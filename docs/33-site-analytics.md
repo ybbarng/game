@@ -39,7 +39,7 @@ game.byb.kr에 방문 통계를 붙이는 장기 계획이다. **당장 만들�
 | 바깥에 열린 길 | `/script.js`(추적 스크립트), `/api/send`(수집), `/api/heartbeat`(감시)만 로그인 없이 열린다. | compose의 `umami-public` 라우터 |
 | 백업·감시 | 매일 04:30 `pg_dump` 7일치(같은 디스크), Gatus가 heartbeat를 본다 | `backup.sh`, gatus `config.yaml` |
 | 새 사이트 붙이기 | "Umami 화면에서 웹사이트를 추가해 ID를 받는다. servers 저장소에서 바꿀 것은 없다" | PLAN.md 13단계 끝 |
-| 앱에 넣는 방식 | `next/script`로 `https://stats.byb.kr/script.js`를 `afterInteractive`로 싣는다. `data-website-id`, `data-domains="star.byb.kr"`(개발 서버 방문 빼기). ID가 비면 스크립트를 싣지 않는다 | star `src/ui/Analytics.tsx` |
+| 앱에 넣는 방식 | `next/script`로 저장소에 고정한 `/stats/umami-3.4.1.js`(같은 출처, 2026-11-01부터. 그전에는 `https://stats.byb.kr/script.js`)를 `afterInteractive`로 싣고 `data-host-url="https://stats.byb.kr"`로 보낸다. 바깥 스크립트는 화면 코드 해시 밖이라 같은 출처의 별 따기 저장소를 읽을 수 있어 옮겼다(docs/39 3절 별도 검토 1번). umami 서버를 올리면 이 파일도 같은 버전으로 바꾼다. `data-website-id`, `data-domains="star.byb.kr"`(개발 서버 방문 빼기). ID가 비면 스크립트를 싣지 않는다 | star `src/ui/Analytics.tsx` |
 | 이벤트 | `track(name, data)` 한 함수만 쓰고, 이름과 값의 모양을 `TrackEvents` 타입 한 곳에 모은다. 스크립트가 없거나 실패해도 던지지 않는다. 시간은 구간(`"0-2"` 등)으로만 보낸다 | star `src/ui/track.ts`, `src/test/unit/track.test.ts` |
 | 웹사이트 ID | 소스에 상수로 적혀 있다(원래 페이지에 공개되는 값) | — |
 

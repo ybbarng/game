@@ -13,15 +13,20 @@ import { BEFORE_SEND_NAME, UMAMI_WEBSITE_ID } from "@/stats/analytics";
  * 알 수 없고, 같은 출처에서 돌면 기기에 저장된 소속 복구 코드를 읽고 패스키 서명을 띄울 수 있다(D7).
  * 주의(2026-11-01 별도 검토, docs/39 3절 1번): 경로만 빼서는 안전하지 않다. 기기 저장소는 출처(game.byb.kr)
  * 단위라 게임 목록 같은 다른 페이지에서 도는 바깥 스크립트도 별 따기 저장소를 읽는다. 그래서 이 출처에서 도는
- * 코드는 모두 우리 빌드 안(화면 코드 해시 안)에 두어야 한다
+ * 코드는 모두 우리 빌드 안(화면 코드 해시 안)에 두어야 한다. 그래서 추적 스크립트를 저장소에 고정해 같은 출처에서
+ * 내보내고(`public/stats/umami-3.4.1.js`), 보내는 곳만 stats.byb.kr로 둔다(`data-host-url`)
  */
+export const UMAMI_SCRIPT = "/stats/umami-3.4.1.js";
+export const UMAMI_HOST = "https://stats.byb.kr";
+
 export function Analytics() {
   const path = usePathname() ?? "";
   if (!UMAMI_WEBSITE_ID) return null;
   if (path === "/stardraw" || path.startsWith("/stardraw/")) return null;
   return (
     <Script
-      src="https://stats.byb.kr/script.js"
+      src={UMAMI_SCRIPT}
+      data-host-url={UMAMI_HOST}
       data-website-id={UMAMI_WEBSITE_ID}
       data-domains="game.byb.kr"
       data-do-not-track="true"
