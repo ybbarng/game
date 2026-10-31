@@ -121,6 +121,13 @@ export class Store {
         blinded TEXT NOT NULL,
         PRIMARY KEY (period, account)
       );
+      CREATE TABLE IF NOT EXISTS qual_reissue (
+        period TEXT NOT NULL,
+        account TEXT NOT NULL,
+        allowed_at INTEGER NOT NULL,
+        blinded TEXT,
+        PRIMARY KEY (period, account)
+      );
     `);
     // 2026-10-30 확인 링크로 바꾸며 옛 방식(회차·등수 묶음 요청) 요청을 버린다. 한 번만
     const moved = this.db
@@ -447,14 +454,63 @@ export class Store {
       .run(periodHex, account, blindedHex);
   }
 
+  /**
+   * 이 계정의 이번 기간 다시 발급 허락(docs/36 11-27). 없으면 null, 허락만 했으면 blinded null,
+   * 다시 받았으면 그때 보낸 가린 값(hex)
+   */
+  qualReissue(
+    periodHex: string,
+    account: string,
+  ): { blinded: string | null } | null {
+    const r = this.db
+      .prepare(
+        "SELECT blinded FROM qual_reissue WHERE period = ? AND account = ?",
+      )
+      .get(periodHex, account);
+    if (!r) return null;
+    return { blinded: r.blinded === null ? null : String(r.blinded) };
+  }
+
+  qualReissueAllow(periodHex: string, account: string, at: number): void {
+    this.db
+      .prepare(
+        "INSERT INTO qual_reissue (period, account, allowed_at) VALUES (?, ?, ?)",
+      )
+      .run(periodHex, account, at);
+  }
+
+  qualReissueUse(periodHex: string, account: string, blindedHex: string): void {
+    this.db
+      .prepare(
+        "UPDATE qual_reissue SET blinded = ? WHERE period = ? AND account = ? AND blinded IS NULL",
+      )
+      .run(blindedHex, periodHex, account);
+  }
+
+  /** 이 기간에 실제로 다시 도장을 찍은 수(허락만 한 것은 세지 않는다) */
+  qualReissuedCount(periodHex: string): number {
+    const r = this.db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM qual_reissue WHERE period = ? AND blinded IS NOT NULL",
+      )
+      .get(periodHex);
+    return Number(r?.n ?? 0);
+  }
+
   /** 자격 기간마다 발급 수(감시용, D10) */
-  qualIssuedCounts(): { period: string; issued: number }[] {
+  qualIssuedCounts(): { period: string; issued: number; reissued: number }[] {
     return this.db
       .prepare(
-        "SELECT period, COUNT(*) AS n FROM qual_issued GROUP BY period ORDER BY period",
+        `SELECT period, COUNT(*) AS n,
+           (SELECT COUNT(*) FROM qual_reissue r WHERE r.period = i.period AND r.blinded IS NOT NULL) AS re
+         FROM qual_issued i GROUP BY period ORDER BY period`,
       )
       .all()
-      .map((r) => ({ period: String(r.period), issued: Number(r.n) }));
+      .map((r) => ({
+        period: String(r.period),
+        issued: Number(r.n),
+        reissued: Number(r.re),
+      }));
   }
 
   qualIssuedCount(periodHex: string): number {

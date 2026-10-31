@@ -23,6 +23,7 @@ import {
   entrantId,
   equalBytes,
   everDirector,
+  fromHex,
   genesisHash,
   issuerKeyRequestMessage,
   isVoidRound,
@@ -54,6 +55,8 @@ import {
   recordHash,
   registrationContent,
   registrationRoot,
+  reissueEmail,
+  reissueRequestMessage,
   roundAt,
   roundTimes,
   type Schedule,
@@ -233,9 +236,9 @@ export interface ServerState {
   earlySealLag: number | null;
   /** 마감이 지났는데 아직 봉인하지 못한 시간(초). 정상이면 0, 기한(3분)에 가까워지면 시각 인증이 막힌 것(D10) */
   sealOverdueSeconds: number;
-  /** 자격 기간마다 발급한 소속 도장 수. 회사 인원보다 많으면 몰래 찍은 것일 수 있다(D10, P10) */
-  qualIssued: { period: string; issued: number }[];
-  /** qualIssued 가운데 가장 많은 발급 수(감시가 숫자 하나로 비교한다, 없으면 0) */
+  /** 자격 기간마다 발급한 소속 도장 수와 다시 발급 수(docs/36 11-27). 회사 인원보다 많으면 몰래 찍은 것일 수 있다(D10, P10) */
+  qualIssued: { period: string; issued: number; reissued: number }[];
+  /** qualIssued 가운데 가장 많은 발급 수 + 다시 발급 수(감시가 숫자 하나로 비교한다, 없으면 0) */
   qualIssuedMax: number;
 }
 
@@ -423,7 +426,10 @@ export class StardrawServer {
       earlySealLag: anchoring ? store.lastSealed() - store.earlySealed() : null,
       sealOverdueSeconds: round > next ? Math.max(0, now - due) : 0,
       qualIssued,
-      qualIssuedMax: Math.max(0, ...qualIssued.map((q) => q.issued)),
+      qualIssuedMax: Math.max(
+        0,
+        ...qualIssued.map((q) => q.issued + q.reissued),
+      ),
     };
   }
 
@@ -995,12 +1001,32 @@ export class StardrawServer {
         ];
       }),
     );
+    // 다시 발급 수(kind 11, docs/36 11-27): 발급 수와 같은 규칙
+    const reissuedOps = await Promise.all(
+      matured.periods.flatMap((p) => {
+        const count = this.o.store.qualReissuedCount(toHex(p.id));
+        if (count <= p.reissued) return [];
+        return [
+          signAsSeal(
+            {
+              v: OP_VERSION,
+              kind: "qual-reissued",
+              after: prev,
+              effectiveRound: 0,
+              period: p.id,
+              reissued: count,
+            },
+            this.sealFor(round),
+          ),
+        ];
+      }),
+    );
     const submitted = this.o.store.directorOps();
     const { accepted, rejected } = await selectOperations(
       this.ops,
       round,
       prev,
-      [...sealOps, ...issuedOps, ...submitted.map((x) => x.op)],
+      [...sealOps, ...issuedOps, ...reissuedOps, ...submitted.map((x) => x.op)],
       ctx,
       scheduleChanges,
     );
@@ -1213,6 +1239,91 @@ export class StardrawServer {
   }
 
   /**
+   * 소속 다시 발급 허락(docs/36 11-27): 국장 서명을 확인하고, 그 회사 계정(HMAC)이 이 기간에 이미 받았고
+   * 다시 발급을 허락받은 적이 없으면 한 번 허락해 둔다. 이메일은 HMAC을 계산한 뒤 버리고 어디에도 남기지 않는다
+   */
+  async allowReissue(
+    ip: string,
+    input: {
+      periodId: string;
+      email: string;
+      auth: { pub: Uint8Array; signature: SignatureData };
+    },
+  ): Promise<{ allowed: true }> {
+    const q = this.o.qualification;
+    if (!q) throw new EntryError("이 서버는 소속을 발급하지 않습니다", 404);
+    const email = reissueEmail(input.email);
+    if (!/^[^\s@]+@[^\s@]+$/.test(email) || email.length > 254)
+      throw new EntryError("이메일 형식이 맞지 않습니다");
+    if (!/^[0-9a-f]{64}$/.test(input.periodId))
+      throw new EntryError("자격 기간 형식이 맞지 않습니다");
+    const ok =
+      this.isActiveDirector(input.auth.pub) &&
+      (await verifyEntrantSignature(
+        input.auth.pub,
+        reissueRequestMessage(this.head(), fromHex(input.periodId), email),
+        input.auth.signature,
+        this.o.policy,
+      ));
+    if (!ok) throw new EntryError("우주국장의 서명이 아닙니다", 403);
+    const prefix = ipPrefix(ip);
+    const day = String(Math.floor(this.now() / 86400));
+    if (
+      this.counters.count("director", day, prefix) >=
+      (this.o.directorRequestsPerPrefixPerDay ?? 60)
+    )
+      throw new EntryError(
+        "같은 곳에서 오늘 보낸 국장 요청이 너무 많습니다",
+        429,
+      );
+    this.counters.add("director", day, prefix);
+
+    const info = (await this.qualInfo()).periods.find(
+      (p) => p.id === input.periodId,
+    );
+    const state = this.opsAt(
+      Math.max(1, roundAt(this.schedule(), this.now()) ?? 1),
+    );
+    const period = state.periods.find((p) => toHex(p.id) === input.periodId);
+    const affiliation = period
+      ? state.affiliations.find((a) => equalBytes(a.id, period.affiliation))
+      : undefined;
+    const config = affiliation
+      ? q.affiliations.get(affiliation.fields.name)
+      : undefined;
+    if (!info || !period || !info.open || !config)
+      throw new EntryError("지금 받을 수 있는 자격 기간이 아닙니다", 409);
+    if (config.kind !== "google")
+      throw new EntryError(
+        "회사 계정으로 받는 소속만 다시 발급할 수 있습니다",
+        409,
+      );
+    const domain = config.domain.toLowerCase();
+    if (!email.endsWith(`@${domain}`))
+      throw new EntryError("이 소속의 회사 이메일이 아닙니다", 409);
+    const account = createHmac("sha256", this.o.store.qualAccountKey())
+      .update(email)
+      .digest("hex");
+    this.o.store.transaction(() => {
+      if (this.o.store.qualIssue(input.periodId, account) === null)
+        throw new EntryError(
+          "이 계정은 이번 기간 소속을 아직 받지 않았습니다. 다시 발급 없이 그냥 받으면 됩니다",
+          409,
+        );
+      if (this.o.store.qualReissue(input.periodId, account) !== null)
+        throw new EntryError(
+          "이 계정은 이번 기간에 이미 다시 발급을 허락받았습니다",
+          409,
+        );
+      this.o.store.qualReissueAllow(input.periodId, account, this.now());
+    });
+    this.o.log?.(
+      `소속 다시 발급 허락: 기간 ${input.periodId.slice(0, 12)}(누구인지는 남기지 않는다)`,
+    );
+    return { allowed: true };
+  }
+
+  /**
    * 도장 받기: 기관 계정을 확인하고, 이번 기간에 처음이면 가린 값에 도장을 찍어 돌려준다.
    * 서버가 아는 것은 "이 계정(HMAC)이 이 기간에 받았다"뿐이다. 무엇에 찍었는지는 모른다(블라인드).
    * 같은 계정이 같은 가린 값을 다시 보내면(응답을 못 받은 경우) 같은 도장을 다시 준다
@@ -1308,10 +1419,19 @@ export class StardrawServer {
     }
     this.o.store.transaction(() => {
       const before = this.o.store.qualIssue(input.periodId, account);
-      if (before === null)
+      if (before === null) {
         this.o.store.qualIssueAdd(input.periodId, account, blindedHex);
-      else if (before !== blindedHex)
-        throw new EntryError("이번 기간 자격을 이미 받았습니다", 409);
+        return;
+      }
+      if (before === blindedHex) return;
+      // 국장이 허락한 다시 발급(docs/36 11-27): 쓰지 않은 허락이면 새 가린 값에 한 번 더 찍는다
+      const reissue = this.o.store.qualReissue(input.periodId, account);
+      if (reissue?.blinded === null) {
+        this.o.store.qualReissueUse(input.periodId, account, blindedHex);
+        return;
+      }
+      if (reissue?.blinded === blindedHex) return;
+      throw new EntryError("이번 기간 자격을 이미 받았습니다", 409);
     });
     return { blindStamp };
   }

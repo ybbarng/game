@@ -5,6 +5,7 @@ import {
   ByteWriter,
   concat,
   equalBytes,
+  sha256,
   taggedHash,
   toBase64Url,
   utf8,
@@ -171,6 +172,30 @@ export function qualLoginNonce(blinded: Uint8Array): string {
  */
 export function issuerKeyRequestMessage(head: Uint8Array): Uint8Array {
   return concat(utf8("stardraw/qual-key/v1"), new Uint8Array([0]), head);
+}
+
+/** 다시 발급 허락에 넣는 이메일 값: 앞뒤 공백을 빼고 소문자로 바꾼다(서버의 계정 HMAC과 같은 모양) */
+export function reissueEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * 국장이 소속 다시 발급을 허락할 때 서명하는 바이트(docs/36 11-27):
+ * 태그 ‖ 0 ‖ 장부 끝 해시(32) ‖ 기간 id(32) ‖ sha256(소문자 이메일)(32).
+ * 이메일은 서명 바이트에 해시로만 들어가고 장부에는 어디에도 남지 않는다
+ */
+export function reissueRequestMessage(
+  head: Uint8Array,
+  periodId: Uint8Array,
+  email: string,
+): Uint8Array {
+  return concat(
+    utf8("stardraw/qual-reissue/v1"),
+    new Uint8Array([0]),
+    head,
+    periodId,
+    sha256(utf8(reissueEmail(email))),
+  );
 }
 
 /** 씨앗 하나로 정해지는 도장 요청(가린 값과 r). 같은 씨앗·기간이면 늘 같다 */

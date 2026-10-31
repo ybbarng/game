@@ -36,6 +36,7 @@ import type { ModAction, RoomHub } from "./room";
  *   GET  /api/director/state            국장 관리 화면: 다음 기록(서명할 장부 끝 해시), 국장 열쇠·운영 기록·소속, 받아 둔 요청
  *   POST /api/director/ops              { op }(국장 패스키로 서명한 운영 기록) → { id, round, effectiveRound }
  *   POST /api/director/qual-key         { pub, signature }(국장 서명) → 새 도장 열쇠(비밀은 서버에) { issuerKey }. 국장이 자격 기간 열기에 넣어 서명한다
+ *   POST /api/director/qual-reissue     { periodId, email, pub, signature }(국장 서명) → { allowed }. 소속 다시 발급 허락(docs/36 11-27)
  *   GET  /api/qual                      효력이 생긴 자격 기간과 이 서버에서 받을 수 있는지 { round, periods }
  *   POST /api/qual/:periodId/blind      { idToken, blinded }(구글 ID 토큰, 가린 값) → { blindStamp }(docs/36 11-13)
  *   GET  /ledger/...                    공개 장부 파일(nginx가 대신 내도 된다)
@@ -320,6 +321,33 @@ async function handle(
       res,
       200,
       await engine.createIssuerKey(clientIp(req, o.trustProxy), auth),
+    );
+  }
+
+  if (method === "POST" && path === "/api/director/qual-reissue") {
+    const body = await readJson(req);
+    let input: {
+      periodId: string;
+      email: string;
+      auth: { pub: Uint8Array; signature: SignatureData };
+    };
+    try {
+      input = {
+        periodId: str(body.periodId, "자격 기간"),
+        email: str(body.email, "이메일"),
+        auth: {
+          pub: fromBase64Url(str(body.pub, "국장 공개 열쇠")),
+          signature: decodeSignatureData(str(body.signature, "국장 서명")),
+        },
+      };
+    } catch (err) {
+      if (err instanceof EntryError) throw err;
+      throw new EntryError("국장 서명 형식이 맞지 않습니다");
+    }
+    return send(
+      res,
+      200,
+      await engine.allowReissue(clientIp(req, o.trustProxy), input),
     );
   }
 

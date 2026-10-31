@@ -22,6 +22,7 @@ import {
   type QualHolding,
   qualKeyFromSeed,
   qualLoginNonce,
+  reissueRequestMessage,
   type Schedule,
   type SoftPasskey,
   STAMP_SCHEME_BLS,
@@ -502,4 +503,132 @@ describe("새 도장 열쇠는 국장 서명으로만(2026-10-31 보안 검토 B
       }),
     ).rejects.toMatchObject({ status: 403 });
   }, 60_000);
+});
+
+describe("소속 다시 발급 허락(docs/36 11-27)", () => {
+  const allow = async (
+    r: Rig,
+    periodId: string,
+    email: string,
+    signer = director,
+  ) =>
+    r.engine.allowReissue("203.0.113.9", {
+      periodId,
+      email,
+      auth: {
+        pub: signer.publicKey,
+        signature: await signer.sign(
+          reissueRequestMessage(
+            r.engine.head(),
+            Uint8Array.from(Buffer.from(periodId, "hex")),
+            email,
+          ),
+        ),
+      },
+    });
+
+  it("국장이 허락하면 이미 받은 계정이 기간에 한 번 더 받고, 다음 기록에 다시 발급 수가 실리며 장부 검사가 통과한다", async () => {
+    const { r, periodId } = await qualRig();
+    const old = await receive(
+      r,
+      periodId,
+      "google:ivy@example.com:example.com",
+    );
+    await expect(
+      receive(r, periodId, "google:ivy@example.com:example.com"),
+    ).rejects.toMatchObject({ status: 409 });
+    // 대문자·공백이 섞여도 같은 계정이다
+    await allow(r, periodId, " Ivy@Example.com ");
+    const fresh = await receive(
+      r,
+      periodId,
+      "google:ivy@example.com:example.com",
+    );
+    // 허락은 한 번만 쓰인다
+    await expect(
+      receive(r, periodId, "google:ivy@example.com:example.com"),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "이번 기간 자격을 이미 받았습니다",
+    });
+    // 이메일은 어디에도 남지 않는다
+    const rows = r.store.db.prepare("SELECT * FROM qual_reissue").all();
+    expect(rows).toHaveLength(1);
+    expect(JSON.stringify(rows).toLowerCase()).not.toContain("ivy");
+    // 옛 증서와 새 증서 모두 쓸 수 있다(블라인드라 옛 증서를 무효로 못 한다)
+    await enter(r, await player(), [1, 2, 3, 4, 5, 6], "203.0.113.7", old);
+    await enter(r, await player(), [7, 8, 9, 10, 11, 12], "203.0.113.7", fresh);
+    await r.finish(13);
+    const ops13 = r.store.record(13)?.operations ?? [];
+    expect(ops13).toHaveLength(2);
+    expect(ops13).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "qual-issued", issued: 1 }),
+        expect.objectContaining({
+          kind: "qual-reissued",
+          reissued: 1,
+          signer: expect.objectContaining({ role: "seal" }),
+        }),
+      ]),
+    );
+    expect(r.engine.state().qualIssuedMax).toBe(2);
+    const ledger = readLedger(r.dir);
+    const report = await verifyLedger(
+      ledger.genesis,
+      ledger.records,
+      ledger.tickets,
+      ledger.registrations,
+      { beaconVerifier: () => true, powParams: TEST_POW },
+    );
+    expect(report.problems).toEqual([]);
+  }, 60_000);
+
+  it("기간에 한 번만 허락하고, 받은 적 없는 계정·다른 도메인·국장 아닌 서명은 거절한다", async () => {
+    const { r, periodId } = await qualRig();
+    await receive(r, periodId, "google:jay@example.com:example.com");
+    await expect(allow(r, periodId, "kim@example.com")).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(allow(r, periodId, "jay@other.org")).rejects.toMatchObject({
+      status: 409,
+    });
+    const stranger = softPasskeySigner(await generateSigner());
+    await expect(
+      allow(r, periodId, "jay@example.com", stranger),
+    ).rejects.toMatchObject({ status: 403 });
+    await allow(r, periodId, "jay@example.com");
+    await expect(allow(r, periodId, "jay@example.com")).rejects.toMatchObject({
+      status: 409,
+      message: "이 계정은 이번 기간에 이미 다시 발급을 허락받았습니다",
+    });
+    // 허락만 하고 쓰지 않으면 다시 발급 수에 세지 않는다
+    expect(r.store.qualReissuedCount(periodId)).toBe(0);
+  }, 30_000);
+
+  it("다른 이메일에 한 서명이나 지난 장부 끝 해시의 서명은 받지 않는다", async () => {
+    const { r, periodId } = await qualRig();
+    await receive(r, periodId, "google:lee@example.com:example.com");
+    const id = Uint8Array.from(Buffer.from(periodId, "hex"));
+    const signedOther = await director.sign(
+      reissueRequestMessage(r.engine.head(), id, "other@example.com"),
+    );
+    await expect(
+      r.engine.allowReissue("203.0.113.9", {
+        periodId,
+        email: "lee@example.com",
+        auth: { pub: director.publicKey, signature: signedOther },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    const stale = await director.sign(
+      reissueRequestMessage(r.engine.head(), id, "lee@example.com"),
+    );
+    await r.finish(13);
+    await expect(
+      r.engine.allowReissue("203.0.113.9", {
+        periodId,
+        email: "lee@example.com",
+        auth: { pub: director.publicKey, signature: stale },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  }, 30_000);
 });
