@@ -104,11 +104,13 @@ export function DirectorConsole({
     void load();
   }, [load, keyring, version]);
 
-  const act = async (fn: () => Promise<string>) => {
+  /** 서명·요청 한 번. 성공했으면 true */
+  const act = async (fn: () => Promise<string>): Promise<boolean> => {
     setBusy(true);
     setMessage(null);
     try {
       setMessage({ ok: true, text: await fn() });
+      return true;
     } catch (err) {
       const text =
         err instanceof NotDirectorError
@@ -119,6 +121,7 @@ export function DirectorConsole({
               ? err.message
               : String(err);
       setMessage({ ok: false, text });
+      return false;
     } finally {
       setBusy(false);
       await load();
@@ -430,9 +433,31 @@ export function DirectorConsole({
                       className="text-white/60"
                       data-director-period
                     >
-                      {`자격 ${p.number}기 · ${day(p.startsAt)}~${day(p.endsAt)} · 발급 ${p.issued}`}
+                      {`자격 ${p.number}기 · ${day(p.startsAt)}~${day(p.endsAt)} · 발급 ${p.issued}${p.reissued ? ` · 다시 발급 ${p.reissued}` : ""}`}
                     </span>
                   ))}
+                  {backend.allowReissue &&
+                    a.until === null &&
+                    periods
+                      .filter(
+                        (p) => p.startsAt <= state.now && p.endsAt > state.now,
+                      )
+                      .map((p) => (
+                        <ReissueForm
+                          key={`reissue-${p.id}`}
+                          busy={busy}
+                          onAllow={(email) =>
+                            act(async () => {
+                              await backend.allowReissue?.(
+                                keyring,
+                                p.id,
+                                email,
+                              );
+                              return `${email}에 ${p.number}기 다시 발급을 허락했습니다. 그분이 새 기기에서 회사 계정으로 다시 로그인하면 소속을 받습니다.`;
+                            })
+                          }
+                        />
+                      ))}
                   {a.until === null && !open && !pendingPeriod && (
                     <button
                       type="button"
@@ -490,6 +515,60 @@ export function DirectorConsole({
         }
       />
     </div>
+  );
+}
+
+/**
+ * 소속 다시 발급 허락(docs/36 11-27). 기기와 복구 코드를 모두 잃은 직원에게 그 기간에 한 번 더 받게 한다.
+ * 연락해 온 사람이 그 회사 계정의 주인인지 국장이 먼저 본다. 이메일은 서버로만 가고 장부에는 다시 발급 수만 남는다
+ */
+function ReissueForm({
+  busy,
+  onAllow,
+}: {
+  busy: boolean;
+  onAllow: (email: string) => Promise<boolean>;
+}) {
+  const [email, setEmail] = useState("");
+  const valid = /^[^\s@]+@[^\s@]+$/.test(email.trim());
+  return (
+    <form
+      className="mt-1 flex flex-col gap-1.5 rounded-lg border border-white/10 px-3 py-2"
+      data-director-reissue
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        void onAllow(email.trim()).then((ok) => {
+          if (ok) setEmail("");
+        });
+      }}
+    >
+      <span className="text-white/80">다시 발급 허락</span>
+      <span className="text-xs text-white/55">
+        기기와 복구 코드를 모두 잃은 분에게 이번 기간에 한 번 더 받게 합니다.
+        연락해 온 분이 그 회사 계정의 주인인지 먼저 확인해 주세요. 이메일은
+        장부에 남지 않습니다.
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="회사 이메일"
+          aria-label="다시 발급할 회사 이메일"
+          className="min-w-0 flex-1 rounded-lg border border-white/20 bg-transparent px-3 py-1.5 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={busy || !valid}
+          className="rounded-lg border border-white/20 px-3 py-1.5 hover:bg-white/10 disabled:opacity-40"
+        >
+          서명하고 허락
+        </button>
+      </div>
+    </form>
   );
 }
 

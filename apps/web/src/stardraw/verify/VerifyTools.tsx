@@ -294,7 +294,9 @@ export function LedgerCheck() {
                     {p.affiliationName} {p.number}기 · {p.from}회차부터 · 도장
                     열쇠{" "}
                     <code className="text-amber-100/90">{p.fingerprint}</code> ·
-                    발급 {p.issued} · 쓰인 증서 {p.used}
+                    발급 {p.issued}
+                    {p.reissued ? ` · 다시 발급 ${p.reissued}` : ""} · 쓰인 증서{" "}
+                    {p.used}
                   </li>
                 ))}
               </ul>

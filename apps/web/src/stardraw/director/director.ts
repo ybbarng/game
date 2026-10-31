@@ -11,6 +11,7 @@ import {
   type Operation,
   opMessage,
   rawPublicKeyFromSpki,
+  reissueRequestMessage,
   type SignatureData,
   signAsDirector,
   signerFromKeyPair,
@@ -47,6 +48,16 @@ export interface DirectorBackend {
    * 국장 패스키로 장부 끝 해시에 서명해 보낸다(2026-10-31 보안 검토 B9)
    */
   issuerKey(keyring: DirectorKeyring): Promise<Uint8Array>;
+  /**
+   * 소속 다시 발급 허락(docs/36 11-27): 기기와 복구 코드를 모두 잃은 직원의 회사 이메일을 넣어
+   * 그 기간에 한 번 더 받게 한다. 이메일은 서버로만 가고 장부에는 다시 발급 수만 남는다.
+   * 기기 안 연습 장부는 회사 계정 확인을 하지 않아 다시 발급할 것이 없으므로 이 칸이 없다
+   */
+  allowReissue?(
+    keyring: DirectorKeyring,
+    periodId: string,
+    email: string,
+  ): Promise<void>;
 }
 
 /** 서버 API(같은 출처 /stardraw-api) */
@@ -97,6 +108,30 @@ export function remoteDirectorBackend(
       });
       const body = await read(res);
       return fromBase64Url(String(body.issuerKey));
+    },
+    async allowReissue(keyring, periodId, email) {
+      const state = (await read(
+        await f(`${base}/api/director/state`, { cache: "no-store" }),
+      )) as unknown as DirectorState;
+      const signed = await keyring.signBytes(
+        reissueRequestMessage(
+          fromHex(state.view.next.after),
+          fromHex(periodId),
+          email,
+        ),
+      );
+      await read(
+        await f(`${base}/api/director/qual-reissue`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            periodId,
+            email,
+            pub: toBase64Url(signed.pub),
+            signature: encodeSignatureData(signed.signature),
+          }),
+        }),
+      );
     },
   };
 }

@@ -288,3 +288,103 @@ test("관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장�
   expect(overflow).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath("admin.png"), fullPage: true });
 });
+
+test("관리 화면: 소속 다시 발급 허락(docs/36 11-27) — 회사 이메일을 넣어 국장 패스키로 서명해 보낸다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "세로 휴대폰과 데스크톱으로 본다",
+  );
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: {
+      protocol: "ctap2",
+      transport: "internal",
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+  const state = serverState();
+  const affiliation = state.view.affiliations[0];
+  if (affiliation) affiliation.method = "기관 계정";
+  const periodId = "44".repeat(32);
+  state.view.periods = [
+    {
+      id: periodId,
+      affiliation: "11".repeat(32),
+      affiliationName: "시험 성단",
+      number: 1,
+      startsAt: state.now - 86400,
+      endsAt: state.now + 300 * 86400,
+      issuerKey: "q".repeat(128),
+      from: 30,
+      issued: 12,
+      reissued: 1,
+    },
+  ];
+  const requests: Record<string, string>[] = [];
+  await page.route("**/stardraw-api/api/director/state", (route) =>
+    route.fulfill({ json: state }),
+  );
+  await page.route(
+    "**/stardraw-api/api/director/qual-reissue",
+    async (route) => {
+      requests.push(route.request().postDataJSON() as Record<string, string>);
+      await route.fulfill({ json: { allowed: true } });
+    },
+  );
+
+  await page.goto("/stardraw/admin");
+  const console = page.locator("[data-director-console]");
+  await expect(console).toBeVisible();
+  await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
+  await expect(message(page)).toHaveAttribute("data-director-message", "ok");
+  const fingerprint = await console.locator("[data-fingerprint]").innerText();
+  const saved = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("stardraw-director-keys") ?? "[]") as {
+        c: string;
+        p: string;
+      }[],
+  );
+  state.view.directors = [
+    {
+      pub: saved[0]?.p,
+      credentialId: saved[0]?.c,
+      fingerprint,
+      from: 30,
+      until: null,
+    },
+  ];
+  await page.reload();
+  await expect(console.locator("[data-director-period]")).toContainText(
+    "발급 12 · 다시 발급 1",
+  );
+  const form = console.locator("[data-director-reissue]");
+  await expect(
+    form.getByRole("button", { name: "서명하고 허락" }),
+  ).toBeDisabled();
+  await form.getByLabel("다시 발급할 회사 이메일").fill("ivy@example.com");
+  await form.getByRole("button", { name: "서명하고 허락" }).click();
+  await expect(message(page)).toContainText(
+    "ivy@example.com에 1기 다시 발급을 허락했습니다",
+  );
+  expect(requests).toHaveLength(1);
+  expect(requests[0]).toMatchObject({ periodId, email: "ivy@example.com" });
+  expect(requests[0]?.signature).toBeTruthy();
+  await expect(form.getByLabel("다시 발급할 회사 이메일")).toHaveValue("");
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: info.outputPath("admin-reissue.png"),
+    fullPage: true,
+  });
+});
