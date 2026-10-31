@@ -649,4 +649,9 @@ export class FakeGitHub {
   text(branch: string, path: string): string | undefined {
     return this.filesOf(branch)?.get(path);
   }
+
+  /** 브랜치의 모든 파일(git clone 한 폴더를 흉내 낼 때) */
+  files(branch: string): [path: string, text: string][] {
+    return [...(this.filesOf(branch) ?? new Map<string, string>()).entries()];
+  }
 }

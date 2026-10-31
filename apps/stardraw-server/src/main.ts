@@ -25,6 +25,7 @@ import {
 import { isPowWorker, runPowWorker, WorkerPowChecker } from "./pow-pool";
 import { Publisher } from "./publish";
 import { DEFAULT_RELAY_LIMITS, Relay } from "./relay";
+import { restoreFromAnchor } from "./restore";
 import { RoomHub } from "./room";
 import { parseScheduleLiveArgs, scheduleLive } from "./schedule-live";
 import {
@@ -216,6 +217,37 @@ async function sealNextCommand(): Promise<void> {
   );
 }
 
+/**
+ * `node server.mjs restore --from <앵커 저장소 폴더|공개 장부 폴더|github> [--repo 소유자/이름]`:
+ * DB와 백업을 모두 잃었을 때 공개 장부 사본으로 DB를 다시 세운다(docs/36 11-26). 서버를 멈춘 채로 실행한다
+ */
+async function restoreCommand(args: readonly string[]): Promise<void> {
+  const config = loadConfig();
+  const value = (name: string) => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const from = value("--from");
+  if (!from)
+    throw new Error(
+      "사용법: restore --from <앵커 저장소 폴더|공개 장부 폴더|github> [--repo 소유자/이름]",
+    );
+  const repo = value("--repo");
+  mkdirSync(config.dataDir, { recursive: true });
+  const result = await restoreFromAnchor({
+    from,
+    ...(repo ? { repo } : {}),
+    out: join(config.dataDir, "stardraw.sqlite"),
+    ledgerDir: config.ledgerDir,
+    policy: config.policy,
+    pow: config.pow,
+    log: (m) => console.log(`[stardraw] ${m}`),
+  });
+  console.log(
+    `[stardraw] 다시 세웠다: 장부 ${result.ledger}, ${result.rounds}회차까지. 관인 파일을 제자리에 두고 서버를 띄운다`,
+  );
+}
+
 const [command, ...rest] = process.argv.slice(2);
 void (
   isPowWorker()
@@ -226,7 +258,9 @@ void (
         ? Promise.resolve().then(() => scheduleLiveCommand(rest))
         : command === "seal-next"
           ? sealNextCommand()
-          : main()
+          : command === "restore"
+            ? restoreCommand(rest)
+            : main()
 ).catch((err) => {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);
