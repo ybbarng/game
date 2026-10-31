@@ -104,6 +104,10 @@ export function removeHolding(
       (s) => !(s.ledger === ledger && s.periodId === periodId),
     ),
   );
+  // 받다가 끊겨 남은 요청(씨앗)도 함께 지운다(공용 PC, 2026-11-01 점검)
+  const pending = read<PendingRequest>(pendingKey(ns));
+  if (pending && pending.ledger === ledger && pending.periodId === periodId)
+    write(pendingKey(ns), null);
 }
 
 /**
