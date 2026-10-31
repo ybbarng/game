@@ -13,7 +13,7 @@
   - [x] 3. 서버(국장 요청 받기·다음 관인 열쇠 파일·효력 회차 전환·시작 기록)와 시험
   - [x] 4. 검증 페이지·터미널 검사기 관인 내력, 국장 화면 「관인 교체」
   - [x] 5. deploy/stardraw/README.md 관인 교체 절차(사용자용)
-  - [ ] 6. 배포(CI → servers 태그 → recreate → 장부 검사): CI·이미지·화면 배포 끝(4c3bf19), servers 태그 커밋 982f62f까지 함. **서버 다시 띄우기는 자동 권한에 막힘** → 사용자가 :13~:17·:33~:37·:53~:57 밖에 `! ssh byb-ops pull` 뒤 `! ssh byb-ops recreate stardraw`, 시작 기록에 `관인 지문(지금 열쇠 파일)` 줄과 `오류:` 없음 확인, 장부 검사(`pnpm -C packages/stardraw-cli start https://game.byb.kr/stardraw-api/ledger/` 등) 통과. 실제 관인 교체는 하지 않음(다음 관인 열쇠 파일을 만들지 않는다)
+  - [ ] 6. 배포(CI → servers 태그 → recreate → 장부 검사): CI·이미지·화면 배포 끝(4c3bf19), servers 태그 커밋 982f62f까지 함. **서버 다시 띄우기는 자동 권한에 막힘** → 사용자가 :13~:17·:33~:37·:53~:57 밖에 `! ssh byb-ops pull` 뒤 `! ssh byb-ops recreate stardraw`, 시작 기록에 `관인 지문(지금 열쇠 파일)` 줄과 `오류:` 없음 확인, 장부 검사(`pnpm --filter @mighty/stardraw-cli build` 뒤 `node packages/stardraw-cli/dist/stardraw-verify.mjs --source server --compare`, 끝 상태 0. 2026-11-01 배포 전 서버로 돌려 통과·관인 내력 표시 확인함) 통과. 실제 관인 교체는 하지 않음(다음 관인 열쇠 파일을 만들지 않는다)
   ② 보안 헤더(CSP)를 보고 전용 → 실제로 켜기(자격 기간 열고 구글 로그인 확인 뒤). ③ 백업을 구글 드라이브에도(집 서버 rclone 스크립트에 하루 한 개).
 - **사용자가 직접 할 일**: 백업 2단계(집 서버로 끌어오기 — 1단계 매시 크론은 2026-11-01 등록함, 관인은 보안 노트에 저장함), GitHub 보호(stardraw-ledger 강제 push·삭제 금지 룰셋, mighty main 보호·액션 SHA 강제·SERVER_HOST_KEY), 계정 2단계 인증, 국장 패스키 하나 더, 실제 폰(특히 아이폰 사파리) 확인, 국장 화면에서 벌집 성단 소속·자격 기간 열기.
 - **나중(할 일 목록)**: 응모 앞단 가벼운 작업 증명, 소속 없는 응모 회차 상한, 앵커 사본으로 DB 다시 세우는 도구, 디스크 감시, 회차 방 얼굴 뒷모습, 이월(고민 중).
