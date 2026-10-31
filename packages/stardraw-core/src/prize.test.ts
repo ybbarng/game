@@ -230,6 +230,57 @@ const issued = (c: Chain, periodId: Uint8Array, n: number) =>
     seal,
   );
 
+const reissued = (c: Chain, periodId: Uint8Array, n: number) =>
+  signAsSeal(
+    c.body({
+      kind: "qual-reissued",
+      effectiveRound: 0,
+      period: periodId,
+      reissued: n,
+    }),
+    seal,
+  );
+
+describe("다시 발급 수(운영 기록 kind 11, docs/36 11-27)", () => {
+  it("관인이 다시 발급 수를 실으면 기간 보기에 나온다", async () => {
+    const { c, periodId } = await withPeriod();
+    await c.close([
+      await issued(c, periodId, 3),
+      await reissued(c, periodId, 1),
+    ]);
+    expect(await c.problems()).toEqual([]);
+    const report = await c.report();
+    const view = operationsView(report.operations, c.records.length, c.head());
+    expect(view.periods[0]).toMatchObject({ issued: 3, reissued: 1 });
+    expect(
+      view.operations.some(
+        (o) => o.summary === "다시 발급 수: 벌집 성단 1기 1개",
+      ),
+    ).toBe(true);
+  });
+
+  it("다시 발급 수는 국장이 실을 수 없고, 줄거나 그대로일 수 없다", async () => {
+    const { c, periodId } = await withPeriod();
+    await c.close([await reissued(c, periodId, 2)]);
+    const byDirector = await signAsDirector(
+      c.body({
+        kind: "qual-reissued",
+        effectiveRound: 0,
+        period: periodId,
+        reissued: 5,
+      }),
+      director,
+    );
+    await c.close([byDirector]);
+    await c.close([await reissued(c, periodId, 2)]);
+    const problems = await c.problems();
+    expect(problems.some((p) => p.includes("관인만 싣는다"))).toBe(true);
+    expect(problems.some((p) => p.includes("다시 발급 수는 늘기만"))).toBe(
+      true,
+    );
+  });
+});
+
 describe("자격 기간 열기와 발급 수(운영 기록 kind 8·9)", () => {
   it("국장이 연 기간은 3회차 예고 뒤 효력이 생기고, 관인이 발급 수를 싣는다", async () => {
     const { c, periodId } = await withPeriod();
@@ -389,8 +440,33 @@ describe("상품 대상 판정", () => {
       ],
     );
     expect(
-      (await c.problems()).some((p) => p.includes("발급 수 1개보다 많다")),
+      (await c.problems()).some((p) =>
+        p.includes("발급 수 1개와 다시 발급 수 0개를 더한 것보다 많다"),
+      ),
     ).toBe(true);
+  });
+
+  it("다시 발급 수(kind 11)만큼은 쓰인 증서가 발급 수보다 많아도 통과한다(docs/36 11-27)", async () => {
+    const { c, issuer, periodId } = await withPeriod();
+    const [a, b] = entrants as [SoftPasskey, SoftPasskey];
+    await c.close(
+      [await issued(c, periodId, 1), await reissued(c, periodId, 1)],
+      [
+        await ticket(
+          c,
+          a,
+          [1, 2, 3, 4, 5, 6],
+          issue(issuer.secretKey, periodId),
+        ),
+        await ticket(
+          c,
+          b,
+          [7, 8, 9, 10, 11, 12],
+          issue(issuer.secretKey, periodId),
+        ),
+      ],
+    );
+    expect(await c.problems()).toEqual([]);
   });
 
   it("기간 열쇠로 찍지 않은 도장, 효력 전 기간의 증서는 검사가 잡는다", async () => {

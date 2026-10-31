@@ -38,6 +38,7 @@ function opsFrom(schedule: Schedule, info: QualInfo) {
       issuerKey: fromBase64Url(p.issuerKey),
       from: p.from,
       issued: p.issued,
+      reissued: 0,
     });
     if (!state.affiliations.some((a) => toHex(a.id) === p.affiliation))
       state.affiliations.push({

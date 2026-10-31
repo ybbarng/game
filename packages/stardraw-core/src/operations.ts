@@ -59,6 +59,7 @@ import {
  *   8 자격 기간 열기  소속 id(32) ‖ 기간 번호(u16) ‖ startsAt(u64) ‖ endsAt(u64) ‖ 도장 방식(u8 = 1) ‖ 도장 열쇠(bytes, 96)
  *   9 발급 수         기간 id(32) ‖ 누적 발급 수(u32). 관인만, 실리는 즉시 효력(docs/36 11-13)
  *  10 관인 교체       새 관인 pub(65) ‖ 보유 증명(64). 국장만(docs/36 11-25)
+ *  11 다시 발급 수    기간 id(32) ‖ 누적 다시 발급 수(u32). 관인만, 실리는 즉시 효력(docs/36 11-27)
  * 운영 기록 = 본문 ‖ 서명자(u8: 1 관인, 2 국장) ‖ pub(65) ‖ 서명(관인 r‖s 64, 국장 패스키 서명)
  * 서명 대상 = "stardraw/op-sig/v1" ‖ 0x00 ‖ 본문, 운영 기록 id = taggedHash("stardraw/op/v1", 본문)
  *
@@ -79,6 +80,7 @@ export const OP_KINDS = [
   "qual-period",
   "qual-issued",
   "seal-rotate",
+  "qual-reissued",
 ] as const;
 export type OpKind = (typeof OP_KINDS)[number];
 
@@ -94,6 +96,7 @@ export const OP_NAMES: Record<OpKind, string> = {
   "qual-period": "자격 기간 열기",
   "qual-issued": "발급 수",
   "seal-rotate": "관인 교체",
+  "qual-reissued": "다시 발급 수",
 };
 
 /** 배지 종류(소속의 모양). 값은 바이트 */
@@ -138,7 +141,8 @@ export type OpPayload =
       issuerKey: Uint8Array;
     }
   | { kind: "qual-issued"; period: Uint8Array; issued: number }
-  | { kind: "seal-rotate"; pub: Uint8Array; proof: Uint8Array };
+  | { kind: "seal-rotate"; pub: Uint8Array; proof: Uint8Array }
+  | { kind: "qual-reissued"; period: Uint8Array; reissued: number };
 
 export type OpBody = OpPayload & {
   v: number;
@@ -213,6 +217,9 @@ function writeBody(w: ByteWriter, b: OpBody): void {
     case "seal-rotate":
       w.fixed(b.pub, PUBLIC_KEY_LENGTH).fixed(b.proof, SIGNATURE_LENGTH);
       break;
+    case "qual-reissued":
+      w.fixed(b.period, 32).u32(b.reissued);
+      break;
   }
 }
 
@@ -262,6 +269,8 @@ function readBody(r: ByteReader): OpBody {
         pub: r.fixed(PUBLIC_KEY_LENGTH),
         proof: r.fixed(SIGNATURE_LENGTH),
       };
+    case "qual-reissued":
+      return { ...head, kind, period: r.fixed(32), reissued: r.u32() };
   }
 }
 
@@ -450,6 +459,8 @@ export interface QualPeriodState {
   from: number;
   /** 장부에 실린 최신 누적 발급 수(kind 9) */
   issued: number;
+  /** 장부에 실린 최신 누적 다시 발급 수(kind 11, docs/36 11-27) */
+  reissued: number;
 }
 
 export interface AffiliationState {
@@ -611,9 +622,11 @@ export function matureOps(state: OpsState, round: number): void {
           issuerKey: op.issuerKey,
           from: E,
           issued: 0,
+          reissued: 0,
         });
         break;
       case "qual-issued":
+      case "qual-reissued":
         break;
       case "seal-rotate":
         state.sealKey = op.pub;
@@ -696,14 +709,18 @@ export async function checkOperation(
 
   // 서명자: 국장 열쇠 지정·빼기는 관인이나 국장, 취소는 국장(관인은 자기가 한 지정만), 발급 수는 관인만, 나머지는 국장
   const role = op.signer.role;
-  if (op.kind === "qual-issued" && role !== "seal")
-    return "발급 수는 관인만 싣는다";
+  if (
+    (op.kind === "qual-issued" || op.kind === "qual-reissued") &&
+    role !== "seal"
+  )
+    return "발급 수·다시 발급 수는 관인만 싣는다";
   if (role === "seal") {
     const sealAllowed =
       op.kind === "director-add" ||
       op.kind === "director-remove" ||
       op.kind === "cancel" ||
-      op.kind === "qual-issued";
+      op.kind === "qual-issued" ||
+      op.kind === "qual-reissued";
     if (!sealAllowed) return "관인은 이 운영 기록에 서명할 수 없다";
     if (state.sealKey && !equalBytes(state.sealKey, op.signer.pub))
       return "관인 열쇠가 이 회차에 쓰는 관인과 다르다";
@@ -714,9 +731,13 @@ export async function checkOperation(
     return "서명이 맞지 않는다";
 
   // 효력 회차: 3회차 예고와 회차 경계. 취소·발급 수는 0
-  if (op.kind === "cancel" || op.kind === "qual-issued") {
+  if (
+    op.kind === "cancel" ||
+    op.kind === "qual-issued" ||
+    op.kind === "qual-reissued"
+  ) {
     if (op.effectiveRound !== 0)
-      return "예고 취소·발급 수의 효력 회차는 0(실리는 즉시)";
+      return "예고 취소·발급 수·다시 발급 수의 효력 회차는 0(실리는 즉시)";
   } else {
     const earliest = earliestEffectiveRound(state, round);
     if (op.effectiveRound < earliest)
@@ -806,6 +827,13 @@ export async function checkOperation(
       if (!p) return "효력이 생긴 자격 기간이 아니다";
       if (!Number.isInteger(op.issued) || op.issued <= p.issued)
         return "발급 수는 늘기만 한다";
+      return null;
+    }
+    case "qual-reissued": {
+      const p = state.periods.find((x) => equalBytes(x.id, op.period));
+      if (!p) return "효력이 생긴 자격 기간이 아니다";
+      if (!Number.isInteger(op.reissued) || op.reissued <= p.reissued)
+        return "다시 발급 수는 늘기만 한다";
       return null;
     }
   }
@@ -953,6 +981,12 @@ export function acceptOperation(
     state.ops.push({ id, op, round, status: "applied", cancelledIn: null });
     const p = state.periods.find((x) => equalBytes(x.id, op.period));
     if (p) p.issued = op.issued;
+    return;
+  }
+  if (op.kind === "qual-reissued") {
+    state.ops.push({ id, op, round, status: "applied", cancelledIn: null });
+    const p = state.periods.find((x) => equalBytes(x.id, op.period));
+    if (p) p.reissued = op.reissued;
     return;
   }
   state.ops.push({ id, op, round, status: "pending", cancelledIn: null });
@@ -1163,6 +1197,7 @@ export interface QualPeriodView {
   issuerKey: string;
   from: number;
   issued: number;
+  reissued: number;
 }
 
 export interface OperationsView {
@@ -1227,6 +1262,13 @@ function describe(state: OpsState, op: Operation): string {
         : undefined;
       return `발급 수: ${a?.fields.name ?? "자격"} ${p?.number ?? "?"}기 ${op.issued}개`;
     }
+    case "qual-reissued": {
+      const p = state.periods.find((x) => equalBytes(x.id, op.period));
+      const a = p
+        ? state.affiliations.find((x) => equalBytes(x.id, p.affiliation))
+        : undefined;
+      return `다시 발급 수: ${a?.fields.name ?? "자격"} ${p?.number ?? "?"}기 ${op.reissued}개`;
+    }
   }
 }
 
@@ -1266,7 +1308,9 @@ export function operationsView(
       round: e.round,
       effectiveRound: e.op.effectiveRound,
       effectiveAt:
-        e.op.kind === "cancel" || e.op.kind === "qual-issued"
+        e.op.kind === "cancel" ||
+        e.op.kind === "qual-issued" ||
+        e.op.kind === "qual-reissued"
           ? roundTimes(s.schedule, e.round).closesAt
           : opensAt(e.op.effectiveRound),
       status: e.status,
@@ -1282,7 +1326,7 @@ export function operationsView(
           ? hex(e.op.target)
           : e.op.kind === "qual-period"
             ? hex(e.op.affiliation)
-            : e.op.kind === "qual-issued"
+            : e.op.kind === "qual-issued" || e.op.kind === "qual-reissued"
               ? hex(e.op.period)
               : null,
     })),
@@ -1357,6 +1401,7 @@ export function periodView(
     issuerKey: toBase64Url(p.issuerKey),
     from: p.from,
     issued: p.issued,
+    reissued: p.reissued,
   };
 }
 

@@ -408,10 +408,12 @@ export async function verifyLedger(
     for (const period of ops.periods) {
       const key = toHex(period.id);
       const n = used.get(key)?.size ?? 0;
-      if (n > period.issued && !overIssued.has(key)) {
+      // 다시 발급(kind 11)으로 나간 증서도 쓰일 수 있다(옛 증서는 블라인드라 무효로 못 한다, docs/36 11-27)
+      const supply = period.issued + period.reissued;
+      if (n > supply && !overIssued.has(key)) {
         overIssued.add(key);
         fail(
-          `소속 증서: 기간 ${key.slice(0, 12)}: 응모권에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개보다 많다`,
+          `소속 증서: 기간 ${key.slice(0, 12)}: 응모권에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개와 다시 발급 수 ${period.reissued}개를 더한 것보다 많다`,
         );
       }
     }

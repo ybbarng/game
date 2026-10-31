@@ -215,7 +215,7 @@ export function qualificationLines(result: CheckResult): string[] {
     "[소속]",
     ...result.qualification.map(
       (p) =>
-        `  ${p.affiliationName} ${p.number}기 · ${day(p.startsAt)}~${day(p.endsAt)} · ${p.from}회차부터 · 도장 열쇠 ${p.fingerprint} · 발급 ${p.issued} · 쓰인 증서 ${p.used}`,
+        `  ${p.affiliationName} ${p.number}기 · ${day(p.startsAt)}~${day(p.endsAt)} · ${p.from}회차부터 · 도장 열쇠 ${p.fingerprint} · 발급 ${p.issued}${p.reissued ? ` · 다시 발급 ${p.reissued}` : ""} · 쓰인 증서 ${p.used}`,
     ),
   ];
 }
