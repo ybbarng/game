@@ -17,7 +17,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BackToGames } from "@/components/BackToGames";
 import { useNoPullRefresh } from "@/game/no-pull-refresh";
-import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { track } from "@/stats/track";
@@ -439,7 +438,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 printing={printing === view.id}
                 onBack={() => back({ name: "home" })}
                 onDraw={(round) => go({ name: "draw", round })}
-                onMine={() => go({ name: "mine" })}
               />
             );
           })()
@@ -1198,7 +1196,6 @@ function ReceiptView({
   printing,
   onBack,
   onDraw,
-  onMine,
 }: {
   services: Services;
   mine: MyTicket;
@@ -1206,7 +1203,6 @@ function ReceiptView({
   printing?: boolean | undefined;
   onBack: () => void;
   onDraw: (round: number) => void;
-  onMine: () => void;
 }) {
   const record = services.ledger.record(mine.ticket.round);
   // 막 응모했으면 영수증 발급 연출(오버레이)이 끝난 뒤 이 영수증 화면이 드러난다

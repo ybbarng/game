@@ -217,7 +217,6 @@ export function IssuedView({
 }) {
   const key = setup.issued;
   // 출신 인사는 발급할 때 한 번 고른다(다시 그려도 바뀌지 않게)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 발급한 등록증이 바뀔 때만
   const origin = useMemo(
     () => (key ? originGreeting(astronautOf(key.pub), Math.random) : null),
     [key],

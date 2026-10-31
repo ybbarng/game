@@ -12,7 +12,6 @@ import {
 } from "@mighty/stardraw-core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { play } from "@/game/sound";
-import { cn } from "@/lib/cn";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { closedAt, errorText } from "../errors";
 import { FX } from "../fx-timing";
@@ -21,14 +20,12 @@ import { clearKept, type KeptPaper, loadKept, saveKept } from "../kept-paper";
 import type { LedgerStatus } from "../local-ledger";
 import {
   inAppBrowser,
-  type PasskeyProblem,
   passkeyApi,
-  passkeyFailText,
   passkeyProblem,
   platformUnlock,
 } from "../passkey-env";
 import { usableHolding } from "../qual-store";
-import { ensureRegistered, registering, signProof } from "../registrar";
+import { registering } from "../registrar";
 import { roundShort } from "../round-label";
 import { DEMO_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";

@@ -273,7 +273,6 @@ function IssueFx({
   // 실제 등록과 같은 차례: 신청서 → 내기 → 흉내 패스키 만들기 → 서명 → 위로 → 발급한 등록증
   const [apply, setApply] = useState<ApplyStage | null>("text");
   const { ask, open } = useAsk();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 처음 그릴 때 한 번
   useEffect(() => {
     const t = window.setTimeout(() => setApply("waiting"), FX.read);
     return () => window.clearTimeout(t);
