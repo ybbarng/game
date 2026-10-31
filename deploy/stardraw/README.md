@@ -121,7 +121,7 @@ ${EDITOR:-vi} /home/ybbarng/secrets/stardraw-anchor.env   # STARDRAW_ANCHOR_TOKE
   1. 집 서버에서 `gpg -d stardraw-<시각>.sqlite.gz.gpg | gunzip > stardraw.sqlite`
   2. VPS에 옮겨 `~/data/stardraw/ledger/stardraw.sqlite` 자리에 둔다(서버가 멈춘 상태에서, 원래 파일은 옆에 남겨 둔다). 관인은 `~/data/stardraw/server-key.pkcs8`에.
   3. `ssh byb-ops up stardraw`. 서버는 DB의 처음 일정표와 기록으로 이어 가고, 공개 장부 파일을 DB에서 다시 쓴다.
-  4. 백업 뒤에 닫힌 회차가 있었다면 그 기록은 앵커 저장소 사본(`ledgers/<장부 id>/ledger/`)에만 있다. 사본에서 DB로 다시 넣는 도구는 아직 없다(나중) — 그래서 백업을 매시 추첨 직후에 뜬다(잃는 것은 많아야 마감 전 응모 한 회차).
+  4. 백업 뒤에 닫힌 회차가 있었다면 서버가 그 회차를 다시 닫으려다 앵커와 어긋난다. 그때는 백업 대신 6절 "앵커로 다시 세우기"를 쓴다(백업에만 있는 도장 비밀 열쇠·확인 요청은 잃는다). 백업을 매시 추첨 직후에 뜨는 까닭이다.
 - 손으로 뜨기: `docker compose exec -T stardraw node server.mjs backup /data/backup/stardraw-$(date +%F-%H%M).sqlite`
 
 ## 4. 상품 자격(docs/36 11-13)
@@ -160,6 +160,25 @@ STARDRAW_QUAL_AFFILIATIONS=벌집 성단=google:<기관 도메인>
 
 - 효력 전에 서버를 다시 띄우면 다음 열쇠 파일이 그대로 있어야 한다(지우면 효력 회차부터 서명하지 못한다. 시작 기록이 "다음 열쇠 파일과 다르다"로 알린다).
 - 2026-11-01에 절차·기능만 만들었다. 운영에서 실제 교체는 아직 하지 않았다(사용자가 정할 때).
+
+## 6. 앵커로 다시 세우기(docs/36 11-26)
+
+DB(`~/data/stardraw/ledger/stardraw.sqlite`)와 백업을 모두 잃었을 때의 마지막 길이다. 공개 장부 사본으로 DB를 다시 쓰고, 장부 검사를 통과하고 끝 해시가 원본과 같을 때만 성공한다. 백업이 있으면 위 "백업과 되살리기"가 먼저다(이 길은 소속 도장 비밀 열쇠·당첨자 확인 요청·마감 전 응모를 잃는다. 잃는 것과 사용자 영향은 docs/36 11-26 표).
+
+1. **서버 멈추기**: `cd ~/servers/byb.kr/apps/stardraw && docker compose stop stardraw`. DB가 없는 채로 서버가 떴다면 새 장부를 만들려 했을 것이다(앵커 `genesis.txt`가 달라 앵커는 거절된다). 그때 생긴 `~/data/stardraw/ledger/stardraw.sqlite*`는 옆으로 옮긴다(이 명령은 DB 파일이 있으면 덮어쓰지 않는다).
+2. **관인 제자리에**: 보안 노트의 관인을 `~/data/stardraw/server-key.pkcs8`로(권한 600). 관인 교체를 예고 중이었으면 다음 관인도 `server-key.next.pkcs8`로. 관인이 없으면 새 관인으로 띄운 뒤 국장이 관인 교체를 싣는다(그 사이 3회차는 영수증 확인이 틀린다).
+3. **원본 고르기**(가장 앞선 것):
+   - 공개 장부 폴더가 남아 있으면(DB만 잃음): `--from /data/ledger/ledger`
+   - 아니면 앵커 저장소: `git clone --branch main https://github.com/ybbarng/stardraw-ledger ~/data/stardraw/anchor-copy`(정식 시작 전이면 `--branch trial`) 뒤 `--from /data/anchor-copy`. 받지 않고 바로 `--from github`도 된다(raw 주소라 몇 분 늦을 수 있다).
+4. **다시 세우기**:
+   ```sh
+   docker compose run --rm stardraw node server.mjs restore --from /data/anchor-copy
+   ```
+   `[stardraw] N회차까지 되살렸다. 장부 끝 해시 …`가 나오면 성공이다. 거절되면 DB를 만들지 않고 멈춘다. 자주 나오는 거절:
+   - `앵커 저장소 …에 N+1회차 앵커가 있는데`: 사본이 앵커보다 늦다. 몇 분 뒤 다시 받거나 다른 브랜치·공개 장부 폴더를 쓴다.
+   - `원본 장부 검사가 통과하지 않는다`: 원본이 깨졌다. 다른 원본을 쓴다.
+5. **띄우기**(:13~:17, :33~:37, :53~:57은 피한다): `ssh byb-ops up stardraw`. 시작 기록에서 `관인 지문`이 장부의 관인과 같고 `오류:` 줄이 없는지 본다. 서버는 1회차부터 앵커를 다시 확인하며 넘어간다(같은 내용이면 그대로).
+6. **확인과 뒷일**: 터미널 검사기 `--source server --compare`가 통과하는지 본다. 그다음 잃은 것을 되돌린다: 국장 화면에서 소속 기간 새로 열기, 예고하려던 운영 기록 다시 서명, 정식 시작 예약을 다시(`schedule-live`), 당첨자에게 확인 링크 다시 보내기. 봉인했지만 추첨 전이던 회차는 무효로 닫히므로 공지한다.
 
 ## 사용자가 정할 것
 
