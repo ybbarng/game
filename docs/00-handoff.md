@@ -18,7 +18,7 @@
   ② 보안 헤더(CSP)를 보고 전용 → 실제로 켜기(자격 기간 열고 구글 로그인 확인 뒤). ③ 백업을 구글 드라이브에도(집 서버 rclone 스크립트에 하루 한 개).
 - **사용자가 직접 할 일**: 백업 2단계(집 서버로 끌어오기 — 1단계 매시 크론은 2026-11-01 등록함, 관인은 보안 노트에 저장함), GitHub 보호(stardraw-ledger 강제 push·삭제 금지 룰셋, mighty main 보호·액션 SHA 강제·SERVER_HOST_KEY), 계정 2단계 인증, 국장 패스키 하나 더, 실제 폰(특히 아이폰 사파리) 확인, 국장 화면에서 벌집 성단 소속·자격 기간 열기.
 - **나중(할 일 목록)**: 응모 앞단 가벼운 작업 증명, 소속 없는 응모 회차 상한, 디스크 감시(servers에 넘김, 계정 전환 뒤 처리 — 오래된 백업 정리 포함, 끝나면 비서가 알림), 회차 방 얼굴 뒷모습, 이월(고민 중). 끝남: 앵커 사본으로 DB 다시 세우는 서버 `restore` 명령(2026-11-01, docs/36 11-26, deploy/stardraw/README.md 6절. 운영에서 실제로 돌려 본 적은 없음).
-- 상품·예산 메모는 git 밖 `~/personal/projects/mighty/private/stardraw-prizes.md`(GitHub에 올리지 않음).
+- 상품·예산 메모는 git 밖 `~/personal/projects/game/private/stardraw-prizes.md`(GitHub에 올리지 않음).
 
 ## 1. 지금 상태 — 거의 마무리
 
