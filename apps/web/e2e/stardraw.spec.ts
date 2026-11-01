@@ -3,6 +3,7 @@ import {
   expect,
   fastForwardUntil,
   fixStardrawClock,
+  type Locator,
   type Page,
   speedUpAnimations,
   test,
@@ -35,10 +36,26 @@ async function virtualAuthenticator(page: Page, verified = true) {
  * (처음 보는 추첨은 건너뛸 수 없다)
  */
 async function showDrawResult(page: Page, fastForward = false) {
-  if (fastForward) await page.clock.runFor(60_000);
-  await expect(page.locator("[data-draw-result]")).toBeVisible({
-    timeout: 30_000,
-  });
+  const result = page.locator("[data-draw-result]");
+  // 연출은 시계 기준이라 결과가 보일 때까지 빨리 감는다(runFor로 60초를 돌리면 프레임마다 그려 1분 넘게 걸렸다)
+  if (fastForward) {
+    await speedUpAnimations(page);
+    await fastForwardUntil(page, () => result.isVisible());
+  }
+  await expect(result).toBeVisible({ timeout: 30_000 });
+}
+
+/** 연출을 켠 시험에서: 보일 때까지 연출을 빨리 감은 뒤 키보드로 낸다(새로 연 페이지도 CSS 연출을 빠르게) */
+async function pressWhenShown(page: Page, target: Locator) {
+  await speedUpAnimations(page);
+  await fastForwardUntil(page, () => target.isVisible());
+  await target.press("Enter");
+}
+
+/** 연출을 켠 시험에서: 연출 오버레이가 모두 걷힐 때까지 빨리 감는다 */
+async function untilStageGone(page: Page) {
+  const stage = page.locator("[data-stage-overlay]");
+  await fastForwardUntil(page, async () => (await stage.count()) === 0);
 }
 
 /** 응모 단추(패스키로 서명, 확인 한 번) */
@@ -208,19 +225,27 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await noSideScroll(page);
   await page.screenshot({ path: info.outputPath("stardraw-key-setup.png") });
   await setup.getByRole("button", REGISTER).click();
-  // 연출이 있으면 신청서가 올라와 기다린다: 내면(키보드 Enter도 같다) 그 누름에 패스키 만들기
-  if (motion)
-    await page
-      .locator("[aria-label='신청서 제출'][aria-disabled='false']")
-      .press("Enter", { timeout: 30_000 });
+  // 연출이 있으면 신청서가 올라와 기다린다: 내면(키보드 Enter도 같다) 그 누름에 패스키 만들기.
+  // 연출 길이는 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
+  if (motion) {
+    await speedUpAnimations(page);
+    await pressWhenShown(
+      page,
+      page.locator("[aria-label='신청서 제출'][aria-disabled='false']"),
+    );
+  }
   // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로)
   await expect(page.locator("[data-issued='new']")).toBeVisible();
   // 패스키 만들기 창 하나만(장부 등록은 첫 응모 때 응모권과 함께)
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
   // 등록 직후 등록증을 발급해 보여 준다. 아직 응모 전이라 등록일은 비어 있다
-  await expect(page.locator("[data-issued='new']")).toContainText(
-    /^.+에 거주하는 .+ 님,우주인으로 등록되었습니다\. 환영합니다!$/,
-  );
+  const welcome =
+    /^.+에 거주하는 .+ 님,우주인으로 등록되었습니다\. 환영합니다!$/;
+  if (motion)
+    await fastForwardUntil(page, () =>
+      page.locator("[data-issued='new']", { hasText: welcome }).isVisible(),
+    );
+  await expect(page.locator("[data-issued='new']")).toContainText(welcome);
   const card = page.locator("[data-idcard]");
   await expect(card).toBeVisible();
   const number = (await card.getAttribute("data-idcard")) as string;
@@ -302,16 +327,17 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.getByRole("button", ENTER).click();
   if (motion) {
     // 용지와 등록증은 은은하게 떠오르기를 되풀이해(멈추지 않아) 키보드로 낸다(Enter도 같은 제출)
-    const paper = page.locator(
-      "[aria-label='용지 제출'][aria-disabled='false']",
+    await pressWhenShown(
+      page,
+      page.locator("[aria-label='용지 제출'][aria-disabled='false']"),
     );
-    await paper.press("Enter", { timeout: 30_000 });
-    const card = page.locator(
-      "[aria-label='신분증 제출'][aria-disabled='false']",
+    await pressWhenShown(
+      page,
+      page.locator("[aria-label='신분증 제출'][aria-disabled='false']"),
     );
-    await card.press("Enter", { timeout: 30_000 });
   }
   const receipt = page.locator("[data-receipt]");
+  if (motion) await untilStageGone(page);
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 1 });
   await expect(receipt).toContainText("베텔게우스");
@@ -424,10 +450,15 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 누르면 주인 확인: 패스키로 새 문제 값에 서명하고 이 기기에서 확인한다. 시각이 초 단위로 흐른다
   await myCard.click({ position: CARD_TAP });
   // 연출이 있으면 본인 확인도 신분증 제시 틀: 아래에서 올라온 등록증을 내밀면 패스키
-  if (motion)
-    await page
-      .locator("[aria-label='신분증 확인'][aria-disabled='false']")
-      .press("Enter", { timeout: 30_000 });
+  if (motion) {
+    await pressWhenShown(
+      page,
+      page.locator("[aria-label='신분증 확인'][aria-disabled='false']"),
+    );
+    await fastForwardUntil(page, () =>
+      myCard.locator("[data-owner-ok]").isVisible(),
+    );
+  }
   await expect(myCard.locator("[data-owner-ok]")).toBeVisible({
     timeout: 30_000,
   });
@@ -448,10 +479,15 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(back.locator("[data-public-key]")).toHaveCount(0);
   await back.locator("[data-key-mask]").click();
   // 연출이 있으면 열쇠 꺼내기도 신분증 제시 틀(등록증을 내밀면 확인)
-  if (motion)
-    await page
-      .locator("[aria-label='신분증 확인'][aria-disabled='false']")
-      .press("Enter", { timeout: 30_000 });
+  if (motion) {
+    await pressWhenShown(
+      page,
+      page.locator("[aria-label='신분증 확인'][aria-disabled='false']"),
+    );
+    await fastForwardUntil(page, () =>
+      back.locator("[data-public-key]").isVisible(),
+    );
+  }
   await expect(back.locator("[data-public-key]")).toHaveText(
     /^04[0-9a-f]{128}$/,
     { timeout: 30_000 },
@@ -1040,7 +1076,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
   await page.locator("[data-envelope]").click();
   await expect(page.locator("[data-draw-ball], canvas").first()).toBeVisible();
   await expect(skipDraw).toHaveCount(0);
-  await expect(result).toBeVisible({ timeout: 60_000 });
+  await showDrawResult(page, true);
 
   // (나) 끝까지 본 뒤 나중에 연 회차: 건너뛰기가 있고, 누르면 바로 결과·열어 봄
   await enter(false);
@@ -1062,7 +1098,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
     timeout: 30_000,
   });
   await expect(skipDraw).toHaveCount(0);
-  await expect(result).toBeVisible({ timeout: 60_000 });
+  await showDrawResult(page, true);
   await expect(skipDraw).toHaveCount(0);
 });
 
