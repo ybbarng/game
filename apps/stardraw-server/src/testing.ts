@@ -79,7 +79,7 @@ import { Store } from "./store";
 
 export const TEST_POW: PowParams = { memorySize: 8, iterations: 1 };
 export const EASY = 2 ** 31;
-/** 시험 앞단 작업 증명: 가벼운 세기, 평균 2번(docs/36 11-30) */
+/** 시험 앞단 작업 증명: 가벼운 세기, 평균 2번(docs/36 11-31) */
 export const TEST_GATE: FrontGateOptions & { params: PowParams } = {
   target: EASY,
   params: { memorySize: 8, iterations: 1 },

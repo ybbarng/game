@@ -121,7 +121,7 @@ describe("작업 증명 실패 기억(D2)", () => {
     expect(f.blocked("1", "c", "x")).toMatch("이미 계산이 맞지 않은");
   });
 
-  it("앞단 작업 증명을 켜면(열쇠당 1번) 한 번 떨어진 열쇠는 다른 본문도 막는다(docs/36 11-30)", () => {
+  it("앞단 작업 증명을 켜면(열쇠당 1번) 한 번 떨어진 열쇠는 다른 본문도 막는다(docs/36 11-31)", () => {
     const f = new PowFailures(1);
     f.failed("pow|1", "register-body", "key");
     expect(f.blocked("pow|1", "entry-body", "key")).toMatch(
@@ -131,7 +131,7 @@ describe("작업 증명 실패 기억(D2)", () => {
   });
 });
 
-describe("응모 앞단 작업 증명 설정(docs/36 11-30)", () => {
+describe("응모 앞단 작업 증명 설정(docs/36 11-31)", () => {
   const get = (vars: Record<string, string>) => (name: string) => vars[name];
   it("기본은 평균 512번으로 켜고, 0이면 끈다", () => {
     expect(frontGateConfig(get({}))).toEqual({

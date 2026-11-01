@@ -58,7 +58,7 @@ export interface ServerConfig {
   /** 동시에 도는 Argon2 확인 수, 기다리는 줄 상한 */
   argonConcurrency: number;
   argonQueue: number;
-  /** 응모 앞단 작업 증명(docs/36 11-30, `STARDRAW_GATE_TRIES`·`STARDRAW_GATE_OPTIONAL_UNTIL`). null이면 끈다 */
+  /** 응모 앞단 작업 증명(docs/36 11-31, `STARDRAW_GATE_TRIES`·`STARDRAW_GATE_OPTIONAL_UNTIL`). null이면 끈다 */
   frontGate: FrontGateOptions | null;
   /** 마감 뒤 봉인 값의 시각 증명을 받아야 하는 기한(초) */
   sealDeadline: number;
@@ -281,7 +281,7 @@ export function outsideConfig(
 }
 
 /**
- * 응모 앞단 작업 증명 설정(docs/36 11-30).
+ * 응모 앞단 작업 증명 설정(docs/36 11-31).
  * - `STARDRAW_GATE_TRIES`: 평균 시도 수(기본 DEFAULT_GATE_TRIES, 0이면 끈다). 화면은 상태의 `gateTarget`을 따라 푼다
  * - `STARDRAW_GATE_OPTIONAL_UNTIL`: 이 시각 전까지는 답 없는 요청도 받는다(배포 직후 열려 있던 옛 화면). ISO 시각이나 유닉스 초
  */

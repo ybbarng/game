@@ -53,7 +53,7 @@ export interface Ledger {
     registration?: KeyRegistration,
   ): Promise<{ receivedAt: number }>;
   /**
-   * 이 열쇠로 낼 요청의 앞단 작업 증명을 뒤에서 미리 풀기 시작한다(서버 장부만, docs/36 11-30).
+   * 이 열쇠로 낼 요청의 앞단 작업 증명을 뒤에서 미리 풀기 시작한다(서버 장부만, docs/36 11-31).
    * 응모 화면에 들어오면 부르고, 응모권 Argon2를 시작하기 전에 끝나길 기다린다(둘이 겹치면 둘 다 느려진다).
    * 연습 장부는 서버가 없어 필요 없다
    */

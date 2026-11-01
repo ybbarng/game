@@ -66,7 +66,7 @@ interface StateJson {
   entries: number;
   serverKey: string;
   mode?: "trial" | "live";
-  /** 응모 앞단 작업 증명 목표값(docs/36 11-30). 옛 서버나 앞단을 끈 서버는 없다 */
+  /** 응모 앞단 작업 증명 목표값(docs/36 11-31). 옛 서버나 앞단을 끈 서버는 없다 */
   gateTarget?: number;
 }
 
@@ -382,7 +382,7 @@ export class RemoteLedger implements Ledger {
   }
 
   /**
-   * 응모 앞단 작업 증명을 미리 풀기 시작한다(docs/36 11-30). 응모 화면에 들어오면 부른다.
+   * 응모 앞단 작업 증명을 미리 풀기 시작한다(docs/36 11-31). 응모 화면에 들어오면 부른다.
    * 서버가 앞단을 알리지 않으면(옛 서버, 상태를 아직 못 받음) 아무것도 하지 않는다.
    * 다 풀리면 끝나는 약속을 돌려준다(실패해도 거절하지 않는다. 보낼 때 다시 푼다)
    */

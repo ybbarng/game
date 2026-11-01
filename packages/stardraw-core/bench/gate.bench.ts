@@ -10,8 +10,8 @@ import {
 import { POW_PARAMS, powHash, powTargetForTries } from "../src/pow";
 
 /**
- * 앞단 작업 증명 시간 재기(docs/36 11-30). 단위 시험이 아니다: `pnpm --filter @mighty/stardraw-core bench`.
- * 휴대폰 시간은 이 숫자에 기기 배수를 곱해 어림한다(11-30 「난이도」). `GATE_TRIES`로 평균 시도 수를 바꿔 잰다
+ * 앞단 작업 증명 시간 재기(docs/36 11-31). 단위 시험이 아니다: `pnpm --filter @mighty/stardraw-core bench`.
+ * 휴대폰 시간은 이 숫자에 기기 배수를 곱해 어림한다(11-31 「난이도」). `GATE_TRIES`로 평균 시도 수를 바꿔 잰다
  */
 
 const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n));

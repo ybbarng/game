@@ -500,7 +500,7 @@ describe("작업 증명 홍수 막기(D2)", () => {
   });
 });
 
-describe("응모 앞단 작업 증명(docs/36 11-30)", () => {
+describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
   /** Argon2를 센다(엉터리 응모는 늘 떨어진다) */
   const counting = () => {
     const c = {

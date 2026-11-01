@@ -316,7 +316,7 @@ describe("응모 요청: 작업 증명 줄이 가득 찼을 때(D2)", () => {
   });
 });
 
-describe("응모 앞단 작업 증명(docs/36 11-30)", () => {
+describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
   /** 등록·응모 요청 본문을 모으는 가짜 서버. 푼 횟수를 센다 */
   async function setup(gateTarget?: number) {
     const clock = new ManualClock();

@@ -139,7 +139,7 @@ describe("HTTP", () => {
     expect(bad.status).toBe(400);
   });
 
-  it("앞단 작업 증명: 상태가 목표값을 알리고, 응모 요청의 gate 칸을 엔진에 넘긴다(docs/36 11-30)", async () => {
+  it("앞단 작업 증명: 상태가 목표값을 알리고, 응모 요청의 gate 칸을 엔진에 넘긴다(docs/36 11-31)", async () => {
     const base = await serve({ frontGate: TEST_GATE });
     await rig.at(EPOCH + 10);
     const state = await (await fetch(`${base}/api/state`)).json();

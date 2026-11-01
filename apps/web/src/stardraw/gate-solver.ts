@@ -1,6 +1,6 @@
 import { solveGate } from "@mighty/stardraw-core";
 
-/** 응모 앞단 작업 증명 풀기(docs/36 11-30): 문제 값과 공개 열쇠, 목표값으로 답 n을 찾는다 */
+/** 응모 앞단 작업 증명 풀기(docs/36 11-31): 문제 값과 공개 열쇠, 목표값으로 답 n을 찾는다 */
 export type GateSolver = (
   head: Uint8Array,
   pub: Uint8Array,
