@@ -165,6 +165,7 @@ function toAnswer(a: NonNullable<Entry["answer"]>): ConfirmAnswer {
 
 export class LocalConfirmRelay implements ConfirmRelay {
   private listeners = new Set<(key: string) => void>();
+  private readonly unsubscribe: () => void;
 
   constructor(
     private readonly clock: Clock,
@@ -172,7 +173,13 @@ export class LocalConfirmRelay implements ConfirmRelay {
     /** 저장 이름 앞머리(데모는 실제 게임과 따로 둔다) */
     private readonly prefix = "stardraw-confirm:",
   ) {
-    store.subscribe?.((key) => this.emit(key));
+    this.unsubscribe = store.subscribe?.((key) => this.emit(key)) ?? (() => {});
+  }
+
+  /** 다른 탭 알림 구독을 끊는다(데모를 처음부터 하면 새 전달로 바꾸므로 예전 것을 놓는다) */
+  close(): void {
+    this.unsubscribe();
+    this.listeners.clear();
   }
 
   private read(id: string): Entry | null {

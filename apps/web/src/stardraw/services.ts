@@ -154,6 +154,8 @@ export async function resetServices(ns: string): Promise<Services> {
   } catch {
     // 지우지 못한 것은 새 장부와 섞이지 않는다(장부 씨앗이 새로 생긴다)
   }
+  // 예전 전달은 다른 탭 알림(storage 리스너)을 단 채 남지 않게 놓는다
+  if (old.relay instanceof LocalConfirmRelay) old.relay.close();
   cache.delete(ns);
   return getServices(ns);
 }

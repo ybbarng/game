@@ -128,6 +128,26 @@ async function winnerAnswers(
   return { stars, outcomes };
 }
 
+describe("기기 안 전달", () => {
+  it("닫으면 다른 탭 알림 구독을 끊는다(데모를 처음부터 해도 리스너가 쌓이지 않는다)", () => {
+    let subscribed = 0;
+    const store: RelayStore = {
+      get: () => null,
+      set: () => {},
+      remove: () => {},
+      keys: () => [],
+      subscribe: () => {
+        subscribed++;
+        return () => subscribed--;
+      },
+    };
+    const relay = new LocalConfirmRelay(new ManualClock(), store);
+    expect(subscribed).toBe(1);
+    relay.close();
+    expect(subscribed).toBe(0);
+  });
+});
+
 describe("확인 링크", () => {
   it("시작 응답의 회차·응모권이 미리 본 것과 다르면 멈춘다(2026-10-31 보안 검토 B6)", async () => {
     const me = await passkey();
