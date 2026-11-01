@@ -1356,7 +1356,8 @@ function DrawFor({
       savedPass(round) !== null);
   wasInRoom.current = showRoom;
   if (showRoom) {
-    const room = (
+    // 방 머리 줄(「돌아가기」·함께 보는 사람 수·「홈」)은 방 화면이 그린다
+    return (
       <RoomView
         key={round}
         services={services}
@@ -1365,18 +1366,8 @@ function DrawFor({
         ticket={mine.find((m) => m.ticket.round === round)?.ticket}
         onClose={onClose}
         onEnter={onEnter}
+        onHome={onHome}
       />
-    );
-    // 방 머리 줄(「돌아가기」·함께 보는 사람 수)은 방 화면이 그린다. 「홈」은 그 위 오른쪽에 둔다
-    return onHome ? (
-      <div className="flex flex-col gap-2">
-        <div className="-mt-1.5 -mr-3 self-end">
-          <MenuItem target="home" label="홈" onClick={onHome} />
-        </div>
-        {room}
-      </div>
-    ) : (
-      room
     );
   }
   // 아직 결과가 없는 회차: 남은 시간을 보이며 기다리다가 결과가 들어오는 순간 추첨 연출을 시작한다

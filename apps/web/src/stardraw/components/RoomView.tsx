@@ -39,6 +39,7 @@ import { DrawView } from "./DrawView";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { formatLeft } from "./parts";
 import { SkyBoard } from "./SkyBoard";
+import { MenuItem } from "./StardrawNav";
 
 /**
  * 회차 방(docs/36 11-23, docs/06): 밤하늘을 보러 모인 사람들. 위쪽은 밤하늘(추첨도 여기)과 진행 상태 한 줄,
@@ -173,6 +174,7 @@ export function RoomView({
   ticket,
   onClose,
   onEnter,
+  onHome,
 }: {
   services: Services;
   round: number;
@@ -181,6 +183,8 @@ export function RoomView({
   onClose: () => void;
   /** 다음 회차 응모(추첨 연출이 끝난 뒤에만 보인다) */
   onEnter: () => void;
+  /** 메뉴 줄이 없는 휴대폰: 머리 줄 오른쪽 「홈」(추첨 화면 DrawView와 같은 모양) */
+  onHome?: (() => void) | undefined;
 }) {
   const base = serverApi() as string;
   const client = useMemo(() => new RoomClient(base, round), [base, round]);
@@ -640,9 +644,16 @@ export function RoomView({
         >
           ← 돌아가기
         </button>
-        <span className="text-white/55 text-xs tabular-nums" data-room-count>
-          함께 보는 {people.size + watchers}명
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-white/55 text-xs tabular-nums" data-room-count>
+            함께 보는 {people.size + watchers}명
+          </span>
+          {onHome && (
+            <div className="-mr-3">
+              <MenuItem target="home" label="홈" onClick={onHome} />
+            </div>
+          )}
+        </div>
       </div>
 
       <p
