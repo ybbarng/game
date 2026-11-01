@@ -110,8 +110,9 @@ export async function checkPracticeLedger(ledger: {
     source: "practice",
     mode: "practice",
     rounds: closed.length,
-    tickets: closed.reduce((n, c) => n + c.tickets.length, 0),
-    registrations: report.keys.length,
+    // 기록의 수로 센다(연습 장부는 오래된 회차의 연습 참가자 응모권·등록을 지운다)
+    tickets: closed.reduce((n, c) => n + c.record.count, 0),
+    registrations: closed.reduce((n, c) => n + c.record.registrationCount, 0),
     powChecked: report.powChecked,
     head: toHex(report.head),
     items,

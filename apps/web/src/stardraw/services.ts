@@ -83,14 +83,11 @@ export function getServices(ns: string = GAME_NS): Services {
               return null;
             }
           },
-          save: (text) => {
-            try {
-              localStorage.setItem(ledgerKey, text);
-            } catch {
-              // 저장소를 못 쓰면 이번 방문 동안만 장부가 남는다
-            }
-          },
+          // 저장소를 못 쓰면(한도 초과·막힘) 던진다. 장부가 콘솔에 알리고 이번 방문 동안만 남긴다
+          save: (text) => localStorage.setItem(ledgerKey, text),
         },
+        // 판 2 장부를 옮길 때 내 응모권을 가르는 데 쓴다(지갑은 아래에서 만든다)
+        ownKeys: () => walletKeys(cache.get(ns)?.wallet),
       });
   const ledger: Ledger =
     practice ??
@@ -122,6 +119,16 @@ export function getServices(ns: string = GAME_NS): Services {
   };
   cache.set(ns, services);
   return services;
+}
+
+/** 지갑이 아는 내 공개 열쇠: 지금 열쇠와 지갑 응모권의 열쇠 */
+function walletKeys(wallet: Wallet | undefined): Uint8Array[] {
+  if (!wallet) return [];
+  const key = wallet.loadKey();
+  return [
+    ...(key ? [key.pub] : []),
+    ...wallet.loadTickets().map((m) => m.ticket.pub),
+  ];
 }
 
 /**

@@ -35,7 +35,9 @@ import {
   genesisHash,
   type KeyRegistration,
   makeRegistration,
+  makeRegistrationProof,
   makeTicket,
+  makeTicketProof,
   matureOps,
   newIssuerKey,
   newOpsState,
@@ -52,11 +54,13 @@ import {
   powTargetForTries,
   type QualInfo,
   qualInfoOf,
+  type RegistrationProof,
   type RoundRecord,
   type RoundSummary,
   type RoundTimes,
   recordHash,
   registrationContent,
+  registrationId,
   roundAt,
   roundSummary,
   roundTimes,
@@ -74,6 +78,7 @@ import {
   sortRegistrations,
   sortTickets,
   type Ticket,
+  type TicketProof,
   taggedHash,
   ticketContent,
   ticketId,
@@ -130,7 +135,15 @@ export function practiceSchedule(epoch: number): Schedule {
   };
 }
 
-/** 저장소(기본은 localStorage). 시험은 메모리를 넣는다 */
+/**
+ * 최근 이만큼의 회차는 응모권·등록을 모두 둔다. 그보다 오래된 회차는 이 기기의 응모권·등록과 그 포함 증명,
+ * 요약만 남기고 연습 참가자 것을 지운다(회차마다 약 14KB → 수백 바이트).
+ * 48회차 = 매시 회차로 이틀: 다음 날 돌아와 어제 회차를 「이 회차 확인」해도 전부 다시 계산하고,
+ * 데모의 건너뛰기(국장·소속·자격 기간을 차리며 약 25회차)도 모두 남는다. 저장은 약 0.7MB로 한도(약 5백만 자)의 1/7쯤이다
+ */
+export const PRACTICE_KEEP_ROUNDS = 48;
+
+/** 저장소(기본은 localStorage). 시험은 메모리를 넣는다. 저장하지 못하면 `save`가 던진다 */
 export interface LedgerStore {
   load(): string | null;
   save(text: string): void;
@@ -144,16 +157,42 @@ export interface LocalLedgerOptions {
   random?: (n: number) => Uint8Array;
   /** 연습 참가자 수(시험은 줄인다) */
   bots?: number;
+  /** 응모권·등록을 모두 두는 최근 회차 수(기본 `PRACTICE_KEEP_ROUNDS`) */
+  keepRounds?: number;
+  /**
+   * 이 기기 지갑의 열쇠(공개 열쇠). 판 2 장부를 옮길 때 내 것과 연습 참가자 것을 가르는 데 쓴다
+   * (판 2는 둘을 가르지 않고 저장했다). 처음 `settle()` 때 한 번 부른다
+   */
+  ownKeys?: () => readonly Uint8Array[];
+  /** 저장이 실패하면(한도 초과·저장소 막힘) 부른다. 다시 성공하기 전까지는 한 번만. 기본은 콘솔 오류 */
+  onSaveError?: (err: unknown) => void;
 }
 
 /**
  * 저장 판. 2(2026-10-30): 원시 열쇠를 받지 않게 되며(docs/36 11-11) 컴퓨터 참가자가 원시 열쇠로
- * 등록했던 판 1 장부는 읽지 않고 새로 시작한다(새 epoch라 장부 표시도 바뀐다)
+ * 등록했던 판 1 장부는 읽지 않고 새로 시작한다(새 epoch라 장부 표시도 바뀐다).
+ * 3(2026-11-01): 이 기기의 열쇠(`own`)와 지운 회차(`light`)를 둔다. 판 2는 읽어서 옮긴다
  */
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
+
+/** 지운 회차에 남긴 것: 이 기기의 응모권·등록의 포함 증명(응모권·등록 바이트를 담는다)과 그 회차 요약 */
+interface LightRound {
+  tickets: TicketProof[];
+  registrations: RegistrationProof[];
+  summary: RoundSummary;
+}
 
 interface Saved {
-  v: typeof SAVE_VERSION;
+  v: 2 | typeof SAVE_VERSION;
+  /** 이 기기에서 응모·등록한 열쇠의 응모자 id(hex). 판 3부터 */
+  own?: string[];
+  /** 지운 회차(회차 순, 1회차부터 이어진다). 그 회차의 tickets·registrations 칸은 비운다. 판 3부터 */
+  light?: {
+    round: number;
+    t: TicketProof[];
+    r: RegistrationProof[];
+    s: RoundSummary;
+  }[];
   epoch: number;
   /** 건너뛴 시간(초) */
   skipped: number;
@@ -240,6 +279,17 @@ export class LocalLedger implements Ledger {
   };
   /** 등록된 열쇠(응모자 id hex) */
   private keys = new Set<string>();
+  /** 이 기기에서 응모·등록한 열쇠(응모자 id hex). 오래된 회차를 지울 때 남긴다 */
+  private own = new Set<string>();
+  /** 판 2에서 옮겨 와 아직 `own`을 채우지 않았으면 false */
+  private ownReady: boolean;
+  /** 지운 회차(1회차부터 이어진다) */
+  private light = new Map<number, LightRound>();
+  private readonly keepRounds: number;
+  private readonly ownKeys: (() => readonly Uint8Array[]) | undefined;
+  private readonly onSaveError: (err: unknown) => void;
+  /** 마지막 저장이 실패했는지(실패를 거듭 알리지 않게) */
+  private saveFailed = false;
   /** 운영 기록 상태(처음 쓸 때 기록을 다시 읽어 만든다) */
   private ops: OpsState | null = null;
   private seal: Saved["seal"];
@@ -262,6 +312,15 @@ export class LocalLedger implements Ledger {
     this.random =
       options.random ?? ((n) => crypto.getRandomValues(new Uint8Array(n)));
     this.bots = options.bots ?? PRACTICE_BOTS;
+    this.keepRounds = options.keepRounds ?? PRACTICE_KEEP_ROUNDS;
+    this.ownKeys = options.ownKeys;
+    this.onSaveError =
+      options.onSaveError ??
+      ((err) =>
+        console.error(
+          "연습 장부를 이 기기에 저장하지 못했습니다. 다시 저장될 때까지 새 기록은 이 창을 닫으면 사라집니다.",
+          err,
+        ));
     const saved = this.read();
     // 처음 열면 다음 x:55가 1회차 마감(매시 정각 추첨)
     const epoch =
@@ -286,6 +345,21 @@ export class LocalLedger implements Ledger {
           ),
         }
       : { round: 1, tickets: [], registrations: [] };
+    // 판 3: 지운 회차의 목록은 남긴 증명에서 되살린다(저장할 때 비워 둔 칸)
+    for (const l of saved?.light ?? []) {
+      this.light.set(l.round, {
+        tickets: l.t,
+        registrations: l.r,
+        summary: l.s,
+      });
+      this.summaries.set(l.round, l.s);
+      this.tickets[l.round - 1] = l.t.map((p) => decodeTicket(dec(p.ticket)));
+      this.registrations[l.round - 1] = l.r.map((p) =>
+        decodeRegistration(dec(p.registration)),
+      );
+    }
+    this.own = new Set(saved?.own ?? []);
+    this.ownReady = !saved || saved.v === SAVE_VERSION;
     for (const list of [...this.registrations, this.pending.registrations])
       for (const r of list) this.keys.add(toHex(entrantId(r.pub)));
     this.seal = saved?.seal;
@@ -321,7 +395,7 @@ export class LocalLedger implements Ledger {
   }
 
   private async settleNow(): Promise<void> {
-    let changed = false;
+    let changed = this.adoptOwners();
     for (;;) {
       const round = this.records.length + 1;
       const times = roundTimes(this.schedule, round);
@@ -365,7 +439,105 @@ export class LocalLedger implements Ledger {
         this.directorOps = [];
       changed = true;
     }
+    if (this.prune()) changed = true;
     if (changed) this.write();
+  }
+
+  /**
+   * 판 2 장부를 옮길 때 한 번: 내 열쇠를 가린다. 판 2는 내 것과 연습 참가자 것을 섞어 저장했다.
+   * 연습 참가자는 회차마다 새 열쇠로 등록과 응모권 한 장을 같은 회차에 내고 다시 나오지 않으며 소속 증서를 쓰지 않는다.
+   * 그래서 지갑의 열쇠, 아직 닫히지 않은 회차의 응모·등록, 두 회차 이상에 나온 열쇠, 응모 없이 등록만 한 열쇠,
+   * 소속 증서를 쓴 열쇠를 내 것으로 본다. 바뀌었으면 true
+   */
+  private adoptOwners(): boolean {
+    if (this.ownReady) return false;
+    this.ownReady = true;
+    const add = (pub: Uint8Array) => this.own.add(toHex(entrantId(pub)));
+    for (const pub of this.walletKeys()) add(pub);
+    for (const t of this.pending.tickets) add(t.pub);
+    for (const r of this.pending.registrations) add(r.pub);
+    const rounds = new Map<string, Set<number>>();
+    const seen = (pub: Uint8Array, i: number) => {
+      const who = toHex(entrantId(pub));
+      const set = rounds.get(who) ?? new Set<number>();
+      set.add(i);
+      rounds.set(who, set);
+    };
+    this.tickets.forEach((list, i) => {
+      for (const t of list) {
+        seen(t.pub, i);
+        if (t.qual) add(t.pub);
+      }
+    });
+    this.registrations.forEach((list, i) => {
+      const entered = new Set(
+        (this.tickets[i] ?? []).map((t) => toHex(entrantId(t.pub))),
+      );
+      for (const r of list) {
+        seen(r.pub, i);
+        if (!entered.has(toHex(entrantId(r.pub)))) add(r.pub);
+      }
+    });
+    for (const [who, set] of rounds) if (set.size >= 2) this.own.add(who);
+    return true;
+  }
+
+  /** 지갑의 열쇠(못 읽으면 없음) */
+  private walletKeys(): readonly Uint8Array[] {
+    try {
+      return this.ownKeys?.() ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 최근 `keepRounds`보다 오래된 회차에서 연습 참가자의 응모권·등록을 지운다. 이 기기의 응모권·등록은
+   * 기록의 머클 루트로 확인할 포함 증명과 함께, 그 회차 요약(지운 응모권도 센 값)과 함께 남긴다. 지웠으면 true
+   */
+  private prune(): boolean {
+    const upto = this.records.length - this.keepRounds;
+    if (this.light.size >= upto) return false;
+    const wallet = new Set(
+      this.walletKeys().map((pub) => toHex(entrantId(pub))),
+    );
+    const mine = (pub: Uint8Array) => {
+      const who = toHex(entrantId(pub));
+      return this.own.has(who) || wallet.has(who);
+    };
+    for (let round = this.light.size + 1; round <= upto; round++) {
+      const i = round - 1;
+      const record = this.records[i] as RoundRecord;
+      const tickets = this.tickets[i] ?? [];
+      const registrations = this.registrations[i] ?? [];
+      const summary = this.summaries.get(round) ?? roundSummary(tickets);
+      // 목록은 id 순서라 그대로 머클 잎이다
+      const ids = tickets.map(ticketId);
+      const regIds = registrations.map(registrationId);
+      const keptTickets = tickets.filter((t) => mine(t.pub));
+      const keptRegs = registrations.filter((r) => mine(r.pub));
+      this.light.set(round, {
+        tickets: keptTickets.flatMap(
+          (t) => makeTicketProof(round, ids, t, record.merkleRoot) ?? [],
+        ),
+        registrations: keptRegs.flatMap(
+          (r) =>
+            makeRegistrationProof(round, regIds, r, record.registrationRoot) ??
+            [],
+        ),
+        summary,
+      });
+      this.summaries.set(round, summary);
+      this.tickets[i] = keptTickets;
+      this.registrations[i] = keptRegs;
+    }
+    // 지운 연습 참가자 열쇠는 다시 응모하지 않는다
+    this.keys = new Set(
+      [...this.registrations, this.pending.registrations].flatMap((list) =>
+        list.map((r) => toHex(entrantId(r.pub))),
+      ),
+    );
+    return true;
   }
 
   /** 연습 참가자: 회차마다 새 흉내 패스키(UP·UV 켬)를 등록하고 무작위 번호로 한 장씩 낸다 */
@@ -494,6 +666,7 @@ export class LocalLedger implements Ledger {
       this.pending = { round, tickets: [], registrations: [] };
     this.pending.registrations.push(registration);
     this.keys.add(toHex(entrantId(registration.pub)));
+    this.own.add(toHex(entrantId(registration.pub)));
     this.write();
     return { round };
   }
@@ -575,6 +748,7 @@ export class LocalLedger implements Ledger {
         throw new Error("소속 증서: 도장이 맞지 않습니다");
     }
     this.pending.tickets.push(ticket);
+    this.own.add(who);
     if (registration && !this.keys.has(who)) {
       this.pending.registrations.push(registration);
       this.keys.add(who);
@@ -586,7 +760,7 @@ export class LocalLedger implements Ledger {
   /** 회차 → 요약(닫힌 회차는 바뀌지 않는다) */
   private summaries = new Map<number, RoundSummary>();
 
-  /** 닫힌 회차 기록과 요약(연습 장부는 응모권을 들고 있어 기기에서 계산한다) */
+  /** 닫힌 회차 기록과 요약(연습 장부는 응모권을 들고 있어 기기에서 계산한다. 지운 회차는 지우기 전에 낸 요약) */
   closed(): ClosedRound[] {
     return this.records.map((record, i) => {
       let summary = this.summaries.get(record.round);
@@ -602,7 +776,10 @@ export class LocalLedger implements Ledger {
     return this.records[round - 1];
   }
 
-  /** 그 회차 응모권(연습 장부는 들고 있다. 검증하기 페이지의 연습 장부 검사도 쓴다) */
+  /**
+   * 그 회차 응모권(연습 장부는 들고 있다. 검증하기 페이지의 연습 장부 검사도 쓴다).
+   * 지운 회차는 이 기기의 응모권만 남아 있다(연습 참가자는 소속 증서를 쓰지 않아 소속 판정은 그대로다)
+   */
   ticketsOf(round: number): readonly Ticket[] {
     return this.tickets[round - 1] ?? [];
   }
@@ -638,7 +815,10 @@ export class LocalLedger implements Ledger {
     };
   }
 
-  /** 장부 전체를 처음부터 다시 계산한다(연습 drand는 서명 확인을 건너뛴다) */
+  /**
+   * 장부 전체를 처음부터 다시 계산한다(연습 drand는 서명 확인을 건너뛴다).
+   * 지운 회차는 사슬·당첨 번호와, 남긴 내 응모권·등록이 그 회차 루트에 들어 있는지와 등수를 본다
+   */
   verify(mine: readonly Uint8Array[] = []): Promise<VerifyReport> {
     return verifyLedger(
       this.schedule,
@@ -650,8 +830,14 @@ export class LocalLedger implements Ledger {
         powParams: PRACTICE_POW,
         mine,
         webauthnPolicy: this.policy,
+        partialRounds: this.light,
       },
     );
+  }
+
+  /** 응모권·등록을 지운 회차 수(1회차부터 이만큼) */
+  prunedRounds(): number {
+    return this.light.size;
   }
 
   /** 연습 drand 값: 씨앗과 회차로 정한 48바이트(진짜 drand 서명 자리) */
@@ -1008,7 +1194,7 @@ export class LocalLedger implements Ledger {
       const text = this.store?.load();
       if (!text) return null;
       const saved = JSON.parse(text) as Saved;
-      return saved.v === SAVE_VERSION ? saved : null;
+      return saved.v === SAVE_VERSION || saved.v === 2 ? saved : null;
     } catch {
       return null;
     }
@@ -1021,10 +1207,24 @@ export class LocalLedger implements Ledger {
       skipped: this.skipped,
       secret: enc(this.secret),
       records: this.records.map((r) => enc(encodeRecord(r))),
-      tickets: this.tickets.map((l) => l.map((t) => enc(encodeTicket(t)))),
-      registrations: this.registrations.map((l) =>
-        l.map((r) => enc(encodeRegistration(r))),
+      // 지운 회차의 칸은 비운다(남긴 것은 light의 증명에 담겨 있다)
+      tickets: this.tickets.map((l, i) =>
+        this.light.has(i + 1) ? [] : l.map((t) => enc(encodeTicket(t))),
       ),
+      registrations: this.registrations.map((l, i) =>
+        this.light.has(i + 1) ? [] : l.map((r) => enc(encodeRegistration(r))),
+      ),
+      own: [...this.own],
+      ...(this.light.size > 0
+        ? {
+            light: [...this.light].map(([round, l]) => ({
+              round,
+              t: l.tickets,
+              r: l.registrations,
+              s: l.summary,
+            })),
+          }
+        : {}),
       pending: {
         round: this.pending.round,
         tickets: this.pending.tickets.map((t) => enc(encodeTicket(t))),
@@ -1047,7 +1247,14 @@ export class LocalLedger implements Ledger {
         : {}),
       ...(this.demoDirectorKey ? { demoDirector: this.demoDirectorKey } : {}),
     };
-    this.store?.save(JSON.stringify(saved));
+    if (!this.store) return;
+    try {
+      this.store.save(JSON.stringify(saved));
+      this.saveFailed = false;
+    } catch (err) {
+      if (!this.saveFailed) this.onSaveError(err);
+      this.saveFailed = true;
+    }
   }
 }
 
