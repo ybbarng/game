@@ -1430,6 +1430,7 @@ function DrawWait({
           bonus: null,
         }}
         label={`${roundTitle(schedule, round)} 추첨을 기다리는 하늘`}
+        info
       />
       <div className="flex flex-col items-center gap-0.5" role="status">
         {left > 0 ? (

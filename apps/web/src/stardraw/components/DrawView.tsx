@@ -264,6 +264,8 @@ export function DrawView({
                   : [],
             })}
             overlay={party && <SkyCelebration plan={party} bonus={bonus} />}
+            // 룰렛이 도는 동안은 누르기를 막고, 결과가 다 나온 뒤에 별 설명을 볼 수 있다
+            info={done}
             label={`추첨 하늘: 켜진 별 ${main.map((n) => starOf(n).ko).join(", ")}`}
           />
 

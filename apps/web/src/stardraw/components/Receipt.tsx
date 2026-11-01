@@ -130,6 +130,8 @@ export function Receipt({
           }}
           label={`내 별 6개: ${ticket.numbers.map((n) => starOf(n).ko).join(", ")}`}
           className="rounded-md border-0"
+          // 출력되어 나오는 동안은 누르지 않는다
+          info={!printing}
         />
       </div>
       <p

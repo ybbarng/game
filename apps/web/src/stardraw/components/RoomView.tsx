@@ -677,6 +677,8 @@ export function RoomView({
               bonus: null,
             }}
             label={`${title} 추첨을 기다리는 하늘`}
+            // 추첨 알림·카운트다운부터는 연출을 가리지 않게 누르기를 막는다
+            info={phase === "open" || phase === "closed"}
           />
         )}
         {phase === "count" && (

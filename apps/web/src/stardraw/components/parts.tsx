@@ -78,8 +78,17 @@ export function StarLine({
   );
 }
 
-/** 누른 별의 정보 칸(응모 화면 하늘 아래) */
-export function StarInfo({ n }: { n: number | null }) {
+/**
+ * 누른 별의 정보 칸. 응모 화면은 하늘 아래 자리를 늘 비워 두고, 다른 하늘(영수증·추첨)은 `className`으로
+ * 하늘 위에 띄운다(SkyBoard `info`)
+ */
+export function StarInfo({
+  n,
+  className,
+}: {
+  n: number | null;
+  className?: string | undefined;
+}) {
   if (n === null)
     return (
       <div className="min-h-20 rounded-xl border border-white/10 bg-white/5" />
@@ -88,7 +97,10 @@ export function StarInfo({ n }: { n: number | null }) {
     <div
       aria-live="polite"
       data-star-info={n}
-      className="min-h-20 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+      className={cn(
+        "min-h-20 rounded-xl border border-white/10 bg-white/5 px-4 py-3",
+        className,
+      )}
     >
       <StarLine star={starOf(n)} />
     </div>

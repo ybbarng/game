@@ -1,7 +1,7 @@
 "use client";
 
 import { type Clock, realClock } from "@mighty/fair-play";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -13,18 +13,22 @@ import {
   useHdrScreen,
 } from "../hdr-glow";
 import { SKY_STARS, starOf } from "../sky";
-import { drawSky, FAINT_STARS, type SkyState, starAt } from "../sky-draw";
+import { drawSky, FAINT_STARS, HIT, type SkyState, starAt } from "../sky-draw";
 import { type SkyEffects, startSkyEffects } from "../sky-effects";
+import { StarInfo } from "./parts";
 
 /**
  * 네모 하늘 하나(응모·영수증·추첨이 같이 쓴다). 크기·누르기·강조만 다르다.
  * 반짝임·유성은 움직임 줄이기 설정이 아니고 응모 하늘일 때만 돈다(영수증은 고요하게, 추첨은 하늘의 빛을 끈다).
  * 탭이 안 보이면 멈춘다.
  * `hdr`의 별은 HDR 화면에서만 흰색보다 밝은 빛 그림을 위에 겹친다(hdr-glow.ts).
+ * `info`면 별을 눌러 그 별 설명(응모 화면과 같은 StarInfo)을 하늘 위에 띄운다. 페이지가 밀리지 않게 하늘 안에 겹치고,
+ * 누른 별을 가리지 않게 별이 아래쪽이면 위에, 위쪽이면 아래에 둔다. 같은 별·빈 하늘·바깥을 누르면 닫히고 다른 별이면 바뀐다.
  */
 export function SkyBoard({
   state,
   onPick,
+  info = false,
   label,
   className,
   clock = realClock,
@@ -34,6 +38,8 @@ export function SkyBoard({
   state: SkyState;
   /** 응모: 별을 누르면 그 번호 */
   onPick?: ((n: number) => void) | undefined;
+  /** 별을 누르면 그 별 설명을 띄운다(연출 중에는 false로 막는다). onPick이 있으면 쓰지 않는다 */
+  info?: boolean | undefined;
   label: string;
   className?: string | undefined;
   clock?: Clock | undefined;
@@ -44,8 +50,34 @@ export function SkyBoard({
 }) {
   const hdrScreen = useHdrScreen();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  /** 설명을 띄운 별 */
+  const [shown, setShown] = useState<number | null>(null);
+  const showing = info && !onPick ? shown : null;
+  // 연출이 시작되어 누르기를 막으면 띄운 설명도 닫는다
+  useEffect(() => {
+    if (!info) setShown(null);
+  }, [info]);
+  // 바깥을 누르거나 Esc면 닫는다
+  useEffect(() => {
+    if (showing === null) return;
+    const onDown = (e: PointerEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setShown(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShown(null);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showing]);
+  const view: SkyState =
+    showing === null ? state : { ...state, focus: showing };
+  const stateRef = useRef(view);
+  stateRef.current = view;
   const effectsRef = useRef<SkyEffects | null>(null);
   const prevPicked = useRef<readonly number[]>(state.picked);
   /** 움직임이 없을 때(영수증, 움직임 줄이기) 상태가 바뀌면 다시 그린다 */
@@ -153,7 +185,7 @@ export function SkyBoard({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 상태가 바뀔 때마다 다시 그린다
   useEffect(() => {
     repaintRef.current?.();
-  }, [state]);
+  }, [view]);
 
   // 켜진 별의 움직임(state.motion)이 있으면 그동안 매 프레임 다시 그린다(서서히 켜짐·반짝임·흐려짐)
   const moving = !!state.motion;
@@ -174,7 +206,7 @@ export function SkyBoard({
   }, [moving]);
 
   return (
-    <div className={cn("relative w-full max-w-full", className)}>
+    <div ref={wrapRef} className={cn("relative w-full max-w-full", className)}>
       <canvas
         ref={canvasRef}
         role="img"
@@ -182,17 +214,21 @@ export function SkyBoard({
         data-sky={state.mode}
         className={cn(
           "block aspect-square w-full max-w-full rounded-xl border border-white/10 bg-[#070d19]",
-          onPick && "cursor-pointer touch-manipulation",
+          (onPick || info) && "cursor-pointer touch-manipulation",
         )}
         onClick={(e) => {
-          if (!onPick) return;
+          if (!onPick && !info) return;
           const rect = e.currentTarget.getBoundingClientRect();
-          const n = starAt(
-            e.clientX - rect.left,
-            e.clientY - rect.top,
-            rect.width,
-          );
-          if (n !== null) onPick(n);
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          if (onPick) {
+            const n = starAt(x, y, rect.width);
+            if (n !== null) onPick(n);
+            return;
+          }
+          // 작은 하늘(영수증)도 응모 하늘만큼 누르기 쉽게 누르는 범위를 응모 하늘의 기준 크기 아래로 줄이지 않는다
+          const n = starAt(x, y, rect.width, HIT);
+          setShown((prev) => (n === null || n === prev ? null : n));
         }}
       />
       {HDR_GLOWS_ON && hdrScreen && hdr.length > 0 && (
@@ -207,6 +243,16 @@ export function SkyBoard({
         </div>
       )}
       {overlay}
+      {showing !== null && (
+        // 설명 칸은 누르기를 통과시킨다: 그 아래 별을 눌러도 바뀌고, 빈 곳을 누르면 닫힌다
+        <StarInfo
+          n={showing}
+          className={cn(
+            "pointer-events-none absolute inset-x-2 z-10 border-white/15 bg-[#0b1322]/90 shadow-black/40 shadow-lg backdrop-blur-sm",
+            starOf(showing).y > 0.5 ? "top-2" : "bottom-2",
+          )}
+        />
+      )}
     </div>
   );
 }
