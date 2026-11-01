@@ -10,6 +10,7 @@ import {
   type ConfirmRelay,
   LocalConfirmRelay,
 } from "./confirm-relay";
+import { workerGateSolver } from "./gate-solver";
 import type { Ledger } from "./ledger";
 import {
   type LedgerStatus,
@@ -93,7 +94,12 @@ export function getServices(ns: string = GAME_NS): Services {
       });
   const ledger: Ledger =
     practice ??
-    new RemoteLedger({ base: SERVER_API, clock, policy: sitePolicy() });
+    new RemoteLedger({
+      base: SERVER_API,
+      clock,
+      policy: sitePolicy(),
+      gateSolver: workerGateSolver,
+    });
   const ledgerId = () => ledger.id();
   const services: Services = {
     ns,

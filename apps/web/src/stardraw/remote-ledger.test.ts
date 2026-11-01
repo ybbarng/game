@@ -1,5 +1,6 @@
 import { ManualClock } from "@mighty/fair-play";
 import {
+  checkGate,
   closeRound,
   drandRoundForClose,
   encodeRecord,
@@ -8,10 +9,12 @@ import {
   genesisHash,
   githubLedgerBase,
   ledgerId,
+  makeRegistration,
   type RoundRecord,
   recordHash,
   roundTimes,
   type Schedule,
+  signRegistrationProof,
   signTicket,
   softPasskeySigner,
   toBase64Url,
@@ -20,6 +23,7 @@ import {
 } from "@mighty/stardraw-core";
 import { describe, expect, it } from "vitest";
 
+import { type GateSolver, inlineGateSolver } from "./gate-solver";
 import { RemoteLedger } from "./remote-ledger";
 
 /**
@@ -106,6 +110,8 @@ function world(clock: ManualClock) {
     server: "up" as "up" | "down" | "502",
     /** 서버 상태는 되지만 장부 파일만 502 */
     filesBroken: false,
+    /** 서버가 알리는 응모 앞단 목표값(없으면 옛 서버처럼 알리지 않는다) */
+    gateTarget: undefined as number | undefined,
     asked: [] as string[],
     fetch: (async (input: string | URL | Request) => {
       const url = String(input);
@@ -122,6 +128,7 @@ function world(clock: ManualClock) {
             sealed: 3,
             head: toHex(recordHash(all[2] as RoundRecord)),
             entries: 0,
+            ...(w.gateTarget ? { gateTarget: w.gateTarget } : {}),
             serverKey: "",
             mode: "trial",
           });
@@ -137,12 +144,17 @@ function world(clock: ManualClock) {
   return w;
 }
 
-function ledgerIn(w: ReturnType<typeof world>, clock: ManualClock) {
+function ledgerIn(
+  w: ReturnType<typeof world>,
+  clock: ManualClock,
+  gateSolver?: GateSolver,
+) {
   return new RemoteLedger({
     base: SERVER,
     clock,
     policy: { rpId: "game.byb.kr", origins: ["https://game.byb.kr"] },
     fetch: w.fetch,
+    ...(gateSolver ? { gateSolver } : {}),
   });
 }
 
@@ -301,5 +313,88 @@ describe("응모 요청: 작업 증명 줄이 가득 찼을 때(D2)", () => {
       drive(busy.clock, busy.ledger.submit(busy.ticket)),
     ).rejects.toThrow("거절 503");
     expect(busy.posts()).toBe(5);
+  });
+});
+
+describe("응모 앞단 작업 증명(docs/36 11-30)", () => {
+  /** 등록·응모 요청 본문을 모으는 가짜 서버. 푼 횟수를 센다 */
+  async function setup(gateTarget?: number) {
+    const clock = new ManualClock();
+    const w = world(clock);
+    w.gateTarget = gateTarget;
+    const posts: { path: string; body: Record<string, unknown> }[] = [];
+    let solved = 0;
+    const ledger = ledgerIn(
+      {
+        ...w,
+        fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+          const url = String(input);
+          if (init?.method !== "POST") return w.fetch(input);
+          posts.push({
+            path: url.slice(SERVER.length),
+            body: JSON.parse(String(init.body)),
+          });
+          return url.endsWith("/api/register")
+            ? Response.json({ round: 4 })
+            : Response.json({ receivedAt: 1 });
+        }) as typeof fetch,
+      },
+      clock,
+      (head, pub, target) => {
+        solved++;
+        return inlineGateSolver(head, pub, target);
+      },
+    );
+    await ledger.settle();
+    const signer = softPasskeySigner(await generateSigner());
+    const head = ledger.head();
+    const registration = await makeRegistration(
+      signer,
+      signer.credentialId,
+      head,
+      2 ** 31,
+      { params: { memorySize: 8, iterations: 1 } },
+    );
+    if (!registration) throw new Error("등록을 만들지 못했다");
+    const proof = await signRegistrationProof(signer, registration);
+    const ticket = await signTicket(
+      signer,
+      unsignedTicket(signer, 4, [1, 2, 3, 4, 5, 6]),
+      0,
+    );
+    return {
+      ledger,
+      signer,
+      head,
+      registration,
+      proof,
+      ticket,
+      posts,
+      solved: () => solved,
+    };
+  }
+
+  it("서버가 목표값을 알리면 응모 화면에서 한 번 풀어 두고, 등록과 응모에 같은 답을 붙인다", async () => {
+    const target = 2 ** 31;
+    const s = await setup(target);
+    s.ledger.prepare(s.signer.publicKey);
+    s.ledger.prepare(s.signer.publicKey);
+    await s.ledger.register(s.registration, s.proof, s.head);
+    await s.ledger.submit(s.ticket);
+    expect(s.solved()).toBe(1);
+    const gates = s.posts.map((p) => p.body.gate);
+    expect(s.posts.map((p) => p.path)).toEqual(["/api/register", "/api/enter"]);
+    expect(gates[0]).toBe(gates[1]);
+    expect(
+      await checkGate(s.head, s.signer.publicKey, gates[0] as number, target),
+    ).toBe(true);
+  });
+
+  it("옛 서버(목표값을 알리지 않음)에는 답을 붙이지 않고 풀지도 않는다", async () => {
+    const s = await setup();
+    s.ledger.prepare(s.signer.publicKey);
+    await s.ledger.submit(s.ticket);
+    expect(s.solved()).toBe(0);
+    expect(s.posts[0]?.body).not.toHaveProperty("gate");
   });
 });

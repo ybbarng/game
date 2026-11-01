@@ -39,6 +39,7 @@ import {
   type WebAuthnPolicy,
 } from "@mighty/stardraw-core";
 import { HttpError } from "./errors";
+import { type GateSolver, inlineGateSolver } from "./gate-solver";
 import { type Ledger, RegisterLater } from "./ledger";
 import type { LedgerPhase, LedgerStatus } from "./local-ledger";
 
@@ -65,7 +66,13 @@ interface StateJson {
   entries: number;
   serverKey: string;
   mode?: "trial" | "live";
+  /** 응모 앞단 작업 증명 목표값(docs/36 11-30). 옛 서버나 앞단을 끈 서버는 없다 */
+  gateTarget?: number;
 }
+
+/** 앞단 답을 들고 있는 수(열쇠·문제 값마다 하나. 회차가 바뀌면 옛것은 쓸모없다) */
+const GATE_KEEP = 4;
+const noop = () => {};
 
 export interface RemoteLedgerOptions {
   /** 예: "/stardraw-api" */
@@ -79,6 +86,8 @@ export interface RemoteLedgerOptions {
   verifyOptions?: Partial<VerifyOptions>;
   /** 서버가 응답하지 않을 때 장부 사본을 받을 앵커 저장소(기본 STARDRAW_ANCHOR_REPO). null이면 받지 않는다 */
   anchorRepo?: string | null;
+  /** 앞단 작업 증명 풀기(기본 같은 스레드. 화면은 웹 워커, gate-solver.ts) */
+  gateSolver?: GateSolver;
 }
 
 /** 서버가 응답하지 않는다(네트워크 오류는 fetch가 TypeError로 던진다) */
@@ -114,6 +123,8 @@ export class RemoteLedger implements Ledger {
   /** 서버 읽기: 5xx면 Unreachable로 던진다(앵커 저장소로 넘어간다) */
   private readonly serverRead: typeof fetch;
   private github: { source: GitHubLedgerSource; at: number } | null = null;
+  /** 앞단 답(문제 값|공개 열쇠|목표값 → 푸는 중이거나 푼 n). 응모 화면에 들어올 때 미리 풀어 둔다 */
+  private readonly gates = new Map<string, Promise<number>>();
 
   constructor(private readonly o: RemoteLedgerOptions) {
     this.f = o.fetch ?? ((...args) => fetch(...args));
@@ -370,6 +381,44 @@ export class RemoteLedger implements Ledger {
     return fromBase64Url(pub);
   }
 
+  /**
+   * 응모 앞단 작업 증명을 미리 풀기 시작한다(docs/36 11-30). 응모 화면에 들어오면 부른다.
+   * 서버가 앞단을 알리지 않으면(옛 서버, 상태를 아직 못 받음) 아무것도 하지 않는다.
+   * 다 풀리면 끝나는 약속을 돌려준다(실패해도 거절하지 않는다. 보낼 때 다시 푼다)
+   */
+  prepare(pub: Uint8Array): Promise<void> {
+    const gate = this.gateFor(pub, this.head());
+    return gate ? gate.then(noop, noop) : Promise.resolve();
+  }
+
+  /** 앞단 답(같은 열쇠·같은 문제 값이면 한 번만 푼다). 서버가 앞단을 쓰지 않으면 null */
+  private gateFor(pub: Uint8Array, head: Uint8Array): Promise<number> | null {
+    const target = this.state?.gateTarget;
+    if (!target) return null;
+    const key = `${toHex(head)}|${toBase64Url(pub)}|${target}`;
+    let gate = this.gates.get(key);
+    if (!gate) {
+      gate = (this.o.gateSolver ?? inlineGateSolver)(head, pub, target);
+      // 실패한 풀이는 다음에 다시 푼다
+      gate.catch(() => this.gates.delete(key));
+      this.gates.set(key, gate);
+      for (const old of this.gates.keys()) {
+        if (this.gates.size <= GATE_KEEP) break;
+        this.gates.delete(old);
+      }
+    }
+    return gate;
+  }
+
+  /** 요청에 붙일 앞단 칸 */
+  private async gateField(
+    pub: Uint8Array,
+    head: Uint8Array,
+  ): Promise<{ gate?: number }> {
+    const gate = this.gateFor(pub, head);
+    return gate ? { gate: await gate } : {};
+  }
+
   async register(
     registration: KeyRegistration,
     proof: SignatureData,
@@ -379,6 +428,7 @@ export class RemoteLedger implements Ledger {
       registration: toBase64Url(encodeRegistration(registration)),
       proof: toBase64Url(encodeRegistrationProof(proof)),
       head: toHex(challenge),
+      ...(await this.gateField(registration.pub, challenge)),
     });
     const body = (await res.json().catch(() => ({}))) as {
       error?: string;
@@ -405,6 +455,7 @@ export class RemoteLedger implements Ledger {
       ...(registration
         ? { registration: toBase64Url(encodeRegistration(registration)) }
         : {}),
+      ...(await this.gateField(ticket.pub, this.head())),
     });
     const body = (await res.json().catch(() => ({}))) as {
       error?: string;

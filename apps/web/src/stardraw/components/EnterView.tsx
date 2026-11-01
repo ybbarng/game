@@ -161,6 +161,13 @@ export function EnterView({
   // 데모는 실제 패스키 대신 화면 안 흉내 시트를 쓴다: 패스키를 못 쓰는 환경 안내로 막지 않는다
   const demo = services.ns === DEMO_NS;
 
+  // 응모 앞단 작업 증명은 번호와 상관없어 들어오자마자 뒤에서 풀어 둔다(서버 장부만, docs/36 11-30).
+  // 응모가 열리면(앞 회차 기록이 붙어 문제 값이 바뀌면) 새 문제 값으로 다시
+  const openRound = open ? status.round : null;
+  useEffect(() => {
+    if (key && openRound !== null) void services.ledger.prepare?.(key.pub);
+  }, [services, key, openRound]);
+
   useEffect(() => {
     let alive = true;
     services.ledger
@@ -289,6 +296,8 @@ export function EnterView({
         : null;
     const prep = (async () => {
       const signer = await services.wallet.signerFor(key);
+      // 앞단 작업 증명(서버 장부)이 아직이면 먼저 끝낸다. 응모권 Argon2와 겹치면 둘 다 크게 느려진다(docs/36 11-30)
+      await ledger.prepare?.(key.pub);
       let registration: KeyRegistration | undefined;
       // 우주인 등록 직후 올리던 등록이 아직 돌고 있으면 그것을 기다린다
       if (!(await ledger.isRegistered(key.pub)))
