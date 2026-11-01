@@ -590,7 +590,7 @@ test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고
   await expect(page.getByRole("button", { name: /처음으로/ })).toHaveCount(0);
   await page.locator("[data-tab='home']").click();
   await expect(page).toHaveURL(/\/stardraw$/);
-  // 당겨서 새로고침은 응모(하늘에서 별 고르기)와 추첨 화면에서만 막는다
+  // 당겨서 새로고침은 응모(하늘에서 별 고르기)와 추첨 연출에서만 막는다(회차 방은 당겨서 새로고침이 된다)
   const noPull = page.locator("html[data-no-pull]");
   await expect(noPull).toHaveCount(0);
   await page.goto("/stardraw/enter");

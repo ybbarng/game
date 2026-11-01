@@ -165,8 +165,8 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const [view, setView] = useState<View>(() =>
     typeof window === "undefined" ? viewOf(page, "") : viewOfLocation(),
   );
-  // 별을 고르거나 추첨을 보다 화면이 당겨져 새로고침되지 않게(그 밖의 화면은 당겨서 새로고침이 된다)
-  useNoPullRefresh(view.name === "enter" || view.name === "draw");
+  // 별을 고르다 화면이 당겨져 새로고침되지 않게(추첨 연출은 DrawFor가, 그 밖의 화면은 당겨서 새로고침이 된다)
+  useNoPullRefresh(view.name === "enter");
   const [mine, setMine] = useState<MyTicket[]>([]);
   /** 지갑을 한 번 읽었는지(그 전에는 영수증을 "찾을 수 없어요"로 보이지 않는다) */
   const [loaded, setLoaded] = useState(false);
@@ -1360,6 +1360,9 @@ function DrawFor({
       !liveOver(services, round, record, status.now * 1000) ||
       savedPass(round) !== null);
   wasInRoom.current = showRoom;
+  // 추첨 연출을 보다 당겨져 새로고침되지 않게. 회차 방은 오래 머무는 곳이라 당겨서 새로고침이 된다
+  // (새로 고쳐도 서버 시각에 맞춰 그 자리로 돌아온다)
+  useNoPullRefresh(!showRoom);
   if (showRoom) {
     // 방 머리 줄(「홈」·함께 보는 사람 수)은 방 화면이 그린다
     return (
