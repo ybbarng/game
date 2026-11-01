@@ -257,6 +257,12 @@ test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오�
   const id = await registerAndEnter(page);
   const goDraw = page.getByRole("button", { name: "추첨 보러 가기" });
   await expect(goDraw).toBeVisible();
+  // 결과 전 영수증 아래쪽은 상태 문구가 아니라 맺음말(상태는 영수증 밖 단추가 맡는다)
+  const receipt = page.locator(`[data-receipt='${id}']`);
+  await expect(receipt.locator("[data-receipt-thanks]")).toHaveText(
+    "관측에 참여해 주셔서 감사합니다.",
+  );
+  await expect(page.getByText("추첨을 기다리고 있습니다")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("receipt-draw-wait.png"),
     fullPage: true,
@@ -267,11 +273,12 @@ test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오�
 
   // 영수증으로 돌아와 연 채로 1회 추첨 시각(13:00)을 넘기면 결과를 가린 「추첨 보기」로 바뀐다
   await page.goBack();
-  await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
+  await expect(receipt).toBeVisible();
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
   const drawFirst = page.locator("[data-receipt] [data-draw-first='1']");
   await expect(drawFirst).toBeVisible({ timeout: 30_000 });
   await expect(goDraw).toHaveCount(0);
+  await expect(receipt.locator("[data-receipt-thanks]")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("receipt-draw-ready.png"),
     fullPage: true,

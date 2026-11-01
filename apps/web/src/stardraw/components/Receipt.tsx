@@ -204,8 +204,10 @@ export function Receipt({
               : "아쉽게도 당첨되지 않았습니다"}
         </p>
       ) : (
-        <p className="text-center text-slate-300 text-sm">
-          추첨을 기다리고 있습니다
+        // 결과 전에는 영수증 맺음말. "추첨을 기다리고 있습니다" 같은 상태는 영수증에 찍힐 말이 아니라 뺐다
+        // (2026-11-01 사용자: 우주국 말이 "관측"이니 맺음말도 그 말로). 상태는 영수증 밖 「추첨 보러 가기」가 맡는다
+        <p className="text-center text-slate-300 text-sm" data-receipt-thanks>
+          관측에 참여해 주셔서 감사합니다.
         </p>
       )}
       <p className="mt-4 text-center text-[10px] text-slate-500 tracking-wider">
