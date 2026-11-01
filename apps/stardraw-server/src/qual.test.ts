@@ -1,4 +1,6 @@
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   type AffiliationFields,
@@ -37,11 +39,12 @@ import {
   verifyLedger,
   verifyStamp,
 } from "@mighty/stardraw-core";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { parseQualAffiliations } from "./config";
 import { QUAL_WIN_WINDOW, type QualificationOptions } from "./engine";
 import { GoogleTokenError } from "./google";
 import { createHttpServer } from "./http";
+import type { ServerKey } from "./server-key";
 import {
   drawOf,
   EPOCH,
@@ -109,18 +112,51 @@ async function finishThrough(r: Rig, round: number): Promise<void> {
   for (let k = r.store.recordCount() + 1; k <= round; k++) await r.finish(k);
 }
 
+const directorKeys = () => [
+  { credentialId: director.credentialId, pub: director.publicKey },
+];
+
+interface Template {
+  dir: string;
+  serverKey: ServerKey;
+  at: number;
+  periodId: string;
+}
+/**
+ * 13회차가 열린 데이터 폴더. 처음 한 번만 회차를 진행해 만들고, 시험마다 폴더를 복사해 서버를 다시 띄운다
+ * (시험마다 12회차를 새로 진행하던 것이 이 파일 시간의 대부분이었다, 2026-11-01). 다시 띄우기는 운영과 같은 길이다
+ */
+let template: Promise<Template> | undefined;
+afterAll(async () => {
+  const t = await template;
+  if (t) rmSync(t.dir, { recursive: true, force: true });
+});
+
 /** 13회차가 열린 상태: 벌집 성단 1기(1년)가 효력이 생겼다 */
 async function qualRig(
   qualification: QualificationOptions = QUALIFICATION,
 ): Promise<{ r: Rig; periodId: string }> {
+  template ??= buildTemplate();
+  const t = await template;
+  const dir = mkdtempSync(join(tmpdir(), "stardraw-"));
+  cpSync(t.dir, dir, { recursive: true });
   rig = await makeRig({
+    dir,
+    at: t.at,
+    serverKey: t.serverKey,
     schedule: TRIAL,
-    directorKeys: [
-      { credentialId: director.credentialId, pub: director.publicKey },
-    ],
+    directorKeys: directorKeys(),
     qualification,
   });
-  const r = rig;
+  return { r: rig, periodId: t.periodId };
+}
+
+async function buildTemplate(): Promise<Template> {
+  const r = await makeRig({
+    schedule: TRIAL,
+    directorKeys: directorKeys(),
+    qualification: QUALIFICATION,
+  });
   await finishThrough(r, 4);
   const add = await signAsDirector(
     body(r, { kind: "affiliation-add", effectiveRound: 9, fields: FIELDS }),
@@ -147,7 +183,14 @@ async function qualRig(
   );
   await submit(r, period);
   await finishThrough(r, 12);
-  return { r, periodId: toHex(opId(period)) };
+  // 폴더는 남기고(afterAll이 지운다) 저장소만 닫는다
+  r.store.close();
+  return {
+    dir: r.dir,
+    serverKey: r.serverKey,
+    at: r.clock.now() / 1000,
+    periodId: toHex(opId(period)),
+  };
 }
 
 /** 기기가 하는 받기: 자격 열쇠를 만들고 가려 보내고, 받은 도장을 벗긴다 */
