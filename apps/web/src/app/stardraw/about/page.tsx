@@ -115,7 +115,7 @@ export default function StardrawAbout() {
                 <tr key={rank} className="border-white/10 border-b">
                   <td className="py-1.5 font-bold">{rank}등</td>
                   <td className="py-1.5 text-white/75">
-                    {RANK_RULE[rank]} 맞음
+                    {RANK_RULE[rank]} 맞힘
                   </td>
                 </tr>
               ))}
@@ -192,7 +192,7 @@ export default function StardrawAbout() {
             장부의 응모권 열쇠로 서명을 직접 검사하고, 두 기기만 아는 임시
             열쇠로 별 세 개를 계산합니다. 당첨자 화면이나 그 스크린숏은 증거가
             아닙니다. 별 세 개는 요청을 전달하는 서버도 알 수 없어, 가운데서
-            누가 끼어들어도 맞출 수 없습니다. 링크는 한 번 쓰면 닫혀, 누가
+            누가 끼어들어도 맞힐 수 없습니다. 링크는 한 번 쓰면 닫혀, 누가
             링크를 가로채 먼저 쓰면 받은 사람 화면에 "이미 사용된 링크"가 떠서
             알 수 있습니다.
           </p>

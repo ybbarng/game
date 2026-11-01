@@ -507,7 +507,7 @@ function StampSheet({ win, schedule }: { win: WinEntry; schedule: Schedule }) {
         {roundShort(schedule, win.round)} 4등 · {dateOf(win.at)}
       </p>
       <p className="break-keep text-center text-sm">
-        맞은 별: {win.hits.map((n) => starOf(n).ko).join(", ")}
+        맞힌 별: {win.hits.map((n) => starOf(n).ko).join(", ")}
       </p>
     </div>
   );

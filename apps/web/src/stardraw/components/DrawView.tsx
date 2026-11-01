@@ -323,7 +323,7 @@ export function DrawView({
                   <span className="flex size-3 items-center justify-center rounded-full border-2 border-sky-300">
                     <span className="size-1 rounded-full bg-white shadow-[0_0_4px_2px_rgba(255,255,255,0.8)]" />
                   </span>
-                  맞은 별
+                  맞힌 별
                 </span>
               </>
             )}
@@ -347,7 +347,7 @@ export function DrawView({
                       {RANK_LABEL[rank]} 당첨
                     </span>
                     <span className="text-sm text-white/75">
-                      맞은 별 {mine.filter((n) => main.includes(n)).length}개
+                      맞힌 별 {mine.filter((n) => main.includes(n)).length}개
                       {rank === 2 ? " + 보너스" : ""}
                     </span>
                     {party?.sealAt != null && <WinSeal at={party.sealAt} />}
@@ -358,7 +358,7 @@ export function DrawView({
                       아쉽게도 당첨되지 않았습니다
                     </span>
                     <span className="text-sm text-white/65">
-                      맞은 별 {mine.filter((n) => main.includes(n)).length}개
+                      맞힌 별 {mine.filter((n) => main.includes(n)).length}개
                     </span>
                   </>
                 )
