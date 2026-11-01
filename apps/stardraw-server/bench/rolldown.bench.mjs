@@ -10,6 +10,7 @@ export default defineConfig({
     verify: "bench/verify.ts",
     light: "bench/light.ts",
     "light-backfill": "bench/light-backfill.ts",
+    rehearsal: "bench/rehearsal.ts",
   },
   platform: "node",
   output: { dir: "dist/bench", format: "esm" },
