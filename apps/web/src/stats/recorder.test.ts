@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { heuristicBot } from "@mighty/ai";
 import { presetRules } from "@mighty/engine";
 import { heartsNormalBot } from "@mighty/hearts-ai";

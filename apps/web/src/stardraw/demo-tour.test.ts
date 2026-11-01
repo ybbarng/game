@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { ticketId } from "@mighty/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
