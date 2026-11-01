@@ -360,7 +360,7 @@ export const AWARDS: readonly AwardDef[] = [
     find: (c) => countSteps(c.mine, stepsOf("entries"), (m) => m.picks.length),
     text: (f, k) =>
       doc(
-        `귀하는 본 우주국의 밤하늘 관측 사업에 ${f.n}회 참여하여 별 연구에 꾸준히 이바지하였습니다.`,
+        `귀하는 본 우주국의 하늘의 별 따기에 ${f.n}회 참여하여 여섯 별 연구에 꾸준히 이바지하였습니다.`,
         k,
       ),
   },
@@ -668,7 +668,7 @@ export const AWARDS: readonly AwardDef[] = [
           p.every((n, i) => i === 0 || n === (p[i - 1] as number) + 1),
       ),
     text: (_, k) =>
-      doc("귀하는 이어진 번호 여섯 개로 응모권을 가지런히 채웠습니다.", k),
+      doc("귀하는 이어진 번호 여섯 개로 답안지를 가지런히 채웠습니다.", k),
   },
   {
     id: "arithmetic",
@@ -699,7 +699,7 @@ export const AWARDS: readonly AwardDef[] = [
     kind: "인증서",
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => n % 2 === 1)),
-    text: (_, k) => doc("귀하는 홀수 번호로만 응모권을 채웠습니다.", k),
+    text: (_, k) => doc("귀하는 홀수 번호로만 답안지를 채웠습니다.", k),
   },
   {
     id: "all-even",
@@ -708,7 +708,7 @@ export const AWARDS: readonly AwardDef[] = [
     kind: "인증서",
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => n % 2 === 0)),
-    text: (_, k) => doc("귀하는 짝수 번호로만 응모권을 채웠습니다.", k),
+    text: (_, k) => doc("귀하는 짝수 번호로만 답안지를 채웠습니다.", k),
   },
   {
     id: "primes",
@@ -795,7 +795,7 @@ export const AWARDS: readonly AwardDef[] = [
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => starOf(n).mag <= 1.5)),
     text: (_, k) =>
-      doc("귀하는 1등성으로 불리는 밝은 별로만 응모권을 채웠습니다.", k),
+      doc("귀하는 1등성으로 불리는 밝은 별로만 답안지를 채웠습니다.", k),
   },
   {
     id: "five-colors",
@@ -810,7 +810,7 @@ export const AWARDS: readonly AwardDef[] = [
       ),
     text: (_, k) =>
       doc(
-        "귀하는 한 장의 응모권에 푸른 별, 흰 별, 노란빛 별, 주황빛 별, 붉은 별을 모두 담았습니다.",
+        "귀하는 한 장의 답안지에 푸른 별, 흰 별, 노란빛 별, 주황빛 별, 붉은 별을 모두 담았습니다.",
         k,
       ),
   },
@@ -1034,7 +1034,7 @@ export const AWARDS: readonly AwardDef[] = [
       c.mine.filter((m) => m.rank === 1).map((m) => hitAt(m, {}, [m.round])),
     text: (_, k) =>
       doc(
-        "귀하는 하늘의 별 여섯을 모두 맞혀 1등에 당첨되었습니다. 로또 1등보다 어렵다는 하늘의 별 따기를 해낸 공을 높이 기립니다.",
+        "귀하는 빛날 별 여섯을 모두 맞혀 1등에 당첨되었습니다. 로또 1등보다 어렵다는 하늘의 별 따기를 해낸 우주인으로 우주국의 기록에 길이 남깁니다.",
         k,
       ),
   },
@@ -1093,7 +1093,7 @@ export const AWARDS: readonly AwardDef[] = [
       ),
     text: (_, k) =>
       doc(
-        "귀하가 참여한 회차에서 다른 우주인이 1등에 당첨되었습니다. 로또 1등만큼 드문 순간을 함께하였습니다.",
+        "귀하가 참여한 회차에서 다른 우주인이 빛날 별 여섯을 모두 맞혀 1등에 당첨되었습니다. 로또 1등만큼 드문 순간을 같은 하늘 아래에서 함께하였습니다.",
         k,
       ),
   },
