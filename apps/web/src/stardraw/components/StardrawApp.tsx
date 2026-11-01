@@ -15,7 +15,6 @@ import {
   type VerifyReport,
 } from "@mighty/stardraw-core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BackToGames } from "@/components/BackToGames";
 import { useNoPullRefresh } from "@/game/no-pull-refresh";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
@@ -59,7 +58,13 @@ import { ReceiptPrint } from "./ReceiptPrint";
 import { liveDrawRound, liveOver, RoomView, roomOpen } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
 import { useReducedMotion } from "./StageOverlay";
-import { MenuItem, type NavTarget, TabBar, useWideScreen } from "./StardrawNav";
+import {
+  GamesCorner,
+  MenuItem,
+  type NavTarget,
+  TabBar,
+  useWideScreen,
+} from "./StardrawNav";
 import { StatsView } from "./StatsView";
 import { ticketUrl } from "./TicketView";
 import { WinNotice } from "./WinNotice";
@@ -601,10 +606,9 @@ export function Home({
   const sealed = sealedFor(mine, opened, services.ledger);
 
   // 발급한 등록증: 움직임 줄이기면 입구 대신, 아니면 입구 위 화면 전체 오버레이로
+  // 게임 목록으로 가는 길은 메뉴(PC 메뉴 줄 맨 왼쪽, 휴대폰 더 보기 맨 위)가 맡아 따로 한 줄을 두지 않는다
   if (setup.issued && reduce)
-    return (
-      <IssuedView services={services} setup={setup} header={<BackToGames />} />
-    );
+    return <IssuedView services={services} setup={setup} />;
   // 등록·제시 오버레이는 입구와 첫 화면 두 갈래의 같은 자리(맨 앞)에 둔다: 확인되어 갈래가 바뀌어도 끊기지 않게
   if (key === null)
     return (
@@ -631,8 +635,7 @@ export function Home({
     <>
       <WelcomeFlyer services={services} setup={setup} />
       <header className="flex flex-col gap-4">
-        <BackToGames />
-        <StardrawTitle />
+        <TitleWithGames />
         {key !== undefined && <Greeting services={services} keyInfo={key} />}
       </header>
 
@@ -675,6 +678,19 @@ export function Home({
 
       {onSkip && <PracticeSkip onSkip={onSkip} />}
     </>
+  );
+}
+
+/**
+ * 제목과 소개 문구, 휴대폰은 제목 줄 왼쪽 위에 「게임 목록」 화살표를 겹친다. 「← 게임 목록」이 따로 한 줄을 차지해
+ * 아쉬웠다(2026-11-01 사용자). PC는 위쪽 메뉴 줄 맨 왼쪽에 둔다
+ */
+function TitleWithGames() {
+  return (
+    <div className="relative">
+      <GamesCorner />
+      <StardrawTitle />
+    </div>
   );
 }
 
@@ -752,9 +768,6 @@ export function Gate({
   const live = liveDrawRound(services, s);
   return (
     <>
-      <header className="flex flex-col gap-4">
-        <BackToGames />
-      </header>
       <section
         aria-label="카노푸스 우주국 안내"
         data-gate
@@ -768,7 +781,7 @@ export function Gate({
           등록하시거나, 이미 등록하셨다면 신분증을 제시해 주세요.
         </p>
       </section>
-      <StardrawTitle />
+      <TitleWithGames />
       <GameIntro />
       <p
         className="flex items-center justify-center gap-2.5 text-sm tabular-nums"

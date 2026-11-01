@@ -245,6 +245,63 @@ test("화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아
   await expect(backButtons).toHaveCount(0);
 });
 
+/** 휴대폰 제목 줄의 「게임 목록」 화살표가 제목 글자와 겹치지 않는지 */
+async function gamesCornerClear(page: Page) {
+  const link = await page.locator("[data-games-link]:visible").boundingBox();
+  const title = await page.locator(".sd-title h1").evaluate((h) => {
+    const r = document.createRange();
+    r.selectNodeContents(h);
+    const b = r.getBoundingClientRect();
+    return { x: b.x, y: b.y, height: b.height };
+  });
+  expect(link).not.toBeNull();
+  if (!link) return;
+  // 제목 줄 높이 안에 있고(따로 한 줄을 쓰지 않는다), 제목 글자보다 왼쪽에 있다
+  expect(link.y).toBeLessThan(title.y + title.height);
+  expect(link.x + link.width).toBeLessThanOrEqual(title.x);
+}
+
+/**
+ * 2026-11-01 사용자: 첫 화면의 「← 게임 목록」이 한 줄을 따로 차지해 아쉬웠다. PC는 위쪽 메뉴 줄 맨 왼쪽, 휴대폰은 제목 줄
+ * 왼쪽 위에 화살표만 겹쳐 두고(360px에서도 제목과 겹치지 않게) 더 보기 맨 위에도 둔다. 입구(등록 전)도 같다
+ */
+test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 제목 줄 화살표와 더 보기", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  const phone = info.project.name === "phone-portrait";
+  if (phone) await page.setViewportSize({ width: 360, height: 780 });
+  const games = page.locator("[data-games-link]:visible");
+
+  await virtualAuthenticator(page);
+  await page.goto("/stardraw");
+  await expect(page.locator("[data-gate]")).toBeVisible();
+  // 「게임 목록」은 한 군데만 보인다(따로 둔 줄은 없다)
+  await expect(games).toHaveCount(1);
+  if (phone) await gamesCornerClear(page);
+  else await expect(page.locator("nav [data-games-link]")).toBeVisible();
+  await page.screenshot({ path: info.outputPath("nav-games-gate.png") });
+
+  await registerAndEnter(page);
+  await page.goto("/stardraw");
+  await expect(page.locator("[data-greeting]")).toBeVisible();
+  await expect(games).toHaveCount(1);
+  if (phone) {
+    await gamesCornerClear(page);
+    // 더 보기 맨 위에도
+    await page.locator("[data-tab='more']").click();
+    await expect(
+      page
+        .getByRole("dialog", { name: "더 보기" })
+        .locator("[data-games-link]"),
+    ).toBeVisible();
+    await page.locator("[data-tab='more']").click();
+  }
+  await page.screenshot({ path: info.outputPath("nav-games-home.png") });
+  await games.click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 /**
  * 별 따기 앱 밖의 페이지(설명·검증·배우기·소속·등록증·우주국·개인정보·공유 응모권·데모)는 모두 첫 화면에 같은
  * 「← 하늘의 별 따기」가 보인다. 검증 페이지는 설명으로만 이어져 첫 화면까지 두 번 가야 했다(2026-11-01)

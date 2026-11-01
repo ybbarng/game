@@ -742,6 +742,10 @@ button {
   .sd-wide {
     max-width: 42rem;
   }
+  /* 휴대폰에서만 보이는 것(PC는 위쪽 메뉴 줄이 같은 일을 한다). JS 판정 전 첫 그림부터 맞게 CSS로 */
+  .sd-phone-only {
+    display: none;
+  }
 }
 
 /* 연출 오버레이(StageOverlay·IdFlyer): 뒤는 어둡고 흐리게 부드럽게 덮고, 끝나면 걷힌다 */
