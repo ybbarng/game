@@ -11,6 +11,7 @@ import {
   sasChallenge,
   sasSecret,
   sasStars,
+  sha256,
   signInvite,
   type Ticket,
   ticketId,
@@ -54,9 +55,16 @@ async function invite(p: Player, ticket: Ticket, ip?: string) {
   await rig.relay.createInvite({
     invite: encodeInvite(signed),
     ...(ip ? { ip } : {}),
+    inboxHash: toBase64Url(sha256(INBOX_KEY)),
   });
   return token;
 }
+
+/** 당첨자 기기의 받은 요청 열쇠(화면 remote-relay.ts가 응모권마다 만든다) */
+const INBOX_KEY = new Uint8Array(16).fill(9);
+const inboxOf = (ticket: Ticket, key = INBOX_KEY) => [
+  { ticketId: toBase64Url(ticketId(ticket)), key: toBase64Url(key) },
+];
 
 /** 확인하는 사람 기기: 링크를 열어 「확인 시작」 */
 async function start(token: string, ip?: string) {
@@ -157,13 +165,17 @@ describe("링크로 하는 당첨자 확인", () => {
     expect(decodeConfirmRequest(created.request).requester).toBe(
       CHECK_LINK_REQUESTER,
     );
-    const open = rig.relay.openFor([toBase64Url(ticketId(won))]);
+    const open = rig.relay.openFor(inboxOf(won));
     expect(open.map((o) => o.id)).toEqual([created.id]);
     expect(open[0]?.invitedAt).toBe(created.invitedAt);
+    // 응모권 id는 공개라, 링크를 만들 때 해시를 맡긴 열쇠가 아니면 열린 요청(받는 분 이름이 든다)을 주지 않는다
+    expect(rig.relay.openFor(inboxOf(won, new Uint8Array(16).fill(1)))).toEqual(
+      [],
+    );
 
     const { answer, stars } = await answerAs(winner, won, created);
     await rig.relay.answer(created.id, answer);
-    expect(rig.relay.openFor([toBase64Url(ticketId(won))])).toEqual([]);
+    expect(rig.relay.openFor(inboxOf(won))).toEqual([]);
 
     const got = rig.relay.get(created.id);
     expect(got.answer).toEqual(answer);
@@ -187,7 +199,7 @@ describe("링크로 하는 당첨자 확인", () => {
     await start(token);
     expect(rig.relay.peek(token)).toEqual({ state: "used" });
     await rejects(() => start(token), 409);
-    expect(rig.relay.openFor([toBase64Url(ticketId(won))])).toHaveLength(1);
+    expect(rig.relay.openFor(inboxOf(won))).toHaveLength(1);
   });
 
   it("남의 열쇠 서명이나 엉터리 응답은 받지 않고, 진짜 당첨자는 여전히 답할 수 있다", async () => {
@@ -204,7 +216,7 @@ describe("링크로 하는 당첨자 확인", () => {
       () => rig.relay.answer(created.id, { claim: "엉터리", winnerKey: "AA" }),
       403,
     );
-    expect(rig.relay.openFor([toBase64Url(ticketId(won))])).toHaveLength(1);
+    expect(rig.relay.openFor(inboxOf(won))).toHaveLength(1);
     const { answer } = await answerAs(winner, won, created);
     await rig.relay.answer(created.id, answer);
   });
@@ -213,7 +225,7 @@ describe("링크로 하는 당첨자 확인", () => {
     const { winner, won } = await setup();
     const { created } = await start(await invite(winner, won));
     rig.clock.advance(DAY);
-    expect(rig.relay.openFor([toBase64Url(ticketId(won))])).toEqual([]);
+    expect(rig.relay.openFor(inboxOf(won))).toEqual([]);
     const { answer } = await answerAs(winner, won, created);
     await rejects(() => rig.relay.answer(created.id, answer), 410);
     rig.clock.advance(6 * DAY);
@@ -288,16 +300,13 @@ describe("허락 없이 확인을 막지 못한다(2026-10-31 보안 검토 B2)"
     await rig.at(EPOCH + 10);
     const won = (await enter(rig, winner, drawOf(1).numbers)).ticket;
     await rig.finish(1);
-    const token = newInviteToken();
-    await rig.relay.createInvite({
-      invite: encodeInvite(await signInvite(winner.signer, won, token)),
-    });
+    const token = await invite(winner, won);
     const checker = await generateSasKey();
     await rig.relay.start({
       token,
       checkerKey: toBase64Url(checker.publicKey),
     });
-    const open = rig.relay.openFor([toBase64Url(ticketId(won))]);
+    const open = rig.relay.openFor(inboxOf(won));
     const id = open[0]?.id as string;
     // 서명 없는 거절(예전 형식)과 아무 값이나 넣은 응답은 거절된다
     await expect(

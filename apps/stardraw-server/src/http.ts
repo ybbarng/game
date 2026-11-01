@@ -25,10 +25,10 @@ import type { ModAction, RoomHub } from "./room";
  *   GET  /api/passkeys/:credentialId    패스키 번호로 공개 열쇠 찾기(다른 기기에서 내 패스키 찾기). 국장 패스키면 403
  *   POST /api/register                  { registration, proof, head } → { round }(우주인 등록 직후 등록만 올리기)
  *   POST /api/enter                     { ticket, registration? } → { receipt, receivedAt }
- *   POST /api/confirm/invites           당첨자: { invite }(서명한 확인 링크 초대) → { expiresAt }
+ *   POST /api/confirm/invites           당첨자: { invite, inboxHash? }(서명한 확인 링크 초대, 받은 요청 열쇠 해시) → { expiresAt }
  *   POST /api/confirm/peek              확인하는 사람: { token } → { state: "open", round, ticketId, expiresAt } | { state: "used" }
  *   POST /api/confirm/start             { token, checkerKey, director?: { pub, signature, to } } → { id, request, checkerKey, answerBy, invitedAt, reportKey }
- *   POST /api/confirm/open              { ticketIds } → 열린 요청들
+ *   POST /api/confirm/open              { inbox: [{ ticketId, key }] } → 열린 요청들(링크를 만들 때 해시를 맡긴 열쇠의 응모권만)
  *   GET  /api/confirm/:id               { answer, outcome }
  *   POST /api/confirm/:id/answer        { claim, winnerKey }(서명 없는 거절은 받지 않는다)
  *   POST /api/confirm/:id/report        { reportKey, outcome }
@@ -381,6 +381,9 @@ async function handle(
       await relay.createInvite({
         invite: str(body.invite, "확인 링크"),
         ip: clientIp(req, o.trustProxy),
+        ...(body.inboxHash !== undefined
+          ? { inboxHash: str(body.inboxHash, "받은 요청 열쇠 해시") }
+          : {}),
       }),
     );
   }
@@ -422,10 +425,15 @@ async function handle(
 
   if (method === "POST" && path === "/api/confirm/open") {
     const body = await readJson(req);
-    if (!Array.isArray(body.ticketIds))
-      throw new EntryError("응모권 id 목록이 없습니다");
+    // 받은 요청 열쇠 없이 응모권 id만 보내는 옛 화면에는 빈 목록을 준다(2026-11-01 별도 검토 8번)
+    const inbox = Array.isArray(body.inbox) ? body.inbox : [];
     return send(res, 200, {
-      open: relay.openFor(body.ticketIds.map((t) => str(t, "응모권 id"))),
+      open: relay.openFor(
+        inbox.map((i: { ticketId?: unknown; key?: unknown }) => ({
+          ticketId: str(i?.ticketId, "응모권 id"),
+          key: str(i?.key, "받은 요청 열쇠"),
+        })),
+      ),
     });
   }
 

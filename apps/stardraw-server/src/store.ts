@@ -106,6 +106,11 @@ export class Store {
         request_id TEXT
       );
       CREATE INDEX IF NOT EXISTS invites_ticket ON invites (ticket);
+      CREATE TABLE IF NOT EXISTS inbox_keys (
+        ticket TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        PRIMARY KEY (ticket, hash)
+      );
       CREATE TABLE IF NOT EXISTS director_ops (
         id TEXT PRIMARY KEY,
         op BLOB NOT NULL,
@@ -592,6 +597,24 @@ export class Store {
           requestId: r.request_id === null ? null : String(r.request_id),
         }
       : null;
+  }
+
+  /**
+   * 당첨자 기기의 받은 요청 열쇠 해시(2026-11-01 별도 검토 8번). 응모권 주인이 서명한 초대와 함께만 들어온다.
+   * 응모권마다 기기 수만큼 여럿일 수 있다
+   */
+  inboxKeyAdd(ticketHex: string, hash: string): void {
+    this.db
+      .prepare("INSERT OR IGNORE INTO inbox_keys (ticket, hash) VALUES (?, ?)")
+      .run(ticketHex, hash);
+  }
+
+  inboxKeyHas(ticketHex: string, hash: string): boolean {
+    return (
+      this.db
+        .prepare("SELECT 1 FROM inbox_keys WHERE ticket = ? AND hash = ?")
+        .get(ticketHex, hash) !== undefined
+    );
   }
 
   /** 그 응모권의 아직 쓰이지 않고 기한이 남은 초대 수 */

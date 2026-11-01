@@ -17,6 +17,7 @@ import {
   RANKS,
   RawKeyRejected,
   sasChallenge,
+  sha256,
   type Ticket,
   ticketId,
   toBase64Url,
@@ -132,6 +133,8 @@ export class Relay {
   async createInvite(input: {
     invite: string;
     ip?: string;
+    /** 당첨자 기기의 받은 요청 열쇠 해시(sha256, base64url). 있으면 그 기기가 열린 요청을 조회할 수 있다 */
+    inboxHash?: string;
   }): Promise<{ expiresAt: number }> {
     const prefix = ipPrefix(input.ip ?? "unknown");
     const day = this.day();
@@ -178,6 +181,12 @@ export class Relay {
       requestId: null,
     });
     if (!added) throw new EntryError("이미 만든 확인 링크입니다", 409);
+    if (input.inboxHash !== undefined) {
+      const hash = fromBase64Url(input.inboxHash);
+      if (hash.length !== 32)
+        throw new EntryError("받은 요청 열쇠 해시는 32바이트입니다");
+      this.store.inboxKeyAdd(ticketHex, toHex(hash));
+    }
     return { expiresAt };
   }
 
@@ -297,12 +306,23 @@ export class Relay {
     };
   }
 
-  /** 당첨자: 내 응모권들에 온, 아직 답하지 않은 요청 */
-  openFor(ticketIds: readonly string[]): OpenRequestJson[] {
-    if (ticketIds.length > MAX_OPEN_QUERY)
+  /**
+   * 당첨자: 내 응모권들에 온, 아직 답하지 않은 요청. 응모권 id는 공개라, 링크를 만들 때 맡긴 받은 요청 열쇠를
+   * 함께 보낸 응모권만 돌려준다(요청에 국장이 적은 받는 분 이름이 들어 있다, 2026-11-01 별도 검토 8번)
+   */
+  openFor(
+    inbox: readonly { ticketId: string; key: string }[],
+  ): OpenRequestJson[] {
+    if (inbox.length > MAX_OPEN_QUERY)
       throw new EntryError("한 번에 찾는 응모권이 너무 많습니다");
     const now = this.clock.now();
-    const hexes = ticketIds.map((t) => toHex(fromBase64Url(t)));
+    const hexes = inbox
+      .map((i) => ({
+        ticket: toHex(fromBase64Url(i.ticketId)),
+        hash: toHex(sha256(fromBase64Url(i.key))),
+      }))
+      .filter((i) => this.store.inboxKeyHas(i.ticket, i.hash))
+      .map((i) => i.ticket);
     return this.store
       .relayByTickets(hexes)
       .filter((row) => row.keepUntil > now && row.answerBy > now)

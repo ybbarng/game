@@ -26,6 +26,7 @@ import {
   type Schedule,
   type SoftPasskey,
   STAMP_SCHEME_BLS,
+  sha256,
   signAsDirector,
   signInvite,
   softPasskeySigner,
@@ -459,8 +460,10 @@ describe("우주국장이 국장 패스키로 연 확인(2026-10-31 보안 검�
       .ticket;
     await r.finish(13);
     const token = newInviteToken();
+    const inboxKey = new Uint8Array(16).fill(7);
     await r.relay.createInvite({
       invite: encodeInvite(await signInvite(winner.signer, won, token)),
+      inboxHash: toBase64Url(sha256(inboxKey)),
     });
     const checker = await generateSasKey();
     const to = "홍길동";
@@ -499,7 +502,9 @@ describe("우주국장이 국장 패스키로 연 확인(2026-10-31 보안 검�
     expect(decodeConfirmRequest(created.request).requester).toBe(
       directorRequester(to),
     );
-    const open = r.relay.openFor([toBase64Url(ticketId(won))]);
+    const open = r.relay.openFor([
+      { ticketId: toBase64Url(ticketId(won)), key: toBase64Url(inboxKey) },
+    ]);
     expect(open[0]?.director?.to).toBe(to);
   }, 60_000);
 });

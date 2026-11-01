@@ -1,9 +1,12 @@
 import type { Clock } from "@mighty/fair-play";
 import {
   decodeConfirmRequest,
+  decodeInvite,
   encodeSignatureData,
   fromBase64Url,
+  sha256,
   toBase64Url,
+  toHex,
 } from "@mighty/stardraw-core";
 
 import type {
@@ -20,7 +23,13 @@ import type {
  * 서버는 서명이 맞는 초대·응답만 받고, 결과는 요청을 붙인 기기만 올린다(붙일 때 받은 결과 열쇠를 이 기기에 둔다).
  * 확인 링크 토큰은 주소가 아니라 본문으로만 보낸다(서버 로그에 남지 않게).
  * 기다리는 쪽은 `Clock`으로 짧게 되묻는다(시험은 ManualClock).
+ * 받은 요청 열쇠(2026-11-01 별도 검토 8번): 열린 요청에는 국장이 적은 받는 분 이름이 들어 있는데 응모권 id는 공개라,
+ * 링크를 만들 때 응모권마다 이 기기의 무작위 열쇠를 만들어 해시만 서버에 맡기고, 조회할 때 열쇠를 함께 보낸다.
+ * 그래서 열린 요청은 링크를 만든 기기에서 보인다.
  */
+
+const INBOX_KEY_BYTES = 16;
+const inboxSlot = (ticketHex: string) => `inbox:${ticketHex}`;
 
 const POLL_MS = 3000;
 const CHANGE_MS = 15000;
@@ -116,8 +125,17 @@ export class RemoteConfirmRelay implements ConfirmRelay {
   }
 
   async invite(encoded: string): Promise<{ expiresAt: number }> {
+    const slot = inboxSlot(toHex(decodeInvite(encoded).ticketId));
+    let key = this.tokens.get(slot);
+    if (!key) {
+      key = toBase64Url(
+        crypto.getRandomValues(new Uint8Array(INBOX_KEY_BYTES)),
+      );
+      this.tokens.set(slot, key);
+    }
     return this.call<{ expiresAt: number }>("/api/confirm/invites", {
       invite: encoded,
+      inboxHash: toBase64Url(sha256(fromBase64Url(key))),
     });
   }
 
@@ -163,12 +181,15 @@ export class RemoteConfirmRelay implements ConfirmRelay {
   }
 
   async openFor(ticketIds: readonly Uint8Array[]): Promise<OpenRequest[]> {
-    if (ticketIds.length === 0) return [];
+    const inbox = ticketIds.flatMap((id) => {
+      const key = this.tokens.get(inboxSlot(toHex(id)));
+      return key ? [{ ticketId: toBase64Url(id), key }] : [];
+    });
+    if (inbox.length === 0) return [];
     const { open } = await this.call<{ open: OpenJson[] }>(
       "/api/confirm/open",
-      {
-        ticketIds: ticketIds.map(toBase64Url),
-      },
+      // ticketIds는 서버 이미지를 다시 배포하기 전의 서버가 읽는다(새 서버는 inbox만 본다)
+      { inbox, ticketIds: inbox.map((i) => i.ticketId) },
     );
     return open.map(toOpen);
   }
