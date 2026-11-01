@@ -81,6 +81,8 @@ const CANOPUS_PLANE = 310 * Math.cos(rad(25.3));
 
 /**
  * 로그 나선 한 가닥(시작 반지름·각도에서 바깥으로, 피치 약 12°)과 이름표 자리(그림 각도 `labelAt`를 마지막으로 지나는 점).
+ * 그림 각도는 x축에서 화면 시계 방향(SVG는 y가 아래로 커진다)이다. 북은하극에서 내려다보면 은하는 시계 방향으로 돌고
+ * 팔은 회전에 끌려가므로(trailing) 중심에서 바깥으로 갈수록 반시계 방향으로 감긴다. 그래서 바깥으로 갈수록 각도를 줄인다.
  * 태양 방향(그림 아래)에서 안쪽부터 방패-남십자(약 1만 8천 광년)·궁수-용골(약 2만), 태양(2만 6천 7백) 바깥으로
  * 페르세우스(약 3만 5천)·바깥 팔(약 3만 9천)이 지나게 시작 각도를 골랐다(실제 순서와 같다)
  */
@@ -92,7 +94,7 @@ function arm(r0: number, a0: number, turns: number, labelAt: number) {
     const t = (i / 120) * turns * 2 * Math.PI;
     const r = r0 * Math.exp(b * t);
     if (r > 52_000) break;
-    const a = a0 + t;
+    const a = a0 - t;
     const x = GW / 2 + (r / LY_PER_UNIT) * Math.cos(a);
     const y = GW / 2 + (r / LY_PER_UNIT) * Math.sin(a);
     d += `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
@@ -104,13 +106,14 @@ function arm(r0: number, a0: number, turns: number, labelAt: number) {
 
 /** 위에서 내려다본 우리 은하 도식과 태양 둘레 돋보기 */
 export function GalaxyMap() {
-  // 태양은 중심 아래쪽(관례대로), 은하 회전은 시계 방향
+  // 태양은 중심 아래쪽(관례대로), 은하 회전은 시계 방향.
+  // 큰 두 팔은 막대 두 끝(그림 각도 333°·153°)에서 나온다: 페르세우스는 먼 끝, 방패-남십자는 태양 쪽 끝
   const sun = { x: GW / 2, y: GW / 2 + SUN_R / LY_PER_UNIT };
   const arms = [
-    { name: "페르세우스 팔", ...arm(14_000, rad(200), 1.1, 150), w: 9 },
-    { name: "방패-남십자 팔", ...arm(14_000, rad(20), 1.1, 330), w: 9 },
-    { name: "궁수-용골 팔", ...arm(11_000, rad(290), 1.05, 30), w: 6 },
-    { name: "바깥 팔", ...arm(11_000, rad(110), 1.05, 230), w: 6 },
+    { name: "페르세우스 팔", ...arm(14_000, rad(-20), 1.1, 30), w: 9 },
+    { name: "방패-남십자 팔", ...arm(14_000, rad(160), 1.1, 210), w: 9 },
+    { name: "궁수-용골 팔", ...arm(11_000, rad(250), 1.05, 150), w: 6 },
+    { name: "바깥 팔", ...arm(11_000, rad(70), 1.05, 310), w: 6 },
   ];
   // 돋보기: 태양 둘레 ±450광년
   const Z = 120;
@@ -157,7 +160,7 @@ export function GalaxyMap() {
               />
             </g>
           ))}
-          {/* 오리온 팔(국부 팔): 궁수-용골 팔과 페르세우스 팔 사이의 짧은 가지 */}
+          {/* 오리온 팔(국부 팔): 궁수-용골 팔과 페르세우스 팔 사이의 짧은 가지. 큰 팔처럼 바깥(아래)으로 갈수록 오른쪽 */}
           <path
             d={`M${sun.x + 34} ${sun.y + 10} Q ${sun.x} ${sun.y + 3} ${sun.x - 38} ${sun.y - 14}`}
             stroke="rgba(255,225,170,0.35)"
@@ -231,8 +234,9 @@ export function GalaxyMap() {
             fill="#070d1a"
             stroke="rgba(255,225,170,0.45)"
           />
+          {/* 오리온 팔 띠: 큰 그림의 가지와 같은 기울기(왼쪽 위 → 오른쪽 아래) */}
           <path
-            d={`M0 ${Z * 0.62} Q ${Z / 2} ${Z * 0.5} ${Z} ${Z * 0.3}`}
+            d={`M0 ${Z * 0.3} Q ${Z / 2} ${Z * 0.5} ${Z} ${Z * 0.62}`}
             stroke="rgba(255,225,170,0.18)"
             strokeWidth="38"
             fill="none"
