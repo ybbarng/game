@@ -1,5 +1,12 @@
 import sky from "../src/stardraw/sky-data.json" with { type: "json" };
-import { expect, fixStardrawClock, type Page, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  fixStardrawClock,
+  type Page,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
@@ -1126,10 +1133,15 @@ async function bounceAndKeep(page: Page) {
   await card.waitFor({ timeout: 10_000 });
   await page.clock.runFor(25_000);
   await card.press("Enter");
+  // 마감을 넘겼으니 반송까지의 연출은 빨리 감는다(CSS 20배, 타이머는 시계로)
+  await speedUpAnimations(page);
   const bounce = page.locator("[data-bounce]");
-  await expect(bounce).toContainText("응모 마감(12:54:55) 뒤에 도착했습니다.", {
-    timeout: 30_000,
-  });
+  await fastForwardUntil(page, () =>
+    bounce
+      .getByText("응모 마감(12:54:55) 뒤에 도착했습니다.")
+      .isVisible()
+      .catch(() => false),
+  );
   // 냈던 1회 용지가 칠한 칸 그대로 「접수 반송」 도장과 함께 돌아온다
   await expect(
     bounce

@@ -1,4 +1,12 @@
-import { expect, fixStardrawClock, type Page, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  fixStardrawClock,
+  type Locator,
+  type Page,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
@@ -94,6 +102,11 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
   await page.goto("/stardraw/demo#qualify");
+  // CSS 연출은 처음부터 20배로(빠른 기기처럼). 타이머는 마감을 넘긴 뒤부터 빨리 감는다(아래)
+  await speedUpAnimations(page);
+  /** 보일 때까지 연출 타이머를 빨리 감는다 */
+  const shown = (target: Locator) =>
+    fastForwardUntil(page, () => target.isVisible());
   const panel = page.locator("[data-qualify]");
   await panel
     .getByRole("button", { name: "데모 소속 차리기" })
@@ -134,26 +147,31 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
   await card.waitFor({ timeout: 10_000 });
   await page.clock.runFor(25_000);
   await card.press("Enter");
+  // 마감을 넘겼으니 여기부터는 연출 타이머를 빨리 감는다
+  const unlock = page.locator("[data-demo-unlock='sign']");
+  await shown(unlock);
   await demoUnlock(page, "sign");
-  await expect(page.locator("[data-bounce]")).toContainText("접수 반송", {
-    timeout: 30_000,
-  });
+  const bounce = page.locator("[data-bounce]", { hasText: "접수 반송" });
+  await shown(bounce);
 
   // 보관했다가 다음 회차가 열리면(앞 회차 추첨, 마감 5분 뒤) 보관한 용지로 새 용지에 옮겨 다시 서명해 낸다
   await page.getByRole("button", { name: "이 용지 보관하기" }).click();
   await page.getByRole("button", { name: "첫 화면으로" }).click();
   const after = await page.evaluate(() => Date.now());
   await page.clock.setSystemTime(after + 6 * 60_000);
-  await page
+  const reuse = page
     .getByRole("region", { name: "보관한 용지" })
-    .getByRole("button", { name: "이 용지로 응모" })
-    .click({ timeout: 30_000 });
-  await paper.press("Enter", { timeout: 30_000 });
-  await card.press("Enter", { timeout: 10_000 });
+    .getByRole("button", { name: "이 용지로 응모" });
+  await shown(reuse);
+  await reuse.click();
+  await shown(paper);
+  await paper.press("Enter");
+  await shown(card);
+  await card.press("Enter");
+  await shown(unlock);
   await demoUnlock(page, "sign");
-  await expect(page.locator("[data-receipt-qual]")).toContainText(/^Q-/, {
-    timeout: 30_000,
-  });
+  const qual = page.locator("[data-receipt-qual]", { hasText: /^Q-/ });
+  await shown(qual);
 });
 
 test("소속 페이지와 개인정보처리방침: 열린 기간이 없으면 그렇게 알리고, 가로로 넘치지 않는다", async ({
