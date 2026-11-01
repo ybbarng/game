@@ -10,11 +10,29 @@ export { expect } from "@playwright/test";
  */
 export const test = base.extend({
   context: async ({ context }, use) => {
-    for (const page of context.pages()) waitForReady(page);
-    context.on("page", waitForReady);
+    for (const page of context.pages()) prepare(page);
+    context.on("page", prepare);
     await use(context);
   },
 });
+
+function prepare(page: Page): void {
+  waitForReady(page);
+  if (SKIP_SCREENSHOTS) skipSavedScreenshots(page);
+}
+
+/**
+ * CI에서는 파일로 남기기만 하는 스크린숏(`path`를 준 것)을 찍지 않는다. 사람이 직접 보는 용도라 CI에서는 아무도
+ * 보지 않고(실패하면 trace가 남는다), 전체 페이지 스크린숏이 화면 시험 시간의 큰 몫을 썼다(2026-11-01).
+ * 판정에 쓰는 스크린숏(결과 값을 쓰는 것)은 그대로 찍는다. `E2E_SCREENSHOTS=1`이면 CI에서도 찍는다
+ */
+const SKIP_SCREENSHOTS = !!process.env.CI && !process.env.E2E_SCREENSHOTS;
+
+function skipSavedScreenshots(page: Page): void {
+  const shot = page.screenshot.bind(page);
+  page.screenshot = async (options?: Parameters<Page["screenshot"]>[0]) =>
+    options?.path ? Buffer.alloc(0) : shot(options);
+}
 
 const READY = "html[data-hydrated]";
 
