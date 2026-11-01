@@ -314,7 +314,7 @@ export class RemoteLedger implements Ledger {
         ),
       );
     } catch (err) {
-      if (err instanceof ChainBroken) throw err;
+      if (err instanceof ChainBroken || err instanceof RootMismatch) throw err;
       await this.fromGitHub(err, local);
     }
   }
@@ -352,19 +352,34 @@ export class RemoteLedger implements Ledger {
           await loadClosed(base, this.read, from, head.rounds),
         );
     } catch (e) {
-      if (e instanceof ChainBroken) throw e;
+      if (e instanceof ChainBroken || e instanceof RootMismatch) throw e;
       throw err;
     }
   }
 
   /** 받은 기록을 붙인다. 기록 사슬이 처음 일정표부터 이어지지 않으면 던진다(서버가 장부를 바꿨다) */
-  private addClosed(from: number, list: readonly ClosedRound[]): void {
+  private addClosed(from: number, loaded: LoadedClosed): void {
     if (!this.genesis) throw new Error("장부를 아직 받지 못했습니다");
+    const { list, legacy } = loaded;
     let head = this.chainHead ?? genesisHash(this.genesis);
     for (const [i, { record }] of list.entries()) {
       if (record.round !== from + i || !equalBytes(record.prev, head))
         throw new ChainBroken(from + i);
       head = recordHash(record);
+    }
+    // 옛 서버(가벼운 기록·증명 API 없음): 받은 회차 파일을 들고 있다가 증명·내 응모권을 기기에서 계산한다
+    if (legacy)
+      for (const data of legacy)
+        if (!equalBytes(sealRoot(data.tickets), data.record.merkleRoot))
+          throw new RootMismatch(data.record.round);
+    if (!legacy) this.legacy = null;
+    else if (this.legacy || this.records.length === 0) {
+      this.legacy = [...(this.legacy ?? []), ...legacy];
+      for (const data of legacy)
+        for (const r of data.registrations) {
+          this.registered.add(toBase64Url(r.pub));
+          this.registeredAt.set(toBase64Url(r.pub), data.record.round);
+        }
     }
     for (const { record, summary } of list) {
       this.records.push(record);
@@ -372,6 +387,12 @@ export class RemoteLedger implements Ledger {
     }
     this.chainHead = head;
   }
+
+  /**
+   * 옛 서버(가벼운 기록을 내지 않는 판)에서 받은 회차 파일 전체(1회차부터). 새 화면이 서버보다 먼저 나가도
+   * 확인 링크·응모권 보기·내 기록·불러오기가 증명 API 없이 돌게 한다. 가벼운 기록을 받으면 null(증명 API를 쓴다)
+   */
+  private legacy: RoundFileData[] | null = null;
 
   status(): LedgerStatus {
     const now = this.now();
@@ -588,7 +609,7 @@ export class RemoteLedger implements Ledger {
 
   /** 그 회차 파일(확인한 것): 응모권 목록이 기록의 머클 루트와 맞아야 한다 */
   private async roundFile(round: number): Promise<RoundFileData> {
-    const hit = this.roundFiles.get(round);
+    const hit = this.roundFiles.get(round) ?? this.legacy?.[round - 1];
     if (hit) return hit;
     const record = this.record(round);
     if (!record) throw new Error(`${round}회차는 아직 닫히지 않았습니다`);
@@ -619,22 +640,28 @@ export class RemoteLedger implements Ledger {
   async findTicket(round: number, idHex: string): Promise<Ticket | null> {
     const record = this.record(round);
     if (!record || !/^[0-9a-f]{64}$/.test(idHex)) return null;
-    let proof: TicketProof | null;
-    try {
-      const res = await this.serverRead(
-        `${this.o.base}/api/proof/${round}/${idHex}`,
-      );
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error(fetchFailure("응모권 증명", res.status));
-      proof = (await res.json()) as TicketProof;
-    } catch (err) {
-      if (!unreachable(err)) throw err;
-      // 서버가 응답하지 않으면 사본의 그 회차 파일 하나로 기기에서 같은 증명을 만든다
+    // 회차 파일 하나로 기기에서 같은 증명을 만든다(서버가 응답하지 않거나 증명 API가 없는 옛 서버)
+    const fromFile = async () => {
       const { tickets } = await this.roundFile(round);
-      proof = ticketProofFromList(record, tickets, idHex);
-      if (!proof) return null;
-    }
-    return checkTicketProof(proof, record);
+      return ticketProofFromList(record, tickets, idHex);
+    };
+    let proof: TicketProof | null;
+    if (this.legacy) proof = await fromFile();
+    else
+      try {
+        const res = await this.serverRead(
+          `${this.o.base}/api/proof/${round}/${idHex}`,
+        );
+        // 404는 없는 응모권이거나 증명 API가 없는 옛 서버다. 회차 파일로 다시 본다(없는 응모권이면 거기서도 없다)
+        if (res.status === 404) proof = await fromFile();
+        else if (!res.ok)
+          throw new Error(fetchFailure("응모권 증명", res.status));
+        else proof = (await res.json()) as TicketProof;
+      } catch (err) {
+        if (!unreachable(err)) throw err;
+        proof = await fromFile();
+      }
+    return proof && checkTicketProof(proof, record);
   }
 
   async keyTickets(
@@ -643,16 +670,23 @@ export class RemoteLedger implements Ledger {
   ): Promise<Ticket[]> {
     const found = new Map<string, Ticket>();
     const slot = (t: Ticket) => `${toHex(t.pub)}:${t.round}`;
+    // 옛 서버: 받아 둔 회차 파일에서 내 열쇠의 응모권을 찾는다(예전과 같다)
+    if (this.legacy) {
+      const keys = new Set(pubs.map(toHex));
+      return this.legacy.flatMap((d) =>
+        d.tickets.filter((t) => keys.has(toHex(t.pub))),
+      );
+    }
     let offline = false;
     for (const pub of pubs) {
       try {
         for (const t of await this.keyTicketsOf(pub)) found.set(slot(t), t);
       } catch (err) {
-        if (!unreachable(err)) throw err;
+        if (!unreachable(err) && !(err instanceof NoKeyApi)) throw err;
         offline = true;
       }
     }
-    // 서버가 응답하지 않으면 지갑의 응모권(내가 낸 바이트)으로. 등수는 기록의 당첨 id로 다시 본다
+    // 서버가 응답하지 않거나 열쇠별 응모권 API가 없으면 지갑의 응모권(내가 낸 바이트)으로
     if (offline)
       for (const t of known)
         if (this.record(t.round) && !found.has(slot(t))) found.set(slot(t), t);
@@ -683,9 +717,14 @@ export class RemoteLedger implements Ledger {
     let through = cached?.through ?? 0;
     const closed = this.records.length;
     while (through < closed) {
-      const body = await this.get<KeyTicketsResponse>(
-        `/api/keys/${key}/tickets?from=${through + 1}`,
+      const res = await this.serverRead(
+        `${this.o.base}/api/keys/${key}/tickets?from=${through + 1}`,
+        { cache: "no-store" },
       );
+      // 열쇠별 응모권 API가 없는 옛 서버(가벼운 기록 사본은 받았는데 서버가 옛 판인 틈)
+      if (res.status === 404) throw new NoKeyApi();
+      if (!res.ok) throw new Error(fetchFailure("내 응모권", res.status));
+      const body = (await res.json()) as KeyTicketsResponse;
       for (const proof of body.tickets) {
         const record = this.record(proof.round);
         // 서버가 이 기기보다 더 닫았으면 그 회차는 다음에 묻는다
@@ -795,6 +834,14 @@ class ChainBroken extends Error {
   }
 }
 
+/** 서버에 열쇠별 응모권 API가 없다(옛 판) */
+class NoKeyApi extends Error {
+  constructor() {
+    super("서버에 열쇠별 응모권 API가 없습니다");
+    this.name = "NoKeyApi";
+  }
+}
+
 /** 받은 회차 파일의 응모권 목록이 기록의 머클 루트와 다르다 */
 class RootMismatch extends Error {
   constructor(round: number) {
@@ -806,26 +853,41 @@ class RootMismatch extends Error {
 /**
  * from~to 닫힌 회차의 기록과 요약: 가벼운 기록으로 받고, 내지 않는 서버(옛 판)면 회차 파일을 받아 요약을 계산한다
  */
+interface LoadedClosed {
+  list: ClosedRound[];
+  /** 옛 서버라 회차 파일로 받았으면 그 내용(아니면 null) */
+  legacy: RoundFileData[] | null;
+}
+
 async function loadClosed(
   base: string,
   fetchFn: typeof fetch,
   from: number,
   to: number,
-): Promise<ClosedRound[]> {
+): Promise<LoadedClosed> {
   try {
-    return (await loadLightFiles(base, fetchFn, from, to)).map((l) => ({
+    const list = (await loadLightFiles(base, fetchFn, from, to)).map((l) => ({
       record: l.record,
       summary: l.summary,
     }));
+    return { list, legacy: null };
   } catch (err) {
     if (!(err instanceof LightMissing)) throw err;
-    return (await loadRoundFiles(base, fetchFn, from, to)).map(
-      ({ round: f }) => ({
+    const legacy = (await loadRoundFiles(base, fetchFn, from, to)).map(
+      ({ round: f }): RoundFileData => ({
         record: decodeRecord(fromBase64Url(f.record)),
-        summary: roundSummary(
-          f.tickets.map((t) => decodeTicket(fromBase64Url(t))),
+        tickets: f.tickets.map((t) => decodeTicket(fromBase64Url(t))),
+        registrations: f.registrations.map((r) =>
+          decodeRegistration(fromBase64Url(r)),
         ),
       }),
     );
+    return {
+      list: legacy.map((d) => ({
+        record: d.record,
+        summary: roundSummary(d.tickets),
+      })),
+      legacy,
+    };
   }
 }

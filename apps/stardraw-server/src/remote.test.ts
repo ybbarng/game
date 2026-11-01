@@ -225,6 +225,68 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
     expect(outcome).toEqual({ ok: true });
   });
 
+  it("새 화면이 옛 서버(가벼운 기록·증명 API 없음)에 붙어도 확인 링크·응모권 보기·내 기록·불러오기가 된다", async () => {
+    const base = await serve();
+    await rig.at(EPOCH + 10);
+    // 옛 서버: 가벼운 기록 파일과 증명 API가 없다(없는 주소 404)
+    const old = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (
+        url.includes("/ledger/light/") ||
+        url.includes("/api/proof/") ||
+        /\/api\/keys\/[^/]+\/tickets/.test(url)
+      )
+        return Response.json({ error: "없는 주소입니다" }, { status: 404 });
+      return fetch(input, init);
+    }) as typeof fetch;
+    const asked: string[] = [];
+    const ledger = new RemoteLedger({
+      base,
+      clock: rig.clock,
+      policy: POLICY,
+      powParams: TEST_POW,
+      anchorRepo: null,
+      fetch: ((input: string | URL | Request, init?: RequestInit) => {
+        asked.push(String(input));
+        return old(input, init);
+      }) as typeof fetch,
+    });
+    await ledger.settle();
+    const me = await player();
+    const challenge = ledger.head();
+    const registration = await makeRegistration(
+      me.signer,
+      me.signer.credentialId,
+      challenge,
+      EASY,
+      { params: ledger.powParams },
+    );
+    const ticket = await makeTicket(
+      me.signer,
+      1,
+      drawOf(1).numbers,
+      challenge,
+      EASY,
+      { params: ledger.powParams },
+    );
+    if (!ticket || !registration) throw new Error("응모권을 만들지 못했다");
+    await ledger.submit(ticket, registration);
+    await rig.finish(1);
+    await ledger.settle(true);
+    const id = toHex(ticketId(ticket));
+    expect(ledger.closed()).toHaveLength(1);
+    // 확인 링크·응모권 보기: 받아 둔 회차 파일로 기기에서 증명을 만들어 확인한다
+    expect(toHex(ticketId((await ledger.findTicket(1, id)) as never))).toBe(id);
+    expect(await ledger.findTicket(1, "00".repeat(32))).toBeNull();
+    // 내 기록·다른 기기에서 불러오기: 지갑 없이도 받아 둔 회차 파일에서 내 열쇠의 응모권을 찾는다
+    const mine = await ledger.keyTickets([me.signer.publicKey], []);
+    expect(mine.map((t) => toHex(ticketId(t)))).toEqual([id]);
+    expect(await ledger.registeredRound(me.signer.publicKey)).toBe(1);
+    expect(await ledger.roundTickets(1)).toHaveLength(1);
+    // 증명 API에는 묻지 않는다(옛 서버로 알아챘다)
+    expect(asked.some((u) => u.includes("/api/proof/"))).toBe(false);
+  });
+
   it("시험 단계 회차면 화면의 장부가 시험 모드를 안다(화면이 띠를 띄운다)", async () => {
     const base = await serve({
       schedule: {

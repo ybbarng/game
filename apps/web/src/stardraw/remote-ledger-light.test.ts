@@ -148,6 +148,8 @@ function world(clock: ManualClock) {
     ...l,
     files,
     server: "up" as "up" | "down",
+    /** 증명 API가 없는 서버(404) */
+    noApi: false,
     asked: [] as string[],
     /** 열쇠별 응답을 바꿔 끼운다(위조 시험) */
     tamper: null as ((body: KeyTicketsResponse) => KeyTicketsResponse) | null,
@@ -168,6 +170,11 @@ function world(clock: ManualClock) {
             serverKey: "",
             mode: "trial",
           });
+        if (
+          w.noApi &&
+          (path.startsWith("/api/proof/") || path.includes("/tickets?"))
+        )
+          return Response.json({ error: "없는 주소입니다" }, { status: 404 });
         const proof = /^\/api\/proof\/(\d+)\/([0-9a-f]{64})$/.exec(path);
         if (proof) {
           const round = Number(proof[1]);
@@ -296,6 +303,27 @@ describe("서버 장부: 가벼운 확인", () => {
     expect((await fresh.keyTickets([ME], wallet)).map((t) => t.round)).toEqual([
       1,
     ]);
+  });
+
+  it("증명 API가 404면(옛 서버) 응모권 하나는 회차 파일로, 내 응모권은 지갑 것으로", async () => {
+    const clock = new ManualClock();
+    const w = world(clock);
+    w.noApi = true;
+    const ledger = ledgerIn(w, clock);
+    await ledger.settle();
+    const target = (w.tickets[1] as Ticket[])[0] as Ticket;
+    const id = toHex(ticketId(target));
+    expect(toHex(ticketId((await ledger.findTicket(2, id)) as Ticket))).toBe(
+      id,
+    );
+    expect(w.asked).toContain(`${SERVER}/ledger/rounds/000002.json`);
+    expect(await ledger.findTicket(2, "00".repeat(32))).toBeNull();
+    const wallet = (w.tickets[0] as Ticket[]).filter(
+      (t) => toHex(t.pub) === toHex(ME),
+    );
+    expect((await ledger.keyTickets([ME], wallet)).map((t) => t.round)).toEqual(
+      [1],
+    );
   });
 
   it("회차 상세는 그 회차 파일 하나만 받고, 목록이 기록의 루트와 다르면 던진다", async () => {
