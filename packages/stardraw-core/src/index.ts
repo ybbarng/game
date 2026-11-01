@@ -6,6 +6,7 @@ export * from "./draw";
 export * from "./gate";
 export * from "./invite";
 export * from "./keys";
+export * from "./light";
 export * from "./merkle";
 export * from "./nickname";
 export * from "./operations";

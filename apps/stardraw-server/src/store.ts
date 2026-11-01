@@ -345,6 +345,22 @@ export class Store {
       .run(`mirrored:${branch}`, String(round));
   }
 
+  /** 그 브랜치 사본에 가벼운 기록 파일(docs/36 11-30)까지 올린 마지막 회차. 가벼운 기록을 내기 전에 올린 회차를 채우는 데 쓴다 */
+  lightMirrored(branch: string): number {
+    const row = this.db
+      .prepare("SELECT v FROM meta WHERE k = ?")
+      .get(`lightMirrored:${branch}`);
+    return row ? Number(row.v) : 0;
+  }
+
+  setLightMirrored(branch: string, round: number): void {
+    this.db
+      .prepare(
+        "INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
+      )
+      .run(`lightMirrored:${branch}`, String(round));
+  }
+
   setAnchored(round: number): void {
     this.db
       .prepare(

@@ -1595,10 +1595,13 @@ export class StardrawServer {
     if (this.anchoring || this.now() < this.nextAnchorTry) return;
     const { store } = this.o;
     const anchored = store.anchored();
+    const branchNow =
+      anchored > 0 ? anchorBranch(this.schedule(), anchored) : "";
     const mirrorBehind =
       anchored > 0 &&
       this.now() >= this.nextMirrorTry &&
-      store.mirrored(anchorBranch(this.schedule(), anchored)) < anchored;
+      (store.mirrored(branchNow) < anchored ||
+        store.lightMirrored(branchNow) < store.mirrored(branchNow));
     if (
       store.genesisAnchored() &&
       anchored >= store.recordCount() &&
@@ -1632,12 +1635,13 @@ export class StardrawServer {
     await this.earlySealDue();
     // 이미 앵커를 남긴 회차의 사본이 빠졌으면(사본을 올리기 전 판에서 남긴 회차 등) 먼저 채운다
     const anchored = store.anchored();
-    if (anchored > 0)
-      await this.fillMirror(
-        ledger,
-        anchorBranch(this.schedule(), anchored),
-        anchored,
-      );
+    if (anchored > 0) {
+      const branch = anchorBranch(this.schedule(), anchored);
+      // 채울 것이 있을 때만 기다린다(없으면 앵커 흐름이 예전과 같은 차례로 돈다)
+      if (store.lightMirrored(branch) < store.mirrored(branch))
+        await this.fillLightMirror(ledger, branch);
+      await this.fillMirror(ledger, branch, anchored);
+    }
     for (
       let round = store.anchored() + 1;
       round <= store.recordCount();
@@ -1665,7 +1669,7 @@ export class StardrawServer {
         if (files.length > 0)
           try {
             await this.o.anchor.anchor(entry, branch, files);
-            store.setMirrored(branch, round);
+            this.setMirrored(branch, round, round);
           } catch (err) {
             // 사본 때문에 앵커가 밀리지 않게 앵커 파일만 따로 남긴다
             this.mirrorFailed(`${round}회차 장부 사본을 올리지`, err);
@@ -1718,13 +1722,71 @@ export class StardrawServer {
           this.mirrorFiles(ledger, from, last),
           mirrorCommitMessage(ledger, from, last),
         );
-        store.setMirrored(branch, last);
+        this.setMirrored(branch, from, last);
         this.o.log?.(
           `앵커 저장소 ${branch}에 ${mirrorCommitMessage(ledger, from, last)}를 올렸다`,
         );
       } catch (err) {
         this.mirrorFailed(
           `${branch}에 ${from}회차부터 장부 사본을 채우지`,
+          err,
+        );
+      }
+    }
+  }
+
+  /** from~to 회차 사본을 올렸다. 회차 파일과 함께 가벼운 기록도 올라가므로 빈틈이 없으면 그 진행도 옮긴다 */
+  private setMirrored(branch: string, from: number, to: number): void {
+    const { store } = this.o;
+    store.setMirrored(branch, to);
+    if (store.lightMirrored(branch) >= from - 1)
+      store.setLightMirrored(branch, to);
+  }
+
+  /**
+   * 가벼운 기록을 내기 전에 사본에 오른 회차(운영 장부의 지난 회차)의 가벼운 기록 파일·묶음을 채운다(docs/36 11-30).
+   * 커밋 하나에 글 크기 상한만큼. 실패하면 기록만 남기고 10분 뒤 다시
+   */
+  private async fillLightMirror(ledger: string, branch: string): Promise<void> {
+    const { store, publisher } = this.o;
+    const limit = this.o.mirrorCommitBytes ?? 2_000_000;
+    while (
+      store.lightMirrored(branch) < store.mirrored(branch) &&
+      this.now() >= this.nextMirrorTry
+    ) {
+      const from = store.lightMirrored(branch) + 1;
+      const to = store.mirrored(branch);
+      await this.earlySealDue();
+      try {
+        let last = from;
+        let bytes = 0;
+        for (let round = from; round <= to; round++) {
+          const size = publisher
+            .lightFiles(round, round)
+            .reduce((n, f) => n + f.text.length, 0);
+          if (round > from && bytes + size > limit) break;
+          bytes += size;
+          last = round;
+        }
+        const files = publisher.lightFiles(from, last);
+        const message = mirrorCommitMessage(ledger, from, last).replace(
+          "장부 파일",
+          "가벼운 기록 파일",
+        );
+        if (files.length > 0)
+          await this.o.anchor.mirror(
+            branch,
+            files.map((f) => ({
+              path: ledgerMirrorPath(ledger, f.path),
+              text: f.text,
+            })),
+            message,
+          );
+        store.setLightMirrored(branch, last);
+        this.o.log?.(`앵커 저장소 ${branch}에 ${message}을 올렸다`);
+      } catch (err) {
+        this.mirrorFailed(
+          `${branch}에 ${from}회차부터 가벼운 기록 사본을 채우지`,
           err,
         );
       }
@@ -1782,6 +1844,14 @@ export class StardrawServer {
     } catch (err) {
       this.o.log?.(
         `장부 묶음 파일을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    // 가벼운 기록 파일(docs/36 11-30): 띄울 때 지난 회차도 채운다. 못 써도 회차는 닫는다(화면은 회차 파일로 돌아가지 않으니 기록에 남긴다)
+    try {
+      this.o.publisher.lights(this.o.store.recordCount());
+    } catch (err) {
+      this.o.log?.(
+        `가벼운 기록 파일을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

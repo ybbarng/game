@@ -118,6 +118,7 @@ describe("장부 JSON 사본", () => {
           "rounds/000001.json",
           "seals/000001.json",
           "head.json",
+          "light/000001.json",
         ].map((p) => ledgerMirrorPath(id, p)),
       ].sort(),
     );
@@ -163,7 +164,10 @@ describe("장부 JSON 사본", () => {
     gh.treeFailures = 0;
     first.store.close();
     rigs = rigs.filter((r) => r !== first);
-    const bytes = served(first, "seals/000001.json").length * 5;
+    const bytes =
+      (served(first, "seals/000001.json").length +
+        served(first, "light/000001.json").length) *
+      5;
     const again = await makeRig({
       dir: first.dir,
       at: first.clock.now() / 1000,
