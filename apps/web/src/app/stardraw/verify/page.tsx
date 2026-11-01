@@ -80,12 +80,17 @@ export default function StardrawVerify() {
     >
       <article className="mx-auto flex max-w-2xl flex-col gap-10 break-keep leading-relaxed">
         <header className="flex flex-col gap-3">
-          <a
-            href="/stardraw/about"
-            className="self-start text-sm text-white/70 hover:text-white"
-          >
-            ← 하늘의 별 따기 설명
-          </a>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <a href="/stardraw" className="text-white/70 hover:text-white">
+              ← 하늘의 별 따기
+            </a>
+            <a
+              href="/stardraw/about"
+              className="text-white/70 underline underline-offset-2"
+            >
+              설명
+            </a>
+          </div>
           <h1 className="font-black text-3xl">검증하기</h1>
           <p className="text-white/75">
             공개 장부만으로 모든 회차를 처음부터 다시 계산하는 데 필요한 것을

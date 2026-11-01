@@ -166,3 +166,34 @@ test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
 });
+
+/**
+ * 별 따기 앱 밖의 페이지(설명·검증·배우기·소속·등록증·우주국·개인정보·공유 응모권·데모)는 모두 첫 화면에 같은
+ * 「← 하늘의 별 따기」가 보인다. 검증 페이지는 설명으로만 이어져 첫 화면까지 두 번 가야 했다(2026-11-01)
+ */
+test("앱 밖 페이지마다 첫 화면에 「← 하늘의 별 따기」", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  for (const path of [
+    "/stardraw/about",
+    "/stardraw/verify",
+    "/stardraw/learn",
+    "/stardraw/qualify",
+    "/stardraw/id",
+    "/stardraw/bureau",
+    "/stardraw/privacy",
+    `/stardraw/ticket#1-${"0".repeat(64)}`,
+    "/stardraw/demo",
+  ]) {
+    await page.goto(path);
+    const link = page.getByRole("link", {
+      name: "← 하늘의 별 따기",
+      exact: true,
+    });
+    await expect(link, path).toBeInViewport();
+    await expect(link, path).toHaveAttribute("href", "/stardraw");
+    if (path === "/stardraw/verify")
+      await page.screenshot({ path: info.outputPath("nav-home-verify.png") });
+  }
+});
