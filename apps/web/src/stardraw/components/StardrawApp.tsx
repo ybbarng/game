@@ -265,6 +265,11 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     if (navigated) window.history.back();
     else go(fallback, true);
   };
+  /**
+   * 「처음으로」: 늘 첫 화면으로. 뒤로 가기로 두면 추첨 → 다음 회차 응모 → 「처음으로」가 추첨으로, 내 응모 → 영수증 →
+   * 「처음으로」가 내 응모로 돌아갔다(2026-11-01 사용자)
+   */
+  const goHome = () => go({ name: "home" });
   /** 추첨을 아직 열어 보지 않은 내 회차(결과를 가린다, spoiler.ts) */
   const sealed: Sealed = services
     ? sealedFor(mine, opened, services.ledger)
@@ -407,7 +412,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             services={services}
             status={status}
             onWatchDraw={(round) => go({ name: "draw", round }, true)}
-            onBack={() => back({ name: "home" })}
+            onBack={goHome}
             onDone={(ticket, receivedAt) => {
               const m = { ticket, receivedAt };
               services.wallet.addTicket(m);
@@ -436,7 +441,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 mine={m}
                 sealed={sealed(m.ticket.round)}
                 printing={printing === view.id}
-                onBack={() => back({ name: "home" })}
+                onBack={goHome}
                 onDraw={(round) => go({ name: "draw", round })}
               />
             );
@@ -498,7 +503,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             mine={mine}
             sealed={sealed}
             onRecords={openRecords}
-            onBack={() => back({ name: "home" })}
+            onBack={goHome}
             onOpen={(m) =>
               go({ name: "receipt", id: toHex(ticketId(m.ticket)) })
             }
@@ -510,7 +515,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             services={services}
             version={version}
             sealed={sealed}
-            onBack={() => back({ name: "home" })}
+            onBack={goHome}
             onOpen={(round) => go({ name: "round", round })}
             onDraw={(round) => go({ name: "draw", round })}
             onStats={() => go({ name: "stats" })}
