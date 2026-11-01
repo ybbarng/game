@@ -49,7 +49,7 @@ import type { LedgerPhase, LedgerStatus } from "./local-ledger";
  * - 닫힌 회차 파일(`/ledger/rounds/…`)은 바뀌지 않으므로 한 번만, 브라우저 캐시로 받는다.
  *   처음 열 때는 다 찬 묶음 파일(10·100회차)로 받아 요청이 몇 개뿐이다(docs/36 7절 「장부 받기」)
  * - 읽기(GET)는 한꺼번에 4개까지, 서버가 막으면(429·503) 기다렸다 다시 받는다. 응모·등록(POST)은
- *   503(작업 증명 줄이 가득 참)일 때만 몇 번 다시 내고, 상한 거절(429) 등은 다시 보내지 않는다
+ *   503(작업 증명 줄이 가득 참)일 때만 기기마다 흔든 간격으로 마감 5초 전까지 다시 내고, 상한 거절(429) 등은 다시 보내지 않는다
  * - 기기 시계가 틀려도 되게 서버 시각과의 차이를 재 둔다(마감은 서버가 받은 시각으로 정한다)
  * - 우리 서버가 응답하지 않으면(네트워크 오류·5xx) 지난 회차는 앵커 저장소의 장부 사본(GitHub raw)에서 받는다
  *   (docs/36 11-16). 사본은 회차가 닫힌 뒤 오르고 raw 주소는 약 5분 캐시돼 최근 회차가 늦을 수 있다.
@@ -70,6 +70,18 @@ interface StateJson {
   gateTarget?: number;
 }
 
+/** 503 뒤 다시 내기를 그만두는 때: 회차 마감 이만큼 전(ms) */
+export const RETRY_STOP_BEFORE_CLOSE_MS = 5000;
+
+/**
+ * 503 뒤 k번째 다시 내기 전 기다림(ms): 1~4초 무작위에 차례로 0.5초씩 더한다(4번째부터는 그대로).
+ * 그래서 1~4초, 1.5~4.5초, 2~5초, 그 뒤로는 2.5~5.5초. 몰릴수록 다시 내는 간격이 벌어져 줄이 숨을 돌린다.
+ * `r`은 0 이상 1 미만의 무작위 값(시험은 정해 넣는다)
+ */
+export function retryDelay(k: number, r: number): number {
+  return Math.round(1000 + r * 3000 + 500 * (Math.min(k, 4) - 1));
+}
+
 /** 앞단 답을 들고 있는 수(열쇠·문제 값마다 하나. 회차가 바뀌면 옛것은 쓸모없다) */
 const GATE_KEEP = 4;
 const noop = () => {};
@@ -88,6 +100,8 @@ export interface RemoteLedgerOptions {
   anchorRepo?: string | null;
   /** 앞단 작업 증명 풀기(기본 같은 스레드. 화면은 웹 워커, gate-solver.ts) */
   gateSolver?: GateSolver;
+  /** 다시 내기 흔들림에 쓰는 무작위 값(기본 Math.random. 시험은 정해 넣는다) */
+  random?: () => number;
 }
 
 /** 서버가 응답하지 않는다(네트워크 오류는 fetch가 TypeError로 던진다) */
@@ -179,24 +193,37 @@ export class RemoteLedger implements Ledger {
   }
 
   /**
-   * 응모·등록(POST). 서버가 503(작업 증명 줄이 가득 참)이면 아무것도 기록하지 않은 것이라 잠시 뒤 다시 낸다
-   * (1·2·3·4초 간격으로 네 번까지, D2). 다른 거절(상한 429, 형식 400, 마감 409)은 다시 내지 않는다
+   * 응모·등록(POST). 서버가 503(작업 증명 줄이 가득 참)이면 아무것도 기록하지 않은 것이라 잠시 뒤 다시 낸다(D2).
+   * 기다림은 기기마다 흔든다(`retryDelay`): 모두 같은 순간에 다시 내면 줄이 매번 바로 차서, 1천 장이 한꺼번에 오면
+   * 290장만 들어갔다(docs/36 11-30). 회차 마감 5초 전까지만 다시 낸다(그 뒤에 내면 마감에 걸린다).
+   * 다른 거절(상한 429, 형식 400, 마감 409)은 다시 내지 않는다
    */
-  private async post(path: string, body: unknown): Promise<Response> {
+  private async post(
+    path: string,
+    body: unknown,
+    closesAt: number,
+  ): Promise<Response> {
     const send = () =>
       this.f(`${this.o.base}${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
+    const random = this.o.random ?? Math.random;
+    const lastSend = closesAt * 1000 - RETRY_STOP_BEFORE_CLOSE_MS;
     let res = await send();
-    for (let i = 1; res.status === 503 && i <= 4; i++) {
-      await new Promise<void>((resolve) =>
-        this.o.clock.after(i * 1000, resolve),
-      );
+    for (let k = 1; res.status === 503; k++) {
+      const wait = retryDelay(k, random());
+      if (this.nowMs() + wait > lastSend) break;
+      await new Promise<void>((resolve) => this.o.clock.after(wait, resolve));
       res = await send();
     }
     return res;
+  }
+
+  /** 지금 시각(ms, 서버 기준) */
+  private nowMs(): number {
+    return this.o.clock.now() + this.offset * 1000;
   }
 
   settle(force = false): Promise<void> {
@@ -424,12 +451,16 @@ export class RemoteLedger implements Ledger {
     proof: SignatureData,
     challenge: Uint8Array,
   ): Promise<{ round: number }> {
-    const res = await this.post("/api/register", {
-      registration: toBase64Url(encodeRegistration(registration)),
-      proof: toBase64Url(encodeRegistrationProof(proof)),
-      head: toHex(challenge),
-      ...(await this.gateField(registration.pub, challenge)),
-    });
+    const res = await this.post(
+      "/api/register",
+      {
+        registration: toBase64Url(encodeRegistration(registration)),
+        proof: toBase64Url(encodeRegistrationProof(proof)),
+        head: toHex(challenge),
+        ...(await this.gateField(registration.pub, challenge)),
+      },
+      this.status().times.closesAt,
+    );
     const body = (await res.json().catch(() => ({}))) as {
       error?: string;
       round?: number;
@@ -450,13 +481,17 @@ export class RemoteLedger implements Ledger {
     ticket: Ticket,
     registration?: KeyRegistration,
   ): Promise<{ receivedAt: number }> {
-    const res = await this.post("/api/enter", {
-      ticket: toBase64Url(encodeTicket(ticket)),
-      ...(registration
-        ? { registration: toBase64Url(encodeRegistration(registration)) }
-        : {}),
-      ...(await this.gateField(ticket.pub, this.head())),
-    });
+    const res = await this.post(
+      "/api/enter",
+      {
+        ticket: toBase64Url(encodeTicket(ticket)),
+        ...(registration
+          ? { registration: toBase64Url(encodeRegistration(registration)) }
+          : {}),
+        ...(await this.gateField(ticket.pub, this.head())),
+      },
+      roundTimes(this.schedule, ticket.round).closesAt,
+    );
     const body = (await res.json().catch(() => ({}))) as {
       error?: string;
       receivedAt?: number;

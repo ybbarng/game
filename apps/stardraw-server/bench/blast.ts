@@ -1,7 +1,8 @@
 /**
- * 응모를 쏟아붓는 쪽(rush.js가 띄운다, docs/36 11-30). 화면(`remote-ledger.ts` post)과 같이 503이면 1·2·3·4초 뒤
- * 네 번까지 다시 내고, 다른 거절은 다시 내지 않는다. 도착은 uniform(마감 전 window초 동안 고르게) 또는
- * spike(마감 window초 전에 한꺼번에). --policy jitter는 제안한 다시 내기(1~4초 흔들기, 마감 5초 전까지)를 흉내 낸다.
+ * 응모를 쏟아붓는 쪽(rush.js가 띄운다, docs/36 11-30). 503이면 다시 내고, 다른 거절은 다시 내지 않는다.
+ * 도착은 uniform(마감 전 window초 동안 고르게) 또는 spike(마감 window초 전에 한꺼번에).
+ * --policy now는 예전 화면(1·2·3·4초 뒤 네 번), jitter는 지금 화면(`remote-ledger.ts` retryDelay: 1~4초 무작위에
+ * 차례로 0.5초씩 더함, 4번째부터 2.5~5.5초, 마감 5초 전까지, docs/36 11-31)과 같다.
  */
 import { readFileSync } from "node:fs";
 import { arg } from "./common";
@@ -48,10 +49,12 @@ async function main() {
       let res = await send(body);
       attempts++;
       if (policy === "jitter") {
-        // 제안: 1~4초를 흔들어 기다리며 마감 5초 전까지 다시 낸다(모두 같은 순간에 다시 내지 않게)
-        while (res.status === 503 && Date.now() < closeAt - 5000) {
+        // 지금 화면: 1~4초 무작위 + 차례로 0.5초씩 기다리며 마감 5초 전까지 다시 낸다(모두 같은 순간에 다시 내지 않게)
+        for (let k = 1; res.status === 503; k++) {
+          const wait = 1000 + Math.random() * 3000 + 500 * (Math.min(k, 4) - 1);
+          if (Date.now() + wait > closeAt - 5000) break;
           await res.arrayBuffer();
-          await sleep(1000 + Math.random() * 3000);
+          await sleep(wait);
           res = await send(body);
           attempts++;
         }

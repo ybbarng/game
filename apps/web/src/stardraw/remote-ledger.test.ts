@@ -24,7 +24,11 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { type GateSolver, inlineGateSolver } from "./gate-solver";
-import { RemoteLedger } from "./remote-ledger";
+import {
+  RETRY_STOP_BEFORE_CLOSE_MS,
+  RemoteLedger,
+  retryDelay,
+} from "./remote-ledger";
 
 /**
  * 서버 장부의 대비책(docs/36 11-16): 우리 서버가 응답하지 않으면(네트워크 오류·5xx)
@@ -251,25 +255,41 @@ describe("서버 장부: 앵커 저장소 대비책", () => {
   });
 });
 
-describe("응모 요청: 작업 증명 줄이 가득 찼을 때(D2)", () => {
-  /** 응모 요청에 정해 둔 응답을 차례로 내는 가짜 서버(나머지 요청은 world 그대로) */
-  async function setup(statuses: number[]) {
+describe("응모 요청: 작업 증명 줄이 가득 찼을 때(D2, docs/36 11-30)", () => {
+  /**
+   * 응모 요청에 정해 둔 응답을 차례로 내는 가짜 서버(나머지 요청은 world 그대로). 다 쓰면 마지막 응답을 되풀이한다.
+   * `random`은 흔들림 값, `beforeClose`는 4회차 마감까지 남은 초. 다시 내기 전 기다림(ms)을 모은다
+   */
+  async function setup(
+    statuses: number[],
+    options: { random?: number; beforeClose?: number } = {},
+  ) {
     const clock = new ManualClock();
     const w = world(clock);
     let posts = 0;
-    const ledger = ledgerIn(
-      {
-        ...w,
-        fetch: (async (input: string | URL | Request) => {
-          if (String(input) !== `${SERVER}/api/enter`) return w.fetch(input);
-          const status = statuses[posts++] ?? 200;
-          return status === 200
-            ? Response.json({ receivedAt: 1 })
-            : Response.json({ error: `거절 ${status}` }, { status });
-        }) as typeof fetch,
+    const waits: number[] = [];
+    const ledger = new RemoteLedger({
+      base: SERVER,
+      clock: {
+        now: () => clock.now(),
+        after: (ms, fn) => {
+          waits.push(ms);
+          return clock.after(ms, fn);
+        },
       },
-      clock,
-    );
+      policy: { rpId: "game.byb.kr", origins: ["https://game.byb.kr"] },
+      random: () => options.random ?? 0,
+      fetch: (async (input: string | URL | Request) => {
+        if (String(input) !== `${SERVER}/api/enter`) return w.fetch(input);
+        const status = statuses[Math.min(posts++, statuses.length - 1)] ?? 200;
+        return status === 200
+          ? Response.json({ receivedAt: 1 })
+          : Response.json({ error: `거절 ${status}` }, { status });
+      }) as typeof fetch,
+    });
+    // world는 마감 600초 전에 둔다
+    if (options.beforeClose !== undefined)
+      clock.advance((600 - options.beforeClose) * 1000);
     await ledger.settle();
     const signer = softPasskeySigner(await generateSigner());
     const ticket = await signTicket(
@@ -277,42 +297,64 @@ describe("응모 요청: 작업 증명 줄이 가득 찼을 때(D2)", () => {
       unsignedTicket(signer, 4, [1, 2, 3, 4, 5, 6]),
       0,
     );
-    return { clock, ledger, ticket, posts: () => posts };
+    return { clock, ledger, ticket, posts: () => posts, waits };
   }
 
-  /** 시계를 1초씩 옮기며 일이 끝날 때까지 기다린다(조건으로, 상한은 멈춘 시험을 잡는 안전장치) */
+  /** 시계를 0.1초씩 옮기며 일이 끝날 때까지 기다린다(조건으로, 상한은 멈춘 시험을 잡는 안전장치) */
   async function drive<T>(clock: ManualClock, run: Promise<T>) {
     let done = false;
     const watched = run.finally(() => {
       done = true;
     });
     watched.catch(() => {});
-    for (let i = 0; i < 30 && !done; i++) {
+    for (let i = 0; i < 1000 && !done; i++) {
       await new Promise((r) => setTimeout(r, 0));
-      clock.advance(1000);
+      clock.advance(100);
     }
     return watched;
   }
 
-  it("503이면 잠시 뒤 다시 내 받는다", async () => {
-    const s = await setup([503, 503]);
+  it("흔들림: 1~4초 무작위에 차례로 0.5초씩 더하고, 4번째부터는 그대로", () => {
+    expect([1, 2, 3, 4, 9].map((k) => retryDelay(k, 0))).toEqual([
+      1000, 1500, 2000, 2500, 2500,
+    ]);
+    expect([1, 2, 3, 4, 9].map((k) => retryDelay(k, 0.5))).toEqual([
+      2500, 3000, 3500, 4000, 4000,
+    ]);
+    expect([1, 2, 3, 4].map((k) => retryDelay(k, 0.999))).toEqual([
+      3997, 4497, 4997, 5497,
+    ]);
+  });
+
+  it("503이면 흔들어 기다린 뒤 다시 내 받는다", async () => {
+    const s = await setup([503, 503, 200], { random: 0.5 });
     await expect(drive(s.clock, s.ledger.submit(s.ticket))).resolves.toEqual({
       receivedAt: 1,
     });
     expect(s.posts()).toBe(3);
+    expect(s.waits).toEqual([2500, 3000]);
   });
 
-  it("상한(429)은 다시 내지 않고, 503도 네 번 넘게는 다시 내지 않는다", async () => {
+  it("마감 5초 전까지만 다시 내고, 상한(429)은 다시 내지 않는다", async () => {
+    // 마감 20초 전: 마지막으로 낼 수 있는 때는 15초 뒤. 0 → 1 → 2.5 → 4.5 → 7 → 9.5 → 12 → 14.5초에 내고, 다음(17초)은 넘는다
+    const busy = await setup([503], { beforeClose: 20 });
+    await expect(
+      drive(busy.clock, busy.ledger.submit(busy.ticket)),
+    ).rejects.toThrow("거절 503");
+    expect(busy.posts()).toBe(8);
+    expect(busy.waits).toEqual([1000, 1500, 2000, 2500, 2500, 2500, 2500]);
+    expect(RETRY_STOP_BEFORE_CLOSE_MS).toBe(5000);
+    // 마감 6초 전이면 1초만 기다려도 마감 5초 전을 넘지 않으니 한 번 더, 그 뒤로는 그만
+    const late = await setup([503], { beforeClose: 6 });
+    await expect(
+      drive(late.clock, late.ledger.submit(late.ticket)),
+    ).rejects.toThrow("거절 503");
+    expect(late.posts()).toBe(2);
     const limited = await setup([429]);
     await expect(limited.ledger.submit(limited.ticket)).rejects.toThrow(
       "거절 429",
     );
     expect(limited.posts()).toBe(1);
-    const busy = await setup([503, 503, 503, 503, 503, 503]);
-    await expect(
-      drive(busy.clock, busy.ledger.submit(busy.ticket)),
-    ).rejects.toThrow("거절 503");
-    expect(busy.posts()).toBe(5);
   });
 });
 
