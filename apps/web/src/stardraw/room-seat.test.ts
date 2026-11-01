@@ -8,16 +8,16 @@ describe("회차 방 내 자리", () => {
     expect(s.joined).toBe(false);
     expect(s.badge).toBe("조용히 관측 중");
     expect(s.note).toBe(
-      "다른 우주인의 말은 보이지만, 나는 보이지 않고 말할 수 없어요.",
+      "우주인들의 이야기는 보이지만, 나는 아직 언덕에 없어요.",
     );
-    expect(s.join).toBe("신분증 제시하고 대화하기");
+    expect(s.join).toBe("대화에 참여하기");
     expect(s.hill).toBe("아직 다른 우주인은 오지 않았어요.");
   });
 
   it("신분증을 내기 전 다른 우주인이 있으면: 관측 중, 언덕 문구 없음", () => {
     const s = roomSeat({ pass: false, hasKey: true, canJoin: true, others: 3 });
     expect(s.badge).toBe("조용히 관측 중");
-    expect(s.join).toBe("신분증 제시하고 대화하기");
+    expect(s.join).toBe("대화에 참여하기");
     expect(s.hill).toBeNull();
   });
 
@@ -28,7 +28,7 @@ describe("회차 방 내 자리", () => {
       canJoin: true,
       others: 0,
     });
-    expect(s.join).toBe("우주인 등록하고 대화하기");
+    expect(s.join).toBe("우주인 등록하고 참여하기");
   });
 
   it("추첨이 시작된 뒤에는 참여 단추가 없고 그 까닭을 말한다", () => {

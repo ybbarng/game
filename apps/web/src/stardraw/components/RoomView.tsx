@@ -438,7 +438,7 @@ export function RoomView({
     }
   };
 
-  /** 입력 칸을 누름: 표가 없으면 신분증 제시(등록증 없으면 우주인 등록 신청서) */
+  /** 참여 단추(또는 흐린 내 자리)를 누름: 표가 없으면 신분증 제시(등록증 없으면 우주인 등록 신청서) */
   const ensurePass = async (): Promise<string | null> => {
     if (pass) return pass;
     if (!key) {
@@ -828,7 +828,9 @@ export function RoomView({
               {seat.badge}
             </span>
             {seat.note && (
-              <p className="break-keep text-sm text-white/70">{seat.note}</p>
+              <p className="text-balance break-keep text-sm text-white/70">
+                {seat.note}
+              </p>
             )}
             {seat.join && (
               <button
@@ -853,7 +855,7 @@ export function RoomView({
           </div>
         ))}
 
-      {/* 아래: 내가 하는 일(말하기·별똥별) */}
+      {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
       {closed ? (
         <div className="flex flex-col items-center gap-2 py-2">
           <button
@@ -864,7 +866,7 @@ export function RoomView({
             다음 회차 응모하기
           </button>
         </div>
-      ) : (
+      ) : !seat.joined ? null : (
         <form
           className="flex items-center gap-2"
           onSubmit={(e) => {
@@ -881,13 +883,6 @@ export function RoomView({
               const v = e.target.value;
               if (roomCharCount(v) <= ROOM_TEXT_MAX) setDraft(v);
             }}
-            onPointerDown={(e) => {
-              if (!pass) {
-                e.preventDefault();
-                void ensurePass();
-              }
-            }}
-            readOnly={!pass}
             placeholder="말하기"
             className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm placeholder:text-white/35"
             data-room-input
@@ -900,14 +895,12 @@ export function RoomView({
           >
             ☄
           </button>
-          {pass && (
-            <button
-              type="submit"
-              className="rounded-2xl bg-amber-100 px-4 py-3 font-bold text-slate-900 text-sm"
-            >
-              보내기
-            </button>
-          )}
+          <button
+            type="submit"
+            className="rounded-2xl bg-amber-100 px-4 py-3 font-bold text-slate-900 text-sm"
+          >
+            보내기
+          </button>
         </form>
       )}
       {registeringNow && (
@@ -999,7 +992,7 @@ export function RoomView({
         </div>
       )}
       <IdPresentView services={services} id={id} />
-      {/* 등록하지 않은 사람: 입력 칸을 누르면 첫 화면 입구와 같은 「우주인 등록 신청서」, 다른 기기에서 등록했으면 신분증 제시 */}
+      {/* 등록하지 않은 사람: 참여 단추를 누르면 첫 화면 입구와 같은 「우주인 등록 신청서」, 다른 기기에서 등록했으면 신분증 제시 */}
       <WelcomeFlyer services={services} setup={setup} />
       {setup.issued && (
         <IssuedView
