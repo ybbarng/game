@@ -53,3 +53,32 @@ export const STARDRAW_START = new Date("2026-11-02T03:05:00Z");
 export async function fixStardrawClock(page: Page): Promise<void> {
   await page.clock.install({ time: STARDRAW_START });
 }
+
+/**
+ * 연출을 켠 시험에서 CSS·Web Animations 연출을 `rate`배로 돌린다(CDP Animation.setPlaybackRate, Chromium만).
+ * 타이머(setTimeout)는 page.clock이 맡으니 `fastForwardUntil`과 함께 쓴다
+ */
+export async function speedUpAnimations(page: Page, rate = 20): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: rate });
+}
+
+/**
+ * 조건이 맞을 때까지 연출 타이머를 조금씩(`step` ms) 앞당긴다. 연출 길이를 실제 시간으로 기다리지 않는다.
+ * `runFor`가 아니라 `fastForward`로 건너뛴다(runFor는 사이의 rAF 프레임을 모두 돌려 하늘 그리기로 오히려 느렸다).
+ * 한 걸음을 작게 두어 타이머가 (speedUpAnimations로 빨라진) CSS 연출을 크게 앞지르지 않게 한다.
+ * 연출이 끝난 뒤의 자리를 보는 시험은 그 연출이 끝났는지를 조건으로 따로 기다린다. 상한은 멈춘 시험을 잡는 안전장치
+ */
+export async function fastForwardUntil(
+  page: Page,
+  ready: () => Promise<boolean>,
+  { step = 300, timeout = 30_000 }: { step?: number; timeout?: number } = {},
+): Promise<void> {
+  const until = Date.now() + timeout;
+  while (!(await ready())) {
+    if (Date.now() > until)
+      throw new Error("연출을 빨리 감으며 조건을 기다리다 시간이 지났다");
+    await page.clock.fastForward(step);
+  }
+}
