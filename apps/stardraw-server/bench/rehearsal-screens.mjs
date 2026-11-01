@@ -58,7 +58,6 @@ const context = await browser.newContext({
   hasTouch: true,
   locale: "ko-KR",
   timezoneId: "Asia/Seoul",
-  reducedMotion: "reduce",
 });
 const pages = [];
 async function openPage() {
@@ -134,6 +133,8 @@ async function enterViaUi(page, first) {
     .locator("[aria-label='신분증 제출'][aria-disabled='false']")
     .press("Enter", { timeout: 60_000 });
   await page.locator("[data-receipt]").first().waitFor({ timeout: 120_000 });
+  // 영수증 인쇄 연출이 끝나 뒤 화면으로 넘어갈 때까지
+  await page.waitForTimeout(8000);
 }
 
 /** 회차 r의 응모가 열린 직후(앞 회차 추첨 + 연출 뒤) */
@@ -199,7 +200,11 @@ try {
     await shot(page, `${b.name}-첫회차-첫화면`);
     await enterViaUi(page, false);
     await shot(page, `${b.name}-첫회차-영수증`);
-    const go = page.getByRole("button", { name: "추첨 보러 가기" });
+    const go = page.locator("[data-go-draw]");
+    await go
+      .first()
+      .waitFor({ timeout: 30_000 })
+      .catch(() => {});
     if (await go.count()) {
       await go.first().click();
       await shot(page, `${b.name}-첫회차-추첨보러가기`);
