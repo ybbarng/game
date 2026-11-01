@@ -52,7 +52,7 @@ import { StageOverlay, useReducedMotion } from "./StageOverlay";
 
 /**
  * 응모 단계. pick: 별 고르기. busy: 움직임 줄이기에서 응모하는 중(고르는 화면 그대로).
- * 그 밖은 제출 연출(EnterSubmit.tsx): 용지 마킹 → 용지 제출 → 신분증 제시(패스키 서명) → 출력구
+ * 그 밖은 제출 연출(EnterSubmit.tsx): 용지 마킹 → 답안지 제출 → 신분증 제시(패스키 서명) → 출력구
  */
 type Stage = "pick" | "busy" | "paper" | "id" | "print";
 
@@ -114,8 +114,8 @@ export function EnterView({
 }) {
   const [picked, setPicked] = useState<number[]>([...initialPicked]);
   /**
-   * 보관한 용지(반송된 용지). 응모의 입구는 하나라 이 페이지에서 고른다(2026-11-01 사용자): 하늘 위 칸의
-   * 「이 용지로 응모」면 새 회차 용지로 옮겨 적어 내고, 하늘에서 새로 고르면 새로 고르기. 첫 그리기 뒤에 읽는다
+   * 보관한 답안지(반송된 용지). 응모의 입구는 하나라 이 페이지에서 고른다(2026-11-01 사용자): 하늘 위 칸의
+   * 「이 답안지로 응모」면 새 회차 용지로 옮겨 적어 내고, 하늘에서 새로 고르면 새로 고르기. 첫 그리기 뒤에 읽는다
    */
   const [kept, setKept] = useState<KeptPaper | null>(null);
   useEffect(() => {
@@ -263,8 +263,8 @@ export function EnterView({
       const ready = nextRoundOpen(from.round);
       const schedule = ledger.schedule;
       setTransfer({
-        from: `${roundShort(schedule, from.round)} 응모 용지`,
-        to: `${roundShort(schedule, from.round + 1)} 응모 용지`,
+        from: `${roundShort(schedule, from.round)} 답안지`,
+        to: `${roundShort(schedule, from.round + 1)} 답안지`,
         ready,
       });
       if (!reduce) {
@@ -410,7 +410,7 @@ export function EnterView({
     if (key) await submit(key);
   };
 
-  /** 응모가 접수되면 보관한 용지는 버린다(어느 쪽으로 냈든 한 회차 한 장) */
+  /** 응모가 접수되면 보관한 답안지는 버린다(어느 쪽으로 냈든 한 회차 한 장) */
   const finish = (ticket: Ticket, receivedAt: number) => {
     clearKept(services.ns);
     setKept(null);
@@ -460,7 +460,7 @@ export function EnterView({
       </section>
     );
 
-  const title = `${roundShort(services.ledger.schedule, status.round)} 응모권`;
+  const title = `${roundShort(services.ledger.schedule, status.round)} 답안지`;
   const picking = stage === "pick";
   const submitting = stage !== "pick" && stage !== "busy";
   return (
@@ -495,7 +495,7 @@ export function EnterView({
       <IdPresentView services={services} id={id} backdrop={false} />
       {bounce && (
         <BounceSlip
-          title={`${roundShort(services.ledger.schedule, bounce.round)} 응모 용지`}
+          title={`${roundShort(services.ledger.schedule, bounce.round)} 답안지`}
           picked={bounce.numbers}
           deadline={bounce.deadline}
           received={bounce.received}
@@ -526,13 +526,13 @@ export function EnterView({
 
       {kept && kept.round < status.round && open && (
         <section
-          aria-label="보관한 용지"
+          aria-label="보관한 답안지"
           data-kept
           className="flex items-center gap-3 rounded-2xl border border-rose-300/25 bg-[#1b1622] px-3.5 py-3"
         >
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-rose-100/70 text-xs">
-              보관한 용지({roundShort(services.ledger.schedule, kept.round)})
+              보관한 답안지({roundShort(services.ledger.schedule, kept.round)})
             </span>
             <span className="flex flex-wrap gap-1">
               {[...kept.numbers]
@@ -552,7 +552,7 @@ export function EnterView({
               }}
               className="sd-cta rounded-xl px-3 py-2 font-bold text-slate-950 text-sm disabled:opacity-40"
             >
-              이 용지로 응모
+              이 답안지로 응모
             </button>
             <button
               type="button"

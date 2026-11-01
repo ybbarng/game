@@ -69,15 +69,15 @@ function stubSetup(
 const BOUNCE_PICKS = [3, 11, 19, 24, 33, 41];
 
 /**
- * 접수 반송 장면: 돌려받은 용지 → 「이 용지 보관하기」 → 추첨 보러 갈지 묻기 → (다음 회차가 열려 응모 페이지 보관한 용지 칸의
- * 「이 용지로 응모」를 누른 셈으로) 다음 회차 용지로 옮겨 쓰고 밀어 올려 제출
+ * 접수 반송 장면: 돌려받은 용지 → 「이 답안지 보관하기」 → 추첨 보러 갈지 묻기 → (다음 회차가 열려 응모 페이지 보관한 답안지 칸의
+ * 「이 답안지로 응모」를 누른 셈으로) 다음 회차 용지로 옮겨 쓰고 밀어 올려 제출
  */
 function BounceTour({ onDone }: { onDone: () => void }) {
   const [moving, setMoving] = useState(false);
   if (!moving)
     return (
       <BounceSlip
-        title="7회 응모 용지"
+        title="7회 답안지"
         picked={BOUNCE_PICKS}
         deadline="18:54:55"
         received="18:55:03"
@@ -93,8 +93,8 @@ function BounceTour({ onDone }: { onDone: () => void }) {
         title="8회 응모권"
         picked={BOUNCE_PICKS}
         transfer={{
-          from: "7회 응모 용지",
-          to: "8회 응모 용지",
+          from: "7회 답안지",
+          to: "8회 답안지",
           ready: Promise.resolve(),
         }}
         onSubmitted={onDone}

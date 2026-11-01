@@ -77,7 +77,7 @@ test("영수증 넘김: 출력된 영수증이 뒤 화면의 같은 자리로 �
     click,
   );
   await when(
-    page.locator("[aria-label='용지 제출'][aria-disabled='false']"),
+    page.locator("[aria-label='답안지 제출'][aria-disabled='false']"),
     press,
   );
   await when(

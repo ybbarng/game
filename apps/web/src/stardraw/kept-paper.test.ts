@@ -4,7 +4,7 @@ import { clearKept, loadKept, saveKept } from "./kept-paper";
 
 beforeEach(() => localStorage.clear());
 
-describe("보관한 용지", () => {
+describe("보관한 답안지", () => {
   const paper = {
     ledger: "L1",
     round: 3,

@@ -139,7 +139,9 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.getByRole("button", { name: "응모하기", exact: true }).click();
-  const paper = page.locator("[aria-label='용지 제출'][aria-disabled='false']");
+  const paper = page.locator(
+    "[aria-label='답안지 제출'][aria-disabled='false']",
+  );
   await paper.press("Enter", { timeout: 10_000 });
   const card = page.locator(
     "[aria-label='신분증 제출'][aria-disabled='false']",
@@ -154,14 +156,14 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
   const bounce = page.locator("[data-bounce]", { hasText: "접수 반송" });
   await shown(bounce);
 
-  // 보관했다가 다음 회차가 열리면(앞 회차 추첨, 마감 5분 뒤) 보관한 용지로 새 용지에 옮겨 다시 서명해 낸다
-  await page.getByRole("button", { name: "이 용지 보관하기" }).click();
+  // 보관했다가 다음 회차가 열리면(앞 회차 추첨, 마감 5분 뒤) 보관한 답안지로 새 용지에 옮겨 다시 서명해 낸다
+  await page.getByRole("button", { name: "이 답안지 보관하기" }).click();
   await page.getByRole("button", { name: "첫 화면으로" }).click();
   const after = await page.evaluate(() => Date.now());
   await page.clock.setSystemTime(after + 6 * 60_000);
   const reuse = page
-    .getByRole("region", { name: "보관한 용지" })
-    .getByRole("button", { name: "이 용지로 응모" });
+    .getByRole("region", { name: "보관한 답안지" })
+    .getByRole("button", { name: "이 답안지로 응모" });
   await shown(reuse);
   await reuse.click();
   await shown(paper);

@@ -887,7 +887,7 @@ export function RoundCard({
   onDraw: (round: number) => void;
 }) {
   const schedule = services.ledger.schedule;
-  // 보관한 용지(반송된 회차보다 뒤 회차에서 쓸 수 있다). 첫 그리기 뒤에 읽는다(서버에서 그린 화면과 어긋나지 않게)
+  // 보관한 답안지(반송된 회차보다 뒤 회차에서 쓸 수 있다). 첫 그리기 뒤에 읽는다(서버에서 그린 화면과 어긋나지 않게)
   const [kept, setKept] = useState<KeptPaper | null>(null);
   useEffect(() => {
     setKept(loadKept(services.ns, services.ledger.id()));
@@ -1066,10 +1066,10 @@ export function RoundCard({
           >
             별 6개 고르기
           </button>
-          {/* 보관한 용지는 응모 페이지에서 고른다(입구는 하나, 2026-11-01 사용자). 카드에는 있다는 것만 */}
+          {/* 보관한 답안지는 응모 페이지에서 고른다(입구는 하나, 2026-11-01 사용자). 카드에는 있다는 것만 */}
           {keptHere && (
             <span className="text-amber-100/80 text-xs" data-kept-note>
-              보관한 용지가 있어요.
+              보관한 답안지가 있어요.
             </span>
           )}
         </div>

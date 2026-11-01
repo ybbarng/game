@@ -282,7 +282,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
   await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
   // 하늘에서 별을 누르면 그 별 설명, 아래 고른 별 6칸이 채워진다(번호 용지는 응모할 때만 나온다)
-  await expect(page.getByRole("group", { name: "응모 용지" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "답안지" })).toHaveCount(0);
   await tapStar(page, "canvas[data-sky='pick']", 7);
   await expect(page.locator("[data-star-info='7']")).toContainText(
     "오리온자리",
@@ -292,7 +292,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(
     page.getByRole("heading", { name: "하늘의 별 따기", level: 1 }),
   ).toHaveCount(0);
-  const slip = page.getByRole("region", { name: "1회 응모권" });
+  const slip = page.getByRole("region", { name: "1회 답안지" });
   await expect(slip).toHaveAttribute("data-entry-slip", "2");
   await expect(slip.locator("[data-slip-star='7']")).toHaveAccessibleName(
     "7 베텔게우스 빼기",
@@ -329,7 +329,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     // 용지와 등록증은 은은하게 떠오르기를 되풀이해(멈추지 않아) 키보드로 낸다(Enter도 같은 제출)
     await pressWhenShown(
       page,
-      page.locator("[aria-label='용지 제출'][aria-disabled='false']"),
+      page.locator("[aria-label='답안지 제출'][aria-disabled='false']"),
     );
     await pressWhenShown(
       page,
@@ -1117,7 +1117,7 @@ async function toEntryEdge(page: Page) {
   await page.getByRole("button", ENTER).click();
   // 남은 시간이 연출보다 짧아 용지는 한 번에 칠해져 곧바로 내기를 기다린다
   await page
-    .locator("[aria-label='용지 제출'][aria-disabled='false']")
+    .locator("[aria-label='답안지 제출'][aria-disabled='false']")
     .press("Enter", { timeout: 10_000 });
   return page.locator("[aria-label='신분증 제출'][aria-disabled='false']");
 }
@@ -1163,7 +1163,7 @@ test("마감 직전 응모: 줄인 연출로 마감 전에 접수", async ({ pag
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
 });
 
-/** 내밀기를 미루다 마감을 넘겨 반송받고, 「이 용지 보관하기」로 챙긴다 */
+/** 내밀기를 미루다 마감을 넘겨 반송받고, 「이 답안지 보관하기」로 챙긴다 */
 async function bounceAndKeep(page: Page) {
   const card = await toEntryEdge(page);
   await card.waitFor({ timeout: 10_000 });
@@ -1180,9 +1180,7 @@ async function bounceAndKeep(page: Page) {
   );
   // 냈던 1회 용지가 칠한 칸 그대로 「접수 반송」 도장과 함께 돌아온다
   await expect(
-    bounce
-      .getByRole("group", { name: "1회 응모 용지" })
-      .locator("[data-marked]"),
+    bounce.getByRole("group", { name: "1회 답안지" }).locator("[data-marked]"),
   ).toHaveCount(6);
   await expect(bounce).toContainText("접수 반송");
   await expect(
@@ -1190,17 +1188,17 @@ async function bounceAndKeep(page: Page) {
       .getByRole("dialog", { name: "접수 반송" })
       .getByRole("button", { name: "닫기" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "이 용지 보관하기" }).click();
+  await page.getByRole("button", { name: "이 답안지 보관하기" }).click();
   await expect(page.getByText("이번 회차 관측지로 가 볼까요?")).toBeVisible();
   return card;
 }
 
 /**
  * 마감을 넘겨 반송된 용지를 보관하면 추첨을 보러 갈지 묻는다. 다음 회차가 열리면 어느 입구(추첨 화면의 「다음 회차
- * 응모」, 회차 카드의 「별 6개 고르기」)로 들어와도 응모 페이지 하늘 위에 보관한 용지 칸이 있고, 「이 용지로 응모」면
- * 새 회차로 다시 서명해 접수된다. 반송은 내 응모에 남지 않고, 낸 뒤에는 보관한 용지가 사라진다
+ * 응모」, 회차 카드의 「별 6개 고르기」)로 들어와도 응모 페이지 하늘 위에 보관한 답안지 칸이 있고, 「이 답안지로 응모」면
+ * 새 회차로 다시 서명해 접수된다. 반송은 내 응모에 남지 않고, 낸 뒤에는 보관한 답안지가 사라진다
  */
-test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들어와 이 용지로 응모", async ({
+test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들어와 이 답안지로 응모", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1213,11 +1211,11 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
   await page
     .getByRole("button", { name: "다음 회차 응모" })
     .click({ timeout: 30_000 });
-  const kept = page.getByRole("region", { name: "보관한 용지" });
-  await expect(kept).toContainText("보관한 용지(1회)");
-  await kept.getByRole("button", { name: "이 용지로 응모" }).click();
+  const kept = page.getByRole("region", { name: "보관한 답안지" });
+  await expect(kept).toContainText("보관한 답안지(1회)");
+  await kept.getByRole("button", { name: "이 답안지로 응모" }).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
-  // 반송된 1회 용지는 내 응모에 남지 않고 다시 낸 2회 하나만, 보관한 용지는 사라진다
+  // 반송된 1회 용지는 내 응모에 남지 않고 다시 낸 2회 하나만, 보관한 답안지는 사라진다
   // (새로고침하면 시험 시계가 처음으로 돌아가 앱 안에서 옮겨 다닌다)
   await page.getByRole("button", { name: "내 응모", exact: true }).click();
   await expect(
@@ -1232,10 +1230,10 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
 });
 
 /**
- * 회차 카드는 「별 6개 고르기」 하나에 "보관한 용지가 있어요."만 알린다. 응모 페이지에서 보관한 용지를 두고 하늘에서
- * 새로 골라 내면, 응모가 접수된 뒤 보관한 용지는 저절로 버려진다
+ * 회차 카드는 「별 6개 고르기」 하나에 "보관한 답안지가 있어요."만 알린다. 응모 페이지에서 보관한 답안지를 두고 하늘에서
+ * 새로 골라 내면, 응모가 접수된 뒤 보관한 답안지는 저절로 버려진다
  */
-test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보관한 용지가 사라진다", async ({
+test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보관한 답안지가 사라진다", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1243,12 +1241,14 @@ test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보�
   await page.getByRole("button", { name: "첫 화면으로" }).click();
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
   await expect(page.locator("[data-kept-note]")).toHaveText(
-    "보관한 용지가 있어요.",
+    "보관한 답안지가 있어요.",
     { timeout: 30_000 },
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByRole("button", { name: "별 6개 고르기" }).click();
-  await expect(page.getByRole("region", { name: "보관한 용지" })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "보관한 답안지" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.getByRole("button", ENTER).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
