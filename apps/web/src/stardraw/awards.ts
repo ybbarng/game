@@ -440,7 +440,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (f, k) =>
       doc(
-        `귀하는 ${streakSpan(f.n)} 동안 한 회차도 거르지 않고 이어서 관측하였습니다. 잠보다 별을 택한 그 정성에 우주국은 깊은 감명을 받았습니다.`,
+        `귀하는 ${streakSpan(Number(f.n))} 동안 한 회차도 거르지 않고 이어서 관측하였습니다. 잠보다 별을 택한 그 정성에 우주국은 깊은 감명을 받았습니다.`,
         k,
       ),
   },
