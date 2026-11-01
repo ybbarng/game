@@ -13,6 +13,7 @@ export * from "./operations";
 export * from "./polite-fetch";
 export * from "./pow";
 export * from "./prize";
+export * from "./proof";
 export * from "./public-ledger";
 export * from "./qualification";
 export * from "./receipt";

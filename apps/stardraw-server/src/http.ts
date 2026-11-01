@@ -15,6 +15,7 @@ import {
 } from "@mighty/stardraw-core";
 
 import { EntryError, type StardrawServer } from "./engine";
+import { ProofBusy, type ProofService } from "./proof";
 import type { Relay } from "./relay";
 import type { ModAction, RoomHub } from "./room";
 
@@ -22,6 +23,8 @@ import type { ModAction, RoomHub } from "./room";
  * HTTP 주소(모두 `basePath` 아래, 운영은 /stardraw-api).
  *   GET  /api/state                     지금 회차·닫힌 회차 수·문제 값·응모 수·서버 공개 열쇠
  *   GET  /api/keys/:pub                 이 공개 열쇠가 등록돼 있는지와 등록 회차 { registered, round }
+ *   GET  /api/keys/:pub/tickets?from=N  그 열쇠의 응모권 머클 포함 증명과 등록 증명(가벼운 확인, docs/36 11-30, proof.ts)
+ *   GET  /api/proof/:round/:ticketId    응모권 하나의 머클 포함 증명(닫힌 회차)
  *   GET  /api/passkeys/:credentialId    패스키 번호로 공개 열쇠 찾기(다른 기기에서 내 패스키 찾기). 국장 패스키면 403
  *   POST /api/register                  { registration, proof, head } → { round }(우주인 등록 직후 등록만 올리기)
  *   POST /api/enter                     { ticket, registration? } → { receipt, receivedAt }
@@ -50,6 +53,8 @@ export interface HttpOptions {
   trustProxy: boolean;
   /** 회차 방(docs/36 11-23). 없으면 방 주소는 404 */
   rooms?: RoomHub;
+  /** 증명 API(docs/36 11-30). 없으면 증명 주소는 404 */
+  proofs?: ProofService;
 }
 
 const MAX_BODY = 16 * 1024;
@@ -61,6 +66,8 @@ export function createHttpServer(
 ): Server {
   return createServer((req, res) => {
     void handle(engine, relay, options, req, res).catch((err) => {
+      if (err instanceof ProofBusy && !res.headersSent)
+        res.setHeader("retry-after", String(err.retryAfter));
       if (err instanceof EntryError)
         send(res, err.status, { error: err.message });
       else {
@@ -226,6 +233,34 @@ async function handle(
     }
     const round = engine.registrationRound(pub);
     return send(res, 200, { registered: round !== null, round });
+  }
+
+  // 가벼운 확인의 증명(docs/36 11-30). 닫힌 회차 응모권 증명은 바뀌지 않아 오래 캐시한다
+  const keyTicketsMatch = path.match(
+    /^\/api\/keys\/([A-Za-z0-9_-]+)\/tickets$/,
+  );
+  if (method === "GET" && keyTicketsMatch && o.proofs) {
+    let pub: Uint8Array;
+    try {
+      pub = fromBase64Url(keyTicketsMatch[1] as string);
+    } catch {
+      throw new EntryError("공개 열쇠 형식이 맞지 않습니다");
+    }
+    const from = Number(url.searchParams.get("from") ?? "1");
+    return send(res, 200, o.proofs.keyTickets(pub, from));
+  }
+  const proofMatch = path.match(/^\/api\/proof\/(\d+)\/([0-9a-f]{64})$/);
+  if (method === "GET" && proofMatch && o.proofs) {
+    const proof = o.proofs.ticket(
+      Number(proofMatch[1]),
+      proofMatch[2] as string,
+    );
+    res.writeHead(200, {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=31536000, immutable",
+    });
+    res.end(JSON.stringify(proof));
+    return;
   }
 
   const credentialMatch = path.match(/^\/api\/passkeys\/([A-Za-z0-9_-]+)$/);

@@ -23,6 +23,7 @@ import {
   TsaRootLog,
 } from "./outside";
 import { isPowWorker, runPowWorker, WorkerPowChecker } from "./pow-pool";
+import { ProofService } from "./proof";
 import { Publisher } from "./publish";
 import { DEFAULT_RELAY_LIMITS, Relay } from "./relay";
 import { restoreFromAnchor } from "./restore";
@@ -142,6 +143,7 @@ async function main(): Promise<void> {
     devOrigins: config.devOrigins,
     trustProxy: config.trustProxy,
     rooms,
+    proofs: new ProofService(store, clock),
   });
 
   let stopTick = () => {};

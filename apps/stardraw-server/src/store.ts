@@ -76,6 +76,7 @@ export class Store {
         round INTEGER NOT NULL,
         reg BLOB NOT NULL
       );
+      CREATE INDEX IF NOT EXISTS entries_entrant ON entries (entrant, round);
       CREATE UNIQUE INDEX IF NOT EXISTS registrations_credential
         ON registrations (credential) WHERE credential IS NOT NULL;
       CREATE TABLE IF NOT EXISTS seals (
@@ -218,6 +219,44 @@ export class Store {
       .map((r) => decodeTicket(bytes(r.ticket)));
   }
 
+  /** 그 회차 응모권 id(hex)를 사전 순으로(= 바이트 순, 장부의 응모권 목록·머클 잎 순서) */
+  entryIds(round: number): string[] {
+    return this.db
+      .prepare(
+        "SELECT ticket_id FROM entries WHERE round = ? ORDER BY ticket_id",
+      )
+      .all(round)
+      .map((r) => String(r.ticket_id));
+  }
+
+  /** id(hex)로 응모권 하나 */
+  entryById(idHex: string): { round: number; ticket: Ticket } | null {
+    const row = this.db
+      .prepare("SELECT round, ticket FROM entries WHERE ticket_id = ?")
+      .get(idHex);
+    return row
+      ? { round: Number(row.round), ticket: decodeTicket(bytes(row.ticket)) }
+      : null;
+  }
+
+  /** 한 열쇠의 응모권(from~to 회차, 회차 순, 최대 limit장) */
+  entriesOf(
+    entrantHex: string,
+    from: number,
+    to: number,
+    limit: number,
+  ): { round: number; ticket: Ticket }[] {
+    return this.db
+      .prepare(
+        "SELECT round, ticket FROM entries WHERE entrant = ? AND round >= ? AND round <= ? ORDER BY round LIMIT ?",
+      )
+      .all(entrantHex, from, to, limit)
+      .map((r) => ({
+        round: Number(r.round),
+        ticket: decodeTicket(bytes(r.ticket)),
+      }));
+  }
+
   entryCount(round: number): number {
     const row = this.db
       .prepare("SELECT COUNT(*) AS n FROM entries WHERE round = ?")
@@ -266,6 +305,21 @@ export class Store {
         "INSERT INTO registrations (entrant, credential, round, reg) VALUES (?, ?, ?, ?)",
       )
       .run(entrantHex, credentialHex, round, blob(encodeRegistration(r)));
+  }
+
+  /** 한 열쇠의 등록과 등록 회차(없으면 null) */
+  registrationOf(
+    entrantHex: string,
+  ): { round: number; registration: KeyRegistration } | null {
+    const row = this.db
+      .prepare("SELECT round, reg FROM registrations WHERE entrant = ?")
+      .get(entrantHex);
+    return row
+      ? {
+          round: Number(row.round),
+          registration: decodeRegistration(bytes(row.reg)),
+        }
+      : null;
   }
 
   registrations(round: number): KeyRegistration[] {
