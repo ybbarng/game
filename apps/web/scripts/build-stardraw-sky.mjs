@@ -1,8 +1,10 @@
 // 하늘의 별 따기 응모판(네모 하늘) 데이터를 한 번 만들어 고정한다(docs/36 11-3).
 // 화면은 이 결과(src/stardraw/sky-data.json)만 읽는다. 별 목록이나 펴는 규칙을 바꿀 때만 다시 돌린다.
 //
-//   node apps/web/scripts/build-stardraw-sky.mjs ~/personal/projects/star.byb.kr
-//   pnpm exec biome format --write apps/web/src/stardraw/sky-data.json
+//   node apps/web/scripts/build-stardraw-sky.mjs ~/personal/projects/star.byb.kr [--even]
+//   pnpm exec biome format --write apps/web/src/stardraw/sky-data.json apps/web/src/stardraw/sky-topology.json
+//
+// --even: 판을 고르게 채우는 값 묶음(아래 PRESETS). 없으면 별자리 모양 우선
 //
 // 출처(star.byb.kr 저장소)
 // - data/database/bsc5-short.json: Bright Star Catalogue 5판 요약(VizieR V/50)
@@ -124,8 +126,37 @@ for (const s of stars) {
   pos[s.n] = { ...anchor[s.n] };
 }
 const ids = stars.map((s) => s.n);
+/**
+ * 값 묶음 두 벌(2026-11-01 사용자가 두 판을 나란히 보고 고른다). 실행할 때 `--even`을 붙이면 "고르게", 없으면 "모양 우선".
+ * - shape: 별자리 실제 모양을 잘 남긴다(닮음 힘 0.5). 겨울 하늘은 번호 별이 몰리고 봄·여름 하늘은 성기다
+ * - even: 번호 별을 판에 고르게 퍼뜨린 자리로 당기고 닮음은 약하게 둔다. 겨울 별자리가 커지고 늘어난다
+ * 두 벌 모두 아래 점검(평면 매장·회전 순서 보존, 손가락 틈, 한 줄)을 지킨다
+ */
+const PRESETS = {
+  shape: {
+    spreadReach: 0.2,
+    spreadHome: 0.012,
+    scaleNumbered: [0.8, 2.2],
+    scalePlain: [0.7, 1.4],
+    plainTarget: 1,
+    similar: 0.5,
+    even: 0,
+    local: 0.5,
+  },
+  even: {
+    spreadReach: 0.3,
+    spreadHome: 0.002,
+    scaleNumbered: [0.8, 2.6],
+    scalePlain: [0.4, 1],
+    plainTarget: 0.6,
+    similar: 0.25,
+    even: 0.3,
+    local: 0.4,
+  },
+};
+const PRESET = PRESETS[process.argv.includes("--even") ? "even" : "shape"];
 // 고르게 퍼뜨리기: 먼 거리까지 약하게 밀어내고(빈 곳을 채움), 제자리로 약하게 당기고(모양 유지), 가장자리에서 밀어낸다
-const R = 0.2;
+const R = PRESET.spreadReach;
 const M = 0.06;
 for (let it = 0; it < 400; it++) {
   const f = {};
@@ -148,8 +179,8 @@ for (let it = 0; it < 400; it++) {
   for (const n of ids) {
     const p = pos[n];
     const a = anchor[n];
-    f[n].x += (a.x - p.x) * 0.012;
-    f[n].y += (a.y - p.y) * 0.012;
+    f[n].x += (a.x - p.x) * PRESET.spreadHome;
+    f[n].y += (a.y - p.y) * PRESET.spreadHome;
     if (p.x < M) f[n].x += (M - p.x) * 0.2;
     if (p.x > 1 - M) f[n].x -= (p.x - (1 - M)) * 0.2;
     if (p.y < M) f[n].y += (M - p.y) * 0.2;
@@ -342,8 +373,14 @@ for (const g of groups) g.home = centroid(g);
 const MAX_TURN = 10 * DEG;
 /** 보통 크기: 360px 판에서 하늘 1도가 약 1.8px(그릴 하늘 넓이를 판 넓이에 고르게 편 값) */
 const BASE = 1.8 / (360 * DEG);
-const SCALE_NUMBERED = [0.8, 2.2];
-const SCALE_PLAIN = [0.7, 1.4];
+const SCALE_NUMBERED = PRESET.scaleNumbered;
+const SCALE_PLAIN = PRESET.scalePlain;
+// 판을 고르게(2026-11-01 사용자: 2번·11번 둘레가 비어 아쉽다, 별자리는 특징만 알아볼 수 있으면 변형돼도 괜찮다):
+// 닮음 힘은 약하게(SIMILAR), 번호 별은 고르게 퍼뜨린 자리로 당기고(EVEN), 번호 별 없는 별자리는 보통보다 작게(PLAIN_TARGET)
+// 두어 번호 별 있는 별자리가 빈 곳으로 넓어질 자리를 낸다
+const SIMILAR = PRESET.similar;
+const EVEN = PRESET.even;
+const PLAIN_TARGET = PRESET.plainTarget * BASE;
 for (const g of groups) g.numbered = g.ids.some((id) => verts[id].n !== null);
 const GAP = 0.1;
 // 번호 별 둘이 가까운 별자리(쌍둥이 카스토르·폴룩스, 오리온 허리띠)는 그 쌍이 손가락 틈의 PAIR_LIFT만큼 떨어지는 크기까지는
@@ -413,7 +450,7 @@ const fit = (g) =>
     // 번호 별 없는 별자리는 보통 크기로 천천히 돌아간다(이웃에 밀려 쪼그라들지 않게)
     const [lo, hi] = g.numbered ? SCALE_NUMBERED : SCALE_PLAIN;
     const scale = Math.min(hi * BASE, Math.max(lo * BASE, g.minScale, fitted));
-    return g.numbered ? scale : scale + (BASE - scale) * 0.02;
+    return g.numbered ? scale : scale + (PLAIN_TARGET - scale) * 0.02;
   });
 /** 두 꼭짓점이 같은 별자리에 함께 있는지(같은 별자리끼리는 모양 힘이 자리를 정하므로 밀지 않는다) */
 const conOf = verts.map(
@@ -510,6 +547,111 @@ for (const p of polylines)
     )
       segments.push({ con: p.con, a: prev, b: id });
   });
+
+// 꼭 지킬 모양의 짜임(2026-11-01 사용자: "모양의 특징만 유지해서 알아볼 수 있는 정도면 변형이 일어나도 괜찮아. 원래 겹쳐 있지
+// 않은 선이 겹치는 문제만 생기지 않으면 돼"). 수학으로는 평면 그림의 짜임을 지키는 변형(아이소토피)이다:
+// ① 평면 매장 보존: 원래 하늘에서 만나지 않던 두 선분은 판에서도 만나지 않는다(같은 별자리 안, 다른 별자리 사이 모두)
+// ② 회전 순서 보존: 한 별에서 뻗은 선들의 시계 방향 차례가 원래 하늘과 같다
+/** 같은 두 별을 잇는 선분은 하나로(여러 꺾은선이 같은 선을 겹쳐 그린 곳이 있다) */
+const edges = [];
+{
+  const seen = new Set();
+  for (const s of segments) {
+    const key = s.a < s.b ? `${s.a}-${s.b}` : `${s.b}-${s.a}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push(s);
+  }
+}
+const cross3 = (p, q) => [
+  p[1] * q[2] - p[2] * q[1],
+  p[2] * q[0] - p[0] * q[2],
+  p[0] * q[1] - p[1] * q[0],
+];
+/** 하늘(구면)에서 두 대원호 AB·CD가 만나는지(끝점을 함께 쓰면 만나지 않는 것으로 본다) */
+const arcsMeet = (A, B, C, D) => {
+  const n1 = cross3(A, B);
+  const n2 = cross3(C, D);
+  const p = cross3(n1, n2);
+  const len = Math.hypot(...p);
+  if (len < 1e-12) return false;
+  for (const s of [1, -1]) {
+    const x = p.map((v) => (s * v) / len);
+    const onArc = (U, V) =>
+      dot(cross3(U, x), cross3(U, V)) > 0 &&
+      dot(cross3(x, V), cross3(U, V)) > 0;
+    if (onArc(A, B) && onArc(C, D)) return true;
+  }
+  return false;
+};
+/** 판에서 두 선분이 만나는지(끝점을 함께 쓰면 만나지 않는 것으로 본다) */
+const segsMeet = (A, B, C, D) => {
+  const s = (p, a, b) =>
+    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  return s(A, C, D) * s(B, C, D) < 0 && s(C, A, B) * s(D, A, B) < 0;
+};
+const shareEnd = (s, t) =>
+  s.a === t.a || s.a === t.b || s.b === t.a || s.b === t.b;
+/** 원래 하늘에서 만나는 선분 쌍(이것만은 판에서 만나도 된다) */
+const meetInSky = new Set();
+for (let i = 0; i < edges.length; i++)
+  for (let j = i + 1; j < edges.length; j++) {
+    const [s, t] = [edges[i], edges[j]];
+    if (shareEnd(s, t)) continue;
+    if (
+      arcsMeet(verts[s.a].vec, verts[s.b].vec, verts[t.a].vec, verts[t.b].vec)
+    )
+      meetInSky.add(`${i}:${j}`);
+  }
+/** 판에서 새로 만나게 된 선분 쌍(원래 하늘에서는 만나지 않던 것) */
+const newMeetings = () => {
+  const out = [];
+  for (let i = 0; i < edges.length; i++)
+    for (let j = i + 1; j < edges.length; j++) {
+      const [s, t] = [edges[i], edges[j]];
+      if (shareEnd(s, t) || meetInSky.has(`${i}:${j}`)) continue;
+      if (segsMeet(P[s.a], P[s.b], P[t.a], P[t.b]))
+        out.push(`${s.con}/${t.con}`);
+    }
+  return out;
+};
+/** 꼭짓점마다 이웃(선으로 이어진 별) */
+const around = verts.map(() => new Set());
+for (const e of edges) {
+  around[e.a].add(e.b);
+  around[e.b].add(e.a);
+}
+/** 별 v에서 본 이웃 w의 방향(그 별의 접평면, 판과 같게 동쪽이 왼쪽·북쪽이 위) */
+const skyAngle = (v, w) => {
+  const { ra, dec } = verts[v];
+  const east = [-Math.sin(ra * DEG), Math.cos(ra * DEG), 0];
+  const north = [
+    -Math.sin(dec * DEG) * Math.cos(ra * DEG),
+    -Math.sin(dec * DEG) * Math.sin(ra * DEG),
+    Math.cos(dec * DEG),
+  ];
+  const d = verts[w].vec;
+  return Math.atan2(-dot(d, north), -dot(d, east));
+};
+/** 이웃을 각도 차례로 늘어놓고, 가장 작은 번호부터 시작하게 돌린 차례(시계 방향 차례 비교용) */
+const cyclic = (v, angleOf) => {
+  const order = [...around[v]].sort((a, b) => angleOf(a) - angleOf(b));
+  const k = order.indexOf(Math.min(...order));
+  return [...order.slice(k), ...order.slice(0, k)].join(",");
+};
+const skyOrder = verts.map((_, v) =>
+  around[v].size >= 3 ? cyclic(v, (w) => skyAngle(v, w)) : "",
+);
+/** 판에서 시계 방향 차례가 원래 하늘과 달라진 별 */
+const orderChanged = () =>
+  verts
+    .map((_, v) => v)
+    .filter(
+      (v) =>
+        skyOrder[v] !== "" &&
+        cyclic(v, (w) => Math.atan2(P[w][1] - P[v][1], P[w][0] - P[v][0])) !==
+          skyOrder[v],
+    );
 // 국소 모양: 꼭짓점마다 그 별과 선으로 이어진 이웃들(한 덩어리 안)을 한 묶음으로 두고, 그 묶음의 실제 모양을 고른 크기·
 // 옮기기·돌리기로 맞춘 자리로 당긴다. 덩어리 전체를 맞추는 힘만으로는 손가락 틈 때문에 별 하나가 밀려도 막지 못해
 // 오리온 허리띠 가운데 별이 줄 밖으로 접혔다(2026-11-01 사용자). 이 힘이 이웃 각도·길이 비율·일직선을 지켜, 별을
@@ -637,7 +779,8 @@ const lineupStep = (k) => {
     P[c][1] += wc * (t * my - h * mx);
   }
 };
-const LOCAL = 0.5;
+/** 국소 모양 세기(본 단계) */
+const LOCAL = PRESET.local;
 const localStep = (k) => {
   const sum = verts.map(() => [0, 0, 0]);
   for (const c of cells) {
@@ -686,7 +829,9 @@ const segmentStep = (k) => {
     if (!list) return;
     for (const si of list) {
       const s = segments[si];
-      if (conOf[v].has(s.con) || s.a === v || s.b === v) continue;
+      // 같은 별자리 안에서도 선에 이어지지 않은 별은 밀어낸다(평면 매장 보존). 이웃 별은 국소 모양이 자리를 정한다
+      if (s.a === v || s.b === v || around[v].has(s.a) || around[v].has(s.b))
+        continue;
       const [ax, ay] = P[s.a];
       const [bx, by] = P[s.b];
       const ex = bx - ax;
@@ -716,18 +861,12 @@ const segmentStep = (k) => {
 const side = (p, a, b) =>
   (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
 const untangleStep = (k) => {
-  for (let i = 0; i < segments.length; i++)
-    for (let j = i + 1; j < segments.length; j++) {
-      const s = segments[i];
-      const t = segments[j];
-      if (
-        s.con === t.con ||
-        s.a === t.a ||
-        s.a === t.b ||
-        s.b === t.a ||
-        s.b === t.b
-      )
-        continue;
+  // 같은 별자리 안 선분끼리도 푼다(평면 매장 보존). 원래 하늘에서 만나던 쌍은 그대로 둔다
+  for (let i = 0; i < edges.length; i++)
+    for (let j = i + 1; j < edges.length; j++) {
+      const s = edges[i];
+      const t = edges[j];
+      if (shareEnd(s, t) || meetInSky.has(`${i}:${j}`)) continue;
       const [A, B, C, D] = [P[s.a], P[s.b], P[t.a], P[t.b]];
       if (
         Math.max(A[0], B[0]) < Math.min(C[0], D[0]) ||
@@ -770,40 +909,19 @@ const untangleStep = (k) => {
       }
     }
 };
-function countCrossings() {
-  let c = 0;
-  const pairs = {};
-  for (let i = 0; i < segments.length; i++)
-    for (let j = i + 1; j < segments.length; j++) {
-      const s = segments[i];
-      const t = segments[j];
-      if (
-        s.con === t.con ||
-        s.a === t.a ||
-        s.a === t.b ||
-        s.b === t.a ||
-        s.b === t.b
-      )
-        continue;
-      const [A, B, C, D] = [P[s.a], P[s.b], P[t.a], P[t.b]];
-      if (
-        side(A, C, D) * side(B, C, D) < 0 &&
-        side(C, A, B) * side(D, A, B) < 0
-      ) {
-        c++;
-        const k = [s.con, t.con].sort().join("/");
-        pairs[k] = (pairs[k] ?? 0) + 1;
-      }
-    }
-  return c === 0 ? "0" : `${c} ${JSON.stringify(pairs)}`;
-}
 const STEPS = 3000;
 for (let it = 0; it < STEPS; it++) {
-  shapeStep(0.5);
+  shapeStep(SIMILAR);
   localStep(LOCAL);
   const before = P.map(([x, y]) => [x, y]);
   lineupStep(1);
   pushNumbered(GAP, 1);
+  // 번호 별은 2단계에서 판에 고르게 퍼뜨린 자리로 당긴다(판을 고르게 채운다)
+  for (const id of numbered) {
+    const home = pos[verts[id].n];
+    P[id][0] += (home.x - P[id][0]) * EVEN;
+    P[id][1] += (home.y - P[id][1]) * EVEN;
+  }
   for (let a = 0; a < verts.length; a++)
     for (let b = a + 1; b < verts.length; b++) {
       if (sameCon(a, b)) continue;
@@ -874,7 +992,7 @@ const pin = () =>
     P[id][1] = pinned[i][1];
   });
 for (let it = 0; it < 600; it++) {
-  shapeStep(0.5);
+  shapeStep(SIMILAR);
   pin();
   localStep(1);
   pin();
@@ -886,24 +1004,29 @@ for (let it = 0; it < 600; it++) {
   clampAll();
 }
 
-// 점검(어기면 멈춘다): 번호 별 최소 거리, 다른 별자리 선끼리 엇갈림 0, 한 줄로 선 별의 꺾임
+// 점검(어기면 멈춘다): 번호 별 최소 거리, 평면 매장·회전 순서 보존, 한 줄로 선 별의 꺾임
 const bends = bendCheck();
 const straightWorst = bends.worst(bends.straight);
 const allWorst = bends.worst(bends.all);
+const met = newMeetings();
+const turned = orderChanged();
 const report = [
   `번호 별 최소 거리 ${minNumbered().toFixed(4)}(360px 판 ${(minNumbered() * 360).toFixed(1)}px)`,
-  `다른 별자리 선끼리 엇갈림 ${countCrossings()}`,
+  `평면 매장: 원래 하늘에서 만나는 선분 쌍 ${meetInSky.size}, 판에서 새로 만난 쌍 ${met.length}${met.length ? `(${[...new Set(met)].join(", ")})` : ""}`,
+  `회전 순서: 선이 셋 넘게 모이는 별 ${skyOrder.filter((s) => s !== "").length}곳 중 시계 방향 차례가 바뀐 별 ${turned.length}`,
   `한 줄로 선 별 ${bends.straight.length}곳 꺾임 평균 ${bends.mean(bends.straight).toFixed(1)}° · 최대 ${straightWorst.bend.toFixed(1)}°(${straightWorst.con} ${straightWorst.at})`,
   `이웃 셋 ${bends.all.length}곳 각도 변화 평균 ${bends.mean(bends.all).toFixed(1)}° · 최대 ${allWorst.bend.toFixed(1)}°(${allWorst.con} ${allWorst.at})`,
 ];
 /** 한 줄로 선 별이 이만큼 넘게 꺾이면 멈춘다(2026-11-01 오리온 허리띠가 146° 접혔던 일) */
 const STRAIGHT_LIMIT = 30;
-if (minNumbered() < 0.0945)
-  throw new Error(`손가락 틈 부족\n${report.join("\n")}`);
-if (countCrossings() !== "0")
-  throw new Error(`선 엇갈림\n${report.join("\n")}`);
-if (straightWorst.bend > STRAIGHT_LIMIT)
-  throw new Error(`한 줄로 선 별이 꺾임\n${report.join("\n")}`);
+const problems = [
+  minNumbered() < 0.0945 && "손가락 틈 부족",
+  met.length > 0 && "원래 만나지 않던 선분이 만남",
+  turned.length > 0 && "선이 뻗는 차례가 바뀜",
+  straightWorst.bend > STRAIGHT_LIMIT && "한 줄로 선 별이 꺾임",
+].filter(Boolean);
+if (problems.length)
+  throw new Error(`${problems.join(", ")}\n${report.join("\n")}`);
 
 // 7. 별자리 선: 꼭짓점 자리를 잇는다. 가른 곳을 건너는 곳과 남쪽 끝(-47°) 아래에서 끊는다
 const lines = [];
@@ -959,6 +1082,26 @@ const data = {
   lines,
 };
 writeFileSync(out, `${JSON.stringify(data)}\n`);
+// 단위 시험용 원래 하늘의 짜임: 선이 셋 넘게 모이는 별마다 그 별 자리와, 이웃 별 자리를 원래 하늘의 각도 차례로(sky.test.ts가
+// 판에서 같은 차례인지 본다). 원래 하늘에서 만나는 선분 쌍도 적는다(그 밖의 선분은 판에서 만나면 안 된다)
+const at = (id) => P[id].map(round);
+writeFileSync(
+  join(here, "../src/stardraw/sky-topology.json"),
+  `${JSON.stringify({
+    meetInSky: [...meetInSky].map((k) =>
+      k.split(":").map((i) => [at(edges[i].a), at(edges[i].b)]),
+    ),
+    around: verts
+      .map((_, v) => v)
+      .filter((v) => around[v].size >= 3)
+      .map((v) => ({
+        at: at(v),
+        order: [...around[v]]
+          .sort((a, b) => skyAngle(v, a) - skyAngle(v, b))
+          .map(at),
+      })),
+  })}\n`,
+);
 console.log(
   `별 ${data.stars.length}개, 별자리 선 ${lines.length}줄 → ${out}\n${report.join("\n")}`,
 );
