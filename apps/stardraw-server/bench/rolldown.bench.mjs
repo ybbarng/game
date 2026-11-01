@@ -9,6 +9,7 @@ export default defineConfig({
     blast: "bench/blast.ts",
     verify: "bench/verify.ts",
     light: "bench/light.ts",
+    "light-backfill": "bench/light-backfill.ts",
   },
   platform: "node",
   output: { dir: "dist/bench", format: "esm" },

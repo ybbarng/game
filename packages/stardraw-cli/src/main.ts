@@ -95,7 +95,8 @@ async function runLedger(
   const result = await checkPublicLedger({
     base: source.base,
     ledger,
-    fetch: io.fetch,
+    // 폴더 원천이면 file:// 주소(가벼운 기록 대조)도 읽는 fetch. 그 밖의 주소는 io.fetch로 넘긴다
+    fetch: source.fetch,
     powSample: cmd.powSample,
     ...(cmd.anchorRepo !== undefined ? { anchorRepo: cmd.anchorRepo } : {}),
     ...(mine.length > 0 ? { mine } : {}),

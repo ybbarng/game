@@ -11,6 +11,7 @@ import { toBase64Url, toHex } from "./bytes";
 import { drandRandomness, drandRoundForClose, drandTime } from "./drand";
 import { drawNumbers, drawSeed } from "./draw";
 import { generateSigner } from "./keys";
+import { type LightFile, makeLightFile } from "./light";
 import { directorFingerprint, OP_VERSION, signAsSeal } from "./operations";
 import {
   BUNDLE_SIZES,
@@ -19,6 +20,7 @@ import {
   findGitHubLedger,
   findTicket,
   ledgerPieces,
+  lightItem,
   loadPublicLedger,
   loadRoundFiles,
   type PublicLedger,
@@ -85,6 +87,10 @@ function files(change: (f: Record<string, unknown>) => void = () => {}) {
       tickets: [],
       registrations: [],
     },
+    "/ledger/light/000001.json": makeLightFile(
+      toBase64Url(encodeRecord(RECORD)),
+      [],
+    ),
   };
   change(f);
   return (async (url: string) => {
@@ -115,6 +121,67 @@ describe("장부 전체 검사(서버 공개 파일)", () => {
       (i) => !["timestamp", "anchor", "seal-key"].includes(i.id),
     );
     expect(inside.map((i) => i.status)).toEqual(inside.map(() => "pass"));
+  });
+
+  it("가벼운 기록: 없으면 건너뜀, 요약이나 기록이 회차 파일과 다르면 실패(docs/36 11-30)", async () => {
+    const check = async (change: (f: Record<string, unknown>) => void) =>
+      (
+        await checkServerLedger({
+          base: "",
+          fetch: files(change),
+          beaconVerifier: () => true,
+        })
+      ).items.find((i) => i.id === "light");
+    expect((await check(() => {}))?.status).toBe("pass");
+    const none = await check((f) => {
+      delete f["/ledger/light/000001.json"];
+    });
+    expect(none).toMatchObject({
+      status: "skip",
+      detail: "가벼운 기록 파일을 아직 내지 않습니다",
+    });
+    const lied = await check((f) => {
+      const light = f["/ledger/light/000001.json"] as LightFile;
+      light.summary = { ...light.summary, qualified: 3 };
+    });
+    expect(lied).toMatchObject({
+      status: "fail",
+      detail: "1회차: 요약이 회차 파일로 다시 계산한 값과 다르다",
+    });
+    const other = await check((f) => {
+      const light = f["/ledger/light/000001.json"] as LightFile;
+      light.record = toBase64Url(
+        encodeRecord({ ...RECORD, rootLoggedAt: RECORD.rootLoggedAt + 1 }),
+      );
+    });
+    expect(other).toMatchObject({
+      status: "fail",
+      detail: "1회차: 가벼운 기록의 기록이 회차 파일과 다르다",
+    });
+  });
+
+  it("가벼운 기록이 일부만 빠지면 실패(먼저 실패한 조각과 상관없이)", async () => {
+    const second = { ...RECORD, round: 2 };
+    const item = await lightItem(
+      "",
+      files((f) => {
+        for (let r = 3; r <= 12; r++)
+          f[`/ledger/light/${String(r).padStart(6, "0")}.json`] = makeLightFile(
+            toBase64Url(encodeRecord({ ...RECORD, round: r })),
+            [],
+          );
+      }),
+      [
+        RECORD,
+        second,
+        ...Array.from({ length: 10 }, (_, i) => ({ ...RECORD, round: i + 3 })),
+      ],
+      [],
+    );
+    expect(item).toMatchObject({
+      status: "fail",
+      detail: "2회차 가벼운 기록 파일이 없다",
+    });
   });
 
   it("drand 서명이 맞지 않으면 그 항목이 실패한다", async () => {

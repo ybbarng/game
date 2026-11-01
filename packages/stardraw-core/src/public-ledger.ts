@@ -26,6 +26,12 @@ import {
 } from "./drand";
 import { drawNumbers, drawSeed, RANKS, type Rank, rankOf } from "./draw";
 import {
+  LightMissing,
+  loadLightFiles,
+  roundSummary,
+  sameSummary,
+} from "./light";
+import {
   type DirectorHistoryLine,
   directorHistory,
   type OperationsView,
@@ -38,7 +44,7 @@ import {
   type PoliteFetchOptions,
   politeFetch,
 } from "./polite-fetch";
-import { decodeRecord, type RoundRecord } from "./record";
+import { decodeRecord, type RoundRecord, recordHash } from "./record";
 import { decodeRegistration, type KeyRegistration } from "./registration";
 import { isVoidRound, sealDigest } from "./round";
 import { phaseOf, roundTimes, type Schedule } from "./schedule";
@@ -584,6 +590,7 @@ export async function checkPublicLedger(
       report.schedule,
       options.tsaAuthorities,
     ),
+    await lightItem(options.base, f, records, tickets),
   ];
   const anchorSkips = report.skipped.filter((s) => s.includes("앵커")).length;
   const skips: Record<string, string> = {};
@@ -798,6 +805,59 @@ export async function voidRoundsItem(
         : []),
     ].join(" / "),
   );
+}
+
+export const LIGHT_LABEL =
+  "가벼운 기록(요약이 회차 파일로 다시 계산한 값과 같다)";
+
+/**
+ * 가벼운 기록(docs/36 11-30): 보통 기기는 회차 파일 대신 가벼운 기록(기록 + 요약)만 받아 쓴다.
+ * 그래서 전체 검사가 가벼운 기록의 기록이 회차 파일의 기록과 같은지, 요약이 회차 파일의 응모권으로 다시 계산한 값과 같은지 본다.
+ * 하나도 없으면(가벼운 기록을 내기 전 서버·사본) 건너뜀, 일부만 없거나 다르면 실패
+ */
+export async function lightItem(
+  base: string,
+  fetchFn: typeof fetch,
+  records: readonly RoundRecord[],
+  tickets: readonly (readonly Ticket[])[],
+): Promise<CheckItem> {
+  const item = (status: CheckStatus, detail: string): CheckItem => ({
+    id: "light",
+    label: LIGHT_LABEL,
+    status,
+    detail,
+  });
+  if (records.length === 0) return item("skip", "닫힌 회차가 없습니다");
+  let lights: Awaited<ReturnType<typeof loadLightFiles>>;
+  try {
+    lights = await loadLightFiles(base, fetchFn, 1, records.length);
+  } catch (err) {
+    if (!(err instanceof LightMissing))
+      return item("fail", err instanceof Error ? err.message : String(err));
+    // 여러 조각을 함께 받아 먼저 실패한 회차가 오므로 1회차를 따로 물어 「아예 없음」과 「일부 빠짐」을 가른다
+    const first = await loadLightFiles(base, fetchFn, 1, 1).then(
+      () => true,
+      () => false,
+    );
+    if (!first) return item("skip", "가벼운 기록 파일을 아직 내지 않습니다");
+    return item("fail", `${err.round}회차 가벼운 기록 파일이 없다`);
+  }
+  const problems: string[] = [];
+  for (const [i, record] of records.entries()) {
+    const light = lights[i];
+    if (!light) continue;
+    if (!equalBytes(recordHash(light.record), recordHash(record)))
+      problems.push(
+        `${record.round}회차: 가벼운 기록의 기록이 회차 파일과 다르다`,
+      );
+    if (!sameSummary(light.summary, roundSummary(tickets[i] ?? [])))
+      problems.push(
+        `${record.round}회차: 요약이 회차 파일로 다시 계산한 값과 다르다`,
+      );
+  }
+  return problems.length > 0
+    ? item("fail", problems.join(" / "))
+    : item("pass", `${records.length}회차 대조`);
 }
 
 export const TIMESTAMP_LABEL =
