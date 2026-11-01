@@ -68,6 +68,17 @@ describe("하늘 효과 시간표", () => {
     expect(fx.twinkles()).toEqual([]);
   });
 
+  it("오래 켜 두어도 들고 있는 타이머가 늘지 않는다(번호 별·어두운 별·별똥별 하나씩)", () => {
+    const { clock, fx } = effects();
+    expect(fx.pending()).toBe(3);
+    clock.advance(3 * 60 * 60_000);
+    expect(fx.pending()).toBe(3);
+    expect(clock.pending()).toBe(3);
+    fx.stop();
+    expect(fx.pending()).toBe(0);
+    expect(clock.pending()).toBe(0);
+  });
+
   it("고른 별은 곧바로 반짝이고, 세기는 0→1→0", () => {
     const { clock, fx } = effects();
     fx.flash("star", 7, 700);

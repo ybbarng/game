@@ -59,6 +59,8 @@ export interface SkyEffects {
   /** 이 별을 지금 반짝이게(고를 때) */
   flash(kind: Twinkle["kind"], index: number, duration?: number): void;
   stop(): void;
+  /** 지금 걸어 둔 타이머 수(오래 켜 두어도 늘지 않는지 시험이 본다) */
+  pending(): number;
 }
 
 export function startSkyEffects(options: SkyEffectsOptions): SkyEffects {
@@ -69,8 +71,20 @@ export function startSkyEffects(options: SkyEffectsOptions): SkyEffects {
   const gap = (mean: number) => -Math.log(1 - random()) * mean;
   let twinkles: Twinkle[] = [];
   let meteor: Meteor | null = null;
-  const stops: (() => void)[] = [];
+  /**
+   * 걸어 둔 타이머의 끄는 함수. 울린 타이머는 바로 뺀다(예전에는 배열에 쌓기만 해, 응모판·영수증을 켜 둔 탭에서
+   * 1초에 한두 개씩 끝없이 늘었다)
+   */
+  const timers = new Set<() => void>();
   let stopped = false;
+  const after = (ms: number, fn: () => void) => {
+    if (stopped) return;
+    const cancel = clock.after(ms, () => {
+      timers.delete(cancel);
+      fn();
+    });
+    timers.add(cancel);
+  };
 
   const prune = () => {
     const now = clock.now();
@@ -86,15 +100,11 @@ export function startSkyEffects(options: SkyEffectsOptions): SkyEffects {
   };
 
   const loop = (mean: number, fire: () => void) => {
-    const schedule = () => {
-      if (stopped) return;
-      stops.push(
-        clock.after(gap(mean), () => {
-          fire();
-          schedule();
-        }),
-      );
-    };
+    const schedule = () =>
+      after(gap(mean), () => {
+        fire();
+        schedule();
+      });
     schedule();
   };
 
@@ -122,26 +132,22 @@ export function startSkyEffects(options: SkyEffectsOptions): SkyEffects {
       }),
     );
 
-  const nextMeteor = (delay: number) => {
-    if (stopped) return;
-    stops.push(
-      clock.after(delay, () => {
-        const angle = rand(0.15, 0.85) * Math.PI;
-        meteor = {
-          x: rand(0.05, 0.95),
-          y: rand(0, 0.4),
-          dx: Math.cos(angle),
-          dy: Math.sin(angle),
-          distance: rand(0.35, 0.6),
-          tail: 0.18,
-          start: clock.now(),
-          duration: rand(700, 1100),
-        };
-        options.onEffect?.();
-        nextMeteor(rand(8000, 22000));
-      }),
-    );
-  };
+  const nextMeteor = (delay: number) =>
+    after(delay, () => {
+      const angle = rand(0.15, 0.85) * Math.PI;
+      meteor = {
+        x: rand(0.05, 0.95),
+        y: rand(0, 0.4),
+        dx: Math.cos(angle),
+        dy: Math.sin(angle),
+        distance: rand(0.35, 0.6),
+        tail: 0.18,
+        start: clock.now(),
+        duration: rand(700, 1100),
+      };
+      options.onEffect?.();
+      nextMeteor(rand(8000, 22000));
+    });
   if (options.meteors ?? true) nextMeteor(2500);
 
   return {
@@ -157,10 +163,12 @@ export function startSkyEffects(options: SkyEffectsOptions): SkyEffects {
       add({ kind, index, start: clock.now(), duration }),
     stop: () => {
       stopped = true;
-      for (const s of stops) s();
+      for (const cancel of timers) cancel();
+      timers.clear();
       twinkles = [];
       meteor = null;
     },
+    pending: () => timers.size,
   };
 }
 
