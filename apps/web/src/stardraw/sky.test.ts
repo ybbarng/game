@@ -57,6 +57,17 @@ describe("네모 하늘 데이터", () => {
     }
   });
 
+  it("번호 별은 자기 별자리 선의 꼭짓점 바로 그 자리에 있다", () => {
+    for (const s of SKY_STARS) {
+      const onLine = SKY_LINES.some(
+        (line) =>
+          line.con === s.con &&
+          line.pts.some(([x, y]) => x === s.x && y === s.y),
+      );
+      expect(onLine, `${s.n} ${s.ko}`).toBe(true);
+    }
+  });
+
   it("붉은 별은 붉고 푸른 별은 푸르다", () => {
     const [r1, , b1] = tempColor(starOf(7).k);
     const [r2, , b2] = tempColor(starOf(5).k);
