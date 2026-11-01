@@ -64,6 +64,9 @@ for (const m of namesSrc.matchAll(
 )) {
   korean[m[1] ?? m[2]] = m[3];
 }
+// 우리말 이름 대신 원래 이름: 다른 별처럼 소리대로 적는다. 견우성은 민간 이름이고 옛 별자리의 견우(우수)는
+// 염소자리 쪽 다른 별이라, 칠석 이야기는 이름이 아니라 설명 문장에 둔다(2026-11-02 사용자)
+Object.assign(korean, { Vega: "베가", Altair: "알타이르" });
 const sexagesimal = (text) => {
   const [a, b, c] = text.match(/[\d.]+/g).map(Number);
   return a + b / 60 + c / 3600;
