@@ -16,9 +16,10 @@
  * 실행(자동, 결과는 <work>/rehearsal-report.json):
  *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더>
  * 화면 확인용(시험 회차에서 멈춰 실제 시간으로 흐르며 /rehearsal/… 제어를 받는다. 화면 스크립트 rehearsal-screens.mjs가 조종):
- *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더> --screens
+ *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더> --screens --rp-id localhost
  *
  * 선택: --base <운영 서버>(기본 https://game.byb.kr/stardraw-api) --port 8855 --dev-origin http://localhost:4855
+ *       --rp-id game.byb.kr(화면 확인은 localhost: 가상 인증기가 그 페이지 주소로 서명한다)
  *       --trial-rounds 2(예약 전 시험 회차) --live-rounds 26(정식 회차, 100회차 묶음 경계까지는 늘 간다)
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -260,7 +261,7 @@ async function main() {
   const ledgerDir = join(dataDir, "ledger");
   mkdirSync(dataDir, { recursive: true });
   const policy = {
-    rpId: "game.byb.kr",
+    rpId: arg("rp-id", "game.byb.kr"),
     origins: ["https://game.byb.kr", devOrigin],
   };
   const restored = await restoreFromAnchor({

@@ -8,7 +8,7 @@
  * 준비:
  *   NEXT_PUBLIC_STARDRAW_API=http://localhost:8855/stardraw-api nice -n 15 pnpm --filter @mighty/web build
  *   (apps/web) nice -n 15 pnpm exec serve out -l 4855 --no-port-switching
- *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더> --screens
+ *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더> --screens --rp-id localhost
  * 실행: nice -n 15 node apps/stardraw-server/bench/rehearsal-screens.mjs --out <스크린숏 폴더>
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -58,6 +58,7 @@ const context = await browser.newContext({
   hasTouch: true,
   locale: "ko-KR",
   timezoneId: "Asia/Seoul",
+  reducedMotion: "reduce",
 });
 const pages = [];
 async function openPage() {
@@ -76,6 +77,16 @@ async function openPage() {
   });
   const now = (await ctl("info")).now;
   await page.clock.install({ time: now * 1000 });
+  page.on("console", (m) => {
+    if (m.type() === "error") note(`[화면 오류] ${m.text().slice(0, 200)}`);
+  });
+  page.on("response", async (r) => {
+    if (r.status() >= 400 && r.url().includes("/api/"))
+      note(
+        `[응답 ${r.status()}] ${r.url().replace(/^.*stardraw-api/, "")} ${(await r.text().catch(() => "")).slice(0, 200)}`,
+      );
+  });
+  page.on("pageerror", (e) => note(`[화면 예외] ${String(e).slice(0, 200)}`));
   pages.push(page);
   return page;
 }
@@ -94,7 +105,7 @@ async function shot(page, name) {
   n++;
   const file = join(out, `rehearsal-${String(n).padStart(2, "0")}-${name}.png`);
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, fullPage: true });
   const info = await ctl("info");
   note(
     `${file} · 서버 ${info.nowKst} · ${info.label.label}(사슬 ${info.round})`,
@@ -200,6 +211,13 @@ try {
     await stale.close();
     pages.splice(pages.indexOf(stale), 1);
   }
+} catch (err) {
+  for (const [i, p] of pages.entries())
+    await p
+      .screenshot({ path: join(out, `rehearsal-error-${i}.png`) })
+      .catch(() => {});
+  note(`오류: ${err instanceof Error ? err.message.split("\n")[0] : err}`);
+  process.exitCode = 1;
 } finally {
   writeFileSync(join(out, "rehearsal-screens.txt"), `${notes.join("\n")}\n`);
   await browser.close();
