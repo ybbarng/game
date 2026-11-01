@@ -716,8 +716,8 @@
             "남겨 둔다"
           ],
           "recommend": "지운다(이미 404, 쓰는 사람 없음)",
-          "status": "done",
-          "result": "지운다: 2026-11-01 사용자가 dnsever 레코드 삭제. 서버에는 nginx·certbot이 없어 남은 것 없음. servers 기록 정리는 비서 세션을 거쳐 요청"
+          "status": "decided",
+          "decided": "지운다(2026-11-01 dnsever 레코드 삭제, 서버에 nginx·certbot 없음, servers 기록 정리는 비서 거쳐 요청)"
         }
       ]
     },
