@@ -9,6 +9,7 @@ import {
 import { drawNumbers, drawSeed } from "./draw";
 import { makeNickname, type Nickname } from "./nickname";
 import { checkPow } from "./pow";
+import { makeTicketProof, type TicketProof } from "./proof";
 import {
   decodeRecord,
   encodeRecord,
@@ -610,6 +611,63 @@ describe("내 응모권 포함 증명", () => {
     expect(
       proveMembership(ledger.tickets[1] as Ticket[], ticketId(mine)),
     ).toBeNull();
+  });
+});
+
+describe("지운 회차(연습 장부가 남 응모권을 지운 회차)", () => {
+  /** 2회차에서 1등 응모권만 남기고 지운 장부와 그 포함 증명 */
+  async function partialLedger() {
+    const ledger = await buildLedger(3);
+    const list = ledger.tickets[1] as Ticket[];
+    const record = ledger.records[1] as RoundRecord;
+    const kept = list.filter((t) =>
+      record.winners[1].some((w) => toHex(w) === toHex(ticketId(t))),
+    );
+    const ids = list.map(ticketId);
+    const proofs = kept.map(
+      (t) => makeTicketProof(2, ids, t, record.merkleRoot) as TicketProof,
+    );
+    ledger.tickets[1] = kept;
+    return { ledger, kept, proofs };
+  }
+
+  it("남긴 응모권은 포함 증명과 등수로 보고, 응모 수·머클 루트는 문제로 삼지 않는다", async () => {
+    const { ledger, kept, proofs } = await partialLedger();
+    expect(kept).toHaveLength(1);
+    const report = await verifyLedger(
+      ledger.schedule,
+      ledger.records,
+      ledger.tickets,
+      ledger.registrations,
+      {
+        ...OPTIONS,
+        partialRounds: new Map([[2, { tickets: proofs, registrations: [] }]]),
+      },
+    );
+    expect(messages(report)).toEqual([]);
+    expect(report.skipped).toContain(
+      "2회차: 지운 회차라 남긴 응모권 1장·등록 0개만 포함 증명으로 확인",
+    );
+  });
+
+  it("증명이 없으면 드러나고, 지운 회차라고 하지 않으면 응모 수가 맞지 않는다", async () => {
+    const { ledger } = await partialLedger();
+    const lists = [
+      ledger.records,
+      ledger.tickets,
+      ledger.registrations,
+    ] as const;
+    const noProof = await verifyLedger(ledger.schedule, ...lists, {
+      ...OPTIONS,
+      partialRounds: new Map([[2, { tickets: [], registrations: [] }]]),
+    });
+    expect(messages(noProof)).toEqual([
+      expect.stringMatching(
+        /^2: 응모권 .*: 기록의 머클 루트에 들어 있다는 증명이 없다$/,
+      ),
+    ]);
+    const plain = await verifyLedger(ledger.schedule, ...lists, OPTIONS);
+    expect(messages(plain)).toContain("2: 응모 수가 1인데 기록은 4");
   });
 });
 

@@ -28,6 +28,12 @@ import {
 import { checkPow, POW_PARAMS, type PowParams } from "./pow";
 import { countUsed, judgeRound, type QualRoundResult } from "./prize";
 import {
+  checkRegistrationProof,
+  checkTicketProof,
+  type RegistrationProof,
+  type TicketProof,
+} from "./proof";
+import {
   genesisHash,
   type RoundRecord,
   recordHash,
@@ -86,6 +92,18 @@ export interface VerifyOptions {
   genesisAnchorVerifier?: (genesis: Schedule) => Promise<boolean | null>;
   /** 패스키 서명을 받을 사이트·주소. 기본은 game.byb.kr */
   webauthnPolicy?: WebAuthnPolicy;
+  /**
+   * 지운 회차(회차 → 남긴 것의 포함 증명). 기기 안 연습 장부는 오래된 회차의 남(연습 참가자) 응모권·등록을 지운다.
+   * 그 회차 목록에는 남긴 것만 넘기고, 응모 수·머클 루트·당첨 목록 전체 대신 남긴 것마다 기록의 루트로 포함 증명을,
+   * 남긴 응모권마다 등수가 기록의 당첨 목록과 맞는지를 본다
+   */
+  partialRounds?: ReadonlyMap<number, PartialRound>;
+}
+
+/** 지운 회차에 남긴 응모권·등록의 포함 증명(목록과 같은 것을 담는다) */
+export interface PartialRound {
+  tickets: readonly TicketProof[];
+  registrations: readonly RegistrationProof[];
 }
 
 export interface Problem {
@@ -175,6 +193,11 @@ export async function verifyLedger(
     const round = i + 1;
     const fail = (message: string) => problems.push({ round, message });
     const { closesAt, entry } = roundTimes(schedule, round);
+    const partial = options.partialRounds?.get(round);
+    if (partial)
+      skipped.push(
+        `${round}회차: 지운 회차라 남긴 응모권 ${tickets.length}장·등록 ${registrations.length}개만 포함 증명으로 확인`,
+      );
 
     if (record.v !== recordVersionFor(record.operations))
       fail(`모르는 기록 판 ${record.v}(운영 기록이 있으면 2, 없으면 1)`);
@@ -227,12 +250,24 @@ export async function verifyLedger(
       keyByCredential.add(credential);
       keys.push(reg);
     }
-    if (record.registrationCount !== registrations.length)
-      fail(
-        `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}`,
+    if (partial) {
+      const proven = new Set(
+        partial.registrations.flatMap((p) => {
+          const reg = checkRegistrationProof(p, record);
+          return reg ? [toHex(registrationId(reg))] : [];
+        }),
       );
-    if (!equalBytes(record.registrationRoot, merkleRoot(regIds)))
-      fail("등록 목록으로 만든 머클 루트가 기록과 다르다");
+      for (const id of regIds)
+        if (!proven.has(toHex(id)))
+          fail(`등록 ${short(id)}: 기록의 등록 루트에 들어 있다는 증명이 없다`);
+    } else {
+      if (record.registrationCount !== registrations.length)
+        fail(
+          `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}`,
+        );
+      if (!equalBytes(record.registrationRoot, merkleRoot(regIds)))
+        fail("등록 목록으로 만든 머클 루트가 기록과 다르다");
+    }
 
     // 1. 응모권: 판, 회차, 정렬, 등록된 열쇠, 서명, 1인 1장
     const ids = tickets.map(ticketId);
@@ -257,11 +292,25 @@ export async function verifyLedger(
         fail(`응모권 ${short(id)}: 서명이 맞지 않는다`);
     }
 
-    // 2. 응모 수와 머클 루트
-    if (record.count !== tickets.length)
-      fail(`응모 수가 ${tickets.length}인데 기록은 ${record.count}`);
-    if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
-      fail("응모권 목록으로 만든 머클 루트가 기록과 다르다");
+    // 2. 응모 수와 머클 루트(지운 회차는 남긴 응모권마다 포함 증명)
+    if (partial) {
+      const proven = new Set(
+        partial.tickets.flatMap((p) => {
+          const t = checkTicketProof(p, record);
+          return t ? [toHex(ticketId(t))] : [];
+        }),
+      );
+      for (const id of ids)
+        if (!proven.has(toHex(id)))
+          fail(
+            `응모권 ${short(id)}: 기록의 머클 루트에 들어 있다는 증명이 없다`,
+          );
+    } else {
+      if (record.count !== tickets.length)
+        fail(`응모 수가 ${tickets.length}인데 기록은 ${record.count}`);
+      if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
+        fail("응모권 목록으로 만든 머클 루트가 기록과 다르다");
+    }
 
     // 3. drand 회차, 무효 규칙, 서명, 당첨 번호, 등수
     if (record.drandRound !== drandRoundForClose(closesAt))
@@ -299,13 +348,26 @@ export async function verifyLedger(
           `당첨 번호가 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
         );
       }
-      for (const rank of RANKS) {
-        const expected = tickets.flatMap((t, k) =>
-          rankOf(draw, t.numbers) === rank ? [ids[k] as Uint8Array] : [],
-        );
-        if (!sameIds(expected, record.winners[rank]))
-          fail(`${rank}등 당첨자 목록이 규칙대로가 아니다`);
-      }
+      if (partial) {
+        // 남긴 응모권만 있으니, 그 응모권마다 등수가 당첨 목록에 실린 자리와 같은지
+        for (let k = 0; k < tickets.length; k++) {
+          const id = ids[k] as Uint8Array;
+          const rank = rankOf(draw, (tickets[k] as Ticket).numbers);
+          const listed =
+            RANKS.find((r) =>
+              record.winners[r].some((w) => equalBytes(w, id)),
+            ) ?? null;
+          if (rank !== listed)
+            fail(`${rank ?? listed}등 당첨자 목록이 규칙대로가 아니다`);
+        }
+      } else
+        for (const rank of RANKS) {
+          const expected = tickets.flatMap((t, k) =>
+            rankOf(draw, t.numbers) === rank ? [ids[k] as Uint8Array] : [],
+          );
+          if (!sameIds(expected, record.winners[rank]))
+            fail(`${rank}등 당첨자 목록이 규칙대로가 아니다`);
+        }
     } else if (RANKS.some((rank) => record.winners[rank].length > 0)) {
       fail("무효 회차에 당첨자가 있다");
     }
