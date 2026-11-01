@@ -36,13 +36,18 @@ import {
   sha256,
   signRegistrationProof,
   softPasskeySigner,
+  solveGate,
   type Ticket,
   taggedHash,
   toHex,
 } from "@mighty/stardraw-core";
 
 import { DEFAULT_PREFIX_LIMITS } from "./config";
-import { type QualificationOptions, StardrawServer } from "./engine";
+import {
+  type FrontGateOptions,
+  type QualificationOptions,
+  StardrawServer,
+} from "./engine";
 import {
   type Anchor,
   type DrandSource,
@@ -74,6 +79,11 @@ import { Store } from "./store";
 
 export const TEST_POW: PowParams = { memorySize: 8, iterations: 1 };
 export const EASY = 2 ** 31;
+/** 시험 앞단 작업 증명: 가벼운 세기, 평균 2번(docs/36 11-30) */
+export const TEST_GATE: FrontGateOptions & { params: PowParams } = {
+  target: EASY,
+  params: { memorySize: 8, iterations: 1 },
+};
 // 2026-10-29 14:55 KST. 1회차 마감 15:55, 추첨 16:00(매시 정각 추첨 · 55분 마감)
 export const EPOCH = 1793253300;
 
@@ -131,6 +141,8 @@ export interface Rig {
   log: SwitchLog;
   serverKey: ServerKey;
   logs: string[];
+  /** 앞단 작업 증명 설정(켰을 때만). enter·registerOnly가 이것으로 답을 풀어 붙인다 */
+  frontGate?: FrontGateOptions;
   /** 시계를 초 단위 시각으로 옮기고 할 일을 한다 */
   at(seconds: number): Promise<void>;
   /** 회차를 정상으로 끝낸다: 마감 때 봉인하고, drand 시각에 추첨한다 */
@@ -166,6 +178,8 @@ export async function makeRig(
     qualification?: QualificationOptions;
     /** 작업 증명 확인(기본: 같은 스레드에서 실제 계산) */
     powChecker?: PowChecker;
+    /** 응모 앞단 작업 증명(기본: 끔) */
+    frontGate?: FrontGateOptions;
   } = {},
 ): Promise<Rig> {
   const dir = limits.dir ?? mkdtempSync(join(tmpdir(), "stardraw-"));
@@ -210,6 +224,7 @@ export async function makeRig(
     ...(limits.directorKeys ? { directorKeys: limits.directorKeys } : {}),
     ...(limits.qualification ? { qualification: limits.qualification } : {}),
     ...(limits.powChecker ? { powChecker: limits.powChecker } : {}),
+    ...(limits.frontGate ? { frontGate: limits.frontGate } : {}),
     log: (m) => logs.push(m),
   });
   await engine.ready();
@@ -236,6 +251,7 @@ export async function makeRig(
     serverKey,
     logs,
     at,
+    ...(limits.frontGate ? { frontGate: limits.frontGate } : {}),
     async finish(round) {
       const { closesAt } = roundTimes(engine.schedule(), round);
       await at(closesAt);
@@ -295,6 +311,21 @@ export async function entryFor(
   return { ticket, registration };
 }
 
+/** 앞단 작업 증명 답(앞단을 켠 rig만, 화면이 하는 것처럼 문제 값과 열쇠로 푼다) */
+export async function gateFor(
+  rig: Rig,
+  pub: Uint8Array,
+  head: Uint8Array = rig.engine.head(),
+): Promise<{ gate?: number }> {
+  const g = rig.frontGate;
+  if (!g) return {};
+  const n = await solveGate(head, pub, g.target, {
+    ...(g.params ? { params: g.params } : {}),
+  });
+  if (n === null) throw new Error("앞단을 풀지 못했다");
+  return { gate: n };
+}
+
 /** 엔진에 낸다(성공하면 그 사람은 등록된 것으로 친다) */
 export async function enter(
   rig: Rig,
@@ -314,6 +345,7 @@ export async function enter(
   const receipt = await rig.engine.submit({
     ticket: encodeTicket(ticket),
     ...(registration ? { registration: encodeRegistration(registration) } : {}),
+    ...(await gateFor(rig, ticket.pub)),
     ip,
   });
   p.registered = true;
@@ -340,6 +372,7 @@ export async function registerOnly(
     registration: encodeRegistration(registration),
     proof: encodeRegistrationProof(proof),
     head: toHex(head),
+    ...(await gateFor(rig, registration.pub, head)),
     ip,
   });
   p.registered = true;

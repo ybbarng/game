@@ -1,5 +1,6 @@
 import {
   alignedEpoch,
+  DEFAULT_GATE_TRIES,
   DEFAULT_TSA_NAMES,
   type Phase,
   POW_PARAMS,
@@ -14,7 +15,7 @@ import {
   tsaByName,
   type WebAuthnPolicy,
 } from "@mighty/stardraw-core";
-import type { QualMethodConfig } from "./engine";
+import type { FrontGateOptions, QualMethodConfig } from "./engine";
 
 /**
  * 서버 설정. 모두 환경 변수로 받고, 없으면 운영 기본값이다.
@@ -57,6 +58,8 @@ export interface ServerConfig {
   /** 동시에 도는 Argon2 확인 수, 기다리는 줄 상한 */
   argonConcurrency: number;
   argonQueue: number;
+  /** 응모 앞단 작업 증명(docs/36 11-30, `STARDRAW_GATE_TRIES`·`STARDRAW_GATE_OPTIONAL_UNTIL`). null이면 끈다 */
+  frontGate: FrontGateOptions | null;
   /** 마감 뒤 봉인 값의 시각 증명을 받아야 하는 기한(초) */
   sealDeadline: number;
   drandUrls: string[];
@@ -207,6 +210,7 @@ export function loadConfig(): ServerConfig {
     ),
     argonConcurrency: int("STARDRAW_ARGON_CONCURRENCY", 2),
     argonQueue: int("STARDRAW_ARGON_QUEUE", 32),
+    frontGate: frontGateConfig(env),
     sealDeadline: int("STARDRAW_SEAL_DEADLINE", 180),
     directorKeys: parseDirectorKeys(env("STARDRAW_DIRECTOR_KEYS") ?? ""),
     directorRequestsPerPrefixPerDay: int(
@@ -274,4 +278,34 @@ export function outsideConfig(
   const repo = get("STARDRAW_ANCHOR_REPO");
   const token = get("STARDRAW_ANCHOR_TOKEN");
   return { tsa, rekor, github: repo && token ? { repo, token } : null };
+}
+
+/**
+ * 응모 앞단 작업 증명 설정(docs/36 11-30).
+ * - `STARDRAW_GATE_TRIES`: 평균 시도 수(기본 DEFAULT_GATE_TRIES, 0이면 끈다). 화면은 상태의 `gateTarget`을 따라 푼다
+ * - `STARDRAW_GATE_OPTIONAL_UNTIL`: 이 시각 전까지는 답 없는 요청도 받는다(배포 직후 열려 있던 옛 화면). ISO 시각이나 유닉스 초
+ */
+export function frontGateConfig(
+  get: (name: string) => string | undefined,
+): FrontGateOptions | null {
+  const raw = get("STARDRAW_GATE_TRIES");
+  const tries = raw === undefined ? DEFAULT_GATE_TRIES : Number(raw);
+  if (!Number.isInteger(tries) || tries < 0)
+    throw new Error(`STARDRAW_GATE_TRIES는 0 이상 정수: ${raw}`);
+  if (tries === 0) return null;
+  const until = get("STARDRAW_GATE_OPTIONAL_UNTIL");
+  let optionalUntil: number | undefined;
+  if (until !== undefined) {
+    optionalUntil = /^\d+$/.test(until)
+      ? Number(until)
+      : Math.floor(Date.parse(until) / 1000);
+    if (!Number.isFinite(optionalUntil))
+      throw new Error(
+        `STARDRAW_GATE_OPTIONAL_UNTIL은 ISO 시각이나 유닉스 초: ${until}`,
+      );
+  }
+  return {
+    target: powTargetForTries(tries),
+    ...(optionalUntil !== undefined ? { optionalUntil } : {}),
+  };
 }

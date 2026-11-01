@@ -1,6 +1,7 @@
 import {
   concat,
   decodeReceipt,
+  decodeTicket,
   drandRoundForClose,
   encodeReceipt,
   encodeRegistration,
@@ -8,10 +9,12 @@ import {
   generateSigner,
   genesisHash,
   type KeyRegistration,
+  powTargetForTries,
   type RoundRecord,
   receiptInTime,
   roundTimes,
   softPasskeySigner,
+  solveGate,
   type Ticket,
   ticketBody,
   ticketId,
@@ -22,7 +25,7 @@ import {
 } from "@mighty/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { EntryError } from "./engine";
+import { EntryError, type EntryInput, GATE_MISSING_MESSAGE } from "./engine";
 import { LocalRootLog } from "./outside";
 import {
   drawOf,
@@ -30,11 +33,15 @@ import {
   EPOCH,
   enter,
   entryFor,
+  gateFor,
   makeRig,
+  type Player,
   player,
   type Rig,
   readLedger,
+  registerOnly,
   SCHEDULE,
+  TEST_GATE,
   TEST_POW,
 } from "./testing";
 
@@ -490,5 +497,185 @@ describe("작업 증명 홍수 막기(D2)", () => {
       rig.engine.submit(await bodyOf([19, 20, 21, 22, 23, 24])),
     ).rejects.toThrow("여러 번 맞지 않아");
     expect(calls).toBe(3);
+  });
+});
+
+describe("응모 앞단 작업 증명(docs/36 11-30)", () => {
+  /** Argon2를 센다(엉터리 응모는 늘 떨어진다) */
+  const counting = () => {
+    const c = {
+      calls: 0,
+      check: async () => {
+        c.calls++;
+        return false;
+      },
+    };
+    return c;
+  };
+  /** 정해진 공개 열쇠(서명은 맞지 않지만 앞단이 먼저라 서명까지 가지 않는다). 결정적으로 보려고 쓴다 */
+  const fixedPub = (i: number, like: Uint8Array) => {
+    const pub = new Uint8Array(like);
+    new DataView(pub.buffer).setUint32(pub.length - 4, i);
+    return pub;
+  };
+  /** 진짜 응모권 하나를 만들어 공개 열쇠만 바꾼 본문(열쇠를 공짜로 새로 만드는 홍수 흉내) */
+  const floodBodies = async (
+    count: number,
+    gate?: (i: number) => unknown,
+  ): Promise<EntryInput[]> => {
+    const p = await player();
+    const { ticket, registration } = await entryFor(
+      p,
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    return Array.from({ length: count }, (_, i) => {
+      const pub = fixedPub(i, ticket.pub);
+      return {
+        ticket: encodeTicket({ ...ticket, pub }),
+        ...(registration
+          ? { registration: encodeRegistration({ ...registration, pub }) }
+          : {}),
+        ...(gate ? { gate: gate(i) } : {}),
+        ip: `198.51.${i >> 8}.${i & 255}`,
+      };
+    });
+  };
+  /** 엉터리 답이 맞을 일이 없게 세게(평균 2^20번). 풀지 않는 시험에만 쓴다 */
+  const STRICT = {
+    target: powTargetForTries(2 ** 20),
+    params: TEST_GATE.params,
+  };
+
+  it("앞단 답이 없는 응모 1,000건과 틀린 답 1,000건(열쇠마다 새로)은 Argon2를 한 번도 돌리지 않고 400으로 버린다", async () => {
+    const argon = counting();
+    rig = await makeRig({ powChecker: argon, frontGate: STRICT });
+    await rig.at(EPOCH + 10);
+    for (const body of await floodBodies(1000))
+      await expect(rig.engine.submit(body)).rejects.toMatchObject({
+        status: 400,
+        message: GATE_MISSING_MESSAGE,
+      });
+    for (const body of await floodBodies(1000, (i) => i))
+      await expect(rig.engine.submit(body)).rejects.toMatchObject({
+        status: 400,
+        message: "응모 확인 계산이 맞지 않습니다",
+      });
+    // u32가 아닌 칸도 계산 없이 버린다
+    for (const bad of [-1, 1.5, "0", 2 ** 32])
+      for (const body of await floodBodies(1, () => bad))
+        await expect(rig.engine.submit(body)).rejects.toMatchObject({
+          status: 400,
+        });
+    expect(argon.calls).toBe(0);
+    expect(rig.engine.state().entries).toBe(0);
+  });
+
+  it("다른 열쇠나 지난 문제 값으로 푼 답은 받지 않는다", async () => {
+    const argon = counting();
+    const gate = { target: powTargetForTries(64), params: TEST_GATE.params };
+    rig = await makeRig({ powChecker: argon, frontGate: gate });
+    await rig.at(EPOCH + 10);
+    const [a, b] = await floodBodies(2);
+    if (!a || !b) throw new Error("본문이 없다");
+    const pubA = decodeTicket(a.ticket).pub;
+    const pubB = decodeTicket(b.ticket).pub;
+    const forA = await solveGate(rig.engine.head(), pubA, gate.target, gate);
+    const forBOld = await solveGate(
+      new Uint8Array(32).fill(9),
+      pubB,
+      gate.target,
+      gate,
+    );
+    // 열쇠 A의 답을 열쇠 B 응모에, 지난 문제 값의 답을 지금 응모에
+    for (const n of [forA, forBOld])
+      await expect(rig.engine.submit({ ...b, gate: n })).rejects.toThrow(
+        "응모 확인 계산이 맞지 않습니다",
+      );
+    expect(argon.calls).toBe(0);
+    // 제 열쇠·지금 문제 값의 답이면 앞단을 지나 다음 확인(서명, 열쇠를 바꿔 끼워 맞지 않는다)까지 간다
+    await expect(rig.engine.submit({ ...a, gate: forA })).rejects.toThrow(
+      "응모권 서명이 맞지 않습니다",
+    );
+    expect(argon.calls).toBe(0);
+  });
+
+  it("맞힌 답 하나로는 Argon2를 한 번만 시킨다: 같은 열쇠는 한 번 떨어지면 등록·응모 모두 그 회차 동안 계산하지 않는다", async () => {
+    const argon = counting();
+    rig = await makeRig({ powChecker: argon, frontGate: TEST_GATE });
+    await rig.at(EPOCH + 10);
+    const p = await player();
+    const bodyOf = async (numbers: number[]): Promise<EntryInput> => {
+      const { ticket, registration } = await entryFor(
+        p,
+        1,
+        numbers,
+        rig.engine.head(),
+      );
+      return {
+        ticket: encodeTicket(ticket),
+        ...(registration
+          ? { registration: encodeRegistration(registration) }
+          : {}),
+        ...(await gateFor(rig, ticket.pub)),
+        ip: "203.0.113.7",
+      };
+    };
+    await expect(
+      rig.engine.submit(await bodyOf([1, 2, 3, 4, 5, 6])),
+    ).rejects.toThrow("계산이 맞지 않습니다");
+    expect(argon.calls).toBe(1);
+    await expect(
+      rig.engine.submit(await bodyOf([7, 8, 9, 10, 11, 12])),
+    ).rejects.toMatchObject({ status: 429 });
+    await expect(registerOnly(rig, p)).rejects.toMatchObject({ status: 429 });
+    expect(argon.calls).toBe(1);
+  });
+
+  it("정상 사용자: 상태가 목표값을 알리고, 같은 답으로 등록한 뒤 응모한다", async () => {
+    rig = await makeRig({ frontGate: TEST_GATE });
+    await rig.at(EPOCH + 10);
+    expect(rig.engine.state().gateTarget).toBe(TEST_GATE.target);
+    const p = await player();
+    const head = rig.engine.head();
+    const { gate } = await gateFor(rig, p.signer.publicKey, head);
+    await registerOnly(rig, p);
+    const { ticket } = await entryFor(p, 1, [1, 2, 3, 4, 5, 6], head);
+    await rig.engine.submit({
+      ticket: encodeTicket(ticket),
+      gate,
+      ip: "203.0.113.7",
+    });
+    expect(rig.engine.state().entries).toBe(1);
+  });
+
+  it("유예 시각 전에는 답 없는 옛 화면 요청도 받고, 지나면 새로 고치라고 알린다", async () => {
+    rig = await makeRig({
+      frontGate: { ...TEST_GATE, optionalUntil: EPOCH + 100 },
+    });
+    await rig.at(EPOCH + 10);
+    const oldScreen = async (p: Player) => {
+      const { ticket, registration } = await entryFor(
+        p,
+        1,
+        [1, 2, 3, 4, 5, 6],
+        rig.engine.head(),
+      );
+      return rig.engine.submit({
+        ticket: encodeTicket(ticket),
+        ...(registration
+          ? { registration: encodeRegistration(registration) }
+          : {}),
+        ip: "203.0.113.7",
+      });
+    };
+    await oldScreen(await player());
+    await rig.at(EPOCH + 100);
+    await expect(oldScreen(await player())).rejects.toMatchObject({
+      status: 400,
+      message: GATE_MISSING_MESSAGE,
+    });
+    expect(rig.engine.state().entries).toBe(1);
   });
 });

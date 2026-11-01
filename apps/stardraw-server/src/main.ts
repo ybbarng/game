@@ -104,6 +104,7 @@ async function main(): Promise<void> {
       new URL(import.meta.url),
       config.argonConcurrency,
     ),
+    ...(config.frontGate ? { frontGate: config.frontGate } : {}),
     sealDeadline: config.sealDeadline,
     directorKeys: config.directorKeys,
     directorRequestsPerPrefixPerDay: config.directorRequestsPerPrefixPerDay,

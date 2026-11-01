@@ -4,6 +4,7 @@ import {
   activeDirector,
   anchorBranch,
   applyRecordOps,
+  checkGate,
   checkNumbers,
   checkRegistration,
   checkScheduleChange,
@@ -24,6 +25,7 @@ import {
   equalBytes,
   everDirector,
   fromHex,
+  GATE_PARAMS,
   genesisHash,
   issuerKeyRequestMessage,
   isVoidRound,
@@ -103,7 +105,7 @@ import type { Store } from "./store";
 
 /**
  * 회차 서버(docs/36 3절·11-1). 시각은 모두 주입한 `Clock`으로 잰다(시험은 ManualClock).
- * - 응모: 8-1 P1 순서로 싼 확인부터 한다. IP 상한 → 형식 → 등록된 열쇠 → 서명 → 열쇠당 회차 1장 → 작업 증명(Argon2, 동시 실행 제한)
+ * - 응모: 8-1 P1 순서로 싼 확인부터 한다. IP 상한 → 형식 → 앞단 작업 증명(11-30) → 등록된 열쇠 → 서명 → 열쇠당 회차 1장 → 작업 증명(Argon2, 동시 실행 제한)
  * - 봉인: 마감 시각이 지나면 응모권·등록 목록의 봉인 값을 투명성 로그에 올리고 공개한다(기한 안에 못 올리면 그 회차는 무효)
  * - 추첨: 봉인한 회차의 drand 회차 값이 나오면 회차 기록을 닫아 장부에 붙이고, 기록 해시를 앵커에 남긴다
  */
@@ -134,6 +136,8 @@ export interface EngineOptions {
   };
   /** 작업 증명을 어디서 계산할지(기본: 같은 스레드. 운영은 작업 스레드, pow-pool.ts) */
   powChecker?: PowChecker;
+  /** 응모 앞단 작업 증명(docs/36 11-30). 없으면 받지도 요구하지도 않는다 */
+  frontGate?: FrontGateOptions;
   /** 마감 뒤 봉인 값을 로그에 올리는 기한(초) */
   sealDeadline: number;
   /** drand 값을 이만큼(초) 못 받으면 알린다 */
@@ -161,6 +165,25 @@ export interface QualificationOptions {
   /** 발급 요청: IP 앞부분 하나당 하루 상한(기본 200, 회사 NAT 기준) */
   issuesPerPrefixPerDay?: number;
 }
+
+/**
+ * 응모 앞단 작업 증명(docs/36 11-30). 응모·등록 요청의 `gate`를 Argon2보다 먼저 확인한다.
+ * 문제 값과 응모자 id에 묶여 있어 같은 열쇠·같은 회차의 등록과 응모가 한 답을 같이 쓴다
+ */
+export interface FrontGateOptions {
+  /** 목표값(u32). 화면은 `/api/state`의 `gateTarget`으로 받아 푼다 */
+  target: number;
+  /** 계산 세기(기본 규칙의 GATE_PARAMS. 시험만 작게) */
+  params?: PowParams;
+  /**
+   * 이 시각(초) 전까지는 `gate`가 없는 요청도 예전처럼 받는다(있으면 확인한다). 배포 직후 이미 열려 있던
+   * 옛 화면이 계산한 응모를 잃지 않게 하는 유예다. 없으면 처음부터 요구한다
+   */
+  optionalUntil?: number;
+}
+
+/** 앞단 답이 없을 때(유예가 지난 뒤 옛 화면) */
+export const GATE_MISSING_MESSAGE = "화면을 새로 고친 뒤 다시 내 주세요";
 
 /** 요청 본문의 지문(작업 증명 실패 기억에 쓴다, D2) */
 function bodyHash(...parts: Uint8Array[]): string {
@@ -191,6 +214,8 @@ export interface RegisterInput {
   proof: Uint8Array;
   /** 작업 증명에 쓴 문제 값(hex). 지금 문제 값과 다르면 다시 풀라고 409로 알린다 */
   head: string;
+  /** 앞단 작업 증명 답(요청 칸 그대로, 엔진이 u32인지 본다) */
+  gate?: unknown;
   ip: string;
 }
 
@@ -199,6 +224,8 @@ export interface EntryInput {
   ticket: Uint8Array;
   /** 새 열쇠면 encodeRegistration 바이트 */
   registration?: Uint8Array;
+  /** 앞단 작업 증명 답(요청 칸 그대로, 엔진이 u32인지 본다) */
+  gate?: unknown;
   ip: string;
 }
 
@@ -218,6 +245,8 @@ export interface ServerState {
   head: string;
   /** 이번 회차에 들어온 응모 수 */
   entries: number;
+  /** 응모 앞단 작업 증명 목표값(docs/36 11-30). 앞단을 쓰지 않으면 없다 */
+  gateTarget?: number;
   serverKey: string;
   /** 지금 회차의 단계(시험 trial, 정식 live). 화면이 시험 띠를 띄운다 */
   mode: "trial" | "live";
@@ -253,8 +282,12 @@ export class StardrawServer {
   private readonly o: EngineOptions;
   private readonly counters = new Counters();
   private readonly gate: Gate;
-  /** 작업 증명에서 떨어진 본문·열쇠(회차 동안, D2) */
-  private readonly powFailures = new PowFailures();
+  /**
+   * 작업 증명에서 떨어진 본문·열쇠(회차 동안, D2). 앞단이 켜지면 같은 열쇠는 한 번 떨어지면 막는다:
+   * 문제 값이 바뀐 낡은 계산은 앞단에서 먼저 걸러지므로 정상 사용자는 Argon2에서 떨어질 일이 없고,
+   * 공격자는 맞힌 앞단 하나로 Argon2를 한 번만 시킨다(docs/36 11-30)
+   */
+  private readonly powFailures: PowFailures;
   private ticking: Promise<void> = Promise.resolve();
   /**
    * 봉인 값을 계산하기 시작한 가장 늦은 회차. 응모 목록을 읽은 뒤 바깥 로그(시각 인증) 응답을 기다리는 동안
@@ -266,6 +299,33 @@ export class StardrawServer {
   /** 작업 증명 하나 확인(운영은 작업 스레드에서, pow-pool.ts) */
   private checkPowJob(job: PowJob): Promise<boolean> {
     return (this.o.powChecker ?? inlinePowChecker).check(job);
+  }
+
+  /**
+   * 응모 앞단(docs/36 11-30): Argon2보다 먼저, 지금 문제 값과 이 열쇠에 묶인 답인지 본다(한 번 계산, 1ms 안쪽).
+   * 실패는 기억하지 않는다(확인이 기억보다 싸다)
+   */
+  private async checkFrontGate(
+    pub: Uint8Array,
+    gate: unknown,
+    receivedAt: number,
+  ): Promise<void> {
+    const g = this.o.frontGate;
+    if (!g) return;
+    if (gate === undefined || gate === null) {
+      if (g.optionalUntil !== undefined && receivedAt < g.optionalUntil) return;
+      throw new EntryError(GATE_MISSING_MESSAGE);
+    }
+    if (
+      !(await checkGate(
+        this.head(),
+        pub,
+        gate as number,
+        g.target,
+        g.params ?? GATE_PARAMS,
+      ))
+    )
+      throw new EntryError("응모 확인 계산이 맞지 않습니다");
   }
 
   /** 이 회차는 더 받지 않는다(봉인했거나 봉인 값을 계산하는 중) */
@@ -282,6 +342,7 @@ export class StardrawServer {
 
   constructor(options: EngineOptions) {
     this.o = options;
+    this.powFailures = new PowFailures(options.frontGate ? 1 : 3);
     this.genesis = options.store.genesis(options.schedule);
     this.current = scheduleFromRecords(this.genesis, this.records());
     this.ops = newOpsState(this.genesis);
@@ -388,6 +449,7 @@ export class StardrawServer {
       ).length,
       head: toHex(this.head()),
       entries: round > 0 ? this.o.store.entryCount(round) : 0,
+      ...(this.o.frontGate ? { gateTarget: this.o.frontGate.target } : {}),
       serverKey: toBase64Url(this.sealFor(Math.max(1, round)).publicKey),
       mode: this.mode,
       liveFrom: liveStart(this.schedule()),
@@ -531,7 +593,7 @@ export class StardrawServer {
   // ── 우주인 등록(응모 없이 등록만) ──
 
   /**
-   * 우주인 등록 직후 등록만 올린다. 응모와 같은 확인을 같은 순서로 한다: IP 상한 → 형식 → 받는 때 →
+   * 우주인 등록 직후 등록만 올린다. 응모와 같은 확인을 같은 순서로 한다: IP 상한 → 형식 → 받는 때 → 앞단 작업 증명 →
    * 국장 열쇠 거절 → 패스키 서명(UV) → 작업 증명. 장부에 싣는 등록 형식은 응모와 함께 오는 것과 같다.
    * 이미 등록된 열쇠면 그 회차를 그대로 돌려준다(다시 보내도 같다)
    */
@@ -582,6 +644,9 @@ export class StardrawServer {
     if (input.head !== toHex(this.head()))
       throw new EntryError("회차가 바뀌었습니다. 다시 계산해 주세요", 409);
 
+    // 3-1. 앞단 작업 증명(싸다, docs/36 11-30). 문제 값 비교(409, 화면이 다시 계산)보다 뒤에 둔다
+    await this.checkFrontGate(registration.pub, input.gate, receivedAt);
+
     // 4. 국장 열쇠와 섞지 않는다, 패스키 번호는 한 번만
     if (await this.isDirectorKey(registration.pub, registration.credentialId))
       throw new EntryError(DIRECTOR_KEY_MESSAGE, 403);
@@ -595,7 +660,8 @@ export class StardrawServer {
 
     // 6. 작업 증명(떨어진 본문·열쇠는 회차 동안 다시 계산하지 않는다, D2)
     const challenge = this.head();
-    const window = `register|${round}`;
+    // 등록과 응모는 한 회차 칸에서 센다(한 열쇠의 앞단 답 하나로 시킬 수 있는 Argon2를 묶는다, 11-30)
+    const window = `pow|${round}`;
     const body = bodyHash(input.registration, input.proof);
     const blocked = this.powFailures.blocked(window, body, who);
     if (blocked) throw new EntryError(blocked, 429);
@@ -684,6 +750,9 @@ export class StardrawServer {
       throw new EntryError(closedMessage(receivedAt), 409);
     const who = toHex(entrantId(ticket.pub));
 
+    // 2-1. 앞단 작업 증명(형식 다음으로 싸다, docs/36 11-30). 없거나 틀리면 Argon2·서명 전에 버린다
+    await this.checkFrontGate(ticket.pub, input.gate, receivedAt);
+
     // 3. 등록된 열쇠(새 열쇠면 함께 온 등록을 본다)
     const known = store.isRegistered(who);
     let credentialHex: string | null = null;
@@ -739,7 +808,7 @@ export class StardrawServer {
     // 6. 작업 증명(가장 비싸다, 동시 실행 제한). 떨어진 본문·열쇠는 회차 동안 다시 계산하지 않고,
     // 소속 증서까지 확인된 응모는 앞줄에 세운다(익명 홍수에 상품 대상 응모가 밀리지 않게, D2)
     const challenge = this.head();
-    const window = `entry|${round}`;
+    const window = `pow|${round}`;
     const body = bodyHash(input.ticket, input.registration ?? new Uint8Array());
     const blocked = this.powFailures.blocked(window, body, who);
     if (blocked) throw new EntryError(blocked, 429);

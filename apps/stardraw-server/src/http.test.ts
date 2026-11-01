@@ -5,13 +5,25 @@ import {
   encodeRegistration,
   encodeTicket,
   fromBase64Url,
+  fromHex,
+  type KeyRegistration,
   toBase64Url,
   verifyReceipt,
 } from "@mighty/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { GATE_MISSING_MESSAGE } from "./engine";
 import { createHttpServer } from "./http";
-import { drawOf, EPOCH, entryFor, makeRig, player, type Rig } from "./testing";
+import {
+  drawOf,
+  EPOCH,
+  entryFor,
+  gateFor,
+  makeRig,
+  player,
+  type Rig,
+  TEST_GATE,
+} from "./testing";
 
 let rig: Rig;
 let close: (() => Promise<void>) | null = null;
@@ -21,8 +33,8 @@ afterEach(async () => {
   rig?.close();
 });
 
-async function serve() {
-  rig = await makeRig();
+async function serve(options: Parameters<typeof makeRig>[0] = {}) {
+  rig = await makeRig(options);
   const server = createHttpServer(rig.engine, rig.relay, {
     basePath: "/stardraw-api",
     ledgerDir: join(rig.dir, "ledger"),
@@ -125,5 +137,37 @@ describe("HTTP", () => {
     expect((await fetch(`${base}/api/nothing`)).status).toBe(404);
     const bad = await fetch(`${base}/api/enter`, { method: "POST", body: "{" });
     expect(bad.status).toBe(400);
+  });
+
+  it("앞단 작업 증명: 상태가 목표값을 알리고, 응모 요청의 gate 칸을 엔진에 넘긴다(docs/36 11-30)", async () => {
+    const base = await serve({ frontGate: TEST_GATE });
+    await rig.at(EPOCH + 10);
+    const state = await (await fetch(`${base}/api/state`)).json();
+    expect(state.gateTarget).toBe(TEST_GATE.target);
+
+    const p = await player();
+    const { ticket, registration } = await entryFor(
+      p,
+      1,
+      [1, 2, 3, 4, 5, 6],
+      fromHex(state.head),
+    );
+    const body = {
+      ticket: toBase64Url(encodeTicket(ticket)),
+      registration: toBase64Url(
+        encodeRegistration(registration as KeyRegistration),
+      ),
+    };
+    const post = (extra: object) =>
+      fetch(`${base}/api/enter`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...body, ...extra }),
+      });
+    const missing = await post({});
+    expect(missing.status).toBe(400);
+    expect((await missing.json()).error).toBe(GATE_MISSING_MESSAGE);
+    const ok = await post(await gateFor(rig, ticket.pub));
+    expect(ok.status).toBe(200);
   });
 });

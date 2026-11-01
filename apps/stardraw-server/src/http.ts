@@ -259,6 +259,7 @@ async function handle(
         registration,
         proof,
         head: str(body.head, "문제 값"),
+        gate: body.gate,
         ip: clientIp(req, o.trustProxy),
       }),
     );
@@ -279,6 +280,7 @@ async function handle(
     const receipt = await engine.submit({
       ticket,
       ...(registration ? { registration } : {}),
+      gate: body.gate,
       ip: clientIp(req, o.trustProxy),
     });
     return send(res, 200, {

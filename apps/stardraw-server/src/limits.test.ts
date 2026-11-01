@@ -1,7 +1,8 @@
 import { ManualClock } from "@mighty/fair-play";
+import { DEFAULT_GATE_TRIES, powTargetForTries } from "@mighty/stardraw-core";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_PREFIX_LIMITS } from "./config";
+import { DEFAULT_PREFIX_LIMITS, frontGateConfig } from "./config";
 import { BusyError, Counters, Gate, ipPrefix, PowFailures } from "./limits";
 import { DEFAULT_RELAY_LIMITS } from "./relay";
 
@@ -118,6 +119,42 @@ describe("작업 증명 실패 기억(D2)", () => {
     f.failed("1", "c", "k3");
     expect(f.blocked("1", "a", "x")).toBeNull();
     expect(f.blocked("1", "c", "x")).toMatch("이미 계산이 맞지 않은");
+  });
+
+  it("앞단 작업 증명을 켜면(열쇠당 1번) 한 번 떨어진 열쇠는 다른 본문도 막는다(docs/36 11-30)", () => {
+    const f = new PowFailures(1);
+    f.failed("pow|1", "register-body", "key");
+    expect(f.blocked("pow|1", "entry-body", "key")).toMatch(
+      "여러 번 맞지 않아",
+    );
+    expect(f.blocked("pow|1", "entry-body", "other")).toBeNull();
+  });
+});
+
+describe("응모 앞단 작업 증명 설정(docs/36 11-30)", () => {
+  const get = (vars: Record<string, string>) => (name: string) => vars[name];
+  it("기본은 평균 512번으로 켜고, 0이면 끈다", () => {
+    expect(frontGateConfig(get({}))).toEqual({
+      target: powTargetForTries(DEFAULT_GATE_TRIES),
+    });
+    expect(DEFAULT_GATE_TRIES).toBe(512);
+    expect(frontGateConfig(get({ STARDRAW_GATE_TRIES: "0" }))).toBeNull();
+    expect(() => frontGateConfig(get({ STARDRAW_GATE_TRIES: "-1" }))).toThrow();
+  });
+
+  it("유예 시각은 ISO 시각이나 유닉스 초로 받는다", () => {
+    expect(
+      frontGateConfig(
+        get({ STARDRAW_GATE_OPTIONAL_UNTIL: "2026-11-03T00:00:00+09:00" }),
+      )?.optionalUntil,
+    ).toBe(1793631600);
+    expect(
+      frontGateConfig(get({ STARDRAW_GATE_OPTIONAL_UNTIL: "1793631600" }))
+        ?.optionalUntil,
+    ).toBe(1793631600);
+    expect(() =>
+      frontGateConfig(get({ STARDRAW_GATE_OPTIONAL_UNTIL: "내일" })),
+    ).toThrow();
   });
 });
 
