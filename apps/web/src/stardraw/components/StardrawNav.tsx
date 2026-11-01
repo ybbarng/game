@@ -84,17 +84,6 @@ function MoreList({
     "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left hover:bg-white/10";
   return (
     <div className="flex flex-col gap-1">
-      {/*
-        휴대폰의 게임 목록 길은 여기 하나(첫 화면 제목 줄 화살표는 링크로 들어온 사람에게 "뒤로"로 읽혀 뺐다, 2026-11-01 사용자).
-        PC는 메뉴 줄 맨 왼쪽에 있어 겹치지 않게 뺀다. 모양은 아래 다른 페이지 항목과 같다
-      */}
-      <a
-        href="/"
-        data-games-link
-        className={cn(row, "sd-phone-only text-white/75")}
-      >
-        게임 목록
-      </a>
       {a && (
         <a
           href={services.ns === GAME_NS ? "/stardraw/id" : undefined}
@@ -112,6 +101,32 @@ function MoreList({
           {label}
         </a>
       ))}
+      {/*
+        휴대폰의 게임 목록 길은 여기 하나(첫 화면 제목 줄 화살표는 링크로 들어온 사람에게 "뒤로"로 읽혀 뺐다, 2026-11-01 사용자).
+        별 따기 밖으로 나가는 길이라 맨 아래에 줄을 긋고 두고, 게임 모음 그림을 앞에 붙여 눈에 띄게 한다(2026-11-01 사용자).
+        PC는 메뉴 줄 맨 왼쪽에 있어 겹치지 않게 뺀다
+      */}
+      <div
+        aria-hidden="true"
+        className="sd-phone-only mx-3 my-1 h-px bg-white/10"
+      />
+      <a
+        href="/"
+        data-games-link
+        className={cn(row, "sd-phone-only justify-start gap-2.5 text-white/85")}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="size-5 fill-none stroke-current stroke-[1.7]"
+        >
+          <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+          <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+          <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+          <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+        </svg>
+        게임 목록
+      </a>
     </div>
   );
 }
@@ -350,10 +365,11 @@ function BottomBar({
             aria-label="더 보기"
             className="fixed inset-x-0 z-40 mx-auto border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] max-w-xl overflow-y-auto rounded-t-3xl px-3 pt-3"
             style={{
-              bottom: "calc(env(safe-area-inset-bottom, 0px) + 60px)",
+              // 탭바 뒤까지 내려 틈이 생기지 않게 한다(위치를 탭바 높이 숫자로 맞추면 실제 높이와 어긋나 뒤 화면이 비쳤다)
+              bottom: 0,
               paddingLeft: "max(12px, env(safe-area-inset-left, 0px))",
               paddingRight: "max(12px, env(safe-area-inset-right, 0px))",
-              paddingBottom: 12,
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
             }}
           >
             <MoreList services={services} keyInfo={keyInfo} />

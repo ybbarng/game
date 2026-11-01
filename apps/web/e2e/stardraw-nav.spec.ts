@@ -292,8 +292,8 @@ test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오�
 
 /**
  * 2026-11-01 사용자: 첫 화면의 「← 게임 목록」이 한 줄을 따로 차지해 아쉬웠고, 제목 줄에 겹친 「<」는 링크로 바로 들어온
- * 사람에게 "아까 있던 곳으로"로 읽혔다. 게임 목록 길은 PC 메뉴 줄 맨 왼쪽 「게임 목록」, 휴대폰 더 보기 맨 위 「게임 목록」
- * 하나씩이고 화살표가 없다. 입구(등록 전)는 우주국 안내가 제목·소개 문구 아래, 정답 예시 하늘 위에 온다
+ * 사람에게 "아까 있던 곳으로"로 읽혔다. 게임 목록 길은 PC 메뉴 줄 맨 왼쪽 「게임 목록」, 휴대폰 더 보기 맨 아래 「게임 목록」
+ * 하나씩이고 화살표가 없다. 휴대폰 더 보기에서는 나가는 길이라 맨 아래에 그림과 함께 둔다. 입구(등록 전)는 우주국 안내가 제목·소개 문구 아래, 정답 예시 하늘 위에 온다
  */
 test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 하나", async ({
   page,
@@ -324,6 +324,20 @@ test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 
       .getByRole("dialog", { name: "더 보기" })
       .getByRole("link", { name: "게임 목록", exact: true });
     await expect(item).toBeVisible();
+    // 나가는 길이라 맨 아래 항목
+    const sheet = page.getByRole("dialog", { name: "더 보기" });
+    await expect(sheet.getByRole("link").last()).toHaveAttribute(
+      "data-games-link",
+    );
+    // 더 보기 판과 탭바 사이에 뒤 화면이 비치는 틈이 없다
+    const sheetBox = await sheet.boundingBox();
+    const barBox = await page
+      .getByRole("navigation", { name: "별 따기 메뉴" })
+      .boundingBox();
+    expect((sheetBox?.y ?? 0) + (sheetBox?.height ?? 0)).toBeGreaterThanOrEqual(
+      barBox?.y ?? Number.POSITIVE_INFINITY,
+    );
+    await page.screenshot({ path: info.outputPath("more-sheet.png") });
     await item.click();
   } else {
     await expect(games).toHaveCount(1);
