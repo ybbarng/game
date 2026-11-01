@@ -21,7 +21,11 @@ export default defineConfig({
     // 연출이 있는 길을 보는 시험만 `emulateMedia({ reducedMotion: "no-preference" })`로 켠다.
     contextOptions: { reducedMotion: "reduce" },
   },
+  // 차례가 CI 조각 나누기에 영향을 준다. Playwright는 프로젝트 차례로 시험을 늘어놓고 앞에서부터 같은 개수로
+  // 자르는데, 휴대폰 화면은 시험 안에서 건너뛰는 것이 많아 실제 일은 데스크톱에 몰린다(시간 합의 약 60%).
+  // 데스크톱을 맨 앞에 두면 조각 1이 데스크톱 전부를 맡아(약 585초 대 294초, 2026-11-01) 가운데에 둔다(약 480 대 400)
   projects: [
+    { name: "phone-portrait", use: { ...devices["Pixel 7"] } },
     {
       name: "desktop",
       use: {
@@ -29,7 +33,6 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
     },
-    { name: "phone-portrait", use: { ...devices["Pixel 7"] } },
     { name: "phone-landscape", use: { ...devices["Pixel 7 landscape"] } },
   ],
   webServer: {
