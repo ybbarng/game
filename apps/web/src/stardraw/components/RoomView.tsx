@@ -28,6 +28,7 @@ import {
   savedPass,
 } from "../room-client";
 import { roomPhase } from "../room-phase";
+import { roomSeat } from "../room-seat";
 import { LIVE_LEAD_MS, LIVE_ROULETTE_TIMING, planRoulette } from "../roulette";
 import { roundTitle } from "../round-label";
 import { type Services, serverApi } from "../services";
@@ -142,6 +143,16 @@ function LanternBubble({
     </span>
   );
 }
+
+/**
+ * 방 입장 신분증 제시 틀의 작은 글: 무엇을 위해 내는지와 남에게 무엇이 보이는지(docs/36 11-23 ① 사람·고른 별).
+ * 얼굴·이름은 등록증의 공개 열쇠에서, 응모했는지는 봉인 전부터, 고른 별은 봉인(마감) 뒤에 보인다
+ */
+export const ROOM_PASS_NOTE =
+  "같은 회차를 기다리는 우주인들과 이야기하기 위한 제시예요. 다른 우주인에게는 등록증의 얼굴과 이름, 응모했는지가 보이고, 마감 뒤에는 고른 별도 보여요.";
+/** 장부 등록이 아직 없는 등록증으로 방에서 처음 제시할 때(등록 증명 서명) */
+export const ROOM_REGISTER_NOTE =
+  "대화하려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
 
 interface Spark {
   key: string;
@@ -401,6 +412,7 @@ export function RoomView({
             ),
           {
             verb: "제시",
+            note: ROOM_REGISTER_NOTE,
             pub: k.pub,
             tap: true,
             done: `${residentPhrase(astronautOf(k.pub))} 님, 장부에 등록하겠습니다.`,
@@ -448,6 +460,7 @@ export function RoomView({
     const got = await id
       .run(() => client.issuePass(signer, used), {
         verb: "제시",
+        note: ROOM_PASS_NOTE,
         pub: key.pub,
         tap: true,
         done: `${residentPhrase(astronautOf(key.pub))} 님, 어서 오세요.`,
@@ -588,6 +601,12 @@ export function RoomView({
   }, [phase, round]);
 
   const visible = order.current.filter((i) => people.has(i));
+  const seat = roomSeat({
+    pass: pass !== null,
+    hasKey,
+    canJoin: !closed && now < drawAt * 1000,
+    others: visible.filter((i) => i !== me).length,
+  });
   const faces = visible.slice(0, FACES);
   const more = visible.length - faces.length;
   const lit = new Set<number>();
@@ -756,13 +775,83 @@ export function RoomView({
               +{more}
             </span>
           )}
-          {faces.length === 0 && (
-            <span className="py-3 text-sm text-white/50">
-              아직 아무도 오지 않았어요.
-            </span>
+          {/* 신분증을 내기 전 내 자리: 내 화면에만 흐리게(남에게는 보이지 않는다). 누르면 신분증 제시 */}
+          {!seat.joined && (
+            <button
+              type="button"
+              data-face-pending
+              aria-label="내 자리, 다른 우주인에게 보이지 않음"
+              disabled={!seat.join}
+              onClick={() => void ensurePass()}
+              className="relative size-12 overflow-hidden rounded-full border border-white/40 border-dashed"
+            >
+              {key ? (
+                <Avatar
+                  face={astronautOf(key.pub).face}
+                  egg={astronautOf(key.pub).egg}
+                  label=""
+                  className="size-full scale-125 opacity-35 grayscale"
+                />
+              ) : (
+                <span className="text-white/45 text-xs">나</span>
+              )}
+            </button>
           )}
         </div>
+        {seat.hill && (
+          <p className="pt-2 text-center text-sm text-white/50">{seat.hill}</p>
+        )}
       </div>
+
+      {/* 지금 내 자리: 조용히 관측 중(남의 말은 보이지만 나는 보이지 않음) / 대화 참여 중 */}
+      {!closed &&
+        (seat.joined ? (
+          <p data-room-seat="joined" className="flex justify-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-300/15 px-3 py-1 font-semibold text-sky-100 text-xs">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-sky-200"
+              />
+              {seat.badge}
+            </span>
+          </p>
+        ) : (
+          <div
+            data-room-seat="watching"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full border border-white/60"
+              />
+              {seat.badge}
+            </span>
+            {seat.note && (
+              <p className="break-keep text-sm text-white/70">{seat.note}</p>
+            )}
+            {seat.join && (
+              <button
+                type="button"
+                onClick={() => void ensurePass()}
+                disabled={setup.working !== null || registeringNow}
+                className="sd-cta w-full max-w-xs rounded-2xl py-2.5 font-bold text-slate-950 text-sm disabled:opacity-50"
+              >
+                {seat.join}
+              </button>
+            )}
+            {seat.join && !hasKey && (
+              <button
+                type="button"
+                onClick={() => void setup.recover()}
+                disabled={setup.working !== null}
+                className="text-sm text-white/70 underline underline-offset-2"
+              >
+                이미 등록했어요 · 신분증 제시
+              </button>
+            )}
+          </div>
+        ))}
 
       {/* 아래: 내가 하는 일(말하기·별똥별) */}
       {closed ? (
@@ -820,16 +909,6 @@ export function RoomView({
             </button>
           )}
         </form>
-      )}
-      {!closed && !hasKey && (
-        <button
-          type="button"
-          onClick={() => void setup.recover()}
-          disabled={setup.working !== null}
-          className="self-center text-sm text-white/70 underline underline-offset-2"
-        >
-          이미 등록했어요 · 신분증 제시
-        </button>
       )}
       {registeringNow && (
         <p className="text-center text-white/60 text-xs">

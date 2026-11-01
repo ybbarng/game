@@ -12,6 +12,8 @@ export interface IdPresent {
   card: CardSpot;
   checked: boolean;
   text: string;
+  /** 위쪽 문구 아래 작은 글(제시하는 까닭). 결과 문구로 바뀌면 걷힌다 */
+  note: string | null;
   closing: boolean;
   /** 사람이 등록증을 내밀기(밀어 올리거나 누르기)를 기다리는 중 */
   asking: boolean;
@@ -46,6 +48,8 @@ export function useIdPresent(services: Services) {
       verb: IdVerb;
       /** 위쪽 문구를 따로 정할 때(발급: "패스키로 우주인 등록증을 발급합니다.") */
       text?: string;
+      /** 위쪽 문구 아래 작은 글: 무엇을 위해 제시하는지와 무엇이 보이는지 */
+      note?: string;
       /** 카드 단추 이름을 따로 정할 때(발급: "등록증 발급") */
       label?: string;
       /** 누구인지 모를 때 실루엣 카드로 기다린다 */
@@ -88,6 +92,7 @@ export function useIdPresent(services: Services) {
       card: "hidden",
       checked: false,
       text: opts.text ?? idText(opts.verb),
+      note: opts.note ?? null,
       closing: false,
       asking: false,
       label: opts.label ?? `신분증 ${opts.verb}`,
@@ -156,6 +161,7 @@ export function useIdPresent(services: Services) {
     if (opts.done)
       go({
         text: typeof opts.done === "function" ? opts.done(got) : opts.done,
+        note: null,
       });
     await wait(opts.hold ?? FX.idHold);
     go({ card: "hidden" });
@@ -195,6 +201,7 @@ export function IdPresentView({
       card={p.card}
       checked={p.checked}
       text={p.text}
+      note={p.note}
       closing={p.closing}
       backdrop={backdrop}
       blank={p.blank}

@@ -24,6 +24,7 @@ export function IdFlyer({
   card,
   checked = false,
   text,
+  note,
   closing = false,
   backdrop = true,
   press,
@@ -47,6 +48,8 @@ export function IdFlyer({
   checked?: boolean;
   /** 위쪽 고정 자리 문구(바뀌면 부드럽게 바뀐다) */
   text?: ReactNode;
+  /** 위쪽 문구 아래 작은 글: 무엇을 위해 제시하는지와 무엇이 보이는지(회차 방 대화 등) */
+  note?: ReactNode;
   /** 걷히는 중 */
   closing?: boolean;
   backdrop?: boolean;
@@ -87,6 +90,14 @@ export function IdFlyer({
           className="sd-text-in relative min-h-14 break-keep px-6 text-center font-bold text-amber-100 text-lg"
         >
           {text}
+        </p>
+      )}
+      {note && (
+        <p
+          data-id-note
+          className="sd-text-in relative -mt-6 max-w-sm break-keep px-6 text-center text-sm text-white/70 leading-relaxed"
+        >
+          {note}
         </p>
       )}
       <div className="relative flex w-full flex-1 flex-col items-center justify-center gap-5">
