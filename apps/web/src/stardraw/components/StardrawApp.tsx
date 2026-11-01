@@ -1236,6 +1236,21 @@ function ReceiptView({
         onDraw={() => onDraw(mine.ticket.round)}
       />
       <ShareTicket services={services} ticket={mine.ticket} />
+      {/*
+        결과 전에는 첫 화면 회차 카드와 같은 「추첨 보러 가기」(서버가 있으면 회차 방, 없으면 추첨 기다림 화면). 장부를
+        1초마다 다시 읽어 그리므로 영수증을 열어 둔 채 결과가 나오면 영수증 안 「추첨 보기」로 바뀐다(2026-11-01 사용자).
+        막 응모해 영수증이 인쇄되어 나오는 동안에는 두지 않는다(연출과 겹치지 않게)
+      */}
+      {!record && !(printing && !reduce && !printed) && (
+        <button
+          type="button"
+          onClick={() => onDraw(mine.ticket.round)}
+          data-go-draw={mine.ticket.round}
+          className="sd-cta rounded-2xl py-3 font-bold text-slate-950"
+        >
+          추첨 보러 가기
+        </button>
+      )}
       {record && !sealed && (
         <button
           type="button"

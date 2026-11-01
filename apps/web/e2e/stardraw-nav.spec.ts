@@ -245,6 +245,44 @@ test("화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아
   await expect(backButtons).toHaveCount(0);
 });
 
+/**
+ * 2026-11-01 사용자: 영수증을 열어 둔 채 추첨을 기다리면 추첨(회차 방)으로 가는 길이 없었다. 결과 전에는 첫 화면 회차
+ * 카드와 같은 「추첨 보러 가기」가 있고, 영수증을 연 채로 결과가 나오면 새로고침 없이 「추첨 보기」로 바뀐다
+ */
+test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오면 「추첨 보기」", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  await virtualAuthenticator(page);
+  const id = await registerAndEnter(page);
+  const goDraw = page.getByRole("button", { name: "추첨 보러 가기" });
+  await expect(goDraw).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("receipt-draw-wait.png"),
+    fullPage: true,
+  });
+  await goDraw.click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+
+  // 영수증으로 돌아와 연 채로 1회 추첨 시각(13:00)을 넘기면 결과를 가린 「추첨 보기」로 바뀐다
+  await page.goBack();
+  await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
+  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  const drawFirst = page.locator("[data-receipt] [data-draw-first='1']");
+  await expect(drawFirst).toBeVisible({ timeout: 30_000 });
+  await expect(goDraw).toHaveCount(0);
+  await page.screenshot({
+    path: info.outputPath("receipt-draw-ready.png"),
+    fullPage: true,
+  });
+  await drawFirst.click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
+  await expect(page.locator("[data-draw-result]")).toBeVisible({
+    timeout: 30_000,
+  });
+});
+
 /** 휴대폰 제목 줄의 「게임 목록」 화살표가 제목 글자와 겹치지 않는지 */
 async function gamesCornerClear(page: Page) {
   const link = await page.locator("[data-games-link]:visible").boundingBox();
