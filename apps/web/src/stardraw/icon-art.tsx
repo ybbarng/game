@@ -1,7 +1,9 @@
 /**
  * 하늘의 별 따기 앱 아이콘 그림(`next/og` ImageResponse용 JSX): 밤하늘에 흐린 별자리 선과 별,
  * 가운데 노란 로또 공에 별빛 하나가 내려앉는다. 공통 `IconArt`가 `game === "stardraw"`이면 이것을 그린다.
- * 글꼴을 넣지 않으려고 글자는 쓰지 않는다
+ * 글꼴을 넣지 않으려고 글자는 쓰지 않는다.
+ * `maskable`(홈 화면 아이콘)이면 하늘은 끝까지 채우고 그 위의 그림만 가운데 80%로 줄인다.
+ * 하늘까지 줄이면 바깥 띠가 단색으로 남아 안쪽 네모 경계가 보인다
  */
 export function StardrawIconArt({ maskable = false }: { maskable?: boolean }) {
   const stars: [number, number, number][] = [
@@ -28,36 +30,30 @@ export function StardrawIconArt({ maskable = false }: { maskable?: boolean }) {
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          width: maskable ? "80%" : "100%",
-          height: maskable ? "80%" : "100%",
-        }}
+      <svg
+        viewBox="0 0 100 100"
+        width="100%"
+        height="100%"
+        aria-hidden="true"
+        style={{ display: "flex" }}
       >
-        <svg
-          viewBox="0 0 100 100"
-          width="100%"
-          height="100%"
-          aria-hidden="true"
-          style={{ display: "flex" }}
-        >
-          <defs>
-            <radialGradient id="sd-sky" cx="70%" cy="0%" r="100%">
-              <stop offset="0%" stopColor="#1e3358" />
-              <stop offset="100%" stopColor="#0b1322" />
-            </radialGradient>
-            <radialGradient id="sd-ball" cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#fff7d1" />
-              <stop offset="40%" stopColor="#f6c343" />
-              <stop offset="100%" stopColor="#b7861d" />
-            </radialGradient>
-            <radialGradient id="sd-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#fde68a" stopOpacity="0.55" />
-              <stop offset="100%" stopColor="#fde68a" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <rect width="100" height="100" fill="url(#sd-sky)" />
+        <defs>
+          <radialGradient id="sd-sky" cx="70%" cy="0%" r="100%">
+            <stop offset="0%" stopColor="#1e3358" />
+            <stop offset="100%" stopColor="#0b1322" />
+          </radialGradient>
+          <radialGradient id="sd-ball" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#fff7d1" />
+            <stop offset="40%" stopColor="#f6c343" />
+            <stop offset="100%" stopColor="#b7861d" />
+          </radialGradient>
+          <radialGradient id="sd-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fde68a" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#fde68a" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#sd-sky)" />
+        <g transform={maskable ? "translate(10 10) scale(0.8)" : undefined}>
           {/* 흐린 별자리 선 */}
           <polyline
             points="18,22 33,14 52,20 80,16 88,38"
@@ -88,8 +84,8 @@ export function StardrawIconArt({ maskable = false }: { maskable?: boolean }) {
             fill="#ffffff"
             fillOpacity="0.92"
           />
-        </svg>
-      </div>
+        </g>
+      </svg>
     </div>
   );
 }
