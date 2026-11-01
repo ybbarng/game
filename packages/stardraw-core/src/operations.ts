@@ -682,6 +682,38 @@ function directorTaken(state: OpsState, pub: Uint8Array): boolean {
   );
 }
 
+/**
+ * 이름이 겹치는 소속이 있는지(2026-11-01 별도 검토 5번). 서버는 소속 이름으로 발급 설정을 찾으므로 같은 이름이 둘이면
+ * 한 직원이 두 소속에서 증서를 한 장씩 받는다. 끝나지 않은 소속, 예고 중인 추가·바꾸기의 이름과 견준다.
+ * except는 바꾸는 중인 소속 자신(이름을 그대로 두는 바꾸기는 막지 않는다)
+ */
+function affiliationNameTaken(
+  state: OpsState,
+  name: string,
+  round: number,
+  except: Uint8Array | null,
+): boolean {
+  const key = name.normalize("NFC");
+  const same = (n: string) => n.normalize("NFC") === key;
+  const other = (id: Uint8Array) => except === null || !equalBytes(id, except);
+  if (
+    state.affiliations.some(
+      (a) =>
+        other(a.id) &&
+        (a.until === null || a.until > round) &&
+        same(a.fields.name),
+    )
+  )
+    return true;
+  return state.ops.some((e) => {
+    if (e.status !== "pending") return false;
+    if (e.op.kind === "affiliation-add") return same(e.op.fields.name);
+    if (e.op.kind === "affiliation-update")
+      return other(e.op.target) && same(e.op.fields.name);
+    return false;
+  });
+}
+
 function pendingOn(
   state: OpsState,
   kind: OpKind,
@@ -777,6 +809,8 @@ export async function checkOperation(
       const problem = checkAffiliationFields(op.fields);
       if (problem) return problem;
       if (op.fields.issued !== 0) return "소속 추가의 발급 수는 0";
+      if (affiliationNameTaken(state, op.fields.name, round, null))
+        return "같은 이름의 소속이 이미 있다";
       return null;
     }
     case "affiliation-update":
@@ -793,9 +827,12 @@ export async function checkOperation(
         )
       )
         return "끝내기 예고 중인 소속이다";
-      return op.kind === "affiliation-update"
-        ? checkAffiliationFields(op.fields)
-        : null;
+      if (op.kind === "affiliation-end") return null;
+      const problem = checkAffiliationFields(op.fields);
+      if (problem) return problem;
+      if (affiliationNameTaken(state, op.fields.name, round, op.target))
+        return "같은 이름의 소속이 이미 있다";
+      return null;
     }
     case "cancel": {
       const target = find(state, op.target);

@@ -358,6 +358,61 @@ describe("공격: 모두 거절된다", () => {
     ]);
   });
 
+  it("이름이 같은 소속을 하나 더 추가하기(예고 중이거나 효력이 생긴 소속과 같은 이름)", async () => {
+    const c = await withDirector();
+    await c.close([await addAffiliation(c, director)]);
+    // 예고 중인 추가와 같은 이름
+    await c.close([await addAffiliation(c, director)]);
+    await c.until(c.next + 30);
+    // 효력이 생긴 소속과 같은 이름
+    await c.close([await addAffiliation(c, director)]);
+    expect(await c.problems()).toEqual([
+      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
+      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
+    ]);
+  });
+
+  it("다른 소속의 이름으로 바꾸기는 막고, 자기 이름을 그대로 두는 바꾸기는 받는다", async () => {
+    const c = await withDirector();
+    const first = await addAffiliation(c, director);
+    await c.close([first]);
+    const second = await signAsDirector(
+      c.body({
+        kind: "affiliation-add",
+        effectiveRound: c.next + 25,
+        fields: { ...TEST_FIELDS, name: "꿀벌 성단" },
+      }),
+      director,
+    );
+    await c.close([second]);
+    await c.until(c.next + 30);
+    await c.close([
+      await signAsDirector(
+        c.body({
+          kind: "affiliation-update",
+          effectiveRound: c.next + 25,
+          target: opId(second),
+          fields: TEST_FIELDS,
+        }),
+        director,
+      ),
+    ]);
+    await c.close([
+      await signAsDirector(
+        c.body({
+          kind: "affiliation-update",
+          effectiveRound: c.next + 25,
+          target: opId(first),
+          fields: { ...TEST_FIELDS, method: "회사 구글 계정 다시 확인" },
+        }),
+        director,
+      ),
+    ]);
+    expect(await c.problems()).toEqual([
+      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
+    ]);
+  });
+
   it("예고 없이 바로 적용(효력 회차를 다음 회차로)", async () => {
     const c = await withDirector();
     const round = c.next;
