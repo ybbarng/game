@@ -55,7 +55,7 @@ export function kstClock(seconds: number): string {
  * 접수 반송: 마감 뒤에 도착한 응모권은 영수증 대신 출력구에서 냈던 응모 용지(칠한 칸 그대로, 회차 표시)가 돌아오고,
  * 다 나오면 빨간 「접수 반송」 도장이 찍힌다. 아래에 사유와 우주국이 받은 시각(작게). 반송은 내 응모에 남기지 않는다.
  * 「이 용지 보관하기」는 용지를 아래로 내려 챙기고(onKeep, 다음 회차 응모 페이지의 「이 용지로 응모」), 이어서
- * "이번 회차 추첨을 보러 갈까요?"로 「추첨 보러 가기」·「첫 화면으로」. 작은 「닫기」는 보관하지 않고 버린다.
+ * "이번 회차 관측지로 가 볼까요?"로 「관측지로 가기」·「첫 화면으로」. 작은 「닫기」는 보관하지 않고 버린다.
  * 다음 회차가 열리기까지(앞 회차 추첨) 몇 분 걸려 이 자리에 붙잡아 두지 않는다(2026-11-01 사용자)
  */
 export function BounceSlip({
@@ -96,7 +96,7 @@ export function BounceSlip({
         className="sd-text-in sd-submit-status min-h-14 break-keep text-center font-bold text-amber-100 text-lg"
       >
         {phase === "kept"
-          ? "이번 회차 추첨을 보러 갈까요?"
+          ? "이번 회차 관측지로 가 볼까요?"
           : "응모가 마감되었습니다."}
       </p>
       {phase !== "kept" && (
@@ -144,7 +144,7 @@ export function BounceSlip({
               onClick={onDraw}
               className="sd-text-in sd-cta w-full max-w-sm rounded-2xl py-3.5 font-bold text-lg text-slate-950"
             >
-              추첨 보러 가기
+              관측지로 가기
             </button>
             <button
               type="button"

@@ -65,11 +65,11 @@ export default function StardrawPrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="font-bold text-base text-white">회차 방</h2>
+        <h2 className="font-bold text-base text-white">관측지</h2>
         <p>
-          회차 방의 대화와 응원은 저장하지 않습니다. 서버는 받은 말을 그 순간
-          방에 있는 사람들에게 건네주기만 하고, 방이 닫히면 남는 것이 없습니다.
-          방에서 말하는 사람은 우주인 등록증 이름과 얼굴로 보입니다.
+          관측지의 대화와 응원은 저장하지 않습니다. 서버는 받은 말을 그 순간
+          관측지에 있는 사람들에게 건네주기만 하고, 관측을 마치면 남는 것이
+          없습니다. 언덕에서 말하는 사람은 우주인 등록증 이름과 얼굴로 보입니다.
         </p>
 
         <h2 className="font-bold text-base text-white">방문 통계</h2>

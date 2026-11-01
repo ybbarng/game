@@ -1005,10 +1005,10 @@ test("데모 둘러보기 연출: 영수증 출력이 오버레이로 나왔다 
 });
 
 /**
- * 「추첨 보러 가기」로 결과 전에 들어가면 남은 시간을 보이며 기다리고, 결과가 들어오는 순간 추첨으로 바뀐다.
+ * 「관측지로 가기」로 결과 전에 들어가면 남은 시간을 보이며 기다리고, 결과가 들어오는 순간 추첨으로 바뀐다.
  * 결과 전에 나가면 "열어 봄"이 남지 않아 정답 가리기가 그대로다(연습 장부의 건너뛰기로 결과를 결정적으로 들인다)
  */
-test("추첨 보러 가기: 결과 전에는 기다리고, 결과가 오면 바로 추첨", async ({
+test("관측지로 가기: 결과 전에는 기다리고, 결과가 오면 바로 추첨", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1191,7 +1191,7 @@ async function bounceAndKeep(page: Page) {
       .getByRole("button", { name: "닫기" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "이 용지 보관하기" }).click();
-  await expect(page.getByText("이번 회차 추첨을 보러 갈까요?")).toBeVisible();
+  await expect(page.getByText("이번 회차 관측지로 가 볼까요?")).toBeVisible();
   return card;
 }
 
@@ -1205,7 +1205,7 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
   await bounceAndKeep(page);
-  await page.getByRole("button", { name: "추첨 보러 가기" }).click();
+  await page.getByRole("button", { name: "관측지로 가기" }).click();
   await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
   // 1회 추첨(마감 5분 뒤 13:00)이 끝나 2회가 열리면 추첨 결과 아래 「다음 회차 응모」
   await page.emulateMedia({ reducedMotion: "reduce" });

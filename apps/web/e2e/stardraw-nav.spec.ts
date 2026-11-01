@@ -247,15 +247,15 @@ test("화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아
 
 /**
  * 2026-11-01 사용자: 영수증을 열어 둔 채 추첨을 기다리면 추첨(회차 방)으로 가는 길이 없었다. 결과 전에는 첫 화면 회차
- * 카드와 같은 「추첨 보러 가기」가 있고, 영수증을 연 채로 결과가 나오면 새로고침 없이 「추첨 보기」로 바뀐다
+ * 카드와 같은 「관측지로 가기」가 있고, 영수증을 연 채로 결과가 나오면 새로고침 없이 「추첨 보기」로 바뀐다
  */
-test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오면 「추첨 보기」", async ({
+test("영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면 「추첨 보기」", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
   await virtualAuthenticator(page);
   const id = await registerAndEnter(page);
-  const goDraw = page.getByRole("button", { name: "추첨 보러 가기" });
+  const goDraw = page.getByRole("button", { name: "관측지로 가기" });
   await expect(goDraw).toBeVisible();
   // 결과 전 영수증 아래쪽은 상태 문구가 아니라 맺음말(상태는 영수증 밖 단추가 맡는다)
   const receipt = page.locator(`[data-receipt='${id}']`);

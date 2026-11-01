@@ -114,7 +114,7 @@ export class RoomClient {
       error?: string;
     } & T;
     if (!res.ok)
-      throw new RoomError(data.error ?? "방에 닿지 못했어요", res.status);
+      throw new RoomError(data.error ?? "관측지에 닿지 못했어요", res.status);
     return data;
   }
 
@@ -196,12 +196,15 @@ export class RoomClient {
         signal: abort.signal,
       });
     } catch {
-      if (!abort.signal.aborted) onEnd(new RoomError("방에 닿지 못했어요", 0));
+      if (!abort.signal.aborted)
+        onEnd(new RoomError("관측지에 닿지 못했어요", 0));
       return;
     }
     if (!res.ok || !res.body) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      onEnd(new RoomError(data.error ?? "방에 들어가지 못했어요", res.status));
+      onEnd(
+        new RoomError(data.error ?? "관측지에 들어가지 못했어요", res.status),
+      );
       return;
     }
     const reader = res.body.getReader();

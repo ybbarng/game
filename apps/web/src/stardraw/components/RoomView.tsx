@@ -150,10 +150,10 @@ function LanternBubble({
  * 얼굴·이름은 등록증의 공개 열쇠에서, 응모했는지는 봉인 전부터, 고른 별은 봉인(마감) 뒤에 보인다
  */
 export const ROOM_PASS_NOTE =
-  "같은 회차를 기다리는 우주인들과 이야기하기 위한 제시예요. 다른 우주인에게는 등록증의 얼굴과 이름, 응모했는지가 보이고, 마감 뒤에는 고른 별도 보여요.";
+  "언덕에 올라 같은 회차를 기다리는 우주인들과 이야기하기 위한 제시예요. 다른 우주인에게는 등록증의 얼굴과 이름, 응모했는지가 보이고, 마감 뒤에는 고른 별도 보여요.";
 /** 장부 등록이 아직 없는 등록증으로 방에서 처음 제시할 때(등록 증명 서명) */
 export const ROOM_REGISTER_NOTE =
-  "대화하려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
+  "언덕에 오르려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
 
 interface Spark {
   key: string;
@@ -468,7 +468,9 @@ export function RoomView({
         done: `${residentPhrase(astronautOf(key.pub))} 님, 어서 오세요.`,
       })
       .catch((err) => {
-        setSendNote(errorText(err, "방에 들어가", "방에 들어가지 않았어요"));
+        setSendNote(
+          errorText(err, "관측지에 들어가", "관측지에 들어가지 않았어요"),
+        );
         return null;
       });
     if (!got) return null;
@@ -575,7 +577,7 @@ export function RoomView({
             : phase === "live"
               ? `${title} 추첨 중이에요.`
               : closed
-                ? "방을 닫았어요."
+                ? "관측을 마쳤어요."
                 : `${title} 추첨이 끝났어요.`;
 
   // 로컬 데모 바로가기로 왔으면: 이 방의 추첨이 끝난 뒤 잠깐 머물다(결과 이야기) 다음 추첨 회차 방으로
@@ -630,7 +632,7 @@ export function RoomView({
 
   return (
     <section
-      aria-label={`${title} 방`}
+      aria-label={`관측지 · ${title} 관측`}
       data-room={round}
       className="flex flex-col gap-3"
     >
@@ -647,6 +649,15 @@ export function RoomView({
           함께 보는 {people.size + watchers}명
         </span>
       </div>
+
+      {/* 제목: 어디서 무엇을 보는지(docs/36 11-34) */}
+      <h1
+        data-room-title
+        className="flex flex-col items-center gap-0.5 text-center"
+      >
+        <span className="text-white/55 text-xs tracking-wide">관측지</span>
+        <span className="font-bold text-lg">{title} 관측</span>
+      </h1>
 
       <p
         role="status"
@@ -807,7 +818,7 @@ export function RoomView({
         )}
       </div>
 
-      {/* 지금 내 자리: 조용히 관측 중(남의 말은 보이지만 나는 보이지 않음) / 대화 참여 중 */}
+      {/* 지금 내 자리: 숨어서 관측 중(남의 말은 보이지만 나는 보이지 않음) / 언덕에서 관측 중 */}
       {!closed &&
         (seat.joined ? (
           <p data-room-seat="joined" className="flex justify-center">
@@ -1003,7 +1014,7 @@ export function RoomView({
           services={services}
           setup={setup}
           overlay
-          goLabel="방으로 돌아가기"
+          goLabel="관측지로 돌아가기"
         />
       )}
     </section>

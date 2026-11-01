@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { RoomShortcut } from "@/stardraw/components/RoomShortcut";
 
 export const metadata: Metadata = {
-  title: { absolute: "회차 방 · 하늘의 별 따기" },
+  title: { absolute: "관측지 · 하늘의 별 따기" },
   robots: { index: false },
 };
 

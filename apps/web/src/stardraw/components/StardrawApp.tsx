@@ -803,7 +803,7 @@ export function Gate({
           data-gate-live={live}
           className="self-center rounded-2xl border border-amber-200/50 px-5 py-2.5 font-semibold text-amber-100 text-sm hover:bg-amber-200/10"
         >
-          추첨 보러 가기
+          관측지로 가기
         </button>
       )}
       <KeySetup
@@ -923,7 +923,7 @@ export function RoundCard({
           onClick={() => onDraw(live)}
           className="sd-cta w-full max-w-xs rounded-2xl py-4 font-black text-slate-950 text-xl"
         >
-          추첨 보러 가기
+          관측지로 가기
         </button>
       </section>
     );
@@ -995,9 +995,9 @@ export function RoundCard({
       {/*
         창구 말 한 줄(상태 × 내 응모 여부, 2026-10-31 사용자):
         응모 중·안 함 "아직 이번 회차에 응모하지 않으셨어요." / 응모 중·함 "추첨이 끝나면 이 자리에서 알려 드릴게요."
-        응모함·마감 카드는 모두 「추첨 보러 가기」로 이끈다(2026-10-31 사용자):
-        응모 중·함 "(추첨 시각) 추첨을 함께 지켜봐 주세요." / 마감·함 "곧 추첨이 시작됩니다. 추첨을 보러 갈까요?" /
-        마감·안 함 "추첨은 누구나 볼 수 있어요. 추첨을 보러 갈까요?" + 아래 작은 줄에 다음 회차 응모 시각
+        응모함·마감 카드는 모두 「관측지로 가기」로 이끈다(2026-10-31 사용자):
+        응모 중·함 "(추첨 시각) 추첨을 함께 지켜봐 주세요." / 마감·함 "곧 추첨이 시작됩니다. 관측지로 가 볼까요?" /
+        마감·안 함 "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?" + 아래 작은 줄에 다음 회차 응모 시각
       */}
       <p
         className="-mt-2 break-keep text-sm text-white/70"
@@ -1016,8 +1016,8 @@ export function RoundCard({
             ? `${clockOf(drawAt)} 추첨을 함께 지켜봐 주세요.`
             : "아직 이번 회차에 응모하지 않으셨어요."
           : ticket
-            ? "곧 추첨이 시작됩니다. 추첨을 보러 갈까요?"
-            : "추첨은 누구나 볼 수 있어요. 추첨을 보러 갈까요?"}
+            ? "곧 추첨이 시작됩니다. 관측지로 가 볼까요?"
+            : "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?"}
       </p>
       <div className="flex flex-col items-center gap-0.5">
         <span className="text-sm text-white/60">{bigLabel}</span>
@@ -1047,7 +1047,7 @@ export function RoundCard({
             data-go-draw={round}
             className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
           >
-            추첨 보러 가기
+            관측지로 가기
           </button>
           <button
             type="button"
@@ -1080,7 +1080,7 @@ export function RoundCard({
           data-go-draw={round}
           className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
         >
-          추첨 보러 가기
+          관측지로 가기
         </button>
       )}
       <span className="text-white/50 text-xs tabular-nums">
@@ -1235,7 +1235,7 @@ function ReceiptView({
       />
       <ShareTicket services={services} ticket={mine.ticket} />
       {/*
-        결과 전에는 첫 화면 회차 카드와 같은 「추첨 보러 가기」(서버가 있으면 회차 방, 없으면 추첨 기다림 화면). 장부를
+        결과 전에는 첫 화면 회차 카드와 같은 「관측지로 가기」(서버가 있으면 회차 방, 없으면 추첨 기다림 화면). 장부를
         1초마다 다시 읽어 그리므로 영수증을 열어 둔 채 결과가 나오면 영수증 안 「추첨 보기」로 바뀐다(2026-11-01 사용자).
         막 응모해 영수증이 인쇄되어 나오는 동안에는 두지 않는다(연출과 겹치지 않게)
       */}
@@ -1246,7 +1246,7 @@ function ReceiptView({
           data-go-draw={mine.ticket.round}
           className="sd-cta rounded-2xl py-3 font-bold text-slate-950"
         >
-          추첨 보러 가기
+          관측지로 가기
         </button>
       )}
       {record && !sealed && (
@@ -1402,7 +1402,7 @@ function DrawFor({
 }
 
 /**
- * 추첨을 기다리는 화면(「추첨 보러 가기」로 결과 전에 들어왔을 때, 실시간 추첨의 첫걸음). 그 회차 하늘(내 별이 있으면
+ * 추첨을 기다리는 화면(「관측지로 가기」로 결과 전에 들어왔을 때, 실시간 추첨의 첫걸음). 그 회차 하늘(내 별이 있으면
  * 표시)과 추첨까지 남은 시간. 장부를 매초 다시 읽으므로 결과가 들어오는 순간 DrawFor가 추첨 연출로 바꾼다.
  * 추첨 시각이 지났는데 아직 결과가 없으면(드랜드 값을 받는 중) 그렇게 알린다
  */

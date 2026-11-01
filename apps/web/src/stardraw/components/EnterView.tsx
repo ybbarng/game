@@ -109,7 +109,7 @@ export function EnterView({
   initialPicked?: readonly number[];
   /** 데모: 번호 칸 위에 더 둘 도구 */
   extra?: ReactNode;
-  /** 반송 뒤 「추첨 보러 가기」: 반송된 회차의 추첨 화면으로 */
+  /** 반송 뒤 「관측지로 가기」: 반송된 회차의 추첨 화면으로 */
   onWatchDraw?: ((round: number) => void) | undefined;
 }) {
   const [picked, setPicked] = useState<number[]>([...initialPicked]);
