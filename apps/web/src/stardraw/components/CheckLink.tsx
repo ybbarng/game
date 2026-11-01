@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  equalBytes,
-  type Rank,
-  roundTimes,
-  ticketId,
-  toHex,
-} from "@mighty/stardraw-core";
+import { type Rank, roundTimes, toHex } from "@mighty/stardraw-core";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { play } from "@/game/sound";
@@ -78,8 +72,7 @@ export function CheckLink({
   const { checker, ledger } = services;
 
   const ticketOf = useCallback(
-    (r: number, idHex: string) =>
-      ledger.ticketsOf(r).find((t) => toHex(ticketId(t)) === idHex),
+    (r: number, idHex: string) => ledger.findTicket(r, idHex),
     [ledger],
   );
 
@@ -96,9 +89,7 @@ export function CheckLink({
     }
     // 서버가 알려 준 응모권이 그 회차 당첨 응모권인지 공개 장부로 확인한다
     const record = ledger.record(peek.round);
-    const ticket = ledger
-      .ticketsOf(peek.round)
-      .find((t) => equalBytes(ticketId(t), peek.ticketId));
+    const ticket = await ledger.findTicket(peek.round, toHex(peek.ticketId));
     const rank = record && ticket ? myRank(record, ticket) : null;
     setState(
       rank
@@ -213,16 +204,15 @@ export function CheckLink({
   useEffect(() => {
     if (markRound === undefined || !markTicket) return;
     let alive = true;
-    void ledger
-      .qualInfo()
-      .then((info) => {
+    void Promise.all([ledger.qualInfo(), ledger.roundTickets(markRound)])
+      .then(([info, tickets]) => {
         if (!alive) return;
         const marks = qualMarks(
           ledger.schedule,
           info,
           markRound,
           roundTimes(ledger.schedule, markRound).closesAt,
-          ledger.ticketsOf(markRound),
+          tickets,
         );
         setMark(marks.get(markTicket) ?? null);
       })

@@ -2,6 +2,8 @@ import {
   drandRoundForClose,
   emptyWinners,
   type RoundRecord,
+  type RoundSummary,
+  rankOf,
   roundTimes,
   type Schedule,
   type ScheduleEntry,
@@ -60,18 +62,45 @@ function ticket(round: number, numbers: number[], pub: Uint8Array): Ticket {
   return { v: 1, round, numbers, pub, nonce: 0 } as unknown as Ticket;
 }
 
+/** 시험용 요약: 같은 조합 2장 이상(가짜 응모권은 id를 계산하지 않는다) */
+function summaryOf(list: readonly Ticket[]): RoundSummary {
+  const counts = new Map<string, number>();
+  for (const t of list) {
+    const k = [...t.numbers].sort((a, b) => a - b).join(",");
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return {
+    qualified: 0,
+    qualPubs: [],
+    twins: [...counts]
+      .filter(([, n]) => n >= 2)
+      .map(([k, n]) => [k.split(",").map(Number), n] as [number[], number]),
+  };
+}
+
 function world(
   specs: RoundSpec[],
   extra: Partial<AwardInput> = {},
 ): AwardInput {
   const records: RoundRecord[] = [];
-  const tickets = new Map<number, Ticket[]>();
+  const mine: Ticket[] = [];
+  const summaries = new Map<number, RoundSummary>();
   for (const s of specs) {
     const list = [
       ...(s.mine ?? []).map((n) => ticket(s.round, n, ME)),
       ...(s.others ?? []).map((n, i) => ticket(s.round, n, pubOf(i))),
     ];
-    tickets.set(s.round, list);
+    mine.push(...list.filter((t) => t.pub === ME));
+    summaries.set(s.round, summaryOf(list));
+    const winners = emptyWinners();
+    if (s.win)
+      for (const t of list) {
+        const rank = rankOf(
+          { numbers: s.win, bonus: s.bonus ?? 45 } as never,
+          t.numbers,
+        );
+        if (rank !== null) winners[rank].push(new Uint8Array(32));
+      }
     const closesAt = roundTimes(schedule, s.round).closesAt;
     records.push({
       v: 1,
@@ -87,7 +116,7 @@ function world(
       drandSignature: new Uint8Array(s.win ? 48 : 0),
       numbers: s.win ?? [],
       bonus: s.win ? (s.bonus ?? 45) : 0,
-      winners: emptyWinners(),
+      winners,
       scheduleChanges: [],
       nicknames: [],
     });
@@ -95,7 +124,8 @@ function world(
   return {
     schedule,
     records,
-    tickets,
+    mine,
+    summaries,
     myPubs: [ME],
     registeredRound: null,
     now: MIDNIGHT + 400 * 86400,

@@ -112,6 +112,17 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   await expect(row.locator("[data-ball]")).toHaveCount(7);
   await page.goto("/stardraw/rounds#1");
   await expect(page.locator("[data-rank]")).toHaveCount(5);
+  // 「이 회차 확인」(docs/36 11-30, 예전 「장부 검사」)
+  await page.getByRole("button", { name: "이 회차 확인" }).click();
+  await expect(page.locator("[data-verify]")).toHaveAttribute(
+    "data-verify",
+    "ok",
+    { timeout: 30_000 },
+  );
+  await page.screenshot({
+    path: info.outputPath("stardraw-round-check.png"),
+    fullPage: true,
+  });
   await page.goto("/stardraw");
   await expect(page.locator("[data-last-round='1']")).toBeVisible();
   await expect(page.locator("[data-envelope]")).toHaveCount(0);

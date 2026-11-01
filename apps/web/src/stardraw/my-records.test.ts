@@ -77,8 +77,10 @@ function input(
     schedule: s,
     closed: rounds.map((r) => ({
       record: record(r.round, s, r.ok ?? true),
-      tickets: r.tickets,
+      summary: { qualified: 0, qualPubs: [], twins: [] },
     })),
+    // 장부가 내 열쇠로 찾아 준 응모권(남의 것이 섞여도 내 열쇠 것만 센다)
+    mine: rounds.flatMap((r) => r.tickets),
     myPubs: [ME],
     registeredRound: null,
     now: MIDNIGHT + 30 * 86400,

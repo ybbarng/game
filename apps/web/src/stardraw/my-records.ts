@@ -2,6 +2,7 @@ import {
   drandTime,
   type Rank,
   type RoundRecord,
+  type RoundSummary,
   rankOf,
   type Schedule,
   type Ticket,
@@ -47,7 +48,10 @@ export interface MyRecords {
 
 export interface MyRecordsInput {
   schedule: Schedule;
-  closed: readonly { record: RoundRecord; tickets: readonly Ticket[] }[];
+  /** 닫힌 회차 기록과 요약 */
+  closed: readonly { record: RoundRecord; summary: RoundSummary }[];
+  /** 내 응모권(닫힌 회차, 장부의 증명으로 확인한 것: `Ledger.keyTickets`) */
+  mine: readonly Ticket[];
   /** 내 우주인 공개 열쇠들 */
   myPubs: readonly Uint8Array[];
   registeredRound: number | null;
@@ -65,10 +69,13 @@ export function myRecords(input: MyRecordsInput): MyRecords {
   const isMine = (t: Ticket) => input.myPubs.some((p) => same(p, t.pub));
   const idOf = input.idOf ?? ((t: Ticket) => toHex(ticketId(t)));
   const wins: WinEntry[] = [];
-  for (const { record, tickets } of input.closed) {
+  const byRound = new Map<number, Ticket[]>();
+  for (const t of input.mine)
+    byRound.set(t.round, [...(byRound.get(t.round) ?? []), t]);
+  for (const { record } of input.closed) {
     if (record.void || !countsFor(input.schedule, record.round)) continue;
     if (input.sealed?.(record.round)) continue;
-    for (const ticket of tickets) {
+    for (const ticket of byRound.get(record.round) ?? []) {
       if (!isMine(ticket)) continue;
       const rank = rankOf(record, ticket.numbers);
       if (rank === null) continue;
@@ -88,13 +95,13 @@ export function myRecords(input: MyRecordsInput): MyRecords {
   wins.sort((a, b) => b.round - a.round || a.rank - b.rank);
   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<Rank, number>;
   for (const w of wins) counts[w.rank]++;
-  const tickets = new Map(
-    input.closed.map((c) => [c.record.round, c.tickets] as const),
-  );
   const awards = earnedAwards({
     schedule: input.schedule,
     records: input.closed.map((c) => c.record),
-    tickets,
+    mine: input.mine,
+    summaries: new Map(
+      input.closed.map((c) => [c.record.round, c.summary] as const),
+    ),
     myPubs: input.myPubs,
     registeredRound: input.registeredRound,
     now: input.now,

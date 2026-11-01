@@ -223,9 +223,10 @@ function Screen({
     case "records": {
       if (!AWARD_SPECIMENS) return null;
       // 둘러보기만: 1회 1~5등 응모권을 모두 내 것으로 쳐 훈장·당첨증·별 도장·기념 서류가 몇 개씩 보이게
-      const pubs = [...s.byRank.entries()]
+      const specimens = [...s.byRank.entries()]
         .filter(([rank]) => rank !== null)
-        .map(([, t]) => t.pub);
+        .map(([, t]) => t);
+      const pubs = specimens.map((t) => t.pub);
       const key = services.wallet.loadKey();
       return (
         <MyRecordsView
@@ -233,6 +234,7 @@ function Screen({
           records={myRecords({
             schedule: services.ledger.schedule,
             closed: services.ledger.closed(),
+            mine: specimens,
             myPubs: pubs,
             registeredRound: null,
             now: services.ledger.now(),

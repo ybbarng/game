@@ -43,18 +43,41 @@ export function TicketView() {
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
+  /**
+   * 닫힌 회차의 응모권: 증명 API로 받아 기록의 머클 루트로 확인한다(docs/36 11-30).
+   * undefined 아직 찾는 중, null 장부에 없음
+   */
+  const closedRound = want && services?.ledger.record(want.round) ? want : null;
+  const [fromLedger, setFromLedger] = useState<{
+    key: string;
+    ticket: Ticket | null;
+  } | null>(null);
+  const wantKey = closedRound ? `${closedRound.round}-${closedRound.id}` : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 찾을 응모권이 바뀔 때만
+  useEffect(() => {
+    if (!services || !closedRound) return;
+    let alive = true;
+    const key = `${closedRound.round}-${closedRound.id}`;
+    void services.ledger
+      .findTicket(closedRound.round, closedRound.id)
+      .catch(() => null)
+      .then((ticket) => {
+        if (alive) setFromLedger({ key, ticket });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [services, wantKey]);
 
   let body: React.ReactNode;
-  if (!services || !status || !read) {
+  const looked = fromLedger?.key === wantKey ? fromLedger.ticket : undefined;
+  if (!services || !status || !read || (closedRound && looked === undefined)) {
     body = (
       <p className="py-20 text-center text-white/60">하늘을 펴고 있습니다</p>
     );
   } else {
     const same = (t: Ticket) => want && toHex(ticketId(t)) === want.id;
     const record = want ? services.ledger.record(want.round) : undefined;
-    const fromLedger = want
-      ? services.ledger.ticketsOf(want.round).find(same)
-      : undefined;
     const myTickets = services.wallet.loadTickets();
     const mine = myTickets.find((m) => same(m.ticket));
     // 내가 응모한 회차인데 이 기기에서 아직 추첨을 보지 않았으면 결과를 가린다(spoiler.ts)
@@ -65,7 +88,7 @@ export function TicketView() {
         services.wallet.openedRounds(),
         services.ledger,
       )(want.round);
-    const ticket = fromLedger ?? mine?.ticket;
+    const ticket = looked ?? mine?.ticket;
     const drawAt = want
       ? drandTime(
           drandRoundForClose(

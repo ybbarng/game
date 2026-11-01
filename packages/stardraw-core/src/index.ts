@@ -22,6 +22,7 @@ export * from "./registration";
 export * from "./rekor";
 export * from "./room";
 export * from "./round";
+export * from "./round-check";
 export * from "./sas";
 export * from "./schedule";
 export * from "./signature";

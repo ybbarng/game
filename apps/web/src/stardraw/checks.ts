@@ -166,7 +166,10 @@ export class Checker {
    */
   watch(
     session: CheckSession,
-    ticketOf: (round: number, ticketIdHex: string) => Ticket | undefined,
+    ticketOf: (
+      round: number,
+      ticketIdHex: string,
+    ) => Ticket | undefined | null | Promise<Ticket | undefined | null>,
     onUpdate: (session: CheckSession) => void,
   ): () => void {
     if (session.status !== "waiting") return () => {};
@@ -180,10 +183,13 @@ export class Checker {
   private async receive(
     s: CheckSession,
     answer: ConfirmAnswer,
-    ticketOf: (round: number, ticketIdHex: string) => Ticket | undefined,
+    ticketOf: (
+      round: number,
+      ticketIdHex: string,
+    ) => Ticket | undefined | null | Promise<Ticket | undefined | null>,
   ): Promise<void> {
     if (s.status !== "waiting") return;
-    const ticket = ticketOf(s.round, s.ticketId);
+    const ticket = await ticketOf(s.round, s.ticketId);
     if (!ticket) {
       s.status = "failed";
       s.reasons = ["장부에서 그 응모권을 찾지 못했습니다"];

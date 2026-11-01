@@ -68,11 +68,15 @@ export async function checkServerLedger(
 export async function checkPracticeLedger(ledger: {
   settle(): Promise<void>;
   verify(mine?: readonly Uint8Array[]): Promise<VerifyReport>;
-  closed(): { record: RoundRecord; tickets: readonly Ticket[] }[];
+  closed(): readonly { record: RoundRecord }[];
+  ticketsOf(round: number): readonly Ticket[];
 }): Promise<CheckResult> {
   await ledger.settle();
   const report = await ledger.verify();
-  const closed = ledger.closed();
+  const closed = ledger.closed().map(({ record }) => ({
+    record,
+    tickets: ledger.ticketsOf(record.round),
+  }));
   const qualification = qualificationSummary(report, closed.length);
   const items = withQualDetail(
     withPowDetail(

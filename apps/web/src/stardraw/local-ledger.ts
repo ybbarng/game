@@ -53,10 +53,12 @@ import {
   type QualInfo,
   qualInfoOf,
   type RoundRecord,
+  type RoundSummary,
   type RoundTimes,
   recordHash,
   registrationContent,
   roundAt,
+  roundSummary,
   roundTimes,
   type Schedule,
   type SignatureData,
@@ -74,6 +76,7 @@ import {
   type Ticket,
   taggedHash,
   ticketContent,
+  ticketId,
   toBase64Url,
   toHex,
   type VerifyReport,
@@ -84,7 +87,12 @@ import {
   type WebAuthnPolicy,
 } from "@mighty/stardraw-core";
 
-import { type Ledger, RegisterLater } from "./ledger";
+import {
+  type ClosedRound,
+  type Ledger,
+  RegisterLater,
+  type RoundCheck,
+} from "./ledger";
 
 /**
  * 기기 안 연습 장부(docs/36 11-5 2번). 서버가 생기기 전까지 화면이 이것으로 응모 → 마감 → 추첨 →
@@ -575,20 +583,59 @@ export class LocalLedger implements Ledger {
     return { receivedAt: now };
   }
 
-  /** 닫힌 회차 기록과 응모권 목록 */
-  closed(): { record: RoundRecord; tickets: readonly Ticket[] }[] {
-    return this.records.map((record, i) => ({
-      record,
-      tickets: this.tickets[i] ?? [],
-    }));
+  /** 회차 → 요약(닫힌 회차는 바뀌지 않는다) */
+  private summaries = new Map<number, RoundSummary>();
+
+  /** 닫힌 회차 기록과 요약(연습 장부는 응모권을 들고 있어 기기에서 계산한다) */
+  closed(): ClosedRound[] {
+    return this.records.map((record, i) => {
+      let summary = this.summaries.get(record.round);
+      if (!summary) {
+        summary = roundSummary(this.tickets[i] ?? []);
+        this.summaries.set(record.round, summary);
+      }
+      return { record, summary };
+    });
   }
 
   record(round: number): RoundRecord | undefined {
     return this.records[round - 1];
   }
 
+  /** 그 회차 응모권(연습 장부는 들고 있다. 검증하기 페이지의 연습 장부 검사도 쓴다) */
   ticketsOf(round: number): readonly Ticket[] {
     return this.tickets[round - 1] ?? [];
+  }
+
+  async roundTickets(round: number): Promise<readonly Ticket[]> {
+    return this.ticketsOf(round);
+  }
+
+  async findTicket(round: number, idHex: string): Promise<Ticket | null> {
+    return (
+      this.ticketsOf(round).find((t) => toHex(ticketId(t)) === idHex) ?? null
+    );
+  }
+
+  async keyTickets(pubs: readonly Uint8Array[]): Promise<Ticket[]> {
+    const keys = new Set(pubs.map(toHex));
+    return this.tickets.flatMap((list) =>
+      list.filter((t) => keys.has(toHex(t.pub))),
+    );
+  }
+
+  /** 연습 장부는 작아 장부 전체를 다시 계산하고 그 회차 문제만 보인다 */
+  async verifyRound(
+    round: number,
+    mine: readonly Uint8Array[] = [],
+  ): Promise<RoundCheck> {
+    const report = await this.verify(mine);
+    return {
+      problems: report.problems.filter(
+        (p) => p.round === round || p.round === 0,
+      ),
+      skipped: [],
+    };
   }
 
   /** 장부 전체를 처음부터 다시 계산한다(연습 drand는 서명 확인을 건너뛴다) */

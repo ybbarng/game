@@ -6,10 +6,12 @@ import {
   phaseOf,
   type Rank,
   type RoundRecord,
+  type RoundSummary,
   rankOf,
   roundTimes,
   type Schedule,
   type Ticket,
+  twinCount,
 } from "@mighty/stardraw-core";
 
 import { astronautOf } from "./astronaut/identity";
@@ -92,8 +94,10 @@ export interface AwardInput {
   schedule: Schedule;
   /** 닫힌 회차 기록(회차 순서 상관없음) */
   records: readonly RoundRecord[];
-  /** 회차 → 그 회차에 공개된 응모권 전체 */
-  tickets: ReadonlyMap<number, readonly Ticket[]>;
+  /** 내 응모권(닫힌 회차, 장부에서 확인한 것). 내 열쇠가 아닌 것은 무시한다 */
+  mine: readonly Ticket[];
+  /** 회차 → 요약(docs/36 11-30: 같은 조합 수 등. 남의 응모권 전체는 받지 않는다) */
+  summaries: ReadonlyMap<number, RoundSummary>;
   /** 내 우주인 공개 열쇠들(열쇠를 바꾼 적이 있으면 여럿) */
   myPubs: readonly Uint8Array[];
   /** 장부에 내 등록이 실린 회차(없으면 null) */
@@ -141,8 +145,8 @@ interface MyRound {
   picks: number[][];
   at: number;
   time: KstTime;
-  /** 이 회차 공개 응모권 전체 */
-  all: readonly Ticket[];
+  /** 이 회차 요약(같은 조합 수) */
+  summary: RoundSummary | undefined;
   /** 내 가장 높은 등수(무효·낙첨 null) */
   rank: Rank | null;
   /** 내 응모권 중 가장 많이 맞힌 수(무효면 -1) */
@@ -158,8 +162,7 @@ interface Ctx {
   mine: MyRound[];
   /** 단계와 상관없이 모든 내 응모(시험 관측 위원처럼 단계가 조건인 서류만 쓴다) */
   everMine: MyRound[];
-  tickets: ReadonlyMap<number, readonly Ticket[]>;
-  isMine: (t: Ticket) => boolean;
+
   /** 내 우주인 공개 열쇠들(등록증 주소를 계산한다) */
   myPubs: readonly Uint8Array[];
   registeredRound: number | null;
@@ -1063,9 +1066,8 @@ export const AWARDS: readonly AwardDef[] = [
         c,
         1,
         (m) =>
-          !m.record.void &&
-          m.rank !== 1 &&
-          m.all.some((t) => !c.isMine(t) && rankOf(m.record, t.numbers) === 1),
+          // 내가 1등이 아닌데 1등 당첨 응모권이 있으면 남의 것이다
+          !m.record.void && m.rank !== 1 && m.record.winners[1].length > 0,
         true,
       ),
     text: (_, k) =>
@@ -1230,8 +1232,13 @@ export const AWARDS: readonly AwardDef[] = [
     kind: "인증서",
     grade: "silver",
     find: (c) =>
-      firstPick(c, (p, m) =>
-        m.all.some((t) => !c.isMine(t) && key(t.numbers) === key(p)),
+      // 그 조합이 회차에 내가 낸 장 수보다 많으면 다른 우주인도 골랐다
+      firstPick(
+        c,
+        (p, m) =>
+          !!m.summary &&
+          twinCount(m.summary, p) >
+            m.picks.filter((q) => key(q) === key(p)).length,
       ),
     text: (_, k) =>
       doc(
@@ -1248,7 +1255,7 @@ export const AWARDS: readonly AwardDef[] = [
     find: (c) => {
       let most = 0;
       for (const r of c.records) {
-        const count = c.tickets.get(r.round)?.length ?? r.count;
+        const count = r.count;
         if (count > most) {
           most = count;
           if (count >= 10) {
@@ -1271,7 +1278,7 @@ export const AWARDS: readonly AwardDef[] = [
     name: "홀로 관측 인증서",
     kind: "인증서",
     grade: "bronze",
-    find: (c) => nth(c, 1, (m) => m.all.length === 1 && m.picks.length === 1),
+    find: (c) => nth(c, 1, (m) => m.record.count === 1 && m.picks.length === 1),
     text: (_, k) =>
       doc(
         "귀하는 응모권이 단 한 장뿐인 회차에서 홀로 밤하늘을 지켰습니다. 그 회차의 하늘은 오롯이 귀하의 것이었습니다.",
@@ -1333,11 +1340,13 @@ function context(input: AwardInput): Ctx {
     r.void
       ? roundTimes(input.schedule, r.round).closesAt + DRAND_DELAY
       : drandTime(r.drandRound);
+  const mineByRound = new Map<number, Ticket[]>();
+  for (const t of input.mine)
+    if (isMine(t))
+      mineByRound.set(t.round, [...(mineByRound.get(t.round) ?? []), t]);
   const everMine: MyRound[] = [];
   for (const record of everRecords) {
-    const all = input.tickets.get(record.round) ?? [];
-    const picks = all
-      .filter(isMine)
+    const picks = (mineByRound.get(record.round) ?? [])
       .map((t) => [...t.numbers].sort((a, b) => a - b))
       .sort((a, b) => key(a).localeCompare(key(b)));
     if (picks.length === 0) continue;
@@ -1356,7 +1365,7 @@ function context(input: AwardInput): Ctx {
       picks,
       at,
       time: kst(at),
-      all,
+      summary: input.summaries.get(record.round),
       rank,
       bestHits,
     });
@@ -1367,8 +1376,6 @@ function context(input: AwardInput): Ctx {
     atOf,
     mine: everMine.filter((m) => countsFor(input.schedule, m.round)),
     everMine,
-    tickets: input.tickets,
-    isMine,
     myPubs: input.myPubs,
     registeredRound: input.registeredRound,
     now: input.now,

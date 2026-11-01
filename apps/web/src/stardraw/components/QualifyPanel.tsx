@@ -7,8 +7,8 @@ import {
   type QualPeriodInfo,
   qualDisplayId,
   qualKeyFromSeed,
+  qualPubPrefix,
   recoveryCode,
-  ticketId,
   toHex,
 } from "@mighty/stardraw-core";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -215,22 +215,22 @@ function day(seconds: number): string {
 /** 이번 방문에서 막 받거나 불러온 기간(복구 코드를 바로 한 번 보여 준다) */
 const justReceived = new Set<string>();
 
-/** 이 기기에서 내지 않은 응모에 내 소속 증서가 쓰였는지(복구 코드가 새어 나간 신호) */
+/**
+ * 이 기기에서 내지 않은 응모에 내 소속 증서가 쓰였는지(복구 코드가 새어 나간 신호).
+ * 회차 요약의 소속 열쇠 앞부분(docs/36 11-30)을 세어, 그 회차에 이 기기가 같은 증서로 낸 장 수보다 많으면 알린다
+ */
 function foreignUses(services: Services, holding: QualHolding): number[] {
-  const qualPub = toHex(qualKeyFromSeed(holding.seed).publicKey);
-  const mine = new Set(
-    services.wallet.loadTickets().map((m) => toHex(ticketId(m.ticket))),
-  );
-  const rounds = new Set<number>();
-  for (const { tickets } of services.ledger.closed())
-    for (const t of tickets)
-      if (
-        t.qual &&
-        toHex(t.qual.cert.qualPub) === qualPub &&
-        !mine.has(toHex(ticketId(t)))
-      )
-        rounds.add(t.round);
-  return [...rounds].sort((a, b) => a - b);
+  const qualPub = qualPubPrefix(qualKeyFromSeed(holding.seed).publicKey);
+  const mineByRound = new Map<number, number>();
+  for (const { ticket } of services.wallet.loadTickets())
+    if (ticket.qual && qualPubPrefix(ticket.qual.cert.qualPub) === qualPub)
+      mineByRound.set(ticket.round, (mineByRound.get(ticket.round) ?? 0) + 1);
+  const rounds: number[] = [];
+  for (const { record, summary } of services.ledger.closed()) {
+    const used = summary.qualPubs.filter((p) => p === qualPub).length;
+    if (used > (mineByRound.get(record.round) ?? 0)) rounds.push(record.round);
+  }
+  return rounds;
 }
 
 /**

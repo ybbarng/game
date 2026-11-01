@@ -59,9 +59,9 @@ export function StatsView({
             ({ record }) =>
               inPeriod(schedule, record.round, period) && !sealed(record.round),
           )
-          .map(({ record, tickets }) => ({
+          .map(({ record, summary }) => ({
             record,
-            qualified: tickets.filter((t) => t.qual).length,
+            qualified: summary.qualified,
           })),
       ),
     [closed, schedule, period, sealed],

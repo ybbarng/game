@@ -4,7 +4,6 @@ import {
   DRAND_DELAY,
   drandRoundForClose,
   drandTime,
-  equalBytes,
   type QualInfo,
   RANKS,
   type RoundRecord,
@@ -12,7 +11,6 @@ import {
   type Ticket,
   ticketId,
   toHex,
-  type VerifyReport,
 } from "@mighty/stardraw-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNoPullRefresh } from "@/game/no-pull-refresh";
@@ -24,6 +22,7 @@ import { type CheckSession, isActive } from "../checks";
 import { errorText } from "../errors";
 import { FX } from "../fx-timing";
 import { type KeptPaper, loadKept } from "../kept-paper";
+import type { RoundCheck } from "../ledger";
 import type { LedgerStatus } from "../local-ledger";
 import { myRecords, newestRecord, recordKeys } from "../my-records";
 import { passkeyProblem } from "../passkey-env";
@@ -274,23 +273,50 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const receiptOf = (id: string) =>
     mine.find((m) => toHex(ticketId(m.ticket)) === id);
 
-  /** 내 기록: 공개 장부와 내 공개 열쇠(이 기기 등록증 + 내 응모권의 열쇠)로 계산한다(my-records.ts) */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부·지갑·열어 본 회차가 바뀔 때만 다시 센다
-  const records = useMemo(() => {
-    if (!services || !loaded) return null;
+  /** 내 공개 열쇠들: 이 기기 등록증 + 내 응모권의 열쇠 */
+  const myPubs = useMemo(() => {
     const pubs = new Map<string, Uint8Array>();
     if (navKey) pubs.set(toHex(navKey.pub), navKey.pub);
     for (const m of mine) pubs.set(toHex(m.ticket.pub), m.ticket.pub);
-    if (pubs.size === 0) return null;
+    return [...pubs.values()];
+  }, [navKey, mine]);
+  /**
+   * 내 열쇠들의 닫힌 회차 응모권(장부의 머클 증명으로 확인, docs/36 11-30). 다른 기기에서 낸 것도 들어온다.
+   * 장부 전체를 받지 않으므로 내 기록은 이것과 회차 요약으로 센다
+   */
+  const [keyTickets, setKeyTickets] = useState<Ticket[] | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부가 바뀌거나 내 열쇠·지갑이 바뀔 때 다시 묻는다
+  useEffect(() => {
+    if (!services || !loaded || myPubs.length === 0) return;
+    let alive = true;
+    void services.ledger
+      .keyTickets(
+        myPubs,
+        mine.map((m) => m.ticket),
+      )
+      .then((list) => {
+        if (alive) setKeyTickets(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [services, loaded, version, myPubs, mine]);
+  /** 내 기록: 회차 기록·요약과 내 응모권으로 계산한다(my-records.ts) */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부·지갑·열어 본 회차가 바뀔 때만 다시 센다
+  const records = useMemo(() => {
+    if (!services || !loaded || !keyTickets) return null;
+    if (myPubs.length === 0) return null;
     return myRecords({
       schedule: services.ledger.schedule,
       closed: services.ledger.closed(),
-      myPubs: [...pubs.values()],
+      mine: keyTickets,
+      myPubs,
       registeredRound: regRound,
       now: services.ledger.now(),
       sealed,
     });
-  }, [services, loaded, version, mine, opened, navKey, regRound]);
+  }, [services, loaded, version, keyTickets, myPubs, opened, regRound]);
   const newRecords = records
     ? recordKeys(records).filter((k) => !seenRecords.has(k))
     : [];
@@ -1620,15 +1646,14 @@ function RecoverKey({
         setState("missing");
         return;
       }
-      for (const { tickets } of services.ledger.closed())
-        for (const ticket of tickets)
-          if (equalBytes(ticket.pub, key.pub))
-            services.wallet.addTicket({
-              ticket,
-              // 받은 시각은 장부에 없어 그 회차가 열린 시각으로 적는다
-              receivedAt: roundTimes(services.ledger.schedule, ticket.round)
-                .opensAt,
-            });
+      // 장부의 증명 API로 내 열쇠의 응모권을 찾는다(docs/36 11-30)
+      for (const ticket of await services.ledger.keyTickets([key.pub], []))
+        services.wallet.addTicket({
+          ticket,
+          // 받은 시각은 장부에 없어 그 회차가 열린 시각으로 적는다
+          receivedAt: roundTimes(services.ledger.schedule, ticket.round)
+            .opensAt,
+        });
       onFound(key);
     } catch (err) {
       if (passkeyProblem(err) === "cancelled") setState("cancelled");
@@ -1822,7 +1847,24 @@ function RoundDetail({
   onDraw: (round: number) => void;
 }) {
   const record = services.ledger.record(round);
-  const [report, setReport] = useState<VerifyReport | null>(null);
+  const [report, setReport] = useState<RoundCheck | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  /** 그 회차 응모권(회차 파일 하나, docs/36 11-30). 받기 전에는 소속 표시를 비워 둔다 */
+  const [roundTickets, setRoundTickets] = useState<readonly Ticket[]>([]);
+  const closedNow = !!record;
+  useEffect(() => {
+    if (!closedNow) return;
+    let alive = true;
+    void services.ledger
+      .roundTickets(round)
+      .then((list) => {
+        if (alive) setRoundTickets(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [services, round, closedNow]);
   const [checking, setChecking] = useState(false);
   /** 이 기기에서 당첨자 확인을 마친 응모권 */
   const [checked, setChecked] = useState<Map<string, CheckSession>>(new Map());
@@ -1840,7 +1882,6 @@ function RoundDetail({
   if (!record) return null;
   const counts = winnerCounts(record);
   const myIds = new Set(mine.map((m) => toHex(ticketId(m.ticket))));
-  const roundTickets = services.ledger.ticketsOf(round);
   const prize = prizeEligible(
     roundTickets,
     qualInfo
@@ -2001,15 +2042,33 @@ function RoundDetail({
           disabled={checking}
           onClick={async () => {
             setChecking(true);
-            setReport(
-              await services.ledger.verify(mine.map((m) => ticketId(m.ticket))),
-            );
-            setChecking(false);
+            setCheckError(null);
+            try {
+              setReport(
+                await services.ledger.verifyRound(
+                  round,
+                  mine
+                    .filter((m) => m.ticket.round === round)
+                    .map((m) => ticketId(m.ticket)),
+                ),
+              );
+            } catch (err) {
+              setCheckError(
+                errorText(err, "이 회차를 확인", "확인하지 않았어요"),
+              );
+            } finally {
+              setChecking(false);
+            }
           }}
           className="self-start rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
         >
-          {checking ? "검사하고 있습니다" : "장부 검사"}
+          {checking ? "확인하고 있습니다" : "이 회차 확인"}
         </button>
+        {checkError && (
+          <p role="alert" className="break-keep text-rose-200 text-sm">
+            {checkError}
+          </p>
+        )}
         {report && (
           <div
             role="status"
@@ -2038,9 +2097,17 @@ function RoundDetail({
                 ))}
               </ul>
             )}
-            {services.practice && (
+            {services.practice ? (
               <p className="mt-1 text-white/50 text-xs">
                 연습이라 추첨 난수와 마감 시각 증명은 따로 확인하지 않습니다.
+              </p>
+            ) : (
+              <p className="mt-1 text-white/50 text-xs">
+                장부 전체는{" "}
+                <a href="/stardraw/verify" className="underline">
+                  검증하기
+                </a>
+                에서 처음부터 검사합니다.
               </p>
             )}
           </div>

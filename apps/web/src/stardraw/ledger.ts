@@ -1,15 +1,28 @@
 import type {
   KeyRegistration,
   PowParams,
+  Problem,
   QualInfo,
   RoundRecord,
+  RoundSummary,
   Schedule,
   SignatureData,
   Ticket,
-  VerifyReport,
 } from "@mighty/stardraw-core";
 
 import type { LedgerStatus } from "./local-ledger";
+
+/** 닫힌 회차: 기록과 요약(docs/36 11-30). 응모권 전체는 들고 있지 않는다 */
+export interface ClosedRound {
+  record: RoundRecord;
+  summary: RoundSummary;
+}
+
+/** 「이 회차 확인」 결과(core `checkRound`, 연습 장부는 전체 검사에서 그 회차 문제만) */
+export interface RoundCheck {
+  problems: Problem[];
+  skipped: string[];
+}
 
 /**
  * 화면이 쓰는 장부. 기기 안 연습 장부(`LocalLedger`)와 서버 장부(`RemoteLedger`)가 같은 모양이다.
@@ -58,11 +71,29 @@ export interface Ledger {
    * 연습 장부는 서버가 없어 필요 없다
    */
   prepare?(pub: Uint8Array): Promise<void>;
-  closed(): { record: RoundRecord; tickets: readonly Ticket[] }[];
+  /** 닫힌 회차 기록과 요약(회차 순) */
+  closed(): readonly ClosedRound[];
   record(round: number): RoundRecord | undefined;
-  ticketsOf(round: number): readonly Ticket[];
-  /** 장부 전체를 처음부터 다시 계산한다 */
-  verify(mine?: readonly Uint8Array[]): Promise<VerifyReport>;
+  /**
+   * 그 회차 응모권 전체(회차 파일 하나). 회차 상세의 소속 판정·「이 회차 확인」만 쓴다.
+   * 서버 장부는 그때 받고(한 회차 크기), 받은 목록이 기록의 머클 루트와 맞지 않으면 던진다
+   */
+  roundTickets(round: number): Promise<readonly Ticket[]>;
+  /**
+   * 응모권 하나(확인 링크·응모권 보기). 서버 장부는 증명 API로 받아 기록의 머클 루트로 확인한다.
+   * 닫히지 않은 회차·없는 응모권·맞지 않는 증명은 null
+   */
+  findTicket(round: number, idHex: string): Promise<Ticket | null>;
+  /**
+   * 내 열쇠들의 닫힌 회차 응모권(회차 순, 머클 증명으로 확인한 것). 다른 기기에서 낸 것도 들어온다.
+   * `known`은 지갑의 응모권: 서버가 응답하지 않으면 지갑 것만 돌려준다(등수는 기록의 당첨 id로 다시 본다)
+   */
+  keyTickets(
+    pubs: readonly Uint8Array[],
+    known: readonly Ticket[],
+  ): Promise<Ticket[]>;
+  /** 한 회차 확인(사슬·회차 파일·drand·봉인·내 응모권). 장부 전체 검사는 검증 페이지가 한다 */
+  verifyRound(round: number, mine?: readonly Uint8Array[]): Promise<RoundCheck>;
   /** 상품 자격(docs/36 11-13): 효력이 생긴 자격 기간과 여기서 받을 수 있는지 */
   qualInfo(): Promise<QualInfo>;
   /**

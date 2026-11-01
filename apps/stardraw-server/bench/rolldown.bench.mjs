@@ -8,6 +8,7 @@ export default defineConfig({
     rush: "bench/rush.ts",
     blast: "bench/blast.ts",
     verify: "bench/verify.ts",
+    light: "bench/light.ts",
   },
   platform: "node",
   output: { dir: "dist/bench", format: "esm" },

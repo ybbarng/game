@@ -12,6 +12,7 @@ import {
   ticketId,
   toHex,
 } from "@mighty/stardraw-core";
+import { FakeTsa } from "@mighty/stardraw-core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
 // 화면 코드(apps/web)를 그대로 불러 실제 서버와 맞물리는지 본다
@@ -20,6 +21,8 @@ import type { ConfirmAnswer } from "../../web/src/stardraw/confirm-relay";
 import { RemoteLedger } from "../../web/src/stardraw/remote-ledger";
 import { RemoteConfirmRelay } from "../../web/src/stardraw/remote-relay";
 import { createHttpServer } from "./http";
+import { TsaRootLog } from "./outside";
+import { ProofService } from "./proof";
 import { scheduleLive } from "./schedule-live";
 import {
   drawOf,
@@ -55,6 +58,7 @@ async function serve(
     ledgerDir: join(rig.dir, "ledger"),
     devOrigins: [],
     trustProxy: false,
+    proofs: new ProofService(rig.store, rig.clock),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   close = () => new Promise((resolve) => server.close(() => resolve()));
@@ -73,8 +77,18 @@ async function until(condition: () => boolean): Promise<void> {
 }
 
 describe("화면의 서버 장부 ↔ 실제 서버", () => {
-  it("응모 → 추첨 → 장부 받기·검사 → 당첨자 확인(별 세 개)까지 화면 코드로 이어진다", async () => {
-    const base = await serve();
+  it("응모 → 추첨 → 가벼운 기록 받기·이 회차 확인·증명 → 당첨자 확인(별 세 개)까지 화면 코드로 이어진다", async () => {
+    // 봉인은 가짜 시각 인증 기관으로(이 회차 확인이 토큰까지 본다)
+    let tsa: FakeTsa | undefined;
+    const base = await serve({
+      rootLog: (_key, clock) => {
+        tsa = new FakeTsa("tsa-a", () => Math.floor(clock.now() / 1000));
+        const fake = tsa;
+        return new TsaRootLog([fake.authority], 1, (input, init) =>
+          fake.fetch(input, init),
+        );
+      },
+    });
     await rig.at(EPOCH + 10);
     const ledger = new RemoteLedger({
       base,
@@ -84,6 +98,7 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
       verifyOptions: {
         beaconVerifier: () => true,
         powSample: Number.POSITIVE_INFINITY,
+        tsaAuthorities: [(tsa as FakeTsa).authority],
       },
     });
     await ledger.settle();
@@ -134,8 +149,25 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
     expect(ledger.record(1)?.winners[1].map(toHex)).toEqual([
       toHex(ticketId(ticket)),
     ]);
-    const report = await ledger.verify([ticketId(ticket)]);
-    expect(report.problems).toEqual([]);
+    const report = await ledger.verifyRound(1, [ticketId(ticket)]);
+    expect(report).toEqual({ problems: [], skipped: [] });
+    // 내 응모권은 증명 API로, 응모권 하나도 증명으로(기록의 머클 루트로 확인)
+    const mine = await ledger.keyTickets([me.signer.publicKey], []);
+    expect(mine.map((t) => toHex(ticketId(t)))).toEqual([
+      toHex(ticketId(ticket)),
+    ]);
+    expect(
+      toHex(
+        ticketId(
+          (await ledger.findTicket(1, toHex(ticketId(ticket)))) as never,
+        ),
+      ),
+    ).toBe(toHex(ticketId(ticket)));
+    expect(ledger.closed()[0]?.summary).toEqual({
+      qualified: 0,
+      qualPubs: [],
+      twins: [],
+    });
 
     // 당첨자 확인: 당첨자가 링크를 만들고, 확인하는 사람이 같은 서버 전달로 연다
     const tokens = new Map<string, string>();

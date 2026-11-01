@@ -17,7 +17,9 @@ import {
 /** 서버 주소가 있으면 서버 장부, 없으면 이 기기의 연습 장부를 검사한다 */
 async function runCheck(options: { powSample?: number } = {}) {
   if (SERVER_API) return checkServerLedger(options);
-  return checkPracticeLedger(getServices(GAME_NS).ledger);
+  const practice = getServices(GAME_NS).practice;
+  if (!practice) throw new Error("연습 장부가 없습니다");
+  return checkPracticeLedger(practice);
 }
 
 type VectorState = { value?: string; error?: string; running?: boolean };

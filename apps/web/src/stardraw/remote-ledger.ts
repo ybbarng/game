@@ -1,5 +1,8 @@
 import type { Clock } from "@mighty/fair-play";
 import {
+  checkRegistrationProof,
+  checkRound,
+  checkTicketProof,
   decodeRecord,
   decodeRegistration,
   decodeTicket,
@@ -8,6 +11,7 @@ import {
   encodeRegistration,
   encodeRegistrationProof,
   encodeTicket,
+  equalBytes,
   fetchFailure,
   findGitHubLedger,
   fromBase64Url,
@@ -15,46 +19,65 @@ import {
   type GitHubLedgerSource,
   genesisHash,
   type KeyRegistration,
-  type LoadedRoundFile,
+  type KeyTicketsResponse,
+  LightMissing,
   ledgerId,
+  loadLightFiles,
   loadRoundFiles,
   POW_PARAMS,
   type PowParams,
+  type PublicRoundFile,
+  type PublicSealFile,
   phaseOf,
   politeFetch,
   type QualInfo,
+  type RoundCheckOptions,
   type RoundRecord,
+  type RoundSummary,
+  recordHash,
   roundAt,
+  roundFilePath,
+  roundSummary,
   roundTimes,
   type Schedule,
   type SignatureData,
   STARDRAW_ANCHOR_REPO,
   scheduleFromRecords,
+  sealFilePath,
+  sealRoot,
   type Ticket,
+  type TicketProof,
+  ticketProofFromList,
   toBase64Url,
   toHex,
-  type VerifyOptions,
-  type VerifyReport,
-  verifyLedger,
   type WebAuthnPolicy,
 } from "@mighty/stardraw-core";
 import { HttpError } from "./errors";
 import { type GateSolver, inlineGateSolver } from "./gate-solver";
-import { type Ledger, RegisterLater } from "./ledger";
+import {
+  type ClosedRound,
+  type Ledger,
+  RegisterLater,
+  type RoundCheck,
+} from "./ledger";
 import type { LedgerPhase, LedgerStatus } from "./local-ledger";
 
 /**
  * 서버 장부(docs/36 11-5 3번). 같은 출처 `/stardraw-api`(apps/stardraw-server)를 부른다.
  * - 상태(`/api/state`)는 10초마다, 추첨 시각 무렵에는 3초마다 묻는다(1초마다 부르는 화면이 서버를 두드리지 않게)
- * - 닫힌 회차 파일(`/ledger/rounds/…`)은 바뀌지 않으므로 한 번만, 브라우저 캐시로 받는다.
- *   처음 열 때는 다 찬 묶음 파일(10·100회차)로 받아 요청이 몇 개뿐이다(docs/36 7절 「장부 받기」)
+ * - 가벼운 확인(docs/36 11-30): 처음 열 때 응모권 전체 대신 가벼운 기록(회차 기록 + 요약, `/ledger/light/…`)만
+ *   다 찬 묶음(1000·100·10회차)으로 받고, 기록 사슬(prev)이 처음 일정표부터 이어지는지 본다.
+ *   응모권은 필요한 만큼만: 내 응모권은 증명 API(`/api/keys/…/tickets`), 응모권 하나는 `/api/proof/…`,
+ *   회차 상세는 그 회차 파일 하나. 받은 증명·목록은 기기가 가진 기록의 머클 루트로 확인한다.
+ *   가벼운 기록을 내지 않는 옛 서버면 예전처럼 회차 파일을 받아 요약을 기기에서 계산한다
  * - 읽기(GET)는 한꺼번에 4개까지, 서버가 막으면(429·503) 기다렸다 다시 받는다. 응모·등록(POST)은
  *   503(작업 증명 줄이 가득 참)일 때만 기기마다 흔든 간격으로 마감 5초 전까지 다시 내고, 상한 거절(429) 등은 다시 보내지 않는다
  * - 기기 시계가 틀려도 되게 서버 시각과의 차이를 재 둔다(마감은 서버가 받은 시각으로 정한다)
  * - 우리 서버가 응답하지 않으면(네트워크 오류·5xx) 지난 회차는 앵커 저장소의 장부 사본(GitHub raw)에서 받는다
  *   (docs/36 11-16). 사본은 회차가 닫힌 뒤 오르고 raw 주소는 약 5분 캐시돼 최근 회차가 늦을 수 있다.
  *   서버는 10초마다 다시 묻고, 닿으면 서버로 돌아온다
- * 장부 검사는 받은 파일만으로 처음부터 다시 한다(drand 서명도 실제로 확인한다).
+ * 「이 회차 확인」은 기록 사슬과 그 회차 파일·봉인 파일로(core `checkRound`, drand 서명도 실제로 확인한다).
+ * 장부 전체 검사는 검증하기 페이지와 터미널 검사기가 한다.
  */
 
 interface StateJson {
@@ -94,8 +117,8 @@ export interface RemoteLedgerOptions {
   fetch?: typeof fetch;
   /** 작업 증명 세기(기본은 규칙의 16MB. 시험 서버는 가볍게 돈다) */
   powParams?: PowParams;
-  /** 장부 검사 옵션 덧붙이기(시험은 가짜 drand 서명을 받는다) */
-  verifyOptions?: Partial<VerifyOptions>;
+  /** 「이 회차 확인」 옵션 덧붙이기(시험은 가짜 drand 서명·시각 인증 기관을 받는다) */
+  verifyOptions?: Partial<RoundCheckOptions>;
   /** 서버가 응답하지 않을 때 장부 사본을 받을 앵커 저장소(기본 STARDRAW_ANCHOR_REPO). null이면 받지 않는다 */
   anchorRepo?: string | null;
   /** 앞단 작업 증명 풀기(기본 같은 스레드. 화면은 웹 워커, gate-solver.ts) */
@@ -113,6 +136,8 @@ const unreachable = (err: unknown) =>
 const GITHUB_EVERY = 60;
 
 const STATE_EVERY = 10;
+/** 회차 상세에서 받은 회차 파일을 기억하는 수 */
+const ROUND_CACHE = 8;
 const STATE_EVERY_NEAR_DRAW = 3;
 
 export class RemoteLedger implements Ledger {
@@ -125,11 +150,17 @@ export class RemoteLedger implements Ledger {
   private offset = 0;
   private lastState = -Infinity;
   private records: RoundRecord[] = [];
-  private tickets: Ticket[][] = [];
-  private registrations: KeyRegistration[][] = [];
+  private summaries: RoundSummary[] = [];
+  /** 마지막 기록 해시(다음 기록의 prev, 사슬 확인) */
+  private chainHead: Uint8Array | null = null;
   private registered = new Set<string>();
-  /** 공개 열쇠(base64url) → 등록 회차. 닫힌 회차 파일에서 채우고, 없으면 서버에 묻는다 */
+  /** 공개 열쇠(base64url) → 등록 회차. 증명 API의 등록 증명에서 채우고, 없으면 서버에 묻는다 */
   private registeredAt = new Map<string, number>();
+  /** 받아 둔 회차 파일(확인한 것, 최근 ROUND_CACHE개) */
+  private roundFiles = new Map<number, RoundFileData>();
+  /** 공개 열쇠(hex) → 확인한 응모권과 어디까지 물었는지 */
+  private keyCache = new Map<string, { through: number; tickets: Ticket[] }>();
+  private keyLoading = new Map<string, Promise<Ticket[]>>();
   private busy: Promise<unknown> = Promise.resolve();
   private readonly f: typeof fetch;
   /** 읽기 전용(GET): 한꺼번에 받는 수를 묶고 429·503이면 기다렸다 다시 */
@@ -273,9 +304,9 @@ export class RemoteLedger implements Ledger {
     const from = this.records.length + 1;
     if (this.state.records < from) return;
     try {
-      this.addFiles(
+      this.addClosed(
         from,
-        await loadRoundFiles(
+        await loadClosed(
           this.o.base,
           this.serverRead,
           from,
@@ -283,6 +314,7 @@ export class RemoteLedger implements Ledger {
         ),
       );
     } catch (err) {
+      if (err instanceof ChainBroken) throw err;
       await this.fromGitHub(err, local);
     }
   }
@@ -315,31 +347,30 @@ export class RemoteLedger implements Ledger {
       }
       const from = this.records.length + 1;
       if (head.rounds >= from)
-        this.addFiles(
+        this.addClosed(
           from,
-          await loadRoundFiles(base, this.read, from, head.rounds),
+          await loadClosed(base, this.read, from, head.rounds),
         );
-    } catch {
+    } catch (e) {
+      if (e instanceof ChainBroken) throw e;
       throw err;
     }
   }
 
-  private addFiles(from: number, files: readonly LoadedRoundFile[]): void {
-    for (const [i, { round: file }] of files.entries()) {
-      const round = from + i;
-      this.records.push(decodeRecord(fromBase64Url(file.record)));
-      this.tickets.push(
-        file.tickets.map((t) => decodeTicket(fromBase64Url(t))),
-      );
-      const regs = file.registrations.map((r) =>
-        decodeRegistration(fromBase64Url(r)),
-      );
-      this.registrations.push(regs);
-      for (const r of regs) {
-        this.registered.add(toBase64Url(r.pub));
-        this.registeredAt.set(toBase64Url(r.pub), round);
-      }
+  /** 받은 기록을 붙인다. 기록 사슬이 처음 일정표부터 이어지지 않으면 던진다(서버가 장부를 바꿨다) */
+  private addClosed(from: number, list: readonly ClosedRound[]): void {
+    if (!this.genesis) throw new Error("장부를 아직 받지 못했습니다");
+    let head = this.chainHead ?? genesisHash(this.genesis);
+    for (const [i, { record }] of list.entries()) {
+      if (record.round !== from + i || !equalBytes(record.prev, head))
+        throw new ChainBroken(from + i);
+      head = recordHash(record);
     }
+    for (const { record, summary } of list) {
+      this.records.push(record);
+      this.summaries.push(summary);
+    }
+    this.chainHead = head;
   }
 
   status(): LedgerStatus {
@@ -506,10 +537,10 @@ export class RemoteLedger implements Ledger {
     return { receivedAt: body.receivedAt };
   }
 
-  closed(): { record: RoundRecord; tickets: readonly Ticket[] }[] {
+  closed(): ClosedRound[] {
     return this.records.map((record, i) => ({
       record,
-      tickets: this.tickets[i] ?? [],
+      summary: this.summaries[i] as RoundSummary,
     }));
   }
 
@@ -517,8 +548,205 @@ export class RemoteLedger implements Ledger {
     return this.records[round - 1];
   }
 
-  ticketsOf(round: number): readonly Ticket[] {
-    return this.tickets[round - 1] ?? [];
+  /** 장부 파일 하나(서버, 응답하지 않으면 앵커 저장소 사본). 없으면 null */
+  private async ledgerFile<T>(path: string): Promise<T | null> {
+    let res: Response;
+    try {
+      res = await this.serverRead(`${this.o.base}${path}`);
+    } catch (err) {
+      const source = await this.githubSource(err);
+      res = await this.read(`${source.base}${path}`);
+    }
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(fetchFailure("장부", res.status));
+    return (await res.json()) as T;
+  }
+
+  /** 서버가 응답하지 않을 때 앵커 저장소 사본 위치. 사본을 쓸 수 없으면 원래 오류를 던진다 */
+  private async githubSource(err: unknown): Promise<GitHubLedgerSource> {
+    const repo =
+      this.o.anchorRepo === undefined
+        ? STARDRAW_ANCHOR_REPO
+        : this.o.anchorRepo;
+    if (!repo || !unreachable(err)) throw err;
+    const local = Math.floor(this.o.clock.now() / 1000);
+    try {
+      if (!this.github || local - this.github.at >= GITHUB_EVERY)
+        this.github = {
+          source: await findGitHubLedger({
+            repo,
+            fetch: this.read,
+            ...(this.genesis ? { ledger: ledgerId(this.genesis) } : {}),
+          }),
+          at: local,
+        };
+      return this.github.source;
+    } catch {
+      throw err;
+    }
+  }
+
+  /** 그 회차 파일(확인한 것): 응모권 목록이 기록의 머클 루트와 맞아야 한다 */
+  private async roundFile(round: number): Promise<RoundFileData> {
+    const hit = this.roundFiles.get(round);
+    if (hit) return hit;
+    const record = this.record(round);
+    if (!record) throw new Error(`${round}회차는 아직 닫히지 않았습니다`);
+    const file = await this.ledgerFile<PublicRoundFile>(roundFilePath(round));
+    if (!file) throw new Error(fetchFailure(`${round}회차 파일`, 404));
+    const data: RoundFileData = {
+      record: decodeRecord(fromBase64Url(file.record)),
+      tickets: file.tickets.map((t) => decodeTicket(fromBase64Url(t))),
+      registrations: file.registrations.map((r) =>
+        decodeRegistration(fromBase64Url(r)),
+      ),
+    };
+    if (!equalBytes(sealRoot(data.tickets), record.merkleRoot))
+      throw new RootMismatch(round);
+    this.roundFiles.set(round, data);
+    while (this.roundFiles.size > ROUND_CACHE) {
+      const oldest = this.roundFiles.keys().next().value;
+      if (oldest === undefined) break;
+      this.roundFiles.delete(oldest);
+    }
+    return data;
+  }
+
+  async roundTickets(round: number): Promise<readonly Ticket[]> {
+    return (await this.roundFile(round)).tickets;
+  }
+
+  async findTicket(round: number, idHex: string): Promise<Ticket | null> {
+    const record = this.record(round);
+    if (!record || !/^[0-9a-f]{64}$/.test(idHex)) return null;
+    let proof: TicketProof | null;
+    try {
+      const res = await this.serverRead(
+        `${this.o.base}/api/proof/${round}/${idHex}`,
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(fetchFailure("응모권 증명", res.status));
+      proof = (await res.json()) as TicketProof;
+    } catch (err) {
+      if (!unreachable(err)) throw err;
+      // 서버가 응답하지 않으면 사본의 그 회차 파일 하나로 기기에서 같은 증명을 만든다
+      const { tickets } = await this.roundFile(round);
+      proof = ticketProofFromList(record, tickets, idHex);
+      if (!proof) return null;
+    }
+    return checkTicketProof(proof, record);
+  }
+
+  async keyTickets(
+    pubs: readonly Uint8Array[],
+    known: readonly Ticket[],
+  ): Promise<Ticket[]> {
+    const found = new Map<string, Ticket>();
+    const slot = (t: Ticket) => `${toHex(t.pub)}:${t.round}`;
+    let offline = false;
+    for (const pub of pubs) {
+      try {
+        for (const t of await this.keyTicketsOf(pub)) found.set(slot(t), t);
+      } catch (err) {
+        if (!unreachable(err)) throw err;
+        offline = true;
+      }
+    }
+    // 서버가 응답하지 않으면 지갑의 응모권(내가 낸 바이트)으로. 등수는 기록의 당첨 id로 다시 본다
+    if (offline)
+      for (const t of known)
+        if (this.record(t.round) && !found.has(slot(t))) found.set(slot(t), t);
+    return [...found.values()].sort((a, b) => a.round - b.round);
+  }
+
+  /** 한 열쇠의 닫힌 회차 응모권(증명으로 확인). 물어본 회차 뒤로 닫힌 회차만 새로 묻는다 */
+  private keyTicketsOf(pub: Uint8Array): Promise<Ticket[]> {
+    const hex = toHex(pub);
+    const cached = this.keyCache.get(hex);
+    if (cached && cached.through >= this.records.length)
+      return Promise.resolve(cached.tickets);
+    const loading = this.keyLoading.get(hex);
+    if (loading) return loading;
+    const run = this.fetchKeyTickets(pub, cached).finally(() =>
+      this.keyLoading.delete(hex),
+    );
+    this.keyLoading.set(hex, run);
+    return run;
+  }
+
+  private async fetchKeyTickets(
+    pub: Uint8Array,
+    cached: { through: number; tickets: Ticket[] } | undefined,
+  ): Promise<Ticket[]> {
+    const key = toBase64Url(pub);
+    const tickets = [...(cached?.tickets ?? [])];
+    let through = cached?.through ?? 0;
+    const closed = this.records.length;
+    while (through < closed) {
+      const body = await this.get<KeyTicketsResponse>(
+        `/api/keys/${key}/tickets?from=${through + 1}`,
+      );
+      for (const proof of body.tickets) {
+        const record = this.record(proof.round);
+        // 서버가 이 기기보다 더 닫았으면 그 회차는 다음에 묻는다
+        if (!record || proof.round > closed) continue;
+        const ticket = checkTicketProof(proof, record);
+        if (!ticket || !equalBytes(ticket.pub, pub))
+          throw new Error(`${proof.round}회차 응모권 증명이 맞지 않습니다`);
+        tickets.push(ticket);
+      }
+      const reg = body.registration;
+      const regRecord = reg ? this.record(reg.round) : undefined;
+      if (reg && regRecord) {
+        const r = checkRegistrationProof(reg, regRecord);
+        if (!r || !equalBytes(r.pub, pub))
+          throw new Error(`${reg.round}회차 등록 증명이 맞지 않습니다`);
+        this.registered.add(key);
+        this.registeredAt.set(key, reg.round);
+      }
+      through = Math.min(body.through, closed);
+      if (body.next === undefined) break;
+    }
+    this.keyCache.set(toHex(pub), { through, tickets });
+    return tickets;
+  }
+
+  async verifyRound(
+    round: number,
+    mine: readonly Uint8Array[] = [],
+  ): Promise<RoundCheck> {
+    if (!this.genesis) throw new Error("장부를 아직 받지 못했습니다");
+    if (!this.record(round))
+      throw new Error(`${round}회차는 아직 닫히지 않았습니다`);
+    let file: RoundFileData;
+    try {
+      file = await this.roundFile(round);
+    } catch (err) {
+      if (!(err instanceof RootMismatch)) throw err;
+      return { problems: [{ round, message: err.message }], skipped: [] };
+    }
+    const seal = await this.ledgerFile<PublicSealFile>(
+      sealFilePath(round),
+    ).catch(() => null);
+    const report = await checkRound(
+      {
+        genesis: this.genesis,
+        records: this.records,
+        round,
+        fileRecord: file.record,
+        tickets: file.tickets,
+        registrations: file.registrations,
+        seal,
+        summary: this.summaries[round - 1] as RoundSummary,
+      },
+      {
+        powParams: this.powParams,
+        mine,
+        webauthnPolicy: this.o.policy,
+        ...this.o.verifyOptions,
+      },
+    );
+    return { problems: report.problems, skipped: report.skipped };
   }
 
   async qualInfo(): Promise<QualInfo> {
@@ -549,21 +777,55 @@ export class RemoteLedger implements Ledger {
       );
     return fromBase64Url(body.blindStamp);
   }
+}
 
-  verify(mine: readonly Uint8Array[] = []): Promise<VerifyReport> {
-    if (!this.genesis) throw new Error("장부를 아직 받지 못했습니다");
-    // 검사는 처음 일정표에서 시작한다(바뀐 일정표를 넘기면 genesis 해시가 달라진다)
-    return verifyLedger(
-      this.genesis,
-      this.records,
-      this.tickets,
-      this.registrations,
-      {
-        powParams: this.powParams,
-        mine,
-        webauthnPolicy: this.o.policy,
-        ...this.o.verifyOptions,
-      },
+interface RoundFileData {
+  record: RoundRecord;
+  tickets: Ticket[];
+  registrations: KeyRegistration[];
+}
+
+/** 받은 기록 사슬이 처음 일정표부터 이어지지 않는다 */
+class ChainBroken extends Error {
+  constructor(round: number) {
+    super(
+      `${round}회차 기록이 앞 기록과 이어지지 않습니다(장부가 바뀌었습니다)`,
+    );
+    this.name = "ChainBroken";
+  }
+}
+
+/** 받은 회차 파일의 응모권 목록이 기록의 머클 루트와 다르다 */
+class RootMismatch extends Error {
+  constructor(round: number) {
+    super(`${round}회차 파일의 응모권 목록이 기록의 머클 루트와 다르다`);
+    this.name = "RootMismatch";
+  }
+}
+
+/**
+ * from~to 닫힌 회차의 기록과 요약: 가벼운 기록으로 받고, 내지 않는 서버(옛 판)면 회차 파일을 받아 요약을 계산한다
+ */
+async function loadClosed(
+  base: string,
+  fetchFn: typeof fetch,
+  from: number,
+  to: number,
+): Promise<ClosedRound[]> {
+  try {
+    return (await loadLightFiles(base, fetchFn, from, to)).map((l) => ({
+      record: l.record,
+      summary: l.summary,
+    }));
+  } catch (err) {
+    if (!(err instanceof LightMissing)) throw err;
+    return (await loadRoundFiles(base, fetchFn, from, to)).map(
+      ({ round: f }) => ({
+        record: decodeRecord(fromBase64Url(f.record)),
+        summary: roundSummary(
+          f.tickets.map((t) => decodeTicket(fromBase64Url(t))),
+        ),
+      }),
     );
   }
 }
