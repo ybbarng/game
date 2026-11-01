@@ -8,13 +8,23 @@ import type { MedalKind, MedalScene } from "../medal/medal-scene";
 /** 리본까지 넣은 훈장의 세로:가로 */
 export const MEDAL_ASPECT = 1.45;
 
+let webgl: boolean | null = null;
+
+/**
+ * WebGL을 쓸 수 있는지(한 번만 알아보고 기억한다). 알아보려고 만든 맥락은 바로 놓는다. 예전에는 훈장을 그릴 때마다
+ * 맥락을 하나씩 만들고 놓지 않아, 기록 화면을 오가면 맥락이 쌓였다(브라우저가 오래된 것부터 강제로 끊는다)
+ */
 function webglAvailable(): boolean {
+  if (webgl !== null) return webgl;
   try {
     const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+    const g = c.getContext("webgl2") ?? c.getContext("webgl");
+    g?.getExtension("WEBGL_lose_context")?.loseContext();
+    webgl = !!g;
   } catch {
-    return false;
+    webgl = false;
   }
+  return webgl;
 }
 
 /** 정지 그림 모음(같은 종류·크기는 한 번만 그린다) */
