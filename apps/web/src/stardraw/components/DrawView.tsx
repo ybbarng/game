@@ -20,6 +20,7 @@ import { starOf } from "../sky";
 import { SkyCelebration, WinSeal } from "./Celebration";
 import { LottoBall, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
+import { MenuItem } from "./StardrawNav";
 
 /** 틱 소리 사이 가장 짧은 간격(빨리 돌 때 소리가 뭉개지지 않게) */
 const TICK_GAP_MS = 45;
@@ -46,6 +47,7 @@ export function DrawView({
   startedAt,
   timing,
   embedded = false,
+  onHome,
 }: {
   /**
    * 연출 중 아래에 작은 「추첨 건너뛰기」(누르면 바로 결과). 이 기기에서 추첨을 끝까지 한 번 본 뒤, 이미 결과가 나온
@@ -75,6 +77,8 @@ export function DrawView({
   onReplay?: (() => void) | undefined;
   /** 결과를 보인 뒤 다음 회차 응모로(지금 응모할 수 있을 때만 넘긴다) */
   onNext?: (() => void) | undefined;
+  /** 머리 줄 오른쪽 「홈」(메뉴 줄이 없는 휴대폰에서 바깥이 넘긴다). 없으면 그 자리는 비운다 */
+  onHome?: (() => void) | undefined;
 }) {
   const order = drawOrder(record);
   // 회차가 바뀔 때만 다시 계산한다(order는 record에서 정해진다)
@@ -194,14 +198,14 @@ export function DrawView({
     >
       <div
         className={cn(
-          "flex items-center justify-between",
+          "grid grid-cols-[1fr_auto_1fr] items-center gap-2",
           embedded && "hidden",
         )}
       >
         <button
           type="button"
           onClick={onClose}
-          className="text-sm text-white/70 hover:text-white"
+          className="justify-self-start text-sm text-white/70 hover:text-white"
         >
           ← 돌아가기
         </button>
@@ -213,10 +217,10 @@ export function DrawView({
             카노푸스 우주국 정시 추첨
           </span>
         </div>
-        {/* 제목이 가운데 오게 「돌아가기」만큼 자리를 둔다 */}
-        <span aria-hidden="true" className="invisible text-sm">
-          ← 돌아가기
-        </span>
+        {/* 제목은 가운데(양쪽 칸이 같은 너비), 오른쪽 칸은 「홈」이나 빈자리 */}
+        <div className="-mr-3 justify-self-end">
+          {onHome && <MenuItem target="home" label="홈" onClick={onHome} />}
+        </div>
       </div>
 
       {record.void ? (

@@ -123,3 +123,46 @@ test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로"
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
 });
+
+/** 「홈」이 하늘판 위에 겹치지 않고 위쪽에 따로 있는지(연출을 가리지 않는다) */
+async function homeAboveSky(page: Page) {
+  const homeBox = await page.locator("[data-tab='home']").boundingBox();
+  const skyBox = await page.locator("canvas[data-sky='draw']").boundingBox();
+  expect(homeBox).not.toBeNull();
+  expect(skyBox).not.toBeNull();
+  if (!homeBox || !skyBox) return;
+  expect(homeBox.y + homeBox.height).toBeLessThanOrEqual(skyBox.y);
+}
+
+/**
+ * 2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다(탭바 없이 「돌아가기」만, 뒤로 가기라 온 길을 되밟았다).
+ * 휴대폰은 추첨 화면 머리 줄 오른쪽에 「홈」, PC는 다른 화면처럼 위쪽 메뉴 줄. 둘 다 하늘판 위에 겹치지 않는다
+ */
+test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과 화면", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  await virtualAuthenticator(page);
+  await registerAndEnter(page);
+  const home = page.locator("[data-greeting]");
+  const goHome = page.locator("[data-tab='home']");
+
+  // 결과 전: 추첨을 기다리는 화면
+  await page.getByRole("button", { name: "← 처음으로" }).click();
+  await page.locator("[data-card='entered'] [data-go-draw]").click();
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+  await expect(goHome).toHaveCount(1);
+  await homeAboveSky(page);
+  await goHome.click();
+  await expect(page).toHaveURL(/\/stardraw$/);
+  await expect(home).toBeVisible();
+
+  // 결과 화면
+  await openDrawResult(page);
+  await expect(goHome).toHaveCount(1);
+  await homeAboveSky(page);
+  await page.screenshot({ path: info.outputPath("nav-home-draw.png") });
+  await goHome.click();
+  await expect(page).toHaveURL(/\/stardraw$/);
+  await expect(home).toBeVisible();
+});

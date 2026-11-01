@@ -121,6 +121,48 @@ export function TabBar(props: {
   return useWideScreen() ? <TopBar {...props} /> : <BottomBar {...props} />;
 }
 
+/** PC 메뉴 줄의 항목 하나(그림과 이름). 메뉴 줄이 없는 휴대폰 추첨 화면도 「홈」을 이 모양으로 둔다 */
+export function MenuItem({
+  target,
+  label,
+  on = false,
+  onClick,
+}: {
+  target: NavTarget;
+  label: string;
+  on?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-tab={target}
+      aria-current={on ? "page" : undefined}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+        on
+          ? "bg-white/10 text-amber-100"
+          : "text-white/65 hover:bg-white/5 hover:text-white",
+      )}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {ICONS[target as keyof typeof ICONS]}
+      </svg>
+      {label}
+    </button>
+  );
+}
+
 /** PC 위쪽 메뉴 줄: 왼쪽 이름(누르면 홈), 오른쪽 탭과 더 보기. 더 보기는 바깥을 누르거나 Esc로 닫힌다 */
 function TopBar({
   services,
@@ -157,41 +199,18 @@ function TopBar({
       document.removeEventListener("keydown", esc);
     };
   }, [more]);
-  const item = (t: NavTarget, label: string) => {
-    const on = active === t && !more;
-    return (
-      <button
-        key={t}
-        type="button"
-        data-tab={t}
-        aria-current={on ? "page" : undefined}
-        onClick={() => {
-          setMore(false);
-          onGo(t);
-        }}
-        className={cn(
-          "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-          on
-            ? "bg-white/10 text-amber-100"
-            : "text-white/65 hover:bg-white/5 hover:text-white",
-        )}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="size-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {ICONS[t as keyof typeof ICONS]}
-        </svg>
-        {label}
-      </button>
-    );
-  };
+  const item = (t: NavTarget, label: string) => (
+    <MenuItem
+      key={t}
+      target={t}
+      label={label}
+      on={active === t && !more}
+      onClick={() => {
+        setMore(false);
+        onGo(t);
+      }}
+    />
+  );
   return (
     <nav
       aria-label="별 따기 메뉴"

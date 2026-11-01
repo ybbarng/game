@@ -59,7 +59,7 @@ import { ReceiptPrint } from "./ReceiptPrint";
 import { liveDrawRound, liveOver, RoomView, roomOpen } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
 import { useReducedMotion } from "./StageOverlay";
-import { type NavTarget, TabBar, useWideScreen } from "./StardrawNav";
+import { MenuItem, type NavTarget, TabBar, useWideScreen } from "./StardrawNav";
 import { StatsView } from "./StatsView";
 import { ticketUrl } from "./TicketView";
 import { WinNotice } from "./WinNotice";
@@ -333,11 +333,15 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
       go({ name: "receipt", id: toHex(ticketId(enteredNow.ticket)) }, true);
   }, [enteredNow]);
 
-  // 응모·추첨은 하던 일에 집중하게 탭바를 숨긴다
-  // 마우스로 쓰는 넓은 화면은 위쪽 메뉴 줄(탭바 대신)이라 위에 자리를 둔다
+  // 응모·추첨은 하던 일에 집중하게 휴대폰 탭바를 숨긴다(응모는 「처음으로」, 추첨은 머리 줄 「홈」으로 첫 화면에 간다)
+  // 마우스로 쓰는 넓은 화면은 위쪽 메뉴 줄(탭바 대신)이라 위에 자리를 둔다. 연출을 가리지 않아 추첨에도 둔다
+  // (2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다)
   const wide = useWideScreen();
   const showNav =
-    !!services && !!status && view.name !== "enter" && view.name !== "draw";
+    !!services &&
+    !!status &&
+    view.name !== "enter" &&
+    (view.name !== "draw" || wide);
   const navActive: NavTarget | null =
     view.name === "home"
       ? "home"
@@ -477,6 +481,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 }
                 back({ name: "home" });
               }}
+              onHome={wide ? undefined : goHome}
             />
           )
         ) : view.name === "records" ? (
@@ -1319,6 +1324,7 @@ function DrawFor({
   onClose,
   onEnter,
   onSkip,
+  onHome,
 }: {
   services: Services;
   status: LedgerStatus;
@@ -1330,6 +1336,8 @@ function DrawFor({
   onEnter: () => void;
   /** 연습 장부일 때만: 다음 추첨까지 건너뛰기 */
   onSkip: (() => Promise<void>) | null;
+  /** 메뉴 줄이 없는 휴대폰: 머리 줄 오른쪽 「홈」 */
+  onHome?: (() => void) | undefined;
 }) {
   const record = services.ledger.record(round);
   const [replays, setReplays] = useState(0);
@@ -1347,8 +1355,8 @@ function DrawFor({
       !liveOver(services, round, record, status.now * 1000) ||
       savedPass(round) !== null);
   wasInRoom.current = showRoom;
-  if (showRoom)
-    return (
+  if (showRoom) {
+    const room = (
       <RoomView
         key={round}
         services={services}
@@ -1359,6 +1367,18 @@ function DrawFor({
         onEnter={onEnter}
       />
     );
+    // 방 머리 줄(「돌아가기」·함께 보는 사람 수)은 방 화면이 그린다. 「홈」은 그 위 오른쪽에 둔다
+    return onHome ? (
+      <div className="flex flex-col gap-2">
+        <div className="-mt-1.5 -mr-3 self-end">
+          <MenuItem target="home" label="홈" onClick={onHome} />
+        </div>
+        {room}
+      </div>
+    ) : (
+      room
+    );
+  }
   // 아직 결과가 없는 회차: 남은 시간을 보이며 기다리다가 결과가 들어오는 순간 추첨 연출을 시작한다
   if (!record)
     return (
@@ -1369,6 +1389,7 @@ function DrawFor({
         ticket={mine.find((m) => m.ticket.round === round)?.ticket}
         onClose={onClose}
         onSkip={onSkip}
+        onHome={onHome}
       />
     );
   const canEnter =
@@ -1389,6 +1410,7 @@ function DrawFor({
       onClose={onClose}
       clock={services.clock}
       label={roundTitle(services.ledger.schedule, round)}
+      onHome={onHome}
     />
   );
 }
@@ -1405,6 +1427,7 @@ function DrawWait({
   ticket,
   onClose,
   onSkip,
+  onHome,
 }: {
   services: Services;
   status: LedgerStatus;
@@ -1412,6 +1435,7 @@ function DrawWait({
   ticket: Ticket | undefined;
   onClose: () => void;
   onSkip: (() => Promise<void>) | null;
+  onHome?: (() => void) | undefined;
 }) {
   const schedule = services.ledger.schedule;
   const drawAt = drandTime(
@@ -1424,13 +1448,20 @@ function DrawWait({
       data-draw-wait={round}
       className="flex flex-col gap-4"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="self-start text-sm text-white/70 hover:text-white"
-      >
-        ← 돌아가기
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-sm text-white/70 hover:text-white"
+        >
+          ← 돌아가기
+        </button>
+        {onHome && (
+          <div className="-mr-3">
+            <MenuItem target="home" label="홈" onClick={onHome} />
+          </div>
+        )}
+      </div>
       <h2 className="text-center font-bold text-xl">
         {roundTitle(schedule, round)} 추첨
       </h2>
