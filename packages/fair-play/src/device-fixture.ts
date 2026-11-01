@@ -65,10 +65,12 @@ export function network(
     );
   const settle = async () => {
     // 기기가 일을 마치며 새 메시지를 보낼 수 있어, 메시지와 일이 함께 비는 때까지 되풀이한다.
+    // 여러 기기를 함께 기다리는 동안 먼저 빈 기기가 다시 메시지를 받아 일을 시작할 수 있어,
+    // 다 기다린 뒤 모든 기기가 비었는지 다시 본다.
     for (;;) {
       await new Promise<void>((r) => setTimeout(() => r(), 0));
       await Promise.all(devices.map((d) => d.idle()));
-      if (inFlight === 0) return;
+      if (inFlight === 0 && devices.every((d) => !d.busy())) return;
     }
   };
   return { devices, clock, settle };
