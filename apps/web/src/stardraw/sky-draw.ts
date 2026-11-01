@@ -96,8 +96,17 @@ export function scaleOf(width: number): number {
   return Math.max(0.55, Math.min(1.6, width / 360));
 }
 
+/** 별을 누르는 범위의 반지름(판 너비 360px 기준 px) */
+export const HIT = 22;
+
 /** 이 자리(px)에 있는 별 번호. 별(과 오른쪽 위 번호)을 누르면 된다 */
-export function starAt(x: number, y: number, width: number): number | null {
+export function starAt(
+  x: number,
+  y: number,
+  width: number,
+  /** 누르는 범위의 가장 작은 반지름(px). 작은 하늘(영수증)도 응모 하늘만큼 누르기 쉽게 */
+  minHit = 0,
+): number | null {
   const scale = scaleOf(width);
   let best: number | null = null;
   let bestD = Infinity;
@@ -108,7 +117,7 @@ export function starAt(x: number, y: number, width: number): number | null {
       best = s.n;
     }
   }
-  return bestD < 22 * scale ? best : null;
+  return bestD < Math.max(HIT * scale, minHit) ? best : null;
 }
 
 export interface FrameInput {
@@ -262,10 +271,10 @@ function sceneOf(W: number, state: SkyState) {
   const dark = state.mode === "draw";
   const picked = new Set([...state.picked, ...(state.marks ?? [])]);
   const lit = new Set(state.lit);
-  const focusCon =
-    state.focus && state.mode === "pick"
-      ? (SKY_STARS[state.focus - 1]?.con ?? null)
-      : null;
+  // 누른 별의 별자리는 어느 하늘에서나 환하게(영수증·추첨 하늘에서도 별 설명을 본다)
+  const focusCon = state.focus
+    ? (SKY_STARS[state.focus - 1]?.con ?? null)
+    : null;
   const pickedCons = new Set(
     [...picked].map((n) => SKY_STARS[n - 1]?.con).filter(Boolean),
   );
@@ -294,7 +303,9 @@ function sceneOf(W: number, state: SkyState) {
       on,
       hit: mine && (drawn || isBonus),
       // 영수증은 내 별 말고 흐리게, 추첨은 켜진 별 말고 모두 끈다
-      dim: (receipt && !mine) || (dark && !on),
+      dim: ((receipt && !mine) || (dark && !on)) && state.focus !== s.n,
+      /** 누른 별: 흐린 하늘에서도 밝게 두고 점선 고리를 두른다 */
+      focused: state.focus === s.n,
     };
   });
   return { W, state, scale, receipt, dark, focusCon, levelOf, stars };
@@ -313,9 +324,17 @@ function paintBase(g: Ctx, sc: Scene) {
 
   // 별자리 선: 평소엔 아주 흐리게, 고른(영수증은 내) 별의 별자리는 조금 밝게, 누른 별의 별자리는 환하게
   const lineColors = dark
-    ? ["rgba(150,172,240,0.12)", "rgba(150,172,240,0.12)", ""]
+    ? [
+        "rgba(150,172,240,0.12)",
+        "rgba(150,172,240,0.12)",
+        "rgba(185,205,255,0.6)",
+      ]
     : receipt
-      ? ["rgba(150,172,240,0.08)", "rgba(160,182,245,0.28)", ""]
+      ? [
+          "rgba(150,172,240,0.08)",
+          "rgba(160,182,245,0.28)",
+          "rgba(185,205,255,0.7)",
+        ]
       : [
           "rgba(150,172,240,0.16)",
           "rgba(160,182,245,0.34)",
@@ -337,9 +356,9 @@ function paintBase(g: Ctx, sc: Scene) {
   for (const p of FAINT_STARS) {
     const level = levelOf(p.con);
     const base = dark
-      ? 0.22
+      ? [0.22, 0.22, 0.7][level]
       : receipt
-        ? [0.18, 0.4, 0.4][level]
+        ? [0.18, 0.4, 0.8][level]
         : [0.32, 0.5, 0.85][level];
     g.fillStyle = `rgba(225,232,255,${base})`;
     g.beginPath();
@@ -355,7 +374,7 @@ function paintBase(g: Ctx, sc: Scene) {
 
   for (const st of sc.stars) {
     const on = st.on && !sc.state.motion;
-    g.globalAlpha = dark && !on ? 0.2 : st.dim ? 0.35 : 1;
+    g.globalAlpha = dark && !on && !st.focused ? 0.2 : st.dim ? 0.35 : 1;
     paintStar(g, st.x, st.y, st.c, st.look);
   }
   g.globalAlpha = 1;
@@ -387,7 +406,13 @@ function paintTop(g: Ctx, sc: Scene) {
 
     // 번호: 동그라미 없이 별빛 색 글자로 별 오른쪽 위에(별 지도처럼), 은은하게 빛난다
     g.globalAlpha =
-      dark && !st.on ? 0.22 : st.dim ? 0.3 : st.mine || st.on ? 1 : 0.88;
+      dark && !st.on && !st.focused
+        ? 0.22
+        : st.dim
+          ? 0.3
+          : st.mine || st.on || st.focused
+            ? 1
+            : 0.88;
     g.save();
     g.shadowColor = rgba(st.c, 0.9);
     g.shadowBlur = 6 * scale;
@@ -411,7 +436,7 @@ function paintTop(g: Ctx, sc: Scene) {
       g.arc(x, y, st.r + 6 * scale, 0, TAU);
       g.stroke();
     }
-    if (state.mode === "pick" && state.focus === s.n) {
+    if (st.focused) {
       g.strokeStyle = "rgba(232,236,246,0.6)";
       g.setLineDash([3, 3]);
       g.lineWidth = 1;
