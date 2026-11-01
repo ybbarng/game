@@ -71,6 +71,14 @@ async function checkStarInfo(
   await expect(page.locator("[data-star-info='7']")).toBeVisible();
   await outside.click();
   await expect(info).toHaveCount(0);
+  // 오른쪽 위 ✕ 단추로도 닫힌다(손가락으로 누를 만한 크기)
+  await tapStar(page, canvas, 7);
+  const close = info.getByRole("button", { name: "설명 닫기" });
+  const size = await close.boundingBox();
+  expect(size?.width).toBeGreaterThanOrEqual(32);
+  expect(size?.height).toBeGreaterThanOrEqual(32);
+  await close.click();
+  await expect(info).toHaveCount(0);
 }
 
 test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지난 회차에서도 별을 누르면 그 별 설명이 뜬다", async ({
@@ -119,7 +127,16 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
     path: testInfo.outputPath("star-info-draw.png"),
     fullPage: true,
   });
-  await tapStar(page, "canvas[data-sky='draw']", 7);
+  // 위쪽 별을 누르면 설명 칸이 아래쪽(켜진 당첨 별 위)에 뜬다: 밝은 별 위에서도 글이 읽히는지 스크린숏으로 본다
+  const upper = sky.stars.find((s) => s.y < 0.3);
+  if (!upper) throw new Error("위쪽 별이 없다");
+  await tapStar(page, "canvas[data-sky='draw']", upper.n);
+  await expect(page.locator(`[data-star-info='${upper.n}']`)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("star-info-draw-low.png"),
+    fullPage: true,
+  });
+  await tapStar(page, "canvas[data-sky='draw']", upper.n);
 
   // 지난 회차 결과(지난 회차 목록에서 연 추첨 화면, 새로 열어 결과부터 보인다)
   await page.goto("/stardraw/rounds#draw-1");

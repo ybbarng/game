@@ -244,11 +244,13 @@ export function SkyBoard({
       )}
       {overlay}
       {showing !== null && (
-        // 설명 칸은 누르기를 통과시킨다: 그 아래 별을 눌러도 바뀌고, 빈 곳을 누르면 닫힌다
+        // 설명 칸은 누르기를 통과시킨다: 그 아래 별을 눌러도 바뀌고, 빈 곳을 누르면 닫힌다(✕ 단추만 누르기를 받는다).
+        // 배경은 살짝 비쳐 아래 하늘·별자리가 보이고, 가벼운 흐림으로 밝은 별 위에서도 글이 읽힌다
         <StarInfo
           n={showing}
+          onClose={() => setShown(null)}
           className={cn(
-            "pointer-events-none absolute inset-x-2 z-10 border-white/15 bg-[#0b1322]/90 shadow-black/40 shadow-lg backdrop-blur-sm",
+            "pointer-events-none absolute inset-x-2 z-10 border-white/15 bg-[#0b1322]/75 shadow-black/40 shadow-lg backdrop-blur-[3px]",
             starOf(showing).y > 0.5 ? "top-2" : "bottom-2",
           )}
         />

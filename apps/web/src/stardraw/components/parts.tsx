@@ -85,9 +85,12 @@ export function StarLine({
 export function StarInfo({
   n,
   className,
+  onClose,
 }: {
   n: number | null;
   className?: string | undefined;
+  /** 하늘 위에 띄운 칸: 오른쪽 위에 ✕ 닫기 단추(칸이 누르기를 아래로 넘겨도 단추는 받는다) */
+  onClose?: (() => void) | undefined;
 }) {
   if (n === null)
     return (
@@ -99,10 +102,23 @@ export function StarInfo({
       data-star-info={n}
       className={cn(
         "min-h-20 rounded-xl border border-white/10 bg-white/5 px-4 py-3",
+        onClose && "pr-10",
         className,
       )}
     >
       <StarLine star={starOf(n)} />
+      {onClose && (
+        <button
+          type="button"
+          aria-label="설명 닫기"
+          onClick={onClose}
+          className="pointer-events-auto absolute top-1 right-1 flex size-9 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+        >
+          <span aria-hidden="true" className="text-base leading-none">
+            ✕
+          </span>
+        </button>
+      )}
     </div>
   );
 }
