@@ -111,6 +111,7 @@ test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로"
     .first()
     .click();
   await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("nav-home-receipt.png") });
   await page.getByRole("button", { name: "← 처음으로" }).click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
@@ -122,6 +123,7 @@ test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로"
   await page.getByRole("button", { name: "← 처음으로" }).click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
+  await page.screenshot({ path: info.outputPath("nav-home-first.png") });
 });
 
 /** 「홈」이 하늘판 위에 겹치지 않고 위쪽에 따로 있는지(연출을 가리지 않는다) */
