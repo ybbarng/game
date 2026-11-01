@@ -169,6 +169,20 @@ describe("기념 서류", () => {
     expect(find(earnedAwards(world(withVoid)), "streak", 12)?.round).toBe(12);
   });
 
+  it("연속 응모는 시간으로 센다: 회차 길이가 1시간에서 2시간으로 바뀌면 12시간은 9회차에서 채운다(docs/36 11-32)", () => {
+    const longer: Schedule = {
+      ...schedule,
+      entries: [entry(1), { ...entry(6), length: 7200 }],
+    };
+    // 1~5회차 5시간 + 6~9회차 8시간 = 13시간(8회차까지는 11시간)
+    const got = earnedAwards(world(plain(1, 12), { schedule: longer }));
+    expect(find(got, "streak", 12)?.round).toBe(9);
+    expect(find(got, "streak", 12)?.text).toContain(
+      "12시간 동안 한 회차도 거르지 않고",
+    );
+    expect(find(got, "streak", 168)).toBeUndefined();
+  });
+
   it("연속 낙첨: 무효 회차는 끊지도 세지도 않고, 당첨이 끼면 처음부터", () => {
     const specs = [
       ...plain(1, 30),

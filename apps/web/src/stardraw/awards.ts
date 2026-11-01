@@ -248,6 +248,11 @@ function countSteps(
 }
 
 /** 이어진 길이가 단계에 처음 닿은 곳 */
+/** 연속 관측 시간(시간 단위)을 문장에 쓰는 말: 12 → "12시간", 168 → "7일", 720 → "30일" */
+function streakSpan(hours: number): string {
+  return hours >= 48 && hours % 24 === 0 ? `${hours / 24}일` : `${hours}시간`;
+}
+
 function runSteps(
   items: readonly { m: MyRound; cont: boolean }[],
   steps: readonly Step[],
@@ -408,18 +413,34 @@ export const AWARDS: readonly AwardDef[] = [
       { n: 168, name: "철야 관측 표창장", kind: "표창장", grade: "gold" },
       { n: 720, name: "한 달 철야 공로패", kind: "공로패", grade: "star" },
     ],
+    // 단계 수(n)는 시간이다. 회차 길이가 바뀌어도(정식 1시간 → 2시간 등, docs/36 11-32) 이어진 회차들의 길이 합으로 센다.
+    // 1시간 회차만 있으면 예전처럼 n회차와 같다
     find: (c) => {
-      const items: { m: MyRound; cont: boolean }[] = [];
+      const out: Hit[] = [];
+      const reached = new Set<number>();
+      let seconds = 0;
       let prev = -1;
       for (const m of c.mine) {
-        items.push({ m, cont: m.round === prev + 1 });
+        const length = roundTimes(c.schedule, m.round).entry.length;
+        seconds = m.round === prev + 1 ? seconds + length : length;
         prev = m.round;
+        for (const s of stepsOf("streak"))
+          if (seconds >= s.n * 3600 && !reached.has(s.n)) {
+            reached.add(s.n);
+            out.push({
+              step: s.n,
+              round: m.round,
+              at: m.at,
+              fill: { n: s.n },
+              results: [],
+            });
+          }
       }
-      return runSteps(items, stepsOf("streak"));
+      return out;
     },
     text: (f, k) =>
       doc(
-        `귀하는 ${f.n}회차를 한 번도 거르지 않고 이어서 관측하였습니다. 잠보다 별을 택한 그 정성에 우주국은 깊은 감명을 받았습니다.`,
+        `귀하는 ${streakSpan(f.n)} 동안 한 회차도 거르지 않고 이어서 관측하였습니다. 잠보다 별을 택한 그 정성에 우주국은 깊은 감명을 받았습니다.`,
         k,
       ),
   },
