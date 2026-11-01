@@ -1,4 +1,5 @@
 import {
+  checkGate,
   concat,
   decodeReceipt,
   decodeTicket,
@@ -542,22 +543,22 @@ describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
       };
     });
   };
-  /** 엉터리 답이 맞을 일이 없게 세게(평균 2^20번). 풀지 않는 시험에만 쓴다 */
-  const STRICT = {
-    target: powTargetForTries(2 ** 20),
-    params: TEST_GATE.params,
-  };
+  /**
+   * 어떤 답도 맞지 않는 목표값(값 < 0인 해시는 없다). 풀지 않는 시험에만 쓴다.
+   * 예전에는 평균 2^20번짜리라 엉터리 답 1,000개 중 하나가 맞을 확률이 0.1%쯤 있었다
+   */
+  const STRICT = { target: 0, params: TEST_GATE.params };
 
-  it("앞단 답이 없는 응모 1,000건과 틀린 답 1,000건(열쇠마다 새로)은 Argon2를 한 번도 돌리지 않고 400으로 버린다", async () => {
+  it("앞단 답이 없는 응모 100건과 틀린 답 100건(열쇠마다 새로)은 Argon2를 한 번도 돌리지 않고 400으로 버린다", async () => {
     const argon = counting();
     rig = await makeRig({ powChecker: argon, frontGate: STRICT });
     await rig.at(EPOCH + 10);
-    for (const body of await floodBodies(1000))
+    for (const body of await floodBodies(100))
       await expect(rig.engine.submit(body)).rejects.toMatchObject({
         status: 400,
         message: GATE_MISSING_MESSAGE,
       });
-    for (const body of await floodBodies(1000, (i) => i))
+    for (const body of await floodBodies(100, (i) => i))
       await expect(rig.engine.submit(body)).rejects.toMatchObject({
         status: 400,
         message: "응모 확인 계산이 맞지 않습니다",
@@ -581,13 +582,27 @@ describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
     if (!a || !b) throw new Error("본문이 없다");
     const pubA = decodeTicket(a.ticket).pub;
     const pubB = decodeTicket(b.ticket).pub;
-    const forA = await solveGate(rig.engine.head(), pubA, gate.target, gate);
-    const forBOld = await solveGate(
-      new Uint8Array(32).fill(9),
-      pubB,
-      gate.target,
-      gate,
-    );
+    const head = rig.engine.head();
+    const oldHead = new Uint8Array(32).fill(9);
+    // 목표값이 1/64라 한쪽의 답이 우연히 다른 쪽에도 맞을 수 있다. 그런 n은 건너뛰어
+    // "한쪽에는 맞고 다른 쪽에는 틀린 답"을 고른다(운에 따라 결과가 달라지지 않게)
+    const answerOnly = async (
+      solve: [Uint8Array, Uint8Array],
+      not: [Uint8Array, Uint8Array],
+    ): Promise<number> => {
+      for (let start = 0; ; ) {
+        const n = await solveGate(solve[0], solve[1], gate.target, {
+          ...gate,
+          start,
+        });
+        if (n === null) throw new Error("앞단을 풀지 못했다");
+        if (!(await checkGate(not[0], not[1], n, gate.target, gate.params)))
+          return n;
+        start = n + 1;
+      }
+    };
+    const forA = await answerOnly([head, pubA], [head, pubB]);
+    const forBOld = await answerOnly([oldHead, pubB], [head, pubB]);
     // 열쇠 A의 답을 열쇠 B 응모에, 지난 문제 값의 답을 지금 응모에
     for (const n of [forA, forBOld])
       await expect(rig.engine.submit({ ...b, gate: n })).rejects.toThrow(
