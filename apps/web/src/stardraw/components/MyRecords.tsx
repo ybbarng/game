@@ -563,7 +563,7 @@ function AwardDocument({
       </span>
       <span className="relative mt-2 flex items-center gap-2 font-bold">
         카노푸스 우주국장
-        <Seal className="size-14" />
+        <Seal className="size-14 mix-blend-multiply" />
       </span>
     </div>
   );
@@ -665,7 +665,7 @@ function Certificate({
               <Seal
                 text="당첨"
                 label="카노푸스 우주국 당첨 직인"
-                className="size-12"
+                className="size-12 mix-blend-multiply"
               />
             </span>
           </span>
