@@ -23,6 +23,10 @@ test("footer 「카노푸스 우주국」은 우주국 소개 페이지로", asy
   await expect(
     bureau.getByText("제1대 카노푸스 우주국장").first(),
   ).toBeVisible();
+  // 우주국이 찾은 여섯 별 이야기(docs/36 11-34)
+  await expect(
+    bureau.getByRole("heading", { name: "여섯 별", exact: true }),
+  ).toBeVisible();
   await expect(bureau.getByRole("img", { name: /직인/ })).toBeVisible();
   // 실제 성도·제주 바다·은하 도식·3D 배치(장부가 없는 빌드라 국장 열쇠 칸은 그리지 않는다)
   await expect(
