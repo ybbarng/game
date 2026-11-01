@@ -11,6 +11,13 @@ import {
   toHorizontal,
   transitAfterNoon,
 } from "../astro";
+import {
+  aboveSeoulRidge,
+  type Boat,
+  MARADO_BOATS,
+  type RidgePoint,
+  SEOUL_RIDGES,
+} from "../canopus-scenery";
 import data from "../canopus-sky.json";
 import { tempColor } from "../sky";
 
@@ -328,9 +335,92 @@ function reddened(k: number, dim: number): [number, number, number] {
   ];
 }
 
+/** 배 실루엣 하나. (cx, wy)는 물에 닿는 가운데, L은 배 길이(px) */
+function BoatShape({
+  boat,
+  cx,
+  wy,
+  L,
+  lampFill,
+  reflectFill,
+}: {
+  boat: Boat;
+  cx: number;
+  wy: number;
+  L: number;
+  lampFill: string;
+  reflectFill: string;
+}) {
+  const f = boat.facing;
+  const hh = L * 0.12;
+  const px = (dx: number) => (cx + dx * f).toFixed(1);
+  const py = (dy: number) => (wy + dy).toFixed(1);
+  const hull = `M${px(-L / 2)} ${py(-hh)}L${px(L / 2 + L * 0.07)} ${py(-hh * 1.3)}L${px(L / 2 - L * 0.08)} ${py(0)}L${px(-L / 2 + L * 0.05)} ${py(0)}Z`;
+  const cabin = `M${px(-L * 0.3)} ${py(-hh)}L${px(-L * 0.3)} ${py(-hh * 2.3)}L${px(-L * 0.02)} ${py(-hh * 2.3)}L${px(L * 0.04)} ${py(-hh)}Z`;
+  const mastX = L * 0.16;
+  const mastTop = -hh * (boat.lamps ? 3 : 3.8);
+  const lr = Math.max(0.6, L * 0.022);
+  const lamps =
+    boat.lamps > 0
+      ? Array.from({ length: boat.lamps }, (_, i) => ({
+          dx: -L * 0.42 + (L * 0.84 * i) / Math.max(1, boat.lamps - 1),
+          dy: -hh * 2.7,
+        }))
+      : [];
+  return (
+    <g>
+      {lamps.map((l) => (
+        <rect
+          key={`r${l.dx}`}
+          x={Number(px(l.dx)) - lr * 0.6}
+          y={wy + 0.5}
+          width={lr * 1.2}
+          height={L * 0.3}
+          fill={reflectFill}
+        />
+      ))}
+      <line
+        x1={px(mastX)}
+        x2={px(mastX)}
+        y1={py(-hh)}
+        y2={py(mastTop)}
+        stroke="#020409"
+        strokeWidth={Math.max(0.6, L * 0.02)}
+      />
+      {lamps.length > 0 && (
+        <line
+          x1={px(lamps[0]?.dx ?? 0)}
+          x2={px(lamps[lamps.length - 1]?.dx ?? 0)}
+          y1={py(-hh * 2.7)}
+          y2={py(-hh * 2.7)}
+          stroke="#020409"
+          strokeWidth={Math.max(0.5, L * 0.012)}
+        />
+      )}
+      <path d={hull} fill="#020409" />
+      <path d={cabin} fill="#020409" />
+      {lamps.map((l) => (
+        <g key={l.dx}>
+          <circle cx={px(l.dx)} cy={py(l.dy)} r={lr * 5} fill={lampFill} />
+          <circle cx={px(l.dx)} cy={py(l.dy)} r={lr} fill="#fff4d6" />
+        </g>
+      ))}
+      {lamps.length === 0 && (
+        <circle
+          cx={px(mastX)}
+          cy={py(mastTop)}
+          r={Math.max(0.5, L * 0.012)}
+          fill="rgba(255,240,220,0.8)"
+        />
+      )}
+    </g>
+  );
+}
+
 /**
  * 남쪽을 바라본 수평 시야(방위 120~240°, 고도 −9~38°). 그 곳에서 카노푸스가 남중하는 순간의 실제 별을
- * 고도·방위로 계산해 그리고(굴절 포함), 낮은 별은 대기에 흡수된 만큼 어둡고 붉게. 바다면 수면 반영
+ * 고도·방위로 계산해 그리고(굴절 포함), 낮은 별은 대기에 흡수된 만큼 어둡고 붉게.
+ * 바다면 수면 반영과 고깃배, 땅이면 남쪽 산 능선(능선보다 낮은 별은 가린다)
  */
 function SouthView({
   place,
@@ -368,15 +458,27 @@ function SouthView({
   const canDim = can ? extinction(can.alt) : 0;
   const canColor = can ? reddened(7500, canDim) : tempColor(7500);
   const canR = can ? sizeOf(-0.72 + canDim, 1.15) : 0;
+  /** 카노푸스가 보이는가: 바다면 수평선 위, 땅이면 산 능선 위 */
+  const seen =
+    can !== undefined && (sea ? can.alt > 0 : aboveSeoulRidge(can.az, can.alt));
+  const degPx = W / (AZ1 - AZ0);
+  const ridgePath = (ridge: readonly RidgePoint[]) =>
+    `M${x(ridge[0]?.[0] ?? AZ0).toFixed(1)} ${H}${ridge
+      .map(([az, alt]) => `L${x(az).toFixed(1)} ${y(alt).toFixed(1)}`)
+      .join("")}L${x(ridge[ridge.length - 1]?.[0] ?? AZ1).toFixed(1)} ${H}Z`;
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       className="w-full rounded-2xl"
       role="img"
       aria-label={
-        can
-          ? `${place.name}에서 남쪽을 바라본 하늘. 카노푸스가 남쪽 수평선 위 약 ${can.alt.toFixed(1)}도 높이에 주황빛으로 낮게 떠 있다.`
-          : `${place.name}에서 남쪽을 바라본 하늘. 카노푸스는 지평선 아래에 있어 보이지 않는다.`
+        sea
+          ? seen && can
+            ? `${place.name}에서 남쪽을 바라본 하늘. 카노푸스가 남쪽 수평선 위 약 ${can.alt.toFixed(1)}도 높이에 주황빛으로 낮게 떠 있고, 바다 양옆에 고깃배가 떠 있다.`
+            : `${place.name}에서 남쪽을 바라본 하늘. 카노푸스는 수평선 아래에 있어 보이지 않는다.`
+          : seen && can
+            ? `${place.name}에서 남쪽을 바라본 하늘. 남쪽 산 능선 사이 골짜기로 카노푸스가 지평선 위 약 ${can.alt.toFixed(1)}도 높이에 겨우 보인다.`
+            : `${place.name}에서 남쪽을 바라본 하늘. 카노푸스는 남쪽 산 능선에 가려 보이지 않는다.`
       }
     >
       <defs>
@@ -392,6 +494,14 @@ function SouthView({
         <linearGradient id={`glint${id}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={rgb(canColor, 0.45)} />
           <stop offset="1" stopColor={rgb(canColor, 0)} />
+        </linearGradient>
+        <radialGradient id={`lamp${id}`}>
+          <stop offset="0" stopColor="rgba(255,230,170,0.55)" />
+          <stop offset="1" stopColor="rgba(255,230,170,0)" />
+        </radialGradient>
+        <linearGradient id={`lampsea${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="rgba(255,230,170,0.35)" />
+          <stop offset="1" stopColor="rgba(255,230,170,0)" />
         </linearGradient>
       </defs>
       <rect width={W} height={horizon} fill={`url(#sky${id})`} />
@@ -428,7 +538,7 @@ function SouthView({
           />
         );
       })}
-      {can && sea && (
+      {can && sea && seen && (
         <rect
           x={x(can.az) - 2.5}
           y={horizon + 1}
@@ -439,32 +549,58 @@ function SouthView({
         />
       )}
       {can && can.alt > 0 && (
+        <Glow
+          x={x(can.az)}
+          y={y(can.alt)}
+          r={Math.max(1.6, canR)}
+          color={canColor}
+          rays={false}
+        />
+      )}
+      {sea ? (
         <>
-          <Glow
-            x={x(can.az)}
-            y={y(can.alt)}
-            r={Math.max(1.6, canR)}
-            color={canColor}
-            rays={false}
+          <line
+            x1="0"
+            x2={W}
+            y1={horizon}
+            y2={horizon}
+            stroke="rgba(200,215,255,0.35)"
+            strokeWidth="1"
           />
-          <text
-            x={x(can.az) + 8}
-            y={y(can.alt) - 8}
-            fontSize={compact ? 13 : 12}
-            fill="rgba(255,255,255,0.85)"
-          >
-            카노푸스 {can.alt.toFixed(1)}°
-          </text>
+          {MARADO_BOATS.map((b) => (
+            <BoatShape
+              key={b.az}
+              boat={b}
+              cx={x(b.az)}
+              wy={y(b.water)}
+              L={b.length * degPx}
+              lampFill={`url(#lamp${id})`}
+              reflectFill={`url(#lampsea${id})`}
+            />
+          ))}
+        </>
+      ) : (
+        <>
+          <path d={ridgePath(SEOUL_RIDGES.far)} fill="#0b1221" />
+          <path
+            d={ridgePath(SEOUL_RIDGES.near)}
+            fill="#05070c"
+            stroke="rgba(160,180,230,0.14)"
+            strokeWidth="0.8"
+            strokeLinejoin="round"
+          />
         </>
       )}
-      <line
-        x1="0"
-        x2={W}
-        y1={horizon}
-        y2={horizon}
-        stroke="rgba(200,215,255,0.35)"
-        strokeWidth="1"
-      />
+      {can && seen && (
+        <text
+          x={x(can.az) + 8}
+          y={y(can.alt) - 8}
+          fontSize={compact ? 13 : 12}
+          fill="rgba(255,255,255,0.85)"
+        >
+          카노푸스 {can.alt.toFixed(1)}°
+        </text>
+      )}
       <g fontSize="11" fill="rgba(200,215,255,0.5)" textAnchor="middle">
         <text x={x(135)} y={H - 6}>
           남동
