@@ -132,6 +132,7 @@ export function Receipt({
           className="rounded-md border-0"
           // 출력되어 나오는 동안은 누르지 않는다
           info={!printing}
+          infoCompact
         />
       </div>
       <p

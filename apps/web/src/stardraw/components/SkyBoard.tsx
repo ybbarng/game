@@ -29,6 +29,7 @@ export function SkyBoard({
   state,
   onPick,
   info = false,
+  infoCompact = false,
   label,
   className,
   clock = realClock,
@@ -40,6 +41,8 @@ export function SkyBoard({
   onPick?: ((n: number) => void) | undefined;
   /** 별을 누르면 그 별 설명을 띄운다(연출 중에는 false로 막는다). onPick이 있으면 쓰지 않는다 */
   info?: boolean | undefined;
+  /** 좁은 하늘(영수증)에서는 설명 칸을 작게 */
+  infoCompact?: boolean | undefined;
   label: string;
   className?: string | undefined;
   clock?: Clock | undefined;
@@ -248,6 +251,7 @@ export function SkyBoard({
         // 배경은 비쳐 아래 별자리 선이 그대로 보이고 밝은 별만 조금 가려진다(흐림은 선을 뭉개 두지 않는다, 2026-11-01 사용자)
         <StarInfo
           n={showing}
+          compact={infoCompact}
           onClose={() => setShown(null)}
           className={cn(
             "pointer-events-none absolute inset-x-2 z-10 border-white/15 bg-[#0b1322]/55 shadow-black/30 shadow-lg",

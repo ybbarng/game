@@ -86,9 +86,12 @@ export function StarInfo({
   n,
   className,
   onClose,
+  compact = false,
 }: {
   n: number | null;
   className?: string | undefined;
+  /** 좁은 하늘(영수증): 공·글씨를 한 단계 작게, 여백을 줄여 줄 수를 줄인다(2026-11-01 사용자) */
+  compact?: boolean;
   /** 하늘 위에 띄운 칸: 오른쪽 위에 ✕ 닫기 단추(칸이 누르기를 아래로 넘겨도 단추는 받는다) */
   onClose?: (() => void) | undefined;
 }) {
@@ -101,12 +104,13 @@ export function StarInfo({
       aria-live="polite"
       data-star-info={n}
       className={cn(
-        "min-h-20 rounded-xl border border-white/10 bg-white/5 px-4 py-3",
-        onClose && "pr-10",
+        "rounded-xl border border-white/10 bg-white/5",
+        compact ? "px-3 py-2" : "min-h-20 px-4 py-3",
+        onClose && (compact ? "pr-9" : "pr-10"),
         className,
       )}
     >
-      <StarLine star={starOf(n)} />
+      <StarLine star={starOf(n)} compact={compact} />
       {onClose && (
         <button
           type="button"
