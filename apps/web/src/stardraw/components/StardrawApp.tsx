@@ -58,13 +58,7 @@ import { ReceiptPrint } from "./ReceiptPrint";
 import { liveDrawRound, liveOver, RoomView, roomOpen } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
 import { useReducedMotion } from "./StageOverlay";
-import {
-  GamesCorner,
-  MenuItem,
-  type NavTarget,
-  TabBar,
-  useWideScreen,
-} from "./StardrawNav";
+import { MenuItem, type NavTarget, TabBar, useWideScreen } from "./StardrawNav";
 import { StatsView } from "./StatsView";
 import { ticketUrl } from "./TicketView";
 import { WinNotice } from "./WinNotice";
@@ -635,7 +629,7 @@ export function Home({
     <>
       <WelcomeFlyer services={services} setup={setup} />
       <header className="flex flex-col gap-4">
-        <TitleWithGames />
+        <StardrawTitle />
         {key !== undefined && <Greeting services={services} keyInfo={key} />}
       </header>
 
@@ -678,19 +672,6 @@ export function Home({
 
       {onSkip && <PracticeSkip onSkip={onSkip} />}
     </>
-  );
-}
-
-/**
- * 제목과 소개 문구, 휴대폰은 제목 줄 왼쪽 위에 「게임 목록」 화살표를 겹친다. 「← 게임 목록」이 따로 한 줄을 차지해
- * 아쉬웠다(2026-11-01 사용자). PC는 위쪽 메뉴 줄 맨 왼쪽에 둔다
- */
-function TitleWithGames() {
-  return (
-    <div className="relative">
-      <GamesCorner />
-      <StardrawTitle />
-    </div>
   );
 }
 
@@ -743,7 +724,7 @@ function PracticeSkip({ onSkip }: { onSkip: () => Promise<void> }) {
 }
 
 /**
- * 처음 온 사람의 입구(2026-10-31 사용자): 카노푸스 우주국 인사 → 제목 → 정답 예시 하늘 → 지금 회차 한 줄 → 등록·제시.
+ * 처음 온 사람의 입구(2026-10-31 사용자): 제목 → 카노푸스 우주국 인사(2026-11-01 제목 아래로) → 정답 예시 하늘 → 지금 회차 한 줄 → 등록·제시.
  * 단추는 둘이다. 브라우저는 묻기 전에는 이 사람에게 패스키가 있는지 알 수 없어, 한 단추로 "제시"부터 하면
  * 처음 온 사람에게 다른 기기 QR 같은 엉뚱한 창이 뜬다. 그래서 큰 「우주인 등록」과 작은 「신분증 제시」
  */
@@ -768,6 +749,8 @@ export function Gate({
   const live = liveDrawRound(services, s);
   return (
     <>
+      {/* 첫 화면(등록 뒤)의 인사 줄과 같은 자리: 제목·소개 문구 아래, 정답 예시 하늘 위(2026-11-01 사용자) */}
+      <StardrawTitle />
       <section
         aria-label="카노푸스 우주국 안내"
         data-gate
@@ -781,7 +764,6 @@ export function Gate({
           등록하시거나, 이미 등록하셨다면 신분증을 제시해 주세요.
         </p>
       </section>
-      <TitleWithGames />
       <GameIntro />
       <p
         className="flex items-center justify-center gap-2.5 text-sm tabular-nums"

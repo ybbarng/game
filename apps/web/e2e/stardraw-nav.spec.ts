@@ -283,60 +283,49 @@ test("영수증: 결과 전에는 「추첨 보러 가기」, 결과가 나오�
   });
 });
 
-/** 휴대폰 제목 줄의 「게임 목록」 화살표가 제목 글자와 겹치지 않는지 */
-async function gamesCornerClear(page: Page) {
-  const link = await page.locator("[data-games-link]:visible").boundingBox();
-  const title = await page.locator(".sd-title h1").evaluate((h) => {
-    const r = document.createRange();
-    r.selectNodeContents(h);
-    const b = r.getBoundingClientRect();
-    return { x: b.x, y: b.y, height: b.height };
-  });
-  expect(link).not.toBeNull();
-  if (!link) return;
-  // 제목 줄 높이 안에 있고(따로 한 줄을 쓰지 않는다), 제목 글자보다 왼쪽에 있다
-  expect(link.y).toBeLessThan(title.y + title.height);
-  expect(link.x + link.width).toBeLessThanOrEqual(title.x);
-}
-
 /**
- * 2026-11-01 사용자: 첫 화면의 「← 게임 목록」이 한 줄을 따로 차지해 아쉬웠다. PC는 위쪽 메뉴 줄 맨 왼쪽, 휴대폰은 제목 줄
- * 왼쪽 위에 화살표만 겹쳐 두고(360px에서도 제목과 겹치지 않게) 더 보기 맨 위에도 둔다. 입구(등록 전)도 같다
+ * 2026-11-01 사용자: 첫 화면의 「← 게임 목록」이 한 줄을 따로 차지해 아쉬웠고, 제목 줄에 겹친 「<」는 링크로 바로 들어온
+ * 사람에게 "아까 있던 곳으로"로 읽혔다. 게임 목록 길은 PC 메뉴 줄 맨 왼쪽 「게임 목록」, 휴대폰 더 보기 맨 위 「게임 목록」
+ * 하나씩이고 화살표가 없다. 입구(등록 전)는 우주국 안내가 제목·소개 문구 아래, 정답 예시 하늘 위에 온다
  */
-test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 제목 줄 화살표와 더 보기", async ({
+test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 하나", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
   const phone = info.project.name === "phone-portrait";
-  if (phone) await page.setViewportSize({ width: 360, height: 780 });
   const games = page.locator("[data-games-link]:visible");
-
-  await virtualAuthenticator(page);
   await page.goto("/stardraw");
-  await expect(page.locator("[data-gate]")).toBeVisible();
-  // 「게임 목록」은 한 군데만 보인다(따로 둔 줄은 없다)
-  await expect(games).toHaveCount(1);
-  if (phone) await gamesCornerClear(page);
-  else await expect(page.locator("nav [data-games-link]")).toBeVisible();
-  await page.screenshot({ path: info.outputPath("nav-games-gate.png") });
+  const notice = page.locator("[data-gate]");
+  await expect(notice).toBeVisible();
 
-  await registerAndEnter(page);
-  await page.goto("/stardraw");
-  await expect(page.locator("[data-greeting]")).toBeVisible();
-  await expect(games).toHaveCount(1);
+  // 입구: 제목·소개 문구 → 우주국 안내 → 정답 예시 하늘 순서
+  const top = async (sel: string) =>
+    ((await page.locator(sel).first().boundingBox())?.y ??
+      Number.NaN) as number;
+  const titleY = await top(".sd-title");
+  const noticeY = await top("[data-gate]");
+  const introY = await top("[data-intro]");
+  expect(titleY).toBeLessThan(noticeY);
+  expect(noticeY).toBeLessThan(introY);
+
+  // 본문에는 게임 목록 길(화살표 포함)이 없다
+  await expect(page.locator("main > div [data-games-link]")).toHaveCount(0);
   if (phone) {
-    await gamesCornerClear(page);
-    // 더 보기 맨 위에도
+    await expect(games).toHaveCount(0);
     await page.locator("[data-tab='more']").click();
-    await expect(
-      page
-        .getByRole("dialog", { name: "더 보기" })
-        .locator("[data-games-link]"),
-    ).toBeVisible();
-    await page.locator("[data-tab='more']").click();
+    const item = page
+      .getByRole("dialog", { name: "더 보기" })
+      .getByRole("link", { name: "게임 목록", exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
+  } else {
+    await expect(games).toHaveCount(1);
+    const item = page
+      .locator("nav")
+      .getByRole("link", { name: "게임 목록", exact: true });
+    await expect(item).toBeVisible();
+    await item.click();
   }
-  await page.screenshot({ path: info.outputPath("nav-games-home.png") });
-  await games.click();
   await expect(page).toHaveURL(/\/$/);
 });
 

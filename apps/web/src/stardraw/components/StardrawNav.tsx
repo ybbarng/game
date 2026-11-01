@@ -29,38 +29,6 @@ export function useWideScreen(): boolean {
   return wide;
 }
 
-/** 왼쪽 화살표(게임 목록으로) */
-const BACK_ARROW = <path d="M15 5l-7 7 7 7" />;
-
-/**
- * 첫 화면 제목 줄 왼쪽 위에 겹쳐 둔 「게임 목록」(휴대폰만). 따로 한 줄을 차지하지 않게 제목 줄 높이 안에 두고,
- * 360px 폭에서도 제목과 겹치지 않게 글자 없이 화살표만(이름은 aria-label). PC는 위쪽 메뉴 줄 맨 왼쪽에 있다(2026-11-01 사용자)
- */
-export function GamesCorner() {
-  return (
-    <a
-      href="/"
-      aria-label="게임 목록"
-      data-games-link
-      className="sd-phone-only absolute top-0 -left-2 z-10 flex size-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="size-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {BACK_ARROW}
-      </svg>
-      <span className="sr-only">게임 목록</span>
-    </a>
-  );
-}
-
 /** 탭 그림 */
 const ICONS = {
   home: (
@@ -116,13 +84,16 @@ function MoreList({
     "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left hover:bg-white/10";
   return (
     <div className="flex flex-col gap-1">
-      {/* 휴대폰은 첫 화면 화살표가 작아 여기에도 둔다(PC는 메뉴 줄 맨 왼쪽에 있어 겹치지 않게 뺀다) */}
+      {/*
+        휴대폰의 게임 목록 길은 여기 하나(첫 화면 제목 줄 화살표는 링크로 들어온 사람에게 "뒤로"로 읽혀 뺐다, 2026-11-01 사용자).
+        PC는 메뉴 줄 맨 왼쪽에 있어 겹치지 않게 뺀다. 모양은 아래 다른 페이지 항목과 같다
+      */}
       <a
         href="/"
         data-games-link
         className={cn(row, "sd-phone-only text-white/75")}
       >
-        ← 게임 목록
+        게임 목록
       </a>
       {a && (
         <a
@@ -255,24 +226,15 @@ function TopBar({
     >
       <div className="sd-wide mx-auto flex max-w-xl items-center justify-between gap-4 px-4 py-2.5">
         <div className="flex items-center gap-1">
-          {/* 별 따기 밖(게임 센터)으로 나가는 길. 첫 화면에 따로 한 줄을 두지 않고 여기에(2026-11-01 사용자) */}
+          {/*
+            별 따기 밖(게임 센터)으로 나가는 길. 첫 화면에 따로 한 줄을 두지 않고 여기에(2026-11-01 사용자).
+            화살표는 붙이지 않는다: 링크로 바로 들어온 사람에게 「<」는 "아까 있던 곳으로"로 읽힌다
+          */}
           <a
             href="/"
             data-games-link
-            className="-ml-2 flex items-center gap-0.5 rounded-lg px-2 py-1.5 text-sm text-white/65 hover:bg-white/5 hover:text-white"
+            className="-ml-2 rounded-lg px-2 py-1.5 text-sm text-white/65 hover:bg-white/5 hover:text-white"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              className="size-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {BACK_ARROW}
-            </svg>
             게임 목록
           </a>
           <span aria-hidden="true" className="h-4 border-white/15 border-l" />
