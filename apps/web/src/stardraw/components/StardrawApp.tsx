@@ -158,9 +158,6 @@ function viewOf(page: StardrawPage, hash: string): View {
   return { name: "home" };
 }
 
-/** 이번 방문에서 별 따기 화면 사이를 옮겨 다녔는지(아니면 "돌아가기"가 사이트 밖으로 나가지 않게 정한 화면으로) */
-let navigated = false;
-
 /**
  * 하늘의 별 따기(docs/36 11절). 서버 주소가 없으면 이 기기 안 연습 장부로 돈다.
  * `page`는 처음 열린 페이지일 뿐이고, 그 뒤 화면은 늘 지금 주소(경로 + # 조각)에서 읽는다(go 참고)
@@ -254,20 +251,14 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
    */
   const go = (v: View, replace = false) => {
     const url = urlOf(v);
-    navigated = true;
     if (replace) window.history.replaceState(window.history.state, "", url);
     else window.history.pushState(window.history.state, "", url);
     setView(v);
     window.scrollTo({ top: 0 });
   };
-  /** 화면의 "돌아가기": 옮겨 왔으면 바로 전 화면, 주소로 바로 열었으면 정한 화면으로 */
-  const back = (fallback: View) => {
-    if (navigated) window.history.back();
-    else go(fallback, true);
-  };
   /**
-   * 「처음으로」: 늘 첫 화면으로. 뒤로 가기로 두면 추첨 → 다음 회차 응모 → 「처음으로」가 추첨으로, 내 응모 → 영수증 →
-   * 「처음으로」가 내 응모로 돌아갔다(2026-11-01 사용자)
+   * 응모의 「처음으로」, 메뉴가 없는 휴대폰 추첨·회차 방의 「홈」: 늘 첫 화면으로. 바로 전 화면은 브라우저·기기의 뒤로 가기가
+   * 맡는다. 화면 안에 뒤로 가기 단추를 두지 않는다(이름과 다른 곳으로 가고, 탭바·메뉴 줄과 겹쳤다, 2026-11-01 사용자 B안)
    */
   const goHome = () => go({ name: "home" });
   /** 추첨을 아직 열어 보지 않은 내 회차(결과를 가린다, spoiler.ts) */
@@ -342,21 +333,22 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     !!status &&
     view.name !== "enter" &&
     (view.name !== "draw" || wide);
+  // 화면마다 속한 탭 하나: 영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차(2026-11-01 사용자 B안)
   const navActive: NavTarget | null =
     view.name === "home"
       ? "home"
-      : view.name === "mine" || view.name === "receipt"
+      : view.name === "mine" ||
+          view.name === "receipt" ||
+          view.name === "records"
         ? "mine"
-        : view.name === "records"
-          ? "records"
-          : view.name === "rounds" || view.name === "round"
-            ? "rounds"
-            : view.name === "stats"
-              ? "stats"
-              : null;
+        : view.name === "rounds" ||
+            view.name === "round" ||
+            view.name === "stats"
+          ? "rounds"
+          : null;
+  // 하위 화면에서 자기 탭을 다시 누르면 그 탭 첫 화면(목록)으로
   const onNav = (t: NavTarget) => {
-    if (t === "records") openRecords();
-    else if (t !== navActive || view.name !== t) go({ name: t });
+    if (view.name !== t) go({ name: t });
   };
   return (
     <main
@@ -445,7 +437,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 mine={m}
                 sealed={sealed(m.ticket.round)}
                 printing={printing === view.id}
-                onBack={goHome}
                 onDraw={(round) => go({ name: "draw", round })}
               />
             );
@@ -473,14 +464,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 setOpened(services.wallet.openedRounds());
                 go({ name: "enter" });
               }}
-              onClose={() => {
-                // 결과가 나오기 전에 나가면 "열어 봄"을 남기지 않는다(정답 가리기가 풀리지 않게)
-                if (services.ledger.record(view.round)) {
-                  services.wallet.markOpened(view.round);
-                  setOpened(services.wallet.openedRounds());
-                }
-                back({ name: "home" });
-              }}
               onHome={wide ? undefined : goHome}
             />
           )
@@ -490,7 +473,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
               records={records}
               schedule={services.ledger.schedule}
               recipient={navKey ? astronautOf(navKey.pub).name : null}
-              onBack={() => back({ name: "mine" })}
               onOpenTicket={(w) => {
                 if (receiptOf(w.id)) go({ name: "receipt", id: w.id });
               }}
@@ -508,7 +490,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             mine={mine}
             sealed={sealed}
             onRecords={openRecords}
-            onBack={goHome}
             onOpen={(m) =>
               go({ name: "receipt", id: toHex(ticketId(m.ticket)) })
             }
@@ -520,25 +501,19 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             services={services}
             version={version}
             sealed={sealed}
-            onBack={goHome}
             onOpen={(round) => go({ name: "round", round })}
             onDraw={(round) => go({ name: "draw", round })}
             onStats={() => go({ name: "stats" })}
           />
         ) : view.name === "stats" ? (
-          <StatsView
-            services={services}
-            version={version}
-            sealed={sealed}
-            onBack={() => back({ name: "rounds" })}
-          />
+          <StatsView services={services} version={version} sealed={sealed} />
         ) : view.name === "round" ? (
           <RoundDetail
             services={services}
             round={view.round}
             mine={mine}
             sealed={sealed}
-            onBack={() => back({ name: "rounds" })}
+            onList={() => go({ name: "rounds" })}
             onDraw={(round) => go({ name: "draw", round })}
           />
         ) : view.name === "link" ? (
@@ -561,7 +536,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }
             onDraw={(round) => go({ name: "draw", round })}
             onMine={() => go({ name: "mine" })}
-            onRounds={() => go({ name: "rounds" })}
+            onRound={(round) => go({ name: "round", round })}
             onSkip={
               services.practice
                 ? async () => {
@@ -589,7 +564,7 @@ export function Home({
   onReceipt,
   onDraw,
   onMine,
-  onRounds,
+  onRound,
   onSkip,
 }: {
   services: Services;
@@ -601,7 +576,8 @@ export function Home({
   onReceipt: (m: MyTicket) => void;
   onDraw: (round: number) => void;
   onMine: () => void;
-  onRounds: () => void;
+  /** 지난 회차 한 줄: 그 회차 결과로 */
+  onRound: (round: number) => void;
   /** 연습 장부일 때만(서버 장부는 시간을 건너뛸 수 없다) */
   onSkip: (() => Promise<void>) | null;
 }) {
@@ -679,7 +655,7 @@ export function Home({
           services={services}
           mine={mine}
           sealed={sealed}
-          onRounds={onRounds}
+          onRound={onRound}
           onDraw={onDraw}
         />
       )}
@@ -1109,18 +1085,21 @@ export function RoundCard({
   );
 }
 
-/** 지난 회차 결과 한 줄(누르면 지난 회차). 내 응모권이 있으면 등수와 「다시 보기」 */
+/**
+ * 지난 회차 결과 한 줄(누르면 그 회차 결과. 회차 번호와 공이 보여 그 회차가 열릴 거라 기대한다, 목록은 탭이 맡는다,
+ * 2026-11-01 사용자 B안). 내 응모권이 있으면 등수와 「다시 보기」
+ */
 function LastRound({
   services,
   mine,
   sealed,
-  onRounds,
+  onRound,
   onDraw,
 }: {
   services: Services;
   mine: MyTicket[];
   sealed: Sealed;
-  onRounds: () => void;
+  onRound: (round: number) => void;
   onDraw: (round: number) => void;
 }) {
   const closed = services.ledger.closed();
@@ -1133,7 +1112,7 @@ function LastRound({
       <div className="sd-glass flex items-center gap-2 rounded-2xl px-4 py-3">
         <button
           type="button"
-          onClick={onRounds}
+          onClick={() => onRound(record.round)}
           aria-label="지난 회차"
           data-last-round={record.round}
           className="min-w-0 flex-1 text-left text-white/60 text-xs tabular-nums"
@@ -1147,7 +1126,7 @@ function LastRound({
     <div className="sd-glass flex items-center gap-2 rounded-2xl px-4 py-3">
       <button
         type="button"
-        onClick={onRounds}
+        onClick={() => onRound(record.round)}
         aria-label="지난 회차"
         data-last-round={record.round}
         className="flex min-w-0 flex-1 flex-col gap-1.5 text-left"
@@ -1204,29 +1183,21 @@ function ReceiptView({
   mine,
   sealed,
   printing,
-  onBack,
   onDraw,
 }: {
   services: Services;
   mine: MyTicket;
   sealed: boolean;
   printing?: boolean | undefined;
-  onBack: () => void;
   onDraw: (round: number) => void;
 }) {
   const record = services.ledger.record(mine.ticket.round);
   // 막 응모했으면 영수증 발급 연출(오버레이)이 끝난 뒤 이 영수증 화면이 드러난다
   const reduce = useReducedMotion();
   const [printed, setPrinted] = useState(false);
+  // 머리 줄 단추는 두지 않는다: 내 응모 탭이 켜져 있고, 목록은 그 탭이, 바로 전 화면은 뒤로 가기가 맡는다
   return (
     <section className="flex flex-col gap-4" aria-label="응모권">
-      <button
-        type="button"
-        onClick={onBack}
-        className="self-start text-sm text-white/70 hover:text-white"
-      >
-        ← 처음으로
-      </button>
       {printing && (
         <p role="status" className="text-center font-semibold text-amber-100">
           응모했습니다
@@ -1321,7 +1292,6 @@ function DrawFor({
   round,
   mine,
   seen,
-  onClose,
   onEnter,
   onSkip,
   onHome,
@@ -1332,11 +1302,10 @@ function DrawFor({
   mine: MyTicket[];
   /** 이 기기에서 이미 결과까지 본 회차면 연출 없이 결과부터(「추첨 다시 보기」로 다시 돈다) */
   seen: boolean;
-  onClose: () => void;
   onEnter: () => void;
   /** 연습 장부일 때만: 다음 추첨까지 건너뛰기 */
   onSkip: (() => Promise<void>) | null;
-  /** 메뉴 줄이 없는 휴대폰: 머리 줄 오른쪽 「홈」 */
+  /** 메뉴 줄이 없는 휴대폰: 머리 줄 왼쪽 「홈」(이 화면의 하나뿐인 출구). PC는 위쪽 메뉴 줄이 있어 넘기지 않는다 */
   onHome?: (() => void) | undefined;
 }) {
   const record = services.ledger.record(round);
@@ -1356,7 +1325,7 @@ function DrawFor({
       savedPass(round) !== null);
   wasInRoom.current = showRoom;
   if (showRoom) {
-    // 방 머리 줄(「돌아가기」·함께 보는 사람 수·「홈」)은 방 화면이 그린다
+    // 방 머리 줄(「홈」·함께 보는 사람 수)은 방 화면이 그린다
     return (
       <RoomView
         key={round}
@@ -1364,7 +1333,6 @@ function DrawFor({
         round={round}
         record={record}
         ticket={mine.find((m) => m.ticket.round === round)?.ticket}
-        onClose={onClose}
         onEnter={onEnter}
         onHome={onHome}
       />
@@ -1378,7 +1346,6 @@ function DrawFor({
         status={status}
         round={round}
         ticket={mine.find((m) => m.ticket.round === round)?.ticket}
-        onClose={onClose}
         onSkip={onSkip}
         onHome={onHome}
       />
@@ -1398,7 +1365,6 @@ function DrawFor({
       onWatched={() => services.wallet.markWatchedDraw()}
       record={record}
       ticket={mine.find((m) => m.ticket.round === round)?.ticket}
-      onClose={onClose}
       clock={services.clock}
       label={roundTitle(services.ledger.schedule, round)}
       onHome={onHome}
@@ -1416,7 +1382,6 @@ function DrawWait({
   status,
   round,
   ticket,
-  onClose,
   onSkip,
   onHome,
 }: {
@@ -1424,7 +1389,6 @@ function DrawWait({
   status: LedgerStatus;
   round: number;
   ticket: Ticket | undefined;
-  onClose: () => void;
   onSkip: (() => Promise<void>) | null;
   onHome?: (() => void) | undefined;
 }) {
@@ -1439,20 +1403,11 @@ function DrawWait({
       data-draw-wait={round}
       className="flex flex-col gap-4"
     >
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 돌아가기
-        </button>
-        {onHome && (
-          <div className="-mr-3">
-            <MenuItem target="home" label="홈" onClick={onHome} />
-          </div>
-        )}
-      </div>
+      {onHome && (
+        <div className="-ml-3 self-start">
+          <MenuItem target="home" label="홈" onClick={onHome} />
+        </div>
+      )}
       <h2 className="text-center font-bold text-xl">
         {roundTitle(schedule, round)} 추첨
       </h2>
@@ -1492,7 +1447,6 @@ export function MineView({
   services,
   mine,
   sealed = NOTHING_SEALED,
-  onBack,
   onOpen,
   onDraw,
   onRecovered,
@@ -1501,7 +1455,6 @@ export function MineView({
   services: Services;
   mine: MyTicket[];
   sealed?: Sealed;
-  onBack: () => void;
   onOpen: (m: MyTicket) => void;
   onDraw?: (round: number) => void;
   onRecovered: () => void;
@@ -1512,17 +1465,7 @@ export function MineView({
   const [key, setKey] = useState(() => services.wallet.loadKey());
   return (
     <section className="flex flex-col gap-4" aria-label="내 응모">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 처음으로
-        </button>
-        <h2 className="font-bold text-lg">내 응모</h2>
-        <span className="w-16" />
-      </div>
+      <h2 className="text-center font-bold text-lg">내 응모</h2>
       {onRecords && (
         <button
           type="button"
@@ -1716,7 +1659,6 @@ export function RoundsView({
   services,
   version,
   sealed = NOTHING_SEALED,
-  onBack,
   onOpen,
   onDraw,
   onStats,
@@ -1724,7 +1666,6 @@ export function RoundsView({
   services: Services;
   version: number;
   sealed?: Sealed;
-  onBack: () => void;
   onOpen: (round: number) => void;
   /** 가린 회차는 회차 결과 대신 추첨으로 */
   onDraw?: (round: number) => void;
@@ -1748,13 +1689,7 @@ export function RoundsView({
   return (
     <section className="flex flex-col gap-4" aria-label="지난 회차">
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 처음으로
-        </button>
+        <span className="w-16" />
         <h2 className="font-bold text-lg">지난 회차</h2>
         {onStats ? (
           <button
@@ -1861,14 +1796,18 @@ function RoundDetail({
   round,
   mine,
   sealed,
-  onBack,
+  onList,
   onDraw,
 }: {
   services: Services;
   round: number;
   mine: MyTicket[];
   sealed: Sealed;
-  onBack: () => void;
+  /**
+   * 「← 지난 회차」: 어디서 들어왔든 늘 지난 회차 목록으로(뒤로 가기로 두면 첫 화면에서 들어온 사람은 첫 화면으로 갔다,
+   * 2026-11-01 사용자 B안)
+   */
+  onList: () => void;
   onDraw: (round: number) => void;
 }) {
   const record = services.ledger.record(round);
@@ -1922,7 +1861,7 @@ function RoundDetail({
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={onBack}
+          onClick={onList}
           className="text-sm text-white/70 hover:text-white"
         >
           ← 지난 회차

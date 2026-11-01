@@ -27,7 +27,6 @@ export function MyRecordsView({
   specimen = false,
   schedule,
   recipient,
-  onBack,
   onOpenTicket,
 }: {
   /** 견본(데모 둘러보기, 로컬 빌드만): 공개 장부에 없는 응모권이라 당첨증 QR 대신 "견본" */
@@ -36,7 +35,6 @@ export function MyRecordsView({
   schedule: Schedule;
   /** 받는 사람 이름(등록증 이름). 없으면 비운다 */
   recipient: string | null;
-  onBack: () => void;
   /** 이 기기에 있는 응모권이면 그 영수증으로 */
   onOpenTicket?: ((w: WinEntry) => void) | undefined;
 }) {
@@ -50,17 +48,8 @@ export function MyRecordsView({
       aria-label="내 기록"
       data-my-records
     >
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 내 응모
-        </button>
-        <h2 className="font-bold text-lg">내 기록</h2>
-        <span className="w-16" />
-      </div>
+      {/* 내 응모 탭 아래 화면이라 그 탭이 켜진다. 머리 줄 단추는 두지 않는다(탭과 뒤로 가기가 맡는다) */}
+      <h2 className="text-center font-bold text-lg">내 기록</h2>
 
       {medals.length > 0 && (
         <Part title="훈장">

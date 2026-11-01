@@ -35,13 +35,11 @@ export function StatsView({
   services,
   version,
   sealed = NOTHING_SEALED,
-  onBack,
 }: {
   services: Services;
   version: number;
   /** 추첨을 아직 열어 보지 않은 내 회차는 조용히 빼고 센다 */
   sealed?: Sealed;
-  onBack: () => void;
 }) {
   const schedule = services.ledger.schedule;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 장부가 바뀔 때 다시 계산한다
@@ -71,14 +69,8 @@ export function StatsView({
 
   return (
     <section className="flex flex-col gap-4" aria-label="관측 기록">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 지난 회차
-        </button>
+      {/* 지난 회차 탭 아래 화면이라 그 탭이 켜진다. 머리 줄 단추는 두지 않는다(탭과 뒤로 가기가 맡는다) */}
+      <div className="flex items-center justify-center">
         <h2 className="flex items-center gap-1.5 font-bold text-lg">
           관측 기록
           {periods.length === 1 && period === "trial" && (
@@ -90,7 +82,6 @@ export function StatsView({
             </span>
           )}
         </h2>
-        <span className="w-16" />
       </div>
       {periods.length > 1 && (
         <div

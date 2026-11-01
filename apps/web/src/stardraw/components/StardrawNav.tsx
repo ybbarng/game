@@ -6,8 +6,11 @@ import { astronautOf } from "../astronaut/identity";
 import { GAME_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 
-/** 탭바가 가리키는 앱 안 화면 */
-export type NavTarget = "home" | "mine" | "rounds" | "stats" | "records";
+/**
+ * 탭바가 가리키는 앱 안 화면. 하위 화면은 자기 탭을 켠다(영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차,
+ * 2026-11-01 사용자 B안)
+ */
+export type NavTarget = "home" | "mine" | "rounds";
 
 /** 마우스로 쓰는 넓은 화면(PC): 탭바 대신 위쪽 메뉴 줄. 휴대폰 가로처럼 넓어도 손가락으로 쓰면 탭바 */
 export const WIDE_QUERY =
@@ -65,15 +68,16 @@ const PAGES: [string, string][] = [
   ["데모", "/stardraw/demo"],
 ];
 
-/** 탭바 「더 보기」 목록: 내 등록증(이름·번호), 관측 기록, 다른 페이지 */
+/**
+ * 탭바 「더 보기」 목록: 내 등록증(이름·번호)과 다른 페이지. 모두 앱 밖 페이지다.
+ * 내 기록·관측 기록은 두지 않는다(내 응모 「내 기록」 칸, 지난 회차 머리 줄 「관측 기록」 한 길로, 2026-11-01 사용자)
+ */
 function MoreList({
   services,
   keyInfo,
-  onGo,
 }: {
   services: Services;
   keyInfo: KeyInfo | null;
-  onGo: (t: NavTarget) => void;
 }) {
   const a = keyInfo ? astronautOf(keyInfo.pub) : null;
   const row =
@@ -92,13 +96,6 @@ function MoreList({
           </span>
         </a>
       )}
-      <button type="button" className={row} onClick={() => onGo("records")}>
-        내 기록
-      </button>
-      <button type="button" className={row} onClick={() => onGo("stats")}>
-        관측 기록
-      </button>
-      <div className="my-1 border-white/10 border-t" />
       {PAGES.map(([label, href]) => (
         <a key={href} href={href} className={cn(row, "text-white/75")}>
           {label}
@@ -256,14 +253,7 @@ function TopBar({
               ref={box}
               className="absolute top-full right-0 mt-2 border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] w-64 overflow-y-auto rounded-2xl p-2 shadow-2xl"
             >
-              <MoreList
-                services={services}
-                keyInfo={keyInfo}
-                onGo={(t) => {
-                  setMore(false);
-                  onGo(t);
-                }}
-              />
+              <MoreList services={services} keyInfo={keyInfo} />
             </div>
           )}
         </div>
@@ -341,14 +331,7 @@ function BottomBar({
               paddingBottom: 12,
             }}
           >
-            <MoreList
-              services={services}
-              keyInfo={keyInfo}
-              onGo={(t) => {
-                setMore(false);
-                onGo(t);
-              }}
-            />
+            <MoreList services={services} keyInfo={keyInfo} />
           </div>
         </>
       )}

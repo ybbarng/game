@@ -195,7 +195,7 @@ function Screen({
           onReceipt={noop}
           onDraw={noop}
           onMine={noop}
-          onRounds={noop}
+          onRound={noop}
           onSkip={null}
         />
       );
@@ -216,7 +216,6 @@ function Screen({
         <MineView
           services={services}
           mine={mine}
-          onBack={onBack}
           onOpen={noop}
           onRecovered={noop}
         />
@@ -240,19 +239,11 @@ function Screen({
           })}
           schedule={services.ledger.schedule}
           recipient={key ? astronautOf(key.pub).name : null}
-          onBack={onBack}
         />
       );
     }
     case "rounds":
-      return (
-        <RoundsView
-          services={services}
-          version={0}
-          onBack={onBack}
-          onOpen={noop}
-        />
-      );
+      return <RoundsView services={services} version={0} onOpen={noop} />;
     case "win-notice":
       return <WinNotice services={services} tickets={[drawn.ticket]} />;
     case "link-open":

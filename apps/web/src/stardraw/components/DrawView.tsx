@@ -67,7 +67,8 @@ export function DrawView({
   embedded?: boolean | undefined;
   record: RoundRecord;
   ticket?: Ticket | undefined;
-  onClose: () => void;
+  /** 머리 줄 왼쪽 「← 돌아가기」(데모만. 별 따기 앱은 넘기지 않는다: 바로 전 화면은 뒤로 가기가 맡는다) */
+  onClose?: (() => void) | undefined;
   clock?: Clock | undefined;
   /** 연출 없이 결과부터(데모 화면 둘러보기) */
   instant?: boolean | undefined;
@@ -77,7 +78,7 @@ export function DrawView({
   onReplay?: (() => void) | undefined;
   /** 결과를 보인 뒤 다음 회차 응모로(지금 응모할 수 있을 때만 넘긴다) */
   onNext?: (() => void) | undefined;
-  /** 머리 줄 오른쪽 「홈」(메뉴 줄이 없는 휴대폰에서 바깥이 넘긴다). 없으면 그 자리는 비운다 */
+  /** 머리 줄 왼쪽 「홈」(메뉴 줄이 없는 휴대폰에서 바깥이 넘긴다) */
   onHome?: (() => void) | undefined;
 }) {
   const order = drawOrder(record);
@@ -202,13 +203,24 @@ export function DrawView({
           embedded && "hidden",
         )}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="justify-self-start text-sm text-white/70 hover:text-white"
-        >
-          ← 돌아가기
-        </button>
+        {/* 왼쪽 칸: 메뉴가 없는 휴대폰은 「홈」 하나, PC는 위쪽 메뉴 줄이 있어 비운다. 「돌아가기」는 데모만 넘긴다 */}
+        <div className="justify-self-start">
+          {onHome ? (
+            <div className="-ml-3">
+              <MenuItem target="home" label="홈" onClick={onHome} />
+            </div>
+          ) : (
+            onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-white/70 hover:text-white"
+              >
+                ← 돌아가기
+              </button>
+            )
+          )}
+        </div>
         <div className="flex flex-col items-center leading-tight">
           <h2 className="font-bold text-lg tabular-nums">
             {label ?? `제 ${record.round}회`} 추첨
@@ -217,10 +229,8 @@ export function DrawView({
             카노푸스 우주국 정시 추첨
           </span>
         </div>
-        {/* 제목은 가운데(양쪽 칸이 같은 너비), 오른쪽 칸은 「홈」이나 빈자리 */}
-        <div className="-mr-3 justify-self-end">
-          {onHome && <MenuItem target="home" label="홈" onClick={onHome} />}
-        </div>
+        {/* 제목은 가운데(양쪽 칸이 같은 너비), 오른쪽 칸은 빈자리 */}
+        <div />
       </div>
 
       {record.void ? (

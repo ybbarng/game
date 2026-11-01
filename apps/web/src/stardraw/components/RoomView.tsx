@@ -172,7 +172,6 @@ export function RoomView({
   round,
   record,
   ticket,
-  onClose,
   onEnter,
   onHome,
 }: {
@@ -180,10 +179,9 @@ export function RoomView({
   round: number;
   record: RoundRecord | null | undefined;
   ticket: Ticket | undefined;
-  onClose: () => void;
   /** 다음 회차 응모(추첨 연출이 끝난 뒤에만 보인다) */
   onEnter: () => void;
-  /** 메뉴 줄이 없는 휴대폰: 머리 줄 오른쪽 「홈」(추첨 화면 DrawView와 같은 모양) */
+  /** 메뉴 줄이 없는 휴대폰: 머리 줄 왼쪽 「홈」(추첨 화면 DrawView와 같은 모양) */
   onHome?: (() => void) | undefined;
 }) {
   const base = serverApi() as string;
@@ -636,24 +634,18 @@ export function RoomView({
       data-room={round}
       className="flex flex-col gap-3"
     >
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 돌아가기
-        </button>
-        <div className="flex items-center gap-1">
-          <span className="text-white/55 text-xs tabular-nums" data-room-count>
-            함께 보는 {people.size + watchers}명
-          </span>
-          {onHome && (
-            <div className="-mr-3">
-              <MenuItem target="home" label="홈" onClick={onHome} />
-            </div>
-          )}
-        </div>
+      {/* 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은 함께 보는 사람 수 */}
+      <div className="flex min-h-8 items-center justify-between">
+        {onHome ? (
+          <div className="-ml-3">
+            <MenuItem target="home" label="홈" onClick={onHome} />
+          </div>
+        ) : (
+          <span />
+        )}
+        <span className="text-white/55 text-xs tabular-nums" data-room-count>
+          함께 보는 {people.size + watchers}명
+        </span>
       </div>
 
       <p
@@ -669,7 +661,6 @@ export function RoomView({
           <DrawView
             record={record}
             ticket={ticket}
-            onClose={onClose}
             clock={clock}
             startedAt={showStart}
             timing={LIVE_ROULETTE_TIMING}
