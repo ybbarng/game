@@ -180,6 +180,8 @@ export async function makeRig(
     powChecker?: PowChecker;
     /** 응모 앞단 작업 증명(기본: 끔) */
     frontGate?: FrontGateOptions;
+    /** Argon2 줄 길이(기본 32) */
+    argonQueue?: number;
   } = {},
 ): Promise<Rig> {
   const dir = limits.dir ?? mkdtempSync(join(tmpdir(), "stardraw-"));
@@ -218,7 +220,7 @@ export async function makeRig(
         limits.registrationsPerPrefixPerDay ??
         DEFAULT_PREFIX_LIMITS.registrationsPerPrefixPerDay,
       argonConcurrency: 2,
-      argonQueue: 32,
+      argonQueue: limits.argonQueue ?? 32,
     },
     sealDeadline: 180,
     ...(limits.directorKeys ? { directorKeys: limits.directorKeys } : {}),

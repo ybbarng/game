@@ -40,8 +40,13 @@ describe("동시 실행 제한", () => {
         await new Promise<void>((resolve) => releases.push(resolve));
         running--;
       });
+    expect(gate.full()).toBe(false);
     const first = job();
+    expect(gate.full()).toBe(false);
     const second = job();
+    // 실행 칸과 줄이 다 차면 들어오기 전에 알 수 있다(서명 확인 전에 503, docs/36 11-30)
+    expect(gate.full()).toBe(true);
+    expect(gate.full({ priority: true })).toBe(false);
     await expect(job()).rejects.toBeInstanceOf(BusyError);
     // 조건이 맞을 때까지(첫 일이 돌기 시작) 기다린다
     while (releases.length === 0) await Promise.resolve();

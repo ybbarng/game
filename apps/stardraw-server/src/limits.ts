@@ -73,6 +73,15 @@ export class Gate {
     },
   ) {}
 
+  /**
+   * 지금 들어오면 바로 거절될지(실행 칸도 줄도 가득). 서명 확인처럼 비싼 일을 하기 전에 보고 바로 503을 돌려준다
+   * (거절에 드는 일을 줄인다, docs/36 11-30). 확인과 `run` 사이에 자리가 바뀔 수 있어 `run`도 그대로 거절한다
+   */
+  full(options: { priority?: boolean } = {}): boolean {
+    const line = options.priority ? this.waiting.high : this.waiting.normal;
+    return this.running >= this.concurrency && line.length >= this.queue;
+  }
+
   async run<T>(
     fn: () => Promise<T>,
     options: { priority?: boolean } = {},

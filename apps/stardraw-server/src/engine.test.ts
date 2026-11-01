@@ -679,3 +679,76 @@ describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
     expect(rig.engine.state().entries).toBe(1);
   });
 });
+
+describe("Argon2 줄이 가득할 때(docs/36 11-30)", () => {
+  it("앞단은 먼저 보고, 줄이 가득하면 서명 확인 전에 바로 503을 돌려준다", async () => {
+    // Argon2 확인을 붙잡아 실행 칸 2개와 줄 1칸을 채운다
+    const held: ((ok: boolean) => void)[] = [];
+    rig = await makeRig({
+      frontGate: TEST_GATE,
+      argonQueue: 1,
+      powChecker: {
+        check: () => new Promise<boolean>((resolve) => held.push(resolve)),
+      },
+    });
+    await rig.at(EPOCH + 10);
+    const full = () =>
+      (rig.engine as unknown as { gate: { full(): boolean } }).gate.full();
+    const pending = [];
+    for (let i = 0; i < 3; i++) {
+      const p = await player();
+      pending.push(
+        enter(rig, p, [1, 2, 3, 4, 5, 6]).then(
+          () => null,
+          (err: unknown) => err,
+        ),
+      );
+    }
+    for (let i = 0; i < 1000 && !full(); i++)
+      await new Promise((r) => setImmediate(r));
+    expect(full()).toBe(true);
+
+    // 서명이 맞지 않는 응모(열쇠를 바꿔 끼움)도 서명까지 가지 않고 503
+    const p = await player();
+    const { ticket, registration } = await entryFor(
+      p,
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const other = await player();
+    const swapped = { ...ticket, pub: other.signer.publicKey };
+    const body = {
+      ticket: encodeTicket(swapped),
+      ...(registration
+        ? {
+            registration: encodeRegistration({
+              ...registration,
+              pub: other.signer.publicKey,
+            }),
+          }
+        : {}),
+      ip: "203.0.113.7",
+    };
+    await expect(
+      rig.engine.submit({
+        ...body,
+        ...(await gateFor(rig, other.signer.publicKey)),
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+    // 앞단 답이 없으면 줄을 보기 전에 앞단에서 떨어진다
+    await expect(rig.engine.submit(body)).rejects.toMatchObject({
+      status: 400,
+      message: GATE_MISSING_MESSAGE,
+    });
+
+    // 붙잡은 확인을 풀어 정리한다(앞의 둘이 끝나면 줄의 하나도 확인에 들어간다)
+    for (let i = 0; held.length > 0 || i < 3; i++) {
+      held.shift()?.(true);
+      await new Promise((r) => setImmediate(r));
+      if (i > 1000) break;
+    }
+    const results = await Promise.all(pending);
+    expect(results).toEqual([null, null, null]);
+  });
+});

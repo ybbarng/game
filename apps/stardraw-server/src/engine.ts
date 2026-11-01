@@ -646,6 +646,8 @@ export class StardrawServer {
 
     // 3-1. 앞단 작업 증명(싸다, docs/36 11-31). 문제 값 비교(409, 화면이 다시 계산)보다 뒤에 둔다
     await this.checkFrontGate(registration.pub, input.gate, receivedAt);
+    // 3-2. Argon2 줄이 가득하면 서명 확인 전에 바로 503(화면이 흔들어 다시 낸다, docs/36 11-30)
+    if (this.gate.full()) throw new EntryError(new BusyError().message, 503);
 
     // 4. 국장 열쇠와 섞지 않는다, 패스키 번호는 한 번만
     if (await this.isDirectorKey(registration.pub, registration.credentialId))
@@ -752,6 +754,10 @@ export class StardrawServer {
 
     // 2-1. 앞단 작업 증명(형식 다음으로 싸다, docs/36 11-31). 없거나 틀리면 Argon2·서명 전에 버린다
     await this.checkFrontGate(ticket.pub, input.gate, receivedAt);
+    // 2-2. Argon2 줄이 가득하면 서명 확인 같은 비싼 일 전에 바로 503(화면이 흔들어 다시 낸다, docs/36 11-30).
+    // 소속 증서를 단 응모는 앞줄을 본다(증서는 아래에서 확인한다. 거짓이면 Argon2 전에 떨어진다)
+    if (this.gate.full({ priority: !!ticket.qual }))
+      throw new EntryError(new BusyError().message, 503);
 
     // 3. 등록된 열쇠(새 열쇠면 함께 온 등록을 본다)
     const known = store.isRegistered(who);

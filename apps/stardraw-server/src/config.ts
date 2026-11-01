@@ -209,7 +209,10 @@ export function loadConfig(): ServerConfig {
       DEFAULT_PREFIX_LIMITS.invitesPerPrefixPerDay,
     ),
     argonConcurrency: int("STARDRAW_ARGON_CONCURRENCY", 2),
-    argonQueue: int("STARDRAW_ARGON_QUEUE", 32),
+    // 줄 400(docs/36 11-30·11-31): 처음 응모(Argon2 2번)를 스레드 2개가 5초 기다림 상한 안에 비울 수 있는 만큼(초당 약 85장 × 5초).
+    // 기다리는 요청 하나는 소켓·요청·응답 객체와 풀어 둔 본문뿐이라(Argon2 메모리는 계산 중인 2개만, 16MB씩) 400개여도
+    // 수십 MB 안쪽으로, 컨테이너 상한 320MiB(평소 약 62MiB)에 여유가 있다
+    argonQueue: int("STARDRAW_ARGON_QUEUE", 400),
     frontGate: frontGateConfig(env),
     sealDeadline: int("STARDRAW_SEAL_DEADLINE", 180),
     directorKeys: parseDirectorKeys(env("STARDRAW_DIRECTOR_KEYS") ?? ""),
