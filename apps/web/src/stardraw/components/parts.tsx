@@ -116,9 +116,16 @@ export function StarInfo({
           type="button"
           aria-label="설명 닫기"
           onClick={onClose}
-          className="pointer-events-auto absolute top-1 right-1 flex size-9 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white"
+          className="group pointer-events-auto absolute top-0.5 right-0.5 flex size-9 items-center justify-center text-white/45 hover:text-white"
         >
-          <span aria-hidden="true" className="text-base leading-none">
+          {/* 누르는 범위(36px)는 손가락에 맞게 두고, 보이는 것은 작게(2026-11-01 사용자: 닫기 단추가 과하게 커 보임) */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              "flex items-center justify-center rounded-full leading-none [@media(hover:hover)]:group-hover:bg-white/10",
+              compact ? "size-5 text-[11px]" : "size-6 text-xs",
+            )}
+          >
             ✕
           </span>
         </button>
