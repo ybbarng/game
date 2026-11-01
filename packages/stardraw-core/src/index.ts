@@ -3,6 +3,7 @@ export * from "./bytes";
 export * from "./claim";
 export * from "./drand";
 export * from "./draw";
+export * from "./gate";
 export * from "./invite";
 export * from "./keys";
 export * from "./merkle";
