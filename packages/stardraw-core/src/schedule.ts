@@ -207,6 +207,19 @@ export function checkScheduleChange(
   return null;
 }
 
+/**
+ * 회차 `decidedInRound` 기록을 닫을 때 아직 효력이 생기지 않은(예고 중인) 일정 줄이 있는지.
+ * 마지막 줄의 효력 회차가 그 기록 회차보다 뒤면 예고 중이다. 옛 칸(기록의 일정 변경)과 국장 운영 기록을 가리지 않는다.
+ * 일정 바꾸기는 한 번에 하나만 예고한다(docs/36 11-12, 11-32)
+ */
+export function schedulePending(
+  schedule: Schedule,
+  decidedInRound: number,
+): boolean {
+  const last = schedule.entries.at(-1);
+  return last !== undefined && last.fromRound > decidedInRound;
+}
+
 export function withChange(
   schedule: Schedule,
   change: ScheduleEntry,

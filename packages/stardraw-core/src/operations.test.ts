@@ -305,6 +305,48 @@ describe("국장이 일하는 길", () => {
         roundTimes(report.schedule, from).closesAt,
     ).toBe(3600);
   });
+
+  it("옛 칸(운영자 명령 schedule-change)으로 예고 중인 일정 바꾸기가 있으면 국장 일정 바꾸기도 받지 않는다(docs/36 11-32)", async () => {
+    const c = await withDirector();
+    const from = c.next + 10;
+    const entry: ScheduleEntry = {
+      ...(HOURLY.entries[0] as ScheduleEntry),
+      fromRound: from,
+      length: 1800,
+    };
+    await c.close([], [], [entry]);
+    const later = { ...entry, fromRound: from + 20, length: 7200 };
+    const op = await signAsDirector(
+      c.body({
+        kind: "schedule",
+        effectiveRound: later.fromRound,
+        entry: later,
+      }),
+      director,
+    );
+    await c.close([op]);
+    expect((await c.problems()).join("\n")).toMatch(
+      /이미 예고 중인 일정 바꾸기가 있다/,
+    );
+    // 효력이 생긴 뒤에는 받는다
+    c.records.pop();
+    c.regs.pop();
+    await c.until(from + 1);
+    const ok = await signAsDirector(
+      c.body({
+        kind: "schedule",
+        effectiveRound: later.fromRound,
+        entry: later,
+      }),
+      director,
+    );
+    await c.close([ok]);
+    const report = await c.report();
+    expect(report.problems).toEqual([]);
+    expect(report.schedule.entries.map((e) => e.length)).toEqual([
+      3600, 1800, 7200,
+    ]);
+  });
 });
 
 describe("공격: 모두 거절된다", () => {

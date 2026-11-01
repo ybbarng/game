@@ -66,6 +66,7 @@ import {
   type SignatureData,
   STAMP_LENGTH,
   scheduleFromRecords,
+  schedulePending,
   sealDesignations,
   sealDigest,
   sealFingerprint,
@@ -1021,7 +1022,9 @@ export class StardrawServer {
     if (!pending) return [];
     const problem = this.ops.pendingSchedule
       ? "국장이 예고한 일정 바꾸기가 있다"
-      : checkScheduleChange(schedule, pending, round);
+      : schedulePending(schedule, round)
+        ? "예고 중인 일정 바꾸기가 있다"
+        : checkScheduleChange(schedule, pending, round);
     if (!problem) return [pending];
     this.o.store.setPendingChange(null);
     this.o.log?.(

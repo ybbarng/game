@@ -30,6 +30,7 @@ import {
   roundTimes,
   type Schedule,
   type ScheduleEntry,
+  schedulePending,
   withChange,
   writeScheduleEntry,
 } from "./schedule";
@@ -851,7 +852,8 @@ export async function checkOperation(
     case "schedule": {
       if (op.effectiveRound !== op.entry.fromRound)
         return "일정 바꾸기의 효력 회차는 새 줄의 fromRound";
-      if (state.pendingSchedule) return "이미 예고 중인 일정 바꾸기가 있다";
+      if (state.pendingSchedule || schedulePending(state.schedule, round))
+        return "이미 예고 중인 일정 바꾸기가 있다";
       const problem = checkScheduleChange(state.schedule, op.entry, round);
       return problem ? `일정 바꾸기: ${problem}` : null;
     }
@@ -1046,7 +1048,7 @@ export async function applyRecordOps(
   const round = record.round;
   matureOps(state, round);
   for (const change of record.scheduleChanges) {
-    if (state.pendingSchedule) {
+    if (state.pendingSchedule || schedulePending(state.schedule, round)) {
       problems.push(
         "일정 변경: 일정 바꾸기 예고 중에는 다른 일정 변경을 받지 않는다",
       );
@@ -1098,7 +1100,11 @@ export async function selectOperations(
   const s = cloneOpsState(state);
   matureOps(s, round);
   for (const change of scheduleChanges)
-    if (!s.pendingSchedule && !checkScheduleChange(s.schedule, change, round))
+    if (
+      !s.pendingSchedule &&
+      !schedulePending(s.schedule, round) &&
+      !checkScheduleChange(s.schedule, change, round)
+    )
       s.schedule = withChange(s.schedule, change);
   const accepted: Operation[] = [];
   const rejected: { op: Operation; problem: string }[] = [];
@@ -1380,7 +1386,8 @@ export function operationsView(
       until: a.until,
     })),
     periods: s.periods.map((p) => periodView(s, p)),
-    schedulePending: s.pendingSchedule !== null,
+    schedulePending:
+      s.pendingSchedule !== null || schedulePending(s.schedule, next),
   };
 }
 

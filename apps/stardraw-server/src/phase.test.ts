@@ -11,7 +11,11 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GitHubAnchor } from "./outside";
-import { parseScheduleLiveArgs, scheduleLive } from "./schedule-live";
+import {
+  parseScheduleLiveArgs,
+  scheduleChange,
+  scheduleLive,
+} from "./schedule-live";
 import {
   FakeGitHub,
   makeRig,
@@ -128,6 +132,58 @@ describe("시험 → 정식: 이어지는 장부", () => {
     expect(rig.store.record(2)?.scheduleChanges).toEqual([]);
     expect(rig.store.pendingChange()).toBeNull();
     expect(rig.logs.join("\n")).toMatch(/싣지 못해 지웠다/);
+  });
+
+  it("회차 길이 바꾸기(docs/36 11-32): 시험 1시간 → 시험 30분 → 정식 1시간이 한 사슬로 검사를 통과하고, 예고 중에는 다음 바꾸기를 받지 않는다", async () => {
+    rig = await makeRig({ schedule: TRIAL });
+    await rig.finish(1);
+    expect(() => scheduleChange(rig?.store as never, opensAt(6), 3600)).toThrow(
+      /지금 일정과 같다/,
+    );
+    expect(() =>
+      scheduleChange(rig?.store as never, opensAt(6) + 600, 1800),
+    ).toThrow(/x:25·x:55/);
+    expect(scheduleChange(rig.store, opensAt(6), 1800)).toMatchObject({
+      change: { fromRound: 6, length: 1800, phase: "trial" },
+      decidedIn: 2,
+    });
+    await rig.finish(2);
+    // 2회차 기록에 실려 6회차부터 효력: 그 전에는 다음 바꾸기를 받지 않는다
+    const at = (round: number) =>
+      roundTimes(rig?.engine.schedule() as Schedule, round).opensAt;
+    expect(() => scheduleLive(rig?.store as never, at(12))).toThrow(
+      /예고 중인 일정 바꾸기가 있다/,
+    );
+    for (let round = 3; round <= 6; round++) await rig.finish(round);
+    expect(at(7) - at(6)).toBe(1800);
+    expect(rig.engine.state().mode).toBe("trial");
+    // 30분 회차 사이에서 정각 추첨이 되는 x:55만 정식 1회가 될 수 있다
+    expect(() => scheduleLive(rig?.store as never, at(11))).toThrow(/x:55/);
+    expect(scheduleLive(rig.store, at(12))).toMatchObject({
+      change: { fromRound: 12, length: 3600, phase: "live" },
+      decidedIn: 7,
+    });
+    for (let round = 7; round <= 12; round++) await rig.finish(round);
+    expect(rig.engine.state().liveFrom).toBe(12);
+
+    const ledger = readLedger(rig.dir);
+    const report = await verifyLedger(
+      ledger.genesis,
+      ledger.records,
+      ledger.tickets,
+      ledger.registrations,
+      { beaconVerifier: () => true, powParams: TEST_POW },
+    );
+    expect(report.problems).toEqual([]);
+    expect(
+      report.schedule.entries.map((e) => [e.fromRound, e.length, e.phase]),
+    ).toEqual([
+      [1, 3600, "trial"],
+      [6, 1800, "trial"],
+      [12, 3600, "live"],
+    ]);
+    expect(displayRound(report.schedule, 11).label).toBe("시험 11회");
+    expect(displayRound(report.schedule, 12).label).toBe("정식 1회");
   });
 
   it("명령 인자: --from은 ISO 시각(초 단위)", () => {

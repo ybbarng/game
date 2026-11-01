@@ -28,7 +28,11 @@ import { Publisher } from "./publish";
 import { DEFAULT_RELAY_LIMITS, Relay } from "./relay";
 import { restoreFromAnchor } from "./restore";
 import { RoomHub } from "./room";
-import { parseScheduleLiveArgs, scheduleLive } from "./schedule-live";
+import {
+  parseScheduleLiveArgs,
+  scheduleChange,
+  scheduleLive,
+} from "./schedule-live";
 import {
   createNextServerKey,
   loadNextServerKey,
@@ -185,21 +189,28 @@ async function backupTo(target: string): Promise<void> {
 
 /**
  * `node server.mjs schedule-live --from <ISO>`: 정식 단계를 예약한다(docs/36 11-6).
+ * `node server.mjs schedule-change --from <ISO> --round-seconds <초> [--phase trial|live]`: 회차 길이를 바꾼다(11-32).
  * 돌고 있는 서버가 다음에 닫는 회차 기록에 일정 바꾸기 한 줄로 싣는다(3회차 예고)
  */
-function scheduleLiveCommand(args: readonly string[]): void {
+function scheduleCommand(live: boolean, args: readonly string[]): void {
   const config = loadConfig();
   const parsed = parseScheduleLiveArgs(args);
+  if (!live && parsed.roundSeconds === undefined)
+    throw new Error("--round-seconds <초>가 필요하다(예: 3600)");
   const store = new Store(join(config.dataDir, "stardraw.sqlite"));
   try {
-    const { change, decidedIn } = scheduleLive(
-      store,
-      parsed.from,
-      parsed.roundSeconds,
-    );
+    const { change, decidedIn } = live
+      ? scheduleLive(store, parsed.from, parsed.roundSeconds)
+      : scheduleChange(
+          store,
+          parsed.from,
+          parsed.roundSeconds as number,
+          parsed.phase,
+        );
+    const label = change.phase === "live" ? "정식" : "시험";
     console.log(
-      `[stardraw] 정식 단계를 예약했다: 사슬 ${change.fromRound}회차(${new Date(parsed.from * 1000).toISOString()} 시작)가 정식 1회, ` +
-        `${change.length / 60}분 회차. ${decidedIn}회차 기록에 실린다`,
+      `[stardraw] 일정 바꾸기를 예약했다: 사슬 ${change.fromRound}회차(${new Date(parsed.from * 1000).toISOString()} 시작)부터 ` +
+        `${label} 단계 ${change.length / 60}분 회차. ${decidedIn}회차 기록에 실리고 ${decidedIn + 1}~${change.fromRound - 1}회차 동안 예고된다`,
     );
   } finally {
     store.close();
@@ -258,12 +269,14 @@ void (
     : command === "backup" && rest[0]
       ? backupTo(rest[0])
       : command === "schedule-live"
-        ? Promise.resolve().then(() => scheduleLiveCommand(rest))
-        : command === "seal-next"
-          ? sealNextCommand()
-          : command === "restore"
-            ? restoreCommand(rest)
-            : main()
+        ? Promise.resolve().then(() => scheduleCommand(true, rest))
+        : command === "schedule-change"
+          ? Promise.resolve().then(() => scheduleCommand(false, rest))
+          : command === "seal-next"
+            ? sealNextCommand()
+            : command === "restore"
+              ? restoreCommand(rest)
+              : main()
 ).catch((err) => {
   console.error(err instanceof Error ? err.message : err);
   process.exit(1);

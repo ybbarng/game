@@ -340,10 +340,10 @@ export function DirectorConsole({
         }
       />
 
-      <LiveStart
+      <ScheduleChange
         state={state}
         busy={busy}
-        onSend={(fromRound, length) =>
+        onSend={(fromRound, length, phase) =>
           void act(() =>
             sendBody(() => {
               const last = schedule.entries.at(-1);
@@ -351,7 +351,7 @@ export function DirectorConsole({
               return {
                 kind: "schedule",
                 effectiveRound: fromRound,
-                entry: { ...last, fromRound, length, phase: "live" },
+                entry: { ...last, fromRound, length, phase },
               };
             }),
           )
@@ -852,30 +852,54 @@ type Fields = {
   issued: number;
 };
 
-/** 정식 시작 예약: 정각 추첨이 되는 x:55 시작 회차만 고를 수 있다(3회차 예고 뒤) */
-function LiveStart({
+/** 국장이 고를 수 있는 회차 길이(초). 10분보다 짧을 수 없고(규칙), 추첨이 길이의 배수 시각에 온다 */
+const LENGTH_CHOICES = [1200, 1800, 3600, 7200] as const;
+
+const lengthName = (length: number) =>
+  length % 3600 === 0 ? `${length / 3600}시간` : `${length / 60}분`;
+
+/**
+ * 일정 바꾸기(docs/36 11-12, 11-32): 회차 길이를 바꾸거나(같은 단계 안) 시험 → 정식으로 들어간다.
+ * 새 회차는 추첨이 그 길이의 배수 시각에 오게 시작해야 하고(1시간이면 x:55), 3회차 예고 뒤 회차부터 고른다
+ */
+function ScheduleChange({
   state,
   busy,
   onSend,
 }: {
   state: DirectorState;
   busy: boolean;
-  onSend: (fromRound: number, length: number) => void;
+  onSend: (fromRound: number, length: number, phase: "trial" | "live") => void;
 }) {
   const { schedule, view } = state;
   const phased = schedule.entries.every((e) => e.phase !== undefined);
-  const options = phased ? liveOptions(state) : [];
-  const [pick, setPick] = useState<number | null>(null);
-  if (!phased) return null;
+  const last = schedule.entries.at(-1);
   const live = liveStart(schedule);
-  const chosen = pick ?? options[0]?.round ?? null;
+  const nowPhase = last?.phase === "live" ? "live" : "trial";
+  // 처음 고른 값: 1시간이 아닌 회차면 1시간으로, 시험 1시간이면 정식 시작, 정식 1시간이면 2시간
+  const [phase, setPhase] = useState<"trial" | "live">(
+    nowPhase === "trial" && last?.length === 3600 ? "live" : nowPhase,
+  );
+  const [length, setLength] = useState<number>(
+    last?.length === 3600 && nowPhase === "live" ? 7200 : 3600,
+  );
+  const [pick, setPick] = useState<number | null>(null);
+  if (!phased || !last) return null;
+  const nextPhase = live !== null ? "live" : phase;
+  const same = nextPhase === last.phase && length === last.length;
+  const options = same ? [] : startOptions(state, length);
+  const chosen =
+    pick !== null && options.some((o) => o.round === pick)
+      ? pick
+      : (options[0]?.round ?? null);
   return (
-    <Section title="정식 시작 예약">
-      {live !== null ? (
-        <p className="text-sm text-white/70">
-          정식 단계가 이미 정해졌습니다(사슬 {live}회차부터 정식 1회).
-        </p>
-      ) : view.schedulePending ? (
+    <Section title="일정 바꾸기">
+      <p className="text-sm text-white/70">
+        지금: {nowPhase === "live" ? "정식" : "시험"} 단계 ·{" "}
+        {scheduleLine(last.length)}
+        {live !== null && ` · 사슬 ${live}회차부터 정식 1회`}
+      </p>
+      {view.schedulePending ? (
         <p className="text-sm text-white/70">
           예고 중인 일정 바꾸기가 있습니다. 바꾸려면 아래 운영 기록에서 먼저
           취소하세요.
@@ -883,29 +907,64 @@ function LiveStart({
       ) : (
         <>
           <p className="break-keep text-sm text-white/70">
-            정식 단계는 {scheduleLine(3600)}입니다. 첫 회차는 x:55에 열려야
-            하고, 이 요청이 실리는 기록 뒤 3회차 예고가 지난 회차부터 고를 수
-            있습니다. 효력이 생기기 전까지는 취소할 수 있습니다.
+            새 회차는 추첨이 회차 길이의 배수 시각에 오게 시작합니다(1시간이면
+            x:55 시작, 정각 추첨). 이 요청이 실리는 기록 뒤 3회차 예고가 지난
+            회차부터 고를 수 있고, 효력이 생기기 전까지는 취소할 수 있습니다.
           </p>
+          {live === null && (
+            <label className="flex flex-col gap-1 text-sm sm:max-w-sm">
+              단계
+              <select
+                value={phase}
+                onChange={(e) => setPhase(e.target.value as "trial" | "live")}
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+                data-schedule-phase
+              >
+                <option value="trial">시험 단계 그대로(회차 길이만)</option>
+                <option value="live">정식 시작</option>
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1 text-sm sm:max-w-sm">
-            정식 1회가 열리는 시각
+            회차 길이
             <select
-              value={chosen ?? ""}
-              onChange={(e) => setPick(Number(e.target.value))}
+              value={length}
+              onChange={(e) => setLength(Number(e.target.value))}
               className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
-              data-live-start
+              data-schedule-length
             >
-              {options.map((o) => (
-                <option key={o.round} value={o.round}>
-                  {at(o.opensAt)} 시작 · 사슬 {o.round}회차
+              {LENGTH_CHOICES.map((l) => (
+                <option key={l} value={l}>
+                  {lengthName(l)} · {scheduleLine(l)}
                 </option>
               ))}
             </select>
           </label>
+          {same ? (
+            <p className="text-sm text-white/70">지금 일정과 같습니다.</p>
+          ) : (
+            <label className="flex flex-col gap-1 text-sm sm:max-w-sm">
+              {nextPhase === "live" && live === null
+                ? "정식 1회가 열리는 시각"
+                : "새 회차가 열리는 시각"}
+              <select
+                value={chosen ?? ""}
+                onChange={(e) => setPick(Number(e.target.value))}
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
+                data-live-start
+              >
+                {options.map((o) => (
+                  <option key={o.round} value={o.round}>
+                    {at(o.opensAt)} 시작 · 사슬 {o.round}회차
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
-            disabled={busy || chosen === null}
-            onClick={() => chosen !== null && onSend(chosen, 3600)}
+            disabled={busy || same || chosen === null}
+            onClick={() => chosen !== null && onSend(chosen, length, nextPhase)}
             className="sd-cta self-start rounded-lg px-4 py-2 font-bold text-slate-950 disabled:opacity-40"
           >
             국장 패스키로 서명해 예약
@@ -916,19 +975,17 @@ function LiveStart({
   );
 }
 
-/** 가장 이른 효력 회차부터, 1시간 회차가 정각 추첨이 되는 시작 회차 24개 */
-function liveOptions(
+/** 가장 이른 효력 회차부터, 새 회차 길이로 추첨이 그 길이의 배수 시각에 오는 시작 회차 24개 */
+function startOptions(
   state: DirectorState,
+  length: number,
 ): { round: number; opensAt: number }[] {
   const out: { round: number; opensAt: number }[] = [];
   const { schedule } = state;
-  for (
-    let r = state.view.next.earliestEffectiveRound;
-    out.length < 24 && r < state.view.next.earliestEffectiveRound + 24 * 60;
-    r++
-  ) {
+  const first = state.view.next.earliestEffectiveRound;
+  for (let r = first; out.length < 24 && r < first + 24 * 72; r++) {
     const opensAt = roundTimes(schedule, r).opensAt;
-    if (isAlignedEpoch(opensAt, 3600)) out.push({ round: r, opensAt });
+    if (isAlignedEpoch(opensAt, length)) out.push({ round: r, opensAt });
   }
   return out;
 }
