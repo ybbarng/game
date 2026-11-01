@@ -320,19 +320,17 @@ export function CheckLink({
               </button>
             </div>
           )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void start(state)}
-            className={cn(
-              "rounded-xl py-3 font-bold disabled:opacity-40",
-              hasDirector
-                ? "border border-white/20 hover:bg-white/10"
-                : "sd-cta text-slate-950",
-            )}
-          >
-            {busy ? "요청을 보내고 있습니다" : "확인 시작"}
-          </button>
+          {/* 국장 기기에서는 받는 분을 적는 국장 확인만 둔다(2026-11-01 별도 검토 3번: 이름 없이 진행되는 길을 없앤다) */}
+          {!hasDirector && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void start(state)}
+              className="sd-cta rounded-xl py-3 font-bold text-slate-950 disabled:opacity-40"
+            >
+              {busy ? "요청을 보내고 있습니다" : "확인 시작"}
+            </button>
+          )}
           <p className="text-white/50 text-xs">
             한 번만 쓸 수 있습니다 · {formatTime(state.expiresAt / 1000)}까지
           </p>
