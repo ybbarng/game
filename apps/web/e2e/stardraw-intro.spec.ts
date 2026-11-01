@@ -30,7 +30,11 @@ test("첫 화면 정답 예시: 별자리판과 번호 공(처음 온 사람도 
   const intro = page.locator("section[aria-label='정답 예시']");
   await expect(intro).toBeVisible();
   await expect(intro.getByRole("heading")).toHaveText(
-    "45개의 별 중 이번에 빛날 별 6개를 맞혀 보세요",
+    "이번에 빛날 별 6개를 맞혀 보세요",
+  );
+  // 처음 온 사람: 우주국 인사가 여섯 별 이야기를 한다(회차 간격마다 45개 가운데 6개)
+  await expect(page.locator("[data-gate]")).toContainText(
+    /45개 가운데 (\d+분마다|매시간|\d+시간마다) 6개가 빛난다/,
   );
   await expect(intro.locator("canvas")).toBeVisible();
   // 당첨 별 6개 + 보너스 1개, 별자리 선은 6개끼리만(5개)
@@ -55,4 +59,8 @@ test("첫 화면 정답 예시: 별자리판과 번호 공(처음 온 사람도 
   await page.goto("/stardraw");
   await expect(page.locator("[data-card]").first()).toBeVisible();
   await expect(intro).toBeVisible();
+  // 다녀간 사람의 첫 화면은 우주국 인사가 없으니 소개 줄이 여섯 별을 말한다
+  await expect(intro).toContainText(
+    /(\d+분마다|매시간|\d+시간마다) 45개의 별 가운데 6개가 빛납니다\./,
+  );
 });

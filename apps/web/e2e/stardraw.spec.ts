@@ -202,7 +202,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 처음 온 사람: 첫 화면이 입구다. 우주국 인사, 정답 예시, 지금 회차 한 줄, 우주인 등록·신분증 제시
   await expect(page.locator("[data-greeting]")).toHaveCount(0);
   await expect(page.locator("[data-gate]")).toContainText(
-    "하늘의 별 따기는 등록한 우주인만 응모할 수 있습니다.",
+    "다음에 빛날 별을 맞힐 우주인이 있을까요?",
   );
   await expect(page.locator("[data-gate-round]")).toContainText(
     /응모를 (받고 있어요|마감했어요)/,

@@ -144,3 +144,25 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
   await expect(result).toBeVisible({ timeout: 30_000 });
   await checkStarInfo(page, "canvas[data-sky='draw']", result);
 });
+
+test("별 설명: 첫 화면 정답 예시 하늘에서도 별을 누르면 그 별 설명이 뜬다", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name === "phone-landscape",
+    "휴대폰 세로와 PC 두 크기로",
+  );
+  await page.goto("/stardraw");
+  const intro = page.locator("section[aria-label='정답 예시']");
+  await expect(intro).toBeVisible();
+  await checkStarInfo(
+    page,
+    "section[aria-label='정답 예시'] canvas",
+    intro.getByRole("heading"),
+  );
+  await tapStar(page, "section[aria-label='정답 예시'] canvas", 7);
+  await page.screenshot({
+    path: testInfo.outputPath("star-info-intro.png"),
+    fullPage: true,
+  });
+});

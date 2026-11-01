@@ -19,3 +19,10 @@ function safeDisplay(schedule: Schedule, round: number) {
     ? displayRound(schedule, round)
     : { phase: null, number: round, label: `${round}회` };
 }
+
+/** 회차 간격을 문장 앞머리로: "20분마다"·"매시간"·"2시간마다" */
+export function cadenceOf(lengthSec: number): string {
+  if (lengthSec === 3600) return "매시간";
+  if (lengthSec % 3600 === 0) return `${lengthSec / 3600}시간마다`;
+  return `${Math.round(lengthSec / 60)}분마다`;
+}

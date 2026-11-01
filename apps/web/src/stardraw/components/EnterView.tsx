@@ -26,7 +26,7 @@ import {
 } from "../passkey-env";
 import { usableHolding } from "../qual-store";
 import { registering } from "../registrar";
-import { roundShort } from "../round-label";
+import { cadenceOf, roundShort } from "../round-label";
 import { DEMO_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 import {
@@ -36,6 +36,7 @@ import {
   useAstronautSetup,
   WelcomeFlyer,
 } from "./AstronautSetup";
+import { BureauWelcome } from "./BureauWelcome";
 import {
   PickedRow,
   paperFullMs,
@@ -442,7 +443,12 @@ export function EnterView({
           onBack={onBack}
           round={roundShort(services.ledger.schedule, status.round)}
         />
+        {/* 처음 온 사람은 첫 화면 입구와 같은 우주국 인사부터(데모는 예전처럼 짧게) */}
+        {!demo && (
+          <BureauWelcome cadence={cadenceOf(status.times.entry.length)} />
+        )}
         <KeySetup
+          gate={!demo}
           demo={demo}
           env={env}
           working={setup.working}

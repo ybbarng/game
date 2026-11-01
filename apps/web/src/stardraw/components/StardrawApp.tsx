@@ -30,11 +30,12 @@ import { qualMarks } from "../qual-judge";
 import { ensureRegistered } from "../registrar";
 import { myRank, prizeEligible, RANK_RULE, winnerCounts } from "../results";
 import { savedPass } from "../room-client";
-import { roundShort, roundTitle } from "../round-label";
+import { cadenceOf, roundShort, roundTitle } from "../round-label";
 import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
 import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
 import type { KeyInfo, MyTicket } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
+import { BureauWelcome } from "./BureauWelcome";
 import { CheckLink } from "./CheckLink";
 import { DrawnNotice } from "./DrawnNotice";
 import { DrawView } from "./DrawView";
@@ -660,7 +661,7 @@ export function Home({
       </header>
 
       {/* 정답 예시 하늘은 처음 온 사람이든 다녀간 사람이든 늘 같은 자리에(첫 화면 모양이 달라 헷갈렸다, 사용자) */}
-      <GameIntro />
+      <GameIntro cadence={cadenceOf(status.times.entry.length)} />
 
       <RoundCard
         services={services}
@@ -777,19 +778,8 @@ export function Gate({
     <>
       {/* 첫 화면(등록 뒤)의 인사 줄과 같은 자리: 제목·소개 문구 아래, 정답 예시 하늘 위(2026-11-01 사용자) */}
       <StardrawTitle />
-      <section
-        aria-label="카노푸스 우주국 안내"
-        data-gate
-        className="sd-glass flex flex-col gap-2 rounded-3xl px-5 py-5 break-keep text-[15px] leading-relaxed"
-      >
-        <p className="font-semibold text-amber-100">
-          안녕하세요, 카노푸스 우주국입니다.
-        </p>
-        <p className="text-white/85">
-          하늘의 별 따기는 등록한 우주인만 응모할 수 있습니다. 새로
-          등록하시거나, 이미 등록하셨다면 신분증을 제시해 주세요.
-        </p>
-      </section>
+      <BureauWelcome cadence={cadenceOf(s.times.entry.length)} />
+      {/* 우주국 인사가 여섯 별 이야기를 이미 해서 소개 줄은 빼고 하늘만 */}
       <GameIntro />
       <p
         className="flex items-center justify-center gap-2.5 text-sm tabular-nums"

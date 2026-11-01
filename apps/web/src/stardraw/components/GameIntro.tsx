@@ -64,7 +64,12 @@ const NO_MOTION: SkyMotion = { lit: {}, sparkle: {}, fadeFrom: null };
  * 첫 화면 정답 예시: 별자리판에서 별 6개와 보너스가 차례로 켜지고 가짜 별자리가 이어지며, 그 번호 공이 함께 떠오른다.
  * 움직임 줄이기면 첫 예시가 다 그려진 채 멈춘다
  */
-export function GameIntro() {
+export function GameIntro({
+  cadence = null,
+}: {
+  /** 회차 간격 앞머리("20분마다"). 있으면 제목 위에 우주국이 찾은 것을 한 줄로 */
+  cadence?: string | null;
+} = {}) {
   const [example, setExample] = useState<IntroExample>(FIRST_EXAMPLE);
   // 빈 하늘에서 시작해 하나씩 생긴다(움직임 줄이기면 아래에서 바로 다 그린다)
   const [shown, setShown] = useState(0);
@@ -146,9 +151,16 @@ export function GameIntro() {
       data-intro={`${numbers.join(",")}+${bonus}`}
       className="flex flex-col items-center gap-3"
     >
-      <h2 className="text-balance text-center font-bold text-lg">
-        45개의 별 중 이번에 빛날 별 6개를 맞혀 보세요
-      </h2>
+      <div className="flex flex-col items-center gap-1">
+        {cadence && (
+          <p className="text-balance break-keep text-center text-sm text-white/65">
+            {cadence} 45개의 별 가운데 6개가 빛납니다.
+          </p>
+        )}
+        <h2 className="text-balance text-center font-bold text-lg">
+          이번에 빛날 별 6개를 맞혀 보세요
+        </h2>
+      </div>
       <SkyBoard
         state={{
           mode: "draw",
@@ -158,6 +170,8 @@ export function GameIntro() {
           bonus: bonusShown(shown) ? bonus : null,
           ...(motion ? { motion } : {}),
         }}
+        // 별을 누르면 그 별 설명(응모·관측지 하늘과 같다)
+        info
         label={`정답 예시 별: ${numbers.map((n) => starOf(n).ko).join(", ")}, 보너스 ${b.ko}`}
         className="w-full"
         hdr={hdr}
