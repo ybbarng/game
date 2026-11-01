@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-10-31T09:01:09Z",
+  "updatedAt": "2026-11-01T09:30:00Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -1013,6 +1013,26 @@
         {
           "label": "출시 준비 점검표",
           "path": "docs/39-stardraw-launch.md"
+        }
+      ]
+    },
+    {
+      "id": "next-lotto-scale",
+      "title": "별 따기 규모: 가벼운 확인·오래된 회차 보관",
+      "parent": "next-lotto",
+      "status": "building",
+      "size": 2,
+      "summary": "2026-11-01 측정과 설계(docs/36 11-30, 구현은 아직). 지금 화면은 처음 열 때 장부 전체를 받아 1년 뒤면 응모 0장이어도 154MB(봉인 파일 17KB×회차), 회차당 100장이면 540MB. 서버는 Argon2 줄 2개로 초당 약 170장(처음 응모 85장), 마감 1분에 고르게 오면 1만 장까지 받지만 한꺼번에 몰리면 줄 32·같은 순간 다시 내기 때문에 1천 장 중 290장만 받음(줄 600이면 모두). 설계: 보통 기기는 회차 기록 사슬·요약·내 응모권 머클 증명만(가벼운 확인), 전체 검사는 검증 페이지·터미널 검사기·집 서버 감시. 앵커 사본에서 묶음 빼기, 다 찬 1,000회차 응모권은 Release 자산(브라우저는 교차 출처로 못 받음을 확인, 터미널 검사기용). 측정 도구 apps/stardraw-server/bench",
+      "since": "2026-11-01",
+      "found": "2026-11-01",
+      "links": [
+        {
+          "label": "규모 설계(11-30)",
+          "path": "docs/36-hourly-lotto-design.md"
+        },
+        {
+          "label": "측정 도구",
+          "path": "apps/stardraw-server/bench"
         }
       ]
     },
