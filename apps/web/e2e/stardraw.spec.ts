@@ -584,34 +584,6 @@ test("설명 페이지: 별 45개와 데이터 출처", async ({ page }) => {
   await noSideScroll(page);
 });
 
-test("별의 색: 온도 실험실과 봉우리 실험실", async ({ page }, info) => {
-  await page.goto("/stardraw/about");
-  await page.getByRole("link", { name: "별의 색" }).click();
-  await expect(
-    page.getByRole("heading", { name: "별의 색", level: 1 }),
-  ).toBeVisible();
-  const lab = page.locator("[data-star-lab]");
-  await expect(lab.locator("[data-lab-name]")).toContainText("해");
-  await lab.getByRole("button", { name: "베텔게우스", exact: true }).click();
-  await expect(lab.locator("[data-lab-name]")).toContainText("7 베텔게우스");
-  await expect(lab).toContainText("붉은 별");
-  // 띠 위의 점(별 45개)을 눌러도 그 별로 바뀐다
-  await lab.getByRole("button", { name: /^37 알니탁/ }).click();
-  await expect(lab).toContainText("푸른 별");
-  await page.screenshot({
-    path: info.outputPath("star-colors.png"),
-    fullPage: true,
-  });
-  const bump = page.locator("[data-bump-lab]");
-  await bump.getByRole("button", { name: "빨강 + 파랑" }).click();
-  await expect(bump.getByRole("button", { name: "봉우리 둘" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.locator("[data-three-colors] [data-ball]")).toHaveCount(5);
-  await noSideScroll(page);
-});
-
 test("데모: 1등으로 응모해 당첨자 확인 초록불까지(틀린 별, 가짜 당첨자 포함)", async ({
   page,
 }, info) => {

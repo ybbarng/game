@@ -144,8 +144,8 @@ export default function StardrawAbout() {
               빛깔을 진하게 칠합니다. 표면 온도가 높은 순서로 푸른 별, 흰 별,
               노란빛 별, 주황빛 별, 붉은 별입니다. 초록 별은 왜 없는지, 공과
               별빛을 왜 다르게 칠했는지는{" "}
-              <a href="/stardraw/colors" className="underline">
-                별의 색
+              <a href="/stardraw/learn#colors" className="underline">
+                배우기의 「별의 색」
               </a>
               에서 직접 움직여 볼 수 있습니다.
             </li>

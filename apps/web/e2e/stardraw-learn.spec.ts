@@ -258,3 +258,39 @@ test("보안 배우기: 고르게 뽑히나 — 실제 규칙으로 돌려 번�
   await expect(verdict(page, "fair-repeat")).toContainText("13.3%");
   await toy.screenshot({ path: info.outputPath("fair-toy.png") });
 });
+
+test("덧붙임 별의 색: 온도 실험실과 봉우리 실험실", async ({ page }, info) => {
+  await page.goto("/stardraw/about");
+  await page.getByRole("link", { name: "배우기의 「별의 색」" }).click();
+  await expect(page).toHaveURL(/\/stardraw\/learn#colors$/);
+  // 주소의 # 단계는 펼쳐져 있다
+  await expect(page.locator("[data-lesson-toggle='colors']")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  const lab = page.locator("[data-star-lab]");
+  await expect(lab.locator("[data-lab-name]")).toContainText("해");
+  await lab.getByRole("button", { name: "베텔게우스", exact: true }).click();
+  await expect(lab.locator("[data-lab-name]")).toContainText("7 베텔게우스");
+  await expect(lab).toContainText("붉은 별");
+  // 띠 위의 점(별 45개)을 눌러도 그 별로 바뀐다
+  await lab.getByRole("button", { name: /^37 알니탁/ }).click();
+  await expect(lab).toContainText("푸른 별");
+  await lab.screenshot({ path: info.outputPath("star-colors-lab.png") });
+  const bump = page.locator("[data-bump-lab]");
+  await bump.getByRole("button", { name: "빨강 + 파랑" }).click();
+  await expect(bump.getByRole("button", { name: "봉우리 둘" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator("[data-three-colors] [data-ball]")).toHaveCount(5);
+  await page.locator("#colors").screenshot({
+    path: info.outputPath("star-colors-lesson.png"),
+  });
+  // 가로로 밀리지 않는다
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
