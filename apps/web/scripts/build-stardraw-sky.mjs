@@ -45,7 +45,7 @@ const CON = {
   UMi: "작은곰자리",
   Cet: "고래자리",
   And: "안드로메다자리",
-  Cen: "켄타우루스자리",
+  Cen: "센타우루스자리",
   Oph: "뱀주인자리",
 };
 
@@ -89,8 +89,9 @@ for (const s of stars) {
     throw new Error(`이름이나 문구가 없다: ${JSON.stringify(s)}`);
 }
 
-// 2. 네모 하늘: 적경을 가로(동쪽이 왼쪽, 올려다본 하늘), 적위를 세로로 편다.
-//    별이 가장 듬성한 적경에서 가른다. 가로·세로 모두 실제 비율과 차례 순위를 섞어 몰린 곳은 넓히고 빈 곳은 채운다
+// 2. 네모 하늘의 큰 틀: 적경을 가로(동쪽이 왼쪽, 올려다본 하늘), 적위를 세로로 편다.
+//    별이 가장 듬성한 적경에서 가른다. 가로·세로 모두 실제 비율과 차례 순위를 섞어 몰린 곳은 넓히고 빈 곳은 채운다.
+//    여기서 번호 별을 고르게 퍼뜨린 자리는 별자리들이 어디쯤 놓일지(5단계 처음 자리)만 정한다. 마지막 자리는 6단계가 정한다
 const byRa = [...stars].sort((a, b) => a.ra - b.ra);
 let cut = 0;
 let gap = -1;
@@ -180,8 +181,113 @@ for (let it = 0; it < 60; it++) {
   }
 }
 
-// 3. 별자리 선: 어두운 별은 가까운 밝은 별이 움직인 만큼(거리 제곱에 반비례해 섞어) 따라 휜다.
-//    네모 하늘을 가른 곳을 건너거나 남쪽 끝(-47°) 아래로 내려가는 곳에서 선을 끊는다
+// 3. 별자리 꼭짓점: 모든 꼭짓점은 실제 별 하나다. 같은 별(0.1° 안)은 꼭짓점 하나로 묶는다(엘나스는 황소·마차부가 함께 쓴다).
+//    번호 별은 늘 그 별의 꼭짓점 자체라 선과 어긋나지 않는다
+const DEG = Math.PI / 180;
+const fromRaDec = (ra, dec) => [
+  Math.cos(dec * DEG) * Math.cos(ra * DEG),
+  Math.cos(dec * DEG) * Math.sin(ra * DEG),
+  Math.sin(dec * DEG),
+];
+const toRaDec = ([x, y, z]) => {
+  const dec = Math.asin(Math.max(-1, Math.min(1, z))) / DEG;
+  const ra = Math.atan2(y, x) / DEG;
+  return [ra < 0 ? ra + 360 : ra, dec];
+};
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const SAME = Math.cos(0.1 * DEG);
+/** 꼭짓점: 실제 별 하나(번호 별이면 n) */
+const verts = stars.map((s) => ({
+  vec: fromRaDec(s.ra, s.dec),
+  ra: s.ra,
+  dec: s.dec,
+  n: s.n,
+}));
+const vertexOf = (vec) => {
+  const i = verts.findIndex((v) => dot(v.vec, vec) > SAME);
+  if (i >= 0) return i;
+  const [ra, dec] = toRaDec(vec);
+  verts.push({ vec, ra, dec, n: null });
+  return verts.length - 1;
+};
+const lineSrc = JSON.parse(
+  readFileSync(
+    join(root, "build/database/vectors-constellations.json"),
+    "utf8",
+  ),
+);
+/** 원본 꺾은선마다 꼭짓점 번호(남쪽 끝 -47° 아래는 null로 끊는다) */
+const polylines = lineSrc.map((c) => ({
+  con: c.label,
+  ids: c.stars.map((vec) => (toRaDec(vec)[1] <= -47 ? null : vertexOf(vec))),
+}));
+/** 네모 하늘을 가른 곳을 건너는 선(가로로 그림 폭의 절반 넘게 뛴다) */
+const crosses = (a, b) => Math.abs(u(verts[a].ra) - u(verts[b].ra)) > 0.5;
+
+// 4. 모양 덩어리: 별자리마다 선으로 이어진 꼭짓점 묶음. 가른 곳을 건너는 선은 잇지 않아 좌우 두 덩어리가 된다
+//    (세페우스, 작은곰 → 북극성). 번호 별이 자기 별자리 선에 없으면 그 별자리의 가장 가까운 꼭짓점 덩어리에 넣는다
+const groups = [];
+for (const con of new Set(polylines.map((p) => p.con))) {
+  const parent = new Map();
+  const find = (a) => {
+    while (parent.get(a) !== a) a = parent.get(a);
+    return a;
+  };
+  const add = (a) => {
+    if (!parent.has(a)) parent.set(a, a);
+  };
+  for (const p of polylines.filter((q) => q.con === con))
+    p.ids.forEach((id, k) => {
+      if (id === null) return;
+      add(id);
+      const prev = p.ids[k - 1];
+      if (prev !== null && prev !== undefined && !crosses(prev, id))
+        parent.set(find(prev), find(id));
+    });
+  for (const s of stars) {
+    if (CON[s.con] !== con || parent.has(s.n - 1)) continue;
+    let best = null;
+    for (const id of parent.keys())
+      if (
+        best === null ||
+        dot(verts[id].vec, verts[s.n - 1].vec) >
+          dot(verts[best].vec, verts[s.n - 1].vec)
+      )
+        best = id;
+    add(s.n - 1);
+    if (best !== null) parent.set(s.n - 1, find(best));
+  }
+  const byRoot = new Map();
+  for (const id of [...parent.keys()].sort((a, b) => a - b)) {
+    const r = find(id);
+    if (!byRoot.has(r)) byRoot.set(r, []);
+    byRoot.get(r).push(id);
+  }
+  for (const ids of byRoot.values()) groups.push({ con, ids });
+}
+// 덩어리마다 참모양: 덩어리 가운데에서 본 하늘을 평사 투영으로 편다(북쪽이 위, 동쪽이 왼쪽). 실제 하늘에서 보는 모양이다
+for (const g of groups) {
+  const c = [0, 0, 0];
+  for (const id of g.ids) for (let k = 0; k < 3; k++) c[k] += verts[id].vec[k];
+  const len = Math.hypot(...c);
+  const [cra, cdec] = toRaDec(c.map((v) => v / len));
+  const center = fromRaDec(cra, cdec);
+  const east = [-Math.sin(cra * DEG), Math.cos(cra * DEG), 0];
+  const north = [
+    -Math.sin(cdec * DEG) * Math.cos(cra * DEG),
+    -Math.sin(cdec * DEG) * Math.sin(cra * DEG),
+    Math.cos(cdec * DEG),
+  ];
+  g.ref = g.ids.map((id) => {
+    const v = verts[id].vec;
+    const k = 2 / (1 + dot(v, center));
+    return [-k * dot(v, east), -k * dot(v, north)];
+  });
+}
+
+// 5. 처음 자리: 모든 꼭짓점(번호 별 포함)을 가까운 번호 별이 2단계에서 옮긴 만큼(거리 제곱에 반비례해 섞어) 휜 자리.
+//    이 휨은 이어진 변형이라 선이 서로 엇갈리지 않는다. 여기서 출발해야 6단계가 별자리를 서로 꿰지 않는다
+//    (번호 별을 퍼뜨린 자리에 바로 붙이고 출발하면 처음부터 52곳이 엇갈렸다)
 const lin = (ra, dec) => ({
   x: 0.07 + 0.86 * u(ra),
   y: 0.07 + 0.84 * ((90 - dec) / 135),
@@ -203,36 +309,386 @@ const warp = (ra, dec) => {
   }
   return [l.x + sx / sw, l.y + sy / sw];
 };
-const toRaDec = ([x, y, z]) => {
-  const dec = (Math.asin(Math.max(-1, Math.min(1, z))) * 180) / Math.PI;
-  const ra = (Math.atan2(y, x) * 180) / Math.PI;
-  return [ra < 0 ? ra + 360 : ra, dec];
+const P = verts.map((v) => warp(v.ra, v.dec));
+/** 꼭짓점마다 속한 덩어리 */
+const groupsOf = verts.map(() => []);
+groups.forEach((g, gi) => {
+  for (const id of g.ids) groupsOf[id].push(gi);
+});
+const centroid = (g) => {
+  let x = 0;
+  let y = 0;
+  for (const id of g.ids) {
+    x += P[id][0];
+    y += P[id][1];
+  }
+  return [x / g.ids.length, y / g.ids.length];
 };
-const lineSrc = JSON.parse(
-  readFileSync(
-    join(root, "build/database/vectors-constellations.json"),
-    "utf8",
-  ),
+// 덩어리 가운데는 처음 자리 근처에 머문다(동서남북 차례를 지킨다)
+for (const g of groups) g.home = centroid(g);
+
+// 6. 함께 풀기(2026-11-01 사용자: "모양은 해치지 않으면서, 조금씩 위치를 서로 밀어내는 식으로").
+//    같은 입력이면 같은 결과다(난수 없음, 정해진 차례). 차례마다
+//    ① 모양: 덩어리마다 참모양을 고른 크기·옮기기·조금 돌리기(±MAX_TURN)로 지금 자리에 가장 잘 맞춘 뒤 그 자리로 당긴다
+//       (as-similar-as-possible). 두 별자리가 함께 쓰는 별은 두 목표의 가운데로 간다
+//    ② 손가락 틈: 번호 별끼리 GAP보다 가까우면 떼어 놓는다
+//    ③ 겹침: 서로 다른 별자리 꼭짓점끼리, 꼭짓점과 다른 별자리 선분이 너무 가까우면 밀어내고, 엇갈린 선분은 풀어 준다
+//    ④ ②③에서 밀린 만큼을 덩어리 전체가 함께 옮긴다
+//    ⑤ 제자리: 덩어리 가운데를 처음 자리로 약하게 당긴다(동서남북 차례)
+//    ⑥ 가장자리: 번호 별은 0.05~0.95 · 0.05~0.92, 어두운 별은 판 안
+const MAX_TURN = 10 * DEG;
+/** 보통 크기: 360px 판에서 하늘 1도가 약 1.8px(그릴 하늘 넓이를 판 넓이에 고르게 편 값) */
+const BASE = 1.8 / (360 * DEG);
+const SCALE_NUMBERED = [0.8, 2.2];
+const SCALE_PLAIN = [0.7, 1.4];
+for (const g of groups) g.numbered = g.ids.some((id) => verts[id].n !== null);
+const GAP = 0.1;
+// 번호 별 둘이 가까운 별자리(쌍둥이 카스토르·폴룩스, 오리온 허리띠)는 그 쌍이 손가락 틈의 PAIR_LIFT만큼 떨어지는 크기까지는
+// 별자리 전체를 고르게 키운다(상한 안에서). 나머지 틈만 그 둘레를 조금 늘려 메운다
+const PAIR_LIFT = 0.5;
+for (const g of groups) {
+  let near = Infinity;
+  for (let i = 0; i < g.ids.length; i++)
+    for (let j = i + 1; j < g.ids.length; j++) {
+      if (verts[g.ids[i]].n === null || verts[g.ids[j]].n === null) continue;
+      near = Math.min(
+        near,
+        Math.hypot(g.ref[i][0] - g.ref[j][0], g.ref[i][1] - g.ref[j][1]),
+      );
+    }
+  g.minScale = near === Infinity ? 0 : (PAIR_LIFT * GAP) / near;
+}
+const APART = 0.03;
+const APART_NUMBERED = 0.045;
+const isNumbered = (id) => verts[id].n !== null;
+const fit = (g) => {
+  const [px, py] = centroid(g);
+  let qx = 0;
+  let qy = 0;
+  for (const [x, y] of g.ref) {
+    qx += x;
+    qy += y;
+  }
+  qx /= g.ref.length;
+  qy /= g.ref.length;
+  let a = 0;
+  let b = 0;
+  let qq = 0;
+  g.ids.forEach((id, k) => {
+    const rx = g.ref[k][0] - qx;
+    const ry = g.ref[k][1] - qy;
+    const ox = P[id][0] - px;
+    const oy = P[id][1] - py;
+    a += rx * ox + ry * oy;
+    b += rx * oy - ry * ox;
+    qq += rx * rx + ry * ry;
+  });
+  // 돌리기는 조금만, 그리고 북쪽이 위로 천천히 돌아가게 한다
+  const turn = 0.9 * Math.max(-MAX_TURN, Math.min(MAX_TURN, Math.atan2(b, a)));
+  const fitted = qq > 0 ? (a * Math.cos(turn) + b * Math.sin(turn)) / qq : 0;
+  // 크기는 판 전체의 보통 크기(BASE) 둘레에 머문다. 번호 별이 있는 별자리는 손가락 틈을 위해 더 커질 수 있고,
+  // 번호 별 없는 별자리는 보통 크기로 천천히 돌아간다(이웃에 밀려 쪼그라들지 않게)
+  const [lo, hi] = g.numbered ? SCALE_NUMBERED : SCALE_PLAIN;
+  let scale = Math.min(hi * BASE, Math.max(lo * BASE, g.minScale, fitted));
+  if (!g.numbered) scale += (BASE - scale) * 0.02;
+  const cs = scale * Math.cos(turn);
+  const sn = scale * Math.sin(turn);
+  return g.ref.map(([x, y]) => [
+    px + cs * (x - qx) - sn * (y - qy),
+    py + sn * (x - qx) + cs * (y - qy),
+  ]);
+};
+/** 두 꼭짓점이 같은 별자리에 함께 있는지(같은 별자리끼리는 모양 힘이 자리를 정하므로 밀지 않는다) */
+const conOf = verts.map(
+  (_, i) => new Set(groupsOf[i].map((g) => groups[g].con)),
 );
+const sameConTable = new Uint8Array(verts.length * verts.length);
+for (let a = 0; a < verts.length; a++)
+  for (let b = 0; b < verts.length; b++)
+    sameConTable[a * verts.length + b] = [...conOf[a]].some((c) =>
+      conOf[b].has(c),
+    )
+      ? 1
+      : 0;
+const sameCon = (a, b) => sameConTable[a * verts.length + b] === 1;
+const push = (a, b, want, k) => {
+  const dx = P[b][0] - P[a][0];
+  const dy = P[b][1] - P[a][1];
+  const d = Math.hypot(dx, dy) || 1e-9;
+  if (d >= want) return;
+  const m = ((want - d) / 2) * k;
+  P[a][0] -= (dx / d) * m;
+  P[a][1] -= (dy / d) * m;
+  P[b][0] += (dx / d) * m;
+  P[b][1] += (dy / d) * m;
+};
+const numbered = verts.map((_, i) => i).filter(isNumbered);
+const clampAll = () => {
+  verts.forEach((v, i) => {
+    const [x0, x1, y0, y1] = v.n
+      ? [0.05, 0.95, 0.05, 0.92]
+      : [0.01, 0.99, 0.01, 0.99];
+    P[i][0] = Math.min(x1, Math.max(x0, P[i][0]));
+    P[i][1] = Math.min(y1, Math.max(y0, P[i][1]));
+  });
+};
+const shapeStep = (k) => {
+  const sum = verts.map(() => [0, 0, 0]);
+  for (const g of groups) {
+    if (g.ids.length < 2) continue;
+    const t = fit(g);
+    g.ids.forEach((id, j) => {
+      sum[id][0] += t[j][0] - P[id][0];
+      sum[id][1] += t[j][1] - P[id][1];
+      sum[id][2] += 1;
+    });
+  }
+  sum.forEach(([x, y, c], i) => {
+    if (c === 0) return;
+    P[i][0] += (k * x) / c;
+    P[i][1] += (k * y) / c;
+  });
+};
+/** 별자리 선분(가른 곳을 건너는 선 제외) */
+const segments = [];
+for (const p of polylines)
+  p.ids.forEach((id, k) => {
+    const prev = p.ids[k - 1];
+    if (
+      id !== null &&
+      prev !== null &&
+      prev !== undefined &&
+      prev !== id &&
+      !crosses(prev, id)
+    )
+      segments.push({ con: p.con, a: prev, b: id });
+  });
+/** 다른 별자리 선분에 꼭짓점이 SEG_APART보다 가까우면 꼭짓점과 선분을 서로 밀어낸다(선이 엉키지 않게) */
+const SEG_APART = 0.03;
+const UNTANGLE = 2;
+/** 덩어리 가운데를 처음 자리로 당기는 세기(번호 별 있는 별자리, 없는 별자리) */
+const HOME_NUMBERED = 0.01;
+const HOME_PLAIN = 0.001;
+const CELL = 0.05;
+const segmentStep = (k) => {
+  const grid = new Map();
+  const cellKey = (cx, cy) => cx * 1000 + cy;
+  segments.forEach((s, si) => {
+    const [ax, ay] = P[s.a];
+    const [bx, by] = P[s.b];
+    const x0 = Math.floor((Math.min(ax, bx) - SEG_APART) / CELL);
+    const x1 = Math.floor((Math.max(ax, bx) + SEG_APART) / CELL);
+    const y0 = Math.floor((Math.min(ay, by) - SEG_APART) / CELL);
+    const y1 = Math.floor((Math.max(ay, by) + SEG_APART) / CELL);
+    for (let cx = x0; cx <= x1; cx++)
+      for (let cy = y0; cy <= y1; cy++) {
+        const key = cellKey(cx, cy);
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key).push(si);
+      }
+  });
+  verts.forEach((_, v) => {
+    if (groupsOf[v].length === 0) return;
+    const list = grid.get(
+      cellKey(Math.floor(P[v][0] / CELL), Math.floor(P[v][1] / CELL)),
+    );
+    if (!list) return;
+    for (const si of list) {
+      const s = segments[si];
+      if (conOf[v].has(s.con) || s.a === v || s.b === v) continue;
+      const [ax, ay] = P[s.a];
+      const [bx, by] = P[s.b];
+      const ex = bx - ax;
+      const ey = by - ay;
+      const ll = ex * ex + ey * ey || 1e-12;
+      const t = Math.max(
+        0,
+        Math.min(1, ((P[v][0] - ax) * ex + (P[v][1] - ay) * ey) / ll),
+      );
+      const cx = ax + t * ex;
+      const cy = ay + t * ey;
+      const dx = P[v][0] - cx;
+      const dy = P[v][1] - cy;
+      const d = Math.hypot(dx, dy) || 1e-9;
+      if (d >= SEG_APART) continue;
+      const m = ((SEG_APART - d) / 2) * k;
+      P[v][0] += (dx / d) * m;
+      P[v][1] += (dy / d) * m;
+      P[s.a][0] -= (dx / d) * m * (1 - t);
+      P[s.a][1] -= (dy / d) * m * (1 - t);
+      P[s.b][0] -= (dx / d) * m * t;
+      P[s.b][1] -= (dy / d) * m * t;
+    }
+  });
+};
+/** 서로 다른 별자리 선분이 엇갈리면, 상대 선에 가장 가까운 끝점을 건너편으로 넘긴다(상대 선분도 반대로 조금) */
+const side = (p, a, b) =>
+  (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+const untangleStep = (k) => {
+  for (let i = 0; i < segments.length; i++)
+    for (let j = i + 1; j < segments.length; j++) {
+      const s = segments[i];
+      const t = segments[j];
+      if (
+        s.con === t.con ||
+        s.a === t.a ||
+        s.a === t.b ||
+        s.b === t.a ||
+        s.b === t.b
+      )
+        continue;
+      const [A, B, C, D] = [P[s.a], P[s.b], P[t.a], P[t.b]];
+      if (
+        Math.max(A[0], B[0]) < Math.min(C[0], D[0]) ||
+        Math.max(C[0], D[0]) < Math.min(A[0], B[0])
+      )
+        continue;
+      if (
+        Math.max(A[1], B[1]) < Math.min(C[1], D[1]) ||
+        Math.max(C[1], D[1]) < Math.min(A[1], B[1])
+      )
+        continue;
+      if (
+        side(A, C, D) * side(B, C, D) >= 0 ||
+        side(C, A, B) * side(D, A, B) >= 0
+      )
+        continue;
+      // 끝점마다 상대 선(무한 직선)까지 거리 → 가장 가까운 끝점을 넘긴다
+      const cand = [
+        [s.a, C, D, t],
+        [s.b, C, D, t],
+        [t.a, A, B, s],
+        [t.b, A, B, s],
+      ].map(([id, p, q, other]) => {
+        const ex = q[0] - p[0];
+        const ey = q[1] - p[1];
+        const len = Math.hypot(ex, ey) || 1e-9;
+        const d = side(P[id], p, q) / len;
+        return { id, nx: -ey / len, ny: ex / len, d, other };
+      });
+      cand.sort((x, y) => Math.abs(x.d) - Math.abs(y.d));
+      const { id, nx, ny, d, other } = cand[0];
+      // 끝점이 있는 쪽의 반대편으로 |d| + 여백만큼(끝점 하나는 k, 상대 선분 두 끝은 반대로 k/2씩)
+      const m = (Math.abs(d) + 0.006) * k;
+      const sgn = d > 0 ? -1 : 1;
+      P[id][0] += sgn * nx * m;
+      P[id][1] += sgn * ny * m;
+      for (const e of [other.a, other.b]) {
+        P[e][0] -= (sgn * nx * m) / 2;
+        P[e][1] -= (sgn * ny * m) / 2;
+      }
+    }
+};
+function countCrossings() {
+  let c = 0;
+  const pairs = {};
+  for (let i = 0; i < segments.length; i++)
+    for (let j = i + 1; j < segments.length; j++) {
+      const s = segments[i];
+      const t = segments[j];
+      if (
+        s.con === t.con ||
+        s.a === t.a ||
+        s.a === t.b ||
+        s.b === t.a ||
+        s.b === t.b
+      )
+        continue;
+      const [A, B, C, D] = [P[s.a], P[s.b], P[t.a], P[t.b]];
+      if (
+        side(A, C, D) * side(B, C, D) < 0 &&
+        side(C, A, B) * side(D, A, B) < 0
+      ) {
+        c++;
+        const k = [s.con, t.con].sort().join("/");
+        pairs[k] = (pairs[k] ?? 0) + 1;
+      }
+    }
+  return c === 0 ? "0" : `${c} ${JSON.stringify(pairs)}`;
+}
+const STEPS = 3000;
+for (let it = 0; it < STEPS; it++) {
+  shapeStep(0.5);
+  const before = P.map(([x, y]) => [x, y]);
+  for (let i = 0; i < numbered.length; i++)
+    for (let j = i + 1; j < numbered.length; j++)
+      push(numbered[i], numbered[j], GAP, 0.5);
+  for (let a = 0; a < verts.length; a++)
+    for (let b = a + 1; b < verts.length; b++) {
+      if (sameCon(a, b)) continue;
+      const want = isNumbered(a) || isNumbered(b) ? APART_NUMBERED : APART;
+      if (
+        Math.abs(P[a][0] - P[b][0]) >= want ||
+        Math.abs(P[a][1] - P[b][1]) >= want
+      )
+        continue;
+      push(a, b, want, 0.3);
+    }
+  segmentStep(0.3);
+  untangleStep(UNTANGLE);
+  // 밀린 만큼을 덩어리 전체가 함께 옮긴다(꼭짓점 하나만 밀리면 모양 힘이 도로 당겨 이웃 별자리가 비켜나지 못한다)
+  const delta = P.map(([x, y], i) => [x - before[i][0], y - before[i][1]]);
+  for (const g of groups) {
+    let mx = 0;
+    let my = 0;
+    for (const id of g.ids) {
+      mx += delta[id][0];
+      my += delta[id][1];
+    }
+    const k = (g.numbered ? 0.5 : 1) / g.ids.length;
+    for (const id of g.ids) {
+      P[id][0] += (mx * k) / groupsOf[id].length;
+      P[id][1] += (my * k) / groupsOf[id].length;
+    }
+  }
+  for (const g of groups) {
+    const [cx, cy] = centroid(g);
+    const HOME = g.numbered ? HOME_NUMBERED : HOME_PLAIN;
+    for (const id of g.ids) {
+      P[id][0] += ((g.home[0] - cx) * HOME) / groupsOf[id].length;
+      P[id][1] += ((g.home[1] - cy) * HOME) / groupsOf[id].length;
+    }
+  }
+  clampAll();
+}
+// 마무리: 손가락 틈 MIN_GAP(2026-11-01 전 판의 실제 최소 0.0946과 같은 수준)을 확실히 둔다. 대개 이미 넘어 거의 움직이지 않는다
+const MIN_GAP = 0.095;
+for (let it = 0; it < 200; it++) {
+  for (let i = 0; i < numbered.length; i++)
+    for (let j = i + 1; j < numbered.length; j++)
+      push(numbered[i], numbered[j], MIN_GAP, 1);
+  clampAll();
+}
+
+// 7. 별자리 선: 꼭짓점 자리를 잇는다. 가른 곳을 건너는 곳과 남쪽 끝(-47°) 아래에서 끊는다
 const lines = [];
-for (const c of lineSrc) {
+/** 그림 위쪽 가장자리 밖(북극 너머로 이어지는 선의 끝) */
+const ABOVE = -0.04;
+for (const p of polylines) {
   let run = [];
-  let prevU = null;
   const flush = () => {
-    if (run.length >= 2) lines.push({ con: c.label, pts: run });
+    if (run.length >= 2) lines.push({ con: p.con, pts: run });
     run = [];
   };
-  for (const v of c.stars) {
-    const [ra, dec] = toRaDec(v);
-    if (dec <= -47) {
+  p.ids.forEach((id, k) => {
+    if (id === null) {
       flush();
-      prevU = null;
-      continue;
+      return;
     }
-    if (prevU !== null && Math.abs(u(ra) - prevU) > 0.5) flush();
-    run.push(warp(ra, dec).map(round));
-    prevU = u(ra);
-  }
+    const prev = p.ids[k - 1];
+    const at = P[id].map(round);
+    if (prev !== null && prev !== undefined && crosses(prev, id)) {
+      // 북극 근처에서 그림 폭을 넘나드는 선(작은곰자리 → 북극성)은 북극 너머로 이어진다: 앞 별에서 위쪽 가장자리 밖으로
+      // 나가고, 다음 별 위쪽 가장자리 밖에서 들어오게 그린다(2026-11-01 사용자). 그 밖의 곳(세페우스 등)은 끊는다
+      const a = verts[prev].dec;
+      const b = verts[id].dec;
+      const polar = Math.min(a, b) > 60 && Math.max(a, b) > 85;
+      if (polar && run.length > 0) run.push([run[run.length - 1][0], ABOVE]);
+      flush();
+      if (polar) run.push([at[0], ABOVE]);
+    }
+    run.push(at);
+  });
   flush();
 }
 
@@ -251,11 +707,13 @@ const data = {
     dec: Math.round(s.dec * 100) / 100,
     mag: s.mag,
     k: s.k,
-    x: round(pos[s.n].x),
-    y: round(pos[s.n].y),
+    x: round(P[s.n - 1][0]),
+    y: round(P[s.n - 1][1]),
     fact: facts[String(s.n)],
   })),
   lines,
 };
 writeFileSync(out, `${JSON.stringify(data)}\n`);
-console.log(`별 ${data.stars.length}개, 별자리 선 ${lines.length}줄 → ${out}`);
+console.log(
+  `별 ${data.stars.length}개, 별자리 선 ${lines.length}줄, 다른 별자리 선끼리 엇갈림 ${countCrossings()} → ${out}`,
+);
