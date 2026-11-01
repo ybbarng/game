@@ -25,6 +25,7 @@ import {
   player,
   type Rig,
   readLedger,
+  stopServer,
 } from "./testing";
 
 /**
@@ -115,7 +116,7 @@ describe("가벼운 기록 파일", () => {
       trustProxy: false,
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-    close = () => new Promise((r) => server.close(() => r()));
+    close = () => stopServer(server);
     const { port } = server.address() as AddressInfo;
     const base = `http://127.0.0.1:${port}/stardraw-api`;
     const res = await fetch(`${base}/ledger/${lightBundleName(10, 1)}`);

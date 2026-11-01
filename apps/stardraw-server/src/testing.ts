@@ -266,6 +266,20 @@ export async function makeRig(
   };
 }
 
+/**
+ * 시험 HTTP 서버를 바로 닫는다. `close()`만 부르면 받는 쪽이 붙잡고 있는 연결(다 읽지 않은 응답 등)이
+ * 끊길 때까지 기다려, 부하 아래에서 가끔 3초씩 멈췄다(2026-11-01). 남은 연결을 모두 끊고 닫는다
+ */
+export function stopServer(server: {
+  close(cb: () => void): unknown;
+  closeAllConnections(): void;
+}): Promise<void> {
+  return new Promise((resolve) => {
+    server.close(() => resolve());
+    server.closeAllConnections();
+  });
+}
+
 /** 회차 k의 drand 시각(추첨이 되는 때) */
 export function drawTimeOf(round: number): number {
   return drandTime(drandRoundForClose(roundTimes(SCHEDULE, round).closesAt));

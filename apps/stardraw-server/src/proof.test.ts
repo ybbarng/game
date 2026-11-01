@@ -22,6 +22,7 @@ import {
   player,
   type Rig,
   readLedger,
+  stopServer,
 } from "./testing";
 
 /**
@@ -70,7 +71,7 @@ describe("증명 API", () => {
       proofs: new ProofService(rig.store, rig.clock, limits),
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-    close = () => new Promise((r) => server.close(() => r()));
+    close = () => stopServer(server);
     const { port } = server.address() as AddressInfo;
     return `http://127.0.0.1:${port}/stardraw-api`;
   }

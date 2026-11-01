@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createHttpServer } from "./http";
 import { Publisher, pad } from "./publish";
-import { EPOCH, makeRig, type Rig } from "./testing";
+import { EPOCH, makeRig, type Rig, stopServer } from "./testing";
 
 /**
  * 묶음 파일(docs/36 7절 「장부 받기」): 다 찬 10회차 구간의 회차·봉인 파일을 한 파일로 함께 낸다.
@@ -78,7 +78,7 @@ describe("장부 묶음 파일", () => {
       trustProxy: false,
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
-    close = () => new Promise((r) => server.close(() => r()));
+    close = () => stopServer(server);
     const { port } = server.address() as AddressInfo;
     const base = `http://127.0.0.1:${port}/stardraw-api`;
 

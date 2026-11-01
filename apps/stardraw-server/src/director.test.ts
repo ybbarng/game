@@ -31,6 +31,7 @@ import {
   readLedger,
   registerOnly,
   SCHEDULE,
+  stopServer,
   TEST_POW,
 } from "./testing";
 
@@ -320,7 +321,7 @@ describe("HTTP 국장 경로", () => {
       });
       expect(broken.status).toBe(400);
     } finally {
-      await new Promise((resolve) => server.close(() => resolve(null)));
+      await stopServer(server);
     }
   });
 });

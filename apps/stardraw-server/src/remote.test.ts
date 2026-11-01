@@ -32,6 +32,7 @@ import {
   player,
   type Rig,
   SCHEDULE,
+  stopServer,
   TEST_POW,
 } from "./testing";
 
@@ -61,7 +62,7 @@ async function serve(
     proofs: new ProofService(rig.store, rig.clock),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  close = () => new Promise((resolve) => server.close(() => resolve()));
+  close = () => stopServer(server);
   const { port } = server.address() as AddressInfo;
   return `http://127.0.0.1:${port}/stardraw-api`;
 }

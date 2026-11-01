@@ -26,6 +26,7 @@ import {
   readLedger,
   registerOnly,
   SCHEDULE,
+  stopServer,
   TEST_POW,
 } from "./testing";
 
@@ -133,7 +134,7 @@ describe("등록만 올리기", () => {
     await new Promise<void>((resolve) =>
       server.listen(0, "127.0.0.1", resolve),
     );
-    close = () => new Promise((resolve) => server.close(() => resolve()));
+    close = () => stopServer(server);
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/stardraw-api`;
     await rig.at(EPOCH + 10);
     const p = await player();

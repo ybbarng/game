@@ -51,6 +51,7 @@ import {
   type Rig,
   readLedger,
   SCHEDULE,
+  stopServer,
   TEST_POW,
 } from "./testing";
 
@@ -365,7 +366,7 @@ describe("상품 자격 받기(기관 계정 → 블라인드 도장)", () => {
       const { blindStamp } = await res.json();
       expect(fromBase64Url(blindStamp)).toHaveLength(48);
     } finally {
-      await new Promise((resolve) => server.close(() => resolve(null)));
+      await stopServer(server);
     }
   }, 30_000);
 });

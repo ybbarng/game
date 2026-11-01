@@ -22,6 +22,7 @@ import {
   makeRig,
   player,
   type Rig,
+  stopServer,
   TEST_GATE,
 } from "./testing";
 
@@ -42,7 +43,7 @@ async function serve(options: Parameters<typeof makeRig>[0] = {}) {
     trustProxy: true,
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  close = () => new Promise((resolve) => server.close(() => resolve()));
+  close = () => stopServer(server);
   const { port } = server.address() as AddressInfo;
   return `http://127.0.0.1:${port}/stardraw-api`;
 }
