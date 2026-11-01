@@ -108,13 +108,15 @@ async function finishThrough(r: Rig, round: number): Promise<void> {
 }
 
 /** 13회차가 열린 상태: 벌집 성단 1기(1년)가 효력이 생겼다 */
-async function qualRig(): Promise<{ r: Rig; periodId: string }> {
+async function qualRig(
+  qualification: QualificationOptions = QUALIFICATION,
+): Promise<{ r: Rig; periodId: string }> {
   rig = await makeRig({
     schedule: TRIAL,
     directorKeys: [
       { credentialId: director.credentialId, pub: director.publicKey },
     ],
-    qualification: QUALIFICATION,
+    qualification,
   });
   const r = rig;
   await finishThrough(r, 4);
@@ -243,6 +245,26 @@ describe("상품 자격 받기(기관 계정 → 블라인드 도장)", () => {
     const first = await send();
     const again = await send();
     expect(toHex(again.blindStamp)).toBe(toHex(first.blindStamp));
+  }, 30_000);
+
+  it("엉터리 요청(구글 서명이 틀림·다른 도메인)은 같은 곳의 하루 상한을 쓰지 않는다(별도 검토 7번)", async () => {
+    const { r, periodId } = await qualRig({
+      ...QUALIFICATION,
+      issuesPerPrefixPerDay: 2,
+    });
+    for (let i = 0; i < 5; i++) {
+      await expect(receive(r, periodId, "bad-token")).rejects.toMatchObject({
+        status: 401,
+      });
+      await expect(
+        receive(r, periodId, "google:mallory@other.org:other.org"),
+      ).rejects.toMatchObject({ status: 403 });
+    }
+    await receive(r, periodId, "google:carol@example.com:example.com");
+    await receive(r, periodId, "google:dave@example.com:example.com");
+    await expect(
+      receive(r, periodId, "google:erin@example.com:example.com"),
+    ).rejects.toMatchObject({ status: 429 });
   }, 30_000);
 
   it("증서를 붙인 응모를 받고, 같은 자격의 두 번째 응모도 받는다. 기록에 발급 수가 실리고 장부 검사가 통과한다", async () => {

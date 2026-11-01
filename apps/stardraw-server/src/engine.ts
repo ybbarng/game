@@ -1346,7 +1346,8 @@ export class StardrawServer {
         "같은 곳에서 오늘 보낸 자격 요청이 너무 많습니다",
         429,
       );
-    this.counters.add("qual", day, prefix);
+    // 횟수는 신원 확인까지 통과한 요청만 센다(2026-11-01 별도 검토 7번). 엉터리 요청으로 같은 곳 동료들의 몫을
+    // 다 쓰지 못하게. 실패한 요청은 구글 공개 열쇠로 서명만 확인하고(캐시) 끝난다
     if (input.blinded.length !== STAMP_LENGTH)
       throw new EntryError("가린 값은 48바이트입니다");
     const info = (await this.qualInfo()).periods.find(
@@ -1402,6 +1403,7 @@ export class StardrawServer {
     } else {
       throw new EntryError("모르는 확인 방법입니다", 500);
     }
+    this.counters.add("qual", day, prefix);
 
     const secret = this.o.store.qualKeySecret(toHex(period.issuerKey));
     if (!secret) {

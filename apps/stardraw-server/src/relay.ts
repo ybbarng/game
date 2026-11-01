@@ -164,9 +164,10 @@ export class Relay {
         `아직 쓰이지 않은 확인 링크가 ${this.limits.openInvitesPerTicket}개입니다. 그 링크를 먼저 보내 주세요`,
         429,
       );
-    this.counters.add("invite", day, prefix);
     if ((await verifyInvite(invite, ticket, this.policy)).length > 0)
       throw new EntryError("그 응모권 주인의 서명이 아닙니다", 403);
+    // 응모권 주인의 서명이 맞는 요청만 센다(2026-11-01 별도 검토 7번): 공개된 당첨 응모권 id만으로 같은 곳의 몫을 다 쓰지 못하게
+    this.counters.add("invite", day, prefix);
     const expiresAt = now + INVITE_TTL_MS;
     const added = this.store.inviteAdd({
       tokenHash: toHex(invite.tokenHash),

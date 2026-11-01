@@ -235,6 +235,18 @@ describe("장난 막기", () => {
     await invite(winner, won, "203.0.113.5");
   });
 
+  it("주인 서명이 아닌 링크 만들기는 하루 상한을 쓰지 않는다(공개된 당첨 응모권 id로 같은 곳 몫 소진 막기)", async () => {
+    const { winner, won, loser } = await setup({
+      invitesPerPrefixPerDay: 2,
+      openInvitesPerTicket: 99,
+    });
+    for (let i = 0; i < 5; i++)
+      await rejects(() => invite(loser, won, "203.0.113.5"), 403);
+    await invite(winner, won, "203.0.113.6");
+    await invite(winner, won, "203.0.113.7");
+    await rejects(() => invite(winner, won, "203.0.113.8"), 429);
+  });
+
   it("없는 링크를 여러 번 열면 그 곳은 하루 동안 막힌다(토큰 맞히기)", async () => {
     const { winner, won } = await setup({ badLinksPerPrefixPerDay: 2 });
     const real = await invite(winner, won);
