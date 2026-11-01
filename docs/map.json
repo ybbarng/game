@@ -1037,6 +1037,26 @@
       ]
     },
     {
+      "id": "next-lotto-front-pow",
+      "title": "별 따기 응모 앞단 작업 증명·줄·다시 내기",
+      "parent": "next-lotto",
+      "status": "building",
+      "size": 1,
+      "summary": "2026-11-01 브랜치 front-pow(main에 아직 합치지 않음, 서버·화면 함께 배포). 정상 사용자는 불편하지 않게, 악성 사용자는 불편하게. 응모·등록 요청에 열쇠·문제 값에 묶인 작은 Argon2(256KiB, 평균 512번) 답을 붙여 서버가 비싼 Argon2 전에 0.3ms로 거른다(장부 형식은 그대로). 화면은 응모 화면에 들어오면 웹 워커로 미리 풀고(맥 0.06~0.44초), 응모권 Argon2와 겹치지 않게 차례로. Argon2 줄 32 → 400, 줄이 가득하면 서명 확인 전에 503, 503 다시 내기를 1~4초 흔들어 마감 5초 전까지: 한꺼번에 1천 장 3.7초·3천 장 18.5초에 모두(전: 1천 장 중 260장). 배포 때 STARDRAW_GATE_OPTIONAL_UNTIL로 옛 탭 유예 하루",
+      "since": "2026-11-01",
+      "found": "2026-10-31",
+      "links": [
+        {
+          "label": "설계(11-31)",
+          "path": "docs/36-hourly-lotto-design.md"
+        },
+        {
+          "label": "배포 안내",
+          "path": "deploy/stardraw/README.md"
+        }
+      ]
+    },
+    {
       "id": "next-lotto-live",
       "title": "별 따기 실시간 추첨·회차 방",
       "parent": "next-lotto",
