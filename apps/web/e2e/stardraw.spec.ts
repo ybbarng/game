@@ -343,7 +343,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.goBack();
   await expect(receipt).toBeVisible();
 
-  await page.getByRole("button", { name: "← 처음으로" }).click();
+  await page.locator("[data-tab='home']").click();
   // 등록한 사람: 인사와 작은 등록증, 응모한 회차는 추첨까지 시계와 고른 별·「영수증」
   await expect(page.locator(`[data-greeting="${number}"]`)).toContainText(
     /^.+에 거주하는 .+ 님, 안녕하세요$/,
@@ -388,7 +388,8 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     path: info.outputPath("stardraw-draw.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "← 돌아가기" }).click();
+  // 휴대폰은 추첨 머리 줄 「홈」, PC는 위쪽 메뉴 줄 「홈」
+  await page.locator("[data-tab='home']").click();
   // 결과를 본 뒤에는 지난 회차 한 줄에 내 등수와 「다시 보기」
   await expect(page.locator("[data-last-round='1']")).toBeVisible();
   await page.getByRole("button", { name: /내 응모/ }).click();
@@ -541,9 +542,10 @@ test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고
   await page.goBack();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(page.locator("[data-gate]")).toBeVisible();
-  // 주소로 바로 연 화면의 「처음으로」는 사이트 밖이 아니라 첫 화면으로
+  // 주소로 바로 연 화면도 메뉴 「홈」으로 첫 화면에 간다(화면 안 「처음으로」는 두지 않는다)
   await page.goto("/stardraw/rounds");
-  await page.getByRole("button", { name: /처음으로/ }).click();
+  await expect(page.getByRole("button", { name: /처음으로/ })).toHaveCount(0);
+  await page.locator("[data-tab='home']").click();
   await expect(page).toHaveURL(/\/stardraw$/);
   // 당겨서 새로고침은 응모(하늘에서 별 고르기)와 추첨 화면에서만 막는다
   const noPull = page.locator("html[data-no-pull]");
@@ -980,7 +982,7 @@ test("추첨 보러 가기: 결과 전에는 기다리고, 결과가 오면 바�
   const wait = page.locator("[data-draw-wait='1']");
   await expect(wait).toContainText("추첨까지");
   // 결과 전에 나갔다 와도 정답 가리기가 풀리지 않는다(열어 봄이 남지 않는다)
-  await page.getByRole("button", { name: "← 돌아가기" }).click();
+  await page.locator("[data-tab='home']").click();
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   await expect(wait).toBeVisible();
   // 기다리는 동안 결과가 들어오면 그 자리에서 추첨으로
@@ -1040,7 +1042,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
   await page.locator("[data-envelope]").click();
   await skipDraw.click({ timeout: 10_000 });
   await expect(result).toBeVisible({ timeout: 5_000 });
-  await page.getByRole("button", { name: "← 돌아가기" }).click();
+  await page.locator("[data-tab='home']").click();
   await expect(page.locator("[data-envelope]")).toHaveCount(0);
 
   // (다) 실시간: 기다리는 화면에서 결과가 들어와 시작한 추첨에는 건너뛰기가 없다

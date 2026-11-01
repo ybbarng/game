@@ -2,7 +2,7 @@ import { expect, fixStardrawClock, test } from "./test";
 
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
-test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 통계를 보고 돌아간다", async ({
+test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 통계를 보고 탭으로 돌아간다", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "데스크톱·휴대폰 세로로");
@@ -34,9 +34,12 @@ test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 �
     fullPage: true,
   });
 
-  // 새로고침해도 관측 기록, 돌아가기는 지난 회차
+  // 새로고침해도 관측 기록. 지난 회차 탭 아래 화면이라 그 탭이 켜져 있고, 누르면 지난 회차 목록
   await page.reload();
   await expect(page.getByRole("region", { name: "관측 기록" })).toBeVisible();
-  await page.getByRole("button", { name: "← 지난 회차" }).click();
+  const roundsTab = page.locator("nav [data-tab='rounds']");
+  await expect(roundsTab).toHaveAttribute("aria-current", "page");
+  await roundsTab.click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds$/);
   await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
 });

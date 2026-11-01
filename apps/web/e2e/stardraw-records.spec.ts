@@ -53,6 +53,11 @@ test("내 기록: 처음 받은 서류는 띠로 알리고 건네받은 뒤 내 
   await page.getByRole("button", { name: "받기" }).click();
   await expect(handover).toHaveCount(0, { timeout: 10_000 });
   await expect(page).toHaveURL(/\/stardraw\/mine#records$/);
+  // 띠에서 들어와도 내 기록은 내 응모 탭 아래 화면이라 그 탭이 켜진다
+  await expect(page.locator("nav [data-tab='mine']")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   const view = page.locator("[data-my-records]");
   await expect(view.locator("[data-record-award]")).not.toHaveCount(0);
 

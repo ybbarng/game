@@ -91,9 +91,10 @@ async function openDrawResult(page: Page) {
 
 /**
  * 2026-11-01 사용자: 「처음으로」가 첫 화면이 아니라 뒤로 가기처럼 움직였다(추첨 결과 → 「다음 회차 응모」 → 「처음으로」가
- * 추첨으로, 내 응모 → 영수증 → 「처음으로」가 내 응모로). 어디서 눌러도 첫 화면이다
+ * 추첨으로). 메뉴가 없는 응모 화면의 「처음으로」는 어디서 들어왔든 첫 화면이다.
+ * 탭바가 있는 영수증에는 「처음으로」를 두지 않는다(켜진 탭은 내 응모인데 단추는 홈으로 가 어긋났다, B안)
  */
-test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로", async ({
+test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭으로", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
@@ -101,7 +102,7 @@ test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로"
   const id = await registerAndEnter(page);
   const home = page.locator("[data-greeting]");
 
-  // 내 응모 → 영수증 → 「처음으로」
+  // 내 응모 → 영수증: 머리 줄 단추 없이 내 응모 탭이 켜져 있다
   await page.goto("/stardraw/mine");
   await page
     .getByRole("region", { name: "내 응모" })
@@ -111,8 +112,13 @@ test("「처음으로」는 바로 전 화면이 아니라 늘 첫 화면으로"
     .first()
     .click();
   await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
+  await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
+  await expect(page.locator("nav [data-tab='mine']")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await page.screenshot({ path: info.outputPath("nav-home-receipt.png") });
-  await page.getByRole("button", { name: "← 처음으로" }).click();
+  await page.locator("nav [data-tab='home']").click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
 
@@ -138,7 +144,8 @@ async function homeAboveSky(page: Page) {
 
 /**
  * 2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다(탭바 없이 「돌아가기」만, 뒤로 가기라 온 길을 되밟았다).
- * 휴대폰은 추첨 화면 머리 줄 오른쪽에 「홈」, PC는 다른 화면처럼 위쪽 메뉴 줄. 둘 다 하늘판 위에 겹치지 않는다
+ * 휴대폰은 추첨 화면 머리 줄 왼쪽에 「홈」 하나, PC는 다른 화면처럼 위쪽 메뉴 줄. 둘 다 하늘판 위에 겹치지 않는다.
+ * 「← 돌아가기」는 없다(바로 전 화면은 브라우저·기기의 뒤로 가기, B안)
  */
 test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과 화면", async ({
   page,
@@ -148,13 +155,16 @@ test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과
   await registerAndEnter(page);
   const home = page.locator("[data-greeting]");
   const goHome = page.locator("[data-tab='home']");
+  const backButtons = page.getByRole("button", { name: /^← / });
 
   // 결과 전: 추첨을 기다리는 화면
-  await page.getByRole("button", { name: "← 처음으로" }).click();
+  await goHome.click();
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
   await expect(goHome).toHaveCount(1);
+  await expect(backButtons).toHaveCount(0);
   await homeAboveSky(page);
+  await page.screenshot({ path: info.outputPath("nav-home-draw-wait.png") });
   await goHome.click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
@@ -162,11 +172,77 @@ test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과
   // 결과 화면
   await openDrawResult(page);
   await expect(goHome).toHaveCount(1);
+  await expect(backButtons).toHaveCount(0);
   await homeAboveSky(page);
   await page.screenshot({ path: info.outputPath("nav-home-draw.png") });
   await goHome.click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
+});
+
+/**
+ * 2026-11-01 사용자 B안: 화면마다 속한 탭을 하나로 정했다. 영수증·내 기록은 내 응모 탭, 회차 결과·관측 기록은 지난 회차
+ * 탭이 켜진다. 내 기록·관측 기록은 더 보기에서 빠지고 화면 안 한 길(내 응모 「내 기록」 칸, 지난 회차 「관측 기록」)로만
+ * 들어간다. 탭바·메뉴 줄이 있는 화면에는 「← 처음으로」「← 돌아가기」 같은 단추가 없다. 회차 결과의 「← 지난 회차」만
+ * 남고, 어디서 들어왔든 지난 회차 목록으로 간다. 첫 화면의 지난 회차 한 줄은 그 회차 결과로 바로 간다
+ */
+test("화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아가기가 없다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  await virtualAuthenticator(page);
+  await registerAndEnter(page);
+  const backButtons = page.getByRole("button", { name: /^← / });
+  const tabOn = (t: string) =>
+    expect(page.locator(`nav [data-tab='${t}']`)).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  // 추첨을 넘겨 지난 회차를 만들고 결과를 열어 본다(첫 화면에 지난 회차 한 줄이 보이게)
+  await page.locator("nav [data-tab='home']").click();
+  await openDrawResult(page);
+  await page.locator("[data-tab='home']").click();
+
+  // 더 보기에는 내 기록·관측 기록이 없다(내 등록증과 앱 밖 페이지만)
+  await page.locator("[data-tab='more']").click();
+  await expect(page.locator("[data-my-name]")).toBeVisible();
+  for (const name of ["내 기록", "관측 기록"])
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(
+      0,
+    );
+  await page.screenshot({ path: info.outputPath("nav-more.png") });
+  await page.locator("[data-tab='more']").click();
+
+  // 첫 화면 지난 회차 한 줄 → 그 회차 결과(지난 회차 탭) → 「← 지난 회차」는 뒤로 가기가 아니라 목록으로
+  await page.locator("[data-last-round='1']").click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds#1$/);
+  await tabOn("rounds");
+  await page.getByRole("button", { name: "← 지난 회차" }).click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds$/);
+  await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
+  await tabOn("rounds");
+  await expect(backButtons).toHaveCount(0);
+
+  // 주소로 바로 연 회차 결과도 「← 지난 회차」는 목록으로
+  await page.goto("/stardraw");
+  await page.goto("/stardraw/rounds#1");
+  await page.getByRole("button", { name: "← 지난 회차" }).click();
+  await expect(page).toHaveURL(/\/stardraw\/rounds$/);
+
+  // 관측 기록: 지난 회차 머리 줄에서 들어가고, 지난 회차 탭이 켜진다
+  await page.getByRole("button", { name: "관측 기록", exact: true }).click();
+  await expect(page).toHaveURL(/\/stardraw\/stats$/);
+  await tabOn("rounds");
+  await expect(backButtons).toHaveCount(0);
+
+  // 내 응모 → 「내 기록」 칸: 내 응모 탭이 켜진다
+  await page.locator("nav [data-tab='mine']").click();
+  await tabOn("mine");
+  await expect(backButtons).toHaveCount(0);
+  await page.locator("[data-open-records]").click();
+  await expect(page).toHaveURL(/\/stardraw\/mine#records$/);
+  await tabOn("mine");
+  await expect(backButtons).toHaveCount(0);
 });
 
 /**
