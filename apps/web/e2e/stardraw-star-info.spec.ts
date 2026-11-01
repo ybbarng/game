@@ -127,7 +127,7 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
     path: testInfo.outputPath("star-info-draw.png"),
     fullPage: true,
   });
-  // 위쪽 별을 누르면 설명 칸이 아래쪽(켜진 당첨 별 위)에 뜬다: 밝은 별 위에서도 글이 읽히는지 스크린숏으로 본다
+  // 위쪽 별을 누르면 설명 칸이 아래쪽(켜진 당첨 별 위)에 뜬다: 밝은 별 위에서도 글이 읽히는지 스크린샷으로 본다
   const upper = sky.stars.find((s) => s.y < 0.3);
   if (!upper) throw new Error("위쪽 별이 없다");
   await tapStar(page, "canvas[data-sky='draw']", upper.n);
