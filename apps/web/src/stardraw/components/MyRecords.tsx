@@ -607,7 +607,11 @@ function Certificate({
             "inset 0 0 0 6px #fbf6ea, inset 0 0 0 7px #c8a24a, 0 18px 40px rgba(0,0,0,0.4)",
         }}
       >
-        <span className="font-black text-3xl tracking-[0.4em]">입상 증서</span>
+        {/* 증서 제목은 글자 사이를 고르게 벌린다. 띄어쓰기 자리는 자간과 겹쳐 가운데가 크게 벌어지므로 줄이고,
+            끝 글자 뒤 자간만큼 왼쪽을 채워 가운데에 맞춘다(2026-11-03 사용자: 「입상 증서」 자간) */}
+        <span className="pl-[0.4em] font-black text-3xl tracking-[0.4em] [word-spacing:-0.4em]">
+          입상 증서
+        </span>
         <span className="font-bold text-lg">
           {roundShort(schedule, win.round)} {RANK_LABEL[win.rank]}
         </span>
