@@ -14,6 +14,9 @@ test("관측 시간표: 지금 회차부터 확정 회차와 예정 회차를 �
   const first = table.locator("[data-timetable-round]").first();
   await expect(first).toHaveAttribute("data-state", "open");
   await expect(first).toContainText("예측 접수 중");
+  // 지금 선은 지금 회차 막대에만 있다
+  await expect(table.locator("[data-timeline-now]")).toHaveCount(1);
+  await expect(first.locator("[data-timeline-now]")).toBeVisible();
   // 확정 회차 뒤에 안내 문구, 그 아래는 예정 회차
   const planned = table.locator("[data-timetable-planned]");
   await expect(planned).toHaveText(

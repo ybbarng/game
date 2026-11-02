@@ -12,6 +12,7 @@ import {
 } from "../timetable";
 import { watchRound } from "./BroadcastToast";
 import { liveDrawRound } from "./RoomView";
+import { useReducedMotion } from "./StageOverlay";
 
 const CLOCK = new Intl.DateTimeFormat("ko-KR", {
   hour: "2-digit",
@@ -62,6 +63,7 @@ export function TimetableView({
     observing,
     live,
   );
+  const reduce = useReducedMotion();
   const fixedRows = table.rows.filter((r) => r.fixed);
   const plannedRows = table.rows.filter((r) => !r.fixed);
 
@@ -77,7 +79,12 @@ export function TimetableView({
           {lengthWord(table.change.length)}마다로 바뀝니다.
         </p>
       )}
-      <Rows rows={fixedRows} schedule={schedule} />
+      <Rows
+        rows={fixedRows}
+        schedule={schedule}
+        nowAt={status.now}
+        reduce={reduce}
+      />
       {plannedRows.length > 0 && (
         <>
           <p
@@ -95,6 +102,8 @@ export function TimetableView({
             schedule={schedule}
             planned
             before={fixedRows.at(-1)}
+            nowAt={status.now}
+            reduce={reduce}
           />
         </>
       )}
@@ -110,12 +119,16 @@ function Rows({
   schedule,
   planned = false,
   before,
+  nowAt,
+  reduce,
 }: {
   rows: TimetableRow[];
   schedule: Services["ledger"]["schedule"];
   planned?: boolean;
   /** 앞 목록의 마지막 줄(같은 날이면 날짜를 다시 적지 않는다) */
   before?: TimetableRow | undefined;
+  nowAt: number;
+  reduce: boolean;
 }) {
   return (
     <ol className="flex flex-col gap-2">
@@ -136,7 +149,7 @@ function Rows({
               data-state={r.state}
               data-fixed={r.fixed ? "1" : "0"}
               className={cn(
-                "flex items-center gap-3 rounded-2xl border px-4 py-3 tabular-nums",
+                "flex flex-col gap-2.5 rounded-2xl border px-4 pt-3 pb-2.5 tabular-nums",
                 now
                   ? "sd-glass border-amber-200/35"
                   : planned
@@ -144,8 +157,8 @@ function Rows({
                     : "border-white/10 bg-white/[0.03]",
               )}
             >
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex items-center gap-2 font-semibold">
+              <div className="flex items-center gap-3">
+                <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
                   {now && (
                     <span
                       aria-hidden="true"
@@ -160,20 +173,83 @@ function Rows({
                     </span>
                   )}
                 </span>
-                <span className="text-sm text-white/65">
-                  예측 접수 {clock(r.opensAt)} ~ {clock(r.deadline)}
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-white/50 text-xs">관측</span>
+                  <span className="font-bold font-mono text-lg">
+                    {clock(r.observeAt)}
+                  </span>
                 </span>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-white/50 text-xs">관측</span>
-                <span className="font-bold font-mono text-lg">
-                  {clock(r.observeAt)}
-                </span>
-              </div>
+              <TimeBar row={r} now={nowAt} reduce={reduce} />
             </div>
           </li>
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * 회차 하나의 시간 막대(2026-11-02 사용자: 한 회차가 가로 한 줄을 쓰고 지금 선이 흘러간다).
+ * 예측 접수 → 마감 여유 → 관측 기다림 순서로 칠하고 끝에 관측 별을 둔다. 지난 부분은 밝게, 지금 선은 1초마다 옮긴다
+ */
+function TimeBar({
+  row,
+  now,
+  reduce,
+}: {
+  row: TimetableRow;
+  now: number;
+  reduce: boolean;
+}) {
+  const span = row.observeAt - row.opensAt;
+  const at = (t: number) => ((t - row.opensAt) / span) * 100;
+  const deadline = at(row.deadline);
+  const closes = at(row.closesAt);
+  const inside = now >= row.opensAt;
+  const progress = Math.min(100, Math.max(0, at(now)));
+  const moving = !reduce && { transition: "left 1s linear, width 1s linear" };
+  return (
+    <div className="flex flex-col gap-1" aria-hidden="true">
+      <div className="relative h-2.5">
+        <div className="absolute inset-0 flex overflow-hidden rounded-full">
+          <span
+            className="h-full bg-emerald-300/30"
+            style={{ width: `${deadline}%` }}
+          />
+          <span
+            className="h-full bg-amber-300/35"
+            style={{ width: `${closes - deadline}%` }}
+          />
+          <span className="h-full flex-1 bg-white/10" />
+        </div>
+        {inside && (
+          <span
+            data-timeline-progress
+            className="absolute inset-y-0 left-0 rounded-full bg-white/25"
+            style={{ width: `${progress}%`, ...moving }}
+          />
+        )}
+        {inside && progress < 100 && (
+          <span
+            data-timeline-now
+            className="-translate-x-1/2 -top-1 -bottom-1 absolute w-0.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
+            style={{ left: `${progress}%`, ...moving }}
+          />
+        )}
+        <span className="-translate-y-1/2 absolute top-1/2 right-0 translate-x-1/2 text-amber-200 text-xs leading-none">
+          ★
+        </span>
+      </div>
+      <div className="relative h-4 text-[11px] text-white/55">
+        <span className="absolute left-0">접수 {clock(row.opensAt)}</span>
+        <span
+          className="-translate-x-full absolute whitespace-nowrap"
+          style={{ left: `${deadline}%` }}
+        >
+          마감 {clock(row.deadline)}
+        </span>
+      </div>
+    </div>
   );
 }

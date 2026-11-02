@@ -28,6 +28,8 @@ export interface TimetableRow {
   opensAt: number;
   /** 화면이 예측을 막는 시각(마감) */
   deadline: number;
+  /** 서버 마감(마감 여유가 끝나는 때) */
+  closesAt: number;
   /** 관측 시각(마감 + drand 지연, 홈 회차 카드와 같다) */
   observeAt: number;
   /** 장부 규칙상 시각이 바뀔 수 없다 */
@@ -83,6 +85,7 @@ export function timetable(
       round,
       opensAt: t.opensAt,
       deadline: t.entryDeadline,
+      closesAt: t.closesAt,
       observeAt,
       fixed: round <= fixed,
       state,
