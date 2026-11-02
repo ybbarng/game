@@ -208,7 +208,7 @@ umami 수집 끝점(`POST https://stats.byb.kr/api/send`)은 브라우저가 불
 
 ### 5-2. 막는 것(servers 쪽, 비서 세션을 거쳐 요청)
 
-1. `umami-public` 라우터의 `/api/send`에 Traefik `rateLimit`(예: IP 당 1분 60번, 몰아서 30 — 진단 서버와 같은 값). 정직한 방문자는 페이지 이동·이벤트를 합쳐도 1분에 수십 번을 넘기지 않는다.
+1. 지금(2026-11-02 servers 저장소 확인)은 `umami-public` 라우터(`/script.js`·`/api/send`·`/api/heartbeat`)와 Traefik 진입점 어디에도 횟수 제한이 없다. 넣는다면 IP 하나 뒤의 정상 사용자 수를 기준으로 넉넉하게 둔다. 회사 NAT 하나 뒤에 별 따기 공지를 받은 약 125명이 있고 한 사람이 1분에 수십 번(페이지 이동·이벤트)까지 보내므로, IP당 1분 60번(진단 서버 game-diag 값)은 정상 사용자를 막는다. 서버 자원 보호용 안전장치로만 1분 수천 번 단위로 두고, 1차 방어는 아래 2·3번이다.
 2. 본문 크기 제한(Traefik `buffering.maxRequestBodyBytes`, 예: 16KB).
 3. umami가 기기 하나 메모리(384MB)·DB 256MB로 묶여 있어 다른 앱까지 쓰러지지는 않는다. 디스크 사용량 경보(서버 "나중에" 목록)에 umami 데이터 폴더를 넣는다.
 
