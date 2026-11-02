@@ -1843,6 +1843,14 @@ button {
     radial-gradient(120% 70% at 50% 100%, #0d1426 60%, transparent 61%),
     linear-gradient(to bottom, transparent, #070b16 85%);
 }
+/* 언덕 아래 어둠: 신분증을 내기 전 내가 숨어 있는 곳(언덕 바로 밑에 이어진다) */
+.sd-room-under {
+  background: linear-gradient(to bottom, #070b16 55%, transparent);
+}
+.sd-room-below {
+  background: #0a1020;
+  box-shadow: 0 0 18px 6px #070b16;
+}
 .sd-room-face {
   animation: sd-room-face-in 0.9s cubic-bezier(0.32, 0.72, 0, 1) both;
   background: #0f1d3a;

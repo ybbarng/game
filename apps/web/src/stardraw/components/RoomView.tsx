@@ -790,28 +790,6 @@ export function RoomView({
               +{more}
             </span>
           )}
-          {/* 신분증을 내기 전 내 자리: 내 화면에만 흐리게(남에게는 보이지 않는다). 누르면 신분증 제시 */}
-          {!seat.joined && (
-            <button
-              type="button"
-              data-face-pending
-              aria-label="내 자리, 다른 우주인에게 보이지 않음"
-              disabled={!seat.join}
-              onClick={() => void ensurePass()}
-              className="relative size-12 overflow-hidden rounded-full border border-white/40 border-dashed"
-            >
-              {key ? (
-                <Avatar
-                  face={astronautOf(key.pub).face}
-                  egg={astronautOf(key.pub).egg}
-                  label=""
-                  className="size-full scale-125 opacity-35 grayscale"
-                />
-              ) : (
-                <span className="text-white/45 text-xs">나</span>
-              )}
-            </button>
-          )}
         </div>
         {seat.hill && (
           <p className="pt-2 text-center text-sm text-white/50">{seat.hill}</p>
@@ -833,8 +811,28 @@ export function RoomView({
         ) : (
           <div
             data-room-seat="watching"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center"
+            className="sd-room-under -mx-4 -mt-3 flex flex-col items-center gap-2 px-4 pt-2 pb-4 text-center"
           >
+            {/* 언덕 아래 어둠 속의 내 얼굴: 내 화면에만 흐리게(남에게는 보이지 않는다). 언덕에 오르면 위 줄로 옮겨 간다 */}
+            <div
+              data-face-pending
+              role="img"
+              aria-label="언덕 아래의 나, 다른 우주인에게 보이지 않음"
+              className="sd-room-below relative size-12 overflow-hidden rounded-full border border-white/25 border-dashed"
+            >
+              {key ? (
+                <Avatar
+                  face={astronautOf(key.pub).face}
+                  egg={astronautOf(key.pub).egg}
+                  label=""
+                  className="size-full scale-125 opacity-30 grayscale"
+                />
+              ) : (
+                <span className="grid size-full place-items-center text-white/40 text-xs">
+                  나
+                </span>
+              )}
+            </div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
               <span
                 aria-hidden="true"

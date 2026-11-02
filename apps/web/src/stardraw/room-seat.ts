@@ -47,7 +47,7 @@ export function roomSeat(input: {
   return {
     joined: false,
     badge: "숨어서 관측 중",
-    note: "우주인들 틈에 숨어 조용히 관측하고 있어요.",
+    note: "언덕 아래 어둠 속에서 조용히 관측하고 있어요.",
     // 이미 관측지 안에서 보고 있으니 「입장」이 아니라 언덕에 오른다(신분증을 제시하면 얼굴이 보이고 말할 수 있다)
     join: input.hasKey ? "언덕에 오르기" : "우주인 등록하고 언덕에 오르기",
     hill,

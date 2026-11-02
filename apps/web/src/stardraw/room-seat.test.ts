@@ -7,7 +7,7 @@ describe("관측지 내 자리", () => {
     const s = roomSeat({ pass: false, hasKey: true, canJoin: true, others: 0 });
     expect(s.joined).toBe(false);
     expect(s.badge).toBe("숨어서 관측 중");
-    expect(s.note).toBe("우주인들 틈에 숨어 조용히 관측하고 있어요.");
+    expect(s.note).toBe("언덕 아래 어둠 속에서 조용히 관측하고 있어요.");
     expect(s.join).toBe("언덕에 오르기");
     expect(s.hill).toBe("아직 언덕에 다른 우주인이 오지 않았어요.");
   });
