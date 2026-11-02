@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-02T07:57:56.842Z",
+  "updatedAt": "2026-11-02T08:12:01.733Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -1143,6 +1143,16 @@
       "since": "2026-11-02",
       "found": "2026-11-02",
       "summary": "관리 화면의 「이 기기에서 만든 국장 패스키」 목록은 만든 브라우저의 localStorage에만 있다(2026-11-02 사용자: PC에서 안 보임). 운영 기록 서명(sign)은 패스키 고르기 창 + 장부 대조라 목록 없이도 되지만(동기화된 패스키나 다른 기기 QR), 당첨자 「확인 시작」 같은 signBytes는 목록이 있어야 한다. 장부의 국장 지정 기록에 패스키 번호·공개 열쇠가 있으니, 그 번호로 navigator.credentials.get을 불러 고른 패스키를 목록에 다시 넣는다. 정식 전, 기기 바꾸기 전에."
+    },
+    {
+      "id": "next-lotto-stale-build",
+      "title": "조용히 새 화면으로",
+      "parent": "next-lotto",
+      "status": "done",
+      "size": 1,
+      "since": "2026-11-02",
+      "found": "2026-11-01",
+      "summary": "오래 열어 둔 화면이 새 배포를 알아채고 다음 화면 이동 때 새 판으로(별 고르기·관측 중 제외). version.json, 서비스 워커 저장 제외, 페이지 HTML no-cache. docs/36 11-40."
     }
   ]
 }

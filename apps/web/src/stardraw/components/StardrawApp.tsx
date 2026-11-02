@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNoPullRefresh } from "@/game/no-pull-refresh";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { useChunkErrorReload, useStaleBuild } from "@/stardraw/stale-build";
 import { track } from "@/stats/track";
 import { astronautOf } from "../astronaut/identity";
 import { type CheckSession, isActive } from "../checks";
@@ -203,6 +204,9 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   /** 처음 받은 서류를 건네받는 연출 중인지 */
   const [handover, setHandover] = useState(false);
   const reduceMotion = useReducedMotion();
+  /** 배포된 판이 이 화면과 다르다(stale-build.ts). 다음 화면 이동 때 새로 불러온다 */
+  const stale = useStaleBuild();
+  useChunkErrorReload();
   /**
    * 우주국 인사(IntroGate): 한 방문에 한 번, 홈으로 들어왔을 때만. 인사가 물러나는 동안 홈이 차례로 펼쳐진다
    * (unfold: 하늘 → 제목 → 회차 카드 → 나머지, CSS sd-unfold-all)
@@ -345,6 +349,12 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
    */
   const go = (v: View, replace = false) => {
     const url = urlOf(v);
+    // 새 판이 나왔으면 이 이동을 그 주소 새로 불러오기로 바꾼다(조용히 새 화면으로). 별을 고르거나 관측하는 중에는 하지 않는다
+    if (stale && !picking && !observing) {
+      if (replace) window.location.replace(url);
+      else window.location.assign(url);
+      return;
+    }
     if (replace) window.history.replaceState(window.history.state, "", url);
     else window.history.pushState(window.history.state, "", url);
     setView(v);

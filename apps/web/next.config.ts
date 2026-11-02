@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
       ? ["tsx", "ts", "jsx", "js", "specimen.tsx"]
       : ["tsx", "ts", "jsx", "js"],
   generateBuildId: async () => sourceCommit(),
+  // 화면이 아는 자기 판 번호. 배포된 out/version.json(scripts/write-version.mjs)과 다르면 새 배포가 나온 것(StaleBuild)
+  env: { NEXT_PUBLIC_BUILD_COMMIT: sourceCommit() },
   transpilePackages: [
     "@game/mighty-engine",
     "@game/mighty-ai",
