@@ -209,6 +209,8 @@ export function RoomView({
   const [lanterns, setLanterns] = useState<Lantern[]>([]);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [closed, setClosed] = useState(false);
+  /** 서버에서 언덕 소식(hello)을 받았는지. 추첨 뒤 표 없이 온 사람은 받지 못한다 */
+  const [heard, setHeard] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [now, setNow] = useState(() => client.serverNow());
   const order = useRef<string[]>([]);
@@ -236,6 +238,7 @@ export function RoomView({
         order.current = e.people.map((p) => p.id);
         setWatchers(e.watchers);
         setPicks(e.picks);
+        setHeard(true);
         setProblem(null);
       } else if (e.type === "join") {
         setPeople((m) => new Map(m).set(e.person.id, e.person));
@@ -273,7 +276,8 @@ export function RoomView({
           err &&
           (err.status === 409 || err.status === 410 || err.status === 404)
         ) {
-          setProblem(err.message);
+          // 409(추첨 뒤 새로 온 사람)는 내 자리 칸이 같은 말을 하므로 따로 띄우지 않는다
+          if (err.status !== 409) setProblem(err.message);
           if (err.status === 410) setClosed(true);
           return;
         }
@@ -610,7 +614,10 @@ export function RoomView({
     hasKey,
     canJoin: !closed && now < drawAt * 1000,
     others: visible.filter((i) => i !== me).length,
+    over: phase === "after",
+    heard,
   });
+  const closeIn = drawAt * 1000 + ROOM_CLOSE_AFTER_MS - now;
   const faces = visible.slice(0, FACES);
   const more = visible.length - faces.length;
   const lit = new Set<number>();
@@ -796,17 +803,37 @@ export function RoomView({
         )}
       </div>
 
+      {/* 관측이 끝난 뒤: 언덕에서 이야기할 수 있는 남은 시간(서버가 추첨 7분 뒤 닫는다) */}
+      {phase === "after" && !closed && (
+        <p
+          data-room-closing
+          className="-mt-2 text-center text-white/60 text-xs tabular-nums"
+        >
+          관측지가 닫히기까지 {formatLeft(closeIn / 1000)}
+        </p>
+      )}
+
       {/* 지금 내 자리: 숨어서 관측 중(남의 말은 보이지만 나는 보이지 않음) / 언덕에서 관측 중 */}
       {!closed &&
         (seat.joined ? (
-          <p data-room-seat="joined" className="flex justify-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-300/15 px-3 py-1 font-semibold text-sky-100 text-xs">
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-sky-200"
-              />
-              {seat.badge}
-            </span>
+          seat.badge && (
+            <p data-room-seat="joined" className="flex justify-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-300/15 px-3 py-1 font-semibold text-sky-100 text-xs">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-sky-200"
+                />
+                {seat.badge}
+              </span>
+            </p>
+          )
+        ) : seat.badge === null ? (
+          // 관측이 끝난 뒤 오르지 못한 사람: 까닭 한 줄만
+          <p
+            data-room-seat="after"
+            className="text-balance break-keep text-center text-sm text-white/60"
+          >
+            {seat.note}
           </p>
         ) : (
           <div
@@ -869,23 +896,7 @@ export function RoomView({
         ))}
 
       {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
-      {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다 */}
-      {closed ? (
-        <RoomClosedNotice now={now} onGo={onEnter} />
-      ) : (
-        phase === "after" && (
-          <div className="flex flex-col items-center gap-2 py-2">
-            <button
-              type="button"
-              onClick={onEnter}
-              data-room-next
-              className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
-            >
-              접수처로 가기
-            </button>
-          </div>
-        )
-      )}
+      {closed && <RoomClosedNotice now={now} onGo={onEnter} />}
       {closed || !seat.joined ? null : (
         <form
           className="flex items-center gap-2"
@@ -940,8 +951,13 @@ export function RoomView({
         <p className="text-center text-white/60 text-sm">{problem}</p>
       )}
 
-      {phase === "after" && (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+      {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다.
+          닫히면 위 알림이 접수처로 옮기므로 이 칸은 걷는다 */}
+      {phase === "after" && !closed && (
+        <div
+          data-room-next
+          className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center"
+        >
           <span className="font-semibold">
             지금 {roundTitle(schedule, round + 1)} 예측을 받고 있어요.
           </span>
@@ -1026,6 +1042,9 @@ export function RoomView({
   );
 }
 
+/** 관측지가 닫히는 때(추첨 시각 뒤 ms, 서버 room.ts closeAfterMs와 같다) */
+const ROOM_CLOSE_AFTER_MS = 7 * 60_000;
+
 /** 이 회차를 방으로 보여 줄지: 서버가 있고, 방이 아직 열려 있는 동안(추첨 7분 뒤까지) */
 export function roomOpen(
   services: Services,
@@ -1035,7 +1054,9 @@ export function roomOpen(
   if (!serverApi()) return false;
   const times = roundTimes(services.ledger.schedule, round);
   const drawAt = drandTime(drandRoundForClose(times.closesAt));
-  return nowSec >= times.opensAt && nowSec < drawAt + 7 * 60;
+  return (
+    nowSec >= times.opensAt && nowSec < drawAt + ROOM_CLOSE_AFTER_MS / 1000
+  );
 }
 
 /** 실시간 추첨이 끝났는지(시작 + 연출 길이). 끝났으면 방에서도 다시 보기 규칙을 따른다 */

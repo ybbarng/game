@@ -1,18 +1,20 @@
 /**
  * 관측지에서 지금 내 자리(docs/36 11-23 ③-2, 11-34 관측지·언덕). 대화 표(신분증 제시) 없이 들어온 사람도 서버가 말·응원을 모두 건네므로
  * 남의 얼굴·풍등·응원은 보이지만(들어올 마음이 생기게), 언덕에 내 얼굴이 없고 말할 수 없다. 그래서 화면은 참여 전에
- * 입력 칸·별똥별 단추 대신 참여 단추 하나를 둔다. 서버는 추첨 시각부터 새 표를 주지 않는다(room.ts afterDraw)
+ * 입력 칸·별똥별 단추 대신 참여 단추 하나를 둔다. 서버는 추첨 시각부터 새 표를 주지 않는다(room.ts afterDraw).
+ * 관측(추첨 연출)이 끝난 뒤에는 「관측 중」 표시를 두지 않는다. 언덕에 있던 사람은 내 얼굴과 입력 칸으로 충분하고,
+ * 오르지 못한 사람에게는 그 까닭 한 줄만 말한다
  */
 export interface RoomSeat {
   /** 신분증을 제시해 언덕에 앉았는지 */
   joined: boolean;
-  /** 상태 표시 */
-  badge: string;
+  /** 상태 표시(관측이 끝나면 없음) */
+  badge: string | null;
   /** 상태 설명(대화 참여 중이면 없음) */
   note: string | null;
   /** 언덕에 오르는(대화에 참여하는) 단추 이름(지금 참여할 수 없으면 없음) */
   join: string | null;
-  /** 언덕에 나 말고 아무도 없을 때 문구 */
+  /** 언덕에 나 말고 아무도 없을 때 문구(언덕 소식을 받지 못했으면 없음) */
   hill: string | null;
 }
 
@@ -25,13 +27,19 @@ export function roomSeat(input: {
   canJoin: boolean;
   /** 언덕의 다른 우주인 수(나 빼고) */
   others: number;
+  /** 관측(추첨 연출)이 끝났다 */
+  over: boolean;
+  /** 서버에서 언덕 소식(누가 있는지)을 받았다. 추첨 뒤 새로 온 사람은 받지 못해 언덕이 비었는지 모른다 */
+  heard: boolean;
 }): RoomSeat {
   const hill =
-    input.others === 0 ? "아직 언덕에 다른 우주인이 오지 않았어요." : null;
+    input.heard && input.others === 0
+      ? "아직 언덕에 다른 우주인이 오지 않았어요."
+      : null;
   if (input.pass)
     return {
       joined: true,
-      badge: "언덕에서 관측 중",
+      badge: input.over ? null : "언덕에서 관측 중",
       note: null,
       join: null,
       hill,
@@ -39,8 +47,10 @@ export function roomSeat(input: {
   if (!input.canJoin)
     return {
       joined: false,
-      badge: "숨어서 관측 중",
-      note: "관측이 시작되어 이제는 언덕에 오를 수 없어요.",
+      badge: input.over ? null : "숨어서 관측 중",
+      note: input.over
+        ? "관측이 끝나 이제는 언덕에 오를 수 없어요."
+        : "관측이 시작되어 이제는 언덕에 오를 수 없어요.",
       join: null,
       hill,
     };
