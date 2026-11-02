@@ -58,6 +58,33 @@ function SealText({
 }
 
 /**
+ * 용골자리(카노푸스가 속한 별자리) 밝은 별 자리(동쪽이 왼쪽, 0~100 칸 위쪽). 우주국장 직인과 편지 실링왁스가 같이 쓴다.
+ * 카노푸스 α, χ, ε(아비오르), ι(아스피디스케), q, p, θ, ω, β(미아플라키두스), υ
+ */
+export const CARINA_STARS = {
+  alpha: [84, 18],
+  chi: [61, 19],
+  epsilon: [54, 31],
+  iota: [40, 30],
+  q: [25, 34],
+  p: [21, 35],
+  theta: [18, 40],
+  omega: [26, 49],
+  beta: [41, 48],
+  upsilon: [33, 40],
+} as const;
+export type CarinaStar = keyof typeof CARINA_STARS;
+export const CARINA_LINES: CarinaStar[][] = [
+  ["alpha", "chi", "epsilon", "iota", "q", "p", "theta"],
+  ["epsilon", "beta", "omega", "theta"],
+  ["iota", "upsilon", "beta"],
+];
+/** 네 갈래 빛줄기 별 모양 */
+export function starPath(x: number, y: number, r: number): string {
+  return `M${x} ${y - r} L ${x + r * 0.3} ${y - r * 0.3} L ${x + r} ${y} L ${x + r * 0.3} ${y + r * 0.3} L ${x} ${y + r} L ${x - r * 0.3} ${y + r * 0.3} L ${x - r} ${y} L ${x - r * 0.3} ${y - r * 0.3} Z`;
+}
+
+/**
  * 발급 기관 직인: 용골자리(카노푸스가 속한 별자리)의 별과 선, 아래에 칸을 꽉 채운 굵은 글자를 새긴 주홍 인주 네모 도장.
  * 지어낸 기관 "카노푸스 우주국장"의 것이다. 별 자리는 실제 적경·적위를 동쪽이 왼쪽이 되게 펴서 인장 위쪽에 맞췄다.
  *
@@ -78,27 +105,9 @@ export function Seal({
   label?: string;
 }) {
   const id = useId().replace(/:/g, "");
-  // 용골자리 밝은 별(동쪽이 왼쪽): 카노푸스 α, χ, ε(아비오르), ι(아스피디스케), q, p, θ, ω, β(미아플라키두스), υ
-  const at = {
-    alpha: [84, 18],
-    chi: [61, 19],
-    epsilon: [54, 31],
-    iota: [40, 30],
-    q: [25, 34],
-    p: [21, 35],
-    theta: [18, 40],
-    omega: [26, 49],
-    beta: [41, 48],
-    upsilon: [33, 40],
-  } as const;
-  type Star = keyof typeof at;
-  const lines: Star[][] = [
-    ["alpha", "chi", "epsilon", "iota", "q", "p", "theta"],
-    ["epsilon", "beta", "omega", "theta"],
-    ["iota", "upsilon", "beta"],
-  ];
-  const star = (x: number, y: number, r: number) =>
-    `M${x} ${y - r} L ${x + r * 0.3} ${y - r * 0.3} L ${x + r} ${y} L ${x + r * 0.3} ${y + r * 0.3} L ${x} ${y + r} L ${x - r * 0.3} ${y + r * 0.3} L ${x - r} ${y} L ${x - r * 0.3} ${y - r * 0.3} Z`;
+  const at = CARINA_STARS;
+  const lines = CARINA_LINES;
+  const star = starPath;
   const short = [...text].length <= 2;
   return (
     <svg
@@ -164,9 +173,12 @@ export function Seal({
           />
           {/* 글자 띠에는 큰 얼룩을 두지 않는다(획이 지워지면 "우"가 "부"로 읽힌다) */}
           <feFlood x="13" y="56" width="74" height="31" result="textBand" />
+          {/* 카노푸스(α) 둘레도 늘 또렷하게: 우주국 이름의 별이라 덜 찍힌 얼룩이 걸치면 안 된다(2026-11-02 사용자) */}
+          <feFlood x="73" y="7" width="22" height="22" result="canopus" />
           <feMerge result="voids">
             <feMergeNode in="blots" />
             <feMergeNode in="textBand" />
+            <feMergeNode in="canopus" />
           </feMerge>
           {/* 잔 구멍: 드물게 */}
           <feTurbulence
@@ -245,7 +257,7 @@ export function Seal({
             strokeLinejoin="round"
           />
         ))}
-        {(Object.keys(at) as Star[]).map((k) => (
+        {(Object.keys(at) as CarinaStar[]).map((k) => (
           <path
             key={k}
             d={star(at[k][0], at[k][1], k === "alpha" ? 8 : 4.5)}

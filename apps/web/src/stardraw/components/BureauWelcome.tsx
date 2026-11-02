@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 
 import { Seal } from "../astronaut/marks";
+import { BureauLogo, WaxSeal } from "./BureauMarks";
 import { StageOverlay, useReducedMotion } from "./StageOverlay";
 
 /** 생애 첫 방문에 편지를 저절로 연 적이 있는지(이 기기). 한 번 열면 그 뒤로는 홈의 봉투로만 연다 */
@@ -99,6 +100,9 @@ export function BureauWelcome({
           aria-label="우주국 편지 열기"
           className="sd-envelope sd-letter-envelope flex h-28 w-48 flex-col items-center justify-end rounded-xl pb-3 text-slate-900"
         >
+          <span className="-translate-x-1/2 -translate-y-1/2 absolute top-[46%] left-1/2">
+            <WaxSeal className="sd-env-seal block size-8" />
+          </span>
           <span className="text-[11px] text-slate-600">처음 오신 우주인께</span>
           <span className="font-bold">편지 열기</span>
         </button>
@@ -166,6 +170,9 @@ function LetterStage({
             stage === "arrive" ? "sd-env-drop" : "sd-env-open",
           )}
         >
+          <span className="-translate-x-1/2 -translate-y-1/2 absolute top-[46%] left-1/2">
+            <WaxSeal className="sd-env-seal block size-10" />
+          </span>
           <span className="text-slate-600 text-xs">처음 오신 우주인께</span>
         </button>
       </div>
@@ -206,13 +213,8 @@ function Letter({
       )}
     >
       <header className="flex flex-col items-center gap-1 pb-1">
-        <span className="flex items-center gap-2 font-semibold text-[13px] text-stone-700 tracking-[0.3em]">
-          <span
-            aria-hidden="true"
-            className="grid size-5 place-items-center rounded-full bg-[#b91c1c] font-bold text-[10px] text-rose-50 tracking-normal"
-          >
-            宇
-          </span>
+        <BureauLogo className="size-11 text-stone-700" />
+        <span className="font-semibold text-[13px] text-stone-700 tracking-[0.3em]">
           카노푸스 우주국
         </span>
         <span

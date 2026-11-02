@@ -83,7 +83,7 @@ test("우주국 인사: 등록한 사람에게는 이름으로, 누르면 바로
   await tab.emulateMedia({ reducedMotion: "no-preference" });
   await tab.goto("/stardraw");
   const greeting = tab.getByRole("dialog", GREETING);
-  await expect(greeting).toContainText(/에 거주하는 .+ 님, 반갑습니다\./);
+  await expect(greeting).toContainText(/에 거주하는 .+ 님, \S.+/);
   await tab.screenshot({ path: info.outputPath("greeting-named.png") });
   await greeting.click();
   await expect(greeting).toHaveCount(0, { timeout: 3_000 });

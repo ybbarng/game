@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { astronautOf, residentPhrase } from "../astronaut/identity";
+import { greetNow } from "../greeting";
 import { GAME_NS, getServices } from "../services";
 
 /** 인사가 적어도 이만큼은 머문다(읽을 시간, 연출은 여유 있게) */
@@ -71,7 +72,12 @@ export function IntroGate({
   useEffect(() => {
     try {
       const key = getServices(GAME_NS).wallet.loadKey();
-      setPhrase(key ? residentPhrase(astronautOf(key.pub)) : null);
+      // 등록한 사람: 「○○에 거주하는 ○○ 님,」 + 시간대 인사(신분증 확인 뒤 창구 인사와 같은 모음, greeting.ts)
+      setPhrase(
+        key
+          ? `${residentPhrase(astronautOf(key.pub))} 님, ${greetNow(Date.now(), "enter")}`
+          : null,
+      );
     } catch {
       setPhrase(null);
     }
@@ -114,9 +120,7 @@ export function IntroGate({
       <IntroShell>
         {phrase !== undefined && (
           <p className="sd-intro-line break-keep font-bold text-white/95 text-xl leading-snug">
-            {phrase
-              ? `${phrase} 님, 반갑습니다.`
-              : "카노푸스 우주국에 오신 것을 환영합니다."}
+            {phrase ? phrase : "카노푸스 우주국에 오신 것을 환영합니다."}
           </p>
         )}
         {slow && !ready && (

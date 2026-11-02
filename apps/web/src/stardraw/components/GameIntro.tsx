@@ -148,7 +148,6 @@ export function GameIntro({
   return (
     <section
       aria-label="정답 예시"
-      data-unfold="sky"
       data-intro={`${numbers.join(",")}+${bonus}`}
       className="flex flex-col items-center gap-3"
     >

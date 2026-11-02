@@ -87,6 +87,9 @@ type View =
   /** 당첨자가 보낸 확인 링크(/stardraw/check#토큰) */
   | { name: "link"; token: string };
 
+/** 우주국 인사·편지가 걷힌 뒤 홈을 펼치기까지 쉬는 시간(연출은 여유 있게) */
+const UNFOLD_PAUSE_MS = 400;
+
 /** 화면마다 자기 주소(정적 내보내기라 실제 경로 페이지). 경로 안의 작은 화면은 # 조각으로 */
 export type StardrawPage =
   | "home"
@@ -211,6 +214,12 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   useEffect(() => {
     if (view.name === "home" && shouldShowIntro()) setIntro(true);
   }, []);
+  /** 생애 첫 방문인 처음 온 사람: 인사 뒤 편지가 먼저 */
+  const letterFirst = useRef(false);
+  /** 인사·편지가 걷힌 뒤 펼치기까지의 쉼 */
+  const unfoldAfterPause = () => {
+    window.setTimeout(() => setUnfold("run"), UNFOLD_PAUSE_MS);
+  };
   useEffect(() => {
     if (unfold !== "run") return;
     const t = window.setTimeout(() => setUnfold(null), 2600);
@@ -501,10 +510,16 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
         <IntroGate
           ready={!!services && !!status}
           // 생애 첫 방문인 처음 온 사람은 편지(위에서 내려와 꺼내 읽는다)를 먼저, 닫히면 홈을 펼친다
-          onLeave={() =>
-            setUnfold(!navKey && letterAutoPending() ? "hold" : "run")
-          }
-          onDone={() => setIntro(false)}
+          // 인사가 물러나는 동안과 사라진 뒤 잠깐은 홈을 숨겨 두고, 여유를 둔 뒤 위에서부터 펼친다(2026-11-02 사용자).
+          // 생애 첫 방문인 처음 온 사람은 편지(위에서 내려와 꺼내 읽는다)를 먼저, 닫히면 펼친다
+          onLeave={() => {
+            letterFirst.current = !navKey && letterAutoPending();
+            setUnfold("hold");
+          }}
+          onDone={() => {
+            setIntro(false);
+            if (!letterFirst.current) unfoldAfterPause();
+          }}
         />
       )}
       <div
@@ -755,8 +770,8 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }
             onDraw={goWatch}
             onTimetable={() => go({ name: "timetable" })}
-            letterAuto={unfold === "hold" && !intro}
-            onLetterClosed={() => setUnfold("run")}
+            letterAuto={unfold === "hold" && !intro && letterFirst.current}
+            onLetterClosed={unfoldAfterPause}
             onMine={() => go({ name: "mine" })}
             onRound={(round) => go({ name: "round", round })}
             onSkip={
