@@ -1208,9 +1208,9 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
 
 /**
  * 지금 회차(/stardraw/now): 고르던 별은 자동 저장되고, 마감 몇 초 뒤 관측지로 옮겨 간다. 방송은 밀면 사라진다.
- * 다음 회차에 접수처로 오면 「작성하던 예측지」를 불러와 한 칸씩 옮겨 적는다
+ * 다음 회차에 접수처로 오면 「작성하던 예측서」를 불러와 한 칸씩 옮겨 적는다
  */
-test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측지를 불러온다", async ({
+test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측서를 불러온다", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1240,7 +1240,7 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   });
   await page.mouse.up();
   await expect(toast).toHaveCount(0);
-  // 1회 추첨(정각)이 끝나 2회가 열리면 접수처에 쓰던 예측지
+  // 1회 추첨(정각)이 끝나 2회가 열리면 접수처에 쓰던 예측서
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
   await page
     .getByRole("button", { name: "별 6개 고르기" })
