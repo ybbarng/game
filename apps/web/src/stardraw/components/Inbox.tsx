@@ -257,7 +257,7 @@ export function Inbox({
                   data-confirm-from="director"
                 >
                   우주국장({directorFingerprint(req.director.pub)})이 확인을
-                  시작했습니다 · 받는 분:{" "}
+                  시작했습니다 · 확인하는 분:{" "}
                   <b>{directorRecipient(req.request.requester)}</b>
                 </p>
               ) : (
@@ -265,7 +265,7 @@ export function Inbox({
                   className="text-sm text-amber-100/80"
                   data-confirm-from="other"
                 >
-                  우주국장이 아닌 사람이 확인을 요청했습니다. 링크를 보낸 적이
+                  링크를 받은 사람이 확인을 시작했습니다. 링크를 보낸 적이
                   없으면 승인하지 마세요.
                 </p>
               )}

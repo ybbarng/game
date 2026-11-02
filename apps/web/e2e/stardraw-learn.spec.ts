@@ -230,7 +230,7 @@ test("보안 배우기: 랑데부 해싱은 주소를 더해도 몇 명만 이�
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("보안 배우기: 고르게 뽑히나 — 실제 규칙으로 돌려 번호별 횟수·묶음·연속 회차를 본다", async ({
+test("보안 배우기: 별은 고르게 빛나나 — 실제 규칙으로 돌려 번호별 횟수·묶음·연속 회차를 본다", async ({
   page,
 }, info) => {
   test.skip(

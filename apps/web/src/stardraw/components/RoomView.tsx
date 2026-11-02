@@ -927,7 +927,7 @@ export function RoomView({
         )}
         {phase === "live" && !record && (
           <p className="absolute inset-x-0 bottom-3 text-center text-sm text-white/75">
-            하늘에서 결과를 받고 있습니다.
+            곧 별이 빛납니다.
           </p>
         )}
         {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다 */}

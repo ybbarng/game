@@ -21,9 +21,9 @@ export function QualifyView() {
           <span />
         </div>
         <p className="break-keep text-sm text-white/75" data-qual-about>
-          소속은 카노푸스 우주국장이 우주인에게 부여하는 집단입니다. 성단과
-          성운이 있고, 소속마다 정한 방법으로 확인한 우주인만 받을 수 있습니다.
-          받은 소속은 예측서와 등록증에 표시됩니다.
+          소속은 카노푸스 우주국장이 우주인에게 부여하는 모임입니다.
+          별·성단·성운·은하가 있고, 소속마다 정한 방법으로 확인한 우주인만 받을
+          수 있습니다. 받은 소속은 예측서와 등록증에 표시됩니다.
         </p>
         {services ? (
           <QualifyPanel services={services} />

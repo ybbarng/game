@@ -689,7 +689,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             if (!m)
               return (
                 <p className="py-10 text-center text-white/60">
-                  이 기기에서 이 예측서를 찾을 수 없어요
+                  이 기기에서 이 예측서를 찾을 수 없어요.
                 </p>
               );
             return (
@@ -1459,7 +1459,7 @@ function ReceiptView({
     <section className="flex flex-col gap-4" aria-label="예측서">
       {printing && (
         <p role="status" className="text-center font-semibold text-amber-100">
-          예측했습니다
+          예측했습니다.
         </p>
       )}
       {printing && !reduce && !printed && (
@@ -1730,9 +1730,7 @@ function DrawWait({
             </span>
           </>
         ) : (
-          <span className="break-keep text-white/75">
-            하늘에서 결과를 받고 있습니다.
-          </span>
+          <span className="break-keep text-white/75">곧 별이 빛납니다.</span>
         )}
       </div>
       {onSkip && <PracticeSkip onSkip={onSkip} />}
@@ -1789,7 +1787,7 @@ export function MineView({
       />
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 예측하지 않았습니다
+          아직 예측하지 않았습니다.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -2009,7 +2007,7 @@ export function RoundsView({
       )}
       {closed.length === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 관측한 회차가 없습니다
+          아직 관측한 회차가 없습니다.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -2247,7 +2245,8 @@ function RoundDetail({
                     {RANK_RULE[rank]}
                   </span>
                 </span>
-                <span className="text-sm tabular-nums">{counts[rank]}장</span>
+                {/* 회차마다 1인 1장이라 예측서 수가 곧 사람 수(관측 뒤 등수별 인원 줄 winnersLine과 같은 「명」) */}
+                <span className="text-sm tabular-nums">{counts[rank]}명</span>
               </span>
               {record.winners[rank].map((id) => {
                 const hex = toHex(id);
@@ -2344,14 +2343,14 @@ function RoundDetail({
                   <li key={`${p.round}-${p.message}`}>
                     {sealed(p.round) ? (
                       <span className="inline-flex items-center gap-2">
-                        {p.round}회
+                        {roundShort(services.ledger.schedule, p.round)}
                         <DrawFirst
                           round={p.round}
                           onDraw={() => onDraw(p.round)}
                         />
                       </span>
                     ) : (
-                      `${p.round}회: ${p.message}`
+                      `${roundShort(services.ledger.schedule, p.round)}: ${p.message}`
                     )}
                   </li>
                 ))}

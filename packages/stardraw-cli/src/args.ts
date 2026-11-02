@@ -187,7 +187,7 @@ export function parseArgs(argv: readonly string[]): Command {
         download = false;
         break;
       default:
-        if (a.startsWith("--")) throw new Error(`모르는 선택 ${a}`);
+        if (a.startsWith("--")) throw new Error(`모르는 옵션 ${a}`);
         positional.push(a);
     }
   }

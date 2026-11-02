@@ -11,6 +11,7 @@ import {
   type TourState,
 } from "../demo-tour";
 import { myRecords } from "../my-records";
+import { roundTitle } from "../round-label";
 import { AstronautPanel } from "./AstronautPanel";
 import { CheckLink } from "./CheckLink";
 import { FX_ITEMS, FxScreen } from "./DemoTourFx";
@@ -151,6 +152,7 @@ function Screen({
   const drawOf = (rank: Rank | null) => (
     <DrawView
       record={record}
+      label={roundTitle(services.ledger.schedule, record.round)}
       ticket={s.byRank.get(rank)}
       onClose={onBack}
       clock={services.clock}
@@ -179,6 +181,7 @@ function Screen({
       return (
         <DrawView
           record={record}
+          label={roundTitle(services.ledger.schedule, record.round)}
           ticket={drawn.ticket}
           onClose={onBack}
           clock={services.clock}

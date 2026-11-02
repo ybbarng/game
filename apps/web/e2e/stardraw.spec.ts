@@ -355,9 +355,6 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(receipt).toContainText("베텔게우스");
   await expect(receipt).toContainText("시리우스");
   await expect(receipt.locator("[data-passkey-mark]")).toBeVisible();
-  await expect(receipt.locator("[data-wish]")).toHaveText(
-    "내 별에 소원을 빌어 보세요",
-  );
   await page.screenshot({
     path: info.outputPath("stardraw-receipt.png"),
     fullPage: true,

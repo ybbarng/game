@@ -495,10 +495,7 @@ export const AWARDS: readonly AwardDef[] = [
       return runSteps(items, stepsOf("steady"));
     },
     text: (f, k) =>
-      doc(
-        `귀하는 ${f.n}회차 동안 같은 별 여섯을 이어서 골랐습니다. 흔들리지 않는 그 믿음을 별들도 알아줄 것입니다.`,
-        k,
-      ),
+      doc(`귀하는 ${f.n}회차 동안 같은 별 여섯을 이어서 골랐습니다.`, k),
   },
 
   // 시간(추첨 시각, 한국 시각)
@@ -530,7 +527,7 @@ export const AWARDS: readonly AwardDef[] = [
         "한낮 관측 인증서",
         "인증서",
         [12],
-        "정오의 관측에 10회 참여하였습니다. 해가 가장 높이 떠 별이 하나도 보이지 않는 시각에도 별을 믿었습니다.",
+        "정오의 관측에 10회 참여하였습니다. 해가 가장 높이 떠 별이 하나도 보이지 않는 시각이었습니다.",
       ],
     ] as const
   ).map(
@@ -941,11 +938,7 @@ export const AWARDS: readonly AwardDef[] = [
     ],
     find: (c) =>
       countSteps(c.mine, stepsOf("fifth"), (m) => (m.rank === 5 ? 1 : 0), true),
-    text: (f, k) =>
-      doc(
-        `귀하는 별 셋을 맞혀 5등에 ${f.n}번 들었습니다. 크지 않아도 꾸준한 빛이 하늘을 채웁니다.`,
-        k,
-      ),
+    text: (f, k) => doc(`귀하는 별 셋을 맞혀 5등에 ${f.n}번 들었습니다.`, k),
   },
   {
     id: "fourth",
@@ -1020,7 +1013,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (f, k) =>
       doc(
-        `귀하가 고른 ${topic(String(f.star))} ${ASLEEP_DRAWS}번의 관측 동안 한 번도 뽑히지 않다가 귀하의 예측과 함께 빛난 별로 떠올랐습니다. 잠든 별을 깨운 공로를 기립니다.`,
+        `귀하가 고른 ${topic(String(f.star))} ${ASLEEP_DRAWS}번의 관측 동안 한 번도 빛나지 않다가 귀하의 예측과 함께 빛난 별로 떠올랐습니다. 잠든 별을 깨운 공로를 기립니다.`,
         k,
       ),
   },
@@ -1034,7 +1027,7 @@ export const AWARDS: readonly AwardDef[] = [
       c.mine.filter((m) => m.rank === 1).map((m) => hitAt(m, {}, [m.round])),
     text: (_, k) =>
       doc(
-        "귀하는 빛날 별 여섯을 모두 맞혀 1등에 들었습니다. 로또 1등보다 어렵다는 하늘의 별 따기를 해낸 우주인으로 우주국의 기록에 길이 남깁니다.",
+        "귀하는 빛난 별 여섯을 모두 맞혀 1등에 들었습니다. 로또 1등만큼 어렵다는 하늘의 별 따기를 해낸 우주인으로 우주국의 기록에 길이 남깁니다.",
         k,
       ),
   },
@@ -1093,7 +1086,7 @@ export const AWARDS: readonly AwardDef[] = [
       ),
     text: (_, k) =>
       doc(
-        "귀하가 참여한 회차에서 다른 우주인이 빛날 별 여섯을 모두 맞혀 1등에 들었습니다. 로또 1등만큼 드문 순간을 같은 하늘 아래에서 함께하였습니다.",
+        "귀하가 참여한 회차에서 다른 우주인이 빛난 별 여섯을 모두 맞혀 1등에 들었습니다. 로또 1등만큼 드문 순간을 같은 하늘 아래에서 함께하였습니다.",
         k,
       ),
   },
@@ -1301,10 +1294,7 @@ export const AWARDS: readonly AwardDef[] = [
     grade: "bronze",
     find: (c) => nth(c, 1, (m) => m.record.count === 1 && m.picks.length === 1),
     text: (_, k) =>
-      doc(
-        "귀하는 예측서가 단 한 장뿐인 회차에서 홀로 밤하늘을 지켰습니다. 그 회차의 하늘은 오롯이 귀하의 것이었습니다.",
-        k,
-      ),
+      doc("귀하는 예측서가 단 한 장뿐인 회차에서 홀로 밤하늘을 지켰습니다.", k),
   },
 ];
 

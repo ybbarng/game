@@ -73,8 +73,8 @@ export function DrawView({
   clock?: Clock | undefined;
   /** 연출 없이 결과부터(데모 화면 둘러보기) */
   instant?: boolean | undefined;
-  /** 보이는 회차 이름(서버 장부의 "시험 n회"·"정식 n회"). 없으면 "제 n회" */
-  label?: string | undefined;
+  /** 보이는 회차 이름(`roundTitle`: 서버 장부는 "시험 n회"·"정식 n회", 연습 장부는 "제 n회") */
+  label: string;
   /** 결과를 보인 뒤 「다시 보기」(연출을 처음부터). 없으면 단추가 없다 */
   onReplay?: (() => void) | undefined;
   /** 결과를 보인 뒤 다음 회차 응모로(지금 응모할 수 있을 때만 넘긴다) */
@@ -195,10 +195,7 @@ export function DrawView({
   }, [party, reduce, clock]);
 
   return (
-    <section
-      className="flex flex-col gap-4"
-      aria-label={`${label ?? `${record.round}회`} 관측`}
-    >
+    <section className="flex flex-col gap-4" aria-label={`${label} 관측`}>
       <div
         className={cn(
           "grid grid-cols-[1fr_auto_1fr] items-center gap-2",
@@ -224,9 +221,7 @@ export function DrawView({
           )}
         </div>
         <div className="flex flex-col items-center leading-tight">
-          <h2 className="font-bold text-lg tabular-nums">
-            {label ?? `제 ${record.round}회`} 관측
-          </h2>
+          <h2 className="font-bold text-lg tabular-nums">{label} 관측</h2>
           <span className="text-[11px] text-white/45">
             카노푸스 우주국 정시 관측
           </span>
@@ -359,7 +354,7 @@ export function DrawView({
                 ) : (
                   <>
                     <span className="font-bold text-xl">
-                      이번에는 등수에 들지 못했습니다
+                      이번에는 등수에 들지 못했습니다.
                     </span>
                     <span className="text-sm text-white/65">
                       맞힌 별 {mine.filter((n) => main.includes(n)).length}개
@@ -368,7 +363,7 @@ export function DrawView({
                 )
               ) : (
                 <span className="text-sm text-white/75">
-                  이 회차에는 예측하지 않았습니다
+                  이 회차에는 예측하지 않았습니다.
                 </span>
               )}
               {/* 이 회차의 등수별 당첨 인원(예측하지 않은 사람도 볼거리가 있게, docs/36 11-44) */}

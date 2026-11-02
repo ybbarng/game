@@ -23,6 +23,7 @@ import { demoKeyring, practiceDirectorBackend } from "../director/director";
 import { invitesOf } from "../invites";
 import type { LocalLedger } from "../local-ledger";
 import { myRank } from "../results";
+import { roundTitle } from "../round-label";
 import { DEMO_NS, type Services, useLedger } from "../services";
 import { type MyTicket, sitePolicy } from "../wallet";
 import { CheckLink } from "./CheckLink";
@@ -207,7 +208,7 @@ export function StardrawDemo() {
                   className="font-bold tabular-nums"
                   data-demo-round={status.round}
                 >
-                  제 {status.round}회
+                  {roundTitle(services.ledger.schedule, status.round)}
                 </span>
                 <span className="text-sm text-white/65">
                   {status.phase === "open"
@@ -291,6 +292,10 @@ export function StardrawDemo() {
                   <div className="mx-auto w-full max-w-xl">
                     <DrawView
                       record={latestRecord}
+                      label={roundTitle(
+                        services.ledger.schedule,
+                        latestRecord.round,
+                      )}
                       ticket={latest.ticket}
                       onClose={() => setDrawing(null)}
                       clock={services.clock}

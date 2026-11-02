@@ -132,7 +132,7 @@ export function TicketView() {
     } else {
       body = (
         <p role="status" className="py-10 text-center text-white/75">
-          이 예측서를 찾을 수 없어요
+          이 예측서를 찾을 수 없어요.
         </p>
       );
     }

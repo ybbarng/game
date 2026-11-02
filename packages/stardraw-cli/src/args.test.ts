@@ -87,7 +87,7 @@ describe("명령줄", () => {
     );
     expect(() => parseArgs(["--pow-sample", "-1"])).toThrow();
     expect(() => parseArgs(["site", "--no-download"])).toThrow("--build");
-    expect(() => parseArgs(["--모름"])).toThrow("모르는 선택");
+    expect(() => parseArgs(["--모름"])).toThrow("모르는 옵션");
     expect(parseArgs(["-h"])).toEqual({ kind: "help" });
   });
 });

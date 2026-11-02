@@ -285,7 +285,7 @@ export function CheckLink({
           {hasDirector && (
             <div className="flex flex-col gap-2 rounded-xl border border-amber-200/25 p-3">
               <label className="flex flex-col gap-1 text-sm">
-                받는 분
+                확인하는 분
                 <input
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}

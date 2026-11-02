@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  displayRound,
   drandRoundForClose,
   drandTime,
   qualDisplayId,
@@ -16,7 +15,7 @@ import {
 import { cn } from "@/lib/cn";
 import { FX } from "../fx-timing";
 import { myRank } from "../results";
-import { roundShort } from "../round-label";
+import { roundShort, roundTitle } from "../round-label";
 import { starOf } from "../sky";
 import { KeyIcon } from "./PasskeyHelp";
 import { DrawFirst, formatTime, LottoBall, RANK_LABEL, shortId } from "./parts";
@@ -75,9 +74,7 @@ export function Receipt({
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-mono text-[13px] tabular-nums">
         <dt className="text-slate-400">회차</dt>
         <dd className="text-right font-bold">
-          {displayRound(schedule, ticket.round).phase
-            ? roundShort(schedule, ticket.round)
-            : `제 ${ticket.round} 회`}
+          {roundTitle(schedule, ticket.round)}
         </dd>
         <dt className="text-slate-400">관측</dt>
         <dd className="text-right">{formatTime(drawAt)}</dd>
@@ -135,12 +132,6 @@ export function Receipt({
           infoCompact
         />
       </div>
-      <p
-        className="mt-2.5 text-center text-[12px] text-amber-100/60 tracking-wide"
-        data-wish
-      >
-        내 별에 소원을 빌어 보세요
-      </p>
 
       <SectionTitle className="mt-5">별 설명</SectionTitle>
       <ol className="flex flex-col gap-2.5">
@@ -201,10 +192,10 @@ export function Receipt({
       ) : record ? (
         <p className="text-center font-bold" data-result>
           {record.void
-            ? "이 회차는 무효가 되어 빛날 별을 정하지 않았습니다"
+            ? "이 회차는 예측 목록을 제때 기록하지 못해 무효가 되었습니다."
             : rank
               ? RANK_LABEL[rank]
-              : "이번에는 등수에 들지 못했습니다"}
+              : "이번에는 등수에 들지 못했습니다."}
         </p>
       ) : (
         // 결과 전에는 접수증 맺음말. "추첨을 기다리고 있습니다" 같은 상태는 접수증에 찍힐 말이 아니라 뺐다.
