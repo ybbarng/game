@@ -81,8 +81,16 @@ test.describe("카카오톡 안 브라우저", () => {
     page,
   }, info) => {
     test.skip(info.project.name !== "phone-portrait", "휴대폰 세로로");
-    await page.clock.setSystemTime(new Date("2026-11-02T04:00:20Z"));
+    // 연습 장부는 처음 연 때를 1회로 잡는다: 먼저 홈을 열고, 1회 관측 20초 뒤에 다시 들어오면 관측지
     await page.goto("/stardraw");
+    await page.clock.setSystemTime(new Date("2026-11-02T04:00:20Z"));
+    // 연습 장부가 1회 기록을 낼 때까지(시간표 줄이 관측 중으로)
+    await expect(
+      page
+        .getByRole("region", { name: "관측 시간표" })
+        .locator("[data-timetable-round='1']"),
+    ).toHaveAttribute("data-state", "observing", { timeout: 30_000 });
+    await page.reload();
     await expect(page).toHaveURL(/\/stardraw\/now$/, { timeout: 30_000 });
     await page
       .getByRole("complementary", { name: "관측 안내" })
