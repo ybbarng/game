@@ -1348,6 +1348,9 @@ export function RoundCard({
   );
 }
 
+/** 좁은 휴대폰(390 폭 아래)의 지난 회차 공: 한 줄에 7개가 들게 조금 작게 */
+const NARROW_BALL = "max-[389px]:size-6 max-[389px]:text-[11px]";
+
 /**
  * 지난 회차 결과 한 줄(누르면 그 회차 결과. 회차 번호와 공이 보여 그 회차가 열릴 거라 기대한다, 목록은 탭이 맡는다,
  * 2026-11-01 사용자 B안). 내 응모권이 있으면 등수와 「다시 보기」
@@ -1407,20 +1410,23 @@ function LastRound({
             </b>
           )}
         </span>
+        {/* 375 폭 휴대폰은 「다시 보기」 곁에 공 7개가 한 줄에 들지 않아 보너스 공이 둘째 줄로 내려가 아래 메뉴에
+            가려졌다: 좁은 폭에서는 공과 간격을 줄인다 */}
         {record.void ? (
           <span className="text-amber-300/90 text-sm">무효 회차</span>
         ) : (
-          <span className="flex flex-wrap items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1 max-[389px]:gap-0.5">
             {record.numbers.map((n) => (
               <LottoBall
                 key={n}
                 n={n}
                 size="sm"
                 ring={!!my?.ticket.numbers.includes(n)}
+                className={NARROW_BALL}
               />
             ))}
             <span className="px-0.5 text-white/40">+</span>
-            <LottoBall n={record.bonus} size="sm" />
+            <LottoBall n={record.bonus} size="sm" className={NARROW_BALL} />
           </span>
         )}
       </button>

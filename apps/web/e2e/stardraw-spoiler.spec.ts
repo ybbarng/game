@@ -126,4 +126,17 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   await page.goto("/stardraw");
   await expect(page.locator("[data-last-round='1']")).toBeVisible();
   await expect(page.locator("[data-envelope]")).toHaveCount(0);
+
+  // 375×667 휴대폰에서도 지난 회차의 공 7개(보너스 포함)가 한 줄에 든다(보너스 공이 둘째 줄로 내려가 아래 메뉴에 가려졌다)
+  await page.setViewportSize({ width: 375, height: 667 });
+  const balls = page.locator("[data-last-round='1'] [data-ball]");
+  await expect(balls).toHaveCount(7);
+  const tops = await balls.evaluateAll((els) =>
+    els.map((e) => Math.round(e.getBoundingClientRect().top)),
+  );
+  expect(new Set(tops).size).toBe(1);
+  await page.screenshot({
+    path: info.outputPath("stardraw-home-375.png"),
+    fullPage: true,
+  });
 });
