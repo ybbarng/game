@@ -1,4 +1,11 @@
-import { expect, fixStardrawClock, type Page, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  fixStardrawClock,
+  type Page,
+  STARDRAW_START,
+  test,
+} from "./test";
 
 test.use({ stardrawIntro: true });
 test.beforeEach(({ page }) => fixStardrawClock(page));
@@ -87,4 +94,89 @@ test("우주국 인사: 등록한 사람에게는 이름으로, 누르면 바로
   await tab.screenshot({ path: info.outputPath("greeting-named.png") });
   await greeting.click();
   await expect(greeting).toHaveCount(0, { timeout: 3_000 });
+});
+
+/**
+ * 장부를 붙잡아 두는 탭(services.ts `ledgerHold`). 시계는 멈춰 두고 시험이 정확한 순간으로 감는다.
+ * 돌려준 함수를 부르면 장부를 내준다
+ */
+async function holdLedger(page: Page): Promise<() => Promise<void>> {
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __stardrawLedgerHold?: Promise<void>;
+      __stardrawLedgerRelease?: () => void;
+    };
+    w.__stardrawLedgerHold = new Promise<void>((resolve) => {
+      w.__stardrawLedgerRelease = resolve;
+    });
+  });
+  await page.clock.pauseAt(new Date(STARDRAW_START.getTime() + 1000));
+  return () =>
+    page.evaluate(() =>
+      (
+        window as unknown as { __stardrawLedgerRelease: () => void }
+      ).__stardrawLedgerRelease(),
+    );
+}
+
+const SLOW_LINE = "하늘을 펴고 있습니다";
+
+test("장부가 늦을 때 인사: 로고는 인사 한 겹만, 1.8초 뒤 인사 아래에 한 줄", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const release = await holdLedger(page);
+  await page.goto("/stardraw");
+  const greeting = page.getByRole("dialog", GREETING);
+  await expect(greeting).toContainText(
+    "카노푸스 우주국에 오신 것을 환영합니다.",
+  );
+  // 기다리는 자리는 인사가 덮는 동안 그리지 않는다: 로고는 화면 전체에 인사 쪽 하나뿐
+  await expect(page.locator("[data-sky-wait]")).toHaveCount(0);
+  await expect(page.locator("[data-intro-shell]")).toHaveCount(1);
+  await expect(greeting.locator("[data-bureau-logo]")).toHaveCount(1);
+  await expect(page.getByText(SLOW_LINE)).toHaveCount(0);
+  await page.clock.fastForward(1799);
+  await expect(page.getByText(SLOW_LINE)).toHaveCount(0);
+  await page.clock.fastForward(1);
+  await expect(greeting.getByText(SLOW_LINE)).toBeVisible();
+  await expect(page.getByText(SLOW_LINE)).toHaveCount(1);
+  // 인사 문장이 다 떠오른 뒤 찍는다(sd-intro-rise)
+  await expect(greeting.locator(".sd-intro-line")).toHaveCSS("opacity", "1");
+  await page.screenshot({ path: info.outputPath("intro-greeting-slow.png") });
+  // 장부가 오면 인사가 물러나고 처음 온 사람의 편지가 내려온다
+  await release();
+  await fastForwardUntil(page, async () => (await greeting.count()) === 0);
+  await fastForwardUntil(page, () =>
+    page.locator("[data-letter-stage='arrive']").isVisible(),
+  );
+});
+
+test("장부가 늦을 때 인사가 없으면: 빈 밤하늘 바탕, 1.8초 뒤 가운데 한 줄만", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  // 정적 HTML에서부터 기다리는 자리는 바탕만이다(로고·인사 묶음이 먼저 뜨지 않는다)
+  const html = await (await page.request.get("/stardraw")).text();
+  expect(html).toContain("data-sky-wait");
+  expect(html).not.toContain("data-intro-shell");
+  // 움직임 줄이기(시험 기본)라 인사가 뜨지 않는다
+  const release = await holdLedger(page);
+  await page.goto("/stardraw");
+  const wait = page.locator("[data-sky-wait]");
+  await expect(wait).toBeVisible();
+  await expect(page.getByRole("dialog", GREETING)).toHaveCount(0);
+  await expect(wait.locator("[data-bureau-logo]")).toHaveCount(0);
+  await expect(wait).toHaveText("");
+  await page.screenshot({ path: info.outputPath("intro-wait-blank.png") });
+  await page.clock.fastForward(1799);
+  await expect(wait).toHaveText("");
+  await page.clock.fastForward(1);
+  await expect(wait).toHaveText(SLOW_LINE);
+  await page.screenshot({ path: info.outputPath("intro-wait-slow.png") });
+  // 장부가 오면 기다리는 자리가 걷히고 홈이 보인다
+  await release();
+  await expect(wait).toHaveCount(0);
+  await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();
 });

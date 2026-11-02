@@ -46,7 +46,7 @@ import { EnterView, KeySetup, usePasskeyEnv } from "./EnterView";
 import { GameIntro } from "./GameIntro";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { Inbox } from "./Inbox";
-import { IntroGate, IntroShell, shouldShowIntro } from "./IntroGate";
+import { IntroGate, SkyWait, shouldShowIntro } from "./IntroGate";
 import { MyRecordsView, RecordHandover, RecordNotice } from "./MyRecords";
 import { OnAirGuide } from "./OnAirGuide";
 import {
@@ -581,10 +581,10 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           />
         )}
         {!services || !status ? (
-          // 장부를 기다리는 자리: 우주국 인사와 같은 자리·모양(정적 HTML에서부터 보인다, IntroGate)
-          <IntroShell>
-            <span className="text-sm text-white/50">하늘을 펴고 있습니다</span>
-          </IntroShell>
+          // 장부를 기다리는 자리: 밤하늘 바탕만(정적 HTML에서부터 보인다). 인사가 떠 있으면 인사가 같은 바탕을 덮는다
+          intro ? null : (
+            <SkyWait />
+          )
         ) : view.name === "now" ? (
           nowMode === null ? null : nowMode.kind === "observe" ? (
             loaded && (

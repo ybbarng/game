@@ -11,8 +11,8 @@ import { BureauLogo } from "./BureauMarks";
 const HOLD_MS = 1300;
 /** 물러나는 연출 길이(CSS sd-intro-leave와 같다) */
 const LEAVE_MS = 700;
-/** 장부가 이보다 늦으면 인사 아래에 「하늘을 펴고 있습니다」 */
-const SLOW_MS = 1800;
+/** 장부가 이보다 늦으면 「하늘을 펴고 있습니다」(인사가 떠 있으면 인사 아래에, 없으면 빈 바탕 가운데에) */
+export const SLOW_MS = 1800;
 
 const SEEN_KEY = "stardraw-intro-seen";
 
@@ -31,8 +31,8 @@ export function shouldShowIntro(): boolean {
   }
 }
 
-/** 장부를 기다리는 자리(정적 HTML에서부터 같은 자리·모양이라 인사로 넘어갈 때 튀지 않는다) */
-export function IntroShell({ children }: { children?: React.ReactNode }) {
+/** 인사의 로고·이름·문장 묶음(물러날 때 이 묶음이 위로 올라간다, CSS sd-intro-leave) */
+function IntroShell({ children }: { children?: React.ReactNode }) {
   return (
     <div
       data-intro-shell
@@ -43,6 +43,30 @@ export function IntroShell({ children }: { children?: React.ReactNode }) {
         카노푸스 우주국
       </span>
       {children}
+    </div>
+  );
+}
+
+/**
+ * 장부를 기다리는 자리: 인사와 같은 밤하늘 바탕만 화면 전체에 깐다(정적 HTML에서부터 보인다).
+ * 예전에는 여기에도 로고를 그려, 인사가 위에 뜨면 아래 줄 수가 달라 로고가 살짝 어긋나게 두 겹으로 보였다
+ * (2026-11-02 사용자, 휴대폰). 인사가 뜨는 동안은 이 자리를 그리지 않는다(인사가 같은 바탕을 덮는다).
+ * 인사 없이 들어왔는데 장부가 SLOW_MS보다 늦으면 「하늘을 펴고 있습니다」 한 줄만 조용히 띄운다
+ */
+export function SkyWait() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const late = window.setTimeout(() => setSlow(true), SLOW_MS);
+    return () => window.clearTimeout(late);
+  }, []);
+  return (
+    <div
+      data-sky-wait
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#070d19]"
+    >
+      {slow && (
+        <span className="text-sm text-white/50">하늘을 펴고 있습니다</span>
+      )}
     </div>
   );
 }

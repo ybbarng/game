@@ -167,6 +167,16 @@ export async function resetServices(ns: string): Promise<Services> {
   return getServices(ns);
 }
 
+/**
+ * 화면 시험이 「장부가 늦는 순간」을 만드는 자리. 연습 장부는 기기 안에서 곧바로 준비돼 늦출 길이 없어, 시험이
+ * 페이지를 열기 전에 `window.__stardrawLedgerHold`에 약속(Promise)을 두면 그것이 풀릴 때까지 장부를 내주지 않는다.
+ * 실제 화면에서는 아무도 두지 않아 그대로 지나간다
+ */
+function ledgerHold(): Promise<void> | undefined {
+  return (globalThis as { __stardrawLedgerHold?: Promise<void> })
+    .__stardrawLedgerHold;
+}
+
 /** 1초마다 지난 회차를 추첨하고 지금 상태를 돌려준다. 장부가 바뀌면 `version`이 오른다 */
 export function useLedger(ns: string = GAME_NS): {
   services: Services | null;
@@ -190,6 +200,7 @@ export function useLedger(ns: string = GAME_NS): {
     let lastRecords = -1;
     const tick = async () => {
       try {
+        await ledgerHold();
         await s.ledger.settle();
         if (!alive) return;
         const closed = s.ledger.closed().length;
