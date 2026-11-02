@@ -11,6 +11,7 @@ import {
   softPasskeySigner,
   type Ticket,
   ticketId,
+  toHex,
 } from "@game/stardraw-core";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -127,12 +128,15 @@ export function StardrawDemo() {
   const latestTicket = mine
     .filter((m) => services?.ledger.record(m.ticket.round))
     .sort((a, b) => b.ticket.round - a.ticket.round)[0]?.ticket;
+  // 장부가 바뀔 때마다 응모권 객체는 새로 읽힌다. 같은 응모권이면 확인하는 사람 화면(링크·두 번째 사람)을 그대로 둔다
+  const latestHex = latestTicket ? toHex(ticketId(latestTicket)) : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 같은 응모권(latestHex)이면 다시 열지 않는다
   useEffect(() => {
     if (!services || !latestTicket) return;
     const [newest] = invitesOf(services.ns, latestTicket, services.clock.now());
     setLink(newest?.token ?? null);
     setSecond(false);
-  }, [services, latestTicket]);
+  }, [services, latestHex]);
 
   if (!services || !status)
     return (

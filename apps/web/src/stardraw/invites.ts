@@ -93,16 +93,23 @@ export function invitesOf(ns: string, ticket: Ticket, now: number): MyInvite[] {
  */
 export async function pruneInvites(services: Services): Promise<void> {
   const now = services.clock.now();
-  const kept: MyInvite[] = [];
+  const dropped = new Set<string>();
   for (const i of loadInvites(services.ns)) {
-    if (i.expiresAt <= now) continue;
+    if (i.expiresAt <= now) {
+      dropped.add(i.token);
+      continue;
+    }
     try {
       const peek = await services.relay.peek(i.token);
-      if (peek.state !== "open") continue;
+      if (peek.state !== "open") dropped.add(i.token);
     } catch {
       // 닿지 않으면 그대로 둔다
     }
-    kept.push(i);
   }
-  saveInvites(services.ns, kept);
+  if (dropped.size === 0) return;
+  // 묻는 사이에 새로 만든 링크가 있을 수 있어 처음 읽은 목록으로 덮지 않고, 지울 것만 뺀다
+  saveInvites(
+    services.ns,
+    loadInvites(services.ns).filter((i) => !dropped.has(i.token)),
+  );
 }

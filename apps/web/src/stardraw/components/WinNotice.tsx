@@ -102,13 +102,18 @@ function NoticeCard({
   const [canShare, setCanShare] = useState(false);
   /** 확인 링크는 이 응모권을 낸 등록증의 서명으로 만든다: 신분증 제시 틀 */
   const id = useIdPresent(services);
+  // 응모권 객체가 아니라 id가 바뀔 때만 다시 읽는다. 부모는 장부가 바뀔 때마다 응모권을 저장소에서 새로 읽어
+  // 객체가 바뀌는데, 그때마다 지우기가 돌면 보고 있던 링크가 쓰이자마자 사라져 단추가 「확인 링크 만들기」로
+  // 돌아갔다(장부 읽기가 언제 끝나느냐에 달려 CI에서만 가끔, 2026-11-03)
+  const ticketHex = toHex(ticketId(ticket));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 같은 응모권(ticketHex)이면 다시 읽지 않는다
   useEffect(() => {
     setLinks(invitesOf(services.ns, ticket, services.clock.now()));
     void pruneInvites(services).then(() =>
       setLinks(invitesOf(services.ns, ticket, services.clock.now())),
     );
     setCanShare(typeof navigator !== "undefined" && "share" in navigator);
-  }, [services, ticket]);
+  }, [services, ticketHex]);
 
   const title = `${roundShort(services.ledger.schedule, ticket.round)} ${RANK_LABEL[rank]}`;
   const latest = links[0];
