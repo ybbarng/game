@@ -19,6 +19,43 @@ export function inAppBrowser(ua: string): string | null {
   return IN_APP.find(([re]) => re.test(ua))?.[1] ?? null;
 }
 
+/**
+ * 앱 안 브라우저에서 이 주소를 기기의 브라우저로 여는 길(2026-11-03 클로즈 베타 점검, 지인은 대개 카카오톡으로 링크를 받는다).
+ * - 카카오톡: `kakaotalk://web/openExternal?url=`(공식 문서는 없지만 널리 쓰이는 길. 아이폰은 Safari, 안드로이드는 기본 브라우저).
+ *   안 열리는 판도 있어 `steps`로 손으로 여는 메뉴 자리도 함께 알려 준다
+ * - 라인: 주소에 `openExternalBrowser=1`을 붙이면 라인이 바깥 브라우저로 연다(라인 안내)
+ * - 그 밖의 앱: 길이 없어 null(주소 복사만)
+ */
+export function openOutside(
+  app: string,
+  ua: string,
+  href: string,
+): { url: string; label: string; steps?: string } | null {
+  const iphone = /iPhone|iPad|iPod/i.test(ua);
+  const label = iphone ? "Safari로 열기" : "다른 브라우저로 열기";
+  if (app === "카카오톡")
+    return {
+      url: `kakaotalk://web/openExternal?url=${encodeURIComponent(href)}`,
+      label,
+      steps: iphone
+        ? "열리지 않으면 오른쪽 아래 공유 단추를 눌러 Safari로 열어 주세요."
+        : "열리지 않으면 오른쪽 아래 ⋮ 단추를 눌러 「다른 브라우저로 열기」를 골라 주세요.",
+    };
+  if (app === "라인") {
+    const u = new URL(href);
+    u.searchParams.set("openExternalBrowser", "1");
+    return { url: u.toString(), label };
+  }
+  return null;
+}
+
+/** 앱 안 브라우저 안내에서 열어 달라고 할 브라우저 이름(조사까지) */
+export function browserName(ua: string): string {
+  if (/iPhone|iPad|iPod/i.test(ua)) return "Safari로";
+  if (/Android/i.test(ua)) return "Chrome 같은 브라우저로";
+  return "Safari나 Chrome으로";
+}
+
 /** 이 브라우저에 WebAuthn이 있는지 */
 export function passkeyApi(): boolean {
   return (

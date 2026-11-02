@@ -564,8 +564,15 @@ test("패스키를 못 쓰는 브라우저와 앱 안 브라우저는 응모 대
   const inApp = await kakao.newPage();
   await toEntry(inApp);
   await expect(inApp.getByRole("note")).toContainText(
-    "카카오톡 안에서는 패스키를 쓸 수 없어요",
+    "카카오톡 안에서는 패스키를 쓸 수 없어요. Safari로 열어 주세요.",
   );
+  // 카카오톡은 바깥 브라우저로 여는 단추와, 안 열릴 때 손으로 여는 메뉴 자리
+  const outside = inApp.getByRole("link", { name: "Safari로 열기" });
+  await expect(outside).toHaveAttribute(
+    "href",
+    /^kakaotalk:\/\/web\/openExternal\?url=http/,
+  );
+  await expect(inApp.getByRole("note")).toContainText("공유 단추");
   await expect(inApp.getByRole("button", { name: "주소 복사" })).toBeVisible();
   await kakao.close();
 });

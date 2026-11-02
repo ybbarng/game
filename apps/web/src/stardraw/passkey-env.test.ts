@@ -2,8 +2,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  browserName,
   DEMO_CANCEL,
   inAppBrowser,
+  openOutside,
   passkeyFailText,
   passkeyProblem,
   unlockWith,
@@ -29,6 +31,30 @@ describe("패스키 환경", () => {
     );
     expect(inAppBrowser(ANDROID_CHROME)).toBeNull();
     expect(inAppBrowser(MAC_SAFARI)).toBeNull();
+  });
+
+  it("카카오톡·라인은 기기의 브라우저로 여는 주소를, 그 밖의 앱은 null을 준다", () => {
+    const href = "https://game.byb.kr/stardraw?x=1";
+    const kakao = openOutside("카카오톡", IPHONE_KAKAO, href);
+    expect(kakao?.url).toBe(
+      `kakaotalk://web/openExternal?url=${encodeURIComponent(href)}`,
+    );
+    expect(kakao?.label).toBe("Safari로 열기");
+    expect(kakao?.steps).toContain("공유 단추");
+    const android = openOutside(
+      "카카오톡",
+      `${ANDROID_CHROME} KAKAOTALK 10.8.5`,
+      href,
+    );
+    expect(android?.label).toBe("다른 브라우저로 열기");
+    expect(android?.steps).toContain("다른 브라우저로 열기");
+    expect(openOutside("라인", ANDROID_CHROME, href)?.url).toBe(
+      "https://game.byb.kr/stardraw?x=1&openExternalBrowser=1",
+    );
+    expect(openOutside("인스타그램", ANDROID_CHROME, href)).toBeNull();
+    expect(browserName(IPHONE_KAKAO)).toBe("Safari로");
+    expect(browserName(ANDROID_CHROME)).toBe("Chrome 같은 브라우저로");
+    expect(browserName(WINDOWS_EDGE)).toBe("Safari나 Chrome으로");
   });
 
   it("기기에 맞는 잠금 이름을 붙이고, 이 기기 잠금을 못 쓰면 패스키로 한다", () => {
