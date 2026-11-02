@@ -37,6 +37,7 @@ import { errorText } from "../errors";
 import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
 import {
+  freshNonce,
   ROOM_TEXT_MAX,
   RoomClient,
   type RoomEvent,
@@ -545,7 +546,11 @@ export function RoomView({
 
   const key = services.wallet.loadKey();
   const id = useIdPresent(services);
-  const [nonce, setNonce] = useState<string | null>(null);
+  /** 미리 받은 한 번 쓰는 값과 서버가 정한 기한(서버 시각 ms) */
+  const [nonce, setNonce] = useState<{
+    nonce: string;
+    expiresAt: number;
+  } | null>(null);
   const [registeringNow, setRegisteringNow] = useState(false);
   const [draft, setDraft] = useState("");
   const [sendNote, setSendNote] = useState<string | null>(null);
@@ -564,7 +569,7 @@ export function RoomView({
     const fetchNonce = () =>
       client
         .challenge()
-        .then((c) => alive && setNonce(c.nonce))
+        .then((c) => alive && setNonce(c))
         .catch(() => alive && setNonce(null));
     void fetchNonce();
     const t = window.setInterval(fetchNonce, 90_000);
@@ -648,10 +653,13 @@ export function RoomView({
     const registered = await registerFirst(key);
     if (!registered) return null;
     // 한 번 쓰는 값과 서명자는 미리 준비해 둔다: 등록증을 누른 그 순간 사이에 기다림 없이 패스키를 연다(아이폰 사파리 누름 규칙).
-    // 방금 장부 등록을 올렸으면 그사이 미리 받은 값이 낡았을 수 있어 새로 받는다
+    // 방금 장부 등록을 올렸으면 그사이 미리 받은 값이 낡았을 수 있어 새로 받는다. 기한이 다 됐어도 새로 받는다:
+    // 휴대폰은 다른 앱에 다녀오는 동안 탭의 타이머가 멈춰 1분 30초마다 새로 받기가 밀린다(2026-11-03 클로즈 베타 점검,
+    // 낡은 값으로 내면 서버가 403을 돌려 「신분증 확인이 맞지 않아」로 보였다)
+    const fresh =
+      registered === "ready" ? freshNonce(nonce, client.serverNow()) : null;
     const used: string =
-      (registered === "ready" ? nonce : null) ??
-      (await client.challenge().then((c) => c.nonce));
+      fresh ?? (await client.challenge().then((c) => c.nonce));
     setNonce(null);
     const signer = signerRef.current ?? (await services.wallet.signerFor(key));
     // 신분증 제시 틀(입구·응모와 같은 부품): 오버레이 → "패스키로 신분증을 제시해 주세요." → 등록증이 올라와 기다림 →

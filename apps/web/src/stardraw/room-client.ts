@@ -242,3 +242,23 @@ export class RoomClient {
     this.abort = null;
   }
 }
+
+/**
+ * 미리 받은 한 번 쓰는 값은 기한(서버 2분)까지 이만큼 남아 있을 때만 쓴다. 등록증을 내밀고 패스키 창에서 얼굴·지문을
+ * 대는 동안에도 기한이 지나지 않게
+ */
+export const NONCE_SPARE_MS = 45_000;
+
+/**
+ * 미리 받은 값을 지금 써도 되는지(서버 시각 기준). 휴대폰은 다른 앱에 다녀오는 동안 탭의 타이머가 멈춰 새로 받기가
+ * 밀리므로, 기한이 가까우면 null(새로 받는다). 낡은 값으로 내면 서버가 403을 돌려 「신분증 확인이 맞지 않아」로 보였다
+ * (2026-11-03 클로즈 베타 점검)
+ */
+export function freshNonce(
+  held: { nonce: string; expiresAt: number } | null,
+  serverNow: number,
+): string | null {
+  return held && serverNow < held.expiresAt - NONCE_SPARE_MS
+    ? held.nonce
+    : null;
+}
