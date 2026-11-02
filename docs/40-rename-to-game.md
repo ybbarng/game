@@ -95,3 +95,29 @@ CI나 빌드가 늦어 S+12분이 칸 끝(:32·:52·:12)을 넘을 것 같으면
   - 13:58 사용자가 옛 웹을 내림(`docker compose -p mighty down`). /, /healthz, /stardraw, /stardraw-api/ 200, /diag 405(GET), /signal/은 신호 서버가 답함, Gatus 실패 0, 별 따기 서버는 그대로. servers PLAN 23단계 f1a38b7.
 - 남은 일(사용자): 새 GHCR 패키지 공개 범위 맞추기, authorized_keys 경로 고친 뒤 링크 폴더 지우기, 며칠 뒤 옛 이미지와 `~/data/mighty-diag` 지우기.
 - 4단계(이 맥 폴더)는 모든 세션을 닫을 때 따로 한다. 그 뒤 servers가 verify-stardraw.sh scp 경로를 고친다.
+
+## 4단계 절차(2026-11-02 17:30 준비 끝)
+
+이 폴더를 쓰던 세션은 game-ce 하나뿐이었다. 배포(de010f3, 조용히 새 화면으로)가 끝난 뒤 준비했다.
+
+**맡는 사람**: 사용자는 game-ce 세션만 닫는다(`/exit`). 그 뒤는 **비서 세션**이 이어서 한다(2026-11-02 사용자). 비서는 game-ce가 세션 목록에서 사라진 것을 확인하고 시작한다.
+
+**비서가 할 일**
+1. 이 폴더를 쓰는 세션·백그라운드 작업이 없는지 확인한다(세션 목록, `lsof +D ~/personal/projects/game/mighty` 정도).
+2. 두 폴더 이름을 바꾼다.
+   ```
+   mv ~/personal/projects/game/mighty ~/personal/projects/game/game
+   mv ~/personal/projects/game/mighty-archive ~/personal/projects/game/game-archive
+   ```
+3. 아래 「마무리」를 한다(직접 하거나, `~/personal/projects/game`에서 game 세션을 새로 띄워 맡긴다). 기억 폴더(`-Users-ybbarng-personal-projects-game`)와 책상(`desk/game.json`)은 바깥 폴더 기준이라 그대로 이어진다.
+
+**마무리**
+- [ ] 바깥 `~/personal/projects/game/CLAUDE.md`의 폴더 표·명령 예시(`mighty/` → `game/`, `pnpm -C mighty` → `pnpm -C game`, mighty-archive → game-archive)
+- [ ] `game/CLAUDE.md` 첫 줄 「저장소 이름은 아직 mighty」 고치기
+- [ ] 옛 서브에이전트 작업 트리 22개(`game/.claude/worktrees/agent-*`, `.git` 파일에 옛 절대 경로): 쓸 일이 없으면 `git -C ~/personal/projects/game/game worktree prune` 뒤 폴더째 지우기(먼저 `git worktree list`와 각 트리의 `git status`로 남은 변경이 없는지 확인하고, 하나라도 있으면 지우지 말고 사용자에게 묻는다), 쓸 거면 `git worktree repair`
+- [ ] git 훅: `git -C … commit`이 lefthook에서 깨지면 `pnpm -C game exec lefthook install`
+- [ ] 새 경로에서 `pnpm -C game typecheck`, 바꾼 패키지 단위 시험 하나, `pnpm --filter @game/web build`가 도는지
+- [ ] main에 남은 커밋 올리기(지도 메모·이 절차, 문서뿐). 마감 앞뒤(:13~:17, :33~:37, :53~:57) 피해서
+- [ ] 비서 저장소의 세션 목록(`local/sessions.txt`)·알림(`reminders.md`) 경로를 `game/game`으로
+- [ ] servers에게: `home/scripts/verify-stardraw.sh`의 scp 경로(`…/game/mighty/…` → `…/game/game/…`)
+- [ ] 기억 `rename-to-game.md`에 4단계 끝 적기, 책상 「4단계」 항목 지우기
