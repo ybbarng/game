@@ -1,8 +1,8 @@
-# mighty 이미지 — GitHub Actions 가 빌드해 GHCR(ghcr.io/ybbarng/mighty)에 올린다. 서버에서는 빌드하지 않는다.
+# game 이미지 — GitHub Actions 가 빌드해 GHCR(ghcr.io/ybbarng/game)에 올린다. 서버에서는 빌드하지 않는다.
 #
 # 서버 없는 정적 사이트다(Next `output: "export"`). Node 런타임 없이 nginx 가 파일만 낸다.
 # 그래서 standalone·node-linker=hoisted 는 필요 없고, DB 가 없으니 도구 이미지·배포 전 단계도 없다.
-# 온라인 대전에서 서로를 찾는 신호 서버는 servers 저장소 byb.kr/apps/mighty-signal 이 따로 띄운다.
+# 온라인 대전에서 서로를 찾는 신호 서버는 servers 저장소 byb.kr/apps/game-signal 이 따로 띄운다.
 
 FROM node:24-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH

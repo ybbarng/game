@@ -1,10 +1,10 @@
 name: Image
 
 # 정적 사이트 이미지를 빌드해 GHCR 에 올리고 서버에 배포한다. 서버는 이미지를 받아 띄우기만 한다.
-#   ghcr.io/ybbarng/mighty — nginx + 정적 빌드(Dockerfile 의 runner)
+#   ghcr.io/ybbarng/game — nginx + 정적 빌드(Dockerfile 의 runner)
 #   ghcr.io/ybbarng/stardraw-server — 하늘의 별 따기 회차 서버(변수 STARDRAW_SERVER_IMAGE=true 일 때만, 배포는 손으로)
 # 태그: 커밋 sha 는 항상, main 이면 latest 도.
-# 서버 쪽 compose.yaml·deploy.sh 는 servers 저장소의 byb.kr/apps/mighty/ 에 있다.
+# 서버 쪽 compose.yaml·deploy.sh 는 servers 저장소의 byb.kr/apps/game/ 에 있다.
 
 # CI(단위·화면 시험)가 main 에서 성공한 뒤에만 빌드하고 배포한다(2026-10-30). 무거운 전체 화면 시험을
 # 개발 맥 대신 CI 가 맡고, 깨진 커밋은 사이트에 올라가지 않는다. 빌드할 커밋은 CI 가 확인한 커밋(head_sha)이다.
@@ -52,7 +52,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
-          images: ghcr.io/ybbarng/mighty
+          images: ghcr.io/ybbarng/game
           tags: |
             type=raw,value=${{ env.SHA }}
             type=raw,value=latest
@@ -68,8 +68,8 @@ jobs:
             NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ env.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
             NEXT_PUBLIC_STARDRAW_API=${{ env.NEXT_PUBLIC_STARDRAW_API }}
             SOURCE_COMMIT=${{ env.SHA }}
-          cache-from: type=gha,scope=mighty
-          cache-to: type=gha,scope=mighty,mode=max
+          cache-from: type=gha,scope=game
+          cache-to: type=gha,scope=game,mode=max
       # 화면 코드 해시 목록(docs/36 11-8). 같은 빌드(캐시)에서 build-hashes.json 만 꺼내
       # 실행 요약과 기록 파일(90일)로 남긴다. 사이트도 같은 파일을 /build-hashes.json 으로 낸다
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
@@ -83,7 +83,7 @@ jobs:
             NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ env.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
             NEXT_PUBLIC_STARDRAW_API=${{ env.NEXT_PUBLIC_STARDRAW_API }}
             SOURCE_COMMIT=${{ env.SHA }}
-          cache-from: type=gha,scope=mighty
+          cache-from: type=gha,scope=game
       - name: 해시 목록 요약
         run: |
           {
@@ -197,7 +197,7 @@ jobs:
               --title "사이트 화면 코드 $tag" --latest=false --notes "$notes"
           fi
 
-  # 서버에 배포한다. 서버의 배포 키는 forced-command 로 servers 저장소의 apps/mighty/deploy.sh 만 실행한다.
+  # 서버에 배포한다. 서버의 배포 키는 forced-command 로 servers 저장소의 apps/game/deploy.sh 만 실행한다.
   # 이미지를 받을 토큰은 이 실행의 GITHUB_TOKEN 을 표준입력으로 넘긴다(서버에 남지 않고, 실행이 끝나면 만료된다).
   # CI 가 성공한 main 커밋만 오므로 늘 운영 배포다(빌드가 건너뛰어지면 배포도 건너뛴다).
   deploy:
