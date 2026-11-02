@@ -178,7 +178,7 @@ export function EnterView({
   useEffect(() => {
     if (open) setWriting(status.round);
   }, [open, status.round]);
-  /** 쓰다 만 예측지(다른 때 고르다 만 별). 첫 그리기 뒤에 읽는다 */
+  /** 쓰다 만 예측서(다른 때 고르다 만 별). 첫 그리기 뒤에 읽는다 */
   const [draft, setDraft] = useState<DraftPaper | null>(null);
   useEffect(() => {
     if (initialPicked.length === 0)
@@ -195,7 +195,7 @@ export function EnterView({
       numbers: picked,
     });
   }, [picked]);
-  /** 쓰다 만 예측지를 불러온다: 별을 한 칸씩 옮겨 적는다(움직임 줄이기면 한 번에) */
+  /** 쓰다 만 예측서를 불러온다: 별을 한 칸씩 옮겨 적는다(움직임 줄이기면 한 번에) */
   const restoreDraft = (d: DraftPaper) => {
     setDraft(null);
     touched.current = true;
@@ -573,7 +573,7 @@ export function EnterView({
               numbers: [...bounce.numbers],
               qual: bounce.qual,
             });
-            // 보관한 답안지가 같은 별을 들고 있으니 쓰다 만 예측지는 지운다
+            // 보관한 답안지가 같은 별을 들고 있으니 쓰다 만 예측서는 지운다
             clearDraft(services.ns);
           }}
           onDraw={() => (onWatchDraw ?? onBack)(bounce.round)}
