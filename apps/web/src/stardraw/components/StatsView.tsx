@@ -417,7 +417,7 @@ const VERDICT = {
   skewed: "치우쳤습니다",
 } as const;
 
-/** 공정성: 별 45개가 고르게 빛나는지(카이제곱) */
+/** 공정성: 별 45개가 고르게 빛나는지(카이제곱 값 자체는 검증 페이지 「장부 전체 검사」 요약에 있다) */
 function Fair({ stats }: { stats: Stats }) {
   const f = stats.fairness;
   if (!f) return null;
@@ -436,9 +436,6 @@ function Fair({ stats }: { stats: Stats }) {
         {f.verdict === "even"
           ? " 흔히 나오는 정도입니다."
           : " 드문 정도라 지켜보고 있습니다."}
-      </p>
-      <p className="text-white/45 text-xs tabular-nums">
-        카이제곱 {f.chi2.toFixed(1)} · 자유도 44(평균 44 안팎)
       </p>
     </Card>
   );

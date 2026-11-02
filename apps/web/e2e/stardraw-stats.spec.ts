@@ -27,6 +27,7 @@ test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 �
   await expect(stats.getByText("한 번도 빛나지 않은 별")).toBeVisible();
   // 이야기 쪽 화면이라 drand 회차는 두지 않는다(검증 페이지로 옮겼다, docs/36 11-47)
   await expect(stats.getByText(/drand/)).toHaveCount(0);
+  await expect(stats.getByText(/카이제곱/)).toHaveCount(0);
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
@@ -46,10 +47,11 @@ test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 �
   await expect(page).toHaveURL(/\/stardraw\/rounds$/);
   await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
 
-  // 마지막 drand 회차는 검증 페이지의 장부 검사 요약에 있다
+  // 마지막 drand 회차와 카이제곱 값은 검증 페이지의 장부 검사 요약에 있다
   await page.goto("/stardraw/verify");
   await page.getByRole("button", { name: "장부 전체 검사" }).click();
   await expect(page.locator("[data-latest-drand]")).toContainText(
     "마지막 drand 회차",
   );
+  await expect(page.locator("[data-ledger-chi2]")).toContainText("카이제곱");
 });

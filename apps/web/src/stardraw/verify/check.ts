@@ -18,12 +18,16 @@ import {
   withQualDetail,
 } from "@game/stardraw-core";
 
+import { computeStats } from "../stats";
+
 export type { CheckItem, CheckStatus } from "@game/stardraw-core";
 
 /** 검사 결과 + 마지막 drand 회차(관측 기록 화면에서 옮겨 왔다, docs/36 11-47) */
 export type LedgerCheckResult = CheckResult & {
   /** 무효가 아닌 마지막 회차가 쓴 drand 회차. 그런 회차가 없으면 null */
   latestDrand: number | null;
+  /** 별 45개가 고르게 빛나는지의 카이제곱 값(자유도 44, 무효가 아닌 회차 전체). 그런 회차가 없으면 null. 관측 기록 화면에서 옮겨 왔다 */
+  chi2: number | null;
 };
 
 /** 무효가 아닌 마지막 회차의 drand 회차 */
@@ -33,6 +37,15 @@ export function latestDrandRound(
   return records.findLast((r) => !r.void)?.drandRound ?? null;
 }
 
+/** 장부 전체의 카이제곱 값(관측 기록 화면 「별은 고르게 빛나나」와 같은 계산) */
+export function ledgerChiSquare(
+  records: readonly RoundRecord[],
+): number | null {
+  return (
+    computeStats(records.map((record) => ({ record, qualified: 0 }))).fairness
+      ?.chi2 ?? null
+  );
+}
 /**
  * 「장부 전체 검사」(검증하기 페이지·콘솔 `stardraw.verify()`).
  * 서버 장부면 공개 장부 파일만 받아 화면의 장부 코드를 거치지 않고 처음부터 다시 계산한다.
@@ -70,7 +83,11 @@ export async function checkServerLedger(
     anchorRepo:
       options.anchorRepo === undefined ? ANCHOR_REPO : options.anchorRepo,
   });
-  return { ...result, latestDrand: latestDrandRound(ledger.records) };
+  return {
+    ...result,
+    latestDrand: latestDrandRound(ledger.records),
+    chi2: ledgerChiSquare(ledger.records),
+  };
 }
 
 /** 이 기기의 연습 장부를 검사한다(서버 주소가 없는 빌드) */
@@ -131,5 +148,6 @@ export async function checkPracticeLedger(ledger: {
     operations: operationsView(report.operations, closed.length, report.head),
     qualification,
     latestDrand: latestDrandRound(closed.map((c) => c.record)),
+    chi2: ledgerChiSquare(closed.map((c) => c.record)),
   };
 }

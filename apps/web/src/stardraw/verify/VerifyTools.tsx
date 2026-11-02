@@ -210,6 +210,12 @@ export function LedgerCheck() {
                 · 마지막 drand 회차 {result.latestDrand.toLocaleString("ko-KR")}
               </span>
             )}
+            {result.chi2 !== null && (
+              <span data-ledger-chi2>
+                {" "}
+                · 카이제곱 {result.chi2.toFixed(1)}(자유도 44, 평균 44 안팎)
+              </span>
+            )}
           </p>
           <ul className="flex flex-col gap-1.5">
             {result.items.map((item) => (
