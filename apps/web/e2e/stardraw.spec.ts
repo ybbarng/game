@@ -213,7 +213,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     await expect(page.locator("[data-letter]")).toHaveCount(0);
   }
   await expect(page.locator("[data-gate-round]")).toContainText(
-    /예측을 (받고 있어요|마감했어요)/,
+    /예측을 (받고 있어요|마감했어요)|관측 중이에요/,
   );
   await expect(page.getByRole("button", { name: TO_PICK })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("home-first.png") });

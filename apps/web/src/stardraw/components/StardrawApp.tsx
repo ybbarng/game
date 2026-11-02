@@ -23,6 +23,7 @@ import { astronautOf } from "../astronaut/identity";
 import { type CheckSession, isActive } from "../checks";
 import { errorText } from "../errors";
 import { FX } from "../fx-timing";
+import { gateStatusLine } from "../gate-status";
 import { type KeptPaper, loadKept } from "../kept-paper";
 import type { RoundCheck } from "../ledger";
 import type { LedgerStatus } from "../local-ledger";
@@ -1045,7 +1046,6 @@ export function Gate({
   letterAuto?: boolean;
   onLetterClosed?: (() => void) | undefined;
 }) {
-  const name = roundShort(services.ledger.schedule, s.round);
   const open = s.phase === "open";
   const live = liveDrawRound(services, s);
   return (
@@ -1069,11 +1069,7 @@ export function Gate({
           className="sd-live-dot"
           data-live={live !== null ? "entered" : open ? "open" : "drawing"}
         />
-        {live !== null
-          ? `지금 ${roundShort(services.ledger.schedule, live)} 관측 중이에요.`
-          : open
-            ? `지금 ${name} 예측을 받고 있어요 · 마감까지 ${formatLeft(s.times.entryDeadline - s.now)}`
-            : `${name} 예측을 마감했어요.`}
+        {gateStatusLine(services.ledger.schedule, s, live)}
       </p>
       {live !== null && onDraw && (
         <button
