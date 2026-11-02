@@ -4,7 +4,8 @@
 # 그래서 standalone·node-linker=hoisted 는 필요 없고, DB 가 없으니 도구 이미지·배포 전 단계도 없다.
 # 온라인 대전에서 서로를 찾는 신호 서버는 servers 저장소 byb.kr/apps/game-signal 이 따로 띄운다.
 
-FROM node:24-bookworm-slim AS build
+# Node 판은 .node-version(CI·재현 빌드)과 같은 정확한 판으로 둔다. 판이 다르면 같은 커밋도 결과물이 달라질 수 있다(docs/36 11-8)
+FROM node:24.22.2-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 # package.json 의 packageManager(pnpm 버전 고정)를 corepack 이 따른다
 RUN corepack enable

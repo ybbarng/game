@@ -3,7 +3,8 @@
 # 서버를 한 파일(dist/server.mjs)로 묶어 Node만 있는 작은 이미지로 돌린다. SQLite는 Node 내장(node:sqlite)이라
 # 네이티브 의존 패키지가 없다. 배포 초안은 deploy/stardraw/.
 
-FROM node:24-bookworm-slim AS build
+# Node 판은 빌드·실행 모두 .node-version(CI 시험)과 같은 정확한 판으로 둔다. 시험한 판과 운영 판이 어긋나지 않게
+FROM node:24.22.2-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable
 WORKDIR /app
@@ -12,7 +13,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --ignore-scripts --filter @game/stardraw-server...
 RUN pnpm --filter @game/stardraw-server build
 
-FROM node:24-alpine AS runner
+FROM node:24.22.2-alpine AS runner
 WORKDIR /app
 COPY --from=build /app/apps/stardraw-server/dist/server.mjs ./server.mjs
 # 데이터(SQLite·장부 파일)는 /data 볼륨, 서명 열쇠는 비밀값 파일로 마운트한다
