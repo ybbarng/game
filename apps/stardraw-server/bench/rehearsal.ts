@@ -50,6 +50,7 @@ import {
   encodeRegistrationProof,
   encodeSignatureData,
   encodeTicket,
+  entrantId,
   equalBytes,
   fromBase64Url,
   fromHex,
@@ -340,6 +341,7 @@ async function main() {
     isDirector: (pub) => engine.isActiveDirector(pub),
     sealed: (round) => store.seal(round) !== null,
     tickets: (round) => store.entries(round),
+    entered: (round, pub) => store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => store.record(round) !== null,
   });
   const inner = createHttpServer(engine, relay, {

@@ -4,9 +4,11 @@ import { backup } from "node:sqlite";
 import { realClock } from "@game/fair-play";
 
 import {
+  entrantId,
   GOOGLE_CLIENT_ID,
   sealFingerprint,
   toBase64Url,
+  toHex,
 } from "@game/stardraw-core";
 import { loadConfig, originProblems } from "./config";
 import { StardrawServer } from "./engine";
@@ -145,6 +147,7 @@ async function main(): Promise<void> {
     isDirector: (pub) => engine.isActiveDirector(pub),
     sealed: (round) => store.seal(round) !== null,
     tickets: (round) => store.entries(round),
+    entered: (round, pub) => store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => store.record(round) !== null,
   });
   const http = createHttpServer(engine, relay, {

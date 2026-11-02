@@ -20,6 +20,7 @@ import {
   DEFAULT_ROOM_LIMITS,
   type RoomEvent,
   RoomHub,
+  type RoomLimits,
   roomModMessage,
   roomPassMessage,
 } from "./room";
@@ -89,9 +90,28 @@ beforeEach(async () => {
     isDirector: (p) => toHex(p) === toHex(director.publicKey),
     sealed: () => sealed,
     tickets: () => tickets,
+    entered: (_r, p) => tickets.some((t) => toHex(t.pub) === toHex(p)),
     drawn: () => drawn,
   });
 });
+
+/** 상한을 작게 둔 방(같은 시계·등록·응모권) */
+function smallHub(limits: Partial<RoomLimits>) {
+  return new RoomHub(
+    {
+      clock,
+      policy: DEFAULT_WEBAUTHN_POLICY,
+      schedule: () => schedule,
+      isRegistered: (p) => registered.has(toHex(p)),
+      isDirector: () => false,
+      sealed: () => sealed,
+      tickets: () => tickets,
+      entered: (_r, p) => tickets.some((t) => toHex(t.pub) === toHex(p)),
+      drawn: () => false,
+    },
+    { ...DEFAULT_ROOM_LIMITS, ...limits },
+  );
+}
 
 async function passFor(who: SoftPasskey) {
   const { nonce } = hub.challenge(ROUND);
@@ -139,6 +159,81 @@ describe("대화 표(신분증 제시 한 번)", () => {
     ).rejects.toMatchObject({ status: 403 });
   });
 
+  it("기한이 지난 값은 409, 서버가 내지 않은 값·다른 회차 값은 403", async () => {
+    const { nonce, expiresAt } = hub.challenge(ROUND);
+    expect(expiresAt).toBeLessThanOrEqual(
+      clock.now() + DEFAULT_ROOM_LIMITS.nonceTtlMs,
+    );
+    const sign = (n: string) =>
+      alice.sign(roomPassMessage(ROUND, Buffer.from(n, "base64url")));
+    const signature = await sign(nonce);
+    clock.advance(expiresAt - clock.now() + 1);
+    await expect(
+      hub.issuePass(ROUND, { pub: alice.publicKey, signature, nonce }),
+    ).rejects.toMatchObject({ status: 409 });
+    // 한 바이트를 바꾼 값(서명은 그 값에 맞게 새로 해도)은 서버가 낸 값이 아니다
+    const fresh = Buffer.from(hub.challenge(ROUND).nonce, "base64url");
+    fresh[5] = (fresh[5] ?? 0) ^ 1;
+    const forged = fresh.toString("base64url");
+    await expect(
+      hub.issuePass(ROUND, {
+        pub: alice.publicKey,
+        signature: await sign(forged),
+        nonce: forged,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    // 다음 회차 방이 낸 값은 이 회차에서 쓰지 못한다
+    const next = roundTimes(schedule, ROUND + 1);
+    clock.advance(Math.max(0, next.opensAt * 1000 - clock.now()) + 1000);
+    const other = hub.challenge(ROUND + 1).nonce;
+    await expect(
+      hub.issuePass(ROUND, {
+        pub: alice.publicKey,
+        signature: await sign(other),
+        nonce: other,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("값을 많이 내줘도 먼저 받아 둔 값은 그대로 쓴다(발급한 값을 기억하지 않는다)", async () => {
+    const early = hub.challenge(ROUND).nonce;
+    for (let i = 0; i < 5000; i++) hub.challenge(ROUND);
+    const signature = await alice.sign(
+      roomPassMessage(ROUND, Buffer.from(early, "base64url")),
+    );
+    await expect(
+      hub.issuePass(ROUND, { pub: alice.publicKey, signature, nonce: early }),
+    ).resolves.toMatchObject({ id: expect.any(String) });
+  });
+
+  it("서명이 틀리면 값을 쓰지 않은 것으로 두고, 쓴 값 기억이 가득 차면 기한 안의 것을 버리지 않고 잠깐 거절한다", async () => {
+    const small = smallHub({ maxUsedNonces: 1 });
+    const { nonce } = small.challenge(ROUND);
+    const n = Buffer.from(nonce, "base64url");
+    const wrong = await bob.sign(roomPassMessage(ROUND, n));
+    await expect(
+      small.issuePass(ROUND, { pub: alice.publicKey, signature: wrong, nonce }),
+    ).rejects.toMatchObject({ status: 403 });
+    const signature = await alice.sign(roomPassMessage(ROUND, n));
+    await small.issuePass(ROUND, { pub: alice.publicKey, signature, nonce });
+    clock.advance(2000);
+    const second = small.challenge(ROUND).nonce;
+    const sig2 = await bob.sign(
+      roomPassMessage(ROUND, Buffer.from(second, "base64url")),
+    );
+    const take = () =>
+      small.issuePass(ROUND, {
+        pub: bob.publicKey,
+        signature: sig2,
+        nonce: second,
+      });
+    await expect(take()).rejects.toMatchObject({ status: 503 });
+    // 앞 값의 기한이 지나면 기억에서 지워져 다시 받는다(두 번째 값은 그보다 늦게 나와 아직 기한 안)
+    clock.advance(DEFAULT_ROOM_LIMITS.nonceTtlMs - 1500);
+    await expect(take()).resolves.toMatchObject({ id: expect.any(String) });
+    small.stop();
+  });
+
   it("국장 패스키는 등록이 없어도 표를 받고 국장으로 표시된다", async () => {
     const p = await passFor(director);
     const res = new FakeRes();
@@ -155,6 +250,9 @@ describe("스트림과 말", () => {
     const watcher = new FakeRes();
     hub.connect(ROUND, asRes(ra), a.pass);
     hub.connect(ROUND, asRes(watcher), undefined);
+    // 보는 사람 수는 1초마다 한 번 모아 알린다
+    expect(ra.of("watchers")).toHaveLength(0);
+    clock.advance(1000);
     expect(ra.of("watchers").at(-1)?.count).toBe(1);
     const rb = new FakeRes();
     hub.connect(ROUND, asRes(rb), b.pass);
@@ -170,6 +268,79 @@ describe("스트림과 말", () => {
     hub.connect(ROUND, asRes(late), undefined);
     expect(late.of("say")).toHaveLength(0);
     expect(JSON.stringify(late.of("hello")[0])).not.toContain("시리우스");
+  });
+
+  it("보는 연결이 가득 차도 표 가진 사람은 들어오고, 표 하나의 탭 수는 따로 묶는다", async () => {
+    const small = smallHub({ maxWatchers: 2, connectionsPerPass: 2 });
+    const { nonce } = small.challenge(ROUND);
+    const a = await small.issuePass(ROUND, {
+      pub: alice.publicKey,
+      signature: await alice.sign(
+        roomPassMessage(ROUND, Buffer.from(nonce, "base64url")),
+      ),
+      nonce,
+    });
+    const open = (pass: string | undefined) => {
+      const r = new FakeRes();
+      return { r, code: status(() => small.connect(ROUND, asRes(r), pass)) };
+    };
+    expect(open(undefined).code).toBe(200);
+    const second = open(undefined);
+    expect(second.code).toBe(200);
+    expect(open(undefined).code).toBe(503);
+    expect(open(a.pass).code).toBe(200);
+    expect(open(a.pass).code).toBe(200);
+    expect(open(a.pass).code).toBe(429);
+    // 보는 연결 하나가 나가면 다시 받는다
+    second.r.end();
+    expect(open(undefined).code).toBe(200);
+    small.stop();
+  });
+
+  it("봉인 뒤 응모권 목록은 방마다 한 번만 읽는다", async () => {
+    let reads = 0;
+    tickets = [
+      {
+        pub: alice.publicKey,
+        numbers: [1, 2, 3, 4, 5, 6],
+      } as unknown as Ticket,
+    ];
+    const counted = new RoomHub({
+      clock,
+      policy: DEFAULT_WEBAUTHN_POLICY,
+      schedule: () => schedule,
+      isRegistered: (p) => registered.has(toHex(p)),
+      isDirector: () => false,
+      sealed: () => sealed,
+      tickets: () => {
+        reads++;
+        return tickets;
+      },
+      entered: (_r, p) => tickets.some((t) => toHex(t.pub) === toHex(p)),
+      drawn: () => false,
+    });
+    const passIn = async (who: SoftPasskey) => {
+      const { nonce } = counted.challenge(ROUND);
+      const signature = await who.sign(
+        roomPassMessage(ROUND, Buffer.from(nonce, "base64url")),
+      );
+      return counted.issuePass(ROUND, { pub: who.publicKey, signature, nonce });
+    };
+    const a = await passIn(alice);
+    const b = await passIn(bob);
+    counted.connect(ROUND, asRes(new FakeRes()), a.pass);
+    expect(reads).toBe(0);
+    sealed = true;
+    clock.advance(1000);
+    for (let i = 0; i < 3; i++) {
+      const r = new FakeRes();
+      counted.connect(ROUND, asRes(r), i === 0 ? b.pass : undefined);
+      const hello = r.of("hello")[0];
+      expect(hello?.picks?.byPerson[a.id]).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(hello?.people.find((p) => p.id === b.id)?.entered).toBe(false);
+    }
+    expect(reads).toBe(1);
+    counted.stop();
   });
 
   it("40자를 넘으면 거절, 표 없이 말하면 거절", async () => {
@@ -382,24 +553,11 @@ describe("신고", () => {
   });
 
   it("세어 두는 말 수에 상한이 있고, 넘으면 오래된 말부터 버린다", async () => {
-    const small = new RoomHub(
-      {
-        clock,
-        policy: DEFAULT_WEBAUTHN_POLICY,
-        schedule: () => schedule,
-        isRegistered: (p) => registered.has(toHex(p)),
-        isDirector: () => false,
-        sealed: () => false,
-        tickets: () => [],
-        drawn: () => false,
-      },
-      {
-        ...DEFAULT_ROOM_LIMITS,
-        sayBurst: 10,
-        reportBurst: 10,
-        maxReportedMessages: 2,
-      },
-    );
+    const small = smallHub({
+      sayBurst: 10,
+      reportBurst: 10,
+      maxReportedMessages: 2,
+    });
     const passIn = async (who: SoftPasskey) => {
       const { nonce } = small.challenge(ROUND);
       const signature = await who.sign(

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { ServerResponse } from "node:http";
 import type { Clock } from "@game/fair-play";
 import {
@@ -44,9 +44,20 @@ export interface RoomLimits {
   closeAfterMs: number;
   /** 한 번 쓰는 값이 살아 있는 시간(ms) */
   nonceTtlMs: number;
-  maxConnections: number;
+  /**
+   * 표 없이 보는 연결(언덕 아래) 상한. 표 가진 사람의 연결과 따로 센다: 보는 연결이 아무리 많아도 언덕에 오른
+   * 우주인은 밀려나지 않게
+   */
+  maxWatchers: number;
+  /** 표 하나로 동시에 열 수 있는 연결(탭) 수. 표 가진 사람의 연결은 maxPasses × 이 값 안에 묶인다 */
+  connectionsPerPass: number;
   maxPasses: number;
-  maxNonces: number;
+  /**
+   * 기한 안에 이미 쓴 한 번 쓰는 값을 기억해 둘 수. 발급한 값은 서버가 기억하지 않는다(서버 비밀로 서명해 내준다).
+   * 기억은 서명이 맞은 뒤에만 하고 기한이 지나면 지운다. 가득 차면 기한 안의 것을 버리지 않고(버리면 다시 쓸 수 있게
+   * 된다) 새 서명을 잠깐 거절한다
+   */
+  maxUsedNonces: number;
   /** 서버 전체에 동시에 둘 방 수 */
   maxRooms: number;
   /** 시각 알림 사이(ms). 스트림이 끊기지 않게도 */
@@ -63,9 +74,11 @@ export const DEFAULT_ROOM_LIMITS: RoomLimits = {
   maxReportedMessages: 2000,
   closeAfterMs: 7 * 60_000,
   nonceTtlMs: 120_000,
-  maxConnections: 600,
+  // 회사 하나(125명)가 탭 여럿을 열어도 넉넉하게. 공유 IP를 세지 않고 방마다 연결 수로만 묶는다
+  maxWatchers: 2000,
+  connectionsPerPass: 6,
   maxPasses: 600,
-  maxNonces: 2000,
+  maxUsedNonces: 5000,
   maxRooms: 4,
   heartbeatMs: 15_000,
 };
@@ -79,8 +92,10 @@ export interface RoomDeps {
   isDirector: (pub: Uint8Array) => boolean;
   /** 봉인(마감)이 끝났는지 */
   sealed: (round: number) => boolean;
-  /** 그 회차 응모권(봉인 뒤 공개되는 것) */
+  /** 그 회차 응모권(봉인 뒤 공개되는 것). 방은 봉인 뒤 한 번만 읽는다 */
   tickets: (round: number) => Ticket[];
+  /** 이 열쇠가 그 회차에 예측했는지(봉인 전 얼굴 표시용, 전체 목록을 읽지 않는 조회) */
+  entered: (round: number, pub: Uint8Array) => boolean;
   /** 회차 기록이 닫혔는지(결과가 나왔는지) */
   drawn: (round: number) => boolean;
 }
@@ -149,6 +164,8 @@ interface Pass {
   report: Bucket;
   lastCheer: number;
   kicked: boolean;
+  /** 봉인 전에 예측한 것을 한 번 보았으면 true(예측은 거두어지지 않으니 다시 묻지 않는다) */
+  entered: boolean;
 }
 
 /** 표마다 물통: 몰아서 burst번, 그 뒤 intervalMs마다 한 번씩 찬다 */
@@ -185,8 +202,17 @@ interface Room {
   entryDeadline: number;
   closesAt: number;
   passes: Map<string, Pass>;
-  nonces: Map<string, number>;
+  /** 이미 쓴 한 번 쓰는 값(hex) → 기한(ms) */
+  usedNonces: Map<string, number>;
   connections: Set<Connection>;
+  /** 표 없이 보는 연결 수와, 화면들에 아직 알리지 않은 바뀜이 있는지(1초마다 한 번 알린다) */
+  watcherCount: number;
+  watchersDirty: boolean;
+  /** 봉인 뒤 한 번 만든 고른 별(별마다 수, 열쇠마다 6개). 봉인 전에는 null */
+  sealedPicks: {
+    counts: Record<number, number>;
+    byPub: Map<string, number[]>;
+  } | null;
   reports: Map<string, Set<string>>;
   sealedSent: boolean;
   drawnSent: boolean;
@@ -204,6 +230,8 @@ const charCount = roomCharCount;
 export class RoomHub {
   private rooms = new Map<number, Room>();
   private stopBeat: () => void;
+  /** 한 번 쓰는 값에 붙이는 서명 열쇠(프로세스마다 새로. 다시 띄우면 방도 비므로 앞 값이 쓸모없어져도 된다) */
+  private readonly nonceKey = randomBytes(32);
 
   constructor(
     private deps: RoomDeps,
@@ -263,8 +291,11 @@ export class RoomHub {
       entryDeadline: times.entryDeadline,
       closesAt: times.closesAt,
       passes: new Map(),
-      nonces: new Map(),
+      usedNonces: new Map(),
       connections: new Set(),
+      watcherCount: 0,
+      watchersDirty: false,
+      sealedPicks: null,
       reports: new Map(),
       sealedSent: this.deps.sealed(round),
       drawnSent: this.deps.drawn(round),
@@ -275,27 +306,80 @@ export class RoomHub {
     return room;
   }
 
-  /** ① 한 번 쓰는 값 */
+  /**
+   * ① 한 번 쓰는 값(16바이트, 서명 내용 형식은 규칙 패키지가 정한다): 발급 시각(초, 4) ‖ 무작위(4) ‖
+   * 서버 비밀로 만든 HMAC(회차 ‖ 앞 8바이트)의 앞 8바이트. 서버는 발급한 값을 기억하지 않아 요청이 몰려도
+   * 먼저 받아 둔 정상 사용자의 값이 밀려나지 않는다. 다시 쓰지 못하게 하는 것은 `consumeNonce`
+   */
   challenge(round: number): { nonce: string; expiresAt: number } {
-    const room = this.room(round);
-    const now = this.nowMs();
-    for (const [n, at] of room.nonces)
-      if (now - at > this.limits.nonceTtlMs) room.nonces.delete(n);
-    while (room.nonces.size >= this.limits.maxNonces) {
-      const first = room.nonces.keys().next().value as string;
-      room.nonces.delete(first);
-    }
-    const nonce = toBase64Url(randomBytes(16));
-    room.nonces.set(nonce, now);
-    return { nonce, expiresAt: now + this.limits.nonceTtlMs };
+    this.room(round);
+    const issued = Math.floor(this.nowMs() / 1000);
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(issued >>> 0, 0);
+    randomBytes(4).copy(head, 4);
+    const nonce = Buffer.concat([head, this.nonceMac(round, head)]);
+    return {
+      nonce: toBase64Url(nonce),
+      expiresAt: issued * 1000 + this.limits.nonceTtlMs,
+    };
   }
 
-  private takeNonce(room: Room, nonce: string): Uint8Array {
-    const at = room.nonces.get(nonce);
-    if (at === undefined || this.nowMs() - at > this.limits.nonceTtlMs)
-      throw new EntryError("확인 값이 맞지 않거나 시간이 지났습니다", 403);
-    room.nonces.delete(nonce);
-    return Buffer.from(nonce, "base64url");
+  private nonceMac(round: number, head: Uint8Array): Buffer {
+    const r = Buffer.alloc(4);
+    r.writeUInt32BE(round >>> 0, 0);
+    return createHmac("sha256", this.nonceKey)
+      .update("stardraw/room-nonce/v1")
+      .update(r)
+      .update(head)
+      .digest()
+      .subarray(0, 8);
+  }
+
+  /**
+   * 서명을 보기 전에 값이 이 서버·이 회차가 낸 것인지, 기한 안인지, 이미 쓰지 않았는지 본다.
+   * 기한이 지났으면 409(화면이 새로 받아 다시 시도한다), 그 밖은 403
+   */
+  private checkNonce(
+    room: Room,
+    nonce: string,
+  ): { bytes: Uint8Array; hex: string; expiresAt: number } {
+    const bytes = Buffer.from(nonce, "base64url");
+    const bad = () => new EntryError("확인 값이 맞지 않습니다", 403);
+    // 같은 바이트를 다른 글자로 적은 값을 따로 세지 않게, 정규 표기만 받는다
+    if (bytes.length !== 16 || toBase64Url(bytes) !== nonce) throw bad();
+    const head = bytes.subarray(0, 8);
+    if (!timingSafeEqual(bytes.subarray(8), this.nonceMac(room.round, head)))
+      throw bad();
+    const issuedMs = bytes.readUInt32BE(0) * 1000;
+    const now = this.nowMs();
+    if (issuedMs > now + 1000) throw bad();
+    const expiresAt = issuedMs + this.limits.nonceTtlMs;
+    if (now > expiresAt)
+      throw new EntryError("확인 값의 기한이 지났습니다", 409);
+    const hex = bytes.toString("hex");
+    if (room.usedNonces.has(hex))
+      throw new EntryError("이미 쓴 확인 값입니다", 403);
+    return { bytes, hex, expiresAt };
+  }
+
+  /**
+   * 서명이 맞은 뒤 그 값을 썼다고 기억한다. 서명 확인을 기다리는 사이 같은 값이 먼저 쓰였으면 거절한다
+   * (이 함수는 기다림 없이 한 번에 돌아 둘 다 받는 일이 없다)
+   */
+  private consumeNonce(
+    room: Room,
+    nonce: { hex: string; expiresAt: number },
+  ): void {
+    if (room.usedNonces.has(nonce.hex))
+      throw new EntryError("이미 쓴 확인 값입니다", 403);
+    if (room.usedNonces.size >= this.limits.maxUsedNonces) {
+      const now = this.nowMs();
+      for (const [n, until] of room.usedNonces)
+        if (until < now) room.usedNonces.delete(n);
+      if (room.usedNonces.size >= this.limits.maxUsedNonces)
+        throw new EntryError("관측지가 가득 찼습니다", 503);
+    }
+    room.usedNonces.set(nonce.hex, nonce.expiresAt);
   }
 
   /** ② 대화 표: 등록한 우주인의 패스키 서명(또는 국장 패스키) */
@@ -304,17 +388,19 @@ export class RoomHub {
     input: { pub: Uint8Array; signature: SignatureData; nonce: string },
   ): Promise<{ pass: string; id: string }> {
     const room = this.room(round);
-    const nonce = this.takeNonce(room, input.nonce);
+    const nonce = this.checkNonce(room, input.nonce);
     const director = this.deps.isDirector(input.pub);
     if (!director && !this.deps.isRegistered(input.pub))
       throw new EntryError("등록한 우주인만 말할 수 있습니다", 403);
     const ok = await verifyEntrantSignature(
       input.pub,
-      roomPassMessage(round, nonce),
+      roomPassMessage(round, nonce.bytes),
       input.signature,
       this.deps.policy,
     );
     if (!ok) throw new EntryError("신분증 확인이 맞지 않습니다", 403);
+    if (room.closed) throw new EntryError("이 회차 관측지는 닫혔습니다", 410);
+    this.consumeNonce(room, nonce);
     const pubHex = toHex(input.pub);
     // 같은 사람이 다시 받으면 앞 표를 바꾼다(얼굴은 하나)
     for (const [t, p] of room.passes)
@@ -333,6 +419,7 @@ export class RoomHub {
       report: { tokens: this.limits.reportBurst, refillAt: this.nowMs() },
       lastCheer: 0,
       kicked: false,
+      entered: false,
     };
     room.passes.set(token, pass);
     return { pass: token, id: pass.id };
@@ -347,18 +434,34 @@ export class RoomHub {
     return pass;
   }
 
+  /**
+   * 봉인 뒤 고른 별: 응모권 목록을 방마다 한 번만 읽어 지도로 둔다(봉인 뒤에는 목록이 바뀌지 않는다).
+   * 예전에는 들어오는 사람마다·인사마다 목록 전체를 읽어, 수천 장·수백 명이면 인사 한 번이 무거웠다
+   */
+  private sealedPicks(room: Room): Room["sealedPicks"] {
+    if (room.sealedPicks) return room.sealedPicks;
+    if (!this.deps.sealed(room.round)) return null;
+    const counts: Record<number, number> = {};
+    const byPub = new Map<string, number[]>();
+    for (const t of this.deps.tickets(room.round)) {
+      for (const n of t.numbers) counts[n] = (counts[n] ?? 0) + 1;
+      byPub.set(toHex(t.pub), [...t.numbers]);
+    }
+    room.sealedPicks = { counts, byPub };
+    return room.sealedPicks;
+  }
+
   private person(room: Room, pass: Pass): Person {
-    const ticket = this.deps
-      .tickets(room.round)
-      .find((t) => toHex(t.pub) === pass.pubHex);
+    const sealed = this.sealedPicks(room);
+    const chosen = sealed?.byPub.get(pass.pubHex);
+    if (!sealed && !pass.entered)
+      pass.entered = this.deps.entered(room.round, pass.pub);
     return {
       id: pass.id,
       pub: toBase64Url(pass.pub),
-      entered: ticket !== undefined,
+      entered: sealed ? chosen !== undefined : pass.entered,
       ...(pass.director ? { director: true } : {}),
-      ...(ticket && this.deps.sealed(room.round)
-        ? { picks: [...ticket.numbers] }
-        : {}),
+      ...(chosen ? { picks: [...chosen] } : {}),
     };
   }
 
@@ -373,24 +476,15 @@ export class RoomHub {
     return out;
   }
 
-  private watchers(room: Room): number {
-    let n = 0;
-    for (const c of room.connections) if (!c.pass) n++;
-    return n;
-  }
-
   private picks(room: Room): Picks | null {
-    if (!this.deps.sealed(room.round)) return null;
-    const counts: Record<number, number> = {};
+    const sealed = this.sealedPicks(room);
+    if (!sealed) return null;
     const byPerson: Record<string, number[]> = {};
-    const inRoom = new Map<string, string>();
-    for (const p of room.passes.values()) inRoom.set(p.pubHex, p.id);
-    for (const t of this.deps.tickets(room.round)) {
-      for (const n of t.numbers) counts[n] = (counts[n] ?? 0) + 1;
-      const id = inRoom.get(toHex(t.pub));
-      if (id) byPerson[id] = [...t.numbers];
+    for (const p of room.passes.values()) {
+      const chosen = sealed.byPub.get(p.pubHex);
+      if (chosen) byPerson[p.id] = [...chosen];
     }
-    return { counts, byPerson };
+    return { counts: { ...sealed.counts }, byPerson };
   }
 
   /** ③ 스트림 연결(표가 있으면 얼굴로, 없으면 보는 사람으로) */
@@ -400,7 +494,13 @@ export class RoomHub {
     if (typeof token === "string" && token) {
       pass = this.passOf(room, token);
     }
-    if (room.connections.size >= this.limits.maxConnections)
+    // 표 가진 사람과 보는 사람을 따로 센다(보는 연결이 차도 언덕에 오른 우주인은 들어온다)
+    if (pass) {
+      let mine = 0;
+      for (const c of room.connections) if (c.pass === pass) mine++;
+      if (mine >= this.limits.connectionsPerPass)
+        throw new EntryError("이 표로 연 화면이 너무 많습니다", 429);
+    } else if (room.watcherCount >= this.limits.maxWatchers)
       throw new EntryError("관측지가 가득 찼습니다", 503);
     res.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
@@ -411,6 +511,10 @@ export class RoomHub {
     const conn: Connection = { res, pass };
     const wasHere = pass ? this.hasFace(room, pass.id) : false;
     room.connections.add(conn);
+    if (!pass) {
+      room.watcherCount++;
+      room.watchersDirty = true;
+    }
     this.write(conn, {
       type: "hello",
       serverTime: this.nowMs(),
@@ -420,7 +524,7 @@ export class RoomHub {
       closesAt: room.closesAt,
       me: pass?.id ?? null,
       people: this.people(room),
-      watchers: this.watchers(room),
+      watchers: room.watcherCount,
       sealed: this.deps.sealed(round),
       drawn: this.deps.drawn(round),
       picks: this.picks(room),
@@ -431,20 +535,20 @@ export class RoomHub {
         { type: "join", person: this.person(room, pass) },
         conn,
       );
-    else if (!pass)
-      this.broadcast(
-        room,
-        { type: "watchers", count: this.watchers(room) },
-        conn,
-      );
+    // 보는 사람 수는 드나들 때마다 모두에게 알리지 않고 1초마다 한 번(tick). 보는 연결이 많을 때 소식이 연결 수의
+    // 제곱으로 늘지 않게
+    let gone = false;
     res.on("close", () => {
+      if (gone) return;
+      gone = true;
       room.connections.delete(conn);
+      if (!conn.pass) {
+        room.watcherCount--;
+        room.watchersDirty = true;
+      }
       if (room.closed) return;
-      if (conn.pass) {
-        if (!this.hasFace(room, conn.pass.id))
-          this.broadcast(room, { type: "leave", id: conn.pass.id });
-      } else
-        this.broadcast(room, { type: "watchers", count: this.watchers(room) });
+      if (conn.pass && !this.hasFace(room, conn.pass.id))
+        this.broadcast(room, { type: "leave", id: conn.pass.id });
     });
   }
 
@@ -547,14 +651,16 @@ export class RoomHub {
     const room = this.room(round, false);
     if (!this.deps.isDirector(input.pub))
       throw new EntryError("국장 열쇠가 아닙니다", 403);
-    const nonce = this.takeNonce(room, input.nonce);
+    const nonce = this.checkNonce(room, input.nonce);
     const ok = await verifyEntrantSignature(
       input.pub,
-      roomModMessage(round, input.action, input.target, nonce),
+      roomModMessage(round, input.action, input.target, nonce.bytes),
       input.signature,
       this.deps.policy,
     );
     if (!ok) throw new EntryError("국장 서명이 맞지 않습니다", 403);
+    if (room.closed) throw new EntryError("이 회차 관측지는 닫혔습니다", 410);
+    this.consumeNonce(room, nonce);
     if (input.action === "hide") {
       this.broadcast(room, { type: "hide", id: input.target });
       return;
@@ -588,6 +694,12 @@ export class RoomHub {
         this.closeRoom(room);
         continue;
       }
+      if (room.watchersDirty) {
+        room.watchersDirty = false;
+        this.broadcast(room, { type: "watchers", count: room.watcherCount });
+      }
+      for (const [n, until] of room.usedNonces)
+        if (until < now) room.usedNonces.delete(n);
       if (
         Math.floor(now / 1000) % Math.round(this.limits.heartbeatMs / 1000) ===
         0
@@ -601,7 +713,8 @@ export class RoomHub {
     for (const c of room.connections) c.res.end();
     room.connections.clear();
     room.passes.clear();
-    room.nonces.clear();
+    room.usedNonces.clear();
+    room.sealedPicks = null;
   }
 
   private write(conn: Connection, event: RoomEvent): void {

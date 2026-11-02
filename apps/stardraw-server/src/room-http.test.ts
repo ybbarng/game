@@ -2,9 +2,11 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import {
   encodeSignatureData,
+  entrantId,
   fromBase64Url,
   roomPassMessage,
   toBase64Url,
+  toHex,
 } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { RoomClient, type RoomEvent } from "../../web/src/stardraw/room-client";
@@ -31,6 +33,7 @@ async function serve(directors: Set<string> = new Set()) {
     isDirector: (pub) => directors.has(toBase64Url(pub)),
     sealed: (round) => rig.store.seal(round) !== null,
     tickets: (round) => rig.store.entries(round),
+    entered: (round, pub) => rig.store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => rig.store.record(round) !== null,
   });
   const server = createHttpServer(rig.engine, rig.relay, {
