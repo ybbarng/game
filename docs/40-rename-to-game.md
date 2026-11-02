@@ -84,3 +84,14 @@ CI나 빌드가 늦어 S+12분이 칸 끝(:32·:52·:12)을 넘을 것 같으면
 **되돌리기**: 옛 웹 컨테이너를 내리기 전이면 그대로 두면 된다. 내린 뒤에 문제가 생기면 `docker compose -p mighty up -d`(옛 이미지가 서버에 남아 있다)로 다시 띄우고, image.yml을 되돌려 push한다. 신호 서버는 game-signal을 내리고 mighty-signal을 다시 띄운다.
 
 4단계(이 맥 폴더 이름)는 이 칸에서 하지 않는다. 모든 세션을 닫을 수 있을 때 따로 한다.
+
+## 진행 기록(2026-11-02)
+
+- 1단계: 12:09 배포(7a91c93).
+- 2단계: 12:10 GitHub 저장소 이름 변경(ybbarng/game, ybbarng/game-archive), 로컬 원격 주소 고침.
+- 3단계(칸 13:38~13:52, 옛 웹만 13:58 칸):
+  - 13:40 사용자가 옛 신호·진단을 내리고 servers가 game-signal·game-diag를 띄움(13:41).
+  - 13:42 game push(bbdad5b: 사이트 저장소 주소, 이미지 `ghcr.io/ybbarng/game`). CI·Image 성공, 13:51 game-game-1 healthz 통과.
+  - 13:58 사용자가 옛 웹을 내림(`docker compose -p mighty down`). /, /healthz, /stardraw, /stardraw-api/ 200, /diag 405(GET), /signal/은 신호 서버가 답함, Gatus 실패 0, 별 따기 서버는 그대로. servers PLAN 23단계 f1a38b7.
+- 남은 일(사용자): 새 GHCR 패키지 공개 범위 맞추기, authorized_keys 경로 고친 뒤 링크 폴더 지우기, 며칠 뒤 옛 이미지와 `~/data/mighty-diag` 지우기.
+- 4단계(이 맥 폴더)는 모든 세션을 닫을 때 따로 한다. 그 뒤 servers가 verify-stardraw.sh scp 경로를 고친다.
