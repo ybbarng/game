@@ -1,4 +1,4 @@
-# 게임 센터 (game.byb.kr, 저장소 이름은 아직 mighty)
+# 게임 센터 (game.byb.kr, 저장소 ybbarng/game)
 
 대학 시절 하던 카드 게임 마이티(원작 Mighty Network 4.0)를 웹으로 되살린 프로젝트에서 시작해, 2026-10-28부터 게임 모음으로 넓히는 중이다(docs/18, 19). 첫 화면은 게임 목록이고 오목(/omok)·장기(/janggi)·체스(/chess)·바둑(/baduk)·마이티(/mighty)·하트(/hearts)·고스톱(/gostop)·민화투(/minhwatu)·나이롱뽕(/nyrongppong)·숫자야구(/baseball)·윷놀이(/yut, docs/37)·하늘의 별 따기(/stardraw, 정시 로또, 지금은 기기 안 연습 장부, docs/36)가 있다. 화투 셋도 멘탈 포커로 돈다. 다음은 실시간 판정(원카드), 그리고 정석·초반을 익히는 "수 배우기"(docs/23). 서버 없이 친구와 온라인 대전(WebRTC, 방장 기기가 엔진), 혼자 하기(컴퓨터 여러 단계), 튜토리얼이 있고, 카드 게임은 멘탈 포커로 방장도 남의 패를 모른다.
 
@@ -9,7 +9,7 @@
 - `packages/engine` 마이티 엔진(순수 함수) · `packages/ai` 마이티 컴퓨터 · `packages/hearts-engine` · `packages/hearts-ai`
 - `packages/fair-play` — 멘탈 포커(SRA 섞기, 열쇠 증명 `proof.ts`, 섞기 증명 `shuffle-proof.ts`, 판 끝 다시 계산 `audit.ts`)
 - `docs/` — 번호순 설계 문서. 남은 일은 `06-backlog.md`
-- 원작 효과음과 2019년 코드·옛 기록은 비공개 저장소 `ybbarng/mighty-archive`에 있다(효과음은 라이선스가 없어 이 공개 저장소와 배포에 넣지 않는다, docs/16)
+- 원작 효과음과 2019년 코드·옛 기록은 비공개 저장소 `ybbarng/game-archive`에 있다(효과음은 라이선스가 없어 이 공개 저장소와 배포에 넣지 않는다, docs/16)
 
 ## 명령
 - 개발 서버: `pnpm dev` (포트 3456)
