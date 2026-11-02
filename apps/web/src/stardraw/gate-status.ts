@@ -27,7 +27,8 @@ export function gateStatusLine(
   s: LedgerStatus,
   live: number | null,
 ): string {
-  if (live !== null) return `지금 ${roundShort(schedule, live)} 관측 중이에요.`;
+  // 관측 1분 내내 다음 회차 접수 시각도 함께(예전에는 실시간 관측 중이면 앞 말만이라 끝 몇 초만 보였다)
+  if (live !== null) return observingLine(schedule, live);
   const name = roundShort(schedule, s.round);
   if (s.phase === "open")
     return `지금 ${name} 예측을 받고 있어요 · 마감까지 ${formatLeft(s.times.entryDeadline - s.now)}`;
@@ -44,6 +45,11 @@ export function gateStatusLine(
   const drawAt = roundTimes(schedule, closed).closesAt + DRAND_DELAY;
   if (s.now < drawAt)
     return `${closedName} 예측을 마감했어요 · 관측까지 ${formatLeft(drawAt - s.now)}`;
-  const next = closed + 1;
-  return `지금 ${closedName} 관측 중이에요 · ${roundShort(schedule, next)} 예측은 ${gateClock(acceptFrom(schedule, next))}부터`;
+  return observingLine(schedule, closed);
+}
+
+/** 관측 중인 회차와 다음 회차 접수 시각 */
+function observingLine(schedule: Schedule, round: number): string {
+  const next = round + 1;
+  return `지금 ${roundShort(schedule, round)} 관측 중이에요 · ${roundShort(schedule, next)} 예측은 ${gateClock(acceptFrom(schedule, next))}부터`;
 }

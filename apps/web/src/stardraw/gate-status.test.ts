@@ -55,10 +55,10 @@ describe("홈 상태 줄", () => {
     expect(line()).toMatch(/^지금 2회 예측을 받고 있어요 · 마감까지 /);
   });
 
-  it("실시간 관측 중이면 그 회차를 말한다", () => {
+  it("실시간 관측 중이면 그 회차와 다음 회차 접수 시각을 말한다(관측 1분 내내)", () => {
     const { ledger } = setup();
     expect(gateStatusLine(ledger.schedule, ledger.status(), 1)).toBe(
-      "지금 1회 관측 중이에요.",
+      `지금 1회 관측 중이에요 · 2회 예측은 ${gateClock(acceptFrom(ledger.schedule, 2))}부터`,
     );
   });
 });
