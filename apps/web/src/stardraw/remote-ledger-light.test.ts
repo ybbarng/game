@@ -275,7 +275,7 @@ describe("서버 장부: 가벼운 확인", () => {
       ),
     });
     await expect(ledger.keyTickets([ME], [])).rejects.toThrow(
-      "2회차 응모권 증명이 맞지 않습니다",
+      "2회차 예측서 증명이 맞지 않습니다",
     );
   });
 
@@ -343,7 +343,7 @@ describe("서버 장부: 가벼운 확인", () => {
     expect((await ledger.verifyRound(1)).problems).toEqual([
       {
         round: 1,
-        message: "1회차 파일의 응모권 목록이 기록의 머클 루트와 다르다",
+        message: "1회차 파일의 예측서 목록이 기록의 머클 루트와 다르다",
       },
     ]);
   });

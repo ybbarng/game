@@ -195,8 +195,8 @@ export function StardrawDemo() {
           </div>
           <h1 className="font-black text-3xl">하늘의 별 따기 데모</h1>
           <p className="break-keep text-white/70">
-            응모 → 추첨 → 당첨자 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
-            24명이 회차마다 함께 응모합니다.
+            예측 → 추첨 → 당첨자 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
+            24명이 회차마다 함께 예측합니다.
           </p>
           {!tourId && <TourList />}
         </header>
@@ -215,7 +215,7 @@ export function StardrawDemo() {
                 </span>
                 <span className="text-sm text-white/65">
                   {status.phase === "open"
-                    ? `응모 받는 중 · 마감까지 ${formatLeft(status.times.entryDeadline - status.now)} · 추첨까지 ${formatLeft(status.times.closesAt + DRAND_DELAY - status.now)}`
+                    ? `예측 받는 중 · 마감까지 ${formatLeft(status.times.entryDeadline - status.now)} · 추첨까지 ${formatLeft(status.times.closesAt + DRAND_DELAY - status.now)}`
                     : status.phase === "closing"
                       ? "곧 마감"
                       : "앞 회차 추첨을 기다리는 중"}
@@ -245,11 +245,11 @@ export function StardrawDemo() {
               </div>
             </Step>
 
-            <Step n={2} title="응모">
+            <Step n={2} title="예측">
               {current ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-white/70">
-                    이번 회차에 응모했습니다. 「지금 추첨」을 눌러 보세요.
+                    이번 회차에 예측했습니다. 「지금 추첨」을 눌러 보세요.
                   </p>
                   <Receipt
                     ticket={current.ticket}
@@ -303,7 +303,7 @@ export function StardrawDemo() {
                 ) : (
                   <div className="sd-glass flex flex-wrap items-center gap-3 rounded-2xl p-4">
                     <span className="tabular-nums">
-                      제 {latest.ticket.round}회 내 응모권:{" "}
+                      제 {latest.ticket.round}회 내 예측서:{" "}
                       <b data-demo-result>
                         {latestRank ? `${RANK_LABEL[latestRank]} 당첨` : "낙첨"}
                       </b>
@@ -319,7 +319,7 @@ export function StardrawDemo() {
                 )
               ) : (
                 <p className="text-sm text-white/60">
-                  응모한 뒤 「지금 추첨」을 누르면 여기서 추첨을 봅니다.
+                  예측한 뒤 「지금 추첨」을 누르면 여기서 추첨을 봅니다.
                 </p>
               )}
             </Step>
@@ -424,8 +424,8 @@ export function StardrawDemo() {
                 </div>
               ) : (
                 <p className="text-sm text-white/60">
-                  당첨된 응모권이 있으면 여기서 당첨자 폰과 확인하는 사람 화면을
-                  나란히 놓고 확인해 봅니다. 응모할 때 「1등 되게」를 눌러
+                  당첨된 예측서가 있으면 여기서 당첨자 폰과 확인하는 사람 화면을
+                  나란히 놓고 확인해 봅니다. 예측할 때 「1등 되게」를 눌러
                   보세요.
                 </p>
               )}
@@ -463,7 +463,7 @@ export function StardrawDemo() {
               <p className="break-keep text-sm text-white/70">
                 데모 기관 계정으로 벌집 성단 소속을 받아 봅니다. 「데모 소속
                 차리기」는 데모 국장으로 소속 추가와 자격 기간 열기를 하고
-                예고를 건너뜁니다. 받은 다음 회차 응모부터 소속이 표시됩니다.
+                예고를 건너뜁니다. 받은 다음 회차 예측부터 소속이 표시됩니다.
               </p>
               <QualifyPanel
                 services={services}

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { TicketView } from "@/stardraw/components/TicketView";
 
 export const metadata: Metadata = {
-  title: { absolute: "응모권 · 하늘의 별 따기" },
+  title: { absolute: "예측서 · 하늘의 별 따기" },
 };
 
 export const viewport: Viewport = { themeColor: "#070d19" };

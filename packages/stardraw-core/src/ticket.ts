@@ -82,11 +82,11 @@ function ticketPrefix(t: UnsignedTicket): Uint8Array {
 export function ticketContent(t: UnsignedTicket): Uint8Array {
   const prefix = ticketPrefix(t);
   if (t.v === TICKET_VERSION) {
-    if (t.qual) throw new Error("v1 응모권에는 자격 증서가 없다");
+    if (t.qual) throw new Error("v1 예측서에는 자격 증서가 없다");
     return prefix;
   }
   if (t.v !== TICKET_VERSION_QUAL || !t.qual)
-    throw new Error("v2 응모권에는 자격 증서가 있어야 한다");
+    throw new Error("v2 예측서에는 자격 증서가 있어야 한다");
   return concat(
     prefix,
     encodeQualCert(t.qual.cert),
@@ -96,7 +96,7 @@ export function ticketContent(t: UnsignedTicket): Uint8Array {
 
 /** 자격 서명 대상: 이 응모권(v·round·numbers·pub)에 이 증서를 붙인다 */
 export function ticketQualMessage(t: UnsignedTicket): Uint8Array {
-  if (!t.qual) throw new Error("자격 증서가 없는 응모권");
+  if (!t.qual) throw new Error("자격 증서가 없는 예측서");
   return qualSigMessage(ticketPrefix(t), t.qual.cert);
 }
 
@@ -121,7 +121,7 @@ export function decodeTicket(bytes: Uint8Array): Ticket {
   const r = new ByteReader(bytes);
   const v = r.u8();
   if (v !== TICKET_VERSION && v !== TICKET_VERSION_QUAL)
-    throw new Error(`모르는 응모권 판: ${v}`);
+    throw new Error(`모르는 예측서 판: ${v}`);
   const round = r.u32();
   const numbers = Array.from(r.fixed(PICK_COUNT));
   const pub = r.fixed(PUBLIC_KEY_LENGTH);

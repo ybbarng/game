@@ -142,7 +142,7 @@ async function ticket(
   const t = await makeTicket(signer, round, numbers, challenge, POW_TARGET, {
     params: ATTACK_POW,
   });
-  if (!t) throw new Error("응모권을 만들지 못했다");
+  if (!t) throw new Error("예측서를 만들지 못했다");
   return t;
 }
 
@@ -347,7 +347,7 @@ function myTicket(w: World): Ticket {
   const t = (w.ledger.tickets[0] ?? []).find((x) =>
     equalBytes(x.pub, me.signer.publicKey),
   );
-  if (!t) throw new Error("내 응모권이 없다");
+  if (!t) throw new Error("내 예측서가 없다");
   return t;
 }
 
@@ -395,8 +395,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-insert",
     role: "operator",
-    title: "결과를 보고 내 응모권 끼워 넣기",
-    how: "drand 값이 나온 뒤 당첨 번호로 응모권을 만들어 넣고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    title: "결과를 보고 내 예측서 끼워 넣기",
+    how: "drand 값이 나온 뒤 당첨 번호로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 쓴다",
     run: async (w) => {
       const l = cloneLedger(w);
       const challenge = genesisHash(l.genesis);
@@ -410,15 +410,15 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "응모권 목록이 바뀌면 봉인 값이 바뀐다. 마감 직후 기관이 서명한 토큰은 옛 봉인 값을 담고 있다",
+        "예측서 목록이 바뀌면 봉인 값이 바뀐다. 마감 직후 기관이 서명한 토큰은 옛 봉인 값을 담고 있다",
       );
     },
   },
   {
     id: "op-remove",
     role: "operator",
-    title: "남의 당첨 응모권 빼기",
-    how: "1회차 1등 응모권(나)을 목록에서 빼고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    title: "남의 당첨 예측서 빼기",
+    how: "1회차 1등 예측서(나)를 목록에서 빼고, 뒤 기록과 앵커까지 고쳐 쓴다",
     run: async (w) => {
       const l = cloneLedger(w);
       const mine = ticketId(myTicket(w));
@@ -429,10 +429,10 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       const result = await ledgerAttack(
         l,
-        "봉인 값이 기관 토큰과 어긋난다. 나는 응모 영수증(서버 서명)으로 빠진 것을 누구에게나 보일 수 있다",
+        "봉인 값이 기관 토큰과 어긋난다. 나는 예측 접수증(서버 서명)으로 빠진 것을 누구에게나 보일 수 있다",
       );
       result.caught.push(
-        "나: 내 응모권이 들어 있다는 증명(머클 증명)이 나오지 않는다",
+        "나: 내 예측서가 들어 있다는 증명(머클 증명)이 나오지 않는다",
       );
       return result;
     },
@@ -441,7 +441,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-history",
     role: "operator",
     title: "지난 회차 기록 고치기",
-    how: "1회차 기록의 응모 수를 고치고, 사슬은 다시 잇지 않는다",
+    how: "1회차 기록의 예측 수를 고치고, 사슬은 다시 잇지 않는다",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
@@ -508,7 +508,7 @@ export const ATTACKS: readonly Attack[] = [
       });
       return {
         caught: problems.map((p) => `확인하는 분 기기: ${p}`),
-        why: "확인하는 분 기기는 장부에 있는 그 응모권의 공개 열쇠로만 서명을 받는다",
+        why: "확인하는 분 기기는 장부에 있는 그 예측서의 공개 열쇠로만 서명을 받는다",
       };
     },
   },
@@ -564,8 +564,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "en-impersonate",
     role: "entrant",
-    title: "남의 이름으로 응모",
-    how: "민지의 공개 열쇠를 넣은 응모권을 내 열쇠로 서명해 낸다",
+    title: "남의 이름으로 예측",
+    how: "민지의 공개 열쇠를 넣은 예측서를 내 열쇠로 서명해 낸다",
     run: async (w) => {
       const l = cloneLedger(w);
       const minji = w.people[1] as Person;
@@ -587,7 +587,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "응모권 서명은 그 공개 열쇠의 비밀 열쇠로만 만들 수 있다",
+        "예측서 서명은 그 공개 열쇠의 비밀 열쇠로만 만들 수 있다",
       );
     },
   },
@@ -595,7 +595,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-double",
     role: "entrant",
     title: "한 열쇠로 두 장 내기",
-    how: "준호가 같은 열쇠로 번호만 다른 응모권을 한 장 더 낸다",
+    how: "준호가 같은 열쇠로 번호만 다른 예측서를 한 장 더 낸다",
     run: async (w) => {
       const l = cloneLedger(w);
       const junho = w.people[2] as Person;
@@ -609,7 +609,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "응모자 id(공개 열쇠의 해시)는 회차마다 한 장만 된다. 서버가 받아 줘도 검사에서 드러난다",
+        "예측자 id(공개 열쇠의 해시)는 회차마다 한 장만 된다. 서버가 받아 줘도 검사에서 드러난다",
       );
     },
   },
@@ -663,7 +663,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-fake-link",
     role: "entrant",
     title: "남의 당첨으로 확인 링크 만들기",
-    how: "민지가 내 1등 응모권의 확인 링크를 자기 열쇠로 서명해 서버에 올린다",
+    how: "민지가 내 1등 예측서의 확인 링크를 자기 열쇠로 서명해 서버에 올린다",
     run: async (w) => {
       const t = myTicket(w);
       const minji = w.people[1] as Person;
@@ -671,7 +671,7 @@ export const ATTACKS: readonly Attack[] = [
       const problems = await verifyInvite(forged, t);
       return {
         caught: problems.map((p) => `서버: ${p}`),
-        why: "서버는 장부에 있는 그 응모권의 공개 열쇠로 서명이 맞아야 링크를 받는다. 그래서 응모권 주인만 링크를 만든다",
+        why: "서버는 장부에 있는 그 예측서의 공개 열쇠로 서명이 맞아야 링크를 받는다. 그래서 예측서 주인만 링크를 만든다",
       };
     },
   },
@@ -679,7 +679,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "mid-numbers",
     role: "middle",
     title: "전달 중에 번호 바꾸기",
-    how: "내 응모권이 서버로 가는 길에 번호 하나를 바꿔 전달한다",
+    how: "내 예측서가 서버로 가는 길에 번호 하나를 바꿔 전달한다",
     run: async (w) => {
       const l = cloneLedger(w);
       const t = myTicket(w);

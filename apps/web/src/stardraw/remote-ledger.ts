@@ -550,7 +550,7 @@ export class RemoteLedger implements Ledger {
     };
     if (!res.ok || body.receivedAt === undefined)
       throw new HttpError(
-        body.error ?? `응모를 내지 못했습니다(${res.status})`,
+        body.error ?? `예측을 내지 못했습니다(${res.status})`,
         res.status,
       );
     this.registered.add(toBase64Url(ticket.pub));
@@ -655,7 +655,7 @@ export class RemoteLedger implements Ledger {
         // 404는 없는 응모권이거나 증명 API가 없는 옛 서버다. 회차 파일로 다시 본다(없는 응모권이면 거기서도 없다)
         if (res.status === 404) proof = await fromFile();
         else if (!res.ok)
-          throw new Error(fetchFailure("응모권 증명", res.status));
+          throw new Error(fetchFailure("예측서 증명", res.status));
         else proof = (await res.json()) as TicketProof;
       } catch (err) {
         if (!unreachable(err)) throw err;
@@ -723,7 +723,7 @@ export class RemoteLedger implements Ledger {
       );
       // 열쇠별 응모권 API가 없는 옛 서버(가벼운 기록 사본은 받았는데 서버가 옛 판인 틈)
       if (res.status === 404) throw new NoKeyApi();
-      if (!res.ok) throw new Error(fetchFailure("내 응모권", res.status));
+      if (!res.ok) throw new Error(fetchFailure("내 예측서", res.status));
       const body = (await res.json()) as KeyTicketsResponse;
       for (const proof of body.tickets) {
         const record = this.record(proof.round);
@@ -731,7 +731,7 @@ export class RemoteLedger implements Ledger {
         if (!record || proof.round > closed) continue;
         const ticket = checkTicketProof(proof, record);
         if (!ticket || !equalBytes(ticket.pub, pub))
-          throw new Error(`${proof.round}회차 응모권 증명이 맞지 않습니다`);
+          throw new Error(`${proof.round}회차 예측서 증명이 맞지 않습니다`);
         tickets.push(ticket);
       }
       const reg = body.registration;
@@ -837,7 +837,7 @@ class ChainBroken extends Error {
 /** 서버에 열쇠별 응모권 API가 없다(옛 판) */
 class NoKeyApi extends Error {
   constructor() {
-    super("서버에 열쇠별 응모권 API가 없습니다");
+    super("서버에 열쇠별 예측서 API가 없습니다");
     this.name = "NoKeyApi";
   }
 }
@@ -845,7 +845,7 @@ class NoKeyApi extends Error {
 /** 받은 회차 파일의 응모권 목록이 기록의 머클 루트와 다르다 */
 class RootMismatch extends Error {
   constructor(round: number) {
-    super(`${round}회차 파일의 응모권 목록이 기록의 머클 루트와 다르다`);
+    super(`${round}회차 파일의 예측서 목록이 기록의 머클 루트와 다르다`);
     this.name = "RootMismatch";
   }
 }

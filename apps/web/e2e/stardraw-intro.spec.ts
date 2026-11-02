@@ -55,7 +55,7 @@ test("첫 화면 정답 예시: 별자리판과 번호 공(처음 온 사람도 
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
   await page.goto("/stardraw");
   await expect(page.locator("[data-card]").first()).toBeVisible();

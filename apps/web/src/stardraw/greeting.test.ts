@@ -33,7 +33,7 @@ describe("인사 고르기", () => {
   it("응모 자리는 창구 말을 뒤에 붙이고, 모든 문장은 마침표나 물음표로 끝난다", () => {
     expect(
       pickGreeting({ now: at(19), place: "submit", random: () => 0 }),
-    ).toBe("좋은 저녁이에요. 응모를 접수하겠습니다.");
+    ).toBe("좋은 저녁이에요. 예측을 접수하겠습니다.");
     for (let h = 0; h < 24; h++)
       for (const l of greetingLines(at(h))) expect(l).toMatch(/[.?]$/);
   });

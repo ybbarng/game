@@ -104,7 +104,7 @@ async function enter(
         { params: PRACTICE_POW },
       )
     : undefined;
-  if (!ticket || reg === null) throw new Error("응모권을 만들지 못했다");
+  if (!ticket || reg === null) throw new Error("예측서를 만들지 못했다");
   await ledger.submit(ticket, reg);
   return ticket;
 }
@@ -172,7 +172,7 @@ describe("연습 장부: 응모 받기", () => {
     await enter(ledger, me, [1, 2, 3, 4, 5, 6]);
     await expect(
       enter(ledger, me, [7, 8, 9, 10, 11, 12], false),
-    ).rejects.toThrow("이미 응모");
+    ).rejects.toThrow("이미 예측");
     clock.advance((HOUR + DRAW_AFTER) * 1000);
     await ledger.settle();
     expect(ledger.isRegistered(me.publicKey)).toBe(true);
@@ -217,7 +217,7 @@ describe("연습 장부: 응모 받기", () => {
       entry.powTarget,
       { params: PRACTICE_POW },
     );
-    if (!ticket) throw new Error("응모권을 만들지 못했다");
+    if (!ticket) throw new Error("예측서를 만들지 못했다");
     clock.advance(HOUR * 1000);
     await expect(ledger.submit(ticket)).rejects.toThrow(
       "마감됐어요(서버 시각 15:55:00)",

@@ -140,7 +140,7 @@ export class Checker {
         toHex(opened.request.ticketId) !== expected.ticketId)
     )
       throw new Error(
-        "서버가 미리 본 응모권과 다른 응모권으로 확인을 시작했습니다. 확인을 멈춥니다",
+        "서버가 미리 본 예측서와 다른 예측서로 확인을 시작했습니다. 확인을 멈춥니다",
       );
     const session: CheckSession = {
       key: opened.id,
@@ -192,7 +192,7 @@ export class Checker {
     const ticket = await ticketOf(s.round, s.ticketId);
     if (!ticket) {
       s.status = "failed";
-      s.reasons = ["장부에서 그 응모권을 찾지 못했습니다"];
+      s.reasons = ["장부에서 그 예측서를 찾지 못했습니다"];
     } else {
       const result = await checkAnswer(
         answer,

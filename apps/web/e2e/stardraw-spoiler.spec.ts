@@ -32,7 +32,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   const receipt = page.locator("[data-receipt]");
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   const id = await receipt.getAttribute("data-receipt");
@@ -62,7 +62,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
 
   // 내 응모: 등수 대신 「추첨 보기」
   await page.goto("/stardraw/mine");
-  const mine = page.getByRole("region", { name: "내 응모" });
+  const mine = page.getByRole("region", { name: "내 예측" });
   await expect(mine.locator("[data-draw-first='1']")).toBeVisible();
   await expect(mine).not.toContainText(/당첨|낙첨/);
   await expect(page.getByRole("region", { name: "당첨 안내" })).toHaveCount(0);

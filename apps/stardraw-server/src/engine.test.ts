@@ -281,13 +281,13 @@ describe("응모 받기: 싼 확인부터, 규칙에 어긋나면 거절", () =>
     );
 
     await enter(rig, a, [1, 2, 3, 4, 5, 6]);
-    await rejects(enter(rig, a, [2, 3, 4, 5, 6, 7]), "이미 응모");
+    await rejects(enter(rig, a, [2, 3, 4, 5, 6, 7]), "이미 예측");
 
     const b = await player();
     const wrong = await entryFor(b, 2, [1, 2, 3, 4, 5, 6], rig.engine.head());
     await rejects(
       rig.engine.submit({ ticket: encodeTicket(wrong.ticket), ip: "1.2.3.4" }),
-      "이번 회차 응모권이 아닙니다",
+      "이번 회차 예측서가 아닙니다",
     );
 
     // 마감 시각에 막 닿은 1회차 응모권(서버가 받은 시각으로 정한다)
@@ -322,7 +322,7 @@ describe("응모 받기: 싼 확인부터, 규칙에 어긋나면 거절", () =>
       ticket.pub,
       new Uint8Array(4),
     );
-    const message = "패스키로만 응모할 수 있습니다";
+    const message = "패스키로만 예측할 수 있습니다";
     await rejects(
       rig.engine.submit({
         ticket: rawTicket,
@@ -561,7 +561,7 @@ describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
     for (const body of await floodBodies(100, (i) => i))
       await expect(rig.engine.submit(body)).rejects.toMatchObject({
         status: 400,
-        message: "응모 확인 계산이 맞지 않습니다",
+        message: "예측 확인 계산이 맞지 않습니다",
       });
     // u32가 아닌 칸도 계산 없이 버린다
     for (const bad of [-1, 1.5, "0", 2 ** 32])
@@ -606,12 +606,12 @@ describe("응모 앞단 작업 증명(docs/36 11-31)", () => {
     // 열쇠 A의 답을 열쇠 B 응모에, 지난 문제 값의 답을 지금 응모에
     for (const n of [forA, forBOld])
       await expect(rig.engine.submit({ ...b, gate: n })).rejects.toThrow(
-        "응모 확인 계산이 맞지 않습니다",
+        "예측 확인 계산이 맞지 않습니다",
       );
     expect(argon.calls).toBe(0);
     // 제 열쇠·지금 문제 값의 답이면 앞단을 지나 다음 확인(서명, 열쇠를 바꿔 끼워 맞지 않는다)까지 간다
     await expect(rig.engine.submit({ ...a, gate: forA })).rejects.toThrow(
-      "응모권 서명이 맞지 않습니다",
+      "예측서 서명이 맞지 않습니다",
     );
     expect(argon.calls).toBe(0);
   });

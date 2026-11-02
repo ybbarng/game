@@ -202,7 +202,7 @@ export function LedgerCheck() {
             {result.source === "server"
               ? `서버 ${result.mode === "trial" ? "시험" : "정식"} 장부`
               : "이 기기의 연습 장부"}{" "}
-            · 닫힌 회차 {result.rounds}개 · 응모권 {result.tickets}장 · 열쇠
+            · 닫힌 회차 {result.rounds}개 · 예측서 {result.tickets}장 · 열쇠
             등록 {result.registrations}개
           </p>
           <ul className="flex flex-col gap-1.5">

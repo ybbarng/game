@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { StardrawApp } from "@/stardraw/components/StardrawApp";
 
 export const metadata: Metadata = {
-  title: { absolute: "내 응모 · 하늘의 별 따기" },
+  title: { absolute: "내 예측 · 하늘의 별 따기" },
 };
 
 export const viewport: Viewport = { themeColor: "#070d19" };

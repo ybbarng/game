@@ -93,7 +93,7 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
 
   // 영수증 안 작은 하늘
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });

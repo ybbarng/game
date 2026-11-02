@@ -45,14 +45,14 @@ export default function StardrawPrivacyPage() {
           </li>
           <li>
             도장은 가린 채로 찍기(블라인드 서명) 때문에, 우주국도 어느 소속
-            번호가 누구의 것인지 모릅니다. 응모 기록은 계정과 이어지지 않습니다.
+            번호가 누구의 것인지 모릅니다. 예측 기록은 계정과 이어지지 않습니다.
           </li>
         </ul>
 
-        <h2 className="font-bold text-base text-white">응모와 공개 장부</h2>
+        <h2 className="font-bold text-base text-white">예측과 공개 장부</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            응모권(고른 별, 우주인 공개 열쇠, 붙인 소속 번호)과 우주인 등록은
+            예측서(고른 별, 우주인 공개 열쇠, 붙인 소속 번호)와 우주인 등록은
             공개 장부에 남아 누구나 볼 수 있습니다. 이름·이메일은 없습니다.
           </li>
           <li>

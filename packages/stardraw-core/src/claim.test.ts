@@ -77,7 +77,7 @@ describe("바로 보내는 당첨 증명", () => {
     const { other, ticket } = await winnerAndTicket();
     const claim = await makeDirectClaim(other, ticket, "ybbarng", "철수", 1);
     expect(await verifyClaim(claim, { ticket, to: "ybbarng" })).toContain(
-      "응모권 주인의 열쇠가 아니다",
+      "예측서 주인의 열쇠가 아니다",
     );
   });
 
@@ -91,7 +91,7 @@ describe("바로 보내는 당첨 증명", () => {
     );
     const claim = await makeDirectClaim(winner, another, "ybbarng", "철수", 1);
     expect(await verifyClaim(claim, { ticket, to: "ybbarng" })).toContain(
-      "다른 응모권의 증명이다",
+      "다른 예측서의 증명이다",
     );
   });
 
@@ -154,7 +154,7 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
     );
     const request = newConfirmRequest("Brice", 2, ticketId(another));
     await expect(answerConfirmRequest(winner, ticket, request)).rejects.toThrow(
-      "이 응모권에 대한 확인 요청이 아니다",
+      "이 예측서에 대한 확인 요청이 아니다",
     );
   });
 

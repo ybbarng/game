@@ -38,7 +38,7 @@ test("보안 배우기: 직접 해 보기 상자가 실제 계산으로 통과·
     "InvalidAccessError",
   );
   await passkey.getByRole("button", { name: /비슷한 가짜/ }).click();
-  await passkey.getByRole("button", { name: "응모권에 패스키로 서명" }).click();
+  await passkey.getByRole("button", { name: "예측서에 패스키로 서명" }).click();
   await expect(verdict(page, "passkey")).toHaveAttribute("data-ok", "fail");
   await passkey
     .getByRole("button", { name: "브라우저가 막지 않았다면?" })
@@ -46,12 +46,12 @@ test("보안 배우기: 직접 해 보기 상자가 실제 계산으로 통과·
   await expect(passkey).toContainText("https://game-byb.kr");
   await expect(verdict(page, "passkey")).toHaveAttribute("data-ok", "fail");
   await passkey.getByRole("button", { name: /진짜/ }).click();
-  await passkey.getByRole("button", { name: "응모권에 패스키로 서명" }).click();
+  await passkey.getByRole("button", { name: "예측서에 패스키로 서명" }).click();
   await passkey.getByRole("button", { name: "확인", exact: true }).click();
   await expect(verdict(page, "passkey")).toHaveAttribute("data-ok", "pass");
   // 본인 확인(UV) 없이 한 서명은 진짜 주소여도 거절된다
   await passkey.getByLabel(/지문·얼굴·PIN 없이 서명/).check();
-  await passkey.getByRole("button", { name: "응모권에 패스키로 서명" }).click();
+  await passkey.getByRole("button", { name: "예측서에 패스키로 서명" }).click();
   await passkey.getByRole("button", { name: "확인", exact: true }).click();
   await expect(verdict(page, "passkey")).toHaveAttribute("data-ok", "fail");
   await expect(passkey).toContainText("본인 확인(UV)");
@@ -61,7 +61,7 @@ test("보안 배우기: 직접 해 보기 상자가 실제 계산으로 통과·
   const pow = page.locator("[data-toy='pow']");
   await pow.getByRole("button", { name: "256KB" }).click();
   await pow.getByRole("button", { name: "1번", exact: true }).click();
-  await pow.getByRole("button", { name: "응모권 한 장 만들기" }).click();
+  await pow.getByRole("button", { name: "예측서 한 장 만들기" }).click();
   await expect(pow.locator("[data-pow-result]")).toHaveAttribute(
     "data-pow-result",
     "done",

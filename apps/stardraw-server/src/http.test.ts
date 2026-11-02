@@ -110,7 +110,7 @@ describe("HTTP", () => {
       body: JSON.stringify({ ticket: toBase64Url(encodeTicket(ticket)) }),
     });
     expect(again.status).toBe(409);
-    expect((await again.json()).error).toContain("이미 응모");
+    expect((await again.json()).error).toContain("이미 예측");
 
     await rig.finish(1);
     const head = await fetch(`${base}/ledger/head.json`);

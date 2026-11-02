@@ -167,7 +167,7 @@ async function ticket(
     { params: TEST_POW },
     qual,
   );
-  if (!t) throw new Error("응모권을 만들지 못했다");
+  if (!t) throw new Error("예측서를 만들지 못했다");
   return t;
 }
 

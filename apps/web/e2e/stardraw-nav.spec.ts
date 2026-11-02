@@ -32,14 +32,14 @@ test("첫 화면 「영수증」은 그 영수증으로, 뒤로가기는 첫 화
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   const receipt = page.locator("[data-receipt]");
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   const id = await receipt.getAttribute("data-receipt");
 
   await page.goto("/stardraw");
   const card = page.locator("[data-card='entered']");
-  await card.getByRole("button", { name: "영수증" }).click();
+  await card.getByRole("button", { name: "접수증" }).click();
   await expect(page).toHaveURL(new RegExp(`/stardraw/mine#t-${id}$`));
   await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
 
@@ -54,10 +54,10 @@ test("첫 화면 「영수증」은 그 영수증으로, 뒤로가기는 첫 화
 
   // 첫 화면 「내 응모」로 다른 경로의 목록에 갔다가 응모권을 눌러도 그 영수증으로
   await page.goto("/stardraw");
-  await page.getByRole("button", { name: /^내 응모/ }).click();
+  await page.getByRole("button", { name: /^내 예측/ }).click();
   await expect(page).toHaveURL(/\/stardraw\/mine$/);
   await page
-    .getByRole("region", { name: "내 응모" })
+    .getByRole("region", { name: "내 예측" })
     .getByRole("listitem")
     .first()
     .getByRole("button")
@@ -72,7 +72,7 @@ async function registerAndEnter(page: Page): Promise<string> {
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   const receipt = page.locator("[data-receipt]");
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   return (await receipt.getAttribute("data-receipt")) as string;
@@ -105,7 +105,7 @@ test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭
   // 내 응모 → 영수증: 머리 줄 단추 없이 내 응모 탭이 켜져 있다
   await page.goto("/stardraw/mine");
   await page
-    .getByRole("region", { name: "내 응모" })
+    .getByRole("region", { name: "내 예측" })
     .getByRole("listitem")
     .first()
     .getByRole("button")
@@ -124,7 +124,7 @@ test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭
 
   // 추첨 결과 → 「다음 회차 응모」 → 「처음으로」
   await openDrawResult(page);
-  await page.getByRole("button", { name: "다음 회차 응모" }).click();
+  await page.getByRole("button", { name: "다음 회차 예측" }).click();
   // 다음 회차 예측은 접수처(지금 회차)에서
   await expect(page).toHaveURL(/\/stardraw\/now$/);
   await page.getByRole("button", { name: "← 처음으로" }).click();

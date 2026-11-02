@@ -195,7 +195,7 @@ export async function verifyInvite(
     invite.round !== ticket.round ||
     !equalBytes(invite.ticketId, ticketId(ticket))
   )
-    problems.push("다른 응모권의 초대다");
+    problems.push("다른 예측서의 초대다");
   if (
     !(await verifyEntrantSignature(
       ticket.pub,
@@ -204,6 +204,6 @@ export async function verifyInvite(
       policy,
     ))
   )
-    problems.push("응모권 주인의 서명이 아니다");
+    problems.push("예측서 주인의 서명이 아니다");
   return problems;
 }

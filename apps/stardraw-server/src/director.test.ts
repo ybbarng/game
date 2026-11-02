@@ -123,13 +123,13 @@ describe("국장 열쇠 지정(서버 설정 → 관인 기록)", () => {
     // 지정된(예고 중) 국장 열쇠로는 우주인 등록을 할 수 없다
     await expect(
       enter(r, { signer: director, registered: false }, [1, 2, 3, 4, 5, 6]),
-    ).rejects.toThrow("이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다");
+    ).rejects.toThrow("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
     // 등록만 올리기도, 다른 기기에서 패스키 찾기도 같은 말로 거절한다
     await expect(
       registerOnly(r, { signer: director, registered: false }),
     ).rejects.toMatchObject({
       status: 403,
-      message: "이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다",
+      message: "이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다",
     });
     await expect(
       r.engine.passkeyPub(director.credentialId),

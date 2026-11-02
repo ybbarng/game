@@ -12,7 +12,7 @@ import { SKY_STARS, tempWord } from "@/stardraw/sky";
 export const metadata: Metadata = {
   title: { absolute: "하늘의 별 따기 설명 · Stardraw" },
   description:
-    "하늘의 별 따기 게임 방법, 응모판(서울 하늘의 밝은 별 45개) 읽는 법, 별 목록, 당첨자 확인, 데이터 출처.",
+    "하늘의 별 따기 게임 방법, 예측판(서울 하늘의 밝은 별 45개) 읽는 법, 별 목록, 당첨자 확인, 데이터 출처.",
 };
 
 export const viewport: Viewport = { themeColor: "#070d19" };
@@ -54,7 +54,7 @@ export default function StardrawAbout() {
             하늘의 별 따기는 카노푸스 우주국이 정해진 시각마다 여는 공개
             추첨입니다. 당첨 번호는 하늘이 정하고, 우주국은 기록할 뿐입니다.
             우주국장에게도 당첨 번호를 고르거나, 지난 기록을 고치거나, 남의
-            등록증으로 응모할 권한이 없습니다. 우주국은 처음부터 그렇게
+            등록증으로 예측할 권한이 없습니다. 우주국은 처음부터 그렇게
             세워졌습니다.
           </p>
           <details className="text-sm text-white/70">
@@ -80,7 +80,7 @@ export default function StardrawAbout() {
             href="/stardraw/demo"
             className="self-start rounded-xl border border-amber-200/40 px-4 py-2 text-amber-100 text-sm hover:bg-amber-200/10"
           >
-            데모에서 응모부터 당첨자 확인까지 해 보기
+            데모에서 예측부터 당첨자 확인까지 해 보기
           </a>
           <a
             href="/stardraw/learn"
@@ -93,19 +93,19 @@ export default function StardrawAbout() {
         <Section title="게임 방법">
           <ol className="list-decimal space-y-2 pl-5 text-white/85">
             <li>
-              회차마다 답안지에 빛날 별 6개를 고릅니다. 네모 하늘에서 별을
+              회차마다 예측서에 빛날 별 6개를 고릅니다. 네모 하늘에서 별을
               누르거나, 아래 1~45 칸에서 번호를 눌러도 같습니다. 자동·남은 칸
               자동도 됩니다.
             </li>
             <li>
-              응모는 패스키로 합니다. 처음 우주인으로 등록할 때 Face
-              ID·지문·화면 잠금으로 패스키가 만들어지고, 응모할 때마다 그
-              패스키로 응모권에 서명합니다. 우주국은 우주인의 이름·이메일을 묻지
+              예측은 패스키로 합니다. 처음 우주인으로 등록할 때 Face
+              ID·지문·화면 잠금으로 패스키가 만들어지고, 예측할 때마다 그
+              패스키로 예측서에 서명합니다. 우주국은 우주인의 이름·이메일을 묻지
               않고, 한 패스키는 회차마다 한 장만 낼 수 있습니다. 먼저 등록한
               우주인이라고 확률이 높아지지는 않습니다.
             </li>
             <li>
-              회차는 1시간입니다. 매시 55분에 응모를 마감하고, 5분 뒤 정각에
+              회차는 1시간입니다. 매시 55분에 예측을 마감하고, 5분 뒤 정각에
               공개 난수로 당첨 번호 6개와 보너스 1개를 정합니다. 추첨기에서 공이
               하나씩 나오며 하늘의 그 별이 켜집니다.
             </li>
@@ -130,7 +130,7 @@ export default function StardrawAbout() {
           </table>
         </Section>
 
-        <Section title="응모판 읽는 법">
+        <Section title="예측판 읽는 법">
           <ul className="list-disc space-y-2 pl-5 text-white/85">
             <li>
               번호 1~45는 서울에서 보이는 가장 밝은 실제 별 45개이고, 번호가 곧
@@ -184,13 +184,13 @@ export default function StardrawAbout() {
         <Section title="당첨자 확인">
           <ol className="list-decimal space-y-2 pl-5 text-white/85">
             <li>
-              당첨되면 내 응모에 카노푸스 우주국 당첨 안내가 뜹니다. 서버가 보낸
+              당첨되면 내 예측에 카노푸스 우주국 당첨 안내가 뜹니다. 서버가 보낸
               말이 아니라 내 기기가 공개 장부로 계산한 안내입니다.
             </li>
             <li>
               「확인 링크 만들기」를 누르고 우주인 등록증으로 서명하면, 한 번만
               쓰는 링크가 생깁니다. 당첨을 알리고 싶은 사람에게 메신저로
-              보냅니다. 링크는 응모권 주인만 만들 수 있고 7일 뒤 닫힙니다.
+              보냅니다. 링크는 예측서 주인만 만들 수 있고 7일 뒤 닫힙니다.
             </li>
             <li>
               받은 사람이 링크를 열어 「확인 시작」을 누르면 내 기기에 확인
@@ -205,7 +205,7 @@ export default function StardrawAbout() {
           </ol>
           <p className="rounded-xl border border-amber-200/30 bg-amber-200/5 p-3 text-amber-50/90 text-sm">
             판정은 늘 확인하는 사람의 기기에서 합니다. 확인하는 분의 브라우저가
-            장부의 응모권 열쇠로 서명을 직접 검사하고, 두 기기만 아는 임시
+            장부의 예측서 열쇠로 서명을 직접 검사하고, 두 기기만 아는 임시
             열쇠로 별 세 개를 계산합니다. 당첨자 화면이나 그 스크린샷은 증거가
             아닙니다. 별 세 개는 요청을 전달하는 서버도 알 수 없어, 가운데서
             누가 끼어들어도 맞힐 수 없습니다. 링크는 한 번 쓰면 닫혀, 누가
@@ -224,16 +224,16 @@ export default function StardrawAbout() {
             <a href="/stardraw/verify#check" className="underline">
               검증하기
             </a>
-            에서 볼 수 있습니다. 국장 패스키는 응모용 패스키와 따로라,
-            우주국장의 응모도 장부에서 남과 구별되지 않습니다.
+            에서 볼 수 있습니다. 국장 패스키는 예측용 패스키와 따로라,
+            우주국장의 예측도 장부에서 남과 구별되지 않습니다.
           </p>
         </Section>
 
         <Section title="패스키와 보안" id="passkey">
           <p className="text-white/85">
-            하늘의 별 따기는 패스키로만 응모합니다. 비밀번호보다 안전하고 쓰기도
+            하늘의 별 따기는 패스키로만 예측합니다. 비밀번호보다 안전하고 쓰기도
             쉬워서, 이 게임으로 패스키에 익숙해지면 좋겠습니다. 처음 한 번
-            패스키를 만들고(얼굴·지문 확인 한 번), 그 뒤 응모할 때마다 그
+            패스키를 만들고(얼굴·지문 확인 한 번), 그 뒤 예측할 때마다 그
             패스키로 서명합니다(확인 한 번). 사람들이 많이 묻는 것을 모았습니다.
           </p>
           <KeyHoldingExplained />
@@ -243,12 +243,12 @@ export default function StardrawAbout() {
         <Section title="우주국이 보관하는 것" id="privacy">
           <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-white/85">
             <li>
-              저장하는 것: 공개 열쇠, 패스키 번호, 등록 회차. 응모권은 공개
+              저장하는 것: 공개 열쇠, 패스키 번호, 등록 회차. 예측서는 공개
               장부에 남습니다.
             </li>
             <li>받지 않는 것: 이름, 이메일, 전화번호.</li>
             <li>
-              응모 수 제한에 쓰는 IP는 앞부분(IPv4는 앞 세 칸, IPv6는 앞 세
+              예측 수 제한에 쓰는 IP는 앞부분(IPv4는 앞 세 칸, IPv6는 앞 세
               묶음)만 메모리에서 세고 저장하지 않습니다.
             </li>
             <li>
@@ -256,8 +256,8 @@ export default function StardrawAbout() {
               공개 열쇠만 남습니다.
             </li>
             <li>
-              응모가 서로 이어져 보이는 게 싫으면 새 우주인으로 다시 등록하세요.
-              그때부터 낸 응모는 앞의 것과 이어지지 않습니다.
+              예측이 서로 이어져 보이는 게 싫으면 새 우주인으로 다시 등록하세요.
+              그때부터 낸 예측은 앞의 것과 이어지지 않습니다.
             </li>
           </ul>
         </Section>

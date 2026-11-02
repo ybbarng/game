@@ -25,8 +25,8 @@ import type { ConfirmAnswer, OpenRequest } from "./confirm-relay";
 
 /** 규칙 패키지의 문제 문장을 화면 말투로 */
 const REASONS: [RegExp, string][] = [
-  [/다른 응모권/, "다른 응모권의 서명입니다"],
-  [/열쇠가 아니다/, "그 응모권을 낸 열쇠의 서명이 아닙니다"],
+  [/다른 예측서/, "다른 예측서의 서명입니다"],
+  [/열쇠가 아니다/, "그 예측서를 낸 열쇠의 서명이 아닙니다"],
   [/확인 문구가 다르다/, "이 확인 요청에 대한 서명이 아닙니다"],
   [/요청자가 다르다/, "이 확인 요청에 대한 서명이 아닙니다"],
   [/바로 보내는 증명/, "이 확인 요청에 대한 서명이 아닙니다"],
@@ -104,7 +104,7 @@ export async function prepareAnswer(
     open.request.round !== ticket.round ||
     !equalBytes(open.request.ticketId, ticketId(ticket))
   )
-    throw new Error("이 응모권에 대한 확인 요청이 아닙니다");
+    throw new Error("이 예측서에 대한 확인 요청이 아닙니다");
   const mine = await generateSasKey();
   const claim = await makeChallengeClaim(
     signer,

@@ -80,7 +80,7 @@ export function ReceiptPrint({
     };
   }, []);
   return (
-    <StageOverlay label="영수증 발급" closing={closing} appear={!continued}>
+    <StageOverlay label="접수증 발급" closing={closing} appear={!continued}>
       <div ref={box} className="pointer-events-none">
         <Receipt
           ticket={ticket}

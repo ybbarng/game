@@ -140,7 +140,7 @@ export class PowFailures {
   /** 계산하지 않고 거절할 까닭(없으면 null) */
   blocked(window: string, body: string, key: string): string | null {
     this.roll(window);
-    if (this.bodies.has(body)) return "이미 계산이 맞지 않은 응모입니다";
+    if (this.bodies.has(body)) return "이미 계산이 맞지 않은 예측입니다";
     if ((this.keys.get(key) ?? 0) >= this.maxPerKey)
       return "이 열쇠의 계산이 여러 번 맞지 않아 이번 회차에는 더 받지 않습니다";
     return null;
@@ -160,6 +160,6 @@ export class PowFailures {
 
 export class BusyError extends Error {
   constructor() {
-    super("지금 응모가 몰려 있습니다. 잠시 뒤 다시 내 주세요");
+    super("지금 예측이 몰려 있습니다. 잠시 뒤 다시 내 주세요");
   }
 }

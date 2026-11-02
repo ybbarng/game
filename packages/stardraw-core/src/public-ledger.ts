@@ -444,10 +444,10 @@ const RULES: { id: string; label: string; test: RegExp }[] = [
   },
   {
     id: "ticket",
-    label: "응모권 서명·한 사람 한 장",
-    test: /^응모권|응모권 목록/,
+    label: "예측서 서명·한 사람 한 장",
+    test: /^예측서|예측서 목록/,
   },
-  { id: "merkle", label: "응모 수·머클 루트", test: /응모 수가|머클 루트/ },
+  { id: "merkle", label: "예측 수·머클 루트", test: /예측 수가|머클 루트/ },
   { id: "drand", label: "drand 회차·서명", test: /drand/ },
   { id: "void", label: "무효 회차 규칙", test: /무효/ },
   { id: "draw", label: "당첨 번호·등수", test: /당첨/ },
@@ -629,7 +629,7 @@ function sealKeyItem(
   head: PublicHeadFile,
   records: number,
 ): CheckItem {
-  const label = "관인 열쇠(운영 기록과 영수증이 같은 우주국)";
+  const label = "관인 열쇠(운영 기록과 접수증이 같은 우주국)";
   const seal = sealKeyAt(report.operations, records + 1);
   if (!seal)
     return {
@@ -1026,7 +1026,7 @@ export function findTicket(
   if (matches.length === 0)
     return {
       found: false,
-      reason: `${query.round}회차 응모권 ${list.length}장 가운데 이 일련번호가 없습니다`,
+      reason: `${query.round}회차 예측서 ${list.length}장 가운데 이 일련번호가 없습니다`,
     };
   if (matches.length > 1)
     return {

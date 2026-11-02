@@ -156,7 +156,7 @@ export class Relay {
       throw new EntryError("확인 링크 형식이 맞지 않습니다");
     }
     const ticket = this.winningTicket(invite.round, invite.ticketId);
-    if (!ticket) throw new EntryError("그 회차의 당첨 응모권이 아닙니다", 404);
+    if (!ticket) throw new EntryError("그 회차의 당첨 예측서가 아닙니다", 404);
     const now = this.clock.now();
     const ticketHex = toHex(invite.ticketId);
     this.store.relayPrune(now);
@@ -168,7 +168,7 @@ export class Relay {
         429,
       );
     if ((await verifyInvite(invite, ticket, this.policy)).length > 0)
-      throw new EntryError("그 응모권 주인의 서명이 아닙니다", 403);
+      throw new EntryError("그 예측서 주인의 서명이 아닙니다", 403);
     // 응모권 주인의 서명이 맞는 요청만 센다(2026-11-01 별도 검토 7번): 공개된 당첨 응모권 id만으로 같은 곳의 몫을 다 쓰지 못하게
     this.counters.add("invite", day, prefix);
     const expiresAt = now + INVITE_TTL_MS;
@@ -247,7 +247,7 @@ export class Relay {
     if (row.requestId) throw usedLink();
     const id = fromHex(row.ticketHex);
     if (!this.winningTicket(row.round, id))
-      throw new EntryError("그 회차의 당첨 응모권이 아닙니다", 404);
+      throw new EntryError("그 회차의 당첨 예측서가 아닙니다", 404);
     let requester = CHECK_LINK_REQUESTER;
     if (input.director) {
       const d = input.director;
@@ -314,7 +314,7 @@ export class Relay {
     inbox: readonly { ticketId: string; key: string }[],
   ): OpenRequestJson[] {
     if (inbox.length > MAX_OPEN_QUERY)
-      throw new EntryError("한 번에 찾는 응모권이 너무 많습니다");
+      throw new EntryError("한 번에 찾는 예측서가 너무 많습니다");
     const now = this.clock.now();
     const hexes = inbox
       .map((i) => ({
@@ -385,7 +385,7 @@ export class Relay {
         problems = ["형식"];
       }
       if (problems.length > 0)
-        throw new EntryError("그 응모권의 서명이 아닙니다", 403);
+        throw new EntryError("그 예측서의 서명이 아닙니다", 403);
     }
     // 서명 확인을 기다리는 사이 다른 응답이 먼저 왔을 수 있다
     const fresh = this.load(id);

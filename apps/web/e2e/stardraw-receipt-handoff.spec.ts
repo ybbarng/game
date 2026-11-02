@@ -73,11 +73,11 @@ test("영수증 넘김: 출력된 영수증이 뒤 화면의 같은 자리로 �
   );
   await when(page.getByRole("button", { name: "자동", exact: true }), click);
   await when(
-    page.getByRole("button", { name: "응모하기", exact: true }),
+    page.getByRole("button", { name: "예측서 내기", exact: true }),
     click,
   );
   await when(
-    page.locator("[aria-label='답안지 제출'][aria-disabled='false']"),
+    page.locator("[aria-label='예측서 제출'][aria-disabled='false']"),
     press,
   );
   await when(

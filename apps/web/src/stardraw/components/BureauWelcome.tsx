@@ -90,7 +90,7 @@ function Letter({ cadence }: { cadence: string }) {
       </p>
       <p>
         그래서 우주국은 다음에 빛날 별을 가장 잘 예측하는 우주인을 찾습니다.
-        우주인으로 등록하고 답안지를 내 주세요.
+        우주인으로 등록하고 예측서를 내 주세요.
       </p>
       <p className="self-end font-semibold">카노푸스 우주국장</p>
     </article>

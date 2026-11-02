@@ -31,7 +31,7 @@ export function DrawnNotice({
       <span className="min-w-0 flex-1 break-keep font-semibold text-amber-50 text-sm">
         {rounds.length === 1
           ? `${roundShort(schedule, latest)} 추첨이 끝났습니다`
-          : `추첨이 끝난 응모 ${rounds.length}회`}
+          : `추첨이 끝난 예측 ${rounds.length}회`}
       </span>
       <button
         type="button"

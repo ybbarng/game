@@ -132,7 +132,7 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
         params: ledger.powParams,
       },
     );
-    if (!ticket || !registration) throw new Error("응모권을 만들지 못했다");
+    if (!ticket || !registration) throw new Error("예측서를 만들지 못했다");
     const { receivedAt } = await ledger.submit(ticket, registration);
     expect(receivedAt).toBe(EPOCH + 10);
     expect(ledger.status().entries).toBe(1);
@@ -140,7 +140,7 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
     // 우주인 등록증의 등록 회차: 닫히기 전에는 서버에 묻고, 닫힌 뒤에는 장부 파일에서
     expect(await ledger.registeredRound(me.signer.publicKey)).toBe(1);
     // 같은 회차 두 번은 서버의 한국어 문구로 거절
-    await expect(ledger.submit(ticket)).rejects.toThrow("이미 응모");
+    await expect(ledger.submit(ticket)).rejects.toThrow("이미 예측");
 
     // 추첨 뒤 장부 파일을 받아 처음부터 검사한다
     await rig.finish(1);
@@ -270,7 +270,7 @@ describe("화면의 서버 장부 ↔ 실제 서버", () => {
       EASY,
       { params: ledger.powParams },
     );
-    if (!ticket || !registration) throw new Error("응모권을 만들지 못했다");
+    if (!ticket || !registration) throw new Error("예측서를 만들지 못했다");
     await ledger.submit(ticket, registration);
     await rig.finish(1);
     await ledger.settle(true);

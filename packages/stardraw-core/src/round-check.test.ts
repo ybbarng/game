@@ -159,8 +159,8 @@ describe("이 회차 확인(checkRound)", () => {
     );
     expect(fewer.problems.map((p) => p.message)).toEqual(
       expect.arrayContaining([
-        "응모 수가 2인데 기록은 3",
-        "응모권 목록으로 만든 머클 루트가 기록과 다르다",
+        "예측 수가 2인데 기록은 3",
+        "예측서 목록으로 만든 머클 루트가 기록과 다르다",
       ]),
     );
     const other = await input(2);

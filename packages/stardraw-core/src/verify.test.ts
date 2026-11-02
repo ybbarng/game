@@ -265,7 +265,7 @@ describe("장부 검사", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/^2: 응모 수/),
+        expect.stringMatching(/^2: 예측 수/),
         expect.stringMatching(/^2: .*머클 루트/),
       ]),
     );
@@ -646,7 +646,7 @@ describe("지운 회차(연습 장부가 남 응모권을 지운 회차)", () =>
     );
     expect(messages(report)).toEqual([]);
     expect(report.skipped).toContain(
-      "2회차: 지운 회차라 남긴 응모권 1장·등록 0개만 포함 증명으로 확인",
+      "2회차: 지운 회차라 남긴 예측서 1장·등록 0개만 포함 증명으로 확인",
     );
   });
 
@@ -663,11 +663,11 @@ describe("지운 회차(연습 장부가 남 응모권을 지운 회차)", () =>
     });
     expect(messages(noProof)).toEqual([
       expect.stringMatching(
-        /^2: 응모권 .*: 기록의 머클 루트에 들어 있다는 증명이 없다$/,
+        /^2: 예측서 .*: 기록의 머클 루트에 들어 있다는 증명이 없다$/,
       ),
     ]);
     const plain = await verifyLedger(ledger.schedule, ...lists, OPTIONS);
-    expect(messages(plain)).toContain("2: 응모 수가 1인데 기록은 4");
+    expect(messages(plain)).toContain("2: 예측 수가 1인데 기록은 4");
   });
 });
 
@@ -691,7 +691,7 @@ describe("열쇠 등록", () => {
     });
     const report = await verifyLedger(HOURLY, [record], [[t]], [[]], OPTIONS);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 응모권 .*: 등록되지 않은 열쇠$/),
+      expect.stringMatching(/^1: 예측서 .*: 등록되지 않은 열쇠$/),
     ]);
   });
 
@@ -946,8 +946,8 @@ describe("별명 남기기", () => {
     );
     const report = await check(ledger, [[sameRound], [loserNick]]);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 별명 .*: 지난 회차 당첨 응모권이 아니다$/),
-      expect.stringMatching(/^2: 별명 .*: 지난 회차 당첨 응모권이 아니다$/),
+      expect.stringMatching(/^1: 별명 .*: 지난 회차 당첨 예측서가 아니다$/),
+      expect.stringMatching(/^2: 별명 .*: 지난 회차 당첨 예측서가 아니다$/),
     ]);
     const stolenReport = await check(ledger, [[], [stolen]]);
     expect(messages(stolenReport)).toEqual([
@@ -965,7 +965,7 @@ describe("별명 남기기", () => {
       [await makeNickname(signer, first, "다시 철수")],
     ]);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^3: 별명 .*: 이미 별명을 남긴 응모권$/),
+      expect.stringMatching(/^3: 별명 .*: 이미 별명을 남긴 예측서$/),
     ]);
   });
 

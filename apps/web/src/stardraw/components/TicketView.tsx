@@ -132,7 +132,7 @@ export function TicketView() {
     } else {
       body = (
         <p role="status" className="py-10 text-center text-white/75">
-          이 응모권을 찾을 수 없어요
+          이 예측서를 찾을 수 없어요
         </p>
       );
     }
@@ -150,14 +150,14 @@ export function TicketView() {
         >
           ← 하늘의 별 따기
         </a>
-        <section className="flex flex-col gap-4" aria-label="공유받은 응모권">
+        <section className="flex flex-col gap-4" aria-label="공유받은 예측서">
           {body}
         </section>
         <a
           href="/stardraw/enter"
           className="sd-cta rounded-2xl py-3 text-center font-bold text-slate-950"
         >
-          나도 응모하기
+          나도 예측하기
         </a>
         <footer className="pt-4 text-center text-[11px] text-white/40">
           <AgencyFooter />

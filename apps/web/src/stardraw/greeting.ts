@@ -101,7 +101,7 @@ export function pickGreeting({
   const all = greetingLines(now);
   const pool = all.filter((l) => l !== last);
   const line = pool[Math.floor(random() * pool.length)] ?? all[0] ?? "";
-  return place === "submit" ? `${line} 응모를 접수하겠습니다.` : line;
+  return place === "submit" ? `${line} 예측을 접수하겠습니다.` : line;
 }
 
 /** 이 탭에서 바로 앞에 건넨 인사(같은 문장이 연달아 나오지 않게, 세션 안에서만) */
@@ -115,6 +115,6 @@ export function greetNow(now: number, place: "enter" | "submit"): string {
     random: Math.random,
     last: lastLine,
   });
-  lastLine = text.replace(/ 응모를 접수하겠습니다\.$/, "");
+  lastLine = text.replace(/ 예측을 접수하겠습니다\.$/, "");
   return text;
 }

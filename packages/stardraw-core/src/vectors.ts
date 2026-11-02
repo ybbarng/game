@@ -297,7 +297,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
   },
   {
     id: "ticket",
-    title: "응모권",
+    title: "예측서",
     vectors: [
       {
         title: "작업 증명 대상(ticketContent)",
@@ -312,23 +312,23 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
         compute: () => toHex(ticketBody(TICKET)),
       },
       {
-        title: '응모권 id = taggedHash("stardraw/ticket/v1", body)',
+        title: '예측서 id = taggedHash("stardraw/ticket/v1", body)',
         input: "위 body",
         expected:
           "00319210354f9c7f5c03ed2a3ae21483b051a4595bbaef6fd7f2848d6091e321",
         compute: () => toHex(ticketId(TICKET)),
       },
       {
-        title: "응모권 바이트(패스키 서명)",
+        title: "예측서 바이트(패스키 서명)",
         input:
           "공개 열쇠만 당첨자 열쇠(04e6b8…0da8)로 바꾼 body ‖ 02 ‖ authenticatorData(flags 05) ‖ clientDataJSON ‖ DER 서명(각 u16 길이 + 바이트)",
         expected: `${SIGNED_BODY_HEX}020025cbeb0bd2fd540b201a4aacf76ead7dbf18a929abe3ef560f2b7e8998e679144d05000000010084${toHex(utf8(SIGNED_CLIENT_DATA))}0046${toHex(SIGNED_DER)}`,
         compute: () => toHex(encodeTicket(SIGNED_TICKET)),
       },
       {
-        title: "응모권 서명 확인",
+        title: "예측서 서명 확인",
         input:
-          "위 응모권(challenge 2p_BiR1w…sMEY, origin https://game.byb.kr, rpId game.byb.kr)",
+          "위 예측서(challenge 2p_BiR1w…sMEY, origin https://game.byb.kr, rpId game.byb.kr)",
         expected: "true",
         compute: async () => String(await verifyTicketSignature(SIGNED_TICKET)),
       },
@@ -576,7 +576,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
       {
         title:
           'sealDigest = taggedHash("stardraw/seal/v1", round ‖ count ‖ merkleRoot ‖ registrationCount ‖ registrationRoot)',
-        input: "1회차, 응모 0장(빈 루트), 등록 0개(빈 루트)",
+        input: "1회차, 예측서 0장(빈 루트), 등록 0개(빈 루트)",
         expected:
           "f239c191ce72c53bbe173db10b4f851f9f4efd72b5061f665f477e7053ad31de",
         compute: () => {
@@ -726,7 +726,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
           qualDisplayId(QUAL_PERIOD, qualKeyFromSeed(QUAL_SEED).publicKey),
       },
       {
-        title: "응모권 v2 id(증서 113바이트와 자격 서명 64바이트가 nonce 앞에)",
+        title: "예측서 v2 id(증서 113바이트와 자격 서명 64바이트가 nonce 앞에)",
         input: `v 2, 7회차, 번호 3·11·19·27·38·44, 공개 열쇠 ${PUB_TEXT}, 위 증서(도장 자리 ab × 48), 자격 서명 자리 5c × 64, nonce 258`,
         expected:
           "fba0e1bef80b0d92a0fe7e790faa57e6693ac00ca088de4cbacafe16844b3d0c",

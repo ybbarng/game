@@ -162,11 +162,11 @@ export function SignToy() {
   };
 
   return (
-    <Toy title="응모권 서명" id="sign">
+    <Toy title="예측서 서명" id="sign">
       <Row label="이 브라우저에서 만든 열쇠">
         {signer ? (
           <>
-            공개 열쇠 <Mono>{short(signer.publicKey, 16)}…</Mono> · 응모자 id{" "}
+            공개 열쇠 <Mono>{short(signer.publicKey, 16)}…</Mono> · 예측자 id{" "}
             <Mono>{short(entrantId(signer.publicKey), 12)}</Mono>
           </>
         ) : (
@@ -175,7 +175,7 @@ export function SignToy() {
       </Row>
       <div className="flex flex-col gap-2">
         <span className="text-white/70 text-xs">
-          7회 응모권 번호(공을 누르면 바뀝니다)
+          7회 예측서 번호(공을 누르면 바뀝니다)
         </span>
         <Balls
           numbers={numbers}
@@ -194,7 +194,7 @@ export function SignToy() {
       {signed && arrived && (
         <div className="flex flex-col gap-2 border-white/10 border-t pt-3">
           <span className="text-white/70 text-xs">
-            서버에 도착한 응모권. 공을 누르거나 아래 단추로 한 글자씩 바꿔
+            서버에 도착한 예측서. 공을 누르거나 아래 단추로 한 글자씩 바꿔
             보세요.
           </span>
           <Balls
@@ -222,7 +222,7 @@ export function SignToy() {
           <Row label="서명(패스키 서명, DER)">
             <Mono>{toHex(arrived.sig.signature).slice(0, 48)}…</Mono>
           </Row>
-          <Row label="응모권 id">
+          <Row label="예측서 id">
             <Mono
               tone={
                 toHex(ticketId(arrived)) === toHex(ticketId(signed))
@@ -383,7 +383,7 @@ export function PasskeyToy() {
       </div>
       <div>
         <Btn primary onClick={start} disabled={!passkey}>
-          응모권에 패스키로 서명
+          예측서에 패스키로 서명
         </Btn>
       </div>
       {sheet && (
@@ -577,7 +577,7 @@ export function PowToy() {
             </Btn>
           ))}
         </div>
-        <span className="text-white/70">응모권 내용</span>
+        <span className="text-white/70">예측서 내용</span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setRound(round + 1)} disabled={busy}>
             회차 바꾸기({round}회)
@@ -594,7 +594,7 @@ export function PowToy() {
       </Row>
       <div className="flex gap-2">
         <Btn primary onClick={() => void solve()} disabled={busy}>
-          {busy ? "계산하는 중…" : "응모권 한 장 만들기"}
+          {busy ? "계산하는 중…" : "예측서 한 장 만들기"}
         </Btn>
         {busy && <Btn onClick={() => (stop.current = true)}>멈추기</Btn>}
       </div>
@@ -661,7 +661,7 @@ function MerkleSvg({
 }) {
   const tree = buildTree(ids);
   const nodes = treeNodes(tree);
-  if (!tree) return <p className="text-white/50 text-xs">응모권이 없습니다</p>;
+  if (!tree) return <p className="text-white/50 text-xs">예측서가 없습니다</p>;
   const { path, siblings } = proofNodes(tree, mine);
   const top = 18;
   // 잎 아래 이름표까지
@@ -772,12 +772,12 @@ export function MerkleToy() {
   ).length;
 
   return (
-    <Toy title="머클 나무와 내 응모권 증명" id="merkle">
+    <Toy title="머클 나무와 내 예측서 증명" id="merkle">
       <MerkleSvg ids={ids} labels={labels} mine={mine} />
       <div className="flex flex-wrap gap-3 text-[11px] text-white/60">
         <span>
           <span className="mr-1 inline-block size-2.5 rounded-sm bg-[#f6c343]" />
-          내 응모권에서 뿌리까지
+          내 예측서에서 뿌리까지
         </span>
         <span>
           <span className="mr-1 inline-block size-2.5 rounded-sm bg-[#7dd3fc]" />
@@ -856,15 +856,15 @@ export function MerkleToy() {
       </div>
       <Verdict ok={same} testId="merkle-root">
         {same
-          ? "지금 응모권 목록이 마감 때 봉인한 뿌리와 같습니다"
-          : `봉인한 뿌리와 다릅니다(뺀 응모권 ${removed.size}장, 바꾼 응모권 ${changedCount}장). 마감 뒤에 목록이 바뀐 것이 드러납니다`}
+          ? "지금 예측서 목록이 마감 때 봉인한 뿌리와 같습니다"
+          : `봉인한 뿌리와 다릅니다(뺀 예측서 ${removed.size}장, 바꾼 예측서 ${changedCount}장). 마감 뒤에 목록이 바뀐 것이 드러납니다`}
       </Verdict>
       <Verdict ok={proofOk} testId="merkle-proof">
         {mine < 0
-          ? "내 응모권이 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 응모 영수증으로 누구에게나 보일 수 있습니다"
+          ? "내 예측서가 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 예측 접수증으로 누구에게나 보일 수 있습니다"
           : proofOk
-            ? `내 응모권 증명 확인: 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다`
-            : "내 응모권 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다"}
+            ? `내 예측서 증명 확인: 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다`
+            : "내 예측서 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다"}
       </Verdict>
     </Toy>
   );

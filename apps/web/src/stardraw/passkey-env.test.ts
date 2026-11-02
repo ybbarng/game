@@ -50,17 +50,17 @@ describe("패스키 환경", () => {
   });
 
   it("취소와 맞는 패스키 없음은 브라우저가 가르지 않아 함께 말하고, 시간 초과·흉내 창 취소는 따로", () => {
-    const what = "응모되지 않았어요";
+    const what = "접수되지 않았어요";
     expect(
       passkeyFailText(new DOMException("x", "NotAllowedError"), what),
     ).toBe(
-      "응모되지 않았어요. 확인을 취소했거나, 이 기기에서 등록증의 패스키를 찾지 못했어요.",
+      "접수되지 않았어요. 확인을 취소했거나, 이 기기에서 등록증의 패스키를 찾지 못했어요.",
     );
     expect(passkeyFailText(new DOMException("x", "AbortError"), what)).toBe(
-      "응모되지 않았어요. 확인 시간이 지났어요.",
+      "접수되지 않았어요. 확인 시간이 지났어요.",
     );
     expect(
       passkeyFailText(new DOMException(DEMO_CANCEL, "NotAllowedError"), what),
-    ).toBe("응모되지 않았어요. 확인을 취소했어요.");
+    ).toBe("접수되지 않았어요. 확인을 취소했어요.");
   });
 });

@@ -196,7 +196,7 @@ export async function verifyLedger(
     const partial = options.partialRounds?.get(round);
     if (partial)
       skipped.push(
-        `${round}회차: 지운 회차라 남긴 응모권 ${tickets.length}장·등록 ${registrations.length}개만 포함 증명으로 확인`,
+        `${round}회차: 지운 회차라 남긴 예측서 ${tickets.length}장·등록 ${registrations.length}개만 포함 증명으로 확인`,
       );
 
     if (record.v !== recordVersionFor(record.operations))
@@ -276,20 +276,20 @@ export async function verifyLedger(
       const t = tickets[k] as Ticket;
       const id = ids[k] as Uint8Array;
       if (t.v !== TICKET_VERSION && t.v !== TICKET_VERSION_QUAL)
-        fail(`응모권 ${short(id)}: 모르는 판`);
+        fail(`예측서 ${short(id)}: 모르는 판`);
       if (t.round !== round)
-        fail(`응모권 ${short(id)}: 다른 회차(${t.round})의 응모권`);
+        fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서`);
       if (k > 0 && compareBytes(ids[k - 1] as Uint8Array, id) >= 0) {
-        fail("응모권 목록이 id 순서가 아니거나 같은 응모권이 두 번 있다");
+        fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있다");
       }
       const who = toHex(entrantId(t.pub));
       if (entrants.has(who))
-        fail(`응모권 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
+        fail(`예측서 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
       entrants.add(who);
       if (!keyByEntrant.has(who))
-        fail(`응모권 ${short(id)}: 등록되지 않은 열쇠`);
+        fail(`예측서 ${short(id)}: 등록되지 않은 열쇠`);
       if (!(await verifyTicketSignature(t, options.webauthnPolicy)))
-        fail(`응모권 ${short(id)}: 서명이 맞지 않는다`);
+        fail(`예측서 ${short(id)}: 서명이 맞지 않는다`);
     }
 
     // 2. 응모 수와 머클 루트(지운 회차는 남긴 응모권마다 포함 증명)
@@ -303,13 +303,13 @@ export async function verifyLedger(
       for (const id of ids)
         if (!proven.has(toHex(id)))
           fail(
-            `응모권 ${short(id)}: 기록의 머클 루트에 들어 있다는 증명이 없다`,
+            `예측서 ${short(id)}: 기록의 머클 루트에 들어 있다는 증명이 없다`,
           );
     } else {
       if (record.count !== tickets.length)
-        fail(`응모 수가 ${tickets.length}인데 기록은 ${record.count}`);
+        fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}`);
       if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
-        fail("응모권 목록으로 만든 머클 루트가 기록과 다르다");
+        fail("예측서 목록으로 만든 머클 루트가 기록과 다르다");
     }
 
     // 3. drand 회차, 무효 규칙, 서명, 당첨 번호, 등수
@@ -393,7 +393,7 @@ export async function verifyLedger(
         entry.powTarget,
         options.powParams ?? POW_PARAMS,
       );
-      if (!ok) fail(`응모권 ${short(id)}: 작업 증명이 맞지 않는다`);
+      if (!ok) fail(`예측서 ${short(id)}: 작업 증명이 맞지 않는다`);
     }
     const unchecked =
       tickets.length -
@@ -413,15 +413,15 @@ export async function verifyLedger(
           n.ticketId,
         ) >= 0
       ) {
-        fail("별명 목록이 응모권 id 순서가 아니거나 한 응모권에 두 번 있다");
+        fail("별명 목록이 예측서 id 순서가 아니거나 한 예측서에 두 번 있다");
       }
       const winner = winnerKeys.get(key);
       if (!winner || winner.round !== n.round || n.round >= round) {
-        fail(`${label}: 지난 회차 당첨 응모권이 아니다`);
+        fail(`${label}: 지난 회차 당첨 예측서가 아니다`);
         continue;
       }
       if (accepted.some((a) => equalBytes(a.ticketId, n.ticketId))) {
-        fail(`${label}: 이미 별명을 남긴 응모권`);
+        fail(`${label}: 이미 별명을 남긴 예측서`);
         continue;
       }
       const problem = checkNickname(n.nickname);
@@ -475,7 +475,7 @@ export async function verifyLedger(
       if (n > supply && !overIssued.has(key)) {
         overIssued.add(key);
         fail(
-          `소속 증서: 기간 ${key.slice(0, 12)}: 응모권에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개와 다시 발급 수 ${period.reissued}개를 더한 것보다 많다`,
+          `소속 증서: 기간 ${key.slice(0, 12)}: 예측서에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개와 다시 발급 수 ${period.reissued}개를 더한 것보다 많다`,
         );
       }
     }

@@ -28,7 +28,7 @@ async function enterAuto(page: Page, first: boolean) {
     await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   } else await page.getByRole("button", { name: "별 6개 고르기" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
   await page.goto("/stardraw");
 }
@@ -70,7 +70,7 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
     timeout: 30_000,
   });
   await page.goto("/stardraw/mine");
-  await expect(page.getByRole("region", { name: "내 응모" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "내 예측" })).toBeVisible();
   await expect(notice).toHaveCount(0);
 
   // 다음 회차에 응모해 추첨을 넘긴 뒤 닫으면, 새로고침해도 뜨지 않는다

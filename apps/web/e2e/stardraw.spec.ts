@@ -59,7 +59,7 @@ async function untilStageGone(page: Page) {
 }
 
 /** 응모 단추(패스키로 서명, 확인 한 번) */
-const ENTER = { name: "응모하기", exact: true } as const;
+const ENTER = { name: "예측서 내기", exact: true } as const;
 /** 우주인 등록 단추(패스키 만들기) */
 const REGISTER = { name: "우주인 등록", exact: true } as const;
 /** 등록증에서 누를 자리(제목 부분. 가운데는 주소 단추라 피한다) */
@@ -213,7 +213,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     await expect(page.locator("[data-letter]")).toHaveCount(0);
   }
   await expect(page.locator("[data-gate-round]")).toContainText(
-    /응모를 (받고 있어요|마감했어요)/,
+    /예측을 (받고 있어요|마감했어요)/,
   );
   await expect(page.getByRole("button", { name: TO_PICK })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("home-first.png") });
@@ -290,7 +290,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
   await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
   // 하늘에서 별을 누르면 그 별 설명, 아래 고른 별 6칸이 채워진다(번호 용지는 응모할 때만 나온다)
-  await expect(page.getByRole("group", { name: "답안지" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "예측서" })).toHaveCount(0);
   await tapStar(page, "canvas[data-sky='pick']", 7);
   await expect(page.locator("[data-star-info='7']")).toContainText(
     "오리온자리",
@@ -300,7 +300,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(
     page.getByRole("heading", { name: "하늘의 별 따기", level: 1 }),
   ).toHaveCount(0);
-  const slip = page.getByRole("region", { name: "1회 답안지" });
+  const slip = page.getByRole("region", { name: "1회 예측서" });
   await expect(slip).toHaveAttribute("data-entry-slip", "2");
   await expect(slip.locator("[data-slip-star='7']")).toHaveAccessibleName(
     "7 베텔게우스 빼기",
@@ -337,7 +337,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     // 용지와 등록증은 은은하게 떠오르기를 되풀이해(멈추지 않아) 키보드로 낸다(Enter도 같은 제출)
     await pressWhenShown(
       page,
-      page.locator("[aria-label='답안지 제출'][aria-disabled='false']"),
+      page.locator("[aria-label='예측서 제출'][aria-disabled='false']"),
     );
     await pressWhenShown(
       page,
@@ -361,7 +361,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
 
   // 응모권 공유: 보낸 링크를 열면 같은 응모권이 읽기 전용으로 보인다
   const id = (await receipt.getAttribute("data-receipt")) as string;
-  await page.getByRole("button", { name: "응모권 공유" }).click();
+  await page.getByRole("button", { name: "예측서 공유" }).click();
   const shared = () =>
     page.evaluate(
       () => (window as unknown as { __shared?: ShareData }).__shared ?? null,
@@ -369,13 +369,13 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect.poll(shared).not.toBeNull();
   const { text, url } = (await shared()) as { text: string; url: string };
   expect(text).toMatch(
-    /^하늘의 별 따기 1회에 응모했어요\. 추첨은 오[전후] \d+시( \d+분)?!$/,
+    /^하늘의 별 따기 1회 예측서를 냈어요\. 추첨은 오[전후] \d+시( \d+분)?!$/,
   );
   expect(url).toMatch(new RegExp(`/stardraw/ticket#1-${id}$`));
   await page.goto(url);
   await expect(page.locator(`[data-receipt="${id}"]`)).toBeVisible();
   await expect(page.getByRole("status")).toContainText("추첨까지");
-  await expect(page.getByRole("link", { name: "나도 응모하기" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "나도 예측하기" })).toBeVisible();
   await noSideScroll(page);
   await page.screenshot({
     path: info.outputPath("stardraw-ticket.png"),
@@ -396,10 +396,10 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 인사는 문장 하나(작은 등록증 그림 없이)
   await expect(page.locator(`[data-greeting="${number}"] *`)).toHaveCount(0);
   await expect(page.locator("[data-card='entered']")).toContainText(
-    "1회에 응모했어요",
+    "1회 예측서를 냈어요",
   );
   await expect(page.locator("[data-countdown='draw']")).toBeVisible();
-  await expect(page.getByRole("button", { name: "영수증" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "접수증" })).toBeVisible();
   await noSideScroll(page);
   await page.screenshot({
     path: info.outputPath("home-entered.png"),
@@ -433,7 +433,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.locator("[data-tab='home']").click();
   // 결과를 본 뒤에는 지난 회차 한 줄에 내 등수와 「다시 보기」
   await expect(page.locator("[data-last-round='1']")).toBeVisible();
-  await page.getByRole("button", { name: /내 응모/ }).click();
+  await page.getByRole("button", { name: /내 예측/ }).click();
   await expect(page.getByRole("button", { name: /제 1회/ })).toBeVisible();
   // 게임 화면은 단순하게: 열쇠 칩·"서버가 가진 것" 비교는 설명 페이지에만
   await expect(page.getByText("서버(공개 장부)가 가진 것")).toHaveCount(0);
@@ -524,7 +524,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(shown).toContainText(/당첨|낙첨|당첨되지 않았습니다/);
   await expect(page.getByText("추첨까지")).toHaveCount(0);
   await page.goto(`/stardraw/ticket#1-${"0".repeat(64)}`);
-  await expect(page.getByText("이 응모권을 찾을 수 없어요")).toBeVisible();
+  await expect(page.getByText("이 예측서를 찾을 수 없어요")).toBeVisible();
 });
 
 test("패스키 만들기를 취소하면 만들어지지 않았다고 알리고 설명으로 이어 준다", async ({
@@ -753,7 +753,7 @@ test("데모: 1등으로 응모해 당첨자 확인 초록불까지(틀린 별, 
   await expect(checker.locator("[data-verdict='fail']").first()).toContainText(
     "본인 확인에 실패했습니다",
   );
-  await expect(checker).toContainText("그 응모권을 낸 열쇠의 서명이 아닙니다");
+  await expect(checker).toContainText("그 예측서를 낸 열쇠의 서명이 아닙니다");
 
   // 3) 새 링크를 보내면 진짜 당첨자가 승인하고 별 세 개를 받는다
   await toWinner();
@@ -808,10 +808,10 @@ test("데모: 1등으로 응모해 당첨자 확인 초록불까지(틀린 별, 
   for (const n of stars) await tapStar(page, sky, n);
   // 이 흐름은 소속을 받지 않고 응모했다: 응모권 주인까지만 확인하고 소속 표시는 없음(2026-10-31 보안 검토 B1)
   await expect(checker.locator("[data-verdict='ok']")).toHaveText(
-    "1회 1등 응모권의 주인이 맞습니다",
+    "1회 1등 예측서의 주인이 맞습니다",
   );
   await expect(checker.locator("[data-qual-mark='none']")).toHaveText(
-    "소속 표시: 없음(증서를 붙이지 않은 응모권)",
+    "소속 표시: 없음(증서를 붙이지 않은 예측서)",
   );
   await page.screenshot({
     path: info.outputPath("stardraw-demo-checker.png"),
@@ -891,7 +891,7 @@ test("데모 화면 둘러보기: 목록의 화면이 모두 가로 넘침 없�
   });
   await page.goBack();
   await expect(list).toBeVisible();
-  await list.getByRole("link", { name: "내 응모" }).click();
+  await list.getByRole("link", { name: "내 예측" }).click();
   await expect(screen.getByText("제 1회").first()).toBeVisible();
   await page.getByRole("button", { name: "← 화면 목록" }).click();
   await expect(list).toBeVisible();
@@ -1118,14 +1118,14 @@ async function toEntryEdge(page: Page) {
   await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
   await page.clock.setSystemTime(new Date("2026-11-02T03:54:40Z"));
   await expect(page.locator("[data-hurry]")).toContainText(
-    "응모 접수에 시간이 걸리니 서둘러 주세요.",
+    "예측 접수에 시간이 걸리니 서둘러 주세요.",
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.getByRole("button", ENTER).click();
   // 남은 시간이 연출보다 짧아 용지는 한 번에 칠해져 곧바로 내기를 기다린다
   await page
-    .locator("[aria-label='답안지 제출'][aria-disabled='false']")
+    .locator("[aria-label='예측서 제출'][aria-disabled='false']")
     .press("Enter", { timeout: 10_000 });
   return page.locator("[aria-label='신분증 제출'][aria-disabled='false']");
 }
@@ -1221,7 +1221,7 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
   const closed = page.locator("[data-enter-closed]");
-  await expect(closed).toContainText("작성하시던 예측지는 자동 저장됩니다.");
+  await expect(closed).toContainText("작성하시던 예측서는 자동 저장됩니다.");
   // 몇 초 뒤 같은 주소에서 관측지로
   await page.clock.fastForward(6000);
   await page.clock.resume();
@@ -1245,8 +1245,8 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page
     .getByRole("button", { name: "별 6개 고르기" })
     .click({ timeout: 30_000 });
-  const draft = page.getByRole("region", { name: "작성하던 예측지" });
-  await expect(draft).toContainText("작성하던 예측지가 있어요 · 별 6개");
+  const draft = page.getByRole("region", { name: "작성하던 예측서" });
+  await expect(draft).toContainText("작성하던 예측서가 있어요 · 별 6개");
   await page.screenshot({
     path: info.outputPath("stardraw-draft.png"),
     fullPage: true,
@@ -1277,13 +1277,13 @@ async function bounceAndKeep(page: Page) {
   const bounce = page.locator("[data-bounce]");
   await fastForwardUntil(page, () =>
     bounce
-      .getByText("응모 마감(12:54:55) 뒤에 도착했습니다.")
+      .getByText("예측 마감(12:54:55) 뒤에 도착했습니다.")
       .isVisible()
       .catch(() => false),
   );
   // 냈던 1회 용지가 칠한 칸 그대로 「접수 반송」 도장과 함께 돌아온다
   await expect(
-    bounce.getByRole("group", { name: "1회 답안지" }).locator("[data-marked]"),
+    bounce.getByRole("group", { name: "1회 예측서" }).locator("[data-marked]"),
   ).toHaveCount(6);
   await expect(bounce).toContainText("접수 반송");
   await expect(
@@ -1291,7 +1291,7 @@ async function bounceAndKeep(page: Page) {
       .getByRole("dialog", { name: "접수 반송" })
       .getByRole("button", { name: "닫기" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "이 답안지 보관하기" }).click();
+  await page.getByRole("button", { name: "이 예측서 보관하기" }).click();
   await expect(page.getByText("이번 회차 관측지로 가 볼까요?")).toBeVisible();
   return card;
 }
@@ -1316,17 +1316,17 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
   await page
-    .getByRole("button", { name: "다음 회차 응모" })
+    .getByRole("button", { name: "다음 회차 예측" })
     .click({ timeout: 30_000 });
-  const kept = page.getByRole("region", { name: "보관한 답안지" });
-  await expect(kept).toContainText("보관한 답안지(1회)");
-  await kept.getByRole("button", { name: "이 답안지로 응모" }).click();
+  const kept = page.getByRole("region", { name: "보관한 예측서" });
+  await expect(kept).toContainText("보관한 예측서(1회)");
+  await kept.getByRole("button", { name: "이 예측서로 내기" }).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
   // 반송된 1회 용지는 내 응모에 남지 않고 다시 낸 2회 하나만, 보관한 답안지는 사라진다
   // (새로고침하면 시험 시계가 처음으로 돌아가 앱 안에서 옮겨 다닌다)
-  await page.getByRole("button", { name: "내 응모", exact: true }).click();
+  await page.getByRole("button", { name: "내 예측", exact: true }).click();
   await expect(
-    page.getByRole("region", { name: "내 응모" }).getByRole("listitem"),
+    page.getByRole("region", { name: "내 예측" }).getByRole("listitem"),
   ).toHaveCount(1);
   await page.getByRole("button", { name: "홈", exact: true }).click();
   await expect(page.locator("[data-round-note]")).toHaveAttribute(
@@ -1348,13 +1348,13 @@ test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보�
   await page.getByRole("button", { name: "첫 화면으로" }).click();
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
   await expect(page.locator("[data-kept-note]")).toHaveText(
-    "보관한 답안지가 있어요.",
+    "보관한 예측서가 있어요.",
     { timeout: 30_000 },
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByRole("button", { name: "별 6개 고르기" }).click();
   await expect(
-    page.getByRole("region", { name: "보관한 답안지" }),
+    page.getByRole("region", { name: "보관한 예측서" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.getByRole("button", ENTER).click();

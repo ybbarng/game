@@ -270,7 +270,7 @@ export function CheckLink({
       )}
       {state.kind === "not-winner" && (
         <Notice tone="warn">
-          장부에서 이 링크의 당첨 응모권을 찾지 못했습니다.
+          장부에서 이 링크의 당첨 예측서를 찾지 못했습니다.
         </Notice>
       )}
 
@@ -405,7 +405,7 @@ export function CheckLink({
             >
               {mark?.kind === "yes"
                 ? `${title} 당첨자 본인이 맞습니다`
-                : `${title} 응모권의 주인이 맞습니다`}
+                : `${title} 예측서의 주인이 맞습니다`}
             </p>
           )}
           {green && mark && (

@@ -153,22 +153,22 @@ export async function checkRound(
     const t = tickets[k] as Ticket;
     const id = ids[k] as Uint8Array;
     if (t.v !== TICKET_VERSION && t.v !== TICKET_VERSION_QUAL)
-      fail(`응모권 ${short(id)}: 모르는 판`);
+      fail(`예측서 ${short(id)}: 모르는 판`);
     if (t.round !== round)
-      fail(`응모권 ${short(id)}: 다른 회차(${t.round})의 응모권`);
+      fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서`);
     if (k > 0 && compareBytes(ids[k - 1] as Uint8Array, id) >= 0)
-      fail("응모권 목록이 id 순서가 아니거나 같은 응모권이 두 번 있다");
+      fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있다");
     const who = toHex(entrantId(t.pub));
     if (entrants.has(who))
-      fail(`응모권 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
+      fail(`예측서 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
     entrants.add(who);
     if (!(await verifyTicketSignature(t, options.webauthnPolicy)))
-      fail(`응모권 ${short(id)}: 서명이 맞지 않는다`);
+      fail(`예측서 ${short(id)}: 서명이 맞지 않는다`);
   }
   if (record.count !== tickets.length)
-    fail(`응모 수가 ${tickets.length}인데 기록은 ${record.count}`);
+    fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}`);
   if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
-    fail("응모권 목록으로 만든 머클 루트가 기록과 다르다");
+    fail("예측서 목록으로 만든 머클 루트가 기록과 다르다");
 
   // 4. drand·무효 규칙·당첨
   if (record.drandRound !== drandRoundForClose(closesAt))
@@ -237,7 +237,7 @@ export async function checkRound(
         params,
       ))
     )
-      fail(`응모권 ${short(id)}: 작업 증명이 맞지 않는다`);
+      fail(`예측서 ${short(id)}: 작업 증명이 맞지 않는다`);
   }
 
   // 6. 봉인 파일과 시각 인증 토큰

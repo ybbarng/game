@@ -668,7 +668,7 @@ export const AWARDS: readonly AwardDef[] = [
           p.every((n, i) => i === 0 || n === (p[i - 1] as number) + 1),
       ),
     text: (_, k) =>
-      doc("귀하는 이어진 번호 여섯 개로 답안지를 가지런히 채웠습니다.", k),
+      doc("귀하는 이어진 번호 여섯 개로 예측서를 가지런히 채웠습니다.", k),
   },
   {
     id: "arithmetic",
@@ -688,7 +688,7 @@ export const AWARDS: readonly AwardDef[] = [
       }),
     text: (f, k) =>
       doc(
-        `귀하는 ${f.d}씩 커지는 번호 여섯 개로 응모하였습니다. 별을 고르는 데에도 수학이 쓰일 수 있음을 보였습니다.`,
+        `귀하는 ${f.d}씩 커지는 번호 여섯 개로 예측하였습니다. 별을 고르는 데에도 수학이 쓰일 수 있음을 보였습니다.`,
         k,
       ),
   },
@@ -699,7 +699,7 @@ export const AWARDS: readonly AwardDef[] = [
     kind: "인증서",
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => n % 2 === 1)),
-    text: (_, k) => doc("귀하는 홀수 번호로만 답안지를 채웠습니다.", k),
+    text: (_, k) => doc("귀하는 홀수 번호로만 예측서를 채웠습니다.", k),
   },
   {
     id: "all-even",
@@ -708,7 +708,7 @@ export const AWARDS: readonly AwardDef[] = [
     kind: "인증서",
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => n % 2 === 0)),
-    text: (_, k) => doc("귀하는 짝수 번호로만 답안지를 채웠습니다.", k),
+    text: (_, k) => doc("귀하는 짝수 번호로만 예측서를 채웠습니다.", k),
   },
   {
     id: "primes",
@@ -719,7 +719,7 @@ export const AWARDS: readonly AwardDef[] = [
     find: (c) => firstPick(c, (p) => p.every((n) => PRIMES.has(n))),
     text: (_, k) =>
       doc(
-        "귀하는 1과 자기 자신으로만 나누어지는 번호로만 응모하였습니다. 나누어지지 않는 별들의 고집을 알아본 안목을 기립니다.",
+        "귀하는 1과 자기 자신으로만 나누어지는 번호로만 예측하였습니다. 나누어지지 않는 별들의 고집을 알아본 안목을 기립니다.",
         k,
       ),
   },
@@ -731,7 +731,7 @@ export const AWARDS: readonly AwardDef[] = [
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => n <= 12)),
     text: (_, k) =>
-      doc("귀하는 12 이하의 번호로만 응모하여 열두 달을 하늘에 담았습니다.", k),
+      doc("귀하는 12 이하의 번호로만 예측하여 열두 달을 하늘에 담았습니다.", k),
   },
   {
     id: "balanced-sum",
@@ -764,7 +764,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (_, k) =>
       doc(
-        "귀하는 바로 앞 회차의 당첨 번호 여섯 개를 그대로 골라 응모하였습니다. 한 번 빛난 별이 다시 빛나기를 바라는 마음을 헤아립니다.",
+        "귀하는 바로 앞 회차의 당첨 번호 여섯 개를 그대로 골라 예측하였습니다. 한 번 빛난 별이 다시 빛나기를 바라는 마음을 헤아립니다.",
         k,
       ),
   },
@@ -795,7 +795,7 @@ export const AWARDS: readonly AwardDef[] = [
     grade: "bronze",
     find: (c) => firstPick(c, (p) => p.every((n) => starOf(n).mag <= 1.5)),
     text: (_, k) =>
-      doc("귀하는 1등성으로 불리는 밝은 별로만 답안지를 채웠습니다.", k),
+      doc("귀하는 1등성으로 불리는 밝은 별로만 예측서를 채웠습니다.", k),
   },
   {
     id: "five-colors",
@@ -810,7 +810,7 @@ export const AWARDS: readonly AwardDef[] = [
       ),
     text: (_, k) =>
       doc(
-        "귀하는 한 장의 답안지에 푸른 별, 흰 별, 노란빛 별, 주황빛 별, 붉은 별을 모두 담았습니다.",
+        "귀하는 한 장의 예측서에 푸른 별, 흰 별, 노란빛 별, 주황빛 별, 붉은 별을 모두 담았습니다.",
         k,
       ),
   },
@@ -843,7 +843,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (_, k) =>
       doc(
-        "귀하는 응모판의 별 마흔다섯을 하나도 빠짐없이 한 번 이상 골랐습니다. 서울 하늘의 밝은 별을 모두 만나 본 우주인으로 기록합니다.",
+        "귀하는 예측판의 별 마흔다섯을 하나도 빠짐없이 한 번 이상 골랐습니다. 서울 하늘의 밝은 별을 모두 만나 본 우주인으로 기록합니다.",
         k,
       ),
   },
@@ -1020,7 +1020,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (f, k) =>
       doc(
-        `귀하가 고른 ${topic(String(f.star))} ${ASLEEP_DRAWS}번의 추첨 동안 한 번도 뽑히지 않다가 귀하의 응모와 함께 당첨 번호로 떠올랐습니다. 잠든 별을 깨운 공로를 기립니다.`,
+        `귀하가 고른 ${topic(String(f.star))} ${ASLEEP_DRAWS}번의 추첨 동안 한 번도 뽑히지 않다가 귀하의 예측과 함께 당첨 번호로 떠올랐습니다. 잠든 별을 깨운 공로를 기립니다.`,
         k,
       ),
   },
@@ -1289,7 +1289,7 @@ export const AWARDS: readonly AwardDef[] = [
     },
     text: (f, k) =>
       doc(
-        `귀하는 그때까지 가장 많은 응모권(${f.count}장)이 모인 회차에 참여하였습니다. 붐비는 하늘에 한 자리를 보태 주었습니다.`,
+        `귀하는 그때까지 가장 많은 예측서(${f.count}장)가 모인 회차에 참여하였습니다. 붐비는 하늘에 한 자리를 보태 주었습니다.`,
         k,
       ),
   },
@@ -1302,7 +1302,7 @@ export const AWARDS: readonly AwardDef[] = [
     find: (c) => nth(c, 1, (m) => m.record.count === 1 && m.picks.length === 1),
     text: (_, k) =>
       doc(
-        "귀하는 응모권이 단 한 장뿐인 회차에서 홀로 밤하늘을 지켰습니다. 그 회차의 하늘은 오롯이 귀하의 것이었습니다.",
+        "귀하는 예측서가 단 한 장뿐인 회차에서 홀로 밤하늘을 지켰습니다. 그 회차의 하늘은 오롯이 귀하의 것이었습니다.",
         k,
       ),
   },

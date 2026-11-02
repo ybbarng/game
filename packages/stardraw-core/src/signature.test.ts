@@ -16,7 +16,7 @@ import {
 } from "./signature";
 import { fakePasskey } from "./testing";
 
-const MESSAGE = utf8("stardraw/test\u0000하늘의 별 따기 12회 응모권");
+const MESSAGE = utf8("stardraw/test\u0000하늘의 별 따기 12회 예측서");
 
 describe("원시 P-256 서명은 받지 않는다(docs/36 11-11)", () => {
   it("서명 종류 01(r‖s 64바이트)은 읽는 단계에서 거절한다", () => {

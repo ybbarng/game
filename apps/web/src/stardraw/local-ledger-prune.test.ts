@@ -103,7 +103,7 @@ async function enter(
         { params: PRACTICE_POW },
       )
     : undefined;
-  if (!ticket || reg === null) throw new Error("응모권을 만들지 못했다");
+  if (!ticket || reg === null) throw new Error("예측서를 만들지 못했다");
   await ledger.submit(ticket, reg);
   return ticket;
 }

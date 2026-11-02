@@ -124,7 +124,7 @@ export async function buildTour(): Promise<TourState> {
       { params: ledger.powParams },
     );
     if (!ticket || registration === null)
-      throw new Error("둘러보기 응모권을 만들지 못했습니다");
+      throw new Error("둘러보기 예측서를 만들지 못했습니다");
     const { receivedAt } = await ledger.submit(ticket, registration);
     return { ticket, receivedAt };
   };

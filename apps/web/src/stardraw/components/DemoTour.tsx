@@ -28,8 +28,8 @@ const SPECIMEN_ITEMS = [{ id: "records", label: "내 기록" }] as const;
 
 /** 데모 "화면 둘러보기" 목록. 주소는 #tour-<id>라 뒤로가기로 목록에 돌아온다 */
 export const TOUR_ITEMS = [
-  { id: "enter", label: "응모" },
-  { id: "receipt", label: "영수증" },
+  { id: "enter", label: "예측" },
+  { id: "receipt", label: "접수증" },
   { id: "draw", label: "추첨(룰렛)" },
   { id: "envelope", label: "결과 봉투" },
   { id: "rank-1", label: "1등" },
@@ -38,7 +38,7 @@ export const TOUR_ITEMS = [
   { id: "rank-4", label: "4등" },
   { id: "rank-5", label: "5등" },
   { id: "lose", label: "낙첨" },
-  { id: "mine", label: "내 응모" },
+  { id: "mine", label: "내 예측" },
   { id: "rounds", label: "지난 회차" },
   { id: "win-notice", label: "당첨 안내·확인 링크" },
   { id: "link-open", label: "확인 링크 연 화면" },

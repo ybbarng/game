@@ -132,7 +132,7 @@ export function MyRecordsView({
         </div>
         {total === 0 ? (
           <p className="py-4 text-center text-sm text-white/55">
-            아직 당첨된 응모권이 없습니다.
+            아직 당첨된 예측서가 없습니다.
           </p>
         ) : (
           <WinList
@@ -643,7 +643,7 @@ function Certificate({
               <InviteQr
                 url={ticketUrl(origin, win.ticket)}
                 size={96}
-                label="공개 장부에서 이 응모권 확인하기"
+                label="공개 장부에서 이 예측서 확인하기"
               />
             </span>
           )}

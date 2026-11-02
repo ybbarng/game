@@ -216,7 +216,7 @@ export function TsaToy() {
           </Row>
           <Verdict ok={!isVoid} testId="tsa-order">
             {!isVoid
-              ? "유효: 봉인이 추첨보다 먼저입니다. 결과를 알기 전에 응모권 목록이 고정됐습니다"
+              ? "유효: 봉인이 추첨보다 먼저입니다. 결과를 알기 전에 예측서 목록이 고정됐습니다"
               : baseTime < closesAt
                 ? "무효: 마감 전 봉인은 말이 되지 않습니다"
                 : "무효: 봉인이 추첨 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 당첨 없이 닫습니다"}
@@ -320,7 +320,7 @@ export function DrandToy() {
       <div className="flex flex-col gap-2 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
           ③ seed = taggedHash("stardraw/seed/v1", 회차 ‖ 난수). 회차를 바꿔
-          보세요. 응모권 목록은 들어가지 않아 운영자가 응모권을 넣고 빼도 번호는
+          보세요. 예측서 목록은 들어가지 않아 운영자가 예측서를 넣고 빼도 번호는
           그대로입니다
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -742,7 +742,7 @@ export function SasToy() {
         {out === null
           ? "계산하는 중"
           : out.claimProblems.length === 0
-            ? "서명 검사 통과: 응모권 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다"
+            ? "서명 검사 통과: 예측서 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다"
             : `서명 검사 실패: ${out.claimProblems.join(", ")}(당첨자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다)`}
       </Verdict>
       <Verdict ok={sameStars} testId="sas-stars">

@@ -150,7 +150,7 @@ function LanternBubble({
  * 얼굴·이름은 등록증의 공개 열쇠에서, 응모했는지는 봉인 전부터, 고른 별은 봉인(마감) 뒤에 보인다
  */
 export const ROOM_PASS_NOTE =
-  "언덕에 올라 같은 회차를 기다리는 우주인들과 이야기하기 위한 제시예요. 다른 우주인에게는 등록증의 얼굴과 이름, 응모했는지가 보이고, 마감 뒤에는 고른 별도 보여요.";
+  "언덕에 올라 같은 회차를 기다리는 우주인들과 이야기하기 위한 제시예요. 다른 우주인에게는 등록증의 얼굴과 이름, 예측했는지가 보이고, 마감 뒤에는 고른 별도 보여요.";
 /** 장부 등록이 아직 없는 등록증으로 방에서 처음 제시할 때(등록 증명 서명) */
 export const ROOM_REGISTER_NOTE =
   "언덕에 오르려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
@@ -567,9 +567,9 @@ export function RoomView({
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"
-      ? `지금 ${title} 응모를 받고 있어요.`
+      ? `지금 ${title} 예측을 받고 있어요.`
       : phase === "closed"
-        ? `응모를 마감했어요. 추첨까지 ${formatLeft(toShow / 1000)}`
+        ? `예측을 마감했어요. 추첨까지 ${formatLeft(toShow / 1000)}`
         : phase === "announce"
           ? "이제 추첨을 시작하겠습니다."
           : phase === "count"
@@ -761,7 +761,7 @@ export function RoomView({
                 type="button"
                 data-face={pid}
                 data-face-entered={p.entered || undefined}
-                aria-label={`${a.name}${p.entered ? ", 응모함" : ""}${pid === me ? ", 나" : ""}`}
+                aria-label={`${a.name}${p.entered ? ", 예측함" : ""}${pid === me ? ", 나" : ""}`}
                 onClick={() => cheer("twinkle", pid)}
                 className={cn(
                   "sd-room-face relative size-12 overflow-hidden rounded-full border",
@@ -928,7 +928,7 @@ export function RoomView({
           {/* 장부는 응모를 받는 동안만 등록을 받는다(마감부터 추첨 몇 초 뒤 다음 회차가 열릴 때까지는 기다린다) */}
           {services.ledger.status().phase === "open"
             ? "장부에 우주인 등록을 올리고 있습니다."
-            : "다음 회차 응모가 열리면 장부에 우주인 등록을 올립니다."}
+            : "다음 회차 예측이 열리면 장부에 우주인 등록을 올립니다."}
         </p>
       )}
       {(sendNote ?? setup.error?.text) && (
@@ -943,7 +943,7 @@ export function RoomView({
       {phase === "after" && (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
           <span className="font-semibold">
-            지금 {roundTitle(schedule, round + 1)} 응모를 받고 있어요.
+            지금 {roundTitle(schedule, round + 1)} 예측을 받고 있어요.
           </span>
           <button
             type="button"

@@ -112,7 +112,7 @@ export const NumberPaper = forwardRef<
   return (
     <fieldset
       ref={ref}
-      aria-label={title ?? "답안지"}
+      aria-label={title ?? "예측서"}
       className={cn(
         "rounded-2xl border border-rose-300/25 bg-[#1b1622] p-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]",
         className,
@@ -207,7 +207,7 @@ export function SubmitView({
   const rowEl = useRef<HTMLElement>(null);
   const paper = useRef<HTMLFieldSetElement>(null);
   const [text, setText] = useState(
-    transfer ? "다음 회차 답안지에 옮겨 적습니다." : "답안지를 작성해 주세요.",
+    transfer ? "다음 회차 예측서에 옮겨 적습니다." : "예측서를 작성해 주세요.",
   );
   /** 옮겨 쓰기에서 돌려받은 용지 */
   const [old, setOld] = useState<"shown" | "folding" | "gone">(
@@ -235,11 +235,11 @@ export function SubmitView({
         ]);
         if (!alive) return;
         if (!early) {
-          setText("다음 회차 응모가 열리면 이어서 접수하겠습니다.");
+          setText("다음 회차 예측이 열리면 이어서 접수하겠습니다.");
           await transfer.ready;
           if (!alive) return;
         }
-        setText("다음 회차 답안지에 옮겨 적습니다.");
+        setText("다음 회차 예측서에 옮겨 적습니다.");
         setSheet("in");
         await wait(FX.sheetIn);
         if (!alive) return;
@@ -252,7 +252,7 @@ export function SubmitView({
         await wait(FX.paperAway);
         if (!alive) return;
         setOld("gone");
-        setText("답안지를 밀어 올려 응모해 주세요.");
+        setText("예측서를 밀어 올려 내 주세요.");
         setAwaiting(true);
         return;
       }
@@ -261,7 +261,7 @@ export function SubmitView({
         setMarked(sorted);
         setFlown(sorted);
         setSheet("in");
-        setText("답안지를 밀어 올려 응모해 주세요.");
+        setText("예측서를 밀어 올려 내 주세요.");
         await wait(FX.sheetIn);
         if (!alive) return;
         setAwaiting(true);
@@ -287,7 +287,7 @@ export function SubmitView({
       setRow("gone");
       await wait(FX.pause);
       if (!alive) return;
-      setText("답안지를 밀어 올려 응모해 주세요.");
+      setText("예측서를 밀어 올려 내 주세요.");
       setAwaiting(true);
     })();
     return () => {
@@ -360,7 +360,7 @@ export function SubmitView({
   return (
     <section
       className="flex min-h-full flex-1 flex-col gap-4"
-      aria-label="답안지 제출"
+      aria-label="예측서 제출"
     >
       <p
         key={text}
@@ -464,7 +464,7 @@ export function Sheet({
   sheet,
   awaiting,
   onSwiped,
-  label = "답안지 제출",
+  label = "예측서 제출",
   children,
 }: {
   sheet: "below" | "in" | "away";

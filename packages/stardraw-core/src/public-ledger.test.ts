@@ -455,7 +455,7 @@ describe("내 응모권 찾기", () => {
     const { ledger } = await ledgerWithTickets();
     expect(findTicket(ledger, { round: 1, id: "00000000" })).toMatchObject({
       found: false,
-      reason: "1회차 응모권 2장 가운데 이 일련번호가 없습니다",
+      reason: "1회차 예측서 2장 가운데 이 일련번호가 없습니다",
     });
     expect(findTicket(ledger, { round: 2, id: "00000000" })).toMatchObject({
       found: false,

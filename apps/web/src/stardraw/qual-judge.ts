@@ -118,9 +118,9 @@ export function qualMarkText(m: QualMark): string {
     case "yes":
       return `소속 표시: 있음(${m.affiliation})`;
     case "dup":
-      return `소속 표시: 없음(같은 ${m.affiliation} 증서로 낸 응모권이 둘 이상)`;
+      return `소속 표시: 없음(같은 ${m.affiliation} 증서로 낸 예측서가 둘 이상)`;
     case "none":
-      return "소속 표시: 없음(증서를 붙이지 않은 응모권)";
+      return "소속 표시: 없음(증서를 붙이지 않은 예측서)";
     case "invalid":
       return "소속 표시: 없음(이 회차에 쓸 수 없는 증서)";
   }

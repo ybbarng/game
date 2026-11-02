@@ -566,7 +566,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             if (!m)
               return (
                 <p className="py-10 text-center text-white/60">
-                  이 기기에서 이 응모권을 찾을 수 없어요
+                  이 기기에서 이 예측서를 찾을 수 없어요
                 </p>
               );
             return (
@@ -618,7 +618,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           ) : (
             loaded && (
               <p className="py-10 text-center text-white/60">
-                아직 응모한 기록이 없습니다.
+                아직 예측한 기록이 없습니다.
               </p>
             )
           )
@@ -908,8 +908,8 @@ export function Gate({
         {live !== null
           ? `지금 ${roundShort(services.ledger.schedule, live)} 추첨 중이에요.`
           : open
-            ? `지금 ${name} 응모를 받고 있어요 · 마감까지 ${formatLeft(s.times.entryDeadline - s.now)}`
-            : `${name} 응모를 마감했어요.`}
+            ? `지금 ${name} 예측을 받고 있어요 · 마감까지 ${formatLeft(s.times.entryDeadline - s.now)}`
+            : `${name} 예측을 마감했어요.`}
       </p>
       {live !== null && onDraw && (
         <button
@@ -1102,10 +1102,10 @@ export function RoundCard({
       >
         <span aria-hidden="true" className="sd-live-dot" data-live={state} />
         {state === "open"
-          ? `지금 ${name} 응모를 받고 있어요.`
+          ? `지금 ${name} 예측을 받고 있어요.`
           : state === "entered"
-            ? `${name}에 응모했어요.`
-            : `${name} 응모를 마감했어요.`}
+            ? `${name} 예측서를 냈어요.`
+            : `${name} 예측을 마감했어요.`}
       </span>
       {/*
         창구 말 한 줄(상태 × 내 응모 여부, 2026-10-31 사용자):
@@ -1129,7 +1129,7 @@ export function RoundCard({
         {!closed
           ? ticket
             ? `${clockOf(drawAt)} 추첨을 함께 지켜봐 주세요.`
-            : "아직 이번 회차에 응모하지 않으셨어요."
+            : "아직 이번 회차에 예측하지 않으셨어요."
           : ticket
             ? "곧 추첨이 시작됩니다. 관측지로 가 볼까요?"
             : "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?"}
@@ -1169,7 +1169,7 @@ export function RoundCard({
             onClick={() => onReceipt(ticket)}
             className="w-full max-w-xs rounded-2xl border border-white/25 py-3 font-semibold hover:bg-white/10"
           >
-            영수증
+            접수증
           </button>
         </div>
       ) : !closed ? (
@@ -1184,7 +1184,7 @@ export function RoundCard({
           {/* 보관한 답안지는 응모 페이지에서 고른다(입구는 하나, 2026-11-01 사용자). 카드에는 있다는 것만 */}
           {keptHere && (
             <span className="text-amber-100/80 text-xs" data-kept-note>
-              보관한 답안지가 있어요.
+              보관한 예측서가 있어요.
             </span>
           )}
         </div>
@@ -1202,10 +1202,10 @@ export function RoundCard({
         {closed
           ? ticket
             ? `추첨 ${clockOf(drawAt)}`
-            : `다음 회차는 ${clockOf(drawAt)}부터 응모할 수 있어요.`
+            : `다음 회차는 ${clockOf(drawAt)}부터 예측할 수 있어요.`
           : ticket
-            ? `마감 ${clockOf(s.times.closesAt)} · 응모 ${s.entries}장`
-            : `추첨 ${clockOf(drawAt)} · 응모 ${s.entries}장`}
+            ? `마감 ${clockOf(s.times.closesAt)} · 예측서 ${s.entries}장`
+            : `추첨 ${clockOf(drawAt)} · 예측서 ${s.entries}장`}
       </span>
     </section>
   );
@@ -1323,10 +1323,10 @@ function ReceiptView({
   const [printed, setPrinted] = useState(false);
   // 머리 줄 단추는 두지 않는다: 내 응모 탭이 켜져 있고, 목록은 그 탭이, 바로 전 화면은 뒤로 가기가 맡는다
   return (
-    <section className="flex flex-col gap-4" aria-label="응모권">
+    <section className="flex flex-col gap-4" aria-label="예측서">
       {printing && (
         <p role="status" className="text-center font-semibold text-amber-100">
-          응모했습니다
+          예측했습니다
         </p>
       )}
       {printing && !reduce && !printed && (
@@ -1399,7 +1399,7 @@ function ShareTicket({
       services.ledger.schedule,
       ticket.round,
     ).closesAt;
-    const text = `하늘의 별 따기 ${roundShort(services.ledger.schedule, ticket.round)}에 응모했어요. 추첨은 ${koreanHour(drandTime(drandRoundForClose(closesAt)))}!`;
+    const text = `하늘의 별 따기 ${roundShort(services.ledger.schedule, ticket.round)} 예측서를 냈어요. 추첨은 ${koreanHour(drandTime(drandRoundForClose(closesAt)))}!`;
     const url = ticketUrl(window.location.origin, ticket);
     if (navigator.share) {
       try {
@@ -1422,7 +1422,7 @@ function ShareTicket({
       onClick={() => void share()}
       className="rounded-2xl border border-white/20 py-2.5 font-semibold text-sm hover:bg-white/10"
     >
-      {copied ? "링크를 복사했어요" : "응모권 공유"}
+      {copied ? "링크를 복사했어요" : "예측서 공유"}
     </button>
   );
 }
@@ -1609,8 +1609,8 @@ export function MineView({
   const sorted = [...mine].sort((a, b) => b.ticket.round - a.ticket.round);
   const [key, setKey] = useState(() => services.wallet.loadKey());
   return (
-    <section className="flex flex-col gap-4" aria-label="내 응모">
-      <h2 className="text-center font-bold text-lg">내 응모</h2>
+    <section className="flex flex-col gap-4" aria-label="내 예측">
+      <h2 className="text-center font-bold text-lg">내 예측</h2>
       {onRecords && (
         <button
           type="button"
@@ -1637,7 +1637,7 @@ export function MineView({
       />
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 응모하지 않았습니다
+          아직 예측하지 않았습니다
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -1767,7 +1767,7 @@ function RecoverKey({
       if (passkeyProblem(err) === "cancelled") setState("cancelled");
       else {
         setState("error");
-        setMessage(errorText(err, "응모 기록을 복구", "찾지 않았어요"));
+        setMessage(errorText(err, "예측 기록을 복구", "찾지 않았어요"));
       }
     }
   };
@@ -1915,7 +1915,7 @@ function RoundRow({
       <span className="flex items-baseline justify-between">
         <span className="font-semibold tabular-nums">{label}</span>
         <span className="text-white/55 text-xs tabular-nums">
-          응모 {record.count}장{sealed ? "" : ` · 당첨 ${winners}장`}
+          예측서 {record.count}장{sealed ? "" : ` · 당첨 ${winners}장`}
         </span>
       </span>
       {sealed ? (
@@ -2056,7 +2056,7 @@ function RoundDetail({
         </div>
       )}
       <p className="text-center text-white/55 text-xs tabular-nums">
-        응모 {record.count}장 · 마감 {formatTime(closesOf(services, round))}
+        예측서 {record.count}장 · 마감 {formatTime(closesOf(services, round))}
       </p>
 
       {!hidden && prize.any && (
@@ -2115,7 +2115,7 @@ function RoundDetail({
                       {shortId(hex)}
                     </span>
                     <span className="text-white/80">
-                      {myIds.has(hex) ? "내 응모권" : (nickname ?? "익명")}
+                      {myIds.has(hex) ? "내 예측서" : (nickname ?? "익명")}
                       {prize.eligible.has(hex) && (
                         <span
                           className="ml-1.5 rounded bg-amber-200/15 px-1.5 py-0.5 text-amber-100 text-xs"

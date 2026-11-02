@@ -78,14 +78,16 @@ export function errorKind(err: unknown): ErrorKind {
   const status = statusOf(err);
   if (status === 503 || status === 429) return "busy";
   if (status === 409) {
-    if (msg.includes("이미 응모")) return "duplicate";
+    if (msg.includes("이미 예측") || msg.includes("이미 응모"))
+      return "duplicate";
     if (msg.includes("회차가 바뀌었")) return "round-changed";
   }
   if (status === 400) return "bad-form";
   if (status === 403) return "bad-signature";
   if (status === 404) return "not-found";
   if (status !== null && status >= 500) return "server";
-  if (msg.includes("이미 응모")) return "duplicate";
+  if (msg.includes("이미 예측") || msg.includes("이미 응모"))
+    return "duplicate";
   return "other";
 }
 
@@ -109,9 +111,9 @@ export function errorText(
     case "busy":
       return `우주국이 너무 바빠 ${failed}. 잠시 뒤 다시 시도해 주세요.`;
     case "closed":
-      return `응모가 마감되어 ${failed}.`;
+      return `예측이 마감되어 ${failed}.`;
     case "duplicate":
-      return "이번 회차에는 이미 응모하셨습니다.";
+      return "이번 회차에는 이미 예측하셨습니다.";
     case "round-changed":
       return `회차가 바뀌어 ${failed}. 다시 시도해 주세요.`;
     case "bad-form":

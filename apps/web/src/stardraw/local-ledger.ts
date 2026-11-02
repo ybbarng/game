@@ -604,7 +604,7 @@ export class LocalLedger implements Ledger {
     for (const list of [...this.registrations, this.pending.registrations])
       for (const r of list) if (toHex(r.credentialId) === id) return r.pub;
     if (everDirector(await this.opsState(), new Uint8Array(0), credentialId))
-      throw new Error("이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다");
+      throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
     return null;
   }
 
@@ -647,7 +647,7 @@ export class LocalLedger implements Ledger {
         registration.credentialId,
       )
     )
-      throw new Error("이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다");
+      throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
     if (await this.passkeyPub(registration.credentialId))
       throw new Error("이미 다른 열쇠로 등록된 패스키입니다");
     if (!(await verifyRegistrationProof(registration, proof, this.policy)))
@@ -682,20 +682,20 @@ export class LocalLedger implements Ledger {
     if (round !== null && ticket.round < round)
       throw new Error(closedMessage(now));
     if (round === null || ticket.round !== round)
-      throw new Error("이번 회차 응모권이 아닙니다");
+      throw new Error("이번 회차 예측서가 아닙니다");
     const times = roundTimes(this.schedule, round);
     if (this.records.length < round - 1)
-      throw new Error("앞 회차 추첨이 끝난 뒤에 응모할 수 있습니다");
+      throw new Error("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다");
     if (now >= times.closesAt) throw new Error(closedMessage(now));
     if (this.pending.round !== round)
       this.pending = { round, tickets: [], registrations: [] };
     const who = toHex(entrantId(ticket.pub));
     if (this.pending.tickets.some((t) => toHex(entrantId(t.pub)) === who))
-      throw new Error("이번 회차에는 이미 응모했습니다");
+      throw new Error("이번 회차에는 이미 예측했습니다");
     const challenge = this.head();
     if (registration) {
       if (toHex(entrantId(registration.pub)) !== who)
-        throw new Error("응모권과 다른 열쇠의 등록입니다");
+        throw new Error("예측서와 다른 열쇠의 등록입니다");
       const problem = checkRegistration(registration);
       if (problem) throw new Error(problem);
       if (
@@ -705,7 +705,7 @@ export class LocalLedger implements Ledger {
           registration.credentialId,
         )
       )
-        throw new Error("이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다");
+        throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
       if (
         !this.keys.has(who) &&
         !(await checkPow(
@@ -729,9 +729,9 @@ export class LocalLedger implements Ledger {
         PRACTICE_POW,
       ))
     )
-      throw new Error("응모 계산이 맞지 않습니다");
+      throw new Error("예측 계산이 맞지 않습니다");
     if (!(await verifyTicketSignature(ticket, this.policy)))
-      throw new Error("응모권 서명이 맞지 않습니다");
+      throw new Error("예측서 서명이 맞지 않습니다");
     if (ticket.qual) {
       const state = cloneOpsState(await this.opsState());
       matureOps(state, round);

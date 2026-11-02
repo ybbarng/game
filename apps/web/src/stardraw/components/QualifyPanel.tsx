@@ -307,7 +307,7 @@ function Backup({
           className="break-keep rounded-xl border border-rose-300/40 bg-rose-500/10 p-3 text-rose-100 text-sm"
           data-qual-leak
         >
-          이 기기에서 내지 않은 응모에 내 소속 증서가 쓰였습니다(
+          이 기기에서 내지 않은 예측에 내 소속 증서가 쓰였습니다(
           {leaked
             .map((r) => roundShort(services.ledger.schedule, r))
             .join(", ")}
@@ -339,7 +339,7 @@ function Backup({
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-amber-200/30 bg-amber-200/5 p-3">
           <p className="break-keep text-sm text-amber-50">
-            복구 코드를 가진 사람은 이 기간 이 소속으로 응모할 수 있습니다.
+            복구 코드를 가진 사람은 이 기간 이 소속으로 예측할 수 있습니다.
             비밀번호처럼 보관하세요. 패스키를 잃어도 이 코드로 새 등록증에
             불러올 수 있습니다.
           </p>
@@ -383,7 +383,7 @@ function Backup({
             </div>
           )}
           <p className="text-white/50 text-xs">
-            받은 다음 회차 응모부터 붙습니다.
+            받은 다음 회차 예측부터 붙습니다.
           </p>
         </div>
       )}

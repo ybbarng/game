@@ -61,7 +61,7 @@ export async function ticketFor(
   const t = await makeTicket(signer, round, numbers, challenge, EASY_TARGET, {
     params: TEST_POW,
   });
-  if (!t) throw new Error("응모권을 만들지 못했다");
+  if (!t) throw new Error("예측서를 만들지 못했다");
   return t;
 }
 

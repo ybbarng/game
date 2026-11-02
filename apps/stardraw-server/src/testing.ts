@@ -314,7 +314,7 @@ export async function entryFor(
     { params: TEST_POW },
     qual,
   );
-  if (!ticket) throw new Error("응모권을 만들지 못했다");
+  if (!ticket) throw new Error("예측서를 만들지 못했다");
   if (p.registered) return { ticket };
   const registration = await makeRegistration(
     p.signer,

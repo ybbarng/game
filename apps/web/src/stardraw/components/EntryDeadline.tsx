@@ -41,7 +41,7 @@ export function HurryNotice({
           : undefined
       }
     >
-      마감까지 {formatLeft(left)} · 응모 접수에 시간이 걸리니 서둘러 주세요.
+      마감까지 {formatLeft(left)} · 예측 접수에 시간이 걸리니 서둘러 주세요.
     </p>
   );
 }
@@ -97,7 +97,7 @@ export function BounceSlip({
       >
         {phase === "kept"
           ? "이번 회차 관측지로 가 볼까요?"
-          : "응모가 마감되었습니다."}
+          : "예측이 마감되었습니다."}
       </p>
       {phase !== "kept" && (
         <div
@@ -127,7 +127,7 @@ export function BounceSlip({
                 stampDelay={FX.printDelay + feed}
               />
               <p className="break-keep text-center text-slate-100 text-sm">
-                응모 마감({deadline}) 뒤에 도착했습니다.
+                예측 마감({deadline}) 뒤에 도착했습니다.
               </p>
               <p className="text-center font-mono text-slate-400 text-xs tabular-nums">
                 우주국이 받은 시각 {received}
@@ -162,7 +162,7 @@ export function BounceSlip({
               disabled={phase !== "slip"}
               className="sd-cta w-full max-w-sm rounded-2xl py-3.5 font-bold text-lg text-slate-950"
             >
-              이 답안지 보관하기
+              이 예측서 보관하기
             </button>
             <button
               type="button"
@@ -193,7 +193,7 @@ export function ErrorStage({
   onClose: () => void;
 }) {
   return (
-    <StageOverlay label="응모 오류" appear={false}>
+    <StageOverlay label="예측 오류" appear={false}>
       <p
         role="alert"
         data-entry-error

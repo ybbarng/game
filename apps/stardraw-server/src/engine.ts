@@ -205,7 +205,7 @@ export class EntryError extends Error {
 
 /** 국장 열쇠로 응모·등록·찾기를 하려 할 때(docs/36 11-12). 화면에 그대로 보인다 */
 export const DIRECTOR_KEY_MESSAGE =
-  "이 패스키는 국장 열쇠라 응모에 쓸 수 없습니다";
+  "이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다";
 
 /** 등록만 올리기(우주인 등록 직후, docs/36 11-14) */
 export interface RegisterInput {
@@ -326,7 +326,7 @@ export class StardrawServer {
         g.params ?? GATE_PARAMS,
       ))
     )
-      throw new EntryError("응모 확인 계산이 맞지 않습니다");
+      throw new EntryError("예측 확인 계산이 맞지 않습니다");
   }
 
   /** 이 회차는 더 받지 않는다(봉인했거나 봉인 값을 계산하는 중) */
@@ -720,7 +720,7 @@ export class StardrawServer {
       this.o.limits.entriesPerPrefixPerRound
     )
       throw new EntryError(
-        "같은 곳에서 이번 회차에 낸 응모가 너무 많습니다",
+        "같은 곳에서 이번 회차에 낸 예측이 너무 많습니다",
         429,
       );
 
@@ -735,9 +735,9 @@ export class StardrawServer {
       // 원시 열쇠(직접 만든 열쇠 쌍)는 본인 확인(UV) 없이 서명할 수 있어 받지 않는다(docs/36 11-11)
       if (err instanceof RawKeyRejected)
         throw new EntryError(
-          "패스키로만 응모할 수 있습니다. 직접 만든 열쇠는 받지 않습니다",
+          "패스키로만 예측할 수 있습니다. 직접 만든 열쇠는 받지 않습니다",
         );
-      throw new EntryError("응모권 형식이 맞지 않습니다");
+      throw new EntryError("예측서 형식이 맞지 않습니다");
     }
     const numbersProblem = checkNumbers(ticket.numbers);
     if (numbersProblem) throw new EntryError(numbersProblem);
@@ -745,10 +745,10 @@ export class StardrawServer {
     if (ticket.round < round)
       throw new EntryError(closedMessage(receivedAt), 409);
     if (ticket.round !== round)
-      throw new EntryError("이번 회차 응모권이 아닙니다");
+      throw new EntryError("이번 회차 예측서가 아닙니다");
     const times = roundTimes(schedule, round);
     if (store.recordCount() < round - 1)
-      throw new EntryError("앞 회차 추첨이 끝난 뒤에 응모할 수 있습니다", 409);
+      throw new EntryError("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다", 409);
     if (receivedAt >= times.closesAt || this.closedFor(round))
       throw new EntryError(closedMessage(receivedAt), 409);
     const who = toHex(entrantId(ticket.pub));
@@ -766,7 +766,7 @@ export class StardrawServer {
     if (!known) {
       if (!registration) throw new EntryError("등록되지 않은 열쇠입니다");
       if (!equalBytes(entrantId(registration.pub), entrantId(ticket.pub)))
-        throw new EntryError("응모권과 다른 열쇠의 등록입니다");
+        throw new EntryError("예측서와 다른 열쇠의 등록입니다");
       const problem = checkRegistration(registration);
       if (problem) throw new EntryError(problem);
       // 국장 열쇠와 우주인 열쇠는 섞지 않는다(docs/36 11-12)
@@ -788,7 +788,7 @@ export class StardrawServer {
 
     // 4. 서명(ECDSA라 싸다)
     if (!(await verifyTicketSignature(ticket, this.o.policy)))
-      throw new EntryError("응모권 서명이 맞지 않습니다");
+      throw new EntryError("예측서 서명이 맞지 않습니다");
 
     // 4-1. 상품 자격 증서(v2): 쓸 수 있는 기간, 자격 서명, 도장. 같은 자격이 이 회차에 이미 있어도 받는다
     // (먼저 낸 쪽만 받으면 증서를 훔친 사람이 주인을 밀어낼 수 있다. 둘 다 상품 대상에서 빠진다, docs/36 11-13)
@@ -810,7 +810,7 @@ export class StardrawServer {
 
     // 5. 열쇠당 회차 1장
     if (store.hasEntry(round, who))
-      throw new EntryError("이번 회차에는 이미 응모했습니다", 409);
+      throw new EntryError("이번 회차에는 이미 예측했습니다", 409);
 
     // 6. 작업 증명(가장 비싸다, 동시 실행 제한). 떨어진 본문·열쇠는 회차 동안 다시 계산하지 않고,
     // 소속 증서까지 확인된 응모는 앞줄에 세운다(익명 홍수에 상품 대상 응모가 밀리지 않게, D2)
@@ -839,7 +839,7 @@ export class StardrawServer {
             target: times.entry.powTarget,
             params: this.o.pow,
           });
-          return ok ? null : "응모 계산이 맞지 않습니다";
+          return ok ? null : "예측 계산이 맞지 않습니다";
         },
         { priority: !!ticket.qual },
       )
@@ -857,7 +857,7 @@ export class StardrawServer {
       if (this.closedFor(round))
         throw new EntryError(closedMessage(receivedAt), 409);
       if (store.hasEntry(round, who))
-        throw new EntryError("이번 회차에는 이미 응모했습니다", 409);
+        throw new EntryError("이번 회차에는 이미 예측했습니다", 409);
       if (!known && registration) {
         if (store.isRegistered(who))
           throw new EntryError("이미 등록된 열쇠입니다. 다시 내 주세요", 409);
@@ -1902,7 +1902,7 @@ export class StardrawServer {
       !(next && equalBytes(ledger, next))
     )
       lines.push(
-        `오류: 장부가 정한 ${round}회차 관인 ${sealFingerprint(ledger)}의 열쇠 파일이 없다. 영수증·관인 기록 서명이 검사에서 틀린다`,
+        `오류: 장부가 정한 ${round}회차 관인 ${sealFingerprint(ledger)}의 열쇠 파일이 없다. 접수증·관인 기록 서명이 검사에서 틀린다`,
       );
     return lines;
   }

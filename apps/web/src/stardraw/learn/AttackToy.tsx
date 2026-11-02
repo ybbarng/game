@@ -19,7 +19,7 @@ const ROLES: { id: Role; label: string; who: string }[] = [
     label: "서버 운영자",
     who: "장부를 쓰고 앵커 저장소도 가진 사람. 고친 뒤 사슬을 다시 잇고 앵커도 강제 push로 고쳐 쓴다고 칩니다",
   },
-  { id: "entrant", label: "다른 참가자", who: "응모권을 내는 누구나" },
+  { id: "entrant", label: "다른 참가자", who: "예측서를 내는 누구나" },
   {
     id: "middle",
     label: "중간자",
@@ -69,7 +69,7 @@ export function AttackToy() {
     <Toy title="공격해 보기" id="attack">
       <p className="text-white/60 text-xs">
         이 브라우저에서 작은 장부를 실제로 만들었습니다: 1회차에 세 명이
-        응모했고(나는 1등), 추첨은 실제 drand 1,000,000회 값, 봉인 토큰은 연습용
+        예측했고(나는 1등), 추첨은 실제 drand 1,000,000회 값, 봉인 토큰은 연습용
         시각 인증 기관이 냈습니다. 2회차는 봉인을 받지 못한 무효 회차입니다.
         공격을 고르면 장부를 고친 뒤 검증하기 페이지와 같은 장부 전체 검사를
         돌립니다.

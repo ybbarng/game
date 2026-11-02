@@ -133,8 +133,8 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     title: "하늘의 별 따기",
     cues: [
       { cue: "starTick", when: "추첨 룰렛 불빛이 별 하나를 지남" },
-      { cue: "starBall", when: "룰렛이 당첨 별에서 멈춰 별이 켜짐·응모 접수" },
-      { cue: "starWin", when: "내 응모권이 당첨(1~5등)" },
+      { cue: "starBall", when: "룰렛이 당첨 별에서 멈춰 별이 켜짐·예측 접수" },
+      { cue: "starWin", when: "내 예측서가 당첨(1~5등)" },
       { cue: "beep", when: "별·번호를 고름" },
     ],
   },

@@ -53,7 +53,7 @@ export function Receipt({
   const rank: Rank | null = record ? myRank(record, ticket) : null;
   const paper = (
     <article
-      aria-label={`${roundShort(schedule, ticket.round)} 응모권`}
+      aria-label={`${roundShort(schedule, ticket.round)} 예측서`}
       data-receipt={printing ? undefined : id}
       className={cn(
         "sd-paper relative mx-auto w-full max-w-sm px-5 pt-6 pb-7 text-slate-100",
@@ -67,7 +67,7 @@ export function Receipt({
         <span className="font-black text-xl tracking-tight">
           하늘의 별 따기
         </span>
-        <span className="text-slate-300 text-xs">응모권 · 영수증</span>
+        <span className="text-slate-300 text-xs">예측서 · 접수증</span>
       </header>
 
       <Cut />
@@ -83,7 +83,7 @@ export function Receipt({
         <dd className="text-right">{formatTime(drawAt)}</dd>
         {receivedAt !== undefined && (
           <>
-            <dt className="text-slate-400">응모</dt>
+            <dt className="text-slate-400">예측</dt>
             <dd className="text-right">{formatTime(receivedAt)}</dd>
           </>
         )}

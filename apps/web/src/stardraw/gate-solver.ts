@@ -10,7 +10,7 @@ export type GateSolver = (
 /** 같은 스레드에서 푼다(시험, 워커를 못 쓰는 브라우저). 한 번 계산마다 쉬어 가서 화면이 멈추지 않는다 */
 export const inlineGateSolver: GateSolver = async (head, pub, target) => {
   const n = await solveGate(head, pub, target);
-  if (n === null) throw new Error("응모 확인 계산을 끝내지 못했습니다");
+  if (n === null) throw new Error("예측 확인 계산을 끝내지 못했습니다");
   return n;
 };
 

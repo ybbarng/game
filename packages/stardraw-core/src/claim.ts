@@ -197,9 +197,9 @@ export async function verifyClaim(
 ): Promise<string[]> {
   const problems: string[] = [];
   if (!equalBytes(claim.ticketId, ticketId(expect.ticket)))
-    problems.push("다른 응모권의 증명이다");
+    problems.push("다른 예측서의 증명이다");
   if (!equalBytes(claim.pub, expect.ticket.pub))
-    problems.push("응모권 주인의 열쇠가 아니다");
+    problems.push("예측서 주인의 열쇠가 아니다");
   if (
     claim.kind === "direct" &&
     expect.to !== undefined &&
@@ -299,6 +299,6 @@ export async function answerConfirmRequest(
   req: ConfirmRequest,
 ): Promise<Claim> {
   if (req.round !== ticket.round || !equalBytes(req.ticketId, ticketId(ticket)))
-    throw new Error("이 응모권에 대한 확인 요청이 아니다");
+    throw new Error("이 예측서에 대한 확인 요청이 아니다");
   return makeChallengeClaim(signer, ticket, req.challenge, req.requester);
 }

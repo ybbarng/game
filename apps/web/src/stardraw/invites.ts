@@ -59,7 +59,7 @@ export async function createInvite(
   const key = services.wallet.loadKey();
   if (!key || !equalBytes(key.pub, ticket.pub))
     throw new Error(
-      "이 응모권을 낸 등록증이 이 기기에 없어 링크를 만들 수 없습니다",
+      "이 예측서를 낸 등록증이 이 기기에 없어 링크를 만들 수 없습니다",
     );
   const token = newInviteToken();
   const signed = await signInvite(

@@ -33,7 +33,7 @@ test("내 기록: 처음 받은 서류는 띠로 알리고 건네받은 뒤 내 
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   const receipt = page.locator("[data-receipt]");
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   const id = await receipt.getAttribute("data-receipt");

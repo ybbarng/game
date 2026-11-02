@@ -305,12 +305,12 @@ async function handle(
     let ticket: Uint8Array;
     let registration: Uint8Array | undefined;
     try {
-      ticket = fromBase64Url(str(body.ticket, "응모권"));
+      ticket = fromBase64Url(str(body.ticket, "예측서"));
       if (body.registration !== undefined)
         registration = fromBase64Url(str(body.registration, "열쇠 등록"));
     } catch (err) {
       if (err instanceof EntryError) throw err;
-      throw new EntryError("응모권 형식이 맞지 않습니다");
+      throw new EntryError("예측서 형식이 맞지 않습니다");
     }
     const receipt = await engine.submit({
       ticket,
@@ -467,7 +467,7 @@ async function handle(
     return send(res, 200, {
       open: relay.openFor(
         inbox.map((i: { ticketId?: unknown; key?: unknown }) => ({
-          ticketId: str(i?.ticketId, "응모권 id"),
+          ticketId: str(i?.ticketId, "예측서 id"),
           key: str(i?.key, "받은 요청 열쇠"),
         })),
       ),

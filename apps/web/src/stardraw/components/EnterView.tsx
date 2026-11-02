@@ -267,7 +267,7 @@ export function EnterView({
 
   const fail = (err: unknown) => {
     setStage("pick");
-    setError(failureOf(err, "응모를 접수", "응모되지 않았어요"));
+    setError(failureOf(err, "예측을 접수", "접수되지 않았어요"));
   };
 
   const toggle = (n: number) => {
@@ -323,8 +323,8 @@ export function EnterView({
       const ready = nextRoundOpen(from.round);
       const schedule = ledger.schedule;
       setTransfer({
-        from: `${roundShort(schedule, from.round)} 답안지`,
-        to: `${roundShort(schedule, from.round + 1)} 답안지`,
+        from: `${roundShort(schedule, from.round)} 예측서`,
+        to: `${roundShort(schedule, from.round + 1)} 예측서`,
         ready,
       });
       if (!reduce) {
@@ -372,7 +372,7 @@ export function EnterView({
           entry.registerPowTarget,
           { params: ledger.powParams },
         );
-        if (!made) throw new Error("응모권을 만들지 못했습니다");
+        if (!made) throw new Error("예측서를 만들지 못했습니다");
         registration = made;
       }
       const unsigned = unsignedTicket(signer, round, numbers, holding);
@@ -382,7 +382,7 @@ export function EnterView({
         entry.powTarget,
         { params: ledger.powParams },
       );
-      if (nonce === null) throw new Error("응모권을 만들지 못했습니다");
+      if (nonce === null) throw new Error("예측서를 만들지 못했습니다");
       return { signer, unsigned, nonce, registration };
     })();
     // 연출 중에 실패해도 처리되지 않은 거절로 남지 않게(아래에서 기다릴 때 다시 받는다)
@@ -458,7 +458,7 @@ export function EnterView({
       // 연출 중 다른 오류는 오버레이 안에서 까닭과 「다시 시도」(패스키 취소는 신분증 단계가 이미 다시 기다린다)
       if (!reduce && passkeyProblem(err) !== "cancelled") {
         setStage("pick");
-        setEntryError(errorText(err, "응모를 접수", "응모되지 않았어요"));
+        setEntryError(errorText(err, "예측을 접수", "접수되지 않았어요"));
         return;
       }
       fail(err);
@@ -495,7 +495,7 @@ export function EnterView({
 
   if (!key)
     return (
-      <section className="flex flex-col gap-4" aria-label="응모">
+      <section className="flex flex-col gap-4" aria-label="예측">
         <WelcomeFlyer services={services} setup={setup} />
         {setup.issued && (
           <IssuedView services={services} setup={setup} overlay />
@@ -524,19 +524,19 @@ export function EnterView({
       </section>
     );
 
-  const title = `${roundShort(services.ledger.schedule, status.round)} 답안지`;
+  const title = `${roundShort(services.ledger.schedule, status.round)} 예측서`;
   const picking = stage === "pick";
   const submitting = stage !== "pick" && stage !== "busy";
   /** 마감: 하늘 아래를 모두 닫고 관측지로 이끈다(내는 중이거나 반송·오류 안내 중이면 그 안내가 먼저) */
   const closedView =
     !open && stage === "pick" && !bounce && !entryError && !!onWatchDraw;
   return (
-    <section className="flex flex-col gap-4" aria-label="응모">
+    <section className="flex flex-col gap-4" aria-label="예측">
       {/* 등록·제시 오버레이는 등록 전 화면과 같은 자리(맨 앞)에: 확인되어 화면이 바뀌어도 끊기지 않게 */}
       <WelcomeFlyer services={services} setup={setup} />
       {/* 제출 연출은 화면 전체 오버레이 한 층에서(뒤의 고르는 화면은 흐려지고 조작되지 않는다). 옮겨 쓰기는 반송 화면에서 그대로 이어져 다시 나타나지 않는다 */}
       {submitting && (
-        <StageOverlay label="응모">
+        <StageOverlay label="예측">
           {stage === "paper" && (
             <SubmitView
               title={title}
@@ -562,7 +562,7 @@ export function EnterView({
       <IdPresentView services={services} id={id} backdrop={false} />
       {bounce && (
         <BounceSlip
-          title={`${roundShort(services.ledger.schedule, bounce.round)} 답안지`}
+          title={`${roundShort(services.ledger.schedule, bounce.round)} 예측서`}
           picked={bounce.numbers}
           deadline={bounce.deadline}
           received={bounce.received}
@@ -595,13 +595,13 @@ export function EnterView({
 
       {kept && kept.round < status.round && open && (
         <section
-          aria-label="보관한 답안지"
+          aria-label="보관한 예측서"
           data-kept
           className="flex items-center gap-3 rounded-2xl border border-rose-300/25 bg-[#1b1622] px-3.5 py-3"
         >
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-rose-100/70 text-xs">
-              보관한 답안지({roundShort(services.ledger.schedule, kept.round)})
+              보관한 예측서({roundShort(services.ledger.schedule, kept.round)})
             </span>
             <span className="flex flex-wrap gap-1">
               {[...kept.numbers]
@@ -621,7 +621,7 @@ export function EnterView({
               }}
               className="sd-cta rounded-xl px-3 py-2 font-bold text-slate-950 text-sm disabled:opacity-40"
             >
-              이 답안지로 응모
+              이 예측서로 내기
             </button>
             <button
               type="button"
@@ -640,13 +640,13 @@ export function EnterView({
 
       {draft && !kept && open && picked.length === 0 && (
         <section
-          aria-label="작성하던 예측지"
+          aria-label="작성하던 예측서"
           data-draft
           className="sd-text-in flex items-center gap-3 rounded-2xl border border-sky-200/25 bg-[#141b2b] px-3.5 py-3"
         >
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-sky-100/75 text-xs">
-              작성하던 예측지가 있어요 · 별 {draft.numbers.length}개
+              작성하던 예측서가 있어요 · 별 {draft.numbers.length}개
             </span>
             <span className="flex flex-wrap gap-1">
               {draft.numbers.map((n) => (
@@ -681,7 +681,7 @@ export function EnterView({
         <SkyBoard
           state={{ mode: "pick", picked, focus, lit: [], bonus: null }}
           onPick={picking ? toggle : undefined}
-          label={`응모판: 서울 하늘의 밝은 별 45개. 고른 별 ${picked.join(", ") || "없음"}`}
+          label={`예측판: 서울 하늘의 밝은 별 45개. 고른 별 ${picked.join(", ") || "없음"}`}
         />
         {open && (
           <HurryNotice
@@ -756,7 +756,7 @@ export function EnterView({
                 className="size-4 accent-amber-300"
               />
               <span className="font-semibold text-amber-50">
-                {qual.period.affiliationName} 소속으로 응모
+                {qual.period.affiliationName} 소속으로 예측
               </span>
             </label>
           )}
@@ -768,8 +768,8 @@ export function EnterView({
             <div className="flex flex-col items-center gap-2" data-enter-closed>
               <p className="break-keep text-center text-sm text-white/70">
                 {status.phase === "closing"
-                  ? "이번 회차 응모가 마감되었습니다."
-                  : "앞 회차 관측이 끝나면 응모할 수 있습니다."}
+                  ? "이번 회차 예측이 마감되었습니다."
+                  : "앞 회차 관측이 끝나면 예측할 수 있습니다."}
               </p>
               <button
                 type="button"
@@ -787,12 +787,12 @@ export function EnterView({
               className="sd-cta rounded-2xl py-4 font-black text-slate-950 text-xl disabled:opacity-40"
             >
               {stage === "busy"
-                ? "응모하고 있습니다"
+                ? "예측서를 내고 있습니다"
                 : !open
                   ? status.phase === "closing"
-                    ? "이번 회차 응모가 마감되었습니다"
-                    : "앞 회차 관측이 끝나면 응모할 수 있습니다"
-                  : "응모하기"}
+                    ? "이번 회차 예측이 마감되었습니다"
+                    : "앞 회차 관측이 끝나면 예측할 수 있습니다"
+                  : "예측서 내기"}
             </button>
           )}
         </>
@@ -840,7 +840,7 @@ function ClosedNotice({
       </p>
       {saved && (
         <p className="break-keep text-white/55 text-xs">
-          작성하시던 예측지는 자동 저장됩니다.
+          작성하시던 예측서는 자동 저장됩니다.
         </p>
       )}
       <button
@@ -880,7 +880,7 @@ function EnterHeader({
         </button>
         {round && (
           <span className="text-sm text-white/60 tabular-nums">
-            {round} 응모
+            {round} 예측
           </span>
         )}
       </div>
@@ -946,7 +946,7 @@ export function KeySetup({
           <KeyIcon className="size-9 text-amber-100" />
           <h2 className="font-bold text-xl">우주인 등록</h2>
           <p className="break-keep text-sm text-white/80">
-            하늘의 별 따기는 등록한 우주인만 응모할 수 있습니다.
+            하늘의 별 따기는 등록한 우주인만 예측할 수 있습니다.
           </p>
         </>
       )}

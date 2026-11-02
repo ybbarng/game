@@ -31,15 +31,15 @@ export const FX_ITEMS = [
   { id: "fx-issue-earth", label: "연출: 지구 출신 발급" },
   { id: "fx-issue-andromeda", label: "연출: 안드로메다 출신 발급" },
   { id: "fx-welcome", label: "연출: 신분증 제시(입장)" },
-  { id: "fx-submit", label: "연출: 응모" },
-  { id: "fx-print", label: "연출: 영수증 출력" },
+  { id: "fx-submit", label: "연출: 예측" },
+  { id: "fx-print", label: "연출: 접수증 출력" },
   { id: "fx-bounce", label: "오류: 접수 반송(마감 뒤 도착)" },
   { id: "fx-error-busy", label: "오류: 우주국이 바쁨" },
   { id: "fx-error-offline", label: "오류: 연락이 닿지 않음" },
-  { id: "fx-card-open", label: "회차 카드: 응모 중" },
-  { id: "fx-card-entered", label: "회차 카드: 응모함" },
-  { id: "fx-card-drawing", label: "회차 카드: 마감(응모함)" },
-  { id: "fx-card-closed-none", label: "회차 카드: 마감(응모 안 함)" },
+  { id: "fx-card-open", label: "회차 카드: 예측 중" },
+  { id: "fx-card-entered", label: "회차 카드: 예측함" },
+  { id: "fx-card-drawing", label: "회차 카드: 마감(예측함)" },
+  { id: "fx-card-closed-none", label: "회차 카드: 마감(예측 안 함)" },
 ] as const;
 export type FxId = (typeof FX_ITEMS)[number]["id"];
 
@@ -77,7 +77,7 @@ function BounceTour({ onDone }: { onDone: () => void }) {
   if (!moving)
     return (
       <BounceSlip
-        title="7회 답안지"
+        title="7회 예측서"
         picked={BOUNCE_PICKS}
         deadline="18:54:55"
         received="18:55:03"
@@ -88,13 +88,13 @@ function BounceTour({ onDone }: { onDone: () => void }) {
       />
     );
   return (
-    <StageOverlay label="응모">
+    <StageOverlay label="예측">
       <SubmitView
-        title="8회 응모권"
+        title="8회 예측서"
         picked={BOUNCE_PICKS}
         transfer={{
-          from: "7회 답안지",
-          to: "8회 답안지",
+          from: "7회 예측서",
+          to: "8회 예측서",
           ready: Promise.resolve(),
         }}
         onSubmitted={onDone}
@@ -158,7 +158,7 @@ export function FxScreen({ id, s }: { id: FxId; s: TourState }): ReactNode {
                 id === "fx-error-busy"
                   ? new HttpError("바쁨", 503)
                   : new TypeError("Failed to fetch"),
-                "응모를 접수",
+                "예측을 접수",
               )}
               onRetry={finish}
               onClose={finish}
@@ -398,10 +398,10 @@ function SubmitFx({ s, onDone }: { s: TourState; onDone: () => void }) {
   return (
     <>
       {stage !== "printing" && (
-        <StageOverlay label="응모">
+        <StageOverlay label="예측">
           {stage === "paper" && (
             <SubmitView
-              title={`${roundShort(services.ledger.schedule, pending.ticket.round)} 응모권`}
+              title={`${roundShort(services.ledger.schedule, pending.ticket.round)} 예측서`}
               picked={pending.ticket.numbers}
               onSubmitted={() => void submitted()}
             />

@@ -33,7 +33,7 @@ test("오래 열지 않은 결과 봉투: 응모 단추는 늘 있고, 봉투는
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
   await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "응모하기", exact: true }).click();
+  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
 
   // 1회 결과를 열지 않고 네 회차를 건너뛴다

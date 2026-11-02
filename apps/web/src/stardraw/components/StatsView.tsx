@@ -171,12 +171,12 @@ function Overview({
       "추첨",
       `${stats.draws}회${stats.voids ? ` (무효 ${stats.voids}회)` : ""}`,
     ],
-    ["응모", `${stats.entries.toLocaleString("ko-KR")}장`],
+    ["예측", `${stats.entries.toLocaleString("ko-KR")}장`],
     ["우주인", `${stats.astronauts.toLocaleString("ko-KR")}명`],
   ];
   if (stats.qualified > 0)
     rows.push([
-      "소속 표시 응모",
+      "소속 표시 예측",
       `${stats.qualified.toLocaleString("ko-KR")}장`,
     ]);
   if (first !== null) rows.push(["첫 관측", formatTime(first)]);
@@ -458,11 +458,11 @@ function Entries({
   const first = series[0];
   const last = series.at(-1);
   return (
-    <Card title="회차별 응모">
+    <Card title="회차별 예측">
       <div
         className="flex h-20 items-end gap-px"
         role="img"
-        aria-label={`최근 ${series.length}회 응모, 가장 많을 때 ${max}장`}
+        aria-label={`최근 ${series.length}회 예측, 가장 많을 때 ${max}장`}
       >
         {series.map((s) => (
           <span

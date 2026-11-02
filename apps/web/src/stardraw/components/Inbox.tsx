@@ -139,11 +139,11 @@ export function Inbox({
     setError(null);
     try {
       const ticket = myTicketFor(req.request, tickets);
-      if (!ticket) throw new Error("이 기기에 그 응모권이 없습니다");
+      if (!ticket) throw new Error("이 기기에 그 예측서가 없습니다");
       const key = services.wallet.loadKey();
       if (!key || !equalBytes(key.pub, ticket.pub))
         throw new Error(
-          "이 응모권을 낸 등록증이 이 기기에 없어 승인할 수 없습니다",
+          "이 예측서를 낸 등록증이 이 기기에 없어 승인할 수 없습니다",
         );
       setApproving({ id: req.id, key, phase: "checking" });
       // 신분증 제시 틀: 오버레이 → 우주국 말 → 등록증을 내밀면 그 누름에 바로 패스키

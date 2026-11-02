@@ -235,7 +235,7 @@ export function DrawView({
 
       {record.void ? (
         <p className="rounded-xl bg-white/5 p-4 text-sm text-white/75">
-          이 회차는 응모 목록을 제때 기록하지 못해 무효가 되었습니다. 당첨 없이
+          이 회차는 예측 목록을 제때 기록하지 못해 무효가 되었습니다. 당첨 없이
           끝났습니다.
         </p>
       ) : (
@@ -366,7 +366,7 @@ export function DrawView({
                 )
               ) : (
                 <span className="text-sm text-white/75">
-                  이 회차에는 응모하지 않았습니다
+                  이 회차에는 예측하지 않았습니다
                 </span>
               )}
             </div>
@@ -391,7 +391,7 @@ export function DrawView({
                   onClick={onNext}
                   className="sd-cta rounded-2xl py-3 font-bold text-slate-950"
                 >
-                  다음 회차 응모
+                  다음 회차 예측
                 </button>
               )}
               {onReplay && (

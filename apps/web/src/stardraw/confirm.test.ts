@@ -70,7 +70,7 @@ async function ticketOf(
     powTargetForTries(1),
     { params: PRACTICE_POW },
   );
-  if (!t) throw new Error("응모권을 만들지 못했다");
+  if (!t) throw new Error("예측서를 만들지 못했다");
   return t;
 }
 
@@ -120,7 +120,7 @@ async function winnerAnswers(
   if (!open) throw new Error("요청을 찾지 못했다");
   expect(open.request.requester).toBe(CHECK_LINK_REQUESTER);
   const mine = myTicketFor(open.request, [ticket]);
-  if (!mine) throw new Error("내 응모권을 찾지 못했다");
+  if (!mine) throw new Error("내 예측서를 찾지 못했다");
   const outcomes: ConfirmOutcome[] = [];
   s.winnerRelay.onOutcome(open.id, (o) => outcomes.push(o));
   const { answer, stars } = await prepareAnswer(signer, mine, open);
@@ -156,7 +156,7 @@ describe("확인 링크", () => {
     const token = await makeLink(s, me, ticket);
     await expect(
       s.checker.start(token, 1, { round: 12, ticketId: "00".repeat(32) }),
-    ).rejects.toThrow("다른 응모권");
+    ).rejects.toThrow("다른 예측서");
   });
 
   it("열어 보면 회차·응모권이 보이고, 「확인 시작」하면 쓰여 닫힌다", async () => {
@@ -263,7 +263,7 @@ describe("당첨자 확인: 별 세 개", () => {
       winnerKey,
     });
     await expect.poll(() => session.status).toBe("failed");
-    expect(session.reasons).toContain("그 응모권을 낸 열쇠의 서명이 아닙니다");
+    expect(session.reasons).toContain("그 예측서를 낸 열쇠의 서명이 아닙니다");
   });
 
   it("거절하면 거절로 남는다", async () => {

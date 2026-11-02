@@ -55,7 +55,7 @@ const ICONS = {
 /** 탭 항목(휴대폰 탭바와 PC 메뉴 줄이 같이 쓴다) */
 const TABS: [NavTarget, string][] = [
   ["home", "홈"],
-  ["mine", "내 응모"],
+  ["mine", "내 예측"],
   ["rounds", "지난 회차"],
 ];
 

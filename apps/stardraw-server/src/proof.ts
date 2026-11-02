@@ -94,7 +94,7 @@ export class ProofService {
     if (!record) throw new EntryError("닫히지 않은 회차입니다", 404);
     const ids = this.store.entryIds(round).map(fromHex);
     if (toHex(merkleRoot(ids)) !== toHex(record.merkleRoot))
-      throw new Error(`${round}회차 응모 목록이 기록의 머클 루트와 다르다`);
+      throw new Error(`${round}회차 예측 목록이 기록의 머클 루트와 다르다`);
     remember(this.ticketIds, round, ids);
     return ids;
   }
@@ -117,12 +117,12 @@ export class ProofService {
   ticket(round: number, idHex: string): TicketProof {
     this.take();
     if (!/^[0-9a-f]{64}$/.test(idHex))
-      throw new EntryError("응모권 일련번호 형식이 맞지 않습니다");
+      throw new EntryError("예측서 일련번호 형식이 맞지 않습니다");
     if (!this.closed(round))
       throw new EntryError("아직 닫히지 않은 회차입니다", 404);
     const found = this.store.entryById(idHex);
     if (!found || found.round !== round)
-      throw new EntryError("그 회차에 없는 응모권입니다", 404);
+      throw new EntryError("그 회차에 없는 예측서입니다", 404);
     const record = this.store.record(round);
     const proof =
       record &&
@@ -132,7 +132,7 @@ export class ProofService {
         found.ticket,
         record.merkleRoot,
       );
-    if (!proof) throw new Error(`${round}회차 응모권 증명을 만들지 못했다`);
+    if (!proof) throw new Error(`${round}회차 예측서 증명을 만들지 못했다`);
     return proof;
   }
 
@@ -156,7 +156,7 @@ export class ProofService {
       const proof =
         record &&
         makeTicketProof(round, this.idsOf(round), ticket, record.merkleRoot);
-      if (!proof) throw new Error(`${round}회차 응모권 증명을 만들지 못했다`);
+      if (!proof) throw new Error(`${round}회차 예측서 증명을 만들지 못했다`);
       tickets.push(proof);
     }
     let registration: RegistrationProof | null = null;

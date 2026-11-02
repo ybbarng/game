@@ -211,8 +211,8 @@ export function DirectorConsole({
         <p className="break-keep text-sm text-white/70">
           이 화면에서 만든 패스키는 우주국이 지정해야 국장 열쇠가 됩니다. 처음
           지정은 서버 설정(<code>STARDRAW_DIRECTOR_KEYS</code>)에 아래 값을
-          넣어야 하고, 그 뒤는 쓰는 중인 국장의 서명으로 더합니다. 응모용 우주인
-          패스키와 따로 만듭니다(국장 패스키로는 응모할 수 없습니다).
+          넣어야 하고, 그 뒤는 쓰는 중인 국장의 서명으로 더합니다. 예측용 우주인
+          패스키와 따로 만듭니다(국장 패스키로는 예측할 수 없습니다).
         </p>
         <button
           type="button"
@@ -592,7 +592,7 @@ function SealSection({
   return (
     <Section title="관인">
       <p className="break-keep text-sm text-white/70">
-        관인은 영수증과 우주국 운영 기록에 찍는 서버 서명 열쇠입니다. 바꾸면
+        관인은 접수증과 우주국 운영 기록에 찍는 서버 서명 열쇠입니다. 바꾸면
         3회차 예고 뒤부터 새 관인으로 서명합니다.
       </p>
       <p className="text-sm text-white/80" data-seal-current>

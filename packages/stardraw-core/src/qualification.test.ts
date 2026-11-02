@@ -253,11 +253,11 @@ describe("블라인드 도장(우주국도 무엇에 찍었는지 모른다)", (
 describe("자격 서명(P-256, low-s)", () => {
   it("자격 열쇠로 서명하고 확인한다. 다른 메시지·열쇠는 거절", () => {
     const key = qualKeyFromSeed(SEED);
-    const message = utf8("응모권");
+    const message = utf8("예측서");
     const sig = qualSign(key.secretKey, message);
     expect(sig).toHaveLength(64);
     expect(qualVerify(key.publicKey, message, sig)).toBe(true);
-    expect(qualVerify(key.publicKey, utf8("다른 응모권"), sig)).toBe(false);
+    expect(qualVerify(key.publicKey, utf8("다른 예측서"), sig)).toBe(false);
     expect(
       qualVerify(qualKeyFromSeed(newQualSeed()).publicKey, message, sig),
     ).toBe(false);
@@ -360,7 +360,7 @@ describe("응모권 v2(자격 증서를 붙인 응모권)", () => {
     expect(decodeTicket(encodeTicket(v1)).qual).toBeUndefined();
     const bytes = encodeTicket(v1);
     bytes[0] = 3;
-    expect(() => decodeTicket(bytes)).toThrow("모르는 응모권 판");
+    expect(() => decodeTicket(bytes)).toThrow("모르는 예측서 판");
   });
 
   it("자격 서명 대상은 응모권 앞부분과 증서를 덮는다", () => {
