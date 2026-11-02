@@ -78,10 +78,10 @@ export default function StardrawPrivacyPage() {
         <h2 className="font-bold text-base text-white">문의</h2>
         <p>
           <a
-            href="https://github.com/ybbarng/mighty/issues"
+            href="https://github.com/ybbarng/game/issues"
             className="underline hover:text-white"
           >
-            github.com/ybbarng/mighty/issues
+            github.com/ybbarng/game/issues
           </a>
         </p>
       </article>

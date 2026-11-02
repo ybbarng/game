@@ -1,4 +1,4 @@
-export const REPO_URL = "https://github.com/ybbarng/mighty";
+export const REPO_URL = "https://github.com/ybbarng/game";
 
 function OutLink({ href, children }: { href: string; children: string }) {
   return (

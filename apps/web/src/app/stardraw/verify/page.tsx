@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#070d19" };
 
-const REPO = "https://github.com/ybbarng/mighty";
+const REPO = "https://github.com/ybbarng/game";
 const SOURCE = `${REPO}/tree/main/packages/stardraw-core/src`;
 
 function Section({
@@ -563,7 +563,7 @@ await stardraw.vectors()`}</Code>
             검사 전용이라 열쇠를 다루지 않고, 예측과 당첨 확인은 브라우저
             패스키로만 합니다.
           </p>
-          <Code>{`git clone https://github.com/ybbarng/mighty && cd mighty
+          <Code>{`git clone https://github.com/ybbarng/game && cd game
 pnpm install
 # 공개 장부 전체(회차별 결과, 실패 사유, 건너뛴 것)
 pnpm stardraw-verify https://game.byb.kr/stardraw-api
