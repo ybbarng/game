@@ -8,7 +8,7 @@ import {
   type Schedule,
   toBase64Url,
 } from "@game/stardraw-core";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { MARKS_DELAY_MS } from "../after-observe";
@@ -262,6 +262,13 @@ describe("관측이 끝난 뒤", () => {
       />,
     );
   }
+  const say = (id: string, from: string, text: string) => ({
+    type: "say",
+    id,
+    from,
+    text,
+    at: later,
+  });
 
   it("당첨된 얼굴에만 등수 표지, 가장 높은 등수는 금빛", async () => {
     const view = renderAfter(null, []);
@@ -275,5 +282,56 @@ describe("관측이 끝난 뒤", () => {
     const best = [...view.container.querySelectorAll("[data-face-best]")];
     expect(best.map((f) => f.getAttribute("data-face"))).toEqual(["a"]);
     expect(best[0]?.classList.contains("sd-room-face-best")).toBe(true);
+  });
+
+  it("1등의 관측 뒤 첫 말은 하늘 가운데 소감, 두 번째 말과 4등의 말은 풍등", async () => {
+    const view = renderAfter("c", [
+      say("1-1", "a", "드디어 별을 맞혔어요"),
+      say("1-2", "a", "모두 고마워요"),
+      say("1-3", "b", "축하해요"),
+    ]);
+    await waitFor(() => {
+      expect(view.container.querySelector("[data-speech]")).not.toBeNull();
+    });
+    const speech = view.container.querySelector("[data-speech]") as HTMLElement;
+    expect(speech.getAttribute("data-speech")).toBe("1");
+    expect(speech.textContent).toContain("드디어 별을 맞혔어요");
+    expect(speech.textContent).toContain("1등");
+    // 같은 사람의 두 번째 말은 보통 풍등(4등의 말은 옆 풍등이 비켜날 때까지 기다렸다 떠서 여기서는 소감이 아닌 것만 본다)
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-lantern='a']:not([data-speech])")
+          ?.textContent,
+      ).toBe("모두 고마워요");
+    });
+    expect(view.container.querySelectorAll("[data-speech]")).toHaveLength(1);
+    // 소감도 길게 누르면 풍등처럼 신고 창
+    fireEvent.contextMenu(speech);
+    expect(
+      view.container.querySelector("[data-room-menu]")?.textContent,
+    ).toContain("신고");
+  });
+
+  it("내가 1~3등이면 관측 뒤 첫 말 전까지 말하기 칸이 소감을 청한다", async () => {
+    const view = renderAfter("a", []);
+    await waitFor(() => {
+      expect(
+        view.container
+          .querySelector("[data-room-input]")
+          ?.getAttribute("placeholder"),
+      ).toBe("당첨 소감을 남겨 보세요");
+    });
+  });
+
+  it("4등이면 말하기 칸은 그대로", async () => {
+    const view = renderAfter("b", []);
+    await waitFor(() => {
+      expect(view.container.querySelector("[data-face-rank]")).not.toBeNull();
+    });
+    expect(
+      view.container
+        .querySelector("[data-room-input]")
+        ?.getAttribute("placeholder"),
+    ).toBe("말하기");
   });
 });

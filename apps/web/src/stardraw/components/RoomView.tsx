@@ -21,7 +21,15 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/cn";
-import { bestRank, hillFaces, hillRanks, marksDelay } from "../after-observe";
+import {
+  bestRank,
+  hillFaces,
+  hillRanks,
+  marksDelay,
+  SPEECH_MS,
+  speechAt,
+  speechRank,
+} from "../after-observe";
 import { Avatar } from "../astronaut/Avatar";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { celebrationPlan } from "../celebrate";
@@ -103,6 +111,61 @@ function useHold(lantern: Lantern, onHold: ((l: Lantern) => void) | undefined) {
       onHold(lantern);
     },
   };
+}
+
+/** 당첨 소감 하나(관측이 끝난 뒤 1~3등의 첫 말, docs/36 11-44) */
+interface Speech {
+  lantern: Lantern;
+  rank: Rank;
+  /** 말한 사람의 공개 열쇠(얼굴·이름) */
+  pub: string | null;
+  /** 뜨는 시각(서버 ms). 앞 소감이 걷힌 뒤 차례로 */
+  at: number;
+}
+
+/**
+ * 당첨 소감: 하늘 가운데에 크게, 금빛으로 오래(SPEECH_MS) 머문다. 길게 누르면 풍등과 같은 신고·국장 조치
+ */
+function SpeechBubble({
+  speech,
+  onHold,
+}: {
+  speech: Speech;
+  onHold?: ((l: Lantern) => void) | undefined;
+}) {
+  const press = useHold(speech.lantern, onHold);
+  const a = speech.pub ? astronautOf(fromBase64Url(speech.pub)) : null;
+  return (
+    <div className="absolute inset-0 grid place-items-center px-5">
+      <div
+        data-speech={speech.rank}
+        data-lantern={speech.lantern.from}
+        {...press}
+        className={cn(
+          "sd-speech flex max-w-full select-none flex-col items-center gap-2 rounded-3xl border border-amber-200/80 bg-gradient-to-b from-amber-100 to-amber-200 px-5 py-4 text-center text-slate-900 shadow-[0_0_48px_rgba(252,211,77,0.55)]",
+          onHold && "pointer-events-auto [-webkit-touch-callout:none]",
+        )}
+      >
+        <span className="flex items-center gap-2 font-semibold text-amber-900 text-xs">
+          {a && (
+            <span className="size-7 overflow-hidden rounded-full border border-amber-500/60 bg-[#0f1d3a]">
+              <Avatar
+                face={a.face}
+                egg={a.egg}
+                label=""
+                className="size-full scale-125"
+              />
+            </span>
+          )}
+          {RANK_LABEL[speech.rank]}
+          {a ? ` · ${a.name}` : ""}
+        </span>
+        <span className="break-keep font-bold text-lg leading-snug sm:text-xl">
+          {speech.lantern.text}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -270,6 +333,60 @@ export function RoomView({
     () => hillRanks(record, picks?.byPerson),
     [record, picks],
   );
+  const [speeches, setSpeeches] = useState<Speech[]>([]);
+  /** 내가 관측 뒤에 말했는지(했으면 말하기 칸 자리표시를 되돌린다) */
+  const [mySpoke, setMySpoke] = useState(false);
+  /** 스트림 소식을 받는 함수가 늘 지금 값을 보게 */
+  const live = useRef({ showEnd, marksAt, record });
+  live.current = { showEnd, marksAt, record };
+  /**
+   * 스트림에서 받은 언덕 소식(나·얼굴·고른 별). 인사·봉인 소식과 말이 한 덩이로 오면 다시 그리기 전에 말을 받으므로
+   * 상태와 따로 받은 그 자리에서 고친다
+   */
+  const heardRef = useRef<{
+    me: string | null;
+    pubs: Map<string, string>;
+    byPerson: Record<string, number[]>;
+  }>({ me: null, pubs: new Map(), byPerson: {} });
+  /** 관측 뒤에 이미 말한 사람(이 화면이 받은 것 기준) */
+  const spokeAfter = useRef(new Set<string>());
+  /** 앞 소감이 걷히는 때(서버 ms) */
+  const speechEnd = useRef(0);
+
+  /** 말이 오면: 관측 뒤 1~3등의 첫 말이면 소감으로 크게, 아니면 풍등 */
+  const said = (id: string, from: string, text: string, at: number) => {
+    const v = live.current;
+    const h = heardRef.current;
+    const after = at >= v.showEnd;
+    const chosen = h.byPerson[from];
+    const rank = speechRank({
+      after,
+      rank: chosen ? hillRanks(v.record, { [from]: chosen }).get(from) : null,
+      spokeBefore: spokeAfter.current.has(from),
+    });
+    if (after) {
+      spokeAfter.current.add(from);
+      if (from === h.me) setMySpoke(true);
+    }
+    if (!rank) return launch(id, from, text);
+    const now = client.serverNow();
+    const start = speechAt(now, v.marksAt, speechEnd.current);
+    speechEnd.current = start + SPEECH_MS;
+    const lantern: Lantern = {
+      key: `${id}-speech`,
+      id,
+      from,
+      text,
+      x: 0,
+      lane: 0,
+      at: start,
+    };
+    setSpeeches((s) => [
+      ...s.filter((x) => x.at + SPEECH_MS > now),
+      { lantern, rank, pub: h.pubs.get(from) ?? null, at: start },
+    ]);
+  };
+
   // 시각(0.25초마다): 카운트다운·진행 상태
   useEffect(() => {
     const t = window.setInterval(() => setNow(client.serverNow()), 250);
@@ -283,6 +400,11 @@ export function RoomView({
     let retry = 0;
     const onEvent = (e: RoomEvent) => {
       if (e.type === "hello") {
+        heardRef.current = {
+          me: e.me,
+          pubs: new Map(e.people.map((p) => [p.id, p.pub])),
+          byPerson: { ...(e.picks?.byPerson ?? {}) },
+        };
         setMe(e.me);
         setPeople(new Map(e.people.map((p) => [p.id, p])));
         order.current = e.people.map((p) => p.id);
@@ -294,6 +416,8 @@ export function RoomView({
         setPeople((m) => new Map(m).set(e.person.id, e.person));
         // 봉인 뒤에 언덕에 오른 사람의 고른 별(봉인 소식에는 없다)
         const chosen = e.person.picks;
+        heardRef.current.pubs.set(e.person.id, e.person.pub);
+        if (chosen) heardRef.current.byPerson[e.person.id] = chosen;
         if (chosen)
           setPicks((p) =>
             p
@@ -312,13 +436,25 @@ export function RoomView({
         });
         if (e.type === "kicked" && e.id === me) setPass(null);
       } else if (e.type === "watchers") setWatchers(e.count);
-      else if (e.type === "sealed") setPicks(e.picks);
-      else if (e.type === "say") launch(e.id, e.from, e.text);
+      else if (e.type === "sealed") {
+        heardRef.current.byPerson = {
+          ...heardRef.current.byPerson,
+          ...e.picks.byPerson,
+        };
+        setPicks(e.picks);
+      } else if (e.type === "say") said(e.id, e.from, e.text, e.at);
       else if (e.type === "hide") {
         lanternsRef.current = lanternsRef.current.map((x) =>
           x.id === e.id ? { ...x, hidden: true } : x,
         );
         setLanterns(lanternsRef.current);
+        setSpeeches((s) =>
+          s.map((x) =>
+            x.lantern.id === e.id
+              ? { ...x, lantern: { ...x.lantern, hidden: true } }
+              : x,
+          ),
+        );
       } else if (e.type === "cheer") spark(e.kind, e.to);
       else if (e.type === "closed") setClosed(true);
     };
@@ -688,6 +824,12 @@ export function RoomView({
   const marked = phase === "after" && now >= marksAt;
   const best = marked ? bestRank(ranks, visible) : null;
   const faces = hillFaces(visible, marked ? ranks : NO_RANKS, FACES);
+  const speech = speeches.find(
+    (s) => now >= s.at && now < s.at + SPEECH_MS && !s.lantern.hidden,
+  );
+  /** 내가 1~3등이고 관측 뒤 아직 말하지 않았으면 말하기 칸이 소감을 청한다 */
+  const myTop = me !== null ? ranks.get(me) : undefined;
+  const invite = marked && !mySpoke && myTop !== undefined && myTop <= 3;
   const more = visible.length - faces.length;
   const lit = new Set<number>();
   // 방송 중인 장면의 켜진 별(그 별을 고른 사람의 얼굴이 빛난다)
@@ -802,6 +944,13 @@ export function RoomView({
                 onHold={pass && l.from !== me ? openMenu : undefined}
               />
             ))}
+          {speech && (
+            <SpeechBubble
+              key={speech.lantern.key}
+              speech={speech}
+              onHold={pass && speech.lantern.from !== me ? openMenu : undefined}
+            />
+          )}
           {sparks
             .filter((s) => s.kind === "meteor")
             .map((s) => (
@@ -1012,7 +1161,7 @@ export function RoomView({
               const v = e.target.value;
               if (roomCharCount(v) <= ROOM_TEXT_MAX) setDraft(v);
             }}
-            placeholder="말하기"
+            placeholder={invite ? "당첨 소감을 남겨 보세요" : "말하기"}
             className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm placeholder:text-white/35"
             data-room-input
           />

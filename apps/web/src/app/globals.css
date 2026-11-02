@@ -1922,6 +1922,28 @@ button {
 .sd-room-rank {
   animation: sd-text-in 700ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
+/* 1~3등 소감: 하늘 가운데에 크게, 천천히 떠올라 오래 머문 뒤 흐려진다(RoomView SPEECH_MS와 같은 9초) */
+.sd-speech {
+  animation: sd-speech 9s ease-in-out forwards;
+}
+@keyframes sd-speech {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1);
+  }
+}
 /* 같은 빠르기로 곧게 떠오른다(빠르기가 같아야 먼저 뜬 풍등을 따라잡아 겹치지 않는다, RoomView LANTERN_CLEAR_MS) */
 .sd-lantern {
   animation: sd-lantern 7s linear forwards;
@@ -2029,6 +2051,18 @@ button {
   }
   .sd-lantern {
     animation: sd-lantern-still 7s linear forwards;
+  }
+  .sd-speech {
+    animation: sd-speech-still 9s linear forwards;
+  }
+  @keyframes sd-speech-still {
+    0%,
+    90% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
   }
   @keyframes sd-lantern-still {
     0%,
