@@ -645,6 +645,8 @@ export function RoomView({
     heard,
   });
   const closeIn = drawAt * 1000 + ROOM_CLOSE_AFTER_MS - now;
+  /** 관측지에 있는 사람 수: 언덕 위(얼굴) + 언덕 아래(대화 표 없이 보는 연결) */
+  const crowd = people.size + watchers;
   const faces = visible.slice(0, FACES);
   const more = visible.length - faces.length;
   const lit = new Set<number>();
@@ -671,7 +673,7 @@ export function RoomView({
       className="flex flex-col gap-3"
     >
       {/* 머리 줄: 가운데 장소 이름 「관측지」, 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은
-          함께 보는 사람 수. 양쪽 칸이 같은 너비라 「홈」이 없는 넓은 화면에서도 가운데가 어긋나지 않는다(docs/36 11-34) */}
+          빈 칸. 양쪽 칸이 같은 너비라 「홈」이 없는 넓은 화면에서도 가운데가 어긋나지 않는다(docs/36 11-34) */}
       <div className="grid min-h-8 grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="justify-self-start">
           {onHome && (
@@ -683,12 +685,7 @@ export function RoomView({
         <h1 data-room-title className="font-bold text-lg">
           관측지
         </h1>
-        <span
-          className="justify-self-end text-white/55 text-xs tabular-nums"
-          data-room-count
-        >
-          함께 보는 {people.size + watchers}명
-        </span>
+        <span />
       </div>
       {/* 지금 보는 회차(장소 이름 바로 아래에 작게) */}
       <p
@@ -792,6 +789,16 @@ export function RoomView({
         className="sd-room-hill relative -mx-4 px-4 pt-6 pb-2"
         data-room-hill
       >
+        {/* 언덕 머리: 관측지에 있는 사람 수(언덕 위 얼굴 + 언덕 아래에서 숨어 보는 사람). 나 혼자면 아래 「아직 언덕에…」가
+            말하므로 두지 않는다(2026-11-02 사용자: 머리 줄보다 별자리 밑, 웅성거리는 우주인들 곁에 있어야 무슨 숫자인지 안다) */}
+        {crowd > 1 && (
+          <p
+            data-room-count={crowd}
+            className="pb-2 text-center text-white/60 text-xs tabular-nums"
+          >
+            관측지에 {crowd}명이 있어요.
+          </p>
+        )}
         <div className="flex flex-wrap items-end justify-center gap-1.5">
           {faces.map((pid) => {
             const p = people.get(pid) as RoomPerson;

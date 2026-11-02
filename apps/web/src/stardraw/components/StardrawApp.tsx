@@ -1619,7 +1619,7 @@ function DrawFor({
   // (새로 고쳐도 서버 시각에 맞춰 그 자리로 돌아온다)
   useNoPullRefresh(!showRoom);
   if (showRoom) {
-    // 방 머리 줄(「홈」·함께 보는 사람 수)은 방 화면이 그린다
+    // 방 머리 줄(「홈」)과 언덕 머리의 사람 수는 방 화면이 그린다
     return (
       <RoomView
         key={round}
