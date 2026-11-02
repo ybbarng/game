@@ -461,6 +461,11 @@ describe("마감 직전 응모와 봉인", () => {
     await sealing;
     expect(err).toBeInstanceOf(EntryError);
     expect((err as EntryError).status).toBe(409);
+    // 마감 전에 받았지만 기다리는 사이 봉인이 시작된 것도 늦은 도착으로 센다(docs/36 11-43)
+    expect(rig.engine.state().pressure.previous).toMatchObject({
+      round: 1,
+      late: 1,
+    });
 
     await rig.at(drawTimeOf(1));
     expect(rig.engine.state()).toMatchObject({
@@ -790,5 +795,156 @@ describe("Argon2 줄이 가득할 때(docs/36 11-30)", () => {
     }
     const results = await Promise.all(pending);
     expect(results).toEqual([null, null, null]);
+  });
+});
+
+describe("예측 몰림 숫자(docs/36 11-43)", () => {
+  const rejected = (p: Promise<unknown>) =>
+    p.then(
+      () => null,
+      (e: unknown) => e as EntryError,
+    );
+
+  it("IP 앞부분 429(예측·등록 따로)와 마감 뒤 60초 안 늦은 도착을 그 회차에 세고, 닫힐 때 로그 한 줄, 한 시간 뒤 감시 숫자는 0", async () => {
+    rig = await makeRig({
+      entriesPerPrefixPerRound: 1,
+      registrationsPerPrefixPerDay: 1,
+    });
+    await rig.at(EPOCH + 10);
+    await enter(rig, await player(), [1, 2, 3, 4, 5, 6]);
+    // 같은 곳에서 두 번째 예측(회차 상한)과 두 번째 등록(하루 상한)
+    expect(
+      (await rejected(enter(rig, await player(), [1, 2, 3, 4, 5, 6])))?.status,
+    ).toBe(429);
+    expect((await rejected(registerOnly(rig, await player())))?.status).toBe(
+      429,
+    );
+    // 다른 곳에서 낸 예측은 세지 않는다(정상 접수)
+    await enter(rig, await player(), [1, 2, 3, 4, 5, 6], "198.51.100.9");
+    expect(rig.engine.state()).toMatchObject({
+      round: 1,
+      pressure: {
+        current: { round: 1, prefixEntry: 1, prefixRegister: 1, busy: 0 },
+        previous: { round: 0, prefixEntry: 0 },
+      },
+      entryPrefixRecent: 2,
+      entryBusyRecent: 0,
+    });
+
+    // 마감 뒤 늦게 온 1회차 예측서: 10초 뒤는 세고, 60초 뒤는 세지 않는다
+    const lateA = await entryFor(
+      await player(),
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const lateB = await entryFor(
+      await player(),
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const { closesAt } = roundTimes(SCHEDULE, 1);
+    await rig.at(closesAt + 10);
+    const send = (t: Ticket) =>
+      rejected(rig.engine.submit({ ticket: encodeTicket(t), ip: "192.0.2.1" }));
+    expect((await send(lateA.ticket))?.status).toBe(409);
+    await rig.at(closesAt + 60);
+    expect((await send(lateB.ticket))?.status).toBe(409);
+    expect(rig.engine.state()).toMatchObject({
+      round: 2,
+      pressure: {
+        current: { round: 2, late: 0, prefixEntry: 0 },
+        previous: { round: 1, late: 1, prefixEntry: 1, prefixRegister: 1 },
+      },
+      entryPrefixRecent: 2,
+      entryLateRecent: 1,
+    });
+
+    // 회차가 닫힐 때 숫자만 담은 JSON 한 줄
+    await rig.at(drawTimeOf(1));
+    const line = rig.logs.find((m) => m.startsWith("예측 몰림 "));
+    expect(JSON.parse(line?.slice("예측 몰림 ".length) ?? "null")).toEqual({
+      round: 1,
+      busy: 0,
+      queueTimeout: 0,
+      maxQueue: 0,
+      maxWaitMs: 0,
+      prefixEntry: 1,
+      prefixRegister: 1,
+      late: 1,
+      entries: 2,
+      void: false,
+    });
+
+    // 마감 한 시간 뒤까지는 남고(1분 감시가 놓치지 않게), 그 뒤 저절로 0(알림 풀림)
+    await rig.at(closesAt + 3599);
+    expect(rig.engine.state().entryPrefixRecent).toBe(2);
+    await rig.at(closesAt + 3600);
+    expect(rig.engine.state()).toMatchObject({
+      entryPrefixRecent: 0,
+      entryLateRecent: 0,
+      // 바로 앞 회차는 2회차가 되어 1회차 숫자는 상태에서 빠진다
+      pressure: { previous: { round: 2 } },
+    });
+  });
+
+  it("Argon2 줄: 가득해 돌려보낸 수, 기다림 상한으로 떨어진 수, 가장 긴 줄, 가장 오래 기다린 시간을 주입한 시계로 잰다", async () => {
+    const held: ((ok: boolean) => void)[] = [];
+    rig = await makeRig({
+      argonQueue: 1,
+      powChecker: {
+        check: () => new Promise<boolean>((resolve) => held.push(resolve)),
+      },
+    });
+    await rig.at(EPOCH + 10);
+    const gate = (rig.engine as unknown as { gate: { queued: number } }).gate;
+    const until = async (ok: () => boolean) => {
+      for (let i = 0; i < 1000 && !ok(); i++)
+        await new Promise((r) => setImmediate(r));
+      expect(ok()).toBe(true);
+    };
+    const go = async () =>
+      rejected(enter(rig, await player(), [1, 2, 3, 4, 5, 6]));
+    // 실행 칸 2개(등록 계산에서 붙잡힘)와 줄 1칸을 채운다
+    const running = [go(), go(), go()];
+    await until(() => held.length === 2 && gate.queued === 1);
+    // 줄이 가득할 때 온 예측은 서명 확인 전에 503
+    expect((await go())?.status).toBe(503);
+
+    // 1.5초 뒤 실행 칸이 하나 비어 줄의 하나가 들어간다
+    rig.clock.advance(1500);
+    held.shift()?.(true); // 등록 계산
+    await until(() => held.length === 2);
+    held.pop()?.(true); // 방금 들어온 그 예측의 계산 → 끝
+    await until(() => held.length === 2 && gate.queued === 0);
+
+    // 다시 줄에 하나 세우고 5초를 넘기면 기다림 상한으로 떨어진다
+    const timedOut = go();
+    await until(() => gate.queued === 1);
+    rig.clock.advance(5000);
+    expect((await timedOut)?.status).toBe(503);
+
+    expect(rig.engine.state()).toMatchObject({
+      pressure: {
+        current: {
+          round: 1,
+          busy: 1,
+          queueTimeout: 1,
+          maxQueue: 1,
+          maxWaitMs: 5000,
+        },
+      },
+      entryBusyRecent: 2,
+      entryMaxWaitMsRecent: 5000,
+      entryMaxQueueRecent: 1,
+    });
+
+    // 붙잡은 확인을 풀어 정리한다
+    for (let i = 0; i < 1000 && (held.length > 0 || i < 3); i++) {
+      held.shift()?.(true);
+      await new Promise((r) => setImmediate(r));
+    }
+    await Promise.all(running);
   });
 });

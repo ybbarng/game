@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-02T12:03:46.571Z",
+  "updatedAt": "2026-11-02T12:30:00.000Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -1103,6 +1103,22 @@
       "since": "2026-11-02",
       "found": "2026-11-02",
       "summary": "사용자 요청(2026-11-02): 봇 500명이 한 회차에 등록·응모하고 관측지에 모여 추첨을 보는 부하 시험. 11-30 측정 도구(apps/stardraw-server/bench)를 넓힌다. 맥 부담을 줄이려 nice, 측정용 일정표(작업 증명 nonce 0), 봇은 소프트웨어 열쇠, 응모를 몇 분에 나눠 보낸다. 운영 서버(320MiB)와 같은 메모리 상한을 걸어 로컬에서 잰다. 시기: 처음 보는 사람 리뷰로 흐름이 굳은 뒤, 정식 시작(매시간) 전."
+    },
+    {
+      "id": "next-lotto-pressure",
+      "title": "별 따기 예측 몰림 알림",
+      "parent": "next-lotto",
+      "status": "building",
+      "size": 1,
+      "since": "2026-11-02",
+      "found": "2026-11-02",
+      "summary": "사용자(2026-11-02): 마감 무렵 예측이 몰려 서버가 받지 못한 일을 회차마다 숫자로 알고, 들어가 보는 통계가 아니라 알림으로. 서버가 503(줄 가득·5초 기다림 상한)·429(IP 앞부분 예측·등록)·마감 뒤 60초 안 늦은 도착·줄 길이·가장 긴 기다림(주입 시계)을 개인 값 없이 메모리에 24회차까지 세어 /api/state(최상위 entryBusyRecent·entryPrefixRecent·entryLateRecent·entryMaxWaitMsRecent: 지금 회차 + 마감 1시간 안 회차, pressure: 지금·앞 회차)와 회차가 닫힐 때 로그 한 줄 「예측 몰림 {JSON}」으로 낸다. 브랜치 entry-pressure(서버만, 화면 그대로). 남은 것: main에 합치기·서버 배포(사용자), gatus 항목 셋 넣기(servers 저장소, docs/36 11-43 초안, 사용자/비서)",
+      "links": [
+        {
+          "label": "설계",
+          "path": "docs/36-hourly-lotto-design.md"
+        }
+      ]
     },
     {
       "id": "next-lotto-smooth",

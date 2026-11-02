@@ -49,6 +49,18 @@ export class Counters {
 interface Waiter {
   start: () => void;
   cancelTimer: () => void;
+  /** 줄에 선 시각(ms, 주입한 시계). 시계가 없으면 0 */
+  since: number;
+  watch: GateWatch | undefined;
+}
+
+/**
+ * 줄을 지켜보는 쪽(받기 압력 숫자, docs/36 11-43). 줄에 설 때 그때의 줄 길이를, 줄에서 나올 때(차례가 와서든 기한이 지나서든)
+ * 기다린 시간을 알린다. 누구의 요청인지는 넘기지 않는다
+ */
+export interface GateWatch {
+  queued(length: number): void;
+  waited(ms: number): void;
 }
 
 /**
@@ -70,6 +82,8 @@ export class Gate {
     private readonly timer?: {
       after: (ms: number, fn: () => void) => () => void;
       maxWaitMs: number;
+      /** 지금 시각(ms). 있으면 줄에서 기다린 시간을 `GateWatch.waited`로 알린다 */
+      now?: () => number;
     },
   ) {}
 
@@ -82,22 +96,37 @@ export class Gate {
     return this.running >= this.concurrency && line.length >= this.queue;
   }
 
+  /** 지금 줄에 선 수(앞줄 + 보통 줄) */
+  get queued(): number {
+    return this.waiting.high.length + this.waiting.normal.length;
+  }
+
   async run<T>(
     fn: () => Promise<T>,
-    options: { priority?: boolean } = {},
+    options: { priority?: boolean; watch?: GateWatch } = {},
   ): Promise<T> {
     if (this.running >= this.concurrency) {
       const line = options.priority ? this.waiting.high : this.waiting.normal;
-      if (line.length >= this.queue) throw new BusyError();
+      if (line.length >= this.queue) throw new BusyError("full");
       await new Promise<void>((resolve, reject) => {
-        const waiter: Waiter = { start: resolve, cancelTimer: () => {} };
+        const waiter: Waiter = {
+          start: () => {
+            this.waited(waiter);
+            resolve();
+          },
+          cancelTimer: () => {},
+          since: this.timer?.now?.() ?? 0,
+          watch: options.watch,
+        };
         if (this.timer)
           waiter.cancelTimer = this.timer.after(this.timer.maxWaitMs, () => {
             const at = line.indexOf(waiter);
             if (at >= 0) line.splice(at, 1);
-            reject(new BusyError());
+            this.waited(waiter);
+            reject(new BusyError("timeout"));
           });
         line.push(waiter);
+        options.watch?.queued(this.queued);
       });
     } else {
       this.running++;
@@ -111,6 +140,11 @@ export class Gate {
         next.start();
       } else this.running--;
     }
+  }
+
+  private waited(waiter: Waiter): void {
+    const now = this.timer?.now;
+    if (now) waiter.watch?.waited(Math.max(0, now() - waiter.since));
   }
 }
 
@@ -158,8 +192,9 @@ export class PowFailures {
   }
 }
 
+/** 줄이 가득해(`full`) 또는 줄에서 기한을 넘게 기다려(`timeout`) 돌려보냄. 화면에는 같은 말, 숫자는 따로 센다 */
 export class BusyError extends Error {
-  constructor() {
+  constructor(readonly reason: "full" | "timeout" = "full") {
     super("지금 예측이 몰려 있습니다. 잠시 뒤 다시 내 주세요");
   }
 }

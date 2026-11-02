@@ -92,7 +92,14 @@ import {
 } from "@game/stardraw-core";
 
 import { GoogleTokenError, type GoogleTokenVerifier } from "./google";
-import { BusyError, Counters, Gate, ipPrefix, PowFailures } from "./limits";
+import {
+  BusyError,
+  Counters,
+  Gate,
+  type GateWatch,
+  ipPrefix,
+  PowFailures,
+} from "./limits";
 import {
   type Anchor,
   type DrandSource,
@@ -101,6 +108,12 @@ import {
   type RootLog,
 } from "./outside";
 import { inlinePowChecker, type PowChecker, type PowJob } from "./pow-pool";
+import {
+  EntryPressure,
+  LATE_WINDOW,
+  type PressureRecent,
+  type RoundPressure,
+} from "./pressure";
 import { type MirrorFile, Publisher } from "./publish";
 import type { ServerKey } from "./server-key";
 import type { Store } from "./store";
@@ -231,7 +244,7 @@ export interface EntryInput {
   ip: string;
 }
 
-export interface ServerState {
+interface ServerStateBase {
   now: number;
   /** 지금 응모받는(또는 곧 받을) 회차. 1회차 전이면 0 */
   round: number;
@@ -271,7 +284,23 @@ export interface ServerState {
   qualIssued: { period: string; issued: number; reissued: number }[];
   /** qualIssued 가운데 가장 많은 발급 수 + 다시 발급 수(감시가 숫자 하나로 비교한다, 없으면 0) */
   qualIssuedMax: number;
+  /**
+   * 예측 몰림 숫자(docs/36 11-43): 지금 회차와 바로 앞 회차(마감이 지난 회차). 메모리에만 있어 서버를 다시 띄우면 0부터다.
+   * 개인을 알 수 있는 값(IP·열쇠·예측서 id)은 없다
+   */
+  pressure: { current: RoundPressure; previous: RoundPressure };
 }
+
+/**
+ * 감시(gatus)용 최상위 숫자(docs/36 11-43). 지금 회차와 마감이 `PRESSURE_RECENT_SECONDS`(1시간) 안에 지난 회차의 합·최댓값이라
+ * 일이 생긴 뒤 적어도 한 시간은 남고(1분 감시가 놓치지 않는다), 그 뒤 저절로 0으로 돌아온다(알림 풀림).
+ * 알림 기준 제안: entryBusyRecent == 0(503), entryPrefixRecent == 0(429), entryMaxWaitMsRecent < 2000(503 전 조기 경보),
+ * entryLateRecent < 20(늦은 도착 급증)
+ */
+export type ServerState = ServerStateBase & PressureRecent;
+
+/** 감시용 합에 넣는 지난 회차: 마감이 이 시간(초) 안에 지난 회차 */
+export const PRESSURE_RECENT_SECONDS = 3600;
 
 /** 무효 회차를 상태에 남겨 두는 시간(초) */
 export const VOID_WINDOW = 24 * 3600;
@@ -284,6 +313,8 @@ export class StardrawServer {
   private readonly o: EngineOptions;
   private readonly counters = new Counters();
   private readonly gate: Gate;
+  /** 예측 몰림 숫자(회차별, 메모리에만, docs/36 11-43) */
+  private readonly pressure = new EntryPressure();
   /**
    * 작업 증명에서 떨어진 본문·열쇠(회차 동안, D2). 앞단이 켜지면 같은 열쇠는 한 번 떨어지면 막는다:
    * 문제 값이 바뀐 낡은 계산은 앞단에서 먼저 걸러지므로 정상 사용자는 Argon2에서 떨어질 일이 없고,
@@ -330,6 +361,36 @@ export class StardrawServer {
       throw new EntryError("예측 확인 계산이 맞지 않습니다");
   }
 
+  /** 이 회차 요청의 줄 길이·기다림을 몰림 숫자에 적는다(docs/36 11-43) */
+  private watchGate(round: number): GateWatch {
+    return {
+      queued: (length) => this.pressure.queued(round, length),
+      waited: (ms) => this.pressure.waited(round, ms),
+    };
+  }
+
+  /** Argon2 줄에서 돌려보낸 것을 세고 503 오류로 바꾼다 */
+  private busy(round: number, reason: BusyError["reason"]): EntryError {
+    this.pressure.add(round, reason === "timeout" ? "queueTimeout" : "busy");
+    return new EntryError(new BusyError(reason).message, 503);
+  }
+
+  /** `gate.run`의 거절: 줄에서 돌려보낸 것만 세어 503으로, 나머지는 그대로 */
+  private busyCatch(round: number) {
+    return (err: unknown): never => {
+      if (err instanceof BusyError) throw this.busy(round, err.reason);
+      throw err;
+    };
+  }
+
+  /** 마감 뒤 늦게 온 그 회차 예측서를 센다(마감 뒤 LATE_WINDOW초 안 도착만) */
+  private countLate(ticketRound: number, receivedAt: number): void {
+    if (!Number.isInteger(ticketRound) || ticketRound < 1) return;
+    const { closesAt } = roundTimes(this.schedule(), ticketRound);
+    if (receivedAt >= closesAt && receivedAt - closesAt < LATE_WINDOW)
+      this.pressure.add(ticketRound, "late");
+  }
+
   /** 이 회차는 더 받지 않는다(봉인했거나 봉인 값을 계산하는 중) */
   private closedFor(round: number): boolean {
     return round <= this.sealingFrom || !!this.o.store.seal(round);
@@ -355,6 +416,7 @@ export class StardrawServer {
       {
         after: (ms, fn) => options.clock.after(ms, fn),
         maxWaitMs: options.limits.argonMaxWaitMs ?? 5000,
+        now: () => options.clock.now(),
       },
     );
     options.publisher.genesis(this.genesis);
@@ -457,6 +519,17 @@ export class StardrawServer {
       liveFrom: liveStart(this.schedule()),
       qualWins: this.qualWins(now),
       ...this.health(now, round),
+      pressure: {
+        current: this.pressure.get(round),
+        previous: this.pressure.get(Math.max(0, round - 1)),
+      },
+      ...this.pressure.recent(
+        (r) =>
+          r >= round ||
+          (r >= 1 &&
+            now - roundTimes(this.schedule(), r).closesAt <
+              PRESSURE_RECENT_SECONDS),
+      ),
     };
   }
 
@@ -612,11 +685,13 @@ export class StardrawServer {
     if (
       this.counters.count("register", day, prefix) >=
       this.o.limits.registrationsPerPrefixPerDay
-    )
+    ) {
+      this.pressure.add(round, "prefixRegister");
       throw new EntryError(
         "같은 곳에서 오늘 새로 등록한 열쇠가 너무 많습니다",
         429,
       );
+    }
 
     // 2. 형식
     let registration: KeyRegistration;
@@ -650,7 +725,7 @@ export class StardrawServer {
     // 3-1. 앞단 작업 증명(싸다, docs/36 11-31). 문제 값 비교(409, 화면이 다시 계산)보다 뒤에 둔다
     await this.checkFrontGate(registration.pub, input.gate, receivedAt);
     // 3-2. Argon2 줄이 가득하면 서명 확인 전에 바로 503(화면이 흔들어 다시 낸다, docs/36 11-30)
-    if (this.gate.full()) throw new EntryError(new BusyError().message, 503);
+    if (this.gate.full()) throw this.busy(round, "full");
 
     // 4. 국장 열쇠와 섞지 않는다, 패스키 번호는 한 번만
     if (await this.isDirectorKey(registration.pub, registration.credentialId))
@@ -671,19 +746,18 @@ export class StardrawServer {
     const blocked = this.powFailures.blocked(window, body, who);
     if (blocked) throw new EntryError(blocked, 429);
     const ok = await this.gate
-      .run(() =>
-        this.checkPowJob({
-          challenge,
-          content: registrationContent(registration),
-          nonce: registration.nonce,
-          target: times.entry.registerPowTarget,
-          params: this.o.pow,
-        }),
+      .run(
+        () =>
+          this.checkPowJob({
+            challenge,
+            content: registrationContent(registration),
+            nonce: registration.nonce,
+            target: times.entry.registerPowTarget,
+            params: this.o.pow,
+          }),
+        { watch: this.watchGate(round) },
       )
-      .catch((err) => {
-        if (err instanceof BusyError) throw new EntryError(err.message, 503);
-        throw err;
-      });
+      .catch(this.busyCatch(round));
     if (!ok) {
       this.powFailures.failed(window, body, who);
       throw new EntryError("열쇠 등록 계산이 맞지 않습니다");
@@ -720,11 +794,13 @@ export class StardrawServer {
     if (
       this.counters.count("entry", String(round), prefix) >=
       this.o.limits.entriesPerPrefixPerRound
-    )
+    ) {
+      this.pressure.add(round, "prefixEntry");
       throw new EntryError(
         "같은 곳에서 이번 회차에 낸 예측이 너무 많습니다",
         429,
       );
+    }
 
     // 2. 형식
     let ticket: Ticket;
@@ -744,8 +820,10 @@ export class StardrawServer {
     const numbersProblem = checkNumbers(ticket.numbers);
     if (numbersProblem) throw new EntryError(numbersProblem);
     // 마감 직후 도착한 앞 회차 응모권은 늦었다고 분명히 알린다(받은 서버 시각을 함께)
-    if (ticket.round < round)
+    if (ticket.round < round) {
+      this.countLate(ticket.round, receivedAt);
       throw new EntryError(closedMessage(receivedAt), 409);
+    }
     if (ticket.round !== round)
       throw new EntryError("이번 회차 예측서가 아닙니다");
     const times = roundTimes(schedule, round);
@@ -755,8 +833,10 @@ export class StardrawServer {
       receivedAt < acceptFrom(schedule, round)
     )
       throw new EntryError("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다", 409);
-    if (receivedAt >= times.closesAt || this.closedFor(round))
+    if (receivedAt >= times.closesAt || this.closedFor(round)) {
+      this.countLate(round, receivedAt);
       throw new EntryError(closedMessage(receivedAt), 409);
+    }
     const who = toHex(entrantId(ticket.pub));
 
     // 2-1. 앞단 작업 증명(형식 다음으로 싸다, docs/36 11-31). 없거나 틀리면 Argon2·서명 전에 버린다
@@ -764,7 +844,7 @@ export class StardrawServer {
     // 2-2. Argon2 줄이 가득하면 서명 확인 같은 비싼 일 전에 바로 503(화면이 흔들어 다시 낸다, docs/36 11-30).
     // 소속 증서를 단 응모는 앞줄을 본다(증서는 아래에서 확인한다. 거짓이면 Argon2 전에 떨어진다)
     if (this.gate.full({ priority: !!ticket.qual }))
-      throw new EntryError(new BusyError().message, 503);
+      throw this.busy(round, "full");
 
     // 3. 등록된 열쇠(새 열쇠면 함께 온 등록을 본다)
     const known = store.isRegistered(who);
@@ -785,11 +865,13 @@ export class StardrawServer {
       if (
         this.counters.count("register", day, prefix) >=
         this.o.limits.registrationsPerPrefixPerDay
-      )
+      ) {
+        this.pressure.add(round, "prefixRegister");
         throw new EntryError(
           "같은 곳에서 오늘 새로 등록한 열쇠가 너무 많습니다",
           429,
         );
+      }
     }
 
     // 4. 서명(ECDSA라 싸다)
@@ -847,12 +929,9 @@ export class StardrawServer {
           });
           return ok ? null : "예측 계산이 맞지 않습니다";
         },
-        { priority: !!ticket.qual },
+        { priority: !!ticket.qual, watch: this.watchGate(round) },
       )
-      .catch((err) => {
-        if (err instanceof BusyError) throw new EntryError(err.message, 503);
-        throw err;
-      });
+      .catch(this.busyCatch(round));
     if (powOk) {
       this.powFailures.failed(window, body, who);
       throw new EntryError(powOk);
@@ -860,8 +939,11 @@ export class StardrawServer {
 
     // 기다리는 사이 봉인(또는 봉인 값 계산)이 시작됐거나 같은 열쇠가 먼저 들어왔을 수 있다. 확인과 넣기를 한 번에(동기) 한다
     store.transaction(() => {
-      if (this.closedFor(round))
+      if (this.closedFor(round)) {
+        // 마감 전에 받았지만 줄에서 기다리는 사이 봉인이 시작됐다. 몰림으로 놓친 것이라 늦은 도착으로 센다
+        this.pressure.add(round, "late");
         throw new EntryError(closedMessage(receivedAt), 409);
+      }
       if (store.hasEntry(round, who))
         throw new EntryError("이번 회차에는 이미 예측했습니다", 409);
       if (!known && registration) {
@@ -994,6 +1076,10 @@ export class StardrawServer {
       if (!equalBytes(sealDigest(record), seal.digest))
         throw new Error(`${round}회차 기록이 봉인 값과 다르다`);
       store.addRecord(record);
+      // 예측 몰림 숫자 한 줄(감시·사후 확인용 JSON, docs/36 11-43). 숫자만 있다
+      this.o.log?.(
+        `예측 몰림 ${JSON.stringify({ ...this.pressure.get(round), entries: tickets.length, void: record.void })}`,
+      );
       if (scheduleChanges.length > 0) {
         store.setPendingChange(null);
         this.o.log?.(

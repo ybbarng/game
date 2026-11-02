@@ -90,6 +90,47 @@ describe("Argon2 줄: 기다림 기한과 앞줄(D2)", () => {
     await h.first;
   });
 
+  it("줄 길이와 기다린 시간을 알리고, 가득 참과 기한 넘김을 구분한다(docs/36 11-43)", async () => {
+    const clock = new ManualClock();
+    const gate = new Gate(1, 2, {
+      after: (ms, fn) => clock.after(ms, fn),
+      maxWaitMs: 5000,
+      now: () => clock.now(),
+    });
+    const lengths: number[] = [];
+    const waits: number[] = [];
+    const watch = {
+      queued: (n: number) => lengths.push(n),
+      waited: (ms: number) => waits.push(ms),
+    };
+    const h = held(gate);
+    const a = gate.run(async () => "a", { watch });
+    const b = gate.run(async () => "b", { watch });
+    expect(lengths).toEqual([1, 2]);
+    expect(gate.queued).toBe(2);
+    const full = await gate.run(async () => 0, { watch }).catch((e) => e);
+    expect(full).toBeInstanceOf(BusyError);
+    expect((full as BusyError).reason).toBe("full");
+
+    // 1.5초 뒤 차례가 온 a는 1500ms를 기다렸다
+    clock.advance(1500);
+    h.release();
+    await h.first;
+    expect(await a).toBe("a");
+    expect(await b).toBe("b");
+    expect(waits).toEqual([1500, 1500]);
+
+    // 기한을 넘긴 일은 기다린 시간(5000ms)을 알리고 이유가 timeout이다
+    const h2 = held(gate);
+    const late = gate.run(async () => 0, { watch }).catch((e) => e);
+    clock.advance(5000);
+    const err = await late;
+    expect((err as BusyError).reason).toBe("timeout");
+    expect(waits.at(-1)).toBe(5000);
+    h2.release();
+    await h2.first;
+  });
+
   it("앞줄(소속 응모)을 먼저 꺼내고, 줄마다 상한을 따로 둔다", async () => {
     const gate = new Gate(1, 1);
     const h = held(gate);

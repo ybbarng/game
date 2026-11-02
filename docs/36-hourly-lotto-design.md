@@ -1947,3 +1947,106 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 - 왜 nginx만으로 막지 않았나: 사이트 검사(`stardraw-verify site`)는 해시 목록의 `stardraw/` 파일을 모두 사이트에서 받아 본다. 목록에 데모가 남은 채 nginx만 404로 내면 검사가 "받지 못한 파일"로 실패한다.
 - **nginx도 겹쳐 막는다**(`deploy/nginx.conf`): `= /stardraw/demo`·`= /stardraw/demo.html`·`= /stardraw/demo.txt`·`^~ /stardraw/demo/`는 `return 404`. 값을 빠뜨린 이미지라도 열리지 않는다. 정확히 맞는 주소와 더 긴 앞부분이라 `/stardraw/` 묶음보다 먼저 골라진다.
 - 값이 없는 빌드(로컬 `pnpm --filter @game/web build`, CI 화면 시험)는 데모가 남아 데모를 쓰는 화면 시험(stardraw·qual·records·award-specimens·admin·nav)이 그대로 돈다. 데모 페이지는 원래 `robots: { index: false }`이고 사이트에 sitemap·robots.txt는 없다.
+
+### 11-43. 예측 몰림 알림: 받지 못한 예측을 회차마다 숫자로(2026-11-02, 사용자와 정함, 브랜치 entry-pressure)
+
+- 사용자: 마감 무렵 예측이 몰려 서버가 받지 못한 일이 생겼는지를 회차마다 숫자로 알아야 한다. 장애면 대응해야 하니 들어가서 보는 통계가 아니라 **알림**이어야 한다. 그때까지 `/api/state`에는 `behind`·`sealOverdueSeconds`·`entries`는 있었지만 거절한 수가 없었다.
+- 개인을 알 수 있는 값(IP, 열쇠, 예측서 id)은 남기지 않고 **숫자만** 센다. 메모리에만 두고 최근 24회차만 남긴다(`apps/stardraw-server/src/pressure.ts`). 서버를 다시 띄우면 0부터다. DB·장부 형식은 그대로다.
+
+#### 세는 것(회차별)
+
+| 이름 | 무엇 | 어디서 |
+|---|---|---|
+| `busy` | Argon2 줄이 가득해 503으로 돌려보낸 수. 서명 확인 전 조기 거절(`gate.full`)과 줄에 들어가려다 가득했던 것 모두 | `engine.ts` `register`·`submit`, `limits.ts` `BusyError("full")` |
+| `queueTimeout` | 줄에 들어갔다가 기다림 상한(5초)을 넘겨 503으로 떨어진 수 | `BusyError("timeout")` |
+| `maxQueue` | 줄의 가장 긴 길이(앞줄 + 보통 줄, 줄에 설 때) | `Gate` `GateWatch.queued` |
+| `maxWaitMs` | 줄에서 가장 오래 기다린 시간(ms). 차례가 와서 나올 때와 기한으로 떨어질 때 모두 잰다. 주입한 시계(`clock.now`)로 재 시험이 결정적이다 | `GateWatch.waited` |
+| `prefixEntry` | 같은 IP 앞부분의 회차당 예측 상한(`STARDRAW_ENTRIES_PER_PREFIX`) 429 | `submit` 1단계 |
+| `prefixRegister` | 같은 IP 앞부분의 하루 등록 상한(`STARDRAW_REGISTRATIONS_PER_PREFIX`) 429. 등록만 할 때와 첫 예측에 붙은 등록 모두 | `register` 1단계, `submit` 3단계 |
+| `late` | 마감 뒤 늦게 도착해 409(`closedMessage`)로 돌려보낸 **그 회차** 예측서. 마감 뒤 60초 안 도착만(`LATE_WINDOW`, 더 늦은 것은 몰림과 상관없는 옛 탭). 마감 전에 받았지만 줄에서 기다리는 사이 봉인이 시작된 것도 센다 | `submit` |
+
+받은 예측 수는 이미 `entries`(지금 회차)에 있다.
+
+#### 내보내는 곳
+
+- **`/api/state` 최상위 감시 숫자**(gatus가 조건 한 줄로 비교한다): 지금 회차와 **마감이 1시간 안에 지난 회차**(`PRESSURE_RECENT_SECONDS`)의 합·최댓값. 일이 생긴 회차의 숫자는 마감 뒤 적어도 한 시간 남아 1분 감시가 놓치지 않고(gatus는 1분마다 보고 3번 연속 실패면 알린다), 그 뒤 저절로 0으로 돌아와 「풀림」 알림이 간다. 지금 회차에 생긴 일은 그 회차 마감 + 1시간까지 남는다.
+  - `entryBusyRecent`: `busy + queueTimeout` 합(503)
+  - `entryPrefixRecent`: `prefixEntry + prefixRegister` 합(429)
+  - `entryLateRecent`: `late` 합
+  - `entryMaxWaitMsRecent`: `maxWaitMs` 최댓값(503 전 조기 경보)
+  - `entryMaxQueueRecent`: `maxQueue` 최댓값(참고용, 알림 없음)
+- **`/api/state` `pressure`**: 지금 회차와 바로 앞 회차(마감이 지난 회차)의 자세한 값.
+- **서버 로그 한 줄**: 회차가 닫힐 때(결과 기록을 붙일 때) `[stardraw] 예측 몰림 {JSON}`. 기존 로그처럼 `[stardraw] ` 뒤에 붙고, `예측 몰림 ` 뒤가 JSON 한 줄이라 `ssh byb-ops logs stardraw | grep '예측 몰림'`으로 회차별 기록을 본다. `entries`(받은 수)와 `void`(무효 회차)를 함께 싣는다.
+
+```json
+{
+  "entries": 2,
+  "pressure": {
+    "current": { "round": 2, "busy": 0, "queueTimeout": 0, "maxQueue": 0, "maxWaitMs": 0, "prefixEntry": 0, "prefixRegister": 0, "late": 0 },
+    "previous": { "round": 1, "busy": 3, "queueTimeout": 1, "maxQueue": 400, "maxWaitMs": 5000, "prefixEntry": 0, "prefixRegister": 0, "late": 2 }
+  },
+  "entryBusyRecent": 4,
+  "entryPrefixRecent": 0,
+  "entryLateRecent": 2,
+  "entryMaxWaitMsRecent": 5000,
+  "entryMaxQueueRecent": 400
+}
+```
+
+```text
+[stardraw] 예측 몰림 {"round":1,"busy":3,"queueTimeout":1,"maxQueue":400,"maxWaitMs":5000,"prefixEntry":0,"prefixRegister":0,"late":2,"entries":2981,"void":false}
+```
+
+#### 알림 기준 제안과 gatus 항목 초안(servers 저장소 `byb.kr/apps/gatus/config.yaml`, 고치는 것은 사용자/비서)
+
+- 503(`entryBusyRecent`)·429(`entryPrefixRecent`)는 **하나라도** 생기면 알린다. 정상 사용자가 떨어졌을 수 있다(화면이 503은 다시 내지만 마감 5초 전까지만, 429는 다시 내지 않는다).
+- 기다림 `entryMaxWaitMsRecent`는 **2초 이상**이면 알린다. 5초면 503이므로 그 전에 알린다.
+- 늦은 도착 `entryLateRecent`는 마감 직전에 누르는 사람이 늘 조금 있어 **20 이상**에서 시작해 실제 값을 보고 고친다(이 값은 어림이다).
+- 기존 항목처럼 같은 주소, `<<: *https`(1분, 3번 연속 실패면 알림, 2번 통과면 풀림), `alerts: - type: custom`. description에는 큰따옴표·역슬래시를 쓰지 않는다.
+
+```yaml
+  # 예측 몰림(game 저장소 docs/36 11-43): 지금 회차 + 마감 1시간 안에 지난 회차의 합·최댓값. 한 시간 뒤 저절로 0(풀림)
+  # entryBusyRecent: Argon2 줄이 가득하거나 5초 기다림 상한으로 503. entryMaxWaitMsRecent: 줄에서 가장 오래 기다린 ms(503 전 경보)
+  - name: 별 따기 예측 몰림
+    group: byb.kr
+    url: https://game.byb.kr/stardraw-api/api/state
+    <<: *https
+    conditions: ["[BODY].entryBusyRecent == 0", "[BODY].entryMaxWaitMsRecent < 2000"]
+    alerts:
+      - type: custom
+        description: "예측이 몰려 서버가 503으로 돌려보냈거나 줄에서 2초 넘게 기다렸습니다. 대응은 game 저장소 docs/36 11-43 알림이 오면 할 일. 회차별 숫자는 ssh byb-ops logs stardraw 에서 예측 몰림 줄"
+  # entryPrefixRecent: 같은 IP 앞부분 상한(회차당 예측, 하루 등록)으로 429. 회사 NAT 뒤 정상 사용자일 수 있다
+  - name: 별 따기 같은 곳 상한
+    group: byb.kr
+    url: https://game.byb.kr/stardraw-api/api/state
+    <<: *https
+    conditions: ["[BODY].entryPrefixRecent == 0"]
+    alerts:
+      - type: custom
+        description: "같은 IP 앞부분 상한으로 예측이나 등록을 429로 거절했습니다. 회사 NAT 뒤 정상 사용자면 상한을 올립니다(docs/36 11-43)"
+  # entryLateRecent: 마감 뒤 60초 안에 늦게 와 거절한 예측서. 마감 직전에 누르는 사람이 늘 조금 있어 20부터(실제 값을 보고 고친다)
+  - name: 별 따기 늦은 도착
+    group: byb.kr
+    url: https://game.byb.kr/stardraw-api/api/state
+    <<: *https
+    conditions: ["[BODY].entryLateRecent < 20"]
+    alerts:
+      - type: custom
+        description: "마감 뒤 늦게 도착한 예측서가 한 시간에 20장을 넘었습니다. 서버 시계와 앞단 지연을 보고, 화면의 마감 안내 문구를 점검하세요(docs/36 11-43)"
+```
+
+#### 알림이 오면 할 일(명령은 모두 사용자가 한다)
+
+1. **503(`entryBusyRecent`)**: 계산 스레드가 모자란 것이다. 운영 서버 `.env`의 `STARDRAW_ARGON_CONCURRENCY`(기본 2)를 서버 코어 수까지 올리고, Argon2 한 번에 16MB를 쓰므로 컨테이너 메모리 상한(servers 저장소 `byb.kr/apps/stardraw/compose.yaml` `mem_limit`, 지금 320m)을 스레드 수 × 16MB + 여유만큼 함께 올린다(11-30 측정: 2개 초당 160번, 4개 287번). 그 뒤 서버를 다시 띄운다(`ssh byb-ops up stardraw`). 줄 길이(`STARDRAW_ARGON_QUEUE`)는 5초 상한 때문에 늘려도 소용이 적다(11-31 「줄과 다시 내기」).
+2. **기다림 2초 이상(`entryMaxWaitMsRecent`)**: 503 바로 전 단계다. 503이 나기 전에 1번과 같은 조치를 미리 한다.
+3. **429(`entryPrefixRecent`)**: 회사·학교 NAT처럼 한 IP 앞부분 뒤에 정상 사용자가 많은 것일 가능성이 크다(11-10). `STARDRAW_ENTRIES_PER_PREFIX`(회차당 예측)·`STARDRAW_REGISTRATIONS_PER_PREFIX`(하루 등록)를 "가장 큰 공유 IP 뒤 사람 수"보다 넉넉히 올리고 다시 띄운다. 같은 열쇠의 반복이나 엉터리 요청이 함께 늘었으면 공격일 수 있으니 로그를 먼저 본다.
+4. **늦은 도착(`entryLateRecent`)**: 대부분 서버 문제가 아니다(마감 직전에 누름). 화면의 마감 안내 문구가 분명한지 점검한다. 갑자기 늘었으면 서버 시계(`/api/time`과 실제 시각)와 앞단(Traefik·nginx) 지연을 확인하고, 503이 함께 있었으면 줄에서 기다리다 마감을 넘긴 것이라 1번을 한다.
+
+#### 설계 점검(다섯 질문 요약)
+
+- ① 뜻·책임: 세는 것은 엔진(`engine.ts`), 줄 길이·기다림은 `Gate`가 `GateWatch`로 알리기만 한다(누구의 요청인지는 넘기지 않는다). 회차별 저장·버리기·합은 `pressure.ts` `EntryPressure`.
+- ② 보장: 숫자만 담는 타입이라 개인 값이 들어갈 칸이 없다. 회차 수 상한(24)으로 메모리가 늘지 않는다.
+- ③ 찾아 쓰기: 이 절, `ServerState` 주석(알림 기준), 로그의 `예측 몰림` 줄.
+- ④ 바뀌면: 감시 창(1시간)은 `PRESSURE_RECENT_SECONDS`, 늦은 도착 창은 `LATE_WINDOW`, 남기는 회차 수는 `PRESSURE_KEEP` 한 곳씩. 회차 길이가 바뀌어도 창은 시각 기준이라 그대로 맞다.
+- ⑤ 대안: 숫자를 DB에 남기기(서버를 다시 띄워도 남음)는 장부 밖 저장 형식을 새로 만들어야 해 고르지 않았다. 회차별 기록은 로그 한 줄로 남는다. 회차별 배열만 내보내기는 gatus가 조건 한 줄로 비교하기 어려워 최상위 합을 따로 둔다.
+- 시험: `pressure.test.ts`(회차별·버리기·합), `limits.test.ts` 「줄 길이와 기다린 시간」, `engine.test.ts` 「예측 몰림 숫자」(429 둘·늦은 도착·로그 한 줄·한 시간 뒤 0, 줄 가득·기다림 상한·가장 긴 줄·가장 오래 기다림)와 「봉인 값을 계산하는 동안」(기다리다 놓친 늦은 도착).
