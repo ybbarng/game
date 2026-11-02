@@ -2,7 +2,7 @@ import { expect, fixStardrawClock, test } from "./test";
 
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
-test("관측 방송: 관측 1분 동안 홈은 관측지가 되고, 처음 온 사람에게 안내와 우주인 등록을 보인다", async ({
+test("관측 방송: 관측 1분 중에 홈으로 들어오면 관측지, 이미 홈에 있던 사람은 그대로. 처음 온 사람에게 안내와 우주인 등록", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "데스크톱·휴대폰 세로로");
@@ -19,8 +19,16 @@ test("관측 방송: 관측 1분 동안 홈은 관측지가 되고, 처음 온 �
     fullPage: true,
   });
 
-  // 1회 관측(13:00) 20초 뒤: 앞 회차 기록은 나왔지만 관측 1분 중이라 홈에 있던 사람도 관측지로
+  // 1회 관측(13:00) 20초 뒤: 이미 홈에 있던 사람은 끌고 가지 않는다(하던 일을 끊지 않게)
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:20Z"));
+  await expect(strip.locator("[data-timetable-round='1']")).toHaveAttribute(
+    "data-state",
+    "observing",
+    { timeout: 30_000 },
+  );
+  await expect(page).toHaveURL(/\/stardraw$/);
+  // 관측 1분 중에 홈으로 새로 들어오면 관측지로(주소는 바꿔치기)
+  await page.reload();
   await expect(page).toHaveURL(/\/stardraw\/now$/, { timeout: 30_000 });
   const guide = page.getByRole("complementary", { name: "관측 안내" });
   await expect(guide).toContainText("1회의 여섯 별을 관측하고 있어요.");

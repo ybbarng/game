@@ -223,17 +223,23 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     );
   }, [view.name, nowMode, services, status, watching]);
   /**
-   * 관측은 방송처럼(2026-11-02 사용자): 관측 시간에는 홈도 관측지다. 홈에 있던 사람은 그 순간, 새로 온 사람은
-   * 들어오자마자 지금 회차 화면의 관측지로 옮긴다(주소는 바꿔치기라 뒤로 가기로 홈에 갇히지 않는다).
-   * 관측이 끝나도 관측지에 둔다(결과를 볼 시간, 다음 회차로는 사람이 간다)
+   * 관측은 방송처럼(2026-11-02 사용자): 관측 시간에 홈으로 처음 들어온 사람은 지금 회차 화면의 관측지로 옮긴다
+   * (주소는 바꿔치기라 뒤로 가기로 홈에 갇히지 않는다). 들어오는 순간에 한 번만 정한다. 이미 홈에 있던 사람은
+   * 끌고 가지 않는다(등록·봉투 열기 같은 하던 일을 끊지 않게, 사용자가 다시 고민해 정함). 그 사람은 홈 회차 카드
+   * 「관측지로 가기」와 방송 토스트가 부른다. 홈 탭으로 돌아온 사람도 옮기지 않는다
    */
   const onAir = services && status ? onAirRound(services, status) : null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 홈에 있거나 관측이 시작될 때만 옮긴다(go는 매번 새로 만든다)
+  const arrival = useRef<"pending" | "done">(
+    view.name === "home" ? "pending" : "done",
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부를 처음 읽었을 때 한 번만 정한다(go는 매번 새로 만든다)
   useEffect(() => {
+    if (arrival.current === "done" || !services || !status) return;
+    arrival.current = "done";
     if (view.name !== "home" || onAir === null) return;
     go({ name: "now" }, true);
     setNowMode({ kind: "observe", round: onAir });
-  }, [view.name, onAir]);
+  }, [services, status]);
   /** 답안지를 쓰는 화면(응모 페이지, 지금 회차의 예측) */
   const picking =
     view.name === "enter" ||
