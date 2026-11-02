@@ -13,7 +13,7 @@ import {
   ticketId,
   toHex,
 } from "@game/stardraw-core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useNoPullRefresh } from "@/game/no-pull-refresh";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
@@ -603,38 +603,38 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
         ) : view.name === "now" ? (
           nowShown === null ? null : nowShown.kind === "observe" ? (
             loaded && (
-              <>
-                {onAir === nowShown.round && (
-                  <OnAirGuide
-                    services={services}
-                    round={nowShown.round}
-                    hasKey={navKey !== null}
-                    onRegister={() => setNowMode({ kind: "predict" })}
-                  />
-                )}
-                <DrawFor
-                  services={services}
-                  status={status}
-                  round={nowShown.round}
-                  mine={mine}
-                  seen={opened.has(nowShown.round)}
-                  onSkip={
-                    services.practice
-                      ? async () => {
-                          await services.practice?.skipToNextDraw();
-                          await refresh();
-                        }
-                      : null
-                  }
-                  onEnter={() => {
-                    // 결과를 봤으니 첫 화면 봉투에서 빠진다
-                    services.wallet.markOpened(nowShown.round);
-                    setOpened(services.wallet.openedRounds());
-                    setNowMode({ kind: "predict" });
-                  }}
-                  onHome={wide ? undefined : goHome}
-                />
-              </>
+              <DrawFor
+                guide={
+                  onAir === nowShown.round && (
+                    <OnAirGuide
+                      services={services}
+                      round={nowShown.round}
+                      hasKey={navKey !== null}
+                      onRegister={() => setNowMode({ kind: "predict" })}
+                    />
+                  )
+                }
+                services={services}
+                status={status}
+                round={nowShown.round}
+                mine={mine}
+                seen={opened.has(nowShown.round)}
+                onSkip={
+                  services.practice
+                    ? async () => {
+                        await services.practice?.skipToNextDraw();
+                        await refresh();
+                      }
+                    : null
+                }
+                onEnter={() => {
+                  // 결과를 봤으니 첫 화면 봉투에서 빠진다
+                  services.wallet.markOpened(nowShown.round);
+                  setOpened(services.wallet.openedRounds());
+                  setNowMode({ kind: "predict" });
+                }}
+                onHome={wide ? undefined : goHome}
+              />
             )
           ) : enteredHere ? (
             <ReceiptView
@@ -1577,11 +1577,17 @@ function DrawFor({
   onEnter,
   onSkip,
   onHome,
+  guide,
 }: {
   services: Services;
   status: LedgerStatus;
   round: number;
   mine: MyTicket[];
+  /**
+   * 관측 방송 안내(OnAirGuide, 지금 회차 화면만). 관측지에서는 머리(장소·회차) 아래에 두어 화면 위쪽을 한 덩어리로,
+   * 다른 화면(다시 보기·기다림)에서는 맨 위에
+   */
+  guide?: ReactNode;
   /** 이 기기에서 이미 결과까지 본 회차면 연출 없이 결과부터(「추첨 다시 보기」로 다시 돈다) */
   seen: boolean;
   onEnter: () => void;
@@ -1617,6 +1623,7 @@ function DrawFor({
     return (
       <RoomView
         key={round}
+        guide={guide}
         services={services}
         round={round}
         record={record}
@@ -1629,37 +1636,43 @@ function DrawFor({
   // 아직 결과가 없는 회차: 남은 시간을 보이며 기다리다가 결과가 들어오는 순간 추첨 연출을 시작한다
   if (!record)
     return (
-      <DrawWait
-        services={services}
-        status={status}
-        round={round}
-        ticket={mine.find((m) => m.ticket.round === round)?.ticket}
-        onSkip={onSkip}
-        onHome={onHome}
-      />
+      <>
+        {guide}
+        <DrawWait
+          services={services}
+          status={status}
+          round={round}
+          ticket={mine.find((m) => m.ticket.round === round)?.ticket}
+          onSkip={onSkip}
+          onHome={onHome}
+        />
+      </>
     );
   const canEnter =
     status.phase === "open" &&
     status.round > round &&
     !mine.some((m) => m.ticket.round === status.round);
   return (
-    <DrawView
-      key={replays}
-      instant={seen && replays === 0}
-      onReplay={() => setReplays((n) => n + 1)}
-      onNext={canEnter ? onEnter : undefined}
-      // 첫 추첨은 끝까지 보고, 그 뒤로는 이미 결과가 나온 회차를 나중에 열 때만 건너뛸 수 있다
-      canSkip={!live && services.wallet.watchedDraw()}
-      onWatched={() => {
-        services.wallet.markWatchedDraw();
-        setWatched(true);
-      }}
-      record={record}
-      ticket={mine.find((m) => m.ticket.round === round)?.ticket}
-      clock={services.clock}
-      label={roundTitle(services.ledger.schedule, round)}
-      onHome={onHome}
-    />
+    <>
+      {guide}
+      <DrawView
+        key={replays}
+        instant={seen && replays === 0}
+        onReplay={() => setReplays((n) => n + 1)}
+        onNext={canEnter ? onEnter : undefined}
+        // 첫 추첨은 끝까지 보고, 그 뒤로는 이미 결과가 나온 회차를 나중에 열 때만 건너뛸 수 있다
+        canSkip={!live && services.wallet.watchedDraw()}
+        onWatched={() => {
+          services.wallet.markWatchedDraw();
+          setWatched(true);
+        }}
+        record={record}
+        ticket={mine.find((m) => m.ticket.round === round)?.ticket}
+        clock={services.clock}
+        label={roundTitle(services.ledger.schedule, round)}
+        onHome={onHome}
+      />
+    </>
   );
 }
 

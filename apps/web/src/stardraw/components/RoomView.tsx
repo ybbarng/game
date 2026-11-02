@@ -187,9 +187,12 @@ export function RoomView({
   ticket,
   onEnter,
   onHome,
+  guide,
 }: {
   services: Services;
   round: number;
+  /** 머리(장소·회차) 아래에 둘 관측 방송 안내(지금 회차 화면만) */
+  guide?: React.ReactNode;
   record: RoundRecord | null | undefined;
   ticket: Ticket | undefined;
   /** 다음 회차 응모(추첨 연출이 끝난 뒤에만 보인다) */
@@ -654,28 +657,34 @@ export function RoomView({
       data-room={round}
       className="flex flex-col gap-3"
     >
-      {/* 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은 함께 보는 사람 수 */}
-      <div className="flex min-h-8 items-center justify-between">
-        {onHome ? (
-          <div className="-ml-3">
-            <MenuItem target="home" label="홈" onClick={onHome} />
-          </div>
-        ) : (
-          <span />
-        )}
-        <span className="text-white/55 text-xs tabular-nums" data-room-count>
+      {/* 머리 줄: 가운데 장소 이름 「관측지」, 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은
+          함께 보는 사람 수. 양쪽 칸이 같은 너비라 「홈」이 없는 넓은 화면에서도 가운데가 어긋나지 않는다(docs/36 11-34) */}
+      <div className="grid min-h-8 grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="justify-self-start">
+          {onHome && (
+            <div className="-ml-3">
+              <MenuItem target="home" label="홈" onClick={onHome} />
+            </div>
+          )}
+        </div>
+        <h1 data-room-title className="font-bold text-lg">
+          관측지
+        </h1>
+        <span
+          className="justify-self-end text-white/55 text-xs tabular-nums"
+          data-room-count
+        >
           함께 보는 {people.size + watchers}명
         </span>
       </div>
-
-      {/* 제목: 어디서 무엇을 보는지(docs/36 11-34) */}
-      <h1
-        data-room-title
-        className="flex flex-col items-center gap-0.5 text-center"
+      {/* 지금 보는 회차(장소 이름 바로 아래에 작게) */}
+      <p
+        data-room-round={round}
+        className="-mt-2 text-center text-sm text-white/65 tabular-nums"
       >
-        <span className="text-white/55 text-xs tracking-wide">관측지</span>
-        <span className="font-bold text-lg">{title} 관측</span>
-      </h1>
+        {title}
+      </p>
+      {guide}
 
       <p
         role="status"
