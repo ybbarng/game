@@ -1,5 +1,6 @@
 import type { Clock } from "@game/fair-play";
 import {
+  acceptFrom,
   checkRegistrationProof,
   checkRound,
   checkTicketProof,
@@ -401,7 +402,10 @@ export class RemoteLedger implements Ledger {
     const times = roundTimes(schedule, round);
     // 서버가 응답하지 않는 동안에는 앵커 저장소 사본에서 받은 회차가 더 많을 수 있다
     const closedCount = Math.max(this.state?.records ?? 0, this.records.length);
-    const ready = closedCount >= round - 1;
+    const ready =
+      closedCount >= round - 1 &&
+      // 관측 1분은 모두의 의무 시간: 앞 회차 관측이 끝나야 이번 회차 예측을 받는다(서버도 그 전에는 거절한다)
+      now >= acceptFrom(schedule, round);
     const phase: LedgerPhase = !ready
       ? "waiting"
       : now >= times.entryDeadline

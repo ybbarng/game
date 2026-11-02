@@ -449,6 +449,7 @@ describe("GitHub 앵커(가짜 GitHub)", () => {
     expect(rig.store.genesisAnchored()).toBe(false);
     expect(rig.store.anchored()).toBe(0);
     await rig.finish(2); // 앵커 실패와 상관없이 다음 회차도 닫힌다
+    await rig.engine.anchorIdle();
     expect(rig.engine.state().records).toBe(2);
     gh.failures = 0; // 되살아났다
     await rig.at(rig.engine.now() + 61);

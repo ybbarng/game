@@ -25,6 +25,7 @@ import {
   leafHash,
   makeRegistration,
   makeTicket,
+  OBSERVE_SECONDS,
   type PowParams,
   p1363ToDer,
   type QualHolding,
@@ -258,6 +259,8 @@ export async function makeRig(
       const { closesAt } = roundTimes(engine.schedule(), round);
       await at(closesAt);
       await at(drandTime(drandRoundForClose(closesAt)));
+      // 관측 1분(모두의 의무 시간)이 지나야 다음 회차를 받는다
+      await at(drandTime(drandRoundForClose(closesAt)) + OBSERVE_SECONDS);
     },
     close() {
       store.close();

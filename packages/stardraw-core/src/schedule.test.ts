@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  acceptFrom,
   alignedEpoch,
   checkSchedule,
   checkScheduleChange,
@@ -9,6 +10,7 @@ import {
   isAlignedEpoch,
   liveStart,
   NOTICE_ROUNDS,
+  OBSERVE_SECONDS,
   phaseOf,
   roundAt,
   roundTimes,
@@ -125,6 +127,20 @@ describe("일정 변경은 3회차 예고 뒤부터", () => {
   it("마지막 줄보다 앞 회차는 바꿀 수 없다", () => {
     const changed = withChange(hourly, change(100));
     expect(checkScheduleChange(changed, change(90), 1)).not.toBeNull();
+  });
+});
+
+describe("관측 1분은 모두의 의무 시간", () => {
+  it("다음 회차는 앞 회차 관측 시각 1분 뒤부터 받는다", () => {
+    expect(OBSERVE_SECONDS).toBe(60);
+    const prev = roundTimes(hourly, 1);
+    expect(acceptFrom(hourly, 2)).toBe(prev.closesAt + 5 * 60 + 60);
+    // 회차 칸은 앞 회차 마감에 시작하지만 접수는 6분 뒤
+    expect(acceptFrom(hourly, 2) - roundTimes(hourly, 2).opensAt).toBe(6 * 60);
+  });
+
+  it("1회차는 앞 회차가 없어 칸 시작부터", () => {
+    expect(acceptFrom(hourly, 1)).toBe(EPOCH);
   });
 });
 

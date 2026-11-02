@@ -10,6 +10,7 @@ import {
   generateSigner,
   genesisHash,
   type KeyRegistration,
+  OBSERVE_SECONDS,
   powTargetForTries,
   type RoundRecord,
   receiptInTime,
@@ -99,6 +100,7 @@ describe("회차 진행: 응모 → 마감·봉인 → drand 추첨 → 공개 �
     expect(record1.numbers).toEqual(drawOf(1).numbers);
     expect(record1.winners[1]).toHaveLength(1);
 
+    await rig.at(drawTimeOf(1) + OBSERVE_SECONDS);
     // 2회차: 등록된 열쇠는 등록 없이 낸다
     await enter(rig, a, [11, 12, 13, 14, 15, 16]);
     await rig.finish(2);
@@ -263,6 +265,29 @@ describe("응모 받기: 싼 확인부터, 규칙에 어긋나면 거절", () =>
     expect(toHex(decoded.ticketId)).toBe(toHex(ticketId(ticket)));
     expect(await verifyReceipt(rig.serverKey.publicKey, decoded)).toBe(true);
     expect(receiptInTime(SCHEDULE, decoded)).toBe(true);
+  });
+
+  it("앞 회차 관측 1분(모두의 의무 시간) 동안은 예측·등록을 받지 않고, 끝나면 받는다", async () => {
+    rig = await makeRig();
+    const a = await player();
+    await enter(rig, a, [1, 2, 3, 4, 5, 6]);
+    const { closesAt } = roundTimes(SCHEDULE, 1);
+    await rig.at(closesAt);
+    await rig.at(drawTimeOf(1));
+    expect(rig.engine.state()).toMatchObject({ records: 1, round: 2 });
+    // 앞 회차 기록은 있지만 관측 중이다
+    await rig.at(drawTimeOf(1) + OBSERVE_SECONDS - 1);
+    await rejects(
+      enter(rig, a, [7, 8, 9, 10, 11, 12]),
+      "앞 회차 관측이 끝난 뒤에 예측할 수 있습니다",
+    );
+    await rejects(
+      registerOnly(rig, await player()),
+      "다음 회차가 열리면 등록됩니다",
+    );
+    await rig.at(drawTimeOf(1) + OBSERVE_SECONDS);
+    await enter(rig, a, [7, 8, 9, 10, 11, 12]);
+    expect(await registerOnly(rig, await player())).toEqual({ round: 2 });
   });
 
   it("등록 없는 새 열쇠, 같은 회차 두 번, 다른 회차 응모권, 마감 뒤를 거절한다", async () => {

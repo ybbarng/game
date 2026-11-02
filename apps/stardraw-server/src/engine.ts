@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import type { Clock } from "@game/fair-play";
 import {
+  acceptFrom,
   activeDirector,
   anchorBranch,
   applyRecordOps,
@@ -634,10 +635,11 @@ export class StardrawServer {
     const known = store.registrationRound(who);
     if (known !== null) return { round: known };
 
-    // 3. 받는 때: 응모를 받는 동안만(등록은 그 회차 기록에 실린다)
+    // 3. 받는 때: 응모를 받는 동안만(등록은 그 회차 기록에 실린다). 앞 회차 관측 1분 동안은 받지 않는다
     const times = roundTimes(schedule, round);
     if (
       store.recordCount() < round - 1 ||
+      receivedAt < acceptFrom(schedule, round) ||
       receivedAt >= times.closesAt ||
       this.closedFor(round)
     )
@@ -747,7 +749,11 @@ export class StardrawServer {
     if (ticket.round !== round)
       throw new EntryError("이번 회차 예측서가 아닙니다");
     const times = roundTimes(schedule, round);
-    if (store.recordCount() < round - 1)
+    // 관측 1분은 모두의 의무 시간: 앞 회차 기록이 있어도 관측이 끝나야 받는다(2026-11-02 사용자)
+    if (
+      store.recordCount() < round - 1 ||
+      receivedAt < acceptFrom(schedule, round)
+    )
       throw new EntryError("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다", 409);
     if (receivedAt >= times.closesAt || this.closedFor(round))
       throw new EntryError(closedMessage(receivedAt), 409);

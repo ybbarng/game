@@ -42,6 +42,7 @@ import {
   useAstronautSetup,
   WelcomeFlyer,
 } from "./AstronautSetup";
+import { watchRound } from "./BroadcastToast";
 import { BureauWelcome } from "./BureauWelcome";
 import {
   PickedRow,
@@ -171,8 +172,7 @@ export function EnterView({
   const observing = live !== null && live < status.round;
   const open = status.phase === "open" && !observing;
   /** 응모를 받지 않을 때 갈 관측지: 마감한 이번 회차, 아니면 추첨을 기다리거나 관측 중인 앞 회차 */
-  const watchRound =
-    live ?? (status.phase === "closing" ? status.round : status.nextDrawRound);
+  const watching = watchRound(services, status) ?? status.round;
   /** 쓰던 회차: 마감되어 다음 회차로 넘어가도 마감 안내에는 쓰던 회차 이름을 둔다 */
   const [writing, setWriting] = useState<number | null>(null);
   useEffect(() => {
@@ -595,7 +595,7 @@ export function EnterView({
         onBack={onBack}
         tag={roundShort(
           services.ledger.schedule,
-          closedView ? (writing ?? watchRound) : status.round,
+          closedView ? (writing ?? watching) : status.round,
         )}
       />
 
@@ -699,10 +699,10 @@ export function EnterView({
 
       {closedView ? (
         <ClosedNotice
-          name={roundShort(services.ledger.schedule, writing ?? watchRound)}
+          name={roundShort(services.ledger.schedule, writing ?? watching)}
           now={status.now}
           saved={picked.length > 0}
-          onGo={() => onWatchDraw?.(watchRound)}
+          onGo={() => onWatchDraw?.(watching)}
         />
       ) : (
         <>
@@ -779,7 +779,7 @@ export function EnterView({
               </p>
               <button
                 type="button"
-                onClick={() => onWatchDraw(watchRound)}
+                onClick={() => onWatchDraw(watching)}
                 className="sd-cta w-full rounded-2xl py-4 font-black text-slate-950 text-xl"
               >
                 관측지로 가기

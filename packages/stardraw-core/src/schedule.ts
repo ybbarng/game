@@ -1,5 +1,5 @@
 import type { ByteReader, ByteWriter } from "./bytes";
-import { DRAND_DELAY } from "./drand";
+import { DRAND_DELAY, drandRoundForClose, drandTime } from "./drand";
 
 /**
  * 일정표: 회차 시각은 이것만으로 계산된다(docs/36 11-1).
@@ -218,6 +218,23 @@ export function schedulePending(
 ): boolean {
   const last = schedule.entries.at(-1);
   return last !== undefined && last.fromRound > decidedInRound;
+}
+
+/**
+ * 관측(결과를 함께 지켜보는 실시간 연출) 시간(초). 연출은 관측 시각 6초 뒤 시작해 50초 안쪽이다.
+ * 모두에게 같은 의무 시간이라 이 동안은 다음 회차 예측·등록을 받지 않는다(2026-11-02 사용자: 관측이 끝나면 다음 회차).
+ * 장부 형식·검사 규칙이 아니라 서버가 지키는 운영 규칙이다(관측 중에 낸 예측이 얻는 이득이 없다)
+ */
+export const OBSERVE_SECONDS = 60;
+
+/**
+ * 회차의 예측·등록을 받기 시작하는 시각: 앞 회차 관측 시각(drand) + 관측 시간. 문제 값이 앞 회차 기록에서 나와
+ * 그 전에는 받을 수도 없다. 1회차는 앞 회차가 없어 칸 시작 그대로
+ */
+export function acceptFrom(schedule: Schedule, round: number): number {
+  if (round <= 1) return roundTimes(schedule, round).opensAt;
+  const prev = roundTimes(schedule, round - 1);
+  return drandTime(drandRoundForClose(prev.closesAt)) + OBSERVE_SECONDS;
 }
 
 /**

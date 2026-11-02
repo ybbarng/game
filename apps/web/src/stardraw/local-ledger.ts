@@ -1,6 +1,7 @@
 import type { Clock } from "@game/fair-play";
 import {
   type AffiliationFields,
+  acceptFrom,
   activeDirector,
   alignedEpoch,
   applyRecordOps,
@@ -41,6 +42,7 @@ import {
   matureOps,
   newIssuerKey,
   newOpsState,
+  OBSERVE_SECONDS,
   OP_NAMES,
   OP_VERSION,
   type OpBody,
@@ -576,7 +578,10 @@ export class LocalLedger implements Ledger {
     const now = this.now();
     const round = roundAt(this.schedule, now) ?? 1;
     const times = roundTimes(this.schedule, round);
-    const ready = this.records.length >= round - 1;
+    const ready =
+      this.records.length >= round - 1 &&
+      // 관측 1분은 모두의 의무 시간: 앞 회차 관측이 끝나야 이번 회차 예측을 받는다(서버도 그 전에는 거절한다)
+      now >= acceptFrom(this.schedule, round);
     const phase: LedgerPhase = !ready
       ? "waiting"
       : now >= times.entryDeadline
@@ -1183,7 +1188,8 @@ export class LocalLedger implements Ledger {
   /** 연습용: 다음 추첨 시각까지 시간을 건너뛰고 추첨한다 */
   async skipToNextDraw(): Promise<void> {
     await this.settle();
-    const target = this.status().nextDrawAt + 1;
+    // 관측 1분이 끝난 때로(연습 장부에는 실시간 관측이 없어 기다릴 것이 없다). 다음 회차를 바로 받는다
+    const target = this.status().nextDrawAt + OBSERVE_SECONDS;
     if (target > this.now()) this.skipped += target - this.now();
     this.write();
     await this.settle();

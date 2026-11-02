@@ -1,6 +1,8 @@
 import {
+  acceptFrom,
   DRAND_DELAY,
   fixedThrough,
+  OBSERVE_SECONDS,
   roundTimes,
   type Schedule,
 } from "@game/stardraw-core";
@@ -25,8 +27,8 @@ export type TimetableState =
 export interface TimetableRow {
   round: number;
   /**
-   * 예측 접수 시작: 앞 회차 관측 시각(문제 값이 앞 회차 기록에서 나와 그 전에는 받지 않는다, 서버 장부의 "waiting").
-   * 장부 일정표의 회차 칸 시작(앞 회차 마감)보다 drand 지연만큼 늦다. 1회차는 칸 시작 그대로
+   * 예측 접수 시작: 앞 회차 관측이 끝난 때(core `acceptFrom`, 관측 시각 + 관측 1분). 서버도 그 전에는 받지 않는다.
+   * 장부 일정표의 회차 칸 시작(앞 회차 마감)보다 6분 늦다. 1회차는 칸 시작 그대로
    */
   opensAt: number;
   /** 화면이 예측을 막는 시각(마감) */
@@ -35,6 +37,8 @@ export interface TimetableRow {
   closesAt: number;
   /** 관측 시각(마감 + drand 지연, 홈 회차 카드와 같다) */
   observeAt: number;
+  /** 관측이 끝나는 때(관측 1분 뒤). 다음 회차 접수가 이때 열린다 */
+  observeEnd: number;
   /** 장부 규칙상 시각이 바뀔 수 없다 */
   fixed: boolean;
   state: TimetableState;
@@ -74,10 +78,10 @@ export function timetable(
   for (let round = first; round <= last; round++) {
     const t = roundTimes(schedule, round);
     const observeAt = t.closesAt + DRAND_DELAY;
-    const opensAt = round > 1 ? t.opensAt + DRAND_DELAY : t.opensAt;
+    const opensAt = acceptFrom(schedule, round);
     const state: TimetableState =
       round === observing
-        ? live
+        ? live || now >= observeAt
           ? "observing"
           : "closed"
         : now < opensAt
@@ -91,6 +95,7 @@ export function timetable(
       deadline: t.entryDeadline,
       closesAt: t.closesAt,
       observeAt,
+      observeEnd: observeAt + OBSERVE_SECONDS,
       fixed: round <= fixed,
       state,
     });

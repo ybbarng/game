@@ -1241,8 +1241,8 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   });
   await page.mouse.up();
   await expect(toast).toHaveCount(0);
-  // 1회 추첨(정각)이 끝나 2회가 열리면 접수처에 쓰던 예측서
-  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  // 1회 관측(정각부터 1분)이 끝나 2회가 열리면 접수처에 쓰던 예측서
+  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
   await page
     .getByRole("button", { name: "별 6개 고르기" })
     .click({ timeout: 30_000 });
@@ -1313,9 +1313,9 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
     .click();
   // 마감한 회차의 관측지는 지금 회차 화면 안에 있다
   await expect(page).toHaveURL(/\/stardraw\/now$/);
-  // 1회 추첨(마감 5분 뒤 13:00)이 끝나 2회가 열리면 추첨 결과 아래 「다음 회차 응모」
+  // 1회 관측(마감 5분 뒤 13:00부터 1분)이 끝나 2회가 열리면 추첨 결과 아래 「다음 회차 응모」
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
   await page
     .getByRole("button", { name: "다음 회차 예측" })
     .click({ timeout: 30_000 });
@@ -1347,7 +1347,7 @@ test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보�
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
   await bounceAndKeep(page);
   await page.getByRole("button", { name: "첫 화면으로" }).click();
-  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
   await expect(page.locator("[data-kept-note]")).toHaveText(
     "보관한 예측서가 있어요.",
     { timeout: 30_000 },

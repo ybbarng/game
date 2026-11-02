@@ -17,7 +17,9 @@ export function watchRound(
   const live = liveDrawRound(services, status);
   if (live !== null) return live;
   if (status.phase === "closing") return status.round;
-  if (status.phase === "waiting") return status.nextDrawRound;
+  // 앞 회차 기록을 기다리거나(nextDrawRound < round), 기록은 있지만 관측 1분 중이다(nextDrawRound = round)
+  if (status.phase === "waiting")
+    return Math.min(status.nextDrawRound, status.round - 1);
   return null;
 }
 

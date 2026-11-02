@@ -8,7 +8,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { anchorPath, ledgerId, verifyLedger } from "@game/stardraw-core";
+import {
+  anchorPath,
+  ledgerId,
+  OBSERVE_SECONDS,
+  verifyLedger,
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GitHubAnchor } from "./outside";
@@ -118,7 +123,7 @@ describe("앵커 저장소 폴더에서 다시 세우기", () => {
 
     const back = await makeRig({
       dir,
-      at: drawTimeOf(3) + 10,
+      at: drawTimeOf(3) + OBSERVE_SECONDS,
       anchor: new GitHubAnchor(REPO, "test-token", gh.fetch),
     });
     rigs.push(back);

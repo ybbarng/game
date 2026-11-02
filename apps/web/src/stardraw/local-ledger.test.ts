@@ -11,6 +11,7 @@ import {
   makeRegistration,
   makeTicket,
   newQualSeed,
+  OBSERVE_SECONDS,
   OP_VERSION,
   type OpBody,
   type QualHolding,
@@ -120,7 +121,7 @@ describe("연습 장부: 회차 진행", () => {
     expect(toHex(ledger.head())).toBe(toHex(genesisHash(ledger.schedule)));
   });
 
-  it("마감 5초 전부터는 화면 마감, 다음 회차는 앞 회차 추첨 뒤에 열린다", async () => {
+  it("마감 5초 전부터는 화면 마감, 다음 회차는 앞 회차 관측 1분 뒤에 열린다", async () => {
     const { clock, ledger } = setup();
     clock.advance((HOUR - 6) * 1000);
     expect(ledger.status().phase).toBe("open");
@@ -131,6 +132,10 @@ describe("연습 장부: 회차 진행", () => {
     expect(ledger.status()).toMatchObject({ round: 2, phase: "waiting" });
     clock.advance(DRAW_AFTER * 1000);
     await ledger.settle();
+    // 앞 회차 기록은 있지만 관측 1분(모두의 의무 시간) 동안은 받지 않는다
+    expect(ledger.record(1)?.round).toBe(1);
+    expect(ledger.status()).toMatchObject({ round: 2, phase: "waiting" });
+    clock.advance(OBSERVE_SECONDS * 1000);
     expect(ledger.status()).toMatchObject({ round: 2, phase: "open" });
     expect(ledger.record(1)?.round).toBe(1);
   });

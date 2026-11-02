@@ -202,10 +202,11 @@ function TimeBar({
   now: number;
   reduce: boolean;
 }) {
-  const span = row.observeAt - row.opensAt;
+  const span = row.observeEnd - row.opensAt;
   const at = (t: number) => ((t - row.opensAt) / span) * 100;
   const deadline = at(row.deadline);
   const closes = at(row.closesAt);
+  const observe = at(row.observeAt);
   const inside = now >= row.opensAt;
   const progress = Math.min(100, Math.max(0, at(now)));
   const moving = !reduce && { transition: "left 1s linear, width 1s linear" };
@@ -221,7 +222,11 @@ function TimeBar({
             className="h-full bg-amber-300/35"
             style={{ width: `${closes - deadline}%` }}
           />
-          <span className="h-full flex-1 bg-white/10" />
+          <span
+            className="h-full bg-white/10"
+            style={{ width: `${observe - closes}%` }}
+          />
+          <span className="h-full flex-1 bg-amber-200/55" />
         </div>
         {inside && (
           <span
@@ -237,7 +242,10 @@ function TimeBar({
             style={{ left: `${progress}%`, ...moving }}
           />
         )}
-        <span className="-translate-y-1/2 absolute top-1/2 right-0 translate-x-1/2 text-amber-200 text-xs leading-none">
+        <span
+          className="-translate-y-1/2 absolute top-1/2 -translate-x-1/2 text-amber-200 text-xs leading-none"
+          style={{ left: `${observe}%` }}
+        >
           ★
         </span>
       </div>

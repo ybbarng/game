@@ -272,10 +272,10 @@ test("영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면
   await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
   await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
 
-  // 영수증으로 돌아와 연 채로 1회 추첨 시각(13:00)을 넘기면 결과를 가린 「추첨 보기」로 바뀐다
+  // 영수증으로 돌아와 연 채로 1회 관측(13:00부터 1분)이 끝나면 결과를 가린 「추첨 보기」로 바뀐다(관측 중에는 관측지로 간다)
   await page.goBack();
   await expect(receipt).toBeVisible();
-  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
   const drawFirst = page.locator("[data-receipt] [data-draw-first='1']");
   await expect(drawFirst).toBeVisible({ timeout: 30_000 });
   await expect(goDraw).toHaveCount(0);

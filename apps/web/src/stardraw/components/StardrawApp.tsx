@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  acceptFrom,
   DRAND_DELAY,
   drandRoundForClose,
   drandTime,
@@ -1029,10 +1030,12 @@ export function RoundCard({
   useEffect(() => {
     setKept(loadKept(services.ns, services.ledger.id()));
   }, [services]);
-  // 앞 회차 추첨을 기다리는 동안은 그 회차가 지금 회차다
-  const drawWaiting = s.phase === "waiting" && s.nextDrawRound < s.round;
-  const round = drawWaiting ? s.nextDrawRound : s.round;
-  const drawAt = drawWaiting ? s.nextDrawAt : s.times.closesAt + DRAND_DELAY;
+  // 앞 회차 추첨을 기다리거나 그 관측 1분(모두의 의무 시간) 동안은 그 회차가 지금 회차다
+  const drawWaiting = s.phase === "waiting" && s.round > 1;
+  const round = drawWaiting ? Math.min(s.nextDrawRound, s.round - 1) : s.round;
+  const drawAt = roundTimes(schedule, round).closesAt + DRAND_DELAY;
+  /** 다음 회차 예측을 받기 시작하는 때(앞 회차 관측이 끝난 뒤) */
+  const nextOpens = acceptFrom(schedule, round + 1);
   const closed = s.phase !== "open";
   const ticket = mine.find((m) => m.ticket.round === round);
   const keptHere = kept !== null && kept.round < round;
@@ -1224,7 +1227,7 @@ export function RoundCard({
         {closed
           ? ticket
             ? `관측 ${clockOf(drawAt)}`
-            : `다음 회차는 ${clockOf(drawAt)}부터 예측할 수 있어요.`
+            : `다음 회차는 ${clockOf(nextOpens)}부터 예측할 수 있어요.`
           : ticket
             ? `마감 ${clockOf(s.times.closesAt)} · 예측서 ${s.entries}장`
             : `관측 ${clockOf(drawAt)} · 예측서 ${s.entries}장`}
