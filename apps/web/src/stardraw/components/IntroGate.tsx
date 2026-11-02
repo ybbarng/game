@@ -14,18 +14,18 @@ const LEAVE_MS = 700;
 /** 장부가 이보다 늦으면 「하늘을 펴고 있습니다」(인사가 떠 있으면 인사 아래에, 없으면 빈 바탕 가운데에) */
 export const SLOW_MS = 1800;
 
-const SEEN_KEY = "stardraw-intro-seen";
-
 /**
- * 첫 화면에 들어올 때 우주국 인사를 보일지: 한 방문(탭 세션)에 한 번, 홈으로 들어왔을 때만, 움직임 줄이기가 아니면.
- * 정한 순간 본 것으로 적는다(같은 탭에서 다른 화면을 오가거나 홈 탭을 눌러도 다시 나오지 않는다)
+ * 페이지를 불러올 때 우주국 인사를 보일지: 별 따기 화면 어디로 들어오든(새로 고침 포함) 장부를 기다리는 동안, 움직임
+ * 줄이기가 아니면. 앱 안에서 화면을 오갈 때는 다시 나오지 않는다(StardrawApp이 처음 그릴 때 한 번만 묻는다).
+ * 예전에는 탭 세션에 한 번, 홈으로 들어올 때만이었다. 휴대폰 브라우저는 탭이 며칠씩 살아 있어 첫날 한 번 뒤로는
+ * 새로 고쳐도 인사가 없었고, 지금 회차 같은 다른 주소로 열면 빈 바탕만 보였다(2026-11-02 사용자, 휴대폰).
+ * 화면 시험은 인사가 누르기를 가로채지 않게 `window.__stardrawNoIntro`로 끈다(e2e/test.ts)
  */
 export function shouldShowIntro(): boolean {
   try {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
-    if (sessionStorage.getItem(SEEN_KEY)) return false;
-    sessionStorage.setItem(SEEN_KEY, "1");
-    return true;
+    if ((window as { __stardrawNoIntro?: boolean }).__stardrawNoIntro)
+      return false;
+    return !matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch {
     return false;
   }

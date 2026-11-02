@@ -28,7 +28,7 @@ async function virtualAuthenticator(page: Page) {
   });
 }
 
-test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난 뒤 홈이 펼쳐진다. 같은 방문에서는 다시 뜨지 않는다", async ({
+test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난 뒤 홈이 펼쳐진다. 새로 고치면 다시 뜬다", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "데스크톱·휴대폰 세로로");
@@ -65,10 +65,9 @@ test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난
   await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();
   // 홈 머리의 「~님, 안녕하세요」 줄은 없다(인사로 옮겼다)
   await expect(page.locator("[data-greeting]")).toHaveCount(0);
-  // 같은 탭에서 새로 고쳐도 다시 뜨지 않는다(한 방문에 한 번)
+  // 같은 탭에서 새로 고쳐도 다시 뜬다(휴대폰 브라우저는 탭이 며칠씩 살아 있어 「탭에 한 번」이면 다시 볼 일이 없었다)
   await page.reload();
-  await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();
-  await expect(greeting).toHaveCount(0);
+  await expect(greeting).toBeVisible();
 });
 
 test("우주국 인사: 등록한 사람에게는 이름으로, 누르면 바로 넘어간다", async ({
@@ -179,4 +178,64 @@ test("장부가 늦을 때 인사가 없으면: 빈 밤하늘 바탕, 1.8초 뒤
   await release();
   await expect(wait).toHaveCount(0);
   await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();
+});
+
+test("홈이 아닌 화면으로 들어와도 인사: 지금 회차·내 예측, 인사가 걷히면 화면과 탭바가 그대로 보인다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const greeting = page.getByRole("dialog", GREETING);
+  await page.goto("/stardraw/now");
+  await expect(greeting).toContainText(
+    "카노푸스 우주국에 오신 것을 환영합니다.",
+  );
+  await fastForwardUntil(page, async () => (await greeting.count()) === 0);
+  await expect(page.locator("main footer")).toBeVisible();
+  // 처음 온 사람이어도 홈이 아닌 화면에서는 편지를 기다리지 않는다(기다리면 탭바가 숨은 채 남았다)
+  await page.goto("/stardraw/mine");
+  await expect(greeting).toBeVisible();
+  await fastForwardUntil(page, async () => (await greeting.count()) === 0);
+  await fastForwardUntil(page, () =>
+    page.getByRole("button", { name: "홈", exact: true }).isVisible(),
+  );
+  await expect(page.locator("[data-letter-stage]")).toHaveCount(0);
+});
+
+/**
+ * 불러오는 동안 DOM이 바뀔 때마다(MutationObserver, 그려지는 틈과 상관없이 모든 상태를 본다) footer가 덮개
+ * (기다리는 자리·인사) 없이 화면 위쪽에 있었는지 적는다. 본문이 빈 순간이 있으면 footer가 위로 올라온다
+ */
+async function watchBareFooter(page: Page): Promise<() => Promise<string[]>> {
+  await page.addInitScript(() => {
+    const bare: string[] = [];
+    (window as unknown as { __bareFooter: string[] }).__bareFooter = bare;
+    const check = () => {
+      const footer = document.querySelector("main footer");
+      if (!footer) return;
+      if (document.querySelector("[data-sky-wait], [data-intro]")) return;
+      const top = footer.getBoundingClientRect().top;
+      if (top < 80) bare.push(`${location.pathname} footer top ${top}`);
+    };
+    new MutationObserver(check).observe(document, {
+      childList: true,
+      subtree: true,
+    });
+  });
+  return () =>
+    page.evaluate(
+      () => (window as unknown as { __bareFooter: string[] }).__bareFooter,
+    );
+}
+
+test("불러오는 동안 footer가 화면 위쪽에 먼저 보이지 않는다: 지금 회차·홈·내 예측", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  const bare = await watchBareFooter(page);
+  for (const path of ["/stardraw/now", "/stardraw", "/stardraw/mine"]) {
+    await page.goto(path);
+    await expect(page.locator("main footer")).toBeVisible();
+    expect(await bare()).toEqual([]);
+  }
 });

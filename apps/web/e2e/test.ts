@@ -10,8 +10,8 @@ export { expect } from "@playwright/test";
  */
 export const test = base.extend<{
   /**
-   * 별 따기 첫 화면의 우주국 인사(IntroGate)를 띄울지. 시험은 새 브라우저로 홈에 들어가 매번 인사가 2초쯤 화면을 덮어
-   * 누르기를 가로채므로, 이 탭 세션에 인사를 이미 본 것으로 두고 시작한다. 인사를 보는 시험만 `test.use({ stardrawIntro: true })`
+   * 별 따기 페이지를 불러올 때의 우주국 인사(IntroGate)를 띄울지. 인사는 불러올 때마다 2초쯤 화면을 덮어 누르기를
+   * 가로채므로 시험은 끄고 시작한다(`window.__stardrawNoIntro`). 인사를 보는 시험만 `test.use({ stardrawIntro: true })`
    */
   stardrawIntro: boolean;
 }>({
@@ -19,11 +19,7 @@ export const test = base.extend<{
   context: async ({ context, stardrawIntro }, use) => {
     if (!stardrawIntro)
       await context.addInitScript(() => {
-        try {
-          sessionStorage.setItem("stardraw-intro-seen", "1");
-        } catch {
-          // 저장소를 못 쓰면 인사도 띄우지 않는다(shouldShowIntro)
-        }
+        (window as { __stardrawNoIntro?: boolean }).__stardrawNoIntro = true;
       });
     for (const page of context.pages()) prepare(page);
     context.on("page", prepare);

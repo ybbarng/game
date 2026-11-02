@@ -208,18 +208,19 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const stale = useStaleBuild();
   useChunkErrorReload();
   /**
-   * 우주국 인사(IntroGate): 한 방문에 한 번, 홈으로 들어왔을 때만. 인사가 물러나는 동안 홈이 차례로 펼쳐진다
-   * (unfold: 하늘 → 제목 → 회차 카드 → 나머지, CSS sd-unfold-all)
+   * 우주국 인사(IntroGate): 페이지를 불러올 때마다(어느 화면이든, 앱 안에서 오갈 때는 아니다). 홈이면 인사가
+   * 물러나는 동안 홈이 차례로 펼쳐진다(unfold: 하늘 → 제목 → 회차 카드 → 나머지, CSS sd-unfold-all)
    */
   const [intro, setIntro] = useState(false);
   /** 홈 펼치기: hold는 처음 온 사람이 편지를 읽는 동안 숨겨 두기, run은 차례로 펼치기 */
   const [unfold, setUnfold] = useState<"hold" | "run" | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 처음 들어온 화면으로 한 번만 정한다
   useEffect(() => {
-    if (view.name === "home" && shouldShowIntro()) setIntro(true);
+    if (shouldShowIntro()) setIntro(true);
   }, []);
   /** 생애 첫 방문인 처음 온 사람: 인사 뒤 편지가 먼저 */
   const letterFirst = useRef(false);
+  /** 인사가 물러날 때 홈이었는지(홈만 펼친다. 다른 화면은 인사가 걷히면 그대로 보인다) */
+  const unfoldHome = useRef(false);
   /** 인사·편지가 걷힌 뒤 펼치기까지의 쉼 */
   const unfoldAfterPause = () => {
     window.setTimeout(() => setUnfold("run"), UNFOLD_PAUSE_MS);
@@ -253,6 +254,17 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     );
   }, [view.name, nowMode, services, status, watching]);
   /**
+   * 화면에 그릴 지금 회차 갈래. 위 effect가 정하기 전 한 번도 같은 값으로 그린다(예전에는 그 한 번에 본문이 비어
+   * footer만 화면 위쪽에 잠깐 보였다, 2026-11-02 사용자, 휴대폰)
+   */
+  const nowShown: typeof nowMode =
+    nowMode ??
+    (view.name === "now" && services && status
+      ? watching !== null
+        ? { kind: "observe", round: watching }
+        : { kind: "predict" }
+      : null);
+  /**
    * 관측은 방송처럼(2026-11-02 사용자): 관측 시간에 홈으로 처음 들어온 사람은 지금 회차 화면의 관측지로 옮긴다
    * (주소는 바꿔치기라 뒤로 가기로 홈에 갇히지 않는다). 들어오는 순간에 한 번만 정한다. 이미 홈에 있던 사람은
    * 끌고 가지 않는다(등록·봉투 열기 같은 하던 일을 끊지 않게, 사용자가 다시 고민해 정함). 그 사람은 홈 회차 카드
@@ -273,11 +285,11 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   /** 답안지를 쓰는 화면(응모 페이지, 지금 회차의 예측) */
   const picking =
     view.name === "enter" ||
-    (view.name === "now" && nowMode?.kind === "predict");
+    (view.name === "now" && nowShown?.kind === "predict");
   /** 추첨을 보는 화면(추첨 페이지, 지금 회차의 관측지) */
   const observing =
     view.name === "draw" ||
-    (view.name === "now" && nowMode?.kind === "observe");
+    (view.name === "now" && nowShown?.kind === "observe");
   // 별을 고르다 화면이 당겨져 새로고침되지 않게(추첨 연출은 DrawFor가, 그 밖의 화면은 당겨서 새로고침이 된다)
   useNoPullRefresh(picking);
   /**
@@ -328,8 +340,8 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const drawRound =
     view.name === "draw"
       ? view.round
-      : view.name === "now" && nowMode?.kind === "observe"
-        ? nowMode.round
+      : view.name === "now" && nowShown?.kind === "observe"
+        ? nowShown.round
         : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 회차를 열 때 한 번
   useEffect(() => {
@@ -522,13 +534,16 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           // 생애 첫 방문인 처음 온 사람은 편지(위에서 내려와 꺼내 읽는다)를 먼저, 닫히면 홈을 펼친다
           // 인사가 물러나는 동안과 사라진 뒤 잠깐은 홈을 숨겨 두고, 여유를 둔 뒤 위에서부터 펼친다(2026-11-02 사용자).
           // 생애 첫 방문인 처음 온 사람은 편지(위에서 내려와 꺼내 읽는다)를 먼저, 닫히면 펼친다
+          // 홈이 아닌 화면(지금 회차·내 예측 등)은 편지가 없어, 여기서 편지를 기다리면 탭바가 숨은 채 남는다
           onLeave={() => {
+            unfoldHome.current = view.name === "home";
+            if (!unfoldHome.current) return;
             letterFirst.current = !navKey && letterAutoPending();
             setUnfold("hold");
           }}
           onDone={() => {
             setIntro(false);
-            if (!letterFirst.current) unfoldAfterPause();
+            if (unfoldHome.current && !letterFirst.current) unfoldAfterPause();
           }}
         />
       )}
@@ -580,19 +595,19 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }}
           />
         )}
-        {!services || !status ? (
-          // 장부를 기다리는 자리: 밤하늘 바탕만(정적 HTML에서부터 보인다). 인사가 떠 있으면 인사가 같은 바탕을 덮는다
+        {!services || !status || !loaded ? (
+          // 장부와 이 기기 지갑을 기다리는 자리: 밤하늘 바탕만(정적 HTML에서부터 보인다). 인사가 떠 있으면 인사가 같은 바탕을 덮는다
           intro ? null : (
             <SkyWait />
           )
         ) : view.name === "now" ? (
-          nowMode === null ? null : nowMode.kind === "observe" ? (
+          nowShown === null ? null : nowShown.kind === "observe" ? (
             loaded && (
               <>
-                {onAir === nowMode.round && (
+                {onAir === nowShown.round && (
                   <OnAirGuide
                     services={services}
-                    round={nowMode.round}
+                    round={nowShown.round}
                     hasKey={navKey !== null}
                     onRegister={() => setNowMode({ kind: "predict" })}
                   />
@@ -600,9 +615,9 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 <DrawFor
                   services={services}
                   status={status}
-                  round={nowMode.round}
+                  round={nowShown.round}
                   mine={mine}
-                  seen={opened.has(nowMode.round)}
+                  seen={opened.has(nowShown.round)}
                   onSkip={
                     services.practice
                       ? async () => {
@@ -613,7 +628,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                   }
                   onEnter={() => {
                     // 결과를 봤으니 첫 화면 봉투에서 빠진다
-                    services.wallet.markOpened(nowMode.round);
+                    services.wallet.markOpened(nowShown.round);
                     setOpened(services.wallet.openedRounds());
                     setNowMode({ kind: "predict" });
                   }}
@@ -797,9 +812,12 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }
           />
         )}
-        <footer className="pt-4 text-center text-[11px] text-white/40">
-          <AgencyFooter />
-        </footer>
+        {/* 본문이 그려진 뒤에만(본문이 빈 순간 footer가 화면 위쪽에 올라와 보이지 않게) */}
+        {services && status && loaded && (
+          <footer className="pt-4 text-center text-[11px] text-white/40">
+            <AgencyFooter />
+          </footer>
+        )}
       </div>
     </main>
   );
@@ -840,8 +858,11 @@ export function Home({
   /** 연습 장부일 때만(서버 장부는 시간을 건너뛸 수 없다) */
   onSkip: (() => Promise<void>) | null;
 }) {
-  // 이 기기의 등록증(첫 그리기 뒤에 읽는다: 서버에서 그린 화면과 어긋나지 않게)
-  const [key, setKey] = useState<KeyInfo | null | undefined>(undefined);
+  // 이 기기의 등록증. 홈은 장부를 받은 뒤 브라우저에서만 그려져(서버에서 그린 화면에는 없다) 처음 그릴 때 바로 읽는다.
+  // 예전에는 첫 그리기 뒤에 읽어, 그 한 번은 홈이 비어 footer만 화면 위쪽에 잠깐 보였다(2026-11-02 사용자, 휴대폰)
+  const [key, setKey] = useState<KeyInfo | null | undefined>(() =>
+    services.wallet.loadKey(),
+  );
   useEffect(() => {
     const found = services.wallet.loadKey();
     setKey(found);
