@@ -89,15 +89,23 @@ export async function createNextServerKey(path: string): Promise<Uint8Array> {
   return (await serverKeyFromPkcs8(pkcs8)).publicKey;
 }
 
-/** 파일에서 읽는다. 없고 `generate`면 새로 만들어 저장한다(개발용) */
+/**
+ * 파일에서 읽는다. 없고 `generate`면 새로 만들어 저장한다(개발용).
+ * `ledgerHasData`(관인으로 서명해 내준 것이나 공개한 head.json이 있음)면 만들지 않고 거절한다: 새 관인은 지난 기록과 맞지 않는다
+ */
 export async function loadServerKey(
   path: string,
   generate: boolean,
+  ledgerHasData = false,
 ): Promise<ServerKey> {
   if (!existsSync(path)) {
     if (!generate)
       throw new Error(
         `서버 열쇠 파일이 없다: ${path} (개발은 STARDRAW_GENERATE_SERVER_KEY=1)`,
+      );
+    if (ledgerHasData)
+      throw new Error(
+        `서버 열쇠 파일이 없다: ${path}. 장부에 이미 기록이 있어 새로 만들지 않는다(백업한 관인 열쇠 파일을 제자리에 둔다)`,
       );
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(

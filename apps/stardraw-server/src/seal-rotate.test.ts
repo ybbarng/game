@@ -22,6 +22,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   createNextServerKey,
   loadNextServerKey,
+  loadServerKey,
   newServerKeyPkcs8,
   type ServerKey,
   serverKeyFromPkcs8,
@@ -146,7 +147,7 @@ describe("관인 교체(서버)", () => {
     expect(report.operations.seals.map((x) => x.from)).toEqual([1, 9]);
   }, 20_000);
 
-  it("교체 뒤 다음 열쇠 파일 없이 옛 열쇠로 다시 띄우면 시작 기록에 오류를 남긴다", async () => {
+  it("교체 뒤 다음 열쇠 파일 없이 옛 열쇠로 다시 띄우면 서버가 뜨지 않는다", async () => {
     const first = await makeRig({
       schedule: TRIAL,
       nextServerKey: nextKey,
@@ -160,20 +161,24 @@ describe("관인 교체(서버)", () => {
     await requestRotation(first);
     await finishThrough(first, 8);
     first.store.close();
-    rig = await makeRig({
-      schedule: TRIAL,
-      dir: first.dir,
-      serverKey: first.serverKey,
-      at: Math.floor(first.clock.now() / 1000),
-      directorKeys: [
-        { credentialId: director.credentialId, pub: director.publicKey },
-      ],
-    });
-    expect(rig.logs.join("\n")).toContain(
-      `오류: 장부가 정한 9회차 관인 ${sealFingerprint(nextKey.publicKey)}의 열쇠 파일이 없다`,
+    rig = undefined;
+    const headBefore = readLedger(first.dir).head;
+    await expect(
+      makeRig({
+        schedule: TRIAL,
+        dir: first.dir,
+        serverKey: first.serverKey,
+        at: Math.floor(first.clock.now() / 1000),
+        directorKeys: [
+          { credentialId: director.credentialId, pub: director.publicKey },
+        ],
+      }),
+    ).rejects.toThrow(
+      `서버를 띄우지 않는다: 장부가 정한 9회차 관인 ${sealFingerprint(nextKey.publicKey)}의 열쇠 파일이 없다`,
     );
+    // 거절한 서버는 head.json을 다시 쓰지 않는다
+    expect(readLedger(first.dir).head).toEqual(headBefore);
     // 정리한 뒤(다음 열쇠를 지금 열쇠로) 다시 띄우면 오류가 없다
-    rig.store.close();
     const fixed = await makeRig({
       schedule: TRIAL,
       dir: first.dir,
@@ -187,6 +192,70 @@ describe("관인 교체(서버)", () => {
     expect(fixed.logs.join("\n")).not.toContain("오류:");
     expect(fixed.engine.state().serverKey).toBe(toBase64Url(nextKey.publicKey));
   }, 20_000);
+});
+
+describe("띄울 때 관인 대조", () => {
+  it("관인 운영 기록이 없는 장부는 지난번 head.json의 관인과 대조한다. 리허설(log)은 띄운다", async () => {
+    const first = await makeRig();
+    rig = first;
+    await first.finish(1);
+    first.store.close();
+    rig = undefined;
+    const other = await serverKeyFromPkcs8(await newServerKeyPkcs8());
+    await expect(
+      makeRig({
+        dir: first.dir,
+        serverKey: other,
+        at: Math.floor(first.clock.now() / 1000),
+      }),
+    ).rejects.toThrow(
+      `서버를 띄우지 않는다: 지난번 공개한 관인 ${sealFingerprint(first.serverKey.publicKey)}의 열쇠 파일이 없다`,
+    );
+    rig = await makeRig({
+      dir: first.dir,
+      serverKey: other,
+      at: Math.floor(first.clock.now() / 1000),
+      sealKeyMismatch: "log",
+    });
+    expect(rig.engine.sealKeyProblem()).toContain("지난번 공개한 관인");
+  });
+
+  it("빈 장부의 첫 시작은 대조할 것이 없고, 같은 데이터 폴더의 열쇠 파일로 다시 띄우면 그대로 뜬다", async () => {
+    const first = await makeRig();
+    rig = first;
+    expect(first.engine.sealKeyProblem()).toBeNull();
+    await first.finish(1);
+    first.store.close();
+    rig = await makeRig({
+      dir: first.dir,
+      at: Math.floor(first.clock.now() / 1000),
+    });
+    expect(rig.serverKey.publicKey).toEqual(first.serverKey.publicKey);
+    expect(rig.engine.sealKeyProblem()).toBeNull();
+  });
+});
+
+describe("관인 열쇠 파일 만들기", () => {
+  it("장부에 기록이 있으면 새로 만들지 않고 거절, 비었으면 만든다", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "stardraw-key-"));
+    try {
+      const path = join(dir, "server-key.pkcs8");
+      await expect(loadServerKey(path, true, true)).rejects.toThrow(
+        "장부에 이미 기록이 있어 새로 만들지 않는다",
+      );
+      expect(existsSync(path)).toBe(false);
+      await expect(loadServerKey(path, false)).rejects.toThrow(
+        "서버 열쇠 파일이 없다",
+      );
+      const made = await loadServerKey(path, true, false);
+      // 이미 있으면 장부와 상관없이 읽는다
+      expect((await loadServerKey(path, true, true)).publicKey).toEqual(
+        made.publicKey,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("다음 관인 열쇠 파일", () => {

@@ -25,6 +25,7 @@ import {
   entrantId,
   equalBytes,
   everDirector,
+  fromBase64Url,
   fromHex,
   GATE_PARAMS,
   genesisHash,
@@ -136,6 +137,11 @@ export interface EngineOptions {
   serverKey: ServerKey;
   /** 다음 관인 열쇠(관인 교체, docs/36 11-25). 장부가 정한 효력 회차부터 이 열쇠로 서명한다 */
   nextServerKey?: ServerKey;
+  /**
+   * 장부가 정한 관인이 지금·다음 열쇠 파일 어느 것과도 다를 때. "refuse"(기본)는 ready()가 거절해 서버가 뜨지 않는다.
+   * "log"는 시작 기록에만 남긴다(운영 장부 사본을 새 관인으로 돌리는 리허설 전용, docs/36 11-49)
+   */
+  sealKeyMismatch?: "refuse" | "log";
   drand: DrandSource;
   rootLog: RootLog;
   anchor: Anchor;
@@ -402,6 +408,8 @@ export class StardrawServer {
   /** 닫힌 기록의 운영 기록을 모두 반영한 상태(서명까지 다시 확인하므로 띄울 때 비동기로 읽는다) */
   private ops: OpsState;
   private readonly opsReady: Promise<void>;
+  /** 띄우기 전 디스크의 head.json에 있던 관인(base64url). 관인 운영 기록이 아직 없는 장부에서 대조한다 */
+  private readonly publishedSeal: string | null;
 
   constructor(options: EngineOptions) {
     this.o = options;
@@ -409,7 +417,16 @@ export class StardrawServer {
     this.genesis = options.store.genesis(options.schedule);
     this.current = scheduleFromRecords(this.genesis, this.records());
     this.ops = newOpsState(this.genesis);
-    this.opsReady = this.loadOps();
+    this.publishedSeal = options.publisher.readHead()?.serverKey ?? null;
+    // 장부의 관인과 열쇠 파일을 맞춘 뒤에야 head.json을 쓴다(틀린 관인을 공개하지 않게)
+    this.opsReady = this.loadOps().then(() => {
+      const problem = this.sealKeyProblem();
+      if (problem && this.o.sealKeyMismatch !== "log")
+        throw new Error(`서버를 띄우지 않는다: ${problem}`);
+      this.publishHead();
+    });
+    // 기다리는 쪽(ready 등)이 거절을 받는다. 아무도 기다리기 전에 거절돼도 처리하지 않은 거절로 죽지 않게
+    this.opsReady.catch(() => {});
     this.gate = new Gate(
       options.limits.argonConcurrency,
       options.limits.argonQueue,
@@ -421,7 +438,6 @@ export class StardrawServer {
     );
     options.publisher.genesis(this.genesis);
     this.publishBundles();
-    this.publishHead();
   }
 
   /** 지금 회차의 단계: 설정이 아니라 장부(일정표)가 정한다. 단계가 없는 일정표면 정식으로 본다 */
@@ -1974,6 +1990,33 @@ export class StardrawServer {
     if (!next) return this.o.serverKey;
     const key = sealKeyAt(this.ops, round);
     return key && equalBytes(key, next.publicKey) ? next : this.o.serverKey;
+  }
+
+  /**
+   * 장부가 정한 관인(관인 내력, 없으면 관인으로 서명한 것이 있을 때 지난번 head.json의 관인)이 지금·다음 열쇠 파일과 다르면 그 까닭.
+   * 장부가 비었거나 맞으면 null
+   */
+  sealKeyProblem(): string | null {
+    const round = this.o.store.recordCount() + 1;
+    const current = this.o.serverKey.publicKey;
+    const next = this.o.nextServerKey?.publicKey ?? null;
+    const matches = (key: Uint8Array) =>
+      equalBytes(key, current) || (next !== null && equalBytes(key, next));
+    const ledger = sealKeyAt(this.ops, round);
+    if (ledger)
+      return matches(ledger)
+        ? null
+        : `장부가 정한 ${round}회차 관인 ${sealFingerprint(ledger)}의 열쇠 파일이 없다(지금 열쇠 파일 ${sealFingerprint(current)})`;
+    if (!this.publishedSeal || !this.o.store.hasSignedData()) return null;
+    let published: Uint8Array;
+    try {
+      published = fromBase64Url(this.publishedSeal);
+    } catch {
+      return "지난번 head.json의 관인을 읽지 못했다";
+    }
+    return matches(published)
+      ? null
+      : `지난번 공개한 관인 ${sealFingerprint(published)}의 열쇠 파일이 없다(지금 열쇠 파일 ${sealFingerprint(current)})`;
   }
 
   /** 시작 기록에 찍을 관인 상태: 지금·다음 관인 지문과 장부가 정한 관인과 맞는지(운영 상태를 읽은 뒤) */

@@ -111,6 +111,21 @@ export class Publisher {
     renameSync(tmp, full);
   }
 
+  /** 지금 디스크에 있는 head.json(없거나 읽지 못하면 null). 띄울 때 지난번에 공개한 관인을 보려고 */
+  readHead(): HeadFile | null {
+    try {
+      const value = JSON.parse(
+        readFileSync(join(this.dir, "head.json"), "utf8"),
+      ) as Partial<HeadFile>;
+      return typeof value.serverKey === "string" &&
+        typeof value.rounds === "number"
+        ? (value as HeadFile)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   private read(path: string): MirrorFile {
     return { path, text: readFileSync(join(this.dir, path), "utf8") };
   }

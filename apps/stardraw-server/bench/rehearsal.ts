@@ -304,6 +304,8 @@ async function main() {
     pow: POW_PARAMS,
     policy,
     serverKey,
+    // 관인은 새로 만든다(위 설명). 장부의 관인과 달라도 띄운다
+    sealKeyMismatch: "log",
     drand: new RehearsalDrand(),
     rootLog: new TsaRootLog(
       [tsaA.authority, tsaB.authority],

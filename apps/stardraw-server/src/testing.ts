@@ -66,11 +66,7 @@ import {
   type RoundFile,
 } from "./publish";
 import { DEFAULT_RELAY_LIMITS, Relay, type RelayLimits } from "./relay";
-import {
-  newServerKeyPkcs8,
-  type ServerKey,
-  serverKeyFromPkcs8,
-} from "./server-key";
+import { loadServerKey, type ServerKey } from "./server-key";
 import { Store } from "./store";
 
 /**
@@ -173,6 +169,8 @@ export async function makeRig(
     serverKey?: ServerKey;
     /** 다음 관인 열쇠(관인 교체, 기본: 없음) */
     nextServerKey?: ServerKey;
+    /** 장부의 관인과 열쇠 파일이 다를 때(기본 refuse) */
+    sealKeyMismatch?: "refuse" | "log";
     /** 서버 설정의 국장 열쇠(STARDRAW_DIRECTOR_KEYS) */
     directorKeys?: { credentialId: Uint8Array; pub: Uint8Array }[];
     /** 상품 자격 발급 설정 */
@@ -190,8 +188,10 @@ export async function makeRig(
   clock.advance((limits.at ?? EPOCH) * 1000);
   const store = new Store(join(dir, "stardraw.sqlite"));
   const drand = new FakeDrand();
+  // 서버 열쇠를 주지 않으면 데이터 폴더의 열쇠 파일(없으면 만든다). 같은 폴더로 다시 띄우면 운영처럼 같은 관인
   const serverKey =
-    limits.serverKey ?? (await serverKeyFromPkcs8(await newServerKeyPkcs8()));
+    limits.serverKey ??
+    (await loadServerKey(join(dir, "server-key.pkcs8"), true));
   const log = new SwitchLog(
     limits.rootLog
       ? limits.rootLog(serverKey, clock)
@@ -207,6 +207,9 @@ export async function makeRig(
     policy: { rpId: "game.byb.kr", origins: ["https://game.byb.kr"] },
     serverKey,
     ...(limits.nextServerKey ? { nextServerKey: limits.nextServerKey } : {}),
+    ...(limits.sealKeyMismatch
+      ? { sealKeyMismatch: limits.sealKeyMismatch }
+      : {}),
     drand,
     rootLog: log,
     anchor: limits.anchor ?? noAnchor,
@@ -230,7 +233,12 @@ export async function makeRig(
     ...(limits.frontGate ? { frontGate: limits.frontGate } : {}),
     log: (m) => logs.push(m),
   });
-  await engine.ready();
+  try {
+    await engine.ready();
+  } catch (err) {
+    store.close();
+    throw err;
+  }
   const relay = new Relay(
     store,
     clock,

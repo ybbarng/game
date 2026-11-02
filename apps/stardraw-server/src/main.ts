@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { backup } from "node:sqlite";
 import { realClock } from "@game/fair-play";
@@ -49,6 +49,7 @@ async function main(): Promise<void> {
   const serverKey = await loadServerKey(
     config.serverKeyFile,
     config.generateServerKey,
+    store.hasSignedData() || existsSync(join(config.ledgerDir, "head.json")),
   );
   const nextServerKey = await loadNextServerKey(config.nextServerKeyFile);
   const log = (message: string) => console.log(`[stardraw] ${message}`);
@@ -149,6 +150,9 @@ async function main(): Promise<void> {
     rooms,
     proofs: new ProofService(store, clock),
   });
+
+  // 장부가 정한 관인과 열쇠 파일이 다르면 여기서 거절된다(받기 전에 멈춘다)
+  await engine.ready();
 
   let stopTick = () => {};
   const loop = () => {

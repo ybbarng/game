@@ -453,6 +453,13 @@ export class Store {
 
   // ── 회차 기록 ──
 
+  /** 관인으로 서명해 내준 것(회차 기록·응모권·등록)이 하나라도 있는지. 없으면 비어 있는 장부다 */
+  hasSignedData(): boolean {
+    for (const table of ["records", "entries", "registrations"])
+      if (this.db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get()) return true;
+    return false;
+  }
+
   recordCount(): number {
     const row = this.db.prepare("SELECT MAX(round) AS r FROM records").get();
     return Number(row?.r ?? 0);
