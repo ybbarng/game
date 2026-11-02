@@ -1,14 +1,22 @@
 import {
+  compareBytes,
+  encodeRegistration,
+  encodeTicket,
   entrantId,
   fromHex,
+  type KeyRegistration,
   type KeyTicketsResponse,
-  makeRegistrationProof,
-  makeTicketProof,
-  merkleRoot,
+  levelsProof,
+  levelsRoot,
+  type MerkleLevels,
+  merkleLevels,
   type RegistrationProof,
   registrationId,
   sortRegistrations,
+  type Ticket,
   type TicketProof,
+  ticketId,
+  toBase64Url,
   toHex,
 } from "@game/stardraw-core";
 
@@ -22,8 +30,9 @@ import type { Store } from "./store";
  *   GET /api/keys/{공개 열쇠}/tickets?from={회차}      → KeyTicketsResponse(그 열쇠의 응모권 증명 + 등록 증명)
  * 닫힌 회차만 낸다(열린 회차의 응모권은 아직 루트가 없다).
  *
- * 남용 안전장치: 증명 하나는 그 회차 응모 수만큼의 해시(1천 장이면 약 2천 번, 1ms 안쪽)라 싸다.
- * 회차마다 정렬한 id를 최근 것 몇 개만 기억하고, 서버 전체로 초당 요청 수를 넉넉히 묶는다(토큰 통).
+ * 남용 안전장치: 회차마다 머클 트리 층을 한 번 만들어 기억하고(정렬한 id와 함께, 최근 것 몇 개·크기 상한), 증명 하나는
+ * 층 수만큼만 읽는다(3천 장이면 12개). 예전에는 증명마다 잎 전체를 다시 해시해(O(n)) 회차 뒤 수천 기기가 한꺼번에
+ * 확인하면 서버가 멈췄다(2026-11-03 bench/stress.ts). 서버 전체로 초당 요청 수를 넉넉히 묶는다(토큰 통).
  * 통이 비면 503과 Retry-After를 낸다(화면은 기다렸다 다시 받는다, politeFetch). 닫힌 회차 응모권 증명은 바뀌지 않아 오래 캐시된다.
  *
  * 한 클라이언트가 통을 다 써서 모든 화면의 확인이 막히지 않게(2026-11-03 검토 M8):
@@ -72,8 +81,74 @@ function refill(b: Bucket, now: number, perSecond: number, burst: number) {
   b.filledAt = now;
 }
 
-/** 기억할 회차 수(회차마다 정렬한 id. 1천 장 회차면 약 32KB) */
+/** 기억할 회차 수(회차마다 정렬한 id와 트리 층. 1천 장 회차면 id 약 32KB + 층 약 64KB) */
 const CACHE_ROUNDS = 64;
+/** 기억할 트리 층 바이트 합(넘으면 오래 안 쓴 회차부터 잊는다. 3천 장 회차 하나가 약 192KB) */
+const TREE_BYTES = 16 * 1024 * 1024;
+
+interface RoundTree {
+  ids: Uint8Array[];
+  tree: MerkleLevels;
+  bytes: number;
+}
+
+/** 정렬한 id에서 찾기(없으면 -1) */
+function indexOf(ids: readonly Uint8Array[], id: Uint8Array): number {
+  let lo = 0;
+  let hi = ids.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const c = compareBytes(ids[mid] as Uint8Array, id);
+    if (c === 0) return mid;
+    if (c < 0) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -1;
+}
+
+/** core `makeTicketProof`와 같은 응답을 기억한 트리 층으로(같은 바이트인지 proof.test.ts가 본다) */
+export function ticketProofFromTree(
+  round: number,
+  t: RoundTree,
+  ticket: Ticket,
+): TicketProof | null {
+  const index = indexOf(t.ids, ticketId(ticket));
+  if (index < 0) return null;
+  return {
+    v: 1,
+    round,
+    ticket: toBase64Url(encodeTicket(ticket)),
+    index,
+    size: t.ids.length,
+    path: levelsProof(t.tree, index).map(toHex),
+    root: toHex(levelsRoot(t.tree)),
+  };
+}
+
+function registrationProofFromTree(
+  round: number,
+  t: RoundTree,
+  registration: KeyRegistration,
+): RegistrationProof | null {
+  const index = indexOf(t.ids, registrationId(registration));
+  if (index < 0) return null;
+  return {
+    v: 1,
+    round,
+    registration: toBase64Url(encodeRegistration(registration)),
+    index,
+    size: t.ids.length,
+    path: levelsProof(t.tree, index).map(toHex),
+    root: toHex(levelsRoot(t.tree)),
+  };
+}
+
+export function roundTree(ids: Uint8Array[]): RoundTree {
+  const tree = merkleLevels(ids);
+  let bytes = ids.length * 32;
+  for (const l of tree.levels) bytes += l.length;
+  return { ids, tree, bytes };
+}
 
 export class ProofBusy extends EntryError {
   constructor(readonly retryAfter: number) {
@@ -84,8 +159,9 @@ export class ProofBusy extends EntryError {
 export class ProofService {
   private readonly all: Bucket;
   private readonly clients = new Map<string, Bucket>();
-  private readonly ticketIds = new Map<number, Uint8Array[]>();
-  private readonly regIds = new Map<number, Uint8Array[]>();
+  private readonly ticketTrees = new Map<number, RoundTree>();
+  private readonly regTrees = new Map<number, RoundTree>();
+  private treeBytes = 0;
   private readonly answers = new Map<
     string,
     { value: unknown; size: number }
@@ -175,35 +251,55 @@ export class ProofService {
     return round >= 1 && round <= this.store.recordCount();
   }
 
-  /** 그 회차 응모권 id(정렬). 처음 읽을 때 기록의 루트와 같은지 확인한다 */
-  private idsOf(round: number): Uint8Array[] {
-    const hit = this.ticketIds.get(round);
+  /** 그 회차 응모권 id(정렬)와 트리 층. 처음 만들 때 기록의 루트와 같은지 확인한다 */
+  private treeOf(round: number): RoundTree {
+    return this.cachedTree(this.ticketTrees, round, (record) => {
+      const t = roundTree(this.store.entryIds(round).map(fromHex));
+      if (toHex(levelsRoot(t.tree)) !== toHex(record.merkleRoot))
+        throw new Error(`${round}회차 예측 목록이 기록의 머클 루트와 다르다`);
+      return t;
+    });
+  }
+
+  private regTreeOf(round: number): RoundTree {
+    return this.cachedTree(this.regTrees, round, (record) => {
+      const t = roundTree(
+        sortRegistrations(this.store.registrations(round)).map(registrationId),
+      );
+      if (toHex(levelsRoot(t.tree)) !== toHex(record.registrationRoot))
+        throw new Error(`${round}회차 등록 목록이 기록의 등록 루트와 다르다`);
+      return t;
+    });
+  }
+
+  private cachedTree(
+    cache: Map<number, RoundTree>,
+    round: number,
+    build: (record: NonNullable<ReturnType<Store["record"]>>) => RoundTree,
+  ): RoundTree {
+    const hit = cache.get(round);
     if (hit) {
-      this.ticketIds.delete(round);
-      this.ticketIds.set(round, hit);
+      cache.delete(round);
+      cache.set(round, hit);
       return hit;
     }
     const record = this.store.record(round);
     if (!record) throw new EntryError("닫히지 않은 회차입니다", 404);
-    const ids = this.store.entryIds(round).map(fromHex);
-    if (toHex(merkleRoot(ids)) !== toHex(record.merkleRoot))
-      throw new Error(`${round}회차 예측 목록이 기록의 머클 루트와 다르다`);
-    remember(this.ticketIds, round, ids);
-    return ids;
-  }
-
-  private regIdsOf(round: number): Uint8Array[] {
-    const hit = this.regIds.get(round);
-    if (hit) return hit;
-    const record = this.store.record(round);
-    if (!record) throw new EntryError("닫히지 않은 회차입니다", 404);
-    const ids = sortRegistrations(this.store.registrations(round)).map(
-      registrationId,
-    );
-    if (toHex(merkleRoot(ids)) !== toHex(record.registrationRoot))
-      throw new Error(`${round}회차 등록 목록이 기록의 등록 루트와 다르다`);
-    remember(this.regIds, round, ids);
-    return ids;
+    const t = build(record);
+    cache.set(round, t);
+    this.treeBytes += t.bytes;
+    // 회차 수와 바이트 합 상한(두 기억을 함께 센다). 방금 넣은 것은 남긴다
+    for (const c of [this.ticketTrees, this.regTrees])
+      while (
+        (c.size > CACHE_ROUNDS || this.treeBytes > TREE_BYTES) &&
+        c.size > (c === cache ? 1 : 0)
+      ) {
+        const oldest = c.keys().next().value;
+        if (oldest === undefined) break;
+        this.treeBytes -= c.get(oldest)?.bytes ?? 0;
+        c.delete(oldest);
+      }
+    return t;
   }
 
   /** 응모권 증명. 없는 응모권·열린 회차면 404. `client`는 상한을 셀 접속 주소(모르면 서버 전체 통만) */
@@ -219,15 +315,7 @@ export class ProofService {
     const found = this.store.entryById(idHex);
     if (!found || found.round !== round)
       throw new EntryError("그 회차에 없는 예측서입니다", 404);
-    const record = this.store.record(round);
-    const proof =
-      record &&
-      makeTicketProof(
-        round,
-        this.idsOf(round),
-        found.ticket,
-        record.merkleRoot,
-      );
+    const proof = ticketProofFromTree(round, this.treeOf(round), found.ticket);
     if (!proof) throw new Error(`${round}회차 예측서 증명을 만들지 못했다`);
     this.keep(key, proof);
     return proof;
@@ -253,27 +341,18 @@ export class ProofService {
     const page = rows.slice(0, this.limits.pageSize);
     const tickets: TicketProof[] = [];
     for (const { round, ticket } of page) {
-      const record = this.store.record(round);
-      const proof =
-        record &&
-        makeTicketProof(round, this.idsOf(round), ticket, record.merkleRoot);
+      const proof = ticketProofFromTree(round, this.treeOf(round), ticket);
       if (!proof) throw new Error(`${round}회차 예측서 증명을 만들지 못했다`);
       tickets.push(proof);
     }
     let registration: RegistrationProof | null = null;
     const reg = this.store.registrationOf(who);
-    if (reg && this.closed(reg.round)) {
-      const record = this.store.record(reg.round);
-      registration =
-        (record &&
-          makeRegistrationProof(
-            reg.round,
-            this.regIdsOf(reg.round),
-            reg.registration,
-            record.registrationRoot,
-          )) ??
-        null;
-    }
+    if (reg && this.closed(reg.round))
+      registration = registrationProofFromTree(
+        reg.round,
+        this.regTreeOf(reg.round),
+        reg.registration,
+      );
     const next = rows.length > page.length ? rows.at(-1)?.round : undefined;
     const answer: KeyTicketsResponse = {
       v: 1,
@@ -284,14 +363,5 @@ export class ProofService {
     };
     this.keep(key, answer);
     return answer;
-  }
-}
-
-function remember<T>(cache: Map<number, T>, round: number, value: T): void {
-  cache.set(round, value);
-  while (cache.size > CACHE_ROUNDS) {
-    const oldest = cache.keys().next().value;
-    if (oldest === undefined) break;
-    cache.delete(oldest);
   }
 }

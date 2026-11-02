@@ -3,7 +3,12 @@ import { join } from "node:path";
 import {
   checkRegistrationProof,
   checkTicketProof,
+  compareBytes,
   type KeyTicketsResponse,
+  makeRegistrationProof,
+  makeTicketProof,
+  registrationId,
+  sortRegistrations,
   type TicketProof,
   ticketId,
   toBase64Url,
@@ -93,6 +98,32 @@ describe("증명 API", () => {
         // 다른 회차 기록으로는 맞지 않는다
         expect(checkTicketProof(proof, l.records[2] as never)).toBeNull();
       }
+  });
+
+  it("기억한 트리 층으로 낸 증명이 core makeTicketProof·makeRegistrationProof와 같은 바이트", async () => {
+    const { rig, players } = await rigWithEntries(3);
+    const proofs = new ProofService(rig.store, rig.clock);
+    const l = readLedger(rig.dir);
+    for (const [i, list] of l.tickets.entries()) {
+      const record = l.records[i] as never as { merkleRoot: Uint8Array };
+      const ids = list.map(ticketId).sort(compareBytes);
+      for (const t of list)
+        expect(JSON.stringify(proofs.ticket(i + 1, toHex(ticketId(t))))).toBe(
+          JSON.stringify(makeTicketProof(i + 1, ids, t, record.merkleRoot)),
+        );
+    }
+    const regs = rig.store.registrations(1);
+    const regIds = sortRegistrations(regs).map(registrationId);
+    const root = (l.records[0] as never as { registrationRoot: Uint8Array })
+      .registrationRoot;
+    for (const p of players) {
+      const reg = regs.find((r) => toHex(r.pub) === toHex(p.signer.publicKey));
+      expect(reg).toBeDefined();
+      const got = proofs.keyTickets(p.signer.publicKey).registration;
+      expect(JSON.stringify(got)).toBe(
+        JSON.stringify(makeRegistrationProof(1, regIds, reg as never, root)),
+      );
+    }
   });
 
   it("없는 응모권·다른 회차·열린 회차는 404, 모양이 틀리면 400", async () => {

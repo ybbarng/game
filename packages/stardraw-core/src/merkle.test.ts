@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { fromHex, toHex } from "./bytes";
 import {
   inclusionProof,
+  levelsProof,
+  levelsRoot,
+  merkleLevels,
   merkleRoot,
   sortLeaves,
   verifyInclusion,
@@ -100,5 +103,60 @@ describe("포함 증명", () => {
   it("잎은 id 사전 순으로 정렬한다", () => {
     const shuffled = [fromHex("03"), fromHex("01"), fromHex("02")];
     expect(sortLeaves(shuffled).map(toHex)).toEqual(["01", "02", "03"]);
+  });
+});
+
+describe("층을 만들어 둔 트리(서버 증명 API)", () => {
+  /** 크기마다 다른 잎(결정적) */
+  const leavesOf = (n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const b = new Uint8Array(32);
+      new DataView(b.buffer).setUint32(0, i * 2654435761);
+      b[31] = n & 0xff;
+      return b;
+    });
+
+  it("CT 참조 시험 값에서 루트와 모든 증명이 기존 함수와 같다", () => {
+    for (let n = 1; n <= LEAVES.length; n++) {
+      const leaves = LEAVES.slice(0, n);
+      const tree = merkleLevels(leaves);
+      expect(toHex(levelsRoot(tree))).toBe(toHex(merkleRoot(leaves)));
+      for (let i = 0; i < n; i++)
+        expect(levelsProof(tree, i).map(toHex)).toEqual(
+          inclusionProof(leaves, i).map(toHex),
+        );
+    }
+  });
+
+  it("크기 0~130과 몇 큰 크기에서 루트와 증명이 같은 바이트(40개 넘으면 처음·끝·가운데)", () => {
+    const sizes = [
+      ...Array.from({ length: 131 }, (_, i) => i),
+      255,
+      256,
+      257,
+      1000,
+      3001,
+    ];
+    for (const n of sizes) {
+      const leaves = leavesOf(n);
+      const tree = merkleLevels(leaves);
+      expect(toHex(levelsRoot(tree))).toBe(toHex(merkleRoot(leaves)));
+      // 큰 크기는 처음·끝·가운데 몇 개만(기존 함수가 증명마다 O(n)이라)
+      const at =
+        n <= 40
+          ? Array.from({ length: n }, (_, i) => i)
+          : [0, 1, n >> 1, n - 2, n - 1];
+      for (const i of at)
+        expect(levelsProof(tree, i).map(toHex)).toEqual(
+          inclusionProof(leaves, i).map(toHex),
+        );
+    }
+  });
+
+  it("범위 밖 잎 번호는 던진다", () => {
+    const tree = merkleLevels(leavesOf(3));
+    expect(() => levelsProof(tree, 3)).toThrow();
+    expect(() => levelsProof(tree, -1)).toThrow();
+    expect(() => levelsProof(merkleLevels([]), 0)).toThrow();
   });
 });

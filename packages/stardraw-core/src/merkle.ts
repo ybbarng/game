@@ -89,3 +89,67 @@ export function verifyInclusion(
   }
   return sn === 0 && equalBytes(r, root);
 }
+
+/**
+ * 층을 한 번 만들어 둔 트리(서버가 회차마다 기억해 증명을 여럿 낼 때). 층 0은 잎 해시, 위로 갈수록 짝을 지어 해시하고
+ * 짝이 없는 마지막 하나는 그대로 올린다 — 위 split 방식(RFC 6962)과 같은 트리다. 층마다 32바이트 해시를 이어 붙여
+ * 한 버퍼로 둔다(해시마다 객체를 만들지 않아 메모리가 적다). 빈 목록은 층이 없다
+ */
+export interface MerkleLevels {
+  size: number;
+  levels: Uint8Array[];
+}
+
+const H = 32;
+
+export function merkleLevels(leaves: readonly Uint8Array[]): MerkleLevels {
+  if (leaves.length === 0) return { size: 0, levels: [] };
+  let level = new Uint8Array(leaves.length * H);
+  leaves.forEach((l, i) => {
+    level.set(leafHash(l), i * H);
+  });
+  const levels = [level];
+  let count = leaves.length;
+  while (count > 1) {
+    const up = Math.ceil(count / 2);
+    const next = new Uint8Array(up * H);
+    for (let i = 0; i + 1 < count; i += 2)
+      next.set(
+        nodeHash(
+          level.subarray(i * H, (i + 1) * H),
+          level.subarray((i + 1) * H, (i + 2) * H),
+        ),
+        (i / 2) * H,
+      );
+    if (count % 2 === 1)
+      next.set(level.subarray((count - 1) * H, count * H), (up - 1) * H);
+    levels.push(next);
+    level = next;
+    count = up;
+  }
+  return { size: leaves.length, levels };
+}
+
+/** 층으로 만든 루트(`merkleRoot`와 같은 값) */
+export function levelsRoot(tree: MerkleLevels): Uint8Array {
+  const top = tree.levels.at(-1);
+  return top ? top.slice(0, H) : sha256();
+}
+
+/** 층으로 만든 index번째 잎의 포함 증명(`inclusionProof`와 같은 값, 층 수만큼만 읽는다) */
+export function levelsProof(tree: MerkleLevels, index: number): Uint8Array[] {
+  if (!Number.isInteger(index) || index < 0 || index >= tree.size) {
+    throw new Error("잎 번호가 범위 밖이다");
+  }
+  const out: Uint8Array[] = [];
+  let i = index;
+  let count = tree.size;
+  for (let d = 0; d < tree.levels.length - 1; d++) {
+    const level = tree.levels[d] as Uint8Array;
+    const sibling = i % 2 === 1 ? i - 1 : i + 1;
+    if (sibling < count) out.push(level.slice(sibling * H, (sibling + 1) * H));
+    i = Math.floor(i / 2);
+    count = Math.ceil(count / 2);
+  }
+  return out;
+}
