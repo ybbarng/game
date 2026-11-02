@@ -402,7 +402,9 @@ export async function earlySealItems(
       ACTIVITY_LABEL,
       "pass",
       [
-        `push 시각 ${pushed}회차 확인`,
+        live.length === 0
+          ? "정식 회차가 아직 없습니다"
+          : `push 시각 ${pushed}회차 확인`,
         rewrites === UNKNOWN
           ? "강제 push·브랜치 삭제 확인 못 함"
           : "강제 push·브랜치 삭제 없음",

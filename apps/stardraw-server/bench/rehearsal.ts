@@ -295,7 +295,8 @@ async function main() {
       ? fake.fetch(input, init)
       : Promise.reject(new Error("모르는 기관"));
   };
-  const github = new FakeGitHub();
+  // 커밋 시각·활동 기록은 리허설 시계로(정식 회차의 관측 전 사본 기한 확인, docs/36 11-50)
+  const github = new FakeGitHub(() => nowSec());
   const serverLog: string[] = [];
   const engine = new StardrawServer({
     store,
@@ -697,6 +698,12 @@ async function main() {
       tsaAuthorities: [...TSA_AUTHORITIES, tsaA.authority, tsaB.authority],
       voidBeacon: async (r: number) => fakeBeacon(r),
       anchorRepo: REPO,
+      // 관측 전 사본의 커밋 시각·활동 기록은 가짜 GitHub API에서, 터미널 검사기처럼 모든 정식 회차를
+      github: {
+        scope: "all" as const,
+        fetch: github.fetch,
+        now: nowSec() + 3600,
+      },
     };
     const server = await checkPublicLedger({
       base: api,

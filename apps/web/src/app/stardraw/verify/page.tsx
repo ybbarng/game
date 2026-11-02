@@ -333,27 +333,51 @@ quicknet 회차 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
             <Code>{`sealDigest = taggedHash("stardraw/seal/v1",
                round(u32) ‖ count(u32) ‖ merkleRoot(32) ‖ registrationCount(u32) ‖ registrationRoot(32))
 무효 회차: rootLoggedAt = 0, 또는 rootLoggedAt < closesAt,
-          또는 rootLoggedAt ≥ drand 회차 시각`}</Code>
+          또는 rootLoggedAt ≥ drand 회차 시각
+정식 회차는 더해: 관측 전 사본(main의 early-seals/N.json)이
+          drand 회차 시각 − 60초까지 올라야 유효`}</Code>
             <p className="text-white/80">
               무효 회차는 빛난 별과 입상자 없이 기록만 남습니다.
             </p>
+            <p className="text-white/80">
+              정식 회차는 봉인이 관측 전에 공개 저장소에 올라가야 유효합니다.
+              제때 오르지 않으면 결과와 상관없이 무효이고, 이 결정은 관측 전에
+              끝납니다. 공개된 시각은 GitHub가 남긴 활동 기록과, 그 시간에
+              지켜본 사람의 기록으로 확인합니다. 그 기록에는 서명이 없어서
+              GitHub와 지켜본 사람을 믿는 부분이 남습니다.
+            </p>
             <ul className={li}>
               <li>
-                무효는 결과보다 먼저 정해져야 합니다. 서버는 봉인하자마자 drand
-                전에 봉인 파일을 공개하고 앵커 저장소에도{" "}
-                <code>ledgers/{"{장부 id}"}/early-seals/N.json</code>로
-                올립니다. 무효 회차인데 그 봉인 값의 맞는 토큰이 drand 시각 전에
-                있었다는 파일이 나오면(이 사본이나 누군가 받아 둔 파일) 검사는
-                실패입니다
+                정식 회차: 서버는 토큰을 받으면 먼저 앵커 저장소 main에{" "}
+                <code>ledgers/{"{장부 id}"}/early-seals/N.json</code>을 올리고,
+                다시 읽어 확인한 뒤에 우리 서버에 같은 바이트로 봉인 파일을
+                공개합니다. 유효 회차인데 사본이 없거나, 봉인 파일과 다르거나,
+                그 경로를 바꾼 커밋 시각이 기한보다 늦으면 실패입니다. 무효
+                회차인데 기한 안에 올린 사본에 drand 전 토큰이 있어도 실패입니다
+              </li>
+              <li>
+                커밋 시각은 커밋하는 쪽이 정할 수 있어, GitHub 활동 기록의 push
+                시각과 대조해 늦으면 「주의」입니다. main·trial에 강제 push나
+                브랜치 삭제 기록이 있으면 실패입니다. 이 페이지는 GitHub 요청
+                한도(IP당 1시간 60번) 때문에 입상 회차·무효 회차·최근 회차만
+                시각을 보고, 전체는 터미널 검사기가 봅니다
+              </li>
+              <li>
+                시험 회차: 서버는 봉인하자마자 봉인 파일을 공개하고 앵커
+                저장소에도 같은 경로로 올립니다. 무효 회차인데 그 봉인 값의 맞는
+                토큰이 drand 시각 전에 있었다는 파일이 나오면(이 사본이나 누군가
+                받아 둔 파일) 검사는 실패입니다
               </li>
               <li>
                 무효 회차마다 drand 값을 받아 무효가 아니었다면 나왔을 결과를
                 계산해, 1~3등이 있었으면 「주의」 맨 앞에 적습니다
               </li>
               <li>
-                터미널 검사기 <code>stardraw-verify watch</code>는 봉인 파일을
-                나오는 대로 받아 두고, <code>--evidence &lt;폴더&gt;</code>로 그
-                파일들을 증거로 넣습니다
+                터미널 검사기 <code>stardraw-verify watch</code>는 봉인 파일과
+                관측 전 사본을 나오는 대로 받아 두고 사본을 처음 본 시각을{" "}
+                <code>seen.jsonl</code>에 남깁니다.{" "}
+                <code>--evidence &lt;폴더&gt;</code>로 받아 둔 봉인 파일을
+                증거로 넣습니다
               </li>
             </ul>
           </Rule>
