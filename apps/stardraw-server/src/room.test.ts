@@ -422,6 +422,57 @@ describe("스트림과 말", () => {
     small.stop();
   });
 
+  it("defer가 있으면 같은 차례의 소식을 연결마다 한 번에 쓰고, 그 사이 들어온 연결에는 인사 뒤 소식만", async () => {
+    const queued: (() => void)[] = [];
+    const deferred = new RoomHub({
+      clock,
+      policy: DEFAULT_WEBAUTHN_POLICY,
+      schedule: () => schedule,
+      isRegistered: (p) => registered.has(toHex(p)),
+      isDirector: () => false,
+      sealed: () => false,
+      tickets: () => [],
+      entered: () => false,
+      drawn: () => false,
+      defer: (fn) => queued.push(fn),
+    });
+    const run = () => {
+      for (const fn of queued.splice(0)) fn();
+    };
+    const { nonce } = deferred.challenge(ROUND);
+    const a = await deferred.issuePass(ROUND, {
+      pub: alice.publicKey,
+      signature: await alice.sign(
+        roomPassMessage(ROUND, Buffer.from(nonce, "base64url")),
+      ),
+      nonce,
+    });
+    const early = new FakeRes();
+    let writes = 0;
+    const write = early.write.bind(early);
+    early.write = (chunk: string) => {
+      writes++;
+      return write(chunk);
+    };
+    deferred.connect(ROUND, asRes(early), undefined);
+    writes = 0;
+    deferred.say(ROUND, a.pass, "하나");
+    deferred.say(ROUND, a.pass, "둘");
+    expect(early.of("say")).toEqual([]);
+    // 모으는 사이에 들어온 우주인: 인사를 바로 받고, 앞의 두 말은 받지 않는다. 다른 연결은 그의 들어옴을 받는다
+    const late = new FakeRes();
+    deferred.connect(ROUND, asRes(late), a.pass);
+    expect(late.of("hello")).toHaveLength(1);
+    deferred.say(ROUND, a.pass, "셋");
+    run();
+    expect(writes).toBe(1);
+    expect(early.of("say").map((e) => e.text)).toEqual(["하나", "둘", "셋"]);
+    expect(early.of("join").map((e) => e.person.id)).toEqual([a.id]);
+    expect(late.of("say").map((e) => e.text)).toEqual(["셋"]);
+    expect(late.of("join")).toEqual([]);
+    deferred.stop();
+  });
+
   it("쓰기가 쌓여 상한을 넘은 연결은 끊고 방에서 뺀다", async () => {
     const small = smallHub({ maxBufferedBytes: 1000 });
     const slow = new FakeRes() as FakeRes & {

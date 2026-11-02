@@ -117,6 +117,11 @@ export interface RoomDeps {
   entered: (round: number, pub: Uint8Array) => boolean;
   /** 회차 기록이 닫혔는지(결과가 나왔는지) */
   drawn: (round: number) => boolean;
+  /**
+   * 방 소식을 모아 쓸 때(운영은 setImmediate). 주면 같은 차례에 생긴 소식(들어옴 몰림, 말 여럿)을 연결마다 한 번의
+   * 쓰기로 묶는다: 연결 쓰기 횟수가 소식 수 × 연결 수에서 차례 수 × 연결 수로 준다. 없으면 소식마다 바로 쓴다(시험)
+   */
+  defer?: (flush: () => void) => void;
 }
 
 /** 방 이벤트(스트림 한 줄) */
@@ -218,6 +223,15 @@ function takeToken(
 interface Connection {
   res: ServerResponse;
   pass: Pass | null;
+  /** 이 연결이 들어온 때의 방 소식 번호(그 전에 모아 둔 소식은 인사에 이미 담겨 있어 보내지 않는다) */
+  since: number;
+}
+
+/** 모아 둔 소식 하나 */
+interface Outgoing {
+  seq: number;
+  text: string;
+  except?: Connection;
 }
 
 interface Room {
@@ -244,6 +258,10 @@ interface Room {
   messageSeq: number;
   /** 방 전체 말 빠르기 */
   say: Bucket;
+  /** 소식 번호와 아직 쓰지 않은 소식(defer가 있을 때만 쌓인다) */
+  seq: number;
+  outbox: Outgoing[];
+  flushing: boolean;
   /** 아직 보내지 않은 응원(cheerBatchMs마다 한 소식으로) */
   meteors: number;
   twinkles: Map<string, number>;
@@ -331,6 +349,9 @@ export class RoomHub {
       drawnSent: this.deps.drawn(round),
       closed: false,
       messageSeq: 0,
+      seq: 0,
+      outbox: [],
+      flushing: false,
       say: { tokens: this.limits.roomSayBurst, refillAt: this.nowMs() },
       meteors: 0,
       twinkles: new Map(),
@@ -542,7 +563,7 @@ export class RoomHub {
       "x-accel-buffering": "no",
       connection: "keep-alive",
     });
-    const conn: Connection = { res, pass };
+    const conn: Connection = { res, pass, since: room.seq };
     const wasHere = pass ? this.hasFace(room, pass.id) : false;
     room.connections.add(conn);
     if (!pass) {
@@ -730,6 +751,8 @@ export class RoomHub {
     for (const p of room.passes.values())
       if (p.id === input.target) p.kicked = true;
     this.broadcast(room, { type: "kicked", id: input.target });
+    // 내보낸다는 소식이 끊기 전에 닿게
+    this.flush(room);
     for (const c of [...room.connections])
       if (c.pass?.id === input.target) c.res.end();
   }
@@ -772,6 +795,7 @@ export class RoomHub {
   }
 
   private closeRoom(room: Room): void {
+    this.flush(room);
     room.closed = true;
     for (const c of room.connections) c.res.end();
     room.connections.clear();
@@ -805,6 +829,42 @@ export class RoomHub {
   /** 소식 글을 한 번만 만들어 모든 연결에 같은 글로 쓴다(연결마다 JSON을 다시 만들지 않는다) */
   private broadcast(room: Room, event: RoomEvent, except?: Connection): void {
     const text = `data: ${JSON.stringify(event)}\n\n`;
-    for (const c of room.connections) if (c !== except) this.send(c, text);
+    room.seq += 1;
+    const defer = this.deps.defer;
+    if (!defer) {
+      for (const c of room.connections) if (c !== except) this.send(c, text);
+      return;
+    }
+    room.outbox.push({ seq: room.seq, text, ...(except ? { except } : {}) });
+    if (!room.flushing) {
+      room.flushing = true;
+      defer(() => this.flush(room));
+    }
+  }
+
+  /**
+   * 모아 둔 소식을 연결마다 한 번에 쓴다. 대부분의 연결은 같은 글을 받으므로 그 글은 한 번만 만든다. 모으는 사이에 들어온
+   * 연결(인사에 이미 담김)과 제외할 연결만 따로 고른다
+   */
+  private flush(room: Room): void {
+    room.flushing = false;
+    const out = room.outbox;
+    if (out.length === 0) return;
+    room.outbox = [];
+    const first = (out[0] as Outgoing).seq;
+    const excepts = new Set<Connection>();
+    for (const o of out) if (o.except) excepts.add(o.except);
+    const all = out.map((o) => o.text).join("");
+    for (const c of room.connections) {
+      if (c.since < first && !excepts.has(c)) {
+        this.send(c, all);
+        continue;
+      }
+      const mine = out
+        .filter((o) => o.seq > c.since && o.except !== c)
+        .map((o) => o.text)
+        .join("");
+      if (mine) this.send(c, mine);
+    }
   }
 }
