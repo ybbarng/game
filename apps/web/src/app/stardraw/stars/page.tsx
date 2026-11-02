@@ -54,9 +54,38 @@ export default function StardrawStars() {
           <h1 className="font-black text-3xl">별 이야기</h1>
           <p className="text-white/80">
             예측판의 별 45개는 모두 서울 하늘에 실제로 뜨는 별입니다. 둥근
-            하늘을 어떻게 네모난 예측판으로 폈는지, 별마다 어떤 이야기가 있는지,
-            별의 색은 왜 그런지 모았습니다.
+            하늘을 어떻게 네모난 예측판으로 폈는지, 별의 색은 왜 그런지, 별마다
+            어떤 이야기가 있는지 모았습니다.
           </p>
+          <nav
+            aria-label="차례"
+            className="flex flex-wrap gap-x-4 gap-y-1 text-sm"
+          >
+            <a
+              href="#board"
+              className="text-amber-100/85 underline-offset-2 hover:underline"
+            >
+              예측판의 별
+            </a>
+            <a
+              href="#making"
+              className="text-amber-100/85 underline-offset-2 hover:underline"
+            >
+              예측판을 편 방법
+            </a>
+            <a
+              href="#colors"
+              className="text-amber-100/85 underline-offset-2 hover:underline"
+            >
+              별의 색
+            </a>
+            <a
+              href="#list"
+              className="text-amber-100/85 underline-offset-2 hover:underline"
+            >
+              별 45개
+            </a>
+          </nav>
         </header>
 
         <Section title="예측판의 별 45개" id="board">
@@ -102,30 +131,6 @@ export default function StardrawStars() {
           <BoardMorph />
         </Section>
 
-        <Section title="별 45개" id="list">
-          <ol className="flex flex-col gap-3">
-            {SKY_STARS.map((s) => (
-              <li
-                key={s.n}
-                id={`star-${s.n}`}
-                className="flex scroll-mt-6 items-start gap-3 rounded-xl target:bg-amber-200/10 target:outline target:outline-1 target:outline-amber-200/30 target:outline-offset-4"
-              >
-                <LottoBall n={s.n} size="sm" className="mt-0.5" />
-                <div className="flex min-w-0 flex-col">
-                  <span className="font-semibold">
-                    {s.ko}{" "}
-                    <span className="font-normal text-white/55 text-xs">
-                      {s.con} {s.bayer} · {s.mag.toFixed(2)}등급 ·{" "}
-                      {tempWord(s.k)}
-                    </span>
-                  </span>
-                  <span className="text-sm text-white/75">{s.fact}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Section>
-
         <Section title="별의 색" id="colors">
           <p className="text-white/85">
             예측판의 별 색도 실제 계산에서 나옵니다. 별 색은 표면 온도가
@@ -160,6 +165,30 @@ export default function StardrawStars() {
             </li>
           </ul>
           <ColorQuiz />
+        </Section>
+
+        <Section title="별 45개" id="list">
+          <ol className="flex flex-col gap-3">
+            {SKY_STARS.map((s) => (
+              <li
+                key={s.n}
+                id={`star-${s.n}`}
+                className="flex scroll-mt-6 items-start gap-3 rounded-xl target:bg-amber-200/10 target:outline target:outline-1 target:outline-amber-200/30 target:outline-offset-4"
+              >
+                <LottoBall n={s.n} size="sm" className="mt-0.5" />
+                <div className="flex min-w-0 flex-col">
+                  <span className="font-semibold">
+                    {s.ko}{" "}
+                    <span className="font-normal text-white/55 text-xs">
+                      {s.con} {s.bayer} · {s.mag.toFixed(2)}등급 ·{" "}
+                      {tempWord(s.k)}
+                    </span>
+                  </span>
+                  <span className="text-sm text-white/75">{s.fact}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
         </Section>
 
         <Section title="자료 출처" id="sources">
