@@ -1034,13 +1034,25 @@ if (problems.length)
 
 // 7. 별자리 선: 꼭짓점 자리를 잇는다. 가른 곳을 건너는 곳과 남쪽 끝(-47°) 아래에서 끊는다
 const lines = [];
+/** 별 이야기의 「예측판은 어떻게 만들었나」: 같은 선의 실제 하늘 자리(적경·적위를 그대로 편 2단계 큰 틀, 퍼뜨리기 전) */
+const realLines = [];
+const real = (id) => {
+  const x = u(verts[id].ra);
+  const y = (90 - verts[id].dec) / 135;
+  return [round(0.07 + x * 0.86), round(0.07 + y * 0.84)];
+};
 /** 그림 위쪽 가장자리 밖(북극 너머로 이어지는 선의 끝) */
 const ABOVE = -0.04;
 for (const p of polylines) {
   let run = [];
+  let runReal = [];
   const flush = () => {
-    if (run.length >= 2) lines.push({ con: p.con, pts: run });
+    if (run.length >= 2) {
+      lines.push({ con: p.con, pts: run });
+      realLines.push(runReal);
+    }
     run = [];
+    runReal = [];
   };
   p.ids.forEach((id, k) => {
     if (id === null) {
@@ -1055,11 +1067,18 @@ for (const p of polylines) {
       const a = verts[prev].dec;
       const b = verts[id].dec;
       const polar = Math.min(a, b) > 60 && Math.max(a, b) > 85;
-      if (polar && run.length > 0) run.push([run[run.length - 1][0], ABOVE]);
+      if (polar && run.length > 0) {
+        run.push([run[run.length - 1][0], ABOVE]);
+        runReal.push([runReal[runReal.length - 1][0], ABOVE]);
+      }
       flush();
-      if (polar) run.push([at[0], ABOVE]);
+      if (polar) {
+        run.push([at[0], ABOVE]);
+        runReal.push([real(id)[0], ABOVE]);
+      }
     }
     run.push(at);
+    runReal.push(real(id));
   });
   flush();
 }
@@ -1086,6 +1105,14 @@ const data = {
   lines,
 };
 writeFileSync(out, `${JSON.stringify(data)}\n`);
+// 별 이야기 페이지만 읽는 실제 하늘 자리(번호 별은 n-1 차례, 선은 data.lines와 같은 차례·같은 점 수)
+writeFileSync(
+  join(here, "../src/stardraw/sky-real.json"),
+  `${JSON.stringify({
+    stars: stars.map((s) => real(s.n - 1)),
+    lines: realLines,
+  })}\n`,
+);
 // 단위 시험용 원래 하늘의 짜임: 선이 셋 넘게 모이는 별마다 그 별 자리와, 이웃 별 자리를 원래 하늘의 각도 차례로(sky.test.ts가
 // 판에서 같은 차례인지 본다). 원래 하늘에서 만나는 선분 쌍도 적는다(그 밖의 선분은 판에서 만나면 안 된다)
 const at = (id) => P[id].map(round);

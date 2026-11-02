@@ -111,6 +111,17 @@ export function StarInfo({
       )}
     >
       <StarLine star={starOf(n)} compact={compact} />
+      {/* 별 이야기의 그 별 자리로(2026-11-02 사용자). 칸이 누르기를 아래로 넘겨도 링크는 받는다 */}
+      <a
+        href={`/stardraw/stars#star-${n}`}
+        data-star-more={n}
+        className={cn(
+          "pointer-events-auto mt-1 block text-right text-amber-100/75 underline-offset-2 hover:text-amber-100 hover:underline",
+          compact ? "text-[11px]" : "text-xs",
+        )}
+      >
+        별 이야기에서 더 보기
+      </a>
       {onClose && (
         <button
           type="button"

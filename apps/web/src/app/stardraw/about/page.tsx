@@ -5,14 +5,12 @@ import {
   KeyHoldingExplained,
   PasskeyFaq,
 } from "@/stardraw/components/PasskeyHelp";
-import { LottoBall } from "@/stardraw/components/parts";
 import { RANK_RULE } from "@/stardraw/results";
-import { SKY_STARS, tempWord } from "@/stardraw/sky";
 
 export const metadata: Metadata = {
   title: { absolute: "하늘의 별 따기 설명 · Stardraw" },
   description:
-    "하늘의 별 따기 게임 방법, 예측판(서울 하늘의 밝은 별 45개) 읽는 법, 별 목록, 당첨자 확인, 데이터 출처.",
+    "하늘의 별 따기 게임 방법, 당첨자 확인, 우주국장의 권한, 패스키와 보안, 우주국이 보관하는 것.",
 };
 
 export const viewport: Viewport = { themeColor: "#070d19" };
@@ -88,6 +86,12 @@ export default function StardrawAbout() {
           >
             어떻게 속일 수 없게 만들었나요? 보안 배우기
           </a>
+          <a
+            href="/stardraw/stars"
+            className="self-start text-amber-100/90 text-sm underline underline-offset-2"
+          >
+            예측판의 별은 어떤 별인가요? 별 이야기
+          </a>
         </header>
 
         <Section title="게임 방법">
@@ -128,46 +132,6 @@ export default function StardrawAbout() {
               ))}
             </tbody>
           </table>
-        </Section>
-
-        <Section title="예측판 읽는 법">
-          <ul className="list-disc space-y-2 pl-5 text-white/85">
-            <li>
-              번호 1~45는 서울에서 보이는 가장 밝은 실제 별 45개이고, 번호가 곧
-              밝은 순서입니다. 1번은 온 하늘에서 가장 밝은 시리우스입니다.
-            </li>
-            <li>
-              별의 크기는 실제 밝기(등급), 색은 실제 표면 온도입니다.
-              베텔게우스·안타레스는 붉고, 리겔·스피카는 푸릅니다.
-            </li>
-            <li>
-              네모 하늘은 하늘을 가로(동쪽이 왼쪽)·세로(위가 북쪽)로 편
-              것입니다. 별이 가장 드문 곳에서 하늘을 갈라 별자리가 잘리지 않게
-              했고, 동서남북 차례는 대체로 지키면서 별이 몰린 겨울 하늘은 넓히고
-              빈 곳은 채웠습니다. 별자리는 실제 하늘의 모양을 그대로 두고 크기만
-              조금씩 다르게 키워, 번호 별 사이에 손가락으로 누를 틈을
-              두었습니다. 그래서 별자리끼리의 거리와 크기는 실제와 다릅니다.
-              아주 가까이 붙은 밝은 별(쌍둥이자리의 두 머리, 오리온자리의
-              허리띠)은 그 둘레만 조금 벌렸습니다. 이때도 한 줄로 늘어선 별은
-              차례 그대로 한 줄에 둡니다.
-            </li>
-            <li>
-              번호는 별 오른쪽 위에 그 별의 빛깔로 적고, 고른 번호 공은 그
-              빛깔을 진하게 칠합니다. 표면 온도가 높은 순서로 푸른 별, 흰 별,
-              노란빛 별, 주황빛 별, 붉은 별입니다. 초록 별은 왜 없는지, 공과
-              별빛을 왜 다르게 칠했는지는{" "}
-              <a href="/stardraw/learn#colors" className="underline">
-                배우기의 「별의 색」
-              </a>
-              에서 직접 움직여 볼 수 있습니다.
-            </li>
-            <li>
-              흐린 선은 실제 별자리 선(서울 하늘에 뜨는 별자리 68개)이고, 작은
-              점은 번호가 없는 어두운 별입니다. 번호 별은 늘 자기 별자리 선 위에
-              있습니다. 별을 누르면 그 별의 별자리가 환해지며 이름이 나오고,
-              고른 별의 별자리는 조금 밝게 남습니다.
-            </li>
-          </ul>
         </Section>
 
         <Section title="로또 1등과 별 맞히기">
@@ -262,60 +226,13 @@ export default function StardrawAbout() {
           </ul>
         </Section>
 
-        <Section title="별 45개">
-          <ol className="flex flex-col gap-3">
-            {SKY_STARS.map((s) => (
-              <li key={s.n} className="flex items-start gap-3">
-                <LottoBall n={s.n} size="sm" className="mt-0.5" />
-                <div className="flex min-w-0 flex-col">
-                  <span className="font-semibold">
-                    {s.ko}{" "}
-                    <span className="font-normal text-white/55 text-xs">
-                      {s.con} {s.bayer} · {s.mag.toFixed(2)}등급 ·{" "}
-                      {tempWord(s.k)}
-                    </span>
-                  </span>
-                  <span className="text-sm text-white/75">{s.fact}</span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Section>
-
-        <Section title="데이터 출처">
-          <ul className="list-disc space-y-1.5 pl-5 text-sm text-white/75">
-            <li>
-              별 목록: Hoffleit &amp; Warren, The Bright Star Catalogue 5판
-              (VizieR V/50). 서울에서 적위 -45° 위로 뜨는 별 가운데 밝은 순서로
-              45개를 골랐습니다.
-            </li>
-            <li>
-              별자리 선: Olaf Frohn,{" "}
-              <a
-                href="https://github.com/ofrohn/d3-celestial"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                d3-celestial
-              </a>{" "}
-              (BSD 라이선스)
-            </li>
-            <li>
-              별의 한글 이름과 데이터 정리:{" "}
-              <a
-                href="https://star.byb.kr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                star.byb.kr
-              </a>
-            </li>
-          </ul>
-        </Section>
-
         <div className="flex flex-col gap-2">
+          <a
+            href="/stardraw/stars"
+            className="self-start text-sm text-amber-100/90 underline underline-offset-2"
+          >
+            별 이야기: 예측판의 별 45개와 그 이야기, 예측판을 편 방법, 별의 색
+          </a>
           <a
             href="/stardraw/learn"
             className="self-start text-sm text-amber-100/90 underline underline-offset-2"

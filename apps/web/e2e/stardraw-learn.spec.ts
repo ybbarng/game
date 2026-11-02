@@ -259,15 +259,16 @@ test("보안 배우기: 고르게 뽑히나 — 실제 규칙으로 돌려 번�
   await toy.screenshot({ path: info.outputPath("fair-toy.png") });
 });
 
-test("덧붙임 별의 색: 온도 실험실과 봉우리 실험실", async ({ page }, info) => {
-  await page.goto("/stardraw/about");
-  await page.getByRole("link", { name: "배우기의 「별의 색」" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/learn#colors$/);
-  // 주소의 # 단계는 펼쳐져 있다
-  await expect(page.locator("[data-lesson-toggle='colors']")).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
+test("별 이야기 「별의 색」: 온도 실험실과 봉우리 실험실(배우기에서 옮김)", async ({
+  page,
+}, info) => {
+  await page.goto("/stardraw/stars");
+  await page.getByRole("link", { name: "「별의 색」" }).click();
+  await expect(page).toHaveURL(/\/stardraw\/stars#colors$/);
+  // 배우기에는 이제 없다
+  await page.goto("/stardraw/learn");
+  await expect(page.locator("[data-lesson-toggle='colors']")).toHaveCount(0);
+  await page.goto("/stardraw/stars#colors");
   const lab = page.locator("[data-star-lab]");
   await expect(lab.locator("[data-lab-name]")).toContainText("해");
   await lab.getByRole("button", { name: "베텔게우스", exact: true }).click();

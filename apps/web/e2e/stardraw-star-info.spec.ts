@@ -165,4 +165,9 @@ test("별 설명: 첫 화면 정답 예시 하늘에서도 별을 누르면 그 
     path: testInfo.outputPath("star-info-intro.png"),
     fullPage: true,
   });
+  // 별 이야기의 그 별 자리로
+  await page.locator("[data-star-more='7']").click();
+  await expect(page).toHaveURL(/\/stardraw\/stars#star-7$/);
+  await expect(page.locator("#star-7")).toContainText("베텔게우스");
+  await expect(page.locator("#star-7")).toBeInViewport();
 });

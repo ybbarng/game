@@ -613,11 +613,15 @@ test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고
   );
 });
 
-test("설명 페이지: 별 45개와 데이터 출처", async ({ page }) => {
+test("설명 페이지: 당첨자 확인과 패스키, 별 이야기로 가는 길", async ({
+  page,
+}) => {
   await page.goto("/stardraw/about");
-  await expect(page.getByRole("heading", { name: "별 45개" })).toBeVisible();
-  await expect(page.getByText("데네볼라")).toBeVisible();
-  await expect(page.getByText(/Bright Star Catalogue/)).toBeVisible();
+  // 별 목록·자료 출처는 별 이야기로 옮겼다(2026-11-02)
+  await expect(page.getByRole("heading", { name: "별 45개" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "예측판의 별은 어떤 별인가요? 별 이야기" }),
+  ).toHaveAttribute("href", "/stardraw/stars");
   await expect(
     page.getByText("판정은 늘 확인하는 사람의 기기에서 합니다", {
       exact: false,

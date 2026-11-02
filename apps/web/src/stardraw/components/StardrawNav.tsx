@@ -62,6 +62,7 @@ const TABS: [NavTarget, string][] = [
 /** 다른 페이지(새로 불러오는 링크) */
 const PAGES: [string, string][] = [
   ["설명", "/stardraw/about"],
+  ["별 이야기", "/stardraw/stars"],
   ["배우기", "/stardraw/learn"],
   ["검증", "/stardraw/verify"],
   ["소속", "/stardraw/qualify"],

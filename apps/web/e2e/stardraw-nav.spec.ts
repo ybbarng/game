@@ -361,6 +361,7 @@ test("앱 밖 페이지마다 첫 화면에 「← 하늘의 별 따기」", asy
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
   for (const path of [
     "/stardraw/about",
+    "/stardraw/stars",
     "/stardraw/verify",
     "/stardraw/learn",
     "/stardraw/qualify",

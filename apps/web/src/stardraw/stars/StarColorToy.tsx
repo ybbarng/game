@@ -22,7 +22,7 @@ import {
   wavelengthCss,
 } from "@/stardraw/spectrum";
 
-import { P } from "./ui";
+import { P } from "../learn/ui";
 
 /** 그림의 파장 범위(nm). 보이는 빛(380~750)보다 넓게 잡아 곡선의 꼭대기가 보이게 한다 */
 const NM_MIN = 150;
@@ -422,7 +422,7 @@ function H3({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 배우기 「덧붙임: 별의 색」(/stardraw/learn#colors)의 체험 상자와 설명.
+ * 별 이야기 「별의 색」(/stardraw/stars#colors)의 체험 상자와 설명(2026-11-02 배우기에서 옮김).
  * 온도 실험실 → 초록·분홍 별이 없는 까닭 → 봉우리 실험실 → 번호 공과 하늘의 별빛 차례로 둔다
  */
 export function StarColorToys() {
