@@ -5,7 +5,7 @@ import {
   CARINA_STARS,
   type CarinaStar,
   starPath,
-} from "../astronaut/marks";
+} from "../astronaut/carina";
 
 /** 용골자리 별을 (x, y)로 옮겨 그리는 자리. 직인 좌표(0~100 칸 위쪽)를 비율 s로 줄여 가운데에 놓는다 */
 function carinaAt(cx: number, cy: number, s: number) {

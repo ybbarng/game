@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 
-import { Seal } from "@/stardraw/astronaut/marks";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { BureauDirector } from "@/stardraw/components/BureauDirector";
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
 import { GalaxyMap, NearbyStars3D } from "@/stardraw/components/BureauSpace";
 import {
   CANOPUS_SKY_SOURCE,
@@ -37,7 +37,7 @@ export default function StardrawBureauPage() {
         </a>
 
         <header className="flex flex-col items-center gap-4 text-center">
-          <Seal className="size-28" />
+          <BureauLogo className="size-28 text-amber-100/90" />
           <div className="flex flex-col gap-1">
             <h1 className="font-black text-3xl text-white tracking-tight">
               카노푸스 우주국

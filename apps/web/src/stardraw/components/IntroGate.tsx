@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { greetNow } from "../greeting";
 import { GAME_NS, getServices } from "../services";
+import { BureauLogo } from "./BureauMarks";
 
 /** 인사가 적어도 이만큼은 머문다(읽을 시간, 연출은 여유 있게) */
 const HOLD_MS = 1300;
@@ -37,6 +38,7 @@ export function IntroShell({ children }: { children?: React.ReactNode }) {
       data-intro-shell
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 px-6 text-center"
     >
+      <BureauLogo className="size-14 text-amber-200/85" />
       <span className="sd-intro-agency font-semibold text-amber-200/85 text-xs tracking-[0.35em]">
         카노푸스 우주국
       </span>

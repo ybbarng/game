@@ -27,7 +27,10 @@ test("footer 「카노푸스 우주국」은 우주국 소개 페이지로", asy
   await expect(
     bureau.getByRole("heading", { name: "여섯 별", exact: true }),
   ).toBeVisible();
-  await expect(bureau.getByRole("img", { name: /직인/ })).toBeVisible();
+  // 머리의 엠블럼은 우주국 로고(직인은 발급 문서에만, 2026-11-02 사용자)
+  await expect(
+    bureau.getByRole("img", { name: "카노푸스 우주국 로고" }).first(),
+  ).toBeVisible();
   // 실제 성도·제주 바다·은하 도식·3D 배치(장부가 없는 빌드라 국장 열쇠 칸은 그리지 않는다)
   await expect(
     bureau.getByRole("img", { name: /카노푸스 둘레의 실제 성도/ }),
