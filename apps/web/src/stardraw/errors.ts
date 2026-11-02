@@ -94,16 +94,20 @@ export function errorKind(err: unknown): ErrorKind {
 /** 문장 끝 마침표를 맞춘다 */
 const sentence = (t: string) => (/[.?!]$/.test(t) ? t : `${t}.`);
 
+/** 「○○하지」: 「~지」로 끝나는 움직씨는 그대로(「보내지」), 그 밖은 「하지」를 붙인다(「등록하지」) */
+const stem = (doing: string) => (doing.endsWith("지") ? doing : `${doing}하지`);
+
 /**
  * 오류를 창구 말 한 문장(또는 두 문장)으로. `doing`은 "○○하지 못했습니다"의 ○○(예: "응모를 접수", "등록", "승인").
+ * 「하다」가 붙지 않는 움직씨는 「~지」까지 넘긴다(예: "말을 보내지" → "말을 보내지 못했습니다", "들어가하지"처럼 깨지지 않게).
  * 패스키 취소는 `cancelWhat`(예: "응모되지 않았어요")로 기존 문구를 쓴다
  */
 export function errorText(
   err: unknown,
   doing: string,
-  cancelWhat = `${doing}하지 않았어요`,
+  cancelWhat = `${stem(doing)} 않았어요`,
 ): string {
-  const failed = `${doing}하지 못했습니다`;
+  const failed = `${stem(doing)} 못했습니다`;
   switch (errorKind(err)) {
     case "cancelled":
     case "unsupported":

@@ -665,9 +665,7 @@ export function RoomView({
         done: `${residentPhrase(astronautOf(key.pub))} 님, 어서 오세요.`,
       })
       .catch((err) => {
-        setSendNote(
-          errorText(err, "관측지에 들어가", "관측지에 들어가지 않았어요"),
-        );
+        setSendNote(errorText(err, "언덕에 오르지", "언덕에 오르지 않았어요"));
         return null;
       });
     if (!got) return null;
@@ -694,7 +692,7 @@ export function RoomView({
       setDraft("");
       setSendNote(null);
     } catch (err) {
-      setSendNote(errorText(err, "말을 보내"));
+      setSendNote(errorText(err, "말을 보내지"));
     }
   };
 
@@ -706,7 +704,10 @@ export function RoomView({
       .then(() => setSendNote(null))
       .catch((err) =>
         setSendNote(
-          errorText(err, kind === "meteor" ? "별똥별을 보내" : "반짝임을 보내"),
+          errorText(
+            err,
+            kind === "meteor" ? "별똥별을 보내지" : "반짝임을 보내지",
+          ),
         ),
       );
   };
@@ -758,7 +759,7 @@ export function RoomView({
       setSendNote(
         errorText(
           err,
-          action === "hide" ? "가리" : "내보내",
+          action === "hide" ? "가리지" : "내보내지",
           "조치하지 않았어요",
         ),
       );
