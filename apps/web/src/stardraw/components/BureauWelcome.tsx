@@ -11,6 +11,17 @@ import { StageOverlay, useReducedMotion } from "./StageOverlay";
 /** 생애 첫 방문에 편지를 저절로 연 적이 있는지(이 기기). 한 번 열면 그 뒤로는 홈의 봉투로만 연다 */
 const AUTO_KEY = "stardraw-letter-auto";
 
+/** 편지를 끝까지 펼쳐 본 적이 있는지(이 기기). 읽었으면 「편지가 왔어요」 카드를 감춘다(2026-11-02 사용자) */
+const READ_KEY = "stardraw-letter-read";
+
+function markLetterRead(): void {
+  try {
+    localStorage.setItem(READ_KEY, "1");
+  } catch {
+    // 저장소를 못 쓰면 카드가 남을 뿐이다
+  }
+}
+
 /** 생애 첫 방문이라 편지를 저절로 열 차례인지(읽기만, 움직임 줄이기면 아니다) */
 export function letterAutoPending(): boolean {
   try {
@@ -57,6 +68,15 @@ export function BureauWelcome({
 }) {
   const [open, setOpen] = useState(false);
   const [auto, setAuto] = useState(false);
+  /** 이미 읽은 편지: 카드를 감춘다(첫 그리기 뒤에 읽는다: 서버에서 그린 화면과 어긋나지 않게) */
+  const [read, setRead] = useState(false);
+  useEffect(() => {
+    try {
+      setRead(!!localStorage.getItem(READ_KEY));
+    } catch {
+      // 저장소를 못 쓰면 카드를 둔다
+    }
+  }, []);
   const reduce = useReducedMotion();
   const asked = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 저절로 열 차례가 오면 한 번만 정한다
@@ -70,6 +90,12 @@ export function BureauWelcome({
   }, [autoOpen]);
   const close = () => {
     setOpen(false);
+    // 끝까지 펼쳐 본 편지면 닫는 대로 카드도 감춘다
+    try {
+      setRead(!!localStorage.getItem(READ_KEY));
+    } catch {
+      // 저장소를 못 쓰면 카드를 둔다
+    }
     if (auto) {
       setAuto(false);
       onClosed?.();
@@ -81,6 +107,10 @@ export function BureauWelcome({
         onRegister();
       }
     : undefined;
+  useEffect(() => {
+    if (open && reduce) markLetterRead();
+  }, [open, reduce]);
+  if (read && !open && !auto) return null;
   return (
     <section
       aria-label="카노푸스 우주국 편지"
@@ -151,6 +181,9 @@ function LetterStage({
   const [stage, setStage] = useState<"arrive" | "open" | "letter">(
     fromTop ? "arrive" : "open",
   );
+  useEffect(() => {
+    if (stage === "letter") markLetterRead();
+  }, [stage]);
   useEffect(() => {
     if (stage !== "open") return;
     const t = window.setTimeout(() => setStage("letter"), OPEN_MS);

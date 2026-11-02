@@ -534,6 +534,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             services={services}
             status={status}
             hidden={observing || picking}
+            belowBar={wide && showNav}
             onGo={goWatch}
           />
         )}

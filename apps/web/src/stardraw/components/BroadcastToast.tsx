@@ -2,6 +2,8 @@
 
 import { acceptFrom } from "@game/stardraw-core";
 import { useRef, useState } from "react";
+
+import { cn } from "@/lib/cn";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
 import type { Services } from "../services";
@@ -32,12 +34,15 @@ export function BroadcastToast({
   services,
   status,
   hidden,
+  belowBar = false,
   onGo,
 }: {
   services: Services;
   status: LedgerStatus;
   /** 이미 관측지(추첨 화면)에 있으면 띄우지 않는다 */
   hidden: boolean;
+  /** 넓은 화면의 위쪽 메뉴 줄(약 61px) 아래에 띄운다(메뉴 줄에 가려졌다, 2026-11-02 사용자) */
+  belowBar?: boolean;
   onGo: (round: number) => void;
 }) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
@@ -61,7 +66,14 @@ export function BroadcastToast({
   const dy = Math.min(0, drag?.y ?? 0);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
+    <div
+      className={cn(
+        "pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3",
+        belowBar
+          ? "pt-[calc(env(safe-area-inset-top,0px)+76px)]"
+          : "pt-[calc(env(safe-area-inset-top,0px)+12px)]",
+      )}
+    >
       <button
         type="button"
         data-broadcast={round}

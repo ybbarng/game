@@ -2177,3 +2177,18 @@ button {
 .sd-unfold-hold [data-stage-overlay] {
   visibility: visible;
 }
+
+/* 키가 작은 화면(작은 폰·폰 가로): 편지 줄 간격과 여백을 조금 줄여 스크롤 거리를 던다 */
+@media (max-height: 700px) {
+  .sd-letter-paper {
+    font-size: 14px;
+    line-height: 1.7;
+    padding-top: 1rem;
+    padding-bottom: 1.25rem;
+    gap: 0.6rem;
+  }
+  .sd-letter-paper [data-bureau-logo] {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
