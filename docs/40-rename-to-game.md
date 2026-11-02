@@ -53,7 +53,7 @@
 | 3 이미지·컨테이너 | image.yml | compose·스크립트·문서 | forced-command, 옛 컨테이너 내리기, 옛 이미지 지우기 |
 | 4 폴더 | 경로 고치기 | 스크립트 경로 | 세션 닫기 |
 
-## 실행 계획: 2026-11-02 13:30~14:00
+## 실행 계획: 2026-11-02 사용자가 돌아온 뒤(시각은 정하지 않는다)
 
 servers 검토(브랜치 rename-game 8901ee8, servers PLAN 23단계)를 반영했다.
 
@@ -61,20 +61,25 @@ servers 검토(브랜치 rename-game 8901ee8, servers PLAN 23단계)를 반영�
 - 신호 서버는 겹쳐 띄우지 않는다. 방 정보를 메모리에 두어서, 같은 규칙의 라우터가 둘이면 방이 갈린다. 옛 것을 내리고 바로 새 것을 띄운다(몇 초 끊김, 이미 이어진 대전은 그대로). 웹은 정적이라 잠깐 겹쳐도 된다.
 - image.yml push와 servers 합치기는 붙여서 한다. 한쪽만 먼저 가면 배포가 실패한다(옛 컨테이너는 그대로라 안전하지만 다시 돌려야 한다).
 
-| 시각 | 누가 | 할 일 |
+사용자가 돌아왔다고 말하면 그때부터 사용자와 함께하는 단계를 시작한다. 정해진 끝 시각은 없다.
+
+**칸**: 20분 회차라 마감·결과 결정 앞뒤(:13~:17, :33~:37, :53~:57)를 피한다. 컨테이너를 바꾸는 3단계는 한 칸(**:18~:32, :38~:52, :58~:12**, 각 15분) 안에서 끝낸다. 돌아온 뒤 처음 오는 칸의 시작(:18, :38, :58)을 S라 한다.
+
+| 언제 | 누가 | 할 일 |
 |---|---|---|
-| 지금~13:10 | game | 1단계 패키지 이름 main 반영, CI·이미지·배포 확인(이미지 이름은 아직 mighty) |
-| 13:20 | 사용자 확인 → game | 2단계: `gh repo rename game`(ybbarng/mighty → ybbarng/game), `mighty-archive` → `game-archive`, 로컬 원격 주소 고침. 사이트의 저장소 주소 커밋은 13:40 push에 함께 싣는다(13:38 전에 배포가 모두 끝나 있어야 하고, 그 사이 새 배포가 돌면 옛 deploy.sh가 git pull 중에 실패한다. 옛 주소는 GitHub가 넘겨준다) |
-| 13:30 | game → servers | 시작 신호에 「1단계 배포 끝(✅ 시각)」을 적는다 |
-| **13:33~13:37** | 모두 | 마감·결과 결정 시간대라 기다린다 |
-| 13:38 | servers | rename-game을 servers main에 합치고 서버에서 pull |
-| 13:39 | 사용자 → servers | `docker compose -p mighty-signal down`, `-p mighty-diag down` → servers가 game-signal·game-diag up |
-| 13:40 | game | 사이트 저장소 주소 + image.yml(이미지 ghcr.io/ybbarng/game) 한 번에 push → CI(약 4분) → Image(빌드·배포) |
-| 13:48 무렵 | game | 첫 배포가 새 컨테이너(game-game-1) healthz 통과 확인. GHCR pull이 403이면 새 패키지 ghcr.io/ybbarng/game이 저장소에 이어졌는지(Actions 접근) 본다 |
-| 13:49 | 사용자 | `docker compose -p mighty down`(옛 웹) |
-| 13:50 | servers·game | 확인: game.byb.kr 200, /signal/, /diag, /stardraw-api/, Gatus, 별 따기 관측지 |
-| **13:53~13:57** | 모두 | 기다린다. 늦어지면 13:58 뒤에 이어 간다 |
-| 그 뒤 | 사용자 | 새 GHCR 패키지 공개 범위를 옛 것과 같게(공개). 며칠 뒤 옛 이미지 지우기, authorized_keys 고친 뒤 링크 폴더 지우기 |
+| 미리(점심 동안) | game | 1단계 패키지 이름 main 반영·배포(이미지 이름은 아직 mighty). 이 뒤로 3단계 push 전까지 game 쪽 배포를 새로 돌리지 않는다 |
+| 돌아오면 바로 | 사용자 | 별 따기 서버 다시 띄우기 `! ssh byb-ops recreate stardraw`(낱말 바꾸기 서버 문구, 마감 앞뒤만 피해서) |
+| 돌아오면 바로 | 사용자 확인 → game | 2단계 `gh repo rename`(ybbarng/mighty → ybbarng/game, mighty-archive → game-archive), 로컬 원격 주소 고침. 사이트의 저장소 주소 커밋은 3단계 push에 싣는다(옛 주소는 GitHub가 넘겨준다) |
+| S 직전 | game → servers | 시작 신호(「1단계 배포 끝(✅ 시각)」과 칸 시작 시각) |
+| S | servers | rename-game을 servers main에 합치고 서버 pull |
+| S+1분 | 사용자(servers가 명령을 드림) | 옛 신호·진단 내리기 → servers가 game-signal·game-diag up |
+| S+2분 | game | 사이트 주소 + image.yml(ghcr.io/ybbarng/game) 한 번에 push → CI(약 4분) → Image(빌드·배포) |
+| S+10분 무렵 | game | 새 웹 컨테이너 healthz 확인(GHCR pull 403이면 새 패키지가 저장소에 이어졌는지 본다) → servers에 알림 |
+| S+11분 | 사용자(servers가 명령을 드림) | `docker compose -p mighty down`(옛 웹) |
+| S+12분 | servers·game | 확인: game.byb.kr 200, /signal/, /diag, /stardraw-api/, Gatus, 별 따기 관측지 |
+| 그 뒤 | 사용자 | 새 GHCR 패키지 공개 범위를 옛 것과 같게. 며칠 뒤 옛 이미지 지우기, authorized_keys 고친 뒤 링크 폴더 지우기 |
+
+CI나 빌드가 늦어 S+12분이 칸 끝(:32·:52·:12)을 넘을 것 같으면, 옛 웹을 내리는 일(S+11분)만 다음 칸으로 미룬다. 새 웹과 옛 웹은 정적이라 잠깐 함께 떠 있어도 된다.
 
 **되돌리기**: 옛 웹 컨테이너를 내리기 전이면 그대로 두면 된다. 내린 뒤에 문제가 생기면 `docker compose -p mighty up -d`(옛 이미지가 서버에 남아 있다)로 다시 띄우고, image.yml을 되돌려 push한다. 신호 서버는 game-signal을 내리고 mighty-signal을 다시 띄운다.
 
