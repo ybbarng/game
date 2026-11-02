@@ -65,3 +65,24 @@ test("첫 화면 정답 예시: 별자리판과 번호 공(처음 온 사람도 
     /(\d+분마다|매시간|\d+시간마다) 45개의 별 가운데 6개가 빛납니다\./,
   );
 });
+
+/**
+ * 카카오톡 링크 미리보기: 별 따기 주소는 게임 센터가 아닌 별 따기 제목·설명·그림을 낸다(2026-11-03 클로즈 베타 점검,
+ * 그 전에는 모든 별 따기 주소가 「게임 · Games」로 보였다)
+ */
+test("링크 미리보기: 첫 화면과 지금 회차가 별 따기 제목·설명·그림을 낸다", async ({
+  page,
+}) => {
+  for (const path of ["/stardraw", "/stardraw/now"]) {
+    await page.goto(path);
+    const meta = (p: string) =>
+      page.locator(`meta[property="${p}"]`).getAttribute("content");
+    expect(await meta("og:title")).toBe("하늘의 별 따기");
+    expect(await meta("og:description")).toContain(
+      "다음에 빛날 별 6개를 맞혀 보세요.",
+    );
+    expect(await meta("og:image")).toMatch(
+      /\/stardraw\/opengraph-image\/share\.png/,
+    );
+  }
+});
