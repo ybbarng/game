@@ -250,9 +250,17 @@ export class RoomClient {
 export const NONCE_SPARE_MS = 45_000;
 
 /**
+ * 서버가 한 번 쓰는 값의 기한이 지났다고 거절했는지(409). 서명이 틀린 것(403)과 달리 새 값을 받아 다시 하면 된다.
+ * 패스키 창에서 오래 머물렀을 때 생긴다
+ */
+export function nonceExpired(err: unknown): boolean {
+  return err instanceof RoomError && err.status === 409;
+}
+
+/**
  * 미리 받은 값을 지금 써도 되는지(서버 시각 기준). 휴대폰은 다른 앱에 다녀오는 동안 탭의 타이머가 멈춰 새로 받기가
  * 밀리므로, 기한이 가까우면 null(새로 받는다). 낡은 값으로 내면 서버가 403을 돌려 「신분증 확인이 맞지 않아」로 보였다
- * (2026-11-03 클로즈 베타 점검)
+ * (2026-11-03 클로즈 베타 점검. 지금 서버는 기한 지남을 409로 따로 알린다, `nonceExpired`)
  */
 export function freshNonce(
   held: { nonce: string; expiresAt: number } | null,

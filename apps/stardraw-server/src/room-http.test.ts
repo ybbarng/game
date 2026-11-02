@@ -9,7 +9,11 @@ import {
   toHex,
 } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
-import { RoomClient, type RoomEvent } from "../../web/src/stardraw/room-client";
+import {
+  nonceExpired,
+  RoomClient,
+  type RoomEvent,
+} from "../../web/src/stardraw/room-client";
 
 import { createHttpServer } from "./http";
 import { RoomHub } from "./room";
@@ -179,5 +183,26 @@ describe("화면 클라이언트 ↔ 서버", () => {
       mine.moderate(p.signer, (await mine.challenge()).nonce, "hide", said),
     ).rejects.toMatchObject({ status: 403 });
     for (const c of [mine, boss]) c.close();
+  });
+
+  it("기한이 지난 확인 값은 409로 와서 화면이 서명 틀림과 가른다", async () => {
+    const base = await serve();
+    await rig.at(EPOCH + 10);
+    const p = await player();
+    await registerOnly(rig, p);
+    const client = new RoomClient(base, 1);
+    const { nonce, expiresAt } = await client.challenge();
+    rig.clock.advance(expiresAt - rig.clock.now() + 1);
+    const late = await client.issuePass(p.signer, nonce).catch((e) => e);
+    expect(late).toMatchObject({ status: 409 });
+    expect(nonceExpired(late)).toBe(true);
+    // 새로 받은 값으로는 들어온다
+    const fresh = (await client.challenge()).nonce;
+    const got = await client.issuePass(p.signer, fresh);
+    expect(got.pass).toBeTruthy();
+    // 이미 쓴 값은 403(기한 지남이 아니라 새로 받아 다시 할 일이 아니다)
+    const again = await client.issuePass(p.signer, fresh).catch((e) => e);
+    expect(again).toMatchObject({ status: 403 });
+    expect(nonceExpired(again)).toBe(false);
   });
 });

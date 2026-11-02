@@ -38,6 +38,7 @@ import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
 import {
   freshNonce,
+  nonceExpired,
   ROOM_TEXT_MAX,
   RoomClient,
   type RoomEvent,
@@ -664,13 +665,20 @@ export function RoomView({
     const signer = signerRef.current ?? (await services.wallet.signerFor(key));
     // 신분증 제시 틀(입구·응모와 같은 부품): 오버레이 → "패스키로 신분증을 제시해 주세요." → 등록증이 올라와 기다림 →
     // 누르거나 밀어 올리면 그 동작 직후 패스키 → 확인 → 인사 → 등록증이 내려가고 걷힘
-    const got = await id
-      .run(() => client.issuePass(signer, used), {
+    const present = (value: string) =>
+      id.run(() => client.issuePass(signer, value), {
         verb: "제시",
         note: ROOM_PASS_NOTE,
         pub: key.pub,
         tap: true,
         done: `${residentPhrase(astronautOf(key.pub))} 님, 어서 오세요.`,
+      });
+    // 패스키 창에서 오래 머물러 값의 기한이 지났으면(409) 알리지 않고 새 값으로 한 번 더 제시한다.
+    // 서명은 새 값에 다시 해야 하므로 등록증을 한 번 더 내민다(패스키 창은 누름 하나에 하나)
+    const got = await present(used)
+      .catch(async (err) => {
+        if (!nonceExpired(err)) throw err;
+        return present((await client.challenge()).nonce);
       })
       .catch((err) => {
         setSendNote(errorText(err, "언덕에 오르지", "언덕에 오르지 않았어요"));
@@ -764,6 +772,11 @@ export function RoomView({
         action === "hide" ? m.lantern.id : m.lantern.from,
       );
     } catch (err) {
+      // 값의 기한이 지났으면 알리지 않고 새 값을 받아 조치 창을 다시 연다(서명은 다시 눌러야 한다)
+      if (nonceExpired(err)) {
+        openMenu(m.lantern);
+        return;
+      }
       setSendNote(
         errorText(
           err,
