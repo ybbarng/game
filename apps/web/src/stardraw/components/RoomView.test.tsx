@@ -82,6 +82,8 @@ let RoomView: typeof import("./RoomView").RoomView;
 let LANTERN_MS = 0;
 let LANTERN_CLEAR_MS = 0;
 let METEOR_MS = 0;
+let CHEER_SPREAD_MS = 0;
+let CHEER_METEORS_MAX = 0;
 
 beforeAll(async () => {
   // 하늘 판(캔버스)과 크기 관찰은 jsdom에 없어 그리지 않는다
@@ -97,9 +99,14 @@ beforeAll(async () => {
     addEventListener() {},
     removeEventListener() {},
   })) as unknown as typeof window.matchMedia;
-  ({ RoomView, LANTERN_MS, LANTERN_CLEAR_MS, METEOR_MS } = await import(
-    "./RoomView"
-  ));
+  ({
+    RoomView,
+    LANTERN_MS,
+    LANTERN_CLEAR_MS,
+    METEOR_MS,
+    CHEER_SPREAD_MS,
+    CHEER_METEORS_MAX,
+  } = await import("./RoomView"));
 });
 
 afterEach(() => {
@@ -236,6 +243,28 @@ describe("관측지 기기 시계", () => {
     expect(meteor()).not.toBeNull();
     act(() => clock.advance(1));
     expect(meteor()).toBeNull();
+  });
+
+  it("묶은 응원은 CHEER_SPREAD_MS에 고르게 펼치고, 별똥별은 CHEER_METEORS_MAX개까지", async () => {
+    const clock = new ManualClock();
+    const { view } = renderWith(clock, () =>
+      body(hello() + ev({ type: "cheers", meteor: 40, twinkle: {} })),
+    );
+    const meteors = () =>
+      view.container.querySelectorAll("[data-room-meteor]").length;
+    await waitFor(() => expect(meteors()).toBe(1));
+    const step = CHEER_SPREAD_MS / CHEER_METEORS_MAX;
+    act(() => clock.advance(step - 1));
+    expect(meteors()).toBe(1);
+    act(() => clock.advance(1));
+    expect(meteors()).toBe(2);
+    act(() => clock.advance(step * (CHEER_METEORS_MAX - 2)));
+    expect(meteors()).toBe(CHEER_METEORS_MAX);
+    // 첫 별똥별이 사라질 때까지 더 늘지 않는다
+    act(() => clock.advance(METEOR_MS - step * (CHEER_METEORS_MAX - 1) - 1));
+    expect(meteors()).toBe(CHEER_METEORS_MAX);
+    act(() => clock.advance(1));
+    expect(meteors()).toBe(CHEER_METEORS_MAX - 1);
   });
 
   it("스트림이 끊기면 2초 뒤에 다시 잇는다", async () => {

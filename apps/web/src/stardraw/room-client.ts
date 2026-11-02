@@ -57,6 +57,8 @@ export type RoomEvent =
       kind: "twinkle" | "meteor";
       to: string | null;
     }
+  /** 묶은 응원(서버가 1초마다): 별똥별 수와 얼굴마다 반짝임 수 */
+  | { type: "cheers"; meteor: number; twinkle: Record<string, number> }
   | { type: "hide"; id: string }
   | { type: "kicked"; id: string }
   | { type: "sealed"; picks: RoomPicks }

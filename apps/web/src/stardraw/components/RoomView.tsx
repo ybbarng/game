@@ -236,6 +236,12 @@ export const ROOM_REGISTER_NOTE =
 
 /** 별똥별이 하늘에 머무는 시간(ms, globals.css sd-room-meteor와 같다) */
 export const METEOR_MS = 2400;
+/**
+ * 묶은 응원(서버가 1초마다 한 소식)을 펼치는 시간(ms)과 한 묶음에서 띄우는 별똥별 수. 한꺼번에 몰리지 않게 이 시간에
+ * 고르게 나눠 띄운다. 별똥별이 이보다 많이 와도 하늘이 가득 차 보일 뿐이라 이만큼만
+ */
+export const CHEER_SPREAD_MS = 1000;
+export const CHEER_METEORS_MAX = 5;
 
 interface Spark {
   key: string;
@@ -464,6 +470,7 @@ export function RoomView({
           ),
         );
       } else if (e.type === "cheer") spark(e.kind, e.to);
+      else if (e.type === "cheers") cheerBatch(e.meteor, e.twinkle);
       else if (e.type === "closed") setClosed(true);
     };
     const open = () => {
@@ -547,6 +554,24 @@ export function RoomView({
     device.after(kind === "meteor" ? METEOR_MS : 2200, () =>
       setSparks((s) => s.filter((x) => x.key !== key)),
     );
+  };
+
+  /** 묶은 응원을 CHEER_SPREAD_MS에 고르게 펼친다(첫 것은 바로) */
+  const cheerBatch = (meteor: number, twinkle: Record<string, number>) => {
+    const meteors = Math.min(meteor, CHEER_METEORS_MAX);
+    const faces = Object.keys(twinkle).slice(0, FACES);
+    // 별똥별과 반짝임을 번갈아(한쪽이 몰리지 않게)
+    const all: [kind: "twinkle" | "meteor", to: string | null][] = [];
+    for (let i = 0; i < Math.max(meteors, faces.length); i++) {
+      if (i < meteors) all.push(["meteor", null]);
+      const to = faces[i];
+      if (to !== undefined) all.push(["twinkle", to]);
+    }
+    all.forEach(([kind, to], i) => {
+      if (i === 0) spark(kind, to);
+      else
+        device.after((i * CHEER_SPREAD_MS) / all.length, () => spark(kind, to));
+    });
   };
 
   // ---------------------------------------------------------------- 말하기·신분증

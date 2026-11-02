@@ -62,6 +62,21 @@ export interface RoomLimits {
   maxRooms: number;
   /** 시각 알림 사이(ms). 스트림이 끊기지 않게도 */
   heartbeatMs: number;
+  /**
+   * 방 전체 말 빠르기(몰아서 roomSayBurst번, 그 뒤 roomSayIntervalMs마다 한 번). 말 하나는 모든 연결에 한 번씩 쓰여
+   * 연결 수만큼 일이 늘어난다. 화면은 풍등을 동시에 몇 개만 띄우므로 그보다 많은 말은 어차피 읽히지 않는다
+   */
+  roomSayIntervalMs: number;
+  roomSayBurst: number;
+  /**
+   * 응원을 모아 보내는 사이(ms). 응원 하나마다 모든 연결에 쓰지 않고, 이 사이에 온 응원을 수로 묶어 한 소식(`cheers`)으로
+   */
+  cheerBatchMs: number;
+  /**
+   * 연결 하나에 쌓인 쓰기(아직 내보내지 못한 바이트) 상한. 넘으면 그 연결을 끊는다(화면은 잠시 뒤 다시 붙어 인사부터
+   * 받는다). 받는 쪽이 느린 연결 때문에 서버 메모리가 쌓이지 않게
+   */
+  maxBufferedBytes: number;
 }
 
 export const DEFAULT_ROOM_LIMITS: RoomLimits = {
@@ -81,6 +96,10 @@ export const DEFAULT_ROOM_LIMITS: RoomLimits = {
   maxUsedNonces: 5000,
   maxRooms: 4,
   heartbeatMs: 15_000,
+  roomSayIntervalMs: 125,
+  roomSayBurst: 16,
+  cheerBatchMs: 1000,
+  maxBufferedBytes: 256 * 1024,
 };
 
 /** 방이 서버에서 읽는 것 */
@@ -127,6 +146,11 @@ export type RoomEvent =
       kind: "twinkle" | "meteor";
       to: string | null;
     }
+  /**
+   * 묶은 응원(2026-11-03): 앞 묶음 뒤에 온 별똥별 수와 얼굴마다 반짝임 수. 한 사람씩 보내던 `cheer`는 서버가 더 보내지
+   * 않는다(옛 화면은 이 소식을 모르는 종류로 넘긴다 — 응원만 안 보이고 나머지는 그대로)
+   */
+  | { type: "cheers"; meteor: number; twinkle: Record<string, number> }
   | { type: "hide"; id: string }
   | { type: "kicked"; id: string }
   | { type: "sealed"; picks: Picks }
@@ -218,6 +242,12 @@ interface Room {
   drawnSent: boolean;
   closed: boolean;
   messageSeq: number;
+  /** 방 전체 말 빠르기 */
+  say: Bucket;
+  /** 아직 보내지 않은 응원(cheerBatchMs마다 한 소식으로) */
+  meteors: number;
+  twinkles: Map<string, number>;
+  cheerAt: number;
 }
 
 const sec = (ms: number) => Math.floor(ms / 1000);
@@ -301,6 +331,10 @@ export class RoomHub {
       drawnSent: this.deps.drawn(round),
       closed: false,
       messageSeq: 0,
+      say: { tokens: this.limits.roomSayBurst, refillAt: this.nowMs() },
+      meteors: 0,
+      twinkles: new Map(),
+      cheerAt: this.nowMs(),
     };
     this.rooms.set(round, room);
     return room;
@@ -571,6 +605,18 @@ export class RoomHub {
       !takeToken(pass.say, now, this.limits.sayIntervalMs, this.limits.sayBurst)
     )
       throw new EntryError("조금 천천히 말해 주세요", 429);
+    if (
+      !takeToken(
+        room.say,
+        now,
+        this.limits.roomSayIntervalMs,
+        this.limits.roomSayBurst,
+      )
+    ) {
+      // 표 몫은 돌려준다(방이 붐빈 것이지 이 사람이 빠른 것이 아니다)
+      pass.say.tokens = Math.min(this.limits.sayBurst, pass.say.tokens + 1);
+      throw new EntryError("관측지가 붐벼요. 조금 뒤에 다시 말해 주세요", 429);
+    }
     room.messageSeq += 1;
     const id = `${room.round}-${room.messageSeq}`;
     this.broadcast(room, {
@@ -593,8 +639,24 @@ export class RoomHub {
     if (now - pass.lastCheer < this.limits.cheerIntervalMs)
       throw new EntryError("조금 천천히 응원해 주세요", 429);
     pass.lastCheer = now;
-    const target = typeof to === "string" && this.hasFace(room, to) ? to : null;
-    this.broadcast(room, { type: "cheer", from: pass.id, kind, to: target });
+    // 모아 두었다가 cheerBatchMs마다 수로 보낸다(tick). 얼굴이 없는 반짝임은 화면에 보일 곳이 없어 세지 않는다
+    if (kind === "meteor") room.meteors += 1;
+    else if (typeof to === "string" && this.hasFace(room, to))
+      room.twinkles.set(to, (room.twinkles.get(to) ?? 0) + 1);
+  }
+
+  private flushCheers(room: Room, now: number): void {
+    if (now - room.cheerAt < this.limits.cheerBatchMs) return;
+    room.cheerAt = now;
+    if (room.meteors === 0 && room.twinkles.size === 0) return;
+    const event: RoomEvent = {
+      type: "cheers",
+      meteor: room.meteors,
+      twinkle: Object.fromEntries(room.twinkles),
+    };
+    room.meteors = 0;
+    room.twinkles.clear();
+    this.broadcast(room, event);
   }
 
   /** 신고: 국장 화면에서 그 말 옆에 수가 보인다(말은 남기지 않으므로 수만) */
@@ -694,6 +756,7 @@ export class RoomHub {
         this.closeRoom(room);
         continue;
       }
+      this.flushCheers(room, now);
       if (room.watchersDirty) {
         room.watchersDirty = false;
         this.broadcast(room, { type: "watchers", count: room.watcherCount });
@@ -722,10 +785,26 @@ export class RoomHub {
   }
 
   private writeRaw(conn: Connection, event: unknown): void {
-    conn.res.write(`data: ${JSON.stringify(event)}\n\n`);
+    this.send(conn, `data: ${JSON.stringify(event)}\n\n`);
   }
 
+  /**
+   * 쓰기 하나. 내보내지 못하고 쌓인 바이트가 상한을 넘은 연결은 끊는다(받는 쪽이 따라오지 못하는 연결에 계속 쌓으면
+   * 서버 메모리가 는다). 끊으면 close가 나서 방에서 빠지고, 화면은 잠시 뒤 다시 붙는다
+   */
+  private send(conn: Connection, text: string): void {
+    const res = conn.res;
+    if (res.destroyed) return;
+    if ((res.writableLength ?? 0) > this.limits.maxBufferedBytes) {
+      res.destroy();
+      return;
+    }
+    res.write(text);
+  }
+
+  /** 소식 글을 한 번만 만들어 모든 연결에 같은 글로 쓴다(연결마다 JSON을 다시 만들지 않는다) */
   private broadcast(room: Room, event: RoomEvent, except?: Connection): void {
-    for (const c of room.connections) if (c !== except) this.write(c, event);
+    const text = `data: ${JSON.stringify(event)}\n\n`;
+    for (const c of room.connections) if (c !== except) this.send(c, text);
   }
 }

@@ -360,15 +360,92 @@ describe("스트림과 말", () => {
     expect(status(() => hub.say(ROUND, a.pass, "다섯"))).toBe(429);
   });
 
-  it("응원은 0.8초에 한 번, 대상이 방에 없으면 하늘로", async () => {
+  it("응원은 0.8초에 한 번", async () => {
     const a = await passFor(alice);
-    const ra = new FakeRes();
-    hub.connect(ROUND, asRes(ra), a.pass);
-    hub.cheer(ROUND, a.pass, "twinkle", "없는사람");
-    expect(ra.of("cheer")[0]).toMatchObject({ kind: "twinkle", to: null });
+    expect(status(() => hub.cheer(ROUND, a.pass, "meteor", null))).toBe(200);
     expect(status(() => hub.cheer(ROUND, a.pass, "meteor", null))).toBe(429);
     clock.advance(DEFAULT_ROOM_LIMITS.cheerIntervalMs);
     expect(status(() => hub.cheer(ROUND, a.pass, "meteor", null))).toBe(200);
+  });
+
+  it("응원은 1초마다 수로 묶어 한 소식, 방에 없는 얼굴의 반짝임은 세지 않는다", async () => {
+    const a = await passFor(alice);
+    const b = await passFor(bob);
+    const ra = new FakeRes();
+    const rb = new FakeRes();
+    hub.connect(ROUND, asRes(ra), a.pass);
+    hub.connect(ROUND, asRes(rb), b.pass);
+    hub.cheer(ROUND, a.pass, "meteor", null);
+    hub.cheer(ROUND, b.pass, "twinkle", a.id);
+    clock.advance(DEFAULT_ROOM_LIMITS.cheerIntervalMs);
+    hub.cheer(ROUND, a.pass, "twinkle", "없는사람");
+    hub.cheer(ROUND, b.pass, "twinkle", a.id);
+    // 한 사람씩 보내던 소식은 더 보내지 않는다
+    expect(ra.of("cheer")).toEqual([]);
+    expect(ra.of("cheers")).toEqual([]);
+    clock.advance(1000);
+    expect(ra.of("cheers")).toEqual([
+      { type: "cheers", meteor: 1, twinkle: { [a.id]: 2 } },
+    ]);
+    expect(rb.of("cheers")).toEqual(ra.of("cheers"));
+    // 응원이 없던 사이에는 보내지 않는다
+    clock.advance(3000);
+    expect(ra.of("cheers")).toHaveLength(1);
+  });
+
+  it("방 전체 말이 상한을 넘으면 429, 그 사람의 몫은 줄지 않는다", async () => {
+    const small = smallHub({ roomSayBurst: 2, roomSayIntervalMs: 1000 });
+    const { nonce: n1 } = small.challenge(ROUND);
+    const a = await small.issuePass(ROUND, {
+      pub: alice.publicKey,
+      signature: await alice.sign(
+        roomPassMessage(ROUND, Buffer.from(n1, "base64url")),
+      ),
+      nonce: n1,
+    });
+    const { nonce: n2 } = small.challenge(ROUND);
+    const b = await small.issuePass(ROUND, {
+      pub: bob.publicKey,
+      signature: await bob.sign(
+        roomPassMessage(ROUND, Buffer.from(n2, "base64url")),
+      ),
+      nonce: n2,
+    });
+    expect(status(() => small.say(ROUND, a.pass, "하나"))).toBe(200);
+    expect(status(() => small.say(ROUND, a.pass, "둘"))).toBe(200);
+    expect(status(() => small.say(ROUND, b.pass, "셋"))).toBe(429);
+    clock.advance(1000);
+    // 방 몫이 다시 찼고, 밀렸던 bob의 몫(몰아서 3번)은 그대로다
+    expect(status(() => small.say(ROUND, b.pass, "셋"))).toBe(200);
+    clock.advance(1000);
+    expect(status(() => small.say(ROUND, b.pass, "넷"))).toBe(200);
+    small.stop();
+  });
+
+  it("쓰기가 쌓여 상한을 넘은 연결은 끊고 방에서 뺀다", async () => {
+    const small = smallHub({ maxBufferedBytes: 1000 });
+    const slow = new FakeRes() as FakeRes & {
+      writableLength: number;
+      destroyed: boolean;
+      destroy: () => void;
+    };
+    slow.writableLength = 0;
+    slow.destroyed = false;
+    slow.destroy = () => {
+      slow.destroyed = true;
+      slow.emit("close");
+    };
+    const fast = new FakeRes();
+    small.connect(ROUND, asRes(slow), undefined);
+    small.connect(ROUND, asRes(fast), undefined);
+    clock.advance(1000);
+    expect(slow.of("watchers").at(-1)).toMatchObject({ count: 2 });
+    slow.writableLength = 1001;
+    clock.advance(15_000);
+    expect(slow.destroyed).toBe(true);
+    clock.advance(1000);
+    expect(fast.of("watchers").at(-1)).toMatchObject({ count: 1 });
+    small.stop();
   });
 });
 
