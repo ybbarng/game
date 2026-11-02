@@ -1576,12 +1576,15 @@ function DrawFor({
   useEffect(() => {
     if (!record) setLive(true);
   }, [record]);
-  // 서버가 있고 방이 열려 있으면 회차 방(실시간 추첨, docs/36 11-23). 실시간 추첨이 끝난 뒤에는 그때 방에 있던
-  // 사람(이 화면에서 방을 보던 사람, 대화 표가 있는 사람)만 방에 남고, 나중에 온 사람은 다시 보기 규칙을 따른다
+  // 서버가 있고 방이 열려 있으면 회차 방(실시간 추첨, docs/36 11-23). 실시간 추첨이 끝난 뒤에 처음 온 사람은 다시 보기
+  // 규칙으로 관측을 먼저 보고(결과를 바로 보이지 않게), 끝까지 보면(이 기기에서 이미 본 회차면 바로) 관측지가 닫히기 전까지
+  // 관측지로 들어가 언덕에 오를 수 있다(2026-11-02 사용자). 그때 방에 있던 사람·대화 표가 있는 사람은 그대로 방에 남는다
   const wasInRoom = useRef(false);
+  const [watched, setWatched] = useState(seen);
   const showRoom =
     roomOpen(services, round, status.now) &&
     (wasInRoom.current ||
+      watched ||
       !liveOver(services, round, record, status.now * 1000) ||
       savedPass(round) !== null);
   wasInRoom.current = showRoom;
@@ -1626,7 +1629,10 @@ function DrawFor({
       onNext={canEnter ? onEnter : undefined}
       // 첫 추첨은 끝까지 보고, 그 뒤로는 이미 결과가 나온 회차를 나중에 열 때만 건너뛸 수 있다
       canSkip={!live && services.wallet.watchedDraw()}
-      onWatched={() => services.wallet.markWatchedDraw()}
+      onWatched={() => {
+        services.wallet.markWatchedDraw();
+        setWatched(true);
+      }}
       record={record}
       ticket={mine.find((m) => m.ticket.round === round)?.ticket}
       clock={services.clock}

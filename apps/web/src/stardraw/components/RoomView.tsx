@@ -209,7 +209,7 @@ export function RoomView({
   const [lanterns, setLanterns] = useState<Lantern[]>([]);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [closed, setClosed] = useState(false);
-  /** 서버에서 언덕 소식(hello)을 받았는지. 추첨 뒤 표 없이 온 사람은 받지 못한다 */
+  /** 서버에서 언덕 소식(hello)을 받았는지(받기 전에는 언덕이 비었는지 모른다) */
   const [heard, setHeard] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [now, setNow] = useState(() => client.serverNow());
@@ -276,8 +276,7 @@ export function RoomView({
           err &&
           (err.status === 409 || err.status === 410 || err.status === 404)
         ) {
-          // 409(추첨 뒤 새로 온 사람)는 내 자리 칸이 같은 말을 하므로 따로 띄우지 않는다
-          if (err.status !== 409) setProblem(err.message);
+          setProblem(err.message);
           if (err.status === 410) setClosed(true);
           return;
         }
@@ -612,7 +611,6 @@ export function RoomView({
   const seat = roomSeat({
     pass: pass !== null,
     hasKey,
-    canJoin: !closed && now < drawAt * 1000,
     others: visible.filter((i) => i !== me).length,
     over: phase === "after",
     heard,
@@ -827,14 +825,6 @@ export function RoomView({
               </span>
             </p>
           )
-        ) : seat.badge === null ? (
-          // 관측이 끝난 뒤 오르지 못한 사람: 까닭 한 줄만
-          <p
-            data-room-seat="after"
-            className="text-balance break-keep text-center text-sm text-white/60"
-          >
-            {seat.note}
-          </p>
         ) : (
           <div
             data-room-seat="watching"
@@ -860,13 +850,15 @@ export function RoomView({
                 </span>
               )}
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full border border-white/60"
-              />
-              {seat.badge}
-            </span>
+            {seat.badge && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full border border-white/60"
+                />
+                {seat.badge}
+              </span>
+            )}
             {seat.note && (
               <p className="text-balance break-keep text-sm text-white/70">
                 {seat.note}

@@ -5,7 +5,6 @@ import { roomSeat } from "./room-seat";
 const base = {
   pass: false,
   hasKey: true,
-  canJoin: true,
   others: 0,
   over: false,
   heard: true,
@@ -33,15 +32,8 @@ describe("관측지 내 자리 · 관측 전과 관측 중", () => {
     expect(s.join).toBe("우주인 등록하고 언덕에 오르기");
   });
 
-  it("추첨이 시작된 뒤에는 참여 단추가 없고 그 까닭을 말한다", () => {
-    const s = roomSeat({ ...base, canJoin: false, others: 2 });
-    expect(s.join).toBeNull();
-    expect(s.badge).toBe("숨어서 관측 중");
-    expect(s.note).toBe("관측이 시작되어 이제는 언덕에 오를 수 없어요.");
-  });
-
-  it("추첨 뒤에 와서 언덕 소식을 받지 못했으면 언덕이 비었다고 하지 않는다", () => {
-    const s = roomSeat({ ...base, canJoin: false, heard: false });
+  it("언덕 소식을 아직 받지 못했으면 언덕이 비었다고 하지 않는다", () => {
+    const s = roomSeat({ ...base, heard: false });
     expect(s.hill).toBeNull();
   });
 
@@ -55,14 +47,14 @@ describe("관측지 내 자리 · 관측 전과 관측 중", () => {
   });
 
   it("신분증을 낸 뒤 함께 있으면 언덕 문구 없음", () => {
-    const s = roomSeat({ ...base, pass: true, canJoin: false, others: 1 });
+    const s = roomSeat({ ...base, pass: true, others: 1 });
     expect(s.badge).toBe("언덕에서 관측 중");
     expect(s.hill).toBeNull();
   });
 });
 
 describe("관측지 내 자리 · 관측이 끝난 뒤", () => {
-  const over = { ...base, canJoin: false, over: true };
+  const over = { ...base, over: true };
 
   it("언덕에 있던 사람은 「관측 중」 표시 없이 그대로 이야기한다", () => {
     const s = roomSeat({ ...over, pass: true, others: 2 });
@@ -71,11 +63,11 @@ describe("관측지 내 자리 · 관측이 끝난 뒤", () => {
     expect(s.note).toBeNull();
   });
 
-  it("오르지 못한 사람에게는 관측이 끝났다는 까닭 한 줄만", () => {
+  it("아직 오르지 않은 사람도 관측지가 닫히기 전까지 언덕에 오를 수 있다(「관측 중」 표시와 설명 없이)", () => {
     const s = roomSeat({ ...over, others: 2 });
     expect(s.joined).toBe(false);
     expect(s.badge).toBeNull();
-    expect(s.join).toBeNull();
-    expect(s.note).toBe("관측이 끝나 이제는 언덕에 오를 수 없어요.");
+    expect(s.note).toBeNull();
+    expect(s.join).toBe("언덕에 오르기");
   });
 });
