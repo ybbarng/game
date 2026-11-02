@@ -869,17 +869,20 @@ export function RoomView({
         ))}
 
       {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
-      {closed ? (
+      {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다 */}
+      {(closed || phase === "after") && (
         <div className="flex flex-col items-center gap-2 py-2">
           <button
             type="button"
             onClick={onEnter}
+            data-room-next
             className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
           >
             다음 회차 응모하기
           </button>
         </div>
-      ) : !seat.joined ? null : (
+      )}
+      {closed || !seat.joined ? null : (
         <form
           className="flex items-center gap-2"
           onSubmit={(e) => {

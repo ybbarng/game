@@ -1163,6 +1163,32 @@ test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", 
   await expect(hurry).toHaveCount(0);
 });
 
+/** 예측(응모)이 끝나면 응모 화면에는 관측지로 가는 길만 남는다(2026-11-02 사용자) */
+test("응모 마감 뒤: 응모 화면은 관측지로 가기만", async ({ page }, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await virtualAuthenticator(page);
+  await page.goto("/stardraw");
+  await page.getByRole("button", REGISTER).click();
+  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+  await expect(page.getByRole("button", ENTER)).toBeVisible();
+  // 화면 마감(:54:55) 뒤 서버 마감(:55) 전
+  await page.clock.setSystemTime(new Date("2026-11-02T03:54:57Z"));
+  const closed = page.locator("[data-enter-closed]");
+  await expect(closed).toContainText("이번 회차 응모가 마감되었습니다.");
+  await expect(page.getByRole("button", ENTER)).toHaveCount(0);
+  // 다음 회차로 넘어갔지만 앞 회차 추첨(정각) 전
+  await page.clock.setSystemTime(new Date("2026-11-02T03:56:00Z"));
+  await expect(closed).toContainText(
+    "앞 회차 관측이 끝나면 응모할 수 있습니다.",
+  );
+  await page.screenshot({
+    path: info.outputPath("stardraw-enter-closed.png"),
+    fullPage: true,
+  });
+  await closed.getByRole("button", { name: "관측지로 가기" }).click();
+  await expect(page).toHaveURL(/#draw-\d+$/);
+});
+
 /** 마감 직전: 위에 "마감까지 …" 안내가 뜨고, 연출을 줄여 마감 전에 접수된다 */
 test("마감 직전 응모: 줄인 연출로 마감 전에 접수", async ({ page }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");

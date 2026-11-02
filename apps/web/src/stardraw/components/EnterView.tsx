@@ -47,6 +47,7 @@ import { BounceSlip, ErrorStage, HurryNotice, kstClock } from "./EntryDeadline";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { KeyIcon } from "./PasskeyHelp";
 import { LottoBall, StardrawTitle, StarInfo } from "./parts";
+import { liveDrawRound } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
 import { StageOverlay, useReducedMotion } from "./StageOverlay";
 
@@ -158,7 +159,14 @@ export function EnterView({
   } | null>(null);
   const [useQual, setUseQual] = useState(true);
   const full = picked.length === 6;
-  const open = status.phase === "open";
+  // 예측(응모)과 관측은 차례로(2026-11-02 사용자): 앞 회차 실시간 추첨을 관측하는 동안에는 다음 회차가 서버에서
+  // 이미 열렸어도(앞 회차 기록은 연출보다 먼저 닫힌다) 응모를 받지 않고 관측지로 이끈다
+  const live = liveDrawRound(services, status);
+  const observing = live !== null && live < status.round;
+  const open = status.phase === "open" && !observing;
+  /** 응모를 받지 않을 때 갈 관측지: 마감한 이번 회차, 아니면 추첨을 기다리거나 관측 중인 앞 회차 */
+  const watchRound =
+    live ?? (status.phase === "closing" ? status.round : status.nextDrawRound);
   // 데모는 실제 패스키 대신 화면 안 흉내 시트를 쓴다: 패스키를 못 쓰는 환경 안내로 막지 않는다
   const demo = services.ns === DEMO_NS;
 
@@ -579,7 +587,7 @@ export function EnterView({
           onPick={picking ? toggle : undefined}
           label={`응모판: 서울 하늘의 밝은 별 45개. 고른 별 ${picked.join(", ") || "없음"}`}
         />
-        {status.phase === "open" && (
+        {open && (
           <HurryNotice
             left={status.times.entryDeadline - status.now}
             floating={submitting || !!entryError}
@@ -649,20 +657,38 @@ export function EnterView({
 
       {error && <ErrorBox error={error} />}
 
-      <button
-        type="button"
-        disabled={!full || !open || !picking}
-        onClick={() => void start()}
-        className="sd-cta rounded-2xl py-4 font-black text-slate-950 text-xl disabled:opacity-40"
-      >
-        {stage === "busy"
-          ? "응모하고 있습니다"
-          : !open
-            ? status.phase === "waiting"
-              ? "앞 회차 추첨이 끝나면 응모할 수 있습니다"
-              : "이번 회차 응모가 마감되었습니다"
-            : "응모하기"}
-      </button>
+      {/* 예측이 끝나면 관측지로 가는 길만 연다(응모 중인 사람은 그대로 끝까지) */}
+      {!open && stage !== "busy" && onWatchDraw ? (
+        <div className="flex flex-col items-center gap-2" data-enter-closed>
+          <p className="break-keep text-center text-sm text-white/70">
+            {status.phase === "closing"
+              ? "이번 회차 응모가 마감되었습니다."
+              : "앞 회차 관측이 끝나면 응모할 수 있습니다."}
+          </p>
+          <button
+            type="button"
+            onClick={() => onWatchDraw(watchRound)}
+            className="sd-cta w-full rounded-2xl py-4 font-black text-slate-950 text-xl"
+          >
+            관측지로 가기
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={!full || !open || !picking}
+          onClick={() => void start()}
+          className="sd-cta rounded-2xl py-4 font-black text-slate-950 text-xl disabled:opacity-40"
+        >
+          {stage === "busy"
+            ? "응모하고 있습니다"
+            : !open
+              ? status.phase === "closing"
+                ? "이번 회차 응모가 마감되었습니다"
+                : "앞 회차 관측이 끝나면 응모할 수 있습니다"
+              : "응모하기"}
+        </button>
+      )}
     </section>
   );
 }
