@@ -48,14 +48,17 @@ COPY . .
 #   NEXT_PUBLIC_SITE_URL   공유 미리보기 이미지 주소
 #   NEXT_PUBLIC_UMAMI_WEBSITE_ID  사이트 통계(stats.byb.kr umami) ID. 비우면 통계 스크립트를 싣지 않는다(docs/33)
 #   NEXT_PUBLIC_STARDRAW_API  하늘의 별 따기 서버 주소(예: /stardraw-api). 비우면 기기 안 연습 장부로 돈다(docs/36 11-5)
+#   NEXT_PUBLIC_STARDRAW_DEMO  0이면 로컬·시험 전용 데모 /stardraw/demo를 결과물에서 뺀다(scripts/drop-demo-pages.mjs). 운영 이미지는 늘 0
 ARG NEXT_PUBLIC_SITE_URL=https://game.byb.kr
 ARG NEXT_PUBLIC_UMAMI_WEBSITE_ID=
 ARG NEXT_PUBLIC_STARDRAW_API=
+ARG NEXT_PUBLIC_STARDRAW_DEMO=0
 # 빌드한 커밋(.git 은 빌드 문맥에 없다). 빌드 id와 화면 코드 해시 목록 build-hashes.json 에 들어간다(docs/36 11-8 재현 빌드)
 ARG SOURCE_COMMIT=
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID \
     NEXT_PUBLIC_STARDRAW_API=$NEXT_PUBLIC_STARDRAW_API \
+    NEXT_PUBLIC_STARDRAW_DEMO=$NEXT_PUBLIC_STARDRAW_DEMO \
     SOURCE_COMMIT=$SOURCE_COMMIT \
     NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @game/web build

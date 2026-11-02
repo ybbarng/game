@@ -30,10 +30,7 @@ export function StardrawAdmin() {
           <p className="break-keep text-white/70">
             카노푸스 우주국장이 국장 패스키로 서명해 운영 기록을 남깁니다.
             누구나 이 화면을 열 수 있지만, 장부에 지정된 국장 열쇠의 서명만
-            받습니다.{" "}
-            <a href="/stardraw/demo#director" className="underline">
-              데모에서 해 보기
-            </a>
+            받습니다.
           </p>
         </header>
         <DirectorConsole backend={backend} keyring={keyring} />

@@ -66,7 +66,6 @@ const PAGES: [string, string][] = [
   ["배우기", "/stardraw/learn"],
   ["검증", "/stardraw/verify"],
   ["소속", "/stardraw/qualify"],
-  ["데모", "/stardraw/demo"],
 ];
 
 /**

@@ -147,12 +147,6 @@ export default function StardrawAbout() {
             진행합니다.
           </p>
           <a
-            href="/stardraw/demo"
-            className="self-start rounded-xl border border-amber-200/40 px-4 py-2 text-amber-100 text-sm hover:bg-amber-200/10"
-          >
-            데모에서 예측부터 당첨자 확인까지 해 보기
-          </a>
-          <a
             href="/stardraw/learn"
             className="self-start text-amber-100/90 text-sm underline underline-offset-2"
           >

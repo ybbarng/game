@@ -27,6 +27,9 @@ env:
   NEXT_PUBLIC_SITE_URL: https://game.byb.kr
   NEXT_PUBLIC_UMAMI_WEBSITE_ID: 73d4af92-bdfe-4bcb-945a-cdc440d380f4
   NEXT_PUBLIC_STARDRAW_API: /stardraw-api
+  # 데모 /stardraw/demo는 로컬·시험 전용이라 운영 결과물에서 뺀다(2026-11-02 사용자, scripts/drop-demo-pages.mjs).
+  # 아래 reproduce 작업도 이 값으로 빌드해 같은 파일 목록이 나온다
+  NEXT_PUBLIC_STARDRAW_DEMO: "0"
 
 permissions:
   contents: read
@@ -67,6 +70,7 @@ jobs:
             NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
             NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ env.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
             NEXT_PUBLIC_STARDRAW_API=${{ env.NEXT_PUBLIC_STARDRAW_API }}
+            NEXT_PUBLIC_STARDRAW_DEMO=${{ env.NEXT_PUBLIC_STARDRAW_DEMO }}
             SOURCE_COMMIT=${{ env.SHA }}
           cache-from: type=gha,scope=game
           cache-to: type=gha,scope=game,mode=max
@@ -82,6 +86,7 @@ jobs:
             NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
             NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ env.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
             NEXT_PUBLIC_STARDRAW_API=${{ env.NEXT_PUBLIC_STARDRAW_API }}
+            NEXT_PUBLIC_STARDRAW_DEMO=${{ env.NEXT_PUBLIC_STARDRAW_DEMO }}
             SOURCE_COMMIT=${{ env.SHA }}
           cache-from: type=gha,scope=game
       - name: 해시 목록 요약

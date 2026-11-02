@@ -384,3 +384,29 @@ test("앱 밖 페이지마다 첫 화면에 「← 하늘의 별 따기」", asy
       await page.screenshot({ path: info.outputPath("nav-home-verify.png") });
   }
 });
+
+/**
+ * 데모 /stardraw/demo는 로컬 디버깅·화면 시험 전용이다(2026-11-02 사용자). 운영 빌드에서는 파일을 지우고 nginx도 404로 막는다
+ * (scripts/drop-demo-pages.mjs, deploy/nginx.conf). 화면 어디에도 데모로 가는 링크가 없어야 한다: 메뉴 더 보기·설명·국장 화면
+ */
+test("데모로 가는 링크가 화면에 없다(메뉴 더 보기·설명·국장 화면)", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+  const demoLinks = page.locator('a[href^="/stardraw/demo"]');
+  await page.goto("/stardraw");
+  await page.locator("[data-tab='more']:visible").click();
+  await expect(
+    page.getByRole("link", { name: "소속", exact: true }),
+  ).toBeVisible();
+  await expect(demoLinks).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "데모" })).toHaveCount(0);
+  for (const path of ["/stardraw/about", "/stardraw/admin"]) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("link", { name: "← 하늘의 별 따기", exact: true }),
+      path,
+    ).toBeVisible();
+    await expect(demoLinks, path).toHaveCount(0);
+  }
+});
