@@ -22,8 +22,8 @@ const trial: Schedule = {
 
 describe("관측 시간표", () => {
   it("관측을 기다리는 회차부터, 확정 뒤 예정 세 줄까지", () => {
-    // 224회 예측 중, 223회 마감 뒤 관측 기다림, 기록은 222회까지
-    const now = roundTimes(trial, 224).opensAt + 60;
+    // 224회 예측 중(223회 관측 1분 뒤), 223회는 관측 연출 전, 기록은 222회까지
+    const now = roundTimes(trial, 224).opensAt + 6 * MIN;
     const t = timetable(trial, 222, now, 224, 223, false);
     expect(t.fixedThrough).toBe(226);
     expect(t.rows.map((r) => [r.round, r.state, r.fixed])).toEqual([
@@ -36,6 +36,17 @@ describe("관측 시간표", () => {
       [229, "upcoming", false],
     ]);
     expect(t.change).toBeNull();
+  });
+
+  it("접수는 앞 회차 관측 시각부터(그 전 5분은 앞 회차 기록을 기다린다)", () => {
+    const slot = roundTimes(trial, 224).opensAt;
+    const before = timetable(trial, 222, slot + 60, 224, 223, false);
+    expect(before.rows[1]).toMatchObject({ round: 224, state: "upcoming" });
+    expect(before.rows[1]?.opensAt).toBe(
+      roundTimes(trial, 223).closesAt + 5 * MIN,
+    );
+    const after = timetable(trial, 223, slot + 5 * MIN, 224, null, false);
+    expect(after.rows[0]).toMatchObject({ round: 224, state: "open" });
   });
 
   it("관측 연출 중인 회차는 관측 중", () => {
@@ -66,7 +77,7 @@ describe("관측 시간표", () => {
       fromRound: 228,
       length: 60 * MIN,
     } as Schedule["entries"][number]);
-    const now = roundTimes(hourly, 224).opensAt + 60;
+    const now = roundTimes(hourly, 224).opensAt + 6 * MIN;
     const t = timetable(hourly, 222, now, 224, 223, false);
     expect(t.fixedThrough).toBe(227);
     expect(t.change).toEqual({ fromRound: 228, length: 60 * MIN });

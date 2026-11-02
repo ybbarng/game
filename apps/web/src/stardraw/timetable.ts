@@ -24,7 +24,10 @@ export type TimetableState =
 
 export interface TimetableRow {
   round: number;
-  /** 예측 접수 시작 */
+  /**
+   * 예측 접수 시작: 앞 회차 관측 시각(문제 값이 앞 회차 기록에서 나와 그 전에는 받지 않는다, 서버 장부의 "waiting").
+   * 장부 일정표의 회차 칸 시작(앞 회차 마감)보다 drand 지연만큼 늦다. 1회차는 칸 시작 그대로
+   */
   opensAt: number;
   /** 화면이 예측을 막는 시각(마감) */
   deadline: number;
@@ -71,19 +74,20 @@ export function timetable(
   for (let round = first; round <= last; round++) {
     const t = roundTimes(schedule, round);
     const observeAt = t.closesAt + DRAND_DELAY;
+    const opensAt = round > 1 ? t.opensAt + DRAND_DELAY : t.opensAt;
     const state: TimetableState =
       round === observing
         ? live
           ? "observing"
           : "closed"
-        : now < t.opensAt
+        : now < opensAt
           ? "upcoming"
           : now < t.entryDeadline
             ? "open"
             : "closed";
     rows.push({
       round,
-      opensAt: t.opensAt,
+      opensAt,
       deadline: t.entryDeadline,
       closesAt: t.closesAt,
       observeAt,
