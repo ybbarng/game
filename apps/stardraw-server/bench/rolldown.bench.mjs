@@ -11,6 +11,7 @@ export default defineConfig({
     light: "bench/light.ts",
     "light-backfill": "bench/light-backfill.ts",
     rehearsal: "bench/rehearsal.ts",
+    room: "bench/room.ts",
   },
   platform: "node",
   output: { dir: "dist/bench", format: "esm" },
