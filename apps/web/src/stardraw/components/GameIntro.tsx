@@ -2,12 +2,12 @@
 
 import { realClock } from "@game/fair-play";
 import { createRng, nextInt } from "@game/mighty-engine";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { constellationOf } from "../celebrate";
 import type { HdrGlow } from "../hdr-glow";
-import { starOf } from "../sky";
-import { MOTION_MS, type SkyMotion } from "../sky-draw";
+import { SKY_STARS, starOf } from "../sky";
+import { MOTION_MS, numberBox, type SkyMotion } from "../sky-draw";
 import { LottoBall } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 
@@ -73,6 +73,7 @@ export function GameIntro({
   const [example, setExample] = useState<IntroExample>(FIRST_EXAMPLE);
   // 빈 하늘에서 시작해 하나씩 생긴다(움직임 줄이기면 아래에서 바로 다 그린다)
   const [shown, setShown] = useState(0);
+  const maskId = `intro-mask-${useId().replace(/:/g, "")}`;
   const [motion, setMotion] = useState<SkyMotion | undefined>(NO_MOTION);
   /** 지금 반짝이는 공(번호순, 6이면 보너스, -1이면 없음) */
   const [twinkle, setTwinkle] = useState(-1);
@@ -183,22 +184,48 @@ export function GameIntro({
             aria-hidden="true"
             className="sd-intro-fade pointer-events-none absolute inset-0 size-full"
           >
-            {edges.map(([p0, q0], k) => {
-              const p = starOf(p0);
-              const q = starOf(q0);
-              return (
-                <line
-                  key={`${numbers.join("-")}-${p0}-${q0}`}
-                  x1={p.x * 100}
-                  y1={p.y * 100}
-                  x2={q.x * 100}
-                  y2={q.y * 100}
-                  pathLength={1}
-                  className="sd-intro-line"
-                  style={{ strokeDashoffset: edgeShown(k, shown) ? 0 : 1 }}
-                />
-              );
-            })}
+            {/* 이음선은 번호 글자 자리에서 흐리게 사라진다(선이 글자를 가렸다, 2026-11-03 검토). 가장자리를 흐려 네모로 보이지 않게 */}
+            <defs>
+              <filter id={`${maskId}-soft`}>
+                <feGaussianBlur stdDeviation="0.5" />
+              </filter>
+              <mask id={maskId} maskUnits="userSpaceOnUse">
+                <rect width="100" height="100" fill="#fff" />
+                <g filter={`url(#${maskId}-soft)`}>
+                  {SKY_STARS.map((s) => {
+                    const b = numberBox(s);
+                    return (
+                      <rect
+                        key={s.n}
+                        x={b.x * 100}
+                        y={b.y * 100}
+                        width={b.w * 100}
+                        height={b.h * 100}
+                        fill="#000"
+                      />
+                    );
+                  })}
+                </g>
+              </mask>
+            </defs>
+            <g mask={`url(#${maskId})`}>
+              {edges.map(([p0, q0], k) => {
+                const p = starOf(p0);
+                const q = starOf(q0);
+                return (
+                  <line
+                    key={`${numbers.join("-")}-${p0}-${q0}`}
+                    x1={p.x * 100}
+                    y1={p.y * 100}
+                    x2={q.x * 100}
+                    y2={q.y * 100}
+                    pathLength={1}
+                    className="sd-intro-line"
+                    style={{ strokeDashoffset: edgeShown(k, shown) ? 0 : 1 }}
+                  />
+                );
+              })}
+            </g>
           </svg>
         }
       />

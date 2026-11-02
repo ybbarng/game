@@ -130,7 +130,8 @@ export function BureauWelcome({
           aria-label="우주국 편지 열기"
           className="sd-envelope sd-letter-envelope flex h-28 w-48 flex-col items-center justify-end rounded-xl pb-3 text-slate-900"
         >
-          <span className="-translate-x-1/2 -translate-y-1/2 absolute top-[46%] left-1/2">
+          {/* 봉인은 덮개 끝보다 조금 위: 작은 봉투는 아래 두 줄(받는 이·편지 열기)과 겹치지 않게(2026-11-03 검토) */}
+          <span className="-translate-x-1/2 -translate-y-1/2 absolute top-[34%] left-1/2">
             <WaxSeal className="sd-env-seal block size-8" />
           </span>
           <span className="text-[11px] text-slate-600">처음 오신 우주인께</span>

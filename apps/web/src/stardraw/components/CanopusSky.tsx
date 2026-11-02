@@ -241,10 +241,19 @@ export function CanopusChart() {
               .map(([ra, dec]) => project(ra, dec))
               .filter((p) => p.inside);
             if (pts.length < 2) return null;
-            const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-            const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+            const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+            const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length + 12;
+            // 글자 양 끝이 둥근 테 안에 들도록 가운데 쪽으로 당긴다(가장자리 별자리 이름이 잘렸다, 2026-11-03 검토)
+            const half = (con.length * 9) / 2 + 4;
+            const room = S / 2 - 6;
+            const dx = cx - S / 2;
+            const dy = cy - S / 2;
+            const fits = (t: number) =>
+              Math.hypot(Math.abs(dx * t) + half, Math.abs(dy * t) + 4) <= room;
+            let t = 1;
+            while (t > 0 && !fits(t)) t -= 0.02;
             return (
-              <text key={con} x={x} y={y + 12}>
+              <text key={con} x={S / 2 + dx * t} y={S / 2 + dy * t}>
                 {con}
               </text>
             );
@@ -272,24 +281,35 @@ export function CanopusChart() {
             카노푸스
           </text>
         </g>
+        {/* 남쪽 끝 이름은 그 점선을 따라 쓴다(곧은 글자가 굽은 선과 겹쳤다, 2026-11-03 검토). 서울은 오른쪽, 마라도는 왼쪽 */}
         <g fontSize="8.5">
           {limits.map((l, i) => {
-            const p = project(
-              CANOPUS.ra + (i === 0 ? -34 : 30),
-              l.place.lat - 90,
-            );
+            const pts = [];
+            // 적경이 줄어드는 쪽이 화면 오른쪽이라, 글자가 바로 서게 왼쪽에서 오른쪽으로 잇는다
+            const [from, to] = i === 0 ? [-8, -64] : [64, 8];
+            for (let d = from; d >= to; d -= 1)
+              pts.push(project(CANOPUS.ra + d, l.place.lat - 90));
+            const pathId = `${clipId}-limit${i}`;
             return (
-              <text
-                key={l.label}
-                x={p.x}
-                y={p.y - 4}
-                fill={
-                  i === 0 ? "rgba(255,200,140,0.85)" : "rgba(140,230,210,0.85)"
-                }
-                textAnchor="middle"
-              >
-                {l.label}
-              </text>
+              <g key={l.label}>
+                <path id={pathId} d={pathOf(pts)} fill="none" />
+                <text
+                  dy={-4}
+                  fill={
+                    i === 0
+                      ? "rgba(255,200,140,0.85)"
+                      : "rgba(140,230,210,0.85)"
+                  }
+                >
+                  <textPath
+                    href={`#${pathId}`}
+                    startOffset="50%"
+                    textAnchor="middle"
+                  >
+                    {l.label}
+                  </textPath>
+                </text>
+              </g>
             );
           })}
         </g>

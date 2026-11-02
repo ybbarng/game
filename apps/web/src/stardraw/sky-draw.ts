@@ -1,6 +1,12 @@
 import { createRng, nextFloat } from "@game/mighty-engine";
 
-import { SKY_LINES, SKY_STARS, starRadius, tempColor } from "./sky";
+import {
+  SKY_LINES,
+  SKY_STARS,
+  type SkyStar,
+  starRadius,
+  tempColor,
+} from "./sky";
 import { type Meteor, type Twinkle, twinkleLevel } from "./sky-effects";
 
 /**
@@ -455,6 +461,29 @@ function paintTop(g: Ctx, sc: Scene) {
 }
 
 /** 별 번호 글자(별 오른쪽 위) */
+/**
+ * 번호 글자(paintNumber)가 차지하는 네모(판 너비에 대한 비율, 둘레 여유 포함). 판 너비가 scaleOf의 비례 구간(198~576px)이면
+ * 너비와 상관없이 같다. 정답 예시의 이음선이 번호를 가리지 않게 이 자리를 비운다(2026-11-03 검토)
+ */
+export function numberBox(s: SkyStar): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  const k = 1 / 360;
+  const r = starRadius(s.mag);
+  const font = 11;
+  const pad = 1.5;
+  const baseline = -r - 1.5;
+  return {
+    x: s.x + (r + 2.5 - pad) * k,
+    y: s.y + (baseline - font * 0.8 - pad) * k,
+    w: (String(s.n).length * font * 0.62 + 2 * pad) * k,
+    h: (font + 2 * pad) * k,
+  };
+}
+
 function paintNumber(
   g: Ctx,
   st: Scene["stars"][number],
