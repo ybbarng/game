@@ -44,7 +44,7 @@ export function BureauWelcome({
           aria-label="우주국 편지 열기"
           className="sd-envelope sd-letter-envelope flex h-28 w-48 flex-col items-center justify-end rounded-xl pb-3 text-slate-900"
         >
-          <span className="text-[11px] text-slate-600">우주인 후보께</span>
+          <span className="text-[11px] text-slate-600">처음 오신 우주인께</span>
           <span className="font-bold">편지 열기</span>
         </button>
       )}
@@ -82,7 +82,7 @@ function Letter({ cadence }: { cadence: string }) {
       data-letter
       className="sd-text-in mx-auto flex w-full max-w-md flex-col gap-3 break-keep rounded-sm bg-[#f3eedf] px-6 py-6 text-left text-[15px] text-slate-800 leading-relaxed shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
     >
-      <p className="font-bold">우주인 후보께.</p>
+      <p className="font-bold">처음 오신 우주인께.</p>
       <p>
         카노푸스 우주국은 오랜 관측 끝에, 서울 하늘의 밝은 별 45개 가운데{" "}
         {cadence} 6개가 빛난다는 것을 알아냈습니다. 그러나 다음에 빛날 별을 미리
