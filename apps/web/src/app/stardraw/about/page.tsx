@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Fragment } from "react";
 
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import {
@@ -10,7 +11,7 @@ import { RANK_RULE } from "@/stardraw/results";
 export const metadata: Metadata = {
   title: { absolute: "하늘의 별 따기 설명 · Stardraw" },
   description:
-    "하늘의 별 따기 게임 방법, 당첨자 확인, 우주국장의 권한, 패스키와 보안, 우주국이 보관하는 것.",
+    "하늘의 별 따기 한 회차의 흐름, 장소와 낱말, 당첨자 확인, 우주국장의 권한, 패스키와 보안, 우주국이 보관하는 것.",
 };
 
 export const viewport: Viewport = { themeColor: "#070d19" };
@@ -31,6 +32,77 @@ function Section({
     </section>
   );
 }
+
+/** 한 회차의 한 단계: 장소·시각, 여기서 하는 일 한 줄, 그 아래 자세한 설명 */
+function FlowStep({
+  n,
+  place,
+  time,
+  does,
+  children,
+}: {
+  n: number;
+  place: string;
+  time: string;
+  does: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span
+        aria-hidden="true"
+        className="grid size-7 shrink-0 place-items-center rounded-full border border-amber-200/40 font-bold text-amber-100 text-sm"
+      >
+        {n}
+      </span>
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <h3 className="font-bold">
+          {place}
+          <span className="ml-2 font-normal text-sm text-white/55 tabular-nums">
+            {time}
+          </span>
+        </h3>
+        <p className="text-amber-100/90">{does}</p>
+        <div className="flex flex-col gap-1.5 text-sm text-white/75">
+          {children}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** 화면에 나오는 장소와 낱말(docs/36 11-29·11-36 낱말표, 화면 문구와 같은 이름만) */
+const WORDS: [string, string][] = [
+  [
+    "우주인 등록증",
+    "내 기기의 패스키로 만든 등록증입니다. 예측서에 서명하고, 관측지에서 신분증으로 제시합니다.",
+  ],
+  ["접수처", "지금 회차의 예측서를 내는 곳입니다."],
+  ["별 바구니", "고른 별 6개를 담아 두는 칸입니다."],
+  ["예측서", "빛날 별 6개를 적어 내는 종이입니다. 내 패스키로 서명해 냅니다."],
+  [
+    "접수증",
+    "우주국이 예측서를 받았다고 서명해 주는 증서입니다. 관측 시각과 일련번호가 적히고, 관측 뒤에는 결과가 찍힙니다.",
+  ],
+  [
+    "관측지",
+    "회차마다 열려 다른 우주인과 함께 관측하는 곳입니다. 정각 7분 뒤 닫힙니다.",
+  ],
+  [
+    "언덕",
+    "관측지에서 얼굴을 내보이고 이야기를 나누는 자리입니다. 신분증을 제시하면 오릅니다.",
+  ],
+  [
+    "언덕 아래",
+    "언덕에 오르지 않은 우주인이 숨어서 관측하는 자리입니다. 남의 얼굴과 말은 보이지만 나는 보이지 않습니다.",
+  ],
+  [
+    "내 기록",
+    "「내 예측」 탭에서 당첨증, 관측 수첩, 당첨 내역, 기념 서류를 모아 보는 곳입니다.",
+  ],
+  ["당첨증", "1~3등 예측서에 주는 증서입니다."],
+  ["관측 수첩", "4등을 할 때마다 별 도장을 하나씩 찍는 수첩입니다."],
+];
 
 /** 하늘의 별 따기 설명 페이지(게임 화면에는 작은 "설명" 링크만 둔다) */
 export default function StardrawAbout() {
@@ -94,32 +166,91 @@ export default function StardrawAbout() {
           </a>
         </header>
 
-        <Section title="게임 방법">
-          <ol className="list-decimal space-y-2 pl-5 text-white/85">
-            <li>
-              회차마다 예측서에 빛날 별 6개를 고릅니다. 네모 하늘에서 별을
-              누르거나, 아래 1~45 칸에서 번호를 눌러도 같습니다. 자동·남은 칸
-              자동도 됩니다.
-            </li>
-            <li>
-              예측은 패스키로 합니다. 처음 우주인으로 등록할 때 Face
-              ID·지문·화면 잠금으로 패스키가 만들어지고, 예측할 때마다 그
-              패스키로 예측서에 서명합니다. 우주국은 우주인의 이름·이메일을 묻지
-              않고, 한 패스키는 회차마다 한 장만 낼 수 있습니다. 먼저 등록한
-              우주인이라고 확률이 높아지지는 않습니다.
-            </li>
-            <li>
-              회차는 1시간입니다. 매시 55분에 예측을 마감하고, 5분 뒤 정각에
-              공개 난수로 당첨 번호 6개와 보너스 1개를 정합니다. 룰렛 불빛이 별
-              사이를 돌다 멈추면 하늘의 그 별이 하나씩 켜집니다.
-            </li>
-            <li>
-              별이 빛나는 순간은 관측지에서 다른 우주인과 함께 지켜볼 수
-              있습니다. 신분증을 제시하면 언덕에 올라 이야기를 나누고, 제시하지
-              않으면 남에게 보이지 않게 숨어서 지켜봅니다.
-            </li>
-            <li>등수는 실제 로또와 같습니다.</li>
+        <Section title="한 회차의 흐름" id="flow">
+          <p className="text-white/85">
+            회차는 1시간입니다. 접수처에서 예측서를 내고, 마감 뒤 관측지에서
+            별이 빛나는 순간을 함께 지켜봅니다. 회차마다의 시각은{" "}
+            <a href="/stardraw/timetable" className="underline">
+              관측 시간표
+            </a>
+            에 있습니다.
+          </p>
+          <ol className="flex flex-col gap-4" data-flow>
+            <FlowStep
+              n={1}
+              place="접수처"
+              time="매시 1분 ~ 55분"
+              does="이번 회차에 빛날 별 6개를 골라 예측서를 냅니다."
+            >
+              <p>
+                네모 하늘에서 별을 누르거나, 아래 1~45 칸에서 번호를 눌러 별
+                바구니에 담습니다. 자동·남은 칸 자동도 됩니다. 「예측서 내기」를
+                누르면 내 패스키로 예측서에 서명해 내고, 우주국이 서명한
+                접수증을 받습니다.
+              </p>
+              <p>
+                처음이면 먼저 우주인으로 등록합니다. Face ID·지문·화면 잠금으로
+                패스키가 만들어지고, 그 패스키가 우주인 등록증이 됩니다.
+                우주국은 우주인의 이름·이메일을 묻지 않습니다. 한 패스키는
+                회차마다 예측서를 한 장만 낼 수 있고, 먼저 등록한 우주인이라고
+                확률이 높아지지는 않습니다.
+              </p>
+            </FlowStep>
+            <FlowStep
+              n={2}
+              place="마감"
+              time="매시 55분"
+              does="예측서 접수를 마칩니다."
+            >
+              <p>
+                우주국은 그때까지 받은 예측서 목록을 봉인해 공개 장부에
+                올립니다. 마감 뒤에는 누구도 예측서를 넣거나 뺄 수 없습니다.
+              </p>
+            </FlowStep>
+            <FlowStep
+              n={3}
+              place="관측지"
+              time="정각 ~ 7분"
+              does="다른 우주인과 함께 여섯 별이 빛나는 순간을 지켜봅니다."
+            >
+              <p>
+                정각에 공개 난수로 빛날 별 6개와 보너스 별 하나가 정해집니다.
+                룰렛 불빛이 별 사이를 돌다 멈추면 하늘의 그 별이 하나씩
+                켜집니다. 관측은 1분쯤이고, 관측지에 온 우주인은 모두 같은
+                장면을 봅니다. 늦게 오면 중간부터 보고, 관측이 끝난 뒤 처음 오면
+                관측을 다시 본 뒤 들어갑니다.
+              </p>
+              <p>
+                관측지에 들어가면 먼저 언덕 아래 어둠 속에서 숨어서 관측합니다.
+                다른 우주인의 얼굴과 말은 보이지만, 나는 보이지 않고 말할 수
+                없습니다. 「언덕에 오르기」를 누르고 신분증을 제시하면 언덕에 내
+                얼굴이 보이고, 이야기를 나누거나 별똥별을 보낼 수 있습니다.
+                언덕에서는 다른 우주인에게 등록증의 얼굴과 이름, 예측했는지가
+                보이고, 마감 뒤에는 고른 별도 보입니다.
+              </p>
+              <p>
+                관측이 끝나도 관측지가 닫히기 전까지는 늦게 와도 언덕에 오를 수
+                있습니다. 관측이 끝나면 관측지 아래에 닫히기까지 남은 시간이
+                보이고, 정각 7분 뒤 관측지가 닫힙니다. 우주국은 언덕의 이야기를
+                남기지 않습니다. 정각 1분 뒤에는 다음 회차 접수처가 열립니다.
+              </p>
+            </FlowStep>
+            <FlowStep
+              n={4}
+              place="결과"
+              time="관측 뒤"
+              does="내 예측서가 별을 몇 개 맞혔는지 보고, 받은 것을 모아 봅니다."
+            >
+              <p>
+                접수증에 당첨 번호와 등수가 찍힙니다. 「내 예측」 탭의 「내
+                기록」에는 1~3등 당첨증, 4등마다 별 도장을 찍는 관측 수첩, 당첨
+                내역, 기념 서류가 모입니다. 1등·2등에는 카노푸스 별 훈장을
+                드립니다. 당첨되면 아래 「당첨자 확인」대로 다른 사람에게 당첨을
+                보일 수 있습니다.
+              </p>
+            </FlowStep>
           </ol>
+          <p className="text-white/85">등수는 실제 로또와 같습니다.</p>
           <table className="w-full text-sm">
             <tbody>
               {([1, 2, 3, 4, 5] as const).map((rank) => (
@@ -132,6 +263,20 @@ export default function StardrawAbout() {
               ))}
             </tbody>
           </table>
+        </Section>
+
+        <Section title="장소와 낱말" id="words">
+          <dl
+            className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm"
+            data-words
+          >
+            {WORDS.map(([word, meaning]) => (
+              <Fragment key={word}>
+                <dt className="font-semibold text-amber-100">{word}</dt>
+                <dd className="text-white/80">{meaning}</dd>
+              </Fragment>
+            ))}
+          </dl>
         </Section>
 
         <Section title="로또 1등과 별 맞히기">

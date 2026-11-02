@@ -58,3 +58,32 @@ test("footer 「카노푸스 우주국」은 우주국 소개 페이지로", asy
     fullPage: true,
   });
 });
+
+/** 우주국 「하는 일」에서 설명 페이지의 한 회차의 흐름으로, 그 아래 장소와 낱말(2026-11-02 사용자) */
+test("우주국 「하는 일」에서 한 회차의 흐름과 장소와 낱말로", async ({
+  page,
+}, info) => {
+  await page.goto("/stardraw/bureau");
+  await page
+    .getByRole("link", { name: "한 회차의 흐름: 접수처에서 관측지까지" })
+    .click();
+  await expect(page).toHaveURL(/\/stardraw\/about#flow$/);
+  const flow = page.locator("#flow");
+  await expect(
+    flow.getByRole("heading", { name: "한 회차의 흐름", level: 2 }),
+  ).toBeVisible();
+  await expect(flow.locator("[data-flow] > li")).toHaveCount(4);
+  for (const place of ["접수처", "마감", "관측지", "결과"])
+    await expect(
+      flow.getByRole("heading", { name: new RegExp(`^${place}`), level: 3 }),
+    ).toBeVisible();
+  await expect(flow.getByText("1등", { exact: true })).toBeVisible();
+  const words = page.locator("#words");
+  await expect(words.locator("[data-words] dt")).toHaveCount(11);
+  await expect(words.getByText("언덕 아래", { exact: true })).toBeVisible();
+  await noSideScroll(page);
+  // 사람이 보는 스크린샷이라 CI에서는 찍지 않는다(page.screenshot과 같은 조건, e2e/test.ts)
+  if (process.env.CI && !process.env.E2E_SCREENSHOTS) return;
+  await flow.screenshot({ path: info.outputPath("stardraw-flow.png") });
+  await words.screenshot({ path: info.outputPath("stardraw-words.png") });
+});

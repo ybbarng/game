@@ -138,6 +138,12 @@ export default function StardrawBureauPage() {
               처음부터 확인할 수 있습니다.
             </Duty>
           </ul>
+          <a
+            href="/stardraw/about#flow"
+            className="self-start text-amber-100/90 underline underline-offset-2"
+          >
+            한 회차의 흐름: 접수처에서 관측지까지
+          </a>
         </Section>
 
         <Section title="카노푸스는 어디에 있나">
