@@ -162,6 +162,9 @@ export const ROOM_PASS_NOTE =
 export const ROOM_REGISTER_NOTE =
   "언덕에 오르려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
 
+/** 별똥별이 하늘에 머무는 시간(ms, globals.css sd-room-meteor와 같다) */
+const METEOR_MS = 2400;
+
 interface Spark {
   key: string;
   kind: "twinkle" | "meteor";
@@ -188,9 +191,12 @@ export function RoomView({
   onEnter,
   onHome,
   guide,
+  api = serverApi() as string,
 }: {
   services: Services;
   round: number;
+  /** 서버 주소(시험이 흉내 서버를 넣는다). 기본은 빌드에 들어간 서버 주소 */
+  api?: string;
   /** 머리(장소·회차) 아래에 둘 관측 방송 안내(지금 회차 화면만) */
   guide?: React.ReactNode;
   record: RoundRecord | null | undefined;
@@ -200,8 +206,7 @@ export function RoomView({
   /** 메뉴 줄이 없는 휴대폰: 머리 줄 왼쪽 「홈」(추첨 화면 DrawView와 같은 모양) */
   onHome?: (() => void) | undefined;
 }) {
-  const base = serverApi() as string;
-  const client = useMemo(() => new RoomClient(base, round), [base, round]);
+  const client = useMemo(() => new RoomClient(api, round), [api, round]);
   const clock = useMemo(() => roomClock(client), [client]);
   const schedule = services.ledger.schedule;
   const times = roundTimes(schedule, round);
@@ -358,7 +363,7 @@ export function RoomView({
     setSparks((s) =>
       [...s, { key, kind, to, x: to ? xOf(to) : Math.random() }].slice(-12),
     );
-    realClock.after(2200, () =>
+    realClock.after(kind === "meteor" ? METEOR_MS : 2200, () =>
       setSparks((s) => s.filter((x) => x.key !== key)),
     );
   };
@@ -522,7 +527,15 @@ export function RoomView({
 
   const cheer = (kind: "twinkle" | "meteor", to: string | null) => {
     if (!pass) return void ensurePass();
-    void client.cheer(pass, kind, to).catch(() => {});
+    // 보내지 못하면(너무 잦음·표 만료 등) 말 보내기처럼 짧게 알린다(예전에는 조용히 삼켜 왜 안 보이는지 알 수 없었다)
+    client
+      .cheer(pass, kind, to)
+      .then(() => setSendNote(null))
+      .catch((err) =>
+        setSendNote(
+          errorText(err, kind === "meteor" ? "별똥별을 보내" : "반짝임을 보내"),
+        ),
+      );
   };
 
   // ---------------------------------------------------------------- 신고·국장 조치
@@ -757,9 +770,13 @@ export function RoomView({
             .map((s) => (
               <span
                 key={s.key}
-                className="sd-room-meteor absolute h-px w-24 bg-gradient-to-r from-transparent to-white"
-                style={{ left: `${s.x * 70}%`, top: "12%" }}
-              />
+                data-room-meteor
+                className="sd-room-meteor absolute"
+                // 하늘 위쪽 왼편에서 출발해 오른쪽 아래로(보낸 얼굴 자리에 따라 출발점만 조금씩 다르다)
+                style={{ left: `${4 + s.x * 30}%`, top: `${6 + s.x * 12}%` }}
+              >
+                <span className="sd-room-meteor-streak" />
+              </span>
             ))}
         </div>
       </div>

@@ -1939,28 +1939,67 @@ button {
     transform: scale(0.94);
   }
 }
+/*
+ * 별똥별(언덕에서 보낸 응원): 하늘 위쪽을 왼쪽 위에서 오른쪽 아래로 비스듬히 가로지른다. 밝은 머리와 점점 흐려지는 꼬리라
+ * 별자리 선(가는 흰 선)과 헷갈리지 않는다(예전 1px 선 하나는 별자리 선 사이에서 보이지 않았다, 2026-11-02 사용자).
+ * 바깥(.sd-room-meteor)은 자리와 기울기, 안쪽(.sd-room-meteor-streak)이 그 기울기 방향으로 날아간다. 시간은 RoomView METEOR_MS
+ */
 .sd-room-meteor {
-  animation: sd-room-meteor 1.6s ease-in forwards;
-  transform: rotate(18deg);
+  width: 60%;
+  height: 0;
+  transform: rotate(22deg);
+  transform-origin: 0 50%;
+}
+.sd-room-meteor-streak {
+  position: absolute;
+  left: 0;
+  top: -1.5px;
+  width: 7.5rem;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    rgba(180, 205, 255, 0),
+    rgba(200, 220, 255, 0.35) 55%,
+    rgba(255, 255, 255, 0.95)
+  );
+  animation: sd-room-meteor 2.4s cubic-bezier(0.3, 0.2, 0.4, 1) forwards;
+}
+.sd-room-meteor-streak::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow:
+    0 0 8px 3px rgba(255, 255, 255, 0.85),
+    0 0 18px 6px rgba(170, 200, 255, 0.55);
 }
 @keyframes sd-room-meteor {
   from {
     opacity: 0;
-    translate: 0 0;
+    transform: translateX(-30%);
   }
-  20% {
+  15% {
+    opacity: 1;
+  }
+  75% {
     opacity: 1;
   }
   to {
     opacity: 0;
-    translate: 220px 80px;
+    transform: translateX(150%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .sd-room-face,
   .sd-room-face-twinkle,
   .sd-room-count,
-  .sd-room-meteor {
+  .sd-room-meteor-streak {
     animation: none;
   }
   .sd-lantern {
