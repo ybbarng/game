@@ -735,7 +735,7 @@ export function LearnPage() {
             href="/stardraw/learn"
             className="w-fit text-amber-200 text-sm underline"
           >
-            하늘의 별 따기(정시 로또)의 보안 배우기 →
+            하늘의 별 따기의 보안 배우기 →
           </a>
           <nav className="grid gap-1.5 sm:grid-cols-2">
             {LESSONS.map((l, i) => (
