@@ -239,6 +239,7 @@ export function EnterView({
               services.ledger.id(),
               info,
               status.round,
+              roundTimes(services.ledger.schedule, status.round).closesAt,
             ),
           );
       })
@@ -350,6 +351,7 @@ export function EnterView({
             ledger.id(),
             await ledger.qualInfo().catch(() => null),
             round,
+            roundTimes(ledger.schedule, round).closesAt,
           )?.holding ?? null)
         : null
       : qual && useQual

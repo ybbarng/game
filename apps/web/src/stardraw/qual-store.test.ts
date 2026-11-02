@@ -14,7 +14,12 @@ import {
 } from "@game/stardraw-core";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { importRecoveryCode, loadHoldings, removeHolding } from "./qual-store";
+import {
+  importRecoveryCode,
+  loadHoldings,
+  removeHolding,
+  usableHolding,
+} from "./qual-store";
 
 /** 장부에 효력이 생긴 기간 하나와 그 기간 열쇠로 찍은 증서 */
 function periodWithHolding(): { info: QualInfo; holding: QualHolding } {
@@ -121,5 +126,25 @@ describe("이 기기에서 지우기(qual-store)", () => {
     expect(
       JSON.parse(localStorage.getItem("t-qual-pending") ?? "null"),
     ).toEqual(pending);
+  });
+});
+
+describe("예측서에 붙일 증서 고르기(usableHolding)", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("회차 마감 시각이 기간 안일 때만 쓰고, 끝난 기간·효력 전 기간의 증서는 건너뛴다", () => {
+    const { info, holding } = periodWithHolding();
+    const period = info.periods[0] as QualInfo["periods"][number];
+    period.startsAt = 1_000;
+    period.endsAt = 2_000;
+    importRecoveryCode("t", "L", info, recoveryCode(holding));
+    // 기간 안: 쓴다
+    expect(usableHolding("t", "L", info, 20, 1_500)?.period.id).toBe(period.id);
+    // 기간이 끝났다(마감 = endsAt): 붙이면 서버가 예측서를 거절하니 건너뛴다
+    expect(usableHolding("t", "L", info, 20, 2_000)).toBeNull();
+    // 기간 시작 전
+    expect(usableHolding("t", "L", info, 20, 999)).toBeNull();
+    // 기간이 효력을 얻기 전 회차(from 13)
+    expect(usableHolding("t", "L", info, 12, 1_500)).toBeNull();
   });
 });

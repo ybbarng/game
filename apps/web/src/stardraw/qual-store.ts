@@ -119,6 +119,8 @@ export function usableHolding(
   ledger: string | null,
   info: QualInfo | null,
   round: number,
+  /** 그 회차의 마감 시각(초). 증서는 마감 시각이 기간 안일 때만 쓴다(서버·검사기 규칙과 같다) */
+  closesAt: number,
 ): { holding: QualHolding; period: QualPeriodInfo } | null {
   if (!info) return null;
   for (const s of (read<Stored[]>(key(ns)) ?? []).filter(
@@ -130,7 +132,14 @@ export function usableHolding(
       stamp: fromBase64Url(s.stamp),
     };
     const period = info.periods.find((p) => p.id === s.periodId);
-    if (period && checkHolding(period, holding)) return { holding, period };
+    // 끝난 기간(또는 아직 효력 전) 증서는 건너뛴다. 붙이면 서버가 예측서를 통째로 거절한다(2026-11-02 검토에서 찾음)
+    const inPeriod =
+      period !== undefined &&
+      round >= period.from &&
+      closesAt >= period.startsAt &&
+      closesAt < period.endsAt;
+    if (period && inPeriod && checkHolding(period, holding))
+      return { holding, period };
   }
   return null;
 }
