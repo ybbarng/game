@@ -15,6 +15,8 @@ import { type Meteor, type Twinkle, twinkleLevel } from "./sky-effects";
  *
  * 휴대폰 비용: 상태가 같으면 바탕 층(먼지·선·별)과 위 층(고리·번호)을 미리 그려 두고,
  * 프레임마다 두 층을 붙이며 그 사이에 움직이는 빛(반짝임·빛줄기·강조)만 그린다.
+ * 룰렛 불빛(cursor)은 두 층에 넣지 않는다: 불빛이 한 칸 옮길 때마다(관측 한 번에 수백 번) 두 층을 통째로 다시 그려
+ * 휴대폰 관측이 버벅였다(2026-11-02). 불빛이 지나는 별의 빛과 번호는 위 층 위에 따로 그린다
  */
 
 export type SkyMode = "pick" | "receipt" | "draw";
@@ -250,15 +252,14 @@ function paintStar(g: Ctx, x: number, y: number, c: Rgb, look: StarLook) {
   g.fill();
 }
 
-/** 상태에서 바탕·위 층 그림이 같은지 가르는 열쇠 */
-function stateKey(s: SkyState): string {
+/** 상태에서 바탕·위 층 그림이 같은지 가르는 열쇠(룰렛 불빛은 층에 넣지 않는다) */
+export function stateKey(s: SkyState): string {
   return [
     s.mode,
     s.picked.join(","),
     s.focus ?? "",
     s.lit.join(","),
     s.bonus ?? "",
-    s.cursor ?? "",
     (s.marks ?? []).join(","),
   ].join("|");
 }
@@ -402,27 +403,21 @@ function paintTop(g: Ctx, sc: Scene) {
   }
 
   for (const st of sc.stars) {
-    const { x, y, s } = st;
+    const { x, y } = st;
 
     // 번호: 동그라미 없이 별빛 색 글자로 별 오른쪽 위에(별 지도처럼), 은은하게 빛난다
-    g.globalAlpha =
+    paintNumber(
+      g,
+      st,
+      scale,
       dark && !st.on && !st.focused
         ? 0.22
         : st.dim
           ? 0.3
           : st.mine || st.on || st.focused
             ? 1
-            : 0.88;
-    g.save();
-    g.shadowColor = rgba(st.c, 0.9);
-    g.shadowBlur = 6 * scale;
-    g.fillStyle = rgba(whiter(st.c, 0.2), 1);
-    g.font = `600 ${Math.max(8, Math.round(10.5 * scale))}px ui-monospace, Menlo, monospace`;
-    g.textAlign = "left";
-    g.textBaseline = "alphabetic";
-    g.fillText(String(s.n), x + st.r + 2.5 * scale, y - st.r - 1.5 * scale);
-    g.restore();
-    g.globalAlpha = 1;
+            : 0.88,
+    );
 
     // 고리: 내 별은 금빛(추첨 화면에서는 당첨 별 금빛과 헷갈리지 않게 하늘색).
     // 맞았는지는 고리 색이 아니라 고리 안의 별이 켜져 빛나는 것으로 알린다(파란 고리 + 빛)
@@ -457,6 +452,30 @@ function paintTop(g: Ctx, sc: Scene) {
     g.textBaseline = "alphabetic";
     g.fillText(CIRCLED[i] ?? String(i + 1), st.x, st.y - st.r - 9 * scale);
   });
+}
+
+/** 별 번호 글자(별 오른쪽 위) */
+function paintNumber(
+  g: Ctx,
+  st: Scene["stars"][number],
+  scale: number,
+  alpha: number,
+) {
+  g.globalAlpha = alpha;
+  g.save();
+  g.shadowColor = rgba(st.c, 0.9);
+  g.shadowBlur = 6 * scale;
+  g.fillStyle = rgba(whiter(st.c, 0.2), 1);
+  g.font = `600 ${Math.max(8, Math.round(10.5 * scale))}px ui-monospace, Menlo, monospace`;
+  g.textAlign = "left";
+  g.textBaseline = "alphabetic";
+  g.fillText(
+    String(st.s.n),
+    st.x + st.r + 2.5 * scale,
+    st.y - st.r - 1.5 * scale,
+  );
+  g.restore();
+  g.globalAlpha = 1;
 }
 
 /** 움직이는 빛: 반짝임, 밝은 별의 빛줄기와 깜빡임, 강조(룰렛 불빛·당첨 별·내 별·차례 별) */
@@ -616,11 +635,11 @@ function newLayer(px: number, dpr: number): HTMLCanvasElement | null {
   return c;
 }
 
-/** 상태·크기가 같으면 미리 그린 두 층을 다시 쓴다 */
-function layersOf(g: Ctx, sc: Scene): Layers | null {
+/** 상태·크기가 같으면 미리 그린 두 층을 다시 쓴다. 층은 룰렛 불빛 없이 그린다 */
+function layersOf(g: Ctx, W: number, state: SkyState): Layers | null {
   const dpr = g.getTransform?.().a || 1;
-  const px = Math.round(sc.W * dpr);
-  const key = `${px}|${dpr}|${stateKey(sc.state)}`;
+  const px = Math.round(W * dpr);
+  const key = `${px}|${dpr}|${stateKey(state)}`;
   const had = layerCache.get(g);
   if (had?.key === key) return had;
   const base = had && had.base.width === px ? had.base : newLayer(px, dpr);
@@ -630,8 +649,12 @@ function layersOf(g: Ctx, sc: Scene): Layers | null {
   if (!base || !top || !bg || !tg) return null;
   for (const c of [bg, tg]) {
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    c.clearRect(0, 0, sc.W, sc.W);
+    c.clearRect(0, 0, W, W);
   }
+  const sc = sceneOf(
+    W,
+    state.cursor == null ? state : { ...state, cursor: null },
+  );
   paintBase(bg, sc);
   paintTop(tg, sc);
   const layers = { key, base, top };
@@ -643,11 +666,17 @@ export function drawSky(g: CanvasRenderingContext2D, f: FrameInput): void {
   const { width: W, state, now } = f;
   const sc = sceneOf(W, state);
   g.clearRect(0, 0, W, W);
-  const layers = layersOf(g, sc);
+  const layers = layersOf(g, W, state);
   if (layers) g.drawImage(layers.base, 0, 0, W, W);
   else paintBase(g, sc);
   paintLive(g, sc, f);
-  if (layers) g.drawImage(layers.top, 0, 0, W, W);
-  else paintTop(g, sc);
+  if (layers) {
+    g.drawImage(layers.top, 0, 0, W, W);
+    // 층에 넣지 않은 룰렛 불빛: 그 별 번호를 켜진 별처럼 또렷하게
+    const passing = sc.stars.find(
+      (st) => st.passing && !st.drawn && !st.isBonus,
+    );
+    if (passing) paintNumber(g, passing, sc.scale, 1);
+  } else paintTop(g, sc);
   if (f.meteor && !sc.receipt && !sc.dark) paintMeteor(g, W, f.meteor, now);
 }

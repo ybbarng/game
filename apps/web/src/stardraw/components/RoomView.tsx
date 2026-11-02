@@ -11,7 +11,14 @@ import {
   roundTimes,
   type Ticket,
 } from "@game/stardraw-core";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@/lib/cn";
 import { Avatar } from "../astronaut/Avatar";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
@@ -161,6 +168,12 @@ interface Spark {
   to: string | null;
   x: number;
 }
+
+/**
+ * 방 안의 관측 연출. 방은 카운트다운·진행 줄 때문에 0.25초마다 다시 그려지는데, 연출 하늘까지 따라 그리면 휴대폰 관측이
+ * 버벅였다(2026-11-02). 연출은 받은 값(기록·예측서·시계)이 같으면 제 시계로만 움직인다
+ */
+const LiveDraw = memo(DrawView);
 
 /** 방 안 시계: 서버 시각에 맞춘다 */
 function roomClock(client: RoomClient): Clock {
@@ -674,7 +687,7 @@ export function RoomView({
 
       <div ref={skyRef} className="relative">
         {record && (phase === "live" || phase === "after") ? (
-          <DrawView
+          <LiveDraw
             record={record}
             ticket={ticket}
             clock={clock}

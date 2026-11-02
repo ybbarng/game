@@ -1,7 +1,13 @@
 "use client";
 
 import { type Clock, realClock } from "@game/fair-play";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -13,7 +19,14 @@ import {
   useHdrScreen,
 } from "../hdr-glow";
 import { SKY_STARS, starOf } from "../sky";
-import { drawSky, FAINT_STARS, HIT, type SkyState, starAt } from "../sky-draw";
+import {
+  drawSky,
+  FAINT_STARS,
+  HIT,
+  type SkyState,
+  starAt,
+  stateKey,
+} from "../sky-draw";
 import { type SkyEffects, startSkyEffects } from "../sky-effects";
 import { StarInfo } from "./parts";
 
@@ -94,7 +107,9 @@ export function SkyBoard({
     prevPicked.current = state.picked;
   }, [state.picked]);
 
-  useEffect(() => {
+  // 화면에 나오기 전에 첫 장면을 그린다(useEffect면 빈 캔버스가 한 장면 이상 보였다: 관측 카운트다운이 끝나
+  // 연출 하늘로 바뀌는 순간 별과 내 별 고리가 사라졌다가 다시 나타났다, 2026-11-02 휴대폰)
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const g = canvas.getContext("2d");
@@ -185,10 +200,14 @@ export function SkyBoard({
     };
   }, [clock]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 상태가 바뀔 때마다 다시 그린다
-  useEffect(() => {
+  // 상태가 바뀌면 다시 그린다. 그림이 같으면(룰렛 불빛이 그대로이고 바깥이 다른 까닭으로 다시 그려졌을 때) 그리지 않는다
+  const painted = useRef("");
+  const viewKey = `${stateKey(view)}|${view.cursor ?? ""}|${view.motion ? JSON.stringify(view.motion) : ""}`;
+  useLayoutEffect(() => {
+    if (painted.current === viewKey) return;
+    painted.current = viewKey;
     repaintRef.current?.();
-  }, [view]);
+  }, [viewKey]);
 
   // 켜진 별의 움직임(state.motion)이 있으면 그동안 매 프레임 다시 그린다(서서히 켜짐·반짝임·흐려짐)
   const moving = !!state.motion;

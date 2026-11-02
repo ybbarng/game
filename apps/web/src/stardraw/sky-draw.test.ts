@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SKY_STARS } from "./sky";
-import { HIT, scaleOf, starAt } from "./sky-draw";
+import { HIT, type SkyState, scaleOf, starAt, stateKey } from "./sky-draw";
 
 describe("starAt: 별 누르는 범위", () => {
   it("별 한가운데를 누르면 그 별이다", () => {
@@ -26,5 +26,31 @@ describe("starAt: 별 누르는 범위", () => {
       }
     }
     expect(checked).toBeGreaterThan(10);
+  });
+});
+
+describe("stateKey: 미리 그린 층을 다시 그릴지", () => {
+  const draw: SkyState = {
+    mode: "draw",
+    picked: [1, 2, 3, 4, 5, 6],
+    focus: null,
+    lit: [7],
+    bonus: null,
+  };
+
+  it("룰렛 불빛이 옮겨도 층은 그대로다(관측 한 번에 수백 번 옮긴다)", () => {
+    expect(stateKey({ ...draw, cursor: 8 })).toBe(stateKey(draw));
+    expect(stateKey({ ...draw, cursor: 9 })).toBe(
+      stateKey({ ...draw, cursor: 8 }),
+    );
+  });
+
+  it("별이 켜지거나 내 별·누른 별이 바뀌면 다시 그린다", () => {
+    expect(stateKey({ ...draw, lit: [7, 8] })).not.toBe(stateKey(draw));
+    expect(stateKey({ ...draw, bonus: 9 })).not.toBe(stateKey(draw));
+    expect(stateKey({ ...draw, focus: 9 })).not.toBe(stateKey(draw));
+    expect(stateKey({ ...draw, picked: [1, 2, 3, 4, 5, 7] })).not.toBe(
+      stateKey(draw),
+    );
   });
 });
