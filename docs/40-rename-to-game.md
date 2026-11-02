@@ -64,12 +64,12 @@ servers 검토(브랜치 rename-game 8901ee8, servers PLAN 23단계)를 반영�
 | 시각 | 누가 | 할 일 |
 |---|---|---|
 | 지금~13:10 | game | 1단계 패키지 이름 main 반영, CI·이미지·배포 확인(이미지 이름은 아직 mighty) |
-| 13:20 | 사용자 확인 → game | 2단계: `gh repo rename game`(ybbarng/mighty → ybbarng/game), `mighty-archive` → `game-archive`, 로컬 원격 주소 고침, 사이트 저장소 주소 커밋 push |
-| 13:30 | game → servers | 2단계 배포 확인 뒤 시작 신호 |
+| 13:20 | 사용자 확인 → game | 2단계: `gh repo rename game`(ybbarng/mighty → ybbarng/game), `mighty-archive` → `game-archive`, 로컬 원격 주소 고침. 사이트의 저장소 주소 커밋은 13:40 push에 함께 싣는다(13:38 전에 배포가 모두 끝나 있어야 하고, 그 사이 새 배포가 돌면 옛 deploy.sh가 git pull 중에 실패한다. 옛 주소는 GitHub가 넘겨준다) |
+| 13:30 | game → servers | 시작 신호에 「1단계 배포 끝(✅ 시각)」을 적는다 |
 | **13:33~13:37** | 모두 | 마감·결과 결정 시간대라 기다린다 |
 | 13:38 | servers | rename-game을 servers main에 합치고 서버에서 pull |
 | 13:39 | 사용자 → servers | `docker compose -p mighty-signal down`, `-p mighty-diag down` → servers가 game-signal·game-diag up |
-| 13:40 | game | image.yml(이미지 ghcr.io/ybbarng/game) push → CI(약 4분) → Image(빌드·배포) |
+| 13:40 | game | 사이트 저장소 주소 + image.yml(이미지 ghcr.io/ybbarng/game) 한 번에 push → CI(약 4분) → Image(빌드·배포) |
 | 13:48 무렵 | game | 첫 배포가 새 컨테이너(game-game-1) healthz 통과 확인. GHCR pull이 403이면 새 패키지 ghcr.io/ybbarng/game이 저장소에 이어졌는지(Actions 접근) 본다 |
 | 13:49 | 사용자 | `docker compose -p mighty down`(옛 웹) |
 | 13:50 | servers·game | 확인: game.byb.kr 200, /signal/, /diag, /stardraw-api/, Gatus, 별 따기 관측지 |
