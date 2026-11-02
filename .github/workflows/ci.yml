@@ -55,7 +55,7 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @game/web exec playwright install --with-deps chromium
       - run: pnpm e2e --shard=${{ matrix.shard }}/2
-      # 화면 시험이 실패했을 때만 스크린숏을 남긴다. 저장 공간이 차서 올리지 못해도 CI를 실패로 만들지 않는다.
+      # 화면 시험이 실패했을 때만 스크린샷을 남긴다. 저장 공간이 차서 올리지 못해도 CI를 실패로 만들지 않는다.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         continue-on-error: true
