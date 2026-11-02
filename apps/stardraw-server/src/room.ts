@@ -198,7 +198,8 @@ export class RoomHub {
   private room(round: number, create = true): Room {
     const found = this.rooms.get(round);
     if (found) {
-      if (found.closed) throw new EntryError("이 회차 방은 닫혔습니다", 410);
+      if (found.closed)
+        throw new EntryError("이 회차 관측지는 닫혔습니다", 410);
       return found;
     }
     if (!Number.isInteger(round) || round < 1)
@@ -208,17 +209,17 @@ export class RoomHub {
     const now = sec(this.nowMs());
     if (!create)
       throw now * 1000 >= drawAt * 1000 + this.limits.closeAfterMs
-        ? new EntryError("이 회차 방은 닫혔습니다", 410)
-        : new EntryError("열린 방이 없습니다", 404);
+        ? new EntryError("이 회차 관측지는 닫혔습니다", 410)
+        : new EntryError("열린 관측지가 없습니다", 404);
     if (now < times.opensAt)
       throw new EntryError("아직 열리지 않은 회차입니다", 404);
     if (now * 1000 >= drawAt * 1000 + this.limits.closeAfterMs)
-      throw new EntryError("이 회차 방은 닫혔습니다", 410);
+      throw new EntryError("이 회차 관측지는 닫혔습니다", 410);
     if (this.rooms.size >= this.limits.maxRooms) {
       // 가장 오래된 방부터 정리(닫힌 방)
       for (const [r, room] of this.rooms) if (room.closed) this.rooms.delete(r);
       if (this.rooms.size >= this.limits.maxRooms)
-        throw new EntryError("방이 가득 찼습니다", 503);
+        throw new EntryError("관측지가 가득 찼습니다", 503);
     }
     const room: Room = {
       round,
@@ -291,7 +292,7 @@ export class RoomHub {
     for (const [t, p] of room.passes)
       if (p.pubHex === pubHex) room.passes.delete(t);
     if (room.passes.size >= this.limits.maxPasses)
-      throw new EntryError("방이 가득 찼습니다", 503);
+      throw new EntryError("관측지가 가득 찼습니다", 503);
     const token = toBase64Url(randomBytes(32));
     const pass: Pass = {
       token,
@@ -371,7 +372,7 @@ export class RoomHub {
       throw new EntryError("추첨이 끝나 새로 들어올 수 없습니다", 409);
     }
     if (room.connections.size >= this.limits.maxConnections)
-      throw new EntryError("방이 가득 찼습니다", 503);
+      throw new EntryError("관측지가 가득 찼습니다", 503);
     res.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-store",
