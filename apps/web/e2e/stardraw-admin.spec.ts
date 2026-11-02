@@ -56,6 +56,8 @@ test("데모 국장 모드: 국장이 되어 시험 소속을 추가하고, 국�
     `${fingerprint}쓰는 중`,
   );
 
+  // 소속 이름은 빈칸에서 시작한다(서버 설정의 이름과 같게 직접 넣는다)
+  await console.getByLabel("이름").fill("시험 성단");
   await console
     .getByRole("button", { name: "국장 아닌 패스키로 해 보기" })
     .click();
@@ -252,6 +254,7 @@ test("관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장�
   await expect(console.locator("[data-director-keys]")).toContainText(
     `${fingerprint}쓰는 중`,
   );
+  await console.getByLabel("이름").fill("시험 성단");
   await console
     .getByRole("button", { name: "국장 패스키로 서명해 예고" })
     .click();

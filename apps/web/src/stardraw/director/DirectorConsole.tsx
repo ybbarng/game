@@ -768,9 +768,9 @@ function AffiliationForm({
   onSend: (fields: Fields) => void;
   onStranger: ((fields: Fields) => void) | undefined;
 }) {
-  const [name, setName] = useState("시험 성단");
+  const [name, setName] = useState("");
   const [badge, setBadge] = useState<Badge>(2);
-  const [method, setMethod] = useState("초대 코드");
+  const [method, setMethod] = useState("기관 계정");
   const fields = (): Fields => ({
     name: name.normalize("NFC").trim(),
     badge,
@@ -779,12 +779,14 @@ function AffiliationForm({
     issued: 0,
   });
   return (
-    <Section title="시험 소속 추가">
+    <Section title="소속 추가">
       <p className="break-keep text-sm text-white/70">
         소속은 별·성단 이름과 배지, 신원 확인 방법 이름만 장부에 남깁니다. 실제
         확인 값(기관 주소 등)은 장부에 넣지 않습니다. 우주인이 소속을 받을 수
         있게 하려면 소속이 효력을 얻은 뒤 아래 「소속」에서 자격 기간을 열어
-        줍니다.
+        줍니다. 이름은 서버 설정(STARDRAW_QUAL_AFFILIATIONS)의 소속 이름과
+        글자까지 같아야 구글 계정 확인이 붙습니다. 장부에 실린 소속은 정식
+        단계까지 이어집니다.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
