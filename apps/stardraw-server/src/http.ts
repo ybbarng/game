@@ -55,6 +55,8 @@ export interface HttpOptions {
   rooms?: RoomHub;
   /** 증명 API(docs/36 11-30). 없으면 증명 주소는 404 */
   proofs?: ProofService;
+  /** 최근 이벤트 루프 지연 최대(ms). 있으면 `/api/state`에 `loopDelayMaxMs`로 싣는다(loop-delay.ts) */
+  loopDelay?: () => number;
 }
 
 const MAX_BODY = 16 * 1024;
@@ -208,7 +210,13 @@ async function handle(
     return serveLedger(o.ledgerDir, path.slice(8), res);
 
   if (method === "GET" && path === "/api/state")
-    return send(res, 200, engine.state());
+    return send(
+      res,
+      200,
+      o.loopDelay
+        ? { ...engine.state(), loopDelayMaxMs: o.loopDelay() }
+        : engine.state(),
+    );
 
   if (method === "GET" && path === "/api/time")
     return send(res, 200, { serverTime: Date.now() });

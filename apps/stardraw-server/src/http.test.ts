@@ -34,13 +34,17 @@ afterEach(async () => {
   rig?.close();
 });
 
-async function serve(options: Parameters<typeof makeRig>[0] = {}) {
+async function serve(
+  options: Parameters<typeof makeRig>[0] = {},
+  loopDelay?: () => number,
+) {
   rig = await makeRig(options);
   const server = createHttpServer(rig.engine, rig.relay, {
     basePath: "/stardraw-api",
     ledgerDir: join(rig.dir, "ledger"),
     devOrigins: ["http://localhost:3456"],
     trustProxy: true,
+    ...(loopDelay ? { loopDelay } : {}),
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   close = () => stopServer(server);
@@ -49,6 +53,17 @@ async function serve(options: Parameters<typeof makeRig>[0] = {}) {
 }
 
 describe("HTTP", () => {
+  it("루프 지연 감시를 주면 상태에 loopDelayMaxMs가 실리고, 없으면 싣지 않는다", async () => {
+    const base = await serve({}, () => 12.5);
+    const state = await (await fetch(`${base}/api/state`)).json();
+    expect(state.loopDelayMaxMs).toBe(12.5);
+    expect(state.round).toBeGreaterThan(0);
+    await close?.();
+    rig?.close();
+    const plain = await (await fetch(`${await serve()}/api/state`)).json();
+    expect(plain).not.toHaveProperty("loopDelayMaxMs");
+  });
+
   it("상태를 묻고, 응모하면 서명된 영수증을 받고, 장부 파일을 내려받는다", async () => {
     const base = await serve();
     await rig.at(EPOCH + 10);

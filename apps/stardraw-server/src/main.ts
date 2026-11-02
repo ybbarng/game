@@ -14,6 +14,7 @@ import { loadConfig, originProblems } from "./config";
 import { StardrawServer } from "./engine";
 import { googleTokenVerifier } from "./google";
 import { createHttpServer } from "./http";
+import { startLoopDelay } from "./loop-delay";
 import {
   type Anchor,
   GitHubAnchor,
@@ -159,6 +160,10 @@ async function main(): Promise<void> {
     trustProxy: config.trustProxy,
     rooms,
     proofs: new ProofService(store, clock),
+    loopDelay: (() => {
+      const d = startLoopDelay(clock);
+      return () => d.recentMaxMs();
+    })(),
   });
 
   // 장부가 정한 관인과 열쇠 파일이 다르면 여기서 거절된다(받기 전에 멈춘다)

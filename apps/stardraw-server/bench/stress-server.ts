@@ -32,6 +32,7 @@ import {
 import { loadConfig } from "../src/config";
 import { StardrawServer } from "../src/engine";
 import { createHttpServer } from "../src/http";
+import { startLoopDelay } from "../src/loop-delay";
 import { LocalRootLog, noAnchor } from "../src/outside";
 import { isPowWorker, runPowWorker, WorkerPowChecker } from "../src/pow-pool";
 import { ProofService } from "../src/proof";
@@ -125,6 +126,11 @@ async function main() {
     trustProxy: config.trustProxy,
     rooms,
     proofs: new ProofService(store, clock),
+    // 측정 시계는 회차를 건너뛰므로 루프 지연 구간은 실제 시각으로
+    loopDelay: (() => {
+      const d = startLoopDelay({ now: () => Date.now() });
+      return () => d.recentMaxMs();
+    })(),
   });
   await engine.ready();
   await new Promise<void>((r) => http.listen(config.port, "127.0.0.1", r));
