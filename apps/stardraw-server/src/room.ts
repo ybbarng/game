@@ -117,6 +117,11 @@ export interface Person {
   entered: boolean;
   /** 국장 패스키로 받은 표(국장 조치를 쓸 수 있다) */
   director?: boolean;
+  /**
+   * 봉인 뒤에만: 이 사람이 고른 6개(봉인 때 이미 장부에 공개된다). 봉인 뒤 언덕에 오른 사람의 고른 별을 먼저 와 있던
+   * 화면도 알게(sealed 소식의 byPerson은 그때 있던 사람만 담는다, docs/36 11-44 언덕 위 등수)
+   */
+  picks?: number[];
 }
 
 /** 봉인 뒤 공개: 별마다 고른 수와 사람마다 고른 6개 */
@@ -312,14 +317,17 @@ export class RoomHub {
   }
 
   private person(room: Room, pass: Pass): Person {
-    const entered = this.deps
+    const ticket = this.deps
       .tickets(room.round)
-      .some((t) => toHex(t.pub) === pass.pubHex);
+      .find((t) => toHex(t.pub) === pass.pubHex);
     return {
       id: pass.id,
       pub: toBase64Url(pass.pub),
-      entered,
+      entered: ticket !== undefined,
       ...(pass.director ? { director: true } : {}),
+      ...(ticket && this.deps.sealed(room.round)
+        ? { picks: [...ticket.numbers] }
+        : {}),
     };
   }
 

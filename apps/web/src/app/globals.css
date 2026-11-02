@@ -1899,6 +1899,29 @@ button {
     box-shadow: 0 0 26px 8px rgba(200, 225, 255, 0.8);
   }
 }
+/*
+ * 관측이 끝난 뒤(docs/36 11-44): 언덕에서 가장 높은 등수인 얼굴은 금빛 테두리가 천천히 숨 쉬듯 빛난다.
+ * 등수 표지(.sd-room-rank)는 결과 카드가 올라온 다음 조용히 나타난다
+ */
+.sd-room-face-best {
+  border-color: #fcd34d;
+  box-shadow:
+    0 0 0 2px #fcd34d,
+    0 0 18px 4px rgba(252, 211, 77, 0.55);
+  animation:
+    sd-room-face-in 0.9s cubic-bezier(0.32, 0.72, 0, 1) both,
+    sd-room-best 3.2s ease-in-out 0.6s infinite;
+}
+@keyframes sd-room-best {
+  50% {
+    box-shadow:
+      0 0 0 3px #fde68a,
+      0 0 30px 10px rgba(252, 211, 77, 0.7);
+  }
+}
+.sd-room-rank {
+  animation: sd-text-in 700ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
 /* 같은 빠르기로 곧게 떠오른다(빠르기가 같아야 먼저 뜬 풍등을 따라잡아 겹치지 않는다, RoomView LANTERN_CLEAR_MS) */
 .sd-lantern {
   animation: sd-lantern 7s linear forwards;
@@ -1998,6 +2021,8 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .sd-room-face,
   .sd-room-face-twinkle,
+  .sd-room-face-best,
+  .sd-room-rank,
   .sd-room-count,
   .sd-room-meteor-streak {
     animation: none;

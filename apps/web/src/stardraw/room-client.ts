@@ -22,6 +22,8 @@ export interface RoomPerson {
   pub: string;
   entered: boolean;
   director?: boolean;
+  /** 봉인 뒤에 들어온 사람의 고른 6개(서버가 들어옴 소식에 싣는다. 봉인 소식의 byPerson은 그때 있던 사람만) */
+  picks?: number[];
 }
 
 export interface RoomPicks {

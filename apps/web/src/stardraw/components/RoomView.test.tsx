@@ -1,8 +1,19 @@
 // @vitest-environment jsdom
-import type { Schedule } from "@game/stardraw-core";
+import {
+  drandRoundForClose,
+  drandTime,
+  emptyWinners,
+  type RoundRecord,
+  roundTimes,
+  type Schedule,
+  toBase64Url,
+} from "@game/stardraw-core";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { MARKS_DELAY_MS } from "../after-observe";
+import { drawOrder } from "../results";
+import { LIVE_LEAD_MS, LIVE_ROULETTE_TIMING, planRoulette } from "../roulette";
 import type { Services } from "../services";
 
 /*
@@ -153,5 +164,116 @@ describe("관측지 사람 수", () => {
       );
     });
     expect(view.container.querySelector("[data-room-count]")).toBeNull();
+  });
+});
+
+/*
+ * 관측이 끝난 뒤(docs/36 11-44): 언덕 위 얼굴의 등수 표지와 최고 등수 금빛 테두리, 1~3등의 관측 뒤 첫 말은
+ * 하늘 가운데 소감으로. 서버 시각(인사의 serverTime)을 관측 연출이 끝난 뒤로 두고 흉내 스트림으로 본다
+ */
+describe("관측이 끝난 뒤", () => {
+  /** 회차 1의 관측 기록: drand 값으로 정해지는 당첨 번호를 그대로 싣는다 */
+  function observed(): RoundRecord {
+    const base = {
+      v: 1,
+      round: 1,
+      void: false,
+      drandRound: 1,
+      drandSignature: new Uint8Array(48).fill(7),
+      winners: emptyWinners(),
+    } as unknown as RoundRecord;
+    const order = drawOrder(base);
+    return {
+      ...base,
+      numbers: order.slice(0, 6).sort((a, b) => a - b),
+      bonus: order[6] as number,
+    };
+  }
+  const record = observed();
+  const times = roundTimes(SCHEDULE, 1);
+  const showEnd =
+    drandTime(drandRoundForClose(times.closesAt)) * 1000 +
+    LIVE_LEAD_MS +
+    planRoulette(drawOrder(record), LIVE_ROULETTE_TIMING).totalMs;
+  /** 등수 표지가 붙은 뒤의 서버 시각 */
+  const later = showEnd + MARKS_DELAY_MS + 1000;
+  const others = Array.from({ length: 45 }, (_, i) => i + 1).filter(
+    (n) => !record.numbers.includes(n) && n !== record.bonus,
+  );
+  const pub = (seed: number) =>
+    toBase64Url(new Uint8Array(33).fill(seed).map((b, i) => (b + i) % 256));
+  /** a 1등, b 4등, c 낙첨 */
+  const byPerson = {
+    a: [...record.numbers],
+    b: [...record.numbers.slice(0, 4), ...others.slice(0, 2)],
+    c: others.slice(2, 8),
+  };
+  const people = ["a", "b", "c"].map((id, i) => ({
+    id,
+    pub: pub(i + 1),
+    entered: true,
+  }));
+
+  function stream(me: string | null, events: unknown[]): Response {
+    const ev = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
+    const text =
+      ev({
+        type: "hello",
+        serverTime: later,
+        round: 1,
+        drawAt: 0,
+        entryDeadline: 0,
+        closesAt: 0,
+        me,
+        people,
+        watchers: 0,
+        sealed: true,
+        drawn: true,
+        picks: { counts: {}, byPerson },
+      }) + events.map(ev).join("");
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(new TextEncoder().encode(text));
+      },
+    });
+    return new Response(body, { status: 200 });
+  }
+
+  function renderAfter(me: string | null, events: unknown[]) {
+    if (me)
+      sessionStorage.setItem(
+        "stardraw-room-pass-1",
+        JSON.stringify({ pass: "p", id: me }),
+      );
+    else sessionStorage.clear();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+      String(input).endsWith("/events")
+        ? stream(me, events)
+        : new Response("{}", { status: 404 }),
+    );
+    return render(
+      <RoomView
+        api="http://room.test/stardraw-api"
+        services={services}
+        round={1}
+        record={record}
+        ticket={undefined}
+        onEnter={() => {}}
+      />,
+    );
+  }
+
+  it("당첨된 얼굴에만 등수 표지, 가장 높은 등수는 금빛", async () => {
+    const view = renderAfter(null, []);
+    await waitFor(() => {
+      expect(view.container.querySelector("[data-face-rank]")).not.toBeNull();
+    });
+    const marks = [...view.container.querySelectorAll("[data-face-rank]")].map(
+      (m) => m.textContent,
+    );
+    expect(marks).toEqual(["1등", "4등"]);
+    const best = [...view.container.querySelectorAll("[data-face-best]")];
+    expect(best.map((f) => f.getAttribute("data-face"))).toEqual(["a"]);
+    expect(best[0]?.classList.contains("sd-room-face-best")).toBe(true);
   });
 });

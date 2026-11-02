@@ -6,6 +6,7 @@ import {
   drandTime,
   type EntrantSigner,
   fromBase64Url,
+  type Rank,
   type RoundRecord,
   registrationProofMessage,
   roundTimes,
@@ -20,11 +21,13 @@ import {
   useState,
 } from "react";
 import { cn } from "@/lib/cn";
+import { bestRank, hillFaces, hillRanks, marksDelay } from "../after-observe";
 import { Avatar } from "../astronaut/Avatar";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
+import { celebrationPlan } from "../celebrate";
 import { errorText } from "../errors";
 import { ensureRegistered, registering } from "../registrar";
-import { drawOrder } from "../results";
+import { drawOrder, myRank } from "../results";
 import {
   ROOM_TEXT_MAX,
   RoomClient,
@@ -44,7 +47,7 @@ import type { KeyInfo } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
 import { IdPresentView, useIdPresent } from "./IdPresent";
-import { formatLeft } from "./parts";
+import { formatLeft, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 import { MenuItem } from "./StardrawNav";
 
@@ -82,6 +85,26 @@ const LANTERN_EDGE = 6;
 /** 풍등을 길게 누르는 시간(ms) */
 const HOLD_MS = 500;
 
+/** 말을 길게 누름(신고·국장 조치). 풍등과 당첨 소감이 같이 쓴다. onHold가 없으면 누를 수 없다 */
+function useHold(lantern: Lantern, onHold: ((l: Lantern) => void) | undefined) {
+  const hold = useRef(0);
+  if (!onHold) return {};
+  return {
+    onPointerDown: () => {
+      window.clearTimeout(hold.current);
+      hold.current = window.setTimeout(() => onHold(lantern), HOLD_MS);
+    },
+    onPointerUp: () => window.clearTimeout(hold.current),
+    onPointerLeave: () => window.clearTimeout(hold.current),
+    onPointerCancel: () => window.clearTimeout(hold.current),
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      window.clearTimeout(hold.current);
+      onHold(lantern);
+    },
+  };
+}
+
 /**
  * 풍등 하나: 그 얼굴 위에서 떠오른다. 폭을 재서 하늘 판 안쪽으로 밀어 넣고(가장자리 얼굴이면 안쪽으로), 꼬리는 얼굴 쪽을 가리킨다
  */
@@ -94,23 +117,7 @@ function LanternBubble({
   onHold?: ((l: Lantern) => void) | undefined;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const hold = useRef(0);
-  const press = onHold
-    ? {
-        onPointerDown: () => {
-          window.clearTimeout(hold.current);
-          hold.current = window.setTimeout(() => onHold(lantern), HOLD_MS);
-        },
-        onPointerUp: () => window.clearTimeout(hold.current),
-        onPointerLeave: () => window.clearTimeout(hold.current),
-        onPointerCancel: () => window.clearTimeout(hold.current),
-        onContextMenu: (e: React.MouseEvent) => {
-          e.preventDefault();
-          window.clearTimeout(hold.current);
-          onHold(lantern);
-        },
-      }
-    : {};
+  const press = useHold(lantern, onHold);
   const [place, setPlace] = useState<{ left: number; tail: number } | null>(
     null,
   );
@@ -241,6 +248,28 @@ export function RoomView({
   const slots = useRef<{ x: number; at: number }[]>([]);
   const skyRef = useRef<HTMLDivElement>(null);
 
+  // ---------------------------------------------------------------- 관측이 끝난 뒤(docs/36 11-44)
+
+  /** 관측 연출이 끝나는 때(서버 ms) */
+  const showEnd = showStart + showLength;
+  /** 내 하늘의 당첨 축하 연출(언덕의 표지는 그 뒤에 붙는다) */
+  const myPlan = useMemo(() => {
+    const rank = record && ticket ? myRank(record, ticket) : null;
+    if (!record || !ticket || !rank) return null;
+    const order = drawOrder(record);
+    return celebrationPlan(
+      rank,
+      ticket.numbers.filter(
+        (n) => order.slice(0, 6).includes(n) || (rank === 2 && order[6] === n),
+      ),
+    );
+  }, [record, ticket]);
+  /** 언덕 위 얼굴에 등수 표지가 붙는 때(서버 ms) */
+  const marksAt = showEnd + marksDelay(myPlan);
+  const ranks = useMemo(
+    () => hillRanks(record, picks?.byPerson),
+    [record, picks],
+  );
   // 시각(0.25초마다): 카운트다운·진행 상태
   useEffect(() => {
     const t = window.setInterval(() => setNow(client.serverNow()), 250);
@@ -263,6 +292,14 @@ export function RoomView({
         setProblem(null);
       } else if (e.type === "join") {
         setPeople((m) => new Map(m).set(e.person.id, e.person));
+        // 봉인 뒤에 언덕에 오른 사람의 고른 별(봉인 소식에는 없다)
+        const chosen = e.person.picks;
+        if (chosen)
+          setPicks((p) =>
+            p
+              ? { ...p, byPerson: { ...p.byPerson, [e.person.id]: chosen } }
+              : p,
+          );
         order.current = [
           ...order.current.filter((i) => i !== e.person.id),
           e.person.id,
@@ -647,7 +684,10 @@ export function RoomView({
   const closeIn = drawAt * 1000 + ROOM_CLOSE_AFTER_MS - now;
   /** 관측지에 있는 사람 수: 언덕 위(얼굴) + 언덕 아래(대화 표 없이 보는 연결) */
   const crowd = people.size + watchers;
-  const faces = visible.slice(0, FACES);
+  /** 관측이 끝나고 결과(와 내 축하 연출)가 다 나온 뒤: 얼굴마다 등수 표지, 가장 높은 등수는 금빛 테두리 */
+  const marked = phase === "after" && now >= marksAt;
+  const best = marked ? bestRank(ranks, visible) : null;
+  const faces = hillFaces(visible, marked ? ranks : NO_RANKS, FACES);
   const more = visible.length - faces.length;
   const lit = new Set<number>();
   // 방송 중인 장면의 켜진 별(그 별을 고른 사람의 얼굴이 빛난다)
@@ -806,34 +846,54 @@ export function RoomView({
             const twinkle = sparks.some(
               (s) => s.kind === "twinkle" && s.to === pid,
             );
+            const rank = marked ? ranks.get(pid) : undefined;
+            const top = rank !== undefined && rank === best;
             return (
-              <button
-                key={pid}
-                type="button"
-                data-face={pid}
-                data-face-entered={p.entered || undefined}
-                aria-label={`${a.name}${p.entered ? ", 예측함" : ""}${pid === me ? ", 나" : ""}`}
-                onClick={() => cheer("twinkle", pid)}
-                className={cn(
-                  "sd-room-face relative size-12 overflow-hidden rounded-full border",
-                  p.entered ? "border-amber-200/70" : "border-white/15",
-                  pid === me && "ring-2 ring-sky-200/70",
-                  glowing(pid) && "sd-room-face-glow",
-                  twinkle && "sd-room-face-twinkle",
-                )}
-              >
-                <Avatar
-                  face={a.face}
-                  egg={a.egg}
-                  label=""
-                  className="size-full scale-125"
-                />
-                {p.director && (
-                  <span className="absolute inset-x-0 bottom-0 bg-rose-500/80 text-[8px] text-white">
-                    국장
+              <div key={pid} className="relative">
+                <button
+                  type="button"
+                  data-face={pid}
+                  data-face-entered={p.entered || undefined}
+                  data-face-best={top || undefined}
+                  aria-label={`${a.name}${p.entered ? ", 예측함" : ""}${rank ? `, ${RANK_LABEL[rank]}` : ""}${pid === me ? ", 나" : ""}`}
+                  onClick={() => cheer("twinkle", pid)}
+                  className={cn(
+                    "sd-room-face relative size-12 overflow-hidden rounded-full border",
+                    p.entered ? "border-amber-200/70" : "border-white/15",
+                    pid === me && "ring-2 ring-sky-200/70",
+                    // 표지가 붙으면 켜진 별 빛은 걷고 가장 높은 등수만 금빛으로
+                    !marked && glowing(pid) && "sd-room-face-glow",
+                    top && "sd-room-face-best",
+                    twinkle && "sd-room-face-twinkle",
+                  )}
+                >
+                  <Avatar
+                    face={a.face}
+                    egg={a.egg}
+                    label=""
+                    className="size-full scale-125"
+                  />
+                  {p.director && (
+                    <span className="absolute inset-x-0 bottom-0 bg-rose-500/80 text-[8px] text-white">
+                      국장
+                    </span>
+                  )}
+                </button>
+                {rank && (
+                  <span
+                    aria-hidden="true"
+                    data-face-rank={rank}
+                    className={cn(
+                      "sd-room-rank pointer-events-none absolute inset-x-0 -top-2 mx-auto w-max rounded-full px-1.5 font-bold text-[10px] leading-4 tabular-nums",
+                      top
+                        ? "bg-amber-300 text-slate-950"
+                        : "bg-slate-800 text-amber-100 ring-1 ring-amber-200/40",
+                    )}
+                  >
+                    {RANK_LABEL[rank]}
                   </span>
                 )}
-              </button>
+              </div>
             );
           })}
           {more > 0 && (
@@ -1079,6 +1139,8 @@ export function RoomView({
     </section>
   );
 }
+
+const NO_RANKS: ReadonlyMap<string, Rank> = new Map();
 
 /** 관측지가 닫히는 때(추첨 시각 뒤 ms, 서버 room.ts closeAfterMs와 같다) */
 const ROOM_CLOSE_AFTER_MS = 7 * 60_000;

@@ -227,6 +227,34 @@ describe("봉인·추첨·닫기", () => {
     expect(Object.keys(picks?.byPerson ?? {})).toHaveLength(1);
   });
 
+  it("봉인 뒤 언덕에 오른 사람은 들어옴 소식에 고른 별을 싣는다(먼저 와 있던 화면이 등수를 알게)", async () => {
+    const a = await passFor(alice);
+    tickets = [
+      { pub: bob.publicKey, numbers: [1, 2, 3, 4, 5, 6] } as unknown as Ticket,
+    ];
+    const ra = new FakeRes();
+    hub.connect(ROUND, asRes(ra), a.pass);
+    // 봉인 전: 예측한 사람이 들어와도 고른 별은 없다
+    const b = await passFor(bob);
+    const early = new FakeRes();
+    hub.connect(ROUND, asRes(early), b.pass);
+    expect(ra.of("join")[0]?.person).toMatchObject({ entered: true });
+    expect(ra.of("join")[0]?.person.picks).toBeUndefined();
+    early.end();
+    sealed = true;
+    clock.advance(1000);
+    // 봉인 뒤 다시 오르면 실린다
+    hub.connect(ROUND, asRes(new FakeRes()), b.pass);
+    expect(ra.of("join")).toHaveLength(2);
+    const join = ra.of("join")[1];
+    expect(join?.person).toMatchObject({
+      entered: true,
+      picks: [1, 2, 3, 4, 5, 6],
+    });
+    // 예측하지 않은 사람은 봉인 뒤에도 없다
+    expect(ra.of("hello")[0]?.people[0]?.picks).toBeUndefined();
+  });
+
   it("관측 시각이 지나도 닫히기 전까지는 늦게 와서 보고, 언덕에 오르고, 말한다", async () => {
     const a = await passFor(alice);
     clock.advance((DRAW_AT - (times.opensAt + 10)) * 1000);
