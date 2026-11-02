@@ -227,23 +227,53 @@ describe("봉인·추첨·닫기", () => {
     expect(Object.keys(picks?.byPerson ?? {})).toHaveLength(1);
   });
 
-  it("추첨 뒤에는 새로 들어오지 못하고, 추첨 전 표는 다시 들어온다. 7분 뒤 닫힌다", async () => {
+  it("관측 시각이 지나도 닫히기 전까지는 늦게 와서 보고, 언덕에 오르고, 말한다", async () => {
     const a = await passFor(alice);
     clock.advance((DRAW_AT - (times.opensAt + 10)) * 1000);
-    expect(status(() => hub.challenge(ROUND))).toBe(409);
-    expect(
-      status(() => hub.connect(ROUND, asRes(new FakeRes()), undefined)),
-    ).toBe(409);
+    // 관측 도중: 보는 연결과 새 표 모두 된다
+    const watcher = new FakeRes();
+    hub.connect(ROUND, asRes(watcher), undefined);
+    expect(watcher.status).toBe(200);
+    const b = await passFor(bob);
+    const rb = new FakeRes();
+    hub.connect(ROUND, asRes(rb), b.pass);
+    expect(rb.status).toBe(200);
+    expect(watcher.of("join").map((e) => e.person.id)).toEqual([b.id]);
+    // 추첨 전 표도 그대로 다시 들어온다
     const back = new FakeRes();
     hub.connect(ROUND, asRes(back), a.pass);
     expect(back.status).toBe(200);
     drawn = true;
     clock.advance(1000);
     expect(back.of("drawn")).toHaveLength(1);
-    clock.advance(DEFAULT_ROOM_LIMITS.closeAfterMs);
+    // 관측이 끝난 뒤(닫히기 직전)에도 처음 오른 사람이 말할 수 있다
+    clock.advance(DEFAULT_ROOM_LIMITS.closeAfterMs - 2000);
+    const late = await passFor(stranger).catch((e) => e);
+    expect(late).toMatchObject({ status: 403 }); // 등록하지 않은 열쇠는 여전히 거절
+    registered.add(toHex(stranger.publicKey));
+    const s = await passFor(stranger);
+    const rs = new FakeRes();
+    hub.connect(ROUND, asRes(rs), s.pass);
+    expect(rs.of("hello")[0]?.drawn).toBe(true);
+    hub.say(ROUND, s.pass, "늦었지만 봤어요");
+    expect(back.of("say").at(-1)).toMatchObject({ from: s.id });
+  });
+
+  it("닫힌 뒤에는 보는 연결도, 새 표도, 말도 거절한다", async () => {
+    const a = await passFor(alice);
+    const back = new FakeRes();
+    hub.connect(ROUND, asRes(back), a.pass);
+    clock.advance(
+      (DRAW_AT - (times.opensAt + 10)) * 1000 +
+        DEFAULT_ROOM_LIMITS.closeAfterMs,
+    );
     expect(back.of("closed")).toHaveLength(1);
     expect(back.ended).toBe(true);
     expect(status(() => hub.say(ROUND, a.pass, "끝"))).toBe(410);
+    expect(status(() => hub.challenge(ROUND))).toBe(410);
+    expect(
+      status(() => hub.connect(ROUND, asRes(new FakeRes()), undefined)),
+    ).toBe(410);
   });
 });
 

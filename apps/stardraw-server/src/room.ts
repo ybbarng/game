@@ -239,15 +239,9 @@ export class RoomHub {
     return room;
   }
 
-  private afterDraw(room: Room): boolean {
-    return sec(this.nowMs()) >= room.drawAt;
-  }
-
   /** ① 한 번 쓰는 값 */
   challenge(round: number): { nonce: string; expiresAt: number } {
     const room = this.room(round);
-    if (this.afterDraw(room))
-      throw new EntryError("관측이 시작되어 새로 들어올 수 없습니다", 409);
     const now = this.nowMs();
     for (const [n, at] of room.nonces)
       if (now - at > this.limits.nonceTtlMs) room.nonces.delete(n);
@@ -274,8 +268,6 @@ export class RoomHub {
     input: { pub: Uint8Array; signature: SignatureData; nonce: string },
   ): Promise<{ pass: string; id: string }> {
     const room = this.room(round);
-    if (this.afterDraw(room))
-      throw new EntryError("관측이 시작되어 새로 들어올 수 없습니다", 409);
     const nonce = this.takeNonce(room, input.nonce);
     const director = this.deps.isDirector(input.pub);
     if (!director && !this.deps.isRegistered(input.pub))
@@ -368,8 +360,6 @@ export class RoomHub {
     let pass: Pass | null = null;
     if (typeof token === "string" && token) {
       pass = this.passOf(room, token);
-    } else if (this.afterDraw(room)) {
-      throw new EntryError("관측이 시작되어 새로 들어올 수 없습니다", 409);
     }
     if (room.connections.size >= this.limits.maxConnections)
       throw new EntryError("관측지가 가득 찼습니다", 503);
