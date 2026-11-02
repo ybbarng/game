@@ -249,13 +249,18 @@ async function handle(
       throw new EntryError("공개 열쇠 형식이 맞지 않습니다");
     }
     const from = Number(url.searchParams.get("from") ?? "1");
-    return send(res, 200, o.proofs.keyTickets(pub, from));
+    return send(
+      res,
+      200,
+      o.proofs.keyTickets(pub, from, clientIp(req, o.trustProxy)),
+    );
   }
   const proofMatch = path.match(/^\/api\/proof\/(\d+)\/([0-9a-f]{64})$/);
   if (method === "GET" && proofMatch && o.proofs) {
     const proof = o.proofs.ticket(
       Number(proofMatch[1]),
       proofMatch[2] as string,
+      clientIp(req, o.trustProxy),
     );
     res.writeHead(200, {
       "content-type": "application/json; charset=utf-8",

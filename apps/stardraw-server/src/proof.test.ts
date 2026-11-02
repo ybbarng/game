@@ -27,7 +27,7 @@ import {
 
 /**
  * 증명 API(docs/36 11-30): 내 응모권이 그 회차 기록의 머클 루트에 있다는 증명, 열쇠별 응모권 증명과 등록 증명.
- * 남용 안전장치는 서버 전체 토큰 통(IP와 상관없다)
+ * 남용 안전장치는 서버 전체 토큰 통, 바뀌지 않는 응답의 기억(통을 쓰지 않는다), 넉넉한 보조인 접속 주소별 몫
  */
 
 let rigs: Rig[] = [];
@@ -179,17 +179,102 @@ describe("증명 API", () => {
     expect(second.next).toBeUndefined();
   });
 
-  it("서버 전체 요청이 통을 넘으면 503과 Retry-After, 시간이 지나면 다시 받는다(IP와 상관없다)", async () => {
+  /** 응모하지 않은 열쇠 n개(열쇠마다 다른 요청이라 기억에서 나오지 않는다) */
+  const strangers = async (n: number) =>
+    Promise.all(
+      Array.from({ length: n }, async () =>
+        toBase64Url((await player()).signer.publicKey),
+      ),
+    );
+  const from = (ip: string) => ({ headers: { "x-real-ip": ip } });
+
+  it("서버 전체 요청이 통을 넘으면 503과 Retry-After, 시간이 지나면 다시 받는다", async () => {
     const { rig } = await rigWithEntries(1);
-    const base = await api(rig, { perSecond: 2, burst: 2, pageSize: 10 });
-    const id = toHex(ticketId(readLedger(rig.dir).tickets[0]?.[0] as never));
-    const url = `${base}/api/proof/1/${id}`;
-    expect((await fetch(url)).status).toBe(200);
-    expect((await fetch(url)).status).toBe(200);
-    const busy = await fetch(url);
+    const base = await api(rig, {
+      ...DEFAULT_PROOF_LIMITS,
+      perSecond: 2,
+      burst: 2,
+      clientShare: 1,
+    });
+    const keys = await strangers(4);
+    const url = (k: string) => `${base}/api/keys/${k}/tickets`;
+    expect((await fetch(url(keys[0] as string))).status).toBe(200);
+    expect((await fetch(url(keys[1] as string))).status).toBe(200);
+    const busy = await fetch(url(keys[2] as string));
     expect(busy.status).toBe(503);
     expect(busy.headers.get("retry-after")).toBe("1");
     rig.clock.advance(500);
-    expect((await fetch(url)).status).toBe(200);
+    expect((await fetch(url(keys[3] as string))).status).toBe(200);
+  });
+
+  it("닫힌 회차의 같은 응답은 기억에서 내주어 통을 쓰지 않는다", async () => {
+    const { rig, players } = await rigWithEntries(1);
+    const base = await api(rig, {
+      ...DEFAULT_PROOF_LIMITS,
+      perSecond: 1,
+      burst: 2,
+      clientShare: 1,
+    });
+    const id = toHex(ticketId(readLedger(rig.dir).tickets[0]?.[0] as never));
+    const proofUrl = `${base}/api/proof/1/${id}`;
+    const keyUrl = `${base}/api/keys/${toBase64Url(players[0]?.signer.publicKey as never)}/tickets`;
+    const first = await (await fetch(proofUrl)).json();
+    const firstKey = await (await fetch(keyUrl)).json();
+    // 통은 비었지만 같은 요청은 몇 번이고 그대로
+    for (let i = 0; i < 5; i++) {
+      const again = await fetch(proofUrl);
+      expect(again.status).toBe(200);
+      expect(await again.json()).toEqual(first);
+      expect(await (await fetch(keyUrl)).json()).toEqual(firstKey);
+    }
+    // 새 요청은 통을 쓴다
+    const [other] = await strangers(1);
+    expect((await fetch(`${base}/api/keys/${other}/tickets`)).status).toBe(503);
+  });
+
+  it("새 회차가 닫히면 열쇠별 응답을 새로 만든다", async () => {
+    const { rig, players } = await rigWithEntries(1);
+    const base = await api(rig);
+    const p = players[0] as Player;
+    const keyUrl = `${base}/api/keys/${toBase64Url(p.signer.publicKey)}/tickets`;
+    const before = (await (await fetch(keyUrl)).json()) as KeyTicketsResponse;
+    expect(before.through).toBe(1);
+    await enter(rig, p, drawOf(2).numbers);
+    await rig.finish(2);
+    const after = (await (await fetch(keyUrl)).json()) as KeyTicketsResponse;
+    expect(after.through).toBe(2);
+    expect(after.tickets.map((t) => t.round)).toEqual([1, 2]);
+  });
+
+  it("넉넉한 보조: 접속 주소 하나는 통의 몫까지만 쓰고, 나머지는 다른 주소에 남는다", async () => {
+    const { rig } = await rigWithEntries(1);
+    const server = createHttpServer(rig.engine, rig.relay, {
+      basePath: "/stardraw-api",
+      ledgerDir: join(rig.dir, "ledger"),
+      devOrigins: [],
+      trustProxy: true,
+      proofs: new ProofService(rig.store, rig.clock, {
+        ...DEFAULT_PROOF_LIMITS,
+        perSecond: 2,
+        burst: 4,
+        clientShare: 0.5,
+      }),
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    close = () => stopServer(server);
+    const { port } = server.address() as AddressInfo;
+    const base = `http://127.0.0.1:${port}/stardraw-api`;
+    const keys = await strangers(6);
+    const ask = (i: number, ip: string) =>
+      fetch(`${base}/api/keys/${keys[i]}/tickets`, from(ip)).then(
+        (r) => r.status,
+      );
+    expect(await ask(0, "203.0.113.7")).toBe(200);
+    expect(await ask(1, "203.0.113.7")).toBe(200);
+    expect(await ask(2, "203.0.113.7")).toBe(503);
+    expect(await ask(3, "198.51.100.9")).toBe(200);
+    expect(await ask(4, "198.51.100.9")).toBe(200);
+    // 서버 전체 통이 비면 누구든 기다린다
+    expect(await ask(5, "192.0.2.1")).toBe(503);
   });
 });
