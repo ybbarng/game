@@ -296,11 +296,12 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     "오리온자리",
   );
   await tapStar(page, "canvas[data-sky='pick']", 1);
-  // 별을 고르는 화면은 첫 화면 제목 없이 이번 회차 응모권(한 줄 6칸)이 머리 역할
+  // 별을 고르는 화면은 첫 화면 제목 없이 위쪽에 지금 회차, 아래 별 바구니(한 줄 6칸)
   await expect(
     page.getByRole("heading", { name: "하늘의 별 따기", level: 1 }),
   ).toHaveCount(0);
-  const slip = page.getByRole("region", { name: "1회 예측서" });
+  await expect(page.locator("[data-enter-round]")).toHaveText("1회 예측");
+  const slip = page.getByRole("region", { name: "별 바구니" });
   await expect(slip).toHaveAttribute("data-entry-slip", "2");
   await expect(slip.locator("[data-slip-star='7']")).toHaveAccessibleName(
     "7 베텔게우스 빼기",
@@ -1208,7 +1209,7 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
 
 /**
  * 지금 회차(/stardraw/now): 고르던 별은 자동 저장되고, 마감 몇 초 뒤 관측지로 옮겨 간다. 방송은 밀면 사라진다.
- * 다음 회차에 접수처로 오면 「작성하던 예측서」를 불러와 한 칸씩 옮겨 적는다
+ * 다음 회차에 접수처로 오면 「바구니에 담아 둔 별」을 불러와 한 칸씩 옮겨 적는다
  */
 test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측서를 불러온다", async ({
   page,
@@ -1221,7 +1222,7 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page.getByRole("button", { name: "자동", exact: true }).click();
   await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
   const closed = page.locator("[data-enter-closed]");
-  await expect(closed).toContainText("작성하시던 예측서는 자동 저장됩니다.");
+  await expect(closed).toContainText("바구니에 담은 별은 저장해 둡니다.");
   // 몇 초 뒤 같은 주소에서 관측지로
   await page.clock.fastForward(6000);
   await page.clock.resume();
@@ -1245,8 +1246,8 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page
     .getByRole("button", { name: "별 6개 고르기" })
     .click({ timeout: 30_000 });
-  const draft = page.getByRole("region", { name: "작성하던 예측서" });
-  await expect(draft).toContainText("작성하던 예측서가 있어요 · 별 6개");
+  const draft = page.getByRole("region", { name: "바구니에 담아 둔 별" });
+  await expect(draft).toContainText("바구니에 담아 둔 별이 있어요 · 6개");
   await page.screenshot({
     path: info.outputPath("stardraw-draft.png"),
     fullPage: true,

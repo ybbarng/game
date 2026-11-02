@@ -591,7 +591,13 @@ export function EnterView({
           onClose={() => setEntryError(null)}
         />
       )}
-      <EnterHeader onBack={onBack} />
+      <EnterHeader
+        onBack={onBack}
+        tag={roundShort(
+          services.ledger.schedule,
+          closedView ? (writing ?? watchRound) : status.round,
+        )}
+      />
 
       {kept && kept.round < status.round && open && (
         <section
@@ -640,13 +646,13 @@ export function EnterView({
 
       {draft && !kept && open && picked.length === 0 && (
         <section
-          aria-label="작성하던 예측서"
+          aria-label="바구니에 담아 둔 별"
           data-draft
           className="sd-text-in flex items-center gap-3 rounded-2xl border border-sky-200/25 bg-[#141b2b] px-3.5 py-3"
         >
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-sky-100/75 text-xs">
-              작성하던 예측서가 있어요 · 별 {draft.numbers.length}개
+              바구니에 담아 둔 별이 있어요 · {draft.numbers.length}개
             </span>
             <span className="flex flex-wrap gap-1">
               {draft.numbers.map((n) => (
@@ -707,7 +713,7 @@ export function EnterView({
           <PickedRow
             key={nudges}
             shake={nudges > 0}
-            title={title}
+            title={BASKET}
             picked={picked}
             onRemove={picking ? toggle : undefined}
           />
@@ -801,6 +807,9 @@ export function EnterView({
   );
 }
 
+/** 별 바구니(2026-11-02 사용자): 고른 별을 담아 두는 6칸. 서류(예측서)가 아니라 손에 든 도구라 따로 부른다 */
+export const BASKET = "별 바구니";
+
 /** 마감 뒤 자동으로 관측지로 옮기기까지(초) */
 const CLOSED_GO_SECONDS = 5;
 
@@ -840,7 +849,7 @@ function ClosedNotice({
       </p>
       {saved && (
         <p className="break-keep text-white/55 text-xs">
-          작성하시던 예측서는 자동 저장됩니다.
+          바구니에 담은 별은 저장해 둡니다.
         </p>
       )}
       <button
@@ -864,9 +873,12 @@ function ClosedNotice({
 function EnterHeader({
   onBack,
   round,
+  tag,
 }: {
   onBack: () => void;
   round?: string;
+  /** 별을 고르는 화면: 제목 없이 오른쪽에 지금 예측하는 회차만(6칸 이름은 별 바구니라 회차가 따로 필요하다) */
+  tag?: string;
 }) {
   return (
     <header className="flex flex-col gap-3">
@@ -878,9 +890,9 @@ function EnterHeader({
         >
           ← 처음으로
         </button>
-        {round && (
-          <span className="text-sm text-white/60 tabular-nums">
-            {round} 예측
+        {(round ?? tag) && (
+          <span className="text-sm text-white/60 tabular-nums" data-enter-round>
+            {round ?? tag} 예측
           </span>
         )}
       </div>

@@ -400,7 +400,7 @@ export function SubmitView({
         {row !== "gone" && (
           <PickedRow
             ref={rowEl}
-            title={title}
+            title="별 바구니"
             picked={picked}
             hidden={flown}
             className="sd-submit-row mx-auto w-full max-w-md transition-opacity"
