@@ -98,8 +98,9 @@ export const PickedRow = forwardRef<
 });
 
 /**
- * 실제 로또 용지처럼 1~45 칸(누를 수 없다). `marked` 칸은 펜으로 칠하듯 채워진다.
- * `title`(예: "2회 답안지")은 용지 위쪽 회차 표시(옮겨 쓰기와 반송에서 어느 회차 용지인지 보인다)
+ * 실제 로또 용지처럼 1~45 칸(누를 수 없다). `marked` 칸은 펜으로 칠하듯 채워진다(`inked`면 이미 칠한 채로:
+ * 반송·옮겨 쓰기의 돌려받은 종이는 마킹해서 낸 종이라 다시 칠하지 않는다, 2026-11-02 사용자).
+ * `title`(예: "2회 예측서")은 용지 위쪽 회차 표시(옮겨 쓰기와 반송에서 어느 회차 용지인지 보인다)
  */
 export const NumberPaper = forwardRef<
   HTMLFieldSetElement,
@@ -107,8 +108,10 @@ export const NumberPaper = forwardRef<
     marked: readonly number[];
     title?: string | undefined;
     className?: string | undefined;
+    /** 이미 칠한 종이(돌려받은 예측서): 칠하는 연출 없이 */
+    inked?: boolean | undefined;
   }
->(function NumberPaper({ marked, title, className }, ref) {
+>(function NumberPaper({ marked, title, className, inked }, ref) {
   return (
     <fieldset
       ref={ref}
@@ -133,7 +136,12 @@ export const NumberPaper = forwardRef<
               data-marked={on || undefined}
               className={cn(
                 "sd-cell relative grid h-9 place-items-center rounded-md font-semibold text-sm tabular-nums",
-                on ? "sd-cell-ink text-slate-950" : "text-rose-100/85",
+                on
+                  ? cn(
+                      inked ? "sd-cell-inked" : "sd-cell-ink",
+                      "text-slate-950",
+                    )
+                  : "text-rose-100/85",
               )}
               style={{ ["--ink-ms" as string]: `${FX.starMark}ms` }}
             >
@@ -436,7 +444,7 @@ export function ReturnedPaper({
 }) {
   return (
     <div className="relative">
-      <NumberPaper title={title} marked={marked} />
+      <NumberPaper title={title} marked={marked} inked />
       <span
         aria-hidden="true"
         className="sd-stamp pointer-events-none absolute top-1/2 left-1/2 whitespace-nowrap rounded-lg border-4 border-rose-500 px-4 py-1.5 font-black text-3xl text-rose-500 tracking-widest"

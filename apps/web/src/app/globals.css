@@ -818,6 +818,11 @@ button {
   animation: sd-ink var(--ink-ms, 260ms) ease-out forwards;
   box-shadow: 0 0 14px rgba(253, 230, 138, 0.45);
 }
+/* 이미 칠한 칸(돌려받은 예측서) */
+.sd-cell-inked {
+  background: #fde68a;
+  box-shadow: 0 0 14px rgba(253, 230, 138, 0.45);
+}
 @keyframes sd-ink {
   to {
     background-size: 100% 100%;
