@@ -614,7 +614,7 @@ export function RoomView({
             note: ROOM_REGISTER_NOTE,
             pub: k.pub,
             tap: true,
-            done: `${residentPhrase(astronautOf(k.pub))} 님, 장부에 등록하겠습니다.`,
+            done: `${residentPhrase(astronautOf(k.pub))} 님, 장부에 등록할게요.`,
           },
         )
         .catch((err) => {
@@ -737,7 +737,7 @@ export function RoomView({
     if (!pass) return;
     try {
       await client.report(pass, l.id);
-      setSendNote("신고했습니다.");
+      setSendNote("신고했어요.");
     } catch (err) {
       setSendNote(errorText(err, "신고"));
     }
@@ -772,18 +772,18 @@ export function RoomView({
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"
-      ? `지금 ${title} 예측을 받고 있어요.`
+      ? `지금 ${title} 예측을 받고 있습니다.`
       : phase === "closed"
-        ? `예측을 마감했어요. 관측까지 ${formatLeft(toShow / 1000)}`
+        ? `예측을 마감했습니다. 관측까지 ${formatLeft(toShow / 1000)}`
         : phase === "announce"
           ? "이제 관측을 시작하겠습니다."
           : phase === "count"
             ? "이제 관측을 시작하겠습니다."
             : phase === "live"
-              ? `${title} 관측 중이에요.`
+              ? `${title} 관측 중입니다.`
               : closed
-                ? "관측을 마쳤어요."
-                : `${title} 관측이 끝났어요.`;
+                ? "관측을 마쳤습니다."
+                : `${title} 관측이 끝났습니다.`;
 
   // 로컬 데모 바로가기로 왔으면: 이 방의 추첨이 끝난 뒤 잠깐 머물다(결과 이야기) 다음 추첨 회차 방으로
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단계가 바뀔 때만

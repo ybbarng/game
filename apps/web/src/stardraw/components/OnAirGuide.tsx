@@ -43,7 +43,7 @@ export function OnAirGuide({
       {!hasKey && (
         <p className="break-keep text-sm text-white/85 leading-relaxed">
           카노푸스 우주국이 지금 {roundShort(schedule, round)}의 여섯 별을
-          관측하고 있어요. 모두 함께 지켜보는 이 1분이 지나면 다음 회차 예측이
+          관측하고 있습니다. 모두 함께 지켜보는 이 1분이 지나면 다음 회차 예측이
           열립니다.
         </p>
       )}

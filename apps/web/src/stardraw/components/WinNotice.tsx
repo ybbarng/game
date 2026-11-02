@@ -124,7 +124,7 @@ function NoticeCard({
         pub: ticket.pub,
         tap: true,
         readFirst: true,
-        done: "확인 링크를 만들었습니다.",
+        done: "확인 링크를 만들었어요.",
         hold: FX.idHoldSubmit,
         onConfirmed: (inv) => {
           onCreated?.(inv);
@@ -144,7 +144,7 @@ function NoticeCard({
       await navigator.clipboard.writeText(url);
       setCopied(true);
     } catch {
-      setError("복사하지 못했습니다. 주소를 길게 눌러 복사해 주세요");
+      setError("복사하지 못했습니다. 주소를 길게 눌러 복사해 주세요.");
     }
   };
 

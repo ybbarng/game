@@ -155,7 +155,7 @@ export function Inbox({
           pub: key.pub,
           tap: true,
           readFirst: true,
-          done: "입상 확인을 승인했습니다.",
+          done: "입상 확인을 승인했어요.",
           hold: FX.idHoldSubmit,
         },
       );

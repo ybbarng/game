@@ -13,7 +13,7 @@ const BY_HOUR: { from: number; to: number; lines: readonly string[] }[] = [
       "늦은 밤까지 관측하시네요.",
       "깊은 밤에 오셨네요.",
       "별이 가장 또렷한 시간이에요.",
-      "밤이 깊었어요. 반갑습니다.",
+      "밤이 깊었어요. 반가워요.",
     ],
   },
   {
@@ -23,7 +23,7 @@ const BY_HOUR: { from: number; to: number; lines: readonly string[] }[] = [
       "좋은 아침이에요.",
       "상쾌한 아침이에요.",
       "이른 시간에 오셨네요.",
-      "오늘 하루도 반갑습니다.",
+      "오늘 하루도 반가워요.",
     ],
   },
   {
@@ -33,7 +33,7 @@ const BY_HOUR: { from: number; to: number; lines: readonly string[] }[] = [
       "점심은 드셨어요?",
       "점심시간에 오셨네요.",
       "좋은 한낮이에요.",
-      "해가 높이 떴어요. 반갑습니다.",
+      "해가 높이 떴어요. 반가워요.",
     ],
   },
   {
@@ -41,9 +41,9 @@ const BY_HOUR: { from: number; to: number; lines: readonly string[] }[] = [
     to: 18,
     lines: [
       "좋은 오후예요.",
-      "오후도 반갑습니다.",
+      "오후에도 반가워요.",
       "남은 하루도 잘 보내세요.",
-      "해가 기울고 있어요. 반갑습니다.",
+      "해가 기울고 있어요. 반가워요.",
     ],
   },
   {
@@ -85,7 +85,7 @@ export function greetingLines(ms: number): readonly string[] {
 
 /**
  * 인사 한 문장. `random`은 [0, 1). 바로 앞 인사(`last`)와 같은 문장은 고르지 않는다.
- * 응모 자리는 창구 말("응모를 접수하겠습니다.")을 뒤에 붙인다
+ * 응모 자리는 창구 말("예측을 접수할게요.")을 뒤에 붙인다
  */
 export function pickGreeting({
   now,
@@ -101,7 +101,7 @@ export function pickGreeting({
   const all = greetingLines(now);
   const pool = all.filter((l) => l !== last);
   const line = pool[Math.floor(random() * pool.length)] ?? all[0] ?? "";
-  return place === "submit" ? `${line} 예측을 접수하겠습니다.` : line;
+  return place === "submit" ? `${line} 예측을 접수할게요.` : line;
 }
 
 /** 이 탭에서 바로 앞에 건넨 인사(같은 문장이 연달아 나오지 않게, 세션 안에서만) */
@@ -115,6 +115,6 @@ export function greetNow(now: number, place: "enter" | "submit"): string {
     random: Math.random,
     last: lastLine,
   });
-  lastLine = text.replace(/ 예측을 접수하겠습니다\.$/, "");
+  lastLine = text.replace(/ 예측을 접수할게요\.$/, "");
   return text;
 }

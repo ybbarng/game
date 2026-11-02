@@ -193,7 +193,7 @@ export const QUICK_SPARE_MS = 20_000;
  * 용지는 아래(내 앞)에 두고 위로 제출한다(2026-10-31 사용자). 시간은 fx-timing의 FX.
  *
  * 옮겨 쓰기(`transfer`, 응모 페이지 보관한 답안지 칸의 「이 답안지로 응모」): 돌려받은 용지가 위에 놓이고, 다음 회차가
- * 아직 안 열렸으면 "다음 회차 응모가 열리면 이어서 접수하겠습니다."로 기다린다. 열리면 새 회차 용지가 아래에서
+ * 아직 안 열렸으면 "다음 회차 예측이 열리면 이어서 접수할게요."로 기다린다. 열리면 새 회차 용지가 아래에서
  * 올라와 칠한 칸이 한 번에 옮겨지고, 돌려받은 용지는 아래로 접혀 사라진 뒤 밀어 올리기를 기다린다.
  * 서명은 회차에 묶이므로 같은 종이를 다시 내지 않고 새 용지로 옮겨 쓴다
  */
@@ -215,7 +215,7 @@ export function SubmitView({
   const rowEl = useRef<HTMLElement>(null);
   const paper = useRef<HTMLFieldSetElement>(null);
   const [text, setText] = useState(
-    transfer ? "다음 회차 예측서에 옮겨 적습니다." : "예측서를 작성해 주세요.",
+    transfer ? "다음 회차 예측서에 옮겨 적을게요." : "예측서를 작성해 주세요.",
   );
   /** 옮겨 쓰기에서 돌려받은 용지 */
   const [old, setOld] = useState<"shown" | "folding" | "gone">(
@@ -243,11 +243,11 @@ export function SubmitView({
         ]);
         if (!alive) return;
         if (!early) {
-          setText("다음 회차 예측이 열리면 이어서 접수하겠습니다.");
+          setText("다음 회차 예측이 열리면 이어서 접수할게요.");
           await transfer.ready;
           if (!alive) return;
         }
-        setText("다음 회차 예측서에 옮겨 적습니다.");
+        setText("다음 회차 예측서에 옮겨 적을게요.");
         setSheet("in");
         await wait(FX.sheetIn);
         if (!alive) return;

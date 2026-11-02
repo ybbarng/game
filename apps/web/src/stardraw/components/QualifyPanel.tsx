@@ -284,7 +284,7 @@ function Backup({
           pub: key.pub,
           tap: true,
           readFirst: true,
-          done: "본인이 맞습니다.",
+          done: "본인이 맞아요.",
           hold: FX.idHoldSubmit,
         },
       );

@@ -740,7 +740,7 @@ export function AstronautCard({
       {!flipped && (aboutMark || (owner === "ok" && !forced)) && (
         <p className="break-keep text-center text-sky-100/85 text-xs">
           {owner === "ok"
-            ? "나에게 보여 주는 확인이에요. 남에게 입상을 증명할 때는 입상 확인을 씁니다"
+            ? "나에게 보여 주는 확인입니다. 남에게 입상을 증명할 때는 입상 확인을 씁니다"
             : "이 등록증은 이 기기의 패스키로 지켜집니다"}{" "}
           ·{" "}
           <a
