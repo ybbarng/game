@@ -91,10 +91,10 @@ async function openDrawResult(page: Page) {
 
 /**
  * 2026-11-01 사용자: 「처음으로」가 첫 화면이 아니라 뒤로 가기처럼 움직였다(추첨 결과 → 「다음 회차 응모」 → 「처음으로」가
- * 추첨으로). 메뉴가 없는 응모 화면의 「처음으로」는 어디서 들어왔든 첫 화면이다.
+ * 추첨으로). 메뉴가 없는 예측 화면의 「홈」(2026-11-02 「처음으로」에서 바꿈)은 어디서 들어왔든 첫 화면이다.
  * 탭바가 있는 영수증에는 「처음으로」를 두지 않는다(켜진 탭은 내 응모인데 단추는 홈으로 가 어긋났다, B안)
  */
-test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭으로", async ({
+test("예측 화면 「홈」은 늘 첫 화면으로, 영수증은 탭으로", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
@@ -123,12 +123,13 @@ test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
 
-  // 추첨 결과 → 「다음 회차 응모」 → 「처음으로」
+  // 추첨 결과 → 「다음 회차 예측」 → 「홈」
   await openDrawResult(page);
   await page.getByRole("button", { name: "다음 회차 예측" }).click();
   // 다음 회차 예측은 접수처(지금 회차)에서
   await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await page.getByRole("button", { name: "← 처음으로" }).click();
+  await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
+  await page.getByRole("button", { name: "홈", exact: true }).click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();
   await page.screenshot({ path: info.outputPath("nav-home-first.png") });
@@ -354,10 +355,11 @@ test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 
 });
 
 /**
- * 별 따기 앱 밖의 페이지(설명·검증·배우기·소속·등록증·우주국·개인정보·공유 응모권·데모)는 모두 첫 화면에 같은
- * 「← 하늘의 별 따기」가 보인다. 검증 페이지는 설명으로만 이어져 첫 화면까지 두 번 가야 했다(2026-11-01)
+ * 별 따기 앱 밖의 페이지(설명·별 이야기·검증·배우기·소속·등록증·우주국·개인정보·공유 예측서·데모·관리)는 모두 첫 화면에
+ * 앱 안과 같은 「홈」(집 그림)이 보이고 별 따기 홈으로 간다. 검증 페이지는 설명으로만 이어져 첫 화면까지 두 번 가야 했다
+ * (2026-11-01). 「← 하늘의 별 따기」와 앱 안 「홈」이 섞여 있던 것을 「홈」 하나로 맞췄다(2026-11-02 사용자)
  */
-test("앱 밖 페이지마다 첫 화면에 「← 하늘의 별 따기」", async ({
+test("앱 밖 페이지마다 첫 화면에 별 따기 홈으로 가는 「홈」", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
@@ -372,17 +374,19 @@ test("앱 밖 페이지마다 첫 화면에 「← 하늘의 별 따기」", asy
     "/stardraw/privacy",
     `/stardraw/ticket#1-${"0".repeat(64)}`,
     "/stardraw/demo",
+    "/stardraw/admin",
   ]) {
     await page.goto(path);
-    const link = page.getByRole("link", {
-      name: "← 하늘의 별 따기",
-      exact: true,
-    });
+    const link = page.getByRole("link", { name: "홈", exact: true });
     await expect(link, path).toBeInViewport();
     await expect(link, path).toHaveAttribute("href", "/stardraw");
+    await expect(link.locator("svg"), path).toHaveCount(1);
+    await expect(page.getByText("← 하늘의 별 따기"), path).toHaveCount(0);
     if (path === "/stardraw/verify")
       await page.screenshot({ path: info.outputPath("nav-home-verify.png") });
   }
+  await page.getByRole("link", { name: "홈", exact: true }).click();
+  await expect(page).toHaveURL(/\/stardraw$/);
 });
 
 /**
@@ -404,7 +408,7 @@ test("데모로 가는 링크가 화면에 없다(메뉴 더 보기·설명·국
   for (const path of ["/stardraw/about", "/stardraw/admin"]) {
     await page.goto(path);
     await expect(
-      page.getByRole("link", { name: "← 하늘의 별 따기", exact: true }),
+      page.getByRole("link", { name: "홈", exact: true }),
       path,
     ).toBeVisible();
     await expect(demoLinks, path).toHaveCount(0);

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fragment } from "react";
-
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 import {
   KeyHoldingExplained,
   PasskeyFaq,
@@ -113,12 +113,7 @@ export default function StardrawAbout() {
     >
       <article className="mx-auto flex max-w-2xl flex-col gap-10 break-keep leading-relaxed">
         <header className="flex flex-col gap-3">
-          <a
-            href="/stardraw"
-            className="self-start text-sm text-white/70 hover:text-white"
-          >
-            ← 하늘의 별 따기
-          </a>
+          <HomeLink />
           <h1 className="font-black text-3xl">하늘의 별 따기 설명</h1>
           <p className="text-amber-100/90" data-agency>
             하늘의 별 따기는 카노푸스 우주국이 정해진 시각마다 여는 공개

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { BureauDirector } from "@/stardraw/components/BureauDirector";
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
@@ -9,6 +8,7 @@ import {
   CanopusChart,
   JejuSky,
 } from "@/stardraw/components/CanopusSky";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 export const metadata: Metadata = {
   title: { absolute: "카노푸스 우주국 · 하늘의 별 따기" },
@@ -32,9 +32,7 @@ export default function StardrawBureauPage() {
         data-bureau
         className="mx-auto flex max-w-xl flex-col gap-6 break-keep text-sm text-white/80 leading-relaxed"
       >
-        <a href="/stardraw" className="text-white/70 hover:text-white">
-          ← 하늘의 별 따기
-        </a>
+        <HomeLink />
 
         <header className="flex flex-col items-center gap-4 text-center">
           <BureauLogo className="size-28 text-amber-100/90" />

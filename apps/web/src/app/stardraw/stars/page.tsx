@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 import { LottoBall } from "@/stardraw/components/parts";
 import { SKY_STARS, tempWord } from "@/stardraw/sky";
 import { BoardMorph } from "@/stardraw/stars/BoardMorph";
@@ -45,12 +45,7 @@ export default function StardrawStars() {
     >
       <article className="mx-auto flex max-w-2xl flex-col gap-10 break-keep leading-relaxed">
         <header className="flex flex-col gap-3">
-          <a
-            href="/stardraw"
-            className="self-start text-sm text-white/70 hover:text-white"
-          >
-            ← 하늘의 별 따기
-          </a>
+          <HomeLink />
           <h1 className="font-black text-3xl">별 이야기</h1>
           <p className="text-white/80">
             예측판의 별 45개는 모두 서울 하늘에 실제로 뜨는 별입니다. 둥근

@@ -1,10 +1,10 @@
 "use client";
 
 import { type Rank, roundTimes, toHex } from "@game/stardraw-core";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 import type { CheckSession } from "../checks";
 import { USED_LINK } from "../confirm-relay";
 import { demoKeyring, passkeyKeyring } from "../director/director";
@@ -228,25 +228,20 @@ export function CheckLink({
       aria-label="당첨자 확인"
       data-check-link={state.kind}
     >
-      <div className="flex items-center justify-between">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-white/70 hover:text-white"
+            className="justify-self-start text-sm text-white/70 hover:text-white"
           >
             ← 돌아가기
           </button>
         ) : (
-          <a
-            href="/stardraw"
-            className="text-sm text-white/70 hover:text-white"
-          >
-            ← 하늘의 별 따기
-          </a>
+          <HomeLink />
         )}
         <h2 className="font-bold text-lg">{title} 확인</h2>
-        <span className="w-16" />
+        <span />
       </div>
 
       {error && (

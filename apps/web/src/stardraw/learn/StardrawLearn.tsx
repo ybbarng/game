@@ -5,6 +5,7 @@ import { REPO_URL } from "@/components/brand/MadeWith";
 import { Quiz, type QuizItem } from "@/components/learn/Quiz";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 import { AttackToy } from "./AttackToy";
 import { FairnessToy } from "./FairnessToy";
@@ -586,9 +587,7 @@ export function StardrawLearn() {
       <article className="mx-auto flex max-w-2xl flex-col gap-10 break-keep leading-relaxed">
         <header className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <a href="/stardraw" className="text-white/70 hover:text-white">
-              ← 하늘의 별 따기
-            </a>
+            <HomeLink />
             <span className="flex gap-3">
               <a
                 href="/stardraw/about"

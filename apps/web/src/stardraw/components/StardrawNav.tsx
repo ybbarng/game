@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { astronautOf } from "../astronaut/identity";
 import { GAME_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
+import { HOME_ICON, MENU_ITEM_CLASS, MENU_ITEM_OFF, NavIcon } from "./HomeLink";
 
 /**
  * 탭바가 가리키는 앱 안 화면. 하위 화면은 자기 탭을 켠다(영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차,
@@ -31,9 +32,7 @@ export function useWideScreen(): boolean {
 
 /** 탭 그림 */
 const ICONS = {
-  home: (
-    <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" />
-  ),
+  home: HOME_ICON,
   mine: (
     <>
       <path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z" />
@@ -163,24 +162,11 @@ export function MenuItem({
       aria-current={on ? "page" : undefined}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-        on
-          ? "bg-white/10 text-amber-100"
-          : "text-white/65 hover:bg-white/5 hover:text-white",
+        MENU_ITEM_CLASS,
+        on ? "bg-white/10 text-amber-100" : MENU_ITEM_OFF,
       )}
     >
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="size-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {ICONS[target as keyof typeof ICONS]}
-      </svg>
+      <NavIcon>{ICONS[target as keyof typeof ICONS]}</NavIcon>
       {label}
     </button>
   );
@@ -334,18 +320,7 @@ function BottomBar({
           on ? "text-amber-100" : "text-white/55 hover:text-white/80",
         )}
       >
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="size-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {icon}
-        </svg>
+        <NavIcon className="size-6">{icon}</NavIcon>
         {label}
       </button>
     );

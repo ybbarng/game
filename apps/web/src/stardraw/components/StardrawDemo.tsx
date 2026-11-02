@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 import { demoPick } from "../demo-pick";
 import { DirectorConsole } from "../director/DirectorConsole";
@@ -171,12 +172,7 @@ export function StardrawDemo() {
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 pt-6">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <a
-              href="/stardraw"
-              className="text-sm text-white/70 hover:text-white"
-            >
-              ← 하늘의 별 따기
-            </a>
+            <HomeLink />
             <button
               type="button"
               disabled={busy}

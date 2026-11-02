@@ -1132,7 +1132,7 @@ async function toEntryEdge(page: Page) {
 
 /**
  * 마감 안내는 장부(서버) 시각으로 화면 마감 1분 전부터, 하늘판 위쪽 가장자리에 겹쳐 뜬다.
- * 자리를 차지하지 않아 들어올 때 화면이 1px도 밀리지 않고, 「← 처음으로」와 겹치지 않는다
+ * 자리를 차지하지 않아 들어올 때 화면이 1px도 밀리지 않고, 머리 줄 「홈」과 겹치지 않는다
  */
 test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", async ({
   page,
@@ -1154,7 +1154,7 @@ test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", 
   expect(await sky.boundingBox()).toEqual(skyBefore);
   expect(await cta.boundingBox()).toEqual(ctaBefore);
   const back = await page
-    .getByRole("button", { name: "← 처음으로" })
+    .getByRole("button", { name: "홈", exact: true })
     .boundingBox();
   const box = await hurry.boundingBox();
   expect(box && back && box.y >= back.y + back.height).toBe(true);
@@ -1193,11 +1193,10 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
     path: info.outputPath("stardraw-enter-closed.png"),
     fullPage: true,
   });
-  // 처음으로 나가면 첫 화면이 다 뜨고 잠깐 쉰 뒤 방송이 내려온다(뜨자마자 덮지 않는다), 누르면 관측지
-  await page.getByRole("button", { name: "← 처음으로" }).click();
-  await expect(
-    page.getByRole("button", { name: "홈", exact: true }),
-  ).toBeVisible();
+  // 「홈」으로 나가면 첫 화면이 다 뜨고 잠깐 쉰 뒤 방송이 내려온다(뜨자마자 덮지 않는다), 누르면 관측지
+  await page.getByRole("button", { name: "홈", exact: true }).click();
+  await expect(page).toHaveURL(/\/stardraw$/);
+  await expect(page.locator("nav [data-tab='home']:visible")).toBeVisible();
   await expect(toast).toHaveCount(0);
   await fastForwardUntil(page, async () => (await toast.count()) > 0);
   await expect(toast).toContainText("카노푸스 우주국");

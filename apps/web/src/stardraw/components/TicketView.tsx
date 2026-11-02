@@ -9,8 +9,8 @@ import {
   toHex,
 } from "@game/stardraw-core";
 import { useEffect, useState } from "react";
-
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 import { useLedger } from "../services";
 import { sealedFor } from "../spoiler";
@@ -144,12 +144,7 @@ export function TicketView() {
       className="sd-night min-h-dvh px-4 pt-6 pb-12 text-white"
     >
       <div className="mx-auto flex max-w-xl flex-col gap-5">
-        <a
-          href="/stardraw"
-          className="self-start text-sm text-white/70 hover:text-white"
-        >
-          ← 하늘의 별 따기
-        </a>
+        <HomeLink />
         <section className="flex flex-col gap-4" aria-label="공유받은 예측서">
           {body}
         </section>

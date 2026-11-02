@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 export const metadata: Metadata = {
   title: { absolute: "개인정보처리방침 · 하늘의 별 따기" },
@@ -17,9 +18,7 @@ export default function StardrawPrivacyPage() {
       className="sd-night min-h-dvh px-4 pt-6 pb-12 text-white"
     >
       <article className="mx-auto flex max-w-xl flex-col gap-5 break-keep text-sm text-white/80 leading-relaxed">
-        <a href="/stardraw" className="text-white/70 hover:text-white">
-          ← 하늘의 별 따기
-        </a>
+        <HomeLink />
         <h1 className="font-bold text-2xl text-white">개인정보처리방침</h1>
         <p>
           하늘의 별 따기(game.byb.kr/stardraw)가 무엇을 받고 어디에 쓰는지

@@ -57,6 +57,7 @@ import { LottoBall, StardrawTitle, StarInfo } from "./parts";
 import { liveDrawRound } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
 import { StageOverlay, useReducedMotion } from "./StageOverlay";
+import { MenuItem } from "./StardrawNav";
 
 /**
  * 응모 단계. pick: 별 고르기. busy: 움직임 줄이기에서 응모하는 중(고르는 화면 그대로).
@@ -889,13 +890,9 @@ function EnterHeader({
   return (
     <header className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← 처음으로
-        </button>
+        <div className="-ml-3">
+          <MenuItem target="home" label="홈" onClick={onBack} />
+        </div>
         {(round ?? tag) && (
           <span className="text-sm text-white/60 tabular-nums" data-enter-round>
             {round ?? tag} 예측

@@ -373,7 +373,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     window.scrollTo({ top: 0 });
   };
   /**
-   * 응모의 「처음으로」, 메뉴가 없는 휴대폰 추첨·회차 방의 「홈」: 늘 첫 화면으로. 바로 전 화면은 브라우저·기기의 뒤로 가기가
+   * 메뉴가 없는 예측·휴대폰 추첨·회차 방의 「홈」: 늘 첫 화면으로. 바로 전 화면은 브라우저·기기의 뒤로 가기가
    * 맡는다. 화면 안에 뒤로 가기 단추를 두지 않는다(이름과 다른 곳으로 가고, 탭바·메뉴 줄과 겹쳤다, 2026-11-01 사용자 B안)
    */
   const goHome = () => go({ name: "home" });
@@ -483,7 +483,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
       go({ name: "receipt", id: toHex(ticketId(enteredNow.ticket)) }, true);
   }, [enteredNow]);
 
-  // 응모·추첨은 하던 일에 집중하게 휴대폰 탭바를 숨긴다(응모는 「처음으로」, 추첨은 머리 줄 「홈」으로 첫 화면에 간다)
+  // 응모·추첨은 하던 일에 집중하게 휴대폰 탭바를 숨긴다(응모·추첨 모두 머리 줄 「홈」으로 첫 화면에 간다)
   // 마우스로 쓰는 넓은 화면은 위쪽 메뉴 줄(탭바 대신)이라 위에 자리를 둔다. 연출을 가리지 않아 추첨에도 둔다
   // (2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다)
   const wide = useWideScreen();

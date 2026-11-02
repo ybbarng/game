@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { HomeLink } from "@/stardraw/components/HomeLink";
 
 import { DirectorConsole } from "./DirectorConsole";
 import { passkeyKeyring, remoteDirectorBackend } from "./director";
@@ -20,12 +20,7 @@ export function StardrawAdmin() {
     <main data-game="stardraw" className="sd-night min-h-dvh pb-12 text-white">
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 pt-6">
         <header className="flex flex-col gap-2">
-          <a
-            href="/stardraw"
-            className="text-sm text-white/70 hover:text-white"
-          >
-            ← 하늘의 별 따기
-          </a>
+          <HomeLink />
           <h1 className="font-black text-3xl">우주국장 관리 화면</h1>
           <p className="break-keep text-white/70">
             카노푸스 우주국장이 국장 패스키로 서명해 운영 기록을 남깁니다.
