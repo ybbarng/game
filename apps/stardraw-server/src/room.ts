@@ -35,6 +35,11 @@ export interface RoomLimits {
   sayBurst: number;
   /** 응원 사이(ms) */
   cheerIntervalMs: number;
+  /** 표마다 신고 사이(ms)와 몰아서 낼 수 있는 수 */
+  reportIntervalMs: number;
+  reportBurst: number;
+  /** 방마다 신고 수를 세어 둘 말 수(넘으면 오래된 말부터 버린다) */
+  maxReportedMessages: number;
   /** 추첨 뒤 방을 닫기까지(ms) */
   closeAfterMs: number;
   /** 한 번 쓰는 값이 살아 있는 시간(ms) */
@@ -53,6 +58,9 @@ export const DEFAULT_ROOM_LIMITS: RoomLimits = {
   sayIntervalMs: 2500,
   sayBurst: 3,
   cheerIntervalMs: 800,
+  reportIntervalMs: 2000,
+  reportBurst: 5,
+  maxReportedMessages: 2000,
   closeAfterMs: 7 * 60_000,
   nonceTtlMs: 120_000,
   maxConnections: 600,
@@ -137,10 +145,33 @@ interface Pass {
   pubHex: string;
   issuedAt: number;
   director: boolean;
-  sayTokens: number;
-  sayRefillAt: number;
+  say: Bucket;
+  report: Bucket;
   lastCheer: number;
   kicked: boolean;
+}
+
+/** 표마다 물통: 몰아서 burst번, 그 뒤 intervalMs마다 한 번씩 찬다 */
+interface Bucket {
+  tokens: number;
+  refillAt: number;
+}
+
+function takeToken(
+  bucket: Bucket,
+  now: number,
+  intervalMs: number,
+  burst: number,
+): boolean {
+  const refill = Math.floor((now - bucket.refillAt) / intervalMs);
+  if (refill > 0) {
+    bucket.tokens = Math.min(burst, bucket.tokens + refill);
+    bucket.refillAt += refill * intervalMs;
+  }
+  if (bucket.tokens <= 0) return false;
+  if (bucket.tokens === burst) bucket.refillAt = now;
+  bucket.tokens -= 1;
+  return true;
 }
 
 interface Connection {
@@ -298,8 +329,8 @@ export class RoomHub {
       pubHex,
       issuedAt: this.nowMs(),
       director,
-      sayTokens: this.limits.sayBurst,
-      sayRefillAt: this.nowMs(),
+      say: { tokens: this.limits.sayBurst, refillAt: this.nowMs() },
+      report: { tokens: this.limits.reportBurst, refillAt: this.nowMs() },
       lastCheer: 0,
       kicked: false,
     };
@@ -432,18 +463,10 @@ export class RoomHub {
     if (charCount(clean) > this.limits.textMax)
       throw new EntryError(`말은 ${this.limits.textMax}자까지입니다`, 413);
     const now = this.nowMs();
-    // 표마다 물통: 몰아서 sayBurst번, 그 뒤 sayIntervalMs마다 한 번씩 찬다
-    const refill = Math.floor(
-      (now - pass.sayRefillAt) / this.limits.sayIntervalMs,
-    );
-    if (refill > 0) {
-      pass.sayTokens = Math.min(this.limits.sayBurst, pass.sayTokens + refill);
-      pass.sayRefillAt += refill * this.limits.sayIntervalMs;
-    }
-    if (pass.sayTokens <= 0)
+    if (
+      !takeToken(pass.say, now, this.limits.sayIntervalMs, this.limits.sayBurst)
+    )
       throw new EntryError("조금 천천히 말해 주세요", 429);
-    if (pass.sayTokens === this.limits.sayBurst) pass.sayRefillAt = now;
-    pass.sayTokens -= 1;
     room.messageSeq += 1;
     const id = `${room.round}-${room.messageSeq}`;
     this.broadcast(room, {
@@ -474,13 +497,39 @@ export class RoomHub {
   report(round: number, token: unknown, messageId: unknown): { count: number } {
     const room = this.room(round, false);
     const pass = this.passOf(room, token);
-    if (typeof messageId !== "string") throw new EntryError("말이 없습니다");
-    const set = room.reports.get(messageId) ?? new Set<string>();
+    // 이 방에서 실제로 나간 말의 번호(`${round}-${n}`, 1 ≤ n ≤ messageSeq)만 받는다
+    const m =
+      typeof messageId === "string"
+        ? /^(\d{1,12})-(\d{1,12})$/.exec(messageId)
+        : null;
+    const n = m ? Number(m[2]) : 0;
+    if (!m || Number(m[1]) !== room.round || n < 1 || n > room.messageSeq)
+      throw new EntryError("신고할 말이 없습니다");
+    if (
+      !takeToken(
+        pass.report,
+        this.nowMs(),
+        this.limits.reportIntervalMs,
+        this.limits.reportBurst,
+      )
+    )
+      throw new EntryError("조금 천천히 신고해 주세요", 429);
+    const id = `${room.round}-${n}`;
+    // 말마다 표 id 모음: 표는 열쇠마다 하나(같은 열쇠로 다시 받으면 같은 id)라 방의 maxPasses를 넘지 않는다
+    let set = room.reports.get(id);
+    if (!set) {
+      set = new Set<string>();
+      while (room.reports.size >= this.limits.maxReportedMessages) {
+        const oldest = room.reports.keys().next().value;
+        if (oldest === undefined) break;
+        room.reports.delete(oldest);
+      }
+      room.reports.set(id, set);
+    }
     set.add(pass.id);
-    room.reports.set(messageId, set);
     for (const c of room.connections)
       if (c.pass?.director)
-        this.writeRaw(c, { type: "report", id: messageId, count: set.size });
+        this.writeRaw(c, { type: "report", id, count: set.size });
     return { count: set.size };
   }
 

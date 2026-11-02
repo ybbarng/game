@@ -342,3 +342,83 @@ describe("국장 조치", () => {
     expect(status(() => hub.say(ROUND, a.pass, "다시"))).toBe(401);
   });
 });
+
+describe("신고", () => {
+  it("이 방에서 나간 말의 번호만 받고, 국장 화면에 사람 수를 보낸다", async () => {
+    const a = await passFor(alice);
+    const b = await passFor(bob);
+    const d = await passFor(director);
+    const rd = new FakeRes();
+    hub.connect(ROUND, asRes(rd), d.pass);
+    const { id } = hub.say(ROUND, a.pass, "광고입니다");
+    for (const bad of [
+      `${ROUND}-0`,
+      `${ROUND}-2`,
+      `${ROUND + 1}-1`,
+      "x",
+      `${ROUND}-1 `,
+      42,
+    ])
+      expect(status(() => hub.report(ROUND, b.pass, bad))).toBe(400);
+    expect(hub.report(ROUND, b.pass, id)).toEqual({ count: 1 });
+    // 같은 사람이 다시 신고해도 한 사람
+    expect(hub.report(ROUND, b.pass, id)).toEqual({ count: 1 });
+    expect(hub.report(ROUND, a.pass, id)).toEqual({ count: 2 });
+    expect(JSON.stringify(rd.events)).toContain(`"count":2`);
+  });
+
+  it("신고 빠르기: 몰아서 5번, 그 뒤 2초마다 한 번", async () => {
+    const a = await passFor(alice);
+    const b = await passFor(bob);
+    const { id } = hub.say(ROUND, a.pass, "안녕");
+    for (let i = 0; i < DEFAULT_ROOM_LIMITS.reportBurst; i++)
+      expect(status(() => hub.report(ROUND, b.pass, id))).toBe(200);
+    expect(status(() => hub.report(ROUND, b.pass, id))).toBe(429);
+    // 다른 사람의 몫은 따로
+    expect(status(() => hub.report(ROUND, a.pass, id))).toBe(200);
+    clock.advance(DEFAULT_ROOM_LIMITS.reportIntervalMs);
+    expect(status(() => hub.report(ROUND, b.pass, id))).toBe(200);
+    expect(status(() => hub.report(ROUND, b.pass, id))).toBe(429);
+  });
+
+  it("세어 두는 말 수에 상한이 있고, 넘으면 오래된 말부터 버린다", async () => {
+    const small = new RoomHub(
+      {
+        clock,
+        policy: DEFAULT_WEBAUTHN_POLICY,
+        schedule: () => schedule,
+        isRegistered: (p) => registered.has(toHex(p)),
+        isDirector: () => false,
+        sealed: () => false,
+        tickets: () => [],
+        drawn: () => false,
+      },
+      {
+        ...DEFAULT_ROOM_LIMITS,
+        sayBurst: 10,
+        reportBurst: 10,
+        maxReportedMessages: 2,
+      },
+    );
+    const passIn = async (who: SoftPasskey) => {
+      const { nonce } = small.challenge(ROUND);
+      const signature = await who.sign(
+        roomPassMessage(ROUND, Buffer.from(nonce, "base64url")),
+      );
+      return small.issuePass(ROUND, { pub: who.publicKey, signature, nonce });
+    };
+    const a = await passIn(alice);
+    const b = await passIn(bob);
+    const [first, second, third] = [1, 2, 3].map(
+      (i) => small.say(ROUND, a.pass, `${i}`).id,
+    );
+    expect(small.report(ROUND, a.pass, first)).toEqual({ count: 1 });
+    expect(small.report(ROUND, a.pass, second)).toEqual({ count: 1 });
+    expect(small.report(ROUND, b.pass, second)).toEqual({ count: 2 });
+    // 셋째 말을 세면 첫 말이 버려진다. 둘째 말은 남아 있다
+    small.report(ROUND, a.pass, third);
+    expect(small.report(ROUND, b.pass, second)).toEqual({ count: 2 });
+    expect(small.report(ROUND, b.pass, first)).toEqual({ count: 1 });
+    small.stop();
+  });
+});
