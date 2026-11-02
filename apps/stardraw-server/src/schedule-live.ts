@@ -9,7 +9,7 @@ import {
   type ScheduleEntry,
   scheduleFromRecords,
   schedulePending,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { LIVE_ROUND_SECONDS } from "./config";
 import type { Store } from "./store";

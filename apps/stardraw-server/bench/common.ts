@@ -16,7 +16,7 @@ import {
   softPasskeySigner,
   type Ticket,
   unsignedTicket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 export const MAX_TARGET = 0xffffffff;
 

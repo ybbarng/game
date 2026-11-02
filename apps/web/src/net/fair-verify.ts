@@ -1,4 +1,10 @@
 import {
+  checkReplay,
+  type FairLogged,
+  type RoundDeal,
+  realAction,
+} from "@game/fair-play";
+import {
   type Action,
   type Card,
   createRng,
@@ -6,13 +12,7 @@ import {
   type PlayerView,
   type RuleSet,
   viewOf,
-} from "@mighty/engine";
-import {
-  checkReplay,
-  type FairLogged,
-  type RoundDeal,
-  realAction,
-} from "@mighty/fair-play";
+} from "@game/mighty-engine";
 
 import type { KitBot } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";

@@ -15,7 +15,7 @@ import {
   type Schedule,
   type ScheduleEntry,
   type Ticket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 서버 저장소(Node 내장 SQLite). 공개 장부 파일은 여기서 만들어 낸다(publish.ts).

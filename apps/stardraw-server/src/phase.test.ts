@@ -7,7 +7,7 @@ import {
   roundTimes,
   type Schedule,
   verifyLedger,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GitHubAnchor } from "./outside";

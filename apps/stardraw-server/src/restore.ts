@@ -29,7 +29,7 @@ import {
   toHex,
   verifyLedger,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { type HeadFile, Publisher, pad } from "./publish";
 import { Store } from "./store";

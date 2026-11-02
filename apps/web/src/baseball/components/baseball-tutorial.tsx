@@ -7,7 +7,7 @@ import {
   createMatch,
   type GameEvent,
   score,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 

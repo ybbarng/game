@@ -8,7 +8,7 @@ import {
   valueOfSticks,
   viewOf,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 

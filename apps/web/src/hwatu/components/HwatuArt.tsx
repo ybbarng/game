@@ -1,4 +1,4 @@
-import type { HwatuCard } from "@mighty/hwatu";
+import type { HwatuCard } from "@game/hwatu";
 import type { ReactNode } from "react";
 
 /*

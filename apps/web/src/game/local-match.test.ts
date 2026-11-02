@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { heuristicBot } from "@mighty/ai";
-import { presetRules } from "@mighty/engine";
+import { heuristicBot } from "@game/mighty-ai";
+import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import type { Snapshot } from "./host";

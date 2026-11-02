@@ -11,7 +11,7 @@ import {
   toBase64Url,
   toHex,
   unblindStamp,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { importRecoveryCode, loadHoldings, removeHolding } from "./qual-store";

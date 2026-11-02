@@ -1,4 +1,4 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   pendingSeats,
@@ -6,7 +6,7 @@ import {
   viewOf,
   type YutRules,
   type YutState,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import type { YutBot } from "./bots";
 

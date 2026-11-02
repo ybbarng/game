@@ -212,7 +212,7 @@ nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더>
 ```
 
 - 이 맥에서 약 6분 걸린다(2026-11-01, 56회차·응모 91장·우주인 47명. 대부분 새 우주인 등록의 Argon2 600번). 포트 8855.
-- 화면 확인: 서버 주소를 넣어 화면을 빌드하고(`NEXT_PUBLIC_STARDRAW_API=http://localhost:8855/stardraw-api pnpm --filter @mighty/web build`, 끝나면 보통 빌드로 다시), `apps/web`에서 `pnpm exec serve out -l 4855`, 리허설을 `--screens`로 띄운 뒤 `node apps/stardraw-server/bench/rehearsal-screens.mjs --out <폴더>`. 휴대폰 세로 화면으로 경계마다 첫 화면·영수증·「추첨 보러 가기」·마감 안내와 경계 전에 열어 둔 탭을 찍는다.
+- 화면 확인: 서버 주소를 넣어 화면을 빌드하고(`NEXT_PUBLIC_STARDRAW_API=http://localhost:8855/stardraw-api pnpm --filter @game/web build`, 끝나면 보통 빌드로 다시), `apps/web`에서 `pnpm exec serve out -l 4855`, 리허설을 `--screens`로 띄운 뒤 `node apps/stardraw-server/bench/rehearsal-screens.mjs --out <폴더>`. 휴대폰 세로 화면으로 경계마다 첫 화면·영수증·「추첨 보러 가기」·마감 안내와 경계 전에 열어 둔 탭을 찍는다.
 - `--screens` 서버는 실제 시간으로 흐르고 `POST /rehearsal/info · jump {to} · schedule {length, phase} · times {round} · bots {count} · check`로 조종한다.
 
 ## 사용자가 정할 것

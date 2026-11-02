@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/baseball-ai",
+  "name": "@game/baseball-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/baseball-engine": "workspace:*"
+    "@game/mighty-engine": "workspace:*",
+    "@game/baseball-engine": "workspace:*"
   }
 }

@@ -7,8 +7,8 @@ import {
   commitmentOf,
   derivedSecret,
   score,
-} from "@mighty/baseball-engine";
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
+} from "@game/baseball-engine";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
 /** 컴퓨터 플레이어. 자기 자리 화면만 받는다(마이티·오목과 같은 모양) */
 export interface BaseballBot {

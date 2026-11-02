@@ -5,7 +5,7 @@
  * 브라우저는 사용자가 한 번 누르기 전에는 소리를 막는다. 첫 누름에서 AudioContext를 열어 두어
  * 컴퓨터 차례처럼 누름 없이 나는 첫 소리도 막히지 않게 한다(특히 iOS).
  */
-import { createRng, nextFloat } from "@mighty/engine";
+import { createRng, nextFloat } from "@game/mighty-engine";
 
 import { FLIGHT_MS } from "./timing";
 

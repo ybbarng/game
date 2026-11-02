@@ -1,4 +1,4 @@
-import type { Suit } from "@mighty/engine";
+import type { Suit } from "@game/mighty-engine";
 
 export type BackPattern = "diamond" | "stripe" | "dots" | "spades";
 

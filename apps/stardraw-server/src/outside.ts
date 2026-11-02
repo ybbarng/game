@@ -25,7 +25,7 @@ import {
   verifyQuicknetBeacon,
   verifyRekorEntry,
   verifyTimestampToken,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 서버 밖과 닿는 세 가지: drand 공개 난수, 봉인 값의 시각 증명(공개 시각 인증 기관, 꺼 둔 선택지로 Rekor), GitHub 앵커.

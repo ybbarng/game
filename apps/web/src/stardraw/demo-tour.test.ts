@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ticketId } from "@mighty/stardraw-core";
+import { ticketId } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildTour } from "./demo-tour";

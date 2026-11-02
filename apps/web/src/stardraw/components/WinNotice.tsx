@@ -1,6 +1,6 @@
 "use client";
 
-import { type Rank, type Ticket, ticketId, toHex } from "@mighty/stardraw-core";
+import { type Rank, type Ticket, ticketId, toHex } from "@game/stardraw-core";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { errorText } from "../errors";

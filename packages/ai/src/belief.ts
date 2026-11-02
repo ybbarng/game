@@ -7,7 +7,7 @@ import {
   type PlayerView,
   rankOf,
   suitOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 /**
  * 손패를 추측할 때 카드가 어느 자리에 있을 법한지의 무게. 1이 보통, 클수록 그 자리에 있을 법하다.

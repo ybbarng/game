@@ -1,4 +1,4 @@
-import { baseballBotFor } from "@mighty/baseball-ai";
+import { baseballBotFor } from "@game/baseball-ai";
 import {
   type Action,
   type BaseballRules,
@@ -6,7 +6,7 @@ import {
   type BaseballView,
   commitmentOf,
   type GameEvent,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

@@ -7,7 +7,7 @@ import {
   type PresetDeal,
   type RuleSet,
   step,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { cardText, slotOfToken } from "./blind";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { drandRandomness, fromHex, toHex } from "@mighty/stardraw-core";
+import { drandRandomness, fromHex, toHex } from "@game/stardraw-core";
 import { useEffect, useRef, useState } from "react";
 
 import {

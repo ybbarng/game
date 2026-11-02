@@ -1,4 +1,4 @@
-import type { GroupName, HostTableSaved } from "@mighty/fair-play";
+import type { GroupName, HostTableSaved } from "@game/fair-play";
 
 import type { ResumeState } from "@/game/local-match";
 

@@ -1,4 +1,4 @@
-import type { PlayerClock } from "@mighty/engine";
+import type { PlayerClock } from "@game/mighty-engine";
 import type { Cell, Kind, Move, Piece, Setup, Side } from "./board";
 import type { JanggiRules } from "./rules";
 

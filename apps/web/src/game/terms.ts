@@ -12,7 +12,7 @@ import {
   type Suit,
   suitOf,
   type UnplayableReason,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { SUIT_GLYPH, SUIT_WORD } from "./suit-style";
 

@@ -9,7 +9,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import type { QualMark } from "./qual-judge";
 
 /** 추첨 연출에 쓸, 공이 나온 차례(앞 6개 당첨 번호, 7번째 보너스). 기록의 drand 값으로 다시 계산한다 */

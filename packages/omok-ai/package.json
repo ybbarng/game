@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/omok-ai",
+  "name": "@game/omok-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/omok-engine": "workspace:*"
+    "@game/mighty-engine": "workspace:*",
+    "@game/omok-engine": "workspace:*"
   }
 }

@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createGostopScenario,
   createMatch,
@@ -6,7 +5,8 @@ import {
   MATGO_RULES,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

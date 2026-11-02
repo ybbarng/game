@@ -1,4 +1,4 @@
-import { chessExpertBot } from "@mighty/chess-ai";
+import { chessExpertBot } from "@game/chess-ai";
 import {
   applyMove,
   attacked,
@@ -16,7 +16,7 @@ import {
   sanToMove,
   squareName,
   viewOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 import type { ChessPuzzle } from "./puzzles";
 

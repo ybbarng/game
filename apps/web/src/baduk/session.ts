@@ -4,7 +4,7 @@ import type {
   BadukState,
   BadukView,
   GameEvent,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

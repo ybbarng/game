@@ -1,4 +1,4 @@
-import { type Card, nextFloat, type RngState } from "@mighty/engine";
+import { type Card, nextFloat, type RngState } from "@game/mighty-engine";
 
 /**
  * 고수 컴퓨터의 성향. 많이 해 본 사람도 저마다 버릇이 있고, 늘 똑같이 두지 않는다.

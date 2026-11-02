@@ -1,6 +1,6 @@
 "use client";
 
-import { groupByMonth, sortCards, splitCaptured } from "@mighty/hwatu";
+import { groupByMonth, sortCards, splitCaptured } from "@game/hwatu";
 
 import { cn } from "@/lib/cn";
 

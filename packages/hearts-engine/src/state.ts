@@ -1,4 +1,4 @@
-import type { Card, RngState } from "@mighty/engine";
+import type { Card, RngState } from "@game/mighty-engine";
 
 import type { HeartsRules } from "./rules";
 

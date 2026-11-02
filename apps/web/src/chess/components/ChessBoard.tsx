@@ -11,7 +11,7 @@ import {
   type Side,
   squareName,
   xyOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { type KeyboardEvent, useRef, useState } from "react";
 
 import { useChessSettings } from "../settings";

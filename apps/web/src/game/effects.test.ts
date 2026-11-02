@@ -4,7 +4,7 @@ import {
   type GameEvent,
   presetRules,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { effectFor } from "./effects";

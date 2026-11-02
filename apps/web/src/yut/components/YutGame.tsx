@@ -10,7 +10,7 @@ import {
   type ThrowValue,
   throwName,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

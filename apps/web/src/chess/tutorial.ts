@@ -7,7 +7,7 @@ import {
   STANDARD_RULES,
   START_FEN,
   squareAt,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

@@ -1,4 +1,4 @@
-import { HWATU_DECK, shuffledDeck } from "@mighty/hwatu";
+import { HWATU_DECK, shuffledDeck } from "@game/hwatu";
 import { describe, expect, it } from "vitest";
 
 import { handValue } from "./hand";

@@ -4,7 +4,7 @@ import {
   decodeRuleString,
   encodeRuleString,
   RULE_PRESETS,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { type ReactNode, useState } from "react";
 
 import { BOT_LEVELS } from "@/game/bots";

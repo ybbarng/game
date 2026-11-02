@@ -1,6 +1,6 @@
 "use client";
 
-import { fromBase64Url } from "@mighty/stardraw-core";
+import { fromBase64Url } from "@game/stardraw-core";
 import { type ReactNode, useEffect, useState } from "react";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import {

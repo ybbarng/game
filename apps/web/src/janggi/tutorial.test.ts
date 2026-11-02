@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { janggiBeginnerBot } from "@mighty/janggi-ai";
+import { janggiBeginnerBot } from "@game/janggi-ai";
 import {
   type Action,
   createJanggiScenario,
@@ -7,7 +7,7 @@ import {
   kingsFacing,
   pointAt,
   viewOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

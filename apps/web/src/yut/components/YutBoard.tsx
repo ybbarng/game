@@ -12,7 +12,7 @@ import {
   START,
   sideOf,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";

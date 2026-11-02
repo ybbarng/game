@@ -1,6 +1,6 @@
 "use client";
 
-import { cardOf } from "@mighty/hwatu";
+import { cardOf } from "@game/hwatu";
 import {
   type GameEvent,
   handValue,
@@ -9,7 +9,7 @@ import {
   ranksOf,
   roundWinners,
   YAK_NAMES,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

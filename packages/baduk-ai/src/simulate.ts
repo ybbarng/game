@@ -1,6 +1,6 @@
-import type { BadukRules, BadukState } from "@mighty/baduk-engine";
-import { createMatch, pendingSeats, step, viewOf } from "@mighty/baduk-engine";
-import { createRng } from "@mighty/engine";
+import type { BadukRules, BadukState } from "@game/baduk-engine";
+import { createMatch, pendingSeats, step, viewOf } from "@game/baduk-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { BadukBot } from "./bots";
 

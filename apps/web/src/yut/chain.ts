@@ -4,7 +4,7 @@ import {
   chainLink,
   derivedSeed,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 /**
  * 내 던지기 사슬 씨앗(docs/37 5절). 온라인에서는 이 기기에만 두고 방장 엔진에는 약속(x_0)만 간다.

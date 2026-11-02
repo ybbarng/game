@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   DEFAULT_WEBAUTHN_POLICY,
   type EntrantSigner,
@@ -11,7 +11,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import {

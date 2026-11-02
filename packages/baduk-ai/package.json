@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/baduk-ai",
+  "name": "@game/baduk-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/baduk-engine": "workspace:*",
-    "@mighty/engine": "workspace:*"
+    "@game/baduk-engine": "workspace:*",
+    "@game/mighty-engine": "workspace:*"
   }
 }

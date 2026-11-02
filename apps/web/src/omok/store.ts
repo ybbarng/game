@@ -1,4 +1,4 @@
-import { omokBotFor } from "@mighty/omok-ai";
+import { omokBotFor } from "@game/omok-ai";
 import {
   type Action,
   createMatch,
@@ -6,7 +6,7 @@ import {
   type OmokRules,
   type OmokState,
   type OmokView,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

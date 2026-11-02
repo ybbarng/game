@@ -1,4 +1,4 @@
-import { createRng, nextInt, type RngState } from "@mighty/engine";
+import { createRng, nextInt, type RngState } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

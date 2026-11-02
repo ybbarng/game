@@ -1,11 +1,11 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   pendingSeats,
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { expect, it } from "vitest";
 
 import {

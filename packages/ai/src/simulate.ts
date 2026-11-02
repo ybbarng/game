@@ -6,7 +6,7 @@ import {
   type RuleSet,
   step,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { Bot } from "./bot";
 

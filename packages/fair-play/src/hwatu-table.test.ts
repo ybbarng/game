@@ -1,4 +1,4 @@
-import { fullDeck } from "@mighty/engine";
+import { fullDeck } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import { groupOf } from "./device";
 import { network } from "./device-fixture";

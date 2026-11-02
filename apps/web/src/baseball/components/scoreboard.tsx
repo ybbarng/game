@@ -4,7 +4,7 @@ import {
   type BaseballView,
   type GuessEntry,
   timeControlOf,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { GameClock } from "@/components/GameClock";

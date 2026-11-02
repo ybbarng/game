@@ -6,8 +6,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/baseball-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/baseball-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { BaseballBot } from "./bots";
 

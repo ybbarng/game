@@ -1,4 +1,4 @@
-import { prepareGroup } from "@mighty/fair-play";
+import { prepareGroup } from "@game/fair-play";
 import { type GameId, track } from "@/stats/track";
 import { useChat } from "./chat";
 import type { DiagContext } from "./diag";

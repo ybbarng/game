@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createMatch,
   type GostopRules,
@@ -6,7 +5,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { GostopBot } from "./bots";
 

@@ -1,10 +1,9 @@
-import { createRng } from "@mighty/engine";
 import {
   gostopBotFor,
   gostopExpertBot,
   greedyValue,
   tableOf,
-} from "@mighty/gostop-ai";
+} from "@game/gostop-ai";
 import {
   type Action,
   type Bak,
@@ -20,9 +19,10 @@ import {
   replay,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
-import type { PresetDeal } from "@mighty/hwatu";
-import { sortCards } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import type { PresetDeal } from "@game/hwatu";
+import { sortCards } from "@game/hwatu";
+import { createRng } from "@game/mighty-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";

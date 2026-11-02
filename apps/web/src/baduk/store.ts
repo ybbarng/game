@@ -1,4 +1,4 @@
-import { badukBotFor } from "@mighty/baduk-ai";
+import { badukBotFor } from "@game/baduk-ai";
 import {
   type Action,
   type BadukRules,
@@ -6,7 +6,7 @@ import {
   type BadukView,
   createMatch,
   type GameEvent,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

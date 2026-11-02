@@ -1,4 +1,4 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   chainCommit,
   createMatch,
@@ -10,7 +10,7 @@ import {
   TEAM_RULES,
   viewOf,
   type YutRules,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { describe, expect, it } from "vitest";
 
 import {

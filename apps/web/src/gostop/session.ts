@@ -4,8 +4,8 @@ import type {
   GostopRules,
   GostopState,
   GostopView,
-} from "@mighty/gostop-engine";
-import type { PresetDeal } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import type { PresetDeal } from "@game/hwatu";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { heuristicBot } from "@mighty/ai";
-import { presetRules } from "@mighty/engine";
-import { heartsNormalBot } from "@mighty/hearts-ai";
-import { WINDOWS_RULES } from "@mighty/hearts-engine";
+
+import { heartsNormalBot } from "@game/hearts-ai";
+import { WINDOWS_RULES } from "@game/hearts-engine";
+import { heuristicBot } from "@game/mighty-ai";
+import { presetRules } from "@game/mighty-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

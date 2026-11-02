@@ -58,7 +58,7 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_STARDRAW_API=$NEXT_PUBLIC_STARDRAW_API \
     SOURCE_COMMIT=$SOURCE_COMMIT \
     NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter @mighty/web build
+RUN pnpm --filter @game/web build
 
 # 화면 코드 해시 목록만 꺼내는 단계(Image 워크플로가 --output 으로 받아 기록에 남긴다)
 FROM scratch AS hashes

@@ -10,7 +10,7 @@ import {
   type RuleSet,
   type StepResult,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { checkReplay, type FairLogged, type RoundDeal } from "./audit";
 import {

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { RANKS, rankOf } from "@mighty/stardraw-core";
+import { RANKS, rankOf } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { demoPick } from "./demo-pick";

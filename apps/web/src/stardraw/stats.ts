@@ -4,7 +4,7 @@ import {
   type Rank,
   type RoundRecord,
   type Schedule,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { SKY_STARS, type SkyStar, tempWord } from "./sky";
 

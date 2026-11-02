@@ -1,7 +1,7 @@
 import {
   type NyrongppongRules,
   STANDARD_RULES,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

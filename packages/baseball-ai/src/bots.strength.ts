@@ -3,8 +3,8 @@ import {
   createBaseballScenario,
   STANDARD_RULES,
   viewOf,
-} from "@mighty/baseball-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/baseball-engine";
+import { createRng } from "@game/mighty-engine";
 import { expect, it } from "vitest";
 
 import {

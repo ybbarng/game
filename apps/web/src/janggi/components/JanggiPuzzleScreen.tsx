@@ -6,7 +6,7 @@ import {
   legalFor,
   type Move,
   step,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { useState } from "react";
 
 import {

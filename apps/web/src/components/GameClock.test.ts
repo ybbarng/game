@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { TIME_PRESETS } from "@mighty/engine";
+import { TIME_PRESETS } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { clockDisplay } from "./GameClock";

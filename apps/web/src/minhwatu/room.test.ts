@@ -1,10 +1,10 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   minhwatuBeginnerBot,
   minhwatuIntermediateBot,
-} from "@mighty/minhwatu-ai";
-import { STANDARD_RULES } from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-ai";
+import { STANDARD_RULES } from "@game/minhwatu-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";

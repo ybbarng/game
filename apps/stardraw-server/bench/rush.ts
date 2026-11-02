@@ -22,7 +22,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { monitorEventLoopDelay } from "node:perf_hooks";
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   drandRoundForClose,
   drandTime,
@@ -33,7 +33,7 @@ import {
   roundTimes,
   toBase64Url,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { StardrawServer } from "../src/engine";
 import { createHttpServer } from "../src/http";
 import { LocalRootLog, noAnchor } from "../src/outside";

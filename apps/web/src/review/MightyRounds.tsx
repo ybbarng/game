@@ -1,7 +1,7 @@
 "use client";
 
-import type { MatchState } from "@mighty/engine";
-import { mightyOf } from "@mighty/engine";
+import type { MatchState } from "@game/mighty-engine";
+import { mightyOf } from "@game/mighty-engine";
 import { SuitText } from "@/components/SuitText";
 import { friendLabel, goalLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";

@@ -1,6 +1,6 @@
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
-import type { Action, GostopView } from "@mighty/gostop-engine";
-import { type Month, monthOf } from "@mighty/hwatu";
+import type { Action, GostopView } from "@game/gostop-engine";
+import { type Month, monthOf } from "@game/hwatu";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
 import {
   exposure,

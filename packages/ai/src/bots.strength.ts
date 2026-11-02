@@ -1,4 +1,4 @@
-import { presetRules } from "@mighty/engine";
+import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import type { Bot } from "./bot";
@@ -49,7 +49,7 @@ function duel(challenger: Bot, baseline: Bot, seeds: number, rounds = 6) {
  * - 그런 패 40개를 추측 판 200개로 견주면 출마가 포기보다 판당 −3.07(표준 오차 0.19), 40개 모두 손해
  * - 예전 고수와 맞대결은 −0.35(720판)였지만, 두 고수가 다르게 두는 곳이 위 패뿐이라 측정 잡음으로 본다
  */
-describe("실력 단계 사이의 세기 (pnpm --filter @mighty/ai bench)", () => {
+describe("실력 단계 사이의 세기 (pnpm --filter @game/mighty-ai bench)", () => {
   it("중수은 입문보다 판당 돈을 더 번다", () => {
     expect(duel(heuristicBot, beginnerBot, 300)).toBeGreaterThan(0.25);
   });

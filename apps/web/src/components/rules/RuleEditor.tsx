@@ -1,6 +1,6 @@
 "use client";
 
-import { type Card, maxGoal, type RuleSet } from "@mighty/engine";
+import { type Card, maxGoal, type RuleSet } from "@game/mighty-engine";
 import { type ReactNode, useState } from "react";
 
 import { cardLabel } from "@/game/terms";

@@ -1,6 +1,6 @@
 "use client";
 
-import { type HeartsRules, PLAYER_COUNT } from "@mighty/hearts-engine";
+import { type HeartsRules, PLAYER_COUNT } from "@game/hearts-engine";
 import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";

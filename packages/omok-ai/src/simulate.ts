@@ -1,4 +1,4 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   type OmokRules,
@@ -6,7 +6,7 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import type { OmokBot } from "./bots";
 

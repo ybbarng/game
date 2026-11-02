@@ -1,4 +1,5 @@
-import { heuristicBot } from "@mighty/ai";
+import { type Clock, realClock } from "@game/fair-play";
+import { heuristicBot } from "@game/mighty-ai";
 import {
   type Action,
   createRng,
@@ -9,9 +10,7 @@ import {
   type PresetDeal,
   type RngState,
   type RuleSet,
-} from "@mighty/engine";
-
-import { type Clock, realClock } from "@mighty/fair-play";
+} from "@game/mighty-engine";
 
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import type { GameKit, KitBot, KitLoggedAction, StepOutcome } from "./kit";

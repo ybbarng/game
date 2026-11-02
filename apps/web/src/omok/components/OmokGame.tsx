@@ -6,7 +6,7 @@ import {
   seatToMove,
   stoneOfSeat,
   timeControlOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

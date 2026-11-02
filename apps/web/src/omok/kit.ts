@@ -1,4 +1,4 @@
-import { omokBotFor, placeGain } from "@mighty/omok-ai";
+import { omokBotFor, placeGain } from "@game/omok-ai";
 import {
   type Action,
   clockTurn,
@@ -18,7 +18,7 @@ import {
   stoneOfSeat,
   stoneToMove,
   viewOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

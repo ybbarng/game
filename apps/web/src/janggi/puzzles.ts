@@ -1,4 +1,4 @@
-import type { Piece } from "@mighty/janggi-engine";
+import type { Piece } from "@game/janggi-engine";
 
 /*
  * 장기 외통 문제(docs/23). 늘 초가 둘 차례다. 장면은 엔진으로 "외통 수가 하나뿐인 장면"을 찾아 골랐고,

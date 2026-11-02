@@ -1,5 +1,5 @@
-import { type Card, rankPower, suitOf } from "@mighty/engine";
-import { type PassDirection, SORT_SUIT_ORDER } from "@mighty/hearts-engine";
+import { type PassDirection, SORT_SUIT_ORDER } from "@game/hearts-engine";
+import { type Card, rankPower, suitOf } from "@game/mighty-engine";
 
 /** 화면용 손패 정렬: ♣ ◆ ♠ ♥, 같은 무늬는 낮은 숫자부터(윈도우 하트와 같다) */
 export function sortHearts(cards: readonly Card[]): Card[] {

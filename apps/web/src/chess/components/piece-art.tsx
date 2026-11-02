@@ -1,4 +1,4 @@
-import type { Kind, Side } from "@mighty/chess-engine";
+import type { Kind, Side } from "@game/chess-engine";
 import { useId } from "react";
 
 /**

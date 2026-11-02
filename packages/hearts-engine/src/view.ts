@@ -1,4 +1,4 @@
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 
 import { pointsOf } from "./cards";
 import { decisionFor } from "./match";

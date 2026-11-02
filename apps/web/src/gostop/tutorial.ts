@@ -5,8 +5,8 @@ import {
   type GostopScenarioOptions,
   type GostopView,
   MATGO_RULES,
-} from "@mighty/gostop-engine";
-import { cardOf, GODORI, hasAll } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import { cardOf, GODORI, hasAll } from "@game/hwatu";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

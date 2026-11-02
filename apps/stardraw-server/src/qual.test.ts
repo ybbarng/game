@@ -38,7 +38,7 @@ import {
   unblindStamp,
   verifyLedger,
   verifyStamp,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { parseQualAffiliations } from "./config";
 import { QUAL_WIN_WINDOW, type QualificationOptions } from "./engine";

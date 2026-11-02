@@ -1,4 +1,4 @@
-import { closedMessage } from "@mighty/stardraw-core";
+import { closedMessage } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 import { closedAt, errorKind, errorText, HttpError } from "./errors";
 import { DEMO_CANCEL } from "./passkey-env";

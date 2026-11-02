@@ -1,4 +1,4 @@
-import { toBase64Url, utf8 } from "@mighty/stardraw-core";
+import { toBase64Url, utf8 } from "@game/stardraw-core";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { GoogleTokenError, googleTokenVerifier } from "./google";

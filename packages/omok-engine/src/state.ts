@@ -1,4 +1,4 @@
-import type { PlayerClock } from "@mighty/engine";
+import type { PlayerClock } from "@game/mighty-engine";
 import type { Cell, Forbidden, Stone } from "./board";
 import type { OmokRules } from "./rules";
 

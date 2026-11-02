@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { evaluate, MATE, negamax, newContext } from "@mighty/chess-ai";
+import { evaluate, MATE, negamax, newContext } from "@game/chess-ai";
 import {
   applyMove,
   legalMoves,
   type Move,
   moveToSan,
   type Position,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
 import { CHESS_PUZZLE_SETS, type ChessPuzzle } from "./puzzles";

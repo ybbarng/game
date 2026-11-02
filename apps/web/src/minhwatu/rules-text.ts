@@ -1,4 +1,4 @@
-import { DEAL_SIZES, type MinhwatuRules } from "@mighty/minhwatu-engine";
+import { DEAL_SIZES, type MinhwatuRules } from "@game/minhwatu-engine";
 
 /** 규칙 한 줄 요약(시작 화면·방 만들기) */
 export function describeRules(rules: MinhwatuRules): string {

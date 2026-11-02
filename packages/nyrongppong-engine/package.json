@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/nyrongppong-engine",
+  "name": "@game/nyrongppong-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/hwatu": "workspace:*"
+    "@game/mighty-engine": "workspace:*",
+    "@game/hwatu": "workspace:*"
   }
 }

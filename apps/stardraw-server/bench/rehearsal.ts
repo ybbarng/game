@@ -31,7 +31,7 @@ import {
 } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   anchorBranch,
   checkPublicLedger,
@@ -83,8 +83,8 @@ import {
   toBase64Url,
   toHex,
   verifyQuicknetBeacon,
-} from "@mighty/stardraw-core";
-import { FakeTsa } from "@mighty/stardraw-core/testing";
+} from "@game/stardraw-core";
+import { FakeTsa } from "@game/stardraw-core/testing";
 import {
   compareLedgers,
   folderFetch,

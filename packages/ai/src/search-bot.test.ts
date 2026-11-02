@@ -9,7 +9,7 @@ import {
   step,
   suitOf,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { heuristicBot } from "./heuristic-bot";

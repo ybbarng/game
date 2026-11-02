@@ -1,4 +1,4 @@
-import type { PresetDeal } from "@mighty/hwatu";
+import type { PresetDeal } from "@game/hwatu";
 import { describe, expect, it } from "vitest";
 
 import { createMatch, dealerOf, step, viewOf } from "./match";

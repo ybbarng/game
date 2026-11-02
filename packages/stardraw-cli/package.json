@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/stardraw-cli",
+  "name": "@game/stardraw-cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "build": "rolldown -c rolldown.config.mjs"
   },
   "dependencies": {
-    "@mighty/stardraw-core": "workspace:*"
+    "@game/stardraw-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

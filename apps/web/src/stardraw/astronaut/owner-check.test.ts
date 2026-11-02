@@ -6,7 +6,7 @@ import {
   type SignatureData,
   softPasskeySigner,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { checkOwner, ownerMessage } from "./owner-check";

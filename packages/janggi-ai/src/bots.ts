@@ -1,4 +1,3 @@
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
 import {
   type Action,
   applyMove,
@@ -10,7 +9,8 @@ import {
   other,
   SETUPS,
   sideOfSeat,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
 import { evaluate, MATE, negamax, type SearchOptions } from "./search";
 

@@ -5,7 +5,7 @@ import {
   rankPower,
   shuffleInPlace,
   suitOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import {
   heartsDeck,

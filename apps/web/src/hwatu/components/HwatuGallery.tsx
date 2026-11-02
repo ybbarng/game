@@ -1,6 +1,6 @@
 "use client";
 
-import { HWATU_DECK, MONTH_NAMES, type Month } from "@mighty/hwatu";
+import { HWATU_DECK, MONTH_NAMES, type Month } from "@game/hwatu";
 import { useState } from "react";
 
 import { HwatuCardView } from "./HwatuCard";

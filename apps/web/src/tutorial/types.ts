@@ -1,4 +1,4 @@
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 
 /** 모든 게임 튜토리얼이 함께 쓰는 단원 형식 */
 

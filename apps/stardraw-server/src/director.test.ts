@@ -18,7 +18,7 @@ import {
   toBase64Url,
   toHex,
   verifyLedger,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { scheduleEntry } from "./config";

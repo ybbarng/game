@@ -1,4 +1,4 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   type MinhwatuRules,
@@ -6,7 +6,7 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 import type { MinhwatuBot } from "./bots";
 

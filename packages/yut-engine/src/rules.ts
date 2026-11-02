@@ -2,7 +2,7 @@ import {
   decodeTimePreset,
   encodeTimePreset,
   type TimePreset,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 /**
  * 윷놀이 규칙(docs/37 1절). 지역마다 다른 것은 모두 여기서 고른다.

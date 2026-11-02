@@ -1,4 +1,4 @@
-import { yutBotFor } from "@mighty/yut-ai";
+import { yutBotFor } from "@game/yut-ai";
 import {
   type Action,
   derivedSeed,
@@ -7,7 +7,7 @@ import {
   type YutRules,
   type YutState,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

@@ -1,6 +1,6 @@
 "use client";
 
-import { digitPool, type GuessEntry } from "@mighty/baseball-engine";
+import { digitPool, type GuessEntry } from "@game/baseball-engine";
 import { memo, useEffect, useRef, useState } from "react";
 
 import { playUiCue } from "@/game/ui-sound";

@@ -1,5 +1,4 @@
-import type { Card } from "@mighty/engine";
-import type { BusyReason } from "@mighty/fair-play";
+import type { BusyReason } from "@game/fair-play";
 import {
   type Action,
   type CompletedTrick,
@@ -7,7 +6,8 @@ import {
   type HeartsRules,
   type PlayerView,
   QUEEN_OF_SPADES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 import { create } from "zustand";
 import type { EndVoteState, IncidentState } from "@/components/FairOverlays";
 import { browserPace } from "@/game/bots";
@@ -36,7 +36,7 @@ export type HeartsHost = MatchHost<PlayerView, Action, GameEvent> & {
 };
 export type HeartsLocalMatch = LocalMatch<
   HeartsRules,
-  import("@mighty/hearts-engine").MatchState,
+  import("@game/hearts-engine").MatchState,
   PlayerView,
   Action,
   GameEvent,

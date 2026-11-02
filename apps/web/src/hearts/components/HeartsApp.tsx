@@ -4,7 +4,7 @@ import {
   encodeHeartsRules,
   type HeartsRules,
   WINDOWS_RULE_CODE,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 import { type ReactNode, useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { ActionButton } from "@/components/panels/common";

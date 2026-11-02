@@ -8,7 +8,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { countsFor, type EarnedAward, earnedAwards } from "./awards";
 

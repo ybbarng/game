@@ -29,7 +29,7 @@ import {
   type Ticket,
   toBase64Url,
   utf8,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { fakeBeacon } from "../src/testing";
 import { arg, benchSchedule, kb, mb, pickNumbers, seeded } from "./common";
 

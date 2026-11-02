@@ -3,7 +3,7 @@ import {
   drawNumbers,
   drawSeed,
   taggedHash,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { chiSquareTail } from "../stats";
 

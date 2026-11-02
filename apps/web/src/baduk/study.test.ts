@@ -7,7 +7,7 @@ import {
   passAliveStones,
   pointName,
   step,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
 import { BADUK_PUZZLE_SETS, type BadukPuzzle } from "./puzzles";

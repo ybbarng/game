@@ -4,7 +4,7 @@ import {
   monthOf,
   type PresetDeal,
   shuffledDeck,
-} from "@mighty/hwatu";
+} from "@game/hwatu";
 
 import {
   CHONGTONG_POINTS,

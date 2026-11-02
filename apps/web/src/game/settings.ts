@@ -3,7 +3,7 @@ import {
   presetRules,
   RULE_PRESETS,
   type RuleSet,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";

@@ -1,5 +1,9 @@
 // @vitest-environment node
-import { type Action, createScenario, type GameEvent } from "@mighty/engine";
+import {
+  type Action,
+  createScenario,
+  type GameEvent,
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

@@ -1,4 +1,4 @@
-import type { Suit } from "@mighty/engine";
+import type { Suit } from "@game/mighty-engine";
 
 /**
  * 무늬 표기 방식. 문구 함수(terms.ts)는 무늬를 기호(♠◆♥♣)로 적고, 화면(`SuitText`)이 이 설정에 따라 바꿔 그린다.

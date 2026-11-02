@@ -8,7 +8,7 @@ import {
   type GameEvent,
   legalMoves,
   squareAt,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { useMemo } from "react";
 
 import type { TutorialKit } from "@/components/tutorial/kit";

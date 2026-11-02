@@ -12,7 +12,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { cn } from "@/lib/cn";
 import { FX } from "../fx-timing";
 import { myRank } from "../results";

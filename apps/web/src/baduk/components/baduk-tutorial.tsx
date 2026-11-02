@@ -7,7 +7,7 @@ import {
   createMatch,
   type GameEvent,
   pointAt,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { useMemo } from "react";
 
 import type { TutorialKit } from "@/components/tutorial/kit";

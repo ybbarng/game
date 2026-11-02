@@ -1,4 +1,4 @@
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   closeRound,
   drandRoundForClose,
@@ -23,7 +23,7 @@ import {
   toBase64Url,
   toHex,
   utf8,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { RemoteLedger } from "./remote-ledger";

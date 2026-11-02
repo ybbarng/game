@@ -1,7 +1,7 @@
 "use client";
 
-import type { Clock } from "@mighty/fair-play";
-import { toHex } from "@mighty/stardraw-core";
+import type { Clock } from "@game/fair-play";
+import { toHex } from "@game/stardraw-core";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";

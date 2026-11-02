@@ -1,12 +1,12 @@
-import type { PresetDeal } from "@mighty/hwatu";
-import { minhwatuBotFor } from "@mighty/minhwatu-ai";
+import type { PresetDeal } from "@game/hwatu";
+import { minhwatuBotFor } from "@game/minhwatu-ai";
 import type {
   Action,
   GameEvent,
   MinhwatuRules,
   MinhwatuState,
   MinhwatuView,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

@@ -1,11 +1,11 @@
-import type { PresetDeal } from "@mighty/hwatu";
+import type { PresetDeal } from "@game/hwatu";
 import type {
   Action,
   GameEvent,
   NyrongppongRules,
   NyrongppongState,
   NyrongppongView,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

@@ -1,11 +1,11 @@
-import { yutBotFor } from "@mighty/yut-ai";
+import { yutBotFor } from "@game/yut-ai";
 import type {
   Action,
   GameEvent,
   YutRules,
   YutState,
   YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

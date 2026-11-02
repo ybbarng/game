@@ -1,10 +1,7 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
-import { nyrongppongIntermediateBot } from "@mighty/nyrongppong-ai";
-import {
-  type NyrongppongView,
-  STANDARD_RULES,
-} from "@mighty/nyrongppong-engine";
+import { ManualClock } from "@game/fair-play";
+import { nyrongppongIntermediateBot } from "@game/nyrongppong-ai";
+import { type NyrongppongView, STANDARD_RULES } from "@game/nyrongppong-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";

@@ -5,7 +5,7 @@ import {
   HONGDAN,
   hasAll,
   type Month,
-} from "@mighty/hwatu";
+} from "@game/hwatu";
 
 import { baseScore, type MinhwatuRules } from "./rules";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Suit } from "@mighty/engine";
+import type { Suit } from "@game/mighty-engine";
 import { Fragment } from "react";
 
 import { useSettings } from "@/game/settings";

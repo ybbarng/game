@@ -1,4 +1,4 @@
-import type { GameEvent, PlayerView } from "@mighty/engine";
+import type { GameEvent, PlayerView } from "@game/mighty-engine";
 
 /** 판이 끝났을 때 화면 가운데에 크게 띄우는 승패 문구 */
 export interface ResultBanner {

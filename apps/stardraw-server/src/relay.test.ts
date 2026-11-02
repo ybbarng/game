@@ -16,7 +16,7 @@ import {
   type Ticket,
   ticketId,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { EntryError } from "./engine";

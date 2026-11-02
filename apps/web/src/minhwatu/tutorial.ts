@@ -5,7 +5,7 @@ import {
   type MinhwatuScenarioOptions,
   type MinhwatuView,
   STANDARD_RULES,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

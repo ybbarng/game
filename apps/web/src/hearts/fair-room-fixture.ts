@@ -1,6 +1,6 @@
-import { ManualClock, prepareGroup } from "@mighty/fair-play";
-import { heartsIntermediateBot, heartsNormalBot } from "@mighty/hearts-ai";
-import { WINDOWS_RULES } from "@mighty/hearts-engine";
+import { ManualClock, prepareGroup } from "@game/fair-play";
+import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
+import { WINDOWS_RULES } from "@game/hearts-engine";
 
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom, type IncidentNotice } from "@/net/host-room";

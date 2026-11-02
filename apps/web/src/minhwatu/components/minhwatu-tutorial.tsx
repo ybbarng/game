@@ -6,7 +6,7 @@ import {
   createMinhwatuScenario,
   type GameEvent,
   type MinhwatuView,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 import {

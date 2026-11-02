@@ -3,7 +3,7 @@ import {
   type HeartsRules,
   WINDOWS_RULE_CODE,
   WINDOWS_RULES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

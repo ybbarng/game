@@ -1,4 +1,4 @@
-import type { Month, PresetDeal } from "@mighty/hwatu";
+import type { Month, PresetDeal } from "@game/hwatu";
 
 import type { GostopRules } from "./rules";
 import type { ScoreBreakdown } from "./score";

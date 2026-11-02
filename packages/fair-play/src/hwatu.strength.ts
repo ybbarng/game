@@ -20,7 +20,7 @@ const SHAPES: Record<number, { hand: number; floor: number }> = {
  * - 증명까지: 섞기 증명(약속·응답·확인)까지 모두 끝난 때
  * - 한 사람 몫: 한 기기가 한 무거운 계산(섞기·다시 잠그기·섞기 증명 약속·응답)의 합
  */
-describe("화투 멘탈 포커 계산 시간 (pnpm --filter @mighty/fair-play bench)", () => {
+describe("화투 멘탈 포커 계산 시간 (pnpm --filter @game/fair-play bench)", () => {
   it.each([2, 3, 4, 5])(
     "%i명",
     async (n) => {

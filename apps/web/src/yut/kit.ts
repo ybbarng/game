@@ -1,4 +1,4 @@
-import { botKnowsChain, expertValues, yutBotFor } from "@mighty/yut-ai";
+import { botKnowsChain, expertValues, yutBotFor } from "@game/yut-ai";
 import {
   type Action,
   clockTurn,
@@ -21,7 +21,7 @@ import {
   type YutRules,
   type YutState,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

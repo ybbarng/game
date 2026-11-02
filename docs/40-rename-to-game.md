@@ -16,7 +16,7 @@
 
 ### 1단계 · 패키지 이름(game 혼자, 바깥 영향 없음)
 
-- 작업 공간 패키지 `@mighty/*` → `@game/*`. 마이티 게임 것은 이름에 마이티를 남긴다: `@mighty/engine` → `@game/mighty-engine`, `@mighty/ai` → `@game/mighty-ai`. 나머지는 `@game/web`, `@game/fair-play`, `@game/stardraw-core`, `@game/stardraw-cli` 처럼.
+- 작업 공간 패키지 `@game/*` → `@game/*`. 마이티 게임 것은 이름에 마이티를 남긴다: `@game/mighty-engine` → `@game/mighty-engine`, `@game/mighty-ai` → `@game/mighty-ai`. 나머지는 `@game/web`, `@game/fair-play`, `@game/stardraw-core`, `@game/stardraw-cli` 처럼.
 - 함께 고칠 곳: 모든 package.json·import, `Dockerfile` COPY 줄, `.github/workflows/ci.yml`·`image.yml`의 `pnpm --filter`, CLAUDE.md·docs·지도.
 - 보통 배포(CI → Image → 자동 배포)로 올라간다. 이미지 이름은 아직 `ghcr.io/ybbarng/mighty`.
 
@@ -34,7 +34,7 @@
 2. 사용자: 서버의 배포 키 forced-command 경로를 `apps/game/deploy.sh`로 고친다(`authorized_keys`). 한동안 옛 경로에 새 스크립트를 가리키는 링크를 둬서, 어느 쪽 배포가 와도 돈다.
 3. game: `image.yml`의 이미지 이름을 `ghcr.io/ybbarng/game`으로, 빌드 캐시 범위 `mighty` → `game`으로 바꿔 push한다. 첫 배포가 새 컨테이너를 띄운다.
 4. 사용자: 옛 컨테이너(mighty-*-1, mighty-signal, mighty-diag)를 내린다. 새 것과 옛 것이 같은 주소 규칙으로 함께 떠 있지 않게, 새 컨테이너가 healthz를 통과한 바로 뒤에 내린다.
-5. servers: TURN 설정(`apps/turn/turnserver.conf`), 상태 감시(`apps/gatus/config.yaml`), `sites.md`·`dns.md`·`PLAN.md`·`HANDOFF.md`, 집 서버 스크립트(`home/scripts/verify-stardraw.sh`의 `@mighty/stardraw-cli`·경로, `pull-stardraw-backup.sh` 주석), 별 따기 compose 주석의 저장소 이름.
+5. servers: TURN 설정(`apps/turn/turnserver.conf`), 상태 감시(`apps/gatus/config.yaml`), `sites.md`·`dns.md`·`PLAN.md`·`HANDOFF.md`, 집 서버 스크립트(`home/scripts/verify-stardraw.sh`의 `@game/stardraw-cli`·경로, `pull-stardraw-backup.sh` 주석), 별 따기 compose 주석의 저장소 이름.
 6. 옛 GHCR 이미지 `ghcr.io/ybbarng/mighty`는 되돌릴 때를 위해 며칠 둔 뒤 사용자가 지운다.
 
 되돌리기: 옛 경로 링크와 옛 이미지가 남아 있는 동안은 `image.yml` 이미지 이름을 되돌리고 옛 compose로 다시 띄우면 된다.

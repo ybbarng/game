@@ -4,7 +4,7 @@
 2026-10-29 화투 세 게임(고스톱·민화투·나이롱뽕)으로 넓혔다. 카드 번호표 뒤에 화투 48장을 덧붙이고 바닥·더미가 있는 게임의 공통 진행을 두었다(`hwatu-table.ts`, docs/27 3절).
 
 - 코드: `packages/fair-play` (SRA 암호 `sra.ts`, 섞기·나눠 주기·내기 `protocol.ts`, 무늬 안 따르기 감시 `renege.ts`, 나간 사람 처리 `dropout.ts`)
-- 시험: `pnpm --filter @mighty/fair-play exec vitest run`(21개), 계산 시간 `pnpm --filter @mighty/fair-play bench`
+- 시험: `pnpm --filter @game/fair-play exec vitest run`(21개), 계산 시간 `pnpm --filter @game/fair-play bench`
 
 ## 1. 무엇을 바꾸나
 
@@ -172,7 +172,7 @@
 
 ### 여러 브라우저로 해 본 결과 (2026-10-21, 한 컴퓨터에 탭 5~6개, 2048비트)
 
-`FAIR_MULTI=1 pnpm --filter @mighty/web exec playwright test e2e/fair-multi.spec.ts --project=desktop`. 모든 자리를 사람(탭)으로 채워 섞기 사슬이 가장 긴 경우다. 자동으로 두되 연출은 2배속.
+`FAIR_MULTI=1 pnpm --filter @game/web exec playwright test e2e/fair-multi.spec.ts --project=desktop`. 모든 자리를 사람(탭)으로 채워 섞기 사슬이 가장 긴 경우다. 자동으로 두되 연출은 2배속.
 
 | | 5마(사람 5) | 6마(사람 6) |
 |---|---|---|
@@ -232,7 +232,7 @@
 ### 언제 확인하나
 - 평소에는 확인하지 않는다. **모든 열쇠가 모였는데 자리가 카드로 열리지 않을 때**(내 자리를 열 때, 모두가 여는 자리), 그 자리에 남이 낸 열쇠의 증명을 확인해 틀린 기기를 `problem`으로 알린다. 증명이 모두 맞으면 섞는 단계(첫 섞기)의 조작이라 누군지 모른다고 알린다.
 - 자리 열쇠를 짧은 열쇠(320비트, 섞기 열쇠와 같은 크기)로 바꿨다. 증명의 거듭제곱이 짧아진다.
-- 계산 시간(Node, `pnpm --filter @mighty/fair-play bench`): 2048비트 열쇠 53개 증명 109ms, 확인 147ms. 10개 32ms·71ms.
+- 계산 시간(Node, `pnpm --filter @game/fair-play bench`): 2048비트 열쇠 53개 증명 109ms, 확인 147ms. 10개 32ms·71ms.
 
 ### 하트 카드 넘기기
 - 넘기는 열쇠는 받는 기기에게만 보낸다. 열쇠를 먼저 보내고, 자리마다 따로 만든 증명을 뒤따라 보낸다(계산이 비동기). 받은 기기는 그 카드를 낼 때 넘겨준 사람의 증명을 그대로 옮겨 공개한다.
@@ -275,7 +275,7 @@
 ### 6·7마 바꾸기(convert)
 - 떠나는 자리 i를 I_i → O_i = I_i^(p/k_i)로 바꾼다(p는 그 단계 섞기 열쇠, k_i는 처음 자리 열쇠). 바꿀 때 V = g^(1/p)를 내고, 판 끝에 자리 열쇠를 공개할 때 "O_i^k_i = I_i^p"를 열쇠 증명 꼴로 낸다(`cproof`). 문제가 생겼을 때만 확인한다.
 
-### 비용 (Node, `pnpm --filter @mighty/fair-play bench`)
+### 비용 (Node, `pnpm --filter @game/fair-play bench`)
 | 군 | 약속 | 응답 | 확인(하나) | 메시지 |
 |---|---|---|---|---|
 | 1024비트 | 0.40초 | 0.15초 | 0.28초 | 158KB |

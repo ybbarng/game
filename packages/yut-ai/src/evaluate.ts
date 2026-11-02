@@ -11,7 +11,7 @@ import {
   throwOdds,
   travel,
   type YutRules,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 /*
  * 컴퓨터 평가(docs/37 3절). 곱셈·덧셈·비교만 쓴다: 온라인 판 끝 검증에서 참가자 기기가 컴퓨터 수를

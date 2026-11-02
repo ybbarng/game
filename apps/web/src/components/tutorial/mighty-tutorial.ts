@@ -1,11 +1,11 @@
-import { beginnerBot } from "@mighty/ai";
+import { beginnerBot } from "@game/mighty-ai";
 import {
   type Action,
   createScenario,
   type GameEvent,
   type PlayerView,
   type ScenarioOptions,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { DEFAULT_BOT_NAMES } from "@/game/bot-names";
 import { LocalMatch } from "@/game/local-match";

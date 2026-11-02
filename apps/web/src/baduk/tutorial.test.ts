@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { badukBeginnerBot } from "@mighty/baduk-ai";
+import { badukBeginnerBot } from "@game/baduk-ai";
 import {
   type Action,
   createBadukScenario,
   type GameEvent,
   pointAt,
   viewOf,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

@@ -1,14 +1,4 @@
 import {
-  type Action,
-  createRng,
-  type GameEvent,
-  type MatchState,
-  type PlayerView,
-  type PresetDeal,
-  type RuleSet,
-} from "@mighty/engine";
-
-import {
   type Clock,
   checkHeartsReplay,
   checkHwatuReplay,
@@ -21,11 +11,17 @@ import {
   realClock,
   realHeartsAction,
   realHwatuAction,
-} from "@mighty/fair-play";
+} from "@game/fair-play";
+import { type HeartsRules, viewOf as heartsViewOf } from "@game/hearts-engine";
 import {
-  type HeartsRules,
-  viewOf as heartsViewOf,
-} from "@mighty/hearts-engine";
+  type Action,
+  createRng,
+  type GameEvent,
+  type MatchState,
+  type PlayerView,
+  type PresetDeal,
+  type RuleSet,
+} from "@game/mighty-engine";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { GameKit, KitLoggedAction } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";

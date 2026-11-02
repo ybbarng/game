@@ -16,7 +16,7 @@ import {
   toBase64Url,
   verifyLedger,
   verifyReceipt,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {

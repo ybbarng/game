@@ -1,12 +1,12 @@
-import { gostopBotFor } from "@mighty/gostop-ai";
+import { gostopBotFor } from "@game/gostop-ai";
 import type {
   Action,
   GameEvent,
   GostopRules,
   GostopState,
   GostopView,
-} from "@mighty/gostop-engine";
-import type { PresetDeal } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import type { PresetDeal } from "@game/hwatu";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

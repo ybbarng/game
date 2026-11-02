@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
-import { gostopBeginnerBot, gostopIntermediateBot } from "@mighty/gostop-ai";
-import { GOSTOP3_RULES, MATGO_RULES } from "@mighty/gostop-engine";
+import { ManualClock } from "@game/fair-play";
+import { gostopBeginnerBot, gostopIntermediateBot } from "@game/gostop-ai";
+import { GOSTOP3_RULES, MATGO_RULES } from "@game/gostop-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";

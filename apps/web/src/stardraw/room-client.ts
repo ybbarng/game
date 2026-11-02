@@ -10,7 +10,7 @@ import {
   roomModMessage,
   roomPassMessage,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 회차 방 연결(docs/36 11-23). 스트림은 fetch로 POST해 받는다(대화 표를 주소에 넣지 않으려고 EventSource 대신).

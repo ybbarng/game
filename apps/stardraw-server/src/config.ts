@@ -14,7 +14,7 @@ import {
   type TsaAuthority,
   tsaByName,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import type { FrontGateOptions, QualMethodConfig } from "./engine";
 
 /**

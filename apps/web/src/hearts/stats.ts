@@ -1,4 +1,4 @@
-import type { GameEvent, PlayerView } from "@mighty/hearts-engine";
+import type { GameEvent, PlayerView } from "@game/hearts-engine";
 
 import type { KitStats } from "@/game/kit";
 import type { GameRecord, RoundRecord } from "@/stats/records";

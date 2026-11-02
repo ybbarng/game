@@ -1,7 +1,8 @@
 // @vitest-environment node
-import { heuristicBot, intermediateBot } from "@mighty/ai";
-import { encodeRuleString, presetRules } from "@mighty/engine";
-import { ManualClock } from "@mighty/fair-play";
+
+import { ManualClock } from "@game/fair-play";
+import { heuristicBot, intermediateBot } from "@game/mighty-ai";
+import { encodeRuleString, presetRules } from "@game/mighty-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { tokenProof } from "./fairness";

@@ -8,7 +8,7 @@ import {
   roundTimes,
   scheduleFromRecords,
   type TicketFinding,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /** 검사 결과를 터미널 글로 옮긴다(시험하기 쉽게 문자열만 만든다) */
 

@@ -1,5 +1,5 @@
-import type { HwatuFairSpec } from "@mighty/fair-play";
-import { sortCards } from "@mighty/hwatu";
+import type { HwatuFairSpec } from "@game/fair-play";
+import { sortCards } from "@game/hwatu";
 import {
   type Action,
   createMatch,
@@ -11,7 +11,7 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 import { withPreset } from "@/hwatu/fair";
 

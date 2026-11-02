@@ -1,10 +1,10 @@
-import { analyzeElection, evaluatePlays, SEARCH_TUNING } from "@mighty/ai";
+import { analyzeElection, evaluatePlays, SEARCH_TUNING } from "@game/mighty-ai";
 import {
   type Action,
   isPointCard,
   type MatchState,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { mean, signed, verdictOf } from "@/review/commentary";
 

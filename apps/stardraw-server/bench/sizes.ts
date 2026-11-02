@@ -29,7 +29,7 @@ import {
   type Ticket,
   ticketId,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { Publisher, pad } from "../src/publish";
 import { fakeBeacon } from "../src/testing";
 import {

@@ -8,7 +8,7 @@ import {
   SIZE,
   type Stone,
   xyOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import {
   type KeyboardEvent,
   type PointerEvent,

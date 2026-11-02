@@ -1,10 +1,10 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createNyrongppongScenario,
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { describe, expect, it } from "vitest";
 import {
   determinize,

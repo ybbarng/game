@@ -11,8 +11,8 @@ import {
   signInvite,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
-import { FakeTsa } from "@mighty/stardraw-core/testing";
+} from "@game/stardraw-core";
+import { FakeTsa } from "@game/stardraw-core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
 // 화면 코드(apps/web)를 그대로 불러 실제 서버와 맞물리는지 본다

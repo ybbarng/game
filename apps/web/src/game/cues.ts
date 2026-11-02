@@ -9,7 +9,7 @@ import {
   suitOf,
   type Trick,
   type TrickContext,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { Cue, PlayOptions } from "./sound";
 import { dealPlan, SHUFFLE_MS } from "./timing";

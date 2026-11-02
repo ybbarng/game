@@ -6,7 +6,7 @@ import {
   SIZE,
   type Stone,
   xyOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 /**
  * 판 모양 점수. 판을 다섯 칸짜리 창(가로·세로·두 대각선)으로 모두 나누고,

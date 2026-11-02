@@ -59,7 +59,7 @@
 - 중수(`greedyScorer`): 먹는 카드 점수 + 내 약 진행(이루면 약 점수 × 인원, 덜 이뤘으면 진행 제곱에 비례) + 남의 약 막기(한 사람만 모으는 약의 카드를 먹으면 그 진행만큼) − 바닥에 놓아 남에게 내줄 위험(남이 그 달 카드를 쥐었을 확률 × 남이 먹을 때의 값).
 - 고수: 모르는 카드(남의 손패·더미)를 무작위로 채운 세계를 여러 개 만들고(`sampleState`), 후보 수마다 그 세계에서 모두 중수처럼 판 끝까지 둬 본 내 판 점수 평균으로 고른다. 한 수에 1,000번(후보당 40번 이상) 둬 보고, 같은 세계·같은 난수를 모든 후보에 써서 운의 차이를 줄인다.
 
-### 세기 비교(`pnpm --filter @mighty/minhwatu-ai bench`, 2026-10-29)
+### 세기 비교(`pnpm --filter @game/minhwatu-ai bench`, 2026-10-29)
 한 판짜리 게임, 센 쪽 하나와 약한 쪽 나머지가 자리를 돌려 가며 친다. 판 점수 합은 0이므로 평균 판 점수가 0보다 크면 더 세다(3인 1등 비율은 셋이 같으면 1/3).
 
 | 대결 | 판 | 센 쪽 평균 판 점수(표준오차) | 센 쪽 1등 |
@@ -76,8 +76,8 @@
 
 ## 4. 구조
 
-- `packages/minhwatu-engine`(`@mighty/minhwatu-engine`): `rules.ts`(규칙·부호·나누기 표·본), `score.ts`(카드 점수·약·판 점수), `state.ts`(상태·행동·사건·화면), `match.ts`(`createMatch`·`step`·`viewOf`·`pendingSeats`·`replay`·`dealRound`·`matchOnFloor`), `scenario.ts`(튜토리얼 장면). 카드 데이터와 섞기는 `@mighty/hwatu`.
-- `packages/minhwatu-ai`(`@mighty/minhwatu-ai`): `bots.ts`, `simulate.ts`, `bots.strength.ts`(세기 비교, 따로 돌림).
+- `packages/minhwatu-engine`(`@game/minhwatu-engine`): `rules.ts`(규칙·부호·나누기 표·본), `score.ts`(카드 점수·약·판 점수), `state.ts`(상태·행동·사건·화면), `match.ts`(`createMatch`·`step`·`viewOf`·`pendingSeats`·`replay`·`dealRound`·`matchOnFloor`), `scenario.ts`(튜토리얼 장면). 카드 데이터와 섞기는 `@game/hwatu`.
+- `packages/minhwatu-ai`(`@game/minhwatu-ai`): `bots.ts`, `simulate.ts`, `bots.strength.ts`(세기 비교, 따로 돌림).
 - `apps/web/src/minhwatu/`: `kit.ts`(GameKit, 해설), `stats.ts`, `store.ts`, `session.ts`, `settings.ts`, `progress.ts`(튜토리얼 진행), `cues.ts`(소리), `tutorial.ts`, `rules-text.ts`, `components/`(App·Table·Floor·OnlineScreen·Replay·Stats·IconArt·tutorial kit).
 - `apps/web/src/app/minhwatu/`: `page.tsx`, `icon.tsx`, `apple-icon.tsx`, `opengraph-image.tsx`.
 - 시험: 엔진 27, 컴퓨터 9, 웹(튜토리얼 9·키트·소리·기록 7·온라인 방 1) 17, 화면 시험 `e2e/minhwatu.spec.ts` 4개(세 화면 크기, 온라인·기록은 데스크톱만).
@@ -85,7 +85,7 @@
 ## 5. 설계 다섯 질문(데이터 계약: 상태·행동·규칙 부호·기록)
 
 1. 뜻·연결·책임
-   - 상태는 판 하나의 모든 것(손패·바닥·더미·먹은 패·차례·고르기 대기)과 게임 진행(판 번호·선·합계·지난 판 결과)이다. 카드는 `@mighty/hwatu`의 번호("03g")를 그대로 쓴다.
+   - 상태는 판 하나의 모든 것(손패·바닥·더미·먹은 패·차례·고르기 대기)과 게임 진행(판 번호·선·합계·지난 판 결과)이다. 카드는 `@game/hwatu`의 번호("03g")를 그대로 쓴다.
    - 행동은 넷뿐이다: `play {card, target?}`, `pick {target}`, `continue`, `retire`. 뒤집기는 행동이 아니라 `play`의 결과다(더미 순서는 시드가 정한다).
    - 사건은 화면·소리·기록이 쓴다: `played`·`flipped`·`picked`(먹은 카드 포함), `yak`, `roundStarted`·`roundEnded`·`gameEnded`.
 2. 꼭 지킬 규칙의 보장
@@ -133,7 +133,7 @@
 
 ## 9. 합칠 때 공유 파일에 할 일
 
-- `apps/web/package.json` 의존성: `@mighty/minhwatu-ai`, `@mighty/minhwatu-engine`(workspace), `pnpm install`로 `pnpm-lock.yaml`.
+- `apps/web/package.json` 의존성: `@game/minhwatu-ai`, `@game/minhwatu-engine`(workspace), `pnpm install`로 `pnpm-lock.yaml`.
 - `Dockerfile`: `packages/minhwatu-engine/package.json`, `packages/minhwatu-ai/package.json` COPY 줄.
 - `games/registry.ts`: id 합집합에 `"minhwatu"`, 항목 하나.
 - `components/brand/icon-art.tsx`: `game="minhwatu"`(지금은 `MinhwatuIconArt`). 그 뒤 `GameCenterHome`·`app/minhwatu/icon·apple-icon·opengraph-image`를 공통으로 바꾼다.

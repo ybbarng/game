@@ -1,5 +1,5 @@
-import { ManualClock } from "@mighty/fair-play";
-import { DEFAULT_GATE_TRIES, powTargetForTries } from "@mighty/stardraw-core";
+import { ManualClock } from "@game/fair-play";
+import { DEFAULT_GATE_TRIES, powTargetForTries } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PREFIX_LIMITS, frontGateConfig } from "./config";

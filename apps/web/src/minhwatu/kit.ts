@@ -1,9 +1,9 @@
-import { cardOf, type PresetDeal, sortCards } from "@mighty/hwatu";
+import { cardOf, type PresetDeal, sortCards } from "@game/hwatu";
 import {
   greedyValue,
   minhwatuBotFor,
   minhwatuExpertBot,
-} from "@mighty/minhwatu-ai";
+} from "@game/minhwatu-ai";
 import {
   type Action,
   createMatch,
@@ -21,7 +21,7 @@ import {
   viewOf,
   YAK_NAMES,
   yaksOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 import type { Commentary, GameKit, Verdict } from "@/game/kit";
 

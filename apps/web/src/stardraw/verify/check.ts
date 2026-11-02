@@ -16,13 +16,13 @@ import {
   voidRoundsItem,
   withPowDetail,
   withQualDetail,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 export type {
   CheckItem,
   CheckResult,
   CheckStatus,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 「장부 전체 검사」(검증하기 페이지·콘솔 `stardraw.verify()`).

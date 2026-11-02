@@ -1,6 +1,6 @@
 "use client";
 
-import { type Clock, realClock } from "@mighty/fair-play";
+import { type Clock, realClock } from "@game/fair-play";
 import {
   drandRoundForClose,
   drandTime,
@@ -10,7 +10,7 @@ import {
   registrationProofMessage,
   roundTimes,
   type Ticket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { Avatar } from "../astronaut/Avatar";

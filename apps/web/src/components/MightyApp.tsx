@@ -1,6 +1,6 @@
 "use client";
 
-import type { RuleSet } from "@mighty/engine";
+import type { RuleSet } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 import type { SavedMatch } from "@/game/local-match";
 import { clearGame, loadGame } from "@/game/persistence";

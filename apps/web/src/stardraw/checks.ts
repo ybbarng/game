@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   checkStartMessage,
   decodeConfirmRequest,
@@ -12,7 +12,7 @@ import {
   toBase64Url,
   toHex,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { checkAnswer, starsMatch } from "./confirm";
 import type { ConfirmAnswer, ConfirmRelay } from "./confirm-relay";

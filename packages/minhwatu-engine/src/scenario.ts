@@ -1,4 +1,4 @@
-import { sortCards } from "@mighty/hwatu";
+import { sortCards } from "@game/hwatu";
 
 import { type MinhwatuRules, STANDARD_RULES } from "./rules";
 import type { MinhwatuState } from "./state";

@@ -1,4 +1,4 @@
-import { createRng, nextInt } from "@mighty/engine";
+import { createRng, nextInt } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

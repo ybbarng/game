@@ -1,18 +1,5 @@
 "use client";
 
-import { heuristicBot } from "@mighty/ai";
-import {
-  type Action,
-  type Card,
-  createMatch,
-  createRng,
-  decisionFor,
-  type LoggedAction,
-  type MatchState,
-  presetRules,
-  step,
-  viewOf,
-} from "@mighty/engine";
 import {
   answerShuffle,
   challengeBits,
@@ -26,7 +13,20 @@ import {
   type ShuffleAnswer,
   verifyKeys,
   verifyShuffle,
-} from "@mighty/fair-play";
+} from "@game/fair-play";
+import { heuristicBot } from "@game/mighty-ai";
+import {
+  type Action,
+  type Card,
+  createMatch,
+  createRng,
+  decisionFor,
+  type LoggedAction,
+  type MatchState,
+  presetRules,
+  step,
+  viewOf,
+} from "@game/mighty-engine";
 import { useEffect, useMemo, useState } from "react";
 
 import { SuitText } from "@/components/SuitText";

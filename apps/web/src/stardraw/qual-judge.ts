@@ -9,7 +9,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 당첨 응모권 한 장의 소속 표시(2026-10-31 보안 검토 B1). 규칙 패키지 judgeRound로 도장·자격 서명·기간·소속을

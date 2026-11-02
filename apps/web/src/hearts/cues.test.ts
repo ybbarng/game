@@ -1,5 +1,5 @@
 // @vitest-environment node
-import type { GameEvent, PlayerView } from "@mighty/hearts-engine";
+import type { GameEvent, PlayerView } from "@game/hearts-engine";
 import { describe, expect, it } from "vitest";
 
 import { heartsCuesFor } from "./cues";

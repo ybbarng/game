@@ -7,7 +7,7 @@ import {
   type PublicLedger,
   parseTicketQuery,
   ticketIdFromHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { type Command, parseArgs, USAGE } from "./args";
 import { folderEarlySealSource, watchOnce } from "./evidence";
@@ -27,7 +27,7 @@ import {
 import { compareLedgers, type ResolvedSource, resolveSource } from "./source";
 
 /**
- * 하늘의 별 따기 독립 검사기(docs/36 7절, 11-8). 규칙 코드는 화면과 같은 @mighty/stardraw-core지만,
+ * 하늘의 별 따기 독립 검사기(docs/36 7절, 11-8). 규칙 코드는 화면과 같은 @game/stardraw-core지만,
  * 공개 저장소에서 내가 받아 돌리므로 운영자가 내주는 화면 코드를 믿지 않아도 된다.
  */
 

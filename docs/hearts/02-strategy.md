@@ -44,7 +44,7 @@
 
 단계 사이: 중수 vs 입문 5.5점, 고수 vs 중수 2.4점. 고수가 카드 한 장 고르는 데 평균 13ms, 최대 66ms.
 
-세기 테스트: `pnpm --filter @mighty/hearts-ai bench` (중수 vs 입문 > 3, 고수 vs 중수 > 1).
+세기 테스트: `pnpm --filter @game/hearts-ai bench` (중수 vs 입문 > 3, 고수 vs 중수 > 1).
 
 ## 4. 남은 것
 

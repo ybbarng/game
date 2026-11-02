@@ -1,6 +1,6 @@
 "use client";
 
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GameTable } from "@/components/GameTable";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlayerClock, TimeControl } from "@mighty/engine";
+import type { PlayerClock, TimeControl } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";

@@ -1,9 +1,9 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMinhwatuScenario,
   STANDARD_RULES,
   viewOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import {

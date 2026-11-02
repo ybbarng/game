@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/nyrongppong-ai",
+  "name": "@game/nyrongppong-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/hwatu": "workspace:*",
-    "@mighty/nyrongppong-engine": "workspace:*"
+    "@game/mighty-engine": "workspace:*",
+    "@game/hwatu": "workspace:*",
+    "@game/nyrongppong-engine": "workspace:*"
   }
 }

@@ -1,4 +1,4 @@
-import { type Card, createRng, nextInt } from "@mighty/engine";
+import { type Card, createRng, nextInt } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { pointsOf } from "./cards";

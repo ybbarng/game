@@ -5,7 +5,7 @@ import {
   legalPoints,
   pointName,
   step,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { useState } from "react";
 
 import {

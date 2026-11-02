@@ -1,4 +1,4 @@
-import type { Action, GameEvent, PlayerView } from "@mighty/engine";
+import type { Action, GameEvent, PlayerView } from "@game/mighty-engine";
 
 /** 엔진이 한 번 진행할 때마다 화면에 넘기는 것. 기본은 마이티, 하트는 하트 타입으로 쓴다 */
 export interface Snapshot<View = PlayerView, Event = GameEvent> {

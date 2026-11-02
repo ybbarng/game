@@ -1,6 +1,6 @@
 "use client";
 
-import { heuristicBot } from "@mighty/ai";
+import { heuristicBot } from "@game/mighty-ai";
 import {
   type Card,
   countPoints,
@@ -12,7 +12,7 @@ import {
   type PlayerView,
   type Suit,
   unplayableReason,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { effectFor } from "@/game/effects";

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { heuristicBot } from "@mighty/ai";
+import { heuristicBot } from "@game/mighty-ai";
 import {
   type Card,
   createMatch,
@@ -7,7 +7,7 @@ import {
   presetRules,
   step,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { explainMighty } from "./mighty-commentary";

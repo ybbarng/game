@@ -2,7 +2,7 @@ import {
   emptyWinners,
   type RoundRecord,
   type Schedule,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import {

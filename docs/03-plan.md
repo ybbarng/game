@@ -32,8 +32,8 @@
 ```
 mighty/
 ├─ packages/
-│  ├─ engine/   @mighty/engine — 규칙 엔진. 외부 의존성 없음, DOM/네트워크 모름
-│  └─ ai/       @mighty/ai     — 컴퓨터 플레이어. engine에만 의존
+│  ├─ engine/   @game/mighty-engine — 규칙 엔진. 외부 의존성 없음, DOM/네트워크 모름
+│  └─ ai/       @game/mighty-ai     — 컴퓨터 플레이어. engine에만 의존
 ├─ apps/
 │  └─ web/      Next.js 정적 웹앱. 화면 + 로컬 대국 진행(LocalMatch)
 └─ docs/
@@ -103,7 +103,7 @@ mighty/
 | M3 | 끝 | 사람 1 + 컴퓨터로 한 판을 끝까지. 가로·세로 배치, 카드 날아가기, 판 결과 |
 | M4 | 끝 | 세부 목록은 [06-backlog.md](./06-backlog.md) |
 | M4.5 | 끝 | 튜토리얼 10단원(설명·퀴즈·미션), 실전 단원의 추천 카드 표시. 남은 다듬기는 [06-backlog.md](./06-backlog.md) |
-| M5 | 끝 | 2단계 봇(`searchBot`): 카드를 낼 때 남의 패를 64번 추측해 끝까지 둬 본다. 1단계 봇과 섞어 앉히면 판당 +0.9 안팎(`pnpm --filter @mighty/ai bench`). 시작 화면에서 보통/고수 선택 |
+| M5 | 끝 | 2단계 봇(`searchBot`): 카드를 낼 때 남의 패를 64번 추측해 끝까지 둬 본다. 1단계 봇과 섞어 앉히면 판당 +0.9 안팎(`pnpm --filter @game/mighty-ai bench`). 시작 화면에서 보통/고수 선택 |
 | M6 | 끝 | 온라인 대전. 실제 인터넷(공개 릴레이)으로 두 탭 연결 확인 |
 
 ## 화면 방향

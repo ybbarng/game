@@ -1,4 +1,4 @@
-import { type GostopView, goThreshold } from "@mighty/gostop-engine";
+import { type GostopView, goThreshold } from "@game/gostop-engine";
 import {
   CHEONGDAN,
   CHODAN,
@@ -9,7 +9,7 @@ import {
   type HwatuCard,
   type Month,
   monthOf,
-} from "@mighty/hwatu";
+} from "@game/hwatu";
 
 /*
  * 카드 값 어림. 중수는 이것만으로 두고, 고수는 앞날을 굴려 볼 때 모든 자리를 이것으로 둔다.

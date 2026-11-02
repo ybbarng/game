@@ -5,7 +5,7 @@
  * 인터넷 대전에서 `startDiag`를 부르기 전에는 아무것도 하지 않는다(단위 시험, 같은 탭 시험).
  */
 
-import type { FairDevice } from "@mighty/fair-play";
+import type { FairDevice } from "@game/fair-play";
 
 const ENDPOINT = "/diag";
 /** 이만큼 모아서 한 번에 보낸다(ms). 서버는 같은 공인 IP당 1분 60번까지 받는다 */

@@ -1,4 +1,3 @@
-import type { Card } from "@mighty/engine";
 import {
   type Action,
   awaitingOpening,
@@ -12,7 +11,8 @@ import {
   type StepResult,
   type Trick,
   TWO_OF_CLUBS,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 
 import { isToken, slotOfToken, tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";

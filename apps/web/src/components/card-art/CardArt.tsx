@@ -5,7 +5,7 @@ import {
   rankOf,
   type Suit,
   suitOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { memo, type ReactNode } from "react";
 
 import { SPADE_PATH } from "../brand/brand";

@@ -6,7 +6,7 @@ import {
   toBase64Url,
   utf8,
   verifyEntrantSignature,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { UnlockPurpose } from "./demo-unlock";

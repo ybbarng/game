@@ -1,7 +1,7 @@
 "use client";
 
-import type { Action, MinhwatuState } from "@mighty/minhwatu-engine";
-import { sumPoints, YAK_NAMES, yaksOf } from "@mighty/minhwatu-engine";
+import type { Action, MinhwatuState } from "@game/minhwatu-engine";
+import { sumPoints, YAK_NAMES, yaksOf } from "@game/minhwatu-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { botName } from "@/game/bot-names";
 import { useSettings } from "@/game/settings";

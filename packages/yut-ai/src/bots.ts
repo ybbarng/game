@@ -1,4 +1,4 @@
-import { nextInt, type RngState } from "@mighty/engine";
+import { nextInt, type RngState } from "@game/mighty-engine";
 import {
   type Action,
   BACK_MO,
@@ -14,7 +14,7 @@ import {
   throwOdds,
   type YutState,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import { evaluate, hitChance, pieceProgress } from "./evaluate";
 

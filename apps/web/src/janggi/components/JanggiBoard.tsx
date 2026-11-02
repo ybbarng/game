@@ -10,7 +10,7 @@ import {
   type Side,
   WIDTH,
   xyOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 
 import type { PieceLabels } from "../settings";

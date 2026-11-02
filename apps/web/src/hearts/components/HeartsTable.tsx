@@ -1,12 +1,12 @@
 "use client";
 
-import type { Card } from "@mighty/engine";
 import {
   type Decision,
   type PlayerView,
   passTarget,
   QUEEN_OF_SPADES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

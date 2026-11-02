@@ -1,4 +1,4 @@
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   CHECK_LINK_REQUESTER,
   DEFAULT_WEBAUTHN_POLICY,
@@ -16,7 +16,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { Checker, type CheckSession, memoryCheckStore } from "./checks";

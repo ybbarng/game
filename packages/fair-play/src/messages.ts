@@ -1,4 +1,4 @@
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 
 import type { FairLogged } from "./audit";
 

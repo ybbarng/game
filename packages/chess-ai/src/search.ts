@@ -10,7 +10,7 @@ import {
   pseudoMoves,
   type Side,
   xyOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 /** 체크메이트의 값. 남은 깊이를 더해 빨리 메이트하는 쪽을 고른다 */
 export const MATE = 1_000_000;

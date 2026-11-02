@@ -10,7 +10,7 @@ import {
   type RuleSet,
   type StepResult,
   step,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 /*
  * 방장 엔진이 남의 패를 모른 채 진행하기.

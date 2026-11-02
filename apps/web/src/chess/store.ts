@@ -1,4 +1,4 @@
-import { chessBotFor } from "@mighty/chess-ai";
+import { chessBotFor } from "@game/chess-ai";
 import {
   type Action,
   type ChessRules,
@@ -6,7 +6,7 @@ import {
   type ChessView,
   createMatch,
   type GameEvent,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

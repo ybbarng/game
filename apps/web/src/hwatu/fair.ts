@@ -1,5 +1,5 @@
-import { realHwatuAction } from "@mighty/fair-play";
-import type { PresetDeal } from "@mighty/hwatu";
+import { realHwatuAction } from "@game/fair-play";
+import type { PresetDeal } from "@game/hwatu";
 
 /*
  * 화투 세 게임이 함께 쓰는 멘탈 포커 연결(복기). 멘탈 포커 판은 판마다 진짜 패(`preset`)를 넣어 가며 돌린다.

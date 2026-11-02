@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
-import { omokBotFor } from "@mighty/omok-ai";
-import { type OmokRules, pointAt } from "@mighty/omok-engine";
+import { ManualClock } from "@game/fair-play";
+import { omokBotFor } from "@game/omok-ai";
+import { type OmokRules, pointAt } from "@game/omok-engine";
 import { describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";

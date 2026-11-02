@@ -1,16 +1,16 @@
 import {
+  type Action,
+  type PlayerView,
+  passTarget,
+  QUEEN_OF_SPADES,
+} from "@game/hearts-engine";
+import {
   type Card,
   type RngState,
   rankPower,
   type Suit,
   suitOf,
-} from "@mighty/engine";
-import {
-  type Action,
-  type PlayerView,
-  passTarget,
-  QUEEN_OF_SPADES,
-} from "@mighty/hearts-engine";
+} from "@game/mighty-engine";
 
 /** 하트 컴퓨터. 자기 자리에서 보이는 정보만 받는다 */
 export interface HeartsBot {

@@ -4,7 +4,7 @@ import {
   EXPERT_PLAYOUTS,
   moveWinRate,
   search,
-} from "@mighty/baduk-ai";
+} from "@game/baduk-ai";
 import {
   type Action,
   type BadukRules,
@@ -23,8 +23,8 @@ import {
   step,
   stoneOfSeat,
   viewOf,
-} from "@mighty/baduk-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/baduk-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

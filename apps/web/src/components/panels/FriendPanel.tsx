@@ -9,7 +9,7 @@ import {
   mightyOf,
   type RuleSet,
   sameFriend,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { useState } from "react";
 
 import { friendLabel, slangTerms } from "@/game/terms";

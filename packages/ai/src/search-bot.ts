@@ -27,7 +27,7 @@ import {
   type Trick,
   type TrickContext,
   trickWinnerIndex,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { type Bias, bidBias, friendCardExcluded, isMemorable } from "./belief";
 import type { Bot } from "./bot";

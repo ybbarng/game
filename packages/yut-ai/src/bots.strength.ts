@@ -1,5 +1,5 @@
-import { createRng } from "@mighty/engine";
-import { createYutScenario, STANDARD_RULES, viewOf } from "@mighty/yut-engine";
+import { createRng } from "@game/mighty-engine";
+import { createYutScenario, STANDARD_RULES, viewOf } from "@game/yut-engine";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -22,7 +22,7 @@ import {
   type TrickCards,
   type TrickContext,
   trickWinnerIndex,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { Bot } from "./bot";
 import { bestKiruda, cardKeepValue, estimatePoints, KIRUDAS } from "./hand";

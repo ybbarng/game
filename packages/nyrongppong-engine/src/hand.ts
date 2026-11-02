@@ -1,4 +1,4 @@
-import { type Month, monthOf } from "@mighty/hwatu";
+import { type Month, monthOf } from "@game/hwatu";
 
 /*
  * 손패 계산(docs/30 1절): 카드 값은 달 숫자(1~12)다. 판이 끝나면 손에 남은 값의 합이 벌점이고, 낮을수록 좋다.

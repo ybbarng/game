@@ -1,4 +1,4 @@
-import { janggiBotFor } from "@mighty/janggi-ai";
+import { janggiBotFor } from "@game/janggi-ai";
 import {
   type Action,
   createMatch,
@@ -6,7 +6,7 @@ import {
   type JanggiRules,
   type JanggiState,
   type JanggiView,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { create } from "zustand";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";

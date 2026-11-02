@@ -1,5 +1,5 @@
-import type { BoardSize, Komi } from "@mighty/baduk-engine";
-import type { TimePreset } from "@mighty/engine";
+import type { BoardSize, Komi } from "@game/baduk-engine";
+import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

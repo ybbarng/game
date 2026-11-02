@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlayerView, SeatRecord } from "@mighty/engine";
+import type { PlayerView, SeatRecord } from "@game/mighty-engine";
 
 import { cn } from "@/lib/cn";
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { minhwatuBotFor } from "@mighty/minhwatu-ai";
-import type { MinhwatuRules } from "@mighty/minhwatu-engine";
+import { minhwatuBotFor } from "@game/minhwatu-ai";
+import type { MinhwatuRules } from "@game/minhwatu-engine";
 import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";

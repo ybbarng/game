@@ -9,7 +9,7 @@ import {
   type Ticket,
   ticketContent,
   unsignedTicket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { play } from "@/game/sound";
 import { astronautOf, residentPhrase } from "../astronaut/identity";

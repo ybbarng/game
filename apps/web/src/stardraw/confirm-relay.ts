@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   CHECK_LINK_REQUESTER,
   type ConfirmRequest,
@@ -15,7 +15,7 @@ import {
   type SignatureData,
   toBase64Url,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 당첨자 확인 전달(docs/36 11-2, 2026-10-30 "당첨자가 먼저 보내는 확인 링크").

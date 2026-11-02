@@ -1,3 +1,4 @@
+import type { BusyReason } from "@game/fair-play";
 import type {
   Action,
   CompletedTrick,
@@ -5,9 +6,8 @@ import type {
   PlayerView,
   PresetDeal,
   RuleSet,
-} from "@mighty/engine";
-import { isJoker, mightyOf } from "@mighty/engine";
-import type { BusyReason } from "@mighty/fair-play";
+} from "@game/mighty-engine";
+import { isJoker, mightyOf } from "@game/mighty-engine";
 import { create } from "zustand";
 import type { EndVoteState } from "@/components/FairOverlays";
 import {

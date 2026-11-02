@@ -12,7 +12,7 @@ import {
   type Schedule,
   type Ticket,
   twinCount,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { astronautOf } from "./astronaut/identity";
 import { SKY_STARS, starOf, tempWord } from "./sky";

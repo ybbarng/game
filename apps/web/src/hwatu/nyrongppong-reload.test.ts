@@ -7,8 +7,8 @@
 import {
   nyrongppongBeginnerBot,
   nyrongppongIntermediateBot,
-} from "@mighty/nyrongppong-ai";
-import { STANDARD_RULES as NYRONGPPONG_RULES } from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-ai";
+import { STANDARD_RULES as NYRONGPPONG_RULES } from "@game/nyrongppong-engine";
 import { describe, expect, it } from "vitest";
 
 import { GuestRoom } from "@/net/guest-room";

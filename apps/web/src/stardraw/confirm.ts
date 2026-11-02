@@ -13,7 +13,7 @@ import {
   ticketId,
   verifyClaim,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type { ConfirmAnswer, OpenRequest } from "./confirm-relay";
 

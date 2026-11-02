@@ -6,7 +6,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useRef, useState } from "react";
 import { EASE, FX } from "../fx-timing";
 import { Receipt } from "./Receipt";

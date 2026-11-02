@@ -10,7 +10,7 @@ import {
   seatToMove,
   sideOfSeat,
   timeControlOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

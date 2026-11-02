@@ -1,6 +1,6 @@
 "use client";
 
-import type { MatchState } from "@mighty/hearts-engine";
+import type { MatchState } from "@game/hearts-engine";
 
 import { cn } from "@/lib/cn";
 

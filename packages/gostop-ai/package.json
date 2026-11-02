@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/gostop-ai",
+  "name": "@game/gostop-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/gostop-engine": "workspace:*",
-    "@mighty/hwatu": "workspace:*"
+    "@game/mighty-engine": "workspace:*",
+    "@game/gostop-engine": "workspace:*",
+    "@game/hwatu": "workspace:*"
   }
 }

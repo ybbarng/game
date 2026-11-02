@@ -12,7 +12,7 @@ import {
   type Position,
   squareName,
   xyOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 /*
  * 체스 전술 문제(포크·핀·스큐어·발견 공격)의 모양을 판에서 알아보고 말로 풀어 준다(docs/23).

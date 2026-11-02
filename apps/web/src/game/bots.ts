@@ -1,4 +1,9 @@
-import { type Bot, beginnerBot, intermediateBot, searchBot } from "@mighty/ai";
+import {
+  type Bot,
+  beginnerBot,
+  intermediateBot,
+  searchBot,
+} from "@game/mighty-ai";
 
 /** 0 입문, 1 중수, 2 고수. 저장해 둔 값(1 중수, 2 고수)이 그대로 이어지도록 입문을 0에 둔다 */
 export type BotLevel = 0 | 1 | 2;

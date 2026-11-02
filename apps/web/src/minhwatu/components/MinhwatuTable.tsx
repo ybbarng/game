@@ -1,6 +1,6 @@
 "use client";
 
-import { cardOf, sortCards } from "@mighty/hwatu";
+import { cardOf, sortCards } from "@game/hwatu";
 import {
   floorMatches,
   type MinhwatuView,
@@ -9,7 +9,7 @@ import {
   type TurnRecord,
   YAK_NAMES,
   yaksOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

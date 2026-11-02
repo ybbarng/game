@@ -8,7 +8,7 @@ import {
   type Stone,
   starPoints,
   xyOf,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import {
   type KeyboardEvent,
   type PointerEvent,

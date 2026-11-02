@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   decodeConfirmRequest,
   decodeInvite,
@@ -7,7 +7,7 @@ import {
   sha256,
   toBase64Url,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type {
   ConfirmAnswer,

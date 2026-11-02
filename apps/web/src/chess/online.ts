@@ -1,11 +1,11 @@
-import { chessBotFor } from "@mighty/chess-ai";
+import { chessBotFor } from "@game/chess-ai";
 import type {
   Action,
   ChessRules,
   ChessState,
   ChessView,
   GameEvent,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

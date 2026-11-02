@@ -1,6 +1,6 @@
 "use client";
 
-import { roundTimes, toHex } from "@mighty/stardraw-core";
+import { roundTimes, toHex } from "@game/stardraw-core";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { AstronautCard } from "../astronaut/AstronautCard";

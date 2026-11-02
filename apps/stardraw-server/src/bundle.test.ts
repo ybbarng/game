@@ -1,7 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { loadPublicLedger, loadRoundFiles } from "@mighty/stardraw-core";
+import { loadPublicLedger, loadRoundFiles } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createHttpServer } from "./http";

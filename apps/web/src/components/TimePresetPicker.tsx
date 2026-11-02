@@ -4,7 +4,7 @@ import {
   TIME_PRESET_NAMES,
   TIME_PRESETS,
   type TimePreset,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { cn } from "@/lib/cn";
 

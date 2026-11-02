@@ -1,4 +1,4 @@
-import type { GuessEntry, Phase } from "@mighty/baseball-engine";
+import type { GuessEntry, Phase } from "@game/baseball-engine";
 
 /**
  * 숫자야구 화면을 야구 경기처럼 보이게 하는 순수 계산. 엔진·규칙과 상관없는 화면 말이다.

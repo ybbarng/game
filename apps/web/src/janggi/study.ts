@@ -1,4 +1,4 @@
-import { janggiExpertBot } from "@mighty/janggi-ai";
+import { janggiExpertBot } from "@game/janggi-ai";
 import {
   applyMove,
   type Board,
@@ -16,7 +16,7 @@ import {
   sideOfSeat,
   viewOf,
   xyOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 import type { JanggiPuzzle } from "./puzzles";
 

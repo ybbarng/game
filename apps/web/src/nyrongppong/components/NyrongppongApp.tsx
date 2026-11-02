@@ -10,7 +10,7 @@ import {
   STOP_OPTIONS,
   YAK_INFO,
   YAK_NAMES,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";

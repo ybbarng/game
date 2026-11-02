@@ -4,7 +4,7 @@ import type {
   JanggiRules,
   JanggiState,
   JanggiView,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

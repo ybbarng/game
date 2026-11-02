@@ -152,7 +152,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm --filter @mighty/web build
+      - run: pnpm --filter @game/web build
         env:
           SOURCE_COMMIT: ${{ env.SHA }}
           NEXT_TELEMETRY_DISABLED: 1
@@ -163,7 +163,7 @@ jobs:
       - name: 이미지의 해시 목록과 비교
         run: |
           set -euo pipefail
-          pnpm --filter @mighty/stardraw-cli build
+          pnpm --filter @game/stardraw-cli build
           node packages/stardraw-cli/dist/stardraw-verify.mjs site \
             --hashes image-hashes/build-hashes.json --build apps/web/out --no-download --all
 

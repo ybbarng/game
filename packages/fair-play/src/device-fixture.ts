@@ -1,7 +1,7 @@
 /** 멘탈 포커 기기 시험이 같이 쓰는 도우미. 시험이 오래 걸려 파일을 나눠 동시에 돌린다 */
 declare function setTimeout(callback: () => void, ms: number): unknown;
 
-import { deckFor, presetRules } from "@mighty/engine";
+import { deckFor, presetRules } from "@game/mighty-engine";
 
 import { ManualClock } from "./clock";
 import { FairDevice, type FairWire, prepareGroup } from "./device";

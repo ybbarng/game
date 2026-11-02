@@ -1,7 +1,7 @@
 "use client";
 
-import type { Action, NyrongppongState } from "@mighty/nyrongppong-engine";
-import { handValue } from "@mighty/nyrongppong-engine";
+import type { Action, NyrongppongState } from "@game/nyrongppong-engine";
+import { handValue } from "@game/nyrongppong-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";

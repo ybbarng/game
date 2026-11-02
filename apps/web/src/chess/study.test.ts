@@ -9,7 +9,7 @@ import {
   mateInTwoMoves,
   moveToSan,
   step,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
 import { CHESS_PUZZLE_SETS, type ChessPuzzle } from "./puzzles";

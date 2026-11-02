@@ -4,7 +4,7 @@ import type {
   OmokRules,
   OmokState,
   OmokView,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

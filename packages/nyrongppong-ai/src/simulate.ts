@@ -1,4 +1,4 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   type NyrongppongRules,
@@ -6,7 +6,7 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import type { NyrongppongBot } from "./bots";
 

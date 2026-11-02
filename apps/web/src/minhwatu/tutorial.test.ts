@@ -1,11 +1,11 @@
 // @vitest-environment node
-import { minhwatuBeginnerBot } from "@mighty/minhwatu-ai";
+import { minhwatuBeginnerBot } from "@game/minhwatu-ai";
 import {
   type Action,
   createMinhwatuScenario,
   type GameEvent,
   viewOf,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

@@ -1,5 +1,5 @@
-import { nextInt, type RngState, shuffleInPlace } from "@mighty/engine";
-import { HWATU_DECK } from "@mighty/hwatu";
+import { HWATU_DECK } from "@game/hwatu";
+import { nextInt, type RngState, shuffleInPlace } from "@game/mighty-engine";
 import {
   type Action,
   cardPoints,
@@ -13,7 +13,7 @@ import {
   viewOf,
   YAK_CARDS,
   yakList,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 
 /** 민화투 컴퓨터. 자기 자리에서 보이는 것만 보고, 받은 난수만 쓴다(온라인 판 끝 검증에서 다시 계산한다) */
 export interface MinhwatuBot {

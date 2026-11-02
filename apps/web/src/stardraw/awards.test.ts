@@ -8,7 +8,7 @@ import {
   type Schedule,
   type ScheduleEntry,
   type Ticket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { astronautOf } from "./astronaut/identity";

@@ -1,4 +1,4 @@
-import type { Suit } from "@mighty/engine";
+import type { Suit } from "@game/mighty-engine";
 
 /**
  * 무늬 모양. 글꼴의 ♠♥◆♣ 글자는 기기마다 모양이 다르고 이모지로 바뀌기도 해서 경로로 그린다.

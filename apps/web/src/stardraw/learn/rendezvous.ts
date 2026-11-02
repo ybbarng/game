@@ -1,4 +1,4 @@
-import { sha256, taggedHash, utf8 } from "@mighty/stardraw-core";
+import { sha256, taggedHash, utf8 } from "@game/stardraw-core";
 
 import {
   ASTRONAUT_TAG,

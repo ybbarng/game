@@ -1,5 +1,5 @@
-import { type Card, fullDeck } from "@mighty/engine";
-import { HWATU_DECK } from "@mighty/hwatu";
+import { HWATU_DECK } from "@game/hwatu";
+import { type Card, fullDeck } from "@game/mighty-engine";
 
 import type { KeyProof } from "./proof";
 import {

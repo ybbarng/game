@@ -2,7 +2,7 @@ import {
   makeRegistration,
   registrationProofMessage,
   type SignatureData,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { RegisterLater } from "./ledger";
 import type { Services } from "./services";

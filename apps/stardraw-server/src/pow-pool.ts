@@ -4,7 +4,7 @@ import {
   Worker,
   workerData,
 } from "node:worker_threads";
-import { checkPow, type PowParams } from "@mighty/stardraw-core";
+import { checkPow, type PowParams } from "@game/stardraw-core";
 
 /**
  * 작업 증명 확인(Argon2id 16MB)을 어디서 돌릴지. 시험과 개발은 같은 스레드에서(`inlinePowChecker`),

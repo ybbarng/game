@@ -1,5 +1,5 @@
-import type { TimePreset } from "@mighty/engine";
-import type { YutRules } from "@mighty/yut-engine";
+import type { TimePreset } from "@game/mighty-engine";
+import type { YutRules } from "@game/yut-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

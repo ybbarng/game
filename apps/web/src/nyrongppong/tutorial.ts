@@ -4,7 +4,7 @@ import {
   type NyrongppongScenarioOptions,
   type NyrongppongView,
   STANDARD_RULES,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { YAK_NAMES, type YakId } from "@mighty/minhwatu-engine";
+import { YAK_NAMES, type YakId } from "@game/minhwatu-engine";
 
 import type { StatsBook } from "@/stats/records";
 import { Card, Counts, pct, StatTile, TrendLine } from "@/stats/widgets";

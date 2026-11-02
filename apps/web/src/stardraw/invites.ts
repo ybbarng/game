@@ -6,7 +6,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type { Services } from "./services";
 

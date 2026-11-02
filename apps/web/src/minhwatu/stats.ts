@@ -1,4 +1,4 @@
-import type { GameEvent, MinhwatuView, YakId } from "@mighty/minhwatu-engine";
+import type { GameEvent, MinhwatuView, YakId } from "@game/minhwatu-engine";
 
 import type { KitStats } from "@/game/kit";
 import type { GameRecord, RoundRecord } from "@/stats/records";

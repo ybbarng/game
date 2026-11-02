@@ -1,6 +1,6 @@
 "use client";
 
-import { cardOf, type HwatuCard } from "@mighty/hwatu";
+import { cardOf, type HwatuCard } from "@game/hwatu";
 import { type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/cn";

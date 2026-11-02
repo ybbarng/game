@@ -1,7 +1,7 @@
 /** 화투 멘탈 포커 온라인 방 시험이 같이 쓰는 도우미(민화투·고스톱·나이롱뽕) */
 
-import { ManualClock, prepareGroup } from "@mighty/fair-play";
-import { isHiddenId } from "@mighty/hwatu";
+import { ManualClock, prepareGroup } from "@game/fair-play";
+import { isHiddenId } from "@game/hwatu";
 import { expect } from "vitest";
 import type { GameKit, KitBot } from "@/game/kit";
 import type { AuditResult, FairSaved, GuestRoom } from "@/net/guest-room";

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  DEAL_SIZES,
-  YAK_DESCRIPTIONS,
-  YAK_NAMES,
-} from "@mighty/minhwatu-engine";
+import { DEAL_SIZES, YAK_DESCRIPTIONS, YAK_NAMES } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { LessonPlayer } from "@/components/tutorial/LessonPlayer";

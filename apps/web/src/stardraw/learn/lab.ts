@@ -31,10 +31,10 @@ import {
   toHex,
   utf8,
   type WebAuthnAssertion,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
- * 보안 배우기(/stardraw/learn)의 계산. 규칙은 모두 `@mighty/stardraw-core`가 하고, 여기는 체험에 필요한
+ * 보안 배우기(/stardraw/learn)의 계산. 규칙은 모두 `@game/stardraw-core`가 하고, 여기는 체험에 필요한
  * 재료(흉내 패스키, 연습 응모권 목록, 짧은 장부, 앵커 저장소 흉내)와 그림에 쓸 모양만 만든다.
  */
 

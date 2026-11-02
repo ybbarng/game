@@ -1,17 +1,17 @@
 import {
-  createRng,
-  nextInt,
-  type RngState,
-  shuffleInPlace,
-} from "@mighty/engine";
-import {
   type Action,
   type GostopState,
   type GostopView,
   settlementFor,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
+import {
+  createRng,
+  nextInt,
+  type RngState,
+  shuffleInPlace,
+} from "@game/mighty-engine";
 
 import { greedyDecide } from "./bots";
 import { tableOf } from "./knowledge";

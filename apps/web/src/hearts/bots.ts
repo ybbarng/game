@@ -3,7 +3,7 @@ import {
   heartsBeginnerBot,
   heartsIntermediateBot,
   heartsSearchBot,
-} from "@mighty/hearts-ai";
+} from "@game/hearts-ai";
 
 import type { HeartsLevel } from "./settings";
 

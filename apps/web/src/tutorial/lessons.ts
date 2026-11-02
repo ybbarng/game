@@ -6,7 +6,7 @@ import {
   type PlayerView,
   presetRules,
   type ScenarioOptions,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type {
   MissionStatus,

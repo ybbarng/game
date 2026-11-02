@@ -8,7 +8,7 @@ import {
   type JanggiView,
   pointAt,
   pseudoTargets,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { useMemo } from "react";
 
 import type { TutorialKit } from "@/components/tutorial/kit";

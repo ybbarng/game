@@ -23,7 +23,7 @@ import {
   utf8,
   verifyLedger,
   verifyReceipt,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { EntryError, type EntryInput, GATE_MISSING_MESSAGE } from "./engine";

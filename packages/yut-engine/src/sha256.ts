@@ -2,7 +2,7 @@
  * SHA-256(FIPS 180-4)을 동기 함수로 계산한다.
  * 엔진 `step`은 순수 동기 함수라 브라우저의 `crypto.subtle`(비동기)을 쓸 수 없다.
  * 던지기 해시 사슬 확인과 결과 계산에 쓰고, 글자는 UTF-8로 바꿔 계산한다.
- * 숫자야구 엔진(`@mighty/baseball-engine`)의 것을 그대로 옮겼다(게임 엔진끼리 서로 기대지 않게).
+ * 숫자야구 엔진(`@game/baseball-engine`)의 것을 그대로 옮겼다(게임 엔진끼리 서로 기대지 않게).
  */
 
 const K = new Uint32Array([

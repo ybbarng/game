@@ -33,11 +33,11 @@ const nextConfig: NextConfig = {
       : ["tsx", "ts", "jsx", "js"],
   generateBuildId: async () => sourceCommit(),
   transpilePackages: [
-    "@mighty/engine",
-    "@mighty/ai",
-    "@mighty/fair-play",
-    "@mighty/hearts-engine",
-    "@mighty/hearts-ai",
+    "@game/mighty-engine",
+    "@game/mighty-ai",
+    "@game/fair-play",
+    "@game/hearts-engine",
+    "@game/hearts-ai",
   ],
 };
 

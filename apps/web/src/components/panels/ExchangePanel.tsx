@@ -1,6 +1,6 @@
 "use client";
 
-import type { Action, Card, Decision, Goal, Kiruda } from "@mighty/engine";
+import type { Action, Card, Decision, Goal, Kiruda } from "@game/mighty-engine";
 import { useState } from "react";
 
 import { goalLabel } from "@/game/terms";

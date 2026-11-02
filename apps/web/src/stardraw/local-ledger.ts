@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   type AffiliationFields,
   activeDirector,
@@ -90,7 +90,7 @@ import {
   verifyStamp,
   verifyTicketSignature,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import {
   type ClosedRound,
@@ -101,7 +101,7 @@ import {
 
 /**
  * 기기 안 연습 장부(docs/36 11-5 2번). 서버가 생기기 전까지 화면이 이것으로 응모 → 마감 → 추첨 →
- * 결과 → 이력 → 증명까지 돈다. 계산은 모두 규칙 패키지(`@mighty/stardraw-core`) 그대로이고,
+ * 결과 → 이력 → 증명까지 돈다. 계산은 모두 규칙 패키지(`@game/stardraw-core`) 그대로이고,
  * 서버만 할 수 있는 일 둘을 흉내 낸다.
  * - drand: 진짜 공개 난수 대신 이 기기의 씨앗과 회차로 정한 값을 서명 자리에 넣는다(검사기는 서명 확인을 건너뛴다)
  * - 봉인 시각 증거(TSA): 마감 1분 뒤 받았다고 적는다

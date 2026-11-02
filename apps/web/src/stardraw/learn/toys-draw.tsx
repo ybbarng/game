@@ -37,7 +37,7 @@ import {
   verifyClaim,
   verifyQuicknetBeacon,
   verifyTimestampToken,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -89,7 +89,7 @@ export function TsaToy() {
   const [closeAt, setCloseAt] = useState<"before" | "long" | "after">("before");
 
   useEffect(() => {
-    void import("@mighty/stardraw-core/tsa-fixtures").then((m) =>
+    void import("@game/stardraw-core/tsa-fixtures").then((m) =>
       setTokens(m.FIXTURE_TOKENS),
     );
   }, []);

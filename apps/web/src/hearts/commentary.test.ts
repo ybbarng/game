@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { heartsNormalBot } from "@mighty/hearts-ai";
+import { heartsNormalBot } from "@game/hearts-ai";
 import {
   createMatch,
   type MatchState,
   step,
   viewOf,
   WINDOWS_RULES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 import { describe, expect, it } from "vitest";
 
 import { explainHearts } from "./commentary";

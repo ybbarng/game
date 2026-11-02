@@ -1,4 +1,4 @@
-import { fromBase64Url } from "@mighty/stardraw-core";
+import { fromBase64Url } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 import { astronautOf } from "./astronaut/identity";
 import { TOUR_ANDROMEDA_PUB, TOUR_EARTH_PUB } from "./demo-tour";

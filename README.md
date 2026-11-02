@@ -18,9 +18,9 @@
 ## 구조
 
 ```
-packages/engine  @mighty/engine — 규칙 엔진 (순수 함수, 외부 의존성 없음)
-packages/ai      @mighty/ai     — 컴퓨터 플레이어
-apps/web         @mighty/web    — Next.js 정적 웹앱
+packages/engine  @game/mighty-engine — 규칙 엔진 (순수 함수, 외부 의존성 없음)
+packages/ai      @game/mighty-ai     — 컴퓨터 플레이어
+apps/web         @game/web    — Next.js 정적 웹앱
 legacy/          2019년 create-react-app + boardgame.io 코드 (참고용)
 ```
 

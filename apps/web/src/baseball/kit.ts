@@ -2,7 +2,7 @@ import {
   baseballBotFor,
   baseballExpertBot,
   botKnowsSecret,
-} from "@mighty/baseball-ai";
+} from "@game/baseball-ai";
 import {
   type Action,
   type BaseballRules,
@@ -22,7 +22,7 @@ import {
   score,
   step,
   viewOf,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

@@ -7,7 +7,7 @@ import {
   type RngState,
   SUITS,
   shuffleInPlace,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { Bot } from "./bot";
 

@@ -33,7 +33,7 @@ import {
   toBase64Url,
   verifyLedger,
   verifyQuicknetBeacon,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { fakeBeacon } from "../src/testing";
 import {
   arg,

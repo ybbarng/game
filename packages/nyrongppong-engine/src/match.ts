@@ -1,5 +1,5 @@
-import { createRng, nextInt } from "@mighty/engine";
-import { type PresetDeal, shuffledDeck, sortCards } from "@mighty/hwatu";
+import { type PresetDeal, shuffledDeck, sortCards } from "@game/hwatu";
+import { createRng, nextInt } from "@game/mighty-engine";
 
 import { findYak, handValue, sameMonthIn } from "./hand";
 import {

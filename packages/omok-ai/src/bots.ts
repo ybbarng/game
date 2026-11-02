@@ -1,4 +1,4 @@
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 import {
   type Action,
   type Cell,
@@ -10,7 +10,7 @@ import {
   stoneOfSeat,
   type Variant,
   winningLine,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import { evaluate, nearbyEmpties, placeGain } from "./shape";
 

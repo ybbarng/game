@@ -11,7 +11,7 @@ const OWNERS = Array.from({ length: 53 }, (_, s) =>
 );
 
 /** 5명 섞기·나눠 주기, 카드 50장 내기, 판 끝 확인에 걸리는 시간(ms) */
-describe("멘탈 포커 계산 시간 (pnpm --filter @mighty/fair-play bench)", () => {
+describe("멘탈 포커 계산 시간 (pnpm --filter @game/fair-play bench)", () => {
   it.each([GROUP_1024, GROUP_2048])(
     "$bits비트",
     async (g) => {

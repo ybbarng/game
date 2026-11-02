@@ -6,7 +6,7 @@ import {
   type GostopState,
   scoreCaptured,
   settlementLines,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {

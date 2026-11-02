@@ -6,7 +6,7 @@ import {
   kingOf,
   SIDE_NAMES,
   sideOfSeat,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

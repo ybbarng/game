@@ -1,6 +1,6 @@
 "use client";
 
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";

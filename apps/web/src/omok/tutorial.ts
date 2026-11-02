@@ -5,7 +5,7 @@ import {
   type OmokView,
   pointAt,
   STANDARD_RULES,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

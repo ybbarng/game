@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { presetRules, suitOf } from "@mighty/engine";
-import { Party } from "@mighty/fair-play";
+
+import { Party } from "@game/fair-play";
+import { presetRules, suitOf } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import { type Cheat, playRounds, setup, until } from "./fair-room-fixture";
 import type { GuestRoom } from "./guest-room";

@@ -1,5 +1,5 @@
-import type { RngState } from "@mighty/engine";
-import type { HwatuFairSpec } from "@mighty/fair-play";
+import type { HwatuFairSpec } from "@game/fair-play";
+import type { RngState } from "@game/mighty-engine";
 
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
 export interface KitBot<View, Action> {

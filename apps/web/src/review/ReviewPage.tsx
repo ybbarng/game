@@ -1,7 +1,7 @@
 "use client";
 
-import type { MatchState } from "@mighty/engine";
-import type { MatchState as HeartsState } from "@mighty/hearts-engine";
+import type { MatchState as HeartsState } from "@game/hearts-engine";
+import type { MatchState } from "@game/mighty-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadukReplay } from "@/baduk/components/BadukReplay";
 import { BaseballReplay } from "@/baseball/components/BaseballReplay";

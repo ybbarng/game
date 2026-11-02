@@ -4,7 +4,7 @@ import {
   type BaseballView,
   type GameEvent,
   PUZZLE_RULES,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

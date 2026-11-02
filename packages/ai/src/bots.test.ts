@@ -7,7 +7,7 @@ import {
   RULE_PRESETS,
   step,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { estimatePoints } from "./hand";

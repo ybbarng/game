@@ -1,7 +1,7 @@
 "use client";
 
-import { realClock } from "@mighty/fair-play";
-import { fromBase64Url, roundTimes } from "@mighty/stardraw-core";
+import { realClock } from "@game/fair-play";
+import { fromBase64Url, roundTimes } from "@game/stardraw-core";
 import { useEffect, useState } from "react";
 
 import { AstronautCard } from "../astronaut/AstronautCard";

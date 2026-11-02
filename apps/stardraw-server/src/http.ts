@@ -12,7 +12,7 @@ import {
   fromBase64Url,
   type SignatureData,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { EntryError, type StardrawServer } from "./engine";
 import { ProofBusy, type ProofService } from "./proof";

@@ -5,7 +5,7 @@ import {
   utf8,
   verifyEntrantSignature,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 등록증 주인 확인(docs/36 11-9, 모바일 신분증 검사처럼). 등록증을 누르면 그 자리에서 만든 새 문제 값에

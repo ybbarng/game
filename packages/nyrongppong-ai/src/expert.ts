@@ -1,11 +1,11 @@
-import { nextInt, type RngState } from "@mighty/engine";
-import { HWATU_DECK, monthOf } from "@mighty/hwatu";
+import { HWATU_DECK, monthOf } from "@game/hwatu";
+import { nextInt, type RngState } from "@game/mighty-engine";
 import {
   handValue,
   monthCounts,
   type NyrongppongState,
   type NyrongppongView,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import { type NyrongppongBot, nyrongppongIntermediateBot } from "./bots";
 

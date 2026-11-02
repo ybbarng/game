@@ -1,11 +1,11 @@
-import { createRng, nextInt } from "@mighty/engine";
 import {
   cardOf,
   isCardId,
   type PresetDeal,
   shuffledDeck,
   sortCards,
-} from "@mighty/hwatu";
+} from "@game/hwatu";
+import { createRng, nextInt } from "@game/mighty-engine";
 
 import { DEAL_SIZES, type MinhwatuRules } from "./rules";
 import { scoreRound, yaksOf } from "./score";

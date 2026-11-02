@@ -4,7 +4,7 @@
  *
  * 실행: nice -n 15 node apps/stardraw-server/dist/bench/argon.js [--count 200] [--threads 1,2,4]
  */
-import { checkPow, POW_PARAMS } from "@mighty/stardraw-core";
+import { checkPow, POW_PARAMS } from "@game/stardraw-core";
 import {
   isPowWorker,
   type PowJob,

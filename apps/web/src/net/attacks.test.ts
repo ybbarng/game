@@ -1,7 +1,8 @@
 // @vitest-environment node
-import { heuristicBot, intermediateBot } from "@mighty/ai";
-import { type Action, presetRules } from "@mighty/engine";
-import { ManualClock } from "@mighty/fair-play";
+
+import { ManualClock } from "@game/fair-play";
+import { heuristicBot, intermediateBot } from "@game/mighty-ai";
+import { type Action, presetRules } from "@game/mighty-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "./guest-room";

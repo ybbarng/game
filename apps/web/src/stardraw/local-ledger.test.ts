@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   blindStampRequest,
   DEFAULT_WEBAUTHN_POLICY,
@@ -24,7 +24,7 @@ import {
   ticketId,
   toHex,
   unblindStamp,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import {

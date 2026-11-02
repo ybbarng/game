@@ -1,11 +1,11 @@
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
-import { monthOf } from "@mighty/hwatu";
+import { monthOf } from "@game/hwatu";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 import {
   type Action,
   handValue,
   monthCounts,
   type NyrongppongView,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 /** 나이롱뽕 컴퓨터. 자기 자리 화면만 본다 */
 export interface NyrongppongBot {

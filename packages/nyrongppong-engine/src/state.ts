@@ -1,4 +1,4 @@
-import type { PresetDeal } from "@mighty/hwatu";
+import type { PresetDeal } from "@game/hwatu";
 import type { Yak } from "./hand";
 import type { NyrongppongRules } from "./rules";
 

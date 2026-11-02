@@ -1,13 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { backup } from "node:sqlite";
-import { realClock } from "@mighty/fair-play";
+import { realClock } from "@game/fair-play";
 
 import {
   GOOGLE_CLIENT_ID,
   sealFingerprint,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { loadConfig } from "./config";
 import { StardrawServer } from "./engine";
 import { googleTokenVerifier } from "./google";

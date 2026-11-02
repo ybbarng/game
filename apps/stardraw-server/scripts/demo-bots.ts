@@ -21,7 +21,7 @@ import {
   softPasskeySigner,
   toBase64Url,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 const [
   base = "http://localhost:8790/stardraw-api",

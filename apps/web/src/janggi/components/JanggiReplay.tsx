@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  type JanggiState,
-  SIDE_NAMES,
-  sideOfSeat,
-} from "@mighty/janggi-engine";
+import { type JanggiState, SIDE_NAMES, sideOfSeat } from "@game/janggi-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

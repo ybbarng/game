@@ -1,15 +1,15 @@
+import { isHeart, QUEEN_OF_SPADES } from "@game/hearts-engine";
 import {
   type Card,
   nextFloat,
   type RngState,
   rankPower,
   suitOf,
-} from "@mighty/engine";
-import { isHeart, QUEEN_OF_SPADES } from "@mighty/hearts-engine";
+} from "@game/mighty-engine";
 
 /**
  * 하트 고수의 성향. 실력(남의 패 추측, 끝까지 수 읽기)은 같고 버릇만 다르다.
- * 마이티 고수의 성향(`@mighty/ai`의 `Persona`)과 같은 생각이다.
+ * 마이티 고수의 성향(`@game/mighty-ai`의 `Persona`)과 같은 생각이다.
  */
 export interface HeartsPersona {
   name: string;

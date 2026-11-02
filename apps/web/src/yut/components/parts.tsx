@@ -1,13 +1,13 @@
 "use client";
 
-import type { Sticks, ThrowValue, YutView } from "@mighty/yut-engine";
+import type { Sticks, ThrowValue, YutView } from "@game/yut-engine";
 import {
   clockTurn,
   sideCount,
   sideOf,
   throwName,
   timeControlOf,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { useEffect, useState } from "react";
 
 import { GameClock } from "@/components/GameClock";

@@ -9,7 +9,7 @@ import {
   pointAt,
   viewOf,
   xyOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { useMemo } from "react";
 
 import type { TutorialKit } from "@/components/tutorial/kit";

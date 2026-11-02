@@ -8,8 +8,8 @@ import {
   type Settlement,
   SPECIAL_NAMES,
   settlementLines,
-} from "@mighty/gostop-engine";
-import { cardOf, MONTH_NAMES, monthOf } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

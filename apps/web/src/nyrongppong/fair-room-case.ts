@@ -1,11 +1,11 @@
 import {
   nyrongppongBeginnerBot,
   nyrongppongIntermediateBot,
-} from "@mighty/nyrongppong-ai";
+} from "@game/nyrongppong-ai";
 import {
   type NyrongppongState,
   STANDARD_RULES,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { expect } from "vitest";
 
 import {

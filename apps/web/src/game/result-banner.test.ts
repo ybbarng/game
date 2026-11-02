@@ -6,7 +6,7 @@ import {
   presetRules,
   type ScoreResult,
   viewOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { mightyResultBanner } from "./result-banner";

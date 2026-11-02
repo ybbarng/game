@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { ServerResponse } from "node:http";
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   drandRoundForClose,
   drandTime,
@@ -17,7 +17,7 @@ import {
   toHex,
   verifyEntrantSignature,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { EntryError } from "./engine";
 

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { p1363ToDer, type Signer } from "@mighty/stardraw-core";
+import { p1363ToDer, type Signer } from "@game/stardraw-core";
 
 /**
  * 서버 서명 열쇠(ECDSA P-256). 응모 영수증과 투명성 로그 항목에 서명한다.

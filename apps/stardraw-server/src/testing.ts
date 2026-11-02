@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   ByteWriter,
   concat,
@@ -40,7 +40,7 @@ import {
   type Ticket,
   taggedHash,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { DEFAULT_PREFIX_LIMITS } from "./config";
 import {

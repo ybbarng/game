@@ -1,5 +1,4 @@
-import type { Card } from "@mighty/engine";
-import { realHeartsAction } from "@mighty/fair-play";
+import { realHeartsAction } from "@game/fair-play";
 import {
   type Action,
   createMatch,
@@ -15,7 +14,8 @@ import {
   replay,
   step,
   viewOf,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 import type { GameKit } from "@/game/kit";
 import { cardLabel, SUIT_SYMBOL } from "@/game/terms";
 

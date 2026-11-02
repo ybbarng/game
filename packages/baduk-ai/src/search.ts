@@ -1,4 +1,4 @@
-import type { RngState } from "@mighty/engine";
+import type { RngState } from "@game/mighty-engine";
 
 import { type Color, FastBoard, PASS, playout } from "./fast-board";
 

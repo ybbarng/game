@@ -1,7 +1,7 @@
 "use client";
 
-import { type Clock, realClock } from "@mighty/fair-play";
-import { isAlignedEpoch } from "@mighty/stardraw-core";
+import { type Clock, realClock } from "@game/fair-play";
+import { isAlignedEpoch } from "@game/stardraw-core";
 import { useEffect, useState } from "react";
 
 import { browserCheckStore, Checker } from "./checks";

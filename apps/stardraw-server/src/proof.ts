@@ -10,7 +10,7 @@ import {
   sortRegistrations,
   type TicketProof,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { EntryError } from "./engine";
 import type { Store } from "./store";

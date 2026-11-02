@@ -1,4 +1,4 @@
-import type { GameEvent } from "@mighty/gostop-engine";
+import type { GameEvent } from "@game/gostop-engine";
 
 import type { Cue } from "@/game/sound";
 

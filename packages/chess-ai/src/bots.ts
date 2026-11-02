@@ -6,8 +6,8 @@ import {
   type Move,
   type Position,
   positionKey,
-} from "@mighty/chess-engine";
-import { nextFloat, nextInt, type RngState } from "@mighty/engine";
+} from "@game/chess-engine";
+import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
 import {
   evaluate,

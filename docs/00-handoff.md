@@ -8,7 +8,7 @@
 
 - **오늘 들어간 것**: 응모 연출(용지 작성·밀어 올려 제출·신분증 제출·영수증), 하단 탭바·PC 메뉴, 입구, 등록 신청서(지문 한 번), 패스키 쓰는 곳 전부 같은 틀(오버레이 → 우주국 말 → 카드 누름), 회차 카드·추첨 보러 가기, 「내 기록」(관측 수첩·당첨증·기념 서류)·3D 훈장(견본은 로컬 빌드 전용), 새 추첨 소리, 우주국 소개 /stardraw/bureau, 실시간 추첨·회차 방, 마감 1분 전 안내·접수 반송·보관한 용지, 모든 오류 문구(errors.ts), 보안 수정(B1~B9, O10 추첨 전 봉인 사본, I1~I12 서버·인프라).
 - **밤샘 진행표(2026-11-01 밤, 사용자 "밤새 할 만한 구현")** — 화면이 바뀌는 일은 브랜치 `night/*`(배포 안 됨, 아침에 로컬 데모), 나머지는 main. 끝난 칸에 x:
-  - [x] 1. 국장 「이 회사 계정 다시 발급 허락」: 설계 docs/36 11-27(8a81eec), 규칙 kind 11(c9c3651), 서버 허락·받기(616fa5d) main. 국장 화면은 브랜치 `night/reissue`(406ec76) — 데모: `git switch night/reissue` → `pnpm --filter @mighty/web build` → `pnpm --filter @mighty/web exec playwright test e2e/stardraw-admin.spec.ts --workers=1` 스크린샷(test-results/…/admin-reissue.png). 실제 국장 화면은 서버 API가 있어야 보여 화면 시험의 흉내 응답으로 본다. 서버 이미지 배포는 하지 않음
+  - [x] 1. 국장 「이 회사 계정 다시 발급 허락」: 설계 docs/36 11-27(8a81eec), 규칙 kind 11(c9c3651), 서버 허락·받기(616fa5d) main. 국장 화면은 브랜치 `night/reissue`(406ec76) — 데모: `git switch night/reissue` → `pnpm --filter @game/web build` → `pnpm --filter @game/web exec playwright test e2e/stardraw-admin.spec.ts --workers=1` 스크린샷(test-results/…/admin-reissue.png). 실제 국장 화면은 서버 API가 있어야 보여 화면 시험의 흉내 응답으로 본다. 서버 이미지 배포는 하지 않음
   - [x] 2. 허락 없이 얻는 길 점검: 새 길 없음, 공용 PC 지우기가 남은 요청도 지움(016094f, 보안 표 B10)
   - [x] 3. docs/39 10단계 운영자 할 일·3절 표 상태(8461c16)
   - [x] 4. docs/39 2절 자동·운영 칸 채움, 빠졌던 복구 코드 불러오기 시험 추가. 남은 빈칸: 실기기 전부, 4단계 운영(자격 기간 열기 뒤), 2단계 몰려올 때(공지 첫날 감시)
@@ -26,7 +26,7 @@
   - [x] 3. 서버(국장 요청 받기·다음 관인 열쇠 파일·효력 회차 전환·시작 기록)와 시험
   - [x] 4. 검증 페이지·터미널 검사기 관인 내력, 국장 화면 「관인 교체」
   - [x] 5. deploy/stardraw/README.md 관인 교체 절차(사용자용)
-  - [x] 6. 배포: CI·이미지·화면(4c3bf19), servers 태그 982f62f, 2026-11-01 02:4x 사용자가 recreate. 시작 기록에 관인 지문(관인-50M8-1FS6-GH1C)·오류 없음, 장부 검사(`pnpm --filter @mighty/stardraw-cli build` 뒤 `node packages/stardraw-cli/dist/stardraw-verify.mjs --source server --compare`) 통과. 실제 관인 교체는 하지 않음(다음 관인 열쇠 파일 없음)
+  - [x] 6. 배포: CI·이미지·화면(4c3bf19), servers 태그 982f62f, 2026-11-01 02:4x 사용자가 recreate. 시작 기록에 관인 지문(관인-50M8-1FS6-GH1C)·오류 없음, 장부 검사(`pnpm --filter @game/stardraw-cli build` 뒤 `node packages/stardraw-cli/dist/stardraw-verify.mjs --source server --compare`) 통과. 실제 관인 교체는 하지 않음(다음 관인 열쇠 파일 없음)
   ② 보안 헤더(CSP)를 보고 전용 → 실제로 켜기(자격 기간 열고 구글 로그인 확인 뒤). ③ 백업을 구글 드라이브에도(집 서버 rclone 스크립트에 하루 한 개).
 - **사용자가 직접 할 일**: 백업 2단계(집 서버로 끌어오기 — 1단계 매시 크론은 2026-11-01 등록함, 관인은 보안 노트에 저장함), GitHub 보호(stardraw-ledger 강제 push·삭제 금지 룰셋, mighty main 보호·액션 SHA 강제·SERVER_HOST_KEY), 계정 2단계 인증, 국장 패스키 하나 더, 실제 폰(특히 아이폰 사파리) 확인, 국장 화면에서 벌집 성단 소속·자격 기간 열기.
 - **나중(할 일 목록)**: 소속 없는 응모 회차 상한, 회차 방 얼굴 뒷모습, 이월(고민 중). 끝남: 디스크 감시(servers 82e9b98·49cf419, 호스트 크론 10분마다 → ntfy, 남은 공간 10%·2GB·inode 10% 아래면 알림), 앵커 사본으로 DB 다시 세우는 서버 `restore` 명령(2026-11-01, docs/36 11-26, deploy/stardraw/README.md 6절. 운영에서 실제로 돌려 본 적은 없음).

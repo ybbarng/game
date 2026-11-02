@@ -6,7 +6,7 @@ import {
   startClock,
   TIME_PRESETS,
   type TimeControl,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import {
   type Clue,

@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createMatch,
   type JanggiRules,
@@ -6,7 +5,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { JanggiBot } from "./bots";
 

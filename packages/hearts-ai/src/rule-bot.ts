@@ -1,19 +1,19 @@
 import {
-  type Card,
-  nextFloat,
-  type RngState,
-  rankPower,
-  type Suit,
-  suitOf,
-} from "@mighty/engine";
-import {
   type Action,
   type Decision,
   isHeart,
   type PlayerView,
   QUEEN_OF_SPADES,
   trickWinner,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import {
+  type Card,
+  nextFloat,
+  type RngState,
+  rankPower,
+  type Suit,
+  suitOf,
+} from "@game/mighty-engine";
 
 import {
   bySuit,

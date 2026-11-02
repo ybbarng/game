@@ -8,8 +8,8 @@ import {
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/baseball-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/baseball-engine";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

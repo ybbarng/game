@@ -3,9 +3,9 @@ import {
   type ChessRules,
   type ChessView,
   createMatch as createChessMatch,
-} from "@mighty/chess-engine";
-import { ManualClock } from "@mighty/fair-play";
-import { omokBeginnerBot } from "@mighty/omok-ai";
+} from "@game/chess-engine";
+import { ManualClock } from "@game/fair-play";
+import { omokBeginnerBot } from "@game/omok-ai";
 import {
   createMatch,
   type OmokRules,
@@ -13,7 +13,7 @@ import {
   type OmokView,
   pointAt,
   replay,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { describe, expect, it } from "vitest";
 
 import { chessKit } from "@/chess/kit";

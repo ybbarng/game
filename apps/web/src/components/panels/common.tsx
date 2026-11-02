@@ -7,7 +7,7 @@ import {
   type Rank,
   SUITS,
   type Suit,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { isRedSuit, kirudaName, kirudaSymbol } from "@/game/terms";

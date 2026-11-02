@@ -537,7 +537,7 @@ v(u8) ‖ round(u32) ‖ prev(32) ‖ count(u32) ‖ merkleRoot(32)
 - 장부 형식(`seals/N.json`의 `log`): `{ kind: "tsa", tokens: [{ tsa, genTime, token }] }`. `token`은 ContentInfo DER의 표준 base64, `genTime`은 토큰 안 시각(초, 소수점 아래 버림)을 사람이 읽기 쉽게 함께 적은 것이다. `rootLoggedAt` = 가장 이른 `genTime`.
 - 검사(`packages/stardraw-core/src/tsa.ts`, 브라우저에서도 WebCrypto): 토큰마다 ① messageImprint가 SHA-256이고 값이 `SHA-256(봉인 값)` ② 서명된 속성의 messageDigest·contentType ③ 서명(RSA PKCS#1 v1.5 SHA-256/384/512, ECDSA P-256/384/521) ④ 서명 인증서에서 올라가며 서명을 확인해 고정한 공개 열쇠(인증서 SPKI DER의 SHA-256)에 닿는지 ⑤ 그 아래 인증서가 `genTime`에 유효한지 ⑥ 서명 인증서가 시각 인증용(EKU timeStamping)인지 ⑦ 적어 둔 `genTime`이 토큰과 같은지. 실린 토큰은 모두 맞아야 하고 서로 다른 기관 `DEFAULT_TSA_MIN`(1)곳 이상, 가장 이른 시각이 기록의 `rootLoggedAt`과 같아야 한다. drand 시각과의 앞뒤는 무효 회차 규칙(`isVoidRound`)이 본다.
 - 고정한 열쇠(루트 SPKI SHA-256): DigiCert Trusted Root G4 `59df317bfa9f4f0ab7ca514d7772296aa2c765b87664d08b96e57399e364729c`, Sectigo Public Time Stamping Root R46 `a4db8668c6796ebf476ddc5ace453a9260dbd4dbb09f51ecec9a839003824795`, FreeTSA Root CA `52c54ba340885605314daa1857c8763b94087d05c636092938d4e2d1818e99b5`. 기관이 루트를 바꾸면 core에 새 열쇠를 더한다(옛 열쇠는 지난 회차 검사를 위해 남긴다).
-- 묶음 크기 때문에 pkijs/asn1js를 들이지 않고 필요한 만큼의 DER 읽기를 직접 썼다(`der.ts`). 시험은 세 기관에서 실제로 받아 둔 토큰(`tsa.fixtures.ts`)으로 네트워크 없이 돌고, 회차 봉인 값을 담은 토큰은 시험용 가짜 기관(`@mighty/stardraw-core/testing`의 `FakeTsa`)이 만든다.
+- 묶음 크기 때문에 pkijs/asn1js를 들이지 않고 필요한 만큼의 DER 읽기를 직접 썼다(`der.ts`). 시험은 세 기관에서 실제로 받아 둔 토큰(`tsa.fixtures.ts`)으로 네트워크 없이 돌고, 회차 봉인 값을 담은 토큰은 시험용 가짜 기관(`@game/stardraw-core/testing`의 `FakeTsa`)이 만든다.
 - Rekor(`rekor.ts`, `RekorRootLog`)는 꺼 둔 선택지로 남긴다: `STARDRAW_TSA=off`이고 `STARDRAW_REKOR_URL`이 있을 때만 쓴다(시험 운영은 rekor.sigstage.dev만, 정식은 rekor.sigstore.dev만). 2026-10-30 시험용 로그에 실제로 한 번 올려(uuid `71d46696…0e3`, integratedTime 1793324413) 검사기가 맞는 것을 확인했다.
 
 **GitHub 앵커**(사용자 승인, 저장소 `ybbarng/stardraw-ledger` 공개)
@@ -563,7 +563,7 @@ v(u8) ‖ round(u32) ‖ prev(32) ‖ count(u32) ‖ merkleRoot(32)
   - 끝 상태: 0 통과(건너뜀 포함), 1 어긋남, 2 사용법·네트워크 오류.
 - 실행: 저장소를 받아 `pnpm install` 뒤 맨 위 폴더에서 `pnpm stardraw-verify [인자]`(묶고 바로 돈다). 묶은 파일 `dist/stardraw-verify.mjs` 하나만 있으면 Node 24로 저장소 없이도 돈다.
 - 시험은 2026-10-30 시험 서버에서 받아 둔 실제 장부·앵커 파일(`src/fixtures/`)로 네트워크 없이 돈다. 진짜 drand 서명과 DigiCert·Sectigo 토큰이라 실제 검사 경로 그대로다.
-- npm 발행은 준비만 했다(바깥 발행이라 사용자 확인 뒤): `package.json`에 `bin`·`files`·`engines`를 두었다. 발행하려면 이름을 정하고(예: `stardraw-verify`, `@mighty/*`는 npm에 없는 범위), `private`을 빼고, `pnpm -C packages/stardraw-cli build` 뒤 `npm publish --provenance`(GitHub Actions에서 하면 어느 커밋에서 묶었는지 npm에 남는다). core가 작업 공간 패키지라 묶은 파일만 올린다.
+- npm 발행은 준비만 했다(바깥 발행이라 사용자 확인 뒤): `package.json`에 `bin`·`files`·`engines`를 두었다. 발행하려면 이름을 정하고(예: `stardraw-verify`, `@game/*`는 npm에 없는 범위), `private`을 빼고, `pnpm -C packages/stardraw-cli build` 뒤 `npm publish --provenance`(GitHub Actions에서 하면 어느 커밋에서 묶었는지 npm에 남는다). core가 작업 공간 패키지라 묶은 파일만 올린다.
 
 **재현 빌드**
 - 흔들리던 것은 Next 빌드 id 하나였다(빌드마다 무작위, HTML·화면 전환 파일·`_next/static/<id>/`에 들어간다). `next.config.ts`의 `generateBuildId`를 빌드한 커밋으로 바꿨다(`SOURCE_COMMIT`, 없으면 `git rev-parse HEAD`). 커밋이 바뀌면 `_next/static/<id>/` 주소도 바뀌어 오래 두는 캐시와 섞이지 않는다.
@@ -578,7 +578,7 @@ v(u8) ‖ round(u32) ‖ prev(32) ‖ count(u32) ‖ merkleRoot(32)
   3. **재현 확인 작업 `reproduce`**(켬): 배포마다 Docker 밖(러너의 Node + pnpm)에서 같은 커밋·같은 빌드 변수로 다시 빌드해 이미지의 목록과 `--all`로 비교한다. 배포는 막지 않고 어긋나면 이 작업만 실패로 남는다.
   4. **GitHub 릴리스 `site-<커밋 앞 12자리>`**(준비만, 꺼 둠): `publish-hashes` 작업이 목록을 릴리스 파일로 올린다. 사이트 밖에 배포 기록이 남아, 운영자가 잠깐 다른 코드를 내줬다가 되돌리는 것을 나중에도 비교할 수 있다. 저장소 변수 `STARDRAW_PUBLISH_HASHES=true`로 켠다. 릴리스는 지우면 그만이라 되돌리기 쉽다.
   - 버린 안: 앵커 저장소(`ybbarng/stardraw-ledger`)에 남기기. 장부 기록과 섞이고, Actions에 다른 저장소 쓰기 토큰을 새로 넣어야 한다.
-- 확인하는 순서: ① `stardraw-verify site`로 사이트 파일이 목록과 같은지 ② 목록의 커밋을 받아 같은 빌드 변수로 `pnpm --filter @mighty/web build` ③ `stardraw-verify site --build apps/web/out`. ①②③이 맞으면 사이트가 내준 하늘의 별 따기 화면 코드는 공개 저장소의 그 커밋에서 나온 것이다.
+- 확인하는 순서: ① `stardraw-verify site`로 사이트 파일이 목록과 같은지 ② 목록의 커밋을 받아 같은 빌드 변수로 `pnpm --filter @game/web build` ③ `stardraw-verify site --build apps/web/out`. ①②③이 맞으면 사이트가 내준 하늘의 별 따기 화면 코드는 공개 저장소의 그 커밋에서 나온 것이다.
 
 **아직 남는 한계**
 - 내 브라우저가 받은 파일이 검사기가 받은 파일과 같다는 보장은 없다. 운영자가 사람마다·때마다 다른 파일을 내주면 검사기로는 그때 받은 것만 비교된다. 서비스 워커가 저장해 둔 옛 파일을 쓰는 동안에도 마찬가지다.
@@ -1018,7 +1018,7 @@ v(u8) ‖ round(u32) ‖ prev(32) ‖ count(u32) ‖ merkleRoot(32)
 **정한 것**
 - **앞단 상한**(servers 저장소, 2026-10-30 코디네이터가 바꿈): 공개 장부 파일(`/stardraw-api/ledger/`)은 앞단 IP 상한이 없다(끝난 기록을 읽어 주기만 해 비싸지 않고 캐시된다. 누구나 전체를 검사할 수 있어야 한다). 나머지 API는 공유 IP(회사·통신사 NAT) 기준으로 넉넉히(1분 6000번, 한꺼번에 600번). 비싼 일은 앞단 상한이 아니라 응모 상한(IP 앞부분마다 회차당 응모·하루 등록·확인 링크, 11-10)과 응모권마다의 작업 증명이 지킨다.
 - **묶음 파일**(장부 형식·낱개 파일은 그대로, 더하기만): 서버는 10회차·100회차 구간이 다 닫히면 그 구간의 회차·봉인 파일을 그대로 담은 `bundles/10/000001.json`(1~10회차), `bundles/100/000101.json`(101~200회차) 꼴을 함께 쓴다. 모양은 `{ v: 1, first, size, rounds: [회차 파일…], seals: [봉인 파일…] }`. 한 번 쓰면 다시 쓰지 않고(바뀌지 않는 파일, 오래 캐시), 서버를 띄울 때 빠진 묶음을 채운다(이미 닫힌 회차도). 묶음을 못 써도 회차는 그대로 닫는다(낱개가 있다).
-- **받는 쪽**(`@mighty/stardraw-core` `loadRoundFiles`, 검사기·검증 페이지·화면의 서버 장부가 같이 쓴다): 1회차부터 큰 묶음(100) → 작은 묶음(10) → 낱개 순으로 나눠 받는다. 묶음이 404면(묶음을 내지 않는 옛 서버) 그 구간을 낱개로 받는다. 묶음은 구간·개수·봉인 회차 번호가 맞는지 보고, 내용은 원래대로 처음부터 다시 계산해 검사한다(묶음이라고 덜 믿을 것은 없다).
+- **받는 쪽**(`@game/stardraw-core` `loadRoundFiles`, 검사기·검증 페이지·화면의 서버 장부가 같이 쓴다): 1회차부터 큰 묶음(100) → 작은 묶음(10) → 낱개 순으로 나눠 받는다. 묶음이 404면(묶음을 내지 않는 옛 서버) 그 구간을 낱개로 받는다. 묶음은 구간·개수·봉인 회차 번호가 맞는지 보고, 내용은 원래대로 처음부터 다시 계산해 검사한다(묶음이라고 덜 믿을 것은 없다).
 - **기다렸다 다시 받기**(`politeFetch`): 한꺼번에 4개까지. 429·503이면 Retry-After(초 또는 날짜)만큼, 없으면 1초부터 두 배씩(최대 30초) 0.5~1배로 흔들어 기다린다. 하나가 막히면 같은 받기의 다른 요청도 그때까지 쉰다. 한 요청에 6번·2분까지, 넘으면 "서버가 요청이 많다며 잠시 막았습니다(429). 1~2분 뒤 다시 해 보세요"로 알린다. 화면은 읽기(GET)만 이렇게 하고, 응모·등록(POST)은 서버의 응모 상한(429)일 수 있어 다시 보내지 않는다. 시험은 손으로 옮기는 시계로 정확한 순간을 본다.
 - **화면이 처음 받는 양**: 처음 일정표 + 상태 + 묶음(100회차마다 1개) + 다 차지 않은 구간(10회차 묶음 최대 9개 + 낱개 최대 9개). 34회차인 지금 묶음 3개 + 낱개 4개, 정식 1년(약 8천8백 회차)이어도 100여 개이고, 닫힌 회차·묶음은 브라우저 캐시로 받아 다시 열 때는 새로 닫힌 것만 받는다.
 
@@ -1703,7 +1703,7 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 | 연습 장부·데모 | 앞단 없음 | 서버가 없어 막을 홍수가 없다 |
 | 문구 | 늘리지 않는다 | 사용자는 앞단이 있는지 알 필요가 없다. 옛 화면만 "화면을 새로 고친 뒤 다시 내 주세요."를 본다 |
 
-#### 비용(이 맥 Apple M3 Pro에서 잼, `pnpm --filter @mighty/stardraw-core bench`)
+#### 비용(이 맥 Apple M3 Pro에서 잼, `pnpm --filter @game/stardraw-core bench`)
 
 - 앞단 풀이(평균 512번, Node 40번 잼): 평균 145ms · 가운데 103ms · 90% 342ms · 최대 760ms. 한 번 계산 0.29ms, 서버 확인 0.28ms. 시도 수가 기하분포라 꼬리가 길다.
 - 실제 브라우저(Playwright Chromium, 빌드한 화면 + 이 서버, 웹 워커): 한 번 계산 0.36~0.5ms, 42번 55ms ~ 1,232번 441ms. 응모권 Argon2와 겹치면 10~40배 느려져 차례로 두기로 했다(위 표).

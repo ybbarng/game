@@ -1,7 +1,7 @@
 "use client";
 
-import { gostopBotFor } from "@mighty/gostop-ai";
-import type { GostopRules } from "@mighty/gostop-engine";
+import { gostopBotFor } from "@game/gostop-ai";
+import type { GostopRules } from "@game/gostop-engine";
 import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";

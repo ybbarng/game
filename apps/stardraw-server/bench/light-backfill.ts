@@ -22,7 +22,7 @@ import {
   lightFileName,
   loadRoundFiles,
   type Schedule,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { Publisher, pad } from "../src/publish";
 import { arg, kb } from "./common";
 

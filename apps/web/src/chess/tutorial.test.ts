@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { chessBeginnerBot } from "@mighty/chess-ai";
+import { chessBeginnerBot } from "@game/chess-ai";
 import {
   type Action,
   createChessScenario,
   type GameEvent,
   squareAt,
   viewOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

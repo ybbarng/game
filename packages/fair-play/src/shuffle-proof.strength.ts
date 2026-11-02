@@ -1,4 +1,4 @@
-import { fullDeck } from "@mighty/engine";
+import { fullDeck } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { encodedDeck, Party } from "./protocol";
@@ -14,7 +14,7 @@ declare const performance: { now(): number };
 declare const console: { log(...args: unknown[]): void };
 
 /** 53장 섞기 증명 하나를 만들고(약속·응답) 확인하는 시간(ms) */
-describe("섞기 증명 계산 시간 (pnpm --filter @mighty/fair-play bench)", () => {
+describe("섞기 증명 계산 시간 (pnpm --filter @game/fair-play bench)", () => {
   it.each([GROUP_1024, GROUP_2048])(
     "$bits비트",
     async (g) => {

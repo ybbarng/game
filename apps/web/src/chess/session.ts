@@ -4,7 +4,7 @@ import type {
   ChessState,
   ChessView,
   GameEvent,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

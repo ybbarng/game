@@ -6,7 +6,7 @@ import {
   cluesOf,
   commitmentOf,
   type RoundResult,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

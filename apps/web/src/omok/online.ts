@@ -1,11 +1,11 @@
-import { omokBotFor } from "@mighty/omok-ai";
+import { omokBotFor } from "@game/omok-ai";
 import type {
   Action,
   GameEvent,
   OmokRules,
   OmokState,
   OmokView,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

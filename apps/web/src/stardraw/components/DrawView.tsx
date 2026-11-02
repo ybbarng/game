@@ -1,7 +1,7 @@
 "use client";
 
-import { type Clock, realClock } from "@mighty/fair-play";
-import type { RoundRecord, Ticket } from "@mighty/stardraw-core";
+import { type Clock, realClock } from "@game/fair-play";
+import type { RoundRecord, Ticket } from "@game/stardraw-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { play } from "@/game/sound";

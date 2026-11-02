@@ -1,4 +1,4 @@
-import { createRng, nextFloat } from "@mighty/engine";
+import { createRng, nextFloat } from "@game/mighty-engine";
 
 import { SKY_LINES, SKY_STARS, starRadius, tempColor } from "./sky";
 import { type Meteor, type Twinkle, twinkleLevel } from "./sky-effects";

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { baseballBeginnerBot } from "@mighty/baseball-ai";
+import { baseballBeginnerBot } from "@game/baseball-ai";
 import {
   type Action,
   candidatesFor,
@@ -7,7 +7,7 @@ import {
   createBaseballScenario,
   type GameEvent,
   viewOf,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

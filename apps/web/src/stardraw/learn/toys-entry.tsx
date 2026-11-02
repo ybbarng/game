@@ -23,7 +23,7 @@ import {
   unsignedTicket,
   verifyInclusion,
   verifyTicketSignature,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";

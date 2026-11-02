@@ -1,6 +1,6 @@
 "use client";
 
-import { RANKS, roundTimes } from "@mighty/stardraw-core";
+import { RANKS, roundTimes } from "@game/stardraw-core";
 import { type ReactNode, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";

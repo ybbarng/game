@@ -1,4 +1,4 @@
-import type { PlayerClock } from "@mighty/engine";
+import type { PlayerClock } from "@game/mighty-engine";
 
 import type { Position } from "./board";
 import type { Sticks } from "./chain";

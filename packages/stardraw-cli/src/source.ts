@@ -12,7 +12,7 @@ import {
   recordHash,
   STARDRAW_ANCHOR_REPO,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type { LedgerSource } from "./args";
 

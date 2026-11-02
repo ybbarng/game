@@ -1,12 +1,12 @@
-import type { PresetDeal } from "@mighty/hwatu";
-import { nyrongppongBotFor } from "@mighty/nyrongppong-ai";
+import type { PresetDeal } from "@game/hwatu";
+import { nyrongppongBotFor } from "@game/nyrongppong-ai";
 import type {
   Action,
   GameEvent,
   NyrongppongRules,
   NyrongppongState,
   NyrongppongView,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { create } from "zustand";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";

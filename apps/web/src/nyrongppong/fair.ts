@@ -1,5 +1,5 @@
-import type { HwatuFairSpec } from "@mighty/fair-play";
-import { sortCards } from "@mighty/hwatu";
+import type { HwatuFairSpec } from "@game/fair-play";
+import { sortCards } from "@game/hwatu";
 import {
   type Action,
   createMatch,
@@ -14,7 +14,7 @@ import {
   sameMonthIn,
   step,
   viewOf,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import { withPreset } from "@/hwatu/fair";
 

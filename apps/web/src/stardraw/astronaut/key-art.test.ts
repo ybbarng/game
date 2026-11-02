@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { generateSigner } from "@mighty/stardraw-core";
+import { generateSigner } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 import { ART_H, ART_W, keyArt } from "./key-art";
 

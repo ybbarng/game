@@ -1,4 +1,4 @@
-import { janggiBotFor, negamax } from "@mighty/janggi-ai";
+import { janggiBotFor, negamax } from "@game/janggi-ai";
 import {
   type Action,
   applyMove,
@@ -23,7 +23,7 @@ import {
   sideToAct,
   step,
   viewOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

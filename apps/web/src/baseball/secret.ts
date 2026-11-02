@@ -6,7 +6,7 @@ import {
   derivedSecret,
   digitPool,
   score,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 /**
  * 내 비밀 수는 이 기기에만 둔다(docs/34 4절). 방장 기기의 엔진에는 약속(해시)만 들어가고,

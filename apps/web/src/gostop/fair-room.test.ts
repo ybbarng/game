@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { gostopBeginnerBot, gostopIntermediateBot } from "@mighty/gostop-ai";
+import { gostopBeginnerBot, gostopIntermediateBot } from "@game/gostop-ai";
 import {
   GOSTOP3_RULES,
   type GostopRules,
   type GostopState,
   MATGO_RULES,
-} from "@mighty/gostop-engine";
-import { isHiddenId } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import { isHiddenId } from "@game/hwatu";
 import { describe, expect, it, vi } from "vitest";
 
 import {

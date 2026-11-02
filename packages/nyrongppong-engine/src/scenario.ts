@@ -1,4 +1,4 @@
-import { HWATU_DECK } from "@mighty/hwatu";
+import { HWATU_DECK } from "@game/hwatu";
 
 import { sameMonthIn } from "./hand";
 import { canStop, seatsAfter } from "./match";

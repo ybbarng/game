@@ -8,7 +8,7 @@ import {
   ticketId,
   toBase64Url,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createHttpServer } from "./http";

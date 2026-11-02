@@ -1,10 +1,11 @@
 // @vitest-environment node
-import { presetRules } from "@mighty/engine";
+
 import {
   type FairGuestSeat,
   type FairHostTable,
   isToken,
-} from "@mighty/fair-play";
+} from "@game/fair-play";
+import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import { hostBidsTop, playRounds, setup, until } from "./fair-room-fixture";
 import type { AuditResult } from "./guest-room";

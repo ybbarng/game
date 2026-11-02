@@ -2,7 +2,7 @@ import {
   type MinhwatuRules,
   type PlayerCount,
   STANDARD_RULES,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

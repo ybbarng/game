@@ -7,7 +7,7 @@ import {
   type Move,
   PROMOTIONS,
   step,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { useState } from "react";
 
 import {

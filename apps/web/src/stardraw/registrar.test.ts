@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   DEFAULT_WEBAUTHN_POLICY,
   generateSigner,
@@ -8,7 +8,7 @@ import {
   type SignatureData,
   softCredentialId,
   softPasskeySigner,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { LocalLedger } from "./local-ledger";

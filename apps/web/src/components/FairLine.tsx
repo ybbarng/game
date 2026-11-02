@@ -1,6 +1,6 @@
 "use client";
 
-import type { BusyReason, GroupName } from "@mighty/fair-play";
+import type { BusyReason, GroupName } from "@game/fair-play";
 
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";

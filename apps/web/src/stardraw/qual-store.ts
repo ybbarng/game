@@ -14,7 +14,7 @@ import {
   toHex,
   unblindStamp,
   verifyStamp,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type { Ledger } from "./ledger";
 

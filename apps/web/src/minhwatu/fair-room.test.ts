@@ -2,8 +2,8 @@
 import {
   minhwatuBeginnerBot,
   minhwatuIntermediateBot,
-} from "@mighty/minhwatu-ai";
-import { type MinhwatuState, STANDARD_RULES } from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-ai";
+import { type MinhwatuState, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import {

@@ -590,7 +590,7 @@ pnpm stardraw-verify site https://game.byb.kr
 # 2. 목록의 commit과 env(빌드 변수)로 직접 빌드
 git switch --detach <commit>
 NEXT_PUBLIC_SITE_URL=… NEXT_PUBLIC_STARDRAW_API=… NEXT_PUBLIC_UMAMI_WEBSITE_ID=… \\
-  pnpm --filter @mighty/web build
+  pnpm --filter @game/web build
 # 3. 내 빌드가 목록과 같은지
 pnpm stardraw-verify site https://game.byb.kr --build apps/web/out`}</Code>
           <p className="text-white/80">

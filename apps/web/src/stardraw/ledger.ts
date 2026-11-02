@@ -8,7 +8,7 @@ import type {
   Schedule,
   SignatureData,
   Ticket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import type { LedgerStatus } from "./local-ledger";
 

@@ -1,11 +1,11 @@
-import { createRng } from "@mighty/engine";
 import {
   createMatch,
   pendingSeats,
   step,
   viewOf,
   WINDOWS_RULES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import type { HeartsBot } from "./knowledge";

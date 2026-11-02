@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createJanggiScenario,
   createMatch,
@@ -7,7 +6,8 @@ import {
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

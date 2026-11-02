@@ -1,11 +1,11 @@
-import type { Card } from "@mighty/engine";
 import type {
   Action,
   GameEvent,
   HeartsRules,
   MatchState,
   PlayerView,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

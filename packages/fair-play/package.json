@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/fair-play",
+  "name": "@game/fair-play",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,12 +12,12 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/engine": "workspace:*",
-    "@mighty/hearts-engine": "workspace:*",
-    "@mighty/hwatu": "workspace:*",
+    "@game/mighty-engine": "workspace:*",
+    "@game/hearts-engine": "workspace:*",
+    "@game/hwatu": "workspace:*",
     "libsodium-wrappers-sumo": "0.8.4"
   },
   "devDependencies": {
-    "@mighty/ai": "workspace:*"
+    "@game/mighty-ai": "workspace:*"
   }
 }

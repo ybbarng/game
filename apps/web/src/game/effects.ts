@@ -5,7 +5,7 @@ import {
   isJoker,
   mightyOf,
   type PlayerView,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import { cardLabel, friendLabel, goalLabel, jokerCallLabel } from "./terms";
 

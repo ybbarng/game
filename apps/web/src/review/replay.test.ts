@@ -1,11 +1,12 @@
 // @vitest-environment node
-import { heuristicBot } from "@mighty/ai";
-import { type MatchState, mightyOf, presetRules } from "@mighty/engine";
-import { heartsNormalBot } from "@mighty/hearts-ai";
+
+import { heartsNormalBot } from "@game/hearts-ai";
 import {
   type MatchState as HeartsState,
   WINDOWS_RULES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import { heuristicBot } from "@game/mighty-ai";
+import { type MatchState, mightyOf, presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

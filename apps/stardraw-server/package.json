@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/stardraw-server",
+  "name": "@game/stardraw-server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "start": "node --disable-warning=ExperimentalWarning dist/server.mjs"
   },
   "dependencies": {
-    "@mighty/fair-play": "workspace:*",
-    "@mighty/stardraw-core": "workspace:*"
+    "@game/fair-play": "workspace:*",
+    "@game/stardraw-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

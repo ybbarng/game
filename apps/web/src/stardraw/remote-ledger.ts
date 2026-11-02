@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   checkRegistrationProof,
   checkRound,
@@ -51,7 +51,7 @@ import {
   toBase64Url,
   toHex,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { HttpError } from "./errors";
 import { type GateSolver, inlineGateSolver } from "./gate-solver";
 import {

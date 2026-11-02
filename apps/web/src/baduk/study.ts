@@ -10,7 +10,7 @@ import {
   pointAt,
   pointName,
   tryPlace,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 
 import type { BadukPuzzle } from "./puzzles";
 

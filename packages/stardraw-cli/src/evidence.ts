@@ -12,7 +12,7 @@ import {
   type PublicSealFile,
   parseSealFile,
   sealFilePath,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 추첨 전 봉인 증거 모으기(docs/36 11-20, 보안 표 O10). 서버는 봉인하자마자(drand 전에) 봉인 파일을 공개한다.

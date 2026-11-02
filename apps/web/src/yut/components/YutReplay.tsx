@@ -1,6 +1,6 @@
 "use client";
 
-import { type GameResult, viewOf, type YutState } from "@mighty/yut-engine";
+import { type GameResult, viewOf, type YutState } from "@game/yut-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

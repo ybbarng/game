@@ -1,4 +1,4 @@
-import type { GameEvent } from "@mighty/minhwatu-engine";
+import type { GameEvent } from "@game/minhwatu-engine";
 
 import type { Cue } from "@/game/sound";
 

@@ -5,16 +5,16 @@
  * 세 게임이 같은 진행(fair-play HwatuHostTable)을 쓰므로 가장 단순한 민화투로 본다. 끝까지 치는 시험은
  * 게임마다 따로 있다(minhwatu·gostop·nyrongppong `fair-room.test.ts`)
  */
-import { type HwatuGuestSeat, Party } from "@mighty/fair-play";
+import { type HwatuGuestSeat, Party } from "@game/fair-play";
 import {
   minhwatuBeginnerBot,
   minhwatuIntermediateBot,
-} from "@mighty/minhwatu-ai";
+} from "@game/minhwatu-ai";
 import {
   type MinhwatuState,
   type MinhwatuView,
   STANDARD_RULES,
-} from "@mighty/minhwatu-engine";
+} from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import { minhwatuKit } from "@/minhwatu/kit";

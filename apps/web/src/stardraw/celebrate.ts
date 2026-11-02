@@ -1,4 +1,4 @@
-import type { Rank } from "@mighty/stardraw-core";
+import type { Rank } from "@game/stardraw-core";
 
 import { starOf } from "./sky";
 

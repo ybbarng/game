@@ -1,5 +1,5 @@
 // @vitest-environment node
-import type { GuessEntry } from "@mighty/baseball-engine";
+import type { GuessEntry } from "@game/baseball-engine";
 import { describe, expect, it } from "vitest";
 
 import { CALL_TEXT, callOf, inningOf, inningText } from "./call";

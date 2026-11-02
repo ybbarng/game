@@ -5,7 +5,7 @@ import {
   type GameEvent,
   pointAt,
   STANDARD_RULES,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

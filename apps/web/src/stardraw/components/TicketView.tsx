@@ -7,7 +7,7 @@ import {
   type Ticket,
   ticketId,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useState } from "react";
 
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";

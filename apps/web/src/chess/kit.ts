@@ -1,4 +1,4 @@
-import { chessBotFor, positionValue } from "@mighty/chess-ai";
+import { chessBotFor, positionValue } from "@game/chess-ai";
 import {
   type Action,
   applyMove,
@@ -21,7 +21,7 @@ import {
   squareName,
   step,
   viewOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";

@@ -1,10 +1,10 @@
-import { evaluateHeartsPlays } from "@mighty/hearts-ai";
+import { evaluateHeartsPlays } from "@game/hearts-ai";
 import {
   type Action,
   type MatchState,
   pointsOf,
   viewOf,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 
 import type { Commentary, Verdict } from "@/game/kit";
 import { cardLabel } from "@/game/terms";

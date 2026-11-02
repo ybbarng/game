@@ -5,7 +5,7 @@ import {
   roundTimes,
   type Schedule,
   type ScheduleEntry,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { roomPhase } from "./room-phase";

@@ -1,4 +1,4 @@
-import { displayRound, type Schedule } from "@mighty/stardraw-core";
+import { displayRound, type Schedule } from "@game/stardraw-core";
 
 /**
  * 화면에 보이는 회차 이름(docs/36 11-6). 서버 장부는 단계가 있어 "시험 12회"·"정식 1회",

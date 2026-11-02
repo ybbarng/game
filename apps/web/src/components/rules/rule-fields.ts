@@ -4,7 +4,7 @@ import type {
   ReverseRunCondition,
   RuleSet,
   WinScoring,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 type BoolKey = {
   [K in keyof RuleSet]: RuleSet[K] extends boolean ? K : never;

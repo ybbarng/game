@@ -1,6 +1,6 @@
 "use client";
 
-import type { BaseballState } from "@mighty/baseball-engine";
+import type { BaseballState } from "@game/baseball-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

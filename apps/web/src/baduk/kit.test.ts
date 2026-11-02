@@ -6,7 +6,7 @@ import {
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
 import { badukKit, explainBaduk, summarizeBaduk } from "./kit";

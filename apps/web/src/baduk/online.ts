@@ -1,11 +1,11 @@
-import { badukBotFor } from "@mighty/baduk-ai";
+import { badukBotFor } from "@game/baduk-ai";
 import type {
   Action,
   BadukRules,
   BadukState,
   BadukView,
   GameEvent,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

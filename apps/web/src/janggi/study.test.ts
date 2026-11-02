@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { negamax } from "@mighty/janggi-ai";
+import { negamax } from "@game/janggi-ai";
 import {
   applyMove,
   forcesMate,
@@ -16,7 +16,7 @@ import {
   pointName,
   pseudoTargets,
   step,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 import { describe, expect, it } from "vitest";
 
 import { JANGGI_PUZZLE_SETS, type JanggiPuzzle } from "./puzzles";

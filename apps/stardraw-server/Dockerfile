@@ -9,8 +9,8 @@ RUN corepack enable
 WORKDIR /app
 COPY . .
 # lefthook 같은 개발용 설치 스크립트는 돌리지 않는다. 서버와 그 의존 패키지만 받는다
-RUN pnpm install --frozen-lockfile --ignore-scripts --filter @mighty/stardraw-server...
-RUN pnpm --filter @mighty/stardraw-server build
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @game/stardraw-server...
+RUN pnpm --filter @game/stardraw-server build
 
 FROM node:24-alpine AS runner
 WORKDIR /app

@@ -1,7 +1,12 @@
 // @vitest-environment node
-import { heuristicBot } from "@mighty/ai";
-import { type MatchState, type PlayerView, presetRules } from "@mighty/engine";
-import { isToken } from "@mighty/fair-play";
+
+import { isToken } from "@game/fair-play";
+import { heuristicBot } from "@game/mighty-ai";
+import {
+  type MatchState,
+  type PlayerView,
+  presetRules,
+} from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import { mightyKit } from "@/game/mighty-kit";
 import type { GameArchive } from "@/review/archive";

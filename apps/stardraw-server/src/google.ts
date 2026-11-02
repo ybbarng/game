@@ -1,4 +1,4 @@
-import { fromBase64Url } from "@mighty/stardraw-core";
+import { fromBase64Url } from "@game/stardraw-core";
 
 /**
  * 구글 로그인 ID 토큰 확인(docs/36 11-13, 기관 계정으로 상품 자격 받기).

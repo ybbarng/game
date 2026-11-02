@@ -1,10 +1,10 @@
-import type { Action, GameEvent, PlayerView } from "@mighty/engine";
 import type {
   FairControl,
   PublicView as FairPublicView,
   FairWire,
   GroupName,
-} from "@mighty/fair-play";
+} from "@game/fair-play";
+import type { Action, GameEvent, PlayerView } from "@game/mighty-engine";
 
 import type { KitLoggedAction } from "@/game/kit";
 

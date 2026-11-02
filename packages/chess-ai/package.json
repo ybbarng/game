@@ -1,5 +1,5 @@
 {
-  "name": "@mighty/chess-ai",
+  "name": "@game/chess-ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
-    "@mighty/chess-engine": "workspace:*",
-    "@mighty/engine": "workspace:*"
+    "@game/chess-engine": "workspace:*",
+    "@game/mighty-engine": "workspace:*"
   }
 }

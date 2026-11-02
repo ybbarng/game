@@ -2,7 +2,7 @@ import {
   type GameEvent,
   type PlayerView,
   QUEEN_OF_SPADES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 
 import { type CueCall, type DealTiming, dealCues } from "@/game/cues";
 

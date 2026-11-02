@@ -5,8 +5,8 @@ import {
   sanToMove,
   step,
   viewOf,
-} from "@mighty/chess-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/chess-engine";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import {

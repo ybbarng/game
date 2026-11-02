@@ -1,6 +1,6 @@
 "use client";
 
-import { TEST_VECTORS, type TestVector } from "@mighty/stardraw-core";
+import { TEST_VECTORS, type TestVector } from "@game/stardraw-core";
 import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { TimePreset } from "@mighty/engine";
+import type { TimePreset } from "@game/mighty-engine";
 import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";

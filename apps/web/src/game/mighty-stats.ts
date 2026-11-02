@@ -6,7 +6,7 @@ import {
   mightyOf,
   type PlayerView,
   type ScoreMultiplier,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { GameRecord, RoundRecord } from "@/stats/records";
 

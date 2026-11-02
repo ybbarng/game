@@ -1,11 +1,11 @@
-import { baseballBotFor } from "@mighty/baseball-ai";
+import { baseballBotFor } from "@game/baseball-ai";
 import type {
   Action,
   BaseballRules,
   BaseballState,
   BaseballView,
   GameEvent,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

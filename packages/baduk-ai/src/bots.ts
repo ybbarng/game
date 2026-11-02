@@ -1,5 +1,5 @@
-import type { Action, BadukView } from "@mighty/baduk-engine";
-import { nextInt, type RngState } from "@mighty/engine";
+import type { Action, BadukView } from "@game/baduk-engine";
+import { nextInt, type RngState } from "@game/mighty-engine";
 
 import { type Color, FastBoard, PASS } from "./fast-board";
 import { candidateMoves, search } from "./search";

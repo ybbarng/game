@@ -9,7 +9,7 @@ import {
   seatToMove,
   stoneOfSeat,
   timeControlOf,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

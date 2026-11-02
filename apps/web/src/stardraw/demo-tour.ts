@@ -1,4 +1,4 @@
-import { realClock } from "@mighty/fair-play";
+import { realClock } from "@game/fair-play";
 import {
   type EntrantSigner,
   generateSasKey,
@@ -9,7 +9,7 @@ import {
   softCredentialId,
   softPasskeySigner,
   type Ticket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { Checker, type CheckSession, memoryCheckStore } from "./checks";
 import { LocalConfirmRelay, type RelayStore } from "./confirm-relay";

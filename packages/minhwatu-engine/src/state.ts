@@ -1,4 +1,4 @@
-import type { PresetDeal } from "@mighty/hwatu";
+import type { PresetDeal } from "@game/hwatu";
 
 import type { MinhwatuRules } from "./rules";
 import type { SeatScore, YakId } from "./score";

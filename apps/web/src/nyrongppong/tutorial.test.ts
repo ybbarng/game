@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
-import { nyrongppongBeginnerBot } from "@mighty/nyrongppong-ai";
+import { ManualClock } from "@game/fair-play";
+import { nyrongppongBeginnerBot } from "@game/nyrongppong-ai";
 import {
   type Action,
   createNyrongppongScenario,
   type GameEvent,
   viewOf,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

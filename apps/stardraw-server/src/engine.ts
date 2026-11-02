@@ -1,5 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   activeDirector,
   anchorBranch,
@@ -88,7 +88,7 @@ import {
   verifyStamp,
   verifyTicketSignature,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { GoogleTokenError, type GoogleTokenVerifier } from "./google";
 import { BusyError, Counters, Gate, ipPrefix, PowFailures } from "./limits";

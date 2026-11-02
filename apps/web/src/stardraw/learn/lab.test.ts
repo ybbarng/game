@@ -15,11 +15,11 @@ import {
   verifyInclusion,
   verifyTicketSignature,
   verifyTimestampToken,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import {
   FIXTURE_IMPRINT,
   FIXTURE_TOKENS,
-} from "@mighty/stardraw-core/tsa-fixtures";
+} from "@game/stardraw-core/tsa-fixtures";
 import { describe, expect, it } from "vitest";
 
 import { ATTACKS, buildWorld, honestCheck } from "./attacks";

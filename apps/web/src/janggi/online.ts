@@ -1,11 +1,11 @@
-import { janggiBotFor } from "@mighty/janggi-ai";
+import { janggiBotFor } from "@game/janggi-ai";
 import type {
   Action,
   GameEvent,
   JanggiRules,
   JanggiState,
   JanggiView,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 import type { BoardOnlineGame } from "@/components/BoardOnlineScreen";
 

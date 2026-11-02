@@ -9,7 +9,7 @@ import {
   SUITS,
   type Suit,
   suitOf,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 export const KIRUDAS: readonly Kiruda[] = ["S", "D", "H", "C", "NT"];
 

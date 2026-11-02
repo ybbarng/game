@@ -1,6 +1,6 @@
 "use client";
 
-import type { Rank, Schedule } from "@mighty/stardraw-core";
+import type { Rank, Schedule } from "@game/stardraw-core";
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { InviteQr } from "@/components/InviteQr";
 import { cn } from "@/lib/cn";

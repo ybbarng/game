@@ -1,12 +1,4 @@
 import {
-  type Card,
-  nextFloat,
-  type RngState,
-  type Suit,
-  shuffleInPlace,
-  suitOf,
-} from "@mighty/engine";
-import {
   type Action,
   type CompletedTrick,
   type Decision,
@@ -22,7 +14,15 @@ import {
   QUEEN_OF_SPADES,
   type Trick,
   trickWinner,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import {
+  type Card,
+  nextFloat,
+  type RngState,
+  type Suit,
+  shuffleInPlace,
+  suitOf,
+} from "@game/mighty-engine";
 
 import { type HeartsBot, knownVoids, passedTo, playedCards } from "./knowledge";
 import {

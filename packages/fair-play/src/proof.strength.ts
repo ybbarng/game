@@ -15,7 +15,7 @@ declare const performance: { now(): number };
 declare const console: { log(...args: unknown[]): void };
 
 /** 열쇠 n개를 한 증명으로 묶어 만들고 확인하는 시간(ms) */
-describe("열쇠 증명 계산 시간 (pnpm --filter @mighty/fair-play bench)", () => {
+describe("열쇠 증명 계산 시간 (pnpm --filter @game/fair-play bench)", () => {
   it.each([GROUP_1024, GROUP_2048])(
     "$bits비트",
     async (g) => {

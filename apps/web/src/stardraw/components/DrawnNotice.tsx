@@ -1,6 +1,6 @@
 "use client";
 
-import type { Schedule } from "@mighty/stardraw-core";
+import type { Schedule } from "@game/stardraw-core";
 
 import { roundShort } from "../round-label";
 

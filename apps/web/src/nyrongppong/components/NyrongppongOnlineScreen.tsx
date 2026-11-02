@@ -1,7 +1,7 @@
 "use client";
 
-import { nyrongppongBotFor } from "@mighty/nyrongppong-ai";
-import type { NyrongppongRules } from "@mighty/nyrongppong-engine";
+import { nyrongppongBotFor } from "@game/nyrongppong-ai";
+import type { NyrongppongRules } from "@game/nyrongppong-engine";
 import { useEffect, useRef, useState } from "react";
 import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";

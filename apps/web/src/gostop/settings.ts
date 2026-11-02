@@ -1,4 +1,4 @@
-import type { GostopRules, GukjinRule } from "@mighty/gostop-engine";
+import type { GostopRules, GukjinRule } from "@game/gostop-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

@@ -4,7 +4,7 @@ import {
   generateSigner,
   sha256,
   utf8,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 import { TOUR_EARTH_PUB, TOUR_EGG_PUBS } from "../demo-tour";
 import {

@@ -1,6 +1,6 @@
 "use client";
 
-import { type Rank, roundTimes, toHex } from "@mighty/stardraw-core";
+import { type Rank, roundTimes, toHex } from "@game/stardraw-core";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { play } from "@/game/sound";

@@ -7,7 +7,7 @@ import {
   type GameEvent,
   handValue,
   type NyrongppongView,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";

@@ -11,7 +11,7 @@ import {
   softPasskeySigner,
   type Ticket,
   ticketId,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";

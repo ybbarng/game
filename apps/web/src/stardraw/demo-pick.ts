@@ -1,4 +1,4 @@
-import type { Draw, Rank } from "@mighty/stardraw-core";
+import type { Draw, Rank } from "@game/stardraw-core";
 
 /**
  * 데모 전용: 미리 본 당첨 번호로 "이번엔 n등"이 되는 번호 6개를 고른다(진짜 게임에는 없는 기능).

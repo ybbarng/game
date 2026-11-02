@@ -1,10 +1,10 @@
 // @vitest-environment node
-import { heartsBeginnerBot } from "@mighty/hearts-ai";
+import { heartsBeginnerBot } from "@game/hearts-ai";
 import {
   type Action,
   createHeartsScenario,
   type GameEvent,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

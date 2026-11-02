@@ -6,7 +6,7 @@
  * 「열어 둔 탭」은 경계 전에 열어 두고 다시 읽지 않은 채 시계만 옮겨, 오래 열린 탭이 새 일정을 따라가는지 본다.
  *
  * 준비:
- *   NEXT_PUBLIC_STARDRAW_API=http://localhost:8855/stardraw-api nice -n 15 pnpm --filter @mighty/web build
+ *   NEXT_PUBLIC_STARDRAW_API=http://localhost:8855/stardraw-api nice -n 15 pnpm --filter @game/web build
  *   (apps/web) nice -n 15 pnpm exec serve out -l 4855 --no-port-switching
  *   nice -n 15 node apps/stardraw-server/dist/bench/rehearsal.js --work <빈 폴더> --screens --rp-id localhost
  * 실행: nice -n 15 node apps/stardraw-server/bench/rehearsal-screens.mjs --out <스크린샷 폴더>

@@ -5,7 +5,7 @@ import {
   encodeRuleString,
   RULE_PRESETS,
   type RuleSet,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { useEffect, useRef, useState } from "react";
 import { botFor, browserPace } from "@/game/bots";
 import { mightyKit } from "@/game/mighty-kit";

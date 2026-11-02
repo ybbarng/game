@@ -1,4 +1,4 @@
-import type { HwatuFairSpec } from "@mighty/fair-play";
+import type { HwatuFairSpec } from "@game/fair-play";
 import {
   type Action,
   createMatch,
@@ -11,8 +11,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
-import { monthOf } from "@mighty/hwatu";
+} from "@game/gostop-engine";
+import { monthOf } from "@game/hwatu";
 
 import { withPreset } from "@/hwatu/fair";
 

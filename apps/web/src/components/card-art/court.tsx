@@ -1,4 +1,4 @@
-import type { Suit } from "@mighty/engine";
+import type { Suit } from "@game/mighty-engine";
 
 import { SuitShape } from "./suits";
 

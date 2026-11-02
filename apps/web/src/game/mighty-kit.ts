@@ -1,3 +1,4 @@
+import { realAction } from "@game/fair-play";
 import {
   type Action,
   type Card,
@@ -18,9 +19,7 @@ import {
   step,
   suitOf,
   viewOf,
-} from "@mighty/engine";
-
-import { realAction } from "@mighty/fair-play";
+} from "@game/mighty-engine";
 
 import { type BotLevel, botFor } from "./bots";
 import type { GameKit } from "./kit";

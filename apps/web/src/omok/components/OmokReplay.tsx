@@ -1,6 +1,6 @@
 "use client";
 
-import { type OmokState, stoneOfSeat } from "@mighty/omok-engine";
+import { type OmokState, stoneOfSeat } from "@game/omok-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

@@ -4,7 +4,7 @@ import type {
   BaseballState,
   BaseballView,
   GameEvent,
-} from "@mighty/baseball-engine";
+} from "@game/baseball-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

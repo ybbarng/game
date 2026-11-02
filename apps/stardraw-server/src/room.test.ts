@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { ServerResponse } from "node:http";
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   DEFAULT_WEBAUTHN_POLICY,
   drandRoundForClose,
@@ -11,7 +11,7 @@ import {
   softPasskeySigner,
   type Ticket,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { defaultSchedule } from "./config";

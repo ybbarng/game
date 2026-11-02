@@ -5,7 +5,7 @@ import {
   type Suit,
   type TrickCards,
   unplayableReason,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { cardText } from "./blind";
 
 /*

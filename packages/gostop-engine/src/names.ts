@@ -1,4 +1,4 @@
-import { cardOf, MONTH_NAMES } from "@mighty/hwatu";
+import { cardOf, MONTH_NAMES } from "@game/hwatu";
 
 import type { Action, Bak, Settlement, Special } from "./state";
 

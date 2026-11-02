@@ -1,4 +1,4 @@
-import { ManualClock } from "@mighty/fair-play";
+import { ManualClock } from "@game/fair-play";
 import {
   checkGate,
   closeRound,
@@ -20,7 +20,7 @@ import {
   toBase64Url,
   toHex,
   unsignedTicket,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import { type GateSolver, inlineGateSolver } from "./gate-solver";

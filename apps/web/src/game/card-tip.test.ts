@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { presetRules } from "@mighty/engine";
+import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { cardTipText } from "./terms";

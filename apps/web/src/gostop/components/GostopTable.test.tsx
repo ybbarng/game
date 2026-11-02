@@ -1,9 +1,5 @@
 // @vitest-environment jsdom
-import {
-  createGostopScenario,
-  MATGO_RULES,
-  viewOf,
-} from "@mighty/gostop-engine";
+import { createGostopScenario, MATGO_RULES, viewOf } from "@game/gostop-engine";
 import {
   act,
   cleanup,

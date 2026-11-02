@@ -152,7 +152,7 @@
 
 ## 7. 합칠 때 할 일(공유 파일, 이 작업에서 고치지 않음)
 
-- `apps/web/package.json`에 `@mighty/gostop-ai`·`@mighty/gostop-engine`, `pnpm install`로 잠금 파일 갱신, `Dockerfile`에 두 패키지 COPY 줄.
+- `apps/web/package.json`에 `@game/gostop-ai`·`@game/gostop-engine`, `pnpm install`로 잠금 파일 갱신, `Dockerfile`에 두 패키지 COPY 줄.
 - `games/registry.ts`: `{ id: "gostop", name: "고스톱", englishName: "Go-Stop", players: "2~3명", path: "/gostop" }`.
 - `components/brand/icon-art.tsx`: `game`에 `"gostop"`, 그림은 `GostopCards`(`gostop/components/GostopIcon.tsx`). 그 뒤 `app/gostop/icon.tsx`·`opengraph-image.tsx`를 공통 `IconArt`·`gameShareImage`로 바꿀 수 있다.
 - `stats/ProfilePage.tsx`: 탭 "🎴 고스톱" → `GostopStats`. `review/ReviewPage.tsx`: `GAME_NAME`, `GostopReplay`.

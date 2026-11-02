@@ -1,5 +1,5 @@
-import type { Card } from "@mighty/engine";
-import { cardOf, HWATU_DECK, type PresetDeal } from "@mighty/hwatu";
+import { cardOf, HWATU_DECK, type PresetDeal } from "@game/hwatu";
+import type { Card } from "@game/mighty-engine";
 
 import { slotOfToken, tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
@@ -23,7 +23,7 @@ import type { PartySnapshot } from "./protocol";
  * - 더미에서 한 장 가져오기(나이롱뽕): 가져가는 기기를 뺀 모두가 열쇠를 공개해 그 사람만 본다
  *
  * 방장 엔진은 아직 열리지 않은 카드를 자리 표(`?_12`)로 든다. 화투 카드 조회는 자리 표를 "어느 달과도
- * 맞지 않는 카드"로 본다(@mighty/hwatu `cardOf`). 엔진이 숨은 카드를 알아야 하는 순간은 셋이다.
+ * 맞지 않는 카드"로 본다(@game/hwatu `cardOf`). 엔진이 숨은 카드를 알아야 하는 순간은 셋이다.
  * - 손패를 낼 때(흔들기·폭탄·뽕·스톱·약처럼 보여야 하는 카드 포함): 낸 사람이 그 자리 열쇠를 공개한다
  * - 더미를 쓸 때: 방장이 엔진을 한 걸음 미리 돌려 보고(자리 표로) 더미가 몇 장 나가는지 본 뒤,
  *   그 자리를 열라고 모두에게 알린다(`deck`). 판 끝에 진짜 카드로 다시 돌려 그 요청이 맞았는지 본다

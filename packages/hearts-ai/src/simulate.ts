@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createMatch,
   type HeartsRules,
@@ -6,7 +5,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import { createRng } from "@game/mighty-engine";
 
 import type { HeartsBot } from "./knowledge";
 

@@ -5,7 +5,7 @@ import {
   GODORI,
   HONGDAN,
   hasAll,
-} from "@mighty/hwatu";
+} from "@game/hwatu";
 
 import type { GukjinRule } from "./rules";
 

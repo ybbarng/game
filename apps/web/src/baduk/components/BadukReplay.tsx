@@ -5,7 +5,7 @@ import {
   type BadukState,
   STONE_NAMES,
   stoneOfSeat,
-} from "@mighty/baduk-engine";
+} from "@game/baduk-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { GameArchive } from "@/review/archive";

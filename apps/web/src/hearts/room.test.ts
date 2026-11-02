@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { ManualClock } from "@mighty/fair-play";
-import { heartsIntermediateBot, heartsNormalBot } from "@mighty/hearts-ai";
-import { WINDOWS_RULES } from "@mighty/hearts-engine";
+import { ManualClock } from "@game/fair-play";
+import { heartsIntermediateBot, heartsNormalBot } from "@game/hearts-ai";
+import { WINDOWS_RULES } from "@game/hearts-engine";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
@@ -77,7 +77,7 @@ describe("하트 온라인 방", () => {
       transport: net.join("host"),
       clock,
       hostName: "방장",
-      rules: (await import("@mighty/engine")).presetRules("standard5"),
+      rules: (await import("@game/mighty-engine")).presetRules("standard5"),
     });
     const guest = new GuestRoom({
       kit: heartsKit,

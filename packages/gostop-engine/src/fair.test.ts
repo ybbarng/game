@@ -1,4 +1,4 @@
-import { HWATU_DECK, isHiddenId, type PresetDeal } from "@mighty/hwatu";
+import { HWATU_DECK, isHiddenId, type PresetDeal } from "@game/hwatu";
 import { describe, expect, it } from "vitest";
 
 import { createMatch, step, viewOf } from "./match";

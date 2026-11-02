@@ -1,4 +1,10 @@
-import { type Card, RANKS, SUITS, type Suit, suitOf } from "@mighty/engine";
+import {
+  type Card,
+  RANKS,
+  SUITS,
+  type Suit,
+  suitOf,
+} from "@game/mighty-engine";
 
 import type { HeartsRules } from "./rules";
 

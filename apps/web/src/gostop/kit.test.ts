@@ -1,11 +1,11 @@
 // @vitest-environment node
-import { gostopIntermediateBot } from "@mighty/gostop-ai";
+import { gostopIntermediateBot } from "@game/gostop-ai";
 import {
   createGostopScenario,
   type GameEvent,
   GOSTOP3_RULES,
   MATGO_RULES,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

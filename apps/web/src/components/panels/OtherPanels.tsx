@@ -7,7 +7,7 @@ import {
   type PlayerView,
   SUITS,
   type Suit,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 import { useState } from "react";
 import { useCardTheme } from "@/game/settings";
 import {

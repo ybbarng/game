@@ -1,4 +1,3 @@
-import { createRng } from "@mighty/engine";
 import {
   createMatch,
   GOSTOP3_RULES,
@@ -7,7 +6,8 @@ import {
   pendingSeats,
   step,
   viewOf,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
+import { createRng } from "@game/mighty-engine";
 import { expect, it } from "vitest";
 
 import {

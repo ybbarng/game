@@ -10,7 +10,7 @@ import {
   pointName,
   pseudoTargets,
   STANDARD_RULES,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { createRng, nextInt } from "@mighty/engine";
-import { realClock } from "@mighty/fair-play";
+import { realClock } from "@game/fair-play";
+import { createRng, nextInt } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 
 import { constellationOf } from "../celebrate";

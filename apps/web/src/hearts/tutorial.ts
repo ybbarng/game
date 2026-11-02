@@ -1,4 +1,3 @@
-import type { Card } from "@mighty/engine";
 import {
   type Action,
   type GameEvent,
@@ -6,7 +5,8 @@ import {
   isHeart,
   type PlayerView,
   WINDOWS_RULES,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type { Card } from "@game/mighty-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

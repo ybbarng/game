@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { Party } from "@mighty/fair-play";
+import { Party } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
 import type { AuditResult } from "@/net/guest-room";

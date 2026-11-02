@@ -1,6 +1,6 @@
 "use client";
 
-import { BAK_NAMES, type Bak } from "@mighty/gostop-engine";
+import { BAK_NAMES, type Bak } from "@game/gostop-engine";
 
 import type { StatsBook } from "@/stats/records";
 import { Card, pct, RateBar, ResultStrip, StatTile } from "@/stats/widgets";

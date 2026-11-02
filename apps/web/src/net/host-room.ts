@@ -1,12 +1,3 @@
-import type {
-  Action,
-  Card,
-  GameEvent,
-  MatchState,
-  PlayerView,
-  PresetDeal,
-  RuleSet,
-} from "@mighty/engine";
 import {
   type Clock,
   FairHostTable,
@@ -15,14 +6,23 @@ import {
   HwatuHostTable,
   type Incident,
   realClock,
-} from "@mighty/fair-play";
+} from "@game/fair-play";
 import type {
   Action as HeartsAction,
   GameEvent as HeartsEvent,
   HeartsRules,
   MatchState as HeartsState,
   PlayerView as HeartsView,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
+import type {
+  Action,
+  Card,
+  GameEvent,
+  MatchState,
+  PlayerView,
+  PresetDeal,
+  RuleSet,
+} from "@game/mighty-engine";
 import { botName } from "@/game/bot-names";
 import type { GameKit, KitBot, KitLoggedAction } from "@/game/kit";
 import { LocalMatch } from "@/game/local-match";
@@ -1396,7 +1396,7 @@ type CardTable<R, S, A, E> = HwatuHostTable<R, S, any, A, E>;
 /** 새로고침한 방장이 멘탈 포커 판을 이어 갈 때 */
 interface FairResume {
   resume: unknown;
-  device: Record<number, import("@mighty/fair-play").PartySnapshot>;
+  device: Record<number, import("@game/fair-play").PartySnapshot>;
 }
 
 /** 그 자리 행동이 기록에 몇 개인가(참가자가 보낸 행동이 들어갔는지 알려 주는 수) */

@@ -1,11 +1,11 @@
-import { createRng } from "@mighty/engine";
+import { createRng } from "@game/mighty-engine";
 import {
   createMatch,
   indexOf,
   type OmokRules,
   type OmokState,
   viewOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { describe, expect, it } from "vitest";
 
 import {

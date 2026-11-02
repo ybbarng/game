@@ -19,7 +19,7 @@ import {
   softPasskeySigner,
   toBase64Url,
   webauthnChallenge,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { requestUnlock, type UnlockPurpose } from "../demo-unlock";
 import type { DirectorState, LocalLedger } from "../local-ledger";

@@ -22,7 +22,7 @@ import {
   type WebAuthnAssertion,
   type WebAuthnPolicy,
   webauthnChallenge,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { astronautOf } from "./astronaut/identity";
 import { requestUnlock, type UnlockPurpose } from "./demo-unlock";

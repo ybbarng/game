@@ -5,7 +5,7 @@ import {
   createGostopScenario,
   type GameEvent,
   type GostopView,
-} from "@mighty/gostop-engine";
+} from "@game/gostop-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 import {

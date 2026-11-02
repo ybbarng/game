@@ -1,7 +1,7 @@
 "use client";
 
-import { bestKiruda } from "@mighty/ai";
-import type { Action, Decision, Kiruda, PlayerView } from "@mighty/engine";
+import { bestKiruda } from "@game/mighty-ai";
+import type { Action, Decision, Kiruda, PlayerView } from "@game/mighty-engine";
 import { useState } from "react";
 
 import { goalLabel } from "@/game/terms";

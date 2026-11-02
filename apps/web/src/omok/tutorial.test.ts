@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { omokBeginnerBot } from "@mighty/omok-ai";
+import { omokBeginnerBot } from "@game/omok-ai";
 import {
   type Action,
   createOmokScenario,
   type GameEvent,
   pointAt,
   viewOf,
-} from "@mighty/omok-engine";
+} from "@game/omok-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

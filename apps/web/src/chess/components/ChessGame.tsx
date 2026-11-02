@@ -15,7 +15,7 @@ import {
   seatToMove,
   sideOfSeat,
   timeControlOf,
-} from "@mighty/chess-engine";
+} from "@game/chess-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";

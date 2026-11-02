@@ -1,4 +1,4 @@
-import { monthOf } from "@mighty/hwatu";
+import { monthOf } from "@game/hwatu";
 
 import type { GostopRules } from "./rules";
 import type { GostopState } from "./state";

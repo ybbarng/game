@@ -1,14 +1,15 @@
 // @vitest-environment node
-import { createRng } from "@mighty/engine";
-import { ManualClock } from "@mighty/fair-play";
-import { yutBotFor } from "@mighty/yut-ai";
+
+import { ManualClock } from "@game/fair-play";
+import { createRng } from "@game/mighty-engine";
+import { yutBotFor } from "@game/yut-ai";
 import {
   type Action,
   chainLink,
   STANDARD_RULES,
   type YutRules,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { describe, expect, it } from "vitest";
 
 import type { MatchHost } from "@/game/host";

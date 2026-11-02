@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 
 /**
  * 응모판 하늘의 반짝임과 유성 시간표(star.byb.kr `ui/skyEffects`와 같은 느낌).

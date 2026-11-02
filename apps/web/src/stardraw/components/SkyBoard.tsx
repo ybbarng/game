@@ -1,6 +1,6 @@
 "use client";
 
-import { type Clock, realClock } from "@mighty/fair-play";
+import { type Clock, realClock } from "@game/fair-play";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";

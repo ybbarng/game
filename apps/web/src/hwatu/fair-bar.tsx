@@ -1,6 +1,6 @@
 "use client";
 
-import type { BusyReason } from "@mighty/fair-play";
+import type { BusyReason } from "@game/fair-play";
 import { create } from "zustand";
 
 import type { EndVoteState, IncidentState } from "@/components/FairOverlays";

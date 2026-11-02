@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { anchorPath, ledgerId, verifyLedger } from "@mighty/stardraw-core";
+import { anchorPath, ledgerId, verifyLedger } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GitHubAnchor } from "./outside";

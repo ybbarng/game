@@ -14,8 +14,8 @@
 ## 명령
 - 개발 서버: `pnpm dev` (포트 3456)
 - 시험: `pnpm test`(단위, 약 20초) · `pnpm lint` · `pnpm typecheck`
-- 화면 시험: `pnpm --filter @mighty/web build` 뒤 `pnpm --filter @mighty/web exec playwright test`. 여러 탭 멘탈 포커는 `FAIR_MULTI=1`
-- 멘탈 포커 계산 시간: `pnpm --filter @mighty/fair-play bench`
+- 화면 시험: `pnpm --filter @game/web build` 뒤 `pnpm --filter @game/web exec playwright test`. 여러 탭 멘탈 포커는 `FAIR_MULTI=1`
+- 멘탈 포커 계산 시간: `pnpm --filter @game/fair-play bench`
 
 ## 작업 규칙(사용자가 정한 것)
 - `main`에서 바로 작은 단위로 커밋하고 push한다. 커밋 메시지는 한국어, 끝에 Co-Authored-By 줄.

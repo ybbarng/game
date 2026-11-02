@@ -1,4 +1,4 @@
-import type { Clock } from "@mighty/fair-play";
+import type { Clock } from "@game/fair-play";
 import {
   CHECK_LINK_REQUESTER,
   type ConfirmRequest,
@@ -26,7 +26,7 @@ import {
   verifyClaim,
   verifyInvite,
   type WebAuthnPolicy,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 import { EntryError } from "./engine";
 import { Counters, ipPrefix } from "./limits";

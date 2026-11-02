@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { baseballBotFor } from "@mighty/baseball-ai";
+import { baseballBotFor } from "@game/baseball-ai";
 import {
   type Action,
   allNumbers,
@@ -8,9 +8,9 @@ import {
   commitmentOf,
   STANDARD_RULES,
   score,
-} from "@mighty/baseball-engine";
-import { createRng } from "@mighty/engine";
-import { ManualClock } from "@mighty/fair-play";
+} from "@game/baseball-engine";
+import { ManualClock } from "@game/fair-play";
+import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import type { MatchHost } from "@/game/host";

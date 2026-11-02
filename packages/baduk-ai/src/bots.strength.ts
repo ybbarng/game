@@ -5,8 +5,8 @@ import {
   STANDARD_RULES,
   step,
   viewOf,
-} from "@mighty/baduk-engine";
-import { createRng } from "@mighty/engine";
+} from "@game/baduk-engine";
+import { createRng } from "@game/mighty-engine";
 import { expect, it } from "vitest";
 
 import {

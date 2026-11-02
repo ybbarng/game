@@ -10,7 +10,7 @@ import {
   sideOf,
   type ThrowValue,
   type YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
 

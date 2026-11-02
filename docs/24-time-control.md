@@ -18,7 +18,7 @@
 
 ## 2. 구조
 
-- `@mighty/engine`의 `time-control`
+- `@game/mighty-engine`의 `time-control`
   - 시간 규칙 `TimePreset`과 남은 시간 `PlayerClock`을 둔다.
   - `spendTime(clock, spent, control)`이 한 수에 쓴 시간을 깎는다. 기본 시간 → 초읽기 → 시간패 순서다.
 - 엔진(오목·장기)

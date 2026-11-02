@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { createRng, nextFloat } from "@mighty/engine";
-import { ManualClock } from "@mighty/fair-play";
+
+import { ManualClock } from "@game/fair-play";
+import { createRng, nextFloat } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { flashCurve, startSkyEffects, twinkleLevel } from "./sky-effects";

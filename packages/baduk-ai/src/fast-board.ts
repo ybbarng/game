@@ -1,7 +1,7 @@
-import { nextInt, type RngState } from "@mighty/engine";
+import { nextInt, type RngState } from "@game/mighty-engine";
 
 /*
- * 컴퓨터가 수를 읽을 때 쓰는 빠른 판. 엔진(`@mighty/baduk-engine`)은 배열을 새로 만들며 규칙을 지키는 데 집중하고,
+ * 컴퓨터가 수를 읽을 때 쓰는 빠른 판. 엔진(`@game/baduk-engine`)은 배열을 새로 만들며 규칙을 지키는 데 집중하고,
  * 이 판은 제자리에서 바꾸며 수천 판을 끝까지 둬 보는(플레이아웃) 데 쓴다.
  * 패는 "바로 되따내기 금지"(단순 패)만 본다. 실제로 둘 수는 엔진의 둘 수 있는 자리(같은 판 모양 금지)로 한 번 더 거른다.
  */

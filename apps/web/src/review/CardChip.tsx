@@ -1,4 +1,4 @@
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 import { SuitText } from "@/components/SuitText";
 import { cardLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";

@@ -6,7 +6,7 @@ import {
   type PlayerView,
   type RuleSet,
   trickWinnerIndex,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { FairLogged, RoundDeal } from "./audit";
 import { cardText, tokenOf } from "./blind";

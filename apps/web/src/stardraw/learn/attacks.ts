@@ -42,8 +42,8 @@ import {
   verifyClaim,
   verifyInvite,
   verifyLedger,
-} from "@mighty/stardraw-core";
-import { FakeTsa } from "@mighty/stardraw-core/testing";
+} from "@game/stardraw-core";
+import { FakeTsa } from "@game/stardraw-core/testing";
 
 import {
   ANCHOR_REPO,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Card } from "@mighty/engine";
+import type { Card } from "@game/mighty-engine";
 import { cardLabel } from "@/game/terms";
 import { PLATE_COMPACT_H, type Rect } from "@/layout/compute-layout";
 import { cn } from "@/lib/cn";

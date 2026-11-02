@@ -1,4 +1,4 @@
-import { fromHex } from "@mighty/stardraw-core";
+import { fromHex } from "@game/stardraw-core";
 import { describe, expect, it } from "vitest";
 
 import {

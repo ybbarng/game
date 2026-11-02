@@ -1,11 +1,11 @@
-import type { PresetDeal } from "@mighty/hwatu";
-import { cardOf, sortCards } from "@mighty/hwatu";
+import type { PresetDeal } from "@game/hwatu";
+import { cardOf, sortCards } from "@game/hwatu";
 import {
   discardFromThree,
   nyrongppongBotFor,
   nyrongppongExpertBot,
   stopChance,
-} from "@mighty/nyrongppong-ai";
+} from "@game/nyrongppong-ai";
 import {
   type Action,
   callClock,
@@ -24,7 +24,7 @@ import {
   step,
   viewOf,
   type YakKind,
-} from "@mighty/nyrongppong-engine";
+} from "@game/nyrongppong-engine";
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
 import { hwatuReviewDeals } from "@/hwatu/fair";

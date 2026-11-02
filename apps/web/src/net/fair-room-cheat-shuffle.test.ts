@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { presetRules } from "@mighty/engine";
-import { Party, PROOF_DEFER_MS } from "@mighty/fair-play";
+
+import { Party, PROOF_DEFER_MS } from "@game/fair-play";
+import { presetRules } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 import { playRounds, settleDevices, setup, until } from "./fair-room-fixture";
 import type { GuestRoom } from "./guest-room";

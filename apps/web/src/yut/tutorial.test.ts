@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { yutBeginnerBot } from "@mighty/yut-ai";
+import { yutBeginnerBot } from "@game/yut-ai";
 import {
   type Action,
   createYutScenario,
   type GameEvent,
   sideOf,
   viewOf,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";

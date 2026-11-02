@@ -6,7 +6,7 @@ import {
   equalBytes,
   type Ticket,
   ticketId,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";

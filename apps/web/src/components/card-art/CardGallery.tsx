@@ -1,6 +1,6 @@
 "use client";
 
-import { type Card, fullDeck } from "@mighty/engine";
+import { type Card, fullDeck } from "@game/mighty-engine";
 
 import { useCardTheme, useSettings } from "@/game/settings";
 import { cardLabel } from "@/game/terms";

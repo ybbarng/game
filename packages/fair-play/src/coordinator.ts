@@ -6,7 +6,7 @@ import {
   lastTrickIndex,
   type RuleSet,
   type Suit,
-} from "@mighty/engine";
+} from "@game/mighty-engine";
 
 import type { RoundDeal } from "./audit";
 import { cardText, redealOwners, slotOfToken, tokenDeal } from "./blind";

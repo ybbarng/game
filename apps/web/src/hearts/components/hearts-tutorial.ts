@@ -1,10 +1,10 @@
-import { heartsBeginnerBot } from "@mighty/hearts-ai";
+import { heartsBeginnerBot } from "@game/hearts-ai";
 import {
   type Action,
   createHeartsScenario,
   type GameEvent,
   type PlayerView,
-} from "@mighty/hearts-engine";
+} from "@game/hearts-engine";
 
 import type { TutorialKit } from "@/components/tutorial/kit";
 import { DEFAULT_BOT_NAMES } from "@/game/bot-names";

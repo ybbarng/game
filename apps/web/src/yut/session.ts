@@ -4,7 +4,7 @@ import type {
   YutRules,
   YutState,
   YutView,
-} from "@mighty/yut-engine";
+} from "@game/yut-engine";
 
 import { useChat } from "@/net/chat";
 import type { GuestRoom } from "@/net/guest-room";

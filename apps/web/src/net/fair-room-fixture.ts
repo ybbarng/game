@@ -1,7 +1,8 @@
 /** 멘탈 포커 온라인 대전 시험이 같이 쓰는 도우미. 시험이 오래 걸려 파일을 나눠 동시에 돌린다 */
-import { heuristicBot, intermediateBot } from "@mighty/ai";
-import type { Action, PlayerView, RuleSet } from "@mighty/engine";
-import { ManualClock, prepareGroup } from "@mighty/fair-play";
+
+import { ManualClock, prepareGroup } from "@game/fair-play";
+import { heuristicBot, intermediateBot } from "@game/mighty-ai";
+import type { Action, PlayerView, RuleSet } from "@game/mighty-engine";
 import { type FairSaved, GuestRoom } from "./guest-room";
 
 import { HostRoom, type IncidentNotice } from "./host-room";

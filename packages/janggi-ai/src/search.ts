@@ -12,7 +12,7 @@ import {
   pseudoTargets,
   type Side,
   xyOf,
-} from "@mighty/janggi-engine";
+} from "@game/janggi-engine";
 
 /** 궁을 잡는 수의 값. 깊이를 더해 빨리 잡는 쪽을 고른다 */
 export const MATE = 1_000_000;

@@ -9,7 +9,7 @@ import {
   type KeyRegistration,
   toBase64Url,
   verifyReceipt,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { GATE_MISSING_MESSAGE } from "./engine";

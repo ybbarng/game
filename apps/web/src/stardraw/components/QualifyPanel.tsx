@@ -10,7 +10,7 @@ import {
   qualPubPrefix,
   recoveryCode,
   toHex,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InviteQr } from "@/components/InviteQr";
 import { cn } from "@/lib/cn";

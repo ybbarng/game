@@ -1,4 +1,4 @@
-import { WINDOWS_RULES } from "@mighty/hearts-engine";
+import { WINDOWS_RULES } from "@game/hearts-engine";
 import { describe, expect, it } from "vitest";
 
 import type { HeartsBot } from "./knowledge";
@@ -50,7 +50,7 @@ function duel(
  * - 중수 vs 입문 5.5점 (3200판)
  * - 고수 vs 중수 2.4점 (300판)
  */
-describe("하트 실력 단계 사이의 세기 (pnpm --filter @mighty/hearts-ai bench)", () => {
+describe("하트 실력 단계 사이의 세기 (pnpm --filter @game/hearts-ai bench)", () => {
   it("중수는 입문보다 점수를 덜 받는다", () => {
     expect(duel(heartsNormalBot, heartsBeginnerBot, 100)).toBeGreaterThan(3);
   });

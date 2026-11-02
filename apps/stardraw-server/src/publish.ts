@@ -26,7 +26,7 @@ import {
   sortTickets,
   type Ticket,
   toBase64Url,
-} from "@mighty/stardraw-core";
+} from "@game/stardraw-core";
 
 /**
  * 공개 장부 파일(누구나 내려받아 처음부터 검사한다, docs/36 7절).
@@ -38,7 +38,7 @@ import {
  *                        다 찬 10·100회차 구간의 회차·봉인 파일 묶음(받는 요청 수를 줄인다). 한 번 쓰면 바꾸지 않는다
  *   light/000001.json    가벼운 기록 파일(회차 기록 + 요약, docs/36 11-30). 회차 파일에서 다시 만들 수 있다
  *   light/bundles/1000|100|10/000001.json  다 찬 구간의 가벼운 기록 묶음
- * 바이너리 형식은 규칙 패키지(@mighty/stardraw-core)가 정한다.
+ * 바이너리 형식은 규칙 패키지(@game/stardraw-core)가 정한다.
  */
 
 export const pad = (n: number) => String(n).padStart(6, "0");
