@@ -599,6 +599,7 @@ export function EnterView({
           services.ledger.schedule,
           closedView ? (writing ?? watching) : status.round,
         )}
+        guide={open}
       />
 
       {kept && kept.round < status.round && open && (
@@ -876,11 +877,14 @@ function EnterHeader({
   onBack,
   round,
   tag,
+  guide = false,
 }: {
   onBack: () => void;
   round?: string;
   /** 별을 고르는 화면: 제목 없이 오른쪽에 지금 예측하는 회차만(6칸 이름은 별 바구니라 회차가 따로 필요하다) */
   tag?: string;
+  /** 별을 고르는 화면에서 접수 중이면 할 일 한 줄(2026-11-02 사용자: 위에 무엇을 하는 화면인지 있어야 한다) */
+  guide?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-3">
@@ -899,6 +903,14 @@ function EnterHeader({
         )}
       </div>
       {round && <StardrawTitle />}
+      {guide && (
+        <p
+          className="text-center text-amber-100/90 break-keep"
+          data-enter-guide
+        >
+          아래 예측판에서 빛날 별 6개를 골라 주세요.
+        </p>
+      )}
     </header>
   );
 }

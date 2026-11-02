@@ -301,6 +301,9 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     page.getByRole("heading", { name: "하늘의 별 따기", level: 1 }),
   ).toHaveCount(0);
   await expect(page.locator("[data-enter-round]")).toHaveText("1회 예측");
+  await expect(page.locator("[data-enter-guide]")).toHaveText(
+    "아래 예측판에서 빛날 별 6개를 골라 주세요.",
+  );
   const slip = page.getByRole("region", { name: "별 바구니" });
   await expect(slip).toHaveAttribute("data-entry-slip", "2");
   await expect(slip.locator("[data-slip-star='7']")).toHaveAccessibleName(
