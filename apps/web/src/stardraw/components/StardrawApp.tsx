@@ -35,6 +35,7 @@ import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
 import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
 import type { KeyInfo, MyTicket } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
+import { BroadcastToast, watchRound } from "./BroadcastToast";
 import { BureauWelcome } from "./BureauWelcome";
 import { CheckLink } from "./CheckLink";
 import { DrawnNotice } from "./DrawnNotice";
@@ -66,6 +67,8 @@ import { WinNotice } from "./WinNotice";
 type View =
   | { name: "home" }
   | { name: "enter" }
+  /** 지금 회차(2026-11-02 사용자): 예측 중이면 답안지, 마감부터 관측이 끝날 때까지는 관측지 */
+  | { name: "now" }
   | { name: "receipt"; id: string }
   | { name: "draw"; round: number }
   | { name: "mine" }
@@ -82,6 +85,7 @@ type View =
 export type StardrawPage =
   | "home"
   | "enter"
+  | "now"
   | "mine"
   | "rounds"
   | "check"
@@ -90,6 +94,7 @@ export type StardrawPage =
 const PATH: Record<StardrawPage, string> = {
   home: "/stardraw",
   enter: "/stardraw/enter",
+  now: "/stardraw/now",
   mine: "/stardraw/mine",
   rounds: "/stardraw/rounds",
   check: "/stardraw/check",
@@ -103,6 +108,8 @@ function urlOf(v: View): string {
       return PATH.home;
     case "enter":
       return PATH.enter;
+    case "now":
+      return PATH.now;
     case "mine":
       return PATH.mine;
     case "records":
@@ -140,6 +147,7 @@ function viewOfLocation(): View {
 function viewOf(page: StardrawPage, hash: string): View {
   const h = hash.replace(/^#/, "");
   if (page === "enter") return { name: "enter" };
+  if (page === "now") return { name: "now" };
   if (page === "check") return { name: "link", token: h };
   if (page === "stats") return { name: "stats" };
   if (page === "mine") {
@@ -166,8 +174,6 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const [view, setView] = useState<View>(() =>
     typeof window === "undefined" ? viewOf(page, "") : viewOfLocation(),
   );
-  // 별을 고르다 화면이 당겨져 새로고침되지 않게(추첨 연출은 DrawFor가, 그 밖의 화면은 당겨서 새로고침이 된다)
-  useNoPullRefresh(view.name === "enter");
   const [mine, setMine] = useState<MyTicket[]>([]);
   /** 지갑을 한 번 읽었는지(그 전에는 영수증을 "찾을 수 없어요"로 보이지 않는다) */
   const [loaded, setLoaded] = useState(false);
@@ -186,6 +192,36 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   useEffect(() => {
     if (view.name !== "receipt") setPrinting(null);
   }, [view.name]);
+  /**
+   * 지금 회차 화면이 보이는 것: 들어올 때 상태로 정하고, 그 뒤로는 사람이 옮길 때만 바꾼다(답안지를 쓰는 중에
+   * 마감되어도 화면을 빼앗지 않고 방송 토스트로 알린다, 2026-11-02 사용자). 관측이 끝나면 관측지의 「다음 회차 응모하기」로
+   */
+  const [nowMode, setNowMode] = useState<
+    { kind: "predict" } | { kind: "observe"; round: number } | null
+  >(null);
+  const watching = services && status ? watchRound(services, status) : null;
+  useEffect(() => {
+    if (view.name !== "now") {
+      setNowMode(null);
+      return;
+    }
+    if (nowMode !== null || !services || !status) return;
+    setNowMode(
+      watching !== null
+        ? { kind: "observe", round: watching }
+        : { kind: "predict" },
+    );
+  }, [view.name, nowMode, services, status, watching]);
+  /** 답안지를 쓰는 화면(응모 페이지, 지금 회차의 예측) */
+  const picking =
+    view.name === "enter" ||
+    (view.name === "now" && nowMode?.kind === "predict");
+  /** 추첨을 보는 화면(추첨 페이지, 지금 회차의 관측지) */
+  const observing =
+    view.name === "draw" ||
+    (view.name === "now" && nowMode?.kind === "observe");
+  // 별을 고르다 화면이 당겨져 새로고침되지 않게(추첨 연출은 DrawFor가, 그 밖의 화면은 당겨서 새로고침이 된다)
+  useNoPullRefresh(picking);
   /**
    * 막 응모해 영수증이 인쇄되어 나오는 중인 응모권(한 번만 연출한다). 화면을 옮겨도 이 부품은 그대로라(go)
    * 처음 만들 때 한 번 읽던 값으로는 연출이 나오지 않았다. 응모가 끝날 때 정하고, 영수증을 떠나면 지운다
@@ -231,7 +267,12 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
 
   // 추첨(결과)을 열면 그 회차는 "열어 봄": 첫 화면 결과 봉투에서 빠진다. 뒤로가기로 나가도 그대로다
   // (예전에는 「돌아가기」로 닫을 때만 기록해, 열지 못하거나 뒤로가기로 나가면 첫 화면이 그 봉투에 갇혔다)
-  const drawRound = view.name === "draw" ? view.round : null;
+  const drawRound =
+    view.name === "draw"
+      ? view.round
+      : view.name === "now" && nowMode?.kind === "observe"
+        ? nowMode.round
+        : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 회차를 열 때 한 번
   useEffect(() => {
     if (!services || !loaded || drawRound === null) return;
@@ -260,17 +301,28 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
    * 맡는다. 화면 안에 뒤로 가기 단추를 두지 않는다(이름과 다른 곳으로 가고, 탭바·메뉴 줄과 겹쳤다, 2026-11-01 사용자 B안)
    */
   const goHome = () => go({ name: "home" });
+  /** 지금 회차로: 예측 중이면 답안지, 관측 중이면 관측지(들어올 때 정한다) */
+  const goNow = () => {
+    setNowMode(null);
+    go({ name: "now" });
+  };
+  /** 관측지로: 지금 관측할 회차면 지금 회차 화면의 관측지, 아니면 그 회차 추첨 화면 */
+  const goWatch = (round: number) => {
+    if (watching !== null && round === watching) {
+      if (view.name !== "now") go({ name: "now" });
+      setNowMode({ kind: "observe", round });
+    } else go({ name: "draw", round });
+  };
   /** 추첨을 아직 열어 보지 않은 내 회차(결과를 가린다, spoiler.ts) */
   const sealed: Sealed = services
     ? sealedFor(mine, opened, services.ledger)
     : NOTHING_SEALED;
   /** 알림 띠에 띄울 회차: 가렸고 띠를 닫지 않은 내 회차(추첨 화면에서는 띄우지 않는다) */
-  const noticeRounds =
-    view.name === "draw"
-      ? []
-      : [...new Set(mine.map((m) => m.ticket.round))]
-          .filter((r) => sealed(r) && !noticeClosed.has(r))
-          .sort((a, b) => a - b);
+  const noticeRounds = observing
+    ? []
+    : [...new Set(mine.map((m) => m.ticket.round))]
+        .filter((r) => sealed(r) && !noticeClosed.has(r))
+        .sort((a, b) => a - b);
   const receiptOf = (id: string) =>
     mine.find((m) => toHex(ticketId(m.ticket)) === id);
 
@@ -339,6 +391,11 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
       markSeen();
   }, [view.name, handover, newRecords.length]);
 
+  /** 지금 회차(예측)에 이미 낸 답안지: 답안지 대신 그 영수증을 그 자리에서 보인다(주소는 그대로) */
+  const enteredHere =
+    view.name === "now" && loaded && status?.phase === "open"
+      ? mine.find((m) => m.ticket.round === status.round)
+      : undefined;
   // 이미 응모한 회차의 응모판으로 들어오면(주소로 바로·뒤로가기) 빈 응모권 대신 그 영수증으로
   const enteredNow =
     view.name === "enter" && loaded && status?.phase === "open"
@@ -354,11 +411,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   // 마우스로 쓰는 넓은 화면은 위쪽 메뉴 줄(탭바 대신)이라 위에 자리를 둔다. 연출을 가리지 않아 추첨에도 둔다
   // (2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다)
   const wide = useWideScreen();
-  const showNav =
-    !!services &&
-    !!status &&
-    view.name !== "enter" &&
-    (view.name !== "draw" || wide);
+  const showNav = !!services && !!status && !picking && (!observing || wide);
   // 화면마다 속한 탭 하나: 영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차(2026-11-01 사용자 B안)
   const navActive: NavTarget | null =
     view.name === "home"
@@ -393,6 +446,14 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
         />
       )}
       <div className="sd-wide mx-auto flex max-w-xl flex-col gap-5">
+        {services && status && (
+          <BroadcastToast
+            services={services}
+            status={status}
+            hidden={observing}
+            onGo={goWatch}
+          />
+        )}
         {services && (
           <DrawnNotice
             rounds={noticeRounds}
@@ -404,15 +465,13 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }}
           />
         )}
-        {view.name !== "draw" &&
-          view.name !== "enter" &&
-          view.name !== "records" && (
-            <RecordNotice
-              count={newRecords.length}
-              onOpen={openRecords}
-              onClose={markSeen}
-            />
-          )}
+        {!observing && !picking && view.name !== "records" && (
+          <RecordNotice
+            count={newRecords.length}
+            onOpen={openRecords}
+            onClose={markSeen}
+          />
+        )}
         {handover && records && services && (
           <RecordHandover
             {...newestRecord(records, newRecords)}
@@ -429,6 +488,59 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           <p className="py-20 text-center text-white/60">
             하늘을 펴고 있습니다
           </p>
+        ) : view.name === "now" ? (
+          nowMode === null ? null : nowMode.kind === "observe" ? (
+            loaded && (
+              <DrawFor
+                services={services}
+                status={status}
+                round={nowMode.round}
+                mine={mine}
+                seen={opened.has(nowMode.round)}
+                onSkip={
+                  services.practice
+                    ? async () => {
+                        await services.practice?.skipToNextDraw();
+                        await refresh();
+                      }
+                    : null
+                }
+                onEnter={() => {
+                  // 결과를 봤으니 첫 화면 봉투에서 빠진다
+                  services.wallet.markOpened(nowMode.round);
+                  setOpened(services.wallet.openedRounds());
+                  setNowMode({ kind: "predict" });
+                }}
+                onHome={wide ? undefined : goHome}
+              />
+            )
+          ) : enteredHere ? (
+            <ReceiptView
+              services={services}
+              mine={enteredHere}
+              sealed={sealed(enteredHere.ticket.round)}
+              printing={false}
+              onDraw={goWatch}
+            />
+          ) : (
+            <EnterView
+              services={services}
+              status={status}
+              onWatchDraw={goWatch}
+              onBack={goHome}
+              onDone={(ticket, receivedAt) => {
+                const m = { ticket, receivedAt };
+                services.wallet.addTicket(m);
+                setMine(services.wallet.loadTickets());
+                track("game-start", { game: "stardraw", mode: "solo" });
+                void refresh();
+                // 응모 화면 기록을 영수증으로 바꾼다: 뒤로가기는 응모 전 화면으로
+                const id = toHex(ticketId(ticket));
+                setPrinting(id);
+                go({ name: "receipt", id }, true);
+              }}
+            />
+          )
         ) : view.name === "enter" ? (
           <EnterView
             services={services}
@@ -463,7 +575,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 mine={m}
                 sealed={sealed(m.ticket.round)}
                 printing={printing === view.id}
-                onDraw={(round) => go({ name: "draw", round })}
+                onDraw={goWatch}
               />
             );
           })()
@@ -556,11 +668,11 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             status={status}
             mine={mine}
             opened={opened}
-            onEnter={() => go({ name: "enter" })}
+            onEnter={goNow}
             onReceipt={(m) =>
               go({ name: "receipt", id: toHex(ticketId(m.ticket)) })
             }
-            onDraw={(round) => go({ name: "draw", round })}
+            onDraw={goWatch}
             onMine={() => go({ name: "mine" })}
             onRound={(round) => go({ name: "round", round })}
             onSkip={

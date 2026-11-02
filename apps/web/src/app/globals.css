@@ -1973,3 +1973,22 @@ button {
     }
   }
 }
+
+/* 우주국 방송 토스트: 위에서 내려오고, 손을 떼면 제자리로 돌아간다 */
+.sd-broadcast {
+  animation: sd-broadcast-in 0.7s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
+}
+@keyframes sd-broadcast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-broadcast {
+    animation: none;
+  }
+}

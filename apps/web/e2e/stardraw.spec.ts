@@ -1186,7 +1186,55 @@ test("응모 마감 뒤: 응모 화면은 관측지로 가기만", async ({ page
     fullPage: true,
   });
   await closed.getByRole("button", { name: "관측지로 가기" }).click();
-  await expect(page).toHaveURL(/#draw-\d+$/);
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+});
+
+/**
+ * 지금 회차(/stardraw/now, 2026-11-02 사용자): 예측 중이면 답안지, 마감부터 관측이 끝날 때까지는 관측지.
+ * 답안지를 쓰는 중에 마감되면 화면을 빼앗지 않고 우주국 방송 토스트를 띄운다(누르면 관측지, 밀면 사라진다)
+ */
+test("지금 회차: 예측 중엔 답안지, 마감되면 방송 토스트로 관측지", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await virtualAuthenticator(page);
+  await page.goto("/stardraw");
+  await page.getByRole("button", REGISTER).click();
+  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
+  await expect(page.getByRole("button", ENTER)).toBeVisible();
+  const toast = page.locator("[data-broadcast]");
+  await expect(toast).toHaveCount(0);
+  // 마감: 답안지는 그대로, 위에 방송
+  await page.clock.setSystemTime(new Date("2026-11-02T03:54:57Z"));
+  await expect(toast).toContainText("카노푸스 우주국");
+  await expect(toast).toContainText(
+    "곧 1회 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.",
+  );
+  await expect(page.locator("[data-enter-closed]")).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("stardraw-broadcast.png"),
+  });
+  // 옆으로 밀면 사라진다
+  const box = await toast.boundingBox();
+  if (!box) throw new Error("토스트 자리 없음");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 160, box.y + box.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  await expect(toast).toHaveCount(0);
+  // 관측 중에 지금 회차로 들어오면 곧바로 관측지
+  await page.goto("/stardraw/now");
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+  await expect(page.locator("[data-broadcast]")).toHaveCount(0);
+  // 다른 화면에서는 방송이 보이고, 누르면 관측지로
+  await page.goto("/stardraw/rounds");
+  await page.locator("[data-broadcast]").click();
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
 });
 
 /** 마감 직전: 위에 "마감까지 …" 안내가 뜨고, 연출을 줄여 마감 전에 접수된다 */
@@ -1237,8 +1285,12 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
   await bounceAndKeep(page);
-  await page.getByRole("button", { name: "관측지로 가기" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
+  await page
+    .getByRole("dialog", { name: "접수 반송" })
+    .getByRole("button", { name: "관측지로 가기" })
+    .click();
+  // 마감한 회차의 관측지는 지금 회차 화면 안에 있다
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
   // 1회 추첨(마감 5분 뒤 13:00)이 끝나 2회가 열리면 추첨 결과 아래 「다음 회차 응모」
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
