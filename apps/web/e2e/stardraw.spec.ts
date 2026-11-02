@@ -1235,8 +1235,9 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
   await expect(toast).toHaveCount(0);
   await fastForwardUntil(page, async () => (await toast.count()) > 0);
   await expect(toast).toContainText("카노푸스 우주국");
+  // 관측까지 5분 남은 마감 직후에는 「곧 시작」 대신 마감과 관측 시각(관측 15초 전 관측 안내부터 관측지로 부른다)
   await expect(toast).toContainText(
-    "곧 1회 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.",
+    /1회 예측을 마감했습니다\. 관측은 \d\d:00입니다\./,
   );
   await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
   await toast.click();
@@ -1279,6 +1280,10 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page.mouse.move(cx, cy + 40, { steps: 4 });
   await page.mouse.up();
   await expect(toast).toBeVisible();
+  // 제자리로 돌아온 뒤 다시 잡는다(돌아오는 0.3초 사이에는 처음 잰 자리에 토스트가 없을 수 있다)
+  await expect
+    .poll(async () => Math.round((await toast.boundingBox())?.y ?? -1))
+    .toBe(Math.round(box.y));
   await page.mouse.move(cx, cy);
   await page.mouse.down();
   await page.mouse.move(cx, cy + 120, { steps: 5 });

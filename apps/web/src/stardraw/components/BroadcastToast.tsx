@@ -1,10 +1,11 @@
 "use client";
 
-import { acceptFrom } from "@game/stardraw-core";
+import { acceptFrom, DRAND_DELAY, roundTimes } from "@game/stardraw-core";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { swipeResult } from "../broadcast-swipe";
+import { gateClock } from "../gate-status";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
 import type { Services } from "../services";
@@ -25,6 +26,25 @@ export function watchRound(
   if (status.phase === "waiting")
     return Math.min(status.nextDrawRound, status.round - 1);
   return null;
+}
+
+/**
+ * 방송 문구(우주국 방송이라 「~습니다」). 마감 직후부터 관측 안내 전(관측 15초 전, 실시간 관측이 잡히기 전)까지는
+ * 마감과 관측 시각을 말한다: 관측까지 5분이 남았는데 「곧 관측이 시작됩니다」는 일렀다(2026-11-03 운영 둘러보기).
+ * 그 뒤로는 관측지로 부른다(실시간 관측 중이면 「지금」)
+ */
+export function broadcastText(
+  services: Services,
+  status: LedgerStatus,
+  round: number,
+  live: boolean,
+): string {
+  const schedule = services.ledger.schedule;
+  const name = roundShort(schedule, round);
+  const drawAt = roundTimes(schedule, round).closesAt + DRAND_DELAY;
+  if (!live && status.now < drawAt)
+    return `${name} 예측을 마감했습니다. 관측은 ${gateClock(drawAt)}입니다.`;
+  return `${live ? "지금" : "곧"} ${name} 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.`;
 }
 
 /** 화면이 다 뜬 뒤 방송이 내려오기까지의 쉼(2026-11-02 사용자: 뜨자마자 덮으면 뒤의 화면을 못 본다) */
@@ -78,7 +98,7 @@ export function BroadcastToast({
   const live = liveDrawRound(services, status);
   const round = watchRound(services, status);
   if (!ready || hidden || round === null || dismissed.has(round)) return null;
-  const name = roundShort(services.ledger.schedule, round);
+  const text = broadcastText(services, status, round, live !== null);
   const dismiss = () => setDismissed((s) => new Set(s).add(round));
 
   const end = () => {
@@ -105,7 +125,7 @@ export function BroadcastToast({
       <button
         type="button"
         data-broadcast={round}
-        aria-label={`카노푸스 우주국 방송: ${live !== null ? "지금" : "곧"} ${name} 관측이 시작됩니다. 누르면 관측지로 이동합니다`}
+        aria-label={`카노푸스 우주국 방송: ${text} 누르면 관측지로 이동합니다`}
         onPointerDown={(e) => {
           start.current = { x: e.clientX, y: e.clientY };
           setDrag({ x: 0, y: 0 });
@@ -143,8 +163,7 @@ export function BroadcastToast({
           카노푸스 우주국
         </span>
         <span className="break-keep text-[15px] text-white/90 leading-snug">
-          {live !== null ? "지금" : "곧"} {name} 관측이 시작됩니다. 우주인
-          여러분은 관측지로 이동해 주시기 바랍니다.
+          {text}
         </span>
       </button>
     </div>
