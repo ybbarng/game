@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 
 import { roundShort } from "../round-label";
 import type { Services } from "../services";
-import { ballColor, SKY_STARS, tempWord } from "../sky";
+import { ballColor, SKY_STARS, starLight, tempWord } from "../sky";
 import { NOTHING_SEALED, type Sealed } from "../spoiler";
 import {
   computeStats,
@@ -229,12 +229,12 @@ function ObservedSky({ stats }: { stats: Stats }) {
                     <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
                     <stop
                       offset="0.35"
-                      stopColor={ballColor(s.star.n)}
+                      stopColor={starLight(s.star.n)}
                       stopOpacity="0.7"
                     />
                     <stop
                       offset="1"
-                      stopColor={ballColor(s.star.n)}
+                      stopColor={starLight(s.star.n)}
                       stopOpacity="0"
                     />
                   </radialGradient>
