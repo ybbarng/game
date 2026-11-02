@@ -10,6 +10,7 @@ import {
   toBase64Url,
   toHex,
 } from "@game/stardraw-core";
+import { useNativeArgon2 } from "./argon";
 import { loadConfig, originProblems } from "./config";
 import { StardrawServer } from "./engine";
 import { googleTokenVerifier } from "./google";
@@ -46,6 +47,9 @@ import { Store } from "./store";
 /** 하늘의 별 따기 회차 서버 시작(docs/36 11-5 3번) */
 async function main(): Promise<void> {
   const config = loadConfig();
+  // 앞단 확인(본 스레드)도 내장 Argon2로. 작업 스레드는 runPowWorker가 따로 바꾼다
+  if (!useNativeArgon2())
+    console.warn("이 Node에 내장 Argon2가 없어 hash-wasm으로 계산한다");
   const originIssues = originProblems(config.policy, config.devOrigins);
   if (originIssues.length > 0)
     throw new Error(

@@ -16,6 +16,37 @@ export interface PowParams {
 /** 공개 규칙의 값. 시험만 작은 값을 넣는다 */
 export const POW_PARAMS: PowParams = { memorySize: 16 * 1024, iterations: 1 };
 
+/** Argon2id 한 번(parallelism 1, 결과 32바이트). memorySize는 KiB */
+export type Argon2idFn = (input: {
+  password: Uint8Array;
+  salt: Uint8Array;
+  iterations: number;
+  memorySize: number;
+}) => Promise<Uint8Array>;
+
+/** 브라우저·검사기가 쓰는 기본 구현(hash-wasm) */
+export const hashWasmArgon2id: Argon2idFn = (a) =>
+  argon2id({
+    password: a.password,
+    salt: a.salt,
+    parallelism: 1,
+    iterations: a.iterations,
+    memorySize: a.memorySize,
+    hashLength: 32,
+    outputType: "binary",
+  });
+
+let argon2Impl: Argon2idFn = hashWasmArgon2id;
+
+/**
+ * 이 프로세스(스레드)의 Argon2id 구현을 바꾼다. 서버만 Node 내장(`crypto.argon2`)을 넣는다: hash-wasm은 부를 때마다
+ * WASM 메모리를 새로 잡아 GC 전까지 쌓였다(2026-11-03 bench/stress.ts). 같은 값인지는 서버 시험이 본다.
+ * null이면 기본으로 돌아간다
+ */
+export function useArgon2id(fn: Argon2idFn | null): void {
+  argon2Impl = fn ?? hashWasmArgon2id;
+}
+
 /** 평균 시도 수 → 목표값 */
 export function powTargetForTries(tries: number): number {
   if (!(tries >= 1)) throw new Error("평균 시도 수는 1 이상");
@@ -32,14 +63,11 @@ export async function powHash(
   nonce: number,
   params: PowParams = POW_PARAMS,
 ): Promise<Uint8Array> {
-  return argon2id({
+  return argon2Impl({
     password: new ByteWriter().bytes(content).u32(nonce).done(),
     salt: challenge,
-    parallelism: 1,
     iterations: params.iterations,
     memorySize: params.memorySize,
-    hashLength: 32,
-    outputType: "binary",
   });
 }
 

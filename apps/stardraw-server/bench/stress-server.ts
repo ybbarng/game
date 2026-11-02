@@ -29,6 +29,7 @@ import {
   fromBase64Url,
   toHex,
 } from "@game/stardraw-core";
+import { useNativeArgon2 } from "../src/argon";
 import { loadConfig } from "../src/config";
 import { StardrawServer } from "../src/engine";
 import { createHttpServer } from "../src/http";
@@ -60,6 +61,8 @@ class JumpClock implements Clock {
 
 async function main() {
   const config = loadConfig();
+  // 운영 main.ts와 같게(STRESS_ARGON=wasm이면 예전 hash-wasm으로 비교)
+  if (process.env.STRESS_ARGON !== "wasm") useNativeArgon2();
   const epoch = Number(process.env.STRESS_EPOCH);
   const length = Number(process.env.STRESS_ROUND_SECONDS ?? "1200");
   const schedule = benchSchedule(epoch, length);

@@ -6,6 +6,8 @@ import {
 } from "node:worker_threads";
 import { checkPow, type PowParams } from "@game/stardraw-core";
 
+import { useNativeArgon2 } from "./argon";
+
 /**
  * 작업 증명 확인(Argon2id 16MB)을 어디서 돌릴지. 시험과 개발은 같은 스레드에서(`inlinePowChecker`),
  * 운영은 작업 스레드에서(`WorkerPowChecker`) 돌린다(D2). Argon2(hash-wasm)는 계산하는 동안 그 스레드를 붙잡아,
@@ -109,6 +111,8 @@ export function isPowWorker(): boolean {
 }
 
 export function runPowWorker(): void {
+  // 작업 스레드마다 모듈이 따로라 여기서도 바꾼다(없으면 hash-wasm)
+  useNativeArgon2();
   parentPort?.on("message", (job: PowJob) => {
     void inlinePowChecker.check(job).then(
       (ok) => parentPort?.postMessage(ok),
