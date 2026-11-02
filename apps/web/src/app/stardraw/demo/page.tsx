@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { StardrawDemo } from "@/stardraw/components/StardrawDemo";
 
 export const metadata: Metadata = {
-  title: { absolute: "하늘의 별 따기 데모 · Stardraw" },
+  title: { absolute: "데모 · 하늘의 별 따기" },
   description:
     "하늘의 별 따기 예측부터 입상 확인까지 혼자 끝까지 해 보는 데모. 실제 게임과 따로 저장됩니다.",
   robots: { index: false },

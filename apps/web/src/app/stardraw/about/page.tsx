@@ -10,7 +10,7 @@ import { StoryTechWords } from "@/stardraw/components/StoryTechWords";
 import { RANK_RULE } from "@/stardraw/results";
 
 export const metadata: Metadata = {
-  title: { absolute: "하늘의 별 따기 설명 · Stardraw" },
+  title: { absolute: "설명 · 하늘의 별 따기" },
   description:
     "하늘의 별 따기 한 회차가 어떻게 돌아가는지, 입상은 어떻게 확인하고 우주국은 무엇을 보관하는지 설명합니다.",
 };
@@ -142,7 +142,8 @@ export default function StardrawAbout() {
             로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요? 카노푸스 우주국은
             서울 하늘에서 가장 밝은 별 45개 가운데 회차마다 6개가 문득 밝게
             빛난다는 것을 알아냈습니다. 왜 그런지는 우주국도 아직 모릅니다.
-            다음에 빛날 별 6개를 맞혀 보세요. 관측은 한 시간마다 열립니다.
+            다음에 빛날 별 6개를 맞혀 보세요. 관측은 한 시간마다 열리고, 지금
+            시험 기간에는 20분마다 열립니다.
           </p>
           <a
             href="/stardraw/learn"

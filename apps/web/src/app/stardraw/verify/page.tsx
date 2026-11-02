@@ -5,7 +5,7 @@ import { StoryTechWords } from "@/stardraw/components/StoryTechWords";
 import { LedgerCheck, VectorTable } from "@/stardraw/verify/VerifyTools";
 
 export const metadata: Metadata = {
-  title: { absolute: "하늘의 별 따기 검증하기 · Stardraw" },
+  title: { absolute: "검증하기 · 하늘의 별 따기" },
   description:
     "하늘의 별 따기 공개 장부를 직접 다시 계산하는 데 필요한 것: 장부 파일, 계산 규칙, 시험 값, 장부 전체 검사.",
 };
