@@ -778,7 +778,10 @@ export function Gate({
     <>
       {/* 첫 화면(등록 뒤)의 인사 줄과 같은 자리: 제목·소개 문구 아래, 정답 예시 하늘 위(2026-11-01 사용자) */}
       <StardrawTitle />
-      <BureauWelcome cadence={cadenceOf(s.times.entry.length)} />
+      <BureauWelcome
+        cadence={cadenceOf(s.times.entry.length)}
+        onRegister={() => void setup.create()}
+      />
       {/* 우주국 인사가 여섯 별 이야기를 이미 해서 소개 줄은 빼고 하늘만 */}
       <GameIntro />
       <p

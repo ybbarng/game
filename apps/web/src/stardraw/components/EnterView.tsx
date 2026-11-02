@@ -445,7 +445,10 @@ export function EnterView({
         />
         {/* 처음 온 사람은 첫 화면 입구와 같은 우주국 인사부터(데모는 예전처럼 짧게) */}
         {!demo && (
-          <BureauWelcome cadence={cadenceOf(status.times.entry.length)} />
+          <BureauWelcome
+            cadence={cadenceOf(status.times.entry.length)}
+            onRegister={() => void setup.create()}
+          />
         )}
         <KeySetup
           gate={!demo}

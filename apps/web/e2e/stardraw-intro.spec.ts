@@ -33,7 +33,8 @@ test("첫 화면 정답 예시: 별자리판과 번호 공(처음 온 사람도 
     "이번에 빛날 별 6개를 맞혀 보세요",
   );
   // 처음 온 사람: 우주국 인사가 여섯 별 이야기를 한다(회차 간격마다 45개 가운데 6개)
-  await expect(page.locator("[data-gate]")).toContainText(
+  await page.locator("[data-letter-envelope]").click();
+  await expect(page.locator("[data-letter]")).toContainText(
     /45개 가운데 (\d+분마다|매시간|\d+시간마다) 6개가 빛난다/,
   );
   await expect(intro.locator("canvas")).toBeVisible();

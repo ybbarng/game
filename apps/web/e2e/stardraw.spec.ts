@@ -201,9 +201,17 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await noSideScroll(page);
   // 처음 온 사람: 첫 화면이 입구다. 우주국 인사, 정답 예시, 지금 회차 한 줄, 우주인 등록·신분증 제시
   await expect(page.locator("[data-greeting]")).toHaveCount(0);
-  await expect(page.locator("[data-gate]")).toContainText(
+  // 우주국 인사는 봉투로 와서, 열면 편지지(시험은 움직임 줄이기라 그 자리에서 펼친다)
+  await expect(page.locator("[data-letter]")).toHaveCount(0);
+  await page.locator("[data-letter-envelope]").click();
+  await expect(page.locator("[data-letter]")).toContainText(
     "다음에 빛날 별을 가장 잘 예측하는 우주인을 찾습니다.",
   );
+  // 연출이 있으면 편지는 화면 전체 오버레이라 닫고 입구로 돌아온다
+  if (motion) {
+    await page.getByRole("button", { name: "닫기", exact: true }).click();
+    await expect(page.locator("[data-letter]")).toHaveCount(0);
+  }
   await expect(page.locator("[data-gate-round]")).toContainText(
     /응모를 (받고 있어요|마감했어요)/,
   );

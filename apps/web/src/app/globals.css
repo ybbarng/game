@@ -1431,6 +1431,22 @@ button {
   font-size: 14px;
 }
 
+/* 우주국 편지 봉투: 결과 봉투와 같은 종이, 봉인 자리에 붉은 관인 */
+.sd-letter-envelope::after {
+  content: "宇";
+  top: 46%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: #b91c1c;
+  color: #fde8e8;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 /* 별 세 개가 맞으면 초록불이 하늘 전체로 번진다 */
 .sd-green {
   position: absolute;
