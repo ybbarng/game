@@ -132,8 +132,10 @@ export function MyRecordsView({
           ))}
         </div>
         {total === 0 ? (
-          <p className="py-4 text-center text-sm text-white/55">
-            아직 입상한 예측서가 없습니다.
+          <p className="py-4 text-center text-sm text-white/55" data-win-empty>
+            {records.trialWins > 0
+              ? "시험 회차의 입상은 입상 기록에 세지 않습니다."
+              : "아직 입상한 예측서가 없습니다."}
           </p>
         ) : (
           <WinList

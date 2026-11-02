@@ -44,6 +44,11 @@ export interface MyRecords {
   certificates: WinEntry[];
   /** 기념 서류(훈장 포함, 받은 차례) */
   awards: EarnedAward[];
+  /**
+   * 세지 않은 시험 회차의 입상 수. 클로즈 베타처럼 모든 회차가 시험이면 방금 5등을 받고도 입상 기록이 비어 보여,
+   * 「아직 입상한 예측서가 없습니다.」 대신 까닭을 말하는 데 쓴다(2026-11-03 클로즈 베타 점검)
+   */
+  trialWins: number;
 }
 
 export interface MyRecordsInput {
@@ -72,9 +77,16 @@ export function myRecords(input: MyRecordsInput): MyRecords {
   const byRound = new Map<number, Ticket[]>();
   for (const t of input.mine)
     byRound.set(t.round, [...(byRound.get(t.round) ?? []), t]);
+  let trialWins = 0;
   for (const { record } of input.closed) {
-    if (record.void || !countsFor(input.schedule, record.round)) continue;
+    if (record.void) continue;
     if (input.sealed?.(record.round)) continue;
+    if (!countsFor(input.schedule, record.round)) {
+      for (const ticket of byRound.get(record.round) ?? [])
+        if (isMine(ticket) && rankOf(record, ticket.numbers) !== null)
+          trialWins++;
+      continue;
+    }
     for (const ticket of byRound.get(record.round) ?? []) {
       if (!isMine(ticket)) continue;
       const rank = rankOf(record, ticket.numbers);
@@ -113,6 +125,7 @@ export function myRecords(input: MyRecordsInput): MyRecords {
     stamps: wins.filter((w) => w.rank === 4).reverse(),
     certificates: wins.filter((w) => w.rank <= 3),
     awards,
+    trialWins,
   };
 }
 
