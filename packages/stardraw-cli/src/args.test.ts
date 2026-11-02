@@ -26,7 +26,12 @@ describe("명령줄", () => {
       out: "ev",
       interval: 30,
       once: true,
+      anchorRepo: undefined,
     });
+    expect(parseArgs(["watch", "--no-anchor"])).toMatchObject({
+      anchorRepo: null,
+    });
+    expect(() => parseArgs(["site", "--no-anchor"])).toThrow();
     expect(() => parseArgs(["watch", "--interval", "1"])).toThrow("5초 이상");
     expect(parseArgs(["--evidence", "ev"])).toMatchObject({ evidence: "ev" });
   });

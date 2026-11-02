@@ -33,6 +33,8 @@ export type Command =
       interval: number;
       /** 한 번만 묻고 끝낸다 */
       once: boolean;
+      /** 관측 전 사본을 찾을 앵커 저장소(기본 ybbarng/stardraw-ledger, null이면 보지 않음) */
+      anchorRepo: string | null | undefined;
     }
   | {
       kind: "site";
@@ -61,9 +63,13 @@ export const USAGE = `stardraw-verify — 하늘의 별 따기 독립 검사기
       --no-anchor              앵커 저장소를 보지 않음
       --evidence <폴더>         watch로 받아 둔 봉인 파일을 무효 회차의 증거로 넣음
       --json                   결과를 JSON으로
+      환경 변수 GITHUB_TOKEN이 있으면 관측 전 사본의 커밋 시각·활동 기록을 물을 때 함께 보냅니다
+      (인증 없이는 IP당 1시간 60번이라, 정식 회차가 많으면 일부가 「확인 못 함」이 됩니다)
 
-  stardraw-verify watch [서버 주소]          봉인 파일을 나오는 대로 받아 둠(관측 전 증거 모으기)
-      --out <폴더>              받아 둘 폴더(기본 stardraw-evidence)
+  stardraw-verify watch [서버 주소]          봉인 파일과 관측 전 사본을 나오는 대로 받아 둠(관측 전 증거 모으기)
+      --out <폴더>              받아 둘 폴더(기본 stardraw-evidence). 관측 전 사본은 early-seals/, 처음 본 시각은 seen.jsonl
+      --anchor-repo <소유자/이름>  관측 전 사본을 찾을 앵커 저장소(기본 ybbarng/stardraw-ledger)
+      --no-anchor              관측 전 사본은 받지 않음
       --interval <초>           몇 초마다 물을지(기본 15)
       --once                   한 번만 묻고 끝냄
 
@@ -143,11 +149,11 @@ export function parseArgs(argv: readonly string[]): Command {
         powSample = Number.POSITIVE_INFINITY;
         break;
       case "--anchor-repo":
-        only("ledger");
+        if (kind === "site") only("ledger");
         anchorRepo = value(a);
         break;
       case "--no-anchor":
-        only("ledger");
+        if (kind === "site") only("ledger");
         anchorRepo = null;
         break;
       case "--evidence":
@@ -213,6 +219,7 @@ export function parseArgs(argv: readonly string[]): Command {
       out,
       interval,
       once,
+      anchorRepo,
     };
   if (!download && !build)
     throw new Error("--no-download이면 --build로 비교할 폴더를 주세요");

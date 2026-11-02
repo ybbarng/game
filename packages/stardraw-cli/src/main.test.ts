@@ -48,6 +48,7 @@ async function run(argv: string[], fetch: typeof globalThis.fetch) {
     print: (t) => out.push(t),
     error: (t) => err.push(t),
     progress: null,
+    env: {},
   });
   return { code, out: out.join("\n"), err: err.join("\n") };
 }

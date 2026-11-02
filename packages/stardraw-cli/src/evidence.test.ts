@@ -1,9 +1,10 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { earlySealPath, ledgerId, type Schedule } from "@game/stardraw-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { folderEarlySealSource, watchOnce } from "./evidence";
+import { folderEarlySealSource, SEEN_FILE, watchOnce } from "./evidence";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -76,5 +77,75 @@ describe("추첨 전 봉인 증거 모으기(watch)", () => {
       0, 1793327710,
     ]);
     expect(await source(9)).toEqual([]);
+  });
+});
+
+describe("관측 전 사본도 받아 두기(docs/36 11-50)", () => {
+  const schedule: Schedule = {
+    epoch: 1793321700,
+    entries: [
+      {
+        fromRound: 1,
+        length: 3600,
+        closeMargin: 5,
+        powTarget: 2 ** 31,
+        registerPowTarget: 2 ** 31,
+        phase: "live",
+      },
+    ],
+  };
+  const id = ledgerId(schedule);
+  const REPO = "ybbarng/stardraw-ledger";
+
+  it("서버가 봉인한 다음 회차의 사본까지 main에서 찾아 받아 두고, 처음 본 시각을 남긴다", async () => {
+    const out = mkdtempSync(join(tmpdir(), "stardraw-ev-"));
+    dirs.push(out);
+    const copies = new Map<string, string>([
+      // 서버는 2회까지 봉인했고, 3회 사본은 공개 전에 먼저 올랐다
+      [earlySealPath(id, 2), seal(2, "bb")],
+      [earlySealPath(id, 3), seal(3, "cc")],
+    ]);
+    const fetchFn = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/ledger/genesis.json"))
+        return Response.json({ v: 1, schedule });
+      if (url.endsWith("/ledger/head.json"))
+        return Response.json({ sealed: 2 });
+      if (url.endsWith("/ledger/seals/000002.json"))
+        return new Response(seal(2, "bb"));
+      const prefix = `https://raw.githubusercontent.com/${REPO}/main/`;
+      const text = url.startsWith(prefix)
+        ? copies.get(url.slice(prefix.length))
+        : undefined;
+      return text === undefined
+        ? new Response("없음", { status: 404 })
+        : new Response(text);
+    }) as typeof fetch;
+    const now = () => new Date("2026-11-03T09:55:04Z");
+    expect(
+      await watchOnce("", out, fetchFn, { anchorRepo: REPO, now }),
+    ).toEqual([
+      "2회 봉인 받음(시각 인증 digicert)",
+      "2회 관측 전 사본 봄(main, 2026-11-03T09:55:04.000Z)",
+      "3회 관측 전 사본 봄(main, 2026-11-03T09:55:04.000Z)",
+    ]);
+    expect(readdirSync(join(out, "early-seals")).sort()).toEqual([
+      "000002.json",
+      "000003.json",
+    ]);
+    const seen = readFileSync(join(out, SEEN_FILE), "utf8")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
+    expect(seen.map((s) => [s.round, s.branch, s.seenAt])).toEqual([
+      [2, "main", "2026-11-03T09:55:04.000Z"],
+      [3, "main", "2026-11-03T09:55:04.000Z"],
+    ]);
+    // 한 번 본 사본은 다시 적지 않는다
+    expect(
+      await watchOnce("", out, fetchFn, { anchorRepo: REPO, now }),
+    ).toEqual([]);
+    // 증거 폴더로 읽을 때 사본 폴더는 섞이지 않는다
+    expect(await folderEarlySealSource(out)(3)).toEqual([]);
   });
 });

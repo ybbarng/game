@@ -6,6 +6,7 @@ import {
   loadPublicLedger,
   type PublicLedger,
   parseTicketQuery,
+  STARDRAW_ANCHOR_REPO,
   ticketIdFromHex,
 } from "@game/stardraw-core";
 
@@ -38,6 +39,8 @@ export interface Io {
   error: (text: string) => void;
   /** 받는 중 n/m 표시(터미널일 때만) */
   progress: ((label: string) => (done: number, total: number) => void) | null;
+  /** 환경 변수(GITHUB_TOKEN만 읽는다) */
+  env: Readonly<Record<string, string | undefined>>;
 }
 
 /** 30초 안에 응답이 없으면 끊는다(멈춘 연결에 매달리지 않게) */
@@ -54,6 +57,7 @@ const DEFAULT_IO: Io = {
         if (done === total) process.stderr.write("\n");
       }
     : null,
+  env: process.env,
 };
 
 async function runLedger(
@@ -103,6 +107,12 @@ async function runLedger(
     ...(cmd.evidence
       ? { earlySeals: folderEarlySealSource(cmd.evidence) }
       : {}),
+    // 정식 회차의 관측 전 사본 커밋 시각·활동 기록은 모든 회차를 본다(docs/36 11-50). 토큰은 어디에도 찍지 않는다
+    github: {
+      scope: "all",
+      fetch: io.fetch,
+      ...(io.env.GITHUB_TOKEN ? { token: io.env.GITHUB_TOKEN } : {}),
+    },
   });
   const failed =
     result.items.some((i) => i.status === "fail") ||
@@ -363,11 +373,14 @@ async function runWatch(
   io: Io,
 ): Promise<number> {
   io.print(
-    `${cmd.base}의 봉인 파일을 ${cmd.out}에 받아 둡니다(${cmd.interval}초마다)`,
+    `${cmd.base}의 봉인 파일과 관측 전 사본을 ${cmd.out}에 받아 둡니다(${cmd.interval}초마다)`,
   );
   for (;;) {
     try {
-      for (const line of await watchOnce(cmd.base, cmd.out, io.fetch))
+      for (const line of await watchOnce(cmd.base, cmd.out, io.fetch, {
+        anchorRepo:
+          cmd.anchorRepo === undefined ? STARDRAW_ANCHOR_REPO : cmd.anchorRepo,
+      }))
         io.print(line);
     } catch (err) {
       io.error(
