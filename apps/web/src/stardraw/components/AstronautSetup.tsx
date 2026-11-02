@@ -61,6 +61,8 @@ export function useAstronautSetup(
   const [working, setWorking] = useState<null | "create" | "recover">(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<Failure | null>(null);
+  /** 패스키를 못 쓰는 브라우저인데 화면에 입구 안내가 없다(관측지): 누른 단추 곁에 안내(`PasskeyBlockedNotice`)를 그린다 */
+  const [blockedHere, setBlockedHere] = useState(false);
   /** 방금 발급한 등록증 */
   const [issued, setIssued] = useState<KeyInfo | null>(null);
   /** 발급한 등록증을 주머니에 넣는 중(아래로 내려가며 사라진다) */
@@ -82,11 +84,13 @@ export function useAstronautSetup(
 
   /**
    * 패스키를 쓸 수 없는 브라우저(앱 안 브라우저 등)면 신청서·신분증 제시를 띄우지 않는다. 화면에 입구 안내(KeySetup)가
-   * 있으면 그리로 옮기고(같은 말이 두 번 나오지 않게), 없으면(관측지) 그 자리에 까닭을 적는다
+   * 있으면 그리로 옮기고(같은 말이 두 번 나오지 않게), 없으면(관측지) `blockedHere`로 그 화면이 누른 단추 곁에
+   * 같은 안내(바깥 브라우저로 열기·주소 복사)를 그리게 한다(2026-11-03 운영 둘러보기: 빨간 글 한 줄만 떨어져 떴다)
    */
   const blocked = (): boolean => {
     if (services.ns === DEMO_NS) return false;
     const why = passkeyBlocked(navigator.userAgent, passkeyApi());
+    setBlockedHere(false);
     if (!why) return false;
     const notice = document.querySelector("[data-key-setup]");
     if (notice)
@@ -94,7 +98,7 @@ export function useAstronautSetup(
         block: "center",
         behavior: reduced() ? "auto" : "smooth",
       });
-    else setError({ kind: "other", text: why });
+    else setBlockedHere(true);
     return true;
   };
 
@@ -208,6 +212,7 @@ export function useAstronautSetup(
     working,
     note,
     error,
+    blockedHere,
     issued,
     pocketing,
     id,

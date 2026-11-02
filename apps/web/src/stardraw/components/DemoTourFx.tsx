@@ -53,6 +53,7 @@ function stubSetup(
     working: null,
     note: null,
     error: null,
+    blockedHere: false,
     issued: null,
     pocketing: false,
     id: { present: null, run: async () => null, confirm: noop },

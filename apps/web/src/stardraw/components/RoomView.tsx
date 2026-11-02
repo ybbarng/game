@@ -57,6 +57,7 @@ import type { KeyInfo } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
 import { IdPresentView, useIdPresent } from "./IdPresent";
+import { PasskeyBlockedNotice } from "./InAppNotice";
 import { formatLeft, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 import { MenuItem } from "./StardrawNav";
@@ -1192,6 +1193,12 @@ export function RoomView({
               >
                 이미 등록했어요 · 신분증 제시
               </button>
+            )}
+            {/* 패스키를 못 쓰는 브라우저(카카오톡 등): 누른 단추 바로 아래에 바깥 브라우저로 여는 안내(입구와 같은 조각) */}
+            {seat.join && setup.blockedHere && (
+              <div className="w-full max-w-xs" data-room-blocked>
+                <PasskeyBlockedNotice />
+              </div>
             )}
           </div>
         ))}

@@ -70,3 +70,36 @@ test("관측 방송: 관측 1분이 지나면 홈은 다시 홈이고, 시간표
     "open",
   );
 });
+
+test.describe("카카오톡 안 브라우저", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+  });
+
+  test("관측 안내의 「우주인 등록」은 신청서 대신 Safari로 여는 안내로", async ({
+    page,
+  }, info) => {
+    test.skip(info.project.name !== "phone-portrait", "휴대폰 세로로");
+    await page.clock.setSystemTime(new Date("2026-11-02T04:00:20Z"));
+    await page.goto("/stardraw");
+    await expect(page).toHaveURL(/\/stardraw\/now$/, { timeout: 30_000 });
+    await page
+      .getByRole("complementary", { name: "관측 안내" })
+      .getByRole("button", { name: "우주인 등록" })
+      .click();
+    const note = page.locator("[data-key-setup]").getByRole("note");
+    await expect(note).toContainText(
+      "카카오톡 안에서는 패스키를 쓸 수 없어요. Safari로 열어 주세요.",
+    );
+    await expect(
+      note.getByRole("link", { name: "Safari로 열기" }),
+    ).toBeVisible();
+    await expect(note.getByRole("button", { name: "주소 복사" })).toBeVisible();
+    await expect(page.locator("[data-register-form]")).toHaveCount(0);
+    await note.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath("stardraw-onair-kakao.png"),
+    });
+  });
+});

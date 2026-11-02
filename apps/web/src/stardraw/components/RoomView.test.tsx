@@ -16,7 +16,15 @@ import {
   render,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { MARKS_DELAY_MS } from "../after-observe";
 import { drawOrder } from "../results";
@@ -500,5 +508,76 @@ describe("관측이 끝난 뒤", () => {
         .querySelector("[data-room-input]")
         ?.getAttribute("placeholder"),
     ).toBe("말하기");
+  });
+});
+
+/*
+ * 앱 안 브라우저(2026-11-03 운영 둘러보기): 카카오톡에서 관측지의 「우주인 등록하고 언덕에 오르기」를 누르면 빨간 글 한 줄만
+ * 떨어져 떴다. 누른 단추 바로 아래에 입구와 같은 안내(바깥 브라우저로 열기·메뉴 안내·주소 복사)가 나오고 신청서는 뜨지 않는다
+ */
+describe("관측지의 앱 안 브라우저", () => {
+  const kakao = (ua: string) =>
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue(ua);
+  // 앞 시험이 남긴 대화 표(언덕에 오른 상태)를 지운다
+  beforeEach(() => sessionStorage.clear());
+
+  it.each([
+    [
+      "아이폰",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+      "Safari로 열기",
+      "공유 단추",
+    ],
+    [
+      "안드로이드",
+      "Mozilla/5.0 (Linux; Android 14; SM-S921N Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.6723.102 Mobile Safari/537.36 KAKAOTALK/25.9.1 (INAPP)",
+      "다른 브라우저로 열기",
+      "⋮ 단추",
+    ],
+  ])(
+    "%s 카카오톡: 누른 단추 아래에 바깥 브라우저 안내",
+    async (_name, ua, label, steps) => {
+      kakao(ua);
+      const view = renderRoom(1);
+      const join = await view.findByRole("button", {
+        name: "우주인 등록하고 언덕에 오르기",
+      });
+      fireEvent.click(join);
+      const notice = await waitFor(() => {
+        const n = view.container.querySelector("[data-room-blocked]");
+        expect(n).not.toBeNull();
+        return n as HTMLElement;
+      });
+      // 누른 단추와 같은 칸(언덕 아래 내 자리) 안
+      expect(notice.parentElement).toBe(join.parentElement);
+      expect(notice.textContent).toContain(
+        "카카오톡 안에서는 패스키를 쓸 수 없어요.",
+      );
+      const open = notice.querySelector("[data-open-outside]");
+      expect(open?.textContent).toBe(label);
+      expect(open?.getAttribute("href")).toMatch(
+        /^kakaotalk:\/\/web\/openExternal\?url=/,
+      );
+      expect(notice.textContent).toContain(steps);
+      expect(notice.textContent).toContain("주소 복사");
+      expect(view.container.querySelector("[data-register-form]")).toBeNull();
+    },
+  );
+
+  it("신분증 제시를 눌러도 같은 안내", async () => {
+    kakao(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+    );
+    const view = renderRoom(1);
+    fireEvent.click(
+      await view.findByRole("button", {
+        name: "이미 등록했어요 · 신분증 제시",
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-blocked] [data-open-outside]"),
+      ).not.toBeNull();
+    });
   });
 });
