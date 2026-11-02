@@ -575,6 +575,28 @@ test("패스키를 못 쓰는 브라우저와 앱 안 브라우저는 응모 대
   await expect(inApp.getByRole("note")).toContainText("공유 단추");
   await expect(inApp.getByRole("button", { name: "주소 복사" })).toBeVisible();
   await kakao.close();
+
+  // 카카오톡에서 처음 온 사람이 편지의 「우주인 등록」을 눌러도 신청서를 띄우지 않고 입구 안내로 보낸다(막다른 길이었다)
+  const kakaoLetter = await browser.newContext({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+    reducedMotion: "no-preference",
+  });
+  const first = await kakaoLetter.newPage();
+  await first.goto("/stardraw");
+  await first
+    .locator("[data-letter-stage='arrive']")
+    .click({ force: true, timeout: 15_000 });
+  await first
+    .getByRole("dialog", { name: "카노푸스 우주국 편지" })
+    .getByRole("button", { name: "우주인 등록", exact: true })
+    .click();
+  await expect(first.getByRole("note")).toBeInViewport();
+  await expect(first.getByRole("note")).toContainText(
+    "카카오톡 안에서는 패스키를 쓸 수 없어요",
+  );
+  await expect(first.locator("[data-register-form]")).toHaveCount(0);
+  await kakaoLetter.close();
 });
 
 test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고침은 그 화면에 머문다", async ({

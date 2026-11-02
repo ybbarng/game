@@ -124,3 +124,17 @@ export function passkeyFailText(err: unknown, what: string): string {
 
 /** 흉내 창(데모)을 닫았을 때의 오류 문구(passkeyFailText가 취소로 읽는다) */
 export const DEMO_CANCEL = "확인을 취소했습니다";
+
+/**
+ * 이 브라우저에서 패스키를 쓸 수 없으면 그 까닭과 할 일 한 문장, 쓸 수 있으면 null(입구 안내 KeySetup과 같은 말).
+ * 편지·관측지의 「우주인 등록」「신분증 제시」가 신청서를 띄우기 전에 본다(2026-11-03 클로즈 베타 점검: 카카오톡에서
+ * 편지의 「우주인 등록」을 누르면 패스키를 못 쓰는데도 신청서가 떠 막다른 길이었다)
+ */
+export function passkeyBlocked(ua: string, api: boolean): string | null {
+  const app = inAppBrowser(ua);
+  if (app)
+    return `${app} 안에서는 패스키를 쓸 수 없어요. ${browserName(ua)} 열어 주세요.`;
+  if (!api)
+    return "이 브라우저는 패스키를 지원하지 않아요. 최신 Safari·Chrome으로 열어 주세요.";
+  return null;
+}

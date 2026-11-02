@@ -7,9 +7,14 @@ import { errorText } from "../errors";
 import { FX } from "../fx-timing";
 import { greetNow } from "../greeting";
 import { originGreeting } from "../origin-greeting";
-import { type PasskeyProblem, passkeyProblem } from "../passkey-env";
+import {
+  type PasskeyProblem,
+  passkeyApi,
+  passkeyBlocked,
+  passkeyProblem,
+} from "../passkey-env";
 import { ensureRegistered } from "../registrar";
-import type { Services } from "../services";
+import { DEMO_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 import { AstronautPanel } from "./AstronautPanel";
 import { IdPresentView, useIdPresent } from "./IdPresent";
@@ -75,10 +80,29 @@ export function useAstronautSetup(
    */
   const makeKey = () => services.wallet.createPasskey();
 
+  /**
+   * 패스키를 쓸 수 없는 브라우저(앱 안 브라우저 등)면 신청서·신분증 제시를 띄우지 않는다. 화면에 입구 안내(KeySetup)가
+   * 있으면 그리로 옮기고(같은 말이 두 번 나오지 않게), 없으면(관측지) 그 자리에 까닭을 적는다
+   */
+  const blocked = (): boolean => {
+    if (services.ns === DEMO_NS) return false;
+    const why = passkeyBlocked(navigator.userAgent, passkeyApi());
+    if (!why) return false;
+    const notice = document.querySelector("[data-key-setup]");
+    if (notice)
+      notice.scrollIntoView({
+        block: "center",
+        behavior: reduced() ? "auto" : "smooth",
+      });
+    else setError({ kind: "other", text: why });
+    return true;
+  };
+
   /** 우주인 등록: 연출이 있으면 신청서부터(패스키는 신청서를 낼 때), 움직임 줄이기면 바로 패스키 만들기 */
   const create = async () => {
     setNote(null);
     setError(null);
+    if (blocked()) return;
     if (!reduced()) {
       setApply("text");
       await wait(FX.read);
@@ -124,9 +148,10 @@ export function useAstronautSetup(
 
   /** 신분증 제시: 다른 기기에서 만든(따라온) 패스키를 찾아 장부의 등록을 확인한다 */
   const recover = async () => {
-    setWorking("recover");
     setNote(null);
     setError(null);
+    if (blocked()) return;
+    setWorking("recover");
     try {
       const found = await id.run(
         async () => {

@@ -6,6 +6,7 @@ import {
   DEMO_CANCEL,
   inAppBrowser,
   openOutside,
+  passkeyBlocked,
   passkeyFailText,
   passkeyProblem,
   unlockWith,
@@ -55,6 +56,16 @@ describe("패스키 환경", () => {
     expect(browserName(IPHONE_KAKAO)).toBe("Safari로");
     expect(browserName(ANDROID_CHROME)).toBe("Chrome 같은 브라우저로");
     expect(browserName(WINDOWS_EDGE)).toBe("Safari나 Chrome으로");
+  });
+
+  it("패스키를 못 쓰는 브라우저면 까닭과 할 일 한 문장, 쓸 수 있으면 null", () => {
+    expect(passkeyBlocked(IPHONE_KAKAO, true)).toBe(
+      "카카오톡 안에서는 패스키를 쓸 수 없어요. Safari로 열어 주세요.",
+    );
+    expect(passkeyBlocked(ANDROID_CHROME, false)).toContain(
+      "이 브라우저는 패스키를 지원하지 않아요",
+    );
+    expect(passkeyBlocked(ANDROID_CHROME, true)).toBeNull();
   });
 
   it("기기에 맞는 잠금 이름을 붙이고, 이 기기 잠금을 못 쓰면 패스키로 한다", () => {
