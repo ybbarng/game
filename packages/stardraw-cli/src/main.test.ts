@@ -119,9 +119,9 @@ describe("장부 검사(받아 둔 실제 장부)", () => {
       fakeFetch(),
     );
     expect(out).toContain(
-      "못 찾음  1-abcd ef01 2345: 1회차 응모권 0장 가운데 이 일련번호가 없습니다",
+      "못 찾음  1-abcd ef01 2345: 1회차 예측서 0장 가운데 이 일련번호가 없습니다",
     );
-    expect(out).toContain("확인하려던 응모권을 장부에서 찾지 못했습니다");
+    expect(out).toContain("확인하려던 예측서를 장부에서 찾지 못했습니다");
     expect(code).toBe(1);
   });
 

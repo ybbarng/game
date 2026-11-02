@@ -61,7 +61,7 @@ export function roundLines(
     const problems = result.problems.filter((p) => p.round === round);
     const skipped = result.skipped.filter((s) => s.startsWith(`${round}회차:`));
     lines.push(
-      `${problems.length > 0 ? "실패" : "통과"}  ${label}(사슬 ${round}) 마감 ${kst(closesAt)} · 응모 ${count}장 · ${draw}`,
+      `${problems.length > 0 ? "실패" : "통과"}  ${label}(사슬 ${round}) 마감 ${kst(closesAt)} · 예측서 ${count}장 · ${draw}`,
     );
     for (const p of problems) lines.push(`        문제: ${p.message}`);
     for (const s of skipped)
@@ -84,7 +84,7 @@ export function ledgerReport(
   const out: string[] = [];
   out.push(`하늘의 별 따기 공개 장부 검사 · ${base}`);
   out.push(
-    `${result.mode === "trial" ? "시험" : "정식"} 장부 · 닫힌 회차 ${result.rounds}개 · 응모권 ${result.tickets}장 · 열쇠 등록 ${result.registrations}개 · 작업 증명 계산 ${result.powChecked}장`,
+    `${result.mode === "trial" ? "시험" : "정식"} 장부 · 닫힌 회차 ${result.rounds}개 · 예측서 ${result.tickets}장 · 열쇠 등록 ${result.registrations}개 · 작업 증명 계산 ${result.powChecked}장`,
   );
   out.push(...notes);
   out.push("");
@@ -105,7 +105,7 @@ export function ledgerReport(
   out.push(...qualificationLines(result));
   if (findings.length > 0) {
     out.push("");
-    out.push("[내 응모권]");
+    out.push("[내 예측서]");
     for (const { query, finding } of findings)
       out.push(...ticketLines(query, finding, result.ledger));
   }
@@ -115,7 +115,7 @@ export function ledgerReport(
     failed
       ? "결과: 규칙에 어긋나는 곳이 있습니다"
       : ticketFailed
-        ? "결과: 장부는 모든 확인을 통과했지만, 확인하려던 응모권을 장부에서 찾지 못했습니다"
+        ? "결과: 장부는 모든 확인을 통과했지만, 확인하려던 예측서를 장부에서 찾지 못했습니다"
         : "결과: 모든 확인을 통과했습니다(건너뜀은 확인할 수단이 없거나 표본 밖인 것)",
   );
   // 주의(예: 무효 회차)는 통과를 바꾸지 않지만 결과 줄에 묻히지 않게 한 번 더 적는다
@@ -135,16 +135,16 @@ export function ticketLines(
   const record = ledger.records[finding.round - 1];
   const drawAt = record ? kst(drandTime(record.drandRound)) : "";
   const result = finding.void
-    ? "무효 회차라 추첨하지 않았습니다"
+    ? "무효 회차라 결과를 정하지 않았습니다"
     : finding.rank
       ? `${finding.rank}등 당첨`
       : "낙첨";
   return [
-    `${finding.included ? "찾음  " : "실패  "}  ${label}(사슬 ${finding.round}) 응모권 ${finding.id}`,
-    `        고른 번호 ${finding.ticket.numbers.join(" ")} · 추첨 ${drawAt} · ${result}`,
+    `${finding.included ? "찾음  " : "실패  "}  ${label}(사슬 ${finding.round}) 예측서 ${finding.id}`,
+    `        고른 번호 ${finding.ticket.numbers.join(" ")} · 관측 ${drawAt} · ${result}`,
     finding.included
-      ? "        머클 증명: 그 회차 기록의 응모권 루트에 들어 있습니다(작업 증명도 전부 계산했습니다)"
-      : "        머클 증명: 기록의 응모권 루트와 맞지 않습니다",
+      ? "        머클 증명: 그 회차 기록의 예측서 루트에 들어 있습니다(작업 증명도 전부 계산했습니다)"
+      : "        머클 증명: 기록의 예측서 루트와 맞지 않습니다",
   ];
 }
 

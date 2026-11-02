@@ -126,7 +126,7 @@ export function compareLedgers(a: PublicLedger, b: PublicLedger): string[] {
         (b.tickets[i] ?? []).map(encodeTicket),
       )
     )
-      out.push(`${round}회차: 응모권 목록이 다릅니다`);
+      out.push(`${round}회차: 예측서 목록이 다릅니다`);
     if (
       !same(
         (a.registrations[i] ?? []).map(encodeRegistration),

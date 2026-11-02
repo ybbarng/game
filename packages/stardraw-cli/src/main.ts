@@ -64,7 +64,7 @@ async function runLedger(
     const q = parseTicketQuery(text);
     if (!q)
       throw new Error(
-        `응모권을 읽지 못했습니다: ${text} (예: 12-abcd ef01 2345)`,
+        `예측서를 읽지 못했습니다: ${text} (예: 12-abcd ef01 2345)`,
       );
     return { text, q };
   });
