@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 
+import { winnersLine } from "../after-observe";
 import { celebrationPlan } from "../celebrate";
 import { drawGlows } from "../hdr-glow";
 import { drawOrder, myRank } from "../results";
@@ -159,6 +160,7 @@ export function DrawView({
   const main = frame.fixed.slice(0, 6);
   const bonus = frame.fixed.length >= 7 ? (frame.fixed[6] ?? null) : null;
   const mine = ticket?.numbers ?? [];
+  const winners = winnersLine(record);
 
   // 당첨 축하: 결과가 나오면 맞은 내 별(보너스 포함)로 나만의 별자리, 3등부터 별똥별, 1~3등은 당첨 직인
   // biome-ignore lint/correctness/useExhaustiveDependencies: 결과·응모권이 정해지면 바뀌지 않는다
@@ -367,6 +369,15 @@ export function DrawView({
               ) : (
                 <span className="text-sm text-white/75">
                   이 회차에는 예측하지 않았습니다
+                </span>
+              )}
+              {/* 이 회차의 등수별 당첨 인원(예측하지 않은 사람도 볼거리가 있게, docs/36 11-44) */}
+              {winners && (
+                <span
+                  data-draw-winners
+                  className="mt-2 w-full border-white/10 border-t pt-2 text-white/60 text-xs tabular-nums"
+                >
+                  {winners}
                 </span>
               )}
             </div>
