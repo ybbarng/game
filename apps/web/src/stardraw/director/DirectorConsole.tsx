@@ -15,7 +15,7 @@ import {
   STAMP_SCHEME_BLS,
   sealFingerprint,
 } from "@game/stardraw-core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -771,6 +771,8 @@ function AffiliationForm({
   const [name, setName] = useState("");
   const [badge, setBadge] = useState<Badge>(2);
   const [method, setMethod] = useState("기관 계정");
+  // 칸마다 라벨을 id로 잇는다(감싼 라벨만으로는 이름을 못 읽는 도구가 있었다, 2026-11-03 검토)
+  const id = useId();
   const fields = (): Fields => ({
     name: name.normalize("NFC").trim(),
     badge,
@@ -789,18 +791,20 @@ function AffiliationForm({
         단계까지 이어집니다.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1 text-sm">
-          이름
+        <label htmlFor={`${id}-name`} className="flex flex-col gap-1 text-sm">
+          소속 이름
           <input
+            id={`${id}-name`}
             value={name}
             maxLength={20}
             onChange={(e) => setName(e.target.value)}
             className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label htmlFor={`${id}-badge`} className="flex flex-col gap-1 text-sm">
           배지
           <select
+            id={`${id}-badge`}
             value={badge}
             onChange={(e) => setBadge(Number(e.target.value) as Badge)}
             className="rounded-lg border border-white/20 bg-black/30 px-3 py-2"
@@ -812,9 +816,10 @@ function AffiliationForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label htmlFor={`${id}-method`} className="flex flex-col gap-1 text-sm">
           신원 확인 방법
           <input
+            id={`${id}-method`}
             value={method}
             maxLength={20}
             onChange={(e) => setMethod(e.target.value)}
