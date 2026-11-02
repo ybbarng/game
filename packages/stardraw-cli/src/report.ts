@@ -51,8 +51,8 @@ export function roundLines(
     const count = ledger.tickets[i]?.length ?? 0;
     const winners = RANKS.map((r) => record.winners[r].length);
     const draw = record.void
-      ? "무효 회차(당첨 없음)"
-      : `당첨 번호 ${record.numbers.join(" ")} + ${record.bonus} · 당첨 ${
+      ? "무효 회차(입상자 없음)"
+      : `빛난 별 ${record.numbers.join(" ")} + ${record.bonus} · 입상 ${
           winners
             .map((n, k) => (n > 0 ? `${k + 1}등 ${n}` : ""))
             .filter(Boolean)
@@ -137,8 +137,8 @@ export function ticketLines(
   const result = finding.void
     ? "무효 회차라 결과를 정하지 않았습니다"
     : finding.rank
-      ? `${finding.rank}등 당첨`
-      : "낙첨";
+      ? `${finding.rank}등`
+      : "등수 밖";
   return [
     `${finding.included ? "찾음  " : "실패  "}  ${label}(사슬 ${finding.round}) 예측서 ${finding.id}`,
     `        고른 번호 ${finding.ticket.numbers.join(" ")} · 관측 ${drawAt} · ${result}`,

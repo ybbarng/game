@@ -209,7 +209,7 @@ export default function StardrawBureauPage() {
 
         <Section title="원칙">
           <ol className="flex list-decimal flex-col gap-2 pl-5">
-            <li>당첨 번호는 하늘이 정하고, 우주국은 기록할 뿐입니다.</li>
+            <li>빛날 별은 하늘이 정하고, 우주국은 기록할 뿐입니다.</li>
             <li>
               우주국도 우주인이 누구인지 모릅니다. 등록증과 소속은 이름이나
               이메일과 이어지지 않습니다.

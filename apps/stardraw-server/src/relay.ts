@@ -156,7 +156,7 @@ export class Relay {
       throw new EntryError("확인 링크 형식이 맞지 않습니다");
     }
     const ticket = this.winningTicket(invite.round, invite.ticketId);
-    if (!ticket) throw new EntryError("그 회차의 당첨 예측서가 아닙니다", 404);
+    if (!ticket) throw new EntryError("그 회차의 입상 예측서가 아닙니다", 404);
     const now = this.clock.now();
     const ticketHex = toHex(invite.ticketId);
     this.store.relayPrune(now);
@@ -208,7 +208,7 @@ export class Relay {
     if (!row || row.expiresAt <= this.clock.now()) {
       this.counters.add("bad-link", day, prefix);
       throw new EntryError(
-        "없는 링크이거나 기한(7일)이 지났습니다. 당첨자에게 새 링크를 받으세요",
+        "없는 링크이거나 기한(7일)이 지났습니다. 입상자에게 새 링크를 받으세요",
         404,
       );
     }
@@ -247,7 +247,7 @@ export class Relay {
     if (row.requestId) throw usedLink();
     const id = fromHex(row.ticketHex);
     if (!this.winningTicket(row.round, id))
-      throw new EntryError("그 회차의 당첨 예측서가 아닙니다", 404);
+      throw new EntryError("그 회차의 입상 예측서가 아닙니다", 404);
     let requester = CHECK_LINK_REQUESTER;
     if (input.director) {
       const d = input.director;
@@ -415,7 +415,7 @@ export class Relay {
 
 function usedLink(): EntryError {
   return new EntryError(
-    "이미 사용된 링크입니다. 당첨자에게 새 링크를 받으세요",
+    "이미 사용된 링크입니다. 입상자에게 새 링크를 받으세요",
     409,
   );
 }

@@ -200,7 +200,7 @@ export async function checkRound(
       draw.bonus !== record.bonus
     )
       fail(
-        `당첨 번호가 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
+        `빛난 별이 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
       );
     for (const rank of RANKS) {
       const expected = tickets.flatMap((t, k) =>
@@ -211,10 +211,10 @@ export async function checkRound(
         expected.length !== listed.length ||
         expected.some((id, i) => !equalBytes(id, listed[i] as Uint8Array))
       )
-        fail(`${rank}등 당첨자 목록이 규칙대로가 아니다`);
+        fail(`${rank}등 입상자 목록이 규칙대로가 아니다`);
     }
   } else if (RANKS.some((rank) => record.winners[rank].length > 0)) {
-    fail("무효 회차에 당첨자가 있다");
+    fail("무효 회차에 입상자가 있다");
   }
 
   // 5. 작업 증명: 내 것과 1~3등은 전부, 나머지는 표본(검사기와 같은 표본)

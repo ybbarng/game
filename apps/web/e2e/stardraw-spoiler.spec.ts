@@ -64,8 +64,8 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   await page.goto("/stardraw/mine");
   const mine = page.getByRole("region", { name: "내 예측" });
   await expect(mine.locator("[data-draw-first='1']")).toBeVisible();
-  await expect(mine).not.toContainText(/당첨|낙첨/);
-  await expect(page.getByRole("region", { name: "당첨 안내" })).toHaveCount(0);
+  await expect(mine).not.toContainText(/[1-5]등|등수 밖/);
+  await expect(page.getByRole("region", { name: "입상 안내" })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("stardraw-spoiler-mine.png") });
 
   // 지난 회차 목록: 그 회차 줄에 번호와 당첨 수가 없다
@@ -73,7 +73,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   const row = page.locator("[data-round='1']");
   await expect(row.locator("[data-draw-first='1']")).toBeVisible();
   await expect(row.locator("[data-ball]")).toHaveCount(0);
-  await expect(row).not.toContainText("당첨");
+  await expect(row).not.toContainText("입상");
   await page.screenshot({
     path: info.outputPath("stardraw-spoiler-rounds.png"),
   });
@@ -107,7 +107,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
     fullPage: true,
   });
   await page.goto("/stardraw/mine");
-  await expect(mine).toContainText(/당첨|낙첨/);
+  await expect(mine).toContainText(/[1-5]등|등수 밖/);
   await page.goto("/stardraw/rounds");
   await expect(row.locator("[data-ball]")).toHaveCount(7);
   await page.goto("/stardraw/rounds#1");

@@ -191,7 +191,7 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
       await makeChallengeClaim(winner, ticket, "ABCDEFGHJK", "Brice"),
     );
     expect(() => decodeClaim("hello")).toThrow(
-      "하늘의 별 따기 당첨 증명이 아니다",
+      "하늘의 별 따기 입상 증명이 아니다",
     );
     const body = fromBase64Url(text.slice(CLAIM_PREFIX.length));
     expect(() =>

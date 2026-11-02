@@ -45,7 +45,7 @@ export type InvitePeek =
   | { state: "missing" };
 
 export const USED_LINK =
-  "이미 사용된 링크입니다. 당첨자에게 새 링크를 받으세요";
+  "이미 사용된 링크입니다. 입상자에게 새 링크를 받으세요";
 
 export type ConfirmOutcome =
   | { ok: true }
@@ -295,7 +295,7 @@ export class LocalConfirmRelay implements ConfirmRelay {
     const invite = this.liveInvite(token);
     if (!invite)
       throw new Error(
-        "없는 링크이거나 기한(7일)이 지났습니다. 당첨자에게 새 링크를 받으세요",
+        "없는 링크이거나 기한(7일)이 지났습니다. 입상자에게 새 링크를 받으세요",
       );
     if (invite.requestId) throw new Error(USED_LINK);
     const id = toHex(crypto.getRandomValues(new Uint8Array(12)));

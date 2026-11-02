@@ -345,7 +345,7 @@ export async function verifyLedger(
         draw.bonus !== record.bonus
       ) {
         fail(
-          `당첨 번호가 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
+          `빛난 별이 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
         );
       }
       if (partial) {
@@ -358,7 +358,7 @@ export async function verifyLedger(
               record.winners[r].some((w) => equalBytes(w, id)),
             ) ?? null;
           if (rank !== listed)
-            fail(`${rank ?? listed}등 당첨자 목록이 규칙대로가 아니다`);
+            fail(`${rank ?? listed}등 입상자 목록이 규칙대로가 아니다`);
         }
       } else
         for (const rank of RANKS) {
@@ -366,10 +366,10 @@ export async function verifyLedger(
             rankOf(draw, t.numbers) === rank ? [ids[k] as Uint8Array] : [],
           );
           if (!sameIds(expected, record.winners[rank]))
-            fail(`${rank}등 당첨자 목록이 규칙대로가 아니다`);
+            fail(`${rank}등 입상자 목록이 규칙대로가 아니다`);
         }
     } else if (RANKS.some((rank) => record.winners[rank].length > 0)) {
-      fail("무효 회차에 당첨자가 있다");
+      fail("무효 회차에 입상자가 있다");
     }
 
     // 4. 작업 증명: 내 것·당첨은 전부, 나머지는 표본
@@ -417,7 +417,7 @@ export async function verifyLedger(
       }
       const winner = winnerKeys.get(key);
       if (!winner || winner.round !== n.round || n.round >= round) {
-        fail(`${label}: 지난 회차 당첨 예측서가 아니다`);
+        fail(`${label}: 지난 회차 입상 예측서가 아니다`);
         continue;
       }
       if (accepted.some((a) => equalBytes(a.ticketId, n.ticketId))) {

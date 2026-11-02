@@ -64,7 +64,7 @@ export function WinNotice({
   const wins = winningTickets(services, tickets, sealed);
   if (wins.length === 0) return null;
   return (
-    <section aria-label="당첨 안내" className="flex flex-col gap-3">
+    <section aria-label="입상 안내" className="flex flex-col gap-3">
       {wins.map(({ ticket, rank }) => (
         <NoticeCard
           key={toHex(ticketId(ticket))}
@@ -151,8 +151,8 @@ function NoticeCard({
   const share = async () => {
     try {
       await navigator.share({
-        title: "하늘의 별 따기 당첨자 확인",
-        text: `${title} 당첨자 확인 링크입니다. 한 번만 쓸 수 있습니다.`,
+        title: "하늘의 별 따기 입상 확인",
+        text: `${title} 입상 확인 링크입니다. 한 번만 쓸 수 있습니다.`,
         url,
       });
     } catch {
@@ -167,7 +167,7 @@ function NoticeCard({
     >
       <IdPresentView services={services} id={id} />
       <p className="font-semibold text-amber-200 text-xs tracking-wide">
-        카노푸스 우주국 당첨 안내
+        카노푸스 우주국 입상 안내
       </p>
       <p className="break-keep font-bold text-lg">{title}입니다</p>
       {compact ? (

@@ -133,8 +133,8 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     title: "하늘의 별 따기",
     cues: [
       { cue: "starTick", when: "관측 룰렛 불빛이 별 하나를 지남" },
-      { cue: "starBall", when: "룰렛이 당첨 별에서 멈춰 별이 켜짐·예측 접수" },
-      { cue: "starWin", when: "내 예측서가 당첨(1~5등)" },
+      { cue: "starBall", when: "룰렛이 빛날 별에서 멈춰 별이 켜짐·예측 접수" },
+      { cue: "starWin", when: "내 예측서가 입상(1~5등)" },
       { cue: "beep", when: "별·번호를 고름" },
     ],
   },
@@ -275,7 +275,7 @@ export function SoundBoard() {
             onClick={() => play("starWin", { star: { rank } })}
             className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
           >
-            {rank}등 당첨
+            {rank}등
           </button>
         ))}
       </section>

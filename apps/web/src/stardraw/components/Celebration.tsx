@@ -193,8 +193,8 @@ export function WinSeal({ at }: { at: number }) {
         style={{ animationDelay: `${at}ms` }}
       >
         <Seal
-          text="당첨"
-          label="카노푸스 우주국 당첨 직인"
+          text="입상"
+          label="카노푸스 우주국 입상 직인"
           className="size-16 sm:size-20"
         />
       </span>

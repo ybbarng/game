@@ -219,7 +219,7 @@ export function TsaToy() {
               ? "유효: 봉인이 결과 결정보다 먼저입니다. 결과를 알기 전에 예측서 목록이 고정됐습니다"
               : baseTime < closesAt
                 ? "무효: 마감 전 봉인은 말이 되지 않습니다"
-                : "무효: 봉인이 결과 결정 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 당첨 없이 닫습니다"}
+                : "무효: 봉인이 결과 결정 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 입상자 없이 닫습니다"}
           </Verdict>
         </div>
       )}
@@ -365,7 +365,7 @@ export function DrandToy() {
           {bonus && <LottoBall n={bonus} size="sm" />}
         </div>
         <SkyBoard
-          label={`${round}회 당첨 별`}
+          label={`${round}회 빛난 별`}
           className="mx-auto w-full max-w-sm"
           state={{ mode: "draw", picked: [], focus: null, lit: numbers, bonus }}
         />
@@ -683,14 +683,14 @@ export function SasToy() {
         <div className="flex flex-col gap-1">
           <Row label="서버가 보는 것">
             확인하는 분 열쇠{" "}
-            <Mono>{short(world.checker.publicKey.slice(1), 8)}</Mono>, 당첨자
+            <Mono>{short(world.checker.publicKey.slice(1), 8)}</Mono>, 입상자
             열쇠 <Mono>{short(world.winner.publicKey.slice(1), 8)}</Mono>, 요청
             id <Mono>{REQUEST_ID}</Mono>. 공유 비밀은 두 기기의 비밀 열쇠가
             있어야 계산됩니다
           </Row>
           {mitm && (
             <Row label="바꿔치기">
-              당첨자에게는{" "}
+              입상자에게는{" "}
               <Mono tone="warn">
                 {short(world.mitmToWinner.publicKey.slice(1), 8)}
               </Mono>
@@ -707,7 +707,7 @@ export function SasToy() {
         <div className="grid grid-cols-2 gap-2">
           {(
             [
-              ["당첨자 화면", out.winnerStars],
+              ["입상자 화면", out.winnerStars],
               ["확인하는 분이 계산한 별", out.checkerStars],
             ] as const
           ).map(([label, stars]) => (
@@ -743,13 +743,13 @@ export function SasToy() {
           ? "계산하는 중"
           : out.claimProblems.length === 0
             ? "서명 검사 통과: 예측서 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다"
-            : `서명 검사 실패: ${out.claimProblems.join(", ")}(당첨자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다)`}
+            : `서명 검사 실패: ${out.claimProblems.join(", ")}(입상자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다)`}
       </Verdict>
       <Verdict ok={sameStars} testId="sas-stars">
         {sameStars === null
           ? "계산하는 중"
           : sameStars
-            ? "두 화면의 별 세 개가 같습니다. 당첨자가 메신저로 보낸 별을 누르면 초록불이 켜집니다"
+            ? "두 화면의 별 세 개가 같습니다. 입상자가 메신저로 보낸 별을 누르면 초록불이 켜집니다"
             : "별이 다릅니다. 가운데 끼어든 사람은 양쪽에 같은 별을 맞춰 줄 수 없습니다"}
       </Verdict>
     </Toy>

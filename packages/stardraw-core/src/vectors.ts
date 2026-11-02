@@ -321,7 +321,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
       {
         title: "예측서 바이트(패스키 서명)",
         input:
-          "공개 열쇠만 당첨자 열쇠(04e6b8…0da8)로 바꾼 body ‖ 02 ‖ authenticatorData(flags 05) ‖ clientDataJSON ‖ DER 서명(각 u16 길이 + 바이트)",
+          "공개 열쇠만 입상자 열쇠(04e6b8…0da8)로 바꾼 body ‖ 02 ‖ authenticatorData(flags 05) ‖ clientDataJSON ‖ DER 서명(각 u16 길이 + 바이트)",
         expected: `${SIGNED_BODY_HEX}020025cbeb0bd2fd540b201a4aacf76ead7dbf18a929abe3ef560f2b7e8998e679144d05000000010084${toHex(utf8(SIGNED_CLIENT_DATA))}0046${toHex(SIGNED_DER)}`,
         compute: () => toHex(encodeTicket(SIGNED_TICKET)),
       },
@@ -539,7 +539,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
   },
   {
     id: "draw",
-    title: "당첨 번호와 등수",
+    title: "빛난 별과 등수",
     vectors: [
       {
         title: 'seed = taggedHash("stardraw/seed/v1", round(u32) ‖ 난수)',
@@ -549,7 +549,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
         compute: () => toHex(drawSeed(1, fromHex(RANDOMNESS_HEX))),
       },
       {
-        title: "나온 차례(앞 6개 당첨, 7번째 보너스)",
+        title: "나온 차례(앞 6개 빛난 별, 7번째 보너스)",
         input: "위 seed",
         expected: "45, 29, 5, 38, 37, 41, 4",
         compute: () =>
@@ -557,13 +557,13 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
       },
       {
         title: "등수",
-        input: "당첨 5·29·37·38·41·45 + 보너스 4, 고른 번호 4·5·29·37·38·41",
+        input: "빛난 별 5·29·37·38·41·45 + 보너스 4, 고른 번호 4·5·29·37·38·41",
         expected: "2",
         compute: () => String(rankOf(DRAW, [4, 5, 29, 37, 38, 41])),
       },
       {
         title: "등수",
-        input: "같은 당첨, 고른 번호 1·2·3·5·29·37",
+        input: "같은 빛난 별, 고른 번호 1·2·3·5·29·37",
         expected: "5",
         compute: () => String(rankOf(DRAW, [1, 2, 3, 5, 29, 37])),
       },
@@ -648,7 +648,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
       },
       {
         title: "국장 서명 확인(고정 열쇠, flags 05)",
-        input: "위 본문에 당첨자 열쇠(WINNER_JWK)로 미리 한 패스키 서명",
+        input: "위 본문에 입상자 열쇠(WINNER_JWK)로 미리 한 패스키 서명",
         expected: "true",
         compute: async () => String(await opSignedBy(OP_BODY)),
       },

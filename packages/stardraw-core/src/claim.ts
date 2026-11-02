@@ -144,7 +144,7 @@ export function encodeClaim(c: Claim): string {
 export function decodeClaim(text: string): Claim {
   const trimmed = text.trim();
   if (!trimmed.startsWith(CLAIM_PREFIX))
-    throw new Error("하늘의 별 따기 당첨 증명이 아니다");
+    throw new Error("하늘의 별 따기 입상 증명이 아니다");
   const r = new ByteReader(fromBase64Url(trimmed.slice(CLAIM_PREFIX.length)));
   const kind = r.u8();
   const body = new ByteReader(r.bytes());

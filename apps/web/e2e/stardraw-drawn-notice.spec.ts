@@ -54,7 +54,7 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
   });
   await expect(notice).toHaveText(/1회 관측이 끝났습니다/);
   await expect(notice.locator("[data-ball]")).toHaveCount(0);
-  await expect(notice).not.toContainText(/당첨|낙첨|등/);
+  await expect(notice).not.toContainText(/입상|등/);
 
   // 다른 화면에서도 뜬다
   await page.goto("/stardraw/rounds");

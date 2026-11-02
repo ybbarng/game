@@ -208,7 +208,7 @@ function Results({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-fair-draws={fair.draws}>
       <span className="text-white/60 text-xs">
-        번호별 당첨 횟수 · 가운데 선은 기대값, 띠는 우연으로 흔히 나오는 범위
+        번호별 빛난 횟수 · 가운데 선은 기대값, 띠는 우연으로 흔히 나오는 범위
         {compare && " · 붉은 점은 치우친 뽑기"}
       </span>
       <CountChart fair={fair} biased={compare ? biased : null} />
@@ -268,7 +268,7 @@ function CountChart({ fair, biased }: { fair: Tally; biased: Tally | null }) {
       viewBox={`0 0 450 ${H}`}
       className="w-full"
       role="img"
-      aria-label={`번호 1~45의 당첨 횟수, 기대값 ${Math.round(band.expected)}회`}
+      aria-label={`번호 1~45가 빛난 횟수, 기대값 ${Math.round(band.expected)}회`}
       data-fair-chart="counts"
     >
       <rect

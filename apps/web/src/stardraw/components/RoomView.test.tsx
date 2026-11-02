@@ -319,7 +319,7 @@ describe("관측이 끝난 뒤", () => {
         view.container
           .querySelector("[data-room-input]")
           ?.getAttribute("placeholder"),
-      ).toBe("당첨 소감을 남겨 보세요");
+      ).toBe("입상 소감을 남겨 보세요");
     });
   });
 

@@ -379,8 +379,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-numbers",
     role: "operator",
-    title: "당첨 번호 바꾸기",
-    how: "1회차 당첨 번호를 바꾸고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    title: "빛난 별 바꾸기",
+    how: "1회차에 빛난 별을 바꾸고, 뒤 기록과 앵커까지 고쳐 쓴다",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
@@ -396,7 +396,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-insert",
     role: "operator",
     title: "결과를 보고 내 예측서 끼워 넣기",
-    how: "drand 값이 나온 뒤 당첨 번호로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    how: "drand 값이 나온 뒤 빛난 별로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 쓴다",
     run: async (w) => {
       const l = cloneLedger(w);
       const challenge = genesisHash(l.genesis);
@@ -417,7 +417,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-remove",
     role: "operator",
-    title: "남의 당첨 예측서 빼기",
+    title: "남의 입상 예측서 빼기",
     how: "1회차 1등 예측서(나)를 목록에서 빼고, 뒤 기록과 앵커까지 고쳐 쓴다",
     run: async (w) => {
       const l = cloneLedger(w);
@@ -492,8 +492,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-steal",
     role: "operator",
-    title: "1등 당첨 가로채기",
-    how: "확인하는 분에게 운영자 열쇠로 서명한 당첨자 확인 응답을 보낸다",
+    title: "1등 입상 가로채기",
+    how: "확인하는 분에게 운영자 열쇠로 서명한 입상 확인 응답을 보낸다",
     run: async (w) => {
       const t = myTicket(w);
       const claim = await makeChallengeClaim(
@@ -641,8 +641,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "en-replay",
     role: "entrant",
-    title: "지난 당첨 증명 다시 쓰기",
-    how: "남이 예전에 받은 당첨자 확인 응답을 새 확인 요청에 그대로 낸다",
+    title: "지난 입상 증명 다시 쓰기",
+    how: "남이 예전에 받은 입상 확인 응답을 새 확인 요청에 그대로 낸다",
     run: async (w) => {
       const t = myTicket(w);
       const me = w.people[0] as Person;
@@ -662,7 +662,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "en-fake-link",
     role: "entrant",
-    title: "남의 당첨으로 확인 링크 만들기",
+    title: "남의 입상으로 확인 링크 만들기",
     how: "민지가 내 1등 예측서의 확인 링크를 자기 열쇠로 서명해 서버에 올린다",
     run: async (w) => {
       const t = myTicket(w);

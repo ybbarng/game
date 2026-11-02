@@ -191,11 +191,11 @@ export function CheckLink({
   const title =
     state.kind === "ready"
       ? hidden
-        ? `${roundShort(ledger.schedule, state.round)} 당첨자`
+        ? `${roundShort(ledger.schedule, state.round)} 입상자`
         : titleOf(state.round, state.rank)
       : session
         ? titleOf(session.round, session.rank)
-        : "당첨자";
+        : "입상자";
   const green = session?.status === "confirmed";
   // 소속 표시: 도장·자격 서명·기간·중복을 규칙 패키지로 판정한다(2026-10-31 보안 검토 B1)
   const [mark, setMark] = useState<QualMark | null>(null);
@@ -225,7 +225,7 @@ export function CheckLink({
   return (
     <section
       className="flex flex-col gap-4"
-      aria-label="당첨자 확인"
+      aria-label="입상 확인"
       data-check-link={state.kind}
     >
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -255,7 +255,7 @@ export function CheckLink({
 
       {state.kind === "missing" && (
         <Notice tone="warn">
-          없는 링크이거나 기한(7일)이 지났습니다. 당첨자에게 새 링크를 받으세요.
+          없는 링크이거나 기한(7일)이 지났습니다. 입상자에게 새 링크를 받으세요.
         </Notice>
       )}
       {state.kind === "used" && (
@@ -265,7 +265,7 @@ export function CheckLink({
       )}
       {state.kind === "not-winner" && (
         <Notice tone="warn">
-          장부에서 이 링크의 당첨 예측서를 찾지 못했습니다.
+          장부에서 이 링크의 입상 예측서를 찾지 못했습니다.
         </Notice>
       )}
 
@@ -280,7 +280,7 @@ export function CheckLink({
       {state.kind === "ready" && !hidden && (
         <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/30 bg-amber-200/5 p-4">
           <p className="font-bold text-lg">
-            {title} 당첨자가 보낸 확인 링크입니다
+            {title} 입상자가 보낸 확인 링크입니다
           </p>
           {hasDirector && (
             <div className="flex flex-col gap-2 rounded-xl border border-amber-200/25 p-3">
@@ -327,7 +327,7 @@ export function CheckLink({
           {session.status === "waiting" &&
             services.clock.now() > session.answerBy && (
               <Notice tone="info">
-                당첨자가 {formatTime(session.answerBy / 1000)}까지 응답하지
+                입상자가 {formatTime(session.answerBy / 1000)}까지 응답하지
                 않았습니다.
               </Notice>
             )}
@@ -338,7 +338,7 @@ export function CheckLink({
                 className="sd-breathe rounded-2xl border border-sky-200/25 bg-sky-300/5 p-4 text-center"
               >
                 <p className="font-semibold">
-                  당첨자의 승인을 기다리고 있습니다
+                  입상자의 승인을 기다리고 있습니다
                 </p>
                 <p className="mt-1 text-sm text-white/60">
                   {formatTime(session.answerBy / 1000)}까지
@@ -350,8 +350,8 @@ export function CheckLink({
             <div className="flex flex-col gap-3">
               <p className="break-keep font-semibold">
                 {green
-                  ? "당첨자가 보낸 별 세 개가 맞습니다"
-                  : "당첨자가 보낸 별 세 개를 하늘에서 차례로 눌러 주세요"}
+                  ? "입상자가 보낸 별 세 개가 맞습니다"
+                  : "입상자가 보낸 별 세 개를 하늘에서 차례로 눌러 주세요"}
               </p>
               <div className="relative">
                 <SkyBoard
@@ -399,7 +399,7 @@ export function CheckLink({
               className="sd-rise rounded-2xl border border-emerald-300/50 bg-emerald-400/15 p-4 text-center font-bold text-emerald-100 text-lg"
             >
               {mark?.kind === "yes"
-                ? `${title} 당첨자 본인이 맞습니다`
+                ? `${title} 입상자 본인이 맞습니다`
                 : `${title} 예측서의 주인이 맞습니다`}
             </p>
           )}
@@ -443,7 +443,7 @@ export function CheckLink({
                 </p>
               ))}
               <p className="mt-2 text-white/60 text-xs">
-                다시 확인하려면 당첨자에게 새 링크를 받으세요.
+                다시 확인하려면 입상자에게 새 링크를 받으세요.
               </p>
             </div>
           )}

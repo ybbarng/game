@@ -128,7 +128,7 @@ export function StatsView({
           </Card>
           <Constellations groups={stats.constellations} />
           <Fair stats={stats} />
-          <Card title="등수별 당첨 누적">
+          <Card title="등수별 입상 누적">
             <ul className="grid grid-cols-5 gap-2 text-center">
               {RANKS.map((r) => (
                 <li key={r} className="flex flex-col gap-0.5">

@@ -155,7 +155,7 @@ export function Inbox({
           pub: key.pub,
           tap: true,
           readFirst: true,
-          done: "당첨 확인을 승인했습니다.",
+          done: "입상 확인을 승인했습니다.",
           hold: FX.idHoldSubmit,
         },
       );
@@ -213,7 +213,7 @@ export function Inbox({
     return null;
 
   return (
-    <section className="flex flex-col gap-3" aria-label="당첨자 확인 요청">
+    <section className="flex flex-col gap-3" aria-label="입상 확인 요청">
       <IdPresentView services={services} id={idp} />
       {error && (
         <p
@@ -243,7 +243,7 @@ export function Inbox({
               <p className="font-bold">
                 보낸 확인 링크로{" "}
                 {roundShort(services.ledger.schedule, req.request.round)}{" "}
-                {rank ? RANK_LABEL[rank] : ""} 당첨 확인 요청이 왔습니다
+                {rank ? RANK_LABEL[rank] : ""} 입상 확인 요청이 왔습니다
               </p>
               <p className="text-amber-100/60 text-xs">
                 {formatTime(req.invitedAt / 1000)}에 만든 링크 · 전달: 카노푸스
@@ -358,11 +358,11 @@ function AnsweredCard({
       ) : (
         <>
           <p className="break-keep font-semibold">
-            링크를 보낸 사람에게, 당첨을 알렸던 그 메신저·메일로 이 세 별 이름을
+            링크를 보낸 사람에게, 입상을 알렸던 그 메신저·메일로 이 세 별 이름을
             차례대로 보내 주세요
           </p>
           <p className="break-keep text-amber-100/85 text-sm" data-sas-warning>
-            별 세 개는 내가 당첨을 알린 그 사람에게만 보내세요.
+            별 세 개는 내가 입상을 알린 그 사람에게만 보내세요.
           </p>
           <SkyBoard
             state={{

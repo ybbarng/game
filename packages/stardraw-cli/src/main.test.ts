@@ -56,7 +56,7 @@ describe("장부 검사(받아 둔 실제 장부)", () => {
   it("정직한 장부는 drand 서명·시각 인증·앵커까지 모두 통과한다", async () => {
     const { code, out } = await run([BASE], fakeFetch());
     expect(out).toContain("통과  시험 1회(사슬 1)");
-    expect(out).toContain("당첨 번호 9 21 29 38 39 45 + 23");
+    expect(out).toContain("빛난 별 9 21 29 38 39 45 + 23");
     expect(out).toContain("1회차 확인(digicert, sectigo)");
     expect(out).toMatch(/통과 {4}앵커 저장소/);
     expect(out).toContain("[국장 열쇠 내력]");

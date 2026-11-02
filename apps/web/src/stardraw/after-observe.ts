@@ -25,7 +25,7 @@ export function winnersLine(record: RoundRecord): string | null {
   );
   return parts.length > 0
     ? parts.join(" · ")
-    : "이번 관측에서는 당첨이 없었습니다.";
+    : "이번 관측에서는 입상자가 없었습니다.";
 }
 
 /** 언덕 위 사람마다 등수(봉인 뒤 공개된 고른 별과 당첨 번호로). 당첨이 아닌 사람은 넣지 않는다 */

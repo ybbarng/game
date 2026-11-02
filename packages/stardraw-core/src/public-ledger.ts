@@ -450,7 +450,7 @@ const RULES: { id: string; label: string; test: RegExp }[] = [
   { id: "merkle", label: "예측 수·머클 루트", test: /예측 수가|머클 루트/ },
   { id: "drand", label: "drand 회차·서명", test: /drand/ },
   { id: "void", label: "무효 회차 규칙", test: /무효/ },
-  { id: "draw", label: "당첨 번호·등수", test: /당첨/ },
+  { id: "draw", label: "빛난 별·등수", test: /빛난 별|입상자/ },
   { id: "schedule", label: "일정 변경", test: /^일정 변경/ },
   {
     id: "operations",
@@ -650,7 +650,7 @@ function sealKeyItem(
 }
 
 export const VOID_ROUNDS_LABEL =
-  "무효 회차(봉인 증명 없이 닫혀 당첨이 없는 회차)";
+  "무효 회차(봉인 증명 없이 닫혀 입상자가 없는 회차)";
 
 /**
  * 추첨 전에 공개된 봉인 파일을 찾는 곳(docs/36 11-20). 그 회차에서 찾은 파일을 모두 돌려준다(없으면 빈 목록).

@@ -40,7 +40,7 @@ describe("등수별 인원 한 줄", () => {
     expect(winnersLine(record({ 1: 1, 5: 2 }))).toBe("1등 1명 · 5등 2명");
   });
   it("아무도 없으면 한 문장", () => {
-    expect(winnersLine(record())).toBe("이번 관측에서는 당첨이 없었습니다.");
+    expect(winnersLine(record())).toBe("이번 관측에서는 입상자가 없었습니다.");
   });
   it("무효 회차는 줄을 두지 않는다", () => {
     expect(winnersLine(record({}, { void: true }))).toBeNull();

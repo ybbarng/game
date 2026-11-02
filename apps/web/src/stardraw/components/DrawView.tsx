@@ -237,8 +237,8 @@ export function DrawView({
 
       {record.void ? (
         <p className="rounded-xl bg-white/5 p-4 text-sm text-white/75">
-          이 회차는 예측 목록을 제때 기록하지 못해 무효가 되었습니다. 당첨 없이
-          끝났습니다.
+          이 회차는 예측 목록을 제때 기록하지 못해 무효가 되었습니다. 입상자
+          없이 끝났습니다.
         </p>
       ) : (
         <>
@@ -274,7 +274,7 @@ export function DrawView({
           <div
             className="flex items-center justify-center gap-1.5 sm:gap-2"
             role="status"
-            aria-label={`당첨 번호 ${main.join(", ")}${bonus ? `, 보너스 ${bonus}` : ""}`}
+            aria-label={`빛난 별 ${main.join(", ")}${bonus ? `, 보너스 ${bonus}` : ""}`}
             data-roulette-stop={frame.fixed.length}
           >
             {[0, 1, 2, 3, 4, 5].map((i) => {
@@ -308,7 +308,7 @@ export function DrawView({
               <span className="flex size-3 items-center justify-center font-bold text-[11px] text-white leading-none [text-shadow:0_0_4px_rgba(255,255,255,0.9)]">
                 ＋
               </span>
-              당첨 번호
+              빛난 별
             </span>
             <span className="flex items-center gap-1.5">
               <span className="flex size-3 items-center justify-center font-bold text-[11px] text-white leading-none [text-shadow:0_0_4px_rgba(255,255,255,0.9)]">
@@ -348,7 +348,7 @@ export function DrawView({
                 rank ? (
                   <>
                     <span className="font-black text-3xl text-amber-100">
-                      {RANK_LABEL[rank]} 당첨
+                      {RANK_LABEL[rank]}
                     </span>
                     <span className="text-sm text-white/75">
                       맞힌 별 {mine.filter((n) => main.includes(n)).length}개
@@ -359,7 +359,7 @@ export function DrawView({
                 ) : (
                   <>
                     <span className="font-bold text-xl">
-                      아쉽게도 당첨되지 않았습니다
+                      이번에는 등수에 들지 못했습니다
                     </span>
                     <span className="text-sm text-white/65">
                       맞힌 별 {mine.filter((n) => main.includes(n)).length}개

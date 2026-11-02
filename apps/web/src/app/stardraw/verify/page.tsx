@@ -208,7 +208,7 @@ id    = taggedHash("stardraw/ticket/v1", body)       서명은 id에 들어가�
        (각각 u16 길이 + 바이트, 패스키)`}</Code>
             <ul className={li}>
               <li>
-                예측서·별명·당첨 증명·확인 링크의 서명은 모두 패스키 서명입니다.
+                예측서·별명·입상 증명·확인 링크의 서명은 모두 패스키 서명입니다.
                 kind 1(직접 만든 열쇠의 r‖s 64바이트 서명)은 받지 않습니다. 본인
                 확인 표시가 없어 지문·얼굴·PIN 없이 예측하는 길이 되기
                 때문입니다.
@@ -263,7 +263,7 @@ h 앞 4바이트(u32) < 목표값 이면 통과
 목표값  = 일정표 줄의 powTarget(예측서), registerPowTarget(등록)`}</Code>
             <p className="text-white/80">
               검사기는 회차마다 공개 seed로 고른 몇 장만 계산해도 됩니다(내
-              예측서와 당첨 예측서는 늘 전부). 표본 seed는{" "}
+              예측서와 입상 예측서는 늘 전부). 표본 seed는{" "}
               <code>
                 taggedHash(&quot;stardraw/sample/v1&quot;, drand 난수)
               </code>
@@ -333,7 +333,7 @@ quicknet 회차 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
 무효 회차: rootLoggedAt = 0, 또는 rootLoggedAt < closesAt,
           또는 rootLoggedAt ≥ drand 회차 시각`}</Code>
             <p className="text-white/80">
-              무효 회차는 당첨 번호와 당첨자 없이 기록만 남습니다.
+              무효 회차는 빛난 별과 입상자 없이 기록만 남습니다.
             </p>
             <ul className={li}>
               <li>
@@ -403,11 +403,11 @@ rootLoggedAt = 맞는 토큰 가운데 가장 이른 genTime(초, 소수점 아�
             </ul>
           </Rule>
 
-          <Rule title="당첨 번호와 등수" file="draw.ts">
+          <Rule title="빛난 별과 등수" file="draw.ts">
             <Code>{`seed = taggedHash("stardraw/seed/v1", round(u32) ‖ drand 난수(32))
 블록 i = taggedHash("stardraw/draw/v1", seed ‖ i(u32)),  i = 0, 1, 2, …
 블록의 바이트 b를 차례로: b ≥ 225 이면 버림, 아니면 n = b mod 45 + 1, 이미 나온 n은 건너뜀
-7개가 될 때까지 → 앞 6개 당첨 번호(오름차순으로 기록), 7번째 보너스`}</Code>
+7개가 될 때까지 → 앞 6개 빛난 별(오름차순으로 기록), 7번째 보너스`}</Code>
             <p className="text-white/80">
               머클 루트·예측 수처럼 운영자가 바꿀 수 있는 값은 seed에 넣지
               않습니다. 등수는 6/45 로또와 같습니다: 1등 6개, 2등 5개 + 보너스,
@@ -494,24 +494,24 @@ genesis 해시 = taggedHash("stardraw/genesis/v1", epoch(u64) ‖ 줄 수(u16) �
             </ul>
           </Rule>
 
-          <Rule title="별 세 개(당첨자 확인)" file="sas.ts">
+          <Rule title="별 세 개(입상 확인)" file="sas.ts">
             <Code>{`양쪽이 요청마다 임시 P-256 ECDH 열쇠를 만들고 공개 열쇠만 주고받는다
 공유 비밀 = ECDH(내 임시 비밀 열쇠, 상대 임시 공개 열쇠)   32바이트
 seed     = taggedHash("stardraw/sas/v1", 공유 비밀 ‖ 요청 id(u16 길이 + utf8))
-블록 i   = taggedHash("stardraw/sas-draw/v1", seed ‖ i(u32)) — 당첨 번호와 같은 거절 표본, 3개
-당첨자가 서명하는 문구 = 요청 문구 | 확인자 임시 공개 열쇠 | 당첨자 임시 공개 열쇠 (base64url)`}</Code>
+블록 i   = taggedHash("stardraw/sas-draw/v1", seed ‖ i(u32)) — 빛난 별과 같은 거절 표본, 3개
+입상자가 서명하는 문구 = 요청 문구 | 확인자 임시 공개 열쇠 | 입상자 임시 공개 열쇠 (base64url)`}</Code>
             <p className="text-white/80">
               서버는 공개 열쇠만 보므로 별을 알 수 없습니다. 서명이 예측서의
               열쇠로 했는지는 확인하는 쪽 브라우저가 장부로 직접 검사합니다.
             </p>
           </Rule>
 
-          <Rule title="확인 링크(당첨자 확인)" file="invite.ts">
+          <Rule title="확인 링크(입상 확인)" file="invite.ts">
             <Code>{`토큰       = 무작위 18바이트(base64url 24자). 링크 …/stardraw/check#토큰 의 # 뒤에만 있다
 토큰 해시  = taggedHash("stardraw/confirm-invite-token/v1", utf8(토큰))
 서명할 내용 = "stardraw/confirm-invite/v1" ‖ 0x00 ‖ round(u32) ‖ 예측서 id(32) ‖ 토큰 해시(32)`}</Code>
             <p className="text-white/80">
-              당첨자가 예측서 열쇠로 서명해 올리고, 서버는 장부의 그 예측서 공개
+              입상자가 예측서 열쇠로 서명해 올리고, 서버는 장부의 그 예측서 공개
               열쇠로 서명이 맞을 때만 받습니다. 서버는 토큰 해시만 두고, 링크는
               확인을 시작하면 한 번으로 닫힙니다.
             </p>
@@ -531,7 +531,7 @@ seed     = taggedHash("stardraw/sas/v1", 공유 비밀 ‖ 요청 id(u16 길이 
           <p className="text-white/80">
             공개 장부 파일을 처음부터 받아 다시 계산합니다: 일정표, 기록 사슬,
             열쇠 등록, 예측서 서명과 한 사람 한 장, 머클 루트, 봉인 파일, drand
-            회차와 BLS 서명, 무효 규칙, 당첨 번호와 등수, 장부 끝 해시. 작업
+            회차와 BLS 서명, 무효 규칙, 빛난 별과 등수, 장부 끝 해시. 작업
             증명은 회차마다 표본 8장입니다.
           </p>
           <LedgerCheck />
@@ -558,7 +558,7 @@ await stardraw.vectors()`}</Code>
               packages/stardraw-cli
             </a>
             , Node 24와 pnpm). 앵커는 GitHub에서 직접 읽습니다. 터미널 도구는
-            검사 전용이라 열쇠를 다루지 않고, 예측과 당첨 확인은 브라우저
+            검사 전용이라 열쇠를 다루지 않고, 예측과 입상 확인은 브라우저
             패스키로만 합니다.
           </p>
           <Code>{`git clone https://github.com/ybbarng/game && cd game
@@ -605,14 +605,14 @@ pnpm stardraw-verify site https://game.byb.kr --build apps/web/out`}</Code>
             운영자가 할 수 없는 일
           </h3>
           <ul className={li}>
-            <li>당첨 번호를 고르거나 미리 알기(drand 값이 마감 뒤에 나옴)</li>
-            <li>남의 예측서를 만들거나 당첨을 가로채기(서명)</li>
+            <li>빛날 별을 고르거나 미리 알기(drand 값이 마감 뒤에 나옴)</li>
+            <li>남의 예측서를 만들거나 입상을 가로채기(서명)</li>
           </ul>
           <h3 className="font-semibold text-white/90">하면 드러나는 일</h3>
           <ul className={li}>
             <li>지난 회차 기록 고치기, 사람마다 다른 장부 보이기(기록 사슬)</li>
             <li>예측서 끼워 넣기·빼기, 번호 바꾸기(머클 루트, 봉인 파일)</li>
-            <li>당첨 번호·등수 속이기, 다른 drand 회차 쓰기(다시 계산)</li>
+            <li>빛난 별·등수 속이기, 다른 drand 회차 쓰기(다시 계산)</li>
             <li>접수증을 받은 예측서 빼기(서버 서명 접수증이 증거가 됨)</li>
             <li>
               국장 열쇠를 몰래 바꾸거나 운영 일을 몰래 하기(운영 기록은 장부에
@@ -638,7 +638,7 @@ pnpm stardraw-verify site https://game.byb.kr --build apps/web/out`}</Code>
               이 페이지와 화면 코드는 운영자가 내줍니다. 해시 비교로 내가 받은
               파일이 공개 커밋에서 나왔는지는 알 수 있지만, 운영자가 사람마다
               또는 때마다 다른 파일을 내주면 내가 비교한 그때의 파일만
-              확인됩니다. 예측과 당첨 확인은 브라우저 패스키로만 하므로 패스키
+              확인됩니다. 예측과 입상 확인은 브라우저 패스키로만 하므로 패스키
               서명은 늘 화면 코드가 시킵니다.
             </li>
             <li>

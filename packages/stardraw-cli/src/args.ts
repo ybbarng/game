@@ -55,7 +55,7 @@ export const USAGE = `stardraw-verify — 하늘의 별 따기 독립 검사기
       --compare                서버와 앵커 저장소 사본이 겹치는 회차에서 같은지 대조
       --ticket <회차-일련번호>   내 예측서 확인(여러 번 줄 수 있음). 일련번호는 접수증 앞 12자리면 됩니다.
                                공유 주소(…/stardraw/ticket#12-…)를 그대로 넣어도 됩니다
-      --pow-sample <n>         회차마다 작업 증명을 계산할 표본 수(기본 8). 내 예측서·당첨은 늘 전부
+      --pow-sample <n>         회차마다 작업 증명을 계산할 표본 수(기본 8). 내 예측서·입상 예측서는 늘 전부
       --pow-all                작업 증명을 모두 계산(느림)
       --anchor-repo <소유자/이름>  앵커 저장소(기본 ybbarng/stardraw-ledger)
       --no-anchor              앵커 저장소를 보지 않음

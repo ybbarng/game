@@ -191,7 +191,7 @@ export function StardrawDemo() {
           </div>
           <h1 className="font-black text-3xl">하늘의 별 따기 데모</h1>
           <p className="break-keep text-white/70">
-            예측 → 관측 → 당첨자 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
+            예측 → 관측 → 입상 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
             24명이 회차마다 함께 예측합니다.
           </p>
           {!tourId && <TourList />}
@@ -301,7 +301,7 @@ export function StardrawDemo() {
                     <span className="tabular-nums">
                       제 {latest.ticket.round}회 내 예측서:{" "}
                       <b data-demo-result>
-                        {latestRank ? `${RANK_LABEL[latestRank]} 당첨` : "낙첨"}
+                        {latestRank ? RANK_LABEL[latestRank] : "등수 밖"}
                       </b>
                     </span>
                     <button
@@ -320,13 +320,13 @@ export function StardrawDemo() {
               )}
             </Step>
 
-            <Step n={4} title="당첨자 확인">
+            <Step n={4} title="입상 확인">
               {latest && latestRecord && latestRank ? (
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-2 lg:hidden" role="tablist">
                     {(
                       [
-                        ["winner", "당첨자 폰"],
+                        ["winner", "입상자 폰"],
                         ["checker", "확인하는 사람 화면"],
                       ] as const
                     ).map(([id, label]) => (
@@ -349,7 +349,7 @@ export function StardrawDemo() {
                   </div>
                   <div className="grid gap-6 lg:grid-cols-2">
                     <Pane
-                      title="당첨자 폰"
+                      title="입상자 폰"
                       hidden={pane !== "winner"}
                       data="winner"
                     >
@@ -378,7 +378,7 @@ export function StardrawDemo() {
                       {link ? (
                         <>
                           <p className="text-sm text-white/65">
-                            당첨자가 보낸 링크를 연 화면입니다.
+                            입상자가 보낸 링크를 연 화면입니다.
                           </p>
                           <CheckLink
                             key={link}
@@ -411,7 +411,7 @@ export function StardrawDemo() {
                         </>
                       ) : (
                         <p className="text-sm text-white/60">
-                          당첨자 폰에서 「확인 링크 만들기」를 누르면 그 링크를
+                          입상자 폰에서 「확인 링크 만들기」를 누르면 그 링크를
                           여기서 엽니다.
                         </p>
                       )}
@@ -420,7 +420,7 @@ export function StardrawDemo() {
                 </div>
               ) : (
                 <p className="text-sm text-white/60">
-                  당첨된 예측서가 있으면 여기서 당첨자 폰과 확인하는 사람 화면을
+                  입상한 예측서가 있으면 여기서 입상자 폰과 확인하는 사람 화면을
                   나란히 놓고 확인해 봅니다. 예측할 때 「1등 되게」를 눌러
                   보세요.
                 </p>
@@ -550,7 +550,7 @@ function RankPicker({
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-amber-300/40 bg-amber-300/10 p-3">
       <p className="text-amber-100 text-sm">
-        데모 전용: 이번 회차 당첨 번호를 미리 보고 등수를 골라 채웁니다
+        데모 전용: 이번 회차에 빛날 별을 미리 보고 등수를 골라 채웁니다
       </p>
       <div className="flex flex-wrap gap-2">
         {([1, 2, 3, 4, 5] as const).map((rank) => (
@@ -568,11 +568,11 @@ function RankPicker({
           onClick={() => onPick(demoPick(draw, null), null)}
           className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
         >
-          낙첨되게
+          등수 밖으로
         </button>
       </div>
       <p className="flex flex-wrap items-center gap-1 text-white/60 text-xs">
-        미리 본 당첨 번호
+        미리 본 빛날 별
         {draw.numbers.map((n) => (
           <LottoBall key={n} n={n} size="sm" />
         ))}
@@ -595,7 +595,7 @@ function FakeWinner({
     <div className="flex flex-col gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/5 p-3">
       <p className="text-rose-100/85 text-sm">
         실패도 해 볼 수 있습니다: 확인하는 사람 화면에서 별을 일부러 틀리게
-        누르거나, 아래 단추로 가짜 당첨자가 대신 답하게 합니다.
+        누르거나, 아래 단추로 가짜 입상자가 대신 답하게 합니다.
       </p>
       <button
         type="button"
@@ -624,11 +624,11 @@ function FakeWinner({
             claim: encodeClaim(claim),
             winnerKey: key.publicKey,
           });
-          setMessage("가짜 당첨자가 답했습니다. 확인하는 사람 화면을 보세요");
+          setMessage("가짜 입상자가 답했습니다. 확인하는 사람 화면을 보세요");
         }}
         className="self-start rounded-lg border border-rose-300/40 px-3 py-1.5 text-rose-100 text-sm hover:bg-rose-400/10"
       >
-        가짜 당첨자로 답하기
+        가짜 입상자로 답하기
       </button>
       {message && <p className="text-sm text-white/70">{message}</p>}
     </div>

@@ -312,7 +312,7 @@ describe("장부 검사", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/^1: 당첨 번호가 규칙대로가 아니다/),
+        expect.stringMatching(/^1: 빛난 별이 규칙대로가 아니다/),
         expect.stringMatching(/^2: 앞 기록 해시/),
       ]),
     );
@@ -330,7 +330,7 @@ describe("장부 검사", () => {
       OPTIONS,
     );
     expect(messages(report)).toContain(
-      "1: 1등 당첨자 목록이 규칙대로가 아니다",
+      "1: 1등 입상자 목록이 규칙대로가 아니다",
     );
   });
 
@@ -946,8 +946,8 @@ describe("별명 남기기", () => {
     );
     const report = await check(ledger, [[sameRound], [loserNick]]);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 별명 .*: 지난 회차 당첨 예측서가 아니다$/),
-      expect.stringMatching(/^2: 별명 .*: 지난 회차 당첨 예측서가 아니다$/),
+      expect.stringMatching(/^1: 별명 .*: 지난 회차 입상 예측서가 아니다$/),
+      expect.stringMatching(/^2: 별명 .*: 지난 회차 입상 예측서가 아니다$/),
     ]);
     const stolenReport = await check(ledger, [[], [stolen]]);
     expect(messages(stolenReport)).toEqual([

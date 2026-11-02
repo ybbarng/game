@@ -154,7 +154,7 @@ export const CUE_LABELS: Record<Cue, string> = {
   homerun: "숫자야구: 홈런",
   starTick: "하늘의 별 따기: 룰렛 틱",
   starBall: "하늘의 별 따기: 별 켜짐",
-  starWin: "하늘의 별 따기: 당첨",
+  starWin: "하늘의 별 따기: 입상",
   yutThrow: "윷놀이: 던지기",
   yutLand: "윷놀이: 떨어지기",
   yutBonus: "윷놀이: 윷·모(한 번 더)",

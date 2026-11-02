@@ -176,7 +176,7 @@ export function Receipt({
           className="mb-3 flex flex-wrap items-center justify-center gap-1.5"
           data-result-numbers
           role="img"
-          aria-label={`당첨 번호 ${record.numbers.join(", ")}, 보너스 ${record.bonus}`}
+          aria-label={`빛난 별 ${record.numbers.join(", ")}, 보너스 ${record.bonus}`}
         >
           {record.numbers.map((n) => (
             <LottoBall
@@ -203,8 +203,8 @@ export function Receipt({
           {record.void
             ? "이 회차는 무효가 되어 빛날 별을 정하지 않았습니다"
             : rank
-              ? `${RANK_LABEL[rank]} 당첨`
-              : "아쉽게도 당첨되지 않았습니다"}
+              ? RANK_LABEL[rank]
+              : "이번에는 등수에 들지 못했습니다"}
         </p>
       ) : (
         // 결과 전에는 접수증 맺음말. "추첨을 기다리고 있습니다" 같은 상태는 접수증에 찍힐 말이 아니라 뺐다.

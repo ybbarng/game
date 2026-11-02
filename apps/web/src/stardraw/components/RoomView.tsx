@@ -1161,7 +1161,7 @@ export function RoomView({
               const v = e.target.value;
               if (roomCharCount(v) <= ROOM_TEXT_MAX) setDraft(v);
             }}
-            placeholder={invite ? "당첨 소감을 남겨 보세요" : "말하기"}
+            placeholder={invite ? "입상 소감을 남겨 보세요" : "말하기"}
             className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm placeholder:text-white/35"
             data-room-input
           />

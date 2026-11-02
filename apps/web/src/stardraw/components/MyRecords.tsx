@@ -71,7 +71,7 @@ export function MyRecordsView({
       )}
 
       {records.certificates.length > 0 && (
-        <Part title="당첨증">
+        <Part title="입상 증서">
           <div className="flex flex-col gap-3">
             {records.certificates.map((c) => (
               <button
@@ -83,7 +83,8 @@ export function MyRecordsView({
               >
                 <span className="flex flex-col">
                   <span className="font-semibold">
-                    {roundShort(schedule, c.round)} {RANK_LABEL[c.rank]} 당첨증
+                    {roundShort(schedule, c.round)} {RANK_LABEL[c.rank]} 입상
+                    증서
                   </span>
                   <span className="text-white/55 text-xs">{dateOf(c.at)}</span>
                 </span>
@@ -111,7 +112,7 @@ export function MyRecordsView({
         />
       </Part>
 
-      <Part title="당첨 내역">
+      <Part title="입상 기록">
         <div className="grid grid-cols-5 gap-1.5 text-center" data-win-counts>
           {([1, 2, 3, 4, 5] as Rank[]).map((r) => (
             <div
@@ -132,7 +133,7 @@ export function MyRecordsView({
         </div>
         {total === 0 ? (
           <p className="py-4 text-center text-sm text-white/55">
-            아직 당첨된 예측서가 없습니다.
+            아직 입상한 예측서가 없습니다.
           </p>
         ) : (
           <WinList
@@ -180,7 +181,7 @@ export function MyRecordsView({
 
       {open && (
         <StageOverlay
-          label={open.award ? open.award.name : "당첨증"}
+          label={open.award ? open.award.name : "입상 증서"}
           align="center"
           scroll
         >
@@ -606,7 +607,7 @@ function Certificate({
             "inset 0 0 0 6px #fbf6ea, inset 0 0 0 7px #c8a24a, 0 18px 40px rgba(0,0,0,0.4)",
         }}
       >
-        <span className="font-black text-3xl tracking-[0.4em]">당첨증</span>
+        <span className="font-black text-3xl tracking-[0.4em]">입상 증서</span>
         <span className="font-bold text-lg">
           {roundShort(schedule, win.round)} {RANK_LABEL[win.rank]}
         </span>
@@ -620,7 +621,7 @@ function Certificate({
               <LottoBall key={n} n={n} size="sm" ring={win.hits.includes(n)} />
             ))}
           </span>
-          <span className="mt-2 text-xs">당첨 번호</span>
+          <span className="mt-2 text-xs">빛난 별</span>
           <span className="flex items-center gap-1">
             {win.record.numbers.map((n) => (
               <LottoBall key={n} n={n} size="sm" />
@@ -652,8 +653,8 @@ function Certificate({
             <span className="flex items-center gap-2 font-bold text-sm">
               카노푸스 우주국장
               <Seal
-                text="당첨"
-                label="카노푸스 우주국 당첨 직인"
+                text="입상"
+                label="카노푸스 우주국 입상 직인"
                 className="size-12 mix-blend-multiply"
               />
             </span>

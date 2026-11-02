@@ -1407,11 +1407,7 @@ function LastRound({
                 rank ? "text-amber-200" : "text-white/70",
               )}
             >
-              {record.void
-                ? "무효"
-                : rank
-                  ? `${RANK_LABEL[rank]} 당첨`
-                  : "낙첨"}
+              {record.void ? "무효" : rank ? RANK_LABEL[rank] : "등수 밖"}
             </b>
           )}
         </span>
@@ -1834,8 +1830,8 @@ export function MineView({
                           : record.void
                             ? "무효 회차"
                             : rank
-                              ? `${RANK_LABEL[rank]} 당첨`
-                              : "낙첨"}
+                              ? RANK_LABEL[rank]
+                              : "등수 밖"}
                     </span>
                   </span>
                   <span className="flex flex-wrap justify-end gap-1">
@@ -2009,7 +2005,7 @@ export function RoundsView({
       </div>
       {openChecks.length > 0 && (
         <p className="sd-breathe rounded-xl border border-sky-200/25 bg-sky-300/5 px-4 py-3 text-sm">
-          확인 중인 당첨자 {openChecks.length}건
+          확인 중인 입상자 {openChecks.length}건
           {waitingStars > 0
             ? ` · 별 세 개를 기다리는 중 ${waitingStars}건`
             : ""}
@@ -2075,7 +2071,7 @@ function RoundRow({
       <span className="flex items-baseline justify-between">
         <span className="font-semibold tabular-nums">{label}</span>
         <span className="text-white/55 text-xs tabular-nums">
-          예측서 {record.count}장{sealed ? "" : ` · 당첨 ${winners}장`}
+          예측서 {record.count}장{sealed ? "" : ` · 입상 ${winners}장`}
         </span>
       </span>
       {sealed ? (
@@ -2224,7 +2220,7 @@ function RoundDetail({
           className="break-keep text-center text-amber-100/90 text-sm"
           data-prize-summary
         >
-          소속이 표시된 당첨 {prizeWinners}장
+          소속이 표시된 입상 {prizeWinners}장
           {prize.excluded > 0 &&
             ` · 같은 소속 증서로 낸 장은 소속 표시에서 빠졌습니다`}
         </p>
@@ -2241,7 +2237,7 @@ function RoundDetail({
       )}
 
       {!hidden && (
-        <ul className="flex flex-col gap-2" aria-label="등수별 당첨">
+        <ul className="flex flex-col gap-2" aria-label="등수별 입상자">
           {RANKS.map((rank) => (
             <li
               key={rank}
