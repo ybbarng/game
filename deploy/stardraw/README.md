@@ -99,7 +99,7 @@ STARDRAW_DIRECTOR_KEYS=<패스키 번호 base64url>.<공개 열쇠 base64url>
 - 설정에서 열쇠를 빼고 다시 띄우면, 아직 예고 중인 관인 지정은 다음 기록에 관인이 취소한다. 이미 효력이 생긴 열쇠는 관리 화면의 「빼기」(국장 서명)로 뺀다. 지정이 취소된 열쇠는 설정에 다시 넣어도 싣지 않는다(새 패스키를 만든다).
 - 국장 열쇠는 여러 개 둘 수 있다(기기 분실 대비). 쓰는 중인 국장은 관리 화면에서 새 열쇠를 지정할 수 있다.
 - 국장 패스키로는 우주인 등록(응모)을 할 수 없다. 응모는 다른 패스키로 한다.
-- `STARDRAW_ORIGINS`에 localhost가 있으면 서버는 localhost에서 한 서명도 받지만, 공개 장부 검사(검증 페이지·터미널 검사기)는 `https://game.byb.kr`에서 한 서명만 받는다. 국장 서명은 꼭 `game.byb.kr`의 관리 화면에서 한다.
+- 운영 rpId(`game.byb.kr`)에서 `STARDRAW_ORIGINS`는 공개 장부 검사(검증 페이지·터미널 검사기)가 받는 출처 `https://game.byb.kr`만 둔다. https가 아닌 출처나 localhost가 `STARDRAW_ORIGINS`·`STARDRAW_DEV_ORIGINS`에 있으면 서버가 뜨지 않는다(docs/36 11-49). 로컬에서 시험할 때는 `STARDRAW_RP_ID=localhost`로 띄운다.
 - 국장 요청 상한: IP 앞부분마다 하루 60번(`STARDRAW_DIRECTOR_REQUESTS_PER_PREFIX`), 받아 두고 아직 싣지 않은 요청 20개.
 
 ## 지금 장부를 한 번 새로 시작하기(2026-10-30, 장부 형식이 바뀐 때 한 번만)

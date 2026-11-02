@@ -8,7 +8,7 @@ import {
   sealFingerprint,
   toBase64Url,
 } from "@game/stardraw-core";
-import { loadConfig } from "./config";
+import { loadConfig, originProblems } from "./config";
 import { StardrawServer } from "./engine";
 import { googleTokenVerifier } from "./google";
 import { createHttpServer } from "./http";
@@ -43,6 +43,11 @@ import { Store } from "./store";
 /** 하늘의 별 따기 회차 서버 시작(docs/36 11-5 3번) */
 async function main(): Promise<void> {
   const config = loadConfig();
+  const originIssues = originProblems(config.policy, config.devOrigins);
+  if (originIssues.length > 0)
+    throw new Error(
+      `서버를 띄우지 않는다: 운영 rpId(${config.policy.rpId})의 출처 설정이 맞지 않는다\n  ${originIssues.join("\n  ")}`,
+    );
   mkdirSync(config.dataDir, { recursive: true });
   const clock = realClock;
   const store = new Store(join(config.dataDir, "stardraw.sqlite"));

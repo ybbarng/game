@@ -25,9 +25,9 @@ services:
     environment:
       STARDRAW_BASE_PATH: /stardraw-api
       STARDRAW_RP_ID: game.byb.kr
-      # 개발 서버(3456)와 화면 시험(4173)에서도 이 서버를 시험할 수 있게 localhost를 둔다
-      STARDRAW_ORIGINS: https://game.byb.kr,http://localhost:3456,http://localhost:4173
-      STARDRAW_DEV_ORIGINS: http://localhost:3456,http://localhost:4173
+      # 운영 rpId에서는 https 출처만, localhost는 받지 않는다(있으면 서버가 뜨지 않는다, docs/36 11-49).
+      # 공개 장부 검사가 받는 출처와 같아야 한다. STARDRAW_DEV_ORIGINS는 두지 않는다
+      STARDRAW_ORIGINS: https://game.byb.kr
       STARDRAW_TRUST_PROXY: "1"
       # 봉인 시각 증명: 공개 시각 인증 기관(기본 digicert,sectigo 중 1곳 이상). 단계와 상관없이 켠다
       STARDRAW_TSA: ${STARDRAW_TSA:-digicert,sectigo}

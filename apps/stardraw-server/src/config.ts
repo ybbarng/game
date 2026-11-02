@@ -2,6 +2,7 @@ import {
   alignedEpoch,
   DEFAULT_GATE_TRIES,
   DEFAULT_TSA_NAMES,
+  DEFAULT_WEBAUTHN_POLICY,
   type Phase,
   POW_PARAMS,
   type PowParams,
@@ -190,11 +191,7 @@ export function loadConfig(): ServerConfig {
       length,
     ),
     pow: POW_PARAMS,
-    policy: {
-      rpId: env("STARDRAW_RP_ID") ?? "game.byb.kr",
-      origins: (env("STARDRAW_ORIGINS") ?? "https://game.byb.kr").split(","),
-    },
-    devOrigins: (env("STARDRAW_DEV_ORIGINS") ?? "").split(",").filter(Boolean),
+    ...originConfig(env),
     trustProxy: env("STARDRAW_TRUST_PROXY") === "1",
     entriesPerPrefixPerRound: int(
       "STARDRAW_ENTRIES_PER_PREFIX",
@@ -231,6 +228,75 @@ export function loadConfig(): ServerConfig {
     ).split(","),
     ...outside,
   };
+}
+
+/** 패스키 정책(rpId·받는 출처)과 개발용 CORS 출처 */
+export function originConfig(get: (name: string) => string | undefined): {
+  policy: WebAuthnPolicy;
+  devOrigins: string[];
+} {
+  return {
+    policy: {
+      rpId: get("STARDRAW_RP_ID") ?? DEFAULT_WEBAUTHN_POLICY.rpId,
+      origins: (
+        get("STARDRAW_ORIGINS") ?? DEFAULT_WEBAUTHN_POLICY.origins.join(",")
+      )
+        .split(",")
+        .filter(Boolean),
+    },
+    devOrigins: (get("STARDRAW_DEV_ORIGINS") ?? "").split(",").filter(Boolean),
+  };
+}
+
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+const isLocalHost = (host: string) =>
+  LOCAL_HOSTS.has(host) || host.endsWith(".localhost");
+
+/**
+ * 운영 시작 검사(docs/36 11-49): rpId가 localhost가 아니면(운영) 받는 출처와 개발용 출처는 https만, localhost는 받지 않는다.
+ * rpId가 공개 검사기의 rpId(game.byb.kr)면 받는 출처는 검사기가 받는 출처 안에 있어야 한다
+ * (서버가 받은 예측서·국장 서명을 공개 장부 검사도 그대로 받게). 문제마다 한 줄, 없으면 빈 목록
+ */
+export function originProblems(
+  policy: WebAuthnPolicy,
+  devOrigins: readonly string[],
+): string[] {
+  if (isLocalHost(policy.rpId)) return [];
+  const problems: string[] = [];
+  if (policy.origins.length === 0) problems.push("STARDRAW_ORIGINS가 비었다");
+  const check = (name: string, origin: string, onRp: boolean) => {
+    let url: URL;
+    try {
+      url = new URL(origin);
+    } catch {
+      problems.push(`${name}에 출처가 아닌 값이 있다: ${origin}`);
+      return;
+    }
+    if (url.protocol !== "https:")
+      problems.push(`${name}에 https가 아닌 출처가 있다: ${origin}`);
+    if (isLocalHost(url.hostname))
+      problems.push(`${name}에 localhost 출처가 있다: ${origin}`);
+    if (url.origin !== origin)
+      problems.push(`${name}의 값이 출처 모양이 아니다: ${origin}`);
+    if (
+      onRp &&
+      url.hostname !== policy.rpId &&
+      !url.hostname.endsWith(`.${policy.rpId}`)
+    )
+      problems.push(
+        `${name}의 출처가 rpId(${policy.rpId}) 아래가 아니다: ${origin}`,
+      );
+  };
+  for (const o of policy.origins) check("STARDRAW_ORIGINS", o, true);
+  for (const o of devOrigins) check("STARDRAW_DEV_ORIGINS", o, false);
+  if (policy.rpId === DEFAULT_WEBAUTHN_POLICY.rpId)
+    for (const o of policy.origins)
+      if (!DEFAULT_WEBAUTHN_POLICY.origins.includes(o))
+        problems.push(
+          `STARDRAW_ORIGINS의 ${o}는 공개 장부 검사가 받지 않는 출처다(받는 출처: ${DEFAULT_WEBAUTHN_POLICY.origins.join(", ")})`,
+        );
+  return problems;
 }
 
 /**
