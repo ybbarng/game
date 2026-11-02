@@ -1,5 +1,7 @@
 import { expect, fixStardrawClock, test } from "./test";
 
+// 화면은 기기 시간대로 시각을 보인다. 시각 글자를 확인하므로 한국 시간으로 고정한다(CI는 UTC)
+test.use({ timezoneId: "Asia/Seoul" });
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
 test("관측 방송: 관측 1분 중에 홈으로 들어오면 관측지, 이미 홈에 있던 사람은 그대로. 처음 온 사람에게 안내와 우주인 등록", async ({
