@@ -295,7 +295,7 @@ async function main() {
       ? fake.fetch(input, init)
       : Promise.reject(new Error("모르는 기관"));
   };
-  // 커밋 시각·활동 기록은 리허설 시계로(정식 회차의 관측 전 사본 기한 확인, docs/36 11-50)
+  // 커밋 시각·활동 기록은 리허설 시계로(정식 회차의 관측 전 사본 기한 확인, docs/36 11-51)
   const github = new FakeGitHub(() => nowSec());
   const serverLog: string[] = [];
   const engine = new StardrawServer({

@@ -117,7 +117,7 @@ describe("장부 전체 검사(서버 공개 파일)", () => {
     expect(status.anchor).toBe("skip");
     // 운영 기록이 없는 장부라 관인 열쇠는 볼 것이 없다
     expect(status["seal-key"]).toBe("skip");
-    // 시험 단계 장부라 관측 전 사본 규칙(정식 회차, docs/36 11-50)은 볼 것이 없다
+    // 시험 단계 장부라 관측 전 사본 규칙(정식 회차, docs/36 11-51)은 볼 것이 없다
     expect(status["early-seal"]).toBe("skip");
     const inside = result.items.filter(
       (i) =>

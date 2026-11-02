@@ -31,7 +31,7 @@ export interface Seal {
   log: unknown;
 }
 
-/** 공개 전 봉인(정식 회차, docs/36 11-50) */
+/** 공개 전 봉인(정식 회차, docs/36 11-51) */
 export interface PendingSeal {
   round: number;
   /** 공개할 봉인 파일 글 그대로(관측 전 사본과 같은 바이트) */
@@ -394,7 +394,7 @@ export class Store {
       .run(String(round));
   }
 
-  /** 시험 회차 가운데 drand가 지나 관측 전 사본을 올리지 못한 회차(최근 200개, docs/36 11-50) */
+  /** 시험 회차 가운데 drand가 지나 관측 전 사본을 올리지 못한 회차(최근 200개, docs/36 11-51) */
   earlySealMissed(): number[] {
     const row = this.db
       .prepare("SELECT v FROM meta WHERE k = 'earlySealMissed'")
@@ -414,7 +414,7 @@ export class Store {
   }
 
   /**
-   * 정식 회차의 공개 전 봉인(docs/36 11-50): 토큰은 받았지만 관측 전 사본을 확인하기 전이라 아직 공개하지 않은 봉인 파일 글.
+   * 정식 회차의 공개 전 봉인(docs/36 11-51): 토큰은 받았지만 관측 전 사본을 확인하기 전이라 아직 공개하지 않은 봉인 파일 글.
    * 다시 띄워도 같은 바이트로 이어 가려고 남긴다. 한 번에 한 회차뿐이다
    */
   pendingSeal(): PendingSeal | null {

@@ -305,7 +305,7 @@ export interface Anchor {
    */
   earlySeal(branch: string, file: RepoFile, message: string): Promise<void>;
   /**
-   * 관측 전 사본을 다시 읽는다(docs/36 11-50): 그 브랜치의 글과, 그 경로를 마지막으로 바꾼 커밋의 시각(초).
+   * 관측 전 사본을 다시 읽는다(docs/36 11-51): 그 브랜치의 글과, 그 경로를 마지막으로 바꾼 커밋의 시각(초).
    * 파일이 없으면 null. 읽지 못하면 던진다(있는지 모르는 채로 무효를 정하지 않게)
    */
   earlySealStatus(

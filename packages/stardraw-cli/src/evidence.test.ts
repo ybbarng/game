@@ -80,7 +80,7 @@ describe("추첨 전 봉인 증거 모으기(watch)", () => {
   });
 });
 
-describe("관측 전 사본도 받아 두기(docs/36 11-50)", () => {
+describe("관측 전 사본도 받아 두기(docs/36 11-51)", () => {
   const schedule: Schedule = {
     epoch: 1793321700,
     entries: [

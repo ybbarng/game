@@ -266,7 +266,7 @@ export async function makeRig(
     async finish(round) {
       const { closesAt } = roundTimes(engine.schedule(), round);
       await at(closesAt);
-      // 정식 회차는 관측 전 사본을 확인한 뒤에 봉인을 공개한다(docs/36 11-50). 운영은 1초마다 진행하므로
+      // 정식 회차는 관측 전 사본을 확인한 뒤에 봉인을 공개한다(docs/36 11-51). 운영은 1초마다 진행하므로
       // 앵커 흐름이 돌고 있었으면 그 뒤에 올린다. 그 흉내로 앵커가 끝난 뒤 한 번 더 진행한다
       if (store.pendingSeal()) {
         await engine.earlySealIdle();

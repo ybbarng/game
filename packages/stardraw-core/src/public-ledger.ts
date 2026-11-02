@@ -213,7 +213,7 @@ export interface PublicCheckOptions {
   /** 한꺼번에 받는 수·다시 받기(시험은 손으로 옮기는 시계를 넣는다) */
   polite?: PoliteFetchOptions;
   /**
-   * 정식 회차의 관측 전 사본 커밋 시각·활동 기록(api.github.com, docs/36 11-50). null이면 보지 않는다.
+   * 정식 회차의 관측 전 사본 커밋 시각·활동 기록(api.github.com, docs/36 11-51). null이면 보지 않는다.
    * scope 기본 focus(검증 페이지: 고른 회차만, 요청 수 상한), 터미널 검사기는 all
    */
   github?: {
@@ -556,7 +556,7 @@ export async function checkPublicLedger(
       : null;
   /**
    * 무효 회차의 drand 전 봉인 증거(docs/36 11-20): 넣어 준 증거(받아 둔 서버 봉인 파일)와, 시험 회차는 앵커 저장소의 사본.
-   * 정식 회차의 main 사본은 커밋 시각과 함께 증인(witness)이 본다(docs/36 11-50)
+   * 정식 회차의 main 사본은 커밋 시각과 함께 증인(witness)이 본다(docs/36 11-51)
    */
   const voidEvidence = (schedule: Schedule) => {
     const anchorCopies = anchorRepo
@@ -775,7 +775,7 @@ export interface VoidRoundsOptions {
   beacon?: (drandRound: number) => Promise<DrandBeacon | null>;
   tsaAuthorities?: readonly TsaAuthority[];
   /**
-   * 정식 회차의 공개 증인(앵커 저장소 main, docs/36 11-50). 정식 무효 회차는 여기 사본이 커밋 시각 기한 안이고
+   * 정식 회차의 공개 증인(앵커 저장소 main, docs/36 11-51). 정식 무효 회차는 여기 사본이 커밋 시각 기한 안이고
    * drand 전 토큰이 들어 있으면 실패, 커밋 시각이 늦으면 규칙대로 무효로 본다
    */
   witness?: GitHubWitness;
@@ -841,7 +841,7 @@ export async function voidRoundsItem(
           caught = true;
           break;
         }
-    // 정식 회차(docs/36 11-50): main 사본은 커밋 시각이 기한 안일 때만 「제때 올린 사본」이다
+    // 정식 회차(docs/36 11-51): main 사본은 커밋 시각이 기한 안일 때만 「제때 올린 사본」이다
     if (
       !caught &&
       options.witness &&

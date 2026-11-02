@@ -107,7 +107,7 @@ async function runLedger(
     ...(cmd.evidence
       ? { earlySeals: folderEarlySealSource(cmd.evidence) }
       : {}),
-    // 정식 회차의 관측 전 사본 커밋 시각·활동 기록은 모든 회차를 본다(docs/36 11-50). 토큰은 어디에도 찍지 않는다
+    // 정식 회차의 관측 전 사본 커밋 시각·활동 기록은 모든 회차를 본다(docs/36 11-51). 토큰은 어디에도 찍지 않는다
     github: {
       scope: "all",
       fetch: io.fetch,

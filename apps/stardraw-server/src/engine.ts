@@ -317,7 +317,7 @@ interface ServerStateBase {
   anchorLag: number | null;
   /** 봉인 수 − 추첨 전 봉인 사본을 올린 수. 앵커를 쓰지 않으면 null(D10) */
   earlySealLag: number | null;
-  /** 마감이 VOID_WINDOW(24시간) 안인 시험 회차 가운데 drand 전에 관측 전 사본을 올리지 못한 회차(docs/36 11-50) */
+  /** 마감이 VOID_WINDOW(24시간) 안인 시험 회차 가운데 drand 전에 관측 전 사본을 올리지 못한 회차(docs/36 11-51) */
   earlySealMissed: number[];
   /** 마감이 지났는데 아직 봉인하지 못한 시간(초). 정상이면 0, 기한(3분)에 가까워지면 시각 인증이 막힌 것(D10) */
   sealOverdueSeconds: number;
@@ -1054,7 +1054,7 @@ export class StardrawServer {
       this.sealingFrom = Math.max(this.sealingFrom, round);
       const parts = this.sealParts(round);
       const digest = sealDigest(parts);
-      // 정식 회차: 관측 전 사본을 확인한 뒤에야 공개한다(docs/36 11-50)
+      // 정식 회차: 관측 전 사본을 확인한 뒤에야 공개한다(docs/36 11-51)
       if (this.earlySealRequired(schedule, round)) {
         if (await this.sealLive(round, closesAt, parts, digest)) continue;
         return;
@@ -1091,13 +1091,13 @@ export class StardrawServer {
     };
   }
 
-  /** 관측 전 사본이 있어야 유효한 회차인지: 정식 단계이고 앵커를 쓰는 서버(docs/36 11-50) */
+  /** 관측 전 사본이 있어야 유효한 회차인지: 정식 단계이고 앵커를 쓰는 서버(docs/36 11-51) */
   private earlySealRequired(schedule: Schedule, round: number): boolean {
     return this.o.anchor !== noAnchor && requiresEarlySeal(schedule, round);
   }
 
   /**
-   * 정식 회차 봉인(docs/36 11-50): 토큰 받기 → 봉인 파일 글을 DB에만 남김 → (earlySealDue가) main에 사본 올리고 다시 읽어 확인
+   * 정식 회차 봉인(docs/36 11-51): 토큰 받기 → 봉인 파일 글을 DB에만 남김 → (earlySealDue가) main에 사본 올리고 다시 읽어 확인
    * → 확인되면 같은 바이트로 공개. 기한(drand − 60초)까지 확인하지 못하면 토큰을 버리고 무효로 봉인한다.
    * 봉인했으면 true(다음 회차로), 아직이면 false(다음 진행 때 다시)
    */
@@ -1837,7 +1837,7 @@ export class StardrawServer {
    * 빠진 지난 회차는 먼저 몇 커밋으로 묶어 채운다. 사본을 올리지 못해도 앵커 파일은 따로 남기고, 사본은 10분 뒤 다시 채운다
    */
   /**
-   * 관측 전 봉인 사본(docs/36 11-20·11-50, 보안 표 O10): drand가 나오기 전에 봉인 파일을 앵커 저장소에 올린다.
+   * 관측 전 봉인 사본(docs/36 11-20·11-51, 보안 표 O10): drand가 나오기 전에 봉인 파일을 앵커 저장소에 올린다.
    * - 정식 회차: 사본이 유효의 조건이다. 공개 전 봉인(`pendingSeal`)을 main에 올리고 다시 읽어 확인하면 표시해 두고,
    *   sealDue가 그 글을 공개한다. 실패하면 기한(drand − 60초)까지 5초마다 다시
    * - 시험 회차: 공개한 봉인 파일을 뒤따라 올린다. 나중에 그 회차를 무효로 닫으면 검사가 실패로 잡는다.
@@ -1867,7 +1867,7 @@ export class StardrawServer {
     });
   }
 
-  /** 정식 회차의 공개 전 봉인을 main에 올리고 다시 읽어 확인한다(docs/36 11-50) */
+  /** 정식 회차의 공개 전 봉인을 main에 올리고 다시 읽어 확인한다(docs/36 11-51) */
   private async pushPendingSeal(): Promise<void> {
     const { store } = this.o;
     const pending = store.pendingSeal();

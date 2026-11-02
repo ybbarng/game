@@ -5,7 +5,7 @@ import type { RoundRecord } from "./record";
 import { phaseOf, roundTimes, type Schedule } from "./schedule";
 
 /**
- * 정식 회차의 관측 전 사본(docs/36 11-50, 보안 표 O10).
+ * 정식 회차의 관측 전 사본(docs/36 11-51, 보안 표 O10).
  * 정식 단계 회차는 봉인 파일이 앵커 저장소 main의 `early-seals/`에 「drand 시각 − EARLY_SEAL_MARGIN」까지 올라야 유효다.
  * 서버는 그 사본을 확인한 뒤에야 우리 서버에 봉인 파일을 공개하고, 기한까지 확인하지 못하면 토큰을 버리고 무효로 닫는다.
  * 그래서 「유효인데 사본이 없음」과 「무효인데 제때 올린 사본이 있음」이 모두 검사 실패다.
@@ -267,7 +267,7 @@ export interface EarlySealCheckOptions {
 }
 
 /**
- * 정식 유효 회차의 관측 전 사본(docs/36 11-50): 사본이 없거나·봉인 파일과 다르거나·커밋 시각이 기한보다 늦으면 실패.
+ * 정식 유효 회차의 관측 전 사본(docs/36 11-51): 사본이 없거나·봉인 파일과 다르거나·커밋 시각이 기한보다 늦으면 실패.
  * 그 커밋의 활동 기록 push 시각이 늦거나 기록에 없으면 주의, main·trial의 강제 push·브랜치 삭제는 실패.
  * 무효 회차는 「무효 회차」 항목(voidRoundsItem)이 본다. 받지 못한 회차는 「확인 못 함」으로 적고 실패로 보지 않는다
  */

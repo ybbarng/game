@@ -198,7 +198,7 @@ export class Publisher {
     this.sealRaw(s.round, Publisher.sealText(s));
   }
 
-  /** 이미 만든 봉인 파일 글을 그대로 공개한다(정식 회차: 관측 전 사본을 확인한 글, docs/36 11-50) */
+  /** 이미 만든 봉인 파일 글을 그대로 공개한다(정식 회차: 관측 전 사본을 확인한 글, docs/36 11-51) */
   sealRaw(round: number, text: string): void {
     const full = join(this.dir, `seals/${pad(round)}.json`);
     const tmp = `${full}.tmp`;

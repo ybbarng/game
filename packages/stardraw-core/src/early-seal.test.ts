@@ -23,7 +23,7 @@ import { FakeTsa } from "./testing";
 import { sealImprint, type TsaProof } from "./tsa";
 
 /**
- * 정식 회차의 관측 전 사본(docs/36 11-50). 1~2회차는 시험, 3회차부터 정식인 장부
+ * 정식 회차의 관측 전 사본(docs/36 11-51). 1~2회차는 시험, 3회차부터 정식인 장부
  */
 
 const ENTRY = {
