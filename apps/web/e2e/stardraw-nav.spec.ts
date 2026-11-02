@@ -261,7 +261,7 @@ test("영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면
   // 결과 전 영수증 아래쪽은 상태 문구가 아니라 맺음말(상태는 영수증 밖 단추가 맡는다)
   const receipt = page.locator(`[data-receipt='${id}']`);
   await expect(receipt.locator("[data-receipt-thanks]")).toHaveText(
-    "관측에 참여해 주셔서 감사합니다.",
+    "예측에 참여해 주셔서 감사합니다.별이 빛나는 순간을 관측지에서 함께 지켜봐 주시기 바랍니다.",
   );
   await expect(page.getByText("추첨을 기다리고 있습니다")).toHaveCount(0);
   await page.screenshot({
