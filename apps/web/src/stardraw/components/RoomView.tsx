@@ -569,16 +569,16 @@ export function RoomView({
     phase === "open"
       ? `지금 ${title} 예측을 받고 있어요.`
       : phase === "closed"
-        ? `예측을 마감했어요. 추첨까지 ${formatLeft(toShow / 1000)}`
+        ? `예측을 마감했어요. 관측까지 ${formatLeft(toShow / 1000)}`
         : phase === "announce"
-          ? "이제 추첨을 시작하겠습니다."
+          ? "이제 관측을 시작하겠습니다."
           : phase === "count"
-            ? "이제 추첨을 시작하겠습니다."
+            ? "이제 관측을 시작하겠습니다."
             : phase === "live"
-              ? `${title} 추첨 중이에요.`
+              ? `${title} 관측 중이에요.`
               : closed
                 ? "관측을 마쳤어요."
-                : `${title} 추첨이 끝났어요.`;
+                : `${title} 관측이 끝났어요.`;
 
   // 로컬 데모 바로가기로 왔으면: 이 방의 추첨이 끝난 뒤 잠깐 머물다(결과 이야기) 다음 추첨 회차 방으로
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단계가 바뀔 때만
@@ -687,7 +687,7 @@ export function RoomView({
               lit: [],
               bonus: null,
             }}
-            label={`${title} 추첨을 기다리는 하늘`}
+            label={`${title} 관측을 기다리는 하늘`}
             // 추첨 알림·카운트다운부터는 연출을 가리지 않게 누르기를 막는다
             info={phase === "open" || phase === "closed"}
           />
@@ -708,7 +708,7 @@ export function RoomView({
         )}
         {phase === "live" && !record && (
           <p className="absolute inset-x-0 bottom-3 text-center text-sm text-white/75">
-            하늘에서 추첨 결과를 받고 있습니다.
+            하늘에서 결과를 받고 있습니다.
           </p>
         )}
         {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다 */}

@@ -319,7 +319,7 @@ export async function verifyLedger(
     if (record.void !== shouldBeVoid) {
       fail(
         shouldBeVoid
-          ? "루트 기록 시각으로는 무효 회차인데 추첨했다"
+          ? "루트 기록 시각으로는 무효 회차인데 결과를 정했다"
           : "무효가 아닌데 무효로 처리했다",
       );
     }

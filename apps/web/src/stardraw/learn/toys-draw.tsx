@@ -186,7 +186,7 @@ export function TsaToy() {
       {baseTime > 0 && (
         <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
           <span className="text-white/70 text-xs">
-            봉인 시각은 마감 뒤, drand 추첨 전이어야 그 회차가 유효합니다
+            봉인 시각은 마감 뒤, drand 결과 결정 전이어야 그 회차가 유효합니다
           </span>
           <div className="flex flex-wrap gap-1.5">
             <Btn
@@ -211,15 +211,15 @@ export function TsaToy() {
           <Row label="봉인(토큰)">
             <Mono>{kst(baseTime).slice(11)}</Mono>
           </Row>
-          <Row label="추첨(drand)">
+          <Row label="결과 결정(drand)">
             <Mono>{kst(drandAt).slice(11)}</Mono>
           </Row>
           <Verdict ok={!isVoid} testId="tsa-order">
             {!isVoid
-              ? "유효: 봉인이 추첨보다 먼저입니다. 결과를 알기 전에 예측서 목록이 고정됐습니다"
+              ? "유효: 봉인이 결과 결정보다 먼저입니다. 결과를 알기 전에 예측서 목록이 고정됐습니다"
               : baseTime < closesAt
                 ? "무효: 마감 전 봉인은 말이 되지 않습니다"
-                : "무효: 봉인이 추첨 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 당첨 없이 닫습니다"}
+                : "무효: 봉인이 결과 결정 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 당첨 없이 닫습니다"}
           </Verdict>
         </div>
       )}
@@ -311,7 +311,7 @@ export function DrandToy() {
             ? "BLS 서명 확인 중"
             : beaconOk
               ? "quicknet 공개 열쇠로 서명이 맞습니다. 진짜 drand 값입니다"
-              : "서명이 맞지 않습니다. 이 값으로는 추첨하지 않습니다"}
+              : "서명이 맞지 않습니다. 이 값으로는 결과를 정하지 않습니다"}
         </Verdict>
         <Row label="난수 = SHA-256(서명)">
           <Mono>{short(randomness, 24)}…</Mono>

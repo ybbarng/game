@@ -718,7 +718,8 @@ describe("무효 회차를 결과보다 먼저 정하기(docs/36 11-20, 보안 �
   it("추첨 전에 받은 봉인 증거가 나오면 무효로 닫은 장부는 실패다(증거를 숨기고 결과를 본 뒤 무효)", async () => {
     expect(await check([earlyFile(closesAt + 10)])).toMatchObject({
       status: "fail",
-      detail: "1회: 추첨 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다",
+      detail:
+        "1회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다",
     });
   });
 

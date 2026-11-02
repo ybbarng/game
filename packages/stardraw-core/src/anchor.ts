@@ -75,7 +75,7 @@ export function earlySealPath(ledger: string, round: number): string {
 
 /** 추첨 전 봉인 사본 커밋 메시지: "하늘의 별 따기 {회차}회 봉인(추첨 전) (장부 {id})" */
 export function earlySealCommitMessage(ledger: string, round: number): string {
-  return `하늘의 별 따기 ${round}회 봉인(추첨 전) (장부 ${ledger})`;
+  return `하늘의 별 따기 ${round}회 봉인(관측 전) (장부 ${ledger})`;
 }
 
 /** 앵커 저장소의 장부 사본 기준 주소(뒤에 `/ledger/…`를 붙여 받는다) */

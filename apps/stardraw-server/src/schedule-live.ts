@@ -72,7 +72,7 @@ export function scheduleChange(
     throw new Error("지금 일정과 같다(회차 길이·단계가 바뀌지 않는다)");
   if (!isAlignedEpoch(from, roundSeconds))
     throw new Error(
-      `새 회차는 추첨이 회차 길이의 배수 시각에 오게 시작해야 한다(${alignedHint(roundSeconds)})`,
+      `새 회차는 관측 시각이 회차 길이의 배수 시각에 오게 시작해야 한다(${alignedHint(roundSeconds)})`,
     );
   const fromRound = roundAt(schedule, from);
   if (fromRound === null || roundTimes(schedule, fromRound).opensAt !== from)
@@ -116,7 +116,7 @@ export function alignedHint(length: number): string {
     );
     return `${minutes}분 회차면 ${marks.join("·")}`;
   }
-  return `${minutes}분 회차면 추첨(시작 + 길이 + 5분)이 유닉스 시각 ${length}초의 배수인 시각`;
+  return `${minutes}분 회차면 관측 시각(시작 + 길이 + 5분)이 유닉스 시각 ${length}초의 배수인 시각`;
 }
 
 /**

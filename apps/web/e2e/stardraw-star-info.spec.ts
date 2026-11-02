@@ -110,7 +110,7 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
   await page.goto("/stardraw");
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   const wait = page.locator("[data-draw-wait='1']");
-  await expect(wait).toContainText("추첨까지");
+  await expect(wait).toContainText("관측까지");
   await checkStarInfo(
     page,
     "[data-draw-wait] canvas[data-sky='draw']",
@@ -118,7 +118,7 @@ test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지�
   );
 
   // 결과가 들어오면 그 자리에서 추첨(화면 시험은 움직임 줄이기라 결과가 바로 나온다)
-  await page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ }).click();
+  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
   const result = page.locator("[data-draw-result]");
   await expect(result).toBeVisible({ timeout: 30_000 });
   await checkStarInfo(page, "canvas[data-sky='draw']", result);

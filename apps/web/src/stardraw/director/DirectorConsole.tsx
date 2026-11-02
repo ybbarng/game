@@ -907,9 +907,10 @@ function ScheduleChange({
       ) : (
         <>
           <p className="break-keep text-sm text-white/70">
-            새 회차는 추첨이 회차 길이의 배수 시각에 오게 시작합니다(1시간이면
-            x:55 시작, 정각 추첨). 이 요청이 실리는 기록 뒤 3회차 예고가 지난
-            회차부터 고를 수 있고, 효력이 생기기 전까지는 취소할 수 있습니다.
+            새 회차는 관측 시각이 회차 길이의 배수 시각에 오게
+            시작합니다(1시간이면 x:55 시작, 정각 관측). 이 요청이 실리는 기록 뒤
+            3회차 예고가 지난 회차부터 고를 수 있고, 효력이 생기기 전까지는
+            취소할 수 있습니다.
           </p>
           {live === null && (
             <label className="flex flex-col gap-1 text-sm sm:max-w-sm">

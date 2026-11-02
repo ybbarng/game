@@ -762,7 +762,7 @@ export async function voidRoundsItem(
         });
         if (check.ok && !isVoidRound(closesAt, check.loggedAt)) {
           hidden.push(
-            `${record.round}회: 추첨 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다`,
+            `${record.round}회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다`,
           );
           break;
         }

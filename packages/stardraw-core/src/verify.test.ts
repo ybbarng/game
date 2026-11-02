@@ -465,7 +465,7 @@ describe("장부 검사", () => {
       OPTIONS,
     );
     expect(messages(report)).toContain(
-      "1: 루트 기록 시각으로는 무효 회차인데 추첨했다",
+      "1: 루트 기록 시각으로는 무효 회차인데 결과를 정했다",
     );
   });
 

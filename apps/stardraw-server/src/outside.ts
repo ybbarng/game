@@ -385,7 +385,7 @@ export class GitHubAnchor implements Anchor {
     if (existing !== null) {
       if (existing === file.text) return;
       throw new Error(
-        `추첨 전 봉인 사본이 이미 다른 내용으로 있다: ${branch}/${file.path}`,
+        `결과 결정 전 봉인 사본이 이미 다른 내용으로 있다: ${branch}/${file.path}`,
       );
     }
     await this.commit(branch, [file], message);

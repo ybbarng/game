@@ -46,7 +46,7 @@ describe("오류 종류(상태 코드·서버 문구)", () => {
     expect(errorKind(timeout)).toBe("timeout");
     expect(errorKind(new Error("장부를 아직 받지 못했습니다"))).toBe("behind");
     expect(
-      errorKind(new Error("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다")),
+      errorKind(new Error("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다")),
     ).toBe("other");
   });
 });
@@ -71,10 +71,10 @@ describe("창구 말 문구", () => {
     // 장부·화면이 낸 한국어 문구는 그대로(마침표를 맞춘다)
     expect(
       errorText(
-        new Error("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다"),
+        new Error("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다"),
         "예측을 접수",
       ),
-    ).toBe("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다.");
+    ).toBe("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다.");
     expect(errorText(null, "등록")).toBe(
       "등록하지 못했습니다. 다시 시도해 주세요.",
     );

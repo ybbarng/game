@@ -358,7 +358,7 @@ quicknet 회차 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
             </ul>
           </Rule>
 
-          <Rule title="봉인이 추첨보다 먼저였다는 증거" file="tsa.ts">
+          <Rule title="봉인이 결과 결정보다 먼저였다는 증거" file="tsa.ts">
             <p className="text-white/80">
               마감 직후 봉인 값으로 공개 시각 인증 기관(RFC 3161 TSA) 여러
               곳에서 시각 인증 토큰을 받아 <code>seals/N.json</code>의{" "}

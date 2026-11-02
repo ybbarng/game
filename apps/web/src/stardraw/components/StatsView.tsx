@@ -109,7 +109,7 @@ export function StatsView({
       )}
       {stats.draws === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 추첨한 회차가 없습니다
+          아직 관측한 회차가 없습니다
         </p>
       ) : (
         <>
@@ -168,7 +168,7 @@ function Overview({
     : null;
   const rows: [string, string][] = [
     [
-      "추첨",
+      "관측",
       `${stats.draws}회${stats.voids ? ` (무효 ${stats.voids}회)` : ""}`,
     ],
     ["예측", `${stats.entries.toLocaleString("ko-KR")}장`],

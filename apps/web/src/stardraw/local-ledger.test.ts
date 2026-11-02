@@ -200,7 +200,7 @@ describe("연습 장부: 응모 받기", () => {
     );
     clock.advance(HOUR * 1000);
     await expect(enter(ledger, me, [1, 2, 3, 4, 5, 6])).rejects.toThrow(
-      "앞 회차 추첨",
+      "앞 회차 관측",
     );
   });
 

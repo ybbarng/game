@@ -39,7 +39,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
 
   // 1회 추첨을 넘긴다(열어 보지 않는다)
   await page.goto("/stardraw");
-  const skip = page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ });
+  const skip = page.getByRole("button", { name: /다음 관측까지 건너뛰기/ });
   await skip.click();
   await expect(page.locator("[data-envelope='1']")).toBeVisible({
     timeout: 30_000,
@@ -53,7 +53,7 @@ test("응모한 회차는 추첨을 본 뒤에야 어디서든 정답이 보인�
   await expect(receipt.locator("[data-result]")).toHaveCount(0);
   await expect(receipt.locator(".sd-ball-hit")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "추첨 다시 보기" }),
+    page.getByRole("button", { name: "관측 다시 보기" }),
   ).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("stardraw-spoiler-receipt.png"),

@@ -195,7 +195,7 @@ export function StardrawDemo() {
           </div>
           <h1 className="font-black text-3xl">하늘의 별 따기 데모</h1>
           <p className="break-keep text-white/70">
-            예측 → 추첨 → 당첨자 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
+            예측 → 관측 → 당첨자 확인까지 혼자 끝까지 해 봅니다. 연습 참가자
             24명이 회차마다 함께 예측합니다.
           </p>
           {!tourId && <TourList />}
@@ -215,10 +215,10 @@ export function StardrawDemo() {
                 </span>
                 <span className="text-sm text-white/65">
                   {status.phase === "open"
-                    ? `예측 받는 중 · 마감까지 ${formatLeft(status.times.entryDeadline - status.now)} · 추첨까지 ${formatLeft(status.times.closesAt + DRAND_DELAY - status.now)}`
+                    ? `예측 받는 중 · 마감까지 ${formatLeft(status.times.entryDeadline - status.now)} · 관측까지 ${formatLeft(status.times.closesAt + DRAND_DELAY - status.now)}`
                     : status.phase === "closing"
                       ? "곧 마감"
-                      : "앞 회차 추첨을 기다리는 중"}
+                      : "앞 회차 관측을 기다리는 중"}
                 </span>
                 <span className="ml-auto flex gap-2">
                   <button
@@ -239,7 +239,7 @@ export function StardrawDemo() {
                     }
                     className="sd-cta rounded-lg px-3 py-1.5 font-bold text-slate-950 text-sm disabled:opacity-40"
                   >
-                    지금 추첨
+                    지금 관측
                   </button>
                 </span>
               </div>
@@ -249,7 +249,7 @@ export function StardrawDemo() {
               {current ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-white/70">
-                    이번 회차에 예측했습니다. 「지금 추첨」을 눌러 보세요.
+                    이번 회차에 예측했습니다. 「지금 관측」을 눌러 보세요.
                   </p>
                   <Receipt
                     ticket={current.ticket}
@@ -289,7 +289,7 @@ export function StardrawDemo() {
               )}
             </Step>
 
-            <Step n={3} title="추첨">
+            <Step n={3} title="관측">
               {latest && latestRecord ? (
                 drawing === latest.ticket.round ? (
                   <div className="mx-auto w-full max-w-xl">
@@ -313,13 +313,13 @@ export function StardrawDemo() {
                       onClick={() => setDrawing(latest.ticket.round)}
                       className="sd-cta ml-auto rounded-lg px-3 py-1.5 font-bold text-slate-950 text-sm"
                     >
-                      추첨 보기
+                      관측 보기
                     </button>
                   </div>
                 )
               ) : (
                 <p className="text-sm text-white/60">
-                  예측한 뒤 「지금 추첨」을 누르면 여기서 추첨을 봅니다.
+                  예측한 뒤 「지금 관측」을 누르면 여기서 관측을 봅니다.
                 </p>
               )}
             </Step>

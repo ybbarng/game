@@ -685,7 +685,7 @@ export class LocalLedger implements Ledger {
       throw new Error("이번 회차 예측서가 아닙니다");
     const times = roundTimes(this.schedule, round);
     if (this.records.length < round - 1)
-      throw new Error("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다");
+      throw new Error("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다");
     if (now >= times.closesAt) throw new Error(closedMessage(now));
     if (this.pending.round !== round)
       this.pending = { round, tickets: [], registrations: [] };

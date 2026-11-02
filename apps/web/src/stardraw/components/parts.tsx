@@ -170,10 +170,10 @@ export function formatLeft(seconds: number): string {
 
 /** 회차 시각 안내. 마감은 늘 추첨 5분 전(docs/36 3절) */
 export function scheduleLine(length: number): string {
-  if (length === 3600) return "매시 정각 추첨 · 55분 마감";
+  if (length === 3600) return "매시 정각 관측 · 55분 마감";
   const every =
     length % 3600 === 0 ? `${length / 3600}시간` : `${length / 60}분`;
-  return `${every}마다 추첨 · 추첨 5분 전 마감`;
+  return `${every}마다 관측 · 관측 5분 전 마감`;
 }
 
 export const TAGLINE = "로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요?";
@@ -213,11 +213,11 @@ export function DrawFirst({
       data-draw-first={round}
       className={look}
     >
-      추첨 보기
+      관측 보기
     </button>
   ) : (
     <span data-draw-first={round} className={look}>
-      추첨 보기
+      관측 보기
     </span>
   );
 }

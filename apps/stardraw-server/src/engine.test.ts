@@ -385,7 +385,7 @@ describe("응모 받기: 싼 확인부터, 규칙에 어긋나면 거절", () =>
     await rig.at(close1 + 1);
     expect(rig.engine.state()).toMatchObject({ round: 2, records: 0 });
     const a = await player();
-    await rejects(enter(rig, a, [1, 2, 3, 4, 5, 6]), "앞 회차 추첨");
+    await rejects(enter(rig, a, [1, 2, 3, 4, 5, 6]), "앞 회차 관측");
   });
 });
 

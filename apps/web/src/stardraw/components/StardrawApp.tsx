@@ -857,7 +857,7 @@ function PracticeSkip({ onSkip }: { onSkip: () => Promise<void> }) {
       }}
       className="self-center rounded-lg border border-white/15 border-dashed px-3 py-1.5 text-sm text-white/60 hover:bg-white/10 disabled:opacity-50"
     >
-      {skipping ? "건너뛰고 있습니다" : "연습: 다음 추첨까지 건너뛰기"}
+      {skipping ? "건너뛰고 있습니다" : "연습: 다음 관측까지 건너뛰기"}
     </button>
   );
 }
@@ -906,7 +906,7 @@ export function Gate({
           data-live={live !== null ? "entered" : open ? "open" : "drawing"}
         />
         {live !== null
-          ? `지금 ${roundShort(services.ledger.schedule, live)} 추첨 중이에요.`
+          ? `지금 ${roundShort(services.ledger.schedule, live)} 관측 중이에요.`
           : open
             ? `지금 ${name} 예측을 받고 있어요 · 마감까지 ${formatLeft(s.times.entryDeadline - s.now)}`
             : `${name} 예측을 마감했어요.`}
@@ -1021,7 +1021,7 @@ export function RoundCard({
   if (live !== null)
     return (
       <section
-        aria-label="실시간 추첨"
+        aria-label="실시간 관측"
         data-card="live"
         className="sd-glass sd-live-card flex flex-col items-center gap-4 rounded-3xl px-5 py-6 text-center"
       >
@@ -1031,7 +1031,7 @@ export function RoundCard({
             className="sd-live-dot"
             data-live="entered"
           />
-          지금 {roundShort(schedule, live)} 추첨 중이에요.
+          지금 {roundShort(schedule, live)} 관측 중이에요.
         </span>
         <button
           type="button"
@@ -1047,12 +1047,12 @@ export function RoundCard({
     const r = envelope.ticket.round;
     return (
       <section
-        aria-label="추첨 결과"
+        aria-label="관측 결과"
         data-card="result"
         className="sd-glass flex flex-col items-center gap-4 rounded-3xl p-6 text-center"
       >
         <span className="font-bold text-lg tabular-nums">
-          {roundShort(schedule, r)} 추첨 끝
+          {roundShort(schedule, r)} 관측 끝
         </span>
         <button
           type="button"
@@ -1060,7 +1060,7 @@ export function RoundCard({
           data-envelope={r}
           className="sd-envelope flex h-28 w-44 items-end justify-center rounded-xl pb-3 font-bold text-slate-900"
         >
-          추첨 보기
+          관측 보기
         </button>
         {!closed && (
           <span className="text-sm text-white/60 tabular-nums">
@@ -1082,7 +1082,7 @@ export function RoundCard({
     );
   }
 
-  const bigLabel = closed || ticket ? "추첨까지" : "마감까지";
+  const bigLabel = closed || ticket ? "관측까지" : "마감까지";
   const big = closed || ticket ? drawAt - s.now : s.times.entryDeadline - s.now;
   const state = closed ? "drawing" : ticket ? "entered" : "open";
   const name = roundShort(schedule, round);
@@ -1128,10 +1128,10 @@ export function RoundCard({
       >
         {!closed
           ? ticket
-            ? `${clockOf(drawAt)} 추첨을 함께 지켜봐 주세요.`
+            ? `${clockOf(drawAt)} 관측을 함께 지켜봐 주세요.`
             : "아직 이번 회차에 예측하지 않으셨어요."
           : ticket
-            ? "곧 추첨이 시작됩니다. 관측지로 가 볼까요?"
+            ? "곧 관측이 시작됩니다. 관측지로 가 볼까요?"
             : "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?"}
       </p>
       <div className="flex flex-col items-center gap-0.5">
@@ -1139,9 +1139,9 @@ export function RoundCard({
         <span
           className={cn(
             "font-bold font-mono text-6xl tabular-nums tracking-tight",
-            bigLabel === "추첨까지" && "text-amber-100",
+            bigLabel === "관측까지" && "text-amber-100",
           )}
-          data-countdown={bigLabel === "추첨까지" ? "draw" : "close"}
+          data-countdown={bigLabel === "관측까지" ? "draw" : "close"}
         >
           {formatLeft(big)}
         </span>
@@ -1201,11 +1201,11 @@ export function RoundCard({
       <span className="text-white/50 text-xs tabular-nums">
         {closed
           ? ticket
-            ? `추첨 ${clockOf(drawAt)}`
+            ? `관측 ${clockOf(drawAt)}`
             : `다음 회차는 ${clockOf(drawAt)}부터 예측할 수 있어요.`
           : ticket
             ? `마감 ${clockOf(s.times.closesAt)} · 예측서 ${s.entries}장`
-            : `추첨 ${clockOf(drawAt)} · 예측서 ${s.entries}장`}
+            : `관측 ${clockOf(drawAt)} · 예측서 ${s.entries}장`}
       </span>
     </section>
   );
@@ -1370,7 +1370,7 @@ function ReceiptView({
           onClick={() => onDraw(mine.ticket.round)}
           className="sd-cta rounded-2xl py-3 font-bold text-slate-950"
         >
-          추첨 다시 보기
+          관측 다시 보기
         </button>
       )}
     </section>
@@ -1399,7 +1399,7 @@ function ShareTicket({
       services.ledger.schedule,
       ticket.round,
     ).closesAt;
-    const text = `하늘의 별 따기 ${roundShort(services.ledger.schedule, ticket.round)} 예측서를 냈어요. 추첨은 ${koreanHour(drandTime(drandRoundForClose(closesAt)))}!`;
+    const text = `하늘의 별 따기 ${roundShort(services.ledger.schedule, ticket.round)} 예측서를 냈어요. 관측은 ${koreanHour(drandTime(drandRoundForClose(closesAt)))}!`;
     const url = ticketUrl(window.location.origin, ticket);
     if (navigator.share) {
       try {
@@ -1543,7 +1543,7 @@ function DrawWait({
   const left = drawAt - status.now;
   return (
     <section
-      aria-label={`${roundTitle(schedule, round)} 추첨`}
+      aria-label={`${roundTitle(schedule, round)} 관측`}
       data-draw-wait={round}
       className="flex flex-col gap-4"
     >
@@ -1553,7 +1553,7 @@ function DrawWait({
         </div>
       )}
       <h2 className="text-center font-bold text-xl">
-        {roundTitle(schedule, round)} 추첨
+        {roundTitle(schedule, round)} 관측
       </h2>
       <SkyBoard
         state={{
@@ -1563,23 +1563,23 @@ function DrawWait({
           lit: [],
           bonus: null,
         }}
-        label={`${roundTitle(schedule, round)} 추첨을 기다리는 하늘`}
+        label={`${roundTitle(schedule, round)} 관측을 기다리는 하늘`}
         info
       />
       <div className="flex flex-col items-center gap-0.5" role="status">
         {left > 0 ? (
           <>
-            <span className="text-sm text-white/60">추첨까지</span>
+            <span className="text-sm text-white/60">관측까지</span>
             <span className="font-bold font-mono text-5xl text-amber-100 tabular-nums tracking-tight">
               {formatLeft(left)}
             </span>
             <span className="mt-1 text-white/50 text-xs tabular-nums">
-              추첨 {clockOf(drawAt)}
+              관측 {clockOf(drawAt)}
             </span>
           </>
         ) : (
           <span className="break-keep text-white/75">
-            하늘에서 추첨 결과를 받고 있습니다.
+            하늘에서 결과를 받고 있습니다.
           </span>
         )}
       </div>
@@ -1670,7 +1670,7 @@ export function MineView({
                       {hidden
                         ? null
                         : !record
-                          ? "추첨 전"
+                          ? "관측 전"
                           : record.void
                             ? "무효 회차"
                             : rank
@@ -1857,7 +1857,7 @@ export function RoundsView({
       )}
       {closed.length === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 추첨한 회차가 없습니다
+          아직 관측한 회차가 없습니다
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -2037,7 +2037,7 @@ function RoundDetail({
             onClick={() => onDraw(round)}
             className="text-sm text-white/70 hover:text-white"
           >
-            추첨 보기
+            관측 보기
           </button>
         )}
       </div>
@@ -2207,7 +2207,7 @@ function RoundDetail({
             )}
             {services.practice ? (
               <p className="mt-1 text-white/50 text-xs">
-                연습이라 추첨 난수와 마감 시각 증명은 따로 확인하지 않습니다.
+                연습이라 결과 난수와 마감 시각 증명은 따로 확인하지 않습니다.
               </p>
             ) : (
               <p className="mt-1 text-white/50 text-xs">

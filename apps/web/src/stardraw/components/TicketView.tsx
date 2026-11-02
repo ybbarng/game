@@ -105,7 +105,7 @@ export function TicketView() {
               role="status"
               className="text-center font-semibold text-amber-100"
             >
-              추첨까지 {Math.max(1, Math.ceil((drawAt - status.now) / 60))}분
+              관측까지 {Math.max(1, Math.ceil((drawAt - status.now) / 60))}분
             </p>
           )}
           <Receipt
@@ -126,7 +126,7 @@ export function TicketView() {
           {status.now <
           roundTimes(services.ledger.schedule, want.round).closesAt
             ? "마감 뒤에 보여요"
-            : "추첨 뒤에 보여요"}
+            : "관측 뒤에 보여요"}
         </p>
       );
     } else {

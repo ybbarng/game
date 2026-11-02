@@ -47,12 +47,12 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
   await expect(notice).toHaveCount(0);
 
   // 화면을 열어 둔 채 추첨이 끝나면 그 자리에서 뜬다
-  const skip = page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ });
+  const skip = page.getByRole("button", { name: /다음 관측까지 건너뛰기/ });
   await skip.click();
   await expect(notice).toHaveAttribute("data-drawn-notice", "1", {
     timeout: 30_000,
   });
-  await expect(notice).toHaveText(/1회 추첨이 끝났습니다/);
+  await expect(notice).toHaveText(/1회 관측이 끝났습니다/);
   await expect(notice.locator("[data-ball]")).toHaveCount(0);
   await expect(notice).not.toContainText(/당첨|낙첨|등/);
 
@@ -64,7 +64,7 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
   });
 
   // 「추첨 보기」 → 그 회차 추첨, 열어 본 회차는 다시 뜨지 않는다
-  await notice.getByRole("button", { name: "추첨 보기" }).click();
+  await notice.getByRole("button", { name: "관측 보기" }).click();
   await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
   await expect(page.locator("[data-draw-result]")).toBeVisible({
     timeout: 30_000,

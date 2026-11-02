@@ -748,7 +748,7 @@ export class StardrawServer {
       throw new EntryError("이번 회차 예측서가 아닙니다");
     const times = roundTimes(schedule, round);
     if (store.recordCount() < round - 1)
-      throw new EntryError("앞 회차 추첨이 끝난 뒤에 예측할 수 있습니다", 409);
+      throw new EntryError("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다", 409);
     if (receivedAt >= times.closesAt || this.closedFor(round))
       throw new EntryError(closedMessage(receivedAt), 409);
     const who = toHex(entrantId(ticket.pub));
@@ -1578,7 +1578,7 @@ export class StardrawServer {
       } catch (err) {
         this.nextEarlySealTry = this.now() + 15;
         this.o.log?.(
-          `${round}회차 추첨 전 봉인 사본을 올리지 못해 15초 뒤 다시 시도한다: ${String(err)}`,
+          `${round}회차 결과 결정 전 봉인 사본을 올리지 못해 15초 뒤 다시 시도한다: ${String(err)}`,
         );
         return;
       }

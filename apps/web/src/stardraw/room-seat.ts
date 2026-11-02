@@ -40,7 +40,7 @@ export function roomSeat(input: {
     return {
       joined: false,
       badge: "숨어서 관측 중",
-      note: "추첨이 시작되어 이제는 언덕에 오를 수 없어요.",
+      note: "관측이 시작되어 이제는 언덕에 오를 수 없어요.",
       join: null,
       hill,
     };

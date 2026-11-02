@@ -37,7 +37,7 @@ describe("관측지 내 자리", () => {
       others: 2,
     });
     expect(s.join).toBeNull();
-    expect(s.note).toBe("추첨이 시작되어 이제는 언덕에 오를 수 없어요.");
+    expect(s.note).toBe("관측이 시작되어 이제는 언덕에 오를 수 없어요.");
   });
 
   it("신분증을 낸 뒤 혼자면: 대화 참여 중, 다른 우주인이 없다고 한다", () => {

@@ -195,7 +195,7 @@ export function DrawView({
   return (
     <section
       className="flex flex-col gap-4"
-      aria-label={`${label ?? `${record.round}회`} 추첨`}
+      aria-label={`${label ?? `${record.round}회`} 관측`}
     >
       <div
         className={cn(
@@ -223,10 +223,10 @@ export function DrawView({
         </div>
         <div className="flex flex-col items-center leading-tight">
           <h2 className="font-bold text-lg tabular-nums">
-            {label ?? `제 ${record.round}회`} 추첨
+            {label ?? `제 ${record.round}회`} 관측
           </h2>
           <span className="text-[11px] text-white/45">
-            카노푸스 우주국 정시 추첨
+            카노푸스 우주국 정시 관측
           </span>
         </div>
         {/* 제목은 가운데(양쪽 칸이 같은 너비), 오른쪽 칸은 빈자리 */}
@@ -266,7 +266,7 @@ export function DrawView({
             overlay={party && <SkyCelebration plan={party} bonus={bonus} />}
             // 룰렛이 도는 동안은 누르기를 막고, 결과가 다 나온 뒤에 별 설명을 볼 수 있다
             info={done}
-            label={`추첨 하늘: 켜진 별 ${main.map((n) => starOf(n).ko).join(", ")}`}
+            label={`관측 하늘: 켜진 별 ${main.map((n) => starOf(n).ko).join(", ")}`}
           />
 
           <div
@@ -380,7 +380,7 @@ export function DrawView({
               }}
               className="self-center rounded-lg px-3 py-1.5 text-sm text-white/55 hover:text-white"
             >
-              추첨 건너뛰기
+              관측 건너뛰기
             </button>
           )}
           {done && (onNext || onReplay) && (
@@ -400,7 +400,7 @@ export function DrawView({
                   onClick={onReplay}
                   className="rounded-2xl border border-white/20 py-2.5 font-semibold text-sm hover:bg-white/10"
                 >
-                  추첨 다시 보기
+                  관측 다시 보기
                 </button>
               )}
             </div>

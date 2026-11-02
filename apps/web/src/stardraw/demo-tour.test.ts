@@ -11,7 +11,7 @@ describe("데모 화면 둘러보기의 가짜 상태", () => {
   it("1회 등수별 응모권이 그 등수가 되고, 2회 내 응모권은 추첨 전, 1등 확인 링크 셋이 각자 상태에 있다", async () => {
     const s = await buildTour();
     const record = s.services.ledger.record(1);
-    if (!record) throw new Error("1회가 추첨되지 않았다");
+    if (!record) throw new Error("1회가 관측되지 않았다");
     for (const [rank, ticket] of s.byRank)
       expect(myRank(record, ticket)).toBe(rank);
     expect(s.pending.ticket.round).toBe(2);

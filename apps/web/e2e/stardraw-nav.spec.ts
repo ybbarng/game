@@ -80,7 +80,7 @@ async function registerAndEnter(page: Page): Promise<string> {
 
 /** 첫 화면에서 연습 장부를 다음 추첨까지 넘기고 결과 봉투를 열어 추첨 결과까지 */
 async function openDrawResult(page: Page) {
-  await page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ }).click();
+  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
   const envelope = page.locator("[data-envelope]").first();
   await expect(envelope).toBeVisible({ timeout: 60_000 });
   await envelope.click();
@@ -263,7 +263,7 @@ test("영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면
   await expect(receipt.locator("[data-receipt-thanks]")).toHaveText(
     "예측에 참여해 주셔서 감사합니다.별이 빛나는 순간을 관측지에서 함께 지켜봐 주시기 바랍니다.",
   );
-  await expect(page.getByText("추첨을 기다리고 있습니다")).toHaveCount(0);
+  await expect(page.getByText("관측을 기다리고 있습니다")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("receipt-draw-wait.png"),
     fullPage: true,

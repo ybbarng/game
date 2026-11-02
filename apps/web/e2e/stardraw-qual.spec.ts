@@ -76,7 +76,7 @@ test("데모 소속: 데모 기관 계정으로 받아 복구 코드를 보고, 
   await expect(page.locator("[data-qual-toggle]")).toHaveCount(0);
 
   // 다음 회차: 「벌집 성단 소속으로 응모」가 켜진 채로 응모하면 영수증에 소속
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-qual-toggle='on']")).toContainText(
     "벌집 성단 소속으로 예측",
     { timeout: 60_000 },
@@ -122,7 +122,7 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
     .click();
   await demoUnlock(page, "create");
   await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-qual-toggle='on']")).toBeVisible({
     timeout: 60_000,
   });

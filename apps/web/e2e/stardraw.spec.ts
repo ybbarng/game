@@ -370,12 +370,12 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect.poll(shared).not.toBeNull();
   const { text, url } = (await shared()) as { text: string; url: string };
   expect(text).toMatch(
-    /^하늘의 별 따기 1회 예측서를 냈어요\. 추첨은 오[전후] \d+시( \d+분)?!$/,
+    /^하늘의 별 따기 1회 예측서를 냈어요\. 관측은 오[전후] \d+시( \d+분)?!$/,
   );
   expect(url).toMatch(new RegExp(`/stardraw/ticket#1-${id}$`));
   await page.goto(url);
   await expect(page.locator(`[data-receipt="${id}"]`)).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("추첨까지");
+  await expect(page.getByRole("status")).toContainText("관측까지");
   await expect(page.getByRole("link", { name: "나도 예측하기" })).toBeVisible();
   await noSideScroll(page);
   await page.screenshot({
@@ -406,7 +406,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     path: info.outputPath("home-entered.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ }).click();
+  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
   const envelope = page.locator("[data-envelope]").first();
   await expect(envelope).toBeVisible({ timeout: 60_000 });
   await page.screenshot({
@@ -523,7 +523,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   const shown = page.locator(`[data-receipt="${id}"]`);
   await expect(shown).toBeVisible();
   await expect(shown).toContainText(/당첨|낙첨|당첨되지 않았습니다/);
-  await expect(page.getByText("추첨까지")).toHaveCount(0);
+  await expect(page.getByText("관측까지")).toHaveCount(0);
   await page.goto(`/stardraw/ticket#1-${"0".repeat(64)}`);
   await expect(page.getByText("이 예측서를 찾을 수 없어요")).toBeVisible();
 });
@@ -679,15 +679,15 @@ test("데모: 1등으로 응모해 당첨자 확인 초록불까지(틀린 별, 
   expect((await demoUnlocks(page)) - afterCreate).toBe(1);
 
   // 추첨
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-demo-result]")).toHaveText("1등 당첨", {
     timeout: 60_000,
   });
-  await page.getByRole("button", { name: "추첨 보기" }).click();
+  await page.getByRole("button", { name: "관측 보기" }).click();
   await showDrawResult(page);
   await expect(page.locator("[data-draw-result='1']")).toBeVisible();
   await page
-    .getByRole("region", { name: /회 추첨/ })
+    .getByRole("region", { name: /회 관측/ })
     .getByRole("button", { name: "← 돌아가기" })
     .click();
   await noSideScroll(page);
@@ -845,7 +845,7 @@ test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차
   await page.getByRole("button", ENTER).click();
   await demoUnlock(page, "sign");
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-demo-result]")).toBeVisible({
     timeout: 60_000,
   });
@@ -858,7 +858,7 @@ test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차
     .locator("[data-demo-round]")
     .getAttribute("data-demo-round");
   await page.getByRole("button", { name: "지금 마감" }).click();
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-demo-round]")).not.toHaveAttribute(
     "data-demo-round",
     before ?? "",
@@ -871,7 +871,7 @@ test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차
   await demoUnlock(page, "sign");
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
   expect((await demoUnlocks(page)) - beforeEntry).toBe(1);
-  await page.getByRole("button", { name: "지금 추첨" }).click();
+  await page.getByRole("button", { name: "지금 관측" }).click();
   await expect(page.locator("[data-demo-result]")).toHaveText("1등 당첨", {
     timeout: 60_000,
   });
@@ -1032,13 +1032,13 @@ test("관측지로 가기: 결과 전에는 기다리고, 결과가 오면 바�
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   await expect(page).toHaveURL(/#draw-1$/);
   const wait = page.locator("[data-draw-wait='1']");
-  await expect(wait).toContainText("추첨까지");
+  await expect(wait).toContainText("관측까지");
   // 결과 전에 나갔다 와도 정답 가리기가 풀리지 않는다(열어 봄이 남지 않는다)
   await page.locator("[data-tab='home']").click();
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   await expect(wait).toBeVisible();
   // 기다리는 동안 결과가 들어오면 그 자리에서 추첨으로
-  await page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ }).click();
+  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
   await expect(page.locator("[data-draw-result]")).toBeVisible({
     timeout: 30_000,
   });
@@ -1056,7 +1056,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
   test.setTimeout(150_000);
   await virtualAuthenticator(page);
-  const skipDraw = page.getByRole("button", { name: "추첨 건너뛰기" });
+  const skipDraw = page.getByRole("button", { name: "관측 건너뛰기" });
   const result = page.locator("[data-draw-result]");
   const enter = async (first: boolean) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1073,7 +1073,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
     await page.goto("/stardraw");
   };
   const skipToDraw = async () => {
-    const skip = page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ });
+    const skip = page.getByRole("button", { name: /다음 관측까지 건너뛰기/ });
     await skip.click();
     await expect(skip).toBeEnabled({ timeout: 30_000 });
   };
@@ -1102,7 +1102,7 @@ test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.locator("[data-card='entered'] [data-go-draw]").click();
   await expect(page.locator("[data-draw-wait]")).toBeVisible();
-  await page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ }).click();
+  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
   await expect(page.locator("[data-draw-wait]")).toHaveCount(0, {
     timeout: 30_000,
   });

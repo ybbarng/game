@@ -79,7 +79,7 @@ export function Receipt({
             ? roundShort(schedule, ticket.round)
             : `제 ${ticket.round} 회`}
         </dd>
-        <dt className="text-slate-400">추첨</dt>
+        <dt className="text-slate-400">관측</dt>
         <dd className="text-right">{formatTime(drawAt)}</dd>
         {receivedAt !== undefined && (
           <>
@@ -201,7 +201,7 @@ export function Receipt({
       ) : record ? (
         <p className="text-center font-bold" data-result>
           {record.void
-            ? "이 회차는 무효가 되어 추첨하지 않았습니다"
+            ? "이 회차는 무효가 되어 빛날 별을 정하지 않았습니다"
             : rank
               ? `${RANK_LABEL[rank]} 당첨`
               : "아쉽게도 당첨되지 않았습니다"}

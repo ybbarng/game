@@ -30,7 +30,7 @@ const SPECIMEN_ITEMS = [{ id: "records", label: "내 기록" }] as const;
 export const TOUR_ITEMS = [
   { id: "enter", label: "예측" },
   { id: "receipt", label: "접수증" },
-  { id: "draw", label: "추첨(룰렛)" },
+  { id: "draw", label: "관측(룰렛)" },
   { id: "envelope", label: "결과 봉투" },
   { id: "rank-1", label: "1등" },
   { id: "rank-2", label: "2등" },

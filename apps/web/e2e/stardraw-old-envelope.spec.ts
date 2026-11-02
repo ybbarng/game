@@ -38,14 +38,14 @@ test("오래 열지 않은 결과 봉투: 응모 단추는 늘 있고, 봉투는
 
   // 1회 결과를 열지 않고 네 회차를 건너뛴다
   await page.goto("/stardraw");
-  const skip = page.getByRole("button", { name: /다음 추첨까지 건너뛰기/ });
+  const skip = page.getByRole("button", { name: /다음 관측까지 건너뛰기/ });
   for (let i = 0; i < 4; i++) {
     await skip.click();
     await expect(skip).toBeEnabled({ timeout: 30_000 });
   }
   await page.reload();
   const card = page.locator("[data-card='result']");
-  await expect(card).toContainText("1회 추첨 끝");
+  await expect(card).toContainText("1회 관측 끝");
   // 봉투가 있는 동안은 아래 지난 회차 카드를 두지 않는다(둘이 같은 곳으로 가는 것처럼 보였다)
   await expect(page.locator("[data-last-round]")).toHaveCount(0);
   // (가) 봉투가 있어도 지금 회차 응모 단추
@@ -56,7 +56,7 @@ test("오래 열지 않은 결과 봉투: 응모 단추는 늘 있고, 봉투는
   // (나) 봉투는 그 회차 추첨으로(목록이 아니라)
   await card.locator("[data-envelope]").click();
   await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
-  await expect(page.getByRole("heading", { name: /1회 추첨/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /1회 관측/ })).toBeVisible();
   await expect(page.locator("[data-draw-result]")).toBeVisible({
     timeout: 30_000,
   });

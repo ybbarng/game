@@ -30,15 +30,15 @@ export function DrawnNotice({
     >
       <span className="min-w-0 flex-1 break-keep font-semibold text-amber-50 text-sm">
         {rounds.length === 1
-          ? `${roundShort(schedule, latest)} 추첨이 끝났습니다`
-          : `추첨이 끝난 예측 ${rounds.length}회`}
+          ? `${roundShort(schedule, latest)} 관측이 끝났습니다`
+          : `관측이 끝난 예측 ${rounds.length}회`}
       </span>
       <button
         type="button"
         onClick={() => onDraw(latest)}
         className="shrink-0 rounded-lg bg-amber-200 px-3 py-1.5 font-bold text-slate-950 text-sm hover:bg-amber-100"
       >
-        추첨 보기
+        관측 보기
       </button>
       <button
         type="button"
