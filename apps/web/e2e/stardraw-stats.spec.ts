@@ -19,11 +19,14 @@ test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 �
   await expect(stats).toBeVisible();
   await expect(stats.locator("dt:text-is('관측') + dd")).toHaveText("2회");
   await expect(stats.getByText(/아직 2회뿐이라/)).toBeVisible();
-  // 두 회차 당첨 번호(겹치면 12개보다 적다)만큼 관측 하늘에 빛이 있다
+  // 두 회차 빛난 별(겹치면 12개보다 적다)만큼 관측 하늘에 빛이 있다
   const glows = page.locator("[data-observed-sky] circle[data-drawn]");
   expect(await glows.count()).toBeGreaterThan(5);
   await expect(page.locator("[data-fairness]")).toBeVisible();
-  await expect(stats.getByText("한 번도 떨어지지 않은 별")).toBeVisible();
+  await expect(stats.getByText("가장 자주 빛난 별")).toBeVisible();
+  await expect(stats.getByText("한 번도 빛나지 않은 별")).toBeVisible();
+  // 이야기 쪽 화면이라 drand 회차는 두지 않는다(검증 페이지로 옮겼다, docs/36 11-47)
+  await expect(stats.getByText(/drand/)).toHaveCount(0);
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
@@ -42,4 +45,11 @@ test("관측 기록: 지난 회차에서 들어가 공개 장부로 계산한 �
   await roundsTab.click();
   await expect(page).toHaveURL(/\/stardraw\/rounds$/);
   await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
+
+  // 마지막 drand 회차는 검증 페이지의 장부 검사 요약에 있다
+  await page.goto("/stardraw/verify");
+  await page.getByRole("button", { name: "장부 전체 검사" }).click();
+  await expect(page.locator("[data-latest-drand]")).toContainText(
+    "마지막 drand 회차",
+  );
 });

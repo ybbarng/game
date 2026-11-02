@@ -58,7 +58,6 @@ describe("관측 기록 계산", () => {
     expect(s.expected).toBeCloseTo((2 * 6) / 45);
     expect(s.entries).toBe(6);
     expect(s.astronauts).toBe(3);
-    expect(s.latestDrand).toBe(1002);
   });
 
   it("잠든 추첨 수와 이어서 뽑힌 수", () => {
@@ -103,7 +102,6 @@ describe("관측 기록 계산", () => {
     expect(s).toMatchObject({
       draws: 0,
       firstRound: null,
-      latestDrand: null,
       fairness: null,
     });
   });

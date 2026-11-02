@@ -98,7 +98,6 @@ export interface Stats {
   constellations: GroupStat[];
   /** 등수별 누적 당첨 장 수 */
   winners: Record<Rank, number>;
-  latestDrand: number | null;
   fairness: Fairness | null;
 }
 
@@ -192,7 +191,6 @@ export function computeStats(rounds: readonly ClosedRound[]): Stats {
     brightness,
     constellations,
     winners,
-    latestDrand: drawnRounds.at(-1)?.record.drandRound ?? null,
     fairness: draws > 0 ? fairness(stars, draws) : null,
   };
 }

@@ -18,11 +18,20 @@ import {
   withQualDetail,
 } from "@game/stardraw-core";
 
-export type {
-  CheckItem,
-  CheckResult,
-  CheckStatus,
-} from "@game/stardraw-core";
+export type { CheckItem, CheckStatus } from "@game/stardraw-core";
+
+/** 검사 결과 + 마지막 drand 회차(관측 기록 화면에서 옮겨 왔다, docs/36 11-47) */
+export type LedgerCheckResult = CheckResult & {
+  /** 무효가 아닌 마지막 회차가 쓴 drand 회차. 그런 회차가 없으면 null */
+  latestDrand: number | null;
+};
+
+/** 무효가 아닌 마지막 회차의 drand 회차 */
+export function latestDrandRound(
+  records: readonly RoundRecord[],
+): number | null {
+  return records.findLast((r) => !r.void)?.drandRound ?? null;
+}
 
 /**
  * 「장부 전체 검사」(검증하기 페이지·콘솔 `stardraw.verify()`).
@@ -54,14 +63,14 @@ export interface CheckOptions {
 /** 서버의 공개 장부 파일을 처음부터 받아 검사한다 */
 export async function checkServerLedger(
   options: CheckOptions = {},
-): Promise<CheckResult> {
-  const { ledger: _, ...result } = await checkPublicLedger({
+): Promise<LedgerCheckResult> {
+  const { ledger, ...result } = await checkPublicLedger({
     ...options,
     base: options.base ?? SERVER_API,
     anchorRepo:
       options.anchorRepo === undefined ? ANCHOR_REPO : options.anchorRepo,
   });
-  return result;
+  return { ...result, latestDrand: latestDrandRound(ledger.records) };
 }
 
 /** 이 기기의 연습 장부를 검사한다(서버 주소가 없는 빌드) */
@@ -70,7 +79,7 @@ export async function checkPracticeLedger(ledger: {
   verify(mine?: readonly Uint8Array[]): Promise<VerifyReport>;
   closed(): readonly { record: RoundRecord }[];
   ticketsOf(round: number): readonly Ticket[];
-}): Promise<CheckResult> {
+}): Promise<LedgerCheckResult> {
   await ledger.settle();
   const report = await ledger.verify();
   const closed = ledger.closed().map(({ record }) => ({
@@ -121,5 +130,6 @@ export async function checkPracticeLedger(ledger: {
     directors: directorHistory(report.operations),
     operations: operationsView(report.operations, closed.length, report.head),
     qualification,
+    latestDrand: latestDrandRound(closed.map((c) => c.record)),
   };
 }

@@ -21,9 +21,9 @@ import {
 import { formatTime, LottoBall, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 
-/** 이보다 추첨이 적으면 숫자가 크게 출렁인다고 밝힌다 */
+/** 이보다 관측이 적으면 숫자가 크게 출렁인다고 밝힌다 */
 const FEW_DRAWS = 30;
-/** 응모 추이 막대 수 */
+/** 회차별 예측 막대 수 */
 const SERIES = 48;
 const PERIOD_LABEL: Record<StatsPeriod, string> = {
   live: "정식",
@@ -38,7 +38,7 @@ export function StatsView({
 }: {
   services: Services;
   version: number;
-  /** 추첨을 아직 열어 보지 않은 내 회차는 조용히 빼고 센다 */
+  /** 결과를 아직 열어 보지 않은 내 회차는 조용히 빼고 센다 */
   sealed?: Sealed;
 }) {
   const schedule = services.ledger.schedule;
@@ -109,7 +109,7 @@ export function StatsView({
       )}
       {stats.draws === 0 ? (
         <p className="py-10 text-center text-white/60">
-          아직 관측한 회차가 없습니다
+          아직 관측한 회차가 없습니다.
         </p>
       ) : (
         <>
@@ -180,8 +180,6 @@ function Overview({
       `${stats.qualified.toLocaleString("ko-KR")}장`,
     ]);
   if (first !== null) rows.push(["첫 관측", formatTime(first)]);
-  if (stats.latestDrand !== null)
-    rows.push(["마지막 drand 회차", stats.latestDrand.toLocaleString("ko-KR")]);
   return (
     <Card title="카노푸스 우주국 관측 일지">
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -201,7 +199,7 @@ function Overview({
   );
 }
 
-/** 관측 하늘: 많이 떨어진 별일수록 그 별빛 색으로 크고 밝게 */
+/** 관측 하늘: 자주 빛난 별일수록 그 별빛 색으로 크고 밝게 */
 function ObservedSky({ stats }: { stats: Stats }) {
   const max = Math.max(1, ...stats.stars.map((s) => s.drawn));
   return (
@@ -215,7 +213,7 @@ function ObservedSky({ stats }: { stats: Stats }) {
             lit: [],
             bonus: null,
           }}
-          label="관측 하늘: 많이 떨어진 별일수록 밝게"
+          label="관측 하늘: 자주 빛난 별일수록 밝게"
           overlay={
             <svg
               viewBox="0 0 100 100"
@@ -261,7 +259,7 @@ function ObservedSky({ stats }: { stats: Stats }) {
         />
       </div>
       <p className="text-white/55 text-xs">
-        많이 떨어진 별일수록 크고 밝습니다(가장 많이 {max}번).
+        자주 빛난 별일수록 크고 밝습니다(가장 많이 {max}번).
       </p>
     </Card>
   );
@@ -294,14 +292,14 @@ function Highlights({ stats }: { stats: Stats }) {
   const exp = stats.expected;
   return (
     <>
-      <Card title="가장 자주 떨어진 별">
+      <Card title="가장 자주 빛난 별">
         <ul className="flex flex-col gap-2">
           {byDrawn.slice(0, 3).map((s) => (
             <StarRow key={s.star.n} s={s} note={`${s.drawn}번`} />
           ))}
         </ul>
         <p className="text-white/55 text-xs">
-          고르게 뽑히면 별마다 {exp.toFixed(1)}번쯤입니다.
+          고르게 빛난다면 별마다 {exp.toFixed(1)}번쯤입니다.
         </p>
       </Card>
       <Card title="가장 오래 잠든 별">
@@ -313,7 +311,7 @@ function Highlights({ stats }: { stats: Stats }) {
         {never.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-sm">
-              한 번도 떨어지지 않은 별{" "}
+              한 번도 빛나지 않은 별{" "}
               <span className="tabular-nums">{never.length}개</span>
             </p>
             <span className="flex flex-wrap gap-1">
@@ -325,7 +323,7 @@ function Highlights({ stats }: { stats: Stats }) {
         )}
       </Card>
       {streak && streak.streak >= 2 && (
-        <Card title="이어서 떨어진 별">
+        <Card title="이어서 빛난 별">
           <ul>
             <StarRow s={streak} note={`${streak.streak}회 연속`} />
           </ul>
@@ -335,7 +333,7 @@ function Highlights({ stats }: { stats: Stats }) {
   );
 }
 
-/** 무리마다 뽑힌 비율(막대)과 고르게 뽑힐 때의 비율(눈금) */
+/** 무리마다 빛난 비율(막대)과 고르게 빛날 때의 비율(눈금) */
 /** 별빛 갈래의 공 색(그 갈래 별 하나의 번호 공 색) */
 function kindColor(kind: string): string | undefined {
   const star = SKY_STARS.find((s) => tempWord(s.k) === kind);
@@ -396,7 +394,7 @@ function GroupBars({
 function Constellations({ groups }: { groups: readonly GroupStat[] }) {
   const top = groups.filter((g) => g.drawn > 0).slice(0, 5);
   return (
-    <Card title="많이 떨어진 별자리">
+    <Card title="자주 빛난 별자리">
       <ol className="flex flex-col gap-1.5 text-sm">
         {top.map((g, i) => (
           <li key={g.label} className="flex items-baseline justify-between">
@@ -414,23 +412,23 @@ function Constellations({ groups }: { groups: readonly GroupStat[] }) {
 }
 
 const VERDICT = {
-  even: "고르게 떨어지고 있습니다",
+  even: "고르게 빛나고 있습니다",
   slight: "조금 치우쳤습니다",
   skewed: "치우쳤습니다",
 } as const;
 
-/** 공정성: 별 45개가 고르게 떨어지는지(카이제곱) */
+/** 공정성: 별 45개가 고르게 빛나는지(카이제곱) */
 function Fair({ stats }: { stats: Stats }) {
   const f = stats.fairness;
   if (!f) return null;
   const pct = f.p * 100;
   return (
-    <Card title="별이 고르게 떨어지나">
+    <Card title="별은 고르게 빛나나">
       <p data-fairness={f.verdict} className="font-semibold">
         {VERDICT[f.verdict]}
       </p>
       <p className="text-sm text-white/70">
-        모든 별이 같은 확률로 뽑힌다면, 지금보다 더 치우친 결과가 나올 확률은{" "}
+        모든 별이 같은 확률로 빛난다면, 지금보다 더 치우친 결과가 나올 확률은{" "}
         <span className="tabular-nums">
           {pct >= 1 ? `${Math.round(pct)}%` : `${pct.toFixed(2)}%`}
         </span>

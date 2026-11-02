@@ -7,10 +7,10 @@ import { cn } from "@/lib/cn";
 
 import { GAME_NS, getServices } from "../services";
 import {
-  type CheckResult,
   type CheckStatus,
   checkPracticeLedger,
   checkServerLedger,
+  type LedgerCheckResult,
   SERVER_API,
 } from "./check";
 
@@ -123,7 +123,7 @@ const STATUS_TEXT: Record<CheckStatus, string> = {
 
 /** 「장부 전체 검사」와 콘솔 함수 `stardraw.verify()`·`stardraw.vectors()` */
 export function LedgerCheck() {
-  const [result, setResult] = useState<CheckResult | null>(null);
+  const [result, setResult] = useState<LedgerCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -204,6 +204,12 @@ export function LedgerCheck() {
               : "이 기기의 연습 장부"}{" "}
             · 닫힌 회차 {result.rounds}개 · 예측서 {result.tickets}장 · 열쇠
             등록 {result.registrations}개
+            {result.latestDrand !== null && (
+              <span data-latest-drand>
+                {" "}
+                · 마지막 drand 회차 {result.latestDrand.toLocaleString("ko-KR")}
+              </span>
+            )}
           </p>
           <ul className="flex flex-col gap-1.5">
             {result.items.map((item) => (
