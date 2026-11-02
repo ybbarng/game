@@ -189,8 +189,21 @@ export class Publisher {
     this.write("head.json", { v: 1, ...h } satisfies HeadFile);
   }
 
+  /** 봉인 파일 글(공개 장부와 관측 전 사본이 같은 바이트) */
+  static sealText(s: Omit<SealFile, "v">): string {
+    return fileText({ v: 1, ...s } satisfies SealFile);
+  }
+
   seal(s: Omit<SealFile, "v">): void {
-    this.write(`seals/${pad(s.round)}.json`, { v: 1, ...s } satisfies SealFile);
+    this.sealRaw(s.round, Publisher.sealText(s));
+  }
+
+  /** 이미 만든 봉인 파일 글을 그대로 공개한다(정식 회차: 관측 전 사본을 확인한 글, docs/36 11-50) */
+  sealRaw(round: number, text: string): void {
+    const full = join(this.dir, `seals/${pad(round)}.json`);
+    const tmp = `${full}.tmp`;
+    writeFileSync(tmp, text);
+    renameSync(tmp, full);
   }
 
   round(

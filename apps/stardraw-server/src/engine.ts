@@ -21,6 +21,7 @@ import {
   drandRoundForClose,
   drandTime,
   earlySealCommitMessage,
+  earlySealDeadline,
   earlySealPath,
   entrantId,
   equalBytes,
@@ -61,6 +62,7 @@ import {
   registrationRoot,
   reissueEmail,
   reissueRequestMessage,
+  requiresEarlySeal,
   roundAt,
   roundTimes,
   type Schedule,
@@ -125,6 +127,37 @@ import type { Store } from "./store";
  * - 봉인: 마감 시각이 지나면 응모권·등록 목록의 봉인 값을 투명성 로그에 올리고 공개한다(기한 안에 못 올리면 그 회차는 무효)
  * - 추첨: 봉인한 회차의 drand 회차 값이 나오면 회차 기록을 닫아 장부에 붙이고, 기록 해시를 앵커에 남긴다
  */
+
+/** 봉인 값 재료(core sealDigest의 입력) */
+interface SealParts {
+  round: number;
+  count: number;
+  merkleRoot: Uint8Array;
+  registrationCount: number;
+  registrationRoot: Uint8Array;
+}
+
+/** 공개할 봉인 파일 글(서버 장부 `seals/N.json`과 관측 전 사본이 같은 바이트) */
+function sealFileText(
+  parts: SealParts,
+  digest: Uint8Array,
+  loggedAt: number,
+  log: unknown,
+): string {
+  return Publisher.sealText({
+    round: parts.round,
+    count: parts.count,
+    merkleRoot: toHex(parts.merkleRoot),
+    registrationCount: parts.registrationCount,
+    registrationRoot: toHex(parts.registrationRoot),
+    digest: toHex(digest),
+    loggedAt,
+    log,
+  });
+}
+
+/** 정식 회차의 관측 전 사본을 올리지 못했을 때 다시 시도하는 간격(초) */
+const PENDING_RETRY = 5;
 
 export interface EngineOptions {
   store: Store;
@@ -284,6 +317,8 @@ interface ServerStateBase {
   anchorLag: number | null;
   /** 봉인 수 − 추첨 전 봉인 사본을 올린 수. 앵커를 쓰지 않으면 null(D10) */
   earlySealLag: number | null;
+  /** 마감이 VOID_WINDOW(24시간) 안인 시험 회차 가운데 drand 전에 관측 전 사본을 올리지 못한 회차(docs/36 11-50) */
+  earlySealMissed: number[];
   /** 마감이 지났는데 아직 봉인하지 못한 시간(초). 정상이면 0, 기한(3분)에 가까워지면 시각 인증이 막힌 것(D10) */
   sealOverdueSeconds: number;
   /** 자격 기간마다 발급한 소속 도장 수와 다시 발급 수(docs/36 11-27). 회사 인원보다 많으면 몰래 찍은 것일 수 있다(D10, P10) */
@@ -558,6 +593,7 @@ export class StardrawServer {
     | "voidRecent"
     | "anchorLag"
     | "earlySealLag"
+    | "earlySealMissed"
     | "sealOverdueSeconds"
     | "qualIssued"
     | "qualIssuedMax"
@@ -577,6 +613,9 @@ export class StardrawServer {
       voidRecent,
       anchorLag: anchoring ? store.recordCount() - store.anchored() : null,
       earlySealLag: anchoring ? store.lastSealed() - store.earlySealed() : null,
+      earlySealMissed: store
+        .earlySealMissed()
+        .filter((r) => now - roundTimes(schedule, r).closesAt <= VOID_WINDOW),
       sealOverdueSeconds: round > next ? Math.max(0, now - due) : 0,
       qualIssued,
       qualIssuedMax: Math.max(
@@ -1013,16 +1052,13 @@ export class StardrawServer {
       if (now < closesAt) return;
       // 목록을 읽기 전에 이 회차를 닫는다(아래 await 사이에 들어오는 응모를 막는다)
       this.sealingFrom = Math.max(this.sealingFrom, round);
-      const tickets = store.entries(round);
-      const registrations = store.registrations(round);
-      const parts = {
-        round,
-        count: tickets.length,
-        merkleRoot: sealRoot(tickets),
-        registrationCount: registrations.length,
-        registrationRoot: registrationRoot(registrations),
-      };
+      const parts = this.sealParts(round);
       const digest = sealDigest(parts);
+      // 정식 회차: 관측 전 사본을 확인한 뒤에야 공개한다(docs/36 11-50)
+      if (this.earlySealRequired(schedule, round)) {
+        if (await this.sealLive(round, closesAt, parts, digest)) continue;
+        return;
+      }
       // 기한 30초 전부터는 시각 인증을 최소 수만큼 못 채워도 받은 만큼으로 봉인한다(D8)
       const logged = await this.o.rootLog.log(digest, {
         lastChance: now >= closesAt + this.o.sealDeadline - 30,
@@ -1034,18 +1070,185 @@ export class StardrawServer {
           `${round}회차 봉인 값을 기한 안에 로그에 올리지 못해 무효로 닫는다`,
         );
       store.addSeal({ round, digest, loggedAt, log: logged?.proof ?? null });
-      this.o.publisher.seal({
+      this.o.publisher.sealRaw(
         round,
-        count: parts.count,
-        merkleRoot: toHex(parts.merkleRoot),
-        registrationCount: parts.registrationCount,
-        registrationRoot: toHex(parts.registrationRoot),
-        digest: toHex(digest),
-        loggedAt,
-        log: logged?.proof ?? null,
-      });
+        sealFileText(parts, digest, loggedAt, logged?.proof ?? null),
+      );
       this.publishHead();
     }
+  }
+
+  /** 그 회차의 응모권·등록 목록으로 만든 봉인 값 재료(마감 뒤에는 바뀌지 않는다) */
+  private sealParts(round: number): SealParts {
+    const tickets = this.o.store.entries(round);
+    const registrations = this.o.store.registrations(round);
+    return {
+      round,
+      count: tickets.length,
+      merkleRoot: sealRoot(tickets),
+      registrationCount: registrations.length,
+      registrationRoot: registrationRoot(registrations),
+    };
+  }
+
+  /** 관측 전 사본이 있어야 유효한 회차인지: 정식 단계이고 앵커를 쓰는 서버(docs/36 11-50) */
+  private earlySealRequired(schedule: Schedule, round: number): boolean {
+    return this.o.anchor !== noAnchor && requiresEarlySeal(schedule, round);
+  }
+
+  /**
+   * 정식 회차 봉인(docs/36 11-50): 토큰 받기 → 봉인 파일 글을 DB에만 남김 → (earlySealDue가) main에 사본 올리고 다시 읽어 확인
+   * → 확인되면 같은 바이트로 공개. 기한(drand − 60초)까지 확인하지 못하면 토큰을 버리고 무효로 봉인한다.
+   * 봉인했으면 true(다음 회차로), 아직이면 false(다음 진행 때 다시)
+   */
+  private async sealLive(
+    round: number,
+    closesAt: number,
+    parts: SealParts,
+    digest: Uint8Array,
+  ): Promise<boolean> {
+    const { store } = this.o;
+    const schedule = this.schedule();
+    const deadline = earlySealDeadline(schedule, round);
+    const now = this.now();
+    let pending = store.pendingSeal();
+    if (pending && pending.round !== round) {
+      this.o.log?.(
+        `${pending.round}회차 공개 전 봉인이 남아 있어 지운다(지금 봉인할 회차는 ${round}회차)`,
+      );
+      store.setPendingSeal(null);
+      pending = null;
+    }
+    if (!pending) {
+      const tokenDeadline = closesAt + this.o.sealDeadline;
+      if (now < tokenDeadline && now < deadline) {
+        const logged = await this.o.rootLog.log(digest, {
+          lastChance: now >= tokenDeadline - 30,
+        });
+        if (!logged) return false;
+        store.setPendingSeal({
+          round,
+          text: sealFileText(parts, digest, logged.loggedAt, logged.proof),
+          pushed: false,
+          confirmed: false,
+        });
+        this.startEarlySeal();
+        return false;
+      }
+      // 기한 안에 토큰을 받지 못했다. 되살린 DB처럼 남긴 글이 없을 수 있어, 사본이 이미 있는지 읽어 보고 정한다
+      const found = await this.readEarlySeal(round);
+      if (found === "error") return false;
+      if (found && this.timelyCopy(found, deadline, digest)) {
+        this.publishLive(round, found.text, digest);
+        return true;
+      }
+      this.sealLiveVoid(
+        round,
+        parts,
+        digest,
+        found
+          ? "관측 전 사본이 기한보다 늦게 올랐다"
+          : "기한 안에 시각 인증 토큰을 받지 못했다",
+      );
+      return true;
+    }
+    if (pending.confirmed) {
+      this.publishLive(round, pending.text, digest);
+      return true;
+    }
+    if (now < deadline) {
+      this.startEarlySeal();
+      return false;
+    }
+    if (!pending.pushed) {
+      this.sealLiveVoid(
+        round,
+        parts,
+        digest,
+        "기한까지 관측 전 사본을 올리지 못했다",
+      );
+      return true;
+    }
+    // 올리기를 시작했으니 GitHub에 있을 수 있다. 읽어 보고 정한다(읽지 못하면 무효로 닫지 않고 다시)
+    const found = await this.readEarlySeal(round);
+    if (found === "error") return false;
+    if (
+      found &&
+      found.text === pending.text &&
+      this.timelyCopy(found, deadline, digest)
+    ) {
+      this.publishLive(round, pending.text, digest);
+      return true;
+    }
+    this.sealLiveVoid(
+      round,
+      parts,
+      digest,
+      found
+        ? "관측 전 사본이 기한보다 늦게 올랐거나 내용이 다르다"
+        : "기한까지 관측 전 사본을 확인하지 못했다",
+    );
+    return true;
+  }
+
+  /** main의 관측 전 사본. 없으면 null, 읽지 못하면 "error"(기록을 남긴다) */
+  private async readEarlySeal(
+    round: number,
+  ): Promise<{ text: string; commitDate: number | null } | null | "error"> {
+    const path = earlySealPath(ledgerId(this.genesis), round);
+    try {
+      return await this.o.anchor.earlySealStatus(
+        anchorBranch(this.schedule(), round),
+        path,
+      );
+    } catch (err) {
+      this.o.log?.(
+        `${round}회차 관측 전 사본을 읽지 못해 다시 시도한다: ${String(err)}`,
+      );
+      return "error";
+    }
+  }
+
+  /** 사본이 이 회차 봉인 값이고 커밋 시각이 기한 안인지 */
+  private timelyCopy(
+    found: { text: string; commitDate: number | null },
+    deadline: number,
+    digest: Uint8Array,
+  ): boolean {
+    if (found.commitDate === null || found.commitDate > deadline) return false;
+    try {
+      return (
+        (JSON.parse(found.text) as { digest?: string }).digest === toHex(digest)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /** 확인한 사본 글을 같은 바이트로 공개한다 */
+  private publishLive(round: number, text: string, digest: Uint8Array): void {
+    const { store } = this.o;
+    const file = JSON.parse(text) as { loggedAt: number; log: unknown };
+    store.addSeal({ round, digest, loggedAt: file.loggedAt, log: file.log });
+    this.o.publisher.sealRaw(round, text);
+    store.setPendingSeal(null);
+    if (store.earlySealed() === round - 1) store.setEarlySealed(round);
+    this.publishHead();
+  }
+
+  /** 정식 회차를 무효로 봉인한다(받은 토큰은 어디에도 싣지 않는다) */
+  private sealLiveVoid(
+    round: number,
+    parts: SealParts,
+    digest: Uint8Array,
+    why: string,
+  ): void {
+    const { store } = this.o;
+    this.o.log?.(`${round}회차를 무효로 닫는다: ${why}`);
+    store.addSeal({ round, digest, loggedAt: 0, log: null });
+    this.o.publisher.sealRaw(round, sealFileText(parts, digest, 0, null));
+    store.setPendingSeal(null);
+    this.publishHead();
   }
 
   private async drawDue(): Promise<void> {
@@ -1634,34 +1837,82 @@ export class StardrawServer {
    * 빠진 지난 회차는 먼저 몇 커밋으로 묶어 채운다. 사본을 올리지 못해도 앵커 파일은 따로 남기고, 사본은 10분 뒤 다시 채운다
    */
   /**
-   * 추첨 전 봉인 사본(docs/36 11-20, 보안 표 O10): 봉인하자마자 drand가 나오기 전에 봉인 파일을 앵커 저장소에 올린다.
-   * 사본이 운영자 손을 떠나(포크, git clone, GH Archive의 커밋 해시) 나중에 그 회차를 무효로 닫으면 검사가 실패로 잡는다.
+   * 관측 전 봉인 사본(docs/36 11-20·11-50, 보안 표 O10): drand가 나오기 전에 봉인 파일을 앵커 저장소에 올린다.
+   * - 정식 회차: 사본이 유효의 조건이다. 공개 전 봉인(`pendingSeal`)을 main에 올리고 다시 읽어 확인하면 표시해 두고,
+   *   sealDue가 그 글을 공개한다. 실패하면 기한(drand − 60초)까지 5초마다 다시
+   * - 시험 회차: 공개한 봉인 파일을 뒤따라 올린다. 나중에 그 회차를 무효로 닫으면 검사가 실패로 잡는다.
+   *   drand가 지난 회차는 올려도 증거가 못 되므로 건너뛰고 「놓침」으로 센다. 실패하면 15초 뒤 다시
    * 회차 앵커와 한 줄로 차례대로 돈다(둘이 겹치면 브랜치 옮기기가 한쪽 실패해 사본이 밀린다). 앵커를 보내는 중이면
-   * 앵커 흐름이 커밋마다 먼저 이것을 처리한다(추첨 전에 올려야 하므로 앞세운다).
-   * 추첨 시각이 지난 회차는 올려도 증거가 못 되므로 건너뛴다. 실패하면 15초 뒤 다시
+   * 앵커 흐름이 커밋마다 먼저 이것을 처리한다(관측 전에 올려야 하므로 앞세운다).
    */
   private earlySealing: Promise<void> | null = null;
   private nextEarlySealTry = 0;
+  private nextPendingTry = 0;
 
   private startEarlySeal(): void {
     const { store } = this.o;
-    if (
-      this.earlySealing ||
-      this.anchoring ||
-      this.now() < this.nextEarlySealTry
-    )
-      return;
+    if (this.earlySealing || this.anchoring) return;
+    const pending = store.pendingSeal();
+    const pendingDue =
+      pending !== null &&
+      !pending.confirmed &&
+      this.now() >= this.nextPendingTry;
+    const trialDue =
+      store.earlySealed() < store.lastSealed() &&
+      this.now() >= this.nextEarlySealTry;
     // 처음 일정표 앵커(main 브랜치를 만든다)가 먼저다. 그 뒤로는 앵커 흐름이 처음에 이것을 처리한다
-    if (!store.genesisAnchored() || store.earlySealed() >= store.lastSealed())
-      return;
+    if (!store.genesisAnchored() || (!pendingDue && !trialDue)) return;
     this.earlySealing = this.earlySealDue().finally(() => {
       this.earlySealing = null;
     });
   }
 
+  /** 정식 회차의 공개 전 봉인을 main에 올리고 다시 읽어 확인한다(docs/36 11-50) */
+  private async pushPendingSeal(): Promise<void> {
+    const { store } = this.o;
+    const pending = store.pendingSeal();
+    if (!pending || pending.confirmed || this.now() < this.nextPendingTry)
+      return;
+    const { round } = pending;
+    const schedule = this.schedule();
+    const deadline = earlySealDeadline(schedule, round);
+    if (this.now() >= deadline) return; // 그 뒤는 sealDue가 GitHub를 읽어 정한다
+    const ledger = ledgerId(this.genesis);
+    const branch = anchorBranch(schedule, round);
+    const path = earlySealPath(ledger, round);
+    // 보내기 전에 표시한다: 응답을 잃어도 올라갔을 수 있다
+    if (!pending.pushed) store.setPendingSeal({ ...pending, pushed: true });
+    try {
+      await this.o.anchor.earlySeal(
+        branch,
+        { path, text: pending.text },
+        earlySealCommitMessage(ledger, round),
+      );
+      const found = await this.o.anchor.earlySealStatus(branch, path);
+      if (!found || found.text !== pending.text)
+        throw new Error("다시 읽은 사본이 올린 글과 다르다");
+      if (found.commitDate === null || found.commitDate > deadline) {
+        // 다시 올려도 커밋 시각은 그대로다. 기한이 지나면 sealDue가 무효로 닫는다
+        this.nextPendingTry = deadline;
+        this.o.log?.(
+          `${round}회차 관측 전 사본의 커밋 시각이 기한보다 늦거나 없다(${found.commitDate})`,
+        );
+        return;
+      }
+      store.setPendingSeal({ ...pending, pushed: true, confirmed: true });
+    } catch (err) {
+      this.nextPendingTry = this.now() + PENDING_RETRY;
+      this.o.log?.(
+        `${round}회차 관측 전 사본을 올리지 못해 ${PENDING_RETRY}초 뒤 다시 시도한다: ${String(err)}`,
+      );
+    }
+  }
+
   private async earlySealDue(): Promise<void> {
     const { store } = this.o;
-    if (this.now() < this.nextEarlySealTry || !store.genesisAnchored()) return;
+    if (!store.genesisAnchored()) return;
+    await this.pushPendingSeal();
+    if (this.now() < this.nextEarlySealTry) return;
     const ledger = ledgerId(this.genesis);
     for (
       let round = store.earlySealed() + 1;
@@ -1671,9 +1922,18 @@ export class StardrawServer {
       const schedule = this.schedule();
       const { closesAt } = roundTimes(schedule, round);
       const late = this.now() >= drandTime(drandRoundForClose(closesAt));
-      // 무효로 닫힌 봉인(증거 없음)과 추첨이 지난 회차는 올릴 까닭이 없다
-      if (late || !store.seal(round)?.log) {
+      // 정식 회차는 공개 전에 올렸고(pushPendingSeal), 무효로 닫힌 봉인(증거 없음)은 올릴 까닭이 없다
+      if (this.earlySealRequired(schedule, round) || !store.seal(round)?.log) {
         store.setEarlySealed(round);
+        continue;
+      }
+      // 시험 회차인데 drand가 지났다: 올려도 증거가 못 된다. 올린 것으로 세지 않고 놓침으로 남긴다
+      if (late) {
+        store.addEarlySealMissed(round);
+        store.setEarlySealed(round);
+        this.o.log?.(
+          `${round}회차 관측 전 사본을 drand 전에 올리지 못했다(놓침)`,
+        );
         continue;
       }
       try {

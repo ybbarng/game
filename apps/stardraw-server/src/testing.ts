@@ -266,6 +266,14 @@ export async function makeRig(
     async finish(round) {
       const { closesAt } = roundTimes(engine.schedule(), round);
       await at(closesAt);
+      // 정식 회차는 관측 전 사본을 확인한 뒤에 봉인을 공개한다(docs/36 11-50). 운영은 1초마다 진행하므로
+      // 앵커 흐름이 돌고 있었으면 그 뒤에 올린다. 그 흉내로 앵커가 끝난 뒤 한 번 더 진행한다
+      if (store.pendingSeal()) {
+        await engine.earlySealIdle();
+        await engine.anchorIdle();
+        await at(closesAt + 1);
+        await engine.earlySealIdle();
+      }
       await at(drandTime(drandRoundForClose(closesAt)));
       // 관측 1분(모두의 의무 시간)이 지나야 다음 회차를 받는다
       await at(drandTime(drandRoundForClose(closesAt)) + OBSERVE_SECONDS);
@@ -550,11 +558,23 @@ export class FakeGitHub {
   private refs = new Map<string, string>();
   private commitsBySha = new Map<
     string,
-    { tree: string; parents: string[]; message: string }
+    { tree: string; parents: string[]; message: string; date: number }
   >();
+  /** 활동 기록(GitHub Activity API 흉내): 브랜치를 옮길 때마다 한 줄 */
+  activity: {
+    ref: string;
+    before: string;
+    after: string;
+    type: string;
+    at: number;
+  }[] = [];
+  /** 커밋 시각을 지금보다 이만큼(초) 옮겨 적는다(커밋하는 쪽이 시각을 정할 수 있다는 것을 흉내) */
+  commitDateShift = 0;
   private trees = new Map<string, Map<string, string>>();
   failures = 0;
   treeFailures = 0;
+  /** 읽기(GET)를 이만큼 500으로 */
+  readFailures = 0;
   /** 브랜치에 들어간 커밋(차례대로): 메시지와 바꾼 경로 */
   commits: { branch: string; message: string; paths: string[] }[] = [];
   /** 받은 API 요청 수 */
@@ -562,7 +582,8 @@ export class FakeGitHub {
   /** 마지막 요청에 토큰 머리글이 있었는지(값은 보지 않는다) */
   sawAuth = false;
 
-  constructor() {
+  /** 커밋 시각·활동 기록 시각(초). 기본은 0(시각을 보지 않는 시험) */
+  constructor(private readonly now: () => number = () => 0) {
     this.trees.set(this.treeSha(new Map()), new Map());
   }
 
@@ -585,12 +606,24 @@ export class FakeGitHub {
         `${tree} ${parents.join(",")} ${message} ${this.commitsBySha.size}`,
       )
       .digest("hex");
-    this.commitsBySha.set(sha, { tree, parents, message });
+    this.commitsBySha.set(sha, {
+      tree,
+      parents,
+      message,
+      date: this.now() + this.commitDateShift,
+    });
     return sha;
   }
 
   /** 브랜치를 커밋으로 옮기고, 부모 커밋과 달라진 경로를 남긴다 */
   private moveRef(branch: string, sha: string): void {
+    this.activity.push({
+      ref: `refs/heads/${branch}`,
+      before: this.refs.get(branch) ?? "0".repeat(40),
+      after: sha,
+      type: "push",
+      at: this.now(),
+    });
     this.refs.set(branch, sha);
     const c = this.commitsBySha.get(sha);
     const parent = c?.parents[0] ? this.commitsBySha.get(c.parents[0]) : null;
@@ -613,6 +646,10 @@ export class FakeGitHub {
     const method = init?.method ?? "GET";
     const rest = /^\/repos\/[^/]+\/[^/]+\/(.+)$/.exec(url.pathname)?.[1];
     if (!rest) return new Response("not found", { status: 404 });
+    if (method === "GET" && this.readFailures > 0) {
+      this.readFailures--;
+      return new Response("오류", { status: 500 });
+    }
     if (method !== "GET" && this.failures > 0) {
       this.failures--;
       return new Response("오류", { status: 500 });
@@ -651,6 +688,54 @@ export class FakeGitHub {
       return text === undefined
         ? json({ message: "Not Found" }, 404)
         : json({ content: Buffer.from(text).toString("base64") });
+    }
+    if (rest === "commits" && method === "GET") {
+      // 그 경로를 바꾼 커밋(최근부터, 첫 부모를 따라)
+      const path = url.searchParams.get("path") ?? "";
+      const out: unknown[] = [];
+      let sha = this.refs.get(url.searchParams.get("sha") ?? "main");
+      while (sha) {
+        const c = this.commitsBySha.get(sha);
+        if (!c) break;
+        const parent = c.parents[0]
+          ? this.commitsBySha.get(c.parents[0])
+          : null;
+        const now = this.trees.get(c.tree)?.get(path);
+        const before = parent
+          ? this.trees.get(parent.tree)?.get(path)
+          : undefined;
+        if (now !== before)
+          out.push({
+            sha,
+            commit: {
+              message: c.message,
+              committer: { date: new Date(c.date * 1000).toISOString() },
+            },
+          });
+        sha = c.parents[0];
+      }
+      return json(out.slice(0, Number(url.searchParams.get("per_page") ?? 30)));
+    }
+    if (rest === "activity" && method === "GET") {
+      const ref = url.searchParams.get("ref");
+      const type = url.searchParams.get("activity_type");
+      const rows = [...this.activity]
+        .reverse()
+        .filter(
+          (a) =>
+            (!ref || a.ref === ref || a.ref === `refs/heads/${ref}`) &&
+            (!type || a.type === type),
+        )
+        .map((a) => ({
+          ref: a.ref,
+          before: a.before,
+          after: a.after,
+          activity_type: a.type,
+          timestamp: new Date(a.at * 1000).toISOString(),
+        }));
+      return json(
+        rows.slice(0, Number(url.searchParams.get("per_page") ?? 30)),
+      );
     }
     const branch = /^branches\/(.+)$/.exec(rest);
     if (branch && method === "GET") {

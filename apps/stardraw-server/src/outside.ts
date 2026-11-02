@@ -304,6 +304,14 @@ export interface Anchor {
    * (한 번 올린 추첨 전 사본은 고치지 않는다)
    */
   earlySeal(branch: string, file: RepoFile, message: string): Promise<void>;
+  /**
+   * 관측 전 사본을 다시 읽는다(docs/36 11-50): 그 브랜치의 글과, 그 경로를 마지막으로 바꾼 커밋의 시각(초).
+   * 파일이 없으면 null. 읽지 못하면 던진다(있는지 모르는 채로 무효를 정하지 않게)
+   */
+  earlySealStatus(
+    branch: string,
+    path: string,
+  ): Promise<{ text: string; commitDate: number | null } | null>;
 }
 
 export const noAnchor: Anchor = {
@@ -311,6 +319,7 @@ export const noAnchor: Anchor = {
   anchorGenesis: async () => undefined,
   mirror: async () => undefined,
   earlySeal: async () => undefined,
+  earlySealStatus: async () => null,
 };
 
 /**
@@ -389,6 +398,26 @@ export class GitHubAnchor implements Anchor {
       );
     }
     await this.commit(branch, [file], message);
+  }
+
+  async earlySealStatus(
+    branch: string,
+    path: string,
+  ): Promise<{ text: string; commitDate: number | null } | null> {
+    const text = await this.getText(path, branch);
+    if (text === null) return null;
+    // 검사기(core githubWitness)와 같은 API: 그 경로를 마지막으로 바꾼 커밋
+    const rows = await this.json<
+      { commit?: { committer?: { date?: string } } }[]
+    >(
+      "GET",
+      `/commits?sha=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}&per_page=1`,
+    );
+    const date = Date.parse(rows[0]?.commit?.committer?.date ?? "");
+    return {
+      text,
+      commitDate: Number.isFinite(date) ? Math.floor(date / 1000) : null,
+    };
   }
 
   private async call(

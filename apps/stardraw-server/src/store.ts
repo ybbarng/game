@@ -31,6 +31,17 @@ export interface Seal {
   log: unknown;
 }
 
+/** 공개 전 봉인(정식 회차, docs/36 11-50) */
+export interface PendingSeal {
+  round: number;
+  /** 공개할 봉인 파일 글 그대로(관측 전 사본과 같은 바이트) */
+  text: string;
+  /** 사본 올리기를 한 번이라도 시작했는지. 시작했으면 기한이 지나도 GitHub를 읽어 보고 정한다 */
+  pushed: boolean;
+  /** main에서 같은 글과 기한 안 커밋 시각을 확인했는지 */
+  confirmed: boolean;
+}
+
 /** 당첨자 확인 링크 초대(토큰 해시만 둔다) */
 export interface InviteRow {
   tokenHash: string;
@@ -381,6 +392,48 @@ export class Store {
         "INSERT INTO meta (k, v) VALUES ('earlySealed', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
       )
       .run(String(round));
+  }
+
+  /** 시험 회차 가운데 drand가 지나 관측 전 사본을 올리지 못한 회차(최근 200개, docs/36 11-50) */
+  earlySealMissed(): number[] {
+    const row = this.db
+      .prepare("SELECT v FROM meta WHERE k = 'earlySealMissed'")
+      .get();
+    return row ? (JSON.parse(String(row.v)) as number[]) : [];
+  }
+
+  addEarlySealMissed(round: number): void {
+    const list = [...this.earlySealMissed().filter((r) => r !== round), round]
+      .sort((a, b) => a - b)
+      .slice(-200);
+    this.db
+      .prepare(
+        "INSERT INTO meta (k, v) VALUES ('earlySealMissed', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
+      )
+      .run(JSON.stringify(list));
+  }
+
+  /**
+   * 정식 회차의 공개 전 봉인(docs/36 11-50): 토큰은 받았지만 관측 전 사본을 확인하기 전이라 아직 공개하지 않은 봉인 파일 글.
+   * 다시 띄워도 같은 바이트로 이어 가려고 남긴다. 한 번에 한 회차뿐이다
+   */
+  pendingSeal(): PendingSeal | null {
+    const row = this.db
+      .prepare("SELECT v FROM meta WHERE k = 'pendingSeal'")
+      .get();
+    return row ? (JSON.parse(String(row.v)) as PendingSeal) : null;
+  }
+
+  setPendingSeal(p: PendingSeal | null): void {
+    if (!p) {
+      this.db.prepare("DELETE FROM meta WHERE k = 'pendingSeal'").run();
+      return;
+    }
+    this.db
+      .prepare(
+        "INSERT INTO meta (k, v) VALUES ('pendingSeal', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
+      )
+      .run(JSON.stringify(p));
   }
 
   /** 앵커 저장소의 그 브랜치에 장부 JSON 사본을 올린 마지막 회차(1회차부터 빈틈없이). 없으면 0 */
