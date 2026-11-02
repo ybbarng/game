@@ -2067,3 +2067,110 @@ button {
     animation: none;
   }
 }
+
+/* 우주국 편지(2026-11-02): 봉투가 위에서 내려와 숨 쉬듯 떠 있다가, 누르면 덮개가 젖혀지며 봉인이 풀리고 봉투가 물러난다 */
+@keyframes sd-env-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-60vh) rotate(-6deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(8px) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sd-env-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.sd-env-drop {
+  perspective: 600px;
+  animation:
+    sd-env-drop 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    sd-env-float 3200ms ease-in-out 1100ms infinite;
+}
+@keyframes sd-env-flap {
+  to {
+    transform: rotateX(180deg);
+  }
+}
+@keyframes sd-env-seal {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.4);
+  }
+}
+@keyframes sd-env-away {
+  to {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+}
+.sd-env-open {
+  perspective: 600px;
+  animation: sd-env-away 450ms ease-in 750ms both;
+}
+.sd-env-open::before {
+  transform-origin: top;
+  animation: sd-env-flap 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.sd-env-open::after {
+  animation: sd-env-seal 350ms ease-out both;
+}
+
+/* 편지지: 옅은 줄이 있는 미색 종이, 명조 글꼴. 봉투에서 나와 위에서부터 펼쳐진다 */
+.sd-letter-paper {
+  font-family:
+    "Nanum Myeongjo", "AppleMyungjo", "Batang", "Noto Serif KR",
+    "Noto Serif CJK KR", serif;
+  background-color: #f6f0e1;
+  background-image: radial-gradient(
+    120% 90% at 50% 40%,
+    transparent 60%,
+    rgba(150, 115, 60, 0.12)
+  );
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 6px #f6f0e1,
+    inset 0 0 0 7px rgba(150, 115, 60, 0.35);
+}
+@keyframes sd-letter-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scaleY(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-letter-unfold {
+  transform-origin: top;
+  animation: sd-letter-unfold 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-env-drop,
+  .sd-env-open,
+  .sd-env-open::before,
+  .sd-env-open::after,
+  .sd-letter-unfold {
+    animation: none;
+  }
+}
+
+/* 처음 온 사람이 편지를 읽는 동안 홈을 숨겨 둔다(편지 오버레이만 보인다). 편지가 닫히면 sd-unfold-all로 펼친다 */
+.sd-unfold-hold > * {
+  visibility: hidden;
+}
+.sd-unfold-hold [data-stage-overlay] {
+  visibility: visible;
+}

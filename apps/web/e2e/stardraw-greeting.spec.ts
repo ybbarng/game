@@ -35,6 +35,26 @@ test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난
   await page.screenshot({ path: info.outputPath("greeting-new.png") });
   // 1.3초 머문 뒤 물러난다(시계는 실제로 흐른다)
   await expect(greeting).toHaveCount(0, { timeout: 10_000 });
+  // 생애 첫 방문인 처음 온 사람: 편지가 위에서 내려오고, 누르면 꺼내 읽는다. 그동안 홈은 숨겨 둔다
+  const envelope = page.locator("[data-letter-stage='arrive']");
+  await expect(envelope).toBeVisible();
+  await expect(page.locator("section[aria-label='정답 예시']")).toBeHidden();
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: info.outputPath("letter-arrive.png") });
+  // 봉투는 숨 쉬듯 둥실거려 멈추지 않는다(멈출 때까지 기다리지 않고 누른다)
+  await envelope.click({ force: true });
+  const letter = page.locator("[data-letter]");
+  await expect(letter).toContainText(
+    "가장 잘 예측하는 우주인을 찾고 있습니다.",
+  );
+  await expect(letter.locator("[data-seal]")).toBeVisible();
+  await page.waitForTimeout(900);
+  await page.screenshot({
+    path: info.outputPath("letter-read.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "먼저 둘러볼게요" }).click();
+  await expect(letter).toHaveCount(0);
   await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();
   // 홈 머리의 「~님, 안녕하세요」 줄은 없다(인사로 옮겼다)
   await expect(page.locator("[data-greeting]")).toHaveCount(0);

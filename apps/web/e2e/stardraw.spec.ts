@@ -205,7 +205,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(page.locator("[data-letter]")).toHaveCount(0);
   await page.locator("[data-letter-envelope]").click();
   await expect(page.locator("[data-letter]")).toContainText(
-    "다음에 빛날 별을 가장 잘 예측하는 우주인을 찾습니다.",
+    "다음에 빛날 별을 가장 잘 예측하는 우주인을 찾고 있습니다.",
   );
   // 연출이 있으면 편지는 화면 전체 오버레이라 닫고 입구로 돌아온다
   if (motion) {

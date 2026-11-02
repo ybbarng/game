@@ -37,7 +37,7 @@ import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
 import type { KeyInfo, MyTicket } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { BroadcastToast, onAirRound, watchRound } from "./BroadcastToast";
-import { BureauWelcome } from "./BureauWelcome";
+import { BureauWelcome, letterAutoPending } from "./BureauWelcome";
 import { CheckLink } from "./CheckLink";
 import { DrawnNotice } from "./DrawnNotice";
 import { DrawView } from "./DrawView";
@@ -205,14 +205,15 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
    * (unfold: 하늘 → 제목 → 회차 카드 → 나머지, CSS sd-unfold-all)
    */
   const [intro, setIntro] = useState(false);
-  const [unfold, setUnfold] = useState(false);
+  /** 홈 펼치기: hold는 처음 온 사람이 편지를 읽는 동안 숨겨 두기, run은 차례로 펼치기 */
+  const [unfold, setUnfold] = useState<"hold" | "run" | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 처음 들어온 화면으로 한 번만 정한다
   useEffect(() => {
     if (view.name === "home" && shouldShowIntro()) setIntro(true);
   }, []);
   useEffect(() => {
-    if (!unfold) return;
-    const t = window.setTimeout(() => setUnfold(false), 2600);
+    if (unfold !== "run") return;
+    const t = window.setTimeout(() => setUnfold(null), 2600);
     return () => window.clearTimeout(t);
   }, [unfold]);
   useEffect(() => {
@@ -455,7 +456,14 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   // 마우스로 쓰는 넓은 화면은 위쪽 메뉴 줄(탭바 대신)이라 위에 자리를 둔다. 연출을 가리지 않아 추첨에도 둔다
   // (2026-11-01 사용자: 추첨 화면에서 첫 화면으로 가기 어렵다)
   const wide = useWideScreen();
-  const showNav = !!services && !!status && !picking && (!observing || wide);
+  // 우주국 인사와 처음 온 사람의 편지 동안에는 감춘다(뒤에 희미하게 비쳤다)
+  const showNav =
+    !!services &&
+    !!status &&
+    !picking &&
+    (!observing || wide) &&
+    !intro &&
+    unfold !== "hold";
   // 화면마다 속한 탭 하나: 영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차(2026-11-01 사용자 B안)
   const navActive: NavTarget | null =
     view.name === "home" || view.name === "timetable"
@@ -492,14 +500,18 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
       {intro && (
         <IntroGate
           ready={!!services && !!status}
-          onLeave={() => setUnfold(true)}
+          // 생애 첫 방문인 처음 온 사람은 편지(위에서 내려와 꺼내 읽는다)를 먼저, 닫히면 홈을 펼친다
+          onLeave={() =>
+            setUnfold(!navKey && letterAutoPending() ? "hold" : "run")
+          }
           onDone={() => setIntro(false)}
         />
       )}
       <div
         className={cn(
           "sd-wide mx-auto flex max-w-xl flex-col gap-5",
-          unfold && view.name === "home" && "sd-unfold-all",
+          unfold === "run" && view.name === "home" && "sd-unfold-all",
+          unfold === "hold" && view.name === "home" && "sd-unfold-hold",
         )}
       >
         {services && status && (
@@ -743,6 +755,8 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
             }
             onDraw={goWatch}
             onTimetable={() => go({ name: "timetable" })}
+            letterAuto={unfold === "hold" && !intro}
+            onLetterClosed={() => setUnfold("run")}
             onMine={() => go({ name: "mine" })}
             onRound={(round) => go({ name: "round", round })}
             onSkip={
@@ -772,6 +786,8 @@ export function Home({
   onReceipt,
   onDraw,
   onTimetable,
+  letterAuto = false,
+  onLetterClosed,
   onMine,
   onRound,
   onSkip,
@@ -786,6 +802,10 @@ export function Home({
   onDraw: (round: number) => void;
   /** 관측 시간표로 */
   onTimetable: () => void;
+  /** 생애 첫 방문: 우주국 인사 뒤 편지가 위에서 내려온다(처음 온 사람 입구) */
+  letterAuto?: boolean;
+  /** 저절로 연 편지가 닫혔다(홈을 펼친다) */
+  onLetterClosed?: (() => void) | undefined;
   onMine: () => void;
   /** 지난 회차 한 줄: 그 회차 결과로 */
   onRound: (round: number) => void;
@@ -835,6 +855,8 @@ export function Home({
           onSkip={onSkip}
           onDraw={onDraw}
           onTimetable={onTimetable}
+          letterAuto={letterAuto}
+          onLetterClosed={onLetterClosed}
         />
       </>
     );
@@ -959,6 +981,8 @@ export function Gate({
   onSkip,
   onDraw,
   onTimetable,
+  letterAuto = false,
+  onLetterClosed,
 }: {
   services: Services;
   status: LedgerStatus;
@@ -969,6 +993,8 @@ export function Gate({
   onDraw?: (round: number) => void;
   /** 관측 시간표로. 없으면(데모 둘러보기) 시간표를 붙이지 않는다 */
   onTimetable?: (() => void) | undefined;
+  letterAuto?: boolean;
+  onLetterClosed?: (() => void) | undefined;
 }) {
   const name = roundShort(services.ledger.schedule, s.round);
   const open = s.phase === "open";
@@ -980,6 +1006,8 @@ export function Gate({
       <BureauWelcome
         cadence={cadenceOf(s.times.entry.length)}
         onRegister={() => void setup.create()}
+        autoOpen={letterAuto}
+        onClosed={onLetterClosed}
       />
       {/* 우주국 인사가 여섯 별 이야기를 이미 해서 소개 줄은 빼고 하늘만 */}
       <GameIntro />
