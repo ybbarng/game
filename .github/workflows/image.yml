@@ -105,7 +105,7 @@ jobs:
           retention-days: 90
 
   # 하늘의 별 따기 회차 서버 이미지(ghcr.io/ybbarng/stardraw-server, apps/stardraw-server/Dockerfile).
-  # 이미지만 만들어 올리고 배포는 하지 않는다(servers 저장소 apps/stardraw/ 에서 손으로 띄운다, deploy/stardraw/README.md).
+  # 이미지를 올리면 아래 deploy-server 가 운영 서버에 띄운다(docs/36 11-45).
   # 저장소 변수 STARDRAW_SERVER_IMAGE 를 true 로 켜기 전에는 돌지 않는다.
   server-image:
     if: vars.STARDRAW_SERVER_IMAGE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository))
@@ -139,6 +139,49 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=stardraw-server
           cache-to: type=gha,scope=stardraw-server,mode=max
+
+  # 별 따기 서버를 운영에 띄운다(2026-11-02 사용자: 서버 판은 game 이 스스로 배포한다, docs/36 11-45).
+  # 서버의 배포 키 stardraw-deploy 는 forced-command 로 servers 저장소 byb.kr/apps/stardraw/deploy.sh 만 실행한다.
+  # deploy.sh 가 마감(:15·:35·:55) 앞뒤 2분과 회차가 밀린 동안(behind·pending·sealOverdueSeconds)을 30초씩 기다렸다가
+  # (최대 15분, 넘으면 바꾸지 않고 실패) 태그만 바꿔 다시 띄우고 상태 200을 확인한다. 이미지가 공개라 토큰은 넘기지 않는다.
+  # 회차 길이를 바꾸면 deploy.sh 의 CLOSE_MINUTES 도 함께 고친다.
+  deploy-server:
+    needs: server-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: deploy-server
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      - name: SSH → stardraw deploy.sh
+        env:
+          KEY: ${{ secrets.STARDRAW_DEPLOY_KEY }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+          PORT: ${{ secrets.SERVER_PORT || '22' }}
+          HOST_KEY: ${{ secrets.SERVER_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          # 배포 키를 아직 넣지 않았으면 이미지만 올리고 배포는 건너뛴다
+          if [ -z "$KEY" ] || [ -z "$HOST" ]; then
+            echo "STARDRAW_DEPLOY_KEY·SERVER_HOST 시크릿이 없어 별 따기 서버 배포를 건너뛴다"
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/stardraw_key
+          chmod 600 ~/.ssh/stardraw_key
+          if [ -n "$HOST_KEY" ]; then
+            printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          ssh -i ~/.ssh/stardraw_key -p "$PORT" \
+            -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 \
+            "$USER@$HOST" "deploy $SHA" </dev/null
+          rm -f ~/.ssh/stardraw_key
 
   # 재현 빌드 확인(docs/36 11-8): Docker 밖(보통 러너, Node + pnpm)에서 같은 커밋·같은 빌드 변수로 다시 빌드해
   # 이미지 안 해시 목록과 digest 가 같은지 본다. 배포를 막지는 않는다(실패하면 이 작업만 빨갛게 남는다).
@@ -205,8 +248,11 @@ jobs:
   # 서버에 배포한다. 서버의 배포 키는 forced-command 로 servers 저장소의 apps/game/deploy.sh 만 실행한다.
   # 이미지를 받을 토큰은 이 실행의 GITHUB_TOKEN 을 표준입력으로 넘긴다(서버에 남지 않고, 실행이 끝나면 만료된다).
   # CI 가 성공한 main 커밋만 오므로 늘 운영 배포다(빌드가 건너뛰어지면 배포도 건너뛴다).
+  # 웹은 별 따기 서버 배포가 끝난 뒤에 올린다(새 화면이 옛 서버를 만나지 않게). 서버 이미지를 만들지 않았거나
+  # (변수 꺼짐) 배포 키가 없어 건너뛴 경우에도 웹은 올리고, 서버 배포가 실패하거나 취소되면 웹도 올리지 않는다.
   deploy:
-    needs: build
+    needs: [build, deploy-server]
+    if: always() && needs.build.result == 'success' && (needs.deploy-server.result == 'success' || needs.deploy-server.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

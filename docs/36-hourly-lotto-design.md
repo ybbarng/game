@@ -2085,3 +2085,12 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 - ④ 바뀌면: 표지 시각은 `MARKS_DELAY_MS`, 소감 길이는 `SPEECH_MS`(CSS `sd-speech` 9초와 함께), 소감 대상 등수는 `speechRank`의 `rank > 3` 한 곳. 소감을 늦게 온 사람에게도 보이게 하려면 서버가 관측 뒤 1~3등의 첫 말을 방에 잠깐 들고 있다가 인사에 실어야 한다(대화를 남기지 않는 11-23과 부딪쳐 하지 않았다).
 - ⑤ 대안: 소감 전용 입력 칸·서버 메시지 종류(서버가 1~3등을 확인)는 서버가 회차 기록과 방을 엮어야 하고 화면 판단과 결과가 같아 고르지 않았다. 화면이 판단하므로 조작한 화면은 자기 화면에서만 아무 말이나 크게 보일 뿐 남의 화면은 바뀌지 않는다.
 - 시험: `after-observe.test.ts`(인원 줄·등수·최고 등수·얼굴 차례·표지 시각·소감 판정), `RoomView.test.tsx` 「관측이 끝난 뒤」(흉내 방 스트림: 표지·금빛, 1등 첫 말은 소감·두 번째 말은 풍등·길게 누르면 신고, 1등 본인 자리표시, 4등은 그대로), 서버 `room.test.ts`. 스크린샷은 리허설 서버(가짜 drand로 당첨 번호를 미리 알아 봇 예측서로 당첨 수를 만듦)에 방 스트림만 흉내 내어 찍었다.
+
+### 11-45. 별 따기 서버는 Image 워크플로가 스스로 배포한다(2026-11-02 사용자 결정)
+
+- **왜**: 서버를 바꿀 때마다 비서가 servers 저장소 compose 기본 태그를 올리고 사용자가 손으로 다시 띄웠다. 같은 날 세 번(714fd69·2df9fd1·d6201fc) 중계와 승인이 오갔고, 한 번은 마감 직전에 다시 떴다. 사용자가 "서버 판은 game 쪽이 스스로 배포한다"로 정했다. 시간 안전장치는 servers 쪽 배포 스크립트에 둔다.
+- **흐름**: Image 워크플로 `server-image`(이미지 `ghcr.io/ybbarng/stardraw-server:<커밋>`) → `deploy-server`가 배포 키 `STARDRAW_DEPLOY_KEY`(Actions 비밀값)로 `ssh ... "deploy <40자 커밋>"` → 서버의 forced-command `servers/byb.kr/apps/stardraw/deploy.sh`가 servers pull → 이미지 미리 받기 → **마감(:15·:35·:55) 앞뒤 2분과 `behind`·`pending`·`sealOverdueSeconds`가 0이 아닌 동안 30초마다 기다림**(최대 15분, 넘으면 바꾸지 않고 실패) → 폴더 `.env`의 `STARDRAW_TAG`만 바꿈 → up → `/api/state` 200 확인. `check`는 지금 띄워도 되는지만 답한다.
+- **웹은 서버 다음**: `deploy`(웹)는 `deploy-server`가 성공하거나 건너뛰었을 때만 돈다(새 화면이 옛 서버를 만나지 않게). 서버 배포가 실패·취소되면 웹도 올리지 않는다. 서버 이미지 변수가 꺼졌거나 배포 키가 없으면 서버 배포를 건너뛰고 웹은 올린다. 서버 이미지 빌드가 실패해도 `deploy-server`가 건너뛰어져 웹은 올라간다(옛 서버 그대로).
+- **회차 길이를 바꾸면** `deploy.sh`의 `CLOSE_MINUTES`도 함께 고친다(servers 저장소, 비서를 거친다). 지금은 시험 20분 회차라 :15·:35·:55, 정식 1시간 회차면 :55만.
+- compose 기본 태그는 더 올리지 않는다(운영 태그는 서버 폴더 `.env`). 이미지가 공개라 토큰은 넘기지 않는다.
+- 배포 키는 웹 배포 키(`SERVER_SSH_KEY`, apps/game/deploy.sh)와 따로다. 하나가 새어도 다른 쪽은 실행할 수 없다.

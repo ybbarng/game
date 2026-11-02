@@ -31,7 +31,8 @@
 - **사용자가 직접 할 일**: 백업 2단계(집 서버로 끌어오기 — 1단계 매시 크론은 2026-11-01 등록함, 관인은 보안 노트에 저장함), GitHub 보호(stardraw-ledger 강제 push·삭제 금지 룰셋, mighty main 보호·액션 SHA 강제·SERVER_HOST_KEY), 계정 2단계 인증, 국장 패스키 하나 더, 실제 폰(특히 아이폰 사파리) 확인, 국장 화면에서 벌집 성단 소속·자격 기간 열기.
 - **나중(할 일 목록)**: 소속 없는 응모 회차 상한, 회차 방 얼굴 뒷모습, 이월(고민 중). 끝남: 디스크 감시(servers 82e9b98·49cf419, 호스트 크론 10분마다 → ntfy, 남은 공간 10%·2GB·inode 10% 아래면 알림), 앵커 사본으로 DB 다시 세우는 서버 `restore` 명령(2026-11-01, docs/36 11-26, deploy/stardraw/README.md 6절. 운영에서 실제로 돌려 본 적은 없음).
 - **데모 `/stardraw/demo`는 로컬·시험 전용, 운영에서 404(2026-11-02 사용자)**: 화면의 링크(메뉴·설명·국장 화면)를 모두 뺐고, 운영 빌드는 `NEXT_PUBLIC_STARDRAW_DEMO=0`으로 파일을 지운 뒤 해시 목록을 만들며 nginx도 막는다(docs/36 11-42). 로컬 빌드·CI 화면 시험에는 그대로 있다. 위 데모 안내(`/stardraw/demo#director` 등)는 로컬에서 연다.
-- **예측 몰림 알림(2026-11-02, 브랜치 `entry-pressure`, docs/36 11-43)**: 서버가 회차마다 503(줄 가득·기다림 상한)·429(IP 앞부분 예측·등록)·늦은 도착·줄 길이·가장 긴 기다림을 숫자로만 세어 `/api/state`(최상위 `entryBusyRecent` 등, `pressure`)와 회차가 닫힐 때 로그 한 줄로 낸다. 서버 다시 띄우기(배포)와 감시 알림 설정(servers 저장소 gatus, 11-43의 항목 초안)은 사용자/비서.
+- **예측 몰림 알림(2026-11-02, 브랜치 `entry-pressure`, docs/36 11-43)**: 서버가 회차마다 503(줄 가득·기다림 상한)·429(IP 앞부분 예측·등록)·늦은 도착·줄 길이·가장 긴 기다림을 숫자로만 세어 `/api/state`(최상위 `entryBusyRecent` 등, `pressure`)와 회차가 닫힐 때 로그 한 줄로 낸다. 운영에 켜짐(2df9fd1), gatus 「예측 몰림」「늦은 도착」 알림 켜짐(2026-11-02).
+- **별 따기 서버 자동 배포(2026-11-02 사용자 결정, docs/36 11-45)**: Image 워크플로 `deploy-server`가 배포 키 `STARDRAW_DEPLOY_KEY`로 servers `byb.kr/apps/stardraw/deploy.sh`를 부른다(마감 앞뒤·회차 밀림 동안 기다렸다가 `.env` 태그만 바꿔 다시 띄움). 웹 배포는 서버 배포 뒤. 비서 중계·손으로 다시 띄우기는 없앴다. 회차 길이를 바꾸면 deploy.sh `CLOSE_MINUTES`도 고친다.
 - 상품·예산 메모는 git 밖 `~/personal/projects/game/private/stardraw-prizes.md`(GitHub에 올리지 않음).
 
 ## 1. 지금 상태 — 거의 마무리
