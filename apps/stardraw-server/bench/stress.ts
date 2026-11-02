@@ -185,6 +185,10 @@ async function startServer(epoch: number) {
       STARDRAW_DATA_DIR: join(dir, "data"),
       STRESS_EPOCH: String(epoch),
       STRESS_ROUND_SECONDS: String(length),
+      // STRESS_ARGON=wasm이면 측정 서버가 예전 hash-wasm으로 계산한다(비교용)
+      ...(process.env.STRESS_ARGON
+        ? { STRESS_ARGON: process.env.STRESS_ARGON }
+        : {}),
     },
     stdio: ["pipe", "pipe", "inherit"],
   });
