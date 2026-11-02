@@ -71,7 +71,7 @@ import { MenuItem } from "./StardrawNav";
 const FACES = 12;
 /** 동시에 떠 있는 풍등 수 */
 const LANTERNS = 6;
-const LANTERN_MS = 7000;
+export const LANTERN_MS = 7000;
 
 interface Lantern {
   key: string;
@@ -88,7 +88,7 @@ interface Lantern {
 }
 
 /** 풍등이 다른 풍등과 겹치지 않을 만큼 위로 떠오르는 시간(ms)과 가로로 떨어져야 하는 거리(px) */
-const LANTERN_CLEAR_MS = 1700;
+export const LANTERN_CLEAR_MS = 1700;
 const LANTERN_GAP = 220;
 /** 하늘 판 가장자리 여백(px) */
 const LANTERN_EDGE = 6;
@@ -235,7 +235,7 @@ export const ROOM_REGISTER_NOTE =
   "언덕에 오르려면 먼저 우주국 장부에 우주인으로 올라야 해요. 장부는 누구나 볼 수 있어요.";
 
 /** 별똥별이 하늘에 머무는 시간(ms, globals.css sd-room-meteor와 같다) */
-const METEOR_MS = 2400;
+export const METEOR_MS = 2400;
 
 interface Spark {
   key: string;
@@ -251,8 +251,8 @@ interface Spark {
 const LiveDraw = memo(DrawView);
 
 /** 방 안 시계: 서버 시각에 맞춘다 */
-function roomClock(client: RoomClient): Clock {
-  return { now: () => client.serverNow(), after: realClock.after };
+function roomClock(client: RoomClient, base: Clock): Clock {
+  return { now: () => client.serverNow(), after: base.after.bind(base) };
 }
 
 export function RoomView({
@@ -264,11 +264,17 @@ export function RoomView({
   onHome,
   guide,
   api = serverApi() as string,
+  clock: device = realClock,
 }: {
   services: Services;
   round: number;
   /** 서버 주소(시험이 흉내 서버를 넣는다). 기본은 빌드에 들어간 서버 주소 */
   api?: string;
+  /**
+   * 기기 시계(풍등 차례·사라짐, 별똥별, 다시 연결 기다림). 기본은 realClock, 시험은 ManualClock을 넣어
+   * 정확한 순간에 일으킨다
+   */
+  clock?: Clock;
   /** 머리(장소·회차) 아래에 둘 관측 방송 안내(지금 회차 화면만) */
   guide?: React.ReactNode;
   record: RoundRecord | null | undefined;
@@ -279,7 +285,7 @@ export function RoomView({
   onHome?: (() => void) | undefined;
 }) {
   const client = useMemo(() => new RoomClient(api, round), [api, round]);
-  const clock = useMemo(() => roomClock(client), [client]);
+  const clock = useMemo(() => roomClock(client, device), [client, device]);
   const schedule = services.ledger.schedule;
   const times = roundTimes(schedule, round);
   const drawAt = drandTime(drandRoundForClose(times.closesAt));
@@ -399,7 +405,7 @@ export function RoomView({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 표가 바뀔 때만 다시 연결
   useEffect(() => {
     let alive = true;
-    let retry = 0;
+    let retry = () => {};
     const onEvent = (e: RoomEvent) => {
       if (e.type === "hello") {
         heardRef.current = {
@@ -476,13 +482,13 @@ export function RoomView({
           if (err.status === 410) setClosed(true);
           return;
         }
-        retry = window.setTimeout(open, 2000);
+        retry = device.after(2000, open);
       });
     };
     open();
     return () => {
       alive = false;
-      window.clearTimeout(retry);
+      retry();
       client.close();
     };
   }, [client, pass]);
@@ -508,7 +514,7 @@ export function RoomView({
   const launch = (id: string, from: string, text: string) => {
     const key = `${id}-${Math.random()}`;
     const x = faceX(from);
-    const now = realClock.now();
+    const now = device.now();
     // 모두 같은 줄에서 같은 빠르기로 떠오르므로, 가로로 가까운 풍등이 한 칸 위로 비켜날 때까지만 기다렸다 띄운다
     // (기다리는 중인 풍등도 자리를 잡아 둔다). 그래서 위아래로도 옆으로도 겹치지 않는다
     const near = slots.current.filter(
@@ -519,14 +525,14 @@ export function RoomView({
       ...slots.current.filter((s) => s.at > now - LANTERN_CLEAR_MS),
       { x, at },
     ];
-    realClock.after(at - now, () => {
+    device.after(at - now, () => {
       const next = [
         ...lanternsRef.current.filter((l) => l.from !== from),
         { key, id, from, text, x, lane: 0, at },
       ].slice(-LANTERNS);
       lanternsRef.current = next;
       setLanterns(next);
-      realClock.after(LANTERN_MS, () => {
+      device.after(LANTERN_MS, () => {
         lanternsRef.current = lanternsRef.current.filter((l) => l.key !== key);
         setLanterns(lanternsRef.current);
       });
@@ -538,7 +544,7 @@ export function RoomView({
     setSparks((s) =>
       [...s, { key, kind, to, x: to ? xOf(to) : Math.random() }].slice(-12),
     );
-    realClock.after(kind === "meteor" ? METEOR_MS : 2200, () =>
+    device.after(kind === "meteor" ? METEOR_MS : 2200, () =>
       setSparks((s) => s.filter((x) => x.key !== key)),
     );
   };

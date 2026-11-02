@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ManualClock } from "@game/fair-play";
 import {
   drandRoundForClose,
   drandTime,
@@ -8,7 +9,13 @@ import {
   type Schedule,
   toBase64Url,
 } from "@game/stardraw-core";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { MARKS_DELAY_MS } from "../after-observe";
@@ -72,6 +79,9 @@ const services = {
 } as unknown as Services;
 
 let RoomView: typeof import("./RoomView").RoomView;
+let LANTERN_MS = 0;
+let LANTERN_CLEAR_MS = 0;
+let METEOR_MS = 0;
 
 beforeAll(async () => {
   // 하늘 판(캔버스)과 크기 관찰은 jsdom에 없어 그리지 않는다
@@ -87,7 +97,9 @@ beforeAll(async () => {
     addEventListener() {},
     removeEventListener() {},
   })) as unknown as typeof window.matchMedia;
-  ({ RoomView } = await import("./RoomView"));
+  ({ RoomView, LANTERN_MS, LANTERN_CLEAR_MS, METEOR_MS } = await import(
+    "./RoomView"
+  ));
 });
 
 afterEach(() => {
@@ -119,6 +131,123 @@ describe("관측지 별똥별", () => {
       "[data-room-meteor]",
     ) as HTMLElement;
     expect(meteor.querySelector(".sd-room-meteor-streak")).not.toBeNull();
+  });
+});
+
+/*
+ * 기기 시계(clock 주입): 풍등이 차례로 뜨고 사라지는 때, 별똥별이 사라지는 때, 끊긴 스트림을 다시 잇는 때를
+ * ManualClock으로 정확한 순간에 일으킨다(실제 시간을 기다리지 않는다)
+ */
+describe("관측지 기기 시계", () => {
+  const ev = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
+  const hello = (people: unknown[] = []) =>
+    ev({
+      type: "hello",
+      serverTime: Date.now(),
+      round: 1,
+      drawAt: 0,
+      entryDeadline: 0,
+      closesAt: 0,
+      me: null,
+      people,
+      watchers: 1,
+      sealed: false,
+      drawn: false,
+      picks: null,
+    });
+  /** 흉내 스트림. `end`면 보낸 뒤 닫는다(서버가 끊은 것처럼) */
+  const body = (text: string, end = false) =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(text));
+          if (end) c.close();
+        },
+      }),
+      { status: 200 },
+    );
+  function renderWith(clock: ManualClock, streams: () => Response) {
+    const events = vi.fn(streams);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+      String(input).endsWith("/events")
+        ? events()
+        : new Response("{}", { status: 404 }),
+    );
+    sessionStorage.clear();
+    const view = render(
+      <RoomView
+        api="http://room.test/stardraw-api"
+        services={services}
+        round={1}
+        record={undefined}
+        ticket={undefined}
+        onEnter={() => {}}
+        clock={clock}
+      />,
+    );
+    return { view, events };
+  }
+
+  it("가까운 자리의 풍등은 앞 풍등이 비켜날 때까지 기다렸다 뜨고, 뜬 지 LANTERN_MS 뒤 사라진다", async () => {
+    const clock = new ManualClock();
+    const people = ["a", "b"].map((id, i) => ({
+      id,
+      pub: toBase64Url(new Uint8Array(33).fill(i + 1)),
+      entered: false,
+    }));
+    const at = Date.now();
+    const { view } = renderWith(clock, () =>
+      body(
+        hello(people) +
+          ev({ type: "say", id: "1-1", from: "a", text: "첫 말", at }) +
+          ev({ type: "say", id: "1-2", from: "b", text: "둘째 말", at }),
+      ),
+    );
+    const lantern = (from: string) =>
+      view.container.querySelector(`[data-lantern='${from}']`);
+    // 두 말을 받으면 첫 풍등은 바로(0ms 뒤) 뜬다
+    await waitFor(() => {
+      act(() => clock.advance(0));
+      expect(lantern("a")).not.toBeNull();
+    });
+    // jsdom은 자리가 모두 0이라 둘째 풍등은 같은 자리 → 첫 풍등이 비켜날 때까지 기다린다
+    expect(lantern("b")).toBeNull();
+    act(() => clock.advance(LANTERN_CLEAR_MS - 1));
+    expect(lantern("b")).toBeNull();
+    act(() => clock.advance(1));
+    expect(lantern("b")).not.toBeNull();
+    act(() => clock.advance(LANTERN_MS - LANTERN_CLEAR_MS - 1));
+    expect(lantern("a")).not.toBeNull();
+    act(() => clock.advance(1));
+    expect(lantern("a")).toBeNull();
+    expect(lantern("b")).not.toBeNull();
+  });
+
+  it("별똥별은 METEOR_MS 동안만 하늘에 있다", async () => {
+    const clock = new ManualClock();
+    const { view } = renderWith(clock, () =>
+      body(
+        hello() + ev({ type: "cheer", from: "x", kind: "meteor", to: null }),
+      ),
+    );
+    const meteor = () => view.container.querySelector("[data-room-meteor]");
+    await waitFor(() => expect(meteor()).not.toBeNull());
+    act(() => clock.advance(METEOR_MS - 1));
+    expect(meteor()).not.toBeNull();
+    act(() => clock.advance(1));
+    expect(meteor()).toBeNull();
+  });
+
+  it("스트림이 끊기면 2초 뒤에 다시 잇는다", async () => {
+    const clock = new ManualClock();
+    const { events } = renderWith(clock, () => body(hello(), true));
+    // 끊김을 받으면 다시 잇기를 시계에 걸어 둔다
+    await waitFor(() => expect(clock.pending()).toBe(1));
+    expect(events).toHaveBeenCalledTimes(1);
+    act(() => clock.advance(1999));
+    expect(events).toHaveBeenCalledTimes(1);
+    act(() => clock.advance(1));
+    expect(events).toHaveBeenCalledTimes(2);
   });
 });
 
