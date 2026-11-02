@@ -36,7 +36,7 @@ import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
 import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
 import type { KeyInfo, MyTicket } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
-import { BroadcastToast, watchRound } from "./BroadcastToast";
+import { BroadcastToast, onAirRound, watchRound } from "./BroadcastToast";
 import { BureauWelcome } from "./BureauWelcome";
 import { CheckLink } from "./CheckLink";
 import { DrawnNotice } from "./DrawnNotice";
@@ -46,6 +46,7 @@ import { GameIntro } from "./GameIntro";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { Inbox } from "./Inbox";
 import { MyRecordsView, RecordHandover, RecordNotice } from "./MyRecords";
+import { OnAirGuide } from "./OnAirGuide";
 import {
   DrawFirst,
   formatLeft,
@@ -221,6 +222,18 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
         : { kind: "predict" },
     );
   }, [view.name, nowMode, services, status, watching]);
+  /**
+   * 관측은 방송처럼(2026-11-02 사용자): 관측 시간에는 홈도 관측지다. 홈에 있던 사람은 그 순간, 새로 온 사람은
+   * 들어오자마자 지금 회차 화면의 관측지로 옮긴다(주소는 바꿔치기라 뒤로 가기로 홈에 갇히지 않는다).
+   * 관측이 끝나도 관측지에 둔다(결과를 볼 시간, 다음 회차로는 사람이 간다)
+   */
+  const onAir = services && status ? onAirRound(services, status) : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 홈에 있거나 관측이 시작될 때만 옮긴다(go는 매번 새로 만든다)
+  useEffect(() => {
+    if (view.name !== "home" || onAir === null) return;
+    go({ name: "now" }, true);
+    setNowMode({ kind: "observe", round: onAir });
+  }, [view.name, onAir]);
   /** 답안지를 쓰는 화면(응모 페이지, 지금 회차의 예측) */
   const picking =
     view.name === "enter" ||
@@ -500,28 +513,38 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
         ) : view.name === "now" ? (
           nowMode === null ? null : nowMode.kind === "observe" ? (
             loaded && (
-              <DrawFor
-                services={services}
-                status={status}
-                round={nowMode.round}
-                mine={mine}
-                seen={opened.has(nowMode.round)}
-                onSkip={
-                  services.practice
-                    ? async () => {
-                        await services.practice?.skipToNextDraw();
-                        await refresh();
-                      }
-                    : null
-                }
-                onEnter={() => {
-                  // 결과를 봤으니 첫 화면 봉투에서 빠진다
-                  services.wallet.markOpened(nowMode.round);
-                  setOpened(services.wallet.openedRounds());
-                  setNowMode({ kind: "predict" });
-                }}
-                onHome={wide ? undefined : goHome}
-              />
+              <>
+                {onAir === nowMode.round && (
+                  <OnAirGuide
+                    services={services}
+                    round={nowMode.round}
+                    hasKey={navKey !== null}
+                    onRegister={() => setNowMode({ kind: "predict" })}
+                  />
+                )}
+                <DrawFor
+                  services={services}
+                  status={status}
+                  round={nowMode.round}
+                  mine={mine}
+                  seen={opened.has(nowMode.round)}
+                  onSkip={
+                    services.practice
+                      ? async () => {
+                          await services.practice?.skipToNextDraw();
+                          await refresh();
+                        }
+                      : null
+                  }
+                  onEnter={() => {
+                    // 결과를 봤으니 첫 화면 봉투에서 빠진다
+                    services.wallet.markOpened(nowMode.round);
+                    setOpened(services.wallet.openedRounds());
+                    setNowMode({ kind: "predict" });
+                  }}
+                  onHome={wide ? undefined : goHome}
+                />
+              </>
             )
           ) : enteredHere ? (
             <ReceiptView
@@ -772,6 +795,7 @@ export function Home({
           setup={setup}
           onSkip={onSkip}
           onDraw={onDraw}
+          onTimetable={onTimetable}
         />
       </>
     );
@@ -799,14 +823,6 @@ export function Home({
         onReceipt={onReceipt}
         onDraw={onDraw}
       />
-      <button
-        type="button"
-        onClick={onTimetable}
-        data-go-timetable
-        className="-mt-2 self-center text-sm text-white/65 underline-offset-4 hover:text-white hover:underline"
-      >
-        관측 시간표
-      </button>
 
       {/* 봉투가 떠 있는 동안은 지난 회차 카드를 두지 않는다(둘이 같은 곳으로 가는 것처럼 보였다, 2026-11-01 사용자). 봉투를 열면 다시 보인다 */}
       {!envelope && (
@@ -830,6 +846,13 @@ export function Home({
         services={services}
         tickets={mine.map((m) => m.ticket)}
         sealed={sealed}
+      />
+
+      {/* 앞으로의 회차(2026-11-02 사용자: 홈 아래에 붙인다. 길어지지 않게 세 줄, 전체는 시간표 페이지) */}
+      <TimetableView
+        services={services}
+        status={status}
+        compact={{ rows: 3, onMore: onTimetable }}
       />
 
       {onSkip && <PracticeSkip onSkip={onSkip} />}
@@ -897,6 +920,7 @@ export function Gate({
   setup,
   onSkip,
   onDraw,
+  onTimetable,
 }: {
   services: Services;
   status: LedgerStatus;
@@ -905,6 +929,8 @@ export function Gate({
   onSkip: (() => Promise<void>) | null;
   /** 실시간 추첨 중이면 그 추첨으로(누구나 볼 수 있다) */
   onDraw?: (round: number) => void;
+  /** 관측 시간표로. 없으면(데모 둘러보기) 시간표를 붙이지 않는다 */
+  onTimetable?: (() => void) | undefined;
 }) {
   const name = roundShort(services.ledger.schedule, s.round);
   const open = s.phase === "open";
@@ -954,6 +980,15 @@ export function Gate({
         onCreate={() => void setup.create()}
         onRecover={() => void setup.recover()}
       />
+      {/* 앞으로의 회차(2026-11-02 사용자: 홈 아래에 붙인다. 길어지지 않게 세 줄, 전체는 시간표 페이지) */}
+      {onTimetable && (
+        <TimetableView
+          services={services}
+          status={s}
+          compact={{ rows: 3, onMore: onTimetable }}
+        />
+      )}
+
       {onSkip && <PracticeSkip onSkip={onSkip} />}
     </>
   );

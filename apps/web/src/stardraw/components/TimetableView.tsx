@@ -47,9 +47,15 @@ function lengthWord(seconds: number): string {
 export function TimetableView({
   services,
   status,
+  compact,
 }: {
   services: Services;
   status: LedgerStatus;
+  /**
+   * 홈 아래에 붙이는 짧은 시간표(2026-11-02 사용자): 앞의 몇 줄만, 머리 줄 오른쪽 「전체 시간표」로 페이지에 간다.
+   * 맨 아래 예고 안내는 페이지에만 둔다
+   */
+  compact?: { rows: number; onMore: () => void } | undefined;
 }) {
   const schedule = services.ledger.schedule;
   const lastRecord = services.ledger.closed().at(-1)?.record.round ?? 0;
@@ -64,12 +70,27 @@ export function TimetableView({
     live,
   );
   const reduce = useReducedMotion();
-  const fixedRows = table.rows.filter((r) => r.fixed);
-  const plannedRows = table.rows.filter((r) => !r.fixed);
+  const shown = compact ? table.rows.slice(0, compact.rows) : table.rows;
+  const fixedRows = shown.filter((r) => r.fixed);
+  const plannedRows = shown.filter((r) => !r.fixed);
 
   return (
     <section className="flex flex-col gap-4" aria-label="관측 시간표">
-      <h2 className="text-center font-bold text-lg">관측 시간표</h2>
+      {compact ? (
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">관측 시간표</h2>
+          <button
+            type="button"
+            onClick={compact.onMore}
+            data-timetable-more
+            className="text-sm text-white/65 hover:text-white"
+          >
+            전체 시간표
+          </button>
+        </div>
+      ) : (
+        <h2 className="text-center font-bold text-lg">관측 시간표</h2>
+      )}
       {table.change && (
         <p
           data-timetable-change={table.change.fromRound}
@@ -107,9 +128,11 @@ export function TimetableView({
           />
         </>
       )}
-      <p className="break-keep text-center text-white/45 text-xs">
-        일정을 바꿀 때는 세 회차 앞서 장부에 예고합니다.
-      </p>
+      {!compact && (
+        <p className="break-keep text-center text-white/45 text-xs">
+          일정을 바꿀 때는 세 회차 앞서 장부에 예고합니다.
+        </p>
+      )}
     </section>
   );
 }

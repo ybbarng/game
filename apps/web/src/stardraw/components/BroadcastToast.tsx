@@ -1,5 +1,6 @@
 "use client";
 
+import { acceptFrom } from "@game/stardraw-core";
 import { useRef, useState } from "react";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
@@ -107,4 +108,26 @@ export function BroadcastToast({
       </button>
     </div>
   );
+}
+
+/**
+ * 지금 관측 방송 중인 회차(2026-11-02 사용자: 관측 시간에는 홈도 관측지를 보인다). 관측 안내 15초 전부터
+ * 연출이 끝날 때까지(서버가 있을 때), 그리고 앞 회차 기록이 나온 뒤 관측 1분(`acceptFrom`)이 끝날 때까지.
+ * 마감 뒤 관측을 기다리는 5분은 들지 않는다(홈 회차 카드가 「관측까지」를 센다)
+ */
+export function onAirRound(
+  services: Services,
+  status: LedgerStatus,
+): number | null {
+  const live = liveDrawRound(services, status);
+  if (live !== null) return live;
+  const prev = status.round - 1;
+  if (
+    status.phase === "waiting" &&
+    prev >= 1 &&
+    services.ledger.record(prev) &&
+    status.now < acceptFrom(services.ledger.schedule, status.round)
+  )
+    return prev;
+  return null;
 }
