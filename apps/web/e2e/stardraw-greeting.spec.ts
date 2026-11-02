@@ -1,8 +1,10 @@
 import {
+  animationsDone,
   expect,
   fastForwardUntil,
   fixStardrawClock,
   type Page,
+  SAVE_SCREENSHOTS,
   STARDRAW_START,
   test,
 } from "./test";
@@ -40,13 +42,14 @@ test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난
     "카노푸스 우주국에 오신 것을 환영합니다.",
   );
   await page.screenshot({ path: info.outputPath("greeting-new.png") });
-  // 1.3초 머문 뒤 물러난다(시계는 실제로 흐른다)
-  await expect(greeting).toHaveCount(0, { timeout: 10_000 });
+  // 1.3초 머문 뒤 물러난다. 실제 시간으로 기다리지 않고 시계를 감는다
+  await fastForwardUntil(page, async () => (await greeting.count()) === 0);
   // 생애 첫 방문인 처음 온 사람: 편지가 위에서 내려오고, 누르면 꺼내 읽는다. 그동안 홈은 숨겨 둔다
   const envelope = page.locator("[data-letter-stage='arrive']");
   await expect(envelope).toBeVisible();
   await expect(page.locator("section[aria-label='정답 예시']")).toBeHidden();
-  await page.waitForTimeout(1200);
+  // 내려오기(1.1초)가 끝날 때까지 기다린다. 그 뒤의 둥실거림은 끝이 없어 animationsDone이 빼고 본다
+  await animationsDone(envelope);
   await page.screenshot({ path: info.outputPath("letter-arrive.png") });
   // 봉투는 숨 쉬듯 둥실거려 멈추지 않는다(멈출 때까지 기다리지 않고 누른다)
   await envelope.click({ force: true });
@@ -55,11 +58,13 @@ test("우주국 인사: 처음 들어오면 가운데 인사가 뜨고 물러난
     "가장 잘 예측하는 우주인을 찾고 있습니다.",
   );
   await expect(letter.locator("[data-seal]")).toBeVisible();
-  await page.waitForTimeout(900);
-  await page.screenshot({
-    path: info.outputPath("letter-read.png"),
-    fullPage: true,
-  });
+  if (SAVE_SCREENSHOTS) {
+    await animationsDone(letter);
+    await page.screenshot({
+      path: info.outputPath("letter-read.png"),
+      fullPage: true,
+    });
+  }
   await page.getByRole("button", { name: "먼저 둘러볼게요" }).click();
   await expect(letter).toHaveCount(0);
   await expect(page.locator("section[aria-label='정답 예시']")).toBeVisible();

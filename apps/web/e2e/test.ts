@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { test as base, type Locator, type Page } from "@playwright/test";
 
 export type { BrowserContext, Locator, Page } from "@playwright/test";
 export { expect } from "@playwright/test";
@@ -38,6 +38,24 @@ function prepare(page: Page): void {
  * 판정에 쓰는 스크린샷(결과 값을 쓰는 것)은 그대로 찍는다. `E2E_SCREENSHOTS=1`이면 CI에서도 찍는다
  */
 const SKIP_SCREENSHOTS = !!process.env.CI && !process.env.E2E_SCREENSHOTS;
+
+/** 파일로 남기는 스크린샷을 실제로 찍는지. 스크린샷만을 위한 기다림(연출이 끝나기 등)은 이것이 참일 때만 한다 */
+export const SAVE_SCREENSHOTS = !SKIP_SCREENSHOTS;
+
+/**
+ * 요소와 그 안의 끝이 있는 연출(CSS animation·transition, Web Animations)이 모두 끝날 때까지 기다린다.
+ * 숨 쉬듯 되풀이하는 연출(iterations Infinity)은 끝나지 않으므로 뺀다. "n ms 기다리면 끝나 있겠지" 대신 쓴다
+ */
+export async function animationsDone(locator: Locator): Promise<void> {
+  await locator.evaluate((el) =>
+    Promise.all(
+      el
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+}
 
 function skipSavedScreenshots(page: Page): void {
   const shot = page.screenshot.bind(page);
