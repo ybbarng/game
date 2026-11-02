@@ -1190,8 +1190,13 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
     path: info.outputPath("stardraw-enter-closed.png"),
     fullPage: true,
   });
-  // 처음으로 나가면 첫 화면 위에 방송, 누르면 관측지
+  // 처음으로 나가면 첫 화면이 다 뜨고 잠깐 쉰 뒤 방송이 내려온다(뜨자마자 덮지 않는다), 누르면 관측지
   await page.getByRole("button", { name: "← 처음으로" }).click();
+  await expect(
+    page.getByRole("button", { name: "홈", exact: true }),
+  ).toBeVisible();
+  await expect(toast).toHaveCount(0);
+  await fastForwardUntil(page, async () => (await toast.count()) > 0);
   await expect(toast).toContainText("카노푸스 우주국");
   await expect(toast).toContainText(
     "곧 1회 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.",
@@ -1224,17 +1229,22 @@ test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 �
   await page.clock.resume();
   await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
   await expect(page).toHaveURL(/\/stardraw\/now$/);
-  // 첫 화면의 방송은 옆으로 밀면 그 회차 동안 사라진다
+  // 첫 화면의 방송은 아래로 조금 끌면 뒤를 보이고 제자리로, 더 밀면 그 회차 동안 사라진다(옆으로 미는 판정은 단위 시험)
   await page.getByRole("button", { name: "홈", exact: true }).click();
   const toast = page.locator("[data-broadcast]");
-  await expect(toast).toBeVisible();
+  await fastForwardUntil(page, () => toast.isVisible());
   const box = await toast.boundingBox();
   if (!box) throw new Error("토스트 자리 없음");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 + 160, box.y + box.height / 2, {
-    steps: 5,
-  });
+  await page.mouse.move(cx, cy + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect(toast).toBeVisible();
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy + 120, { steps: 5 });
   await page.mouse.up();
   await expect(toast).toHaveCount(0);
   // 1회 관측(정각부터 1분)이 끝나 2회가 열리면 접수처에 쓰던 예측서

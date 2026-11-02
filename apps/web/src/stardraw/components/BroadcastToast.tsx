@@ -1,9 +1,10 @@
 "use client";
 
 import { acceptFrom } from "@game/stardraw-core";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { swipeResult } from "../broadcast-swipe";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
 import type { Services } from "../services";
@@ -26,14 +27,20 @@ export function watchRound(
   return null;
 }
 
+/** 화면이 다 뜬 뒤 방송이 내려오기까지의 쉼(2026-11-02 사용자: 뜨자마자 덮으면 뒤의 화면을 못 본다) */
+export const BROADCAST_DELAY_MS = 1500;
+
 /**
  * 우주국 방송(2026-11-02 사용자): 예측(응모)이 마감되면 관측지 밖의 별 따기 화면 위쪽에 우주국 안내가 내려온다.
- * 마감부터 그 회차 관측(추첨 연출)이 끝날 때까지. 누르면 관측지로, 옆이나 위로 밀면 그 회차 동안 사라진다
+ * 마감부터 그 회차 관측(추첨 연출)이 끝날 때까지. 화면이 다 뜨고 잠깐 쉰 뒤 내려온다. 누르면 관측지로,
+ * 옆이나 위·아래로 밀면 그 회차 동안 사라진다
  */
 export function BroadcastToast({
   services,
   status,
   hidden,
+  settled,
+  screen,
   belowBar = false,
   onGo,
 }: {
@@ -41,16 +48,36 @@ export function BroadcastToast({
   status: LedgerStatus;
   /** 이미 관측지(추첨 화면)에 있으면 띄우지 않는다 */
   hidden: boolean;
+  /** 화면이 다 떴는가(우주국 인사·홈 펼치기가 끝났다). 그 뒤 BROADCAST_DELAY_MS를 쉬고 내려온다 */
+  settled: boolean;
+  /** 지금 화면 이름. 바뀌면 새 화면이 뜰 때까지 다시 기다린다 */
+  screen: string;
   /** 넓은 화면의 위쪽 메뉴 줄(약 61px) 아래에 띄운다(메뉴 줄에 가려졌다, 2026-11-02 사용자) */
   belowBar?: boolean;
   onGo: (round: number) => void;
 }) {
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const [ready, setReady] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 화면이 바뀌면 다시 쉰다
+  useEffect(() => {
+    setReady(false);
+    if (!settled) return;
+    let timer: number | undefined;
+    const wait = () => {
+      timer = window.setTimeout(() => setReady(true), BROADCAST_DELAY_MS);
+    };
+    if (document.readyState === "complete") wait();
+    else window.addEventListener("load", wait, { once: true });
+    return () => {
+      window.removeEventListener("load", wait);
+      window.clearTimeout(timer);
+    };
+  }, [settled, screen]);
   const live = liveDrawRound(services, status);
   const round = watchRound(services, status);
-  if (hidden || round === null || dismissed.has(round)) return null;
+  if (!ready || hidden || round === null || dismissed.has(round)) return null;
   const name = roundShort(services.ledger.schedule, round);
   const dismiss = () => setDismissed((s) => new Set(s).add(round));
 
@@ -59,11 +86,12 @@ export function BroadcastToast({
     start.current = null;
     setDrag(null);
     if (!d) return;
-    if (Math.abs(d.x) > 80 || d.y < -40) dismiss();
-    else if (Math.abs(d.x) < 8 && Math.abs(d.y) < 8) onGo(round);
+    const r = swipeResult(d);
+    if (r === "dismiss") dismiss();
+    else if (r === "go") onGo(round);
   };
   const dx = drag?.x ?? 0;
-  const dy = Math.min(0, drag?.y ?? 0);
+  const dy = drag?.y ?? 0;
 
   return (
     <div
@@ -104,7 +132,8 @@ export function BroadcastToast({
         }}
         style={{
           transform: `translate(${dx}px, ${dy}px)`,
-          opacity: 1 - Math.min(0.7, Math.abs(dx) / 200),
+          opacity:
+            1 - Math.min(0.7, Math.max(Math.abs(dx) / 200, Math.abs(dy) / 150)),
           transition: drag ? "none" : undefined,
         }}
         className="sd-broadcast pointer-events-auto flex w-full max-w-md touch-none select-none flex-col gap-1 rounded-2xl border border-amber-200/30 bg-slate-950/90 px-4 py-3 text-left shadow-[0_12px_32px_rgba(0,0,0,0.5)] backdrop-blur"
