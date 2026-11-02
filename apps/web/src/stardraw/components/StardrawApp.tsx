@@ -450,7 +450,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           <BroadcastToast
             services={services}
             status={status}
-            hidden={observing}
+            hidden={observing || picking}
             onGo={goWatch}
           />
         )}
@@ -600,7 +600,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 // 결과를 봤으니 첫 화면 봉투에서 빠진다
                 services.wallet.markOpened(view.round);
                 setOpened(services.wallet.openedRounds());
-                go({ name: "enter" });
+                goNow();
               }}
               onHome={wide ? undefined : goHome}
             />

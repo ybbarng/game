@@ -1163,38 +1163,11 @@ test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", 
   await expect(hurry).toHaveCount(0);
 });
 
-/** 예측(응모)이 끝나면 응모 화면에는 관측지로 가는 길만 남는다(2026-11-02 사용자) */
-test("응모 마감 뒤: 응모 화면은 관측지로 가기만", async ({ page }, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
-  await virtualAuthenticator(page);
-  await page.goto("/stardraw");
-  await page.getByRole("button", REGISTER).click();
-  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
-  await expect(page.getByRole("button", ENTER)).toBeVisible();
-  // 화면 마감(:54:55) 뒤 서버 마감(:55) 전
-  await page.clock.setSystemTime(new Date("2026-11-02T03:54:57Z"));
-  const closed = page.locator("[data-enter-closed]");
-  await expect(closed).toContainText("이번 회차 응모가 마감되었습니다.");
-  await expect(page.getByRole("button", ENTER)).toHaveCount(0);
-  // 다음 회차로 넘어갔지만 앞 회차 추첨(정각) 전
-  await page.clock.setSystemTime(new Date("2026-11-02T03:56:00Z"));
-  await expect(closed).toContainText(
-    "앞 회차 관측이 끝나면 응모할 수 있습니다.",
-  );
-  await page.screenshot({
-    path: info.outputPath("stardraw-enter-closed.png"),
-    fullPage: true,
-  });
-  await closed.getByRole("button", { name: "관측지로 가기" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
-});
-
 /**
- * 지금 회차(/stardraw/now, 2026-11-02 사용자): 예측 중이면 답안지, 마감부터 관측이 끝날 때까지는 관측지.
- * 답안지를 쓰는 중에 마감되면 화면을 빼앗지 않고 우주국 방송 토스트를 띄운다(누르면 관측지, 밀면 사라진다)
+ * 예측이 마감되면 접수처는 하늘 아래를 닫고 몇 초 뒤 관측지로 옮긴다(2026-11-02 사용자). 접수처 밖의 화면에는
+ * 우주국 방송 토스트가 뜨고, 누르면 관측지로 간다
  */
-test("지금 회차: 예측 중엔 답안지, 마감되면 방송 토스트로 관측지", async ({
+test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방송 토스트", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1205,18 +1178,59 @@ test("지금 회차: 예측 중엔 답안지, 마감되면 방송 토스트로 �
   await expect(page).toHaveURL(/\/stardraw\/now$/);
   await expect(page.getByRole("button", ENTER)).toBeVisible();
   const toast = page.locator("[data-broadcast]");
+  // 화면 마감(:54:55) 뒤: 하늘 아래를 닫고 안내(접수처에는 토스트를 겹쳐 띄우지 않는다)
+  // 시계를 멈춰 몇 초 뒤 옮겨 가기 전에 안내를 본다
+  await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
+  const closed = page.locator("[data-enter-closed]");
+  await expect(closed).toContainText("1회 예측이 마감되었습니다.");
+  await expect(closed).toContainText("초 뒤 관측지로 이동합니다.");
+  await expect(page.getByRole("button", ENTER)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "자동", exact: true }),
+  ).toHaveCount(0);
   await expect(toast).toHaveCount(0);
-  // 마감: 답안지는 그대로, 위에 방송
-  await page.clock.setSystemTime(new Date("2026-11-02T03:54:57Z"));
+  await page.screenshot({
+    path: info.outputPath("stardraw-enter-closed.png"),
+    fullPage: true,
+  });
+  // 처음으로 나가면 첫 화면 위에 방송, 누르면 관측지
+  await page.getByRole("button", { name: "← 처음으로" }).click();
   await expect(toast).toContainText("카노푸스 우주국");
   await expect(toast).toContainText(
     "곧 1회 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.",
   );
-  await expect(page.locator("[data-enter-closed]")).toBeVisible();
-  await page.screenshot({
-    path: info.outputPath("stardraw-broadcast.png"),
-  });
-  // 옆으로 밀면 사라진다
+  await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
+  await toast.click();
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+  await expect(toast).toHaveCount(0);
+});
+
+/**
+ * 지금 회차(/stardraw/now): 고르던 별은 자동 저장되고, 마감 몇 초 뒤 관측지로 옮겨 간다. 방송은 밀면 사라진다.
+ * 다음 회차에 접수처로 오면 「작성하던 예측지」를 불러와 한 칸씩 옮겨 적는다
+ */
+test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측지를 불러온다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await virtualAuthenticator(page);
+  await page.goto("/stardraw");
+  await page.getByRole("button", REGISTER).click();
+  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+  await page.getByRole("button", { name: "자동", exact: true }).click();
+  await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
+  const closed = page.locator("[data-enter-closed]");
+  await expect(closed).toContainText("작성하시던 예측지는 자동 저장됩니다.");
+  // 몇 초 뒤 같은 주소에서 관측지로
+  await page.clock.fastForward(6000);
+  await page.clock.resume();
+  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
+  // 첫 화면의 방송은 옆으로 밀면 그 회차 동안 사라진다
+  await page.getByRole("button", { name: "홈", exact: true }).click();
+  const toast = page.locator("[data-broadcast]");
+  await expect(toast).toBeVisible();
   const box = await toast.boundingBox();
   if (!box) throw new Error("토스트 자리 없음");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -1226,15 +1240,22 @@ test("지금 회차: 예측 중엔 답안지, 마감되면 방송 토스트로 �
   });
   await page.mouse.up();
   await expect(toast).toHaveCount(0);
-  // 관측 중에 지금 회차로 들어오면 곧바로 관측지
-  await page.goto("/stardraw/now");
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
-  await expect(page.locator("[data-broadcast]")).toHaveCount(0);
-  // 다른 화면에서는 방송이 보이고, 누르면 관측지로
-  await page.goto("/stardraw/rounds");
-  await page.locator("[data-broadcast]").click();
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+  // 1회 추첨(정각)이 끝나 2회가 열리면 접수처에 쓰던 예측지
+  await page.clock.setSystemTime(new Date("2026-11-02T04:00:30Z"));
+  await page
+    .getByRole("button", { name: "별 6개 고르기" })
+    .click({ timeout: 30_000 });
+  const draft = page.getByRole("region", { name: "작성하던 예측지" });
+  await expect(draft).toContainText("작성하던 예측지가 있어요 · 별 6개");
+  await page.screenshot({
+    path: info.outputPath("stardraw-draft.png"),
+    fullPage: true,
+  });
+  await draft.getByRole("button", { name: "불러오기" }).click();
+  await expect(draft).toHaveCount(0);
+  await page.clock.fastForward(4000);
+  await expect(page.getByText("6/6", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", ENTER)).toBeEnabled();
 });
 
 /** 마감 직전: 위에 "마감까지 …" 안내가 뜨고, 연출을 줄여 마감 전에 접수된다 */

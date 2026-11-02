@@ -870,17 +870,21 @@ export function RoomView({
 
       {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
       {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다 */}
-      {(closed || phase === "after") && (
-        <div className="flex flex-col items-center gap-2 py-2">
-          <button
-            type="button"
-            onClick={onEnter}
-            data-room-next
-            className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
-          >
-            다음 회차 응모하기
-          </button>
-        </div>
+      {closed ? (
+        <RoomClosedNotice now={now} onGo={onEnter} />
+      ) : (
+        phase === "after" && (
+          <div className="flex flex-col items-center gap-2 py-2">
+            <button
+              type="button"
+              onClick={onEnter}
+              data-room-next
+              className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
+            >
+              접수처로 가기
+            </button>
+          </div>
+        )
       )}
       {closed || !seat.joined ? null : (
         <form
@@ -1096,4 +1100,48 @@ export function nextRoomRound(
     return null;
   }
   return null;
+}
+
+/** 관측지가 닫힌 뒤 접수처로 옮기기까지(초) */
+const ROOM_CLOSED_GO_SECONDS = 5;
+
+/**
+ * 관측지가 닫히면(추첨 7분 뒤) 몇 초 세다가 접수처(다음 회차 예측)로 옮긴다(2026-11-02 사용자).
+ * 서버 시각(ms)으로 센다
+ */
+function RoomClosedNotice({ now, onGo }: { now: number; onGo: () => void }) {
+  const [since] = useState(now);
+  const left = Math.max(
+    0,
+    Math.ceil(ROOM_CLOSED_GO_SECONDS - (now - since) / 1000),
+  );
+  const gone = useRef(false);
+  useEffect(() => {
+    if (left > 0 || gone.current) return;
+    gone.current = true;
+    onGo();
+  }, [left, onGo]);
+  return (
+    <div
+      className="sd-text-in flex flex-col items-center gap-2 py-2 text-center"
+      data-room-closed
+    >
+      <p className="break-keep font-semibold text-amber-100">
+        관측지가 닫혔습니다.
+      </p>
+      <p className="break-keep text-sm text-white/70 tabular-nums">
+        {left}초 뒤 접수처로 이동합니다.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          gone.current = true;
+          onGo();
+        }}
+        className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
+      >
+        접수처로 가기
+      </button>
+    </div>
+  );
 }

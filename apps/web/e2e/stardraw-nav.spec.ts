@@ -125,7 +125,8 @@ test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭
   // 추첨 결과 → 「다음 회차 응모」 → 「처음으로」
   await openDrawResult(page);
   await page.getByRole("button", { name: "다음 회차 응모" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/enter$/);
+  // 다음 회차 예측은 접수처(지금 회차)에서
+  await expect(page).toHaveURL(/\/stardraw\/now$/);
   await page.getByRole("button", { name: "← 처음으로" }).click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(home).toBeVisible();

@@ -13,6 +13,12 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { play } from "@/game/sound";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
+import {
+  clearDraft,
+  type DraftPaper,
+  loadDraft,
+  saveDraft,
+} from "../draft-paper";
 import { closedAt, errorText } from "../errors";
 import { FX } from "../fx-timing";
 import { greetNow } from "../greeting";
@@ -167,6 +173,50 @@ export function EnterView({
   /** 응모를 받지 않을 때 갈 관측지: 마감한 이번 회차, 아니면 추첨을 기다리거나 관측 중인 앞 회차 */
   const watchRound =
     live ?? (status.phase === "closing" ? status.round : status.nextDrawRound);
+  /** 쓰던 회차: 마감되어 다음 회차로 넘어가도 마감 안내에는 쓰던 회차 이름을 둔다 */
+  const [writing, setWriting] = useState<number | null>(null);
+  useEffect(() => {
+    if (open) setWriting(status.round);
+  }, [open, status.round]);
+  /** 쓰다 만 예측지(다른 때 고르다 만 별). 첫 그리기 뒤에 읽는다 */
+  const [draft, setDraft] = useState<DraftPaper | null>(null);
+  useEffect(() => {
+    if (initialPicked.length === 0)
+      setDraft(loadDraft(services.ns, services.ledger.id()));
+  }, [services, initialPicked.length]);
+  /** 사람이 별을 고치기 시작했는지: 그 뒤로만 고른 별을 자동 저장한다(들어오자마자 빈 칸으로 덮지 않게) */
+  const touched = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 고른 별이 바뀔 때만 저장한다
+  useEffect(() => {
+    if (!touched.current || !open) return;
+    saveDraft(services.ns, {
+      ledger: services.ledger.id(),
+      round: status.round,
+      numbers: picked,
+    });
+  }, [picked]);
+  /** 쓰다 만 예측지를 불러온다: 별을 한 칸씩 옮겨 적는다(움직임 줄이기면 한 번에) */
+  const restoreDraft = (d: DraftPaper) => {
+    setDraft(null);
+    touched.current = true;
+    const nums = d.numbers.slice(0, 6);
+    if (reduce) {
+      setPicked(nums);
+      setFocus(nums.at(-1) ?? null);
+      return;
+    }
+    setPicked([]);
+    nums.forEach((n, i) => {
+      window.setTimeout(
+        () => {
+          setPicked((p) => (p.includes(n) || p.length >= 6 ? p : [...p, n]));
+          setFocus(n);
+          play("beep");
+        },
+        400 + i * 380,
+      );
+    });
+  };
   // 데모는 실제 패스키 대신 화면 안 흉내 시트를 쓴다: 패스키를 못 쓰는 환경 안내로 막지 않는다
   const demo = services.ns === DEMO_NS;
 
@@ -223,6 +273,7 @@ export function EnterView({
   const toggle = (n: number) => {
     setFocus(n);
     setError(null);
+    touched.current = true;
     if (!picked.includes(n) && picked.length >= 6) {
       setNudges((k) => k + 1);
       return;
@@ -236,6 +287,7 @@ export function EnterView({
   };
 
   const fill = (keep: number[]) => {
+    touched.current = true;
     const out = [...keep];
     const bag = crypto.getRandomValues(new Uint8Array(64));
     let i = 0;
@@ -420,6 +472,7 @@ export function EnterView({
 
   /** 응모가 접수되면 보관한 답안지는 버린다(어느 쪽으로 냈든 한 회차 한 장) */
   const finish = (ticket: Ticket, receivedAt: number) => {
+    clearDraft(services.ns);
     clearKept(services.ns);
     setKept(null);
     onDone(ticket, receivedAt);
@@ -474,6 +527,9 @@ export function EnterView({
   const title = `${roundShort(services.ledger.schedule, status.round)} 답안지`;
   const picking = stage === "pick";
   const submitting = stage !== "pick" && stage !== "busy";
+  /** 마감: 하늘 아래를 모두 닫고 관측지로 이끈다(내는 중이거나 반송·오류 안내 중이면 그 안내가 먼저) */
+  const closedView =
+    !open && stage === "pick" && !bounce && !entryError && !!onWatchDraw;
   return (
     <section className="flex flex-col gap-4" aria-label="응모">
       {/* 등록·제시 오버레이는 등록 전 화면과 같은 자리(맨 앞)에: 확인되어 화면이 바뀌어도 끊기지 않게 */}
@@ -510,14 +566,16 @@ export function EnterView({
           picked={bounce.numbers}
           deadline={bounce.deadline}
           received={bounce.received}
-          onKeep={() =>
+          onKeep={() => {
             saveKept(services.ns, {
               ledger: services.ledger.id(),
               round: bounce.round,
               numbers: [...bounce.numbers],
               qual: bounce.qual,
-            })
-          }
+            });
+            // 보관한 답안지가 같은 별을 들고 있으니 쓰다 만 예측지는 지운다
+            clearDraft(services.ns);
+          }}
           onDraw={() => (onWatchDraw ?? onBack)(bounce.round)}
           onHome={onBack}
           onClose={onBack}
@@ -580,6 +638,44 @@ export function EnterView({
         </section>
       )}
 
+      {draft && !kept && open && picked.length === 0 && (
+        <section
+          aria-label="작성하던 예측지"
+          data-draft
+          className="sd-text-in flex items-center gap-3 rounded-2xl border border-sky-200/25 bg-[#141b2b] px-3.5 py-3"
+        >
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="text-sky-100/75 text-xs">
+              작성하던 예측지가 있어요 · 별 {draft.numbers.length}개
+            </span>
+            <span className="flex flex-wrap gap-1">
+              {draft.numbers.map((n) => (
+                <LottoBall key={n} n={n} size="sm" />
+              ))}
+            </span>
+          </div>
+          <div className="flex shrink-0 flex-col items-stretch gap-1">
+            <button
+              type="button"
+              onClick={() => restoreDraft(draft)}
+              className="sd-cta rounded-xl px-3 py-2 font-bold text-slate-950 text-sm"
+            >
+              불러오기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearDraft(services.ns);
+                setDraft(null);
+              }}
+              className="rounded-lg px-2 py-1 text-white/55 text-xs hover:text-white"
+            >
+              버리기
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* 마감 안내는 하늘판 위쪽 가장자리에 겹쳐 뜬다(들어올 때 화면이 밀리지 않게) */}
       <div className="relative" data-sky-wrap>
         <SkyBoard
@@ -595,101 +691,169 @@ export function EnterView({
         )}
       </div>
 
-      <StarInfo n={focus} />
-
-      {extra}
-
-      <PickedRow
-        key={nudges}
-        shake={nudges > 0}
-        title={title}
-        picked={picked}
-        onRemove={picking ? toggle : undefined}
-      />
-
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          disabled={!picking}
-          onClick={() => fill([])}
-          className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
-        >
-          자동
-        </button>
-        <button
-          type="button"
-          disabled={!picking || full}
-          onClick={() => fill(picked)}
-          className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
-        >
-          남은 칸 자동
-        </button>
-        <button
-          type="button"
-          disabled={!picking || picked.length === 0}
-          onClick={() => {
-            setPicked([]);
-            setFocus(null);
-          }}
-          className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
-        >
-          지우기
-        </button>
-      </div>
-
-      {qual && (
-        <label
-          className="flex items-center gap-2 rounded-xl border border-amber-200/30 bg-amber-200/5 px-3 py-2 text-sm"
-          data-qual-toggle={useQual ? "on" : "off"}
-        >
-          <input
-            type="checkbox"
-            checked={useQual}
-            disabled={!picking}
-            onChange={(e) => setUseQual(e.target.checked)}
-            className="size-4 accent-amber-300"
-          />
-          <span className="font-semibold text-amber-50">
-            {qual.period.affiliationName} 소속으로 응모
-          </span>
-        </label>
-      )}
-
-      {error && <ErrorBox error={error} />}
-
-      {/* 예측이 끝나면 관측지로 가는 길만 연다(응모 중인 사람은 그대로 끝까지) */}
-      {!open && stage !== "busy" && onWatchDraw ? (
-        <div className="flex flex-col items-center gap-2" data-enter-closed>
-          <p className="break-keep text-center text-sm text-white/70">
-            {status.phase === "closing"
-              ? "이번 회차 응모가 마감되었습니다."
-              : "앞 회차 관측이 끝나면 응모할 수 있습니다."}
-          </p>
-          <button
-            type="button"
-            onClick={() => onWatchDraw(watchRound)}
-            className="sd-cta w-full rounded-2xl py-4 font-black text-slate-950 text-xl"
-          >
-            관측지로 가기
-          </button>
-        </div>
+      {closedView ? (
+        <ClosedNotice
+          name={roundShort(services.ledger.schedule, writing ?? watchRound)}
+          now={status.now}
+          saved={picked.length > 0}
+          onGo={() => onWatchDraw?.(watchRound)}
+        />
       ) : (
-        <button
-          type="button"
-          disabled={!full || !open || !picking}
-          onClick={() => void start()}
-          className="sd-cta rounded-2xl py-4 font-black text-slate-950 text-xl disabled:opacity-40"
-        >
-          {stage === "busy"
-            ? "응모하고 있습니다"
-            : !open
-              ? status.phase === "closing"
-                ? "이번 회차 응모가 마감되었습니다"
-                : "앞 회차 관측이 끝나면 응모할 수 있습니다"
-              : "응모하기"}
-        </button>
+        <>
+          <StarInfo n={focus} />
+
+          {extra}
+
+          <PickedRow
+            key={nudges}
+            shake={nudges > 0}
+            title={title}
+            picked={picked}
+            onRemove={picking ? toggle : undefined}
+          />
+
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={!picking}
+              onClick={() => fill([])}
+              className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
+            >
+              자동
+            </button>
+            <button
+              type="button"
+              disabled={!picking || full}
+              onClick={() => fill(picked)}
+              className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
+            >
+              남은 칸 자동
+            </button>
+            <button
+              type="button"
+              disabled={!picking || picked.length === 0}
+              onClick={() => {
+                touched.current = true;
+                setPicked([]);
+                setFocus(null);
+              }}
+              className="rounded-xl border border-white/15 bg-white/5 py-2 text-sm hover:bg-white/10 disabled:opacity-40"
+            >
+              지우기
+            </button>
+          </div>
+
+          {qual && (
+            <label
+              className="flex items-center gap-2 rounded-xl border border-amber-200/30 bg-amber-200/5 px-3 py-2 text-sm"
+              data-qual-toggle={useQual ? "on" : "off"}
+            >
+              <input
+                type="checkbox"
+                checked={useQual}
+                disabled={!picking}
+                onChange={(e) => setUseQual(e.target.checked)}
+                className="size-4 accent-amber-300"
+              />
+              <span className="font-semibold text-amber-50">
+                {qual.period.affiliationName} 소속으로 응모
+              </span>
+            </label>
+          )}
+
+          {error && <ErrorBox error={error} />}
+
+          {/* 예측이 끝나면 관측지로 가는 길만 연다(응모 중인 사람은 그대로 끝까지) */}
+          {!open && stage !== "busy" && onWatchDraw ? (
+            <div className="flex flex-col items-center gap-2" data-enter-closed>
+              <p className="break-keep text-center text-sm text-white/70">
+                {status.phase === "closing"
+                  ? "이번 회차 응모가 마감되었습니다."
+                  : "앞 회차 관측이 끝나면 응모할 수 있습니다."}
+              </p>
+              <button
+                type="button"
+                onClick={() => onWatchDraw(watchRound)}
+                className="sd-cta w-full rounded-2xl py-4 font-black text-slate-950 text-xl"
+              >
+                관측지로 가기
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!full || !open || !picking}
+              onClick={() => void start()}
+              className="sd-cta rounded-2xl py-4 font-black text-slate-950 text-xl disabled:opacity-40"
+            >
+              {stage === "busy"
+                ? "응모하고 있습니다"
+                : !open
+                  ? status.phase === "closing"
+                    ? "이번 회차 응모가 마감되었습니다"
+                    : "앞 회차 관측이 끝나면 응모할 수 있습니다"
+                  : "응모하기"}
+            </button>
+          )}
+        </>
       )}
     </section>
+  );
+}
+
+/** 마감 뒤 자동으로 관측지로 옮기기까지(초) */
+const CLOSED_GO_SECONDS = 5;
+
+/**
+ * 예측 마감 안내(2026-11-02 사용자): 하늘 아래를 모두 닫고 몇 초 세다가 관측지로 옮긴다. 「관측지로 가기」로 바로.
+ * 시각은 장부 상태의 지금 시각(초)으로 센다(시험은 시계를 옮겨 정확한 순간을 만든다)
+ */
+function ClosedNotice({
+  name,
+  now,
+  saved,
+  onGo,
+}: {
+  name: string;
+  now: number;
+  saved: boolean;
+  onGo: () => void;
+}) {
+  const [since] = useState(now);
+  const left = Math.max(0, Math.ceil(CLOSED_GO_SECONDS - (now - since)));
+  const gone = useRef(false);
+  useEffect(() => {
+    if (left > 0 || gone.current) return;
+    gone.current = true;
+    onGo();
+  }, [left, onGo]);
+  return (
+    <div
+      className="sd-text-in flex flex-col items-center gap-3 rounded-3xl border border-amber-200/20 bg-white/5 px-5 py-6 text-center"
+      data-enter-closed
+    >
+      <p className="break-keep font-bold text-amber-100 text-lg">
+        {name} 예측이 마감되었습니다.
+      </p>
+      <p className="break-keep text-sm text-white/75 tabular-nums">
+        {left}초 뒤 관측지로 이동합니다.
+      </p>
+      {saved && (
+        <p className="break-keep text-white/55 text-xs">
+          작성하시던 예측지는 자동 저장됩니다.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          gone.current = true;
+          onGo();
+        }}
+        className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
+      >
+        관측지로 가기
+      </button>
+    </div>
   );
 }
 
