@@ -34,6 +34,10 @@ test("관측 방송: 관측 1분 중에 홈으로 들어오면 관측지, 이미
   await expect(page).toHaveURL(/\/stardraw\/now$/, { timeout: 30_000 });
   const guide = page.getByRole("complementary", { name: "관측 안내" });
   await expect(guide).toContainText("1회의 여섯 별을 관측하고 있어요.");
+  // 다음 회차 줄은 「다음 회차」로 시작한다(지금 관측하는 회차의 시각으로 읽히지 않게)
+  await expect(guide.locator("[data-on-air-next='2']")).toContainText(
+    "다음 회차",
+  );
   await expect(guide.locator("[data-on-air-next='2']")).toContainText(
     "예측 접수 13:01",
   );

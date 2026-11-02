@@ -14,8 +14,9 @@ const clock = (s: number) => CLOCK.format(new Date(s * 1000));
 
 /**
  * 관측 방송 안내(2026-11-02 사용자): 관측 시간에는 홈도 관측지를 보여서, 처음 온 사람도 지금 무엇을 하는 시간인지
- * 알 수 있게 관측지 위에 짧게 풀어 둔다. 다음 회차 시간표 한 줄과, 등록증이 없으면 우주인 등록 단추.
- * 등록증이 있는 사람에게는 다음 회차 한 줄만
+ * 알 수 있게 관측지 머리(장소·회차) 아래에 짧게 풀어 둔다. 다음 회차 시간표 한 줄과, 등록증이 없으면 우주인 등록 단추.
+ * 등록증이 있는 사람에게는 다음 회차 한 줄만. 그 줄은 「다음 회차」로 시작한다: 이름만 있으면 관측이 시작되기 전에는
+ * 지금 보는 회차보다 먼저 눈에 들어와 아직 열리지 않은 접수 시각이 지금 회차 것처럼 읽혔다(2026-11-02 사용자 휴대폰)
  */
 export function OnAirGuide({
   services,
@@ -51,6 +52,7 @@ export function OnAirGuide({
           data-on-air-next={next}
           className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm tabular-nums"
         >
+          <span className="text-white/55">다음 회차</span>
           <span className="font-semibold">{roundShort(schedule, next)}</span>
           <span className="text-white/70">
             예측 접수 {clock(opens)} ~ {clock(nextTimes.entryDeadline)}
