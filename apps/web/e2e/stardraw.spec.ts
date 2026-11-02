@@ -631,6 +631,11 @@ test("설명 페이지: 당첨자 확인과 패스키, 별 이야기로 가는 �
   await expect(page.getByText("얼굴·지문이 서버로 가나요?")).toBeVisible();
   await expect(page.getByText(/솔직한 한계/)).toBeVisible();
   await expect(page.locator("[data-agency]")).toContainText("카노푸스 우주국");
+  // 이야기 쪽(머리·흐름)은 기술 낱말 없이, 기술 쪽 첫머리에 짝 낱말 표 한 번(docs/36 11-47)
+  for (const story of ["[data-agency]", "#flow"])
+    await expect(page.locator(story)).not.toContainText(/난수|drand|서버/);
+  await expect(page.locator("#tech [data-story-tech] dt")).toHaveCount(6);
+  await expect(page.locator("#tech")).toContainText("drand 공개 난수");
   await expect(
     page.getByRole("heading", { name: "우주국이 보관하는 것" }),
   ).toBeVisible();

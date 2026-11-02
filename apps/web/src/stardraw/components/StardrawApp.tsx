@@ -2363,7 +2363,7 @@ function RoundDetail({
             )}
             {services.practice ? (
               <p className="mt-1 text-white/50 text-xs">
-                연습이라 결과 난수와 마감 시각 증명은 따로 확인하지 않습니다.
+                연습 장부라 빛난 별과 마감 시각은 따로 확인하지 않습니다.
               </p>
             ) : (
               <p className="mt-1 text-white/50 text-xs">

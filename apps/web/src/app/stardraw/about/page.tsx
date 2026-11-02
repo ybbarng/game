@@ -6,6 +6,7 @@ import {
   KeyHoldingExplained,
   PasskeyFaq,
 } from "@/stardraw/components/PasskeyHelp";
+import { StoryTechWords } from "@/stardraw/components/StoryTechWords";
 import { RANK_RULE } from "@/stardraw/results";
 
 export const metadata: Metadata = {
@@ -120,10 +121,9 @@ export default function StardrawAbout() {
           <h1 className="font-black text-3xl">하늘의 별 따기 설명</h1>
           <p className="text-amber-100/90" data-agency>
             하늘의 별 따기는 카노푸스 우주국이 정해진 시각마다 여는 공개
-            관측입니다. 어떤 별이 빛날지는 세계 여러 천문대가 정각에 함께
-            보내오는 신호로 정해집니다. 어느 천문대도 혼자서는 이 신호를 미리 알
-            수 없어서, 우주국도 결과를 고를 수 없습니다. 우주국장 역시 지난
-            기록을 고치거나 남의 등록증으로 예측할 수 없습니다.
+            관측입니다. 그때 어느 별이 빛날지는 아무도 미리 알 수 없고, 우주국도
+            알거나 고를 수 없습니다. 우주국장 역시 지난 기록을 고치거나 남의
+            등록증으로 예측할 수 없습니다.
           </p>
           <details className="text-sm text-white/70">
             <summary className="cursor-pointer text-white/80">
@@ -139,10 +139,10 @@ export default function StardrawAbout() {
             </p>
           </details>
           <p className="text-white/75">
-            로또 1등과 하늘의 별 따기, 어느 쪽이 더 쉬울까요? 카노푸스 우주국은
-            서울 하늘에서 가장 밝은 별 45개 가운데 회차마다 6개가 빛난다는 것을
-            알아냈습니다. 다음에 빛날 별 6개를 맞혀 보세요. 관측은 한 시간마다
-            열립니다.
+            로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요? 카노푸스 우주국은
+            서울 하늘에서 가장 밝은 별 45개 가운데 회차마다 6개가 문득 밝게
+            빛난다는 것을 알아냈습니다. 왜 그런지는 우주국도 아직 모릅니다.
+            다음에 빛날 별 6개를 맞혀 보세요. 관측은 한 시간마다 열립니다.
           </p>
           <a
             href="/stardraw/learn"
@@ -205,11 +205,11 @@ export default function StardrawAbout() {
               does="다른 우주인과 함께 여섯 별이 빛나는 순간을 지켜봅니다."
             >
               <p>
-                정각에 천문대들의 신호가 오면 빛날 별 6개와 보너스 별 하나가
-                정해집니다. 룰렛 불빛이 별 사이를 돌다 멈출 때마다 하늘에서 그
-                별이 켜집니다. 관측은 1분쯤 걸리고, 관측지에 있는 우주인은 같은
-                장면을 함께 봅니다. 늦게 오면 중간부터 보게 되고, 관측이 끝난
-                뒤에 처음 오면 관측 장면을 다시 보고 나서 들어갑니다.
+                정각이 되면 여섯 별과 보너스 별 하나가 빛납니다. 룰렛 불빛이 별
+                사이를 돌다 멈출 때마다 하늘에서 그 별이 하나씩 켜집니다. 관측은
+                1분쯤 걸리고, 관측지에 있는 우주인은 같은 장면을 함께 봅니다.
+                늦게 오면 중간부터 보게 되고, 관측이 끝난 뒤에 처음 오면 관측
+                장면을 다시 보고 나서 들어갑니다.
               </p>
               <p>
                 관측지에 들어가면 처음에는 언덕 아래 어둠 속에 숨어서
@@ -282,6 +282,14 @@ export default function StardrawAbout() {
           </p>
         </Section>
 
+        <Section title="이야기 속 낱말과 실제 기술" id="tech">
+          <p className="text-white/85">
+            여기부터는 믿을 수 있는지 따져 보려는 분을 위한 설명이라 실제 기술
+            이름을 씁니다. 이야기 속 낱말은 실제로 이렇습니다.
+          </p>
+          <StoryTechWords />
+        </Section>
+
         <Section title="입상 확인">
           <ol className="list-decimal space-y-2 pl-5 text-white/85">
             <li>
@@ -323,9 +331,8 @@ export default function StardrawAbout() {
             서명한 기록으로만 할 수 있습니다. 이 기록은 공개 장부에 실리고
             3회차가 지나야 효력이 생기므로, 그동안 누구나 미리 볼 수 있습니다.
             서버 데이터를 몰래 고쳐서 할 수는 없습니다. 빛날 별도 우주국장이
-            고르지 못합니다. 천문대들의 신호는 실제로는 drand라는 공개
-            난수입니다. 그 값으로 결과를 다시 계산하는 방법과, 국장 열쇠를 언제
-            정하고 바꿨는지는{" "}
+            고르지 못합니다. 결과는 drand 공개 난수로 정해지고, 그 값으로 결과를
+            다시 계산하는 방법과 국장 열쇠를 언제 정하고 바꿨는지는{" "}
             <a href="/stardraw/verify#check" className="underline">
               검증하기
             </a>

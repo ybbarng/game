@@ -1421,7 +1421,7 @@ export class StardrawServer {
     },
   ): Promise<{ allowed: true }> {
     const q = this.o.qualification;
-    if (!q) throw new EntryError("이 서버는 소속을 발급하지 않습니다", 404);
+    if (!q) throw new EntryError("지금은 소속을 발급하지 않습니다", 404);
     const email = reissueEmail(input.email);
     if (!/^[^\s@]+@[^\s@]+$/.test(email) || email.length > 254)
       throw new EntryError("이메일 형식이 맞지 않습니다");
@@ -1505,7 +1505,7 @@ export class StardrawServer {
     ip: string;
   }): Promise<{ blindStamp: Uint8Array }> {
     const q = this.o.qualification;
-    if (!q) throw new EntryError("이 서버는 소속을 발급하지 않습니다", 404);
+    if (!q) throw new EntryError("지금은 소속을 발급하지 않습니다", 404);
     const prefix = ipPrefix(input.ip);
     const day = String(Math.floor(this.now() / 86400));
     if (
@@ -1535,7 +1535,7 @@ export class StardrawServer {
       ? q.affiliations.get(affiliation.fields.name)
       : undefined;
     if (!period || !info.open || !config)
-      throw new EntryError("지금 이 서버에서 받을 수 없는 자격입니다", 409);
+      throw new EntryError("지금은 받을 수 없는 자격입니다", 409);
 
     // 신원 확인(방법마다). 화면이 보낸 이메일·도메인은 믿지 않는다
     let account: string;
@@ -1580,7 +1580,10 @@ export class StardrawServer {
       this.o.log?.(
         `자격 기간 ${input.periodId.slice(0, 12)}의 도장 비밀 열쇠가 이 서버에 없다`,
       );
-      throw new EntryError("이 기간의 도장 열쇠가 서버에 없습니다", 500);
+      throw new EntryError(
+        "지금은 이 기간의 소속 도장을 찍을 수 없습니다. 잠시 뒤 다시 해 주세요",
+        500,
+      );
     }
     const blindedHex = toHex(input.blinded);
     let blindStamp: Uint8Array;

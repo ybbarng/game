@@ -6,6 +6,7 @@ import { Quiz, type QuizItem } from "@/components/learn/Quiz";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { HomeLink } from "@/stardraw/components/HomeLink";
+import { StoryTechWords } from "@/stardraw/components/StoryTechWords";
 
 import { AttackToy } from "./AttackToy";
 import { FairnessToy } from "./FairnessToy";
@@ -612,6 +613,7 @@ export function StardrawLearn() {
             등록증이 정해지는 방법을 덧붙였습니다. 상자 안의 계산은 모두 실제
             게임과 같은 코드가 이 브라우저에서 합니다.
           </P>
+          <StoryTechWords folded />
           <div className="flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
               <div

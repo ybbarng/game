@@ -72,7 +72,9 @@ export function createHttpServer(
         send(res, err.status, { error: err.message });
       else {
         console.error(err);
-        send(res, 500, { error: "서버에서 문제가 생겼습니다" });
+        send(res, 500, {
+          error: "우주국에 문제가 생겼습니다. 잠시 뒤 다시 해 주세요",
+        });
       }
     });
   });

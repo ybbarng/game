@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { HomeLink } from "@/stardraw/components/HomeLink";
+import { StoryTechWords } from "@/stardraw/components/StoryTechWords";
 import { LedgerCheck, VectorTable } from "@/stardraw/verify/VerifyTools";
 
 export const metadata: Metadata = {
@@ -104,6 +105,7 @@ export default function StardrawVerify() {
             )이 기준이고, 아래 시험 값으로 다른 언어의 구현을 맞춰 볼 수
             있습니다.
           </p>
+          <StoryTechWords folded />
           <a
             href="/stardraw/learn"
             className="self-start text-amber-100/90 text-sm underline underline-offset-2"

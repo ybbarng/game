@@ -1,0 +1,55 @@
+import { Fragment } from "react";
+
+/**
+ * 이야기 말과 실제 기술의 짝(docs/36 11-47). 이야기 쪽 화면은 왼쪽 말만 쓰고, 기술 쪽 페이지는 첫머리에 이 표를 한 번 둔다.
+ * 짝이 바뀌면 여기 한 곳만 고친다(설명·검증·보안 배우기가 같이 쓴다).
+ */
+export const STORY_TECH_PAIRS: [string, string][] = [
+  [
+    "여섯 별이 빛나는 일",
+    "drand 공개 난수로 정해지는 값입니다. 세계 여러 기관이 함께 내는 난수라 어느 한 곳도 미리 알거나 고를 수 없고, 예측 마감 5분 뒤에 나오는 값을 씁니다.",
+  ],
+  ["카노푸스 우주국", "이 게임을 돌리는 별 따기 서버와 그 운영자입니다."],
+  [
+    "우주인 등록증",
+    "내 패스키의 공개 열쇠에서 그린 그림입니다. 비밀 열쇠는 기기 밖으로 나오지 않습니다.",
+  ],
+  [
+    "우주국 서명·관인",
+    "서버가 가진 서명 열쇠로 한 서명입니다. 접수증과 운영 기록에 찍힙니다.",
+  ],
+  [
+    "봉인",
+    "마감 때 예측서 목록을 하나로 묶은 머클 루트와, 바깥 시각 인증 기관이 그 값에 찍어 준 시각 증명입니다.",
+  ],
+  [
+    "장부",
+    "회차 기록을 해시로 이어 붙인 공개 기록입니다. 장부 끝 해시는 GitHub 저장소에도 남깁니다.",
+  ],
+];
+
+/** 짝 낱말 표. `folded`면 접어 두고 「이야기 속 낱말은 실제로 무엇인가요?」로 펼친다 */
+export function StoryTechWords({ folded = false }: { folded?: boolean }) {
+  const list = (
+    <dl
+      data-story-tech
+      className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm"
+    >
+      {STORY_TECH_PAIRS.map(([story, tech]) => (
+        <Fragment key={story}>
+          <dt className="font-semibold text-amber-100">{story}</dt>
+          <dd className="text-white/80">{tech}</dd>
+        </Fragment>
+      ))}
+    </dl>
+  );
+  if (!folded) return list;
+  return (
+    <details className="text-sm text-white/75">
+      <summary className="cursor-pointer text-white/80">
+        이야기 속 낱말은 실제로 무엇인가요?
+      </summary>
+      <div className="mt-2">{list}</div>
+    </details>
+  );
+}
