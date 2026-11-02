@@ -26,6 +26,16 @@ import {
 } from "./drand";
 import { drawNumbers, drawSeed, RANKS, type Rank, rankOf } from "./draw";
 import {
+  type EarlySealScope,
+  earlySealDeadline,
+  earlySealItems,
+  FOCUS_API_CALLS,
+  type GitHubWitness,
+  githubWitness,
+  requiresEarlySeal,
+  UNKNOWN,
+} from "./early-seal";
+import {
   LightMissing,
   loadLightFiles,
   roundSummary,
@@ -202,6 +212,19 @@ export interface PublicCheckOptions {
   voidBeacon?: (drandRound: number) => Promise<DrandBeacon | null>;
   /** 한꺼번에 받는 수·다시 받기(시험은 손으로 옮기는 시계를 넣는다) */
   polite?: PoliteFetchOptions;
+  /**
+   * 정식 회차의 관측 전 사본 커밋 시각·활동 기록(api.github.com, docs/36 11-50). null이면 보지 않는다.
+   * scope 기본 focus(검증 페이지: 고른 회차만, 요청 수 상한), 터미널 검사기는 all
+   */
+  github?: {
+    scope?: EarlySealScope;
+    /** api.github.com 인증 토큰(어디에도 찍지 않는다) */
+    token?: string;
+    /** api.github.com 받기(기본은 fetch 옵션) */
+    fetch?: typeof fetch;
+    /** 지금(초, 시험만) */
+    now?: number;
+  } | null;
 }
 
 const pad = (n: number) => String(n).padStart(6, "0");
@@ -516,13 +539,41 @@ export async function checkPublicLedger(
     options.ledger ??
     (await loadPublicLedger(options.base, f, options.onProgress));
   const { genesis, head, records, tickets, registrations, seals } = ledger;
-  // 무효 회차의 추첨 전 봉인 증거(docs/36 11-20): 앵커 저장소의 추첨 전 사본 + 넣어 준 증거
-  const earlySeals = combineEarlySealSources(
-    ...(anchorRepo
-      ? [githubEarlySealSource({ repo: anchorRepo, genesis, fetchFn: f })]
-      : []),
-    ...(options.earlySeals ? [options.earlySeals] : []),
-  );
+  const github =
+    options.github === null || !anchorRepo ? null : (options.github ?? {});
+  const scope = github?.scope ?? "focus";
+  const witness =
+    github && anchorRepo
+      ? githubWitness({
+          repo: anchorRepo,
+          ledger: ledgerId(genesis),
+          rawFetch: f,
+          apiFetch:
+            github.fetch ?? options.fetch ?? ((...args) => fetch(...args)),
+          ...(github.token ? { token: github.token } : {}),
+          ...(scope === "focus" ? { maxApiCalls: FOCUS_API_CALLS } : {}),
+        })
+      : null;
+  /**
+   * 무효 회차의 drand 전 봉인 증거(docs/36 11-20): 넣어 준 증거(받아 둔 서버 봉인 파일)와, 시험 회차는 앵커 저장소의 사본.
+   * 정식 회차의 main 사본은 커밋 시각과 함께 증인(witness)이 본다(docs/36 11-50)
+   */
+  const voidEvidence = (schedule: Schedule) => {
+    const anchorCopies = anchorRepo
+      ? githubEarlySealSource({ repo: anchorRepo, genesis, fetchFn: f })
+      : null;
+    return combineEarlySealSources(
+      ...(anchorCopies
+        ? [
+            (round: number) =>
+              witness && requiresEarlySeal(schedule, round)
+                ? Promise.resolve([])
+                : anchorCopies(round),
+          ]
+        : []),
+      ...(options.earlySeals ? [options.earlySeals] : []),
+    );
+  };
 
   const report = await verifyLedger(genesis, records, tickets, registrations, {
     powSample: options.powSample ?? 8,
@@ -576,7 +627,8 @@ export async function checkPublicLedger(
         },
     sealKeyItem(report, head, records.length),
     await voidRoundsItem(records, tickets, report.schedule, {
-      earlySeals,
+      earlySeals: voidEvidence(report.schedule),
+      ...(witness ? { witness } : {}),
       beacon:
         options.voidBeacon ??
         ((round) => fetchQuicknetBeacon(round, { fetchFn: f })),
@@ -591,6 +643,13 @@ export async function checkPublicLedger(
       options.tsaAuthorities,
     ),
     await lightItem(options.base, f, records, tickets),
+    ...(witness
+      ? await earlySealItems(records, seals, report.schedule, {
+          witness,
+          scope,
+          ...(github?.now !== undefined ? { now: github.now } : {}),
+        })
+      : []),
   ];
   const anchorSkips = report.skipped.filter((s) => s.includes("앵커")).length;
   const skips: Record<string, string> = {};
@@ -715,6 +774,11 @@ export interface VoidRoundsOptions {
   /** 무효 회차의 drand 값을 받는다(있었을 결과 계산). 없으면 계산하지 않는다 */
   beacon?: (drandRound: number) => Promise<DrandBeacon | null>;
   tsaAuthorities?: readonly TsaAuthority[];
+  /**
+   * 정식 회차의 공개 증인(앵커 저장소 main, docs/36 11-50). 정식 무효 회차는 여기 사본이 커밋 시각 기한 안이고
+   * drand 전 토큰이 들어 있으면 실패, 커밋 시각이 늦으면 규칙대로 무효로 본다
+   */
+  witness?: GitHubWitness;
 }
 
 /**
@@ -745,27 +809,55 @@ export async function voidRoundsItem(
   const hidden: string[] = [];
   const prized: string[] = [];
   const unknown: number[] = [];
+  /** 정식 무효 회차: 사본이 늦게 올라 규칙대로 무효인 회차, 사본 시각을 확인하지 못한 회차 */
+  const lateCopies: number[] = [];
+  const unsure: number[] = [];
   for (const { record, tickets: list } of voids) {
     const { closesAt } = roundTimes(schedule, record.round);
     const drandRound = drandRoundForClose(closesAt);
-    if (options.earlySeals) {
+    /** 그 봉인 값의 맞는 토큰이 drand 전에 있었다는 파일인지 */
+    const provesEarly = async (file: PublicSealFile) => {
       const digest = sealDigest(record);
-      for (const file of await options.earlySeals(record.round)) {
-        const log = file.log as TsaProof | null | undefined;
-        if (file.digest !== toHex(digest) || log?.kind !== "tsa") continue;
-        const check = await verifyTsaProof(log, {
-          digest,
-          minValid: 1,
-          ...(options.tsaAuthorities
-            ? { authorities: options.tsaAuthorities }
-            : {}),
-        });
-        if (check.ok && !isVoidRound(closesAt, check.loggedAt)) {
-          hidden.push(
-            `${record.round}회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다`,
-          );
+      const log = file.log as TsaProof | null | undefined;
+      if (file.digest !== toHex(digest) || log?.kind !== "tsa") return false;
+      const check = await verifyTsaProof(log, {
+        digest,
+        minValid: 1,
+        ...(options.tsaAuthorities
+          ? { authorities: options.tsaAuthorities }
+          : {}),
+      });
+      return check.ok && !isVoidRound(closesAt, check.loggedAt);
+    };
+    const hide = () =>
+      hidden.push(
+        `${record.round}회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다`,
+      );
+    let caught = false;
+    if (options.earlySeals)
+      for (const file of await options.earlySeals(record.round))
+        if (await provesEarly(file)) {
+          hide();
+          caught = true;
           break;
         }
+    // 정식 회차(docs/36 11-50): main 사본은 커밋 시각이 기한 안일 때만 「제때 올린 사본」이다
+    if (
+      !caught &&
+      options.witness &&
+      requiresEarlySeal(schedule, record.round)
+    ) {
+      const text = await options.witness.copy(record.round);
+      const file =
+        typeof text === "string" && text !== UNKNOWN
+          ? parseSealFile(text, record.round)
+          : null;
+      if (file && (await provesEarly(file))) {
+        const commit = await options.witness.commit(record.round);
+        if (commit === UNKNOWN || commit === null) unsure.push(record.round);
+        else if (commit.date <= earlySealDeadline(schedule, record.round))
+          hide();
+        else lateCopies.push(record.round);
       }
     }
     if (options.beacon) {
@@ -801,6 +893,16 @@ export async function voidRoundsItem(
       ...(unknown.length > 0
         ? [
             `있었을 결과를 계산하지 못한 회차(drand를 받지 못함): ${unknown.join(", ")}`,
+          ]
+        : []),
+      ...(lateCopies.length > 0
+        ? [
+            `관측 전 사본이 기한보다 늦게 올라 규칙대로 무효: ${lateCopies.join(", ")}`,
+          ]
+        : []),
+      ...(unsure.length > 0
+        ? [
+            `관측 전 사본이 있으나 올린 시각을 확인하지 못한 무효 회차: ${unsure.join(", ")}`,
           ]
         : []),
     ].join(" / "),
