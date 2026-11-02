@@ -772,7 +772,8 @@ export function RoomView({
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"
-      ? `지금 ${title} 예측을 받고 있습니다.`
+      ? // 마감 전에 일찍 온 사람도 언제 관측하는지 알게(2026-11-03 클로즈 베타 점검)
+        `지금 ${title} 예측을 받고 있습니다. 관측까지 ${formatLeft(toShow / 1000)}`
       : phase === "closed"
         ? `예측을 마감했습니다. 관측까지 ${formatLeft(toShow / 1000)}`
         : phase === "announce"

@@ -156,6 +156,15 @@ describe("관측지 사람 수", () => {
     expect(count?.closest("[data-room-hill]")).not.toBeNull();
   });
 
+  it("마감 전에 온 사람에게도 관측까지 남은 시간을 알린다", async () => {
+    const view = renderRoom(1);
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-phase='open']")?.textContent,
+      ).toMatch(/^지금 시험 1회 예측을 받고 있습니다\. 관측까지 \d+:\d\d/);
+    });
+  });
+
   it("나 혼자면 사람 수 없이 언덕이 비었다는 말만", async () => {
     const view = renderRoom(1);
     await waitFor(() => {
