@@ -616,6 +616,10 @@ test("설명 페이지: 당첨자 확인과 패스키, 별 이야기로 가는 �
   page,
 }) => {
   await page.goto("/stardraw/about");
+  // 편지의 「20분마다」와 어긋나지 않게 시험 기간 주기도 말한다(2026-11-03 클로즈 베타 점검)
+  await expect(page.locator("#flow")).toContainText(
+    "시험 기간에는 20분마다 한 회차가 돌아갑니다.",
+  );
   // 별 목록·자료 출처는 별 이야기로 옮겼다(2026-11-02)
   await expect(page.getByRole("heading", { name: "별 45개" })).toHaveCount(0);
   await expect(

@@ -160,7 +160,8 @@ export default function StardrawAbout() {
 
         <Section title="한 회차의 흐름" id="flow">
           <p className="text-white/85">
-            한 회차는 1시간입니다. 접수처에서 예측서를 내고, 마감 뒤에는
+            한 회차는 1시간입니다. 정식으로 문을 열기 전 시험 기간에는 20분마다
+            한 회차가 돌아갑니다. 접수처에서 예측서를 내고, 마감 뒤에는
             관측지에서 별이 빛나는 순간을 함께 지켜봅니다. 회차별 시각은{" "}
             <a href="/stardraw/timetable" className="underline">
               관측 시간표
