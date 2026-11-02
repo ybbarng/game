@@ -5,6 +5,7 @@ import {
   checkScheduleChange,
   closedMessage,
   displayRound,
+  fixedThrough,
   isAlignedEpoch,
   liveStart,
   NOTICE_ROUNDS,
@@ -124,6 +125,37 @@ describe("일정 변경은 3회차 예고 뒤부터", () => {
   it("마지막 줄보다 앞 회차는 바꿀 수 없다", () => {
     const changed = withChange(hourly, change(100));
     expect(checkScheduleChange(changed, change(90), 1)).not.toBeNull();
+  });
+});
+
+describe("시각이 확정된 회차(관측 시간표)", () => {
+  const change = (fromRound: number) => ({
+    fromRound,
+    length: 2 * HOUR,
+    closeMargin: 60,
+    powTarget: 2 ** 26,
+    registerPowTarget: 2 ** 20,
+  });
+
+  it("예고 중인 변경이 없으면 다음 기록에 실을 수 있는 변경의 효력 회차 앞까지", () => {
+    // 10회차까지 기록됨: 11회차 기록에 실은 변경은 15회차부터라 14회차까지 확정
+    expect(fixedThrough(hourly, 10)).toBe(14);
+    expect(checkScheduleChange(hourly, change(15), 11)).toBeNull();
+    expect(checkScheduleChange(hourly, change(14), 11)).not.toBeNull();
+  });
+
+  it("기록이 하나도 없으면 4회차까지", () => {
+    expect(fixedThrough(hourly, 0)).toBe(4);
+  });
+
+  it("예고 중인 변경이 있으면 취소될 수 있어 그 변경 앞 회차까지만", () => {
+    const pending = withChange(hourly, change(30));
+    expect(fixedThrough(pending, 10)).toBe(29);
+  });
+
+  it("변경이 효력을 얻은 뒤에는 다시 다음 기록 기준", () => {
+    const applied = withChange(hourly, change(30));
+    expect(fixedThrough(applied, 30)).toBe(34);
   });
 });
 

@@ -220,6 +220,23 @@ export function schedulePending(
   return last !== undefined && last.fromRound > decidedInRound;
 }
 
+/**
+ * 시각이 장부로 확정된 마지막 회차(관측 시간표의 「확정」과 「예정」 경계, 2026-11-02 사용자).
+ * 마지막 기록이 `lastRecordRound`이면 다음 일정 변경은 빨라야 그다음 기록에 실려 `earliestNoticeRound`부터
+ * 효력이 생긴다. 예고 중인 줄이 있으면 새 변경은 그 줄의 효력 회차 뒤에야 실을 수 있지만, 예고 중인 줄은
+ * 효력 전까지 취소될 수 있어(operations `cancel`) 그 줄 앞 회차까지만 확정이다
+ */
+export function fixedThrough(
+  schedule: Schedule,
+  lastRecordRound: number,
+): number {
+  // 1회차부터인 첫 줄은 예고가 아니다(처음 일정표)
+  const last = schedule.entries.at(-1) as ScheduleEntry;
+  if (last.fromRound > 1 && schedulePending(schedule, lastRecordRound))
+    return last.fromRound - 1;
+  return earliestNoticeRound(lastRecordRound + 1) - 1;
+}
+
 export function withChange(
   schedule: Schedule,
   change: ScheduleEntry,
