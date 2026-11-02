@@ -62,6 +62,7 @@ import { useReducedMotion } from "./StageOverlay";
 import { MenuItem, type NavTarget, TabBar, useWideScreen } from "./StardrawNav";
 import { StatsView } from "./StatsView";
 import { ticketUrl } from "./TicketView";
+import { TimetableView } from "./TimetableView";
 import { WinNotice } from "./WinNotice";
 
 type View =
@@ -78,6 +79,8 @@ type View =
   | { name: "round"; round: number }
   /** 관측 기록(공개 장부 통계) */
   | { name: "stats" }
+  /** 관측 시간표: 앞으로의 예측 접수·관측 시각 */
+  | { name: "timetable" }
   /** 당첨자가 보낸 확인 링크(/stardraw/check#토큰) */
   | { name: "link"; token: string };
 
@@ -89,7 +92,8 @@ export type StardrawPage =
   | "mine"
   | "rounds"
   | "check"
-  | "stats";
+  | "stats"
+  | "timetable";
 
 const PATH: Record<StardrawPage, string> = {
   home: "/stardraw",
@@ -99,6 +103,7 @@ const PATH: Record<StardrawPage, string> = {
   rounds: "/stardraw/rounds",
   check: "/stardraw/check",
   stats: "/stardraw/stats",
+  timetable: "/stardraw/timetable",
 };
 
 /** 화면 → 주소. 뒤로가기·새로고침이 그 화면으로 돌아오게 브라우저 기록에 남긴다 */
@@ -126,6 +131,8 @@ function urlOf(v: View): string {
       return `${PATH.check}#${v.token}`;
     case "stats":
       return PATH.stats;
+    case "timetable":
+      return PATH.timetable;
   }
 }
 
@@ -150,6 +157,7 @@ function viewOf(page: StardrawPage, hash: string): View {
   if (page === "now") return { name: "now" };
   if (page === "check") return { name: "link", token: h };
   if (page === "stats") return { name: "stats" };
+  if (page === "timetable") return { name: "timetable" };
   if (page === "mine") {
     if (h === "records") return { name: "records" };
     const t = /^t-([0-9a-f]{64})$/.exec(h);
@@ -414,7 +422,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   const showNav = !!services && !!status && !picking && (!observing || wide);
   // 화면마다 속한 탭 하나: 영수증·내 기록은 내 응모, 회차 결과·관측 기록은 지난 회차(2026-11-01 사용자 B안)
   const navActive: NavTarget | null =
-    view.name === "home"
+    view.name === "home" || view.name === "timetable"
       ? "home"
       : view.name === "mine" ||
           view.name === "receipt" ||
@@ -645,6 +653,8 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           />
         ) : view.name === "stats" ? (
           <StatsView services={services} version={version} sealed={sealed} />
+        ) : view.name === "timetable" ? (
+          <TimetableView services={services} status={status} />
         ) : view.name === "round" ? (
           <RoundDetail
             services={services}
@@ -673,6 +683,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
               go({ name: "receipt", id: toHex(ticketId(m.ticket)) })
             }
             onDraw={goWatch}
+            onTimetable={() => go({ name: "timetable" })}
             onMine={() => go({ name: "mine" })}
             onRound={(round) => go({ name: "round", round })}
             onSkip={
@@ -701,6 +712,7 @@ export function Home({
   onEnter,
   onReceipt,
   onDraw,
+  onTimetable,
   onMine,
   onRound,
   onSkip,
@@ -713,6 +725,8 @@ export function Home({
   onEnter: () => void;
   onReceipt: (m: MyTicket) => void;
   onDraw: (round: number) => void;
+  /** 관측 시간표로 */
+  onTimetable: () => void;
   onMine: () => void;
   /** 지난 회차 한 줄: 그 회차 결과로 */
   onRound: (round: number) => void;
@@ -784,6 +798,14 @@ export function Home({
         onReceipt={onReceipt}
         onDraw={onDraw}
       />
+      <button
+        type="button"
+        onClick={onTimetable}
+        data-go-timetable
+        className="-mt-2 self-center text-sm text-white/65 underline-offset-4 hover:text-white hover:underline"
+      >
+        관측 시간표
+      </button>
 
       {/* 봉투가 떠 있는 동안은 지난 회차 카드를 두지 않는다(둘이 같은 곳으로 가는 것처럼 보였다, 2026-11-01 사용자). 봉투를 열면 다시 보인다 */}
       {!envelope && (

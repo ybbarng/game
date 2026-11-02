@@ -194,6 +194,7 @@ function Screen({
           onEnter={noop}
           onReceipt={noop}
           onDraw={noop}
+          onTimetable={noop}
           onMine={noop}
           onRound={noop}
           onSkip={null}
