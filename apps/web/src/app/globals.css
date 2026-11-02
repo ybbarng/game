@@ -1997,3 +1997,73 @@ button {
     animation: none;
   }
 }
+
+/* 우주국 인사(IntroGate, 2026-11-02): 가운데 인사가 천천히 떠오르고, 물러날 때는 위로 사라지며 뒤의 홈이 드러난다 */
+@keyframes sd-intro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-intro .sd-intro-line {
+  animation: sd-intro-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: 150ms;
+}
+.sd-intro {
+  transition: opacity 700ms ease;
+}
+.sd-intro-leave {
+  opacity: 0;
+  pointer-events: none;
+}
+.sd-intro-leave [data-intro-shell] {
+  transition: transform 700ms cubic-bezier(0.4, 0, 0.6, 1);
+  transform: translateY(-24px);
+}
+
+/* 홈 펼치기: 하늘이 먼저 떠오르고(살짝 커지며), 제목 → 회차 카드 → 나머지 차례로 */
+@keyframes sd-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sd-unfold-sky {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-unfold-all > * {
+  animation: sd-unfold 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: 1000ms;
+}
+.sd-unfold-all > [data-unfold="sky"] {
+  animation: sd-unfold-sky 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: 100ms;
+}
+.sd-unfold-all > header {
+  animation-delay: 550ms;
+}
+.sd-unfold-all > [aria-label="이번 회차"],
+.sd-unfold-all > [data-card] {
+  animation-delay: 800ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-intro .sd-intro-line,
+  .sd-unfold-all > * {
+    animation: none;
+  }
+}

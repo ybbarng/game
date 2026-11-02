@@ -100,7 +100,8 @@ test("응모 화면 「처음으로」는 늘 첫 화면으로, 영수증은 탭
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
   await virtualAuthenticator(page);
   const id = await registerAndEnter(page);
-  const home = page.locator("[data-greeting]");
+  // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
+  const home = page.locator("section[aria-label='이번 회차']");
 
   // 내 응모 → 영수증: 머리 줄 단추 없이 내 응모 탭이 켜져 있다
   await page.goto("/stardraw/mine");
@@ -154,7 +155,8 @@ test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과
   test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
   await virtualAuthenticator(page);
   await registerAndEnter(page);
-  const home = page.locator("[data-greeting]");
+  // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
+  const home = page.locator("section[aria-label='이번 회차']");
   const goHome = page.locator("[data-tab='home']");
   const backButtons = page.getByRole("button", { name: /^← / });
 

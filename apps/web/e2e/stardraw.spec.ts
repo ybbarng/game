@@ -386,16 +386,8 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await expect(receipt).toBeVisible();
 
   await page.locator("[data-tab='home']").click();
-  // 등록한 사람: 인사와 작은 등록증, 응모한 회차는 추첨까지 시계와 고른 별·「영수증」
-  await expect(page.locator(`[data-greeting="${number}"]`)).toContainText(
-    /^.+에 거주하는 .+ 님, 안녕하세요$/,
-  );
-  await expect(page.locator(`[data-greeting="${number}"]`)).toHaveAttribute(
-    "href",
-    "/stardraw/id",
-  );
-  // 인사는 문장 하나(작은 등록증 그림 없이)
-  await expect(page.locator(`[data-greeting="${number}"] *`)).toHaveCount(0);
+  // 등록한 사람: 응모한 회차는 추첨까지 시계와 고른 별·「영수증」. 인사 줄은 우주국 인사(IntroGate)로 옮겨 홈에는 없다(2026-11-02)
+  await expect(page.locator("[data-greeting]")).toHaveCount(0);
   await expect(page.locator("[data-card='entered']")).toContainText(
     "1회 예측서를 냈어요",
   );

@@ -18,7 +18,7 @@ import { useNoPullRefresh } from "@/game/no-pull-refresh";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { track } from "@/stats/track";
-import { astronautOf, residentPhrase } from "../astronaut/identity";
+import { astronautOf } from "../astronaut/identity";
 import { type CheckSession, isActive } from "../checks";
 import { errorText } from "../errors";
 import { FX } from "../fx-timing";
@@ -45,6 +45,7 @@ import { EnterView, KeySetup, usePasskeyEnv } from "./EnterView";
 import { GameIntro } from "./GameIntro";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { Inbox } from "./Inbox";
+import { IntroGate, IntroShell, shouldShowIntro } from "./IntroGate";
 import { MyRecordsView, RecordHandover, RecordNotice } from "./MyRecords";
 import { OnAirGuide } from "./OnAirGuide";
 import {
@@ -199,6 +200,21 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   /** 처음 받은 서류를 건네받는 연출 중인지 */
   const [handover, setHandover] = useState(false);
   const reduceMotion = useReducedMotion();
+  /**
+   * 우주국 인사(IntroGate): 한 방문에 한 번, 홈으로 들어왔을 때만. 인사가 물러나는 동안 홈이 차례로 펼쳐진다
+   * (unfold: 하늘 → 제목 → 회차 카드 → 나머지, CSS sd-unfold-all)
+   */
+  const [intro, setIntro] = useState(false);
+  const [unfold, setUnfold] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 처음 들어온 화면으로 한 번만 정한다
+  useEffect(() => {
+    if (view.name === "home" && shouldShowIntro()) setIntro(true);
+  }, []);
+  useEffect(() => {
+    if (!unfold) return;
+    const t = window.setTimeout(() => setUnfold(false), 2600);
+    return () => window.clearTimeout(t);
+  }, [unfold]);
   useEffect(() => {
     if (view.name !== "receipt") setPrinting(null);
   }, [view.name]);
@@ -473,7 +489,19 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           onGo={onNav}
         />
       )}
-      <div className="sd-wide mx-auto flex max-w-xl flex-col gap-5">
+      {intro && (
+        <IntroGate
+          ready={!!services && !!status}
+          onLeave={() => setUnfold(true)}
+          onDone={() => setIntro(false)}
+        />
+      )}
+      <div
+        className={cn(
+          "sd-wide mx-auto flex max-w-xl flex-col gap-5",
+          unfold && view.name === "home" && "sd-unfold-all",
+        )}
+      >
         {services && status && (
           <BroadcastToast
             services={services}
@@ -513,9 +541,10 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
           />
         )}
         {!services || !status ? (
-          <p className="py-20 text-center text-white/60">
-            하늘을 펴고 있습니다
-          </p>
+          // 장부를 기다리는 자리: 우주국 인사와 같은 자리·모양(정적 HTML에서부터 보인다, IntroGate)
+          <IntroShell>
+            <span className="text-sm text-white/50">하늘을 펴고 있습니다</span>
+          </IntroShell>
         ) : view.name === "now" ? (
           nowMode === null ? null : nowMode.kind === "observe" ? (
             loaded && (
@@ -782,6 +811,10 @@ export function Home({
   // 결과 봉투: 추첨이 끝났는데 아직 열어 보지 않은 내 응모권(가장 최근 것)
   const sealed = sealedFor(mine, opened, services.ledger);
 
+  // 이 기기 등록증을 읽기 전에는 그리지 않는다(한 박자). 등록한 사람 모양으로 그렸다가 처음 온 사람 입구(편지)로
+  // 바뀌면 하늘이 아래로 밀렸다(2026-11-02 펼치기 녹화). 모양이 정해진 뒤 한 번에 펼친다
+  if (key === undefined) return null;
+
   // 발급한 등록증: 움직임 줄이기면 입구 대신, 아니면 입구 위 화면 전체 오버레이로
   // 게임 목록으로 가는 길은 메뉴(PC 메뉴 줄 맨 왼쪽, 휴대폰 더 보기 맨 위)가 맡아 따로 한 줄을 두지 않는다
   if (setup.issued && reduce)
@@ -814,7 +847,6 @@ export function Home({
       <WelcomeFlyer services={services} setup={setup} />
       <header className="flex flex-col gap-4">
         <StardrawTitle />
-        {key !== undefined && <Greeting services={services} keyInfo={key} />}
       </header>
 
       {/* 정답 예시 하늘은 처음 온 사람이든 다녀간 사람이든 늘 같은 자리에(첫 화면 모양이 달라 헷갈렸다, 사용자) */}
@@ -997,40 +1029,6 @@ export function Gate({
 
       {onSkip && <PracticeSkip onSkip={onSkip} />}
     </>
-  );
-}
-
-/**
- * 맨 위 인사. 이 기기에 등록증이 있으면 "○○에 거주하는 ○○ 님, 안녕하세요"(누르면 내 등록증, 밑줄 없는 은은한 링크),
- * 없으면 「우주인 등록」
- */
-function Greeting({
-  services,
-  keyInfo,
-}: {
-  services: Services;
-  keyInfo: KeyInfo | null;
-}) {
-  // 등록 전에는 인사를 비운다. 등록은 카드의 「별 6개 고르기」가 맡는다(같은 곳으로 가는 단추가 둘이었다, 2026-10-31 UX 시험)
-  if (!keyInfo) return null;
-  const a = astronautOf(keyInfo.pub);
-  const text = `${residentPhrase(a)} 님, 안녕하세요`;
-  // 데모·둘러보기의 가짜 우주인은 실제 게임의 내 등록증으로 잇지 않는다
-  return services.ns === GAME_NS ? (
-    <a
-      href="/stardraw/id"
-      data-greeting={a.number}
-      className="self-center break-keep px-2 py-1 text-center text-sm text-white/85 no-underline transition-colors hover:text-amber-100"
-    >
-      {text}
-    </a>
-  ) : (
-    <p
-      data-greeting={a.number}
-      className="self-center break-keep px-2 py-1 text-center text-sm text-white/85"
-    >
-      {text}
-    </p>
   );
 }
 
