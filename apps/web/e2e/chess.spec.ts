@@ -719,9 +719,9 @@ test("체스: 고수가 생각하는 동안에도 화면이 멈추지 않는다(
   await slowCpu(page, 4);
   await playOne(page, false);
   await watchFrames(page);
-  await expect(page.getByRole("status")).toContainText("생각하는 중");
-  // 컴퓨터가 답하면 다시 내 차례(느린 CPU라 넉넉히 기다린다).
-  await expect(page.getByRole("status")).toContainText("내 차례", {
+  // 컴퓨터가 답할 때까지(기보에 흑의 첫 수가 적힐 때까지) 잰다. 잠깐 지나가는 「생각하는 중」은 기다리지 않는다
+  // (계산이 아주 빠르면 놓친다). 느린 CPU라 넉넉히 기다린다.
+  await expect(page.getByTitle("기보")).toHaveText(/1\. \S+ \S+/, {
     timeout: 30_000,
   });
   const { maxGap, span } = await stopFrames(page);
