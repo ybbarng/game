@@ -192,7 +192,7 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
 
 /**
  * 렌주 문제의 함정: 금지가 없는 규칙(자유)이면 같은 수 안에 이기는 첫 수인데, 렌주에서는 흑에게 금지인 자리.
- * 함정이 없으면 빈 배열(「렌주 금수 피하기」 묶음만 함정이 있다)
+ * 함정이 없으면 빈 배열. 「렌주 금수 피하기」 묶음은 함정이 꼭 있고, 다른 묶음에도 있을 수 있다(예: open-four-10). 있으면 해설 첫머리에 짚는다
  */
 export function trapsOf(
   puzzle: OmokPuzzle,
