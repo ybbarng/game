@@ -32,6 +32,7 @@ import {
   type QuizQuestion,
   ROUND_LIMITS,
   recordAnswer,
+  rightKeyTag,
   saveDrill,
   summarize,
   weakKeys,
@@ -60,6 +61,9 @@ const MODES: { id: Mode; title: string }[] = [
   { id: "quiz", title: "키 보고 맞히기" },
   { id: "formula", title: "공식 따라 치기" },
 ];
+
+/** 키 보고 맞히기: 정답을 고른 뒤 다음 문제까지(맞은 보기·키를 알아볼 만큼) */
+export const QUIZ_NEXT_MS = 900;
 
 export function KeyDrillApp({ clock = realClock }: { clock?: Clock }) {
   const keymap = useKeymap();
@@ -248,13 +252,9 @@ function SeeDrill({
     return () => window.clearInterval(id);
   }, [phase]);
 
-  // 판이 끝나면 기록을 남긴다
-  const saved = useRef<DrillRound | null>(null);
-  useEffect(() => {
-    if (!round || phase !== "done" || saved.current === round) return;
-    saved.current = round;
-    save({ ...record, see: round.statsNow });
-  }, [round, phase, record, save]);
+  // 기록은 문제를 맞힐 때마다 남긴다(판 도중에 떠나도 그때까지의 기록이 남는다)
+  const liveRecord = useRef(record);
+  liveRecord.current = record;
 
   const limit =
     ROUND_LIMITS.find((l) => l.id === limitId)?.limit ??
@@ -296,16 +296,15 @@ function SeeDrill({
       if (r === "miss") {
         setWrong(input.code);
         setShowAnswer(true);
-        setMessage(
-          `${describeInput(keymap, n, input).text}(친 수 ${result.notation})`,
-        );
+        setMessage(describeInput(keymap, n, input, result.notation).text);
       } else if (r === "hit") {
         setWrong(null);
         setShowAnswer(false);
         setMessage(null);
+        save({ ...liveRecord.current, see: round.statsNow });
       }
     },
-    [round, cube, keymap, n, showCube, flash],
+    [round, cube, keymap, n, showCube, flash, save],
   );
   usePracticeKeys(n, keymap, true, onKey);
 
@@ -324,10 +323,6 @@ function SeeDrill({
       data-drill="see"
       data-drill-phase={phase}
     >
-      <p className="break-keep text-sm text-white/80">
-        표기가 하나씩 뜹니다. 맞는 키를 치면 다음 수로 넘어갑니다. 틀리면 친
-        키가 무엇이었는지와 맞는 키를 보여 줍니다
-      </p>
       <LevelPicker
         level={level}
         setLevel={setLevel}
@@ -388,7 +383,7 @@ function SeeDrill({
               >
                 {message ?? ""}
                 {showAnswer && message
-                  ? ` · 「${prompt}」은 ${keyTextFor(keymap, n, prompt) ?? ""}`
+                  ? ` ${rightKeyTag(keyTextFor(keymap, n, prompt) ?? "")}`
                   : ""}
               </p>
               <button
@@ -421,7 +416,7 @@ function SeeDrill({
               )}
               {pool.length === 0 ? (
                 <p className="text-amber-200 text-sm">
-                  이 배치에는 이 단계에서 칠 수 있는 키가 없습니다
+                  이 배치에는 이 단계에서 칠 수 있는 키가 없습니다.
                 </p>
               ) : (
                 <button
@@ -490,8 +485,7 @@ function StatsTable({
       {weak.length > 0 && (
         <p className="text-amber-200 text-xs" data-drill-weak>
           약한 키:{" "}
-          {weak.map((a) => `${actionLabel(a)}(${keyText(a)})`).join(" · ")} —
-          다음 판에 더 자주 나옵니다
+          {weak.map((a) => `${actionLabel(a)}(${keyText(a)})`).join(" · ")}
         </p>
       )}
       <table className="w-full max-w-lg text-xs">
@@ -546,7 +540,15 @@ function QuizDrill({ keymap, record, save, clock }: DrillProps) {
     },
     [keymap, pool, clock],
   );
-  useEffect(() => next(), [next]);
+  // 정답 뒤 다음 문제로 넘어가기를 기다리는 중이면 끄는 함수
+  const cancelNext = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    next();
+    return () => {
+      cancelNext.current?.();
+      cancelNext.current = null;
+    };
+  }, [next]);
 
   const choose = (a: string) => {
     if (!q || picked.includes(a) || picked.includes(q.answer)) return;
@@ -566,16 +568,16 @@ function QuizDrill({ keymap, record, save, clock }: DrillProps) {
         clock.now() - askedAt.current,
       ),
     });
-    window.setTimeout(() => next(q.answer), ok ? 350 : 900);
+    cancelNext.current?.();
+    cancelNext.current = clock.after(QUIZ_NEXT_MS, () => {
+      cancelNext.current = null;
+      next(q.answer);
+    });
   };
 
   const weak = weakKeys(record.quiz, pool);
   return (
     <section className="flex flex-col gap-3" data-drill="quiz">
-      <p className="break-keep text-sm text-white/80">
-        키보드 그림에서 빛나는 키(Shift·Alt가 함께 빛나면 같이 누름)가 어떤
-        동작인지 고르세요. 키 자리를 외우는 연습입니다
-      </p>
       <LevelPicker
         level={level}
         setLevel={setLevel}
@@ -618,7 +620,7 @@ function QuizDrill({ keymap, record, save, clock }: DrillProps) {
         </>
       ) : (
         <p className="text-amber-200 text-sm">
-          이 단계에서 키 하나로 치는 동작이 넷보다 적어 퀴즈를 낼 수 없습니다
+          이 단계에서 키 하나로 치는 동작이 넷보다 적어 퀴즈를 낼 수 없습니다.
         </p>
       )}
       <StatsTable
@@ -697,9 +699,7 @@ function FormulaDrill({
       const r = run.feed(result.move);
       if (r === "miss") {
         setWrong(input.code);
-        setMessage(
-          `${describeInput(keymap, 3, input).text}(친 수 ${result.notation})`,
-        );
+        setMessage(describeInput(keymap, 3, input, result.notation).text);
         bump((x) => x + 1);
         return;
       }
@@ -739,10 +739,6 @@ function FormulaDrill({
 
   return (
     <section className="flex flex-col gap-3" data-drill="formula">
-      <p className="break-keep text-sm text-white/80">
-        공식을 키로 반복해 칩니다. 첫 키를 치면 시간이 가고, 한 번 끝날 때마다
-        시간과 초당 수를 남깁니다
-      </p>
       <div className="flex flex-wrap gap-1">
         {FORMULAS.map((f) => (
           <button

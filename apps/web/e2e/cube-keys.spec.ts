@@ -128,3 +128,24 @@ test("조작 훈련: 문제를 맞히면 키별 기록이 남는다", async ({ p
     0,
   );
 });
+
+test("조작 훈련: 판 도중에 떠나도 맞힌 문제의 기록이 남는다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 기기만");
+  await page.goto("/cube/keys/drill");
+  await ready(page);
+  await page.getByRole("button", { name: "30수" }).click();
+  await page.locator("[data-drill-start]").click();
+  const t = (await page
+    .locator("[data-drill-prompt]")
+    .getAttribute("data-drill-prompt")) as string;
+  await page.keyboard.press(TWO_HAND[t] as string);
+  await expect(page.locator("[data-drill-score]")).toContainText("맞힘 1 ");
+  // 그만을 누르지 않고 다시 연다
+  await page.reload();
+  await ready(page);
+  await expect(
+    page.locator(`[data-drill-stats] [data-stat="${t}"]`),
+  ).toHaveCount(1);
+});
