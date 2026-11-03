@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-03T15:37:58.833Z",
+  "updatedAt": "2026-11-03T15:34:25.000Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -1023,6 +1023,51 @@
       ]
     },
     {
+      "id": "next-galaxy",
+      "title": "은하 한 바퀴(땅 사기 장르, /galaxy)",
+      "parent": "next-games",
+      "status": "building",
+      "size": 3,
+      "summary": "주사위로 계절 하늘 한 바퀴(32칸)를 돌며 실제 별을 사고 정거장 이용료를 받는다. 별자리 잇기(둘이면 선, 셋이면 완성), 제철 하늘, 봉인 입찰, 별 사실로 계산하는 우주국 공문, 하늘 고르기(사계절·황도 12궁·남쪽·계절·내가 고른 하늘). 주사위·공문은 윷놀이 해시 사슬, 입찰은 약속 후 공개. 기본 판 4인 20차례·35분 상한, 첫 운항 중단에 끝내고 자산 순위",
+      "next": "G1 별 자료·G2 엔진 끝(2026-11-04, 브랜치 galaxy). 다음: 판 위 별 거리 표 → G3 컴퓨터·bench 워크플로 → G4 웹 혼자 하기(docs/48 12절)",
+      "since": "2026-11-03",
+      "found": "2026-11-03",
+      "links": [
+        {
+          "label": "은하 한 바퀴 검토와 기획",
+          "path": "docs/48-galaxy-loop.md"
+        },
+        {
+          "label": "새 게임 체크리스트",
+          "path": "docs/21-new-game-checklist.md"
+        }
+      ],
+      "signs": [
+        {
+          "id": "galaxy-forks",
+          "type": "fork",
+          "title": "은하 한 바퀴 갈림길 8개(docs/48 11절: 거래·공문 더미·경매·첫 파산 끝·돈 이름·인원·하늘 고르기·제철 하늘)",
+          "owner": "me",
+          "options": [
+            "추천대로(거래 한 번 제안·받기/거절, 사슬로 공문 뽑기, 봉인 입찰, 첫 파산에 끝, 별빛, 2~4명, 사계절 하늘부터, 제철 하늘 켬)",
+            "일부를 바꿔서"
+          ],
+          "recommend": "추천대로(사용자 지시로 추천안으로 구현 시작, 2026-11-03)",
+          "status": "open"
+        },
+        {
+          "id": "galaxy-trademark",
+          "type": "risk",
+          "title": "「은하 한 바퀴」 KIPRIS 상표 조회를 세션이 못 함(웹 검색에서는 겹침 없음)"
+        },
+        {
+          "id": "galaxy-winter-traffic",
+          "type": "risk",
+          "title": "소행성대 바로 뒤가 가장 비싼 겨울이라 많이 밟힌다. bench로 재고 docs/48 3-3 순서로 고친다"
+        }
+      ]
+    },
+    {
       "id": "next-mafia",
       "title": "마피아·라이어 게임",
       "parent": "next-games",
@@ -1030,6 +1075,88 @@
       "size": 2,
       "summary": "멘탈 포커로 역할을 나눠 사회자 없이도, 방장도 모르게",
       "found": "2026-10-29"
+    },
+    {
+      "id": "next-party",
+      "title": "행사용 게임 묶음(다 같이)",
+      "parent": "next-games",
+      "status": "fog",
+      "size": 3,
+      "summary": "docs/49 기획(2026-11-04, 설계만). 송년회·행사에서 수십~백 명이 각자 휴대폰으로, 큰 화면(진행자 화면)에 진행. 서버는 순서를 매겨 모두에게 같은 기록을 보내는 게시판만(1:n, 메모리, 규칙 모름), 규칙은 모든 기기가 같은 순수 함수로 계산. 운은 봉인 뒤 drand, 봉인이 먼저였는지는 휴대폰마다 자기 시계로, 같은 기록인지는 큰 화면 판 지문으로. 후보: 가위바위보(전원 대 진행자·1:1 대진표), 사다리(사람 줄 + 하늘 줄로 어느 줄이든 1/n)·경품 추첨, 빙고(번호마다 미래 drand), 눈치 게임(docs/43 2층, 정직한 사람끼리만), 평균의 2/3(약속 뒤 공개). 라이어·마피아는 next-mafia로. 돈·결제 없음, 경품은 주최자가 밖에서",
+      "next": "사용자 갈림길(docs/49 8절) 답을 받은 뒤, 큐브·원카드가 정리되면 0단계 공통 틀(party-core·party-server·/party 대기실)부터",
+      "found": "2026-11-04",
+      "links": [
+        {
+          "label": "행사용 게임 묶음 기획",
+          "path": "docs/49-party-games.md"
+        },
+        {
+          "label": "공정한 동시 판정(눈치 게임)",
+          "path": "docs/43-fair-simultaneity.md"
+        }
+      ],
+      "signs": [
+        {
+          "id": "party-server-place",
+          "type": "fork",
+          "title": "중계 서버 자리",
+          "owner": "me",
+          "options": [
+            "별도 컨테이너 apps/party-server",
+            "별 따기 서버 안 경로",
+            "진행자 노트북 WebRTC 별 모양"
+          ],
+          "recommend": "별도 컨테이너(별 따기 배포 시간 창·운영과 섞이지 않고, 행사가 없으면 자원이 거의 0)",
+          "status": "open"
+        },
+        {
+          "id": "party-identity",
+          "type": "fork",
+          "title": "들어오기 신원",
+          "owner": "me",
+          "options": [
+            "이름만(기본) + 주최자 명단 고르기(선택)",
+            "우주인 등록증·소속 증서"
+          ],
+          "recommend": "이름만 + 명단 선택(행사는 얼굴이 신원, 등록증은 1인 1몫을 보장하지 못하면서 처음 온 사람 비용만 큼)",
+          "status": "open"
+        },
+        {
+          "id": "party-first",
+          "type": "fork",
+          "title": "처음 만들 것",
+          "owner": "me",
+          "options": [
+            "공통 틀 + 사다리·경품 추첨 + 가위바위보 전원 대 진행자",
+            "가위바위보 1:1 대진표 먼저",
+            "빙고 먼저"
+          ],
+          "recommend": "공통 틀 + 사다리·경품 추첨 + 가위바위보 전원 대 진행자(입력 없는 봉인 → drand부터 확인, 약속 뒤 공개는 다음 걸음)",
+          "status": "open"
+        },
+        {
+          "id": "party-name",
+          "type": "fork",
+          "title": "이름과 주소",
+          "owner": "me",
+          "options": [
+            "다 같이(/party)",
+            "행사 게임(/party)"
+          ],
+          "recommend": "다 같이",
+          "status": "open"
+        },
+        {
+          "id": "party-sybil",
+          "type": "risk",
+          "title": "이름만 들어오면 한 사람이 휴대폰 여러 대로 여러 몫(추첨 확률·2/3 골라 공개). IP로 막지 않고 명단 고르기·이긴 사람 앞으로 나오기로 줄임"
+        },
+        {
+          "id": "party-nunchi-honest",
+          "type": "risk",
+          "title": "눈치 게임의 누가 먼저인가는 정직한 사람끼리만 공정(docs/43 2층). 화면에 밝히고 경품 판에는 권하지 않음"
+        }
+      ]
     },
     {
       "id": "next-stardraw-tech-reuse",
