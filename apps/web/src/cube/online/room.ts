@@ -41,12 +41,24 @@ export interface RoomSettings {
   timeLimitSec: number;
 }
 
+/**
+ * 크기별 기본 제한 시간(초). 가장 느린 컴퓨터(입문, 초당 2수·층별)도 시간 안에 맞추게 넉넉히 둔다.
+ * `botPlan("beginner")` 길이(2026-11-04): 2×2 씨앗 200개 중앙값 50초·최대 82초, 3×3 씨앗 40개 중앙값 104초·최대 130초.
+ * 그래서 2×2 3분, 3×3 5분(최대의 2배 남짓). 4×4·5×5는 컴퓨터가 없고 사람끼리 10분
+ */
+export const TIME_LIMIT_SEC: Record<number, number> = {
+  2: 180,
+  3: 300,
+  4: 600,
+  5: 600,
+};
+
 export const DEFAULT_SETTINGS: RoomSettings = {
   n: 3,
   format: "single",
   target: 3,
   inspection: true,
-  timeLimitSec: 180,
+  timeLimitSec: TIME_LIMIT_SEC[3] as number,
 };
 
 export const MAX_PLAYERS = 8;

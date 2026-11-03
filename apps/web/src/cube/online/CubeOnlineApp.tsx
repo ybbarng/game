@@ -16,7 +16,7 @@ import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botSupports } from "./bot-racer";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom, MAX_PLAYERS, NAME_MAX } from "./room";
+import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
 import { FORMAT_LABELS, type MatchFormat, standings } from "./standings";
 import { useCubeRoom } from "./use-room";
 
@@ -143,9 +143,7 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 경주는 키보드가 있는 기기(PC·노트북)에서만 참가할 수
-            있습니다. 이 링크를 PC에서 열어 주세요. 휴대폰은 「혼자 맞추기」에서
-            단추로 돌려 볼 수 있습니다.
+            온라인 경주는 키보드가 있는 기기에서만 참가할 수 있습니다
           </p>
         )}
 
@@ -300,12 +298,13 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <select
             disabled={!host}
             value={s.n}
-            onChange={(e) =>
+            onChange={(e) => {
+              const k = Number(e.target.value);
               room.setSettings({
-                n: Number(e.target.value),
-                timeLimitSec: Number(e.target.value) <= 2 ? 60 : s.timeLimitSec,
-              })
-            }
+                n: k,
+                timeLimitSec: TIME_LIMIT_SEC[k] ?? s.timeLimitSec,
+              });
+            }}
             className="rounded bg-white/10 px-2 py-1"
           >
             {[2, 3, 4, 5].map((k) => (
@@ -390,9 +389,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             onClick={() => room.startRound()}
             className="rounded-xl bg-sky-500 py-2 font-semibold text-black disabled:opacity-50"
           >
-            {state.players.length < 2
-              ? "두 명 이상이면 시작할 수 있습니다"
-              : "시작"}
+            {state.players.length < 2 ? "두 명부터 시작" : "시작"}
           </button>
         ) : (
           <p className="text-white/60 text-xs">방장이 시작하기를 기다리는 중</p>

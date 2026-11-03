@@ -31,8 +31,8 @@ import type { CubeRoom, RoundRecord } from "./room";
 const PHASE_TEXT: Record<RaceSnapshot["phase"], string> = {
   commit: "섞기를 정하는 중(모두 약속)…",
   reveal: "섞기를 정하는 중(모두 공개)…",
-  inspect: "살펴보기: 큐브를 보기만 할 수 있습니다(마우스로 끌어 돌려 보기)",
-  race: "맞추세요!",
+  inspect: "살펴보는 중",
+  race: "맞추는 중",
   waiting: "다른 사람을 기다리는 중",
   finished: "판 끝",
 };
@@ -91,9 +91,7 @@ export function RaceView({
         return true;
       }
       if (r.reason === "살펴보기 중")
-        setNotice(
-          "살펴보기 중에는 돌릴 수 없습니다. 마우스로 끌어 보기만 됩니다.",
-        );
+        setNotice("살펴보기 중에는 돌릴 수 없습니다");
       return false;
     },
     [room],
@@ -154,9 +152,7 @@ export function RaceView({
           수 <b data-cube-moves>{turnCount(n, mine?.moveLog(room.me) ?? [])}</b>
         </span>
         <span className="text-sm text-white/70" data-cube-phase-text>
-          {snap.preparing
-            ? "섞는 중…(처음에는 몇 초 걸립니다)"
-            : PHASE_TEXT[phase]}
+          {snap.preparing ? "섞는 중…" : PHASE_TEXT[phase]}
           {snap.attempt > 0 && phase !== "finished"
             ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
             : ""}
@@ -174,7 +170,8 @@ export function RaceView({
         </p>
       )}
 
-      {finishedFirst.length > 0 && (
+      {/* 아무도 못 맞춰도 판이 끝나면 결과(모두 DNF)를 보인다 */}
+      {(finishedFirst.length > 0 || snap.result) && (
         <ResultBox room={room} snap={snap} round={round} n={n} />
       )}
 
@@ -329,7 +326,7 @@ function ResultBox({
         </b>
         <p className="text-white/70 text-xs">
           {snap.peers.find((p) => p.id === room.me)?.status === "playing"
-            ? "끝까지 맞춰 내 시간을 남기세요. 제한 시간이 지나면 판이 끝납니다."
+            ? "맞추는 중"
             : "다른 사람을 기다리는 중"}
         </p>
       </div>
