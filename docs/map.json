@@ -651,6 +651,10 @@
         {
           "label": "바둑 수 배우기",
           "path": "docs/25-baduk.md"
+        },
+        {
+          "label": "정석 수순 자료(출처·엔진 확인, 넣기 전)",
+          "path": "docs/25-baduk-joseki-sources.md"
         }
       ]
     },
