@@ -56,7 +56,7 @@ star 방식은 그대로 본뜰 만하다. 다만 star는 `data-exclude-search`�
 | 이 기기 기록 | `apps/web/src/stats/records.ts`. 게임이 끝나면 모든 게임이 `addGame({id, game, mode, data})`를 부른다(같은 id는 한 번만). `mode`는 `"solo" \| "online"`. **온라인 판의 `id`에는 방 코드가 들어간다**(`recorder.ts` 주석: "온라인: 방 코드와 시작 시각") |
 | 배우기 진행 | 대부분 `createTutorialProgress(name).complete(id)`(`apps/web/src/tutorial/progress.ts`, 게임별 `progress.ts`) |
 | 컴퓨터 단계 | 게임마다 `…Level = 0 \| 1 \| 2`(입문·중수·고수), 각 게임 store의 `newGame` |
-| 연결 진단 | `apps/web/src/net/diag.ts` → 같은 출처 `/diag`(servers `apps/mighty-diag/`). 온라인 대전에서만, 방은 SHA-256 앞 12자리만 보낸다. **사람이 원시 기록을 읽는 용도**이고 umami와 목적이 다르다(5절) |
+| 연결 진단 | `apps/web/src/net/diag.ts` → 같은 출처 `/diag`(servers `apps/mighty-diag/`). 온라인 대전에서만, 방은 SHA-256 앞 12자리만 보낸다. 대전 중에는 공정한 동시 판정 준비용으로 상대와의 연결 지연 요약(숫자만)도 10분마다·나갈 때 보낸다(`diag("latency")`, docs/43 5절). **사람이 원시 기록을 읽는 용도**이고 umami와 목적이 다르다(5절) |
 | 서비스 워커 | `public/sw.js`는 다른 출처 요청을 건드리지 않는다. `stats.byb.kr` 스크립트·수집은 저장하지 않으므로 고칠 것이 없다 |
 | 화면 시험 | Playwright가 `out/`을 `localhost`에서 `serve`로 띄운다(`playwright.config.ts`) |
 
@@ -135,7 +135,7 @@ star처럼 `track()` 한 함수와 `TrackEvents` 타입 하나에 이름과 값�
 | 세션 | 같은 웹사이트·IP·브라우저 문자열·기간 소금(salt)으로 만든 해시 id. 쿠키 없이 "같은 사람"을 어림한다. 소금이 바뀌면(기본 한 달) 같은 사람도 새 세션이 된다 | 같은 DB | umami |
 | 이벤트 | 2-2의 이름과 값 | 같은 DB | 이 저장소 `track.ts`(이름·값의 유일한 정의) |
 | 이 기기 기록(`mighty-stats`) | 내 승패·판 기록. **umami와 다른 것**이다. 서버로 가지 않는다 | 브라우저 localStorage | 이 저장소 `stats/` |
-| 연결 진단(`/diag`) | 온라인 연결·섞기 시간의 원시 기록. 개발자가 문제를 고치려고 읽는다. 14일 뒤 지운다 | servers `mighty-diag` 파일 | 이 저장소 `net/diag.ts` + servers |
+| 연결 진단(`/diag`) | 온라인 연결·섞기 시간의 원시 기록과, 대전 중 상대와의 연결 지연 요약(숫자만, 10분마다·나갈 때, 공정한 동시 판정 준비용 docs/43). 개발자가 문제를 고치려고 읽는다. 14일 뒤 지운다 | servers `mighty-diag` 파일 | 이 저장소 `net/diag.ts` + servers |
 
 umami는 **사이트 전체의 지난 기간 집계**, `/diag`는 **연결 문제의 원시 기록**, 이 기기 기록은 **나만 보는 내 성적**이다. 서로 잇지 않는다(세션 id·방 태그를 맞춰 보지 않는다).
 
