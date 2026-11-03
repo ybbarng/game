@@ -1,3 +1,4 @@
+import { ONECARD_LEVELS as AI_LEVELS } from "@game/onecard-ai";
 import {
   type OnecardRules,
   STANDARD_ONECARD_RULES,
@@ -5,8 +6,8 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** 컴퓨터 단계. 지금은 "보통" 하나(컴퓨터 패키지가 생기면 셋) */
-export type OnecardLevel = 1;
+/** 0 입문, 1 중수, 2 고수 */
+export type OnecardLevel = 0 | 1 | 2;
 
 /** 원카드에서 고르는 것. 첫 그리기 뒤에 저장값을 읽는다(StoreHydration) */
 interface OnecardSettings {
@@ -23,7 +24,7 @@ export const useOnecardSettings = create<OnecardSettings>()(
       players: STANDARD_ONECARD_RULES.players,
       handSize: STANDARD_ONECARD_RULES.handSize,
       endOnFirst: STANDARD_ONECARD_RULES.endOnFirst,
-      level: 1,
+      level: 0,
       set: (patch) => set(patch),
     }),
     {
@@ -48,15 +49,13 @@ export function rulesOf(s: {
   };
 }
 
+/** 컴퓨터 단계(`@game/onecard-ai`의 입문·중수·고수, docs/42 13절) */
 export const ONECARD_LEVELS: readonly {
   value: OnecardLevel;
   label: string;
   description: string;
-}[] = [
-  {
-    value: 1,
-    label: "보통",
-    description:
-      "아끼는 카드(조커·공격·7)는 뒤로 미룬다. 원카드는 자주 외치고, 잊은 사람을 가끔 잡는다",
-  },
-];
+}[] = AI_LEVELS.map((l) => ({
+  value: l.level,
+  label: l.name,
+  description: l.description,
+}));
