@@ -78,7 +78,9 @@ function PlayerPlate({
       <StoneDot black={stone === 1} />
       <span className="truncate font-semibold text-sm">{name}</span>
       <span className="ml-auto whitespace-nowrap text-white/70 text-xs">
-        따냄 {view.prisoners[stone]} · {view.wins[seat] ?? 0}승
+        따냄 {view.prisoners[stone]}
+        {/* 한 판짜리면 이긴 판 수는 뜻이 없어 감춘다(휴대폰에서 이름이 덜 잘린다) */}
+        {view.rules.winsToFinish > 1 && ` · ${view.wins[seat] ?? 0}승`}
       </span>
       {control && view.clocks?.[seat] && (
         <GameClock

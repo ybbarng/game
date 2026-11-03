@@ -160,7 +160,7 @@ test("바둑 배우기: 첫 단원 미션을 틀렸다가 다시 해서 백 한 
   const touch = info.project.name.startsWith("phone");
   await page.goto("/baduk");
   await page.getByRole("button", { name: /바둑 배우기/ }).click();
-  await expect(page.getByText("0/7")).toBeVisible();
+  await expect(page.getByText("0/8")).toBeVisible();
   await page.getByRole("button", { name: /바둑은 어떤 게임/ }).click();
   await page.getByRole("button", { name: "다음", exact: true }).click();
   // 둘째 설명(활로와 따내기)에는 판 그림이 있다.
