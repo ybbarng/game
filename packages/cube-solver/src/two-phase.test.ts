@@ -85,6 +85,20 @@ describe("3×3 2단계 해법", () => {
     expect(applyAlgorithm(f, sol)).toBe(S3);
   });
 
+  it("큐브를 돌린 상태(가운데가 기본 방향이 아님)도 푼다", () => {
+    for (const [seed, rot] of [
+      [1, "x"],
+      [2, "y'"],
+      [3, "z2"],
+      [4, "x y"],
+      [5, "Rw U Fw'"],
+    ] as const) {
+      const f = applyAlgorithm(randomCube(seed), rot);
+      const sol = solve3x3(f);
+      expect(isSolvedFacelets(applyAlgorithm(f, sol))).toBe(true);
+    }
+  });
+
   it("맞출 수 없는 상태는 오류", () => {
     const a = S3.split("");
     [a[8], a[9], a[20]] = [a[20] as string, a[8] as string, a[9] as string];

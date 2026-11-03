@@ -24,6 +24,7 @@ import {
   moveName,
   solvedCubie,
 } from "./cubie";
+import { FACES } from "./facelets";
 import { rankPermutation, unrankPermutation } from "./perm";
 
 const N_TWIST = 2187;
@@ -288,6 +289,23 @@ export interface Solve3x3Options {
   maxLength?: number;
 }
 
+/** 3×3 스티커의 글자를 가운데 색 기준 면 이름으로 바꾼다(가운데 여섯이 서로 달라야 한다). */
+function relabelByCenters(facelets: string): string {
+  if (facelets.length !== 54) return facelets;
+  const rename = new Map<string, string>();
+  for (let k = 0; k < 6; k++) {
+    rename.set(facelets[k * 9 + 4] as string, FACES[k] as string);
+  }
+  if (rename.size !== 6) throw new Error("가운데 조각 색이 겹친다");
+  let out = "";
+  for (const ch of facelets) {
+    const r = rename.get(ch);
+    if (r === undefined) throw new Error(`모르는 글자: ${ch}`);
+    out += r;
+  }
+  return out;
+}
+
 /** 한 번의 탐색이 쓰는 상태(동기 탐색이라 모듈 안에 둔다). */
 const seq = new Int8Array(64);
 let start: CubieCube = solvedCubie();
@@ -387,12 +405,16 @@ function phase2(
 /**
  * 3×3 스티커 문자열(54글자, Kociemba 순서)을 맞추는 수를 WCA 표기로 낸다. 맞춘 상태면 빈 문자열.
  * 같은 입력이면 늘 같은 해가 나온다. 맞출 수 없는 상태면 오류.
+ *
+ * 큐브가 돌아가 있어도(가운데가 기본 방향이 아님: x·y로 돌렸거나 Rw·Uw로 끝난 섞기) 된다.
+ * 가운데 색을 기준으로 면 이름을 다시 붙여 푼다. 바깥 면 수는 공간에 붙은 면(위·오른쪽…)을
+ * 돌리는 것이라, 해는 그대로 그 큐브에 두면 맞는다(맞춘 뒤 큐브 방향은 처음 방향 그대로).
  */
 export function solve3x3(
   facelets: string,
   options: Solve3x3Options = {},
 ): string {
-  const cube = faceletsToCubie(facelets);
+  const cube = faceletsToCubie(relabelByCenters(facelets));
   init3x3();
   const t = tables as Tables;
   start = cube;
