@@ -309,7 +309,11 @@ test("오목 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다",
   await expect(page.getByText("1/5")).toBeVisible();
 
   // 2단원: 넷을 막지 않으면 실패, 다시 해서 막으면 성공
-  await page.getByRole("button", { name: /막기/ }).click();
+  // 「수 배우기」 단추 설명에도 「막기」가 있어 그 단추는 뺀다.
+  await page
+    .getByRole("button", { name: /막기/ })
+    .filter({ hasNotText: "수 배우기" })
+    .click();
   for (let i = 0; i < 2; i++)
     await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: /한쪽만 막을 수 있어/ }).click();
