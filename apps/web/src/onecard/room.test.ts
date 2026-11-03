@@ -276,3 +276,76 @@ describe("원카드 일반방", () => {
     expect(troubles).toEqual([]);
   });
 });
+
+describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 검증이 짚는다", () => {
+  /** 몇 수 둔 뒤 `tamper`로 방장 기기를 고쳐 쓰고, 방장이 나가 기록을 공개하면 참가자 검증이 어떻게 되나 */
+  async function audited(
+    tamper: (ctx: Awaited<ReturnType<typeof setup>>) => Promise<void>,
+  ): Promise<AuditResult> {
+    const ctx = await setup(2);
+    const { clock, host, guests, match } = ctx;
+    const guest = guests[0] as Guest;
+    const audits: AuditResult[] = [];
+    guest.on("audit", (r) => audits.push(r));
+    for (let moves = 0; moves < 4; ) {
+      const hv = match.current();
+      const gv = guest.match?.current();
+      if (hv.decision === "turn") match.submit(firstMove(hv));
+      else if (gv?.decision === "turn") guest.match?.submit(firstMove(gv));
+      else throw new Error("둘 사람이 없다");
+      moves++;
+      await tick(clock, 1);
+    }
+    await tamper(ctx);
+    host.finish();
+    await pump(clock, () => audits.length === 1);
+    return audits[0] as AuditResult;
+  }
+
+  it("정직한 방장: 청구가 낀 판도 통과한다", async () => {
+    const result = await audited(async ({ clock, guests }) => {
+      (guests[0] as Guest).claims?.claim({});
+      await settleClaims(clock);
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("사람 자리의 외침을 지어내 기록에 넣으면(청구 없이) 짚는다", async () => {
+    const result = await audited(async ({ clock, match }) => {
+      // 고친 방장 기기: 참가자 1의 손패가 여러 장일 때 그 자리로 외침을 넣어 헛외침 벌칙을 먹인다
+      expect(
+        match.submitAs(1, { type: "shout", seen: match.rawState().turnNo }).ok,
+      ).toBe(true);
+      await tick(clock, 1);
+    });
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.reason).toContain("청구 통로를 거치지 않고");
+  });
+
+  it("발표하지 않은 청구 묶음을 기록에 넣으면 짚는다", async () => {
+    const result = await audited(async ({ clock, match }) => {
+      const seen = match.rawState().turnNo;
+      match.submitHost(0, {
+        type: "claims",
+        batch: 0,
+        shouts: [{ seat: 1, seen, id: "fake" }],
+      });
+      await tick(clock, 1);
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(result.ok ? "" : result.reason).toContain("없던 청구");
+  });
+
+  it("발표는 바르게 하고 기록에서 청구를 빼면 짚는다", async () => {
+    const result = await audited(async ({ clock, host, guests }) => {
+      // 고친 방장 기기: 발표는 보내되 엔진에는 넣지 않는다
+      (
+        host.claims as unknown as { options: { apply?: unknown } }
+      ).options.apply = () => {};
+      (guests[0] as Guest).claims?.claim({});
+      await settleClaims(clock);
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(result.ok ? "" : result.reason).toContain("빠졌다");
+  });
+});

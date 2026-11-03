@@ -27,10 +27,11 @@ import {
   type RuleSet,
 } from "@game/mighty-engine";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
-import type { GameKit, KitLoggedAction } from "@/game/kit";
+import type { GameKit, KitLoggedAction, VerifyContext } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import type { ClaimsResolved } from "./claim";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { type FairReplayGame, verifyFairLog } from "./fair-verify";
@@ -348,6 +349,24 @@ export class GuestRoom<
   private startProblem: string | null = null;
   /** 방장과 한 번이라도 끊겼다(그동안 컴퓨터가 대신 둘 수 있다) */
   private everDisconnected = false;
+  /** 받아들인 방장 발표로 만든 청구 묶음 행동(JSON, 받은 차례) */
+  private readonly resolvedClaims: ClaimsResolved[] = [];
+
+  /** 판 끝 다시 계산에 주는 것(`kit.verifyUnsigned`). `complete`: 기록이 끝까지인가(게임 끝 검증) */
+  private verifyContext(complete: boolean): VerifyContext {
+    return {
+      claimsResolved: [...this.resolvedClaims],
+      botSeats: new Set(
+        (this.lobby?.seats ?? [])
+          .filter((s) => s.kind === "bot")
+          .map((s) => s.seat),
+      ),
+      partial: this.everDisconnected || this.resumedClaims,
+      complete,
+    };
+  }
+  /** 새로고침 뒤 다시 들어온 기기(그 전에 받은 발표는 모른다) */
+  private resumedClaims = false;
   private audited = false;
   private readonly listeners: {
     [K in keyof GuestEvents<View, ActionT, Event>]: Set<
@@ -456,6 +475,9 @@ export class GuestRoom<
           resumed: options.token !== null,
         })
       : null;
+    this.resumedClaims = options.token !== null;
+    // 받아들인 발표를 남긴다(판 끝 다시 계산에서 `kit.verifyUnsigned`가 기록 속 청구 묶음과 맞춰 본다).
+    this.claims?.onResolved((resolved) => this.resolvedClaims.push(resolved));
 
     this.transport.onPeerJoin((peerId) => {
       this.peers.add(peerId);
@@ -812,7 +834,7 @@ export class GuestRoom<
   /** 새로고침 전에 남긴 멘탈 포커 진행에서 되살렸다(판 중간에 다시 들어왔다) */
   private resumedFair = false;
 
-  private fairInput(log: readonly FairLogged[]) {
+  private fairInput(log: readonly FairLogged[], complete = true) {
     const lobby = this.lobby;
     if (!lobby || this.seat === null || !this.match || !this.fair) return null;
     if (this.fairSeed === null) return null;
@@ -823,7 +845,7 @@ export class GuestRoom<
       level !== undefined && this.kit.botFor ? this.kit.botFor(level) : null;
     return {
       ...(this.kit.cardTable
-        ? { game: this.cardReplay() }
+        ? { game: this.cardReplay(complete) }
         : this.kit.id === "hearts"
           ? { game: this.heartsReplay() }
           : {}),
@@ -852,10 +874,25 @@ export class GuestRoom<
       >,
       { kind: "onecard" }
     >,
+    complete: boolean,
   ): FairReplayGame {
     const kit = this.kit;
     const fair = this.fair as AnyOnecardSeat;
+    const context = this.verifyContext(complete);
     return {
+      ...(kit.verifyUnsigned
+        ? {
+            unsigned: (state, entry, index) =>
+              kit.verifyUnsigned?.({
+                before: state as State,
+                seat: entry.seat,
+                action: realOnecardAction(entry.action) as ActionT,
+                index,
+                context,
+              }) ?? null,
+            unsignedDone: () => kit.verifyUnsignedDone?.(context) ?? null,
+          }
+        : {}),
       check: (rules, seed, log, deals) =>
         checkOnecardTable(
           spec,
@@ -881,11 +918,11 @@ export class GuestRoom<
   }
 
   /** 화투 판 다시 계산하기: 진짜 패로 돌리며 방장이 더미를 엔진대로만 열었는지도 본다 */
-  private cardReplay(): FairReplayGame {
+  private cardReplay(complete = true): FairReplayGame {
     const kit = this.kit;
     const table = kit.cardTable as NonNullable<typeof kit.cardTable>;
     if ("kind" in table && table.kind === "onecard")
-      return this.onecardReplay(table);
+      return this.onecardReplay(table, complete);
     const spec = table as Exclude<typeof table, { kind: "onecard" }>;
     // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
     const fair = this.fair as HwatuGuestSeat<Rules, State, any, ActionT, Event>;
@@ -960,7 +997,7 @@ export class GuestRoom<
       (deal < this.firstRound || (this.resumedFair && deal === this.firstRound))
     )
       return;
-    const input = this.fairInput(log);
+    const input = this.fairInput(log, false);
     if (!input) {
       this.raiseIncident({
         seat: 0,
@@ -1345,6 +1382,7 @@ export class GuestRoom<
     );
     let { state } = this.kit.createMatch(rules.rules, seed.seed);
     const replayedViews = [JSON.stringify(this.kit.viewOf(state, this.seat))];
+    const context = this.verifyContext(true);
     for (const [index, entry] of log.entries()) {
       const { seat, action } = entry;
       // 방장 시계가 남긴 기록(시간패, 응답 창 끝)과 방장 기기가 넣은 행동(`hostAction`)은 누가 둔 수가 아니다.
@@ -1352,6 +1390,17 @@ export class GuestRoom<
       const byClock =
         this.kit.timing?.strip(action) === null ||
         this.kit.hostAction?.(action) === true;
+      // 사람이 보낸 것이 아닌 기록은 맞춰 볼 사람이 없으니 게임이 따로 본다(방장이 지어내거나 뺀 청구 등)
+      if (byClock && this.kit.verifyUnsigned) {
+        const problem = this.kit.verifyUnsigned({
+          before: state,
+          seat,
+          action,
+          index,
+          context,
+        });
+        if (problem) return { ok: false, reason: problem };
+      }
       if (bot && !byClock) {
         if (botSeats.has(seat) && !entry.bot)
           return {
@@ -1389,6 +1438,8 @@ export class GuestRoom<
           bot.observe(this.kit.viewOf(state, s), result.events);
       replayedViews.push(JSON.stringify(this.kit.viewOf(state, this.seat)));
     }
+    const unsignedEnd = this.kit.verifyUnsignedDone?.(context) ?? null;
+    if (unsignedEnd) return { ok: false, reason: unsignedEnd };
     if (replayedViews.at(-1) !== JSON.stringify(this.match.current())) {
       return { ok: false, reason: "다시 계산한 결과가 내가 본 화면과 다르다" };
     }

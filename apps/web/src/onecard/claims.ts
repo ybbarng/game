@@ -51,5 +51,7 @@ export const onecardClaims: KitClaims<
       ? null
       : { type: "claims", batch: resolved.batch, shouts };
   },
+  recorded: (action) => action.type === "claims",
+  direct: (action) => action.type === "shout",
   rules: { windowMs: 100, staleBoards: STALE_SEEN },
 };

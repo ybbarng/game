@@ -425,7 +425,7 @@ export class LocalMatch<
   private insert(
     seat: number,
     action: ActionT,
-    who: "clock" | "react" | "auto",
+    who: "clock" | "react" | "auto" | "host",
   ) {
     if (this.options.prepare) {
       this.enqueue(seat, action, who);
@@ -434,6 +434,16 @@ export class LocalMatch<
     const result = this.apply(seat, action, who === "react");
     if (result.ok) this.runBots();
     else if (who === "clock") this.syncTimers();
+  }
+
+  /**
+   * 방장 기기가 정해 넣는 행동(실시간 청구 발표를 엔진에 넣기). 사람 행동(`submitAs`)과 달리 그 자리의 앞 행동을
+   * 준비 중이거나 화면을 미뤄 두었어도 거절하지 않고 준비 줄 끝에 세운다(발표한 외침이 사라지지 않게)
+   */
+  submitHost(seat: number, action: ActionT): void {
+    // 게임을 끝낸 뒤(`end`)에 닿은 발표도 기록에 남긴다(엔진은 끝난 판의 청구 묶음을 아무 일 없이 받는다)
+    if (this.disposed || this.haltedReason) return;
+    this.insert(seat, action, "host");
   }
 
   /** 대국을 돌리는 기기가 바로 넣는 행동(`kit.autoAction`, 원카드 다시 섞기) */
@@ -465,7 +475,9 @@ export class LocalMatch<
     if (!react || this.frozen) return;
     const n = this.kit.playerCount(this.rules);
     for (let seat = 0; seat < n; seat++) {
-      if (!this.isBot(seat)) continue;
+      // 처음부터 컴퓨터인 자리만 반응한다. 끊긴 사람 대신 두는 컴퓨터는 차례 수만 둔다: 사람 자리의 외침은
+      // 그 사람의 청구로만 들어와야 참가자가 판 끝에 방장이 지어낸 외침을 가려낼 수 있다(원카드, docs/42 16절)
+      if (!this.isComputer(seat)) continue;
       const plan = react.call(
         this.bot,
         this.kit.viewOf(this.state, seat),
@@ -589,14 +601,14 @@ export class LocalMatch<
   private enqueue(
     seat: number,
     action: ActionT,
-    who: boolean | "clock" | "react" | "auto",
+    who: boolean | "clock" | "react" | "auto" | "host",
   ): void {
     // 시간패·창 시간 끝(`clock`)과 다시 섞기(`auto`)는 사람 자리 행동도 컴퓨터 수도 아니다(기록에 bot 표시 없이 남긴다).
     // 컴퓨터 차례 밖 반응(`react`)은 bot 표시로 남기지만 차례 수 진행(`botBusy`)과는 상관없다.
     const bot = who === true;
     const react = who === "react";
     const auto = who === "auto";
-    const byClock = who === "clock" || react || auto;
+    const byClock = who === "clock" || who === "host" || react || auto;
     const prepare = this.options.prepare as NonNullable<
       LocalMatchOptions<Rules, State, View, ActionT, Event, Extra>["prepare"]
     >;
@@ -612,7 +624,7 @@ export class LocalMatch<
         return;
       }
       // 차례 밖 반응·창 시간 끝은 줄을 기다리는 사이 대국이 멈추거나 끝났으면 넣지 않는다.
-      if (byClock && this.frozen) {
+      if (byClock && who !== "host" && this.frozen) {
         if (auto) this.autoQueued = false;
         return;
       }
@@ -620,7 +632,7 @@ export class LocalMatch<
       const prepared = await prepare(this.state, seat, action);
       debug("준비 끝", seat, JSON.stringify(prepared).slice(0, 200));
       if (auto) this.autoQueued = false;
-      if (this.ended) {
+      if (this.ended && who !== "host") {
         if (!byClock) this.preparing.delete(seat);
         return;
       }

@@ -641,7 +641,15 @@ export function step(
   const n = state.rules.players;
   if (!Number.isInteger(seat) || seat < 0 || seat >= n)
     return fail("없는 자리다");
-  if (state.phase === "over") return fail("끝난 판이다");
+  if (state.phase === "over") {
+    // 판이 끝난 뒤 닿은 청구 묶음도 기록에는 남긴다(아무 일 없음). 방장이 발표한 묶음은 모두 기록에 들어가야
+    // 참가자가 발표와 기록을 하나하나 맞춰 볼 수 있다
+    if (action.type === "claims" && Array.isArray(action.shouts)) {
+      const next = clone(state);
+      return done(next, [], false);
+    }
+    return fail("끝난 판이다");
+  }
 
   if (action.type === "retire") {
     const next = clone(state);

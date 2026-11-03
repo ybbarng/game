@@ -22,6 +22,7 @@ import {
 } from "@game/onecard-engine";
 
 import type { Commentary, GameKit, KitStats } from "@/game/kit";
+import { claimsVerifier } from "@/net/claim-verify";
 import type { GameRecord, RoundRecord } from "@/stats/records";
 
 import { onecardBotFor, toKitBot } from "./bots";
@@ -166,6 +167,8 @@ function explainOnecard(
   };
 }
 
+const onecardVerifier = claimsVerifier<Action>(onecardClaims);
+
 export const onecardKit: OnecardKit = {
   id: "onecard",
   createMatch: (rules, seed, extra) =>
@@ -213,6 +216,9 @@ export const onecardKit: OnecardKit = {
     // (반응 시각은 다시 계산할 수 없어 컴퓨터 수 맞춰 보기에서 뺀다)
     action.type === "shout",
   claims: onecardClaims,
+  // 판 끝 다시 계산: 사람 자리의 외침(`shout`)은 지어낸 것, 청구 묶음은 받은 발표와 차례·내용이 같아야 한다
+  verifyUnsigned: (input) => onecardVerifier.verifyUnsigned(input),
+  verifyUnsignedDone: (context) => onecardVerifier.verifyUnsignedDone(context),
   // 암호화방(멘탈 포커): 방장도 남의 패를 모른다. 다시 섞기는 새 섞기 사슬로(`autoAction`이 낸 다시 섞기를
   // 방장 진행이 받아 버린 더미를 알리고 그 조각의 자리 표로 바꾼다)
   cardTable: onecardFair,
