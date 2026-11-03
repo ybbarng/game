@@ -481,13 +481,13 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
       case "roll":
         status =
           decision.purpose === "jailRoll"
-            ? `소행성대에 걸렸어요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈을 노려 굴려요.`
+            ? "소행성대에 걸렸어요."
             : decision.purpose === "comet"
               ? "혜성이에요. 한 번 더 굴려요."
               : "내 차례예요. 주사위를 굴려 주세요.";
         break;
       case "end":
-        status = "정거장을 관리하거나 차례를 마쳐요.";
+        status = "차례를 마칠까요?";
         break;
       case "buy":
         status = "이 별을 살까요?";
