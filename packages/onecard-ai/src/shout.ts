@@ -126,9 +126,11 @@ export function shoutAction(
     case "self":
       return memory.marks[me] === "exposed" ? shout : null;
     case "pre":
-      // 그사이 카드를 냈으면 본인 외침이 된다
+      // 그사이 카드를 냈으면 본인 외침이 된다(본인 창은 다시 섞기 중에도 받는다)
       if (memory.marks[me] === "exposed") return shout;
-      return view.turn === me &&
+      // 미리 외침은 차례 행동을 기다릴 때(play)만 받는다. 다시 섞기 중에 누르면 헛외침이 된다
+      return view.phase === "play" &&
+        view.turn === me &&
         view.hand.length === 2 &&
         memory.marks[me] !== "pre"
         ? shout

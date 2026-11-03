@@ -2,6 +2,7 @@ import { createRng } from "@game/mighty-engine";
 import {
   type Action,
   createOnecardScenario,
+  judgeShout,
   type OnecardScenarioOptions,
   type OnecardState,
   STANDARD_ONECARD_RULES,
@@ -197,6 +198,26 @@ describe("외침 계획", () => {
     t.act(0, action as Action);
     t.act(0, { type: "play", card: "H9" });
     expect(t.state.called[0]).toBe(true);
+  });
+
+  it("미리 외칠 시간이 됐을 때 다시 섞기 중이면 누르지 않는다(엔진은 헛외침으로 본다)", () => {
+    const t = table({
+      hands: [
+        ["H9", "S3"],
+        ["D3", "D4"],
+      ],
+      pile: ["C4", "H5"],
+      deck: [],
+    });
+    const memory = t.memories[0] as OnecardMemory;
+    const plan = planShout(viewOf(t.state, 0), 2, createRng(1), memory);
+    expect(plan?.reason).toBe("pre");
+    // 계획과 누름 사이에 판이 다시 섞기를 기다리게 됐다
+    const waiting: OnecardState = { ...t.state, phase: "reshuffle" };
+    expect(judgeShout(waiting, 0, waiting.turnNo).kind).toBe("false");
+    expect(
+      shoutAction(plan as NonNullable<typeof plan>, viewOf(waiting, 0), memory),
+    ).toBeNull();
   });
 
   it("입문은 이미 외친 사람을 가끔 잡으려 해 헛외침을 한다, 중수·고수는 하지 않는다", () => {
