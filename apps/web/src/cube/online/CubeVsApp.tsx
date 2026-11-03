@@ -15,7 +15,17 @@ import { useCubeRoom } from "./use-room";
  * 온라인 방과 같은 길(경주 틀 + 컴퓨터 참가자)을 진짜 연결 없이 쓴다.
  */
 
-const TIME_LIMIT: Record<number, number> = { 2: 60, 3: 180 };
+/** 제한 시간(초). 4×4·5×5 입문은 4~5분 걸려 10분을 둔다 */
+const TIME_LIMIT: Record<number, number> = { 2: 60, 3: 180, 4: 600, 5: 600 };
+
+const SIZES = [2, 3, 4, 5] as const;
+
+/** 단계별 빠르기 설명(cube-ai `BOT_SPEEDS`·`BIG_BOT_SPEEDS`) */
+function speedNote(n: number): string {
+  return n >= 4
+    ? "입문 초당 1.5수·층별, 중수 3수, 고수 6수·CFOP, 초고수 8수. 가운데·모서리 짝을 먼저 맞춥니다"
+    : "입문 초당 2수·층별, 중수 4수, 고수 8수·CFOP, 초고수 10수";
+}
 
 export function CubeVsApp() {
   const [n, setN] = useState(2);
@@ -99,12 +109,11 @@ export function CubeVsApp() {
                 onChange={(e) => setN(Number(e.target.value))}
                 className="rounded bg-white/10 px-2 py-1"
               >
-                <option value={2} className="bg-neutral-800">
-                  2×2
-                </option>
-                <option value={3} className="bg-neutral-800">
-                  3×3
-                </option>
+                {SIZES.map((k) => (
+                  <option key={k} value={k} className="bg-neutral-800">
+                    {k}×{k}
+                  </option>
+                ))}
               </select>
             </label>
             <fieldset className="flex flex-col gap-1 text-sm">
@@ -122,8 +131,8 @@ export function CubeVsApp() {
                   </button>
                 ))}
               </div>
-              <span className="text-white/50 text-xs">
-                입문 초당 2수·층별, 중수 4수, 고수 8수·CFOP, 초고수 10수
+              <span className="text-white/50 text-xs" data-cube-vs-speed>
+                {speedNote(n)}
               </span>
             </fieldset>
             <label className="flex items-center gap-2 text-sm">

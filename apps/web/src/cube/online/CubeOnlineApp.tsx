@@ -30,6 +30,16 @@ type Phase = "name" | "connecting" | "room" | "error";
 
 const TIME_CHOICES = [60, 120, 180, 300, 600];
 
+/**
+ * 종목을 바꿀 때의 제한 시간. 2×2는 1분, 4×4·5×5는 10분(컴퓨터 입문이 4~5분 걸린다),
+ * 3×3은 지금 값을 그대로 둔다
+ */
+function timeLimitFor(n: number, s: { timeLimitSec: number }): number {
+  if (n <= 2) return 60;
+  if (n >= 4) return 600;
+  return s.timeLimitSec;
+}
+
 /** 키보드가 없을 것 같은 기기(손가락만 쓰는 휴대폰·태블릿) */
 function touchOnly(): boolean {
   try {
@@ -289,7 +299,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           )}
           {host && !bots && (
             <p className="mt-2 text-white/50 text-xs">
-              컴퓨터는 2×2·3×3만 있습니다.
+              컴퓨터는 2×2~5×5만 있습니다.
             </p>
           )}
         </div>
@@ -300,12 +310,10 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <select
             disabled={!host}
             value={s.n}
-            onChange={(e) =>
-              room.setSettings({
-                n: Number(e.target.value),
-                timeLimitSec: Number(e.target.value) <= 2 ? 60 : s.timeLimitSec,
-              })
-            }
+            onChange={(e) => {
+              const k = Number(e.target.value);
+              room.setSettings({ n: k, timeLimitSec: timeLimitFor(k, s) });
+            }}
             className="rounded bg-white/10 px-2 py-1"
           >
             {[2, 3, 4, 5].map((k) => (

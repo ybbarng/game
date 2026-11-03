@@ -46,6 +46,10 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
       .getAttribute("data-cube-scramble")) ?? "";
   expect(scramble.split(" ").length).toBeGreaterThan(3);
   await shot(page, "vs-inspect", info.project.name);
+  // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
+  await expect(
+    page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
+  ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
 
   const result = page.locator("[data-cube-result]");
   await fastForwardUntil(page, () => result.isVisible(), {
@@ -80,6 +84,43 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
     await expect(page.locator("[data-cube-players] li")).toHaveCount(2);
     await shot(page, "online-lobby", info.project.name);
   }
+});
+
+/**
+ * 4×4 컴퓨터(축소법 + 3×3 사람 해법)도 같은 길로 돈다. 계획은 워커에서 만들고, 입문은 3~4분 걸려
+ * 시계를 크게 감는다. 화면 크기와 상관없는 길이라 desktop 하나로 본다
+ */
+test("컴퓨터와 경주: 4×4 입문 컴퓨터가 맞추면 결과 상자가 뜬다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "크기만 다른 같은 길");
+  test.setTimeout(150_000);
+  await page.clock.install();
+  await page.goto("/cube/vs");
+  await page.locator("[data-cube-vs-size]").selectOption("4");
+  await expect(page.locator("[data-cube-vs-speed]")).toContainText("1.5수");
+  await page.getByRole("button", { name: "입문", exact: true }).click();
+  await page.locator("[data-cube-vs-start]").click();
+
+  const view = page.locator("[data-cube-race-phase]");
+  await expect(view).toHaveAttribute("data-cube-race-phase", "inspect", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
+  await expect(
+    page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
+  ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
+  const result = page.locator("[data-cube-result]");
+  await fastForwardUntil(page, () => result.isVisible(), {
+    step: 2_000,
+    timeout: 120_000,
+  });
+  await expect(result).toContainText("컴퓨터 1");
+  await expect(page.locator('[data-cube-peer="bot1"]')).toHaveAttribute(
+    "data-cube-peer-status",
+    "done",
+  );
+  await shot(page, "vs-4x4-bot-done", info.project.name);
 });
 
 /**

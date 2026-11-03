@@ -22,14 +22,20 @@ export function botSeed(raceSeed: string, botId: string): number {
   );
 }
 
-/** 이 크기에 컴퓨터가 있나(지금은 2×2·3×3) */
+/** 이 크기에 컴퓨터가 있나(2×2~5×5) */
 export function botSupports(n: number): boolean {
-  return n === 2 || n === 3;
+  return n >= 2 && n <= 5;
 }
 
 /**
+ * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭. 고른 단계 해법이 실패하면 `botPlan`이
+ * 먼저 초고수 해로 대신하므로, 이것은 그것마저 실패했을 때다
+ */
+export const BOT_NO_PLAN = "컴퓨터가 맞출 길을 찾지 못함";
+
+/**
  * 계획 만들기. 제품은 웹 워커(`planInWorker`, 해법기 표를 처음 만들 때 1초 넘게 걸려 화면이 멈추지 않게),
- * 시험은 같은 스레드에서 바로 만든다
+ * 시험은 같은 스레드에서 바로 만든다. 못 만들면 던지거나 거절한다(그 컴퓨터는 그 판 기권)
  */
 export type PlanFn = (
   level: BotLevel,
@@ -49,6 +55,8 @@ export interface AttachBotInit {
   n: number;
   clock: Clock;
   plan?: PlanFn;
+  /** 그 시도의 계획을 받았다(화면 표시·시험용) */
+  onPlanned?: (attempt: number) => void;
 }
 
 /**
@@ -97,6 +105,7 @@ export function attachBot(init: AttachBotInit): () => void {
     times = plan.moves.map((m) => m.at);
     const snap = session.snapshot();
     delay = snap.phase === "race" ? (snap.elapsed ?? 0) : 0;
+    init.onPlanned?.(k);
     maybeStart();
   };
 
@@ -111,12 +120,20 @@ export function attachBot(init: AttachBotInit): () => void {
       moves = null;
       scheduled = false;
       cancel?.();
-      const made = planOf(level, n, start, botSeed(snap.seed, id));
-      if (made instanceof Promise)
-        made.then(
-          (plan) => accept(k, plan),
-          () => undefined, // 계획을 못 만들면 두지 않는다(제한 시간에 DNF)
-        );
+      // 기권한 컴퓨터는 남은 사람끼리 다시 하는 시도에서 계획을 세우지 않는다
+      const fail = () => {
+        if (stopped || k !== attempt) return;
+        stopped = true;
+        session.retire(BOT_NO_PLAN);
+      };
+      let made: BotPlan | Promise<BotPlan>;
+      try {
+        made = planOf(level, n, start, botSeed(snap.seed, id));
+      } catch {
+        fail();
+        return;
+      }
+      if (made instanceof Promise) made.then((plan) => accept(k, plan), fail);
       else accept(k, made);
     }
     maybeStart();

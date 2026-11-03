@@ -615,8 +615,16 @@ export class RaceSession<Move, State> {
 
   /** 시작 상태를 만들지 못했다: 이 기기가 그 판 기권(남은 사람끼리 다시 약속) */
   private cannotPrepare(): void {
-    if (!this.forfeit([{ id: this.self, reason: "섞기를 만들지 못함" }]))
-      return;
+    this.retire("섞기를 만들지 못함");
+  }
+
+  /**
+   * 나(이 세션의 참가자)가 그 판을 기권한다. 남은 사람끼리 약속부터 다시 하고, 까닭은 결과에 남는다.
+   * 경주 컴퓨터가 계획을 만들지 못했을 때 쓴다.
+   */
+  retire(reason: string): void {
+    if (this.disposed || this.result) return;
+    if (!this.forfeit([{ id: this.self, reason }])) return;
     // 보기만 하는 기기는 약속을 보내지 않으므로, 남은 사람이 나를 기다리지 않게 기권 목록을 직접 알린다
     // (받는 쪽은 기권 목록을 합쳐 다음 시도로 넘어가고, 기권한 사람이 보낸 약속 값은 쓰지 않는다)
     this.broadcast({
@@ -626,6 +634,7 @@ export class RaceSession<Move, State> {
       commit: "-",
       out: this.outList(),
     });
+    this.emit();
   }
 
   private fixSeed(seed: string, releaseAt: number): void {

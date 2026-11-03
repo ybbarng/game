@@ -14,7 +14,13 @@ import { DelayNet, runUntil } from "@/net/race/race-fixture";
 import { RaceSession } from "@/net/race/race-session";
 import type { RaceResult } from "@/net/race/types";
 import { planInWorker } from "../worker";
-import { attachBot, botSeed, checkBotRun, planHere } from "./bot-racer";
+import {
+  attachBot,
+  BOT_NO_PLAN,
+  botSeed,
+  checkBotRun,
+  planHere,
+} from "./bot-racer";
 import { RaceHub } from "./hub";
 import {
   createCubeRaceGame,
@@ -262,6 +268,38 @@ describe("큐브 경주(어댑터)", () => {
     // 첫 수는 계획 시각 + 늦은 만큼
     expect(log[0]?.t).toBe((plan.moves[0]?.at as number) + late);
     expect(g.snapshot().result?.players.bot1?.status).toBe("done");
+  });
+
+  it("계획을 끝내 못 만든 컴퓨터는 그 판을 기권하고 까닭이 결과에 남는다(남은 사람끼리 다시 섞는다)", async () => {
+    const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
+    const bot = sessions.get("bot1") as Session;
+    const h = sessions.get("h") as Session;
+    const g = sessions.get("g") as Session;
+    let asked = 0;
+    attachBot({
+      session: bot,
+      id: "bot1",
+      level: "beginner",
+      n: 2,
+      clock,
+      plan: () => {
+        asked++;
+        return Promise.reject(new Error("축소법이 막혔다"));
+      },
+    });
+    runUntil(clock, () => g.snapshot().seed !== undefined);
+    await Promise.resolve();
+    await Promise.resolve();
+    runUntil(clock, allDone([h, g, bot]), 600_000, 100);
+    const r = g.snapshot().result as RaceResult;
+    expect(h.snapshot().result).toEqual(r);
+    expect(r.players.bot1).toMatchObject({
+      status: "forfeit",
+      reason: BOT_NO_PLAN,
+    });
+    expect(r.players.h?.status).toBe("dnf");
+    // 기권한 뒤 다시 섞은 시도에서는 계획을 다시 세우지 않는다
+    expect(asked).toBe(1);
   });
 
   it("남이 컴퓨터 이름으로 보낸 수는 받지 않는다", () => {
