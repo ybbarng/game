@@ -25,8 +25,8 @@ export function ReactionLab() {
         <h1 className="font-bold text-xl">반응 측정실</h1>
         <p className="break-keep text-sm text-white/70">
           누가 먼저 눌렀는지 공정하게 가리는 장치를 만들려고 기기와 망을 재는
-          화면입니다. 결과는 개발용 진단 기록으로 보내고, 아래 단추로 복사하거나
-          내려받을 수 있습니다.
+          화면입니다. 결과는 서버로 보내지 않고 이 화면에만 보이며, 아래 단추로
+          복사하거나 내려받을 수 있습니다.
         </p>
         {mode === "e1" && <E1Panel />}
         {mode === "e5" && <E5Panel />}

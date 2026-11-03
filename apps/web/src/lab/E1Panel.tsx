@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { diag, startDiag } from "@/net/diag";
-
 import {
   collectFrames,
   deviceInfo,
@@ -14,23 +12,22 @@ import {
 } from "./device-probe";
 import { ExportButtons } from "./ExportButtons";
 
-/** 누름 재기를 진단 기록으로 보내는 수 */
-const TAPS_TO_SEND = 10;
+/** 누름 재기에 모으는 수 */
+const TAPS = 10;
 
 /**
- * E1 기기 혼자(docs/43 5절). 열면 저절로 타이머 단위·주사율을 재고 진단 기록으로 보낸다.
+ * E1 기기 혼자(docs/43 5절). 열면 저절로 타이머 단위·주사율을 재 화면에 보인다.
  * 누름 칸을 누르면 `event.timeStamp` 단위, pointerdown과 click 차이, 입력 처리 지연을 더한다.
+ * 결과는 서버로 보내지 않고 복사·내려받기로만 꺼낸다(운영 진단 기록을 섞지 않게).
  */
 export function E1Panel() {
   const [auto, setAuto] = useState<Record<string, unknown> | null>(null);
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const pendingDown = useRef<{ index: number; ts: number } | null>(null);
-  const sentTaps = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      await startDiag("lab-reaction", { role: "host", game: "lab-reaction" });
       const timer = timerStep();
       const frames = frameRate(await collectFrames());
       if (cancelled) return;
@@ -41,7 +38,6 @@ export function E1Panel() {
         visibility: document.visibilityState,
       };
       setAuto(result);
-      diag("lab-e1", result);
     })();
     return () => {
       cancelled = true;
@@ -49,12 +45,6 @@ export function E1Panel() {
   }, []);
 
   const tapSummary = taps.length > 0 ? summarizeTaps(taps) : null;
-
-  useEffect(() => {
-    if (sentTaps.current || taps.length < TAPS_TO_SEND || !tapSummary) return;
-    sentTaps.current = true;
-    diag("lab-e1-taps", tapSummary);
-  }, [taps, tapSummary]);
 
   const frames = auto?.frames as ReturnType<typeof frameRate> | undefined;
   const timer = auto?.timer as ReturnType<typeof timerStep> | undefined;
@@ -119,7 +109,7 @@ export function E1Panel() {
           );
         }}
       >
-        여기를 {TAPS_TO_SEND}번 눌러 주세요 ({taps.length})
+        여기를 {TAPS}번 눌러 주세요 ({taps.length})
       </button>
       {tapSummary && (
         <p className="text-sm" data-lab-taps>
