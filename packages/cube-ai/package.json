@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@game/cube-engine": "workspace:*",
+    "@game/cube-reduction": "workspace:*",
     "@game/cube-solver": "workspace:*",
     "@game/puzzle-core": "workspace:*"
   }

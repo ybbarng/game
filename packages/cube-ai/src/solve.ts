@@ -33,7 +33,15 @@ export type StageName =
   | "ep"
   | "oll"
   | "pll"
-  | "first-layer";
+  | "first-layer"
+  // 4×4·5×5(축소법)
+  | "centers-ud"
+  | "centers-rest"
+  | "edges"
+  | "last-edges"
+  | "oll-parity"
+  | "pll-parity"
+  | "three";
 
 export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   solve: "맞추기",
@@ -51,6 +59,13 @@ export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   oll: "윗면(OLL)",
   pll: "윗층 자리(PLL)",
   "first-layer": "첫 층",
+  "centers-ud": "흰·노랑 가운데",
+  "centers-rest": "나머지 가운데",
+  edges: "모서리 짝",
+  "last-edges": "마지막 두 모서리",
+  "oll-parity": "패리티(모서리 뒤집기)",
+  "pll-parity": "패리티(모서리 맞바꾸기)",
+  three: "3×3 맞추기",
 };
 
 export interface SolveStage {
@@ -65,6 +80,12 @@ export interface HumanSolve {
   /** WCA 표기 수 목록(큐브 돌리기 x·y·z, 3×3의 가운데 층 M·E·S 포함) */
   moves: string[];
   stages: SolveStage[];
+  /**
+   * 단계 안에서 사람이 다음 모양을 살피느라 잠깐 멈추는 자리(이 번호의 수 앞, 늘어나는 차례).
+   * 입문이 같은 공식을 되풀이할 때 공식 묶음 사이가 그런 자리다. 단계 첫 수는 넣지 않는다
+   * (단계 사이 멈춤이 따로 있다).
+   */
+  looks: number[];
 }
 
 const SOLVED_FRAME: readonly Face[] = FACES;
@@ -76,6 +97,8 @@ export class Solve {
   frame: Face[] | null;
   readonly moves: CubeMove[];
   readonly stageList: { name: StageName; start: number; end: number }[];
+  /** 살피는 멈춤이 드는 자리(`moves` 번호). `look()`으로 더한다 */
+  readonly lookList: number[];
 
   constructor(n: number, facelets: string, frame: Face[] | null = null) {
     this.n = n;
@@ -83,6 +106,7 @@ export class Solve {
     this.frame = n === 3 ? null : (frame ?? [...SOLVED_FRAME]);
     this.moves = [];
     this.stageList = [];
+    this.lookList = [];
   }
 
   clone(): Solve {
@@ -136,39 +160,71 @@ export class Solve {
     this.stageList.push({ name, start, end: this.moves.length });
   }
 
+  /** 다음 수 앞에서 다음 모양을 살핀다(공식을 되풀이하는 단계의 한 바퀴 시작) */
+  look(): void {
+    if (this.lookList.at(-1) !== this.moves.length)
+      this.lookList.push(this.moves.length);
+  }
+
   /** 단계마다 이어진 같은 층 수를 합치고 WCA 표기로 낸다 */
   result(): HumanSolve {
     const moves: string[] = [];
     const stages: SolveStage[] = [];
+    const looks: number[] = [];
+    const lookSet = new Set(this.lookList);
     for (const st of this.stageList) {
-      const merged = mergeMoves(this.moves.slice(st.start, st.end));
+      const raw = this.moves
+        .slice(st.start, st.end)
+        .map((m, i) => ({ m, look: lookSet.has(st.start + i) }));
+      const merged = mergeMarked(raw);
       const start = moves.length;
-      for (const m of merged) moves.push(formatMove(this.n, m));
+      merged.forEach(({ m, look }, i) => {
+        if (look && i > 0) looks.push(moves.length);
+        moves.push(formatMove(this.n, m));
+      });
       stages.push({ name: st.name, start, end: moves.length });
     }
-    return { moves, stages };
+    return { moves, stages, looks };
   }
+}
+
+interface Marked {
+  m: CubeMove;
+  look: boolean;
+}
+
+/** 합치기와 같고, 멈춤 표시는 합쳐진 수의 앞쪽에, 지워진 수의 표시는 다음 수에 넘긴다 */
+function mergeMarked(list: readonly Marked[]): Marked[] {
+  const out: Marked[] = [];
+  let carry = false;
+  for (const item of list) {
+    const last = out.at(-1);
+    const m = item.m;
+    if (
+      last &&
+      last.m.axis === m.axis &&
+      last.m.from === m.from &&
+      last.m.to === m.to
+    ) {
+      const turns = (last.m.turns + m.turns) % 4;
+      out.pop();
+      if (turns !== 0)
+        out.push({
+          m: { ...m, turns: turns as 1 | 2 | 3 },
+          look: last.look || item.look,
+        });
+      else carry = carry || last.look || item.look;
+    } else {
+      out.push({ m, look: item.look || carry });
+      carry = false;
+    }
+  }
+  return out;
 }
 
 /** 이어진 같은 층 수 합치기(U U → U2, R R' → 없음) */
 export function mergeMoves(list: readonly CubeMove[]): CubeMove[] {
-  const out: CubeMove[] = [];
-  for (const m of list) {
-    const last = out.at(-1);
-    if (
-      last &&
-      last.axis === m.axis &&
-      last.from === m.from &&
-      last.to === m.to
-    ) {
-      const turns = (last.turns + m.turns) % 4;
-      out.pop();
-      if (turns !== 0) out.push({ ...m, turns: turns as 1 | 2 | 3 });
-    } else {
-      out.push(m);
-    }
-  }
-  return out;
+  return mergeMarked(list.map((m) => ({ m, look: false }))).map((x) => x.m);
 }
 
 /** 큐브 돌리기 뒤의 기준 방향: 맞춘 3×3에 같은 돌리기를 두고 가운데가 어디로 갔나 본다 */
