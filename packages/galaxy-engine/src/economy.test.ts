@@ -235,6 +235,14 @@ describe("관측지와 혜성", () => {
     expect(paysOf(events)).toEqual([
       { type: "pay", from: -1, to: 0, amount: 150, reason: "observatory" },
     ]);
+    expect(events).toContainEqual({ type: "observed", seat: 0, amount: 150 });
+    // 1위라 0이어도 받은 값을 사건으로 남긴다(돈은 오가지 않는다)
+    const rich = roll(
+      scene({ positions: [13, 0, 0, 0], cash: [3000, 1000, 1000, 1000] }),
+      [1, 2],
+    ).events;
+    expect(rich).toContainEqual({ type: "observed", seat: 0, amount: 0 });
+    expect(paysOf(rich)).toEqual([]);
     const three = scene({
       rules: { ...STANDARD_RULES, players: 3 },
       cash: [100, 200, 300],

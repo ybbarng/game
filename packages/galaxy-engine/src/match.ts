@@ -930,9 +930,12 @@ function land(
   events.push({ type: "landed", seat, square });
   const kind = s.board.squares[square]?.kind;
   switch (kind) {
-    case "observatory":
-      pay(s, events, BANK, seat, observatoryGrant(s, seat), "observatory");
+    case "observatory": {
+      const amount = observatoryGrant(s, seat);
+      events.push({ type: "observed", seat, amount });
+      pay(s, events, BANK, seat, amount, "observatory");
       return "done";
+    }
     case "comet":
       s.phase = "turn";
       s.turn.next = "comet";

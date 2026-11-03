@@ -18,6 +18,7 @@ export {
 /** 지금 설정으로 만든 규칙(하늘은 G7 전까지 사계절 하늘 하나) */
 export function rulesFromSettings(
   s: Pick<GalaxySettings, "players" | "length" | "trade" | "seasonal"> & {
+    meteor?: boolean;
     time?: TimePreset;
   },
 ): GalaxyRules {
@@ -26,6 +27,7 @@ export function rulesFromSettings(
     length: s.length,
     trade: s.trade,
     seasonal: s.seasonal,
+    meteor: s.meteor === true,
     sky: DEFAULT_SKY,
     ...(s.time && s.time !== "none" ? { time: s.time } : {}),
   };

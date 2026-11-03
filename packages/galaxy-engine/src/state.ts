@@ -313,6 +313,8 @@ export type GameEvent =
       card?: number;
     }
   | { type: "landed"; seat: number; square: number }
+  /** 관측지에 멈춰 받을 관측 지원금(1위라 0이어도 남긴다. 0보다 크면 뒤에 pay 사건이 따른다) */
+  | { type: "observed"; seat: number; amount: number }
   | { type: "card"; seat: number; card: number; squares: number[] }
   | { type: "jailed"; seat: number; by: "card" | "doubles" }
   | { type: "freed"; seat: number; by: "fine" | "doubles" | "wait" }

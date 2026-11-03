@@ -8,6 +8,18 @@ import {
 import { money, SEASON_NAMES, squareName } from "./format";
 
 /**
+ * 별 사실 공문(2·3·4·8·10·12)과 별자리 선 측량(16)에서 해당하는 별이 없어 0이 됐을 때 붙이는 말. 그 밖은 null
+ */
+export function cardNoMatch(
+  cardId: number,
+  squares: readonly number[],
+): string | null {
+  if (squares.length > 0) return null;
+  if (cardId === 16) return "해당 별자리 없음";
+  return cardById(cardId).fact !== null ? "해당 별 없음" : null;
+}
+
+/**
  * 사건 한 줄(오른쪽 「기록」 칸·다시 보기). 돈이 누구에게서 누구에게 왜 갔는지를 보인다(docs/48 13절 1번).
  * 화면에 남길 것이 없는 사건(약속·공개·차례 시작 등)은 null
  */
@@ -58,8 +70,14 @@ export function eventLine(
       return e.result.winner === null
         ? `봉인 입찰 · ${squareName(board, e.result.square)} · 아무도 내지 않음`
         : `봉인 입찰 · ${name(e.result.winner)} ${squareName(board, e.result.square)} ${money(e.result.price)}`;
-    case "card":
-      return `${name(e.seat)} · 공문 「${cardById(e.card).title}」`;
+    case "observed":
+      return e.amount > 0
+        ? null
+        : `${name(e.seat)} · 관측지 · 자산 1위라 관측 지원금 없음`;
+    case "card": {
+      const none = cardNoMatch(e.card, e.squares);
+      return `${name(e.seat)} · 공문 「${cardById(e.card).title}」${none ? ` · ${none}` : ""}`;
+    }
     case "linked": {
       const group = board.groups[e.group]?.ko ?? "";
       return e.owned >= e.size
@@ -86,6 +104,8 @@ export function eventLine(
       return `${name(e.seat)} · 운항 중단`;
     case "seasonChanged":
       return `${SEASON_NAMES[e.season] ?? ""} 하늘이 떠올랐어요`;
+    case "meteorShower":
+      return "유성우의 밤 · 판 끝까지 이용료 2배";
     case "timeUp":
       return "시간 상한 · 이번 돌림을 마치면 끝나요";
     default:

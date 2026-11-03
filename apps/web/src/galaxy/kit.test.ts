@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { SKY_STARS } from "@/stardraw/sky";
 import type { RoundRecord } from "@/stats/records";
 
+import { eventLine } from "./events";
 import { buildTimeline, shipPositions, shownCash } from "./fx";
 import {
   describeGalaxy,
@@ -18,6 +19,7 @@ import {
   type GalaxyRound,
   galaxyKit,
   galaxyStats,
+  metSquares,
   outcomeOf,
   summarizeGalaxy,
 } from "./kit";
@@ -203,5 +205,51 @@ describe("연출 목록", () => {
     expect(shipPositions(t, [0, 5], t.total)[1]?.square).toBe(5);
     expect(shownCash(t, events, [1030, 970], 0)).toEqual([1000, 1000]);
     expect(shownCash(t, events, [1030, 970], t.total)).toEqual([1030, 970]);
+  });
+});
+
+describe("만난 별과 사건 줄", () => {
+  const board = boardOfSky("seasons");
+  const view = { board, owners: board.squares.map(() => -1), mySeat: 0 };
+
+  it("처음 받은 별, 거래로 오간 별도 만난 별에 든다", () => {
+    const events: GameEvent[] = [
+      {
+        type: "dealt",
+        stars: [
+          [1, 2],
+          [5, 6],
+        ],
+      },
+      {
+        type: "tradeAccepted",
+        offer: {
+          from: 1,
+          to: 0,
+          give: { stars: [9], cash: 0 },
+          get: { stars: [2], cash: 100 },
+        },
+      },
+    ];
+    expect(metSquares(view, events)).toEqual([1, 2, 9]);
+  });
+
+  it("해당 별이 없어 0인 공문, 1위라 0인 관측 지원금도 줄을 남긴다", () => {
+    const name = (s: number) => (s === 0 ? "나" : `컴퓨터 ${s}`);
+    const card = (id: number, squares: number[]) =>
+      eventLine({ type: "card", seat: 0, card: id, squares }, board, name);
+    expect(card(4, [])).toBe("나 · 공문 「먼 별 탐사 지원」 · 해당 별 없음");
+    expect(card(16, [])).toContain("해당 별자리 없음");
+    expect(card(4, [9])).not.toContain("없음");
+    expect(card(1, [])).not.toContain("없음");
+    expect(
+      eventLine({ type: "observed", seat: 1, amount: 0 }, board, name),
+    ).toContain("관측 지원금 없음");
+    expect(
+      eventLine({ type: "observed", seat: 1, amount: 50 }, board, name),
+    ).toBeNull();
+    expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
+      "유성우의 밤",
+    );
   });
 });
