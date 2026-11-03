@@ -1,4 +1,5 @@
 import { useTestSpeed } from "./fast";
+import { slowCpu, stopFrames, watchFrames } from "./frames";
 import { expect, type Page, ready, test } from "./test";
 
 /** 판 크기와 가장자리 여백(JanggiBoard의 PAD) */
@@ -515,4 +516,38 @@ test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 �
   });
   await expect(page.locator("[data-plan]")).toContainText("노림: ");
   await page.screenshot({ path: info.outputPath("janggi-master.png") });
+});
+
+test("장기: 초고수가 생각하는 동안에도 화면이 멈추지 않는다(CPU 4배 느리게, 워커 계산)", async ({
+  page,
+}, info) => {
+  // CPU 느리게 하기는 Chromium CDP라 데스크톱 한 화면에서만 본다.
+  test.skip(info.project.name !== "desktop", "데스크톱에서만");
+  await page.goto("/janggi");
+  await startSolo(page, "초고수");
+  await page.getByRole("button", { name: "상마상마" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await slowCpu(page, 4);
+  // 첫 수는 초고수도 가볍게 답한다. 세 수를 이어 두며 컴퓨터가 생각하는 동안만 잰다(내 수를 그리는 때는 빼고).
+  let maxGap = 0;
+  let span = 0;
+  for (let i = 0; i < 3; i++) {
+    await playOne(page, false);
+    await watchFrames(page);
+    // 컴퓨터가 답하면 다시 내 차례(느린 CPU라 넉넉히 기다린다).
+    await expect(page.getByRole("status")).toContainText("내 차례", {
+      timeout: 30_000,
+    });
+    const round = await stopFrames(page);
+    maxGap = Math.max(maxGap, round.maxGap);
+    span += round.span;
+  }
+  info.annotations.push({
+    type: "frames",
+    description: `가장 긴 프레임 간격 ${maxGap}ms, 잰 시간 ${span}ms`,
+  });
+  console.info(`[장기 초고수] 가장 긴 프레임 간격 ${maxGap}ms / ${span}ms`);
+  // 화면 스레드에서 세면 CPU 4배 느린 판에서 한 번에 0.8초 넘게 멈춘다(고수 한 수 약 0.2초 × 4).
+  // 재는 구간에 컴퓨터 수를 그리는 순간도 들어가 CI 기기 속도에 따라 흔들리지 않게 넉넉히 400ms로 가린다
+  expect(maxGap).toBeLessThan(400);
 });

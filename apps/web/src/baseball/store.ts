@@ -8,6 +8,7 @@ import {
   type GameEvent,
 } from "@game/baseball-engine";
 import { create } from "zustand";
+import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
@@ -226,6 +227,8 @@ export const useBaseball = create<BaseballStore>((set, get) => {
   ) => {
     stop();
     const { local, level } = options;
+    // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
+    if (get().local !== local) get().local?.dispose();
     secretKey = options.key;
     const recorder = options.stats
       ? new StatsRecorder(baseballKit.stats, options.stats)
@@ -282,6 +285,7 @@ export const useBaseball = create<BaseballStore>((set, get) => {
         seed,
         humanSeat: 0,
         bot: baseballBotFor(level),
+        ...workerBotOption({ game: "baseball", level }),
         pace: browserPace,
       },
       log,
@@ -440,6 +444,7 @@ export const useBaseball = create<BaseballStore>((set, get) => {
 
     leave() {
       stop();
+      get().local?.dispose();
       secretKey = null;
       set({
         host: null,

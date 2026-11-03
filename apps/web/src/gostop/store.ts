@@ -8,6 +8,7 @@ import type {
 } from "@game/gostop-engine";
 import type { PresetDeal } from "@game/hwatu";
 import { create } from "zustand";
+import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
@@ -174,6 +175,8 @@ export const useGostop = create<GostopStore>((set, get) => {
   ) => {
     stop();
     const { local, level } = options;
+    // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
+    if (get().local !== local) get().local?.dispose();
     const recorder = options.stats
       ? new StatsRecorder(gostopKit.stats, options.stats)
       : null;
@@ -227,6 +230,7 @@ export const useGostop = create<GostopStore>((set, get) => {
         seed,
         humanSeat: 0,
         bot: gostopBotFor(level),
+        ...workerBotOption({ game: "gostop", level }),
         pace: browserPace,
       },
       log,
@@ -357,6 +361,7 @@ export const useGostop = create<GostopStore>((set, get) => {
 
     leave() {
       stop();
+      get().local?.dispose();
       set({
         host: null,
         local: null,

@@ -1,7 +1,7 @@
 "use client";
 
-import { createBadukSearchBot, EXPERT_PLAYOUTS } from "@game/baduk-ai";
 import {
+  type Action,
   areaOwners,
   atariStones,
   type BadukView,
@@ -25,6 +25,7 @@ import {
   MissionOverlay,
   type MissionProps,
 } from "@/components/tutorial/MissionOverlay";
+import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
@@ -32,9 +33,6 @@ import { countText } from "../kit";
 import { BADUK_LEVELS, useBadukSettings } from "../settings";
 import { useBaduk } from "../store";
 import { BadukBoard } from "./BadukBoard";
-
-/** 힌트에 쓰는 컴퓨터: 고수와 같은 나무 탐색을 판 수만 3분의 1로(휴대폰에서도 1초 안팎) */
-const HINT_BOT = createBadukSearchBot(Math.round(EXPERT_PLAYOUTS / 3));
 
 /** 돌 그림(판 위 돌과 같은 빛과 그림자) */
 export function StoneDot({
@@ -129,7 +127,7 @@ export function BadukGame({
   const atariHint = useBadukSettings((s) => s.atariHint);
   const played = view?.played.length ?? 0;
   // 힌트: 컴퓨터가 고른 자리(쉬기면 "pass"). 수가 오가면 지운다.
-  const { hint, showHint } = useHint<number | "pass">(played);
+  const { hint, showHint, thinking, ask } = useHint<number | "pass">(played);
 
   useEffect(() => {
     if (!notice) return;
@@ -341,14 +339,24 @@ export function BadukGame({
               online={online}
               mission={!!mission}
               myTurn={myTurn}
-              onHint={() => {
-                // 같은 판이면 같은 수(시드는 둔 수 개수)
-                const action = HINT_BOT.decide(view, createRng(played + 1));
-                if (action.type === "place") {
-                  showHint(action.at);
-                  setAim(action.at);
-                } else showHint("pass");
-              }}
+              thinking={thinking}
+              onHint={() =>
+                // 같은 판이면 같은 수(시드는 둔 수 개수). 힌트 고수(baduk/advisor.ts)가 워커에서 센다.
+                ask(
+                  () =>
+                    adviseWith<Action>(
+                      { game: "baduk", name: "advisor" },
+                      view,
+                      createRng(played + 1).seed,
+                    ),
+                  (action) => {
+                    if (action.type === "place") {
+                      showHint(action.at);
+                      setAim(action.at);
+                    } else showHint("pass");
+                  },
+                )
+              }
             />
             {myTurn && (
               <button

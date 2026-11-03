@@ -68,6 +68,8 @@
   - `undo`(혼자 하기만), `leave`
   - `startPractice`(튜토리얼: 저장·기록·무르기 없음)
   - 컴퓨터 수는 조금 기다렸다 보인다
+  - 컴퓨터 수는 웹 워커에서 센다(2026-11-03, docs/26 8절): `game/bot-registry.ts` 등록부에 게임 한 줄(`<게임>BotFor(level)`, 화면용 고수가 있으면 `name: "advisor"`)을 넣고, 대국에 `...workerBotOption({ game, level })`을 넘긴다. 무르기·새 판·떠나기로 대국을 바꾸면 이전 대국을 `dispose()`한다. 온라인 화면도 `HostRoom`에 같은 열쇠를 넘긴다
+  - 힌트·문제 받는 수처럼 화면에서 고수를 부르는 곳은 `decide`를 바로 부르지 않고 `adviseWith`(힌트는 `useHint().ask`)로 워커에 맡긴다
 - [ ] `session.ts`: 온라인 방 정리
 
 ## 5. 화면

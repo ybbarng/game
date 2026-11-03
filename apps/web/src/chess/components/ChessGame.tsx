@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type Action,
   type ChessView,
   KIND_NAMES,
   type Kind,
@@ -28,10 +29,10 @@ import {
   MissionOverlay,
   type MissionProps,
 } from "@/components/tutorial/MissionOverlay";
+import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
-import { chessAdvisor } from "../advisor";
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
 import { CHESS_LEVELS, useChessSettings } from "../settings";
@@ -203,7 +204,7 @@ export function ChessGame({
   const [promotion, setPromotion] = useState<Move | null>(null);
   const played = view?.played.length ?? 0;
   /** 힌트: 고수가 이 판에서 고르는 수(장기와 같은 초록 고리) */
-  const { hint, showHint } = useHint<Move>(played);
+  const { hint, showHint, thinking, ask } = useHint<Move>(played);
   const list = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -445,15 +446,23 @@ export function ChessGame({
               online={online}
               mission={!!mission}
               myTurn={myMove}
-              onHint={() => {
-                // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께).
-                const action = chessAdvisor.decide(view, {
-                  seed: played + 1,
-                });
-                if (action.type !== "move") return;
-                showHint({ from: action.from, to: action.to });
-                setSelected(action.from);
-              }}
+              thinking={thinking}
+              onHint={() =>
+                // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 워커에서 센다.
+                ask(
+                  () =>
+                    adviseWith<Action>(
+                      { game: "chess", name: "advisor" },
+                      view,
+                      played + 1,
+                    ),
+                  (action) => {
+                    if (action.type !== "move") return;
+                    showHint({ from: action.from, to: action.to });
+                    setSelected(action.from);
+                  },
+                )
+              }
             />
             {view.canOfferDraw && !mission && (
               <button

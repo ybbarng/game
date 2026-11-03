@@ -17,6 +17,7 @@ import {
 } from "@/review/recorder";
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
+import { workerBotOption } from "./bot-runner";
 import { botFor, browserPace } from "./bots";
 import { cuesFor, type DealTiming } from "./cues";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
@@ -153,6 +154,8 @@ interface GameStore {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
+/** 혼자 하는 대국(바꿀 때 `dispose`) */
+let solo: LocalMatch | null = null;
 
 function clearTimer(): void {
   if (timer !== null) clearTimeout(timer);
@@ -316,6 +319,9 @@ export const useGame = create<GameStore>((set, get) => {
   ) => {
     clearTimer();
     unsubscribe?.();
+    // 혼자 하던 대국을 바꾸면(새 판·이어하기·온라인) 그 대국이 세던 컴퓨터 수는 버린다.
+    if (solo && solo !== host) solo.dispose();
+    solo = options.save && host instanceof LocalMatch ? host : null;
     const current = host.current();
     const pending = host.drain();
     set({
@@ -423,6 +429,10 @@ export const useGame = create<GameStore>((set, get) => {
         rules: options.rules,
         seed,
         bot: botFor(useSettings.getState().botLevel),
+        ...workerBotOption({
+          game: "mighty",
+          level: useSettings.getState().botLevel,
+        }),
         pace: browserPace,
         ...(options.presetDeal ? { presetDeal: options.presetDeal } : {}),
       });
@@ -439,6 +449,10 @@ export const useGame = create<GameStore>((set, get) => {
       attach(
         LocalMatch.restore(saved, {
           bot: botFor(useSettings.getState().botLevel),
+          ...workerBotOption({
+            game: "mighty",
+            level: useSettings.getState().botLevel,
+          }),
           pace: browserPace,
         }),
         {

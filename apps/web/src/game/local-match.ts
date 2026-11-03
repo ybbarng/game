@@ -12,6 +12,7 @@ import {
   type RuleSet,
 } from "@game/mighty-engine";
 
+import type { BotRunner } from "./bot-runner";
 import type { MatchHost, Snapshot, SubmitResult } from "./host";
 import type { GameKit, KitBot, KitLoggedAction, StepOutcome } from "./kit";
 import { mightyKit } from "./mighty-kit";
@@ -42,6 +43,12 @@ export interface LocalMatchOptions<
    * 2단계 봇이 여럿 이어 생각해도 화면이 한 번에 오래 멈추지 않는다. 없으면 한 번에 다 둔다.
    */
   pace?: (next: () => void) => void;
+  /**
+   * 컴퓨터 수를 다른 곳(웹 워커, `workerBot`)에서 센다. 있으면 생각하는 동안 화면이 멈추지 않는다.
+   * 받은 난수는 그대로 두고 돌려준 난수를 이어 쓰므로 `bot.decide`를 바로 부를 때와 같은 기록이 된다.
+   * 계산하는 사이 판이 바뀌면(무르기·기권·판 끝·`dispose`) 그 답은 버린다. 없으면 같은 스레드에서 바로 센다
+   */
+  runBot?: BotRunner<View, ActionT>;
   /** 엔진 한 걸음을 바꾼다(멘탈 포커: 자리 표를 든 상태, packages/fair-play) */
   step?: (
     state: State,
@@ -168,6 +175,11 @@ export class LocalMatch<
    * 아직 두지 못한 수(멘탈 포커 준비 중)의 난수까지 남기면 되살린 뒤 같은 수를 다시 생각하지 못한다)
    */
   private appliedRng = 0;
+  /** 워커에서 컴퓨터 수를 세는 중이면 그 일(번호가 바뀌면 늦게 온 답을 버린다) */
+  private thinking: { ticket: number; abort: AbortController } | null = null;
+  private thinkTicket = 0;
+  /** 더 쓰지 않는 대국(무르기·새 판·떠나기로 바꿨다). 컴퓨터를 더 돌리지 않는다 */
+  private disposed = false;
 
   constructor(
     options: LocalMatchOptions<Rules, State, View, ActionT, Event, Extra>,
@@ -280,7 +292,7 @@ export class LocalMatch<
 
   static restore(
     saved: SavedMatch,
-    extra: Pick<LocalMatchOptions, "bot" | "pace"> = {},
+    extra: Pick<LocalMatchOptions, "bot" | "pace" | "runBot"> = {},
   ): LocalMatch {
     return new LocalMatch(
       {
@@ -328,6 +340,26 @@ export class LocalMatch<
   /** 부정이 드러나 더 진행하지 않는다 */
   halt(reason: string): void {
     this.haltedReason = reason;
+    this.stopThinking();
+  }
+
+  /** 더 쓰지 않는다(무르기·새 판·떠나기). 세는 중인 컴퓨터 수는 버린다 */
+  dispose(): void {
+    this.disposed = true;
+    this.stopThinking();
+  }
+
+  /** 컴퓨터가 워커에서 수를 세는 중인가 */
+  get botThinking(): boolean {
+    return this.thinking !== null;
+  }
+
+  /** 세는 중인 컴퓨터 수를 버린다(늦게 와도 쓰지 않는다) */
+  private stopThinking(): void {
+    if (!this.thinking) return;
+    this.thinking.abort.abort();
+    this.thinking = null;
+    this.thinkTicket++;
   }
 
   /**
@@ -340,6 +372,7 @@ export class LocalMatch<
     if (!result.ok) return result;
     this.ended = true;
     this.haltedReason = "게임을 끝냈다";
+    this.stopThinking();
     for (const seat of [...this.held.keys()]) this.deliver(seat);
     return result;
   }
@@ -511,6 +544,8 @@ export class LocalMatch<
     const result = this.stepper(this.state, seat, action);
     if (!result.ok) return result;
     this.state = result.state;
+    // 컴퓨터가 지난 판을 보고 세던 수는 버린다(사람이 기권·무승부 제안을 했거나 시간패). 부른 쪽이 다시 깨운다.
+    this.stopThinking();
     this.log.push(bot ? { seat, action, bot: true } : { seat, action });
     this.appliedRng = this.rng.seed;
     if (timing) {
@@ -564,9 +599,10 @@ export class LocalMatch<
     });
   }
 
-  /** 봇 한 수. 둘 봇이 없으면 `false` */
+  /** 봇 한 수. 둘 봇이 없으면 `false`(워커에서 세기 시작했을 때도. 답이 오면 다시 깨운다) */
   private stepBot(): boolean {
-    if (this.haltedReason || this.botBusy) return false;
+    if (this.haltedReason || this.botBusy || this.thinking || this.disposed)
+      return false;
     const pending = this.options.pendingSeats
       ? this.options.pendingSeats(this.state)
       : this.kit.pendingSeats(this.state);
@@ -579,7 +615,49 @@ export class LocalMatch<
     // 멘탈 포커: 아직 카드를 열지 못했으면 열 때까지 기다린다(`refresh`).
     if (view === null) return false;
     if (this.kit.botCanAct && !this.kit.botCanAct(view)) return false;
-    const decided = this.bot.decide(view, this.rng);
+    if (this.options.runBot) {
+      this.thinkOffThread(this.options.runBot, seat, view);
+      return false;
+    }
+    return this.playBot(seat, view, this.bot.decide(view, this.rng));
+  }
+
+  /**
+   * 워커에서 컴퓨터 수를 센다. 난수는 답이 온 뒤에야 이어 쓴다(버린 답의 난수는 쓰지 않아,
+   * 실제로 둔 컴퓨터 수마다 한 번씩 난수가 나아간다. 같은 스레드에서 셀 때와 같다)
+   */
+  private thinkOffThread(
+    runBot: BotRunner<View, ActionT>,
+    seat: number,
+    view: View,
+  ): void {
+    const ticket = ++this.thinkTicket;
+    const abort = new AbortController();
+    this.thinking = { ticket, abort };
+    const state = this.state;
+    runBot(view, { seed: this.rng.seed }, abort.signal).then(
+      ({ action, rng }) => {
+        if (this.thinking?.ticket !== ticket) return;
+        this.thinking = null;
+        // 세는 사이 판이 바뀌었거나(멘탈 포커 증명 반영 등) 사람이 돌아왔으면 지금 판으로 다시 센다.
+        if (this.state !== state || !this.isBot(seat)) {
+          this.runBots();
+          return;
+        }
+        this.rng.seed = rng.seed;
+        if (this.playBot(seat, view, action)) this.runBots();
+      },
+      (err: unknown) => {
+        if (this.thinking?.ticket !== ticket) return;
+        this.thinking = null;
+        // 계산이 실패하면 같은 생각을 되풀이하지 않게 멈춘다(다음 `refresh`에 다시 센다).
+        console.error("컴퓨터 계산 실패", err);
+      },
+    );
+  }
+
+  /** 고른 컴퓨터 수를 둔다. 이어서 다음 봇을 돌릴 수 있으면 `true` */
+  private playBot(seat: number, view: View, decided: ActionT): boolean {
     const action = this.kit.annotateBotAction
       ? this.kit.annotateBotAction(view, decided)
       : decided;

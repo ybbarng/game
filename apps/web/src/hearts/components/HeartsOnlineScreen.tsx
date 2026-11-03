@@ -14,6 +14,7 @@ import {
 } from "@/components/FairLine";
 import { InviteLink } from "@/components/InviteLink";
 import { ActionButton } from "@/components/panels/common";
+import { workerBotOption } from "@/game/bot-runner";
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
@@ -178,6 +179,10 @@ export function HeartsOnlineScreen({
           ...(resume ? { restore: resume.restore } : {}),
           bot: heartsBotFor(useHeartsSettings.getState().level),
           botLevel: useHeartsSettings.getState().level,
+          ...workerBotOption({
+            game: "hearts",
+            level: useHeartsSettings.getState().level,
+          }),
           botNames: useSettings.getState().botNames,
           pace: (next) => setTimeout(next, 0),
           ...testVoteDelayMs(),

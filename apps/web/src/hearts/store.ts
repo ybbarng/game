@@ -10,6 +10,7 @@ import {
 import type { Card } from "@game/mighty-engine";
 import { create } from "zustand";
 import type { EndVoteState, IncidentState } from "@/components/FairOverlays";
+import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { DealTiming } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
@@ -152,6 +153,8 @@ interface HeartsStore {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
+/** 혼자 하는 대국(바꿀 때 `dispose`) */
+let solo: { dispose(): void } | null = null;
 
 function clearTimer(): void {
   if (timer !== null) clearTimeout(timer);
@@ -289,6 +292,12 @@ export const useHearts = create<HeartsStore>((set, get) => {
   ) => {
     clearTimer();
     unsubscribe?.();
+    // 혼자 하던 대국을 바꾸면(새 판·이어하기·온라인) 그 대국이 세던 컴퓨터 수는 버린다.
+    if (solo && solo !== (host as unknown)) solo.dispose();
+    solo =
+      options.save && host instanceof LocalMatch
+        ? (host as unknown as typeof solo)
+        : null;
     const current = host.current();
     const pending = host.drain();
     set({
@@ -362,6 +371,10 @@ export const useHearts = create<HeartsStore>((set, get) => {
         rules,
         seed,
         bot: heartsBotFor(useHeartsSettings.getState().level),
+        ...workerBotOption({
+          game: "hearts",
+          level: useHeartsSettings.getState().level,
+        }),
         pace: browserPace,
       },
       log,

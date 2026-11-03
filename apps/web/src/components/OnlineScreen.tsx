@@ -7,6 +7,7 @@ import {
   type RuleSet,
 } from "@game/mighty-engine";
 import { useEffect, useRef, useState } from "react";
+import { workerBotOption } from "@/game/bot-runner";
 import { botFor, browserPace } from "@/game/bots";
 import { mightyKit } from "@/game/mighty-kit";
 import { ruleLabel, useSettings } from "@/game/settings";
@@ -207,6 +208,10 @@ export function OnlineScreen({
           ...(resume ? { restore: resume.restore } : {}),
           bot: botFor(useSettings.getState().botLevel),
           botLevel: useSettings.getState().botLevel,
+          ...workerBotOption({
+            game: "mighty",
+            level: useSettings.getState().botLevel,
+          }),
           botNames: useSettings.getState().botNames,
           pace: browserPace,
           ...testVoteDelayMs(),

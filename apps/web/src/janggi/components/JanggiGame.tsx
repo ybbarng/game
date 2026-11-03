@@ -1,7 +1,8 @@
 "use client";
 
-import { janggiBotFor, masterPlanFor } from "@game/janggi-ai";
+import { masterPlanFor } from "@game/janggi-ai";
 import {
+  type Action,
   type JanggiView,
   type Kind,
   kingOf,
@@ -28,6 +29,7 @@ import {
   MissionOverlay,
   type MissionProps,
 } from "@/components/tutorial/MissionOverlay";
+import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
@@ -164,7 +166,12 @@ export function JanggiGame({
   const [selected, setSelected] = useState<number | null>(null);
   const played = view?.played.length ?? 0;
   // 힌트: 고수가 고른 수, 또는 쉬기("pass"). 수가 오가면 저절로 지운다(공통 useHint)
-  const { hint: hinted, showHint } = useHint<Move | "pass">(played);
+  const {
+    hint: hinted,
+    showHint,
+    thinking,
+    ask,
+  } = useHint<Move | "pass">(played);
   const hint = hinted === "pass" ? null : hinted;
   /** 힌트로 고수가 쉬기를 골랐다 */
   const hintPass = hinted === "pass";
@@ -398,19 +405,28 @@ export function JanggiGame({
               online={online}
               mission={!!mission}
               myTurn={myMove}
-              onHint={() => {
+              thinking={thinking}
+              onHint={() =>
                 // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 쉬기면 상태 줄로 알린다.
-                const action = janggiBotFor(2).decide(view, {
-                  seed: played + 1,
-                });
-                if (action.type === "pass") {
-                  showHint("pass");
-                  return;
-                }
-                if (action.type !== "move") return;
-                showHint({ from: action.from, to: action.to });
-                setSelected(action.from);
-              }}
+                // 워커에서 센다.
+                ask(
+                  () =>
+                    adviseWith<Action>(
+                      { game: "janggi", name: "advisor" },
+                      view,
+                      played + 1,
+                    ),
+                  (action) => {
+                    if (action.type === "pass") {
+                      showHint("pass");
+                      return;
+                    }
+                    if (action.type !== "move") return;
+                    showHint({ from: action.from, to: action.to });
+                    setSelected(action.from);
+                  },
+                )
+              }
             />
             {myMove && view.check !== mySide && (
               <button

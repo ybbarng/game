@@ -6,6 +6,7 @@ import { ChatBox } from "@/components/ChatBox";
 import { ConnectingNotice } from "@/components/ConnectingNotice";
 import { InviteLink } from "@/components/InviteLink";
 import { timePresetLabel } from "@/components/TimePresetPicker";
+import { workerBotOption } from "@/game/bot-runner";
 import type { MatchHost, Snapshot } from "@/game/host";
 import type { GameKit, KitBot } from "@/game/kit";
 import { useSettings } from "@/game/settings";
@@ -210,6 +211,7 @@ export function BoardOnlineScreen<
           ...(resume ? { restore: resume.restore } : {}),
           bot: game.botFor(BOT_LEVEL),
           botLevel: BOT_LEVEL,
+          ...workerBotOption({ game: kit.id, level: BOT_LEVEL }),
           botNames: useSettings.getState().botNames,
           standInDelayMs: STAND_IN_MS,
           pace: (next) => setTimeout(next, 0),
