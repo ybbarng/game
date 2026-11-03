@@ -20,6 +20,8 @@
     "@game/baseball-engine": "workspace:*",
     "@game/chess-ai": "workspace:*",
     "@game/chess-engine": "workspace:*",
+    "@game/cube-engine": "workspace:*",
+    "@game/cube-scramble": "workspace:*",
     "@game/mighty-engine": "workspace:*",
     "@game/fair-play": "workspace:*",
     "@game/galaxy-ai": "workspace:*",

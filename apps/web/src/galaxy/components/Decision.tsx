@@ -164,9 +164,7 @@ export function BuySheet({
         </button>
       </div>
       {!canAfford && (
-        <p className="mt-1 text-rose-200/80 text-xs">
-          별빛이 모자라요. 넘기면 봉인 입찰이 열려요.
-        </p>
+        <p className="mt-1 text-rose-200/80 text-xs">별빛이 모자라요.</p>
       )}
     </Sheet>
   );
@@ -196,9 +194,7 @@ export function BidSheet({
     setValue((v) => Math.max(10, Math.min(top, v + d)));
   return (
     <Sheet title={`봉인 입찰 · ${info?.star.ko ?? ""}`} testId="bid">
-      <p className="text-white/60 text-xs">
-        다른 사람의 값은 끝나야 보여요. 별 값 {money(info?.value ?? 0)}
-      </p>
+      <p className="text-white/60 text-xs">별 값 {money(info?.value ?? 0)}</p>
       <div className="my-3 flex items-center justify-center gap-1.5">
         {[-50, -10].map((d) => (
           <button
@@ -417,9 +413,6 @@ export function TradeComposer({
   );
   return (
     <Sheet title={`거래 · ${name(partner)}`} testId="trade-compose">
-      <p className="mb-2 text-white/60 text-xs">
-        판에서 별을 눌러 담아요. 내 별은 주는 것, 상대 별은 받는 것이에요.
-      </p>
       <div className="flex gap-2">
         <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-2">
           <p className="text-[11px] text-white/50">주는 것</p>
@@ -496,9 +489,6 @@ export function DebtSheet({
         : "";
   return (
     <Sheet title={`별빛 ${money(short)}이 모자라요`} testId="debt">
-      <p className="mb-2 text-white/60 text-xs">
-        정거장을 내리거나 별을 맡겨 마련해요. 넉넉해지면 바로 갚아요.
-      </p>
       <ol className="mb-3 flex flex-col gap-1">
         {plan.map((a, i) => (
           <li
@@ -570,8 +560,7 @@ export function ManagePanel({
       <summary className="cursor-pointer font-semibold">정거장 관리</summary>
       {actions.length === 0 ? (
         <p className="mt-1 text-white/50 text-xs">
-          지금은 올리거나 맡길 별이 없어요. 별자리를 완성하면 정거장을 올릴 수
-          있어요.
+          지금은 올리거나 맡길 별이 없어요.
         </p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1">

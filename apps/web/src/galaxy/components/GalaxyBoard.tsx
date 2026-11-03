@@ -690,7 +690,7 @@ function FxOverlay({
       return (
         <div className={cn(box, "items-center")}>
           <p className="galaxy-toast rounded-xl bg-stone-800/90 px-3 py-2 text-center font-semibold text-sm text-stone-100 shadow-xl">
-            {name(step.seat)} · 소행성대에 걸렸습니다
+            {name(step.seat)} · 소행성대에 걸렸어요.
           </p>
         </div>
       );
@@ -699,8 +699,8 @@ function FxOverlay({
         <div className={cn(box, "items-center")}>
           <p className="galaxy-toast rounded-xl bg-slate-800/90 px-3 py-2 text-center font-semibold text-sm shadow-xl">
             {step.accepted
-              ? `${name(step.from)} ↔ ${name(step.to)} 거래가 이뤄졌어요`
-              : `${name(step.to)} · 거래를 거절했어요`}
+              ? `${name(step.from)} ↔ ${name(step.to)} 거래가 이뤄졌어요.`
+              : `${name(step.to)} · 거래를 거절했어요.`}
           </p>
         </div>
       );
@@ -743,8 +743,8 @@ function FxOverlay({
             {opened && (
               <p className="text-center text-white/70 text-xs">
                 {r.winner === null
-                  ? "아무도 내지 않아 주인 없이 남아요"
-                  : `${name(r.winner)} · ${money(r.price)}에 샀어요`}
+                  ? "아무도 내지 않아 주인 없이 남아요."
+                  : `${name(r.winner)} · ${money(r.price)}에 샀어요.`}
               </p>
             )}
           </div>
