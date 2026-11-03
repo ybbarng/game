@@ -136,6 +136,7 @@
 - [ ] `<게임>/study.ts`: 장면에서 시작하는 판, 내 수 판정, 상대 응수, 해설(장면에서 만든다)
 - [ ] 단위 시험(`study.test.ts`): 모든 문제를 엔진으로 다시 둔다. 정답이 맞고, 다른 수로는 같은 결과가 안 나온다
 - [ ] 화면: 목록은 `StudyHome`, 문제는 공통 틀 `PuzzleScreen`·`usePuzzleRun`(components/study). 배우기 첫 화면의 "수 배우기" 칸으로 들어간다
+- [ ] 문제·수순 화면의 수 소리는 규칙의 `sounds`(놓기·잡기 `Cue`, 예: 바둑 `stone`·`badukCapture`)로 넘긴다. 안 넘기면 장기 기물 소리(`piece`·`capture`)가 난다
 - [ ] 진행 기록 `createStudyProgress("<게임>-study")`, 첫 그리기 뒤에 rehydrate한다
 - [ ] 화면 시험: 틀린 답 → 다시 하기 → 맞는 답
 

@@ -103,6 +103,7 @@ function BadukPuzzleRun({
   const [placed, setPlaced] = useState(0);
   const run = usePuzzleRun<BadukState, number>({
     initial: () => puzzleState(puzzle),
+    sounds: { move: "stone", capture: "badukCapture" },
     judge: (state, move, at) => judgeMove(puzzle, state, move, at),
     apply: (state, move) => {
       const result = step(state, 0, { type: "place", at: move });
