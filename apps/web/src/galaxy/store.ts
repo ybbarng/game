@@ -33,6 +33,7 @@ import { buildTimeline, EMPTY_TIMELINE, type Timeline } from "./fx";
 import { GALAXY_FX } from "./fx-timing";
 import { galaxyKit, myRank } from "./kit";
 import { rememberMet } from "./met-stars";
+import { scriptedDiceStep } from "./practice";
 import { galaxyCuesFor } from "./sound";
 
 export type GalaxyLocalMatch = LocalMatch<
@@ -127,7 +128,12 @@ interface GalaxyStore {
   /** 정해진 장면에서 시작한다(저장·기록 없음). 튜토리얼 미션(G6)과 화면 시험이 쓴다 */
   practice: boolean;
   newGame(options: { rules: GalaxyRules; level: number; seed?: number }): void;
-  startPractice(initialState: GalaxyState, level: number): void;
+  /** `dice`: 장면의 굴림 눈을 차례로 정해 둔다(튜토리얼 미션). 다 쓰면 보통처럼 사슬로 굴린다 */
+  startPractice(
+    initialState: GalaxyState,
+    level: number,
+    dice?: readonly (readonly [number, number])[],
+  ): void;
   resume(saved: GalaxySaved): void;
   /** 온라인 방의 대국을 붙인다(저장 없음) */
   attachOnline(
@@ -400,7 +406,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     firstMet: [],
     practice: false,
 
-    startPractice(initialState, level) {
+    startPractice(initialState, level, dice) {
       const seed = Math.floor(Math.random() * 2 ** 31);
       set({ bid: null });
       const local: GalaxyLocalMatch = new LocalMatch({
@@ -411,6 +417,9 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
         bot: galaxyBotFor(level),
         pace: browserPace,
         initialState,
+        ...(dice && dice.length > 0
+          ? { step: scriptedDiceStep(initialState, dice) }
+          : {}),
       });
       attachLocal(local, level, seed, true);
     },
