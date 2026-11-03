@@ -17,7 +17,7 @@ function colorAt(n: number, text: string, f: number, r: number, c: number) {
 }
 
 describe("생김새", () => {
-  it.each(SIZES)("%i×%i 조각 수와 궤도", (n) => {
+  it.each(SIZES.map((n) => [n, n]))("%i×%i 조각 수와 궤도", (n) => {
     const t = cubeTopology(n);
     expect(t.stickers).toHaveLength(6 * n * n);
     // 겉에 보이는 조각 수 = n³ - (n-2)³
@@ -52,17 +52,20 @@ describe("3D 좌표", () => {
 });
 
 describe("수 적용", () => {
-  it.each(SIZES)("%i×%i 모든 층의 수를 4번 돌리면 제자리", (n) => {
-    for (const axis of ["x", "y", "z"] as const) {
-      for (let l = 1; l <= n; l++) {
-        const m = { axis, from: l, to: l, turns: 1 } as const;
-        const s = applyMoves(n, solvedCube(n), [m, m, m, m]);
-        expect(statesEqual(s, solvedCube(n))).toBe(true);
+  it.each(SIZES.map((n) => [n, n]))(
+    "%i×%i 모든 층의 수를 4번 돌리면 제자리",
+    (n) => {
+      for (const axis of ["x", "y", "z"] as const) {
+        for (let l = 1; l <= n; l++) {
+          const m = { axis, from: l, to: l, turns: 1 } as const;
+          const s = applyMoves(n, solvedCube(n), [m, m, m, m]);
+          expect(statesEqual(s, solvedCube(n))).toBe(true);
+        }
       }
-    }
-  });
+    },
+  );
 
-  it.each(SIZES)("%i×%i R U R' U' 6번은 제자리", (n) => {
+  it.each(SIZES.map((n) => [n, n]))("%i×%i R U R' U' 6번은 제자리", (n) => {
     const s = run(n, "R U R' U' ".repeat(6));
     expect(statesEqual(s, solvedCube(n))).toBe(true);
   });
@@ -80,16 +83,19 @@ describe("수 적용", () => {
     expect(colorAt(3, "M", F, 1, 1)).toBe(U);
   });
 
-  it.each(SIZES)("%i×%i 거꾸로 수열을 이어 두면 제자리", (n) => {
-    const moves = parseMoves(n, "R U2 F' Lw D B2 x y' Rw' z");
-    const s = applyMoves(
-      n,
-      applyMoves(n, solvedCube(n), moves),
-      invertMoves(moves),
-    );
-    expect(statesEqual(s, solvedCube(n))).toBe(true);
-    expect(isSolved(n, applyMoves(n, solvedCube(n), moves))).toBe(false);
-  });
+  it.each(SIZES.map((n) => [n, n]))(
+    "%i×%i 거꾸로 수열을 이어 두면 제자리",
+    (n) => {
+      const moves = parseMoves(n, "R U2 F' Lw D B2 x y' Rw' z");
+      const s = applyMoves(
+        n,
+        applyMoves(n, solvedCube(n), moves),
+        invertMoves(moves),
+      );
+      expect(statesEqual(s, solvedCube(n))).toBe(true);
+      expect(isSolved(n, applyMoves(n, solvedCube(n), moves))).toBe(false);
+    },
+  );
 
   it("넓게 돌리기 = 바깥층 + 안쪽 층", () => {
     expect(statesEqual(run(4, "Rw"), run(4, "R 2R"))).toBe(true);

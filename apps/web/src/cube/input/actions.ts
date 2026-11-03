@@ -6,7 +6,8 @@ import type { Axis, CubeMove } from "../view/types";
  * 동작 이름(문자열, 배치 JSON에 그대로 저장):
  * - 수: WCA 표기 한 수. `R` `R'` `R2` `Rw` `3Rw'` `2R` `r` `M` `E'` `S2` `x` `y'` `z2`
  * - 다음 수 깊이: `depth:2` … `depth:7`(다음 면 수 앞에 숫자를 붙인다. `R` → `3R`, `Rw` → `3Rw`)
- * - 명령: `undo`(되돌리기) `reset`(맞춘 상태로) `scramble`(다시 섞기) `inspectionSkip`(살펴보기 건너뛰기)
+ * - 명령: `undo`(되돌리기) `reset`(맞춘 상태로) `scramble`(다시 섞기) `inspectionSkip`(살펴보기 접기·블라인드 시작/끝)
+ *   `peekBack`·`peekDown`(누르는 동안 뒤·아래 살짝 보기)
  */
 
 export type ActionId = string;
@@ -16,6 +17,8 @@ export const COMMANDS = [
   "reset",
   "scramble",
   "inspectionSkip",
+  "peekBack",
+  "peekDown",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -23,7 +26,9 @@ export const COMMAND_LABEL: Record<Command, string> = {
   undo: "되돌리기",
   reset: "맞춘 상태로",
   scramble: "다시 섞기",
-  inspectionSkip: "살펴보기 건너뛰기",
+  inspectionSkip: "살펴보기 접기·블라인드 시작/끝",
+  peekBack: "뒤 살짝 보기(누르는 동안)",
+  peekDown: "아래 살짝 보기(누르는 동안)",
 };
 
 export type ParsedAction =

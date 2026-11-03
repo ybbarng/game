@@ -184,6 +184,10 @@ export function edgeFlipSum(n: number, state: PuzzleState): number {
 /**
  * 맞출 수 있는 상태인가(스티커 순열만 본다. 방향 `twist`는 보지 않는다).
  * 조각이 깨지지 않았는지, 홀수 크기 가운데 6개가 한 방향으로 돌린 모양인지, 위 조건 1·2를 본다.
+ *
+ * 주의: **조각 단위 판정**이다. 큰 큐브에서 같은 색 날개 모서리끼리(또는 같은 색 안쪽 가운데끼리)
+ * 자리만 바뀐 상태는 눈으로는 똑같아도 false가 될 수 있다. 사용자가 색을 칠해 넣은 큐브를
+ * 검사하는 데 쓰지 말 것(색만으로는 조각 번호를 정할 수 없다).
  */
 export function isSolvable(n: number, state: PuzzleState): boolean {
   const topo = cubeTopology(n);
@@ -235,6 +239,10 @@ export interface RandomStateOptions {
 /**
  * 맞출 수 있는 무작위 상태. 같은 씨앗이면 같은 상태가 나온다.
  * 큐브 전체 방향은 맞춘 상태 그대로(위 흰색·앞 초록)다.
+ *
+ * 가운데 조각의 방향(`twist`)은 늘 0으로 둔다. 그래서 그림 큐브(`orientCenters`)에는 아직 맞지 않는다:
+ * 실물에서는 가운데 방향 합의 홀짝이 꼭짓점 순열의 홀짝과 묶여 있어, 그림 큐브용으로 쓰려면
+ * 그 조건에 맞춰 가운데 방향도 무작위로 정해야 한다.
  */
 export function randomCubeState(
   n: number,

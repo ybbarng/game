@@ -1,0 +1,71 @@
+import { hexColor } from "../settings";
+
+/**
+ * 펼친 그림(전개도). 위(U) 아래로 왼쪽·앞·오른쪽·뒤(L F R B)가 한 줄, 그 아래 아래(D).
+ * `faces`는 면마다(U R F D L B) 칸 색 번호(줄마다 왼쪽→오른쪽, null = 가림). 칸 차례는 엔진과 같다.
+ */
+
+/** 면 번호 → 펼친 그림에서 칸 자리(가로, 세로) */
+const PLACE: Record<number, [number, number]> = {
+  0: [1, 0], // U
+  4: [0, 1], // L
+  2: [1, 1], // F
+  1: [2, 1], // R
+  5: [3, 1], // B
+  3: [1, 2], // D
+};
+
+export function CubeNet({
+  n,
+  faces,
+  colors,
+  hidden,
+  className,
+}: {
+  n: number;
+  faces: readonly (readonly (number | null)[])[];
+  colors: readonly number[];
+  hidden: "black" | "gray";
+  className?: string;
+}) {
+  const cell = 10;
+  const gap = 4;
+  const face = n * cell;
+  const w = 4 * face + 3 * gap;
+  const h = 3 * face + 2 * gap;
+  const hiddenFill = hidden === "gray" ? "#6b6b6b" : "#111";
+  return (
+    <svg
+      viewBox={`-1 -1 ${w + 2} ${h + 2}`}
+      className={className}
+      role="img"
+      aria-label="큐브 펼친 그림"
+      data-cube-net
+    >
+      {faces.map((grid, f) => {
+        const [fx, fy] = PLACE[f] ?? [0, 0];
+        const ox = fx * (face + gap);
+        const oy = fy * (face + gap);
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 면 번호가 곧 자리
+          <g key={f}>
+            {grid.map((c, k) => (
+              <rect
+                // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 자리
+                key={k}
+                x={ox + (k % n) * cell + 0.5}
+                y={oy + Math.floor(k / n) * cell + 0.5}
+                width={cell - 1}
+                height={cell - 1}
+                rx={1.5}
+                fill={c === null ? hiddenFill : hexColor(colors[c] ?? 0)}
+                stroke="#000"
+                strokeWidth={0.6}
+              />
+            ))}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
