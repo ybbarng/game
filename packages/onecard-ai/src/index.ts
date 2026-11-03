@@ -3,4 +3,7 @@ export * from "./choose";
 export * from "./expert";
 export * from "./levels";
 export * from "./memory";
+export * from "./seat";
+export * from "./shout";
+export * from "./simulate";
 export * from "./table";
