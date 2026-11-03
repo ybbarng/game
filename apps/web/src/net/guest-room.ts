@@ -351,6 +351,17 @@ export class GuestRoom<
   private everDisconnected = false;
   /** 받아들인 방장 발표로 만든 청구 묶음 행동(JSON, 받은 차례) */
   private readonly resolvedClaims: ClaimsResolved[] = [];
+  /**
+   * 받지 못한 발표가 끼어 있을 수 있는 자리(`VerifyContext.gaps`): 방장과 끊길 때(새로고침이면 0)까지 받은 발표 수.
+   * 다시 이어진 뒤 받은 첫 발표가 그 구간을 닫는다(발표는 차례대로 온다)
+   */
+  private readonly claimGaps: number[] = [];
+
+  /** 방장과 끊겼다(또는 방장이 바뀌었다): 지금까지 받은 발표 뒤에 받지 못한 발표가 낄 수 있다 */
+  private markClaimGap(): void {
+    const at = this.resolvedClaims.length;
+    if (this.claimGaps.at(-1) !== at) this.claimGaps.push(at);
+  }
 
   /** 판 끝 다시 계산에 주는 것(`kit.verifyUnsigned`). `complete`: 기록이 끝까지인가(게임 끝 검증) */
   private verifyContext(complete: boolean): VerifyContext {
@@ -362,6 +373,7 @@ export class GuestRoom<
           .map((s) => s.seat),
       ),
       partial: this.everDisconnected || this.resumedClaims,
+      gaps: [...this.claimGaps],
       complete,
     };
   }
@@ -476,6 +488,8 @@ export class GuestRoom<
         })
       : null;
     this.resumedClaims = options.token !== null;
+    // 새로고침 전에 받은 발표는 모른다: 처음부터 다시 받은 첫 발표까지가 끊긴 구간이다.
+    if (this.resumedClaims) this.claimGaps.push(0);
     // 받아들인 발표를 남긴다(판 끝 다시 계산에서 `kit.verifyUnsigned`가 기록 속 청구 묶음과 맞춰 본다).
     this.claims?.onResolved((resolved) => this.resolvedClaims.push(resolved));
 
@@ -498,6 +512,7 @@ export class GuestRoom<
         return;
       }
       this.everDisconnected = true;
+      this.markClaimGap();
       // 잠깐 끊겼을 수 있으니 바로 끝내지 않고 다시 연결되기를 기다린다.
       for (const l of this.listeners.connection) l("reconnecting");
       this.reconnectTimer?.();
@@ -1118,6 +1133,8 @@ export class GuestRoom<
           // 받지 못한 행동이 있는지 지금 화면에서 확인한다.
           this.checkLost = true;
           this.resendOwnFair(from);
+          // 끊김을 알기 전에 새로고침한 방장이 먼저 보였을 수 있다: 받지 못한 발표는 지금까지 받은 것 뒤에 낀다.
+          this.markClaimGap();
         }
         this.seat = message.seat;
         this.token = message.token;
@@ -1229,6 +1246,9 @@ export class GuestRoom<
       case "audit": {
         if (from !== this.hostId || this.audited) return;
         this.audited = true;
+        // 판이 끝났다: 청구 통로를 닫는다. 방장도 기록을 공개하기 전에 닫아 발표 전 묶음을 버렸으므로, 그 묶음의 청구로
+        // 빠뜨림 이의를 내지 않고 뒤늦은 발표도 받지 않는다(모두 같은 결론, docs/42 16-3).
+        this.claims?.close();
         const result = this.fair
           ? await this.verifyFairEnd(message.log as unknown as FairLogged[])
           : await this.verify(

@@ -223,11 +223,15 @@ export class ClaimHub<View = unknown> {
     return () => this.resolvedListeners.delete(listener);
   }
 
-  /** 더 받지 않는다. 걸린 타이머를 끈다 */
+  /**
+   * 더 받지 않는다. 걸린 타이머를 끈다. 방장은 닫지 않은 묶음(발표 전)을 버리고, 참가자는 받은 청구의 빠뜨림 이의를
+   * 내지 않는다(판 끝에 모두가 닫아 같은 결론이 된다)
+   */
   close(): void {
     this.closed = true;
     this.windowTimer?.();
     this.windowTimer = null;
+    this.pending = [];
     for (const r of this.received.values()) r.cancel?.();
   }
 
