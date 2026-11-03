@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import { StudyHome } from "@/components/study/StudyHome";
 import {
   TimePresetPicker,
   timePresetLabel,
@@ -14,6 +15,8 @@ import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useOmokTutorialProgress } from "@/tutorial/progress";
 import { omokOnline } from "../online";
+import { useOmokStudyProgress } from "../progress";
+import { OMOK_PUZZLE_SETS } from "../puzzles";
 import { endOmokSession } from "../session";
 import {
   OMOK_LEVELS,
@@ -30,6 +33,7 @@ import {
 } from "../store";
 import { OMOK_LESSONS } from "../tutorial";
 import { OmokGame } from "./OmokGame";
+import { OmokPuzzleScreen } from "./OmokPuzzleScreen";
 import { omokTutorial } from "./omok-tutorial";
 
 /** 오목 화면들의 배경(대국 화면의 짙은 돌색과 이어진다) */
@@ -342,7 +346,17 @@ type Screen =
   | { kind: "options" }
   | { kind: "rules" }
   | { kind: "tutorial" }
-  | { kind: "lesson"; lessonId: string };
+  | { kind: "lesson"; lessonId: string }
+  | { kind: "study" }
+  | { kind: "puzzle"; puzzleId: string };
+
+/** 수 배우기 목록에 보일 문제 묶음 */
+const STUDY_SETS = OMOK_PUZZLE_SETS.map((s) => ({
+  id: s.id,
+  title: s.title,
+  summary: s.summary,
+  puzzleIds: s.puzzles.map((p) => p.id),
+}));
 
 /** 오목(/omok): 첫 화면, 옵션, 규칙, 배우기, 다함께 오목 방, 대국 화면 */
 export function OmokApp() {
@@ -354,12 +368,17 @@ export function OmokApp() {
   // 화면마다 브라우저 기록에 남겨 뒤로가기가 바로 전 화면으로 간다(game/screen-history)
   const [screen, setScreen] = useScreenHistory<Screen>(
     { kind: "start" },
-    { leavePlay, restorable: ["options", "rules", "tutorial"] },
+    { leavePlay, restorable: ["options", "rules", "tutorial", "study"] },
   );
   const view = useOmok((s) => s.view);
   const variant = useOmokSettings((s) => s.variant);
   const winsToFinish = useOmokSettings((s) => s.winsToFinish);
   const time = useOmokSettings((s) => s.time);
+
+  // 수 배우기 진행은 첫 그리기 뒤에 읽는다(미리 그린 HTML과 첫 화면이 같게).
+  useEffect(() => {
+    void useOmokStudyProgress.persist.rehydrate();
+  }, []);
 
   // 다 끝난 게임은 이어하기에 남기지 않는다.
   useEffect(() => {
@@ -398,6 +417,31 @@ export function OmokApp() {
         tutorial={omokTutorial}
         onBack={backToStart}
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
+        extra={{
+          title: "수 배우기",
+          detail: `사로 몰아 이기기·막기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키워요`,
+          onClick: () => setScreen({ kind: "study" }),
+        }}
+      />
+    );
+  if (screen.kind === "study")
+    return (
+      <StudyHome
+        title="오목 수 배우기"
+        background={BG}
+        sets={STUDY_SETS}
+        progress={useOmokStudyProgress}
+        onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        onBack={() => setScreen({ kind: "tutorial" })}
+      />
+    );
+  if (screen.kind === "puzzle")
+    return (
+      <OmokPuzzleScreen
+        key={screen.puzzleId}
+        puzzleId={screen.puzzleId}
+        onExit={() => setScreen({ kind: "study" })}
+        onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
       />
     );
   if (screen.kind === "lesson")

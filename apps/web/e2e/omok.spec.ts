@@ -162,6 +162,14 @@ test("오목: 두던 게임은 새로고침해도 이어 둔다", async ({ page 
   await page.goto("/omok?keep");
   await page.getByRole("button", { name: /이어하기/ }).click();
   await expect(stones(page)).toHaveCount(2);
+
+  // 힌트: 고수가 고른 자리에 초록 고리, 그 자리를 겨눠 두어 Enter로 둘 수 있다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(1);
+  await expect(page.getByRole("status")).toContainText("고수가 고른 자리");
+  await board(page).press("Enter");
+  await expect(stones(page)).toHaveCount(4, { timeout: 10_000 });
+  await expect(page.locator("[data-hint]")).toHaveCount(0);
 });
 
 test("오목: 방장이 방을 만들고 친구가 링크로 들어와 한 판을 둔다", async ({
@@ -229,7 +237,12 @@ test("오목: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
   await startSolo(page);
   await placeOne(page, false);
   await expect(stones(page)).toHaveCount(2);
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   // 복기 기록은 IndexedDB에 비동기로 쓴다. 끝난 판이 실제로 쓰인 뒤에 떠난다(바로 떠나면 쓰기가 끊긴다).
   await expect
@@ -349,4 +362,73 @@ test("오목 개인 시간: 빠른 3분으로 두면 내 시계가 가고, 다 �
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-time.png") });
+});
+
+/** 자리 이름("H8")을 판 좌표로 */
+const xyOfName = (name: string): [number, number] => [
+  name.charCodeAt(0) - 65,
+  SIZE - Number(name.slice(1)),
+];
+
+test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷으로 이기고, 백의 몰아붙이기를 끊는다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "문제 풀이 진행은 크기와 상관없다(공통 문제 화면의 배치는 장기 외통 문제가 세 크기로 본다)",
+  );
+  const play = (name: string) => placeAt(page, ...xyOfName(name), false);
+  await page.goto("/omok");
+  await page.getByRole("button", { name: /오목 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const five = page.getByRole("region", { name: "다섯 만들기" });
+  await expect(five.getByText("0/8")).toBeVisible();
+  await five.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText("한 수로 다섯을 만드세요");
+
+  // 흑 H8·H7·H6·H5, 백이 H9를 막았다. 위(H9)가 아니라 아래 H4가 다섯 자리다.
+  await play("A1");
+  await expect(page.getByRole("status")).toHaveText(
+    "그 수로는 몰아붙일 수 없어요",
+  );
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await play("H4");
+  await expect(page.getByRole("status")).toHaveText("다섯!");
+  await expect(page.getByText("H4: 다섯!")).toBeVisible();
+  await page.getByRole("button", { name: "← 목록" }).click();
+  await expect(five.getByText("1/8")).toBeVisible();
+
+  // 열린 넷: G9로 가로 넷을 열면 백은 한쪽만 막는다. 남은 쪽에 두어 다섯.
+  await page
+    .getByRole("region", { name: "열린 넷" })
+    .getByRole("button", { name: "풀기 시작" })
+    .click();
+  await play("G9");
+  await expect(page.getByRole("status")).toHaveText(
+    "계속 사로 몰아 다섯을 만드세요",
+    { timeout: 10_000 },
+  );
+  const blocked = await page.locator("[data-last]").getAttribute("data-last");
+  await play(blocked === "E9" ? "J9" : "E9");
+  await expect(page.getByRole("status")).toHaveText("다섯!");
+  await expect(
+    page.getByText(/두 곳이 되어 한 번에 다 막을 수 없다/),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-study-open-four.png") });
+  await page.getByRole("button", { name: "← 목록" }).click();
+
+  // 끊기: 백의 몰아붙이기 급소를 먼저 막는다.
+  await page
+    .getByRole("region", { name: "몰아붙이기 끊기" })
+    .getByRole("button", { name: "풀기 시작" })
+    .click();
+  await expect(page.getByRole("status")).toHaveText(
+    "백의 공격을 미리 막으세요",
+  );
+  await play("F7");
+  await expect(page.getByRole("status")).toHaveText("막았어요!");
+  await expect(
+    page.getByText(/백이 사로 몰아붙여 다섯을 만든다/),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-study-defend.png") });
 });

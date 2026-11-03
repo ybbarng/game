@@ -108,7 +108,7 @@
       "parent": "platform",
       "status": "building",
       "size": 2,
-      "summary": "단원(설명·퀴즈·미션) 틀, 문제 풀기 틀(진행 기록·목록 StudyHome·문제 화면 PuzzleScreen·usePuzzleRun), 수순 따라 두기 틀(study/line.ts·LineScreen·useLineRun, 2026-11-03)은 끝. 장기·체스·바둑이 함께 쓴다",
+      "summary": "단원(설명·퀴즈·미션) 틀, 문제 풀기 틀(진행 기록·목록 StudyHome·문제 화면 PuzzleScreen·usePuzzleRun), 수순 따라 두기 틀(study/line.ts·LineScreen·useLineRun, 2026-11-03)은 끝. 장기·체스·바둑·오목이 함께 쓴다",
       "next": "장기 포진·바둑 정석 수순 데이터(docs/23 「수순 따라 두기 넣는 법」, 출처 확인 뒤), 날짜 간격 반복",
       "since": "2026-10-29",
       "found": "2026-10-29",
@@ -577,7 +577,7 @@
       "parent": "boards",
       "status": "done",
       "size": 3,
-      "summary": "일반·자유·렌주, 컴퓨터 세 단계, 온라인, 배우기, 개인 시간",
+      "summary": "일반·자유·렌주, 컴퓨터 세 단계(초고수 만드는 중), 온라인, 배우기, 개인 시간, 수 배우기 38문제(2026-11-03), 혼자 하기 힌트",
       "since": "2026-10-29",
       "found": "2026-10-27",
       "links": [
