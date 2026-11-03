@@ -9,6 +9,7 @@ import { describe, expect, test } from "vitest";
 import { FACE_LETTERS } from "./sim";
 import {
   type ReductionStageId,
+  ReductionStuckError,
   solveReduction,
   solveReductionState,
 } from "./solve";
@@ -107,4 +108,20 @@ test("4×4·5×5 밖의 크기는 받지 않는다", () => {
       RangeError,
     );
   }
+});
+
+test("되풀이 상한을 줄이면 그 단계에서 이름 있는 오류로 막힌다(시험이 막힘을 일으키는 길)", () => {
+  const { state } = caseOf(1);
+  const stuckAt = (limits: { centerSteps?: number; edgeSteps?: number }) => {
+    try {
+      solveReductionState(n, state, limits);
+    } catch (e) {
+      expect(e).toBeInstanceOf(ReductionStuckError);
+      const err = e as ReductionStuckError;
+      return `${err.stage}:${err.reason}`;
+    }
+    return "풀림";
+  };
+  expect(stuckAt({ centerSteps: 1 })).toBe("centers-ud:too-long");
+  expect(stuckAt({ edgeSteps: 1 })).toBe("edges:too-long");
 });

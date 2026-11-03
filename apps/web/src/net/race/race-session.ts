@@ -20,6 +20,9 @@
  * 남은 일: 누군가 "저 사람은 기권"이라는 목록을 거짓으로 보내면 그대로 따른다(막을 증인이 없다).
  * 친구끼리 판이라 받아들이고, 기권 까닭은 결과에 남겨 복기에서 보이게 한다.
  *
+ * 스스로 그만두기(`retire`, 경주 컴퓨터가 계획을 못 만듦)는 섞기를 정하기 전에만 이 길로 간다. 정한 뒤에는
+ * 다른 사람이 이미 그 섞기를 살펴보거나 돌리고 있으므로 그 사람만 DNF로 빼고 판은 그대로 둔다(`race-retire`).
+ *
  * ## 끊김
  * 상대가 나갔다 돌아오면 그 판에 보냈던 메시지를 그 사람에게 다시 보낸다(받는 쪽은 겹친 것을 버린다).
  * 공개값을 보낸 뒤 그 상대가 한 번이라도 끊겼으면 그 상대의 하한은 "확인 약함"(null)으로 보내
@@ -481,6 +484,21 @@ export class RaceSession<Move, State> {
         this.drain(rec);
         break;
       }
+      case "race-retire": {
+        const rec = this.a.records.get(from);
+        if (!rec) {
+          this.future.push({ msg, from });
+          return;
+        }
+        // 먼저 받은 수는 적용해 두고(진행 표시), 그 판에서만 뺀다
+        this.drain(rec);
+        if (rec.status !== "playing") return;
+        rec.status = "dnf";
+        rec.reason = msg.reason;
+        rec.raw.clear();
+        this.maybeFinalize();
+        break;
+      }
       case "race-bound": {
         if (msg.of === from || !this.a.members.includes(msg.of)) return;
         const rec = this.a.records.get(msg.of);
@@ -644,11 +662,30 @@ export class RaceSession<Move, State> {
   }
 
   /**
-   * 나(이 세션의 참가자)가 그 판을 기권한다. 남은 사람끼리 약속부터 다시 하고, 까닭은 결과에 남는다.
-   * 경주 컴퓨터가 계획을 만들지 못했을 때 쓴다.
+   * 나(이 세션의 참가자)가 그 판을 그만둔다. 까닭은 결과에 남는다. 경주 컴퓨터가 계획을 만들지 못했을 때 쓴다.
+   * - 섞기(씨앗)를 정하기 전: 기권으로 하고 남은 사람끼리 약속부터 다시 한다.
+   * - 정한 뒤(살펴보기·경주 중): 나만 DNF로 빠지고 판은 그대로 간다(`race-retire`). 다른 사람이 이미
+   *   살펴보거나 돌리고 있는 섞기를 새것으로 바꾸지 않는다. 이미 맞췄거나 빠졌으면 하지 않는다.
    */
   retire(reason: string): void {
     if (this.disposed || this.result) return;
+    const a = this.a;
+    if (a.seed !== undefined && !a.spectator) {
+      const rec = a.records.get(this.self);
+      if (rec?.status !== "playing") return;
+      this.flush();
+      rec.status = "dnf";
+      rec.reason = reason;
+      this.broadcast({
+        type: "race-retire",
+        race: this.race,
+        attempt: this.attemptNo,
+        reason,
+      });
+      this.maybeFinalize();
+      this.emit();
+      return;
+    }
     if (!this.forfeit([{ id: this.self, reason }])) return;
     // 보기만 하는 기기는 약속을 보내지 않으므로, 남은 사람이 나를 기다리지 않게 기권 목록을 직접 알린다
     // (받는 쪽은 기권 목록을 합쳐 다음 시도로 넘어가고, 기권한 사람이 보낸 약속 값은 쓰지 않는다)

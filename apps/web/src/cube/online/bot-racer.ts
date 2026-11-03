@@ -28,8 +28,9 @@ export function botSupports(n: number): boolean {
 }
 
 /**
- * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭. 고른 단계 해법이 실패하면 `botPlan`이
- * 먼저 초고수 해로 대신하므로, 이것은 그것마저 실패했을 때다
+ * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭. 고른 단계의 3×3 해법이 실패하면 `botPlan`이
+ * 먼저 초고수 해로 대신하므로, 이것은 그것마저 실패했거나 4×4·5×5 축소법이 돌려 쥐어도 막혔을 때다
+ * (축소법은 모든 단계가 함께 써서 초고수로 대신해도 똑같이 막힌다)
  */
 export const BOT_NO_PLAN = "컴퓨터가 맞출 길을 찾지 못함";
 
@@ -121,7 +122,8 @@ export function attachBot(init: AttachBotInit): () => void {
       moves = null;
       scheduled = false;
       cancel?.();
-      // 기권한 컴퓨터는 남은 사람끼리 다시 하는 시도에서 계획을 세우지 않는다
+      // 계획은 섞기를 정한 뒤에 세우므로, 못 만들면 그 판에서 이 컴퓨터만 DNF로 빠지고 판은 그대로 간다
+      // (`retire`). 다른 까닭으로 다시 섞어도 그만둔 컴퓨터는 계획을 다시 세우지 않는다
       const fail = () => {
         if (stopped || k !== attempt) return;
         stopped = true;
