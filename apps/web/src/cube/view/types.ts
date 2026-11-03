@@ -60,6 +60,13 @@ export interface Sticker {
   color: number | null;
 }
 
+/**
+ * 그릴 수 있는 크기. 엔진 `packages/cube-engine`의 `MIN_SIZE`·`MAX_SIZE`와 같은 값이다.
+ * 웹이 엔진을 잇는 단계에서 엔진의 상수를 가져오게 바꾼다.
+ */
+export const MIN_CUBE_SIZE = 2;
+export const MAX_CUBE_SIZE = 7;
+
 export type Quality = "high" | "medium" | "low";
 
 export interface CubeViewOptions {
