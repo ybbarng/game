@@ -31,6 +31,8 @@ export type RaceMessage =
       attempt: number;
       /** 씨앗을 만든 사람별 약속. 서로 다른 섞기를 받았는지 맞춰 본다 */
       commits: Record<string, string>;
+      /** 보낸 기기가 만든 시작 상태의 지문(`RaceGame.startFingerprint`). 게임이 안 쓰면 없다 */
+      start?: string;
     }
   | {
       type: "race-moves";
@@ -81,7 +83,13 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
         if (!isStr(c)) return null;
         commits[id] = c;
       }
-      return { type: raw.type, ...base, commits };
+      if (raw.start !== undefined && !isStr(raw.start)) return null;
+      return {
+        type: raw.type,
+        ...base,
+        commits,
+        ...(isStr(raw.start) ? { start: raw.start } : {}),
+      };
     }
     case "race-moves": {
       if (!Array.isArray(raw.moves)) return null;

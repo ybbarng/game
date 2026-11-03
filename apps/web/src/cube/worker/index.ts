@@ -1,7 +1,10 @@
+import type { BotLevel, BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
+import type { PuzzleState } from "@game/puzzle-core";
 
 import {
   type CubeJob,
+  type CubeJobAnswer,
   type CubeJobMessage,
   type CubeJobReply,
   runCubeJob,
@@ -20,7 +23,7 @@ import {
 
 interface Pending {
   job: CubeJob;
-  resolve: (r: Scramble | string) => void;
+  resolve: (r: CubeJobAnswer) => void;
   reject: (e: unknown) => void;
 }
 
@@ -72,7 +75,7 @@ function ensureWorker(): Worker | null {
   return worker;
 }
 
-function request(job: CubeJob): Promise<Scramble | string> {
+function request(job: CubeJob): Promise<CubeJobAnswer> {
   return new Promise((resolve, reject) => {
     const p: Pending = { job, resolve, reject };
     const target = ensureWorker();
@@ -109,6 +112,23 @@ export function solveInWorker(
       ? { kind: "solve", facelets }
       : { kind: "solve", facelets, maxLength },
   ) as Promise<string>;
+}
+
+/** 컴퓨터가 맞추는 계획(수와 둘 시각). 해법기 표를 처음 만들 때 1초 넘게 걸릴 수 있다 */
+export function planInWorker(
+  level: BotLevel,
+  size: number,
+  state: PuzzleState,
+  seed: number,
+): Promise<BotPlan> {
+  return request({
+    kind: "plan",
+    level,
+    size,
+    perm: Array.from(state.perm),
+    twist: Array.from(state.twist),
+    seed,
+  }) as Promise<BotPlan>;
 }
 
 /** 표를 미리 만들어 두게 한다(화면을 열 때 불러 두면 첫 섞기가 빠르다) */

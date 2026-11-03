@@ -3,6 +3,7 @@ import {
   type Action,
   bidCommitment,
   bidSalt,
+  GALAXY_EDITION,
   type GalaxyRules,
   type GalaxyState,
   type GalaxyView,
@@ -75,7 +76,12 @@ export function loadGalaxy(): GalaxySaved | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const saved = JSON.parse(raw) as GalaxySaved;
-    return saved.version === 1 && Array.isArray(saved.log) ? saved : null;
+    // 판 번호가 다른 이어하기(옛 규칙 판)는 버린다
+    return saved.version === 1 &&
+      Array.isArray(saved.log) &&
+      saved.rules?.edition === GALAXY_EDITION
+      ? saved
+      : null;
   } catch {
     return null;
   }

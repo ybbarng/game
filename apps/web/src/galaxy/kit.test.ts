@@ -3,6 +3,7 @@ import {
   boardOfSky,
   type GameEvent,
   SHORT_RULES,
+  STANDARD_RULES,
   step,
   viewOf,
 } from "@game/galaxy-engine";
@@ -19,6 +20,7 @@ import {
   type GalaxyRound,
   galaxyKit,
   galaxyStats,
+  isCurrentEdition,
   metSquares,
   outcomeOf,
   summarizeGalaxy,
@@ -54,7 +56,7 @@ function playedGame() {
 describe("은하 한 바퀴 kit", () => {
   it("규칙 문자열을 주고받는다", () => {
     const code = galaxyKit.encodeRules(rules);
-    expect(code).toMatch(/^g1-2s[tn]w-seasons$/);
+    expect(code).toMatch(/^g2-2s[tn]w-seasons$/);
     expect(galaxyKit.decodeRules(code)).toEqual({ ok: true, rules });
     expect(galaxyKit.decodeRules(code.replace("seasons", "zodiac")).ok).toBe(
       false,
@@ -251,5 +253,26 @@ describe("만난 별과 사건 줄", () => {
     expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
       "유성우의 밤",
     );
+  });
+});
+
+describe("옛 규칙 판", () => {
+  it("판 번호가 다른 기록은 지금 판으로 보지 않는다(다시 보기에서 다시 두지 않음)", () => {
+    expect(isCurrentEdition(STANDARD_RULES)).toBe(true);
+    const { edition: _, ...old } = STANDARD_RULES;
+    expect(isCurrentEdition(old)).toBe(false);
+    expect(isCurrentEdition({ ...STANDARD_RULES, edition: 1 })).toBe(false);
+    expect(isCurrentEdition(null)).toBe(false);
+  });
+
+  it("긴 판은 유성우를 싣지 않아 같은 판이 문자열 하나다", () => {
+    const rules = rulesFromSettings({
+      players: 4,
+      length: "long",
+      trade: true,
+      seasonal: true,
+      meteor: true,
+    });
+    expect(rules.meteor).toBe(false);
   });
 });
