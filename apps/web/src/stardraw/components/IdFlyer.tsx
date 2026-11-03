@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { AstronautCard, BlankAstronautCard } from "../astronaut/AstronautCard";
 import { astronautOf } from "../astronaut/identity";
@@ -9,6 +9,7 @@ import { lockScroll } from "../scroll-lock";
 import type { Services } from "../services";
 import { useIssued } from "./AstronautPanel";
 import { IdleHint, useIdleHint } from "./IdleHint";
+import { useSwipeUp } from "./swipe-up";
 
 /** 등록증 자리: 아래에 숨음 / 아래에서 살짝 올라와 내밀기를 기다림 / 내밀어 조금 올라감 / 가운데 떠 있음 */
 export type CardSpot = "hidden" | "peek" | "lift" | "up";
@@ -131,12 +132,10 @@ export function IdFlyer({
   );
 }
 
-/** 조금이라도 끌었으면(이만큼 넘게) 누르기로 보지 않는다 */
-const TAP_SLOP = 8;
-
 /**
  * 움직이는 등록증. `onPress`가 있으면 등록증이 단추다(내 앞의 물건을 위로 내밀기: 밀어 올리거나 한 번 누르기).
- * 끄는 동안 손을 따라오고, 일정 거리·속도를 넘기거나 누르면 `onPress`를 그 동작 안에서 바로 부른다. 못 미치면 제자리
+ * 끄는 동안 손을 따라오고, 일정 거리·속도를 넘기거나 누르면 `onPress`를 그 동작 안에서 바로 부른다. 못 미치면 제자리.
+ * 끌기 판정은 예측서와 같은 `useSwipeUp`(swipe-up.ts)
  */
 function FlyingCard({
   services,
@@ -152,11 +151,9 @@ function FlyingCard({
   onPress?: (() => void) | undefined;
   label?: string | undefined;
 }) {
-  const [drag, setDrag] = useState<number | null>(null);
-  const start = useRef<{ y: number; lastY: number; lastT: number } | null>(
-    null,
-  );
   const pressable = !!onPress && spot === "peek";
+  const swipe = useSwipeUp(pressable, () => onPress?.());
+  const drag = swipe.drag;
   /** 가만히 있으면 누르는 손짓. 손짓이 움직이는 동안 등록증의 떠오름은 멈춘다(동시에 움직이지 않기) */
   const hint = useIdleHint(pressable);
   /** 실루엣으로 기다렸으면 확인된 등록증은 칸마다 채워지며 나타난다 */
@@ -189,38 +186,7 @@ function FlyingCard({
       tabIndex={pressable ? 0 : -1}
       data-id-card-press={pressable || undefined}
       data-id-card
-      onPointerDown={(e) => {
-        if (!pressable) return;
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        start.current = { y: e.clientY, lastY: e.clientY, lastT: e.timeStamp };
-        setDrag(0);
-      }}
-      onPointerMove={(e) => {
-        const st = start.current;
-        if (!st) return;
-        st.lastY = e.clientY;
-        st.lastT = e.timeStamp;
-        const dy = e.clientY - st.y;
-        setDrag(dy < 0 ? dy : dy * 0.2);
-      }}
-      onPointerUp={(e) => {
-        const st = start.current;
-        start.current = null;
-        setDrag(null);
-        if (!st) return;
-        const dy = e.clientY - st.y;
-        const v = (e.clientY - st.lastY) / Math.max(1, e.timeStamp - st.lastT);
-        if (
-          Math.abs(dy) <= TAP_SLOP ||
-          -dy > FX.swipeDistance ||
-          v < -FX.swipeVelocity
-        )
-          onPress?.();
-      }}
-      onPointerCancel={() => {
-        start.current = null;
-        setDrag(null);
-      }}
+      {...swipe.handlers}
       onKeyDown={(e) => {
         if (pressable && ["Enter", " ", "ArrowUp"].includes(e.key)) {
           e.preventDefault();
