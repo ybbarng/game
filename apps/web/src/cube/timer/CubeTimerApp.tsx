@@ -30,8 +30,8 @@ import { CubeNet } from "./CubeNet";
 import { EVENT_INFO, TIMER_EVENTS, type TimerEvent } from "./events";
 import { type Scramble, scrambleProvider } from "./fallback-scramble";
 import {
-  INSPECTION_DNF_MS,
   INSPECTION_MS,
+  inspectionPenalty,
   type MachineView,
   type Penalty,
   type TimerEventOut,
@@ -424,8 +424,8 @@ function faceText(
     view.inspectionStart !== null ? now - view.inspectionStart : null;
   const inspText = () => {
     if (insp === null) return null;
-    if (insp > INSPECTION_DNF_MS) return "DNF";
-    if (insp > INSPECTION_MS) return "+2";
+    const p = inspectionPenalty(insp);
+    if (p !== "none") return p;
     return String(Math.ceil((INSPECTION_MS - insp) / 1000));
   };
   switch (view.phase) {
@@ -609,11 +609,14 @@ function SessionBar({
 }
 
 function StatsPanel({ stats, blind }: { stats: SessionStats; blind: boolean }) {
+  // 블라인드 종목은 지금 3×3뿐이다: 5번 중 최고로 순위(9b3a), 5번 평균은 따로 인정(9b3b).
+  // 4×4·5×5 블라인드를 넣으면 3번 중 최고(bo3)·세 번 평균(mo3)을 보인다(9b6).
   const rows: [string, string][] = blind
     ? [
         ["최고", formatSingle(stats.best)],
-        ["세 번 평균", formatAverage(stats.mo3)],
-        ["세 번 중 최고", formatSingle(stats.bo3)],
+        ["5번 중 최고", formatSingle(stats.bo5)],
+        ["5번 평균", formatAverage(stats.ao5)],
+        ["최고 5번 평균", formatAverage(stats.bestAo5)],
         ["기록 수", String(stats.count)],
       ]
     : [

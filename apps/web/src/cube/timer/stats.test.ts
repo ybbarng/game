@@ -11,6 +11,7 @@ import {
   formatSingle,
   formatSolve,
   meanOf,
+  recordedMs,
   sessionStats,
   type Timed,
   trimCount,
@@ -84,10 +85,53 @@ describe("평균", () => {
     expect(best([dnf(), t(5000, "+2"), t(6500)])).toBe(6500);
   });
 
-  it("블라인드 통계(mo3·bo3)", () => {
+  it("3×3 블라인드: 마지막 5번 중 최고(Bo5)와 5번 평균(Ao5)", () => {
+    const list = [t(50_000), t(90_000), dnf(), t(70_000), t(60_000)];
+    expect(sessionStats(list.slice(0, 4)).bo5).toBeNull();
+    const s = sessionStats(list);
+    expect(s.bo5).toBe(50_000);
+    expect(s.ao5).toBe(73_330); // (60 + 70 + 90) / 3 = 73.333… → 73.33
+    expect(sessionStats([...list, t(40_000)]).bo5).toBe(40_000);
+  });
+
+  it("4×4·5×5 블라인드용 세 번 평균·3번 중 최고", () => {
     const s = sessionStats([t(90_000), dnf(), t(60_000)]);
     expect(s.mo3).toBe(DNF);
     expect(s.bo3).toBe(60_000);
+  });
+});
+
+describe("규정대로 버리고 반올림하기(9f1·9f2)", () => {
+  it("한 번 기록은 원래 값을 1/100초로 버린 뒤 +2를 더한다", () => {
+    expect(recordedMs(t(12_349))).toBe(12_340);
+    expect(recordedMs(t(12_349, "+2"))).toBe(14_340);
+    expect(recordedMs(dnf())).toBe(DNF);
+  });
+
+  it("10분 이상 기록은 초 아래를 버린다(+2를 더해 10분이 넘어도)", () => {
+    expect(recordedMs(t(612_345))).toBe(612_000);
+    expect(recordedMs(t(599_999))).toBe(599_990);
+    expect(recordedMs(t(599_500, "+2"))).toBe(601_000);
+  });
+
+  it("평균은 버린 기록으로 낸 뒤 1/100초로 반올림한다", () => {
+    // 버리지 않으면 (10.009 + 10.009 + 10.019) / 3 = 10.01233 → 10.01
+    // 버리면 (10.00 + 10.00 + 10.01) / 3 = 10.00333 → 10.00
+    expect(meanOf([t(10_009), t(10_009), t(10_019)])).toBe(10_000);
+    // (10.00 + 10.01 + 10.01) / 3 = 10.00666 → 10.01(반올림)
+    expect(meanOf([t(10_000), t(10_010), t(10_010)])).toBe(10_010);
+    // +2는 버린 뒤에 더한다: 9.999 → 9.99 + 2 = 11.99
+    expect(meanOf([t(9_999, "+2"), t(11_990), t(11_990)])).toBe(11_990);
+  });
+
+  it("10분 이상 평균은 초로 반올림한다(X.50은 올림)", () => {
+    expect(meanOf([t(600_000), t(601_000)])).toBe(601_000); // 600.5 → 601
+    expect(meanOf([t(600_000), t(600_000), t(601_000)])).toBe(600_000); // 600.33 → 600
+    expect(meanOf([t(600_000), t(601_000), t(601_000)])).toBe(601_000); // 600.67 → 601
+  });
+
+  it("평균이 10분 바로 아래면 1/100초로 반올림한다", () => {
+    expect(meanOf([t(599_990), t(599_990), t(599_980)])).toBe(599_990);
   });
 });
 

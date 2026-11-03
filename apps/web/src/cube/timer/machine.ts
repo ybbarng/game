@@ -8,8 +8,12 @@ import type { Clock } from "@game/fair-play";
  * - 누르고 있기: `holdMs`보다 오래 누르고 있으면 「준비」. 그 전에 떼면 취소(살펴보기 중이면 살펴보기로 돌아간다).
  * - 블라인드: 살펴보기가 없다. 도는 동안 첫 누름은 외우기 끝 표시, 다음 누름이 멈춤이다.
  *
- * 살펴보기 벌점(WCA 규정 A3·A5로 기억한다 — 규정 원문으로 확인 필요):
- * 살펴보기는 15초까지. 15초를 넘겨 17초까지 안에 시작하면 +2, 17초를 넘겨 시작하면 DNF.
+ * 살펴보기 벌점(WCA 규정 2026-04-01판):
+ * - A3a1: 살펴보기는 15초 "미만"이다.
+ * - A4d1·A4d1+: 15초 안에 시작하지 못하면 +2. 딱 15.00초여도 +2다.
+ * - A4d2·A4d2+: 17초 안에 시작하지 못하면 DNF. 딱 17.00초여도 DNF다.
+ * - A3b3·A3b4: 8초·12초에 심판이 알린다.
+ * - B1a: 블라인드는 살펴보기가 없다.
  * 시작 = 준비에서 손을 뗀 때(타이머가 도는 순간).
  */
 
@@ -64,10 +68,10 @@ export interface MachineView {
   readonly last: SolveResult | null;
 }
 
-/** 살펴보기 시간 → 벌점 */
+/** 살펴보기 시간 → 벌점(15.00초부터 +2, 17.00초부터 DNF) */
 export function inspectionPenalty(elapsedMs: number): Penalty {
-  if (elapsedMs > INSPECTION_DNF_MS) return "DNF";
-  if (elapsedMs > INSPECTION_MS) return "+2";
+  if (elapsedMs >= INSPECTION_DNF_MS) return "DNF";
+  if (elapsedMs >= INSPECTION_MS) return "+2";
   return "none";
 }
 
