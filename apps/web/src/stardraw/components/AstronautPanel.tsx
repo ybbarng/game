@@ -4,6 +4,7 @@ import { roundTimes, toHex } from "@game/stardraw-core";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { AstronautCard } from "../astronaut/AstronautCard";
+import { cardCodeOf, cardUrl } from "../astronaut/card-code";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { checkOwner } from "../astronaut/owner-check";
 import { FX } from "../fx-timing";
@@ -49,9 +50,38 @@ export function useIssued(services: Services, pub: Uint8Array): string | null {
 }
 
 /**
+ * 공유본 주소의 값(docs/36 11-66): 고른 값·발급일·등록 회차. 등록 회차는 장부에 오른 회차, 아직 오르지 않았으면
+ * 지금 회차(등록은 지금 회차에 함께 오른다). 읽는 중이면 null
+ */
+function useShareCode(services: Services, pub: Uint8Array): string | null {
+  const [code, setCode] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const registered = await services.ledger
+        .registeredRound(pub)
+        .catch(() => null);
+      let round = registered;
+      if (round === null)
+        try {
+          round = services.ledger.status().round;
+        } catch {
+          round = null;
+        }
+      const issuedAt = await issuedAtOf(services, pub);
+      if (alive) setCode(cardCodeOf(pub, { issuedAt, round }));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [services, pub]);
+  return code;
+}
+
+/**
  * 우주인 등록증 한 장과 공유(docs/36 11-9). 등록 직후·내 등록증·데모가 같이 쓴다.
- * 우리 화면은 남의 등록증을 그리지 않는다: 이 기기의 내 등록증만(데모는 가짜 우주인). 그래서 공유도 공개 열쇠 주소 대신
- * 인사 문구와 첫 화면 주소만 보낸다.
+ * 우리 화면은 이 기기의 내 등록증만 그린다(데모는 가짜 우주인). 공유는 공유본 주소(/stardraw/card, 11-66)를 보낸다:
+ * 공개 열쇠 없이 등록증에 보이는 값만 담고, 받는 화면은 공개 열쇠를 늘 가린 채 장부와 대조한다.
  * 공개 열쇠는 앞면·공유에 넣지 않고 카드 뒷면에 가려 둔다(꺼내 보기 전에 본인 확인, `AstronautCard`).
  * 등록증 그림을 나눠도 글자 검색으로 장부 속 응모가 바로 찾히지 않게 하는 실수 방지다. 등록번호로도 계산하면 찾을 수 있다는 한계는 남는다.
  * 발급일은 `issuedAtOf`가 정한다.
@@ -76,6 +106,7 @@ export function AstronautPanel({
   const issued = useIssued(services, pub);
   const affiliation = useAffiliation(services, pub);
   const [copied, setCopied] = useState(false);
+  const code = useShareCode(services, pub);
   // 앞면 주인 확인과 뒷면 열쇠 꺼내 보기가 같은 본인 확인을 쓴다(그 등록증의 패스키, 기기 안에서 확인)
   /** 본인 확인도 신분증 제시 틀: 오버레이 → 우주국 말 → 등록증을 내밀면 그 누름에 바로 패스키 */
   const idp = useIdPresent(services);
@@ -109,7 +140,10 @@ export function AstronautPanel({
 
   const share = async () => {
     const text = `${residentPhrase(a)}, 하늘의 별 따기 우주인으로 등록했어요.`;
-    const url = `${window.location.origin}/stardraw`;
+    const url = cardUrl(
+      window.location.origin,
+      code ?? cardCodeOf(pub, { issuedAt: null, round: null }),
+    );
     if (navigator.share) {
       try {
         await navigator.share({ text, url });

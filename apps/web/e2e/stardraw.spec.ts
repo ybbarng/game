@@ -525,12 +525,20 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 다시 뒤집으면 가린다
   await page.locator("[data-flip-card]").click();
   await expect(back.locator("[data-public-key]")).toHaveCount(0);
-  // 등록증 공유: "끝 천체에 거주하는 이름"과 첫 화면 주소(남의 화면이 등록증을 그리지 않게 공개 열쇠는 넣지 않는다)
+  // 등록증 공유: "끝 천체에 거주하는 이름"과 공유본 주소(공개 열쇠 없이 등록증에 보이는 값만, docs/36 11-66)
   await page.getByRole("button", { name: "등록증 공유" }).click();
   await expect
     .poll(async () => ((await shared()) as { text: string }).text)
     .toMatch(/^.+에 거주하는 .+, 하늘의 별 따기 우주인으로 등록했어요\.$/);
-  expect(((await shared()) as { url: string }).url).toMatch(/\/stardraw$/);
+  const cardUrl = ((await shared()) as { url: string }).url;
+  expect(cardUrl).toMatch(/\/stardraw\/card\?c=v1\.[\w-]{35}$/);
+  // 응모하고 관측까지 지난 회차라 등록이 장부에 올라 있다: 공유본이 장부에서 찾힌다
+  await page.goto(cardUrl);
+  await expect(page.locator(`[data-card-copy="${number}"]`)).toBeVisible();
+  await expect(page.locator("[data-card-check]")).toHaveAttribute(
+    "data-card-check",
+    "found",
+  );
 
   // 추첨 뒤 공유 링크는 장부에서 찾아 결과까지 보여 준다
   await page.goto(url);

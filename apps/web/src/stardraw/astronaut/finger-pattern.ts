@@ -1,17 +1,21 @@
 import { sha256, taggedHash, utf8 } from "@game/stardraw-core";
 
+import { serialOf } from "./identity";
+
 /**
  * 지문 도장(docs/36 11-64). 우주인 등록 신청서에 지문 단추로 서명하면 서명 칸에 찍히고, 등록증 뒷면에도 작게 들어가는 붉은 인주 무늬.
  * 공개 열쇠 하나에서 결정적으로 정한다: 같은 패스키면 어느 기기에서든 같은 무늬다. 실제 지문과는 아무 관계가 없다
  * (패스키의 지문 인증은 기기 안에서 끝나고 사이트는 지문을 받지 않는다). 그래서 일부러 진짜 지문처럼 보이지 않게
  * 가운데에 별 하나, 골 사이에 별 점 몇 개를 둔다.
  *
- * 씨앗 s = taggedHash("stardraw/fingermark/v1", 공개 열쇠 65바이트). 등록증 씨앗(stardraw/astronaut/v2)과 도메인이 달라
- * 이름·얼굴과 상관없이 정해진다. 값마다 sha256(s ‖ 이름)에서 뽑는다(이름이 곧 구분 문자열이라 값을 더해도 다른 값이 그대로다).
+ * 씨앗 s = taggedHash("stardraw/fingermark/v2", 등록번호 40비트). 등록번호는 공개 열쇠에서 나오고(`serialOf`) 앞면에 이미 보인다.
+ * 등록증 공유본(/stardraw/card, docs/36 11-66)이 열쇠 없이 같은 도장을 그리도록 v1(공개 열쇠 65바이트)에서 바꿨다.
+ * 이름·얼굴은 등록증 씨앗의 다른 바이트에서 뽑으니 도장과 상관없이 정해진다.
+ * 값마다 sha256(s ‖ 이름)에서 뽑는다(이름이 곧 구분 문자열이라 값을 더해도 다른 값이 그대로다).
  *
  * 좌표는 그림 판(FM_W × FM_H) 기준이고, 기울기를 빼고 정한다(그릴 때 판 가운데를 축으로 통째로 돌린다).
  */
-export const FINGERMARK_TAG = "stardraw/fingermark/v1";
+export const FINGERMARK_TAG = "stardraw/fingermark/v2";
 
 /** 그림 판(세로로 긴 손가락 끝) */
 export const FM_W = 100;
@@ -198,7 +202,12 @@ function nearest(line: Pt[], p: Pt): Pt {
 
 /** 공개 열쇠(65바이트 원시 P-256) → 지문 도장 정의 */
 export function fingermarkOf(pub: Uint8Array): FingerMarkDef {
-  return fingermarkFromHash(taggedHash(FINGERMARK_TAG, pub));
+  return fingermarkOfSerial(serialOf(pub));
+}
+
+/** 등록번호 40비트(5바이트) → 지문 도장 정의. 공유본은 열쇠 없이 이것으로 같은 도장을 그린다 */
+export function fingermarkOfSerial(serial: Uint8Array): FingerMarkDef {
+  return fingermarkFromHash(taggedHash(FINGERMARK_TAG, serial));
 }
 
 export function fingermarkFromHash(seed: Uint8Array): FingerMarkDef {

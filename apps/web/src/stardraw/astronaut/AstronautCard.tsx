@@ -8,7 +8,8 @@ import { cn } from "@/lib/cn";
 
 import { Avatar, EGG_LABEL } from "./Avatar";
 import { FingerMark } from "./FingerMark";
-import type { Astronaut } from "./identity";
+import { fingermarkOfSerial } from "./finger-pattern";
+import { type Astronaut, serialOfNumber } from "./identity";
 import { ART_H, ART_W, keyArt } from "./key-art";
 import { PasskeyMark, Seal } from "./marks";
 import { OWNER_CHECK_SECONDS } from "./owner-check";
@@ -122,10 +123,13 @@ function PathNames({
  *   30초 뒤 원래대로. 실패·취소면 조용히 "확인하지 못했습니다".
  *   "내 패스키가 이 카드 열쇠와 맞다"를 나에게 보여 주는 체험일 뿐, 남에게 보여 주는 증명이 아니다
  *   (가짜 페이지도 같은 표시를 흉내 낼 수 있다). 남에게 당첨을 증명하는 길은 당첨자 확인(별 세 개)이다.
- * - 뒷면(`pub`·`onReveal`이 있을 때): 옆으로 밀거나 「뒷면 보기」로 뒤집는다. 공개 열쇠로 그린 별 무늬, 지문 도장(「본인 서명」), 가린 공개 열쇠 줄.
+ * - 뒷면(`pub`·`onReveal`이 있을 때, 또는 공유본 `copy`): 옆으로 밀거나 「뒷면 보기」로 뒤집는다. 등록번호에서 정한 별 무늬,
+ *   지문 도장(「본인 서명」), 가린 공개 열쇠 줄. 별 무늬와 지문 도장은 등록번호(열쇠에서 나온 40비트)로 그려 공유본도 같다.
  *   가린 줄을 누르면 본인 확인 뒤 공개 열쇠와 복사 단추를 보인다. 30초 뒤나 다시 뒤집으면 가린다.
  *   공개 열쇠는 비밀이 아니다(장부와 기기에 있다). 캡처·어깨너머로 장부 속 내 응모가 바로 찾히지 않게 하는 실수 방지다.
  *   앞면은 주인 확인, 뒷면은 열쇠 꺼내 보기로 역할을 나눈다. 앞면과 공유에는 공개 열쇠를 넣지 않는다.
+ * - 공유본(`copy`, /stardraw/card, docs/36 11-66): 열쇠가 없다. 뒤집기·홀로그램은 같고, 공개 열쇠 줄은 늘 가려 누를 수 없으며,
+ *   본인 확인이 없다. 앞뒷면에 「공유본 · 본인 확인에 쓸 수 없습니다」 도장을 찍는다(서류의 「사본」 도장처럼).
  */
 export function AstronautCard({
   astronaut: a,
@@ -137,6 +141,7 @@ export function AstronautCard({
   onReveal,
   affiliation,
   office,
+  copy = false,
 }: {
   astronaut: Astronaut;
   /** 발급일 "2026. 10. 30."(읽는 중이면 null) */
@@ -159,6 +164,8 @@ export function AstronautCard({
    * 국장 열쇠는 공개 기관장 신분이라 남의 등록증을 그리지 않는다는 규칙(docs/36 11-9)의 예외다
    */
   office?: string | undefined;
+  /** 공유본(열쇠 없이 주소의 값으로 그린 등록증): 뒷면은 보이고 공개 열쇠는 꺼낼 수 없다 */
+  copy?: boolean;
 }) {
   /** 돌림판(앞뒷면과 옆면 층을 함께 돌린다) */
   const turn = useRef<HTMLDivElement>(null);
@@ -180,13 +187,18 @@ export function AstronautCard({
   const frame = useRef(0);
   /** 쌓인 뒤집기 각(180의 배수). 왼쪽으로 밀면 줄고 오른쪽이면 는다 */
   const base = useRef(0);
-  const canFlip = pub !== undefined && onReveal !== undefined;
+  const canFlip = copy || (pub !== undefined && onReveal !== undefined);
   const [flipped, setFlipped] = useState(false);
   const [reveal, setReveal] = useState<Reveal>("hidden");
   const [keyCopied, setKeyCopied] = useState(false);
   /** 뒤집을 때마다 늘려, 뒤집기 전에 시작한 본인 확인이 끝나도 열쇠를 꺼내지 않게 한다 */
   const flipTurn = useRef(0);
-  const art = useMemo(() => (pub ? keyArt(pub) : null), [pub]);
+  const serial = useMemo(() => serialOfNumber(a.number), [a.number]);
+  const art = useMemo(() => (serial ? keyArt(serial) : null), [serial]);
+  const mark = useMemo(
+    () => (serial ? fingermarkOfSerial(serial) : null),
+    [serial],
+  );
   const hex = useMemo(() => (pub ? toHex(pub) : ""), [pub]);
   const [inner, setOwner] = useState<Owner>("idle");
   const owner: Owner = forced ?? inner;
@@ -267,7 +279,7 @@ export function AstronautCard({
   };
 
   const revealKey = async () => {
-    if (!onReveal || reveal !== "hidden") return;
+    if (copy || !onReveal || reveal !== "hidden") return;
     const t = flipTurn.current;
     setReveal("checking");
     const ok = await onReveal();
@@ -415,7 +427,7 @@ export function AstronautCard({
           <div
             role="button"
             tabIndex={0}
-            aria-label={`우주인 등록증 ${a.name}. ${onCheck ? "누르면 본인 확인" : ""}`}
+            aria-label={`우주인 등록증 ${a.name}.${copy ? " 공유본" : onCheck ? " 누르면 본인 확인" : ""}`}
             data-idcard={a.number}
             data-owner={owner}
             inert={flipped}
@@ -567,6 +579,8 @@ export function AstronautCard({
 
             <HoloFilm />
 
+            {copy && <CopyMark className="bottom-[11cqw] left-[4.4cqw]" />}
+
             {owner === "ok" && (
               <div
                 role="status"
@@ -581,7 +595,7 @@ export function AstronautCard({
             )}
             <div aria-hidden="true" className="sd-idcard-shade" />
           </div>
-          {canFlip && art && (
+          {canFlip && art && mark && (
             // biome-ignore lint/a11y/useSemanticElements: 뒷면은 묶음일 뿐 입력 양식이 아니라 fieldset을 쓰지 않는다
             <div
               data-idcard-back
@@ -656,7 +670,7 @@ export function AstronautCard({
                 className="absolute top-[3.6cqw] right-[5cqw] flex flex-col items-center gap-[0.4cqw] rounded-[2cqw] border border-white/15 bg-slate-950/85 px-[2.2cqw] pt-[1.4cqw] pb-[1cqw]"
               >
                 <FingerMark
-                  pub={pub}
+                  def={mark}
                   label="본인 서명 지문 도장"
                   className="h-[15cqw] w-[12.5cqw] text-rose-400"
                 />
@@ -687,7 +701,19 @@ export function AstronautCard({
                 </div>
                 {/* 가린 줄과 꺼낸 값이 같은 높이(130자 세 줄)를 차지해, 꺼내도 상자 높이가 변하지 않는다 */}
                 <div className="h-[9.6cqw]" data-key-slot>
-                  {reveal === "shown" ? (
+                  {copy ? (
+                    <span
+                      data-key-mask
+                      data-key-locked
+                      role="img"
+                      aria-label="공개 열쇠(공유본에서는 가려 둡니다)"
+                      className="flex size-full items-center rounded-[1.4cqw] bg-white/5 px-[2cqw]"
+                    >
+                      <span className="font-mono text-[3.2cqw] text-white/70 tracking-[0.2em]">
+                        ●●●● ●●●● ●●●● ●●●●
+                      </span>
+                    </span>
+                  ) : reveal === "shown" ? (
                     <code
                       data-public-key
                       className="block break-all font-mono text-[2.25cqw] text-white/90 leading-[3.2cqw]"
@@ -715,6 +741,7 @@ export function AstronautCard({
                   )}
                 </div>
               </div>
+              {copy && <CopyMark className="top-[24cqw] left-[5cqw]" />}
               <div aria-hidden="true" className="sd-idcard-shade" />
             </div>
           )}
@@ -763,7 +790,9 @@ export function AstronautCard({
         <p className="break-keep text-center text-sky-100/85 text-xs">
           {owner === "ok"
             ? "나에게 보여 주는 확인입니다. 남에게 입상을 증명할 때는 입상 확인을 씁니다"
-            : "이 등록증은 이 기기의 패스키로 지켜집니다"}{" "}
+            : copy
+              ? "이 등록증은 주인의 패스키로 지켜집니다"
+              : "이 등록증은 이 기기의 패스키로 지켜집니다"}{" "}
           ·{" "}
           <a
             href="/stardraw/about#passkey"
@@ -931,6 +960,29 @@ function AddressGuide({ astronaut: a }: { astronaut: Astronaut }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * 공유본 도장(docs/36 11-66): 서류의 「사본」 도장처럼 비스듬히 찍은 붉은 테. 직인과 같은 인주 색.
+ * 주소의 값으로 그린 그림일 뿐이라 본인 확인에 쓸 수 없다는 것을 등록증 위에서 바로 알린다
+ */
+function CopyMark({ className }: { className: string }) {
+  return (
+    <div
+      data-copy-mark
+      className={cn(
+        "-rotate-[7deg] pointer-events-none absolute z-10 flex flex-col items-center rounded-[1.2cqw] border-[0.5cqw] border-rose-400/80 bg-rose-950/35 px-[2.2cqw] py-[0.6cqw] text-rose-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]",
+        className,
+      )}
+    >
+      <span className="font-black text-[3.6cqw] leading-none tracking-[0.3em]">
+        공유본
+      </span>
+      <span className="mt-[0.5cqw] text-[2cqw] leading-none">
+        본인 확인에 쓸 수 없습니다
+      </span>
+    </div>
   );
 }
 

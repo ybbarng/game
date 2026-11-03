@@ -1,12 +1,17 @@
+import { sha256, taggedHash } from "@game/stardraw-core";
+
 /**
- * 등록증 뒷면의 열쇠 그림(docs/36 11-9). 공개 열쇠 바이트에서 그대로 정해지는 별 무늬라
+ * 등록증 뒷면의 별 무늬(docs/36 11-9, 11-66). 등록번호 40비트(`serialOf`, 공개 열쇠에서 나온다)에서 정해지는 무늬라
  * 같은 열쇠면 어느 기기에서든 같은 그림이다. 꾸밈일 뿐 무엇을 판정하는 데 쓰지 않는다.
- * 원시 P-256 공개 열쇠(65바이트, 04 ‖ x ‖ y)의 x·y는 고르게 퍼진 값이라 해시 없이 바로 쓴다.
+ * 예전에는 공개 열쇠 x·y 바이트를 그대로 썼다. 등록증 공유본(/stardraw/card)이 열쇠 없이 같은 그림을 그리도록
+ * 앞면에 이미 보이는 등록번호에서 정하게 바꿨다(2026-11-03).
  */
 
 /** 그림 판(가로:세로 = 카드 비율 1.586) */
 export const ART_W = 158.6;
 export const ART_H = 100;
+
+export const KEY_ART_TAG = "stardraw/key-art/v2";
 
 export type ArtStar = { x: number; y: number; r: number; o: number };
 
@@ -23,9 +28,15 @@ const STARS = 20;
 /** 선으로 잇는 밝은 별 수 */
 const LINKED = 7;
 
-export function keyArt(pub: Uint8Array): KeyArt {
-  if (pub.length < 65) throw new Error("공개 열쇠는 65바이트여야 한다");
-  const b = (i: number) => pub[1 + (i % 64)] as number;
+/** 등록번호 40비트(5바이트) → 별 무늬 */
+export function keyArt(serial: Uint8Array): KeyArt {
+  if (serial.length !== 5) throw new Error("등록번호는 5바이트여야 한다");
+  const seed = taggedHash(KEY_ART_TAG, serial);
+  // 무늬에 쓰는 64바이트: 씨앗에서 두 번 늘린다
+  const bytes = new Uint8Array(64);
+  bytes.set(sha256(seed, Uint8Array.of(0)), 0);
+  bytes.set(sha256(seed, Uint8Array.of(1)), 32);
+  const b = (i: number) => bytes[i % 64] as number;
   const stars: ArtStar[] = [];
   for (let i = 0; i < STARS; i++) {
     stars.push({

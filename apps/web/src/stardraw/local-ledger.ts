@@ -782,6 +782,15 @@ export class LocalLedger implements Ledger {
   }
 
   /**
+   * 닫힌 회차의 등록(등록증 공유본을 장부와 대조할 때, docs/36 11-66). 아직 닫히지 않았으면 null.
+   * 지운 회차는 이 기기의 등록만 남아 있다
+   */
+  closedRegistrations(round: number): readonly KeyRegistration[] | null {
+    if (!this.records[round - 1]) return null;
+    return this.registrations[round - 1] ?? [];
+  }
+
+  /**
    * 그 회차 응모권(연습 장부는 들고 있다. 검증하기 페이지의 연습 장부 검사도 쓴다).
    * 지운 회차는 이 기기의 응모권만 남아 있다(연습 참가자는 소속 증서를 쓰지 않아 소속 판정은 그대로다)
    */

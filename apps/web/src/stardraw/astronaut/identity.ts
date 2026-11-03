@@ -189,13 +189,26 @@ const LISTS: AstronautLists = {
 const byId = (p: { id: string }) => p.id;
 const self = (s: string) => s;
 
-/** 씨앗에서 등록증을 계산한다(목록은 시험에서 바꿔 넣을 수 있다) */
-export function astronautFromHash(
+/**
+ * 등록증을 정하는 고른 값들. 씨앗에서 뽑거나(`astronautFromHash`), 공유본 주소에서 읽어(`card-code.ts`) 같은 등록증을 만든다
+ */
+export interface AstronautPicks {
+  /** 등록번호 40비트(씨앗 앞 5바이트) */
+  serial: Uint8Array;
+  name: string;
+  otherGalaxy: boolean;
+  place: Place;
+  /** 대륙이 있는 곳(지구)이면 그 가운데 하나, 아니면 null */
+  area: Area | null;
+  egg: Egg | null;
+  face: Face;
+}
+
+/** 씨앗에서 고른 값들을 뽑는다(목록은 시험에서 바꿔 넣을 수 있다) */
+export function picksFromHash(
   s: Uint8Array,
   lists: AstronautLists = LISTS,
-): Astronaut {
-  const raw = crockford40(s);
-  const number = `SD-${raw.slice(0, 4)}-${raw.slice(4)}`;
+): AstronautPicks {
   const name = rendezvous(s, "name", lists.names, self);
   const otherGalaxy = u16(s, 5) < GALAXY_ROLL;
   const place = otherGalaxy
@@ -204,15 +217,6 @@ export function astronautFromHash(
   const area: Area | null = place.areas?.length
     ? rendezvous(s, "area", place.areas, byId)
     : null;
-  const path = area ? [...place.path, area.name] : place.path;
-  const address = otherGalaxy
-    ? [COSMIC_PATH[0], ...path]
-    : [...COSMIC_PATH, ...ARM_PATH, ...path];
-  // 짧은 경로: 우리 은하부터, 다른 은하는 끝의 세 단계(예: 국부은하군 › 안드로메다은하 › M32)
-  const short = otherGalaxy
-    ? address.slice(-3)
-    : address.slice(COSMIC_PATH.length);
-  const body = place.path[place.path.length - 1] as string;
   const egg =
     u16(s, 7) < EGG_ROLL
       ? rendezvous(s, "egg", EGGS, self as (e: Egg) => string)
@@ -230,17 +234,70 @@ export function astronautFromHash(
     sky: u32(s, 10),
   };
   return {
-    number,
+    serial: s.slice(0, 5),
     name,
+    otherGalaxy,
+    place,
+    area,
+    egg,
+    face,
+  };
+}
+
+/** 고른 값들 → 등록증(주소 경로·짧은 경로·인사 이름을 붙인다) */
+export function astronautFromPicks(p: AstronautPicks): Astronaut {
+  const { place, area, otherGalaxy } = p;
+  const raw = crockford40(p.serial);
+  const number = `SD-${raw.slice(0, 4)}-${raw.slice(4)}`;
+  const path = area ? [...place.path, area.name] : place.path;
+  const address = otherGalaxy
+    ? [COSMIC_PATH[0], ...path]
+    : [...COSMIC_PATH, ...ARM_PATH, ...path];
+  // 짧은 경로: 우리 은하부터, 다른 은하는 끝의 세 단계(예: 국부은하군 › 안드로메다은하 › M32)
+  const short = otherGalaxy
+    ? address.slice(-3)
+    : address.slice(COSMIC_PATH.length);
+  const body = place.path[place.path.length - 1] as string;
+  return {
+    number,
+    name: p.name,
     address,
     short,
     home: area ? `${body} ${area.name}` : body,
     placeId: area ? area.id : place.id,
     ...(place.ly !== undefined ? { ly: place.ly } : {}),
     otherGalaxy,
-    face,
-    egg,
+    face: p.face,
+    egg: p.egg,
   };
+}
+
+/** 씨앗에서 등록증을 계산한다(목록은 시험에서 바꿔 넣을 수 있다) */
+export function astronautFromHash(
+  s: Uint8Array,
+  lists: AstronautLists = LISTS,
+): Astronaut {
+  return astronautFromPicks(picksFromHash(s, lists));
+}
+
+/** 등록번호 "SD-XXXX-XXXX" → 40비트 5바이트(`crockford40`의 반대). 모양이 아니면 null */
+export function serialOfNumber(number: string): Uint8Array | null {
+  const m = /^SD-([0-9A-HJKMNP-TV-Z]{4})-([0-9A-HJKMNP-TV-Z]{4})$/.exec(number);
+  if (!m) return null;
+  let v = 0n;
+  for (const ch of `${m[1]}${m[2]}`)
+    v = (v << 5n) | BigInt(CROCKFORD.indexOf(ch));
+  const out = new Uint8Array(5);
+  for (let i = 4; i >= 0; i--) {
+    out[i] = Number(v & 255n);
+    v >>= 8n;
+  }
+  return out;
+}
+
+/** 공개 열쇠 → 등록번호 40비트(뒷면 별 무늬·지문 도장의 씨앗, docs/36 11-66) */
+export function serialOf(pub: Uint8Array): Uint8Array {
+  return taggedHash(ASTRONAUT_TAG, pub).slice(0, 5);
 }
 
 /** 공개 열쇠(65바이트 원시 P-256) → 등록증 */
