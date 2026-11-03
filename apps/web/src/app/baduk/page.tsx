@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   description:
-    "컴퓨터(입문·중수·고수)와 두는 웹 바둑. 9·13·19줄, 친구와 온라인 대전, PC와 휴대폰 모두.",
+    "컴퓨터(입문·중수·고수·초고수)와 두는 웹 바둑. 9·13·19줄, 친구와 온라인 대전, PC와 휴대폰 모두.",
   keywords: ["바둑", "Baduk", "Go", "위기", "보드게임"],
 };
 
