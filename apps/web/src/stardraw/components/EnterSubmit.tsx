@@ -11,6 +11,7 @@ import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { EASE, EASE_OUT, FX } from "../fx-timing";
 import { SKY_STARS, starOf } from "../sky";
+import { IdleHint, useIdleHint } from "./IdleHint";
 import { LottoBall } from "./parts";
 
 /**
@@ -518,6 +519,8 @@ export function Sheet({
     setDrag(null);
   };
   const dragging = drag !== null;
+  /** 가만히 있으면 밀어 올리는 손짓. 손짓이 움직이는 동안 용지의 떠오름은 멈춘다(동시에 움직이지 않기) */
+  const hint = useIdleHint(awaiting);
   const transform =
     sheet === "below"
       ? "translateY(100vh)"
@@ -557,7 +560,7 @@ export function Sheet({
         data-sheet={sheet}
         data-awaiting={awaiting || undefined}
         className={cn(
-          "flex touch-none select-none flex-col gap-3 rounded-2xl outline-none",
+          "relative flex touch-none select-none flex-col gap-3 rounded-2xl outline-none",
           // 초점 테두리는 내기를 기다릴 때만(낸 뒤에는 남지 않게)
           awaiting &&
             "focus-visible:ring-2 focus-visible:ring-amber-200/70 focus-visible:ring-offset-4 focus-visible:ring-offset-[#070b16]",
@@ -569,7 +572,8 @@ export function Sheet({
         style={{
           transform,
           transition,
-          animationPlayState: awaiting && !dragging ? "running" : "paused",
+          animationPlayState:
+            awaiting && !dragging && !hint ? "running" : "paused",
           filter: dragging
             ? `drop-shadow(0 ${16 + Math.min(24, -(drag ?? 0) / 6)}px 28px rgba(0,0,0,0.5))`
             : undefined,
@@ -584,6 +588,7 @@ export function Sheet({
           )}
         />
         {children}
+        <IdleHint kind="swipe-up" shown={hint} />
       </div>
     </div>
   );

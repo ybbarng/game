@@ -7,6 +7,7 @@ import { astronautOf } from "../astronaut/identity";
 import { EASE, EASE_OUT, FX } from "../fx-timing";
 import type { Services } from "../services";
 import { useIssued } from "./AstronautPanel";
+import { IdleHint, useIdleHint } from "./IdleHint";
 
 /** 등록증 자리: 아래에 숨음 / 아래에서 살짝 올라와 내밀기를 기다림 / 내밀어 조금 올라감 / 가운데 떠 있음 */
 export type CardSpot = "hidden" | "peek" | "lift" | "up";
@@ -163,6 +164,8 @@ function FlyingCard({
     null,
   );
   const pressable = !!onPress && spot === "peek";
+  /** 가만히 있으면 누르는 손짓. 손짓이 움직이는 동안 등록증의 떠오름은 멈춘다(동시에 움직이지 않기) */
+  const hint = useIdleHint(pressable);
   /** 실루엣으로 기다렸으면 확인된 등록증은 칸마다 채워지며 나타난다 */
   const sawBlank = useRef(!pub);
   if (!pub) sawBlank.current = true;
@@ -246,7 +249,8 @@ function FlyingCard({
       style={{
         transform,
         transition,
-        animationPlayState: pressable && drag === null ? "running" : "paused",
+        animationPlayState:
+          pressable && drag === null && !hint ? "running" : "paused",
       }}
     >
       <div className="pointer-events-none">
@@ -258,6 +262,7 @@ function FlyingCard({
           <BlankAstronautCard />
         )}
       </div>
+      <IdleHint kind="tap" shown={hint} />
     </div>
   );
 }
