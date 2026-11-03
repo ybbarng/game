@@ -86,6 +86,12 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           공식 훈련
         </a>
         <a
+          href="/cube/algs"
+          className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+        >
+          공식 모음
+        </a>
+        <a
           href="/cube/fingers"
           className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
         >

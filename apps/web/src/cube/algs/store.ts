@@ -198,3 +198,13 @@ export function setAsText(book: AlgBook, set: AlgSetInfo): string {
 export function setById(id: string): AlgSetInfo | undefined {
   return ALG_SETS.find((s) => s.set === id);
 }
+
+/** 자료 공식(대표·대안)으로 그 상황을 찾는다. 배우기 단원의 모범 답이 어느 상황인지 알아볼 때 */
+export function caseOfAlg(alg: string): AlgCase | undefined {
+  const t = tidyAlg(alg);
+  for (const s of ALG_SETS) {
+    const c = s.cases.find((x) => x.algs.includes(t));
+    if (c) return c;
+  }
+  return undefined;
+}
