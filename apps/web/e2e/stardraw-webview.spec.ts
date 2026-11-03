@@ -197,3 +197,95 @@ test.describe("슬랙 아이폰(SFSafariViewController는 Safari와 같다)", ()
     expect(await autoOpened(page)).toBeNull();
   });
 });
+
+/** 패스키 만들기가 답하지 않게 한다. `window.__finish()`로 늦게 실패시킨다 */
+async function hangingCreate(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __finish?: () => void; __creates: number };
+    w.__creates = 0;
+    navigator.credentials.create = () => {
+      w.__creates += 1;
+      return new Promise((_, reject) => {
+        w.__finish = () =>
+          reject(new DOMException("늦은 취소", "NotAllowedError"));
+      });
+    };
+  });
+}
+
+test.describe("패스키 무응답(안드로이드 Chrome)", () => {
+  test("답이 없으면 누른 자리 아래에 우주국 안내, 늦게 답이 오면 걷는다", async ({
+    page,
+  }, info) => {
+    await platformSays(page, true);
+    await hangingCreate(page);
+    await page.goto("/stardraw");
+    const register = page.getByRole("button", {
+      name: "우주인 등록",
+      exact: true,
+    });
+    await register.click();
+    const stall = page.locator("[data-passkey-stall]");
+    // 초점 신호(창 blur)가 없으니 짧은 시간 뒤 「창이 안 뜬 것」으로
+    await page.clock.fastForward(7_000);
+    await expect(stall).toHaveCount(0);
+    await page.clock.fastForward(1_500);
+    await expect(stall).toHaveAttribute("data-passkey-stall", "quiet");
+    await expect(stall).toContainText("카노푸스 우주국");
+    await expect(stall).toContainText(
+      "확인 창이 열리지 않은 것 같습니다. 이 브라우저에서는 패스키가 열리지 않을 수 있습니다. 다른 브라우저(Safari·Chrome)에서 열어 보세요.",
+    );
+    await expect(
+      stall.getByRole("button", { name: "다시 시도" }),
+    ).toBeVisible();
+    await expect(
+      stall.getByRole("button", { name: "주소 복사" }),
+    ).toBeVisible();
+    // 누른 단추 바로 아래(누르면 이름이 「등록하고 있습니다」로 바뀐다)
+    const b = await page
+      .locator("[data-key-setup]")
+      .getByRole("button", { name: "등록하고 있습니다" })
+      .boundingBox();
+    const s = await stall.boundingBox();
+    expect(s?.y ?? 0).toBeGreaterThan((b?.y ?? 0) + (b?.height ?? 0) - 1);
+    // 호출은 끊지 않았다(한 번만 불렀다)
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __creates: number }).__creates,
+      ),
+    ).toBe(1);
+    if (process.env.E2E_SCREENSHOTS)
+      await page.screenshot({ path: info.outputPath("webview-stall.png") });
+    // 늦게라도 답이 오면 안내를 걷고 평소대로(여기서는 취소 문구)
+    await page.evaluate(() =>
+      (window as unknown as { __finish: () => void }).__finish(),
+    );
+    await expect(stall).toHaveCount(0);
+    await expect(
+      page.locator("[data-key-setup]").getByRole("alert").filter({
+        hasText: "등록하지 않았어요",
+      }),
+    ).toBeVisible();
+  });
+});
+
+test.describe("패스키 무응답(카카오톡 안드로이드, 패스키가 된다고 하는 웹뷰)", () => {
+  test.use({ userAgent: WV(";KAKAOTALK 2510030") });
+
+  test("안내에 바깥 브라우저로 여는 단추", async ({ page }) => {
+    await platformSays(page, true);
+    await hangingCreate(page);
+    await page.goto("/stardraw");
+    await page
+      .getByRole("button", { name: "우주인 등록", exact: true })
+      .click();
+    await page.clock.fastForward(8_500);
+    const stall = page.locator("[data-passkey-stall]");
+    await expect(stall).toContainText(
+      "확인 창이 열리지 않은 것 같습니다. 카카오톡 안에서는 패스키가 열리지 않을 수 있습니다.",
+    );
+    await expect(
+      stall.getByRole("link", { name: "다른 브라우저로 열기" }),
+    ).toHaveAttribute("href", /^kakaotalk:\/\//);
+  });
+});

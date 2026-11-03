@@ -27,6 +27,7 @@ import {
   passkeyReach,
   webviewKind,
 } from "./passkey-env";
+import { onPasskeyStall } from "./passkey-watch";
 import type { Wallet } from "./wallet";
 
 /** 실제 게임으로 확인한 저장 이름공간 */
@@ -111,6 +112,8 @@ export function keyFailKind(err: unknown): SdKeyFailKind {
  * 센다. 성공·실패는 원래 함수의 결과 그대로 돌려준다
  */
 export function instrument(ns: string, wallet: Wallet, ledger: Ledger): void {
+  // 패스키를 불렀는데 답이 없어 안내를 띄우면 한 번(호출은 끊지 않는다)
+  onPasskeyStall((step) => keyFail(ns, step, "no-response"));
   const create = wallet.createPasskey.bind(wallet);
   wallet.createPasskey = async () => {
     try {
@@ -145,7 +148,11 @@ export function instrument(ns: string, wallet: Wallet, ledger: Ledger): void {
   };
 }
 
-function keyFail(ns: string, step: SdKeyHow, kind: SdKeyFailKind): void {
+function keyFail(
+  ns: string,
+  step: SdKeyHow | "sign",
+  kind: SdKeyFailKind,
+): void {
   sdTrack(ns, "sd-key-fail", { step, kind, inApp: inApp() });
 }
 

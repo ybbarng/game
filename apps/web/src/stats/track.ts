@@ -28,11 +28,11 @@ export interface TrackEvents {
   /** 우주인 등록증을 만들었거나(create) 다른 기기에서 신분증을 제시해 찾았다(present) */
   "sd-key": { how: SdKeyHow; where: SdWhere; inApp: boolean };
   /**
-   * 패스키가 막혔다. step: 만들기·제시, 또는 들어오자마자 본 브라우저 환경(env, 페이지를 열 때 한 번).
+   * 패스키가 막혔다. step: 만들기·제시·서명(sign, 예측서·언덕·입상 확인), 또는 들어오자마자 본 브라우저 환경(env, 페이지를 열 때 한 번).
    * kind는 SdKeyFailKind, inApp은 앱 안 브라우저(웹뷰, passkey-env `webviewKind`)였는지
    */
   "sd-key-fail": {
-    step: SdKeyHow | "env";
+    step: SdKeyHow | "sign" | "env";
     kind: SdKeyFailKind;
     inApp: boolean;
   };
@@ -65,6 +65,8 @@ export type SdKeyFailKind =
   | "wv-ios"
   | "wv-android-auto"
   | "wv-ios-auto"
+  /** 패스키를 불렀는데 답이 없어 「창이 뜨지 않았나요?」 안내를 띄웠다(호출은 끊지 않는다, passkey-watch) */
+  | "no-response"
   /** 웹뷰가 아닌 브라우저에 패스키 기능이 없다(env) */
   | "no-api"
   | "other";

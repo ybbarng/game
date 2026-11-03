@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { WebviewBand } from "@/stardraw/components/InAppNotice";
+import {
+  PasskeyStallNotice,
+  WebviewBand,
+} from "@/stardraw/components/InAppNotice";
 
 /**
  * 하늘의 별 따기 링크 미리보기(카카오톡·메신저가 읽는 og:title·og:description). 이것이 없으면 별 따기의 모든 주소가
@@ -19,12 +22,13 @@ export const metadata: Metadata = {
   },
 };
 
-/** 별 따기 모든 화면: 웹뷰에서 패스키가 안 될 것 같으면 위쪽 띠(docs/36 11-54) */
+/** 별 따기 모든 화면: 웹뷰에서 패스키가 안 될 것 같으면 위쪽 띠(docs/36 11-54), 패스키 무응답 안내(11-55) */
 export default function StardrawLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <WebviewBand />
       {children}
+      <PasskeyStallNotice />
     </>
   );
 }

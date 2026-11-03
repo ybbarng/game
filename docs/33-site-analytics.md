@@ -374,12 +374,12 @@ umami 수집 끝점(`POST https://stats.byb.kr/api/send`)은 브라우저가 불
 |---|---|---|---|
 | `sd-arrive` | `from: "notice"` | 공지 링크 꼬리표로 들어왔을 때 한 번. 꼬리표는 주소에서 지운다 | `StardrawApp`(장부를 받은 뒤) `trackArrival` |
 | `sd-key` | `how: "create"\|"present"`, `where`(화면 이름), `inApp` | 등록증 만들기 성공(create), 신분증 제시로 이 기기에 찾아옴(present) | 지갑 `createPasskey`·`recoverPasskey`를 감쌈(`instrument`) |
-| `sd-key-fail` | `step: "create"\|"present"\|"env"`, `kind`, `inApp` | 만들기·제시 실패, 또는 페이지를 열 때 패스키를 못 쓰는 브라우저(env, 탭마다 한 번) | 같음, env는 `trackKeyEnv` |
+| `sd-key-fail` | `step: "create"\|"present"\|"sign"\|"env"`, `kind`, `inApp` | 만들기·제시 실패, 또는 페이지를 열 때 패스키를 못 쓰는 브라우저(env, 탭마다 한 번) | 같음, env는 `trackKeyEnv` |
 | `sd-predict` | `kind: "first"\|"again"` | **예측 시작**: 그 회차에 처음 별을 바구니에 담을 때 한 번(쓰다 만 별 불러오기 포함). first는 이 기기에 앞서 낸 예측서가 없음 | `draft-paper.ts` `saveDraft` |
 | `sd-predict-fail` | `why`(`stardraw/errors.ts` `ErrorKind`) | 예측서 내기가 서버에서 거절·실패 | 장부 `submit`을 감쌈 |
 | `sd-view` | `view: "records"\|"receipt"\|"round"\|"draw"\|"predict"\|"observe"` | 주소 경로가 바뀌지 않는 화면(# 조각 화면, 지금 회차의 예측·관측)으로 바뀔 때 | `StardrawApp` |
 
-- `kind`(`sd-key-fail`): `cancelled`(창을 닫음·시간 초과, 브라우저는 「맞는 패스키 없음」도 같은 오류로 준다), `unsupported`(ES256·본인 확인 못 함), `not-found`(제시: 장부에 없는 등록증), `wv-android`·`wv-ios`(웹뷰이고 미리 알아보니 패스키가 안 될 것 같음, 처음 열 때 바깥으로 자동으로 넘겨 본 탭은 끝에 `-auto`)·`no-api`(웹뷰가 아닌데 WebAuthn 없음, 둘 다 env), `other`. 2026-11-03 전의 env `in-app`은 이름을 아는 앱이면 늘 보냈다(docs/36 11-54). `inApp`은 웹뷰 판정(`webviewKind`)이다.
+- `kind`(`sd-key-fail`): `cancelled`(창을 닫음·시간 초과, 브라우저는 「맞는 패스키 없음」도 같은 오류로 준다), `unsupported`(ES256·본인 확인 못 함), `not-found`(제시: 장부에 없는 등록증), `no-response`(패스키를 불렀는데 답이 없어 안내를 띄움, step은 create·present·sign, docs/36 11-55), `wv-android`·`wv-ios`(웹뷰이고 미리 알아보니 패스키가 안 될 것 같음, 처음 열 때 바깥으로 자동으로 넘겨 본 탭은 끝에 `-auto`)·`no-api`(웹뷰가 아닌데 WebAuthn 없음, 둘 다 env), `other`. 2026-11-03 전의 env `in-app`은 이름을 아는 앱이면 늘 보냈다(docs/36 11-54). `inApp`은 웹뷰 판정(`webviewKind`)이다.
 - `where`: `home`·`enter`·`predict`·`observe`·`mine`·`records`·`receipt`·`rounds`·`round`·`draw`·`stats`·`timetable`·`other`(StardrawApp 밖, 입상 확인).
 - 「예측 시작」과 접수는 다른 순간이다. 사람이 별을 고르고 예측서를 내기까지 신분증 제출·작업 증명이 끼어 적어도 몇 초, 보통 몇십 초가 걸린다. 시작 시각으로 접수 시각을 맞혀 보기는 어렵다고 보고 사용자가 남기기로 했다.
 - 패스키 성공·실패와 접수 실패는 화면 부품이 아니라 `getServices`에서 지갑·장부를 한 번 감싸 센다. 화면을 고쳐도 빠지지 않는다. 예측서 서명(패스키 확인)을 취소한 것은 장부까지 오지 않아 `sd-predict-fail`에 없다.

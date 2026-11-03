@@ -1,7 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   autoOpen,
   autoOpenTarget,
@@ -15,6 +21,12 @@ import {
   passkeyReach,
   webviewName,
 } from "../passkey-env";
+import {
+  dismissStall,
+  passkeyStall,
+  type StallWhy,
+  subscribeStall,
+} from "../passkey-watch";
 import { BureauLogo } from "./BureauMarks";
 
 /** 우주국 안내의 머리: 작은 로고와 「카노푸스 우주국」(방송 토스트와 같은 결) */
@@ -253,5 +265,113 @@ export function WebviewBand() {
         )}
       </div>
     </>
+  );
+}
+
+/** 패스키 무응답 안내의 문구(docs/36 11-55). 우주국이 내는 글이라 「~습니다」 */
+export function stallText(why: StallWhy, app: string | null): string {
+  const first =
+    why === "quiet"
+      ? "확인 창이 열리지 않은 것 같습니다."
+      : "확인이 아직 끝나지 않았습니다.";
+  return app
+    ? `${first} ${app} 안에서는 패스키가 열리지 않을 수 있습니다.`
+    : `${first} 이 브라우저에서는 패스키가 열리지 않을 수 있습니다. 다른 브라우저(Safari·Chrome)에서 열어 보세요.`;
+}
+
+/** 화면 가장자리와 띄울 거리(px) */
+const GUTTER = 16;
+
+/**
+ * 패스키를 불렀는데 답이 없을 때의 안내(passkey-watch). 누른 자리 바로 아래(자리가 없으면 위)에 띄운다. 웹뷰면 바깥
+ * 브라우저로 여는 단추, 아니면 주소 복사와 함께 「다시 시도」(페이지를 다시 연다: 멈춘 호출은 끊지 않으므로 같은 페이지에서
+ * 다시 부르면 「이미 진행 중」으로 막힌다. 바구니의 별은 저장해 둔다). 늦게라도 답이 오면 걷힌다
+ */
+export function PasskeyStallNotice() {
+  const stall = useSyncExternalStore(subscribeStall, passkeyStall, () => null);
+  const box = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!stall || !el) {
+      setPos(null);
+      return;
+    }
+    const place = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const me = el.getBoundingClientRect();
+      const a = stall.anchor?.isConnected
+        ? stall.anchor.getBoundingClientRect()
+        : null;
+      const left = Math.min(
+        Math.max(GUTTER, (a ? a.left + a.width / 2 : w / 2) - me.width / 2),
+        Math.max(GUTTER, w - GUTTER - me.width),
+      );
+      let top = a ? a.bottom + 8 : h - me.height - 96;
+      if (a && top + me.height > h - GUTTER) top = a.top - 8 - me.height;
+      top = Math.min(
+        Math.max(GUTTER, top),
+        Math.max(GUTTER, h - GUTTER - me.height),
+      );
+      setPos({ top, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, { capture: true });
+    };
+  }, [stall]);
+  if (!stall) return null;
+  const ua = navigator.userAgent;
+  const app = webviewName(ua);
+  const outside = openOutside(ua, location.href);
+  return (
+    <div
+      ref={box}
+      role="alert"
+      data-passkey-stall={stall.why}
+      className="fixed z-[90] flex w-[calc(100vw-32px)] max-w-sm flex-col gap-2 rounded-2xl border border-amber-200/30 bg-slate-950/95 px-4 py-3 text-left text-sm shadow-[0_12px_32px_rgba(0,0,0,0.5)] backdrop-blur"
+      style={
+        pos
+          ? { top: pos.top, left: pos.left }
+          : { visibility: "hidden", top: 0, left: 0 }
+      }
+    >
+      <div className="flex items-center justify-between gap-2">
+        <BureauHead />
+        <button
+          type="button"
+          aria-label="닫기"
+          onClick={dismissStall}
+          className="-mr-1 rounded-md px-1.5 text-white/60 hover:text-white"
+        >
+          ×
+        </button>
+      </div>
+      <p className="break-keep text-white/90 leading-snug">
+        {stallText(stall.why, app)}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {outside && (
+          <OpenOutsideLink
+            outside={outside}
+            className="sd-cta rounded-lg px-3 py-1.5 font-bold text-slate-950 text-xs"
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => location.reload()}
+          className="rounded-lg border border-amber-200/40 px-3 py-1.5 text-amber-50 text-xs hover:bg-amber-200/10"
+        >
+          다시 시도
+        </button>
+        {!outside && (
+          <CopyLink className="rounded-lg border border-amber-200/40 px-3 py-1.5 text-amber-50 text-xs hover:bg-amber-200/10" />
+        )}
+      </div>
+    </div>
   );
 }

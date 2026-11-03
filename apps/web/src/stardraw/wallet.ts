@@ -27,6 +27,7 @@ import {
 import { astronautOf } from "./astronaut/identity";
 import { requestUnlock, type UnlockPurpose } from "./demo-unlock";
 import { DEMO_CANCEL } from "./passkey-env";
+import { watchPasskey } from "./passkey-watch";
 
 /**
  * 내 열쇠와 내 응모권(docs/36 11-2). 브라우저 응모는 패스키로만 한다(2026-10-29 사용자).
@@ -227,28 +228,30 @@ export function createWallet(
 
     async createPasskey() {
       const userId = crypto.getRandomValues(new Uint8Array(16));
-      const credential = (await navigator.credentials.create({
-        publicKey: {
-          rp: { id: location.hostname, name: PASSKEY_NAME },
-          user: {
-            // 이름·이메일은 받지 않는다. 만든 뒤 "우주인 ○○"으로 바꿔 국장 패스키와 가른다
-            id: userId,
-            name: NEW_ASTRONAUT_NAME,
-            displayName: NEW_ASTRONAUT_NAME,
+      const credential = (await watchPasskey("create", () =>
+        navigator.credentials.create({
+          publicKey: {
+            rp: { id: location.hostname, name: PASSKEY_NAME },
+            user: {
+              // 이름·이메일은 받지 않는다. 만든 뒤 "우주인 ○○"으로 바꿔 국장 패스키와 가른다
+              id: userId,
+              name: NEW_ASTRONAUT_NAME,
+              displayName: NEW_ASTRONAUT_NAME,
+            },
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            // ES256(P-256)만: 응모자 id와 서명 규칙이 P-256이다
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            // 새 기기에서 이름 없이 찾을 수 있게(discoverable). 기기 종류는 정하지 않는다:
+            // iCloud·Google 비밀번호 관리자·1Password·Windows Hello·보안 키·휴대폰 QR 모두 되게
+            authenticatorSelection: {
+              residentKey: "required",
+              requireResidentKey: true,
+              userVerification: "required",
+            },
+            attestation: "none",
           },
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          // ES256(P-256)만: 응모자 id와 서명 규칙이 P-256이다
-          pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-          // 새 기기에서 이름 없이 찾을 수 있게(discoverable). 기기 종류는 정하지 않는다:
-          // iCloud·Google 비밀번호 관리자·1Password·Windows Hello·보안 키·휴대폰 QR 모두 되게
-          authenticatorSelection: {
-            residentKey: "required",
-            requireResidentKey: true,
-            userVerification: "required",
-          },
-          attestation: "none",
-        },
-      })) as PublicKeyCredential | null;
+        }),
+      )) as PublicKeyCredential | null;
       if (!credential)
         throw new DOMException("패스키를 만들지 않았습니다", "NotAllowedError");
       const response = credential.response as AuthenticatorAttestationResponse;
@@ -285,13 +288,15 @@ export function createWallet(
         new Uint8Array([0]),
         crypto.getRandomValues(new Uint8Array(32)),
       );
-      const credential = (await navigator.credentials.get({
-        publicKey: {
-          challenge: new Uint8Array(webauthnChallenge(message)),
-          rpId: location.hostname,
-          userVerification: "required",
-        },
-      })) as PublicKeyCredential | null;
+      const credential = (await watchPasskey("present", () =>
+        navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(webauthnChallenge(message)),
+            rpId: location.hostname,
+            userVerification: "required",
+          },
+        }),
+      )) as PublicKeyCredential | null;
       if (!credential) return null;
       const credentialId = new Uint8Array(credential.rawId);
       const pub = await lookup(credentialId);
@@ -616,20 +621,25 @@ async function passkeyAssertion(
   credentialId: Uint8Array | null,
   challenge: Uint8Array,
 ): Promise<WebAuthnAssertion> {
-  const credential = (await navigator.credentials.get({
-    publicKey: {
-      challenge: new Uint8Array(challenge),
-      rpId: location.hostname,
-      ...(credentialId
-        ? {
-            allowCredentials: [
-              { type: "public-key" as const, id: new Uint8Array(credentialId) },
-            ],
-          }
-        : {}),
-      userVerification: "required",
-    },
-  })) as PublicKeyCredential | null;
+  const credential = (await watchPasskey("sign", () =>
+    navigator.credentials.get({
+      publicKey: {
+        challenge: new Uint8Array(challenge),
+        rpId: location.hostname,
+        ...(credentialId
+          ? {
+              allowCredentials: [
+                {
+                  type: "public-key" as const,
+                  id: new Uint8Array(credentialId),
+                },
+              ],
+            }
+          : {}),
+        userVerification: "required",
+      },
+    }),
+  )) as PublicKeyCredential | null;
   if (!credential)
     throw new DOMException("패스키로 서명하지 않았습니다", "NotAllowedError");
   const response = credential.response as AuthenticatorAssertionResponse;
