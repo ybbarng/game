@@ -3,8 +3,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** 0 입문, 1 중수, 2 고수 */
-export type BadukLevel = 0 | 1 | 2;
+/** 0 입문, 1 중수, 2 고수, 3 초고수 */
+export type BadukLevel = 0 | 1 | 2 | 3;
 
 /** 나홀로 바둑에서 내 돌: 흑(먼저)·백·무작위 */
 export type StonePick = "black" | "white" | "random";
@@ -72,7 +72,13 @@ export const BADUK_LEVELS: readonly {
     value: 2,
     label: "고수",
     description:
-      "몬테카를로 나무 탐색으로 수천 판을 둬 본다. 9줄에서 가장 세고, 큰 판에서는 조금 약하다",
+      "몬테카를로 나무 탐색으로 수천 판을 둬 본다. 큰 판에서는 조금 약하다",
+  },
+  {
+    value: 3,
+    label: "초고수",
+    description:
+      "축·모양·사활 감각으로 더 깊이 읽고, 판세를 세며 둔다. 이기면 지키고 지면 흔든다. 큰 판은 생각이 조금 길다",
   },
 ];
 

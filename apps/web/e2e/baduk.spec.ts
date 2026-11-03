@@ -439,3 +439,36 @@ test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘
   await expect(page.getByRole("status")).toHaveText("수순을 끝까지 두었어요!");
   await page.screenshot({ path: info.outputPath("baduk-joseki.png") });
 });
+
+test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하는 중」을 보이다가 한 수 받는다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "컴퓨터 단계는 화면 크기와 상관없다",
+  );
+  await page.goto("/baduk");
+  await startSolo(page, "초고수");
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  // 상태 줄이 지나간 글자를 모두 적어 둔다. 생각이 짧아도 놓치지 않는다(기다리는 시간에 기대지 않는다).
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { __seen: string[] }).__seen = seen;
+    const status = document.querySelector('[role="status"]');
+    if (!status) throw new Error("상태 줄이 없다");
+    new MutationObserver(() => seen.push(status.textContent ?? "")).observe(
+      status,
+      { childList: true, characterData: true, subtree: true },
+    );
+  });
+  await placeAt(page, "E5", false);
+  await expect(page.getByRole("status")).toContainText("내 차례", {
+    timeout: 30_000,
+  });
+  await expect(stones(page)).toHaveCount(2);
+  const seen = await page.evaluate(
+    () => (window as unknown as { __seen: string[] }).__seen,
+  );
+  // 계산은 웹 워커에서 돌아 화면이 멈추지 않고, 컴퓨터 수가 오기 전에 상태 줄이 먼저 바뀐다.
+  expect(seen).toContain("컴퓨터가 생각하는 중…");
+});

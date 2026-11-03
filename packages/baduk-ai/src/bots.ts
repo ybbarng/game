@@ -190,12 +190,16 @@ export function createBadukSearchBot(playouts = EXPERT_PLAYOUTS): BadukBot {
 
 export const badukExpertBot = createBadukSearchBot();
 
-/** 초고수가 둬 볼 판 수(9줄). 무거운 플레이아웃이라 한 판이 고수보다 비싸다 */
-export const MASTER_PLAYOUTS = 10000;
+/**
+ * 초고수가 둬 볼 판 수(9줄). 무거운 플레이아웃이라 한 판이 고수보다 비싸다.
+ * 휴대폰(맥북의 3~5배 느림)에서 한 수 가운데 1초 안쪽이 되게 맞춘다(2026-11-04 본부 검토).
+ * 맥북 10000판 가운데 약 0.7초(부하 아래)에서 비율로 줄였다. 1500판으로도 고수에게 9승 1패였다
+ */
+export const MASTER_PLAYOUTS = 3000;
 
 /**
  * 초고수가 판 크기마다 둬 볼 판 수. 큰 판은 한 판이 길어 줄이되, 고수(×0.4·×0.15)보다는 덜 줄인다.
- * 9줄 2초·19줄 3초(맥북) 안에 들도록 bench로 맞췄다
+ * 배율은 맥북 bench(9줄 2초·13줄 안에 들게)로 정했다. 19줄 시간은 아직 재지 못했다(docs/25 3절)
  */
 function masterBudget(size: number, nine: number): number {
   return Math.round(size <= 9 ? nine : size <= 13 ? nine * 0.6 : nine * 0.18);
