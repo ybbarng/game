@@ -8,9 +8,6 @@ import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
  * 들어가는지만 본다).
  */
 
-/** 3D 첫 그림(셰이더 만들기 등)은 CI 휴대폰(소프트웨어 WebGL)에서 6초 넘게 걸린 적이 있다. 멈춘 시험을 잡는 상한일 뿐이다 */
-const FIRST_DRAW_LIMIT = 30_000;
-
 async function shot(page: Page, name: string, project: string) {
   if (!SAVE_SCREENSHOTS) return;
   await page.screenshot({
@@ -85,8 +82,10 @@ test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) =>
   await expect(
     page.locator("[data-cube-stage][data-input-ready]"),
   ).toBeVisible();
+  // 밀기는 3D 그림이 있어야 한다. CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸려 기본 상한을 넘었다
+  // (멈춘 시험을 잡는 안전장치로 30초)
   const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
-  await expect(canvas).toBeVisible({ timeout: FIRST_DRAW_LIMIT });
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
   const moves = page.locator("[data-cube-moves]");
   await expect(moves).toHaveText("0");
 
