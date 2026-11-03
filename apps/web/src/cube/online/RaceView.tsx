@@ -173,7 +173,8 @@ export function RaceView({
         </p>
       )}
 
-      {finishedFirst.length > 0 && (
+      {/* 아무도 못 맞춰도 판이 끝나면 결과(모두 DNF)를 보인다 */}
+      {(finishedFirst.length > 0 || snap.result) && (
         <ResultBox room={room} snap={snap} round={round} n={n} local={local} />
       )}
 

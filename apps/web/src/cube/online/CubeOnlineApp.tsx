@@ -16,7 +16,7 @@ import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botSupports } from "./bot-racer";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom, MAX_PLAYERS, NAME_MAX } from "./room";
+import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
 import { FORMAT_LABELS, type MatchFormat, standings } from "./standings";
 import { useCubeRoom } from "./use-room";
 
@@ -288,12 +288,13 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <select
             disabled={!host}
             value={s.n}
-            onChange={(e) =>
+            onChange={(e) => {
+              const k = Number(e.target.value);
               room.setSettings({
-                n: Number(e.target.value),
-                timeLimitSec: Number(e.target.value) <= 2 ? 60 : s.timeLimitSec,
-              })
-            }
+                n: k,
+                timeLimitSec: TIME_LIMIT_SEC[k] ?? s.timeLimitSec,
+              });
+            }}
             className="rounded bg-white/10 px-2 py-1"
           >
             {[2, 3, 4, 5].map((k) => (

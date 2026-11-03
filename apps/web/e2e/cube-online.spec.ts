@@ -3,6 +3,7 @@ import {
   fastForwardUntil,
   type Page,
   SAVE_SCREENSHOTS,
+  speedUpAnimations,
   test,
 } from "./test";
 
@@ -27,6 +28,7 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
 }, info) => {
   await page.clock.install();
   await page.goto("/cube/vs");
+  await speedUpAnimations(page);
   await expect(page.locator("[data-cube-vs-size]")).toHaveValue("2");
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await shot(page, "vs-setup", info.project.name);
@@ -51,9 +53,11 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
     page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
   ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
 
+  // 결과 상자는 누가 맞추거나 판이 끝나면 뜬다. 2×2 제한 시간 3분은 입문 컴퓨터 계획의 최대 길이(약 82초)보다
+  // 넉넉해 씨앗과 상관없이 컴퓨터가 먼저 맞춘다(room.ts TIME_LIMIT_SEC)
   const result = page.locator("[data-cube-result]");
   await fastForwardUntil(page, () => result.isVisible(), {
-    step: 500,
+    step: 1_000,
     timeout: 60_000,
   });
   await expect(result).toContainText("컴퓨터 1");
@@ -67,7 +71,7 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
   await fastForwardUntil(
     page,
     async () => (await result.getAttribute("data-cube-result")) === "final",
-    { step: 2_000, timeout: 60_000 },
+    { step: 5_000, timeout: 60_000 },
   );
   await expect(page.locator('[data-cube-rank="bot1"]')).toContainText(
     "컴퓨터 계획 확인",
