@@ -212,9 +212,6 @@ importers:
       '@fontsource/roboto-condensed':
         specifier: 5.3.0
         version: 5.3.0
-      '@game/mighty-ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
       '@game/baduk-ai':
         specifier: workspace:*
         version: link:../../packages/baduk-ai
@@ -233,9 +230,9 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
-      '@game/mighty-engine':
+      '@game/cube-engine':
         specifier: workspace:*
-        version: link:../../packages/engine
+        version: link:../../packages/cube-engine
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
@@ -260,6 +257,12 @@ importers:
       '@game/janggi-engine':
         specifier: workspace:*
         version: link:../../packages/janggi-engine
+      '@game/mighty-ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@game/minhwatu-ai':
         specifier: workspace:*
         version: link:../../packages/minhwatu-ai
@@ -427,15 +430,15 @@ importers:
 
   packages/fair-play:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hearts-engine':
         specifier: workspace:*
         version: link:../hearts-engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
       libsodium-wrappers-sumo:
         specifier: 0.8.4
         version: 0.8.4
@@ -446,33 +449,33 @@ importers:
 
   packages/gostop-ai:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/gostop-engine':
         specifier: workspace:*
         version: link:../gostop-engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/gostop-engine:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
-
-  packages/hearts-ai:
-    dependencies:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+
+  packages/hearts-ai:
+    dependencies:
       '@game/hearts-engine':
         specifier: workspace:*
         version: link:../hearts-engine
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/hearts-engine:
     dependencies:
@@ -488,12 +491,12 @@ importers:
 
   packages/janggi-ai:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/janggi-engine':
         specifier: workspace:*
         version: link:../janggi-engine
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/janggi-engine:
     dependencies:
@@ -503,45 +506,45 @@ importers:
 
   packages/minhwatu-ai:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
       '@game/minhwatu-engine':
         specifier: workspace:*
         version: link:../minhwatu-engine
 
   packages/minhwatu-engine:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/nyrongppong-ai:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
       '@game/nyrongppong-engine':
         specifier: workspace:*
         version: link:../nyrongppong-engine
 
   packages/nyrongppong-engine:
     dependencies:
-      '@game/mighty-engine':
-        specifier: workspace:*
-        version: link:../engine
       '@game/hwatu':
         specifier: workspace:*
         version: link:../hwatu
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
 
   packages/omok-ai:
     dependencies:
