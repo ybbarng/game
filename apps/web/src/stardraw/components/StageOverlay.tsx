@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { lockScroll } from "../scroll-lock";
 
 /** 움직임 줄이기 설정(첫 그리기 뒤에 읽는다) */
 export function useReducedMotion(): boolean {
@@ -39,14 +40,7 @@ export function StageOverlay({
   scroll?: boolean;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    const html = document.documentElement;
-    const before = html.style.overflow;
-    html.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = before;
-    };
-  }, []);
+  useEffect(() => lockScroll(), []);
   return (
     <div
       role="dialog"

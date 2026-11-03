@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { astronautOf } from "../astronaut/identity";
+import { lockScroll } from "../scroll-lock";
 import { GAME_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 import { HOME_ICON, MENU_ITEM_CLASS, MENU_ITEM_OFF, NavIcon } from "./HomeLink";
@@ -305,15 +306,7 @@ function BottomBar({
   const [more, setMore] = useState(false);
   // 목록이 열린 동안 뒤 페이지를 멈춘다: 목록 끝에서 남은 스크롤이나 어두운 뒷배경을 끄는 손짓이 뒤 페이지를 움직여
   // 어색했다(2026-11-03 사용자). 목록 안 스크롤은 overscroll-contain으로 그 칸에서 멈춘다
-  useEffect(() => {
-    if (!more) return;
-    const root = document.documentElement;
-    const before = root.style.overflow;
-    root.style.overflow = "hidden";
-    return () => {
-      root.style.overflow = before;
-    };
-  }, [more]);
+  useEffect(() => (more ? lockScroll() : undefined), [more]);
   const tab = (
     t: NavTarget | "more",
     label: string,

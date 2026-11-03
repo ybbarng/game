@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { AstronautCard, BlankAstronautCard } from "../astronaut/AstronautCard";
 import { astronautOf } from "../astronaut/identity";
 import { EASE, EASE_OUT, FX } from "../fx-timing";
+import { lockScroll } from "../scroll-lock";
 import type { Services } from "../services";
 import { useIssued } from "./AstronautPanel";
 import { IdleHint, useIdleHint } from "./IdleHint";
@@ -59,15 +60,7 @@ export function IdFlyer({
   backdrop?: boolean;
 }) {
   // 떠 있는 동안 뒤 화면은 스크롤되지 않는다
-  useEffect(() => {
-    if (!backdrop) return;
-    const html = document.documentElement;
-    const before = html.style.overflow;
-    html.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = before;
-    };
-  }, [backdrop]);
+  useEffect(() => (backdrop ? lockScroll() : undefined), [backdrop]);
   const up = card === "up";
   return (
     <div
