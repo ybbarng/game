@@ -146,6 +146,10 @@ describe("등록증 뒷면의 지문 도장", () => {
     expect(back).toContain("data-back-fingermark");
     expect(back).toContain(`data-fingermark="${fingermarkOf(pub).kind}"`);
     expect(back).toContain("본인 서명");
+    // 발행처 대신 주민등록증 뒷면처럼 진위 확인·습득 안내(앞면에 우주국장·직인이 있다)
+    expect(back).toContain("data-back-notes");
+    expect(back).toContain("진위는 아래 공개 열쇠로 확인할 수 있습니다");
+    expect(back).not.toContain("카노푸스 우주국<");
     // 앞면에는 넣지 않는다
     expect(html.slice(0, html.indexOf("data-idcard-back"))).not.toContain(
       "data-fingermark",

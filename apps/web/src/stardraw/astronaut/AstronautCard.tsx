@@ -640,9 +640,15 @@ export function AstronautCard({
               </svg>
               <HoloFilm />
 
-              <span className="absolute top-[4.4cqw] left-[5cqw] text-[2.8cqw] text-sky-50/80 tracking-[0.08em]">
-                카노푸스 우주국
-              </span>
+              {/* 주민등록증 뒷면처럼 발행처 대신 안내 두 줄(2026-11-03 사용자: 앞면에 우주국장·직인이 있어 뒷면의 「카노푸스
+                  우주국」은 겹쳤다). 진위 확인은 아래 공개 열쇠 칸이 실제로 하는 일이고, 습득 안내는 「가까운 우체통」을 우주국 말로 */}
+              <div
+                data-back-notes
+                className="absolute top-[4.4cqw] left-[5cqw] flex max-w-[58cqw] flex-col gap-[1cqw] break-keep text-[2.4cqw] text-sky-50/75 leading-[3.4cqw] [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]"
+              >
+                <p>이 등록증의 진위는 아래 공개 열쇠로 확인할 수 있습니다.</p>
+                <p>이 등록증을 습득하신 분은 가까운 관측지에 맡겨 주십시오.</p>
+              </div>
 
               {/* 신청서에 찍은 지문 도장(열쇠에서 정한 무늬, docs/36 11-64) */}
               <div

@@ -485,6 +485,10 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
     back.locator("[data-back-fingermark] [data-fingermark]"),
   ).toBeVisible();
   await expect(back.locator("[data-public-key]")).toHaveCount(0);
+  await expect(back.locator("[data-back-notes]")).toContainText(
+    "진위는 아래 공개 열쇠로",
+  );
+  await page.screenshot({ path: info.outputPath("stardraw-id-back.png") });
   await back.locator("[data-key-mask]").click();
   // 연출이 있으면 열쇠 꺼내기도 신분증 제시 틀(등록증을 내밀면 확인)
   if (motion) {
