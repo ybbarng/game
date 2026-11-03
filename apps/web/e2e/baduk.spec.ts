@@ -391,3 +391,51 @@ test("바둑 수 배우기: 단수 방향을 틀렸다 다시 풀고, 축으로 
   await expect(page.getByText(/급소/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("baduk-kill.png") });
 });
+
+/** 19줄 판의 자리("E17")를 누른다. 손가락은 한 번 겨누고 다시 눌러 둔다 */
+async function placeAt19(page: Page, name: string, touch: boolean) {
+  const size = 19;
+  const view = size - 1 + PAD * 2;
+  const columns = "ABCDEFGHJKLMNOPQRST";
+  const box = await board(page).boundingBox();
+  if (!box) throw new Error("판이 안 보인다");
+  const unit = box.width / view;
+  const px = box.x + (columns.indexOf(name[0] as string) + PAD) * unit;
+  const py = box.y + (size - Number(name.slice(1)) + PAD) * unit;
+  if (touch) {
+    await page.touchscreen.tap(px, py);
+    await page.touchscreen.tap(px, py);
+  } else await page.mouse.click(px, py);
+}
+
+test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘모 붙임을 끝까지 둔다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  await page.goto("/baduk");
+  await page.getByRole("button", { name: /바둑 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const set = page.getByRole("region", { name: "정석 따라 두기" });
+  await set
+    .getByRole("button", { name: "화점 날일자 걸침 — 마늘모 붙임(흑)" })
+    .click();
+  // 백이 먼저 걸쳐 온다.
+  await expect(
+    page.locator('[data-point="F17"][data-stone="white"]'),
+  ).toHaveCount(1);
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+
+  await placeAt19(page, "A1", touch);
+  await expect(page.getByRole("status")).toHaveText(
+    /이 수순에서 두는 수가 아니에요/,
+  );
+  await expect(page.locator('[data-point="A1"]')).toHaveCount(0);
+
+  await placeAt19(page, "E17", touch);
+  await expect(
+    page.locator('[data-point="F16"][data-stone="white"]'),
+  ).toHaveCount(1);
+  await placeAt19(page, "D14", touch);
+  await expect(page.getByRole("status")).toHaveText("수순을 끝까지 두었어요!");
+  await page.screenshot({ path: info.outputPath("baduk-joseki.png") });
+});
