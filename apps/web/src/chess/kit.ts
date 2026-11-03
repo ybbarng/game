@@ -22,9 +22,9 @@ import {
   step,
   viewOf,
 } from "@game/chess-engine";
-
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";
+import { chessAdvisor } from "./advisor";
 
 export type ChessKit = GameKit<
   ChessRules,
@@ -133,7 +133,7 @@ export function explainChess(
     to: action.to,
     ...(action.promotion ? { promotion: action.promotion } : {}),
   };
-  const suggested = chessBotFor(2).decide(viewOf(state, next.seat), {
+  const suggested = chessAdvisor.decide(viewOf(state, next.seat), {
     seed: 1,
   });
   const mine = moveToSan(state.position, played);
