@@ -1,0 +1,453 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { cn } from "@/lib/cn";
+
+import {
+  type ActionGroup,
+  actionsFor,
+  chordLabel,
+  exportKeymap,
+  findConflicts,
+  importKeymap,
+  type Keymap,
+  loadKeymap,
+  PRESET_LABEL,
+  presetKeymap,
+  saveKeymap,
+  unbind,
+} from "../input";
+import {
+  assignKey,
+  chordFromEvent,
+  clearAction,
+  customFrom,
+  keysOf,
+  toCustom,
+} from "../keymap-editor";
+import {
+  COLOR_SCHEME_LABEL,
+  hexColor,
+  updateSettings,
+  useCubeSettings,
+  withFaceColor,
+  withScheme,
+} from "../settings";
+import type { Quality } from "../view/types";
+import { CubeNet } from "./CubeNet";
+
+/** 큐브 설정 화면(`/cube/settings`): 키 배치·사용자 배치 편집, 색, 보기, 소리 */
+
+const FACE_LABEL = [
+  "위(U)",
+  "오른쪽(R)",
+  "앞(F)",
+  "아래(D)",
+  "왼쪽(L)",
+  "뒤(B)",
+];
+const GROUP_LABEL: Record<ActionGroup, string> = {
+  face: "면 돌리기",
+  wide: "넓게 돌리기",
+  inner: "안쪽 한 층",
+  slice: "가운데 층",
+  rotate: "큐브 돌리기",
+  depth: "다음 수 깊이",
+  command: "명령",
+};
+const QUALITY_LABEL: Record<Quality, string> = {
+  high: "높음",
+  medium: "보통",
+  low: "낮음",
+};
+const SOLVED_FACES = Array.from({ length: 6 }, (_, f) =>
+  new Array<number>(9).fill(f),
+);
+
+const chip = (on: boolean) =>
+  cn(
+    "rounded-lg px-3 py-1 text-sm",
+    on ? "bg-sky-500 text-black" : "bg-white/10 hover:bg-white/15",
+  );
+
+export function CubeSettingsApp() {
+  const settings = useCubeSettings();
+  const [keymap, setKeymapState] = useState<Keymap | null>(null);
+  useEffect(() => setKeymapState(loadKeymap()), []);
+  const setKeymap = (km: Keymap) => {
+    setKeymapState(km);
+    saveKeymap(km);
+  };
+
+  return (
+    <div className="min-h-dvh bg-neutral-900 text-white">
+      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5">
+        <header className="flex items-center gap-3">
+          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+            ← 큐브
+          </a>
+          <h1 className="font-bold text-xl">큐브 설정</h1>
+          <span className="text-white/50 text-xs">이 기기에 저장됩니다</span>
+        </header>
+
+        {keymap && <KeymapSection keymap={keymap} setKeymap={setKeymap} />}
+
+        <section className="flex flex-col gap-3" data-settings-colors>
+          <h2 className="font-semibold text-lg">색</h2>
+          <div className="flex flex-wrap gap-2">
+            {(["standard", "highContrast", "colorblind"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={settings.colorScheme === s}
+                onClick={() => updateSettings(withScheme(settings, s))}
+                className={chip(settings.colorScheme === s)}
+              >
+                {COLOR_SCHEME_LABEL[s]}
+              </button>
+            ))}
+            {settings.colorScheme === "custom" && (
+              <span className={chip(true)}>{COLOR_SCHEME_LABEL.custom}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <CubeNet
+              n={3}
+              faces={SOLVED_FACES}
+              colors={settings.colors}
+              hidden={settings.hidden}
+              className="h-24 w-auto"
+            />
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+              {FACE_LABEL.map((label, f) => (
+                <label key={label} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={hexColor(settings.colors[f] ?? 0)}
+                    onChange={(e) =>
+                      updateSettings(
+                        withFaceColor(
+                          settings,
+                          f,
+                          Number.parseInt(e.target.value.slice(1), 16),
+                        ),
+                      )
+                    }
+                    className="h-7 w-9 cursor-pointer rounded border-0 bg-transparent"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3 text-sm">
+          <h2 className="font-semibold text-lg">보기와 소리</h2>
+          <label className="flex items-center gap-2">
+            회전 속도 <b className="w-14 tabular-nums">{settings.moveMs}ms</b>
+            <input
+              type="range"
+              min={0}
+              max={200}
+              step={10}
+              value={settings.moveMs}
+              onChange={(e) =>
+                updateSettings({ ...settings, moveMs: Number(e.target.value) })
+              }
+            />
+            <span className="text-white/50 text-xs">0이면 바로 바뀜</span>
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            그리기 품질
+            {(["high", "medium", "low"] as const).map((q) => (
+              <button
+                key={q}
+                type="button"
+                aria-pressed={settings.quality === q}
+                onClick={() => updateSettings({ ...settings, quality: q })}
+                className={chip(settings.quality === q)}
+              >
+                {QUALITY_LABEL[q]}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            가린 스티커
+            {(["black", "gray"] as const).map((h) => (
+              <button
+                key={h}
+                type="button"
+                aria-pressed={settings.hidden === h}
+                onClick={() => updateSettings({ ...settings, hidden: h })}
+                className={chip(settings.hidden === h)}
+              >
+                {h === "black" ? "검정" : "회색"}
+              </button>
+            ))}
+          </div>
+          {(
+            [
+              ["stickerless", "스티커 없는 모양(색 플라스틱 조각)"],
+              ["sound", "큐브 소리(면 돌기·맞춤·살펴보기 알림)"],
+              ["inspection", "혼자 맞추기 15초 살펴보기"],
+            ] as const
+          ).map(([k, label]) => (
+            <label key={k} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={settings[k]}
+                onChange={(e) =>
+                  updateSettings({ ...settings, [k]: e.target.checked })
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function KeymapSection({
+  keymap,
+  setKeymap,
+}: {
+  keymap: Keymap;
+  setKeymap: (km: Keymap) => void;
+}) {
+  const [n, setN] = useState(3);
+  const [capturing, setCapturing] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const conflicts = useMemo(() => findConflicts(keymap), [keymap]);
+  const actions = useMemo(() => actionsFor(n), [n]);
+
+  // 키 지정: 다음 키 누름을 받는다(조합 키만 누르면 계속 기다린다, Esc는 그만두기)
+  useEffect(() => {
+    if (!capturing) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.code === "Escape" && !e.shiftKey && !e.altKey && !e.ctrlKey) {
+        setCapturing(null);
+        setMessage(null);
+        return;
+      }
+      const chord = chordFromEvent(e);
+      if (!chord) return;
+      const r = assignKey(keymap, capturing, chord);
+      setKeymap(r.keymap);
+      setMessage(
+        r.replaced
+          ? `${chordLabel(chord)}는 「${r.replaced}」에 쓰던 키라 그쪽에서 뺐습니다.`
+          : `${chordLabel(chord)} → 「${capturing}」`,
+      );
+      setCapturing(null);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [capturing, keymap, setKeymap]);
+
+  const groups = [...new Set(actions.map((a) => a.group))];
+
+  return (
+    <section className="flex flex-col gap-3" data-settings-keymap>
+      <h2 className="font-semibold text-lg">키 배치</h2>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {(["twoHand", "notation"] as const).map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={keymap.preset === p}
+            onClick={() => {
+              setKeymap(presetKeymap(p));
+              setMessage(null);
+            }}
+            className={chip(keymap.preset === p)}
+          >
+            {PRESET_LABEL[p]}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-pressed={keymap.preset === "custom"}
+          onClick={() => setKeymap(toCustom(keymap))}
+          className={chip(keymap.preset === "custom")}
+        >
+          {PRESET_LABEL.custom}
+        </button>
+      </div>
+      <p className="break-keep text-white/60 text-xs">
+        「두 손」은 실물에서 그 면을 돌리는 손으로 치는 빠른 배치, 「표기」는
+        R·U·F 글자 그대로 치는 배치입니다(Shift = 반대, Alt = 넓게).
+        「사용자」에서는 아래 표에서 아무 동작이나 아무 키로 바꿀 수 있습니다.
+      </p>
+
+      {keymap.preset === "custom" && (
+        <div
+          className="flex flex-col gap-3 rounded-xl bg-white/5 p-3"
+          data-keymap-editor
+        >
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-1">
+              동작 목록 크기
+              <select
+                value={n}
+                onChange={(e) => setN(Number(e.target.value))}
+                className="rounded bg-white/10 px-2 py-1"
+              >
+                {[2, 3, 4, 5, 6, 7].map((s) => (
+                  <option key={s} value={s} className="bg-neutral-800">
+                    {s}×{s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="ml-auto text-white/60 text-xs">
+              기본으로 되돌리기:
+            </span>
+            {(["twoHand", "notation"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  setKeymap(customFrom(p));
+                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다.`);
+                }}
+                className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
+              >
+                {PRESET_LABEL[p]}
+              </button>
+            ))}
+          </div>
+          {message && (
+            <p className="text-amber-300 text-xs" role="status">
+              {message}
+            </p>
+          )}
+          {conflicts.length > 0 && (
+            <p className="text-red-300 text-xs" role="alert">
+              겹친 키:{" "}
+              {conflicts
+                .map((c) => `${c.chord}(${c.actions.join("·")})`)
+                .join(", ")}
+            </p>
+          )}
+          {groups.map((g) => (
+            <div key={g}>
+              <h3 className="mb-1 font-semibold text-white/80 text-xs">
+                {GROUP_LABEL[g]}
+              </h3>
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {actions
+                  .filter((a) => a.group === g)
+                  .map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center gap-2 rounded bg-black/20 px-2 py-1 text-sm"
+                    >
+                      <span className="w-28 shrink-0 truncate font-mono text-xs">
+                        {a.label}
+                      </span>
+                      <span className="flex flex-1 flex-wrap gap-1">
+                        {keysOf(keymap, a.id).map((c) => (
+                          <button
+                            key={chordLabel(c)}
+                            type="button"
+                            title="이 키 빼기"
+                            onClick={() => setKeymap(unbind(keymap, c))}
+                            className="rounded bg-white/15 px-1.5 text-xs hover:bg-red-500/40"
+                          >
+                            {chordLabel(c)} ×
+                          </button>
+                        ))}
+                      </span>
+                      <button
+                        type="button"
+                        data-assign={a.id}
+                        onClick={() => {
+                          setCapturing(a.id);
+                          setMessage("지정할 키를 누르세요(Esc는 그만두기).");
+                        }}
+                        className={cn(
+                          "shrink-0 rounded px-2 py-0.5 text-xs",
+                          capturing === a.id
+                            ? "bg-amber-400 text-black"
+                            : "bg-white/10 hover:bg-white/20",
+                        )}
+                      >
+                        {capturing === a.id ? "키를 누르세요" : "키 지정"}
+                      </button>
+                      {keysOf(keymap, a.id).length > 0 && (
+                        <button
+                          type="button"
+                          title="이 동작의 키 모두 지우기"
+                          onClick={() => setKeymap(clearAction(keymap, a.id))}
+                          className="shrink-0 text-white/40 text-xs hover:text-white"
+                        >
+                          비우기
+                        </button>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <details className="rounded-xl bg-white/5 p-3 text-sm">
+        <summary className="cursor-pointer">내보내기·가져오기(JSON)</summary>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs">
+            지금 배치
+            <textarea
+              readOnly
+              value={exportKeymap(keymap)}
+              rows={6}
+              className="rounded bg-black/30 p-2 font-mono"
+              onFocus={(e) => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                void navigator.clipboard?.writeText(exportKeymap(keymap))
+              }
+              className="self-start rounded bg-white/10 px-2 py-1"
+            >
+              복사
+            </button>
+          </label>
+          <label className="flex flex-col gap-1 text-xs">
+            가져올 배치
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={6}
+              className="rounded bg-black/30 p-2 font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const r = importKeymap(importText);
+                if (r.ok) {
+                  setKeymap(r.keymap);
+                  setImportError(null);
+                  setMessage("배치를 가져왔습니다.");
+                } else setImportError(r.error);
+              }}
+              className="self-start rounded bg-white/10 px-2 py-1"
+            >
+              가져오기
+            </button>
+            {importError && <span className="text-red-300">{importError}</span>}
+          </label>
+        </div>
+      </details>
+    </section>
+  );
+}

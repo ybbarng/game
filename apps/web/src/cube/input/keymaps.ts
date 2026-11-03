@@ -69,6 +69,10 @@ export function codeLabel(code: string): string {
     Backspace: "⌫",
     Escape: "Esc",
     Enter: "Enter",
+    ArrowLeft: "←",
+    ArrowRight: "→",
+    ArrowUp: "↑",
+    ArrowDown: "↓",
   };
   return named[code] ?? code;
 }
@@ -188,6 +192,9 @@ const COMMON_COMMANDS: KeyBinding[] = [
   key("Escape", "reset"),
   key("Enter", "scramble"),
   key("Space", "inspectionSkip"),
+  key("ArrowLeft", "peekBack"),
+  key("ArrowRight", "peekBack"),
+  key("ArrowDown", "peekDown"),
 ];
 
 /**

@@ -15,14 +15,17 @@ import { cubeTopology } from "./topology";
 const SIZES = [2, 3, 4, 5] as const;
 
 describe("맞출 수 있는지 판정", () => {
-  it.each(SIZES)("%i×%i 수로 만든 상태는 맞출 수 있다", (n) => {
-    const s = applyMoves(
-      n,
-      solvedCube(n),
-      parseMoves(n, "R U' F2 Lw D' 2B x Rw2 y' U L' 2F z' B"),
-    );
-    expect(isSolvable(n, s)).toBe(true);
-  });
+  it.each(SIZES.map((n) => [n, n]))(
+    "%i×%i 수로 만든 상태는 맞출 수 있다",
+    (n) => {
+      const s = applyMoves(
+        n,
+        solvedCube(n),
+        parseMoves(n, "R U' F2 Lw D' 2B x Rw2 y' U L' 2F z' B"),
+      );
+      expect(isSolvable(n, s)).toBe(true);
+    },
+  );
 
   it("꼭짓점 하나 비틀기·모서리 하나 뒤집기·두 조각 바꾸기는 맞출 수 없다", () => {
     const solved = solvedCube(3);
@@ -55,7 +58,7 @@ describe("맞출 수 있는지 판정", () => {
 });
 
 describe("무작위 상태", () => {
-  it.each(SIZES)("%i×%i 씨앗마다 맞출 수 있는 상태", (n) => {
+  it.each(SIZES.map((n) => [n, n]))("%i×%i 씨앗마다 맞출 수 있는 상태", (n) => {
     for (let seed = 1; seed <= 8; seed++) {
       const s = randomCubeState(n, seed);
       expect(isValidPerm(s.perm)).toBe(true);
