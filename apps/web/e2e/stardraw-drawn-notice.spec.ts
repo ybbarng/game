@@ -52,7 +52,7 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
   await expect(notice).toHaveAttribute("data-drawn-notice", "1", {
     timeout: 30_000,
   });
-  await expect(notice).toHaveText(/1회 관측이 끝났습니다/);
+  await expect(notice).toHaveText(/예측한 (.* )?1회 관측 결과가 나왔습니다/);
   await expect(notice.locator("[data-ball]")).toHaveCount(0);
   await expect(notice).not.toContainText(/입상|등/);
 

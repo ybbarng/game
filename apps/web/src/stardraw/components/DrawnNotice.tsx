@@ -29,9 +29,11 @@ export function DrawnNotice({
       className="sd-rise flex items-center gap-2 rounded-2xl border border-amber-200/40 bg-amber-200/10 py-2 pr-2 pl-4"
     >
       <span className="min-w-0 flex-1 break-keep font-semibold text-amber-50 text-sm">
+        {/* 방금 본 관측과 다른, 예전에 예측한 회차라는 것이 드러나게(「n회 관측이 끝났습니다」만으로는 다 본 관측을
+            또 알리는 줄 알았다, 2026-11-03 사용자) */}
         {rounds.length === 1
-          ? `${roundShort(schedule, latest)} 관측이 끝났습니다`
-          : `관측이 끝난 예측 ${rounds.length}회`}
+          ? `예측한 ${roundShort(schedule, latest)} 관측 결과가 나왔습니다. 지금 확인해 보세요.`
+          : `예측한 ${rounds.length}개 회차의 관측 결과가 나왔습니다. 지금 확인해 보세요.`}
       </span>
       <button
         type="button"
