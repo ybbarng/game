@@ -18,7 +18,11 @@ import type { Transport } from "./transport";
 
 /** 실제 방에 붙일지와 주기. 끄려면 `enabled: false` 하나만 바꾼다 */
 export const LATENCY_PROBE = {
-  enabled: true,
+  /**
+   * 꺼 둔다(2026-11-03 사용자). 판정 값은 서버에 모아 정하지 않고 방 안에서 그 자리에서 정한다(docs/43 0-1).
+   * 연결 진단(`/diag`)은 디버깅 통로라 게임 자료를 쌓지 않는다. 이 측정기는 나중에 방 안 판정에 쓴다
+   */
+  enabled: false,
   /** 핑 간격(ms). 메시지가 작아도 게임 통로를 쓰므로 드물게 */
   pingMs: 5000,
   /**
