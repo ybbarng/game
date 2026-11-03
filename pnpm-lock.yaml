@@ -278,6 +278,9 @@ importers:
       '@game/omok-engine':
         specifier: workspace:*
         version: link:../../packages/omok-engine
+      '@game/onecard-engine':
+        specifier: workspace:*
+        version: link:../../packages/onecard-engine
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../../packages/stardraw-core
