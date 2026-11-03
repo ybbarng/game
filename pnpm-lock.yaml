@@ -412,6 +412,17 @@ importers:
         specifier: workspace:*
         version: link:../puzzle-core
 
+  packages/cube-scramble:
+    dependencies:
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../cube-solver
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+
+  packages/cube-solver: {}
+
   packages/engine: {}
 
   packages/fair-play:
