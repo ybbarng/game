@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { type Cell, emptyBoard, pointAt } from "./board";
+import { boardHash, type Cell, emptyBoard, pointAt, tryPlace } from "./board";
 import {
+  bestDefense,
   canCapture,
   canKill,
   canLive,
   captureMoves,
+  koRecapturePoint,
   lifeKeyMoves,
   passAliveStones,
+  snapbackGain,
 } from "./puzzle";
 
 const SIZE = 9;
@@ -59,5 +62,42 @@ describe("사활 읽기", () => {
   it("흑이 먼저 급소에 두면 끝내 따낸다. 급소는 하나뿐이다", () => {
     expect(lifeKeyMoves(b, problem, 1, 8)).toEqual([p("A8")]);
     expect(canKill(b, problem, 1, 8)).toBe(true);
+  });
+});
+
+describe("환격(되따내기)", () => {
+  // 귀의 백 두 점(A8·A9). B9에 한 점을 내주면 백이 B8로 따내고, 흑이 B9에 다시 두어 세 점을 되따낸다.
+  const b = board(["A7", "B7", "C8"], ["A8", "A9", "C9", "D9"]);
+
+  it("한 점을 내주는 자리는 되따내는 돌 수를, 아닌 자리는 0을 낸다", () => {
+    expect(snapbackGain(b, 1, p("A8"), p("B9"))).toBe(3);
+    expect(snapbackGain(b, 1, p("A8"), p("B8"))).toBe(0);
+  });
+
+  it("두 수 안에 따내는 첫 수는 내주는 자리 하나뿐이다", () => {
+    expect(captureMoves(b, 1, p("A8"), 2)).toEqual([p("B9")]);
+  });
+});
+
+describe("패", () => {
+  // 흑이 A7에 두어 백 A6을 따내면 백 A8이 단수다. 백은 A6에 바로 되따낼 수 없다.
+  const b = board(["A5", "B6", "B8"], ["A6", "B7", "A8"]);
+
+  it("패를 따내는 수는 되따낼 자리를 알려 준다", () => {
+    expect(koRecapturePoint(b, p("A7"), 1)).toBe(p("A6"));
+    expect(koRecapturePoint(b, p("A9"), 1)).toBeNull();
+  });
+
+  it("받는 쪽은 같은 판 모양이 되는 되따내기를 두지 않는다", () => {
+    const taken = tryPlace(b, p("A7"), 1);
+    if (!taken.ok) throw new Error("둘 수 없다");
+    // 판 기록이 없으면 되따내기가 가장 오래 버티는 수다
+    expect(bestDefense(taken.board, 1, p("A8"), 1)).toBe(p("A6"));
+    const history = [boardHash(b), boardHash(taken.board)];
+    expect(bestDefense(taken.board, 1, p("A8"), 1, history)).not.toBe(p("A6"));
+  });
+
+  it("되따낼 수 없으니 패를 따내는 수 하나로 두 수 안에 잡는다", () => {
+    expect(captureMoves(b, 1, p("A8"), 2)).toEqual([p("A7")]);
   });
 });

@@ -18,6 +18,7 @@ import {
  *    공격하는 쪽은 첫 수는 판 전체를, 그다음은 무리 활로와 그 둘레만 본다.
  * 2. 사활(두 눈 만들기·눈 빼앗기): 둘러싸인 무리가 정해진 빈 자리 안에서만 두어 "두 눈으로 산 모양"이 되나.
  *    산 모양은 벤슨(Benson) 방법으로 가린다: 상대가 몇 수를 두어도 잡히지 않는 무리(쉬어도 사는 무리).
+ * 3. 환격·패: 잡기 문제의 첫 수 모양을 가린다(`snapbackGain`, `koRecapturePoint`).
  *
  * 패(같은 판 되풀이)는 읽는 길 위에서 같은 판이 다시 나오면 둘 수 없는 것으로 본다.
  */
@@ -178,14 +179,25 @@ export function movesToCapture(
   attacker: Stone,
   target: number,
   n: number,
+  history: Iterable<string> = [],
 ): number | null {
   for (let k = 0; k <= n; k++)
-    if (canCapture(board, attacker, target, k)) return k;
+    if (
+      canCapture(
+        board,
+        attacker,
+        target,
+        k,
+        new Set([...history, boardHash(board)]),
+      )
+    )
+      return k;
   return null;
 }
 
 /**
  * 받는 쪽(노리는 무리 편)의 응수: 공격하는 쪽이 따내는 데 가장 오래 걸리게 하는 후보.
+ * `history`는 이번 판에 나왔던 판 지문(`BadukState.positions`)이다. 같은 판 모양이 되는 수(패 되따내기)는 두지 않는다.
  * 같은 판은 늘 같은 수(후보 차례대로 첫 것)
  */
 export function bestDefense(
@@ -193,20 +205,71 @@ export function bestDefense(
   attacker: Stone,
   target: number,
   n: number,
+  history: readonly string[] = [],
 ): number | null {
   const defender = other(attacker);
+  const seen = new Set(history);
   let best: number | null = null;
   let bestCost = -1;
   for (const d of defenseCandidates(board, target)) {
     const tried = tryPlace(board, d, defender);
     if (!tried.ok || tried.board[target] !== defender) continue;
-    const cost = movesToCapture(tried.board, attacker, target, n) ?? n + 1;
+    const key = boardHash(tried.board);
+    if (seen.has(key)) continue;
+    const cost =
+      movesToCapture(tried.board, attacker, target, n, [...seen, key]) ?? n + 1;
     if (cost > bestCost) {
       bestCost = cost;
       best = d;
     }
   }
   return best;
+}
+
+/**
+ * 패 따내기인가: `stone`이 `at`에 두어 상대 돌 하나를 따내고, 놓은 돌이 혼자이며 그 따낸 자리 하나만 활로라
+ * 상대가 바로 그 자리에 두면 되따낼 수 있는 모양이면 그 자리(되따낼 자리). 아니면 null.
+ * 되따내면 판이 두기 전과 같아지므로 같은 판 모양 금지에 걸려 상대는 바로 되따낼 수 없다
+ */
+export function koRecapturePoint(
+  board: Board,
+  at: number,
+  stone: Stone,
+): number | null {
+  const tried = tryPlace(board, at, stone);
+  if (!tried.ok || tried.captured.length !== 1) return null;
+  const mine = groupOf(tried.board, at);
+  const taken = tried.captured[0] as number;
+  if (mine.stones.length !== 1 || mine.liberties.length !== 1) return null;
+  if (mine.liberties[0] !== taken) return null;
+  const back = tryPlace(tried.board, taken, other(stone));
+  if (!back.ok || back.captured.length !== 1) return null;
+  return taken;
+}
+
+/**
+ * 환격(되따내기): `attacker`가 `at`에 한 점을 내주면(아무것도 따내지 않고 활로 하나뿐인 돌),
+ * 상대가 그 돌을 따낸 뒤 같은 자리에 다시 두어 노리는 무리를 되따낸다. 그때 되따내는 돌 수. 그런 모양이 아니면 0
+ */
+export function snapbackGain(
+  board: Board,
+  attacker: Stone,
+  target: number,
+  at: number,
+): number {
+  const thrown = tryPlace(board, at, attacker);
+  if (!thrown.ok || thrown.captured.length > 0) return 0;
+  const mine = groupOf(thrown.board, at);
+  if (mine.stones.length !== 1 || mine.liberties.length !== 1) return 0;
+  const taken = tryPlace(
+    thrown.board,
+    mine.liberties[0] as number,
+    other(attacker),
+  );
+  if (!taken.ok || !taken.captured.includes(at)) return 0;
+  const back = tryPlace(taken.board, at, attacker);
+  if (!back.ok || back.board[target] !== 0) return 0;
+  return back.captured.length;
 }
 
 /**
