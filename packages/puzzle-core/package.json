@@ -1,0 +1,13 @@
+{
+  "name": "@game/puzzle-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "퍼즐 공통 계약 — 스티커 자리 순열 + 스티커 방향, 수의 그리기 정보, 순열 도구",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

@@ -579,7 +579,19 @@ export class LocalMatch<
         events: result.events,
       });
     }
+    for (const l of this.appliedListeners) l();
     return { ok: true };
+  }
+
+  private readonly appliedListeners = new Set<() => void>();
+
+  /**
+   * 엔진 걸음이 기록에 들어가고 화면을 보낸 뒤에 부른다(실시간 청구가 판 번호마다 판을 남길 때, `ClaimHub`).
+   * 끄는 함수를 돌려준다
+   */
+  onApplied(listener: () => void): () => void {
+    this.appliedListeners.add(listener);
+    return () => this.appliedListeners.delete(listener);
   }
 
   /** 처음부터 컴퓨터가 앉은 자리(끊긴 사람을 대신 두는 자리는 아니다) */

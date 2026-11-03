@@ -325,6 +325,46 @@ type ClaimMessage = {
 | 2. 공통 2층 | `MonotonicClock`, `claimBound`(아래 경계 깎기, 늦은 청구 컷), `resolveClaims`(겹침 묶기·rt·X·동점) | **SET**이 이 위에서 돈다: 겹치지 않는 두 세트 모두 인정, 겹치면 rt 승, "없음" 동시 누름이 억울한 벌칙 없이 갈림, rt를 여유+1ms 깎은 청구가 깎이는 시험. 핑 답을 늦춘 기기·자극을 늦게 보내는 방장을 잡는 시험은 1-2 빈틈 막는 길이 정해진 뒤 더한다(그전까지 2층은 "정직한 사람끼리 공정"으로만 밝힌다) |
 | 3. 할리갈리 | 함께 정한 난수(docs/18 3단계와 함께), 열쇠 동시 공개와 늦은 열쇠 깎기, 암호화방 전용 | 0단계 기준을 넘었을 때만 시작. 같은 기기 쌍으로 다시 막대 실험해 실제 게임 화면에서도 일치율 ≥ 95% |
 
+### 7-1. 1층 구현 (2026-11-03)
+
+공통 장치 1층을 게임에 붙이지 않은 채 만들었다(원카드 통합은 다음 단계). 서버로 보내는 것은 없다(0-1).
+
+| 만든 것 | 파일 | 하는 일 |
+|---|---|---|
+| 데이터 계약 v1 + 판 번호 판정 | `apps/web/src/net/claim.ts` | `ClaimMessage`·`ClaimsResolved` 모양 검사(`parseClaim`·`parseResolved`), `boardStatus`, `resolveClaimBatch` |
+| `GameKit.claims`(선택 항목) | `apps/web/src/game/kit.ts` `KitClaims` | `stimulusOf`·`board`(모든 자리에 같은 공개 판)·`isBody`·`judge(board, claim)`·`action(resolved)`·`rules` |
+| 청구 통로 `ClaimHub` | `apps/web/src/net/claim-hub.ts`, `HostRoom.claims`·`GuestRoom.claims` | 모두에게 직접 보내기, 방장 묶음·발표·엔진에 넣기, 참가자 다시 계산과 이의 |
+| 함께 정한 난수 | `apps/web/src/net/joint-random.ts` | `jointCommit`·`jointOutcome`·`jointDraw`·`jointPick`·`jointTiebreak`, 방 흐름 `JointRandomHub` |
+| 시험용 지연 망 | `apps/web/src/net/delayed-network.ts` | 쌍마다 지연·비대칭·n번째 메시지, 기본은 순서 보장(앞 막힘까지) |
+| 시험 | `net/claim*.test.ts`, `delayed-network.test.ts`, `joint-random.test.ts`, 가짜 게임 `net/claim-fixture.ts` | 늦게 본 판의 정직한 청구가 맞은 청구로, 방장이 청구를 빼면 다른 참가자가 이의, 창이 지난 옛 판 청구는 모두 같은 결론, 판정·내용·판 번호 바꾸기·가짜 청구, 옛 방 코드가 무시 |
+
+**데이터 계약 v1 확정 모양**(4-2에서 바뀐 점: `game`을 더함, `rtMs`는 자리만(선택), 방장 발표에 청구 사본과 판정 결과를 함께 싣는다):
+
+```ts
+type ClaimMessage = { v: 1; kind: "claim"; game: string; claimId: string; // [A-Za-z0-9_-]{1,64}
+  seat: number; seen: number; body: unknown; rtMs?: number; hidden?: boolean };
+type ClaimsResolved = { v: 1; kind: "claims-resolved"; game: string; batch: number;
+  at: number;              // 묶음을 닫을 때 방장 엔진 상태의 판 번호
+  entries: { claim: ClaimMessage;
+             outcome: { status: "judged"; verdict: unknown }
+                    | { status: "ignored"; reason: "stale" | "future" | "unknown-board" | "too-many" } }[] };
+```
+
+- 메시지에 `t`가 없어(꼬리표는 `v`·`kind`) 방 코드의 `isGuestMessage`·`isHostMessage`를 지나지 못한다. 이 기능이 없는 옛 클라이언트는 그냥 버린다(`claim-compat.test.ts`). 함께 정한 난수는 `{ jr: 1, k: "commit" | "reveal" }`.
+- 계약은 `packages/fair-play` 대신 `apps/web/src/net`에 두었다(같은 시기 fair-play의 다시 섞기 작업과 겹치지 않게). 엔진 패키지가 청구 모양을 알아야 하면 그때 옮긴다.
+- **1층 처리 순서는 도착 순이 아니라 `(seen, seat, claimId)`**다. 방장이 바꿀 수 없고 모두가 같은 순서를 계산한다. 같은 판을 두고 겨루는 순서(`rtMs`)는 2층이 정한다.
+- 판정 값(처음 값, `CLAIM_RULES`): 묶음 창 `windowMs` 300, 옛 판 창 `staleBoards` 1(`at − seen > 1`이면 벌칙 없이 버림), 이의 유예 `graceMs` 5초, 한 묶음 자리당 `maxPerSeat` 4. 게임이 `KitClaims.rules`로 바꾼다.
+- 참가자의 이의(기존 부정 알림 `raiseIncident` → 모두에게 `incident`, 경찰관 팝업과 같은 흐름): 직접 받은 청구가 유예 안에 어느 발표에도 없음(방장 탓), 내 자리로 내가 보내지 않은 청구, 순서가 정해진 순서와 다름, 같은 판을 다르게 판정, 판 번호 `at`이 내 마지막 판과 다름(방장 탓), 발표 속 청구 내용이 직접 받은 것과 다름(방장인지 청구자인지 가리지 못해 `seat: null`). 남의 자리를 사칭한 청구는 모두가 버린다.
+
+남은 것:
+
+- **원카드 통합**: B안의 `judge`(미리 외침·본인 외침·잡기·헛외침)와 `action`, 화면의 청구 표면(더미 치기, `pointerdown` 시각, 2-1의 `seen` 고르기), 잡기 창 시간(방장 `Clock`, `GameKit.timing`).
+- **판 끝 다시 계산**: 지금 `action`은 판정 결과를 싣는다. 판 끝 `replay`에서 판정까지 다시 하려면 엔진 행동에 청구 원문을 싣고 엔진이 같은 `judge`를 부르게 한다(원카드 통합 때 정한다).
+- **멘탈 포커 방의 판 번호 확인**: 화면을 미루는 방은 `strictAt`을 꺼서, 방장이 판 번호를 줄여 말하는 것만 잡고 늘려 말하는 것(정직한 청구를 "늦음"으로 버리기)은 잡지 못한다.
+- **부분 끊김**: 청구자 → 방장 연결만 끊기면 증인이 방장 탓으로 이의를 낸다(1-1 표 "일부 연결이 끊긴 때만 약해짐"). 내용 다름의 탓 가리기는 청구 서명이 있어야 한다.
+- **함께 정한 난수의 합의**: 부분 끊김에서 기기마다 받은 약속·공개가 달라 결과가 갈릴 수 있다. 동점 결과를 방장 발표에 싣고 모두가 맞춰 보게 하는 것은 쓰는 게임(할리갈리·SET)과 함께 한다.
+- 2층(`claimBound`로 깎기, `resolveClaims`의 겹침·rt·창 X·동점)은 아직이다.
+
 첫 게임 근거: 원카드는 지금 작업 중이고 1층만 쓰므로 공통 장치의 바닥(판 번호·청구 통로·증인)을 가장 적은 위험으로 세운다. SET은 반응 시간을 쓰지만 동점이 드물어, 측정값이 조금 틀려도 결과가 거의 안 바뀐다. 2층의 배관을 검증하기에 가장 안전하다. 할리갈리는 정밀도가 그대로 승부라 마지막에 둔다.
 
 ---

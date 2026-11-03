@@ -31,6 +31,7 @@ COPY packages/baduk-engine/package.json packages/baduk-engine/
 COPY packages/baduk-ai/package.json packages/baduk-ai/
 COPY packages/nyrongppong-engine/package.json packages/nyrongppong-engine/
 COPY packages/nyrongppong-ai/package.json packages/nyrongppong-ai/
+COPY packages/onecard-engine/package.json packages/onecard-engine/
 COPY packages/gostop-engine/package.json packages/gostop-engine/
 COPY packages/gostop-ai/package.json packages/gostop-ai/
 COPY packages/minhwatu-engine/package.json packages/minhwatu-engine/
@@ -42,6 +43,10 @@ COPY packages/yut-ai/package.json packages/yut-ai/
 COPY packages/galaxy-engine/package.json packages/galaxy-engine/
 COPY packages/stardraw-core/package.json packages/stardraw-core/
 COPY packages/stardraw-cli/package.json packages/stardraw-cli/
+COPY packages/puzzle-core/package.json packages/puzzle-core/
+COPY packages/cube-engine/package.json packages/cube-engine/
+COPY packages/cube-solver/package.json packages/cube-solver/
+COPY packages/cube-scramble/package.json packages/cube-scramble/
 # lefthook 같은 개발용 설치 스크립트는 돌리지 않는다
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
