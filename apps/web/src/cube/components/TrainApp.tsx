@@ -195,7 +195,7 @@ export function TrainApp() {
   const stats = cur ? book[cur.c.id] : undefined;
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4"
         data-train-set={set.set}

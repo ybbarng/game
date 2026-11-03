@@ -81,7 +81,7 @@ export function CubeSettingsApp() {
   };
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5">
         <header className="flex items-center gap-3">
           <a href="/cube" className="text-sm text-white/70 hover:text-white">

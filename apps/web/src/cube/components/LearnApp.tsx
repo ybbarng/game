@@ -47,7 +47,7 @@ export function LearnApp() {
 
   const found = lessonId ? findLesson(lessonId) : null;
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4"
         data-cube-learn={found ? found.lesson.id : "list"}

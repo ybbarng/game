@@ -8,7 +8,7 @@ import { CubeNet } from "./CubeNet";
 
 /**
  * 큐브 첫 화면(`/cube`). 게임 첫 화면 틀(GameHome)과 같은 모양이지만 고를 것이 달라(혼자·타이머·블라인드·배우기)
- * 따로 둔다. 아직 게임 목록에는 올리지 않는다.
+ * 따로 둔다.
  */
 
 interface Item {
@@ -84,7 +84,10 @@ const HERO_FACES = [
 export function CubeHome() {
   const settings = useCubeSettings();
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white">
+    <main
+      data-game="cube"
+      className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white"
+    >
       <div className="flex w-full max-w-sm flex-col gap-3">
         <BackToGames />
         <div className="mb-2 flex flex-col items-center text-center">

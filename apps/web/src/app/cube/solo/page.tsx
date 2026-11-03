@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 import { SolveApp } from "@/cube/components/SolveApp";
 
-// 아직 게임 목록에 올리지 않았다(docs/47 12절). 올릴 때 검색 막기를 푼다
 export const metadata: Metadata = {
   title: { absolute: "큐브 혼자 맞추기" },
-  robots: { index: false, follow: false },
+  description:
+    "키보드로 3D 큐브를 섞고 맞춰 시간을 잰다(2×2~7×7). 15초 살펴보기, 5번·12번 평균.",
 };
 
 export default function CubeSoloPage() {

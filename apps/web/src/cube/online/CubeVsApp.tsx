@@ -51,7 +51,7 @@ export function CubeVsApp() {
 
   const status = room?.state?.status;
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-cube-vs={status ?? "setup"}

@@ -127,7 +127,7 @@ export function FingersApp() {
     laps.length > 0 ? laps.reduce((a, b) => a + b, 0) / laps.length : 0;
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-fingers={drill.id}
