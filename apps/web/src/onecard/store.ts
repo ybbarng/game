@@ -43,8 +43,12 @@ export type OnecardSaved = SavedMatch<OnecardRules, Action, OnecardExtra> & {
  */
 export const BOT_PACE_MS = 700;
 
-function botPace(next: () => void): void {
-  setTimeout(next, BOT_PACE_MS);
+/**
+ * 컴퓨터 대기. 화면 시험의 온라인 방(탭 여럿이라 `page.clock`을 못 쓴다)은 `window.__onecardPace`로 줄인다
+ */
+export function botPace(next: () => void): void {
+  const fast = (globalThis as { __onecardPace?: number }).__onecardPace;
+  setTimeout(next, typeof fast === "number" ? fast : BOT_PACE_MS);
 }
 
 const SAVE_KEY = "onecard-save";

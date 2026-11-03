@@ -41,7 +41,7 @@ import { saveGuestArchive } from "@/review/recorder";
 import { onecardBotFor, toKitBot } from "../bots";
 import { onecardKit } from "../kit";
 import { type OnecardHostRoom, onecardSession } from "../session";
-import { BOT_PACE_MS, useOnecard } from "../store";
+import { botPace, useOnecard } from "../store";
 
 type Phase = "name" | "connecting" | "lobby" | "full" | "kicked" | "error";
 
@@ -185,7 +185,7 @@ export function OnecardOnlineScreen({
           botLevel: ONLINE_BOT_LEVEL,
           botNames: useSettings.getState().botNames,
           standInDelayMs: STAND_IN_MS,
-          pace: (next) => setTimeout(next, BOT_PACE_MS),
+          pace: botPace,
           ...(onecardKit.cardTable && useSettings.getState().fairPlay
             ? { fair: { group: "r255" as const } }
             : {}),
@@ -361,10 +361,6 @@ export function OnecardOnlineScreen({
                 {rules.endOnFirst
                   ? "한 명이 다 내면 끝"
                   : "한 사람 남을 때까지"}
-                . 가운데 더미를 치면 "원카드!"가 방장을 거치지 않고 모두에게
-                바로 갑니다(방장이 빼거나 순서를 바꾸면 다른 사람이 알아챕니다).
-                빈 자리는 컴퓨터가 앉습니다. 게임이 끝나면 섞은 값과 기록을
-                공개해 모두가 다시 확인합니다.
               </p>
             )}
             {isHost && onecardKit.cardTable && <RoomKindPicker />}
