@@ -30,6 +30,7 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
+import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
 import { CHESS_LEVELS, useChessSettings } from "../settings";
 import { useChess } from "../store";
@@ -195,6 +196,7 @@ export function ChessGame({
   const canUndo = useChess((s) => s.canUndo());
   const clearNotice = useChess((s) => s.clearNotice);
   const coordinates = useChessSettings((s) => s.coordinates);
+  const dangerHint = useChessSettings((s) => s.dangerHint);
   const [selected, setSelected] = useState<number | null>(null);
   const [promotion, setPromotion] = useState<Move | null>(null);
   // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
@@ -235,6 +237,12 @@ export function ChessGame({
     ? kingOf(view.position.board, view.check)
     : null;
 
+  // 내 차례에만 잡힐 기물을 보인다(상대 차례에는 상대가 두는 중이라 뜻이 없다).
+  const danger =
+    dangerHint && view.phase === "play" && myMove
+      ? hangingPieces(view.position, mySide)
+      : [];
+
   let status: string;
   if (view.phase === "play")
     status = myMove
@@ -244,7 +252,9 @@ export function ChessGame({
           ? hint && selected === hint.from
             ? "힌트: 초록 고리 칸으로 옮기면 고수가 고른 수예요"
             : "갈 칸을 누르세요"
-          : "내 차례 — 옮길 기물을 누르세요"
+          : danger.length > 0
+            ? "내 차례 — 잡힐 수 있는 기물이 있어요(빨간 점선)"
+            : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -361,6 +371,7 @@ export function ChessGame({
           checkedKing={checkedKing}
           coordinates={coordinates}
           hint={hint}
+          danger={danger}
         />
         {promotion && (
           <PromotionChooser
