@@ -4,6 +4,7 @@ export * from "./dice";
 export * from "./match";
 export * from "./rules";
 export * from "./scenario";
+export * from "./skies";
 export * from "./sky-types";
 export * from "./state";
 export * from "./test-sky";
