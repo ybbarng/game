@@ -65,3 +65,23 @@ describe("잡힐 위험 표시", () => {
     );
   });
 });
+
+describe("잡힐 위험 표시와 빅장 규칙", () => {
+  // 두 궁(95·25) 사이를 한 차(35)만 막고 있다. 그 차가 내 졸(31)을 잡으러 비키면 빅장이 된다.
+  const facing = () => {
+    const { board } = createJanggiScenario({
+      pieces: { "95": "cK", "25": "hK", "35": "hR", "31": "cP" },
+    });
+    return board;
+  };
+
+  it("빅장 금지면 그 잡기는 둘 수 없어 위험이 아니다", () => {
+    expect(
+      piecesInDanger(facing(), "c", { bikjangForbidden: true }).map(pointName),
+    ).toEqual([]);
+  });
+
+  it("빅장을 점수로 가리는 기본 규칙이면 잡을 수 있어 위험이다", () => {
+    expect(piecesInDanger(facing(), "c").map(pointName)).toEqual(["31"]);
+  });
+});
