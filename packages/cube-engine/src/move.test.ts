@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applyMoves, invertMoves, moveGeometry } from "./move";
 import { parseMoves } from "./notation";
 import { faceColors, isSolved, solvedCube } from "./state";
-import { cubeTopology, F, L, R, U } from "./topology";
+import { cubeTopology, F, L, R, stickerGeometry, U } from "./topology";
 
 const SIZES = [2, 3, 4, 5] as const;
 
@@ -24,6 +24,30 @@ describe("생김새", () => {
     expect(t.pieces).toHaveLength(n ** 3 - (n - 2) ** 3);
     const total = t.orbits.reduce((s, o) => s + o.pieces.length, 0);
     expect(total).toBe(t.pieces.length);
+  });
+});
+
+describe("3D 좌표", () => {
+  it("조각 중심은 원점 가운데·간격 1, 스티커는 표면 위", () => {
+    const g2 = stickerGeometry(2);
+    expect(g2[0]).toMatchObject({
+      face: U,
+      center: [-0.5, 0.5, -0.5],
+      position: [-0.5, 1, -0.5],
+      axis: "y",
+      sign: 1,
+    });
+    const g3 = stickerGeometry(3);
+    // R 면 가운데 줄 첫 칸(앞쪽)
+    expect(g3[R * 9 + 3]).toMatchObject({
+      center: [1, 0, 1],
+      position: [1.5, 0, 1],
+      axis: "x",
+      sign: 1,
+    });
+    // B 면 왼쪽 위(바깥에서 볼 때) = 오른쪽 위 뒤 꼭짓점
+    expect(g3[5 * 9]?.center).toEqual([1, 1, -1]);
+    expect(stickerGeometry(4).map((s) => s.center[0])).toContain(1.5);
   });
 });
 

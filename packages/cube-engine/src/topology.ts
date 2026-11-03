@@ -10,8 +10,8 @@ import type {
  *
  * - 면 번호는 U R F D L B 차례(0~5). 스티커 자리 번호 = 면 × n² + 줄 × n +칸.
  *   면마다 그 면을 바깥에서 바라볼 때 왼쪽 위가 0번이다(U는 F가 아래쪽에, D는 F가 위쪽에 오게 본다).
- * - 좌표: x 오른쪽(R), y 위(U), z 앞(F). 조각 중심은 -(n-1)~(n-1)을 2씩 건너뛰는 정수라
- *   조각 하나의 크기는 2다. 스티커 중심 = 조각 중심 + 바라보는 방향(조각 표면).
+ * - 좌표: x 오른쪽(R), y 위(U), z 앞(F). 큐브 가운데가 원점, 조각 사이 간격은 1
+ *   (n이 홀수면 0, ±1, …, 짝수면 ±0.5, ±1.5, …). 스티커 중심 = 조각 중심 + 바라보는 방향 × 0.5(조각 표면).
  * - 층 번호: 축(x·y·z)을 따라 + 쪽(R·U·F) 바깥층이 1, 반대쪽 바깥층이 n.
  */
 
@@ -209,21 +209,22 @@ export function faceOfNormal(v: Vec3): number {
 
 /** 면 f의 줄 r·칸 c 스티커가 붙은 조각의 중심 좌표 */
 function piecePosition(n: number, f: number, r: number, c: number): Vec3 {
-  const co = (i: number) => -(n - 1) + 2 * i;
-  const m = n - 1;
+  // -0 이 섞이지 않게 + 0 으로 맞춘다
+  const co = (i: number) => i - (n - 1) / 2 + 0;
+  const m = (n - 1) / 2;
   switch (f) {
     case U:
       return [co(c), m, co(r)];
     case R:
-      return [m, -co(r), -co(c)];
+      return [m, -co(r) + 0, -co(c) + 0];
     case F:
-      return [co(c), -co(r), m];
+      return [co(c), -co(r) + 0, m];
     case D:
-      return [co(c), -m, -co(r)];
+      return [co(c), -m, -co(r) + 0];
     case L:
-      return [-m, -co(r), co(c)];
+      return [-m, -co(r) + 0, co(c)];
     default:
-      return [-co(c), -co(r), -m];
+      return [-co(c) + 0, -co(r) + 0, -m];
   }
 }
 
@@ -241,8 +242,9 @@ export function cubeTopology(n: number): CubeTopology {
   if (hit) return hit;
 
   const span = 2 * n + 1;
+  // 좌표는 0.5 단위라 두 배 해서 정수로 찾는다
   const posKey = (p: Vec3) =>
-    ((p[0] + n) * span + (p[1] + n)) * span + (p[2] + n);
+    ((2 * p[0] + n) * span + (2 * p[1] + n)) * span + (2 * p[2] + n);
 
   const pieceIndex = new Map<number, number>();
   const pieceStickers: number[][] = [];
@@ -272,9 +274,9 @@ export function cubeTopology(n: number): CubeTopology {
           row: r,
           col: c,
           position: [
-            pos[0] + normal[0],
-            pos[1] + normal[1],
-            pos[2] + normal[2],
+            pos[0] + normal[0] / 2,
+            pos[1] + normal[1] / 2,
+            pos[2] + normal[2] / 2,
           ],
           normal,
           up: FACE_UPS[f] as Vec3,
@@ -330,7 +332,56 @@ export function cubeTopology(n: number): CubeTopology {
   return topo;
 }
 
+/** 3D 화면이 스티커 하나를 그리는 데 쓰는 정보 */
+export interface StickerDrawInfo {
+  /** 스티커 자리 번호(= 맞춘 상태에서 그 자리에 있는 스티커 번호) */
+  readonly index: number;
+  /** 면 번호(U R F D L B = 0~5) */
+  readonly face: number;
+  readonly row: number;
+  readonly col: number;
+  /** 조각 자리 번호 */
+  readonly piece: number;
+  /** 조각 중심(큐브 가운데가 원점, 간격 1) */
+  readonly center: Vec3;
+  /** 스티커 중심(조각 중심 + 법선 × 0.5) */
+  readonly position: Vec3;
+  /** 법선 축과 부호(예: R 면은 x, +1) */
+  readonly axis: "x" | "y" | "z";
+  readonly sign: 1 | -1;
+  readonly normal: Vec3;
+  /** 자리 기준 위 방향(twist 0일 때 스티커의 위) */
+  readonly up: Vec3;
+}
+
+const drawCache = new Map<number, readonly StickerDrawInfo[]>();
+
+/** 스티커 자리마다 3D 정보. 화면은 이것과 상태의 `perm`(색)·`twist`(방향)만으로 그린다 */
+export function stickerGeometry(n: number): readonly StickerDrawInfo[] {
+  const hit = drawCache.get(n);
+  if (hit) return hit;
+  const topo = cubeTopology(n);
+  const out = topo.stickers.map((s, index): StickerDrawInfo => {
+    const ai = s.normal[0] !== 0 ? 0 : s.normal[1] !== 0 ? 1 : 2;
+    return {
+      index,
+      face: s.face,
+      row: s.row,
+      col: s.col,
+      piece: s.piece,
+      center: topo.pieces[s.piece]?.position as Vec3,
+      position: s.position,
+      axis: (["x", "y", "z"] as const)[ai],
+      sign: (s.normal[ai] as number) > 0 ? 1 : -1,
+      normal: s.normal,
+      up: s.up,
+    };
+  });
+  drawCache.set(n, out);
+  return out;
+}
+
 /** 조각 좌표의 축 값 → 층 번호(1 = + 쪽 바깥층) */
 export function layerOf(n: number, coord: number): number {
-  return (n - 1 - coord) / 2 + 1;
+  return (n - 1) / 2 - coord + 1;
 }
