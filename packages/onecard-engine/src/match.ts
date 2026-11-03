@@ -651,6 +651,15 @@ export function pendingSeat(state: OnecardState): number | null {
 }
 
 /**
+ * 차례 행동을 기다리는 자리들(다른 엔진의 `pendingSeats`와 같은 모양). 원카드는 늘 한 사람이라
+ * `pendingSeat`를 배열로 준다. 외침은 누구나 언제든 보내므로 넣지 않는다
+ */
+export function pendingSeats(state: OnecardState): number[] {
+  const seat = pendingSeat(state);
+  return seat === null ? [] : [seat];
+}
+
+/**
  * 지금 할 수 있는 차례 행동(컴퓨터·화면). 7은 무늬마다 하나씩, 맨 끝은 먹기.
  * 외침(`shout`)은 판에 있는 자리면 언제든 보낼 수 있어 넣지 않는다
  */

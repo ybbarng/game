@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { ONECARD_DECK, type OnecardCard, type Suit } from "./cards";
-import { createMatch, legalActions, type StepResult, step } from "./match";
+import {
+  createMatch,
+  legalActions,
+  pendingSeat,
+  pendingSeats,
+  type StepResult,
+  step,
+} from "./match";
 import { type OnecardRules, STANDARD_ONECARD_RULES } from "./rules";
 import { createOnecardScenario } from "./scenario";
 import type { Action, GameEvent, OnecardState } from "./state";
@@ -451,6 +458,25 @@ describe("기타", () => {
     expect(step(end, 1, { type: "draw" }).ok).toBe(false);
     expect(step(s, -1, { type: "draw" }).ok).toBe(false);
     expect(step(s, 0, { type: "nope" } as unknown as Action).ok).toBe(false);
+  });
+
+  it("기다리는 자리(pendingSeats): 차례인 사람 하나, 다시 섞기를 기다리거나 끝나면 없음", () => {
+    const s = createOnecardScenario({
+      hands: [
+        ["H9", "H8"],
+        ["D3", "D4"],
+      ],
+      pile: ["C3", "H5"],
+      deck: [],
+      turn: 1,
+    });
+    expect(pendingSeats(s)).toEqual([1]);
+    const waiting = draw(s, 1);
+    expect(waiting.phase).toBe("reshuffle");
+    expect(pendingSeats(waiting)).toEqual([]);
+    expect(pendingSeat(waiting)).toBeNull();
+    const end = ok(step(s, 0, { type: "retire" }));
+    expect(pendingSeats(end)).toEqual([]);
   });
 
   it("그만두기: 지금 손패로 순위를 매기고 끝낸다", () => {
