@@ -16,6 +16,7 @@ export type GameEntry = {
     | "baseball"
     | "stardraw"
     | "yut"
+    | "galaxy"
     | "onecard";
   name: string;
   englishName: string;
@@ -135,5 +136,14 @@ export const GAMES: readonly GameEntry[] = [
       "윷가락을 던져 말을 몰고, 업고, 잡는다. 던지기는 모두의 기기가 함께 정한다",
     players: "2~4명",
     path: "/yut",
+  },
+  {
+    id: "galaxy",
+    name: "은하 한 바퀴",
+    englishName: "Galaxy Loop",
+    tagline:
+      "주사위를 굴려 계절 하늘을 돌며 별을 사고 정거장을 짓는다. 별자리를 이으면 이용료가 오른다",
+    players: "2~4명",
+    path: "/galaxy",
   },
 ];

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { summarizeBaduk } from "@/baduk/kit";
 import { BaseballStats } from "@/baseball/components/BaseballStats";
 import { ChessStats } from "@/chess/components/ChessStats";
+import { GalaxyStats } from "@/galaxy/components/GalaxyStats";
 import { summarizeMighty } from "@/game/mighty-stats";
 import { useSettings } from "@/game/settings";
 import { kirudaName } from "@/game/terms";
@@ -42,6 +43,7 @@ type GameTab =
   | "minhwatu"
   | "baseball"
   | "yut"
+  | "galaxy"
   | "onecard";
 
 const TAB_LABEL: Record<GameTab, string> = {
@@ -56,6 +58,7 @@ const TAB_LABEL: Record<GameTab, string> = {
   hearts: "♥ 하트",
   baseball: "⚾ 숫자야구",
   yut: "🪵 윷놀이",
+  galaxy: "✶ 은하 한 바퀴",
   onecard: "🃏 원카드",
 };
 
@@ -101,6 +104,7 @@ export function ProfilePage() {
       game === "minhwatu" ||
       game === "baseball" ||
       game === "yut" ||
+      game === "galaxy" ||
       game === "onecard"
     ) {
       setBack(`/${game}`);
@@ -195,6 +199,7 @@ export function ProfilePage() {
                 "onecard",
                 "baseball",
                 "yut",
+                "galaxy",
               ] as const
             ).map((t) => (
               <button
@@ -234,6 +239,8 @@ export function ProfilePage() {
           <BaseballStats book={book} />
         ) : tab === "yut" ? (
           <YutStats book={book} />
+        ) : tab === "galaxy" ? (
+          <GalaxyStats book={book} />
         ) : tab === "onecard" ? (
           <OnecardStats book={book} />
         ) : (

@@ -343,16 +343,16 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   rows.push({
     item: "운항 중단으로 끝난 판(기본 판)",
     value: pct(bankrupt),
-    target: "20~60%",
-    pass: bankrupt >= 0.2 && bankrupt <= 0.6,
+    target: "20% 아래(판은 차례 수로 끝난다, docs/48 3-5)",
+    pass: bankrupt <= 0.2,
   });
   const withTrade = main.completionGames / Math.max(1, main.games);
   const withoutTrade = noTrade.completionGames / Math.max(1, noTrade.games);
   rows.push({
     item: "별자리 완성이 한 번이라도 나온 판",
     value: `거래 켬 ${pct(withTrade)} · 끔 ${pct(withoutTrade)}`,
-    target: "켬 80% 넘게, 끔 50% 넘게",
-    pass: withTrade > 0.8 && withoutTrade > 0.5,
+    target: "켬 80% 넘게(끔은 참고, docs/48 3-5)",
+    pass: withTrade > 0.8,
   });
   const kept = main.leaderKept / Math.max(1, main.leaderChecked);
   rows.push({

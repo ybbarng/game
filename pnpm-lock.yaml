@@ -230,9 +230,21 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../../packages/cube-engine
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../../packages/cube-scramble
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
+      '@game/galaxy-ai':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-ai
+      '@game/galaxy-engine':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-engine
       '@game/gostop-ai':
         specifier: workspace:*
         version: link:../../packages/gostop-ai
@@ -414,12 +426,19 @@ importers:
       '@game/cube-engine':
         specifier: workspace:*
         version: link:../cube-engine
+      '@game/cube-reduction':
+        specifier: workspace:*
+        version: link:../cube-reduction
       '@game/cube-solver':
         specifier: workspace:*
         version: link:../cube-solver
       '@game/puzzle-core':
         specifier: workspace:*
         version: link:../puzzle-core
+    devDependencies:
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../cube-scramble
 
   packages/cube-engine:
     dependencies:
