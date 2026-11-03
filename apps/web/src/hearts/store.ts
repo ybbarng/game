@@ -470,12 +470,25 @@ export const useHearts = create<HeartsStore>((set, get) => {
   };
 });
 
+/**
+ * 누가 넘길 카드를 골랐다는 알림뿐인 스냅숏. 넘기기는 모두 동시에 고르므로 이 알림이 줄을 서 있어도
+ * 내 할 일(넘길 카드 고르기)은 그대로다.
+ */
+function onlyPassChosen(snapshot: HeartsSnapshot): boolean {
+  return (
+    snapshot.events.length > 0 &&
+    snapshot.events.every((e) => e.type === "passChosen")
+  );
+}
+
 /** 사람이 지금 고를 수 있는가 */
 export function canActHearts(
   state: Pick<HeartsStore, "queue" | "view" | "shownTrick" | "dealing">,
 ): boolean {
   return (
-    state.queue.length === 0 &&
+    // 컴퓨터 수는 워커에서 따로따로 돌아와, 앞 알림의 ✓ 표를 보이는 동안 다음 알림이 줄을 선다.
+    // 그것까지 막으면 넘기기 판이 잠깐 사라지고 그 사이 누른 카드가 먹히지 않는다.
+    state.queue.every(onlyPassChosen) &&
     state.shownTrick === null &&
     state.dealing === null &&
     state.view?.decision != null

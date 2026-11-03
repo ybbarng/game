@@ -29,6 +29,7 @@ const spec: KitClaims<
   judge: (board, claim) =>
     claim.body.button === board.target ? "hit" : "miss",
   action: () => null,
+  recorded: () => false,
   rules: { windowMs: 50, staleBoards: 1, graceMs: 1_000, staleSlackMs: 300 },
 };
 

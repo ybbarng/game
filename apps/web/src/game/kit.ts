@@ -1,4 +1,4 @@
-import type { HwatuFairSpec } from "@game/fair-play";
+import type { HwatuFairSpec, OnecardTableSpec } from "@game/fair-play";
 import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
@@ -22,6 +22,11 @@ export interface KitBot<View, Action, Event = unknown> {
     action: Action;
     recheck?: (view: View) => Action | null;
   } | null;
+  /**
+   * 걸음마다 사건을 듣기만 한다(반응 계획·난수 없이). 온라인 판 끝 검증이 컴퓨터 수를 다시 셀 때, 대국 중에
+   * `react`로 들었던 것과 같은 사건을 들려줘 기억을 쓰는 컴퓨터(원카드 고수: 없는 무늬)가 같은 수를 내게 한다
+   */
+  observe?(view: View, events: readonly Event[]): void;
 }
 
 /**
@@ -192,11 +197,20 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
     seed: number,
   ): { seat: number; action: Action } | null;
   /**
+   * 사람이 보낸 수가 아니라 대국을 돌리는 기기(방장)가 넣은 행동인가(원카드 창 시간 끝·다시 섞기·청구 묶음·컴퓨터의
+   * 차례 밖 외침). 판 끝 검증이 "내가 보낸 행동"과 "컴퓨터가 둘 수"를 맞춰 볼 때 뺀다. 엔진이 받아들일지는 그대로 본다.
+   * 없으면 개인 시간의 시간패(`timing.strip`이 null)만 뺀다
+   */
+  hostAction?(action: Action): boolean;
+  /**
    * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
    * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
    */
-  // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
-  cardTable?: HwatuFairSpec<Rules, State, any, Action, Event>;
+  cardTable?: // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
+    | HwatuFairSpec<Rules, State, any, Action, Event>
+    /** 원카드: 판 도중 뽑기와 다시 섞기 사슬(`kind: "onecard"`, fair-play `OnecardHostTable`) */
+    // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
+    | OnecardTableSpec<Rules, State, any, Action, Event>;
   /**
    * 실시간 청구(공정한 동시 판정 1층, docs/43). 있으면 온라인 방이 청구를 모두에게 직접 보내고(`ClaimHub`),
    * 방장이 묶음으로 판정해 발표하며, 참가자가 같은 함수로 다시 계산해 맞춰 본다. 없으면 그 게임은 영향이 없다
@@ -207,6 +221,10 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    * 사람이 보낸 것이 아닌 기록(방장 시계·방장이 넣은 행동: `timing.strip`이 null인 것 등)이 규칙대로인지
    * 판 끝 다시 계산에서 본다. 그런 기록은 「내가 보낸 것」 대조와 컴퓨터 수 대조를 건너뛰므로, 꼬리표만 달면
    * 아무 행동이나 넣을 수 있는 구멍을 막는다. null이면 통과, 글이면 판 끝 검증 실패 까닭
+   *
+   * 부르는 곳: 일반방 판 끝 다시 계산(guest-room)과 암호화방 다시 계산(fair-verify `FairReplayGame.unsigned`),
+   * `timing.strip`이 null이거나 `hostAction`인 기록마다. 같은 판 끝 확인 안에서는 같은 `context`로 차례대로 부르므로
+   * 게임이 `context`를 열쇠로 진행 위치를 들 수 있다(원카드 `net/claim-verify.ts`). 다 부른 뒤 `verifyUnsignedDone`
    */
   verifyUnsigned?(input: {
     /** 이 기록을 넣기 직전 상태(다시 계산 중인 상태) */
@@ -217,6 +235,8 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
     index: number;
     context: VerifyContext;
   }): string | null;
+  /** 기록을 다 본 뒤 한 번(받은 발표가 기록에서 빠졌는지 등 끝에서만 알 수 있는 것). 글이면 판 끝 검증 실패 까닭 */
+  verifyUnsignedDone?(context: VerifyContext): string | null;
 }
 
 /**
@@ -246,6 +266,16 @@ export interface KitClaims<
    * 넣을 것이 없으면 null
    */
   action(resolved: ClaimsResolved<Body, Verdict>): Action | null;
+  /**
+   * 기록 속 이 행동이 청구 묶음 행동(`action`이 만든 것)인가. 참가자가 판 끝 검증에서 기록 속 청구 묶음을
+   * 자기가 받아들인 발표로 만든 기대 행동과 차례·내용까지 맞춰 본다(방장이 발표는 바르게, 기록만 다르게 하지 못하게)
+   */
+  recorded(action: Action): boolean;
+  /**
+   * 온라인에서는 청구로만 들어와야 하는 직접 행동인가(원카드 `shout`). 기록에서 사람 자리의 이 행동은
+   * 방장이 지어낸 것이다(방장 기기의 컴퓨터 자리만 직접 친다)
+   */
+  direct?(action: Action): boolean;
   /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
   rules?: Partial<ClaimRules>;
 }
@@ -256,6 +286,10 @@ export interface VerifyContext {
   claimsResolved?: readonly unknown[];
   /** 대기실이 컴퓨터로 적은 자리 */
   botSeats?: ReadonlySet<number>;
+  /** 끊긴 적이 있거나 새로고침으로 다시 들어와 받지 못한 발표가 있을 수 있다(받은 것이 빠짐없이 차례대로인지만 본다) */
+  partial?: boolean;
+  /** 기록이 끝까지다(게임 끝 검증). 아니면(판마다 검증) 뒤따를 기록이 있어 앞부분만 본다 */
+  complete?: boolean;
 }
 
 export interface KitTiming<State, Action> {
