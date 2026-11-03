@@ -187,7 +187,8 @@ export function scheduleLine(length: number): string {
   return `${every}마다 관측 · 관측 5분 전 마감`;
 }
 
-export const TAGLINE = "로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요?";
+/** 머리 한 줄: 우주국의 목적(docs/41). 「로또 1등과 …」는 들어오자마자 정체가 드러나 바꿨다(2026-11-03 사용자) */
+export const TAGLINE = "다음에 빛날 별을 가장 잘 예측하는 우주인을 찾습니다.";
 
 /** 제목과 소개 문구(첫 화면·응모 화면이 같은 머리말을 쓴다) */
 export function StardrawTitle() {

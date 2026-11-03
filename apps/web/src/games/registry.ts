@@ -112,7 +112,8 @@ export const GAMES: readonly GameEntry[] = [
     id: "stardraw",
     name: "하늘의 별 따기",
     englishName: "Stardraw",
-    tagline: "로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요?",
+    tagline:
+      "카노푸스 우주국이 다음에 빛날 별을 가장 잘 예측하는 우주인을 찾는다",
     players: "누구나",
     path: "/stardraw",
   },

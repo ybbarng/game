@@ -81,6 +81,11 @@ test("링크 미리보기: 첫 화면과 지금 회차가 별 따기 제목·설
     expect(await meta("og:description")).toContain(
       "다음에 빛날 별 6개를 맞혀 보세요.",
     );
+    // 미리보기에서 로또 놀이라는 정체가 먼저 드러나지 않게(2026-11-03 사용자)
+    expect(await meta("og:description")).not.toContain("로또");
+    expect(
+      await page.locator('meta[name="description"]').getAttribute("content"),
+    ).not.toContain("로또");
     expect(await meta("og:image")).toMatch(
       /\/stardraw\/opengraph-image\/share\.png/,
     );

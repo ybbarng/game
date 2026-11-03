@@ -199,7 +199,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.getByRole("link", { name: /하늘의 별 따기/ }).click();
   await expect(page).toHaveURL(/\/stardraw$/);
   await expect(
-    page.getByText("로또 1등과 하늘의 별 따기, 어느 게 더 쉬울까요?"),
+    page.getByText("다음에 빛날 별을 가장 잘 예측하는 우주인을 찾습니다."),
   ).toBeVisible();
   await noSideScroll(page);
   // 처음 온 사람: 첫 화면이 입구다. 우주국 인사, 정답 예시, 지금 회차 한 줄, 우주인 등록·신분증 제시
