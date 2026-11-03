@@ -10,6 +10,7 @@ import {
   solvedStickers,
   type Vec3,
 } from "./geometry";
+import { cellOfPoint, type SwipeHit, swipeToMove } from "./swipe";
 import {
   type CubeMove,
   type CubeViewOptions,
@@ -41,6 +42,8 @@ const RETURN_MS = 700;
 const DEFAULT_YAW = 32;
 const DEFAULT_PITCH = 26;
 const PITCH_LIMIT = 80;
+/** 이만큼(CSS 픽셀) 밀어야 밀기로 본다. 그보다 짧으면 누름일 뿐 */
+const SWIPE_PX = 14;
 
 interface QualitySpec {
   maxDpr: number;
@@ -210,6 +213,16 @@ export class CubeView {
   private overshoot: boolean;
   private hidden: "black" | "gray";
   private onMoveDone: ((done: number) => void) | undefined;
+  private onSwipe: ((move: CubeMove) => void) | undefined;
+  private swipeMouse: boolean;
+  /** 밀기 하나(누른 곳에서 정한 칸, 이미 수를 냈는지) */
+  private gesture: {
+    id: number;
+    x: number;
+    y: number;
+    hit: SwipeHit | null;
+    done: boolean;
+  } | null = null;
 
   private queue: CubeMove[] = [];
   private running: Running | null = null;
@@ -243,6 +256,8 @@ export class CubeView {
     this.overshoot = o.overshoot ?? false;
     this.hidden = o.hidden ?? "black";
     this.onMoveDone = o.onMoveDone;
+    this.onSwipe = o.onSwipe;
+    this.swipeMouse = o.swipeMouse ?? false;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas,
@@ -434,12 +449,16 @@ export class CubeView {
         | "overshoot"
         | "hidden"
         | "onMoveDone"
+        | "onSwipe"
+        | "swipeMouse"
       >
     >,
   ): void {
     if (o.moveMs !== undefined) this.moveMs = clampMs(o.moveMs);
     if (o.overshoot !== undefined) this.overshoot = o.overshoot;
     if ("onMoveDone" in o) this.onMoveDone = o.onMoveDone;
+    if ("onSwipe" in o) this.onSwipe = o.onSwipe;
+    if (o.swipeMouse !== undefined) this.swipeMouse = o.swipeMouse;
     let recolor = false;
     if (o.colors) {
       this.colors = o.colors;
@@ -661,14 +680,87 @@ export class CubeView {
     if (busy) this.invalidate();
   };
 
+  /** 끄는 동안 손가락이 캔버스 밖으로 나가도 이어 받는다. 이미 끝난 포인터면 브라우저가 던지므로 넘긴다 */
+  private capture(pointerId: number, on: boolean): void {
+    try {
+      if (on) this.canvas.setPointerCapture?.(pointerId);
+      else this.canvas.releasePointerCapture?.(pointerId);
+    } catch {
+      // 붙잡지 못해도 밀기·끌기는 캔버스 안에서 그대로 된다
+    }
+  }
+
+  /** 화면의 한 점 아래 큐브 겉의 칸(큐브를 감싼 상자와 만나는 점으로 정한다). 빈 곳이면 null */
+  private hitAt(clientX: number, clientY: number): SwipeHit | null {
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.placeCamera();
+    this.camera.updateMatrixWorld();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const h = this.n / 2;
+    const box = new THREE.Box3(
+      new THREE.Vector3(-h, -h, -h),
+      new THREE.Vector3(h, h, h),
+    );
+    const p = ray.ray.intersectBox(box, new THREE.Vector3());
+    return p ? cellOfPoint(this.n, [p.x, p.y, p.z]) : null;
+  }
+
   private readonly onPointerDown = (e: PointerEvent): void => {
-    if (e.button !== 0 || this.drag) return;
+    if (e.button !== 0 || this.drag || this.gesture) return;
+    const mouse = e.pointerType === "mouse";
+    if (this.onSwipe && (!mouse || this.swipeMouse)) {
+      // 마우스로 돌리기를 켠 사람의 마우스 끌기는 늘 큐브 전체(칸 위여도)
+      this.gesture = {
+        id: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        hit: mouse ? null : this.hitAt(e.clientX, e.clientY),
+        done: false,
+      };
+      this.capture(e.pointerId, true);
+      return;
+    }
     this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
     this.returning = null;
-    this.canvas.setPointerCapture?.(e.pointerId);
+    this.capture(e.pointerId, true);
   };
 
   private readonly onPointerMove = (e: PointerEvent): void => {
+    const g = this.gesture;
+    if (g && g.id === e.pointerId) {
+      if (g.done) return;
+      const dx = e.clientX - g.x;
+      const dy = e.clientY - g.y;
+      if (Math.hypot(dx, dy) < SWIPE_PX) return;
+      g.done = true;
+      // 화면에서 민 방향을 세계 좌표로: 카메라의 오른쪽·위 방향(화면 y는 아래로 커진다)
+      this.placeCamera();
+      this.camera.updateMatrixWorld();
+      const right = new THREE.Vector3().setFromMatrixColumn(
+        this.camera.matrixWorld,
+        0,
+      );
+      const up = new THREE.Vector3().setFromMatrixColumn(
+        this.camera.matrixWorld,
+        1,
+      );
+      const swipe = right.multiplyScalar(dx).addScaledVector(up, -dy);
+      const toward = this.camera.position.clone().normalize();
+      const move = swipeToMove(
+        this.n,
+        g.hit,
+        [swipe.x, swipe.y, swipe.z],
+        [toward.x, toward.y, toward.z],
+      );
+      if (move) this.onSwipe?.(move);
+      return;
+    }
     const d = this.drag;
     if (!d || d.id !== e.pointerId) return;
     this.dragYaw -= (e.clientX - d.x) * 0.45;
@@ -681,9 +773,14 @@ export class CubeView {
   };
 
   private readonly onPointerUp = (e: PointerEvent): void => {
+    if (this.gesture && this.gesture.id === e.pointerId) {
+      this.gesture = null;
+      this.capture(e.pointerId, false);
+      return;
+    }
     if (!this.drag || this.drag.id !== e.pointerId) return;
     this.drag = null;
-    this.canvas.releasePointerCapture?.(e.pointerId);
+    this.capture(e.pointerId, false);
     this.returning = {
       start: performance.now(),
       yaw: this.dragYaw,

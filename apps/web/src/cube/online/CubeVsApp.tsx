@@ -143,8 +143,8 @@ export function CubeVsApp() {
               시작
             </button>
             <p className="text-white/50 text-xs">
-              키보드로 맞춥니다. 휴대폰에서는 아래 단추로 돌릴 수 있지만
-              컴퓨터보다 느립니다.
+              키보드로 맞춥니다. 휴대폰에서는 큐브를 밀거나 아래 단추로 돌릴 수
+              있지만 컴퓨터보다 느립니다.
             </p>
           </section>
         ) : (
