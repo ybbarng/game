@@ -9,6 +9,11 @@ export type SolveMode = "solo" | "blind";
 export interface SolveRecord {
   /** 끝난 시각(Date.now) */
   at: number;
+  /**
+   * 크기·모드마다 1부터 늘어나는 번호. 저장할 때 매긴다(목록이 상한에 닿아 옛것이 빠져도 이어진다).
+   * 번호가 없던 옛 기록은 읽을 때 오래된 것부터 매긴다
+   */
+  no?: number;
   n: number;
   mode: SolveMode;
   /** 맞춘 시간(ms, 벌점 빼고). DNF면 null */
@@ -65,7 +70,19 @@ export function loadRecords(
   storage: StorageLike | null = defaultStorage(),
 ): SolveRecord[] {
   const list = readBook(storage)[bookKey(mode, n)];
-  return Array.isArray(list) ? list.filter(isRecord) : [];
+  return Array.isArray(list) ? numbered(list.filter(isRecord)) : [];
+}
+
+/** 번호가 없는 기록에 번호를 매긴다(새것이 앞인 목록, 오래된 것부터 앞 번호에 이어서) */
+function numbered(list: SolveRecord[]): SolveRecord[] {
+  let last = 0;
+  const out = [...list];
+  for (let i = out.length - 1; i >= 0; i--) {
+    const r = out[i] as SolveRecord;
+    if (typeof r.no === "number" && r.no > last) last = r.no;
+    else out[i] = { ...r, no: ++last };
+  }
+  return out;
 }
 
 function isRecord(r: unknown): r is SolveRecord {
@@ -86,7 +103,10 @@ export function addRecord(
 ): SolveRecord[] {
   const book = readBook(storage);
   const key = bookKey(record.mode, record.n);
-  const list = [record, ...(book[key] ?? []).filter(isRecord)].slice(
+  const before = Array.isArray(book[key])
+    ? numbered((book[key] as unknown[]).filter(isRecord))
+    : [];
+  const list = [{ ...record, no: (before[0]?.no ?? 0) + 1 }, ...before].slice(
     0,
     MAX_RECORDS,
   );

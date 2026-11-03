@@ -352,7 +352,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                     className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
                   >
                     <span className="w-6 text-right text-white/40 text-xs">
-                      {records.length - i}
+                      {r.no ?? records.length - i}
                     </span>
                     <span className="w-16 font-mono tabular-nums">
                       {formatMs(resultMs(r))}
