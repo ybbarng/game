@@ -27,8 +27,8 @@ describe("정거장 이용료(2-2)", () => {
         stars: [13, 14, 15].map((square) => ({ square, owner: 1, level })),
       });
     expect(rentOf(leveled(2), 14)).toBe(110);
-    expect(rentOf(leveled(3), 14)).toBe(290);
-    expect(rentOf(leveled(4), 14)).toBe(530);
+    expect(rentOf(leveled(3), 14)).toBe(350);
+    expect(rentOf(leveled(4), 14)).toBe(660);
     expect(
       rentOf(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] }), 14),
     ).toBe(0);
