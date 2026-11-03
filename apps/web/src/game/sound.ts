@@ -102,7 +102,27 @@ export type Cue =
   /** 윷놀이: 상대 말을 잡는 "딱-퐁" */
   | "yutCapture"
   /** 윷놀이: 말이 나는 "띠링" */
-  | "yutHome";
+  | "yutHome"
+  /** 은하 한 바퀴: 주사위 둘이 유리 판 위를 구르다 멈추는 "따그르르 톡" */
+  | "galaxyDice"
+  /** 은하 한 바퀴: 우주선이 칸 하나를 지나는 작은 "틱" */
+  | "galaxyTick"
+  /** 은하 한 바퀴: 별을 사는 맑은 종 한 번 */
+  | "galaxyBuy"
+  /** 은하 한 바퀴: 정거장 이용료(빛이 흐르는 짧은 쓸림) */
+  | "galaxyRent"
+  /** 은하 한 바퀴: 별자리 선 잇기(올라가는 음 셋) */
+  | "galaxyLink"
+  /** 은하 한 바퀴: 별자리 완성(아르페지오) */
+  | "galaxyComplete"
+  /** 은하 한 바퀴: 우주국 공문이 내려와 펴지는 종이 "사락"과 직인 "톡" */
+  | "galaxyNotice"
+  /** 은하 한 바퀴: 소행성대에 걸리는 낮고 둔한 "쿵" */
+  | "galaxyAsteroid"
+  /** 은하 한 바퀴: 우주국 지원금(작은 차임) */
+  | "galaxySalary"
+  /** 은하 한 바퀴: 봉인 입찰 봉투가 열리는 "스윽 톡" */
+  | "galaxyBid";
 
 /** 소리 이름. 소리 미리 듣기 화면에 쓴다 */
 /**
@@ -112,6 +132,7 @@ export type Cue =
  */
 export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   starTick: "repeat",
+  galaxyTick: "repeat",
 };
 
 export const CUE_LABELS: Record<Cue, string> = {
@@ -164,6 +185,16 @@ export const CUE_LABELS: Record<Cue, string> = {
   yutPiece: "윷놀이: 말 놓기",
   yutCapture: "윷놀이: 잡기",
   yutHome: "윷놀이: 나기",
+  galaxyDice: "은하 한 바퀴: 주사위",
+  galaxyTick: "은하 한 바퀴: 칸 지나기",
+  galaxyBuy: "은하 한 바퀴: 별 사기",
+  galaxyRent: "은하 한 바퀴: 이용료",
+  galaxyLink: "은하 한 바퀴: 별자리 선 잇기",
+  galaxyComplete: "은하 한 바퀴: 별자리 완성",
+  galaxyNotice: "은하 한 바퀴: 우주국 공문",
+  galaxyAsteroid: "은하 한 바퀴: 소행성대",
+  galaxySalary: "은하 한 바퀴: 지원금",
+  galaxyBid: "은하 한 바퀴: 입찰 공개",
 };
 
 /**
@@ -215,6 +246,16 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
+  galaxyDice: 4,
+  galaxyTick: 8,
+  galaxyBuy: 0,
+  galaxyRent: 0,
+  galaxyLink: 0,
+  galaxyComplete: 0,
+  galaxyNotice: 0,
+  galaxyAsteroid: 0,
+  galaxySalary: 0,
+  galaxyBid: 0,
 };
 
 function trim(cue: Cue): number {
@@ -805,7 +846,7 @@ export function play(
   const t0 = ctx.currentTime + delay;
   const bus = ctx.createGain();
   bus.gain.value = trim(cue);
-  if (cue === "starTick") {
+  if (cue === "starTick" || cue === "galaxyTick") {
     tickEnergy = tickEnergy * Math.exp(-(t0 - tickAt) / 0.5) + 1;
     tickAt = t0;
     bus.gain.value /= Math.sqrt(tickEnergy);
@@ -1354,6 +1395,93 @@ function render(cue: Cue, v: Voice): void {
       pluck(v, C5, 0, 0.25, 0.12);
       bell(v, G5, 0.08, 0.6, 0.07);
       bell(v, C6, 0.16, 0.8, 0.06);
+      break;
+    case "galaxyDice":
+      // 주사위 둘이 유리 판에 떨어져 구르다(작고 높은 "따그르르") 멈추는 "톡 톡"
+      for (let i = 0; i < 5; i++)
+        woodClack(v, i * 0.06 + random() * 0.025, 0.45 - i * 0.05, 1.5);
+      tap(v, 0.34, 0.7, 1.4);
+      tap(v, 0.42 + random() * 0.03, 0.55, 1.5);
+      break;
+    case "galaxyTick":
+      // 칸 하나를 지날 때 아주 작은 유리 "틱"(칸마다 음이 조금 다르다)
+      glass(v, pentatonic(6 + Math.floor(random() * 5)), 0, 0.12, 0.04, 0.4);
+      break;
+    case "galaxyBuy":
+      // 별을 맡는 맑은 종 한 번, 하늘이라 메아리가 조금
+      glass(withEcho(v, 1.4), G5, 0, 1.1, 0.085, 0.7);
+      tone(v, G5 * 2, 0.01, 0.5, { gain: 0.02, attack: 0.004 });
+      break;
+    case "galaxyRent":
+      // 빛이 흘러가는 짧은 쓸림과 작은 반짝임
+      noise(v, 0, 0.32, {
+        filter: "bandpass",
+        freq: 1800,
+        sweepTo: 4800,
+        q: 1.1,
+        gain: 0.16,
+        attack: 0.08,
+      });
+      glass(v, E5 * 2, 0.22, 0.4, 0.035, 0.8);
+      break;
+    case "galaxyLink":
+      // 별 둘 사이에 선이 그어지는 올라가는 음 셋
+      glass(withEcho(v, 1.2), pentatonic(5), 0, 0.5, 0.06, 0.6);
+      glass(v, pentatonic(7), 0.1, 0.5, 0.055, 0.6);
+      glass(v, pentatonic(9), 0.2, 0.7, 0.055, 0.7);
+      break;
+    case "galaxyComplete": {
+      // 별자리 완성: 선을 따라 올라가는 아르페지오와 부드러운 바탕음
+      const e = withEcho(v, 2.4);
+      [0, 2, 4, 5, 7, 9].forEach((step, i) => {
+        glass(e, pentatonic(step), i * 0.11, 0.9, 0.05, 0.7);
+      });
+      pad(v, C5, 0, 1.8, 0.03);
+      sparkles(e, 4, 0.7, 0.5);
+      break;
+    }
+    case "galaxyNotice":
+      // 공문 종이가 내려와 펴지는 "사락"과 직인 "톡"
+      noise(v, 0, 0.26, {
+        filter: "bandpass",
+        freq: 1100,
+        sweepTo: 2000,
+        q: 0.8,
+        gain: 0.14,
+        attack: 0.07,
+      });
+      thump(v, 0.3, 170, 90, 0.07, 0.22);
+      tap(v, 0.3, 0.5, 0.8);
+      break;
+    case "galaxyAsteroid":
+      // 소행성대에 걸리는 낮고 둔한 "쿵"과 자갈 부딪는 소리
+      thump(v, 0, 120, 55, 0.35, 0.34);
+      noise(v, 0, 0.3, {
+        filter: "lowpass",
+        freq: 500,
+        q: 0.7,
+        gain: 0.35,
+        attack: 0.004,
+      });
+      for (let i = 0; i < 3; i++)
+        woodClack(v, 0.08 + i * 0.07 + random() * 0.03, 0.25, 0.6);
+      break;
+    case "galaxySalary":
+      // 우주국 지원금: 작은 차임 둘
+      bell(v, E5 * 2, 0, 0.5, 0.05);
+      bell(v, G5 * 2, 0.09, 0.7, 0.045);
+      break;
+    case "galaxyBid":
+      // 봉투가 열리는 "스윽"과 값이 드러나는 "톡"
+      noise(v, 0, 0.2, {
+        filter: "highpass",
+        freq: 2200,
+        sweepTo: 3600,
+        q: 0.6,
+        gain: 0.12,
+        attack: 0.04,
+      });
+      pluck(v, C5 * 2, 0.2, 0.3, 0.1);
       break;
     case "roundEnd":
       // 점수표를 펼치는 "사락"과 "띵동"
