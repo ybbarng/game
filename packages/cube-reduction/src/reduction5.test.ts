@@ -51,6 +51,9 @@ describe.each(SEEDS)("5×5 무작위 상태 %i", (seed) => {
   test("수 길이가 사람 축소법 정도다", () => {
     const len = parseMoves(n, sol.moves).length;
     expect(len).toBeGreaterThan(80);
+    // 시험 씨앗은 173~208수, 씨앗 1~40은 164~223수, 검토(game-85 #52)에서는 232수까지
+    // 나왔다. 400은 그 위로 넉넉히 둔 상한이라 공식 고르기를 조금 바꿔도 깨지지 않고, 크게
+    // 길어지면 잡는다.
     expect(len).toBeLessThan(400);
   });
 });
