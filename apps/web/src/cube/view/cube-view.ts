@@ -257,11 +257,17 @@ export class CubeView {
     room.dispose();
     pmrem.dispose();
     this.scene.environment = this.envTexture;
-    this.scene.environmentIntensity = 0.9;
-    // 위에서 오는 빛 하나를 더해 윗면이 조금 더 밝게(실내 조명처럼)
-    const key = new THREE.DirectionalLight(0xffffff, 0.6);
-    key.position.set(2, 6, 3);
-    this.scene.add(key);
+    // 방 환경은 광택(반사)용으로만 약하게 쓴다. 세게 두면 비스듬히 보이는 면(오른쪽)에 하얀 방이 비쳐 색이 물 빠진 듯 옅어진다
+    this.scene.environmentIntensity = 0.45;
+    // 색은 직접 빛으로 낸다: 보이는 세 면(위·앞·오른쪽)이 비슷하게 밝도록 위-앞, 오른쪽, 왼쪽-앞에서 비춘다
+    const sky = new THREE.HemisphereLight(0xffffff, 0x3a3a3a, 0.7);
+    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    key.position.set(3, 5, 4);
+    const right = new THREE.DirectionalLight(0xffffff, 0.75);
+    right.position.set(5, 0.5, 1);
+    const left = new THREE.DirectionalLight(0xffffff, 0.5);
+    left.position.set(-4, 1, 3);
+    this.scene.add(sky, key, right, left);
 
     // 조각 몸통
     const boxGeo = new RoundedBoxGeometry(
@@ -283,10 +289,12 @@ export class CubeView {
     this.stickerMaterial = this.spec.physical
       ? new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
-          roughness: 0.32,
+          roughness: 0.4,
           metalness: 0,
-          clearcoat: 1,
-          clearcoatRoughness: 0.08,
+          // 광택은 얇게: 맑은 막(clearcoat)이 세면 비스듬한 면에서 방 반사가 색을 덮는다
+          clearcoat: 0.35,
+          clearcoatRoughness: 0.22,
+          envMapIntensity: 0.5,
         })
       : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
     this.disposables.push(boxGeo, this.bodyMaterial, this.stickerMaterial);
@@ -496,8 +504,8 @@ export class CubeView {
     // 스티커 없는 큐브: 색 플라스틱 조각에 안쪽만 검은 심. 몸통을 조금 밝은 검정으로, 광택은 덜하게
     this.bodyMaterial.color.setHex(this.stickerless ? 0x1a1a1c : 0x0d0d0f);
     if (this.stickerMaterial instanceof THREE.MeshPhysicalMaterial) {
-      this.stickerMaterial.clearcoat = this.stickerless ? 0.35 : 1;
-      this.stickerMaterial.roughness = this.stickerless ? 0.4 : 0.32;
+      this.stickerMaterial.clearcoat = this.stickerless ? 0.2 : 0.35;
+      this.stickerMaterial.roughness = this.stickerless ? 0.45 : 0.4;
     }
   }
 
