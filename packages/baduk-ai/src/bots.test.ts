@@ -122,6 +122,23 @@ describe("바둑 컴퓨터", () => {
     },
   );
 
+  it("입문: 판이 비었을 때는 가장자리(19줄은 1·2선)에 두지 않는다", () => {
+    const rules = { ...STANDARD_RULES, size: 19 as const };
+    const state = createBadukScenario({
+      rules,
+      black: ["D4"],
+      white: [],
+      me: 2,
+    });
+    for (let seed = 1; seed <= 40; seed++) {
+      const action = badukBeginnerBot.decide(viewOf(state, 0), createRng(seed));
+      if (action.type !== "place") throw new Error("둬야 한다");
+      const x = action.at % 19;
+      const y = Math.floor(action.at / 19);
+      expect(Math.min(x, y, 18 - x, 18 - y)).toBeGreaterThanOrEqual(2);
+    }
+  });
+
   it("같은 시드면 같은 수를 둔다", () => {
     // 고수와 같은 탐색이다. 같은 시드면 같은 수라는 성질은 둬 보는 횟수와 상관없어 400번으로 본다
     const bot = createBadukSearchBot(400);

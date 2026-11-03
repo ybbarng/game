@@ -105,6 +105,22 @@ function obviousMove(
     : PASS;
 }
 
+/**
+ * 판이 아직 비었을 때(돌이 판의 3분의 1 아래) 가장자리에 가까운 수인가.
+ * 맨 가장자리(1선)는 늘, 13줄 이상이면 2선도 친다. 무작위로 고르는 입문이 초반에 판 끝에 두면 어색해서 뺀다.
+ * 판이 차면 가장자리도 집 경계를 닫는 수라 다시 둔다
+ */
+function earlyEdge(board: FastBoard, at: number): boolean {
+  let stones = 0;
+  for (let i = 0; i < board.n; i++) if (board.cells[i] !== 0) stones++;
+  if (stones * 3 >= board.n) return false;
+  const size = board.size;
+  const x = at % size;
+  const y = Math.floor(at / size);
+  const line = Math.min(x, y, size - 1 - x, size - 1 - y);
+  return line < (size >= 13 ? 2 : 1);
+}
+
 export const badukBeginnerBot = botWith(
   "baduk-beginner",
   (view, board, rng) => {
@@ -114,7 +130,9 @@ export const badukBeginnerBot = botWith(
     const obvious = obviousMove(moves, allowed, board, rng);
     if (obvious !== PASS) return obvious;
     const safe = moves.filter((m) => libertiesAfter(board, m) >= 2);
-    const pool = safe.length > 0 ? safe : moves;
+    const sensible = safe.filter((m) => !earlyEdge(board, m));
+    const pool =
+      sensible.length > 0 ? sensible : safe.length > 0 ? safe : moves;
     return pool[nextInt(rng, pool.length)] as number;
   },
 );
