@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-03T05:00:00.000Z",
+  "updatedAt": "2026-11-03T06:00:00.000Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -389,7 +389,7 @@
             "외칠 수 있는 시간 창(속도 겨루기 없음)",
             "반응 시간으로 먼저 외친 사람"
           ],
-          "recommend": "외칠 수 있는 시간 창부터",
+          "recommend": "외칠 수 있는 시간 창부터(원카드는 docs/42 B안: 본인 시간과 잡기 창을 겹치지 않게)",
           "status": "open"
         }
       ]
@@ -552,15 +552,39 @@
       "id": "card-onecard",
       "title": "원카드",
       "parent": "cards",
-      "status": "blocked",
+      "status": "fog",
       "size": 2,
-      "summary": "먼저 외치기가 핵심이라 실시간 판정이 정해진 뒤에만 한다",
+      "summary": "조사 끝(docs/42): 본인 외침을 카드 낼 때 같이 누르고, 잊으면 본인 시간 → 잡기 창을 겹치지 않게 열면 속도 겨루기 없이 판정된다. 잡는 사람끼리 순서는 판정에 안 쓰인다. 판 도중 뽑기는 지금 되고, 버린 더미 다시 섞기는 새 섞기 사슬이 필요하다",
+      "next": "사용자가 갈림길(판정 방식·본인 시간·잡기 창·벌칙 등 9개)을 정하면 엔진과 일반방부터",
       "since": "2026-10-28",
       "found": "2026-10-28",
       "links": [
         {
+          "label": "원카드 외치기 판정 조사",
+          "path": "docs/42-onecard-realtime.md"
+        },
+        {
           "label": "게임 센터 기획",
           "path": "docs/18-game-center-plan.md"
+        }
+      ],
+      "signs": [
+        {
+          "id": "onecard-forks",
+          "type": "fork",
+          "title": "원카드 규칙·판정 갈림길 9개(docs/42 9절)",
+          "owner": "me",
+          "options": [
+            "추천대로(겹치지 않는 창, 본인 시간 1초, 잡기 창 3초, 벌칙 1장, 일반방 먼저)",
+            "일부를 바꿔서"
+          ],
+          "recommend": "추천대로",
+          "status": "open"
+        },
+        {
+          "id": "onecard-reshuffle",
+          "type": "risk",
+          "title": "암호화방에서 버린 더미 다시 섞기: 한 판에 사슬 여러 개, 판 끝 검증이 덱 조각을 이어야 한다(폰 시간 미측정)"
         }
       ]
     },
