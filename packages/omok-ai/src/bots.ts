@@ -2,6 +2,7 @@ import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 import {
   type Action,
   type Cell,
+  defenseCandidates,
   forbiddenReason,
   hasForbidden,
   type OmokView,
@@ -9,7 +10,9 @@ import {
   type Stone,
   stoneOfSeat,
   type Variant,
+  winningFirstMoves,
   winningLine,
+  winsByFours,
 } from "@game/omok-engine";
 
 import { evaluate, nearbyEmpties, placeGain } from "./shape";
@@ -190,12 +193,55 @@ function negamax(
   return best;
 }
 
-/** 고수: 모양 점수로 후보를 추려 네 수 앞까지 읽는다(알파베타). 같은 값이면 앞 순위 */
-export function createOmokSearchBot(depth = 4): OmokBot {
+/** 사로 몰아붙이기를 읽는 길이(내 수, 마지막 다섯 포함) */
+const VCF_MOVES = 4;
+
+/**
+ * 상대가 사로 몰아 이기는 길이 있으면, 그 길을 끊는 자리들. 길이 없으면 null.
+ * 끊을 자리가 없으면 빈 배열(어차피 진다)
+ */
+function stopsAgainstFours(
+  board: Cell[],
+  stone: Stone,
+  variant: Variant,
+): number[] | null {
+  const foe = other(stone);
+  if (!winsByFours(board, foe, variant, VCF_MOVES)) return null;
+  return defenseCandidates(board, foe, variant).filter((at) => {
+    if (!allowed(board, at, stone, variant)) return false;
+    board[at] = stone;
+    const stopped = !winsByFours(board, foe, variant, VCF_MOVES);
+    board[at] = 0;
+    return stopped;
+  });
+}
+
+/**
+ * 앞수 읽기 봇. 모양 점수로 후보를 추려 `depth`수 앞까지 읽는다(알파베타). 같은 값이면 앞 순위.
+ * `readFours`면 먼저 사로 몰아 이기는 길이 있는지 보고 그대로 두며, 상대에게 그런 길이 있으면 끊는 자리 가운데서 고른다
+ * (고수는 읽지 않는다. 초고수의 바탕)
+ */
+export function createOmokSearchBot(depth = 4, readFours = false): OmokBot {
   return {
-    name: `omok-search-${depth}`,
+    name: readFours ? `omok-fours-${depth}` : `omok-search-${depth}`,
     decide: placeWith((board, stone, variant, rng) => {
-      const moves = searchMoves(board, stone, variant);
+      let moves = searchMoves(board, stone, variant);
+      if (readFours) {
+        const win = winningFirstMoves(board, stone, variant, VCF_MOVES)[0];
+        if (win !== undefined) return win;
+        const stops = stopsAgainstFours(board, stone, variant);
+        if (stops && stops.length > 0) {
+          // 모양 점수 순서를 지키며 끊는 자리만 남긴다(점수 밖의 끊는 자리는 뒤에 붙인다).
+          const set = new Set(stops);
+          const ordered = ranked(board, stone, variant, 1)
+            .map((m) => m.at)
+            .filter((at) => set.has(at));
+          moves = [
+            ...ordered,
+            ...stops.filter((at) => !ordered.includes(at)),
+          ].slice(0, WIDTH);
+        }
+      }
       let bestAt = moves[0] ?? anyLegal(board, stone, variant);
       let best = -Infinity;
       for (const at of moves) {

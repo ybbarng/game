@@ -9,6 +9,7 @@ import {
 import { expect, it } from "vitest";
 
 import {
+  createOmokSearchBot,
   type OmokBot,
   omokBeginnerBot,
   omokExpertBot,
@@ -47,6 +48,12 @@ it("단계가 높을수록 이긴다", () => {
   expect(duel(omokExpertBot, omokIntermediateBot, 20)).toBeGreaterThanOrEqual(
     14,
   );
+});
+
+it("사 몰아붙이기를 읽으면 고수를 이긴다", () => {
+  expect(
+    duel(createOmokSearchBot(4, true), omokExpertBot, 20),
+  ).toBeGreaterThanOrEqual(12);
 });
 
 it("고수 한 수에 걸리는 시간", () => {

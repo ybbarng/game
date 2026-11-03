@@ -1,5 +1,7 @@
 "use client";
 
+import { createRng } from "@game/mighty-engine";
+import { omokBotFor } from "@game/omok-ai";
 import {
   type OmokView,
   pointName,
@@ -102,9 +104,12 @@ export function OmokGame({
   // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑·체스와 같은 모양).
   const [confirmResign, setConfirmResign] = useState(false);
   const played = view?.moves.length ?? 0;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 수가 오갈 때마다 묻기를 닫는다
+  // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 지운다)
+  const [hint, setHint] = useState<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 수가 오갈 때마다 묻기와 힌트를 닫는다
   useEffect(() => {
     setConfirmResign(false);
+    setHint(null);
   }, [played]);
 
   useEffect(() => {
@@ -129,7 +134,9 @@ export function OmokGame({
   if (view.phase === "play")
     status = myTurn
       ? aim !== null
-        ? `${pointName(aim)}: 한 번 더 누르면 둔다`
+        ? hint === aim
+          ? `힌트 ${pointName(aim)}: 초록 고리가 고수가 고른 자리예요`
+          : `${pointName(aim)}: 한 번 더 누르면 둔다`
         : "내 차례 — 판을 눌러 두세요"
       : online
         ? `${opponent}의 차례`
@@ -243,6 +250,7 @@ export function OmokGame({
           aim={aim}
           onAim={setAim}
           onPlace={(at) => submit({ type: "place", at })}
+          hint={hint}
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
@@ -280,6 +288,24 @@ export function OmokGame({
                 className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
               >
                 무르기
+              </button>
+            )}
+            {!online && !mission && myTurn && (
+              <button
+                type="button"
+                onClick={() => {
+                  // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다).
+                  const action = omokBotFor(2).decide(
+                    view,
+                    createRng(played + 1),
+                  );
+                  if (action.type !== "place") return;
+                  setHint(action.at);
+                  setAim(action.at);
+                }}
+                className="rounded-xl bg-white/10 px-4 py-2"
+              >
+                힌트
               </button>
             )}
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
