@@ -252,7 +252,7 @@ export class HostRoom<
           apply: (resolved) => {
             const action = claimSpec.action(resolved) as ActionT | null;
             if (action !== null && this.match)
-              this.match.submitAs(this.match.seat, action);
+              this.match.submitHost(this.match.seat, action);
           },
           object: (seat, reason) => this.raiseIncident({ seat, reason }),
         })

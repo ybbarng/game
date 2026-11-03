@@ -131,6 +131,48 @@ describe("원카드 대국 진행(LocalMatch + onecardKit)", () => {
     expect(restored.save().reactRng).toBe(saved.reactRng);
   });
 
+  it("방장 자리 행동을 준비하는 중에 온 청구 묶음(submitHost)도 거절하지 않고 줄 끝에 세워 넣는다", async () => {
+    const clock = new ManualClock();
+    const initialState = createOnecardScenario(ONE_LEFT);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const match = new LocalMatch({
+      kit: onecardKit,
+      rules: initialState.rules,
+      seed: 1,
+      humanSeat: 0,
+      bot: quietBot,
+      initialState,
+      clock,
+      prepare: async (_state, _seat, action) => {
+        if (action.type === "play") await gate;
+        return { ok: true, action };
+      },
+    });
+    const settle = async () => {
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    };
+    match.submit({ type: "play", card: "S3" });
+    const claims: Action = {
+      type: "claims",
+      batch: 0,
+      shouts: [{ seat: 1, seen: 0, id: "a" }],
+    };
+    // 사람 행동 길(submitAs)은 앞 행동을 준비하는 동안 거절한다. 발표는 그러면 사라지므로 방장 기기 길을 쓴다
+    expect(match.submitAs(0, claims).ok).toBe(false);
+    match.submitHost(0, claims);
+    release();
+    await settle();
+    expect(
+      match
+        .actionLog()
+        .map((e) => e.action.type)
+        .slice(0, 2),
+    ).toEqual(["play", "claims"]);
+  });
+
   it("준비 줄(prepare, 멘탈 포커)이 있으면 창 시간 끝도 그 줄을 탄다", async () => {
     const clock = new ManualClock();
     const initialState = createOnecardScenario(ONE_LEFT);
