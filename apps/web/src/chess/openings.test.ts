@@ -26,7 +26,7 @@ describe("체스 오프닝 수순", () => {
     "%s: 본줄기와 모든 갈래가 처음 판에서 규칙대로 두어지고, 기보 글자가 엔진과 같다",
     (_name, line) => {
       for (const path of allPaths(line)) {
-        let pos = parseFen(START_FEN);
+        let pos = parseFen(line.start ?? START_FEN);
         for (const node of path) {
           const move = sanToMove(pos, node.move);
           if (!move)

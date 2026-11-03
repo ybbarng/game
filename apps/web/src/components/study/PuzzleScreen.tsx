@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
+import type { Cue } from "@/game/sound";
 import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
 
@@ -24,6 +25,26 @@ export interface Applied<S> {
   capture: boolean;
 }
 
+/** 수를 둘 때 내는 소리. 게임마다 다르다(바둑은 돌 소리) */
+export interface MoveSounds {
+  /** 그냥 둘 때 */
+  move: Cue;
+  /** 잡을 때 */
+  capture: Cue;
+}
+
+/** 넘기지 않으면 쓰는 기물 소리(장기·체스) */
+const PIECE_SOUNDS: MoveSounds = { move: "piece", capture: "capture" };
+
+/** 둔 수 하나의 소리를 낸다 */
+export function playMoveCue(
+  sounds: MoveSounds | undefined,
+  capture: boolean,
+): void {
+  const s = sounds ?? PIECE_SOUNDS;
+  playUiCue(capture ? s.capture : s.move);
+}
+
 export interface PuzzleRules<S, M> {
   /** 문제 처음 판 */
   initial: () => S;
@@ -35,6 +56,8 @@ export interface PuzzleRules<S, M> {
   reply?: (state: S) => (Applied<S> & { move: M | null }) | null;
   /** 푼 뒤 해설. 둔 수 앞의 판과 둔 수로 만든다 */
   explain: (before: S, move: M) => string[];
+  /** 수 소리. 없으면 기물 소리(`piece`·`capture`) */
+  sounds?: MoveSounds;
   /** 진행 기록 */
   solve: () => void;
   miss: () => void;
@@ -63,7 +86,7 @@ export function usePuzzleRun<S, M>(rules: PuzzleRules<S, M>) {
       setState(answer.state);
       if (answer.move !== null) {
         setLastMove(answer.move);
-        playUiCue(answer.capture ? "capture" : "piece");
+        playMoveCue(latest.current.sounds, answer.capture);
       }
       setStep((i) => i + 1);
       setStatus("play");
@@ -87,7 +110,7 @@ export function usePuzzleRun<S, M>(rules: PuzzleRules<S, M>) {
     const before = state;
     setState(done.state);
     setLastMove(move);
-    playUiCue(done.capture ? "capture" : "piece");
+    playMoveCue(rules.sounds, done.capture);
     if (verdict === "solved") {
       setExplain(rules.explain(before, move));
       setStatus("solved");

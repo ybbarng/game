@@ -221,8 +221,8 @@ function JanggiOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
         <p className="text-xs opacity-60">
-          상대가 공짜로, 또는 더 작은 기물로 잡을 수 있는 내 기물에 빨간 점선
-          고리를 두른다. 지키거나 피할 기물이 한눈에 보인다
+          공짜로 잡히거나 더 작은 기물이 노리는 내 기물에 빨간 점선 고리를
+          두른다
         </p>
       </Section>
       <p className="text-xs opacity-60">

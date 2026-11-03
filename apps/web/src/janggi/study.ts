@@ -18,6 +18,7 @@ import {
   xyOf,
 } from "@game/janggi-engine";
 
+import { threatenedPieces } from "./danger";
 import type { JanggiPuzzle } from "./puzzles";
 
 /** 문제 장면에서 시작하는 판. 늘 초(나, 0번 자리)가 둘 차례다 */
@@ -292,25 +293,10 @@ export function explainPalace(board: Board, move: Move): string[] {
 export function hangingPieces(
   board: Board,
 ): { at: number; attackers: number[] }[] {
-  const out: { at: number; attackers: number[] }[] = [];
-  board.forEach((cell, at) => {
-    if (!cell.startsWith("c")) return;
-    const kind = cell[1] as Kind;
-    if (kind === "K" || PIECE_VALUE[kind] < 5) return;
-    const by: number[] = [];
-    let free = false;
-    board.forEach((other, from) => {
-      if (!other.startsWith("h") || !pseudoTargets(board, from).includes(at))
-        return;
-      by.push(from);
-      const taken = applyMove(board, { from, to: at });
-      const defended = attackers(taken, at, "c").length > 0;
-      const cheaper = PIECE_VALUE[other[1] as Kind] < PIECE_VALUE[kind];
-      if (!defended || cheaper) free = true;
-    });
-    if (free) out.push({ at, attackers: by });
-  });
-  return out;
+  // 계산은 화면의 잡힐 위험 표시와 같은 것(danger.ts)을 쓰고, 문제에서는 큰 기물만 본다.
+  return threatenedPieces(board, "c").filter(
+    (t) => PIECE_VALUE[(board[t.at] as string)[1] as Kind] >= 5,
+  );
 }
 
 /**

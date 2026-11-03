@@ -239,6 +239,8 @@ test("오목: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
   await expect(stones(page)).toHaveCount(2);
   // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await expect(page.getByText("정말 기권할까요?")).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-resign-confirm.png") });
   await page.getByRole("button", { name: "계속 두기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
   await page.getByRole("button", { name: "기권" }).click();

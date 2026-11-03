@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { HintButton, useHint } from "@/components/HintButton";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -101,16 +103,9 @@ export function OmokGame({
   const clearNotice = useOmok((s) => s.clearNotice);
   const showForbidden = useOmokSettings((s) => s.showForbidden);
   const [aim, setAim] = useState<number | null>(null);
-  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑·체스와 같은 모양).
-  const [confirmResign, setConfirmResign] = useState(false);
   const played = view?.moves.length ?? 0;
-  // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 지운다)
-  const [hint, setHint] = useState<number | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 수가 오갈 때마다 묻기와 힌트를 닫는다
-  useEffect(() => {
-    setConfirmResign(false);
-    setHint(null);
-  }, [played]);
+  // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 저절로 지운다, 공통 useHint)
+  const { hint, showHint } = useHint<number>(played);
 
   useEffect(() => {
     if (!notice) return;
@@ -290,61 +285,28 @@ export function OmokGame({
                 무르기
               </button>
             )}
-            {!online && !mission && myTurn && (
-              <button
-                type="button"
-                onClick={() => {
-                  // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다).
-                  const action = omokBotFor(2).decide(
-                    view,
-                    createRng(played + 1),
-                  );
-                  if (action.type !== "place") return;
-                  setHint(action.at);
-                  setAim(action.at);
-                }}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                힌트
-              </button>
-            )}
+            <HintButton
+              online={online}
+              mission={!!mission}
+              myTurn={myTurn}
+              onHint={() => {
+                // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다).
+                const action = omokBotFor(2).decide(
+                  view,
+                  createRng(played + 1),
+                );
+                if (action.type !== "place") return;
+                showHint(action.at);
+                setAim(action.at);
+              }}
+            />
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myTurn) &&
-              (confirmResign ? (
-                <span className="flex w-full items-center justify-center gap-2">
-                  <span className="text-sm text-white/80">
-                    정말 기권할까요?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmResign(false);
-                      submit({ type: "resign" });
-                    }}
-                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
-                  >
-                    기권하기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmResign(false)}
-                    className="rounded-xl bg-white/10 px-4 py-2"
-                  >
-                    계속 두기
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAim(null);
-                    setConfirmResign(true);
-                  }}
-                  className="rounded-xl bg-white/10 px-4 py-2"
-                >
-                  기권
-                </button>
-              ))}
+            {(!online || myTurn) && (
+              <ResignButton
+                resetKey={played}
+                onResign={() => submit({ type: "resign" })}
+              />
+            )}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

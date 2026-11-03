@@ -24,7 +24,7 @@ import { ChessBoard } from "./ChessBoard";
 /** 수순 처음 판. 배우는 사람 자리(0번)가 수순의 그 편을 쥔다 */
 function lineState(line: StudyLine): ChessState {
   return createChessScenario({
-    fen: START_FEN,
+    fen: line.start ?? START_FEN,
     me: line.learner === 0 ? "w" : "b",
   });
 }
