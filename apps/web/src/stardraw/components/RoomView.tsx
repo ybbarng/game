@@ -1119,10 +1119,12 @@ export function RoomView({
                 곧 별이 빛납니다.
               </p>
             )}
-            {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다 */}
+            {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다. 칸은 하늘 정사각형만: 관측 중·뒤에는 이 칸 아래에 공 줄·결과 칸이
+              붙어, 칸 전체에 띄우면 풍등이 결과 글 위에 겹쳤다(docs/36 11-68) */}
             <div
               aria-live="polite"
-              className="pointer-events-none absolute inset-0 overflow-hidden"
+              data-room-lanterns
+              className="pointer-events-none absolute inset-x-0 top-0 aspect-square max-h-full overflow-hidden"
             >
               {lanterns
                 .filter((l) => !l.hidden)
