@@ -580,7 +580,13 @@ export function searchExpert(
     alpha > -MATE / 2;
   const staticEval = shallow ? tuning.evaluate(pos.board, pos.turn) : 0;
   // 한 수 덜 읽어도 될 만큼 판 값이 beta보다 높으면(깊이마다 120) 더 보지 않는다.
-  if (shallow && beta - alpha === 1 && staticEval - 120 * d >= beta)
+  // 둘 차례 편에 폰만 남은 판은 추크츠방(두어야 해서 손해)이 잦아 판 값만 믿을 수 없으니 하지 않는다(널 무브와 같은 까닭).
+  if (
+    shallow &&
+    beta - alpha === 1 &&
+    hasOfficers(pos.board, pos.turn) &&
+    staticEval - 120 * d >= beta
+  )
     return staticEval;
   /** 이 깊이에서 조용한 수를 건너뛸 선(판 값 + 여유가 alpha에 못 미치면) */
   const margin = d <= 2 ? (FUTILITY_MARGIN[d] as number) : 0;

@@ -11,7 +11,7 @@ import { TACTIC_NAMES, type Tactic } from "./tactics";
  * 문제 하나. 늘 백이 둘 차례다.
  * - mate: `mateIn`수 만에 메이트. 마지막 수는 메이트면 어느 수든 정답이다
  * - tactic: 포크·핀·스큐어·발견 공격으로 기물을 얻는 수. 정답 수 하나뿐
- * - endgame: 킹과 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹+폰 대 킹 승패표 `kpk.ts`로 확인)
+ * - endgame: 킹과 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹+폰 대 킹 승패표 `@game/chess-ai`의 `kpk.ts`로 확인)
  */
 export type ChessPuzzle = {
   id: string;
@@ -77,7 +77,7 @@ const MATE_IN_TWO: readonly Raw[] = [
 ];
 
 /*
- * 킹과 폰 끝내기(2026-11-03): 킹+폰 대 킹 승패표(`kpk.ts`)로 "이기는 수가 킹 수 하나뿐이고,
+ * 킹과 폰 끝내기(2026-11-03): 킹+폰 대 킹 승패표(`@game/chess-ai`의 `kpk.ts`)로 "이기는 수가 킹 수 하나뿐이고,
  * 폰부터 밀면 비기는" 판을 찾아 골랐다. kpk.test.ts가 모든 문제를 다시 확인한다.
  */
 const KING_AND_PAWN: readonly Raw[] = [
