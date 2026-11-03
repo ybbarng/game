@@ -289,6 +289,11 @@ export class RaceSession<Move, State> {
       : this.game.startState(this.a.seed, this.options.gameOptions);
   }
 
+  /** 한 사람의 지금 상태(이 기기가 다시 적용한 데까지). 진행 단계·작은 큐브를 그릴 때 쓴다 */
+  stateOf(id: string): State | undefined {
+    return this.a.records.get(id)?.state;
+  }
+
   /** 한 사람이 둔 수(글)와 시각(풀림 기준 ms). 이 기기가 다시 적용한 것까지 */
   moveLog(id: string): readonly { m: string; t: number }[] {
     return this.a.records.get(id)?.log ?? [];

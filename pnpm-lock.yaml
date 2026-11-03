@@ -230,6 +230,9 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
+      '@game/cube-ai':
+        specifier: workspace:*
+        version: link:../../packages/cube-ai
       '@game/cube-engine':
         specifier: workspace:*
         version: link:../../packages/cube-engine
