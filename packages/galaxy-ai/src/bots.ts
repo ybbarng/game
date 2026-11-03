@@ -11,6 +11,7 @@ import {
   NUMBERS,
   rentOf,
   STAR_SQUARES,
+  sellValue,
   starAt,
   step,
   type TradeOffer,
@@ -304,6 +305,30 @@ function side(stars: number[], cash: number): TradeSide {
   return { stars, cash };
 }
 
+function starsValue(ctx: Ctx, stars: readonly number[]): number {
+  return stars.reduce(
+    (t, sq) => t + (starAt(ctx.view.board, sq)?.value ?? 0),
+    0,
+  );
+}
+
+/**
+ * 별자리를 완성하는 거래에 내는 값의 상한(넘겨주는 별 값 + 별빛 − 받는 별빛): 넘겨받는 별 값의 1.5배.
+ * 남은 돌림이 적으면 완성으로 받을 이용료도 적어, 마지막 돌림에는 별 값까지로 줄인다(자산은 완성 100만큼 는다)
+ */
+function completionCap(ctx: Ctx, value: number): number {
+  const rounds = remainingRounds(ctx.view);
+  return value * (1 + 0.5 * Math.min(1, (rounds - 1) / 6));
+}
+
+/** 이 거래로 받는 쪽(`offer.to`)이 내놓는 값: 주는 별 값 + 주는 별빛 − 받는 별빛 */
+function netPaidByReceiver(ctx: Ctx, offer: TradeOffer): number {
+  return starsValue(ctx, offer.get.stars) + offer.get.cash - offer.give.cash;
+}
+
+/** 외톨이 별을 이만큼(값의 배수) 넘게 받으면 판다 */
+const LONE_SALE = 1.3;
+
 /* ───────────── 입문 ───────────── */
 
 /**
@@ -345,7 +370,10 @@ const beginnerPolicy: Policy = {
 
 /* ───────────── 중수 ───────────── */
 
-/** 중수가 남길 돈: 지금 남의 별 이용료 가운데 가장 큰 값의 1.5배(적어도 60) */
+/**
+ * 중수가 남길 돈: 지금 남의 별 이용료 가운데 가장 큰 값의 1.5배(적어도 60). 1배로 줄여 보았더니
+ * 정거장을 남길 돈 끝까지 지어 큰 정거장 한 번에 운항 중단이 잦았다(docs/48 3-6)
+ */
 function intermediateReserve(ctx: Ctx): number {
   return Math.max(60, 1.5 * maxOpponentRent(ctx.view, ctx.seat));
 }
@@ -365,22 +393,44 @@ function intermediateBonus(ctx: Ctx, square: number): number {
 
 /**
  * 중수가 받는 파는 거래: 내가 주는 별이 모두 그 별자리에 하나뿐인 외톨이 별이고,
- * 받는 것(별 값 + 별빛)이 주는 별 값의 두 배 이상이다
+ * 받는 것(별 값 + 별빛)이 주는 것의 1.3배 이상이다
  */
 function sellsLoneStars(ctx: Ctx, offer: TradeOffer): boolean {
-  const value = (sq: number) => starAt(ctx.view.board, sq)?.value ?? 0;
   const given = offer.get.stars;
   if (given.some((sq) => ownedIn(ctx, ctx.seat, groupOf(ctx, sq)) !== 1))
     return false;
   if (myCash(ctx) - offer.get.cash < intermediateReserve(ctx)) return false;
-  const out = given.reduce((t, sq) => t + value(sq), 0) + offer.get.cash;
-  const back =
-    offer.give.stars.reduce((t, sq) => t + value(sq), 0) + offer.give.cash;
-  return back >= 2 * out;
+  const out = starsValue(ctx, given) + offer.get.cash;
+  const back = starsValue(ctx, offer.give.stars) + offer.give.cash;
+  return back >= LONE_SALE * out;
 }
 
 /** 칸 밟힘을 모르는 중수가 쓰는 고른 밟힘(한 차례에 별 칸 하나를 밟을 어림) */
 const EVEN_RATE = 1 / 28;
+const evenRates = new Array<number>(32)
+  .fill(0)
+  .map((_, sq) => (STAR_SQUARES.includes(sq) ? EVEN_RATE : 0));
+
+/**
+ * 공정한 제안: 두 쪽의 기대 자산 변화(고른 밟힘으로 셈)가 비슷하다. 내 쪽이 줄지 않고,
+ * 상대 쪽 이득이 내 이득보다 50(또는 오가는 별 값의 10%) 넘게 크지 않다
+ */
+function fairForIntermediate(ctx: Ctx, offer: TradeOffer): boolean {
+  if (myCash(ctx) - offer.get.cash < intermediateReserve(ctx)) return false;
+  const after = afterTrade(ctx.view, offer);
+  const delta = (seat: number) => {
+    const turns = opponentTurns(ctx.view, seat);
+    return (
+      worth(after, seat, evenRates, turns) -
+      worth(ctx.view, seat, evenRates, turns)
+    );
+  };
+  const mine = delta(offer.to);
+  const theirs = delta(offer.from);
+  const traded =
+    starsValue(ctx, offer.give.stars) + starsValue(ctx, offer.get.stars);
+  return mine >= 0 && theirs - mine <= Math.max(50, 0.1 * traded);
+}
 
 const intermediatePolicy: Policy = {
   bid(ctx, square) {
@@ -398,13 +448,15 @@ const intermediatePolicy: Policy = {
     const reserve = intermediateReserve(ctx);
     const rounds = remainingRounds(ctx.view);
     const others = activeSeats(ctx.view).length - 1;
-    // 비싼 별자리부터, 별자리 안에서는 엔진이 허락한 칸(고르게)
+    // 완성한 별자리는 남길 돈 안에서 올린다. 짓는 순간 자산이 한 단 값의 절반만큼 줄어드니(2-10)
+    // 그 몫을 남은 돌림에 이용료로 되찾을 수 있을 때만. 비싼 별자리부터, 별자리 안에서는 엔진이 허락한 칸(고르게)
     const builds = buildable(ctx)
       .filter((sq) => {
         const cost = levelCostAt(ctx.view.board, sq);
         if (myCash(ctx) - cost < reserve) return false;
         const perRound = rentGain(ctx, sq) * EVEN_RATE * others;
-        return perRound > 0 && cost / perRound <= rounds;
+        const lost = cost - sellValue(ctx.view.board, sq);
+        return perRound > 0 && lost / perRound <= rounds;
       })
       .sort(
         (a, b) =>
@@ -456,9 +508,10 @@ const intermediatePolicy: Policy = {
       const give = gives[0];
       const giveValue =
         give === undefined ? 0 : (starAt(ctx.view.board, give)?.value ?? 0);
-      // 상대가 받을 만하게 값의 두 배(중수끼리도 거래가 이루어진다, 아래 accept)
-      const cash = ceil10(Math.max(0, 2 * price - giveValue));
+      // 상대가 받을 만하게 값의 1.3배(외톨이 별 파는 기준, 중수끼리도 거래가 이루어진다). 완성 거래 상한을 넘으면 청하지 않는다
+      const cash = ceil10(Math.max(0, LONE_SALE * price - giveValue));
       if (myCash(ctx) - cash < reserve) continue;
+      if (cash + giveValue > completionCap(ctx, price)) continue;
       const offer: TradeOffer = {
         from: ctx.seat,
         to: owner,
@@ -471,13 +524,20 @@ const intermediatePolicy: Policy = {
     return null;
   },
   accept(ctx, offer) {
-    // 내 별자리를 완성하는 거래를 받는다. 상대도 완성하면 내 별자리가 더 비쌀 때만.
-    // 그 밖에는 선을 잇지 않은 외톨이 별을 값의 두 배 넘게 받고 파는 거래만 받는다
+    // 내 별자리를 완성하는 거래는 내놓는 값이 상한(넘겨받는 별 값의 1.5배, 남은 돌림이 적으면 덜) 안이면 받는다.
+    // 상대도 완성하면 내 별자리가 더 비쌀 때만. 그 밖에는 외톨이 별을 값의 1.3배 넘게 받고 파는 거래,
+    // 두 쪽 기대 자산 변화가 비슷한 공정한 거래를 받는다
     const after = afterTrade(ctx.view, offer);
     const mine = newlyCompleted(ctx.view, after, ctx.seat);
-    if (mine.length === 0) return sellsLoneStars(ctx, offer);
+    if (mine.length === 0)
+      return sellsLoneStars(ctx, offer) || fairForIntermediate(ctx, offer);
     const pay = offer.get.cash;
     if (myCash(ctx) - pay < intermediateReserve(ctx)) return false;
+    if (
+      netPaidByReceiver(ctx, offer) >
+      completionCap(ctx, starsValue(ctx, offer.give.stars))
+    )
+      return false;
     const theirs = newlyCompleted(ctx.view, after, offer.from);
     const base = (g: number) => ctx.view.board.groups[g]?.base ?? 0;
     return (
@@ -594,8 +654,10 @@ const expertPolicy: Policy = {
       let score = (income(raise(1)) - now) / groupCost;
       if (spare >= 2 * groupCost)
         score = Math.max(score, (income(raise(2)) - now) / (2 * groupCost));
-      // 묶인 별빛은 공문 6(정거장 점검)과 빚 정리 때 반값이 되는 위험이 있어 이득이 작으면 짓지 않는다
-      if (score < 0.15) continue;
+      // 짓는 순간 자산이 한 단 값에서 돌려받는 값을 뺀 만큼(절반) 준다(2-10). 남은 판의 기대 이용료가
+      // 그 몫의 1.2배(공문 6 정거장 점검, 빚 정리 위험 몫)를 넘을 때만 짓는다
+      const lost = (cost - sellValue(ctx.view.board, sq)) / cost;
+      if (score < 1.2 * lost) continue;
       if (!best || score > best.score) best = { square: sq, score };
     }
     if (best) return { type: "build", square: best.square };
@@ -664,6 +726,13 @@ const expertPolicy: Policy = {
     const d = tradeDelta(ctx, offer);
     if (d.to <= 0) return false;
     const after = afterTrade(ctx.view, offer);
+    // 내 별자리를 완성하는 거래도 내놓는 값은 넘겨받는 별 값의 1.5배(남은 돌림이 적으면 덜)까지
+    if (
+      newlyCompleted(ctx.view, after, ctx.seat).length > 0 &&
+      netPaidByReceiver(ctx, offer) >
+        completionCap(ctx, starsValue(ctx, offer.give.stars))
+    )
+      return false;
     if (newlyCompleted(ctx.view, after, offer.from).length > 0)
       return d.to > d.from;
     return true;

@@ -161,6 +161,18 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
       </Section>
+      {s.length !== "long" && (
+        <Section title="유성우의 밤">
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={s.meteor} onClick={() => s.set({ meteor: true })}>
+              켬
+            </Chip>
+            <Chip active={!s.meteor} onClick={() => s.set({ meteor: false })}>
+              끔
+            </Chip>
+          </div>
+        </Section>
+      )}
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -197,7 +209,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
       "목표",
-      "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별·정거장 값, 완성한 별자리마다 100을 더한 것이에요.",
+      "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별 값, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 100을 더한 것이에요.",
     ],
     [
       "별 사기",
@@ -206,6 +218,10 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     [
       "이용료",
       "남의 별에 멈추면 정거장 이용료를 내요. 같은 별자리 별을 둘 가지면 선이 이어져 1.5배, 셋 모두면 별자리 완성으로 2배이고 정거장을 올릴 수 있어요.",
+    ],
+    [
+      "제철 하늘·유성우의 밤",
+      "제철 하늘을 켜면 판이 네 토막으로 나뉘어 토막마다 그 계절 변의 이용료가 1.5배예요. 유성우의 밤을 켜면 마지막 두 돌림 동안 모든 별 이용료가 2배예요.",
     ],
     [
       "모퉁이",
@@ -286,6 +302,7 @@ function GalaxyHome({
           lengthDetail(rules).split(" · ")[1],
           s.trade ? "거래" : "거래 없음",
           s.seasonal ? "제철 하늘" : null,
+          s.meteor && s.length !== "long" ? "유성우의 밤" : null,
           timePresetLabel(rules.time),
           `컴퓨터 ${level}`,
         ]

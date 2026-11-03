@@ -156,7 +156,7 @@ describe("우주국 공문 16장(2-6)", () => {
   it("14 계절 바꾸기: 다음 계절의 첫 별로 가고 이용료는 반", () => {
     const { state, events } = draw(14, { stars: [{ square: 9, owner: 1 }] });
     expect(state.positions[0]).toBe(9);
-    expect(amounts(events)).toEqual([[0, 1, 10]]);
+    expect(amounts(events)).toEqual([[0, 1, 20]]);
     // 여름 공문(28)에서는 가을 첫 별(1)로, 우주국을 지나 지원금
     const wrap = draw(14, {}, 25);
     expect(wrap.state.positions[0]).toBe(1);

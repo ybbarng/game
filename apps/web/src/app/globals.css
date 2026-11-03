@@ -308,6 +308,41 @@ html:has([data-game="galaxy"]) body {
   outline: 1px solid rgba(253, 230, 138, 0.28);
   outline-offset: -1px;
 }
+/* 유성우의 밤: 판 전체가 조금 푸르고, 유성이 비스듬히 천천히 흐른다(제철 빛남처럼 은은하게) */
+.galaxy-meteor-sky {
+  background-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(125, 211, 252, 0.12),
+    rgba(125, 211, 252, 0) 70%
+  );
+}
+@keyframes galaxy-meteor {
+  0% {
+    transform: translate(0, 0) rotate(35deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  30%,
+  100% {
+    transform: translate(-28cqw, 40cqw) rotate(35deg);
+    opacity: 0;
+  }
+}
+.galaxy-meteor {
+  position: absolute;
+  width: 1.5px;
+  height: 9%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(224, 242, 254, 0),
+    rgba(224, 242, 254, 0.9)
+  );
+  opacity: 0;
+  animation: galaxy-meteor 9s linear infinite;
+}
 @keyframes galaxy-dice-shake {
   0% {
     transform: translate(0, -6%) rotate(-8deg);
@@ -343,6 +378,9 @@ html:has([data-game="galaxy"]) body {
   .galaxy-sparkle,
   .galaxy-pulse {
     animation: none;
+  }
+  .galaxy-meteor {
+    display: none;
   }
 }
 

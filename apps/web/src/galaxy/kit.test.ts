@@ -3,6 +3,7 @@ import {
   boardOfSky,
   type GameEvent,
   SHORT_RULES,
+  STANDARD_RULES,
   step,
   viewOf,
 } from "@game/galaxy-engine";
@@ -11,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import { SKY_STARS } from "@/stardraw/sky";
 import type { RoundRecord } from "@/stats/records";
 
+import { eventLine } from "./events";
 import { buildTimeline, shipPositions, shownCash } from "./fx";
 import {
   describeGalaxy,
@@ -18,6 +20,8 @@ import {
   type GalaxyRound,
   galaxyKit,
   galaxyStats,
+  isCurrentEdition,
+  metSquares,
   outcomeOf,
   summarizeGalaxy,
 } from "./kit";
@@ -52,7 +56,7 @@ function playedGame() {
 describe("은하 한 바퀴 kit", () => {
   it("규칙 문자열을 주고받는다", () => {
     const code = galaxyKit.encodeRules(rules);
-    expect(code).toMatch(/^g1-2s[tn]w-seasons$/);
+    expect(code).toMatch(/^g2-2s[tn]w-seasons$/);
     expect(galaxyKit.decodeRules(code)).toEqual({ ok: true, rules });
     expect(galaxyKit.decodeRules(code.replace("seasons", "zodiac")).ok).toBe(
       false,
@@ -203,5 +207,72 @@ describe("연출 목록", () => {
     expect(shipPositions(t, [0, 5], t.total)[1]?.square).toBe(5);
     expect(shownCash(t, events, [1030, 970], 0)).toEqual([1000, 1000]);
     expect(shownCash(t, events, [1030, 970], t.total)).toEqual([1030, 970]);
+  });
+});
+
+describe("만난 별과 사건 줄", () => {
+  const board = boardOfSky("seasons");
+  const view = { board, owners: board.squares.map(() => -1), mySeat: 0 };
+
+  it("처음 받은 별, 거래로 오간 별도 만난 별에 든다", () => {
+    const events: GameEvent[] = [
+      {
+        type: "dealt",
+        stars: [
+          [1, 2],
+          [5, 6],
+        ],
+      },
+      {
+        type: "tradeAccepted",
+        offer: {
+          from: 1,
+          to: 0,
+          give: { stars: [9], cash: 0 },
+          get: { stars: [2], cash: 100 },
+        },
+      },
+    ];
+    expect(metSquares(view, events)).toEqual([1, 2, 9]);
+  });
+
+  it("해당 별이 없어 0인 공문, 1위라 0인 관측 지원금도 줄을 남긴다", () => {
+    const name = (s: number) => (s === 0 ? "나" : `컴퓨터 ${s}`);
+    const card = (id: number, squares: number[]) =>
+      eventLine({ type: "card", seat: 0, card: id, squares }, board, name);
+    expect(card(4, [])).toBe("나 · 공문 「먼 별 탐사 지원」 · 해당 별 없음");
+    expect(card(16, [])).toContain("해당 별자리 없음");
+    expect(card(4, [9])).not.toContain("없음");
+    expect(card(1, [])).not.toContain("없음");
+    expect(
+      eventLine({ type: "observed", seat: 1, amount: 0 }, board, name),
+    ).toContain("관측 지원금 없음");
+    expect(
+      eventLine({ type: "observed", seat: 1, amount: 50 }, board, name),
+    ).toBeNull();
+    expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
+      "유성우의 밤",
+    );
+  });
+});
+
+describe("옛 규칙 판", () => {
+  it("판 번호가 다른 기록은 지금 판으로 보지 않는다(다시 보기에서 다시 두지 않음)", () => {
+    expect(isCurrentEdition(STANDARD_RULES)).toBe(true);
+    const { edition: _, ...old } = STANDARD_RULES;
+    expect(isCurrentEdition(old)).toBe(false);
+    expect(isCurrentEdition({ ...STANDARD_RULES, edition: 1 })).toBe(false);
+    expect(isCurrentEdition(null)).toBe(false);
+  });
+
+  it("긴 판은 유성우를 싣지 않아 같은 판이 문자열 하나다", () => {
+    const rules = rulesFromSettings({
+      players: 4,
+      length: "long",
+      trade: true,
+      seasonal: true,
+      meteor: true,
+    });
+    expect(rules.meteor).toBe(false);
   });
 });

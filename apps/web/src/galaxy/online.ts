@@ -238,6 +238,7 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
     `${length}(${lengthDetail(rules).split(" · ")[0]})`,
     rules.trade ? "거래" : "거래 없음",
     rules.seasonal ? "제철 하늘" : null,
+    rules.meteor && rules.length !== "long" ? "유성우의 밤" : null,
   ]
     .filter(Boolean)
     .join(" · ");

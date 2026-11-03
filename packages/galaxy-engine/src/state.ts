@@ -175,6 +175,8 @@ export interface GalaxyState {
   round: number;
   /** 지금 계절 변(0~3). 제철 하늘을 끄면 null */
   season: number | null;
+  /** 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 끈 판·긴 판은 늘 false */
+  meteor: boolean;
   /** 첫 차례 자리(돌림은 이 자리에서 시작한다) */
   starter: number;
   turn: TurnInfo;
@@ -311,6 +313,8 @@ export type GameEvent =
       card?: number;
     }
   | { type: "landed"; seat: number; square: number }
+  /** 관측지에 멈춰 받을 관측 지원금(1위라 0이어도 남긴다. 0보다 크면 뒤에 pay 사건이 따른다) */
+  | { type: "observed"; seat: number; amount: number }
   | { type: "card"; seat: number; card: number; squares: number[] }
   | { type: "jailed"; seat: number; by: "card" | "doubles" }
   | { type: "freed"; seat: number; by: "fine" | "doubles" | "wait" }
@@ -331,6 +335,8 @@ export type GameEvent =
   | { type: "debt"; debt: Debt }
   | { type: "bankrupt"; seat: number; to: number }
   | { type: "seasonChanged"; season: number }
+  /** 유성우의 밤이 시작됐다(이 돌림부터 판 끝까지 이용료 2배) */
+  | { type: "meteorShower" }
   | { type: "turnStarted"; seat: number; round: number }
   | { type: "timeUp" }
   /** `result`가 null이면 순위 없이 중간에 끝냈다 */

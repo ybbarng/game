@@ -18,6 +18,8 @@ export interface GalaxySettings {
   trade: boolean;
   /** 제철 하늘(docs/48 2-12 1번) */
   seasonal: boolean;
+  /** 유성우의 밤(docs/48 2-12 7번): 마지막 두 돌림 이용료 2배. 기본 끔 */
+  meteor: boolean;
   level: GalaxyLevel;
   /** 개인 시간(docs/24). 굴리기·사기·차례 마치기·거래 답·빚 정리에만 시계가 간다 */
   time: TimePreset;
@@ -33,6 +35,7 @@ export const useGalaxySettings = create<GalaxySettings>()(
       length: "standard",
       trade: true,
       seasonal: true,
+      meteor: false,
       level: 0,
       time: "none",
       follow: true,

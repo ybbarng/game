@@ -7,6 +7,7 @@ import {
   DEFAULT_SKY,
   decodeGalaxyRules,
   encodeGalaxyRules,
+  GALAXY_EDITION,
   type GalaxyRules,
   type GalaxyState,
   type GalaxyView,
@@ -82,7 +83,7 @@ export interface GalaxyGame {
   retired: boolean;
 }
 
-/** 이번 판에서 내가 만난 별 칸: 머문 별과 판 끝에 가진 별 */
+/** 이번 판에서 내가 만난 별 칸: 머문 별, 처음부터 받은 별, 산 별·입찰로 산 별, 거래로 오간 별, 판 끝에 가진 별 */
 export function metSquares(
   view: Pick<GalaxyView, "board" | "owners" | "mySeat">,
   events: readonly GameEvent[],
@@ -101,6 +102,13 @@ export function metSquares(
       met.add(e.result.square);
     if (e.type === "dealt")
       for (const sq of e.stars[view.mySeat] ?? []) met.add(sq);
+    // 거래로 오간 별(받은 별, 준 별 모두 한때 가졌거나 내 손을 거쳤다)
+    if (
+      e.type === "tradeAccepted" &&
+      (e.offer.from === view.mySeat || e.offer.to === view.mySeat)
+    )
+      for (const sq of [...e.offer.give.stars, ...e.offer.get.stars])
+        met.add(sq);
   }
   for (const sq of STAR_SQUARES)
     if (view.owners[sq] === view.mySeat) met.add(sq);
@@ -250,6 +258,15 @@ const TIMED = new Set<Action["type"]>([
   "unmortgage",
   "end",
 ]);
+
+/** 기록의 규칙이 지금 판 번호(`GALAXY_EDITION`)인가. 옛 규칙 판은 다시 보기·통계에서 새 숫자로 다시 두지 않는다 */
+export function isCurrentEdition(rules: unknown): boolean {
+  return (
+    typeof rules === "object" &&
+    rules !== null &&
+    (rules as { edition?: unknown }).edition === GALAXY_EDITION
+  );
+}
 
 /** 은하 한 바퀴 엔진을 대국 진행·온라인 방에 잇는다. 판은 규칙의 하늘로 만든다(사계절 하늘은 늘 있다) */
 export const galaxyKit: GalaxyKit = {
