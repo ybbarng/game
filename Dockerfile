@@ -40,6 +40,7 @@ COPY packages/baseball-ai/package.json packages/baseball-ai/
 COPY packages/yut-engine/package.json packages/yut-engine/
 COPY packages/yut-ai/package.json packages/yut-ai/
 COPY packages/galaxy-engine/package.json packages/galaxy-engine/
+COPY packages/galaxy-ai/package.json packages/galaxy-ai/
 COPY packages/stardraw-core/package.json packages/stardraw-core/
 COPY packages/stardraw-cli/package.json packages/stardraw-cli/
 COPY packages/puzzle-core/package.json packages/puzzle-core/
