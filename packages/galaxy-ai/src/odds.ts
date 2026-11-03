@@ -12,7 +12,7 @@ import {
 
 /**
  * 칸 밟힘 확률(docs/48 3-3·8절 고수). 한 차례를 주사위 둘·같은 눈 한 번 더·세 번째 같은 눈·
- * 소행성대(다음 차례 같은 눈이면 나감)·혜성 한 번 더·공문 이동(10 우주국, 11 소행성대,
+ * 소행성대(다음 차례 같은 눈이면 나감)·혜성 한 번 더·공문 이동(11 소행성대,
  * 13 관측지, 14 다음 계절 첫 별, 15 혜성)으로 펼친 마르코프 연쇄를 정확히 계산한다.
  * 차례 시작 자리의 정상 분포에서 한 차례에 각 칸에 멈추는 기대 횟수를 낸다.
  *
@@ -102,9 +102,6 @@ function turnModel(board: GalaxyBoard) {
         for (const card of cards) {
           let next: Spread;
           switch (card) {
-            case 10:
-              next = land(BASE, again, doubles, hop + 1);
-              break;
             case 11:
               next = jail();
               break;

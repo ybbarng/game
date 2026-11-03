@@ -233,6 +233,12 @@ importers:
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
+      '@game/galaxy-ai':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-ai
+      '@game/galaxy-engine':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-engine
       '@game/gostop-ai':
         specifier: workspace:*
         version: link:../../packages/gostop-ai

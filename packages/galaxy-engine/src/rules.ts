@@ -38,7 +38,7 @@ export const STANDARD_RULES: GalaxyRules = {
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
-  trade: false,
+  trade: true,
 };
 
 export const LONG_RULES: GalaxyRules = { ...STANDARD_RULES, length: "long" };
@@ -68,8 +68,8 @@ export const NUMBERS = {
     pair: 150,
     complete: 200,
     level2: 500,
-    level3: 1300,
-    grand: 2400,
+    level3: 1600,
+    grand: 3000,
   },
   /** 정거장 한 단 값 = 별자리 기본 값의 이만큼(천분율) */
   levelCost: 500,
