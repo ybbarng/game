@@ -420,6 +420,10 @@ importers:
       '@game/puzzle-core':
         specifier: workspace:*
         version: link:../puzzle-core
+    devDependencies:
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../cube-scramble
 
   packages/cube-engine:
     dependencies:

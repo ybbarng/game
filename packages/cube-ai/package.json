@@ -15,5 +15,8 @@
     "@game/cube-reduction": "workspace:*",
     "@game/cube-solver": "workspace:*",
     "@game/puzzle-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@game/cube-scramble": "workspace:*"
   }
 }
