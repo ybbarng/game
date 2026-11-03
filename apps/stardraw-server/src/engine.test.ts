@@ -889,6 +889,88 @@ describe("예측 몰림 숫자(docs/36 11-43)", () => {
     });
   });
 
+  it("예측서 거절 까닭을 회차별로 세어 닫힐 때 한 줄(몰림 숫자가 세는 거절은 빼고, 마감 뒤 1분이 지난 것만 stale)", async () => {
+    rig = await makeRig({ entriesPerPrefixPerRound: 2 });
+    await rig.at(EPOCH + 10);
+    const alice = await player();
+    await enter(rig, alice, [1, 2, 3, 4, 5, 6]);
+    // 같은 열쇠로 한 장 더(중복), 형식이 깨진 본문, 등록 없는 새 열쇠
+    const again = await rejected(enter(rig, alice, [7, 8, 9, 10, 11, 12]));
+    expect(again?.status).toBe(409);
+    const broken = await rejected(
+      rig.engine.submit({
+        ticket: new Uint8Array([1, 2, 3]),
+        ip: "198.51.100.1",
+      }),
+    );
+    expect(broken?.status).toBe(400);
+    const bob = await player();
+    const { ticket } = await entryFor(
+      bob,
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const unregistered = await rejected(
+      rig.engine.submit({
+        ticket: encodeTicket(ticket),
+        ip: "198.51.100.2",
+      }),
+    );
+    expect(unregistered?.message).toBe("등록되지 않은 열쇠입니다");
+    // IP 앞부분 상한(몰림의 prefixEntry가 센다)은 여기서 세지 않는다
+    await enter(rig, await player(), [1, 2, 3, 4, 5, 6]);
+    const capped = await rejected(
+      enter(rig, await player(), [1, 2, 3, 4, 5, 6]),
+    );
+    expect(capped?.status).toBe(429);
+
+    // 마감 10초 뒤는 몰림의 late, 70초 뒤(옛 탭)는 stale
+    const lateA = await entryFor(
+      await player(),
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const lateB = await entryFor(
+      await player(),
+      1,
+      [1, 2, 3, 4, 5, 6],
+      rig.engine.head(),
+    );
+    const send = (t: Ticket, r?: KeyRegistration) =>
+      rejected(
+        rig.engine.submit({
+          ticket: encodeTicket(t),
+          ...(r ? { registration: encodeRegistration(r) } : {}),
+          ip: "192.0.2.1",
+        }),
+      );
+    const { closesAt } = roundTimes(SCHEDULE, 1);
+    await rig.at(closesAt + 10);
+    expect((await send(lateA.ticket, lateA.registration))?.status).toBe(409);
+    await rig.at(closesAt + 70);
+    expect((await send(lateB.ticket, lateB.registration))?.status).toBe(409);
+
+    await rig.at(drawTimeOf(1));
+    const line = rig.logs.find((m) => m.startsWith("예측 거절 "));
+    // 늦은 둘은 받은 때의 회차(2회차)에 센다. 1회차 줄에는 1회차 동안의 거절만
+    expect(JSON.parse(line?.slice("예측 거절 ".length) ?? "null")).toEqual({
+      round: 1,
+      duplicate: 1,
+      format: 1,
+      unregistered: 1,
+    });
+    // 소속 기간이 없으면 발급 줄은 남기지 않는다
+    expect(rig.logs.some((m) => m.startsWith("소속 발급 "))).toBe(false);
+    await rig.at(drawTimeOf(2));
+    const line2 = rig.logs.find((m) => m.startsWith('예측 거절 {"round":2'));
+    expect(JSON.parse(line2?.slice("예측 거절 ".length) ?? "null")).toEqual({
+      round: 2,
+      stale: 1,
+    });
+  });
+
   it("Argon2 줄: 가득해 돌려보낸 수, 기다림 상한으로 떨어진 수, 가장 긴 줄, 가장 오래 기다린 시간을 주입한 시계로 잰다", async () => {
     const held: ((ok: boolean) => void)[] = [];
     rig = await makeRig({

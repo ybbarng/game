@@ -118,6 +118,7 @@ import {
   type RoundPressure,
 } from "./pressure";
 import { type MirrorFile, Publisher } from "./publish";
+import { EntryRejects, type RejectCode } from "./rejects";
 import type { ServerKey } from "./server-key";
 import type { Store } from "./store";
 
@@ -246,11 +247,15 @@ function bodyHash(...parts: Uint8Array[]): string {
   return h.digest("hex");
 }
 
-/** 응모자에게 보일 거절. status는 HTTP 응답 번호 */
+/**
+ * 응모자에게 보일 거절. status는 HTTP 응답 번호, code는 예측서 거절 까닭 숫자(rejects.ts)에 셀 까닭
+ * (몰림 숫자가 세는 거절과 예측서 밖의 요청에는 달지 않는다)
+ */
 export class EntryError extends Error {
   constructor(
     message: string,
     readonly status = 400,
+    readonly code?: RejectCode,
   ) {
     super(message);
   }
@@ -356,6 +361,8 @@ export class StardrawServer {
   private readonly gate: Gate;
   /** 예측 몰림 숫자(회차별, 메모리에만, docs/36 11-43) */
   private readonly pressure = new EntryPressure();
+  /** 예측서 거절 까닭 숫자(회차별, 메모리에만, docs/33 11절) */
+  private readonly rejects = new EntryRejects();
   /**
    * 작업 증명에서 떨어진 본문·열쇠(회차 동안, D2). 앞단이 켜지면 같은 열쇠는 한 번 떨어지면 막는다:
    * 문제 값이 바뀐 낡은 계산은 앞단에서 먼저 걸러지므로 정상 사용자는 Argon2에서 떨어질 일이 없고,
@@ -388,7 +395,7 @@ export class StardrawServer {
     if (!g) return;
     if (gate === undefined || gate === null) {
       if (g.optionalUntil !== undefined && receivedAt < g.optionalUntil) return;
-      throw new EntryError(GATE_MISSING_MESSAGE);
+      throw new EntryError(GATE_MISSING_MESSAGE, 400, "gate");
     }
     if (
       !(await checkGate(
@@ -399,7 +406,7 @@ export class StardrawServer {
         g.params ?? GATE_PARAMS,
       ))
     )
-      throw new EntryError("예측 확인 계산이 맞지 않습니다");
+      throw new EntryError("예측 확인 계산이 맞지 않습니다", 400, "gate");
   }
 
   /** 이 회차 요청의 줄 길이·기다림을 몰림 숫자에 적는다(docs/36 11-43) */
@@ -424,12 +431,15 @@ export class StardrawServer {
     };
   }
 
-  /** 마감 뒤 늦게 온 그 회차 예측서를 센다(마감 뒤 LATE_WINDOW초 안 도착만) */
-  private countLate(ticketRound: number, receivedAt: number): void {
-    if (!Number.isInteger(ticketRound) || ticketRound < 1) return;
+  /** 마감 뒤 늦게 온 그 회차 예측서를 센다(마감 뒤 LATE_WINDOW초 안 도착만). 셌으면 true */
+  private countLate(ticketRound: number, receivedAt: number): boolean {
+    if (!Number.isInteger(ticketRound) || ticketRound < 1) return false;
     const { closesAt } = roundTimes(this.schedule(), ticketRound);
-    if (receivedAt >= closesAt && receivedAt - closesAt < LATE_WINDOW)
+    if (receivedAt >= closesAt && receivedAt - closesAt < LATE_WINDOW) {
       this.pressure.add(ticketRound, "late");
+      return true;
+    }
+    return false;
   }
 
   /** 이 회차는 더 받지 않는다(봉인했거나 봉인 값을 계산하는 중) */
@@ -837,7 +847,21 @@ export class StardrawServer {
 
   // ── 응모 ──
 
+  /**
+   * 예측서 받기. 거절하면 까닭(code가 있는 거절만, 몰림 숫자가 세는 것은 빼고)을 회차별로 센다(docs/33 11절)
+   */
   async submit(input: EntryInput): Promise<Receipt> {
+    const round = roundAt(this.schedule(), this.now());
+    try {
+      return await this.submitEntry(input);
+    } catch (err) {
+      if (round !== null && err instanceof EntryError && err.code)
+        this.rejects.add(round, err.code);
+      throw err;
+    }
+  }
+
+  private async submitEntry(input: EntryInput): Promise<Receipt> {
     const { store } = this.o;
     const receivedAt = this.now();
     const schedule = this.schedule();
@@ -869,28 +893,42 @@ export class StardrawServer {
       if (err instanceof RawKeyRejected)
         throw new EntryError(
           "패스키로만 예측할 수 있습니다. 직접 만든 열쇠는 받지 않습니다",
+          400,
+          "raw-key",
         );
-      throw new EntryError("예측서 형식이 맞지 않습니다");
+      throw new EntryError("예측서 형식이 맞지 않습니다", 400, "format");
     }
     const numbersProblem = checkNumbers(ticket.numbers);
-    if (numbersProblem) throw new EntryError(numbersProblem);
+    if (numbersProblem) throw new EntryError(numbersProblem, 400, "format");
     // 마감 직후 도착한 앞 회차 응모권은 늦었다고 분명히 알린다(받은 서버 시각을 함께)
     if (ticket.round < round) {
-      this.countLate(ticket.round, receivedAt);
-      throw new EntryError(closedMessage(receivedAt), 409);
+      const counted = this.countLate(ticket.round, receivedAt);
+      throw new EntryError(
+        closedMessage(receivedAt),
+        409,
+        counted ? undefined : "stale",
+      );
     }
     if (ticket.round !== round)
-      throw new EntryError("이번 회차 예측서가 아닙니다");
+      throw new EntryError("이번 회차 예측서가 아닙니다", 400, "wrong-round");
     const times = roundTimes(schedule, round);
     // 관측 1분은 모두의 의무 시간: 앞 회차 기록이 있어도 관측이 끝나야 받는다(2026-11-02 사용자)
     if (
       store.recordCount() < round - 1 ||
       receivedAt < acceptFrom(schedule, round)
     )
-      throw new EntryError("앞 회차 관측이 끝난 뒤에 예측할 수 있습니다", 409);
+      throw new EntryError(
+        "앞 회차 관측이 끝난 뒤에 예측할 수 있습니다",
+        409,
+        "early",
+      );
     if (receivedAt >= times.closesAt || this.closedFor(round)) {
-      this.countLate(round, receivedAt);
-      throw new EntryError(closedMessage(receivedAt), 409);
+      const counted = this.countLate(round, receivedAt);
+      throw new EntryError(
+        closedMessage(receivedAt),
+        409,
+        counted ? undefined : "stale",
+      );
     }
     const who = toHex(entrantId(ticket.pub));
 
@@ -905,17 +943,26 @@ export class StardrawServer {
     const known = store.isRegistered(who);
     let credentialHex: string | null = null;
     if (!known) {
-      if (!registration) throw new EntryError("등록되지 않은 열쇠입니다");
+      if (!registration)
+        throw new EntryError("등록되지 않은 열쇠입니다", 400, "unregistered");
       if (!equalBytes(entrantId(registration.pub), entrantId(ticket.pub)))
-        throw new EntryError("예측서와 다른 열쇠의 등록입니다");
+        throw new EntryError(
+          "예측서와 다른 열쇠의 등록입니다",
+          400,
+          "registration",
+        );
       const problem = checkRegistration(registration);
-      if (problem) throw new EntryError(problem);
+      if (problem) throw new EntryError(problem, 400, "registration");
       // 국장 열쇠와 우주인 열쇠는 섞지 않는다(docs/36 11-12)
       if (await this.isDirectorKey(registration.pub, registration.credentialId))
-        throw new EntryError(DIRECTOR_KEY_MESSAGE, 403);
+        throw new EntryError(DIRECTOR_KEY_MESSAGE, 403, "director");
       credentialHex = toHex(registration.credentialId);
       if (store.credentialTaken(credentialHex))
-        throw new EntryError("이미 다른 열쇠로 등록된 패스키입니다");
+        throw new EntryError(
+          "이미 다른 열쇠로 등록된 패스키입니다",
+          400,
+          "credential-taken",
+        );
       const day = String(Math.floor(receivedAt / 86400));
       if (
         this.counters.count("register", day, prefix) >=
@@ -931,7 +978,7 @@ export class StardrawServer {
 
     // 4. 서명(ECDSA라 싸다)
     if (!(await verifyTicketSignature(ticket, this.o.policy)))
-      throw new EntryError("예측서 서명이 맞지 않습니다");
+      throw new EntryError("예측서 서명이 맞지 않습니다", 400, "signature");
 
     // 4-1. 상품 자격 증서(v2): 쓸 수 있는 기간, 자격 서명, 도장. 같은 자격이 이 회차에 이미 있어도 받는다
     // (먼저 낸 쪽만 받으면 증서를 훔친 사람이 주인을 밀어낼 수 있다. 둘 다 상품 대상에서 빠진다, docs/36 11-13)
@@ -939,7 +986,7 @@ export class StardrawServer {
       await this.opsReady;
       const state = this.opsAt(round);
       const problem = checkTicketQualification(state, ticket, times.closesAt);
-      if (problem) throw new EntryError(`소속 증서: ${problem}`);
+      if (problem) throw new EntryError(`소속 증서: ${problem}`, 400, "qual");
       const period = state.periods.find((p) =>
         equalBytes(p.id, ticket.qual?.cert.periodId ?? new Uint8Array()),
       );
@@ -948,12 +995,12 @@ export class StardrawServer {
         !period ||
         !verifyStamp(period.issuerKey, cert.periodId, cert.qualPub, cert.stamp)
       )
-        throw new EntryError("소속 증서: 도장이 맞지 않습니다");
+        throw new EntryError("소속 증서: 도장이 맞지 않습니다", 400, "qual");
     }
 
     // 5. 열쇠당 회차 1장
     if (store.hasEntry(round, who))
-      throw new EntryError("이번 회차에는 이미 예측했습니다", 409);
+      throw new EntryError("이번 회차에는 이미 예측했습니다", 409, "duplicate");
 
     // 6. 작업 증명(가장 비싸다, 동시 실행 제한). 떨어진 본문·열쇠는 회차 동안 다시 계산하지 않고,
     // 소속 증서까지 확인된 응모는 앞줄에 세운다(익명 홍수에 상품 대상 응모가 밀리지 않게, D2)
@@ -961,7 +1008,7 @@ export class StardrawServer {
     const window = `pow|${round}`;
     const body = bodyHash(input.ticket, input.registration ?? new Uint8Array());
     const blocked = this.powFailures.blocked(window, body, who);
-    if (blocked) throw new EntryError(blocked, 429);
+    if (blocked) throw new EntryError(blocked, 429, "pow-blocked");
     const powOk = await this.gate
       .run(
         async () => {
@@ -989,7 +1036,7 @@ export class StardrawServer {
       .catch(this.busyCatch(round));
     if (powOk) {
       this.powFailures.failed(window, body, who);
-      throw new EntryError(powOk);
+      throw new EntryError(powOk, 400, "pow");
     }
 
     // 기다리는 사이 봉인(또는 봉인 값 계산)이 시작됐거나 같은 열쇠가 먼저 들어왔을 수 있다. 확인과 넣기를 한 번에(동기) 한다
@@ -1000,12 +1047,24 @@ export class StardrawServer {
         throw new EntryError(closedMessage(receivedAt), 409);
       }
       if (store.hasEntry(round, who))
-        throw new EntryError("이번 회차에는 이미 예측했습니다", 409);
+        throw new EntryError(
+          "이번 회차에는 이미 예측했습니다",
+          409,
+          "duplicate",
+        );
       if (!known && registration) {
         if (store.isRegistered(who))
-          throw new EntryError("이미 등록된 열쇠입니다. 다시 내 주세요", 409);
+          throw new EntryError(
+            "이미 등록된 열쇠입니다. 다시 내 주세요",
+            409,
+            "race-registered",
+          );
         if (credentialHex && store.credentialTaken(credentialHex))
-          throw new EntryError("이미 다른 열쇠로 등록된 패스키입니다");
+          throw new EntryError(
+            "이미 다른 열쇠로 등록된 패스키입니다",
+            400,
+            "credential-taken",
+          );
         store.addRegistration(round, who, credentialHex, registration);
       }
       store.addEntry(round, toHex(ticketId(ticket)), who, ticket, receivedAt);
@@ -1299,6 +1358,15 @@ export class StardrawServer {
       this.o.log?.(
         `예측 몰림 ${JSON.stringify({ ...this.pressure.get(round), entries: tickets.length, void: record.void })}`,
       );
+      // 거절 까닭과 소속 발급 수도 같은 꼴로 한 줄씩(docs/33 11절). 숫자와 자격 기간 id(공개 장부의 값)만 있다
+      this.o.log?.(
+        `예측 거절 ${JSON.stringify({ round, ...this.rejects.get(round) })}`,
+      );
+      const qualIssued = store.qualIssuedCounts();
+      if (qualIssued.length > 0)
+        this.o.log?.(
+          `소속 발급 ${JSON.stringify({ round, periods: qualIssued })}`,
+        );
       if (scheduleChanges.length > 0) {
         store.setPendingChange(null);
         this.o.log?.(
