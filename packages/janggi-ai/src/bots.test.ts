@@ -21,6 +21,7 @@ import {
   janggiExpertBot,
   janggiIntermediateBot,
   janggiMasterBot,
+  MASTER_BUDGET,
 } from "./bots";
 import { playGame } from "./simulate";
 
@@ -154,5 +155,13 @@ describe("장기 컴퓨터", () => {
     expect(janggiBotFor(1)).toBe(janggiIntermediateBot);
     expect(janggiBotFor(2)).toBe(janggiExpertBot);
     expect(janggiBotFor(3)).toBe(janggiMasterBot);
+  });
+});
+
+describe("초고수 노드 예산", () => {
+  // 노드 예산이 바뀌면 같은 판에서 다른 수가 나와, 판 끝 다시 계산(같은 컴퓨터로 기록을 다시 두기)이 어긋난다.
+  // 지금은 온라인이 초고수를 쓰지 않지만, 쓰게 되면 이 값을 바꿀 때 방 규칙 판 번호도 올려야 한다(docs/22 3절).
+  it("값이 그대로다", () => {
+    expect(MASTER_BUDGET).toEqual({ nodes: 50_000, softNodes: 16_000 });
   });
 });

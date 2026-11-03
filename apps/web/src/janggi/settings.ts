@@ -70,7 +70,7 @@ export const JANGGI_LEVELS: readonly {
     value: 3,
     label: "초고수",
     description:
-      "판마다 노림을 세우고(전개·궁성 공격·외통 몰기) 더 깊이 읽는다. 고수에게 20전 20승",
+      "수마다 노림을 세우고(전개·궁성 공격·외통 몰기) 더 깊이 읽는다",
   },
 ];
 
