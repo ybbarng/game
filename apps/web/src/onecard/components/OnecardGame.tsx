@@ -478,7 +478,8 @@ export function OnecardGame({
         "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-2 text-white",
         ONECARD_BG,
         "short-landscape:grid short-landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short-landscape:content-start short-landscape:items-start short-landscape:gap-x-4",
-        mission && "pt-16",
+        // 미션 띠는 좁은 화면에서 두 줄이 된다
+        mission && "pt-20",
       )}
     >
       {mission && <MissionOverlay mission={mission} top={8} />}
