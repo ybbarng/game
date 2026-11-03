@@ -33,6 +33,16 @@ export type FairControl =
   | { t: "fp"; k: "ready"; deal: number; from: number; shown?: number[] }
   /**
    * 원카드: 더미가 바닥나 버린 더미(맨 위 빼고, 이미 모두가 본 카드)를 덱 조각 `segment`로 다시 섞는다
-   * (`OnecardDeck.reshuffle`). 뒤따르는 `deck`의 `deal`은 `onecardDealId(round, segment)`다
+   * (`OnecardDeck.reshuffle`). `deal`은 새 조각의 기기 판 번호 `onecardDealId(round, segment)`이고 뒤따르는
+   * `deck`의 `deal`도 이것이다. 다른 메시지처럼 `deal`이 있어야 방 코드가 판별로 기록을 정리할 때(방장
+   * `fairDealOf`, 참가자 `rememberOwn`) 0번 판으로 잘못 모이지 않는다. 만들 때는 `onecardReshuffleMessage`,
+   * 받을 때는 `isOnecardReshuffle`로 셋이 맞는지 본다
    */
-  | { t: "fp"; k: "reshuffle"; round: number; segment: number; cards: Card[] };
+  | {
+      t: "fp";
+      k: "reshuffle";
+      deal: number;
+      round: number;
+      segment: number;
+      cards: Card[];
+    };

@@ -11,6 +11,7 @@ import {
 } from "./onecard-fixture";
 import {
   checkOnecardReplay,
+  isOnecardReshuffle,
   ONECARD_CARDS,
   ONECARD_SHOWN_WAIT_MS,
   OnecardDeck,
@@ -19,6 +20,7 @@ import {
   type OnecardRoundDeal,
   onecardDealId,
   onecardLayout,
+  onecardReshuffleMessage,
   reshuffleOrder,
 } from "./onecard-table";
 import { decode, encodedDeck } from "./protocol";
@@ -57,6 +59,25 @@ describe("원카드 덱과 자리 번호", () => {
     expect(onecardDealId(1, 0)).toBe(1024);
     expect(onecardDealId(2, 3)).toBe(2051);
     expect(() => onecardDealId(1, 1024)).toThrow();
+  });
+
+  it("다시 섞기 알림은 새 조각의 판 번호(deal)를 함께 싣고, 받는 쪽은 셋이 맞는지 본다", () => {
+    const message = onecardReshuffleMessage(2, 1, ["S3", "S2"]);
+    expect(message).toEqual({
+      t: "fp",
+      k: "reshuffle",
+      deal: onecardDealId(2, 1),
+      round: 2,
+      segment: 1,
+      cards: ["S3", "S2"],
+    });
+    expect(isOnecardReshuffle(message)).toBe(true);
+    expect(isOnecardReshuffle({ ...message, deal: 0 })).toBe(false);
+    expect(isOnecardReshuffle({ ...message, segment: 0, deal: 2048 })).toBe(
+      false,
+    );
+    const { deal: _, ...withoutDeal } = message;
+    expect(isOnecardReshuffle(withoutDeal)).toBe(false);
   });
 
   it("다시 섞을 카드는 카드 번호표 순서로 맞춘다(기기마다 같은 덱에서 사슬을 시작한다)", () => {

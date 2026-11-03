@@ -4,6 +4,7 @@ import { tokenOf } from "./blind";
 import { type Clock, realClock } from "./clock";
 import { type Incident, reportShuffleTamper } from "./coordinator";
 import type { FairDevice } from "./device";
+import type { FairControl } from "./messages";
 import { CARD_CODES, COLOR_JOKER, DECK } from "./protocol";
 
 /*
@@ -40,6 +41,48 @@ export const ONECARD_SHOWN_WAIT_MS = 10_000;
 
 /** 모두에게 여는 자리(처음 펼칠 카드·모두에게 펼치는 뽑기)의 주인 */
 const PUBLIC = -1;
+
+/** 다시 섞기 알림(방장 → 모두) */
+export type OnecardReshuffleMessage = Extract<FairControl, { k: "reshuffle" }>;
+
+/** 다시 섞기 알림을 만든다(`deal`은 판·조각에서 계산한다) */
+export function onecardReshuffleMessage(
+  round: number,
+  segment: number,
+  cards: readonly Card[],
+): OnecardReshuffleMessage {
+  return {
+    t: "fp",
+    k: "reshuffle",
+    deal: onecardDealId(round, segment),
+    round,
+    segment,
+    cards: [...cards],
+  };
+}
+
+/** 받은 다시 섞기 알림의 모양과 `deal = onecardDealId(round, segment)`가 맞는가 */
+export function isOnecardReshuffle(
+  value: unknown,
+): value is OnecardReshuffleMessage {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  if (m.t !== "fp" || m.k !== "reshuffle") return false;
+  const { round, segment, deal, cards } = m;
+  if (!Number.isInteger(round) || (round as number) < 0) return false;
+  if (
+    !Number.isInteger(segment) ||
+    (segment as number) < 1 ||
+    (segment as number) >= ONECARD_MAX_SEGMENTS
+  )
+    return false;
+  if (deal !== onecardDealId(round as number, segment as number)) return false;
+  return (
+    Array.isArray(cards) &&
+    cards.length <= ONECARD_CARDS.length &&
+    cards.every((c) => typeof c === "string")
+  );
+}
 
 /** 판 번호와 덱 조각 번호(0 = 처음 덱, k = k번째 다시 섞기)로 기기 판 번호(섞기 사슬 하나) */
 export function onecardDealId(round: number, segment: number): number {
