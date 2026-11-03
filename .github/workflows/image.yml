@@ -199,7 +199,7 @@ jobs:
   # deploy.sh 가 마감(:15·:35·:55) 2분 전부터 관측지가 닫히는 마감 + 12분까지와 회차가 밀린 동안(behind·sealOverdueSeconds)을
   # 30초씩 기다렸다가(최대 20분, 넘으면 바꾸지 않고 실패) 태그만 바꿔 다시 띄우고 60초 안에 상태 200을 확인한다.
   # 안 돌아오면 앞 판으로 되돌리고 실패한다. 배포 두 개가 겹치면 서버에서 flock 으로 기다린다. 이미지가 공개라 토큰은 넘기지 않는다.
-  # 회차 길이를 바꾸면 deploy.sh 의 CLOSE_MINUTES 도 함께 고친다.
+  # 회차 길이를 바꾸면 guard.sh 의 CLOSE_MINUTES·AFTER_CLOSE 를 고친다(시간 창은 guard.sh 한곳).
   deploy-server:
     needs: server-image
     runs-on: ubuntu-latest
