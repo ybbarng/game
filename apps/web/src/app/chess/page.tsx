@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   description:
-    "컴퓨터(입문·중수·고수)와 두는 웹 체스. 캐슬링·앙파상·승급까지 FIDE 규칙 그대로, 친구와 온라인 대전, PC와 휴대폰 모두.",
+    "컴퓨터(입문·중수·고수·초고수)와 두는 웹 체스. 캐슬링·앙파상·승급까지 FIDE 규칙 그대로, 친구와 온라인 대전, PC와 휴대폰 모두.",
   keywords: ["체스", "Chess", "체크메이트", "보드게임"],
 };
 

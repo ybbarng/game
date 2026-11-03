@@ -178,6 +178,22 @@ test("체스 배우기: 첫 단원 미션을 틀렸다가 다시 해 룩으로 �
   await expect(page.getByText("단원 완료!")).toBeVisible();
 });
 
+test("체스 옵션: 컴퓨터 실력에서 초고수를 고르면 설명이 바뀌고 첫 화면 요약에 보인다", async ({
+  page,
+}, info) => {
+  await page.goto("/chess");
+  await openOptions(page);
+  const master = page.getByRole("button", { name: "초고수", exact: true });
+  await master.click();
+  await expect(master).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/이름난 오프닝으로 시작하고/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("chess-options-master.png") });
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await expect(page.getByRole("button", { name: /나홀로 체스/ })).toContainText(
+    "초고수",
+  );
+});
+
 test("체스 옵션: 기물 모양을 기호로 바꾸면 판의 기물이 기호 글자가 되고, 다시 입체로 돌아온다", async ({
   page,
 }) => {

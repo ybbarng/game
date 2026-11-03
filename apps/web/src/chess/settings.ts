@@ -2,8 +2,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** 0 입문, 1 중수, 2 고수 */
-export type ChessLevel = 0 | 1 | 2;
+/** 0 입문, 1 중수, 2 고수, 3 초고수(2026-11-03 더함. 예전에 저장한 0~2는 그대로 읽힌다) */
+export type ChessLevel = 0 | 1 | 2 | 3;
 
 /** 나홀로 체스에서 내 색: 백(먼저)·흑·무작위 */
 export type ColorPick = "white" | "black" | "random";
@@ -68,5 +68,11 @@ export const CHESS_LEVELS: readonly {
     value: 2,
     label: "고수",
     description: "네 수 앞까지 읽는다. 메이트를 놓치지 않는다",
+  },
+  {
+    value: 3,
+    label: "초고수",
+    description:
+      "고수보다 깊이 읽고 킹 안전·기물 활동·통과한 폰까지 따진다. 이름난 오프닝으로 시작하고 킹과 폰 끝내기를 정확히 둔다",
   },
 ];
