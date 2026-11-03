@@ -14,7 +14,7 @@ import {
 } from "@game/chess-engine";
 import { type KeyboardEvent, useRef, useState } from "react";
 
-import { useChessSettings } from "../settings";
+import { type PieceSet, useChessSettings } from "../settings";
 import {
   Piece3dIcon,
   PieceSprite,
@@ -23,6 +23,9 @@ import {
 } from "./piece-art";
 
 const LIGHT = "#f0d9b5";
+
+/** 누른 채 이만큼(칸 단위) 넘게 움직이면 끌기로 본다. 손이 조금 흔들린 누르기는 끌기가 아니다 */
+const DRAG_THRESHOLD = 0.2;
 const DARK = "#b58863";
 
 /**
@@ -103,7 +106,7 @@ export function PieceIcon({
 
 /**
  * 체스판. 내 기물을 누르면 갈 수 있는 칸에 점(잡을 칸은 고리)이 생기고, 그 칸을 누르면 옮긴다.
- * 마우스·손가락 모두 "고르기 → 옮기기" 두 번 누르기다. 키보드는 화살표로 움직이고 Enter·Space로 고른다.
+ * 마우스·손가락 모두 "고르기 → 옮기기" 두 번 누르기와, 기물을 끌어 갈 칸에 놓기를 함께 쓴다(2026-11-03). 키보드는 화살표로 움직이고 Enter·Space로 고른다.
  * 내 편이 늘 아래에 오게 `flipped`로 판을 돌려 그린다. 승급 수는 `onMove`에 승급 없이 넘기고, 고르기는 화면이 맡는다
  */
 export function ChessBoard({
@@ -133,6 +136,19 @@ export function ChessBoard({
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [cursor, setCursor] = useState<number | null>(null);
+  /** 끌고 있는 기물: 출발 칸과 지금 손가락 자리(판 칸 단위, 그림 좌표) */
+  const [drag, setDrag] = useState<{
+    from: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  /** 누른 순간의 정보: 이번 누르기로 기물을 새로 골랐나, 누른 자리(끌기 시작 판단) */
+  const down = useRef<{
+    from: number;
+    picked: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
   const set = useChessSettings((s) => s.pieces);
   const prefix = usePiecePrefix();
 
@@ -160,18 +176,72 @@ export function ChessBoard({
     else onSelect(null);
   };
 
-  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+  /** 손가락 자리 → 그림 좌표(칸 단위)와 판 칸. 판 밖이면 칸은 null */
+  const locate = (e: React.PointerEvent<SVGSVGElement>) => {
     const rect = svg.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect) return null;
     const unit = rect.width / SIZE;
-    let x = Math.floor((e.clientX - rect.left) / unit);
-    let y = Math.floor((e.clientY - rect.top) / unit);
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
+    const gx = (e.clientX - rect.left) / unit;
+    const gy = (e.clientY - rect.top) / unit;
+    let x = Math.floor(gx);
+    let y = Math.floor(gy);
+    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+      return { gx, gy, square: null };
     if (flipped) {
       x = SIZE - 1 - x;
       y = SIZE - 1 - y;
     }
-    press(indexOf(x, y));
+    return { gx, gy, square: indexOf(x, y) };
+  };
+
+  /** 내 기물을 누르면 바로 고른다(끌기를 시작할 수 있게) */
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    const spot = locate(e);
+    down.current = null;
+    if (!spot || spot.square === null || !movable.has(spot.square)) return;
+    const picked = selected !== spot.square;
+    if (picked) onSelect(spot.square);
+    down.current = { from: spot.square, picked, x: spot.gx, y: spot.gy };
+    svg.current?.setPointerCapture?.(e.pointerId);
+  };
+
+  /** 누른 채 조금 넘게 움직이면 끌기. 기물이 손가락을 따라온다 */
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const start = down.current;
+    if (!start) return;
+    const spot = locate(e);
+    if (!spot) return;
+    if (
+      !drag &&
+      Math.hypot(spot.gx - start.x, spot.gy - start.y) < DRAG_THRESHOLD
+    )
+      return;
+    setDrag({ from: start.from, x: spot.gx, y: spot.gy });
+  };
+
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const start = down.current;
+    down.current = null;
+    const spot = locate(e);
+    if (drag) {
+      setDrag(null);
+      // 갈 곳에 놓으면 옮긴다. 아니면 기물은 제자리로 돌아가고 고른 채로 둔다.
+      const move = spot?.square != null ? targets.get(spot.square) : undefined;
+      if (move) {
+        onSelect(null);
+        onMove(move);
+      }
+      return;
+    }
+    if (!spot || spot.square === null) return;
+    // 방금 누르며 고른 기물이면 떼는 것으로 고르기를 풀지 않는다.
+    if (start?.picked && start.from === spot.square) return;
+    press(spot.square);
+  };
+
+  const onPointerCancel = () => {
+    down.current = null;
+    setDrag(null);
   };
 
   const onKeyDown = (e: KeyboardEvent<SVGSVGElement>) => {
@@ -210,7 +280,10 @@ export function ChessBoard({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: 판은 키보드로 고르고 옮긴다
       tabIndex={0}
       className="block h-full w-full touch-none select-none rounded-md shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onKeyDown={onKeyDown}
     >
       {set === "3d" && <PieceSprite prefix={prefix} />}
@@ -292,10 +365,7 @@ export function ChessBoard({
 
       {board.map((cell, i) => {
         if (cell === "") return null;
-        const side = cell[0] as Side;
-        const kind = cell[1] as Kind;
         const [x, y] = at(i);
-        const piece = cell as `${Side}${Kind}`;
         // 방금 옮긴 기물은 출발 칸에서 미끄러져 온다(장기와 같은 .jg-slide, 2026-11-03 사용자: 판 게임 모두 검토).
         // 수마다 새로 그려 움직임이 다시 돈다. 캐슬링의 룩·앙파상으로 잡힌 폰은 따로 움직이지 않는다
         const arrived = lastMove?.to === i;
@@ -311,40 +381,20 @@ export function ChessBoard({
           [movable.has(i) && "cursor-pointer", slide && "jg-slide"]
             .filter(Boolean)
             .join(" ") || undefined;
-        if (set === "3d")
-          return (
-            <g
-              key={key}
-              data-piece={cell}
-              data-square={squareName(i)}
-              aria-label={pieceLabel(piece, squareName(i))}
-              className={pieceClass}
-              style={slideStyle}
-            >
-              <PieceUse prefix={prefix} piece={piece} x={x} y={y} />
-            </g>
-          );
-        const style = PIECE_STYLE[side];
         return (
-          <text
+          <PieceAt
             key={key}
-            data-piece={cell}
-            data-square={squareName(i)}
-            aria-label={pieceLabel(piece, squareName(i))}
-            x={x + 0.5}
-            y={y + 0.56}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={0.84}
-            fill={style.fill}
-            stroke={style.stroke}
-            strokeWidth={style.width}
-            paintOrder="stroke"
+            cell={cell}
+            square={i}
+            x={x}
+            y={y}
+            set={set}
+            prefix={prefix}
             className={pieceClass}
-            style={{ fontFamily: PIECE_FONT, ...slideStyle }}
-          >
-            {GLYPH[kind]}
-          </text>
+            style={slideStyle}
+            // 끌고 있는 기물은 제자리에 흐리게 남긴다.
+            ghost={drag?.from === i}
+          />
         );
       })}
 
@@ -378,6 +428,19 @@ export function ChessBoard({
         );
       })}
 
+      {drag && board[drag.from] && (
+        <g pointerEvents="none" data-dragging={squareName(drag.from)}>
+          <PieceAt
+            cell={board[drag.from] as Cell}
+            x={drag.x - 0.55}
+            y={drag.y - 0.75}
+            size={1.1}
+            set={set}
+            prefix={prefix}
+          />
+        </g>
+      )}
+
       {cursor !== null && (
         <rect
           x={at(cursor)[0] + 0.04}
@@ -391,5 +454,76 @@ export function ChessBoard({
         />
       )}
     </svg>
+  );
+}
+
+/**
+ * 판 위 기물 하나. 판 칸(`square`)이 있으면 시험·화면 읽기용 이름을 단다(끄는 기물 복사본에는 없다).
+ * `size`는 칸 크기 배수(끌 때 조금 크게)
+ */
+function PieceAt({
+  cell,
+  square,
+  x,
+  y,
+  size = 1,
+  set,
+  prefix,
+  className,
+  style,
+  ghost = false,
+}: {
+  cell: Cell;
+  square?: number;
+  x: number;
+  y: number;
+  size?: number;
+  set: PieceSet;
+  prefix: string;
+  className?: string | undefined;
+  style?: React.CSSProperties | undefined;
+  ghost?: boolean;
+}) {
+  const piece = cell as `${Side}${Kind}`;
+  const named =
+    square === undefined
+      ? {}
+      : {
+          "data-piece": cell,
+          "data-square": squareName(square),
+          "aria-label": pieceLabel(piece, squareName(square)),
+        };
+  const opacity = ghost ? 0.35 : undefined;
+  if (set === "3d")
+    return (
+      <g {...named} className={className} style={style} opacity={opacity}>
+        {size === 1 ? (
+          <PieceUse prefix={prefix} piece={piece} x={x} y={y} />
+        ) : (
+          <g transform={`translate(${x} ${y}) scale(${size})`}>
+            <PieceUse prefix={prefix} piece={piece} x={0} y={0} />
+          </g>
+        )}
+      </g>
+    );
+  const pieceStyle = PIECE_STYLE[piece[0] as Side];
+  return (
+    <text
+      {...named}
+      x={x + 0.5 * size}
+      y={y + 0.56 * size}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={0.84 * size}
+      fill={pieceStyle.fill}
+      stroke={pieceStyle.stroke}
+      strokeWidth={pieceStyle.width}
+      paintOrder="stroke"
+      className={className}
+      opacity={opacity}
+      style={{ fontFamily: PIECE_FONT, ...style }}
+    >
+      {GLYPH[piece[1] as Kind]}
+    </text>
   );
 }

@@ -553,3 +553,51 @@ test("체스 오프닝 수순: 수순에 없는 수는 두지 않고 안내하�
   );
   await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
 });
+
+/** 칸 가운데의 화면 좌표(백이 아래인 판) */
+async function squareCenter(page: Page, name: string) {
+  const box = await board(page).boundingBox();
+  if (!box) throw new Error("판이 안 보인다");
+  const unit = box.width / 8;
+  return {
+    x: box.x + (name.charCodeAt(0) - 97 + 0.5) * unit,
+    y: box.y + (8 - Number(name[1]) + 0.5) * unit,
+  };
+}
+
+test("체스: 기물을 끌어 갈 칸에 놓으면 옮기고, 못 가는 칸에 놓으면 제자리로 돌아온다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "끌기는 포인터 사건이라 크기와 상관없다(Playwright는 손가락 끌기를 흉내 내지 못한다)",
+  );
+  await page.goto("/chess");
+  await startSolo(page, "입문");
+  await expect(page.getByRole("status")).toContainText("내 차례");
+
+  // 못 가는 칸(e5)에 놓으면 폰은 e2에 남고 고른 채로 갈 곳이 보인다.
+  const e2 = await squareCenter(page, "e2");
+  const e5 = await squareCenter(page, "e5");
+  await page.mouse.move(e2.x, e2.y);
+  await page.mouse.down();
+  await page.mouse.move(e5.x, e5.y, { steps: 6 });
+  await expect(page.locator("[data-dragging='e2']")).toHaveCount(1);
+  await page.mouse.up();
+  await expect(page.locator("[data-dragging]")).toHaveCount(0);
+  await expect(page.locator('[data-square="e2"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('[data-target="e4"]')).toHaveCount(1);
+
+  // 갈 칸(e4)에 놓으면 옮긴다.
+  const e4 = await squareCenter(page, "e4");
+  await page.mouse.move(e2.x, e2.y);
+  await page.mouse.down();
+  await page.mouse.move(e4.x, e4.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.getByTitle("기보")).toContainText("1. e4");
+});
