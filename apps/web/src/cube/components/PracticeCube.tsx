@@ -17,6 +17,7 @@ import {
   type KeyResult,
   notationToMove,
 } from "../input";
+import { readPracticeKey } from "../keys/practice-input";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { playCubeCue } from "./CubePlay";
@@ -181,7 +182,7 @@ export function LiveCube({
     <div className={className} data-practice-cube>
       {failed ? (
         <p className="p-4 text-center text-sm text-white/60">
-          이 기기에서는 3D를 그릴 수 없습니다
+          이 기기에서는 3D를 그릴 수 없습니다.
         </p>
       ) : (
         <canvas
@@ -201,23 +202,8 @@ export interface PracticeKey {
   result: KeyResult | null;
 }
 
-/** 수정 키만 누른 것(Shift 등) */
-const MODIFIER_CODES = new Set([
-  "ShiftLeft",
-  "ShiftRight",
-  "AltLeft",
-  "AltRight",
-  "ControlLeft",
-  "ControlRight",
-  "MetaLeft",
-  "MetaRight",
-  "CapsLock",
-  "Tab",
-]);
-
 /**
- * 키 누름을 지금 배치로 해석해 넘긴다. 동작이 없는 키도 넘겨(result null) 「그 키에는 동작이 없습니다」를 보일 수 있게
- * 한다. 글 입력 칸·⌘ 조합·되풀이 누름·수정 키만 누른 것은 건드리지 않는다.
+ * 키 누름을 지금 배치로 해석해 넘긴다(규칙은 `readPracticeKey`). 글 입력 칸에 치는 중이면 건드리지 않는다.
  */
 export function usePracticeKeys(
   n: number,
@@ -236,26 +222,34 @@ export function usePracticeKeys(
     const onKeyDown = (e: KeyboardEvent) => {
       const c = live.current;
       if (!c.enabled || !c.interpreter) return;
-      if (e.repeat || e.metaKey || MODIFIER_CODES.has(e.code)) return;
       if (isTyping(e.target)) return;
-      const input: KeyInput = {
-        code: e.code,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        ctrlKey: e.ctrlKey,
-        metaKey: false,
-        repeat: false,
-      };
-      const result = c.interpreter.handle(input);
-      // 동작으로 바뀐 키와 Alt 조합(맥에서 특수 글자를 치지 않게)은 기본 동작을 막는다
-      if (result || e.altKey || e.code === "Space") e.preventDefault();
-      c.onKey({ input, result });
+      const interpreter = c.interpreter;
+      const read = readPracticeKey(e, (input) => interpreter.handle(input));
+      if (!read) return;
+      if (read.prevent) e.preventDefault();
+      c.onKey({ input: read.input, result: read.result });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   return interpreter;
+}
+
+/** 키보드가 없을 기기(터치만 되는 휴대폰·태블릿). 첫 그림은 false */
+export function useNoKeyboard(): boolean {
+  const [no, setNo] = useState(false);
+  useEffect(() => {
+    try {
+      setNo(
+        window.matchMedia("(pointer: coarse)").matches &&
+          !window.matchMedia("(any-pointer: fine)").matches,
+      );
+    } catch {
+      setNo(false);
+    }
+  }, []);
+  return no;
 }
 
 function isTyping(t: EventTarget | null): boolean {
