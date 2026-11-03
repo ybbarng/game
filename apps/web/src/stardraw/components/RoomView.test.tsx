@@ -148,6 +148,36 @@ describe("관측지 별똥별", () => {
     ) as HTMLElement;
     expect(meteor.querySelector(".sd-room-meteor-streak")).not.toBeNull();
   });
+
+  it("출발점의 가로·세로와 기울기를 따로 뽑는다(늘 같은 대각선에서만 떨어지지 않게)", async () => {
+    // 뽑는 차례: 열쇠 x, 가로 x, 세로 y, 기울기
+    const draws = [0.1, 0.9, 0.1, 0.5];
+    vi.spyOn(Math, "random").mockImplementation(() => draws.shift() ?? 0.5);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+      String(input).endsWith("/events")
+        ? roomStream()
+        : new Response("{}", { status: 404 }),
+    );
+    const view = render(
+      <RoomView
+        api="http://room.test/stardraw-api"
+        services={services}
+        round={1}
+        record={undefined}
+        ticket={undefined}
+        onEnter={() => {}}
+      />,
+    );
+    await waitFor(() => {
+      expect(view.container.querySelector("[data-room-meteor]")).not.toBeNull();
+    });
+    const style = (
+      view.container.querySelector("[data-room-meteor]") as HTMLElement
+    ).style;
+    expect(style.left).toBe("54%");
+    expect(style.top).toBe("8%");
+    expect(style.transform).toBe("rotate(24deg)");
+  });
 });
 
 /*

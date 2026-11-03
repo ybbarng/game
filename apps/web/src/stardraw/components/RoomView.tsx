@@ -260,6 +260,9 @@ interface Spark {
   kind: "twinkle" | "meteor";
   to: string | null;
   x: number;
+  /** 별똥별만: 출발점 세로 자리(0~1)와 기울기(도). 가로 x와 따로 뽑는다 */
+  y: number;
+  tilt: number;
 }
 
 /**
@@ -602,7 +605,17 @@ export function RoomView({
   const spark = (kind: "twinkle" | "meteor", to: string | null) => {
     const key = `${kind}-${Math.random()}`;
     setSparks((s) =>
-      [...s, { key, kind, to, x: to ? xOf(to) : Math.random() }].slice(-12),
+      [
+        ...s,
+        {
+          key,
+          kind,
+          to,
+          x: to ? xOf(to) : Math.random(),
+          y: Math.random(),
+          tilt: 10 + Math.random() * 28,
+        },
+      ].slice(-12),
     );
     device.after(kind === "meteor" ? METEOR_MS : 2200, () =>
       setSparks((s) => s.filter((x) => x.key !== key)),
@@ -1074,8 +1087,13 @@ export function RoomView({
                 key={s.key}
                 data-room-meteor
                 className="sd-room-meteor absolute"
-                // 하늘 위쪽 왼편에서 출발해 오른쪽 아래로(보낸 얼굴 자리에 따라 출발점만 조금씩 다르다)
-                style={{ left: `${4 + s.x * 30}%`, top: `${6 + s.x * 12}%` }}
+                // 하늘 아무 데서나 오른쪽 아래로: 출발점의 가로·세로와 기울기를 따로 뽑는다. 예전에는 한 값으로 가로·세로를 함께
+                // 정해 늘 왼쪽 위 같은 대각선에서만 떨어졌다(2026-11-03 사용자). 넘치는 꼬리는 하늘 칸이 잘라 낸다
+                style={{
+                  left: `${s.x * 60}%`,
+                  top: `${4 + s.y * 40}%`,
+                  transform: `rotate(${s.tilt}deg)`,
+                }}
               >
                 <span className="sd-room-meteor-streak" />
               </span>

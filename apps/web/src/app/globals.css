@@ -592,7 +592,7 @@ button {
   box-shadow: none;
 }
 
-/* 응모 화면의 응모권: 실제 로또 용지처럼 분홍빛 종이 결, 위쪽에 절취선. 다 채우면 테두리가 금빛으로 바뀐다 */
+/* 별 바구니: 분홍빛 바탕. 다 채우면 테두리가 금빛으로 바뀐다 */
 .sd-slip {
   background: linear-gradient(
     180deg,
