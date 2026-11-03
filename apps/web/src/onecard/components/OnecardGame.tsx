@@ -15,6 +15,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
+import {
+  MissionOverlay,
+  type MissionProps,
+} from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
@@ -352,8 +356,14 @@ function Pile({
   );
 }
 
-/** 대국 화면 */
-export function OnecardGame({ onExit }: { onExit: () => void }) {
+/** 대국 화면. `mission`이 있으면 튜토리얼 미션 띠를 얹는다 */
+export function OnecardGame({
+  onExit,
+  mission,
+}: {
+  onExit: () => void;
+  mission?: MissionProps;
+}) {
   const { view, host, notice, level, events, eventSeq } = useOnecard();
   const submit = useOnecard((s) => s.submit);
   const resign = useOnecard((s) => s.resign);
@@ -468,18 +478,23 @@ export function OnecardGame({ onExit }: { onExit: () => void }) {
         "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-2 text-white",
         ONECARD_BG,
         "short-landscape:grid short-landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short-landscape:content-start short-landscape:items-start short-landscape:gap-x-4",
+        // 미션 띠는 좁은 화면에서 두 줄이 된다
+        mission && "pt-20",
       )}
     >
+      {mission && <MissionOverlay mission={mission} top={8} />}
       <header className="flex w-full max-w-xl items-center gap-2 text-sm short-landscape:col-span-2 short-landscape:max-w-none">
         <button
           type="button"
           onClick={onExit}
           className="text-white/70 hover:text-white"
         >
-          ← 원카드
+          {mission ? "← 미션 나가기" : "← 원카드"}
         </button>
         <span className="ml-auto truncate text-white/60 text-xs">
-          {n}명 · {view.rules.handSize}장 · 컴퓨터({levelName})
+          {mission
+            ? `배우기 · ${mission.title}`
+            : `${n}명 · ${view.rules.handSize}장 · 컴퓨터(${levelName})`}
         </span>
       </header>
 
@@ -647,6 +662,7 @@ export function OnecardGame({ onExit }: { onExit: () => void }) {
             </button>
           )}
           {!over &&
+            !mission &&
             (confirmResign ? (
               <span className="flex items-center gap-1.5 text-sm">
                 정말 그만둘까요?
@@ -677,7 +693,7 @@ export function OnecardGame({ onExit }: { onExit: () => void }) {
                 그만두기
               </button>
             ))}
-          {over && (
+          {over && !mission && (
             <>
               <button
                 type="button"
