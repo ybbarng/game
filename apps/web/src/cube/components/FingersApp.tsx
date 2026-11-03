@@ -319,8 +319,8 @@ export function FingersApp() {
   );
 }
 
-/** 반복마다 초당 수 막대 그래프 */
-function LapChart({
+/** 반복마다 초당 수 막대 그래프(핑거 트릭·공식 따라 치기) */
+export function LapChart({
   laps,
   tpsOf,
   reps,

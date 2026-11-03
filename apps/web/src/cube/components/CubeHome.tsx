@@ -52,6 +52,12 @@ const ITEMS: Item[] = [
     href: "/cube/vs",
   },
   {
+    icon: "⌨️",
+    title: "키 익히기",
+    detail: "키보드 그림 단축키 표, 단계별 튜토리얼, 조작 훈련",
+    href: "/cube/keys/learn",
+  },
+  {
     icon: "🎓",
     title: "배우기",
     detail: "처음부터 끝까지 따라 하는 초보자 해법(2×2~5×5, CFOP, 블라인드)",
