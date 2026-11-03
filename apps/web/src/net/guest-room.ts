@@ -27,6 +27,7 @@ import type { GameKit, KitLoggedAction } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { type FairReplayGame, verifyFairLog } from "./fair-verify";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
@@ -405,6 +406,11 @@ export class GuestRoom<
   }
   /** 진행을 만들기 전에 온 멘탈 포커 메시지 */
   private readonly fairEarly: { message: FairMessage; from: number }[] = [];
+  /**
+   * 실시간 청구 통로(`kit.claims`가 있는 게임). 청구를 모두에게 직접 보내고, 방장 발표를
+   * 내가 받은 청구와 내 화면의 판으로 다시 계산해 맞춰 본다. 다르면 부정 알림을 낸다
+   */
+  readonly claims: ClaimHub<View> | null;
 
   constructor(
     options: GuestRoomOptions<Rules, State, View, ActionT, Event, Extra>,
@@ -428,6 +434,20 @@ export class GuestRoom<
     this.clock = options.clock ?? realClock;
     this.hostFingerprint = options.hostFingerprint ?? null;
     this.fairStore = options.fairStore ?? null;
+    this.claims = this.kit.claims
+      ? new ClaimHub<View>({
+          transport: this.transport,
+          game: this.kit.id,
+          spec: this.kit.claims,
+          role: "guest",
+          clock: this.clock,
+          mySeat: () => this.seat,
+          seatOfPeer: (peerId) => this.seatOfPeer(peerId),
+          object: (seat, reason) => this.raiseIncident({ seat, reason }),
+          // 멘탈 포커 방은 카드를 열 때까지 화면을 미룰 수 있어 판 번호가 방장보다 늦을 수 있다.
+          strictAt: () => !this.lobby?.fair,
+        })
+      : null;
 
     this.transport.onPeerJoin((peerId) => {
       this.peers.add(peerId);
@@ -484,6 +504,7 @@ export class GuestRoom<
     this.reconnectTimer?.();
     this.reconnectTimer = null;
     if (this.hostId) this.send({ t: "leave" }, this.hostId);
+    this.claims?.close();
     this.transport.leave();
   }
 
@@ -734,6 +755,7 @@ export class GuestRoom<
   private deliver(snapshot: Snapshot<View, Event>): void {
     if (this.seat === null) return;
     const mine = this.mineQueue.shift();
+    this.claims?.observe(snapshot.view);
     if (this.match) {
       this.match.receive(snapshot, mine);
       return;
