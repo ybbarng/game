@@ -23,7 +23,7 @@ export interface Keymap {
   version: 1;
   preset: KeymapPreset;
   bindings: KeyBinding[];
-  /** 마우스로 끌어 큐브 돌리기(x·y·z, 수로 센다). 「사용자」에서만 켤 수 있고 기본은 끔(지금은 자리만) */
+  /** 마우스로 끌어 큐브 돌리기(x·y·z, 수로 센다). 「사용자」에서만 켤 수 있고 기본은 끔. 끄면 마우스 끌기는 보기만 돌린다 */
   mouseRotate: boolean;
 }
 

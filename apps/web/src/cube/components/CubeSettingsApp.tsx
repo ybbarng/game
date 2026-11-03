@@ -292,6 +292,24 @@ function KeymapSection({
           className="flex flex-col gap-3 rounded-xl bg-white/5 p-3"
           data-keymap-editor
         >
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-mouse-rotate
+              checked={keymap.mouseRotate}
+              onChange={(e) =>
+                setKeymap({ ...keymap, mouseRotate: e.target.checked })
+              }
+              className="mt-0.5"
+            />
+            <span className="break-keep">
+              마우스로 끌어 큐브 전체 돌리기(x·y·z)
+              <span className="block text-white/55 text-xs">
+                끄면 마우스 끌기는 보는 각만 바꿉니다. 경주에서는 키보드보다
+                느립니다. 휴대폰 밀어서 돌리기는 늘 켜져 있습니다.
+              </span>
+            </span>
+          </label>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-1">
               동작 목록 크기
