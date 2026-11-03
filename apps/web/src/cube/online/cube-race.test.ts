@@ -4,6 +4,7 @@ import {
   invertMoves,
   isSolved,
   parseMoves,
+  solvedCube,
 } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
@@ -20,6 +21,7 @@ import {
   createCubeRaceGame,
   type Scrambler,
   scrambleSeed,
+  stateHash,
   turnCount,
 } from "./race-game";
 
@@ -153,6 +155,15 @@ describe("큐브 경주(어댑터)", () => {
     const r = (a as Session).snapshot().result as RaceResult;
     for (const s of all) expect(s.snapshot().result).toEqual(r);
     expect(r.ranking).toEqual(["b", "c", "a"]);
+  });
+
+  it("시작 상태 지문은 섞기 글과 시작 상태 해시를 함께 싣는다(같은 글에서 다른 상태가 나오면 다르다)", () => {
+    const game = createCubeRaceGame(3, fake);
+    void game.prepare?.("s1");
+    const fp = game.startFingerprint?.("s1") as string;
+    const start = game.startState("s1") as PuzzleState;
+    expect(fp).toBe(`333|${game.scrambleFor("s1")?.text}|${stateHash(start)}`);
+    expect(stateHash(solvedCube(3))).not.toBe(stateHash(start));
   });
 
   it("한 기기만 섞기를 다르게 만들면 섞기 어긋남으로 판이 열리지 않는다", () => {
