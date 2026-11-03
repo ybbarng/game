@@ -12,13 +12,13 @@ import {
   explainSolved,
   judgeMove,
   mainLine,
-  PUZZLE_RULES,
   puzzleState,
+  trapsOf,
+  variantOf,
 } from "./study";
 
 type Attack = Extract<OmokPuzzle, { kind: "attack" }>;
 
-const V = PUZZLE_RULES.variant;
 const all = OMOK_PUZZLE_SETS.flatMap((s) => s.puzzles);
 const attacks = all.filter((p): p is Attack => p.kind === "attack");
 const rows = <T extends { id: string }>(ps: T[]) =>
@@ -38,7 +38,7 @@ describe("오목 문제 데이터", () => {
       const state = puzzleState(p);
       expect(state.blackSeat).toBe(0);
       expect(state.moves.length % 2).toBe(0);
-      expect(fivePoints(state.board, 2, V)).toEqual([]);
+      expect(fivePoints(state.board, 2, variantOf(p))).toEqual([]);
     },
   );
 });
@@ -48,11 +48,13 @@ describe("공격 문제(사로 몰아 이기기)", () => {
     "%s: 정해진 수 안에 이기는 첫 수는 정답 하나뿐이고, 더 빨리는 못 이긴다",
     (_id, p) => {
       const { board } = puzzleState(p);
-      expect(names(winningFirstMoves(board, 1, V, p.moves))).toEqual([
-        p.solution,
-      ]);
+      expect(names(winningFirstMoves(board, 1, variantOf(p), p.moves))).toEqual(
+        [p.solution],
+      );
       if (p.moves > 1)
-        expect(winningFirstMoves(board, 1, V, p.moves - 1)).toEqual([]);
+        expect(winningFirstMoves(board, 1, variantOf(p), p.moves - 1)).toEqual(
+          [],
+        );
     },
   );
 
@@ -68,13 +70,23 @@ describe("공격 문제(사로 몰아 이기기)", () => {
           expect(verdict).toBe(i === line.length - 1 ? "solved" : "next");
           board[move] = 1;
         } else {
-          expect(defenseFor(board)).toBe(move);
+          expect(defenseFor(board, variantOf(p))).toBe(move);
           board[move] = 2;
         }
       });
-      expect(explainSolved(p)).toHaveLength(p.moves);
+      expect(explainSolved(p)).toHaveLength(p.moves + trapsOf(p).length);
     },
   );
+
+  it("렌주 문제는 금지가 없다면 이겼을 흑 자리(함정)가 있고, 그 자리는 정답이 아니다", () => {
+    const renju = attacks.filter((p) => variantOf(p) === "renju");
+    expect(renju.length).toBeGreaterThanOrEqual(5);
+    for (const p of renju) {
+      const traps = trapsOf(p);
+      expect(traps.length).toBeGreaterThan(0);
+      expect(traps.map((t) => pointName(t.at))).not.toContain(p.solution);
+    }
+  });
 
   it("정답이 아닌 첫 수는 틀렸다고 한다", () => {
     for (const p of attacks) {
