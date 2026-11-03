@@ -17,13 +17,6 @@ import { useCubeRoom } from "./use-room";
 
 const SIZES = [2, 3, 4, 5] as const;
 
-/** 단계별 빠르기(cube-ai `BOT_SPEEDS`·`BIG_BOT_SPEEDS`) */
-function speedNote(n: number): string {
-  return n >= 4
-    ? "입문 초당 1.5수, 중수 3수, 고수 6수, 초고수 8수"
-    : "입문 초당 2수, 중수 4수, 고수 8수, 초고수 10수";
-}
-
 export function CubeVsApp() {
   const [n, setN] = useState(2);
   const [level, setLevel] = useState<BotLevel>("beginner");
@@ -128,9 +121,6 @@ export function CubeVsApp() {
                   </button>
                 ))}
               </div>
-              <span className="text-white/50 text-xs" data-cube-vs-speed>
-                {speedNote(n)}
-              </span>
             </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input

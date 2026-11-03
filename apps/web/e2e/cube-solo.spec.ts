@@ -55,9 +55,11 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
 
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
-  await expect(
-    page.locator("[data-cube-canvas][data-cube-ready]"),
-  ).toBeVisible();
+  // 3D 그림이 아니라 입력 준비를 기다린다: CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸리고,
+  // 이 시험은 그림 없이도 키·섞기·결과를 본다(그림 준비를 기다리다 5초 상한에 걸려 흔들렸다, 2026-11-04)
+  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
   await expect(main).toHaveAttribute("data-cube-phase", "free");
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 살펴보기가 DNF로 흐르지 않는다
   const now = await page.evaluate(() => Date.now());
@@ -102,9 +104,9 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
 
   // 블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF
   await page.goto("/cube/blind");
-  await expect(
-    page.locator("[data-cube-canvas][data-cube-ready]"),
-  ).toBeVisible();
+  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
   await page.locator("[data-cube-scramble-button]").click();
   await expect(main).toHaveAttribute("data-cube-phase", "memo", {
     timeout: SCRAMBLE_TIMEOUT,

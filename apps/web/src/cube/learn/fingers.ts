@@ -41,21 +41,21 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "U 밀기",
     "U U U U",
     "RI RI RI RI",
-    "오른 검지 끝으로 윗면을 한 칸씩 민다. 민 뒤 검지를 제자리로 빨리 되돌린다",
+    "오른 검지 끝으로 윗면을 한 칸씩 민다. 민 뒤 검지를 제자리로 빨리 되돌린다.",
   ),
   d(
     "u-prime-flick",
     "U' 밀기",
     "U' U' U' U'",
     "LI LI LI LI",
-    "왼 검지로 민다. 오른손은 큐브를 받쳐만 둔다",
+    "왼 검지로 민다. 오른손은 큐브를 받쳐만 둔다.",
   ),
   d(
     "u2-flick",
     "U2 이어 밀기",
     "U2 U2",
     "RI2 RI2",
-    "오른 검지와 가운뎃손가락으로 이어서 두 칸 민다",
+    "오른 검지와 가운뎃손가락으로 이어서 두 칸 민다.",
     10,
   ),
   d(
@@ -63,7 +63,7 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "섹시 무브",
     "R U R' U'",
     "RW RI RW LI",
-    "가장 자주 나오는 네 수. 다시 쥐지 않고 6번 하면 제자리로 돌아온다",
+    "가장 자주 나오는 네 수. 다시 쥐지 않고 6번 하면 제자리로 돌아온다.",
     6,
   ),
   d(
@@ -71,7 +71,7 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "거꾸로 섹시 무브",
     "U R U' R'",
     "RI RW LI RW",
-    "F2L 짝 넣기에 자주 나온다",
+    "F2L 짝 넣기에 자주 나온다.",
     6,
   ),
   d(
@@ -95,7 +95,7 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "수네",
     "R U R' U R U2 R'",
     "RW RI RW RI RW RI2 RW",
-    "오른 검지만으로 U를 이어 민다",
+    "오른 검지만으로 U를 이어 민다.",
     6,
   ),
   d(
@@ -119,7 +119,7 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "Jb퍼뮤",
     "R U R' F' R U R' U' R' F R2 U' R'",
     "RW RI RW LIf RW RI RW LI RW RIf RW LI RW",
-    "T퍼뮤와 손 모양이 거의 같다",
+    "T퍼뮤와 손 모양이 거의 같다.",
     5,
   ),
 ];

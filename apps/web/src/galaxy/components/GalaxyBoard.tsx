@@ -10,6 +10,7 @@ import {
 import { type CSSProperties, useMemo } from "react";
 import { cn } from "@/lib/cn";
 
+import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
   activeStep,
@@ -161,7 +162,8 @@ export function GalaxyBoard({
   const ships = shipPositions(timeline, view.positions, elapsed);
   const hidden = hiddenOwners(timeline, elapsed);
   const owner = (sq: number) => (hidden.has(sq) ? -1 : (view.owners[sq] ?? -1));
-  const season = view.season;
+  // 유성우의 밤에는 제철 1.5배 대신 모든 별이 2배라 제철 빛남을 끄고 판 전체에 유성을 흘린다
+  const season = view.meteor ? null : view.season;
   // 움직임 줄이기면 우주선도 미끄러지지 않고 바로 그 칸에 선다.
   const reduced = prefersReducedMotion();
 
@@ -214,6 +216,7 @@ export function GalaxyBoard({
       >
         {/* 유리 판 */}
         <div className="absolute inset-0 rounded-2xl border border-sky-200/10 bg-[radial-gradient(ellipse_at_50%_40%,#132044_0%,#0a1230_55%,#070b1f_100%)] shadow-[inset_0_0_60px_rgba(56,189,248,0.08)]" />
+        {view.meteor && <MeteorShower />}
 
         {/* 가운데 하늘 */}
         <svg
@@ -602,10 +605,16 @@ function CenterHub({
         height: pct(2.2),
       }}
     >
-      {view.season !== null && (
-        <span className="rounded-full bg-amber-200/10 px-2 py-0.5 text-[clamp(8px,2.2cqw,14px)] text-amber-100/90 tracking-wider">
-          {SEASON_NAMES[view.season]} 하늘
+      {view.meteor ? (
+        <span className="rounded-full bg-sky-200/10 px-2 py-0.5 text-[clamp(8px,2.2cqw,14px)] text-sky-100/90 tracking-wider">
+          유성우의 밤
         </span>
+      ) : (
+        view.season !== null && (
+          <span className="rounded-full bg-amber-200/10 px-2 py-0.5 text-[clamp(8px,2.2cqw,14px)] text-amber-100/90 tracking-wider">
+            {SEASON_NAMES[view.season]} 하늘
+          </span>
+        )
       )}
       <span className="text-[clamp(7px,1.6cqw,11px)] text-white/45">
         {view.round}돌림
@@ -635,6 +644,38 @@ function CenterHub({
   );
 }
 
+/** 유성우의 밤에 판 위로 천천히 흐르는 유성(시작 자리·늦춤은 고정, 움직임 줄이기면 흐르지 않고 판만 푸르게) */
+const METEORS = [
+  { left: 18, top: -6, delay: 0 },
+  { left: 52, top: -10, delay: 1.7 },
+  { left: 80, top: 4, delay: 3.1 },
+  { left: 34, top: 22, delay: 4.6 },
+  { left: 66, top: 30, delay: 6.2 },
+  { left: 94, top: 18, delay: 7.4 },
+] as const;
+
+function MeteorShower() {
+  return (
+    <div
+      data-meteor-shower
+      aria-hidden="true"
+      className="galaxy-meteor-sky pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-2xl"
+    >
+      {METEORS.map((m) => (
+        <span
+          key={`${m.left}-${m.top}`}
+          className="galaxy-meteor"
+          style={{
+            left: `${m.left}%`,
+            top: `${m.top}%`,
+            animationDelay: `${m.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** 연출 하나를 판 위에 덧그린다 */
 function FxOverlay({
   step,
@@ -655,6 +696,7 @@ function FxOverlay({
   switch (step.kind) {
     case "card": {
       const card = cardById(step.card);
+      const none = cardNoMatch(step.card, step.squares);
       return (
         <div className={cn(box, "items-start pt-[4%]")}>
           <NoticePaper
@@ -663,6 +705,11 @@ function FxOverlay({
             dur={step.dur}
           >
             <p>{card.text}</p>
+            {none && (
+              <p data-card-none className="mt-1 font-bold text-slate-700">
+                {none}
+              </p>
+            )}
             <p className="mt-1 text-[11px] text-slate-600">
               받는 분: {name(step.seat)}
             </p>
@@ -682,6 +729,18 @@ function FxOverlay({
               이제 {SEASON_NAMES[step.season]} 별자리 별의 정거장 이용료가
               1.5배입니다.
             </p>
+          </NoticePaper>
+        </div>
+      );
+    case "meteor":
+      return (
+        <div className={cn(box, "items-start pt-[4%]")}>
+          <NoticePaper
+            heading="카노푸스 우주국 공문"
+            title="유성우의 밤이 찾아옵니다"
+            dur={step.dur}
+          >
+            <p>판이 끝날 때까지 모든 별의 정거장 이용료가 2배입니다.</p>
           </NoticePaper>
         </div>
       );

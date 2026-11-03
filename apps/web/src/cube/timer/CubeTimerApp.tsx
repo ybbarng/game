@@ -316,7 +316,7 @@ export function CubeTimerApp() {
               className="text-amber-300 text-sm"
               data-cube-save-failed
             >
-              저장하지 못했습니다
+              저장하지 못했습니다.
             </span>
           )}
         </header>
@@ -373,10 +373,10 @@ export function CubeTimerApp() {
                 try {
                   const next = importBook(latest.current.book, text);
                   update(() => next);
-                  setMessage("가져왔습니다");
+                  setMessage("가져왔습니다.");
                 } catch (err) {
                   setMessage(
-                    err instanceof Error ? err.message : "가져오지 못했습니다",
+                    err instanceof Error ? err.message : "가져오지 못했습니다.",
                   );
                 }
               }}
@@ -481,7 +481,7 @@ function ScrambleBox({
               </span>
             ))
           : failed
-            ? "섞기를 만들지 못했습니다"
+            ? "섞기를 만들지 못했습니다."
             : "섞는 중…"}
       </p>
       {scramble && (
@@ -741,7 +741,7 @@ function SolveList({
   if (solves.length === 0)
     return (
       <p className="rounded-xl bg-white/5 p-3 text-sm text-white/50">
-        아직 기록이 없습니다
+        아직 기록이 없습니다.
       </p>
     );
   const list = solves.map((s, i) => ({ s, no: i + 1 })).reverse();

@@ -23,7 +23,7 @@ const ITEMS: Item[] = [
   {
     icon: "🧊",
     title: "혼자 맞추기",
-    detail: "가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7)",
+    detail: "가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7).",
     href: "/cube/solo",
     primary: true,
   },
@@ -36,19 +36,19 @@ const ITEMS: Item[] = [
   {
     icon: "🙈",
     title: "블라인드",
-    detail: "보고 외운 뒤, 스티커가 모두 가려진 채 맞춥니다",
+    detail: "보고 외운 뒤, 스티커가 모두 가려진 채 맞춥니다.",
     href: "/cube/blind",
   },
   {
     icon: "🏁",
     title: "온라인 경주",
-    detail: "친구 2~8명이 같은 섞기로 겨룹니다(키보드 기기)",
+    detail: "친구 2~8명이 같은 섞기로 겨룹니다(키보드 기기).",
     href: "/cube/online",
   },
   {
     icon: "🤖",
     title: "컴퓨터와 경주",
-    detail: "단계를 골라 같은 섞기로 나란히 맞춥니다",
+    detail: "단계를 골라 같은 섞기로 나란히 맞춥니다.",
     href: "/cube/vs",
   },
   {
@@ -60,13 +60,13 @@ const ITEMS: Item[] = [
   {
     icon: "🎯",
     title: "공식 훈련",
-    detail: "OLL·PLL·F2L·오르테가 상황을 무작위로 내고 시간을 잽니다",
+    detail: "OLL·PLL·F2L·오르테가 상황을 무작위로 내고 시간을 잽니다.",
     href: "/cube/train",
   },
   {
     icon: "✋",
     title: "핑거 트릭",
-    detail: "실물 큐브로 손가락 쓰는 법을 반복 연습합니다",
+    detail: "실물 큐브로 손가락 쓰는 법을 반복 연습합니다.",
     href: "/cube/fingers",
   },
 ];

@@ -3,7 +3,7 @@
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { stickersFromState as stickersOf } from "../bridge";
 import type { Command } from "../input";
@@ -19,6 +19,7 @@ import {
 } from "../records";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
+import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
 import { scrambleInWorker, warmUpScramble } from "../worker";
 import { CubePlay, playCubeCue } from "./CubePlay";
@@ -73,7 +74,8 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const sync = useCallback(() => setSyncToken((v) => v + 1), []);
 
-  const session = useMemo(() => {
+  // 크기·방식마다 세션 하나. 효과 정리에서 치우고, 개발 모드처럼 효과가 다시 돌면 새로 만든다
+  const session = useRenewable(() => {
     const onCue = (cue: SessionCue) => {
       const s = settingsRef.current;
       if (cue === "inspect8" || cue === "inspect12")
@@ -90,7 +92,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       onCue,
       onRecord: (r) => setRecords(addRecord(r)),
     });
-  }, [n, mode, bump]);
+  }, `${n}-${mode}`);
   session.inspection = settings.inspection;
 
   useEffect(() => {
@@ -98,9 +100,8 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     sync();
     return () => {
       scrambleRequest.current++;
-      session.dispose();
     };
-  }, [session, mode, n, sync]);
+  }, [mode, n, sync]);
 
   // 표가 필요한 섞기(2×2·3×3)는 화면을 열 때 워커에서 미리 만들어 둔다
   useEffect(() => {
@@ -135,7 +136,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       sync();
       if (!s.official) setNotice("임시 섞기");
     } catch {
-      if (!stale()) setNotice("섞기를 만들지 못했습니다");
+      if (!stale()) setNotice("섞기를 만들지 못했습니다.");
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
@@ -145,7 +146,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
       const r = session.input(move, notation);
       if (r === "blocked") {
-        setNotice("외우는 동안에는 면을 돌릴 수 없습니다");
+        setNotice("외우는 동안에는 면을 돌릴 수 없습니다.");
         return false;
       }
       return true;
@@ -343,7 +344,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               />
             </dl>
             {records.length === 0 ? (
-              <p className="text-white/50 text-xs">아직 기록이 없습니다</p>
+              <p className="text-white/50 text-xs">아직 기록이 없습니다.</p>
             ) : (
               <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
                 {records.slice(0, 30).map((r, i) => (

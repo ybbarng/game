@@ -148,7 +148,7 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 경주는 키보드가 있는 기기에서만 참가할 수 있습니다
+            온라인 경주는 키보드가 있는 기기에서만 참가할 수 있습니다.
           </p>
         )}
 
@@ -175,7 +175,7 @@ export function CubeOnlineApp() {
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다
+            연결하지 못했습니다.
           </p>
         )}
         {room?.hostLeft && (

@@ -2,7 +2,7 @@ import { chainCommit, derivedSeed } from "@game/yut-engine";
 
 import { BASE, type GalaxyBoard } from "./board";
 import { createMatch, seasonFor } from "./match";
-import { type GalaxyRules, STANDARD_RULES } from "./rules";
+import { type GalaxyRules, meteorFor, STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 
 /** 장면의 별 하나: 칸, 주인, 정거장 단(기본 1), 맡김 */
@@ -45,6 +45,7 @@ export function createGalaxyScenario(options: {
     phase: "turn",
     round: options.round ?? 1,
     season: seasonFor(rules, options.round ?? 1),
+    meteor: meteorFor(rules, options.round ?? 1),
     starter: turn,
     revealFor: null,
     turn: {

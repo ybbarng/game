@@ -104,14 +104,24 @@ describe("판 시작과 사슬", () => {
     expect(revealAll(next).state.lastRoll?.seat).toBe(0);
   });
 
-  it("짧은 판은 첫 공개로 사람마다 별 2개를 나눠 주고 시작한다", () => {
+  it("짧은 판은 첫 공개로 사람마다 다른 별자리의 별 2개를 나눠 주고 시작한다", () => {
     const s = started(SHORT_RULES, 3);
     expect(s.phase).toBe("reveal");
     expect(s.revealFor).toBe("deal");
     const { state, events } = revealAll(s);
     expect(state.phase).toBe("turn");
-    for (let seat = 0; seat < 4; seat++)
-      expect(state.owners.filter((o) => o === seat)).toHaveLength(2);
+    const groups = new Set<number>();
+    for (let seat = 0; seat < 4; seat++) {
+      const mine = state.owners.flatMap((o, sq) => (o === seat ? [sq] : []));
+      expect(mine).toHaveLength(2);
+      const group = state.board.squares[mine[0] ?? -1]?.star?.group;
+      expect(state.board.squares[mine[1] ?? -1]?.star?.group).toBe(group);
+      groups.add(group ?? -1);
+    }
+    expect(groups.size).toBe(4);
+    expect(
+      events.filter((e) => e.type === "linked").map((e) => e.type),
+    ).toHaveLength(4);
     expect(events.some((e) => e.type === "dealt")).toBe(true);
     expect(state.cash).toEqual([1000, 1000, 1000, 1000]);
   });

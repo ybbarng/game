@@ -102,7 +102,6 @@ test("컴퓨터와 경주: 4×4 입문 컴퓨터가 맞추면 결과 상자가 �
   await page.clock.install();
   await page.goto("/cube/vs");
   await page.locator("[data-cube-vs-size]").selectOption("4");
-  await expect(page.locator("[data-cube-vs-speed]")).toContainText("1.5수");
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await page.locator("[data-cube-vs-start]").click();
 
