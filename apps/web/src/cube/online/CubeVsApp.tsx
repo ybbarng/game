@@ -148,7 +148,7 @@ export function CubeVsApp() {
             </p>
           </section>
         ) : (
-          <RaceView room={room} version={version} />
+          <RaceView room={room} version={version} local />
         )}
       </main>
     </div>

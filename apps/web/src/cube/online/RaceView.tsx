@@ -49,10 +49,13 @@ function useTicker(active: boolean): void {
 export function RaceView({
   room,
   version,
+  local = false,
 }: {
   room: CubeRoom;
   /** 방이 바뀔 때마다 오르는 값(다시 그리기) */
   version: number;
+  /** 이 기기 안에서만 도는 경주(컴퓨터와 경주). 연결이 없으니 연결 지연 표시를 숨긴다 */
+  local?: boolean;
 }) {
   const settings = useCubeSettings();
   const n = room.state?.settings.n ?? 3;
@@ -175,7 +178,7 @@ export function RaceView({
       )}
 
       {finishedFirst.length > 0 && (
-        <ResultBox room={room} snap={snap} round={round} n={n} />
+        <ResultBox room={room} snap={snap} round={round} n={n} local={local} />
       )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_280px]">
@@ -272,11 +275,13 @@ function ResultBox({
   snap,
   round,
   n,
+  local,
 }: {
   room: CubeRoom;
   snap: RaceSnapshot;
   round: RoundRecord | undefined;
   n: number;
+  local: boolean;
 }) {
   const result = snap.result;
   const session = room.anySession();
@@ -371,7 +376,7 @@ function ResultBox({
                 ? p.accepted - p.reported
                 : 0;
             const notes: string[] = [];
-            if (extra > 0)
+            if (extra > 0 && !local)
               notes.push(`연결 지연으로 +${(extra / 1000).toFixed(2)}초(하한)`);
             if (p?.weak) notes.push("확인 약함(끊김)");
             if (p?.flags?.burst)
