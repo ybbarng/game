@@ -137,27 +137,33 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
   },
   {
     id: "line-44-attach-block",
-    name: "화점 날일자 걸침 — 붙여막기(흑)",
+    name: "화점 날일자 걸침 — 붙여막기, 위로 잇기(흑)",
     summary:
-      "붙여막기 정석의 뒷부분. 백이 젖혀 오면 끊어 모양을 정리하고 귀를 굳힌다",
+      "붙여막기 정석의 뒷부분. 백이 위로 이어 바깥을 두텁게 하고, 흑은 백 한 점을 따내 귀를 차지한다. G17 둘레에 패가 남는다",
     learner: 1,
     start: "19 B:E17,D16,E16,F16 W:F17,G16,F15 turn:W",
     source: `${SL}44PointLowApproachAttachBlockJoseki`,
     moves: [
-      { move: "G15", note: "백이 이어 바깥을 단단히 해요" },
+      {
+        move: "G15",
+        note: "백이 끊기는 자리를 위로 단단히 이어 바깥을 두텁게 해요",
+      },
       {
         move: "G17",
-        note: "백 F17 한 점을 위에서 눌러요. 백이 귀 쪽으로 이어지지 못하게 해요",
+        note: "백 F17을 단수로 몰아요. 활로가 F18 하나만 남아요",
       },
-      { move: "H17", note: "백은 옆으로 젖혀 버텨요" },
+      { move: "H17", note: "백이 젖혀 거꾸로 흑 G17을 단수로 몰아요" },
       {
         move: "F18",
-        note: "아래로 내려 백 F17 한 점을 따내요. 귀가 확실한 흑 집이 돼요",
+        note: "백 F17을 먼저 따내요. 흑 G17은 활로가 둘로 늘어 바로 잡히지 않아요",
       },
-      { move: "G18", note: "백이 막아 바깥을 정리해요" },
+      {
+        move: "G18",
+        note: "백이 1선을 막아 흑 G17을 다시 단수로 몰아요. 백이 F17에 두면 G17을 따내는 패가 돼요",
+      },
       {
         move: "D14",
-        note: "귀를 굳혔으니 왼쪽 변으로 벌려 집을 넓혀요",
+        note: "왼쪽 변으로 벌려 귀 집을 넓혀요. 백은 바깥 두터움, 흑은 귀 집을 얻었고, G17 둘레는 나중에 패로 다툴 수 있는 곳으로 남아요",
       },
     ],
   },
@@ -227,8 +233,8 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       { move: "E15", note: "백이 붙여 와요" },
       { move: "E14", note: "젖혀서 바깥으로 나오는 길을 막아요" },
       { move: "F15", note: "백이 뻗어요" },
-      { move: "D13", note: "이어서 왼쪽 벽을 튼튼히 해요" },
-      { move: "H16", note: "백이 G17을 압박해요" },
+      { move: "D13", note: "D13에 둬 왼쪽 변을 넓히고 E14를 아래에서 받쳐요" },
+      { move: "H16", note: "백이 H16에 둬 오른쪽 위 자리를 넓혀요" },
       {
         move: "D17",
         note: "귀를 지켜 흑 귀가 확실해져요",
@@ -253,10 +259,14 @@ export function parseJosekiStart(
   const m = /^19 B:([A-T0-9,]*)(?: W:([A-T0-9,]*))? turn:([BW])$/.exec(text);
   if (!m) return null;
   const list = (s: string | undefined) => (s ? s.split(",") : []);
-  return {
-    size: 19,
-    black: list(m[1]),
-    white: list(m[2]),
-    toPlay: m[3] === "B" ? 1 : 2,
-  };
+  const black = list(m[1]);
+  const white = list(m[2]);
+  // 자리 이름은 A~T(I 없음)와 1~19만, 한 자리에 돌 하나만
+  const all = [...black, ...white];
+  if (!all.every((name) => POINT_19.test(name))) return null;
+  if (new Set(all).size !== all.length) return null;
+  return { size: 19, black, white, toPlay: m[3] === "B" ? 1 : 2 };
 }
+
+/** 19줄 판 자리 이름: 가로 A~T(I 없음), 세로 1~19 */
+const POINT_19 = /^[A-HJ-T](?:1[0-9]|[1-9])$/;
