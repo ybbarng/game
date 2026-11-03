@@ -209,12 +209,12 @@ export function JanggiGame({
     status = myMove
       ? view.check === mySide
         ? "장군! 궁을 지키세요"
-        : hintPass
-          ? "힌트: 지금은 쉬어도 돼요(「한 수 쉬기」)"
-          : selected !== null
-            ? hint && selected === hint.from
-              ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
-              : "갈 곳을 누르세요"
+        : selected !== null
+          ? hint && selected === hint.from
+            ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
+            : "갈 곳을 누르세요"
+          : hintPass
+            ? "힌트: 지금은 쉬어도 돼요(「한 수 쉬기」)"
             : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
