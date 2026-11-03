@@ -186,8 +186,6 @@ export interface GalaxyState {
   out: boolean[];
   /** 소행성대에 걸린 자리 */
   jailed: boolean[];
-  /** 소행성대 통과 허가증을 가진 자리 */
-  passes: boolean[];
   /** 칸마다 별 주인(없으면 -1) */
   owners: number[];
   /** 칸마다 정거장 단(0 주인 없음, 1~3단, 4 큰 정거장) */
@@ -315,8 +313,7 @@ export type GameEvent =
   | { type: "landed"; seat: number; square: number }
   | { type: "card"; seat: number; card: number; squares: number[] }
   | { type: "jailed"; seat: number; by: "card" | "doubles" }
-  | { type: "freed"; seat: number; by: "fine" | "doubles" | "pass" | "wait" }
-  | { type: "passUsed"; seat: number }
+  | { type: "freed"; seat: number; by: "fine" | "doubles" | "wait" }
   | { type: "bought"; seat: number; square: number; price: number }
   | { type: "auctionStarted"; index: number; square: number; passer: number }
   | { type: "bidCommitted"; seat: number }

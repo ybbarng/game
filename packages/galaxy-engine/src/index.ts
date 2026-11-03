@@ -7,4 +7,3 @@ export * from "./scenario";
 export * from "./skies";
 export * from "./sky-types";
 export * from "./state";
-export * from "./test-sky";
