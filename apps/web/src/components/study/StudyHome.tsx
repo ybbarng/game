@@ -8,6 +8,8 @@ export interface StudySetSummary {
   title: string;
   summary: string;
   puzzleIds: readonly string[];
+  /** 수순 묶음처럼 번호 대신 이름으로 보일 때, puzzleIds와 같은 차례의 이름 */
+  labels?: readonly string[];
 }
 
 /**
@@ -71,38 +73,70 @@ export function StudyHome({
                   }}
                 />
               </div>
-              <div className="grid grid-cols-7 gap-1.5">
-                {set.puzzleIds.map((id, i) => {
-                  const done = Boolean(records[id]?.solvedAt);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-label={`${set.title} ${i + 1}번${done ? " (풂)" : ""}`}
-                      onClick={() => onOpen(id)}
-                      className={cn(
-                        "aspect-square rounded-lg font-semibold text-sm",
-                        done
-                          ? "bg-emerald-500/30 text-emerald-100"
-                          : "bg-white/10 hover:bg-white/15",
-                      )}
-                    >
-                      {done ? "✓" : i + 1}
-                    </button>
-                  );
-                })}
-              </div>
+              {set.labels ? (
+                <div className="flex flex-col gap-1.5">
+                  {set.puzzleIds.map((id, i) => {
+                    const done = Boolean(records[id]?.solvedAt);
+                    const label = set.labels?.[i] ?? `${i + 1}`;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-label={`${label}${done ? " (끝냄)" : ""}`}
+                        onClick={() => onOpen(id)}
+                        className={cn(
+                          "flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm",
+                          done
+                            ? "bg-emerald-500/30 text-emerald-100"
+                            : "bg-white/10 hover:bg-white/15",
+                        )}
+                      >
+                        <span>{label}</span>
+                        {done && <span aria-hidden>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-1.5">
+                  {set.puzzleIds.map((id, i) => {
+                    const done = Boolean(records[id]?.solvedAt);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-label={`${set.title} ${i + 1}번${done ? " (풂)" : ""}`}
+                        onClick={() => onOpen(id)}
+                        className={cn(
+                          "aspect-square rounded-lg font-semibold text-sm",
+                          done
+                            ? "bg-emerald-500/30 text-emerald-100"
+                            : "bg-white/10 hover:bg-white/15",
+                        )}
+                      >
+                        {done ? "✓" : i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {next && (
                 <button
                   type="button"
                   onClick={() => onOpen(next)}
                   className="rounded-xl bg-amber-400 py-2 font-semibold text-black"
                 >
-                  {solved === 0
-                    ? "풀기 시작"
-                    : solved === set.puzzleIds.length
-                      ? "틀렸던 문제 다시 풀기"
-                      : "이어 풀기"}
+                  {set.labels
+                    ? solved === 0
+                      ? "따라 두기 시작"
+                      : solved === set.puzzleIds.length
+                        ? "틀렸던 수순 다시 두기"
+                        : "이어 두기"
+                    : solved === 0
+                      ? "풀기 시작"
+                      : solved === set.puzzleIds.length
+                        ? "틀렸던 문제 다시 풀기"
+                        : "이어 풀기"}
                 </button>
               )}
             </section>

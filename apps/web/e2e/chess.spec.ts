@@ -498,3 +498,58 @@ test("체스 개인 시간: 내 시계가 가고, 다 쓰면 시간패다", asyn
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await page.screenshot({ path: info.outputPath("chess-time.png") });
 });
+
+test("체스 오프닝 수순: 수순에 없는 수는 두지 않고 안내하며, 런던 시스템을 끝까지 따라 두면 목록에 남는다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  await page.goto("/chess");
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const set = page.getByRole("region", { name: "오프닝 수순" });
+  await expect(set.getByText("0/9")).toBeVisible();
+  await set.getByRole("button", { name: "런던 시스템" }).click();
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+
+  // e4는 좋은 수지만 이 수순의 수가 아니다. 판에 두지 않는다.
+  await tapSquare(page, "e2", touch);
+  await tapSquare(page, "e4", touch);
+  await expect(page.getByRole("status")).toHaveText(
+    /이 수순에서 두는 수가 아니에요/,
+  );
+  await expect(page.locator('[data-square="e2"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+
+  // 백 수를 두면 흑이 수순대로 받는다.
+  const mine: [string, string, string][] = [
+    ["d2", "d4", 'f6"][data-piece="bN'],
+    ["c1", "f4", 'd5"][data-piece="bP'],
+    ["e2", "e3", 'e6"][data-piece="bP'],
+    ["b1", "d2", 'c5"][data-piece="bP'],
+  ];
+  for (const [from, to, reply] of mine) {
+    await tapSquare(page, from, touch);
+    await tapSquare(page, to, touch);
+    await expect(page.locator(`[data-square="${reply}"]`)).toHaveCount(1);
+  }
+  await expect(page.getByTestId("line-note")).toContainText("c5");
+  await tapSquare(page, "c2", touch);
+  await tapSquare(page, "c3", touch);
+  await expect(page.getByRole("status")).toHaveText("수순을 끝까지 두었어요!");
+  await expect(page.getByTestId("line-moves")).toContainText("5. c3 Nc6");
+  await page.screenshot({ path: info.outputPath("chess-line.png") });
+  await page.getByRole("button", { name: "← 목록" }).click();
+  await expect(set.getByText("1/9")).toBeVisible();
+  await expect(
+    set.getByRole("button", { name: "런던 시스템 (끝냄)" }),
+  ).toBeVisible();
+
+  // 흑 수순은 판이 돌아가 있고, 백 첫 수를 저절로 둔다.
+  await set.getByRole("button", { name: "카로칸 디펜스" }).click();
+  await expect(board(page)).toHaveAttribute("data-flipped", /.*/);
+  await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+});
