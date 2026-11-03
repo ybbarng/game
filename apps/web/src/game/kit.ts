@@ -24,14 +24,20 @@ export interface KitBot<View, Action, Event = unknown> {
   } | null;
 }
 
-/** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
-export interface KitTimer<Action> {
+/**
+ * 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창, 은하 한 바퀴 결정 시간). `key`가 같으면 같은 창이다.
+ * 시간이 다 되면 이 자리로 `action`을 넣는다. 넣을 행동을 그때 정해야 하면(컴퓨터가 대신 정하기처럼 계산이 들거나
+ * 그때 남은 자리를 보고 고를 때) `action` 대신 `later`를 준다. null이면 넣지 않는다
+ */
+export type KitTimer<Action, State = unknown> = {
   key: string;
-  /** 시간이 다 되면 이 자리로 `action`을 넣는다 */
   seat: number;
   ms: number;
-  action: Action;
-}
+} & (
+  | { action: Action }
+  /** 시간이 다 된 순간의 엔진 상태를 받아 넣을 자리와 행동을 정한다 */
+  | { later: (state: State) => { seat: number; action: Action } | null }
+);
 
 export type StepOutcome<State, Event> =
   | { ok: true; state: State; events: Event[] }
@@ -176,7 +182,7 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    * 수마다 다시 걸어, 수가 오가도 그대로 흘러야 하는 창에는 맞지 않는다. LocalMatch가 걸음마다 이 목록을 보고
    * 새 `key`는 그때부터 재고, 사라진 `key`는 지운다
    */
-  timers?(state: State): KitTimer<Action>[];
+  timers?(state: State): KitTimer<Action, State>[];
   /**
    * 사람·컴퓨터가 아니라 대국을 돌리는 기기가 바로 넣는 행동(원카드 다시 섞기). 없으면 null.
    * `seed`는 대국 씨앗과 기록 길이로 만든 값이라 같은 기록이면 같은 행동이 나온다
