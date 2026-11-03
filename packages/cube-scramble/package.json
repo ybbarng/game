@@ -13,5 +13,8 @@
   "dependencies": {
     "@game/cube-solver": "workspace:*",
     "@game/mighty-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@game/cube-engine": "workspace:*"
   }
 }

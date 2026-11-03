@@ -14,11 +14,13 @@ import { useMinhwatuSettings } from "@/minhwatu/settings";
 import { useNyrongppongTutorialProgress } from "@/nyrongppong/progress";
 import { useNyrongppongSettings } from "@/nyrongppong/settings";
 import { useOmokSettings } from "@/omok/settings";
+import { useOnecardSettings } from "@/onecard/settings";
 import { useJanggiStudyProgress } from "@/study/progress";
 import {
   useHeartsTutorialProgress,
   useJanggiTutorialProgress,
   useOmokTutorialProgress,
+  useOnecardTutorialProgress,
   useTutorialProgress,
 } from "@/tutorial/progress";
 import { useYutTutorialProgress } from "@/yut/progress";
@@ -50,6 +52,8 @@ export function StoreHydration() {
       useBaseballTutorialProgress.persist.rehydrate(),
       useYutSettings.persist.rehydrate(),
       useYutTutorialProgress.persist.rehydrate(),
+      useOnecardSettings.persist.rehydrate(),
+      useOnecardTutorialProgress.persist.rehydrate(),
     ]).then(() => {
       // 화면이 단추에 동작을 붙이고 저장값까지 읽었다는 표시. 화면 시험이 누르기 전에 기다린다
       // (그 전에 누르면 누름이 사라지거나, 늦게 읽힌 저장값이 고른 것을 덮어쓴다)

@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // bench(bots.strength.ts)가 결과 파일을 쓰려고 node 타입을 쓴다. 컴퓨터 코드(bots.ts 등)는 node API를 쓰지 않는다
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
