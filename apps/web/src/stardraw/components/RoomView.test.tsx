@@ -289,7 +289,7 @@ describe("관측지 기기 시계", () => {
 });
 
 /** 관측지 RoomView를 그린다(방 스트림은 흉내, 언덕 아래 연결 수만 바꾼다) */
-function renderRoom(watchers: number) {
+function renderRoom(watchers: number, svc: Services = services) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
     String(input).endsWith("/events")
       ? roomStream(watchers)
@@ -298,7 +298,7 @@ function renderRoom(watchers: number) {
   return render(
     <RoomView
       api="http://room.test/stardraw-api"
-      services={services}
+      services={svc}
       round={1}
       record={undefined}
       ticket={undefined}
@@ -513,7 +513,9 @@ describe("관측이 끝난 뒤", () => {
 
 /*
  * 앱 안 브라우저(2026-11-03 운영 둘러보기): 카카오톡에서 관측지의 「우주인 등록하고 언덕에 오르기」를 누르면 빨간 글 한 줄만
- * 떨어져 떴다. 누른 단추 바로 아래에 입구와 같은 안내(바깥 브라우저로 열기·메뉴 안내·주소 복사)가 나오고 신청서는 뜨지 않는다
+ * 떨어져 떴다. 누른 단추 바로 아래에 입구와 같은 안내(바깥 브라우저로 열기·메뉴 안내·주소 복사)가 나온다.
+ * WebAuthn이 없으면(jsdom 기본) 신청서를 띄우지 않고 미리 안내하고, 있으면 막지 않고 시도한 뒤 실패하면 안내한다
+ * (2026-11-03 사용자: 「처음부터 막기보다는 시도라도 할 수 있게」)
  */
 describe("관측지의 앱 안 브라우저", () => {
   const kakao = (ua: string) =>
@@ -579,5 +581,57 @@ describe("관측지의 앱 안 브라우저", () => {
         view.container.querySelector("[data-room-blocked] [data-open-outside]"),
       ).not.toBeNull();
     });
+  });
+
+  it("WebAuthn이 있으면 막지 않고 시도하고, 실패하면 그 자리에 안내한 뒤 다시 시도할 수 있다", async () => {
+    kakao(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+    );
+    // 패스키 API가 있는 웹뷰(움직임 줄이기: 신청서 없이 바로 패스키 만들기)
+    const win = window as unknown as { PublicKeyCredential?: unknown };
+    win.PublicKeyCredential = () => {};
+    Object.defineProperty(navigator, "credentials", {
+      configurable: true,
+      value: { create: () => Promise.reject(new Error("쓰지 않음")) },
+    });
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (q: string) =>
+        ({
+          matches: q.includes("reduce"),
+          media: q,
+          addEventListener() {},
+          removeEventListener() {},
+        }) as unknown as MediaQueryList,
+    );
+    // 웹뷰는 패스키를 못 써도 취소와 같은 오류를 낸다
+    const createPasskey = vi.fn(() =>
+      Promise.reject(new DOMException("x", "NotAllowedError")),
+    );
+    const view = renderRoom(1, {
+      ...services,
+      wallet: { ...services.wallet, createPasskey },
+    } as unknown as Services);
+    try {
+      const join = await view.findByRole("button", {
+        name: "우주인 등록하고 언덕에 오르기",
+      });
+      fireEvent.click(join);
+      const notice = await waitFor(() => {
+        const n = view.container.querySelector("[data-room-blocked]");
+        expect(n).not.toBeNull();
+        return n as HTMLElement;
+      });
+      expect(createPasskey).toHaveBeenCalledTimes(1);
+      expect(notice.textContent).toContain(
+        "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
+      );
+      expect(notice.querySelector("[data-open-outside]")).not.toBeNull();
+      // 같은 사람이 다시 눌러도 막지 않는다
+      fireEvent.click(join);
+      await waitFor(() => expect(createPasskey).toHaveBeenCalledTimes(2));
+    } finally {
+      delete win.PublicKeyCredential;
+      Reflect.deleteProperty(navigator, "credentials");
+    }
   });
 });

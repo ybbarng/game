@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { FX } from "../fx-timing";
 import { Sheet } from "./EnterSubmit";
@@ -25,7 +26,10 @@ export function RegisterForm({
   now,
   onSubmit,
   onCancel,
+  help,
 }: {
+  /** 우주국 말 아래 안내(앱 안 브라우저에서 패스키가 실패했을 때 바깥 브라우저로 여는 안내) */
+  help?: ReactNode;
   stage: ApplyStage;
   now: number;
   onSubmit: () => void;
@@ -44,6 +48,11 @@ export function RegisterForm({
         >
           우주인 등록 신청서를 제출해 주세요.
         </p>
+        {help && (
+          <div data-register-help className="mx-auto w-full max-w-md">
+            {help}
+          </div>
+        )}
         <div className="flex-1" />
         <Sheet
           sheet={stage === "text" ? "below" : stage === "away" ? "away" : "in"}

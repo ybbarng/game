@@ -62,6 +62,9 @@ async function untilStageGone(page: Page) {
 const ENTER = { name: "예측서 내기", exact: true } as const;
 /** 우주인 등록 단추(패스키 만들기) */
 const REGISTER = { name: "우주인 등록", exact: true } as const;
+/** 아이폰 카카오톡 안 브라우저 */
+const KAKAO_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5";
 /** 등록증에서 누를 자리(제목 부분. 가운데는 주소 단추라 피한다) */
 const CARD_TAP = { x: 40, y: 30 } as const;
 /** 첫 화면에서 별 고르기로 */
@@ -541,11 +544,11 @@ test("패스키 만들기를 취소하면 만들어지지 않았다고 알리고
   await noSideScroll(page);
 });
 
-test("패스키를 못 쓰는 브라우저와 앱 안 브라우저는 응모 대신 안내한다", async ({
+test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우저는 시도한 뒤 실패하면 바깥으로 여는 안내", async ({
   browser,
   page,
-}) => {
-  // WebAuthn이 없는 브라우저
+}, info) => {
+  // WebAuthn이 없는 브라우저: 시도할 수 없어 단추 대신 미리 안내
   await page.addInitScript(() => {
     // @ts-expect-error 시험: 패스키가 없는 브라우저 흉내
     delete window.PublicKeyCredential;
@@ -556,33 +559,40 @@ test("패스키를 못 쓰는 브라우저와 앱 안 브라우저는 응모 대
   );
   await expect(page.getByRole("button", REGISTER)).toHaveCount(0);
 
-  // 카카오톡 안 브라우저
-  const kakao = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
-  });
+  // 카카오톡 안 브라우저(WebAuthn 있음): 막지 않고 시도한다(2026-11-03 사용자). 웹뷰는 패스키를 못 쓸 때도
+  // 취소와 같은 오류를 내서, 지문 확인이 안 되는 가상 인증기로 그 실패를 낸다
+  const kakao = await browser.newContext({ userAgent: KAKAO_UA });
   const inApp = await kakao.newPage();
+  await virtualAuthenticator(inApp, false);
   await toEntry(inApp);
-  await expect(inApp.getByRole("note")).toContainText(
-    "카카오톡 안에서는 패스키를 쓸 수 없어요. Safari로 열어 주세요.",
+  const setup = inApp.locator("[data-key-setup]");
+  const register = setup.getByRole("button", REGISTER);
+  await expect(register).toBeVisible();
+  // 미리 보이는 안내 줄은 두지 않는다(실패한 뒤에만)
+  await expect(inApp.locator("[data-in-app-notice]")).toHaveCount(0);
+  await register.click();
+  const note = setup.locator("[data-in-app-notice='tried']");
+  await expect(note).toContainText(
+    "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
   );
   // 카카오톡은 바깥 브라우저로 여는 단추와, 안 열릴 때 손으로 여는 메뉴 자리
-  const outside = inApp.getByRole("link", { name: "Safari로 열기" });
-  await expect(outside).toHaveAttribute(
-    "href",
-    /^kakaotalk:\/\/web\/openExternal\?url=http/,
-  );
-  await expect(inApp.getByRole("note")).toContainText("공유 단추");
-  await expect(inApp.getByRole("button", { name: "주소 복사" })).toBeVisible();
+  await expect(
+    note.getByRole("link", { name: "Safari로 열기" }),
+  ).toHaveAttribute("href", /^kakaotalk:\/\/web\/openExternal\?url=http/);
+  await expect(note).toContainText("공유 단추");
+  await expect(note.getByRole("button", { name: "주소 복사" })).toBeVisible();
+  // 다시 시도하는 것도 막지 않는다
+  await expect(register).toBeEnabled();
   await kakao.close();
 
-  // 카카오톡에서 처음 온 사람이 편지의 「우주인 등록」을 눌러도 신청서를 띄우지 않고 입구 안내로 보낸다(막다른 길이었다)
+  // 카카오톡에서 처음 온 사람이 편지의 「우주인 등록」을 누르면 신청서가 뜨고, 내서 실패하면 신청서 위에 같은 안내
   const kakaoLetter = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5",
+    userAgent: KAKAO_UA,
     reducedMotion: "no-preference",
   });
   const first = await kakaoLetter.newPage();
+  await fixStardrawClock(first);
+  await virtualAuthenticator(first, false);
   await first.goto("/stardraw");
   await first
     .locator("[data-letter-stage='arrive']")
@@ -591,11 +601,24 @@ test("패스키를 못 쓰는 브라우저와 앱 안 브라우저는 응모 대
     .getByRole("dialog", { name: "카노푸스 우주국 편지" })
     .getByRole("button", { name: "우주인 등록", exact: true })
     .click();
-  await expect(first.getByRole("note")).toBeInViewport();
-  await expect(first.getByRole("note")).toContainText(
-    "카카오톡 안에서는 패스키를 쓸 수 없어요",
+  const submit = first.locator(
+    "[aria-label='신청서 제출'][aria-disabled='false']",
   );
-  await expect(first.locator("[data-register-form]")).toHaveCount(0);
+  await pressWhenShown(first, submit);
+  const help = first.locator(
+    "[data-register-help] [data-in-app-notice='tried']",
+  );
+  await fastForwardUntil(first, () => help.isVisible());
+  await expect(help).toContainText(
+    "카카오톡 안에서는 패스키가 되지 않을 수 있어요",
+  );
+  await expect(help.getByRole("link", { name: "Safari로 열기" })).toBeVisible();
+  // 신청서는 그 자리에서 다시 기다린다(다시 낼 수 있다)
+  await expect(first.locator("[data-register-form]")).toBeVisible();
+  await expect(submit).toBeVisible();
+  await first.screenshot({
+    path: info.outputPath("stardraw-kakao-register-failed.png"),
+  });
   await kakaoLetter.close();
 });
 
@@ -967,7 +990,10 @@ test("데모 화면 둘러보기: 목록의 화면이 모두 가로 넘침 없�
     ["sheet-create", () => page.locator("[data-demo-unlock='create']")],
     ["sheet-sign", () => page.locator("[data-demo-unlock='sign']")],
     ["sheet-check", () => page.locator("[data-demo-unlock='check']")],
-    ["in-app", (s) => s.getByText(/카카오톡 안에서는 패스키를 쓸 수 없어요/)],
+    [
+      "in-app",
+      (s) => s.getByText(/카카오톡 안에서는 패스키가 되지 않을 수 있어요/),
+    ],
     ["no-passkey", (s) => s.getByText(/패스키를 지원하지 않아요/)],
     // 연출 항목: 시험은 움직임 줄이기라 결과 모습만 보인다
     ["fx-gate", (s) => s.locator("[data-gate]")],

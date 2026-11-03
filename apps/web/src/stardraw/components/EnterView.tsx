@@ -52,7 +52,7 @@ import {
 } from "./EnterSubmit";
 import { BounceSlip, ErrorStage, HurryNotice, kstClock } from "./EntryDeadline";
 import { IdPresentView, useIdPresent } from "./IdPresent";
-import { InAppNotice } from "./InAppNotice";
+import { InAppNotice, InAppTriedNotice } from "./InAppNotice";
 import { KeyIcon } from "./PasskeyHelp";
 import { LottoBall, StardrawTitle, StarInfo } from "./parts";
 import { liveDrawRound } from "./RoomView";
@@ -913,8 +913,17 @@ function EnterHeader({
   );
 }
 
-/** 오류 상자. 패스키 확인을 취소했으면 설명 페이지의 패스키 칸으로 잇는다 */
+/**
+ * 오류 상자. 패스키 확인을 취소했으면 설명 페이지의 패스키 칸으로 잇는다. 앱 안 브라우저에서 패스키가 실패했으면
+ * 문구 대신 바깥 브라우저로 여는 안내(2026-11-03 사용자: 막지 말고 시도한 뒤 실패하면 안내)
+ */
 function ErrorBox({ error }: { error: Failure }) {
+  if (error.inApp)
+    return (
+      <div role="alert" className="w-full">
+        <InAppTriedNotice app={error.inApp} />
+      </div>
+    );
   return (
     <div
       role="alert"
@@ -937,7 +946,8 @@ function ErrorBox({ error }: { error: Failure }) {
  * 우주인 등록(docs/36 11-9): 응모하려면 등록증(= 이 기기의 패스키)이 필요하다. 별을 고르기 전에 먼저 만든다(확인 한 번).
  * 다른 기기에서 만든 패스키가 따라왔으면 「이미 우주인 등록증이 있어요」로 찾는다.
  * 게임 흐름에서는 우주인 말로 부르고, "패스키"는 등록 단계 한 줄에만 둔다(기술 설명은 /stardraw/about#passkey).
- * 패스키를 못 쓰는 환경(앱 안 브라우저·미지원)은 한두 줄로 안내한다. 데모는 흉내라 막지 않는다
+ * WebAuthn이 없는 브라우저는 단추 대신 한두 줄로 안내한다. 앱 안 브라우저라도 WebAuthn이 있으면 단추를 그대로 두고
+ * 실패하면 오류 칸에 바깥 브라우저 안내를 띄운다(미리 보이는 줄은 두지 않는다, 2026-11-03). 데모는 흉내라 막지 않는다
  */
 export function KeySetup({
   demo,
@@ -959,7 +969,7 @@ export function KeySetup({
   onCreate: () => void;
   onRecover: () => void;
 }) {
-  const blocked = !demo && env && (env.inApp || !env.api);
+  const blocked = !demo && env && !env.api;
   return (
     <div
       className="sd-glass flex flex-col items-center gap-3 rounded-3xl px-5 py-7 text-center"
@@ -976,7 +986,7 @@ export function KeySetup({
       )}
       {blocked ? (
         env?.inApp ? (
-          <InAppNotice app={env.inApp} ua={env.ua} />
+          <InAppNotice app={env.inApp} ua={env.ua} sure />
         ) : (
           <p role="note" className="break-keep text-sm text-white/80">
             이 브라우저는 패스키를 지원하지 않아요. 최신 Safari·Chrome으로 열어

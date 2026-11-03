@@ -29,7 +29,10 @@ export function IdFlyer({
   backdrop = true,
   press,
   blank = false,
+  help,
 }: {
+  /** 위쪽 문구 아래 안내(앱 안 브라우저에서 패스키가 실패했을 때 바깥 브라우저로 여는 안내) */
+  help?: ReactNode;
   /** 아직 누구인지 모를 때(pub 없음) 실루엣 카드로 기다린다 */
   blank?: boolean;
   /**
@@ -99,6 +102,11 @@ export function IdFlyer({
         >
           {note}
         </p>
+      )}
+      {help && (
+        <div data-id-help className="relative mt-2 w-full max-w-sm px-6">
+          {help}
+        </div>
       )}
       <div className="relative flex w-full flex-1 flex-col items-center justify-center gap-5">
         {(pub || blank) && (

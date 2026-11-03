@@ -3,7 +3,7 @@
  * 브라우저 응모는 패스키로만 한다. 쓸 수 없는 환경이면 응모 대신 무엇을 하면 되는지 알려 준다.
  */
 
-/** 패스키가 막히는 앱 안 브라우저. 사용자 에이전트에 이 글자가 있으면 그 앱 이름 */
+/** 패스키가 되지 않을 수 있는 앱 안 브라우저. 사용자 에이전트에 이 글자가 있으면 그 앱 이름 */
 const IN_APP: [RegExp, string][] = [
   [/KAKAOTALK/i, "카카오톡"],
   [/NAVER\(inapp/i, "네이버 앱"],
@@ -126,15 +126,32 @@ export function passkeyFailText(err: unknown, what: string): string {
 export const DEMO_CANCEL = "확인을 취소했습니다";
 
 /**
- * 이 브라우저에서 패스키를 쓸 수 없으면 그 까닭과 할 일 한 문장, 쓸 수 있으면 null(입구 안내 KeySetup과 같은 말).
- * 편지·관측지의 「우주인 등록」「신분증 제시」가 신청서를 띄우기 전에 본다(2026-11-03 클로즈 베타 점검: 카카오톡에서
- * 편지의 「우주인 등록」을 누르면 패스키를 못 쓰는데도 신청서가 떠 막다른 길이었다)
+ * WebAuthn 자체가 없어 시도할 수 없으면 그 까닭과 할 일 한 문장, 시도할 수 있으면 null(입구 안내 KeySetup과 같은 말).
+ * 편지·관측지의 「우주인 등록」「신분증 제시」가 신청서를 띄우기 전에 본다(2026-11-03 클로즈 베타 점검: 패스키를 못 쓰는데도
+ * 신청서가 떠 막다른 길이었다). 앱 안 브라우저라도 API가 있으면 막지 않는다(2026-11-03 사용자: 「처음부터 막기보다는
+ * 시도라도 할 수 있게」). 시도가 실패하면 그 자리에 바깥 브라우저 안내(`inAppFailed`)
  */
 export function passkeyBlocked(ua: string, api: boolean): string | null {
+  if (api) return null;
   const app = inAppBrowser(ua);
-  if (app)
-    return `${app} 안에서는 패스키를 쓸 수 없어요. ${browserName(ua)} 열어 주세요.`;
-  if (!api)
-    return "이 브라우저는 패스키를 지원하지 않아요. 최신 Safari·Chrome으로 열어 주세요.";
-  return null;
+  if (app) return inAppText(app, ua, true);
+  return "이 브라우저는 패스키를 지원하지 않아요. 최신 Safari·Chrome으로 열어 주세요.";
+}
+
+/**
+ * 앱 안 브라우저에서 패스키 시도가 실패했으면 그 앱 이름, 아니면 null. 웹뷰는 패스키를 못 쓸 때도 취소와 같은
+ * 오류(NotAllowedError)를 내는 일이 많아 취소·지원 안 함·보안 오류·알 수 없는 오류(브라우저가 낸 DOMException)를
+ * 모두 센다. 서버·연결 오류와 흉내 창(데모) 취소는 세지 않는다
+ */
+export function inAppFailed(err: unknown, ua: string): string | null {
+  if (!(err instanceof DOMException) || err.message === DEMO_CANCEL)
+    return null;
+  // 시간 초과(TimeoutError)는 서버 응답이 늦은 것이다
+  if (err.name === "TimeoutError") return null;
+  return inAppBrowser(ua);
+}
+
+/** 앱 안 브라우저에서 패스키가 안 될 수 있다는 안내 한 문장(`sure`면 API가 없어 확실히 안 된다) */
+export function inAppText(app: string, ua: string, sure = false): string {
+  return `${app} 안에서는 패스키${sure ? "를 쓸 수 없어요" : "가 되지 않을 수 있어요"}. ${browserName(ua)} 열어 주세요.`;
 }

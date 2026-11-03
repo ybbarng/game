@@ -8,6 +8,7 @@ import { FX } from "../fx-timing";
 import { greetNow } from "../greeting";
 import { originGreeting } from "../origin-greeting";
 import {
+  inAppFailed,
   type PasskeyProblem,
   passkeyApi,
   passkeyBlocked,
@@ -18,10 +19,14 @@ import { DEMO_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 import { AstronautPanel } from "./AstronautPanel";
 import { IdPresentView, useIdPresent } from "./IdPresent";
+import { InAppTriedNotice } from "./InAppNotice";
 import { type ApplyStage, RegisterForm } from "./RegisterForm";
 import { StageOverlay } from "./StageOverlay";
 
-export type Failure = { kind: PasskeyProblem; text: string };
+/**
+ * 실패 문구. `inApp`은 앱 안 브라우저에서 패스키 시도가 실패했을 때의 앱 이름: 문구 대신 바깥 브라우저 안내를 보인다
+ */
+export type Failure = { kind: PasskeyProblem; text: string; inApp?: string };
 
 /** 패스키 오류를 화면 문구로 */
 /**
@@ -34,8 +39,13 @@ export function failureOf(
   cancelWhat: string,
 ): Failure {
   const kind = passkeyProblem(err);
+  const inApp =
+    typeof navigator === "undefined"
+      ? null
+      : inAppFailed(err, navigator.userAgent);
   return {
     kind,
+    ...(inApp ? { inApp } : {}),
     text:
       kind === "unsupported"
         ? "이 기기에서는 등록증을 만들 수 없어요. '다른 기기 사용'을 골라 휴대폰으로 만들어 주세요."
@@ -71,6 +81,8 @@ export function useAstronautSetup(
   const id = useIdPresent(services);
   /** 우주인 등록 신청서 단계(없으면 null) */
   const [apply, setApply] = useState<ApplyStage | null>(null);
+  /** 앱 안 브라우저에서 신청서를 냈는데 패스키가 실패했으면 그 앱 이름(신청서 위에 바깥 브라우저 안내) */
+  const [applyInApp, setApplyInApp] = useState<string | null>(null);
   const wait = (ms: number) =>
     new Promise<void>((r) => services.clock.after(ms, r));
 
@@ -82,30 +94,42 @@ export function useAstronautSetup(
    */
   const makeKey = () => services.wallet.createPasskey();
 
+  /** 입구 안내(KeySetup)가 이 화면에 있으면 그리로 옮긴다(안내·오류가 그 칸에 뜬다). 없으면 false */
+  const toKeySetup = (): boolean => {
+    const notice = document.querySelector("[data-key-setup]");
+    notice?.scrollIntoView({
+      block: "center",
+      behavior: reduced() ? "auto" : "smooth",
+    });
+    return notice !== null;
+  };
+
   /**
-   * 패스키를 쓸 수 없는 브라우저(앱 안 브라우저 등)면 신청서·신분증 제시를 띄우지 않는다. 화면에 입구 안내(KeySetup)가
+   * WebAuthn이 아예 없는 브라우저면 신청서·신분증 제시를 띄우지 않는다. 화면에 입구 안내(KeySetup)가
    * 있으면 그리로 옮기고(같은 말이 두 번 나오지 않게), 없으면(관측지) `blockedHere`로 그 화면이 누른 단추 곁에
-   * 같은 안내(바깥 브라우저로 열기·주소 복사)를 그리게 한다(2026-11-03 운영 둘러보기: 빨간 글 한 줄만 떨어져 떴다)
+   * 같은 안내(바깥 브라우저로 열기·주소 복사)를 그리게 한다(2026-11-03 운영 둘러보기: 빨간 글 한 줄만 떨어져 떴다).
+   * 앱 안 브라우저라도 WebAuthn이 있으면 막지 않고 시도한다(2026-11-03 사용자). 실패하면 그 자리에 안내(`Failure.inApp`)
    */
   const blocked = (): boolean => {
     if (services.ns === DEMO_NS) return false;
     const why = passkeyBlocked(navigator.userAgent, passkeyApi());
     setBlockedHere(false);
     if (!why) return false;
-    const notice = document.querySelector("[data-key-setup]");
-    if (notice)
-      notice.scrollIntoView({
-        block: "center",
-        behavior: reduced() ? "auto" : "smooth",
-      });
-    else setBlockedHere(true);
+    if (!toKeySetup()) setBlockedHere(true);
     return true;
+  };
+
+  /** 신청서·신분증 제시 밖에서 난 실패: 앱 안 브라우저면 안내가 뜨는 입구 칸으로 옮긴다 */
+  const failed = (f: Failure) => {
+    setError(f);
+    if (f.inApp) toKeySetup();
   };
 
   /** 우주인 등록: 연출이 있으면 신청서부터(패스키는 신청서를 낼 때), 움직임 줄이기면 바로 패스키 만들기 */
   const create = async () => {
     setNote(null);
     setError(null);
+    setApplyInApp(null);
     if (blocked()) return;
     if (!reduced()) {
       setApply("text");
@@ -117,7 +141,7 @@ export function useAstronautSetup(
     try {
       setIssued(await makeKey());
     } catch (err) {
-      setError(failureOf(err, "등록", "등록하지 않았어요"));
+      failed(failureOf(err, "등록", "등록하지 않았어요"));
     } finally {
       setWorking(null);
     }
@@ -140,7 +164,10 @@ export function useAstronautSetup(
       setApply(null);
       setIssued(made);
     } catch (err) {
-      if (passkeyProblem(err) === "cancelled") setApply("waiting");
+      // 앱 안 브라우저에서 실패하면(취소처럼 보여도) 신청서는 다시 기다리고 바깥 브라우저 안내를 함께 보인다
+      const app = inAppFailed(err, navigator.userAgent);
+      if (app) setApplyInApp(app);
+      if (app || passkeyProblem(err) === "cancelled") setApply("waiting");
       else {
         setApply(null);
         setError(failureOf(err, "등록", "등록하지 않았어요"));
@@ -190,7 +217,7 @@ export function useAstronautSetup(
       if (!found) setWorking(null);
     } catch (err) {
       setWorking(null);
-      setError(failureOf(err, "신분증을 확인", "등록증을 찾지 못했어요"));
+      failed(failureOf(err, "신분증을 확인", "등록증을 찾지 못했어요"));
     }
   };
 
@@ -217,8 +244,12 @@ export function useAstronautSetup(
     pocketing,
     id,
     apply,
+    applyInApp,
     submitApply,
-    cancelApply: () => setApply(null),
+    cancelApply: () => {
+      setApply(null);
+      setApplyInApp(null);
+    },
     create,
     recover,
     pocket,
@@ -355,6 +386,11 @@ export function WelcomeFlyer({
         <RegisterForm
           stage={setup.apply}
           now={services.clock.now()}
+          help={
+            setup.applyInApp && setup.apply === "waiting" ? (
+              <InAppTriedNotice app={setup.applyInApp} />
+            ) : undefined
+          }
           onSubmit={() => void setup.submitApply()}
           onCancel={setup.cancelApply}
         />

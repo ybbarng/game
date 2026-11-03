@@ -346,6 +346,7 @@ function Screen({
       return <FxScreen id={id} s={s} />;
     case "in-app":
     case "no-passkey":
+      // 앱 안 브라우저는 막지 않고 시도한다: 등록을 눌러 패스키가 실패한 뒤의 모습(2026-11-03 사용자)
       return (
         <KeySetup
           demo={false}
@@ -356,7 +357,11 @@ function Screen({
           }
           working={null}
           note={null}
-          error={null}
+          error={
+            id === "in-app"
+              ? { kind: "cancelled", text: "", inApp: "카카오톡" }
+              : null
+          }
           onCreate={noop}
           onRecover={noop}
         />

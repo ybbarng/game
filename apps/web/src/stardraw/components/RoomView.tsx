@@ -34,6 +34,7 @@ import { Avatar } from "../astronaut/Avatar";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { celebrationPlan } from "../celebrate";
 import { errorText } from "../errors";
+import { inAppFailed } from "../passkey-env";
 import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
 import {
@@ -57,7 +58,7 @@ import type { KeyInfo } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
 import { IdPresentView, useIdPresent } from "./IdPresent";
-import { PasskeyBlockedNotice } from "./InAppNotice";
+import { InAppTriedNotice, PasskeyBlockedNotice } from "./InAppNotice";
 import { formatLeft, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 import { MenuItem } from "./StardrawNav";
@@ -587,6 +588,8 @@ export function RoomView({
   const [registeringNow, setRegisteringNow] = useState(false);
   const [draft, setDraft] = useState("");
   const [sendNote, setSendNote] = useState<string | null>(null);
+  /** 앱 안 브라우저에서 패스키 서명이 실패했으면 그 앱 이름(움직임 줄이기: 신분증 제시 틀 없이 바로 실패한다) */
+  const [failApp, setFailApp] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   /** 이 기기 등록증의 서명자(미리 만들어 둔다, 누름 직후 바로 패스키를 열게) */
   const signerRef = useRef<EntrantSigner | null>(null);
@@ -657,6 +660,7 @@ export function RoomView({
         )
         .catch((err) => {
           setSendNote(errorText(err, "신분증을 확인"));
+          setFailApp(inAppFailed(err, navigator.userAgent));
           return null;
         });
       if (!proof) return null;
@@ -683,6 +687,7 @@ export function RoomView({
       return null;
     }
     setSendNote(null);
+    setFailApp(null);
     const registered = await registerFirst(key);
     if (!registered) return null;
     // 한 번 쓰는 값과 서명자는 미리 준비해 둔다: 등록증을 누른 그 순간 사이에 기다림 없이 패스키를 연다(아이폰 사파리 누름 규칙).
@@ -714,6 +719,7 @@ export function RoomView({
       })
       .catch((err) => {
         setSendNote(errorText(err, "언덕에 오르지", "언덕에 오르지 않았어요"));
+        setFailApp(inAppFailed(err, navigator.userAgent));
         return null;
       });
     if (!got) return null;
@@ -1194,12 +1200,22 @@ export function RoomView({
                 이미 등록했어요 · 신분증 제시
               </button>
             )}
-            {/* 패스키를 못 쓰는 브라우저(카카오톡 등): 누른 단추 바로 아래에 바깥 브라우저로 여는 안내(입구와 같은 조각) */}
+            {/* WebAuthn이 없는 브라우저: 누른 단추 바로 아래에 안내(입구와 같은 조각). 앱 안 브라우저에서 시도가 실패했으면
+                같은 자리에 바깥 브라우저로 여는 안내(2026-11-03 사용자: 막지 말고 시도한 뒤 실패하면 안내) */}
             {seat.join && setup.blockedHere && (
               <div className="w-full max-w-xs" data-room-blocked>
                 <PasskeyBlockedNotice />
               </div>
             )}
+            {seat.join &&
+              !setup.blockedHere &&
+              (setup.error?.inApp ?? failApp) && (
+                <div className="w-full max-w-xs" data-room-blocked>
+                  <InAppTriedNotice
+                    app={(setup.error?.inApp ?? failApp) as string}
+                  />
+                </div>
+              )}
           </div>
         ))}
 
@@ -1250,7 +1266,7 @@ export function RoomView({
             : "다음 회차 예측이 열리면 장부에 우주인 등록을 올립니다."}
         </p>
       )}
-      {(sendNote ?? setup.error?.text) && (
+      {(sendNote ?? setup.error?.text) && !(failApp ?? setup.error?.inApp) && (
         <p className="text-center text-rose-200 text-xs">
           {sendNote ?? setup.error?.text}
         </p>

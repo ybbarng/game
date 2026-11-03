@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { FX } from "../fx-timing";
-import { passkeyProblem } from "../passkey-env";
+import { inAppFailed, passkeyProblem } from "../passkey-env";
 import type { Services } from "../services";
 import { type CardSpot, IdFlyer } from "./IdFlyer";
+import { InAppTriedNotice } from "./InAppNotice";
 
 /** 신분증 제시 화면의 한 순간(useIdPresent가 정한다) */
 export interface IdPresent {
@@ -21,6 +22,8 @@ export interface IdPresent {
   label: string;
   /** 아직 누구인지 모를 때 실루엣 카드를 보인다(입장·발급) */
   blank: boolean;
+  /** 앱 안 브라우저에서 패스키 시도가 실패했으면 그 앱 이름: 등록증이 다시 기다리는 동안 바깥 브라우저 안내를 함께 보인다 */
+  inApp: string | null;
 }
 
 /** 신분증 제시 틀의 목적 */
@@ -97,6 +100,7 @@ export function useIdPresent(services: Services) {
       asking: false,
       label: opts.label ?? `신분증 ${opts.verb}`,
       blank: opts.blank ?? false,
+      inApp: null,
     };
     const go = (patch: Partial<IdPresent>) => {
       p = { ...p, ...patch };
@@ -123,8 +127,11 @@ export function useIdPresent(services: Services) {
         try {
           r = await action();
         } catch (err) {
-          if (passkeyProblem(err) === "cancelled") {
-            go({ card: "peek" });
+          // 앱 안 브라우저에서 실패하면(취소처럼 보여도) 등록증은 다시 기다리고 바깥 브라우저 안내를 함께 보인다.
+          // 다시 내미는 것도 막지 않는다(2026-11-03 사용자: 막기보다 시도할 수 있게)
+          const app = inAppFailed(err, navigator.userAgent);
+          if (app || passkeyProblem(err) === "cancelled") {
+            go({ card: "peek", ...(app ? { inApp: app } : {}) });
             continue;
           }
           setPresent(null);
@@ -205,6 +212,9 @@ export function IdPresentView({
       closing={p.closing}
       backdrop={backdrop}
       blank={p.blank}
+      help={
+        p.inApp && p.asking ? <InAppTriedNotice app={p.inApp} /> : undefined
+      }
       press={
         p.asking
           ? {

@@ -61,6 +61,7 @@ function stubSetup(
     recover: async () => {},
     pocket: noop,
     apply: null,
+    applyInApp: null,
     submitApply: async () => {},
     cancelApply: noop,
     ...over,

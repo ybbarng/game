@@ -5,6 +5,8 @@ import {
   browserName,
   DEMO_CANCEL,
   inAppBrowser,
+  inAppFailed,
+  inAppText,
   openOutside,
   passkeyBlocked,
   passkeyFailText,
@@ -58,14 +60,47 @@ describe("패스키 환경", () => {
     expect(browserName(WINDOWS_EDGE)).toBe("Safari나 Chrome으로");
   });
 
-  it("패스키를 못 쓰는 브라우저면 까닭과 할 일 한 문장, 쓸 수 있으면 null", () => {
-    expect(passkeyBlocked(IPHONE_KAKAO, true)).toBe(
+  it("WebAuthn이 없으면 까닭과 할 일 한 문장, 있으면 앱 안 브라우저라도 null(먼저 시도한다)", () => {
+    expect(passkeyBlocked(IPHONE_KAKAO, false)).toBe(
       "카카오톡 안에서는 패스키를 쓸 수 없어요. Safari로 열어 주세요.",
     );
     expect(passkeyBlocked(ANDROID_CHROME, false)).toContain(
       "이 브라우저는 패스키를 지원하지 않아요",
     );
+    expect(passkeyBlocked(IPHONE_KAKAO, true)).toBeNull();
     expect(passkeyBlocked(ANDROID_CHROME, true)).toBeNull();
+  });
+
+  it("앱 안 브라우저에서 브라우저가 낸 패스키 실패만 앱 이름으로 알린다", () => {
+    for (const name of [
+      "NotAllowedError",
+      "NotSupportedError",
+      "SecurityError",
+      "UnknownError",
+      "AbortError",
+    ])
+      expect(inAppFailed(new DOMException("x", name), IPHONE_KAKAO)).toBe(
+        "카카오톡",
+      );
+    // 앱 밖, 서버·연결 오류, 흉내 창 취소, 서버 응답 시간 초과는 세지 않는다
+    expect(
+      inAppFailed(new DOMException("x", "NotAllowedError"), MAC_SAFARI),
+    ).toBeNull();
+    expect(inAppFailed(new TypeError("Failed to fetch"), IPHONE_KAKAO)).toBe(
+      null,
+    );
+    expect(
+      inAppFailed(
+        new DOMException(DEMO_CANCEL, "NotAllowedError"),
+        IPHONE_KAKAO,
+      ),
+    ).toBeNull();
+    expect(
+      inAppFailed(new DOMException("x", "TimeoutError"), IPHONE_KAKAO),
+    ).toBeNull();
+    expect(inAppText("카카오톡", IPHONE_KAKAO)).toBe(
+      "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
+    );
   });
 
   it("기기에 맞는 잠금 이름을 붙이고, 이 기기 잠금을 못 쓰면 패스키로 한다", () => {
