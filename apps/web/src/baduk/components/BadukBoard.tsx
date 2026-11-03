@@ -41,6 +41,7 @@ export function BadukBoard({
   onPlace,
   owners,
   marks,
+  atari,
 }: {
   board: readonly Cell[];
   size: number;
@@ -58,6 +59,8 @@ export function BadukBoard({
   owners?: readonly Cell[] | null;
   /** 튜토리얼 그림의 표시(자리 → 글자, 예: "A"·"×") */
   marks?: Readonly<Record<number, string>>;
+  /** 단수(활로 하나)인 돌 자리. 빨간 테두리를 두른다 */
+  atari?: readonly number[] | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const view = size - 1 + BADUK_PAD * 2;
@@ -241,6 +244,25 @@ export function BadukBoard({
               strokeWidth={0.02}
             />
           </g>
+        );
+      })}
+
+      {/* 단수 표시: 돌 바깥에 빨간 테두리(마지막 수 고리는 돌 안쪽이라 겹치지 않는다) */}
+      {atari?.map((i) => {
+        if (board[i] === 0) return null;
+        const [cx, cy] = at(i);
+        return (
+          <circle
+            key={`a${i}`}
+            cx={cx}
+            cy={cy}
+            r={0.47}
+            fill="none"
+            stroke="#dc2626"
+            strokeWidth={0.08}
+            data-atari={pointName(i, size)}
+            pointerEvents="none"
+          />
         );
       })}
 

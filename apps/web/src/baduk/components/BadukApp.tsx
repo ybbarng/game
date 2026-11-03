@@ -203,6 +203,23 @@ function BadukOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">여러 판이면 판마다 흑백을 바꾼다</p>
       </Section>
+      <Section title="단수 표시">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip active={s.atariHint} onClick={() => s.set({ atariHint: true })}>
+            보이기
+          </Chip>
+          <Chip
+            active={!s.atariHint}
+            onClick={() => s.set({ atariHint: false })}
+          >
+            감추기
+          </Chip>
+        </div>
+        <p className="text-xs opacity-60">
+          활로가 하나 남은 돌(단수)에 빨간 테두리를 두른다. 따낼 돌과 달아날
+          돌이 한눈에 보인다
+        </p>
+      </Section>
       <p className="text-xs opacity-60">
         다함께 바둑도 여기서 고른 판 크기·덤·판 수·시간으로 방을 엽니다.
       </p>

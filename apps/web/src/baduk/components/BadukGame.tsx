@@ -2,6 +2,7 @@
 
 import {
   areaOwners,
+  atariStones,
   type BadukView,
   countArea,
   pointName,
@@ -24,7 +25,7 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
 import { countText } from "../kit";
-import { BADUK_LEVELS } from "../settings";
+import { BADUK_LEVELS, useBadukSettings } from "../settings";
 import { useBaduk } from "../store";
 import { BadukBoard } from "./BadukBoard";
 
@@ -116,6 +117,9 @@ export function BadukGame({
   const clearNotice = useBaduk((s) => s.clearNotice);
   const [aim, setAim] = useState<number | null>(null);
   const [counting, setCounting] = useState(false);
+  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다.
+  const [confirmResign, setConfirmResign] = useState(false);
+  const atariHint = useBadukSettings((s) => s.atariHint);
   const played = view?.played.length ?? 0;
 
   useEffect(() => {
@@ -126,7 +130,10 @@ export function BadukGame({
 
   // 수가 오가면 겨눈 자리를 푼다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다
-  useEffect(() => setAim(null), [played]);
+  useEffect(() => {
+    setAim(null);
+    setConfirmResign(false);
+  }, [played]);
 
   if (!view || !host) return null;
   const me = host.seat;
@@ -189,11 +196,30 @@ export function BadukGame({
     result === null ? null : result.seat === me ? "win" : "loss";
 
   // 판 끝 세기 결과나 "세어 보기"를 누르면 자리 주인을 판에 보인다.
+  // 상대가 쉬어 내가 쉬면 판이 끝나는 때도 미리 세어 보인다(죽은 돌을 남긴 채 쉬어 지는 일을 막는다).
+  const passEnds = opponentPassed && myTurn;
   const showOwners =
     (result?.kind === "score" && view.phase !== "play") ||
-    (counting && view.phase === "play");
+    ((counting || passEnds) && view.phase === "play");
   const owners = showOwners ? areaOwners(view.board) : null;
-  const liveCount = counting ? countArea(view.board, view.rules.komi) : null;
+  const liveCount =
+    counting || passEnds ? countArea(view.board, view.rules.komi) : null;
+  const passWins =
+    liveCount !== null &&
+    (myStone === 1
+      ? liveCount.black > liveCount.white
+      : liveCount.white > liveCount.black);
+  const atari =
+    atariHint && view.phase === "play" ? atariStones(view.board) : null;
+  const myAtari = myTurn && atari?.some((i) => view.board[i] === myStone);
+  if (view.phase === "play" && myTurn && aim === null) {
+    if (passEnds)
+      status = passWins
+        ? "상대가 쉬었어요 — 나도 쉬면 이대로 세어 이겨요"
+        : "상대가 쉬었어요 — 지금 쉬면 져요. 집 안 죽은 돌을 따냈나요?";
+    else if (myAtari)
+      status = "내 돌이 단수예요(빨간 테두리) — 달아나거나 이어 보세요";
+  }
 
   const gameOver = view.phase === "gameOver";
   const summaryParts = [
@@ -261,6 +287,7 @@ export function BadukGame({
           onAim={setAim}
           onPlace={(at) => submit({ type: "place", at })}
           owners={owners}
+          atari={atari}
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
@@ -299,7 +326,7 @@ export function BadukGame({
                 onClick={() => submit({ type: "pass" })}
                 className={cn(
                   "rounded-xl px-4 py-2",
-                  opponentPassed
+                  passEnds && passWins
                     ? "bg-amber-300 font-semibold text-black"
                     : "bg-white/10",
                 )}
@@ -319,15 +346,39 @@ export function BadukGame({
               세어 보기
             </button>
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myTurn) && (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                기권
-              </button>
-            )}
+            {(!online || myTurn) &&
+              (confirmResign ? (
+                <span className="flex w-full items-center justify-center gap-2">
+                  <span className="text-sm text-white/80">
+                    정말 기권할까요?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmResign(false);
+                      submit({ type: "resign" });
+                    }}
+                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
+                  >
+                    기권하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResign(false)}
+                    className="rounded-xl bg-white/10 px-4 py-2"
+                  >
+                    계속 두기
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmResign(true)}
+                  className="rounded-xl bg-white/10 px-4 py-2"
+                >
+                  기권
+                </button>
+              ))}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

@@ -109,6 +109,11 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await expect(page.getByRole("status")).toContainText("내 차례");
 
   await page.getByRole("button", { name: "기권" }).click();
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("baduk-end.png") });
@@ -167,6 +172,9 @@ test("바둑 배우기: 첫 단원 미션을 틀렸다가 다시 해서 백 한 
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "미션 시작" }).click();
   await expect(stones(page)).toHaveCount(4);
+  // 활로가 하나 남은 백 E5에 단수 표시(빨간 테두리)가 있다.
+  await expect(page.locator("[data-atari]")).toHaveCount(1);
+  await expect(page.locator('[data-atari="E5"]')).toHaveCount(1);
   await placeAt(page, "A1", touch);
   await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
     timeout: 10_000,
@@ -253,6 +261,7 @@ test("바둑: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
     timeout: 15_000,
   });
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   // 복기 기록이 실제로 쓰인 뒤에 떠난다.
   await page.waitForFunction(

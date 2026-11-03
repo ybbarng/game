@@ -18,6 +18,8 @@ interface BadukSettings {
   pick: StonePick;
   /** 개인 시간(기본 시간 + 초읽기) */
   time: TimePreset;
+  /** 활로가 하나 남은(단수) 돌을 판에 빨간 테두리로 보인다. 화면 도움일 뿐 규칙과 상관없다 */
+  atariHint: boolean;
   set(patch: Partial<Omit<BadukSettings, "set">>): void;
 }
 
@@ -31,6 +33,7 @@ export const useBadukSettings = create<BadukSettings>()(
       level: 0,
       pick: "black",
       time: "none",
+      atariHint: true,
       set: (patch) => set(patch),
     }),
     {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   areaOwners,
   areaScore,
+  atariStones,
   boardHash,
   type Cell,
   emptyBoard,
@@ -167,5 +168,38 @@ describe("자리 세기(Tromp-Taylor)", () => {
     c[40] = 2;
     expect(boardHash(a)).toBe(boardHash(emptyBoard(9)));
     expect(new Set([boardHash(a), boardHash(b), boardHash(c)]).size).toBe(3);
+  });
+});
+
+describe("단수 표시", () => {
+  it("활로가 하나 남은 무리의 돌을 흑백 모두 찾는다", () => {
+    // 백 A9: 활로 A8 하나. 흑 B9·C9: 활로 C8 하나. 백 D9·B8은 활로가 둘 이상이다
+    const board = draw([
+      "OXXO.....",
+      ".O.......",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+    ]);
+    expect(atariStones(board)).toEqual([0, 1, 2]);
+  });
+
+  it("빈 판과 활로가 넉넉한 돌은 없다", () => {
+    const board = draw([
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+      "....X....",
+      ".........",
+      ".........",
+      ".........",
+      ".........",
+    ]);
+    expect(atariStones(board)).toEqual([]);
   });
 });

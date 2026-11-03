@@ -111,6 +111,19 @@ export function groupOf(
   return { stones, liberties: [...libs] };
 }
 
+/** 단수(활로가 하나 남은 무리)인 돌 자리 전부. 흑백 모두. 화면의 단수 표시가 쓴다 */
+export function atariStones(board: Board): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (let i = 0; i < board.length; i++) {
+    if (!board[i] || seen.has(i)) continue;
+    const g = groupOf(board, i);
+    for (const s of g.stones) seen.add(s);
+    if (g.liberties.length === 1) out.push(...g.stones);
+  }
+  return out.sort((a, b) => a - b);
+}
+
 export type PlaceError = "occupied" | "suicide";
 
 /**
