@@ -18,7 +18,16 @@ import { OPEN_SKIES } from "./sky-ids";
  */
 export type GalaxyLength = "short" | "standard" | "long";
 
+/**
+ * 규칙 판 번호. 숫자 표(이용료·차례 수·자산 계산 등)를 바꾸면 올린다.
+ * 옛 판 기록을 새 숫자로 다시 두면 결과가 달라지므로, 판 번호가 다른 기록은 다시 두지 않는다.
+ * 2: 2026-11-04 재미 개선(docs/48 3-6). 문자열 머리 `g2-`
+ */
+export const GALAXY_EDITION = 2;
+
 export interface GalaxyRules {
+  /** 규칙 판 번호(`GALAXY_EDITION`) */
+  edition: typeof GALAXY_EDITION;
   players: 2 | 3 | 4;
   length: GalaxyLength;
   trade: boolean;
@@ -29,6 +38,7 @@ export interface GalaxyRules {
 }
 
 export const STANDARD_RULES: GalaxyRules = {
+  edition: GALAXY_EDITION,
   players: 4,
   length: "standard",
   trade: true,
@@ -130,14 +140,14 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
 
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
- * 형식: `g1-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
+ * 형식: `g2-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
  *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본 `g1-4mtwr-seasons`, 짧은 판 2인 거래·제철·유성우 끔 `g1-2snn-seasons`, 빠른 시간이면 `g1-4mtwr-seasons-t1`.
+ * 예: 기본 `g2-4mtwr-seasons`, 짧은 판 2인 거래·제철·유성우 끔 `g2-2snn-seasons`, 빠른 시간이면 `g2-4mtwr-seasons-t1`.
  * 유성우의 밤을 더하기 전 문자열(r 없음)은 끈 판으로 읽힌다
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
-  return `g1-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
+  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 /**
@@ -148,9 +158,15 @@ export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
   const match =
-    /^g1-([234])([sml])([tn])([wn])(r?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
+    /^g2-([234])([sml])([tn])([wn])(r?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
       text.trim(),
     );
+  if (!match && /^g1-/.test(text.trim()))
+    return {
+      ok: false,
+      reason:
+        "옛 규칙으로 만든 판이에요. 화면을 새로 고친 뒤 다시 만들어 주세요",
+    };
   if (!match)
     return { ok: false, reason: "은하 한 바퀴 규칙 문자열 형식이 아니에요" };
   const [, players, length, trade, seasonal, meteor, sky, tail] = match;
@@ -164,6 +180,7 @@ export function decodeGalaxyRules(
   return {
     ok: true,
     rules: {
+      edition: GALAXY_EDITION,
       players: Number(players) as 2 | 3 | 4,
       length: lengthName,
       trade: trade === "t",

@@ -128,6 +128,14 @@ describe("돈 합과 다시 두기", () => {
     const again = replay(STANDARD_RULES, 1, BOARD, log);
     expect(again.ok).toBe(true);
     if (again.ok) expect(again.state).toEqual(state);
+    // 판 번호가 다른(옛 규칙) 기록은 지금 숫자로 다시 두지 않는다
+    const old = replay(
+      { ...STANDARD_RULES, edition: 1 as unknown as 2 },
+      1,
+      BOARD,
+      log,
+    );
+    expect(old.ok).toBe(false);
   });
 
   it("긴 판 3인에서도 돈 합이 맞다", () => {

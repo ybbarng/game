@@ -46,6 +46,7 @@ import {
 } from "./dice";
 import {
   endsOnFirstBankrupt,
+  GALAXY_EDITION,
   type GalaxyRules,
   meteorFor,
   NUMBERS,
@@ -1746,6 +1747,13 @@ export function replay(
 ):
   | { ok: true; state: GalaxyState }
   | { ok: false; index: number; error: string } {
+  // 판 번호가 다른 기록은 지금 숫자 표로 다시 두면 결과가 달라진다(rules.ts GALAXY_EDITION)
+  if (rules.edition !== GALAXY_EDITION)
+    return {
+      ok: false,
+      index: 0,
+      error: "옛 규칙으로 둔 판이라 다시 볼 수 없어요",
+    };
   let { state } = createMatch(rules, seed, board);
   for (const [index, entry] of log.entries()) {
     const result = step(state, entry.seat, entry.action);

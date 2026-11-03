@@ -1,5 +1,6 @@
 import {
   DEFAULT_SKY,
+  GALAXY_EDITION,
   type GalaxyLength,
   type GalaxyRules,
   NUMBERS,
@@ -23,6 +24,7 @@ export function rulesFromSettings(
   },
 ): GalaxyRules {
   return {
+    edition: GALAXY_EDITION,
     players: s.players,
     length: s.length,
     trade: s.trade,
