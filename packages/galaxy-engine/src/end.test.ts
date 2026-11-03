@@ -60,7 +60,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
         ...[9, 10, 11].map((square) => ({ square, owner: 0, level: 3 })),
       ],
     });
-    expect(state.debt?.amount).toBe(290);
+    expect(state.debt?.amount).toBe(350);
     const plan = debtPlan(state);
     expect(plan.map((a) => a.type)).toEqual([
       "sell",
@@ -74,7 +74,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
     let s = state;
     for (const action of plan) s = must(s, 0, action).state;
     expect(s.phase).toBe("turn");
-    expect(s.cash[0]).toBe(270 + 90 - 290);
+    expect(s.cash[0]).toBe(270 + 90 - 350);
     expect(debtPlan(s)).toEqual([]);
   });
 

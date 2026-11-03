@@ -823,10 +823,20 @@ function applyCard(
         about,
       );
     }
-    case 10:
-      shown([]);
-      jumpTo(s, seat, BASE, true, events);
-      return land(s, seat, link, events);
+    case 10: {
+      const squares = ownedFact(s, seat, "near");
+      shown(squares);
+      pay(
+        s,
+        events,
+        BANK,
+        seat,
+        CARD_AMOUNTS.near * squares.length,
+        "card",
+        about,
+      );
+      return "done";
+    }
     case 11:
       shown([]);
       sendToAsteroid(s, seat, "card", events);
@@ -846,9 +856,11 @@ function applyCard(
       return "done";
     }
     case 13:
+      // 관측지로 옮기기만 한다(관측 지원금 없음, bench: 지원금까지 주면 평균 이득이 ±60을 넘었다)
       shown([]);
       jumpTo(s, seat, OBSERVATORY, true, events);
-      return land(s, seat, link, events);
+      events.push({ type: "landed", seat, square: OBSERVATORY });
+      return "done";
     case 14: {
       shown([]);
       const side = sideOf(s.positions[seat] as number) ?? 0;
