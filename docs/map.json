@@ -151,6 +151,26 @@
       ]
     },
     {
+      "id": "platform-bot-worker",
+      "title": "컴퓨터 계산을 웹 워커로",
+      "parent": "platform",
+      "status": "building",
+      "size": 2,
+      "summary": "컴퓨터 수를 워커에서 세어 생각하는 동안 화면·시계가 멈추지 않게. 대국·방장 대신 두기·힌트·체스/장기 문제는 옮겼고, 다시 보기 해설과 참가자 판 끝 검증이 남았다",
+      "since": "2026-11-03",
+      "found": "2026-11-03",
+      "links": [
+        {
+          "label": "워커 구조(체스 8절)",
+          "path": "docs/26-chess.md"
+        },
+        {
+          "label": "남은 일",
+          "path": "docs/06-backlog.md"
+        }
+      ]
+    },
+    {
       "id": "platform-tests",
       "title": "시험 믿음성(flaky 없애기)",
       "parent": "platform",
