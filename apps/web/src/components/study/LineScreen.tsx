@@ -106,6 +106,8 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
   };
 
   // 상대 차례면 수순의 수를 저절로 둔다.
+  // 기다리는 상태로 바뀌었거나 판·자리가 바뀔 때만 다시 건다(다른 까닭으로 다시 그려도 기다림이 처음부터 시작하지 않게).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: playNode는 같은 판·자리를 쓰는 함수라 이 셋으로 충분하다
   useEffect(() => {
     if (status !== "waiting") return;
     const timer = setTimeout(() => {
@@ -115,7 +117,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
       if (node && move) playNode(node, move, false);
     }, REPLY_MS);
     return () => clearTimeout(timer);
-  });
+  }, [status, state, cursor]);
 
   const restart = () => {
     setState(rules.initial());
