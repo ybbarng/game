@@ -33,7 +33,7 @@ export function solutionMove(puzzle: ChessPuzzle): Move {
 }
 
 /**
- * 내 수를 판정한다. 전술 문제는 정답 수만 맞다.
+ * 내 수를 판정한다. 전술·끝내기 문제는 정답 수만 맞다.
  * 메이트 문제의 마지막 수는 메이트면 어느 수든 정답, 그 앞 수는 문제의 정답 수만
  */
 export function judgeMove(
@@ -42,7 +42,7 @@ export function judgeMove(
   move: Move,
   step: number,
 ): "solved" | "next" | "wrong" {
-  if (puzzle.kind === "tactic")
+  if (puzzle.kind !== "mate")
     return sameMove(move, solutionMove(puzzle)) ? "solved" : "wrong";
   if (isCheckmate(applyMove(state.position, move))) return "solved";
   if (step >= puzzle.mateIn - 1) return "wrong";
@@ -117,5 +117,38 @@ export function explainMate(pos: Position, move: Move): string[] {
   for (const [who, squares] of guarded)
     lines.push(`킹이 피할 ${squares.join("·")}는 ${subj(who)} 노린다`);
   lines.push("막거나 잡을 수도 없어 체크메이트다");
+  return lines;
+}
+
+/**
+ * 킹과 폰 끝내기 해설: 왜 이 킹 수만 이기고 폰부터 밀면 비기나.
+ * 승패표(`kpk.ts`)로 판단해 문제 데이터와 어긋나지 않는다
+ */
+export function explainEndgame(pos: Position, move: Move): string[] {
+  const after = applyMove(pos, move);
+  const wk = kingOf(after.board, "w");
+  const bk = kingOf(after.board, "b");
+  const [wx, wy] = [wk % 8, Math.floor(wk / 8)];
+  const [bx, by] = [bk % 8, Math.floor(bk / 8)];
+  const lines = [
+    `킹을 ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이긴다`,
+  ];
+  const facing =
+    (wx === bx && Math.abs(wy - by) === 2) ||
+    (wy === by && Math.abs(wx - bx) === 2);
+  if (facing)
+    lines.push(
+      "킹끼리 한 칸 띄우고 마주 섰다(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아간다",
+    );
+  else
+    lines.push(
+      "백 킹이 폰 앞쪽 중요한 칸으로 먼저 간다. 흑 킹은 폰 앞을 막지 못하고 밀려난다",
+    );
+  const pawn = pos.board.findIndex((c) => c === "wP");
+  const push = sanToMove(pos, squareName(pawn - 8));
+  if (push)
+    lines.push(
+      `폰부터 밀면(${moveToSan(pos, push)}) 흑 킹이 폰 앞을 막아 비긴다. 킹이 앞서고 폰은 뒤따라간다`,
+    );
   return lines;
 }

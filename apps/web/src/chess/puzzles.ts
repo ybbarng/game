@@ -11,13 +11,18 @@ import { TACTIC_NAMES, type Tactic } from "./tactics";
  * 문제 하나. 늘 백이 둘 차례다.
  * - mate: `mateIn`수 만에 메이트. 마지막 수는 메이트면 어느 수든 정답이다
  * - tactic: 포크·핀·스큐어·발견 공격으로 기물을 얻는 수. 정답 수 하나뿐
+ * - endgame: 킹과 폰 끝내기에서 이기는 수. 정답 수 하나뿐(킹+폰 대 킹 승패표 `kpk.ts`로 확인)
  */
 export type ChessPuzzle = {
   id: string;
   fen: string;
   /** 첫 정답 수(SAN) */
   solution: string;
-} & ({ kind: "mate"; mateIn: 1 | 2 } | { kind: "tactic"; tactic: Tactic });
+} & (
+  | { kind: "mate"; mateIn: 1 | 2 }
+  | { kind: "tactic"; tactic: Tactic }
+  | { kind: "endgame" }
+);
 
 export interface ChessPuzzleSet {
   id: string;
@@ -69,6 +74,24 @@ const MATE_IN_TWO: readonly Raw[] = [
   { fen: "4N1k1/6pp/8/8/4Q3/4N2P/K3P3/8 w - - 0 30", solution: "Qe7" },
   { fen: "k7/pp5n/8/8/1Q4B1/4P3/7P/1K6 w - - 0 30", solution: "Bf3" },
   { fen: "1k6/p3p3/1pR5/1Q6/1P3P2/8/2K5/8 w - - 0 30", solution: "Qa6" },
+];
+
+/*
+ * 킹과 폰 끝내기(2026-11-03): 킹+폰 대 킹 승패표(`kpk.ts`)로 "이기는 수가 킹 수 하나뿐이고,
+ * 폰부터 밀면 비기는" 판을 찾아 골랐다. kpk.test.ts가 모든 문제를 다시 확인한다.
+ */
+const KING_AND_PAWN: readonly Raw[] = [
+  // 맞서기(옵포지션): 킹끼리 한 칸 띄우고 마주 서서 흑 킹을 비키게 한다
+  { fen: "3k4/8/8/2K1P3/8/8/8/8 w - - 0 50", solution: "Kd6" },
+  { fen: "8/8/3k4/8/8/3PK3/8/8 w - - 0 50", solution: "Kd4" },
+  { fen: "8/8/5k2/8/8/4PK2/8/8 w - - 0 50", solution: "Kf4" },
+  // 킹이 폰보다 먼저: 폰 앞 칸을 킹이 차지한다
+  { fen: "8/8/2k5/4K3/3P4/8/8/8 w - - 0 50", solution: "Ke6" },
+  { fen: "8/8/2k5/4P3/4K3/8/8/8 w - - 0 50", solution: "Kf5" },
+  { fen: "5k2/8/7K/5P2/8/8/8/8 w - - 0 50", solution: "Kg6" },
+  // 돌아 나가기: 흑 킹을 옆으로 밀어내며 앞으로
+  { fen: "8/3k4/8/5P2/5K2/8/8/8 w - - 0 50", solution: "Kg5" },
+  { fen: "8/8/8/4k3/8/6P1/7K/8 w - - 0 50", solution: "Kh3" },
 ];
 
 /*
@@ -159,6 +182,17 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
       id: `mate2-${i + 1}`,
       kind: "mate",
       mateIn: 2,
+      ...p,
+    })),
+  },
+  {
+    id: "king-pawn",
+    title: "킹과 폰",
+    summary:
+      "폰 하나로 이기는 끝내기. 폰부터 밀면 비긴다. 킹을 먼저 앞세우는 한 수를 찾는다",
+    puzzles: KING_AND_PAWN.map((p, i) => ({
+      id: `king-pawn-${i + 1}`,
+      kind: "endgame" as const,
       ...p,
     })),
   },
