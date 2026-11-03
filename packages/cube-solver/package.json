@@ -1,0 +1,13 @@
+{
+  "name": "@game/cube-solver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "큐브 해법기 — 2×2 최적 해, 3×3 2단계 해법. 순수 함수, 외부 의존성 없음",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

@@ -43,6 +43,7 @@ COPY packages/stardraw-core/package.json packages/stardraw-core/
 COPY packages/stardraw-cli/package.json packages/stardraw-cli/
 COPY packages/puzzle-core/package.json packages/puzzle-core/
 COPY packages/cube-engine/package.json packages/cube-engine/
+COPY packages/cube-solver/package.json packages/cube-solver/
 # lefthook 같은 개발용 설치 스크립트는 돌리지 않는다
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
