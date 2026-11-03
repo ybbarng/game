@@ -10,6 +10,7 @@ import {
   PLL_PARITY_TEXT,
   type ReductionSolution,
   type ReductionStageId,
+  ReductionStuckError,
   solveReductionState,
   threeParity,
   toThreeFacelets,
@@ -59,11 +60,58 @@ export function liftMove(n: number, m: CubeMove): CubeMove {
 const reductionCache = new Map<string, ReductionSolution>();
 const REDUCTION_CACHE_SIZE = 8;
 
+/**
+ * 축소법이 막히면(`ReductionStuckError`) 이 차례로 큐브를 돌려 쥐고 다시 푼다. 처음은 쥔
+ * 그대로. 돌려 쥐면 축소법이 보는 면 차례가 바뀌어(5×5는 정가운데 색이 따라 돈다, 4×4는 흰
+ * 면을 늘 위로 맞추므로 옮길 조각이 달라진다) 공식 고르기가 다른 길로 간다. 사람이 막혔을
+ * 때 큐브를 돌려 다른 면부터 보는 것과 같다. 차례가 정해져 있어 같은 상태면 늘 같은 해다.
+ */
+export const REGRIPS: readonly string[] = ["", "y", "x", "x'", "y2", "x2"];
+
+/** 돌려 쥔 수를 축소법 해의 맨 앞(첫 단계 안)에 붙인다 */
+function withGrip(grip: string, red: ReductionSolution): ReductionSolution {
+  if (!grip) return red;
+  return {
+    moves: red.moves ? `${grip} ${red.moves}` : grip,
+    stages: red.stages.map((st, i) => ({
+      ...st,
+      from: i === 0 ? 0 : st.from + 1,
+      to: st.to + 1,
+    })),
+  };
+}
+
+/**
+ * 축소법으로 풀되, 막히면 `REGRIPS` 차례로 돌려 쥐고 다시 해 본다. 모두 막히면 마지막
+ * `ReductionStuckError`를 그대로 던져 화면이 잡게 한다. 막힘이 아닌 오류는 바로 던진다.
+ * `solve`는 시험에서 막힘을 일으키려고 바꿔 넣는다.
+ */
+export function reduceWithRegrip(
+  n: number,
+  state: PuzzleState,
+  solve: (
+    n: number,
+    state: PuzzleState,
+  ) => ReductionSolution = solveReductionState,
+): ReductionSolution {
+  let stuck: ReductionStuckError | undefined;
+  for (const grip of REGRIPS) {
+    const start = grip ? applyMoves(n, state, parseMoves(n, grip)) : state;
+    try {
+      return withGrip(grip, solve(n, start));
+    } catch (e) {
+      if (!(e instanceof ReductionStuckError)) throw e;
+      stuck = e;
+    }
+  }
+  throw stuck;
+}
+
 function reduction(n: number, state: PuzzleState): ReductionSolution {
   const key = `${n}:${faceColors(n, state).join("")}`;
   const hit = reductionCache.get(key);
   if (hit) return hit;
-  const red = solveReductionState(n, state);
+  const red = reduceWithRegrip(n, state);
   reductionCache.set(key, red);
   if (reductionCache.size > REDUCTION_CACHE_SIZE) {
     reductionCache.delete(reductionCache.keys().next().value as string);
