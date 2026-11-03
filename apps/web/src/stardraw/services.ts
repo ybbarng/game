@@ -19,6 +19,7 @@ import {
 } from "./local-ledger";
 import { RemoteLedger } from "./remote-ledger";
 import { browserTokenStore, RemoteConfirmRelay } from "./remote-relay";
+import { instrument, markReal } from "./sd-track";
 import {
   createDemoWallet,
   createWallet,
@@ -117,6 +118,11 @@ export function getServices(ns: string = GAME_NS): Services {
     ledger,
     practice,
   };
+  // 사이트 통계는 실제 게임(서버 장부)에서만(docs/33 11절). 연습 장부·데모는 보내지 않는다
+  if (useServer) {
+    markReal(ns);
+    instrument(ns, services.wallet, ledger);
+  }
   cache.set(ns, services);
   return services;
 }

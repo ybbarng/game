@@ -18,7 +18,8 @@ import { useNoPullRefresh } from "@/game/no-pull-refresh";
 import { cn } from "@/lib/cn";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
 import { useChunkErrorReload, useStaleBuild } from "@/stardraw/stale-build";
-import { track } from "@/stats/track";
+import { skipNextPageview } from "@/stats/analytics";
+import type { SdView, SdWhere } from "@/stats/track";
 import { astronautOf } from "../astronaut/identity";
 import { type CheckSession, isActive } from "../checks";
 import { errorText } from "../errors";
@@ -34,6 +35,7 @@ import { ensureRegistered } from "../registrar";
 import { myRank, prizeEligible, RANK_RULE, winnerCounts } from "../results";
 import { savedPass } from "../room-client";
 import { cadenceOf, roundShort, roundTitle } from "../round-label";
+import { setWhere, trackArrival, trackKeyEnv, trackView } from "../sd-track";
 import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
 import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
 import type { KeyInfo, MyTicket } from "../wallet";
@@ -390,6 +392,52 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
       setNowMode({ kind: "observe", round });
     } else go({ name: "draw", round });
   };
+  /**
+   * 사이트 통계(docs/33 11절, 실제 게임만 보낸다: sd-track.ts). 지금 화면 이름을 적고, 주소(경로)가 바뀌지 않는
+   * 화면은 sd-view로 센다. 공지 링크 꼬리표와 패스키를 못 쓰는 브라우저는 장부를 받은 뒤 한 번
+   */
+  const sdScreen: SdWhere =
+    view.name === "now"
+      ? nowShown?.kind === "observe"
+        ? "observe"
+        : "predict"
+      : view.name === "link"
+        ? "other"
+        : view.name;
+  /** 지금 회차 화면이 예측인지 관측인지 정해졌는지(정하기 전에는 세지 않는다) */
+  const nowKnown = view.name !== "now" || nowShown !== null;
+  /** 예측서를 낸 직후의 접수증 화면은 세지 않는다(접수 시각과 방문을 맞춰 보지 못하게) */
+  const skipView = useRef(false);
+  const leaveAfterSubmit = () => {
+    skipView.current = true;
+    skipNextPageview();
+  };
+  useEffect(() => {
+    setWhere(sdScreen);
+  }, [sdScreen]);
+  useEffect(() => {
+    if (!services) return;
+    const counted: readonly SdWhere[] = [
+      "records",
+      "receipt",
+      "round",
+      "draw",
+      "predict",
+      "observe",
+    ];
+    if (!counted.includes(sdScreen)) return;
+    if (!nowKnown) return;
+    if (sdScreen === "receipt" && skipView.current) {
+      skipView.current = false;
+      return;
+    }
+    trackView(services.ns, sdScreen as SdView);
+  }, [sdScreen, services, nowKnown]);
+  useEffect(() => {
+    if (!services) return;
+    trackArrival(services.ns);
+    trackKeyEnv(services.ns);
+  }, [services]);
   /** 추첨을 아직 열어 보지 않은 내 회차(결과를 가린다, spoiler.ts) */
   const sealed: Sealed = services
     ? sealedFor(mine, opened, services.ledger)
@@ -655,10 +703,10 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
                 const m = { ticket, receivedAt };
                 services.wallet.addTicket(m);
                 setMine(services.wallet.loadTickets());
-                track("game-start", { game: "stardraw", mode: "solo" });
                 void refresh();
                 // 응모 화면 기록을 영수증으로 바꾼다: 뒤로가기는 응모 전 화면으로
                 const id = toHex(ticketId(ticket));
+                leaveAfterSubmit();
                 setPrinting(id);
                 go({ name: "receipt", id }, true);
               }}
@@ -674,10 +722,10 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
               const m = { ticket, receivedAt };
               services.wallet.addTicket(m);
               setMine(services.wallet.loadTickets());
-              track("game-start", { game: "stardraw", mode: "solo" });
               void refresh();
               // 응모 화면 기록을 영수증으로 바꾼다: 뒤로가기는 응모 전 화면으로
               const id = toHex(ticketId(ticket));
+              leaveAfterSubmit();
               setPrinting(id);
               go({ name: "receipt", id }, true);
             }}

@@ -3,7 +3,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createTutorialProgress } from "@/tutorial/progress";
 
-import { beforeSend, setAnalyticsOff, shouldSend } from "./analytics";
+import {
+  beforeSend,
+  SKIP_PAGEVIEW_MS,
+  setAnalyticsOff,
+  shouldSend,
+  skipNextPageview,
+  takeSkip,
+} from "./analytics";
 import { track } from "./track";
 
 const ON = { off: false, gpc: false, search: "" };
@@ -88,5 +95,69 @@ describe("사이트 통계: 끄기 스위치와 이벤트", () => {
         data: { game: "baduk", lesson: "liberties", first: false },
       },
     ]);
+  });
+});
+
+describe("하늘의 별 따기: 보내는 경로(docs/33 11절)", () => {
+  const at = (path: string) => ({ url: `https://game.byb.kr${path}` });
+
+  it("허용한 별 따기 경로만 보내고, 소속·입상 확인·국장 화면·데모와 새 경로는 보내지 않는다", () => {
+    for (const path of [
+      "/stardraw",
+      "/stardraw/",
+      "/stardraw/now",
+      "/stardraw/mine",
+      "/stardraw/rounds",
+      "/stardraw/about",
+      "/stardraw/privacy",
+    ])
+      expect(shouldSend(at(path), ON), path).toBe(true);
+    for (const path of [
+      "/stardraw/qualify",
+      "/stardraw/check",
+      "/stardraw/admin",
+      "/stardraw/demo",
+      "/stardraw/room",
+      "/stardraw/awards",
+      "/stardraw/new-page",
+    ])
+      expect(shouldSend(at(path), ON), path).toBe(false);
+    // 별 따기 밖은 그대로
+    expect(shouldSend(at("/omok"), ON)).toBe(true);
+    expect(shouldSend(at("/stardrawing"), ON)).toBe(true);
+  });
+
+  it("보내지 않는 별 따기 경로에서 왔으면 참조 주소를 지운다(바깥 사이트 참조는 그대로)", () => {
+    const fromCheck = { url: "/stardraw/rounds", referrer: "/stardraw/check" };
+    expect(beforeSend("event", fromCheck)).toEqual({
+      url: "/stardraw/rounds",
+      referrer: "",
+    });
+    const fromQualify = {
+      url: "/stardraw",
+      referrer: "https://game.byb.kr/stardraw/qualify",
+    };
+    expect(beforeSend("event", fromQualify)).toMatchObject({ referrer: "" });
+    const outside = {
+      url: "/stardraw",
+      referrer: "https://example.com/stardraw/check",
+    };
+    expect(beforeSend("event", outside)).toBe(outside);
+    const fromHome = { url: "/stardraw/now", referrer: "/stardraw" };
+    expect(beforeSend("event", fromHome)).toBe(fromHome);
+  });
+
+  it("예측서를 낸 직후의 페이지 보기 하나만 버리고, 이벤트와 정해 둔 시간 뒤의 보기는 보낸다", () => {
+    skipNextPageview(1000);
+    // 이벤트(name 있음)는 건너뛰기와 상관없다
+    expect(takeSkip({ url: "/stardraw/mine", name: "sd-view" }, 1100)).toBe(
+      false,
+    );
+    expect(takeSkip({ url: "/stardraw/mine" }, 1300)).toBe(true);
+    // 하나만
+    expect(takeSkip({ url: "/stardraw" }, 1400)).toBe(false);
+    // 스크립트가 없어 보기가 오지 않았으면 시간이 지나면 풀린다
+    skipNextPageview(2000);
+    expect(takeSkip({ url: "/stardraw" }, 2000 + SKIP_PAGEVIEW_MS)).toBe(false);
   });
 });

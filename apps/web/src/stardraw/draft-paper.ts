@@ -1,3 +1,5 @@
+import { trackPredictStart } from "./sd-track";
+
 /**
  * 쓰다 만 예측서(2026-11-02 사용자): 고르는 동안 고른 별을 이 기기에 저장해 두었다가, 마감으로 내지 못했거나 화면을
  * 닫았으면 다음에 예측하러 왔을 때 「바구니에 담아 둔 별」로 불러올 수 있게 한다. 마킹도 제출도 하지 않은 별이다.
@@ -31,7 +33,12 @@ export function loadDraft(
   }
 }
 
+/**
+ * 고른 별이 바뀔 때마다 부른다(사람이 고친 뒤에만). 그 회차에 처음 별이 담기면 예측 시작으로 센다(sd-track.ts,
+ * 실제 게임만)
+ */
 export function saveDraft(ns: string, paper: DraftPaper): void {
+  trackPredictStart(ns, paper.round, paper.numbers.length);
   try {
     if (paper.numbers.length === 0) localStorage.removeItem(key(ns));
     else localStorage.setItem(key(ns), JSON.stringify(paper));
