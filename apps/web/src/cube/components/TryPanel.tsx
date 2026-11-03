@@ -73,6 +73,7 @@ export function TryPanel({
       if (nextSeed !== undefined) setSeed(nextSeed);
       live.current.state = s;
       setState(s);
+      live.current.history = [];
       setHistory([]);
       setPassed(false);
       setHints(0);
@@ -87,7 +88,8 @@ export function TryPanel({
       const next = applyMove(n, c.state, move);
       c.state = next;
       setState(next);
-      setHistory((h) => [...h, move]);
+      c.history = [...c.history, move];
+      setHistory(c.history);
       if (!c.passed && goalMet(n, next, goal)) {
         c.passed = true;
         setPassed(true);
@@ -108,7 +110,8 @@ export function TryPanel({
         const back = invertMove(lastMove);
         c.state = applyMove(n, c.state, back);
         setState(c.state);
-        setHistory((h) => h.slice(0, -1));
+        c.history = c.history.slice(0, -1);
+        setHistory(c.history);
         return back;
       }
       if (cmd === "reset") restart();

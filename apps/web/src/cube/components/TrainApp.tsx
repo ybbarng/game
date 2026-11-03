@@ -107,6 +107,7 @@ export function TrainApp() {
     live.current.phase = "ready";
     setCur({ c, t });
     setState(t.state);
+    live.current.history = [];
     setHistory([]);
     setPhase("ready");
     setResult(null);
@@ -130,7 +131,8 @@ export function TrainApp() {
     const next = applyMove(n, c.state, move);
     c.state = next;
     setState(next);
-    setHistory((h) => [...h, move]);
+    c.history = [...c.history, move];
+    setHistory(c.history);
     if (c.phase === "ready" && countsAsMove(n, move)) {
       c.phase = "solving";
       c.startedAt = performance.now();
@@ -139,9 +141,7 @@ export function TrainApp() {
     }
     if (c.phase === "solving" && goalMet(n, next, c.cur.t.goal)) {
       const ms = Math.round(performance.now() - c.startedAt);
-      const moves = [...c.history, move].filter((m) =>
-        countsAsMove(n, m),
-      ).length;
+      const moves = c.history.filter((m) => countsAsMove(n, m)).length;
       c.phase = "done";
       setPhase("done");
       setResult({ ms, moves });
@@ -169,7 +169,8 @@ export function TrainApp() {
         const back = invertMove(lastMove);
         c.state = applyMove(c.cur.t.n, c.state, back);
         setState(c.state);
-        setHistory((h) => h.slice(0, -1));
+        c.history = c.history.slice(0, -1);
+        setHistory(c.history);
         return back;
       }
       if (cmd === "scramble") nextCase();
@@ -178,6 +179,7 @@ export function TrainApp() {
         c.state = c.cur.t.state;
         c.phase = "ready";
         setState(c.state);
+        live.current.history = [];
         setHistory([]);
         setPhase("ready");
         setResult(null);
@@ -269,7 +271,7 @@ export function TrainApp() {
               <>
                 <div className="flex w-full flex-wrap items-baseline justify-center gap-x-5 gap-y-1">
                   <span className="font-mono font-semibold text-4xl tabular-nums">
-                    {formatMs(elapsed)}
+                    {phase === "gaveUp" ? "-" : formatMs(elapsed ?? 0)}
                   </span>
                   <span className="text-sm text-white/70">
                     수{" "}

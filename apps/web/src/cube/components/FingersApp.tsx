@@ -357,7 +357,7 @@ function LapChart({
   const max = Math.max(1, ...values);
   return (
     <div
-      className="flex h-28 items-end gap-1 rounded-lg bg-white/5 p-2"
+      className="flex h-28 items-stretch gap-1 rounded-lg bg-white/5 p-2"
       role="img"
       aria-label={`반복마다 초당 수: ${values.map((v) => v.toFixed(1)).join(", ")}`}
     >
