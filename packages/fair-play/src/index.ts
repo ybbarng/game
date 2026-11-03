@@ -10,6 +10,7 @@ export * from "./hearts-table";
 export * from "./host-table";
 export * from "./hwatu-table";
 export * from "./messages";
+export * from "./onecard-host";
 export * from "./onecard-table";
 export * from "./proof";
 export * from "./protocol";

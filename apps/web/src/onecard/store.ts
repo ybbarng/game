@@ -4,7 +4,6 @@ import {
   type GameEvent,
   isAttackCard,
   type OnecardRules,
-  type OnecardSetup,
   type OnecardState,
   type OnecardView,
   rankOf,
@@ -15,12 +14,12 @@ import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { KitBot } from "@/game/kit";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
 import { playUiCue } from "@/game/ui-sound";
-import { ArchiveRecorder } from "@/review/recorder";
-import { StatsRecorder } from "@/stats/recorder";
+import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
+import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 
 import { onecardBotFor, toKitBot } from "./bots";
-import { onecardKit } from "./kit";
+import { type OnecardExtra, onecardKit } from "./kit";
 
 export type OnecardLocalMatch = LocalMatch<
   OnecardRules,
@@ -28,13 +27,13 @@ export type OnecardLocalMatch = LocalMatch<
   OnecardView,
   Action,
   GameEvent,
-  OnecardSetup
+  OnecardExtra
 >;
 export type OnecardHost = MatchHost<OnecardView, Action, GameEvent> & {
   drain(): Snapshot<OnecardView, GameEvent>[];
 };
 
-export type OnecardSaved = SavedMatch<OnecardRules, Action, OnecardSetup> & {
+export type OnecardSaved = SavedMatch<OnecardRules, Action, OnecardExtra> & {
   level: number;
 };
 
@@ -136,7 +135,13 @@ export function cuesFor(
 
 interface OnecardStore {
   host: OnecardHost | null;
+  /** 혼자 할 때만: 저장에 쓴다 */
   local: OnecardLocalMatch | null;
+  /** 온라인 대국이면 자리 이름 */
+  seatNames: string[] | null;
+  reconnecting: boolean;
+  hostLeft: boolean;
+  offlineSeats: number[];
   view: OnecardView | null;
   /** 마지막으로 보인 걸음의 사건 */
   events: GameEvent[];
@@ -149,6 +154,18 @@ interface OnecardStore {
   newGame(options: { rules: OnecardRules; level: number; seed?: number }): void;
   resume(saved: OnecardSaved): void;
   /**
+   * 온라인 방의 대국을 붙인다(저장 없음). `claim`은 "원카드!"를 방 청구 통로(`room.claims`)로 보내는 함수다.
+   * 온라인에서는 외침이 엔진 행동이 아니라 모두에게 직접 가는 청구다(docs/43 7-1)
+   */
+  attachOnline(
+    host: OnecardHost,
+    seatNames: string[],
+    stats: StatsTarget,
+    claim: (seen: number) => boolean,
+    archive?: ArchiveTarget,
+  ): void;
+  setSeatNames(seatNames: string[]): void;
+  /**
    * 튜토리얼 연습 판. 장면 상태(`initialState`)가 있으면 거기서, 없으면 `rules`로 처음부터.
    * 컴퓨터는 넘겨받은 것(장면 대본 또는 실전 컴퓨터)을 쓴다
    */
@@ -158,6 +175,8 @@ interface OnecardStore {
     bot: KitBot<OnecardView, Action, GameEvent>;
   }): void;
   submit(action: Action): SubmitResult;
+  /** 가운데 더미 치기. 혼자 하기는 바로 행동으로, 온라인은 청구로 */
+  shout(seen: number): void;
   /** 혼자 하기를 그만두고 지금 순위로 끝낸다 */
   resign(): void;
   leave(): void;
@@ -165,6 +184,8 @@ interface OnecardStore {
 }
 
 let unsubscribe: (() => void) | null = null;
+/** 온라인 방의 청구 보내기(혼자 하기면 null) */
+let claimShout: ((seen: number) => boolean) | null = null;
 
 function stop(): void {
   unsubscribe?.();
@@ -176,37 +197,36 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     for (let i = 0; i < times; i++) setTimeout(() => playUiCue(cue), i * 160);
   };
 
-  const attachLocal = (
-    local: OnecardLocalMatch,
-    level: number,
-    seed: number,
+  const attach = (
+    host: OnecardHost,
+    options: {
+      local: OnecardLocalMatch | null;
+      level: number;
+      seatNames: string[] | null;
+      stats: StatsTarget;
+      archive?: ArchiveTarget;
+    },
   ) => {
     stop();
+    const { local, level } = options;
     if (get().local !== local) get().local?.dispose();
-    const key = `solo:${seed}`;
-    const recorder = new StatsRecorder(onecardKit.stats, {
-      game: "onecard",
-      mode: "solo",
-      key,
-    });
-    const archiver = new ArchiveRecorder(onecardKit.stats, {
-      game: "onecard",
-      mode: "solo",
-      key,
-      seat: local.seat,
-      seatNames: null,
-      source: () => {
-        const saved = local.save();
-        return { rules: saved.rules, seed: saved.seed, log: saved.log };
-      },
-    });
-    const persist = () => saveOnecard({ ...local.save(), level });
-    const first = local.drain();
+    const recorder = new StatsRecorder(onecardKit.stats, options.stats);
+    const archiver = options.archive
+      ? new ArchiveRecorder(onecardKit.stats, options.archive)
+      : null;
+    const persist = () => {
+      if (local) saveOnecard({ ...local.save(), level });
+    };
+    const first = host.drain();
     set({
-      host: local,
+      host,
       local,
       level,
-      view: local.current(),
+      seatNames: options.seatNames,
+      reconnecting: false,
+      hostLeft: false,
+      offlineSeats: [],
+      view: host.current(),
       events: first.flatMap((s) => s.events),
       eventSeq: get().eventSeq + 1,
       notice: null,
@@ -215,24 +235,50 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     persist();
     for (const snapshot of first) {
       recorder.observe(snapshot);
-      archiver.observe(snapshot);
+      archiver?.observe(snapshot);
     }
     cuesFor(
       first.flatMap((s) => s.events),
-      local.seat,
-      local.current().rules,
+      host.seat,
+      host.current().rules,
       playCue,
     );
-    unsubscribe = local.subscribe((snapshot) => {
+    unsubscribe = host.subscribe((snapshot) => {
       persist();
       recorder.observe(snapshot);
-      archiver.observe(snapshot);
+      archiver?.observe(snapshot);
       set({
         view: snapshot.view,
         events: snapshot.events,
         eventSeq: get().eventSeq + 1,
       });
-      cuesFor(snapshot.events, local.seat, snapshot.view.rules, playCue);
+      cuesFor(snapshot.events, host.seat, snapshot.view.rules, playCue);
+    });
+  };
+
+  const attachLocal = (
+    local: OnecardLocalMatch,
+    level: number,
+    seed: number,
+  ) => {
+    claimShout = null;
+    const key = `solo:${seed}`;
+    attach(local, {
+      local,
+      level,
+      seatNames: null,
+      stats: { game: "onecard", mode: "solo", key },
+      archive: {
+        game: "onecard",
+        mode: "solo",
+        key,
+        seat: local.seat,
+        seatNames: null,
+        source: () => {
+          const saved = local.save();
+          return { rules: saved.rules, seed: saved.seed, log: saved.log };
+        },
+      },
     });
   };
 
@@ -241,6 +287,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     seed: number,
     level: number,
     log?: OnecardSaved["log"],
+    reactRng?: number,
   ): OnecardLocalMatch =>
     new LocalMatch(
       {
@@ -250,6 +297,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         humanSeat: 0,
         bot: toKitBot(onecardBotFor(level)),
         pace: botPace,
+        ...(reactRng !== undefined ? { reactRng } : {}),
       },
       log,
     );
@@ -257,6 +305,10 @@ export const useOnecard = create<OnecardStore>((set, get) => {
   return {
     host: null,
     local: null,
+    seatNames: null,
+    reconnecting: false,
+    hostLeft: false,
+    offlineSeats: [],
     view: null,
     events: [],
     eventSeq: 0,
@@ -272,14 +324,36 @@ export const useOnecard = create<OnecardStore>((set, get) => {
 
     resume(saved) {
       attachLocal(
-        newLocal(saved.rules, saved.seed, saved.level, saved.log),
+        newLocal(
+          saved.rules,
+          saved.seed,
+          saved.level,
+          saved.log,
+          saved.reactRng,
+        ),
         saved.level,
         saved.seed,
       );
     },
 
+    attachOnline(host, seatNames, stats, claim, archive) {
+      claimShout = claim;
+      attach(host, {
+        local: null,
+        level: get().level,
+        seatNames,
+        stats,
+        ...(archive ? { archive } : {}),
+      });
+    },
+
+    setSeatNames(seatNames) {
+      set({ seatNames });
+    },
+
     startPractice({ rules, initialState, bot }) {
       stop();
+      claimShout = null;
       get().local?.dispose();
       const local: OnecardLocalMatch = new LocalMatch({
         kit: onecardKit,
@@ -324,18 +398,31 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       return result;
     },
 
+    shout(seen) {
+      if (claimShout) {
+        if (!claimShout(seen)) playUiCue("invalid");
+        return;
+      }
+      get().submit({ type: "shout", seen });
+    },
+
     resign() {
       get().local?.end();
     },
 
     leave() {
       stop();
+      claimShout = null;
       get().local?.dispose();
       set({
         host: null,
         local: null,
+        seatNames: null,
         view: null,
         events: [],
+        reconnecting: false,
+        hostLeft: false,
+        offlineSeats: [],
         practice: false,
       });
     },

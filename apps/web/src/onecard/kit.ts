@@ -1,10 +1,12 @@
 import {
   type Action,
+  createFairMatch,
   createMatch,
   decodeOnecardRules,
   encodeOnecardRules,
   type GameEvent,
   type OnecardCard,
+  type OnecardFairPreset,
   type OnecardRules,
   type OnecardSetup,
   type OnecardState,
@@ -24,23 +26,43 @@ import type { GameRecord, RoundRecord } from "@/stats/records";
 
 import { onecardBotFor, toKitBot } from "./bots";
 import { cardName, SUIT_NAMES } from "./cards";
+import { onecardClaims } from "./claims";
+import { onecardFair } from "./fair";
 
 /**
- * 원카드 키트. `Extra`는 판 시작 재료(`OnecardSetup`, 섞인 덱). 없으면 씨앗으로 섞는다.
- * 온라인 멘탈 포커 판은 섞은 순서를 바깥에서 넣을 자리로 쓴다(아직 잇지 않았다)
+ * 판 시작 재료: 섞인 덱(`OnecardSetup`, 없으면 씨앗으로 섞는다) 또는 멘탈 포커 판의 처음 패
+ * (`OnecardFairPreset`, 자리 표가 섞인 손패·펼친 카드·더미. 암호화방 방장이 섞기 사슬로 만든다)
  */
+export type OnecardExtra = OnecardSetup | OnecardFairPreset;
+
+/** 원카드 키트 */
 export type OnecardKit = GameKit<
   OnecardRules,
   OnecardState,
   OnecardView,
   Action,
   GameEvent,
-  OnecardSetup
+  OnecardExtra
 >;
+
+function isFairPreset(
+  extra: OnecardExtra | undefined,
+): extra is OnecardFairPreset {
+  return extra !== undefined && "hands" in extra;
+}
 
 /** 씨앗으로 섞은 덱(혼자 하기·일반방) */
 export function setupOf(seed: number, extra?: OnecardSetup): OnecardSetup {
   return extra ?? { deck: shuffledOnecardDeck(seed) };
+}
+
+/**
+ * 규칙을 규칙 문자열로 한 번 돌려 같은 모양으로 맞춘다. 온라인 참가자는 대기실의 규칙 문자열을 풀어 판 끝 검증을
+ * 하는데, 방장이 고른 규칙 객체와 칸 순서가 다르면 다시 계산한 화면(JSON)이 받은 화면과 달라 보인다
+ */
+function canonicalRules(rules: OnecardRules): OnecardRules {
+  const decoded = decodeOnecardRules(encodeOnecardRules(rules));
+  return decoded.ok ? decoded.rules : rules;
 }
 
 /** 판 기록(내 자리에서 본 것). 원카드는 한 판이 한 게임이다 */
@@ -118,6 +140,8 @@ export function describeAction(action: Action): string {
       return action.kind === "selfWindow" ? "본인 시간 끝" : "잡기 시간 끝";
     case "reshuffle":
       return "버린 더미를 다시 섞음";
+    case "claims":
+      return `원카드! 청구 ${action.shouts.length}개`;
     case "retire":
       return "게임 끝냄";
   }
@@ -144,10 +168,23 @@ function explainOnecard(
 
 export const onecardKit: OnecardKit = {
   id: "onecard",
-  createMatch: (rules, seed, extra) => createMatch(rules, setupOf(seed, extra)),
+  createMatch: (rules, seed, extra) =>
+    isFairPreset(extra)
+      ? createFairMatch(canonicalRules(rules), extra)
+      : createMatch(canonicalRules(rules), setupOf(seed, extra)),
   step,
   viewOf,
-  replay: (rules, seed, log, extra) => replay(rules, setupOf(seed, extra), log),
+  replay: (rules, seed, log, extra) => {
+    if (!isFairPreset(extra))
+      return replay(canonicalRules(rules), setupOf(seed, extra), log);
+    let { state } = createFairMatch(canonicalRules(rules), extra);
+    for (const [index, entry] of log.entries()) {
+      const result = step(state, entry.seat, entry.action);
+      if (!result.ok) return { ok: false, index, error: result.error };
+      state = result.state;
+    }
+    return { ok: true, state };
+  },
   pendingSeats: (state) => {
     const seat = pendingSeat(state);
     return seat === null ? [] : [seat];
@@ -163,13 +200,22 @@ export const onecardKit: OnecardKit = {
     },
   ],
   isOver: (view) => view.phase === "over",
-  // 시간 끝·다시 섞기는 대국을 돌리는 기기(방장)만 넣는다.
-  guestMayAct: (action) =>
-    action.type !== "retire" &&
-    action.type !== "timeout" &&
-    action.type !== "reshuffle",
-  // "원카드!"는 누구나 언제든 친다(docs/42 B안 1번).
+  // 참가자가 방장에게 보내는 것은 차례 행동(내기·먹기)뿐이다. 시간 끝·다시 섞기·청구 묶음은 대국을 돌리는 기기(방장)가
+  // 넣고, "원카드!"는 방장을 거치지 않는 청구(`claims`)로 모두에게 직접 보낸다(방장이 빼거나 순서를 바꾸지 못하게).
+  guestMayAct: (action) => action.type === "play" || action.type === "draw",
+  // "원카드!"는 누구나 언제든 친다(docs/42 B안 1번). 혼자 하기에서 쓴다
   offTurn: (_view, action) => action.type === "shout",
+  hostAction: (action) =>
+    action.type === "timeout" ||
+    action.type === "reshuffle" ||
+    action.type === "claims" ||
+    // 온라인 방의 사람 외침은 `claims`로만 들어오므로, 기록 속 `shout`은 방장 기기의 컴퓨터가 정한 시각에 친 것이다
+    // (반응 시각은 다시 계산할 수 없어 컴퓨터 수 맞춰 보기에서 뺀다)
+    action.type === "shout",
+  claims: onecardClaims,
+  // 암호화방(멘탈 포커): 방장도 남의 패를 모른다. 다시 섞기는 새 섞기 사슬로(`autoAction`이 낸 다시 섞기를
+  // 방장 진행이 받아 버린 더미를 알리고 그 조각의 자리 표로 바꾼다)
+  cardTable: onecardFair,
   retireAction: { type: "retire" },
   stats: onecardStats,
   botCanAct: (view) => view.phase === "play",

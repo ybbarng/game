@@ -1,4 +1,4 @@
-import type { HwatuFairSpec } from "@game/fair-play";
+import type { HwatuFairSpec, OnecardTableSpec } from "@game/fair-play";
 import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
@@ -22,6 +22,11 @@ export interface KitBot<View, Action, Event = unknown> {
     action: Action;
     recheck?: (view: View) => Action | null;
   } | null;
+  /**
+   * 걸음마다 사건을 듣기만 한다(반응 계획·난수 없이). 온라인 판 끝 검증이 컴퓨터 수를 다시 셀 때, 대국 중에
+   * `react`로 들었던 것과 같은 사건을 들려줘 기억을 쓰는 컴퓨터(원카드 고수: 없는 무늬)가 같은 수를 내게 한다
+   */
+  observe?(view: View, events: readonly Event[]): void;
 }
 
 /** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
@@ -186,11 +191,20 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
     seed: number,
   ): { seat: number; action: Action } | null;
   /**
+   * 사람이 보낸 수가 아니라 대국을 돌리는 기기(방장)가 넣은 행동인가(원카드 창 시간 끝·다시 섞기·청구 묶음·컴퓨터의
+   * 차례 밖 외침). 판 끝 검증이 "내가 보낸 행동"과 "컴퓨터가 둘 수"를 맞춰 볼 때 뺀다. 엔진이 받아들일지는 그대로 본다.
+   * 없으면 개인 시간의 시간패(`timing.strip`이 null)만 뺀다
+   */
+  hostAction?(action: Action): boolean;
+  /**
    * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
    * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
    */
-  // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
-  cardTable?: HwatuFairSpec<Rules, State, any, Action, Event>;
+  cardTable?: // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
+    | HwatuFairSpec<Rules, State, any, Action, Event>
+    /** 원카드: 판 도중 뽑기와 다시 섞기 사슬(`kind: "onecard"`, fair-play `OnecardHostTable`) */
+    // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
+    | OnecardTableSpec<Rules, State, any, Action, Event>;
   /**
    * 실시간 청구(공정한 동시 판정 1층, docs/43). 있으면 온라인 방이 청구를 모두에게 직접 보내고(`ClaimHub`),
    * 방장이 묶음으로 판정해 발표하며, 참가자가 같은 함수로 다시 계산해 맞춰 본다. 없으면 그 게임은 영향이 없다

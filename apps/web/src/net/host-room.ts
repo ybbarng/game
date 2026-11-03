@@ -5,6 +5,7 @@ import {
   HeartsHostTable,
   HwatuHostTable,
   type Incident,
+  OnecardHostTable,
   realClock,
 } from "@game/fair-play";
 import type {
@@ -174,6 +175,8 @@ export class HostRoom<
     | HeartsHostTable
     // biome-ignore lint/suspicious/noExplicitAny: 화투 게임마다 상태 모양이 다르다
     | HwatuHostTable<any, any, any, any, any>
+    // biome-ignore lint/suspicious/noExplicitAny: 원카드 상태 모양
+    | OnecardHostTable<any, any, any, any, any>
     | null = null;
   /** 오간 멘탈 포커 메시지. 다시 연결된 참가자에게 다시 보낸다 */
   private readonly fpLog: { from: number; message: FairMessage }[] = [];
@@ -839,29 +842,37 @@ export class HostRoom<
     const spec = this.kit.cardTable as NonNullable<typeof this.kit.cardTable>;
     const get = () =>
       this.match as LocalMatch<Rules, State, View, ActionT, Event, Extra>;
-    const table: CardTable<Rules, State, ActionT, Event> = new HwatuHostTable({
-      spec,
+    const hooks = {
+      patch: (fn: (state: State) => State) => {
+        get().patchState(fn);
+        this.persist();
+      },
+      state: () => get().rawState(),
+      log: () => get().actionLog(),
+      refresh: () => this.match?.refresh(),
+      broadcast: (message: FairMessage) => {
+        this.logFair(0, message);
+        this.send(message as never);
+      },
+      onIncident: (incident: Incident) => this.raiseIncident(incident),
+    };
+    const common = {
       rules: this.rules,
       seed,
       guestSeats: [...this.guests.keys()],
       group,
       clock: this.clock,
       ...(restore ? { restore: restore.device } : {}),
-      hooks: {
-        patch: (fn) => {
-          get().patchState(fn);
-          this.persist();
-        },
-        state: () => get().rawState(),
-        log: () => get().actionLog(),
-        refresh: () => this.match?.refresh(),
-        broadcast: (message) => {
-          this.logFair(0, message);
-          this.send(message as never);
-        },
-        onIncident: (incident) => this.raiseIncident(incident),
-      },
-    });
+      hooks,
+    };
+    // 원카드: 판 도중 뽑기·다시 섞기 사슬(OnecardHostTable), 그 밖 화투 셋(HwatuHostTable)
+    const table: CardTable<Rules, State, ActionT, Event> =
+      "kind" in spec && spec.kind === "onecard"
+        ? new OnecardHostTable({ ...common, spec })
+        : new HwatuHostTable({
+            ...common,
+            spec: spec as Exclude<typeof spec, { kind: "onecard" }>,
+          });
     this.fair = table;
     table.device.on("persist", () => this.persist());
     watchFairDevice(table.device);
@@ -1451,8 +1462,13 @@ export class HostRoom<
 }
 
 /** 화투 멘탈 포커 진행(화면 모양은 게임마다 다르다) */
+type CardTable<R, S, A, E> =
+  | HwatuTableOf<R, S, A, E>
+  | OnecardTableOf<R, S, A, E>;
 // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
-type CardTable<R, S, A, E> = HwatuHostTable<R, S, any, A, E>;
+type HwatuTableOf<R, S, A, E> = HwatuHostTable<R, S, any, A, E>;
+// biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다
+type OnecardTableOf<R, S, A, E> = OnecardHostTable<R, S, any, A, E>;
 
 /** 새로고침한 방장이 멘탈 포커 판을 이어 갈 때 */
 interface FairResume {
