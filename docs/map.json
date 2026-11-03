@@ -378,6 +378,10 @@
           "path": "docs/42-onecard-realtime.md"
         },
         {
+          "label": "동시 판정 모의 실험",
+          "path": "docs/44-fair-simultaneity-sim.md"
+        },
+        {
           "label": "게임 센터 기획 3-1·부류 C",
           "path": "docs/18-game-center-plan.md"
         }
@@ -416,6 +420,11 @@
           "id": "simul-device-latency",
           "type": "risk",
           "title": "기기마다 터치·화면 지연 차이는 어떤 판정으로도 못 지운다. 할리갈리는 이 값(측정 전)에 달렸다"
+        },
+        {
+          "id": "simul-rtt-inflate",
+          "type": "risk",
+          "title": "핑 답을 늦춰 RTT_min을 부풀리면 아래 경계를 그만큼 피한다(docs/44, 승률 94~99%). getStats RTT 기준 등으로 막아야 2층을 부정에 강하다고 할 수 있다"
         }
       ]
     },
