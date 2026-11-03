@@ -5,8 +5,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { StonePick } from "./store";
 
-/** 0 입문, 1 중수, 2 고수 */
-export type OmokLevel = 0 | 1 | 2;
+/** 0 입문, 1 중수, 2 고수, 3 초고수 */
+export type OmokLevel = 0 | 1 | 2 | 3;
 
 /** 오목만의 설정. 첫 그리기 뒤에 저장값을 읽는다(StoreHydration) */
 interface OmokSettings {
@@ -68,6 +68,11 @@ export const OMOK_LEVELS: readonly {
     value: 2,
     label: "고수",
     description: "네 수 앞까지 읽는다. 쉽게 지지 않는다",
+  },
+  {
+    value: 3,
+    label: "초고수",
+    description: "사·열린 삼으로 몰아붙이는 길을 읽고 여섯 수 앞까지 본다",
   },
 ];
 
