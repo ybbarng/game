@@ -35,6 +35,16 @@ test("footer 「카노푸스 우주국」은 우주국 소개 페이지로", asy
   await expect(
     bureau.getByRole("img", { name: /카노푸스 둘레의 실제 성도/ }),
   ).toBeVisible();
+  // 용골자리와 아르고호: 옛 성도 바탕 그림(정적 파일)과 나침반자리 이름표
+  await expect(
+    bureau.getByRole("img", { name: /옛 아르고자리 자리의 실제 성도/ }),
+  ).toBeVisible();
+  await expect(bureau.locator("[data-pyxis-label]")).toHaveText("나침반자리");
+  const bayer = bureau.locator("[data-argo-bayer]");
+  if (await bayer.count()) {
+    const src = await bayer.getAttribute("href");
+    expect((await page.request.get(src ?? "")).ok()).toBe(true);
+  }
   await expect(
     bureau.getByRole("img", { name: /마라도에서 남쪽을 바라본 하늘/ }),
   ).toBeVisible();
