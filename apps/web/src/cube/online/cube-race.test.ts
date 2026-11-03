@@ -65,6 +65,7 @@ function rig(
   n: number,
   devices: Record<string, string[]>,
   scramblerFor: (device: string) => Scrambler = () => fake,
+  options: typeof OPTIONS = OPTIONS,
 ): Rig {
   const clock = new ManualClock();
   const net = new DelayNet(clock);
@@ -90,7 +91,7 @@ function rig(
           clock,
           race: "r1",
           players: everyone,
-          options: OPTIONS,
+          options,
           random: () => `${id}-${k++}`,
         }),
       );
@@ -318,7 +319,7 @@ describe("큐브 경주(어댑터)", () => {
     ).resolves.toBe(true);
   });
 
-  it("계획을 끝내 못 만든 컴퓨터는 그 판을 기권하고 까닭이 결과에 남는다(남은 사람끼리 다시 섞는다)", async () => {
+  it("계획을 끝내 못 만든 컴퓨터는 그 판에서만 빠지고(DNF) 까닭이 결과에 남는다. 살펴보던 섞기는 그대로다", async () => {
     const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
     const bot = sessions.get("bot1") as Session;
     const h = sessions.get("h") as Session;
@@ -336,18 +337,85 @@ describe("큐브 경주(어댑터)", () => {
       },
     });
     runUntil(clock, () => g.snapshot().seed !== undefined);
+    const seed = g.snapshot().seed;
     await Promise.resolve();
     await Promise.resolve();
+    // 살펴보기 중에 빠졌다: 다른 기기도 살펴보기 안에 알고, 새 섞기를 받지 않는다
+    runUntil(
+      clock,
+      () => g.snapshot().peers.find((p) => p.id === "bot1")?.status === "dnf",
+    );
+    expect(g.snapshot().phase).toBe("inspect");
     runUntil(clock, allDone([h, g, bot]), 600_000, 100);
     const r = g.snapshot().result as RaceResult;
     expect(h.snapshot().result).toEqual(r);
+    expect(bot.snapshot().result).toEqual(r);
     expect(r.players.bot1).toMatchObject({
-      status: "forfeit",
+      status: "dnf",
       reason: BOT_NO_PLAN,
     });
     expect(r.players.h?.status).toBe("dnf");
-    // 기권한 뒤 다시 섞은 시도에서는 계획을 다시 세우지 않는다
+    expect(g.snapshot().attempt).toBe(0);
+    expect(g.snapshot().seed).toBe(seed);
     expect(asked).toBe(1);
+  });
+
+  it("살펴보기를 끈 방에서 계획이 경주 중에 늦게 와 실패해도 판은 계속되고 사람 결과는 그대로다", async () => {
+    const { clock, sessions } = rig(
+      2,
+      { h: ["h", "bot1"], g: ["g"] },
+      undefined,
+      {
+        ...OPTIONS,
+        inspectionMs: 0,
+      },
+    );
+    const bot = sessions.get("bot1") as Session;
+    const h = sessions.get("h") as Session;
+    const g = sessions.get("g") as Session;
+    let reject: (() => void) | undefined;
+    attachBot({
+      session: bot,
+      id: "bot1",
+      level: "beginner",
+      n: 2,
+      clock,
+      plan: () =>
+        new Promise((_, no) => {
+          reject = () => no(new Error("축소법이 막혔다"));
+        }),
+    });
+    // 사람 둘은 풀린 뒤 400ms에 시작해 200ms마다 둔다
+    solveByInverse(clock, 2, h, "222", 400, 200);
+    solveByInverse(clock, 2, g, "222", 400, 200);
+    runUntil(clock, () => g.snapshot().phase === "race");
+    const seed = g.snapshot().seed;
+    // 사람이 돌리는 도중에 계획이 실패한다
+    runUntil(clock, () => (g.snapshot().elapsed ?? 0) >= 500);
+    expect(g.snapshot().peers.find((p) => p.id === "g")?.moves).toBe(1);
+    reject?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    runUntil(clock, allDone([h, g, bot]), 600_000, 10);
+    const r = g.snapshot().result as RaceResult;
+    expect(h.snapshot().result).toEqual(r);
+    expect(bot.snapshot().result).toEqual(r);
+    expect(r.players.bot1).toMatchObject({
+      status: "dnf",
+      reason: BOT_NO_PLAN,
+    });
+    // 같은 섞기를 끝까지 맞췄다(다시 섞지 않음)
+    expect(g.snapshot().attempt).toBe(0);
+    expect(g.snapshot().seed).toBe(seed);
+    const { text } = fake("222", scrambleSeed(seed as string)) as {
+      text: string;
+    };
+    const moves = parseMoves(2, text).length;
+    for (const id of ["h", "g"]) {
+      expect(r.players[id]?.status).toBe("done");
+      expect(r.players[id]?.moves).toBe(moves);
+      expect(r.players[id]?.reported).toBe(400 + 200 * (moves - 1));
+    }
   });
 
   it("남이 컴퓨터 이름으로 보낸 수는 받지 않는다", () => {

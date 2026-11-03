@@ -5,6 +5,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { caseOfAlg, loadAlgBook, usedAlg } from "../algs/store";
 import type { Command } from "../input";
 import { algTokens, GOALS, type Lesson, type LessonStep } from "../learn";
 import {
@@ -58,6 +59,13 @@ export function TryPanel({
   const mask = masked ? maskFor(n, step.mask) : null;
   const goal = step.goal ?? "solved";
   const answer = useMemo(() => algTokens(step.alg ?? ""), [step.alg]);
+  // 모범 답이 공식 모음의 상황이고 쓰는 공식을 바꿔 뒀으면 힌트 옆에 내 공식도 보인다(판정과는 상관없다)
+  const [mine, setMine] = useState<string | null>(null);
+  useEffect(() => {
+    const c = step.alg ? caseOfAlg(step.alg) : undefined;
+    const used = c ? usedAlg(loadAlgBook(), c) : null;
+    setMine(c && used !== c.algs[0] ? used : null);
+  }, [step.alg]);
 
   // 가리기를 바꾸면 장면을 다시 칠한다
   // biome-ignore lint/correctness/useExhaustiveDependencies: masked가 바뀔 때만
@@ -201,6 +209,15 @@ export function TryPanel({
             </span>
           ))}
           {hints < answer.length && <span className="text-white/40">…</span>}
+        </p>
+      )}
+      {hints > 0 && mine && (
+        <p
+          className="flex flex-wrap justify-center gap-1 text-sm"
+          data-cube-hint-mine
+        >
+          <span className="text-white/60 text-xs">내 공식:</span>
+          <span className="font-mono">{mine}</span>
         </p>
       )}
       {answer.length === 0 && (

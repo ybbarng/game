@@ -128,7 +128,7 @@ async function setup(
   }
   const match = host.match;
   if (!match) throw new Error("시작하지 않았다");
-  return { clock, host, guests, match, troubles };
+  return { clock, net, host, guests, match, troubles };
 }
 
 describe("원카드 일반방", () => {
@@ -281,6 +281,8 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
   /** 몇 수 둔 뒤 `tamper`로 방장 기기를 고쳐 쓰고, 방장이 나가 기록을 공개하면 참가자 검증이 어떻게 되나 */
   async function audited(
     tamper: (ctx: Awaited<ReturnType<typeof setup>>) => Promise<void>,
+    /** 방장이 나간(기록을 공개한) 바로 뒤에 할 일 */
+    afterFinish?: (clock: ManualClock) => void,
   ): Promise<AuditResult> {
     const ctx = await setup(2);
     const { clock, host, guests, match } = ctx;
@@ -297,8 +299,11 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
       await tick(clock, 1);
     }
     await tamper(ctx);
-    host.finish();
+    void host.finish();
+    afterFinish?.(clock);
     await pump(clock, () => audits.length === 1);
+    // 참가자의 빠뜨림 이의 유예(5초)가 지나도록 둔다(판 끝에 버린 청구로 방장을 짚지 않는지)
+    await tick(clock, 6_000);
     return audits[0] as AuditResult;
   }
 
@@ -334,6 +339,104 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
     });
     expect(result).toMatchObject({ ok: false });
     expect(result.ok ? "" : result.reason).toContain("없던 청구");
+  });
+
+  it("발표는 바르게 하고 기록 속 청구 내용만 바꾸면(같은 개수, seen만 다르게) 짚는다", async () => {
+    const result = await audited(async ({ clock, host, guests, match }) => {
+      // 고친 방장 기기: 발표는 그대로 보내고, 엔진에는 같은 자리·아이디로 seen만 한 판 앞으로 바꿔 넣는다
+      (
+        host.claims as unknown as {
+          options: { apply?: (r: ClaimsResolved) => void };
+        }
+      ).options.apply = (resolved) => {
+        const action = onecardKit.claims?.action(resolved) as Action | null;
+        if (action?.type !== "claims") return;
+        match.submitHost(0, {
+          ...action,
+          shouts: action.shouts.map((s) => ({ ...s, seen: s.seen - 1 })),
+        });
+      };
+      const seen = match.rawState().turnNo;
+      expect(seen).toBeGreaterThan(0);
+      (guests[0] as Guest).claims?.claim({}, { seen });
+      await settleClaims(clock);
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(result.ok ? "" : result.reason).toContain("방장 발표와 다르다");
+  });
+
+  it("정직한 방장: 묶음 창이 열린 채 방장이 나가도(판 끝 직전 청구) 짚히지 않고, 버린 청구로 이의도 나지 않는다", async () => {
+    let troubles: string[] = [];
+    const result = await audited(
+      async (ctx) => {
+        troubles = ctx.troubles;
+        // 참가자와 방장이 친 청구가 방장 통로에 닿아 묶음 창(100ms)이 열린 채로 방장이 나간다
+        (ctx.guests[0] as Guest).claims?.claim({});
+        ctx.host.claims?.claim({});
+        await flush();
+      },
+      // 기록을 공개한 바로 뒤 묶음 창이 지난다(예전에는 이때 발표가 나가, 참가자는 발표를 받았는데 기록엔 없었다)
+      (clock) => clock.advance(200),
+    );
+    expect(result).toEqual({ ok: true });
+    expect(troubles).toEqual([]);
+  });
+
+  /** 참가자가 방장과 끊겼다 다시 이어질 때까지 */
+  async function dropAndReturn(
+    ctx: Awaited<ReturnType<typeof setup>>,
+    meanwhile: () => Promise<void>,
+  ) {
+    const { clock, net, guests } = ctx;
+    const guest = guests[0] as Guest;
+    const states: string[] = [];
+    const off = guest.on("connection", (s) => states.push(s));
+    net.disconnect("g1");
+    await pump(clock, () => states.includes("reconnecting"));
+    await meanwhile();
+    net.reconnect("g1");
+    await pump(clock, () => states.includes("connected"));
+    off();
+  }
+
+  it("정직한 방장: 끊긴 동안 받지 못한 발표의 청구가 기록에 있어도 통과한다", async () => {
+    const result = await audited(async (ctx) => {
+      const { clock, host, guests, match } = ctx;
+      await dropAndReturn(ctx, async () => {
+        // 끊긴 동안 방장이 친 청구: 발표가 참가자에게 가지 못한다
+        host.claims?.claim({});
+        await settleClaims(clock);
+        expect(
+          match.actionLog().filter((e) => e.action.type === "claims"),
+        ).toHaveLength(1);
+      });
+      // 다시 이어진 뒤의 청구는 받아 맞춰 본다
+      (guests[0] as Guest).claims?.claim({});
+      await settleClaims(clock);
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("끊긴 적이 있어도 끊긴 구간 밖에 지어낸 청구를 넣으면 짚는다", async () => {
+    const result = await audited(async (ctx) => {
+      const { clock, host, guests, match } = ctx;
+      await dropAndReturn(ctx, async () => {
+        host.claims?.claim({});
+        await settleClaims(clock);
+      });
+      // 다시 이어진 뒤 받은 첫 발표가 끊긴 구간을 닫는다
+      (guests[0] as Guest).claims?.claim({});
+      await settleClaims(clock);
+      // 고친 방장 기기: 그 뒤에 발표하지 않은 청구 묶음을 넣는다
+      match.submitHost(0, {
+        type: "claims",
+        batch: 9,
+        shouts: [{ seat: 1, seen: match.rawState().turnNo, id: "fake" }],
+      });
+      await tick(clock, 1);
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(result.ok ? "" : result.reason).toContain("끊긴 구간 밖");
   });
 
   it("발표는 바르게 하고 기록에서 청구를 빼면 짚는다", async () => {

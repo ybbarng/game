@@ -40,9 +40,9 @@ export const onecardSession: {
 export function endOnecardSession(): void {
   clearHostingRoom();
   if (onecardSession.host) {
-    onecardSession.host.finish();
     const host = onecardSession.host;
-    setTimeout(() => host.close(), 500);
+    // 발표한 청구 묶음이 기록에 들어가 판 끝 기록을 보낸 뒤에 닫는다(암호화방 준비 줄, `HostRoom.finish`)
+    void host.finish().then(() => setTimeout(() => host.close(), 500));
   }
   onecardSession.guest?.leave();
   onecardSession.host = null;

@@ -21,6 +21,10 @@ import { GameClock } from "@/components/GameClock";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
+import {
+  MissionOverlay,
+  type MissionProps,
+} from "@/components/tutorial/MissionOverlay";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
@@ -407,7 +411,14 @@ function DecisionTimer({ resetKey }: { resetKey: string }) {
 }
 
 /** 대국 화면(docs/48 7절). PC·눕힌 폰은 판 왼쪽 + 오른쪽 칸, 세로 폰은 판 아래로 쌓는다 */
-export function GalaxyGame({ onExit }: { onExit: () => void }) {
+export function GalaxyGame({
+  onExit,
+  mission,
+}: {
+  onExit: () => void;
+  /** 배우기 미션: 판 위에 목표 띠와 성공·실패 안내를 얹는다 */
+  mission?: MissionProps;
+}) {
   const {
     view,
     host,
@@ -594,7 +605,7 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
   const outcome = gameOver ? outcomeOf(view.result, me) : null;
   const mine = view.result?.standings.find((s) => s.seat === me);
   const banner: Banner | null =
-    ended?.type === "gameEnded" && !playing
+    ended?.type === "gameEnded" && !playing && !mission
       ? {
           won: outcome === "win",
           draw: outcome === "draw",
@@ -723,8 +734,10 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
         "relative isolate flex min-h-dvh flex-col items-center gap-2.5 overflow-x-clip px-3 py-3 text-white",
         "split:grid split:grid-cols-[minmax(0,min(46rem,calc(100dvh-3.5rem)))_minmax(0,22rem)] split:content-start split:items-start split:justify-center split:gap-x-5 lg:py-4",
         GALAXY_BG,
+        mission && "pt-16",
       )}
     >
+      {mission && <MissionOverlay mission={mission} top={8} />}
       <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-span-2 split:max-w-none">
         <button
           type="button"
@@ -881,7 +894,7 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
             className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
           />
         )}
-        {gameOver && (
+        {gameOver && !mission && (
           <>
             <button
               type="button"

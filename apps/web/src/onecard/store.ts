@@ -44,7 +44,11 @@ export type OnecardSaved = SavedMatch<OnecardRules, Action, OnecardExtra> & {
 export const BOT_PACE_MS = 700;
 
 /**
- * 컴퓨터 대기. 화면 시험의 온라인 방(탭 여럿이라 `page.clock`을 못 쓴다)은 `window.__onecardPace`로 줄인다
+ * 컴퓨터 대기(혼자 하기·온라인 방 모두 이 함수 하나로 기다린다).
+ *
+ * `window.__onecardPace`는 **시험 전용**이다(이 함수 밖에서 읽지 않는다). 온라인 화면 시험은 탭이 여럿이라
+ * `page.clock`으로 감을 수 없어 이 값으로 컴퓨터 차례 수 대기만 줄인다. 외침 반응(컴퓨터 `react`), 본인 시간 P·잡기 창 T,
+ * 청구 묶음 창은 모두 Clock으로 재므로 이 값이 닿지 않는다(판정 시간은 시험에서도 제품과 같다)
  */
 export function botPace(next: () => void): void {
   const fast = (globalThis as { __onecardPace?: number }).__onecardPace;
@@ -78,6 +82,21 @@ export function clearOnecard(): void {
   } catch {
     // 지울 수 없어도 문제없다.
   }
+}
+
+/**
+ * 자리별 외침·잡기·헛외침 사건 수(`OnecardStore.shoutEvents`). 사건을 낸 자리(외친 사람·잡은 사람·헛외친 사람)로 센다.
+ * `prev`에 더한 새 배열을 돌려준다
+ */
+export function countShouts(
+  events: readonly GameEvent[],
+  prev: readonly number[] = [],
+): number[] {
+  const next = [...prev];
+  for (const e of events)
+    if (e.type === "shouted" || e.type === "caught" || e.type === "falseShout")
+      next[e.seat] = (next[e.seat] ?? 0) + 1;
+  return Array.from(next, (n) => n ?? 0);
 }
 
 /** 사건에 맞춰 소리를 낸다 */
@@ -151,6 +170,11 @@ interface OnecardStore {
   events: GameEvent[];
   /** 사건 묶음마다 오르는 번호(말풍선을 새로 띄운다) */
   eventSeq: number;
+  /**
+   * 이 대국에서 받은 외침·잡기·헛외침 사건 수, 사건을 낸 자리별(말풍선은 잠깐 떴다 사라지지만 이 값은 남는다).
+   * 화면 뿌리의 `data-shouts-by`(자리 순서로 쉼표로 이은 수)로 보인다(화면 시험이 잠깐 뜨는 말풍선 대신 이 값을 기다린다)
+   */
+  shoutEvents: readonly number[];
   level: number;
   notice: string | null;
   /** 튜토리얼 연습 판(이어하기 저장·내 기록·복기에 남기지 않는다) */
@@ -233,6 +257,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       view: host.current(),
       events: first.flatMap((s) => s.events),
       eventSeq: get().eventSeq + 1,
+      shoutEvents: countShouts(first.flatMap((s) => s.events)),
       notice: null,
       practice: false,
     });
@@ -255,6 +280,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         view: snapshot.view,
         events: snapshot.events,
         eventSeq: get().eventSeq + 1,
+        shoutEvents: countShouts(snapshot.events, get().shoutEvents),
       });
       cuesFor(snapshot.events, host.seat, snapshot.view.rules, playCue);
     });
@@ -316,6 +342,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     view: null,
     events: [],
     eventSeq: 0,
+    shoutEvents: [],
     level: 1,
     notice: null,
     practice: false,
@@ -377,6 +404,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         view: local.current(),
         events,
         eventSeq: get().eventSeq + 1,
+        shoutEvents: countShouts(events),
         notice: null,
         practice: true,
       });
@@ -386,6 +414,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
           view: snapshot.view,
           events: snapshot.events,
           eventSeq: get().eventSeq + 1,
+          shoutEvents: countShouts(snapshot.events, get().shoutEvents),
         });
         cuesFor(snapshot.events, local.seat, snapshot.view.rules, playCue);
       });
@@ -403,6 +432,8 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     },
 
     shout(seen) {
+      // 판이 끝나면 더미 치기를 받지 않는다(온라인 방은 판 끝에 청구 통로를 닫는다)
+      if (get().view?.phase === "over") return;
       if (claimShout) {
         if (!claimShout(seen)) playUiCue("invalid");
         return;
@@ -424,6 +455,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         seatNames: null,
         view: null,
         events: [],
+        shoutEvents: [],
         reconnecting: false,
         hostLeft: false,
         offlineSeats: [],

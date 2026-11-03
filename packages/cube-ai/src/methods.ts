@@ -1,3 +1,4 @@
+import type { ReductionLimits } from "@game/cube-reduction";
 import { FACES, type Face, solve2x2, solve3x3 } from "@game/cube-solver";
 import type { PuzzleState } from "@game/puzzle-core";
 import {
@@ -557,11 +558,15 @@ function finish(s: Solve): HumanSolve {
   return s.result();
 }
 
-/** 단계·크기로 해법 고르기(2×2~5×5). 4×4·5×5는 축소법 뒤 같은 단계의 3×3 해법 */
+/**
+ * 단계·크기로 해법 고르기(2×2~5×5). 4×4·5×5는 축소법 뒤 같은 단계의 3×3 해법.
+ * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다(4×4·5×5).
+ */
 export function solveHuman(
   level: BotLevel,
   size: number,
   state: PuzzleState,
+  limits?: ReductionLimits,
 ): HumanSolve {
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state);
@@ -577,11 +582,12 @@ export function solveHuman(
   }
   if (size === 4 || size === 5) {
     if (level === "beginner")
-      return solveBigHuman(BEGINNER3_STEPS, size, state);
+      return solveBigHuman(BEGINNER3_STEPS, size, state, limits);
     if (level === "intermediate")
-      return solveBigHuman(INTERMEDIATE3_STEPS, size, state);
-    if (level === "advanced") return solveBigHuman(CFOP_STEPS, size, state);
-    return solveBigExpert(size, state);
+      return solveBigHuman(INTERMEDIATE3_STEPS, size, state, limits);
+    if (level === "advanced")
+      return solveBigHuman(CFOP_STEPS, size, state, limits);
+    return solveBigExpert(size, state, limits);
   }
   throw new RangeError(`${size}×${size} 컴퓨터는 아직 없다`);
 }
