@@ -32,7 +32,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
       ],
     });
     expect(state.phase).toBe("debt");
-    expect(state.debt).toEqual({ seat: 0, to: 1, amount: 20, reason: "rent" });
+    expect(state.debt).toEqual({ seat: 0, to: 1, amount: 40, reason: "rent" });
     expect(pendingSeats(state)).toEqual([0]);
     expect(refused(state, 0, { type: "end" })).toContain("차례가 아니");
     expect(refused(state, 0, { type: "unmortgage", square: 1 })).toContain(
@@ -44,12 +44,12 @@ describe("빚 정리와 운항 중단(2-9)", () => {
     });
     expect(paysOf(events).map((p) => [p.from, p.to, p.amount])).toEqual([
       [-1, 0, 30],
-      [0, 1, 20],
+      [0, 1, 40],
     ]);
     expect(paid.debt).toBeNull();
     expect(paid.phase).toBe("turn");
     expect(paid.turn.next).toBe("end");
-    expect(paid.cash[0]).toBe(20);
+    expect(paid.cash[0]).toBe(0);
   });
 
   it("빚 정리 제안: 높은 정거장부터 고르게 내리고, 그래도 모자라면 싼 별부터 맡긴다", () => {
@@ -60,7 +60,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
         ...[9, 10, 11].map((square) => ({ square, owner: 0, level: 3 })),
       ],
     });
-    expect(state.debt?.amount).toBe(350);
+    expect(state.debt?.amount).toBe(440);
     const plan = debtPlan(state);
     expect(plan.map((a) => a.type)).toEqual([
       "sell",
@@ -70,11 +70,12 @@ describe("빚 정리와 운항 중단(2-9)", () => {
       "sell",
       "sell",
       "mortgage",
+      "mortgage",
     ]);
     let s = state;
     for (const action of plan) s = must(s, 0, action).state;
     expect(s.phase).toBe("turn");
-    expect(s.cash[0]).toBe(270 + 90 - 350);
+    expect(s.cash[0]).toBe(270 + 180 - 440);
     expect(debtPlan(s)).toEqual([]);
   });
 

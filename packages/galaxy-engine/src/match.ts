@@ -206,11 +206,13 @@ export function rentOf(
     rate =
       owned >= size ? rates.complete : owned >= 2 ? rates.pair : rates.single;
   }
+  const plain = Math.max(10, round10(star.value, rate));
   const inSeason = state.season !== null && sideOf(square) === state.season;
-  const rent = inSeason
-    ? round10(star.value, rate, NUMBERS.seasonal)
-    : round10(star.value, rate);
-  return Math.max(10, rent);
+  if (!inSeason) return plain;
+  return Math.max(
+    plain + NUMBERS.seasonalMin,
+    round10(star.value, rate, NUMBERS.seasonal),
+  );
 }
 
 /** 정거장 한 단 값 */
