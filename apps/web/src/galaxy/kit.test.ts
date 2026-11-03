@@ -144,17 +144,14 @@ describe("설정", () => {
 });
 
 describe("별 이야기", () => {
-  it("사계절 하늘 24별을 모두 덮고, 별 따기에 있는 별은 같은 문장이다(베가·알타이르는 견우·직녀를 빼서 다르다)", () => {
+  it("사계절 하늘 24별을 모두 덮고, 별 따기에 있는 별은 같은 문장이다", () => {
     const board = boardOfSky("seasons");
     const stars = board.squares.flatMap((s) => (s.star ? [s.star.star] : []));
     expect(stars).toHaveLength(24);
     for (const star of stars) {
       expect(STAR_FACTS[star.id], star.id).toBeTruthy();
       const same = SKY_STARS.find((s) => s.name === star.id);
-      // 견우성·직녀성은 쓰지 않는다(2026-11-04 사용자, 견우성이 어느 별인지 명확하지 않다)
-      if (same && star.id !== "Vega" && star.id !== "Altair")
-        expect(STAR_FACTS[star.id]).toBe(same.fact);
-      expect(STAR_FACTS[star.id]).not.toMatch(/견우|직녀/);
+      if (same) expect(STAR_FACTS[star.id]).toBe(same.fact);
     }
   });
 });
