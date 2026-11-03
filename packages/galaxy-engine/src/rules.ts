@@ -33,7 +33,7 @@ export const STANDARD_RULES: GalaxyRules = {
   length: "standard",
   trade: true,
   seasonal: true,
-  meteor: true,
+  meteor: false,
   sky: "seasons",
 };
 
@@ -67,15 +67,15 @@ export const NUMBERS = {
   dealStars: { short: 2, standard: 0, long: 0 },
   /**
    * 정거장 이용료 배수(천분율, 2-2). 위 단계는 한 단 값(별 값의 절반)을 판 안에 되찾게 정했다(3-1 회수 기간):
-   * 완성 → 2단 +0.6p, 2단 → 3단 +1.0p, 3단 → 큰 정거장 +1.0p
+   * 완성 → 2단 +0.5p, 2단 → 3단 +0.7p, 3단 → 큰 정거장 +0.8p. 큰 정거장은 처음 값 2.4p(#64 전)로 두어 운항 중단을 줄였다
    */
   rent: {
     single: 200,
     pair: 300,
     complete: 400,
-    level2: 1000,
-    level3: 2000,
-    grand: 3000,
+    level2: 900,
+    level3: 1600,
+    grand: 2400,
   },
   /** 정거장 한 단 값 = 별자리 기본 값의 이만큼(천분율) */
   levelCost: 500,
@@ -94,7 +94,7 @@ export const NUMBERS = {
   /** 제철 하늘 이용료 배수(천분율). 반올림으로 차이가 사라지지 않게 제철이면 적어도 `seasonalMin` 더 낸다 */
   seasonal: 1500,
   seasonalMin: 10,
-  /** 유성우의 밤: 마지막 이만큼의 돌림 동안 이용료 배수(천분율). 제철과 겹치면 함께 곱한다 */
+  /** 유성우의 밤: 마지막 이만큼의 돌림 동안 이용료 배수(천분율). 이때는 제철 1.5배 대신 이 배수만 쓴다 */
   meteorRounds: 2,
   meteor: 2000,
   /** 긴 판의 제철 하늘은 이만큼의 돌림마다 바뀐다(차례 수가 없으므로) */

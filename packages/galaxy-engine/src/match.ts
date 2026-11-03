@@ -187,7 +187,7 @@ export function isComplete(
 
 /**
  * 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2). 제철이면 1.5배(적어도 10 더),
- * 유성우의 밤이면 그 값의 2배(2-12)
+ * 유성우의 밤에는 제철 대신 모든 별이 2배(2-12)
  */
 export function rentOf(
   state: Pick<
@@ -196,8 +196,11 @@ export function rentOf(
   > & { meteor?: boolean },
   square: number,
 ): number {
-  const rent = baseRentOf(state, square);
-  return state.meteor ? round10(rent, NUMBERS.meteor) : rent;
+  if (state.meteor) {
+    const plain = baseRentOf({ ...state, season: null }, square);
+    return round10(plain, NUMBERS.meteor);
+  }
+  return baseRentOf(state, square);
 }
 
 function baseRentOf(

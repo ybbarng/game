@@ -26,9 +26,9 @@ describe("정거장 이용료(2-2)", () => {
       scene({
         stars: [13, 14, 15].map((square) => ({ square, owner: 1, level })),
       });
-    expect(rentOf(leveled(2), 14)).toBe(220);
-    expect(rentOf(leveled(3), 14)).toBe(440);
-    expect(rentOf(leveled(4), 14)).toBe(660);
+    expect(rentOf(leveled(2), 14)).toBe(200);
+    expect(rentOf(leveled(3), 14)).toBe(350);
+    expect(rentOf(leveled(4), 14)).toBe(530);
     expect(
       rentOf(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] }), 14),
     ).toBe(0);
@@ -50,7 +50,7 @@ describe("정거장 이용료(2-2)", () => {
       round: 6,
       stars: [13, 14, 15].map((square) => ({ square, owner: 1, level: 2 })),
     });
-    expect(rentOf(full, 14)).toBe(330);
+    expect(rentOf(full, 14)).toBe(300);
     const autumn = scene({ round: 6, stars: [{ square: 2, owner: 1 }] });
     expect(rentOf(autumn, 2)).toBe(20);
     const off = scene({

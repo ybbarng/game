@@ -61,7 +61,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
         ...[9, 10, 11].map((square) => ({ square, owner: 0, level: 3 })),
       ],
     });
-    expect(state.debt?.amount).toBe(440);
+    expect(state.debt?.amount).toBe(350);
     const plan = debtPlan(state);
     expect(plan.map((a) => a.type)).toEqual([
       "sell",
@@ -71,12 +71,11 @@ describe("빚 정리와 운항 중단(2-9)", () => {
       "sell",
       "sell",
       "mortgage",
-      "mortgage",
     ]);
     let s = state;
     for (const action of plan) s = must(s, 0, action).state;
     expect(s.phase).toBe("turn");
-    expect(s.cash[0]).toBe(270 + 180 - 440);
+    expect(s.cash[0]).toBe(270 + 90 - 350);
     expect(debtPlan(s)).toEqual([]);
   });
 
@@ -200,8 +199,9 @@ describe("끝과 순위(2-10)", () => {
     expect(state.turn.seat).toBe(0);
   });
 
-  it("유성우의 밤: 마지막 두 돌림이 시작될 때 알리고, 그때부터 이용료 2배", () => {
-    let s = lastTurn({ round: 18, positions: [0, 0, 0, 29] });
+  it("유성우의 밤(켠 판): 마지막 두 돌림이 시작될 때 알리고, 그때부터 제철 대신 모든 별 이용료 2배", () => {
+    const rules = { ...STANDARD_RULES, meteor: true };
+    let s = lastTurn({ rules, round: 18, positions: [0, 0, 0, 29] });
     expect(s.meteor).toBe(false);
     s = roll(s, [1, 2]).state;
     const { state, events } = must(s, 3, { type: "end" });
@@ -209,14 +209,15 @@ describe("끝과 순위(2-10)", () => {
     expect(state.meteor).toBe(true);
     expect(events).toContainEqual({ type: "meteorShower" });
     // 시리우스(14) 1단: 제철이 아닌 여름 돌림 40 → 80
-    const sirius = (round: number, rules = STANDARD_RULES) =>
-      scene({ round, rules, stars: [{ square: 14, owner: 1 }] });
-    expect(rentOf(sirius(18), 14)).toBe(40);
-    expect(rentOf(sirius(19), 14)).toBe(80);
-    expect(rentOf(sirius(20), 14)).toBe(80);
-    expect(rentOf(sirius(20, { ...STANDARD_RULES, meteor: false }), 14)).toBe(
-      40,
-    );
+    const owned = (round: number, square: number, r = rules) =>
+      scene({ round, rules: r, stars: [{ square, owner: 1 }] });
+    expect(rentOf(owned(18, 14), 14)).toBe(40);
+    expect(rentOf(owned(19, 14), 14)).toBe(80);
+    expect(rentOf(owned(20, 14), 14)).toBe(80);
+    expect(rentOf(owned(20, 14, STANDARD_RULES), 14)).toBe(40);
+    // 베가(26, 값 160) 1단 30: 여름 제철과 겹쳐도 1.5배를 더 곱하지 않는다(90이 아니라 60)
+    expect(rentOf(owned(18, 26), 26)).toBe(50);
+    expect(rentOf(owned(19, 26), 26)).toBe(60);
     expect(scene({ round: 40, rules: LONG_RULES }).meteor).toBe(false);
   });
 
