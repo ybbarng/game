@@ -337,6 +337,12 @@ export function CubePlay({
         >
           {showNet ? "펼친 그림 숨기기" : "펼친 그림 보기"}
         </button>
+        <a
+          href="/cube/keys"
+          className="hidden underline-offset-2 hover:underline sm:inline"
+        >
+          단축키 표
+        </a>
         <a href="/cube/settings" className="underline-offset-2 hover:underline">
           키·색 설정
         </a>
