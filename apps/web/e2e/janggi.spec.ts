@@ -111,7 +111,12 @@ test("장기: 게임 목록에서 들어가 상차림을 고르고 두다가 무
   await expect(page.locator("[data-hint]")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-end.png") });
@@ -200,6 +205,7 @@ test("장기: 방장이 방을 만들고 친구가 링크로 들어와 두고, �
     timeout: 15_000,
   });
   await cho.getByRole("button", { name: "기권" }).click();
+  await cho.getByRole("button", { name: "기권하기" }).click();
   await expect(han.getByRole("status")).toHaveText("상대가 기권했어요");
   await han.screenshot({ path: info.outputPath("janggi-online.png") });
 
@@ -223,6 +229,7 @@ test("장기: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
     timeout: 15_000,
   });
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   // 복기 기록이 실제로 쓰인 뒤에 떠난다.
   await expect

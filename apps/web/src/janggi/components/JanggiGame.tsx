@@ -146,6 +146,8 @@ export function JanggiGame({
   const labels = useJanggiSettings((s) => s.labels);
   const [selected, setSelected] = useState<number | null>(null);
   const [hint, setHint] = useState<Move | null>(null);
+  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
+  const [confirmResign, setConfirmResign] = useState(false);
   const played = view?.played.length ?? 0;
 
   useEffect(() => {
@@ -159,6 +161,7 @@ export function JanggiGame({
   useEffect(() => {
     setSelected(null);
     setHint(null);
+    setConfirmResign(false);
   }, [played]);
 
   if (!view || !host) return null;
@@ -368,15 +371,39 @@ export function JanggiGame({
               </button>
             )}
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myMove) && (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                기권
-              </button>
-            )}
+            {(!online || myMove) &&
+              (confirmResign ? (
+                <span className="flex w-full items-center justify-center gap-2">
+                  <span className="text-sm text-white/80">
+                    정말 기권할까요?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmResign(false);
+                      submit({ type: "resign" });
+                    }}
+                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
+                  >
+                    기권하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResign(false)}
+                    className="rounded-xl bg-white/10 px-4 py-2"
+                  >
+                    계속 두기
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmResign(true)}
+                  className="rounded-xl bg-white/10 px-4 py-2"
+                >
+                  기권
+                </button>
+              ))}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (
