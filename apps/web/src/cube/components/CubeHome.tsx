@@ -40,6 +40,18 @@ const ITEMS: Item[] = [
     href: "/cube/blind",
   },
   {
+    icon: "🏁",
+    title: "온라인 경주",
+    detail: "친구 2~8명이 같은 섞기로 겨룹니다(키보드 기기)",
+    href: "/cube/online",
+  },
+  {
+    icon: "🤖",
+    title: "컴퓨터와 경주",
+    detail: "단계를 골라 같은 섞기로 나란히 맞춥니다",
+    href: "/cube/vs",
+  },
+  {
     icon: "🎓",
     title: "배우기",
     detail: "준비 중: 처음부터 끝까지 따라 하는 초보자 해법과 훈련",

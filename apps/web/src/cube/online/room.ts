@@ -486,7 +486,7 @@ export class CubeRoom {
     for (const f of c.off) f();
     for (const s of c.sessions.values()) s.dispose();
     this.hub.clear();
-    this.current = undefined;
+    delete this.current;
   }
 
   private emit(): void {
