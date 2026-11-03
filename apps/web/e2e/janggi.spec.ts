@@ -495,18 +495,21 @@ test("장기 수 배우기: 잡힐 기물 지키기를 틀렸다 다시 풀고 �
   await page.screenshot({ path: info.outputPath("janggi-defend.png") });
 });
 
-test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 보이고 한 수를 받는다", async ({
+test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 잘리지 않고 보이고 한 수를 받는다", async ({
   page,
 }, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "자리 표 한 줄이라 배치는 크기와 상관없다",
-  );
+  const touch = info.project.name.startsWith("phone");
   await page.goto("/janggi");
   await startSolo(page, "초고수");
   await page.getByRole("button", { name: "상마상마" }).click();
   await expect(page.locator("[data-plan]")).toContainText("노림: ");
-  await playOne(page, false);
+  // 「차 길 열기·기물 전개」는 노림 문구 가운데 가장 긴 축이다. 좁은 휴대폰에서도 잘리지 않아야 한다.
+  expect(
+    await page
+      .locator("[data-plan]")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await playOne(page, touch);
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });
