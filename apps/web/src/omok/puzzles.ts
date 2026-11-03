@@ -1050,7 +1050,7 @@ export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
     id: "fours",
     title: "사로 몰아붙이기",
     summary:
-      "사(넷)를 두면 상대는 막을 수밖에 없어요. 막는 동안 사삼·열린 넷을 만들어 이겨요",
+      "사(넷)를 두면 상대는 막을 수밖에 없어요. 막는 동안 사삼·열린 넷을 만들어 이겨요. 앞 8문제는 세 수, 뒤 2문제는 네 수 안에",
     prompt: "사로 몰아붙여 이기세요",
     hint: "둘 때마다 사를 만들어 상대가 막기만 하게 해요. 사와 열린 삼을 한 번에 만드는 자리(사삼)가 열쇠예요",
     puzzles: [...attack("fours3", 3, THREE), ...attack("fours4", 4, LONG)],

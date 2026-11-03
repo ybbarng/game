@@ -24,6 +24,9 @@ import {
 } from "../study";
 import { OmokBoard } from "./OmokBoard";
 
+/** 몇 수 안인지 보일 때 쓰는 말 */
+const COUNT = ["", "한", "두", "세", "네", "다섯"];
+
 /** 오목 문제 하나. 흑이 둔다 */
 export function OmokPuzzleScreen({
   puzzleId,
@@ -94,7 +97,9 @@ function OmokPuzzleRun({
   const goal =
     puzzle.kind === "attack" && run.step > 0
       ? "계속 사로 몰아 다섯을 만드세요"
-      : set.prompt;
+      : puzzle.kind === "attack" && puzzle.moves >= 3
+        ? `사로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
+        : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   const prompt =
     aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둔다` : goal;
