@@ -5,9 +5,13 @@ import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
  * 「표기」 배치로 친다(R = R, Shift+R = R', 두 번 = R2). 움직임 줄이기라 장면 회전은 바로 끝난다.
  * 3×3 섞기는 워커가 처음에 표를 만들어 몇 초 걸린다(기다림 상한은 멈춘 시험을 잡는 안전장치).
  * 시계는 Playwright 가짜 시계로 멈춰 두고 `fastForward`로만 흘린다: 살펴보기 15·17초가 기기 속도와 상관없이 정확하다.
+ * 키·단추는 3D 그림을 기다리지 않는다(입력 준비 `data-input-ready`만 본다). CI 휴대폰 화면은 소프트웨어 WebGL이라
+ * 첫 그림이 섞기 워커의 표 만들기와 겹쳐 6초 넘게 걸린 적이 있다(PR #76 CI, 녹화 프레임이 6.4초 끊김).
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
+/** 3D 첫 그림(셰이더 만들기 등)은 느린 기기에서 오래 걸릴 수 있다. 멈춘 시험을 잡는 상한일 뿐이다 */
+const FIRST_DRAW_LIMIT = 30_000;
 
 async function useNotationKeys(page: Page) {
   await page.addInitScript(() => {
@@ -55,9 +59,8 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
 
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
-  await expect(
-    page.locator("[data-cube-canvas][data-cube-ready]"),
-  ).toBeVisible();
+  const inputReady = page.locator("[data-cube-stage][data-input-ready]");
+  await expect(inputReady).toBeVisible();
   await expect(main).toHaveAttribute("data-cube-phase", "free");
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 살펴보기가 DNF로 흐르지 않는다
   const now = await page.evaluate(() => Date.now());
@@ -70,6 +73,12 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   });
   const text = (await scramble.getAttribute("data-cube-scramble")) ?? "";
   expect(text.split(" ").length).toBeGreaterThan(10);
+  // 3D는 따로 뜬다(못 그리는 환경이면 안내가 뜬다)
+  await expect(
+    page
+      .locator("[data-cube-canvas][data-cube-ready]")
+      .or(page.locator("[data-cube-no3d]")),
+  ).toBeVisible({ timeout: FIRST_DRAW_LIMIT });
   await shot(page, "solo-inspect", info.project.name);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
@@ -102,9 +111,7 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
 
   // 블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF
   await page.goto("/cube/blind");
-  await expect(
-    page.locator("[data-cube-canvas][data-cube-ready]"),
-  ).toBeVisible();
+  await expect(inputReady).toBeVisible();
   await page.locator("[data-cube-scramble-button]").click();
   await expect(main).toHaveAttribute("data-cube-phase", "memo", {
     timeout: SCRAMBLE_TIMEOUT,
