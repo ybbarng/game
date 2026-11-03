@@ -229,7 +229,12 @@ test("오목: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
   await startSolo(page);
   await placeOne(page, false);
   await expect(stones(page)).toHaveCount(2);
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   // 복기 기록은 IndexedDB에 비동기로 쓴다. 끝난 판이 실제로 쓰인 뒤에 떠난다(바로 떠나면 쓰기가 끊긴다).
   await expect

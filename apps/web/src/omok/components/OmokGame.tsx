@@ -99,6 +99,13 @@ export function OmokGame({
   const clearNotice = useOmok((s) => s.clearNotice);
   const showForbidden = useOmokSettings((s) => s.showForbidden);
   const [aim, setAim] = useState<number | null>(null);
+  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑·체스와 같은 모양).
+  const [confirmResign, setConfirmResign] = useState(false);
+  const played = view?.moves.length ?? 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 수가 오갈 때마다 묻기를 닫는다
+  useEffect(() => {
+    setConfirmResign(false);
+  }, [played]);
 
   useEffect(() => {
     if (!notice) return;
@@ -276,15 +283,42 @@ export function OmokGame({
               </button>
             )}
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myTurn) && (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                기권
-              </button>
-            )}
+            {(!online || myTurn) &&
+              (confirmResign ? (
+                <span className="flex w-full items-center justify-center gap-2">
+                  <span className="text-sm text-white/80">
+                    정말 기권할까요?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmResign(false);
+                      submit({ type: "resign" });
+                    }}
+                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
+                  >
+                    기권하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResign(false)}
+                    className="rounded-xl bg-white/10 px-4 py-2"
+                  >
+                    계속 두기
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAim(null);
+                    setConfirmResign(true);
+                  }}
+                  className="rounded-xl bg-white/10 px-4 py-2"
+                >
+                  기권
+                </button>
+              ))}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (
