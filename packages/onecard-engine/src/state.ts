@@ -101,6 +101,11 @@ export interface OnecardState {
   bankruptCounts: number[];
   /** 최근 판 번호의 판정 재료(`STALE_SEEN` + 1개) */
   recent: SeenMark[];
+  /**
+   * 늦음(`late`)으로 봐준 누름: 자리와 그 누름의 `seen`. 같은 자리·같은 `seen`의 늦음은 한 번만 봐주고
+   * 그다음부터는 헛외침이다(`judgeShout`). `STALE_SEEN`보다 오래된 것은 지운다. 없으면 빈 것
+   */
+  lateSeen?: { seat: number; turnNo: number }[];
   result: OnecardResult | null;
   /** 끊긴 사람을 기다리지 않기로 해 중간에 끝났다 */
   retired?: boolean;

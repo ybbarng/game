@@ -378,7 +378,16 @@ export function judgeShout(
     };
   }
   if (targets.length === 0) return { kind: "false" };
-  if (open.length === 0) return { kind: "late" };
+  if (open.length === 0) {
+    // 늦음은 같은 자리·같은 seen으로 한 번만 봐준다. 창이 닫힌 판 번호를 골라 마구 눌러도 벌칙이 없던 구멍을 막는다.
+    // "창이 닫힌 뒤 첫 차례 행동 전까지만"으로 자르지 않은 까닭: 창이 차례 행동(먹기·다 내기)으로 닫히면
+    // 그 전 판을 보고 정직하게 누른 사람의 누름이 지연 때문에 그 행동 뒤에 닿는다. 그 사람을 헛외침으로 만들면
+    // `seen` 판정(지연 때문에 한 판 늦게 본 사람을 봐준다)이 무너진다
+    const used = (state.lateSeen ?? []).some(
+      (l) => l.seat === seat && l.turnNo === seen,
+    );
+    return used ? { kind: "false" } : { kind: "late" };
+  }
   return caught.length > 0
     ? { kind: "catch", targets: caught, held }
     : { kind: "hold", targets: held };
@@ -399,6 +408,7 @@ function applyShout(
   state: OnecardState,
   seat: number,
   verdict: ShoutVerdict,
+  seen: number,
   events: GameEvent[],
 ): void {
   events.push({ type: "shouted", seat });
@@ -432,8 +442,12 @@ function applyShout(
       events.push({ type: "falseShout", seat });
       enqueue(state, seat, state.rules.falseShoutPenalty, "falseShout");
       break;
+    case "late":
+      // 벌칙은 없지만 한 번 봐준 것을 적어 둔다(같은 seen으로 되풀이하면 헛외침)
+      state.lateSeen = [...(state.lateSeen ?? []), { seat, turnNo: seen }];
+      break;
     default:
-      // lateSelf·late·stale: 아무 일 없음
+      // lateSelf·stale: 아무 일 없음
       break;
   }
   processQueue(state, events);
@@ -513,6 +527,12 @@ function done(
       exposed: next.windows.map((w) => w.seat),
     });
     if (next.recent.length > STALE_SEEN + 1) next.recent.shift();
+    // 적어 둔 늦음이 있을 때만 `seen`으로 더는 못 가리키는 것을 지운다.
+    // 배열은 늘 새로 만들어 바꾸므로 `clone`이 얕게 나눠 가져도 된다
+    if (next.lateSeen)
+      next.lateSeen = next.lateSeen.filter(
+        (l) => next.turnNo - l.turnNo <= STALE_SEEN,
+      );
   }
   return { ok: true, state: next, events };
 }
@@ -546,7 +566,7 @@ export function step(
     if (verdict.kind === "error") return fail(verdict.error);
     const next = clone(state);
     const events: GameEvent[] = [];
-    applyShout(next, seat, verdict, events);
+    applyShout(next, seat, verdict, action.seen, events);
     return done(next, events, false);
   }
 

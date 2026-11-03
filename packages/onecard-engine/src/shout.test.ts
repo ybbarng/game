@@ -252,6 +252,34 @@ describe("잡기 창 T", () => {
     expect(counts(after)).toEqual([1, 4, 4, 3]);
   });
 
+  it("늦음은 같은 자리·같은 판 번호로 한 번만 봐준다. 되풀이하면 헛외침", () => {
+    const closed = ok(
+      step(catchOpen(), 1, { type: "timeout", kind: "catchWindow", target: 0 }),
+    );
+    const seen = closed.turnNo;
+    // 정직하게 한 번 늦은 누름은 벌칙 없음
+    const [once, e1] = shout(closed, 2, seen);
+    expect(e1).toEqual([{ type: "shouted", seat: 2 }]);
+    // 같은 seen으로 다시 누르면 헛외침
+    expect(judgeShout(once, 2, seen)).toEqual({ kind: "false" });
+    const [twice, e2] = shout(once, 2, seen);
+    expect(e2).toContainEqual({ type: "falseShout", seat: 2 });
+    expect(counts(twice)).toEqual([1, 3, 4, 3]);
+    // 다른 자리는 따로 센다
+    expect(judgeShout(twice, 3, seen)).toEqual({ kind: "late" });
+  });
+
+  it("차례 행동으로 창이 닫혀도 그 전 판을 보고 누른 첫 누름은 늦음", () => {
+    let s = catchOpen();
+    s = ok(step(s, 1, { type: "draw" }));
+    s = ok(step(s, 2, { type: "draw" }));
+    s = ok(step(s, 3, { type: "draw" }));
+    const seen = s.turnNo;
+    // 0이 먹어 창이 닫혔는데, 3은 먹기 전 판을 보고 눌렀다
+    s = ok(step(s, 0, { type: "draw" }));
+    expect(judgeShout(s, 3, seen)).toEqual({ kind: "late" });
+  });
+
   it("잡기 창이 열리자 세 사람이 같은 판을 보고 연달아 외쳐도: 첫 사람만 잡고 나머지는 벌칙 없음", () => {
     const s = catchOpen();
     const seen = s.turnNo;
