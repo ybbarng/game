@@ -1,6 +1,7 @@
 import { galaxyBotFor, playGalaxy } from "@game/galaxy-ai";
 import {
   boardOfSky,
+  GALAXY_EDITION,
   type GameEvent,
   SHORT_RULES,
   STANDARD_RULES,
@@ -101,9 +102,55 @@ describe("은하 한 바퀴 kit", () => {
         ({ game: "galaxy", data, id: `${i}`, at: i }) as unknown as RoundRecord,
     );
     const summary = summarizeGalaxy(records);
+    expect(round.edition).toBe(GALAXY_EDITION);
     expect(summary.rounds).toBe(2);
+    expect(summary.oldRounds).toBe(0);
     expect(summary.bestAssets).toBe(Math.max(2000, round.assets));
     expect(summary.met.length).toBe(new Set(round.met).size);
+  });
+
+  it("내 기록: 옛 규칙 판(판 번호가 다르거나 없음)은 숫자에 섞지 않고 판 수만 센다", () => {
+    const base: GalaxyRound = {
+      edition: GALAXY_EDITION,
+      players: 4,
+      length: "standard",
+      sky: "seasons",
+      rank: 2,
+      assets: 1500,
+      cash: 800,
+      by: "turns",
+      bought: [],
+      completed: ["orion"],
+      rentPaid: 100,
+      rentReceived: 200,
+      met: ["rigel"],
+    };
+    const { edition: _, ...noEdition } = base;
+    const rounds = [
+      base,
+      {
+        ...base,
+        edition: GALAXY_EDITION - 1,
+        rank: 1,
+        assets: 9000,
+        met: ["vega"],
+      },
+      { ...noEdition, rank: 1, assets: 8000, completed: ["lyra"] },
+    ].map(
+      (data, i) =>
+        ({ game: "galaxy", data, id: `${i}`, at: i }) as unknown as RoundRecord,
+    );
+    const s = summarizeGalaxy(rounds);
+    expect(s.rounds).toBe(1);
+    expect(s.oldRounds).toBe(2);
+    expect(s.firsts).toBe(0);
+    expect(s.averageRank).toBe(2);
+    expect(s.bestAssets).toBe(1500);
+    expect(s.completedBy).toEqual({ orion: 1 });
+    expect(s.rentReceived).toBe(200);
+    expect(s.recent).toEqual([{ rank: 2, players: 4 }]);
+    // 만난 별은 규칙과 상관없어 옛 판도 함께 센다
+    expect(s.met.sort()).toEqual(["rigel", "vega"]);
   });
 
   it("다시 보기: 행동 한 줄과 이 걸음의 별빛 흐름", () => {
