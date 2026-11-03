@@ -219,7 +219,7 @@ export function CubePlay({
   const colors = settings.colors;
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      {/* 키 입력 준비(data-input-ready)와 3D 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
+      {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
       <div
         data-cube-stage
         data-input-ready={interpreter && !locked ? "" : undefined}
