@@ -275,6 +275,10 @@ export class LocalMatch<
       Math.max(0, turn.left - used) + 1,
       () => {
         this.cancelFlag = null;
+        // 컴퓨터 자리가 워커에서 세는 중이면 시간패 대신 답을 기다린다. 생각하는 시간은 기기 속도라
+        // 컴퓨터를 지게 하지 않고, 답이 오면 쓴 시간을 남은 시간 안으로 적는다(`apply`).
+        // 아무도 정할 것이 없는 창(나이롱뽕 등)이나 같은 스레드 계산에서는 예전처럼 시간 끝을 기록한다.
+        if (this.thinking && this.isComputer(turn.seat)) return;
         const timeout = timing.timeout(turn.left + 1);
         // 멘탈 포커(화투): 시간패로 판이 끝나거나 더미를 쓸 수 있어 카드를 여는 준비를 거친다.
         if (this.options.prepare) {
@@ -537,10 +541,13 @@ export class LocalMatch<
     // 시간 규칙이 없는 판은 싣지 않아 예전 기록과 같다.
     const timing = this.kit.timing;
     const before = timing?.turn(this.state);
-    const action =
-      timing && before
-        ? timing.stamp(raw, this.clock.now() - this.turnSince)
-        : raw;
+    let spent = this.clock.now() - this.turnSince;
+    // 컴퓨터 자리(사람 대신이 아니라 처음부터 컴퓨터)는 쓴 시간을 남은 시간 안으로 적는다. 워커에서 세는 동안
+    // 시계는 가지만, 느린 폰에서 계산이 길어져도 컴퓨터가 시간패로 지지 않는다(2026-11-03 헤드쿼터 검토 ③).
+    // 끊긴 사람을 대신 두는 자리는 그 사람의 시계라 그대로 잰다.
+    if (bot && before && this.isComputer(seat))
+      spent = Math.min(spent, Math.max(0, before.left - 1));
+    const action = timing && before ? timing.stamp(raw, spent) : raw;
     const result = this.stepper(this.state, seat, action);
     if (!result.ok) return result;
     this.state = result.state;
@@ -573,6 +580,11 @@ export class LocalMatch<
       });
     }
     return { ok: true };
+  }
+
+  /** 처음부터 컴퓨터가 앉은 자리(끊긴 사람을 대신 두는 자리는 아니다) */
+  private isComputer(seat: number): boolean {
+    return !this.humans.has(seat);
   }
 
   private isBot(seat: number): boolean {

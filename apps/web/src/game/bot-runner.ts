@@ -146,13 +146,25 @@ export function thinkWith<ActionT>(
   });
 }
 
-/** 이 열쇠의 봇으로 한 수만 고른다(힌트·문제 받는 수). 난수 상태는 쓰고 버린다 */
+/**
+ * 이 열쇠의 봇으로 한 수만 고른다(힌트·문제 받는 수). 난수 상태는 쓰고 버린다.
+ * `fallback`이 있으면 워커 계산이 실패할 때(새 배포 뒤 열어 둔 탭이 옛 봇 파일에서 404 등) 그 함수로
+ * 화면 스레드에서 이어서 센다. 답을 기다리는 화면(문제 받는 수)이 영영 멈추지 않게 한다(LocalMatch와 같은 방식)
+ */
 export async function adviseWith<ActionT>(
   key: BotKey,
   view: unknown,
   seed: number,
+  fallback?: () => ActionT,
 ): Promise<ActionT> {
-  return (await thinkWith<ActionT>(key, view, { seed })).action;
+  try {
+    return (await thinkWith<ActionT>(key, view, { seed })).action;
+  } catch (err) {
+    if (!fallback || (err instanceof Error && err.name === "AbortError"))
+      throw err;
+    console.error("컴퓨터 계산 실패, 화면 스레드에서 이어서 센다", err);
+    return fallback();
+  }
 }
 
 /**

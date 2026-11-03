@@ -153,3 +153,41 @@ describe("차례를 끝내지 않는 행동(체스 무승부 제안)", () => {
     expect(view().result).toEqual({ kind: "time", seat: white });
   });
 });
+
+describe("컴퓨터 자리의 개인 시간(워커 계산)", () => {
+  it("워커가 남은 시간보다 오래 세도 컴퓨터는 시간패로 지지 않고, 쓴 시간은 남은 시간 안으로 적힌다", async () => {
+    const clock = new ManualClock();
+    const black = createMatch(FAST, SEED).state.blackSeat;
+    const white = 1 - black;
+    // 워커 답을 손으로 늦춘다(실제 시간을 기다리지 않는다)
+    let answer: (() => void) | null = null;
+    const match = new LocalMatch({
+      kit: omokKit,
+      rules: FAST,
+      seed: SEED,
+      humanSeat: black,
+      bot: omokBeginnerBot,
+      clock,
+      runBot: (view, rng) =>
+        new Promise((resolve) => {
+          answer = () => {
+            const next = { ...rng };
+            resolve({ action: omokBeginnerBot.decide(view, next), rng: next });
+          };
+        }),
+    });
+    match.submit({ type: "place", at: pointAt("H8") });
+    expect(answer).not.toBeNull();
+    // 컴퓨터 남은 시간(기본 3분 + 초읽기 30초×3 = 270초)보다 오래 센다
+    clock.advance(400_000);
+    const view = () => match.current() as OmokView;
+    expect(view().phase).toBe("play");
+    (answer as unknown as () => void)();
+    await new Promise((done) => setTimeout(done, 0));
+    const bot = match.actionLog().find((e) => e.seat === white);
+    if (!bot) throw new Error("컴퓨터가 두지 않았다");
+    expect(bot.action.type).toBe("place");
+    expect((bot.action as { spent?: number }).spent).toBe(269_999);
+    expect(view().phase).toBe("play");
+  });
+});

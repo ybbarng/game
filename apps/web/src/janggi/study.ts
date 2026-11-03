@@ -72,6 +72,8 @@ export function defenseOffThread(state: JanggiState): Promise<Action> {
     { game: "janggi", name: "advisor" },
     viewOf(state, 1),
     7,
+    // 워커가 실패하면 같은 수를 화면 스레드에서 센다(문제 화면이 「받는 중」에 멈추지 않게)
+    () => defenseFor(state),
   );
 }
 
