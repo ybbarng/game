@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { MinhwatuStats } from "@/minhwatu/components/MinhwatuStats";
 import { NyrongppongStats } from "@/nyrongppong/components/NyrongppongStats";
 import { summarizeOmok } from "@/omok/kit";
+import { OnecardStats } from "@/onecard/components/OnecardStats";
 import { YutStats } from "@/yut/components/YutStats";
 
 import { clearStats, importStats, loadStats, type StatsBook } from "./records";
@@ -40,7 +41,8 @@ type GameTab =
   | "gostop"
   | "minhwatu"
   | "baseball"
-  | "yut";
+  | "yut"
+  | "onecard";
 
 const TAB_LABEL: Record<GameTab, string> = {
   omok: "● 오목",
@@ -54,6 +56,7 @@ const TAB_LABEL: Record<GameTab, string> = {
   hearts: "♥ 하트",
   baseball: "⚾ 숫자야구",
   yut: "🪵 윷놀이",
+  onecard: "🃏 원카드",
 };
 
 /** 열 판마다 한 단계 오른다 */
@@ -97,7 +100,8 @@ export function ProfilePage() {
       game === "gostop" ||
       game === "minhwatu" ||
       game === "baseball" ||
-      game === "yut"
+      game === "yut" ||
+      game === "onecard"
     ) {
       setBack(`/${game}`);
       setTab(game);
@@ -188,6 +192,7 @@ export function ProfilePage() {
                 "gostop",
                 "minhwatu",
                 "nyrongppong",
+                "onecard",
                 "baseball",
                 "yut",
               ] as const
@@ -229,6 +234,8 @@ export function ProfilePage() {
           <BaseballStats book={book} />
         ) : tab === "yut" ? (
           <YutStats book={book} />
+        ) : tab === "onecard" ? (
+          <OnecardStats book={book} />
         ) : (
           <OmokStats book={book} />
         )}
