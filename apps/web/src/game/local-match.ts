@@ -430,24 +430,23 @@ export class LocalMatch<
     seat: number,
     action: ActionT,
     who: "clock" | "react" | "auto" | "host",
-  ) {
-    if (this.options.prepare) {
-      this.enqueue(seat, action, who);
-      return;
-    }
+  ): Promise<void> | null {
+    if (this.options.prepare) return this.enqueue(seat, action, who);
     const result = this.apply(seat, action, who === "react");
     if (result.ok) this.runBots();
     else if (who === "clock") this.syncTimers();
+    return null;
   }
 
   /**
    * 방장 기기가 정해 넣는 행동(실시간 청구 발표를 엔진에 넣기). 사람 행동(`submitAs`)과 달리 그 자리의 앞 행동을
-   * 준비 중이거나 화면을 미뤄 두었어도 거절하지 않고 준비 줄 끝에 세운다(발표한 외침이 사라지지 않게)
+   * 준비 중이거나 화면을 미뤄 두었어도 거절하지 않고 준비 줄 끝에 세운다(발표한 외침이 사라지지 않게).
+   * 줄에 세웠으면 그 행동을 처리한 뒤 풀리는 약속을 돌려준다(판 끝 기록을 공개하기 전에 기다린다). 바로 넣었으면 null
    */
-  submitHost(seat: number, action: ActionT): void {
+  submitHost(seat: number, action: ActionT): Promise<void> | null {
     // 게임을 끝낸 뒤(`end`)에 닿은 발표도 기록에 남긴다(엔진은 끝난 판의 청구 묶음을 아무 일 없이 받는다)
-    if (this.disposed || this.haltedReason) return;
-    this.insert(seat, action, "host");
+    if (this.disposed || this.haltedReason) return null;
+    return this.insert(seat, action, "host");
   }
 
   /** 대국을 돌리는 기기가 바로 넣는 행동(`kit.autoAction`, 원카드 다시 섞기) */
@@ -601,12 +600,12 @@ export class LocalMatch<
     return { ok: true };
   }
 
-  /** 준비가 필요한 행동을 차례로 처리한다 */
+  /** 준비가 필요한 행동을 차례로 처리한다. 돌려준 약속은 이 행동을 처리하면(넣거나 버리면) 풀린다 */
   private enqueue(
     seat: number,
     action: ActionT,
     who: boolean | "clock" | "react" | "auto" | "host",
-  ): void {
+  ): Promise<void> {
     // 시간패·창 시간 끝(`clock`)과 다시 섞기(`auto`)는 사람 자리 행동도 컴퓨터 수도 아니다(기록에 bot 표시 없이 남긴다).
     // 컴퓨터 차례 밖 반응(`react`)은 bot 표시로 남기지만 차례 수 진행(`botBusy`)과는 상관없다.
     const bot = who === true;
@@ -657,6 +656,7 @@ export class LocalMatch<
       }
       this.runBots();
     });
+    return this.work;
   }
 
   subscribe(listener: (snapshot: Snapshot<View, Event>) => void): () => void {

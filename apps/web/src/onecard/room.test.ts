@@ -281,6 +281,8 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
   /** 몇 수 둔 뒤 `tamper`로 방장 기기를 고쳐 쓰고, 방장이 나가 기록을 공개하면 참가자 검증이 어떻게 되나 */
   async function audited(
     tamper: (ctx: Awaited<ReturnType<typeof setup>>) => Promise<void>,
+    /** 방장이 나간(기록을 공개한) 바로 뒤에 할 일 */
+    afterFinish?: (clock: ManualClock) => void,
   ): Promise<AuditResult> {
     const ctx = await setup(2);
     const { clock, host, guests, match } = ctx;
@@ -297,8 +299,11 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
       await tick(clock, 1);
     }
     await tamper(ctx);
-    host.finish();
+    void host.finish();
+    afterFinish?.(clock);
     await pump(clock, () => audits.length === 1);
+    // 참가자의 빠뜨림 이의 유예(5초)가 지나도록 둔다(판 끝에 버린 청구로 방장을 짚지 않는지)
+    await tick(clock, 6_000);
     return audits[0] as AuditResult;
   }
 
@@ -358,6 +363,23 @@ describe("원카드 일반방: 방장이 기록 속 외침을 고치면 판 끝 
     });
     expect(result).toMatchObject({ ok: false });
     expect(result.ok ? "" : result.reason).toContain("방장 발표와 다르다");
+  });
+
+  it("정직한 방장: 묶음 창이 열린 채 방장이 나가도(판 끝 직전 청구) 짚히지 않고, 버린 청구로 이의도 나지 않는다", async () => {
+    let troubles: string[] = [];
+    const result = await audited(
+      async (ctx) => {
+        troubles = ctx.troubles;
+        // 참가자와 방장이 친 청구가 방장 통로에 닿아 묶음 창(100ms)이 열린 채로 방장이 나간다
+        (ctx.guests[0] as Guest).claims?.claim({});
+        ctx.host.claims?.claim({});
+        await flush();
+      },
+      // 기록을 공개한 바로 뒤 묶음 창이 지난다(예전에는 이때 발표가 나가, 참가자는 발표를 받았는데 기록엔 없었다)
+      (clock) => clock.advance(200),
+    );
+    expect(result).toEqual({ ok: true });
+    expect(troubles).toEqual([]);
   });
 
   /** 참가자가 방장과 끊겼다 다시 이어질 때까지 */

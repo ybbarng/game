@@ -407,6 +407,8 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     },
 
     shout(seen) {
+      // 판이 끝나면 더미 치기를 받지 않는다(온라인 방은 판 끝에 청구 통로를 닫는다)
+      if (get().view?.phase === "over") return;
       if (claimShout) {
         if (!claimShout(seen)) playUiCue("invalid");
         return;

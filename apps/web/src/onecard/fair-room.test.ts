@@ -89,7 +89,14 @@ function hostMove(
  * 판을 끝까지 둔다. 참가자는 두 장인 차례에 한 번 더미를 친다(청구). `tamper`는 그 청구 전에 한 번 부른다
  * (고친 방장 기기 흉내). 판 끝 검증 결과와 부정 알림, 방장 엔진 상태를 돌려준다
  */
-async function playFair(tamper?: (host: AnyHost, guest: AnyGuest) => void) {
+async function playFair(
+  tamper?: (host: AnyHost, guest: AnyGuest) => void,
+  /**
+   * `claimBeforeLast`: 마지막 카드를 내기 직전에 그 사람이 더미를 친다(판이 끝나는 걸음과 청구 묶음 창이 겹친다).
+   * 판이 끝난 뒤 묶음 창과 빠뜨림 이의 유예가 지나도록 시계를 옮긴다
+   */
+  options: { claimBeforeLast?: boolean } = {},
+) {
   const { host, guests, incidents, audits, clock } = await setupHwatu({
     kit: shortKit,
     rules,
@@ -112,6 +119,7 @@ async function playFair(tamper?: (host: AnyHost, guest: AnyGuest) => void) {
   guest.on("rejected", () => rejections++);
   resolvedSeen(guest);
   let shouted = false;
+  let lastClaimed = false;
   while (raw().phase !== "over" && incidents.length === 0) {
     const state = raw();
     // 방장 엔진: 참가자 손패와 더미는 자리 표뿐이다(방장 자기 패도 자리 표로 든다).
@@ -143,10 +151,40 @@ async function playFair(tamper?: (host: AnyHost, guest: AnyGuest) => void) {
     const hv = match.current() as OnecardView;
     const rejected = rejections;
     let acted = false;
-    if (hv.decision === "turn")
-      acted = match.submit(hostMove(hv, gv, state)).ok;
-    else if (gv?.decision === "turn")
-      acted = guest.match?.submit(firstMove(gv)).ok ?? false;
+    /** 마지막 카드를 내는 수면 그 직전에 더미를 친다(한 번만) */
+    const beforeLast = (
+      view: OnecardView,
+      action: Action,
+      claim: () => void,
+    ) => {
+      if (
+        !options.claimBeforeLast ||
+        lastClaimed ||
+        action.type !== "play" ||
+        view.hand.length !== 1
+      )
+        return false;
+      claim();
+      lastClaimed = true;
+      return true;
+    };
+    if (hv.decision === "turn") {
+      const action = hostMove(hv, gv, state);
+      const claimed = beforeLast(hv, action, () => host.claims?.claim({}));
+      acted = match.submit(action).ok;
+      // 마지막 카드를 준비하는 사이 묶음 창이 닫혀, 발표한 묶음이 준비 줄에서 마지막 카드 뒤에 선다
+      // (판 끝 기록은 그 묶음이 기록에 들어간 뒤에 나가야 한다)
+      if (claimed) clock.advance(150);
+    } else if (gv?.decision === "turn") {
+      const action = firstMove(gv);
+      const claimed = beforeLast(gv, action, () => guest.claims?.claim({}));
+      acted = guest.match?.submit(action).ok ?? false;
+      if (claimed) {
+        // 청구와 마지막 카드가 함께 방장에게 닿은 뒤 묶음 창이 닫힌다: 발표가 마지막 카드 뒤 준비 줄에 선다
+        await until(() => pendingClaims(host) > 0, "청구가 방장에게 닿음");
+        clock.advance(150);
+      }
+    }
     // 다음 걸음(엔진 기록이 늘고 참가자 화면이 따라옴, 또는 판 끝)까지. 내지 못했으면(준비 중·카드를 여는 중)
     // 두 화면 중 하나가 바뀔 때까지(바로 다시 내며 맴돌지 않게)
     const stamp = JSON.stringify([match.current(), guestView()]);
@@ -160,9 +198,34 @@ async function playFair(tamper?: (host: AnyHost, guest: AnyGuest) => void) {
       "다음 걸음",
     );
   }
-  host.finish();
+  if (options.claimBeforeLast) {
+    // 판이 끝난 뒤 묶음 창(100ms)이 지난다(예전에는 기록을 공개한 뒤 발표가 나갔다)
+    clock.advance(200);
+  }
+  void host.finish();
   await until(() => audits.length === 1 || incidents.length > 0, "판 끝 검증");
-  return { host, guest, incidents, audits, state: raw(), shouted };
+  if (options.claimBeforeLast) {
+    // 참가자의 빠뜨림 이의 유예(5초)가 지나도 버린 청구로 방장을 짚지 않는다
+    clock.advance(6_000);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return {
+    host,
+    guest,
+    incidents,
+    audits,
+    state: raw(),
+    shouted,
+    lastClaimed,
+  };
+}
+
+/** 방장 청구 통로에서 아직 닫지 않은 묶음의 청구 수(시험이 묶음 창을 닫을 때를 고른다) */
+function pendingClaims(host: AnyHost): number {
+  return (
+    (host.claims as unknown as { pending: unknown[] } | null)?.pending.length ??
+    0
+  );
 }
 
 /** 참가자가 받아들인 발표 수(청구 통로 이벤트로 센다) */
@@ -217,6 +280,17 @@ describe("원카드 암호화방", () => {
     expect(reasons.some((r) => r.includes("청구 통로를 거치지 않고"))).toBe(
       true,
     );
+  }, 60_000);
+
+  it("정직한 방장: 마지막 카드 직전 청구로 판이 끝나는 걸음과 묶음 창이 겹쳐도 짚히지 않는다", async () => {
+    const { incidents, audits, state, lastClaimed } = await playFair(
+      undefined,
+      { claimBeforeLast: true },
+    );
+    expect(state.phase).toBe("over");
+    expect(lastClaimed).toBe(true);
+    expect(audits).toEqual([{ ok: true }]);
+    expect(incidents).toEqual([]);
   }, 60_000);
 
   it("방장이 발표는 바르게 하고 기록에서 청구를 빼면 판 끝 검증이 짚는다", async () => {

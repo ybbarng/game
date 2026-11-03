@@ -1246,6 +1246,9 @@ export class GuestRoom<
       case "audit": {
         if (from !== this.hostId || this.audited) return;
         this.audited = true;
+        // 판이 끝났다: 청구 통로를 닫는다. 방장도 기록을 공개하기 전에 닫아 발표 전 묶음을 버렸으므로, 그 묶음의 청구로
+        // 빠뜨림 이의를 내지 않고 뒤늦은 발표도 받지 않는다(모두 같은 결론, docs/42 16-3).
+        this.claims?.close();
         const result = this.fair
           ? await this.verifyFairEnd(message.log as unknown as FairLogged[])
           : await this.verify(

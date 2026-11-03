@@ -251,8 +251,16 @@ export class HostRoom<
           seatOfPeer: (peerId) => this.seatOf(peerId),
           apply: (resolved) => {
             const action = claimSpec.action(resolved) as ActionT | null;
-            if (action !== null && this.match)
-              this.match.submitHost(this.match.seat, action);
+            if (action === null || !this.match) return;
+            // 암호화방은 준비 줄에 선다: 판 끝 기록은 발표한 묶음이 기록에 들어간 뒤에 공개한다(`sendAudit`).
+            const landing = this.match.submitHost(this.match.seat, action);
+            if (landing) {
+              const settled: Promise<void> = landing.then(
+                () => this.claimLanded(settled),
+                () => this.claimLanded(settled),
+              );
+              this.claimsLanding = settled;
+            }
           },
           object: (seat, reason) => this.raiseIncident({ seat, reason }),
         })
@@ -440,7 +448,7 @@ export class HostRoom<
             { t: "snapshot", ...snapshot, mine: mineOf(match, seat) },
             guest.peerId,
           );
-        if (this.kit.isOver(snapshot.view)) this.sendAudit();
+        if (this.kit.isOver(snapshot.view)) void this.sendAudit();
       });
   }
 
@@ -782,7 +790,7 @@ export class HostRoom<
             guest.peerId,
           );
       // 첫 판이 바로 끝나 게임도 끝났으면(한 판짜리 총통) 뒤따르는 화면이 없어 구독에서 판 끝 기록을 보내지 못한다.
-      if (this.kit.isOver(match.viewFor(0))) this.sendAudit();
+      if (this.kit.isOver(match.viewFor(0))) void this.sendAudit();
       this.broadcastLobby();
       this.persist();
       return match;
@@ -1106,9 +1114,12 @@ export class HostRoom<
     >;
   }
 
-  /** 게임을 끝내며 검증용 기록을 공개한다 */
-  finish(): void {
-    this.sendAudit();
+  /**
+   * 게임을 끝내며 검증용 기록을 공개한다. 발표한 청구 묶음이 아직 준비 줄에 있으면(암호화방) 기록에 들어간 뒤 공개하고,
+   * 그때 풀린다(방을 닫기 전에 기다린다)
+   */
+  finish(): Promise<void> {
+    return this.sendAudit();
   }
 
   close(): void {
@@ -1122,7 +1133,50 @@ export class HostRoom<
   }
 
   private audited = false;
-  private sendAudit(): void {
+  /** 판 끝 기록 공개를 기다리는 중(발표한 청구 묶음이 기록에 들어가기를) */
+  private auditing: Promise<void> | null = null;
+  /** 발표했지만 아직 준비 줄에 있는 청구 묶음 중 마지막 것(줄은 차례대로라 이것만 기다리면 된다) */
+  private claimsLanding: Promise<void> | null = null;
+
+  private claimLanded(which: Promise<void>): void {
+    if (this.claimsLanding === which) this.claimsLanding = null;
+  }
+
+  /**
+   * 판이 끝나거나 방장이 나갈 때 판 끝 기록을 공개한다. 그 전에 청구 통로를 닫는다(docs/42 16-3):
+   * 발표 전인 묶음은 버리고(참가자도 판 끝 기록을 받으면 통로를 닫아 그 청구로 이의를 내지 않는다, 모두 같은 결론),
+   * 발표한 묶음은 기록에 들어간 뒤에 공개한다. 그러지 않으면 기록을 공개한 뒤 묶음 창이 닫혀 참가자는 발표를 받았는데
+   * 기록엔 없어 「발표한 청구 묶음이 기록에서 빠졌다」로 정직한 방장을 짚는다.
+   * 준비 줄이 막혀도 참가자의 빠뜨림 이의 유예(`graceMs`)의 절반 안에는 공개한다
+   */
+  private sendAudit(): Promise<void> {
+    if (!this.match || this.audited) return Promise.resolve();
+    if (this.auditing) return this.auditing;
+    this.claims?.close();
+    const landing = this.claimsLanding;
+    if (!landing) {
+      this.publishAudit();
+      return Promise.resolve();
+    }
+    const waitMs = (this.claims?.rules.graceMs ?? 5_000) / 2;
+    this.auditing = new Promise<void>((resolve) => {
+      let cancel: (() => void) | null = null;
+      let done = false;
+      const go = () => {
+        if (done) return;
+        done = true;
+        cancel?.();
+        this.auditing = null;
+        this.publishAudit();
+        resolve();
+      };
+      cancel = this.clock.after(waitMs, go);
+      void landing.then(go);
+    });
+    return this.auditing;
+  }
+
+  private publishAudit(): void {
     if (!this.match || this.audited) return;
     this.audited = true;
     this.persist();
