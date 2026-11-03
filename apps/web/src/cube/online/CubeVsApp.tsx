@@ -15,6 +15,8 @@ import { useCubeRoom } from "./use-room";
  * 온라인 방과 같은 길(경주 틀 + 컴퓨터 참가자)을 진짜 연결 없이 쓴다.
  */
 
+const SIZES = [2, 3, 4, 5] as const;
+
 export function CubeVsApp() {
   const [n, setN] = useState(2);
   const [level, setLevel] = useState<BotLevel>("beginner");
@@ -97,12 +99,11 @@ export function CubeVsApp() {
                 onChange={(e) => setN(Number(e.target.value))}
                 className="rounded bg-white/10 px-2 py-1"
               >
-                <option value={2} className="bg-neutral-800">
-                  2×2
-                </option>
-                <option value={3} className="bg-neutral-800">
-                  3×3
-                </option>
+                {SIZES.map((k) => (
+                  <option key={k} value={k} className="bg-neutral-800">
+                    {k}×{k}
+                  </option>
+                ))}
               </select>
             </label>
             <fieldset className="flex flex-col gap-1 text-sm">
@@ -120,9 +121,6 @@ export function CubeVsApp() {
                   </button>
                 ))}
               </div>
-              <span className="text-white/50 text-xs">
-                입문 초당 2수·층별, 중수 4수, 고수 8수·CFOP, 초고수 10수
-              </span>
             </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input

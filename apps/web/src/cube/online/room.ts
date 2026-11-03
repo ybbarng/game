@@ -157,6 +157,8 @@ export class CubeRoom {
     game: CubeRaceGame;
     sessions: Map<string, RaceSession<CubeMove, PuzzleState>>;
     off: (() => void)[];
+    /** 이 기기 컴퓨터가 계획을 세운 시도 번호 */
+    planned: Map<string, number>;
   };
   private readonly listeners = new Set<() => void>();
   private disposed = false;
@@ -223,6 +225,13 @@ export class CubeRoom {
     return c
       ? (c.sessions.get(this.me) ?? [...c.sessions.values()][0])
       : undefined;
+  }
+
+  /** 이 기기 컴퓨터가 지금 시도의 계획을 다 세웠나(화면 시험이 시계를 감기 전에 기다린다) */
+  botPlanned(id: string): boolean {
+    const c = this.current;
+    const at = c?.planned.get(id);
+    return at !== undefined && at === c?.sessions.get(id)?.snapshot().attempt;
   }
 
   game(): CubeRaceGame | undefined {
@@ -441,6 +450,7 @@ export class CubeRoom {
     const sessions = new Map<string, RaceSession<CubeMove, PuzzleState>>();
     const off: (() => void)[] = [];
     const round = s.round;
+    const planned = new Map<string, number>();
     for (const p of local) {
       const session = new RaceSession({
         game,
@@ -461,6 +471,10 @@ export class CubeRoom {
             n: s.settings.n,
             clock: this.init.clock,
             ...(this.init.botPlan ? { plan: this.init.botPlan } : {}),
+            onPlanned: (attempt) => {
+              planned.set(p.id, attempt);
+              this.emit();
+            },
           }),
         );
       off.push(
@@ -471,7 +485,15 @@ export class CubeRoom {
         }),
       );
     }
-    this.current = { race: race.id, round, owners, game, sessions, off };
+    this.current = {
+      race: race.id,
+      round,
+      owners,
+      game,
+      sessions,
+      off,
+      planned,
+    };
     for (const session of sessions.values()) session.start();
     this.emit();
   }

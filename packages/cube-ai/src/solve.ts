@@ -188,13 +188,17 @@ export class Solve {
   }
 }
 
-interface Marked {
+export interface Marked {
   m: CubeMove;
   look: boolean;
 }
 
-/** 합치기와 같고, 멈춤 표시는 합쳐진 수의 앞쪽에, 지워진 수의 표시는 다음 수에 넘긴다 */
-function mergeMarked(list: readonly Marked[]): Marked[] {
+/**
+ * 합치기와 같고, 멈춤 표시는 합쳐진 수의 앞쪽에, 지워진 수의 표시는 다음 수에 넘긴다.
+ * 지워진 뒤 다음 수가 앞 수와 합쳐지면(U R R' U → U2) 넘긴 표시는 그 합친 수가 받는다.
+ * 받지 않으면 표시가 그 뒤의 다른 수로 한 수 밀린다.
+ */
+export function mergeMarked(list: readonly Marked[]): Marked[] {
   const out: Marked[] = [];
   let carry = false;
   for (const item of list) {
@@ -208,12 +212,13 @@ function mergeMarked(list: readonly Marked[]): Marked[] {
     ) {
       const turns = (last.m.turns + m.turns) % 4;
       out.pop();
-      if (turns !== 0)
+      if (turns !== 0) {
         out.push({
           m: { ...m, turns: turns as 1 | 2 | 3 },
-          look: last.look || item.look,
+          look: last.look || item.look || carry,
         });
-      else carry = carry || last.look || item.look;
+        carry = false;
+      } else carry = carry || last.look || item.look;
     } else {
       out.push({ m, look: item.look || carry });
       carry = false;

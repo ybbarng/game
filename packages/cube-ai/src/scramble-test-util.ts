@@ -1,14 +1,7 @@
 /** 대회 섞기 시험에서만 쓰는 도구 */
-import {
-  applyMoves,
-  isSolved,
-  parseMoves,
-  solvedCube,
-} from "@game/cube-engine";
-import { solveReductionState } from "@game/cube-reduction";
+import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { scramble } from "@game/cube-scramble";
 import type { PuzzleState } from "@game/puzzle-core";
-import { expect } from "vitest";
 import { checkSolve } from "./big-test-util";
 import { solveHuman } from "./methods";
 
@@ -25,12 +18,14 @@ export function scrambledState(
   );
 }
 
-/** 고수 사람 흉내와 축소법 해가 그 상태를 엔진에서 맞춘다 */
+/**
+ * 고수 사람 흉내와 축소법 해(초고수)가 그 상태를 엔진에서 맞춘다. 둘은 같은 축소법 결과를
+ * 쓰므로(big.ts가 최근 상태를 기억한다) 축소법은 한 번만 돈다. 5×5는 한 번에 수백 ms라
+ * 두 번 돌리면 파일 하나가 2초에 바투 붙는다.
+ */
 export function checkScramble(event: "444" | "555", seed: number): void {
   const n = event === "444" ? 4 : 5;
   const start = scrambledState(event, seed);
   checkSolve(n, start, solveHuman("advanced", n, start));
-  const red = solveReductionState(n, start);
-  const end = applyMoves(n, start, parseMoves(n, red.moves));
-  expect(isSolved(n, end)).toBe(true);
+  checkSolve(n, start, solveHuman("expert", n, start));
 }

@@ -94,7 +94,7 @@ export function RaceView({
         return true;
       }
       if (r.reason === "살펴보기 중")
-        setNotice("살펴보기 중에는 돌릴 수 없습니다");
+        setNotice("살펴보기 중에는 돌릴 수 없습니다.");
       return false;
     },
     [room],
@@ -115,7 +115,7 @@ export function RaceView({
   if (!snap || !session) {
     return (
       <p className="rounded-xl bg-white/5 p-4 text-center text-sm">
-        이번 판에는 들지 않았습니다
+        이번 판에는 들지 않았습니다.
       </p>
     );
   }
@@ -215,6 +215,7 @@ export function RaceView({
                 key={p.id}
                 data-cube-peer={p.id}
                 data-cube-peer-status={p.status}
+                data-cube-bot-planned={room.botPlanned(p.id) ? "" : undefined}
                 className="flex flex-col gap-1 rounded-xl bg-white/5 p-2"
               >
                 <div className="flex items-baseline gap-2 text-sm">
@@ -290,6 +291,8 @@ function ResultBox({
     for (const p of room.state.players) {
       const level = p.bot;
       if (!level || !round.players.includes(p.id)) continue;
+      // 기권한 컴퓨터는 둔 수가 없다(계획을 못 만들었거나 그 판을 떠났다)
+      if (round.result.players[p.id]?.status === "forfeit") continue;
       const log = round.logs[p.id] ?? [];
       void checkBotRun(
         level,

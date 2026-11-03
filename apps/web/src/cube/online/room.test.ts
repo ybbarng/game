@@ -118,13 +118,19 @@ describe("큐브 경주 방", () => {
     expect(guest.state?.players.map((p) => p.id)).toEqual(["h", "g", "bot1"]);
   });
 
-  it("4×4 이상으로 바꾸면 컴퓨터를 뺀다(컴퓨터는 2×2·3×3만)", () => {
+  it("4×4·5×5로 바꿔도 컴퓨터가 남고, 빈자리에 더할 수 있다", () => {
     const { clock, host, guest } = setup();
-    host.fillWithBots("beginner");
-    expect(host.state?.players).toHaveLength(8);
-    host.setSettings({ n: 4 });
+    host.addBot("beginner");
+    host.setSettings({ n: 5 });
+    host.addBot("expert");
     clock.advance(100);
-    expect(guest.state?.players.map((p) => p.id)).toEqual(["h", "g"]);
+    expect(guest.state?.settings.n).toBe(5);
+    expect(guest.state?.players.map((p) => [p.id, p.bot])).toEqual([
+      ["h", undefined],
+      ["g", undefined],
+      ["bot1", "beginner"],
+      ["bot2", "expert"],
+    ]);
   });
 });
 

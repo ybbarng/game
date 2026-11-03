@@ -46,6 +46,9 @@ export const raceClock: Clock = {
   after: realClock.after,
 };
 
+/** 기권 까닭: 판정 설정 지문을 모르는 옛 판 화면(배포 직후 판이 섞인 때) */
+export const DIFFERENT_VERSION = "다른 판 화면";
+
 export interface RaceSessionInit<Move, State> {
   game: RaceGame<Move, State>;
   transport: Transport;
@@ -94,8 +97,8 @@ interface Attempt<State> {
   seedCommits: Map<string, Record<string, string>>;
   /** 다른 기기가 알린 시작 상태 지문 */
   seedStarts: Map<string, string>;
-  /** 다른 기기가 알린 판정 설정 지문(안 실었으면 빈 글) */
-  seedRules: Map<string, string>;
+  /** 다른 기기가 알린 판정 설정 지문(안 실었으면 undefined: 지문을 모르는 옛 판 화면) */
+  seedRules: Map<string, string | undefined>;
   /** 내가 만든 시작 상태 지문 */
   start?: string;
   /** 씨앗은 정했고 시작 상태를 만드는 중 */
@@ -448,7 +451,7 @@ export class RaceSession<Move, State> {
       case "race-seed":
         this.a.seedCommits.set(from, msg.commits);
         if (msg.start !== undefined) this.a.seedStarts.set(from, msg.start);
-        this.a.seedRules.set(from, msg.rules ?? "");
+        this.a.seedRules.set(from, msg.rules);
         this.checkSeedCommits();
         break;
       case "race-moves": {
@@ -637,8 +640,16 @@ export class RaceSession<Move, State> {
 
   /** 시작 상태를 만들지 못했다: 이 기기가 그 판 기권(남은 사람끼리 다시 약속) */
   private cannotPrepare(): void {
-    if (!this.forfeit([{ id: this.self, reason: "섞기를 만들지 못함" }]))
-      return;
+    this.retire("섞기를 만들지 못함");
+  }
+
+  /**
+   * 나(이 세션의 참가자)가 그 판을 기권한다. 남은 사람끼리 약속부터 다시 하고, 까닭은 결과에 남는다.
+   * 경주 컴퓨터가 계획을 만들지 못했을 때 쓴다.
+   */
+  retire(reason: string): void {
+    if (this.disposed || this.result) return;
+    if (!this.forfeit([{ id: this.self, reason }])) return;
     // 보기만 하는 기기는 약속을 보내지 않으므로, 남은 사람이 나를 기다리지 않게 기권 목록을 직접 알린다
     // (받는 쪽은 기권 목록을 합쳐 다음 시도로 넘어가고, 기권한 사람이 보낸 약속 값은 쓰지 않는다)
     this.broadcast({
@@ -648,6 +659,7 @@ export class RaceSession<Move, State> {
       commit: "-",
       out: this.outList(),
     });
+    this.emit();
   }
 
   private fixSeed(seed: string, releaseAt: number): void {
@@ -707,23 +719,31 @@ export class RaceSession<Move, State> {
   private checkSeedCommits(): void {
     const a = this.a;
     if (a.seed === undefined) return;
-    const blamed = new Set<string>();
+    /** 사람 → 기권 까닭. 먼저 붙은 까닭을 남긴다 */
+    const blamed = new Map<string, string>();
+    const blame = (id: string, reason: string) => {
+      if (!blamed.has(id)) blamed.set(id, reason);
+    };
+    // 판정 설정 지문을 안 실었다: 지문을 모르는 옛 판 화면이다(배포 직후 판이 섞인 때).
+    // 그 기기는 섞기·설정도 다를 수 있으니 이 까닭을 먼저 붙여 「섞기 어긋남」과 헷갈리지 않게 한다
+    for (const [from, theirs] of a.seedRules)
+      if (theirs === undefined) blame(from, DIFFERENT_VERSION);
     for (const [from, theirs] of a.seedCommits) {
       const ids = new Set([...a.members, ...Object.keys(theirs)]);
       for (const id of ids)
         if (a.commits.get(id) !== theirs[id])
-          blamed.add(id === this.self ? from : id);
+          blame(id === this.self ? from : id, "섞기 어긋남");
     }
     // 같은 씨앗인데 시작 상태가 다르다: 그 기기의 섞기를 믿지 않는다.
     // 서로를 탓하므로 둘뿐이면 판이 열리지 않고, 셋 이상이면 다르게 만든 기기만 빠진다
     if (a.start !== undefined)
       for (const [from, theirs] of a.seedStarts)
-        if (theirs !== a.start) blamed.add(from);
+        if (theirs !== a.start) blame(from, "섞기 어긋남");
     // 판정 설정(살펴보기·제한 시간 등)이 다르다: 방장이 기기마다 다른 설정을 줬거나 기기가 고쳐 썼다. 같은 길로 뺀다
     for (const [from, theirs] of a.seedRules)
-      if (theirs !== this.rules) blamed.add(from);
+      if (theirs !== this.rules) blame(from, "섞기 어긋남");
     if (blamed.size > 0)
-      this.forfeit([...blamed].map((id) => ({ id, reason: "섞기 어긋남" })));
+      this.forfeit([...blamed].map(([id, reason]) => ({ id, reason })));
   }
 
   private flush(): void {

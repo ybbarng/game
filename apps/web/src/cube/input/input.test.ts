@@ -389,7 +389,7 @@ describe("저장·내보내기·가져오기", () => {
         bindings: [{ code: "KeyR", action: "Q" }],
       }),
     );
-    expect(bad).toEqual({ ok: false, error: "1번째 키의 동작(Q)을 모릅니다" });
+    expect(bad).toEqual({ ok: false, error: "1번째 키의 동작(Q)을 모릅니다." });
     expect(isKnownAction("depth:9")).toBe(false);
     expect(isKnownAction("7Rw")).toBe(true);
   });
