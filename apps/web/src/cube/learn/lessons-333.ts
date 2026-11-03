@@ -255,14 +255,14 @@ const secondLayer: Lesson = {
     },
     {
       kind: "demo",
-      body: "오른쪽으로 넣기: U R U' R' U' F' U F",
+      body: "오른쪽으로 넣기: U R U' R' U' F' U F를 한다.",
       setup: flip(RIGHT),
       alg: RIGHT,
       mask: "f2l",
     },
     {
       kind: "demo",
-      body: "왼쪽으로 넣기: U' L' U L U F U' F'",
+      body: "왼쪽으로 넣기: U' L' U L U F U' F'를 한다.",
       setup: flip(LEFT),
       alg: LEFT,
       mask: "f2l",
@@ -552,7 +552,7 @@ export const BEGINNER_333: Course = {
   id: "333-beginner",
   size: 3,
   title: "3×3 처음 맞추기(층별)",
-  summary: "표기부터 마지막 층까지 여덟 단원. 공식 일곱 개로 끝까지 맞춘다.",
+  summary: "표기부터 마지막 층까지 여덟 단원. 공식 여덟 개로 끝까지 맞춘다.",
   lessons: [
     notation,
     whiteCross,

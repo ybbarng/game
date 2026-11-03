@@ -11,19 +11,22 @@ function run(n: number, text: string) {
 }
 
 describe("맞춤 판정", () => {
-  it.each(SIZES)("%i×%i 큐브 돌리기만 했으면 맞춤", (n) => {
+  it.each(SIZES.map((n) => [n, n]))("%i×%i 큐브 돌리기만 했으면 맞춤", (n) => {
     for (const text of ["x", "y'", "z2", "x y", "x2 z'", "y z x'"]) {
       expect(isSolved(n, run(n, text))).toBe(true);
       expect(isSolved(n, run(n, text), { orientCenters: true })).toBe(true);
     }
   });
 
-  it.each(SIZES)("%i×%i 큐브를 돌린 채 섞고 풀면 맞춤", (n) => {
-    // 큐브를 돌린 뒤 같은 물리적 면을 돌려 되돌린다: x 뒤의 U = 원래 F
-    const s = run(n, "x U R U' R' x' R F R' F'");
-    expect(isSolved(n, s)).toBe(true);
-    expect(isSolved(n, run(n, "x U R"))).toBe(false);
-  });
+  it.each(SIZES.map((n) => [n, n]))(
+    "%i×%i 큐브를 돌린 채 섞고 풀면 맞춤",
+    (n) => {
+      // 큐브를 돌린 뒤 같은 물리적 면을 돌려 되돌린다: x 뒤의 U = 원래 F
+      const s = run(n, "x U R U' R' x' R F R' F'");
+      expect(isSolved(n, s)).toBe(true);
+      expect(isSolved(n, run(n, "x U R"))).toBe(false);
+    },
+  );
 
   it("4×4 넓게 돌리기로 같은 모양이 되면 맞춤", () => {
     // Rw 와 Lw x 는 같은 결과

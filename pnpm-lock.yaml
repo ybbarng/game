@@ -236,6 +236,9 @@ importers:
       '@game/cube-scramble':
         specifier: workspace:*
         version: link:../../packages/cube-scramble
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../../packages/cube-solver
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
@@ -296,6 +299,9 @@ importers:
       '@game/onecard-engine':
         specifier: workspace:*
         version: link:../../packages/onecard-engine
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../../packages/puzzle-core
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../../packages/stardraw-core
