@@ -94,6 +94,8 @@ interface Attempt<State> {
   seedCommits: Map<string, Record<string, string>>;
   /** 다른 기기가 알린 시작 상태 지문 */
   seedStarts: Map<string, string>;
+  /** 다른 기기가 알린 판정 설정 지문(안 실었으면 빈 글) */
+  seedRules: Map<string, string>;
   /** 내가 만든 시작 상태 지문 */
   start?: string;
   /** 씨앗은 정했고 시작 상태를 만드는 중 */
@@ -122,6 +124,8 @@ export class RaceSession<Move, State> {
   private readonly revealTimeoutMs: number;
   private readonly resultGraceMs: number;
   private readonly options: RaceOptions;
+  /** 판정에 끼는 설정의 지문. `race-seed`에 실어 서로 맞춰 본다 */
+  private readonly rules: string;
 
   private readonly out = new Map<string, string>();
   private readonly connected: Set<string>;
@@ -152,6 +156,14 @@ export class RaceSession<Move, State> {
     this.commitTimeoutMs = o.commitTimeoutMs ?? 5_000;
     this.revealTimeoutMs = o.revealTimeoutMs ?? 5_000;
     this.resultGraceMs = o.resultGraceMs ?? 3_000;
+    this.rules = JSON.stringify([
+      this.inspectionMs,
+      this.timeLimitMs,
+      this.capMs,
+      this.resultGraceMs,
+      o.suspicion ?? null,
+      o.gameOptions ?? null,
+    ]);
     this.connected = new Set(this.roster.filter((id) => id !== this.self));
     this.a = this.emptyAttempt([]);
 
@@ -330,6 +342,7 @@ export class RaceSession<Move, State> {
       released: false,
       seedCommits: new Map(),
       seedStarts: new Map(),
+      seedRules: new Map(),
       records: new Map(),
       batch: [],
       log: [],
@@ -435,6 +448,7 @@ export class RaceSession<Move, State> {
       case "race-seed":
         this.a.seedCommits.set(from, msg.commits);
         if (msg.start !== undefined) this.a.seedStarts.set(from, msg.start);
+        this.a.seedRules.set(from, msg.rules ?? "");
         this.checkSeedCommits();
         break;
       case "race-moves": {
@@ -674,6 +688,7 @@ export class RaceSession<Move, State> {
         attempt: this.attemptNo,
         commits,
         ...(a.start !== undefined ? { start: a.start } : {}),
+        rules: this.rules,
       });
     }
     const toRelease = Math.max(0, releaseAt - this.clock.now());
@@ -713,6 +728,9 @@ export class RaceSession<Move, State> {
     if (a.start !== undefined)
       for (const [from, theirs] of a.seedStarts)
         if (theirs !== a.start) blamed.add(from);
+    // 판정 설정(살펴보기·제한 시간 등)이 다르다: 방장이 기기마다 다른 설정을 줬거나 기기가 고쳐 썼다. 같은 길로 뺀다
+    for (const [from, theirs] of a.seedRules)
+      if (theirs !== this.rules) blamed.add(from);
     if (blamed.size > 0)
       this.forfeit([...blamed].map((id) => ({ id, reason: "섞기 어긋남" })));
   }

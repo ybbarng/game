@@ -467,3 +467,76 @@ describe("헛외침·판 번호(seen)", () => {
     expect(after.turn).toBe(0);
   });
 });
+
+describe("청구 묶음(claims, 온라인 방)", () => {
+  const claims = (shouts: { seat: number; seen: number }[], batch = 0) =>
+    ({
+      type: "claims",
+      batch,
+      shouts: shouts.map((s, i) => ({ ...s, id: `c${i}` })),
+    }) as const;
+
+  it("묶음 속 외침을 차례대로 엔진이 판정한다: 같은 판에 둘이 잡으면 앞 사람이 잡고 뒤 사람은 늦음", () => {
+    const s = ok(step(forgot({ selfWindowMs: 0 }), 1, { type: "draw" }));
+    const seen = s.turnNo;
+    const [after, events] = okEvents(
+      step(
+        s,
+        0,
+        claims([
+          { seat: 2, seen },
+          { seat: 3, seen },
+        ]),
+      ),
+    );
+    expect(events).toEqual([
+      { type: "shouted", seat: 2 },
+      { type: "caught", seat: 2, target: 0 },
+      { type: "drew", seat: 0, count: 1, reason: "caught" },
+      { type: "shouted", seat: 3 },
+    ]);
+    // 판 번호는 오르지 않는다(외침은 판을 바꾸지 않는다)
+    expect(after.turnNo).toBe(seen);
+    expect(after.lateSeen).toEqual([{ seat: 3, turnNo: seen }]);
+  });
+
+  it("하나씩 외친 것과 결과가 같다(판정은 청구 원문으로 다시 계산된다)", () => {
+    const s = forgot();
+    const one = shout(shout(s, 1)[0], 0)[0];
+    const batch = ok(
+      step(
+        s,
+        0,
+        claims([
+          { seat: 1, seen: s.turnNo },
+          { seat: 0, seen: s.turnNo },
+        ]),
+      ),
+    );
+    expect({ ...batch, version: 0 }).toEqual({ ...one, version: 0 });
+  });
+
+  it("판정할 수 없는 청구(없는 자리·모르는 판 번호)는 건너뛰고 나머지는 판정한다", () => {
+    const s = forgot({ selfWindowMs: 0 });
+    const [after, events] = okEvents(
+      step(
+        s,
+        0,
+        claims([
+          { seat: 9, seen: s.turnNo },
+          { seat: 1, seen: s.turnNo + 5 },
+          { seat: 2, seen: s.turnNo },
+        ]),
+      ),
+    );
+    expect(events.filter((e) => e.type === "caught")).toEqual([
+      { type: "caught", seat: 2, target: 0 },
+    ]);
+    expect(counts(after)).toEqual([2, 3, 3, 3]);
+  });
+
+  it("모양이 틀린 묶음은 거절한다", () => {
+    const bad: Action = { type: "claims", batch: -1, shouts: [] };
+    expect(step(forgot(), 0, bad).ok).toBe(false);
+  });
+});

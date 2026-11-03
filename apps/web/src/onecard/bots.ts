@@ -89,6 +89,17 @@ export function toKitBot(
   return {
     name: table.name,
     decide: (view, rng) => table.seatBot(view.mySeat).chooseAction(view, rng),
+    // 판 끝 검증: 대국 중 `react`가 들었던 것과 같은 사건을 듣는다(차례 수에 쓰는 기억은 사건만으로 정해진다)
+    observe(view, events) {
+      const seat = view.mySeat;
+      const bot = table.seatBot(seat);
+      const now = clock.now();
+      if (!heard.has(seat)) {
+        heard.add(seat);
+        bot.hear([], beforeView(view, events), now);
+      }
+      bot.hear(events, view, now);
+    },
     react(view, events, rng: RngState) {
       const seat = view.mySeat;
       const bot = table.seatBot(seat);

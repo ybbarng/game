@@ -13,6 +13,7 @@ import {
 } from "@game/onecard-engine";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ChatBox } from "@/components/ChatBox";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -23,6 +24,7 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { useStimulusShown } from "@/game/stimulus-shown";
+import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { cn } from "@/lib/cn";
 
 import { isRedSuit, SUIT_NAMES, SUIT_SYMBOLS } from "../cards";
@@ -130,12 +132,15 @@ function SeatPlate({
   name,
   bubble,
   small,
+  offline = false,
 }: {
   view: OnecardView;
   seat: number;
   name: string;
   bubble: Bubble | undefined;
   small: boolean;
+  /** 온라인: 연결이 끊긴 사람 */
+  offline?: boolean;
 }) {
   const turn = view.phase === "play" && view.turn === seat;
   const count = view.handCounts[seat] ?? 0;
@@ -164,6 +169,14 @@ function SeatPlate({
         {broke && (
           <span className="shrink-0 rounded bg-rose-700 px-1 text-[10px]">
             파산
+          </span>
+        )}
+        {offline && (
+          <span
+            data-offline={seat}
+            className="shrink-0 rounded bg-slate-600 px-1 text-[10px]"
+          >
+            연결 끊김
           </span>
         )}
         <span
@@ -364,8 +377,21 @@ export function OnecardGame({
   onExit: () => void;
   mission?: MissionProps;
 }) {
-  const { view, host, notice, level, events, eventSeq } = useOnecard();
+  const {
+    view,
+    host,
+    local,
+    notice,
+    level,
+    events,
+    eventSeq,
+    seatNames,
+    reconnecting,
+    hostLeft,
+    offlineSeats,
+  } = useOnecard();
   const submit = useOnecard((s) => s.submit);
+  const shout = useOnecard((s) => s.shout);
   const resign = useOnecard((s) => s.resign);
   const clearNotice = useOnecard((s) => s.clearNotice);
   const botNames = useSettings((s) => s.botNames);
@@ -394,8 +420,13 @@ export function OnecardGame({
   const me = host.seat;
   const n = view.rules.players;
   const levelName = ONECARD_LEVELS.find((l) => l.value === level)?.label ?? "";
+  const online = local === null;
   const name = (seat: number) =>
-    seat === me ? "나" : botName(botNames, (seat - me + n) % n);
+    seat === me
+      ? "나"
+      : online
+        ? (seatNames?.[seat] ?? `자리 ${seat + 1}`)
+        : botName(botNames, (seat - me + n) % n);
   const others = Array.from({ length: n - 1 }, (_, i) => (me + 1 + i) % n);
   const myTurn = view.phase === "play" && view.turn === me;
   const playable = new Set(
@@ -494,9 +525,25 @@ export function OnecardGame({
         <span className="ml-auto truncate text-white/60 text-xs">
           {mission
             ? `배우기 · ${mission.title}`
-            : `${n}명 · ${view.rules.handSize}장 · 컴퓨터(${levelName})`}
+            : `${n}명 · ${view.rules.handSize}장 · ${online ? "친구와" : `컴퓨터(${levelName})`}`}
         </span>
       </header>
+
+      {online && (
+        <div className="w-full max-w-xl short-landscape:col-span-2 short-landscape:max-w-none">
+          <HwatuFairBar me={me} over={over} />
+        </div>
+      )}
+      {online && (reconnecting || hostLeft) && (
+        <p
+          role="status"
+          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm short-landscape:col-span-2"
+        >
+          {hostLeft
+            ? "방장이 방을 나갔습니다"
+            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+        </p>
+      )}
 
       {/* 왼쪽(가로 화면) 또는 위: 상대들과 가운데 */}
       <div className="flex w-full max-w-xl flex-col gap-2 short-landscape:col-start-1">
@@ -519,6 +566,7 @@ export function OnecardGame({
               name={name(seat)}
               bubble={bubbles.get(seat)}
               small={short || others.length >= 3}
+              offline={offlineSeats.includes(seat)}
             />
           ))}
         </section>
@@ -537,11 +585,7 @@ export function OnecardGame({
               더미 {view.deckCount}장
             </span>
           </div>
-          <Pile
-            view={view}
-            width={pileWidth}
-            onShout={(seen) => send({ type: "shout", seen })}
-          />
+          <Pile view={view} width={pileWidth} onShout={shout} />
           <div className="flex min-w-20 flex-col items-start gap-1.5 text-xs">
             <SuitChip suit={view.suit} />
             {changedSuit && (
@@ -659,6 +703,7 @@ export function OnecardGame({
             </button>
           )}
           {!over &&
+            !online &&
             !mission &&
             (confirmResign ? (
               <span className="flex items-center gap-1.5 text-sm">
@@ -707,6 +752,11 @@ export function OnecardGame({
         </div>
 
         {over && <RankTable view={view} name={name} />}
+        {online && (
+          <div className="w-full max-w-xl">
+            <ChatBox mySeat={me} />
+          </div>
+        )}
       </div>
     </main>
   );
