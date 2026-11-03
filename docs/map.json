@@ -108,8 +108,8 @@
       "parent": "platform",
       "status": "building",
       "size": 2,
-      "summary": "단원(설명·퀴즈·미션) 틀과 문제 풀기 틀(진행 기록·목록 StudyHome·문제 화면 PuzzleScreen·usePuzzleRun)은 끝. 장기·체스·바둑이 함께 쓴다",
-      "next": "수순 따라 두기 화면(포진·오프닝·정석, 수순은 출처 확인 뒤), 날짜 간격 반복",
+      "summary": "단원(설명·퀴즈·미션) 틀, 문제 풀기 틀(진행 기록·목록 StudyHome·문제 화면 PuzzleScreen·usePuzzleRun), 수순 따라 두기 틀(study/line.ts·LineScreen·useLineRun, 2026-11-03)은 끝. 장기·체스·바둑이 함께 쓴다",
+      "next": "장기 포진·바둑 정석 수순 데이터(docs/23 「수순 따라 두기 넣는 법」, 출처 확인 뒤), 날짜 간격 반복",
       "since": "2026-10-29",
       "found": "2026-10-29",
       "links": [
@@ -626,8 +626,8 @@
       "parent": "boards",
       "status": "building",
       "size": 2,
-      "summary": "메이트(한 수 12·두 수 7)·전술(포크 8·핀 8·스큐어 7·발견 공격 7). 전술은 모양(tacticsOf)과 엔진 평가로 정답이 하나뿐인지 시험이 확인",
-      "next": "대표 오프닝 수순(출처 확인 뒤), 기본 엔드게임",
+      "summary": "메이트(한 수 12·두 수 17)·킹과 폰 8(KPK 승패표로 확인)·전술(포크 8·핀 8·스큐어 7·발견 공격 7)·오프닝 수순 9(수순 따라 두기 공통 틀 LineScreen, 2026-11-03). 전술은 모양(tacticsOf)과 엔진 평가로 정답이 하나뿐인지 시험이 확인",
+      "next": "더 많은 문제(세 수 메이트 등), 날짜 간격 반복",
       "since": "2026-10-29",
       "found": "2026-10-29",
       "links": [
@@ -676,7 +676,7 @@
       "parent": "boards",
       "status": "done",
       "size": 4,
-      "summary": "FIDE 규칙(perft 검증), 컴퓨터 세 단계, 온라인, 8단원 배우기, 수 배우기 49문제, 개인 시간",
+      "summary": "FIDE 규칙(perft 검증), 컴퓨터 세 단계, 온라인, 8단원 배우기, 수 배우기 67문제·오프닝 수순 9, 개인 시간",
       "since": "2026-10-29",
       "found": "2026-10-27",
       "links": [

@@ -1,5 +1,6 @@
 "use client";
 
+import { chessBotFor } from "@game/chess-ai";
 import {
   type ChessView,
   KIND_NAMES,
@@ -196,6 +197,10 @@ export function ChessGame({
   const coordinates = useChessSettings((s) => s.coordinates);
   const [selected, setSelected] = useState<number | null>(null);
   const [promotion, setPromotion] = useState<Move | null>(null);
+  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
+  const [confirmResign, setConfirmResign] = useState(false);
+  /** 힌트: 고수가 이 판에서 고르는 수(장기와 같은 초록 고리) */
+  const [hint, setHint] = useState<Move | null>(null);
   const played = view?.played.length ?? 0;
   const list = useRef<HTMLParagraphElement>(null);
 
@@ -210,6 +215,8 @@ export function ChessGame({
   useEffect(() => {
     setSelected(null);
     setPromotion(null);
+    setConfirmResign(false);
+    setHint(null);
     list.current?.scrollTo({ left: list.current.scrollWidth });
   }, [played]);
 
@@ -234,7 +241,9 @@ export function ChessGame({
       ? view.check === mySide
         ? "체크! 킹을 지키세요"
         : selected !== null
-          ? "갈 칸을 누르세요"
+          ? hint && selected === hint.from
+            ? "힌트: 초록 고리 칸으로 옮기면 고수가 고른 수예요"
+            : "갈 칸을 누르세요"
           : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
@@ -351,6 +360,7 @@ export function ChessGame({
           lastMove={last}
           checkedKing={checkedKing}
           coordinates={coordinates}
+          hint={hint}
         />
         {promotion && (
           <PromotionChooser
@@ -422,6 +432,23 @@ export function ChessGame({
                 무르기
               </button>
             )}
+            {!online && !mission && myMove && (
+              <button
+                type="button"
+                onClick={() => {
+                  // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께).
+                  const action = chessBotFor(2).decide(view, {
+                    seed: played + 1,
+                  });
+                  if (action.type !== "move") return;
+                  setHint({ from: action.from, to: action.to });
+                  setSelected(action.from);
+                }}
+                className="rounded-xl bg-white/10 px-4 py-2"
+              >
+                힌트
+              </button>
+            )}
             {view.canOfferDraw && !mission && (
               <button
                 type="button"
@@ -432,15 +459,39 @@ export function ChessGame({
               </button>
             )}
             {/* 온라인 참가자는 내 차례에만 기권을 보낼 수 있다 */}
-            {(!online || myMove) && (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                기권
-              </button>
-            )}
+            {(!online || myMove) &&
+              (confirmResign ? (
+                <span className="flex w-full items-center justify-center gap-2">
+                  <span className="text-sm text-white/80">
+                    정말 기권할까요?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmResign(false);
+                      submit({ type: "resign" });
+                    }}
+                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
+                  >
+                    기권하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmResign(false)}
+                    className="rounded-xl bg-white/10 px-4 py-2"
+                  >
+                    계속 두기
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmResign(true)}
+                  className="rounded-xl bg-white/10 px-4 py-2"
+                >
+                  기권
+                </button>
+              ))}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

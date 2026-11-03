@@ -103,8 +103,15 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   expect(overflow).toBe(false);
   await page.screenshot({ path: info.outputPath("chess-start.png") });
 
-  // 한 수 두면 컴퓨터가 답하고 다시 내 차례. 기보 줄에 두 수가 보인다.
+  // 힌트: 고수가 고른 수의 출발·도착에 고리, 그 기물이 골라져 갈 곳 점이 보인다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(2);
+  await expect(page.locator("[data-target]").first()).toBeVisible();
+  await page.screenshot({ path: info.outputPath("chess-hint.png") });
+
+  // 한 수 두면 컴퓨터가 답하고 다시 내 차례. 기보 줄에 두 수가 보인다(힌트는 사라진다).
   await playOne(page, touch);
+  await expect(page.locator("[data-hint]")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });
@@ -122,7 +129,12 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   await page.getByRole("button", { name: "무르기" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
 
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   await expect(page.locator('[data-result-banner="lose"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-end.png") });
@@ -282,6 +294,7 @@ test("체스: 방장이 방을 만들고 친구가 링크로 들어와 두고, �
     timeout: 15_000,
   });
   await white.getByRole("button", { name: "기권" }).click();
+  await white.getByRole("button", { name: "기권하기" }).click();
   await expect(black.getByRole("status")).toHaveText("상대가 기권했어요");
   await black.screenshot({ path: info.outputPath("chess-online.png") });
 
@@ -354,6 +367,7 @@ test("체스: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다�
     timeout: 15_000,
   });
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");
   // 복기 기록이 실제로 쓰인 뒤에 떠난다.
   await expect
@@ -497,4 +511,133 @@ test("체스 개인 시간: 내 시계가 가고, 다 쓰면 시간패다", asyn
   await page.clock.runFor(270_001);
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await page.screenshot({ path: info.outputPath("chess-time.png") });
+});
+
+test("체스 오프닝 수순: 수순에 없는 수는 두지 않고 안내하며, 런던 시스템을 끝까지 따라 두면 목록에 남는다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  await page.goto("/chess");
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const set = page.getByRole("region", { name: "오프닝 수순" });
+  await expect(set.getByText("0/9")).toBeVisible();
+  await set.getByRole("button", { name: "런던 시스템" }).click();
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+
+  // e4는 좋은 수지만 이 수순의 수가 아니다. 판에 두지 않는다.
+  await tapSquare(page, "e2", touch);
+  await tapSquare(page, "e4", touch);
+  await expect(page.getByRole("status")).toHaveText(
+    /이 수순에서 두는 수가 아니에요/,
+  );
+  await expect(page.locator('[data-square="e2"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+
+  // 백 수를 두면 흑이 수순대로 받는다.
+  const mine: [string, string, string][] = [
+    ["d2", "d4", 'f6"][data-piece="bN'],
+    ["c1", "f4", 'd5"][data-piece="bP'],
+    ["e2", "e3", 'e6"][data-piece="bP'],
+    ["b1", "d2", 'c5"][data-piece="bP'],
+  ];
+  for (const [from, to, reply] of mine) {
+    await tapSquare(page, from, touch);
+    await tapSquare(page, to, touch);
+    await expect(page.locator(`[data-square="${reply}"]`)).toHaveCount(1);
+  }
+  await expect(page.getByTestId("line-note")).toContainText("c5");
+  await tapSquare(page, "c2", touch);
+  await tapSquare(page, "c3", touch);
+  await expect(page.getByRole("status")).toHaveText("수순을 끝까지 두었어요!");
+  await expect(page.getByTestId("line-moves")).toContainText("5. c3 Nc6");
+  await page.screenshot({ path: info.outputPath("chess-line.png") });
+  await page.getByRole("button", { name: "← 목록" }).click();
+  await expect(set.getByText("1/9")).toBeVisible();
+  await expect(
+    set.getByRole("button", { name: "런던 시스템 (끝냄)" }),
+  ).toBeVisible();
+
+  // 흑 수순은 판이 돌아가 있고, 백 첫 수를 저절로 둔다.
+  await set.getByRole("button", { name: "카로칸 디펜스" }).click();
+  await expect(board(page)).toHaveAttribute("data-flipped", /.*/);
+  await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.getByRole("status")).toHaveText("수순의 다음 수를 두세요");
+});
+
+/** 칸 가운데의 화면 좌표(백이 아래인 판) */
+async function squareCenter(page: Page, name: string) {
+  const box = await board(page).boundingBox();
+  if (!box) throw new Error("판이 안 보인다");
+  const unit = box.width / 8;
+  return {
+    x: box.x + (name.charCodeAt(0) - 97 + 0.5) * unit,
+    y: box.y + (8 - Number(name[1]) + 0.5) * unit,
+  };
+}
+
+test("체스: 기물을 끌어 갈 칸에 놓으면 옮기고, 못 가는 칸에 놓으면 제자리로 돌아온다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "끌기는 포인터 사건이라 크기와 상관없다(Playwright는 손가락 끌기를 흉내 내지 못한다)",
+  );
+  await page.goto("/chess");
+  await startSolo(page, "입문");
+  await expect(page.getByRole("status")).toContainText("내 차례");
+
+  // 못 가는 칸(e5)에 놓으면 폰은 e2에 남고 고른 채로 갈 곳이 보인다.
+  const e2 = await squareCenter(page, "e2");
+  const e5 = await squareCenter(page, "e5");
+  await page.mouse.move(e2.x, e2.y);
+  await page.mouse.down();
+  await page.mouse.move(e5.x, e5.y, { steps: 6 });
+  await expect(page.locator("[data-dragging='e2']")).toHaveCount(1);
+  await page.mouse.up();
+  await expect(page.locator("[data-dragging]")).toHaveCount(0);
+  await expect(page.locator('[data-square="e2"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('[data-target="e4"]')).toHaveCount(1);
+
+  // 갈 칸(e4)에 놓으면 옮긴다.
+  const e4 = await squareCenter(page, "e4");
+  await page.mouse.move(e2.x, e2.y);
+  await page.mouse.down();
+  await page.mouse.move(e4.x, e4.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(page.locator('[data-square="e4"][data-piece="wP"]')).toHaveCount(
+    1,
+  );
+  await expect(page.getByTitle("기보")).toContainText("1. e4");
+});
+
+test("체스 수 배우기: 킹과 폰 문제에서 폰부터 밀면 틀리고, 킹을 앞세우면 이긴다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "문제 풀이 진행은 크기와 상관없다",
+  );
+  await page.goto("/chess");
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const set = page.getByRole("region", { name: "킹과 폰" });
+  await set.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "백이 이기는 단 하나의 수를 찾으세요",
+  );
+  await tapSquare(page, "e5", false);
+  await tapSquare(page, "e6", false);
+  await expect(page.getByRole("status")).toHaveText("그 수는 흑이 막아 비겨요");
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await tapSquare(page, "c5", false);
+  await tapSquare(page, "d6", false);
+  await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
+  await expect(page.getByText(/폰부터 밀면\(e6\)/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("chess-king-pawn.png") });
 });

@@ -25,6 +25,7 @@ import {
 import { useChessSettings } from "../settings";
 import {
   defenseFor,
+  explainEndgame,
   explainMate,
   judgeMove,
   puzzleState,
@@ -115,7 +116,9 @@ function ChessPuzzleRun({
     explain: (before, move) =>
       puzzle.kind === "tactic"
         ? explainTactic(before.position, move, puzzle.tactic)
-        : explainMate(before.position, move),
+        : puzzle.kind === "endgame"
+          ? explainEndgame(before.position, move)
+          : explainMate(before.position, move),
     solve: () => solve(puzzle.id),
     miss: () => miss(puzzle.id),
   });
@@ -137,13 +140,16 @@ function ChessPuzzleRun({
 
   const legal = status === "play" ? legalFor(state, 0) : [];
   const tactic = puzzle.kind === "tactic" ? puzzle.tactic : null;
+  const endgame = puzzle.kind === "endgame";
   const prompt = tactic
     ? TACTIC_PROMPT[tactic]
-    : puzzle.kind === "mate" && puzzle.mateIn === 1
-      ? "한 수로 체크메이트하세요"
-      : run.step === 0
-        ? "두 수 만에 메이트: 첫 수를 두세요"
-        : "이제 체크메이트하세요";
+    : endgame
+      ? "백이 이기는 단 하나의 수를 찾으세요"
+      : puzzle.kind === "mate" && puzzle.mateIn === 1
+        ? "한 수로 체크메이트하세요"
+        : run.step === 0
+          ? "두 수 만에 메이트: 첫 수를 두세요"
+          : "이제 체크메이트하세요";
 
   return (
     <PuzzleScreen
@@ -151,7 +157,7 @@ function ChessPuzzleRun({
       setTitle={set.title}
       index={index}
       total={set.puzzles.length}
-      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] short-landscape:w-[calc(100dvh-1.5rem)]"
+      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] split:w-[min(calc(100dvh-1.5rem),36rem)]"
       board={
         <ChessBoard
           board={state.position.board}
@@ -169,7 +175,7 @@ function ChessPuzzleRun({
           }}
           lastMove={run.lastMove}
           checkedKing={
-            status === "solved" && !tactic
+            status === "solved" && !tactic && !endgame
               ? kingOf(state.position.board, "b")
               : null
           }
@@ -179,12 +185,26 @@ function ChessPuzzleRun({
       status={status}
       prompt={prompt}
       waitingText="흑이 받는 중…"
-      solvedText={tactic ? `${TACTIC_NAMES[tactic]}!` : "체크메이트!"}
-      wrongText={tactic ? "그 수로는 기물을 얻지 못해요" : "메이트가 아니에요"}
+      solvedText={
+        tactic
+          ? `${TACTIC_NAMES[tactic]}!`
+          : endgame
+            ? "이기는 수예요!"
+            : "체크메이트!"
+      }
+      wrongText={
+        tactic
+          ? "그 수로는 기물을 얻지 못해요"
+          : endgame
+            ? "그 수는 흑이 막아 비겨요"
+            : "메이트가 아니에요"
+      }
       wrongHint={
         tactic
           ? TACTIC_HINT[tactic]
-          : "체크를 부르고, 킹이 피할 칸을 모두 막아야 해요"
+          : endgame
+            ? "폰보다 킹이 먼저예요. 흑 킹과 마주 서거나 폰 앞 칸을 차지해요"
+            : "체크를 부르고, 킹이 피할 칸을 모두 막아야 해요"
       }
       shown={shown !== null}
       explain={run.explain}

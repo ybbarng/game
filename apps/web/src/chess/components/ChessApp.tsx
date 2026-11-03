@@ -14,6 +14,7 @@ import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { chessOnline } from "../online";
+import { CHESS_OPENING_SET } from "../openings";
 import { useChessStudyProgress, useChessTutorialProgress } from "../progress";
 import { CHESS_PUZZLE_SETS } from "../puzzles";
 import { endChessSession } from "../session";
@@ -28,6 +29,7 @@ import { type ChessSaved, clearChess, loadChess, useChess } from "../store";
 import { CHESS_LESSONS } from "../tutorial";
 import { PieceIcon } from "./ChessBoard";
 import { ChessGame } from "./ChessGame";
+import { ChessLineScreen } from "./ChessLineScreen";
 import { ChessPuzzleScreen } from "./ChessPuzzleScreen";
 import { chessTutorial } from "./chess-tutorial";
 
@@ -366,7 +368,8 @@ type Screen =
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string }
   | { kind: "study" }
-  | { kind: "puzzle"; puzzleId: string };
+  | { kind: "puzzle"; puzzleId: string }
+  | { kind: "line"; lineId: string };
 
 /** 수 배우기 목록에 보일 문제 묶음 */
 const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
@@ -375,6 +378,21 @@ const STUDY_SETS = CHESS_PUZZLE_SETS.map((s) => ({
   summary: s.summary,
   puzzleIds: s.puzzles.map((p) => p.id),
 }));
+
+/** 수 배우기 목록에 보일 오프닝 수순 묶음 */
+const OPENING_SET = {
+  id: CHESS_OPENING_SET.id,
+  title: CHESS_OPENING_SET.title,
+  summary: CHESS_OPENING_SET.summary,
+  puzzleIds: CHESS_OPENING_SET.lines.map((l) => l.id),
+  labels: CHESS_OPENING_SET.lines.map((l) => l.name),
+};
+
+/** 목록에서 고른 것이 수순이면 수순 화면, 아니면 문제 화면 */
+const studyScreen = (id: string): Screen =>
+  id.startsWith("line-")
+    ? { kind: "line", lineId: id }
+    : { kind: "puzzle", puzzleId: id };
 
 /** 체스(/chess): 첫 화면, 옵션, 규칙, 배우기, 다함께 체스 방, 대국 화면 */
 export function ChessApp() {
@@ -432,7 +450,7 @@ export function ChessApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `메이트·전술 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키워요`,
+          detail: `오프닝 수순 ${OPENING_SET.puzzleIds.length}개, 메이트·전술 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키워요`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />
@@ -442,9 +460,9 @@ export function ChessApp() {
       <StudyHome
         title="체스 수 배우기"
         background={BG}
-        sets={STUDY_SETS}
+        sets={[OPENING_SET, ...STUDY_SETS]}
         progress={useChessStudyProgress}
-        onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+        onOpen={(id) => setScreen(studyScreen(id))}
         onBack={() => setScreen({ kind: "tutorial" })}
       />
     );
@@ -455,6 +473,15 @@ export function ChessApp() {
         puzzleId={screen.puzzleId}
         onExit={() => setScreen({ kind: "study" })}
         onOpen={(puzzleId) => setScreen({ kind: "puzzle", puzzleId })}
+      />
+    );
+  if (screen.kind === "line")
+    return (
+      <ChessLineScreen
+        key={screen.lineId}
+        lineId={screen.lineId}
+        onExit={() => setScreen({ kind: "study" })}
+        onOpen={(id) => setScreen(studyScreen(id))}
       />
     );
   if (screen.kind === "lesson")
