@@ -108,7 +108,7 @@
   - 장기는 문제 데이터와 같은 출발-도착 글자("48-44")를 쓰면 된다
   - 수순에 없는 수는 판에 두지 않고 "이 수순에서 두는 수가 아니에요"라고 알린다(틀린 횟수는 수순마다 한 번만 센다). 수 보기를 누른 뒤 끝내면 푼 것으로 치지 않는다
 - **목록**: `StudyHome`의 묶음에 `labels`(수순 이름)를 주면 번호 칸 대신 이름 목록으로 보인다
-- **검증 시험**: `allPaths(line)`으로 본줄기와 모든 갈래를 처음 판부터 엔진으로 다시 두어, 규칙에 맞고 글자가 엔진의 기보와 같은지 본다(체스 `chess/openings.test.ts`). 배우는 편의 수에 설명이 있는지도 본다
+- **검증 시험**: `allPaths(line)`으로 본줄기와 모든 갈래를 처음 판부터 엔진으로 다시 두어, 규칙에 맞고 글자가 엔진의 기보와 같은지 본다(체스 `chess/openings.test.ts`). 배우는 편의 수에 설명이 있는지도 본다. 판을 모르는 틀 함수(`advance`·`candidates`·`opponentPick`·`allPaths`, 대칭 `matchMove`)는 게임 데이터와 떼어 `study/line.test.ts`가 본다(2026-11-03)
 - **본보기**: 체스 `chess/openings.ts`(데이터)·`chess/components/ChessLineScreen.tsx`(화면 연결)·`ChessApp.tsx`의 `studyScreen`
 
 ### 남은 일
