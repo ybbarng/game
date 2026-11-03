@@ -77,6 +77,11 @@ export interface ClaimRules {
   graceMs: number;
   /** 한 묶음에서 한 자리의 청구를 몇 개까지 판정하나(마구 누르기로 발표가 커지지 않게) */
   maxPerSeat: number;
+  /**
+   * 참가자: 방장이 "늦음"으로 버린 청구를, 늦음이 되는 판(`seen + staleBoards + 1`)을 내가 그 청구를 받은 뒤
+   * 이만큼 넘게 지나서야 받았다면 방장이 발표를 미룬 것으로 보고 이의를 낸다(ms). 정직한 늦음은 편도 지연 몇 번 안쪽이다
+   */
+  staleSlackMs: number;
 }
 
 export const CLAIM_RULES: ClaimRules = {
@@ -84,6 +89,7 @@ export const CLAIM_RULES: ClaimRules = {
   staleBoards: 1,
   graceMs: 5_000,
   maxPerSeat: 4,
+  staleSlackMs: 1_500,
 };
 
 /** 한 묶음의 최대 청구 수(받은 발표를 검사할 때 상한) */

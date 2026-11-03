@@ -101,6 +101,11 @@ export interface OnecardState {
   bankruptCounts: number[];
   /** 최근 판 번호의 판정 재료(`STALE_SEEN` + 1개) */
   recent: SeenMark[];
+  /**
+   * 늦음(`late`)으로 봐준 누름: 자리와 그 누름의 `seen`. 같은 자리·같은 `seen`의 늦음은 한 번만 봐주고
+   * 그다음부터는 헛외침이다(`judgeShout`). `STALE_SEEN`보다 오래된 것은 지운다. 없으면 빈 것
+   */
+  lateSeen?: { seat: number; turnNo: number }[];
   result: OnecardResult | null;
   /** 끊긴 사람을 기다리지 않기로 해 중간에 끝났다 */
   retired?: boolean;
@@ -116,11 +121,16 @@ export type Action =
    * 뜻은 엔진이 가린다(`judgeShout`): 미리 외침·본인 외침·잡기·헛외침
    */
   | { type: "shout"; seen: number }
-  /** 창 시간이 다 됐다(바깥 시계가 넣는다). `target`: 창 주인 */
+  /**
+   * 창 시간이 다 됐다(바깥 시계가 넣는다). `target`: 창 주인.
+   * `id`: 시계를 건 창 번호(`shoutWindows`의 `id`). 지금 열린 창과 다르면 받지 않는다
+   * (지우지 못한 옛 시계가 같은 자리의 새 창을 닫지 않게). 없으면 자리·종류로만 찾는다(옛 기록 호환)
+   */
   | {
       type: "timeout";
       kind: "selfWindow" | "catchWindow";
       target: number;
+      id?: number;
     }
   /** 다시 섞은 더미 순서(앞이 맨 위). `reshuffleRequest`가 준 카드를 섞은 것이어야 한다 */
   | { type: "reshuffle"; order: OnecardCard[] }
@@ -129,8 +139,12 @@ export type Action =
 
 /** 외침 판정 결과(`judgeShout`) */
 export type ShoutVerdict =
-  /** 자기 차례에 두 장 → 미리 외침 */
-  | { kind: "pre" }
+  /**
+   * 자기 차례에 두 장 → 미리 외침.
+   * 규칙 `shoutBoth`(기본 켬)면 같은 누름이 남도 잡는다: `alsoCaught`는 잡기 창 안이라 잡힌 사람,
+   * `alsoHeld`는 본인 시간 P 안이라 적어만 둔 사람(hold와 같다). 해당하는 사람이 없으면 필드가 없다
+   */
+  | { kind: "pre"; alsoCaught?: number[]; alsoHeld?: number[] }
   /** 한 장인데 아직 안 외침, 본인 시간 안 → 안전 */
   | { kind: "self" }
   /** 본인 시간이 지나 잡기 창일 때 본인이 외침 → 받지 않는다(벌칙 없음) */

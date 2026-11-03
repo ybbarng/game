@@ -1468,8 +1468,8 @@ function mineOf(
   return match.actionLog().filter((e) => e.seat === seat).length;
 }
 
-/** 멘탈 포커 메시지가 속한 판 */
-function fairDealOf(message: FairMessage): number {
+/** 멘탈 포커 메시지가 속한 판(원카드 다시 섞기 알림도 `deal`을 싣는다) */
+export function fairDealOf(message: FairMessage): number {
   const m = message as { deal?: number; query?: { deal?: number } };
   return m.deal ?? m.query?.deal ?? 0;
 }

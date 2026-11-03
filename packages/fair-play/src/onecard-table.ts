@@ -1,8 +1,10 @@
 import type { Card } from "@game/mighty-engine";
 
 import { tokenOf } from "./blind";
+import { type Clock, realClock } from "./clock";
 import { type Incident, reportShuffleTamper } from "./coordinator";
 import type { FairDevice } from "./device";
+import type { FairControl } from "./messages";
 import { CARD_CODES, COLOR_JOKER, DECK } from "./protocol";
 
 /*
@@ -31,8 +33,56 @@ export const ONECARD_CARDS: readonly Card[] = [...DECK, COLOR_JOKER];
 /** 한 판에 쓸 수 있는 덱 조각 수(처음 덱 + 다시 섞기). 기기 판 번호가 겹치지 않게 하는 한도다 */
 export const ONECARD_MAX_SEGMENTS = 1024;
 
+/**
+ * 다시 섞기 알림의 카드가 "이미 모두에게 열린 카드"가 될 때까지 기다리는 시간(ms). 카드를 낸 사람의 열쇠는
+ * 방장을 거치지 않고 직접 오므로 다시 섞기 알림보다 늦게 닿을 수 있다. 이 시간 안에 열리지 않으면 방장을 짚는다
+ */
+export const ONECARD_SHOWN_WAIT_MS = 10_000;
+
 /** 모두에게 여는 자리(처음 펼칠 카드·모두에게 펼치는 뽑기)의 주인 */
 const PUBLIC = -1;
+
+/** 다시 섞기 알림(방장 → 모두) */
+export type OnecardReshuffleMessage = Extract<FairControl, { k: "reshuffle" }>;
+
+/** 다시 섞기 알림을 만든다(`deal`은 판·조각에서 계산한다) */
+export function onecardReshuffleMessage(
+  round: number,
+  segment: number,
+  cards: readonly Card[],
+): OnecardReshuffleMessage {
+  return {
+    t: "fp",
+    k: "reshuffle",
+    deal: onecardDealId(round, segment),
+    round,
+    segment,
+    cards: [...cards],
+  };
+}
+
+/** 받은 다시 섞기 알림의 모양과 `deal = onecardDealId(round, segment)`가 맞는가 */
+export function isOnecardReshuffle(
+  value: unknown,
+): value is OnecardReshuffleMessage {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  if (m.t !== "fp" || m.k !== "reshuffle") return false;
+  const { round, segment, deal, cards } = m;
+  if (!Number.isInteger(round) || (round as number) < 0) return false;
+  if (
+    !Number.isInteger(segment) ||
+    (segment as number) < 1 ||
+    (segment as number) >= ONECARD_MAX_SEGMENTS
+  )
+    return false;
+  if (deal !== onecardDealId(round as number, segment as number)) return false;
+  return (
+    Array.isArray(cards) &&
+    cards.length <= ONECARD_CARDS.length &&
+    cards.every((c) => typeof c === "string")
+  );
+}
 
 /** 판 번호와 덱 조각 번호(0 = 처음 덱, k = k번째 다시 섞기)로 기기 판 번호(섞기 사슬 하나) */
 export function onecardDealId(round: number, segment: number): number {
@@ -176,6 +226,14 @@ export class OnecardDeck {
   >();
   /** 그 조각을 시작하기 전에 온 뽑기(다시 들어온 기기가 기록을 다시 받을 때) */
   private early: { deal: number; slot: number; to: number }[] = [];
+  private readonly clock: Clock;
+  /** 다시 섞기 알림의 카드가 모두에게 열리기를 기다리는 것(열쇠가 알림보다 늦게 오는 망) */
+  private readonly shownWaits = new Set<{
+    ctx: RoundCtx;
+    segment: number;
+    cards: readonly Card[];
+    cancel: () => void;
+  }>();
 
   constructor(options: {
     device: FairDevice;
@@ -185,7 +243,10 @@ export class OnecardDeck {
     onIncident: (incident: Incident) => void;
     /** 덱(기본 54장). 시험은 작은 덱을 넣는다 */
     cards?: readonly Card[];
+    /** 다시 섞은 카드가 열리기를 기다리는 시간을 잰다. 시험은 ManualClock */
+    clock?: Clock;
   }) {
+    this.clock = options.clock ?? realClock;
     this.device = options.device;
     this.devices = options.devices;
     this.deviceOf = options.deviceOf;
@@ -312,18 +373,36 @@ export class OnecardDeck {
       new Map(),
     );
     // 알린 카드가 정말 이미 모두에게 열린 카드인지는 앞서 온 열쇠를 다 처리한 뒤에 본다
-    // (카드를 낸 열쇠와 다시 섞기 알림이 거의 함께 온다).
+    // (카드를 낸 열쇠와 다시 섞기 알림이 거의 함께 온다). 카드를 낸 사람의 열쇠는 방장을 거치지 않고 직접 와서
+    // 알림보다 늦을 수 있으니, 아직 안 열렸으면 열쇠가 닿을 때까지(`ONECARD_SHOWN_WAIT_MS`) 기다린 뒤 짚는다.
     if (options.trusted) return seg.dealId;
     void this.device.settled().then(() => {
-      if (this.halted) return;
-      const hidden = ordered.find((c) => !this.wasShown(ctx, seg.segment, c));
-      if (hidden !== undefined)
+      if (this.halted || this.allShown(ctx, seg.segment, ordered)) return;
+      const wait = {
+        ctx,
+        segment: seg.segment,
+        cards: ordered,
+        cancel: () => {},
+      };
+      wait.cancel = this.clock.after(ONECARD_SHOWN_WAIT_MS, () => {
+        this.shownWaits.delete(wait);
+        if (this.halted || this.allShown(ctx, seg.segment, ordered)) return;
         this.incident({
           seat: 0,
           reason: "방장이 아직 모두에게 열리지 않은 카드를 다시 섞으려 했다",
         });
+      });
+      this.shownWaits.add(wait);
     });
     return seg.dealId;
+  }
+
+  private allShown(
+    ctx: RoundCtx,
+    segment: number,
+    cards: readonly Card[],
+  ): boolean {
+    return cards.every((c) => this.wasShown(ctx, segment, c));
   }
 
   /**
@@ -521,6 +600,12 @@ export class OnecardDeck {
   }
 
   private check(): void {
+    // 늦게 온 열쇠로 다시 섞은 카드가 모두 열렸으면 기다림을 끝낸다.
+    for (const wait of [...this.shownWaits])
+      if (this.allShown(wait.ctx, wait.segment, wait.cards)) {
+        wait.cancel();
+        this.shownWaits.delete(wait);
+      }
     for (const ctx of this.rounds.values()) this.checkRound(ctx);
     this.notify();
   }
@@ -661,7 +746,10 @@ export interface OnecardFairSpec<Rules, State, Action, Event> {
   reshufflesOf(state: State): number;
   /** 지금 다시 섞으면 새 더미가 될 카드(버린 더미에서 맨 위를 뺀 것) */
   reshufflePool(state: State): readonly string[];
-  /** 이 걸음에 더미에서 뽑은 카드마다 받은 자리(null이면 모두에게 펼침), 뽑은 순서 */
+  /**
+   * 이 걸음에 더미에서 뽑은 카드마다 받은 자리(null이면 모두에게 펼침), 뽑은 순서. 판이 바뀌는 걸음(먹다가
+   * 파산해 판이 끝남 등)이면 바뀌기 전 판의 더미에서 뽑은 것만 넣는다(다음 판 패는 `withPreset`으로 넣으므로 뽑기가 아니다)
+   */
   drawsOf(events: readonly Event[]): (number | null)[];
 }
 
@@ -705,8 +793,21 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
     seat: 0,
     reason,
   });
+  let round = spec.roundOf(state);
+  /** 이 걸음에 엔진이 뽑은 카드가 방장이 연 더미 자리와 같은 차례·같은 사람인가 */
+  const drawsMatch = (events: readonly Event[]): boolean => {
+    if (!requests) return true;
+    const asked = requests.of(round);
+    for (const use of spec.drawsOf(events)) {
+      const want = use === null ? PUBLIC : requests.deviceOf(use);
+      const got = asked[used];
+      if (!got || got.to !== want) return false;
+      used += 1;
+    }
+    return true;
+  };
   for (const [index, entry] of log.entries()) {
-    const round = spec.roundOf(state);
+    round = spec.roundOf(state);
     const deal = deals.get(round);
     if (!deal) return { ok: true, state, states, upTo: index };
     const k = spec.reshufflesOf(state);
@@ -743,17 +844,15 @@ export function checkOnecardReplay<Rules, State, Action, Event>(
             "방장이 다시 섞을 카드를 버린 더미와 다르게 알렸다",
           );
       }
-      if (requests) {
-        const asked = requests.of(round);
-        for (const use of spec.drawsOf(result.events)) {
-          const want = use === null ? PUBLIC : requests.deviceOf(use);
-          const got = asked[used];
-          if (!got || got.to !== want)
-            return host(index, "방장이 더미 카드를 엔진과 다르게 열었다");
-          used += 1;
-        }
-      }
+      if (!drawsMatch(result.events))
+        return host(index, "방장이 더미 카드를 엔진과 다르게 열었다");
     } else {
+      // 판이 바뀌는 걸음에도 바뀌기 전에 그 판 더미에서 뽑은 카드가 있을 수 있다(원카드 엔진: 먹다가
+      // 파산해 판이 끝남). 그것까지 맞춰 본 뒤 남은 연 자리가 있는지 본다. 이 걸음의 다시 섞기는 상태가 다음 판으로
+      // 넘어가 버린 더미와 견줄 수 없다. 원카드 엔진은 다시 섞기가 따로 한 걸음(`reshuffle` 행동)이라 판 끝과
+      // 겹치지 않고, 알린 카드는 그 자리(`reshuffle`의 열린 카드 확인)와 판 끝(조각을 열어 같은 카드인지)에서 본다.
+      if (!drawsMatch(result.events))
+        return host(index, "방장이 더미 카드를 엔진과 다르게 열었다");
       if (requests && requests.of(round).length > used)
         return host(index, "방장이 엔진이 쓰지 않은 더미 카드를 열었다");
       used = 0;

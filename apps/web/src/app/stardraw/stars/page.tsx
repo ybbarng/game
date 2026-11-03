@@ -203,7 +203,16 @@ export default function StardrawStars() {
               >
                 d3-celestial
               </a>{" "}
-              (BSD 라이선스)
+              (Copyright (c) 2015, Olaf Frohn.{" "}
+              <a
+                href="/licenses/d3-celestial.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                BSD 3조항 라이선스 전문
+              </a>
+              )
             </li>
             <li>
               별의 한글 이름과 데이터 정리:{" "}
