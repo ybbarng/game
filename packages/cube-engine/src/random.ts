@@ -38,7 +38,8 @@ import {
 
 export type Seed = number | RngState;
 
-function toRng(seed: Seed): RngState {
+/** 씨앗(수)이면 새 난수 생성기를, 생성기면 그대로 */
+export function createRngFromSeed(seed: Seed): RngState {
   return typeof seed === "number" ? createRng(seed) : seed;
 }
 
@@ -241,7 +242,7 @@ export function randomCubeState(
   opts: RandomStateOptions = {},
 ): PuzzleState {
   const topo = cubeTopology(n);
-  const rng = toRng(seed);
+  const rng = createRngFromSeed(seed);
   const keep = new Set(opts.keep ?? []);
   topo.pieces.forEach((p, i) => {
     if (p.kind === "center") keep.add(i);
