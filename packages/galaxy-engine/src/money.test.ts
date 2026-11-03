@@ -118,13 +118,14 @@ function tradeIdea(
 
 describe("돈 합과 다시 두기", () => {
   it("새 판의 돈 합은 시작 합이고, 걸음마다 「별빛 합 + 사라진 것 − 준 것」이 그대로다", () => {
-    const { state, log } = play(STANDARD_RULES, 5, 260);
+    // 내리기(sell)는 빚 정리에서만 나와 end.test가 따로 본다
+    const { state, log } = play(STANDARD_RULES, 1, 260);
     const kinds = new Set(log.map((e) => e.action.type));
-    for (const kind of ["buy", "pass", "bidReveal", "offer", "build", "sell"])
+    for (const kind of ["buy", "pass", "bidReveal", "offer", "build"])
       expect(kinds).toContain(kind);
     expect(state.revealCount).toBeGreaterThan(20);
     expect(state.owners.filter((o) => o >= 0).length).toBeGreaterThan(5);
-    const again = replay(STANDARD_RULES, 5, BOARD, log);
+    const again = replay(STANDARD_RULES, 1, BOARD, log);
     expect(again.ok).toBe(true);
     if (again.ok) expect(again.state).toEqual(state);
   });

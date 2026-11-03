@@ -17,7 +17,13 @@ export interface NoticeCard {
   fact: StarFact | null;
 }
 
-export type StarFact = "firstMagnitude" | "blue" | "far" | "red" | "yellow";
+export type StarFact =
+  | "firstMagnitude"
+  | "blue"
+  | "far"
+  | "near"
+  | "red"
+  | "yellow";
 
 /** 별 사실의 기준값 */
 export const FACT_LIMITS = {
@@ -29,6 +35,8 @@ export const FACT_LIMITS = {
   red: 4_000,
   /** 먼 별: 이보다 먼 별(광년) */
   far: 500,
+  /** 이웃 별: 이보다 가까운 별(광년) */
+  near: 100,
   /** 노란·주황 별(해와 비슷한 별): 표면 온도가 이 사이인 별(K, 양 끝 포함) */
   yellowMin: 4_000,
   yellowMax: 7_500,
@@ -44,6 +52,8 @@ export function matchesFact(star: GalaxyStar, fact: StarFact): boolean {
       return star.k < FACT_LIMITS.red;
     case "far":
       return star.ly !== null && star.ly > FACT_LIMITS.far;
+    case "near":
+      return star.ly !== null && star.ly < FACT_LIMITS.near;
     case "yellow":
       return star.k >= FACT_LIMITS.yellowMin && star.k <= FACT_LIMITS.yellowMax;
   }
@@ -115,10 +125,10 @@ export const CARDS: readonly NoticeCard[] = [
   },
   {
     id: 10,
-    title: "우주국 호출",
-    text: "카노푸스 우주국으로 곧장 갑니다. 지원금을 받습니다.",
-    kind: "move",
-    fact: null,
+    title: "이웃 별 조사",
+    text: "가진 별 가운데 100광년보다 가까운 별마다 20을 드립니다.",
+    kind: "gain",
+    fact: "near",
   },
   {
     id: 11,
@@ -137,7 +147,7 @@ export const CARDS: readonly NoticeCard[] = [
   {
     id: 13,
     title: "관측지 초청",
-    text: "관측지로 곧장 갑니다.",
+    text: "관측지로 곧장 갑니다. 이번에는 관측 지원금이 없습니다.",
     kind: "move",
     fact: null,
   },
@@ -171,12 +181,13 @@ export const CARD_AMOUNTS = {
   blue: 20,
   far: 40,
   supply: 30,
-  inspectLevel: 15,
-  inspectGrand: 40,
+  inspectLevel: 12,
+  inspectGrand: 30,
   dust: 40,
   red: 20,
   support: 100,
   yellow: 20,
+  near: 20,
   lineSurvey: 30,
   lineSurveyComplete: 50,
 } as const;

@@ -78,7 +78,7 @@ describe("우주국 공문 16장(2-6)", () => {
     ]);
   });
 
-  it("6 정거장 안전 점검: 한 단마다 15, 큰 정거장마다 40(맡긴 별은 빼고)", () => {
+  it("6 정거장 안전 점검: 한 단마다 12, 큰 정거장마다 30(맡긴 별은 빼고)", () => {
     const { events } = draw(6, {
       stars: [
         { square: 1, owner: 0 },
@@ -88,7 +88,7 @@ describe("우주국 공문 16장(2-6)", () => {
         { square: 15, owner: 0, level: 3 },
       ],
     });
-    expect(amounts(events)).toEqual([[0, -1, 15 + 45 + 40 + 45]]);
+    expect(amounts(events)).toEqual([[0, -1, 12 + 36 + 30 + 36]]);
   });
 
   it("7 우주 먼지 청소: 40", () => {
@@ -108,10 +108,19 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(amounts(draw(9).events)).toEqual([]);
   });
 
-  it("10 우주국 호출: 우주국으로 가서 지원금", () => {
-    const { state, events } = draw(10);
-    expect(state.positions[0]).toBe(0);
-    expect(amounts(events)).toEqual([[-1, 0, 120]]);
+  it("10 이웃 별 조사: 가진 별 가운데 100광년보다 가까운 별마다 20", () => {
+    const all = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15];
+    const { state, events } = draw(10, {
+      stars: all.map((square) => ({ square, owner: 0 })),
+    });
+    const near = all.filter((sq) => {
+      const ly = state.board.squares[sq]?.star?.star.ly;
+      return ly !== null && ly !== undefined && ly < 100;
+    });
+    expect(near.length).toBeGreaterThan(0);
+    expect(amounts(events)).toEqual([[-1, 0, 20 * near.length]]);
+    expect(state.positions[0]).toBe(4);
+    expect(amounts(draw(10).events)).toEqual([]);
   });
 
   it("11 궤도 이탈: 소행성대에 걸리고 지원금 없음", () => {
@@ -138,10 +147,10 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(state.positions[0]).toBe(4);
   });
 
-  it("13 관측지 초청: 관측지로 가서 관측 지원금", () => {
+  it("13 관측지 초청: 관측지로 가기만 하고 관측 지원금은 없다", () => {
     const { state, events } = draw(13, { cash: [100, 1000, 1000, 1000] });
     expect(state.positions[0]).toBe(16);
-    expect(amounts(events)).toEqual([[-1, 0, 150]]);
+    expect(amounts(events)).toEqual([]);
   });
 
   it("14 계절 바꾸기: 다음 계절의 첫 별로 가고 이용료는 반", () => {
