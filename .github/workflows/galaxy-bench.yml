@@ -1,0 +1,47 @@
+name: galaxy-bench
+
+# 은하 한 바퀴 밸런스 bench(docs/48 3-4). 컴퓨터끼리 수천 판을 두어 오래 걸려 손으로만 돌린다.
+# 결과 표는 실행 요약과 산출물(bench-result.md)로 남는다. 기준을 넘는 항목은 표시만 하고 실패시키지 않는다.
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "기본 판 수(4인 중수 ×4). 나머지 묶음은 같은 비율. 비우면 코드의 상수(2000)"
+        required: false
+        default: ""
+
+# 시험 안의 의존 패키지 코드가 저장소에 쓰지 못하게 읽기 권한만(D6)
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: bench
+        env:
+          GALAXY_BENCH_GAMES: ${{ inputs.games }}
+        run: pnpm --filter @game/galaxy-ai bench
+      - name: 결과를 실행 요약에
+        if: always()
+        run: |
+          if [ -f packages/galaxy-ai/bench-result.md ]; then
+            cat packages/galaxy-ai/bench-result.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: galaxy-bench-result
+          path: packages/galaxy-ai/bench-result.md
+          if-no-files-found: warn
+          retention-days: 30
