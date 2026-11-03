@@ -135,7 +135,7 @@ export function explainSolved(
         puzzle.goal === "live"
           ? [
               `${text.name}: ${text.vital}`,
-              `${named(move)}에 두면 눈 자리가 떨어진 눈 둘 이상으로 나뉘어 산다`,
+              `${named(move)}에 두면 눈 자리가 떨어진 두 눈 이상으로 나뉘어 산다`,
               "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡힌다",
             ]
           : [
