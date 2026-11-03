@@ -303,3 +303,88 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   if (SAVE_SCREENSHOTS)
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
+
+/** 보이는 내 할 일 하나를 한다(기다리지 않는다). 했으면 true */
+async function stepIfReady(page: Page): Promise<boolean> {
+  for (const button of [
+    rollButton(page),
+    passButton(page),
+    bidSkip(page),
+    endTurn(page),
+    debtPlan(page),
+    page.getByRole("button", { name: "거절" }),
+  ])
+    if (await button.isVisible()) {
+      await button.click();
+      return true;
+    }
+  return false;
+}
+
+test("은하 한 바퀴 온라인: 방장이 방을 만들고 친구가 링크로 들어와 두다가 기권으로 끝내고 판 끝 검증을 통과한다", async ({
+  context,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  const host = await context.newPage();
+  const guest = await context.newPage();
+  const errors: string[] = [];
+  for (const p of [host, guest])
+    p.on("pageerror", (e) => errors.push(e.message));
+
+  await host.goto("/galaxy?net=local");
+  await ready(host);
+  await host.getByRole("button", { name: "옵션" }).click();
+  await host.getByRole("button", { name: "2명", exact: true }).click();
+  await host.getByRole("button", { name: "짧은 판", exact: true }).click();
+  await host.getByRole("button", { name: "처음으로" }).click();
+  await host.getByRole("button", { name: /친구와 하기/ }).click();
+  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+  const link = await host.locator("input[readonly]").inputValue();
+  expect(link).toContain("/galaxy");
+  if (SAVE_SCREENSHOTS)
+    await host.screenshot({ path: info.outputPath("galaxy-online-lobby.png") });
+
+  await guest.goto(link);
+  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+  await guest.getByRole("button", { name: "들어가기" }).click();
+  await expect(guest.getByText("방장이 시작하기를 기다리는 중")).toBeVisible();
+  await expect(host.getByText("철수")).toBeVisible();
+  await host.getByRole("button", { name: "시작하기" }).click();
+  await expect(board(guest)).toBeVisible();
+  await expect(guest.locator("[data-player]").first()).toContainText(/방장|나/);
+
+  // 둘이 몇 번씩 굴리고 정한 뒤 방장이 기권한다. 판 끝 검증은 그때까지의 주사위·공문·입찰·별빛을
+  // 모두 다시 계산한다. 끝까지 두는 진행은 엔진·방 단위 시험이 본다.
+  let actions = 0;
+  for (let i = 0; i < 1500 && actions < 10; i++) {
+    for (const p of [host, guest]) if (await stepIfReady(p)) actions++;
+    if ((await over(host).isVisible()) && (await over(guest).isVisible()))
+      break;
+    await host.waitForTimeout(30);
+  }
+  expect(actions).toBeGreaterThanOrEqual(4);
+  if (SAVE_SCREENSHOTS)
+    await guest.screenshot({
+      path: info.outputPath("galaxy-online-guest.png"),
+    });
+  if (!(await over(host).isVisible())) {
+    const resign = host.getByRole("button", { name: "기권" });
+    await expect(resign).toBeEnabled({ timeout: 20_000 });
+    await resign.click();
+    await host.getByRole("button", { name: "기권하기" }).click();
+  }
+  await expect(over(host)).toBeVisible({ timeout: 20_000 });
+  await expect(over(guest)).toBeVisible({ timeout: 20_000 });
+
+  // 방장이 나가면 기록이 공개되고, 참가자가 모든 걸음을 다시 계산해 확인한다.
+  await host.getByRole("button", { name: "← 은하 한 바퀴" }).click();
+  await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
+    timeout: 15_000,
+  });
+  if (SAVE_SCREENSHOTS)
+    await guest.screenshot({
+      path: info.outputPath("galaxy-online-guest-end.png"),
+    });
+  expect(errors).toEqual([]);
+});
