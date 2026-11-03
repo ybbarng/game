@@ -464,3 +464,27 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
   await expect(page.getByText(/4·4 금지라 둘 수 없다/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-study-renju.png") });
 });
+
+test("오목 초고수: 옵션에서 고르면 상대 이름에 보이고 한 수를 받는다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  await page.goto("/omok");
+  await ready(page);
+  await page.getByRole("button", { name: "옵션" }).click();
+  await page.getByRole("button", { name: /초고수/ }).click();
+  await page.screenshot({ path: info.outputPath("omok-options.png") });
+  // 가로로 넘치지 않는다(단계 단추가 넷이다).
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    ),
+  ).toBe(false);
+  await page.getByRole("button", { name: /흑\(먼저\)/ }).click();
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: /나홀로 오목/ }).click();
+  await expect(page.getByText("컴퓨터(초고수)")).toBeVisible();
+  await placeOne(page, touch);
+  await expect(stones(page)).toHaveCount(2, { timeout: 15_000 });
+  await expect(page.getByRole("status")).toContainText("내 차례");
+});

@@ -5,19 +5,22 @@ import {
   indexOf,
   SIZE,
   type Stone,
-  xyOf,
 } from "@game/omok-engine";
 
 /**
  * 판 모양 점수. 판을 다섯 칸짜리 창(가로·세로·두 대각선)으로 모두 나누고,
  * 상대 돌이 없는 창마다 내 돌 수에 따라 점수를 준다. 열린 삼(.XXX.)은 창 둘에 걸쳐 막힌 삼보다 점수가 크다.
  */
-const WEIGHT = [0, 1, 12, 160, 3000, 1_000_000] as const;
+export const WEIGHT = [0, 1, 12, 160, 3000, 1_000_000] as const;
+
+/** 판 크기(가져온 값을 지역 값으로 두어 시험 실행기에서도 빠르게 읽는다) */
+const N = SIZE;
+const ALL = CELLS;
 
 /** 다섯 칸 창 모두 */
-const WINDOWS: number[][] = [];
+export const WINDOWS: number[][] = [];
 /** 칸마다 그 칸을 품은 창 번호 */
-const WINDOWS_OF: number[][] = Array.from({ length: CELLS }, () => []);
+export const WINDOWS_OF: number[][] = Array.from({ length: CELLS }, () => []);
 
 for (const [dx, dy] of [
   [1, 0],
@@ -85,21 +88,25 @@ export function evaluate(board: Board, stone: Stone): number {
 
 /** 돌 근처(두 칸 안) 빈칸. 빈 판이면 가운데 */
 export function nearbyEmpties(board: readonly Cell[]): number[] {
-  const near = new Set<number>();
-  let any = false;
-  for (let at = 0; at < CELLS; at++) {
+  // 처음 만난 차례를 지킨다(같은 점수끼리의 순서가 고수의 수를 정한다).
+  const seen = new Uint8Array(ALL);
+  const found: number[] = [];
+  for (let at = 0; at < ALL; at++) {
     if (board[at] === 0) continue;
-    any = true;
-    const [x, y] = xyOf(at);
+    const x = at % N;
+    const y = (at - x) / N;
     for (let dy = -2; dy <= 2; dy++)
       for (let dx = -2; dx <= 2; dx++) {
         const nx = x + dx;
         const ny = y + dy;
-        if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) continue;
-        const n = indexOf(nx, ny);
-        if (board[n] === 0) near.add(n);
+        if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
+        const n = ny * N + nx;
+        if (board[n] === 0 && !seen[n]) {
+          seen[n] = 1;
+          found.push(n);
+        }
       }
   }
-  if (!any) return [indexOf(7, 7)];
-  return [...near];
+  if (found.length === 0 && !board.some((v) => v !== 0)) return [indexOf(7, 7)];
+  return found;
 }
