@@ -14,12 +14,15 @@ import {
   TimePresetPicker,
   timePresetLabel,
 } from "@/components/TimePresetPicker";
+import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
+import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { GalaxyIconArt } from "../icon-art";
 import { galaxyOnline } from "../online";
+import { useGalaxyTutorialProgress } from "../progress";
 import { endGalaxySession } from "../session";
 import {
   GALAXY_LENGTHS,
@@ -30,7 +33,10 @@ import {
   useGalaxySettings,
 } from "../settings";
 import { clearGalaxy, type GalaxySaved, loadGalaxy, useGalaxy } from "../store";
+import { GALAXY_LESSONS } from "../tutorial";
 import { GALAXY_BG, GalaxyGame } from "./GalaxyGame";
+import { GalaxyStarQuiz } from "./GalaxyStarQuiz";
+import { galaxyTutorial } from "./galaxy-tutorial";
 import { GalaxySources } from "./Sources";
 
 function Chip({
@@ -261,15 +267,18 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
 function GalaxyHome({
   onStart,
   onOnline,
+  onLearn,
   onOptions,
   onRules,
 }: {
   onStart: (saved?: GalaxySaved) => void;
   onOnline: () => void;
+  onLearn: () => void;
   onOptions: () => void;
   onRules: () => void;
 }) {
   const s = useGalaxySettings();
+  const learned = useGalaxyTutorialProgress((p) => p.completed.length);
   const [saved, setSaved] = useState<GalaxySaved | null>(null);
   useEffect(() => setSaved(loadGalaxy()), []);
   const rules = rulesFromSettings(s);
@@ -316,6 +325,13 @@ function GalaxyHome({
         detail: "링크로 2~4명 · 빈자리는 컴퓨터",
         onClick: onOnline,
       }}
+      learn={{
+        title: "은하 한 바퀴 배우기",
+        learned,
+        total: GALAXY_LESSONS.length,
+        firstHint: `처음이라면 여기부터. ${GALAXY_LESSONS.length}단원`,
+        onClick: onLearn,
+      }}
       onOptions={onOptions}
       aboutLabel="은하 한 바퀴는?"
       onAbout={onRules}
@@ -359,9 +375,12 @@ type Screen =
     }
   | { kind: "playing" }
   | { kind: "options" }
-  | { kind: "rules" };
+  | { kind: "rules" }
+  | { kind: "tutorial" }
+  | { kind: "lesson"; lessonId: string }
+  | { kind: "starQuiz" };
 
-/** 은하 한 바퀴(/galaxy): 첫 화면, 옵션, 규칙, 친구와 하기 방, 대국. 배우기(G6)는 아직 없다 */
+/** 은하 한 바퀴(/galaxy): 첫 화면, 옵션, 규칙, 배우기·별자리 퀴즈, 친구와 하기 방, 대국 */
 export function GalaxyApp() {
   // 판·방을 떠날 때(나가기 단추든 뒤로가기든) 하는 정리
   function leavePlay() {
@@ -370,14 +389,16 @@ export function GalaxyApp() {
   }
   const [screen, setScreen] = useScreenHistory<Screen>(
     { kind: "start" },
-    { leavePlay, restorable: ["options", "rules"] },
+    { leavePlay, restorable: ["options", "rules", "tutorial", "starQuiz"] },
   );
   const view = useGalaxy((s) => s.view);
   const settings = useGalaxySettings();
 
   // 다 끝난 게임은 이어하기에 남기지 않는다(온라인 판은 저장하지 않는다).
   useEffect(() => {
-    if (view?.phase === "gameOver" && useGalaxy.getState().local) clearGalaxy();
+    // 배우기 미션 판은 저장하지 않으므로 이어하기 저장도 건드리지 않는다.
+    const { local, practice } = useGalaxy.getState();
+    if (view?.phase === "gameOver" && local && !practice) clearGalaxy();
   }, [view?.phase]);
 
   // 초대 링크로 왔으면 그 방으로, 방장이 새로고침했으면 연 방을 다시 연다.
@@ -407,9 +428,35 @@ export function GalaxyApp() {
   if (screen.kind === "options") return <GalaxyOptions onBack={backToStart} />;
   if (screen.kind === "rules")
     return <GalaxyRulesScreen onBack={backToStart} />;
+  if (screen.kind === "tutorial")
+    return (
+      <TutorialHome
+        tutorial={galaxyTutorial}
+        onBack={backToStart}
+        onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
+        extra={{
+          icon: "✦",
+          title: "별자리 퀴즈",
+          detail: "사계절 하늘 8 별자리·24별로 끝없이 풀어요",
+          onClick: () => setScreen({ kind: "starQuiz" }),
+        }}
+      />
+    );
+  if (screen.kind === "lesson")
+    return (
+      <LessonPlayer
+        key={screen.lessonId}
+        tutorial={galaxyTutorial}
+        lessonId={screen.lessonId}
+        onExit={() => setScreen({ kind: "tutorial" })}
+      />
+    );
+  if (screen.kind === "starQuiz")
+    return <GalaxyStarQuiz onBack={() => setScreen({ kind: "tutorial" })} />;
   return (
     <GalaxyHome
       onOnline={() => setScreen({ kind: "online", room: null })}
+      onLearn={() => setScreen({ kind: "tutorial" })}
       onOptions={() => setScreen({ kind: "options" })}
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
