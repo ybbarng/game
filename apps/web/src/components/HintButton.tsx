@@ -12,10 +12,14 @@ export function useHint<T>(resetKey: unknown): {
   hint: T | null;
   showHint: (hint: T) => void;
 } {
-  const [shown, setShown] = useState<{ key: unknown; hint: T } | null>(null);
-  const hint =
-    shown !== null && Object.is(shown.key, resetKey) ? shown.hint : null;
-  return { hint, showHint: (h: T) => setShown({ key: resetKey, hint: h }) };
+  const [hint, setHint] = useState<T | null>(null);
+  // resetKey가 바뀌면(수가 오가거나 무르면) 힌트를 지운다. 무르기로 같은 수 개수에 돌아와도 다시 뜨지 않는다.
+  const [seenKey, setSeenKey] = useState(resetKey);
+  if (!Object.is(seenKey, resetKey)) {
+    setSeenKey(resetKey);
+    setHint(null);
+  }
+  return { hint, showHint: setHint };
 }
 
 /**
