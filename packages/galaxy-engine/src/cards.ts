@@ -98,7 +98,7 @@ export const CARDS: readonly NoticeCard[] = [
   {
     id: 6,
     title: "정거장 안전 점검",
-    text: "정거장 한 단마다 15, 큰 정거장마다 40을 냅니다.",
+    text: "정거장 한 단마다 10, 큰 정거장마다 30을 냅니다.",
     kind: "pay",
     fact: null,
   },
@@ -181,7 +181,7 @@ export const CARD_AMOUNTS = {
   blue: 20,
   far: 40,
   supply: 30,
-  inspectLevel: 12,
+  inspectLevel: 10,
   inspectGrand: 30,
   dust: 40,
   red: 20,
