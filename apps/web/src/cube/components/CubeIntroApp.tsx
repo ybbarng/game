@@ -186,7 +186,7 @@ export function CubeIntroApp() {
                   data-intro-keys
                   className="rounded-xl border border-sky-300/60 bg-sky-500/25 px-3 py-1.5 text-sm hover:bg-sky-500/35"
                 >
-                  키 익히기: 직접 쳐 보며 손에 익히기
+                  키 익히기
                 </a>
                 <a
                   href="/cube/keys"

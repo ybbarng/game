@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import type { Command } from "../input/actions";
-import { chordsFor, type KeyChord } from "../input/keymaps";
+import { chordsFor, codeLabel, type KeyChord } from "../input/keymaps";
 import {
   describeInput,
   keyTextFor,
   loadLearn,
   pressesFor,
+  rightKeyTag,
   StepRun,
   type StepRun as StepRunT,
   saveLearn,
@@ -25,6 +26,7 @@ import {
   LiveCube,
   type PracticeCube,
   type PracticeKey,
+  useNoKeyboard,
   usePracticeCube,
   usePracticeKeys,
 } from "./PracticeCube";
@@ -50,6 +52,7 @@ export function KeyLearnApp() {
   const [wrong, setWrong] = useState<string | null>(null);
   const [, bump] = useState(0);
   const cube = usePracticeCube(TUTORIAL_N, settings);
+  const noKeyboard = useNoKeyboard();
 
   useEffect(() => {
     const p = loadLearn();
@@ -111,13 +114,13 @@ export function KeyLearnApp() {
         const said = describeInput(keymap, TUTORIAL_N, input).text;
         const want = before ? hint(keymap, before) : "";
         setWrong(input.code);
-        setFeedback({ kind: "miss", text: `${said} · ${want}` });
+        setFeedback({ kind: "miss", text: want ? `${said} ${want}` : said });
         return;
       }
       setWrong(null);
       if (outcomes.includes("done")) {
         if (step) markDone(step.id);
-        setFeedback({ kind: "ok", text: "이 단계를 마쳤습니다" });
+        setFeedback({ kind: "ok", text: "이 단계를 마쳤습니다." });
       } else if (outcomes.includes("hit"))
         setFeedback({ kind: "ok", text: "맞아요" });
       else if (outcomes.includes("partial"))
@@ -288,10 +291,11 @@ export function KeyLearnApp() {
             wrong={wrong}
           />
         )}
-        <p className="break-keep text-white/50 text-xs">
-          휴대폰에서는 키보드가 없어 큐브를 밀어서 돌립니다. 키 익히기는
-          키보드가 있는 기기에서 하세요
-        </p>
+        {noKeyboard && (
+          <p className="text-amber-200 text-xs" data-learn-no-keyboard>
+            키보드가 필요합니다.
+          </p>
+        )}
       </main>
     </div>
   );
@@ -316,6 +320,5 @@ function hint(
   keymap: Parameters<typeof keyTextFor>[0],
   t: TutorialTarget,
 ): string {
-  if (t.kind === "code") return `지금은 ${targetLabel(t)}를 누르세요`;
-  return `「${targetLabel(t)}」은 ${keyOf(keymap, t)}`;
+  return rightKeyTag(t.kind === "code" ? codeLabel(t.code) : keyOf(keymap, t));
 }

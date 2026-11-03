@@ -146,11 +146,15 @@ export class MoveMatcher {
   }
 }
 
-/** 눌린 키를 사람에게: 「I: R」 / 「Q: 이 키에는 동작이 없습니다」 */
+/**
+ * 눌린 키를 사람에게 완결된 문장으로: 「K 키는 「R'」입니다.」 / 「Q 키에는 동작이 없습니다.」.
+ * `played`(실제로 돌아간 수, 깊이 키 뒤의 `2R` 등)가 키의 동작과 다르면 「친 수는 2R입니다.」를 잇는다.
+ */
 export function describeInput(
   keymap: Keymap,
   n: number,
   input: KeyInput,
+  played?: string,
 ): { chord: string; action: ActionId | null; text: string } {
   const chord = chordLabel({
     code: input.code,
@@ -160,12 +164,18 @@ export function describeInput(
   });
   const action = resolveAction(keymap, { ...input, repeat: false });
   if (action === null)
-    return { chord, action, text: `${chord} 키에는 동작이 없습니다` };
-  if (!isAvailable(n, action))
-    return {
-      chord,
-      action,
-      text: `${chord} 키는 「${actionLabel(action)}」(이 크기에서는 쓰지 않음)`,
-    };
-  return { chord, action, text: `${chord} 키는 「${actionLabel(action)}」` };
+    return { chord, action, text: `${chord} 키에는 동작이 없습니다.` };
+  const said = isAvailable(n, action)
+    ? `${chord} 키는 「${actionLabel(action)}」입니다.`
+    : `${chord} 키는 「${actionLabel(action)}」이지만 이 크기에서는 쓰지 않습니다.`;
+  const tail =
+    played !== undefined && played !== action
+      ? ` 친 수는 ${played}입니다.`
+      : "";
+  return { chord, action, text: said + tail };
+}
+
+/** 틀렸을 때 덧붙이는 맞는 키 꼬리표: 「맞는 키: I」 */
+export function rightKeyTag(keys: string): string {
+  return `맞는 키: ${keys}`;
 }
