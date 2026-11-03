@@ -52,11 +52,11 @@ const missions = BADUK_LESSONS.flatMap((l) =>
 );
 
 describe("바둑 튜토리얼 미션", () => {
-  it("단원은 일곱, 장면이 있는 미션은 여섯이다(실전은 처음부터)", () => {
-    expect(BADUK_LESSONS).toHaveLength(7);
+  it("단원은 여덟, 장면이 있는 미션은 일곱이다(실전은 처음부터)", () => {
+    expect(BADUK_LESSONS).toHaveLength(8);
     expect(BADUK_LESSONS[0]?.id).toBe("goal");
     expect(BADUK_LESSONS.at(-1)?.id).toBe("real");
-    expect(missions).toHaveLength(6);
+    expect(missions).toHaveLength(7);
   });
 
   it.each(missions)("%s: 정답이면 성공, 실수면 실패", (_title, mission) => {

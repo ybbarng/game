@@ -75,6 +75,20 @@ const CAPTURE_SCENE: BadukScene = {
   marks: { E4: "×" },
 };
 
+/** 흑 한 점(E5)이 백 셋에 둘러싸여 단수. 남은 활로 E4로 뻗으면 활로가 셋이 된다 */
+const ESCAPE_SCENE: BadukScene = {
+  black: ["E5"],
+  white: ["D5", "E6", "F5"],
+  marks: { E4: "×" },
+};
+
+/** 흑 두 점(D4·F4)이 떨어져 있다. 가운데 E4를 이으면 한 무리가 되어 활로를 함께 쓴다 */
+const CONNECT_SCENE: BadukScene = {
+  black: ["D4", "F4"],
+  white: ["D5", "F5", "E5"],
+  marks: { E4: "A" },
+};
+
 /** E5는 백 돌로 둘러싸였지만, 흑이 두면 단수인 백 E6을 따내 둘 수 있다 */
 const SUICIDE_SCENE: BadukScene = {
   black: ["D6", "F6", "E7"],
@@ -176,6 +190,56 @@ export const BADUK_LESSONS: readonly BadukLesson[] = [
         check: capturedFirst("E5"),
         success: "따냈어요! 따낸 돌은 판에서 들려 나가요.",
         fail: "아직 따내지 못했어요. 백 돌 곁에 남은 빈 점을 찾아보세요.",
+        solution: [place("E4")],
+        mistake: [place("A1")],
+      },
+    ],
+  },
+  {
+    id: "atari",
+    title: "단수에서 달아나기",
+    summary: "활로가 하나 남으면 활로 쪽으로 뻗거나 이어서 활로를 늘린다",
+    steps: [
+      {
+        kind: "explain",
+        title: "단수면 달아나요",
+        body: [
+          "활로가 **하나**만 남은 상태를 **단수**라고 해요. 상대가 다음에 그 활로를 막으면 따내져요.",
+          "내 돌이 단수면 남은 활로 쪽으로 **뻗어** 활로를 늘려요. 그림의 흑은 ×로 뻗으면 활로가 셋이 돼요.",
+          "대국 화면에서는 단수인 돌에 **빨간 테두리**가 생겨요. 내 돌에 보이면 먼저 살펴요.",
+        ],
+        scene: ESCAPE_SCENE,
+      },
+      {
+        kind: "explain",
+        title: "이으면 활로를 함께 써요",
+        body: [
+          "떨어진 내 돌 사이를 **이으면** 한 무리가 되어 활로를 함께 써요. 무리가 클수록 따내기 어려워요.",
+          "그림의 흑 두 점은 A로 이으면 한 무리가 돼요.",
+        ],
+        scene: CONNECT_SCENE,
+      },
+      {
+        kind: "quiz",
+        question: "내 돌이 단수가 됐어요. 먼저 해 볼 일은?",
+        options: [
+          "남은 활로 쪽으로 뻗어 활로를 늘린다",
+          "멀리 떨어진 넓은 곳에 둔다",
+          "쉬기를 누른다",
+        ],
+        answer: 0,
+        explain:
+          "그대로 두면 상대가 마지막 활로를 막아 따내요. 활로 쪽으로 뻗으면 활로가 늘어 살아날 수 있어요.",
+      },
+      {
+        kind: "mission",
+        title: "단수 벗어나기",
+        objective: "단수에 걸린 흑 한 점을 **활로 쪽으로 뻗어** 살리세요.",
+        hint: "흑 돌 아래쪽(E4)만 비어 있어요.",
+        scenario: ESCAPE_SCENE,
+        check: firstAt("E4"),
+        success: "달아났어요! 이제 활로가 셋이라 바로 따내지지 않아요.",
+        fail: "그대로 두면 백이 마지막 활로를 막아 따내요. 남은 활로를 찾아보세요.",
         solution: [place("E4")],
         mistake: [place("A1")],
       },
