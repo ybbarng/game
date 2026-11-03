@@ -72,6 +72,14 @@ export function turnCount(n: number, log: readonly { m: string }[]): number {
   return count;
 }
 
+/** 큐브 상태(조각 자리·방향)의 해시. 기기마다 엔진이 같은 상태를 만들었는지 맞춰 본다 */
+export function stateHash(state: PuzzleState): string {
+  return sha256Hex(`${state.perm.join(",")}|${state.twist.join(",")}`).slice(
+    0,
+    16,
+  );
+}
+
 export function createCubeRaceGame(
   n: number,
   scrambler: Scrambler,
@@ -103,7 +111,9 @@ export function createCubeRaceGame(
     startFingerprint(seed) {
       const s = scrambleOf(seed);
       if (!s) throw new Error("섞기를 아직 만들지 않았다");
-      return `${event}|${s.text}`;
+      // 섞기 글만 맞춰 보면 엔진 판이 달라 같은 글에서 다른 상태가 나와도 못 잡는다: 시작 상태도 함께
+      const start = applyMoves(n, solvedCube(n), parseMoves(n, s.text));
+      return `${event}|${s.text}|${stateHash(start)}`;
     },
     apply(state, move) {
       if (!isValidMove(n, move)) throw new RangeError("둘 수 없는 수");

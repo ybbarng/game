@@ -86,8 +86,25 @@ function chainLinks(seed: string): string[] {
  * 공개는 그 사람을 기다린다. 그 밖의 결정은 언제든 대신 할 수 있다
  */
 export function botKnowsChain(view: GalaxyView): boolean {
+  if (view.decision?.kind === "bidReveal") return committedBid(view) !== null;
   if (view.decision?.kind !== "reveal") return true;
   return view.chains[view.mySeat]?.commit === chainLinks(botSeedOf(view))[0];
+}
+
+/**
+ * 이 자리 봉투가 자리 재료의 소금(`bidSalt`)으로 낸 것이면 그 값. 컴퓨터 자신이 낸 봉투, 끊긴 사람 대신 낸 봉투,
+ * 온라인 방이 결정 시간을 넘긴 사람 대신 낸 「내지 않음」 모두 같은 소금이라, 실력 단계와 상관없이 약속에서 값을 찾는다
+ * (10 단위로 가진 별빛까지라 몇백 번 해시면 된다). 사람이 자기 소금으로 낸 봉투면 null
+ */
+export function committedBid(view: GalaxyView): number | null {
+  const auction = view.auction;
+  const commit = auction?.myCommit ?? null;
+  if (!auction || !commit) return null;
+  const salt = bidSalt(view.botKey, auction.index);
+  const cash = view.cash[view.mySeat] ?? 0;
+  for (let value = 0; value <= cash; value += 10)
+    if (bidCommitment(auction.index, value, salt) === commit) return value;
+  return null;
 }
 
 /** 재료로 만든 사슬로 약속·공개한다(컴퓨터·혼자 하기의 내 자리) */
@@ -168,15 +185,22 @@ function makeBot(name: string, policy: Policy): GalaxyBot {
       if (decision.kind === "bid" || decision.kind === "bidReveal") {
         const auction = view.auction;
         if (!auction) throw new Error("입찰이 없다");
+        const salt = bidSalt(view.botKey, auction.index);
+        if (decision.kind === "bidReveal") {
+          // 약속에서 값을 찾는다(대신 낸 봉투도 같은 소금이다). 사람이 자기 소금으로 냈으면 공개할 수 없다
+          const value = committedBid(view);
+          if (value === null)
+            throw new Error(
+              "이 자리 봉투는 사람이 만들어 컴퓨터가 공개할 수 없다",
+            );
+          return { type: "bidReveal", value, salt };
+        }
         const ctx = ctxOf(view);
         const value = legalBid(
           policy.bid(ctx, auction.square, bidRng(view, auction.index)),
           view.cash[view.mySeat] ?? 0,
         );
-        const salt = bidSalt(view.botKey, auction.index);
-        return decision.kind === "bid"
-          ? { type: "bid", hash: bidCommitment(auction.index, value, salt) }
-          : { type: "bidReveal", value, salt };
+        return { type: "bid", hash: bidCommitment(auction.index, value, salt) };
       }
       const ctx = ctxOf(view);
       switch (decision.kind) {

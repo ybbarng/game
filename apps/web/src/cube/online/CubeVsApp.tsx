@@ -7,15 +7,13 @@ import { raceClock } from "@/net/race/race-session";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom } from "./room";
+import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { useCubeRoom } from "./use-room";
 
 /**
  * 컴퓨터와 경주(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
  * 온라인 방과 같은 길(경주 틀 + 컴퓨터 참가자)을 진짜 연결 없이 쓴다.
  */
-
-const TIME_LIMIT: Record<number, number> = { 2: 60, 3: 180 };
 
 export function CubeVsApp() {
   const [n, setN] = useState(2);
@@ -40,7 +38,7 @@ export function CubeVsApp() {
         n,
         format: "single",
         inspection,
-        timeLimitSec: TIME_LIMIT[n] ?? 180,
+        timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
       },
     });
     r.addBot(level);

@@ -4,6 +4,7 @@ import {
   invertMoves,
   isSolved,
   parseMoves,
+  solvedCube,
 } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
@@ -20,6 +21,7 @@ import {
   createCubeRaceGame,
   type Scrambler,
   scrambleSeed,
+  stateHash,
   turnCount,
 } from "./race-game";
 
@@ -155,6 +157,15 @@ describe("큐브 경주(어댑터)", () => {
     expect(r.ranking).toEqual(["b", "c", "a"]);
   });
 
+  it("시작 상태 지문은 섞기 글과 시작 상태 해시를 함께 싣는다(같은 글에서 다른 상태가 나오면 다르다)", () => {
+    const game = createCubeRaceGame(3, fake);
+    void game.prepare?.("s1", undefined);
+    const fp = game.startFingerprint?.("s1", undefined) as string;
+    const start = game.startState("s1", undefined) as PuzzleState;
+    expect(fp).toBe(`333|${game.scrambleFor("s1")?.text}|${stateHash(start)}`);
+    expect(stateHash(solvedCube(3))).not.toBe(stateHash(start));
+  });
+
   it("한 기기만 섞기를 다르게 만들면 섞기 어긋남으로 판이 열리지 않는다", () => {
     const { clock, sessions } = rig(3, { a: ["a"], b: ["b"] }, (d) =>
       d === "b" ? skewed : fake,
@@ -214,6 +225,32 @@ describe("큐브 경주(어댑터)", () => {
         planInWorker,
       ),
     ).resolves.toBe(true);
+    // 시각도 본다: 모든 수를 같은 만큼 늦게 적은 것(계획이 늦게 옴)은 맞고,
+    // 계획보다 빨리 둔 것처럼 시각을 줄이거나 계획보다 이르게 적으면 다르다
+    const check = (log: readonly { m: string; t: number }[]) =>
+      checkBotRun(
+        "beginner",
+        2,
+        g.startState() as PuzzleState,
+        seed,
+        "bot1",
+        log,
+      );
+    const real = g.moveLog("bot1");
+    await expect(
+      check(real.map((x) => ({ ...x, t: x.t + 1234.5 }))),
+    ).resolves.toBe(true);
+    await expect(check(real.map((x) => ({ ...x, t: x.t / 2 })))).resolves.toBe(
+      false,
+    );
+    await expect(
+      check(real.map((x) => ({ ...x, t: x.t - 300 }))),
+    ).resolves.toBe(false);
+    await expect(
+      check(
+        real.map((x, i) => (i === real.length - 1 ? { ...x, t: x.t - 50 } : x)),
+      ),
+    ).resolves.toBe(false);
     // 다른 단계로 다시 계산하면 맞지 않는다
     await expect(
       checkBotRun(
@@ -262,6 +299,17 @@ describe("큐브 경주(어댑터)", () => {
     // 첫 수는 계획 시각 + 늦은 만큼
     expect(log[0]?.t).toBe((plan.moves[0]?.at as number) + late);
     expect(g.snapshot().result?.players.bot1?.status).toBe("done");
+    // 모든 수를 같은 만큼 미뤘으므로 다른 기기의 계획 확인(시각 포함)을 통과한다
+    await expect(
+      checkBotRun(
+        "beginner",
+        2,
+        g.startState() as PuzzleState,
+        g.snapshot().seed as string,
+        "bot1",
+        log,
+      ),
+    ).resolves.toBe(true);
   });
 
   it("남이 컴퓨터 이름으로 보낸 수는 받지 않는다", () => {

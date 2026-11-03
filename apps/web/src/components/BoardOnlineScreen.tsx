@@ -256,6 +256,15 @@ export function BoardOnlineScreen<
           saveSeatToken(roomCode, { token, secret: guest.secret }),
         );
         guest.on("lobby", (l) => {
+          // 이 기기가 읽지 못하는 규칙(아직 열지 않은 하늘 등)이면 방에 들어가지 않는다.
+          const decoded = kit.decodeRules(l.ruleCode);
+          if (!decoded.ok) {
+            guest.leave();
+            session.guest = null;
+            setError(`이 방의 규칙을 열 수 없어요: ${decoded.reason}`);
+            setPhase("error");
+            return;
+          }
           syncLobby(l);
           setPhase("lobby");
         });
