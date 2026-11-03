@@ -1,8 +1,8 @@
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
- * 큐브 공식 모음(/cube/algs, docs/47 8절 「내 공식」). 새 공식은 쓰는 동안 검사되고, 맞는 것만 넣을 수 있다.
- * 검사는 화면 안 순수 계산이라 입력 뒤 검사 결과(`[data-alg-check]`)를 조건으로 기다린다.
+ * 큐브 공식 모음(/cube/algs, docs/47 8절 「내 공식」). 새 공식은 입력이 멈추면 검사되고, 맞는 것만 넣을 수 있다.
+ * 검사는 짧은 지연 뒤 화면 안 순수 계산이라 입력 뒤 검사 결과(`[data-alg-check]`)를 조건으로 기다린다.
  */
 
 async function shot(page: Page, name: string, project: string) {
@@ -84,4 +84,31 @@ test("공식 링크: 받은 공식을 시연하고 넣을 수 있다", async ({ 
   await d.locator("[data-alg-add]").click();
   // 자료에 이미 있는 대안이라 그대로
   await expect(page.locator("[data-algs-notice]")).toHaveText("이미 있음");
+});
+
+test("가져오기: 워커에서 검사해 맞는 것만 넣고, 같은 공식이 되풀이돼도 뺀 목록에 모두 보인다", async ({
+  page,
+}) => {
+  await page.goto("/cube/algs");
+  await expect(page.locator('[data-case-open="oll-27"]')).toBeVisible();
+  const text = JSON.stringify({
+    format: "cube-algs",
+    version: 1,
+    cases: {
+      "oll-27": { mine: ["L U L' U L U2 L'", "R U R'", "R U R'"] },
+    },
+  });
+  await page.locator("[data-algs-import]").setInputFiles({
+    name: "cube-algs.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(text),
+  });
+  await expect(page.locator("[data-algs-notice]")).toHaveText(
+    "가져옴 1 · 뺌 2",
+  );
+  await expect(page.locator("[data-algs-rejected] li")).toHaveCount(2);
+  await page.locator('[data-case-open="oll-27"]').click();
+  await expect(
+    page.locator('[data-alg-case="oll-27"] [data-alg-row="mine"]'),
+  ).toHaveCount(1);
 });
