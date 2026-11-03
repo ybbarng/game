@@ -5,6 +5,7 @@ import {
   type JanggiView,
   type Kind,
   kingOf,
+  MOVE_LIMIT,
   type Move,
   materialScore,
   other,
@@ -115,6 +116,9 @@ function PlayerPlate({
     </div>
   );
 }
+
+/** 이만큼 두면 수 한도가 다가온다고 알린다 */
+const MOVE_LIMIT_WARN = MOVE_LIMIT - 40;
 
 /** 잡은 기물을 늘어놓는 차례(큰 기물부터) */
 const CAPTURE_ORDER: readonly Kind[] = ["R", "C", "N", "E", "A", "P", "K"];
@@ -263,6 +267,16 @@ export function JanggiGame({
         </button>
         <span className="ml-auto text-white/60">
           나는 {SIDE_NAMES[mySide]} · {bikjangLabel} · {view.roundNumber}판째
+          {view.phase === "play" && played > 0 && (
+            <span
+              data-move-count={played}
+              className={cn(played >= MOVE_LIMIT_WARN && "text-amber-300")}
+            >
+              {" "}
+              · {played}수
+              {played >= MOVE_LIMIT_WARN && `(${MOVE_LIMIT}수에서 점수로)`}
+            </span>
+          )}
         </span>
       </header>
 
