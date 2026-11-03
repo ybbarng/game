@@ -27,7 +27,7 @@ export type StarFact =
 
 /** 별 사실의 기준값 */
 export const FACT_LIMITS = {
-  /** 1등성: 이보다 밝은(등급이 작은) 별 */
+  /** 1등성: 이 등급까지(포함) 밝은 별. 아다라(1.50)도 흔히 1등성 21개에 넣는다 */
   firstMagnitude: 1.5,
   /** 푸른 별: 표면 온도가 이보다 높은 별(K) */
   blue: 10_000,
@@ -45,7 +45,7 @@ export const FACT_LIMITS = {
 export function matchesFact(star: GalaxyStar, fact: StarFact): boolean {
   switch (fact) {
     case "firstMagnitude":
-      return star.mag < FACT_LIMITS.firstMagnitude;
+      return star.mag <= FACT_LIMITS.firstMagnitude;
     case "blue":
       return star.k > FACT_LIMITS.blue;
     case "red":
@@ -70,7 +70,7 @@ export const CARDS: readonly NoticeCard[] = [
   {
     id: 2,
     title: "별빛 측정 수당",
-    text: "가진 별 가운데 1.5등급보다 밝은 별(1등성)마다 30을 드립니다.",
+    text: "가진 별 가운데 1.5등급까지 밝은 별(1등성)마다 30을 드립니다.",
     kind: "gain",
     fact: "firstMagnitude",
   },

@@ -15,47 +15,63 @@ function sirius(
 
 describe("정거장 이용료(2-2)", () => {
   it("1단·둘·완성·2단·3단·큰 정거장·맡김", () => {
-    expect(rentOf(sirius(), 14)).toBe(20);
-    expect(rentOf(sirius([{ square: 13, owner: 1 }]), 14)).toBe(30);
+    expect(rentOf(sirius(), 14)).toBe(40);
+    expect(rentOf(sirius([{ square: 13, owner: 1 }]), 14)).toBe(70);
     const all = [
       { square: 13, owner: 1 },
       { square: 15, owner: 1 },
     ];
-    expect(rentOf(sirius(all), 14)).toBe(40);
+    expect(rentOf(sirius(all), 14)).toBe(90);
     const leveled = (level: number) =>
       scene({
         stars: [13, 14, 15].map((square) => ({ square, owner: 1, level })),
       });
-    expect(rentOf(leveled(2), 14)).toBe(110);
+    expect(rentOf(leveled(2), 14)).toBe(200);
     expect(rentOf(leveled(3), 14)).toBe(350);
-    expect(rentOf(leveled(4), 14)).toBe(660);
+    expect(rentOf(leveled(4), 14)).toBe(530);
     expect(
       rentOf(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] }), 14),
     ).toBe(0);
     expect(rentOf(scene(), 14)).toBe(0);
-    // 가장 싼 별도 10은 낸다(60 × 0.1 = 6 → 10).
-    expect(rentOf(scene({ stars: [{ square: 1, owner: 1 }] }), 1)).toBe(10);
+    // 가장 싼 별도 10은 낸다(60 × 0.2 = 12 → 10).
+    const cheap = scene({
+      rules: { ...STANDARD_RULES, seasonal: false },
+      stars: [{ square: 1, owner: 1 }],
+    });
+    expect(rentOf(cheap, 1)).toBe(10);
   });
 
   it("제철 하늘: 지금 계절 변의 이용료는 1.5배, 다른 변은 그대로", () => {
     // 기본 4인 20차례: 6돌림부터 겨울(변 1)
     const winter = sirius([], 6);
     expect(winter.season).toBe(1);
-    expect(rentOf(winter, 14)).toBe(30);
+    expect(rentOf(winter, 14)).toBe(70);
     const full = scene({
       round: 6,
       stars: [13, 14, 15].map((square) => ({ square, owner: 1, level: 2 })),
     });
-    expect(rentOf(full, 14)).toBe(170);
+    expect(rentOf(full, 14)).toBe(300);
     const autumn = scene({ round: 6, stars: [{ square: 2, owner: 1 }] });
-    expect(rentOf(autumn, 2)).toBe(10);
+    expect(rentOf(autumn, 2)).toBe(20);
     const off = scene({
       rules: { ...STANDARD_RULES, seasonal: false },
       round: 6,
       stars: [{ square: 14, owner: 1 }],
     });
     expect(off.season).toBeNull();
-    expect(rentOf(off, 14)).toBe(20);
+    expect(rentOf(off, 14)).toBe(40);
+  });
+
+  it("제철 하늘: 반올림으로 1.5배가 같아져도 적어도 10 더 낸다", () => {
+    // 셰아트(2, 값 80): 1단 80 × 0.2 = 16 → 20, 제철 80 × 0.2 × 1.5 = 24 → 20이라 30으로 올린다
+    const plain = scene({
+      rules: { ...STANDARD_RULES, seasonal: false },
+      stars: [{ square: 2, owner: 1 }],
+    });
+    expect(rentOf(plain, 2)).toBe(20);
+    const inSeason = scene({ round: 1, stars: [{ square: 2, owner: 1 }] });
+    expect(inSeason.season).toBe(0);
+    expect(rentOf(inSeason, 2)).toBe(30);
   });
 
   it("남의 별에 멈추면 이용료를 주인에게 낸다(주인이 소행성대에 있어도)", () => {
@@ -67,7 +83,7 @@ describe("정거장 이용료(2-2)", () => {
     const { state, events } = roll(s, [2, 4]);
     expect(state.positions[0]).toBe(14);
     expect(paysOf(events)).toEqual([
-      { type: "pay", from: 0, to: 1, amount: 20, reason: "rent", square: 14 },
+      { type: "pay", from: 0, to: 1, amount: 40, reason: "rent", square: 14 },
     ]);
     expect(state.phase).toBe("turn");
     expect(state.turn.next).toBe("end");
@@ -219,6 +235,14 @@ describe("관측지와 혜성", () => {
     expect(paysOf(events)).toEqual([
       { type: "pay", from: -1, to: 0, amount: 150, reason: "observatory" },
     ]);
+    expect(events).toContainEqual({ type: "observed", seat: 0, amount: 150 });
+    // 1위라 0이어도 받은 값을 사건으로 남긴다(돈은 오가지 않는다)
+    const rich = roll(
+      scene({ positions: [13, 0, 0, 0], cash: [3000, 1000, 1000, 1000] }),
+      [1, 2],
+    ).events;
+    expect(rich).toContainEqual({ type: "observed", seat: 0, amount: 0 });
+    expect(paysOf(rich)).toEqual([]);
     const three = scene({
       rules: { ...STANDARD_RULES, players: 3 },
       cash: [100, 200, 300],

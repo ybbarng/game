@@ -6,6 +6,7 @@ import {
   type GalaxyState,
   type GameEvent,
   isComplete,
+  SHORT_RULES,
   STANDARD_RULES,
   standingsOf,
   turnLimitOf,
@@ -34,12 +35,15 @@ export const BENCH_GAMES = {
   noTrade: 1000,
   /** 고수 1 대 중수 3, 중수 1 대 입문 3(각각) */
   strength: 1000,
+  /** 긴장 지표 묶음(각각): 짧은 판 유성우 켬·끔, 기본 판 유성우 반대쪽(기본 판 켬·끔 가운데 main이 아닌 쪽) */
+  tension: 1000,
 } as const;
 
 export interface BenchOptions {
   main: number;
   noTrade: number;
   strength: number;
+  tension: number;
   sky?: string;
 }
 
@@ -50,6 +54,7 @@ export function scaledGames(main: number): BenchOptions {
     main,
     noTrade: Math.max(1, Math.round(BENCH_GAMES.noTrade * ratio)),
     strength: Math.max(1, Math.round(BENCH_GAMES.strength * ratio)),
+    tension: Math.max(1, Math.round(BENCH_GAMES.tension * ratio)),
   };
 }
 
@@ -77,6 +82,17 @@ interface Tally {
   rounds: number;
   decisions: number;
   auctions: number;
+  /** 긴장 지표: 판마다 판 끝 1위와 꼴찌 자산 차이 */
+  gaps: number[];
+  /** 마지막 5돌림이 시작될 때 1등이 판 끝 1등이 아니었던 판 / 그 자리를 잰 판 */
+  lateChecked: number;
+  lateFlipped: number;
+  /** 판마다 300 넘는 이용료를 낸 수 */
+  bigRents: number[];
+  /** 판마다 첫 별자리 완성 돌림(없으면 넣지 않는다) */
+  firstComplete: number[];
+  /** 2단 이상 정거장이 선 판 */
+  level2Games: number;
 }
 
 function newTally(): Tally {
@@ -97,8 +113,19 @@ function newTally(): Tally {
     rounds: 0,
     decisions: 0,
     auctions: 0,
+    gaps: [],
+    lateChecked: 0,
+    lateFlipped: 0,
+    bigRents: [],
+    firstComplete: [],
+    level2Games: 0,
   };
 }
+
+/** 이용료가 이만큼 넘으면 「크게 받는 순간」으로 센다 */
+const BIG_RENT = 300;
+/** 막판 뒤집힘을 보는 돌림 수 */
+const LATE_ROUNDS = 5;
 
 /** 공문을 편 사람의 이득: 그 걸음에서 공문 뒤 다음 굴림 전까지 그 사람에게 오간 별빛(빚으로 미룬 것 포함) */
 function cardGains(events: readonly GameEvent[], tally: Tally): void {
@@ -140,9 +167,15 @@ function runSet(
   const tally = newTally();
   const board = boardOfSky(rules.sky);
   const leaderRound = 11;
+  const limit = turnLimitOf(rules);
+  const lateRound = limit === null ? null : limit - LATE_ROUNDS + 1;
   for (let g = 0; g < n; g++) {
     let leaders: number[] | null = null;
+    let lateLeaders: number[] | null = null;
     let completed = false;
+    let firstComplete: number | null = null;
+    let bigRents = 0;
+    let level2 = false;
     const { state } = playGalaxy({
       bots: seatBots(g),
       rules,
@@ -161,9 +194,22 @@ function runSet(
               leaders = standingsOf(after)
                 .filter((s) => s.rank === 1 && !s.out)
                 .map((s) => s.seat);
-          } else if (e.type === "linked" && e.owned === e.size)
+            if (e.round === lateRound && lateLeaders === null)
+              lateLeaders = standingsOf(after)
+                .filter((s) => s.rank === 1 && !s.out)
+                .map((s) => s.seat);
+          } else if (e.type === "linked" && e.owned === e.size) {
             completed = true;
-          else if (e.type === "auctionStarted") tally.auctions += 1;
+            firstComplete ??= after.round;
+          } else if (e.type === "auctionStarted") tally.auctions += 1;
+          else if (
+            e.type === "pay" &&
+            e.reason === "rent" &&
+            e.amount > BIG_RENT
+          )
+            // 빚 정리로 미룬 이용료도 갚을 때 같은 pay 사건이 난다
+            bigRents += 1;
+          else if (e.type === "built" && e.level >= 2) level2 = true;
         }
         cardGains(events, tally);
       },
@@ -193,6 +239,18 @@ function runSet(
       tally.leaderChecked += 1;
       if (atTen.some((s) => winners.includes(s))) tally.leaderKept += 1;
     }
+    const late = lateLeaders as number[] | null;
+    if (late && late.length > 0) {
+      tally.lateChecked += 1;
+      if (!late.some((s) => winners.includes(s))) tally.lateFlipped += 1;
+    }
+    const finals = state.result?.standings ?? [];
+    if (finals.length > 0)
+      tally.gaps.push((finals[0]?.assets ?? 0) - (finals.at(-1)?.assets ?? 0));
+    tally.bigRents.push(bigRents);
+    const first = firstComplete as number | null;
+    if (first !== null) tally.firstComplete.push(first);
+    if (level2) tally.level2Games += 1;
     onGame?.(state, g);
   }
   return tally;
@@ -253,7 +311,60 @@ export interface BenchReport {
   }[];
   groups: { name: string; completed: number; winRate: number | null }[];
   cards: { id: number; title: string; draws: number; mean: number | null }[];
+  /** 긴장 지표(판 길이 × 유성우의 밤 켬·끔) */
+  tension: TensionRow[];
   seconds: number;
+}
+
+/** 긴장 지표 한 줄(docs/48 3-6) */
+export interface TensionRow {
+  length: "standard" | "short";
+  meteor: boolean;
+  games: number;
+  /** 판 끝 1위 − 꼴찌 자산: 아래 사분위, 중앙값, 위 사분위 */
+  gap: [number, number, number];
+  /** 마지막 5돌림이 시작될 때 1등이 판 끝 1등이 아닌 판의 비율 */
+  lateFlip: number;
+  /** 300 넘는 이용료: 판마다 평균, 한 번이라도 나온 판의 비율 */
+  bigRentMean: number;
+  bigRentGames: number;
+  /** 첫 별자리 완성 돌림 중앙값(완성이 나온 판만), 차례 수 */
+  firstComplete: number | null;
+  limit: number;
+  /** 2단 이상 정거장이 선 판의 비율 */
+  level2: number;
+  bankrupt: number;
+}
+
+/** 정렬된 수의 분위(선형 사이값) */
+function quantile(sorted: readonly number[], q: number): number {
+  if (sorted.length === 0) return 0;
+  const at = (sorted.length - 1) * q;
+  const lo = Math.floor(at);
+  const hi = Math.ceil(at);
+  const a = sorted[lo] as number;
+  const b = sorted[hi] as number;
+  return a + (b - a) * (at - lo);
+}
+
+function tensionOf(
+  tally: Tally,
+  rules: GalaxyRules,
+): Omit<TensionRow, "length" | "meteor"> {
+  const games = Math.max(1, tally.games);
+  const gaps = [...tally.gaps].sort((a, b) => a - b);
+  const firsts = [...tally.firstComplete].sort((a, b) => a - b);
+  return {
+    games: tally.games,
+    gap: [quantile(gaps, 0.25), quantile(gaps, 0.5), quantile(gaps, 0.75)],
+    lateFlip: tally.lateFlipped / Math.max(1, tally.lateChecked),
+    bigRentMean: tally.bigRents.reduce((a, b) => a + b, 0) / games,
+    bigRentGames: tally.bigRents.filter((x) => x > 0).length / games,
+    firstComplete: firsts.length > 0 ? quantile(firsts, 0.5) : null,
+    limit: turnLimitOf(rules) ?? 0,
+    level2: tally.level2Games / games,
+    bankrupt: tally.bankruptEnds / games,
+  };
 }
 
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
@@ -282,6 +393,33 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
     40_000,
     rules,
   );
+  // 긴장 지표: 유성우의 밤 켬·끔을 같은 시드로 견준다(기본 판 한쪽은 main 묶음)
+  const all = () => [mid, mid, mid, mid];
+  const otherMeteor = { ...rules, meteor: !rules.meteor };
+  const shortRules: GalaxyRules = { ...SHORT_RULES, sky };
+  const tension: TensionRow[] = [
+    {
+      length: "standard",
+      meteor: rules.meteor,
+      ...tensionOf(main, rules),
+    },
+    {
+      length: "standard",
+      meteor: otherMeteor.meteor,
+      ...tensionOf(
+        runSet(options.tension, otherMeteor, all, 10_000),
+        otherMeteor,
+      ),
+    },
+    ...[true, false].map((meteor) => {
+      const r = { ...shortRules, meteor };
+      return {
+        length: "short" as const,
+        meteor,
+        ...tensionOf(runSet(options.tension, r, all, 60_000), r),
+      };
+    }),
+  ];
 
   const rows: BenchRow[] = [];
   const odds = landingOdds(board);
@@ -415,6 +553,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
     landing,
     groups,
     cards,
+    tension,
     seconds: (now() - started) / 1000,
   };
 }
@@ -426,12 +565,21 @@ export function benchMarkdown(report: BenchReport): string {
   const lines = [
     `# 은하 한 바퀴 밸런스 bench(${report.options.sky})`,
     "",
-    `판 수: 기본 ${report.options.main} · 거래 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
+    `판 수: 기본 ${report.options.main} · 거래 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength} · 긴장 지표 각 ${report.options.tension}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
     "",
     "| 잴 것 | 값 | 기준 | 판정 |",
     "|---|---|---|---|",
     ...report.rows.map(
       (r) => `| ${r.item} | ${r.value} | ${r.target} | ${mark(r.pass)} |`,
+    ),
+    "",
+    "## 긴장 지표(4인 중수 ×4, 유성우의 밤 켬·끔은 같은 시드, docs/48 3-6)",
+    "",
+    "| 판 | 유성우 | 판 수 | 1위−꼴찌 자산(사분위 아래·중앙·위) | 마지막 5돌림 안 1위 바뀜 | 300 넘는 이용료(판마다 · 나온 판) | 첫 완성 돌림 중앙값 | 2단 이상 선 판 | 운항 중단 |",
+    "|---|---|---|---|---|---|---|---|---|",
+    ...report.tension.map(
+      (t) =>
+        `| ${t.length === "short" ? "짧은" : "기본"} | ${t.meteor ? "켬" : "끔"} | ${t.games} | ${t.gap.map((x) => Math.round(x)).join(" · ")} | ${pct(t.lateFlip)} | ${t.bigRentMean.toFixed(2)} · ${pct(t.bigRentGames)} | ${t.firstComplete === null ? "—" : `${t.firstComplete}/${t.limit}`} | ${pct(t.level2)} | ${pct(t.bankrupt)} |`,
     ),
     "",
     "## 칸마다 밟힌 비율",

@@ -47,6 +47,7 @@ import {
 import {
   endsOnFirstBankrupt,
   type GalaxyRules,
+  meteorFor,
   NUMBERS,
   permille,
   round10,
@@ -112,6 +113,7 @@ export function createMatch(
     phase: "commit",
     round: 1,
     season: seasonFor(rules, 1),
+    meteor: meteorFor(rules, 1),
     starter,
     turn: {
       seat: starter,
@@ -183,8 +185,25 @@ export function isComplete(
   return squares.length > 0 && squares.every((sq) => state.owners[sq] === seat);
 }
 
-/** 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2) */
+/**
+ * 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2). 제철이면 1.5배(적어도 10 더),
+ * 유성우의 밤에는 제철 대신 모든 별이 2배(2-12)
+ */
 export function rentOf(
+  state: Pick<
+    GalaxyState,
+    "board" | "owners" | "levels" | "mortgaged" | "season"
+  > & { meteor?: boolean },
+  square: number,
+): number {
+  if (state.meteor) {
+    const plain = baseRentOf({ ...state, season: null }, square);
+    return round10(plain, NUMBERS.meteor);
+  }
+  return baseRentOf(state, square);
+}
+
+function baseRentOf(
   state: Pick<
     GalaxyState,
     "board" | "owners" | "levels" | "mortgaged" | "season"
@@ -206,11 +225,13 @@ export function rentOf(
     rate =
       owned >= size ? rates.complete : owned >= 2 ? rates.pair : rates.single;
   }
+  const plain = Math.max(10, round10(star.value, rate));
   const inSeason = state.season !== null && sideOf(square) === state.season;
-  const rent = inSeason
-    ? round10(star.value, rate, NUMBERS.seasonal)
-    : round10(star.value, rate);
-  return Math.max(10, rent);
+  if (!inSeason) return plain;
+  return Math.max(
+    plain + NUMBERS.seasonalMin,
+    round10(star.value, rate, NUMBERS.seasonal),
+  );
 }
 
 /** 정거장 한 단 값 */
@@ -237,8 +258,9 @@ export function sellValue(board: GalaxyBoard, square: number): number {
 }
 
 /**
- * 자산(2-10) = 별빛 + 가진 별 값(맡긴 별은 맡긴 값) + 지은 정거장 값(1단은 별 값에 들어 있다)
- * + 완성 별자리마다 100
+ * 자산(2-10) = 별빛 + 가진 별 값(맡긴 별은 맡긴 값) + 지은 정거장을 내릴 때 돌려받는 값(한 단 값의 절반,
+ * 1단은 별 값에 들어 있다) + 완성 별자리마다 100. 정거장은 짓는 순간 자산이 절반만큼 줄어
+ * 이용료로 되찾을 시간이 남았을 때 짓는다(「언제 올릴까」)
  */
 export function assetsOf(
   state: Pick<
@@ -254,7 +276,7 @@ export function assetsOf(
     if (!star) continue;
     total += state.mortgaged[sq] ? mortgageValue(state.board, sq) : star.value;
     total +=
-      Math.max(0, (state.levels[sq] ?? 1) - 1) * levelCostAt(state.board, sq);
+      Math.max(0, (state.levels[sq] ?? 1) - 1) * sellValue(state.board, sq);
   }
   state.board.groups.forEach((_, g) => {
     if (isComplete(state, seat, g)) total += NUMBERS.completeBonus;
@@ -554,6 +576,9 @@ function endTurn(s: GalaxyState, events: GameEvent[]): void {
       s.season = season;
       if (season !== null) events.push({ type: "seasonChanged", season });
     }
+    const meteor = meteorFor(s.rules, s.round);
+    if (meteor && !s.meteor) events.push({ type: "meteorShower" });
+    s.meteor = meteor;
   }
   startTurn(s, next, events);
 }
@@ -905,9 +930,12 @@ function land(
   events.push({ type: "landed", seat, square });
   const kind = s.board.squares[square]?.kind;
   switch (kind) {
-    case "observatory":
-      pay(s, events, BANK, seat, observatoryGrant(s, seat), "observatory");
+    case "observatory": {
+      const amount = observatoryGrant(s, seat);
+      events.push({ type: "observed", seat, amount });
+      pay(s, events, BANK, seat, amount, "observatory");
       return "done";
+    }
     case "comet":
       s.phase = "turn";
       s.turn.next = "comet";
@@ -980,7 +1008,7 @@ function applyDeal(s: GalaxyState, hash: string, events: GameEvent[]): void {
   const seats = activeSeats(s);
   const hands = dealStars(
     hash,
-    STAR_SQUARES,
+    s.board.groups.map((g) => g.squares),
     seats,
     NUMBERS.dealStars[s.rules.length],
   );

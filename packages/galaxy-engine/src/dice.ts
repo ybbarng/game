@@ -61,26 +61,45 @@ export function drawIndex(remaining: number, link: string): number {
   return new HashStream(sha256Hex(`galaxy-card|${link}`)).below(remaining);
 }
 
-/** 짧은 판 시작 별: 별 칸들을 굴림 해시로 섞어 앞에서부터 자리마다 `perSeat`개씩 */
+/** 굴림 해시 흐름으로 섞는다(피셔-예이츠) */
+function shuffled<T>(stream: HashStream, list: readonly T[]): T[] {
+  const pool = [...list];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = stream.below(i + 1);
+    [pool[i], pool[j]] = [pool[j] as T, pool[i] as T];
+  }
+  return pool;
+}
+
+/**
+ * 짧은 판 시작 별(docs/48 2-11): 굴림 해시로 별자리를 섞어 자리마다 다른 별자리 하나를 고르고,
+ * 그 별자리 별을 `perSeat`개 준다(완성이 되지 않게 별자리 별 수 − 1까지). 모자라면 고른 별자리가 아닌 별에서 채운다.
+ * `groups`는 별자리마다 별 칸(판 차례)
+ */
 export function dealStars(
   hash: string,
-  squares: readonly number[],
+  groups: readonly (readonly number[])[],
   seats: readonly number[],
   perSeat: number,
 ): number[][] {
+  if (groups.length < seats.length)
+    throw new Error("자리마다 다른 별자리를 줄 만큼 별자리가 없다");
   const stream = new HashStream(sha256Hex(`galaxy-deal|${hash}`));
-  const pool = [...squares];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = stream.below(i + 1);
-    [pool[i], pool[j]] = [pool[j] as number, pool[i] as number];
-  }
-  const hands: number[][] = [];
+  const chosen = shuffled(stream, groups).slice(0, seats.length);
+  const rest = shuffled(
+    stream,
+    groups.filter((g) => !chosen.includes(g)).flat(),
+  );
   let at = 0;
-  for (const _ of seats) {
-    hands.push(pool.slice(at, at + perSeat));
-    at += perSeat;
-  }
-  return hands;
+  return chosen.map((group) => {
+    const take = Math.min(perSeat, group.length - 1);
+    const hand = shuffled(stream, group)
+      .slice(0, take)
+      .sort((a, b) => a - b);
+    const fill = rest.slice(at, at + perSeat - take);
+    at += fill.length;
+    return [...hand, ...fill];
+  });
 }
 
 export const SALT_PATTERN = /^[0-9a-f]{32}$/;

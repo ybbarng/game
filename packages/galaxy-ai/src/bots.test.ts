@@ -53,7 +53,7 @@ describe("은하 한 바퀴 컴퓨터", () => {
     const { state } = playGalaxy({
       bots: [0, 1, 2].map(galaxyBotFor),
       rules: { ...SHORT_RULES, players: 3, trade: true },
-      seed: 11, // 8돌림에 사기·입찰·짓기가 모두 나온다(짧은 판은 14돌림)
+      seed: 9, // 2돌림에 사기·입찰·짓기가 모두 나온다(짧은 판 3인은 17돌림)
       board,
       onStep: (_before, _seat, _action, _after, events) => {
         for (const e of events) seen.add(e.type);
@@ -126,7 +126,7 @@ describe("은하 한 바퀴 컴퓨터", () => {
   });
 
   it("빚이 생기면 정리 제안대로 정리해 갚는다", () => {
-    // 0번은 별빛 10, 사자자리 별 둘을 가졌다. 1번의 시리우스(큰정거장)에 멈추면 빚 정리
+    // 0번은 별빛 10, 사자자리 별 셋을 가졌다. 1번이 완성한 큰개자리의 시리우스(이용료 90)에 멈추면 빚 정리
     const sirius = board.squares.findIndex((s) => s.star?.star.id === "Sirius");
     const leo = board.squares.flatMap((s) =>
       s.star && board.groups[s.star.group]?.id === "Leo" ? [s.index] : [],
@@ -141,7 +141,7 @@ describe("은하 한 바퀴 컴퓨터", () => {
       cash: [10, 800, 800, 800],
       stars: [
         ...leo.map((square) => ({ square, owner: 0 })),
-        ...canis.map((square) => ({ square, owner: 1, level: 2 })),
+        ...canis.map((square) => ({ square, owner: 1 })),
       ],
     });
     state = rolled(state, [1, 2]);
@@ -218,6 +218,60 @@ describe("은하 한 바퀴 컴퓨터", () => {
       state = must(state, seat, reveal);
     }
     expect(state.phase).toBe("bidReveal");
+  });
+
+  it("중수 거래: 완성 거래는 넘겨받는 별 값의 1.5배까지(마지막 돌림은 별 값까지), 외톨이 별은 1.3배부터 판다", () => {
+    const squaresOf = (id: string) =>
+      board.squares.flatMap((s) =>
+        s.star && board.groups[s.star.group]?.id === id ? [s.index] : [],
+      );
+    const orion = squaresOf("Ori");
+    const rigel = board.squares.findIndex((s) => s.star?.star.id === "Rigel");
+    const bellatrix = board.squares.findIndex(
+      (s) => s.star?.star.id === "Bellatrix",
+    );
+    const answer = (round: number, cash: number) => {
+      const state = createGalaxyScenario({
+        board,
+        round,
+        stars: orion.map((square) => ({
+          square,
+          owner: square === bellatrix ? 0 : 1,
+        })),
+      });
+      const offered = must(state, 0, {
+        type: "offer",
+        to: 1,
+        give: { stars: [bellatrix], cash: 0 },
+        get: { stars: [], cash },
+      });
+      return galaxyIntermediateBot.decide(viewOf(offered, 1), createRng(1))
+        .type;
+    };
+    // 벨라트릭스 값 180: 1돌림 상한 270, 마지막(20) 돌림 상한 180
+    expect(answer(1, 270)).toBe("acceptTrade");
+    expect(answer(1, 280)).toBe("rejectTrade");
+    expect(answer(1, 830)).toBe("rejectTrade");
+    expect(answer(20, 180)).toBe("acceptTrade");
+    expect(answer(20, 200)).toBe("rejectTrade");
+
+    const sell = (cash: number) => {
+      const state = createGalaxyScenario({
+        board,
+        stars: [{ square: rigel, owner: 1 }],
+      });
+      const offered = must(state, 0, {
+        type: "offer",
+        to: 1,
+        give: { stars: [], cash },
+        get: { stars: [rigel], cash: 0 },
+      });
+      return galaxyIntermediateBot.decide(viewOf(offered, 1), createRng(1))
+        .type;
+    };
+    // 리겔 값 200: 260(1.3배)이면 팔고 250이면 판 끝까지 받을 이용료가 아까워 거절
+    expect(sell(260)).toBe("acceptTrade");
+    expect(sell(250)).toBe("rejectTrade");
   });
 
   it("단계 번호로 고른다", () => {

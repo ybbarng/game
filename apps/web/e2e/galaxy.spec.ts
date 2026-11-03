@@ -304,6 +304,76 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
 
+test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌림이 시작될 때 공문이 내려오고 판에 유성이 흐른다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "연출 순서는 화면 크기와 상관없다",
+  );
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
+  // 2인 기본 판은 36차례: 34돌림이 끝나면 유성우의 밤(35·36돌림)
+  await page.addInitScript(() => {
+    (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
+      rules: {
+        players: 2,
+        length: "standard",
+        trade: false,
+        seasonal: true,
+        meteor: true,
+        sky: "seasons",
+      },
+      level: 1,
+      seed: 5,
+      round: 34,
+      stars: [
+        { square: 13, owner: 0 },
+        { square: 14, owner: 0 },
+        { square: 26, owner: 1 },
+      ],
+    };
+  });
+  await page.goto("/galaxy");
+  await speedUpAnimations(page);
+  await ready(page);
+  await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+  await expect(rollButton(page)).toBeVisible();
+  await expect(page.locator("[data-meteor-shower]")).toHaveCount(0);
+  const paper = page.locator("[data-notice-paper]", {
+    hasText: "유성우의 밤",
+  });
+  for (let i = 0; i < 60; i++) {
+    if (await paper.isVisible()) break;
+    for (const button of [
+      rollButton(page),
+      buyButton(page),
+      passButton(page),
+      bidSkip(page),
+      endTurn(page),
+      debtPlan(page),
+    ])
+      if (await button.isVisible()) {
+        await button.click();
+        break;
+      }
+    await page.clock.fastForward(300);
+  }
+  await expect(paper).toBeVisible();
+  await expect(page.locator("[data-meteor-shower]")).toHaveCount(1);
+  if (SAVE_SCREENSHOTS)
+    await page.screenshot({
+      path: info.outputPath("galaxy-meteor-notice.png"),
+    });
+  await fastForwardUntil(
+    page,
+    async () => (await page.locator("[data-moving]").count()) === 0,
+  );
+  await expect(board(page)).toContainText("유성우의 밤");
+  if (SAVE_SCREENSHOTS)
+    await page.screenshot({ path: info.outputPath("galaxy-meteor.png") });
+});
+
 /** 온라인 시험에서 누르는 할 일 단추들 */
 const stepButtons = (page: Page) => [
   rollButton(page),

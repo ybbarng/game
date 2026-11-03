@@ -12,6 +12,7 @@ import { OPEN_SKIES } from "./sky-ids";
  * - length 판 길이: 짧은 판(short)·기본 판(standard)·긴 판(long), 2-11
  * - trade 거래(2-8)
  * - seasonal 제철 하늘(2-12 1번)
+ * - meteor 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 차례 수가 있는 판(짧은·기본)에만
  * - sky 하늘 id(5-9, 예: "seasons")
  * - time 개인 시간(docs/24). 없으면 시간 없음
  */
@@ -22,6 +23,7 @@ export interface GalaxyRules {
   length: GalaxyLength;
   trade: boolean;
   seasonal: boolean;
+  meteor: boolean;
   sky: string;
   time?: TimePreset;
 }
@@ -31,10 +33,11 @@ export const STANDARD_RULES: GalaxyRules = {
   length: "standard",
   trade: true,
   seasonal: true,
+  meteor: false,
   sky: "seasons",
 };
 
-/** 짧은 판은 거래를 기본으로 끈다(2-8) */
+/** 짧은 판도 거래를 켠다(2-8) */
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
@@ -54,22 +57,25 @@ export const NUMBERS = {
   salary: 120,
   /** 한 사람이 갖는 차례 수(2-11). 긴 판은 제한 없음 */
   turns: {
-    short: { 2: 20, 3: 14, 4: 10 },
+    short: { 2: 24, 3: 17, 4: 12 },
     standard: { 2: 36, 3: 26, 4: 20 },
     long: null,
   },
   /** 시간 상한(ms, 엔진 밖 시계가 재고 `timeUp`으로 알린다). 긴 판은 없음 */
-  timeCap: { short: 15 * 60_000, standard: 35 * 60_000, long: null },
-  /** 짧은 판에 사람마다 나눠 주는 별 수 */
+  timeCap: { short: 18 * 60_000, standard: 35 * 60_000, long: null },
+  /** 짧은 판에 사람마다 나눠 주는 별 수(자리마다 다른 별자리 하나에서, dice.ts `dealStars`) */
   dealStars: { short: 2, standard: 0, long: 0 },
-  /** 정거장 이용료 배수(천분율, 2-2) */
+  /**
+   * 정거장 이용료 배수(천분율, 2-2). 위 단계는 한 단 값(별 값의 절반)을 판 안에 되찾게 정했다(3-1 회수 기간):
+   * 완성 → 2단 +0.5p, 2단 → 3단 +0.7p, 3단 → 큰 정거장 +0.8p. 큰 정거장은 처음 값 2.4p(#64 전)로 두어 운항 중단을 줄였다
+   */
   rent: {
-    single: 100,
-    pair: 150,
-    complete: 200,
-    level2: 500,
+    single: 200,
+    pair: 300,
+    complete: 400,
+    level2: 900,
     level3: 1600,
-    grand: 3000,
+    grand: 2400,
   },
   /** 정거장 한 단 값 = 별자리 기본 값의 이만큼(천분율) */
   levelCost: 500,
@@ -85,8 +91,12 @@ export const NUMBERS = {
   observatory: { 2: [0, 100], 3: [0, 60, 120], 4: [0, 50, 100, 150] },
   /** 판이 끝날 때 완성한 별자리마다 더하는 자산 */
   completeBonus: 100,
-  /** 제철 하늘 이용료 배수(천분율) */
+  /** 제철 하늘 이용료 배수(천분율). 반올림으로 차이가 사라지지 않게 제철이면 적어도 `seasonalMin` 더 낸다 */
   seasonal: 1500,
+  seasonalMin: 10,
+  /** 유성우의 밤: 마지막 이만큼의 돌림 동안 이용료 배수(천분율). 이때는 제철 1.5배 대신 이 배수만 쓴다 */
+  meteorRounds: 2,
+  meteor: 2000,
   /** 긴 판의 제철 하늘은 이만큼의 돌림마다 바뀐다(차례 수가 없으므로) */
   longSeasonRounds: 8,
   /** 별 값 범위(5-9): 가장 어두운 별자리 ~ 가장 밝은 별자리, 별자리 안 가장 밝은 별 더함 */
@@ -99,6 +109,12 @@ export const NUMBERS = {
 export function turnLimitOf(rules: GalaxyRules): number | null {
   const table = NUMBERS.turns[rules.length];
   return table ? table[rules.players] : null;
+}
+
+/** 이 돌림이 유성우의 밤인가(2-12 7번): 켠 판의 마지막 `meteorRounds` 돌림. 차례 수가 없는 긴 판은 없다 */
+export function meteorFor(rules: GalaxyRules, round: number): boolean {
+  const limit = turnLimitOf(rules);
+  return rules.meteor && limit !== null && round > limit - NUMBERS.meteorRounds;
 }
 
 /** 첫 운항 중단에 판이 끝나나(기본·짧은 판, 2-9) */
@@ -115,12 +131,13 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
  * 형식: `g1-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
- *       + 제철 하늘(w 켬 / n 끔) + `-` + 하늘 id(영문·숫자·점)
+ *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본 `g1-4mtw-seasons`, 짧은 판 2인 `g1-2snw-seasons`, 빠른 시간이면 `g1-4mtw-seasons-t1`
+ * 예: 기본 `g1-4mtwr-seasons`, 짧은 판 2인 거래·제철·유성우 끔 `g1-2snn-seasons`, 빠른 시간이면 `g1-4mtwr-seasons-t1`.
+ * 유성우의 밤을 더하기 전 문자열(r 없음)은 끈 판으로 읽힌다
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
-  return `g1-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
+  return `g1-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 /**
@@ -130,12 +147,13 @@ export function encodeGalaxyRules(rules: GalaxyRules): string {
 export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
-  const match = /^g1-([234])([sml])([tn])([wn])-([A-Za-z0-9.]+)(-t\d)?$/.exec(
-    text.trim(),
-  );
+  const match =
+    /^g1-([234])([sml])([tn])([wn])(r?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
+      text.trim(),
+    );
   if (!match)
     return { ok: false, reason: "은하 한 바퀴 규칙 문자열 형식이 아니에요" };
-  const [, players, length, trade, seasonal, sky, tail] = match;
+  const [, players, length, trade, seasonal, meteor, sky, tail] = match;
   const time = decodeTimePreset(tail);
   if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요" };
   if (!OPEN_SKIES.includes(sky as string))
@@ -150,6 +168,7 @@ export function decodeGalaxyRules(
       length: lengthName,
       trade: trade === "t",
       seasonal: seasonal === "w",
+      meteor: meteor === "r",
       sky: sky as string,
       ...(time === "none" ? {} : { time }),
     },

@@ -14,14 +14,15 @@ import {
 
 /**
  * 컴퓨터가 판을 셈하는 도움 함수. 모두 화면(`GalaxyView`)에 보이는 값만 쓴다.
- * 별을 사거나 정거장을 지으면 자산은 그대로(값이 자산에 들어간다)이고 별빛만 묶인다(docs/48 2-10).
- * 그래서 컴퓨터는 「앞으로 받을 이용료」와 「빚 정리에 몰리지 않을 남길 돈」을 견준다.
+ * 별을 사면 자산은 그대로(값이 자산에 들어간다)이고 별빛만 묶인다. 정거장은 짓는 순간 자산이 한 단 값의 절반만큼 줄어
+ * 든다(내릴 때 돌려받는 값만 자산, docs/48 2-10). 그래서 컴퓨터는 「앞으로 받을 이용료」와
+ * 「짓느라 줄어든 자산」, 「빚 정리에 몰리지 않을 남길 돈」을 견준다.
  */
 
 /** 셈에 쓰는 판 조각(엔진 함수가 받는 모양) */
 export type Board = Pick<
   GalaxyState,
-  "board" | "owners" | "levels" | "mortgaged" | "cash" | "season"
+  "board" | "owners" | "levels" | "mortgaged" | "cash" | "season" | "meteor"
 >;
 
 /** 화면으로 수를 따져 보는 상태. 남의 재료와 입찰은 모르므로 비워 둔다(입찰 단계에서는 쓰지 않는다) */
@@ -51,9 +52,9 @@ export function opponentTurns(
   return remainingRounds(view) * others;
 }
 
-/** 제철을 빼고 본 판(계절은 판 내내 돌아 모든 별에 한 번씩 온다) */
+/** 제철·유성우의 밤을 빼고 본 판(계절은 판 내내 돌아 모든 별에 한 번씩 온다) */
 export function seasonless(b: Board): Board {
-  return { ...b, season: null };
+  return { ...b, season: null, meteor: false };
 }
 
 /** 이 사람이 이 칸을 가진 판(1단, 별빛은 그대로) */

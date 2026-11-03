@@ -15,10 +15,14 @@ describe("규칙 문자열", () => {
   it("기본·짧은·긴 판과 시간 꼬리가 왕복한다", () => {
     const cases: [GalaxyRules, string][] = [
       [STANDARD_RULES, "g1-4mtw-seasons"],
+      [{ ...STANDARD_RULES, meteor: true }, "g1-4mtwr-seasons"],
       [{ ...SHORT_RULES, players: 2 }, "g1-2stw-seasons"],
       [{ ...SHORT_RULES, players: 2, trade: false }, "g1-2snw-seasons"],
       [{ ...LONG_RULES, players: 3, seasonal: false }, "g1-3ltn-seasons"],
-      [{ ...STANDARD_RULES, time: "fast" }, "g1-4mtw-seasons-t1"],
+      [
+        { ...STANDARD_RULES, meteor: true, time: "fast" },
+        "g1-4mtwr-seasons-t1",
+      ],
     ];
     for (const [rules, text] of cases) {
       expect(encodeGalaxyRules(rules)).toBe(text);
@@ -36,6 +40,7 @@ describe("규칙 문자열", () => {
       "g1-4xtw-seasons",
       "g2-4mtw-seasons",
       "g1-4mtw-",
+      "g1-4mtwrr-seasons",
       "g1-4mtw-seasons-t9",
       "y1-2s4b6p",
       // 없는 하늘, 자료는 있지만 아직 열지 않은 하늘
@@ -49,7 +54,8 @@ describe("규칙 문자열", () => {
   it("차례 수 표(2-11)", () => {
     expect(turnLimitOf(STANDARD_RULES)).toBe(20);
     expect(turnLimitOf({ ...STANDARD_RULES, players: 2 })).toBe(36);
-    expect(turnLimitOf({ ...SHORT_RULES, players: 3 })).toBe(14);
+    expect(turnLimitOf(SHORT_RULES)).toBe(12);
+    expect(turnLimitOf({ ...SHORT_RULES, players: 3 })).toBe(17);
     expect(turnLimitOf(LONG_RULES)).toBeNull();
   });
 
