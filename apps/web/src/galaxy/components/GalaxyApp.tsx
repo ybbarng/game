@@ -4,6 +4,7 @@ import {
   boardOfSky,
   createGalaxyScenario,
   type GalaxyRules,
+  NUMBERS,
   type ScenarioStar,
 } from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
@@ -117,9 +118,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          나 한 명과 컴퓨터 {s.players - 1}명
-        </p>
       </Section>
       <Section title="판 길이">
         <div className="flex flex-wrap gap-1.5">
@@ -127,14 +125,7 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             <Chip
               key={l.value}
               active={s.length === l.value}
-              onClick={() =>
-                // 짧은 판은 거래를 기본으로 끈다(docs/48 2-8)
-                s.set(
-                  l.value === "short"
-                    ? { length: l.value, trade: false }
-                    : { length: l.value },
-                )
-              }
+              onClick={() => s.set({ length: l.value })}
             >
               {l.label}
             </Chip>
@@ -151,9 +142,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             끔
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          내 차례에 굴리기 전 한 번, 별과 별빛을 바꾸자고 할 수 있어요
-        </p>
       </Section>
       <Section title="제철 하늘">
         <div className="flex flex-wrap gap-1.5">
@@ -164,9 +152,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             끔
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          판이 흐르며 계절이 바뀌고, 지금 계절 별의 이용료가 1.5배예요
-        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -191,10 +176,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
             끔
           </Chip>
         </div>
-        <p className="text-xs opacity-60">
-          우주선이 움직이는 동안 그 변을 크게 보여요. 움직임 줄이기를 켜 두면
-          쓰지 않아요
-        </p>
       </Section>
     </SubScreen>
   );
@@ -217,7 +198,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "모퉁이",
-      "카노푸스 우주국을 지나면 지원금 120, 관측지에 멈추면 뒤처진 사람일수록 많은 관측 지원금, 혜성에서는 한 번 더 굴려 더 가요. 소행성대에 걸리면 50을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).",
+      `카노푸스 우주국을 지나면 지원금 ${NUMBERS.salary}, 관측지에 멈추면 뒤처진 사람일수록 많은 관측 지원금, 혜성에서는 한 번 더 굴려 더 가요. 소행성대에 걸리면 ${NUMBERS.asteroidFine}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`,
     ],
     [
       "우주국 공문",

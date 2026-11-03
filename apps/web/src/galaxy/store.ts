@@ -190,8 +190,9 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     const show = () => {
       timer = null;
       const timeline = buildTimeline(next.events, next.view.board, me, {
+        // 연출 시간은 진행 속도 설정과 상관없이 그대로(읽을 시간 1.2초·움직임 0.6초를 지킨다, docs/41 6절).
+        // 진행 속도는 컴퓨터가 생각하는 기다림만 줄인다
         reduced: prefersReducedMotion(),
-        scale: paced,
       });
       const over = next.events.some((e) => e.type === "gameEnded");
       const history = [...get().history, ...next.events];

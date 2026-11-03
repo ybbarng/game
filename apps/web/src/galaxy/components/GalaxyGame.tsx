@@ -6,6 +6,7 @@ import {
   assetsOf,
   type GalaxyView,
   type GameResult,
+  NUMBERS,
   rentOf,
   STAR_SQUARES,
   standingsOf,
@@ -60,7 +61,7 @@ function resultText(
     case "resign":
       return result.seat === view.mySeat
         ? "기권했어요"
-        : `${name(result.seat ?? 0)}이(가) 기권했어요 · 나 ${rank}`;
+        : `${name(result.seat ?? 0)} 기권 · 나 ${rank}`;
     case "bankrupt":
       return result.seat === view.mySeat
         ? `운항을 멈췄어요 · ${rank}`
@@ -231,9 +232,9 @@ function cornerHelp(view: GalaxyView, square: number): string {
   const kind = view.board.squares[square]?.kind;
   switch (kind) {
     case "base":
-      return "지나가거나 멈추면 우주국 지원금 ✦120을 받아요.";
+      return `지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`;
     case "asteroid":
-      return "공문이나 같은 눈 세 번으로 오면 걸려요. ✦50을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).";
+      return `공문이나 같은 눈 세 번으로 오면 걸려요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`;
     case "observatory":
       return "멈추면 관측 지원금을 받아요. 자산 순위가 낮을수록 많아요.";
     case "comet":
@@ -480,7 +481,7 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
       case "roll":
         status =
           decision.purpose === "jailRoll"
-            ? "소행성대에 걸렸어요. ✦50을 내거나 같은 눈을 노려 굴려요."
+            ? `소행성대에 걸렸어요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈을 노려 굴려요.`
             : decision.purpose === "comet"
               ? "혜성이에요. 한 번 더 굴려요."
               : "내 차례예요. 주사위를 굴려 주세요.";
@@ -610,7 +611,7 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
             onClick={() => act({ type: "payFine" })}
             className={SECONDARY}
           >
-            {money(50)} 내고 나가기
+            {money(NUMBERS.asteroidFine)} 내고 나가기
           </button>
         )}
         {decision.kind === "roll" && decision.canOffer && (

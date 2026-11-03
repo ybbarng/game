@@ -60,15 +60,12 @@ function CornerArt({ kind }: { kind: string }) {
           stroke="#fcd34d"
           strokeWidth="2"
         />
+        {/* 우주국: 둥근 테 안의 네 갈래 별(카노푸스) */}
         <path
-          d="M8 27 Q20 22 32 27"
-          fill="none"
-          stroke="#fcd34d"
-          strokeWidth="1.6"
+          d="M20 8 L22.6 17.4 L32 20 L22.6 22.6 L20 32 L17.4 22.6 L8 20 L17.4 17.4 Z"
+          fill="#fff7d6"
         />
-        <circle cx="27" cy="13" r="2.6" fill="#fff7d6" />
-        <circle cx="16" cy="17" r="1.2" fill="#fde68a" />
-        <circle cx="20" cy="12" r="1" fill="#fde68a" />
+        <circle cx="20" cy="20" r="2.4" fill="#fcd34d" />
       </svg>
     );
   if (kind === "asteroid")
@@ -703,7 +700,7 @@ function FxOverlay({
           <p className="galaxy-toast rounded-xl bg-slate-800/90 px-3 py-2 text-center font-semibold text-sm shadow-xl">
             {step.accepted
               ? `${name(step.from)} ↔ ${name(step.to)} 거래가 이뤄졌어요`
-              : `${name(step.to)}이(가) 거래를 거절했어요`}
+              : `${name(step.to)} · 거래를 거절했어요`}
           </p>
         </div>
       );

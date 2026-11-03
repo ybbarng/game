@@ -13,6 +13,7 @@ import {
   type GameEvent,
   type GameResult,
   isComplete,
+  NUMBERS,
   pendingSeats,
   replay,
   STAR_SQUARES,
@@ -171,7 +172,7 @@ export function describeGalaxy(action: unknown): string {
     case "roll":
       return "주사위 굴리기";
     case "payFine":
-      return `소행성대에서 ${money(50)} 내고 나가기`;
+      return `소행성대에서 ${money(NUMBERS.asteroidFine)} 내고 나가기`;
     case "buy":
       return "별 사기";
     case "pass":

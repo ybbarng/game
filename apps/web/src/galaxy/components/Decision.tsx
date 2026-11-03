@@ -124,7 +124,7 @@ export function BuySheet({
   const rents = rentTable(view, square);
   const hint = useIdleHint(canAfford, GALAXY_FX.idleHint);
   return (
-    <Sheet title="이 별을 살까요?" testId="buy">
+    <Sheet testId="buy">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <p className="font-black text-lg">
           ✶ {info?.star.ko}{" "}
@@ -278,12 +278,8 @@ function TradeSides({
   );
   return (
     <div className="flex gap-2">
-      {side(
-        `${name(offer.from)}이(가) 주는 것`,
-        offer.give.stars,
-        offer.give.cash,
-      )}
-      {side(`${name(offer.to)}이(가) 주는 것`, offer.get.stars, offer.get.cash)}
+      {side(`${name(offer.from)} · 주는 것`, offer.give.stars, offer.give.cash)}
+      {side(`${name(offer.to)} · 주는 것`, offer.get.stars, offer.get.cash)}
     </div>
   );
 }
@@ -420,7 +416,7 @@ export function TradeComposer({
     </span>
   );
   return (
-    <Sheet title={`${name(partner)}와(과) 거래`} testId="trade-compose">
+    <Sheet title={`거래 · ${name(partner)}`} testId="trade-compose">
       <p className="mb-2 text-white/60 text-xs">
         판에서 별을 눌러 담아요. 내 별은 주는 것, 상대 별은 받는 것이에요.
       </p>

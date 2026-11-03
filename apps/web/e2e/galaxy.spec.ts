@@ -259,10 +259,21 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   if (SAVE_SCREENSHOTS)
     await page.screenshot({ path: info.outputPath("galaxy-trade.png") });
   await page.getByRole("button", { name: "제안 보내기" }).click();
-  await fastForwardUntil(page, async () =>
-    page.locator("[data-complete-name]").isVisible(),
+  // 오리온의 실제 선 토막이 내 색으로 모두 이어지고 이름이 떠오를 때까지
+  const segments = page.locator(
+    '[data-sky-group="Ori"] line:not([data-complete-line]):not([data-pair-line])',
   );
-  expect(await page.locator("[data-complete-line]").count()).toBeGreaterThan(2);
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await page.locator("[data-complete-line]").count()) ===
+      (await segments.count()),
+    { step: 100 },
+  );
+  expect(await segments.count()).toBeGreaterThan(2);
+  // 다 이은 뒤 이름이 떠오른다
+  await expect(page.locator("[data-complete-name]")).toBeVisible();
+  await page.clock.fastForward(500);
   if (SAVE_SCREENSHOTS)
     await page.screenshot({ path: info.outputPath("galaxy-complete.png") });
   await fastForwardUntil(
