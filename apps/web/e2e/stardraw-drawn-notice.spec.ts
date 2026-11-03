@@ -86,3 +86,67 @@ test("추첨이 끝난 내 회차 알림 띠: 숫자 없이, 추첨 보기로 �
   await expect(page.locator("[data-envelope='2']")).toBeVisible();
   await expect(notice).toHaveCount(0);
 });
+
+/**
+ * 관측지에서 관측을 본 회차는 「열어 봄」이라 홈으로 돌아와도 띠가 없다. 같은 브라우저의 다른 탭에서 본 경우도
+ * 열어 둔 탭이 그 기록을 받아 띠를 거둔다(예전에는 장부가 바뀔 때만 지갑을 다시 읽어 띠가 남았다, 2026-11-03 사용자)
+ */
+test.describe("관측을 본 회차는 알림 띠를 띄우지 않는다", () => {
+  /** 1회 예측서를 내고 마감(03:54:55) 뒤 관측(04:00) 전으로 */
+  async function enterAndClose(page: Page) {
+    await virtualAuthenticator(page);
+    await page.goto("/stardraw");
+    await enterAuto(page, true);
+    await page.clock.setSystemTime(new Date("2026-11-02T03:58:00Z"));
+  }
+
+  test("같은 탭: 지금 회차 관측지에서 보고 「홈」으로", async ({
+    page,
+  }, info) => {
+    test.skip(
+      info.project.name === "phone-landscape",
+      "데스크톱·휴대폰 세로로",
+    );
+    await enterAndClose(page);
+    await page.goto("/stardraw/now");
+    await expect(page.locator("[data-draw-wait='1']")).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.clock.setSystemTime(new Date("2026-11-02T04:00:05Z"));
+    await expect(page.locator("[data-draw-result]")).toBeVisible({
+      timeout: 30_000,
+    });
+    // 휴대폰은 관측지 머리 줄의 「홈」, 데스크톱은 위쪽 메뉴 줄의 「홈」
+    await page.getByRole("button", { name: "홈", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(
+      page.getByRole("region", { name: "관측 시간표" }),
+    ).toBeVisible();
+    await expect(page.locator("[data-drawn-notice]")).toHaveCount(0);
+  });
+
+  test("다른 탭: 관측지 탭에서 보면 열어 둔 탭의 띠도 거둔다", async ({
+    page,
+    context,
+  }, info) => {
+    test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
+    await enterAndClose(page);
+    await page.goto("/stardraw/mine");
+    const room = await context.newPage();
+    await room.goto("/stardraw/now");
+    await expect(room.locator("[data-draw-wait='1']")).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.clock.setSystemTime(new Date("2026-11-02T04:00:05Z"));
+    await expect(room.locator("[data-draw-result]")).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.bringToFront();
+    await page.getByRole("button", { name: "홈", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(
+      page.getByRole("region", { name: "관측 시간표" }),
+    ).toBeVisible();
+    await expect(page.locator("[data-drawn-notice]")).toHaveCount(0);
+  });
+});

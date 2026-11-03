@@ -38,7 +38,7 @@ import { cadenceOf, roundShort, roundTitle } from "../round-label";
 import { setWhere, trackArrival, trackKeyEnv, trackView } from "../sd-track";
 import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
 import { NOTHING_SEALED, type Sealed, sealedFor } from "../spoiler";
-import type { KeyInfo, MyTicket } from "../wallet";
+import { type KeyInfo, type MyTicket, walletChanged } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { BroadcastToast, onAirRound, watchRound } from "./BroadcastToast";
 import { BureauWelcome, letterAutoPending } from "./BureauWelcome";
@@ -301,7 +301,18 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
    */
   const [printing, setPrinting] = useState<string | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부가 바뀔 때 다시 읽는다
+  /** 같은 브라우저의 다른 탭이 지갑을 바꾼 횟수(그 탭에서 관측을 열어 보거나 예측서를 내면 이 탭도 다시 읽는다) */
+  const [walletVersion, setWalletVersion] = useState(0);
+  useEffect(() => {
+    if (!services) return;
+    const onStorage = (e: StorageEvent) => {
+      if (walletChanged(services.ns, e.key)) setWalletVersion((n) => n + 1);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [services]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 장부가 바뀌거나 다른 탭이 지갑을 바꿀 때 다시 읽는다
   useEffect(() => {
     if (!services) return;
     setMine(services.wallet.loadTickets());
@@ -310,7 +321,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
     setNoticeClosed(services.wallet.noticeClosedRounds());
     setNavKey(services.wallet.loadKey());
     setSeenRecords(services.wallet.seenRecords());
-  }, [version, services]);
+  }, [version, walletVersion, services]);
 
   useEffect(() => {
     if (!services || !navKey) return;

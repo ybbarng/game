@@ -158,6 +158,24 @@ export interface Wallet {
   clear(): Promise<void>;
 }
 
+/** 화면이 지갑에서 읽어 그리는 값의 저장 이름(등록증·예측서·열어 본 회차·닫은 알림 띠·본 서류) */
+const SHOWN_KEYS = [
+  "key",
+  "tickets",
+  "opened",
+  "notice-closed",
+  "seen-records",
+];
+
+/**
+ * 다른 탭이 바꾼 저장값(storage 이벤트의 key)이 이 이름공간 지갑에서 화면이 읽는 값인지. null은 저장소를 통째로
+ * 지운 것이다. 같은 브라우저의 다른 탭에서 관측을 보면 그 탭이 「열어 봄」을 남기는데, 열어 둔 탭은 장부가 바뀔 때만
+ * 지갑을 다시 읽어 알림 띠가 남았다(2026-11-03 사용자)
+ */
+export function walletChanged(ns: string, key: string | null): boolean {
+  return key === null || SHOWN_KEYS.some((k) => key === `${ns}-${k}`);
+}
+
 /**
  * `ledgerId`는 지금 장부의 표시다(아직 장부를 받지 못했으면 null).
  * 다른 장부의 응모권·봉투는 지우지 않고 남겨 두되 지금 것으로 세지 않는다

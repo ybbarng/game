@@ -15,6 +15,7 @@ import {
   createWallet,
   hasUserVerification,
   sitePolicy,
+  walletChanged,
 } from "./wallet";
 
 afterEach(() => {
@@ -227,5 +228,32 @@ describe("패스키 만들기: 본인 확인(UV) 표시", () => {
     expect(hasUserVerification(authData(0x5d))).toBe(true);
     expect(hasUserVerification(authData(0x01))).toBe(false);
     expect(hasUserVerification(authData(0x04))).toBe(false);
+  });
+});
+
+describe("다른 탭이 바꾼 지갑 알아보기(walletChanged)", () => {
+  it("열어 본 회차·닫은 알림 띠를 남기는 저장 이름은 그 이름공간의 지갑 변경이다", () => {
+    const written: string[] = [];
+    const setItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      this: Storage,
+      key: string,
+      value: string,
+    ) {
+      written.push(key);
+      setItem.call(this, key, value);
+    });
+    const wallet = createWallet("stardraw", () => "server:ab");
+    wallet.markOpened(3);
+    wallet.closeNotice([3]);
+    expect(written.length).toBe(2);
+    for (const key of written)
+      expect(walletChanged("stardraw", key)).toBe(true);
+  });
+
+  it("다른 이름공간·장부 사본은 아니고, 저장소를 통째로 지우면(null) 다시 읽는다", () => {
+    expect(walletChanged("stardraw", "stardraw-demo-opened")).toBe(false);
+    expect(walletChanged("stardraw", "stardraw-ledger")).toBe(false);
+    expect(walletChanged("stardraw", null)).toBe(true);
   });
 });
