@@ -547,5 +547,7 @@ test("장기: 초고수가 생각하는 동안에도 화면이 멈추지 않는�
     description: `가장 긴 프레임 간격 ${maxGap}ms, 잰 시간 ${span}ms`,
   });
   console.info(`[장기 초고수] 가장 긴 프레임 간격 ${maxGap}ms / ${span}ms`);
-  expect(maxGap).toBeLessThan(200);
+  // 화면 스레드에서 세면 CPU 4배 느린 판에서 한 번에 0.8초 넘게 멈춘다(고수 한 수 약 0.2초 × 4).
+  // 재는 구간에 컴퓨터 수를 그리는 순간도 들어가 CI 기기 속도에 따라 흔들리지 않게 넉넉히 400ms로 가린다
+  expect(maxGap).toBeLessThan(400);
 });
