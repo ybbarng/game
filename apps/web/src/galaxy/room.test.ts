@@ -4,6 +4,8 @@ import { ManualClock } from "@game/fair-play";
 import { galaxyBotFor } from "@game/galaxy-ai";
 import {
   type Action,
+  bidCommitment,
+  bidSalt,
   boardOfSky,
   createGalaxyScenario,
   type GalaxyRules,
@@ -26,7 +28,13 @@ import {
   type GalaxySecrets,
   revealFor,
 } from "./chain";
-import { DECISION_MS, galaxyOnlineKit, isLate, standInAction } from "./online";
+import {
+  DECISION_MS,
+  galaxyOnlineKit,
+  isLate,
+  standInAction,
+  verifyLate,
+} from "./online";
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -168,6 +176,16 @@ async function play(room: Room, stopWhen: () => boolean, watch?: () => void) {
 
 const hostView = (room: Room) => room.host.match?.current();
 const hostState = (room: Room) => room.host.match?.rawState();
+
+/**
+ * 방장 기기가 아무 자리에나 행동을 넣는다(못된 방장 흉내). 방장 엔진의 안쪽 `apply`를 직접 부른다
+ */
+function injectFromHost(room: Room, seat: number, action: Action): boolean {
+  const match = room.host.match as unknown as {
+    apply(seat: number, action: Action): { ok: boolean };
+  };
+  return match.apply(seat, action).ok;
+}
 
 /** 참가자가 기권해 판을 끝내고 판 끝 검증을 기다린다 */
 async function resignAndAudit(room: Room): Promise<AuditResult[]> {
@@ -387,6 +405,82 @@ describe("은하 한 바퀴 온라인 방", () => {
       room.host.match?.actionLog().some((e) => e.seat === botSeat && e.bot),
     ).toBe(true);
     expect(await resignAndAudit(room)).toEqual([{ ok: true }]);
+  });
+
+  it("방장이 꼬리표를 달아 참가자 봉투를 지어 넣으면(가진 별빛 전부) 참가자 기기가 공개하지 않고 판 끝 검증이 잡는다", async () => {
+    const room = await setup();
+    const { seat } = room;
+    room.guestDevice.passBuy = true;
+    room.hostDevice.passBuy = true;
+    room.guestDevice.hold = (view) => view.decision?.kind === "bid";
+    await play(
+      room,
+      () => room.guest.match?.current().decision?.kind === "bid",
+    );
+    const state = hostState(room) as NonNullable<ReturnType<typeof hostState>>;
+    const index = state.auction?.index as number;
+    // 방장이 시간 넘김인 척 참가자 자리에 별빛 전부를 건 봉투를 넣는다(자리 재료 소금은 방장이 안다).
+    const forged = {
+      type: "bid",
+      hash: bidCommitment(
+        index,
+        state.cash[seat] as number,
+        bidSalt(state.keys[seat] as string, index),
+      ),
+      late: true,
+    } as Action;
+    expect(injectFromHost(room, seat, forged)).toBe(true);
+    room.guestDevice.hold = null;
+    await play(room, () => hostState(room)?.phase === "bidReveal");
+    for (let i = 0; i < 20; i++) {
+      room.guestDevice.act();
+      await flush();
+    }
+    // 참가자 기기는 「내지 않음」이 아닌 대신 낸 봉투를 제 것으로 받지 않는다.
+    expect(hostState(room)?.auction?.reveals[seat]).toBeNull();
+    const audits = await resignAndAudit(room);
+    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]?.ok === false && audits[0].reason).toContain(
+      "정해진 대신 두기와 다르다",
+    );
+  });
+
+  it("방장이 꼬리표를 달아 참가자 굴리기 차례에 다른 행동(맡기기)을 넣으면 판 끝 검증이 잡는다", async () => {
+    const room = await setup();
+    const { seat } = room;
+    room.guestDevice.hold = (view) => view.decision?.kind === "roll";
+    await play(
+      room,
+      () => room.guest.match?.current().decision?.kind === "roll",
+    );
+    const state = hostState(room) as NonNullable<ReturnType<typeof hostState>>;
+    const square = state.owners.findIndex(
+      (o, sq) => o === seat && !state.mortgaged[sq],
+    );
+    expect(square).toBeGreaterThan(-1);
+    expect(
+      injectFromHost(room, seat, {
+        type: "mortgage",
+        square,
+        late: true,
+      } as Action),
+    ).toBe(true);
+    expect(hostState(room)?.mortgaged[square]).toBe(true);
+    room.guestDevice.hold = null;
+    const audits = await resignAndAudit(room);
+    expect(audits[0]?.ok).toBe(false);
+    expect(audits[0]?.ok === false && audits[0].reason).toContain(
+      "정해진 대신 두기와 다르다",
+    );
+  });
+
+  it("방장이 꼬리표를 달아 컴퓨터 자리를 두면 판 끝 검증이 잡는다", () => {
+    const board = boardOfSky("seasons");
+    const before = createGalaxyScenario({ board, rules: ROOM_RULES });
+    const late = { type: "roll", late: true } as Action;
+    expect(verifyLate(before, 0, late)).toBeNull();
+    expect(verifyLate(before, 0, late, new Set([0]))).toContain("컴퓨터 자리");
+    expect(verifyLate(before, 1, late)).toContain("정할 때가 아닌");
   });
 
   it("개인 시간: 굴리기에 쓴 시간을 깎고, 공개·봉투를 기다리는 시간은 재지 않는다", async () => {

@@ -84,8 +84,8 @@ export function bidAction(index: number, value: number, salt: string): Action {
 }
 
 /**
- * 이번 입찰에 공개할 값과 소금. 이 기기에 남긴 봉투가 약속과 맞으면 그것, 아니면 방장이 내 자리 재료 소금으로
- * 대신 낸 봉투(결정 시간을 넘겼거나 끊긴 사이)인지 본다. 둘 다 아니면 null
+ * 이번 입찰에 공개할 값과 소금. 이 기기에 남긴 봉투가 약속과 맞으면 그것, 아니면 방장이 결정 시간을 넘긴 내 대신
+ * 낸 「내지 않음」 봉투인지 본다. 둘 다 아니면 null
  */
 export function myBid(
   view: GalaxyView,
@@ -99,10 +99,12 @@ export function myBid(
     bidCommitment(auction.index, kept.value, kept.salt) === auction.myCommit
   )
     return kept;
+  // 방장이 내 자리 재료 소금으로 대신 낸 봉투는 「내지 않음」(0)일 때만 내 것으로 받는다. 다른 값이면 방장이
+  // 내 별빛을 걸고 지어 넣은 봉투일 수 있어 공개하지 않는다(판 끝 검증도 이런 기록을 실패로 잡는다)
   const value = committedBid(view);
-  return value === null
-    ? null
-    : { value, salt: bidSalt(view.botKey, auction.index) };
+  return value === 0
+    ? { value, salt: bidSalt(view.botKey, auction.index) }
+    : null;
 }
 
 /** 사람이 할 일이 없는 공개(주사위 고리·봉투). 내 씨앗·봉투를 모르면 null */

@@ -1,7 +1,6 @@
 import { committedBid, galaxyBotFor } from "@game/galaxy-ai";
 import {
   type Action,
-  activeSeats,
   bidSalt,
   debtPlan,
   type GalaxyRules,
@@ -54,11 +53,13 @@ function stateId(state: GalaxyState): number {
 }
 
 /**
- * 판마다(첫 자리 재료로 가린다) 이번 차례에 이미 대신 정한 자리. 한 번 시간을 넘긴 사람의 같은 차례 남은 결정은
- * 기다리지 않고 바로 대신 정한다(자리를 비운 사람 하나 때문에 차례마다 결정 수 × 20초를 기다리지 않게)
+ * 마지막으로 대신 정한 차례(판은 첫 자리 재료로 가린다). 한 번 시간을 넘긴 사람의 같은 차례 남은 결정은
+ * 기다리지 않고 바로 대신 정한다(자리를 비운 사람 하나 때문에 차례마다 결정 수 × 20초를 기다리지 않게).
+ * 한 기기에 방은 하나뿐이라 하나만 기억한다(판마다 쌓이지 않게)
  */
-const lateTurns = new Map<string, string>();
-const turnKey = (state: GalaxyState) => `${state.round}:${state.turn.seat}`;
+let lateTurn: string | null = null;
+const turnKey = (state: GalaxyState) =>
+  `${state.keys[0] ?? ""}:${state.round}:${state.turn.seat}`;
 
 /**
  * 시간을 넘긴 자리 대신 정할 행동(docs/48 4-5). 굴리기·차례 마치기는 그대로, 사기는 중수 컴퓨터가 정하고,
@@ -122,12 +123,11 @@ export function galaxyTimers(
       key: "timeUp",
       seat: 0,
       ms: cap,
-      later: (now) => {
-        const seat = activeSeats(now)[0];
-        return seat === undefined || now.timeUp || now.phase === "gameOver"
+      // 방장 자리로 낸다(시간 상한이 있는 판은 첫 운항 중단에 끝나므로 방장 자리는 늘 판에 있다).
+      later: (now) =>
+        now.timeUp || now.phase === "gameOver" || now.out[0]
           ? null
-          : { seat, action: { type: "timeUp" } };
-      },
+          : { seat: 0, action: { type: "timeUp" } },
     });
   const pending = pendingSeats(state);
   const auction = state.auction;
@@ -155,10 +155,8 @@ export function galaxyTimers(
   if (!decides || timeControlOf(state.rules) !== null) return timers;
   const seat = pending[0];
   if (seat === undefined) return timers;
-  const match = state.keys[0] ?? "";
   const id = stateId(state);
-  const again =
-    seat === state.turn.seat && lateTurns.get(match) === turnKey(state);
+  const again = seat === state.turn.seat && lateTurn === turnKey(state);
   timers.push({
     key: `decide:${id}`,
     seat,
@@ -167,11 +165,40 @@ export function galaxyTimers(
       if (stateId(now) !== id) return null;
       const action = standInAction(now, seat);
       if (!action) return null;
-      if (seat === now.turn.seat) lateTurns.set(match, turnKey(now));
+      if (seat === now.turn.seat) lateTurn = turnKey(now);
       return { seat, action: late(action) };
     },
   });
   return timers;
+}
+
+/**
+ * 판 끝 검증: 방장이 넣은 기록(꼬리표·시간 상한·시간패)이 규칙대로인가(`GameKit.verifyUnsigned`).
+ * 꼬리표만 달면 「내가 보낸 것」·컴퓨터 수 대조를 건너뛰므로, 대신 정한 수는 사람 자리일 것, 그 자리가 정할
+ * 때였을 것, `standInAction`과 같을 것을 본다. 시간패는 엔진이 남은 시간으로 확인한다. 시간 상한은 방장 자리로만
+ * 받고 시각은 확인할 수 없다(docs/48 4-5 한계)
+ */
+export function verifyLate(
+  before: GalaxyState,
+  seat: number,
+  action: Action,
+  botSeats?: ReadonlySet<number>,
+): string | null {
+  if (action.type === "timeUp")
+    return seat === 0 ? null : "시간 상한을 방장 아닌 자리로 냈다";
+  if (!isLate(action)) return null;
+  if (botSeats?.has(seat)) return "컴퓨터 자리를 시간 넘김으로 대신 뒀다";
+  if (!pendingSeats(before).includes(seat))
+    return "정할 때가 아닌 자리를 대신 뒀다";
+  const {
+    late: _late,
+    spent: _spent,
+    ...bare
+  } = action as Late & { spent?: number };
+  const expected = standInAction(before, seat);
+  if (!expected || JSON.stringify(bare) !== JSON.stringify(expected))
+    return "시간 넘김으로 대신 둔 수가 정해진 대신 두기와 다르다";
+  return null;
 }
 
 /** 은하 한 바퀴 온라인 방에서 쓰는 킷: 방 시계(`timers`)와, 대신 정한 행동을 판 끝 검증에서 가리는 것 */
@@ -184,6 +211,8 @@ export const galaxyOnlineKit: GalaxyKit = {
     action.type !== "timeout" &&
     action.type !== "timeUp",
   timers: galaxyTimers,
+  verifyUnsigned: ({ before, seat, action, context }) =>
+    verifyLate(before, seat, action, context.botSeats),
   timing: {
     ...(galaxyKit.timing as NonNullable<GalaxyKit["timing"]>),
     // 방장 시계가 남긴 기록(시간패·시간 상한·결정 시간 넘김)은 누가 보낸 행동이 아니다.

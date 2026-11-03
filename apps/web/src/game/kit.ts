@@ -203,6 +203,20 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   // biome-ignore lint/suspicious/noExplicitAny: 청구 내용·판·판정 모양은 게임마다 다르다
   claims?: KitClaims<View, Action, any, any, any>;
+  /**
+   * 사람이 보낸 것이 아닌 기록(방장 시계·방장이 넣은 행동: `timing.strip`이 null인 것 등)이 규칙대로인지
+   * 판 끝 다시 계산에서 본다. 그런 기록은 「내가 보낸 것」 대조와 컴퓨터 수 대조를 건너뛰므로, 꼬리표만 달면
+   * 아무 행동이나 넣을 수 있는 구멍을 막는다. null이면 통과, 글이면 판 끝 검증 실패 까닭
+   */
+  verifyUnsigned?(input: {
+    /** 이 기록을 넣기 직전 상태(다시 계산 중인 상태) */
+    before: State;
+    seat: number;
+    action: Action;
+    /** 기록 번호(0부터) */
+    index: number;
+    context: VerifyContext;
+  }): string | null;
 }
 
 /**
@@ -234,6 +248,14 @@ export interface KitClaims<
   action(resolved: ClaimsResolved<Body, Verdict>): Action | null;
   /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
   rules?: Partial<ClaimRules>;
+}
+
+/** `verifyUnsigned`에 주는 게임별 추가 재료 */
+export interface VerifyContext {
+  /** 원카드: 방장이 발표한 청구 판정(원카드가 채운다) */
+  claimsResolved?: readonly unknown[];
+  /** 대기실이 컴퓨터로 적은 자리 */
+  botSeats?: ReadonlySet<number>;
 }
 
 export interface KitTiming<State, Action> {
