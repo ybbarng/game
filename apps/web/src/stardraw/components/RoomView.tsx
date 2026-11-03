@@ -34,6 +34,7 @@ import { Avatar } from "../astronaut/Avatar";
 import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { celebrationPlan } from "../celebrate";
 import { errorText } from "../errors";
+import { EASE, FX } from "../fx-timing";
 import { inAppFailed } from "../passkey-env";
 import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
@@ -54,6 +55,7 @@ import { LIVE_LEAD_MS, LIVE_ROULETTE_TIMING, planRoulette } from "../roulette";
 import { roundTitle } from "../round-label";
 import { type Services, serverApi } from "../services";
 import { starOf } from "../sky";
+import { rowFaceLimit, useTypingFit } from "../typing-fit";
 import type { KeyInfo } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
@@ -656,6 +658,23 @@ export function RoomView({
   /** 앱 안 브라우저에서 패스키 서명이 실패했으면 그 앱 이름(움직임 줄이기: 신분증 제시 틀 없이 바로 실패한다) */
   const [failApp, setFailApp] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /**
+   * 말하는 동안 키보드 위에 담기(docs/36 11-61): 입력 칸에 초점이 있고 키보드가 올라온 동안만 관측지를 키보드 위 칸에
+   * 하늘 → 얼굴 한 줄 → 입력 칸으로 다시 놓는다. 나머지(머리 줄·상태 줄·언덕 머리·아래 칸)는 그동안 숨긴다
+   */
+  const typing = useTypingFit();
+  const fit = typing.fit;
+  /** 말하는 동안 누르는 단추가 입력 칸 초점을 빼앗지 않게(빼앗기면 키보드가 내려가 칸이 원래대로 돌아간다) */
+  const keepFocus = fit
+    ? (e: React.MouseEvent) => e.preventDefault()
+    : undefined;
+  /** 평소 관측지 높이: 말하는 동안 칸이 fixed로 빠져도 페이지 길이·스크롤 자리가 그대로 남게 */
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyHeight = useRef(0);
+  useLayoutEffect(() => {
+    if (!fit && bodyRef.current)
+      bodyHeight.current = bodyRef.current.offsetHeight;
+  });
   /** 이 기기 등록증의 서명자(미리 만들어 둔다, 누름 직후 바로 패스키를 열게) */
   const signerRef = useRef<EntrantSigner | null>(null);
   /** 방에서 막 등록·제시를 마쳤으면 이어서 방 입장 신분증 제시로 */
@@ -951,7 +970,14 @@ export function RoomView({
   /** 관측이 끝나고 결과(와 내 축하 연출)가 다 나온 뒤: 얼굴마다 등수 표지, 가장 높은 등수는 금빛 테두리 */
   const marked = phase === "after" && now >= marksAt;
   const best = marked ? bestRank(ranks, visible) : null;
-  const faces = hillFaces(visible, marked ? ranks : NO_RANKS, FACES);
+  // 말하는 동안은 얼굴 한 줄(칸 너비 max-w-xl 576px에서 좌우 여백 32px를 뺀 만큼, 넘치면 +n)
+  const faces = hillFaces(
+    visible,
+    marked ? ranks : NO_RANKS,
+    fit
+      ? rowFaceLimit(Math.min(fit.width, 576) - 32, visible.length, FACES)
+      : FACES,
+  );
   const speech = speeches.find(
     (s) => now >= s.at && now < s.at + SPEECH_MS && !s.lantern.hidden,
   );
@@ -980,410 +1006,508 @@ export function RoomView({
     <section
       aria-label={`관측지 · ${title} 관측`}
       data-room={round}
-      className="flex flex-col gap-3"
+      style={fit ? { minHeight: bodyHeight.current } : undefined}
     >
-      {/* 머리 줄: 가운데 장소 이름 「관측지」, 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은
-          빈 칸. 양쪽 칸이 같은 너비라 「홈」이 없는 넓은 화면에서도 가운데가 어긋나지 않는다(docs/36 11-34) */}
-      <div className="grid min-h-8 grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="justify-self-start">
-          {onHome && (
-            <div className="-ml-3">
-              <MenuItem target="home" label="홈" onClick={onHome} />
-            </div>
-          )}
-        </div>
-        <h1 data-room-title className="font-bold text-lg">
-          <PlaceLabel place="room">관측지</PlaceLabel>
-        </h1>
-        <span />
-      </div>
-      <p
-        role="status"
-        data-room-phase={phase}
-        // 회차 이름은 따로 한 줄 두지 않고 상태 줄이 말한다(2026-11-03 사용자: 위쪽에 회차가 두 번 나와 자리를 차지했다)
-        data-room-round={round}
-        className="text-center break-keep font-semibold text-amber-100"
-      >
-        {statusLine}
-      </p>
-
-      <div ref={skyRef} className="relative">
-        {record && (phase === "live" || phase === "after") ? (
-          <LiveDraw
-            record={record}
-            ticket={ticket}
-            clock={clock}
-            startedAt={showStart}
-            timing={LIVE_ROULETTE_TIMING}
-            label={title}
-            embedded
-          />
-        ) : (
-          <SkyBoard
-            state={{
-              mode: "draw",
-              picked: ticket ? ticket.numbers : [],
-              focus: null,
-              lit: [],
-              bonus: null,
-            }}
-            label={`${title} 관측을 기다리는 하늘`}
-            // 추첨 알림·카운트다운부터는 연출을 가리지 않게 누르기를 막는다
-            info={phase === "open" || phase === "closed"}
-          />
-        )}
-        {phase === "count" && (
-          <div
-            aria-live="assertive"
-            data-room-countdown
-            className="pointer-events-none absolute inset-0 grid place-items-center"
-          >
-            <span
-              key={Math.ceil(toShow / 1000)}
-              className="sd-room-count font-black text-8xl text-amber-50 tabular-nums"
-            >
-              {Math.ceil(toShow / 1000)}
-            </span>
-          </div>
-        )}
-        {phase === "live" && !record && (
-          <p className="absolute inset-x-0 bottom-3 text-center text-sm text-white/75">
-            곧 별이 빛납니다.
-          </p>
-        )}
-        {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다 */}
-        <div
-          aria-live="polite"
-          className="pointer-events-none absolute inset-0 overflow-hidden"
-        >
-          {lanterns
-            .filter((l) => !l.hidden)
-            .map((l) => (
-              <LanternBubble
-                key={l.key}
-                lantern={l}
-                onHold={pass && l.from !== me ? openMenu : undefined}
-              />
-            ))}
-          {speech && (
-            <SpeechBubble
-              key={speech.lantern.key}
-              speech={speech}
-              onHold={pass && speech.lantern.from !== me ? openMenu : undefined}
-            />
-          )}
-          {sparks
-            .filter((s) => s.kind === "meteor")
-            .map((s) => (
-              <span
-                key={s.key}
-                data-room-meteor
-                className="sd-room-meteor absolute"
-                // 하늘 아무 데서나 오른쪽 아래로: 출발점의 가로·세로와 기울기를 따로 뽑는다. 예전에는 한 값으로 가로·세로를 함께
-                // 정해 늘 왼쪽 위 같은 대각선에서만 떨어졌다(2026-11-03 사용자). 넘치는 꼬리는 하늘 칸이 잘라 낸다
-                style={{
-                  left: `${s.x * 60}%`,
-                  top: `${4 + s.y * 40}%`,
-                  transform: `rotate(${s.tilt}deg)`,
-                }}
-              >
-                <span className="sd-room-meteor-streak" />
-              </span>
-            ))}
-        </div>
-      </div>
-
-      {popular.length > 0 && phase !== "after" && (
-        <p className="text-center text-white/55 text-xs">
-          가장 많이 고른 별 · {popular.join(" · ")}
-        </p>
-      )}
-
-      {/* 언덕: 모여 앉은 얼굴들 */}
+      {/* 말하는 동안(fit)은 이 칸이 키보드 위 보이는 칸(visualViewport)에 fixed로 놓인다(docs/36 11-61) */}
       <div
-        className="sd-room-hill relative -mx-4 px-4 pt-6 pb-2"
-        data-room-hill
+        ref={bodyRef}
+        data-room-typing={fit ? "" : undefined}
+        className={cn(
+          "flex flex-col gap-3",
+          fit &&
+            "fixed inset-x-0 z-[55] mx-auto max-w-xl gap-2 bg-[#070d19] px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2",
+        )}
+        style={fit ? { top: fit.top, height: fit.height } : undefined}
       >
-        {/* 언덕 머리: 관측지에 있는 사람 수(언덕 위 얼굴 + 언덕 아래에서 숨어 보는 사람). 나 혼자면 아래 「아직 언덕에…」가
-            말하므로 두지 않는다(2026-11-02 사용자: 머리 줄보다 별자리 밑, 웅성거리는 우주인들 곁에 있어야 무슨 숫자인지 안다) */}
-        {/* 언덕이 둘 이상일 때만 내가 보는 언덕 이름(docs/36 11-56). 하나면 아무것도 더하지 않는다 */}
-        {hills > 1 && (
-          <p
-            data-room-hill-name={hillNo}
-            className="pb-1 text-center font-semibold text-white/70 text-xs tabular-nums"
+        {/* 머리 줄: 가운데 장소 이름 「관측지」, 왼쪽은 메뉴가 없는 휴대폰만 「홈」(추첨 화면과 같은 자리·모양), 오른쪽은
+          빈 칸. 양쪽 칸이 같은 너비라 「홈」이 없는 넓은 화면에서도 가운데가 어긋나지 않는다(docs/36 11-34) */}
+        <div
+          className={cn(
+            "grid min-h-8 grid-cols-[1fr_auto_1fr] items-center gap-2",
+            fit && "hidden",
+          )}
+        >
+          <div className="justify-self-start">
+            {onHome && (
+              <div className="-ml-3">
+                <MenuItem target="home" label="홈" onClick={onHome} />
+              </div>
+            )}
+          </div>
+          <h1 data-room-title className="font-bold text-lg">
+            <PlaceLabel place="room">관측지</PlaceLabel>
+          </h1>
+          <span />
+        </div>
+        <p
+          role="status"
+          data-room-phase={phase}
+          // 회차 이름은 따로 한 줄 두지 않고 상태 줄이 말한다(2026-11-03 사용자: 위쪽에 회차가 두 번 나와 자리를 차지했다)
+          data-room-round={round}
+          className={cn(
+            "text-center break-keep font-semibold text-amber-100",
+            fit && "hidden",
+          )}
+        >
+          {statusLine}
+        </p>
+
+        {/* 하늘. 말하는 동안은 남은 높이를 다 차지하는 칸 안에서 min(가로, 남은 높이) 정사각형으로 가운데에 줄인다
+          (하늘·풍등·별똥별·내 별 고리가 통째로 보이게). 관측 중이면 하늘 아래 공 줄·결과 칸은 정사각형 밖이라 잘린다.
+          크기는 키보드 빠르기쯤(FX.typingFit)으로 부드럽게, 움직임 줄이기면 바로 */}
+        <div
+          className={cn(
+            fit &&
+              "flex min-h-0 flex-1 items-center justify-center [container-type:size]",
+          )}
+        >
+          <div
+            ref={skyRef}
+            data-room-sky
+            className={cn(
+              "relative mx-auto transition-[width] duration-(--fit-ms) ease-(--fit-ease) motion-reduce:transition-none",
+              fit && "aspect-square overflow-hidden rounded-xl",
+            )}
+            style={
+              {
+                width: fit ? "min(100cqw, 100cqh)" : "100%",
+                "--fit-ms": `${FX.typingFit}ms`,
+                "--fit-ease": EASE,
+              } as React.CSSProperties
+            }
           >
-            {hillNo}번 언덕
-          </p>
-        )}
-        {crowd > 1 && (
-          <p
-            data-room-count={crowd}
-            className="pb-2 text-center text-white/60 text-xs tabular-nums"
-          >
-            관측지에 {crowd}명이 있어요.
-          </p>
-        )}
-        <div className="flex flex-wrap items-end justify-center gap-1.5">
-          {faces.map((pid) => {
-            const p = people.get(pid) as RoomPerson;
-            const a = astronautOf(fromBase64Url(p.pub));
-            const twinkle = sparks.some(
-              (s) => s.kind === "twinkle" && s.to === pid,
-            );
-            const rank = marked ? ranks.get(pid) : undefined;
-            const top = rank !== undefined && rank === best;
-            return (
-              <div key={pid} className="relative">
-                <button
-                  type="button"
-                  data-face={pid}
-                  data-face-entered={p.entered || undefined}
-                  data-face-best={top || undefined}
-                  aria-label={`${a.name}${p.entered ? ", 예측함" : ""}${rank ? `, ${RANK_LABEL[rank]}` : ""}${pid === me ? ", 나" : ""}`}
-                  onClick={() => cheer("twinkle", pid)}
-                  className={cn(
-                    "sd-room-face relative size-12 overflow-hidden rounded-full border",
-                    p.entered ? "border-amber-200/70" : "border-white/15",
-                    pid === me && "ring-2 ring-sky-200/70",
-                    // 표지가 붙으면 켜진 별 빛은 걷고 가장 높은 등수만 금빛으로
-                    !marked && glowing(pid) && "sd-room-face-glow",
-                    top && "sd-room-face-best",
-                    twinkle && "sd-room-face-twinkle",
-                  )}
+            {record && (phase === "live" || phase === "after") ? (
+              <LiveDraw
+                record={record}
+                ticket={ticket}
+                clock={clock}
+                startedAt={showStart}
+                timing={LIVE_ROULETTE_TIMING}
+                label={title}
+                embedded
+              />
+            ) : (
+              <SkyBoard
+                state={{
+                  mode: "draw",
+                  picked: ticket ? ticket.numbers : [],
+                  focus: null,
+                  lit: [],
+                  bonus: null,
+                }}
+                label={`${title} 관측을 기다리는 하늘`}
+                // 추첨 알림·카운트다운부터는 연출을 가리지 않게 누르기를 막는다
+                info={phase === "open" || phase === "closed"}
+              />
+            )}
+            {phase === "count" && (
+              <div
+                aria-live="assertive"
+                data-room-countdown
+                className="pointer-events-none absolute inset-0 grid place-items-center"
+              >
+                <span
+                  key={Math.ceil(toShow / 1000)}
+                  className="sd-room-count font-black text-8xl text-amber-50 tabular-nums"
                 >
-                  <Avatar
-                    face={a.face}
-                    egg={a.egg}
-                    label=""
-                    className="size-full scale-125"
+                  {Math.ceil(toShow / 1000)}
+                </span>
+              </div>
+            )}
+            {phase === "live" && !record && (
+              <p className="absolute inset-x-0 bottom-3 text-center text-sm text-white/75">
+                곧 별이 빛납니다.
+              </p>
+            )}
+            {/* 풍등: 얼굴에서 떠올라 하늘로 흐려진다 */}
+            <div
+              aria-live="polite"
+              className="pointer-events-none absolute inset-0 overflow-hidden"
+            >
+              {lanterns
+                .filter((l) => !l.hidden)
+                .map((l) => (
+                  <LanternBubble
+                    key={l.key}
+                    lantern={l}
+                    onHold={pass && l.from !== me ? openMenu : undefined}
                   />
-                  {p.director && (
-                    <span className="absolute inset-x-0 bottom-0 bg-rose-500/80 text-[8px] text-white">
-                      국장
-                    </span>
-                  )}
-                </button>
-                {rank && (
+                ))}
+              {speech && (
+                <SpeechBubble
+                  key={speech.lantern.key}
+                  speech={speech}
+                  onHold={
+                    pass && speech.lantern.from !== me ? openMenu : undefined
+                  }
+                />
+              )}
+              {sparks
+                .filter((s) => s.kind === "meteor")
+                .map((s) => (
                   <span
-                    aria-hidden="true"
-                    data-face-rank={rank}
+                    key={s.key}
+                    data-room-meteor
+                    className="sd-room-meteor absolute"
+                    // 하늘 아무 데서나 오른쪽 아래로: 출발점의 가로·세로와 기울기를 따로 뽑는다. 예전에는 한 값으로 가로·세로를 함께
+                    // 정해 늘 왼쪽 위 같은 대각선에서만 떨어졌다(2026-11-03 사용자). 넘치는 꼬리는 하늘 칸이 잘라 낸다
+                    style={{
+                      left: `${s.x * 60}%`,
+                      top: `${4 + s.y * 40}%`,
+                      transform: `rotate(${s.tilt}deg)`,
+                    }}
+                  >
+                    <span className="sd-room-meteor-streak" />
+                  </span>
+                ))}
+            </div>
+          </div>
+        </div>
+
+        {popular.length > 0 && phase !== "after" && (
+          <p
+            className={cn("text-center text-white/55 text-xs", fit && "hidden")}
+          >
+            가장 많이 고른 별 · {popular.join(" · ")}
+          </p>
+        )}
+
+        {/* 언덕: 모여 앉은 얼굴들 */}
+        <div
+          className={cn(
+            "sd-room-hill relative -mx-4 px-4",
+            fit ? "shrink-0 pt-2 pb-0" : "pt-6 pb-2",
+          )}
+          data-room-hill
+        >
+          {/* 언덕 머리: 관측지에 있는 사람 수(언덕 위 얼굴 + 언덕 아래에서 숨어 보는 사람). 나 혼자면 아래 「아직 언덕에…」가
+            말하므로 두지 않는다(2026-11-02 사용자: 머리 줄보다 별자리 밑, 웅성거리는 우주인들 곁에 있어야 무슨 숫자인지 안다) */}
+          {/* 언덕이 둘 이상일 때만 내가 보는 언덕 이름(docs/36 11-56). 하나면 아무것도 더하지 않는다 */}
+          {hills > 1 && (
+            <p
+              data-room-hill-name={hillNo}
+              className={cn(
+                "pb-1 text-center font-semibold text-white/70 text-xs tabular-nums",
+                fit && "hidden",
+              )}
+            >
+              {hillNo}번 언덕
+            </p>
+          )}
+          {crowd > 1 && (
+            <p
+              data-room-count={crowd}
+              className={cn(
+                "pb-2 text-center text-white/60 text-xs tabular-nums",
+                fit && "hidden",
+              )}
+            >
+              관측지에 {crowd}명이 있어요.
+            </p>
+          )}
+          <div
+            className={cn(
+              "flex items-end justify-center gap-1.5",
+              fit ? "flex-nowrap" : "flex-wrap",
+            )}
+          >
+            {faces.map((pid) => {
+              const p = people.get(pid) as RoomPerson;
+              const a = astronautOf(fromBase64Url(p.pub));
+              const twinkle = sparks.some(
+                (s) => s.kind === "twinkle" && s.to === pid,
+              );
+              const rank = marked ? ranks.get(pid) : undefined;
+              const top = rank !== undefined && rank === best;
+              return (
+                <div key={pid} className="relative">
+                  <button
+                    type="button"
+                    data-face={pid}
+                    data-face-entered={p.entered || undefined}
+                    data-face-best={top || undefined}
+                    aria-label={`${a.name}${p.entered ? ", 예측함" : ""}${rank ? `, ${RANK_LABEL[rank]}` : ""}${pid === me ? ", 나" : ""}`}
+                    onClick={() => cheer("twinkle", pid)}
+                    onMouseDown={keepFocus}
                     className={cn(
-                      "sd-room-rank pointer-events-none absolute inset-x-0 -top-2 mx-auto w-max rounded-full px-1.5 font-bold text-[10px] leading-4 tabular-nums",
-                      top
-                        ? "bg-amber-300 text-slate-950"
-                        : "bg-slate-800 text-amber-100 ring-1 ring-amber-200/40",
+                      "sd-room-face relative overflow-hidden rounded-full border",
+                      fit ? "size-9" : "size-12",
+                      p.entered ? "border-amber-200/70" : "border-white/15",
+                      pid === me && "ring-2 ring-sky-200/70",
+                      // 표지가 붙으면 켜진 별 빛은 걷고 가장 높은 등수만 금빛으로
+                      !marked && glowing(pid) && "sd-room-face-glow",
+                      top && "sd-room-face-best",
+                      twinkle && "sd-room-face-twinkle",
                     )}
                   >
-                    {RANK_LABEL[rank]}
+                    <Avatar
+                      face={a.face}
+                      egg={a.egg}
+                      label=""
+                      className="size-full scale-125"
+                    />
+                    {p.director && (
+                      <span className="absolute inset-x-0 bottom-0 bg-rose-500/80 text-[8px] text-white">
+                        국장
+                      </span>
+                    )}
+                  </button>
+                  {rank && (
+                    <span
+                      aria-hidden="true"
+                      data-face-rank={rank}
+                      className={cn(
+                        "sd-room-rank pointer-events-none absolute inset-x-0 -top-2 mx-auto w-max rounded-full px-1.5 font-bold text-[10px] leading-4 tabular-nums",
+                        top
+                          ? "bg-amber-300 text-slate-950"
+                          : "bg-slate-800 text-amber-100 ring-1 ring-amber-200/40",
+                      )}
+                    >
+                      {RANK_LABEL[rank]}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {more > 0 && (
+              <span
+                className={cn(
+                  "grid place-items-center rounded-full border border-white/15 text-sm text-white/70",
+                  fit ? "size-9" : "size-12",
+                )}
+              >
+                +{more}
+              </span>
+            )}
+          </div>
+          {seat.hill && (
+            <p
+              className={cn(
+                "pt-2 text-center text-sm text-white/50",
+                fit && "hidden",
+              )}
+            >
+              {seat.hill}
+            </p>
+          )}
+        </div>
+
+        {/* 관측이 끝난 뒤: 언덕에서 이야기할 수 있는 남은 시간(서버가 추첨 7분 뒤 닫는다) */}
+        {phase === "after" && !closed && (
+          <p
+            data-room-closing
+            className={cn(
+              "-mt-2 text-center text-white/60 text-xs tabular-nums",
+              fit && "hidden",
+            )}
+          >
+            관측지가 닫히기까지 {formatLeft(closeIn / 1000)}
+          </p>
+        )}
+
+        {/* 지금 내 자리: 숨어서 관측 중(남의 말은 보이지만 나는 보이지 않음) / 언덕에서 관측 중 */}
+        {!closed &&
+          (seat.joined ? (
+            seat.badge && (
+              <p
+                data-room-seat="joined"
+                className={cn("flex justify-center", fit && "hidden")}
+              >
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-300/15 px-3 py-1 font-semibold text-sky-100 text-xs">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full bg-sky-200"
+                  />
+                  {seat.badge}
+                </span>
+              </p>
+            )
+          ) : (
+            <div
+              data-room-seat="watching"
+              className="sd-room-under -mx-4 -mt-3 flex flex-col items-center gap-2 px-4 pt-2 pb-4 text-center"
+            >
+              {/* 언덕 아래 어둠 속의 내 얼굴: 내 화면에만 흐리게(남에게는 보이지 않는다). 언덕에 오르면 위 줄로 옮겨 간다 */}
+              <div
+                data-face-pending
+                role="img"
+                aria-label="언덕 아래의 나, 다른 우주인에게 보이지 않음"
+                className="sd-room-below relative size-12 overflow-hidden rounded-full border border-white/25 border-dashed"
+              >
+                {key ? (
+                  <Avatar
+                    face={astronautOf(key.pub).face}
+                    egg={astronautOf(key.pub).egg}
+                    label=""
+                    className="size-full scale-125 opacity-30 grayscale"
+                  />
+                ) : (
+                  <span className="grid size-full place-items-center text-white/40 text-xs">
+                    나
                   </span>
                 )}
               </div>
-            );
-          })}
-          {more > 0 && (
-            <span className="grid size-12 place-items-center rounded-full border border-white/15 text-sm text-white/70">
-              +{more}
-            </span>
-          )}
-        </div>
-        {seat.hill && (
-          <p className="pt-2 text-center text-sm text-white/50">{seat.hill}</p>
-        )}
-      </div>
-
-      {/* 관측이 끝난 뒤: 언덕에서 이야기할 수 있는 남은 시간(서버가 추첨 7분 뒤 닫는다) */}
-      {phase === "after" && !closed && (
-        <p
-          data-room-closing
-          className="-mt-2 text-center text-white/60 text-xs tabular-nums"
-        >
-          관측지가 닫히기까지 {formatLeft(closeIn / 1000)}
-        </p>
-      )}
-
-      {/* 지금 내 자리: 숨어서 관측 중(남의 말은 보이지만 나는 보이지 않음) / 언덕에서 관측 중 */}
-      {!closed &&
-        (seat.joined ? (
-          seat.badge && (
-            <p data-room-seat="joined" className="flex justify-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-300/15 px-3 py-1 font-semibold text-sky-100 text-xs">
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-sky-200"
-                />
-                {seat.badge}
-              </span>
-            </p>
-          )
-        ) : (
-          <div
-            data-room-seat="watching"
-            className="sd-room-under -mx-4 -mt-3 flex flex-col items-center gap-2 px-4 pt-2 pb-4 text-center"
-          >
-            {/* 언덕 아래 어둠 속의 내 얼굴: 내 화면에만 흐리게(남에게는 보이지 않는다). 언덕에 오르면 위 줄로 옮겨 간다 */}
-            <div
-              data-face-pending
-              role="img"
-              aria-label="언덕 아래의 나, 다른 우주인에게 보이지 않음"
-              className="sd-room-below relative size-12 overflow-hidden rounded-full border border-white/25 border-dashed"
-            >
-              {key ? (
-                <Avatar
-                  face={astronautOf(key.pub).face}
-                  egg={astronautOf(key.pub).egg}
-                  label=""
-                  className="size-full scale-125 opacity-30 grayscale"
-                />
-              ) : (
-                <span className="grid size-full place-items-center text-white/40 text-xs">
-                  나
+              {seat.badge && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 rounded-full border border-white/60"
+                  />
+                  {seat.badge}
                 </span>
               )}
-            </div>
-            {seat.badge && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold text-white/80 text-xs">
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full border border-white/60"
-                />
-                {seat.badge}
-              </span>
-            )}
-            {seat.note && (
-              <p className="text-balance break-keep text-sm text-white/70">
-                {seat.note}
-              </p>
-            )}
-            {seat.join && (
-              <button
-                type="button"
-                onClick={() => void ensurePass()}
-                disabled={setup.working !== null || registeringNow}
-                data-room-join={phase === "after" ? "plain" : "cta"}
-                // 관측이 끝난 뒤에는 평범한 단추: 아래 「별 6개 고르기」(다음 회차 예측)가 권장 단추다. 금색 단추 둘이
-                // 나란히 있어 눈이 어지러웠다(2026-11-03 사용자)
-                className={cn(
-                  "w-full max-w-xs rounded-2xl py-2.5 font-bold text-sm disabled:opacity-50",
-                  phase === "after"
-                    ? "border border-white/20 bg-white/5 text-white/85 hover:bg-white/10"
-                    : "sd-cta text-slate-950",
-                )}
-              >
-                <PlaceLabel place="room">{seat.join}</PlaceLabel>
-              </button>
-            )}
-            {seat.join && !hasKey && (
-              <button
-                type="button"
-                onClick={() => void setup.recover()}
-                disabled={setup.working !== null}
-                className="text-sm text-white/70 underline underline-offset-2"
-              >
-                이미 등록했어요 · 신분증 제시
-              </button>
-            )}
-            {/* WebAuthn이 없는 브라우저: 누른 단추 바로 아래에 안내(입구와 같은 조각). 앱 안 브라우저에서 시도가 실패했으면
+              {seat.note && (
+                <p className="text-balance break-keep text-sm text-white/70">
+                  {seat.note}
+                </p>
+              )}
+              {seat.join && (
+                <button
+                  type="button"
+                  onClick={() => void ensurePass()}
+                  disabled={setup.working !== null || registeringNow}
+                  data-room-join={phase === "after" ? "plain" : "cta"}
+                  // 관측이 끝난 뒤에는 평범한 단추: 아래 「별 6개 고르기」(다음 회차 예측)가 권장 단추다. 금색 단추 둘이
+                  // 나란히 있어 눈이 어지러웠다(2026-11-03 사용자)
+                  className={cn(
+                    "w-full max-w-xs rounded-2xl py-2.5 font-bold text-sm disabled:opacity-50",
+                    phase === "after"
+                      ? "border border-white/20 bg-white/5 text-white/85 hover:bg-white/10"
+                      : "sd-cta text-slate-950",
+                  )}
+                >
+                  <PlaceLabel place="room">{seat.join}</PlaceLabel>
+                </button>
+              )}
+              {seat.join && !hasKey && (
+                <button
+                  type="button"
+                  onClick={() => void setup.recover()}
+                  disabled={setup.working !== null}
+                  className="text-sm text-white/70 underline underline-offset-2"
+                >
+                  이미 등록했어요 · 신분증 제시
+                </button>
+              )}
+              {/* WebAuthn이 없는 브라우저: 누른 단추 바로 아래에 안내(입구와 같은 조각). 앱 안 브라우저에서 시도가 실패했으면
                 같은 자리에 바깥 브라우저로 여는 안내(2026-11-03 사용자: 막지 말고 시도한 뒤 실패하면 안내) */}
-            {seat.join && setup.blockedHere && (
-              <div className="w-full max-w-xs" data-room-blocked>
-                <PasskeyBlockedNotice />
-              </div>
-            )}
-            {seat.join &&
-              !setup.blockedHere &&
-              (setup.error?.inApp ?? failApp) && (
+              {seat.join && setup.blockedHere && (
                 <div className="w-full max-w-xs" data-room-blocked>
-                  <InAppTriedNotice
-                    app={(setup.error?.inApp ?? failApp) as string}
-                  />
+                  <PasskeyBlockedNotice />
                 </div>
               )}
-          </div>
-        ))}
+              {seat.join &&
+                !setup.blockedHere &&
+                (setup.error?.inApp ?? failApp) && (
+                  <div className="w-full max-w-xs" data-room-blocked>
+                    <InAppTriedNotice
+                      app={(setup.error?.inApp ?? failApp) as string}
+                    />
+                  </div>
+                )}
+            </div>
+          ))}
 
-      {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
-      {closed && <RoomClosedNotice now={now} onGo={onEnter} />}
-      {closed || !seat.joined ? null : (
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
-          <input
-            ref={inputRef}
-            aria-label="말하기"
-            value={draft}
-            maxLength={ROOM_TEXT_MAX * 2}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (roomCharCount(v) <= ROOM_TEXT_MAX) setDraft(v);
+        {/* 아래: 내가 하는 일(말하기·별똥별). 참여 전에는 위 참여 칸이 이 자리를 맡는다 */}
+        {closed && <RoomClosedNotice now={now} onGo={onEnter} />}
+        {closed || !seat.joined ? null : (
+          <form
+            className={cn("flex items-center gap-2", fit && "shrink-0")}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
             }}
-            placeholder={invite ? "입상 소감을 남겨 보세요" : "말하기"}
-            className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm placeholder:text-white/35"
-            data-room-input
-          />
-          <button
-            type="button"
-            aria-label="별똥별 보내기"
-            onClick={() => cheer("meteor", null)}
-            className="grid size-11 place-items-center rounded-full border border-white/15 text-lg"
           >
-            ☄
-          </button>
-          <button
-            type="submit"
-            className="rounded-2xl bg-amber-100 px-4 py-3 font-bold text-slate-900 text-sm"
+            <input
+              ref={inputRef}
+              aria-label="말하기"
+              value={draft}
+              maxLength={ROOM_TEXT_MAX * 2}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (roomCharCount(v) <= ROOM_TEXT_MAX) setDraft(v);
+              }}
+              onFocus={typing.onFocus}
+              onBlur={typing.onBlur}
+              placeholder={invite ? "입상 소감을 남겨 보세요" : "말하기"}
+              // 휴대폰은 16px: 아이폰 사파리는 16px보다 작은 입력 칸에 초점이 가면 화면을 확대해 칸 맞춤이 어긋난다
+              className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base placeholder:text-white/35 sm:text-sm"
+              data-room-input
+            />
+            <button
+              type="button"
+              aria-label="별똥별 보내기"
+              onClick={() => cheer("meteor", null)}
+              onMouseDown={keepFocus}
+              className="grid size-11 place-items-center rounded-full border border-white/15 text-lg"
+            >
+              ☄
+            </button>
+            <button
+              type="submit"
+              onMouseDown={keepFocus}
+              className="rounded-2xl bg-amber-100 px-4 py-3 font-bold text-slate-900 text-sm"
+            >
+              보내기
+            </button>
+          </form>
+        )}
+        {registeringNow && (
+          <p
+            className={cn("text-center text-white/60 text-xs", fit && "hidden")}
           >
-            보내기
-          </button>
-        </form>
-      )}
-      {registeringNow && (
-        <p className="text-center text-white/60 text-xs">
-          {/* 장부는 응모를 받는 동안만 등록을 받는다(마감부터 추첨 몇 초 뒤 다음 회차가 열릴 때까지는 기다린다) */}
-          {services.ledger.status().phase === "open"
-            ? "장부에 우주인 등록을 올리고 있습니다."
-            : "다음 회차 예측이 열리면 장부에 우주인 등록을 올립니다."}
-        </p>
-      )}
-      {(sendNote ?? setup.error?.text) && !(failApp ?? setup.error?.inApp) && (
-        <p className="text-center text-rose-200 text-xs">
-          {sendNote ?? setup.error?.text}
-        </p>
-      )}
-      {problem && (
-        <p className="text-center text-white/60 text-sm">{problem}</p>
-      )}
+            {/* 장부는 응모를 받는 동안만 등록을 받는다(마감부터 추첨 몇 초 뒤 다음 회차가 열릴 때까지는 기다린다) */}
+            {services.ledger.status().phase === "open"
+              ? "장부에 우주인 등록을 올리고 있습니다."
+              : "다음 회차 예측이 열리면 장부에 우주인 등록을 올립니다."}
+          </p>
+        )}
+        {(sendNote ?? setup.error?.text) &&
+          !(failApp ?? setup.error?.inApp) && (
+            <p className="text-center text-rose-200 text-xs">
+              {sendNote ?? setup.error?.text}
+            </p>
+          )}
+        {problem && (
+          <p
+            className={cn("text-center text-white/60 text-sm", fit && "hidden")}
+          >
+            {problem}
+          </p>
+        )}
 
-      {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다.
+        {/* 관측(추첨 연출)이 끝나면 다음 회차 예측을 연다(2026-11-02 사용자). 관측지가 닫히기 전에도 언덕에서 이야기는 이어진다.
           닫히면 위 알림이 접수처로 옮기므로 이 칸은 걷는다 */}
-      {phase === "after" && !closed && (
-        <div
-          data-room-next
-          className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center"
-        >
-          <span className="font-semibold">
-            지금 {roundTitle(schedule, round + 1)} 예측을 받고 있어요.
-          </span>
-          <button
-            type="button"
-            onClick={onEnter}
-            className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
+        {phase === "after" && !closed && (
+          <div
+            data-room-next
+            className={cn(
+              "flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-center",
+              fit && "hidden",
+            )}
           >
-            <PlaceLabel place="desk">별 6개 고르기</PlaceLabel>
-          </button>
-        </div>
-      )}
+            <span className="font-semibold">
+              지금 {roundTitle(schedule, round + 1)} 예측을 받고 있어요.
+            </span>
+            <button
+              type="button"
+              onClick={onEnter}
+              className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
+            >
+              <PlaceLabel place="desk">별 6개 고르기</PlaceLabel>
+            </button>
+          </div>
+        )}
 
-      {/* 관측 방송 안내(다음 회차 시각, 등록 안 한 사람의 「우주인 등록」)는 맨 아래에: 위쪽에 있으면 하늘을 아래로 밀고
+        {/* 관측 방송 안내(다음 회차 시각, 등록 안 한 사람의 「우주인 등록」)는 맨 아래에: 위쪽에 있으면 하늘을 아래로 밀고
           관측과 상관없는 다음 회차가 먼저 눈에 들어왔다(2026-11-03 사용자: 「불필요하니 없애거나 아래로」). 등록 단추가 있어
           없애지 않고 옮긴다 */}
-      {guide}
+        {guide && <div className={fit ? "hidden" : "contents"}>{guide}</div>}
+      </div>
 
       {menu && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center p-4">
+        // 말하는 동안의 관측지 칸(z-[55])보다 위에
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4">
           <button
             type="button"
             aria-label="닫기"

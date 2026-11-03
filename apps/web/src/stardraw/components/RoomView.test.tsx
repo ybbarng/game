@@ -655,6 +655,74 @@ describe("관측이 끝난 뒤", () => {
         ?.getAttribute("placeholder"),
     ).toBe("말하기");
   });
+
+  it("말하는 동안 키보드가 올라오면 키보드 위 칸에 하늘·얼굴 한 줄·입력 칸만, 초점이 빠지면 원래대로(docs/36 11-61)", async () => {
+    // jsdom에는 visualViewport가 없어 흉내 낸다: 키보드가 올라오면 보이는 높이가 844 → 450
+    const vv = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 844,
+      offsetTop: 0,
+      scale: 1,
+    });
+    Object.defineProperty(window, "visualViewport", {
+      value: vv,
+      configurable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      value: 844,
+      configurable: true,
+    });
+    try {
+      const view = renderAfter("c", []);
+      await waitFor(() => {
+        expect(
+          view.container.querySelector("[data-room-input]"),
+        ).not.toBeNull();
+      });
+      const input = view.container.querySelector(
+        "[data-room-input]",
+      ) as HTMLInputElement;
+      const typing = () => view.container.querySelector("[data-room-typing]");
+      // 초점만으로는(PC처럼 키보드가 없으면) 바뀌지 않는다
+      fireEvent.focus(input);
+      expect(typing()).toBeNull();
+      act(() => {
+        vv.height = 450;
+        vv.dispatchEvent(new Event("resize"));
+      });
+      const box = typing() as HTMLElement;
+      expect(box).not.toBeNull();
+      expect(box.style.top).toBe("0px");
+      expect(box.style.height).toBe("450px");
+      // 머리 줄·상태 줄은 숨기고, 하늘·얼굴·입력 칸은 남긴다
+      expect(
+        view.container.querySelector("[data-room-title]")?.parentElement
+          ?.classList,
+      ).toContain("hidden");
+      expect(
+        view.container.querySelector("[data-room-phase]")?.classList,
+      ).toContain("hidden");
+      expect(
+        (view.container.querySelector("[data-room-sky]") as HTMLElement).style
+          .width,
+      ).toBe("min(100cqw, 100cqh)");
+      expect(view.container.querySelector("[data-face]")?.classList).toContain(
+        "size-9",
+      );
+      expect(input.closest("[data-room-typing]")).toBe(box);
+
+      fireEvent.blur(input);
+      expect(typing()).toBeNull();
+      expect(
+        view.container.querySelector("[data-room-phase]")?.classList,
+      ).not.toContain("hidden");
+    } finally {
+      Object.defineProperty(window, "visualViewport", {
+        value: undefined,
+        configurable: true,
+      });
+    }
+  });
 });
 
 /*
