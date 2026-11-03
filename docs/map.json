@@ -3,7 +3,7 @@
   "title": "게임 센터 (game.byb.kr)",
   "goal": "누구나 game.byb.kr에서 서버 없이 친구와, 혼자라면 컴퓨터와 여러 카드·판 게임을 공정하게 즐긴다. 게임마다 PC·휴대폰 화면, 컴퓨터 세 단계, 효과음, 온라인 대전, 배우기를 갖춘다",
   "baselineAt": "2026-10-20",
-  "updatedAt": "2026-11-03T04:15:00.000Z",
+  "updatedAt": "2026-11-03T05:00:00.000Z",
   "here": "fairness-realtime",
   "regions": [
     {
@@ -163,6 +163,30 @@
         {
           "label": "작업 규칙",
           "path": "CLAUDE.md"
+        }
+      ]
+    },
+    {
+      "id": "platform-slow-tests",
+      "title": "느린 시험 알림",
+      "parent": "platform",
+      "status": "done",
+      "size": 1,
+      "summary": "main CI가 성공하면 Slow tests 워크플로가 시험 시간을 scripts/slow-tests.json 기준과 비교해, 최근 3번 가운데 2번 이상 넘은 시험을 라벨 slow-test 이슈 하나에 모은다. 모두 기준 안이면 이슈를 닫는다. 열린 이슈는 다음 세션의 남은 일",
+      "since": "2026-11-03",
+      "found": "2026-11-03",
+      "links": [
+        {
+          "label": "비교 스크립트",
+          "path": "scripts/slow-tests.mjs"
+        },
+        {
+          "label": "기준",
+          "path": "scripts/slow-tests.json"
+        },
+        {
+          "label": "워크플로",
+          "path": ".github/workflows/slow-tests.yml"
         }
       ]
     },
@@ -697,7 +721,7 @@
       "parent": "ops",
       "status": "done",
       "size": 2,
-      "summary": "Image 워크플로가 서버에 배포, CI는 단위 시험·화면 시험 3조각",
+      "summary": "Image 워크플로가 서버에 배포, CI는 단위 시험·화면 시험 2조각, 성공하면 Slow tests가 느린 시험 이슈를 고친다",
       "since": "2026-10-28",
       "links": [
         {

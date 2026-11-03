@@ -1,0 +1,58 @@
+name: Slow tests
+
+# main push CI가 성공하면 그 실행이 남긴 시험 시간(artifact test-times-*)을 받아 scripts/slow-tests.json 기준과
+# 비교하고, 자꾸 기준을 넘는 시험을 라벨 slow-test 이슈 하나에 모은다(2026-11-03). 다음 세션이 그 이슈를 남은 일로 잡는다.
+# CI 안의 작업으로 두지 않은 까닭: ① 이슈 쓰기 권한을 남의 코드(PR)가 도는 CI 워크플로에 주지 않는다 ② CI가 늦게
+# 끝나면 Image(배포)도 늦어진다. 이 워크플로는 늘 main의 스크립트로 돌고, 실패해도 아무것도 막지 않는다.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# 같은 이슈 본문(지난 기록)을 읽고 고치므로 한 번에 하나씩, 앞 실행을 끊지 않는다
+concurrency:
+  group: slow-tests
+  cancel-in-progress: false
+
+jobs:
+  report:
+    # 성공한 main push만(포크에서 main이라는 이름의 브랜치로 연 PR은 빼려고 event·저장소도 본다)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # 앞 CI 실행의 artifact 받기
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        continue-on-error: true
+        with:
+          pattern: test-times-*
+          path: test-times
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      # 스크립트는 늘 0으로 끝나지만, 무슨 일이 있어도 이 단계 때문에 실패로 보이지 않게
+      - name: 느린 시험 이슈 갱신
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: >-
+          node scripts/slow-tests.mjs
+          --unit test-times/test-times-unit/unit.json
+          --e2e test-times/test-times-e2e-1/e2e.json
+          --e2e test-times/test-times-e2e-2/e2e.json
