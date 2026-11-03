@@ -246,7 +246,7 @@ export function CubePlay({
       >
         {failed ? (
           <p data-cube-no3d className="p-6 text-center text-sm text-white/70">
-            이 기기에서는 3D를 그릴 수 없습니다. 아래 펼친 그림을 보며 맞추세요.
+            이 기기에서는 3D를 그릴 수 없습니다
           </p>
         ) : (
           <canvas

@@ -210,10 +210,6 @@ export function CubeLab() {
     <div className="min-h-dvh bg-neutral-900">
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-5 text-white">
         <h1 className="font-bold text-xl">큐브 그리기 시험</h1>
-        <p className="break-keep text-sm text-white/70">
-          키를 치면 큐브가 돕니다(엔진 없이 그리기만). 큐브를 끌면 보는 각만
-          바뀌고, 놓으면 제자리로 돌아옵니다.
-        </p>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-1">
             크기
@@ -281,8 +277,7 @@ export function CubeLab() {
               data-cube-no3d
               className="flex h-full items-center justify-center break-keep rounded border border-white/15 px-6 text-center text-sm text-white/70"
             >
-              이 기기에서는 3D 큐브를 그릴 수 없습니다. 키는 그대로 받고 돌린
-              수를 셉니다.
+              이 기기에서는 3D 큐브를 그릴 수 없습니다
             </p>
           )}
           <canvas
