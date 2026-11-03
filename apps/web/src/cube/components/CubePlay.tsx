@@ -205,6 +205,8 @@ export function CubePlay({
       setLit(code);
       window.setTimeout(() => setLit((c) => (c === code ? null : c)), 160);
     };
+    /** 살짝 보기를 일으킨 키(떼면 보기를 되돌린다) */
+    let peekKey: string | null = null;
     const detach = attachKeyboard(
       window,
       () => {
@@ -214,13 +216,19 @@ export function CubePlay({
       },
       (r, e) => {
         flash(e.code);
+        // 살짝 보기는 누르는 동안만: 지금 배치에서 그 동작을 일으킨 키를 기억해 두고 떼면 되돌린다
+        if (
+          r.kind === "command" &&
+          (r.command === "peekBack" || r.command === "peekDown")
+        )
+          peekKey = e.code;
         handleRef.current(r);
       },
     );
-    // 살짝 보기는 누르는 동안만
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code.startsWith("Arrow"))
-        viewRef.current?.setView(DEFAULT_VIEW.yaw, DEFAULT_VIEW.pitch);
+      if (peekKey === null || e.code !== peekKey) return;
+      peekKey = null;
+      viewRef.current?.setView(DEFAULT_VIEW.yaw, DEFAULT_VIEW.pitch);
     };
     window.addEventListener("keyup", onKeyUp);
     return () => {
