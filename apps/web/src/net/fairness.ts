@@ -9,7 +9,8 @@ export function newSecret(): string {
   return randomId(32);
 }
 
-async function sha256Hex(text: string): Promise<string> {
+/** SHA-256 16진 문자열(약속·시드·함께 정한 난수가 같이 쓴다) */
+export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(text),
