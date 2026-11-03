@@ -192,9 +192,9 @@ export function PuzzleScreen({
   return (
     <main
       data-game={game}
-      className="flex min-h-dvh flex-col items-center gap-3 bg-[#1c1917] px-4 py-3 text-white short-landscape:grid short-landscape:grid-cols-[auto_minmax(0,18rem)] short-landscape:grid-rows-[auto_auto_1fr] short-landscape:content-center short-landscape:justify-center short-landscape:gap-x-6"
+      className="flex min-h-dvh flex-col items-center gap-3 bg-[#1c1917] px-4 py-3 text-white split:grid split:grid-cols-[auto_minmax(0,18rem)] split:grid-rows-[auto_auto_1fr] split:content-center split:justify-center split:gap-x-6"
     >
-      <header className="flex w-full max-w-xl items-center gap-2 text-sm short-landscape:col-start-2 short-landscape:row-start-1">
+      <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-start-2 split:row-start-1">
         <button
           type="button"
           onClick={onExit}
@@ -209,14 +209,14 @@ export function PuzzleScreen({
 
       <div
         className={cn(
-          "max-w-xl short-landscape:col-start-1 short-landscape:row-span-3 short-landscape:row-start-1",
+          "max-w-xl split:col-start-1 split:row-span-3 split:row-start-1",
           boardClassName,
         )}
       >
         {board}
       </div>
 
-      <div className="flex w-full max-w-xl flex-col items-center gap-3 short-landscape:col-start-2 short-landscape:row-start-2">
+      <div className="flex w-full max-w-xl flex-col items-center gap-3 split:col-start-2 split:row-start-2">
         <RoundOutcome
           outcome={outcome}
           status={statusText}

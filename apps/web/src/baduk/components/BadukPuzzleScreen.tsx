@@ -142,7 +142,7 @@ function BadukPuzzleRun({
       setTitle={set.title}
       index={index}
       total={set.puzzles.length}
-      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] short-landscape:w-[calc(100dvh-1.5rem)]"
+      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] split:w-[min(calc(100dvh-1.5rem),36rem)]"
       board={
         <BadukBoard
           board={state.board}

@@ -157,7 +157,7 @@ function JanggiPuzzleRun({
       setTitle={set.title}
       index={index}
       total={set.puzzles.length}
-      boardClassName="aspect-[924/1024] w-[min(100%,calc((100dvh-17rem)*0.9))] short-landscape:w-[calc((100dvh-1.5rem)*0.9)]"
+      boardClassName="aspect-[924/1024] w-[min(100%,calc((100dvh-17rem)*0.9))] split:w-[min(calc((100dvh-1.5rem)*0.9),32rem)]"
       board={
         <JanggiBoard
           board={state.board}
