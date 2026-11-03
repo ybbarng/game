@@ -30,4 +30,9 @@ export type FairControl =
   /** 화투: 판이 끝나기 전에 모든 열쇠를 공개한다(나이롱뽕: 손패 합이 점수다) */
   | { t: "fp"; k: "all"; deal: number }
   /** 화투: 내 패를 다 열었다(고스톱 총통이면 그 넉 장을 먼저 공개했다). 방장은 모두 준비되면 판을 시작한다 */
-  | { t: "fp"; k: "ready"; deal: number; from: number; shown?: number[] };
+  | { t: "fp"; k: "ready"; deal: number; from: number; shown?: number[] }
+  /**
+   * 원카드: 더미가 바닥나 버린 더미(맨 위 빼고, 이미 모두가 본 카드)를 덱 조각 `segment`로 다시 섞는다
+   * (`OnecardDeck.reshuffle`). 뒤따르는 `deck`의 `deal`은 `onecardDealId(round, segment)`다
+   */
+  | { t: "fp"; k: "reshuffle"; round: number; segment: number; cards: Card[] };

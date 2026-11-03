@@ -415,6 +415,18 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/cube-ai:
+    dependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../cube-solver
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../puzzle-core
+
   packages/cube-engine:
     dependencies:
       '@game/mighty-engine':
@@ -432,6 +444,10 @@ importers:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+    devDependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
 
   packages/cube-solver: {}
 
