@@ -4,6 +4,7 @@ import { GostopIconArt } from "@/gostop/components/GostopIcon";
 import { CHO_GLYPH, HAN_GLYPH } from "@/janggi/icon-glyphs";
 import { MinhwatuIconArt } from "@/minhwatu/components/MinhwatuIconArt";
 import { NyrongppongIconArt } from "@/nyrongppong/icon-art";
+import { OnecardIconArt } from "@/onecard/icon-art";
 import { StardrawIconArt } from "@/stardraw/icon-art";
 import { YutIconArt } from "@/yut/icon-art";
 
@@ -495,6 +496,7 @@ export function IconArt({
     | "baseball"
     | "stardraw"
     | "yut"
+    | "onecard"
     | "center";
 }) {
   if (game === "nyrongppong") return <NyrongppongIconArt maskable={maskable} />;
@@ -503,6 +505,7 @@ export function IconArt({
   if (game === "baseball") return <BaseballIconArt maskable={maskable} />;
   if (game === "stardraw") return <StardrawIconArt maskable={maskable} />;
   if (game === "yut") return <YutIconArt maskable={maskable} />;
+  if (game === "onecard") return <OnecardIconArt maskable={maskable} />;
   return (
     <div
       style={{

@@ -4,9 +4,28 @@ import type { RngState } from "@game/mighty-engine";
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
 
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
-export interface KitBot<View, Action> {
+export interface KitBot<View, Action, Event = unknown> {
   readonly name: string;
   decide(view: View, rng: RngState): Action;
+  /**
+   * 차례와 상관없는 반응(원카드 "원카드!" 외침·잡기). 판이 바뀔 때마다 컴퓨터 자리마다 불리고,
+   * 행동과 기다릴 시간을 돌려주면 대국을 돌리는 기기(LocalMatch)가 그 시간 뒤에 넣는다.
+   * 걸음마다 늘 불리고(사건을 빠짐없이 듣게), 새 계획을 주면 그 자리에 걸어 둔 앞 계획은 버린다. `events`는 이번 걸음의 사건
+   */
+  react?(
+    view: View,
+    events: readonly Event[],
+    rng: RngState,
+  ): { delayMs: number; action: Action } | null;
+}
+
+/** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
+export interface KitTimer<Action> {
+  key: string;
+  /** 시간이 다 되면 이 자리로 `action`을 넣는다 */
+  seat: number;
+  ms: number;
+  action: Action;
 }
 
 export type StepOutcome<State, Event> =
@@ -147,6 +166,20 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    * 시간이 다 되면 `timeout` 행동을 기록에 남긴다. 시계 자체는 엔진 상태에 있다
    */
   timing?: KitTiming<State, Action>;
+  /**
+   * 여러 개가 함께 열리는 시간 창(원카드 외침 창, docs/42 B안 7번). `timing`은 차례 시계 하나만 재고
+   * 수마다 다시 걸어, 수가 오가도 그대로 흘러야 하는 창에는 맞지 않는다. LocalMatch가 걸음마다 이 목록을 보고
+   * 새 `key`는 그때부터 재고, 사라진 `key`는 지운다
+   */
+  timers?(state: State): KitTimer<Action>[];
+  /**
+   * 사람·컴퓨터가 아니라 대국을 돌리는 기기가 바로 넣는 행동(원카드 다시 섞기). 없으면 null.
+   * `seed`는 대국 씨앗과 기록 길이로 만든 값이라 같은 기록이면 같은 행동이 나온다
+   */
+  autoAction?(
+    state: State,
+    seed: number,
+  ): { seat: number; action: Action } | null;
   /**
    * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
    * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
