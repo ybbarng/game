@@ -204,6 +204,135 @@ export function explainEscape(board: Board, move: Move): string[] {
   ];
 }
 
+/** 한 궁성의 대각선 위 점(모서리 넷과 가운데) */
+const HAN_PALACE_DIAGONAL = new Set(["14", "16", "25", "34", "36"]);
+
+/** 차·포·졸이 한 궁성 대각선을 따라 움직이는 수인가(가로·세로 수는 아니다) */
+export function palaceDiagonalMove(board: Board, move: Move): boolean {
+  const kind = board[move.from]?.[1];
+  if (kind !== "R" && kind !== "C" && kind !== "P") return false;
+  if (
+    !HAN_PALACE_DIAGONAL.has(pointName(move.from)) ||
+    !HAN_PALACE_DIAGONAL.has(pointName(move.to))
+  )
+    return false;
+  const [fx, fy] = xyOf(move.from);
+  const [tx, ty] = xyOf(move.to);
+  return fx !== tx && fy !== ty;
+}
+
+/** 궁성 공격을 말로 풀어 준다: 대각선으로 간 길과, 그 수로 얻는 것. 장면에서 엔진으로 만든다 */
+export function explainPalace(board: Board, move: Move): string[] {
+  const after = applyMove(board, move);
+  const moverKind = (board[move.from] as string)[1] as Kind;
+  const mover = KIND_NAMES[moverKind];
+  const [fx] = xyOf(move.from);
+  const [tx] = xyOf(move.to);
+  // 모서리에서 모서리로 가면 가운데(25)를 지난다. 포는 그 기물을 넘는다.
+  const jumped = Math.abs(tx - fx) === 2 ? (board[pointAt("25")] ?? "") : "";
+  const path =
+    moverKind === "C" && jumped !== ""
+      ? `가운데 ${obj(KIND_NAMES[jumped[1] as Kind])} 넘어`
+      : "";
+  const lines = [
+    `${obj(mover)} ${pointName(move.from)}에서 ${pointName(move.to)}로: 궁성 대각선을 따라 ${path ? `${path} ` : ""}간다`,
+  ];
+  const taken = board[move.to] ?? "";
+  const check = attackers(after, after.indexOf("hK")).length > 0;
+  if (isCheckmate(after, "h")) {
+    lines.push("장군! 궁이 피할 곳도, 막거나 잡을 길도 없어 외통이다");
+  } else if (taken !== "") {
+    const kind = taken[1] as Kind;
+    lines.push(
+      `${obj(KIND_NAMES[kind])} 잡는다(${PIECE_VALUE[kind]}점)${check ? ". 장군도 함께 부른다" : ""}`,
+    );
+  } else {
+    const next = pseudoTargets(after, move.to)
+      .filter(
+        (t) =>
+          after[t]?.startsWith("h") && after[t] !== "hK" && isBig(after[t]),
+      )
+      .map((t) => KIND_NAMES[(after[t] as string)[1] as Kind]);
+    const word = [...new Set(next)].join("·");
+    lines.push(
+      word
+        ? `장군! ${obj(word)} 함께 노려서, 한이 궁을 지키는 사이 잡는다`
+        : "장군! 한이 궁을 지키는 사이 다른 기물을 얻는다",
+    );
+  }
+  lines.push("차·포·졸은 궁성 안에서 선이 그어진 대각선으로도 다닌다");
+  return lines;
+}
+
+/**
+ * 공짜로 잡힐 내(초) 큰 기물(차·포·마): 한이 잡을 수 있는데 다시 잡을 기물이 없거나,
+ * 노리는 기물이 더 싸서 잡고 바꿔도 한이 이득인 것. `attackers`는 노리는 한 기물 자리
+ */
+export function hangingPieces(
+  board: Board,
+): { at: number; attackers: number[] }[] {
+  const out: { at: number; attackers: number[] }[] = [];
+  board.forEach((cell, at) => {
+    if (!cell.startsWith("c")) return;
+    const kind = cell[1] as Kind;
+    if (kind === "K" || PIECE_VALUE[kind] < 5) return;
+    const by: number[] = [];
+    let free = false;
+    board.forEach((other, from) => {
+      if (!other.startsWith("h") || !pseudoTargets(board, from).includes(at))
+        return;
+      by.push(from);
+      const taken = applyMove(board, { from, to: at });
+      const defended = attackers(taken, at, "c").length > 0;
+      const cheaper = PIECE_VALUE[other[1] as Kind] < PIECE_VALUE[kind];
+      if (!defended || cheaper) free = true;
+    });
+    if (free) out.push({ at, attackers: by });
+  });
+  return out;
+}
+
+/**
+ * 잡힐 기물 지키기를 말로 풀어 준다: 누가 무엇을 노리고, 정답이 비키기·지키기·막기 가운데 무엇인지.
+ * 장면에서 엔진으로 만든다
+ */
+export function explainDefend(board: Board, move: Move): string[] {
+  const threat = hangingPieces(board)[0];
+  if (!threat) return [];
+  const by = names(
+    threat.attackers.map((at) => (board[at] as string)[1] as Kind),
+  );
+  const lines = [
+    `한 ${by}${hasBatchim(by) ? "이" : "가"} ${pieceAt(board, threat.at, "을")} 공짜로 노린다`,
+  ];
+  const after = applyMove(board, move);
+  const mover = KIND_NAMES[(board[move.from] as string)[1] as Kind];
+  if (move.from === threat.at) {
+    lines.push(`${obj(mover)} ${pointName(move.to)}로 비킨다`);
+  } else {
+    const still = threat.attackers.some((from) =>
+      pseudoTargets(after, from).includes(threat.at),
+    );
+    // 노리던 포와 기물 사이에서 비킨 기물이면 포의 다리를 치운 것이다.
+    const bridge = threat.attackers.some(
+      (from) => board[from] === "hC" && between(from, threat.at, move.from),
+    );
+    lines.push(
+      still
+        ? `${obj(mover)} ${pointName(move.to)}로 옮겨 지킨다. 잡으면 다시 잡아 한이 손해다`
+        : bridge
+          ? `${obj(mover)} ${pointName(move.to)}로 옮겨 포의 다리를 치운다`
+          : `${obj(mover)} ${pointName(move.to)}에 놓아 노리는 길을 막는다`,
+    );
+  }
+  lines.push(
+    move.from === threat.at
+      ? "다른 곳으로 비키면 또 잡히거나 다른 기물을 잃는다. 비킬 곳이 안전한지 살핀다"
+      : "다른 수는 두 수 안에 기물을 잃는다",
+  );
+  return lines;
+}
+
 /** 푼 문제의 해설: 문제 종류에 맞는 풀이를 장면에서 만든다 */
 export function explainSolved(
   puzzle: JanggiPuzzle,
@@ -223,6 +352,10 @@ export function explainSolved(
       return explainMate(board, move);
     case "escape":
       return explainEscape(board, move);
+    case "palace":
+      return explainPalace(board, move);
+    case "defend":
+      return explainDefend(board, move);
   }
 }
 

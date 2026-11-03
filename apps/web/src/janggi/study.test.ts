@@ -4,6 +4,7 @@ import {
   applyMove,
   forcesMate,
   inCheck,
+  isCheckmate,
   type Kind,
   kingsFacing,
   legalMoves,
@@ -25,12 +26,16 @@ import {
   defenseFor,
   explainBlock,
   explainCannon,
+  explainDefend,
   explainEscape,
   explainFork,
   explainMate,
+  explainPalace,
   explainTrade,
+  hangingPieces,
   judgeMove,
   legBlock,
+  palaceDiagonalMove,
   parseMove,
   puzzleState,
 } from "./study";
@@ -316,5 +321,61 @@ describe("장군 풀기 문제", () => {
     const escapes = all.filter((p) => p.kind === "escape");
     const keys = escapes.map((p) => JSON.stringify(p.pieces));
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("궁성 공격 문제", () => {
+  it.each(rows(all.filter((p) => p.kind === "palace")))(
+    "%s: 정답이 궁성 대각선 위의 수이고 장군·외통·큰 기물 잡기를 만들며, 다른 모든 수보다 졸 하나 반 이상 낫다",
+    (_id, p) => {
+      const board = puzzleState(p).board;
+      const move = parseMove(p.solution);
+      expect(palaceDiagonalMove(board, move)).toBe(true);
+      const after = applyMove(board, move);
+      const taken = board[move.to]?.[1] as Kind | undefined;
+      expect(
+        inCheck(after, "h") ||
+          (taken !== undefined && taken !== "K" && PIECE_VALUE[taken] >= 5),
+      ).toBe(true);
+      // 외통이면 정답 말고는 한 수 외통이 없다. 외통이 아니면 한 수 외통이 아예 없다.
+      expect(mateInOneMoves(board, "c").map(name)).toEqual(
+        isCheckmate(after, "h") ? [p.solution] : [],
+      );
+      expectClearBest(p);
+      const lines = explainPalace(board, move);
+      expect(lines[0]).toMatch(/궁성 대각선을 따라/);
+      expect(lines[1]).toMatch(/외통이다|잡는다/);
+    },
+  );
+});
+
+describe("잡힐 기물 지키기 문제", () => {
+  it.each(rows(all.filter((p) => p.kind === "defend")))(
+    "%s: 한이 내 큰 기물 하나를 공짜로 노리는 조용한 판이고, 정답 뒤 공짜로 잡힐 기물이 없으며 정답이 둘째보다 졸 하나 반 이상 낫다",
+    (_id, p) => {
+      const board = puzzleState(p).board;
+      const move = parseMove(p.solution);
+      const threats = hangingPieces(board);
+      expect(threats).toHaveLength(1);
+      // 지금 잡을 수 있는 기물이 없는 조용한 판에서 낸다(노리는 기물을 잡아 끝내는 문제가 아니다).
+      expect(legalMoves(board, "c").every((m) => board[m.to] === "")).toBe(
+        true,
+      );
+      expect(hangingPieces(applyMove(board, move))).toEqual([]);
+      expectClearBest(p);
+      const lines = explainDefend(board, move);
+      expect(lines[0]).toMatch(/공짜로 노린다$/);
+      expect(lines[1]).toMatch(/비킨다|지킨다|막는다|치운다/);
+    },
+  );
+
+  it("피하기·지키기가 섞여 있다", () => {
+    const defends = all.filter((p) => p.kind === "defend");
+    const away = defends.filter((p) => {
+      const board = puzzleState(p).board;
+      return parseMove(p.solution).from === hangingPieces(board)[0]?.at;
+    });
+    expect(away.length).toBeGreaterThan(0);
+    expect(away.length).toBeLessThan(defends.length);
   });
 });

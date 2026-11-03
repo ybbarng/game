@@ -464,3 +464,33 @@ test("장기 수 배우기: 장군 풀기를 틀렸다 다시 풀고 해설을 �
   await expect(page.getByText(/장군 부른 차를 잡는다/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-escape.png") });
 });
+
+test("장기 수 배우기: 잡힐 기물 지키기를 틀렸다 다시 풀고 해설을 본다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "문제 화면 배치는 위 외통 문제 시험이 세 크기로 본다",
+  );
+  await page.goto("/janggi");
+  await page.getByRole("button", { name: /장기 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const defendSet = page.getByRole("region", { name: "잡힐 기물 지키기" });
+  await expect(defendSet.getByText("0/12")).toBeVisible();
+  await defendSet.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "노림을 받는 기물을 지키세요",
+  );
+
+  // 첫 문제(defend-1): 한 상이 차(39)를 노린다. 49로 비키면 손해이고, 29가 정답이다.
+  await tapPoint(page, "39", false);
+  await tapPoint(page, "49", false);
+  await expect(page.getByRole("status")).toHaveText("그 수로는 기물을 잃어요");
+  await page.getByRole("button", { name: "다시 하기" }).click();
+
+  await tapPoint(page, "39", false);
+  await tapPoint(page, "29", false);
+  await expect(page.getByRole("status")).toHaveText("잘 지켰어요!");
+  await expect(page.getByText(/차를 29로 비킨다/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("janggi-defend.png") });
+});
