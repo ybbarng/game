@@ -7,6 +7,7 @@ import {
   setupRace,
   sortPuzzle,
 } from "./race-fixture";
+import { DIFFERENT_VERSION } from "./race-session";
 import type { RaceGame, RaceResult } from "./types";
 
 /** 시작 상태 만들기(`prepare`)·시작 상태 지문(`startFingerprint`) 시험 */
@@ -194,6 +195,27 @@ describe("경주 틀: 시작 상태", () => {
     expect(r.players.p3).toMatchObject({
       status: "forfeit",
       reason: "섞기 어긋남",
+    });
+  });
+
+  it("3명에서 한 기기가 판정 설정 지문을 안 실으면(옛 판 화면) 그 사람만 「다른 판 화면」으로 빠진다", () => {
+    const { clock, devices } = setupRace(3, {}, (net) => {
+      net.filter = (m, from) => {
+        const msg = m as { type?: string; rules?: string };
+        if (from === "p3" && msg.type === "race-seed") delete msg.rules;
+        return m;
+      };
+    });
+    const [a, b] = devices as [Device, Device, Device];
+    autoSolve(clock, a, 300, 100);
+    autoSolve(clock, b, 500, 100);
+    runUntil(clock, finished([a, b]));
+    const r = a.session.snapshot().result as RaceResult;
+    expect(b.session.snapshot().result).toEqual(r);
+    expect(r.ranking).toEqual(["p1", "p2", "p3"]);
+    expect(r.players.p3).toMatchObject({
+      status: "forfeit",
+      reason: DIFFERENT_VERSION,
     });
   });
 
