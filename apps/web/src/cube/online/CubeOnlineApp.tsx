@@ -280,11 +280,6 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
               </button>
             </div>
           )}
-          {host && !bots && (
-            <p className="mt-2 text-white/50 text-xs">
-              컴퓨터는 2×2·3×3만 있습니다.
-            </p>
-          )}
         </div>
       </section>
       <section className="flex flex-col gap-3 rounded-2xl bg-white/5 p-3 text-sm">

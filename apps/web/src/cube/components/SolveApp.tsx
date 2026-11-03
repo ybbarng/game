@@ -343,7 +343,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               />
             </dl>
             {records.length === 0 ? (
-              <p className="text-white/50 text-xs">아직 기록이 없습니다.</p>
+              <p className="text-white/50 text-xs">아직 기록이 없습니다</p>
             ) : (
               <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
                 {records.slice(0, 30).map((r, i) => (

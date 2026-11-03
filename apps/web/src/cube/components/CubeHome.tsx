@@ -23,8 +23,7 @@ const ITEMS: Item[] = [
   {
     icon: "🧊",
     title: "혼자 맞추기",
-    detail:
-      "키보드(휴대폰은 밀기)로 가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7)",
+    detail: "가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7)",
     href: "/cube/solo",
     primary: true,
   },
