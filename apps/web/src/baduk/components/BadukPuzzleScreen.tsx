@@ -32,8 +32,11 @@ import {
 } from "../study";
 import { BadukBoard } from "./BadukBoard";
 
-/** 잡기 문제 모양마다 보이는 글 */
-const CAPTURE_TEXT: Record<CaptureTheme, { prompt: string; hint: string }> = {
+/** 잡기 문제 모양마다 보이는 글. `follow`는 둘째 수부터의 안내(없으면 "계속 몰아 따내세요") */
+const CAPTURE_TEXT: Record<
+  CaptureTheme,
+  { prompt: string; hint: string; follow?: string }
+> = {
   atari: {
     prompt: "△ 백 돌을 따내세요",
     hint: "단수를 어느 쪽에서 치느냐가 중요해요. 백이 넓은 쪽으로 못 나오게 막아요",
@@ -45,6 +48,16 @@ const CAPTURE_TEXT: Record<CaptureTheme, { prompt: string; hint: string }> = {
   net: {
     prompt: "장문으로 △ 백 돌을 잡으세요",
     hint: "바로 단수 치면 달아나요. 한 칸 떨어져 길을 막아 봐요",
+  },
+  snapback: {
+    prompt: "한 점을 내주고 △ 백 돌을 되따내세요",
+    hint: "백 무리에 붙은 빈 자리에 일부러 들어가 봐요. 따이더라도 다시 두면 더 많이 따내요",
+    follow: "같은 자리에 다시 두어 되따내세요",
+  },
+  ko: {
+    prompt: "패를 따내며 △ 백 돌을 잡으세요",
+    hint: "백 돌 하나를 따내면서 △ 백 돌을 단수로 만드는 자리를 찾아요",
+    follow: "백은 되따내지 못했어요. 이제 따내세요",
   },
 };
 
@@ -126,7 +139,7 @@ function BadukPuzzleRun({
   const goal = capture
     ? run.step === 0
       ? capture.prompt
-      : "계속 몰아 따내세요"
+      : (capture.follow ?? "계속 몰아 따내세요")
     : live
       ? "△ 흑 무리를 살리세요"
       : "△ 백 무리를 잡으세요";

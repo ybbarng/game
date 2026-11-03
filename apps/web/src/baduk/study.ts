@@ -67,7 +67,7 @@ export function judgeMove(
 
 /**
  * 상대(백)가 받는 수: 따내는 데 가장 오래 걸리게 버틴다. 버틸 수가 없으면 쉰다.
- * 같은 판은 늘 같은 수
+ * 같은 판 모양 금지를 지킨다(패를 바로 되따내지 않는다). 같은 판은 늘 같은 수
  */
 export function defenseFor(
   puzzle: BadukPuzzle,
@@ -76,7 +76,14 @@ export function defenseFor(
 ): Action {
   if (puzzle.kind !== "capture") return { type: "pass" };
   const left = Math.max(0, puzzle.within - step - 1);
-  const d = bestDefense(state.board, 1, targetOf(puzzle), left);
+  // 판 기록을 넘겨 패 되따내기(같은 판 모양)는 두지 않는다
+  const d = bestDefense(
+    state.board,
+    1,
+    targetOf(puzzle),
+    left,
+    state.positions,
+  );
   return d === null ? { type: "pass" } : { type: "place", at: d };
 }
 
@@ -121,6 +128,14 @@ export function explainSolved(
     net: [
       `${first}: 바로 단수 치지 않고 한 칸 떨어져 길을 막는다(장문)`,
       "백이 어느 쪽으로 나와도 다음 단수에 잡힌다",
+    ],
+    snapback: [
+      `${first}: 일부러 한 점을 내준다(먹여치기). 백 무리는 단수가 된다`,
+      `백이 이 돌을 따내도 활로가 하나뿐이라, 흑이 ${first}에 다시 두어 되따낸다(환격)`,
+    ],
+    ko: [
+      `${first}: 패를 따내며 단수를 친다`,
+      "백은 바로 되따낼 수 없다(같은 판 모양 금지). 한 번 다른 곳에 두어야 해서 달아날 틈이 없다",
     ],
   };
   return [

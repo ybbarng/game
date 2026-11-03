@@ -2,11 +2,14 @@
 import {
   captureMoves,
   groupOf,
+  koRecapturePoint,
   lifeKeyMoves,
   lifeWrongMovesFail,
   passAliveStones,
   pointName,
+  snapbackGain,
   step,
+  tryPlace,
 } from "@game/baduk-engine";
 import { describe, expect, it } from "vitest";
 
@@ -28,6 +31,8 @@ type Life = Extract<BadukPuzzle, { kind: "life" }>;
 const all = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles);
 const captures = all.filter((p): p is Capture => p.kind === "capture");
 const lives = all.filter((p): p is Life => p.kind === "life");
+const snapbacks = captures.filter((p) => p.theme === "snapback");
+const kos = captures.filter((p) => p.theme === "ko");
 const rows = <T extends { id: string }>(ps: T[]) =>
   ps.map((p) => [p.id, p] as const);
 const name = (p: number) => pointName(p, PUZZLE_SIZE);
@@ -120,6 +125,73 @@ describe("잡기 문제(단수 방향·축·장문)", () => {
     );
     expect(judgeMove(p, state, wrong, 0)).toBe("wrong");
   });
+});
+
+describe("환격 문제", () => {
+  it("묶음에 문제가 있다", () => {
+    expect(snapbacks.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it.each(rows(snapbacks))(
+    "%s: 첫 수는 한 점을 내주는 수이고, 백이 따내면 같은 자리에서 세 점 넘게 되따낸다",
+    (_id, p) => {
+      let state = puzzleState(p);
+      const target = targetOf(p);
+      const first = solutionOf(p);
+      expect(
+        snapbackGain(state.board, 1, target, first),
+      ).toBeGreaterThanOrEqual(3);
+      // 정답대로 두면 백은 내준 돌을 따낸다
+      const mine = step(state, 0, { type: "place", at: first });
+      if (!mine.ok) throw new Error(mine.error);
+      state = mine.state;
+      const reply = defenseFor(p, state, 0);
+      const theirs = step(state, 1, reply);
+      if (!theirs.ok) throw new Error(theirs.error);
+      expect(theirs.state.board[first]).toBe(0);
+      state = theirs.state;
+      // 같은 자리에 다시 두어 되따낸다
+      expect(judgeMove(p, state, first, 1)).toBe("solved");
+      const back = step(state, 0, { type: "place", at: first });
+      if (!back.ok) throw new Error(back.error);
+      expect(back.state.board[target]).toBe(0);
+      expect(back.state.prisoners[1] - state.prisoners[1]).toBeGreaterThan(1);
+    },
+  );
+});
+
+describe("패 문제", () => {
+  it("묶음에 문제가 있다", () => {
+    expect(kos.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it.each(rows(kos))(
+    "%s: 첫 수는 패를 따내는 수이고, 백은 같은 판 모양 금지로 바로 되따낼 수 없다",
+    (_id, p) => {
+      const state = puzzleState(p);
+      const target = targetOf(p);
+      const first = solutionOf(p);
+      const ko = koRecapturePoint(state.board, first, 1);
+      expect(ko).not.toBeNull();
+      const mine = step(state, 0, { type: "place", at: first });
+      if (!mine.ok) throw new Error(mine.error);
+      expect(groupOf(mine.state.board, target).liberties).toHaveLength(1);
+      // 돌 놓기만 보면 되따낼 수 있고, 되따내면 노리는 돌은 활로가 둘로 돌아온다
+      const retake = tryPlace(mine.state.board, ko as number, 2);
+      expect(retake.ok).toBe(true);
+      if (retake.ok)
+        expect(groupOf(retake.board, target).liberties).toHaveLength(2);
+      // 하지만 규칙(같은 판 모양 금지)이 막는다
+      expect(step(mine.state, 1, { type: "place", at: ko as number }).ok).toBe(
+        false,
+      );
+      // 백 응수도 되따내기를 고르지 않는다
+      expect(defenseFor(p, mine.state, 0)).not.toEqual({
+        type: "place",
+        at: ko,
+      });
+    },
+  );
 });
 
 describe("사활 문제(두 눈 만들기·눈 빼앗기)", () => {

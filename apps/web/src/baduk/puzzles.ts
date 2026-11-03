@@ -1,14 +1,15 @@
 /*
  * 바둑 첫 수 배우기 문제(docs/23, docs/25). 9줄 판의 작은 장면이고, 늘 흑(나)이 둔다. 자리는 "D4"처럼 쓴다.
  * 장면은 엔진으로 무작위 판을 만들어 "정답이 하나뿐인 판"을 찾아 골랐고, study.test.ts가 모든 문제를 다시 확인한다.
- * - 잡기(단수·축·장문): `captureMoves`로 `within`수 안에 노리는 돌을 따내는 첫 수가 정답 하나뿐이고, 더 빨리는 못 따낸다
+ * - 잡기(단수·축·장문·환격·패): `captureMoves`로 `within`수 안에 노리는 돌을 따내는 첫 수가 정답 하나뿐이고, 더 빨리는 못 따낸다.
+ *   환격은 첫 수가 한 점을 내주는 수(`snapbackGain`), 패는 첫 수가 패를 따내는 수(`koRecapturePoint`)다
  * - 사활(두 눈 만들기·눈 빼앗기): `lifeKeyMoves`로 정한 빈 자리 안의 첫 수 가운데 정답이 하나뿐이고,
  *   다른 수는 반대 결과(사는 문제면 잡히고, 잡는 문제면 산다)가 된다(`lifeWrongMovesFail`)
  * 해설은 장면에서 만든다(study.ts).
  */
 
-/** 잡기 문제의 모양: 단수 방향, 축, 장문 */
-export type CaptureTheme = "atari" | "ladder" | "net";
+/** 잡기 문제의 모양: 단수 방향, 축, 장문, 환격, 패 */
+export type CaptureTheme = "atari" | "ladder" | "net" | "snapback" | "ko";
 
 /**
  * 문제 하나. 늘 흑이 둔다.
@@ -211,6 +212,126 @@ const LADDERS: readonly RawCapture[] = [
   },
 ];
 
+/** 환격: 첫 수로 한 점을 내주고, 백이 따내면 같은 자리에 다시 두어 더 많이 되따낸다 */
+const SNAPBACKS: readonly RawCapture[] = [
+  {
+    black: ["A7", "B7", "C8"],
+    white: ["A8", "A9", "C9", "D9"],
+    target: "A8",
+    solution: "B9",
+    within: 2,
+  },
+  {
+    black: ["B3", "C2", "D1"],
+    white: ["A3", "B2", "B1", "C1"],
+    target: "B1",
+    solution: "A2",
+    within: 2,
+  },
+  {
+    black: ["G2", "H3", "J4"],
+    white: ["F1", "G1", "J1", "J2", "J3"],
+    target: "J1",
+    solution: "H1",
+    within: 2,
+  },
+  {
+    black: ["F3", "G2", "D1", "G1"],
+    white: ["E3", "D2", "F2", "F1"],
+    target: "F2",
+    solution: "E2",
+    within: 2,
+  },
+  {
+    black: ["E9", "G7", "H9", "H8"],
+    white: ["E8", "F7", "G9", "G8"],
+    target: "G9",
+    solution: "F8",
+    within: 2,
+  },
+  {
+    black: ["D4", "C3", "C5", "B3", "B6", "A3"],
+    white: ["C4", "B4", "B5", "A6", "A7"],
+    target: "C4",
+    solution: "A5",
+    within: 2,
+  },
+  {
+    black: ["J7", "H7", "G7", "F8"],
+    white: ["J8", "H8", "J9", "H9", "F9", "E9"],
+    target: "J8",
+    solution: "G9",
+    within: 2,
+  },
+  {
+    black: ["E4", "F5", "G2", "G5", "H3", "H4"],
+    white: ["E3", "F2", "G3", "G4"],
+    target: "G3",
+    solution: "F3",
+    within: 2,
+  },
+];
+
+/** 패: 첫 수로 패를 따내며 단수. 백은 같은 판 모양 금지로 바로 되따낼 수 없다 */
+const KOS: readonly RawCapture[] = [
+  {
+    black: ["A5", "B6", "B8"],
+    white: ["A6", "B7", "A8"],
+    target: "A8",
+    solution: "A7",
+    within: 2,
+  },
+  {
+    black: ["D8", "C7", "B8"],
+    white: ["D9", "C8", "B9"],
+    target: "B9",
+    solution: "C9",
+    within: 2,
+  },
+  {
+    black: ["F9", "G8", "H7"],
+    white: ["G9", "H8", "J9"],
+    target: "H8",
+    solution: "H9",
+    within: 2,
+  },
+  {
+    black: ["E5", "F6", "G5", "G3", "H5", "H3"],
+    white: ["E4", "F5", "F3", "G4"],
+    target: "G4",
+    solution: "F4",
+    within: 2,
+  },
+  {
+    black: ["E6", "E4", "D6", "D4", "C3", "B4"],
+    white: ["D5", "C6", "C4", "B5"],
+    target: "D5",
+    solution: "C5",
+    within: 2,
+  },
+  {
+    black: ["F1", "H2", "H4", "J5"],
+    white: ["G1", "H3", "J1", "J2", "J4"],
+    target: "J1",
+    solution: "J3",
+    within: 2,
+  },
+  {
+    black: ["A6", "B6", "C6", "B7", "D7", "D8", "C9"],
+    white: ["A7", "C7", "B8", "C8", "A9"],
+    target: "C7",
+    solution: "A8",
+    within: 2,
+  },
+  {
+    black: ["D7", "C9", "C8", "C6", "B8", "B5"],
+    white: ["C7", "B9", "B7", "B6", "A8", "A7"],
+    target: "C7",
+    solution: "A9",
+    within: 2,
+  },
+];
+
 const LIVE: readonly RawLife[] = [
   {
     black: ["C9", "D9", "G9", "C8", "F8", "G8", "C7", "D7", "E7", "F7"],
@@ -395,6 +516,18 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
     "장문",
     "바로 단수 치지 않고 한 칸 떨어져 길을 막는다. 어느 쪽으로 나와도 잡힌다",
     NETS,
+  ),
+  captureSet(
+    "snapback",
+    "환격(되따내기)",
+    "일부러 한 점을 내준다. 백이 따내면 그 자리에 다시 두어 더 많은 백 돌을 되따낸다",
+    SNAPBACKS,
+  ),
+  captureSet(
+    "ko",
+    "패 따내기",
+    "패를 따내며 단수를 친다. 백은 바로 되따낼 수 없어(같은 판 모양 금지) 달아날 틈이 없다",
+    KOS,
   ),
   lifeSet(
     "live",
