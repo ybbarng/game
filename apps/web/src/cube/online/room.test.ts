@@ -276,6 +276,44 @@ describe("큐브 경주 방: 남의 결과를 꾸미지 못한다", () => {
     expect(rooms.b.rounds[0]?.result).toEqual(rooms.h.rounds[0]?.result);
   });
 
+  it("판을 여는 방 상태에서 방장이 b에게만 a의 기기를 h로 바꿔 보내면 b는 그 표를 받지 않는다(사람은 자기 기기만)", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    // 방장 h가 b에게 가는 판 여는 방 상태만 고쳐 쓴다
+    net.filter = (m, from, to) => {
+      const msg = m as { type?: string; state?: RoomState };
+      if (
+        from === "h" &&
+        to === "b" &&
+        msg.type === "cube-room" &&
+        msg.state?.status === "racing"
+      )
+        for (const p of msg.state.players) if (p.id === "a") p.device = "h";
+      return m;
+    };
+    const rooms = Object.fromEntries(
+      (["h", "a", "b"] as const).map((id) => [
+        id,
+        new CubeRoom({
+          transport: net.join(id),
+          clock,
+          isHost: id === "h",
+          name: id,
+          scrambler: fake,
+          ...(id === "h" ? { settings: { n: 2, inspection: false } } : {}),
+        }),
+      ]),
+    ) as Record<"h" | "a" | "b", CubeRoom>;
+    clock.advance(100);
+    const lobby = rooms.b.state?.v;
+    expect(rooms.h.startRound()).toBe(true);
+    clock.advance(100);
+    expect(rooms.a.state?.status).toBe("racing");
+    expect(rooms.b.state?.v).toBe(lobby);
+    expect(rooms.b.state?.players.find((p) => p.id === "a")?.device).toBe("a");
+    expect(rooms.b.session()).toBeUndefined();
+  });
+
   it("판 도중 방장이 참가자 표를 바꾼 방 상태를 보내도 그 판은 열 때의 표대로 받는다", () => {
     const { clock, t, rooms } = attackSetup();
     solveWhenReleased(clock, rooms.a, 300);
