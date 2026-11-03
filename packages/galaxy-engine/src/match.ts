@@ -47,6 +47,7 @@ import {
 import {
   endsOnFirstBankrupt,
   type GalaxyRules,
+  meteorFor,
   NUMBERS,
   permille,
   round10,
@@ -112,6 +113,7 @@ export function createMatch(
     phase: "commit",
     round: 1,
     season: seasonFor(rules, 1),
+    meteor: meteorFor(rules, 1),
     starter,
     turn: {
       seat: starter,
@@ -183,8 +185,22 @@ export function isComplete(
   return squares.length > 0 && squares.every((sq) => state.owners[sq] === seat);
 }
 
-/** 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2) */
+/**
+ * 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2). 제철이면 1.5배(적어도 10 더),
+ * 유성우의 밤이면 그 값의 2배(2-12)
+ */
 export function rentOf(
+  state: Pick<
+    GalaxyState,
+    "board" | "owners" | "levels" | "mortgaged" | "season"
+  > & { meteor?: boolean },
+  square: number,
+): number {
+  const rent = baseRentOf(state, square);
+  return state.meteor ? round10(rent, NUMBERS.meteor) : rent;
+}
+
+function baseRentOf(
   state: Pick<
     GalaxyState,
     "board" | "owners" | "levels" | "mortgaged" | "season"
@@ -557,6 +573,9 @@ function endTurn(s: GalaxyState, events: GameEvent[]): void {
       s.season = season;
       if (season !== null) events.push({ type: "seasonChanged", season });
     }
+    const meteor = meteorFor(s.rules, s.round);
+    if (meteor && !s.meteor) events.push({ type: "meteorShower" });
+    s.meteor = meteor;
   }
   startTurn(s, next, events);
 }

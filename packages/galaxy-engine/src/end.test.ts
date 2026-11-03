@@ -5,10 +5,11 @@ import {
   debtPlan,
   legalActions,
   pendingSeats,
+  rentOf,
   standingsOf,
   step,
 } from "./match";
-import { LONG_RULES } from "./rules";
+import { LONG_RULES, STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 import { chainAction, must, paysOf, refused, roll, scene } from "./test-utils";
 
@@ -197,6 +198,26 @@ describe("끝과 순위(2-10)", () => {
     expect(state.season).toBe(1);
     expect(events).toContainEqual({ type: "seasonChanged", season: 1 });
     expect(state.turn.seat).toBe(0);
+  });
+
+  it("유성우의 밤: 마지막 두 돌림이 시작될 때 알리고, 그때부터 이용료 2배", () => {
+    let s = lastTurn({ round: 18, positions: [0, 0, 0, 29] });
+    expect(s.meteor).toBe(false);
+    s = roll(s, [1, 2]).state;
+    const { state, events } = must(s, 3, { type: "end" });
+    expect(state.round).toBe(19);
+    expect(state.meteor).toBe(true);
+    expect(events).toContainEqual({ type: "meteorShower" });
+    // 시리우스(14) 1단: 제철이 아닌 여름 돌림 40 → 80
+    const sirius = (round: number, rules = STANDARD_RULES) =>
+      scene({ round, rules, stars: [{ square: 14, owner: 1 }] });
+    expect(rentOf(sirius(18), 14)).toBe(40);
+    expect(rentOf(sirius(19), 14)).toBe(80);
+    expect(rentOf(sirius(20), 14)).toBe(80);
+    expect(rentOf(sirius(20, { ...STANDARD_RULES, meteor: false }), 14)).toBe(
+      40,
+    );
+    expect(scene({ round: 40, rules: LONG_RULES }).meteor).toBe(false);
   });
 
   it("시간 상한: 엔진 밖 시계가 알리면 그 돌림을 마치고 끝난다", () => {
