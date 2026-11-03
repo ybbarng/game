@@ -12,7 +12,7 @@ import {
   tryPlace,
 } from "@game/baduk-engine";
 
-import type { BadukPuzzle } from "./puzzles";
+import { type BadukPuzzle, LIFE_SHAPE_NAMES, type LifeShape } from "./puzzles";
 
 /** 문제 판 크기: 모두 9줄 판이다 */
 export const PUZZLE_SIZE = 9;
@@ -87,6 +87,38 @@ export function defenseFor(
   return d === null ? { type: "pass" } : { type: "place", at: d };
 }
 
+/** 이름 있는 눈 모양의 해설: 이름(풀이)과 급소, 덧붙일 말 */
+const SHAPE_TEXT: Record<
+  LifeShape,
+  { name: string; vital: string; note?: string }
+> = {
+  "straight-three": {
+    name: `${LIFE_SHAPE_NAMES["straight-three"]}(곧은 세 집)`,
+    vital: "가운데가 급소다",
+  },
+  "bent-three": {
+    name: `${LIFE_SHAPE_NAMES["bent-three"]}(구부러진 세 집)`,
+    vital: "꺾인 자리가 급소다",
+  },
+  "pyramid-four": {
+    name: LIFE_SHAPE_NAMES["pyramid-four"],
+    vital: "세 집에 붙은 가운데가 급소다",
+    note: "곧은 네 집(직사)·구부러진 네 집(곡사)은 상대가 한 곳을 막아도 다른 곳에 두면 두 눈이 되어 그대로 살고, 네모 네 집은 그대로 죽는다",
+  },
+  "flower-five": {
+    name: `${LIFE_SHAPE_NAMES["flower-five"]}(십자 다섯 집)`,
+    vital: "네 집에 붙은 한가운데가 급소다",
+  },
+  "bulky-five": {
+    name: LIFE_SHAPE_NAMES["bulky-five"],
+    vital: "네모 네 집에 한 집이 붙은 모양. 세 집에 붙은 자리가 급소다",
+  },
+  "rabbity-six": {
+    name: `${LIFE_SHAPE_NAMES["rabbity-six"]}(꽃 여섯 집)`,
+    vital: "네 집에 붙은 가운데가 급소다",
+  },
+};
+
 const COUNT = ["", "한", "두", "세", "네", "다섯", "여섯", "일곱", "여덟"];
 
 /** 푼 문제의 해설. 장면과 둔 수에서 만든다 */
@@ -97,6 +129,22 @@ export function explainSolved(
   movesPlayed: number,
 ): string[] {
   if (puzzle.kind === "life") {
+    if (puzzle.shape) {
+      const text = SHAPE_TEXT[puzzle.shape];
+      const lines =
+        puzzle.goal === "live"
+          ? [
+              `${text.name}: ${text.vital}`,
+              `${named(move)}에 두면 눈 자리가 떨어진 눈 둘 이상으로 나뉘어 산다`,
+              "백이 먼저 이 급소를 차지하면 한 눈뿐이라 잡힌다",
+            ]
+          : [
+              `${text.name}: ${text.vital}`,
+              `${named(move)}에 두면 백은 눈을 둘로 나눌 수 없다. 안을 채워 가면 끝내 따낸다`,
+              "백이 먼저 이 급소를 차지하면 두 눈이 되어 산다",
+            ];
+      return text.note ? [...lines, text.note] : lines;
+    }
     const placed = tryPlace(before, move, 1);
     const took = placed.ok ? placed.captured.length : 0;
     if (puzzle.goal === "live")
