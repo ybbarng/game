@@ -152,6 +152,8 @@ jobs:
           # 서버와 그 작업 공간 의존: stardraw-core, fair-play 와 fair-play 가 기대는 mighty-engine(engine)·mighty-ai(ai)·
           # hearts-engine·hwatu(묶음에 들어가지 않는 것도 있지만 package.json 의 dependencies 를 따라 넓게 본다)
           paths=(apps/stardraw-server packages/stardraw-core packages/fair-play packages/engine packages/ai packages/hearts-engine packages/hwatu package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json)
+          # 시험·세기 측정 파일은 서버 이미지에 들어가지 않는다. 그것만 바뀌었으면 다시 띄우지 않는다(관측지 방 메모리를 비우지 않게)
+          paths+=(':(exclude,glob)**/*.test.ts' ':(exclude,glob)**/*.test.tsx' ':(exclude,glob)**/*.strength.ts')
           if git diff --quiet "$prev" "$SHA" -- "${paths[@]}"; then
             echo "서버 파일이 ${prev:0:7} 뒤로 바뀌지 않아 서버 이미지·배포를 건너뛴다"
             echo "server=false" >> "$GITHUB_OUTPUT"

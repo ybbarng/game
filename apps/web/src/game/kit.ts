@@ -1,10 +1,31 @@
 import type { HwatuFairSpec } from "@game/fair-play";
 import type { RngState } from "@game/mighty-engine";
 
+import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
+
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
-export interface KitBot<View, Action> {
+export interface KitBot<View, Action, Event = unknown> {
   readonly name: string;
   decide(view: View, rng: RngState): Action;
+  /**
+   * 차례와 상관없는 반응(원카드 "원카드!" 외침·잡기). 판이 바뀔 때마다 컴퓨터 자리마다 불리고,
+   * 행동과 기다릴 시간을 돌려주면 대국을 돌리는 기기(LocalMatch)가 그 시간 뒤에 넣는다.
+   * 걸음마다 늘 불리고(사건을 빠짐없이 듣게), 새 계획을 주면 그 자리에 걸어 둔 앞 계획은 버린다. `events`는 이번 걸음의 사건
+   */
+  react?(
+    view: View,
+    events: readonly Event[],
+    rng: RngState,
+  ): { delayMs: number; action: Action } | null;
+}
+
+/** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
+export interface KitTimer<Action> {
+  key: string;
+  /** 시간이 다 되면 이 자리로 `action`을 넣는다 */
+  seat: number;
+  ms: number;
+  action: Action;
 }
 
 export type StepOutcome<State, Event> =
@@ -146,11 +167,62 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   timing?: KitTiming<State, Action>;
   /**
+   * 여러 개가 함께 열리는 시간 창(원카드 외침 창, docs/42 B안 7번). `timing`은 차례 시계 하나만 재고
+   * 수마다 다시 걸어, 수가 오가도 그대로 흘러야 하는 창에는 맞지 않는다. LocalMatch가 걸음마다 이 목록을 보고
+   * 새 `key`는 그때부터 재고, 사라진 `key`는 지운다
+   */
+  timers?(state: State): KitTimer<Action>[];
+  /**
+   * 사람·컴퓨터가 아니라 대국을 돌리는 기기가 바로 넣는 행동(원카드 다시 섞기). 없으면 null.
+   * `seed`는 대국 씨앗과 기록 길이로 만든 값이라 같은 기록이면 같은 행동이 나온다
+   */
+  autoAction?(
+    state: State,
+    seed: number,
+  ): { seat: number; action: Action } | null;
+  /**
    * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
    * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
    */
   // biome-ignore lint/suspicious/noExplicitAny: 화면 모양은 게임마다 다르다(손패·결정·판 번호만 쓴다)
   cardTable?: HwatuFairSpec<Rules, State, any, Action, Event>;
+  /**
+   * 실시간 청구(공정한 동시 판정 1층, docs/43). 있으면 온라인 방이 청구를 모두에게 직접 보내고(`ClaimHub`),
+   * 방장이 묶음으로 판정해 발표하며, 참가자가 같은 함수로 다시 계산해 맞춰 본다. 없으면 그 게임은 영향이 없다
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: 청구 내용·판·판정 모양은 게임마다 다르다
+  claims?: KitClaims<View, Action, any, any, any>;
+}
+
+/**
+ * 실시간 청구를 쓰는 게임이 채우는 것(docs/43 4-1 `KitRealtime`의 1층 부분).
+ * 판정은 늘 청구가 가리킨 판(`seen`) 기준이다. 벌칙·점수는 `action`이 돌려준 행동으로 엔진이 매긴다
+ */
+export interface KitClaims<
+  View,
+  Action,
+  Body = unknown,
+  Board = unknown,
+  Verdict = unknown,
+> {
+  /** 이 화면의 판 번호. 판이 바뀔 때(원카드: 카드가 열릴 때) 1씩 는다. 모든 자리에서 같아야 한다 */
+  stimulusOf(view: View): number;
+  /**
+   * 지난 판을 판정하려고 남길 최소한의 공개 정보(원카드: 맨 위 카드와 자리별 장 수). 모든 자리의 화면에서 같아야 한다.
+   * 각 기기가 판 번호마다 남겨 두고, 받은 청구를 그 판으로 다시 판정한다. JSON으로 견줄 수 있는 값
+   */
+  board(view: View): Board;
+  /** 청구 내용 모양 검사(받은 값은 믿지 않는다) */
+  isBody(body: unknown): body is Body;
+  /** `seen` 판에서 이 청구가 어떤가(순수 함수, 결과는 JSON으로 견줄 수 있는 값). 원카드: 외침·잡기·헛외침 */
+  judge(board: Board, claim: ClaimMessage<Body>): Verdict;
+  /**
+   * 방장 발표를 엔진 행동으로(방장 자리로 낸다). 기록에 남아 판 끝 검증(`replay`)이 같은 결과를 낸다.
+   * 넣을 것이 없으면 null
+   */
+  action(resolved: ClaimsResolved<Body, Verdict>): Action | null;
+  /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
+  rules?: Partial<ClaimRules>;
 }
 
 export interface KitTiming<State, Action> {
