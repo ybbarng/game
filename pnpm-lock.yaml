@@ -620,6 +620,15 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/onecard-ai:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/onecard-engine':
+        specifier: workspace:*
+        version: link:../onecard-engine
+
   packages/onecard-engine:
     dependencies:
       '@game/mighty-engine':
