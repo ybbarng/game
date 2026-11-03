@@ -25,7 +25,7 @@ import {
   verifyLedger,
   verifyReceipt,
 } from "@game/stardraw-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EntryError, type EntryInput, GATE_MISSING_MESSAGE } from "./engine";
 import { LocalRootLog } from "./outside";
@@ -63,6 +63,40 @@ const check = (
 
 const messages = (report: Awaited<ReturnType<typeof check>>) =>
   report.problems.map((p) => p.message);
+
+/**
+ * 시간 상한은 멈춘 시험을 잡는 안전장치일 뿐이다. 응모 하나에 서명·해시 같은 비동기 계산이 끼어 있어,
+ * 「setImmediate n번이면 끝나 있겠지」로 기다리면 부하 아래(CI·전체 시험 동시) 깨진다(2026-11-04 CI)
+ */
+const WAIT_LIMIT = { timeout: 10_000, interval: 2 };
+
+/** 조건이 맞을 때까지 기다린다 */
+async function until(ok: () => boolean): Promise<void> {
+  await vi.waitFor(() => {
+    if (!ok()) throw new Error("조건이 아직 맞지 않다");
+  }, WAIT_LIMIT);
+}
+
+/** 붙잡은 확인을 모두 푼다. 늦게 들어오는 확인까지 풀며, 모든 응모가 끝날 때까지 기다린다 */
+async function releaseAll(
+  held: ((ok: boolean) => void)[],
+  all: Promise<unknown>,
+): Promise<void> {
+  let settled = false;
+  void all.then(
+    () => {
+      settled = true;
+    },
+    () => {
+      settled = true;
+    },
+  );
+  await vi.waitFor(() => {
+    while (held.length > 0) held.shift()?.(true);
+    if (!settled) throw new Error("아직 끝나지 않은 응모가 있다");
+  }, WAIT_LIMIT);
+  await all;
+}
 
 describe("회차 진행: 응모 → 마감·봉인 → drand 추첨 → 공개 장부", () => {
   it("두 회차를 돌린 뒤 장부 파일만으로 처음부터 검사하면 문제가 없다", async () => {
@@ -749,9 +783,7 @@ describe("Argon2 줄이 가득할 때(docs/36 11-30)", () => {
         ),
       );
     }
-    for (let i = 0; i < 1000 && !full(); i++)
-      await new Promise((r) => setImmediate(r));
-    expect(full()).toBe(true);
+    await until(full);
 
     // 서명이 맞지 않는 응모(열쇠를 바꿔 끼움)도 서명까지 가지 않고 503
     const p = await player();
@@ -788,11 +820,7 @@ describe("Argon2 줄이 가득할 때(docs/36 11-30)", () => {
     });
 
     // 붙잡은 확인을 풀어 정리한다(앞의 둘이 끝나면 줄의 하나도 확인에 들어간다)
-    for (let i = 0; held.length > 0 || i < 3; i++) {
-      held.shift()?.(true);
-      await new Promise((r) => setImmediate(r));
-      if (i > 1000) break;
-    }
+    await releaseAll(held, Promise.all(pending));
     const results = await Promise.all(pending);
     expect(results).toEqual([null, null, null]);
   });
@@ -981,11 +1009,6 @@ describe("예측 몰림 숫자(docs/36 11-43)", () => {
     });
     await rig.at(EPOCH + 10);
     const gate = (rig.engine as unknown as { gate: { queued: number } }).gate;
-    const until = async (ok: () => boolean) => {
-      for (let i = 0; i < 1000 && !ok(); i++)
-        await new Promise((r) => setImmediate(r));
-      expect(ok()).toBe(true);
-    };
     const go = async () =>
       rejected(enter(rig, await player(), [1, 2, 3, 4, 5, 6]));
     // 실행 칸 2개(등록 계산에서 붙잡힘)와 줄 1칸을 채운다
@@ -1023,10 +1046,6 @@ describe("예측 몰림 숫자(docs/36 11-43)", () => {
     });
 
     // 붙잡은 확인을 풀어 정리한다
-    for (let i = 0; i < 1000 && (held.length > 0 || i < 3); i++) {
-      held.shift()?.(true);
-      await new Promise((r) => setImmediate(r));
-    }
-    await Promise.all(running);
+    await releaseAll(held, Promise.all(running));
   });
 });

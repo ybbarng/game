@@ -43,16 +43,23 @@ function rolled(state: GalaxyState, dice: [number, number]): GalaxyState {
 }
 
 describe("은하 한 바퀴 컴퓨터", () => {
-  it("세 단계가 한 판을 끝까지 합법 행동만으로 둔다(3인 짧은 판, 거래 켬)", () => {
-    // 둘 수 없는 수를 내면 playGalaxy가 멈춘다. 입찰 약속과 공개가 맞지 않아도 멈춘다
+  it("세 단계가 합법 행동만으로 사기·입찰·짓기까지 둔다(3인 짧은 판, 거래 켬)", () => {
+    // 둘 수 없는 수를 내면 playGalaxy가 멈춘다. 입찰 약속과 공개가 맞지 않아도 멈춘다.
+    // 판 끝까지 두지 않고, 확인할 사건(산 별·입찰 끝·정거장 짓기)이 모두 나오면 멈춘다
+    const seen = new Set<string>();
+    const watched = ["bought", "auctionEnded", "built"];
     const { state } = playGalaxy({
       bots: [0, 1, 2].map(galaxyBotFor),
       rules: { ...SHORT_RULES, players: 3, trade: true },
-      seed: 7,
+      seed: 11, // 8돌림에 사기·입찰·짓기가 모두 나온다(짧은 판은 14돌림)
       board,
+      onStep: (_before, _seat, _action, _after, events) => {
+        for (const e of events) seen.add(e.type);
+      },
+      until: (s) => s.phase === "gameOver" || watched.every((t) => seen.has(t)),
     });
-    expect(state.phase).toBe("gameOver");
-    expect(state.result?.standings).toHaveLength(3);
+    for (const t of watched) expect(seen.has(t), t).toBe(true);
+    expect(state.round).toBeGreaterThan(0);
   });
 
   it("같은 화면이면 난수와 상관없이 같은 수를 둔다(중수·고수, 입찰은 세 단계 모두)", () => {

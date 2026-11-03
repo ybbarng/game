@@ -33,6 +33,8 @@ export interface PlayOptions {
   onStep?: StepWatcher;
   /** 멈춘 판을 잡는 상한(걸음 수) */
   maxSteps?: number;
+  /** 참이 되면 판 끝 전이라도 멈춘다(시험이 확인할 지점까지만 둘 때) */
+  until?: (state: GalaxyState) => boolean;
 }
 
 /**
@@ -49,7 +51,7 @@ export function playGalaxy(options: PlayOptions): {
   const max = options.maxSteps ?? 200_000;
   for (let steps = 0; steps < max; steps++) {
     const seat = pendingSeats(state)[0];
-    if (seat === undefined) return { state, steps };
+    if (seat === undefined || options.until?.(state)) return { state, steps };
     const bot = options.bots[seat] as GalaxyBot;
     const action = bot.decide(viewOf(state, seat), rng);
     const result = step(state, seat, action);

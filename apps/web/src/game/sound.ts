@@ -122,7 +122,31 @@ export type Cue =
   /** 은하 한 바퀴: 우주국 지원금(작은 차임) */
   | "galaxySalary"
   /** 은하 한 바퀴: 봉인 입찰 봉투가 열리는 "스윽 톡" */
-  | "galaxyBid";
+  | "galaxyBid"
+  /** 원카드: 가운데 더미를 손바닥으로 치는 "탁!"(원카드!) */
+  | "onecardShout"
+  /** 원카드: 공격 카드(2·A·조커). 쌓인 장 수가 많으면 여러 번(`times`) */
+  | "onecardAttack"
+  /** 원카드: 공격을 받아쳐 막음 */
+  | "onecardBlock"
+  /** 원카드: 7로 무늬를 바꿈 */
+  | "onecardSuit"
+  /** 원카드: J 건너뛰기 */
+  | "onecardSkip"
+  /** 원카드: Q 방향 바꾸기 */
+  | "onecardReverse"
+  /** 원카드: K 한 번 더 */
+  | "onecardAgain"
+  /** 원카드: 더미에서 먹음 */
+  | "onecardDraw"
+  /** 원카드: 외치지 않아 잡힘 */
+  | "onecardCaught"
+  /** 원카드: 헛외침 */
+  | "onecardFalse"
+  /** 원카드: 버린 더미를 다시 섞음 */
+  | "onecardReshuffle"
+  /** 원카드: 손패를 다 냄 */
+  | "onecardOut";
 
 /** 소리 이름. 소리 미리 듣기 화면에 쓴다 */
 /**
@@ -195,6 +219,18 @@ export const CUE_LABELS: Record<Cue, string> = {
   galaxyAsteroid: "은하 한 바퀴: 소행성대",
   galaxySalary: "은하 한 바퀴: 지원금",
   galaxyBid: "은하 한 바퀴: 입찰 공개",
+  onecardShout: "원카드: 더미 치기(원카드!)",
+  onecardAttack: "원카드: 공격",
+  onecardBlock: "원카드: 막기",
+  onecardSuit: "원카드: 7 무늬 바꾸기",
+  onecardSkip: "원카드: J 건너뛰기",
+  onecardReverse: "원카드: Q 방향 바꾸기",
+  onecardAgain: "원카드: K 한 번 더",
+  onecardDraw: "원카드: 먹기",
+  onecardCaught: "원카드: 잡힘",
+  onecardFalse: "원카드: 헛외침",
+  onecardReshuffle: "원카드: 다시 섞기",
+  onecardOut: "원카드: 다 냄",
 };
 
 /**
@@ -256,6 +292,18 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   galaxyAsteroid: 0,
   galaxySalary: 0,
   galaxyBid: 0,
+  onecardShout: 5,
+  onecardAttack: 2,
+  onecardBlock: 7.5,
+  onecardSuit: -1.5,
+  onecardSkip: 4.3,
+  onecardReverse: -2,
+  onecardAgain: -3,
+  onecardDraw: 2.7,
+  onecardCaught: -3.3,
+  onecardFalse: 9.7,
+  onecardReshuffle: 0,
+  onecardOut: 0,
 };
 
 function trim(cue: Cue): number {
@@ -282,6 +330,8 @@ const BIG: ReadonlySet<Cue> = new Set<Cue>([
   "heartsBroken",
   "go",
   "ppong",
+  "onecardShout",
+  "onecardCaught",
 ]);
 
 interface Graph {
@@ -899,6 +949,7 @@ export function renderCue(
 
 /** 같은 소리를 이어서 낼 때 간격(초) */
 function gap(cue: Cue): number {
+  if (cue === "onecardAttack") return 0.16;
   return cue === "pickCard" ? 0.09 : 0.13;
 }
 
@@ -1482,6 +1533,125 @@ function render(cue: Cue, v: Voice): void {
         attack: 0.04,
       });
       pluck(v, C5 * 2, 0.2, 0.3, 0.1);
+      break;
+    case "onecardShout": {
+      // 손바닥으로 더미를 내리치는 "탁!": 넓은 마찰음, 묵직한 "쿵", 짧게 올려 외치는 소리
+      const vary = 0.95 + random() * 0.1;
+      noise(v, 0, 0.05, {
+        filter: "bandpass",
+        freq: 1800 * vary,
+        q: 0.7,
+        gain: 0.9,
+        attack: 0.001,
+      });
+      thump(v, 0, 140 * vary, 70, 0.14, 0.35);
+      tone(v, 620, 0.03, 0.16, {
+        type: "triangle",
+        gain: 0.1,
+        endFreq: 940,
+        attack: 0.005,
+      });
+      break;
+    }
+    case "onecardAttack":
+      // 공격: 낮게 울리는 "쿵"과 거친 바람
+      thump(v, 0, 120, 50, 0.22, 0.4);
+      noise(v, 0, 0.16, {
+        filter: "lowpass",
+        freq: 1400,
+        sweepTo: 300,
+        gain: 0.25,
+        attack: 0.002,
+      });
+      tap(v, 0, 0.6, 0.9);
+      break;
+    case "onecardBlock":
+      // 막기: 쇠끼리 맞부딪는 "챙"
+      tap(v, 0, 0.7, 1.2);
+      for (const f of [1180, 1760, 2350])
+        tone(v, f, 0.004, 0.28, { gain: 0.05, attack: 0.002 });
+      thump(v, 0, 160, 90, 0.08, 0.2);
+      break;
+    case "onecardSuit":
+      // 7로 무늬 바꾸기: 카드 내는 소리와 "띠링" 두 음
+      tap(v, 0);
+      pluck(v, E5, 0.05, 0.25, 0.12);
+      pluck(v, A5, 0.13, 0.4, 0.12);
+      break;
+    case "onecardSkip":
+      // J 건너뛰기: 카드와 위로 휙 지나가는 바람
+      tap(v, 0);
+      noise(v, 0.03, 0.18, {
+        filter: "bandpass",
+        freq: 900,
+        sweepTo: 4200,
+        q: 1.2,
+        gain: 0.35,
+        attack: 0.04,
+      });
+      break;
+    case "onecardReverse":
+      // Q 방향 바꾸기: 올라갔다 내려오는 "뾰-용"
+      tap(v, 0);
+      tone(v, 500, 0.03, 0.14, { type: "sine", gain: 0.18, endFreq: 1000 });
+      tone(v, 1000, 0.17, 0.16, { type: "sine", gain: 0.18, endFreq: 520 });
+      break;
+    case "onecardAgain":
+      // K 한 번 더: 톡톡 두 번과 올라가는 음
+      tap(v, 0);
+      tap(v, 0.09, 0.8, 1.2);
+      pluck(v, G5, 0.12, 0.3, 0.12);
+      break;
+    case "onecardDraw":
+      // 더미에서 집어 오는 "스윽"
+      noise(v, 0, 0.12, {
+        filter: "bandpass",
+        freq: 1500,
+        sweepTo: 2600,
+        q: 0.9,
+        gain: 0.35,
+        attack: 0.03,
+      });
+      tap(v, 0.1, 0.4, 0.8);
+      break;
+    case "onecardCaught":
+      // 잡힘: "삐-빅" 내려가는 경고음과 "쿵"
+      tone(v, 880, 0, 0.12, {
+        type: "square",
+        gain: 0.09,
+        attack: 0.004,
+        lowpass: 2400,
+      });
+      tone(v, 587.33, 0.13, 0.24, {
+        type: "square",
+        gain: 0.09,
+        endFreq: 440,
+        attack: 0.004,
+        lowpass: 2400,
+      });
+      thump(v, 0.13, 120, 60, 0.2, 0.25);
+      break;
+    case "onecardFalse":
+      // 헛외침: 낮게 "부-웅" 하는 버저
+      tone(v, 180, 0, 0.32, {
+        type: "sawtooth",
+        gain: 0.12,
+        endFreq: 140,
+        attack: 0.01,
+        lowpass: 900,
+      });
+      break;
+    case "onecardReshuffle":
+      // 버린 더미를 한 번 섞는 "촤르륵"
+      cut(v, 0);
+      riffle(v, 0.15);
+      break;
+    case "onecardOut":
+      // 다 냄: 맑은 종이 올라간다
+      pluck(v, C5, 0, 0.25, 0.12);
+      pluck(v, E5, 0.07, 0.25, 0.12);
+      pluck(v, G5, 0.14, 0.3, 0.12);
+      bell(v, C6, 0.22, 0.8, 0.07);
       break;
     case "roundEnd":
       // 점수표를 펼치는 "사락"과 "띵동"
