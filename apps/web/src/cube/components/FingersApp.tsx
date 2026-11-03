@@ -118,7 +118,6 @@ export function FingersApp() {
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">핑거 트릭</h1>
-          <span className="text-white/50 text-xs">실물 큐브를 들고 합니다</span>
         </header>
 
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
@@ -279,10 +278,7 @@ export function FingersApp() {
                     {laps.length}/{reps}
                   </span>
                 </div>
-                <p className="break-keep text-white/50 text-xs">
-                  Space로 시작한 뒤, 공식을 한 번 끝낼 때마다 Space. 한 번은{" "}
-                  {moves}수입니다.
-                </p>
+                <p className="text-white/50 text-xs">한 번 {moves}수</p>
                 {laps.length > 0 && (
                   <>
                     <LapChart laps={laps} tpsOf={tpsOf} reps={reps} />
@@ -311,7 +307,7 @@ export function FingersApp() {
                 )}
                 {phase === "done" && (
                   <p role="status" className="font-semibold text-emerald-300">
-                    {reps}번 끝! 「다시」로 한 번 더.
+                    {reps}번 끝
                   </p>
                 )}
               </div>

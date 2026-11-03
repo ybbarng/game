@@ -153,19 +153,12 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 경주는 키보드가 있는 기기(PC·노트북)에서만 참가할 수
-            있습니다. 이 링크를 PC에서 열어 주세요. 휴대폰은 「혼자 맞추기」에서
-            단추로 돌려 볼 수 있습니다.
+            온라인 경주는 키보드가 있는 기기에서만 참가할 수 있습니다
           </p>
         )}
 
         {!phone && phase === "name" && roomFromUrl !== undefined && (
           <section className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4">
-            <p className="text-sm">
-              {isHost
-                ? "방을 만들고 친구에게 링크를 보내세요. 2~8명이 같은 섞기로 겨룹니다."
-                : "친구의 경주 방에 들어갑니다."}
-            </p>
             <input
               value={name}
               maxLength={NAME_MAX}
@@ -187,12 +180,12 @@ export function CubeOnlineApp() {
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다. 새로고침해 다시 해 보세요.
+            연결하지 못했습니다
           </p>
         )}
         {room?.hostLeft && (
           <p role="status" className="text-center text-amber-300 text-sm">
-            방장이 나갔습니다. 방장이 돌아오면 이어집니다.
+            방장이 나갔습니다
           </p>
         )}
         {phase === "room" && room && !state && (
@@ -398,9 +391,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             onClick={() => room.startRound()}
             className="rounded-xl bg-sky-500 py-2 font-semibold text-black disabled:opacity-50"
           >
-            {state.players.length < 2
-              ? "두 명 이상이면 시작할 수 있습니다"
-              : "시작"}
+            {state.players.length < 2 ? "두 명부터 시작" : "시작"}
           </button>
         ) : (
           <p className="text-white/60 text-xs">방장이 시작하기를 기다리는 중</p>

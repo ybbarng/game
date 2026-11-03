@@ -44,14 +44,13 @@ function randomSeed(): number {
 }
 
 const PHASE_HINT: Record<string, string> = {
-  free: "「섞기」를 누르거나 Enter. 맞춘 큐브는 마음대로 돌려 볼 수 있습니다.",
-  inspect:
-    "살펴보기(15초). 큐브 돌리기(x·y·z)와 보기만 됩니다. 면을 돌리면 시간이 시작됩니다.",
-  ready: "면을 돌리면 시간이 시작됩니다.",
+  free: "",
+  inspect: "살펴보는 중",
+  ready: "준비",
   solving: "맞추는 중",
-  memo: "외우는 중. 면은 돌릴 수 없고 큐브 돌리기·보기만 됩니다. 다 외웠으면 Space(시작).",
-  blindSolve: "스티커가 모두 가려졌습니다. 다 맞췄다고 생각하면 Space(끝).",
-  done: "끝. 「섞기」로 다음 판.",
+  memo: "외우는 중",
+  blindSolve: "가린 채 맞추는 중",
+  done: "끝",
 };
 
 export function SolveApp({ mode }: { mode: SolveMode }) {
@@ -127,10 +126,9 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       if (session.n !== n) return;
       session.start(s.text, seed);
       sync();
-      if (!s.official)
-        setNotice("이 크기의 섞기는 아직 대회 방식(무작위 상태)과 다릅니다.");
+      if (!s.official) setNotice("임시 섞기");
     } catch {
-      setNotice("섞기를 만들지 못했습니다. 다시 눌러 주세요.");
+      setNotice("섞기를 만들지 못했습니다");
     } finally {
       setPreparing(false);
     }
@@ -140,7 +138,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
       const r = session.input(move, notation);
       if (r === "blocked") {
-        setNotice("외우는 동안에는 면을 돌릴 수 없습니다. 다 외웠으면 Space.");
+        setNotice("외우는 동안에는 면을 돌릴 수 없습니다");
         return false;
       }
       return true;
@@ -292,9 +290,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               className="min-h-10 break-keep text-center font-mono text-sm text-white/80"
               data-cube-scramble={session.scramble}
             >
-              {preparing
-                ? "섞기 준비 중… (처음에는 몇 초 걸립니다)"
-                : session.scramble || " "}
+              {preparing ? "섞기 준비 중…" : session.scramble || " "}
             </p>
             <p className="break-keep text-center text-white/55 text-xs">
               {replaying ? "다시 보는 중" : PHASE_HINT[phase]}
@@ -326,8 +322,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
 
           <aside className="flex flex-col gap-2 text-sm" data-cube-records>
             <h2 className="font-semibold">
-              {n}×{n} 기록{" "}
-              <span className="text-white/50 text-xs">(이 기기)</span>
+              {n}×{n} 기록
             </h2>
             <dl className="grid grid-cols-3 gap-1 text-center">
               <Stat label="최고" value={formatMs(best ?? undefined)} />

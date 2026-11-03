@@ -92,10 +92,6 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           핑거 트릭
         </a>
       </header>
-      <p className="break-keep text-sm text-white/70">
-        단원을 차례대로 따라 하면 끝까지 맞출 수 있습니다. 순서를 건너뛰어도
-        되지만, 처음이라면 3×3 초보자부터. 진도는 이 기기에만 남습니다.
-      </p>
       {last && (
         <a
           href={lessonHref(last.lesson.id)}
