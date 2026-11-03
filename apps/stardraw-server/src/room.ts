@@ -4,8 +4,10 @@ import type { Clock } from "@game/fair-play";
 import {
   drandRoundForClose,
   drandTime,
+  type Rank,
   ROOM_TEXT_MAX,
   type RoomModAction,
+  rankOf,
   roomCharCount,
   roomModMessage,
   roomPassMessage,
@@ -63,8 +65,9 @@ export interface RoomLimits {
   /** 시각 알림 사이(ms). 스트림이 끊기지 않게도 */
   heartbeatMs: number;
   /**
-   * 방 전체 말 빠르기(몰아서 roomSayBurst번, 그 뒤 roomSayIntervalMs마다 한 번). 말 하나는 모든 연결에 한 번씩 쓰여
-   * 연결 수만큼 일이 늘어난다. 화면은 풍등을 동시에 몇 개만 띄우므로 그보다 많은 말은 어차피 읽히지 않는다
+   * 언덕마다 전체 말 빠르기(몰아서 roomSayBurst번, 그 뒤 roomSayIntervalMs마다 한 번, docs/36 11-56). 말 하나는 그
+   * 언덕의 모든 연결(1번 언덕은 보는 연결도)에 한 번씩 쓰여 연결 수만큼 일이 늘어난다. 화면은 풍등을 동시에 몇 개만
+   * 띄우므로 그보다 많은 말은 어차피 읽히지 않는다
    */
   roomSayIntervalMs: number;
   roomSayBurst: number;
@@ -77,6 +80,11 @@ export interface RoomLimits {
    * 받는다). 받는 쪽이 느린 연결 때문에 서버 메모리가 쌓이지 않게
    */
   maxBufferedBytes: number;
+  /**
+   * 한 언덕에 앉힐 수 있는 사람 수(docs/36 11-56). 대화 표를 받을 때 아직 이만큼 차지 않은 가장 낮은 번호의 언덕에 앉힌다.
+   * 말·얼굴·전체 말 빠르기는 언덕마다 따로다. 사람이 이보다 적으면 언덕은 하나뿐이라 예전과 같다
+   */
+  hillSize: number;
 }
 
 export const DEFAULT_ROOM_LIMITS: RoomLimits = {
@@ -100,6 +108,7 @@ export const DEFAULT_ROOM_LIMITS: RoomLimits = {
   roomSayBurst: 16,
   cheerBatchMs: 1000,
   maxBufferedBytes: 256 * 1024,
+  hillSize: 40,
 };
 
 /** 방이 서버에서 읽는 것 */
@@ -126,6 +135,13 @@ export interface RoomDeps {
    * 방이 닫힐 때 숫자 요약 한 줄을 남길 곳(운영은 `[stardraw]` 서버 로그, docs/33 11절). 말 내용·열쇠·IP는 넣지 않는다
    */
   log?: (message: string) => void;
+  /**
+   * 회차 결과(빛난 별·보너스 별). 관측 뒤 1~3등의 말을 모든 언덕에 건네려고 읽는다(하늘 가운데 입상 소감, docs/36 11-56).
+   * 없으면 말은 늘 그 언덕에만 간다
+   */
+  record?: (
+    round: number,
+  ) => { numbers: number[]; bonus: number; void: boolean } | null;
 }
 
 /** 방 이벤트(스트림 한 줄) */
@@ -138,17 +154,37 @@ export type RoomEvent =
       entryDeadline: number;
       closesAt: number;
       me: string | null;
+      /** 이 연결이 보는 언덕의 얼굴만(docs/36 11-56) */
       people: Person[];
       watchers: number;
       sealed: boolean;
       drawn: boolean;
       picks: Picks | null;
+      /**
+       * 언덕 나누기(2026-11-03, 더하기만 한 항목): 이 연결이 보는 언덕 번호(1부터, 표 없이 보는 연결은 1번 언덕), 지금 언덕
+       * 수, 모든 언덕의 얼굴 수. 예전 화면은 모르는 항목이라 넘긴다
+       */
+      hill: number;
+      hills: number;
+      faces: number;
     }
   | { type: "time"; serverTime: number }
   | { type: "join"; person: Person }
   | { type: "leave"; id: string }
-  | { type: "watchers"; count: number }
-  | { type: "say"; id: string; from: string; text: string; at: number }
+  /** 보는 사람 수(1초마다). faces·hills는 언덕 나누기와 함께 더한 항목 */
+  | { type: "watchers"; count: number; faces: number; hills: number }
+  | {
+      type: "say";
+      id: string;
+      from: string;
+      text: string;
+      at: number;
+      /** 말한 사람의 언덕 */
+      hill: number;
+      /** 다른 언덕으로 가는 입상 소감에만: 말한 사람의 공개 열쇠와 고른 별(받는 화면에 그 얼굴이 없어 등수·얼굴을 계산하게) */
+      pub?: string;
+      picks?: number[];
+    }
   | {
       type: "cheer";
       from: string;
@@ -199,6 +235,20 @@ interface Pass {
   kicked: boolean;
   /** 봉인 전에 예측한 것을 한 번 보았으면 true(예측은 거두어지지 않으니 다시 묻지 않는다) */
   entered: boolean;
+  /** 앉은 언덕(1부터) */
+  hill: number;
+  /** 관측 뒤 1~3등이면 그 등수, 아니면 null(결과가 나온 뒤 한 번 계산, 그 전에는 undefined) */
+  rank?: Rank | null;
+}
+
+/** 언덕 하나(docs/36 11-56) */
+interface Hill {
+  /** 이 언덕에 앉힌 열쇠 수(나갔다 와도 자리는 그 사람 몫이라 줄지 않는다) */
+  seated: number;
+  /** 언덕 전체 말 빠르기 */
+  say: Bucket;
+  /** 아직 보내지 않은 반짝임(얼굴 → 수) */
+  twinkles: Map<string, number>;
 }
 
 /** 표마다 물통: 몰아서 burst번, 그 뒤 intervalMs마다 한 번씩 찬다 */
@@ -227,6 +277,8 @@ function takeToken(
 interface Connection {
   res: ServerResponse;
   pass: Pass | null;
+  /** 이 연결이 보는 언덕(표가 있으면 그 표의 언덕, 없으면 1번 언덕) */
+  hill: number;
   /** 이 연결이 들어온 때의 방 소식 번호(그 전에 모아 둔 소식은 인사에 이미 담겨 있어 보내지 않는다) */
   since: number;
 }
@@ -236,7 +288,21 @@ interface Outgoing {
   seq: number;
   text: string;
   except?: Connection;
+  /** 이 언덕의 연결에만(없으면 모두). directors면 국장 연결도 받는다 */
+  hill?: number;
+  directors?: boolean;
 }
+
+/** 소식을 건넬 곳(없으면 관측지 전체) */
+interface Scope {
+  hill: number;
+  directors?: boolean;
+}
+
+const reaches = (o: { hill?: number; directors?: boolean }, c: Connection) =>
+  o.hill === undefined ||
+  c.hill === o.hill ||
+  (o.directors === true && c.pass?.director === true);
 
 interface Room {
   round: number;
@@ -260,15 +326,17 @@ interface Room {
   drawnSent: boolean;
   closed: boolean;
   messageSeq: number;
-  /** 방 전체 말 빠르기 */
-  say: Bucket;
+  /** 언덕들(번호 = 자리 + 1)과 열쇠(hex)마다 앉은 언덕. 다시 표를 받아도 같은 언덕으로 */
+  hills: Hill[];
+  hillOf: Map<string, number>;
+  /** 얼굴 수가 바뀌었는지(언덕이 둘 이상일 때 1초마다 모두에게 알린다) */
+  facesDirty: boolean;
   /** 소식 번호와 아직 쓰지 않은 소식(defer가 있을 때만 쌓인다) */
   seq: number;
   outbox: Outgoing[];
   flushing: boolean;
-  /** 아직 보내지 않은 응원(cheerBatchMs마다 한 소식으로) */
+  /** 아직 보내지 않은 별똥별(cheerBatchMs마다 한 소식으로, 반짝임은 언덕마다) */
   meteors: number;
-  twinkles: Map<string, number>;
   cheerAt: number;
   /** 닫을 때 남길 숫자(관측지 요약): 가장 많았던 보는 연결·언덕 얼굴 수, 별똥별·반짝임 합 */
   peakWatchers: number;
@@ -361,9 +429,10 @@ export class RoomHub {
       seq: 0,
       outbox: [],
       flushing: false,
-      say: { tokens: this.limits.roomSayBurst, refillAt: this.nowMs() },
+      hills: [],
+      hillOf: new Map(),
+      facesDirty: false,
       meteors: 0,
-      twinkles: new Map(),
       cheerAt: this.nowMs(),
       peakWatchers: 0,
       peakFaces: 0,
@@ -475,6 +544,7 @@ export class RoomHub {
       if (p.pubHex === pubHex) room.passes.delete(t);
     if (room.passes.size >= this.limits.maxPasses)
       throw new EntryError("관측지가 가득 찼습니다", 503);
+    const hill = this.seat(room, pubHex);
     const token = toBase64Url(randomBytes(32));
     const pass: Pass = {
       token,
@@ -488,9 +558,41 @@ export class RoomHub {
       lastCheer: 0,
       kicked: false,
       entered: false,
+      hill,
     };
     room.passes.set(token, pass);
     return { pass: token, id: pass.id };
+  }
+
+  /**
+   * 열쇠가 앉을 언덕(docs/36 11-56): 앞서 앉은 적이 있으면 그 언덕, 아니면 아직 hillSize만큼 차지 않은 가장 낮은 번호의
+   * 언덕(먼저 채운다). 모두 찼으면 새 언덕
+   */
+  private seat(room: Room, pubHex: string): number {
+    const known = room.hillOf.get(pubHex);
+    if (known !== undefined) return known;
+    let i = room.hills.findIndex((h) => h.seated < this.limits.hillSize);
+    if (i < 0) {
+      room.hills.push({
+        seated: 0,
+        say: { tokens: this.limits.roomSayBurst, refillAt: this.nowMs() },
+        twinkles: new Map(),
+      });
+      i = room.hills.length - 1;
+    }
+    (room.hills[i] as Hill).seated += 1;
+    room.hillOf.set(pubHex, i + 1);
+    return i + 1;
+  }
+
+  /** 번호의 언덕(표를 받은 사람의 언덕은 늘 있다) */
+  private hill(room: Room, n: number): Hill {
+    return room.hills[n - 1] as Hill;
+  }
+
+  /** 지금 언덕 수(아무도 오르지 않았어도 1. 보는 연결은 1번 언덕을 본다) */
+  private hillCount(room: Room): number {
+    return Math.max(1, room.hills.length);
   }
 
   private passOf(room: Room, token: unknown): Pass {
@@ -533,11 +635,12 @@ export class RoomHub {
     };
   }
 
-  private people(room: Room): Person[] {
+  /** 그 언덕의 얼굴들 */
+  private people(room: Room, hill: number): Person[] {
     const seen = new Set<string>();
     const out: Person[] = [];
     for (const c of room.connections)
-      if (c.pass && !seen.has(c.pass.id)) {
+      if (c.pass && c.pass.hill === hill && !seen.has(c.pass.id)) {
         seen.add(c.pass.id);
         out.push(this.person(room, c.pass));
       }
@@ -576,15 +679,18 @@ export class RoomHub {
       "x-accel-buffering": "no",
       connection: "keep-alive",
     });
-    const conn: Connection = { res, pass, since: room.seq };
+    const hill = pass?.hill ?? 1;
+    const conn: Connection = { res, pass, hill, since: room.seq };
     const wasHere = pass ? this.hasFace(room, pass.id) : false;
     room.connections.add(conn);
     if (!pass) {
       room.watcherCount++;
       room.watchersDirty = true;
       room.peakWatchers = Math.max(room.peakWatchers, room.watcherCount);
-    } else if (!wasHere)
+    } else if (!wasHere) {
       room.peakFaces = Math.max(room.peakFaces, this.faceCount(room));
+      room.facesDirty = true;
+    }
     this.write(conn, {
       type: "hello",
       serverTime: this.nowMs(),
@@ -593,17 +699,22 @@ export class RoomHub {
       entryDeadline: room.entryDeadline,
       closesAt: room.closesAt,
       me: pass?.id ?? null,
-      people: this.people(room),
+      people: this.people(room, hill),
       watchers: room.watcherCount,
       sealed: this.deps.sealed(round),
       drawn: this.deps.drawn(round),
       picks: this.picks(room),
+      hill,
+      hills: this.hillCount(room),
+      faces: this.faceCount(room),
     });
+    // 들어옴·나감은 그 언덕에만
     if (pass && !wasHere)
       this.broadcast(
         room,
         { type: "join", person: this.person(room, pass) },
         conn,
+        { hill: pass.hill },
       );
     // 보는 사람 수는 드나들 때마다 모두에게 알리지 않고 1초마다 한 번(tick). 보는 연결이 많을 때 소식이 연결 수의
     // 제곱으로 늘지 않게
@@ -617,8 +728,12 @@ export class RoomHub {
         room.watchersDirty = true;
       }
       if (room.closed) return;
-      if (conn.pass && !this.hasFace(room, conn.pass.id))
-        this.broadcast(room, { type: "leave", id: conn.pass.id });
+      if (conn.pass && !this.hasFace(room, conn.pass.id)) {
+        room.facesDirty = true;
+        this.broadcast(room, { type: "leave", id: conn.pass.id }, undefined, {
+          hill: conn.pass.hill,
+        });
+      }
     });
   }
 
@@ -630,8 +745,24 @@ export class RoomHub {
   }
 
   private hasFace(room: Room, id: string): boolean {
-    for (const c of room.connections) if (c.pass?.id === id) return true;
-    return false;
+    return this.faceHill(room, id) !== null;
+  }
+
+  /** 얼굴이 보이는 언덕(지금 연결이 없으면 null) */
+  private faceHill(room: Room, id: string): number | null {
+    for (const c of room.connections) if (c.pass?.id === id) return c.pass.hill;
+    return null;
+  }
+
+  /** 결과가 나온 뒤 이 사람이 1~3등인지(입상 소감 후보). 결과와 고른 별은 바뀌지 않아 표마다 한 번만 계산한다 */
+  private topRank(room: Room, pass: Pass): Rank | null {
+    if (pass.rank !== undefined) return pass.rank;
+    const record = this.deps.record?.(room.round);
+    if (!record) return null;
+    const chosen = this.sealedPicks(room)?.byPub.get(pass.pubHex);
+    const rank = !record.void && chosen ? rankOf(record, chosen) : null;
+    pass.rank = rank !== null && rank <= 3 ? rank : null;
+    return pass.rank;
   }
 
   /** ④ 말하기 */
@@ -650,25 +781,42 @@ export class RoomHub {
       throw new EntryError("조금 천천히 말해 주세요", 429);
     if (
       !takeToken(
-        room.say,
+        this.hill(room, pass.hill).say,
         now,
         this.limits.roomSayIntervalMs,
         this.limits.roomSayBurst,
       )
     ) {
-      // 표 몫은 돌려준다(방이 붐빈 것이지 이 사람이 빠른 것이 아니다)
+      // 표 몫은 돌려준다(언덕이 붐빈 것이지 이 사람이 빠른 것이 아니다)
       pass.say.tokens = Math.min(this.limits.sayBurst, pass.say.tokens + 1);
       throw new EntryError("관측지가 붐벼요. 조금 뒤에 다시 말해 주세요", 429);
     }
+    // 말 번호는 관측지 전체에서 하나씩(신고가 언덕을 몰라도 되게)
     room.messageSeq += 1;
     const id = `${room.round}-${room.messageSeq}`;
-    this.broadcast(room, {
+    const event: RoomEvent = {
       type: "say",
       id,
       from: pass.id,
       text: clean,
       at: now,
-    });
+      hill: pass.hill,
+    };
+    // 관측 뒤 1~3등의 말은 모든 언덕에 건넨다(받는 화면이 관측 연출이 끝난 뒤 첫 말인지 보고 하늘 가운데 소감으로 띄우고,
+    // 다른 언덕의 그 밖의 말은 버린다). 다른 언덕 화면에는 그 얼굴이 없어 공개 열쇠와 고른 별(봉인 뒤 장부에 공개된 것)을 싣는다
+    const chosen = this.sealedPicks(room)?.byPub.get(pass.pubHex);
+    if (room.hills.length > 1 && chosen && this.topRank(room, pass) !== null)
+      this.broadcast(room, {
+        ...event,
+        pub: toBase64Url(pass.pub),
+        picks: [...chosen],
+      });
+    // 그 밖의 말은 그 언덕과 국장에게만
+    else
+      this.broadcast(room, event, undefined, {
+        hill: pass.hill,
+        directors: true,
+      });
     return { id };
   }
 
@@ -682,28 +830,38 @@ export class RoomHub {
     if (now - pass.lastCheer < this.limits.cheerIntervalMs)
       throw new EntryError("조금 천천히 응원해 주세요", 429);
     pass.lastCheer = now;
-    // 모아 두었다가 cheerBatchMs마다 수로 보낸다(tick). 얼굴이 없는 반짝임은 화면에 보일 곳이 없어 세지 않는다
+    // 모아 두었다가 cheerBatchMs마다 수로 보낸다(tick). 얼굴이 없는 반짝임은 화면에 보일 곳이 없어 세지 않는다.
+    // 별똥별은 하늘(관측지 전체)에, 반짝임은 그 얼굴이 있는 언덕에만 보인다(docs/36 11-56)
     if (kind === "meteor") {
       room.meteors += 1;
       room.meteorTotal += 1;
-    } else if (typeof to === "string" && this.hasFace(room, to)) {
-      room.twinkles.set(to, (room.twinkles.get(to) ?? 0) + 1);
+    } else if (typeof to === "string") {
+      const hill = this.faceHill(room, to);
+      if (hill === null) return;
+      const twinkles = this.hill(room, hill).twinkles;
+      twinkles.set(to, (twinkles.get(to) ?? 0) + 1);
       room.twinkleTotal += 1;
     }
   }
 
+  /** 언덕마다 한 소식: 관측지 전체의 별똥별 수와 그 언덕 얼굴의 반짝임. 언덕이 하나면 모두에게(예전과 같다) */
   private flushCheers(room: Room, now: number): void {
     if (now - room.cheerAt < this.limits.cheerBatchMs) return;
     room.cheerAt = now;
-    if (room.meteors === 0 && room.twinkles.size === 0) return;
-    const event: RoomEvent = {
-      type: "cheers",
-      meteor: room.meteors,
-      twinkle: Object.fromEntries(room.twinkles),
-    };
+    const meteor = room.meteors;
     room.meteors = 0;
-    room.twinkles.clear();
-    this.broadcast(room, event);
+    const many = room.hills.length > 1;
+    for (let n = 1; n <= this.hillCount(room); n++) {
+      const twinkles = room.hills[n - 1]?.twinkles;
+      if (meteor === 0 && !twinkles?.size) continue;
+      const event: RoomEvent = {
+        type: "cheers",
+        meteor,
+        twinkle: Object.fromEntries(twinkles ?? []),
+      };
+      twinkles?.clear();
+      this.broadcast(room, event, undefined, many ? { hill: n } : undefined);
+    }
   }
 
   /** 신고: 국장 화면에서 그 말 옆에 수가 보인다(말은 남기지 않으므로 수만) */
@@ -807,9 +965,16 @@ export class RoomHub {
         continue;
       }
       this.flushCheers(room, now);
-      if (room.watchersDirty) {
+      // 언덕이 둘 이상이면 얼굴 수(관측지 전체)가 바뀔 때도 알린다. 하나면 화면이 들어옴·나감으로 센다
+      if (room.watchersDirty || (room.facesDirty && room.hills.length > 1)) {
         room.watchersDirty = false;
-        this.broadcast(room, { type: "watchers", count: room.watcherCount });
+        room.facesDirty = false;
+        this.broadcast(room, {
+          type: "watchers",
+          count: room.watcherCount,
+          faces: this.faceCount(room),
+          hills: this.hillCount(room),
+        });
       }
       for (const [n, until] of room.usedNonces)
         if (until < now) room.usedNonces.delete(n);
@@ -823,7 +988,7 @@ export class RoomHub {
 
   /**
    * 관측지 요약 한 줄(docs/33 11절): 가장 많았던 보는 사람(언덕 아래 연결)·언덕 얼굴, 언덕에 오른 사람(표를 받은 열쇠 수),
-   * 말·신고한 말·별똥별·반짝임 수. 숫자만 남긴다
+   * 언덕 수(docs/36 11-56), 말·신고한 말·별똥별·반짝임 수. 숫자만 남긴다
    */
   private logSummary(room: Room): void {
     this.deps.log?.(
@@ -832,6 +997,7 @@ export class RoomHub {
         peakWatchers: room.peakWatchers,
         peakFaces: room.peakFaces,
         hill: room.passes.size,
+        hills: this.hillCount(room),
         says: room.messageSeq,
         reported: room.reports.size,
         meteors: room.meteorTotal,
@@ -872,16 +1038,30 @@ export class RoomHub {
     res.write(text);
   }
 
-  /** 소식 글을 한 번만 만들어 모든 연결에 같은 글로 쓴다(연결마다 JSON을 다시 만들지 않는다) */
-  private broadcast(room: Room, event: RoomEvent, except?: Connection): void {
+  /**
+   * 소식 글을 한 번만 만들어 받을 연결 모두에 같은 글로 쓴다(연결마다 JSON을 다시 만들지 않는다). scope가 있으면 그
+   * 언덕(과 국장)에만
+   */
+  private broadcast(
+    room: Room,
+    event: RoomEvent,
+    except?: Connection,
+    scope?: Scope,
+  ): void {
     const text = `data: ${JSON.stringify(event)}\n\n`;
     room.seq += 1;
     const defer = this.deps.defer;
     if (!defer) {
-      for (const c of room.connections) if (c !== except) this.send(c, text);
+      for (const c of room.connections)
+        if (c !== except && (!scope || reaches(scope, c))) this.send(c, text);
       return;
     }
-    room.outbox.push({ seq: room.seq, text, ...(except ? { except } : {}) });
+    room.outbox.push({
+      seq: room.seq,
+      text,
+      ...(except ? { except } : {}),
+      ...scope,
+    });
     if (!room.flushing) {
       room.flushing = true;
       defer(() => this.flush(room));
@@ -889,8 +1069,8 @@ export class RoomHub {
   }
 
   /**
-   * 모아 둔 소식을 연결마다 한 번에 쓴다. 대부분의 연결은 같은 글을 받으므로 그 글은 한 번만 만든다. 모으는 사이에 들어온
-   * 연결(인사에 이미 담김)과 제외할 연결만 따로 고른다
+   * 모아 둔 소식을 연결마다 한 번에 쓴다. 같은 언덕의 연결(국장은 따로)은 같은 글을 받으므로 그 글은 언덕마다 한 번만
+   * 만든다. 모으는 사이에 들어온 연결(인사에 이미 담김)과 제외할 연결만 따로 고른다
    */
   private flush(room: Room): void {
     room.flushing = false;
@@ -900,14 +1080,23 @@ export class RoomHub {
     const first = (out[0] as Outgoing).seq;
     const excepts = new Set<Connection>();
     for (const o of out) if (o.except) excepts.add(o.except);
-    const all = out.map((o) => o.text).join("");
+    const shared = new Map<string, string>();
     for (const c of room.connections) {
       if (c.since < first && !excepts.has(c)) {
-        this.send(c, all);
+        const key = `${c.hill}:${c.pass?.director ? 1 : 0}`;
+        let text = shared.get(key);
+        if (text === undefined) {
+          text = out
+            .filter((o) => reaches(o, c))
+            .map((o) => o.text)
+            .join("");
+          shared.set(key, text);
+        }
+        if (text) this.send(c, text);
         continue;
       }
       const mine = out
-        .filter((o) => o.seq > c.since && o.except !== c)
+        .filter((o) => o.seq > c.since && o.except !== c && reaches(o, c))
         .map((o) => o.text)
         .join("");
       if (mine) this.send(c, mine);

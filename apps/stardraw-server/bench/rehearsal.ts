@@ -344,6 +344,7 @@ async function main() {
     tickets: (round) => store.entries(round),
     entered: (round, pub) => store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => store.record(round) !== null,
+    record: (round) => store.record(round),
   });
   const inner = createHttpServer(engine, relay, {
     basePath: "/stardraw-api",

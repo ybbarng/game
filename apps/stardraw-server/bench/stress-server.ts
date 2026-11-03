@@ -119,6 +119,7 @@ async function main() {
     tickets: (round) => store.entries(round),
     entered: (round, pub) => store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => store.record(round) !== null,
+    record: (round) => store.record(round),
     // 같은 차례에 생긴 소식을 연결마다 한 번에 쓴다(들어옴 몰림·말 여럿)
     defer: (flush) => setImmediate(flush),
   });

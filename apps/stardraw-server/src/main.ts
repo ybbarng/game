@@ -154,6 +154,8 @@ async function main(): Promise<void> {
     tickets: (round) => store.entries(round),
     entered: (round, pub) => store.hasEntry(round, toHex(entrantId(pub))),
     drawn: (round) => store.record(round) !== null,
+    // 관측 뒤 1~3등의 말을 모든 언덕에(docs/36 11-56)
+    record: (round) => store.record(round),
     // 같은 차례에 생긴 소식을 연결마다 한 번에 쓴다(들어옴 몰림·말 여럿)
     defer: (flush) => setImmediate(flush),
     // 방이 닫힐 때 숫자 요약 한 줄(관측지)

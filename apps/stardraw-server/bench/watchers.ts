@@ -30,6 +30,7 @@ const hello: number[] = [];
 let sayLags: number[] = [];
 let allSayLags: number[] = [];
 let sayCount = 0;
+const hills: Record<string, number> = {};
 
 const q = (xs: number[], p: number) => {
   if (!xs.length) return null;
@@ -74,6 +75,11 @@ function connect(pass: string | undefined): void {
           const line = buf.slice(0, i);
           buf = buf.slice(i + 2);
           events++;
+          // 인사에 실린 언덕 번호(docs/36 11-56): 언덕마다 연결 수
+          if (line.includes('"type":"hello"')) {
+            const h = /"hill":(\d+)/.exec(line)?.[1] ?? "없음";
+            hills[h] = (hills[h] ?? 0) + 1;
+          }
           if (line.includes('"type":"say"')) {
             const m = /"text":"t(\d+)/.exec(line);
             if (m) {
@@ -124,6 +130,7 @@ const report = (final: boolean) => {
     helloP95: q(hello, 0.95),
     helloMax: hello.length ? Math.max(...hello) : null,
     says: sayCount,
+    hills,
     sayLagP50: q(sayLags, 0.5),
     sayLagP95: q(sayLags, 0.95),
     sayLagMax: sayLags.length ? Math.max(...sayLags) : null,

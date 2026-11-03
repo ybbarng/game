@@ -757,6 +757,7 @@ describe("관측지 요약 한 줄(docs/33 11절)", () => {
       peakWatchers: 2,
       peakFaces: 2,
       hill: 2,
+      hills: 1,
       says: 2,
       reported: 1,
       meteors: 1,
@@ -765,5 +766,259 @@ describe("관측지 요약 한 줄(docs/33 11절)", () => {
     // 말 내용·열쇠는 없다
     expect(line).not.toContain("시리우스");
     expect(line).not.toContain(toHex(alice.publicKey).slice(0, 16));
+  });
+});
+
+describe("언덕 나누기(docs/36 11-56)", () => {
+  let carol: SoftPasskey;
+  let dave: SoftPasskey;
+  let record: { numbers: number[]; bonus: number; void: boolean } | null;
+  let logs: string[];
+
+  beforeEach(async () => {
+    carol = softPasskeySigner(await generateSigner());
+    dave = softPasskeySigner(await generateSigner());
+    for (const k of [carol, dave]) registered.add(toHex(k.publicKey));
+    record = null;
+    logs = [];
+    hub.stop();
+    // 한 언덕에 둘(시험을 빠르게). 국장도 우주인처럼 자리를 차지한다
+    hub = new RoomHub(
+      {
+        clock,
+        policy: DEFAULT_WEBAUTHN_POLICY,
+        schedule: () => schedule,
+        isRegistered: (p) => registered.has(toHex(p)),
+        isDirector: (p) => toHex(p) === toHex(director.publicKey),
+        sealed: () => sealed,
+        tickets: () => tickets,
+        entered: (_r, p) => tickets.some((t) => toHex(t.pub) === toHex(p)),
+        drawn: () => record !== null,
+        record: () => record,
+        log: (m) => logs.push(m),
+      },
+      { ...DEFAULT_ROOM_LIMITS, hillSize: 2 },
+    );
+  });
+
+  /** 표를 받고 스트림을 연다 */
+  async function climb(who: SoftPasskey) {
+    const p = await passFor(who);
+    const res = new FakeRes();
+    hub.connect(ROUND, asRes(res), p.pass);
+    return { ...p, res };
+  }
+  const watch = () => {
+    const res = new FakeRes();
+    hub.connect(ROUND, asRes(res), undefined);
+    return res;
+  };
+
+  it("먼저 온 차례로 가장 낮은 번호의 빈 언덕에 앉히고, 같은 열쇠는 다시 받아도 같은 언덕", async () => {
+    const a = await climb(alice);
+    const b = await climb(bob);
+    const c = await climb(carol);
+    expect(a.res.of("hello")[0]).toMatchObject({ hill: 1, hills: 1 });
+    expect(b.res.of("hello")[0]).toMatchObject({ hill: 1 });
+    expect(c.res.of("hello")[0]).toMatchObject({ hill: 2, hills: 2 });
+    // alice가 나갔다가 표를 다시 받아도 1번 언덕(자리는 그 사람 몫이라 dave가 차지하지 못한다)
+    a.res.end();
+    const again = await climb(alice);
+    expect(again.res.of("hello")[0]).toMatchObject({ hill: 1 });
+    const d = await climb(dave);
+    expect(d.res.of("hello")[0]).toMatchObject({ hill: 2 });
+    // 보는 연결은 1번 언덕을 본다
+    expect(watch().of("hello")[0]).toMatchObject({ hill: 1, hills: 2 });
+  });
+
+  it("얼굴·들어옴·나감은 그 언덕에만, 관측지 전체 얼굴 수는 1초마다 함께 알린다", async () => {
+    const a = await climb(alice);
+    const b = await climb(bob);
+    const c = await climb(carol);
+    const w = watch();
+    expect(a.res.of("join").map((e) => e.person.id)).toEqual([b.id]);
+    expect(c.res.of("hello")[0]?.people.map((p) => p.id)).toEqual([c.id]);
+    expect(w.of("hello")[0]?.people.map((p) => p.id)).toEqual([a.id, b.id]);
+    expect(w.of("hello")[0]).toMatchObject({ faces: 3 });
+    const d = await climb(dave);
+    expect(c.res.of("join").map((e) => e.person.id)).toEqual([d.id]);
+    expect(a.res.of("join").map((e) => e.person.id)).toEqual([b.id]);
+    d.res.end();
+    expect(c.res.of("leave").map((e) => e.id)).toEqual([d.id]);
+    expect(a.res.of("leave")).toEqual([]);
+    clock.advance(1000);
+    expect(a.res.of("watchers").at(-1)).toEqual({
+      type: "watchers",
+      count: 1,
+      faces: 3,
+      hills: 2,
+    });
+  });
+
+  it("말은 그 언덕(1번 언덕이면 보는 연결도)과 국장에게만, 언덕 전체 말 빠르기도 언덕마다", async () => {
+    hub.stop();
+    hub = new RoomHub(
+      {
+        clock,
+        policy: DEFAULT_WEBAUTHN_POLICY,
+        schedule: () => schedule,
+        isRegistered: (p) => registered.has(toHex(p)),
+        isDirector: (p) => toHex(p) === toHex(director.publicKey),
+        sealed: () => false,
+        tickets: () => [],
+        entered: () => false,
+        drawn: () => false,
+      },
+      { ...DEFAULT_ROOM_LIMITS, hillSize: 2, roomSayBurst: 1 },
+    );
+    const a = await climb(alice);
+    const b = await climb(bob);
+    const c = await climb(carol);
+    const d = await climb(director);
+    const w = watch();
+    hub.say(ROUND, a.pass, "1번 언덕");
+    expect(status(() => hub.say(ROUND, b.pass, "붐빔"))).toBe(429);
+    // 2번 언덕의 몫은 따로
+    hub.say(ROUND, c.pass, "2번 언덕");
+    const texts = (r: FakeRes) => r.of("say").map((e) => e.text);
+    expect(texts(b.res)).toEqual(["1번 언덕"]);
+    expect(texts(w)).toEqual(["1번 언덕"]);
+    expect(texts(c.res)).toEqual(["2번 언덕"]);
+    // 국장(2번 언덕)은 모든 언덕의 말을 언덕 번호와 함께 받는다
+    expect(d.res.of("say").map((e) => [e.text, e.hill])).toEqual([
+      ["1번 언덕", 1],
+      ["2번 언덕", 2],
+    ]);
+    // 말 번호는 관측지 전체에서 하나씩
+    expect(d.res.of("say").map((e) => e.id)).toEqual([
+      `${ROUND}-1`,
+      `${ROUND}-2`,
+    ]);
+  });
+
+  it("별똥별은 모든 언덕에, 반짝임은 그 얼굴의 언덕에만", async () => {
+    const a = await climb(alice);
+    await climb(bob);
+    const c = await climb(carol);
+    hub.cheer(ROUND, a.pass, "meteor", null);
+    hub.cheer(ROUND, c.pass, "twinkle", c.id);
+    clock.advance(1000);
+    expect(a.res.of("cheers")).toEqual([
+      { type: "cheers", meteor: 1, twinkle: {} },
+    ]);
+    expect(c.res.of("cheers")).toEqual([
+      { type: "cheers", meteor: 1, twinkle: { [c.id]: 1 } },
+    ]);
+  });
+
+  it("관측 뒤 1~3등의 말은 모든 언덕에(공개 열쇠와 고른 별을 실어), 그 밖은 그 언덕에만", async () => {
+    tickets = [
+      { pub: carol.publicKey, numbers: [1, 2, 3, 4, 5, 6] },
+      { pub: alice.publicKey, numbers: [1, 2, 3, 20, 21, 22] },
+    ] as unknown as Ticket[];
+    sealed = true;
+    const a = await climb(alice);
+    await climb(bob);
+    const c = await climb(carol);
+    // 결과 전에는 그 언덕에만
+    hub.say(ROUND, c.pass, "두근두근");
+    expect(a.res.of("say")).toEqual([]);
+    record = { numbers: [1, 2, 3, 4, 5, 6], bonus: 7, void: false };
+    clock.advance(DEFAULT_ROOM_LIMITS.sayIntervalMs);
+    hub.say(ROUND, c.pass, "1등이에요");
+    expect(a.res.of("say")).toEqual([
+      expect.objectContaining({
+        text: "1등이에요",
+        hill: 2,
+        pub: Buffer.from(carol.publicKey).toString("base64url"),
+        picks: [1, 2, 3, 4, 5, 6],
+      }),
+    ]);
+    // 5등(alice)의 말은 그 언덕에만
+    hub.say(ROUND, a.pass, "5등이에요");
+    expect(c.res.of("say").map((e) => e.text)).toEqual([
+      "두근두근",
+      "1등이에요",
+    ]);
+  });
+
+  it("모아 쓸 때(운영 defer)도 언덕마다 제 소식만 한 번에", async () => {
+    const queued: (() => void)[] = [];
+    hub.stop();
+    hub = new RoomHub(
+      {
+        clock,
+        policy: DEFAULT_WEBAUTHN_POLICY,
+        schedule: () => schedule,
+        isRegistered: (p) => registered.has(toHex(p)),
+        isDirector: (p) => toHex(p) === toHex(director.publicKey),
+        sealed: () => false,
+        tickets: () => [],
+        entered: () => false,
+        drawn: () => false,
+        defer: (fn) => queued.push(fn),
+      },
+      { ...DEFAULT_ROOM_LIMITS, hillSize: 2 },
+    );
+    const a = await climb(alice);
+    const b = await climb(bob);
+    const c = await climb(carol);
+    const d = await climb(director);
+    const w = watch();
+    for (const fn of queued.splice(0)) fn();
+    hub.say(ROUND, a.pass, "하나");
+    hub.say(ROUND, c.pass, "둘");
+    hub.say(ROUND, b.pass, "셋");
+    for (const fn of queued.splice(0)) fn();
+    const texts = (r: FakeRes) => r.of("say").map((e) => e.text);
+    expect(texts(w)).toEqual(["하나", "셋"]);
+    expect(texts(a.res)).toEqual(["하나", "셋"]);
+    expect(texts(c.res)).toEqual(["둘"]);
+    expect(texts(d.res)).toEqual(["하나", "둘", "셋"]);
+    // carol은 1번 언덕의 들어옴을 받지 않았다
+    expect(c.res.of("join").map((e) => e.person.id)).toEqual([d.id]);
+  });
+
+  it("관측지 요약에 언덕 수", async () => {
+    await climb(alice);
+    await climb(bob);
+    await climb(carol);
+    clock.advance(
+      (DRAW_AT - (times.opensAt + 10)) * 1000 +
+        DEFAULT_ROOM_LIMITS.closeAfterMs,
+    );
+    expect(
+      JSON.parse((logs[0] as string).slice("관측지 ".length)),
+    ).toMatchObject({ hill: 3, hills: 2, peakFaces: 3 });
+  });
+});
+
+describe("언덕이 하나일 때는 예전과 같다(예전 화면 관점)", () => {
+  it("소식 차례와 내용이 같고, 더한 항목(hill·hills·faces)만 늘어난다", async () => {
+    const a = await passFor(alice);
+    const b = await passFor(bob);
+    const ra = new FakeRes();
+    hub.connect(ROUND, asRes(ra), a.pass);
+    hub.connect(ROUND, asRes(new FakeRes()), b.pass);
+    hub.say(ROUND, b.pass, "안녕");
+    hub.cheer(ROUND, b.pass, "twinkle", a.id);
+    // 얼굴만 드나들면 보는 사람 수 소식을 따로 보내지 않는다(언덕이 하나면 화면이 들어옴·나감으로 센다)
+    clock.advance(1000);
+    expect(ra.events.map((e) => e.type)).toEqual([
+      "hello",
+      "join",
+      "say",
+      "cheers",
+    ]);
+    expect(ra.of("hello")[0]).toMatchObject({ hill: 1, hills: 1, faces: 1 });
+    const say = ra.of("say")[0];
+    expect(say).toEqual({
+      type: "say",
+      id: `${ROUND}-1`,
+      from: b.id,
+      text: "안녕",
+      at: clock.now() - 1000,
+      hill: 1,
+    });
   });
 });
