@@ -82,8 +82,10 @@ test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) =>
   await expect(
     page.locator("[data-cube-stage][data-input-ready]"),
   ).toBeVisible();
+  // 밀기는 3D 그림이 있어야 한다. CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸려 기본 상한을 넘었다
+  // (멈춘 시험을 잡는 안전장치로 30초)
   const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
-  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
   const moves = page.locator("[data-cube-moves]");
   await expect(moves).toHaveText("0");
 
