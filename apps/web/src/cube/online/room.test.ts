@@ -36,7 +36,7 @@ function setup() {
     scrambler: fake,
   });
   clock.advance(100);
-  return { clock, host, guest };
+  return { clock, net, host, guest };
 }
 
 /** 내 경주가 풀리면 `delay` 뒤 섞기의 거꾸로를 한 번에 둔다 */
@@ -105,6 +105,17 @@ describe("큐브 경주 방", () => {
     host.removePlayer("g");
     expect(host.state?.settings.n).toBe(2);
     expect(host.state?.players).toHaveLength(2);
+  });
+
+  it("연결 아이디가 컴퓨터 아이디 모양(bot2)인 손님은 받지 않아 방이 멈추지 않는다", () => {
+    const { clock, net, host, guest } = setup();
+    net.join("bot2").send({ type: "cube-hello", name: "끼어든 사람" });
+    clock.advance(100);
+    host.addBot("expert");
+    clock.advance(100);
+    // 받았다면 손님은 그 뒤 방 상태(사람 bot2가 든 표)를 모두 버려 v가 멈춘다
+    expect(guest.state?.v).toBe(host.state?.v);
+    expect(guest.state?.players.map((p) => p.id)).toEqual(["h", "g", "bot1"]);
   });
 
   it("4×4 이상으로 바꾸면 컴퓨터를 뺀다(컴퓨터는 2×2·3×3만)", () => {

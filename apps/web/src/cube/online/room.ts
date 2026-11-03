@@ -371,6 +371,8 @@ export class CubeRoom {
     if (msg.type === "cube-hello" && this.isHost) {
       const s = this.state;
       if (!s || typeof msg.name !== "string") return;
+      // 컴퓨터 아이디 모양(`bot숫자`)의 사람을 표에 넣으면 정직한 손님이 방 상태를 모두 버려 방이 멈춘다
+      if (BOT_ID.test(from)) return;
       this.connected.add(from);
       const name = cleanName(msg.name) || "손님";
       const known = s.players.find((p) => p.id === from);
