@@ -51,6 +51,11 @@ export interface OnecardRules {
   catchWindowMs: 2000 | 3000 | 5000;
   /** 본인이 외치면 다른 사람들이 한 장씩 먹는다 */
   shoutReward: boolean;
+  /**
+   * 한 번 누름이 미리 외침(내 차례·두 장)과 잡기(남이 잡기 창 안) 둘 다에 해당하면 둘 다 한다.
+   * 오프라인에서 "원카드!" 한 번은 둘 다 되기 때문(docs/42 12-5). 없으면 켬. 끄면 미리 외침만
+   */
+  shoutBoth?: boolean;
 }
 
 export const STANDARD_ATTACK: AttackValues = {
@@ -74,6 +79,7 @@ export const STANDARD_ONECARD_RULES: OnecardRules = {
   selfWindowMs: 1000,
   catchWindowMs: 3000,
   shoutReward: false,
+  shoutBoth: true,
 };
 
 export const HAND_SIZE_OPTIONS = [7, 5] as const;
@@ -102,6 +108,7 @@ export function attackValue(card: OnecardCard, rules: OnecardRules): number {
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
  * 형식: `o1-p<인원>h<장 수>a<2>.<A>.<♠A>.<흑백 조커>.<컬러 조커>f<a|s|n>b<파산>e<0|1>c<잡기 벌칙>x<헛외침 벌칙>w<P>t<T>r<0|1>j<0|1>`
  * 예: 기본 `o1-p4h7a2.3.5.5.7fab20e0c1x1w1000t3000r0j0`
+ * `shoutBoth`를 끈 규칙만 끝에 `s0`이 붙는다(켠 규칙의 문자열은 옵션이 생기기 전과 같다)
  */
 export function encodeOnecardRules(rules: OnecardRules): string {
   const a = rules.attack;
@@ -112,7 +119,8 @@ export function encodeOnecardRules(rules: OnecardRules): string {
     `f${finish}b${rules.bankruptAt}e${rules.endOnFirst ? 1 : 0}` +
     `c${rules.catchPenalty}x${rules.falseShoutPenalty}` +
     `w${rules.selfWindowMs}t${rules.catchWindowMs}` +
-    `r${rules.shoutReward ? 1 : 0}j${rules.jokerColor ? 1 : 0}`
+    `r${rules.shoutReward ? 1 : 0}j${rules.jokerColor ? 1 : 0}` +
+    (rules.shoutBoth === false ? "s0" : "")
   );
 }
 
@@ -123,7 +131,7 @@ export function decodeOnecardRules(
 ): { ok: true; rules: OnecardRules } | { ok: false; reason: string } {
   const match = new RegExp(
     `^o1-p([2-5])h([57])a${ATTACK}\\.${ATTACK}\\.${ATTACK}\\.${ATTACK}\\.${ATTACK}` +
-      "f([asn])b(0|15|20|24)e([01])c([12])x([012])w(0|1000|2000)t(2000|3000|5000)r([01])j([01])$",
+      "f([asn])b(0|15|20|24)e([01])c([12])x([012])w(0|1000|2000)t(2000|3000|5000)r([01])j([01])(s0)?$",
   ).exec(text.trim());
   if (!match) return { ok: false, reason: "원카드 규칙 문자열 형식이 아니다" };
   const [
@@ -144,6 +152,7 @@ export function decodeOnecardRules(
     catchMs,
     reward,
     jokerColor,
+    noBoth,
   ] = match;
   const finishRule: Record<string, FinishRule> = {
     a: "attack",
@@ -173,6 +182,7 @@ export function decodeOnecardRules(
       catchWindowMs: Number(catchMs) as OnecardRules["catchWindowMs"],
       shoutReward: reward === "1",
       jokerColor: jokerColor === "1",
+      shoutBoth: noBoth === undefined,
     },
   };
 }
