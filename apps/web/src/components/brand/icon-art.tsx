@@ -1,5 +1,6 @@
 import { BaseballIconArt } from "@/baseball/icon-art";
 import { ChessPawnArt } from "@/chess/icon-art";
+import { GalaxyIconArt } from "@/galaxy/icon-art";
 import { GostopIconArt } from "@/gostop/components/GostopIcon";
 import { CHO_GLYPH, HAN_GLYPH } from "@/janggi/icon-glyphs";
 import { MinhwatuIconArt } from "@/minhwatu/components/MinhwatuIconArt";
@@ -495,6 +496,7 @@ export function IconArt({
     | "baseball"
     | "stardraw"
     | "yut"
+    | "galaxy"
     | "center";
 }) {
   if (game === "nyrongppong") return <NyrongppongIconArt maskable={maskable} />;
@@ -503,6 +505,7 @@ export function IconArt({
   if (game === "baseball") return <BaseballIconArt maskable={maskable} />;
   if (game === "stardraw") return <StardrawIconArt maskable={maskable} />;
   if (game === "yut") return <YutIconArt maskable={maskable} />;
+  if (game === "galaxy") return <GalaxyIconArt maskable={maskable} />;
   return (
     <div
       style={{

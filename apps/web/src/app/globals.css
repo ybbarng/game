@@ -142,6 +142,177 @@ html:has([data-game="stardraw"]) body {
   background: #070d19;
 }
 
+/* 은하 한 바퀴: 밤하늘 */
+html:has([data-game="galaxy"]),
+html:has([data-game="galaxy"]) body {
+  background: #070d1c;
+}
+
+/* 은하 한 바퀴 연출(시간은 galaxy/fx-timing.ts, 움직임 줄이기면 연출 자체가 없다) */
+@keyframes galaxy-twinkle {
+  0%,
+  100% {
+    opacity: var(--tw-o, 0.2);
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+.galaxy-twinkle {
+  animation: galaxy-twinkle 4.2s ease-in-out infinite;
+}
+/* 우주국 공문: 위에서 내려와 머물다 걷힌다 */
+@keyframes galaxy-paper {
+  0% {
+    transform: translateY(-60%) rotate(-2deg);
+    opacity: 0;
+  }
+  14% {
+    transform: translateY(0) rotate(-0.6deg);
+    opacity: 1;
+  }
+  88% {
+    transform: translateY(0) rotate(-0.6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-8%);
+    opacity: 0;
+  }
+}
+.galaxy-paper {
+  animation: galaxy-paper var(--galaxy-paper-ms, 2600ms)
+    cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 직인: 종이가 자리 잡은 뒤 찍힌다 */
+@keyframes galaxy-stamp {
+  0%,
+  22% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(0.94);
+    opacity: 0.95;
+  }
+  36%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+}
+.galaxy-stamp {
+  animation: galaxy-stamp var(--galaxy-paper-ms, 2600ms) ease-out both;
+}
+@keyframes galaxy-toast {
+  0% {
+    transform: translateY(8px) scale(0.96);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.galaxy-toast {
+  animation: galaxy-toast 1.3s ease-out both;
+}
+/* 별자리 완성: 이름이 아래에서 떠오른다 */
+@keyframes galaxy-name-rise {
+  0% {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  35%,
+  85% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.galaxy-name-rise {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: galaxy-name-rise 1.5s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes galaxy-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.7);
+  }
+}
+.galaxy-pulse {
+  animation: galaxy-pulse 0.65s ease-in-out 1;
+}
+@keyframes galaxy-sparkle {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(253, 230, 138, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(253, 230, 138, 0.95);
+  }
+}
+.galaxy-sparkle {
+  animation: galaxy-sparkle 0.8s ease-in-out 3;
+}
+/* 제철 변: 은은하게 빛난다 */
+.galaxy-season {
+  background-image: linear-gradient(
+    180deg,
+    rgba(253, 230, 138, 0.16),
+    rgba(253, 230, 138, 0.03)
+  );
+  outline: 1px solid rgba(253, 230, 138, 0.28);
+  outline-offset: -1px;
+}
+@keyframes galaxy-dice-shake {
+  0% {
+    transform: translate(0, -6%) rotate(-8deg);
+  }
+  50% {
+    transform: translate(0, 4%) rotate(8deg);
+  }
+  100% {
+    transform: translate(0, -6%) rotate(-8deg);
+  }
+}
+.galaxy-dice-shake {
+  animation: galaxy-dice-shake 0.18s linear infinite;
+}
+/* 결정 창: 아래에서 올라온다(나는 아래, docs/41 6절) */
+@keyframes galaxy-sheet {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.galaxy-sheet {
+  animation: galaxy-sheet 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-twinkle,
+  .galaxy-sheet,
+  .galaxy-dice-shake,
+  .galaxy-sparkle,
+  .galaxy-pulse {
+    animation: none;
+  }
+}
+
 /* 게임 목록 첫 화면: 당겨 넘칠 때 비치는 바탕도 첫 화면 색으로 */
 html:has([data-game="center"]),
 html:has([data-game="center"]) body {
