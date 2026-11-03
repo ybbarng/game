@@ -198,10 +198,6 @@ const ortega: Lesson = {
       alg: T_PERM,
       goal: "solved",
     },
-    {
-      kind: "text",
-      body: "나머지 공식은 훈련의 「오르테가 OLL」「오르테가 PBL」 묶음에서 하나씩 연습한다.",
-    },
   ],
 };
 
@@ -210,6 +206,6 @@ export const BEGINNER_222: Course = {
   size: 2,
   title: "2×2 처음 맞추기",
   summary:
-    "첫 층 → 윗면 → 윗층 자리. 3×3 공식 두 개면 된다. 끝에 오르테가 소개.",
+    "첫 층 → 윗면 → 윗층 자리. 3×3 공식 세 개(R U R' U', 수네, A퍼뮤)면 된다. 끝에 오르테가 소개.",
   lessons: [intro, firstLayer, topFace, topLayer, ortega],
 };
