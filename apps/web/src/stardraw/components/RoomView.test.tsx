@@ -625,7 +625,10 @@ describe("관측지의 앱 안 브라우저", () => {
       expect(notice.textContent).toContain(
         "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
       );
-      expect(notice.querySelector("[data-open-outside]")).not.toBeNull();
+      // 바깥으로 여는 단추는 안내가 뜬 다음 차례에 그려진다(주소를 화면에서 읽는다) — 조건으로 기다린다
+      await waitFor(() =>
+        expect(notice.querySelector("[data-open-outside]")).not.toBeNull(),
+      );
       // 같은 사람이 다시 눌러도 막지 않는다
       fireEvent.click(join);
       await waitFor(() => expect(createPasskey).toHaveBeenCalledTimes(2));
