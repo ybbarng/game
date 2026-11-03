@@ -1,4 +1,3 @@
-import { chessExpertBot } from "@game/chess-ai";
 import {
   applyMove,
   attacked,
@@ -18,6 +17,7 @@ import {
   viewOf,
 } from "@game/chess-engine";
 
+import { chessAdvisor } from "./advisor";
 import type { ChessPuzzle } from "./puzzles";
 
 /** 문제 장면에서 시작하는 판. 늘 백(나, 0번 자리)이 둘 차례다 */
@@ -49,9 +49,9 @@ export function judgeMove(
   return sameMove(move, solutionMove(puzzle)) ? "next" : "wrong";
 }
 
-/** 상대(흑)의 받는 수: 고수가 가장 오래 버티는 수를 고른다. 같은 문제는 늘 같은 수 */
+/** 상대(흑)의 받는 수: 고수(화면용 `chessAdvisor`)가 가장 오래 버티는 수를 고른다. 같은 문제는 늘 같은 수 */
 export function defenseFor(state: ChessState) {
-  return chessExpertBot.decide(viewOf(state, 1), { seed: 7 });
+  return chessAdvisor.decide(viewOf(state, 1), { seed: 7 });
 }
 
 /** 이 칸을 노리는 백 기물 종류 */

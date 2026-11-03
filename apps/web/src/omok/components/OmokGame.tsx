@@ -304,6 +304,7 @@ export function OmokGame({
             {(!online || myTurn) && (
               <ResignButton
                 resetKey={played}
+                onAsk={() => setAim(null)}
                 onResign={() => submit({ type: "resign" })}
               />
             )}

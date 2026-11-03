@@ -5,6 +5,7 @@ import {
   advance,
   allPaths,
   candidates,
+  keepWays,
   type LineNode,
   learnerToMove,
   lineDone,
@@ -82,11 +83,11 @@ describe("수순 따라 두기(공통 순수 함수)", () => {
   });
 });
 
-describe("대칭 변환으로 수 맞추기(matchMove)", () => {
-  // 9줄 바둑 좌표(I 없이 A~J). 왼쪽·오른쪽 뒤집기만 쓰는 간단한 두 방향
+describe("대칭 변환으로 수 맞추기(matchMove·keepWays)", () => {
+  // 9줄 바둑 좌표(I 없이 A~J). 왼쪽·오른쪽 뒤집기만 쓰는 간단한 두 방향. 쉬기는 그대로
   const COLS = "ABCDEFGHJ";
   const mirror = (p: string) =>
-    `${COLS[8 - COLS.indexOf(p[0] as string)]}${p.slice(1)}`;
+    p === "pass" ? p : `${COLS[8 - COLS.indexOf(p[0] as string)]}${p.slice(1)}`;
   const transforms = [(p: string) => p, mirror];
   const corner: StudyLine = {
     id: "line-corner",
@@ -99,14 +100,34 @@ describe("대칭 변환으로 수 맞추기(matchMove)", () => {
   const parse = (p: string) => p;
   const same = (a: string, b: string) => a === b;
 
-  it("방향이 정해지지 않았으면 뒤집은 자리도 맞고, 맞은 방향을 돌려준다", () => {
+  it("방향이 정해지지 않았으면 뒤집은 자리도 맞고, 맞은 방향만 남긴다", () => {
     const cursor = startCursor(corner);
-    expect(matchMove(cursor, "C3", parse, same, transforms, null)?.orient).toBe(
-      0,
-    );
+    expect(
+      matchMove(cursor, "C3", parse, same, transforms, null)?.orients,
+    ).toEqual([0]);
     const flipped = matchMove(cursor, "G3", parse, same, transforms, null);
-    expect(flipped?.orient).toBe(1);
+    expect(flipped?.orients).toEqual([1]);
     expect(flipped?.node.move).toBe("C3");
+  });
+
+  it("대칭인 자리(가운데 줄)는 두 방향이 함께 맞고, 뒤의 수가 좁힌다", () => {
+    const center: StudyLine = {
+      ...corner,
+      moves: [node("E5"), node("C3"), node("D4")],
+    };
+    const first = matchMove(
+      startCursor(center),
+      "E5",
+      parse,
+      same,
+      transforms,
+      null,
+    );
+    expect(first?.orients).toEqual([0, 1]);
+    // 상대가 첫 방향(그대로)으로 C3을 두면 C3이 되는 방향만 남는다
+    expect(keepWays(node("C3"), "C3", parse, same, transforms, [0, 1])).toEqual(
+      [0],
+    );
   });
 
   it("방향이 정해지면 그 방향만 본다", () => {
@@ -115,9 +136,9 @@ describe("대칭 변환으로 수 맞추기(matchMove)", () => {
       corner.moves[1] as LineNode,
     );
     if (!cursor) throw new Error("자리 없음");
-    expect(matchMove(cursor, "F3", parse, same, transforms, 1)?.node.move).toBe(
-      "D3",
-    );
-    expect(matchMove(cursor, "D3", parse, same, transforms, 1)).toBeNull();
+    expect(
+      matchMove(cursor, "F3", parse, same, transforms, [1])?.node.move,
+    ).toBe("D3");
+    expect(matchMove(cursor, "D3", parse, same, transforms, [1])).toBeNull();
   });
 });

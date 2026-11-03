@@ -67,6 +67,8 @@ function OmokPuzzleRun({
   const miss = useOmokStudyProgress((s) => s.miss);
   const [aim, setAim] = useState<number | null>(null);
   const run = usePuzzleRun<OmokState, number>({
+    // 오목은 돌 놓는 소리(잡기가 없어 둘 다 같다)
+    sounds: { move: "stone", capture: "stone" },
     initial: () => puzzleState(puzzle),
     judge: (state, move, at) => judgeMove(puzzle, state.board, move, at),
     apply: (state, move) => {

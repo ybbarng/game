@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { allPaths } from "@/study/line";
 
+import { learnerSide } from "./components/ChessLineScreen";
 import { CHESS_OPENINGS } from "./openings";
 
 describe("체스 오프닝 수순", () => {
@@ -50,5 +51,19 @@ describe("체스 오프닝 수순", () => {
             `${line.name} ${ply + 1}번째 수 ${node.move}`,
           ).toBeTruthy();
         });
+  });
+});
+
+describe("체스 수순의 배우는 편", () => {
+  const base = CHESS_OPENINGS[0];
+  if (!base) throw new Error("수순 없음");
+  it("처음 판에서는 learner 0이 백, 1이 흑", () => {
+    expect(learnerSide({ ...base, learner: 0 })).toBe("w");
+    expect(learnerSide({ ...base, learner: 1 })).toBe("b");
+  });
+  it("흑 차례로 시작하는 판이면 learner 0이 흑이다", () => {
+    const start = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    expect(learnerSide({ ...base, start, learner: 0 })).toBe("b");
+    expect(learnerSide({ ...base, start, learner: 1 })).toBe("w");
   });
 });

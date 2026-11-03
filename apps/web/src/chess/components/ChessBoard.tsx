@@ -12,7 +12,7 @@ import {
   squareName,
   xyOf,
 } from "@game/chess-engine";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { type PieceSet, useChessSettings } from "../settings";
 import {
@@ -27,8 +27,8 @@ const LIGHT = "#f0d9b5";
 /** 힌트(고수가 고른 수) 표시 */
 const HINT_COLOR = "#059669";
 
-/** 잡힐 기물 표시 */
-const DANGER_COLOR = "#dc2626";
+/** 잡힐 기물 표시(주황: 체크의 빨강과 가린다) */
+const DANGER_COLOR = "#f97316";
 
 /** 누른 채 이만큼(칸 단위) 넘게 움직이면 끌기로 본다. 손이 조금 흔들린 누르기는 끌기가 아니다 */
 const DRAG_THRESHOLD = 0.2;
@@ -143,7 +143,7 @@ export function ChessBoard({
   coordinates: boolean;
   /** 힌트: 고수가 고른 수의 출발(점선)·도착에 초록 고리(장기와 같은 모양) */
   hint?: Move | null;
-  /** 잡힐 수 있는 내 기물 칸(빨간 점선 네모) */
+  /** 잡힐 수 있는 내 기물 칸(주황 점선 네모) */
   danger?: readonly number[] | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
@@ -156,6 +156,12 @@ export function ChessBoard({
   } | null>(null);
   /** 끌어서 놓은 수. 손으로 옮겼으니 놓은 뒤 출발 칸에서 다시 미끄러져 오지 않게 한다 */
   const dropped = useRef<Move | null>(null);
+  // 마지막 수가 끌어서 둔 수가 아니게 되면(상대가 두었거나 무르면) 기억을 비운다.
+  useEffect(() => {
+    const d = dropped.current;
+    if (d && (lastMove?.from !== d.from || lastMove?.to !== d.to))
+      dropped.current = null;
+  }, [lastMove]);
   /** 누른 순간의 정보: 이번 누르기로 기물을 새로 골랐나, 누른 자리(끌기 시작 판단) */
   const down = useRef<{
     from: number;
@@ -470,7 +476,7 @@ export function ChessBoard({
           rx={0.08}
           fill="none"
           stroke={DANGER_COLOR}
-          strokeWidth={0.06}
+          strokeWidth={0.075}
           strokeDasharray="0.14 0.08"
           data-danger={squareName(i)}
           pointerEvents="none"

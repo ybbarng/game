@@ -17,6 +17,7 @@ export function ResignButton({
   resetKey,
   className = BOARD_BUTTON,
   keepLabel = "계속 두기",
+  onAsk,
 }: {
   onResign: () => void;
   /** 수가 오갔는지 알리는 값. 바뀌면 묻기를 닫는다 */
@@ -25,16 +26,25 @@ export function ResignButton({
   className?: string;
   /** 묻기를 닫는 단추 글(두는 게임이 아니면 「계속 하기」 등) */
   keepLabel?: string;
+  /** 「기권」을 눌러 묻기 시작할 때(오목은 겨눈 자리를 푼다) */
+  onAsk?: () => void;
 }) {
-  // 물었을 때의 resetKey를 적어 두고, 지금 값과 같을 때만 묻는 중으로 본다(수가 오가면 저절로 닫힌다).
-  const [askedAt, setAskedAt] = useState<{ key: unknown } | null>(null);
-  const asking = askedAt !== null && Object.is(askedAt.key, resetKey);
+  const [asking, setAsking] = useState(false);
+  // resetKey가 바뀌면(수가 오가거나 무르면) 묻기를 지운다. 무르기로 같은 수 개수에 돌아와도 다시 뜨지 않는다.
+  const [seenKey, setSeenKey] = useState(resetKey);
+  if (!Object.is(seenKey, resetKey)) {
+    setSeenKey(resetKey);
+    setAsking(false);
+  }
 
   if (!asking)
     return (
       <button
         type="button"
-        onClick={() => setAskedAt({ key: resetKey })}
+        onClick={() => {
+          onAsk?.();
+          setAsking(true);
+        }}
         className={className}
       >
         기권
@@ -46,7 +56,7 @@ export function ResignButton({
       <button
         type="button"
         onClick={() => {
-          setAskedAt(null);
+          setAsking(false);
           onResign();
         }}
         className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
@@ -55,7 +65,7 @@ export function ResignButton({
       </button>
       <button
         type="button"
-        onClick={() => setAskedAt(null)}
+        onClick={() => setAsking(false)}
         className={className}
       >
         {keepLabel}

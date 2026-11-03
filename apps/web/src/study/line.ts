@@ -1,6 +1,6 @@
 /*
  * 수 배우기의 "수순 따라 두기"(docs/23 2절). 장기 포진·체스 오프닝·바둑 정석이 함께 쓴다.
- * 수순은 게임의 기보 글자(체스 SAN "Nf3", 장기 "95", 바둑 "D4")로 쓰고, 게임마다 글자를 수로 바꾸는 함수를 넘긴다.
+ * 수순은 게임의 기보 글자(체스 SAN "Nf3", 장기 출발-도착 "48-44", 바둑 "D4"·쉬기 "pass")로 쓰고, 게임마다 글자를 수로 바꾸는 함수를 넘긴다.
  * 여기에는 판·규칙을 모르는 순수 함수만 둔다(어느 수가 맞는지, 다음은 어디인지).
  */
 
@@ -33,7 +33,7 @@ export interface StudyLine {
   learner: 0 | 1;
   /**
    * 수순이 시작하는 판(게임의 글자, 없으면 게임의 처음 판). 틀은 읽지 않고 게임의 `initial`이 읽는다.
-   * 예: 체스 FEN, 장기 상차림(예: "c:NENE h:ENEN"), 바둑 판 크기와 놓인 돌
+   * 예: 체스 FEN, 장기 상차림(형식은 장기가 정해 `placeSetup`에 넘긴다), 바둑 판 크기와 놓인 돌. 읽는 코드는 그 게임의 수순 화면에 둔다
    */
   start?: string;
   /** 본줄기 */
@@ -90,11 +90,37 @@ export function advance(
   return { list: branch, index: 1, ply: cursor.ply + 1 };
 }
 
+/** 그대로 두는 변환 */
+const SAME = (s: string) => s;
+
+/** 아직 맞는 방향들. null이면 모든 방향 */
+export function waysOf(
+  transforms: readonly ((notation: string) => string)[],
+  orients: readonly number[] | null,
+): number[] {
+  return orients ? [...orients] : transforms.map((_, k) => k);
+}
+
+/** 이 마디를 `move`로 두는 방향만 남긴다(대칭인 자리는 여러 방향이 함께 맞는다) */
+export function keepWays<M>(
+  node: LineNode,
+  move: M,
+  parse: (notation: string) => M | null,
+  same: (a: M, b: M) => boolean,
+  transforms: readonly ((notation: string) => string)[],
+  ways: readonly number[],
+): number[] {
+  return ways.filter((k) => {
+    const m = parse((transforms[k] ?? SAME)(node.move));
+    return m !== null && same(m, move);
+  });
+}
+
 /**
  * 대칭 변환으로 둔 수를 수순 마디에 맞춰 본다(바둑 정석은 네 귀·뒤집기 여덟 방향 어디서나 같다).
- * - `transforms[k]`는 수순 글자를 k번째 방향의 글자로 바꾼다. 0번은 그대로여야 한다
- * - 방향이 정해지지 않았으면(`orient` null) 모든 방향을 차례로 보고, 맞은 방향을 함께 돌려준다
- * - 방향이 정해졌으면 그 방향만 본다(한 수순 안에서 방향이 바뀌지 않는다)
+ * - `transforms[k]`는 수순 글자를 k번째 방향의 글자로 바꾼다. 0번은 그대로여야 하고, 쉬기("pass") 같은 판 밖 글자는 그대로 돌려줘야 한다
+ * - 방향은 숫자 하나가 아니라 「아직 맞는 방향 집합」(`orients`, null이면 모두)으로 들고 다닌다.
+ *   첫 수가 대각선 위처럼 대칭인 자리면 여러 방향이 함께 맞으니 모두 남기고, 뒤의 수가 좁힌다
  * `parse`가 글자를 판의 수로 바꾸고, `same`이 둔 수와 같은지 본다. 맞는 마디가 없으면 null
  */
 export function matchMove<M>(
@@ -103,15 +129,12 @@ export function matchMove<M>(
   parse: (notation: string) => M | null,
   same: (a: M, b: M) => boolean,
   transforms: readonly ((notation: string) => string)[],
-  orient: number | null,
-): { node: LineNode; move: M; orient: number } | null {
-  const ways = orient === null ? transforms.map((_, k) => k) : [orient];
-  for (const k of ways) {
-    const turn = transforms[k] ?? ((s: string) => s);
-    for (const node of candidates(cursor)) {
-      const move = parse(turn(node.move));
-      if (move !== null && same(move, played)) return { node, move, orient: k };
-    }
+  orients: readonly number[] | null,
+): { node: LineNode; move: M; orients: number[] } | null {
+  const ways = waysOf(transforms, orients);
+  for (const node of candidates(cursor)) {
+    const kept = keepWays(node, played, parse, same, transforms, ways);
+    if (kept.length > 0) return { node, move: played, orients: kept };
   }
   return null;
 }

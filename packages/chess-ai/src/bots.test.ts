@@ -18,7 +18,9 @@ import {
 } from "./bots";
 import { playGame } from "./simulate";
 
-const BOTS = [chessBeginnerBot, chessIntermediateBot, chessExpertBot];
+/** 장면 하나에서 고르는 수를 보는 고수. 탐색·평가는 고수와 같고 판 수 상한만 줄여 시험을 빨리 끝낸다 */
+const testExpert = createChessExpertBot(10_000);
+const BOTS = [chessBeginnerBot, chessIntermediateBot, testExpert];
 /** 규칙·시드·무승부처럼 판 수 상한과 상관없는 성질을 빨리 보려고 상한을 줄인 고수 */
 const quickExpert = createChessExpertBot(5_000);
 const QUICK_BOTS = [chessBeginnerBot, chessIntermediateBot, quickExpert];
@@ -81,7 +83,7 @@ describe("체스 컴퓨터", () => {
   it("중수·고수는 지켜진 폰을 퀸으로 잡지 않는다", () => {
     // d5 폰은 e6 폰이 지킨다. 퀸으로 잡으면 퀸을 잃는다.
     const fen = "4k3/8/4p3/3p4/8/8/3Q4/4K3 w - - 0 1";
-    for (const bot of [chessIntermediateBot, chessExpertBot])
+    for (const bot of [chessIntermediateBot, testExpert])
       expect(choose(bot, fen)).not.toEqual(moveOf(fen, "Qxd5"));
   });
 

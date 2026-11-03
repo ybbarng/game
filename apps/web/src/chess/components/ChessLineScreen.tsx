@@ -6,6 +6,7 @@ import {
   legalFor,
   type Move,
   PROMOTIONS,
+  parseFen,
   START_FEN,
   sameMove,
   sanToMove,
@@ -21,11 +22,21 @@ import { useChessStudyProgress } from "../progress";
 import { useChessSettings } from "../settings";
 import { ChessBoard } from "./ChessBoard";
 
-/** 수순 처음 판. 배우는 사람 자리(0번)가 수순의 그 편을 쥔다 */
+/**
+ * 배우는 사람의 편. learner는 「수순 안의 차례」라(0 = moves[0]을 두는 편),
+ * 시작 판(FEN)의 둘 차례 편을 기준으로 정한다. 흑 차례로 시작하는 장면에서도 편이 뒤집히지 않는다
+ */
+export function learnerSide(line: StudyLine): "w" | "b" {
+  const first = parseFen(line.start ?? START_FEN).turn;
+  if (line.learner === 0) return first;
+  return first === "w" ? "b" : "w";
+}
+
+/** 수순 처음 판. 배우는 사람 자리(0번)가 그 편을 쥔다 */
 function lineState(line: StudyLine): ChessState {
   return createChessScenario({
     fen: line.start ?? START_FEN,
-    me: line.learner === 0 ? "w" : "b",
+    me: learnerSide(line),
   });
 }
 
@@ -119,7 +130,7 @@ function ChessLineRun({
       board={
         <ChessBoard
           board={state.position.board}
-          flipped={line.learner === 1}
+          flipped={learnerSide(line) === "b"}
           legal={shown ? legal.filter((m) => sameMove(m, shown)) : legal}
           selected={selected}
           onSelect={setSelected}
@@ -136,7 +147,9 @@ function ChessLineRun({
       history={run.history}
       mistake={run.mistake}
       revealed={run.revealed}
-      waitingText={line.learner === 0 ? "흑이 두는 중…" : "백이 두는 중…"}
+      waitingText={
+        learnerSide(line) === "w" ? "흑이 두는 중…" : "백이 두는 중…"
+      }
       moveLabel={(ply, san) => (ply % 2 === 0 ? `${ply / 2 + 1}. ${san}` : san)}
       onHint={() => setSelected(run.expected()?.from ?? null)}
       onReveal={() => {
