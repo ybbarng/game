@@ -107,6 +107,8 @@ export class SolveSession {
   private solveStart = 0;
   private memoEnd = 0;
   private timers: (() => void)[] = [];
+  /** 정리했는가. 정리한 세션은 새 판을 열지 않고 소리·기록도 내지 않는다(늦게 온 섞기가 옛 세션을 깨우지 않게) */
+  private disposedFlag = false;
   inspection: boolean;
 
   constructor(opts: SolveSessionOptions) {
@@ -154,6 +156,7 @@ export class SolveSession {
 
   /** 섞기 글을 받아 새 판을 연다 */
   start(scramble: string, seed?: number): void {
+    if (this.disposedFlag) return;
     this.clearTimers();
     const moves = parseMoves(this.n, scramble);
     let s = solvedCube(this.n);
@@ -176,7 +179,7 @@ export class SolveSession {
       for (const at of INSPECTION_ALERTS)
         this.timers.push(
           this.clock.after(at, () =>
-            this.opts.onCue?.(at === 8_000 ? "inspect8" : "inspect12"),
+            this.cue(at === 8_000 ? "inspect8" : "inspect12"),
           ),
         );
       this.timers.push(
@@ -271,7 +274,7 @@ export class SolveSession {
         ...(solved ? {} : { dnfReason: "unsolved" as const }),
       };
       this.phase = "done";
-      this.opts.onCue?.(solved ? "solved" : "dnf");
+      this.cue(solved ? "solved" : "dnf");
       this.record();
       this.changed();
       return "blindEnd";
@@ -279,8 +282,14 @@ export class SolveSession {
     return null;
   }
 
+  /** 화면을 떠나거나 크기를 바꿀 때. 타이머를 멈추고 그 뒤 부르는 것은 모두 무시한다 */
   dispose(): void {
+    this.disposedFlag = true;
     this.clearTimers();
+  }
+
+  get disposed(): boolean {
+    return this.disposedFlag;
   }
 
   private beginSolve(now: number): void {
@@ -304,12 +313,12 @@ export class SolveSession {
     };
     this.phase = "done";
     this.clearTimers();
-    this.opts.onCue?.("solved");
+    this.cue("solved");
     this.record();
   }
 
   private inspectionTimeout(): void {
-    if (this.phase !== "inspect") return;
+    if (this.disposedFlag || this.phase !== "inspect") return;
     this.result = {
       ms: null,
       penalty: 0,
@@ -318,14 +327,14 @@ export class SolveSession {
     };
     this.phase = "done";
     this.clearTimers();
-    this.opts.onCue?.("dnf");
+    this.cue("dnf");
     this.record();
     this.changed();
   }
 
   private record(): void {
     const r = this.result;
-    if (!r) return;
+    if (!r || this.disposedFlag) return;
     const record: SolveRecord = {
       at: Date.now(),
       n: this.n,
@@ -346,6 +355,10 @@ export class SolveSession {
   private clearTimers(): void {
     for (const off of this.timers) off();
     this.timers = [];
+  }
+
+  private cue(cue: SessionCue): void {
+    if (!this.disposedFlag) this.opts.onCue?.(cue);
   }
 
   private changed(): void {

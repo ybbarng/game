@@ -65,6 +65,8 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const [, tick] = useState(0);
   const viewRef = useRef<CubeView | null>(null);
   const replayTimers = useRef<number[]>([]);
+  /** 섞기 요청 번호. 답이 왔을 때 번호가 바뀌었으면(크기를 바꿨거나 화면을 떠났으면) 그 답을 버린다 */
+  const scrambleRequest = useRef(0);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -94,7 +96,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   useEffect(() => {
     setRecords(loadRecords(mode, n));
     sync();
-    return () => session.dispose();
+    return () => {
+      scrambleRequest.current++;
+      session.dispose();
+    };
   }, [session, mode, n, sync]);
 
   // 표가 필요한 섞기(2×2·3×3)는 화면을 열 때 워커에서 미리 만들어 둔다
@@ -120,17 +125,19 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     stopReplay();
     setPreparing(true);
     setNotice(null);
+    const id = ++scrambleRequest.current;
+    const stale = () => id !== scrambleRequest.current || session.disposed;
     const seed = randomSeed();
     try {
       const s = await scrambleInWorker(eventFor(n, mode), seed);
-      if (session.n !== n) return;
+      if (stale()) return;
       session.start(s.text, seed);
       sync();
       if (!s.official) setNotice("임시 섞기");
     } catch {
-      setNotice("섞기를 만들지 못했습니다");
+      if (!stale()) setNotice("섞기를 만들지 못했습니다");
     } finally {
-      setPreparing(false);
+      if (id === scrambleRequest.current) setPreparing(false);
     }
   }, [preparing, n, mode, session, sync, stopReplay]);
 
@@ -229,12 +236,15 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
             <select
               data-cube-size
               value={n}
+              disabled={preparing}
               onChange={(e) => {
                 stopReplay();
+                scrambleRequest.current++;
+                setPreparing(false);
                 setN(Number(e.target.value));
                 e.target.blur();
               }}
-              className="rounded bg-white/10 px-2 py-1"
+              className="rounded bg-white/10 px-2 py-1 disabled:opacity-60"
             >
               {SIZES.map((s) => (
                 <option key={s} value={s} className="bg-neutral-800">
