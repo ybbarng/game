@@ -9,6 +9,7 @@ import { gateClock } from "../gate-status";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
 import type { Services } from "../services";
+import { RoomIcon } from "./PlaceIcons";
 import { liveDrawRound } from "./RoomView";
 
 /**
@@ -161,6 +162,8 @@ export function BroadcastToast({
         <span className="flex items-center gap-2 font-semibold text-amber-200 text-xs tracking-wide">
           <span aria-hidden="true" className="sd-live-dot" data-live="open" />
           카노푸스 우주국
+          {/* 누르면 가는 곳(관측지) 표시 */}
+          <RoomIcon className="ml-auto size-5 text-amber-200/85" />
         </span>
         <span className="break-keep text-[15px] text-white/90 leading-snug">
           {text}

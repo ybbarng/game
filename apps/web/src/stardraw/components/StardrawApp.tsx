@@ -52,6 +52,7 @@ import { Inbox } from "./Inbox";
 import { IntroGate, SkyWait, shouldShowIntro } from "./IntroGate";
 import { MyRecordsView, RecordHandover, RecordNotice } from "./MyRecords";
 import { OnAirGuide } from "./OnAirGuide";
+import { PlaceLabel } from "./PlaceIcons";
 import {
   DrawFirst,
   formatLeft,
@@ -1137,7 +1138,7 @@ export function Gate({
           data-gate-live={live}
           className="self-center rounded-2xl border border-amber-200/50 px-5 py-2.5 font-semibold text-amber-100 text-sm hover:bg-amber-200/10"
         >
-          관측지로 가기
+          <PlaceLabel place="room">관측지로 가기</PlaceLabel>
         </button>
       )}
       <KeySetup
@@ -1234,7 +1235,7 @@ export function RoundCard({
           onClick={() => onDraw(live)}
           className="sd-cta w-full max-w-xs rounded-2xl py-4 font-black text-slate-950 text-xl"
         >
-          관측지로 가기
+          <PlaceLabel place="room">관측지로 가기</PlaceLabel>
         </button>
       </section>
     );
@@ -1271,7 +1272,7 @@ export function RoundCard({
             onClick={onEnter}
             className="sd-cta w-full max-w-xs rounded-2xl py-3 font-black text-lg text-slate-950"
           >
-            별 6개 고르기
+            <PlaceLabel place="desk">별 6개 고르기</PlaceLabel>
           </button>
         )}
       </section>
@@ -1358,7 +1359,7 @@ export function RoundCard({
             data-go-draw={round}
             className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
           >
-            관측지로 가기
+            <PlaceLabel place="room">관측지로 가기</PlaceLabel>
           </button>
           <button
             type="button"
@@ -1375,7 +1376,7 @@ export function RoundCard({
             onClick={onEnter}
             className="sd-cta w-full max-w-xs rounded-2xl py-4 font-black text-slate-950 text-xl"
           >
-            별 6개 고르기
+            <PlaceLabel place="desk">별 6개 고르기</PlaceLabel>
           </button>
           {/* 보관한 답안지는 응모 페이지에서 고른다(입구는 하나, 2026-11-01 사용자). 카드에는 있다는 것만 */}
           {keptHere && (
@@ -1391,7 +1392,7 @@ export function RoundCard({
           data-go-draw={round}
           className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
         >
-          관측지로 가기
+          <PlaceLabel place="room">관측지로 가기</PlaceLabel>
         </button>
       )}
       <span className="text-white/50 text-xs tabular-nums">
@@ -1559,7 +1560,7 @@ function ReceiptView({
           data-go-draw={mine.ticket.round}
           className="sd-cta rounded-2xl py-3 font-bold text-slate-950"
         >
-          관측지로 가기
+          <PlaceLabel place="room">관측지로 가기</PlaceLabel>
         </button>
       )}
       {record && !sealed && (

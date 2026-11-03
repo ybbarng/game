@@ -59,6 +59,7 @@ import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { InAppTriedNotice, PasskeyBlockedNotice } from "./InAppNotice";
+import { PlaceLabel } from "./PlaceIcons";
 import { formatLeft, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
 import { MenuItem } from "./StardrawNav";
@@ -994,7 +995,7 @@ export function RoomView({
           )}
         </div>
         <h1 data-room-title className="font-bold text-lg">
-          관측지
+          <PlaceLabel place="room">관측지</PlaceLabel>
         </h1>
         <span />
       </div>
@@ -1277,7 +1278,7 @@ export function RoomView({
                     : "sd-cta text-slate-950",
                 )}
               >
-                {seat.join}
+                <PlaceLabel place="room">{seat.join}</PlaceLabel>
               </button>
             )}
             {seat.join && !hasKey && (
@@ -1380,7 +1381,7 @@ export function RoomView({
             onClick={onEnter}
             className="sd-cta w-full max-w-xs rounded-2xl py-3 font-bold text-slate-950"
           >
-            별 6개 고르기
+            <PlaceLabel place="desk">별 6개 고르기</PlaceLabel>
           </button>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EASE, FX } from "../fx-timing";
 import { ReturnedPaper } from "./EnterSubmit";
+import { PlaceLabel } from "./PlaceIcons";
 import { formatLeft } from "./parts";
 import { StageOverlay } from "./StageOverlay";
 
@@ -146,7 +147,7 @@ export function BounceSlip({
               onClick={onDraw}
               className="sd-text-in sd-cta w-full max-w-sm rounded-2xl py-3.5 font-bold text-lg text-slate-950"
             >
-              관측지로 가기
+              <PlaceLabel place="room">관측지로 가기</PlaceLabel>
             </button>
             <button
               type="button"

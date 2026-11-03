@@ -55,6 +55,7 @@ import { BounceSlip, ErrorStage, HurryNotice, kstClock } from "./EntryDeadline";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { BureauNote, InAppNotice, InAppTriedNotice } from "./InAppNotice";
 import { KeyIcon } from "./PasskeyHelp";
+import { PlaceLabel } from "./PlaceIcons";
 import { LottoBall, StardrawTitle, StarInfo } from "./parts";
 import { liveDrawRound } from "./RoomView";
 import { SkyBoard } from "./SkyBoard";
@@ -788,7 +789,7 @@ export function EnterView({
                 onClick={() => onWatchDraw(watching)}
                 className="sd-cta w-full rounded-2xl py-4 font-black text-slate-950 text-xl"
               >
-                관측지로 가기
+                <PlaceLabel place="room">관측지로 가기</PlaceLabel>
               </button>
             </div>
           ) : (
@@ -866,7 +867,7 @@ function ClosedNotice({
         }}
         className="sd-cta w-full max-w-xs rounded-2xl py-3.5 font-black text-lg text-slate-950"
       >
-        관측지로 가기
+        <PlaceLabel place="room">관측지로 가기</PlaceLabel>
       </button>
     </div>
   );
