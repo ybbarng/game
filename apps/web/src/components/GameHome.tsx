@@ -70,6 +70,7 @@ export function GameHome({
   aboutLabel,
   onAbout,
   credit,
+  footer,
   theme,
 }: {
   /** 내 기록 링크(`/profile?game=`)에 쓰는 게임 id */
@@ -86,8 +87,10 @@ export function GameHome({
   /** 저장한 대국이 있을 때만 */
   resume?: () => void;
   solo: HomeAction;
-  together: HomeAction;
-  learn: {
+  /** 친구와 하기. 아직 온라인이 없는 게임은 빼 둔다(단계별로 여는 새 게임) */
+  together?: HomeAction;
+  /** 배우기. 아직 단원이 없는 게임은 빼 둔다 */
+  learn?: {
     title: string;
     /** 마친 단원 수와 모든 단원 수 */
     learned: number;
@@ -102,11 +105,14 @@ export function GameHome({
   onAbout: () => void;
   /** 바닥글 위 한 줄(어디서 이어받았나 등) */
   credit?: ReactNode;
+  /** 내 기록 단추 아래, 바닥글 위에 두는 덩어리(안내 한 줄·접는 칸 등) */
+  footer?: ReactNode;
 }) {
   // 처음 온 사람에게는 배우기를 먼저 권한다. 하던 게임이 있으면 이어하기를.
-  const newcomer = learn.learned === 0 && !resume;
-  const learnDetail =
-    learn.learned >= learn.total
+  const newcomer = !!learn && learn.learned === 0 && !resume;
+  const learnDetail = !learn
+    ? ""
+    : learn.learned >= learn.total
       ? "모든 단원을 마쳤어요. 언제든 다시 볼 수 있어요"
       : learn.learned > 0
         ? `${learn.learned}/${learn.total} 단원 마침`
@@ -144,21 +150,25 @@ export function GameHome({
           primaryClass={primaryClass}
           action={solo}
         />
-        <MenuItem
-          primary={false}
-          primaryClass={primaryClass}
-          action={together}
-        />
-        <MenuItem
-          primary={newcomer}
-          primaryClass={primaryClass}
-          action={{
-            icon: "🎓",
-            title: learn.title,
-            detail: learnDetail,
-            onClick: learn.onClick,
-          }}
-        />
+        {together && (
+          <MenuItem
+            primary={false}
+            primaryClass={primaryClass}
+            action={together}
+          />
+        )}
+        {learn && (
+          <MenuItem
+            primary={newcomer}
+            primaryClass={primaryClass}
+            action={{
+              icon: "🎓",
+              title: learn.title,
+              detail: learnDetail,
+              onClick: learn.onClick,
+            }}
+          />
+        )}
 
         <div className="mt-1 flex justify-center gap-2">
           <button type="button" onClick={onOptions} className={SMALL}>
@@ -171,6 +181,7 @@ export function GameHome({
             내 기록
           </a>
         </div>
+        {footer}
         <p className="mt-2 text-center text-[11px] opacity-40">
           {credit}
           {credit && <br />}

@@ -2,6 +2,7 @@
 import { badukBotFor } from "@game/baduk-ai";
 import { baseballBotFor } from "@game/baseball-ai";
 import { chessBotFor } from "@game/chess-ai";
+import { galaxyBotFor } from "@game/galaxy-ai";
 import { gostopBotFor } from "@game/gostop-ai";
 import { janggiBotFor } from "@game/janggi-ai";
 import { minhwatuBotFor } from "@game/minhwatu-ai";
@@ -31,6 +32,7 @@ describe("컴퓨터 등록부", () => {
       ["minhwatu", minhwatuBotFor, [0, 1, 2]],
       ["nyrongppong", nyrongppongBotFor, [0, 1, 2]],
       ["yut", yutBotFor, [0, 1, 2]],
+      ["galaxy", galaxyBotFor, [0, 1, 2]],
     ];
     expect(registeredGames().sort()).toEqual(table.map(([g]) => g).sort());
     for (const [game, make, levels] of table)

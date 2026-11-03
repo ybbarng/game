@@ -24,6 +24,7 @@ import {
   moveName,
   solvedCubie,
 } from "./cubie";
+import { FACES } from "./facelets";
 import { rankPermutation, unrankPermutation } from "./perm";
 
 const N_TWIST = 2187;
@@ -286,16 +287,41 @@ export function init3x3(): void {
 export interface Solve3x3Options {
   /** 해의 최대 길이(HTM). 기본 21. 줄이면 더 오래 찾는다(20 아래는 매우 오래 걸릴 수 있다). */
   maxLength?: number;
+  /**
+   * 해의 첫 수로 두지 않을 축(그 면과 맞은편 면 모두). 예: "R"이면 R·L로 시작하지 않는다.
+   * 블라인드 섞기에서 섞기 마지막 수(= 해 첫 수의 거꾸로)가 뒤에 붙는 방향 돌리기와 같은 축이
+   * 되지 않게 한다(TNoodle firstAxisRestriction).
+   */
+  firstAxisNot?: "U" | "R" | "F" | "D" | "L" | "B";
+}
+
+/** 3×3 스티커의 글자를 가운데 색 기준 면 이름으로 바꾼다(가운데 여섯이 서로 달라야 한다). */
+function relabelByCenters(facelets: string): string {
+  if (facelets.length !== 54) return facelets;
+  const rename = new Map<string, string>();
+  for (let k = 0; k < 6; k++) {
+    rename.set(facelets[k * 9 + 4] as string, FACES[k] as string);
+  }
+  if (rename.size !== 6) throw new Error("가운데 조각 색이 겹친다");
+  let out = "";
+  for (const ch of facelets) {
+    const r = rename.get(ch);
+    if (r === undefined) throw new Error(`모르는 글자: ${ch}`);
+    out += r;
+  }
+  return out;
 }
 
 /** 한 번의 탐색이 쓰는 상태(동기 탐색이라 모듈 안에 둔다). */
 const seq = new Int8Array(64);
 let start: CubieCube = solvedCubie();
 let limit = 21;
+/** 첫 수로 막은 축(0 U·D, 1 R·L, 2 F·B), 없으면 -1 */
+let bannedFirstAxis = -1;
 
 /** 직전 수 다음에 두지 않을 수: 같은 면, 그리고 맞은편 면은 U·R·F 쪽이 먼저 오게. */
 function skip(face: number, depth: number): boolean {
-  if (depth === 0) return false;
+  if (depth === 0) return face % 3 === bannedFirstAxis;
   const prev = Math.floor((seq[depth - 1] as number) / 3);
   return face === prev || face === prev - 3;
 }
@@ -387,16 +413,24 @@ function phase2(
 /**
  * 3×3 스티커 문자열(54글자, Kociemba 순서)을 맞추는 수를 WCA 표기로 낸다. 맞춘 상태면 빈 문자열.
  * 같은 입력이면 늘 같은 해가 나온다. 맞출 수 없는 상태면 오류.
+ *
+ * 큐브가 돌아가 있어도(가운데가 기본 방향이 아님: x·y로 돌렸거나 Rw·Uw로 끝난 섞기) 된다.
+ * 가운데 색을 기준으로 면 이름을 다시 붙여 푼다. 바깥 면 수는 공간에 붙은 면(위·오른쪽…)을
+ * 돌리는 것이라, 해는 그대로 그 큐브에 두면 맞는다(맞춘 뒤 큐브 방향은 처음 방향 그대로).
  */
 export function solve3x3(
   facelets: string,
   options: Solve3x3Options = {},
 ): string {
-  const cube = faceletsToCubie(facelets);
+  const cube = faceletsToCubie(relabelByCenters(facelets));
   init3x3();
   const t = tables as Tables;
   start = cube;
   limit = options.maxLength ?? 21;
+  bannedFirstAxis =
+    options.firstAxisNot === undefined
+      ? -1
+      : FACES.indexOf(options.firstAxisNot) % 3;
   const twist = twistOf(cube);
   const flip = flipOf(cube);
   const slice = sliceOf(cube);

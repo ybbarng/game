@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { judgeShout, type StepResult, shoutWindows, step } from "./match";
 import type { OnecardRules } from "./rules";
 import { createOnecardScenario } from "./scenario";
-import type { GameEvent, OnecardState } from "./state";
+import type { Action, GameEvent, OnecardState } from "./state";
 
 function okEvents(result: StepResult): [OnecardState, GameEvent[]] {
   if (!result.ok) throw new Error(result.error);
@@ -94,6 +94,67 @@ describe("미리 외침·본인 외침", () => {
     const [safe, events] = shout(forgot({ shoutReward: true }), 0);
     expect(counts(safe)).toEqual([1, 4, 4, 4]);
     expect(events.filter((e) => e.type === "drew")).toHaveLength(3);
+  });
+});
+
+describe("한 번 누름 = 미리 외침 + 잡기(shoutBoth)", () => {
+  /** 자리 0이 외치지 않고 한 장이 됐고, 두 장을 든 자리 1의 차례 */
+  function both(rules: Partial<OnecardRules> = {}) {
+    const s0 = createOnecardScenario({
+      rules,
+      hands: [
+        ["H9", "H8"],
+        ["H3", "H4"],
+        ["S3", "S4", "S5"],
+      ],
+      pile: ["H5"],
+    });
+    return ok(step(s0, 0, { type: "play", card: "H9" }));
+  }
+  const toCatch = (s: OnecardState) =>
+    ok(step(s, 2, { type: "timeout", kind: "selfWindow", target: 0 }));
+
+  it("잡기 창 안이면 한 누름으로 미리 외치고 잊은 사람도 잡는다", () => {
+    const s = toCatch(both());
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({
+      kind: "pre",
+      alsoCaught: [0],
+    });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([
+      { type: "shouted", seat: 1 },
+      { type: "caught", seat: 1, target: 0 },
+      { type: "drew", seat: 0, count: 1, reason: "caught" },
+    ]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(counts(after)).toEqual([2, 2, 3]);
+    const played = ok(step(after, 1, { type: "play", card: "H3" }));
+    expect(played.called[1]).toBe(true);
+    expect(shoutWindows(played)).toEqual([]);
+  });
+
+  it("shoutBoth를 끄면 예전처럼 미리 외침만", () => {
+    const s = toCatch(both({ shoutBoth: false }));
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({ kind: "pre" });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([{ type: "shouted", seat: 1 }]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(counts(after)).toEqual([1, 2, 3]);
+  });
+
+  it("잊은 사람이 본인 시간 P 안이면 잡지 않고 적어만 둔다(P가 끝나면 잡힘)", () => {
+    const s = both();
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({ kind: "pre", alsoHeld: [0] });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([{ type: "shouted", seat: 1 }]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(after.windows[0]?.heldBy).toBe(1);
+    expect(counts(after)).toEqual([1, 2, 3]);
+    const [caught, more] = okEvents(
+      step(after, 2, { type: "timeout", kind: "selfWindow", target: 0 }),
+    );
+    expect(more).toContainEqual({ type: "caught", seat: 1, target: 0 });
+    expect(counts(caught)).toEqual([2, 2, 3]);
   });
 });
 
@@ -189,6 +250,34 @@ describe("잡기 창 T", () => {
       { type: "drew", seat: 2, count: 1, reason: "falseShout" },
     ]);
     expect(counts(after)).toEqual([1, 4, 4, 3]);
+  });
+
+  it("늦음은 같은 자리·같은 판 번호로 한 번만 봐준다. 되풀이하면 헛외침", () => {
+    const closed = ok(
+      step(catchOpen(), 1, { type: "timeout", kind: "catchWindow", target: 0 }),
+    );
+    const seen = closed.turnNo;
+    // 정직하게 한 번 늦은 누름은 벌칙 없음
+    const [once, e1] = shout(closed, 2, seen);
+    expect(e1).toEqual([{ type: "shouted", seat: 2 }]);
+    // 같은 seen으로 다시 누르면 헛외침
+    expect(judgeShout(once, 2, seen)).toEqual({ kind: "false" });
+    const [twice, e2] = shout(once, 2, seen);
+    expect(e2).toContainEqual({ type: "falseShout", seat: 2 });
+    expect(counts(twice)).toEqual([1, 3, 4, 3]);
+    // 다른 자리는 따로 센다
+    expect(judgeShout(twice, 3, seen)).toEqual({ kind: "late" });
+  });
+
+  it("차례 행동으로 창이 닫혀도 그 전 판을 보고 누른 첫 누름은 늦음", () => {
+    let s = catchOpen();
+    s = ok(step(s, 1, { type: "draw" }));
+    s = ok(step(s, 2, { type: "draw" }));
+    s = ok(step(s, 3, { type: "draw" }));
+    const seen = s.turnNo;
+    // 0이 먹어 창이 닫혔는데, 3은 먹기 전 판을 보고 눌렀다
+    s = ok(step(s, 0, { type: "draw" }));
+    expect(judgeShout(s, 3, seen)).toEqual({ kind: "late" });
   });
 
   it("잡기 창이 열리자 세 사람이 같은 판을 보고 연달아 외쳐도: 첫 사람만 잡고 나머지는 벌칙 없음", () => {
@@ -328,6 +417,30 @@ describe("헛외침·판 번호(seen)", () => {
     expect(
       step(forgot(), 0, { type: "timeout", kind: "catchWindow", target: 0 }).ok,
     ).toBe(false);
+  });
+
+  it("시간 끝의 창 번호가 지금 열린 창과 다르면 받지 않는다(지우지 못한 옛 시계)", () => {
+    const s = forgot();
+    const self = { type: "timeout", kind: "selfWindow", target: 0 } as const;
+    expect(step(s, 1, { ...self, id: 99 }).ok).toBe(false);
+    const opened = ok(step(s, 1, { ...self, id: 1 }));
+    expect(shoutWindows(opened)[0]?.id).toBe(2);
+    const late = { type: "timeout", kind: "catchWindow", target: 0 } as const;
+    // P 창(1번)에 걸었던 시계가 같은 자리의 새 잡기 창(2번)을 닫지 않는다
+    expect(step(opened, 1, { ...late, id: 1 }).ok).toBe(false);
+    expect(shoutWindows(ok(step(opened, 1, { ...late, id: 2 })))).toEqual([]);
+  });
+
+  it("모르는 창 종류의 시간 끝은 받지 않는다", () => {
+    const s = ok(
+      step(forgot(), 1, { type: "timeout", kind: "selfWindow", target: 0 }),
+    );
+    const bogus = {
+      type: "timeout",
+      kind: "otherWindow",
+      target: 0,
+    } as unknown as Action;
+    expect(step(s, 1, bogus).ok).toBe(false);
   });
 
   it("벌칙으로 먹다가 더미가 바닥나면 다시 섞기를 기다린다", () => {

@@ -1,6 +1,6 @@
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
-
+import { sha256Hex } from "./fairness";
 import {
   isJointWire,
   JointRandomHub,
@@ -73,6 +73,104 @@ describe("함께 정한 난수: 순수 부분", () => {
       expect((await jointTiebreak(outcome, [0, 1, 2], "tie")).at(-1)).toBe(1);
     },
   );
+
+  it("공개를 거부한 사람은 결과를 고르지 못한다: 거부자의 값·거부한 사람 수와 상관없이 같은 대체 값", async () => {
+    const seats = [0, 1, 2];
+    const commits = await commitsFor("r6");
+    const all = S.map((secret, seat) => ({ seat, secret }));
+    const honest = await jointOutcome("r6", seats, commits, all);
+    expect(honest.fallback).toBe(false);
+    // 1번이 거부했을 때, 2번이 거부했을 때, 1·2번이 짜고 거부했을 때, 1번이 약속과 다른 값을 냈을 때
+    const variants = [
+      all.filter((r) => r.seat !== 1),
+      all.filter((r) => r.seat !== 2),
+      all.filter((r) => r.seat === 0),
+      all.map((r) => (r.seat === 1 ? { ...r, secret: "secretZZZZ9" } : r)),
+    ];
+    const draws = new Set<string>();
+    const picks = new Set<number>();
+    for (const reveals of variants) {
+      const outcome = await jointOutcome("r6", seats, commits, reveals);
+      expect(outcome.fallback).toBe(true);
+      draws.add(await jointDraw(outcome, "first"));
+      picks.add(await jointPick(outcome, "first", 1000));
+    }
+    // 예전 규칙이면 거부 조합마다 다른 값(정직한 사람 값만으로)이 나와 거부자가 고를 수 있었다
+    expect(draws.size).toBe(1);
+    expect(picks.size).toBe(1);
+    // 거부자가 무슨 비밀 값을 약속했든 대체 값은 같다(다른 비밀 값으로 약속을 다시 만들어 본다)
+    const other = [...commits];
+    other[1] = { seat: 1, hash: await jointCommit("r6", "secretOTHER1") };
+    const withOther = await jointOutcome(
+      "r6",
+      seats,
+      other,
+      all.filter((r) => r.seat !== 1),
+    );
+    expect(await jointDraw(withOther, "first")).toBe([...draws][0]);
+    // 모두 정직하면 예전과 같은 값(옛 식 그대로)이다
+    expect(await jointDraw(honest, "first")).toBe(
+      await sha256Hex(`joint-random|r6|${S.join("|")}|first`),
+    );
+  });
+
+  it("약속하지 않은 자리는 대체 값으로 보내지 않고 뺀다(남의 값을 보기 전에 빠졌다)", async () => {
+    const commits = (await commitsFor("r7")).filter((c) => c.seat !== 2);
+    const outcome = await jointOutcome(
+      "r7",
+      [0, 1, 2],
+      commits,
+      S.map((secret, seat) => ({ seat, secret })).filter((r) => r.seat !== 2),
+    );
+    expect(outcome.fallback).toBe(false);
+    expect(outcome.faulted).toEqual([{ seat: 2, reason: "약속하지 않았다" }]);
+    expect(outcome.secrets).toEqual([S[0], S[1]]);
+  });
+
+  it("동점 가르기: 동점이 아닌 자리가 공개를 거부해도 결과가 똑같다", async () => {
+    const commits = await commitsFor("r8");
+    const all = S.map((secret, seat) => ({ seat, secret }));
+    const honest = await jointOutcome("r8", [0, 1, 2], commits, all);
+    const refused = await jointOutcome(
+      "r8",
+      [0, 1, 2],
+      commits,
+      all.filter((r) => r.seat !== 2),
+    );
+    const lied = await jointOutcome(
+      "r8",
+      [0, 1, 2],
+      commits,
+      all.map((r) => (r.seat === 2 ? { ...r, secret: "secretZZZZ9" } : r)),
+    );
+    for (const label of ["tie-1", "tie-2", "tie-3", "tie-4"]) {
+      const order = await jointTiebreak(honest, [0, 1], label);
+      expect(await jointTiebreak(refused, [0, 1], label)).toEqual(order);
+      expect(await jointTiebreak(lied, [0, 1], label)).toEqual(order);
+    }
+  });
+
+  it("동점 가르기: 동점 자리가 거부하면 맨 뒤로 가고, 남은 순서는 거부자의 값과 상관없다", async () => {
+    const commits = await commitsFor("r9");
+    const all = S.map((secret, seat) => ({ seat, secret }));
+    const refused = await jointOutcome(
+      "r9",
+      [0, 1, 2],
+      commits,
+      all.filter((r) => r.seat !== 0),
+    );
+    const lied = await jointOutcome(
+      "r9",
+      [0, 1, 2],
+      commits,
+      all.map((r) => (r.seat === 0 ? { ...r, secret: "secretZZZZ9" } : r)),
+    );
+    for (const label of ["tie-1", "tie-2", "tie-3"]) {
+      const a = await jointTiebreak(refused, [0, 1, 2], label);
+      expect(a.at(-1)).toBe(0);
+      expect(await jointTiebreak(lied, [0, 1, 2], label)).toEqual(a);
+    }
+  });
 
   it("약속하지 않은 자리, 다른 범위의 약속은 쓰지 못한다", async () => {
     const commits = await commitsFor("r3");

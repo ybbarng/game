@@ -11,13 +11,16 @@ import {
 } from "./onecard-fixture";
 import {
   checkOnecardReplay,
+  isOnecardReshuffle,
   ONECARD_CARDS,
+  ONECARD_SHOWN_WAIT_MS,
   OnecardDeck,
   type OnecardDraw,
   type OnecardLogged,
   type OnecardRoundDeal,
   onecardDealId,
   onecardLayout,
+  onecardReshuffleMessage,
   reshuffleOrder,
 } from "./onecard-table";
 import { decode, encodedDeck } from "./protocol";
@@ -56,6 +59,25 @@ describe("원카드 덱과 자리 번호", () => {
     expect(onecardDealId(1, 0)).toBe(1024);
     expect(onecardDealId(2, 3)).toBe(2051);
     expect(() => onecardDealId(1, 1024)).toThrow();
+  });
+
+  it("다시 섞기 알림은 새 조각의 판 번호(deal)를 함께 싣고, 받는 쪽은 셋이 맞는지 본다", () => {
+    const message = onecardReshuffleMessage(2, 1, ["S3", "S2"]);
+    expect(message).toEqual({
+      t: "fp",
+      k: "reshuffle",
+      deal: onecardDealId(2, 1),
+      round: 2,
+      segment: 1,
+      cards: ["S3", "S2"],
+    });
+    expect(isOnecardReshuffle(message)).toBe(true);
+    expect(isOnecardReshuffle({ ...message, deal: 0 })).toBe(false);
+    expect(isOnecardReshuffle({ ...message, segment: 0, deal: 2048 })).toBe(
+      false,
+    );
+    const { deal: _, ...withoutDeal } = message;
+    expect(isOnecardReshuffle(withoutDeal)).toBe(false);
   });
 
   it("다시 섞을 카드는 카드 번호표 순서로 맞춘다(기기마다 같은 덱에서 사슬을 시작한다)", () => {
@@ -195,6 +217,34 @@ describe("판 도중 다시 섞기(기기 둘, 메시지)", () => {
     expect(
       checkOnecardReplay(TOY_SPEC, null, 0, ended, twoRounds, requests(extra)),
     ).toMatchObject({ ok: false, seat: 0, reason: /쓰지 않은 더미/ });
+    // 판이 바뀌는 걸음에서 뽑은 카드(먹다가 파산해 판이 끝남)도 방장이 연 자리와 맞춰 본다.
+    // 조각 2에 남은 한 장(판 자리 12)을 1번이 먹고 판이 끝난다.
+    const last = asked.at(-1) as OnecardDraw;
+    const endDraw = { ...last, slot: last.slot + 1, global: 12 };
+    const bust: OnecardLogged<ToyAction>[] = [
+      ...log,
+      { seat: 1, action: { type: "end", n: 1 } },
+    ];
+    expect(
+      checkOnecardReplay(
+        TOY_SPEC,
+        null,
+        0,
+        bust,
+        twoRounds,
+        requests([...asked, { ...endDraw, to: 1 }]),
+      ),
+    ).toMatchObject({ ok: true, upTo: bust.length });
+    expect(
+      checkOnecardReplay(
+        TOY_SPEC,
+        null,
+        0,
+        bust,
+        twoRounds,
+        requests([...asked, { ...endDraw, to: 0 }]),
+      ),
+    ).toMatchObject({ ok: false, index: log.length, reason: /엔진과 다르게/ });
     // 다시 섞을 카드를 버린 더미와 다르게 알렸다(맨 위 카드를 넣고 한 장을 뺐다).
     const lying = {
       ...deal,
@@ -260,7 +310,7 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     ]);
   });
 
-  it("아직 모두에게 열리지 않은 카드(남의 손패)를 다시 섞으려 하면 짚는다", async () => {
+  it("아직 모두에게 열리지 않은 카드(남의 손패)를 다시 섞으려 하면, 열쇠를 기다린 뒤 짚는다", async () => {
     const net = onecardNet();
     await net.settle();
     net.draw(1, 3);
@@ -269,6 +319,10 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     const hidden = net.decks[0]?.knownCards(1).get(0) as Card;
     const open = net.decks[1]?.publicCards(1).get(4) as Card;
     net.decks[1]?.reshuffle(1, 1, [open, hidden]);
+    await net.settle();
+    // 카드를 낸 열쇠가 늦게 올 수 있어 바로 짚지 않는다.
+    expect(net.incidents[1]).toEqual([]);
+    net.clock.advance(ONECARD_SHOWN_WAIT_MS);
     await net.settle();
     expect(net.incidents[1]).toEqual([
       {

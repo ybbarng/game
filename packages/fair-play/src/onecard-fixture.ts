@@ -2,7 +2,7 @@
 import type { Card } from "@game/mighty-engine";
 
 import type { Incident } from "./coordinator";
-import type { FairDevice } from "./device";
+import type { FairDevice, FairWire } from "./device";
 import { network, type TestNetwork } from "./device-fixture";
 import {
   OnecardDeck,
@@ -39,9 +39,14 @@ export interface OnecardNet extends TestNetwork {
   play(device: number, globals: readonly number[]): void;
 }
 
-/** 기기 둘(방장 0, 참가자 1)을 잇고 1판을 섞어 나눈다. 자리 번호 = 기기 번호 */
-export function onecardNet(): OnecardNet {
-  const net = network([0, 1]);
+/**
+ * 기기 둘(방장 0, 참가자 1)을 잇고 1판을 섞어 나눈다. 자리 번호 = 기기 번호.
+ * `drop`은 보내지 않을 메시지(시험이 붙잡았다가 나중에 `receive`로 넣어 순서를 바꾼다)
+ */
+export function onecardNet(
+  options: { drop?: (message: FairWire, from: number) => boolean } = {},
+): OnecardNet {
+  const net = network([0, 1], options);
   const incidents: Incident[][] = [[], []];
   const decks = net.devices.map(
     (device: FairDevice, i) =>
@@ -51,6 +56,7 @@ export function onecardNet(): OnecardNet {
         deviceOf: (seat) => seat,
         onIncident: (x) => incidents[i]?.push(x),
         cards: SMALL_DECK,
+        clock: net.clock,
       }),
   );
   const [host, guest] = decks as [OnecardDeck, OnecardDeck];
@@ -98,7 +104,8 @@ export type ToyAction =
   | { type: "play"; card: string }
   | { type: "draw"; n: number }
   | { type: "flip" }
-  | { type: "end" };
+  /** 판을 끝내고 다음 판으로. `n`이 있으면 먼저 그만큼 뽑는다(먹다가 파산해 판이 끝나는 걸음 흉내) */
+  | { type: "end"; n?: number };
 
 export type ToyEvent = { type: "draw"; seat: number | null };
 
@@ -158,6 +165,10 @@ export const TOY_SPEC: OnecardFairSpec<null, ToyState, ToyAction, ToyEvent> = {
         break;
       }
       case "end":
+        for (let k = 0; k < (action.n ?? 0); k++) {
+          hand.push(drawOne(s));
+          events.push({ type: "draw", seat });
+        }
         if (!s.preset) throw new Error("다음 판 패를 모른다");
         return { ok: true, state: deal(s.round + 1, s.preset), events };
     }
