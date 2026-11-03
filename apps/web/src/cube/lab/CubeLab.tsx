@@ -19,6 +19,8 @@ import type { CubeView } from "@/cube/view";
 import {
   type CubeMove,
   loadCubeView,
+  MAX_CUBE_SIZE,
+  MIN_CUBE_SIZE,
   type Quality,
   solvedStickers,
 } from "@/cube/view";
@@ -28,7 +30,10 @@ import {
  * 맞춘 상태에서 키로 돌린 회전만 장면이 따라간다.
  */
 
-const SIZES = [2, 3, 4, 5, 6, 7];
+const SIZES = Array.from(
+  { length: MAX_CUBE_SIZE - MIN_CUBE_SIZE + 1 },
+  (_, i) => MIN_CUBE_SIZE + i,
+);
 const QUALITIES: { id: Quality; label: string }[] = [
   { id: "high", label: "높음" },
   { id: "medium", label: "보통" },
@@ -101,15 +106,22 @@ export function CubeLab() {
   const [stickerless, setStickerless] = useState(false);
   const [moveMs, setMoveMs] = useState(90);
   const [keymap, setKeymap] = useState<Keymap>(() => presetKeymap("twoHand"));
-  const [done, setDone] = useState(0);
+  /** 키로 보낸 회전 수(되돌리기·섞기 포함). 3D 그림이 없어도 센다 */
+  const [moves, setMoves] = useState(0);
+  /** 장면이 회전을 끝낸 수 */
+  const [drawn, setDrawn] = useState(0);
   const [readyFor, setReadyFor] = useState<string | null>(null);
+  const [inputReady, setInputReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [last, setLast] = useState("");
   const [depth, setDepth] = useState<number | null>(null);
   const [lit, setLit] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
+  /** 되돌리기에 쓰는 수 */
   const historyRef = useRef<CubeMove[]>([]);
+  /** 맞춘 상태에서 지금까지 장면에 보낸 회전. 3D가 늦게 뜨면 이것을 바로 적용해 따라잡는다 */
+  const sceneRef = useRef<CubeMove[]>([]);
   const optionsRef = useRef({ stickerless, moveMs });
   optionsRef.current = { stickerless, moveMs };
 
@@ -120,34 +132,54 @@ export function CubeLab() {
   // 저장해 둔 배치(첫 그리기 뒤에 읽는다)
   useEffect(() => setKeymap(loadKeymap()), []);
 
-  // 장면: 크기·품질이 바뀌면 새 캔버스로 다시 만든다
+  // 장면: 크기·품질이 바뀌면 새 캔버스로 다시 만든다.
+  // WebGL을 못 만들거나(예외) 문맥을 잃으면 안내로 바꾼다. 키 입력과 수 세기는 장면과 따로 돈다.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
-    setDone(0);
+    setMoves(0);
+    setDrawn(0);
+    setFailed(false);
     historyRef.current = [];
+    sceneRef.current = [];
     const ro = new ResizeObserver(() =>
       viewRef.current?.resize(canvas.clientWidth, canvas.clientHeight),
     );
-    void loadCubeView()
-      .then(({ CubeView }) => {
-        if (disposed) return;
-        viewRef.current = CubeView.create(canvas, {
-          n,
-          quality,
-          ...optionsRef.current,
-          onMoveDone: setDone,
-        });
-        ro.observe(canvas);
-        setReadyFor(`${n}-${quality}`);
-      })
-      .catch(() => setFailed(true));
-    return () => {
-      disposed = true;
+    const drop = () => {
+      canvas.removeEventListener("webglcontextlost", onLost);
       ro.disconnect();
       viewRef.current?.dispose();
       viewRef.current = null;
+    };
+    const onLost = () => {
+      drop();
+      setReadyFor(null);
+      setFailed(true);
+    };
+    void loadCubeView()
+      .then(({ CubeView }) => {
+        if (disposed) return;
+        const view = CubeView.create(canvas, {
+          n,
+          quality,
+          ...optionsRef.current,
+          onMoveDone: setDrawn,
+        });
+        viewRef.current = view;
+        canvas.addEventListener("webglcontextlost", onLost);
+        ro.observe(canvas);
+        // 그림이 뜨기 전에 친 수를 따라잡는다
+        for (const m of sceneRef.current) view.enqueue(m);
+        view.flush();
+        setReadyFor(`${n}-${quality}`);
+      })
+      .catch(() => {
+        if (!disposed) setFailed(true);
+      });
+    return () => {
+      disposed = true;
+      drop();
     };
   }, [n, quality]);
 
@@ -160,13 +192,25 @@ export function CubeLab() {
       setLit(code);
       window.setTimeout(() => setLit((c) => (c === code ? null : c)), 160);
     };
+    /** 회전을 세고 장면에 보낸다(장면이 아직 없거나 못 그리면 세기만) */
+    const send = (ms: CubeMove[]) => {
+      sceneRef.current.push(...ms);
+      setMoves((c) => c + ms.length);
+      const view = viewRef.current;
+      if (view) for (const m of ms) view.enqueue(m);
+    };
+    const restart = () => {
+      const size = interpreterRef.current.n;
+      historyRef.current = [];
+      sceneRef.current = [];
+      viewRef.current?.setStickers(solvedStickers(size));
+      return size;
+    };
     const onResult = (r: KeyResult, e: KeyboardEvent) => {
       flash(e.code);
-      const view = viewRef.current;
       setDepth(interpreterRef.current.pendingDepth);
-      if (!view) return;
       if (r.kind === "move") {
-        view.enqueue(r.move);
+        send([r.move]);
         historyRef.current.push(r.move);
         setLast(r.notation);
         return;
@@ -175,22 +219,26 @@ export function CubeLab() {
       if (r.command === "undo") {
         const m = historyRef.current.pop();
         if (m) {
-          view.enqueue(inverse(m));
+          send([inverse(m)]);
           setLast("되돌리기");
         }
       } else if (r.command === "reset") {
-        view.setStickers(solvedStickers(view.n));
-        historyRef.current = [];
+        restart();
         setLast("맞춘 상태로");
       } else if (r.command === "scramble") {
-        view.setStickers(solvedStickers(view.n));
-        historyRef.current = [];
-        for (const m of randomMoves(view.n, view.n * 7)) view.enqueue(m);
-        view.flush();
+        const size = restart();
+        send(randomMoves(size, size * 7));
+        viewRef.current?.flush();
         setLast("다시 섞기");
       }
     };
-    return attachKeyboard(window, () => interpreterRef.current, onResult);
+    const detach = attachKeyboard(
+      window,
+      () => interpreterRef.current,
+      onResult,
+    );
+    setInputReady(true);
+    return detach;
   }, []);
 
   const choosePreset = (preset: "twoHand" | "notation") => {
@@ -287,26 +335,38 @@ export function CubeLab() {
           </label>
         </div>
 
-        <div className="relative aspect-square w-full max-w-[560px] self-center">
-          {failed ? (
-            <p className="text-sm text-white/70">
-              이 기기에서는 3D를 그릴 수 없습니다.
+        {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
+        <div
+          data-cube-stage
+          data-input-ready={inputReady ? "" : undefined}
+          data-cube-moves={moves}
+          className="relative aspect-square w-full max-w-[560px] self-center"
+        >
+          {failed && (
+            <p
+              data-cube-no3d
+              className="flex h-full items-center justify-center break-keep rounded border border-white/15 px-6 text-center text-sm text-white/70"
+            >
+              이 기기에서는 3D 큐브를 그릴 수 없습니다. 키는 그대로 받고 돌린
+              수를 셉니다.
             </p>
-          ) : (
-            <canvas
-              key={`${n}-${quality}`}
-              ref={canvasRef}
-              data-cube-canvas
-              data-cube-ready={readyFor === `${n}-${quality}` ? "" : undefined}
-              data-cube-moves={done}
-              className="h-full w-full cursor-grab active:cursor-grabbing"
-            />
           )}
+          <canvas
+            key={`${n}-${quality}`}
+            ref={canvasRef}
+            hidden={failed}
+            data-cube-canvas
+            data-cube-ready={
+              !failed && readyFor === `${n}-${quality}` ? "" : undefined
+            }
+            data-cube-drawn={drawn}
+            className="h-full w-full cursor-grab active:cursor-grabbing"
+          />
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm">
           <span>
-            돌린 수 <b data-cube-done>{done}</b>
+            돌린 수 <b data-cube-done>{moves}</b>
           </span>
           <span>
             마지막 <b>{last || "-"}</b>
