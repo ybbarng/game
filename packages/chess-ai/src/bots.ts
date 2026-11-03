@@ -10,7 +10,15 @@ import {
 } from "@game/chess-engine";
 import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
-import { hashOf, newExpertContext, searchExpert } from "./expert";
+import { bookMoves } from "./book";
+import {
+  EXPERT_TUNING,
+  hashOf,
+  newExpertContext,
+  type SearchTuning,
+  searchExpert,
+} from "./expert";
+import { MASTER_TUNING } from "./master";
 import {
   evaluate,
   MATE,
@@ -196,22 +204,35 @@ export function createChessSearchBot(
 }
 
 /**
- * 고수: 고수 전용 탐색(expert.ts)으로 깊이를 하나씩 늘리며 읽는다(반복 심화).
- * 치환표·PVS·널 무브·줄여 읽기로 같은 판 수 상한 안에서 더 깊이 본다.
+ * 깊이를 하나씩 늘리며 읽는 컴퓨터(반복 심화). 고수·초고수가 함께 쓰는 틀로, expert.ts의 탐색을 `tuning`으로 부른다.
  * 판 수 상한을 넘으면 그 깊이는 버리고 앞 깊이의 결과를 쓴다(기기 속도와 상관없이 늘 같은 수).
- * 앞 깊이의 값 순서대로 뿌리의 수를 읽고, 가장 좋은 값과 `EXPERT_JITTER` 안쪽인 수 가운데 시드로 고른다
+ * 앞 깊이의 값 순서대로 뿌리의 수를 읽고, 가장 좋은 값과 `EXPERT_JITTER` 안쪽인 수 가운데 시드로 고른다.
+ * `book`이 있으면 책에 있는 판에서는 읽지 않고 책의 수 가운데 시드로 고른다
  */
-export function createChessExpertBot(
-  budget = EXPERT_NODE_BUDGET,
-  maxDepth = 40,
-): ChessBot {
-  return botWith("chess-expert", (view, rng) => {
+function createDeepSearchBot(options: {
+  name: string;
+  budget: number;
+  maxDepth: number;
+  tuning: SearchTuning;
+  book?: (pos: Position) => readonly Move[];
+}): ChessBot {
+  const { name, budget, maxDepth, tuning, book } = options;
+  return botWith(name, (view, rng) => {
     const pos = view.position;
     if (view.legal.length === 0) return null;
     const mate = view.legal.find((m) => isCheckmate(applyMove(pos, m)));
     if (mate) return mate;
+    if (book) {
+      const known = book(pos).filter((m) =>
+        view.legal.some(
+          (l) =>
+            l.from === m.from && l.to === m.to && l.promotion === m.promotion,
+        ),
+      );
+      if (known.length > 0) return known[nextInt(rng, known.length)] ?? null;
+    }
     // 게임 기록(지금 판 포함)을 넣어 탐색 안에서 같은 판 되풀이를 알아본다.
-    const ctx = newExpertContext(budget, view.positions);
+    const ctx = newExpertContext(budget, view.positions, tuning);
     const enemy = pos.turn === "w" ? "b" : "w";
     let order = orderMoves(pos, [...view.legal]);
     let best: { move: Move; score: number }[] = [];
@@ -262,16 +283,58 @@ export function createChessExpertBot(
 /** 한 깊이를 끝냈을 때 판 수 상한의 이만큼을 넘게 썼으면 더 깊이 가지 않는다 */
 const EXPERT_STOP_SHARE = 0.4;
 
+/**
+ * 고수: 고수 전용 탐색(expert.ts)으로 깊이를 하나씩 늘리며 읽는다.
+ * 치환표·PVS·널 무브·줄여 읽기로 같은 판 수 상한 안에서 더 깊이 본다
+ */
+export function createChessExpertBot(
+  budget = EXPERT_NODE_BUDGET,
+  maxDepth = 40,
+): ChessBot {
+  return createDeepSearchBot({
+    name: "chess-expert",
+    budget,
+    maxDepth,
+    tuning: EXPERT_TUNING,
+  });
+}
+
+/**
+ * 초고수가 한 수에 보는 판 수 상한(docs/26 3절). 16만에서도 고수에게 20판 20승이었지만
+ * 가장 긴 한 수가 부하 아래 1.7초를 넘어 12만으로 낮췄다
+ */
+export const MASTER_NODE_BUDGET = 120_000;
+
+/**
+ * 초고수: 고수와 같은 틀에 오프닝 책(book.ts), 더 넓은 평가·끝내기 표·가지치기(master.ts),
+ * 더 큰 판 수 상한을 더했다
+ */
+export function createChessMasterBot(
+  budget = MASTER_NODE_BUDGET,
+  options: { book?: boolean; tuning?: SearchTuning } = {},
+): ChessBot {
+  return createDeepSearchBot({
+    name: "chess-master",
+    budget,
+    maxDepth: 40,
+    tuning: options.tuning ?? MASTER_TUNING,
+    ...(options.book === false ? {} : { book: bookMoves }),
+  });
+}
+
 /** 예전 고수(깊이 4, 치환표 없음). 세기 비교에 남겨 둔다 */
 export const chessExpertBotV1 = createChessSearchBot();
 
 export const chessExpertBot = createChessExpertBot();
 
-/** 실력 단계(0 입문, 1 중수, 2 고수) */
+export const chessMasterBot = createChessMasterBot();
+
+/** 실력 단계(0 입문, 1 중수, 2 고수, 3 초고수) */
 export function chessBotFor(level: number): ChessBot {
   if (level <= 0) return chessBeginnerBot;
   if (level === 1) return chessIntermediateBot;
-  return chessExpertBot;
+  if (level === 2) return chessExpertBot;
+  return chessMasterBot;
 }
 
 /** 다시 보기 해설에 쓰는 값: 이 판을 둘 차례 편에서 본 값 */

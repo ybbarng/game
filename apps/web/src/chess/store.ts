@@ -34,7 +34,7 @@ export type ChessHost = MatchHost<ChessView, Action, GameEvent> & {
 };
 
 export type ChessSaved = SavedMatch<ChessRules, Action, undefined> & {
-  /** 컴퓨터 단계(0 입문, 1 중수, 2 고수) */
+  /** 컴퓨터 단계(0 입문, 1 중수, 2 고수, 3 초고수) */
   level: number;
 };
 
