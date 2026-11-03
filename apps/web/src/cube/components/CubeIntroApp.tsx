@@ -146,9 +146,6 @@ export function CubeIntroApp() {
                   큰 큐브: <b>Rw</b>는 바깥 두 층, <b>2R</b>은 안쪽 한 층
                 </li>
               </ul>
-              <p className="text-white/60 text-xs">
-                아래는 「R U R' U'」를 천천히 돌리는 모습입니다.
-              </p>
               <div className="mx-auto w-full max-w-xs">
                 <DemoCube
                   n={3}
@@ -305,7 +302,7 @@ export function CubeIntroApp() {
               onClick={() => setIndex((i) => i + 1)}
               className="rounded-xl bg-sky-500 px-4 py-2 font-semibold text-black text-sm disabled:opacity-40"
             >
-              {quizDone ? "다음" : "퀴즈를 맞히면 다음"}
+              다음
             </button>
           )}
         </div>

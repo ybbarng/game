@@ -241,7 +241,7 @@ function KeymapSection({
       setKeymap(r.keymap);
       setMessage(
         r.replaced
-          ? `${chordLabel(chord)} → 「${capturing}」 · 「${r.replaced}」에서 뺐습니다`
+          ? `${chordLabel(chord)} → 「${capturing}」 · 「${r.replaced}」에서 뺐습니다.`
           : `${chordLabel(chord)} → 「${capturing}」`,
       );
       setCapturing(null);
@@ -338,7 +338,7 @@ function KeymapSection({
                 type="button"
                 onClick={() => {
                   setKeymap(customFrom(p));
-                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다`);
+                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다.`);
                 }}
                 className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
               >
@@ -459,7 +459,7 @@ function KeymapSection({
                 if (r.ok) {
                   setKeymap(r.keymap);
                   setImportError(null);
-                  setMessage("배치를 가져왔습니다");
+                  setMessage("배치를 가져왔습니다.");
                 } else setImportError(r.error);
               }}
               className="self-start rounded bg-white/10 px-2 py-1"

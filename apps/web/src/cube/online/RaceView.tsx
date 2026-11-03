@@ -94,7 +94,7 @@ export function RaceView({
         return true;
       }
       if (r.reason === "살펴보기 중")
-        setNotice("살펴보기 중에는 돌릴 수 없습니다");
+        setNotice("살펴보기 중에는 돌릴 수 없습니다.");
       return false;
     },
     [room],
@@ -115,7 +115,7 @@ export function RaceView({
   if (!snap || !session) {
     return (
       <p className="rounded-xl bg-white/5 p-4 text-center text-sm">
-        이번 판에는 들지 않았습니다
+        이번 판에는 들지 않았습니다.
       </p>
     );
   }
