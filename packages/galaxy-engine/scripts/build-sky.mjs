@@ -640,7 +640,7 @@ const DISTANCE = {
   603: [350, "van Leeuwen 2007"], // Almach
   617: [66, "van Leeuwen 2007"], // Hamal
   681: [300, "van Leeuwen 2007"], // Mira
-  834: [1000, "Gaia DR3"], // Miram
+  834: [1000, "Gaia DR3 시차 3.27 mas"], // Miram
   838: [170, "van Leeuwen 2007"], // Bharani
   897: [160, "van Leeuwen 2007"], // Acamar
   911: [250, "van Leeuwen 2007"], // Menkar
