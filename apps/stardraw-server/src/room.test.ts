@@ -708,3 +708,62 @@ describe("신고", () => {
     small.stop();
   });
 });
+
+describe("관측지 요약 한 줄(docs/33 11절)", () => {
+  it("닫힐 때 가장 많았던 보는 사람·얼굴, 언덕에 오른 사람, 말·신고·응원 수만 남긴다", async () => {
+    hub.stop();
+    const logs: string[] = [];
+    hub = new RoomHub({
+      clock,
+      policy: DEFAULT_WEBAUTHN_POLICY,
+      schedule: () => schedule,
+      isRegistered: (p) => registered.has(toHex(p)),
+      isDirector: () => false,
+      sealed: () => sealed,
+      tickets: () => tickets,
+      entered: () => false,
+      drawn: () => drawn,
+      log: (m) => logs.push(m),
+    });
+    const a = await passFor(alice);
+    const b = await passFor(bob);
+    const ra = new FakeRes();
+    const ra2 = new FakeRes();
+    const rb = new FakeRes();
+    const w1 = new FakeRes();
+    const w2 = new FakeRes();
+    hub.connect(ROUND, asRes(w1), undefined);
+    hub.connect(ROUND, asRes(w2), undefined);
+    hub.connect(ROUND, asRes(ra), a.pass);
+    // 같은 사람의 탭 둘은 얼굴 하나
+    hub.connect(ROUND, asRes(ra2), a.pass);
+    hub.connect(ROUND, asRes(rb), b.pass);
+    w2.end();
+    const said = hub.say(ROUND, a.pass, "시리우스!");
+    hub.say(ROUND, b.pass, "카노푸스는 안 보여요");
+    hub.report(ROUND, b.pass, said.id);
+    hub.cheer(ROUND, a.pass, "meteor", null);
+    hub.cheer(ROUND, b.pass, "twinkle", a.id);
+    expect(logs).toEqual([]);
+    clock.advance(
+      (DRAW_AT - (times.opensAt + 10)) * 1000 +
+        DEFAULT_ROOM_LIMITS.closeAfterMs,
+    );
+    expect(logs).toHaveLength(1);
+    const line = logs[0] as string;
+    expect(line.startsWith("관측지 ")).toBe(true);
+    expect(JSON.parse(line.slice("관측지 ".length))).toEqual({
+      round: ROUND,
+      peakWatchers: 2,
+      peakFaces: 2,
+      hill: 2,
+      says: 2,
+      reported: 1,
+      meteors: 1,
+      twinkles: 1,
+    });
+    // 말 내용·열쇠는 없다
+    expect(line).not.toContain("시리우스");
+    expect(line).not.toContain(toHex(alice.publicKey).slice(0, 16));
+  });
+});

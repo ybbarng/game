@@ -122,6 +122,10 @@ export interface RoomDeps {
    * 쓰기로 묶는다: 연결 쓰기 횟수가 소식 수 × 연결 수에서 차례 수 × 연결 수로 준다. 없으면 소식마다 바로 쓴다(시험)
    */
   defer?: (flush: () => void) => void;
+  /**
+   * 방이 닫힐 때 숫자 요약 한 줄을 남길 곳(운영은 `[stardraw]` 서버 로그, docs/33 11절). 말 내용·열쇠·IP는 넣지 않는다
+   */
+  log?: (message: string) => void;
 }
 
 /** 방 이벤트(스트림 한 줄) */
@@ -266,6 +270,11 @@ interface Room {
   meteors: number;
   twinkles: Map<string, number>;
   cheerAt: number;
+  /** 닫을 때 남길 숫자(관측지 요약): 가장 많았던 보는 연결·언덕 얼굴 수, 별똥별·반짝임 합 */
+  peakWatchers: number;
+  peakFaces: number;
+  meteorTotal: number;
+  twinkleTotal: number;
 }
 
 const sec = (ms: number) => Math.floor(ms / 1000);
@@ -356,6 +365,10 @@ export class RoomHub {
       meteors: 0,
       twinkles: new Map(),
       cheerAt: this.nowMs(),
+      peakWatchers: 0,
+      peakFaces: 0,
+      meteorTotal: 0,
+      twinkleTotal: 0,
     };
     this.rooms.set(round, room);
     return room;
@@ -569,7 +582,9 @@ export class RoomHub {
     if (!pass) {
       room.watcherCount++;
       room.watchersDirty = true;
-    }
+      room.peakWatchers = Math.max(room.peakWatchers, room.watcherCount);
+    } else if (!wasHere)
+      room.peakFaces = Math.max(room.peakFaces, this.faceCount(room));
     this.write(conn, {
       type: "hello",
       serverTime: this.nowMs(),
@@ -605,6 +620,13 @@ export class RoomHub {
       if (conn.pass && !this.hasFace(room, conn.pass.id))
         this.broadcast(room, { type: "leave", id: conn.pass.id });
     });
+  }
+
+  /** 지금 언덕에 얼굴이 보이는 사람 수(연결이 하나 이상인 표) */
+  private faceCount(room: Room): number {
+    const ids = new Set<string>();
+    for (const c of room.connections) if (c.pass) ids.add(c.pass.id);
+    return ids.size;
   }
 
   private hasFace(room: Room, id: string): boolean {
@@ -661,9 +683,13 @@ export class RoomHub {
       throw new EntryError("조금 천천히 응원해 주세요", 429);
     pass.lastCheer = now;
     // 모아 두었다가 cheerBatchMs마다 수로 보낸다(tick). 얼굴이 없는 반짝임은 화면에 보일 곳이 없어 세지 않는다
-    if (kind === "meteor") room.meteors += 1;
-    else if (typeof to === "string" && this.hasFace(room, to))
+    if (kind === "meteor") {
+      room.meteors += 1;
+      room.meteorTotal += 1;
+    } else if (typeof to === "string" && this.hasFace(room, to)) {
       room.twinkles.set(to, (room.twinkles.get(to) ?? 0) + 1);
+      room.twinkleTotal += 1;
+    }
   }
 
   private flushCheers(room: Room, now: number): void {
@@ -776,6 +802,7 @@ export class RoomHub {
       }
       if (now >= room.drawAt * 1000 + this.limits.closeAfterMs) {
         this.broadcast(room, { type: "closed" });
+        this.logSummary(room);
         this.closeRoom(room);
         continue;
       }
@@ -792,6 +819,25 @@ export class RoomHub {
       )
         this.broadcast(room, { type: "time", serverTime: now });
     }
+  }
+
+  /**
+   * 관측지 요약 한 줄(docs/33 11절): 가장 많았던 보는 사람(언덕 아래 연결)·언덕 얼굴, 언덕에 오른 사람(표를 받은 열쇠 수),
+   * 말·신고한 말·별똥별·반짝임 수. 숫자만 남긴다
+   */
+  private logSummary(room: Room): void {
+    this.deps.log?.(
+      `관측지 ${JSON.stringify({
+        round: room.round,
+        peakWatchers: room.peakWatchers,
+        peakFaces: room.peakFaces,
+        hill: room.passes.size,
+        says: room.messageSeq,
+        reported: room.reports.size,
+        meteors: room.meteorTotal,
+        twinkles: room.twinkleTotal,
+      })}`,
+    );
   }
 
   private closeRoom(room: Room): void {
