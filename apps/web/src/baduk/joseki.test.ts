@@ -48,3 +48,23 @@ describe("바둑 정석 수순", () => {
     },
   );
 });
+
+describe("정석 시작 판 글자", () => {
+  it("판 크기·놓인 돌·먼저 둘 편을 읽는다", () => {
+    expect(parseJosekiStart("19 B:D16,K16 W:F17 turn:W")).toEqual({
+      size: 19,
+      black: ["D16", "K16"],
+      white: ["F17"],
+      toPlay: 2,
+    });
+    expect(parseJosekiStart("19 B:C16 turn:B")?.white).toEqual([]);
+  });
+
+  it("I열, 판 밖, 흑백이 겹친 자리, 다른 판 크기는 받지 않는다", () => {
+    expect(parseJosekiStart("19 B:I16 turn:W")).toBeNull();
+    expect(parseJosekiStart("19 B:D20 turn:W")).toBeNull();
+    expect(parseJosekiStart("19 B:D0 turn:W")).toBeNull();
+    expect(parseJosekiStart("19 B:D16 W:D16 turn:W")).toBeNull();
+    expect(parseJosekiStart("9 B:D4 turn:W")).toBeNull();
+  });
+});
