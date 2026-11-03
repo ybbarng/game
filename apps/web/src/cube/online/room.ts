@@ -130,9 +130,16 @@ export class CubeRoom {
   private readonly init: CubeRoomInit;
   private readonly hub: RaceHub;
   private readonly connected = new Set<string>();
+  /**
+   * 방장 연결 아이디. 방장은 나, 손님은 처음 받은 방 상태의 방장으로 고정한다(초대 링크에는 방 코드만 있다).
+   * 그 뒤로는 이 방장이 보낸 방 상태만 받는다
+   */
+  private hostId?: string;
   private current?: {
     race: string;
     round: number;
+    /** 이 판의 참가자 → 맡은 기기. 판을 열 때 고정한다(판 도중 방 상태가 바뀌어도 그대로) */
+    owners: Map<string, string>;
     game: CubeRaceGame;
     sessions: Map<string, RaceSession<CubeMove, PuzzleState>>;
     off: (() => void)[];
@@ -147,12 +154,15 @@ export class CubeRoom {
     this.hub = new RaceHub({
       ...(init.transport ? { transport: init.transport } : {}),
       clock: init.clock,
-      owner: (p) => this.state?.players.find((x) => x.id === p)?.device,
+      // 경주 메시지는 판을 열 때 고정한 표로만 누구 것인지 정한다
+      owner: (p) => this.current?.owners.get(p),
       participantsOf: (d) =>
-        this.state?.players.filter((x) => x.device === d).map((x) => x.id) ??
-        [],
+        [...(this.current?.owners ?? [])]
+          .filter(([, device]) => device === d)
+          .map(([id]) => id),
     });
     if (init.isHost) {
+      this.hostId = this.me;
       this.state = {
         v: 1,
         host: this.me,
@@ -360,9 +370,11 @@ export class CubeRoom {
     }
     if (msg.type === "cube-room" && !this.isHost) {
       const next = msg.state;
+      // 방 상태(참가자 표·판 번호·진행)는 고정한 방장에게서 온 것만. 그물이라 손님끼리도 직접 보낼 수 있다
+      if (this.hostId !== undefined && from !== this.hostId) return;
       if (!isRoomState(next) || next.host !== from) return;
-      if (this.state && next.v <= this.state.v && next.host === this.state.host)
-        return;
+      if (this.state && next.v <= this.state.v) return;
+      this.hostId = from;
       if (next.round === 0) this.rounds = [];
       this.state = next;
       this.connected.add(from);
@@ -396,6 +408,10 @@ export class CubeRoom {
     if (this.rounds.some((r) => r.race === race.id)) return;
     if (s.status !== "racing") return;
     this.endRace();
+    const owners = new Map<string, string>();
+    for (const p of s.players)
+      if (race.players.includes(p.id)) owners.set(p.id, p.device);
+    if (race.players.some((id) => !owners.has(id))) return;
     const local = s.players.filter(
       (p) => race.players.includes(p.id) && p.device === this.me,
     );
@@ -438,7 +454,7 @@ export class CubeRoom {
         }),
       );
     }
-    this.current = { race: race.id, round, game, sessions, off };
+    this.current = { race: race.id, round, owners, game, sessions, off };
     for (const session of sessions.values()) session.start();
     this.emit();
   }
@@ -494,23 +510,49 @@ export class CubeRoom {
   }
 }
 
+const BOT_ID = /^bot\d+$/;
+
+/**
+ * 받은 방 상태의 모양과 참가자 표를 확인한다. 방장도 남의 기기를 바꿀 수 없게:
+ * - 사람은 자기 기기에서만 자기 수를 낸다(`device === id`).
+ * - 컴퓨터는 아이디가 `bot숫자`이고 방장 기기가 맡는다.
+ */
 function isRoomState(v: unknown): v is RoomState {
   if (typeof v !== "object" || v === null) return false;
   const s = v as RoomState;
+  if (
+    !(
+      typeof s.v === "number" &&
+      typeof s.host === "string" &&
+      Array.isArray(s.players) &&
+      s.players.every(
+        (p) =>
+          typeof p?.id === "string" &&
+          typeof p.name === "string" &&
+          typeof p.device === "string",
+      ) &&
+      s.players.length <= MAX_PLAYERS &&
+      typeof s.round === "number" &&
+      typeof s.settings?.n === "number" &&
+      [2, 3, 4, 5].includes(s.settings.n) &&
+      typeof s.settings.timeLimitSec === "number"
+    )
+  )
+    return false;
+  const ids = new Set(s.players.map((p) => p.id));
+  if (ids.size !== s.players.length) return false;
+  const rosterOk = s.players.every((p) =>
+    p.bot !== undefined
+      ? BOT_ID.test(p.id) && p.device === s.host
+      : !BOT_ID.test(p.id) && p.device === p.id,
+  );
+  if (!rosterOk) return false;
+  const race = s.race;
+  if (race === undefined) return true;
+  // 지난 판 참가자는 판 사이에 나갔을 수 있다(판을 열 때 표에 없으면 열지 않는다, `applyState`)
   return (
-    typeof s.v === "number" &&
-    typeof s.host === "string" &&
-    Array.isArray(s.players) &&
-    s.players.every(
-      (p) =>
-        typeof p?.id === "string" &&
-        typeof p.name === "string" &&
-        typeof p.device === "string",
-    ) &&
-    s.players.length <= MAX_PLAYERS &&
-    typeof s.round === "number" &&
-    typeof s.settings?.n === "number" &&
-    [2, 3, 4, 5].includes(s.settings.n) &&
-    typeof s.settings.timeLimitSec === "number"
+    typeof race.id === "string" &&
+    Array.isArray(race.players) &&
+    race.players.every((id) => typeof id === "string")
   );
 }
