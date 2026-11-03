@@ -4,6 +4,10 @@ import { useEffect } from "react";
 
 import { useBaseballTutorialProgress } from "@/baseball/progress";
 import { useBaseballSettings } from "@/baseball/settings";
+import {
+  useGalaxyStarQuiz,
+  useGalaxyTutorialProgress,
+} from "@/galaxy/progress";
 import { useGalaxySettings } from "@/galaxy/settings-store";
 import { useSettings } from "@/game/settings";
 import { useGostopTutorialProgress } from "@/gostop/progress";
@@ -54,6 +58,8 @@ export function StoreHydration() {
       useYutSettings.persist.rehydrate(),
       useYutTutorialProgress.persist.rehydrate(),
       useGalaxySettings.persist.rehydrate(),
+      useGalaxyTutorialProgress.persist.rehydrate(),
+      useGalaxyStarQuiz.persist.rehydrate(),
       useOnecardSettings.persist.rehydrate(),
       useOnecardTutorialProgress.persist.rehydrate(),
     ]).then(() => {
