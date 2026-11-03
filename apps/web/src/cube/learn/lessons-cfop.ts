@@ -136,7 +136,7 @@ const twoLookOll: Lesson = {
     },
     {
       kind: "demo",
-      body: "꼭짓점 단계 중 H 모양: 양옆에 헤드라이트가 마주 본다.",
+      body: "꼭짓점 단계 중 H 모양: 앞과 뒤 옆면에 노란 칸이 둘씩 마주 본다.",
       setup: flip("R U2 R' U' R U R' U' R U' R'"),
       alg: "R U2 R' U' R U R' U' R U' R'",
       mask: "oll",
