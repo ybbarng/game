@@ -97,6 +97,9 @@ export function TourList() {
 let tour: Promise<TourState> | null = null;
 
 const noop = () => {};
+/** 데모 「앱 안 브라우저」가 흉내 낼 카카오톡 아이폰 사용자 에이전트(바깥 여는 단추·문구가 실제와 같게) */
+const DEMO_KAKAO_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 10.8.5";
 
 export function TourScreen({ id, onBack }: { id: TourId; onBack: () => void }) {
   const [state, setState] = useState<TourState | null>(null);
@@ -352,7 +355,12 @@ function Screen({
           demo={false}
           env={
             id === "in-app"
-              ? { inApp: "카카오톡", api: true, platform: true, ua: "" }
+              ? {
+                  inApp: "카카오톡",
+                  api: true,
+                  platform: true,
+                  ua: DEMO_KAKAO_UA,
+                }
               : { inApp: null, api: false, platform: false, ua: "" }
           }
           working={null}

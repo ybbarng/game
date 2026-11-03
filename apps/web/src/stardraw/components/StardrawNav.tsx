@@ -224,6 +224,8 @@ function TopBar({
     <nav
       aria-label="별 따기 메뉴"
       className="fixed inset-x-0 top-0 z-50 border-white/10 border-b bg-[#0a0f1c]/85 backdrop-blur-md"
+      // 웹뷰 위쪽 띠가 있으면 그 아래로(InAppNotice WebviewBand)
+      style={{ top: "var(--sd-band, 0px)" }}
     >
       <div className="sd-wide mx-auto flex max-w-xl items-center justify-between gap-4 px-4 py-2.5">
         <div className="flex items-center gap-1">

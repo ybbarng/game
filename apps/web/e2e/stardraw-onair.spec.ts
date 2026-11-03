@@ -116,7 +116,7 @@ test.describe("카카오톡 안 브라우저", () => {
       .click();
     const note = page.locator("[data-key-setup] [data-in-app-notice='tried']");
     await expect(note).toContainText(
-      "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
+      "카카오톡 안에서는 패스키 확인을 마치지 못했습니다. Safari로 옮겨 오시면 이어서 접수하겠습니다.",
     );
     await expect(
       note.getByRole("link", { name: "Safari로 열기" }),

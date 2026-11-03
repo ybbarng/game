@@ -436,7 +436,7 @@ export function StardrawApp({ page = "home" }: { page?: StardrawPage }) {
   useEffect(() => {
     if (!services) return;
     trackArrival(services.ns);
-    trackKeyEnv(services.ns);
+    void trackKeyEnv(services.ns);
   }, [services]);
   /** 추첨을 아직 열어 보지 않은 내 회차(결과를 가린다, spoiler.ts) */
   const sealed: Sealed = services

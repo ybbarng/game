@@ -555,7 +555,7 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
   });
   await toEntry(page);
   await expect(page.getByRole("note")).toContainText(
-    "이 브라우저는 패스키를 지원하지 않아요",
+    "이 브라우저는 패스키를 지원하지 않습니다.",
   );
   await expect(page.getByRole("button", REGISTER)).toHaveCount(0);
 
@@ -573,7 +573,7 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
   await register.click();
   const note = setup.locator("[data-in-app-notice='tried']");
   await expect(note).toContainText(
-    "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
+    "카카오톡 안에서는 패스키 확인을 마치지 못했습니다. Safari로 옮겨 오시면 이어서 접수하겠습니다.",
   );
   // 카카오톡은 바깥 브라우저로 여는 단추와, 안 열릴 때 손으로 여는 메뉴 자리
   await expect(
@@ -610,7 +610,7 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
   );
   await fastForwardUntil(first, () => help.isVisible());
   await expect(help).toContainText(
-    "카카오톡 안에서는 패스키가 되지 않을 수 있어요",
+    "카카오톡 안에서는 패스키 확인을 마치지 못했습니다",
   );
   await expect(help.getByRole("link", { name: "Safari로 열기" })).toBeVisible();
   // 신청서는 그 자리에서 다시 기다린다(다시 낼 수 있다)
@@ -992,9 +992,9 @@ test("데모 화면 둘러보기: 목록의 화면이 모두 가로 넘침 없�
     ["sheet-check", () => page.locator("[data-demo-unlock='check']")],
     [
       "in-app",
-      (s) => s.getByText(/카카오톡 안에서는 패스키가 되지 않을 수 있어요/),
+      (s) => s.getByText(/카카오톡 안에서는 패스키 확인을 마치지 못했습니다/),
     ],
-    ["no-passkey", (s) => s.getByText(/패스키를 지원하지 않아요/)],
+    ["no-passkey", (s) => s.getByText(/패스키를 지원하지 않습니다/)],
     // 연출 항목: 시험은 움직임 줄이기라 결과 모습만 보인다
     ["fx-gate", (s) => s.locator("[data-gate]")],
     ["fx-issue", (s) => s.locator("[data-issued='new']")],

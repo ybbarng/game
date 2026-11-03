@@ -29,7 +29,7 @@ export interface TrackEvents {
   "sd-key": { how: SdKeyHow; where: SdWhere; inApp: boolean };
   /**
    * 패스키가 막혔다. step: 만들기·제시, 또는 들어오자마자 본 브라우저 환경(env, 페이지를 열 때 한 번).
-   * kind는 SdKeyFailKind, inApp은 앱 안 브라우저(카카오톡 등)였는지
+   * kind는 SdKeyFailKind, inApp은 앱 안 브라우저(웹뷰, passkey-env `webviewKind`)였는지
    */
   "sd-key-fail": {
     step: SdKeyHow | "env";
@@ -57,9 +57,15 @@ export type SdKeyFailKind =
   | "unsupported"
   /** 신분증 제시: 패스키는 골랐지만 장부에 없는 등록증 */
   | "not-found"
-  /** 들어온 브라우저가 앱 안 브라우저(env) */
-  | "in-app"
-  /** 들어온 브라우저에 패스키 기능이 없다(env) */
+  /**
+   * 들어온 브라우저가 웹뷰이고 미리 알아보니 패스키가 안 될 것 같다(env, 2026-11-03부터. 그 전의 `in-app`은 이름을 아는 앱이면
+   * 늘 보냈다). 끝의 `-auto`는 처음 열 때 바깥 브라우저로 자동으로 넘겨 본 탭(카카오톡·라인)
+   */
+  | "wv-android"
+  | "wv-ios"
+  | "wv-android-auto"
+  | "wv-ios-auto"
+  /** 웹뷰가 아닌 브라우저에 패스키 기능이 없다(env) */
   | "no-api"
   | "other";
 

@@ -21,7 +21,12 @@ import {
 
 import { errorKind } from "./errors";
 import type { Ledger } from "./ledger";
-import { inAppBrowser, passkeyApi, passkeyProblem } from "./passkey-env";
+import {
+  autoOpenTarget,
+  passkeyProblem,
+  passkeyReach,
+  webviewKind,
+} from "./passkey-env";
 import type { Wallet } from "./wallet";
 
 /** 실제 게임으로 확인한 저장 이름공간 */
@@ -43,8 +48,7 @@ export function setWhere(w: SdWhere): void {
 }
 
 const inApp = () =>
-  typeof navigator !== "undefined" &&
-  inAppBrowser(navigator.userAgent) !== null;
+  typeof navigator !== "undefined" && webviewKind(navigator.userAgent) !== null;
 
 interface Umami {
   track(name: string, data?: object): void;
@@ -148,25 +152,30 @@ function keyFail(ns: string, step: SdKeyHow, kind: SdKeyFailKind): void {
 const ENV_SEEN = "stardraw-sd-env-seen";
 
 /**
- * 들어온 브라우저가 패스키를 못 쓰면(앱 안 브라우저, 기능 없음) 탭마다 한 번 보낸다. 신청서를 띄우기 전에 막히는
- * 사람(입구 안내만 보고 떠나는 사람)을 세려고
+ * 들어온 브라우저가 패스키를 못 쓸 것 같으면 탭마다 한 번 보낸다(미리 알아보기 `passkeyReach`와 같은 판단, docs/36 11-54).
+ * 웹뷰면 `wv-android`·`wv-ios`(처음 열 때 바깥으로 자동으로 넘겨 본 탭은 끝에 `-auto`), 웹뷰가 아닌데 WebAuthn이 없으면
+ * `no-api`. 신청서를 띄우기 전에 막히는 사람(띠·입구 안내만 보고 떠나는 사람)을 세려고. 앱 이름·주소는 보내지 않는다
  */
-export function trackKeyEnv(ns: string): void {
+export async function trackKeyEnv(ns: string): Promise<void> {
   if (!real.has(ns) || typeof navigator === "undefined") return;
-  const app = inAppBrowser(navigator.userAgent) !== null;
-  const kind: SdKeyFailKind | null = app
-    ? "in-app"
-    : passkeyApi()
-      ? null
-      : "no-api";
-  if (!kind) return;
+  const reach = await passkeyReach();
+  if (reach.ok) return;
+  const kind: SdKeyFailKind = reach.webview
+    ? autoOpenTarget(navigator.userAgent, reach, location.href)
+      ? `wv-${reach.webview}-auto`
+      : `wv-${reach.webview}`
+    : "no-api";
   try {
     if (sessionStorage.getItem(ENV_SEEN)) return;
     sessionStorage.setItem(ENV_SEEN, "1");
   } catch {
     // 저장소를 못 쓰면 페이지마다 보낸다
   }
-  sdTrack(ns, "sd-key-fail", { step: "env", kind, inApp: app });
+  sdTrack(ns, "sd-key-fail", {
+    step: "env",
+    kind,
+    inApp: reach.webview !== null,
+  });
 }
 
 /** 공지 링크 꼬리표(docs/33 11절): `/stardraw?from=notice` */

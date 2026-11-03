@@ -553,7 +553,7 @@ describe("관측지의 앱 안 브라우저", () => {
       // 누른 단추와 같은 칸(언덕 아래 내 자리) 안
       expect(notice.parentElement).toBe(join.parentElement);
       expect(notice.textContent).toContain(
-        "카카오톡 안에서는 패스키를 쓸 수 없어요.",
+        "카카오톡 안에서는 패스키를 쓸 수 없습니다.",
       );
       const open = notice.querySelector("[data-open-outside]");
       expect(open?.textContent).toBe(label);
@@ -623,7 +623,7 @@ describe("관측지의 앱 안 브라우저", () => {
       });
       expect(createPasskey).toHaveBeenCalledTimes(1);
       expect(notice.textContent).toContain(
-        "카카오톡 안에서는 패스키가 되지 않을 수 있어요. Safari로 열어 주세요.",
+        "카카오톡 안에서는 패스키 확인을 마치지 못했습니다. Safari로 옮겨 오시면 이어서 접수하겠습니다.",
       );
       // 바깥으로 여는 단추는 안내가 뜬 다음 차례에 그려진다(주소를 화면에서 읽는다) — 조건으로 기다린다
       await waitFor(() =>

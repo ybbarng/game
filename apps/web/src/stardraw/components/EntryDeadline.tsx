@@ -37,7 +37,9 @@ export function HurryNotice({
       }`}
       style={
         floating
-          ? { top: "max(10px, calc(env(safe-area-inset-top, 0px) + 6px))" }
+          ? {
+              top: "max(10px, calc(max(env(safe-area-inset-top, 0px), var(--sd-band, 0px)) + 6px))",
+            }
           : undefined
       }
     >

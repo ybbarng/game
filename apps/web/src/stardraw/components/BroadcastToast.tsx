@@ -118,8 +118,8 @@ export function BroadcastToast({
       className={cn(
         "pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-3",
         belowBar
-          ? "pt-[calc(env(safe-area-inset-top,0px)+76px)]"
-          : "pt-[calc(env(safe-area-inset-top,0px)+12px)]",
+          ? "pt-[calc(max(env(safe-area-inset-top,0px),var(--sd-band,0px))+76px)]"
+          : "pt-[calc(max(env(safe-area-inset-top,0px),var(--sd-band,0px))+12px)]",
       )}
     >
       <button

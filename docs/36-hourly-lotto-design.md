@@ -2289,3 +2289,34 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 - 「카노푸스는 어디에 있나」 뒤에 새 절. 사실 단락(프톨레마이오스 48 별자리의 아르고자리, 18세기 라카유가 용골·고물·돛자리로 나누고 1930년 국제천문연맹이 셋을 남김, 그리스 글자를 배 전체에 한 벌로 매긴 흔적, 라카유가 곁에 나침반자리를 새로 만듦 — 사용자가 한 번 빼려다 「지금은 구성하니까 넣자」)과 이야기 단락(용골이 배를 떠받치듯 우주국은 대우주 시대의 기틀이 될 연구)을 나눈다.
 - 그림 `ArgoChart`: 실제 별 좌표로 아르고호 둘레를 그리고, 용골자리는 공용 모양(`carina.ts`)으로 금빛, 고물·돛·나침반자리는 흐리게, 카노푸스가 가장 밝다. 바탕에 요한 바이어 「우라노메트리아」(1603) 아르고호 판화(공공 저작물, 위키미디어 공용 File:Uranometria_Argo_Navis.png)를 별 기호를 지우고 흐리게(투명도 0.3) 깐다. 판화 좌표 그물(남쪽 황극 중심 등거리 방위 투영)을 읽어 실제 별에 맞춘 아핀 변환 `BAYER_TO_CHART`(약 30° 돌림, 평균 어긋남 400칸 기준 6칸). 출처 한 줄을 그림 아래에. 직접 그린 단순 윤곽(시안 A)은 상수 `ARGO_BACKDROP`로 바꿀 수 있게 남김.
 - 정해진 「아르고자리 별자리선」은 없다(옛 성도는 선 대신 배 그림을 그렸다). 그래서 지금 세 별자리 선이 옛 아르고자리 별을 잇는 선 구실을 한다.
+
+### 11-54. 앱 안 브라우저(웹뷰)는 모양으로 알아보고, 미리 알아보고, 바깥으로 넘긴다(2026-11-03 사용자 결정)
+
+사용자: 「안드로이드 카톡 웹뷰에서는 (우리) 버튼으로 외부 브라우저가 잘 열렸음. 아이폰은 확인 못 함.」 추천안 「처음 열 때 자동으로 바깥 브라우저로 넘기기 + 미리 알아보기 + 위쪽 띠」에 동의하고 「카톡뿐 아니라 슬랙 등 다양한 앱의 웹뷰에서 쓸 수 있으니 범용적인 방법이면 좋겠다」. 이어서 「웹뷰 안내도 카노푸스 우주국에서 보내는 메시지 느낌으로」. 코드는 `apps/web/src/stardraw/passkey-env.ts`(판정·여는 길)와 `components/InAppNotice.tsx`(띠·안내).
+
+- **웹뷰 알아보기(`webviewKind`)**: 앱 이름 목록이 아니라 사용자 에이전트 모양으로.
+
+  | 경우 | 규칙 | 근거 |
+  |---|---|---|
+  | 안드로이드 시스템 웹뷰 | `Android`이고 `; wv)`가 있거나 Chrome 앞에 `Version/x.x`(옛 웹뷰) | Android Developers Blog 2024-12 「User-Agent reduction on Android WebView」(앱이 통째로 바꾸지 않으면 `wv`가 남는다), ua-parser/uap-core #38 |
+  | 아이폰·아이패드 WKWebView | iOS인데 `Safari/` 토큰이 없다 | Safari·SFSafariViewController(슬랙·텔레그램 iOS)·CriOS·FxiOS·EdgiOS는 끝에 `Safari/…`. 카카오톡·인스타그램·페이스북·네이버는 없고, 라인은 빗금 없는 `Safari Line/…`(Classmethod 2025-08) |
+  | 이름 목록(카카오톡·네이버·다음·인스타그램·페이스북·라인·밴드·에브리타임) | 위 표시가 없어도 웹뷰 | 이름은 「카카오톡 안에서는」에, 카카오톡·라인은 그 앱만의 여는 길에 |
+  | 웹뷰가 아님 | Safari, SFSafariViewController, iOS Chrome·Firefox·Edge, 안드로이드 Chrome·Chrome 맞춤 탭(슬랙·텔레그램 안드로이드), 삼성 인터넷, 데스크톱 | |
+  | 알아보지 못함 | 데스크톱 모드 아이패드의 WKWebView(`Macintosh`로 온다), Safari처럼 꾸민 앱 | 시도 뒤 안내(11-52)가 맡는다 |
+
+- **미리 알아보기(`judgeReach`·`passkeyReach`, 탭마다 한 번 sessionStorage)**: 웹뷰가 아니면 WebAuthn 유무만(이 기기 잠금이 없어도 휴대폰 QR·보안 키로 된다). 웹뷰면 `getClientCapabilities().userVerifyingPlatformAuthenticator`(있으면 앞세운다), 없으면 `isUserVerifyingPlatformAuthenticatorAvailable()`. WKWebView는 그 앱이 도메인과 연결됐을 때만 true(WebKit 버그 250912, 2023-01 고침), 안드로이드 웹뷰는 앱이 WebAuthn을 켰을 때만. 웹뷰인데 된다고 하면 막지도 띠도 띄우지 않고 평소처럼 시도한다. WebAuthn이 아예 없을 때만 시도를 막는다(`passkeyBlocked`는 이 판단의 `api: false`와 같다).
+- **바깥 브라우저로 여는 길(`openOutside`)**:
+
+  | 경우 | 주소 | 자동 | 근거 |
+  |---|---|---|---|
+  | 카카오톡 | `kakaotalk://web/openExternal?url=…` | 예 | 공식 문서 없음, 널리 쓰임. 안드로이드는 사용자가 확인(2026-11-03) |
+  | 라인 | 같은 주소 + `openExternalBrowser=1` | 예 | LINE Developers 「Using LINE features with the LINE URL scheme」. 안 되면 같은 페이지가 다시 열릴 뿐이고 꼬리표는 주소에서 지운다 |
+  | 그 밖의 안드로이드 웹뷰 | `intent://host/path?q#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=…;end` | 아니오 | Chrome 「Android Intents with Chrome」. intent를 받는 것은 앱이고, 받지 않는 웹뷰는 오류 화면(ERR_UNKNOWN_URL_SCHEME)을 띄워 자동으로는 시도하지 않는다 |
+  | 그 밖의 iOS 웹뷰 | `x-safari-https://host/path` | 아니오 | iOS 17부터, 애플 문서 없음, iOS 16과 일부 앱(인스타그램 보고)은 안 됨(Christian Tietze 2023-05, gist felquis/a08ee…). 몸짓 없는 시도가 무해한지 확인하지 못했다 |
+
+  단추로 안 열릴 때를 위해 메뉴 자리 한 줄과 주소 복사를 함께 둔다. 단추 이름은 아이폰 「Safari로 열기」, 안드로이드 「다른 브라우저로 열기」.
+- **처음 열 때 자동 넘김**: 웹뷰이고 미리 알아보니 안 되고 자동 길(카카오톡·라인)이 있으면, 별 따기 페이지를 처음 열 때 탭마다 한 번(sessionStorage `stardraw-auto-open`에 넘긴 주소) 넘긴다. 넘긴 뒤 원래 화면에는 말을 더하지 않고 띠만 남긴다.
+- **위쪽 띠(`WebviewBand`, 별 따기 layout)**: 웹뷰이고 미리 알아보니 안 되면 별 따기 모든 화면(데모·국장 화면 빼고) 위쪽에 「카노푸스 우주국」 머리와 「{앱 이름|이 앱} 안에서는 우주인 등록과 예측서 접수가 어렵습니다.」, 오른쪽에 여는 단추. 글을 누르면 메뉴 자리와 주소 복사를 펼친다. 둘러보기·관측·숨어서 관측은 그대로. 띠는 위에 고정하고 같은 높이의 빈칸으로 본문을 밀며, 위에 고정된 PC 메뉴·방송 토스트·마감 표시는 `--sd-band`만큼 내려간다(safe-area 포함).
+- **우주국 안내 말투**: 띠, 시도 뒤 실패 안내(`InAppNotice`), WebAuthn이 없는 브라우저 안내를 방송 토스트처럼 작은 우주국 로고와 「카노푸스 우주국」 머리를 붙인 「~습니다」로. 실패 뒤 「카카오톡 안에서는 패스키 확인을 마치지 못했습니다. Safari로 옮겨 오시면 이어서 접수하겠습니다.」, API 없음 「… 패스키를 쓸 수 없습니다. …」, 웹뷰가 아닌 미지원 「이 브라우저는 패스키를 지원하지 않습니다. 최신 Safari·Chrome으로 열어 주세요.」
+- **통계**: `sd-key-fail` env의 `kind`를 `wv-android`·`wv-ios`(자동으로 넘겨 본 탭은 `-auto`)·`no-api`로. 웹뷰라도 된다고 하면 보내지 않는다. `inApp`은 웹뷰 판정. 앱 이름·주소는 보내지 않는다(docs/33).
+- **실기기로 확인할 것**: 카카오톡 아이폰 자동 넘김(Safari가 열리는지, 카카오톡이 몸짓 없는 자기 스킴을 받는지), 카카오톡 아이폰·안드로이드에서 isUVPAA가 실제로 false인지(띠가 뜨는지), 인스타그램·네이버·페이스북 안드로이드에서 intent 단추가 기본 브라우저를 여는지(오류 화면이 아닌지), 같은 앱들 아이폰에서 x-safari-https 단추, 라인 자동 넘김, 슬랙·텔레그램에서 띠가 뜨지 않는지, 띠가 노치·다이내믹 아일랜드 아래로 내려오는지.

@@ -25,10 +25,11 @@ import { greetNow } from "../greeting";
 import { clearKept, type KeptPaper, loadKept, saveKept } from "../kept-paper";
 import type { LedgerStatus } from "../local-ledger";
 import {
-  inAppBrowser,
+  NO_PASSKEY_TEXT,
   passkeyApi,
   passkeyProblem,
   platformUnlock,
+  webviewName,
 } from "../passkey-env";
 import { usableHolding } from "../qual-store";
 import { registering } from "../registrar";
@@ -52,7 +53,7 @@ import {
 } from "./EnterSubmit";
 import { BounceSlip, ErrorStage, HurryNotice, kstClock } from "./EntryDeadline";
 import { IdPresentView, useIdPresent } from "./IdPresent";
-import { InAppNotice, InAppTriedNotice } from "./InAppNotice";
+import { BureauNote, InAppNotice, InAppTriedNotice } from "./InAppNotice";
 import { KeyIcon } from "./PasskeyHelp";
 import { LottoBall, StardrawTitle, StarInfo } from "./parts";
 import { liveDrawRound } from "./RoomView";
@@ -83,7 +84,7 @@ export function usePasskeyEnv(): Env | null {
     let alive = true;
     void platformUnlock().then((platform) => {
       if (alive)
-        setEnv({ inApp: inAppBrowser(ua), api: passkeyApi(), platform, ua });
+        setEnv({ inApp: webviewName(ua), api: passkeyApi(), platform, ua });
     });
     return () => {
       alive = false;
@@ -988,10 +989,7 @@ export function KeySetup({
         env?.inApp ? (
           <InAppNotice app={env.inApp} ua={env.ua} sure />
         ) : (
-          <p role="note" className="break-keep text-sm text-white/80">
-            이 브라우저는 패스키를 지원하지 않아요. 최신 Safari·Chrome으로 열어
-            주세요.
-          </p>
+          <BureauNote text={NO_PASSKEY_TEXT} />
         )
       ) : (
         <>
