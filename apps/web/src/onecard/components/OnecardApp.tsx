@@ -8,8 +8,10 @@ import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
 import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
+import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useOnecardTutorialProgress } from "@/tutorial/progress";
 
+import { endOnecardSession } from "../session";
 import {
   ONECARD_LEVELS,
   type OnecardLevel,
@@ -25,6 +27,7 @@ import {
 import { ONECARD_LESSONS } from "../tutorial/lessons";
 import { OnecardCardView } from "./OnecardCard";
 import { ONECARD_BG, OnecardGame } from "./OnecardGame";
+import { OnecardOnlineScreen } from "./OnecardOnlineScreen";
 import { onecardTutorial } from "./onecard-tutorial";
 
 function Chip({
@@ -219,11 +222,13 @@ function OnecardRulesScreen({ onBack }: { onBack: () => void }) {
 
 function OnecardHome({
   onStart,
+  onOnline,
   onLearn,
   onOptions,
   onRules,
 }: {
   onStart: (saved?: OnecardSaved) => void;
+  onOnline: () => void;
   onLearn: () => void;
   onOptions: () => void;
   onRules: () => void;
@@ -231,7 +236,6 @@ function OnecardHome({
   const s = useOnecardSettings();
   const learned = useOnecardTutorialProgress((p) => p.completed.length);
   const [saved, setSaved] = useState<OnecardSaved | null>(null);
-  const [soon, setSoon] = useState(false);
   useEffect(() => setSaved(loadOnecard()), []);
   const level = ONECARD_LEVELS.find((l) => l.value === s.level)?.label;
   return (
@@ -261,11 +265,6 @@ function OnecardHome({
           <strong className="text-amber-200">
             가운데 더미를 탁 치면 원카드!
           </strong>
-          {soon && (
-            <span role="status" className="mt-1 block text-xs text-white/70">
-              친구와 하기는 준비 중이에요
-            </span>
-          )}
         </>
       }
       {...(saved ? { resume: () => onStart(saved) } : {})}
@@ -280,8 +279,8 @@ function OnecardHome({
       together={{
         icon: "👥",
         title: "친구와 하기",
-        detail: "준비 중이에요",
-        onClick: () => setSoon(true),
+        detail: `${s.players}명 · 링크로 초대`,
+        onClick: onOnline,
       }}
       learn={{
         title: "원카드 배우기",
@@ -299,15 +298,24 @@ function OnecardHome({
 
 type Screen =
   | { kind: "start" }
+  | {
+      kind: "online";
+      /** 초대 링크로 들어왔으면 방 코드, 방장이면 null */
+      room: string | null;
+      /** 방장이 새로고침했으면 이 탭이 연 방과 남긴 것 */
+      resume?: { room: string; restore: HostRestore };
+    }
   | { kind: "playing" }
   | { kind: "options" }
   | { kind: "rules" }
   | { kind: "tutorial" }
   | { kind: "lesson"; lessonId: string };
 
-/** 원카드(/onecard): 첫 화면, 옵션, 규칙, 배우기, 대국 화면. 온라인은 다음 단계 */
+/** 원카드(/onecard): 첫 화면, 옵션, 규칙, 배우기, 친구와 하기(온라인 방), 대국 화면 */
 export function OnecardApp() {
+  // 판·방을 떠날 때(나가기 단추든 뒤로가기든) 하는 정리
   function leavePlay() {
+    endOnecardSession();
     useOnecard.getState().leave();
   }
   const [screen, setScreen] = useScreenHistory<Screen>(
@@ -322,8 +330,29 @@ export function OnecardApp() {
       clearOnecard();
   }, [view?.phase]);
 
+  // 초대 링크로 왔으면 그 방으로, 방장이 새로고침했으면 연 방을 다시 연다.
+  useEffect(() => {
+    const room = new URLSearchParams(window.location.search).get("room");
+    if (room) {
+      setScreen({ kind: "online", room });
+      return;
+    }
+    const hosted = hostedRoom("onecard");
+    if (hosted) setScreen({ kind: "online", room: null, resume: hosted });
+  }, [setScreen]);
+
   const backToStart = () => setScreen({ kind: "start" });
 
+  if (screen.kind === "online")
+    return (
+      <OnecardOnlineScreen
+        rules={rulesOf(useOnecardSettings.getState())}
+        roomFromUrl={screen.room}
+        {...(screen.resume ? { resume: screen.resume } : {})}
+        onBack={backToStart}
+        onPlaying={() => setScreen({ kind: "playing" })}
+      />
+    );
   if (screen.kind === "playing") return <OnecardGame onExit={backToStart} />;
   if (screen.kind === "options") return <OnecardOptions onBack={backToStart} />;
   if (screen.kind === "rules")
@@ -347,6 +376,7 @@ export function OnecardApp() {
     );
   return (
     <OnecardHome
+      onOnline={() => setScreen({ kind: "online", room: null })}
       onLearn={() => setScreen({ kind: "tutorial" })}
       onOptions={() => setScreen({ kind: "options" })}
       onRules={() => setScreen({ kind: "rules" })}

@@ -188,6 +188,7 @@ function quickView(state: OnecardState, seat: number): OnecardView {
     finished: state.finished,
     bankrupt: state.bankrupt,
     moves: legalActions(state, seat),
+    decision: state.phase === "play" && state.turn === seat ? "turn" : null,
     result: state.result,
   };
 }

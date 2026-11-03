@@ -38,6 +38,17 @@ export interface FairReplayGame {
   byClock?(action: unknown): boolean;
   /** 기록 속 내 행동을 내가 보낸 모양으로(방장이 실은 쓴 시간을 뗀다) */
   sentForm?(action: unknown): unknown;
+  /**
+   * 사람이 보낸 것이 아닌 기록(`byClock`)마다 게임이 따로 본다(`GameKit.verifyUnsigned`). `state`는 넣기 전 진짜 카드 상태.
+   * 문제가 있으면 까닭
+   */
+  unsigned?(
+    state: unknown,
+    entry: { seat: number; action: unknown },
+    index: number,
+  ): string | null;
+  /** 기록을 끝까지 본 뒤 한 번(`GameKit.verifyUnsignedDone`) */
+  unsignedDone?(): string | null;
 }
 
 /** 마이티 */
@@ -101,6 +112,23 @@ export async function verifyFairLog(
   const { states } = checked;
   const partial = checked.upTo < log.length;
   const done = log.slice(0, checked.upTo);
+
+  // 사람이 보낸 것이 아닌 기록(방장 시계·방장 기기가 넣은 것)은 게임이 따로 본다(지어낸 청구, 뺀 발표 등)
+  if (game.unsigned)
+    for (const [index, entry] of done.entries()) {
+      if (!game.byClock?.(entry.action)) continue;
+      const problem = game.unsigned(states[index], entry, index);
+      if (problem)
+        return {
+          ok: false,
+          seat: 0,
+          reason: `기록 ${index + 1}번째: ${problem}`,
+        };
+    }
+  if (!partial) {
+    const problem = game.unsignedDone?.() ?? null;
+    if (problem) return { ok: false, seat: 0, reason: problem };
+  }
 
   if (input.bot) {
     const botRng = createRng(seed ^ 0x2545f491);
