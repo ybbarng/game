@@ -5,10 +5,11 @@ import {
   debtPlan,
   legalActions,
   pendingSeats,
+  rentOf,
   standingsOf,
   step,
 } from "./match";
-import { LONG_RULES } from "./rules";
+import { LONG_RULES, STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 import { chainAction, must, paysOf, refused, roll, scene } from "./test-utils";
 
@@ -32,7 +33,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
       ],
     });
     expect(state.phase).toBe("debt");
-    expect(state.debt).toEqual({ seat: 0, to: 1, amount: 20, reason: "rent" });
+    expect(state.debt).toEqual({ seat: 0, to: 1, amount: 40, reason: "rent" });
     expect(pendingSeats(state)).toEqual([0]);
     expect(refused(state, 0, { type: "end" })).toContain("차례가 아니");
     expect(refused(state, 0, { type: "unmortgage", square: 1 })).toContain(
@@ -44,12 +45,12 @@ describe("빚 정리와 운항 중단(2-9)", () => {
     });
     expect(paysOf(events).map((p) => [p.from, p.to, p.amount])).toEqual([
       [-1, 0, 30],
-      [0, 1, 20],
+      [0, 1, 40],
     ]);
     expect(paid.debt).toBeNull();
     expect(paid.phase).toBe("turn");
     expect(paid.turn.next).toBe("end");
-    expect(paid.cash[0]).toBe(20);
+    expect(paid.cash[0]).toBe(0);
   });
 
   it("빚 정리 제안: 높은 정거장부터 고르게 내리고, 그래도 모자라면 싼 별부터 맡긴다", () => {
@@ -198,6 +199,28 @@ describe("끝과 순위(2-10)", () => {
     expect(state.turn.seat).toBe(0);
   });
 
+  it("유성우의 밤(켠 판): 마지막 두 돌림이 시작될 때 알리고, 그때부터 제철 대신 모든 별 이용료 2배", () => {
+    const rules = { ...STANDARD_RULES, meteor: true };
+    let s = lastTurn({ rules, round: 18, positions: [0, 0, 0, 29] });
+    expect(s.meteor).toBe(false);
+    s = roll(s, [1, 2]).state;
+    const { state, events } = must(s, 3, { type: "end" });
+    expect(state.round).toBe(19);
+    expect(state.meteor).toBe(true);
+    expect(events).toContainEqual({ type: "meteorShower" });
+    // 시리우스(14) 1단: 제철이 아닌 여름 돌림 40 → 80
+    const owned = (round: number, square: number, r = rules) =>
+      scene({ round, rules: r, stars: [{ square, owner: 1 }] });
+    expect(rentOf(owned(18, 14), 14)).toBe(40);
+    expect(rentOf(owned(19, 14), 14)).toBe(80);
+    expect(rentOf(owned(20, 14), 14)).toBe(80);
+    expect(rentOf(owned(20, 14, STANDARD_RULES), 14)).toBe(40);
+    // 베가(26, 값 160) 1단 30: 여름 제철과 겹쳐도 1.5배를 더 곱하지 않는다(90이 아니라 60)
+    expect(rentOf(owned(18, 26), 26)).toBe(50);
+    expect(rentOf(owned(19, 26), 26)).toBe(60);
+    expect(scene({ round: 40, rules: LONG_RULES }).meteor).toBe(false);
+  });
+
   it("시간 상한: 엔진 밖 시계가 알리면 그 돌림을 마치고 끝난다", () => {
     const s = scene();
     const up = must(s, 2, { type: "timeUp" }).state;
@@ -212,12 +235,12 @@ describe("끝과 순위(2-10)", () => {
     expect(ended.result?.kind).toBe("timeUp");
   });
 
-  it("자산 = 별빛 + 별 값(맡긴 별은 절반) + 지은 정거장 + 완성 별자리마다 100", () => {
+  it("자산 = 별빛 + 별 값(맡긴 별은 절반) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 100", () => {
     const s = scene({
       cash: [500, 1000, 1000, 1000],
       stars: [...cma(0, 2), { square: 1, owner: 0, mortgaged: true }],
     });
-    expect(assetsOf(s, 0)).toBe(500 + 620 + 300 + 30 + 100);
+    expect(assetsOf(s, 0)).toBe(500 + 620 + 150 + 30 + 100);
     expect(standingsOf(s)[0]?.seat).toBe(0);
   });
 

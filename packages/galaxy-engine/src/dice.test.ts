@@ -49,12 +49,34 @@ describe("함께 정하는 난수", () => {
     expect(() => stream.below(0)).toThrow();
   });
 
-  it("시작 별은 겹치지 않게 자리마다 나눈다", () => {
-    const hands = dealStars(sha256Hex("deal"), STAR_SQUARES, [0, 1, 2, 3], 2);
-    const all = hands.flat();
-    expect(hands.every((h) => h.length === 2)).toBe(true);
-    expect(new Set(all).size).toBe(8);
-    expect(all.every((sq) => STAR_SQUARES.includes(sq))).toBe(true);
+  it("시작 별은 자리마다 다른 별자리 하나에서 둘씩, 겹치지 않게 나눈다", () => {
+    // 별자리 셋짜리 여덟(사계절 하늘 모양)
+    const triples = Array.from({ length: 8 }, (_, g) =>
+      STAR_SQUARES.slice(g * 3, g * 3 + 3),
+    );
+    const groupOf = (sq: number) => triples.findIndex((g) => g.includes(sq));
+    for (const seed of ["deal", "deal2", "deal3"]) {
+      const hands = dealStars(sha256Hex(seed), triples, [0, 1, 2, 3], 2);
+      expect(hands.every((h) => h.length === 2)).toBe(true);
+      expect(new Set(hands.flat()).size).toBe(8);
+      expect(
+        hands.every((h) => groupOf(h[0] ?? -1) === groupOf(h[1] ?? -2)),
+      ).toBe(true);
+      expect(new Set(hands.map((h) => groupOf(h[0] ?? -1))).size).toBe(4);
+    }
+    // 둘짜리 별자리(황도 12궁)는 완성이 되지 않게 하나만, 나머지 하나는 고른 별자리가 아닌 별에서
+    const pairs = Array.from({ length: 12 }, (_, g) =>
+      STAR_SQUARES.slice(g * 2, g * 2 + 2),
+    );
+    const pairOf = (sq: number) => pairs.findIndex((g) => g.includes(sq));
+    const hands = dealStars(sha256Hex("deal"), pairs, [0, 1, 2], 2);
+    const picked = new Set(hands.map((h) => pairOf(h[0] ?? -1)));
+    expect(picked.size).toBe(3);
+    for (const h of hands) {
+      expect(h).toHaveLength(2);
+      expect(picked.has(pairOf(h[1] ?? -1))).toBe(false);
+    }
+    expect(new Set(hands.flat()).size).toBe(6);
   });
 
   it("입찰 약속은 번호·값·소금이 모두 같아야 같다", () => {

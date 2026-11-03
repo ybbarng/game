@@ -730,6 +730,124 @@ const DISTANCE = {
   8974: [45, "van Leeuwen 2007"], // Errai
 };
 
+/**
+ * 판 위 별의 표면 온도(K, 100 단위): 흔히 알려진 문헌 값을 손으로 옮긴 표(docs/48 3-6). HR 번호 → [K, 메모].
+ * BSC5 요약의 온도는 색지수에서 어림한 값이라 몇 별이 흔히 알려진 값과 크게 달랐다
+ * (아크투루스 4,900 ↔ 약 4,300, 레굴루스 16,000 ↔ 약 12,500, 벨라트릭스·아다라 26,000 ↔ 약 22,000).
+ * 하늘 파일에 놓인 별은 모두 이 표로 덮어쓴다. 표에 없는 판 위 별이 있으면 스크립트가 멈춘다.
+ * - 메모 「웹 확인」: 2026-11-04에 문헌·백과 정보 상자 값을 찾아 맞춘 것
+ * - 메모 「흔한 값」: 교과서·백과에 흔히 실린 값(분광형과 맞는지 보았다). 다시 확인하면 좋다
+ * - 값 null: 문헌 값을 확인하지 못해 BSC5 값을 그대로 둔다(분광형과 크게 어긋나지 않는다)
+ * - 빨리 도는 별(레굴루스·알타이르·베가·오카브)은 겉면 평균, 쌍성은 가장 밝은 별
+ * 숫자 하나는 사실이라 옮겨도 된다.
+ */
+const TEMPERATURE = {
+  15: [13800, "흔한 값, B8IVpMnHg"], // Alpheratz
+  21: [6800, "흔한 값, F2III"], // Caph
+  39: [21200, "웹 확인(약 21,000~22,000)"], // Algenib
+  168: [4500, "흔한 값, K0IIIa"], // Schedar
+  188: [4800, "흔한 값, G9III"], // Diphda
+  337: [3800, "흔한 값, M0III"], // Mirach
+  403: [8400, "흔한 값, A5IV"], // Ruchbah
+  424: [6000, "흔한 값, F7Ib(Polaris Aa)"], // Polaris
+  437: [4900, "흔한 값, G7IIIa"], // Alpherg
+  472: [15000, "흔한 값(극·적도 차이가 크다)"], // Achernar
+  510: [null, "BSC5 그대로"], // Torcular
+  553: [null, "BSC5 그대로"], // Sheratan
+  596: [null, "BSC5 그대로"], // Alrescha
+  603: [4300, "흔한 값, K3IIb"], // Almach
+  617: [4500, "흔한 값, K2III"], // Hamal
+  681: [3000, "흔한 값(변광, 약 2,900~3,200)"], // Mira
+  834: [null, "BSC5 그대로"], // Miram
+  838: [null, "BSC5 그대로"], // Bharani
+  897: [8200, "흔한 값, A3IV-V"], // Acamar
+  911: [3800, "흔한 값, M1.5IIIa"], // Menkar
+  936: [12500, "흔한 값(Algol A)"], // Algol
+  1017: [6400, "흔한 값, F5Ib"], // Mirfak
+  1165: [12300, "흔한 값, B7IIIe"], // Alcyone
+  1231: [3800, "흔한 값, M1III"], // Zaurak
+  1457: [3900, "흔한 값, K5III"], // Aldebaran
+  1666: [null, "BSC5 그대로"], // Cursa
+  1708: [5000, "흔한 값(Capella Aa)"], // Capella
+  1713: [12100, "흔한 값, B8Ia"], // Rigel
+  1790: [21800, "흔한 값, B2III"], // Bellatrix
+  1791: [13800, "흔한 값, B7III"], // Elnath
+  2061: [3600, "흔한 값(Levesque & Massey 2020)"], // Betelgeuse
+  2088: [null, "BSC5 그대로"], // Menkalinan
+  2095: [10400, "흔한 값, A0pSi"], // Mahasim
+  2326: [7000, "흔한 값, A9II"], // Canopus
+  2421: [9300, "흔한 값, A1IV"], // Alhena
+  2491: [9900, "흔한 값(Sirius A)"], // Sirius
+  2618: [22200, "웹 확인(약 21,000~22,900)"], // Adhara
+  2693: [6800, "흔한 값, F8Ia"], // Wezen
+  2891: [10300, "흔한 값(Castor Aa)"], // Castor
+  2990: [4600, "흔한 값, K0III"], // Pollux
+  3045: [null, "BSC5 그대로"], // Azmidi
+  3165: [40000, "흔한 값, O4I"], // Naos
+  3185: [null, "BSC5 그대로"], // Tureis
+  3249: [4100, "흔한 값, K4III"], // Tarf
+  3307: [4500, "웹 확인(ε Car A 약 4,460)"], // Avior
+  3461: [4800, "흔한 값, K0III"], // Asellus Australis
+  3485: [9500, "흔한 값, A1Va"], // Alsephina
+  3634: [3800, "웹 확인(약 3,835)"], // Suhail
+  3685: [8900, "흔한 값, A1III"], // Miaplacidus
+  3734: [18200, "웹 확인(κ Vel A)"], // Markeb
+  3982: [12500, "흔한 값(빨리 돌아 극 약 15,400·적도 약 10,300)"], // Regulus
+  4057: [4500, "흔한 값, K0III"], // Algieba
+  4534: [8500, "흔한 값, A3V"], // Denebola
+  4730: [24000, "흔한 값(α¹ Cru)"], // Acrux
+  4763: [3600, "흔한 값, M3.5III"], // Gacrux
+  4853: [27000, "흔한 값, B0.5III"], // Mimosa
+  4932: [5100, "흔한 값, G8III"], // Vindemiatrix
+  5056: [25300, "흔한 값(Spica A)"], // Spica
+  5235: [6100, "흔한 값, G0IV"], // Muphrid
+  5267: [25000, "흔한 값, B1III"], // Hadar
+  5288: [4900, "흔한 값, K0III"], // Menkent
+  5340: [4300, "흔한 값, K1.5III"], // Arcturus
+  5459: [5800, "흔한 값(α Cen A)"], // Rigil Kentaurus
+  5506: [4600, "흔한 값(ε Boo A, K0II-III)"], // Izar
+  5531: [null, "BSC5 그대로"], // Zubenelgenubi
+  5563: [4000, "흔한 값, K4III(약 4,030)"], // Kochab
+  5685: [12300, "웹 확인(약 11,900~12,300)"], // Zubeneschamali
+  5735: [null, "BSC5 그대로"], // Pherkad
+  6056: [3700, "흔한 값, M0.5III"], // Yed Prior
+  6132: [5100, "흔한 값, G8III"], // Athebyne
+  6134: [3700, "흔한 값(약 3,660)"], // Antares
+  6378: [null, "BSC5 그대로"], // Sabik
+  6527: [25000, "흔한 값, B2IV"], // Shaula
+  6536: [5200, "흔한 값, G2Ib-IIa"], // Rastaban
+  6553: [7300, "흔한 값, F1II"], // Sargas
+  6556: [8000, "흔한 값, A5III"], // Rasalhague
+  6705: [3900, "흔한 값, K5III"], // Eltanin
+  6879: [10000, "흔한 값(약 9,960)"], // Kaus Australis
+  7001: [9600, "흔한 값(빨리 돌아 극이 더 뜨겁다)"], // Vega
+  7106: [13300, "흔한 값(β Lyr Aa)"], // Sheliak
+  7121: [18900, "흔한 값, B2.5V"], // Nunki
+  7178: [10100, "웹 확인(약 10,080)"], // Sulafat
+  7194: [null, "BSC5 그대로"], // Ascella
+  7235: [9600, "웹 확인(약 9,620)"], // Okab
+  7525: [4100, "흔한 값, K3II"], // Tarazed
+  7557: [7700, "흔한 값(빨리 돌아 약 6,900~8,600)"], // Altair
+  7602: [5100, "흔한 값, G8IV"], // Alshain
+  7776: [4900, "흔한 값(β Cap Aa, K0II)"], // Dabih
+  7796: [5800, "흔한 값, F8Iab"], // Sadr
+  7924: [8500, "흔한 값, A2Ia"], // Deneb
+  7949: [4700, "흔한 값, K0III"], // Aljanah
+  8162: [7700, "흔한 값, A8V"], // Alderamin
+  8232: [5700, "흔한 값, G0Ib"], // Sadalsuud
+  8238: [27000, "흔한 값, B1IV"], // Alfirk
+  8308: [4400, "흔한 값, K2Ib"], // Enif
+  8322: [7300, "흔한 값, A7m"], // Deneb Algedi
+  8353: [null, "BSC5 그대로"], // Aldhanab
+  8414: [5200, "흔한 값, G2Ib"], // Sadalmelik
+  8425: [13900, "흔한 값, B6V"], // Alnair
+  8636: [3500, "흔한 값, M5III"], // Tiaki
+  8709: [null, "BSC5 그대로"], // Skat
+  8775: [3700, "흔한 값, M2.5II-III"], // Scheat
+  8781: [9800, "웹 확인(약 9,765)"], // Markab
+  8974: [4800, "흔한 값, K1IV"], // Errai
+};
+
 const notes = { noKorean: [], noCon: [], renamed: [] };
 /** 별자리 약어 → 이름 있는 별(밝은 순) */
 const byCon = {};
@@ -1070,6 +1188,22 @@ for (const c of candidates)
   for (const star of c.stars)
     if (DISTANCE[star.hr]) star.ly = DISTANCE[star.hr][0];
 
+// 5-2. 온도 덮어쓰기: 판 위 별은 모두 TEMPERATURE 표로(표에 없으면 멈춘다, 값 null은 BSC5 그대로).
+// 후보 목록에만 있는 별도 표에 값이 있으면 같은 값으로 맞춘다
+const keptTemperature = new Set();
+for (const s of skies)
+  for (const c of s.board)
+    for (const star of c.stars) {
+      const row = TEMPERATURE[star.hr];
+      if (!row)
+        throw new Error(`온도 표에 없는 판 위 별: ${star.id}(HR ${star.hr})`);
+      if (row[0] === null) keptTemperature.add(star.id);
+      else star.k = row[0];
+    }
+for (const c of candidates)
+  for (const star of c.stars)
+    if (TEMPERATURE[star.hr]?.[0]) star.k = TEMPERATURE[star.hr][0];
+
 // 6. 스스로 검사: 하나라도 어긋나면 파일을 쓰지 않고 멈춘다
 const fail = (msg) => {
   throw new Error(`검사 실패: ${msg}`);
@@ -1140,13 +1274,13 @@ console.log(
 );
 console.log(`짝별이라 뺀 별: ${notes.pair.join(", ") || "없음"}`);
 console.log(
-  `| 하늘 | 별자리 | 1.5등급보다 밝은 별 | 1만 K 넘는 별 | 4,000 K 아래 별 | 500광년 넘는 별 | 4,000~7,500 K 별 | 거리 모름 |`,
+  `| 하늘 | 별자리 | 1.5등급까지 밝은 별 | 1만 K 넘는 별 | 4,000 K 아래 별 | 500광년 넘는 별 | 4,000~7,500 K 별 | 거리 모름 |`,
 );
 console.log("|---|---|---|---|---|---|---|---|");
 for (const s of skies) {
   const list = s.board.flatMap((c) => c.stars);
   console.log(
-    `| ${s.ko} | ${s.board.map((c) => c.ko).join(" · ")} | ${count(list, (x) => x.mag < 1.5)} | ${count(list, (x) => x.k > 10000)} | ${count(list, (x) => x.k < 4000)} | ${count(list, (x) => x.ly !== null && x.ly > 500)} | ${count(list, (x) => x.k >= 4000 && x.k <= 7500)} | ${count(list, (x) => x.ly === null)} |`,
+    `| ${s.ko} | ${s.board.map((c) => c.ko).join(" · ")} | ${count(list, (x) => x.mag <= 1.5)} | ${count(list, (x) => x.k > 10000)} | ${count(list, (x) => x.k < 4000)} | ${count(list, (x) => x.ly !== null && x.ly > 500)} | ${count(list, (x) => x.k >= 4000 && x.k <= 7500)} | ${count(list, (x) => x.ly === null)} |`,
   );
 }
 console.log("\n합친 밝기(사계절 하늘, 밝은 순)");
@@ -1158,7 +1292,7 @@ for (const c of [...skies[0].board].sort(
   );
 for (const [id, why] of dropped) console.log(`빠진 하늘 ${id}: ${why}`);
 console.log(
-  `거리를 모르는 판 위 별: ${[...new Set(unknownDistance)].join(", ") || "없음"}`,
+  `거리를 모르는 판 위 별: ${[...new Set(unknownDistance)].join(", ") || "없음"} · 온도를 BSC5 그대로 둔 판 위 별: ${[...keptTemperature].join(", ") || "없음"}`,
 );
 console.log(
   `\n한글 이름이 없어 뺀 IAU 별 ${notes.noKorean.length}개: ${notes.noKorean.join(", ")}`,

@@ -80,7 +80,8 @@ describe("판 만들기", () => {
 describe("공문 더미", () => {
   it("별 사실 공문은 판 위 실제 별로 센다", () => {
     expect(factSquares(BOARD, "firstMagnitude")).toEqual([
-      9, 10, 14, 18, 22, 26, 30,
+      // 아다라(13, 1.50등급)도 1등성(1.5등급까지)
+      9, 10, 13, 14, 18, 22, 26, 30,
     ]);
     expect(factSquares(BOARD, "red")).toEqual([2, 6, 9]);
     expect(factSquares(BOARD, "far")).toEqual([9, 10, 15, 25, 27]);

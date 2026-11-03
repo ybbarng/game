@@ -26,6 +26,7 @@ function cuesOfStep(step: TimedStep): [Cue, number][] {
       return [["galaxyBuy", 0]];
     case "card":
     case "season":
+    case "meteor":
       return [["galaxyNotice", 0]];
     case "link":
       return [[step.owned >= step.size ? "galaxyComplete" : "galaxyLink", 0]];
@@ -54,6 +55,7 @@ function strongestCue(events: readonly GameEvent[]): Cue | null {
     ["auctionEnded", "galaxyBid"],
     ["jailed", "galaxyAsteroid"],
     ["card", "galaxyNotice"],
+    ["meteorShower", "galaxyNotice"],
     ["bought", "galaxyBuy"],
     ["pay", "galaxyRent", (e) => e.type === "pay" && e.reason === "rent"],
     ["dice", "galaxyDice"],

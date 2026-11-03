@@ -32,7 +32,7 @@ export interface BoardStar {
   group: number;
   /** 별 값(사는 값) */
   value: number;
-  /** 별자리 안에서 가장 밝은 별(+20) */
+  /** 판 위에 놓인 그 별자리 별 가운데 가장 밝은 별(+20). 별자리 전체에서 가장 밝은 별과 다를 수 있다(페가수스는 판에 없는 에니프) */
   brightest: boolean;
 }
 
