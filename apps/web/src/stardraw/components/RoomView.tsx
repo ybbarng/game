@@ -900,16 +900,14 @@ export function RoomView({
       ? // 마감 전에 일찍 온 사람도 언제 관측하는지 알게(2026-11-03 클로즈 베타 점검)
         `지금 ${title} 예측을 받고 있습니다. 관측까지 ${formatLeft(toShow / 1000)}`
       : phase === "closed"
-        ? `예측을 마감했습니다. 관측까지 ${formatLeft(toShow / 1000)}`
-        : phase === "announce"
-          ? "이제 관측을 시작하겠습니다."
-          : phase === "count"
-            ? "이제 관측을 시작하겠습니다."
-            : phase === "live"
-              ? `${title} 관측 중입니다.`
-              : closed
-                ? "관측을 마쳤습니다."
-                : `${title} 관측이 끝났습니다.`;
+        ? `${title} 예측을 마감했습니다. 관측까지 ${formatLeft(toShow / 1000)}`
+        : phase === "announce" || phase === "count"
+          ? `이제 ${title} 관측을 시작하겠습니다.`
+          : phase === "live"
+            ? `${title} 관측 중입니다.`
+            : closed
+              ? `${title} 관측을 마쳤습니다.`
+              : `${title} 관측이 끝났습니다.`;
 
   // 로컬 데모 바로가기로 왔으면: 이 방의 추첨이 끝난 뒤 잠깐 머물다(결과 이야기) 다음 추첨 회차 방으로
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단계가 바뀔 때만
@@ -999,18 +997,12 @@ export function RoomView({
         </h1>
         <span />
       </div>
-      {/* 지금 보는 회차(장소 이름 바로 아래에 작게) */}
-      <p
-        data-room-round={round}
-        className="-mt-2 text-center text-sm text-white/65 tabular-nums"
-      >
-        {title}
-      </p>
-
       <p
         role="status"
         data-room-phase={phase}
-        className="text-center font-semibold text-amber-100"
+        // 회차 이름은 따로 한 줄 두지 않고 상태 줄이 말한다(2026-11-03 사용자: 위쪽에 회차가 두 번 나와 자리를 차지했다)
+        data-room-round={round}
+        className="text-center break-keep font-semibold text-amber-100"
       >
         {statusLine}
       </p>

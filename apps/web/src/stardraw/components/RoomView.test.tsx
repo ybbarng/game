@@ -364,6 +364,8 @@ describe("관측지 사람 수", () => {
         view.container.querySelector("[data-room-phase='open']")?.textContent,
       ).toMatch(/^지금 시험 1회 예측을 받고 있습니다\. 관측까지 \d+:\d\d/);
     });
+    // 회차 이름은 상태 줄 한 곳에만(따로 회차 줄을 두지 않는다, 2026-11-03 사용자)
+    expect(view.container.textContent?.match(/시험 1회/g)).toHaveLength(1);
   });
 
   it("나 혼자면 사람 수 없이 언덕이 비었다는 말만", async () => {
