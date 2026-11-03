@@ -607,19 +607,7 @@ button {
     border-color 0.4s,
     box-shadow 0.4s;
 }
-.sd-slip::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(253, 164, 175, 0.55) 0 6px,
-    transparent 6px 11px
-  );
-}
+/* 별 바구니 위 가장자리의 절취선(종이 응모 용지 시절의 흔적)은 지웠다: 바구니는 서류가 아니라 손에 든 도구다(2026-11-03 사용자) */
 .sd-slip-full {
   border-color: rgba(253, 230, 138, 0.6);
   box-shadow:
