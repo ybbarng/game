@@ -4,6 +4,7 @@ import { asState } from "@game/galaxy-ai";
 import {
   type Action,
   assetsOf,
+  clockTurn,
   type GalaxyView,
   type GameResult,
   NUMBERS,
@@ -11,9 +12,12 @@ import {
   STAR_SQUARES,
   standingsOf,
   starAt,
+  timeControlOf,
   turnLimitOf,
 } from "@game/galaxy-engine";
 import { useEffect, useMemo, useState } from "react";
+import { ChatBox } from "@/components/ChatBox";
+import { GameClock } from "@/components/GameClock";
 import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
@@ -26,6 +30,8 @@ import { money, seatLabel, shipOf, squareName } from "../format";
 import { shownCash } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
 import { metSquares, outcomeOf } from "../kit";
+import { DECISION_MS } from "../online";
+import { galaxySession } from "../session";
 import { GALAXY_LENGTHS, GALAXY_LEVELS, useGalaxySettings } from "../settings";
 import { prefersReducedMotion, useGalaxy } from "../store";
 import { useFxElapsed } from "../use-fx";
@@ -350,6 +356,56 @@ function MetStars({
   );
 }
 
+/** 모두가 함께 내는 때(약속·공개·봉투) 아직 내지 않은 자리 */
+function togetherWaiting(view: GalaxyView): number[] {
+  return view.cash
+    .map((_, seat) => seat)
+    .filter((seat) => {
+      if (view.out[seat]) return false;
+      switch (view.phase) {
+        case "commit":
+          return view.chains[seat]?.commit === null;
+        case "reveal":
+          return view.reveals[seat] === null;
+        case "bid":
+          return view.auction?.committed[seat] === false;
+        case "bidReveal":
+          return view.auction?.revealed[seat] === false;
+        default:
+          return false;
+      }
+    });
+}
+
+/**
+ * 온라인 결정 시간(docs/48 4-5). 결정이 이 화면에 보인 때부터 이 기기에서 센다(방장 시계와 왕복만큼 다를 수 있다).
+ * 다 되면 방장이 대신 정한다
+ */
+function DecisionTimer({ resetKey }: { resetKey: string }) {
+  const [since, setSince] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 결정이 바뀔 때만 다시 센다
+  useEffect(() => {
+    const t = Date.now();
+    setSince(t);
+    setNow(t);
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [resetKey]);
+  const left = Math.max(0, Math.ceil((DECISION_MS - (now - since)) / 1000));
+  return (
+    <p
+      data-decision-timer={left}
+      className={cn(
+        "self-end rounded-full bg-black/30 px-2 py-0.5 text-xs tabular-nums",
+        left <= 5 ? "text-rose-200" : "text-white/70",
+      )}
+    >
+      {left}초
+    </p>
+  );
+}
+
 /** 대국 화면(docs/48 7절). PC·눕힌 폰은 판 왼쪽 + 오른쪽 칸, 세로 폰은 판 아래로 쌓는다 */
 export function GalaxyGame({ onExit }: { onExit: () => void }) {
   const {
@@ -363,6 +419,11 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
     fxStart,
     playing,
     firstMet,
+    local,
+    seatNames,
+    reconnecting,
+    hostLeft,
+    offlineSeats,
   } = useGalaxy();
   const submit = useGalaxy((s) => s.submit);
   const placeBid = useGalaxy((s) => s.placeBid);
@@ -455,9 +516,33 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
 
   if (!view || !host) return null;
   const me = host.seat;
-  const players = view.rules.players;
-  const name = (seat: number) => seatLabel(seat, me, null, players);
   const gameOver = view.phase === "gameOver";
+  const players = view.rules.players;
+  const online = local === null;
+  const name = (seat: number) => seatLabel(seat, me, seatNames, players);
+  const control = timeControlOf(view.rules);
+  // 온라인 결정 시간(docs/48 4-5): 봉투는 늘, 차례 결정은 개인 시간이 없는 판에서만
+  const timedDecision =
+    online &&
+    !playing &&
+    (decision?.kind === "bid" ||
+      (control === null &&
+        (decision?.kind === "roll" ||
+          decision?.kind === "end" ||
+          decision?.kind === "buy" ||
+          decision?.kind === "trade" ||
+          decision?.kind === "debt")));
+  const together =
+    view.phase === "commit" ||
+    view.phase === "reveal" ||
+    view.phase === "bid" ||
+    view.phase === "bidReveal";
+  const waitingOffline =
+    online &&
+    !gameOver &&
+    together &&
+    togetherWaiting(view).some((s) => offlineSeats.includes(s));
+  const hostRoom = galaxySession.host;
   const levelName = GALAXY_LEVELS.find((l) => l.value === level)?.label ?? "";
   const lengthName =
     GALAXY_LENGTHS.find((l) => l.value === view.rules.length)?.label ?? "";
@@ -653,13 +738,65 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
           {limit
             ? ` · ${Math.min(view.round, limit)}/${limit}차례`
             : ` · ${view.round}돌림`}
-          {` · 컴퓨터 ${levelName}`}
+          {online ? "" : ` · 컴퓨터 ${levelName}`}
         </span>
       </header>
+
+      {online && (reconnecting || hostLeft) && (
+        <p
+          role="alert"
+          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
+        >
+          {hostLeft
+            ? "방장이 방을 나갔어요."
+            : "방장과 연결이 끊겼어요. 다시 잇는 중이에요."}
+        </p>
+      )}
+      {waitingOffline && (
+        <div
+          role="alert"
+          data-waiting-offline
+          className="flex w-full max-w-xl flex-wrap items-center justify-center gap-2 rounded-xl bg-rose-800/80 px-3 py-2 text-center text-sm split:col-span-2 split:max-w-none"
+        >
+          <span>연결이 끊긴 사람의 공개를 기다리고 있어요.</span>
+          {hostRoom && (
+            <button
+              type="button"
+              data-abandon
+              onClick={() => hostRoom.abandon()}
+              className="rounded-lg bg-white px-2 py-0.5 font-semibold text-black"
+            >
+              기다리지 않고 끝내기
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="w-full max-w-xl split:hidden">
         <PlayerStrip view={view} cash={cash} name={name} />
       </div>
+      {control && view.clocks && (
+        <div className="flex w-full max-w-xl flex-wrap justify-center gap-1.5 split:col-span-2 split:max-w-none">
+          {view.clocks.map((clock, seat) => (
+            <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: 자리 번호가 열쇠다
+              key={seat}
+              data-clock-seat={seat}
+              className="flex items-center gap-1.5 rounded-xl bg-black/25 px-2 py-1 text-xs"
+            >
+              <ShipToken seat={seat} size={10} />
+              <span className="max-w-20 truncate">{name(seat)}</span>
+              <GameClock
+                clock={clock}
+                control={control}
+                running={
+                  clockTurn({ ...view, keys: [], auction: null })?.seat === seat
+                }
+              />
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 판 */}
       <div className="w-full max-w-[min(36rem,calc(100dvh-14rem))] min-w-72 split:col-start-1 split:row-span-6 split:row-start-2 split:max-w-none">
@@ -691,6 +828,7 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
           />
           <ResultBanner banner={banner} seq={view.roundNumber} />
         </div>
+        {timedDecision && <DecisionTimer resetKey={decisionKey} />}
         {decisionPanel}
         {!decisionPanel && info !== null && !gameOver && (
           <SquareInfo
@@ -761,6 +899,12 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
           </>
         )}
       </div>
+
+      {online && (
+        <div className="w-full max-w-xl split:col-start-2">
+          <ChatBox mySeat={me} />
+        </div>
+      )}
     </main>
   );
 }

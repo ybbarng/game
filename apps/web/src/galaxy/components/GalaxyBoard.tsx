@@ -21,6 +21,7 @@ import {
 import { GALAXY_FX } from "../fx-timing";
 import { cellOf, SKY_SIZE, skyArt, squareCenter } from "../sky-art";
 import { groupColor, magScale, starRgb } from "../star-color";
+import { prefersReducedMotion } from "../store";
 import { DiceFace, NoticePaper, ShipToken } from "./parts";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
@@ -47,6 +48,11 @@ const FIELD = Array.from({ length: 70 }, (_, i) => {
 });
 
 /** 모퉁이 그림(칸 안 작은 그림) */
+/** 판 위 알림 상자가 그 단계 동안 떠 있게(`galaxy-toast` 애니메이션 길이) */
+function toastStyle(dur: number): CSSProperties {
+  return { "--galaxy-toast-ms": `${dur}ms` } as CSSProperties;
+}
+
 function CornerArt({ kind }: { kind: string }) {
   const common = "size-[62%] opacity-90";
   if (kind === "base")
@@ -156,6 +162,8 @@ export function GalaxyBoard({
   const hidden = hiddenOwners(timeline, elapsed);
   const owner = (sq: number) => (hidden.has(sq) ? -1 : (view.owners[sq] ?? -1));
   const season = view.season;
+  // 움직임 줄이기면 우주선도 미끄러지지 않고 바로 그 칸에 선다.
+  const reduced = prefersReducedMotion();
 
   // 별자리마다 누가 몇 개를 가졌나(보이는 주인 기준)
   const groupOwners = board.groups.map((g) => {
@@ -526,7 +534,10 @@ export function GalaxyBoard({
               key={seat}
               data-ship={seat}
               data-ship-square={s.square}
-              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 transition-[left,top] ease-out"
+              className={cn(
+                "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2",
+                !reduced && "transition-[left,top] ease-out",
+              )}
               style={{
                 left: pct(c.x + dx),
                 top: pct(c.y + dy),
@@ -689,7 +700,10 @@ function FxOverlay({
     case "jail":
       return (
         <div className={cn(box, "items-center")}>
-          <p className="galaxy-toast rounded-xl bg-stone-800/90 px-3 py-2 text-center font-semibold text-sm text-stone-100 shadow-xl">
+          <p
+            className="galaxy-toast rounded-xl bg-stone-800/90 px-3 py-2 text-center font-semibold text-sm text-stone-100 shadow-xl"
+            style={toastStyle(step.dur)}
+          >
             {name(step.seat)} · 소행성대에 걸렸어요.
           </p>
         </div>
@@ -697,7 +711,10 @@ function FxOverlay({
     case "trade":
       return (
         <div className={cn(box, "items-center")}>
-          <p className="galaxy-toast rounded-xl bg-slate-800/90 px-3 py-2 text-center font-semibold text-sm shadow-xl">
+          <p
+            className="galaxy-toast rounded-xl bg-slate-800/90 px-3 py-2 text-center font-semibold text-sm shadow-xl"
+            style={toastStyle(step.dur)}
+          >
             {step.accepted
               ? `${name(step.from)} ↔ ${name(step.to)} 거래가 이뤄졌어요.`
               : `${name(step.to)} · 거래를 거절했어요.`}
@@ -706,12 +723,13 @@ function FxOverlay({
       );
     case "auction": {
       const r = step.result;
-      const opened = elapsed - step.at > step.dur * 0.3;
+      const opened = elapsed - step.at > step.dur * GALAXY_FX.auctionOpen;
       return (
         <div className={cn(box, "items-center")}>
           <div
             data-auction-reveal
             className="galaxy-toast flex w-[86%] max-w-80 flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-3 shadow-2xl"
+            style={toastStyle(step.dur)}
           >
             <p className="text-center font-bold text-sm">
               봉인 입찰 · {squareName(board, r.square)}

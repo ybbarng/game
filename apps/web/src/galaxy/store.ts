@@ -15,9 +15,20 @@ import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
 import { paced } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
-import { ArchiveRecorder } from "@/review/recorder";
-import { StatsRecorder } from "@/stats/recorder";
+import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
+import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
+import {
+  bidAction,
+  commitAction,
+  EMPTY_SECRETS,
+  type GalaxySecrets,
+  loadSecrets,
+  newSalt,
+  newSeed,
+  revealFor,
+  saveSecrets,
+} from "./chain";
 import { buildTimeline, EMPTY_TIMELINE, type Timeline } from "./fx";
 import { GALAXY_FX } from "./fx-timing";
 import { galaxyKit, myRank } from "./kit";
@@ -87,7 +98,15 @@ export function prefersReducedMotion(): boolean {
 
 interface GalaxyStore {
   host: GalaxyHost | null;
+  /** 혼자 할 때만: 저장에 쓴다. 온라인 대국이면 null */
   local: GalaxyLocalMatch | null;
+  /** 온라인 대국이면 자리 이름 */
+  seatNames: string[] | null;
+  reconnecting: boolean;
+  hostLeft: boolean;
+  offlineSeats: number[];
+  /** 온라인: 이 기기에만 있는 주사위 사슬 씨앗과 봉투(`chain.ts`) */
+  secrets: GalaxySecrets;
   view: GalaxyView | null;
   /** 지금 보이는 걸음의 사건 */
   events: GameEvent[];
@@ -110,6 +129,14 @@ interface GalaxyStore {
   newGame(options: { rules: GalaxyRules; level: number; seed?: number }): void;
   startPractice(initialState: GalaxyState, level: number): void;
   resume(saved: GalaxySaved): void;
+  /** 온라인 방의 대국을 붙인다(저장 없음) */
+  attachOnline(
+    host: GalaxyHost,
+    seatNames: string[],
+    stats: StatsTarget,
+    archive?: ArchiveTarget,
+  ): void;
+  setSeatNames(seatNames: string[]): void;
   submit(action: Action): SubmitResult;
   /** 봉인 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
   placeBid(value: number): SubmitResult;
@@ -122,6 +149,8 @@ let fxTimer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
 /** 마지막으로 자동으로 낸 행동(같은 화면을 다시 받아도 두 번 내지 않는다) */
 let lastAuto: string | null = null;
+/** 온라인 방의 비밀을 남기는 열쇠(`online:방`). 혼자 하기·미션은 null(자리 재료로 만든 씨앗·소금) */
+let secretKey: string | null = null;
 
 function stop(): void {
   if (timer !== null) clearTimeout(timer);
@@ -150,7 +179,10 @@ function botActed(events: readonly GameEvent[], me: number): boolean {
 }
 
 export const useGalaxy = create<GalaxyStore>((set, get) => {
-  /** 약속·공개·입찰 공개는 내 기기가 바로 낸다(사람이 할 일이 없다). 혼자 하기는 자리 재료로 만든 씨앗 */
+  /**
+   * 약속·공개·입찰 공개는 내 기기가 바로 낸다(사람이 할 일이 없다). 온라인은 이 기기에서 만든 씨앗·소금,
+   * 혼자 하기는 자리 재료로 만든 씨앗·소금. 온라인에서 내 비밀을 모르면(다른 기기에서 약속했다 등) 내지 않는다
+   */
   const autoAct = (): void => {
     const { host, view, queue, playing } = get();
     if (!host || !view || queue.length > 0 || playing) return;
@@ -159,7 +191,23 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     const key = `${view.generation}:${view.revealCount}:${view.auctionCount}:${kind}:${view.chains[view.mySeat]?.used ?? 0}`;
     if (lastAuto === key) return;
     let action: Action | null;
-    if (kind === "bidReveal") {
+    if (secretKey) {
+      let secrets = get().secrets;
+      if (kind === "commit") {
+        let seed = secrets.seeds[view.generation];
+        if (!seed) {
+          seed = newSeed();
+          secrets = {
+            ...secrets,
+            seeds: { ...secrets.seeds, [view.generation]: seed },
+          };
+          // 약속을 내기 전에 먼저 남긴다(새로고침해도 공개할 수 있게).
+          set({ secrets });
+          saveSecrets(secretKey, secrets);
+        }
+        action = commitAction(seed);
+      } else action = revealFor(view, secrets);
+    } else if (kind === "bidReveal") {
       const bid = get().bid;
       const index = view.auction?.index ?? -1;
       const value = bid && bid.index === index ? bid.value : 0;
@@ -222,41 +270,42 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
   };
 
   const attach = (
-    local: GalaxyLocalMatch,
-    level: number,
-    seed: number,
-    practice = false,
+    host: GalaxyHost,
+    options: {
+      local: GalaxyLocalMatch | null;
+      level: number;
+      seatNames: string[] | null;
+      /** 정해진 장면(튜토리얼·화면 시험)이면 저장·내 기록·복기에 남기지 않는다 */
+      practice: boolean;
+      stats: StatsTarget | null;
+      archive?: ArchiveTarget;
+      secrets: GalaxySecrets;
+      secretKey: string | null;
+    },
   ) => {
     stop();
+    const { local, level, practice } = options;
     if (get().local !== local) get().local?.dispose();
-    const key = `solo:${seed}`;
-    // 정해진 장면(튜토리얼·화면 시험)은 저장·내 기록·복기에 남기지 않는다
-    const recorder = practice
-      ? null
-      : new StatsRecorder(galaxyKit.stats, {
-          game: "galaxy",
-          mode: "solo",
-          key,
-        });
-    const archiver = practice
-      ? null
-      : new ArchiveRecorder(galaxyKit.stats, {
-          game: "galaxy",
-          mode: "solo",
-          key,
-          seat: local.seat,
-          seatNames: null,
-          source: () => {
-            const saved = local.save();
-            return { rules: saved.rules, seed: saved.seed, log: saved.log };
-          },
-        });
-    const first = local.drain();
+    secretKey = options.secretKey;
+    const recorder =
+      practice || !options.stats
+        ? null
+        : new StatsRecorder(galaxyKit.stats, options.stats);
+    const archiver =
+      practice || !options.archive
+        ? null
+        : new ArchiveRecorder(galaxyKit.stats, options.archive);
+    const first = host.drain();
     set({
-      host: local,
+      host,
       local,
       level,
-      view: local.current(),
+      seatNames: options.seatNames,
+      reconnecting: false,
+      hostLeft: false,
+      offlineSeats: [],
+      secrets: options.secrets,
+      view: host.current(),
       events: [],
       history: first.flatMap((s) => s.events),
       queue: [],
@@ -271,7 +320,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       recorder?.observe(snapshot);
       archiver?.observe(snapshot);
     }
-    unsubscribe = local.subscribe((snapshot) => {
+    unsubscribe = host.subscribe((snapshot) => {
       persist();
       recorder?.observe(snapshot);
       archiver?.observe(snapshot);
@@ -300,9 +349,44 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       log,
     );
 
+  /** 혼자 하기·미션: 이 기기의 대국으로 붙인다 */
+  const attachLocal = (
+    local: GalaxyLocalMatch,
+    level: number,
+    seed: number,
+    practice = false,
+  ) => {
+    const key = `solo:${seed}`;
+    attach(local, {
+      local,
+      level,
+      seatNames: null,
+      practice,
+      stats: { game: "galaxy", mode: "solo", key },
+      archive: {
+        game: "galaxy",
+        mode: "solo",
+        key,
+        seat: local.seat,
+        seatNames: null,
+        source: () => {
+          const saved = local.save();
+          return { rules: saved.rules, seed: saved.seed, log: saved.log };
+        },
+      },
+      secrets: EMPTY_SECRETS,
+      secretKey: null,
+    });
+  };
+
   return {
     host: null,
     local: null,
+    seatNames: null,
+    reconnecting: false,
+    hostLeft: false,
+    offlineSeats: [],
+    secrets: EMPTY_SECRETS,
     view: null,
     events: [],
     history: [],
@@ -328,23 +412,41 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
         pace: browserPace,
         initialState,
       });
-      attach(local, level, seed, true);
+      attachLocal(local, level, seed, true);
     },
 
     newGame({ rules, level, seed: given }) {
       track("game-start", { game: "galaxy", mode: "solo", level });
       const seed = given ?? Math.floor(Math.random() * 2 ** 31);
       set({ bid: null });
-      attach(newLocal(rules, seed, level), level, seed);
+      attachLocal(newLocal(rules, seed, level), level, seed);
     },
 
     resume(saved) {
       set({ bid: saved.bid ?? null });
-      attach(
+      attachLocal(
         newLocal(saved.rules, saved.seed, saved.level, saved.log),
         saved.level,
         saved.seed,
       );
+    },
+
+    attachOnline(host, seatNames, stats, archive) {
+      set({ bid: null });
+      attach(host, {
+        local: null,
+        level: get().level,
+        seatNames,
+        practice: false,
+        stats,
+        ...(archive ? { archive } : {}),
+        secrets: loadSecrets(stats.key),
+        secretKey: stats.key,
+      });
+    },
+
+    setSeatNames(seatNames) {
+      set({ seatNames });
     },
 
     submit(action) {
@@ -366,6 +468,18 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       const index = view?.auction?.index;
       if (!view || index === undefined || view.decision?.kind !== "bid")
         return { ok: false, error: "입찰할 때가 아니에요" };
+      if (secretKey) {
+        // 온라인: 이 기기에서 만든 소금으로 약속한다. 값과 소금을 먼저 남긴다(새로고침해도 공개하게).
+        const salt = newSalt();
+        const secrets = get().secrets;
+        const next = {
+          ...secrets,
+          bids: { ...secrets.bids, [index]: { value, salt } },
+        };
+        set({ secrets: next });
+        saveSecrets(secretKey, next);
+        return get().submit(bidAction(index, value, salt));
+      }
       // 값을 먼저 남긴다(약속을 낸 뒤 새로고침해도 같은 값을 공개하게).
       set({ bid: { index, value } });
       const result = get().submit({
@@ -379,9 +493,15 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     leave() {
       stop();
       get().local?.dispose();
+      secretKey = null;
       set({
         host: null,
         local: null,
+        seatNames: null,
+        reconnecting: false,
+        hostLeft: false,
+        offlineSeats: [],
+        secrets: EMPTY_SECRETS,
         view: null,
         queue: [],
         events: [],

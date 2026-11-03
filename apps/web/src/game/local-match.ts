@@ -228,6 +228,8 @@ export class LocalMatch<
         events: [],
       });
       this.armClock();
+      // 시간 창도 지금부터 다시 잰다(새로고침 전에 걸어 둔 창은 이 기기에서 사라졌다).
+      this.syncTimers();
       return;
     }
     if (savedLog && savedLog.length > 0) {
@@ -398,7 +400,11 @@ export class LocalMatch<
         this.clock.after(timer.ms, () => {
           this.windowTimers.delete(timer.key);
           if (this.frozen) return;
-          if (this.apply(timer.seat, timer.action).ok) this.runBots();
+          const fired =
+            "later" in timer
+              ? timer.later(this.state)
+              : { seat: timer.seat, action: timer.action };
+          if (fired && this.apply(fired.seat, fired.action).ok) this.runBots();
         }),
       );
     }
