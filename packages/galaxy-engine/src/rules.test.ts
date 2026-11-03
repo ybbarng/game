@@ -15,7 +15,8 @@ describe("규칙 문자열", () => {
   it("기본·짧은·긴 판과 시간 꼬리가 왕복한다", () => {
     const cases: [GalaxyRules, string][] = [
       [STANDARD_RULES, "g1-4mtw-seasons"],
-      [{ ...SHORT_RULES, players: 2 }, "g1-2snw-seasons"],
+      [{ ...SHORT_RULES, players: 2 }, "g1-2stw-seasons"],
+      [{ ...SHORT_RULES, players: 2, trade: false }, "g1-2snw-seasons"],
       [{ ...LONG_RULES, players: 3, seasonal: false }, "g1-3ltn-seasons"],
       [{ ...STANDARD_RULES, time: "fast" }, "g1-4mtw-seasons-t1"],
     ];

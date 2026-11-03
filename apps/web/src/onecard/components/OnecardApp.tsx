@@ -167,9 +167,7 @@ function OnecardOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">
-          {level?.description} 입문·고수는 준비 중이에요.
-        </p>
+        <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
     </SubScreen>
   );

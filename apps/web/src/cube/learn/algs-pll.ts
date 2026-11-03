@@ -1,5 +1,8 @@
 // PLL(Permutation of the Last Layer, 윗층 자리 맞추기) 21 상황.
 // 이름은 굳은 이름(T퍼뮤 = T 퍼뮤테이션, 「자리 바꾸기 공식」)을 그대로 쓰고 설명을 곁들인다.
+// 수순 확인: PLL 이름(Ua·Ub·H·Z·Aa·Ab·E·T·F·Ja·Jb·Ra·Rb·V·Y·Na·Nb·Ga~Gd)은 널리 쓰는 이름을 기억으로 옮겼고,
+//   바깥 자료와 다시 대조하지는 못했다(2026-11-04) — 공식과 이름만 옮겼다. pll.test.ts가 21 상황이 서로 다르고
+//   묶음(이웃·대각 꼭짓점 바꿈 등)과 맞는지 시뮬레이터로 확인한다. 설명(note)은 우리말로 새로 썼다.
 import type { AlgCase } from "./types";
 
 const pll = (

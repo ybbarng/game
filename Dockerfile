@@ -32,6 +32,7 @@ COPY packages/baduk-ai/package.json packages/baduk-ai/
 COPY packages/nyrongppong-engine/package.json packages/nyrongppong-engine/
 COPY packages/nyrongppong-ai/package.json packages/nyrongppong-ai/
 COPY packages/onecard-engine/package.json packages/onecard-engine/
+COPY packages/onecard-ai/package.json packages/onecard-ai/
 COPY packages/gostop-engine/package.json packages/gostop-engine/
 COPY packages/gostop-ai/package.json packages/gostop-ai/
 COPY packages/minhwatu-engine/package.json packages/minhwatu-engine/

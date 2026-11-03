@@ -177,6 +177,29 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     ],
   },
   {
+    title: "은하 한 바퀴",
+    cues: [
+      { cue: "galaxyDice", when: "주사위를 굴림(나·컴퓨터 모두)" },
+      { cue: "galaxyTick", when: "우주선이 칸 하나를 지남" },
+      { cue: "galaxyBuy", when: "별을 삼" },
+      { cue: "galaxyRent", when: "정거장 이용료·공문으로 별빛이 오감" },
+      {
+        cue: "galaxyLink",
+        when: "같은 별자리 별 둘로 선 하나가 이어짐·거래 성사",
+      },
+      { cue: "galaxyComplete", when: "별자리 완성" },
+      { cue: "galaxyNotice", when: "우주국 공문·계절이 바뀌는 공문" },
+      { cue: "galaxyAsteroid", when: "소행성대에 걸림·운항 중단" },
+      { cue: "galaxySalary", when: "우주국 지원금·관측 지원금" },
+      { cue: "galaxyBid", when: "봉인 입찰 봉투가 한 번에 열림" },
+      { cue: "pickCard", when: "정거장 올리기·내리기·맡기기" },
+      { cue: "invalid", when: "할 수 없는 행동" },
+      { cue: "win", when: "1등" },
+      { cue: "lose", when: "꼴찌" },
+      { cue: "roundEnd", when: "가운데 순위로 끝남" },
+    ],
+  },
+  {
     title: "큐브 맞추기",
     cues: [
       { cue: "cubeTurn", when: "면·층·큐브를 한 번 돌림(키·단추·밀기)" },

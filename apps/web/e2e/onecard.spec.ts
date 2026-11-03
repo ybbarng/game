@@ -1,9 +1,17 @@
-import { expect, type Page, ready, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  type Page,
+  ready,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 /*
  * 원카드 화면 시험(docs/42 14절). 혼자 하기는 `?seed=`로 패를 정한다(씨앗 10: 둘이서 5장, 첫 차례에 7을 낼 수 있다).
- * 컴퓨터 대기는 `window.__onecardPace`로 줄이고, 더미를 누르고 있는 시간은 `page.clock`으로 옮긴다.
- * 규칙·외침 판정은 단위 시험(onecard/match.test.ts)이 본다. 여기서는 화면으로만 보이는 것을 본다
+ * 컴퓨터 대기·외침 창·누르고 있는 시간은 모두 타이머라 `page.clock`으로 감는다(실제 시간으로 기다리지 않는다).
+ * 규칙·외침 판정·컴퓨터는 단위 시험(onecard/match.test.ts, bots.test.ts)이 본다. 여기서는 화면으로만 보이는 것을
+ * 확인할 지점까지만 본다: 시작 → 7 무늬 고르기 → 먹기 → 더미 치기(말풍선) → 그만두기로 판 끝 화면
  */
 
 const hand = (page: Page) => page.getByRole("region", { name: "내 손패" });
@@ -19,18 +27,9 @@ async function noOverflow(page: Page) {
 
 const myTurn = async (page: Page) =>
   (await hand(page).getAttribute("data-turn")) !== null;
-const over = async (page: Page) =>
-  (await page.locator("[data-outcome]").count()) > 0;
 
-/** 내 차례나 판 끝이 될 때까지 */
-async function waitTurn(page: Page) {
-  await expect
-    .poll(async () => (await myTurn(page)) || (await over(page)), {
-      timeout: 30_000,
-      intervals: [50],
-    })
-    .toBe(true);
-}
+/** 내 차례가 될 때까지 컴퓨터 대기 시계를 감는다 */
+const waitTurn = (page: Page) => fastForwardUntil(page, () => myTurn(page));
 
 /** 가운데 더미를 150ms 넘게 누르고 있다 떼기(원카드!). 누르는 시간은 시계를 옮겨 만든다 */
 async function slap(page: Page) {
@@ -55,14 +54,14 @@ async function playCard(page: Page, card: string, touch: boolean) {
 
 test.beforeEach(async ({ page }) => {
   await page.clock.install();
+  await speedUpAnimations(page);
   await page.addInitScript(() => {
     sessionStorage.setItem("mighty-splash-seen", "1");
     localStorage.removeItem("onecard-save");
-    (window as { __onecardPace?: number }).__onecardPace = 60;
   });
 });
 
-test("원카드: 목록에서 들어가 7·먹기·더미 치기를 하고 판 끝 화면까지 간다", async ({
+test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 뒤 그만두기로 판 끝 화면을 본다", async ({
   page,
 }, info) => {
   const touch = info.project.name.startsWith("phone");
@@ -77,7 +76,6 @@ test("원카드: 목록에서 들어가 7·먹기·더미 치기를 하고 판 �
   await expect(page).toHaveURL(/\/onecard$/);
   await ready(page);
   await expect(page.getByRole("heading", { name: "원카드" })).toBeVisible();
-  await expect(page.getByText("가운데 더미를 탁 치면 원카드!")).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("onecard-home.png") });
 
@@ -85,12 +83,20 @@ test("원카드: 목록에서 들어가 7·먹기·더미 치기를 하고 판 �
   await page.getByRole("button", { name: "2명", exact: true }).click();
   await page.getByRole("button", { name: "5장", exact: true }).click();
   await page.getByRole("button", { name: "한 명이 다 내면 끝" }).click();
+  for (const name of ["입문", "중수", "고수"])
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "중수", exact: true }).click();
+  await expect(page.getByText(/받아치기용으로 아끼고/)).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({ path: info.outputPath("onecard-options.png") });
   await page.getByRole("button", { name: "처음으로" }).click();
 
   await page.goto("/onecard?seed=10");
+  await expect(page.getByText(/컴퓨터 1명과 · 5장 · 중수/)).toBeVisible();
   await page.getByRole("button", { name: /혼자 하기/ }).click();
   await expect(hand(page)).toBeVisible();
   await expect(page.locator("[data-seat]")).toHaveCount(1);
+  await expect(page.getByText("꾹 치면 원카드!")).toHaveCount(0);
   await waitTurn(page);
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("onecard-table.png") });
@@ -120,37 +126,9 @@ test("원카드: 목록에서 들어가 7·먹기·더미 치기를 하고 판 �
   await expect(hand(page).getByRole("button")).toHaveCount(count + 1);
   await page.screenshot({ path: info.outputPath("onecard-bubble.png") });
 
-  // 판 끝 화면까지 가장 짧은 길(docs/21 10절): 휴대폰은 그만두기. 데스크톱 하나만 끝까지 둔다:
-  // 낼 수 있는 첫 카드를 내고, 없으면 먹는다. 내 차례에 두 장이면 먼저 더미를 친다(미리 외침).
-  if (touch) {
-    await page.getByRole("button", { name: "그만두기" }).click();
-    await page.getByRole("button", { name: "그만두기" }).click();
-  }
-  for (let i = 0; i < 300 && !touch; i++) {
-    await waitTurn(page);
-    if (await over(page)) break;
-    const cards = hand(page).getByRole("button");
-    if ((await cards.count()) === 2) await slap(page);
-    const playable = hand(page).locator("[data-playable]").first();
-    if ((await playable.count()) > 0) {
-      const card = (await playable.getAttribute("data-card")) as string;
-      await playCard(page, card, touch);
-      const heart = page.getByRole("button", { name: "하트", exact: true });
-      if (card.endsWith("7")) await heart.click();
-      await expect(hand(page).locator(`[data-card="${card}"]`)).toHaveCount(0);
-    } else {
-      const n = await cards.count();
-      await drawButton(page).click();
-      await expect
-        .poll(
-          async () =>
-            (await over(page)) ||
-            (await hand(page).getByRole("button").count()) !== n,
-          { intervals: [50] },
-        )
-        .toBe(true);
-    }
-  }
+  // 판 끝 화면은 그만두기로(docs/21 10절). 판을 끝까지 두지 않는다.
+  await page.getByRole("button", { name: "그만두기" }).click();
+  await page.getByRole("button", { name: "그만두기" }).click();
   await expect(page.locator("[data-outcome]")).toBeVisible();
   await expect(page.getByRole("table", { name: "순위표" })).toBeVisible();
   await expect(page.getByRole("button", { name: "다시 하기" })).toBeVisible();

@@ -1,5 +1,7 @@
 // OLL(Orientation of the Last Layer, 윗면 한 색 만들기) 57 상황.
-// 번호는 널리 쓰는 표준 번호다. 모양 묶음 이름은 한국어로 풀었다.
+// 수순 확인: 번호(1~57)·모양 묶음 분류는 널리 쓰는 표준 번호(SpeedSolving Wiki OLL 표 등)를 기억으로 옮겼고,
+//   바깥 자료와 하나하나 다시 대조하지는 못했다(2026-11-04, 그곳 쪽글은 막혀 열지 못함) — 공식과 번호·묶음 이름만 옮겼다.
+//   공식이 맞는지는 oll.test.ts가 시뮬레이터로 확인한다(F2L을 지키고 57 상황이 서로 다름). 묶음 이름과 설명(note)은 우리말로 새로 썼다.
 // 상황 만드는 공식이 따로 없으면 대표 공식의 거꾸로를 쓴다(docs/47 2-3).
 import type { AlgCase } from "./types";
 
@@ -43,11 +45,11 @@ export const OLL_CASES: AlgCase[] = [
     "r U r' U2 r U2 R' U2 R U' r'",
     "F R U R' U' F' f R U R' U' f'",
   ]),
-  oll(3, "dot", "점·왼쪽 위 꼭짓점", [
+  oll(3, "dot", "점·왼쪽 앞 꼭짓점", [
     "r' R2 U R' U r U2 r' U M'",
     "f R U R' U' f' U' F R U R' U' F'",
   ]),
-  oll(4, "dot", "점·오른쪽 위 꼭짓점", [
+  oll(4, "dot", "점·오른쪽 앞 꼭짓점", [
     "M U' r U2 r' U' R U' R' M'",
     "f R U R' U' f' U F R U R' U' F'",
   ]),
@@ -71,7 +73,7 @@ export const OLL_CASES: AlgCase[] = [
     "F R' F' R2 r' U R U' R' U' M'",
     "R U R' U R' F R F' U2 R' F R F'",
   ]),
-  oll(18, "dot", "점·위 꼭짓점 둘", ["r U R' U R U2 r2 U' R U' R' U2 r"]),
+  oll(18, "dot", "점·뒤 꼭짓점 둘", ["r U R' U R U2 r2 U' R U' R' U2 r"]),
   oll(19, "dot", "점·화살촉", ["r' R U R U R' U' M' R' F R F'"]),
   oll(
     20,
@@ -85,21 +87,21 @@ export const OLL_CASES: AlgCase[] = [
     "ocll",
     "H(헤드라이트 둘)",
     ["R U2 R' U' R U R' U' R U' R'"],
-    "양옆에 헤드라이트(같은 색 두 칸)가 마주 본다",
+    "앞과 뒤 옆면에 노란 칸이 둘씩(헤드라이트) 마주 본다",
   ),
   oll(
     22,
     "ocll",
     "파이(Pi)",
     ["R U2 R2 U' R2 U' R2 U2 R"],
-    "한쪽에 헤드라이트, 맞은쪽 꼭짓점은 바깥을 본다",
+    "왼쪽 옆면에 노란 칸 둘(헤드라이트), 오른쪽 두 꼭짓점의 노랑은 앞과 뒤를 본다",
   ),
   oll(
     23,
     "ocll",
     "헤드라이트(U)",
     ["R2 D' R U2 R' D R U2 R"],
-    "노란 칸이 뒤쪽 두 꼭짓점에, 앞쪽 옆면에 헤드라이트",
+    "윗면 노랑이 앞쪽 두 꼭짓점에, 뒤 옆면에 노란 칸 둘(헤드라이트)",
   ),
   oll(24, "ocll", "T(크로스 T)", ["r U R' U' r' F R F'"]),
   oll(25, "ocll", "나비넥타이(L)", ["F' r U R' U' r' F R"]),
@@ -108,14 +110,14 @@ export const OLL_CASES: AlgCase[] = [
     "ocll",
     "안티수네",
     ["R U2 R' U' R U' R'"],
-    "노란 꼭짓점 하나가 왼쪽 앞, 나머지는 시계 반대로 돌아 있음",
+    "위를 보는 노란 꼭짓점 하나가 오른쪽 뒤, 왼쪽 앞 꼭짓점의 노랑은 앞을 봄",
   ),
   oll(
     27,
     "ocll",
     "수네",
     ["R U R' U R U2 R'"],
-    "노란 꼭짓점 하나가 왼쪽 앞, 나머지는 시계 방향으로 돌아 있음",
+    "위를 보는 노란 꼭짓점 하나가 왼쪽 앞, 오른쪽 앞 꼭짓점의 노랑은 앞을 봄",
   ),
   oll(28, "edges-only", "화살표", ["r U R' U' M U R U' R'"]),
   oll(29, "awkward", "어색한 1", ["R U R' U' R U' R' F' U' F R U R'"]),

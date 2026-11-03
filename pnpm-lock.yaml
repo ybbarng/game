@@ -245,6 +245,12 @@ importers:
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
+      '@game/galaxy-ai':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-ai
+      '@game/galaxy-engine':
+        specifier: workspace:*
+        version: link:../../packages/galaxy-engine
       '@game/gostop-ai':
         specifier: workspace:*
         version: link:../../packages/gostop-ai
@@ -290,6 +296,9 @@ importers:
       '@game/omok-engine':
         specifier: workspace:*
         version: link:../../packages/omok-engine
+      '@game/onecard-ai':
+        specifier: workspace:*
+        version: link:../../packages/onecard-ai
       '@game/onecard-engine':
         specifier: workspace:*
         version: link:../../packages/onecard-engine
@@ -635,6 +644,15 @@ importers:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+
+  packages/onecard-ai:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/onecard-engine':
+        specifier: workspace:*
+        version: link:../onecard-engine
 
   packages/onecard-engine:
     dependencies:

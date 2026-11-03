@@ -10,13 +10,18 @@ export interface KitBot<View, Action, Event = unknown> {
   /**
    * 차례와 상관없는 반응(원카드 "원카드!" 외침·잡기). 판이 바뀔 때마다 컴퓨터 자리마다 불리고,
    * 행동과 기다릴 시간을 돌려주면 대국을 돌리는 기기(LocalMatch)가 그 시간 뒤에 넣는다.
-   * 걸음마다 늘 불리고(사건을 빠짐없이 듣게), 새 계획을 주면 그 자리에 걸어 둔 앞 계획은 버린다. `events`는 이번 걸음의 사건
+   * 걸음마다 늘 불리고(사건을 빠짐없이 듣게), 새 계획을 주면 그 자리에 걸어 둔 앞 계획은 버린다. `events`는 이번 걸음의 사건.
+   * `recheck`가 있으면 시간이 됐을 때 `action` 대신 그 순간 화면으로 다시 정한다(null이면 넣지 않는다)
    */
   react?(
     view: View,
     events: readonly Event[],
     rng: RngState,
-  ): { delayMs: number; action: Action } | null;
+  ): {
+    delayMs: number;
+    action: Action;
+    recheck?: (view: View) => Action | null;
+  } | null;
 }
 
 /** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
