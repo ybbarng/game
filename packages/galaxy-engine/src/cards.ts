@@ -147,7 +147,7 @@ export const CARDS: readonly NoticeCard[] = [
   {
     id: 13,
     title: "관측지 초청",
-    text: "관측지로 곧장 갑니다. 이번에는 관측 지원금이 없습니다.",
+    text: "관측지로 곧장 갑니다. 관측 지원금은 없고, 우주국을 지나면 지원금은 60만 받습니다.",
     kind: "move",
     fact: null,
   },
@@ -190,6 +190,8 @@ export const CARD_AMOUNTS = {
   near: 20,
   lineSurvey: 30,
   lineSurveyComplete: 50,
+  /** 13 관측지 초청으로 우주국을 지날 때 받는 지원금(지원금 120의 반) */
+  inviteSalary: 60,
 } as const;
 
 export function cardById(id: number): NoticeCard {

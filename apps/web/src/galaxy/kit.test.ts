@@ -57,7 +57,7 @@ function playedGame() {
 describe("은하 한 바퀴 kit", () => {
   it("규칙 문자열을 주고받는다", () => {
     const code = galaxyKit.encodeRules(rules);
-    expect(code).toMatch(/^g2-2s[tn]w-seasons$/);
+    expect(code).toMatch(/^g3-2s[tn]w-seasons$/);
     expect(galaxyKit.decodeRules(code)).toEqual({ ok: true, rules });
     expect(galaxyKit.decodeRules(code.replace("seasons", "zodiac")).ok).toBe(
       false,
