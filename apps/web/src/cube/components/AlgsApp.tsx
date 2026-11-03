@@ -1,23 +1,34 @@
 "use client";
 
+import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { caseById, caseStart, checkAlg, setOf, shortName } from "../algs/check";
+import {
+  caseById,
+  caseStart,
+  checkAlg,
+  MAX_ALG_LENGTH,
+  setOf,
+  shortName,
+} from "../algs/check";
 import { algLink, parseAlgLink } from "../algs/link";
+import { useSettled } from "../algs/settle";
 import {
   type AlgBook,
   addMine,
   algsOf,
+  commitAlgBook,
   exportAlgBook,
   type ImportResult,
-  importAlgBook,
   loadAlgBook,
+  MAX_IMPORT_BYTES,
   removeMine,
-  saveAlgBook,
   setAsText,
   setUsed,
+  unknownCaseIds,
   usedAlg,
+  watchAlgBook,
 } from "../algs/store";
 import {
   addAuf,
@@ -32,6 +43,7 @@ import {
 import { ALG_SETS, type AlgCase, type AlgSet, type AlgSetInfo } from "../learn";
 import { movesOf } from "../learn/judge";
 import { type CubeSettings, useCubeSettings } from "../settings";
+import { importAlgsInWorker } from "../worker";
 import { AlgPicture } from "./AlgPicture";
 import { DemoCube } from "./DemoCube";
 
@@ -54,6 +66,9 @@ async function copyText(text: string, select?: Element | null) {
 
 const KIND_LABEL = { main: "대표", alt: "대안", mine: "내 공식" } as const;
 
+/** 가져오기에서 뺀 공식을 몇 개까지 보이나(나머지는 개수만) */
+const REJECTED_SHOWN = 100;
+
 export function AlgsApp() {
   const settings = useCubeSettings();
   const [book, setBookState] = useState<AlgBook>({});
@@ -66,9 +81,14 @@ export function AlgsApp() {
   const [imported, setImported] = useState<ImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const setTextRef = useRef<HTMLPreElement>(null);
+  const bookRef = useRef<AlgBook>({});
+  const setBook = useCallback((b: AlgBook) => {
+    bookRef.current = b;
+    setBookState(b);
+  }, []);
 
   useEffect(() => {
-    setBookState(loadAlgBook());
+    setBook(loadAlgBook());
     const l = parseAlgLink(window.location.search);
     const c = l && caseById(l.caseId);
     if (l && c) {
@@ -76,12 +96,20 @@ export function AlgsApp() {
       setOpenId(c.id);
       if (l.alg) setLinked({ id: c.id, alg: l.alg });
     }
-  }, []);
+    // 다른 탭(훈련 등)이 저장하면 다시 읽는다
+    return watchAlgBook(setBook);
+  }, [setBook]);
 
-  const updateBook = useCallback((b: AlgBook) => {
-    setBookState(b);
-    saveAlgBook(b);
-  }, []);
+  /** prev에서 next로 바뀐 상황만 저장하고(다른 탭 변경과 합친다) 합친 것을 보인다 */
+  const commitBook = useCallback(
+    (prev: AlgBook, next: AlgBook) => setBook(commitAlgBook(prev, next)),
+    [setBook],
+  );
+  const updateBook = useCallback(
+    (b: AlgBook) => commitBook(bookRef.current, b),
+    [commitBook],
+  );
+  const unknown = unknownCaseIds(book).length;
 
   const set =
     ALG_SETS.find((s) => s.set === setId) ?? (ALG_SETS[0] as AlgSetInfo);
@@ -185,16 +213,32 @@ export function AlgsApp() {
               const file = e.currentTarget.files?.[0];
               e.currentTarget.value = "";
               if (!file) return;
+              if (file.size > MAX_IMPORT_BYTES) {
+                setNotice("파일이 너무 큼");
+                return;
+              }
+              setNotice("가져오는 중");
+              setImported(null);
               try {
-                const r = importAlgBook(book, await file.text());
-                updateBook(r.book);
+                const base = bookRef.current;
+                const r = await importAlgsInWorker(base, await file.text());
+                commitBook(base, r.book);
                 setImported(r);
                 setNotice(`가져옴 ${r.added} · 뺌 ${r.rejected.length}`);
               } catch (err) {
-                setNotice(err instanceof Error ? err.message : "가져오지 못함");
+                setNotice(
+                  err instanceof Error
+                    ? err.message.replace(/^Error: /, "")
+                    : "가져오지 못함",
+                );
               }
             }}
           />
+          {unknown > 0 && (
+            <span data-algs-unknown className="text-amber-200">
+              모르는 상황 {unknown}개
+            </span>
+          )}
           {notice && (
             <span role="status" data-algs-notice className="text-white/70">
               {notice}
@@ -202,15 +246,24 @@ export function AlgsApp() {
           )}
         </div>
         {imported && imported.rejected.length > 0 && (
-          <ul className="flex flex-col gap-0.5 rounded-lg bg-red-500/10 p-2 text-red-200 text-xs">
-            {imported.rejected.map((x) => (
-              <li key={`${x.caseId}|${x.alg}`}>
+          <ul
+            className="flex flex-col gap-0.5 rounded-lg bg-red-500/10 p-2 text-red-200 text-xs"
+            data-algs-rejected
+          >
+            {imported.rejected.slice(0, REJECTED_SHOWN).map((x, i) => (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 공식이 되풀이될 수 있어 순번을 더한다(목록은 바뀌지 않는다)
+                key={`${i}|${x.caseId}|${x.alg}`}
+              >
                 {caseById(x.caseId)
                   ? shortName(caseById(x.caseId) as AlgCase)
                   : x.caseId}
                 : <span className="font-mono">{x.alg}</span> · {x.message}
               </li>
             ))}
+            {imported.rejected.length > REJECTED_SHOWN && (
+              <li>외 {imported.rejected.length - REJECTED_SHOWN}개</li>
+            )}
           </ul>
         )}
         <pre ref={setTextRef} className="sr-only">
@@ -291,6 +344,7 @@ function CaseDetail({
   settings,
   onClose,
   onNotice,
+  clock,
 }: {
   c: AlgCase;
   book: AlgBook;
@@ -299,15 +353,29 @@ function CaseDetail({
   settings: CubeSettings;
   onClose: () => void;
   onNotice: (s: string) => void;
+  /** 입력이 멈췄는지 재는 시계(없으면 실제 시계) */
+  clock?: Clock;
 }) {
   const set = setOf(c);
   const n = set.size;
   const rootRef = useRef<HTMLElement>(null);
-  const [draft, setDraft] = useState(initialAlg ?? "");
+  const [draft, setDraftOnly] = useState(initialAlg ?? "");
+  // 검사는 입력이 멈춘 뒤 한 번만(칠 때마다 하면 긴 공식에서 멈춘다)
+  const [checked, settler] = useSettled(initialAlg ?? "", clock);
   const result = useMemo(
-    () => (draft.trim() ? checkAlg(c, draft) : null),
-    [c, draft],
+    () => (checked.trim() ? checkAlg(c, checked) : null),
+    [c, checked],
   );
+  /** 지금 입력칸의 글을 검사한 결과인가(아직 기다리는 중이면 넣지 않는다) */
+  const fresh = checked === draft;
+  const typeDraft = (v: string) => {
+    setDraftOnly(v);
+    settler.push(v);
+  };
+  const setDraft = (v: string) => {
+    setDraftOnly(v);
+    settler.now(v);
+  };
   // 받은 공식이 맞으면 그것을, 아니면 쓰는 공식을 시연한다
   const [demo, setDemo] = useState(() => {
     if (initialAlg) {
@@ -325,7 +393,8 @@ function CaseDetail({
   }, []);
 
   const base = draft.trim() || used;
-  const baseReadable = !result || result.ok || result.errorAt === undefined;
+  const baseReadable =
+    !fresh || !result || result.ok || result.errorAt === undefined;
   const transform = (f: (alg: string) => string) => {
     try {
       setDraft(f(base));
@@ -448,9 +517,10 @@ function CaseDetail({
           <input
             data-alg-input
             value={draft}
-            onChange={(e) => setDraft(e.currentTarget.value)}
+            maxLength={MAX_ALG_LENGTH}
+            onChange={(e) => typeDraft(e.currentTarget.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && result?.ok) add();
+              if (e.key === "Enter" && fresh && result?.ok) add();
             }}
             spellCheck={false}
             autoCapitalize="off"
@@ -472,6 +542,7 @@ function CaseDetail({
             {!result.ok && result.other && (
               <span className="text-amber-200" data-alg-check-other>
                 이건 {result.other.name}
+                {result.other.slot && `(${result.other.slot} 칸)`}
               </span>
             )}
             {result.htm !== undefined && (
@@ -485,7 +556,7 @@ function CaseDetail({
           <button
             type="button"
             data-alg-add
-            disabled={!result?.ok}
+            disabled={!fresh || !result?.ok}
             onClick={add}
             className="rounded-lg bg-sky-500 px-3 py-1.5 font-semibold text-black disabled:opacity-40"
           >
@@ -493,8 +564,8 @@ function CaseDetail({
           </button>
           <button
             type="button"
-            disabled={!result?.ok}
-            onClick={() => result?.ok && setDemo(result.text)}
+            disabled={!fresh || !result?.ok}
+            onClick={() => fresh && result?.ok && setDemo(result.text)}
             className="rounded-lg bg-white/10 px-3 py-1.5 hover:bg-white/15 disabled:opacity-40"
           >
             시연

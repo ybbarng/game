@@ -3,6 +3,7 @@ import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import { type Clock, realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import type { AlgBook, ImportResult } from "../algs/store";
 import {
   type CubeJob,
   type CubeJobAnswer,
@@ -39,6 +40,7 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   scramble: 20_000,
   solve: 20_000,
   plan: 30_000,
+  "algs-import": 30_000,
 };
 
 export interface JobRunnerOptions {
@@ -183,6 +185,17 @@ export function planInWorker(
     twist: Array.from(state.twist),
     seed,
   }) as Promise<BotPlan>;
+}
+
+/**
+ * 내 공식 가져오기(파일 글을 검사해 더한다). 공식마다 검사기를 돌려 화면이 멈추지 않게 워커에서 한다.
+ * 글을 못 읽으면 Error(화면에 보일 까닭)
+ */
+export function importAlgsInWorker(
+  book: AlgBook,
+  text: string,
+): Promise<ImportResult> {
+  return request({ kind: "algs-import", book, text }) as Promise<ImportResult>;
 }
 
 /** 표를 미리 만들어 두게 한다(화면을 열 때 불러 두면 첫 섞기가 빠르다) */

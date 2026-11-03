@@ -18,7 +18,13 @@ import {
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import { ALG_SETS, type AlgCase, type AlgSet, type AlgSetInfo } from "../learn";
+import {
+  ALG_SETS,
+  type AlgCase,
+  type AlgSet,
+  type AlgSetInfo,
+  type GoalName,
+} from "../learn";
 import { centersSolved, goalMet, unpairedEdgeLines } from "../learn/judge";
 import { moveCounts, tidyAlg } from "./transform";
 
@@ -360,8 +366,11 @@ export type CheckResult =
       errorAt?: number;
       htm?: number;
       stm?: number;
-      /** 같은 묶음의 다른 상황을 푸는 공식이면 그 상황 */
-      other?: { id: string; name: string };
+      /**
+       * 같은 묶음의 다른 상황을 푸는 공식이면 그 상황. F2L은 다른 칸(FL·BL·BR)에서 푸는 것도 찾고
+       * 그 칸을 slot에 준다(같은 상황을 다른 칸에서 풀 때도)
+       */
+      other?: { id: string; name: string; slot?: string };
     };
 
 /** 상황 이름에서 괄호 설명을 뺀 짧은 이름 */
@@ -369,10 +378,13 @@ export function shortName(c: AlgCase): string {
   return c.name.replace(/\s*\(.*\)\s*$/, "");
 }
 
-function solvesWith(c: AlgCase, moves: readonly CubeMove[]): string | null {
+function solvesWith(
+  c: AlgCase,
+  moves: readonly CubeMove[],
+  start: PuzzleState = caseStart(c),
+): string | null {
   const n = setOf(c).size;
   const role = roleOf(c);
-  const start = caseStart(c);
   for (const pre of role.auf ? AUF : [""]) {
     const s = engineApply(n, pre ? apply(n, start, pre) : start, moves);
     if (role.met(s)) return pre;
@@ -380,29 +392,79 @@ function solvesWith(c: AlgCase, moves: readonly CubeMove[]): string | null {
   return null;
 }
 
-/** 이 공식이 같은 묶음의 어느 상황을 푸나(자기 상황 빼고 첫 번째) */
-export function findSolvedCase(
-  c: AlgCase,
-  moves: readonly CubeMove[],
-): AlgCase | null {
-  for (const other of setOf(c).cases) {
-    if (other.id === c.id) continue;
-    if (solvesWith(other, moves) !== null) return other;
-  }
-  return null;
+/**
+ * F2L 상황을 다른 칸으로 옮긴 시작 큐브(큐브를 y·y2·y'로 돌려 쥠). 자료는 모두 FR 칸이라
+ * 거울(좌우 대칭)로 만든 공식은 FL 칸을 푼다
+ */
+const SLOT_GRIPS = [
+  { grip: "y", slot: "FL" },
+  { grip: "y2", slot: "BL" },
+  { grip: "y'", slot: "BR" },
+] as const;
+
+const slotStartCache = new Map<string, PuzzleState>();
+function slotStart(c: AlgCase, grip: string): PuzzleState {
+  const key = `${c.id}|${grip}`;
+  const hit = slotStartCache.get(key);
+  if (hit) return hit;
+  const s = apply(setOf(c).size, caseStart(c), grip);
+  slotStartCache.set(key, s);
+  return s;
+}
+
+export interface SolvedCase {
+  c: AlgCase;
+  /** FR이 아닌 다른 칸에서 풀면 그 칸(F2L만) */
+  slot?: string;
 }
 
 /**
- * 공식이 그 상황의 역할에 맞는지 본다. n은 큐브 크기(없으면 묶음 크기).
+ * 이 공식이 같은 묶음의 어느 상황을 푸나(자기 상황 빼고 첫 번째).
+ * F2L은 FR 칸에서 못 찾으면 다른 칸(자기 상황 포함)에서도 찾는다
+ */
+export function findSolvedCase(
+  c: AlgCase,
+  moves: readonly CubeMove[],
+): SolvedCase | null {
+  const cases = setOf(c).cases;
+  for (const other of cases) {
+    if (other.id === c.id) continue;
+    if (solvesWith(other, moves) !== null) return { c: other };
+  }
+  if (c.set !== "f2l") return null;
+  for (const { grip, slot } of SLOT_GRIPS)
+    for (const other of cases)
+      if (solvesWith(other, moves, slotStart(other, grip)) !== null)
+        return { c: other, slot };
+  return null;
+}
+
+/** 공식 한 줄의 글자 수 상한(링크·입력칸·가져오기가 같이 쓴다). 넘으면 검사하지 않는다 */
+export const MAX_ALG_LENGTH = 300;
+
+export interface CheckOptions {
+  /** 큐브 크기(없으면 묶음 크기) */
+  n?: number;
+  /**
+   * 틀렸을 때 같은 묶음의 다른 상황을 푸는지 찾아보나(기본 true). 상황마다 네 번씩 해 봐서 무겁다.
+   * 가져오기처럼 까닭만 필요하면 끈다
+   */
+  findOther?: boolean;
+}
+
+/**
+ * 공식이 그 상황의 역할에 맞는지 본다.
  * 맞으면 앞에 붙일 윗면 돌리기와 저장할 글을, 아니면 까닭과(있으면) 대신 푸는 상황을 준다.
  */
 export function checkAlg(
   c: AlgCase,
   input: string,
-  n: number = setOf(c).size,
+  opts: CheckOptions = {},
 ): CheckResult {
+  const n = opts.n ?? setOf(c).size;
   const text = tidyAlg(input);
   if (text === "") return { ok: false, message: "공식이 비어 있음" };
+  if (text.length > MAX_ALG_LENGTH) return { ok: false, message: "너무 김" };
   let moves: CubeMove[];
   try {
     moves = parseMoves(n, text);
@@ -429,13 +491,38 @@ export function checkAlg(
   }
   const start = caseStart(c);
   const after = engineApply(n, start, moves);
-  const other = findSolvedCase(c, moves);
+  const other = opts.findOther === false ? null : findSolvedCase(c, moves);
   return {
     ok: false,
     message: roleOf(c).why(after, start),
     ...counts,
-    ...(other ? { other: { id: other.id, name: shortName(other) } } : {}),
+    ...(other
+      ? {
+          other: {
+            id: other.c.id,
+            name: shortName(other.c),
+            ...(other.slot ? { slot: other.slot } : {}),
+          },
+        }
+      : {}),
   };
+}
+
+/**
+ * 공식을 이 큐브에 그대로(앞 윗면 돌리기 없이) 해 보면 목표가 되나. 못 읽는 공식이면 아니다.
+ * 배우기 단원에서 내 공식을 힌트로 보여도 될지 볼 때(단원 상황은 공식 모음과 쥔 방향이 다를 수 있다)
+ */
+export function fitsStart(
+  n: number,
+  start: PuzzleState,
+  alg: string,
+  goal: GoalName,
+): boolean {
+  try {
+    return goalMet(n, engineApply(n, start, parseMoves(n, alg)), goal);
+  } catch {
+    return false;
+  }
 }
 
 /** 상황 id → 상황 */

@@ -9,10 +9,11 @@ import { algLink } from "../algs/link";
 import {
   type AlgBook,
   algsOf,
+  commitAlgBook,
   loadAlgBook,
-  saveAlgBook,
   setUsed,
   usedAlg,
+  watchAlgBook,
 } from "../algs/store";
 import type { Command } from "../input";
 import {
@@ -95,6 +96,8 @@ export function TrainApp() {
   useEffect(() => {
     setBook(loadTrain());
     setAlgBook(loadAlgBook());
+    // 공식 모음을 다른 탭에서 고치면 다시 읽는다
+    return watchAlgBook(setAlgBook);
   }, []);
 
   const pool = useMemo(() => {
@@ -361,9 +364,10 @@ export function TrainApp() {
                     t={cur.t}
                     book={algBook}
                     onUse={(alg) => {
-                      const b = setUsed(algBook, cur.c, alg);
-                      setAlgBook(b);
-                      saveAlgBook(b);
+                      // 바꾼 상황만 저장해 다른 탭의 변경을 덮지 않는다
+                      setAlgBook(
+                        commitAlgBook(algBook, setUsed(algBook, cur.c, alg)),
+                      );
                     }}
                   />
                 )}

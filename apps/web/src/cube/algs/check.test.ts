@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { ALG_SETS, type AlgCase } from "../learn";
 import { goalMet } from "../learn/judge";
-import { caseById, caseStart, checkAlg, setOf } from "./check";
+import { caseById, caseStart, checkAlg, fitsStart, setOf } from "./check";
+import { mirrorAlg } from "./transform";
 
 const byId = (id: string): AlgCase => {
   const c = caseById(id);
@@ -104,6 +105,34 @@ describe("역할 확인: 까닭", () => {
     expect(checkAlg(c, "U").message).toBe("짝이 안 들어감");
     expect(checkAlg(c, "U R U' R' F2").message).toBe("십자가 깨짐");
     expect(checkAlg(c, "U R U' R' L U L'").message).toBe("다른 칸이 깨짐");
+  });
+
+  it("단원 상황에 그대로 해 봐서 목표가 되는지(앞 윗면 돌리기가 어긋나면 아니다)", () => {
+    const sune = byId("oll-27");
+    const start = caseStart(sune);
+    const main = sune.algs[0] as string;
+    expect(fitsStart(3, start, main, "oll")).toBe(true);
+    expect(fitsStart(3, start, `U ${main}`, "oll")).toBe(false);
+    expect(fitsStart(3, start, "R Q", "oll")).toBe(false);
+  });
+
+  it("F2L 좌우 거울은 FL 칸을 푼다: 어느 상황의 어느 칸인지 알려 준다", () => {
+    // 상황 1의 거울(U' L' U L)은 상황 2를 FL 칸에서 푼다
+    const r = checkAlg(byId("f2l-1"), mirrorAlg(3, "U R U' R'", "M"));
+    expect(r).toMatchObject({
+      ok: false,
+      message: "다른 칸이 깨짐",
+      other: { id: "f2l-2", slot: "FL" },
+    });
+    // 같은 상황을 다른 칸에서 풀어도 알려 준다(상황 2 자리에 상황 2의 FL판)
+    const r2 = checkAlg(byId("f2l-2"), "U' L' U L");
+    expect(r2.ok || r2.other).toMatchObject({ id: "f2l-2", slot: "FL" });
+    // FR 칸의 다른 상황을 풀면 칸은 붙이지 않는다
+    const r3 = checkAlg(byId("f2l-2"), "U R U' R'");
+    expect(r3.ok || r3.other).toEqual({
+      id: "f2l-1",
+      name: "F2L 1 바로 넣기 1",
+    });
   });
 
   it("큐브 돌리기·넓게·가운데 층이 섞여도 방향과 상관없이 판정한다", () => {

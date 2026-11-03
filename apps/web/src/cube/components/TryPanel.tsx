@@ -5,6 +5,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { fitsStart } from "../algs/check";
 import { caseOfAlg, loadAlgBook, usedAlg } from "../algs/store";
 import type { Command } from "../input";
 import { algTokens, GOALS, type Lesson, type LessonStep } from "../learn";
@@ -59,13 +60,19 @@ export function TryPanel({
   const mask = masked ? maskFor(n, step.mask) : null;
   const goal = step.goal ?? "solved";
   const answer = useMemo(() => algTokens(step.alg ?? ""), [step.alg]);
-  // 모범 답이 공식 모음의 상황이고 쓰는 공식을 바꿔 뒀으면 힌트 옆에 내 공식도 보인다(판정과는 상관없다)
+  // 모범 답이 공식 모음의 상황이고 쓰는 공식을 바꿔 뒀으면 힌트 옆에 내 공식도 보인다.
+  // 내 공식의 앞 윗면 돌리기는 공식 모음의 쥔 방향 기준이라 단원 상황과 어긋날 수 있다:
+  // 지금 단원 상황에 그대로 해 봐서 목표가 될 때만 보인다
   const [mine, setMine] = useState<string | null>(null);
   useEffect(() => {
     const c = step.alg ? caseOfAlg(step.alg) : undefined;
     const used = c ? usedAlg(loadAlgBook(), c) : null;
-    setMine(c && used !== c.algs[0] ? used : null);
-  }, [step.alg]);
+    setMine(
+      c && used && used !== c.algs[0] && fitsStart(n, start, used, goal)
+        ? used
+        : null,
+    );
+  }, [step.alg, n, start, goal]);
 
   // 가리기를 바꾸면 장면을 다시 칠한다
   // biome-ignore lint/correctness/useExhaustiveDependencies: masked가 바뀔 때만
