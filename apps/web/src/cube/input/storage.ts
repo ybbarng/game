@@ -88,14 +88,9 @@ export function importKeymap(text: string): ImportResult {
   if (!optBool(data.mouseRotate))
     return { ok: false, error: "mouseRotate는 참·거짓이어야 합니다" };
   const mouseRotate = data.mouseRotate === true;
+  // 마우스 돌리기는 「사용자」 배치에서만 켠다. 기본 배치는 값이 있어도 받지 않는다
   if (preset !== "custom")
-    return {
-      ok: true,
-      keymap: {
-        ...presetKeymap(preset as "twoHand" | "notation"),
-        mouseRotate,
-      },
-    };
+    return { ok: true, keymap: presetKeymap(preset as "twoHand" | "notation") };
   const raw = data.bindings;
   if (!Array.isArray(raw)) return { ok: false, error: "키 목록이 없습니다" };
   if (raw.length > MAX_BINDINGS)

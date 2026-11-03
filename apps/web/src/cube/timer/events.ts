@@ -19,7 +19,7 @@ export interface EventInfo {
   readonly size: number;
   /** 화면에 보일 이름 */
   readonly label: string;
-  /** 블라인드: 살펴보기 없이 외우기·맞추기 시간을 나눠 잰다. 평균은 세 번 평균(mo3)과 세 번 중 최고(bo3) */
+  /** 블라인드: 살펴보기 없이 외우기·맞추기 시간을 나눠 잰다. 3×3 블라인드는 5번 중 최고(Bo5)로 순위를 정하고 5번 평균(Ao5)을 따로 본다(WCA 9b3) */
   readonly blind: boolean;
 }
 
