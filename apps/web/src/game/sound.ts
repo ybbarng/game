@@ -102,7 +102,13 @@ export type Cue =
   /** 윷놀이: 상대 말을 잡는 "딱-퐁" */
   | "yutCapture"
   /** 윷놀이: 말이 나는 "띠링" */
-  | "yutHome";
+  | "yutHome"
+  /** 큐브: 면 하나가 도는 짧은 플라스틱 "딸깍"(빠르게 치면 앞 소리를 끊는다) */
+  | "cubeTurn"
+  /** 큐브: 다 맞췄다 */
+  | "cubeSolved"
+  /** 큐브: 살펴보기 8초·12초 알림 "삐" */
+  | "cubeInspect";
 
 /** 소리 이름. 소리 미리 듣기 화면에 쓴다 */
 /**
@@ -112,6 +118,7 @@ export type Cue =
  */
 export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   starTick: "repeat",
+  cubeTurn: "repeat",
 };
 
 export const CUE_LABELS: Record<Cue, string> = {
@@ -164,6 +171,9 @@ export const CUE_LABELS: Record<Cue, string> = {
   yutPiece: "윷놀이: 말 놓기",
   yutCapture: "윷놀이: 잡기",
   yutHome: "윷놀이: 나기",
+  cubeTurn: "큐브: 면 돌기",
+  cubeSolved: "큐브: 맞춤",
+  cubeInspect: "큐브: 살펴보기 알림",
 };
 
 /**
@@ -215,6 +225,10 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
+  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 말 놓기(같은 나무 소리 갈래)보다 약 10dB 작게
+  cubeTurn: 2,
+  cubeSolved: 0,
+  cubeInspect: 10,
 };
 
 function trim(cue: Cue): number {
@@ -767,6 +781,7 @@ const G4 = 392;
 const C5 = 523.25;
 const D5 = 587.33;
 const E5 = 659.25;
+const B5 = 987.77;
 const G5 = 783.99;
 const A5 = 880;
 const C6 = 1046.5;
@@ -791,6 +806,9 @@ export interface PlayOptions {
   star?: StarSound | undefined;
 }
 
+/** 지금 울리는 큐브 면 돌기 소리. 다음 돌기가 오면 재빨리 줄여 소리가 쌓이지 않게 한다 */
+let turnVoice: GainNode | null = null;
+
 /** 룰렛 "띵"이 몰릴수록 작게: 최근에 낸 횟수(0.35초마다 절반쯤 잊는다) */
 let tickEnergy = 0;
 let tickAt = 0;
@@ -811,6 +829,10 @@ export function play(
     bus.gain.value /= Math.sqrt(tickEnergy);
   }
   bus.connect(a.out);
+  if (cue === "cubeTurn") {
+    turnVoice?.gain.setTargetAtTime(0, t0, 0.008);
+    turnVoice = bus;
+  }
   if (BIG.has(cue)) {
     // 앞 큰 소리를 이 소리가 시작할 때 재빨리 줄인다.
     bigVoice?.gain.setTargetAtTime(0, t0, 0.04);
@@ -1348,6 +1370,20 @@ function render(cue: Cue, v: Voice): void {
         endFreq: 1100,
         attack: 0.004,
       });
+      break;
+    case "cubeTurn":
+      // 플라스틱 조각이 맞물리며 도는 짧고 가벼운 "딸깍"
+      woodClack(v, 0, 0.8, 1.6);
+      break;
+    case "cubeSolved":
+      // 다 맞춘 "띠리링"(위로 올라가는 세 음)
+      pluck(v, E5, 0, 0.25, 0.12);
+      bell(v, B5, 0.08, 0.6, 0.07);
+      bell(v, E5 * 2, 0.16, 0.9, 0.06);
+      break;
+    case "cubeInspect":
+      // 살펴보기 시간 알림 "삐"
+      tone(v, 980, 0, 0.06, { gain: 0.2, attack: 0.003 });
       break;
     case "yutHome":
       // 말이 참먹이를 지나 나는 "띠링"
