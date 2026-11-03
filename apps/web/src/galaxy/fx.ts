@@ -35,6 +35,7 @@ export type FxStep =
   | { kind: "jail"; seat: number }
   | { kind: "auction"; result: AuctionResult }
   | { kind: "season"; season: number }
+  | { kind: "meteor" }
   | { kind: "build"; seat: number; square: number; what: string }
   | { kind: "trade"; accepted: boolean; from: number; to: number }
   | { kind: "bankrupt"; seat: number };
@@ -149,6 +150,9 @@ export function buildTimeline(
         break;
       case "seasonChanged":
         push({ kind: "season", season: e.season }, FX.season);
+        break;
+      case "meteorShower":
+        push({ kind: "meteor" }, FX.meteor);
         break;
       case "built":
       case "sold":

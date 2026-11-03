@@ -8,7 +8,7 @@ import { replayArchive } from "@/review/replay";
 
 import { money } from "../format";
 import { EMPTY_TIMELINE } from "../fx";
-import { explainGalaxy, galaxyKit } from "../kit";
+import { explainGalaxy, galaxyKit, isCurrentEdition } from "../kit";
 import { GalaxyBoard } from "./GalaxyBoard";
 import { ShipToken } from "./parts";
 
@@ -20,7 +20,21 @@ const QUIET = new Set(["commit", "bid"]);
  * 은하 한 바퀴 다시 보기: 기록을 처음부터 다시 둬 보며, 걸음마다 별빛이 어떻게 흘렀는지 사건으로 보인다.
  * 약속·입찰 봉투처럼 기기가 낸 걸음은 건너뛴다. 공개는 주사위가 정해지는 마지막 공개만 남긴다. ←·→ 키로도 움직인다
  */
-export function GalaxyReplay({
+export function GalaxyReplay(props: {
+  archive: GameArchive;
+  name: (seat: number) => string;
+}) {
+  // 판 번호가 다른(옛 규칙) 판은 지금 숫자로 다시 두면 다른 판이 되므로 다시 두지 않는다
+  if (!isCurrentEdition(props.archive.rules))
+    return (
+      <p className="py-6 text-center text-sm text-white/60" role="status">
+        옛 규칙으로 둔 판이라 다시 볼 수 없어요.
+      </p>
+    );
+  return <ReplayBody {...props} />;
+}
+
+function ReplayBody({
   archive,
   name,
 }: {

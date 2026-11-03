@@ -64,8 +64,9 @@ export function GalaxySources() {
           ). HR 번호와 이름만 뽑아 옮겼습니다.
         </li>
         <li>
-          밝기·색·온도: Hoffleit &amp; Warren(1991), Yale Bright Star Catalogue
-          5판(BSC5). 거리는 별마다 문헌 값(대부분 van Leeuwen 2007).
+          밝기·색: Hoffleit &amp; Warren(1991), Yale Bright Star Catalogue
+          5판(BSC5). 온도는 판 위 별 대부분 문헌 값, 나머지는 BSC5. 거리는
+          별마다 문헌 값(대부분 van Leeuwen 2007).
         </li>
         <li>
           별자리 선: d3-celestial(Olaf Frohn), BSD 3조항 라이선스.{" "}
