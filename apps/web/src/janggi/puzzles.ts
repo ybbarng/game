@@ -1133,20 +1133,6 @@ const DEFENDS: readonly Raw[] = [
   },
   {
     pieces: {
-      "24": "hA",
-      "35": "hA",
-      "36": "hK",
-      "75": "hN",
-      "78": "hP",
-      "87": "cR",
-      "95": "cK",
-      "05": "cA",
-      "06": "cA",
-    },
-    solution: "87-27",
-  },
-  {
-    pieces: {
       "16": "hA",
       "34": "hK",
       "44": "hE",
@@ -1201,18 +1187,6 @@ const DEFENDS: readonly Raw[] = [
       "86": "cA",
     },
     solution: "76-53",
-  },
-  {
-    pieces: {
-      "14": "hK",
-      "61": "cC",
-      "64": "hR",
-      "74": "cE",
-      "84": "cA",
-      "86": "cK",
-      "94": "cR",
-    },
-    solution: "94-91",
   },
   {
     pieces: {
@@ -1326,17 +1300,6 @@ const PALACES: readonly Raw[] = [
   },
   {
     pieces: {
-      "14": "hR",
-      "16": "hK",
-      "25": "hP",
-      "36": "cC",
-      "81": "cC",
-      "06": "cK",
-    },
-    solution: "36-14",
-  },
-  {
-    pieces: {
       "16": "hN",
       "24": "hA",
       "25": "cP",
@@ -1372,10 +1335,6 @@ const PALACES: readonly Raw[] = [
       "95": "cA",
     },
     solution: "25-16",
-  },
-  {
-    pieces: { "15": "hN", "19": "cC", "24": "hK", "36": "cP", "96": "cK" },
-    solution: "36-25",
   },
   {
     pieces: {

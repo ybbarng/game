@@ -476,7 +476,7 @@ test("장기 수 배우기: 잡힐 기물 지키기를 틀렸다 다시 풀고 �
   await page.getByRole("button", { name: /장기 배우기/ }).click();
   await page.getByRole("button", { name: /수 배우기/ }).click();
   const defendSet = page.getByRole("region", { name: "잡힐 기물 지키기" });
-  await expect(defendSet.getByText("0/12")).toBeVisible();
+  await expect(defendSet.getByText("0/10")).toBeVisible();
   await defendSet.getByRole("button", { name: "풀기 시작" }).click();
   await expect(page.getByRole("status")).toHaveText(
     "노림을 받는 기물을 지키세요",

@@ -176,7 +176,9 @@ export function JanggiGame({
   const danger = useMemo(
     () =>
       view && host && dangerHint && view.phase === "play" && !mission
-        ? piecesInDanger(view.board, sideOfSeat(view, host.seat))
+        ? piecesInDanger(view.board, sideOfSeat(view, host.seat), {
+            bikjangForbidden: view.rules.bikjang === "forbidden",
+          })
         : [],
     [view, host, dangerHint, mission],
   );
