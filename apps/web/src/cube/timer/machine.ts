@@ -119,9 +119,12 @@ export class TimerMachine {
     return 0;
   }
 
-  /** 스페이스바를 누르거나 화면을 누름. 도는 중이면 아무 키나 이것으로 부른다 */
-  press(): void {
-    const now = this.clock.now();
+  /**
+   * 스페이스바를 누르거나 화면을 누름. 도는 중이면 아무 키나 이것으로 부른다.
+   * `at`은 입력이 일어난 시각(이벤트의 timeStamp). 처리기가 늦게 불려도 기록이 늘지 않게 한다
+   */
+  press(at: number = this.clock.now()): void {
+    const now = at;
     switch (this.phase) {
       case "idle":
         if (this.usesInspection()) {
@@ -148,9 +151,9 @@ export class TimerMachine {
     }
   }
 
-  /** 스페이스바를 떼거나 화면에서 손을 뗌 */
-  release(): void {
-    const now = this.clock.now();
+  /** 스페이스바를 떼거나 화면에서 손을 뗌(`at`은 `press`와 같다) */
+  release(at: number = this.clock.now()): void {
+    const now = at;
     if (this.phase === "holding") {
       this.clearHold();
       this.phase = this.inspectionStart !== null ? "inspecting" : "idle";
