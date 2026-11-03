@@ -1,5 +1,6 @@
 "use client";
 
+import { createBadukSearchBot, EXPERT_PLAYOUTS } from "@game/baduk-ai";
 import {
   areaOwners,
   atariStones,
@@ -11,6 +12,7 @@ import {
   stoneOfSeat,
   timeControlOf,
 } from "@game/baduk-engine";
+import { createRng } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
@@ -28,6 +30,9 @@ import { countText } from "../kit";
 import { BADUK_LEVELS, useBadukSettings } from "../settings";
 import { useBaduk } from "../store";
 import { BadukBoard } from "./BadukBoard";
+
+/** 힌트에 쓰는 컴퓨터: 고수와 같은 나무 탐색을 판 수만 3분의 1로(휴대폰에서도 1초 안팎) */
+const HINT_BOT = createBadukSearchBot(Math.round(EXPERT_PLAYOUTS / 3));
 
 /** 돌 그림(판 위 돌과 같은 빛과 그림자) */
 export function StoneDot({
@@ -121,6 +126,8 @@ export function BadukGame({
   const [counting, setCounting] = useState(false);
   // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다.
   const [confirmResign, setConfirmResign] = useState(false);
+  // 힌트: 컴퓨터가 고른 자리(쉬기면 "pass"). 수가 오가면 지운다.
+  const [hint, setHint] = useState<number | "pass" | null>(null);
   const atariHint = useBadukSettings((s) => s.atariHint);
   const played = view?.played.length ?? 0;
 
@@ -135,6 +142,7 @@ export function BadukGame({
   useEffect(() => {
     setAim(null);
     setConfirmResign(false);
+    setHint(null);
   }, [played]);
 
   if (!view || !host) return null;
@@ -214,8 +222,16 @@ export function BadukGame({
   const atari =
     atariHint && view.phase === "play" ? atariStones(view.board) : null;
   const myAtari = myTurn && atari?.some((i) => view.board[i] === myStone);
+  if (
+    view.phase === "play" &&
+    myTurn &&
+    typeof hint === "number" &&
+    aim === hint
+  )
+    status = `힌트: 초록 고리 ${pointName(hint, size)}에 두어 보세요`;
   if (view.phase === "play" && myTurn && aim === null) {
-    if (passEnds)
+    if (hint === "pass") status = "힌트: 지금은 쉬어도 돼요";
+    else if (passEnds)
       status = passWins
         ? "상대가 쉬었어요 — 나도 쉬면 이대로 세어 이겨요"
         : "상대가 쉬었어요 — 지금 쉬면 져요. 집 안 죽은 돌을 따냈나요?";
@@ -290,6 +306,7 @@ export function BadukGame({
           onPlace={(at) => submit({ type: "place", at })}
           owners={owners}
           atari={atari}
+          hint={typeof hint === "number" ? hint : null}
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
@@ -320,6 +337,22 @@ export function BadukGame({
                 className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
               >
                 무르기
+              </button>
+            )}
+            {!online && !mission && myTurn && (
+              <button
+                type="button"
+                onClick={() => {
+                  // 같은 판이면 같은 수(시드는 둔 수 개수)
+                  const action = HINT_BOT.decide(view, createRng(played + 1));
+                  if (action.type === "place") {
+                    setHint(action.at);
+                    setAim(action.at);
+                  } else setHint("pass");
+                }}
+                className="rounded-xl bg-white/10 px-4 py-2"
+              >
+                힌트
               </button>
             )}
             {myTurn && (

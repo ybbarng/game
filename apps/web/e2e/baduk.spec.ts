@@ -108,10 +108,17 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   await expect(stones(page)).toHaveCount(2);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
+  // 힌트는 컴퓨터가 고른 자리에 초록 고리를 두고 그 자리를 겨눈다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(1);
+  await expect(page.getByRole("status")).toContainText("힌트: 초록 고리");
+  await page.screenshot({ path: info.outputPath("baduk-hint.png") });
+
   await page.getByRole("button", { name: "기권" }).click();
   // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "계속 두기" }).click();
-  await expect(page.getByRole("status")).toContainText("내 차례");
+  await expect(page.getByRole("button", { name: "쉬기" })).toBeVisible();
+  await expect(stones(page)).toHaveCount(2);
   await page.getByRole("button", { name: "기권" }).click();
   await page.getByRole("button", { name: "기권하기" }).click();
   await expect(page.getByRole("status")).toHaveText("기권했어요");

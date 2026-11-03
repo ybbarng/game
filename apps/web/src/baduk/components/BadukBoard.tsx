@@ -42,6 +42,7 @@ export function BadukBoard({
   owners,
   marks,
   atari,
+  hint,
 }: {
   board: readonly Cell[];
   size: number;
@@ -61,6 +62,8 @@ export function BadukBoard({
   marks?: Readonly<Record<number, string>>;
   /** 단수(활로 하나)인 돌 자리. 빨간 테두리를 두른다 */
   atari?: readonly number[] | null;
+  /** 힌트: 컴퓨터가 고른 자리. 초록 고리로 보인다 */
+  hint?: number | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const view = size - 1 + BADUK_PAD * 2;
@@ -286,6 +289,19 @@ export function BadukBoard({
           />
         );
       })}
+
+      {hint != null && board[hint] === 0 && (
+        <circle
+          cx={at(hint)[0]}
+          cy={at(hint)[1]}
+          r={0.38}
+          fill="none"
+          stroke="#16a34a"
+          strokeWidth={0.1}
+          data-hint={pointName(hint, size)}
+          pointerEvents="none"
+        />
+      )}
 
       {ghost !== null && board[ghost] === 0 && legalSet.has(ghost) && (
         <circle
