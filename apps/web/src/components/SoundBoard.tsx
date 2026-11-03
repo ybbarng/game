@@ -100,7 +100,7 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     title: "바둑",
     cues: [
       { cue: "stone", when: "돌을 놓음(나·상대 모두)" },
-      { cue: "capture", when: "돌을 따냄" },
+      { cue: "badukCapture", when: "돌을 따냄" },
       { cue: "win", when: "세어서 이김·상대 기권" },
       { cue: "lose", when: "세어서 짐·기권" },
     ],

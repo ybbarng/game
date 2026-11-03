@@ -65,6 +65,8 @@ export type Cue =
   | "piece"
   /** 장기: 상대 기물을 쳐서 잡는 "탁-딱" */
   | "capture"
+  /** 바둑: 돌을 놓아 상대 돌을 들어내는 "딱"과 돌끼리 부딪는 "자글" */
+  | "badukCapture"
   /** 장기: 장군을 부르는 짧은 나팔 */
   | "check"
   /** 화투: 패를 바닥에 치는 "착" */
@@ -143,6 +145,7 @@ export const CUE_LABELS: Record<Cue, string> = {
   stone: "오목: 돌 놓기",
   piece: "장기: 기물 놓기",
   capture: "장기: 잡기",
+  badukCapture: "바둑: 돌 따내기",
   check: "장기: 장군",
   hwatuSlap: "화투: 패 치기",
   hwatuFlip: "화투: 뒤집기",
@@ -173,6 +176,7 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   stone: 7.5,
   piece: 6,
   capture: 3,
+  badukCapture: 6,
   check: -3,
   pickCard: 8.5,
   click: 7.7,
@@ -1130,6 +1134,38 @@ function render(cue: Cue, v: Voice): void {
         endFreq: 440,
         attack: 0.002,
       });
+      break;
+    }
+    case "badukCapture": {
+      // 오목·바둑 돌 놓기와 같은 "딱" 뒤에, 들어낸 돌들이 손안에서 부딪는 가볍고 높은 "자글" 세 번
+      const vary = 0.94 + random() * 0.12;
+      noise(v, 0, 0.025, {
+        filter: "bandpass",
+        freq: 2400 * vary,
+        q: 1.8,
+        gain: 0.9,
+        attack: 0.001,
+      });
+      tone(v, 640 * vary, 0, 0.09, {
+        type: "triangle",
+        gain: 0.12,
+        endFreq: 560,
+        attack: 0.002,
+      });
+      thump(v, 0, 190 * vary, 120, 0.08, 0.22);
+      for (const [at, freq] of [
+        [0.12, 3400],
+        [0.17, 4100],
+        [0.215, 3700],
+      ] as const) {
+        noise(v, at, 0.018, {
+          filter: "bandpass",
+          freq: freq * vary,
+          q: 3,
+          gain: 0.45,
+          attack: 0.001,
+        });
+      }
       break;
     }
     case "check":

@@ -68,7 +68,7 @@
 - `packages/baduk-ai`: `FastBoard`, `search`(UCT + RAVE), 세 단계 봇과 `badukBotFor`, 세기 비교(`bots.strength.ts`).
 - `apps/web/src/baduk/`: `badukKit`(통계·해설·`timing` 포함), 설정, 저장소, 온라인 방, 화면, 배우기, 진행 기록(`progress.ts`).
 - 온라인은 `HostRoom`·`GuestRoom`을 그대로 쓴다. 완전 공개 게임이라 멘탈 포커는 없다. 끊긴 사람 대신 중수가 60초 뒤에 둔다.
-- 소리: 돌 놓기는 오목의 `stone`. 따내기는 아직 장기의 `capture`를 빌린다(바둑 "돌 따내기" 소리를 `game/sound.ts`에 더할 때 바꾼다).
+- 소리: 돌 놓기는 오목의 `stone`. 따내기는 바둑 `badukCapture`(돌 놓는 "딱" + 들어낸 돌이 부딪는 "자글", 2026-11-03).
 
 ## 5. 설계 다섯 질문(데이터 계약: 상태·행동·규칙 문자열)
 
@@ -114,7 +114,7 @@
 7. ~~화면 시험 `e2e/baduk.spec.ts`(세 화면 크기)~~ 끝(2026-10-29)
 8. 남음
    - 공통 파일 연결: 게임 목록 등록, `IconArt` 바둑 그림, `globals.css` 바탕, 내 기록 탭, 복기, `Dockerfile` COPY 줄, `apps/web/package.json` 의존
-   - 바둑 "돌 따내기" 소리를 `game/sound.ts`에 더하고 `/sounds`에 바둑 묶음을 더한다
+   - ~~바둑 "돌 따내기" 소리(`badukCapture`)를 `game/sound.ts`에 더하고 `/sounds` 바둑 묶음에 넣기~~ 끝(2026-11-03). 공통 문제 화면(`PuzzleScreen`)은 아직 모든 게임에 장기 소리를 낸다
    - 공유 그림
    - 수 배우기: ~~단수 방향 8·축 5·장문 8·두 눈 만들기 8·눈 빼앗기 8~~ 끝(2026-10-29, 아래 "수 배우기"). ~~환격 8·패 따내기 8~~ 끝(2026-11-03). 긴 축, 패로 버티기(팻감 쓰기), 포석·정석 수순은 남았다
 

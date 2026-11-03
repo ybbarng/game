@@ -125,10 +125,8 @@ interface BadukStore {
   clearNotice(): void;
 }
 
-/**
- * 돌을 따낼 때 내는 소리. 바둑만의 "돌 따내기" 소리를 `game/sound.ts`에 더하기 전까지는 장기의 잡기 소리를 빌린다
- */
-const CAPTURE_CUE = "capture";
+/** 돌을 따낼 때 내는 소리: 돌 놓는 "딱"에 들어낸 돌이 부딪는 "자글"을 더한 바둑 소리 */
+const CAPTURE_CUE = "badukCapture";
 
 /** 사건에 맞춰 소리를 낸다: 돌 놓기·따내기, 판 끝(이김·짐) */
 function cuesFor(events: readonly GameEvent[], me: number): void {
