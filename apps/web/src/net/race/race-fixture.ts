@@ -172,6 +172,8 @@ export function setupRace(
   n: number,
   options: Partial<RaceOptions> = {},
   configure?: (net: DelayNet) => void,
+  /** 기기마다 다른 게임(시작 상태를 다르게 만드는 기기 등). 없으면 `sortPuzzle` */
+  gameFor?: (id: string) => RaceGame<number, number[]>,
 ): { clock: ManualClock; net: DelayNet; devices: Device[] } {
   const clock = new ManualClock();
   const net = new DelayNet(clock);
@@ -185,7 +187,7 @@ export function setupRace(
     );
     let counter = 0;
     const session = new RaceSession({
-      game: sortPuzzle,
+      game: gameFor?.(id) ?? sortPuzzle,
       transport,
       clock: deviceClock,
       race: "r1",
