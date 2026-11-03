@@ -2,6 +2,7 @@ import {
   blockFor,
   type Cell,
   createOmokScenario,
+  type Forbidden,
   fivePoints,
   forbiddenReason,
   legalMoves,
@@ -10,20 +11,22 @@ import {
   pointName,
   STANDARD_RULES,
   type Stone,
+  type Variant,
   winningFirstMoves,
   xyOf,
 } from "@game/omok-engine";
 
 import type { OmokPuzzle } from "./puzzles";
 
-/** 문제는 모두 일반 규칙(흑·백 모두 3·3 금지, 정확히 다섯)이다 */
-export const PUZZLE_RULES = STANDARD_RULES;
-const VARIANT = PUZZLE_RULES.variant;
+/** 문제의 규칙. 따로 적지 않으면 일반 규칙(흑·백 모두 3·3 금지, 정확히 다섯)이다 */
+export function variantOf(puzzle: OmokPuzzle): Variant {
+  return puzzle.variant ?? "standard";
+}
 
 /** 문제 장면에서 시작하는 판. 늘 흑(나, 0번 자리)이 둔다 */
 export function puzzleState(puzzle: OmokPuzzle): OmokState {
   return createOmokScenario({
-    rules: PUZZLE_RULES,
+    rules: { ...STANDARD_RULES, variant: variantOf(puzzle) },
     black: puzzle.black,
     white: puzzle.white,
   });
@@ -55,10 +58,11 @@ export function judgeMove(
 ): "solved" | "next" | "wrong" {
   if (puzzle.kind === "defend")
     return puzzle.answers.map(pointAt).includes(move) ? "solved" : "wrong";
+  const variant = variantOf(puzzle);
   const left = puzzle.moves - step;
-  const wins = winningFirstMoves(board, 1, VARIANT, left);
+  const wins = winningFirstMoves(board, 1, variant, left);
   if (!wins.includes(move)) return "wrong";
-  if (fivePoints(board, 1, VARIANT).includes(move)) return "solved";
+  if (fivePoints(board, 1, variant).includes(move)) return "solved";
   if (step === 0 && move !== pointAt(puzzle.solution)) return "wrong";
   return "next";
 }
@@ -67,18 +71,21 @@ export function judgeMove(
  * 백이 받는 수: 흑의 다섯 자리를 막는다. 다섯 자리가 백에게 금지(3·3)라 막을 수 없으면,
  * 그 자리에서 가장 가까운 둘 수 있는 곳에 둔다(흑이 다음에 다섯). 흑의 다섯 자리가 없으면 null
  */
-export function defenseFor(board: readonly Cell[]): number | null {
-  const block = blockFor(board, 1, VARIANT);
+export function defenseFor(
+  board: readonly Cell[],
+  variant: Variant = "standard",
+): number | null {
+  const block = blockFor(board, 1, variant);
   if (block !== null) return block;
-  const target = fivePoints(board, 1, VARIANT)[0];
+  const target = fivePoints(board, 1, variant)[0];
   if (target === undefined) return null;
   const [tx, ty] = xyOf(target);
   const near = (at: number) => {
     const [x, y] = xyOf(at);
     return Math.max(Math.abs(x - tx), Math.abs(y - ty)) * 1000 + at;
   };
-  const legal = legalMoves(board, 2, VARIANT).filter(
-    (at) => !fivePoints(board, 1, VARIANT).includes(at),
+  const legal = legalMoves(board, 2, variant).filter(
+    (at) => !fivePoints(board, 1, variant).includes(at),
   );
   return legal.sort((a, b) => near(a) - near(b))[0] ?? null;
 }
@@ -86,18 +93,19 @@ export function defenseFor(board: readonly Cell[]): number | null {
 /** 공격 문제의 바른 수순(흑·백 번갈아). 해설과 시험에 쓴다 */
 export function mainLine(puzzle: OmokPuzzle): number[] {
   if (puzzle.kind !== "attack") return [];
+  const variant = variantOf(puzzle);
   let board = [...puzzleState(puzzle).board];
   const line: number[] = [];
   for (let left = puzzle.moves; left > 0; left--) {
     const move =
       line.length === 0
         ? pointAt(puzzle.solution)
-        : winningFirstMoves(board, 1, VARIANT, left)[0];
+        : winningFirstMoves(board, 1, variant, left)[0];
     if (move === undefined) break;
     line.push(move);
-    if (fivePoints(board, 1, VARIANT).includes(move)) break;
+    if (fivePoints(board, 1, variant).includes(move)) break;
     board = placed(board, move, 1);
-    const block = defenseFor(board);
+    const block = defenseFor(board, variant);
     if (block === null) break;
     line.push(block);
     board = placed(board, block, 2);
@@ -106,16 +114,20 @@ export function mainLine(puzzle: OmokPuzzle): number[] {
 }
 
 /** 막기 문제에서 흑이 두지 않으면 백이 사로 몰아 이기는 수순(백·흑 번갈아, 백 다섯까지) */
-function whiteLine(start: readonly Cell[], within: number): number[] {
+function whiteLine(
+  start: readonly Cell[],
+  within: number,
+  variant: Variant,
+): number[] {
   let board = [...start];
   const line: number[] = [];
   for (let left = within; left > 0; left--) {
-    const move = winningFirstMoves(board, 2, VARIANT, left)[0];
+    const move = winningFirstMoves(board, 2, variant, left)[0];
     if (move === undefined) break;
     line.push(move);
-    if (fivePoints(board, 2, VARIANT).includes(move)) break;
+    if (fivePoints(board, 2, variant).includes(move)) break;
     board = placed(board, move, 2);
-    const block = blockFor(board, 2, VARIANT);
+    const block = blockFor(board, 2, variant);
     if (block === null) break;
     line.push(block);
     board = placed(board, block, 1);
@@ -124,13 +136,17 @@ function whiteLine(start: readonly Cell[], within: number): number[] {
 }
 
 /** 흑 한 수가 무엇을 만들었는지 한 줄로 */
-function describe(board: readonly Cell[], move: number): string {
+function describe(
+  board: readonly Cell[],
+  move: number,
+  variant: Variant,
+): string {
   const name = pointName(move);
-  if (fivePoints(board, 1, VARIANT).includes(move)) return `${name}: 다섯!`;
+  if (fivePoints(board, 1, variant).includes(move)) return `${name}: 다섯!`;
   const after = placed(board, move, 1);
-  const threats = fivePoints(after, 1, VARIANT);
+  const threats = fivePoints(after, 1, variant);
   const blockable = threats.filter(
-    (at) => forbiddenReason(after, at, 2, VARIANT) === null,
+    (at) => forbiddenReason(after, at, 2, variant) === null,
   );
   const block = threats[0];
   if (block !== undefined && blockable.length === 0)
@@ -143,9 +159,10 @@ function describe(board: readonly Cell[], move: number): string {
 /** 푼 문제의 해설. 장면에서 만든다 */
 export function explainSolved(puzzle: OmokPuzzle): string[] {
   const start = [...puzzleState(puzzle).board];
+  const variant = variantOf(puzzle);
   if (puzzle.kind === "defend") {
     const answer = puzzle.answers.map(pointAt);
-    const threat = whiteLine(start, puzzle.within);
+    const threat = whiteLine(start, puzzle.within, variant);
     const first = threat[0];
     const steps = threat
       .map((at, i) => `${i % 2 === 0 ? "백" : "흑"} ${pointName(at)}`)
@@ -160,11 +177,30 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
     ];
   }
   const line = mainLine(puzzle);
-  const lines: string[] = [];
+  // 렌주: 금지가 없다면 이겼을 흑 자리(함정)를 먼저 짚는다.
+  const lines: string[] = trapsOf(puzzle).map(
+    (t) =>
+      `${pointName(t.at)}에 두면 이길 것 같지만 흑에게 ${t.reason} 금지라 둘 수 없다`,
+  );
   let board = start;
   line.forEach((move, i) => {
-    if (i % 2 === 0) lines.push(describe(board, move));
+    if (i % 2 === 0) lines.push(describe(board, move, variant));
     board = placed(board, move, i % 2 === 0 ? 1 : 2);
   });
   return lines;
+}
+
+/**
+ * 렌주 문제의 함정: 금지가 없는 규칙(자유)이면 같은 수 안에 이기는 첫 수인데, 렌주에서는 흑에게 금지인 자리.
+ * 일반 규칙 문제는 빈 배열
+ */
+export function trapsOf(
+  puzzle: OmokPuzzle,
+): { at: number; reason: Forbidden }[] {
+  if (puzzle.kind !== "attack" || variantOf(puzzle) !== "renju") return [];
+  const { board } = puzzleState(puzzle);
+  return winningFirstMoves(board, 1, "free", puzzle.moves).flatMap((at) => {
+    const reason = forbiddenReason(board, at, 1, "renju");
+    return reason ? [{ at, reason }] : [];
+  });
 }

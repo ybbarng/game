@@ -66,6 +66,8 @@ function OmokPuzzleRun({
   const solve = useOmokStudyProgress((s) => s.solve);
   const miss = useOmokStudyProgress((s) => s.miss);
   const [aim, setAim] = useState<number | null>(null);
+  // 금지 자리를 누르면 엔진이 받지 않으므로 까닭을 알린다(틀린 것으로 치지 않는다).
+  const [notice, setNotice] = useState<string | null>(null);
   const run = usePuzzleRun<OmokState, number>({
     initial: () => puzzleState(puzzle),
     judge: (state, move, at) => judgeMove(puzzle, state.board, move, at),
@@ -76,7 +78,7 @@ function OmokPuzzleRun({
     ...(puzzle.kind === "attack"
       ? {
           reply: (state: OmokState) => {
-            const block = defenseFor(state.board);
+            const block = defenseFor(state.board, state.rules.variant);
             if (block === null) return null;
             const result = step(state, 1, { type: "place", at: block });
             if (!result.ok) return null;
@@ -102,7 +104,7 @@ function OmokPuzzleRun({
         : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   const prompt =
-    aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둔다` : goal;
+    notice ?? (aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둔다` : goal);
 
   return (
     <PuzzleScreen
@@ -110,7 +112,7 @@ function OmokPuzzleRun({
       setTitle={set.title}
       index={index}
       total={set.puzzles.length}
-      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] short-landscape:w-[calc(100dvh-1.5rem)]"
+      boardClassName="aspect-square w-[min(100%,calc(100dvh-16rem))] split:w-[min(calc(100dvh-1.5rem),36rem)]"
       board={
         <OmokBoard
           board={state.board}
@@ -120,9 +122,18 @@ function OmokPuzzleRun({
           winLine={result?.kind === "five" ? result.line : null}
           forbidden={status === "play" ? view.forbidden : []}
           aim={aim}
-          onAim={setAim}
+          onAim={(at) => {
+            setNotice(null);
+            setAim(at);
+          }}
           onPlace={(at) => {
             setAim(null);
+            const banned = view.forbidden.find((f) => f.at === at);
+            if (banned) {
+              setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요`);
+              return;
+            }
+            setNotice(null);
             run.play(at);
           }}
         />

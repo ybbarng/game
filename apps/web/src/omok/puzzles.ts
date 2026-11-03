@@ -8,6 +8,8 @@
 
 export type OmokPuzzle = {
   id: string;
+  /** 규칙. 없으면 일반 규칙. 렌주 묶음만 "renju" */
+  variant?: "renju";
   black: readonly string[];
   white: readonly string[];
 } & (
@@ -1026,6 +1028,60 @@ const DEFEND = [
   },
 ];
 
+/** 렌주 규칙 장면: 흑 금지 모양(4·4·장목)을 심고 엔진으로 정답이 하나뿐인 것을 골랐다 */
+const RENJU = [
+  {
+    black: ["F14", "F13", "F12", "C11", "D11", "E11"],
+    white: ["E15", "E14", "C13", "D10", "J10", "G8"],
+    answer: "B11",
+  },
+  {
+    black: ["F9", "F8", "E6", "F6", "D5", "C4"],
+    white: ["E9", "E7", "I5", "J5", "H4", "I3"],
+    answer: "B3",
+  },
+  {
+    black: ["C8", "D7", "E6", "G6", "E4", "D3"],
+    white: ["B8", "B7", "H7", "C6", "B4", "J3"],
+    answer: "B9",
+  },
+  {
+    black: ["F12", "F10", "H10", "E9", "I9", "D8"],
+    white: ["G15", "H14", "H13", "D10", "D7", "J7"],
+    answer: "C7",
+  },
+  {
+    black: ["G12", "G10", "I10", "F9", "J9", "E8"],
+    white: ["J14", "K12", "D11", "D9", "F8", "L7"],
+    answer: "D7",
+  },
+  {
+    black: ["F9", "G8", "K8", "H7", "H5", "G4"],
+    white: ["L6", "M5", "E3", "G3", "E2", "K2"],
+    answer: "E10",
+  },
+  {
+    black: ["E12", "G12", "H12", "G11", "G10", "G8", "G7"],
+    white: ["I11", "J10", "C8", "D8", "I6", "D5", "F5"],
+    answer: "F12",
+  },
+  {
+    black: ["G8", "H8", "J8", "K8", "L8", "H7", "H6"],
+    white: ["I12", "I11", "H10", "M9", "L6", "E5", "K5"],
+    answer: "H5",
+  },
+  {
+    black: ["G11", "G10", "F8", "G8", "I8", "G7", "G6"],
+    white: ["I13", "K13", "F10", "E9", "H9", "C7", "H7"],
+    answer: "H8",
+  },
+  {
+    black: ["M14", "L13", "J12", "K12", "L12", "I10", "H9"],
+    white: ["K13", "N12", "L11", "H10", "N10", "M9", "G8"],
+    answer: "I12",
+  },
+];
+
 /** 수 배우기 묶음. 쉬운 것부터 */
 export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
   {
@@ -1063,5 +1119,22 @@ export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
     prompt: "백의 공격을 미리 막으세요",
     hint: "백이 사를 이어 둘 수 있는 줄을 따라가 봐요. 두 줄이 만나는 자리가 급소예요",
     puzzles: defend("defend", DEFEND),
+  },
+  {
+    id: "renju",
+    title: "렌주 금수 피하기",
+    summary:
+      "렌주 규칙에서 흑은 4·4·3·3·장목(여섯 이상)이 금지예요. 이길 것 같은 자리가 금지면, 다른 길로 열린 넷을 만들어요",
+    prompt: "렌주 규칙: 금지 자리를 피해 두 수 안에 이기세요",
+    hint: "× 표시는 흑이 둘 수 없는 자리예요. 넷이 둘 생기는 자리 말고, 한 줄로 열린 넷을 만드는 자리를 찾아요",
+    puzzles: RENJU.map((s, i) => ({
+      id: `renju-${i + 1}`,
+      kind: "attack" as const,
+      variant: "renju" as const,
+      moves: 2,
+      black: s.black,
+      white: s.white,
+      solution: s.answer,
+    })),
   },
 ];

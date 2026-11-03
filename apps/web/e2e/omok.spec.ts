@@ -437,4 +437,25 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
     page.getByText(/백이 사로 몰아붙여 다섯을 만든다/),
   ).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-study-defend.png") });
+  await page.getByRole("button", { name: "← 목록" }).click();
+
+  // 렌주 금수: F11은 흑 4·4 금지라 안내만 하고, B11로 열린 넷을 만들어 이긴다.
+  await page
+    .getByRole("region", { name: "렌주 금수 피하기" })
+    .getByRole("button", { name: "풀기 시작" })
+    .click();
+  await play("F11");
+  await expect(page.getByRole("status")).toHaveText("F11: 흑은 4·4 금지예요");
+  await play("B11");
+  await expect(page.getByRole("status")).toHaveText(
+    "계속 사로 몰아 다섯을 만드세요",
+    { timeout: 10_000 },
+  );
+  const renjuBlock = await page
+    .locator("[data-last]")
+    .getAttribute("data-last");
+  await play(renjuBlock === "A11" ? "F11" : "A11");
+  await expect(page.getByRole("status")).toHaveText("다섯!");
+  await expect(page.getByText(/4·4 금지라 둘 수 없다/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-study-renju.png") });
 });
