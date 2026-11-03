@@ -176,10 +176,26 @@ export function SkyBoard({
       cancelAnimationFrame(raf);
       raf = 0;
     };
+    /**
+     * 안드로이드 크롬은 탭이 뒤로 가면 캔버스 그림 메모리를 버리고(contextlost) 돌아오면 비운 채 되살린다
+     * (contextrestored). 그사이 캔버스는 흰 바탕·깨진 그림 표시로 보였고, 움직이지 않는 하늘은 다시 그려지지도 않았다
+     * (2026-11-03 사용자, 안드로이드 홈 버튼으로 나갔다 돌아옴). 버려진 동안은 캔버스를 숨겨 감싸는 칸의 같은 밤하늘
+     * 색을 보이고, 되살아나면 배율부터 다시 맞춰 그린다(contextlost를 막으면 되살리지 않으므로 막지 않는다)
+     */
+    const hide = (lost: boolean) => {
+      canvas.style.visibility = lost ? "hidden" : "";
+    };
+    const onLost = () => hide(true);
+    const onRestored = () => {
+      resize();
+      paint();
+      hide(false);
+    };
     const onVisibility = () => {
       if (document.hidden) stop();
       else start();
-      paint();
+      if (g.isContextLost?.()) hide(true);
+      else paint();
     };
 
     resize();
@@ -189,12 +205,16 @@ export function SkyBoard({
       paint();
     });
     observer.observe(canvas);
+    canvas.addEventListener("contextlost", onLost);
+    canvas.addEventListener("contextrestored", onRestored);
     document.addEventListener("visibilitychange", onVisibility);
     if (!document.hidden) start();
     repaintRef.current = paint;
     return () => {
       stop();
       observer.disconnect();
+      canvas.removeEventListener("contextlost", onLost);
+      canvas.removeEventListener("contextrestored", onRestored);
       document.removeEventListener("visibilitychange", onVisibility);
       repaintRef.current = null;
     };
@@ -228,7 +248,14 @@ export function SkyBoard({
   }, [moving]);
 
   return (
-    <div ref={wrapRef} className={cn("relative w-full max-w-full", className)}>
+    // 감싸는 칸도 밤하늘 색: 캔버스를 숨긴 동안(그림 메모리를 버렸을 때) 이 색이 보인다
+    <div
+      ref={wrapRef}
+      className={cn(
+        "relative w-full max-w-full rounded-xl bg-[#070d19]",
+        className,
+      )}
+    >
       <canvas
         ref={canvasRef}
         role="img"
