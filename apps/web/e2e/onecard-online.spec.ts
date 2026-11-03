@@ -119,18 +119,20 @@ test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치�
   });
 
   // 참가자가 더미를 친다: 청구가 모두에게 가고, 방장이 묶음으로 엔진에 넣는다(헛외침이든 외침이든).
-  // 말풍선은 1.5초만 떠서 부하 아래 놓칠 수 있으므로, 남는 상태(화면이 받은 외침 사건 수 `data-shouts`)를 기다린다
-  const shouts = (p: Page) =>
-    p
-      .locator('[data-game="onecard"]')
-      .getAttribute("data-shouts")
-      .then((v) => Number(v ?? 0));
-  // 빈 자리 컴퓨터도 외칠 수 있어 친 뒤 늘었는지로 본다
-  const before = [await shouts(host), await shouts(guest)];
+  // 말풍선은 1.5초만 떠서 부하 아래 놓칠 수 있으므로, 남는 상태(화면이 받은 자리별 외침 사건 수 `data-shouts-by`)로
+  // 참가자 자리의 외침·잡기·헛외침이 방장·참가자 두 화면에서 늘었는지 기다린다(빈 자리 컴퓨터의 외침은 세지 않는다)
+  const root = (p: Page) => p.locator('[data-game="onecard"]');
+  const guestSeat = Number(await root(guest).getAttribute("data-my-seat"));
+  expect(guestSeat).toBeGreaterThan(0);
+  const shoutsOfGuest = async (p: Page) => {
+    const by = (await root(p).getAttribute("data-shouts-by")) ?? "";
+    return Number(by.split(",")[guestSeat] || 0);
+  };
+  const before = [await shoutsOfGuest(host), await shoutsOfGuest(guest)];
   await slap(guest);
   for (const [i, p] of [host, guest].entries())
     await expect
-      .poll(() => shouts(p), { timeout: 30_000 })
+      .poll(() => shoutsOfGuest(p), { timeout: 30_000 })
       .toBeGreaterThan(before[i] as number);
   await host.screenshot({
     path: test.info().outputPath("onecard-online-normal-host.png"),
