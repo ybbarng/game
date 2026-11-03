@@ -880,3 +880,57 @@ describe("관측 안내 자리", () => {
     ).toBeTruthy();
   });
 });
+
+/*
+ * 관측 카운트다운 진동(docs/36 11-70): 10초 카운트다운이 시작되는 순간 한 번 톡. 예측 마감 뒤 기다리는 동안에는 울리지 않는다.
+ * 기기 시각을 그 회차의 정해진 순간으로 옮겨 본다(서버 시각은 hello의 serverTime = 기기 시각)
+ */
+describe("관측 카운트다운 진동", () => {
+  const times = roundTimes(SCHEDULE, 1);
+  const showStart =
+    drandTime(drandRoundForClose(times.closesAt)) * 1000 + LIVE_LEAD_MS;
+  let calls: unknown[];
+  beforeEach(async () => {
+    calls = [];
+    (await import("../haptics")).forgetBuzzed();
+    Object.defineProperty(navigator, "vibrate", {
+      configurable: true,
+      value: (p: unknown) => {
+        calls.push(p);
+        return true;
+      },
+    });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, "vibrate");
+  });
+  /** 기기 시각을 `at`(ms)부터 실제 시간만큼 흐르게 한다 */
+  function deviceAt(at: number) {
+    const start = performance.now();
+    vi.spyOn(Date, "now").mockImplementation(
+      () => at + (performance.now() - start),
+    );
+  }
+
+  it("카운트다운이 뜨면 [60] 한 번", async () => {
+    deviceAt(showStart - 5_000);
+    const view = renderRoom(1);
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-countdown]"),
+      ).not.toBeNull();
+    });
+    expect(calls).toEqual([60]);
+  });
+
+  it("마감 뒤 기다리는 동안(카운트다운 전)에는 울리지 않는다", async () => {
+    deviceAt(showStart - 60_000);
+    const view = renderRoom(1);
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-phase='closed']"),
+      ).not.toBeNull();
+    });
+    expect(calls).toEqual([]);
+  });
+});

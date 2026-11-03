@@ -256,7 +256,11 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 연출이 있으면 신청서가 올라와 기다린다: 아래 지문 단추를 누르면(키보드 Enter도 같다) 그 누름에 패스키 만들기,
   // 도장·성명·주소가 채워진 뒤 신청서를 낸다. 연출 길이는 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
   if (motion) await signAndSubmitApply(page);
-  // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로)
+  // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로. 그 연출도 빨리 감는다)
+  if (motion)
+    await fastForwardUntil(page, () =>
+      page.locator("[data-issued='new']").isVisible(),
+    );
   await expect(page.locator("[data-issued='new']")).toBeVisible();
   // 패스키 만들기 창 하나만(장부 등록은 첫 응모 때 응모권과 함께)
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
@@ -1267,6 +1271,24 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  // 진동을 부른 기록(방송이 내려오는 순간 [30, 80, 30] 한 번, docs/36 11-70)
+  await page.addInitScript(() => {
+    const w = window as unknown as { __vibrated: unknown[] };
+    w.__vibrated = [];
+    Object.defineProperty(navigator, "vibrate", {
+      configurable: true,
+      value: (p: unknown) => {
+        w.__vibrated.push(p);
+        return true;
+      },
+    });
+  });
+  const broadcastBuzzes = () =>
+    page.evaluate(() =>
+      (window as unknown as { __vibrated: unknown[] }).__vibrated.filter(
+        (p) => JSON.stringify(p) === "[30,80,30]",
+      ),
+    );
   await virtualAuthenticator(page);
   await page.goto("/stardraw");
   await page.getByRole("button", REGISTER).click();
@@ -1300,6 +1322,7 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
   await expect(toast).toContainText(
     /1회 예측을 마감했습니다\. 관측은 \d\d:00입니다\./,
   );
+  expect(await broadcastBuzzes()).toHaveLength(1);
   await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
   await toast.click();
   await expect(page).toHaveURL(/\/stardraw\/now$/);
@@ -1454,12 +1477,27 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 �
   const finger = page.getByRole("button", {
     name: "본인 확인으로 신분증 제출",
   });
-  // 등록증이 가운데로 다 올라온 뒤(움직임이 끝난 뒤) 자리를 잰다
+  const cancel = page.getByRole("button", { name: "취소", exact: true });
+  // 지문 단추·「취소」는 아래에서 살짝 올라오며 나타난다(끝나도 남는 연출). 숨 쉬듯 되풀이하는 것은 끝나지 않아 뺀다
+  const appeared = (target: Locator) =>
+    target.evaluate((el) =>
+      el
+        .getAnimations()
+        .every(
+          (a) =>
+            a.playState === "finished" ||
+            a.effect?.getComputedTiming().iterations === Infinity,
+        ),
+    );
+  // 등록증이 가운데로 다 올라오고 지문 단추·「취소」도 다 나타난 뒤(움직임이 끝난 뒤) 자리를 잰다.
+  // 등록증만 기다리면 부하 아래 단추가 아직 올라오는 중에 재어 위아래 순서가 어긋날 수 있다
   await fastForwardUntil(
     page,
     async () =>
       (await finger.isVisible()) &&
-      (await card.evaluate((el) => el.getAnimations().length === 0)),
+      (await card.evaluate((el) => el.getAnimations().length === 0)) &&
+      (await appeared(finger)) &&
+      (await appeared(cancel)),
   );
   // 휴대폰(터치)은 지문을 가리키는 문구. 등록증은 화면 안에 다 보이고, 지문 단추·「취소」와 겹치지 않는다
   await expect(
@@ -1469,9 +1507,7 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 �
   const view = page.viewportSize() as { width: number; height: number };
   const cardBox = await card.boundingBox();
   const fingerBox = await finger.boundingBox();
-  const cancelBox = await page
-    .getByRole("button", { name: "취소", exact: true })
-    .boundingBox();
+  const cancelBox = await cancel.boundingBox();
   if (!cardBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
   expect(cardBox.y).toBeGreaterThanOrEqual(0);
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(fingerBox.y);
@@ -1547,6 +1583,18 @@ test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려
   ]);
   await expect(form).not.toContainText("등록번호");
   await expect(form.locator("[data-register-field='name']")).toHaveText("");
+  // 서명 칸(「(인)」 자리)에 빛나는 지문 자리(11-70). 서명 칸 안에 들어 있다
+  const seal = form.getByRole("button", { name: "서명 칸에 지문으로 서명" });
+  await expect(seal).toBeVisible();
+  const sealBox = await seal.boundingBox();
+  const cellBox = await form
+    .locator("td:has([data-register-seal])")
+    .boundingBox();
+  if (!sealBox || !cellBox) throw new Error("서명 칸 자리 없음");
+  expect(sealBox.y).toBeGreaterThanOrEqual(cellBox.y);
+  expect(sealBox.y + sealBox.height).toBeLessThanOrEqual(
+    cellBox.y + cellBox.height,
+  );
   // 신청서·지문 단추·「취소」가 화면 안에서 겹치지 않는다(휴대폰은 작은 화면 360×640에서도)
   const fits = async () => {
     const view = page.viewportSize() as { width: number; height: number };
@@ -1595,6 +1643,8 @@ test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려
   await expect(
     form.locator("[data-register-signed] [data-fingermark]"),
   ).toBeVisible();
+  // 지문 자리는 걷히고 그 자리에 도장이 남았다
+  await expect(form.locator("[data-register-seal]")).toHaveCount(0);
   const name = form.locator("[data-register-field='name']");
   await expect(name).not.toHaveText("");
   await expect(form.locator("[data-register-field='address']")).toContainText(
@@ -1796,13 +1846,16 @@ test("등록증 끌기: 가로는 민 방향으로 뒤집고 못 넘기면 제�
   await expect(screen.locator("[data-full-address]")).toBeVisible();
   // 카드를 짧게 누르면 본인 확인(둘러보기는 확인을 바로 통과시킨다)
   await stage.locator("[data-idcard]").click({ position: CARD_TAP });
-  // 본인 확인은 신분증 제시 틀: 아래에서 올라온 등록증을 내밀면(Enter도 같다) 확인, 연출이 끝나면 카드에 확인됨
-  await page
-    .locator("[aria-label='신분증 확인'][aria-disabled='false']")
-    .press("Enter", { timeout: 30_000 });
-  await expect(stage.locator("[data-owner-ok]")).toBeVisible({
-    timeout: 30_000,
-  });
+  // 본인 확인은 신분증 제시 틀: 아래에서 올라온 등록증을 내밀면(Enter도 같다) 확인, 연출이 끝나면 카드에 확인됨.
+  // 끌기 판정이 끝났으니 여기부터 연출은 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
+  await pressWhenShown(
+    page,
+    page.locator("[aria-label='신분증 확인'][aria-disabled='false']"),
+  );
+  await fastForwardUntil(page, () =>
+    stage.locator("[data-owner-ok]").isVisible(),
+  );
+  await expect(stage.locator("[data-owner-ok]")).toBeVisible();
 });
 
 test("당첨 축하: 맞은 내 별로 나만의 별자리, 1~3등은 당첨 직인, 5등은 가볍게", async ({

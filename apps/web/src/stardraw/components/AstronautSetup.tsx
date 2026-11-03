@@ -6,6 +6,7 @@ import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { errorText } from "../errors";
 import { FX } from "../fx-timing";
 import { greetNow } from "../greeting";
+import { buzz } from "../haptics";
 import { originGreeting } from "../origin-greeting";
 import {
   inAppFailed,
@@ -168,7 +169,7 @@ export function useAstronautSetup(
       const made = await makeKey();
       setApplyKey(made);
       setApply("stamp");
-      navigator.vibrate?.(20);
+      buzz("confirm");
       await wait(fillPlan(astronautOf(made.pub)).end);
       setApply("submit");
     } catch (err) {

@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import { astronautOf } from "../astronaut/identity";
+import {
+  canVibrate,
+  setVibrateOn,
+  subscribeVibrate,
+  vibrateOn,
+} from "../haptics";
 import { lockScroll } from "../scroll-lock";
 import { GAME_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
@@ -69,7 +75,43 @@ const PAGES: [string, string][] = [
 ];
 
 /**
- * 탭바 「더 보기」 목록: 내 등록증(이름·번호)과 다른 페이지. 모두 앱 밖 페이지다.
+ * 「진동」 켜고 끄기(docs/36 11-70): 이 기기에 저장, 움직임 줄이기와 따로. 진동 함수가 없는 기기(아이폰 등)에는 줄을 두지 않는다
+ */
+function VibrateRow({ className }: { className: string }) {
+  const [able, setAble] = useState(false);
+  useEffect(() => setAble(canVibrate()), []);
+  const on = useSyncExternalStore(subscribeVibrate, vibrateOn, () => true);
+  if (!able) return null;
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      data-vibrate-switch={on ? "on" : "off"}
+      onClick={() => setVibrateOn(!on)}
+      className={cn(className, "text-white/75")}
+    >
+      진동
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative h-5 w-9 rounded-full transition-colors",
+          on ? "bg-amber-300/80" : "bg-white/20",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 size-4 rounded-full bg-white transition-[left]",
+            on ? "left-[18px]" : "left-0.5",
+          )}
+        />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * 탭바 「더 보기」 목록: 내 등록증(이름·번호)과 다른 페이지(모두 앱 밖 페이지), 진동 되는 기기면 「진동」 켜고 끄기.
  * 내 기록·관측 기록은 두지 않는다(내 응모 「내 기록」 칸, 지난 회차 머리 줄 「관측 기록」 한 길로, 2026-11-01 사용자)
  */
 function MoreList({
@@ -101,6 +143,7 @@ function MoreList({
           {label}
         </a>
       ))}
+      <VibrateRow className={row} />
       {/*
         휴대폰의 게임 목록 길은 여기 하나(첫 화면 제목 줄 화살표는 링크로 들어온 사람에게 "뒤로"로 읽혀 뺐다, 2026-11-01 사용자).
         별 따기 밖으로 나가는 길이라 맨 아래에 줄을 긋고 두고, 게임 모음 그림을 앞에 붙여 눈에 띄게 한다(2026-11-01 사용자).

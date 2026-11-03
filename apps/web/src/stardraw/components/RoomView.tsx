@@ -35,6 +35,7 @@ import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { celebrationPlan } from "../celebrate";
 import { errorText } from "../errors";
 import { EASE, FX } from "../fx-timing";
+import { buzz, buzzOnce } from "../haptics";
 import { inAppFailed } from "../passkey-env";
 import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
@@ -860,7 +861,7 @@ export function RoomView({
   } | null>(null);
   const director = me !== null && people.get(me)?.director === true;
   const openMenu = (l: Lantern) => {
-    navigator.vibrate?.(15);
+    buzz("tap");
     setMenu({ lantern: l, nonce: null });
     if (director)
       void client
@@ -916,6 +917,10 @@ export function RoomView({
   const phase = roomPhase(now, times.entryDeadline, showStart, showLength);
   // 관측 안내부터 관측이 끝날 때까지 화면이 어두워지지 않게(2026-11-03 사용자)
   useWakeLock(phase === "announce" || phase === "count" || phase === "live");
+  // 10초 카운트다운이 시작되는 순간 한 번 톡(회차마다 한 번)
+  useEffect(() => {
+    if (phase === "count") buzzOnce("countdown", round);
+  }, [phase, round]);
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"

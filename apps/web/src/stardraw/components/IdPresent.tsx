@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { FX } from "../fx-timing";
+import { buzz } from "../haptics";
 import { inAppFailed, passkeyProblem } from "../passkey-env";
 import type { Services } from "../services";
 import { type CardSpot, IdFlyer } from "./IdFlyer";
@@ -178,7 +179,7 @@ export function useIdPresent(services: Services) {
     go({ card: "up" });
     await wait(FX.idIn + FX.pause);
     go({ checked: true });
-    navigator.vibrate?.(20);
+    buzz("confirm");
     await wait(FX.idCheck + FX.pause);
     if (opts.done)
       go({

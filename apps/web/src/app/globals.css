@@ -793,6 +793,25 @@ button {
   }
 }
 
+/* 등록 신청서 서명 칸의 지문 자리(docs/36 11-70): 아래 지문 단추(.sd-finger-glow)와 같은 길이·같은 박자로 숨 쉬듯
+   빛난다. 서식 위라 금빛 대신 인주색(rose-700)으로 */
+.sd-seal-glow {
+  animation: sd-seal-glow 2.8s ease-in-out infinite;
+}
+@keyframes sd-seal-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    box-shadow: 0 0 0 0 rgba(190, 18, 60, 0);
+    border-color: rgba(190, 18, 60, 0.3);
+  }
+  50% {
+    opacity: 0.95;
+    box-shadow: 0 0 12px 1px rgba(190, 18, 60, 0.28);
+    border-color: rgba(190, 18, 60, 0.6);
+  }
+}
+
 /* 등록 신청서 지문 도장(docs/36 11-65): 살짝 크게 떠 있다가 내려와 눌려 찍히고, 그 둘레로 인주가 번졌다가 옅게 남는다.
    번짐은 도장이 닿은 뒤(약 45%)에 시작해 둘이 함께 움직이지 않는다 */
 .sd-fingerstamp {
@@ -2034,6 +2053,7 @@ button {
   .sd-sheet-hint,
   .sd-finger-in,
   .sd-finger-glow,
+  .sd-seal-glow,
   .sd-fingerstamp,
   .sd-ink-spread,
   .sd-type,

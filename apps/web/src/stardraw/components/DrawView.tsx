@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { winnersLine } from "../after-observe";
 import { celebrationPlan } from "../celebrate";
 import { EASE, FX } from "../fx-timing";
+import { buzz } from "../haptics";
 import { drawGlows } from "../hdr-glow";
 import { drawOrder, myRank } from "../results";
 import {
@@ -259,20 +260,17 @@ export function DrawView({
         : null,
     [settled, rank, ticket, record.round],
   );
-  /** 움직임 줄이기면 별자리·직인이 바로 보인다(HDR 번쩍임·떨림도 없다) */
-  const [reduce, setReduce] = useState(false);
+  /** 움직임 줄이기면 별자리·직인이 바로 보인다(HDR 번쩍임도 없다) */
+  const [reduce, setReduce] = useState<boolean | null>(null);
   useEffect(() => {
     setReduce(matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
-  // 안드로이드: 직인이 찍히는 순간 짧게 떨린다(지원하지 않는 기기는 없는 일로)
+  // 안드로이드: 직인이 찍히는 순간 짧게 떨린다. 진동은 움직임 줄이기와 묶지 않아(docs/36 11-70), 움직임 줄이기면
+  // 직인이 바로 보이는 때 떤다. 「진동」을 껐거나 지원하지 않는 기기는 haptics가 넘어간다
   useEffect(() => {
-    if (!party || party.sealAt === null || reduce) return;
-    return clock.after(party.sealAt + 350, () => {
-      try {
-        navigator.vibrate?.(party.rank === 1 ? [40, 60, 80] : 40);
-      } catch {
-        // 떨림을 못 하면 그냥 넘어간다
-      }
+    if (!party || party.sealAt === null || reduce === null) return;
+    return clock.after(reduce ? 0 : party.sealAt + 350, () => {
+      buzz(party.rank === 1 ? "seal1" : "seal");
     });
   }, [party, reduce, clock]);
 

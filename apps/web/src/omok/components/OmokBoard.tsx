@@ -31,6 +31,8 @@ const STARS = [
 
 const BOARD = "#e0b464";
 const LINE = "#3b2a14";
+/** 힌트(고수가 고른 자리) 표시. 장기 힌트와 같은 색 */
+const HINT_COLOR = "#059669";
 
 /**
  * 오목 판. 마우스는 올리면 반투명 돌이 보이고 누르면 둔다.
@@ -47,6 +49,7 @@ export function OmokBoard({
   aim,
   onAim,
   onPlace,
+  hint = null,
 }: {
   board: readonly Cell[];
   /** 내 돌 색(미리 보기 돌 색) */
@@ -59,6 +62,8 @@ export function OmokBoard({
   aim: number | null;
   onAim: (at: number | null) => void;
   onPlace: (at: number) => void;
+  /** 힌트: 고수가 고른 자리에 초록 고리 */
+  hint?: number | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   // 돌 그러데이션 이름. 한 화면에 판이 여럿이어도 겹치지 않게 한다.
@@ -251,6 +256,19 @@ export function OmokBoard({
           r={0.45}
           fill={myStone === 1 ? blackFill : whiteFill}
           opacity={0.55}
+          pointerEvents="none"
+        />
+      )}
+
+      {hint !== null && board[hint] === 0 && (
+        <circle
+          cx={at(hint)[0]}
+          cy={at(hint)[1]}
+          r={0.56}
+          fill="none"
+          stroke={HINT_COLOR}
+          strokeWidth={0.09}
+          data-hint={pointName(hint)}
           pointerEvents="none"
         />
       )}
