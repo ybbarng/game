@@ -1,3 +1,4 @@
+import type { Card } from "@game/mighty-engine";
 import type { ComponentType } from "react";
 
 import type { TutorialProgressStore } from "@/tutorial/progress";
@@ -23,6 +24,8 @@ export interface TutorialKit<View, Event, Scenario, Action> {
   ): () => void;
   /** 설명·퀴즈의 `scene`을 그리는 그림(판 게임). 없으면 장면을 보이지 않는다 */
   Scene?: ComponentType<{ scenario: Scenario }>;
+  /** 설명·퀴즈의 `cards`를 그리는 줄. 없으면 마이티 카드 그림으로 그린다(원카드는 제 카드 모양) */
+  CardRow?: ComponentType<{ cards: readonly Card[] }>;
   /** 미션 띠를 얹은 판 화면 */
   Table: ComponentType<{
     onExit: () => void;

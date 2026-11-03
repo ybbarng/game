@@ -1,0 +1,22 @@
+{
+  "name": "@game/galaxy-ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "은하 한 바퀴 컴퓨터 플레이어 — 입문·중수·고수, 컴퓨터끼리 두기와 밸런스 bench",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "bench": "vitest run --config vitest.strength.config.ts"
+  },
+  "dependencies": {
+    "@game/galaxy-engine": "workspace:*",
+    "@game/mighty-engine": "workspace:*",
+    "@game/yut-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5"
+  }
+}

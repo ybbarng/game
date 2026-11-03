@@ -33,7 +33,6 @@ import {
   type CardKind,
   cardById,
   matchesFact,
-  PASS_CARD,
   type StarFact,
 } from "./cards";
 import {
@@ -126,7 +125,6 @@ export function createMatch(
     cash: seats.map(() => NUMBERS.startFunds[rules.length]),
     out: seats.map(() => false),
     jailed: seats.map(() => false),
-    passes: seats.map(() => false),
     owners: Array.from({ length: BOARD_SIZE }, () => -1),
     levels: Array.from({ length: BOARD_SIZE }, () => 0),
     mortgaged: Array.from({ length: BOARD_SIZE }, () => false),
@@ -392,7 +390,6 @@ function clone(state: GalaxyState): GalaxyState {
     cash: [...state.cash],
     out: [...state.out],
     jailed: [...state.jailed],
-    passes: [...state.passes],
     owners: [...state.owners],
     levels: [...state.levels],
     mortgaged: [...state.mortgaged],
@@ -588,10 +585,6 @@ function bankrupt(
       s.owners[sq] = to;
     }
   }
-  if (s.passes[seat]) {
-    s.passes[seat] = false;
-    s.deck.push(PASS_CARD);
-  }
   s.out[seat] = true;
   s.jailed[seat] = false;
   events.push({ type: "bankrupt", seat, to });
@@ -678,7 +671,7 @@ function jumpTo(
     pay(s, events, BANK, seat, NUMBERS.salary, "salary");
 }
 
-/** 소행성대로 보내 걸리게 한다. 통과 허가증이 있으면 바로 쓰고 걸리지 않는다 */
+/** 소행성대로 보내 걸리게 한다 */
 function sendToAsteroid(
   s: GalaxyState,
   seat: number,
@@ -697,13 +690,6 @@ function sendToAsteroid(
     via: by === "card" ? "card" : "dice",
   });
   s.turn.again = false;
-  if (s.passes[seat]) {
-    s.passes[seat] = false;
-    s.deck.push(PASS_CARD);
-    events.push({ type: "passUsed", seat });
-    events.push({ type: "freed", seat, by: "pass" });
-    return;
-  }
   s.jailed[seat] = true;
   events.push({ type: "jailed", seat, by });
 }
@@ -718,17 +704,14 @@ function ownedFact(s: GalaxyState, seat: number, fact: StarFact): number[] {
   });
 }
 
-/** 공문 한 장을 편다(4-2). 남은 공문이 없으면 다시 채운다(가진 통과 허가증은 빼고) */
+/** 공문 한 장을 편다(4-2). 남은 공문이 없으면 다시 채운다 */
 function drawCard(
   s: GalaxyState,
   seat: number,
   link: string,
   events: GameEvent[],
 ): "done" | "wait" {
-  if (s.deck.length === 0) {
-    const held = s.passes.some(Boolean);
-    s.deck = activeCards(s.board).filter((c) => !(held && c === PASS_CARD));
-  }
+  if (s.deck.length === 0) s.deck = activeCards(s.board);
   if (s.deck.length === 0) return "done";
   const index = drawIndex(s.deck.length, link);
   const card = s.deck.splice(index, 1)[0] as number;
@@ -849,23 +832,18 @@ function applyCard(
       sendToAsteroid(s, seat, "card", events);
       return "done";
     case 12: {
-      shown([]);
-      const from = s.positions[seat] as number;
-      const to = (from - CARD_AMOUNTS.backSteps + BOARD_SIZE) % BOARD_SIZE;
-      const path: number[] = [];
-      for (let i = 1; i <= CARD_AMOUNTS.backSteps; i++)
-        path.push((from - i + BOARD_SIZE) % BOARD_SIZE);
-      s.positions[seat] = to;
-      events.push({
-        type: "moved",
+      const squares = ownedFact(s, seat, "yellow");
+      shown(squares);
+      pay(
+        s,
+        events,
+        BANK,
         seat,
-        from,
-        to,
-        path,
-        forward: false,
-        via: "card",
-      });
-      return land(s, seat, link, events);
+        CARD_AMOUNTS.yellow * squares.length,
+        "card",
+        about,
+      );
+      return "done";
     }
     case 13:
       shown([]);
@@ -881,10 +859,23 @@ function applyCard(
       shown([]);
       jumpTo(s, seat, COMET, true, events);
       return land(s, seat, link, events);
-    case PASS_CARD:
-      shown([]);
-      s.passes[seat] = true;
+    case 16: {
+      // 같은 별자리 별을 둘 이상 가진 별자리마다(완성하면 더). 맡긴 별도 센다(이용료 셈과 같다)
+      let amount = 0;
+      const squares: number[] = [];
+      s.board.groups.forEach((group, g) => {
+        const owned = ownedInGroup(s, seat, g);
+        if (owned < 2) return;
+        amount +=
+          owned >= group.squares.length
+            ? CARD_AMOUNTS.lineSurveyComplete
+            : CARD_AMOUNTS.lineSurvey;
+        squares.push(...group.squares.filter((sq) => s.owners[sq] === seat));
+      });
+      shown(squares);
+      pay(s, events, BANK, seat, amount, "card", about);
       return "done";
+    }
     default:
       return "done";
   }

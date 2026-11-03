@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { CARDS } from "./cards";
 import type { GalaxyState, GameEvent } from "./state";
-import { must, paysOf, roll, scene } from "./test-utils";
+import { paysOf, roll, scene } from "./test-utils";
 
 type SceneOptions = NonNullable<Parameters<typeof scene>[0]>;
 
@@ -122,11 +122,20 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(state.turn.next).toBe("end");
   });
 
-  it("12 항로 정비: 세 칸 뒤로 가서 그 칸의 일", () => {
-    const { state, events } = draw(12);
-    expect(state.positions[0]).toBe(1);
-    expect(state.phase).toBe("buy");
-    expect(amounts(events)).toEqual([]);
+  it("12 별 색 조사: 가진 노란·주황 별(4,000~7,500 K)마다 20", () => {
+    // 시험 판: 알마크(7) 4,500 K, 웨젠(15) 6,100 K는 노란 별, 시리우스(14) 9,900 K는 아니다
+    const { state, events } = draw(12, {
+      stars: [
+        { square: 7, owner: 0 },
+        { square: 15, owner: 0 },
+        { square: 14, owner: 0 },
+        { square: 17, owner: 1 },
+      ],
+    });
+    expect(amounts(events)).toEqual([[-1, 0, 40]]);
+    const shown = events.find((e) => e.type === "card");
+    expect(shown?.type === "card" && shown.squares).toEqual([7, 15]);
+    expect(state.positions[0]).toBe(4);
   });
 
   it("13 관측지 초청: 관측지로 가서 관측 지원금", () => {
@@ -154,30 +163,27 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(amounts(wrap.events)).toEqual([[-1, 0, 120]]);
   });
 
-  it("16 통과 허가증: 가지고 있다가 소행성대에 걸리면 바로 쓰고 더미로 돌아간다", () => {
-    const { state } = draw(16);
-    expect(state.passes[0]).toBe(true);
-    expect(state.deck).toEqual([]);
-    const s = must(state, 0, { type: "end" }).state;
-    // 1번 자리 차례를 넘기고, 0번이 궤도 이탈을 편다.
-    let t = { ...s, positions: [25, 29, 29, 29], deck: [11] };
-    for (const seat of [1, 2, 3]) {
-      t = roll(t, [1, 2]).state;
-      t = must(t, seat, { type: "end" }).state;
-    }
-    const { state: after, events } = roll(t, [1, 2]);
-    expect(after.positions[0]).toBe(8);
-    expect(after.jailed[0]).toBe(false);
-    expect(after.passes[0]).toBe(false);
-    expect(after.deck).toContain(16);
-    expect(events.some((e) => e.type === "passUsed")).toBe(true);
+  it("16 별자리 선 측량: 별 둘 이상인 별자리마다 30, 완성한 별자리는 50", () => {
+    const { events } = draw(16, {
+      stars: [
+        // 오리온 둘(선 하나), 큰개 셋(완성, 하나는 맡김), 사자 하나(없음)
+        { square: 9, owner: 0 },
+        { square: 10, owner: 0 },
+        { square: 13, owner: 0 },
+        { square: 14, owner: 0, mortgaged: true },
+        { square: 15, owner: 0 },
+        { square: 17, owner: 0 },
+        { square: 18, owner: 1 },
+        { square: 19, owner: 1 },
+      ],
+    });
+    expect(amounts(events)).toEqual([[-1, 0, 80]]);
   });
 
-  it("남은 공문이 없으면 다시 채운다(가진 통과 허가증은 빼고)", () => {
-    const s = scene({ positions: [1, 0, 0, 0], deck: [], passes: [2] });
+  it("남은 공문이 없으면 다시 채운다", () => {
+    const s = scene({ positions: [1, 0, 0, 0], deck: [] });
     const { state, events } = roll(s, [1, 2]);
     expect(events.some((e) => e.type === "card")).toBe(true);
-    expect(state.deck).toHaveLength(14);
-    expect(state.deck).not.toContain(16);
+    expect(state.deck).toHaveLength(15);
   });
 });
