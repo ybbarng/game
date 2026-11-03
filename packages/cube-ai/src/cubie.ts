@@ -10,6 +10,9 @@ import { applyToFacelets } from "./facelets";
  *
  * 글자는 "지금 큐브 방향 기준" 면 이름이다(`Solve.rel()`). 그래서 같은 번호라도
  * 큐브를 돌리면(y 등) 가리키는 실제 조각이 바뀐다. 사람이 "앞 오른쪽 자리"라고 부르는 것과 같다.
+ *
+ * 남은 일: 조각 번호 표가 cube-solver의 facelets 표, cube-reduction `three.ts`의 표와 겹친다.
+ * cube-solver가 표를 내보내게 하고 하나로 합친다(game-85 #52 검토).
  */
 
 export interface Cubie {

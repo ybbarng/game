@@ -81,7 +81,33 @@ export const STAGE_NAMES: Readonly<Record<ReductionStageId, string>> = {
 
 export const REDUCTION_SIZES: readonly number[] = [4, 5];
 
-/** 면 f의 가운데가 맞아야 할 색. 홀수 크기는 정가운데 조각 색, 짝수는 기본 방향(U흰 F초록) */
+/**
+ * 축소법이 막혔다. 고른 공식으로 더 나아질 수 없거나(`no-progress`), 되풀이 상한을 넘었다
+ * (`too-long`). 지금까지 본 상태에서는 나오지 않았지만, 공식 고르기가 욕심쟁이(한 걸음씩 가장
+ * 좋은 것)라 어떤 모양에서는 막힐 수 있다. 부르는 쪽(cube-ai)이 이 오류만 골라 잡아 큐브를
+ * 돌려 쥐고 다시 풀 수 있게 이름과 단계를 담는다.
+ */
+export class ReductionStuckError extends Error {
+  override readonly name = "ReductionStuckError";
+  constructor(
+    /** 막힌 단계 */
+    readonly stage: ReductionStageId,
+    readonly reason: "no-progress" | "too-long",
+    detail: string,
+  ) {
+    super(`축소법 ${STAGE_NAMES[stage]} 단계에서 막혔다: ${detail}`);
+  }
+}
+
+/**
+ * 면 f의 가운데가 맞아야 할 색. 홀수 크기는 정가운데 조각 색, 짝수는 기본 방향(U흰 F초록).
+ *
+ * 4×4는 정가운데 조각이 없어 어떻게 쥐고 있든 흰 면을 위(U), 초록을 앞(F)으로 맞춘다. 사람은
+ * 쥔 방향에서 가까운 면부터 맞추지만 여기서는 정규화를 그대로 둔다. 까닭: 사람 흉내(cube-ai
+ * `big.ts`)는 축소가 끝난 뒤 3×3 단계에서 `whiteDown` 같은 큐브 돌리기(x·y·z) 수로 쥔 방향을
+ * 맞추므로, 축소법이 어느 방향으로 맞추든 이어지는 해가 맞다. 쥔 방향마다 목표를 고르면 여섯
+ * 면 × 네 방향 가운데 어느 것이 짧은지 매번 견줘야 해서 계산이 몇 배로 늘어난다.
+ */
 function centerTargets(n: number, colors: Colors): number[] {
   const g = reductionGeometry(n);
   if (n % 2 === 0) return [0, 1, 2, 3, 4, 5];
@@ -129,6 +155,7 @@ interface Pick {
 
 /** 가운데 한 단계: 무게가 있는 자리가 다 맞을 때까지 고른 공식을 되풀이 */
 function solveCenterPhase(
+  stage: ReductionStageId,
   n: number,
   colors: Colors,
   target: readonly number[],
@@ -178,7 +205,9 @@ function solveCenterPhase(
     if (!best || best.ratio > 3) best = consider(cycles, best);
     if (!best) {
       const wrong = g.centers.filter((p) => w[p] !== 0 && cur[p] !== want[p]);
-      throw new Error(
+      throw new ReductionStuckError(
+        stage,
+        "no-progress",
         `가운데를 더 맞출 공식을 찾지 못했다(${wrong.join(",")})`,
       );
     }
@@ -186,7 +215,11 @@ function solveCenterPhase(
     out.push(...step);
     cur = applyMovesColors(n, cur, step);
   }
-  throw new Error("가운데 맞추기가 끝나지 않는다");
+  throw new ReductionStuckError(
+    stage,
+    "too-long",
+    "가운데 맞추기가 끝나지 않는다",
+  );
 }
 
 function pairedCount(n: number, colors: Colors): number {
@@ -286,6 +319,7 @@ function macrosBySlot(macros: readonly Macro[], slotCount: number): Macro[][] {
 
 /** 모서리 짝 단계: 짝 맞은 칸이 `goal`개가 될 때까지 */
 function solveEdgePhase(
+  stage: ReductionStageId,
   n: number,
   colors: Colors,
   goal: number,
@@ -359,7 +393,9 @@ function solveEdgePhase(
     }
     if (!best) best = search(3, both, undefined);
     if (!best) {
-      throw new Error(
+      throw new ReductionStuckError(
+        stage,
+        "no-progress",
         `모서리 짝을 더 맞출 공식을 찾지 못했다(${pairedCount(n, cur)}개 맞음)`,
       );
     }
@@ -367,7 +403,11 @@ function solveEdgePhase(
     out.push(...step);
     cur = applyMovesColors(n, cur, step);
   }
-  throw new Error("모서리 짝 맞추기가 끝나지 않는다");
+  throw new ReductionStuckError(
+    stage,
+    "too-long",
+    "모서리 짝 맞추기가 끝나지 않는다",
+  );
 }
 
 /** 스티커 문자열(Kociemba 순서, 글자는 면 이름) → 색 배열 */
@@ -429,8 +469,16 @@ export function solveReductionColors(
   };
 
   run("centers-ud", (out) => {
-    const up = solveCenterPhase(n, cur, target, (f) => (f === 0 ? 1 : 0), out);
+    const up = solveCenterPhase(
+      "centers-ud",
+      n,
+      cur,
+      target,
+      (f) => (f === 0 ? 1 : 0),
+      out,
+    );
     return solveCenterPhase(
+      "centers-ud",
       n,
       up,
       target,
@@ -440,6 +488,7 @@ export function solveReductionColors(
   });
   run("centers-rest", (out) =>
     solveCenterPhase(
+      "centers-rest",
       n,
       cur,
       target,
@@ -447,8 +496,8 @@ export function solveReductionColors(
       out,
     ),
   );
-  run("edges", (out) => solveEdgePhase(n, cur, 10, out));
-  run("last-edges", (out) => solveEdgePhase(n, cur, 12, out));
+  run("edges", (out) => solveEdgePhase("edges", n, cur, 10, out));
+  run("last-edges", (out) => solveEdgePhase("last-edges", n, cur, 12, out));
 
   if (n % 2 === 0) {
     run("oll-parity", (out) => {

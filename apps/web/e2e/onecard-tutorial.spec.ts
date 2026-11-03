@@ -1,10 +1,11 @@
-import { expect, type Page, test } from "./test";
+import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /*
  * 원카드 배우기 화면 시험(docs/42 15절). 단원 열기 → 첫 단원 미션(카드 내기)으로 단원 끝 →
  * 외치기 단원의 잡기 미션(컴퓨터가 한 장이 되고 본인 시간이 지난 뒤 더미 치기)과 외치기 미션(치고 내기).
  * 미션 판정은 단위 시험(onecard/tutorial)이 본다. 여기서는 화면으로 끝까지 갈 수 있는지를 본다.
- * 본인 시간 1초는 `page.clock.fastForward`로 건너뛰고, 더미를 누르고 있는 시간도 시계로 만든다
+ * 컴퓨터 대기·본인 시간 1초는 `page.clock`으로 감고(실제 시간으로 기다리지 않는다), 더미를 누르고 있는 시간도
+ * 시계로 만든다
  */
 
 const hand = (page: Page) => page.getByRole("region", { name: "내 손패" });
@@ -48,7 +49,6 @@ test.beforeEach(async ({ page }) => {
   await page.clock.install();
   await page.addInitScript(() => {
     sessionStorage.setItem("mighty-splash-seen", "1");
-    (window as { __onecardPace?: number }).__onecardPace = 60;
   });
 });
 
@@ -112,6 +112,12 @@ test("원카드 배우기: 첫 단원을 끝내고, 깜빡한 컴퓨터를 잡�
 
   // 잡기: 컴퓨터가 ◆4를 내고 한 장이 됐는데 외치지 않는다. 본인 시간(1초)이 지난 뒤 더미를 친다.
   await page.getByRole("button", { name: "미션 시작" }).click();
+  // 컴퓨터가 낼 때까지 시계를 감는다. 한 장이 된 순간부터 본인 시간이 흐른다.
+  await fastForwardUntil(
+    page,
+    async () => (await page.locator('[data-count="1"]').count()) > 0,
+    { step: 50 },
+  );
   await expect(page.locator('[data-count="1"]')).toHaveText("1장");
   await page.clock.fastForward(1_100);
   await slap(page);

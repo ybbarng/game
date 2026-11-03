@@ -9,6 +9,7 @@ import {
   type BotLevel,
   solveBeginner3,
   solveCfop,
+  solveExpert3,
   solveIntermediate3,
 } from "./methods";
 import type { HumanSolve } from "./solve";
@@ -45,7 +46,9 @@ const cases: [
     "beginner",
     solveBeginner3,
     80,
-    200,
+    // 씨앗 40개에서 가장 길게 189수가 나왔다(2026-11-04). 초보자 방법은 첫 층 꼭짓점·둘째 층을
+    // 같은 공식으로 되풀이해 운 나쁜 상태에서 길어지므로 20% 남짓 여유를 둔다.
+    230,
     ["cross", "corners", "middle", "eo", "co", "cp", "ep"],
   ],
   [
@@ -78,6 +81,16 @@ describe.each(cases)("3×3 %s", (level, solve, lo, hi, stageNames) => {
       const cross = result.stages[0];
       expect((cross?.end ?? 0) - (cross?.start ?? 0)).toBeLessThanOrEqual(9);
     }
+  });
+});
+
+describe("3×3 expert", () => {
+  // 2단계 해법은 큐브를 돌려 쥐지 않고 한 단계로 맞춘다(사람을 넘는 짧은 해)
+  it.each(SEEDS)("씨앗 %i: 맞춰지고 한 단계, 21수 안", (seed) => {
+    const result = solveExpert3(randomCubeState(3, seed));
+    check(result, seed);
+    expect(result.stages.map((s) => s.name)).toEqual(["solve"]);
+    expect(result.moves.length).toBeLessThanOrEqual(21);
   });
 });
 

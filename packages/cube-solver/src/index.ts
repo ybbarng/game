@@ -10,6 +10,7 @@ export {
   distance2x2,
   init2x2,
   POCKET_STATE_COUNT,
+  pocketApply,
   pocketCubie,
   pocketDistance,
   solve2x2,

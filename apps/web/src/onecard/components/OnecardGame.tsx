@@ -537,14 +537,11 @@ export function OnecardGame({
               더미 {view.deckCount}장
             </span>
           </div>
-          <div className="flex flex-col items-center">
-            <Pile
-              view={view}
-              width={pileWidth}
-              onShout={(seen) => send({ type: "shout", seen })}
-            />
-            <span className="text-[11px] text-white/50">꾹 치면 원카드!</span>
-          </div>
+          <Pile
+            view={view}
+            width={pileWidth}
+            onShout={(seen) => send({ type: "shout", seen })}
+          />
           <div className="flex min-w-20 flex-col items-start gap-1.5 text-xs">
             <SuitChip suit={view.suit} />
             {changedSuit && (

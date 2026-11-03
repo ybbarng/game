@@ -32,6 +32,11 @@ export function toThreeFacelets(
   return out;
 }
 
+/**
+ * 3×3 모서리·꼭짓점 자리의 스티커 번호(Kociemba 순서, 자리 차례는 cube-solver와 같다).
+ * cube-solver의 facelets 표, cube-ai `cubie.ts`의 조각 번호 표와 같은 것을 따로 적어 두었다.
+ * 나중에 cube-solver가 표를 내보내게 하고 셋이 그것을 쓰도록 합친다(남은 일, game-85 #52 검토).
+ */
 const EDGES: readonly (readonly [number, number])[] = [
   [5, 10],
   [7, 19],

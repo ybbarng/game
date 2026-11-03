@@ -230,6 +230,12 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../../packages/cube-engine
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../../packages/cube-scramble
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
@@ -284,6 +290,9 @@ importers:
       '@game/omok-engine':
         specifier: workspace:*
         version: link:../../packages/omok-engine
+      '@game/onecard-ai':
+        specifier: workspace:*
+        version: link:../../packages/onecard-ai
       '@game/onecard-engine':
         specifier: workspace:*
         version: link:../../packages/onecard-engine
@@ -417,12 +426,19 @@ importers:
       '@game/cube-engine':
         specifier: workspace:*
         version: link:../cube-engine
+      '@game/cube-reduction':
+        specifier: workspace:*
+        version: link:../cube-reduction
       '@game/cube-solver':
         specifier: workspace:*
         version: link:../cube-solver
       '@game/puzzle-core':
         specifier: workspace:*
         version: link:../puzzle-core
+    devDependencies:
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../cube-scramble
 
   packages/cube-engine:
     dependencies:
