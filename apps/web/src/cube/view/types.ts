@@ -1,8 +1,8 @@
 /**
  * 큐브 그리기·조작이 쓰는 공통 계약(docs/47 2-2).
  *
- * **엔진과 맞출 것**: `packages/cube-engine`이 같은 모양을 따로 만든다. 엔진이 들어오면 이 파일의 타입은
- * 엔진에서 가져오게 바꾸고, 뜻(좌표·층 번호·돌리는 방향·면 번호 차례)이 어긋나지 않는지 확인한다.
+ * 수(`CubeMove`)는 엔진(`@game/cube-engine`)의 타입을 그대로 쓴다. 스티커 모양(`Sticker`)은 그리기 쪽 계약이고,
+ * 엔진 상태에서 만드는 변환은 `cube/bridge.ts`에 있다. 두 쪽의 뜻이 같은지는 `bridge.test.ts`가 확인한다.
  *
  * - 좌표: 조각 중심은 큐브 가운데가 원점, 간격 1(n이 짝수면 ±0.5, ±1.5 …). +x = R, +y = U, +z = F(오른손 좌표계).
  * - 층 번호 1..n은 그 축의 **+ 끝에서부터** 센다.
@@ -10,15 +10,7 @@
  *   R={x,1,1,1}, L={x,n,n,3}, U={y,1,1,1}, D={y,n,n,3}, F={z,1,1,1}, B={z,n,n,3}, x={x,1,n,1}.
  */
 
-export type Axis = "x" | "y" | "z";
-
-export interface CubeMove {
-  axis: Axis;
-  /** 층 범위(1..n, from ≤ to), + 끝에서부터 센다 */
-  from: number;
-  to: number;
-  turns: 1 | 2 | 3;
-}
+export type { Axis, CubeMove } from "@game/cube-engine";
 
 export type Normal = "+x" | "-x" | "+y" | "-y" | "+z" | "-z";
 

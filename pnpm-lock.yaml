@@ -284,6 +284,9 @@ importers:
       '@game/omok-engine':
         specifier: workspace:*
         version: link:../../packages/omok-engine
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../../packages/puzzle-core
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../../packages/stardraw-core

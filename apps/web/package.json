@@ -37,6 +37,7 @@
     "@game/nyrongppong-engine": "workspace:*",
     "@game/omok-ai": "workspace:*",
     "@game/omok-engine": "workspace:*",
+    "@game/puzzle-core": "workspace:*",
     "@game/stardraw-core": "workspace:*",
     "@game/yut-ai": "workspace:*",
     "@game/yut-engine": "workspace:*",
