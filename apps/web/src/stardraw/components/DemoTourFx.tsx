@@ -11,7 +11,6 @@ import {
 import { errorText, HttpError } from "../errors";
 import { FX } from "../fx-timing";
 import { greetNow } from "../greeting";
-import { roundShort } from "../round-label";
 import { AstronautPanel } from "./AstronautPanel";
 import { IssuedView, type useAstronautSetup } from "./AstronautSetup";
 import { DemoUnlockPrompt } from "./DemoUnlockSheet";
@@ -96,7 +95,6 @@ function BounceTour({ onDone }: { onDone: () => void }) {
   return (
     <StageOverlay label="예측">
       <SubmitView
-        title="8회 예측서"
         picked={BOUNCE_PICKS}
         transfer={{
           from: "7회 예측서",
@@ -415,7 +413,6 @@ function SubmitFx({ s, onDone }: { s: TourState; onDone: () => void }) {
         <StageOverlay label="예측">
           {stage === "paper" && (
             <SubmitView
-              title={`${roundShort(services.ledger.schedule, pending.ticket.round)} 예측서`}
               picked={pending.ticket.numbers}
               onSubmitted={() => void submitted()}
             />

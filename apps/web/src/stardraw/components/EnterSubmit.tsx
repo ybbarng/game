@@ -195,13 +195,11 @@ export const QUICK_SPARE_MS = 20_000;
  * 서명은 회차에 묶이므로 같은 종이를 다시 내지 않고 새 용지로 옮겨 쓴다
  */
 export function SubmitView({
-  title,
   picked,
   quick = false,
   transfer,
   onSubmitted,
 }: {
-  title: string;
   picked: readonly number[];
   /** 마감이 가까우면: 용지를 한 번에 칠하고 바로 내기를 기다린다(별이 하나씩 날아가지 않는다) */
   quick?: boolean;

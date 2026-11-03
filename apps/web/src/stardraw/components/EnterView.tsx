@@ -531,7 +531,6 @@ export function EnterView({
       </section>
     );
 
-  const title = `${roundShort(services.ledger.schedule, status.round)} 예측서`;
   const picking = stage === "pick";
   const submitting = stage !== "pick" && stage !== "busy";
   /** 마감: 하늘 아래를 모두 닫고 관측지로 이끈다(내는 중이거나 반송·오류 안내 중이면 그 안내가 먼저) */
@@ -546,7 +545,6 @@ export function EnterView({
         <StageOverlay label="예측">
           {stage === "paper" && (
             <SubmitView
-              title={title}
               picked={picked}
               quick={quick}
               transfer={transfer ?? undefined}
