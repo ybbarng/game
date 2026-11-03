@@ -256,7 +256,11 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   // 연출이 있으면 신청서가 올라와 기다린다: 아래 지문 단추를 누르면(키보드 Enter도 같다) 그 누름에 패스키 만들기,
   // 도장·성명·주소가 채워진 뒤 신청서를 낸다. 연출 길이는 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
   if (motion) await signAndSubmitApply(page);
-  // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로)
+  // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로. 그 연출도 빨리 감는다)
+  if (motion)
+    await fastForwardUntil(page, () =>
+      page.locator("[data-issued='new']").isVisible(),
+    );
   await expect(page.locator("[data-issued='new']")).toBeVisible();
   // 패스키 만들기 창 하나만(장부 등록은 첫 응모 때 응모권과 함께)
   expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
