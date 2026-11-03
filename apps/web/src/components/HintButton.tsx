@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { BOARD_BUTTON } from "./ResignButton";
 
 /**
@@ -19,18 +19,16 @@ export function useHint<T>(resetKey: unknown): {
   const [hint, setHint] = useState<T | null>(null);
   const [thinking, setThinking] = useState(false);
   // resetKey가 바뀌면(수가 오가거나 무르면) 힌트를 지운다. 무르기로 같은 수 개수에 돌아와도 다시 뜨지 않는다.
+  // 판이 바뀐 횟수. 늦게 온 답이 지난 판의 것인지 가린다.
+  // 그리는 중 resetKey가 바뀐 그 자리에서 올려, 수가 오간 직후 늦은 힌트가 지난 판에 뜰 틈을 없앤다.
+  const epoch = useRef(0);
   const [seenKey, setSeenKey] = useState(resetKey);
   if (!Object.is(seenKey, resetKey)) {
+    epoch.current++;
     setSeenKey(resetKey);
     setHint(null);
     setThinking(false);
   }
-  // 판이 바뀐 횟수. 늦게 온 답이 지난 판의 것인지 가린다.
-  const epoch = useRef(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey가 바뀔 때마다 센다
-  useEffect(() => {
-    epoch.current++;
-  }, [resetKey]);
   const ask = useCallback(
     <A,>(think: () => Promise<A>, use: (answer: A) => void) => {
       const at = epoch.current;
