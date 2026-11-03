@@ -326,10 +326,9 @@ function guards(
   pool: Pool,
 ): number[] | null {
   const foe = other(stone);
-  const moves = threes ? limits.vctMoves : limits.vcfMoves;
   const guardLength = threes ? limits.guardMoves : limits.vcfMoves;
   const probe = pool.run(threes ? limits.vctNodes : limits.vcfNodes, (b) =>
-    hasThreatWin(board, foe, variant, moves, threes, b),
+    hasThreatWin(board, foe, variant, guardLength, threes, b),
   );
   if (!probe.value) return null;
   const tries = [...candidates];
@@ -342,14 +341,7 @@ function guards(
     if (!allowed(board, at, stone, variant)) continue;
     board[at] = stone;
     const check = pool.run(limits.guardNodes, (b) =>
-      hasThreatWin(
-        board,
-        foe,
-        variant,
-        Math.max(moves, guardLength),
-        threes,
-        b,
-      ),
+      hasThreatWin(board, foe, variant, guardLength, threes, b),
     );
     board[at] = 0;
     // 다 읽지 못했으면 끊는지 모르므로 넣지 않는다.
