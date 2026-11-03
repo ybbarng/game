@@ -13,6 +13,7 @@ import type { Piece } from "@game/janggi-engine";
  * - trade: 잡을 수 있는 기물이 여럿인데 이득인 잡기는 하나뿐. `trap`은 잡으면 손해인 잡기
  * - cannon: 다리를 놓아 포 길을 연다. 정답 수 하나뿐
  * - block: 상대 마·상의 멱을 막아 내 기물을 지킨다. 정답 수 하나뿐
+ * - escape: 장군을 받았다. 비키기·막기·잡기 가운데 손해 없는 풀기는 정답 수 하나뿐
  */
 export type JanggiPuzzle = {
   id: string;
@@ -26,6 +27,7 @@ export type JanggiPuzzle = {
   | { kind: "trade"; trap: string }
   | { kind: "cannon" }
   | { kind: "block" }
+  | { kind: "escape" }
 );
 
 export interface JanggiPuzzleSet {
@@ -862,7 +864,234 @@ const MATE_IN_THREE: readonly Raw[] = [
   },
 ];
 
+/**
+ * 장군 풀기(처음 하는 사람용). 엔진으로 장군 받은 판을 만들어, 두 수 앞을 읽으면 정답이
+ * 다른 풀기보다 졸 하나 반 이상 나은 판만 골랐다. 잡기·막기·비키기가 고루 섞이게 했다
+ */
+const ESCAPES: readonly Raw[] = [
+  {
+    pieces: {
+      "27": "cP",
+      "36": "hK",
+      "54": "hR",
+      "59": "cR",
+      "73": "hE",
+      "84": "cK",
+      "95": "hP",
+      "09": "cC",
+    },
+    solution: "59-54",
+  },
+  {
+    pieces: {
+      "15": "cP",
+      "34": "hK",
+      "56": "hC",
+      "62": "cR",
+      "65": "hN",
+      "72": "hE",
+      "85": "hC",
+      "95": "cK",
+      "05": "cA",
+    },
+    solution: "95-85",
+  },
+  {
+    pieces: {
+      "16": "hK",
+      "24": "cR",
+      "35": "hC",
+      "46": "hN",
+      "76": "cR",
+      "85": "cK",
+      "97": "hN",
+      "05": "cA",
+      "01": "cE",
+    },
+    solution: "76-96",
+  },
+  {
+    pieces: {
+      "35": "hK",
+      "46": "hP",
+      "57": "cE",
+      "64": "cE",
+      "69": "cR",
+      "86": "cK",
+      "87": "hR",
+      "04": "hC",
+    },
+    solution: "64-87",
+  },
+  {
+    pieces: {
+      "34": "hK",
+      "36": "cE",
+      "47": "cR",
+      "48": "hC",
+      "57": "cC",
+      "67": "hN",
+      "86": "cK",
+      "99": "hN",
+      "06": "hN",
+    },
+    solution: "86-96",
+  },
+  {
+    pieces: {
+      "21": "cE",
+      "34": "hK",
+      "59": "hP",
+      "63": "hC",
+      "86": "cK",
+      "95": "cR",
+      "98": "cN",
+      "07": "hN",
+    },
+    solution: "95-97",
+  },
+  {
+    pieces: {
+      "23": "cP",
+      "24": "hR",
+      "25": "hK",
+      "53": "cR",
+      "61": "hC",
+      "92": "hC",
+      "04": "cK",
+      "03": "cC",
+    },
+    solution: "23-24",
+  },
+  {
+    pieces: {
+      "15": "hK",
+      "45": "hN",
+      "52": "cN",
+      "56": "hR",
+      "71": "cR",
+      "83": "cC",
+      "86": "cK",
+      "96": "cA",
+      "04": "hC",
+    },
+    solution: "86-95",
+  },
+  {
+    pieces: {
+      "26": "hK",
+      "41": "cE",
+      "52": "cP",
+      "74": "cR",
+      "85": "hC",
+      "93": "hN",
+      "97": "hE",
+      "05": "cK",
+    },
+    solution: "74-94",
+  },
+  {
+    pieces: {
+      "26": "hK",
+      "47": "cE",
+      "52": "hP",
+      "84": "hE",
+      "93": "hR",
+      "94": "cK",
+      "96": "cC",
+      "08": "cN",
+      "02": "hE",
+    },
+    solution: "96-93",
+  },
+  {
+    pieces: {
+      "15": "hK",
+      "17": "hE",
+      "24": "cR",
+      "35": "hR",
+      "48": "cE",
+      "62": "cE",
+      "79": "hP",
+      "86": "cA",
+      "95": "cK",
+      "04": "hE",
+      "06": "hC",
+    },
+    solution: "95-06",
+  },
+  {
+    pieces: {
+      "27": "hE",
+      "34": "hK",
+      "45": "cR",
+      "57": "hP",
+      "74": "hN",
+      "83": "cR",
+      "87": "hP",
+      "91": "hN",
+      "95": "cK",
+      "04": "cA",
+    },
+    solution: "83-84",
+  },
+  {
+    pieces: {
+      "24": "hK",
+      "39": "cC",
+      "45": "cC",
+      "48": "hR",
+      "65": "hN",
+      "74": "cE",
+      "84": "cK",
+      "94": "cA",
+    },
+    solution: "45-75",
+  },
+  {
+    pieces: {
+      "21": "cN",
+      "24": "hK",
+      "42": "cR",
+      "57": "hN",
+      "61": "hN",
+      "64": "hR",
+      "84": "cA",
+      "94": "cK",
+      "08": "cC",
+      "02": "hN",
+      "04": "hN",
+    },
+    solution: "42-02",
+  },
+  {
+    pieces: {
+      "25": "hK",
+      "34": "cN",
+      "48": "cN",
+      "66": "hR",
+      "75": "hN",
+      "91": "cR",
+      "93": "hC",
+      "95": "cA",
+      "06": "cK",
+    },
+    solution: "06-05",
+  },
+];
+
 export const JANGGI_PUZZLE_SETS: readonly JanggiPuzzleSet[] = [
+  {
+    id: "escape",
+    title: "장군 풀기",
+    summary:
+      "궁 비키기·사이 막기·장군 부른 기물 잡기 가운데 손해 없는 풀기를 고른다",
+    puzzles: ESCAPES.map((p, i) => ({
+      id: `escape-${i + 1}`,
+      kind: "escape",
+      ...p,
+    })),
+  },
   {
     id: "mate1",
     title: "한 수 외통",

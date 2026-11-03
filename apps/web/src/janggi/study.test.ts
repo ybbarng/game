@@ -25,6 +25,7 @@ import {
   defenseFor,
   explainBlock,
   explainCannon,
+  explainEscape,
   explainFork,
   explainMate,
   explainTrade,
@@ -103,10 +104,10 @@ describe("장기 문제 데이터", () => {
   });
 
   it.each(rows(all))(
-    "%s: 초가 둘 차례이고, 장군도 빅장도 아닌 판에서 시작한다",
+    "%s: 초가 둘 차례이고, 빅장도 한 장군도 아닌 판에서 시작한다(초 장군은 장군 풀기만)",
     (_id, p) => {
       const state = puzzleState(p);
-      expect(inCheck(state.board, "c")).toBe(false);
+      expect(inCheck(state.board, "c")).toBe(p.kind === "escape");
       expect(inCheck(state.board, "h")).toBe(false);
       expect(kingsFacing(state.board)).toBe(false);
     },
@@ -286,5 +287,34 @@ describe("판정", () => {
     expect(judgeMove(p, puzzleState(p), parseMove(p.solution), 0)).toBe(
       "solved",
     );
+  });
+});
+
+describe("장군 풀기 문제", () => {
+  it.each(rows(all.filter((p) => p.kind === "escape")))(
+    "%s: 장군을 받은 판이고, 풀기 방법이 둘 이상 있으며, 정답이 다른 풀기보다 졸 하나 반 이상 낫다",
+    (_id, p) => {
+      const board = puzzleState(p).board;
+      expect(inCheck(board, "c")).toBe(true);
+      expect(inCheck(board, "h")).toBe(false);
+      expect(kingsFacing(board)).toBe(false);
+      const king = board.indexOf("cK");
+      const ways = new Set(
+        legalMoves(board, "c").map((m) =>
+          m.from === king ? "비키기" : board[m.to] !== "" ? "잡기" : "막기",
+        ),
+      );
+      expect(ways.size).toBeGreaterThanOrEqual(2);
+      expectClearBest(p);
+      const lines = explainEscape(board, parseMove(p.solution));
+      expect(lines[0]).toMatch(/장군을 불렀다$/);
+      expect(lines[1]).toMatch(/비킨다|잡는다|막는다|치운다/);
+    },
+  );
+
+  it("문제가 서로 겹치지 않는다", () => {
+    const escapes = all.filter((p) => p.kind === "escape");
+    const keys = escapes.map((p) => JSON.stringify(p.pieces));
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

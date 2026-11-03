@@ -424,3 +424,35 @@ test("장기 개인 시간: 상차림 뒤부터 시계가 가고, 다 쓰면 시
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await page.screenshot({ path: info.outputPath("janggi-time.png") });
 });
+
+test("장기 수 배우기: 장군 풀기를 틀렸다 다시 풀고 해설을 본다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "문제 화면 배치는 위 외통 문제 시험이 세 크기로 본다",
+  );
+  await page.goto("/janggi");
+  await page.getByRole("button", { name: /장기 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const escapeSet = page.getByRole("region", { name: "장군 풀기" });
+  await expect(escapeSet.getByText("0/15")).toBeVisible();
+  await escapeSet.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText("장군을 손해 없이 푸세요");
+
+  // 첫 문제(escape-1)의 정답은 차 59 → 54(장군 부른 차를 잡기). 궁을 비키면 손해다.
+  await tapPoint(page, "84", false);
+  const to = await page
+    .locator("[data-target]")
+    .first()
+    .getAttribute("data-target");
+  await tapPoint(page, to as string, false);
+  await expect(page.getByRole("status")).toHaveText("그 풀기로는 손해를 봐요");
+  await page.getByRole("button", { name: "다시 하기" }).click();
+
+  await tapPoint(page, "59", false);
+  await tapPoint(page, "54", false);
+  await expect(page.getByRole("status")).toHaveText("잘 풀었어요!");
+  await expect(page.getByText(/장군 부른 차를 잡는다/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("janggi-escape.png") });
+});

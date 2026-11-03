@@ -171,6 +171,39 @@ export function explainTrade(board: Board, move: Move, trap: Move): string[] {
   return lines;
 }
 
+/**
+ * 장군 풀기를 말로 풀어 준다: 누가 장군을 불렀고, 정답이 잡기·막기·비키기 가운데 무엇인지.
+ * 장면에서 엔진으로 만들어 문제 데이터와 어긋나지 않는다
+ */
+export function explainEscape(board: Board, move: Move): string[] {
+  const king = board.indexOf("cK");
+  const checkers = attackers(board, king, "h");
+  const by = names(checkers);
+  const mover = KIND_NAMES[(board[move.from] as string)[1] as Kind];
+  const target = board[move.to] ?? "";
+  let how: string;
+  if (move.from === king) how = `궁을 ${pointName(move.to)}로 비킨다`;
+  else if (target !== "") {
+    const kind = target[1] as Kind;
+    how = `${mover}로 장군 부른 ${obj(KIND_NAMES[kind])} 잡는다(${PIECE_VALUE[kind]}점)`;
+  } else {
+    // 장군 부른 포와 궁 사이에서 비킨 기물이면 포의 다리를 치운 것이다.
+    const bridge = board.some(
+      (cell, at) =>
+        cell === "hC" &&
+        pseudoTargets(board, at).includes(king) &&
+        between(at, king, move.from),
+    );
+    how = bridge
+      ? `${obj(mover)} ${pointName(move.to)}로 옮겨 포의 다리를 치운다`
+      : `${obj(mover)} ${pointName(move.to)}에 놓아 길을 막는다`;
+  }
+  return [
+    `${by}${hasBatchim(by) ? "이" : "가"} 장군을 불렀다`,
+    `${how}. 다른 풀기는 두 수 안에 기물을 잃거나 몰린다`,
+  ];
+}
+
 /** 푼 문제의 해설: 문제 종류에 맞는 풀이를 장면에서 만든다 */
 export function explainSolved(
   puzzle: JanggiPuzzle,
@@ -188,6 +221,8 @@ export function explainSolved(
       return explainBlock(board, move);
     case "mate":
       return explainMate(board, move);
+    case "escape":
+      return explainEscape(board, move);
   }
 }
 
