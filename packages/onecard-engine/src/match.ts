@@ -262,6 +262,8 @@ function goBankrupt(
   state.pile.unshift(...cards);
   state.hands[seat] = [];
   state.queue = state.queue.filter((t) => t.seat !== seat);
+  // 공격을 받던 사람(차례인 사람)이 파산하면 공격은 그 사람에게서 끝난다. 다음 사람이 떠안지 않는다
+  if (state.turn === seat) state.attack = 0;
   resetCall(state, seat);
   events.push({ type: "bankrupt", seat });
 }
@@ -356,20 +358,36 @@ export function judgeShout(
   if (state.turnNo - seen > STALE_SEEN) return { kind: "stale" };
   const own = state.windows.find((w) => w.seat === seat);
   if (own) return own.kind === "self" ? { kind: "self" } : { kind: "lateSelf" };
+  const mark = state.recent.find((m) => m.turnNo === seen);
+  const targets = (mark?.exposed ?? []).filter((s) => s !== seat);
+  const open = state.windows.filter((w) => targets.includes(w.seat));
+  const caught = open.filter((w) => w.kind === "catch").map((w) => w.seat);
+  const held = open.filter((w) => w.kind === "self").map((w) => w.seat);
   if (
     state.phase === "play" &&
     state.turn === seat &&
     hand(state, seat).length === 2 &&
     !state.preCalled[seat]
-  )
-    return { kind: "pre" };
-  const mark = state.recent.find((m) => m.turnNo === seen);
-  const targets = (mark?.exposed ?? []).filter((s) => s !== seat);
+  ) {
+    // 한 번 누름이 둘 다에 해당하면 둘 다(shoutBoth, docs/42 12-5)
+    if (state.rules.shoutBoth === false) return { kind: "pre" };
+    return {
+      kind: "pre",
+      ...(caught.length > 0 ? { alsoCaught: caught } : {}),
+      ...(held.length > 0 ? { alsoHeld: held } : {}),
+    };
+  }
   if (targets.length === 0) return { kind: "false" };
-  const open = state.windows.filter((w) => targets.includes(w.seat));
-  if (open.length === 0) return { kind: "late" };
-  const caught = open.filter((w) => w.kind === "catch").map((w) => w.seat);
-  const held = open.filter((w) => w.kind === "self").map((w) => w.seat);
+  if (open.length === 0) {
+    // 늦음은 같은 자리·같은 seen으로 한 번만 봐준다. 창이 닫힌 판 번호를 골라 마구 눌러도 벌칙이 없던 구멍을 막는다.
+    // "창이 닫힌 뒤 첫 차례 행동 전까지만"으로 자르지 않은 까닭: 창이 차례 행동(먹기·다 내기)으로 닫히면
+    // 그 전 판을 보고 정직하게 누른 사람의 누름이 지연 때문에 그 행동 뒤에 닿는다. 그 사람을 헛외침으로 만들면
+    // `seen` 판정(지연 때문에 한 판 늦게 본 사람을 봐준다)이 무너진다
+    const used = (state.lateSeen ?? []).some(
+      (l) => l.seat === seat && l.turnNo === seen,
+    );
+    return used ? { kind: "false" } : { kind: "late" };
+  }
   return caught.length > 0
     ? { kind: "catch", targets: caught, held }
     : { kind: "hold", targets: held };
@@ -390,12 +408,18 @@ function applyShout(
   state: OnecardState,
   seat: number,
   verdict: ShoutVerdict,
+  seen: number,
   events: GameEvent[],
 ): void {
   events.push({ type: "shouted", seat });
   switch (verdict.kind) {
     case "pre":
       state.preCalled[seat] = true;
+      for (const w of state.windows)
+        if (verdict.alsoHeld?.includes(w.seat) && w.heldBy === null)
+          w.heldBy = seat;
+      for (const target of verdict.alsoCaught ?? [])
+        catchSeat(state, seat, target, events);
       break;
     case "self":
       closeWindows(state, seat);
@@ -418,8 +442,12 @@ function applyShout(
       events.push({ type: "falseShout", seat });
       enqueue(state, seat, state.rules.falseShoutPenalty, "falseShout");
       break;
+    case "late":
+      // 벌칙은 없지만 한 번 봐준 것을 적어 둔다(같은 seen으로 되풀이하면 헛외침)
+      state.lateSeen = [...(state.lateSeen ?? []), { seat, turnNo: seen }];
+      break;
     default:
-      // lateSelf·late·stale: 아무 일 없음
+      // lateSelf·stale: 아무 일 없음
       break;
   }
   processQueue(state, events);
@@ -499,6 +527,12 @@ function done(
       exposed: next.windows.map((w) => w.seat),
     });
     if (next.recent.length > STALE_SEEN + 1) next.recent.shift();
+    // 적어 둔 늦음이 있을 때만 `seen`으로 더는 못 가리키는 것을 지운다.
+    // 배열은 늘 새로 만들어 바꾸므로 `clone`이 얕게 나눠 가져도 된다
+    if (next.lateSeen)
+      next.lateSeen = next.lateSeen.filter(
+        (l) => next.turnNo - l.turnNo <= STALE_SEEN,
+      );
   }
   return { ok: true, state: next, events };
 }
@@ -532,16 +566,21 @@ export function step(
     if (verdict.kind === "error") return fail(verdict.error);
     const next = clone(state);
     const events: GameEvent[] = [];
-    applyShout(next, seat, verdict, events);
+    applyShout(next, seat, verdict, action.seen, events);
     return done(next, events, false);
   }
 
   if (action.type === "timeout") {
+    if (action.kind !== "selfWindow" && action.kind !== "catchWindow")
+      return fail("모르는 창 종류다");
     const kind = action.kind === "selfWindow" ? "self" : "catch";
     const window = state.windows.find(
       (w) => w.seat === action.target && w.kind === kind,
     );
     if (!window) return fail("그 창이 열려 있지 않다");
+    // `id`가 없는 것은 창 번호를 싣기 전 기록(옛 기록 호환): 자리·종류로만 찾는다
+    if (action.id !== undefined && action.id !== window.id)
+      return fail("지난 창의 시간 끝이다");
     const next = clone(state);
     const events: GameEvent[] = [];
     const w = next.windows.find((x) => x.id === window.id) as ShoutWindow;
@@ -612,6 +651,15 @@ export function pendingSeat(state: OnecardState): number | null {
 }
 
 /**
+ * 차례 행동을 기다리는 자리들(다른 엔진의 `pendingSeats`와 같은 모양). 원카드는 늘 한 사람이라
+ * `pendingSeat`를 배열로 준다. 외침은 누구나 언제든 보내므로 넣지 않는다
+ */
+export function pendingSeats(state: OnecardState): number[] {
+  const seat = pendingSeat(state);
+  return seat === null ? [] : [seat];
+}
+
+/**
  * 지금 할 수 있는 차례 행동(컴퓨터·화면). 7은 무늬마다 하나씩, 맨 끝은 먹기.
  * 외침(`shout`)은 판에 있는 자리면 언제든 보낼 수 있어 넣지 않는다
  */
@@ -632,7 +680,7 @@ export function legalActions(state: OnecardState, seat: number): Action[] {
 
 /**
  * 열린 외침 창과 그 길이(ms). 방장 `LocalMatch`가 창 `id`마다 시계를 걸고, 다 되면
- * `{type:"timeout", kind, target: seat}`를 넣는다. 화면에는 보이지 않는다(누가 잊었나가 드러난다)
+ * `{type:"timeout", kind, target: seat, id}`를 넣는다. 화면에는 보이지 않는다(누가 잊었나가 드러난다)
  */
 export function shoutWindows(state: OnecardState): {
   id: number;

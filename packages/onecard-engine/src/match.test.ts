@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { ONECARD_DECK, type OnecardCard, type Suit } from "./cards";
-import { createMatch, legalActions, type StepResult, step } from "./match";
+import {
+  createMatch,
+  legalActions,
+  pendingSeat,
+  pendingSeats,
+  type StepResult,
+  step,
+} from "./match";
 import { type OnecardRules, STANDARD_ONECARD_RULES } from "./rules";
 import { createOnecardScenario } from "./scenario";
 import type { Action, GameEvent, OnecardState } from "./state";
@@ -370,6 +377,48 @@ describe("마지막 카드·순위·파산", () => {
     expect(t.turn).toBe(0);
   });
 
+  it("공격을 받던 사람이 벌칙으로 먹다가 파산하면 공격은 그 사람에게서 끝난다", () => {
+    const big = ONECARD_DECK.filter((c) => c.startsWith("C")).slice(0, 13);
+    const s = createOnecardScenario({
+      hands: [
+        ["HA", "H9", "H8"],
+        [...big, "S3", "S4", "S5", "S6", "S8", "S9"],
+        ["D3", "D4"],
+      ],
+      pile: ["H5"],
+    });
+    const attacked = play(s, 0, "HA");
+    expect(attacked.attack).toBe(3);
+    expect(attacked.turn).toBe(1);
+    // 헛외침 벌칙 한 장으로 20장 → 파산
+    const [after, events] = okEvents(
+      step(attacked, 1, { type: "shout", seen: attacked.turnNo }),
+    );
+    expect(events).toContainEqual({ type: "bankrupt", seat: 1 });
+    expect(after.turn).toBe(2);
+    expect(after.attack).toBe(0);
+    expect(draw(after, 2).hands[2]).toHaveLength(3);
+  });
+
+  it("공격을 받지 않던 사람이 파산하면 공격은 차례인 사람에게 그대로", () => {
+    const big = ONECARD_DECK.filter((c) => c.startsWith("C")).slice(0, 13);
+    const s = createOnecardScenario({
+      hands: [
+        ["HA", "H9", "H8"],
+        ["D3", "D4"],
+        [...big, "S3", "S4", "S5", "S6", "S8", "S9"],
+      ],
+      pile: ["H5"],
+    });
+    const attacked = play(s, 0, "HA");
+    const after = ok(
+      step(attacked, 2, { type: "shout", seen: attacked.turnNo }),
+    );
+    expect(after.bankrupt).toEqual([2]);
+    expect(after.turn).toBe(1);
+    expect(after.attack).toBe(3);
+  });
+
   it("파산 옵션을 끄면 많이 들어도 계속", () => {
     const big = ONECARD_DECK.filter((c) => c.startsWith("C"));
     const s = createOnecardScenario({
@@ -409,6 +458,25 @@ describe("기타", () => {
     expect(step(end, 1, { type: "draw" }).ok).toBe(false);
     expect(step(s, -1, { type: "draw" }).ok).toBe(false);
     expect(step(s, 0, { type: "nope" } as unknown as Action).ok).toBe(false);
+  });
+
+  it("기다리는 자리(pendingSeats): 차례인 사람 하나, 다시 섞기를 기다리거나 끝나면 없음", () => {
+    const s = createOnecardScenario({
+      hands: [
+        ["H9", "H8"],
+        ["D3", "D4"],
+      ],
+      pile: ["C3", "H5"],
+      deck: [],
+      turn: 1,
+    });
+    expect(pendingSeats(s)).toEqual([1]);
+    const waiting = draw(s, 1);
+    expect(waiting.phase).toBe("reshuffle");
+    expect(pendingSeats(waiting)).toEqual([]);
+    expect(pendingSeat(waiting)).toBeNull();
+    const end = ok(step(s, 0, { type: "retire" }));
+    expect(pendingSeats(end)).toEqual([]);
   });
 
   it("그만두기: 지금 손패로 순위를 매기고 끝낸다", () => {

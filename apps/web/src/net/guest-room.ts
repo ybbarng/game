@@ -446,6 +446,8 @@ export class GuestRoom<
           object: (seat, reason) => this.raiseIncident({ seat, reason }),
           // 멘탈 포커 방은 카드를 열 때까지 화면을 미룰 수 있어 판 번호가 방장보다 늦을 수 있다.
           strictAt: () => !this.lobby?.fair,
+          // 토큰이 있으면 새로고침 뒤 다시 들어온 것이다(그 전에 낸 내 청구 아이디는 모른다).
+          resumed: options.token !== null,
         })
       : null;
 

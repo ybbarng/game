@@ -15,6 +15,17 @@ import {
 } from "./claim";
 import { randomId, type Transport } from "./transport";
 
+/** 청구 기억(아이디 목록 등)의 상한. 넘치면 오래된 것부터 지운다 */
+const MAX_REMEMBERED = 512;
+
+/** 넣은 순서가 오래된 것부터 지워 크기를 맞춘다 */
+function trim(items: Map<string, unknown> | Set<string>, max: number): void {
+  while (items.size > max) {
+    const oldest = items.keys().next().value as string;
+    items.delete(oldest);
+  }
+}
+
 export interface ClaimHubOptions<View> {
   transport: Transport;
   /** 게임 키트 id(`ClaimMessage.game`) */
@@ -38,6 +49,11 @@ export interface ClaimHubOptions<View> {
    * 화면을 미루는 방(멘탈 포커)은 false로 두고, 방장이 판 번호를 줄여 말한 것(`at` < 내 판)만 잡는다
    */
   strictAt?(): boolean;
+  /**
+   * 참가자: 새로고침 뒤 다시 들어온 기기다(방 토큰이 있었다). 그러면 새로고침 전에 낸 내 청구 아이디를 모르므로,
+   * 이 통로가 처음 본 판까지의 "내 자리 청구"는 모름으로 보고 가짜 청구 이의를 내지 않는다
+   */
+  resumed?: boolean;
   /** 청구 아이디 만들기(시험이 정한 값으로) */
   newId?(): string;
 }
@@ -45,6 +61,8 @@ export interface ClaimHubOptions<View> {
 /** 받은 청구 하나(참가자가 이의 판단에 쓴다) */
 interface Received {
   claim: ClaimMessage;
+  /** 받은(내 것은 보낸) 시각(`Clock.now`). 늦은 발표를 가리는 데 쓴다 */
+  at: number;
   /** 발표에서 보았다 */
   announced: boolean;
   /** 이의 유예 타이머를 끄는 함수 */
@@ -58,7 +76,8 @@ interface Received {
  * - 방장은 첫 청구를 받은 뒤 `windowMs`가 지나면 묶음을 닫고 `resolveClaimBatch`로 판정해 발표한 뒤 엔진에 넣는다.
  * - 참가자는 발표를 자기가 받은 청구와 자기가 본 판으로 다시 계산해 맞춰 본다. 다르면 이의(`object`):
  *   직접 받은 청구가 `graceMs` 안에 어느 발표에도 없음, 내용이 다름, 내가 보내지 않은 내 청구, 순서·판정이 다름,
- *   판 번호(`at`)를 줄여 말함.
+ *   판 번호(`at`)를 줄여 말함, 발표를 미뤄 정직한 청구를 "늦음"으로 만듦(`staleSlackMs`).
+ * - 기억(받은 청구·발표 사본·내 청구)은 발표로 정리되면 지우고, 판정에 쓸 판보다 한참 옛 판(`keepBoards`)이면 지운다.
  * - 각 기기는 판 번호마다 공개 판(`KitClaims.board`)을 남긴다(`observe`). 판정은 늘 청구의 `seen` 판 기준이다.
  */
 export class ClaimHub<View = unknown> {
@@ -66,19 +85,26 @@ export class ClaimHub<View = unknown> {
   private readonly options: ClaimHubOptions<View>;
   /** 판 번호 → 공개 판(최근 몇 판만) */
   private readonly boards = new Map<number, unknown>();
+  /** 판 번호 → 이 기기가 그 판을 처음 받은 시각(`Clock.now`) */
+  private readonly shownAt = new Map<number, number>();
   private latest: number | null = null;
-  /** 이미 본 청구 아이디(같은 청구를 두 번 세지 않는다) */
-  private readonly seenIds = new Set<string>();
+  /** 이 통로가 처음 본 판 번호(새로고침 뒤 "모름"의 경계) */
+  private first: number | null = null;
+  /** 이미 본 청구 아이디 → 그 청구의 판 번호(같은 청구를 두 번 세지 않는다, 옛 판이면 지운다) */
+  private readonly seenIds = new Map<string, number>();
   /** 방장: 닫지 않은 묶음 */
   private pending: ClaimMessage[] = [];
   private windowTimer: (() => void) | null = null;
   private batch = 0;
-  /** 참가자: 받은 청구(아이디 → 청구) */
+  /** 참가자: 받은 청구 중 아직 발표에서 보지 못한 것(아이디 → 청구). 발표에서 보거나 유예가 끝나면 지운다 */
   private readonly received = new Map<string, Received>();
-  /** 참가자: 발표에서 본 청구(아이디 → 발표 속 사본). 청구가 발표보다 늦게 오면 이것과 견준다 */
+  /**
+   * 참가자: 발표에서 보았지만 직접은 아직 받지 못한 청구(아이디 → 발표 속 사본). 청구가 발표보다 늦게 오면
+   * 이것과 견주고 지운다
+   */
   private readonly announced = new Map<string, ClaimMessage>();
-  /** 내가 낸 청구 아이디 */
-  private readonly mine = new Set<string>();
+  /** 내가 낸 청구 아이디 → 판 번호 */
+  private readonly mine = new Map<string, number>();
   /** 같은 이의를 되풀이하지 않는다 */
   private readonly objected = new Set<string>();
   private readonly resolvedListeners = new Set<
@@ -97,16 +123,60 @@ export class ClaimHub<View = unknown> {
   /** 판 번호가 바뀐 화면을 받으면 부른다. 같은 판 번호의 판은 처음 것을 남긴다 */
   observe(view: View): void {
     const seen = this.options.spec.stimulusOf(view);
-    if (!this.boards.has(seen))
+    if (!this.boards.has(seen)) {
       this.boards.set(
         seen,
         JSON.parse(JSON.stringify(this.options.spec.board(view))) as unknown,
       );
+      this.shownAt.set(seen, this.options.clock.now());
+    }
+    this.first ??= seen;
     if (this.latest === null || seen > this.latest) this.latest = seen;
-    // 판정에 쓸 수 있는 판(`staleBoards`)보다 넉넉히 남기고 지운다.
-    const keep = this.rules.staleBoards + 8;
+    this.prune();
+  }
+
+  /** 판정에 쓸 수 있는 판(`staleBoards`)보다 넉넉히 남긴다. 이보다 옛 판의 청구는 참가자가 받지도 기억하지도 않는다 */
+  private get keepBoards(): number {
+    return this.rules.staleBoards + 8;
+  }
+
+  /** 옛 판의 판·청구 기억을 지운다(발표로 정리된 것은 이미 지웠다). 넘치면 오래된 것부터 */
+  private prune(): void {
+    if (this.latest === null) return;
+    const floor = this.latest - this.keepBoards;
     for (const key of this.boards.keys())
-      if (key < this.latest - keep) this.boards.delete(key);
+      if (key < floor) {
+        this.boards.delete(key);
+        this.shownAt.delete(key);
+      }
+    for (const [id, seen] of this.seenIds)
+      if (seen < floor) this.seenIds.delete(id);
+    for (const [id, seen] of this.mine) if (seen < floor) this.mine.delete(id);
+    for (const [id, copy] of this.announced)
+      if (copy.seen < floor) this.announced.delete(id);
+    // 아직 발표되지 않은 받은 청구는 이의 유예가 끝날 때 지워진다(이의 판단에 필요하다).
+    trim(this.seenIds, MAX_REMEMBERED);
+    trim(this.mine, MAX_REMEMBERED);
+    trim(this.announced, MAX_REMEMBERED);
+    trim(this.objected, MAX_REMEMBERED);
+    while (this.received.size > MAX_REMEMBERED) {
+      const [id, entry] = this.received.entries().next().value as [
+        string,
+        Received,
+      ];
+      entry.cancel?.();
+      this.received.delete(id);
+    }
+  }
+
+  /** 기억하고 있는 청구 수(시험이 정리되는지 본다) */
+  memorySize(): number {
+    return (
+      this.seenIds.size +
+      this.received.size +
+      this.announced.size +
+      this.mine.size
+    );
   }
 
   /** 내 기기가 마지막으로 본 판 번호 */
@@ -141,7 +211,7 @@ export class ClaimHub<View = unknown> {
       this.options.spec.isBody(b),
     );
     if (!parsed) return null;
-    this.mine.add(parsed.claimId);
+    this.mine.set(parsed.claimId, parsed.seen);
     this.options.transport.send(parsed);
     this.accept(parsed);
     return parsed;
@@ -185,7 +255,14 @@ export class ClaimHub<View = unknown> {
       // 참가자: 같은 아이디로 내용이 다른 청구가 또 오면 방장 발표와 견줄 때 드러난다(첫 것을 남긴다).
       return;
     }
-    this.seenIds.add(claim.claimId);
+    // 참가자: 기억을 지운 옛 판의 청구(늦게 온 사본일 수 있다)는 받지 않는다. 방장은 그대로 받아 "늦음"으로 발표한다.
+    if (
+      this.options.role === "guest" &&
+      this.latest !== null &&
+      claim.seen < this.latest - this.keepBoards
+    )
+      return;
+    this.seenIds.set(claim.claimId, claim.seen);
     if (this.options.role === "host") {
       this.pending.push(claim);
       this.windowTimer ??= this.options.clock.after(this.rules.windowMs, () =>
@@ -195,18 +272,20 @@ export class ClaimHub<View = unknown> {
     }
     const copy = this.announced.get(claim.claimId);
     if (copy) {
-      // 발표가 먼저 왔다: 지금 견준다.
+      // 발표가 먼저 왔다: 지금 견주고 정리한다.
+      this.announced.delete(claim.claimId);
       this.compareContent(copy, claim);
-      this.received.set(claim.claimId, {
-        claim,
-        announced: true,
-        cancel: null,
-      });
       return;
     }
-    const entry: Received = { claim, announced: false, cancel: null };
+    const entry: Received = {
+      claim,
+      at: this.options.clock.now(),
+      announced: false,
+      cancel: null,
+    };
     entry.cancel = this.options.clock.after(this.rules.graceMs, () => {
       entry.cancel = null;
+      this.received.delete(claim.claimId);
       if (!entry.announced && !this.closed)
         this.raise(
           `omit:${claim.claimId}`,
@@ -274,7 +353,11 @@ export class ClaimHub<View = unknown> {
     const expected = this.judgeBatch(claims, resolved.at);
     for (const [i, entry] of resolved.entries.entries()) {
       const id = entry.claim.claimId;
-      if (entry.claim.seat === me && !this.mine.has(id))
+      if (
+        entry.claim.seat === me &&
+        !this.mine.has(id) &&
+        !this.unknownMine(entry.claim)
+      )
         this.raise(
           `fake:${id}`,
           0,
@@ -285,13 +368,48 @@ export class ClaimHub<View = unknown> {
         got.announced = true;
         got.cancel?.();
         got.cancel = null;
+        this.received.delete(id);
         this.compareContent(entry.claim, got.claim);
-      } else {
+        this.checkStaleDelay(entry, got);
+      } else if (!this.seenIds.has(id)) {
+        // 직접 받은 것이 오면 견준다(이미 받아 정리한 청구가 다시 발표된 것이면 둘 일이 없다).
         this.announced.set(id, entry.claim);
       }
       this.compareOutcome(tag, entry, expected[i]);
     }
+    this.prune();
     for (const l of this.resolvedListeners) l(resolved);
+  }
+
+  /**
+   * 새로고침 뒤 다시 들어온 기기는 처음 본 판까지의 내 청구를 모른다(새로고침 전에 냈을 수 있다).
+   * 판 번호는 줄지 않으므로 처음 본 판보다 뒤의 판에 대한 내 청구는 모두 이 통로가 낸 것이다
+   */
+  private unknownMine(claim: ClaimMessage): boolean {
+    if (!this.options.resumed) return false;
+    return this.first === null || claim.seen <= this.first;
+  }
+
+  /**
+   * 방장이 묶음을 늦게 닫아 정직한 청구를 "늦음"으로 만들었나. 늦음이 정직하려면 청구가 방장에게 닿을 때
+   * 방장 판이 이미 `seen + staleBoards + 1`(늦음이 되는 판, S)이어야 한다. 방장 판은 내게 편도만큼 늦게 오고
+   * 청구도 방장에게 편도만큼 늦게 닿으므로, 정직하면 "내가 S를 받은 시각 − 내가 청구를 받은(보낸) 시각"이
+   * 편도 몇 번 안쪽이다. 그보다 한참 뒤(`staleSlackMs`)에 S를 받았는데 늦음이면, 방장이 청구를 받고도
+   * 발표를 미루다 판을 넘긴 것이다
+   */
+  private checkStaleDelay(entry: ResolvedClaim, got: Received): void {
+    if (entry.outcome.status !== "ignored" || entry.outcome.reason !== "stale")
+      return;
+    const shown = this.shownAt.get(
+      entry.claim.seen + this.rules.staleBoards + 1,
+    );
+    if (shown === undefined) return;
+    if (shown - got.at > this.rules.staleSlackMs)
+      this.raise(
+        `late:${entry.claim.claimId}`,
+        0,
+        `방장이 ${entry.claim.seat}번 자리의 청구(${entry.claim.seen}번 판)를 늦게 발표해 늦음으로 버렸다`,
+      );
   }
 
   /** 판정 비교. 내가 그 판을 기록하지 못했으면(늦게 들어옴) 판정은 건너뛴다 */
