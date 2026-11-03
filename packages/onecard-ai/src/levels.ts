@@ -1,7 +1,7 @@
 /*
  * 단계 정의(docs/42 13절). 이름은 다른 게임과 같은 입문·중수·고수(docs/10, docs/21).
  * 외침 값의 출발점은 letsuno 컴퓨터(docs/42 3절): 외침 0.6·0.9·1.0, 잡기 0.2·0.5·0.9,
- * 잡기까지 2~4초·1~3초·0.5~2초.
+ * 잡기까지 2~4초·1~3초·0.5~2초. 잡기 시간은 규칙의 P·T에 맞춰 비율로 둔다(`catchAt`).
  */
 
 /** 0 입문, 1 중수, 2 고수 */
@@ -16,8 +16,12 @@ export interface ShoutProfile {
   preMs: readonly [number, number];
   /** 외치지 않은 한 장짜리를 알아채고 잡을 확률 */
   catch: number;
-  /** 잡기까지 걸리는 시간(ms) */
-  catchMs: readonly [number, number];
+  /**
+   * 잡기까지 걸리는 시간. 한 장이 된 때부터 잡을 수 있는 시간(본인 시간 P + 잡기 창 T)의 비율 구간.
+   * P 안에 누르면 엔진이 적어 두었다가 P 끝에 잡은 것으로 하므로 0부터 쓸 수 있다.
+   * 기본 규칙(P 1초·T 3초)에서 letsuno 값과 같다: 입문 2~3.8초, 중수 1~3초, 고수 0.5~2초
+   */
+  catchAt: readonly [number, number];
   /** 이미 외친 한 장짜리를 잡으려고 누를(헛외침) 확률 */
   falseShout: number;
 }
@@ -40,7 +44,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       selfMs: [300, 900],
       preMs: [150, 450],
       catch: 0.2,
-      catchMs: [2000, 4000],
+      catchAt: [0.5, 0.95],
       falseShout: 0.15,
     },
   },
@@ -54,7 +58,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       selfMs: [200, 800],
       preMs: [100, 350],
       catch: 0.5,
-      catchMs: [1000, 3000],
+      catchAt: [0.25, 0.75],
       falseShout: 0,
     },
   },
@@ -68,7 +72,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       selfMs: [100, 500],
       preMs: [80, 250],
       catch: 0.9,
-      catchMs: [500, 2000],
+      catchAt: [0.125, 0.5],
       falseShout: 0,
     },
   },

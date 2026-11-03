@@ -98,9 +98,9 @@ export function playGame(
       const view = viewOf(state, s);
       const memory = memories[s] as OnecardMemory;
       for (
-        let plan = planShout(view, levels[s] as OnecardLevel, rng, memory);
+        let plan = planShout(view, levels[s] as OnecardLevel, rng, memory, now);
         plan;
-        plan = planShout(view, levels[s] as OnecardLevel, rng, memory)
+        plan = planShout(view, levels[s] as OnecardLevel, rng, memory, now)
       )
         timers.push({
           at: now + plan.delayMs,
@@ -147,6 +147,7 @@ export function playGame(
           timer.plan,
           viewOf(state, timer.seat),
           memories[timer.seat] as OnecardMemory,
+          now,
         );
         if (action && apply(timer.seat, action))
           shouts[timer.seat] = (shouts[timer.seat] ?? 0) + 1;

@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import type { OnecardLevel } from "./levels";
 import { createMemory, type OnecardMemory, observe } from "./memory";
 import { createSeatBot } from "./seat";
-import { planShout, shoutAction } from "./shout";
+import { CATCH_MARGIN_MS, planShout, shoutAction } from "./shout";
 import { playGame } from "./simulate";
 
 /** 판과 자리마다 기억을 함께 들고 행동을 넣는다 */
@@ -177,7 +177,7 @@ describe("기억", () => {
 });
 
 describe("외침 계획", () => {
-  it("잡기 확률과 시간이 단계 값과 맞다(입문 0.2·2~4초, 중수 0.5·1~3초, 고수 0.9·0.5~2초)", () => {
+  it("기본 규칙(P 1초·T 3초)에서 잡기 확률과 시간이 letsuno 값과 맞다", () => {
     const make = () => {
       const t = exposedOne();
       return {
@@ -193,11 +193,95 @@ describe("외침 계획", () => {
     expect(b.rate).toBeGreaterThan(0.42);
     expect(b.rate).toBeLessThan(0.58);
     expect(c.rate).toBeGreaterThan(0.85);
-    expect([a.min, a.max]).toEqual([expect.any(Number), expect.any(Number)]);
+    // 입문 2~3.8초(창이 닫히기 0.25초 전까지만), 중수 1~3초, 고수 0.5~2초
     expect(a.min).toBeGreaterThanOrEqual(2000);
-    expect(a.max).toBeLessThanOrEqual(4000);
+    expect(a.max).toBeLessThanOrEqual(4000 - CATCH_MARGIN_MS);
+    expect(b.min).toBeGreaterThanOrEqual(1000);
+    expect(b.max).toBeLessThanOrEqual(3000);
     expect(c.min).toBeGreaterThanOrEqual(500);
     expect(c.max).toBeLessThanOrEqual(2000);
+  });
+
+  it.each([
+    [0, 2000],
+    [1000, 2000],
+    [2000, 5000],
+  ] as const)(
+    "P %ims·T %ims: 잡기는 늘 창이 닫히기 전에 닿는다",
+    (selfWindowMs, catchWindowMs) => {
+      const rules = { selfWindowMs, catchWindowMs };
+      for (const level of [0, 1, 2] as const) {
+        const r = rate(
+          () => {
+            const t = exposedOne(rules);
+            return {
+              view: viewOf(t.state, 0),
+              memory: t.memories[0] as OnecardMemory,
+            };
+          },
+          level,
+          "catch",
+        );
+        expect(r.rate).toBeGreaterThan(0);
+        expect(r.max).toBeLessThanOrEqual(
+          selfWindowMs + catchWindowMs - CATCH_MARGIN_MS,
+        );
+      }
+    },
+  );
+
+  it("너무 늦게 알아채 창 안에 닿지 못하면 누르지 않는다", () => {
+    const t = table({
+      hands: [
+        ["D3", "D4", "C5"],
+        ["H9", "S3"],
+        ["C9", "D8", "SK"],
+      ],
+      pile: ["H5"],
+      turn: 1,
+    });
+    t.act(1, { type: "play", card: "H9" }, 0);
+    const memory = t.memories[0] as OnecardMemory;
+    // P+T = 4초. 3.9초에야 계획을 세우면(창이 닫히기 0.25초 전을 넘었다) 누르지 않는다
+    expect(
+      planShout(viewOf(t.state, 0), 2, createRng(1), memory, 3900),
+    ).toBeNull();
+    // 3초면 바로 누른다
+    const u = exposedOne();
+    const late = u.memories[0] as OnecardMemory;
+    late.exposedAt[1] = 0;
+    const plan = planShout(viewOf(u.state, 0), 2, createRng(1), late, 3000);
+    expect(plan).toMatchObject({ reason: "catch", delayMs: 0 });
+  });
+
+  it("잡을 사람이 둘이면 한 번 눌러 둘 다 잡는다", () => {
+    const t = table({
+      hands: [
+        ["D3", "D4", "C5"],
+        ["H9", "S3"],
+        ["H8", "D8"],
+      ],
+      pile: ["H5"],
+      turn: 1,
+    });
+    t.act(1, { type: "play", card: "H9" }, 0);
+    t.act(2, { type: "play", card: "H8" }, 100);
+    t.act(1, { type: "timeout", kind: "selfWindow", target: 1 }, 1000);
+    t.act(2, { type: "timeout", kind: "selfWindow", target: 2 }, 1100);
+    const memory = t.memories[0] as OnecardMemory;
+    const view = viewOf(t.state, 0);
+    const plan = planShout(view, 2, createRng(1), memory, 1100);
+    expect(plan).toMatchObject({ reason: "catch", targets: [1, 2] });
+    expect(planShout(view, 2, createRng(2), memory, 1100)).toBeNull();
+    const action = shoutAction(
+      plan as NonNullable<typeof plan>,
+      view,
+      memory,
+      1100 + (plan?.delayMs ?? 0),
+    );
+    const events = t.act(0, action as Action, 1100 + (plan?.delayMs ?? 0));
+    expect(events).toContainEqual({ type: "caught", seat: 0, target: 1 });
+    expect(events).toContainEqual({ type: "caught", seat: 0, target: 2 });
   });
 
   it("같은 상황에는 계획을 한 번만 세운다", () => {

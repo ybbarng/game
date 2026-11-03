@@ -16,8 +16,11 @@ export interface OnecardSeatBot {
   readonly level: OnecardLevel;
   /** 차례 행동(내기·먹기, 7의 무늬 포함) */
   chooseAction(view: OnecardView, rng: RngState): Action;
-  /** 몇 ms 뒤에 외칠지. 없으면 null. 받아들인 행동마다 null이 나올 때까지 부른다 */
-  planShout(view: OnecardView, rng: RngState): ShoutPlan | null;
+  /**
+   * 몇 ms 뒤에 외칠지. 없으면 null. 받아들인 행동마다 null이 나올 때까지 부른다.
+   * 잡기는 규칙의 P·T 안에 닿을 때만 낸다. `nowMs`는 `hear`와 같은 시계(없으면 방금 한 장이 된 것으로 본다)
+   */
+  planShout(view: OnecardView, rng: RngState, nowMs?: number): ShoutPlan | null;
   /**
    * 받아들인 행동 하나의 사건과 그 뒤 이 자리 화면. `nowMs`(받아들인 시각)를 주면 본인 시간 P가 지난 늦은
    * 본인 외침(엔진이 받지 않아 여전히 잡힌다)을 가려 잡으러 간다. 없으면 외침은 모두 안전으로 본다
@@ -27,7 +30,7 @@ export interface OnecardSeatBot {
    * 계획한 시간이 됐을 때 넣을 외침(`seen` = 지금 `turnNo`). 그사이 외쳤거나 먹어 누를 까닭이 없어졌으면 null.
    * 부르지 않고 바로 `{type:"shout", seen: view.turnNo}`를 넣어도 되지만, 그러면 헛외침이 늘어난다
    */
-  shoutNow(plan: ShoutPlan, view: OnecardView): Action | null;
+  shoutNow(plan: ShoutPlan, view: OnecardView, nowMs?: number): Action | null;
 }
 
 export function createSeatBot(level: OnecardLevel): OnecardSeatBot {
@@ -39,8 +42,9 @@ export function createSeatBot(level: OnecardLevel): OnecardSeatBot {
   return {
     level,
     chooseAction: (view, rng) => chooseAction(view, level, rng, mind(view)),
-    planShout: (view, rng) => planShout(view, level, rng, mind(view)),
+    planShout: (view, rng, nowMs) =>
+      planShout(view, level, rng, mind(view), nowMs),
     hear: (events, view, nowMs) => observe(mind(view), events, view, nowMs),
-    shoutNow: (plan, view) => shoutAction(plan, view, mind(view)),
+    shoutNow: (plan, view, nowMs) => shoutAction(plan, view, mind(view), nowMs),
   };
 }

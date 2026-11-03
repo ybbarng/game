@@ -19,14 +19,36 @@ export interface ShoutPlan {
    * catch: 외치지 않은 한 장인 남 잡기 / false: 이미 외친 남을 잡으려는 헛외침(입문)
    */
   reason: "pre" | "self" | "catch" | "false";
-  /** 잡을 자리(pre·self는 나) */
+  /** 잡을 자리(pre·self는 나). 잡을 사람이 여럿이면 `targets`의 처음 */
   target: number;
+  /** 잡을 자리 모두. 한 번 누르면 그 판에 창이 열린 사람이 모두 잡히므로 한 번만 누른다 */
+  targets: number[];
   /** 지금부터 누르기까지(ms) */
   delayMs: number;
 }
 
+/** 잡기 창이 닫히기 이만큼 전까지 닿지 못하면 누르지 않는다(ms, 지연·시계 차이 여유) */
+export const CATCH_MARGIN_MS = 250;
+
+/** 한 장이 된 때(모르면 지금)부터 잡을 수 있는 시간이 끝나는 시각 */
+function catchDeadline(
+  view: OnecardView,
+  memory: OnecardMemory,
+  seat: number,
+  now: number,
+): number {
+  const since = memory.exposedAt[seat] ?? now;
+  return (
+    since + view.rules.selfWindowMs + view.rules.catchWindowMs - CATCH_MARGIN_MS
+  );
+}
+
 function between(rng: RngState, [lo, hi]: readonly [number, number]): number {
-  return Math.round(lo + (hi - lo) * nextFloat(rng));
+  return Math.round(between01(rng, [lo, hi]));
+}
+
+function between01(rng: RngState, [lo, hi]: readonly [number, number]): number {
+  return lo + (hi - lo) * nextFloat(rng);
 }
 
 /** 이 상황에 계획을 처음 세우나(세웠으면 다시 세우지 않는다) */
@@ -38,13 +60,15 @@ function firstTime(memory: OnecardMemory, key: string): boolean {
 
 /**
  * 외침 계획 하나. 없으면 null. 한 번 부를 때 하나만 내므로 null이 나올 때까지 부른다.
- * 기억(`memory`)이 꼭 있어야 한다: 화면은 누가 외쳤는지 숨긴다
+ * 기억(`memory`)이 꼭 있어야 한다: 화면은 누가 외쳤는지 숨긴다.
+ * `now`: 지금 시각(`observe`에 준 시계와 같은 것). 없으면 방금 한 장이 된 것으로 본다
  */
 export function planShout(
   view: OnecardView,
   level: OnecardLevel,
   rng: RngState,
   memory: OnecardMemory,
+  now?: number,
 ): ShoutPlan | null {
   if (view.phase === "over") return null;
   const me = view.mySeat;
@@ -60,7 +84,12 @@ export function planShout(
     if (selfMs > 0 && nextFloat(rng) < profile.shout) {
       const hi = Math.min(profile.selfMs[1], selfMs - 100);
       const lo = Math.min(profile.selfMs[0], hi);
-      return { reason: "self", target: me, delayMs: between(rng, [lo, hi]) };
+      return {
+        reason: "self",
+        target: me,
+        targets: [me],
+        delayMs: between(rng, [lo, hi]),
+      };
     }
   }
 
@@ -77,23 +106,51 @@ export function planShout(
       return {
         reason: "pre",
         target: me,
+        targets: [me],
         delayMs: between(rng, profile.preMs),
       };
   }
 
-  // 남: 외치지 않은 한 장짜리를 잡는다. 입문은 이미 외친 사람도 가끔 잡으려 한다(헛외침)
+  // 남: 외치지 않은 한 장짜리를 잡는다. 아직 정하지 않은 사람을 모아 한 번에 정한다(한 번 누르면 모두 잡힌다)
+  const span = view.rules.selfWindowMs + view.rules.catchWindowMs;
+  const fresh: number[] = [];
+  for (let seat = 0; seat < view.rules.players; seat++) {
+    if (seat === me || !isActiveSeat(view, seat)) continue;
+    if (
+      memory.marks[seat] === "exposed" &&
+      firstTime(memory, `catch:${seat}:${memory.markIds[seat]}`)
+    )
+      fresh.push(seat);
+  }
+  if (fresh.length > 0 && nextFloat(rng) < profile.catch) {
+    // 지금 시각을 모르면 방금 한 장이 된 것으로 본다
+    const known = fresh.flatMap((s) => {
+      const t = memory.exposedAt[s];
+      return t === null || t === undefined ? [] : [t];
+    });
+    const at = now ?? (known.length > 0 ? Math.max(...known) : 0);
+    // 가장 늦게 한 장이 된 사람을 알아챈 때부터 잰다
+    const base = Math.max(...fresh.map((s) => memory.exposedAt[s] ?? at));
+    // 늦게 알아챘으면(계획을 늦게 세웠으면) 지금 바로
+    const pressAt = Math.max(at, base + span * between01(rng, profile.catchAt));
+    // 누르는 때 아직 창이 열려 있을 사람만. 아무도 없으면 누르지 않는다(늦은 누름은 헛외침이 될 수 있다)
+    const targets = fresh.filter(
+      (s) => catchDeadline(view, memory, s, at) >= pressAt,
+    );
+    if (targets.length > 0)
+      return {
+        reason: "catch",
+        target: targets[0] as number,
+        targets,
+        delayMs: Math.max(0, Math.round(pressAt - at)),
+      };
+  }
+
+  // 입문은 이미 외친 사람도 가끔 잡으려 한다(헛외침)
   for (let seat = 0; seat < view.rules.players; seat++) {
     if (seat === me || !isActiveSeat(view, seat)) continue;
     const mark = memory.marks[seat];
     const id = memory.markIds[seat];
-    if (mark === "exposed" && firstTime(memory, `catch:${seat}:${id}`)) {
-      if (nextFloat(rng) < profile.catch)
-        return {
-          reason: "catch",
-          target: seat,
-          delayMs: between(rng, profile.catchMs),
-        };
-    }
     if (
       mark === "safe" &&
       profile.falseShout > 0 &&
@@ -103,7 +160,8 @@ export function planShout(
         return {
           reason: "false",
           target: seat,
-          delayMs: between(rng, profile.catchMs),
+          targets: [seat],
+          delayMs: Math.round(span * between01(rng, profile.catchAt)),
         };
     }
   }
@@ -118,6 +176,7 @@ export function shoutAction(
   plan: ShoutPlan,
   view: OnecardView,
   memory: OnecardMemory,
+  now?: number,
 ): Action | null {
   if (view.phase === "over" || !isActiveSeat(view, view.mySeat)) return null;
   const me = view.mySeat;
@@ -136,7 +195,16 @@ export function shoutAction(
         ? shout
         : null;
     case "catch":
-      return memory.marks[plan.target] === "exposed" ? shout : null;
+      // 잡을 사람 가운데 아직 외치지도 먹지도 않았고, (시각을 알면) 창이 닫히지 않은 사람이 있을 때만
+      return plan.targets.some(
+        (s) =>
+          memory.marks[s] === "exposed" &&
+          (now === undefined ||
+            memory.exposedAt[s] === null ||
+            now <= catchDeadline(view, memory, s, now)),
+      )
+        ? shout
+        : null;
     case "false":
       return view.handCounts[plan.target] === 1 ? shout : null;
   }

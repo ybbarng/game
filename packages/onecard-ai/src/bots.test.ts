@@ -72,7 +72,8 @@ describe("단계 목록", () => {
     const [a, b, c] = ONECARD_LEVELS.map((l) => l.shout);
     expect(a?.shout).toBeLessThan(b?.shout as number);
     expect(b?.catch).toBeLessThan(c?.catch as number);
-    expect(c?.catchMs[1]).toBeLessThanOrEqual(a?.catchMs[0] as number);
+    expect(c?.catchAt[1]).toBeLessThanOrEqual(a?.catchAt[0] as number);
+    expect(ONECARD_LEVELS.every((l) => l.shout.catchAt[1] < 1)).toBe(true);
     expect(onecardBotFor(0).name).toBe("onecard-beginner");
     expect(onecardBotFor(2).name).toBe("onecard-expert");
   });
