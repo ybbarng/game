@@ -254,7 +254,22 @@ function KeymapSection({
 
   return (
     <section className="flex flex-col gap-3" data-settings-keymap>
-      <h2 className="font-semibold text-lg">키 배치</h2>
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h2 className="font-semibold text-lg">키 배치</h2>
+        <a
+          href="/cube/keys"
+          data-keys-map-link
+          className="text-sky-300 text-sm underline-offset-2 hover:underline"
+        >
+          키보드 그림으로 보기
+        </a>
+        <a
+          href="/cube/keys/learn"
+          className="text-sky-300 text-sm underline-offset-2 hover:underline"
+        >
+          키 익히기
+        </a>
+      </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {(["twoHand", "notation"] as const).map((p) => (
           <button

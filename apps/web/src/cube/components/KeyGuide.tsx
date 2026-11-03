@@ -1,14 +1,14 @@
 "use client";
 
-import { actionLabel, isAvailable } from "../input/actions";
+import { actionLabel } from "../input/actions";
 import {
   chordLabel,
   chordsFor,
   codeLabel,
   type Keymap,
   PRESET_LABEL,
-  resolveAction,
 } from "../input/keymaps";
+import { keyLayers } from "../keys/layout";
 
 /** 키 그림(지금 배치). 칸의 굵은 글은 그냥 칠 때, 흐린 글은 Shift와 함께 칠 때 */
 
@@ -52,15 +52,6 @@ const KEY_ROWS = [
   ],
 ];
 
-const key = (code: string, shift = false) => ({
-  code,
-  shiftKey: shift,
-  altKey: false,
-  ctrlKey: false,
-  metaKey: false,
-  repeat: false,
-});
-
 const COMMAND_KEYS = [
   "undo",
   "reset",
@@ -81,10 +72,7 @@ export function KeyGuide({
   lit: string | null;
 }) {
   const cell = (code: string) => {
-    const plain = resolveAction(keymap, key(code));
-    const shift = resolveAction(keymap, key(code, true));
-    const usable = (a: string | null): a is string =>
-      a !== null && isAvailable(n, a);
+    const { plain, shift } = keyLayers(keymap, n, code);
     return (
       <div
         key={code}
@@ -97,10 +85,10 @@ export function KeyGuide({
       >
         <span className="text-white/40">{codeLabel(code)}</span>
         <span className="font-semibold text-xs">
-          {usable(plain) ? actionLabel(plain) : ""}
+          {plain?.usable ? plain.label : ""}
         </span>
         <span className="text-white/50">
-          {usable(shift) ? actionLabel(shift) : ""}
+          {shift?.usable ? shift.label : ""}
         </span>
       </div>
     );

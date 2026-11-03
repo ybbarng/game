@@ -5,6 +5,15 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { algLink } from "../algs/link";
+import {
+  type AlgBook,
+  algsOf,
+  loadAlgBook,
+  saveAlgBook,
+  setUsed,
+  usedAlg,
+} from "../algs/store";
 import type { Command } from "../input";
 import {
   ALG_SETS,
@@ -82,7 +91,11 @@ export function TrainApp() {
   const [syncToken, setSyncToken] = useState(0);
   const [, tick] = useState(0);
 
-  useEffect(() => setBook(loadTrain()), []);
+  const [algBook, setAlgBook] = useState<AlgBook>({});
+  useEffect(() => {
+    setBook(loadTrain());
+    setAlgBook(loadAlgBook());
+  }, []);
 
   const pool = useMemo(() => {
     const ids = set.cases.map((c) => c.id);
@@ -200,7 +213,9 @@ export function TrainApp() {
         className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4"
         data-train-set={set.set}
         data-train-case={cur?.c.id}
-        data-train-answer={cur?.t.answer}
+        data-train-answer={
+          cur ? `${cur.t.preAuf} ${usedAlg(algBook, cur.c)}`.trim() : undefined
+        }
         data-train-phase={phase}
       >
         <header className="flex flex-wrap items-center gap-3">
@@ -209,8 +224,14 @@ export function TrainApp() {
           </a>
           <h1 className="font-bold text-lg">공식 훈련</h1>
           <a
-            href="/cube/learn"
+            href="/cube/algs"
             className="ml-auto text-sm text-white/70 hover:text-white"
+          >
+            공식 모음
+          </a>
+          <a
+            href="/cube/learn"
+            className="text-sm text-white/70 hover:text-white"
           >
             배우기
           </a>
@@ -334,7 +355,18 @@ export function TrainApp() {
                     {showAlgs ? "공식 숨기기" : "공식 보기"}
                   </button>
                 </div>
-                {showAlgs && <AlgView c={cur.c} t={cur.t} />}
+                {showAlgs && (
+                  <AlgView
+                    c={cur.c}
+                    t={cur.t}
+                    book={algBook}
+                    onUse={(alg) => {
+                      const b = setUsed(algBook, cur.c, alg);
+                      setAlgBook(b);
+                      saveAlgBook(b);
+                    }}
+                  />
+                )}
                 {state && (
                   <CubePlay
                     n={cur.t.n}
@@ -420,9 +452,21 @@ export function TrainApp() {
   );
 }
 
-/** 대표·대안 공식과 손가락 표기 */
-function AlgView({ c, t }: { c: AlgCase; t: TrainCase }) {
+/** 대표·대안·내 공식과 손가락 표기(대표만). 쓰는 공식을 여기서도 고른다 */
+function AlgView({
+  c,
+  t,
+  book,
+  onUse,
+}: {
+  c: AlgCase;
+  t: TrainCase;
+  book: AlgBook;
+  onUse: (alg: string) => void;
+}) {
   const fingers = c.fingers?.split(/\s+/) ?? [];
+  const used = usedAlg(book, c);
+  const list = algsOf(book, c);
   return (
     <div className="flex w-full max-w-xl flex-col gap-2 rounded-xl bg-white/5 p-3 text-sm">
       {t.preAuf && (
@@ -432,14 +476,34 @@ function AlgView({ c, t }: { c: AlgCase; t: TrainCase }) {
         </p>
       )}
       <ol className="flex flex-col gap-2">
-        {c.algs.map((alg, i) => (
-          <li key={alg} className="flex flex-col gap-1">
-            <span className="text-white/50 text-xs">
-              {i === 0 ? "대표 공식" : `대안 ${i}`}
+        {list.map(({ alg, kind }, i) => (
+          <li key={alg} className="flex flex-col gap-1" data-train-alg={kind}>
+            <span className="flex items-center gap-2 text-white/50 text-xs">
+              {kind === "main"
+                ? "대표 공식"
+                : kind === "alt"
+                  ? `대안 ${i}`
+                  : "내 공식"}
+              <button
+                type="button"
+                aria-pressed={alg === used}
+                onClick={(e) => {
+                  onUse(alg);
+                  e.currentTarget.blur();
+                }}
+                className={cn(
+                  "rounded px-1.5 py-0.5",
+                  alg === used
+                    ? "bg-sky-500 font-semibold text-black"
+                    : "bg-white/10 text-white/80 hover:bg-white/15",
+                )}
+              >
+                {alg === used ? "쓰는 중" : "쓰기"}
+              </button>
             </span>
             <span className="flex flex-wrap gap-1 font-mono">
               {algTokens(alg).map((tok, k) => {
-                const f = i === 0 ? fingers[k] : undefined;
+                const f = kind === "main" ? fingers[k] : undefined;
                 return (
                   <span
                     // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
@@ -461,6 +525,13 @@ function AlgView({ c, t }: { c: AlgCase; t: TrainCase }) {
         ))}
       </ol>
       {c.note && <p className="break-keep text-white/60 text-xs">{c.note}</p>}
+      <a
+        href={algLink(c.id)}
+        data-train-algs-link
+        className="self-start text-sky-300 text-xs hover:text-sky-200"
+      >
+        공식 모음
+      </a>
     </div>
   );
 }

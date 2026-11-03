@@ -9,6 +9,7 @@ export { EDGE_PARITY_TEXT, PLL_PARITY_TEXT } from "./macros";
 export {
   colorsFromFacelets,
   REDUCTION_SIZES,
+  type ReductionLimits,
   type ReductionSolution,
   type ReductionStage,
   type ReductionStageId,
