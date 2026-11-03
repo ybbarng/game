@@ -10,8 +10,11 @@ export default defineConfig({
   // 여러 탭 멘탈 포커처럼 무거운 시험은 파일 안에서 따로 정한다
   timeout: 90_000,
   fullyParallel: true,
-  // CI도 list를 함께 써서 시험마다 걸린 시간을 로그에 남긴다(느린 시험을 찾을 때 `gh run view --log`로 본다)
-  reporter: process.env.CI ? [["list"], ["github"]] : "list",
+  // CI도 list를 함께 써서 시험마다 걸린 시간을 로그에 남긴다(느린 시험을 찾을 때 `gh run view --log`로 본다).
+  // json은 시험마다 걸린 시간을 파일로 남겨, CI가 artifact로 올리고 scripts/slow-tests.mjs가 기준과 비교한다
+  reporter: process.env.CI
+    ? [["list"], ["github"], ["json", { outputFile: "test-times/e2e.json" }]]
+    : "list",
   // 끝에 느린 파일 목록을 낸다(파일 하나가 이보다 오래 걸리면)
   reportSlowTests: { max: 15, threshold: 30_000 },
   use: {
