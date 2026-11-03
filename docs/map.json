@@ -1086,7 +1086,7 @@
       "parent": "next-games",
       "status": "fog",
       "size": 2,
-      "summary": "멘탈 포커로 역할을 나눠 사회자 없이도, 방장도 모르게",
+      "summary": "멘탈 포커로 역할을 나눠 사회자 없이도, 방장도 모르게. 역할 나누기·한 사람에게만 보여 주기·동시 봉인 투표·판 끝 정체 공개는 next-hidden과 같은 「숨은 편 틀」로 쓴다(PR #70 docs/50 7절)",
       "found": "2026-10-29"
     },
     {
@@ -1611,6 +1611,80 @@
           "recommend": "관측 1분 전, .ics는 푸시를 정할 때 다시",
           "status": "decided",
           "decided": "푸시를 하지 않아 없음(2026-11-03 사용자: 진동만)"
+        }
+      ]
+    },
+    {
+      "id": "next-hidden",
+      "title": "숨은 편 카드 게임",
+      "parent": "next-games",
+      "status": "fog",
+      "size": 3,
+      "summary": "docs/50 기획(2026-11-04, 기획만). 사용자가 대학 때 즐긴 두 숨은 편 카드 게임의 재미(행동이 곧 증거, 보여 준 카드는 진짜, 한 사람에게만 보여 주기, 모두가 아는 지도자, 혼자 이기려는 배신자, 선언 도박)를 분석하고 장르의 틀만 가져온 새 게임 안 셋: A 「도성의 밤」(포도대장·인장·골목 지도, 탈락 없이 넘어지면 정체 공개), B 「아르고호의 두 모임」(별 따기 우주국 연구선, 값이 숨은 물건의 합으로 항로 선언, 몸수색 봉인 투표, 별 사건), C 「도깨비 장터」(추천: 장터지기만 사람 편 선언, 방망이로 비밀이나 물건을 내놓게, 구미호는 선언에 이름이 오르면 혼자 승, 첫닭이면 도깨비 승). 6~10명, 빈자리 컴퓨터. 보여 주기는 지정 확인자 증명으로 남에게 넘겨줄 수 없게. 원작 이름·카드 글·그림·능력표·역할 표·숫자는 쓰지 않음. 기획 초안은 PR #70(열려 있음, 머지는 사용자가 3판 결과를 보고 정함). hidden 세션은 2026-11-04 닫음, game 헤드쿼터가 이어받음. git 밖 원자료(가상 대국 보고서 20판·아이디어 원문 100개): ~/personal/projects/game/private/hidden-games/ (README에 「원문, 고치지 않음」)",
+      "next": "PR #70 이어 가기: ① docs/50-*.md 다섯과 docs/50-playtests/log.jsonl을 docs/50-hidden/ 폴더로 묶고 README(읽는 순서 sides → ideas → fun-criteria → loop → rescore), 링크 고치기 ② 「원작과 무엇이 다른가」 표를 판마다 고치기(특히 도성의 밤 계열) ③ 3판: 열 게임(docs/50-hidden-ideas.md 4-1~4-10)마다 docs/50-fun-criteria.md 3절 설계 점검표를 2판 규칙으로 채움 → 뼈대(끝 조건, 편마다 자기 시계, 행동마다 득을 보는 편)부터 3~6개 고침 → 다시 채워 흠이 옮겨 가지 않았는지(H2·H3·H5·H19) → 게임 절 끝에 「3판」 단락(다섯 게임씩 서브에이전트 둘) ④ 대국: docs/50-hidden-loop.md 5절 진행자 지시 틀, 진행자 1 + 플레이어 5~7, 두세 게임씩, 보고서는 private/hidden-games/playtests/, 저장소엔 log.jsonl 한 줄 ⑤ 판정은 관문 G1~G7(2절)·현황판(3-4). 지금 메밀묵 금기가 G1~G5 통과, 구미호 구슬 2판 83점이 가장 가까움 ⑥ 새 다섯 안(D-05·F-09·F-16·K-17·R-25) 1판 설계 → 대국, 05 발자국 3판과 D-05 합칠지. 관문을 넘는 게임이 나오면 사람 시험 → 공통 숨은 편 틀 → 구현",
+      "found": "2026-11-04",
+      "links": [
+        {
+          "label": "PR #70 숨은 편 기획 초안",
+          "url": "https://github.com/ybbarng/game/pull/70"
+        },
+        {
+          "label": "다듬는 틀(브랜치 hidden-review)",
+          "url": "https://github.com/ybbarng/game/blob/hidden-review/docs/50-hidden-loop.md"
+        },
+        {
+          "label": "숨은 편 게임 기획(브랜치)",
+          "url": "https://github.com/ybbarng/game/blob/hidden-review/docs/50-hidden-sides.md"
+        },
+        {
+          "label": "멘탈 포커",
+          "path": "docs/13-mental-poker.md"
+        },
+        {
+          "label": "공정한 동시 판정",
+          "path": "docs/43-fair-simultaneity.md"
+        }
+      ],
+      "signs": [
+        {
+          "id": "hidden-order",
+          "type": "fork",
+          "title": "next-mafia와 순서",
+          "owner": "me",
+          "options": [
+            "공통 틀 + 라이어 먼저",
+            "이 게임 먼저",
+            "따로 만들기"
+          ],
+          "recommend": "공통 숨은 편 틀을 라이어로 시험한 뒤 C",
+          "status": "open"
+        },
+        {
+          "id": "hidden-host-bots",
+          "type": "risk",
+          "title": "컴퓨터 자리 정체를 방장 기기가 안다(지금 온라인 방 구조). 모르는 사람과는 빈자리를 사람으로, 나중에 문턱 열쇠로 나눠 들기"
+        },
+        {
+          "id": "hidden-first",
+          "type": "fork",
+          "title": "처음 만들 게임",
+          "owner": "me",
+          "options": [
+            "3판 결과로 관문(G1~G7)을 넘는 게임",
+            "사람 시험을 먼저 해 보고 정하기"
+          ],
+          "recommend": "3판 결과로 관문을 넘는 게임(전의 「어느 안부터」·「세계관」 갈림길은 열 게임 3판으로 바뀌어 닫음)",
+          "status": "open"
+        },
+        {
+          "id": "hidden-ai-playtest",
+          "type": "risk",
+          "title": "AI 가상 대국은 사람 재미를 대신하지 못한다(AI는 결정적 증거 하나로 몰아감, H16). 관문은 판의 모양(길이·핵심 장치·모든 자리)을 먼저 본다"
+        },
+        {
+          "id": "hidden-fix-moves",
+          "type": "risk",
+          "title": "고침이 흠을 옮긴다(2판에서 넷: 파루 종·아홉 꼬리·탈 바꾸기·야간 당직)"
         }
       ]
     }
