@@ -29,6 +29,7 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
+import { piecesInDanger } from "../danger";
 import { BIKJANG_INFO, JANGGI_LEVELS, useJanggiSettings } from "../settings";
 import { useJanggi } from "../store";
 import { JanggiBoard, pieceLabel, SIDE_COLOR } from "./JanggiBoard";
@@ -148,6 +149,7 @@ export function JanggiGame({
   const canUndo = useJanggi((s) => s.canUndo());
   const clearNotice = useJanggi((s) => s.clearNotice);
   const labels = useJanggiSettings((s) => s.labels);
+  const dangerHint = useJanggiSettings((s) => s.dangerHint);
   const [selected, setSelected] = useState<number | null>(null);
   const [hint, setHint] = useState<Move | null>(null);
   // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
@@ -316,6 +318,11 @@ export function JanggiGame({
           checkedKing={checkedKing}
           labels={labels}
           hint={hint}
+          danger={
+            dangerHint && view.phase === "play" && !mission
+              ? piecesInDanger(view.board, mySide)
+              : []
+          }
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>

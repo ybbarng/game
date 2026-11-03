@@ -25,6 +25,8 @@ const BOARD = "#e4bb6f";
 const LINE = "#3b2a14";
 /** 마지막 수 표시(출발 점선 고리·도착 고리) */
 const LAST_COLOR = "#1d4ed8";
+/** 잡힐 위험 표시 */
+const DANGER_COLOR = "#e11d48";
 /** 힌트(고수가 고른 수) 표시 */
 const HINT_COLOR = "#059669";
 
@@ -118,6 +120,7 @@ export function JanggiBoard({
   checkedKing,
   labels,
   hint = null,
+  danger = [],
 }: {
   board: readonly Cell[];
   /** 한 편이면 판을 뒤집어 내 편을 아래에 둔다 */
@@ -133,6 +136,8 @@ export function JanggiBoard({
   labels: PieceLabels;
   /** 힌트: 고수가 고른 수의 출발·도착에 초록 고리 */
   hint?: Move | null;
+  /** 잡힐 위험이 있는 내 기물 자리(빨간 점선 고리) */
+  danger?: readonly number[];
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const id = `piece${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -422,6 +427,21 @@ export function JanggiBoard({
           />
         );
       })}
+
+      {danger.map((i) => (
+        <circle
+          key={`d${i}`}
+          cx={at(i)[0]}
+          cy={at(i)[1]}
+          r={0.5}
+          fill="none"
+          stroke={DANGER_COLOR}
+          strokeWidth={0.06}
+          strokeDasharray="0.12 0.08"
+          data-danger={pointName(i)}
+          pointerEvents="none"
+        />
+      ))}
 
       {hint &&
         [hint.from, hint.to].map((i, n) => (
