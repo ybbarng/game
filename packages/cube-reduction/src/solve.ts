@@ -100,6 +100,20 @@ export class ReductionStuckError extends Error {
 }
 
 /**
+ * 단계마다 공식을 되풀이하는 상한. 제품은 기본값을 쓴다. 지금 아는 섞기로는 축소법이 막히지
+ * 않으므로, 시험이 상한을 줄여 진짜 축소법 길에서 `too-long`으로 막히게 할 때 넣는다(결정적).
+ */
+export interface ReductionLimits {
+  /** 가운데 한 묶음(흰 면, 노란 면, 나머지)마다 공식 수. 기본 500 */
+  centerSteps?: number;
+  /** 모서리 짝 한 단계마다 공식 수. 기본 100 */
+  edgeSteps?: number;
+}
+
+const CENTER_STEPS = 500;
+const EDGE_STEPS = 100;
+
+/**
  * 면 f의 가운데가 맞아야 할 색. 홀수 크기는 정가운데 조각 색, 짝수는 기본 방향(U흰 F초록).
  *
  * 4×4는 정가운데 조각이 없어 어떻게 쥐고 있든 흰 면을 위(U), 초록을 앞(F)으로 맞춘다. 사람은
@@ -161,6 +175,7 @@ function solveCenterPhase(
   target: readonly number[],
   weight: (face: number) => number,
   out: CubeMove[],
+  maxSteps: number,
 ): Colors {
   const g = reductionGeometry(n);
   const { inserts, cycles } = centerMacros(n);
@@ -171,7 +186,7 @@ function solveCenterPhase(
     w[p] = weight(faceOfSticker(n, p));
   }
   let cur = colors;
-  for (let guard = 0; guard < 500; guard++) {
+  for (let guard = 0; guard < maxSteps; guard++) {
     if (g.centers.every((p) => w[p] === 0 || cur[p] === want[p])) return cur;
     // 준비 수(면마다 0~3번 돌리기)를 돌린 색 배열. 번호 = Σ 돌린 횟수 × 4^면
     const setupColors: (Colors | undefined)[] = [];
@@ -324,6 +339,7 @@ function solveEdgePhase(
   colors: Colors,
   goal: number,
   out: CubeMove[],
+  maxSteps: number,
 ): Colors {
   const g = reductionGeometry(n);
   const t = slotTable(n);
@@ -370,7 +386,7 @@ function solveEdgePhase(
     }
     return best;
   };
-  for (let guard = 0; guard < 100; guard++) {
+  for (let guard = 0; guard < maxSteps; guard++) {
     if (pairedCount(n, cur) >= goal) return cur;
     // 짝 짓기 공식이 수 다섯에 하나 넘게 맞추면 그것으로, 아니면 날개 세 개 돌리기까지 본다.
     let best = search(2, pairs, undefined);
@@ -436,17 +452,21 @@ export function solveReduction(facelets: string): ReductionSolution {
 export function solveReductionState(
   n: number,
   state: PuzzleState,
+  limits: ReductionLimits = {},
 ): ReductionSolution {
-  return solveReductionColors(n, faceColors(n, state));
+  return solveReductionColors(n, faceColors(n, state), limits);
 }
 
 export function solveReductionColors(
   n: number,
   colors: Colors,
+  limits: ReductionLimits = {},
 ): ReductionSolution {
   if (!REDUCTION_SIZES.includes(n)) {
     throw new RangeError(`축소법은 4×4·5×5만 푼다: ${n}×${n}`);
   }
+  const centerSteps = limits.centerSteps ?? CENTER_STEPS;
+  const edgeSteps = limits.edgeSteps ?? EDGE_STEPS;
   const target = centerTargets(n, colors);
   const faceOfColor = new Array<number>(6).fill(-1);
   target.forEach((c, f) => {
@@ -476,6 +496,7 @@ export function solveReductionColors(
       target,
       (f) => (f === 0 ? 1 : 0),
       out,
+      centerSteps,
     );
     return solveCenterPhase(
       "centers-ud",
@@ -484,6 +505,7 @@ export function solveReductionColors(
       target,
       (f) => (f === 0 ? 1000 : f === 3 ? 1 : 0),
       out,
+      centerSteps,
     );
   });
   run("centers-rest", (out) =>
@@ -494,10 +516,13 @@ export function solveReductionColors(
       target,
       (f) => (f === 0 || f === 3 ? 1000 : 1),
       out,
+      centerSteps,
     ),
   );
-  run("edges", (out) => solveEdgePhase("edges", n, cur, 10, out));
-  run("last-edges", (out) => solveEdgePhase("last-edges", n, cur, 12, out));
+  run("edges", (out) => solveEdgePhase("edges", n, cur, 10, out, edgeSteps));
+  run("last-edges", (out) =>
+    solveEdgePhase("last-edges", n, cur, 12, out, edgeSteps),
+  );
 
   if (n % 2 === 0) {
     run("oll-parity", (out) => {

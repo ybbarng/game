@@ -8,6 +8,7 @@ import {
 import {
   EDGE_PARITY_TEXT,
   PLL_PARITY_TEXT,
+  type ReductionLimits,
   type ReductionSolution,
   type ReductionStageId,
   ReductionStuckError,
@@ -107,7 +108,20 @@ export function reduceWithRegrip(
   throw stuck;
 }
 
-function reduction(n: number, state: PuzzleState): ReductionSolution {
+/**
+ * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다. 그때는 기억을 건너뛴다(기본
+ * 상한으로 푼 해를 돌려주거나, 막힌 결과로 다른 시험을 흐리지 않게).
+ */
+function reduction(
+  n: number,
+  state: PuzzleState,
+  limits?: ReductionLimits,
+): ReductionSolution {
+  if (limits) {
+    return reduceWithRegrip(n, state, (size, s) =>
+      solveReductionState(size, s, limits),
+    );
+  }
   const key = `${n}:${faceColors(n, state).join("")}`;
   const hit = reductionCache.get(key);
   if (hit) return hit;
@@ -123,8 +137,9 @@ export function solveBigHuman(
   steps: readonly Step[],
   n: number,
   state: PuzzleState,
+  limits?: ReductionLimits,
 ): HumanSolve {
-  const red = reduction(n, state);
+  const red = reduction(n, state, limits);
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
   const moves: string[] = [];
   const stages: HumanSolve["stages"] = [];
@@ -183,8 +198,12 @@ export function solveBigHuman(
 }
 
 /** 4×4·5×5 초고수: 축소법 + 2단계 3×3 해법(cube-reduction 그대로, 패리티는 3×3 앞에서) */
-export function solveBigExpert(n: number, state: PuzzleState): HumanSolve {
-  const red = reduction(n, state);
+export function solveBigExpert(
+  n: number,
+  state: PuzzleState,
+  limits?: ReductionLimits,
+): HumanSolve {
+  const red = reduction(n, state, limits);
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
   const stages = red.stages.map((st) => ({
     name: (REDUCTION_STAGE[st.id] ?? st.id) as StageName,
