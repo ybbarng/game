@@ -16,7 +16,7 @@ import {
   sideOfSeat,
   timeControlOf,
 } from "@game/janggi-engine";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
@@ -152,6 +152,8 @@ export function JanggiGame({
   const dangerHint = useJanggiSettings((s) => s.dangerHint);
   const [selected, setSelected] = useState<number | null>(null);
   const [hint, setHint] = useState<Move | null>(null);
+  /** 힌트로 고수가 쉬기를 골랐다 */
+  const [hintPass, setHintPass] = useState(false);
   // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
   const [confirmResign, setConfirmResign] = useState(false);
   const played = view?.played.length ?? 0;
@@ -167,8 +169,18 @@ export function JanggiGame({
   useEffect(() => {
     setSelected(null);
     setHint(null);
+    setHintPass(false);
     setConfirmResign(false);
   }, [played]);
+
+  // 잡힐 위험 표시는 판이 바뀔 때만 다시 센다.
+  const danger = useMemo(
+    () =>
+      view && host && dangerHint && view.phase === "play" && !mission
+        ? piecesInDanger(view.board, sideOfSeat(view, host.seat))
+        : [],
+    [view, host, dangerHint, mission],
+  );
 
   if (!view || !host) return null;
   const me = host.seat;
@@ -196,11 +208,13 @@ export function JanggiGame({
     status = myMove
       ? view.check === mySide
         ? "장군! 궁을 지키세요"
-        : selected !== null
-          ? hint && selected === hint.from
-            ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
-            : "갈 곳을 누르세요"
-          : "내 차례 — 옮길 기물을 누르세요"
+        : hintPass
+          ? "힌트: 지금은 쉬어도 돼요(「한 수 쉬기」)"
+          : selected !== null
+            ? hint && selected === hint.from
+              ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
+              : "갈 곳을 누르세요"
+            : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -318,11 +332,7 @@ export function JanggiGame({
           checkedKing={checkedKing}
           labels={labels}
           hint={hint}
-          danger={
-            dangerHint && view.phase === "play" && !mission
-              ? piecesInDanger(view.board, mySide)
-              : []
-          }
+          danger={danger}
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
@@ -373,7 +383,12 @@ export function JanggiGame({
                   const action = janggiBotFor(2).decide(view, {
                     seed: played + 1,
                   });
-                  if (action.type !== "move") return;
+                  if (action.type !== "move") {
+                    setHint(null);
+                    setHintPass(action.type === "pass");
+                    return;
+                  }
+                  setHintPass(false);
                   setHint({ from: action.from, to: action.to });
                   setSelected(action.from);
                 }}

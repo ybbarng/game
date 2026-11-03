@@ -1,6 +1,8 @@
 import {
+  applyMove,
   type Board,
   CELLS,
+  inCheck,
   type Kind,
   other,
   PIECE_VALUE,
@@ -8,21 +10,22 @@ import {
   type Side,
 } from "@game/janggi-engine";
 
-/** `side` 편 기물 가운데 `at`을 잡을 수 있는 기물의 종류(궁이 잡히는지는 보지 않는다) */
-function attackersOf(board: Board, at: number, side: Side): Kind[] {
-  const kinds: Kind[] = [];
+/** `side` 편이 `at`을 실제로(자기 궁을 드러내지 않고) 잡을 수 있나 */
+function canTake(board: Board, at: number, side: Side): boolean {
   for (let from = 0; from < CELLS; from++) {
     const cell = board[from] ?? "";
-    if (cell.startsWith(side) && pseudoTargets(board, from).includes(at))
-      kinds.push(cell[1] as Kind);
+    if (!cell.startsWith(side) || !pseudoTargets(board, from).includes(at))
+      continue;
+    if (!inCheck(applyMove(board, { from, to: at }), side)) return true;
   }
-  return kinds;
+  return false;
 }
 
 /**
- * 잡힐 위험이 있는 `side` 편 기물 자리: 상대가 잡을 수 있는데 지키는 기물이 없거나,
- * 더 작은 기물로 잡을 수 있으면 위험이다(잡고 다시 잡혀도 상대가 이득). 궁은 장군 표시가 따로 있어 뺀다.
- * 화면 도움일 뿐이라 궁이 드러나는 수(장군 피하기)까지는 따지지 않는다
+ * 잡힐 위험이 있는 `side` 편 기물 자리. 상대가 그 기물을 실제로 잡아 본 판에서 따진다:
+ * 잡는 기물이 더 싸거나(잡고 다시 잡혀도 상대가 이득), 내가 자기 궁을 드러내지 않고 되받아 잡을 수 없으면 위험이다.
+ * 잡는 수가 상대 자기 궁을 드러내면(규칙 위반) 건너뛴다. 잡으러 온 기물이 그 칸에 서고 원래 칸이 비는 것까지
+ * 반영하므로 포가 포를 못 잡는 규칙도 맞는다. 궁은 장군 표시가 따로 있어 뺀다
  */
 export function piecesInDanger(board: Board, side: Side): number[] {
   const enemy = other(side);
@@ -30,21 +33,23 @@ export function piecesInDanger(board: Board, side: Side): number[] {
   for (let at = 0; at < CELLS; at++) {
     const cell = board[at] ?? "";
     if (!cell.startsWith(side) || cell[1] === "K") continue;
-    const kind = cell[1] as Kind;
-    const attackers = attackersOf(board, at, enemy);
-    if (attackers.length === 0) continue;
-    const cheapest = Math.min(
-      ...attackers.map((k) => (k === "K" ? Infinity : PIECE_VALUE[k])),
-    );
-    if (cheapest < PIECE_VALUE[kind]) {
-      danger.push(at);
-      continue;
+    const value = PIECE_VALUE[cell[1] as Kind];
+    for (let from = 0; from < CELLS; from++) {
+      const attacker = board[from] ?? "";
+      if (
+        !attacker.startsWith(enemy) ||
+        !pseudoTargets(board, from).includes(at)
+      )
+        continue;
+      const next = applyMove(board, { from, to: at });
+      if (inCheck(next, enemy)) continue;
+      const kind = attacker[1] as Kind;
+      const cheaper = kind !== "K" && PIECE_VALUE[kind] < value;
+      if (cheaper || !canTake(next, at, side)) {
+        danger.push(at);
+        break;
+      }
     }
-    // 지키는 기물: 그 자리에 상대 기물이 있다고 보고 내 기물이 잡을 수 있나.
-    // 같은 종류로 바꿔 두어야 포가 포를 못 잡는 규칙까지 맞는다.
-    const probe = [...board];
-    probe[at] = `${enemy}${kind}` as (typeof probe)[number];
-    if (attackersOf(probe, at, side).length === 0) danger.push(at);
   }
   return danger;
 }

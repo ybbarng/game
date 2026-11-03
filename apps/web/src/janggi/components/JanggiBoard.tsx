@@ -433,7 +433,7 @@ export function JanggiBoard({
           key={`d${i}`}
           cx={at(i)[0]}
           cy={at(i)[1]}
-          r={0.5}
+          r={0.44}
           fill="none"
           stroke={DANGER_COLOR}
           strokeWidth={0.06}

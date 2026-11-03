@@ -38,6 +38,7 @@ import {
   palaceDiagonalMove,
   parseMove,
   puzzleState,
+  ro,
 } from "./study";
 
 type Mate = Extract<JanggiPuzzle, { kind: "mate" }>;
@@ -377,5 +378,36 @@ describe("잡힐 기물 지키기 문제", () => {
     });
     expect(away.length).toBeGreaterThan(0);
     expect(away.length).toBeLessThan(defends.length);
+  });
+});
+
+describe("해설 조사와 장군 풀기 해설", () => {
+  it("「로·으로」를 받침과 숫자 읽는 소리로 고른다", () => {
+    expect(ro("상")).toBe("상으로");
+    expect(ro("차")).toBe("차로");
+    expect(ro("궁")).toBe("궁으로");
+    expect(ro("졸")).toBe("졸로");
+    expect(ro("96")).toBe("96으로");
+    expect(ro("90")).toBe("90으로");
+    expect(ro("93")).toBe("93으로");
+    expect(ro("29")).toBe("29로");
+    expect(ro("41")).toBe("41로");
+    expect(ro("58")).toBe("58로");
+  });
+
+  it("궁이 기물을 잡으며 비키면 「잡으며 비킨다」로 쓴다", () => {
+    const kingTakes = all.filter((p) => {
+      if (p.kind !== "escape") return false;
+      const board = puzzleState(p).board;
+      const m = parseMove(p.solution);
+      return board[m.from] === "cK" && board[m.to] !== "";
+    });
+    expect(kingTakes.length).toBeGreaterThan(0);
+    for (const p of kingTakes) {
+      const board = puzzleState(p).board;
+      expect(explainEscape(board, parseMove(p.solution))[1]).toMatch(
+        /^궁으로 .+ 잡으며 .+ 비킨다\(\d+점\)/,
+      );
+    }
   });
 });
