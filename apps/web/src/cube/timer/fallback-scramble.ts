@@ -96,7 +96,16 @@ export const fallbackScramble: ScrambleProvider = async (event, seed) => ({
 });
 
 /**
- * 화면이 쓰는 섞기. `cube-scramble`이 들어오면 이 한 줄만 바꾼다:
- * `export const scrambleProvider: ScrambleProvider = async (event, seed) => { const s = await cubeScramble(event, seed); return { text: s.text, official: s.official }; };`
+ * 화면이 쓰는 섞기: 대회 규칙 섞기(`cube-scramble`). 3×3 해법 표를 만드느라 처음 한 번 잠깐 걸리므로
+ * 첫 화면을 막지 않게 늦게 불러온다. 불러오기에 실패하면 임시 섞기로 대신한다.
+ * (나중에 웹 워커로 옮기면 표 만드는 동안에도 화면이 멈추지 않는다)
  */
-export const scrambleProvider: ScrambleProvider = fallbackScramble;
+export const scrambleProvider: ScrambleProvider = async (event, seed) => {
+  try {
+    const { scramble } = await import("@game/cube-scramble");
+    const s = scramble(event, seed >>> 0);
+    return { text: s.text, official: s.official };
+  } catch {
+    return fallbackScramble(event, seed);
+  }
+};
