@@ -12,6 +12,7 @@ import {
   xyOf,
 } from "@game/janggi-engine";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { cn } from "@/lib/cn";
 
 import type { PieceLabels } from "../settings";
 
@@ -22,6 +23,8 @@ const VIEW_H = HEIGHT - 1 + PAD * 2;
 
 const BOARD = "#e4bb6f";
 const LINE = "#3b2a14";
+/** 마지막 수 표시(출발 점선 고리·도착 고리) */
+const LAST_COLOR = "#1d4ed8";
 
 /** 기물 크기(반지름, 칸 단위): 궁이 가장 크고 사·졸이 가장 작다 */
 const RADIUS: Record<Kind, number> = {
@@ -260,19 +263,23 @@ export function JanggiBoard({
         );
       })}
 
-      {/* 마지막 수: 출발·도착 칸을 옅게 */}
-      {lastMove &&
-        [lastMove.from, lastMove.to].map((i) => (
-          <circle
-            key={`last${i}`}
-            cx={at(i)[0]}
-            cy={at(i)[1]}
-            r={0.47}
-            fill="#facc15"
-            opacity={0.35}
-            data-last={pointName(i)}
-          />
-        ))}
+      {/* 마지막 수의 출발 자리: 빈 교차점에 점선 고리(떠난 흔적). 예전에는 옅은 노란 원이라 나무 판에서 거의 안 보였고
+          도착 칸 원은 기물에 가려져, 상대가 무엇을 두었는지 헷갈렸다(2026-11-03 회사 직원 의견). 도착 고리는 기물 위에 그린다 */}
+      {lastMove && (
+        <circle
+          cx={at(lastMove.from)[0]}
+          cy={at(lastMove.from)[1]}
+          r={0.3}
+          fill={LAST_COLOR}
+          fillOpacity={0.12}
+          stroke={LAST_COLOR}
+          strokeWidth={0.05}
+          strokeDasharray="0.12 0.08"
+          data-last={pointName(lastMove.from)}
+          data-last-from
+          pointerEvents="none"
+        />
+      )}
 
       {board.map((cell, i) => {
         if (cell === "") return null;
@@ -281,13 +288,26 @@ export function JanggiBoard({
         const [cx, cy] = at(i);
         const r = RADIUS[kind];
         const chosen = selected === i;
+        const arrived = lastMove?.to === i;
+        const [fx, fy] = arrived && lastMove ? at(lastMove.from) : [cx, cy];
         return (
           <g
-            // biome-ignore lint/suspicious/noArrayIndexKey: 판 자리 번호가 곧 정체다
-            key={i}
+            // 판 자리 번호가 곧 정체다. 방금 옮긴 기물은 수마다 새로 그려 미끄러짐이 다시 돈다
+            key={arrived && lastMove ? `${i}:${lastMove.from}` : i}
             data-piece={cell}
             data-point={pointName(i)}
-            className={movable.has(i) ? "cursor-pointer" : undefined}
+            className={cn(
+              movable.has(i) && "cursor-pointer",
+              arrived && "jg-slide",
+            )}
+            style={
+              arrived
+                ? ({
+                    "--jg-dx": `${Math.round((fx - cx) * 1000) / 1000}px`,
+                    "--jg-dy": `${Math.round((fy - cy) * 1000) / 1000}px`,
+                  } as React.CSSProperties)
+                : undefined
+            }
           >
             {/* 입체감: 판에 진 그림자 → 알 옆면(두께) → 윗면 → 윗면 안쪽 모서리 빛 */}
             <polygon
@@ -341,6 +361,21 @@ export function JanggiBoard({
           </g>
         );
       })}
+
+      {/* 마지막 수의 도착: 옮겨 온 기물 둘레에 파란 고리(고르기·갈 곳의 주황, 장군의 빨강과 다른 색) */}
+      {lastMove && (
+        <circle
+          cx={at(lastMove.to)[0]}
+          cy={at(lastMove.to)[1]}
+          r={0.5}
+          fill="none"
+          stroke={LAST_COLOR}
+          strokeWidth={0.06}
+          data-last={pointName(lastMove.to)}
+          data-last-to
+          pointerEvents="none"
+        />
+      )}
 
       {checkedKing !== null && (
         <circle

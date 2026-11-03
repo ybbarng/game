@@ -2409,3 +2409,18 @@ button {
     height: 2.25rem;
   }
 }
+
+/* 장기: 방금 옮긴 기물이 출발 자리에서 미끄러져 온다(SVG 안이라 px = 판 좌표 한 칸 단위) */
+.jg-slide {
+  animation: jg-slide 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes jg-slide {
+  from {
+    transform: translate(var(--jg-dx), var(--jg-dy));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jg-slide {
+    animation: none;
+  }
+}
