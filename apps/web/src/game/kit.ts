@@ -197,23 +197,6 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   hostAction?(action: Action): boolean;
   /**
-   * 판 끝 다시 계산에서 사람이 보낸 것이 아닌 기록(시간패 `timing.strip`이 null이거나 `hostAction`인 것)마다 부른다.
-   * 그런 기록은 "내가 보낸 행동"·"컴퓨터 수" 맞춰 보기에서 빠지므로, 방장이 그 자리에 지어낸 행동을 넣거나
-   * 받은 것을 빼지 못하게 게임이 따로 본다(원카드: 사람 자리의 `shout` 거절, `claims`는 받은 발표 묶음에서
-   * `claims.action`으로 만든 기대 행동과 차례·내용이 같은지). `before`는 그 기록을 넣기 전 상태(암호화방은 진짜 카드).
-   * 문제가 있으면 까닭(판 끝 실패), 없으면 null. 같은 판 끝 확인 안에서는 같은 `context`로 차례대로 부른다
-   * (게임이 `context`를 열쇠로 진행 위치를 들 수 있다). 다 부른 뒤 `verifyUnsignedDone`(있으면)을 한 번 부른다
-   */
-  verifyUnsigned?(input: {
-    before: State;
-    seat: number;
-    action: Action;
-    index: number;
-    context: VerifyContext;
-  }): string | null;
-  /** 기록을 다 본 뒤 한 번(받은 발표가 기록에서 빠졌는지 등 끝에서만 알 수 있는 것). 문제가 있으면 까닭 */
-  verifyUnsignedDone?(context: VerifyContext): string | null;
-  /**
    * 화투처럼 바닥·더미가 있는 카드 게임의 멘탈 포커(fair-play `HwatuFairSpec`). 있으면 암호화방에서
    * 방장도 더미와 남의 손패를 모르게 진행한다(HostRoom·GuestRoom)
    */
@@ -228,20 +211,26 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   // biome-ignore lint/suspicious/noExplicitAny: 청구 내용·판·판정 모양은 게임마다 다르다
   claims?: KitClaims<View, Action, any, any, any>;
-}
-
-/**
- * 판 끝 다시 계산의 `verifyUnsigned`에 함께 주는 것(이 기기가 아는 것). 게임마다 필요한 것만 본다
- */
-export interface VerifyContext {
-  /** 이 기기가 받아들인 실시간 청구 발표 묶음(받은 차례) */
-  claimsResolved?: readonly ClaimsResolved[];
-  /** 처음부터 컴퓨터가 앉은 자리(대기실 정보) */
-  botSeats?: ReadonlySet<number>;
-  /** 끊긴 적이 있거나 새로고침으로 다시 들어와 받지 못한 발표가 있을 수 있다(받은 것이 빠짐없이 차례대로인지만 본다) */
-  partial?: boolean;
-  /** 기록이 끝까지다(게임 끝 검증). 아니면(판마다 검증) 뒤따를 기록이 있어 앞부분만 본다 */
-  complete?: boolean;
+  /**
+   * 사람이 보낸 것이 아닌 기록(방장 시계·방장이 넣은 행동: `timing.strip`이 null인 것 등)이 규칙대로인지
+   * 판 끝 다시 계산에서 본다. 그런 기록은 「내가 보낸 것」 대조와 컴퓨터 수 대조를 건너뛰므로, 꼬리표만 달면
+   * 아무 행동이나 넣을 수 있는 구멍을 막는다. null이면 통과, 글이면 판 끝 검증 실패 까닭
+   *
+   * 부르는 곳: 일반방 판 끝 다시 계산(guest-room)과 암호화방 다시 계산(fair-verify `FairReplayGame.unsigned`),
+   * `timing.strip`이 null이거나 `hostAction`인 기록마다. 같은 판 끝 확인 안에서는 같은 `context`로 차례대로 부르므로
+   * 게임이 `context`를 열쇠로 진행 위치를 들 수 있다(원카드 `net/claim-verify.ts`). 다 부른 뒤 `verifyUnsignedDone`
+   */
+  verifyUnsigned?(input: {
+    /** 이 기록을 넣기 직전 상태(다시 계산 중인 상태) */
+    before: State;
+    seat: number;
+    action: Action;
+    /** 기록 번호(0부터) */
+    index: number;
+    context: VerifyContext;
+  }): string | null;
+  /** 기록을 다 본 뒤 한 번(받은 발표가 기록에서 빠졌는지 등 끝에서만 알 수 있는 것). 글이면 판 끝 검증 실패 까닭 */
+  verifyUnsignedDone?(context: VerifyContext): string | null;
 }
 
 /**
@@ -283,6 +272,18 @@ export interface KitClaims<
   direct?(action: Action): boolean;
   /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
   rules?: Partial<ClaimRules>;
+}
+
+/** `verifyUnsigned`에 주는 게임별 추가 재료 */
+export interface VerifyContext {
+  /** 원카드: 방장이 발표한 청구 판정(원카드가 채운다) */
+  claimsResolved?: readonly unknown[];
+  /** 대기실이 컴퓨터로 적은 자리 */
+  botSeats?: ReadonlySet<number>;
+  /** 끊긴 적이 있거나 새로고침으로 다시 들어와 받지 못한 발표가 있을 수 있다(받은 것이 빠짐없이 차례대로인지만 본다) */
+  partial?: boolean;
+  /** 기록이 끝까지다(게임 끝 검증). 아니면(판마다 검증) 뒤따를 기록이 있어 앞부분만 본다 */
+  complete?: boolean;
 }
 
 export interface KitTiming<State, Action> {

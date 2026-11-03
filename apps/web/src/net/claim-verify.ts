@@ -1,5 +1,7 @@
 import type { KitClaims, VerifyContext } from "@/game/kit";
 
+import type { ClaimsResolved } from "./claim";
+
 /**
  * 실시간 청구를 쓰는 게임의 `GameKit.verifyUnsigned`·`verifyUnsignedDone`(판 끝 다시 계산, docs/43 7-1·docs/42 16절).
  *
@@ -22,10 +24,12 @@ export function claimsVerifier<Action>(
     let c = cursors.get(context);
     if (!c) {
       c = {
-        expected: (context.claimsResolved ?? []).flatMap((r) => {
-          const action = spec.action(r);
-          return action === null ? [] : [JSON.stringify(action)];
-        }),
+        expected: ((context.claimsResolved ?? []) as ClaimsResolved[]).flatMap(
+          (r) => {
+            const action = spec.action(r);
+            return action === null ? [] : [JSON.stringify(action)];
+          },
+        ),
         at: 0,
       };
       cursors.set(context, c);
@@ -39,10 +43,9 @@ export function claimsVerifier<Action>(
       index: number;
       context: VerifyContext;
     }): string | null {
-      const { seat, action, index, context } = input;
-      const where = `기록 ${index + 1}번째`;
+      const { seat, action, context } = input;
       if (spec.direct?.(action) && !context.botSeats?.has(seat))
-        return `${where}: ${seat}번 자리의 청구가 청구 통로를 거치지 않고 기록에 들어 있다(방장이 지어냈다)`;
+        return `${seat}번 자리의 청구가 청구 통로를 거치지 않고 기록에 들어 있다(방장이 지어냈다)`;
       if (!spec.recorded(action)) return null;
       const c = cursorOf(context);
       const text = JSON.stringify(action);
@@ -53,9 +56,9 @@ export function claimsVerifier<Action>(
       }
       const want = c.expected[c.at];
       if (want === undefined)
-        return `${where}: 기록 속 청구 묶음이 받은 발표보다 많다(방장이 없던 청구를 넣었다)`;
+        return `기록 속 청구 묶음이 받은 발표보다 많다(방장이 없던 청구를 넣었다)`;
       if (want !== text)
-        return `${where}: 기록 속 청구 묶음이 방장 발표와 다르다(빼거나 바꿨다)`;
+        return `기록 속 청구 묶음이 방장 발표와 다르다(빼거나 바꿨다)`;
       c.at++;
       return null;
     },

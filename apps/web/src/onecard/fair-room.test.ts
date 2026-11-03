@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  type Action,
   type OnecardState,
   type OnecardView,
   STANDARD_ONECARD_RULES,
@@ -57,9 +58,33 @@ const rules = {
   endOnFirst: true,
 };
 
-/** 방장·참가자 수는 중수 컴퓨터가 고른다(낼 카드가 없어 서로 먹기만 도는 판이 나오지 않게) */
-const bot = onecardBotFor(1);
-let seed = 1;
+/** 참가자: 낼 수 있는 첫 카드를 내고 없으면 먹는다 */
+const firstMove = (view: OnecardView): Action =>
+  view.moves.find((a) => a.type === "play") ?? { type: "draw" };
+
+/**
+ * 방장(시험이 판이 반드시 끝나게 고른다. 짧은 덱엔 특수 카드가 없어 무늬나 숫자가 같아야 낸다):
+ * 다시 섞기가 한 번 일어날 때까지는 먹어 더미를 비운다(버린 더미가 한 장뿐이라 다시 섞을 수 없으면 낸다).
+ * 그 뒤로는 참가자가 이어 낼 수 있게 되는 카드를 내고, 없으면 먹는다. 참가자는 낼 수 있으면 늘 내므로 손패가 준다
+ */
+function hostMove(
+  hv: OnecardView,
+  gv: OnecardView | undefined,
+  state: OnecardState,
+): Action {
+  const draw: Action = { type: "draw" };
+  if ((state.reshuffles ?? 0) === 0 && (hv.deckCount > 0 || hv.pile.length > 1))
+    return draw;
+  const follows = (card: string) =>
+    (gv?.hand ?? []).some(
+      (c) => c[0] === card[0] || c.slice(1) === card.slice(1),
+    );
+  return (
+    hv.moves.find((a) => a.type === "play" && follows(a.card)) ??
+    hv.moves.find((a) => a.type === "play") ??
+    draw
+  );
+}
 /**
  * 판을 끝까지 둔다. 참가자는 두 장인 차례에 한 번 더미를 친다(청구). `tamper`는 그 청구 전에 한 번 부른다
  * (고친 방장 기기 흉내). 판 끝 검증 결과와 부정 알림, 방장 엔진 상태를 돌려준다
@@ -119,15 +144,9 @@ async function playFair(tamper?: (host: AnyHost, guest: AnyGuest) => void) {
     const rejected = rejections;
     let acted = false;
     if (hv.decision === "turn")
-      acted = match.submit(
-        hv.hand.length > 8
-          ? bot.seatBot(0).chooseAction(hv, { seed: seed++ })
-          : { type: "draw" },
-      ).ok;
+      acted = match.submit(hostMove(hv, gv, state)).ok;
     else if (gv?.decision === "turn")
-      acted =
-        guest.match?.submit(bot.seatBot(1).chooseAction(gv, { seed: seed++ }))
-          .ok ?? false;
+      acted = guest.match?.submit(firstMove(gv)).ok ?? false;
     // 다음 걸음(엔진 기록이 늘고 참가자 화면이 따라옴, 또는 판 끝)까지. 내지 못했으면(준비 중·카드를 여는 중)
     // 두 화면 중 하나가 바뀔 때까지(바로 다시 내며 맴돌지 않게)
     const stamp = JSON.stringify([match.current(), guestView()]);

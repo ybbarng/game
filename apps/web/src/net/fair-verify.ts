@@ -118,7 +118,12 @@ export async function verifyFairLog(
     for (const [index, entry] of done.entries()) {
       if (!game.byClock?.(entry.action)) continue;
       const problem = game.unsigned(states[index], entry, index);
-      if (problem) return { ok: false, seat: 0, reason: problem };
+      if (problem)
+        return {
+          ok: false,
+          seat: 0,
+          reason: `기록 ${index + 1}번째: ${problem}`,
+        };
     }
   if (!partial) {
     const problem = game.unsignedDone?.() ?? null;

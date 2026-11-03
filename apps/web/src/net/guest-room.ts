@@ -1399,7 +1399,8 @@ export class GuestRoom<
           index,
           context,
         });
-        if (problem) return { ok: false, reason: problem };
+        if (problem)
+          return { ok: false, reason: `기록 ${index + 1}번째: ${problem}` };
       }
       if (bot && !byClock) {
         if (botSeats.has(seat) && !entry.bot)
