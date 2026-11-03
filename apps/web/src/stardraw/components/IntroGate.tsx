@@ -115,15 +115,22 @@ export function IntroGate({
     };
   }, []);
 
+  // 물러난 뒤 부를 onDone은 늘 마지막 것으로
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  const doneTimer = useRef<number | undefined>(undefined);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 물러나는 것은 한 번뿐이다
   useEffect(() => {
     if (left.current || !ready || !(held || skip)) return;
     left.current = true;
     setLeaving(true);
     onLeave();
-    const t = window.setTimeout(onDone, LEAVE_MS);
-    return () => window.clearTimeout(t);
+    // 타이머는 이 효과의 정리로 지우지 않는다. 물러나는 중에 held·skip이 바뀌면(인사를 일찍 누르고 1.3초가 지나면)
+    // 정리가 타이머를 지우고 left 때문에 다시 걸지 않아, onDone이 끝내 불리지 않고 홈이 숨은 채 빈 화면으로 남았다
+    // (2026-11-03 사용자, 맥 크롬)
+    doneTimer.current = window.setTimeout(() => doneRef.current(), LEAVE_MS);
   }, [ready, held, skip]);
+  useEffect(() => () => window.clearTimeout(doneTimer.current), []);
 
   return (
     // 누르면 넘어간다(키보드는 Enter·Space·Esc)
