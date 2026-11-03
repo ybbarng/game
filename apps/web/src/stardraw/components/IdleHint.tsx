@@ -88,16 +88,16 @@ function Swipe({ still }: { still: boolean }) {
     return (
       <div className="sd-hint-ink flex flex-col items-center gap-1">
         <ArrowUp className="size-7" />
-        <HandIcon className="size-11" />
+        <HandIcon className="size-14" />
       </div>
     );
   return (
     <div
-      className="sd-hint-ink sd-hint-swipe relative h-40 w-12"
+      className="sd-hint-ink sd-hint-swipe relative h-40 w-14"
       style={{ ["--hint-ms" as string]: `${FX.hintSwipe}ms` }}
     >
       <span className="sd-hint-trail absolute" />
-      <HandIcon className="sd-hint-swipe-hand absolute bottom-0 left-0 size-11" />
+      <HandIcon className="sd-hint-swipe-hand absolute bottom-0 left-0 size-14" />
     </div>
   );
 }
@@ -106,13 +106,13 @@ function Swipe({ still }: { still: boolean }) {
 function Tap({ still }: { still: boolean }) {
   return (
     <div
-      className={cn("sd-hint-ink relative size-16", !still && "sd-hint-tap")}
+      className={cn("sd-hint-ink relative size-20", !still && "sd-hint-tap")}
       style={{ ["--hint-ms" as string]: `${FX.hintTap}ms` }}
     >
       {!still && <span className="sd-hint-ring absolute" />}
       <HandIcon
         className={cn(
-          "absolute top-2 left-2 size-11",
+          "absolute top-3 left-3 size-14",
           !still && "sd-hint-tap-hand",
         )}
       />

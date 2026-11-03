@@ -828,7 +828,7 @@ button {
 }
 /*
   손짓 안내(IdleHint): 가만히 있으면 나오는 손. 한 바퀴 길이는 --hint-ms(FX.hintSwipe·hintTap).
-  손끝은 손 그림(44px)의 왼쪽 19px·위 5.5px 자리라 꼬리선과 동그라미를 그 자리에 맞춘다
+  손끝은 손 그림(56px)의 왼쪽 24.5px·위 7px 자리라 꼬리선과 동그라미를 그 자리에 맞춘다
 */
 .sd-hint-ink {
   color: rgba(255, 248, 230, 0.92);
@@ -839,8 +839,8 @@ button {
     infinite;
 }
 .sd-hint-trail {
-  left: 17.75px;
-  bottom: 38.5px;
+  left: 23px;
+  bottom: 49px;
   width: 3px;
   height: 100px;
   border-radius: 9999px;
@@ -888,10 +888,10 @@ button {
   animation: sd-hint-tap-hand var(--hint-ms) ease-in-out infinite;
 }
 .sd-hint-ring {
-  left: 13.25px;
-  top: -0.5px;
-  width: 28px;
-  height: 28px;
+  left: 20.5px;
+  top: 3px;
+  width: 32px;
+  height: 32px;
   border: 1.5px solid currentColor;
   border-radius: 9999px;
   animation: sd-hint-ring var(--hint-ms) ease-out infinite;

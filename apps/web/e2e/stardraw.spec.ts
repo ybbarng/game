@@ -1341,6 +1341,77 @@ test("마감 직전 응모: 줄인 연출로 마감 전에 접수", async ({ pag
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
 });
 
+/**
+ * 손짓 안내 스크린샷용: 되풀이하는 손짓을 한 바퀴의 `at`(0~1) 자리에 세운다(어느 순간에 찍혀도 같은 그림이 되게).
+ * 찍은 뒤에는 다시 돌린다
+ */
+async function holdHint(
+  hint: Locator,
+  at: number,
+  run: () => Promise<unknown>,
+) {
+  const set = (paused: boolean) =>
+    hint.evaluate(
+      (el, a) => {
+        for (const x of el.getAnimations({ subtree: true })) {
+          const d = Number(x.effect?.getComputedTiming().duration ?? 0);
+          if (a.paused) {
+            x.pause();
+            x.currentTime = d * a.at;
+          } else x.play();
+        }
+      },
+      { paused, at },
+    );
+  await set(true);
+  await run();
+  await set(false);
+}
+
+/** 예측서·등록증을 기다리며 가만히 있으면 손짓이 나오고(예측서는 밀어 올리기, 등록증은 누르기), 손을 대면 사라진다 */
+test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 등록증은 누르기", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await virtualAuthenticator(page);
+  await page.goto("/stardraw");
+  await page.getByRole("button", REGISTER).click();
+  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "자동", exact: true }).click();
+  await page.getByRole("button", ENTER).click();
+  await speedUpAnimations(page);
+  const sheet = page.locator(
+    "[aria-label='예측서 제출'][aria-disabled='false']",
+  );
+  const swipe = sheet.locator("[data-idle-hint='swipe-up']");
+  await fastForwardUntil(page, () => swipe.isVisible());
+  // 손짓은 예측서 안에 겹치고, 누름을 가로채지 않는다
+  await expect(swipe).toHaveCSS("pointer-events", "none");
+  await expect(swipe).toHaveText("");
+  await holdHint(swipe, 0.45, () =>
+    page.screenshot({ path: info.outputPath("stardraw-hint-swipe.png") }),
+  );
+  // 손을 대면(키) 곧바로 사라진다
+  await page.keyboard.press("Shift");
+  await expect(swipe).toHaveCount(0);
+  await sheet.press("Enter");
+
+  const card = page.locator(
+    "[aria-label='신분증 제출'][aria-disabled='false']",
+  );
+  const tap = card.locator("[data-idle-hint='tap']");
+  await fastForwardUntil(page, () => tap.isVisible());
+  await expect(tap).toHaveCSS("pointer-events", "none");
+  await holdHint(tap, 0.4, () =>
+    page.screenshot({ path: info.outputPath("stardraw-hint-tap.png") }),
+  );
+  await card.press("Enter");
+  await expect(tap).toHaveCount(0);
+  await untilStageGone(page);
+  await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
+});
+
 /** 내밀기를 미루다 마감을 넘겨 반송받고, 「이 답안지 보관하기」로 챙긴다 */
 async function bounceAndKeep(page: Page) {
   const card = await toEntryEdge(page);
