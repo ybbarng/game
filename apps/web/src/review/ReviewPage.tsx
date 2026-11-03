@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BadukReplay } from "@/baduk/components/BadukReplay";
 import { BaseballReplay } from "@/baseball/components/BaseballReplay";
 import { ChessReplay } from "@/chess/components/ChessReplay";
+import { GalaxyReplay } from "@/galaxy/components/GalaxyReplay";
 import { botName } from "@/game/bot-names";
 import type { GameKit } from "@/game/kit";
 import { mightyKit } from "@/game/mighty-kit";
@@ -46,6 +47,7 @@ const GAME_NAME: Record<string, string> = {
   nyrongppong: "🎴 나이롱뽕",
   baseball: "⚾ 숫자야구",
   yut: "🪵 윷놀이",
+  galaxy: "✶ 은하 한 바퀴",
 };
 
 function when(at: number): string {
@@ -234,7 +236,8 @@ function ArchiveView({
     archive.game === "gostop" ||
     archive.game === "minhwatu" ||
     archive.game === "baseball" ||
-    archive.game === "yut"
+    archive.game === "yut" ||
+    archive.game === "galaxy"
   )
     return <BoardArchiveView archive={archive} onBack={onBack} />;
   return <CardArchiveView archive={archive} onBack={onBack} />;
@@ -281,6 +284,8 @@ function BoardArchiveView({
           <BaseballReplay archive={archive} name={name} />
         ) : archive.game === "yut" ? (
           <YutReplay archive={archive} name={name} />
+        ) : archive.game === "galaxy" ? (
+          <GalaxyReplay archive={archive} name={name} />
         ) : (
           <OmokReplay archive={archive} name={name} />
         )}

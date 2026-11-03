@@ -105,7 +105,10 @@ interface GalaxyStore {
   bid: PendingBid | null;
   /** 판 끝에 이 기기에서 처음 만난 별(별 id) */
   firstMet: string[];
+  /** 정해진 장면에서 시작한다(저장·기록 없음). 튜토리얼 미션(G6)과 화면 시험이 쓴다 */
+  practice: boolean;
   newGame(options: { rules: GalaxyRules; level: number; seed?: number }): void;
+  startPractice(initialState: GalaxyState, level: number): void;
   resume(saved: GalaxySaved): void;
   submit(action: Action): SubmitResult;
   /** 봉인 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
@@ -173,8 +176,9 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
   };
 
   const persist = () => {
-    const { local, level, bid } = get();
-    if (local) saveGalaxy({ ...local.save(), level, ...(bid ? { bid } : {}) });
+    const { local, level, bid, practice } = get();
+    if (local && !practice)
+      saveGalaxy({ ...local.save(), level, ...(bid ? { bid } : {}) });
   };
 
   /** 쌓인 화면을 차례로 보인다. 컴퓨터 결정은 조금 기다렸다가, 연출이 있는 걸음은 연출이 끝난 뒤 다음으로 */
@@ -216,26 +220,36 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     else show();
   };
 
-  const attach = (local: GalaxyLocalMatch, level: number, seed: number) => {
+  const attach = (
+    local: GalaxyLocalMatch,
+    level: number,
+    seed: number,
+    practice = false,
+  ) => {
     stop();
     if (get().local !== local) get().local?.dispose();
     const key = `solo:${seed}`;
-    const recorder = new StatsRecorder(galaxyKit.stats, {
-      game: "galaxy",
-      mode: "solo",
-      key,
-    });
-    const archiver = new ArchiveRecorder(galaxyKit.stats, {
-      game: "galaxy",
-      mode: "solo",
-      key,
-      seat: local.seat,
-      seatNames: null,
-      source: () => {
-        const saved = local.save();
-        return { rules: saved.rules, seed: saved.seed, log: saved.log };
-      },
-    });
+    // 정해진 장면(튜토리얼·화면 시험)은 저장·내 기록·복기에 남기지 않는다
+    const recorder = practice
+      ? null
+      : new StatsRecorder(galaxyKit.stats, {
+          game: "galaxy",
+          mode: "solo",
+          key,
+        });
+    const archiver = practice
+      ? null
+      : new ArchiveRecorder(galaxyKit.stats, {
+          game: "galaxy",
+          mode: "solo",
+          key,
+          seat: local.seat,
+          seatNames: null,
+          source: () => {
+            const saved = local.save();
+            return { rules: saved.rules, seed: saved.seed, log: saved.log };
+          },
+        });
     const first = local.drain();
     set({
       host: local,
@@ -249,16 +263,17 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
       playing: false,
       notice: null,
       firstMet: [],
+      practice,
     });
     persist();
     for (const snapshot of first) {
-      recorder.observe(snapshot);
-      archiver.observe(snapshot);
+      recorder?.observe(snapshot);
+      archiver?.observe(snapshot);
     }
     unsubscribe = local.subscribe((snapshot) => {
       persist();
-      recorder.observe(snapshot);
-      archiver.observe(snapshot);
+      recorder?.observe(snapshot);
+      archiver?.observe(snapshot);
       set({ queue: [...get().queue, snapshot] });
       advance();
     });
@@ -298,6 +313,22 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     notice: null,
     bid: null,
     firstMet: [],
+    practice: false,
+
+    startPractice(initialState, level) {
+      const seed = Math.floor(Math.random() * 2 ** 31);
+      set({ bid: null });
+      const local: GalaxyLocalMatch = new LocalMatch({
+        kit: galaxyKit,
+        rules: initialState.rules,
+        seed,
+        humanSeat: 0,
+        bot: galaxyBotFor(level),
+        pace: browserPace,
+        initialState,
+      });
+      attach(local, level, seed, true);
+    },
 
     newGame({ rules, level, seed: given }) {
       track("game-start", { game: "galaxy", mode: "solo", level });
@@ -358,6 +389,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
         playing: false,
         bid: null,
         firstMet: [],
+        practice: false,
       });
     },
 

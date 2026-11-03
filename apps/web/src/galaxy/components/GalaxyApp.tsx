@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  boardOfSky,
+  createGalaxyScenario,
+  type GalaxyRules,
+  type ScenarioStar,
+} from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
 import { GameHome } from "@/components/GameHome";
 import { useScreenHistory } from "@/game/screen-history";
@@ -307,6 +313,23 @@ function GalaxyHome({
   );
 }
 
+/**
+ * 화면 시험이 정해진 시드·장면으로 시작하게 하는 손잡이(window에 시험이 넣는다, 화면에는 없다).
+ * 장면으로 시작한 판은 저장·내 기록에 남지 않는다
+ */
+interface GalaxyTestHooks {
+  __galaxySeed?: number;
+  __galaxyScenario?: {
+    rules: GalaxyRules;
+    level: number;
+    seed?: number;
+    stars?: ScenarioStar[];
+    cash?: number[];
+    positions?: number[];
+    round?: number;
+  };
+}
+
 type Screen =
   | { kind: "start" }
   | { kind: "playing" }
@@ -339,12 +362,26 @@ export function GalaxyApp() {
       onOptions={() => setScreen({ kind: "options" })}
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {
+        const hooks = window as GalaxyTestHooks;
+        const scene = hooks.__galaxyScenario;
         if (saved) useGalaxy.getState().resume(saved);
-        else {
+        else if (scene) {
+          const { level, ...options } = scene;
+          useGalaxy.getState().startPractice(
+            createGalaxyScenario({
+              ...options,
+              board: boardOfSky(scene.rules.sky),
+            }),
+            level,
+          );
+        } else {
           const s = useGalaxySettings.getState();
           useGalaxy.getState().newGame({
             rules: rulesFromSettings(s),
             level: s.level,
+            ...(hooks.__galaxySeed !== undefined
+              ? { seed: hooks.__galaxySeed }
+              : {}),
           });
         }
         setScreen({ kind: "playing" });

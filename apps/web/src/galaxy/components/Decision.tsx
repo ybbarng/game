@@ -387,10 +387,17 @@ export function TradeComposer({
     <span className="mt-1 flex items-center gap-1 text-xs">
       <button
         type="button"
-        onClick={() => set(Math.max(0, value - 10))}
-        className="rounded bg-white/10 px-1.5"
+        onClick={() => set(Math.max(0, value - 100))}
+        className="rounded bg-white/10 px-1"
       >
-        −
+        −100
+      </button>
+      <button
+        type="button"
+        onClick={() => set(Math.max(0, value - 10))}
+        className="rounded bg-white/10 px-1"
+      >
+        −10
       </button>
       <span className="min-w-12 text-center text-amber-100">
         {money(value)}
@@ -398,9 +405,17 @@ export function TradeComposer({
       <button
         type="button"
         onClick={() => set(Math.min(max, value + 10))}
-        className="rounded bg-white/10 px-1.5"
+        className="rounded bg-white/10 px-1"
       >
-        +
+        +10
+      </button>
+      <button
+        type="button"
+        data-cash-plus100
+        onClick={() => set(Math.min(max, value + 100))}
+        className="rounded bg-white/10 px-1"
+      >
+        +100
       </button>
     </span>
   );

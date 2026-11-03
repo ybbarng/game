@@ -466,7 +466,8 @@ export function GalaxyGame({ onExit }: { onExit: () => void }) {
 
   let status: string;
   if (gameOver) status = resultText(view.result, view, name);
-  else if (playing) status = "…";
+  else if (playing)
+    status = view.turn.seat === me ? "내 차례예요" : `${turnName}의 차례예요`;
   else if (!decision) {
     status =
       view.phase === "bid" || view.phase === "bidReveal"
