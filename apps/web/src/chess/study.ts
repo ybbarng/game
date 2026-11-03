@@ -144,7 +144,7 @@ export function explainEndgame(pos: Position, move: Move): string[] {
     lines.push(
       "백 킹이 폰 앞쪽 중요한 칸으로 먼저 간다. 흑 킹은 폰 앞을 막지 못하고 밀려난다",
     );
-  const pawn = pos.board.findIndex((c) => c === "wP");
+  const pawn = pos.board.indexOf("wP");
   const push = sanToMove(pos, squareName(pawn - 8));
   if (push)
     lines.push(
