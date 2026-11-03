@@ -403,6 +403,15 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/cube-engine:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../puzzle-core
+
   packages/engine: {}
 
   packages/fair-play:
@@ -537,6 +546,8 @@ importers:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+
+  packages/puzzle-core: {}
 
   packages/stardraw-cli:
     dependencies:
