@@ -420,6 +420,10 @@ importers:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+    devDependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
 
   packages/cube-solver: {}
 
