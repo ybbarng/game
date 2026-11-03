@@ -25,6 +25,8 @@ const BOARD = "#e4bb6f";
 const LINE = "#3b2a14";
 /** 마지막 수 표시(출발 점선 고리·도착 고리) */
 const LAST_COLOR = "#1d4ed8";
+/** 힌트(고수가 고른 수) 표시 */
+const HINT_COLOR = "#059669";
 
 /** 기물 크기(반지름, 칸 단위): 궁이 가장 크고 사·졸이 가장 작다 */
 const RADIUS: Record<Kind, number> = {
@@ -115,6 +117,7 @@ export function JanggiBoard({
   lastMove,
   checkedKing,
   labels,
+  hint = null,
 }: {
   board: readonly Cell[];
   /** 한 편이면 판을 뒤집어 내 편을 아래에 둔다 */
@@ -128,6 +131,8 @@ export function JanggiBoard({
   /** 장군을 받는 궁의 자리 */
   checkedKing: number | null;
   labels: PieceLabels;
+  /** 힌트: 고수가 고른 수의 출발·도착에 초록 고리 */
+  hint?: Move | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const id = `piece${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -417,6 +422,22 @@ export function JanggiBoard({
           />
         );
       })}
+
+      {hint &&
+        [hint.from, hint.to].map((i, n) => (
+          <circle
+            key={`h${i}`}
+            cx={at(i)[0]}
+            cy={at(i)[1]}
+            r={0.56}
+            fill="none"
+            stroke={HINT_COLOR}
+            strokeWidth={0.09}
+            strokeDasharray={n === 0 ? "0.18 0.12" : undefined}
+            data-hint={pointName(i)}
+            pointerEvents="none"
+          />
+        ))}
 
       {cursor !== null && (
         <rect

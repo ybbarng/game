@@ -1,9 +1,13 @@
 "use client";
 
+import { janggiBotFor } from "@game/janggi-ai";
 import {
   type JanggiView,
+  type Kind,
   kingOf,
+  type Move,
   materialScore,
+  other,
   type ScoreReason,
   SETUPS,
   SIDE_NAMES,
@@ -49,36 +53,71 @@ function PlayerPlate({
   const side = sideOfSeat(view, seat);
   const turn = seatToMove(view) === seat;
   const control = timeControlOf(view.rules);
+  // 이 편이 잡은 상대 기물(큰 기물부터)
+  const captured = view.played
+    .flatMap((p) =>
+      "captured" in p && p.side === side && p.captured ? [p.captured] : [],
+    )
+    .sort((a, b) => CAPTURE_ORDER.indexOf(a) - CAPTURE_ORDER.indexOf(b));
   return (
     <div
       data-turn={turn || undefined}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 py-2",
+        "flex min-w-0 flex-1 flex-col gap-1 rounded-xl border px-3 py-2",
         turn
           ? "border-amber-300 bg-amber-300/15"
           : "border-white/10 bg-white/5",
       )}
     >
-      <span
-        className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#f1e2c0] font-bold font-serif text-sm shadow-[1px_2px_2px_rgba(0,0,0,0.5)]"
-        style={{ color: SIDE_COLOR[side] }}
-      >
-        {pieceLabel("K", side, labels)}
-      </span>
-      <span className="truncate font-semibold text-sm">{name}</span>
-      <span className="ml-auto whitespace-nowrap text-white/70 text-xs">
-        {materialScore(view.board, side)}점 · {view.wins[seat] ?? 0}승
-      </span>
-      {control && view.clocks?.[seat] && (
-        <GameClock
-          clock={view.clocks[seat]}
-          control={control}
-          running={turn && view.phase === "play"}
-        />
-      )}
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#f1e2c0] font-bold font-serif text-sm shadow-[1px_2px_2px_rgba(0,0,0,0.5)]"
+          style={{ color: SIDE_COLOR[side] }}
+        >
+          {pieceLabel("K", side, labels)}
+        </span>
+        <span className="truncate font-semibold text-sm">{name}</span>
+        {control && view.clocks?.[seat] && (
+          <span className="ml-auto">
+            <GameClock
+              clock={view.clocks[seat]}
+              control={control}
+              running={turn && view.phase === "play"}
+            />
+          </span>
+        )}
+      </div>
+      <div className="flex min-h-5 items-center gap-1 text-white/70 text-xs">
+        <span className="whitespace-nowrap">
+          {materialScore(view.board, side)}점 · {view.wins[seat] ?? 0}승
+        </span>
+        {captured.length > 0 && (
+          <span
+            className="ml-auto flex min-w-0 flex-wrap justify-end gap-0.5"
+            role="img"
+            aria-label={`잡은 기물: ${captured.map((k) => pieceLabel(k, other(side), "hangul")).join(" ")}`}
+            data-captured={captured.join("")}
+          >
+            {captured.map((kind, i) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 기물이 여럿일 수 있다
+                key={i}
+                aria-hidden
+                className="flex size-4 items-center justify-center rounded-sm bg-[#f1e2c0] font-bold font-serif text-[0.6rem] leading-none"
+                style={{ color: SIDE_COLOR[other(side)] }}
+              >
+                {pieceLabel(kind, other(side), "hangul")}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
+
+/** 잡은 기물을 늘어놓는 차례(큰 기물부터) */
+const CAPTURE_ORDER: readonly Kind[] = ["R", "C", "N", "E", "A", "P", "K"];
 
 /** 대국 화면 */
 export function JanggiGame({
@@ -106,6 +145,7 @@ export function JanggiGame({
   const clearNotice = useJanggi((s) => s.clearNotice);
   const labels = useJanggiSettings((s) => s.labels);
   const [selected, setSelected] = useState<number | null>(null);
+  const [hint, setHint] = useState<Move | null>(null);
   const played = view?.played.length ?? 0;
 
   useEffect(() => {
@@ -116,7 +156,10 @@ export function JanggiGame({
 
   // 수가 오가면 고른 기물을 놓는다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다
-  useEffect(() => setSelected(null), [played]);
+  useEffect(() => {
+    setSelected(null);
+    setHint(null);
+  }, [played]);
 
   if (!view || !host) return null;
   const me = host.seat;
@@ -145,7 +188,9 @@ export function JanggiGame({
       ? view.check === mySide
         ? "장군! 궁을 지키세요"
         : selected !== null
-          ? "갈 곳을 누르세요"
+          ? hint && selected === hint.from
+            ? "힌트: 초록 고리 자리로 옮기면 고수가 고른 수예요"
+            : "갈 곳을 누르세요"
           : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
@@ -253,6 +298,7 @@ export function JanggiGame({
           lastMove={lastMove}
           checkedKing={checkedKing}
           labels={labels}
+          hint={hint}
         />
         <ResultBanner banner={banner} seq={view.roundNumber} />
       </div>
@@ -293,6 +339,23 @@ export function JanggiGame({
                 className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
               >
                 무르기
+              </button>
+            )}
+            {!online && !mission && myMove && (
+              <button
+                type="button"
+                onClick={() => {
+                  // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께).
+                  const action = janggiBotFor(2).decide(view, {
+                    seed: played + 1,
+                  });
+                  if (action.type !== "move") return;
+                  setHint({ from: action.from, to: action.to });
+                  setSelected(action.from);
+                }}
+                className="rounded-xl bg-white/10 px-4 py-2"
+              >
+                힌트
               </button>
             )}
             {myMove && view.check !== mySide && (

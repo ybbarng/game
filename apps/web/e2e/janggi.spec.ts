@@ -102,8 +102,13 @@ test("장기: 게임 목록에서 들어가 상차림을 고르고 두다가 무
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });
+  // 힌트: 고수가 고른 수의 출발·도착에 고리, 그 기물이 골라져 갈 곳 점이 보인다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(2);
+  await expect(page.locator("[data-target]").first()).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-play.png") });
   await page.getByRole("button", { name: "무르기" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("내 차례");
 
   await page.getByRole("button", { name: "기권" }).click();
