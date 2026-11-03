@@ -87,6 +87,8 @@ function BadukLineRun({
   const [aim, setAim] = useState<number | null>(null);
   const run = useLineRun<BadukState, number>({
     line,
+    // 바둑 돌 소리(문제 화면 BadukPuzzleScreen과 같다). 넘기지 않으면 장기·체스 기물 소리가 난다
+    sounds: { move: "stone", capture: "badukCapture" },
     initial: () => lineState(line),
     parse: (_state, name) => {
       try {
