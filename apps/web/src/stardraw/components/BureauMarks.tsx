@@ -1,22 +1,11 @@
 import { useId } from "react";
 
 import {
+  CARINA_KEYS,
   CARINA_LINES,
-  CARINA_STARS,
-  type CarinaStar,
+  carinaAt,
   starPath,
 } from "../astronaut/carina";
-
-/** 용골자리 별을 (x, y)로 옮겨 그리는 자리. 직인 좌표(0~100 칸 위쪽)를 비율 s로 줄여 가운데에 놓는다 */
-function carinaAt(cx: number, cy: number, s: number) {
-  // 직인 좌표의 별 묶음 가운데(x 18~84, y 18~49)
-  const mx = 51;
-  const my = 33.5;
-  return (k: CarinaStar): [number, number] => {
-    const [x, y] = CARINA_STARS[k];
-    return [cx + (x - mx) * s, cy + (y - my) * s];
-  };
-}
 
 /**
  * 카노푸스 우주국 로고(2026-11-02 사용자: 편지지 머리글): 둥근 테 안에 용골자리 선과 가장 큰 별 카노푸스, 아래에 낮은
@@ -24,7 +13,7 @@ function carinaAt(cx: number, cy: number, s: number) {
  * 한 색(`currentColor`)으로 그려 종이에 인쇄된 머리글처럼 쓴다
  */
 export function BureauLogo({ className }: { className?: string }) {
-  const at = carinaAt(50, 42, 0.78);
+  const at = carinaAt(50, 42, 52);
   return (
     <svg
       viewBox="0 0 100 100"
@@ -54,7 +43,7 @@ export function BureauLogo({ className }: { className?: string }) {
           opacity="0.8"
         />
       ))}
-      {(Object.keys(CARINA_STARS) as CarinaStar[]).map((k) => {
+      {CARINA_KEYS.map((k) => {
         const [x, y] = at(k);
         return (
           <path
@@ -90,7 +79,7 @@ const WAX_EDGE = waxEdge();
  */
 export function WaxSeal({ className }: { className?: string }) {
   const id = useId().replace(/:/g, "");
-  const at = carinaAt(50, 51, 0.6);
+  const at = carinaAt(50, 51, 40);
   const emboss = (dx: number, dy: number, color: string, w: number) => (
     <g
       transform={`translate(${dx} ${dy})`}
@@ -105,7 +94,7 @@ export function WaxSeal({ className }: { className?: string }) {
           strokeWidth={w}
         />
       ))}
-      {(Object.keys(CARINA_STARS) as CarinaStar[]).map((k) => {
+      {CARINA_KEYS.map((k) => {
         const [x, y] = at(k);
         return (
           <path

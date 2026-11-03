@@ -1,12 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import {
-  CARINA_LINES,
-  CARINA_STARS,
-  type CarinaStar,
-  starPath,
-} from "./carina";
+import { CARINA_KEYS, CARINA_LINES, carinaAt, starPath } from "./carina";
 import { SEAL_GLYPHS } from "./seal-glyphs";
 
 /** 주홍빛 인주 색과, 획 가장자리에 고이는 조금 짙은 색 */
@@ -84,9 +79,8 @@ export function Seal({
   label?: string;
 }) {
   const id = useId().replace(/:/g, "");
-  const at = CARINA_STARS;
-  const lines = CARINA_LINES;
-  const star = starPath;
+  // 인장 위쪽(안쪽 테 12~88 칸)에 너비 64로. 카노푸스는 오른쪽 위
+  const at = carinaAt(51, 35, 64);
   const short = [...text].length <= 2;
   return (
     <svg
@@ -227,19 +221,19 @@ export function Seal({
           fill="none"
           strokeWidth="1.8"
         />
-        {lines.map((l) => (
+        {CARINA_LINES.map((l) => (
           <polyline
             key={l.join("-")}
-            points={l.map((k) => at[k].join(",")).join(" ")}
+            points={l.map((k) => at(k).join(",")).join(" ")}
             fill="none"
             strokeWidth="2.2"
             strokeLinejoin="round"
           />
         ))}
-        {(Object.keys(at) as CarinaStar[]).map((k) => (
+        {CARINA_KEYS.map((k) => (
           <path
             key={k}
-            d={star(at[k][0], at[k][1], k === "alpha" ? 8 : 4.5)}
+            d={starPath(...at(k), k === "alpha" ? 8 : 4.5)}
             stroke="none"
           />
         ))}

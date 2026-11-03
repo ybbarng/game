@@ -7,64 +7,35 @@
 
 import { type CSSProperties, useId } from "react";
 
+import {
+  CARINA_EDGES,
+  CARINA_HEIGHT,
+  CARINA_KEYS,
+  CARINA_SHAPE,
+  CARINA_STARS,
+} from "./carina";
 import { ART_H, ART_W } from "./key-art";
 
-/** 용골자리(카노푸스가 속한 별자리)의 실제 별: 적경(시), 적위(도), 등급 */
-const CARINA_STARS: readonly [string, number, number, number][] = [
-  ["α", 6.399, -52.696, -0.74], // 카노푸스
-  ["χ", 7.946, -52.982, 3.47],
-  ["ε", 8.375, -59.51, 1.86], // 아비오르
-  ["ι", 9.285, -59.275, 2.21], // 아스피디스케
-  ["q", 10.284, -61.332, 3.4],
-  ["p", 10.533, -61.685, 3.3],
-  ["θ", 10.716, -64.394, 2.76],
-  ["ω", 10.229, -70.038, 3.29],
-  ["β", 9.22, -69.717, 1.67], // 미아플라키두스
-  ["υ", 9.785, -65.072, 2.97],
-];
-
-/** 별자리 선(별 번호 둘) */
-const CARINA_LINES: readonly [number, number][] = [
-  [0, 1],
-  [1, 2],
-  [2, 3],
-  [3, 4],
-  [4, 5],
-  [5, 6],
-  [6, 7],
-  [7, 8],
-  [8, 9],
-  [9, 3],
-];
+/** 용골자리 선(별 번호 둘). 별 번호는 `CARINA_KEYS` 차례 */
+const CARINA_LINES: readonly [number, number][] = CARINA_EDGES.map(([a, b]) => [
+  CARINA_KEYS.indexOf(a),
+  CARINA_KEYS.indexOf(b),
+]);
 
 type Pt = { x: number; y: number; r: number };
 
 /**
- * 하늘에서 보는 대로(동쪽이 왼쪽, 북쪽이 위) 펼친 용골자리. 가로 1 기준으로 맞추고, 세로는 비율대로.
- * 적위 -61도 근처라 적경 간격에 cos(적위)를 곱한다.
+ * 하늘에서 보는 대로(동쪽이 왼쪽, 북쪽이 위) 펼친 용골자리(carina.ts의 공용 모양, 직인·로고와 같다).
+ * 가로 1 기준이고, 별 크기는 밝기대로
  */
-const CARINA: { stars: Pt[]; height: number } = (() => {
-  const dec0 = (-61 * Math.PI) / 180;
-  const raw = CARINA_STARS.map(([, ra, dec, mag]) => ({
-    x: -ra * 15 * Math.cos(dec0),
-    y: -dec,
-    mag,
-  }));
-  const minX = Math.min(...raw.map((s) => s.x));
-  const maxX = Math.max(...raw.map((s) => s.x));
-  const minY = Math.min(...raw.map((s) => s.y));
-  const maxY = Math.max(...raw.map((s) => s.y));
-  const w = maxX - minX;
-  return {
-    stars: raw.map((s) => ({
-      x: (s.x - minX) / w,
-      y: (s.y - minY) / w,
-      // 밝을수록 크게(등급이 작을수록 밝다)
-      r: 0.007 + (4 - s.mag) * 0.0025,
-    })),
-    height: (maxY - minY) / w,
-  };
-})();
+const CARINA: { stars: Pt[]; height: number } = {
+  stars: CARINA_KEYS.map((k) => {
+    const [x, y] = CARINA_SHAPE[k];
+    // 밝을수록 크게(등급이 작을수록 밝다)
+    return { x, y, r: 0.007 + (4 - CARINA_STARS[k].mag) * 0.0025 };
+  }),
+  height: CARINA_HEIGHT,
+};
 
 /** 판 위 (x, y)에 너비 w로 놓은 용골자리 */
 function placed(x: number, y: number, w: number): Pt[] {
