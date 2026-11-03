@@ -177,7 +177,7 @@ function SeatPlate({
                 key={card}
                 card={card}
                 width={small ? 16 : 20}
-                className={i > 0 ? "-ml-2" : undefined}
+                className={i > 0 ? "-ml-1" : undefined}
               />
             ))}
           </div>
@@ -194,7 +194,7 @@ function SeatPlate({
                 card={null}
                 width={back}
                 label=""
-                className={i > 0 ? "-ml-2.5" : undefined}
+                className={i > 0 ? "-ml-1.5" : undefined}
               />
             ))}
           </span>

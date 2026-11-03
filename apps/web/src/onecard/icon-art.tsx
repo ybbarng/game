@@ -60,16 +60,15 @@ export function OnecardIconArt({ maskable = false }: { maskable?: boolean }) {
             stroke="#cbd5e1"
             strokeWidth={1.2}
           />
-          <text
-            x={33}
-            y={33}
-            fontSize={13}
-            fontWeight={800}
-            fill="#d42a2a"
-            fontFamily="sans-serif"
-          >
-            A
-          </text>
+          {/* 모서리 "A"(이미지 그리기가 <text>를 못 그려 선으로) */}
+          <path
+            d="M32 34 L36.5 22 L41 34 M33.8 29.5 L39.2 29.5"
+            stroke="#d42a2a"
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
           <path
             d="M50 66 C38 57 34 50 38 45 C42 40 48 42 50 47 C52 42 58 40 62 45 C66 50 62 57 50 66 Z"
             fill="#d42a2a"
