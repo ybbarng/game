@@ -650,8 +650,16 @@ export class LocalMatch<
       (err: unknown) => {
         if (this.thinking?.ticket !== ticket) return;
         this.thinking = null;
-        // 계산이 실패하면 같은 생각을 되풀이하지 않게 멈춘다(다음 `refresh`에 다시 센다).
-        console.error("컴퓨터 계산 실패", err);
+        // 워커 계산이 실패하면(새로 배포된 뒤 열어 둔 탭이 옛 봇 묶음을 못 불러오는 경우 등) 이 스레드의 봇으로
+        // 같은 판을 이어 센다. 멈추면 혼자 하기는 다시 깨워 줄 곳이 없어 판이 영영 서 있었다(2026-11-03 PR #27 검토).
+        // 같은 view·같은 난수라 워커가 냈을 수와 같다
+        console.error("컴퓨터 계산 실패, 이 화면에서 이어 센다", err);
+        if (this.state !== state || !this.isBot(seat)) {
+          this.runBots();
+          return;
+        }
+        if (this.playBot(seat, view, this.bot.decide(view, this.rng)))
+          this.runBots();
       },
     );
   }

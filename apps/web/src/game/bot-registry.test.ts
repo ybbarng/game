@@ -24,7 +24,7 @@ describe("컴퓨터 등록부", () => {
       ["hearts", (l) => heartsBotFor(l as 0 | 1 | 2), [0, 1, 2]],
       ["chess", chessBotFor, [0, 1, 2]],
       ["janggi", janggiBotFor, [0, 1, 2, 3]],
-      ["omok", omokBotFor, [0, 1, 2]],
+      ["omok", omokBotFor, [0, 1, 2, 3]],
       ["baduk", badukBotFor, [0, 1, 2]],
       ["baseball", baseballBotFor, [0, 1, 2]],
       ["gostop", gostopBotFor, [0, 1, 2]],

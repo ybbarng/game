@@ -74,6 +74,28 @@ describe("LocalMatch 워커 계산(runBot)", () => {
     expect(offThread.resumeState().rng).toBe(direct.resumeState().rng);
   });
 
+  it("워커 계산이 실패해도(옛 봇 묶음 404 등) 판이 멈추지 않고 이 스레드로 이어 같은 기록을 남긴다", async () => {
+    const direct = new LocalMatch({ rules, seed: 21, humanSeat: 2 });
+    const failing: BotRunner<PlayerView, Action> = () =>
+      Promise.reject(new Error("봇 묶음을 불러오지 못함"));
+    const errors = console.error;
+    console.error = () => {};
+    try {
+      const match = new LocalMatch({
+        rules,
+        seed: 21,
+        humanSeat: 2,
+        runBot: failing,
+      });
+      for (let i = 0; i < 40 && match.botThinking; i++) await settle();
+      expect(match.botThinking).toBe(false);
+      expect(match.actionLog()).toEqual(direct.actionLog());
+      expect(match.resumeState().rng).toBe(direct.resumeState().rng);
+    } finally {
+      console.error = errors;
+    }
+  });
+
   it("세는 동안 대국을 버리면(무르기·새 판·떠나기) 늦게 온 답을 두지 않는다", async () => {
     const { jobs, runBot } = manualRunner();
     const match = new LocalMatch({ rules, seed: 21, humanSeat: 2, runBot });
