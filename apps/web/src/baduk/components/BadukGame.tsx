@@ -17,6 +17,8 @@ import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { HintButton, useHint } from "@/components/HintButton";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -124,12 +126,10 @@ export function BadukGame({
   const clearNotice = useBaduk((s) => s.clearNotice);
   const [aim, setAim] = useState<number | null>(null);
   const [counting, setCounting] = useState(false);
-  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다.
-  const [confirmResign, setConfirmResign] = useState(false);
-  // 힌트: 컴퓨터가 고른 자리(쉬기면 "pass"). 수가 오가면 지운다.
-  const [hint, setHint] = useState<number | "pass" | null>(null);
   const atariHint = useBadukSettings((s) => s.atariHint);
   const played = view?.played.length ?? 0;
+  // 힌트: 컴퓨터가 고른 자리(쉬기면 "pass"). 수가 오가면 지운다.
+  const { hint, showHint } = useHint<number | "pass">(played);
 
   useEffect(() => {
     if (!notice) return;
@@ -141,8 +141,6 @@ export function BadukGame({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다
   useEffect(() => {
     setAim(null);
-    setConfirmResign(false);
-    setHint(null);
   }, [played]);
 
   if (!view || !host) return null;
@@ -339,22 +337,19 @@ export function BadukGame({
                 무르기
               </button>
             )}
-            {!online && !mission && myTurn && (
-              <button
-                type="button"
-                onClick={() => {
-                  // 같은 판이면 같은 수(시드는 둔 수 개수)
-                  const action = HINT_BOT.decide(view, createRng(played + 1));
-                  if (action.type === "place") {
-                    setHint(action.at);
-                    setAim(action.at);
-                  } else setHint("pass");
-                }}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                힌트
-              </button>
-            )}
+            <HintButton
+              online={online}
+              mission={!!mission}
+              myTurn={myTurn}
+              onHint={() => {
+                // 같은 판이면 같은 수(시드는 둔 수 개수)
+                const action = HINT_BOT.decide(view, createRng(played + 1));
+                if (action.type === "place") {
+                  showHint(action.at);
+                  setAim(action.at);
+                } else showHint("pass");
+              }}
+            />
             {myTurn && (
               <button
                 type="button"
@@ -381,39 +376,12 @@ export function BadukGame({
               세어 보기
             </button>
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myTurn) &&
-              (confirmResign ? (
-                <span className="flex w-full items-center justify-center gap-2">
-                  <span className="text-sm text-white/80">
-                    정말 기권할까요?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmResign(false);
-                      submit({ type: "resign" });
-                    }}
-                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
-                  >
-                    기권하기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmResign(false)}
-                    className="rounded-xl bg-white/10 px-4 py-2"
-                  >
-                    계속 두기
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmResign(true)}
-                  className="rounded-xl bg-white/10 px-4 py-2"
-                >
-                  기권
-                </button>
-              ))}
+            {(!online || myTurn) && (
+              <ResignButton
+                resetKey={played}
+                onResign={() => submit({ type: "resign" })}
+              />
+            )}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

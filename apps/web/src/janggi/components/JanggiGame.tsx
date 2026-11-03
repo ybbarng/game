@@ -20,6 +20,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { HintButton, useHint } from "@/components/HintButton";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -151,12 +153,12 @@ export function JanggiGame({
   const labels = useJanggiSettings((s) => s.labels);
   const dangerHint = useJanggiSettings((s) => s.dangerHint);
   const [selected, setSelected] = useState<number | null>(null);
-  const [hint, setHint] = useState<Move | null>(null);
-  /** 힌트로 고수가 쉬기를 골랐다 */
-  const [hintPass, setHintPass] = useState(false);
-  // 기권은 한 번 더 물어 잘못 누른 손가락으로 판을 잃지 않게 한다(바둑과 같은 모양).
-  const [confirmResign, setConfirmResign] = useState(false);
   const played = view?.played.length ?? 0;
+  // 힌트: 고수가 고른 수, 또는 쉬기("pass"). 수가 오가면 저절로 지운다(공통 useHint)
+  const { hint: hinted, showHint } = useHint<Move | "pass">(played);
+  const hint = hinted === "pass" ? null : hinted;
+  /** 힌트로 고수가 쉬기를 골랐다 */
+  const hintPass = hinted === "pass";
 
   useEffect(() => {
     if (!notice) return;
@@ -168,9 +170,6 @@ export function JanggiGame({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 둔 수가 늘 때만 푼다
   useEffect(() => {
     setSelected(null);
-    setHint(null);
-    setHintPass(false);
-    setConfirmResign(false);
   }, [played]);
 
   // 잡힐 위험 표시는 판이 바뀔 때만 다시 센다.
@@ -375,28 +374,24 @@ export function JanggiGame({
                 무르기
               </button>
             )}
-            {!online && !mission && myMove && (
-              <button
-                type="button"
-                onClick={() => {
-                  // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께).
-                  const action = janggiBotFor(2).decide(view, {
-                    seed: played + 1,
-                  });
-                  if (action.type !== "move") {
-                    setHint(null);
-                    setHintPass(action.type === "pass");
-                    return;
-                  }
-                  setHintPass(false);
-                  setHint({ from: action.from, to: action.to });
-                  setSelected(action.from);
-                }}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                힌트
-              </button>
-            )}
+            <HintButton
+              online={online}
+              mission={!!mission}
+              myTurn={myMove}
+              onHint={() => {
+                // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 쉬기면 상태 줄로 알린다.
+                const action = janggiBotFor(2).decide(view, {
+                  seed: played + 1,
+                });
+                if (action.type === "pass") {
+                  showHint("pass");
+                  return;
+                }
+                if (action.type !== "move") return;
+                showHint({ from: action.from, to: action.to });
+                setSelected(action.from);
+              }}
+            />
             {myMove && view.check !== mySide && (
               <button
                 type="button"
@@ -407,39 +402,12 @@ export function JanggiGame({
               </button>
             )}
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
-            {(!online || myMove) &&
-              (confirmResign ? (
-                <span className="flex w-full items-center justify-center gap-2">
-                  <span className="text-sm text-white/80">
-                    정말 기권할까요?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmResign(false);
-                      submit({ type: "resign" });
-                    }}
-                    className="rounded-xl bg-rose-600 px-4 py-2 font-semibold"
-                  >
-                    기권하기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmResign(false)}
-                    className="rounded-xl bg-white/10 px-4 py-2"
-                  >
-                    계속 두기
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmResign(true)}
-                  className="rounded-xl bg-white/10 px-4 py-2"
-                >
-                  기권
-                </button>
-              ))}
+            {(!online || myMove) && (
+              <ResignButton
+                resetKey={played}
+                onResign={() => submit({ type: "resign" })}
+              />
+            )}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

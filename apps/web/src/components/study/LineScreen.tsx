@@ -16,7 +16,7 @@ import {
   startCursor,
 } from "@/study/line";
 
-import type { Applied } from "./PuzzleScreen";
+import { type Applied, type MoveSounds, playMoveCue } from "./PuzzleScreen";
 
 /*
  * 수 배우기 "수순 따라 두기" 화면의 공통 틀(docs/23 2절). 장기 포진·체스 오프닝·바둑 정석이 함께 쓴다.
@@ -43,6 +43,8 @@ export interface LineRules<S, M> {
   apply: (state: S, move: M) => Applied<S> | null;
   /** 상대 갈래 고르기에 쓰는 0 이상 1 미만의 수. 기본은 Math.random */
   roll?: () => number;
+  /** 수 소리. 없으면 기물 소리(`piece`·`capture`) */
+  sounds?: MoveSounds;
   /** 진행 기록 */
   solve: () => void;
   miss: () => void;
@@ -95,7 +97,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
       { notation: node.move, mine, ...(node.note ? { note: node.note } : {}) },
     ]);
     setShown(null);
-    playUiCue(done.capture ? "capture" : "piece");
+    playMoveCue(latest.current.sounds, done.capture);
     if (lineDone(next)) {
       setStatus("done");
       playUiCue("win");

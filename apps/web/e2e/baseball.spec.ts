@@ -457,7 +457,12 @@ test("숫자야구: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸�
   await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
     timeout: 15_000,
   });
+  // 기권은 한 번 더 묻는다. 「계속 하기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 하기" }).click();
+  await expect(status(page)).toContainText(/내 차례|마지막 기회/);
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(status(page)).toHaveText("기권했어요");
   await expect
     .poll(() => page.evaluate(finishedBaseballGames), { intervals: [50] })

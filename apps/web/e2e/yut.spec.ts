@@ -156,6 +156,7 @@ test("윷놀이: 게임 목록에서 들어가 입문 컴퓨터와 두다가 판
     if (await over(page).isVisible()) break;
     if (await throwButton(page).isVisible()) {
       await page.getByRole("button", { name: "기권" }).click();
+      await page.getByRole("button", { name: "기권하기" }).click();
       break;
     }
     await pickTarget(page, touch);
@@ -278,6 +279,7 @@ test("윷놀이: 방장이 방을 만들고 친구가 링크로 들어와 두다
     const resign = host.getByRole("button", { name: "기권" });
     await expect(resign).toBeEnabled({ timeout: 20_000 });
     await resign.click();
+    await host.getByRole("button", { name: "기권하기" }).click();
   }
   await expect(over(host)).toBeVisible();
   await expect(over(guest)).toBeVisible();
@@ -299,7 +301,12 @@ test("윷놀이: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음�
   await startSolo(page);
   for (let i = 0; i < 4; i++) await playStep(page, false);
   await untilMyThrow(page);
+  // 기권은 한 번 더 묻는다. 「계속 두기」면 판이 그대로다.
   await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "계속 두기" }).click();
+  await expect(throwButton(page)).toBeVisible();
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
   await expect(status(page)).toHaveText("기권했어요");
   await expect
     .poll(() => page.evaluate(finishedYutGames), { intervals: [50] })
