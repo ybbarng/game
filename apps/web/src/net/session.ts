@@ -57,7 +57,8 @@ export async function openTransport(
 }
 
 /**
- * 초대 링크. `k`는 방장 공개 열쇠의 지문이다. 참가자는 이 열쇠로 서명한 연결만 방장으로 믿는다(identity.ts).
+ * 초대 링크. `k`는 참가자가 방장을 알아보는 값이다. 카드·판 게임은 방장 공개 열쇠의 지문(이 열쇠로 서명한 연결만 방장으로 믿는다, identity.ts),
+ * 큐브 경주는 방장 연결 아이디(그 아이디가 보낸 방 상태만 받는다, cube/online/room.ts).
  */
 export function inviteUrl(roomCode: string, fingerprint?: string): string {
   const url = new URL(window.location.href);

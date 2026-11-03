@@ -56,6 +56,8 @@ export function CubeOnlineApp() {
   const [roomFromUrl, setRoomFromUrl] = useState<string | null | undefined>(
     undefined,
   );
+  /** 초대 링크에 실린 방장 연결 아이디(`k`). 옛 링크면 없다 */
+  const [hostFromUrl, setHostFromUrl] = useState<string | undefined>();
   const [roomCode, setRoomCode] = useState("");
   const [phone, setPhone] = useState(false);
   const [room, setRoom] = useState<CubeRoom | null>(null);
@@ -64,8 +66,10 @@ export function CubeOnlineApp() {
   const transportRef = useRef<Transport | null>(null);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("room");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("room");
     setRoomFromUrl(code);
+    setHostFromUrl(params.get("k") ?? undefined);
     setRoomCode(code ?? randomId(16));
     setPhone(touchOnly());
   }, []);
@@ -95,6 +99,7 @@ export function CubeOnlineApp() {
         transport,
         clock: raceClock,
         isHost,
+        ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
         name: trimmed,
         scrambler: scrambleInWorker,
         botPlan: planInWorker,
@@ -207,7 +212,8 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
   const state = room.state;
   const [botLevel, setBotLevel] = useState<BotLevel>("intermediate");
   const [link, setLink] = useState("");
-  useEffect(() => setLink(inviteUrl(roomCode)), [roomCode]);
+  // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게)
+  useEffect(() => setLink(inviteUrl(roomCode, room.me)), [roomCode, room.me]);
   if (!state) return null;
   const s = state.settings;
   const host = room.isHost;

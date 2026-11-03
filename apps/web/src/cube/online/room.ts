@@ -107,6 +107,8 @@ export interface CubeRoomInit {
   transport?: Transport;
   clock: Clock;
   isHost: boolean;
+  /** 손님: 초대 링크에 실린 방장 연결 아이디. 있으면 이 아이디가 보낸 방 상태만 받는다(옛 링크면 없다) */
+  hostId?: string;
   name: string;
   scrambler: Scrambler;
   settings?: Partial<RoomSettings>;
@@ -143,8 +145,8 @@ export class CubeRoom {
   private readonly hub: RaceHub;
   private readonly connected = new Set<string>();
   /**
-   * 방장 연결 아이디. 방장은 나, 손님은 처음 받은 방 상태의 방장으로 고정한다(초대 링크에는 방 코드만 있다).
-   * 그 뒤로는 이 방장이 보낸 방 상태만 받는다
+   * 방장 연결 아이디. 방장은 나, 손님은 초대 링크에 실린 아이디(`CubeRoomInit.hostId`)로 처음부터 정한다.
+   * 링크에 없으면(옛 링크) 처음 받은 방 상태의 방장으로 고정한다. 그 뒤로는 이 방장이 보낸 방 상태만 받는다
    */
   private hostId?: string;
   private current?: {
@@ -173,6 +175,7 @@ export class CubeRoom {
           .filter(([, device]) => device === d)
           .map(([id]) => id),
     });
+    if (!init.isHost && init.hostId) this.hostId = init.hostId;
     if (init.isHost) {
       this.hostId = this.me;
       this.state = {
