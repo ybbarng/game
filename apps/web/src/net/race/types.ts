@@ -15,6 +15,17 @@ export interface RaceGame<Move, State> {
   progress(state: State): number;
   encodeMove(move: Move): string;
   decodeMove(text: string): Move;
+  /**
+   * 씨앗에서 시작 상태를 만드는 데 시간이 드는 게임(웹 워커에서 섞기 등)은 여기서 미리 만들어 둔다.
+   * Promise면 끝날 때까지 기다린 뒤 `startState`를 부른다. 살펴보기 시계는 씨앗을 안 순간부터 이미 흐른다
+   * (늦게 만든 기기가 시간을 벌지 못하게). 실패하면 이 기기는 그 판 기권
+   */
+  prepare?(seed: string, options: unknown): Promise<void> | void;
+  /**
+   * 시작 상태의 지문(예: 섞기 글). 씨앗을 알리는 `race-seed`에 실어 모두 같은지 맞춰 본다.
+   * 기기마다 섞기를 다르게 만들었으면(해법기 판이 다름 등) 다른 사람을 "섞기 어긋남"으로 본다
+   */
+  startFingerprint?(seed: string, options: unknown): string;
 }
 
 /** 그럴듯함 검사 기준. 게임이 넘긴다. 결과(순위)는 바꾸지 않고 표시만 한다(docs/46 3-4) */
@@ -119,6 +130,8 @@ export interface RaceSnapshot {
   seed?: string;
   /** 이 기기가 기권 처리되어 보기만 하는 중 */
   spectator: boolean;
+  /** 씨앗은 정했고 시작 상태를 만드는 중(`RaceGame.prepare`). phase는 "reveal" */
+  preparing?: boolean;
   /** 풀림까지 남은 시간(ms). 살펴보기 중에만 */
   inspectionLeft?: number;
   /** 풀림 뒤 지난 시간(ms) */

@@ -67,6 +67,8 @@ interface Record_<State> {
   /** 다시 적용한(또는 내가 둔) 수 */
   applied: number;
   moveTimes: number[];
+  /** 적용한 수(글)와 시각. 판 끝 다시 보기에 쓴다 */
+  log: { m: string; t: number }[];
   /** 받았지만 앞 수가 모자라 아직 못 적용한 수 */
   raw: Map<number, { m: string; t: number; arrivedAt: number }>;
   done?: { n: number; t: number; arrivedAt: number };
@@ -90,6 +92,12 @@ interface Attempt<State> {
   released: boolean;
   /** 다른 기기가 알린 씨앗 재료 */
   seedCommits: Map<string, Record<string, string>>;
+  /** 다른 기기가 알린 시작 상태 지문 */
+  seedStarts: Map<string, string>;
+  /** 내가 만든 시작 상태 지문 */
+  start?: string;
+  /** 씨앗은 정했고 시작 상태를 만드는 중 */
+  preparing?: string;
   records: Map<string, Record_<State>>;
   batch: { i: number; m: string; t: number }[];
   /** 끊겼다 돌아온 사람에게 다시 보낼, 이 시도에서 모두에게 보낸 메시지 */
@@ -200,7 +208,9 @@ export class RaceSession<Move, State> {
     rec.state = next;
     rec.applied++;
     rec.moveTimes.push(t);
-    a.batch.push({ i, m: this.game.encodeMove(move), t });
+    const m = this.game.encodeMove(move);
+    rec.log.push({ m, t });
+    a.batch.push({ i, m, t });
     const solved = this.game.isSolved(next);
     if (solved) {
       rec.status = "done";
@@ -256,6 +266,9 @@ export class RaceSession<Move, State> {
       phase,
       attempt: this.attemptNo,
       spectator: a.spectator,
+      ...(a.preparing !== undefined && a.seed === undefined
+        ? { preparing: true }
+        : {}),
       peers,
       lateMoves,
       ...(a.seed !== undefined ? { seed: a.seed } : {}),
@@ -274,6 +287,11 @@ export class RaceSession<Move, State> {
     return this.a.seed === undefined
       ? undefined
       : this.game.startState(this.a.seed, this.options.gameOptions);
+  }
+
+  /** 한 사람이 둔 수(글)와 시각(풀림 기준 ms). 이 기기가 다시 적용한 것까지 */
+  moveLog(id: string): readonly { m: string; t: number }[] {
+    return this.a.records.get(id)?.log ?? [];
   }
 
   onChange(fn: (s: RaceSnapshot) => void): () => void {
@@ -298,6 +316,7 @@ export class RaceSession<Move, State> {
       nonces: new Map(),
       released: false,
       seedCommits: new Map(),
+      seedStarts: new Map(),
       records: new Map(),
       batch: [],
       log: [],
@@ -402,6 +421,7 @@ export class RaceSession<Move, State> {
         break;
       case "race-seed":
         this.a.seedCommits.set(from, msg.commits);
+        if (msg.start !== undefined) this.a.seedStarts.set(from, msg.start);
         this.checkSeedCommits();
         break;
       case "race-moves": {
@@ -553,14 +573,64 @@ export class RaceSession<Move, State> {
 
   private maybeFixSeed(): void {
     const a = this.a;
-    if (this.result || a.seed !== undefined) return;
+    if (this.result || a.seed !== undefined || a.preparing !== undefined)
+      return;
     if (!a.spectator && a.revealedAt === undefined) return;
     if (!a.members.every((id) => a.nonces.has(id))) return;
     const nonces: Record<string, string> = {};
     for (const id of a.members) nonces[id] = a.nonces.get(id) as string;
-    a.seed = raceSeed(this.race, this.attemptNo, nonces);
-    a.releaseAt = this.clock.now() + this.inspectionMs;
+    const seed = raceSeed(this.race, this.attemptNo, nonces);
+    // 살펴보기는 씨앗을 안 지금부터 잰다. 시작 상태를 늦게 만든 기기도 풀림 시각은 같다
+    const releaseAt = this.clock.now() + this.inspectionMs;
+    let pending: Promise<void> | void;
+    try {
+      pending = this.game.prepare?.(seed, this.options.gameOptions);
+    } catch {
+      this.cannotPrepare();
+      return;
+    }
+    if (pending && typeof pending.then === "function") {
+      a.preparing = seed;
+      pending.then(
+        () => {
+          if (this.disposed || this.a !== a || this.result) return;
+          this.fixSeed(seed, releaseAt);
+          this.emit();
+        },
+        () => {
+          if (this.disposed || this.a !== a || this.result) return;
+          this.cannotPrepare();
+          this.emit();
+        },
+      );
+      return;
+    }
+    this.fixSeed(seed, releaseAt);
+  }
+
+  /** 시작 상태를 만들지 못했다: 이 기기가 그 판 기권(남은 사람끼리 다시 약속) */
+  private cannotPrepare(): void {
+    if (!this.forfeit([{ id: this.self, reason: "섞기를 만들지 못함" }]))
+      return;
+    // 보기만 하는 기기는 약속을 보내지 않으므로, 남은 사람이 나를 기다리지 않게 기권 목록을 직접 알린다
+    // (받는 쪽은 기권 목록을 합쳐 다음 시도로 넘어가고, 기권한 사람이 보낸 약속 값은 쓰지 않는다)
+    this.broadcast({
+      type: "race-commit",
+      race: this.race,
+      attempt: this.attemptNo,
+      commit: "-",
+      out: this.outList(),
+    });
+  }
+
+  private fixSeed(seed: string, releaseAt: number): void {
+    const a = this.a;
+    a.seed = seed;
+    a.releaseAt = releaseAt;
+    delete a.preparing;
     const start = this.game.startState(a.seed, this.options.gameOptions);
+    if (this.game.startFingerprint)
+      a.start = this.game.startFingerprint(a.seed, this.options.gameOptions);
     for (const id of a.members)
       a.records.set(id, {
         id,
@@ -568,6 +638,7 @@ export class RaceSession<Move, State> {
         state: start,
         applied: 0,
         moveTimes: [],
+        log: [],
         raw: new Map(),
         bounds: new Map(),
         lateMoves: 0,
@@ -580,16 +651,18 @@ export class RaceSession<Move, State> {
         race: this.race,
         attempt: this.attemptNo,
         commits,
+        ...(a.start !== undefined ? { start: a.start } : {}),
       });
     }
-    this.after(this.inspectionMs, () => {
+    const toRelease = Math.max(0, releaseAt - this.clock.now());
+    this.after(toRelease, () => {
       this.a.released = true;
     });
-    this.after(this.inspectionMs + this.timeLimitMs, () => {
+    this.after(toRelease + this.timeLimitMs, () => {
       // 내 제한 시간: 더는 둘 수 없다(맞추지 못한 것은 판 끝에 정한다)
       this.maybeFinalize();
     });
-    this.after(this.inspectionMs + this.timeLimitMs + this.resultGraceMs, () =>
+    this.after(toRelease + this.timeLimitMs + this.resultGraceMs, () =>
       this.finalize(),
     );
     const k = this.attemptNo;
@@ -613,6 +686,11 @@ export class RaceSession<Move, State> {
         if (a.commits.get(id) !== theirs[id])
           blamed.add(id === this.self ? from : id);
     }
+    // 같은 씨앗인데 시작 상태가 다르다: 그 기기의 섞기를 믿지 않는다.
+    // 서로를 탓하므로 둘뿐이면 판이 열리지 않고, 셋 이상이면 다르게 만든 기기만 빠진다
+    if (a.start !== undefined)
+      for (const [from, theirs] of a.seedStarts)
+        if (theirs !== a.start) blamed.add(from);
     if (blamed.size > 0)
       this.forfeit([...blamed].map((id) => ({ id, reason: "섞기 어긋남" })));
   }
@@ -683,6 +761,7 @@ export class RaceSession<Move, State> {
       }
       rec.applied++;
       rec.moveTimes.push(mv.t);
+      rec.log.push({ m: mv.m, t: mv.t });
       // 수마다 같은 하한: 몰아서 보낸 수는 보고 시각이 하한보다 이르다(표시만, docs/46 3-3)
       const lb = this.boundAt(rec.id, mv.arrivedAt);
       if (lb !== null && mv.t < lb) rec.lateMoves++;
