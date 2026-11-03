@@ -27,6 +27,9 @@ const LIGHT = "#f0d9b5";
 /** 힌트(고수가 고른 수) 표시 */
 const HINT_COLOR = "#059669";
 
+/** 잡힐 기물 표시 */
+const DANGER_COLOR = "#dc2626";
+
 /** 누른 채 이만큼(칸 단위) 넘게 움직이면 끌기로 본다. 손이 조금 흔들린 누르기는 끌기가 아니다 */
 const DRAG_THRESHOLD = 0.2;
 const DARK = "#b58863";
@@ -123,6 +126,7 @@ export function ChessBoard({
   checkedKing,
   coordinates,
   hint = null,
+  danger = null,
 }: {
   board: readonly Cell[];
   /** 흑이면 판을 돌려 내 편을 아래에 둔다 */
@@ -139,6 +143,8 @@ export function ChessBoard({
   coordinates: boolean;
   /** 힌트: 고수가 고른 수의 출발(점선)·도착에 초록 고리(장기와 같은 모양) */
   hint?: Move | null;
+  /** 잡힐 수 있는 내 기물 칸(빨간 점선 네모) */
+  danger?: readonly number[] | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [cursor, setCursor] = useState<number | null>(null);
@@ -148,6 +154,8 @@ export function ChessBoard({
     x: number;
     y: number;
   } | null>(null);
+  /** 끌어서 놓은 수. 손으로 옮겼으니 놓은 뒤 출발 칸에서 다시 미끄러져 오지 않게 한다 */
+  const dropped = useRef<Move | null>(null);
   /** 누른 순간의 정보: 이번 누르기로 기물을 새로 골랐나, 누른 자리(끌기 시작 판단) */
   const down = useRef<{
     from: number;
@@ -234,6 +242,7 @@ export function ChessBoard({
       // 갈 곳에 놓으면 옮긴다. 아니면 기물은 제자리로 돌아가고 고른 채로 둔다.
       const move = spot?.square != null ? targets.get(spot.square) : undefined;
       if (move) {
+        dropped.current = move;
         onSelect(null);
         onMove(move);
       }
@@ -374,7 +383,11 @@ export function ChessBoard({
         const [x, y] = at(i);
         // 방금 옮긴 기물은 출발 칸에서 미끄러져 온다(장기와 같은 .jg-slide, 2026-11-03 사용자: 판 게임 모두 검토).
         // 수마다 새로 그려 움직임이 다시 돈다. 캐슬링의 룩·앙파상으로 잡힌 폰은 따로 움직이지 않는다
-        const arrived = lastMove?.to === i;
+        const handMoved =
+          dropped.current !== null &&
+          lastMove?.from === dropped.current.from &&
+          lastMove?.to === dropped.current.to;
+        const arrived = lastMove?.to === i && !handMoved;
         const key = arrived && lastMove ? `${i}:${lastMove.from}` : i;
         const slide = arrived && lastMove ? at(lastMove.from) : null;
         const slideStyle = slide
@@ -446,6 +459,23 @@ export function ChessBoard({
           />
         </g>
       )}
+
+      {danger?.map((i) => (
+        <rect
+          key={`d${i}`}
+          x={at(i)[0] + 0.05}
+          y={at(i)[1] + 0.05}
+          width={0.9}
+          height={0.9}
+          rx={0.08}
+          fill="none"
+          stroke={DANGER_COLOR}
+          strokeWidth={0.06}
+          strokeDasharray="0.14 0.08"
+          data-danger={squareName(i)}
+          pointerEvents="none"
+        />
+      ))}
 
       {hint &&
         [hint.from, hint.to].map((i, n) => (

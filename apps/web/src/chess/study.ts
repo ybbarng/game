@@ -130,6 +130,7 @@ export function explainEndgame(pos: Position, move: Move): string[] {
   const bk = kingOf(after.board, "b");
   const [wx, wy] = [wk % 8, Math.floor(wk / 8)];
   const [bx, by] = [bk % 8, Math.floor(bk / 8)];
+  const pawn = pos.board.indexOf("wP");
   const lines = [
     `킹을 ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이긴다`,
   ];
@@ -140,11 +141,14 @@ export function explainEndgame(pos: Position, move: Move): string[] {
     lines.push(
       "킹끼리 한 칸 띄우고 마주 섰다(맞서기). 흑 차례라 흑 킹이 비켜야 하고, 그 틈으로 백 킹이 나아간다",
     );
+  else if (wy < Math.floor(pawn / 8))
+    lines.push(
+      "백 킹이 폰보다 앞 칸을 먼저 차지한다. 흑 킹은 폰 앞을 막지 못하고 밀려난다",
+    );
   else
     lines.push(
-      "백 킹이 폰 앞쪽 중요한 칸으로 먼저 간다. 흑 킹은 폰 앞을 막지 못하고 밀려난다",
+      "흑 킹이 막는 쪽을 피해 옆으로 돌아 나간다. 다음 수에 폰 앞 칸으로 들어가 흑 킹을 밀어낸다",
     );
-  const pawn = pos.board.indexOf("wP");
   const push = sanToMove(pos, squareName(pawn - 8));
   if (push)
     lines.push(
