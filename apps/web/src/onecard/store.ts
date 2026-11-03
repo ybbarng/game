@@ -44,14 +44,8 @@ export type OnecardSaved = SavedMatch<OnecardRules, Action, OnecardSetup> & {
  */
 export const BOT_PACE_MS = 700;
 
-/** 화면 시험이 컴퓨터를 빨리 두게 할 때(`window.__onecardPace`) */
-function paceMs(): number {
-  const fast = (globalThis as { __onecardPace?: number }).__onecardPace;
-  return typeof fast === "number" ? fast : BOT_PACE_MS;
-}
-
 function botPace(next: () => void): void {
-  setTimeout(next, paceMs());
+  setTimeout(next, BOT_PACE_MS);
 }
 
 const SAVE_KEY = "onecard-save";

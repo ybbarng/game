@@ -437,7 +437,10 @@ export class LocalMatch<
         this.clock.after(Math.max(0, plan.delayMs), () => {
           this.reactions.delete(seat);
           if (this.frozen || !this.isBot(seat)) return;
-          if (this.apply(seat, plan.action, true).ok) this.runBots();
+          const action = plan.recheck
+            ? plan.recheck(this.kit.viewOf(this.state, seat))
+            : plan.action;
+          if (action && this.apply(seat, action, true).ok) this.runBots();
         }),
       );
     }

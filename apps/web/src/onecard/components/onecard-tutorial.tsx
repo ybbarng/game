@@ -117,10 +117,10 @@ export const onecardTutorial: TutorialKit<
       });
       return;
     }
-    // 실전: 둘이서 7장, 가장 짧게 끝난다. 컴퓨터는 가장 쉬운 단계
+    // 실전: 둘이서 7장, 가장 짧게 끝난다. 컴퓨터는 가장 쉬운 단계(입문)
     store.startPractice({
       rules: { ...ONECARD_TUTORIAL_RULES, players: 2, handSize: 7 },
-      bot: toKitBot(onecardBotFor(1)),
+      bot: toKitBot(onecardBotFor(0)),
     });
   },
   subscribe: (listener) =>
