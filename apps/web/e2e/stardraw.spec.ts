@@ -1809,13 +1809,16 @@ test("등록증 끌기: 가로는 민 방향으로 뒤집고 못 넘기면 제�
   await expect(screen.locator("[data-full-address]")).toBeVisible();
   // 카드를 짧게 누르면 본인 확인(둘러보기는 확인을 바로 통과시킨다)
   await stage.locator("[data-idcard]").click({ position: CARD_TAP });
-  // 본인 확인은 신분증 제시 틀: 아래에서 올라온 등록증을 내밀면(Enter도 같다) 확인, 연출이 끝나면 카드에 확인됨
-  await page
-    .locator("[aria-label='신분증 확인'][aria-disabled='false']")
-    .press("Enter", { timeout: 30_000 });
-  await expect(stage.locator("[data-owner-ok]")).toBeVisible({
-    timeout: 30_000,
-  });
+  // 본인 확인은 신분증 제시 틀: 아래에서 올라온 등록증을 내밀면(Enter도 같다) 확인, 연출이 끝나면 카드에 확인됨.
+  // 끌기 판정이 끝났으니 여기부터 연출은 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
+  await pressWhenShown(
+    page,
+    page.locator("[aria-label='신분증 확인'][aria-disabled='false']"),
+  );
+  await fastForwardUntil(page, () =>
+    stage.locator("[data-owner-ok]").isVisible(),
+  );
+  await expect(stage.locator("[data-owner-ok]")).toBeVisible();
 });
 
 test("당첨 축하: 맞은 내 별로 나만의 별자리, 1~3등은 당첨 직인, 5등은 가볍게", async ({
