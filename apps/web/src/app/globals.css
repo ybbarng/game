@@ -244,8 +244,9 @@ html:has([data-game="galaxy"]) body {
     opacity: 0;
   }
 }
+/* 단계 길이에 맞춘다(--galaxy-toast-ms, galaxy/fx-timing.ts). 문구는 15~85% 사이에 다 보인다 */
 .galaxy-toast {
-  animation: galaxy-toast 1.3s ease-out both;
+  animation: galaxy-toast var(--galaxy-toast-ms, 1300ms) ease-out both;
 }
 /* 별자리 완성: 이름이 아래에서 떠오른다 */
 @keyframes galaxy-name-rise {
