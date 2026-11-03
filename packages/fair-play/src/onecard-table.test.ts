@@ -12,6 +12,7 @@ import {
 import {
   checkOnecardReplay,
   ONECARD_CARDS,
+  ONECARD_SHOWN_WAIT_MS,
   OnecardDeck,
   type OnecardDraw,
   type OnecardLogged,
@@ -195,6 +196,34 @@ describe("판 도중 다시 섞기(기기 둘, 메시지)", () => {
     expect(
       checkOnecardReplay(TOY_SPEC, null, 0, ended, twoRounds, requests(extra)),
     ).toMatchObject({ ok: false, seat: 0, reason: /쓰지 않은 더미/ });
+    // 판이 바뀌는 걸음에서 뽑은 카드(먹다가 파산해 판이 끝남)도 방장이 연 자리와 맞춰 본다.
+    // 조각 2에 남은 한 장(판 자리 12)을 1번이 먹고 판이 끝난다.
+    const last = asked.at(-1) as OnecardDraw;
+    const endDraw = { ...last, slot: last.slot + 1, global: 12 };
+    const bust: OnecardLogged<ToyAction>[] = [
+      ...log,
+      { seat: 1, action: { type: "end", n: 1 } },
+    ];
+    expect(
+      checkOnecardReplay(
+        TOY_SPEC,
+        null,
+        0,
+        bust,
+        twoRounds,
+        requests([...asked, { ...endDraw, to: 1 }]),
+      ),
+    ).toMatchObject({ ok: true, upTo: bust.length });
+    expect(
+      checkOnecardReplay(
+        TOY_SPEC,
+        null,
+        0,
+        bust,
+        twoRounds,
+        requests([...asked, { ...endDraw, to: 0 }]),
+      ),
+    ).toMatchObject({ ok: false, index: log.length, reason: /엔진과 다르게/ });
     // 다시 섞을 카드를 버린 더미와 다르게 알렸다(맨 위 카드를 넣고 한 장을 뺐다).
     const lying = {
       ...deal,
@@ -260,7 +289,7 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     ]);
   });
 
-  it("아직 모두에게 열리지 않은 카드(남의 손패)를 다시 섞으려 하면 짚는다", async () => {
+  it("아직 모두에게 열리지 않은 카드(남의 손패)를 다시 섞으려 하면, 열쇠를 기다린 뒤 짚는다", async () => {
     const net = onecardNet();
     await net.settle();
     net.draw(1, 3);
@@ -269,6 +298,10 @@ describe("다시 섞기와 뽑기에서 방장 부정을 그 자리에서 막는
     const hidden = net.decks[0]?.knownCards(1).get(0) as Card;
     const open = net.decks[1]?.publicCards(1).get(4) as Card;
     net.decks[1]?.reshuffle(1, 1, [open, hidden]);
+    await net.settle();
+    // 카드를 낸 열쇠가 늦게 올 수 있어 바로 짚지 않는다.
+    expect(net.incidents[1]).toEqual([]);
+    net.clock.advance(ONECARD_SHOWN_WAIT_MS);
     await net.settle();
     expect(net.incidents[1]).toEqual([
       {
