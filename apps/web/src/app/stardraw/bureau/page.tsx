@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AgencyFooter } from "@/stardraw/components/AgencyFooter";
+import { ArgoChart } from "@/stardraw/components/ArgoChart";
 import { BureauDirector } from "@/stardraw/components/BureauDirector";
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
 import { GalaxyMap, NearbyStars3D } from "@/stardraw/components/BureauSpace";
@@ -153,6 +154,29 @@ export default function StardrawBureauPage() {
             점선은 그 위도에서 떠오르는 별의 남쪽 끝입니다. 카노푸스는 서울
             선보다 0.3도 남쪽에 거의 붙어 있어 서울에서는 지평선에 겨우
             닿습니다. 마라도 선보다는 안쪽이라 제주 남쪽 바다 위로 떠오릅니다.
+          </p>
+        </Section>
+
+        <Section title="용골자리와 아르고호">
+          <p>
+            용골자리는 옛 별자리 아르고자리에서 나왔습니다. 아르고자리는
+            프톨레마이오스가 정리한 48개 별자리 가운데 하나로, 그리스 신화에서
+            이아손과 원정대가 황금 양털을 찾아 타고 떠난 배 아르고호를 그린
+            별자리입니다.
+          </p>
+          <p>
+            18세기 프랑스 천문학자 라카유가 이 배를 셋으로 나눴습니다. 배
+            밑바닥의 용골자리, 배 뒤쪽의 고물자리, 돛을 그린 돛자리입니다.
+            1930년 국제천문연맹이 88개 별자리를 정할 때 아르고자리는 빠지고 이
+            셋이 남았습니다. 라카유가 그리스 글자를 배 전체에 한 벌로 매겨,
+            지금도 용골자리에는 γ별과 δ별이 없고 돛자리에는 α별과 β별이
+            없습니다.
+          </p>
+          <ArgoChart />
+          <p>
+            용골은 배 밑바닥 한가운데를 뱃머리에서 배 뒤쪽까지 잇는 뼈대로, 배
+            전체를 떠받칩니다. 용골자리의 별 카노푸스에서 이름을 딴 카노푸스
+            우주국은 대우주 시대의 기틀이 될 핵심 과학 연구를 하고 있습니다.
           </p>
         </Section>
 
