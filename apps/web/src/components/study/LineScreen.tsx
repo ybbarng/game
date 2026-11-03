@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import {
   advance,
   candidates,
+  keepWays,
   type LineCursor,
   type LineNode,
   learnerToMove,
@@ -15,6 +16,7 @@ import {
   opponentPick,
   type StudyLine,
   startCursor,
+  waysOf,
 } from "@/study/line";
 
 import { type Applied, type MoveSounds, playMoveCue } from "./PuzzleScreen";
@@ -68,9 +70,12 @@ export interface PlayedNode {
 const IDENTITY = [(s: string) => s] as const;
 
 /** 정해진 방향으로 마디 글자를 바꾼다 */
-function turned<S, M>(rules: LineRules<S, M>, orient: number | null) {
+function turned<S, M>(
+  rules: LineRules<S, M>,
+  orients: readonly number[] | null,
+) {
   const list = rules.transforms ?? IDENTITY;
-  return list[orient ?? 0] ?? IDENTITY[0];
+  return list[orients?.[0] ?? 0] ?? IDENTITY[0];
 }
 
 /** 지금 자리에서 마디를 판의 수로 바꾼 후보들(정해진 방향, 아직 없으면 그대로) */
@@ -78,9 +83,9 @@ function movesAt<S, M>(
   rules: LineRules<S, M>,
   state: S,
   cursor: LineCursor,
-  orient: number | null,
+  orients: readonly number[] | null,
 ) {
-  const turn = turned(rules, orient);
+  const turn = turned(rules, orients);
   return candidates(cursor)
     .map((node) => ({ node, move: rules.parse(state, turn(node.move)) }))
     .filter((c): c is { node: LineNode; move: M } => c.move !== null);
@@ -103,7 +108,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
   const [revealed, setRevealed] = useState(false);
   const [missed, setMissed] = useState(false);
   /** 대칭 방향. 배우는 사람의 첫 수나 상대의 첫 수에서 정한다 */
-  const [orient, setOrient] = useState<number | null>(null);
+  const [orients, setOrients] = useState<readonly number[] | null>(null);
   const latest = useRef(rules);
   latest.current = rules;
 
@@ -132,20 +137,32 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
 
   // 상대 차례면 수순의 수를 저절로 둔다.
   // 기다리는 상태로 바뀌었거나 판·자리가 바뀔 때만 다시 건다(다른 까닭으로 다시 그려도 기다림이 처음부터 시작하지 않게).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: playNode는 같은 판·자리를 쓰는 함수라 이 셋으로 충분하다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: playNode는 같은 판·자리·방향을 쓰는 함수라 이 넷으로 충분하다
   useEffect(() => {
     if (status !== "waiting") return;
     const timer = setTimeout(() => {
       const rules = latest.current;
       const node = opponentPick(cursor, (rules.roll ?? Math.random)());
-      const move = node
-        ? rules.parse(state, turned(rules, orient)(node.move))
-        : null;
-      if (orient === null) setOrient(0);
-      if (node && move) playNode(node, move, false);
+      if (!node) return;
+      // 아직 맞는 방향 가운데 첫 방향으로 두고, 그 수와 같은 자리가 되는 방향만 남긴다.
+      const transforms = rules.transforms ?? IDENTITY;
+      const ways = waysOf(transforms, orients);
+      const move = rules.parse(state, turned(rules, ways)(node.move));
+      if (!move) return;
+      setOrients(
+        keepWays(
+          node,
+          move,
+          (n) => rules.parse(state, n),
+          rules.same,
+          transforms,
+          ways,
+        ),
+      );
+      playNode(node, move, false);
     }, REPLY_MS);
     return () => clearTimeout(timer);
-  }, [status, state, cursor]);
+  }, [status, state, cursor, orients]);
 
   const restart = () => {
     setState(rules.initial());
@@ -155,7 +172,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
     setLastMove(null);
     setMistake(false);
     setShown(null);
-    setOrient(null);
+    setOrients(null);
     // 수 보기로 본 표시도 지운다: 처음부터 다시 두어 보지 않고 끝까지 두면 푼 것으로 친다(문제 화면 usePuzzleRun과 같게)
     setRevealed(false);
   };
@@ -169,11 +186,11 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
       (notation) => rules.parse(state, notation),
       rules.same,
       rules.transforms ?? IDENTITY,
-      orient,
+      orients,
     );
     if (found) {
       setMistake(false);
-      setOrient(found.orient);
+      setOrients(found.orients);
       playNode(found.node, found.move, true);
       return;
     }
@@ -188,7 +205,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
   /** 이 자리에서 수순이 두는 수(본줄기) */
   const expected = (): M | null =>
     status === "play"
-      ? (movesAt(rules, state, cursor, orient)[0]?.move ?? null)
+      ? (movesAt(rules, state, cursor, orients)[0]?.move ?? null)
       : null;
 
   /** 수 보기: 다음 수를 판에 보인다. 본 뒤 끝까지 두어도 푼 것으로 치지 않는다 */
