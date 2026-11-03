@@ -1045,6 +1045,10 @@
           "path": "docs/50-hidden-ideas.md"
         },
         {
+          "label": "재미 기준(열두 기준, 점수표, 설계 점검표)",
+          "path": "docs/50-fun-criteria.md"
+        },
+        {
           "label": "다듬는 틀(대국 → 흠 → 고침, 관문, 흠 목록)",
           "path": "docs/50-hidden-loop.md"
         },
