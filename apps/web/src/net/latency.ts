@@ -288,6 +288,11 @@ export class LatencyMeter {
         if (!theirs) {
           theirs = new Map();
           this.theirArrivals.set(message.k, theirs);
+          // 내가 받지 않는 알림(방장 자신이 보낸 것)도 쌓이지 않게 오래된 것을 버린다
+          if (this.theirArrivals.size > 200) {
+            const first = this.theirArrivals.keys().next().value as string;
+            this.theirArrivals.delete(first);
+          }
         }
         theirs.set(from, message.at);
         this.compareArrivals(message.k);
