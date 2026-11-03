@@ -239,8 +239,9 @@ export function sellValue(board: GalaxyBoard, square: number): number {
 }
 
 /**
- * 자산(2-10) = 별빛 + 가진 별 값(맡긴 별은 맡긴 값) + 지은 정거장 값(1단은 별 값에 들어 있다)
- * + 완성 별자리마다 100
+ * 자산(2-10) = 별빛 + 가진 별 값(맡긴 별은 맡긴 값) + 지은 정거장을 내릴 때 돌려받는 값(한 단 값의 절반,
+ * 1단은 별 값에 들어 있다) + 완성 별자리마다 100. 정거장은 짓는 순간 자산이 절반만큼 줄어
+ * 이용료로 되찾을 시간이 남았을 때 짓는다(「언제 올릴까」)
  */
 export function assetsOf(
   state: Pick<
@@ -256,7 +257,7 @@ export function assetsOf(
     if (!star) continue;
     total += state.mortgaged[sq] ? mortgageValue(state.board, sq) : star.value;
     total +=
-      Math.max(0, (state.levels[sq] ?? 1) - 1) * levelCostAt(state.board, sq);
+      Math.max(0, (state.levels[sq] ?? 1) - 1) * sellValue(state.board, sq);
   }
   state.board.groups.forEach((_, g) => {
     if (isComplete(state, seat, g)) total += NUMBERS.completeBonus;

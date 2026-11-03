@@ -213,12 +213,12 @@ describe("끝과 순위(2-10)", () => {
     expect(ended.result?.kind).toBe("timeUp");
   });
 
-  it("자산 = 별빛 + 별 값(맡긴 별은 절반) + 지은 정거장 + 완성 별자리마다 100", () => {
+  it("자산 = 별빛 + 별 값(맡긴 별은 절반) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 100", () => {
     const s = scene({
       cash: [500, 1000, 1000, 1000],
       stars: [...cma(0, 2), { square: 1, owner: 0, mortgaged: true }],
     });
-    expect(assetsOf(s, 0)).toBe(500 + 620 + 300 + 30 + 100);
+    expect(assetsOf(s, 0)).toBe(500 + 620 + 150 + 30 + 100);
     expect(standingsOf(s)[0]?.seat).toBe(0);
   });
 
