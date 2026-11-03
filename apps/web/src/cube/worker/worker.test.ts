@@ -1,7 +1,12 @@
 import { scramble } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
-import { createJobRunner, scrambleInWorker, type WorkerLike } from "./index";
+import {
+  createJobRunner,
+  importAlgsInWorker,
+  scrambleInWorker,
+  type WorkerLike,
+} from "./index";
 import type { CubeJob, CubeJobMessage, CubeJobReply } from "./jobs";
 
 describe("큐브 워커 모듈", () => {
@@ -10,6 +15,20 @@ describe("큐브 워커 모듈", () => {
     const s = await scrambleInWorker("555", 3);
     expect(s).toEqual(scramble("555", 3));
     expect(s.text.split(" ")).toHaveLength(60);
+  });
+
+  it("내 공식 가져오기도 워커를 못 쓰면 같은 스레드에서 한다", async () => {
+    const text = JSON.stringify({
+      format: "cube-algs",
+      version: 1,
+      cases: { "oll-27": { mine: ["L U L' U L U2 L'", "R U R'"] } },
+    });
+    const r = await importAlgsInWorker({}, text);
+    expect(r.added).toBe(1);
+    expect(r.rejected.map((x) => x.message)).toEqual(["F2L이 깨짐"]);
+    await expect(importAlgsInWorker({}, "{")).rejects.toThrow(
+      "JSON을 읽지 못함",
+    );
   });
 });
 

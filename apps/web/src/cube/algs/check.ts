@@ -392,17 +392,32 @@ export function findSolvedCase(
   return null;
 }
 
+/** 공식 한 줄의 글자 수 상한(링크·입력칸·가져오기가 같이 쓴다). 넘으면 검사하지 않는다 */
+export const MAX_ALG_LENGTH = 300;
+
+export interface CheckOptions {
+  /** 큐브 크기(없으면 묶음 크기) */
+  n?: number;
+  /**
+   * 틀렸을 때 같은 묶음의 다른 상황을 푸는지 찾아보나(기본 true). 상황마다 네 번씩 해 봐서 무겁다.
+   * 가져오기처럼 까닭만 필요하면 끈다
+   */
+  findOther?: boolean;
+}
+
 /**
- * 공식이 그 상황의 역할에 맞는지 본다. n은 큐브 크기(없으면 묶음 크기).
+ * 공식이 그 상황의 역할에 맞는지 본다.
  * 맞으면 앞에 붙일 윗면 돌리기와 저장할 글을, 아니면 까닭과(있으면) 대신 푸는 상황을 준다.
  */
 export function checkAlg(
   c: AlgCase,
   input: string,
-  n: number = setOf(c).size,
+  opts: CheckOptions = {},
 ): CheckResult {
+  const n = opts.n ?? setOf(c).size;
   const text = tidyAlg(input);
   if (text === "") return { ok: false, message: "공식이 비어 있음" };
+  if (text.length > MAX_ALG_LENGTH) return { ok: false, message: "너무 김" };
   let moves: CubeMove[];
   try {
     moves = parseMoves(n, text);
@@ -429,7 +444,7 @@ export function checkAlg(
   }
   const start = caseStart(c);
   const after = engineApply(n, start, moves);
-  const other = findSolvedCase(c, moves);
+  const other = opts.findOther === false ? null : findSolvedCase(c, moves);
   return {
     ok: false,
     message: roleOf(c).why(after, start),

@@ -9,15 +9,17 @@ import {
   type AlgBook,
   addMine,
   algsOf,
+  commitAlgBook,
   exportAlgBook,
   type ImportResult,
-  importAlgBook,
   loadAlgBook,
+  MAX_IMPORT_BYTES,
   removeMine,
-  saveAlgBook,
   setAsText,
   setUsed,
+  unknownCaseIds,
   usedAlg,
+  watchAlgBook,
 } from "../algs/store";
 import {
   addAuf,
@@ -32,6 +34,7 @@ import {
 import { ALG_SETS, type AlgCase, type AlgSet, type AlgSetInfo } from "../learn";
 import { movesOf } from "../learn/judge";
 import { type CubeSettings, useCubeSettings } from "../settings";
+import { importAlgsInWorker } from "../worker";
 import { AlgPicture } from "./AlgPicture";
 import { DemoCube } from "./DemoCube";
 
@@ -54,6 +57,9 @@ async function copyText(text: string, select?: Element | null) {
 
 const KIND_LABEL = { main: "대표", alt: "대안", mine: "내 공식" } as const;
 
+/** 가져오기에서 뺀 공식을 몇 개까지 보이나(나머지는 개수만) */
+const REJECTED_SHOWN = 100;
+
 export function AlgsApp() {
   const settings = useCubeSettings();
   const [book, setBookState] = useState<AlgBook>({});
@@ -66,9 +72,14 @@ export function AlgsApp() {
   const [imported, setImported] = useState<ImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const setTextRef = useRef<HTMLPreElement>(null);
+  const bookRef = useRef<AlgBook>({});
+  const setBook = useCallback((b: AlgBook) => {
+    bookRef.current = b;
+    setBookState(b);
+  }, []);
 
   useEffect(() => {
-    setBookState(loadAlgBook());
+    setBook(loadAlgBook());
     const l = parseAlgLink(window.location.search);
     const c = l && caseById(l.caseId);
     if (l && c) {
@@ -76,12 +87,20 @@ export function AlgsApp() {
       setOpenId(c.id);
       if (l.alg) setLinked({ id: c.id, alg: l.alg });
     }
-  }, []);
+    // 다른 탭(훈련 등)이 저장하면 다시 읽는다
+    return watchAlgBook(setBook);
+  }, [setBook]);
 
-  const updateBook = useCallback((b: AlgBook) => {
-    setBookState(b);
-    saveAlgBook(b);
-  }, []);
+  /** prev에서 next로 바뀐 상황만 저장하고(다른 탭 변경과 합친다) 합친 것을 보인다 */
+  const commitBook = useCallback(
+    (prev: AlgBook, next: AlgBook) => setBook(commitAlgBook(prev, next)),
+    [setBook],
+  );
+  const updateBook = useCallback(
+    (b: AlgBook) => commitBook(bookRef.current, b),
+    [commitBook],
+  );
+  const unknown = unknownCaseIds(book).length;
 
   const set =
     ALG_SETS.find((s) => s.set === setId) ?? (ALG_SETS[0] as AlgSetInfo);
@@ -185,16 +204,32 @@ export function AlgsApp() {
               const file = e.currentTarget.files?.[0];
               e.currentTarget.value = "";
               if (!file) return;
+              if (file.size > MAX_IMPORT_BYTES) {
+                setNotice("파일이 너무 큼");
+                return;
+              }
+              setNotice("가져오는 중");
+              setImported(null);
               try {
-                const r = importAlgBook(book, await file.text());
-                updateBook(r.book);
+                const base = bookRef.current;
+                const r = await importAlgsInWorker(base, await file.text());
+                commitBook(base, r.book);
                 setImported(r);
                 setNotice(`가져옴 ${r.added} · 뺌 ${r.rejected.length}`);
               } catch (err) {
-                setNotice(err instanceof Error ? err.message : "가져오지 못함");
+                setNotice(
+                  err instanceof Error
+                    ? err.message.replace(/^Error: /, "")
+                    : "가져오지 못함",
+                );
               }
             }}
           />
+          {unknown > 0 && (
+            <span data-algs-unknown className="text-amber-200">
+              모르는 상황 {unknown}개
+            </span>
+          )}
           {notice && (
             <span role="status" data-algs-notice className="text-white/70">
               {notice}
@@ -202,15 +237,24 @@ export function AlgsApp() {
           )}
         </div>
         {imported && imported.rejected.length > 0 && (
-          <ul className="flex flex-col gap-0.5 rounded-lg bg-red-500/10 p-2 text-red-200 text-xs">
-            {imported.rejected.map((x) => (
-              <li key={`${x.caseId}|${x.alg}`}>
+          <ul
+            className="flex flex-col gap-0.5 rounded-lg bg-red-500/10 p-2 text-red-200 text-xs"
+            data-algs-rejected
+          >
+            {imported.rejected.slice(0, REJECTED_SHOWN).map((x, i) => (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 공식이 되풀이될 수 있어 순번을 더한다(목록은 바뀌지 않는다)
+                key={`${i}|${x.caseId}|${x.alg}`}
+              >
                 {caseById(x.caseId)
                   ? shortName(caseById(x.caseId) as AlgCase)
                   : x.caseId}
                 : <span className="font-mono">{x.alg}</span> · {x.message}
               </li>
             ))}
+            {imported.rejected.length > REJECTED_SHOWN && (
+              <li>외 {imported.rejected.length - REJECTED_SHOWN}개</li>
+            )}
           </ul>
         )}
         <pre ref={setTextRef} className="sr-only">

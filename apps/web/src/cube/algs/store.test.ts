@@ -5,8 +5,10 @@ import { caseById } from "./check";
 import { algLink, parseAlgLink } from "./link";
 import {
   ALGS_KEY,
+  type AlgBook,
   addMine,
   algsOf,
+  commitAlgBook,
   exportAlgBook,
   importAlgBook,
   loadAlgBook,
@@ -14,7 +16,9 @@ import {
   saveAlgBook,
   setAsText,
   setUsed,
+  unknownCaseIds,
   usedAlg,
+  watchAlgBook,
 } from "./store";
 
 const byId = (id: string): AlgCase => {
@@ -72,7 +76,7 @@ describe("내 공식", () => {
     );
   });
 
-  it("저장소에 쓰고 읽는다. 깨진 값·없는 상황은 버린다", () => {
+  it("저장소에 쓰고 읽는다. 깨진 값은 버린다", () => {
     const st = memory();
     const r = addMine({}, SUNE, LEFT_SUNE_BACK);
     if (!r.ok) throw new Error();
@@ -83,10 +87,80 @@ describe("내 공식", () => {
     expect(loadAlgBook(st)).toEqual({});
     st.data.set(
       ALGS_KEY,
-      JSON.stringify({ "no-such": { mine: ["R"] }, "oll-27": { mine: [1] } }),
+      JSON.stringify({ "oll-27": { mine: [1] }, "oll-26": 3 }),
     );
     expect(loadAlgBook(st)).toEqual({ "oll-27": { mine: [] } });
     expect(loadAlgBook(null)).toEqual({});
+  });
+
+  it("자료에 없는 상황의 공식은 남겨 두고, 저장·내보내기에도 그대로 둔다", () => {
+    const st = memory();
+    st.data.set(
+      ALGS_KEY,
+      JSON.stringify({ "oll-old": { mine: ["R U R'"], use: "R U R'" } }),
+    );
+    const book = loadAlgBook(st);
+    expect(unknownCaseIds(book)).toEqual(["oll-old"]);
+    // 다른 상황을 바꿔 저장해도 지워지지 않는다
+    const r = addMine(book, SUNE, LEFT_SUNE_BACK);
+    if (!r.ok) throw new Error();
+    commitAlgBook(book, r.book, st);
+    const back = loadAlgBook(st);
+    expect(back["oll-old"]).toEqual({ mine: ["R U R'"], use: "R U R'" });
+    expect(JSON.parse(exportAlgBook(back)).cases["oll-old"]).toEqual({
+      mine: ["R U R'"],
+      use: "R U R'",
+    });
+    // 아무것도 남지 않은 모르는 상황은 세지 않는다
+    expect(unknownCaseIds({ "oll-old": { mine: [] } })).toEqual([]);
+  });
+});
+
+describe("두 탭에서 함께 쓰기", () => {
+  const AA = byId("oll-26");
+  const ANTI_BACK = "L' U' L U' L' U2 L";
+
+  it("저장할 때 바꾼 상황만 덮어 써서 다른 탭이 바꾼 상황을 지우지 않는다", () => {
+    const st = memory();
+    // 두 탭이 같은 빈 상태에서 시작
+    const tabA = loadAlgBook(st);
+    const tabB = loadAlgBook(st);
+    const a = addMine(tabA, SUNE, LEFT_SUNE_BACK);
+    if (!a.ok) throw new Error();
+    const savedA = commitAlgBook(tabA, a.book, st);
+    expect(Object.keys(savedA)).toEqual([SUNE.id]);
+
+    const b = addMine(tabB, AA, ANTI_BACK);
+    if (!b.ok) throw new Error(b.message);
+    const savedB = commitAlgBook(tabB, b.book, st);
+    // 앞 탭이 넣은 수네 공식이 남아 있다
+    expect(Object.keys(savedB).sort()).toEqual([AA.id, SUNE.id].sort());
+    expect(loadAlgBook(st)).toEqual(savedB);
+
+    // 같은 상황은 나중 저장이 이긴다(앞 탭이 지운 것을 뒤 탭이 다시 고르면 그 값)
+    const removed = removeMine(savedA, SUNE, a.alg);
+    commitAlgBook(savedA, removed, st);
+    expect(loadAlgBook(st)[SUNE.id]?.mine).toEqual([]);
+    expect(loadAlgBook(st)[AA.id]?.mine).toHaveLength(1);
+  });
+
+  it("다른 탭이 저장하면 다시 읽어 알려 준다", () => {
+    const st = memory();
+    const target = new EventTarget();
+    const seen: AlgBook[] = [];
+    const stop = watchAlgBook((b) => seen.push(b), target, st);
+    const r = addMine({}, SUNE, LEFT_SUNE_BACK);
+    if (!r.ok) throw new Error();
+    saveAlgBook(r.book, st);
+    const storageEvent = (key: string | null) =>
+      Object.assign(new Event("storage"), { key });
+    target.dispatchEvent(storageEvent("other.key"));
+    expect(seen).toEqual([]);
+    target.dispatchEvent(storageEvent(ALGS_KEY));
+    expect(seen).toEqual([r.book]);
+    stop();
+    target.dispatchEvent(storageEvent(ALGS_KEY));
+    expect(seen).toHaveLength(1);
   });
 });
 
