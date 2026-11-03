@@ -12,10 +12,29 @@ import {
 import { CARD_CODES, decode, encodedDeck } from "./protocol";
 
 describe("카드 번호표", () => {
-  it("마이티 53장 번호는 그대로이고 화투 48장은 뒤에 붙는다", () => {
+  it("마이티 53장 번호는 그대로이고 화투 48장, 원카드 컬러 조커가 차례로 뒤에 붙는다", () => {
     expect(CARD_CODES.slice(0, 53)).toEqual(fullDeck());
-    expect(CARD_CODES.slice(53)).toEqual(HWATU_CARDS);
-    expect(new Set(CARD_CODES).size).toBe(101);
+    expect(CARD_CODES.slice(53, 101)).toEqual(HWATU_CARDS);
+    expect(CARD_CODES[101]).toBe("JC");
+    expect(new Set(CARD_CODES).size).toBe(102);
+  });
+
+  it("앞 번호는 바뀌지 않는다(지난 기록·판 끝 검증이 이 번호로 잠근 값을 연다)", () => {
+    // 번호를 옮기면 같은 카드가 다른 값으로 잠겨 예전 기록을 다시 열 수 없다. 몇 군데를 값으로 적어 둔다.
+    const fixed: [number, string][] = [
+      [0, "S2"],
+      [12, "SA"],
+      [13, "D2"],
+      [51, "CA"],
+      [52, "JK"],
+      [53, "01g"],
+      [100, "12d"],
+      [101, "JC"],
+    ];
+    for (const [index, card] of fixed) {
+      expect(CARD_CODES[index]).toBe(card);
+      expect(CARD_CODES.indexOf(card as never)).toBe(index);
+    }
   });
 
   it("화투 카드도 잠그기 전 값으로 바꾸고 되돌린다(r255)", () => {

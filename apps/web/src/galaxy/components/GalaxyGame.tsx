@@ -1,0 +1,766 @@
+"use client";
+
+import { asState } from "@game/galaxy-ai";
+import {
+  type Action,
+  assetsOf,
+  type GalaxyView,
+  type GameResult,
+  NUMBERS,
+  rentOf,
+  STAR_SQUARES,
+  standingsOf,
+  starAt,
+  turnLimitOf,
+} from "@game/galaxy-engine";
+import { useEffect, useMemo, useState } from "react";
+import { ResignButton } from "@/components/ResignButton";
+import { ResultBanner } from "@/components/ResultBanner";
+import { RoundOutcome } from "@/components/RoundOutcome";
+import type { ResultBanner as Banner } from "@/game/result-banner";
+import { cn } from "@/lib/cn";
+import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
+
+import { eventLine } from "../events";
+import { money, seatLabel, shipOf, squareName } from "../format";
+import { shownCash } from "../fx";
+import { GALAXY_FX } from "../fx-timing";
+import { metSquares, outcomeOf } from "../kit";
+import { GALAXY_LENGTHS, GALAXY_LEVELS, useGalaxySettings } from "../settings";
+import { prefersReducedMotion, useGalaxy } from "../store";
+import { useFxElapsed } from "../use-fx";
+import {
+  BidSheet,
+  BuySheet,
+  DebtSheet,
+  ManagePanel,
+  PRIMARY,
+  rentTable,
+  SECONDARY,
+  Sheet,
+  StarFacts,
+  TradeAnswer,
+  TradeComposer,
+} from "./Decision";
+import { GalaxyBoard } from "./GalaxyBoard";
+import { ShipToken } from "./parts";
+
+/** 은하 한 바퀴 화면 바탕: 깊은 밤하늘 */
+export const GALAXY_BG =
+  "bg-[radial-gradient(ellipse_at_top,#1d2f5c_0%,#0b1430_45%,#070d1c_100%)]";
+
+function resultText(
+  result: GameResult | null,
+  view: GalaxyView,
+  name: (seat: number) => string,
+): string {
+  if (!result) return "게임을 끝냈어요";
+  const mine = result.standings.find((s) => s.seat === view.mySeat);
+  const rank = mine ? `${mine.rank}등` : "";
+  switch (result.kind) {
+    case "resign":
+      return result.seat === view.mySeat
+        ? "기권했어요"
+        : `${name(result.seat ?? 0)} 기권 · 나 ${rank}`;
+    case "bankrupt":
+      return result.seat === view.mySeat
+        ? `운항을 멈췄어요 · ${rank}`
+        : `${name(result.seat ?? 0)} 운항 중단으로 끝 · 나 ${rank}`;
+    case "time":
+      return `시간을 다 써서 끝났어요 · 나 ${rank}`;
+    case "forfeit":
+      return "공개를 기다리지 않고 끝냈어요";
+    default:
+      return mine?.rank === 1 ? "1등이에요!" : `판이 끝났어요 · 나 ${rank}`;
+  }
+}
+
+/** 우주인 줄: 모양·이름·별빛·순위. 차례인 사람은 밝게 */
+function PlayerStrip({
+  view,
+  cash,
+  name,
+}: {
+  view: GalaxyView;
+  cash: number[];
+  name: (seat: number) => string;
+}) {
+  const standings = standingsOf({ ...asState(view), cash });
+  return (
+    <ul className="grid w-full grid-cols-2 gap-1.5 split:grid-cols-1">
+      {cash.map((c, seat) => {
+        const row = standings.find((s) => s.seat === seat);
+        const turn = view.turn.seat === seat && view.phase !== "gameOver";
+        return (
+          <li
+            // biome-ignore lint/suspicious/noArrayIndexKey: 자리 번호가 열쇠다
+            key={seat}
+            data-player={seat}
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl border px-2 py-1 text-sm transition",
+              turn
+                ? "border-white/40 bg-white/10"
+                : "border-white/10 bg-white/[0.03]",
+              view.out[seat] && "opacity-40",
+            )}
+            style={
+              turn ? { boxShadow: `0 0 12px ${shipOf(seat).color}55` } : {}
+            }
+          >
+            <ShipToken seat={seat} size={13} />
+            <span className="truncate">{name(seat)}</span>
+            <span
+              data-cash={seat}
+              className="ml-auto font-bold text-amber-100 tabular-nums"
+            >
+              {money(c)}
+            </span>
+            <span className="text-[11px] text-white/50">
+              {view.out[seat] ? "중단" : `${row?.rank ?? ""}위`}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** 내 별자리: 가진 별 수와 선, 완성 */
+function MyConstellations({ view }: { view: GalaxyView }) {
+  const me = view.mySeat;
+  const rows = view.board.groups
+    .map((g, i) => ({
+      g,
+      i,
+      owned: g.squares.filter((sq) => view.owners[sq] === me),
+    }))
+    .filter((r) => r.owned.length > 0);
+  if (rows.length === 0)
+    return <p className="text-white/50 text-xs">아직 가진 별이 없어요.</p>;
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      {rows.map(({ g, owned }) => {
+        const complete = owned.length >= g.squares.length;
+        return (
+          <li
+            key={g.id}
+            data-my-group={g.id}
+            className="flex items-center gap-2"
+          >
+            <span className="w-24 truncate">{g.ko}</span>
+            <span className="font-mono text-sky-100/80 text-xs tracking-tight">
+              {g.squares
+                .map((sq) => (view.owners[sq] === me ? "✶" : "·"))
+                .join(complete || owned.length >= 2 ? "─" : " ")}
+            </span>
+            <span
+              className={cn(
+                "ml-auto text-xs",
+                complete ? "font-bold text-amber-200" : "text-white/50",
+              )}
+            >
+              {complete ? "완성" : `${owned.length}/${g.squares.length}`}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** 칸 정보(누른 칸·마우스를 올린 칸) */
+function SquareInfo({
+  view,
+  square,
+  name,
+  onClose,
+}: {
+  view: GalaxyView;
+  square: number;
+  name: (seat: number) => string;
+  onClose?: () => void;
+}) {
+  const star = starAt(view.board, square);
+  const owner = view.owners[square] ?? -1;
+  const rents = rentTable(view, square);
+  return (
+    <Sheet testId="info">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-bold">
+          {star ? `✶ ${star.star.ko}` : squareName(view.board, square)}
+          {star && (
+            <span className="ml-1 font-normal text-sm text-white/60">
+              {money(star.value)}
+            </span>
+          )}
+        </p>
+        {onClose && (
+          <button
+            type="button"
+            aria-label="닫기"
+            onClick={onClose}
+            className="text-white/60"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {star ? (
+        <>
+          <StarFacts view={view} square={square} />
+          <p className="mt-1 text-white/60 text-xs">
+            {owner >= 0
+              ? `${name(owner)}의 별 · 지금 이용료 ${money(rentOf(view, square))}`
+              : "주인 없는 별"}
+          </p>
+          {rents && (
+            <p className="text-white/45 text-xs">
+              1단 {money(rents.single)} · 둘 {money(rents.pair)} · 완성{" "}
+              {money(rents.complete)} · 2단 {money(rents.level2)} · 3단{" "}
+              {money(rents.level3)} · 큰 정거장 {money(rents.grand)}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-white/60 text-xs">{cornerHelp(view, square)}</p>
+      )}
+    </Sheet>
+  );
+}
+
+function cornerHelp(view: GalaxyView, square: number): string {
+  const kind = view.board.squares[square]?.kind;
+  switch (kind) {
+    case "base":
+      return `지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`;
+    case "asteroid":
+      return `공문이나 같은 눈 세 번으로 오면 걸려요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`;
+    case "observatory":
+      return "멈추면 관측 지원금을 받아요. 자산 순위가 낮을수록 많아요.";
+    case "comet":
+      return "주사위를 한 번 더 굴려 그만큼 더 가요.";
+    default:
+      return "우주국 공문 한 장을 펴서 따라요.";
+  }
+}
+
+/** 판 끝: 순위·자산 표 */
+function Standings({
+  view,
+  name,
+}: {
+  view: GalaxyView;
+  name: (seat: number) => string;
+}) {
+  const rows = view.result?.standings ?? [];
+  if (rows.length === 0) return null;
+  return (
+    <table data-standings className="w-full text-sm">
+      <thead className="text-white/50 text-xs">
+        <tr>
+          <th className="text-left font-normal">순위</th>
+          <th className="text-left font-normal">우주인</th>
+          <th className="text-right font-normal">별빛</th>
+          <th className="text-right font-normal">자산</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr
+            key={r.seat}
+            className={cn(r.seat === view.mySeat && "text-amber-100")}
+          >
+            <td>{r.rank}등</td>
+            <td className="flex items-center gap-1">
+              <ShipToken seat={r.seat} size={11} />
+              {name(r.seat)}
+              {r.out && <span className="text-white/40 text-xs">(중단)</span>}
+            </td>
+            <td className="text-right tabular-nums">{money(r.cash)}</td>
+            <td className="text-right font-bold tabular-nums">
+              {money(r.assets)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** 판 끝: 이번 판에서 만난 별(별자리별, 산 별·처음 표시, docs/48 5-5) */
+function MetStars({
+  view,
+  history,
+  firstMet,
+}: {
+  view: GalaxyView;
+  history: Parameters<typeof metSquares>[1];
+  firstMet: readonly string[];
+}) {
+  const met = new Set(metSquares(view, history));
+  const [open, setOpen] = useState<number | null>(null);
+  const groups = view.board.groups.filter((g) =>
+    g.squares.some((sq) => met.has(sq)),
+  );
+  if (groups.length === 0) return null;
+  return (
+    <section data-met-stars className="w-full">
+      <h2 className="mb-1 font-bold text-sm">이번 판에서 만난 별</h2>
+      <ul className="flex flex-col gap-1.5">
+        {groups.map((g) => (
+          <li key={g.id} className="text-sm">
+            <span className="mr-2 text-white/60 text-xs">{g.ko}</span>
+            {g.squares
+              .filter((sq) => met.has(sq))
+              .map((sq) => {
+                const star = starAt(view.board, sq)?.star;
+                if (!star) return null;
+                const mine = view.owners[sq] === view.mySeat;
+                const first = firstMet.includes(star.id);
+                return (
+                  <button
+                    key={sq}
+                    type="button"
+                    onClick={() => setOpen(open === sq ? null : sq)}
+                    className={cn(
+                      "mr-1 mb-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                      mine
+                        ? "border-amber-200/60 bg-amber-200/10"
+                        : "border-white/15 bg-white/5",
+                    )}
+                  >
+                    {mine ? "✶" : "·"} {star.ko}
+                    {first && (
+                      <span className="rounded bg-sky-300/90 px-1 text-[10px] text-slate-950">
+                        처음
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+          </li>
+        ))}
+      </ul>
+      {open !== null && (
+        <div className="mt-1">
+          <StarFacts view={view} square={open} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** 대국 화면(docs/48 7절). PC·눕힌 폰은 판 왼쪽 + 오른쪽 칸, 세로 폰은 판 아래로 쌓는다 */
+export function GalaxyGame({ onExit }: { onExit: () => void }) {
+  const {
+    view,
+    host,
+    notice,
+    level,
+    events,
+    history,
+    timeline,
+    fxStart,
+    playing,
+    firstMet,
+  } = useGalaxy();
+  const submit = useGalaxy((s) => s.submit);
+  const placeBid = useGalaxy((s) => s.placeBid);
+  const clearNotice = useGalaxy((s) => s.clearNotice);
+  const followSetting = useGalaxySettings((s) => s.follow);
+  const elapsed = useFxElapsed(timeline, fxStart);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const [trading, setTrading] = useState(false);
+  const [partner, setPartner] = useState<number | null>(null);
+  const [marked, setMarked] = useState<Set<number>>(new Set());
+  const [portrait, setPortrait] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(
+      "(max-width: 640px) and (orientation: portrait)",
+    );
+    const update = () => setPortrait(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(clearNotice, 2200);
+    return () => clearTimeout(id);
+  }, [notice, clearNotice]);
+
+  const decision = view?.decision ?? null;
+  const ready = !playing && decision !== null;
+  const canRoll = ready && decision?.kind === "roll";
+  const hint = useIdleHint(canRoll && !trading, GALAXY_FX.idleHint);
+
+  // 결정이 바뀌면 거래 고르기를 닫는다.
+  const decisionKey = view
+    ? `${view.phase}:${view.turn.seat}:${view.turn.rolls}:${view.revealCount}`
+    : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 차례·단계가 바뀔 때만 닫는다
+  useEffect(() => {
+    setTrading(false);
+    setPartner(null);
+    setMarked(new Set());
+  }, [decisionKey]);
+
+  const act = (a: Action) => {
+    setSelected(null);
+    submit(a);
+  };
+
+  // 키보드: Space 굴리기, B 사기, N 넘기기, T 거래, ←→ 칸 살피기, Esc 닫기
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea")) return;
+      if (e.key === "Escape") {
+        setSelected(null);
+        setTrading(false);
+        setMarked(new Set());
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const d = e.key === "ArrowRight" ? 1 : 31;
+        setSelected((s) => ((s ?? view?.positions[view.mySeat] ?? 0) + d) % 32);
+        return;
+      }
+      if (!ready || !decision) return;
+      if (e.key === " " && !target?.closest("button")) {
+        if (decision.kind === "roll") {
+          e.preventDefault();
+          act({ type: "roll" });
+        } else if (decision.kind === "end") {
+          e.preventDefault();
+          act({ type: "end" });
+        }
+      } else if (e.key === "b" && decision.kind === "buy" && decision.canAfford)
+        act({ type: "buy" });
+      else if (e.key === "n" && decision.kind === "buy") act({ type: "pass" });
+      else if (e.key === "t" && decision.kind === "roll" && decision.canOffer)
+        setTrading(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const cash = useMemo(
+    () => (view ? shownCash(timeline, events, view.cash, elapsed) : []),
+    [view, timeline, events, elapsed],
+  );
+
+  if (!view || !host) return null;
+  const me = host.seat;
+  const players = view.rules.players;
+  const name = (seat: number) => seatLabel(seat, me, null, players);
+  const gameOver = view.phase === "gameOver";
+  const levelName = GALAXY_LEVELS.find((l) => l.value === level)?.label ?? "";
+  const lengthName =
+    GALAXY_LENGTHS.find((l) => l.value === view.rules.length)?.label ?? "";
+  const limit = turnLimitOf(view.rules);
+  const turnName = name(view.turn.seat);
+  const follow = portrait && followSetting && !prefersReducedMotion();
+
+  let status: string;
+  if (gameOver) status = resultText(view.result, view, name);
+  else if (playing)
+    status = view.turn.seat === me ? "내 차례예요" : `${turnName}의 차례예요`;
+  else if (!decision) {
+    status =
+      view.phase === "bid" || view.phase === "bidReveal"
+        ? "모두가 봉투를 내는 중이에요"
+        : view.phase === "commit" || view.phase === "reveal"
+          ? "모두의 기기가 주사위를 함께 정하는 중이에요"
+          : `${turnName}의 차례예요`;
+  } else
+    switch (decision.kind) {
+      case "roll":
+        status =
+          decision.purpose === "jailRoll"
+            ? "소행성대에 걸렸어요."
+            : decision.purpose === "comet"
+              ? "혜성이에요. 한 번 더 굴려요."
+              : "내 차례예요. 주사위를 굴려 주세요.";
+        break;
+      case "end":
+        status = "차례를 마칠까요?";
+        break;
+      case "buy":
+        status = "이 별을 살까요?";
+        break;
+      case "bid":
+        status = "봉인 입찰에 낼 값을 골라요.";
+        break;
+      case "trade":
+        status = "거래 제안이 왔어요.";
+        break;
+      case "debt":
+        status = "별빛이 모자라요. 정리해 주세요.";
+        break;
+      default:
+        status = "잠깐만요";
+    }
+
+  const ended = events.find((e) => e.type === "gameEnded");
+  const outcome = gameOver ? outcomeOf(view.result, me) : null;
+  const mine = view.result?.standings.find((s) => s.seat === me);
+  const banner: Banner | null =
+    ended?.type === "gameEnded" && !playing
+      ? {
+          won: outcome === "win",
+          draw: outcome === "draw",
+          detail: mine ? `${mine.rank}등 · 자산 ${money(mine.assets)}` : null,
+        }
+      : null;
+
+  const onPick = (square: number) => {
+    if (trading && partner !== null) {
+      const owner = view.owners[square];
+      if (owner === me || owner === partner) {
+        setMarked((m) => {
+          const next = new Set(m);
+          if (next.has(square)) next.delete(square);
+          else next.add(square);
+          return next;
+        });
+        return;
+      }
+    }
+    setSelected((s) => (s === square ? null : square));
+  };
+
+  const info = hover ?? selected;
+  const log = history
+    .flatMap((e) => {
+      const line = eventLine(e, view.board, name);
+      return line ? [line] : [];
+    })
+    .slice(-8)
+    .reverse();
+  const myAssets = assetsOf(asState(view), me);
+  const myStars = STAR_SQUARES.filter((sq) => view.owners[sq] === me).length;
+
+  const decisionPanel = !ready ? null : decision?.kind === "buy" ? (
+    <BuySheet
+      view={view}
+      square={decision.square}
+      price={decision.price}
+      canAfford={decision.canAfford}
+      submit={act}
+    />
+  ) : decision?.kind === "bid" ? (
+    <BidSheet
+      key={decision.index}
+      view={view}
+      square={decision.square}
+      max={decision.max}
+      onBid={(v) => placeBid(v)}
+    />
+  ) : decision?.kind === "trade" ? (
+    <TradeAnswer view={view} offer={decision.offer} name={name} submit={act} />
+  ) : decision?.kind === "debt" ? (
+    <DebtSheet view={view} submit={act} />
+  ) : trading ? (
+    <TradeComposer
+      view={view}
+      partner={partner}
+      setPartner={setPartner}
+      marked={marked}
+      clearMarked={() => setMarked(new Set())}
+      name={name}
+      submit={act}
+      onClose={() => {
+        setTrading(false);
+        setPartner(null);
+      }}
+    />
+  ) : decision?.kind === "roll" || decision?.kind === "end" ? (
+    <Sheet testId={decision.kind}>
+      <div className="flex flex-wrap gap-2">
+        {decision.kind === "roll" ? (
+          <span className="relative min-w-40 flex-1">
+            <button
+              type="button"
+              data-roll
+              onClick={() => act({ type: "roll" })}
+              className={cn(PRIMARY, "w-full py-3 text-lg")}
+            >
+              {decision.purpose === "comet"
+                ? "한 번 더 굴리기"
+                : "주사위 굴리기"}
+            </button>
+            <IdleHint kind="tap" shown={hint} />
+          </span>
+        ) : (
+          <button
+            type="button"
+            data-end-turn
+            onClick={() => act({ type: "end" })}
+            className={cn(PRIMARY, "min-w-40 flex-1 py-3")}
+          >
+            차례 마치기
+          </button>
+        )}
+        {decision.kind === "roll" && decision.canPayFine && (
+          <button
+            type="button"
+            onClick={() => act({ type: "payFine" })}
+            className={SECONDARY}
+          >
+            {money(NUMBERS.asteroidFine)} 내고 나가기
+          </button>
+        )}
+        {decision.kind === "roll" && decision.canOffer && (
+          <button
+            type="button"
+            data-trade
+            onClick={() => setTrading(true)}
+            className={SECONDARY}
+          >
+            거래 제안
+          </button>
+        )}
+      </div>
+      <div className="mt-2">
+        <ManagePanel view={view} submit={act} />
+      </div>
+    </Sheet>
+  ) : null;
+
+  return (
+    <main
+      data-game="galaxy"
+      className={cn(
+        "relative isolate flex min-h-dvh flex-col items-center gap-2.5 overflow-x-clip px-3 py-3 text-white",
+        "split:grid split:grid-cols-[minmax(0,min(46rem,calc(100dvh-3.5rem)))_minmax(0,22rem)] split:content-start split:items-start split:justify-center split:gap-x-5 lg:py-4",
+        GALAXY_BG,
+      )}
+    >
+      <header className="flex w-full max-w-xl items-center gap-2 text-sm split:col-span-2 split:max-w-none">
+        <button
+          type="button"
+          onClick={onExit}
+          className="text-white/70 hover:text-white"
+        >
+          ← 은하 한 바퀴
+        </button>
+        <span className="ml-auto truncate text-white/60">
+          {lengthName}
+          {limit
+            ? ` · ${Math.min(view.round, limit)}/${limit}차례`
+            : ` · ${view.round}돌림`}
+          {` · 컴퓨터 ${levelName}`}
+        </span>
+      </header>
+
+      <div className="w-full max-w-xl split:hidden">
+        <PlayerStrip view={view} cash={cash} name={name} />
+      </div>
+
+      {/* 판 */}
+      <div className="w-full max-w-[min(36rem,calc(100dvh-14rem))] min-w-72 split:col-start-1 split:row-span-6 split:row-start-2 split:max-w-none">
+        <GalaxyBoard
+          view={view}
+          timeline={timeline}
+          elapsed={elapsed}
+          selected={selected}
+          onPick={onPick}
+          onHover={setHover}
+          name={name}
+          follow={follow}
+          marked={marked}
+        />
+      </div>
+
+      {/* 오른쪽(가로)·아래(세로) */}
+      <div className="flex w-full max-w-xl flex-col gap-2 split:col-start-2 split:row-start-2">
+        <div className="hidden split:block">
+          <PlayerStrip view={view} cash={cash} name={name} />
+        </div>
+        <div className="relative">
+          <RoundOutcome
+            outcome={outcome}
+            status={notice ?? status}
+            summary={
+              mine ? `${mine.rank}등 · 자산 ${money(mine.assets)}` : undefined
+            }
+          />
+          <ResultBanner banner={banner} seq={view.roundNumber} />
+        </div>
+        {decisionPanel}
+        {!decisionPanel && info !== null && !gameOver && (
+          <SquareInfo
+            view={view}
+            square={info}
+            name={name}
+            onClose={() => setSelected(null)}
+          />
+        )}
+        {gameOver && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+            <Standings view={view} name={name} />
+            <MetStars view={view} history={history} firstMet={firstMet} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex w-full max-w-xl flex-col gap-2 split:col-start-2">
+        <details
+          open={!portrait || undefined}
+          className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2"
+        >
+          <summary className="cursor-pointer font-semibold text-sm">
+            내 별자리 · 별 {myStars}개 · 자산 {money(myAssets)}
+          </summary>
+          <div className="mt-2">
+            <MyConstellations view={view} />
+          </div>
+        </details>
+        {log.length > 0 && (
+          <ul
+            aria-label="기록"
+            className="flex flex-col gap-0.5 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white/70 text-xs"
+          >
+            {log.map((line, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: 최근 기록 차례
+              <li key={`${i}-${line}`} className="truncate">
+                {line}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
+        {!gameOver && (
+          <ResignButton
+            resetKey={decisionKey}
+            onResign={() => submit({ type: "resign" })}
+            className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
+          />
+        )}
+        {gameOver && (
+          <>
+            <button
+              type="button"
+              onClick={onExit}
+              className="rounded-xl bg-amber-200 px-4 py-2 font-semibold text-slate-950"
+            >
+              다시 하기
+            </button>
+            <a
+              href="/"
+              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+            >
+              게임 목록
+            </a>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
