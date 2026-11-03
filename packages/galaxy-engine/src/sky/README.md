@@ -25,15 +25,34 @@ star.byb.kr 저장소는 읽기만 한다. 스크립트는 끝에서 스스로 �
 
 | 자료 | 출처 | 라이선스·조건 | 쓰는 곳 |
 |---|---|---|---|
-| 위치·등급·온도·별자리·바이어 부호 | Yale Bright Star Catalogue 5판(VizieR V/50)의 요약 `bsc5-short.json`(star.byb.kr `data/database/`) | 공개 천문 목록, 출처 표기 | `ra`·`dec`·`mag`·`k`·`bayer`, 별자리 나누기 |
+| 위치·등급·온도·별자리·바이어 부호 | Hoffleit, D. & Warren, W. H. Jr.(1991), The Bright Star Catalogue, 5th Revised Ed.(Yale Bright Star Catalogue 5판, VizieR V/50)의 요약 `bsc5-short.json`(star.byb.kr `data/database/`) | 공개 천문 목록, 출처 표기 | `ra`·`dec`·`mag`·`k`·`bayer`, 별자리 나누기 |
 | 연주 시차·색지수 B−V | 같은 목록 원본 `bsc5.dat`(162~166칸, 110~114칸) | 위와 같음 | 후보 목록에만 있는 별의 `ly`(B−V는 온도가 없을 때만, 지금은 쓰인 별 없음) |
 | 판 위 별 거리 | van Leeuwen 2007(Hipparcos 신판 시차) 등 논문 값을 별마다 손으로 옮김(스크립트 `DISTANCE`) | 숫자는 사실 | `ly` |
-| 별 영문 이름 | IAU 별 이름 실무단(WGSN) IAU Catalog of Star Names(IAU-CSN), https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt (2022-04-04 판, 2026-11-03에 받음) | 이름과 번호는 사실. 파일 머리말: 「All IAU-produced products (Images, Videos, Texts) are released under Creative Commons Attribution」, 공식 판은 https://www.iau.org/public/themes/naming_stars/ 를 인용하라고 권함 | HR 번호와 이름만 스크립트의 `IAU` 표로 옮김 |
+| 별 영문 이름 | IAU 별 이름 실무단(WGSN) IAU Catalog of Star Names(IAU-CSN, Mamajek 정리), https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt (2022-04-04 판, 2026-11-03에 받음) | **CC BY**(IAU-CSN 머리말, E. Mamajek 정리: 「All IAU-produced products (Images, Videos, Texts) are released under Creative Commons Attribution」). 이름과 번호는 사실이기도 하다. 공식 판은 https://www.iau.org/public/themes/naming_stars/ 를 인용하라고 권함 | HR 번호와 이름만 스크립트의 `IAU` 표로 옮김 |
 | 한글 별 이름 | star.byb.kr `src/search/utils/starNames.ts`(리브레 위키 표기 바탕, 소리 나는 대로) | 사실 | `ko`. 이 파일에 없는 IAU 이름 88개는 같은 방식으로 옮겨 스크립트 `KO_EXTRA` 표에 둠 |
 | 한글 별자리 이름 | 한국천문연구원 표기(star.byb.kr `buildConstellations.ts` 표, 별 따기 `CON` 표와 같음) | 사실 | 별자리 `ko` |
-| 별자리 선 | d3-celestial `constellations.lines.json`(Olaf Frohn, star.byb.kr `build/database/vectors-constellations.json` 경유, 꼭짓점은 BSC 별 위치에 붙음) | BSD 3조항 | `lines`, `extra` |
+| 별자리 선 | d3-celestial `constellations.lines.json`(Olaf Frohn, star.byb.kr `build/database/vectors-constellations.json` 경유, 꼭짓점은 BSC 별 위치에 붙음) | BSD 3조항, Copyright (c) 2015, Olaf Frohn(전문은 아래 「d3-celestial 라이선스」) | `lines`, `extra` |
 
 쓰지 않는 것: Hipparcos 목록(CC BY-NC, 비상업 조건), Stellarium 별자리 선(CC BY-SA), 위키백과 글(CC BY-SA).
+
+### d3-celestial 라이선스
+
+별자리 선(`lines`·`extra`)은 d3-celestial 자료에서 왔다. 원본 LICENSE(star.byb.kr `data/database/d3-celestial/LICENSE` 사본) 전문:
+
+```text
+Copyright (c) 2015, Olaf Frohn
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
 
 ## 별 이름
 
