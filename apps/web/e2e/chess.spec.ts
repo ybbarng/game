@@ -103,8 +103,15 @@ test("체스: 게임 목록에서 들어가 두다가 이어하고, 무르고 �
   expect(overflow).toBe(false);
   await page.screenshot({ path: info.outputPath("chess-start.png") });
 
-  // 한 수 두면 컴퓨터가 답하고 다시 내 차례. 기보 줄에 두 수가 보인다.
+  // 힌트: 고수가 고른 수의 출발·도착에 고리, 그 기물이 골라져 갈 곳 점이 보인다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.locator("[data-hint]")).toHaveCount(2);
+  await expect(page.locator("[data-target]").first()).toBeVisible();
+  await page.screenshot({ path: info.outputPath("chess-hint.png") });
+
+  // 한 수 두면 컴퓨터가 답하고 다시 내 차례. 기보 줄에 두 수가 보인다(힌트는 사라진다).
   await playOne(page, touch);
+  await expect(page.locator("[data-hint]")).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 15_000,
   });

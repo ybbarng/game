@@ -24,6 +24,9 @@ import {
 
 const LIGHT = "#f0d9b5";
 
+/** 힌트(고수가 고른 수) 표시 */
+const HINT_COLOR = "#059669";
+
 /** 누른 채 이만큼(칸 단위) 넘게 움직이면 끌기로 본다. 손이 조금 흔들린 누르기는 끌기가 아니다 */
 const DRAG_THRESHOLD = 0.2;
 const DARK = "#b58863";
@@ -119,6 +122,7 @@ export function ChessBoard({
   lastMove,
   checkedKing,
   coordinates,
+  hint = null,
 }: {
   board: readonly Cell[];
   /** 흑이면 판을 돌려 내 편을 아래에 둔다 */
@@ -133,6 +137,8 @@ export function ChessBoard({
   checkedKing: number | null;
   /** 판 가장자리에 a~h·1~8을 쓴다 */
   coordinates: boolean;
+  /** 힌트: 고수가 고른 수의 출발(점선)·도착에 초록 고리(장기와 같은 모양) */
+  hint?: Move | null;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [cursor, setCursor] = useState<number | null>(null);
@@ -440,6 +446,22 @@ export function ChessBoard({
           />
         </g>
       )}
+
+      {hint &&
+        [hint.from, hint.to].map((i, n) => (
+          <circle
+            key={`h${i}`}
+            cx={at(i)[0] + 0.5}
+            cy={at(i)[1] + 0.5}
+            r={0.44}
+            fill="none"
+            stroke={HINT_COLOR}
+            strokeWidth={0.08}
+            strokeDasharray={n === 0 ? "0.16 0.1" : undefined}
+            data-hint={squareName(i)}
+            pointerEvents="none"
+          />
+        ))}
 
       {cursor !== null && (
         <rect
