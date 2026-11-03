@@ -19,7 +19,7 @@ import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { GalaxyIconArt } from "../icon-art";
-import { DECISION_MS, galaxyOnline } from "../online";
+import { galaxyOnline } from "../online";
 import { endGalaxySession } from "../session";
 import {
   GALAXY_LENGTHS,
@@ -163,11 +163,6 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
       </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
-        <p className="text-xs opacity-60">
-          굴리기·사기·차례 마치기·거래 답·빚 정리에만 시계가 가요. 친구와 할 때
-          개인 시간이 없으면 결정마다 {DECISION_MS / 1000}초이고, 넘기면
-          컴퓨터가 대신 정해요.
-        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -301,8 +296,7 @@ function GalaxyHome({
       together={{
         icon: "👥",
         title: "친구와 하기",
-        detail:
-          "링크로 2~4명이 모여요. 빈자리는 컴퓨터, 주사위는 모두의 기기가 함께 정해요",
+        detail: "링크로 2~4명 · 빈자리는 컴퓨터",
         onClick: onOnline,
       }}
       onOptions={onOptions}

@@ -232,6 +232,6 @@ export const galaxyOnline: BoardOnlineGame<
   useStore: useGalaxy,
   botFor: galaxyBotFor,
   rulesSummary(rules) {
-    return `${galaxyRulesSummary(rules)}. 결정마다 ${DECISION_MS / 1000}초, 넘기면 컴퓨터가 대신 정해요. 주사위·공문은 모두의 기기가 함께 정하고, 봉인 입찰은 방장도 남의 값을 먼저 볼 수 없어요.`;
+    return `${galaxyRulesSummary(rules)} · 결정마다 ${DECISION_MS / 1000}초`;
   },
 };
