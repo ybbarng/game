@@ -184,7 +184,8 @@ export function GameIntro({
             aria-hidden="true"
             className="sd-intro-fade pointer-events-none absolute inset-0 size-full"
           >
-            {/* 이음선은 번호 글자 자리에서 흐리게 사라진다(선이 글자를 가렸다, 2026-11-03 검토). 가장자리를 흐려 네모로 보이지 않게 */}
+            {/* 이음선은 빛나는 별(정답·보너스)의 번호 글자 자리에서만 흐리게 사라진다(선이 글자를 가렸다, 2026-11-03 검토).
+                꺼진 별의 번호 위로는 선이 또렷하게 지나간다(같은 날 사용자). 가장자리를 흐려 네모로 보이지 않게 */}
             <defs>
               <filter id={`${maskId}-soft`}>
                 <feGaussianBlur stdDeviation="0.5" />
@@ -192,7 +193,9 @@ export function GameIntro({
               <mask id={maskId} maskUnits="userSpaceOnUse">
                 <rect width="100" height="100" fill="#fff" />
                 <g filter={`url(#${maskId}-soft)`}>
-                  {SKY_STARS.map((s) => {
+                  {SKY_STARS.filter(
+                    (s) => numbers.includes(s.n) || s.n === bonus,
+                  ).map((s) => {
                     const b = numberBox(s);
                     return (
                       <rect
