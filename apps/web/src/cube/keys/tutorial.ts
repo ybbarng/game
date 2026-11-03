@@ -1,7 +1,12 @@
 import { COMMAND_LABEL, type Command } from "../input/actions";
-import { codeLabel, type Keymap, PRESET_LABEL } from "../input/keymaps";
+import {
+  chordsFor,
+  codeLabel,
+  type Keymap,
+  PRESET_LABEL,
+} from "../input/keymaps";
 import type { CubeMove } from "../view/types";
-import { keyLayers } from "./layout";
+import { handOf, keyLayers } from "./layout";
 import { keyTextFor, MoveMatcher } from "./reach";
 
 /**
@@ -49,7 +54,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
 
   const presetLine =
     keymap.preset === "twoHand"
-      ? "「두 손」 배치는 실물에서 그 면을 돌리는 손으로 칩니다. 같은 면의 시계·반시계는 두 손의 같은 자리에 있습니다"
+      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 칩니다. ${faceHandLine(keymap)}`
       : keymap.preset === "notation"
         ? "「표기」 배치는 글자 그대로 칩니다. Shift를 함께 누르면 반대 방향입니다"
         : `「${PRESET_LABEL.custom}」 배치로 안내합니다. 키는 설정에서 바꾼 대로 나옵니다`;
@@ -151,6 +156,50 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       ...formula,
     },
   ];
+}
+
+const HAND_LABEL = { left: "왼손", right: "오른손" } as const;
+
+export interface FaceHand {
+  face: string;
+  /** 시계(`R`)·반시계(`R'`)를 조합 키 없이 치는 키 */
+  cw: string;
+  ccw: string;
+  /** 두 키를 같은 손으로 치면 그 손, 두 손에 나뉘면 null */
+  hand: "left" | "right" | null;
+}
+
+/** 면마다 시계·반시계 키가 어느 손에 있는지(조합 키 없이 치는 키가 둘 다 있는 면만) */
+export function faceHands(keymap: Keymap): FaceHand[] {
+  const plain = (a: string) =>
+    chordsFor(keymap, a).find((c) => !c.shift && !c.alt && !c.ctrl)?.code;
+  const out: FaceHand[] = [];
+  for (const face of ["R", "L", "U", "D", "F", "B"]) {
+    const cw = plain(face);
+    const ccw = plain(`${face}'`);
+    if (!cw || !ccw) continue;
+    const h = handOf(cw);
+    out.push({ face, cw, ccw, hand: h && h === handOf(ccw) ? h : null });
+  }
+  return out;
+}
+
+/**
+ * 「R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 칩니다. U·U'은 J·F, …로 두 손이 나눠 칩니다.」처럼
+ * 지금 배치의 키에서 만든다.
+ */
+export function faceHandLine(keymap: Keymap): string {
+  const pair = (f: FaceHand) =>
+    `${f.face}·${f.face}'은 ${f.hand ? `${HAND_LABEL[f.hand]} ` : ""}${codeLabel(f.cw)}·${codeLabel(f.ccw)}`;
+  const all = faceHands(keymap);
+  const one = all.filter((f) => f.hand);
+  const two = all.filter((f) => !f.hand);
+  const out: string[] = [];
+  if (one.length > 0)
+    out.push(`${one.map(pair).join(", ")}로 한 손에서 칩니다.`);
+  if (two.length > 0)
+    out.push(`${two.map(pair).join(", ")}로 두 손이 나눠 칩니다.`);
+  return out.join(" ");
 }
 
 export type TutorialEvent =

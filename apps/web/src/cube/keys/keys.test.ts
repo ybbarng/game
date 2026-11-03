@@ -26,6 +26,7 @@ import {
 import { countMoves, FormulaRun } from "./formula";
 import {
   actionRows,
+  handOf,
   KEYBOARD_ROWS,
   keyboardCells,
   keyLayers,
@@ -40,7 +41,7 @@ import {
   pressLabel,
 } from "./reach";
 import { emptyRecord, loadDrill, loadLearn, saveDrill } from "./storage";
-import { StepRun, tutorialSteps } from "./tutorial";
+import { faceHandLine, faceHands, StepRun, tutorialSteps } from "./tutorial";
 
 const mv = (n: number, t: string) => {
   const m = notationToMove(n, t);
@@ -297,6 +298,34 @@ describe("키 익히기", () => {
     expect(two[0]?.lines[2]).toContain("「U'」");
     expect(nota[0]?.lines[2]).toContain("J는 아무 동작도 없음");
     for (const s of [...two, ...nota]) expect(s.missing).toEqual([]);
+  });
+
+  it("「두 손」 설명은 실제 키와 손에 맞는다", () => {
+    const km = twoHandKeymap();
+    const hands = faceHands(km);
+    expect(hands.map((f) => f.face)).toEqual(["R", "L", "U", "D", "F", "B"]);
+    for (const f of hands) {
+      // 그 키를 치면 정말 그 면의 시계·반시계가 된다
+      expect(describeInput(km, 3, press({ code: f.cw })).action).toBe(f.face);
+      expect(describeInput(km, 3, press({ code: f.ccw })).action).toBe(
+        `${f.face}'`,
+      );
+      const a = handOf(f.cw);
+      expect(f.hand).toBe(a === handOf(f.ccw) ? a : null);
+    }
+    expect(hands.find((f) => f.face === "R")?.hand).toBe("right");
+    expect(hands.find((f) => f.face === "L")?.hand).toBe("left");
+    for (const f of ["U", "D", "F", "B"])
+      expect(hands.find((h) => h.face === f)?.hand).toBeNull();
+
+    const line = tutorialSteps(km)[0]?.lines[1] ?? "";
+    expect(line).toContain(
+      "R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 칩니다.",
+    );
+    expect(line).toContain(
+      "U·U'은 J·F, D·D'은 S·L, F·F'은 H·G, B·B'은 W·O로 두 손이 나눠 칩니다.",
+    );
+    expect(faceHandLine(km)).not.toContain("같은 자리");
   });
 
   it("배치에 없는 수는 빼고 알린다", () => {
