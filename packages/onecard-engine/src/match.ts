@@ -262,6 +262,8 @@ function goBankrupt(
   state.pile.unshift(...cards);
   state.hands[seat] = [];
   state.queue = state.queue.filter((t) => t.seat !== seat);
+  // 공격을 받던 사람(차례인 사람)이 파산하면 공격은 그 사람에게서 끝난다. 다음 사람이 떠안지 않는다
+  if (state.turn === seat) state.attack = 0;
   resetCall(state, seat);
   events.push({ type: "bankrupt", seat });
 }
