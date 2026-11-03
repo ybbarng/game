@@ -14,6 +14,8 @@ import {
   type CubeMove,
   type CubeViewOptions,
   DEFAULT_COLORS,
+  MAX_CUBE_SIZE,
+  MIN_CUBE_SIZE,
   type Normal,
   type Quality,
   type Sticker,
@@ -230,7 +232,7 @@ export class CubeView {
   }
 
   private constructor(canvas: HTMLCanvasElement, o: CubeViewOptions) {
-    if (!Number.isInteger(o.n) || o.n < 1 || o.n > 9)
+    if (!Number.isInteger(o.n) || o.n < MIN_CUBE_SIZE || o.n > MAX_CUBE_SIZE)
       throw new Error(`큐브 크기가 맞지 않습니다: ${o.n}`);
     this.n = o.n;
     this.canvas = canvas;
@@ -496,6 +498,8 @@ export class CubeView {
     for (const d of this.disposables) d.dispose();
     this.envTexture?.dispose();
     this.renderer.dispose();
+    // 브라우저의 WebGL 문맥 수에는 상한이 있다. 크기를 여러 번 바꿔도 쌓이지 않게 바로 놓아준다
+    this.renderer.forceContextLoss();
   }
 
   // ---------------------------------------------------------------- 안쪽

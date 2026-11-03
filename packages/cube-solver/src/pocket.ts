@@ -207,6 +207,21 @@ export function distance2x2(facelets: string): number {
   return pocketDistanceOf(pocketIndex(facelets));
 }
 
+/**
+ * 상태 번호에 수 하나를 돌린 상태 번호. `move`는 0~8(U U2 U' R R2 R' F F2 F').
+ * 정해진 길이의 섞기를 찾는 탐색(cube-scramble)에 쓴다.
+ */
+export function pocketApply(index: number, move: number): number {
+  init2x2();
+  const { permMove, oriMove } = tables as Tables;
+  const p = Math.floor(index / ORI_COUNT);
+  const o = index - p * ORI_COUNT;
+  return (
+    (permMove[p * 9 + move] as number) * ORI_COUNT +
+    (oriMove[o * 9 + move] as number)
+  );
+}
+
 /** 2×2 상태 번호의 최적 해 길이. */
 export function pocketDistance(index: number): number {
   return pocketDistanceOf(index);

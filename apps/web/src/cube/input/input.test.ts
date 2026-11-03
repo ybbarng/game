@@ -249,6 +249,20 @@ describe("키 배치", () => {
     expect(resolveAction(km, press("KeyR", { metaKey: true }))).toBeNull();
     expect(resolveAction(km, press("KeyZ", { ctrlKey: true }))).toBe("undo");
   });
+
+  it("맥의 ⌘Z만 Ctrl+Z처럼 되돌리기로 받는다", () => {
+    const km = twoHandKeymap();
+    expect(resolveAction(km, press("KeyZ", { metaKey: true }))).toBe("undo");
+    expect(
+      resolveAction(km, press("KeyZ", { metaKey: true, shiftKey: true })),
+    ).toBeNull();
+    expect(
+      resolveAction(km, press("KeyZ", { metaKey: true, repeat: true })),
+    ).toBeNull();
+    // Ctrl+Z에 되돌리기가 아닌 동작을 놓았으면 ⌘Z는 브라우저에 맡긴다
+    const other = bind(km, { code: "KeyZ", ctrl: true }, "x2");
+    expect(resolveAction(other, press("KeyZ", { metaKey: true }))).toBeNull();
+  });
 });
 
 describe("키 → 동작 → 수", () => {
@@ -346,6 +360,22 @@ describe("저장·내보내기·가져오기", () => {
   it("내보낸 글을 다시 가져온다", () => {
     const km = bind(twoHandKeymap(), { code: "KeyQ", alt: true }, "3Rw'");
     expect(importKeymap(exportKeymap(km))).toEqual({ ok: true, keymap: km });
+  });
+
+  it("마우스 돌리기는 사용자 배치에서만 받는다", () => {
+    const preset = importKeymap(
+      JSON.stringify({ version: 1, preset: "twoHand", mouseRotate: true }),
+    );
+    expect(preset).toMatchObject({ ok: true, keymap: { mouseRotate: false } });
+    const custom = importKeymap(
+      JSON.stringify({
+        version: 1,
+        preset: "custom",
+        mouseRotate: true,
+        bindings: [{ code: "KeyR", action: "R" }],
+      }),
+    );
+    expect(custom).toMatchObject({ ok: true, keymap: { mouseRotate: true } });
   });
 
   it("모양이 틀린 글은 까닭과 함께 거절한다", () => {

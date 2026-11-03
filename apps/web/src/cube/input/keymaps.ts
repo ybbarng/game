@@ -83,13 +83,28 @@ export function chordLabel(c: KeyChord): string {
 
 /**
  * 키 누름 → 동작. 저절로 되풀이된 누름(autorepeat)과 ⌘(Meta) 조합은 무시한다(브라우저 단축키를 막지 않는다).
+ * 다만 맥의 ⌘Z는 되돌리기로 익숙하므로 Ctrl+Z로 보고 찾는다(Ctrl+Z에 놓인 동작을 따른다).
  * 조합 키는 정확히 같아야 한다(Shift+I는 I와 다른 동작).
  */
 export function resolveAction(
   keymap: Keymap,
   input: KeyInput,
 ): ActionId | null {
-  if (input.repeat || input.metaKey) return null;
+  if (input.repeat) return null;
+  if (input.metaKey) {
+    const cmdZ =
+      input.code === "KeyZ" &&
+      !input.ctrlKey &&
+      !input.shiftKey &&
+      !input.altKey;
+    if (!cmdZ) return null;
+    const action = resolveAction(keymap, {
+      ...input,
+      metaKey: false,
+      ctrlKey: true,
+    });
+    return action === "undo" ? action : null;
+  }
   for (const b of keymap.bindings)
     if (
       b.code === input.code &&
