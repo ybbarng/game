@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   distribution,
+  LATENCY_PROBE,
   type LatencyMessage,
   LatencyMeter,
   type LatencyOptions,
@@ -293,19 +294,104 @@ describe("withLatency: 방 통로에 붙이기", () => {
     expect(clock.pending()).toBe(0);
   });
 
-  it("요약을 정해진 간격마다 낸다", () => {
+  it("요약은 10분마다 낸다(진단 서버 용량을 아끼려고 드물게)", () => {
+    expect(LATENCY_PROBE.reportMs).toBe(600_000);
     const clock = new ManualClock();
     const inner = fakeTransport("me");
     const reports: unknown[] = [];
     withLatency(inner.transport, {
       clock,
       mono: { now: () => clock.now() },
-      pingMs: 1000,
-      reportMs: 60_000,
+      pingMs: LATENCY_PROBE.pingMs,
+      reportMs: LATENCY_PROBE.reportMs,
       report: (s) => reports.push(s),
     });
     inner.join("host");
-    clock.advance(120_000);
+    clock.advance(LATENCY_PROBE.reportMs - 1);
+    expect(reports).toHaveLength(0);
+    clock.advance(1);
+    expect(reports).toHaveLength(1);
+    clock.advance(LATENCY_PROBE.reportMs);
     expect(reports).toHaveLength(2);
+  });
+
+  it("숨긴 탭이면 정기 요약을 건너뛰고, 방을 나갈 때 마지막 요약은 낸다", () => {
+    const clock = new ManualClock();
+    const inner = fakeTransport("me");
+    const reports: unknown[] = [];
+    let hidden = true;
+    const wrapped = withLatency(inner.transport, {
+      clock,
+      mono: { now: () => clock.now() },
+      pingMs: 1000,
+      reportMs: 600_000,
+      report: (s) => reports.push(s),
+      hidden: () => hidden,
+    });
+    inner.join("host");
+    clock.advance(1_200_000);
+    expect(reports).toHaveLength(0);
+    hidden = false;
+    clock.advance(600_000);
+    expect(reports).toHaveLength(1);
+    hidden = true;
+    wrapped.leave();
+    expect(reports).toHaveLength(2);
+  });
+});
+
+describe("요약 한 번의 크기", () => {
+  it("쌍마다 숫자 요약만 가고 표본 배열은 가지 않는다(진단 기록 하나 1KB 안쪽)", async () => {
+    const clock = new ManualClock();
+    const net = delayedNet(clock, (_f, _t, n) => 20 + (n % 7));
+    const links = new Map<string, (m: unknown, from: string) => void>();
+    const link = (self: string): UnorderedLink => ({
+      open: () => undefined,
+      close: () => undefined,
+      send: (peer, message) => {
+        const copy = JSON.parse(JSON.stringify(message)) as unknown;
+        clock.after(12, () => links.get(peer)?.(copy, self));
+        return true;
+      },
+      onMessage: (h) => links.set(self, h),
+    });
+    // trystero 연결 id 길이(20자)
+    const hostId = "Xq3vT9bLm2Rk7WpZc4Ds";
+    const guestId = "Yh8nF1sKe6Ju0GtAo5Vb";
+    const h = device(net, clock, hostId, 0, {
+      beacon: true,
+      unordered: link(hostId),
+      rtcStats: async () => ({ rttMs: 41.234, path: "srflx-relay" }),
+    });
+    const g = device(net, clock, guestId, 98_765.4321, {
+      unordered: link(guestId),
+    });
+    h.addPeer(guestId);
+    g.addPeer(hostId);
+    // 10분 동안 5초 간격 핑이면 표본 120개쯤
+    for (let i = 0; i < 120; i++) {
+      clock.advance(1000);
+      await flush();
+    }
+    clock.advance(500);
+    const summary = h.summary();
+    const pair = summary.pairs[0];
+    expect(pair?.app.n).toBeGreaterThanOrEqual(100);
+    expect(pair?.unordered?.n).toBeGreaterThanOrEqual(100);
+    // 배열은 하나도 없다
+    const arrays = JSON.stringify(pair).match(/\[/g) ?? [];
+    expect(arrays).toHaveLength(0);
+    // diag.ts가 붙이는 머리(세션 id·방 태그·시각·종류)까지 더한 진단 기록 하나
+    const event = {
+      s: "3f2a9c1e-5b7d-4e8f-a1b2-c3d4e5f60718",
+      room: "a1b2c3d4e5f6",
+      at: "2026-11-03T12:34:56.789Z",
+      t: 600_123,
+      kind: "latency",
+      elapsedMs: summary.elapsedMs,
+      ...pair,
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(event)).length;
+    expect(bytes).toBeLessThan(1024);
   });
 });

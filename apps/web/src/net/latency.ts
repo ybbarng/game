@@ -6,7 +6,8 @@
  *
  * - 시간 재기는 `MonotonicClock`(제품 `performance.now`), 일정(다음 핑·요약)은 `Clock.after`로 넣는다.
  *   시험은 `ManualMonotonic` + `ManualClock`으로 결정적으로 돈다.
- * - 숨긴 탭이면 핑을 보내지 않는다(`hidden()`).
+ * - 숨긴 탭이면 핑도 정기 요약도 보내지 않는다(`hidden()`). 방을 나갈 때 마지막 요약은 그대로 낸다.
+ * - 요약은 쌍마다 숫자 몇 개(분포·비율·횟수)뿐이다. 표본 배열은 기기 안에만 둔다.
  * - 메시지는 `{ lat: 1, … }` 모양이라 방 메시지와 섞이지 않는다(`isLatencyMessage`). `withLatency`가 방 코드에
  *   닿기 전에 걸러 낸다.
  */
@@ -20,8 +21,11 @@ export const LATENCY_PROBE = {
   enabled: true,
   /** 핑 간격(ms). 메시지가 작아도 게임 통로를 쓰므로 드물게 */
   pingMs: 5000,
-  /** 요약을 진단 기록으로 보내는 간격(ms) */
-  reportMs: 60_000,
+  /**
+   * 요약을 진단 기록으로 보내는 간격(ms). 진단 서버는 기록을 14일 두고 하루 용량 상한이 있어,
+   * 연결 진단을 밀어내지 않게 10분마다와 방을 나갈 때만 보낸다(쌍 하나 약 0.6KB)
+   */
+  reportMs: 600_000,
 } as const;
 
 /** 답이 이보다 늦으면 잃은 핑으로 센다 */
@@ -392,7 +396,8 @@ export class LatencyMeter {
 
   private scheduleReport(ms: number): void {
     this.stopReport = this.options.clock.after(ms, () => {
-      this.options.report?.(this.summary());
+      // 숨긴 탭은 핑을 멈춰 새 표본이 없다. 같은 요약을 되풀이해 보내지 않는다
+      if (!this.options.hidden?.()) this.options.report?.(this.summary());
       if (!this.stopped) this.scheduleReport(ms);
     });
   }
