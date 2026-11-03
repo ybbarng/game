@@ -2,7 +2,8 @@ import type { StudyLine } from "@/study/line";
 
 /*
  * 바둑 정석 수순 따라 두기(docs/23 2절, docs/25-baduk-joseki-sources.md).
- * 수순은 Sensei's Library 문서의 그림 SGF에서 그대로 옮겼다(출처는 `source`). 설명 글은 직접 썼다.
+ * 수순 확인: Sensei's Library(OPL), https://senseis.xmp.net/ — 수순과 이름(사실 정보)만 옮겼다(갈래마다 `source`).
+ * 그곳 글은 OpenContent License라 옮기지 않고, 설명(note)은 우리말로 새로 썼다.
  * 모든 정석은 19줄 판 왼쪽 위 귀(화점 D16, 소목 C16)에서 둔다. 네 귀로 돌리는 대칭은 놓인 돌도 함께 돌려야 해서 쓰지 않는다.
  * `start`는 바둑이 읽는 시작 판 글자: "19 B:D16,K16 W:F17 turn:W"(판 크기, 놓인 흑·백, 먼저 둘 편). joseki.test.ts가 모든 갈래를 엔진으로 다시 둔다.
  */
@@ -32,7 +33,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
           [
             {
               move: "C14",
-              note: "한 칸 띄워 막는 수. 귀를 조금 더 내주는 대신 빨리 끝내고 다른 곳에 먼저 둘 수 있어요(선수)",
+              note: "C15로 막지 않고 날일자로 벌려 둬요. 귀는 백에게 주고, 빨리 끝내 다른 곳에 먼저 둘 수 있어요(선수)",
             },
           ],
           [
