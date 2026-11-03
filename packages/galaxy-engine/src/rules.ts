@@ -4,6 +4,8 @@ import {
   type TimePreset,
 } from "@game/mighty-engine";
 
+import { OPEN_SKIES } from "./sky-ids";
+
 /**
  * 은하 한 바퀴 규칙(docs/48 2절). 판마다 고르는 것은 여기에 둔다.
  * - players 인원(2~4)
@@ -36,7 +38,7 @@ export const STANDARD_RULES: GalaxyRules = {
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
-  trade: false,
+  trade: true,
 };
 
 export const LONG_RULES: GalaxyRules = { ...STANDARD_RULES, length: "long" };
@@ -66,8 +68,8 @@ export const NUMBERS = {
     pair: 150,
     complete: 200,
     level2: 500,
-    level3: 1300,
-    grand: 2400,
+    level3: 1600,
+    grand: 3000,
   },
   /** 정거장 한 단 값 = 별자리 기본 값의 이만큼(천분율) */
   levelCost: 500,
@@ -121,6 +123,10 @@ export function encodeGalaxyRules(rules: GalaxyRules): string {
   return `g1-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
+/**
+ * 규칙 문자열을 읽는다. 온라인에서 받은 문자열이 판 만들기(`boardOfSky`)에서 터지지 않게
+ * 처음 여는 하늘(`OPEN_SKIES`)이 아니면 거절한다
+ */
 export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
@@ -132,6 +138,8 @@ export function decodeGalaxyRules(
   const [, players, length, trade, seasonal, sky, tail] = match;
   const time = decodeTimePreset(tail);
   if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요" };
+  if (!OPEN_SKIES.includes(sky as string))
+    return { ok: false, reason: "아직 열지 않았거나 없는 하늘이에요" };
   const lengthName = (Object.keys(LENGTH_CODES) as GalaxyLength[]).find(
     (k) => LENGTH_CODES[k] === length,
   ) as GalaxyLength;

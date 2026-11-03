@@ -239,8 +239,8 @@ export function goalMet(
   const colors = faceColors(n, state);
   switch (goal) {
     case "solved":
-      // 2×2는 기준 가운데가 없어 마지막 층 돌리기 하나는 봐준다
-      return isSolved(n, state) || (n === 2 && goalMet(n, state, "ll"));
+      // 엔진과 같은 기준: 큐브 전체 방향만 봐주고 층 돌리기는 봐주지 않는다(2×2 포함, #45 검토)
+      return isSolved(n, state);
     case "ll": {
       // 윗면 돌리기 하나 남아도 된다: 어느 면이든 한 번 돌려 맞으면 된다
       for (let f = 0; f < 6; f++)

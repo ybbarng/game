@@ -65,6 +65,10 @@ const loaders: Record<string, (key: BotKey) => Promise<AnyBot>> = {
     const { yutBotFor } = await import("@game/yut-ai");
     return as(yutBotFor(levelOf(key)));
   },
+  galaxy: async (key) => {
+    const { galaxyBotFor } = await import("@game/galaxy-ai");
+    return as(galaxyBotFor(levelOf(key)));
+  },
 };
 
 function levelOf(key: BotKey): number {

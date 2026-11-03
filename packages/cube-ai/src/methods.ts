@@ -10,6 +10,7 @@ import {
   OLL,
   PLL,
 } from "./algs";
+import { solveBigExpert, solveBigHuman } from "./big";
 import { cornerFacelets, FACE_MOVE_COUNT, faceMoveName } from "./cubie";
 import { OPPOSITE, toFacelets } from "./facelets";
 import {
@@ -78,6 +79,7 @@ const CROSS_EDGES = [4, 5, 6, 7];
 function crossOneByOne(s: Solve): void {
   const order = [5, 4, 7, 6];
   for (let k = 1; k <= 4; k++) {
+    s.look();
     const pieces = order.slice(0, k).sort((a, b) => a - b);
     const tracked: Tracked[] = pieces.map((piece) => ({ kind: "e", piece }));
     const hs = [
@@ -120,6 +122,7 @@ function firstLayerCorners(s: Solve): void {
   const D_CORNERS = [4, 5, 6, 7];
   for (let iter = 0; ; iter++) {
     guard(iter, 20, "첫 층 꼭짓점");
+    s.look();
     const c = s.cubie();
     if (D_CORNERS.every((i) => cornerOk(c.cp, c.co, i))) return;
     let k = [0, 1, 2, 3].find((k) => {
@@ -154,6 +157,7 @@ function middleEdges(s: Solve): void {
     ep[i] === i && eo[i] === 0;
   for (let iter = 0; ; iter++) {
     guard(iter, 20, "둘째 층");
+    s.look();
     const c = s.cubie();
     if ([8, 9, 10, 11].every((i) => ok(c.ep, c.eo, i))) return;
     let placed = false;
@@ -183,6 +187,7 @@ function middleEdges(s: Solve): void {
 function yellowCross(s: Solve): void {
   for (let iter = 0; ; iter++) {
     guard(iter, 5, "노란 십자");
+    s.look();
     if (topEdgesOriented(s.rel())) return;
     let done = false;
     for (let a = 0; a < 4 && !done; a++) {
@@ -212,6 +217,7 @@ function yellowFace(s: Solve): void {
   const [ufU, ufF, ufL] = cornerFacelets(n)[1] as [number, number, number];
   for (let iter = 0; ; iter++) {
     guard(iter, 8, "노란 면");
+    s.look();
     const rel = s.rel();
     if (topOriented(rel, n)) return;
     const count = tops.filter((i) => rel[i] === "U").length;
@@ -229,6 +235,7 @@ function topCorners(s: Solve): void {
   const nn = n * n;
   for (let iter = 0; ; iter++) {
     guard(iter, 4, "위 꼭짓점 자리");
+    s.look();
     if (topCornersPermuted(s.rel(), n)) return;
     const a = [0, 1, 2, 3].find((a) => {
       const r = s.clone().apply(uTurn(a)).rel();
@@ -253,6 +260,7 @@ function topEdges(s: Solve): void {
   alignTop(s);
   for (let iter = 0; ; iter++) {
     guard(iter, 4, "위 모서리 자리");
+    s.look();
     if (s.isSolved()) return;
     const k = [0, 1, 2, 3].find((k) => {
       const r = s.clone().apply(yTurn(k)).rel();
@@ -285,6 +293,7 @@ function insertBySearch(
 ): void {
   const done: number[] = [];
   for (let step = 0; step < 4; step++) {
+    s.look();
     const remaining = [0, 1, 2, 3].filter((p) => !done.includes(p));
     let found: { pair: number; path: number[] } | null = null;
     for (let depth = 0; depth <= 16 && !found; depth++) {
@@ -337,16 +346,13 @@ function start3(state: PuzzleState): Solve {
   return new Solve(3, toFacelets(3, state));
 }
 
-function lastLayerBeginner(s: Solve): void {
-  yellowCross(s);
-  s.stage("eo");
-  yellowFace(s);
-  s.stage("co");
-  topCorners(s);
-  s.stage("cp");
-  topEdges(s);
-  s.stage("ep");
-}
+/**
+ * 3×3 사람 해법을 차례(`Step`)로 둔다. 함수는 3×3 수를 두고, 글자 칸("oll-parity"·"pll-parity")은
+ * 4×4에서 사람이 패리티를 알아차리는 자리다(OLL 앞·PLL 앞). 3×3에서는 그냥 지나간다.
+ * 4×4·5×5 해법(`big.ts`)이 같은 차례를 축소가 끝난 큐브에 그대로 쓴다.
+ */
+export type ParityCheck = "oll-parity" | "pll-parity";
+export type Step = ((s: Solve) => void) | ParityCheck;
 
 /** 층별 첫 두 층. 중수(`smartCorners`)는 꼭짓점을 되풀이 공식 대신 짧은 수로 넣는다 */
 function firstTwoLayersBeginner(s: Solve, smartCorners = false): void {
@@ -360,51 +366,94 @@ function firstTwoLayersBeginner(s: Solve, smartCorners = false): void {
   s.stage("middle");
 }
 
-/** 3×3 입문: 층별 맞추기(초보자 공식만) */
-export function solveBeginner3(state: PuzzleState): HumanSolve {
-  const s = start3(state);
-  firstTwoLayersBeginner(s);
-  lastLayerBeginner(s);
-  return finish(s);
-}
+/** 입문: 층별 맞추기(초보자 공식만) */
+export const BEGINNER3_STEPS: readonly Step[] = [
+  (s) => firstTwoLayersBeginner(s),
+  "oll-parity",
+  (s) => {
+    yellowCross(s);
+    s.stage("eo");
+    yellowFace(s);
+    s.stage("co");
+  },
+  "pll-parity",
+  (s) => {
+    topCorners(s);
+    s.stage("cp");
+    topEdges(s);
+    s.stage("ep");
+  },
+];
 
 /**
- * 3×3 중수: 층별 + 짧은 공식. 첫 층 꼭짓점은 되풀이 공식 대신 짧은 수로 넣고(익숙해진 사람처럼),
+ * 중수: 층별 + 짧은 공식. 첫 층 꼭짓점은 되풀이 공식 대신 짧은 수로 넣고(익숙해진 사람처럼),
  * 윗층은 2단계 OLL(십자 3·꼭짓점 7)·2단계 PLL(꼭짓점 2·모서리 4).
  */
-export function solveIntermediate3(state: PuzzleState): HumanSolve {
-  const s = start3(state);
-  firstTwoLayersBeginner(s, true);
-  applyMatch(s, EO_2LOOK, (t) => f2lOk(t) && topEdgesOriented(t.rel()));
-  s.stage("eo");
-  applyMatch(s, OCLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
-  s.stage("co");
-  applyMatch(
-    s,
-    CPLL,
-    (t) =>
-      f2lOk(t) && topOriented(t.rel(), 3) && topCornersPermuted(t.rel(), 3),
-  );
-  s.stage("cp");
-  applyMatch(s, EPLL, (t) => t.isSolved(), true);
-  s.stage("ep");
-  return finish(s);
-}
+export const INTERMEDIATE3_STEPS: readonly Step[] = [
+  (s) => firstTwoLayersBeginner(s, true),
+  "oll-parity",
+  (s) => {
+    applyMatch(s, EO_2LOOK, (t) => f2lOk(t) && topEdgesOriented(t.rel()));
+    s.stage("eo");
+    applyMatch(s, OCLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
+    s.stage("co");
+  },
+  "pll-parity",
+  (s) => {
+    applyMatch(
+      s,
+      CPLL,
+      (t) =>
+        f2lOk(t) && topOriented(t.rel(), 3) && topCornersPermuted(t.rel(), 3),
+    );
+    s.stage("cp");
+    applyMatch(s, EPLL, (t) => t.isSolved(), true);
+    s.stage("ep");
+  },
+];
 
 const PLL_ALGS = PLL.map(([, alg]) => alg);
 
+/** 고수: CFOP(십자, F2L 네 쌍, OLL 57, PLL 21) */
+export const CFOP_STEPS: readonly Step[] = [
+  (s) => {
+    whiteDown(s);
+    crossOptimal(s);
+    s.stage("cross");
+    f2lPairs(s);
+  },
+  "oll-parity",
+  (s) => {
+    applyMatch(s, OLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
+    s.stage("oll");
+  },
+  "pll-parity",
+  (s) => {
+    applyMatch(s, PLL_ALGS, (t) => t.isSolved(), true);
+    s.stage("pll");
+  },
+];
+
+/** 3×3에서는 패리티 칸을 건너뛰고 차례대로 둔다 */
+function run3(steps: readonly Step[], state: PuzzleState): HumanSolve {
+  const s = start3(state);
+  for (const step of steps) if (typeof step === "function") step(s);
+  return finish(s);
+}
+
+/** 3×3 입문: 층별 맞추기(초보자 공식만) */
+export function solveBeginner3(state: PuzzleState): HumanSolve {
+  return run3(BEGINNER3_STEPS, state);
+}
+
+/** 3×3 중수: 층별 + 2단계 OLL·PLL */
+export function solveIntermediate3(state: PuzzleState): HumanSolve {
+  return run3(INTERMEDIATE3_STEPS, state);
+}
+
 /** 3×3 고수: CFOP(십자, F2L 네 쌍, OLL 57, PLL 21) */
 export function solveCfop(state: PuzzleState): HumanSolve {
-  const s = start3(state);
-  whiteDown(s);
-  crossOptimal(s);
-  s.stage("cross");
-  f2lPairs(s);
-  applyMatch(s, OLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
-  s.stage("oll");
-  applyMatch(s, PLL_ALGS, (t) => t.isSolved(), true);
-  s.stage("pll");
-  return finish(s);
+  return run3(CFOP_STEPS, state);
 }
 
 /** 3×3 초고수: 2단계 해법(사람을 넘는 짧은 해) */
@@ -508,7 +557,7 @@ function finish(s: Solve): HumanSolve {
   return s.result();
 }
 
-/** 단계·크기로 해법 고르기(4×4 이상은 아직 없다) */
+/** 단계·크기로 해법 고르기(2×2~5×5). 4×4·5×5는 축소법 뒤 같은 단계의 3×3 해법 */
 export function solveHuman(
   level: BotLevel,
   size: number,
@@ -525,6 +574,14 @@ export function solveHuman(
     if (level === "intermediate") return solveIntermediate2(state);
     if (level === "advanced") return solveAdvanced2(state);
     return solveExpert2(state);
+  }
+  if (size === 4 || size === 5) {
+    if (level === "beginner")
+      return solveBigHuman(BEGINNER3_STEPS, size, state);
+    if (level === "intermediate")
+      return solveBigHuman(INTERMEDIATE3_STEPS, size, state);
+    if (level === "advanced") return solveBigHuman(CFOP_STEPS, size, state);
+    return solveBigExpert(size, state);
   }
   throw new RangeError(`${size}×${size} 컴퓨터는 아직 없다`);
 }

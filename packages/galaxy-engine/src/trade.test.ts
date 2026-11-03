@@ -64,9 +64,9 @@ describe("거래(2-8)", () => {
     const s = base();
     const rolled = roll({ ...s, positions: [29, 0, 0, 0] }, [1, 2]).state;
     expect(refused(rolled, 0, offer())).toContain("굴리기 전");
-    expect(refused({ ...s, rules: SHORT_RULES }, 0, offer())).toContain(
-      "끈 판",
-    );
+    expect(
+      refused({ ...s, rules: { ...SHORT_RULES, trade: false } }, 0, offer()),
+    ).toContain("끈 판");
     expect(refused(s, 0, offer({ get: { stars: [25], cash: 0 } }))).toContain(
       "거래할 수 없는",
     );

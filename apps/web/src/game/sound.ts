@@ -116,7 +116,51 @@ export type Cue =
   /** 큐브 핑거 트릭: 박자(메트로놈) 한 번 "똑" */
   | "cubeBeat"
   /** 큐브 핑거 트릭: 공식 첫 수의 센 박 "딱" */
-  | "cubeBeatAccent";
+  | "cubeBeatAccent"
+  /** 은하 한 바퀴: 주사위 둘이 유리 판 위를 구르다 멈추는 "따그르르 톡" */
+  | "galaxyDice"
+  /** 은하 한 바퀴: 우주선이 칸 하나를 지나는 작은 "틱" */
+  | "galaxyTick"
+  /** 은하 한 바퀴: 별을 사는 맑은 종 한 번 */
+  | "galaxyBuy"
+  /** 은하 한 바퀴: 정거장 이용료(빛이 흐르는 짧은 쓸림) */
+  | "galaxyRent"
+  /** 은하 한 바퀴: 별자리 선 잇기(올라가는 음 셋) */
+  | "galaxyLink"
+  /** 은하 한 바퀴: 별자리 완성(아르페지오) */
+  | "galaxyComplete"
+  /** 은하 한 바퀴: 우주국 공문이 내려와 펴지는 종이 "사락"과 직인 "톡" */
+  | "galaxyNotice"
+  /** 은하 한 바퀴: 소행성대에 걸리는 낮고 둔한 "쿵" */
+  | "galaxyAsteroid"
+  /** 은하 한 바퀴: 우주국 지원금(작은 차임) */
+  | "galaxySalary"
+  /** 은하 한 바퀴: 봉인 입찰 봉투가 열리는 "스윽 톡" */
+  | "galaxyBid"
+  /** 원카드: 가운데 더미를 손바닥으로 치는 "탁!"(원카드!) */
+  | "onecardShout"
+  /** 원카드: 공격 카드(2·A·조커). 쌓인 장 수가 많으면 여러 번(`times`) */
+  | "onecardAttack"
+  /** 원카드: 공격을 받아쳐 막음 */
+  | "onecardBlock"
+  /** 원카드: 7로 무늬를 바꿈 */
+  | "onecardSuit"
+  /** 원카드: J 건너뛰기 */
+  | "onecardSkip"
+  /** 원카드: Q 방향 바꾸기 */
+  | "onecardReverse"
+  /** 원카드: K 한 번 더 */
+  | "onecardAgain"
+  /** 원카드: 더미에서 먹음 */
+  | "onecardDraw"
+  /** 원카드: 외치지 않아 잡힘 */
+  | "onecardCaught"
+  /** 원카드: 헛외침 */
+  | "onecardFalse"
+  /** 원카드: 버린 더미를 다시 섞음 */
+  | "onecardReshuffle"
+  /** 원카드: 손패를 다 냄 */
+  | "onecardOut";
 
 /** 소리 이름. 소리 미리 듣기 화면에 쓴다 */
 /**
@@ -129,6 +173,7 @@ export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   cubeTurn: "repeat",
   cubeBeat: "repeat",
   cubeBeatAccent: "repeat",
+  galaxyTick: "repeat",
 };
 
 export const CUE_LABELS: Record<Cue, string> = {
@@ -188,6 +233,28 @@ export const CUE_LABELS: Record<Cue, string> = {
   cubeTimerStop: "큐브 타이머: 멈춤",
   cubeBeat: "큐브 핑거 트릭: 박자",
   cubeBeatAccent: "큐브 핑거 트릭: 센 박",
+  galaxyDice: "은하 한 바퀴: 주사위",
+  galaxyTick: "은하 한 바퀴: 칸 지나기",
+  galaxyBuy: "은하 한 바퀴: 별 사기",
+  galaxyRent: "은하 한 바퀴: 이용료",
+  galaxyLink: "은하 한 바퀴: 별자리 선 잇기",
+  galaxyComplete: "은하 한 바퀴: 별자리 완성",
+  galaxyNotice: "은하 한 바퀴: 우주국 공문",
+  galaxyAsteroid: "은하 한 바퀴: 소행성대",
+  galaxySalary: "은하 한 바퀴: 지원금",
+  galaxyBid: "은하 한 바퀴: 입찰 공개",
+  onecardShout: "원카드: 더미 치기(원카드!)",
+  onecardAttack: "원카드: 공격",
+  onecardBlock: "원카드: 막기",
+  onecardSuit: "원카드: 7 무늬 바꾸기",
+  onecardSkip: "원카드: J 건너뛰기",
+  onecardReverse: "원카드: Q 방향 바꾸기",
+  onecardAgain: "원카드: K 한 번 더",
+  onecardDraw: "원카드: 먹기",
+  onecardCaught: "원카드: 잡힘",
+  onecardFalse: "원카드: 헛외침",
+  onecardReshuffle: "원카드: 다시 섞기",
+  onecardOut: "원카드: 다 냄",
 };
 
 /**
@@ -249,6 +316,28 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   // 박자는 면 돌기처럼 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게
   cubeBeat: 11,
   cubeBeatAccent: 10,
+  galaxyDice: 0,
+  galaxyTick: 12,
+  galaxyBuy: 0,
+  galaxyRent: 5,
+  galaxyLink: 0,
+  galaxyComplete: 0,
+  galaxyNotice: 0,
+  galaxyAsteroid: 0,
+  galaxySalary: 2,
+  galaxyBid: 0,
+  onecardShout: 5,
+  onecardAttack: 2,
+  onecardBlock: 7.5,
+  onecardSuit: -1.5,
+  onecardSkip: 4.3,
+  onecardReverse: -2,
+  onecardAgain: -3,
+  onecardDraw: 2.7,
+  onecardCaught: -3.3,
+  onecardFalse: 9.7,
+  onecardReshuffle: 0,
+  onecardOut: 0,
 };
 
 function trim(cue: Cue): number {
@@ -275,6 +364,8 @@ const BIG: ReadonlySet<Cue> = new Set<Cue>([
   "heartsBroken",
   "go",
   "ppong",
+  "onecardShout",
+  "onecardCaught",
 ]);
 
 interface Graph {
@@ -843,7 +934,7 @@ export function play(
   const t0 = ctx.currentTime + delay;
   const bus = ctx.createGain();
   bus.gain.value = trim(cue);
-  if (cue === "starTick") {
+  if (cue === "starTick" || cue === "galaxyTick") {
     tickEnergy = tickEnergy * Math.exp(-(t0 - tickAt) / 0.5) + 1;
     tickAt = t0;
     bus.gain.value /= Math.sqrt(tickEnergy);
@@ -900,6 +991,7 @@ export function renderCue(
 
 /** 같은 소리를 이어서 낼 때 간격(초) */
 function gap(cue: Cue): number {
+  if (cue === "onecardAttack") return 0.16;
   return cue === "pickCard" ? 0.09 : 0.13;
 }
 
@@ -1428,6 +1520,212 @@ function render(cue: Cue, v: Voice): void {
       pluck(v, C5, 0, 0.25, 0.12);
       bell(v, G5, 0.08, 0.6, 0.07);
       bell(v, C6, 0.16, 0.8, 0.06);
+      break;
+    case "galaxyDice":
+      // 주사위 둘이 유리 판에 떨어져 구르다(작고 높은 "따그르르") 멈추는 "톡 톡"
+      for (let i = 0; i < 5; i++)
+        woodClack(v, i * 0.06 + random() * 0.025, 0.45 - i * 0.05, 1.5);
+      tap(v, 0.34, 0.7, 1.4);
+      tap(v, 0.42 + random() * 0.03, 0.55, 1.5);
+      break;
+    case "galaxyTick":
+      // 칸 하나를 지날 때 아주 작은 유리 "틱"(칸마다 음이 조금 다르다)
+      glass(v, pentatonic(6 + Math.floor(random() * 5)), 0, 0.12, 0.04, 0.4);
+      break;
+    case "galaxyBuy":
+      // 별을 맡는 맑은 종 한 번, 하늘이라 메아리가 조금
+      glass(withEcho(v, 1.4), G5, 0, 1.1, 0.085, 0.7);
+      tone(v, G5 * 2, 0.01, 0.5, { gain: 0.02, attack: 0.004 });
+      break;
+    case "galaxyRent":
+      // 빛이 흘러가는 짧은 쓸림과 작은 반짝임
+      noise(v, 0, 0.32, {
+        filter: "bandpass",
+        freq: 1800,
+        sweepTo: 4800,
+        q: 1.1,
+        gain: 0.16,
+        attack: 0.08,
+      });
+      glass(v, E5 * 2, 0.22, 0.4, 0.035, 0.8);
+      break;
+    case "galaxyLink":
+      // 별 둘 사이에 선이 그어지는 올라가는 음 셋
+      glass(withEcho(v, 1.2), pentatonic(5), 0, 0.5, 0.06, 0.6);
+      glass(v, pentatonic(7), 0.1, 0.5, 0.055, 0.6);
+      glass(v, pentatonic(9), 0.2, 0.7, 0.055, 0.7);
+      break;
+    case "galaxyComplete": {
+      // 별자리 완성: 선을 따라 올라가는 아르페지오와 부드러운 바탕음
+      const e = withEcho(v, 2.4);
+      [0, 2, 4, 5, 7, 9].forEach((step, i) => {
+        glass(e, pentatonic(step), i * 0.11, 0.9, 0.05, 0.7);
+      });
+      pad(v, C5, 0, 1.8, 0.03);
+      sparkles(e, 4, 0.7, 0.5);
+      break;
+    }
+    case "galaxyNotice":
+      // 공문 종이가 내려와 펴지는 "사락"과 직인 "톡"
+      noise(v, 0, 0.26, {
+        filter: "bandpass",
+        freq: 1100,
+        sweepTo: 2000,
+        q: 0.8,
+        gain: 0.14,
+        attack: 0.07,
+      });
+      thump(v, 0.3, 170, 90, 0.07, 0.22);
+      tap(v, 0.3, 0.5, 0.8);
+      break;
+    case "galaxyAsteroid":
+      // 소행성대에 걸리는 낮고 둔한 "쿵"과 자갈 부딪는 소리
+      thump(v, 0, 120, 55, 0.35, 0.34);
+      noise(v, 0, 0.3, {
+        filter: "lowpass",
+        freq: 500,
+        q: 0.7,
+        gain: 0.35,
+        attack: 0.004,
+      });
+      for (let i = 0; i < 3; i++)
+        woodClack(v, 0.08 + i * 0.07 + random() * 0.03, 0.25, 0.6);
+      break;
+    case "galaxySalary":
+      // 우주국 지원금: 작은 차임 둘
+      bell(v, E5 * 2, 0, 0.5, 0.05);
+      bell(v, G5 * 2, 0.09, 0.7, 0.045);
+      break;
+    case "galaxyBid":
+      // 봉투가 열리는 "스윽"과 값이 드러나는 "톡"
+      noise(v, 0, 0.2, {
+        filter: "highpass",
+        freq: 2200,
+        sweepTo: 3600,
+        q: 0.6,
+        gain: 0.12,
+        attack: 0.04,
+      });
+      pluck(v, C5 * 2, 0.2, 0.3, 0.1);
+      break;
+    case "onecardShout": {
+      // 손바닥으로 더미를 내리치는 "탁!": 넓은 마찰음, 묵직한 "쿵", 짧게 올려 외치는 소리
+      const vary = 0.95 + random() * 0.1;
+      noise(v, 0, 0.05, {
+        filter: "bandpass",
+        freq: 1800 * vary,
+        q: 0.7,
+        gain: 0.9,
+        attack: 0.001,
+      });
+      thump(v, 0, 140 * vary, 70, 0.14, 0.35);
+      tone(v, 620, 0.03, 0.16, {
+        type: "triangle",
+        gain: 0.1,
+        endFreq: 940,
+        attack: 0.005,
+      });
+      break;
+    }
+    case "onecardAttack":
+      // 공격: 낮게 울리는 "쿵"과 거친 바람
+      thump(v, 0, 120, 50, 0.22, 0.4);
+      noise(v, 0, 0.16, {
+        filter: "lowpass",
+        freq: 1400,
+        sweepTo: 300,
+        gain: 0.25,
+        attack: 0.002,
+      });
+      tap(v, 0, 0.6, 0.9);
+      break;
+    case "onecardBlock":
+      // 막기: 쇠끼리 맞부딪는 "챙"
+      tap(v, 0, 0.7, 1.2);
+      for (const f of [1180, 1760, 2350])
+        tone(v, f, 0.004, 0.28, { gain: 0.05, attack: 0.002 });
+      thump(v, 0, 160, 90, 0.08, 0.2);
+      break;
+    case "onecardSuit":
+      // 7로 무늬 바꾸기: 카드 내는 소리와 "띠링" 두 음
+      tap(v, 0);
+      pluck(v, E5, 0.05, 0.25, 0.12);
+      pluck(v, A5, 0.13, 0.4, 0.12);
+      break;
+    case "onecardSkip":
+      // J 건너뛰기: 카드와 위로 휙 지나가는 바람
+      tap(v, 0);
+      noise(v, 0.03, 0.18, {
+        filter: "bandpass",
+        freq: 900,
+        sweepTo: 4200,
+        q: 1.2,
+        gain: 0.35,
+        attack: 0.04,
+      });
+      break;
+    case "onecardReverse":
+      // Q 방향 바꾸기: 올라갔다 내려오는 "뾰-용"
+      tap(v, 0);
+      tone(v, 500, 0.03, 0.14, { type: "sine", gain: 0.18, endFreq: 1000 });
+      tone(v, 1000, 0.17, 0.16, { type: "sine", gain: 0.18, endFreq: 520 });
+      break;
+    case "onecardAgain":
+      // K 한 번 더: 톡톡 두 번과 올라가는 음
+      tap(v, 0);
+      tap(v, 0.09, 0.8, 1.2);
+      pluck(v, G5, 0.12, 0.3, 0.12);
+      break;
+    case "onecardDraw":
+      // 더미에서 집어 오는 "스윽"
+      noise(v, 0, 0.12, {
+        filter: "bandpass",
+        freq: 1500,
+        sweepTo: 2600,
+        q: 0.9,
+        gain: 0.35,
+        attack: 0.03,
+      });
+      tap(v, 0.1, 0.4, 0.8);
+      break;
+    case "onecardCaught":
+      // 잡힘: "삐-빅" 내려가는 경고음과 "쿵"
+      tone(v, 880, 0, 0.12, {
+        type: "square",
+        gain: 0.09,
+        attack: 0.004,
+        lowpass: 2400,
+      });
+      tone(v, 587.33, 0.13, 0.24, {
+        type: "square",
+        gain: 0.09,
+        endFreq: 440,
+        attack: 0.004,
+        lowpass: 2400,
+      });
+      thump(v, 0.13, 120, 60, 0.2, 0.25);
+      break;
+    case "onecardFalse":
+      // 헛외침: 낮게 "부-웅" 하는 버저
+      tone(v, 180, 0, 0.32, {
+        type: "sawtooth",
+        gain: 0.12,
+        endFreq: 140,
+        attack: 0.01,
+        lowpass: 900,
+      });
+      break;
+    case "onecardReshuffle":
+      // 버린 더미를 한 번 섞는 "촤르륵"
+      cut(v, 0);
+      riffle(v, 0.15);
+      break;
+    case "onecardOut":
+      // 다 냄: 맑은 종이 올라간다
+      pluck(v, C5, 0, 0.25, 0.12);
+      pluck(v, E5, 0.07, 0.25, 0.12);
+      pluck(v, G5, 0.14, 0.3, 0.12);
+      bell(v, C6, 0.22, 0.8, 0.07);
       break;
     case "roundEnd":
       // 점수표를 펼치는 "사락"과 "띵동"

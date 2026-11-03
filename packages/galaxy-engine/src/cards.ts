@@ -6,7 +6,7 @@ import type { GalaxyStar } from "./sky-types";
  * 별 사실 공문(2·3·4·8)은 판 위 별의 실제 값으로 계산하고, 해당 별이 판에 하나도 없으면 더미에서 뺀다.
  */
 
-export type CardKind = "gain" | "pay" | "catchUp" | "move" | "keep";
+export type CardKind = "gain" | "pay" | "catchUp" | "move";
 
 export interface NoticeCard {
   id: number;
@@ -17,7 +17,13 @@ export interface NoticeCard {
   fact: StarFact | null;
 }
 
-export type StarFact = "firstMagnitude" | "blue" | "far" | "red";
+export type StarFact =
+  | "firstMagnitude"
+  | "blue"
+  | "far"
+  | "near"
+  | "red"
+  | "yellow";
 
 /** 별 사실의 기준값 */
 export const FACT_LIMITS = {
@@ -29,6 +35,11 @@ export const FACT_LIMITS = {
   red: 4_000,
   /** 먼 별: 이보다 먼 별(광년) */
   far: 500,
+  /** 이웃 별: 이보다 가까운 별(광년) */
+  near: 100,
+  /** 노란·주황 별(해와 비슷한 별): 표면 온도가 이 사이인 별(K, 양 끝 포함) */
+  yellowMin: 4_000,
+  yellowMax: 7_500,
 } as const;
 
 export function matchesFact(star: GalaxyStar, fact: StarFact): boolean {
@@ -41,6 +52,10 @@ export function matchesFact(star: GalaxyStar, fact: StarFact): boolean {
       return star.k < FACT_LIMITS.red;
     case "far":
       return star.ly !== null && star.ly > FACT_LIMITS.far;
+    case "near":
+      return star.ly !== null && star.ly < FACT_LIMITS.near;
+    case "yellow":
+      return star.k >= FACT_LIMITS.yellowMin && star.k <= FACT_LIMITS.yellowMax;
   }
 }
 
@@ -110,10 +125,10 @@ export const CARDS: readonly NoticeCard[] = [
   },
   {
     id: 10,
-    title: "우주국 호출",
-    text: "카노푸스 우주국으로 곧장 갑니다. 지원금을 받습니다.",
-    kind: "move",
-    fact: null,
+    title: "이웃 별 조사",
+    text: "가진 별 가운데 100광년보다 가까운 별마다 20을 드립니다.",
+    kind: "gain",
+    fact: "near",
   },
   {
     id: 11,
@@ -124,15 +139,15 @@ export const CARDS: readonly NoticeCard[] = [
   },
   {
     id: 12,
-    title: "항로 정비",
-    text: "세 칸 뒤로 갑니다.",
-    kind: "move",
-    fact: null,
+    title: "별 색 조사",
+    text: "가진 별 가운데 표면 온도 4,000~7,500 K인 노란·주황 별(해와 비슷한 별)마다 20을 드립니다.",
+    kind: "gain",
+    fact: "yellow",
   },
   {
     id: 13,
     title: "관측지 초청",
-    text: "관측지로 곧장 갑니다.",
+    text: "관측지로 곧장 갑니다. 이번에는 관측 지원금이 없습니다.",
     kind: "move",
     fact: null,
   },
@@ -152,15 +167,12 @@ export const CARDS: readonly NoticeCard[] = [
   },
   {
     id: 16,
-    title: "소행성대 통과 허가증",
-    text: "가지고 있다가 소행성대에 걸렸을 때 바로 나갑니다(쓰면 더미 아래로).",
-    kind: "keep",
+    title: "별자리 선 측량",
+    text: "같은 별자리 별을 둘 이상 가진 별자리마다 30을 드립니다. 완성한 별자리는 50입니다.",
+    kind: "gain",
     fact: null,
   },
 ];
-
-/** 소행성대 통과 허가증 */
-export const PASS_CARD = 16;
 
 /** 공문 금액(2-6). 밸런스를 고칠 때는 이 표만 바꾼다 */
 export const CARD_AMOUNTS = {
@@ -169,12 +181,15 @@ export const CARD_AMOUNTS = {
   blue: 20,
   far: 40,
   supply: 30,
-  inspectLevel: 15,
-  inspectGrand: 40,
+  inspectLevel: 12,
+  inspectGrand: 30,
   dust: 40,
   red: 20,
   support: 100,
-  backSteps: 3,
+  yellow: 20,
+  near: 20,
+  lineSurvey: 30,
+  lineSurveyComplete: 50,
 } as const;
 
 export function cardById(id: number): NoticeCard {

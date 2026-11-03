@@ -1,6 +1,6 @@
 // 시험 전용: 단원 「직접 해보기」의 목표(GOALS)를 3×3 시뮬레이터로 판정한다.
 // 엔진이 만들 판정과 같은 뜻으로, 가운데 색을 기준으로 본다(흰 면이 위든 아래든 같다).
-// 2×2 목표도 꼭짓점만 보는 같은 방식으로 3×3 위에서 본다(2×2 공식은 가운데를 움직이지 않는다).
+// 2×2 목표는 꼭짓점만 3×3 위에서 보고, 가운데 대신 큐브 전체 방향 24가지를 모두 맞춰 본다(goalMet 주석).
 import type { GoalName } from "../types";
 import { apply, type Cube, colorMap, key, solved } from "./sim";
 
@@ -84,7 +84,7 @@ const yellowCorners = (c: Cube) =>
 const llDone = (c: Cube) =>
   D_TURNS.some((d) => check(apply(c, d), () => true, pieceSolved));
 
-// 2×2: 꼭짓점만, 서로의 상대 자리로 본다(가운데가 없으니 맞춘 뒤 큐브 전체 돌리기를 허용)
+// 2×2: 꼭짓점만 본다(큐브 전체 방향은 goalMet에서 맞춘다)
 const corners2 = (
   c: Cube,
   want: (p: Piece) => boolean,
@@ -105,31 +105,56 @@ function pairInPlace(raw: Cube, slot: "FR" | "FL" | "BR" | "BL"): boolean {
     .every((s) => centerColor.get(s.normal.join(",")) === s.color);
 }
 
-const U_TURNS = ["", "U", "U2", "U'"];
-
-/** size 2면 꼭짓점만, 위·아래층 돌리기 차이는 맞은 것으로 본다(2×2에는 기준 가운데가 없다) */
+/**
+ * size 2면 꼭짓점만 본다. 2×2에는 기준 가운데가 없으니 큐브 전체 방향(24가지)만 봐주고,
+ * 층 돌리기(U·D 하나 남음)는 봐주지 않는다. 엔진 isSolved(면마다 한 색)와 같은 기준이다.
+ */
 export function goalMet(goal: GoalName, raw: Cube, size: 2 | 3 = 3): boolean {
-  const c = alignByCenters(raw);
   if (size === 2) {
-    const anyTurn = (f: (x: Cube) => boolean) =>
-      U_TURNS.some((u) => D_TURNS.some((d) => f(apply(c, `${u} ${d}`))));
+    const anyRotation = (f: (x: Cube) => boolean) =>
+      ROTATIONS.some((r) => f(apply(raw, r)));
     switch (goal) {
       case "solved":
-        return anyTurn((x) => corners2(x, () => true, pieceSolved));
+        return anyRotation((x) => corners2(x, () => true, pieceSolved));
       case "2x2-first-layer":
-        return anyTurn((x) =>
+        return anyRotation((x) =>
           corners2(x, (p) => homeHas(p, WHITE), pieceSolved),
         );
       case "2x2-top-face":
-        return anyTurn(
+        return anyRotation(
           (x) =>
             corners2(x, (p) => homeHas(p, WHITE), pieceSolved) &&
             corners2(x, (p) => homeHas(p, YELLOW), yellowFacing),
         );
+      case "2x2-first-face":
+        return anyRotation((x) =>
+          corners2(
+            x,
+            (p) => homeHas(p, WHITE),
+            (p) =>
+              p.stickers.every(
+                (s) => s.color !== WHITE || s.normal === "0,1,0",
+              ),
+          ),
+        );
+      case "2x2-both-faces":
+        return anyRotation((x) =>
+          corners2(
+            x,
+            () => true,
+            (p) =>
+              p.stickers.every(
+                (s) =>
+                  (s.color !== WHITE || s.normal === "0,1,0") &&
+                  (s.color !== YELLOW || s.normal === "0,-1,0"),
+              ),
+          ),
+        );
       default:
-        break;
+        throw new Error(`2×2에서 보지 않는 목표: ${goal}`);
     }
   }
+  const c = alignByCenters(raw);
   switch (goal) {
     case "solved":
       return check(c, () => true, pieceSolved);
@@ -154,24 +179,6 @@ export function goalMet(goal: GoalName, raw: Cube, size: 2 | 3 = 3): boolean {
       return yellowCorners(c);
     case "ll":
       return llDone(c);
-    case "2x2-first-face":
-      return corners2(
-        c,
-        (p) => homeHas(p, WHITE),
-        (p) =>
-          p.stickers.every((s) => s.color !== WHITE || s.normal === "0,1,0"),
-      );
-    case "2x2-both-faces":
-      return corners2(
-        c,
-        () => true,
-        (p) =>
-          p.stickers.every(
-            (s) =>
-              (s.color !== WHITE || s.normal === "0,1,0") &&
-              (s.color !== YELLOW || s.normal === "0,-1,0"),
-          ),
-      );
     default:
       throw new Error(`3×3에서 보지 않는 목표: ${goal}`);
   }
