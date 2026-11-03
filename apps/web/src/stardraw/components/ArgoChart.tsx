@@ -105,7 +105,7 @@ const BAYER_TO_CHART = [
   0.27838, -0.15905, 0.16201, 0.28602, -41.14143, 187.46388,
 ] as const;
 /** 별과 선이 주인공이라 아주 흐리게 */
-const BAYER_OPACITY = 0.22;
+const BAYER_OPACITY = 0.3;
 export const ARGO_BAYER_CREDIT =
   "그림: 요한 바이어, 우라노메트리아(1603), 공공 저작물";
 
