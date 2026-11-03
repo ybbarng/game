@@ -236,6 +236,9 @@ importers:
       '@game/cube-scramble':
         specifier: workspace:*
         version: link:../../packages/cube-scramble
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../../packages/cube-solver
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
