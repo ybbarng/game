@@ -22,8 +22,9 @@ export type GalaxyLength = "short" | "standard" | "long";
  * 규칙 판 번호. 숫자 표(이용료·차례 수·자산 계산 등)를 바꾸면 올린다.
  * 옛 판 기록을 새 숫자로 다시 두면 결과가 달라지므로, 판 번호가 다른 기록은 다시 두지 않는다.
  * 2: 2026-11-04 재미 개선(docs/48 3-6). 문자열 머리 `g2-`
+ * 3: 2026-11-04 마무리 손질(3-6 g3): 뒤 자리 시작 자금 보정, 공문 13 지원금 반. 문자열 머리 `g3-`
  */
-export const GALAXY_EDITION = 2;
+export const GALAXY_EDITION = 3;
 
 export interface GalaxyRules {
   /** 규칙 판 번호(`GALAXY_EDITION`) */
@@ -63,6 +64,12 @@ export const LONG_RULES: GalaxyRules = { ...STANDARD_RULES, length: "long" };
 export const NUMBERS = {
   /** 시작 자금(2-11) */
   startFunds: { short: 1000, standard: 1000, long: 1500 },
+  /**
+   * 첫 차례 이점 보정(3-6 g3): 첫 차례에서 n번째 뒤 자리는 시작 자금을 이만큼 × n 더 받는다(4인 0·20·40·60).
+   * g2 bench에서 첫 차례 자리의 1등이 30.1%(기준 25 ± 5)로 넘었다. 먼저 사는 자리가 별 하나(60~200)를
+   * 앞서 가지는 몫의 일부를 되돌린다
+   */
+  lateSeatBonus: 20,
   /** 우주국 지원금(2-5) */
   salary: 120,
   /** 한 사람이 갖는 차례 수(2-11). 긴 판은 제한 없음 */
@@ -140,11 +147,11 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
 
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
- * 형식: `g2-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
+ * 형식: `g3-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
  *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본(유성우 끔) `g2-4mtw-seasons`, 유성우를 켜면 `g2-4mtwr-seasons`,
- *     짧은 판 2인 거래·제철 끔 `g2-2snn-seasons`, 빠른 시간이면 `g2-4mtw-seasons-t1`.
+ * 예: 기본(유성우 끔) `g3-4mtw-seasons`, 유성우를 켜면 `g3-4mtwr-seasons`,
+ *     짧은 판 2인 거래·제철 끔 `g3-2snn-seasons`, 빠른 시간이면 `g3-4mtw-seasons-t1`.
  * 긴 판은 마지막 돌림이 없어 유성우를 싣지 않는다(r 없음)
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
@@ -159,10 +166,10 @@ export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
   const match =
-    /^g2-([234])([sml])([tn])([wn])(r?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
+    /^g3-([234])([sml])([tn])([wn])(r?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
       text.trim(),
     );
-  if (!match && /^g1-/.test(text.trim()))
+  if (!match && /^g[12]-/.test(text.trim()))
     return {
       ok: false,
       reason:

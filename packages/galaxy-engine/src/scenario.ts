@@ -2,7 +2,7 @@ import { chainCommit, derivedSeed } from "@game/yut-engine";
 
 import { BASE, type GalaxyBoard } from "./board";
 import { createMatch, seasonFor } from "./match";
-import { type GalaxyRules, meteorFor, STANDARD_RULES } from "./rules";
+import { type GalaxyRules, meteorFor, NUMBERS, STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 
 /** 장면의 별 하나: 칸, 주인, 정거장 단(기본 1), 맡김 */
@@ -16,7 +16,8 @@ export interface ScenarioStar {
 /**
  * 튜토리얼 장면: 정해진 칸·자금·주인에서 시작하는 상태를 만든다(판은 `turn` 단계, 굴리기 전).
  * 사슬은 모든 자리가 재료(시드)로 약속해 둔 상태라, 장면 뒤에도 굴리기가 이어진다(내 자리도 재료로 공개한다).
- * 적지 않은 것은 새 판과 같다(모두 우주국, 시작 자금, 주인 없는 별)
+ * 적지 않은 것은 새 판과 같다(모두 우주국, 시작 자금, 주인 없는 별). 시작 자금은 판 중간 장면이라
+ * 뒤 자리 보정(`lateSeatBonus`) 없이 모두 같은 기본 값이다
  */
 export function createGalaxyScenario(options: {
   board: GalaxyBoard;
@@ -59,7 +60,9 @@ export function createGalaxyScenario(options: {
     positions: options.positions
       ? [...options.positions]
       : state.positions.map(() => BASE),
-    cash: options.cash ? [...options.cash] : [...state.cash],
+    cash: options.cash
+      ? [...options.cash]
+      : state.cash.map(() => NUMBERS.startFunds[rules.length]),
     jailed,
     owners: [...state.owners],
     levels: [...state.levels],

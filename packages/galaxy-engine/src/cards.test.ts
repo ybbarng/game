@@ -147,10 +147,14 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(state.positions[0]).toBe(4);
   });
 
-  it("13 관측지 초청: 관측지로 가기만 하고 관측 지원금은 없다", () => {
+  it("13 관측지 초청: 관측지로 가고 관측 지원금은 없다. 우주국을 지나면 지원금은 60", () => {
     const { state, events } = draw(13, { cash: [100, 1000, 1000, 1000] });
     expect(state.positions[0]).toBe(16);
     expect(amounts(events)).toEqual([]);
+    // 여름 공문(28)에서는 우주국을 지나 관측지로: 지원금 반
+    const wrap = draw(13, {}, 25);
+    expect(wrap.state.positions[0]).toBe(16);
+    expect(amounts(wrap.events)).toEqual([[-1, 0, 60]]);
   });
 
   it("14 계절 바꾸기: 다음 계절의 첫 별로 가고 이용료는 반", () => {

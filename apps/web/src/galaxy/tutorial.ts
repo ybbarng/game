@@ -538,7 +538,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         kind: "explain",
         title: "별빛은 이 판의 점수예요",
         body: [
-          `돈 대신 **별빛**(✦)을 써요. 처음에 ${money(startFunds)}을 받아요.`,
+          `돈 대신 **별빛**(✦)을 써요. 처음에 ${money(startFunds)}을 받고, 첫 차례에서 뒤 자리일수록 ${money(NUMBERS.lateSeatBonus)}씩 더 받아요(먼저 사는 쪽이 앞서지 않게).`,
           "별빛은 이 판 안에서만 쓰는 점수예요. 판이 끝나면 사라지고, 실제 돈이나 물건과 바꿀 수 없어요.",
           `판이 끝나면 **자산**(별빛 + 가진 별 값 + 정거장 + 완성한 별자리마다 ${money(NUMBERS.completeBonus)})이 가장 많은 사람이 1등이에요. 기본 판은 둘이면 한 사람이 ${turns2}차례씩 해요.`,
         ],

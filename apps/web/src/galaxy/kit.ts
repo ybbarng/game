@@ -60,6 +60,8 @@ export function outcomeOf(
 
 /** 은하 한 바퀴 판 기록(내 자리에서 본 것, docs/48 13절 3번) */
 export interface GalaxyRound {
+  /** 규칙 판 번호(`GALAXY_EDITION`). 이 칸이 없는 기록은 옛 규칙 판이다 */
+  edition?: number;
   players: number;
   length: GalaxyRules["length"];
   sky: string;
@@ -143,6 +145,7 @@ export const galaxyStats: KitStats<GalaxyView, GameEvent> = {
     const starId = (sq: number) => board.squares[sq]?.star?.star.id ?? "";
     const mine = myRank(ended.result, me);
     return {
+      edition: end.rules.edition,
       players: end.rules.players,
       length: end.rules.length,
       sky: end.rules.sky,
@@ -328,7 +331,10 @@ export const galaxyKit: GalaxyKit = {
 /* ---------- 지표(내 기록) ---------- */
 
 export interface GalaxySummary {
+  /** 지금 규칙 판(`GALAXY_EDITION`)으로 둔 판 수. 아래 숫자는 모두 이 판들만 센다 */
   rounds: number;
+  /** 옛 규칙 판(판 번호가 다르거나 없는 기록) 수. 숫자가 달라 함께 세지 않는다 */
+  oldRounds: number;
   /** 1등 판 수 */
   firsts: number;
   averageRank: number;
@@ -340,15 +346,16 @@ export interface GalaxySummary {
   completedBy: Record<string, number>;
   rentPaid: number;
   rentReceived: number;
-  /** 만난 별(별 id, 겹치지 않게) */
+  /** 만난 별(별 id, 겹치지 않게). 별은 규칙과 상관없어 옛 판도 함께 센다 */
   met: string[];
   recent: { rank: number | null; players: number }[];
 }
 
 export function summarizeGalaxy(rounds: readonly RoundRecord[]): GalaxySummary {
-  const all = rounds
+  const galaxy = rounds
     .filter((r) => r.game === "galaxy")
     .map((r) => r.data as GalaxyRound);
+  const all = galaxy.filter((r) => r.edition === GALAXY_EDITION);
   const ranked = all.filter((r) => r.rank !== null);
   const completedBy: Record<string, number> = {};
   for (const r of all)
@@ -357,6 +364,7 @@ export function summarizeGalaxy(rounds: readonly RoundRecord[]): GalaxySummary {
     list.reduce((n, r) => n + pick(r), 0);
   return {
     rounds: all.length,
+    oldRounds: galaxy.length - all.length,
     firsts: all.filter((r) => r.rank === 1).length,
     averageRank:
       ranked.length === 0 ? 0 : sum((r) => r.rank ?? 0, ranked) / ranked.length,
@@ -367,7 +375,7 @@ export function summarizeGalaxy(rounds: readonly RoundRecord[]): GalaxySummary {
     completedBy,
     rentPaid: sum((r) => r.rentPaid),
     rentReceived: sum((r) => r.rentReceived),
-    met: [...new Set(all.flatMap((r) => r.met))].filter(Boolean),
+    met: [...new Set(galaxy.flatMap((r) => r.met))].filter(Boolean),
     recent: all.slice(-20).map((r) => ({ rank: r.rank, players: r.players })),
   };
 }

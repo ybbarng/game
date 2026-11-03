@@ -125,7 +125,7 @@ export function createMatch(
       again: false,
     },
     positions: seats.map(() => BASE),
-    cash: seats.map(() => NUMBERS.startFunds[rules.length]),
+    cash: seats.map((s) => startFundsOf(rules, starter, s)),
     out: seats.map(() => false),
     jailed: seats.map(() => false),
     owners: Array.from({ length: BOARD_SIZE }, () => -1),
@@ -154,9 +154,23 @@ export function createMatch(
   return { state, events: [{ type: "gameStarted", turn: starter }] };
 }
 
-/** 시작 별빛 합(돈 합 확인용) */
+/** 자리 `seat`의 시작 별빛: 기본 시작 자금 + 첫 차례(`starter`)에서 뒤로 떨어진 만큼 `lateSeatBonus` */
+export function startFundsOf(
+  rules: GalaxyRules,
+  starter: number,
+  seat: number,
+): number {
+  const behind = (seat - starter + rules.players) % rules.players;
+  return NUMBERS.startFunds[rules.length] + NUMBERS.lateSeatBonus * behind;
+}
+
+/** 시작 별빛 합(돈 합 확인용). 첫 차례가 누구든 같다 */
 export function startTotal(rules: GalaxyRules): number {
-  return NUMBERS.startFunds[rules.length] * rules.players;
+  const n = rules.players;
+  return (
+    NUMBERS.startFunds[rules.length] * n +
+    (NUMBERS.lateSeatBonus * n * (n - 1)) / 2
+  );
 }
 
 /* ───────────── 읽기 ───────────── */
@@ -674,13 +688,14 @@ function moveForward(
   if (path.includes(BASE)) pay(s, events, BANK, seat, NUMBERS.salary, "salary");
 }
 
-/** 공문으로 곧장 간다. 앞으로 가며 우주국을 지나면(`salary`) 지원금 */
+/** 공문으로 곧장 간다. 앞으로 가며 우주국을 지나면(`salary`) 지원금(`amount`, 기본은 지원금 전부) */
 function jumpTo(
   s: GalaxyState,
   seat: number,
   target: number,
   salary: boolean,
   events: GameEvent[],
+  amount: number = NUMBERS.salary,
 ): void {
   const from = s.positions[seat] as number;
   s.positions[seat] = target;
@@ -694,7 +709,7 @@ function jumpTo(
     via: "card",
   });
   if (salary && (target === BASE || target < from))
-    pay(s, events, BANK, seat, NUMBERS.salary, "salary");
+    pay(s, events, BANK, seat, amount, "salary");
 }
 
 /** 소행성대로 보내 걸리게 한다 */
@@ -882,9 +897,10 @@ function applyCard(
       return "done";
     }
     case 13:
-      // 관측지로 옮기기만 한다(관측 지원금 없음, bench: 지원금까지 주면 평균 이득이 ±60을 넘었다)
+      // 관측지로 옮긴다(관측 지원금 없음). 우주국을 지나면 지원금은 반만(docs/48 3-6 g3:
+      // 지원금 전부면 평균 이득 59로 기준 ±60 경계, 관측 지원금까지 주면 +109)
       shown([]);
-      jumpTo(s, seat, OBSERVATORY, true, events);
+      jumpTo(s, seat, OBSERVATORY, true, events, CARD_AMOUNTS.inviteSalary);
       events.push({ type: "landed", seat, square: OBSERVATORY });
       return "done";
     case 14: {

@@ -40,7 +40,7 @@ export function colorWord(k: number): string {
   return "푸른색";
 }
 
-/** 별 한 줄 사실(docs/48 5-3): 시리우스 · 큰개자리 · −1.5등급 · 8.6광년 · 흰색 9,800 K */
+/** 별 한 줄 사실(docs/48 5-3): 시리우스 · 큰개자리 · −1.5등급 · 8.6광년 · 흰색 9,900 K */
 export function starLine(star: GalaxyStar, constellation: string): string {
   return [
     star.ko,

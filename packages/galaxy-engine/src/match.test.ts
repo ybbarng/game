@@ -6,6 +6,7 @@ import {
   legalActions,
   pendingSeats,
   replay,
+  startTotal,
   viewOf,
 } from "./match";
 import { SHORT_RULES, STANDARD_RULES } from "./rules";
@@ -28,7 +29,13 @@ describe("판 시작과 사슬", () => {
     const { state } = createMatch(STANDARD_RULES, 7, BOARD);
     expect(state.phase).toBe("commit");
     expect(pendingSeats(state)).toEqual([0, 1, 2, 3]);
-    expect(state.cash).toEqual([1000, 1000, 1000, 1000]);
+    // 첫 차례 자리는 1,000, 그 뒤 자리는 차례대로 20씩 더(3-6 g3 첫 차례 이점 보정)
+    expect(
+      state.cash.map((_, seat) => state.cash[(state.starter + seat) % 4]),
+    ).toEqual([1000, 1020, 1040, 1060]);
+    expect(state.cash.reduce((a, b) => a + b, 0)).toBe(
+      startTotal(STANDARD_RULES),
+    );
     const s = started();
     expect(s.phase).toBe("turn");
     expect(s.turn.seat).toBe(s.starter);
@@ -123,7 +130,8 @@ describe("판 시작과 사슬", () => {
       events.filter((e) => e.type === "linked").map((e) => e.type),
     ).toHaveLength(4);
     expect(events.some((e) => e.type === "dealt")).toBe(true);
-    expect(state.cash).toEqual([1000, 1000, 1000, 1000]);
+    // 별을 나눠 줘도 별빛은 그대로(시작 자금 + 뒤 자리 보정)
+    expect(state.cash).toEqual(s.cash);
   });
 });
 

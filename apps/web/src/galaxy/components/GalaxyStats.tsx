@@ -16,10 +16,16 @@ export function GalaxyStats({ book }: { book: StatsBook }) {
   const [local, setLocal] = useState<string[]>([]);
   useEffect(() => setLocal(loadMet()), []);
   const met = [...new Set([...s.met, ...local])];
+  // 옛 규칙 판은 숫자(이용료·시작 자금 등)가 달라 함께 세지 않고 판 수만 알린다
+  const old =
+    s.oldRounds > 0
+      ? `옛 규칙 판 ${s.oldRounds}판은 숫자가 달라 따로 둡니다.`
+      : null;
   if (s.rounds === 0)
     return (
       <p className="rounded-2xl bg-white/5 p-6 text-center text-sm text-white/60">
         아직 끝낸 은하 한 바퀴 판이 없습니다. 한 판 하고 오세요.
+        {old ? ` ${old}` : ""}
       </p>
     );
   const board = boardOfSky(DEFAULT_SKY);
@@ -83,6 +89,7 @@ export function GalaxyStats({ book }: { book: StatsBook }) {
           낸 이용료 {money(s.rentPaid)} · 받은 이용료 {money(s.rentReceived)}
         </p>
       </Card>
+      {old ? <p className="text-white/50 text-xs">{old}</p> : null}
     </>
   );
 }
