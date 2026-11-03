@@ -151,7 +151,7 @@ test("체스 배우기: 첫 단원 미션을 틀렸다가 다시 해 룩으로 �
   const touch = info.project.name.startsWith("phone");
   await page.goto("/chess");
   await page.getByRole("button", { name: /체스 배우기/ }).click();
-  await expect(page.getByText("0/8")).toBeVisible();
+  await expect(page.getByText("0/9")).toBeVisible();
   // 첫 단원: 설명 둘 → 퀴즈 → 미션(룩으로 폰 잡기)
   await page.getByRole("button", { name: /체스는 어떤 게임/ }).click();
   await expect(board(page)).toBeVisible();

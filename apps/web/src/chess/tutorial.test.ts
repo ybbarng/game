@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { chessBeginnerBot } from "@game/chess-ai";
+import { chessBeginnerBot, createChessExpertBot } from "@game/chess-ai";
 import {
   type Action,
   createChessScenario,
@@ -45,16 +45,50 @@ function runMission(mission: Mission, actions: Action[]) {
   return { before, after: mission.check({ view: match.current(), events }) };
 }
 
-const missions = CHESS_LESSONS.flatMap((l) =>
-  l.steps
-    .filter((s): s is Mission => s.kind === "mission" && s.scenario !== null)
-    .map((m) => [m.title, m] as const),
+const scenarioMissions = CHESS_LESSONS.flatMap((l) =>
+  l.steps.filter(
+    (s): s is Mission => s.kind === "mission" && s.scenario !== null,
+  ),
 );
+/** 한 수로 판정하는 미션(정답·실수 수가 있다) */
+const missions = scenarioMissions
+  .filter((m) => m.solution)
+  .map((m) => [m.title, m] as const);
+/** 끝내기처럼 컴퓨터와 끝까지 두는 미션(정답 수순이 정해져 있지 않다) */
+const playouts = scenarioMissions
+  .filter((m) => !m.solution)
+  .map((m) => [m.title, m] as const);
+
+/** 끝내기 미션을 대신 둘 고수. 판 수 상한을 줄여 시험을 빨리 끝낸다(줄여도 퀸·룩 메이트는 한다) */
+const finisher = createChessExpertBot(10_000);
+
+/** 내 자리를 고수가 대신 두어 판이 끝날 때까지 */
+function playOut(mission: Mission) {
+  if (!mission.scenario) throw new Error("장면이 없는 미션");
+  const match = new LocalMatch({
+    kit: chessKit,
+    rules: CHESS_TUTORIAL_RULES,
+    seed: 1,
+    humanSeat: 0,
+    bot: chessBeginnerBot,
+    initialState: sceneState(mission.scenario),
+  });
+  const events: GameEvent[] = [];
+  match.subscribe((s) => events.push(...s.events));
+  for (let i = 0; i < 100; i++) {
+    const view = match.current();
+    if (view.decision?.kind !== "move") break;
+    const result = match.submit(finisher.decide(view, { seed: i }));
+    if (!result.ok) throw new Error(`${mission.title}: ${result.error}`);
+  }
+  return mission.check({ view: match.current(), events });
+}
 
 describe("체스 튜토리얼 미션", () => {
-  it("단원은 여덟, 장면이 있는 미션은 일곱이다(실전은 처음부터)", () => {
-    expect(CHESS_LESSONS).toHaveLength(8);
+  it("단원은 아홉, 한 수 미션은 일곱, 끝까지 두는 미션은 둘이다(실전은 처음부터)", () => {
+    expect(CHESS_LESSONS).toHaveLength(9);
     expect(missions).toHaveLength(7);
+    expect(playouts).toHaveLength(2);
     expect(CHESS_LESSONS[0]?.id).toBe("goal");
     expect(CHESS_LESSONS.at(-1)?.id).toBe("real");
   });
@@ -65,6 +99,10 @@ describe("체스 튜토리얼 미션", () => {
     expect(solved.before).toBeNull();
     expect(solved.after).toBe("success");
     expect(runMission(mission, mission.mistake ?? []).after).toBe("fail");
+  });
+
+  it.each(playouts)("%s: 고수가 대신 두면 체크메이트로 성공한다", (_t, m) => {
+    expect(playOut(m)).toBe("success");
   });
 });
 
