@@ -230,6 +230,12 @@ importers:
       '@game/chess-engine':
         specifier: workspace:*
         version: link:../../packages/chess-engine
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../../packages/cube-engine
+      '@game/cube-scramble':
+        specifier: workspace:*
+        version: link:../../packages/cube-scramble
       '@game/fair-play':
         specifier: workspace:*
         version: link:../../packages/fair-play
