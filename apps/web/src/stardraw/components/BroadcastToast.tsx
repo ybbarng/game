@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { swipeResult } from "../broadcast-swipe";
 import { gateClock } from "../gate-status";
+import { buzzOnce } from "../haptics";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
 import { type Services, serverApi } from "../services";
@@ -117,7 +118,13 @@ export function BroadcastToast({
   }, [settled, screen]);
   const live = liveDrawRound(services, status);
   const round = broadcastRound(services, status);
-  if (!ready || hidden || round === null || dismissed.has(round)) return null;
+  const shown =
+    ready && !hidden && round !== null && !dismissed.has(round) ? round : null;
+  // 내려오는 순간 짧게 톡톡(회차마다 한 번: 화면을 옮겨 다시 내려오거나 문구가 「곧」으로 바뀌어도 다시 울리지 않는다)
+  useEffect(() => {
+    if (shown !== null) buzzOnce("broadcast", shown);
+  }, [shown]);
+  if (shown === null || round === null) return null;
   const text = broadcastText(services, status, round, live !== null);
   const dismiss = () => setDismissed((s) => new Set(s).add(round));
 

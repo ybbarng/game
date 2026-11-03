@@ -1271,6 +1271,24 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  // 진동을 부른 기록(방송이 내려오는 순간 [30, 80, 30] 한 번, docs/36 11-70)
+  await page.addInitScript(() => {
+    const w = window as unknown as { __vibrated: unknown[] };
+    w.__vibrated = [];
+    Object.defineProperty(navigator, "vibrate", {
+      configurable: true,
+      value: (p: unknown) => {
+        w.__vibrated.push(p);
+        return true;
+      },
+    });
+  });
+  const broadcastBuzzes = () =>
+    page.evaluate(() =>
+      (window as unknown as { __vibrated: unknown[] }).__vibrated.filter(
+        (p) => JSON.stringify(p) === "[30,80,30]",
+      ),
+    );
   await virtualAuthenticator(page);
   await page.goto("/stardraw");
   await page.getByRole("button", REGISTER).click();
@@ -1304,6 +1322,7 @@ test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방
   await expect(toast).toContainText(
     /1회 예측을 마감했습니다\. 관측은 \d\d:00입니다\./,
   );
+  expect(await broadcastBuzzes()).toHaveLength(1);
   await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
   await toast.click();
   await expect(page).toHaveURL(/\/stardraw\/now$/);
