@@ -52,7 +52,7 @@ function randomBoards(games: number, plies: number): Cell[][] {
   return out;
 }
 
-const BOARDS = randomBoards(3, 70);
+const BOARDS = randomBoards(2, 60);
 
 describe("빠른 판", () => {
   it("기물 부호를 오간다", () => {

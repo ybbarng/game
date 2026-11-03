@@ -12,6 +12,7 @@ import {
 } from "@game/janggi-engine";
 import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
+import { type DeepOptions, deepSearch } from "./deep";
 import { evaluate, MATE, negamax, type SearchOptions } from "./search";
 
 /** 컴퓨터 플레이어. 자기 자리 화면만 받는다(`KitBot`과 같은 모양) */
@@ -145,9 +146,33 @@ export function createJanggiSearchBot(depth = 3): JanggiBot {
 
 export const janggiExpertBot = createJanggiSearchBot(3);
 
-/** 실력 단계(0 입문, 1 중수, 2 고수) */
+/** 점점 깊이 읽기를 노드 예산 안에서 하는 컴퓨터(deep.ts) */
+export function createJanggiDeepBot(
+  options: DeepOptions,
+  name = `janggi-deep-${options.nodes}`,
+): JanggiBot {
+  return botWith(name, (view, rng) => deepSearch(view, rng, options).move);
+}
+
+/**
+ * 초고수의 노드 예산(docs/22 3절). 시간이 아니라 노드로 끊어 어느 기기에서도 같은 수가 나온다
+ * (온라인 판 끝 검증이 컴퓨터 수를 다시 계산한다). 바꾸면 옛 판의 다시 계산이 어긋난다
+ */
+export const MASTER_BUDGET: DeepOptions = { nodes: 36_000, softNodes: 10_000 };
+
+/**
+ * 초고수: 수마다 계획(전개·궁성 공격·단순하게·외통 몰기·버티기, plan.ts)을 세우고,
+ * 점점 깊이 읽기 + 본 판 기억 + 장군 연장 + 빠른 외통 고르기로 읽는다(docs/22 3절)
+ */
+export const janggiMasterBot = createJanggiDeepBot(
+  MASTER_BUDGET,
+  "janggi-master",
+);
+
+/** 실력 단계(0 입문, 1 중수, 2 고수, 3 초고수) */
 export function janggiBotFor(level: number): JanggiBot {
   if (level <= 0) return janggiBeginnerBot;
   if (level === 1) return janggiIntermediateBot;
-  return janggiExpertBot;
+  if (level === 2) return janggiExpertBot;
+  return janggiMasterBot;
 }
