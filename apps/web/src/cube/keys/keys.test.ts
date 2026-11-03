@@ -33,6 +33,7 @@ import {
   kindOf,
   searchRows,
 } from "./layout";
+import { readPracticeKey } from "./practice-input";
 import {
   describeInput,
   keyTextFor,
@@ -109,14 +110,54 @@ describe("키 차례", () => {
   it("친 키를 알려 준다", () => {
     const km = twoHandKeymap();
     expect(describeInput(km, 3, press({ code: "KeyK" })).text).toBe(
-      "K 키는 「R'」",
+      "K 키는 「R'」입니다.",
     );
     expect(describeInput(km, 3, press({ code: "Quote" })).text).toBe(
-      "' 키에는 동작이 없습니다",
+      "' 키에는 동작이 없습니다.",
     );
-    expect(describeInput(km, 3, press({ code: "Digit2" })).text).toContain(
-      "쓰지 않음",
+    expect(describeInput(km, 3, press({ code: "Digit2" })).text).toMatch(
+      /이 크기에서는 쓰지 않습니다\.$/,
     );
+    // 친 수가 키의 동작과 같으면 덧붙이지 않고, 다르면 문장으로 잇는다(마침표가 겹치지 않게)
+    expect(describeInput(km, 3, press({ code: "KeyK" }), "R'").text).toBe(
+      "K 키는 「R'」입니다.",
+    );
+    expect(describeInput(km, 4, press({ code: "KeyI" }), "2R").text).toBe(
+      "I 키는 「R」입니다. 친 수는 2R입니다.",
+    );
+  });
+});
+
+describe("익히기·훈련 화면의 키 누름", () => {
+  const ev = (code: string, o: Partial<KeyInput> = {}) => ({
+    code,
+    shiftKey: false,
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    repeat: false,
+    ...o,
+  });
+  const read = (e: ReturnType<typeof ev>) => {
+    const it = new KeyInterpreter(3, twoHandKeymap());
+    return readPracticeKey(e, (i) => it.handle(i));
+  };
+
+  it("본 게임처럼 ⌘Z는 되돌리기, 다른 ⌘ 조합은 브라우저에 둔다", () => {
+    const z = read(ev("KeyZ", { metaKey: true }));
+    expect(z?.result).toMatchObject({ kind: "command", command: "undo" });
+    expect(z?.prevent).toBe(true);
+    expect(read(ev("KeyR", { metaKey: true }))).toBeNull();
+    expect(read(ev("KeyZ", { metaKey: true, shiftKey: true }))).toBeNull();
+  });
+
+  it("동작 없는 키는 넘기고, 되풀이·수정 키만은 넘기지 않는다", () => {
+    const q = read(ev("Quote"));
+    expect(q?.result).toBeNull();
+    expect(q?.prevent).toBe(false);
+    expect(read(ev("KeyI"))?.result?.kind).toBe("move");
+    expect(read(ev("KeyI", { repeat: true }))).toBeNull();
+    expect(read(ev("ShiftLeft", { shiftKey: true }))).toBeNull();
   });
 });
 
@@ -296,8 +337,17 @@ describe("키 익히기", () => {
     expect(two[1]?.lines[0]).toContain("I");
     expect(nota[1]?.lines[0]).toContain("Shift+R");
     expect(two[0]?.lines[2]).toContain("「U'」");
-    expect(nota[0]?.lines[2]).toContain("J는 아무 동작도 없음");
-    for (const s of [...two, ...nota]) expect(s.missing).toEqual([]);
+    expect(two[0]?.lines[2]).toContain(
+      "이 배치에서 F는 「U'」, J는 「U」입니다.",
+    );
+    expect(nota[0]?.lines[2]).toContain(
+      "이 배치에서 F는 「F」입니다. J 키에는 동작이 없습니다.",
+    );
+    for (const s of [...two, ...nota]) {
+      expect(s.missing).toEqual([]);
+      // 설명 줄은 모두 완결된 문장
+      for (const l of s.lines) expect(l, l).toMatch(/\.$/);
+    }
   });
 
   it("「두 손」 설명은 실제 키와 손에 맞는다", () => {

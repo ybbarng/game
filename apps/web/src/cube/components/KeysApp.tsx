@@ -155,8 +155,8 @@ export function KeysApp() {
             <KeyboardMap keymap={keymap} n={n} layer={layer} />
             <p className="break-keep text-white/60 text-xs print:text-neutral-600">
               {layer === "all"
-                ? "칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는 Alt(그리고 Alt+Shift)와 함께 칠 때입니다. 흐린 글은 이 크기에서 쓰지 않습니다"
-                : `${LAYER_LABEL[layer as Layer]} 층만 보입니다. 흐린 글은 이 크기에서 쓰지 않습니다`}
+                ? "칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는 Alt(그리고 Alt+Shift)와 함께 칠 때입니다. 흐린 글은 이 크기에서 쓰지 않습니다."
+                : `${LAYER_LABEL[layer as Layer]} 층만 보입니다. 흐린 글은 이 크기에서 쓰지 않습니다.`}
             </p>
             <KeyLegend />
           </section>
@@ -169,7 +169,7 @@ export function KeysApp() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="찾기: R' · Rw · 되돌리기 · Shift+I"
+              placeholder="동작이나 키"
               aria-label="동작이나 키로 찾기"
               data-keys-search
               className="min-w-0 flex-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm print:hidden"
@@ -213,7 +213,7 @@ export function KeysApp() {
             </tbody>
           </table>
           {found.length === 0 && (
-            <p className="text-sm text-white/60">찾는 동작이 없습니다</p>
+            <p className="text-sm text-white/60">찾는 동작이 없습니다.</p>
           )}
         </section>
       </main>
