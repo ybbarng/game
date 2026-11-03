@@ -21,6 +21,8 @@ interface JanggiSettings {
   labels: PieceLabels;
   /** 개인 시간(기본 시간 + 초읽기) */
   time: TimePreset;
+  /** 잡힐 위험이 있는 내 기물에 빨간 점선 고리. 화면 도움일 뿐 규칙과 상관없다 */
+  dangerHint: boolean;
   set(patch: Partial<Omit<JanggiSettings, "set">>): void;
 }
 
@@ -33,6 +35,7 @@ export const useJanggiSettings = create<JanggiSettings>()(
       pick: "cho",
       labels: "hanja",
       time: "none",
+      dangerHint: true,
       set: (patch) => set(patch),
     }),
     {

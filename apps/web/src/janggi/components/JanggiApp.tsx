@@ -205,6 +205,26 @@ function JanggiOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </Section>
+      <Section title="잡힐 위험 표시">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            active={s.dangerHint}
+            onClick={() => s.set({ dangerHint: true })}
+          >
+            보이기
+          </Chip>
+          <Chip
+            active={!s.dangerHint}
+            onClick={() => s.set({ dangerHint: false })}
+          >
+            감추기
+          </Chip>
+        </div>
+        <p className="text-xs opacity-60">
+          상대가 공짜로, 또는 더 작은 기물로 잡을 수 있는 내 기물에 빨간 점선
+          고리를 두른다. 지키거나 피할 기물이 한눈에 보인다
+        </p>
+      </Section>
       <p className="text-xs opacity-60">
         다함께 장기도 여기서 고른 빅장 규칙과 판 수로 방을 엽니다.
       </p>

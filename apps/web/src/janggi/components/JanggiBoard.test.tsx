@@ -58,3 +58,27 @@ describe("장기판 마지막 수", () => {
     expect(still?.getAttribute("class") ?? "").not.toContain("jg-slide");
   });
 });
+
+describe("장기판 도움 표시", () => {
+  it("잡힐 위험이 있는 기물과 힌트 수에 고리를 그린다", () => {
+    const { container } = render(
+      <JanggiBoard
+        board={board}
+        flipped={false}
+        legal={[]}
+        selected={null}
+        onSelect={() => {}}
+        onMove={() => {}}
+        lastMove={null}
+        checkedKing={null}
+        labels="hanja"
+        danger={[to]}
+        hint={{ from: to, to: indexOf(0, 5) }}
+      />,
+    );
+    const danger = container.querySelectorAll("[data-danger]");
+    expect(danger).toHaveLength(1);
+    expect(danger[0]?.getAttribute("data-danger")).toBe("71");
+    expect(container.querySelectorAll("[data-hint]")).toHaveLength(2);
+  });
+});
