@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -26,6 +27,10 @@ import { BASEBALL_LEVELS, useBaseballSettings } from "../settings";
 import { useBaseball } from "../store";
 import { type DigitMemo, GuessLog, NumberBoxes, NumberPad } from "./parts";
 import { Infield, PitchCall, Scoreboard, usePitchCalls } from "./scoreboard";
+
+/** 아래 단추 줄의 작은 단추 모양 */
+const SMALL_BUTTON =
+  "rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm";
 
 function resultText(
   result: RoundResult,
@@ -514,13 +519,23 @@ export function BaseballGame({
                 무르기
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => submit({ type: "resign" })}
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
-            >
-              {puzzle ? "그만두고 답 보기" : "기권"}
-            </button>
+            {/* 혼자 푸는 문제는 잃을 판이 없으니 묻지 않고 바로 답을 보인다 */}
+            {puzzle ? (
+              <button
+                type="button"
+                onClick={() => submit({ type: "resign" })}
+                className={SMALL_BUTTON}
+              >
+                그만두고 답 보기
+              </button>
+            ) : (
+              <ResignButton
+                resetKey={view.guesses.length}
+                onResign={() => submit({ type: "resign" })}
+                className={SMALL_BUTTON}
+                keepLabel="계속 하기"
+              />
+            )}
           </>
         )}
         {view.phase === "roundEnd" && !view.continued[me] && (

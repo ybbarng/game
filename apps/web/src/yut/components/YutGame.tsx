@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -398,13 +399,11 @@ export function YutGame({
                 무르기
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => submit({ type: "resign" })}
+            <ResignButton
+              resetKey={pendingKey}
+              onResign={() => submit({ type: "resign" })}
               className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm"
-            >
-              기권
-            </button>
+            />
           </>
         )}
         {gameOver && !mission && (
