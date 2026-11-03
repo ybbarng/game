@@ -402,7 +402,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
     pass: expertShare > 0.4 && midShare > 0.35,
   });
   const meanMs = times.reduce((a, b) => a + b, 0) / Math.max(1, times.length);
-  const maxMs = Math.max(0, ...times);
+  const maxMs = times.reduce((a, b) => Math.max(a, b), 0);
   rows.push({
     item: "고수 한 결정 시간(이 기기)",
     value: `평균 ${meanMs.toFixed(2)}ms · 가장 긴 것 ${maxMs.toFixed(1)}ms`,
