@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  acceptFrom,
-  DRAND_DELAY,
   drandRoundForClose,
   drandTime,
   type QualInfo,
@@ -34,6 +32,7 @@ import { qualMarks } from "../qual-judge";
 import { ensureRegistered } from "../registrar";
 import { myRank, prizeEligible, RANK_RULE, winnerCounts } from "../results";
 import { savedPass } from "../room-client";
+import { clockOf, roundCardText } from "../round-card";
 import { cadenceOf, roundShort, roundTitle } from "../round-label";
 import { setWhere, trackArrival, trackKeyEnv, trackView } from "../sd-track";
 import { DEMO_NS, GAME_NS, type Services, useLedger } from "../services";
@@ -1165,15 +1164,6 @@ export function Gate({
   );
 }
 
-/** 시각만 "오후 3:00" */
-function clockOf(seconds: number): string {
-  return CLOCK.format(new Date(seconds * 1000));
-}
-const CLOCK = new Intl.DateTimeFormat("ko-KR", {
-  hour: "numeric",
-  minute: "2-digit",
-});
-
 /**
  * 지금 회차 카드: 지금 할 일 하나와 지금 단계의 시계 하나만 크게.
  * 열지 않은 결과 → 「추첨 보기」, 응모 전 → 마감까지 + 「별 6개 고르기」, 응모함 → 추첨까지 + 고른 별 + 「영수증」,
@@ -1202,12 +1192,11 @@ export function RoundCard({
   useEffect(() => {
     setKept(loadKept(services.ns, services.ledger.id()));
   }, [services]);
-  // 앞 회차 추첨을 기다리거나 그 관측 1분(모두의 의무 시간) 동안은 그 회차가 지금 회차다
-  const drawWaiting = s.phase === "waiting" && s.round > 1;
-  const round = drawWaiting ? Math.min(s.nextDrawRound, s.round - 1) : s.round;
-  const drawAt = roundTimes(schedule, round).closesAt + DRAND_DELAY;
-  /** 다음 회차 예측을 받기 시작하는 때(앞 회차 관측이 끝난 뒤) */
-  const nextOpens = acceptFrom(schedule, round + 1);
+  // 앞 회차 추첨을 기다리거나 그 관측 1분 동안은 그 회차가 지금 회차다(round-card.ts)
+  const text = roundCardText(schedule, s, (r) =>
+    mine.some((m) => m.ticket.round === r),
+  );
+  const { round, state, countdown } = text;
   const closed = s.phase !== "open";
   const ticket = mine.find((m) => m.ticket.round === round);
   const keptHere = kept !== null && kept.round < round;
@@ -1279,10 +1268,6 @@ export function RoundCard({
     );
   }
 
-  const bigLabel = closed || ticket ? "관측까지" : "마감까지";
-  const big = closed || ticket ? drawAt - s.now : s.times.entryDeadline - s.now;
-  const state = closed ? "drawing" : ticket ? "entered" : "open";
-  const name = roundShort(schedule, round);
   return (
     <section
       aria-label="이번 회차"
@@ -1297,52 +1282,37 @@ export function RoundCard({
         className="flex items-center gap-2.5 break-keep font-bold text-lg tabular-nums"
         data-round-state
       >
-        <span aria-hidden="true" className="sd-live-dot" data-live={state} />
-        {state === "open"
-          ? `지금 ${name} 예측을 받고 있어요.`
-          : state === "entered"
-            ? `${name} 예측서를 냈어요.`
-            : `${name} 예측을 마감했어요.`}
+        <span
+          aria-hidden="true"
+          className="sd-live-dot"
+          data-live={state === "observing" ? "entered" : state}
+        />
+        {text.headline}
       </span>
       {/*
-        창구 말 한 줄(상태 × 내 응모 여부, 2026-10-31 사용자):
-        응모 중·안 함 "아직 이번 회차에 응모하지 않으셨어요." / 응모 중·함 "추첨이 끝나면 이 자리에서 알려 드릴게요."
-        응모함·마감 카드는 모두 「관측지로 가기」로 이끈다(2026-10-31 사용자):
-        응모 중·함 "(추첨 시각) 추첨을 함께 지켜봐 주세요." / 마감·함 "곧 추첨이 시작됩니다. 관측지로 가 볼까요?" /
-        마감·안 함 "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?" + 아래 작은 줄에 다음 회차 응모 시각
+        창구 말 한 줄(상태 × 내 예측 여부, 2026-10-31 사용자). 예측함·마감 카드는 모두 「관측지로 가기」로 이끈다.
+        관측 시각이 지나면 셀 것이 없어 큰 시계 대신 관측 중이라고 말한다(docs/36 11-67)
       */}
       <p
         className="-mt-2 break-keep text-sm text-white/70"
-        data-round-note={
-          closed
-            ? ticket
-              ? "closed-entered"
-              : "closed-none"
-            : ticket
-              ? "open-entered"
-              : "open-none"
-        }
+        data-round-note={text.noteKey}
       >
-        {!closed
-          ? ticket
-            ? `${clockOf(drawAt)} 관측을 함께 지켜봐 주세요.`
-            : "아직 이번 회차에 예측하지 않으셨어요."
-          : ticket
-            ? "곧 관측이 시작됩니다. 관측지로 가 볼까요?"
-            : "관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?"}
+        {text.note}
       </p>
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="text-sm text-white/60">{bigLabel}</span>
-        <span
-          className={cn(
-            "font-bold font-mono text-6xl tabular-nums tracking-tight",
-            bigLabel === "관측까지" && "text-amber-100",
-          )}
-          data-countdown={bigLabel === "관측까지" ? "draw" : "close"}
-        >
-          {formatLeft(big)}
-        </span>
-      </div>
+      {countdown && (
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-sm text-white/60">{countdown.label}</span>
+          <span
+            className={cn(
+              "font-bold font-mono text-6xl tabular-nums tracking-tight",
+              countdown.kind === "draw" && "text-amber-100",
+            )}
+            data-countdown={countdown.kind}
+          >
+            {formatLeft(countdown.left)}
+          </span>
+        </div>
+      )}
       {ticket ? (
         <div className="flex w-full flex-col items-center gap-3">
           <div className="flex flex-col items-center gap-1.5" data-my-stars>
@@ -1395,15 +1365,7 @@ export function RoundCard({
           <PlaceLabel place="room">관측지로 가기</PlaceLabel>
         </button>
       )}
-      <span className="text-white/50 text-xs tabular-nums">
-        {closed
-          ? ticket
-            ? `관측 ${clockOf(drawAt)}`
-            : `다음 회차는 ${clockOf(nextOpens)}부터 예측할 수 있어요.`
-          : ticket
-            ? `마감 ${clockOf(s.times.closesAt)} · 예측서 ${s.entries}장`
-            : `관측 ${clockOf(drawAt)} · 예측서 ${s.entries}장`}
-      </span>
+      <span className="text-white/50 text-xs tabular-nums">{text.foot}</span>
     </section>
   );
 }

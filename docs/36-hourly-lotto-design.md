@@ -2545,3 +2545,11 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 **찾아 쓰기**: 부호화 `stardraw/astronaut/card-code.ts`(`cardCodeOf(pub, {issuedAt, round})`, `decodeCard`, `cardUrl`), 장부 대조 `card-ledger.ts`(`checkCard`, `serverRegistrations`), 고른 값 `identity.ts`(`picksFromHash`·`astronautFromPicks`·`serialOf`·`serialOfNumber`), 연습 장부 `LocalLedger.closedRegistrations`. 화면 `components/CardCopyView.tsx`, 페이지 `app/stardraw/card`. 화면 시험 표시: `[data-card-copy=등록번호]`, `[data-card-check=found|missing|unsealed|unknown|error]`, `[data-copy-mark]`, `[data-key-locked]`, `[data-card-unreadable]`.
 
 **시험**: 단위 `card-code.test.ts`(정해 둔 열쇠 40개 왕복이 `astronautOf`와 같음, 다른 은하·지구 대륙, 주소에 열쇠·열쇠 바이트 없음, 판·길이 오류, 범위 밖 값 맞추기, 목록 표 겹침 없음), `card-ledger.test.ts`(흉내 낸 장부로 있음·값을 바꾼 가짜·봉인 전·회차 없음·오류, 발급일 하루 안쪽, 서버 회차 파일 하나만 받기), `card-copy.test.tsx`(공유본 뒷면 별 무늬가 내 등록증과 같고 공개 열쇠 칸에 단추 없음, 공유본 도장, 내 등록증은 그대로), `key-art.test.ts`. 화면 `stardraw-card-share.spec.ts`(복사 길로 얻은 주소를 열면 같은 이름·등록번호, 「아직 장부에 오르지 않은」, 뒤집어 가린 줄을 눌러도 열쇠가 나오지 않고 패스키를 부르지 않음, 망가진 주소)와 `stardraw.spec.ts` 「게임 목록에서 들어가 응모하고…」(관측이 지난 뒤 공유본이 장부에서 찾힘).
+
+### 11-67. 홈 회차 카드가 관측 시각 뒤 「관측까지 0:00」에 멈추던 흠(2026-11-03)
+
+**까닭**: 앞 회차 마감부터 다음 회차 접수 전까지(장부 상태 waiting) 홈 회차 카드는 늘 「관측까지」를 셌다. 관측 시각이 지나면 실시간 관측 카드(`liveDrawRound`)가 대신 나오지만, 서버가 없거나(연습 장부) 관측 연출이 끝난 뒤 다음 회차 접수(관측 시각 + 1분) 전, 또는 기록이 늦게 오는 동안에는 이 카드가 남아 0:00에 멈췄다(11-50에 남은 흠).
+
+**무엇을**: 카드의 단계와 글을 `stardraw/round-card.ts` `roundCardText`로 빼고 단계 `observing`을 더했다. 관측 시각부터 다음 회차 접수 전까지는 홈 상태 줄(`gateStatusLine`, 11-50)과 같은 기준으로 「지금 n회 관측 중이에요.」, 큰 시계는 셀 것이 없어 두지 않고, 아래 작은 줄에 「다음 회차는 HH:MM부터 예측할 수 있어요.」. 창구 말은 예측서를 냈으면 「관측지에서 함께 지켜봐 주세요.」(마감 뒤의 「곧 관측이 시작됩니다」는 이미 시작돼 맞지 않다), 안 냈으면 예전처럼 「관측지는 누구나 들어갈 수 있어요. 관측지로 가 볼까요?」. 단추(관측지로 가기·접수증)는 그대로. 맥박 점은 실시간 관측 카드와 같은 `entered`. 표시는 `[data-card=observing]`, `[data-round-note=observing-entered|observing-none]`.
+
+**시험**: `round-card.test.ts`(장부 시계를 마감·관측 1초 전·관측 그 순간·접수 1초 전·접수 순간에 놓고 단계·글·시계를 본다, 예측서를 낸 경우).
