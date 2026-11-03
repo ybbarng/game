@@ -1006,7 +1006,6 @@ export function RoomView({
       >
         {title}
       </p>
-      {guide}
 
       <p
         role="status"
@@ -1385,6 +1384,11 @@ export function RoomView({
           </button>
         </div>
       )}
+
+      {/* 관측 방송 안내(다음 회차 시각, 등록 안 한 사람의 「우주인 등록」)는 맨 아래에: 위쪽에 있으면 하늘을 아래로 밀고
+          관측과 상관없는 다음 회차가 먼저 눈에 들어왔다(2026-11-03 사용자: 「불필요하니 없애거나 아래로」). 등록 단추가 있어
+          없애지 않고 옮긴다 */}
+      {guide}
 
       {menu && (
         <div className="fixed inset-0 z-40 flex items-end justify-center p-4">

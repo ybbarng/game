@@ -1642,7 +1642,7 @@ function DrawFor({
   round: number;
   mine: MyTicket[];
   /**
-   * 관측 방송 안내(OnAirGuide, 지금 회차 화면만). 관측지에서는 머리(장소·회차) 아래에 두어 화면 위쪽을 한 덩어리로,
+   * 관측 방송 안내(OnAirGuide, 지금 회차 화면만). 관측지에서는 맨 아래(2026-11-03 사용자, 위에서는 하늘을 밀었다),
    * 다른 화면(다시 보기·기다림)에서는 맨 위에
    */
   guide?: ReactNode;

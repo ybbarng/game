@@ -782,3 +782,31 @@ describe("관측지의 앱 안 브라우저", () => {
     }
   });
 });
+
+describe("관측 안내 자리", () => {
+  it("다음 회차 안내(guide)는 하늘과 언덕 아래, 화면 맨 아래에 둔다(2026-11-03 사용자)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+      String(input).endsWith("/events")
+        ? roomStream()
+        : new Response("{}", { status: 404 }),
+    );
+    const view = render(
+      <RoomView
+        api="http://room.test/stardraw-api"
+        services={services}
+        round={1}
+        record={undefined}
+        ticket={undefined}
+        onEnter={() => {}}
+        guide={<aside data-testid="guide" />}
+      />,
+    );
+    const guide = await view.findByTestId("guide");
+    const hill = view.container.querySelector("[data-room-hill]");
+    expect(hill).not.toBeNull();
+    expect(
+      (hill as Node).compareDocumentPosition(guide) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
