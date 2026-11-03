@@ -982,7 +982,7 @@ function applyDeal(s: GalaxyState, hash: string, events: GameEvent[]): void {
   const seats = activeSeats(s);
   const hands = dealStars(
     hash,
-    STAR_SQUARES,
+    s.board.groups.map((g) => g.squares),
     seats,
     NUMBERS.dealStars[s.rules.length],
   );

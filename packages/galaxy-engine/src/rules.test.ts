@@ -49,7 +49,8 @@ describe("규칙 문자열", () => {
   it("차례 수 표(2-11)", () => {
     expect(turnLimitOf(STANDARD_RULES)).toBe(20);
     expect(turnLimitOf({ ...STANDARD_RULES, players: 2 })).toBe(36);
-    expect(turnLimitOf({ ...SHORT_RULES, players: 3 })).toBe(14);
+    expect(turnLimitOf(SHORT_RULES)).toBe(12);
+    expect(turnLimitOf({ ...SHORT_RULES, players: 3 })).toBe(17);
     expect(turnLimitOf(LONG_RULES)).toBeNull();
   });
 

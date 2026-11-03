@@ -34,7 +34,7 @@ export const STANDARD_RULES: GalaxyRules = {
   sky: "seasons",
 };
 
-/** 짧은 판은 거래를 기본으로 끈다(2-8) */
+/** 짧은 판도 거래를 켠다(2-8) */
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
@@ -54,13 +54,13 @@ export const NUMBERS = {
   salary: 120,
   /** 한 사람이 갖는 차례 수(2-11). 긴 판은 제한 없음 */
   turns: {
-    short: { 2: 20, 3: 14, 4: 10 },
+    short: { 2: 24, 3: 17, 4: 12 },
     standard: { 2: 36, 3: 26, 4: 20 },
     long: null,
   },
   /** 시간 상한(ms, 엔진 밖 시계가 재고 `timeUp`으로 알린다). 긴 판은 없음 */
-  timeCap: { short: 15 * 60_000, standard: 35 * 60_000, long: null },
-  /** 짧은 판에 사람마다 나눠 주는 별 수 */
+  timeCap: { short: 18 * 60_000, standard: 35 * 60_000, long: null },
+  /** 짧은 판에 사람마다 나눠 주는 별 수(자리마다 다른 별자리 하나에서, dice.ts `dealStars`) */
   dealStars: { short: 2, standard: 0, long: 0 },
   /**
    * 정거장 이용료 배수(천분율, 2-2). 위 단계는 한 단 값(별 값의 절반)을 판 안에 되찾게 정했다(3-1 회수 기간):
