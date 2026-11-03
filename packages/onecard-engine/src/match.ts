@@ -356,20 +356,27 @@ export function judgeShout(
   if (state.turnNo - seen > STALE_SEEN) return { kind: "stale" };
   const own = state.windows.find((w) => w.seat === seat);
   if (own) return own.kind === "self" ? { kind: "self" } : { kind: "lateSelf" };
+  const mark = state.recent.find((m) => m.turnNo === seen);
+  const targets = (mark?.exposed ?? []).filter((s) => s !== seat);
+  const open = state.windows.filter((w) => targets.includes(w.seat));
+  const caught = open.filter((w) => w.kind === "catch").map((w) => w.seat);
+  const held = open.filter((w) => w.kind === "self").map((w) => w.seat);
   if (
     state.phase === "play" &&
     state.turn === seat &&
     hand(state, seat).length === 2 &&
     !state.preCalled[seat]
-  )
-    return { kind: "pre" };
-  const mark = state.recent.find((m) => m.turnNo === seen);
-  const targets = (mark?.exposed ?? []).filter((s) => s !== seat);
+  ) {
+    // 한 번 누름이 둘 다에 해당하면 둘 다(shoutBoth, docs/42 12-5)
+    if (state.rules.shoutBoth === false) return { kind: "pre" };
+    return {
+      kind: "pre",
+      ...(caught.length > 0 ? { alsoCaught: caught } : {}),
+      ...(held.length > 0 ? { alsoHeld: held } : {}),
+    };
+  }
   if (targets.length === 0) return { kind: "false" };
-  const open = state.windows.filter((w) => targets.includes(w.seat));
   if (open.length === 0) return { kind: "late" };
-  const caught = open.filter((w) => w.kind === "catch").map((w) => w.seat);
-  const held = open.filter((w) => w.kind === "self").map((w) => w.seat);
   return caught.length > 0
     ? { kind: "catch", targets: caught, held }
     : { kind: "hold", targets: held };
@@ -396,6 +403,11 @@ function applyShout(
   switch (verdict.kind) {
     case "pre":
       state.preCalled[seat] = true;
+      for (const w of state.windows)
+        if (verdict.alsoHeld?.includes(w.seat) && w.heldBy === null)
+          w.heldBy = seat;
+      for (const target of verdict.alsoCaught ?? [])
+        catchSeat(state, seat, target, events);
       break;
     case "self":
       closeWindows(state, seat);

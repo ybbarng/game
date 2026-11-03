@@ -129,8 +129,12 @@ export type Action =
 
 /** 외침 판정 결과(`judgeShout`) */
 export type ShoutVerdict =
-  /** 자기 차례에 두 장 → 미리 외침 */
-  | { kind: "pre" }
+  /**
+   * 자기 차례에 두 장 → 미리 외침.
+   * 규칙 `shoutBoth`(기본 켬)면 같은 누름이 남도 잡는다: `alsoCaught`는 잡기 창 안이라 잡힌 사람,
+   * `alsoHeld`는 본인 시간 P 안이라 적어만 둔 사람(hold와 같다). 해당하는 사람이 없으면 필드가 없다
+   */
+  | { kind: "pre"; alsoCaught?: number[]; alsoHeld?: number[] }
   /** 한 장인데 아직 안 외침, 본인 시간 안 → 안전 */
   | { kind: "self" }
   /** 본인 시간이 지나 잡기 창일 때 본인이 외침 → 받지 않는다(벌칙 없음) */

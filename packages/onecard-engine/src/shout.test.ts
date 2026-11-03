@@ -97,6 +97,67 @@ describe("미리 외침·본인 외침", () => {
   });
 });
 
+describe("한 번 누름 = 미리 외침 + 잡기(shoutBoth)", () => {
+  /** 자리 0이 외치지 않고 한 장이 됐고, 두 장을 든 자리 1의 차례 */
+  function both(rules: Partial<OnecardRules> = {}) {
+    const s0 = createOnecardScenario({
+      rules,
+      hands: [
+        ["H9", "H8"],
+        ["H3", "H4"],
+        ["S3", "S4", "S5"],
+      ],
+      pile: ["H5"],
+    });
+    return ok(step(s0, 0, { type: "play", card: "H9" }));
+  }
+  const toCatch = (s: OnecardState) =>
+    ok(step(s, 2, { type: "timeout", kind: "selfWindow", target: 0 }));
+
+  it("잡기 창 안이면 한 누름으로 미리 외치고 잊은 사람도 잡는다", () => {
+    const s = toCatch(both());
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({
+      kind: "pre",
+      alsoCaught: [0],
+    });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([
+      { type: "shouted", seat: 1 },
+      { type: "caught", seat: 1, target: 0 },
+      { type: "drew", seat: 0, count: 1, reason: "caught" },
+    ]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(counts(after)).toEqual([2, 2, 3]);
+    const played = ok(step(after, 1, { type: "play", card: "H3" }));
+    expect(played.called[1]).toBe(true);
+    expect(shoutWindows(played)).toEqual([]);
+  });
+
+  it("shoutBoth를 끄면 예전처럼 미리 외침만", () => {
+    const s = toCatch(both({ shoutBoth: false }));
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({ kind: "pre" });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([{ type: "shouted", seat: 1 }]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(counts(after)).toEqual([1, 2, 3]);
+  });
+
+  it("잊은 사람이 본인 시간 P 안이면 잡지 않고 적어만 둔다(P가 끝나면 잡힘)", () => {
+    const s = both();
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({ kind: "pre", alsoHeld: [0] });
+    const [after, events] = shout(s, 1);
+    expect(events).toEqual([{ type: "shouted", seat: 1 }]);
+    expect(after.preCalled[1]).toBe(true);
+    expect(after.windows[0]?.heldBy).toBe(1);
+    expect(counts(after)).toEqual([1, 2, 3]);
+    const [caught, more] = okEvents(
+      step(after, 2, { type: "timeout", kind: "selfWindow", target: 0 }),
+    );
+    expect(more).toContainEqual({ type: "caught", seat: 1, target: 0 });
+    expect(counts(caught)).toEqual([2, 2, 3]);
+  });
+});
+
 describe("P 안 남의 외침과 P 끝 잡기", () => {
   it("P 안에 온 남의 외침은 헛외침도 잡기도 아니다. 본인이 이어서 외치면 그냥 지나간다", () => {
     const [held, events] = shout(forgot(), 2);

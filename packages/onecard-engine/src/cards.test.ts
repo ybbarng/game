@@ -103,7 +103,9 @@ describe("규칙 문자열", () => {
       selfWindowMs: 0,
       catchWindowMs: 5000,
       shoutReward: true,
+      shoutBoth: false,
     };
+    expect(encodeOnecardRules(rules).endsWith("s0")).toBe(true);
     const decoded = decodeOnecardRules(encodeOnecardRules(rules));
     expect(decoded).toEqual({ ok: true, rules });
     expect(
