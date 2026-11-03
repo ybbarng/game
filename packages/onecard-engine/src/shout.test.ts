@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { judgeShout, type StepResult, shoutWindows, step } from "./match";
 import type { OnecardRules } from "./rules";
 import { createOnecardScenario } from "./scenario";
-import type { GameEvent, OnecardState } from "./state";
+import type { Action, GameEvent, OnecardState } from "./state";
 
 function okEvents(result: StepResult): [OnecardState, GameEvent[]] {
   if (!result.ok) throw new Error(result.error);
@@ -389,6 +389,30 @@ describe("헛외침·판 번호(seen)", () => {
     expect(
       step(forgot(), 0, { type: "timeout", kind: "catchWindow", target: 0 }).ok,
     ).toBe(false);
+  });
+
+  it("시간 끝의 창 번호가 지금 열린 창과 다르면 받지 않는다(지우지 못한 옛 시계)", () => {
+    const s = forgot();
+    const self = { type: "timeout", kind: "selfWindow", target: 0 } as const;
+    expect(step(s, 1, { ...self, id: 99 }).ok).toBe(false);
+    const opened = ok(step(s, 1, { ...self, id: 1 }));
+    expect(shoutWindows(opened)[0]?.id).toBe(2);
+    const late = { type: "timeout", kind: "catchWindow", target: 0 } as const;
+    // P 창(1번)에 걸었던 시계가 같은 자리의 새 잡기 창(2번)을 닫지 않는다
+    expect(step(opened, 1, { ...late, id: 1 }).ok).toBe(false);
+    expect(shoutWindows(ok(step(opened, 1, { ...late, id: 2 })))).toEqual([]);
+  });
+
+  it("모르는 창 종류의 시간 끝은 받지 않는다", () => {
+    const s = ok(
+      step(forgot(), 1, { type: "timeout", kind: "selfWindow", target: 0 }),
+    );
+    const bogus = {
+      type: "timeout",
+      kind: "otherWindow",
+      target: 0,
+    } as unknown as Action;
+    expect(step(s, 1, bogus).ok).toBe(false);
   });
 
   it("벌칙으로 먹다가 더미가 바닥나면 다시 섞기를 기다린다", () => {

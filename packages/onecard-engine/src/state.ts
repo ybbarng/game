@@ -116,11 +116,16 @@ export type Action =
    * 뜻은 엔진이 가린다(`judgeShout`): 미리 외침·본인 외침·잡기·헛외침
    */
   | { type: "shout"; seen: number }
-  /** 창 시간이 다 됐다(바깥 시계가 넣는다). `target`: 창 주인 */
+  /**
+   * 창 시간이 다 됐다(바깥 시계가 넣는다). `target`: 창 주인.
+   * `id`: 시계를 건 창 번호(`shoutWindows`의 `id`). 지금 열린 창과 다르면 받지 않는다
+   * (지우지 못한 옛 시계가 같은 자리의 새 창을 닫지 않게). 없으면 자리·종류로만 찾는다(옛 기록 호환)
+   */
   | {
       type: "timeout";
       kind: "selfWindow" | "catchWindow";
       target: number;
+      id?: number;
     }
   /** 다시 섞은 더미 순서(앞이 맨 위). `reshuffleRequest`가 준 카드를 섞은 것이어야 한다 */
   | { type: "reshuffle"; order: OnecardCard[] }

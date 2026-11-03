@@ -549,11 +549,16 @@ export function step(
   }
 
   if (action.type === "timeout") {
+    if (action.kind !== "selfWindow" && action.kind !== "catchWindow")
+      return fail("모르는 창 종류다");
     const kind = action.kind === "selfWindow" ? "self" : "catch";
     const window = state.windows.find(
       (w) => w.seat === action.target && w.kind === kind,
     );
     if (!window) return fail("그 창이 열려 있지 않다");
+    // `id`가 없는 것은 창 번호를 싣기 전 기록(옛 기록 호환): 자리·종류로만 찾는다
+    if (action.id !== undefined && action.id !== window.id)
+      return fail("지난 창의 시간 끝이다");
     const next = clone(state);
     const events: GameEvent[] = [];
     const w = next.windows.find((x) => x.id === window.id) as ShoutWindow;
@@ -644,7 +649,7 @@ export function legalActions(state: OnecardState, seat: number): Action[] {
 
 /**
  * 열린 외침 창과 그 길이(ms). 방장 `LocalMatch`가 창 `id`마다 시계를 걸고, 다 되면
- * `{type:"timeout", kind, target: seat}`를 넣는다. 화면에는 보이지 않는다(누가 잊었나가 드러난다)
+ * `{type:"timeout", kind, target: seat, id}`를 넣는다. 화면에는 보이지 않는다(누가 잊었나가 드러난다)
  */
 export function shoutWindows(state: OnecardState): {
   id: number;
