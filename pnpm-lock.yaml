@@ -475,6 +475,22 @@ importers:
         specifier: workspace:*
         version: link:../ai
 
+  packages/galaxy-ai:
+    dependencies:
+      '@game/galaxy-engine':
+        specifier: workspace:*
+        version: link:../galaxy-engine
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/yut-engine':
+        specifier: workspace:*
+        version: link:../yut-engine
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
+
   packages/galaxy-engine:
     dependencies:
       '@game/mighty-engine':
