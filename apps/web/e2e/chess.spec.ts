@@ -151,7 +151,7 @@ test("체스 배우기: 첫 단원 미션을 틀렸다가 다시 해 룩으로 �
   const touch = info.project.name.startsWith("phone");
   await page.goto("/chess");
   await page.getByRole("button", { name: /체스 배우기/ }).click();
-  await expect(page.getByText("0/8")).toBeVisible();
+  await expect(page.getByText("0/9")).toBeVisible();
   // 첫 단원: 설명 둘 → 퀴즈 → 미션(룩으로 폰 잡기)
   await page.getByRole("button", { name: /체스는 어떤 게임/ }).click();
   await expect(board(page)).toBeVisible();
@@ -640,4 +640,53 @@ test("체스 수 배우기: 킹과 폰 문제에서 폰부터 밀면 틀리고, 
   await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
   await expect(page.getByText(/폰부터 밀면\(e6\)/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-king-pawn.png") });
+});
+
+test("체스: 잡힐 수 있는 내 기물에 빨간 점선이 보이고, 옵션에서 감출 수 있다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "판 위 표시는 크기와 상관없다");
+  // 앞 단원을 끝낸 것으로 두어 「체크」 단원을 바로 연다.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "chess-tutorial",
+      JSON.stringify({
+        state: { completed: ["goal", "pieces", "pawn"] },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto("/chess");
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  // 「체크」 단원 미션: 흑 룩 e5가 지키는 이 없는 백 룩 a5를 노린다
+  await page.getByRole("button", { name: /체크 / }).first().click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page
+    .getByRole("button", { name: "체크를 두고 다른 기물을 움직인다" })
+    .click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await expect(page.locator("[data-danger]")).toHaveCount(1);
+  await expect(page.locator('[data-danger="a5"]')).toHaveCount(1);
+  await page.screenshot({ path: info.outputPath("chess-danger.png") });
+
+  // 옵션에서 감추면 같은 장면에 표시가 없다.
+  await page.goto("/chess");
+  await openOptions(page);
+  await page
+    .locator("section", { hasText: "잡힐 기물 표시" })
+    .getByRole("button", { name: "감추기" })
+    .click();
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  await page.getByRole("button", { name: /체크 / }).first().click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page
+    .getByRole("button", { name: "체크를 두고 다른 기물을 움직인다" })
+    .click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await expect(board(page)).toBeVisible();
+  await expect(page.locator("[data-piece]")).toHaveCount(4);
+  await expect(page.locator("[data-danger]")).toHaveCount(0);
 });

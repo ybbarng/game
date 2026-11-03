@@ -55,22 +55,24 @@ describe("화투 자리 배치와 자리 표", () => {
   });
 });
 
-describe("화투 48장 섞고 나누기(기기 셋, 메시지)", () => {
+describe("화투 48장 섞고 나누기(기기 둘, 메시지)", () => {
+  // 48장 섞기·가리기·열기를 메시지로 본다. 기기마다 남의 섞기 증명을 모두 확인해 기기 수의 제곱으로 무거워지므로
+  // 두 기기(맞고 배치)로 본다. 기기 셋 이상의 섞기·열기는 device.test.ts가 작은 덱으로 본다
   it("손패는 받는 기기만, 바닥은 모두가 연다. 판 끝에 모두 열면 48장이 한 번씩 있다", async () => {
-    const net = network([0, 1, 2]);
-    const layout = hwatuLayout([7, 7, 7], 6);
+    const net = network([0, 1]);
+    const layout = hwatuLayout([10, 10], 8);
     const owners = new Map<number, number>();
     layout.hands.forEach((slots, seat) => {
       for (const s of slots) owners.set(s, seat);
     });
     for (const s of layout.floor) owners.set(s, -1);
     for (const d of net.devices) {
-      d.start(1, [0, 1, 2], HWATU_CARDS);
+      d.start(1, [0, 1], HWATU_CARDS);
       d.assign(1, owners);
     }
     await net.settle();
     for (const d of net.devices) {
-      expect(d.myCards(1).size).toBe(7);
+      expect(d.myCards(1).size).toBe(10);
       for (const s of layout.floor) expect(d.open(1, s)).not.toBeNull();
       // 남의 손패는 열 수 없다.
       for (const [seat, slots] of layout.hands.entries())

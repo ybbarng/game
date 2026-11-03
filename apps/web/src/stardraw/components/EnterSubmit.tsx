@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import { EASE, EASE_OUT, FX } from "../fx-timing";
+import { buzz } from "../haptics";
 import { SKY_STARS, starOf } from "../sky";
 import { IdleHint, useIdleHint } from "./IdleHint";
 import { LottoBall } from "./parts";
@@ -355,7 +356,7 @@ export function SubmitView({
   const submit = async () => {
     if (!awaiting) return;
     setAwaiting(false);
-    navigator.vibrate?.(20);
+    buzz("confirm");
     setSheet("away");
     await wait(FX.paperAway + FX.pause);
     onSubmitted();

@@ -347,7 +347,10 @@ test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 
       page.evaluate(() => document.documentElement.style.overflow);
     expect(await rootOverflow()).toBe("hidden");
     await expect(sheet).toHaveCSS("overscroll-behavior-y", "contain");
-    await page.getByRole("button", { name: "더 보기 닫기" }).click();
+    // 어두운 뒷배경의 위쪽을 누른다(가운데는 목록이 길어지면 목록에 덮인다: 「진동」 줄이 생긴 뒤, docs/36 11-70)
+    await page
+      .getByRole("button", { name: "더 보기 닫기" })
+      .click({ position: { x: 20, y: 20 } });
     expect(await rootOverflow()).toBe("");
     await page.locator("[data-tab='more']").click();
     await item.click();

@@ -26,20 +26,33 @@ import {
 } from "./fair-room-fixture";
 
 describe("화투 암호화방: 나이롱뽕(가져온 카드는 그 사람만) 새로고침", () => {
-  it("참가자와 방장이 한 번씩 새로고침해도 이어 치고, 모두의 검증을 통과한다", async () => {
-    // 나눠 받은 패에 따라 판이 새로고침할 지점(참가자 4수, 방장 8수)보다 일찍 끝날 수 있다. 패는 기기마다 섞어
-    // 정해지므로 미리 고를 수 없어, 그런 판이면 새 방으로 다시 한다(시간을 기다리는 것이 아니라 조건을 갖추는 것)
-    for (let attempt = 0; attempt < 10; attempt++)
-      if (await nyrongppongReloadScenario()) return;
-    throw new Error("새로고침할 지점까지 가는 판을 만들지 못했다");
-  });
+  it("참가자와 방장이 한 번씩 새로고침해도 이어 치고, 모두의 검증을 통과한다", () =>
+    nyrongppongReloadScenario());
 });
 
 /**
- * 참가자 새로고침 → 방장 새로고침(참가자 행동이 끊긴 사이에 나감) → 판 끝·게임 끝 검증.
- * 판이 새로고침할 지점보다 일찍 끝나면 false
+ * 새로고침할 두 지점(참가자 4수, 방장 8수)까지 두는 컴퓨터: 뽕·스톱·약 선언을 하지 않는다.
+ * 뽕을 하지 않으면 손패를 비우거나 스톱할 수 없고 약도 내지 않으니, 판이 그 지점보다 일찍 끝날 길이 없다.
+ * 예전에는 초급 컴퓨터로 두어 패에 따라 일찍 끝나면 새 방으로 다시 했다(섞고 나누기를 한 번 더 해 느렸다)
  */
-async function nyrongppongReloadScenario(): Promise<boolean> {
+const patientBot: typeof nyrongppongBeginnerBot = {
+  name: "nyrongppong-patient",
+  decide(view, rng) {
+    switch (view.decision?.kind) {
+      case "call":
+        return { type: "pass" };
+      case "draw":
+        return { type: "draw" };
+      case "discard":
+        return { type: "discard", card: view.hand[0] as string };
+      default:
+        return nyrongppongBeginnerBot.decide(view, rng);
+    }
+  },
+};
+
+/** 참가자 새로고침 → 방장 새로고침(참가자 행동이 끊긴 사이에 나감) → 판 끝·게임 끝 검증 */
+async function nyrongppongReloadScenario(): Promise<void> {
   // 새로고침·재연결 진행 논리만 본다: 가장 가벼운 설정(두 사람, 한 판, 군 r255)에서 참가자·방장 새로고침과
   // 그 뒤 판 끝·게임 끝 검증까지. 나누고 섞는 일이 사람 수·판 수만큼 늘어 무거운 설정은 같은 논리를 느리게 되풀이할 뿐이다
   const rules = onlineRules({
@@ -78,11 +91,11 @@ async function nyrongppongReloadScenario(): Promise<boolean> {
     clock.advance(ONLINE_CALL_SECONDS * 1000 + 1);
   };
   await host.start();
-  const play = (done: () => boolean) =>
+  const play = (done: () => boolean, bot = nyrongppongBeginnerBot) =>
     playHwatu({
       host: current,
       guests,
-      bot: nyrongppongBeginnerBot,
+      bot,
       incidents,
       tick,
       done,
@@ -91,9 +104,12 @@ async function nyrongppongReloadScenario(): Promise<boolean> {
     (current.match?.current() as { phase?: string } | undefined)?.phase ===
     "gameOver";
   // 참가자 새로고침
-  await play(() => (current.match?.actionLog().length ?? 0) >= 4 || over());
+  await play(
+    () => (current.match?.actionLog().length ?? 0) >= 4 || over(),
+    patientBot,
+  );
   expect(incidents).toEqual([]);
-  if (over()) return false;
+  expect(over()).toBe(false);
   const old = guests[0] as AnyGuest;
   net.disconnect("g0");
   old.leave();
@@ -125,9 +141,10 @@ async function nyrongppongReloadScenario(): Promise<boolean> {
       ((current.match?.actionLog().length ?? 0) >= 8 &&
         !!guestView()?.decision) ||
       over(),
+    patientBot,
   );
   expect(incidents).toEqual([]);
-  if (over()) return false;
+  expect(over()).toBe(false);
   const states: string[] = [];
   fresh.on("connection", (s) => states.push(s as string));
   net.disconnect("host");
@@ -172,5 +189,4 @@ async function nyrongppongReloadScenario(): Promise<boolean> {
   current.finish();
   await until(() => freshAudits.length >= 1, "판 끝 검증");
   expect(freshAudits).toEqual([{ ok: true }]);
-  return true;
 }

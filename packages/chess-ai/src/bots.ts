@@ -2,6 +2,7 @@ import {
   type Action,
   applyMove,
   type ChessView,
+  inCheck,
   isCheckmate,
   type Move,
   type Position,
@@ -9,6 +10,7 @@ import {
 } from "@game/chess-engine";
 import { nextFloat, nextInt, type RngState } from "@game/mighty-engine";
 
+import { hashOf, newExpertContext, searchExpert } from "./expert";
 import {
   evaluate,
   MATE,
@@ -130,8 +132,14 @@ export const chessIntermediateBot = botWith(
   },
 );
 
-/** 고수가 한 수에 보는 판 수 상한. 맥북에서 가장 길게 1초 안쪽이 되게 잡았다(docs/26) */
-export const EXPERT_NODE_BUDGET = 120_000;
+/**
+ * 고수가 한 수에 보는 판 수 상한. 맥북에서 가장 길게 1초 안쪽이 되게 잡았다(docs/26).
+ * 고수 전용 탐색은 판 하나에 드는 셈이 조금 더 크고 상한까지 쓰는 일이 잦아 예전(12만)보다 낮다
+ */
+export const EXPERT_NODE_BUDGET = 80_000;
+
+/** 예전 고수의 판 수 상한(세기 비교용) */
+const LEGACY_NODE_BUDGET = 120_000;
 
 /** 같은 값으로 보는 차이(이 안의 수는 시드로 고른다) */
 const EXPERT_JITTER = 10;
@@ -142,7 +150,7 @@ const EXPERT_JITTER = 10;
  */
 export function createChessSearchBot(
   maxDepth = 4,
-  budget = EXPERT_NODE_BUDGET,
+  budget = LEGACY_NODE_BUDGET,
 ): ChessBot {
   return botWith(`chess-search-${maxDepth}`, (view, rng) => {
     const pos = view.position;
@@ -187,7 +195,77 @@ export function createChessSearchBot(
   });
 }
 
-export const chessExpertBot = createChessSearchBot();
+/**
+ * 고수: 고수 전용 탐색(expert.ts)으로 깊이를 하나씩 늘리며 읽는다(반복 심화).
+ * 치환표·PVS·널 무브·줄여 읽기로 같은 판 수 상한 안에서 더 깊이 본다.
+ * 판 수 상한을 넘으면 그 깊이는 버리고 앞 깊이의 결과를 쓴다(기기 속도와 상관없이 늘 같은 수).
+ * 앞 깊이의 값 순서대로 뿌리의 수를 읽고, 가장 좋은 값과 `EXPERT_JITTER` 안쪽인 수 가운데 시드로 고른다
+ */
+export function createChessExpertBot(
+  budget = EXPERT_NODE_BUDGET,
+  maxDepth = 40,
+): ChessBot {
+  return botWith("chess-expert", (view, rng) => {
+    const pos = view.position;
+    if (view.legal.length === 0) return null;
+    const mate = view.legal.find((m) => isCheckmate(applyMove(pos, m)));
+    if (mate) return mate;
+    // 게임 기록(지금 판 포함)을 넣어 탐색 안에서 같은 판 되풀이를 알아본다.
+    const ctx = newExpertContext(budget, view.positions);
+    const enemy = pos.turn === "w" ? "b" : "w";
+    let order = orderMoves(pos, [...view.legal]);
+    let best: { move: Move; score: number }[] = [];
+    for (let depth = 1; depth <= maxDepth; depth++) {
+      const scored: { move: Move; score: number }[] = [];
+      let alpha = Number.NEGATIVE_INFINITY;
+      for (const move of order) {
+        const next = applyMove(pos, move);
+        let score: number;
+        if (repeatsThrice(view, next)) score = 0;
+        else {
+          const h = hashOf(next);
+          const gives = inCheck(next.board, enemy);
+          const search = (lo: number, hi: number) =>
+            -searchExpert(next, h, depth - 1, -hi, -lo, ctx, 1, gives);
+          if (alpha === Number.NEGATIVE_INFINITY)
+            score = search(alpha, Number.POSITIVE_INFINITY);
+          else {
+            // 가장 좋은 값보다 조금 낮은 선을 넘는지만 먼저 보고(영 창), 넘으면 정확한 값을 다시 읽는다.
+            const floor = alpha - EXPERT_JITTER;
+            score = search(floor, floor + 1);
+            if (!ctx.aborted && score > floor)
+              score = search(floor, Number.POSITIVE_INFINITY);
+          }
+        }
+        if (ctx.aborted) break;
+        scored.push({ move, score });
+        if (score > alpha) alpha = score;
+      }
+      if (ctx.aborted) break;
+      best = scored;
+      order = [...scored].sort((a, b) => b.score - a.score).map((s) => s.move);
+      const top = Math.max(...scored.map((s) => s.score));
+      if (Math.abs(top) > MATE / 2) break;
+      // 다음 깊이는 보통 지금까지의 몇 배가 든다. 끝내지 못할 깊이에 판 수를 버리지 않는다.
+      if (ctx.nodes > budget * EXPERT_STOP_SHARE) break;
+    }
+    if (best.length === 0) return view.legal[0] ?? null;
+    const top = Math.max(...best.map((s) => s.score));
+    return bestOf(
+      best.filter((s) => s.score >= top - EXPERT_JITTER),
+      rng,
+      EXPERT_JITTER,
+    );
+  });
+}
+
+/** 한 깊이를 끝냈을 때 판 수 상한의 이만큼을 넘게 썼으면 더 깊이 가지 않는다 */
+const EXPERT_STOP_SHARE = 0.4;
+
+/** 예전 고수(깊이 4, 치환표 없음). 세기 비교에 남겨 둔다 */
+export const chessExpertBotV1 = createChessSearchBot();
+
+export const chessExpertBot = createChessExpertBot();
 
 /** 실력 단계(0 입문, 1 중수, 2 고수) */
 export function chessBotFor(level: number): ChessBot {

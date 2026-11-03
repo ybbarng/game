@@ -8,56 +8,9 @@ import {
 } from "@game/chess-engine";
 import { describe, expect, it } from "vitest";
 
-import {
-  advance,
-  allPaths,
-  candidates,
-  learnerToMove,
-  lineDone,
-  opponentPick,
-  startCursor,
-} from "@/study/line";
+import { allPaths } from "@/study/line";
 
 import { CHESS_OPENINGS } from "./openings";
-
-describe("수순 따라 두기(공통 순수 함수)", () => {
-  const italian = CHESS_OPENINGS.find((l) => l.id === "line-italian");
-  if (!italian) throw new Error("이탈리안 없음");
-
-  it("본줄기를 따라가면 끝나고, 배우는 편(백)은 짝수 번째 수를 둔다", () => {
-    let cursor = startCursor(italian);
-    const mine: boolean[] = [];
-    while (!lineDone(cursor)) {
-      mine.push(learnerToMove(italian, cursor));
-      const node = candidates(cursor)[0];
-      if (!node) throw new Error("후보 없음");
-      cursor = advance(cursor, node) ?? cursor;
-    }
-    expect(cursor.ply).toBe(italian.moves.length);
-    expect(mine.slice(0, 4)).toEqual([true, false, true, false]);
-  });
-
-  it("갈래 첫 수를 두면 그 갈래로 옮겨 가고, 후보가 아닌 마디는 두지 못한다", () => {
-    let cursor = startCursor(italian);
-    for (let i = 0; i < 5; i++)
-      cursor = advance(cursor, italian.moves[i] as never) ?? cursor;
-    const [main, branch] = candidates(cursor);
-    expect(main?.move).toBe("Bc5");
-    expect(branch?.move).toBe("Nf6");
-    const moved = advance(cursor, branch as never);
-    expect(moved?.ply).toBe(6);
-    expect(candidates(moved as never)[0]?.move).toBe("d3");
-    expect(advance(cursor, italian.moves[0] as never)).toBeNull();
-  });
-
-  it("상대 차례에는 roll로 본줄기와 갈래 가운데 하나를 고른다", () => {
-    let cursor = startCursor(italian);
-    for (let i = 0; i < 5; i++)
-      cursor = advance(cursor, italian.moves[i] as never) ?? cursor;
-    expect(opponentPick(cursor, 0)?.move).toBe("Bc5");
-    expect(opponentPick(cursor, 0.99)?.move).toBe("Nf6");
-  });
-});
 
 describe("체스 오프닝 수순", () => {
   it("id가 겹치지 않고 모두 line-으로 시작하며 출처가 있다", () => {

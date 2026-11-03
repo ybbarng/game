@@ -209,6 +209,26 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
       </Section>
+      <Section title="잡힐 기물 표시">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            active={s.dangerHint}
+            onClick={() => s.set({ dangerHint: true })}
+          >
+            보이기
+          </Chip>
+          <Chip
+            active={!s.dangerHint}
+            onClick={() => s.set({ dangerHint: false })}
+          >
+            감추기
+          </Chip>
+        </div>
+        <p className="text-xs opacity-60">
+          내 차례에 공짜로(또는 더 싼 기물에) 잡힐 수 있는 내 기물에 빨간 점선을
+          두른다
+        </p>
+      </Section>
       <Section title="기물 모양">
         <div className="flex flex-wrap gap-1.5">
           {PIECE_SET_OPTIONS.map((p) => (

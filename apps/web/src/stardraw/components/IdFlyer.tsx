@@ -199,8 +199,11 @@ export function FingerButton({
   );
 }
 
-/** 지문: 가운데 소용돌이를 둘러싼 고리들(PlaceIcons·손 그림과 같은 꼴: 24칸, 선 1.5, 글자색) */
-function FingerprintIcon({ className }: { className?: string }) {
+/**
+ * 지문: 가운데 소용돌이를 둘러싼 고리들(PlaceIcons·손 그림과 같은 꼴: 24칸, 선 1.5, 글자색). 신청서 서명 칸의 지문 자리
+ * 표시도 같은 그림을 쓴다(RegisterForm, docs/36 11-70)
+ */
+export function FingerprintIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
