@@ -127,14 +127,17 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
     timeout: 60_000,
   });
 
-  // 화면 마감 15초 전으로 옮겨 응모를 시작하고, 내밀기를 미뤄 마감을 넘긴다
+  // 화면 마감 45초 전으로 옮겨 응모를 시작하고, 내밀기를 미뤄 마감을 넘긴다.
+  // 예측서·신분증이 나오기까지는 빨리 감는다(실제 시간으로 기다리지 않는다). 부하 아래 CSS 연출이 늦게 따라와
+  // 빨리 감은 시계가 몇 초 더 흘러도 마감 전에 내밀 수 있게 여유를 둔다(마감 1분 전 안내는 그대로 보인다)
   const line = await page
     .getByText(/예측 받는 중 · 마감까지 [0-9:]+/)
     .textContent();
   const [m, s] = (line?.match(/마감까지 (\d+):(\d+)/) ?? []).slice(1, 3);
   const left = Number(m) * 60 + Number(s);
   const now = await page.evaluate(() => Date.now());
-  await page.clock.setSystemTime(now + (left - 15) * 1000);
+  const deadline = now + left * 1000;
+  await page.clock.setSystemTime(deadline - 45_000);
   await expect(page.locator("[data-hurry]")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.getByRole("button", { name: "자동", exact: true }).click();
@@ -142,12 +145,16 @@ test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소
   const paper = page.locator(
     "[aria-label='예측서 제출'][aria-disabled='false']",
   );
-  await paper.press("Enter", { timeout: 10_000 });
+  await shown(paper);
+  await paper.press("Enter");
   const card = page.locator(
     "[aria-label='신분증 제출'][aria-disabled='false']",
   );
-  await card.waitFor({ timeout: 10_000 });
-  await page.clock.runFor(25_000);
+  await shown(card);
+  // 마감 전에 신분증까지 왔는지 보고, 마감 10초 뒤까지 들고 있다가 낸다
+  const held = await page.evaluate(() => Date.now());
+  expect(held).toBeLessThan(deadline);
+  await page.clock.runFor(deadline + 10_000 - held);
   await card.press("Enter");
   // 마감을 넘겼으니 여기부터는 연출 타이머를 빨리 감는다
   const unlock = page.locator("[data-demo-unlock='sign']");
