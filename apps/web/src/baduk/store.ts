@@ -8,6 +8,7 @@ import {
   type GameEvent,
 } from "@game/baduk-engine";
 import { create } from "zustand";
+import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
@@ -190,6 +191,8 @@ export const useBaduk = create<BadukStore>((set, get) => {
   ) => {
     stop();
     const { local, level } = options;
+    // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
+    if (get().local !== local) get().local?.dispose();
     const recorder = options.stats
       ? new StatsRecorder(badukKit.stats, options.stats)
       : null;
@@ -243,6 +246,7 @@ export const useBaduk = create<BadukStore>((set, get) => {
         seed,
         humanSeat,
         bot: badukBotFor(level),
+        ...workerBotOption({ game: "baduk", level }),
         pace: browserPace,
       },
       log,
@@ -377,6 +381,7 @@ export const useBaduk = create<BadukStore>((set, get) => {
 
     leave() {
       stop();
+      get().local?.dispose();
       set({
         host: null,
         local: null,

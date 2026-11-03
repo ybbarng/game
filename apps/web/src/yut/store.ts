@@ -9,6 +9,7 @@ import {
   type YutView,
 } from "@game/yut-engine";
 import { create } from "zustand";
+import { workerBotOption } from "@/game/bot-runner";
 import { browserPace } from "@/game/bots";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
@@ -230,6 +231,8 @@ export const useYut = create<YutStore>((set, get) => {
   ) => {
     stop();
     const { local, level } = options;
+    // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
+    if (get().local !== local) get().local?.dispose();
     seedKey = options.key;
     const recorder = options.stats
       ? new StatsRecorder(yutKit.stats, options.stats)
@@ -285,6 +288,7 @@ export const useYut = create<YutStore>((set, get) => {
         seed,
         humanSeat: 0,
         bot: yutBotFor(level),
+        ...workerBotOption({ game: "yut", level }),
         pace: browserPace,
       },
       log,
@@ -422,6 +426,7 @@ export const useYut = create<YutStore>((set, get) => {
 
     leave() {
       stop();
+      get().local?.dispose();
       seedKey = null;
       set({
         host: null,

@@ -8,6 +8,7 @@ import type {
   NyrongppongView,
 } from "@game/nyrongppong-engine";
 import { create } from "zustand";
+import { workerBotOption } from "@/game/bot-runner";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
 import { playUiCue } from "@/game/ui-sound";
@@ -166,6 +167,8 @@ export const useNyrongppong = create<NyrongppongStore>((set, get) => {
   ) => {
     stop();
     const { local, level } = options;
+    // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
+    if (get().local !== local) get().local?.dispose();
     const recorder = options.stats
       ? new StatsRecorder(nyrongppongKit.stats, options.stats)
       : null;
@@ -222,6 +225,7 @@ export const useNyrongppong = create<NyrongppongStore>((set, get) => {
         seed,
         humanSeat: 0,
         bot: nyrongppongBotFor(level),
+        ...workerBotOption({ game: "nyrongppong", level }),
         pace: botPace,
       },
       log,
@@ -350,6 +354,7 @@ export const useNyrongppong = create<NyrongppongStore>((set, get) => {
 
     leave() {
       stop();
+      get().local?.dispose();
       set({
         host: null,
         local: null,

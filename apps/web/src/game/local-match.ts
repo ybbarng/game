@@ -292,7 +292,7 @@ export class LocalMatch<
 
   static restore(
     saved: SavedMatch,
-    extra: Pick<LocalMatchOptions, "bot" | "pace"> = {},
+    extra: Pick<LocalMatchOptions, "bot" | "pace" | "runBot"> = {},
   ): LocalMatch {
     return new LocalMatch(
       {

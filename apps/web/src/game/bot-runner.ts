@@ -165,3 +165,15 @@ export function workerBot<View, ActionT>(
   if (typeof Worker === "undefined") return undefined;
   return (view, rng, signal) => thinkWith<ActionT>(key, view, rng, signal);
 }
+
+/**
+ * LocalMatch·HostRoom 옵션에 펼쳐 넣는 모양(`...workerBotOption(key)`). 워커가 없으면 빈 객체라 같은 스레드에서 센다.
+ * 화면은 무엇이든 받고 행동은 받는 게임 것으로 두어(`unknown`·`never`) 어느 게임 옵션에도 맞는다.
+ * 화면·행동 모양은 등록부의 봇이 그 게임 것으로 정한다
+ */
+export function workerBotOption(key: BotKey): {
+  runBot?: BotRunner<unknown, never>;
+} {
+  const runBot = workerBot<unknown, never>(key);
+  return runBot ? { runBot } : {};
+}

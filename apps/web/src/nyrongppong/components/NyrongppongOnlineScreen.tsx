@@ -14,6 +14,7 @@ import {
   reportIncident,
 } from "@/components/FairLine";
 import { InviteLink } from "@/components/InviteLink";
+import { workerBotOption } from "@/game/bot-runner";
 import { useSettings } from "@/game/settings";
 import { useHwatuFair } from "@/hwatu/fair-bar";
 import { cn } from "@/lib/cn";
@@ -174,6 +175,7 @@ export function NyrongppongOnlineScreen({
           ...(resume ? { restore: resume.restore } : {}),
           bot: nyrongppongBotFor(1),
           botLevel: 1,
+          ...workerBotOption({ game: "nyrongppong", level: 1 }),
           botNames: useSettings.getState().botNames,
           standInDelayMs: STAND_IN_MS,
           pace: (next) => setTimeout(next, BOT_PACE_MS),

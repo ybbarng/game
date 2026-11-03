@@ -24,6 +24,7 @@ import type {
   RuleSet,
 } from "@game/mighty-engine";
 import { botName } from "@/game/bot-names";
+import type { BotRunner } from "@/game/bot-runner";
 import type { GameKit, KitBot, KitLoggedAction } from "@/game/kit";
 import { LocalMatch } from "@/game/local-match";
 import { mightyKit } from "@/game/mighty-kit";
@@ -84,6 +85,8 @@ export interface HostRoomOptions<
   botNames?: readonly string[];
   /** 컴퓨터 수 사이에 차례를 넘기는 방법(`LocalMatchOptions.pace`) */
   pace?: (next: () => void) => void;
+  /** 컴퓨터 수를 웹 워커에서 센다(`LocalMatchOptions.runBot`, `workerBotOption`). 없으면 같은 스레드에서 */
+  runBot?: BotRunner<View, ActionT>;
   /**
    * 멘탈 포커로 섞고 나눈다(마이티 3~7마). 방장 기기도 남의 패를 모른다.
    * 없으면 예전처럼 방장 기기가 시드로 섞는다
@@ -156,6 +159,7 @@ export class HostRoom<
   private readonly bot: KitBot<View, ActionT> | null;
   private readonly botLevel: number | null;
   private readonly pace: ((next: () => void) => void) | null;
+  private readonly runBot: BotRunner<View, ActionT> | null;
   private readonly botNames: readonly string[];
   private lobbyListeners = new Set<(lobby: LobbyState) => void>();
   private chatListeners = new Set<(message: ChatMessage) => void>();
@@ -211,6 +215,7 @@ export class HostRoom<
     this.bot = options.bot ?? null;
     this.botLevel = options.botLevel ?? null;
     this.pace = options.pace ?? null;
+    this.runBot = options.runBot ?? null;
     this.botNames = options.botNames ?? [];
     this.fairOption = options.fair ?? null;
     this.store = options.store ?? null;
@@ -379,6 +384,7 @@ export class HostRoom<
         ...(this.bot ? { bot: this.bot } : {}),
         clock: this.clock,
         ...(this.pace ? { pace: this.pace } : {}),
+        ...(this.runBot ? { runBot: this.runBot } : {}),
         afterStep: () => this.persist(),
         resume,
       });
@@ -751,6 +757,7 @@ export class HostRoom<
           ...(this.bot ? { bot: this.bot } : {}),
           clock: this.clock,
           ...(this.pace ? { pace: this.pace } : {}),
+          ...(this.runBot ? { runBot: this.runBot } : {}),
           afterStep: () => this.persist(),
         });
     this.match = match;
@@ -838,6 +845,7 @@ export class HostRoom<
       ...(this.bot ? { bot: this.bot } : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),
+      ...(this.runBot ? { runBot: this.runBot } : {}),
       step: (state, seat, action) => table.step(state, seat, action),
       prepare: (state, seat, action) => table.prepare(state, seat, action),
       revealView: (seat, view) => table.viewFor(seat, view as never) as View,
@@ -908,6 +916,9 @@ export class HostRoom<
         : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),
+      ...(this.runBot
+        ? { runBot: this.runBot as unknown as BotRunner<PlayerView, Action> }
+        : {}),
       step: (state, seat, action) => table.step(state, seat, action),
       prepare: (state, seat, action) => table.prepare(state, seat, action),
       revealView: (seat, view) => table.viewFor(seat, view),
@@ -1005,6 +1016,14 @@ export class HostRoom<
         : {}),
       clock: this.clock,
       ...(this.pace ? { pace: this.pace } : {}),
+      ...(this.runBot
+        ? {
+            runBot: this.runBot as unknown as BotRunner<
+              HeartsView,
+              HeartsAction
+            >,
+          }
+        : {}),
       step: (state, seat, action) => table.step(state, seat, action),
       prepare: (state, seat, action) => table.prepare(state, seat, action),
       revealView: (seat, view) => table.viewFor(seat, view),
@@ -1046,6 +1065,8 @@ export class HostRoom<
     // 연결이 잠깐 끊긴 것과 구별하도록 닫는다고 먼저 알린다.
     this.send({ t: "closed" });
     this.transport.leave();
+    // 세던 컴퓨터 수는 버린다(워커 계산을 멈춘다).
+    this.match?.dispose();
     this.forget();
   }
 
