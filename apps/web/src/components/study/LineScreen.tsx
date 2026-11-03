@@ -125,6 +125,8 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
     setLastMove(null);
     setMistake(false);
     setShown(null);
+    // 수 보기로 본 표시도 지운다: 처음부터 다시 두어 보지 않고 끝까지 두면 푼 것으로 친다(문제 화면 usePuzzleRun과 같게)
+    setRevealed(false);
   };
 
   /** 내 수. 수순(본줄기나 갈래)에 있으면 두고, 없으면 두지 않고 안내한다 */
