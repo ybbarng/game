@@ -187,16 +187,24 @@ export class RaceSession<Move, State> {
     this.emit();
   }
 
-  /** 내 수. 살펴보기 중이거나 둘 수 없으면 거절 */
-  play(move: Move): PlayResult {
+  /**
+   * 내 수. 살펴보기 중이거나 둘 수 없으면 거절.
+   * `at`(풀림 기준 ms)은 시각을 미리 정해 둔 참가자(컴퓨터)가 계획 시각으로 적을 때 쓴다.
+   * 타이머가 늦게 불려도 계획 시각이 남는다. 지금보다 늦게, 앞 수보다 이르게는 적지 않는다
+   */
+  play(move: Move, at?: number): PlayResult {
     const a = this.a;
     if (a.spectator) return { ok: false, reason: "관전" };
     if (a.seed === undefined || a.releaseAt === undefined)
       return { ok: false, reason: "섞기 전" };
     if (!a.released) return { ok: false, reason: "살펴보기 중" };
     const rec = a.records.get(this.self) as Record_<State>;
-    const t = this.clock.now() - a.releaseAt;
-    if (rec.status !== "playing" || t > this.timeLimitMs || this.result)
+    const now = this.clock.now() - a.releaseAt;
+    const t =
+      at === undefined
+        ? now
+        : Math.min(now, Math.max(at, rec.moveTimes.at(-1) ?? 0));
+    if (rec.status !== "playing" || now > this.timeLimitMs || this.result)
       return { ok: false, reason: "끝남" };
     let next: State;
     try {

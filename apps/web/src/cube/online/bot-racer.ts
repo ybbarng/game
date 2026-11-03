@@ -73,7 +73,8 @@ export function attachBot(init: AttachBotInit): () => void {
     if (stopped || k !== attempt || !moves) return;
     const snap = session.snapshot();
     if (snap.attempt !== k || snap.phase !== "race") return;
-    const r = session.play(moves[j] as CubeMove);
+    // 계획 시각(+ 늦게 온 만큼)으로 적는다. 다른 기기가 계획과 시각까지 맞춰 본다(`checkBotRun`)
+    const r = session.play(moves[j] as CubeMove, (times[j] as number) + delay);
     if (!r.ok || r.solved || j + 1 >= moves.length) return;
     schedule(k, j + 1);
   };
@@ -128,14 +129,21 @@ export function attachBot(init: AttachBotInit): () => void {
   };
 }
 
-/** 컴퓨터가 계획대로 두었나(다른 기기에서 다시 계산해 본다). 수 차례만 보고 시각은 보지 않는다 */
+/** 시각 비교 허용 오차(ms). 계획 시각은 정수, 늦게 온 만큼(delay)은 소수일 수 있어 뺄셈 오차만 둔다 */
+export const BOT_TIME_TOLERANCE_MS = 1;
+
+/**
+ * 컴퓨터가 계획대로 두었나(다른 기기에서 다시 계산해 본다). 수 차례와 시각을 함께 본다.
+ * 시각: 보고 시각 − 계획 시각이 모든 수에서 0 이상의 같은 값이어야 한다(계획이 늦게 와서 한꺼번에 미룬 만큼).
+ * 그래서 방장이 컴퓨터를 계획보다 빨리 두고 보고 시각을 작게 적으면 드러난다
+ */
 export async function checkBotRun(
   level: BotLevel,
   n: number,
   start: PuzzleState,
   raceSeed: string,
   botId: string,
-  log: readonly { m: string }[],
+  log: readonly { m: string; t: number }[],
   plan: PlanFn = planHere,
 ): Promise<boolean> {
   const made = await plan(level, n, start, botSeed(raceSeed, botId));
@@ -143,5 +151,14 @@ export async function checkBotRun(
     formatMove(n, parseMoves(n, m.move)[0] as CubeMove),
   );
   if (expected.length !== log.length) return false;
-  return log.every((x, i) => x.m === expected[i]);
+  if (!log.every((x, i) => x.m === expected[i])) return false;
+  const first = log[0];
+  if (!first) return true;
+  const delay = first.t - (made.moves[0]?.at as number);
+  if (delay < -BOT_TIME_TOLERANCE_MS) return false;
+  return log.every(
+    (x, i) =>
+      Math.abs(x.t - (made.moves[i]?.at as number) - delay) <=
+      BOT_TIME_TOLERANCE_MS,
+  );
 }
