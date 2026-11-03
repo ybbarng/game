@@ -444,6 +444,15 @@ importers:
         specifier: workspace:*
         version: link:../ai
 
+  packages/galaxy-engine:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/yut-engine':
+        specifier: workspace:*
+        version: link:../yut-engine
+
   packages/gostop-ai:
     dependencies:
       '@game/gostop-engine':
