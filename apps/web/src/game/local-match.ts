@@ -180,6 +180,12 @@ export class LocalMatch<
   private thinkTicket = 0;
   /** 더 쓰지 않는 대국(무르기·새 판·떠나기로 바꿨다). 컴퓨터를 더 돌리지 않는다 */
   private disposed = false;
+  /** `kit.timers` 창마다 건 시계(열쇠 → 끄기) */
+  private readonly windowTimers = new Map<string, () => void>();
+  /** 컴퓨터 자리마다 걸어 둔 차례 밖 반응(`bot.react`)의 끄기 */
+  private readonly reactions = new Map<number, () => void>();
+  /** 차례 밖 반응 난수. 차례 수(`decide`)의 난수와 따로 두어 반응이 차례 수 기록을 바꾸지 않는다 */
+  private readonly reactRng: RngState;
 
   constructor(
     options: LocalMatchOptions<Rules, State, View, ActionT, Event, Extra>,
@@ -205,6 +211,7 @@ export class LocalMatch<
       options.bot ?? (heuristicBot as unknown as KitBot<View, ActionT>);
     this.pace = options.pace ?? null;
     this.rng = createRng(options.seed ^ 0x2545f491);
+    this.reactRng = createRng(options.seed ^ 0x5bd1e995);
     this.options = options;
     this.clock = options.clock ?? realClock;
     this.stepper =
@@ -255,6 +262,8 @@ export class LocalMatch<
     }
     // 저장한 대국을 이어 둘 때도 시계는 지금부터 다시 잰다(닫아 둔 동안은 세지 않는다).
     this.armClock();
+    this.syncTimers();
+    this.runAuto();
     this.runBots();
   }
 
@@ -345,12 +354,93 @@ export class LocalMatch<
   halt(reason: string): void {
     this.haltedReason = reason;
     this.stopThinking();
+    this.clearTimers();
   }
 
   /** 더 쓰지 않는다(무르기·새 판·떠나기). 세는 중인 컴퓨터 수는 버린다 */
   dispose(): void {
     this.disposed = true;
     this.stopThinking();
+    this.clearTimers();
+  }
+
+  /** 창 시계와 걸어 둔 반응을 모두 끈다 */
+  private clearTimers(): void {
+    for (const cancel of this.windowTimers.values()) cancel();
+    this.windowTimers.clear();
+    for (const cancel of this.reactions.values()) cancel();
+    this.reactions.clear();
+  }
+
+  /** 시계를 더 돌리지 않는 대국인가 */
+  private get frozen(): boolean {
+    return this.disposed || this.ended || this.haltedReason !== null;
+  }
+
+  /**
+   * `kit.timers`의 창을 시계와 맞춘다. 새 창은 지금부터 재고, 사라진 창은 지운다(같은 열쇠는 그대로 흐른다).
+   * 시간이 다 되면 그 자리로 행동을 넣는다. 그사이 창이 닫혔으면 엔진이 거절하고, 그 거절은 버린다
+   */
+  private syncTimers(): void {
+    const timers = this.kit.timers;
+    if (!timers) return;
+    const open = this.frozen ? [] : timers(this.state);
+    const keys = new Set(open.map((t) => t.key));
+    for (const [key, cancel] of this.windowTimers)
+      if (!keys.has(key)) {
+        cancel();
+        this.windowTimers.delete(key);
+      }
+    for (const timer of open) {
+      if (this.windowTimers.has(timer.key)) continue;
+      this.windowTimers.set(
+        timer.key,
+        this.clock.after(timer.ms, () => {
+          this.windowTimers.delete(timer.key);
+          if (this.frozen) return;
+          if (this.apply(timer.seat, timer.action).ok) this.runBots();
+        }),
+      );
+    }
+  }
+
+  /** 대국을 돌리는 기기가 바로 넣는 행동(`kit.autoAction`, 원카드 다시 섞기) */
+  private runAuto(): void {
+    const auto = this.kit.autoAction;
+    if (!auto || this.frozen) return;
+    for (let guard = 0; guard < 100; guard++) {
+      const seed =
+        (this.seed ^ Math.imul(this.log.length + 1, 0x9e3779b1)) >>> 0;
+      const next = auto(this.state, seed);
+      if (!next || !this.apply(next.seat, next.action).ok) return;
+    }
+  }
+
+  /** 컴퓨터 자리마다 차례 밖 반응(`bot.react`)을 물어 걸어 둔다 */
+  private scheduleReactions(events: Event[]): void {
+    const react = this.bot.react;
+    if (!react || this.frozen) return;
+    const n = this.kit.playerCount(this.rules);
+    for (let seat = 0; seat < n; seat++) {
+      if (!this.isBot(seat)) continue;
+      const plan = react.call(
+        this.bot,
+        this.kit.viewOf(this.state, seat),
+        events,
+        this.reactRng,
+      );
+      if (!plan) continue;
+      // 새 계획을 주면 걸어 둔 앞 계획은 버린다(컴퓨터는 걸음마다 사건을 듣고 새로 볼 것만 계획한다).
+      this.reactions.get(seat)?.();
+      this.reactions.set(
+        seat,
+        this.clock.after(Math.max(0, plan.delayMs), () => {
+          this.reactions.delete(seat);
+          if (this.frozen || !this.isBot(seat)) return;
+          if (this.apply(seat, plan.action, true).ok) this.runBots();
+        }),
+      );
+    }
   }
 
   /** 컴퓨터가 워커에서 수를 세는 중인가 */
@@ -377,6 +467,7 @@ export class LocalMatch<
     this.ended = true;
     this.haltedReason = "게임을 끝냈다";
     this.stopThinking();
+    this.clearTimers();
     for (const seat of [...this.held.keys()]) this.deliver(seat);
     return result;
   }
@@ -579,7 +670,12 @@ export class LocalMatch<
         events: result.events,
       });
     }
+    // 이 걸음의 판을 먼저 남기고(ClaimHub), 차례 밖 반응을 묻고(이 걸음 사건 그대로), 창 시계를 맞춘 뒤,
+    // 바로 넣을 행동(다시 섞기)을 넣는다. 다시 섞기는 걸음을 하나 더 두므로 판 남기기가 걸음 순서와 맞는다.
     for (const l of this.appliedListeners) l();
+    this.scheduleReactions(result.events);
+    this.syncTimers();
+    this.runAuto();
     return { ok: true };
   }
 

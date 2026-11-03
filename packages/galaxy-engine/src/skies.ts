@@ -18,8 +18,7 @@ export interface SkyFile extends GalaxySky {
 
 const FILES = [seasons, zodiac, south, summer, autumn, winter] as SkyFile[];
 
-/** 처음 여는 하늘(F7: 나머지는 bench로 하늘마다 확인한 뒤 연다) */
-export const OPEN_SKIES: readonly string[] = ["seasons"];
+export { OPEN_SKIES, SKY_IDS } from "./sky-ids";
 
 export const SKIES: ReadonlyMap<string, SkyFile> = new Map(
   FILES.map((f) => [f.id, f]),

@@ -116,6 +116,29 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     ],
   },
   {
+    title: "원카드",
+    cues: [
+      { cue: "card", when: "카드를 냄(숫자 카드)" },
+      {
+        cue: "onecardAttack",
+        when: "공격 카드(2·A·조커). 쌓인 장 수가 많으면 여러 번",
+      },
+      { cue: "onecardBlock", when: "공격을 받아쳐 막음" },
+      { cue: "onecardSuit", when: "7로 무늬를 바꿈" },
+      { cue: "onecardSkip", when: "J: 다음 사람을 건너뜀" },
+      { cue: "onecardReverse", when: "Q: 방향을 바꿈" },
+      { cue: "onecardAgain", when: "K: 한 번 더" },
+      { cue: "onecardDraw", when: "더미에서 먹음" },
+      { cue: "onecardShout", when: "누가 가운데 더미를 침(원카드!)" },
+      { cue: "onecardCaught", when: "외치지 않아 잡힘" },
+      { cue: "onecardFalse", when: "헛외침" },
+      { cue: "onecardReshuffle", when: "더미가 바닥나 버린 더미를 다시 섞음" },
+      { cue: "onecardOut", when: "누가 손패를 다 냄" },
+      { cue: "win", when: "내가 1등" },
+      { cue: "lose", when: "판 끝, 1등이 아님" },
+    ],
+  },
+  {
     title: "숫자야구",
     cues: [
       { cue: "strike", when: "스트라이크가 하나라도 나온 답(나·상대 모두)" },

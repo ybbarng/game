@@ -142,6 +142,32 @@ html:has([data-game="minhwatu"]) body {
   background: #052e16;
 }
 
+/* 원카드: 짙은 남색 펠트 */
+html:has([data-game="onecard"]),
+html:has([data-game="onecard"]) body {
+  background: #0b1533;
+}
+
+/* 원카드: 가운데 더미를 친 순간 살짝 눌렸다 돌아온다(친 사람 화면에서만, 판 상태와 상관없다) */
+.onecard-slap {
+  animation: onecard-slap 0.18s ease-out;
+}
+
+@keyframes onecard-slap {
+  40% {
+    scale: 0.92;
+  }
+  to {
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onecard-slap {
+    animation: none;
+  }
+}
+
 /* 하늘의 별 따기: 밤하늘 */
 html:has([data-game="stardraw"]),
 html:has([data-game="stardraw"]) body {

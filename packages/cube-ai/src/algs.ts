@@ -69,7 +69,10 @@ export const EPLL: readonly string[] = [
   "M' U M2 U M2 U M' U2 M2", // Z
 ];
 
-/** OLL 57가지(번호 차례) */
+/**
+ * OLL 57가지(번호 차례). 번호와 공식은 널리 쓰는 표준 표(SpeedSolving 위키 「OLL」 쪽의
+ * 1~57번 대표 공식)를 따른다. 맞는지는 시험이 확인한다.
+ */
 export const OLL: readonly string[] = [
   "R U2 R2 F R F' U2 R' F R F'",
   "F R U R' U' F' f R U R' U' f'",
@@ -130,7 +133,10 @@ export const OLL: readonly string[] = [
   "R U R' U' M' U R U' r'",
 ];
 
-/** PLL 21가지(이름, 공식) */
+/**
+ * PLL 21가지(이름, 공식). 이름과 공식은 널리 쓰는 표준 표(SpeedSolving 위키 「PLL」 쪽의
+ * 대표 공식)를 따른다. 맞는지는 시험이 확인한다.
+ */
 export const PLL: readonly (readonly [string, string])[] = [
   ["Aa", "R' F R' B2 R F' R' B2 R2"],
   ["Ab", "R2 B2 R F R' B2 R F' R"],

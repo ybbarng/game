@@ -16,7 +16,8 @@ export type GameEntry = {
     | "baseball"
     | "stardraw"
     | "yut"
-    | "cube";
+    | "cube"
+    | "onecard";
   name: string;
   englishName: string;
   /** 목록에 보일 한 줄 설명 */
@@ -99,6 +100,15 @@ export const GAMES: readonly GameEntry[] = [
     tagline: "화투로 하는 뽕! 같은 달 두 장이면 뽕, 손패 합을 가장 작게",
     players: "2~5명",
     path: "/nyrongppong",
+  },
+  {
+    id: "onecard",
+    name: "원카드",
+    englishName: "One Card",
+    tagline:
+      "무늬나 숫자를 맞춰 먼저 다 내라. 한 장 남으면 가운데 더미를 탁, 원카드!",
+    players: "2~5명",
+    path: "/onecard",
   },
   {
     id: "baseball",

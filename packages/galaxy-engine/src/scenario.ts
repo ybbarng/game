@@ -27,7 +27,6 @@ export function createGalaxyScenario(options: {
   cash?: number[];
   stars?: ScenarioStar[];
   jailed?: number[];
-  passes?: number[];
   /** 남은 공문 더미(번호). 적지 않으면 판의 공문 모두 */
   deck?: number[];
   round?: number;
@@ -61,7 +60,6 @@ export function createGalaxyScenario(options: {
       : state.positions.map(() => BASE),
     cash: options.cash ? [...options.cash] : [...state.cash],
     jailed,
-    passes: state.passes.map((_, s) => options.passes?.includes(s) ?? false),
     owners: [...state.owners],
     levels: [...state.levels],
     mortgaged: [...state.mortgaged],

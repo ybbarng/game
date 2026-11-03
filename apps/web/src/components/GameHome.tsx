@@ -87,7 +87,8 @@ export function GameHome({
   resume?: () => void;
   solo: HomeAction;
   together: HomeAction;
-  learn: {
+  /** 배우기. 아직 튜토리얼이 없는 게임은 두지 않는다(그러면 단추도 없다) */
+  learn?: {
     title: string;
     /** 마친 단원 수와 모든 단원 수 */
     learned: number;
@@ -104,9 +105,10 @@ export function GameHome({
   credit?: ReactNode;
 }) {
   // 처음 온 사람에게는 배우기를 먼저 권한다. 하던 게임이 있으면 이어하기를.
-  const newcomer = learn.learned === 0 && !resume;
-  const learnDetail =
-    learn.learned >= learn.total
+  const newcomer = !!learn && learn.learned === 0 && !resume;
+  const learnDetail = !learn
+    ? ""
+    : learn.learned >= learn.total
       ? "모든 단원을 마쳤어요. 언제든 다시 볼 수 있어요"
       : learn.learned > 0
         ? `${learn.learned}/${learn.total} 단원 마침`
@@ -149,16 +151,18 @@ export function GameHome({
           primaryClass={primaryClass}
           action={together}
         />
-        <MenuItem
-          primary={newcomer}
-          primaryClass={primaryClass}
-          action={{
-            icon: "🎓",
-            title: learn.title,
-            detail: learnDetail,
-            onClick: learn.onClick,
-          }}
-        />
+        {learn && (
+          <MenuItem
+            primary={newcomer}
+            primaryClass={primaryClass}
+            action={{
+              icon: "🎓",
+              title: learn.title,
+              detail: learnDetail,
+              onClick: learn.onClick,
+            }}
+          />
+        )}
 
         <div className="mt-1 flex justify-center gap-2">
           <button type="button" onClick={onOptions} className={SMALL}>
