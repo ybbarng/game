@@ -52,6 +52,7 @@ import {
   SubmitView,
 } from "./EnterSubmit";
 import { BounceSlip, ErrorStage, HurryNotice, kstClock } from "./EntryDeadline";
+import { StarPickHint } from "./IdleHint";
 import { IdPresentView, useIdPresent } from "./IdPresent";
 import { BureauNote, InAppNotice, InAppTriedNotice } from "./InAppNotice";
 import { KeyIcon } from "./PasskeyHelp";
@@ -695,6 +696,9 @@ export function EnterView({
           state={{ mode: "pick", picked, focus, lit: [], bonus: null }}
           onPick={picking ? toggle : undefined}
           label={`예측판: 서울 하늘의 밝은 별 45개. 고른 별 ${picked.join(", ") || "없음"}`}
+          overlay={
+            <StarPickHint active={open && picking && picked.length === 0} />
+          }
         />
         {open && (
           <HurryNotice

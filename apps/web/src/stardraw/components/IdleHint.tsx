@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { FX } from "../fx-timing";
+import { SKY_STARS, type SkyStar } from "../sky";
 
 /**
  * 손짓 안내(2026-11-03 사용자): 사람이 물건을 밀거나 누르기를 기다리는데 손을 대지 않고 가만히 있으면, 글 없이 손짓만
@@ -80,6 +81,45 @@ export function IdleHint({
       {kind === "swipe-up" ? <Swipe still={still} /> : <Tap still={still} />}
     </div>
   );
+}
+
+/**
+ * 예측판의 별 누르기 안내(2026-11-03 사용자: 처음 온 사람이 별을 눌러 고르는 줄 잘 몰랐다). 고른 별이 없고 가만히
+ * 있으면 아무 별 하나 위에서 누르는 손짓을 보인다. 나올 때마다 다른 별이고, 가장자리 별은 손이 잘리지 않게 고르지 않는다.
+ * 별판(SkyBoard)의 overlay로 넘긴다
+ */
+export function StarPickHint({ active }: { active: boolean }) {
+  const shown = useIdleHint(active);
+  const [star, setStar] = useState<SkyStar | null>(null);
+  useEffect(() => {
+    if (shown) setStar(hintStar());
+  }, [shown]);
+  if (!shown || !star) return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-star-hint={star.n}
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
+    >
+      {/* 손끝(80칸 상자의 36.5, 19 자리)이 별 위에 오게 */}
+      <div
+        className="absolute size-20"
+        style={{
+          left: `calc(${star.x * 100}% - 36.5px)`,
+          top: `calc(${star.y * 100}% - 19px)`,
+        }}
+      >
+        <IdleHint kind="tap" shown />
+      </div>
+    </div>
+  );
+}
+
+const HINT_STARS = SKY_STARS.filter(
+  (s) => s.x > 0.15 && s.x < 0.85 && s.y > 0.15 && s.y < 0.85,
+);
+function hintStar(): SkyStar | null {
+  return HINT_STARS[Math.floor(Math.random() * HINT_STARS.length)] ?? null;
 }
 
 /** 손끝이 아래에서 위로 쓸어 올라가고 지나간 자리에 꼬리선이 남았다 흐려진다 */

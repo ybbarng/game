@@ -2,7 +2,13 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FX } from "../fx-timing";
-import { IdleHint, type IdleHintKind, useIdleHint } from "./IdleHint";
+import { starOf } from "../sky";
+import {
+  IdleHint,
+  type IdleHintKind,
+  StarPickHint,
+  useIdleHint,
+} from "./IdleHint";
 
 function Waiting({ active, kind }: { active: boolean; kind: IdleHintKind }) {
   const shown = useIdleHint(active);
@@ -104,5 +110,32 @@ describe("손짓 안내: 가만히 있으면 나오고 손을 대면 사라진�
       expect(c.querySelector(".sd-hint-trail, .sd-hint-ring")).toBeNull();
     }
     expect(swipe.container.querySelectorAll("svg")).toHaveLength(2);
+  });
+});
+
+describe("예측판 별 누르기 손짓", () => {
+  it("고를 수 있을 때 가만히 있으면 가장자리가 아닌 별 하나 위에 누르는 손짓이 나온다", () => {
+    const { container } = render(
+      <div style={{ position: "relative" }}>
+        <StarPickHint active />
+      </div>,
+    );
+    wait(FX.idleHint - 1);
+    expect(container.querySelector("[data-star-hint]")).toBeNull();
+    wait(1);
+    const at = container.querySelector<HTMLElement>("[data-star-hint]");
+    const star = starOf(Number(at?.dataset.starHint));
+    expect(star.x).toBeGreaterThan(0.15);
+    expect(star.x).toBeLessThan(0.85);
+    expect(at?.querySelector("[data-idle-hint='tap']")).not.toBeNull();
+    // 별을 누르려고 손을 대면 사라진다
+    fireEvent.pointerDown(window);
+    expect(container.querySelector("[data-star-hint]")).toBeNull();
+  });
+
+  it("별을 이미 골랐으면(active=false) 나오지 않는다", () => {
+    const { container } = render(<StarPickHint active={false} />);
+    wait(FX.idleHint * 3);
+    expect(container.querySelector("[data-star-hint]")).toBeNull();
   });
 });

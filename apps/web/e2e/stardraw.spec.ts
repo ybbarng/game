@@ -1368,7 +1368,7 @@ async function holdHint(
   await set(false);
 }
 
-/** 예측서·등록증을 기다리며 가만히 있으면 손짓이 나오고(예측서는 밀어 올리기, 등록증은 누르기), 손을 대면 사라진다 */
+/** 예측판·예측서·등록증을 기다리며 가만히 있으면 손짓이 나오고(별·등록증은 누르기, 예측서는 밀어 올리기), 손을 대면 사라진다 */
 test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 등록증은 누르기", async ({
   page,
 }, info) => {
@@ -1378,9 +1378,22 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 등록�
   await page.getByRole("button", REGISTER).click();
   await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", ENTER).click();
+  // 편지 → 등록 신청 → 등록증 덮개가 겹쳐 열렸다 닫혀도 뒤 페이지 스크롤이 풀려 있다(2026-11-03 PC 제보)
+  await expect(page.locator("[data-stage-overlay]")).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.style.overflow))
+    .toBe("");
+  // 별을 아직 안 골랐으면 아무 별 하나 위에서 누르는 손짓
   await speedUpAnimations(page);
+  const star = page.locator("[data-star-hint]");
+  await fastForwardUntil(page, () => star.isVisible());
+  await expect(star).toHaveCSS("pointer-events", "none");
+  await holdHint(star.locator("[data-idle-hint='tap']"), 0.4, () =>
+    page.screenshot({ path: info.outputPath("stardraw-hint-star.png") }),
+  );
+  await page.getByRole("button", { name: "자동", exact: true }).click();
+  await expect(star).toHaveCount(0);
+  await page.getByRole("button", ENTER).click();
   const sheet = page.locator(
     "[aria-label='예측서 제출'][aria-disabled='false']",
   );
