@@ -465,9 +465,18 @@ export function ReturnedPaper({
  * 아래쪽에 붙는 용지 덩어리. 제출을 기다리는 동안은 용지 자체가 단추다(「답안지 제출」): 위쪽 손잡이 막대와 아주 은은한
  * 떠오름으로 알리고, 끌면 손을 따라오며(살짝 기울고 그림자가 짙어진다) 일정 거리·속도를 넘기면 손을 떼도 위로
  * 날아간다. 못 미치면 제자리로 돌아온다. 한 번 누르기(탭·클릭)와 키보드 Enter·Space·↑도 같은 제출이라 끌기가 어려운
- * 사람·마우스·화면 읽기 프로그램도 쓸 수 있다. 조금이라도 끌었으면(TAP_SLOP 넘게) 누르기로 보지 않는다
+ * 사람·마우스·화면 읽기 프로그램도 쓸 수 있다. 조금이라도 끌었으면(TAP_SLOP 넘게) 누르기로 보지 않는다.
+ *
+ * 마우스(2026-11-03 사용자 제보: PC에서 빨리 끌거나 마우스가 벗어나면 제출이 안 됐다):
+ * - 속도는 손을 떼기 직전 SPEED_WINDOW 안의 움직임으로 잰다. 예전에는 마지막 움직임 한 번과 뗀 자리를 비교해,
+ *   빨리 튕기면 둘이 같은 자리라 속도 0으로 읽혀 거리가 모자라면 제자리로 돌아왔다.
+ * - 마우스로 위로 끌었으면(TAP_SLOP 넘게) 거리·속도와 상관없이 낸다. 마우스는 휴대폰처럼 실수로 쓸리는 일이 없다.
+ * - 붙잡기가 풀리거나(창 밖에서 뗌) 취소되면 마지막으로 본 자리에서 뗀 것으로 본다
  */
 const TAP_SLOP = 8;
+const SPEED_WINDOW = 100;
+
+type Sample = { y: number; t: number };
 
 export function Sheet({
   sheet,
@@ -484,25 +493,36 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const [drag, setDrag] = useState<number | null>(null);
-  const start = useRef<{ y: number; t: number; lastY: number; lastT: number }>(
-    null,
-  );
+  /** 누른 자리, 마우스인지, 마지막으로 본 자리, 최근 SPEED_WINDOW 남짓의 움직임 */
+  const start = useRef<{
+    y: number;
+    mouse: boolean;
+    last: Sample;
+    trail: Sample[];
+  }>(null);
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!awaiting) return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const at = { y: e.clientY, t: e.timeStamp };
     start.current = {
       y: e.clientY,
-      t: e.timeStamp,
-      lastY: e.clientY,
-      lastT: e.timeStamp,
+      mouse: e.pointerType === "mouse",
+      last: at,
+      trail: [at],
     };
     setDrag(0);
   };
   const move = (e: ReactPointerEvent<HTMLDivElement>) => {
     const s = start.current;
     if (!s) return;
-    s.lastY = e.clientY;
-    s.lastT = e.timeStamp;
+    s.last = { y: e.clientY, t: e.timeStamp };
+    s.trail.push(s.last);
+    // 창보다 오래된 움직임은 버리되 하나는 남긴다(창 바로 앞 자리부터 잰다)
+    while (
+      s.trail.length > 2 &&
+      e.timeStamp - (s.trail[1]?.t ?? 0) > SPEED_WINDOW
+    )
+      s.trail.shift();
     // 위로만 따라온다(아래로는 조금만 늘어난다)
     const dy = e.clientY - s.y;
     setDrag(dy < 0 ? dy : dy * 0.2);
@@ -511,11 +531,18 @@ export function Sheet({
     const s = start.current;
     start.current = null;
     if (!s) return;
-    const dy = e.clientY - s.y;
-    const dt = Math.max(1, e.timeStamp - s.lastT);
-    const v = (e.clientY - s.lastY) / dt;
-    const tap = Math.abs(dy) <= TAP_SLOP && e.type === "pointerup";
-    if (tap || -dy > FX.swipeDistance || v < -FX.swipeVelocity) onSwiped();
+    // 뗀 자리: pointerup이면 그 자리, 취소·붙잡기 풀림이면 마지막으로 본 자리
+    const released = e.type === "pointerup";
+    const last = s.last;
+    const y = released ? e.clientY : last.y;
+    const t = released ? e.timeStamp : last.t;
+    const dy = y - s.y;
+    const first = s.trail.find((p) => t - p.t <= SPEED_WINDOW) ?? last;
+    const v = (y - first.y) / Math.max(1, t - first.t);
+    const tap = Math.abs(dy) <= TAP_SLOP && released;
+    const mouseUp = s.mouse && dy < -TAP_SLOP;
+    if (tap || mouseUp || -dy > FX.swipeDistance || v < -FX.swipeVelocity)
+      onSwiped();
     setDrag(null);
   };
   const dragging = drag !== null;
@@ -548,6 +575,7 @@ export function Sheet({
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
+        onLostPointerCapture={up}
         onKeyDown={(e) => {
           if (
             awaiting &&
