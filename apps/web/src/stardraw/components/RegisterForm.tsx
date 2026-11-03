@@ -123,7 +123,7 @@ export function RegisterForm({
         {!signed && !help && (
           <p
             data-register-note
-            className="sd-text-in mx-auto mt-2 max-w-sm break-keep px-4 text-center text-sm text-white/70 leading-relaxed [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:leading-snug"
+            className="sd-text-in mx-auto mt-2 max-w-sm break-keep px-4 text-center text-sm text-white/70 leading-relaxed [@media(max-height:700px)]:text-xs [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:leading-snug"
           >
             {APPLY_NOTE}
           </p>
@@ -167,7 +167,7 @@ export function RegisterForm({
                   <th className="w-24 border border-slate-400/70 bg-slate-800/5 px-2 py-2 text-left font-semibold">
                     서명
                   </th>
-                  <td className="relative h-16 [@media(max-height:700px)]:h-14 border border-slate-400/70 px-2">
+                  <td className="relative h-16 [@media(max-height:700px)]:h-12 border border-slate-400/70 px-2">
                     {/* 도장 자리: 서식에 찍힌 「(인)」 */}
                     <span
                       aria-hidden="true"
@@ -275,7 +275,7 @@ function Row({
       </th>
       <td
         data-register-field={data}
-        className="h-8 break-keep border border-slate-400/70 px-2 py-1.5 [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:py-1"
+        className="h-8 break-keep border border-slate-400/70 px-2 py-1.5 [@media(max-height:700px)]:h-6 [@media(max-height:700px)]:py-0.5"
       >
         {children}
       </td>
