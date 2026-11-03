@@ -56,6 +56,8 @@ export function CubeOnlineApp() {
   const [roomFromUrl, setRoomFromUrl] = useState<string | null | undefined>(
     undefined,
   );
+  /** 초대 링크에 실린 방장 연결 아이디(`k`). 옛 링크면 없다 */
+  const [hostFromUrl, setHostFromUrl] = useState<string | undefined>();
   const [roomCode, setRoomCode] = useState("");
   const [phone, setPhone] = useState(false);
   const [room, setRoom] = useState<CubeRoom | null>(null);
@@ -64,8 +66,10 @@ export function CubeOnlineApp() {
   const transportRef = useRef<Transport | null>(null);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("room");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("room");
     setRoomFromUrl(code);
+    setHostFromUrl(params.get("k") ?? undefined);
     setRoomCode(code ?? randomId(16));
     setPhone(touchOnly());
   }, []);
@@ -95,6 +99,7 @@ export function CubeOnlineApp() {
         transport,
         clock: raceClock,
         isHost,
+        ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
         name: trimmed,
         scrambler: scrambleInWorker,
         botPlan: planInWorker,
@@ -121,7 +126,7 @@ export function CubeOnlineApp() {
   }, [state?.settings.n, state]);
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-cube-online={state?.status ?? phase}
@@ -149,11 +154,6 @@ export function CubeOnlineApp() {
 
         {!phone && phase === "name" && roomFromUrl !== undefined && (
           <section className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4">
-            <p className="text-sm">
-              {isHost
-                ? "방을 만들고 친구에게 링크를 보내세요. 2~8명이 같은 섞기로 겨룹니다."
-                : "친구의 경주 방에 들어갑니다."}
-            </p>
             <input
               value={name}
               maxLength={NAME_MAX}
@@ -175,12 +175,12 @@ export function CubeOnlineApp() {
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다. 새로고침해 다시 해 보세요.
+            연결하지 못했습니다
           </p>
         )}
         {room?.hostLeft && (
           <p role="status" className="text-center text-amber-300 text-sm">
-            방장이 나갔습니다. 방장이 돌아오면 이어집니다.
+            방장 연결이 끊김
           </p>
         )}
         {phase === "room" && room && !state && (
@@ -212,7 +212,8 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
   const state = room.state;
   const [botLevel, setBotLevel] = useState<BotLevel>("intermediate");
   const [link, setLink] = useState("");
-  useEffect(() => setLink(inviteUrl(roomCode)), [roomCode]);
+  // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게)
+  useEffect(() => setLink(inviteUrl(roomCode, room.me)), [roomCode, room.me]);
   if (!state) return null;
   const s = state.settings;
   const host = room.isHost;
@@ -284,11 +285,6 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                 빈자리 모두 채우기
               </button>
             </div>
-          )}
-          {host && !bots && (
-            <p className="mt-2 text-white/50 text-xs">
-              컴퓨터는 2×2·3×3만 있습니다.
-            </p>
           )}
         </div>
       </section>

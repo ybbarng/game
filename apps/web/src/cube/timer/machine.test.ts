@@ -44,6 +44,25 @@ describe("TimerMachine — 살펴보기 없음", () => {
     expect(types()).toEqual(["ready", "start", "stop"]);
   });
 
+  it("멈춤 입력 시각을 넘기면 처리가 늦어도 그 시각으로 잰다", () => {
+    const { clock, m } = setup();
+    holdAndStart(clock, m);
+    clock.advance(5_000);
+    // 멈춤 입력은 30ms 전에 일어났다
+    m.press(clock.now() - 30);
+    expect(m.view().last?.ms).toBe(5_000 - 30);
+  });
+
+  it("떼기 시각을 넘기면 시작 시각이 그 시각이다", () => {
+    const { clock, m } = setup();
+    m.press();
+    clock.advance(301);
+    m.release(clock.now() - 20);
+    clock.advance(1_000);
+    m.press();
+    expect(m.view().last?.ms).toBe(1_020);
+  });
+
   it("준비 시간이 되기 전에 떼면 취소된다", () => {
     const { clock, m, types } = setup();
     m.press();

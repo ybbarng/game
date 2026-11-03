@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addSession,
   addSolve,
+  adoptStored,
   currentSession,
   emptyBook,
   exportBook,
@@ -13,6 +14,8 @@ import {
   type Solve,
   STORAGE_KEY,
   saveBook,
+  selectEvent,
+  selectSession,
   setNote,
   setPenalty,
   solvesOf,
@@ -89,8 +92,24 @@ describe("저장", () => {
   it("저장소가 막혀도 오류 없이 빈 기록장", () => {
     const storage = new MemoryStorage();
     storage.fail = true;
-    expect(() => saveBook(emptyBook(), asStorage(storage))).not.toThrow();
+    expect(saveBook(emptyBook(), asStorage(storage))).toBe(false);
     expect(loadBook(asStorage(storage))).toEqual(emptyBook());
+    storage.fail = false;
+    expect(saveBook(emptyBook(), asStorage(storage))).toBe(true);
+  });
+
+  it("다른 탭의 기록은 받고, 이 탭에서 고른 종목·세션은 둔다", () => {
+    let mine = selectSession(
+      addSession(selectEvent(emptyBook(), "222")),
+      "222-2",
+    );
+    mine = addSolve(mine, solve("a", 1));
+    const other = addSolve(addSolve(emptyBook(), solve("a", 1)), solve("b", 2));
+    const next = adoptStored(mine, other);
+    expect(next.solves.map((s) => s.id)).toEqual(["a", "b"]);
+    expect(next.event).toBe("222");
+    // 이 탭이 만든 세션이 저장본에 아직 없으면 그 종목 기본 세션으로 돌아간다
+    expect(currentSession(next)).toBe("222-1");
   });
 
   it("깨진 값이나 다른 버전은 빈 기록장", () => {

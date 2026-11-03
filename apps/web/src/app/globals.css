@@ -67,6 +67,12 @@ html:has([data-game="yut"]) body {
   background: #1f0d07;
 }
 
+/* 큐브 맞추기 화면: 어두운 회색 책상 */
+html:has([data-game="cube"]),
+html:has([data-game="cube"]) body {
+  background: #171717;
+}
+
 /* 윷놀이: 윷가락이 공중에서 돌다 떨어지고(--spin만큼 돈다), 말·결과가 톡 튀어나온다 */
 @keyframes yut-toss {
   0% {

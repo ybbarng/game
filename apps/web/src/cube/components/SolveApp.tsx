@@ -44,14 +44,13 @@ function randomSeed(): number {
 }
 
 const PHASE_HINT: Record<string, string> = {
-  free: "「섞기」를 누르거나 Enter. 맞춘 큐브는 마음대로 돌려 볼 수 있습니다.",
-  inspect:
-    "살펴보기(15초). 큐브 돌리기(x·y·z)와 보기만 됩니다. 면을 돌리면 시간이 시작됩니다.",
-  ready: "면을 돌리면 시간이 시작됩니다.",
+  free: "",
+  inspect: "살펴보는 중",
+  ready: "준비",
   solving: "맞추는 중",
-  memo: "외우는 중. 면은 돌릴 수 없고 큐브 돌리기·보기만 됩니다. 다 외웠으면 Space(시작).",
-  blindSolve: "스티커가 모두 가려졌습니다. 다 맞췄다고 생각하면 Space(끝).",
-  done: "끝. 「섞기」로 다음 판.",
+  memo: "외우는 중",
+  blindSolve: "가린 채 맞추는 중",
+  done: "끝",
 };
 
 export function SolveApp({ mode }: { mode: SolveMode }) {
@@ -66,6 +65,8 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const [, tick] = useState(0);
   const viewRef = useRef<CubeView | null>(null);
   const replayTimers = useRef<number[]>([]);
+  /** 섞기 요청 번호. 답이 왔을 때 번호가 바뀌었으면(크기를 바꿨거나 화면을 떠났으면) 그 답을 버린다 */
+  const scrambleRequest = useRef(0);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -95,7 +96,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   useEffect(() => {
     setRecords(loadRecords(mode, n));
     sync();
-    return () => session.dispose();
+    return () => {
+      scrambleRequest.current++;
+      session.dispose();
+    };
   }, [session, mode, n, sync]);
 
   // 표가 필요한 섞기(2×2·3×3)는 화면을 열 때 워커에서 미리 만들어 둔다
@@ -121,18 +125,19 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     stopReplay();
     setPreparing(true);
     setNotice(null);
+    const id = ++scrambleRequest.current;
+    const stale = () => id !== scrambleRequest.current || session.disposed;
     const seed = randomSeed();
     try {
       const s = await scrambleInWorker(eventFor(n, mode), seed);
-      if (session.n !== n) return;
+      if (stale()) return;
       session.start(s.text, seed);
       sync();
-      if (!s.official)
-        setNotice("이 크기의 섞기는 아직 대회 방식(무작위 상태)과 다릅니다.");
+      if (!s.official) setNotice("임시 섞기");
     } catch {
-      setNotice("섞기를 만들지 못했습니다. 다시 눌러 주세요.");
+      if (!stale()) setNotice("섞기를 만들지 못했습니다");
     } finally {
-      setPreparing(false);
+      if (id === scrambleRequest.current) setPreparing(false);
     }
   }, [preparing, n, mode, session, sync, stopReplay]);
 
@@ -140,7 +145,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
       const r = session.input(move, notation);
       if (r === "blocked") {
-        setNotice("외우는 동안에는 면을 돌릴 수 없습니다. 다 외웠으면 Space.");
+        setNotice("외우는 동안에는 면을 돌릴 수 없습니다");
         return false;
       }
       return true;
@@ -213,7 +218,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   }, null);
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-cube-phase={phase}
@@ -231,12 +236,15 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
             <select
               data-cube-size
               value={n}
+              disabled={preparing}
               onChange={(e) => {
                 stopReplay();
+                scrambleRequest.current++;
+                setPreparing(false);
                 setN(Number(e.target.value));
                 e.target.blur();
               }}
-              className="rounded bg-white/10 px-2 py-1"
+              className="rounded bg-white/10 px-2 py-1 disabled:opacity-60"
             >
               {SIZES.map((s) => (
                 <option key={s} value={s} className="bg-neutral-800">
@@ -292,9 +300,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               className="min-h-10 break-keep text-center font-mono text-sm text-white/80"
               data-cube-scramble={session.scramble}
             >
-              {preparing
-                ? "섞기 준비 중… (처음에는 몇 초 걸립니다)"
-                : session.scramble || " "}
+              {preparing ? "섞기 준비 중…" : session.scramble || " "}
             </p>
             <p className="break-keep text-center text-white/55 text-xs">
               {replaying ? "다시 보는 중" : PHASE_HINT[phase]}
@@ -326,8 +332,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
 
           <aside className="flex flex-col gap-2 text-sm" data-cube-records>
             <h2 className="font-semibold">
-              {n}×{n} 기록{" "}
-              <span className="text-white/50 text-xs">(이 기기)</span>
+              {n}×{n} 기록
             </h2>
             <dl className="grid grid-cols-3 gap-1 text-center">
               <Stat label="최고" value={formatMs(best ?? undefined)} />
@@ -338,7 +343,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               />
             </dl>
             {records.length === 0 ? (
-              <p className="text-white/50 text-xs">아직 기록이 없습니다.</p>
+              <p className="text-white/50 text-xs">아직 기록이 없습니다</p>
             ) : (
               <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
                 {records.slice(0, 30).map((r, i) => (
@@ -347,7 +352,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                     className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
                   >
                     <span className="w-6 text-right text-white/40 text-xs">
-                      {records.length - i}
+                      {r.no ?? records.length - i}
                     </span>
                     <span className="w-16 font-mono tabular-nums">
                       {formatMs(resultMs(r))}

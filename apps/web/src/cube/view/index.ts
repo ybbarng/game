@@ -10,4 +10,5 @@ export function loadCubeView(): Promise<typeof import("./cube-view")> {
 
 export type { CubeView } from "./cube-view";
 export * from "./geometry";
+export * from "./swipe";
 export * from "./types";

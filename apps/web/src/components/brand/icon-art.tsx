@@ -1,5 +1,6 @@
 import { BaseballIconArt } from "@/baseball/icon-art";
 import { ChessPawnArt } from "@/chess/icon-art";
+import { CubeIconArt } from "@/cube/icon-art";
 import { GalaxyIconArt } from "@/galaxy/icon-art";
 import { GostopIconArt } from "@/gostop/components/GostopIcon";
 import { CHO_GLYPH, HAN_GLYPH } from "@/janggi/icon-glyphs";
@@ -497,10 +498,12 @@ export function IconArt({
     | "baseball"
     | "stardraw"
     | "yut"
+    | "cube"
     | "galaxy"
     | "onecard"
     | "center";
 }) {
+  if (game === "cube") return <CubeIconArt maskable={maskable} />;
   if (game === "nyrongppong") return <NyrongppongIconArt maskable={maskable} />;
   if (game === "gostop") return <GostopIconArt maskable={maskable} />;
   if (game === "minhwatu") return <MinhwatuIconArt maskable={maskable} />;

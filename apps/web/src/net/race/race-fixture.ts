@@ -174,6 +174,8 @@ export function setupRace(
   configure?: (net: DelayNet) => void,
   /** 기기마다 다른 게임(시작 상태를 다르게 만드는 기기 등). 없으면 `sortPuzzle` */
   gameFor?: (id: string) => RaceGame<number, number[]>,
+  /** 기기마다 다르게 덮어쓸 설정(설정이 다른 기기) */
+  optionsFor?: (id: string) => Partial<RaceOptions>,
 ): { clock: ManualClock; net: DelayNet; devices: Device[] } {
   const clock = new ManualClock();
   const net = new DelayNet(clock);
@@ -192,7 +194,7 @@ export function setupRace(
       clock: deviceClock,
       race: "r1",
       players: ids,
-      options: { ...TEST_OPTIONS, ...options },
+      options: { ...TEST_OPTIONS, ...options, ...optionsFor?.(id) },
       random: () => `${id}-${counter++}`,
     });
     return { id, session, transport, clock: deviceClock };

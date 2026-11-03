@@ -160,6 +160,43 @@ describe("경주 틀: 시작 상태", () => {
     });
   });
 
+  it("2명에서 한 기기의 제한 시간이 다르면 섞기 어긋남으로 판이 열리지 않는다", () => {
+    const { clock, devices } = setupRace(2, {}, undefined, undefined, (id) =>
+      id === "p2" ? { timeLimitMs: 40_000 } : {},
+    );
+    runUntil(clock, finished(devices));
+    const [a, b] = devices as [Device, Device];
+    const ra = a.session.snapshot().result as RaceResult;
+    const rb = b.session.snapshot().result as RaceResult;
+    expect(ra.cancelled).toBeDefined();
+    expect(rb.cancelled).toBeDefined();
+    expect(ra.players.p2).toMatchObject({
+      status: "forfeit",
+      reason: "섞기 어긋남",
+    });
+    expect(rb.players.p1).toMatchObject({
+      status: "forfeit",
+      reason: "섞기 어긋남",
+    });
+  });
+
+  it("3명에서 한 기기만 살펴보기 시간이 다르면 그 사람만 빠지고 남은 둘이 경주한다", () => {
+    const { clock, devices } = setupRace(3, {}, undefined, undefined, (id) =>
+      id === "p3" ? { inspectionMs: 0 } : {},
+    );
+    const [a, b] = devices as [Device, Device, Device];
+    autoSolve(clock, a, 300, 100);
+    autoSolve(clock, b, 500, 100);
+    runUntil(clock, finished([a, b]));
+    const r = a.session.snapshot().result as RaceResult;
+    expect(b.session.snapshot().result).toEqual(r);
+    expect(r.ranking).toEqual(["p1", "p2", "p3"]);
+    expect(r.players.p3).toMatchObject({
+      status: "forfeit",
+      reason: "섞기 어긋남",
+    });
+  });
+
   it("3명에서 한 기기의 시작 상태만 다르면 그 사람만 빠지고 남은 둘이 새 섞기로 경주한다", () => {
     const { clock, devices } = setupRace(3, {}, undefined, (id) =>
       withFingerprint(id === "p3"),

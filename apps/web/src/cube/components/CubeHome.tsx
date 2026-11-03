@@ -8,7 +8,7 @@ import { CubeNet } from "./CubeNet";
 
 /**
  * 큐브 첫 화면(`/cube`). 게임 첫 화면 틀(GameHome)과 같은 모양이지만 고를 것이 달라(혼자·타이머·블라인드·배우기)
- * 따로 둔다. 아직 게임 목록에는 올리지 않는다.
+ * 따로 둔다.
  */
 
 interface Item {
@@ -23,7 +23,7 @@ const ITEMS: Item[] = [
   {
     icon: "🧊",
     title: "혼자 맞추기",
-    detail: "키보드로 가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7)",
+    detail: "가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7)",
     href: "/cube/solo",
     primary: true,
   },
@@ -84,7 +84,10 @@ const HERO_FACES = [
 export function CubeHome() {
   const settings = useCubeSettings();
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white">
+    <main
+      data-game="cube"
+      className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white"
+    >
       <div className="flex w-full max-w-sm flex-col gap-3">
         <BackToGames />
         <div className="mb-2 flex flex-col items-center text-center">
@@ -96,10 +99,15 @@ export function CubeHome() {
             className="h-24 w-auto"
           />
           <h1 className="mt-2 font-bold text-2xl">큐브 맞추기</h1>
-          <p className="mt-1 font-medium text-sm text-white/85">
-            키보드 두 손으로 돌리는 3D 큐브. 기록은 이 기기에만 남습니다.
-          </p>
         </div>
+        <a
+          href="/cube/intro"
+          data-cube-intro-link
+          className="flex items-center justify-between gap-2 rounded-2xl border border-amber-300/50 bg-amber-400/15 px-4 py-2.5 text-sm hover:bg-amber-400/25"
+        >
+          <b>처음 오셨나요?</b>
+          <span aria-hidden>→</span>
+        </a>
         {ITEMS.map((item) => {
           const body = (
             <>

@@ -40,6 +40,23 @@ describe("기록", () => {
     expect(loadRecords("blind", 3, store)).toHaveLength(0);
   });
 
+  it("번호는 상한에 닿아도 이어지고, 번호 없는 옛 기록은 오래된 것부터 매긴다", () => {
+    const store = memoryStorage();
+    for (let i = 0; i < MAX_RECORDS + 3; i++) addRecord(rec(i), store);
+    const list = loadRecords("solo", 3, store);
+    expect(list[0]?.no).toBe(MAX_RECORDS + 3);
+    expect(list.at(-1)?.no).toBe(4);
+
+    const old = memoryStorage();
+    old.setItem(
+      "cube.records.v1",
+      JSON.stringify({ "solo-3": [rec(3), rec(2), rec(1)] }),
+    );
+    expect(loadRecords("solo", 3, old).map((r) => r.no)).toEqual([3, 2, 1]);
+    expect(addRecord(rec(4), old)[0]?.no).toBe(4);
+    expect(loadRecords("solo", 3, old).map((r) => r.no)).toEqual([4, 3, 2, 1]);
+  });
+
   it("5번 평균: 가장 좋은·나쁜 것을 빼고(벌점 포함), DNF 하나는 가장 나쁜 것", () => {
     expect(
       averageOf(

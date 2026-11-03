@@ -10,6 +10,8 @@
  *   R={x,1,1,1}, L={x,n,n,3}, U={y,1,1,1}, D={y,n,n,3}, F={z,1,1,1}, B={z,n,n,3}, x={x,1,n,1}.
  */
 
+import type { CubeMove } from "@game/cube-engine";
+
 export type { Axis, CubeMove } from "@game/cube-engine";
 
 export type Normal = "+x" | "-x" | "+y" | "-y" | "+z" | "-z";
@@ -77,4 +79,11 @@ export interface CubeViewOptions {
   hidden?: "black" | "gray";
   /** 회전 하나가 끝날 때마다(줄을 빨리 넘긴 수 포함). 지금까지 끝낸 수를 준다 */
   onMoveDone?: (done: number) => void;
+  /**
+   * 밀어서 돌리기(휴대폰). 있으면 손가락·펜으로 칸 위를 밀 때 그 층의 수를, 빈 곳을 밀 때 큐브 전체 돌리기를 준다.
+   * 장면은 스스로 돌리지 않는다(받은 쪽이 엔진에 넣고 받아들였으면 `enqueue`한다). 없으면 끌기는 보기만 돌린다
+   */
+  onSwipe?: (move: CubeMove) => void;
+  /** 마우스로 끌어도 큐브 전체를 돌린다(키 배치 「사용자」의 마우스 돌리기). 기본 끔: 마우스 끌기는 보기만 */
+  swipeMouse?: boolean;
 }

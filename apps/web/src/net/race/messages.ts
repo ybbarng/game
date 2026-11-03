@@ -33,6 +33,8 @@ export type RaceMessage =
       commits: Record<string, string>;
       /** 보낸 기기가 만든 시작 상태의 지문(`RaceGame.startFingerprint`). 게임이 안 쓰면 없다 */
       start?: string;
+      /** 보낸 기기의 판정 설정 지문(살펴보기·제한 시간 등). 다르면 섞기 어긋남과 같이 본다 */
+      rules?: string;
     }
   | {
       type: "race-moves";
@@ -84,11 +86,13 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
         commits[id] = c;
       }
       if (raw.start !== undefined && !isStr(raw.start)) return null;
+      if (raw.rules !== undefined && !isStr(raw.rules)) return null;
       return {
         type: raw.type,
         ...base,
         commits,
         ...(isStr(raw.start) ? { start: raw.start } : {}),
+        ...(isStr(raw.rules) ? { rules: raw.rules } : {}),
       };
     }
     case "race-moves": {

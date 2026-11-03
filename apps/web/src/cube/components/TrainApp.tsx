@@ -195,7 +195,7 @@ export function TrainApp() {
   const stats = cur ? book[cur.c.id] : undefined;
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4"
         data-train-set={set.set}
@@ -296,7 +296,7 @@ export function TrainApp() {
                   )}
                   {phase === "gaveUp" && (
                     <span className="rounded-full bg-red-500/20 px-4 py-1 text-red-200">
-                      포기(실패로 남김)
+                      포기
                     </span>
                   )}
                   <button
@@ -361,12 +361,7 @@ export function TrainApp() {
                 <Stat label="실패" value={String(stats.fails)} />
               </dl>
             )}
-            <h2 className="font-semibold">
-              {set.title} 상황{" "}
-              <span className="text-white/50 text-xs">
-                {pick === "picked" ? "(눌러서 고르기)" : "(이 기기 기록)"}
-              </span>
-            </h2>
+            <h2 className="font-semibold">{set.title} 상황</h2>
             <ul
               data-train-stats
               className="flex max-h-[28rem] flex-col gap-0.5 overflow-y-auto pr-1"
@@ -417,10 +412,7 @@ export function TrainApp() {
                 );
               })}
             </ul>
-            <p className="text-white/40 text-xs">
-              최고 · 최근 평균 · 실패. 결과 모양으로 채점하므로 다른 공식으로
-              풀어도 됩니다.
-            </p>
+            <p className="text-white/40 text-xs">최고 · 최근 평균 · 실패</p>
           </aside>
         </div>
       </main>

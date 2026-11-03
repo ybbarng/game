@@ -109,6 +109,14 @@ export type Cue =
   | "cubeSolved"
   /** 큐브: 살펴보기 8초·12초 알림 "삐" */
   | "cubeInspect"
+  /** 큐브 타이머: 손을 떼 시간이 가기 시작한 "삑" */
+  | "cubeTimerStart"
+  /** 큐브 타이머: 시간을 멈춘 "뚝" */
+  | "cubeTimerStop"
+  /** 큐브 핑거 트릭: 박자(메트로놈) 한 번 "똑" */
+  | "cubeBeat"
+  /** 큐브 핑거 트릭: 공식 첫 수의 센 박 "딱" */
+  | "cubeBeatAccent"
   /** 은하 한 바퀴: 주사위 둘이 유리 판 위를 구르다 멈추는 "따그르르 톡" */
   | "galaxyDice"
   /** 은하 한 바퀴: 우주선이 칸 하나를 지나는 작은 "틱" */
@@ -163,6 +171,8 @@ export type Cue =
 export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   starTick: "repeat",
   cubeTurn: "repeat",
+  cubeBeat: "repeat",
+  cubeBeatAccent: "repeat",
   galaxyTick: "repeat",
 };
 
@@ -219,6 +229,10 @@ export const CUE_LABELS: Record<Cue, string> = {
   cubeTurn: "큐브: 면 돌기",
   cubeSolved: "큐브: 맞춤",
   cubeInspect: "큐브: 살펴보기 알림",
+  cubeTimerStart: "큐브 타이머: 시작",
+  cubeTimerStop: "큐브 타이머: 멈춤",
+  cubeBeat: "큐브 핑거 트릭: 박자",
+  cubeBeatAccent: "큐브 핑거 트릭: 센 박",
   galaxyDice: "은하 한 바퀴: 주사위",
   galaxyTick: "은하 한 바퀴: 칸 지나기",
   galaxyBuy: "은하 한 바퀴: 별 사기",
@@ -292,10 +306,16 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
-  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 말 놓기(같은 나무 소리 갈래)보다 약 10dB 작게
-  cubeTurn: 2,
+  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리 가운데값보다 약 11dB 작게(-42dB 근처).
+  // 0.03초짜리 딸깍이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다(2026-11-04 /sounds에서 잼)
+  cubeTurn: 11,
   cubeSolved: 0,
   cubeInspect: 10,
+  cubeTimerStart: 10,
+  cubeTimerStop: 8,
+  // 박자는 면 돌기처럼 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게
+  cubeBeat: 11,
+  cubeBeatAccent: 10,
   galaxyDice: 0,
   galaxyTick: 12,
   galaxyBuy: 0,
@@ -1476,6 +1496,24 @@ function render(cue: Cue, v: Voice): void {
     case "cubeInspect":
       // 살펴보기 시간 알림 "삐"
       tone(v, 980, 0, 0.06, { gain: 0.2, attack: 0.003 });
+      break;
+    case "cubeTimerStart":
+      // 시간이 가기 시작하는 높고 짧은 "삑"
+      tone(v, 1320, 0, 0.07, { gain: 0.2, attack: 0.003 });
+      break;
+    case "cubeTimerStop":
+      // 멈춘 "뚝": 낮은 음에 손바닥으로 치는 작은 딸깍
+      tone(v, 660, 0, 0.12, { gain: 0.2, attack: 0.003 });
+      woodClack(v, 0, 0.5, 0.9);
+      break;
+    case "cubeBeat":
+      // 메트로놈 "똑"
+      woodClack(v, 0, 0.8, 1.2);
+      break;
+    case "cubeBeatAccent":
+      // 공식 첫 수의 센 박 "딱"(조금 높고 맑게)
+      woodClack(v, 0, 0.8, 1.7);
+      tone(v, 1600, 0, 0.04, { gain: 0.05, attack: 0.002 });
       break;
     case "yutHome":
       // 말이 참먹이를 지나 나는 "띠링"

@@ -36,7 +36,7 @@ function setup() {
     scrambler: fake,
   });
   clock.advance(100);
-  return { clock, host, guest };
+  return { clock, net, host, guest };
 }
 
 /** 내 경주가 풀리면 `delay` 뒤 섞기의 거꾸로를 한 번에 둔다 */
@@ -105,6 +105,17 @@ describe("큐브 경주 방", () => {
     host.removePlayer("g");
     expect(host.state?.settings.n).toBe(2);
     expect(host.state?.players).toHaveLength(2);
+  });
+
+  it("연결 아이디가 컴퓨터 아이디 모양(bot2)인 손님은 받지 않아 방이 멈추지 않는다", () => {
+    const { clock, net, host, guest } = setup();
+    net.join("bot2").send({ type: "cube-hello", name: "끼어든 사람" });
+    clock.advance(100);
+    host.addBot("expert");
+    clock.advance(100);
+    // 받았다면 손님은 그 뒤 방 상태(사람 bot2가 든 표)를 모두 버려 v가 멈춘다
+    expect(guest.state?.v).toBe(host.state?.v);
+    expect(guest.state?.players.map((p) => p.id)).toEqual(["h", "g", "bot1"]);
   });
 
   it("4×4 이상으로 바꾸면 컴퓨터를 뺀다(컴퓨터는 2×2·3×3만)", () => {
@@ -265,6 +276,44 @@ describe("큐브 경주 방: 남의 결과를 꾸미지 못한다", () => {
     expect(rooms.b.rounds[0]?.result).toEqual(rooms.h.rounds[0]?.result);
   });
 
+  it("판을 여는 방 상태에서 방장이 b에게만 a의 기기를 h로 바꿔 보내면 b는 그 표를 받지 않는다(사람은 자기 기기만)", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    // 방장 h가 b에게 가는 판 여는 방 상태만 고쳐 쓴다
+    net.filter = (m, from, to) => {
+      const msg = m as { type?: string; state?: RoomState };
+      if (
+        from === "h" &&
+        to === "b" &&
+        msg.type === "cube-room" &&
+        msg.state?.status === "racing"
+      )
+        for (const p of msg.state.players) if (p.id === "a") p.device = "h";
+      return m;
+    };
+    const rooms = Object.fromEntries(
+      (["h", "a", "b"] as const).map((id) => [
+        id,
+        new CubeRoom({
+          transport: net.join(id),
+          clock,
+          isHost: id === "h",
+          name: id,
+          scrambler: fake,
+          ...(id === "h" ? { settings: { n: 2, inspection: false } } : {}),
+        }),
+      ]),
+    ) as Record<"h" | "a" | "b", CubeRoom>;
+    clock.advance(100);
+    const lobby = rooms.b.state?.v;
+    expect(rooms.h.startRound()).toBe(true);
+    clock.advance(100);
+    expect(rooms.a.state?.status).toBe("racing");
+    expect(rooms.b.state?.v).toBe(lobby);
+    expect(rooms.b.state?.players.find((p) => p.id === "a")?.device).toBe("a");
+    expect(rooms.b.session()).toBeUndefined();
+  });
+
   it("판 도중 방장이 참가자 표를 바꾼 방 상태를 보내도 그 판은 열 때의 표대로 받는다", () => {
     const { clock, t, rooms } = attackSetup();
     solveWhenReleased(clock, rooms.a, 300);
@@ -284,6 +333,60 @@ describe("큐브 경주 방: 남의 결과를 꾸미지 못한다", () => {
     roundOver(clock, rooms);
     expect(rooms.b.rounds[0]?.result.players.a?.status).toBe("done");
     expect(rooms.b.rounds[0]?.result).toEqual(rooms.h.rounds[0]?.result);
+  });
+
+  /**
+   * 먼저 꾸민 손님: b가 들어오는 순간(hello를 받자마자) M이 "방장은 M"인 방 상태를 b에게 보낸다.
+   * 방장 h의 답은 늦게 닿는다(h→b 200ms, M→b 5ms)
+   */
+  function earlyForger(hostId?: string) {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    net.setDelay("h", "b", 200);
+    net.setDelay("M", "b", 5);
+    const h = new CubeRoom({
+      transport: net.join("h"),
+      clock,
+      isHost: true,
+      name: "h",
+      scrambler: fake,
+    });
+    const M = net.join("M");
+    M.onMessage((raw, from) => {
+      const m = raw as { type?: string };
+      if (m.type !== "cube-hello" || from !== "b") return;
+      const state: RoomState = forged(h.state as RoomState, {
+        v: 1000,
+        host: "M",
+        players: [
+          { id: "M", name: "M", device: "M" },
+          { id: "b", name: "b", device: "b" },
+        ],
+      });
+      M.send({ type: "cube-room", state }, "b");
+    });
+    const b = new CubeRoom({
+      transport: net.join("b"),
+      clock,
+      isHost: false,
+      ...(hostId ? { hostId } : {}),
+      name: "b",
+      scrambler: fake,
+    });
+    clock.advance(500);
+    return { h, b };
+  }
+
+  it("링크에 방장 아이디가 없으면(옛 링크) 방장보다 먼저 방 상태를 보낸 손님을 방장으로 믿는다(못 막는 것)", () => {
+    const { b } = earlyForger();
+    expect(b.state?.host).toBe("M");
+  });
+
+  it("링크에 방장 아이디가 있으면 방장보다 먼저 방 상태를 보낸 손님을 믿지 않는다", () => {
+    const { h, b } = earlyForger("h");
+    expect(b.state?.host).toBe("h");
+    expect(b.state?.v).toBe(h.state?.v);
+    expect(b.state?.players.map((p) => p.id)).toEqual(["h", "b"]);
   });
 
   it("손님이 보낸 round:0 방 상태로 남의 판 기록을 지우거나 판 진행을 바꾸지 못한다", () => {

@@ -3,6 +3,7 @@
 import { isRotation, parseMoves, solvedCube } from "@game/cube-engine";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 import {
   algTokens,
@@ -27,18 +28,6 @@ function moveCount(alg: string): number {
   return parseMoves(3, alg).filter((m) => !isRotation(3, m)).length;
 }
 
-/** 박자 소리 하나(짧은 딸깍) */
-function click(ctx: AudioContext, accent: boolean) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.frequency.value = accent ? 1600 : 1000;
-  gain.gain.setValueAtTime(0.25, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.06);
-}
-
 type Phase = "idle" | "running" | "done";
 
 export function FingersApp() {
@@ -53,7 +42,6 @@ export function FingersApp() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [laps, setLaps] = useState<number[]>([]);
   const lastMark = useRef(0);
-  const audio = useRef<AudioContext | null>(null);
 
   const tokens = useMemo(() => algTokens(drill.alg), [drill.alg]);
   const fingers = useMemo(() => drill.fingers.split(/\s+/), [drill.fingers]);
@@ -104,22 +92,14 @@ export function FingersApp() {
   // 메트로놈: 한 수에 한 박, 공식 첫 수에 센 박
   useEffect(() => {
     if (!metronome) return;
-    try {
-      audio.current ??= new AudioContext();
-    } catch {
-      return;
-    }
-    const ctx = audio.current;
-    void ctx.resume();
     let beat = 0;
+    // 박자 소리는 따로 켜고 끄므로 큐브 소리 설정과 상관없이 낸다(전체 음량은 따른다)
     const id = window.setInterval(() => {
-      click(ctx, beat % Math.max(1, moves) === 0);
+      play(beat % Math.max(1, moves) === 0 ? "cubeBeatAccent" : "cubeBeat");
       beat++;
     }, 1000 / tps);
     return () => window.clearInterval(id);
   }, [metronome, tps, moves]);
-
-  useEffect(() => () => void audio.current?.close(), []);
 
   const tpsOf = (ms: number) => moves / (ms / 1000);
   const best = laps.length > 0 ? Math.max(...laps.map(tpsOf)) : 0;
@@ -127,7 +107,7 @@ export function FingersApp() {
     laps.length > 0 ? laps.reduce((a, b) => a + b, 0) / laps.length : 0;
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-fingers={drill.id}
@@ -138,7 +118,6 @@ export function FingersApp() {
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">핑거 트릭</h1>
-          <span className="text-white/50 text-xs">실물 큐브를 들고 합니다</span>
         </header>
 
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
@@ -299,10 +278,7 @@ export function FingersApp() {
                     {laps.length}/{reps}
                   </span>
                 </div>
-                <p className="break-keep text-white/50 text-xs">
-                  Space로 시작한 뒤, 공식을 한 번 끝낼 때마다 Space. 한 번은{" "}
-                  {moves}수입니다.
-                </p>
+                <p className="text-white/50 text-xs">한 번 {moves}수</p>
                 {laps.length > 0 && (
                   <>
                     <LapChart laps={laps} tpsOf={tpsOf} reps={reps} />
@@ -331,7 +307,7 @@ export function FingersApp() {
                 )}
                 {phase === "done" && (
                   <p role="status" className="font-semibold text-emerald-300">
-                    {reps}번 끝! 「다시」로 한 번 더.
+                    {reps}번 끝
                   </p>
                 )}
               </div>

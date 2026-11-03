@@ -1,6 +1,6 @@
 "use client";
 
-import type { CubeMove, StickerMask } from "@game/cube-engine";
+import { type CubeMove, formatMove, type StickerMask } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -27,6 +27,10 @@ import { KeyGuide } from "./KeyGuide";
  * 엔진 상태가 기준이다. 키를 누르면 `onMove`가 엔진에 수를 넣고(그 순간이 시간 기준), 받아들였으면 이 조각이
  * 3D 장면에 같은 수를 넣어 따라 돌린다. 섞기·맞춘 상태로·가리기처럼 한꺼번에 바뀌면 부모가 `syncToken`을 바꿔
  * 장면을 엔진 상태로 다시 칠한다.
+ *
+ * 휴대폰은 큐브를 밀어서 돌린다: 칸 위를 밀면 그 칸이 든 층이, 빈 곳을 밀면 큐브 전체가 민 방향으로 돈다
+ * (계산은 `view/swipe.ts`). 마우스 끌기는 보기만 돌리고, 키 배치 「사용자」에서 마우스 돌리기를 켠 사람만
+ * 마우스로도 큐브 전체를 돌린다. 3D를 못 그리는 기기에는 밀기도 없다(아래 표기 단추로 돌린다).
  */
 
 const DEFAULT_VIEW = { yaw: 32, pitch: 26 };
@@ -91,6 +95,11 @@ export function CubePlay({
   live.current = { state, mask, settings, onMove, onCommand, locked, onView };
 
   useEffect(() => setKeymap(loadKeymap()), []);
+  // 마우스 돌리기(키 배치 「사용자」)는 배치를 읽은 뒤·장면을 만든 뒤에 알린다
+  useEffect(() => {
+    if (ready)
+      viewRef.current?.setOptions({ swipeMouse: keymap?.mouseRotate ?? false });
+  }, [keymap, ready]);
   const interpreter = useMemo(
     () => (keymap ? new KeyInterpreter(n, keymap) : null),
     [n, keymap],
@@ -119,6 +128,10 @@ export function CubePlay({
           stickerless: s.stickerless,
           moveMs: s.moveMs,
           hidden: s.hidden,
+          onSwipe: (m) => {
+            if (live.current.locked) return;
+            moveRef.current(m, formatMove(n, m));
+          },
         });
         view.setStickers(
           stickersFromState(n, live.current.state, live.current.mask),
@@ -155,17 +168,23 @@ export function CubePlay({
     );
   }, [syncToken, n]);
 
+  /** 수 하나를 엔진에 넣고, 받아들였으면 장면이 따라 돈다(키·단추·밀기가 함께 쓴다) */
+  const moveRef = useRef((move: CubeMove, notation: string) => {
+    const c = live.current;
+    if (!c.onMove(move, notation)) {
+      playCubeCue(c.settings, "invalid");
+      return;
+    }
+    viewRef.current?.enqueue(move);
+    playCubeCue(c.settings, "cubeTurn");
+  });
+
   /** 수·명령 하나를 처리한다(키보드와 화면 단추가 함께 쓴다) */
   const handleRef = useRef((r: KeyResult) => {
     const c = live.current;
     setDepth(interpreterRef.current?.pendingDepth ?? null);
     if (r.kind === "move") {
-      if (!c.onMove(r.move, r.notation)) {
-        playCubeCue(c.settings, "invalid");
-        return;
-      }
-      viewRef.current?.enqueue(r.move);
-      playCubeCue(c.settings, "cubeTurn");
+      moveRef.current(r.move, r.notation);
       return;
     }
     if (r.kind !== "command") return;
@@ -186,6 +205,8 @@ export function CubePlay({
       setLit(code);
       window.setTimeout(() => setLit((c) => (c === code ? null : c)), 160);
     };
+    /** 살짝 보기를 일으킨 키(떼면 보기를 되돌린다) */
+    let peekKey: string | null = null;
     const detach = attachKeyboard(
       window,
       () => {
@@ -195,13 +216,19 @@ export function CubePlay({
       },
       (r, e) => {
         flash(e.code);
+        // 살짝 보기는 누르는 동안만: 지금 배치에서 그 동작을 일으킨 키를 기억해 두고 떼면 되돌린다
+        if (
+          r.kind === "command" &&
+          (r.command === "peekBack" || r.command === "peekDown")
+        )
+          peekKey = e.code;
         handleRef.current(r);
       },
     );
-    // 살짝 보기는 누르는 동안만
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code.startsWith("Arrow"))
-        viewRef.current?.setView(DEFAULT_VIEW.yaw, DEFAULT_VIEW.pitch);
+      if (peekKey === null || e.code !== peekKey) return;
+      peekKey = null;
+      viewRef.current?.setView(DEFAULT_VIEW.yaw, DEFAULT_VIEW.pitch);
     };
     window.addEventListener("keyup", onKeyUp);
     return () => {
@@ -227,7 +254,7 @@ export function CubePlay({
       >
         {failed ? (
           <p data-cube-no3d className="p-6 text-center text-sm text-white/70">
-            이 기기에서는 3D를 그릴 수 없습니다. 아래 펼친 그림을 보며 맞추세요.
+            이 기기에서는 3D를 그릴 수 없습니다
           </p>
         ) : (
           <canvas

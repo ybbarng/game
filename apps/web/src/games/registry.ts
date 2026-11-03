@@ -17,7 +17,8 @@ export type GameEntry = {
     | "stardraw"
     | "yut"
     | "galaxy"
-    | "onecard";
+    | "onecard"
+    | "cube";
   name: string;
   englishName: string;
   /** 목록에 보일 한 줄 설명 */
@@ -145,5 +146,14 @@ export const GAMES: readonly GameEntry[] = [
       "주사위를 굴려 계절 하늘을 돌며 별을 사고 정거장을 짓는다. 별자리를 이으면 이용료가 오른다",
     players: "2~4명",
     path: "/galaxy",
+  },
+  {
+    id: "cube",
+    name: "큐브 맞추기",
+    englishName: "Cube",
+    tagline:
+      "키보드 두 손으로 돌리는 3D 큐브. 실물 타이머·배우기·공식 훈련, 같은 섞기로 경주",
+    players: "1~8명",
+    path: "/cube",
   },
 ];

@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import {
   addSession,
   addSolve,
+  adoptStored,
   currentSession,
   emptyBook,
   exportBook,
@@ -16,6 +17,7 @@ import {
   loadBook,
   removeSolve,
   type Solve,
+  STORAGE_KEY,
   saveBook,
   selectEvent,
   selectSession,
@@ -37,7 +39,7 @@ import {
   type TimerEventOut,
   TimerMachine,
 } from "./machine";
-import { playTimerCue, unlockTimerAudio } from "./sound";
+import { playTimerCue } from "./sound";
 import {
   formatAverage,
   formatSingle,
@@ -65,25 +67,52 @@ function newId(): string {
   return `${Date.now().toString(36)}-${Math.floor(Math.random() * 2 ** 32).toString(36)}`;
 }
 
+/** 글을 쓰지 않는 입력(체크박스 등). 여기에 포커스가 남아도 스페이스바는 타이머가 받는다 */
+const NON_TEXT_INPUTS = new Set([
+  "checkbox",
+  "radio",
+  "button",
+  "submit",
+  "reset",
+  "file",
+  "range",
+  "color",
+  "image",
+]);
+
 /** 입력 칸에 글을 쓰는 중인지(그때는 스페이스바를 타이머가 가로채지 않는다) */
 function typing(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el) return false;
+  if (el.tagName === "INPUT")
+    return !NON_TEXT_INPUTS.has((el as HTMLInputElement).type);
   return (
-    el.tagName === "INPUT" ||
-    el.tagName === "TEXTAREA" ||
-    el.tagName === "SELECT" ||
-    el.isContentEditable
+    el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable
   );
+}
+
+/** 이보다 오래된 입력 시각은 믿지 않는다 */
+const MAX_INPUT_LAG_MS = 1000;
+
+/**
+ * 입력이 일어난 시각. 이벤트의 timeStamp는 performance.now와 같은 기준이라, 처리기가 늦게 불려도
+ * 누른 순간으로 잰다. 기준이 다른 값(옛 브라우저의 1970년 기준, 시험의 가짜 시계)이면 지금 시각을 쓴다.
+ */
+function inputTime(timeStamp: number): number {
+  const now = performance.now();
+  const lag = now - timeStamp;
+  return timeStamp > 0 && lag >= 0 && lag < MAX_INPUT_LAG_MS ? timeStamp : now;
 }
 
 export function CubeTimerApp() {
   const [book, setBook] = useState<TimerBook>(emptyBook);
   const [loaded, setLoaded] = useState(false);
   const [scramble, setScramble] = useState<Scramble | null>(null);
+  const [scrambleFailed, setScrambleFailed] = useState(false);
   const [view, setView] = useState<MachineView | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const event = book.event;
   const info = EVENT_INFO[event];
@@ -95,23 +124,32 @@ export function CubeTimerApp() {
   const latest = useRef({ book, scramble });
   latest.current = { book, scramble };
 
+  // 고친 기록장은 바로 저장한다. 처리기가 한 그림 안에서 여러 번 불러도 앞의 결과 위에 쌓는다
   const update = useCallback((fn: (b: TimerBook) => TimerBook) => {
-    setBook((b) => {
-      const next = fn(b);
-      saveBook(next);
-      return next;
-    });
+    const next = fn(latest.current.book);
+    latest.current.book = next;
+    setBook(next);
+    setSaveFailed(!saveBook(next));
   }, []);
 
   const scrambleRequest = useRef(0);
   const nextScramble = useCallback((ev: TimerEvent) => {
     const req = ++scrambleRequest.current;
     setScramble(null);
-    void scrambleProvider(ev, newSeed()).then((s) => {
-      // 그 사이 다시 요청했으면(종목을 바꿨으면) 버린다
-      if (scrambleRequest.current === req) setScramble(s);
-    });
+    setScrambleFailed(false);
+    scrambleProvider(ev, newSeed()).then(
+      (s) => {
+        // 그 사이 다시 요청했으면(종목을 바꿨으면) 버린다
+        if (scrambleRequest.current === req) setScramble(s);
+      },
+      () => {
+        if (scrambleRequest.current === req) setScrambleFailed(true);
+      },
+    );
   }, []);
+
+  /** 지금 도는 풀이의 섞기(시작할 때 붙잡아 둔다) */
+  const runScramble = useRef<Scramble | null>(null);
 
   const onMachine = useCallback(
     (e: TimerEventOut) => {
@@ -122,27 +160,34 @@ export function CubeTimerApp() {
           if (sound) playTimerCue(e.at === 8_000 ? "warn8" : "warn12");
           break;
         case "start":
+          runScramble.current = s;
           if (sound) playTimerCue("start");
           break;
         case "stop": {
           if (sound) playTimerCue("stop");
-          const solve: Solve = {
-            id: newId(),
-            at: Date.now(),
-            event: b.event,
-            session: currentSession(b),
-            ms: Math.round(e.result.ms),
-            penalty: e.result.penalty,
-            scramble: s?.text ?? "",
-            official: s?.official ?? false,
-            ...(e.result.inspectionMs !== undefined
-              ? { inspectionMs: Math.round(e.result.inspectionMs) }
-              : {}),
-            ...(e.result.memoMs !== undefined
-              ? { memoMs: Math.round(e.result.memoMs) }
-              : {}),
-          };
-          update((x) => addSolve(x, solve));
+          const used = runScramble.current;
+          runScramble.current = null;
+          // 섞기 없이 잰 기록은 남기지 않는다(섞기가 없으면 시작하지 못하게 막지만 한 번 더 지킨다)
+          if (used) {
+            // 기록은 1/100초로 버리므로(9f1) 밀리초도 반올림하지 않고 버린다
+            const solve: Solve = {
+              id: newId(),
+              at: Date.now(),
+              event: b.event,
+              session: currentSession(b),
+              ms: Math.floor(e.result.ms),
+              penalty: e.result.penalty,
+              scramble: used.text,
+              official: used.official,
+              ...(e.result.inspectionMs !== undefined
+                ? { inspectionMs: Math.floor(e.result.inspectionMs) }
+                : {}),
+              ...(e.result.memoMs !== undefined
+                ? { memoMs: Math.floor(e.result.memoMs) }
+                : {}),
+            };
+            update((x) => addSolve(x, solve));
+          }
           nextScramble(b.event);
           break;
         }
@@ -178,6 +223,18 @@ export function CubeTimerApp() {
     return () => machine.dispose();
   }, [machine, nextScramble]);
 
+  // 다른 탭에서 기록장을 고치면 다시 읽는다(이 탭의 옛 기록장으로 덮어쓰지 않게)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY && e.key !== null) return;
+      const next = adoptStored(latest.current.book, loadBook());
+      latest.current.book = next;
+      setBook(next);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   // 설정·종목을 상태 기계에 알린다(대기 중에 바뀐 것은 다음 누름부터 적용)
   useEffect(() => {
     machine.setOptions({
@@ -190,6 +247,12 @@ export function CubeTimerApp() {
   const phase = view?.phase ?? "idle";
   const active = phase !== "idle";
 
+  /** 대기에서 새 풀이를 시작할 수 있는지(섞기가 나와 있어야 한다) */
+  const canBegin = useCallback(
+    () => machine.view().phase !== "idle" || latest.current.scramble !== null,
+    [machine],
+  );
+
   // 키보드: 스페이스바로 살펴보기·준비·시작, 도는 중에는 아무 키나 멈춤, Esc는 살펴보기 그만두기
   useEffect(() => {
     if (!loaded) return;
@@ -197,15 +260,15 @@ export function CubeTimerApp() {
       if (machine.view().phase === "running") {
         if (e.repeat) return;
         e.preventDefault();
-        machine.press();
+        machine.press(inputTime(e.timeStamp));
         return;
       }
       if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === " ") {
+        // 포커스가 남은 단추·체크박스가 눌리지 않게 막는다
         e.preventDefault();
-        if (e.repeat) return;
-        unlockTimerAudio();
-        machine.press();
+        if (e.repeat || !canBegin()) return;
+        machine.press(inputTime(e.timeStamp));
       } else if (e.key === "Escape") {
         machine.cancel();
       }
@@ -214,7 +277,7 @@ export function CubeTimerApp() {
       if (e.key !== " ") return;
       if (typing(e.target) && machine.view().phase === "idle") return;
       e.preventDefault();
-      machine.release();
+      machine.release(inputTime(e.timeStamp));
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -222,16 +285,19 @@ export function CubeTimerApp() {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [loaded, machine]);
+  }, [loaded, machine, canBegin]);
 
   // 누름(휴대폰은 길게 누르기)
   const pointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    unlockTimerAudio();
-    machine.press();
+    if (!canBegin()) return;
+    machine.press(inputTime(e.timeStamp));
   };
-  const pointerUp = () => machine.release();
+  const pointerUp = (e: React.PointerEvent) =>
+    machine.release(inputTime(e.timeStamp));
+  // 브라우저가 누르기를 가로채면(스크롤·알림 등) 떼기가 아니므로 시작하지 않고 대기로 돌아간다
+  const pointerCancel = () => machine.cancel();
 
   return (
     <div
@@ -244,7 +310,15 @@ export function CubeTimerApp() {
         <header className="flex flex-wrap items-center gap-3">
           <BackToGames />
           <h1 className="font-bold text-xl">큐브 타이머</h1>
-          <span className="text-sm text-white/50">실물 큐브 시간 재기</span>
+          {saveFailed && (
+            <span
+              role="status"
+              className="text-amber-300 text-sm"
+              data-cube-save-failed
+            >
+              저장하지 못했습니다
+            </span>
+          )}
         </header>
 
         <EventPicker
@@ -261,15 +335,16 @@ export function CubeTimerApp() {
             <ScrambleBox
               n={info.size}
               scramble={scramble}
+              failed={scrambleFailed}
               onNext={() => nextScramble(event)}
             />
             <TimerFace
               view={view}
               blind={info.blind}
               hideRunning={book.settings.hideRunning}
-              inspection={book.settings.inspection && !info.blind}
               onPointerDown={pointerDown}
               onPointerUp={pointerUp}
+              onPointerCancel={pointerCancel}
             />
           </section>
 
@@ -318,6 +393,7 @@ export function CubeTimerApp() {
           hideRunning={book.settings.hideRunning}
           onPointerDown={pointerDown}
           onPointerUp={pointerUp}
+          onPointerCancel={pointerCancel}
         />
       )}
     </div>
@@ -359,10 +435,12 @@ function EventPicker({
 function ScrambleBox({
   n,
   scramble,
+  failed,
   onNext,
 }: {
   n: number;
   scramble: Scramble | null;
+  failed: boolean;
   onNext: () => void;
 }) {
   const size =
@@ -402,7 +480,9 @@ function ScrambleBox({
                 {m}
               </span>
             ))
-          : "섞는 중…"}
+          : failed
+            ? "섞기를 만들지 못했습니다"
+            : "섞는 중…"}
       </p>
       {scramble && (
         <div className="flex justify-center">
@@ -485,17 +565,17 @@ interface FaceProps {
   blind: boolean;
   hideRunning: boolean;
   onPointerDown: (e: React.PointerEvent) => void;
-  onPointerUp: () => void;
+  onPointerUp: (e: React.PointerEvent) => void;
+  onPointerCancel: () => void;
 }
 
 function TimerFace({
   view,
-  blind,
-  inspection,
   hideRunning,
   onPointerDown,
   onPointerUp,
-}: FaceProps & { inspection: boolean }) {
+  onPointerCancel,
+}: FaceProps) {
   const { text, tone, sub } = faceText(view, hideRunning, 0);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: 휴대폰 길게 누르기 자리다. 키보드(스페이스바)는 창 전체에서 받는다
@@ -503,7 +583,7 @@ function TimerFace({
       className="flex min-h-56 cursor-pointer touch-none select-none flex-col items-center justify-center gap-2 rounded-xl bg-white/5 p-6"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       data-cube-face
     >
@@ -517,14 +597,23 @@ function TimerFace({
         {text}
       </div>
       {sub && <div className="text-white/60">{sub}</div>}
-      <p className="break-keep text-center text-sm text-white/50">
-        스페이스바를 누르고 있다가 초록색이 되면 떼서 시작, 아무 키나 눌러 멈춤.
-        휴대폰은 여기를 길게 누르다 뗍니다.
-        {inspection && " 첫 누름은 15초 살펴보기를 시작합니다."}
-        {blind && " 블라인드: 도는 중 첫 누름은 외우기 끝, 다음 누름은 멈춤."}
-      </p>
     </div>
   );
+}
+
+/** 덮개 아래에 보이는 상태 이름 */
+function phaseName(view: MachineView, blind: boolean): string {
+  switch (view.phase) {
+    case "inspecting":
+      return "살펴보는 중";
+    case "ready":
+      return "준비";
+    case "running":
+      if (!blind) return "";
+      return view.memoAt === null ? "외우는 중" : "맞추는 중";
+    default:
+      return "";
+  }
 }
 
 function ActiveOverlay({
@@ -533,26 +622,18 @@ function ActiveOverlay({
   hideRunning,
   onPointerDown,
   onPointerUp,
+  onPointerCancel,
 }: FaceProps & { view: MachineView }) {
   const now = useNow(true);
   const { text, tone, sub } = faceText(view, hideRunning, now);
-  const hint =
-    view.phase === "inspecting"
-      ? "살펴보는 중 · 스페이스바를 누르고 있다가 떼면 시작 · Esc 그만두기"
-      : view.phase === "running"
-        ? blind && view.memoAt === null
-          ? "아무 키나 화면 누르기: 외우기 끝"
-          : "아무 키나 화면 누르기: 멈춤"
-        : view.phase === "ready"
-          ? "떼면 시작"
-          : "누르고 있기…";
+  const hint = phaseName(view, blind);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: 도는 중 화면 어디를 눌러도 멈추게 하는 덮개다. 키보드는 창 전체에서 받는다
     <div
       className="fixed inset-0 z-50 flex touch-none select-none flex-col items-center justify-center gap-4 bg-neutral-950"
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       data-cube-overlay
     >
@@ -588,7 +669,10 @@ function SessionBar({
         <select
           className="flex-1 rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
           value={currentSession(book)}
-          onChange={(e) => onSelect(e.target.value)}
+          onChange={(e) => {
+            onSelect(e.target.value);
+            e.currentTarget.blur();
+          }}
         >
           {list.map((s) => (
             <option key={s.id} value={s.id}>
@@ -657,7 +741,7 @@ function SolveList({
   if (solves.length === 0)
     return (
       <p className="rounded-xl bg-white/5 p-3 text-sm text-white/50">
-        아직 기록이 없습니다.
+        아직 기록이 없습니다
       </p>
     );
   const list = solves.map((s, i) => ({ s, no: i + 1 })).reverse();
@@ -816,7 +900,7 @@ function SettingsPanel({
     <details className="rounded-xl bg-white/5 p-3 text-sm">
       <summary className="cursor-pointer text-white/70">설정·내보내기</summary>
       <div className="mt-3 flex flex-col gap-2">
-        {check("15초 살펴보기(블라인드는 없음)", "inspection")}
+        {check("15초 살펴보기", "inspection")}
         {check("도는 동안 숫자 숨기기", "hideRunning")}
         {check("소리", "sound")}
         <label className="flex items-center gap-2">
@@ -824,7 +908,11 @@ function SettingsPanel({
           <select
             className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
             value={s.holdMs}
-            onChange={(e) => onChange({ holdMs: Number(e.target.value) })}
+            onChange={(e) => {
+              onChange({ holdMs: Number(e.target.value) });
+              // 고른 뒤 포커스를 풀어 스페이스바가 다시 타이머로 가게 한다
+              e.currentTarget.blur();
+            }}
           >
             {HOLD_CHOICES.map((ms) => (
               <option key={ms} value={ms}>
@@ -861,10 +949,6 @@ function SettingsPanel({
           />
         </div>
         {message && <p className="text-white/60">{message}</p>}
-        <p className="text-white/40 text-xs">
-          기록은 이 기기에만 저장됩니다. 다른 기기로 옮기려면 내보내기 파일을
-          가져오세요(같은 기록은 겹치지 않습니다).
-        </p>
       </div>
     </details>
   );

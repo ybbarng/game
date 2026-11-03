@@ -280,12 +280,26 @@ export function loadBook(storage?: Storage): TimerBook {
   }
 }
 
-export function saveBook(book: TimerBook, storage?: Storage): void {
+/** 남겼으면 true. 남기지 못해도(저장소가 막힘·가득 참) 타이머는 돌고, 화면이 알린다 */
+export function saveBook(book: TimerBook, storage?: Storage): boolean {
   try {
     (storage ?? localStorage).setItem(STORAGE_KEY, JSON.stringify(book));
+    return true;
   } catch {
-    // 남기지 못해도 타이머는 돈다.
+    return false;
   }
+}
+
+/**
+ * 다른 탭이 남긴 기록장을 받아들인다. 기록·세션·설정은 저장된 것을 따르고,
+ * 이 탭에서 고른 종목·세션은 그대로 둔다(다른 탭에서 종목을 바꿔도 이 화면이 따라 바뀌지 않게).
+ */
+export function adoptStored(mine: TimerBook, stored: TimerBook): TimerBook {
+  return {
+    ...stored,
+    event: mine.event,
+    current: { ...stored.current, ...mine.current },
+  };
 }
 
 // ---------- 내보내기·가져오기 ----------

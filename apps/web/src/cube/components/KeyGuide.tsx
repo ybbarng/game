@@ -117,8 +117,7 @@ export function KeyGuide({
         </div>
       ))}
       <p className="mt-1 break-keep text-white/55 text-xs">
-        배치 「{PRESET_LABEL[keymap.preset]}」 · 흐린 글은 Shift와 함께
-        {keymap.preset === "notation" ? " · Alt는 넓게(w)" : ""}
+        배치 「{PRESET_LABEL[keymap.preset]}」
         {COMMAND_KEYS.map((c) => {
           const chords = chordsFor(keymap, c);
           if (chords.length === 0) return null;

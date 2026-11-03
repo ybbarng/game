@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 import { FingersApp } from "@/cube/components/FingersApp";
 
-// 아직 게임 목록에 올리지 않았다(docs/47 12절). 올릴 때 검색 막기를 푼다
 export const metadata: Metadata = {
   title: { absolute: "큐브 핑거 트릭" },
-  robots: { index: false, follow: false },
+  description:
+    "실물 큐브를 들고 손가락 쓰는 법을 반복 연습한다. 수마다 손가락 표기, 반복마다 시간·초당 수, 박자 소리.",
 };
 
 export default function CubeFingersPage() {

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 import { CubeOnlineApp } from "@/cube/online/CubeOnlineApp";
 
-// 아직 게임 목록에 올리지 않았다(docs/47 12절). 올릴 때 검색 막기를 푼다
 export const metadata: Metadata = {
   title: { absolute: "큐브 온라인 경주" },
-  robots: { index: false, follow: false },
+  description:
+    "친구 2~8명이 같은 섞기로 겨루는 큐브 경주. 서버 없이, 섞기는 모두가 함께 정한다.",
 };
 
 export default function CubeOnlinePage() {

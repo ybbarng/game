@@ -2,19 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { KeyGuide } from "@/cube/components/KeyGuide";
 import {
   attachKeyboard,
-  codeLabel,
   KeyInterpreter,
   type Keymap,
   type KeyResult,
   loadKeymap,
   PRESET_LABEL,
   presetKeymap,
-  resolveAction,
   saveKeymap,
 } from "@/cube/input";
-import { actionLabel, isAvailable } from "@/cube/input/actions";
 import type { CubeView } from "@/cube/view";
 import {
   type CubeMove,
@@ -38,45 +36,6 @@ const QUALITIES: { id: Quality; label: string }[] = [
   { id: "high", label: "높음" },
   { id: "medium", label: "보통" },
   { id: "low", label: "낮음" },
-];
-const KEY_ROWS = [
-  ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7"],
-  [
-    "KeyQ",
-    "KeyW",
-    "KeyE",
-    "KeyR",
-    "KeyT",
-    "KeyY",
-    "KeyU",
-    "KeyI",
-    "KeyO",
-    "KeyP",
-  ],
-  [
-    "KeyA",
-    "KeyS",
-    "KeyD",
-    "KeyF",
-    "KeyG",
-    "KeyH",
-    "KeyJ",
-    "KeyK",
-    "KeyL",
-    "Semicolon",
-  ],
-  [
-    "KeyZ",
-    "KeyX",
-    "KeyC",
-    "KeyV",
-    "KeyB",
-    "KeyN",
-    "KeyM",
-    "Comma",
-    "Period",
-    "Slash",
-  ],
 ];
 
 const inverse = (m: CubeMove): CubeMove => ({
@@ -247,39 +206,10 @@ export function CubeLab() {
     saveKeymap(km);
   };
 
-  const keyCell = (code: string) => {
-    const plain = resolveAction(keymap, key(code));
-    const shift = resolveAction(keymap, key(code, true));
-    const usable = (a: string | null) => a !== null && isAvailable(n, a);
-    return (
-      <div
-        key={code}
-        data-key={code}
-        className={`flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded border text-[10px] leading-tight transition-colors ${
-          lit === code
-            ? "border-amber-300 bg-amber-300/30"
-            : "border-white/15 bg-white/5"
-        }`}
-      >
-        <span className="text-white/40">{codeLabel(code)}</span>
-        <span className="font-semibold text-xs">
-          {usable(plain) && plain ? actionLabel(plain) : ""}
-        </span>
-        <span className="text-white/50">
-          {usable(shift) && shift ? actionLabel(shift) : ""}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-dvh bg-neutral-900">
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-5 text-white">
         <h1 className="font-bold text-xl">큐브 그리기 시험</h1>
-        <p className="break-keep text-sm text-white/70">
-          키를 치면 큐브가 돕니다(엔진 없이 그리기만). 큐브를 끌면 보는 각만
-          바뀌고, 놓으면 제자리로 돌아옵니다.
-        </p>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-1">
             크기
@@ -347,8 +277,7 @@ export function CubeLab() {
               data-cube-no3d
               className="flex h-full items-center justify-center break-keep rounded border border-white/15 px-6 text-center text-sm text-white/70"
             >
-              이 기기에서는 3D 큐브를 그릴 수 없습니다. 키는 그대로 받고 돌린
-              수를 셉니다.
+              이 기기에서는 3D 큐브를 그릴 수 없습니다
             </p>
           )}
           <canvas
@@ -390,37 +319,9 @@ export function CubeLab() {
             ))}
             {keymap.preset === "custom" && <span>{PRESET_LABEL.custom}</span>}
           </div>
-          <div className="flex flex-col gap-1" data-cube-keys>
-            {KEY_ROWS.map((row, i) => (
-              <div
-                key={row[0]}
-                className="flex gap-1"
-                style={{ paddingLeft: `${i * 2}%` }}
-              >
-                {row.map(keyCell)}
-              </div>
-            ))}
-          </div>
-          <p className="break-keep text-white/50 text-xs">
-            칸의 굵은 글은 그냥 칠 때, 아래 흐린 글은 Shift와 함께 칠 때.
-            {keymap.preset === "notation"
-              ? " Alt를 함께 치면 넓게(w) 돕니다."
-              : " Alt+면 키는 넓게(w)."}{" "}
-            ⌫ 되돌리기 · Esc 맞춘 상태로 · Enter 섞기.
-          </p>
+          <KeyGuide n={n} keymap={keymap} lit={lit} />
         </section>
       </main>
     </div>
   );
-}
-
-function key(code: string, shift = false) {
-  return {
-    code,
-    shiftKey: shift,
-    altKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    repeat: false,
-  };
 }

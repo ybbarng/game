@@ -81,14 +81,13 @@ export function CubeSettingsApp() {
   };
 
   return (
-    <div className="min-h-dvh bg-neutral-900 text-white">
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5">
         <header className="flex items-center gap-3">
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
             ← 큐브
           </a>
           <h1 className="font-bold text-xl">큐브 설정</h1>
-          <span className="text-white/50 text-xs">이 기기에 저장됩니다</span>
         </header>
 
         {keymap && <KeymapSection keymap={keymap} setKeymap={setKeymap} />}
@@ -157,7 +156,6 @@ export function CubeSettingsApp() {
                 updateSettings({ ...settings, moveMs: Number(e.target.value) })
               }
             />
-            <span className="text-white/50 text-xs">0이면 바로 바뀜</span>
           </label>
           <div className="flex flex-wrap items-center gap-2">
             그리기 품질
@@ -189,8 +187,8 @@ export function CubeSettingsApp() {
           </div>
           {(
             [
-              ["stickerless", "스티커 없는 모양(색 플라스틱 조각)"],
-              ["sound", "큐브 소리(면 돌기·맞춤·살펴보기 알림)"],
+              ["stickerless", "스티커 없는 모양"],
+              ["sound", "큐브 소리"],
               ["inspection", "혼자 맞추기 15초 살펴보기"],
             ] as const
           ).map(([k, label]) => (
@@ -243,7 +241,7 @@ function KeymapSection({
       setKeymap(r.keymap);
       setMessage(
         r.replaced
-          ? `${chordLabel(chord)}는 「${r.replaced}」에 쓰던 키라 그쪽에서 뺐습니다.`
+          ? `${chordLabel(chord)} → 「${capturing}」 · 「${r.replaced}」에서 뺐습니다`
           : `${chordLabel(chord)} → 「${capturing}」`,
       );
       setCapturing(null);
@@ -281,17 +279,26 @@ function KeymapSection({
           {PRESET_LABEL.custom}
         </button>
       </div>
-      <p className="break-keep text-white/60 text-xs">
-        「두 손」은 실물에서 그 면을 돌리는 손으로 치는 빠른 배치, 「표기」는
-        R·U·F 글자 그대로 치는 배치입니다(Shift = 반대, Alt = 넓게).
-        「사용자」에서는 아래 표에서 아무 동작이나 아무 키로 바꿀 수 있습니다.
-      </p>
 
       {keymap.preset === "custom" && (
         <div
           className="flex flex-col gap-3 rounded-xl bg-white/5 p-3"
           data-keymap-editor
         >
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              data-mouse-rotate
+              checked={keymap.mouseRotate}
+              onChange={(e) =>
+                setKeymap({ ...keymap, mouseRotate: e.target.checked })
+              }
+              className="mt-0.5"
+            />
+            <span className="break-keep">
+              마우스로 끌어 큐브 전체 돌리기(x·y·z)
+            </span>
+          </label>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-1">
               동작 목록 크기
@@ -316,7 +323,7 @@ function KeymapSection({
                 type="button"
                 onClick={() => {
                   setKeymap(customFrom(p));
-                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다.`);
+                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다`);
                 }}
                 className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
               >
@@ -371,7 +378,7 @@ function KeymapSection({
                         data-assign={a.id}
                         onClick={() => {
                           setCapturing(a.id);
-                          setMessage("지정할 키를 누르세요(Esc는 그만두기).");
+                          setMessage(null);
                         }}
                         className={cn(
                           "shrink-0 rounded px-2 py-0.5 text-xs",
@@ -380,7 +387,7 @@ function KeymapSection({
                             : "bg-white/10 hover:bg-white/20",
                         )}
                       >
-                        {capturing === a.id ? "키를 누르세요" : "키 지정"}
+                        {capturing === a.id ? "키 기다리는 중" : "키 지정"}
                       </button>
                       {keysOf(keymap, a.id).length > 0 && (
                         <button
@@ -437,7 +444,7 @@ function KeymapSection({
                 if (r.ok) {
                   setKeymap(r.keymap);
                   setImportError(null);
-                  setMessage("배치를 가져왔습니다.");
+                  setMessage("배치를 가져왔습니다");
                 } else setImportError(r.error);
               }}
               className="self-start rounded bg-white/10 px-2 py-1"
