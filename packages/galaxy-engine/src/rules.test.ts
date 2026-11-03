@@ -18,12 +18,15 @@ describe("규칙 문자열", () => {
       [{ ...SHORT_RULES, players: 2 }, "g1-2snw-seasons"],
       [{ ...LONG_RULES, players: 3, seasonal: false }, "g1-3ltn-seasons"],
       [{ ...STANDARD_RULES, time: "fast" }, "g1-4mtw-seasons-t1"],
-      [{ ...STANDARD_RULES, sky: "custom.Ori.CMa" }, "g1-4mtw-custom.Ori.CMa"],
     ];
     for (const [rules, text] of cases) {
       expect(encodeGalaxyRules(rules)).toBe(text);
       expect(decodeGalaxyRules(text)).toEqual({ ok: true, rules });
     }
+    // 쓰기는 하늘을 가리지 않는다(내가 고른 하늘 문자열 모양)
+    expect(
+      encodeGalaxyRules({ ...STANDARD_RULES, sky: "custom.Ori.CMa" }),
+    ).toBe("g1-4mtw-custom.Ori.CMa");
   });
 
   it("형식이 틀린 문자열은 받지 않는다", () => {
@@ -34,6 +37,10 @@ describe("규칙 문자열", () => {
       "g1-4mtw-",
       "g1-4mtw-seasons-t9",
       "y1-2s4b6p",
+      // 없는 하늘, 자료는 있지만 아직 열지 않은 하늘
+      "g1-4mtw-custom.Ori.CMa",
+      "g1-4mtw-nowhere",
+      "g1-4mtw-zodiac",
     ])
       expect(decodeGalaxyRules(text).ok).toBe(false);
   });

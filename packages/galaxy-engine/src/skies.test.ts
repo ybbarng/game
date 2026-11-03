@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { activeCards } from "./cards";
 import { createMatch } from "./match";
 import { STANDARD_RULES } from "./rules";
-import { boardOfSky, OPEN_SKIES, SKIES } from "./skies";
+import { boardOfSky, OPEN_SKIES, SKIES, SKY_IDS } from "./skies";
 
 describe("하늘 자료로 판 만들기(docs/48 5-9)", () => {
   it("하늘마다 별 24개로 판이 서고, 판 값 합이 3,200~3,400이다", () => {
@@ -27,6 +27,11 @@ describe("하늘 자료로 판 만들기(docs/48 5-9)", () => {
     const autumn = activeCards(boardOfSky("autumn"));
     const seasons = activeCards(boardOfSky("seasons"));
     expect(autumn.length).toBeLessThan(seasons.length);
+  });
+
+  it("하늘 id 목록(sky-ids.ts)이 자료 파일과 같다", () => {
+    expect([...SKIES.keys()]).toEqual([...SKY_IDS]);
+    for (const id of OPEN_SKIES) expect(SKY_IDS).toContain(id);
   });
 
   it("처음 여는 하늘로 대국을 만들 수 있다", () => {
