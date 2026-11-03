@@ -137,22 +137,50 @@ export function winsByFours(
   stone: Stone,
   variant: Variant,
   moves: number,
+  guide?: Guide,
 ): boolean {
-  return wins([...board] as Work, stone, variant, moves);
+  return wins([...board] as Work, stone, variant, moves, guide);
 }
 
-function wins(board: Work, stone: Stone, variant: Variant, n: number): boolean {
+/**
+ * 읽기 길잡이: 먼저 해 볼 내 수들과, 이긴 길에서 실제로 둔 내 수를 모으는 곳.
+ * 결과는 길잡이가 없을 때와 같다(먼저 해 보는 순서만 바뀐다). 비슷한 판을 여러 번 읽을 때
+ * 앞 판에서 이긴 길(`used`)을 다음 판의 `prefer`로 넘기면, 그 길이 그대로 통하는 판은 후보를 다 만들지 않고 끝난다
+ */
+export interface Guide {
+  prefer?: ReadonlySet<number>;
+  used?: Set<number>;
+}
+
+function wins(
+  board: Work,
+  stone: Stone,
+  variant: Variant,
+  n: number,
+  guide?: Guide,
+): boolean {
   if (n <= 0) return false;
   const mine = fives(board, stone, variant);
   if (mine.some((at) => canPlace(board, at, stone, variant))) return true;
   if (n === 1) return false;
   const theirs = fives(board, other(stone), variant);
   if (theirs.length >= 2) return false;
-  const tries =
-    theirs.length === 1
-      ? theirs.filter((at) => canPlace(board, at, stone, variant))
-      : fourCandidates(board, stone, variant);
-  return tries.some((at) => winsAfter(board, stone, variant, at, n));
+  if (theirs.length === 1)
+    return theirs.some(
+      (at) =>
+        canPlace(board, at, stone, variant) &&
+        winsAfter(board, stone, variant, at, n, guide),
+    );
+  // 길잡이 수를 먼저 해 본다. 사가 아니면 winsAfter가 바로 거른다.
+  const tried = new Set<number>();
+  for (const at of guide?.prefer ?? []) {
+    if (board[at] !== 0 || !canPlace(board, at, stone, variant)) continue;
+    tried.add(at);
+    if (winsAfter(board, stone, variant, at, n, guide)) return true;
+  }
+  return fourCandidates(board, stone, variant).some(
+    (at) => !tried.has(at) && winsAfter(board, stone, variant, at, n, guide),
+  );
 }
 
 /** `stone`이 `at`에 둔 뒤(이 수를 하나로 센다) 남은 수 안에 이기나. 상대는 모든 막는 수를 해 본다 */
@@ -162,33 +190,45 @@ function winsAfter(
   variant: Variant,
   at: number,
   n: number,
+  guide?: Guide,
 ): boolean {
   board[at] = stone;
   try {
-    if (winningLine(board, at, variant) !== null) return true;
-    const foe = other(stone);
-    // 상대가 바로 다섯이면 진다.
-    if (
-      fives(board, foe, variant).some((p) => canPlace(board, p, foe, variant))
-    )
-      return false;
-    const threats = fives(board, stone, variant).filter((p) =>
-      canPlace(board, p, stone, variant),
-    );
-    // 사가 아니면 상대가 아무 데나 둘 수 있어 이 읽기 밖이다.
-    if (threats.length === 0 || n < 2) return false;
-    // 상대는 다섯 자리 하나를 막는다(금지라 못 막는 자리는 그대로 남는다).
-    const blocks = threats.filter((p) => canPlace(board, p, foe, variant));
-    if (blocks.length < threats.length) return true;
-    return blocks.every((p) => {
-      board[p] = foe;
-      const ok = wins(board, stone, variant, n - 1);
-      board[p] = 0;
-      return ok;
-    });
+    const ok = winsAfterPlaced(board, stone, variant, at, n, guide);
+    if (ok) guide?.used?.add(at);
+    return ok;
   } finally {
     board[at] = 0;
   }
+}
+
+function winsAfterPlaced(
+  board: Work,
+  stone: Stone,
+  variant: Variant,
+  at: number,
+  n: number,
+  guide?: Guide,
+): boolean {
+  if (winningLine(board, at, variant) !== null) return true;
+  const foe = other(stone);
+  // 상대가 바로 다섯이면 진다.
+  if (fives(board, foe, variant).some((p) => canPlace(board, p, foe, variant)))
+    return false;
+  const threats = fives(board, stone, variant).filter((p) =>
+    canPlace(board, p, stone, variant),
+  );
+  // 사가 아니면 상대가 아무 데나 둘 수 있어 이 읽기 밖이다.
+  if (threats.length === 0 || n < 2) return false;
+  // 상대는 다섯 자리 하나를 막는다(금지라 못 막는 자리는 그대로 남는다).
+  const blocks = threats.filter((p) => canPlace(board, p, foe, variant));
+  if (blocks.length < threats.length) return true;
+  return blocks.every((p) => {
+    board[p] = foe;
+    const ok = wins(board, stone, variant, n - 1, guide);
+    board[p] = 0;
+    return ok;
+  });
 }
 
 /** 사로 몰아 `moves`수 안에 이기는 첫 수들(바로 다섯 포함) */
@@ -227,6 +267,32 @@ export function blockFor(
     canPlace(work, p, attacker, variant),
   );
   return threats.find((p) => canPlace(work, p, foe, variant)) ?? null;
+}
+
+/**
+ * `attacker`가 사로 몰아 `moves`수 안에 이기는 길이 있을 때, 그 길을 끊는 상대 자리 모두(금지 자리 제외).
+ * 판의 모든 빈칸을 본다. 빈칸마다 처음 판에서 이긴 길을 길잡이로 먼저 해 보므로, 그 길이 그대로 통하는
+ * 대부분의 빈칸은 빨리 끝난다. 이길 길이 처음부터 없으면 null
+ */
+export function stopsOf(
+  board: readonly (0 | 1 | 2)[],
+  attacker: Stone,
+  variant: Variant,
+  moves: number,
+): number[] | null {
+  const used = new Set<number>();
+  if (!winsByFours(board, attacker, variant, moves, { used })) return null;
+  const work = [...board] as Work;
+  const foe = other(attacker);
+  const stops: number[] = [];
+  for (let at = 0; at < CELLS; at++) {
+    if (!canPlace(work, at, foe, variant)) continue;
+    work[at] = foe;
+    if (!wins(work, attacker, variant, moves, { prefer: used, used }))
+      stops.push(at);
+    work[at] = 0;
+  }
+  return stops;
 }
 
 /**
