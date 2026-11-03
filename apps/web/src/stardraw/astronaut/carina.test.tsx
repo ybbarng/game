@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import data from "../canopus-sky.json";
 import { BureauLogo, WaxSeal } from "../components/BureauMarks";
+import { CanopusChart } from "../components/CanopusSky";
 import {
   CARINA_EDGES,
   CARINA_HEIGHT,
@@ -84,5 +85,12 @@ describe("용골자리 하나의 정의(docs/36 11-39)", () => {
     const figureLines = html.match(/stroke="rgba\(200,220,255,0.16\)"/g) ?? [];
     expect(figureLines).toHaveLength(3 * CARINA_EDGES.length);
     expect(renderToStaticMarkup(<CardSecurity />)).toBe(html);
+  });
+
+  test("성도는 용골자리를 공용 목록의 실제 좌표로 한 번만 그린다(d3-celestial의 용골자리 선은 쓰지 않는다)", () => {
+    const html = renderToStaticMarkup(<CanopusChart />);
+    const group = html.match(/<g[^>]*data-carina-lines[^>]*>(.*?)<\/g>/)?.[1];
+    expect(group?.match(/<path /g)).toHaveLength(CARINA_LINES.length);
+    expect(html).toContain('data-con-label="용골자리"');
   });
 });

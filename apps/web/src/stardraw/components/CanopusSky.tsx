@@ -12,6 +12,11 @@ import {
   transitAfterNoon,
 } from "../astro";
 import {
+  CARINA_LINES,
+  CARINA_STARS,
+  type CarinaStar,
+} from "../astronaut/carina";
+import {
   aboveSeoulRidge,
   type Boat,
   MARADO_BOATS,
@@ -31,7 +36,27 @@ interface Star {
   name?: string;
 }
 const STARS = data.stars as Star[];
-const LINES = data.lines as { con: string; pts: [number, number][] }[];
+const CARINA_NAME = "용골자리";
+/**
+ * 별자리 선. 용골자리는 d3-celestial 선 대신 공용 정의(astronaut/carina.ts)의 잇는 별 목록을 실제 좌표로 그려
+ * 직인·로고·등록증의 용골자리와 같은 별끼리 잇는다(docs/36 11-39)
+ */
+const LINES = (data.lines as { con: string; pts: [number, number][] }[]).filter(
+  (l) => l.con !== CARINA_NAME,
+);
+const CARINA_PTS: [number, number][][] = CARINA_LINES.map((l) =>
+  l.map((k: CarinaStar) => [CARINA_STARS[k].ra, CARINA_STARS[k].dec]),
+);
+/** 용골자리를 다른 별자리보다 또렷하게: 선과 이름표 색 */
+const CARINA_STROKE = "rgba(255,214,150,0.72)";
+const CARINA_LABEL = "rgba(255,222,170,0.95)";
+/** 이름표 글자 뒤 어두운 테두리(선이 글자를 지나가도 읽히게, 2026-11-03 검토) */
+const HALO = {
+  stroke: "#060b16",
+  strokeWidth: 3,
+  strokeLinejoin: "round",
+  paintOrder: "stroke",
+} as const;
 const CANOPUS = data.canopus;
 export const CANOPUS_SKY_SOURCE = data.source;
 
@@ -219,6 +244,20 @@ export function CanopusChart() {
             );
           })}
         </g>
+        <g
+          stroke={CARINA_STROKE}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          fill="none"
+          data-carina-lines
+        >
+          {CARINA_PTS.map((l) => (
+            <path
+              key={l.join()}
+              d={pathOf(l.map(([ra, dec]) => project(ra, dec)))}
+            />
+          ))}
+        </g>
         {STARS.map((s) => {
           if (s.hr === 2326) return null;
           const p = project(s.ra, s.dec);
@@ -234,13 +273,44 @@ export function CanopusChart() {
           );
         })}
         <Glow x={canopus.x} y={canopus.y} r={3.2} color={tempColor(7500)} />
-        <g fill="rgba(200,215,255,0.38)" fontSize="9" textAnchor="middle">
+        <g
+          fill="rgba(200,215,255,0.5)"
+          fontSize="9"
+          textAnchor="middle"
+          {...HALO}
+        >
           {[...LABELED].map((con) => {
-            const pts = LINES.filter((l) => l.con === con)
-              .flatMap((l) => l.pts)
+            const carina = con === CARINA_NAME;
+            const pts = (
+              carina
+                ? CARINA_PTS
+                : LINES.filter((l) => l.con === con).map((l) => l.pts)
+            )
+              .flat()
               .map(([ra, dec]) => project(ra, dec))
               .filter((p) => p.inside);
             if (pts.length < 2) return null;
+            if (carina) {
+              // 모양 가운데에 두면 선 위에 앉는다. 카노푸스–미아플라키두스 선 가운데의 오른쪽 바깥에
+              const [a, b] = (CARINA_PTS[0] ?? []).map(([ra, dec]) =>
+                project(ra, dec),
+              );
+              if (!a || !b) return null;
+              return (
+                <text
+                  key={con}
+                  x={(a.x + b.x) / 2 + 8}
+                  y={(a.y + b.y) / 2 + 8}
+                  textAnchor="start"
+                  fill={CARINA_LABEL}
+                  fontSize={11}
+                  fontWeight={700}
+                  data-con-label={con}
+                >
+                  {con}
+                </text>
+              );
+            }
             const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
             const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length + 12;
             // 글자 양 끝이 둥근 테 안에 들도록 가운데 쪽으로 당긴다(가장자리 별자리 이름이 잘렸다, 2026-11-03 검토)
@@ -253,13 +323,18 @@ export function CanopusChart() {
             let t = 1;
             while (t > 0 && !fits(t)) t -= 0.02;
             return (
-              <text key={con} x={S / 2 + dx * t} y={S / 2 + dy * t}>
+              <text
+                key={con}
+                x={S / 2 + dx * t}
+                y={S / 2 + dy * t}
+                data-con-label={con}
+              >
                 {con}
               </text>
             );
           })}
         </g>
-        <g fill="rgba(255,255,255,0.78)" fontSize="10">
+        <g fill="rgba(255,255,255,0.78)" fontSize="10" {...HALO}>
           {STARS.filter((s) => s.name && NAMES[s.name] && s.hr !== 2326).map(
             (s) => {
               const p = project(s.ra, s.dec);
@@ -282,7 +357,7 @@ export function CanopusChart() {
           </text>
         </g>
         {/* 남쪽 끝 이름은 그 점선을 따라 쓴다(곧은 글자가 굽은 선과 겹쳤다, 2026-11-03 검토). 서울은 오른쪽, 마라도는 왼쪽 */}
-        <g fontSize="8.5">
+        <g fontSize="8.5" {...HALO}>
           {limits.map((l, i) => {
             const pts = [];
             // 적경이 줄어드는 쪽이 화면 오른쪽이라, 글자가 바로 서게 왼쪽에서 오른쪽으로 잇는다
@@ -475,6 +550,28 @@ function SouthView({
       return { alt: apparentAltitude(h.alt), az: h.az };
     }),
   ).filter((pts) => pts.some((p) => p.alt > 0 && p.az > AZ0 && p.az < AZ1));
+  /**
+   * 용골자리 선: 대부분 수평선 아래라 선 끝을 버리지 않고 별 사이를 잘게 나눠 그대로 그린 뒤 하늘 밖은 잘라 낸다
+   * (위에 뜬 카노푸스에서 수평선 아래로 이어지는 모습)
+   */
+  const carina = CARINA_PTS.map((l) =>
+    l.slice(1).flatMap(([ra1, dec1], i) => {
+      const [ra0, dec0] = l[i] as [number, number];
+      return Array.from({ length: 13 }, (_, j) => {
+        const t = j / 12;
+        const h = toHorizontal(
+          ra0 + (ra1 - ra0) * t,
+          dec0 + (dec1 - dec0) * t,
+          place,
+          ms,
+        );
+        return { alt: apparentAltitude(h.alt), az: h.az };
+      });
+    }),
+  );
+  const carinaUp = carina
+    .flat()
+    .filter((p) => p.alt > 0.3 && p.az > AZ0 && p.az < AZ1);
   const canDim = can ? extinction(can.alt) : 0;
   const canColor = can ? reddened(7500, canDim) : tempColor(7500);
   const canR = can ? sizeOf(-0.72 + canDim, 1.15) : 0;
@@ -538,6 +635,29 @@ function SouthView({
             key={i}
             points={pts
               .filter((p) => p.alt > -1)
+              .map((p) => `${x(p.az).toFixed(1)},${y(p.alt).toFixed(1)}`)
+              .join(" ")}
+          />
+        ))}
+      </g>
+      <defs>
+        <clipPath id={`up${id}`}>
+          <rect width={W} height={horizon} />
+        </clipPath>
+      </defs>
+      <g
+        clipPath={`url(#up${id})`}
+        stroke={CARINA_STROKE}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        fill="none"
+        data-carina-lines
+      >
+        {carina.map((pts, i) => (
+          <polyline
+            // biome-ignore lint/suspicious/noArrayIndexKey: 고정 데이터의 차례
+            key={i}
+            points={pts
               .map((p) => `${x(p.az).toFixed(1)},${y(p.alt).toFixed(1)}`)
               .join(" ")}
           />
@@ -619,6 +739,21 @@ function SouthView({
           fill="rgba(255,255,255,0.85)"
         >
           카노푸스 {can.alt.toFixed(1)}°
+        </text>
+      )}
+      {can && seen && carinaUp.length > 0 && (
+        <text
+          x={x(can.az) - 10}
+          y={y(can.alt) - 8}
+          textAnchor="end"
+          fontSize={compact ? 12 : 11}
+          fontWeight="700"
+          fill={CARINA_LABEL}
+          {...HALO}
+          stroke="#070d1b"
+          data-con-label={CARINA_NAME}
+        >
+          {CARINA_NAME}
         </text>
       )}
       <g fontSize="11" fill="rgba(200,215,255,0.5)" textAnchor="middle">
