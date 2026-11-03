@@ -5,47 +5,21 @@ import {
   NUMBERS,
   turnLimitOf,
 } from "@game/galaxy-engine";
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import type { TimePreset } from "@game/mighty-engine";
 
-/** 0 입문, 1 중수, 2 고수 */
-export type GalaxyLevel = 0 | 1 | 2;
+import type { GalaxyLevel, GalaxySettings } from "./settings-store";
 
-/** 은하 한 바퀴만의 설정. 첫 그리기 뒤에 저장값을 읽는다(StoreHydration) */
-interface GalaxySettings {
-  players: 2 | 3 | 4;
-  length: GalaxyLength;
-  trade: boolean;
-  /** 제철 하늘(docs/48 2-12 1번) */
-  seasonal: boolean;
-  level: GalaxyLevel;
-  /** 휴대폰 세로에서 우주선이 움직이는 동안 그 변을 크게 따라가 보기(움직임 줄이기면 쓰지 않는다) */
-  follow: boolean;
-  set(patch: Partial<Omit<GalaxySettings, "set">>): void;
-}
-
-export const useGalaxySettings = create<GalaxySettings>()(
-  persist(
-    (set) => ({
-      players: 2,
-      length: "standard",
-      trade: true,
-      seasonal: true,
-      level: 0,
-      follow: true,
-      set: (patch) => set(patch),
-    }),
-    {
-      name: "galaxy-settings",
-      storage: createJSONStorage(() => localStorage),
-      skipHydration: true,
-    },
-  ),
-);
+export {
+  type GalaxyLevel,
+  type GalaxySettings,
+  useGalaxySettings,
+} from "./settings-store";
 
 /** 지금 설정으로 만든 규칙(하늘은 G7 전까지 사계절 하늘 하나) */
 export function rulesFromSettings(
-  s: Pick<GalaxySettings, "players" | "length" | "trade" | "seasonal">,
+  s: Pick<GalaxySettings, "players" | "length" | "trade" | "seasonal"> & {
+    time?: TimePreset;
+  },
 ): GalaxyRules {
   return {
     players: s.players,
@@ -53,6 +27,7 @@ export function rulesFromSettings(
     trade: s.trade,
     seasonal: s.seasonal,
     sky: DEFAULT_SKY,
+    ...(s.time && s.time !== "none" ? { time: s.time } : {}),
   };
 }
 

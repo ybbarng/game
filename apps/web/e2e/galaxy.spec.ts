@@ -303,3 +303,112 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   if (SAVE_SCREENSHOTS)
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
+
+/** 온라인 시험에서 누르는 할 일 단추들 */
+const stepButtons = (page: Page) => [
+  rollButton(page),
+  passButton(page),
+  bidSkip(page),
+  endTurn(page),
+  debtPlan(page),
+  page.getByRole("button", { name: "거절" }),
+];
+
+/**
+ * 보이는 내 할 일 하나를 하고 그 단추가 사라질 때까지(방장이 받을 때까지) 기다린다. 했으면 true.
+ * 앞 걸음 화면을 다 보이기 전에 누르면 저장소가 「잠깐만요」로 받지 않으므로, 단추가 남아 있으면 다시 누른다
+ */
+async function stepIfReady(page: Page): Promise<boolean> {
+  for (const button of stepButtons(page))
+    if (await button.isVisible()) {
+      await expect(async () => {
+        if (await button.isVisible()) await button.click({ timeout: 1_000 });
+        await expect(button).toBeHidden({ timeout: 500 });
+      }).toPass({ timeout: 20_000 });
+      return true;
+    }
+  return false;
+}
+
+/** 이 탭에 할 일 단추가 보이나 */
+async function hasStep(page: Page): Promise<boolean> {
+  for (const button of stepButtons(page))
+    if (await button.isVisible()) return true;
+  return false;
+}
+
+test("은하 한 바퀴 온라인: 방장이 방을 만들고 친구가 링크로 들어와 두다가 기권으로 끝내고 판 끝 검증을 통과한다", async ({
+  context,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  const host = await context.newPage();
+  const guest = await context.newPage();
+  const errors: string[] = [];
+  for (const p of [host, guest])
+    p.on("pageerror", (e) => errors.push(e.message));
+
+  await host.goto("/galaxy?net=local");
+  await ready(host);
+  await host.getByRole("button", { name: "옵션" }).click();
+  await host.getByRole("button", { name: "2명", exact: true }).click();
+  await host.getByRole("button", { name: "짧은 판", exact: true }).click();
+  await host.getByRole("button", { name: "처음으로" }).click();
+  await host.getByRole("button", { name: /친구와 하기/ }).click();
+  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+  const link = await host.locator("input[readonly]").inputValue();
+  expect(link).toContain("/galaxy");
+  if (SAVE_SCREENSHOTS)
+    await host.screenshot({ path: info.outputPath("galaxy-online-lobby.png") });
+
+  await guest.goto(link);
+  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+  await guest.getByRole("button", { name: "들어가기" }).click();
+  await expect(guest.getByText("방장이 시작하기를 기다리는 중")).toBeVisible();
+  await expect(host.getByText("철수")).toBeVisible();
+  await host.getByRole("button", { name: "시작하기" }).click();
+  await expect(board(guest)).toBeVisible();
+  await expect(guest.locator("[data-player]").first()).toContainText(/방장|나/);
+
+  // 둘이 몇 번씩 굴리고 정한 뒤 방장이 기권한다. 판 끝 검증은 그때까지의 주사위·공문·입찰·별빛을
+  // 모두 다시 계산한다. 끝까지 두는 진행은 엔진·방 단위 시험이 본다.
+  let actions = 0;
+  for (let i = 0; i < 40 && actions < 10; i++) {
+    // 두 탭 가운데 한쪽에 할 일이 생기거나 판이 끝날 때까지 기다린다.
+    await expect
+      .poll(
+        async () =>
+          (await hasStep(host)) ||
+          (await hasStep(guest)) ||
+          (await over(host).isVisible()),
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+    if (await over(host).isVisible()) break;
+    for (const p of [host, guest]) if (await stepIfReady(p)) actions++;
+  }
+  expect(actions).toBeGreaterThanOrEqual(4);
+  if (SAVE_SCREENSHOTS)
+    await guest.screenshot({
+      path: info.outputPath("galaxy-online-guest.png"),
+    });
+  if (!(await over(host).isVisible())) {
+    const resign = host.getByRole("button", { name: "기권" });
+    await expect(resign).toBeEnabled({ timeout: 20_000 });
+    await resign.click();
+    await host.getByRole("button", { name: "기권하기" }).click();
+  }
+  await expect(over(host)).toBeVisible({ timeout: 20_000 });
+  await expect(over(guest)).toBeVisible({ timeout: 20_000 });
+
+  // 방장이 나가면 기록이 공개되고, 참가자가 모든 걸음을 다시 계산해 확인한다.
+  await host.getByRole("button", { name: "← 은하 한 바퀴" }).click();
+  await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
+    timeout: 15_000,
+  });
+  if (SAVE_SCREENSHOTS)
+    await guest.screenshot({
+      path: info.outputPath("galaxy-online-guest-end.png"),
+    });
+  expect(errors).toEqual([]);
+});

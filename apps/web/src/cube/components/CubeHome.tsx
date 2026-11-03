@@ -42,7 +42,20 @@ const ITEMS: Item[] = [
   {
     icon: "🎓",
     title: "배우기",
-    detail: "준비 중: 처음부터 끝까지 따라 하는 초보자 해법과 훈련",
+    detail: "처음부터 끝까지 따라 하는 초보자 해법(2×2~5×5, CFOP, 블라인드)",
+    href: "/cube/learn",
+  },
+  {
+    icon: "🎯",
+    title: "공식 훈련",
+    detail: "OLL·PLL·F2L·오르테가 상황을 무작위로 내고 시간을 잽니다",
+    href: "/cube/train",
+  },
+  {
+    icon: "✋",
+    title: "핑거 트릭",
+    detail: "실물 큐브로 손가락 쓰는 법을 반복 연습합니다",
+    href: "/cube/fingers",
   },
 ];
 

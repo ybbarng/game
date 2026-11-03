@@ -1,4 +1,6 @@
 import {
+  bidCommitment,
+  bidSalt,
   boardOfSky,
   createGalaxyScenario,
   createMatch,
@@ -178,6 +180,44 @@ describe("은하 한 바퀴 컴퓨터", () => {
     ).toThrow();
     const reveal = galaxyExpertBot.decide(viewOf(state, 1), createRng(1));
     expect(step(state, 1, reveal).ok).toBe(true);
+  });
+
+  it("봉투는 자리 재료의 소금으로 낸 것만 대신 공개한다(사람이 자기 소금으로 낸 봉투는 기다린다)", () => {
+    const rules = { ...STANDARD_RULES, players: 3 as const };
+    // 0번 자리가 시리우스(14)에 멈춰 넘겼다 → 봉인 입찰
+    let state: GalaxyState = {
+      ...createGalaxyScenario({ board, rules, positions: [14, 0, 0] }),
+      phase: "buy",
+    };
+    state = must(state, 0, { type: "pass" });
+    expect(state.phase).toBe("bid");
+    const index = state.auction?.index as number;
+    // 0번: 사람이 자기 소금으로 150. 1번: 방장이 대신 낸 「내지 않음」(재료 소금). 2번: 컴퓨터
+    state = must(state, 0, {
+      type: "bid",
+      hash: bidCommitment(index, 150, "cd".repeat(16)),
+    });
+    state = must(state, 1, {
+      type: "bid",
+      hash: bidCommitment(index, 0, bidSalt(state.keys[1] as string, index)),
+    });
+    state = must(
+      state,
+      2,
+      galaxyIntermediateBot.decide(viewOf(state, 2), createRng(1)),
+    );
+    expect(state.phase).toBe("bidReveal");
+    expect(botKnowsChain(viewOf(state, 0))).toBe(false);
+    expect(() =>
+      galaxyIntermediateBot.decide(viewOf(state, 0), createRng(1)),
+    ).toThrow();
+    for (const seat of [1, 2]) {
+      expect(botKnowsChain(viewOf(state, seat))).toBe(true);
+      const reveal = galaxyExpertBot.decide(viewOf(state, seat), createRng(1));
+      if (seat === 1) expect(reveal).toMatchObject({ value: 0 });
+      state = must(state, seat, reveal);
+    }
+    expect(state.phase).toBe("bidReveal");
   });
 
   it("단계 번호로 고른다", () => {

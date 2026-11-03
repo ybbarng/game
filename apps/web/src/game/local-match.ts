@@ -411,7 +411,11 @@ export class LocalMatch<
         this.clock.after(timer.ms, () => {
           this.windowTimers.delete(timer.key);
           if (this.frozen) return;
-          this.insert(timer.seat, timer.action, "clock");
+          const fired =
+            "later" in timer
+              ? timer.later(this.state)
+              : { seat: timer.seat, action: timer.action };
+          if (fired) this.insert(fired.seat, fired.action, "clock");
         }),
       );
     }
