@@ -45,12 +45,30 @@ export type RoomEvent =
       sealed: boolean;
       drawn: boolean;
       picks: RoomPicks | null;
+      /**
+       * 언덕 나누기(docs/36 11-56): 내가 보는 언덕(1부터), 언덕 수, 관측지 전체 얼굴 수. 예전 서버는 보내지 않는다(없으면 언덕
+       * 하나로 본다)
+       */
+      hill?: number;
+      hills?: number;
+      faces?: number;
     }
   | { type: "time"; serverTime: number }
   | { type: "join"; person: RoomPerson }
   | { type: "leave"; id: string }
-  | { type: "watchers"; count: number }
-  | { type: "say"; id: string; from: string; text: string; at: number }
+  | { type: "watchers"; count: number; faces?: number; hills?: number }
+  | {
+      type: "say";
+      id: string;
+      from: string;
+      text: string;
+      at: number;
+      /** 말한 사람의 언덕(예전 서버는 없음 = 내 언덕) */
+      hill?: number;
+      /** 다른 언덕에서 온 입상 소감에만: 말한 사람의 공개 열쇠와 고른 별 */
+      pub?: string;
+      picks?: number[];
+    }
   | {
       type: "cheer";
       from: string;

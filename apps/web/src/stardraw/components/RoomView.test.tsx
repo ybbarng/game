@@ -51,10 +51,11 @@ const SCHEDULE: Schedule = {
 };
 
 /** 방 스트림 흉내: 인사(언덕 아래에서 보는 연결 수 watchers) 다음에 별똥별 응원 하나, 그 뒤로는 열어 둔다 */
-function roomStream(watchers = 1): Response {
+function roomStream(watchers = 1, extra: object = {}): Response {
   const ev = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
   const text =
     ev({
+      ...extra,
       type: "hello",
       serverTime: Date.now(),
       round: 1,
@@ -289,10 +290,14 @@ describe("관측지 기기 시계", () => {
 });
 
 /** 관측지 RoomView를 그린다(방 스트림은 흉내, 언덕 아래 연결 수만 바꾼다) */
-function renderRoom(watchers: number, svc: Services = services) {
+function renderRoom(
+  watchers: number,
+  svc: Services = services,
+  extra: object = {},
+) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
     String(input).endsWith("/events")
-      ? roomStream(watchers)
+      ? roomStream(watchers, extra)
       : new Response("{}", { status: 404 }),
   );
   return render(
@@ -343,6 +348,40 @@ describe("관측지 사람 수", () => {
 });
 
 /*
+ * 언덕 나누기(docs/36 11-56): 예전 서버(인사에 hill 없음)와 언덕 하나는 화면이 그대로이고, 언덕이 둘 이상일 때만 내 언덕 이름을
+ * 언덕 머리에 두며 사람 수는 모든 언덕의 얼굴 + 보는 연결
+ */
+describe("관측지 언덕 나누기", () => {
+  it("인사에 언덕이 없거나(예전 서버) 하나면 언덕 이름을 두지 않는다", async () => {
+    for (const extra of [{}, { hill: 1, hills: 1, faces: 0 }]) {
+      const view = renderRoom(3, services, extra);
+      await waitFor(() => {
+        expect(
+          view.container.querySelector("[data-room-count]")?.textContent,
+        ).toBe("관측지에 3명이 있어요.");
+      });
+      expect(view.container.querySelector("[data-room-hill-name]")).toBeNull();
+      cleanup();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("언덕이 둘 이상이면 내 언덕 이름, 사람 수는 모든 언덕의 얼굴 + 보는 연결", async () => {
+    const view = renderRoom(10, services, { hill: 2, hills: 3, faces: 50 });
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-hill-name]")?.textContent,
+      ).toBe("2번 언덕");
+    });
+    const name = view.container.querySelector("[data-room-hill-name]");
+    expect(name?.closest("[data-room-hill]")).not.toBeNull();
+    expect(view.container.querySelector("[data-room-count]")?.textContent).toBe(
+      "관측지에 60명이 있어요.",
+    );
+  });
+});
+
+/*
  * 관측이 끝난 뒤(docs/36 11-44): 언덕 위 얼굴의 등수 표지와 최고 등수 금빛 테두리, 1~3등의 관측 뒤 첫 말은
  * 하늘 가운데 소감으로. 서버 시각(인사의 serverTime)을 관측 연출이 끝난 뒤로 두고 흉내 스트림으로 본다
  */
@@ -389,7 +428,12 @@ describe("관측이 끝난 뒤", () => {
     entered: true,
   }));
 
-  function stream(me: string | null, events: unknown[]): Response {
+  function stream(
+    me: string | null,
+    events: unknown[],
+    extra: object = {},
+    who: unknown[] = people,
+  ): Response {
     const ev = (o: unknown) => `data: ${JSON.stringify(o)}\n\n`;
     const text =
       ev({
@@ -400,11 +444,12 @@ describe("관측이 끝난 뒤", () => {
         entryDeadline: 0,
         closesAt: 0,
         me,
-        people,
+        people: who,
         watchers: 0,
         sealed: true,
         drawn: true,
         picks: { counts: {}, byPerson },
+        ...extra,
       }) + events.map(ev).join("");
     const body = new ReadableStream<Uint8Array>({
       start(c) {
@@ -414,7 +459,12 @@ describe("관측이 끝난 뒤", () => {
     return new Response(body, { status: 200 });
   }
 
-  function renderAfter(me: string | null, events: unknown[]) {
+  function renderAfter(
+    me: string | null,
+    events: unknown[],
+    extra: object = {},
+    who: unknown[] = people,
+  ) {
     if (me)
       sessionStorage.setItem(
         "stardraw-room-pass-1",
@@ -423,7 +473,7 @@ describe("관측이 끝난 뒤", () => {
     else sessionStorage.clear();
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
       String(input).endsWith("/events")
-        ? stream(me, events)
+        ? stream(me, events, extra, who)
         : new Response("{}", { status: 404 }),
     );
     return render(
@@ -495,6 +545,49 @@ describe("관측이 끝난 뒤", () => {
           .querySelector("[data-room-input]")
           ?.getAttribute("placeholder"),
       ).toBe("입상 소감을 남겨 보세요");
+    });
+  });
+
+  it("다른 언덕에서 온 말은 입상 소감만 띄운다(얼굴이 없어도 실려 온 공개 열쇠와 고른 별로)", async () => {
+    const view = renderAfter(
+      "c",
+      [
+        // 서버는 다른 언덕의 1~3등 말만 건네지만, 그 밖의 말이 와도 띄우지 않는다
+        { ...say("1-1", "y", "다른 언덕 이야기"), hill: 2 },
+        {
+          ...say("1-2", "z", "2번 언덕에서 1등"),
+          hill: 2,
+          pub: pub(9),
+          picks: [...record.numbers],
+        },
+        { ...say("1-3", "b", "축하해요"), hill: 1 },
+      ],
+      { hill: 1, hills: 2, faces: 5 },
+    );
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-speech]")?.textContent,
+      ).toContain("2번 언덕에서 1등");
+    });
+    // 내 언덕의 말은 풍등. 그보다 먼저 온 다른 언덕의 말은 뜨지 않았다
+    await waitFor(() => {
+      expect(view.container.querySelector("[data-lantern='b']")).not.toBeNull();
+    });
+    expect(view.container.querySelector("[data-lantern='y']")).toBeNull();
+  });
+
+  it("국장은 다른 언덕의 말도 풍등으로, 언덕이 둘 이상이면 언덕 번호를 붙인다", async () => {
+    const view = renderAfter(
+      "d",
+      [{ ...say("1-1", "y", "광고입니다"), hill: 2 }],
+      { hill: 1, hills: 2, faces: 5 },
+      [...people, { id: "d", pub: pub(7), entered: false, director: true }],
+    );
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-lantern='y'] [data-lantern-hill]")
+          ?.textContent,
+      ).toBe("2번 언덕");
     });
   });
 

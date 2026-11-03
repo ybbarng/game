@@ -87,6 +87,8 @@ interface Lantern {
   /** 띄운 시각(ms) */
   at: number;
   hidden?: boolean;
+  /** 국장 화면에서 언덕이 둘 이상일 때만: 말한 사람의 언덕 번호(docs/36 11-56) */
+  hill?: number;
 }
 
 /** 풍등이 다른 풍등과 겹치지 않을 만큼 위로 떠오르는 시간(ms)과 가로로 떨어져야 하는 거리(px) */
@@ -215,6 +217,14 @@ function LanternBubble({
         visibility: place ? undefined : "hidden",
       }}
     >
+      {lantern.hill !== undefined && (
+        <span
+          data-lantern-hill={lantern.hill}
+          className="mr-1.5 font-semibold text-[10px] text-slate-600"
+        >
+          {lantern.hill}번 언덕
+        </span>
+      )}
       {lantern.text}
       {/* 꼬리: 말한 얼굴 쪽 */}
       <span
@@ -308,6 +318,13 @@ export function RoomView({
 
   const [people, setPeople] = useState<Map<string, RoomPerson>>(new Map());
   const [watchers, setWatchers] = useState(0);
+  /**
+   * 언덕 나누기(docs/36 11-56): 내가 보는 언덕 번호, 언덕 수, 관측지 전체 얼굴 수. 예전 서버는 보내지 않으므로 언덕 하나로
+   * 본다(얼굴 수는 내 언덕의 얼굴로 센다)
+   */
+  const [hillNo, setHillNo] = useState(1);
+  const [hills, setHills] = useState(1);
+  const [allFaces, setAllFaces] = useState<number | null>(null);
   const [me, setMe] = useState<string | null>(null);
   const [pass, setPass] = useState<string | null>(
     () => savedPass(round)?.pass ?? null,
@@ -363,16 +380,35 @@ export function RoomView({
     me: string | null;
     pubs: Map<string, string>;
     byPerson: Record<string, number[]>;
-  }>({ me: null, pubs: new Map(), byPerson: {} });
+    /** 내가 보는 언덕, 언덕 수, 내가 국장인지(국장은 모든 언덕의 말을 받는다) */
+    hill: number;
+    hills: number;
+    director: boolean;
+  }>({
+    me: null,
+    pubs: new Map(),
+    byPerson: {},
+    hill: 1,
+    hills: 1,
+    director: false,
+  });
   /** 관측 뒤에 이미 말한 사람(이 화면이 받은 것 기준) */
   const spokeAfter = useRef(new Set<string>());
   /** 앞 소감이 걷히는 때(서버 ms) */
   const speechEnd = useRef(0);
 
-  /** 말이 오면: 관측 뒤 1~3등의 첫 말이면 소감으로 크게, 아니면 풍등 */
-  const said = (id: string, from: string, text: string, at: number) => {
+  /**
+   * 말이 오면: 관측 뒤 1~3등의 첫 말이면 소감으로 크게, 아니면 풍등. 다른 언덕의 말(서버가 1~3등 말만 모든 언덕에 건넨다)은
+   * 소감일 때만 띄운다. 국장은 모든 언덕의 말을 풍등으로 보고, 언덕이 둘 이상이면 언덕 번호를 붙인다
+   */
+  const said = (e: Extract<RoomEvent, { type: "say" }>) => {
+    const { id, from, text, at } = e;
     const v = live.current;
     const h = heardRef.current;
+    if (e.pub) h.pubs.set(from, e.pub);
+    if (e.picks) h.byPerson[from] = e.picks;
+    const elsewhere = e.hill !== undefined && e.hill !== h.hill && !h.director;
+    const hill = h.director && h.hills > 1 ? e.hill : undefined;
     const after = at >= v.showEnd;
     const chosen = h.byPerson[from];
     const rank = speechRank({
@@ -384,7 +420,10 @@ export function RoomView({
       spokeAfter.current.add(from);
       if (from === h.me) setMySpoke(true);
     }
-    if (!rank) return launch(id, from, text);
+    if (!rank) {
+      if (!elsewhere) launch(id, from, text, hill);
+      return;
+    }
     const now = client.serverNow();
     const start = speechAt(now, v.marksAt, speechEnd.current);
     speechEnd.current = start + SPEECH_MS;
@@ -420,11 +459,17 @@ export function RoomView({
           me: e.me,
           pubs: new Map(e.people.map((p) => [p.id, p.pub])),
           byPerson: { ...(e.picks?.byPerson ?? {}) },
+          hill: e.hill ?? 1,
+          hills: e.hills ?? 1,
+          director: e.people.some((p) => p.id === e.me && p.director === true),
         };
         setMe(e.me);
         setPeople(new Map(e.people.map((p) => [p.id, p])));
         order.current = e.people.map((p) => p.id);
         setWatchers(e.watchers);
+        setHillNo(e.hill ?? 1);
+        setHills(e.hills ?? 1);
+        setAllFaces(e.faces ?? null);
         setPicks(e.picks);
         setHeard(true);
         setProblem(null);
@@ -451,14 +496,20 @@ export function RoomView({
           return next;
         });
         if (e.type === "kicked" && e.id === me) setPass(null);
-      } else if (e.type === "watchers") setWatchers(e.count);
-      else if (e.type === "sealed") {
+      } else if (e.type === "watchers") {
+        setWatchers(e.count);
+        if (e.hills !== undefined) {
+          heardRef.current.hills = e.hills;
+          setHills(e.hills);
+        }
+        if (e.faces !== undefined) setAllFaces(e.faces);
+      } else if (e.type === "sealed") {
         heardRef.current.byPerson = {
           ...heardRef.current.byPerson,
           ...e.picks.byPerson,
         };
         setPicks(e.picks);
-      } else if (e.type === "say") said(e.id, e.from, e.text, e.at);
+      } else if (e.type === "say") said(e);
       else if (e.type === "hide") {
         lanternsRef.current = lanternsRef.current.map((x) =>
           x.id === e.id ? { ...x, hidden: true } : x,
@@ -520,7 +571,7 @@ export function RoomView({
     return f.left + f.width / 2 - s.left;
   };
 
-  const launch = (id: string, from: string, text: string) => {
+  const launch = (id: string, from: string, text: string, hill?: number) => {
     const key = `${id}-${Math.random()}`;
     const x = faceX(from);
     const now = device.now();
@@ -537,7 +588,7 @@ export function RoomView({
     device.after(at - now, () => {
       const next = [
         ...lanternsRef.current.filter((l) => l.from !== from),
-        { key, id, from, text, x, lane: 0, at },
+        { key, id, from, text, x, lane: 0, at, ...(hill ? { hill } : {}) },
       ].slice(-LANTERNS);
       lanternsRef.current = next;
       setLanterns(next);
@@ -879,8 +930,12 @@ export function RoomView({
     heard,
   });
   const closeIn = drawAt * 1000 + ROOM_CLOSE_AFTER_MS - now;
-  /** 관측지에 있는 사람 수: 언덕 위(얼굴) + 언덕 아래(대화 표 없이 보는 연결) */
-  const crowd = people.size + watchers;
+  /**
+   * 관측지에 있는 사람 수: 언덕 위(얼굴) + 언덕 아래(대화 표 없이 보는 연결). 언덕이 둘 이상이면 얼굴은 모든 언덕의 수(서버가
+   * 1초마다 알린다), 하나면 내 언덕의 얼굴(드나듦이 바로 보인다)
+   */
+  const crowd =
+    (hills > 1 && allFaces !== null ? allFaces : people.size) + watchers;
   /** 관측이 끝나고 결과(와 내 축하 연출)가 다 나온 뒤: 얼굴마다 등수 표지, 가장 높은 등수는 금빛 테두리 */
   const marked = phase === "after" && now >= marksAt;
   const best = marked ? bestRank(ranks, visible) : null;
@@ -1041,6 +1096,15 @@ export function RoomView({
       >
         {/* 언덕 머리: 관측지에 있는 사람 수(언덕 위 얼굴 + 언덕 아래에서 숨어 보는 사람). 나 혼자면 아래 「아직 언덕에…」가
             말하므로 두지 않는다(2026-11-02 사용자: 머리 줄보다 별자리 밑, 웅성거리는 우주인들 곁에 있어야 무슨 숫자인지 안다) */}
+        {/* 언덕이 둘 이상일 때만 내가 보는 언덕 이름(docs/36 11-56). 하나면 아무것도 더하지 않는다 */}
+        {hills > 1 && (
+          <p
+            data-room-hill-name={hillNo}
+            className="pb-1 text-center font-semibold text-white/70 text-xs tabular-nums"
+          >
+            {hillNo}번 언덕
+          </p>
+        )}
         {crowd > 1 && (
           <p
             data-room-count={crowd}
