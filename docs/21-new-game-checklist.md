@@ -193,6 +193,7 @@
 - `GameHome`의 `together`(친구와 하기)는 빼도 된다(혼자 하기만 먼저 올릴 때). 아래 `footer` 칸에는 출처 접는 칸 같은 것을 둔다.
 - 엔진 자료가 크면 기본 하나만 묶고 나머지는 `loadSky`처럼 쓸 때 불러온다. 루트 layout이 부르는 설정 저장소는 엔진 값을 가져오지 않는 파일에 둔다(`galaxy/settings-store.ts`, 엔진 package.json `sideEffects: false`).
 - `KitTimer.later(state)`: 시간 창이 끝난 순간의 상태로 넣을 자리·행동을 정한다(컴퓨터가 대신 정하기처럼). 온라인 방 결정 시계(은하 한 바퀴 `galaxy/online.ts`)가 쓴다. 대신 정한 행동은 꼬리표를 달고 `timing.strip`이 null을 돌려 판 끝 검증의 「내가 보낸 것」에서 뺀다.
+- `GameKit.verifyUnsigned({before, seat, action, index, context})`: 사람이 보낸 것이 아닌 기록(`timing.strip`이 null)이 규칙대로인지 참가자 판 끝 다시 계산이 확인한다. 방장이 넣는 꼬리표 행동이 있는 게임은 반드시 채운다(꼬리표만 달면 내 행동·컴퓨터 수 대조를 건너뛰므로).
 - `BoardOnlineScreen`: 참가자 기기가 받은 규칙 문자열을 읽지 못하면 방에 들어가지 않고 오류를 보인다.
 
 공통 정리: 오목·장기·체스·바둑·숫자야구의 온라인 화면은 공통 `BoardOnlineScreen` 하나로 묶었다(2026-10-29). 화투 세 게임의 온라인 화면도 거의 같은 코드라, 멘탈 포커로 옮긴 뒤 같은 식으로 묶을 수 있다.

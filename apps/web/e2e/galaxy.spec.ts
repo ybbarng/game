@@ -304,20 +304,36 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
 
-/** 보이는 내 할 일 하나를 한다(기다리지 않는다). 했으면 true */
+/** 온라인 시험에서 누르는 할 일 단추들 */
+const stepButtons = (page: Page) => [
+  rollButton(page),
+  passButton(page),
+  bidSkip(page),
+  endTurn(page),
+  debtPlan(page),
+  page.getByRole("button", { name: "거절" }),
+];
+
+/**
+ * 보이는 내 할 일 하나를 하고 그 단추가 사라질 때까지(방장이 받을 때까지) 기다린다. 했으면 true.
+ * 앞 걸음 화면을 다 보이기 전에 누르면 저장소가 「잠깐만요」로 받지 않으므로, 단추가 남아 있으면 다시 누른다
+ */
 async function stepIfReady(page: Page): Promise<boolean> {
-  for (const button of [
-    rollButton(page),
-    passButton(page),
-    bidSkip(page),
-    endTurn(page),
-    debtPlan(page),
-    page.getByRole("button", { name: "거절" }),
-  ])
+  for (const button of stepButtons(page))
     if (await button.isVisible()) {
-      await button.click();
+      await expect(async () => {
+        if (await button.isVisible()) await button.click({ timeout: 1_000 });
+        await expect(button).toBeHidden({ timeout: 500 });
+      }).toPass({ timeout: 20_000 });
       return true;
     }
+  return false;
+}
+
+/** 이 탭에 할 일 단추가 보이나 */
+async function hasStep(page: Page): Promise<boolean> {
+  for (const button of stepButtons(page))
+    if (await button.isVisible()) return true;
   return false;
 }
 
@@ -357,11 +373,19 @@ test("은하 한 바퀴 온라인: 방장이 방을 만들고 친구가 링크�
   // 둘이 몇 번씩 굴리고 정한 뒤 방장이 기권한다. 판 끝 검증은 그때까지의 주사위·공문·입찰·별빛을
   // 모두 다시 계산한다. 끝까지 두는 진행은 엔진·방 단위 시험이 본다.
   let actions = 0;
-  for (let i = 0; i < 1500 && actions < 10; i++) {
+  for (let i = 0; i < 40 && actions < 10; i++) {
+    // 두 탭 가운데 한쪽에 할 일이 생기거나 판이 끝날 때까지 기다린다.
+    await expect
+      .poll(
+        async () =>
+          (await hasStep(host)) ||
+          (await hasStep(guest)) ||
+          (await over(host).isVisible()),
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+    if (await over(host).isVisible()) break;
     for (const p of [host, guest]) if (await stepIfReady(p)) actions++;
-    if ((await over(host).isVisible()) && (await over(guest).isVisible()))
-      break;
-    await host.waitForTimeout(30);
   }
   expect(actions).toBeGreaterThanOrEqual(4);
   if (SAVE_SCREENSHOTS)
