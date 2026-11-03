@@ -26,6 +26,7 @@ import {
 } from "@game/chess-engine";
 
 import { evaluate, MATE, material, VALUE } from "./search";
+import { see } from "./see";
 
 // ── 판 열쇠(Zobrist) ──────────────────────────────────────────
 
@@ -148,6 +149,11 @@ function centerDistance(at: number): number {
   return Math.max(3 - x, x - 4) + Math.max(3 - y, y - 4);
 }
 
+const PAWNS_W = new Int8Array(8);
+const PAWNS_B = new Int8Array(8);
+const W_MOST_BACK = new Int8Array(8);
+const B_MOST_BACK = new Int8Array(8);
+
 /**
  * 고수가 보는 판 값(`side` 쪽에서, 폰 100). `evaluate`에 고수만 쓰는 항목을 더한다.
  * 기동력(둘 수 있는 수의 수)은 셈이 비싸 넣지 않았다
@@ -155,10 +161,11 @@ function centerDistance(at: number): number {
 export function evaluateExpert(board: Board, side: Side): number {
   const base = evaluate(board, side);
   // 줄마다 폰 수, 폰이 있는 가장 앞·뒤 가로줄(통과한 폰을 가리려고)
-  const pawns = { w: [0, 0, 0, 0, 0, 0, 0, 0], b: [0, 0, 0, 0, 0, 0, 0, 0] };
+  // 판마다 새로 만들지 않고 비워서 다시 쓴다(평가는 한 수에 수십만 번 불린다)
+  const pawns = { w: PAWNS_W.fill(0), b: PAWNS_B.fill(0) };
   // 백 폰이 막을 수 있는 가장 위 y(작을수록 앞), 흑은 가장 아래 y
-  const wMostBack = [-1, -1, -1, -1, -1, -1, -1, -1]; // 줄마다 백 폰 가운데 가장 큰 y
-  const bMostBack = [8, 8, 8, 8, 8, 8, 8, 8]; // 줄마다 흑 폰 가운데 가장 작은 y
+  const wMostBack = W_MOST_BACK.fill(-1); // 줄마다 백 폰 가운데 가장 큰 y
+  const bMostBack = B_MOST_BACK.fill(8); // 줄마다 흑 폰 가운데 가장 작은 y
   let wBishops = 0;
   let bBishops = 0;
   let wk = -1;
@@ -319,11 +326,39 @@ function encode(m: Move): number {
 
 // ── 탐색 ──────────────────────────────────────────────────
 
+/**
+ * 탐색에서 단계마다 달리 쓰는 것. 고수는 `EXPERT_TUNING`(예전 그대로), 초고수는 master.ts가 정한다
+ */
+export interface SearchTuning {
+  /** 판 값(`side` 쪽에서 본 값) */
+  evaluate: (board: Board, side: Side) => number;
+  /** 잡기만 보는 탐색에서 주고받으면 손해인 잡기(SEE < 0)를 건너뛴다 */
+  pruneLosingCaptures: boolean;
+  /**
+   * 얕은 깊이에서 가망 없는 가지를 일찍 자른다.
+   * 판 값이 beta보다 넉넉히 높으면 바로 돌려주고(거꾸로 가지치기), alpha에 한참 못 미치면 조용한 수를 건너뛴다
+   */
+  futility: boolean;
+  /** 아주 늦게 나온 조용한 수는 두 수 덜 읽는다 */
+  deepReduce: boolean;
+  /** 끝내기 표: 값을 알면 둘 차례 편에서 본 값, 모르면 null */
+  probe: ((pos: Position) => number | null) | null;
+}
+
+export const EXPERT_TUNING: SearchTuning = {
+  evaluate: evaluateExpert,
+  pruneLosingCaptures: false,
+  futility: false,
+  deepReduce: false,
+  probe: null,
+};
+
 /** 고수 탐색 한 번의 셈 */
 export interface ExpertContext {
   nodes: number;
   budget: number;
   aborted: boolean;
+  tuning: SearchTuning;
   /** 깊이(ply)마다 잘라 낸 조용한 수 둘 */
   killers: Int32Array;
   /** 조용한 수(출발·도착 칸)가 잘라 낸 횟수의 점수 */
@@ -335,17 +370,21 @@ export interface ExpertContext {
 }
 
 const MAX_PLY = 128;
+/** 남은 깊이(0·1·2)마다 조용한 수가 판 값을 끌어올릴 수 있다고 보는 여유 */
+const FUTILITY_MARGIN = [100, 150, 300] as const;
 const STACK = 1024;
 
 export function newExpertContext(
   budget: number,
   history: readonly string[] = [],
+  tuning: SearchTuning = EXPERT_TUNING,
 ): ExpertContext {
   ttFlag.fill(0);
   const ctx: ExpertContext = {
     nodes: 0,
     budget,
     aborted: false,
+    tuning,
     killers: new Int32Array(MAX_PLY * 2).fill(-1),
     history: new Int32Array(64 * 64),
     stackHi: new Int32Array(STACK + MAX_PLY),
@@ -442,14 +481,26 @@ export function quiesceExpert(
   depth = 8,
 ): number {
   ctx.nodes += 1;
-  const standPat = evaluateExpert(pos.board, pos.turn);
+  const standPat = ctx.tuning.evaluate(pos.board, pos.turn);
   if (standPat >= beta || depth === 0) return standPat;
   let a = Math.max(alpha, standPat);
   const moves = pseudoMoves(pos, true);
   const scores = scoreMoves(ctx, pos, moves, -1, 0);
+  const prune = ctx.tuning.pruneLosingCaptures;
   for (let i = 0; i < moves.length; i++) {
     pickNext(moves, scores, i);
     const move = moves[i] as Move;
+    // 잡는 기물이 잡히는 기물보다 비쌀 때만 주고받기를 따져 본다(싸거나 같으면 손해가 아니다).
+    if (prune && !move.promotion) {
+      const attacker = pos.board[move.from] ?? "";
+      const victim = pos.board[move.to] ?? "";
+      if (
+        victim !== "" &&
+        VALUE[attacker[1] as Kind] > VALUE[victim[1] as Kind] &&
+        see(pos.board, move) < 0
+      )
+        continue;
+    }
     const next = applyMove(pos, move);
     if (inCheck(next.board, pos.turn)) continue;
     const score = -quiesceExpert(next, -beta, -a, ctx, depth - 1);
@@ -491,6 +542,14 @@ export function searchExpert(
   }
   if (pos.halfmove >= 100 || insufficientMaterial(pos.board)) return 0;
   if (repeated(ctx, h, pos.halfmove)) return 0;
+  const tuning = ctx.tuning;
+  if (tuning.probe) {
+    const known = tuning.probe(pos);
+    if (known !== null) {
+      ctx.nodes += 1;
+      return known;
+    }
+  }
   if ((depth <= 0 && (!checked || depth < -2)) || ply >= MAX_PLY - 2)
     return quiesceExpert(pos, alpha, beta, ctx);
   ctx.nodes += 1;
@@ -512,6 +571,24 @@ export function searchExpert(
     }
   }
 
+  // 얕은 깊이의 가지치기(초고수만): 판 값을 한 번만 셈해 둔다.
+  const shallow =
+    tuning.futility &&
+    !checked &&
+    depth <= 3 &&
+    beta < MATE / 2 &&
+    alpha > -MATE / 2;
+  const staticEval = shallow ? tuning.evaluate(pos.board, pos.turn) : 0;
+  // 한 수 덜 읽어도 될 만큼 판 값이 beta보다 높으면(깊이마다 120) 더 보지 않는다.
+  if (shallow && beta - alpha === 1 && staticEval - 120 * d >= beta)
+    return staticEval;
+  /** 이 깊이에서 조용한 수를 건너뛸 선(판 값 + 여유가 alpha에 못 미치면) */
+  const margin = d <= 2 ? (FUTILITY_MARGIN[d] as number) : 0;
+  const futile =
+    shallow && d <= 2 && staticEval + margin <= alpha
+      ? staticEval + margin
+      : null;
+
   // 널 무브: 한 수 쉬어도 beta를 넘으면 더 볼 것 없이 자른다(폰만 남은 판은 추크츠방이 잦아 하지 않는다).
   if (
     canNull &&
@@ -520,7 +597,7 @@ export function searchExpert(
     beta < MATE / 2 &&
     beta > -MATE / 2 &&
     hasOfficers(pos.board, pos.turn) &&
-    evaluateExpert(pos.board, pos.turn) >= beta
+    tuning.evaluate(pos.board, pos.turn) >= beta
   ) {
     const nullPos: Position = {
       ...pos,
@@ -564,6 +641,11 @@ export function searchExpert(
     const nh = hashOf(next);
     // 잡기·승급·치환표 수·킬러 수가 아닌 수
     const quiet = (scores[i] as number) < 7_000_000;
+    // 가망 없는 조용한 수는 읽지 않고, 값은 판 값 + 여유(넘을 수 없는 위 한계)로 친다.
+    if (futile !== null && played > 1 && quiet && !gives) {
+      if (futile > best) best = futile;
+      continue;
+    }
     let score: number;
     if (played === 1) {
       score = -searchExpert(
@@ -579,7 +661,11 @@ export function searchExpert(
     } else {
       // 늦게 나온 조용한 수는 한 수 덜 읽어 보고, 좋아 보이면 제대로 다시 읽는다.
       const reduce =
-        depth >= 3 && played > 3 && quiet && !checked && !gives ? 1 : 0;
+        depth >= 3 && played > 3 && quiet && !checked && !gives
+          ? tuning.deepReduce && depth >= 6 && played > 8
+            ? 2
+            : 1
+          : 0;
       score = -searchExpert(
         next,
         nh,
