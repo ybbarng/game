@@ -109,10 +109,8 @@ export function IdFlyer({
       )}
       <div
         className={cn(
-          // 남은 높이(cqh)에 맞춰 등록증 너비를 줄인다(작은 휴대폰에 위쪽 안내가 길게 붙어도 지문 단추·「취소」와 겹치지 않게)
-          "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 [container-type:size]",
-          // 아래에 띄운 「취소」와 지문 단추가 겹치지 않게
-          press && "pb-12",
+          // 남은 높이(cqh)에 맞춰 등록증 너비를 줄인다(작은 휴대폰에 위쪽 안내가 길게 붙어도 지문 단추와 겹치지 않게)
+          "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center [container-type:size]",
         )}
       >
         {(pub || blank) && (
@@ -124,15 +122,17 @@ export function IdFlyer({
             label={press?.label}
           />
         )}
-        {/* 지문 단추와 확인 표시가 같은 자리를 나눠 쓴다(누르면 단추가 걷히고 그 자리에 확인 표시) */}
-        <div className="relative h-[5.75rem] w-full shrink-0">
-          <div className="absolute inset-x-0 top-0 flex justify-center">
-            <CheckMark shown={checked} />
-          </div>
-          {press && card === "ready" && (
-            <FingerButton label={press.label} onPress={press.onPress} />
-          )}
+      </div>
+      {/* 지문 단추와 확인 표시가 같은 자리를 나눠 쓴다(누르면 단추가 걷히고 그 자리에 확인 표시). 엄지가 닿는 화면 아래쪽,
+          「취소」 바로 위에 둔다(2026-11-03 사용자: 삼성페이 결제처럼 더 아래에). 늘 자리를 차지해 단추가 생기고 사라져도
+          등록증이 움직이지 않는다 */}
+      <div className="relative mt-4 mb-14 h-[5.75rem] w-full shrink-0">
+        <div className="absolute inset-x-0 top-0 flex justify-center">
+          <CheckMark shown={checked} />
         </div>
+        {press && card === "ready" && (
+          <FingerButton label={press.label} onPress={press.onPress} />
+        )}
       </div>
       {/* 자리를 차지하지 않게 아래에 띄운다(사라질 때 등록증이 밀리지 않게) */}
       {press && (
@@ -280,7 +280,7 @@ function FlyingCard({
       }}
       className={cn(
         // 등록증 높이 = 너비 ÷ 1.586 + 아래 두께 자리(약 1.75rem). 7.25rem은 아래 지문 단추 자리와 사이 간격
-        "relative w-[min(20rem,86vw,calc((100cqh_-_9rem)_*_1.586))] shrink-0 touch-none select-none rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.55)] outline-none",
+        "relative w-[min(20rem,86vw,calc((100cqh_-_2rem)_*_1.586))] shrink-0 touch-none select-none rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.55)] outline-none",
         // 초점 테두리는 내밀기를 기다릴 때만(낸 뒤에는 남지 않게)
         pressable && "focus-visible:ring-2 focus-visible:ring-amber-200/70",
         pressable
