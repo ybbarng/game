@@ -7,6 +7,7 @@ import {
   defenseCandidates,
   fivePoints,
   fourMoves,
+  stopsOf,
   winningFirstMoves,
   winsByFours,
 } from "./threats";
@@ -78,5 +79,29 @@ describe("사로 몰아붙이기", () => {
     const candidates = defenseCandidates(board, 2, V);
     expect(candidates).toContain(pointAt("G8"));
     expect(candidates).not.toContain(pointAt("O15"));
+  });
+
+  it("열린 삼의 몰아붙이기를 끊는 자리: 바로 양 끝, 그리고 흑이 사를 만들어 백이 먼저 막게 하는 자리", () => {
+    const board = boardOf(["A1", "C1", "E1"], ["H8", "I8", "J8"]);
+    // B1·D1은 흑 A1~E1 사가 되어 백이 그 자리를 먼저 막느라 두 수 안에 못 이긴다.
+    expect(names(stopsOf(board, 2, V, 2) ?? [])).toEqual([
+      "B1",
+      "D1",
+      "G8",
+      "K8",
+    ]);
+    // 이길 길이 없으면 null
+    expect(stopsOf(boardOf(["H8"], ["A1"]), 2, V, 2)).toBeNull();
+  });
+
+  it("길잡이를 줘도 결과는 같다", () => {
+    const board = boardOf(["A1", "C1", "E1"], ["H8", "I8", "J8"]);
+    const used = new Set<number>();
+    expect(winsByFours(board, 2, V, 2, { used })).toBe(true);
+    expect(used.size).toBeGreaterThan(0);
+    board[pointAt("G8")] = 1;
+    expect(winsByFours(board, 2, V, 2, { prefer: used })).toBe(
+      winsByFours(board, 2, V, 2),
+    );
   });
 });
