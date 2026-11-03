@@ -1,17 +1,15 @@
 import { nextFloat, nextInt } from "@game/mighty-engine";
 import {
   type Cell,
-  defenseCandidates,
   other,
   type Stone,
+  stopsOf,
   type Variant,
   winningFirstMoves,
   winningLine,
-  winsByFours,
 } from "@game/omok-engine";
 
 import {
-  allowed,
   anyLegal,
   forced,
   type OmokBot,
@@ -90,23 +88,15 @@ function negamax(
 const VCF_MOVES = 4;
 
 /**
- * 상대가 사로 몰아 이기는 길이 있으면, 그 길을 끊는 자리들. 길이 없으면 null.
- * 끊을 자리가 없으면 빈 배열(어차피 진다)
+ * 상대가 사로 몰아 이기는 길이 있으면, 그 길을 끊는 자리들(판의 모든 빈칸을 본다, 엔진 `stopsOf`).
+ * 길이 없으면 null, 끊을 자리가 없으면 빈 배열(어차피 진다)
  */
 function stopsAgainstFours(
   board: Cell[],
   stone: Stone,
   variant: Variant,
 ): number[] | null {
-  const foe = other(stone);
-  if (!winsByFours(board, foe, variant, VCF_MOVES)) return null;
-  return defenseCandidates(board, foe, variant).filter((at) => {
-    if (!allowed(board, at, stone, variant)) return false;
-    board[at] = stone;
-    const stopped = !winsByFours(board, foe, variant, VCF_MOVES);
-    board[at] = 0;
-    return stopped;
-  });
+  return stopsOf(board, other(stone), variant, VCF_MOVES);
 }
 
 /**
