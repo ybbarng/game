@@ -167,7 +167,8 @@ export function CubeIntroApp() {
             <>
               <p className="break-keep text-sm text-white/85">
                 큐브는 키보드로 돌립니다. 배치는 둘 가운데 고르고, 설정에서 아무
-                키로나 바꿀 수 있습니다. Shift를 함께 치면 반대 방향입니다.
+                키로나 바꿀 수 있습니다. 칸의 굵은 글은 그냥 칠 때, 흐린 글은
+                Shift와 함께 칠 때 도는 수입니다.
               </p>
               <h3 className="font-semibold text-sm">
                 「표기」: 글자 그대로(처음에 쉽다)
