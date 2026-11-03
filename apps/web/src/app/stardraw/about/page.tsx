@@ -373,6 +373,18 @@ export default function StardrawAbout() {
               공개 열쇠만 남습니다.
             </li>
             <li>
+              방문 통계(쿠키 없음)는 연 화면과 등록·예측을 시작했는지 같은 몇
+              가지만 셉니다. 고른 별과 공개 열쇠, 예측서를 낸 순간은 세지 않고,
+              소속 받기·입상 확인 화면은 아무것도 보내지 않습니다. 자세한 것은{" "}
+              <a
+                href="/stardraw/privacy"
+                className="text-amber-100/90 underline underline-offset-2"
+              >
+                개인정보처리방침
+              </a>
+              에 있습니다.
+            </li>
+            <li>
               예측이 서로 이어져 보이는 게 싫으면 새 우주인으로 다시 등록하세요.
               그때부터 낸 예측은 앞의 것과 이어지지 않습니다.
             </li>

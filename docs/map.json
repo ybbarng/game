@@ -237,7 +237,7 @@
       "parent": "platform",
       "status": "done",
       "size": 2,
-      "summary": "star와 같은 umami에 붙였다. 페이지 보기 + 게임 이벤트 넷, 쿼리·방 코드는 지우고 남으면 막는다, DNT·GPC·끄기 스위치, ID는 빌드 인자",
+      "summary": "star와 같은 umami에 붙였다. 페이지 보기 + 게임 이벤트 넷, 쿼리·방 코드는 지우고 남으면 막는다, DNT·GPC·끄기 스위치, ID는 빌드 인자. 2026-11-03 별 따기에도 다시 실음(docs/33 11절): 허용 경로만, 소속·입상 확인·국장 화면과 예측서를 낸 순간은 보내지 않음, 이벤트 sd-arrive·sd-key·sd-key-fail·sd-predict·sd-predict-fail·sd-view(실제 게임만), 서버 로그 예측 거절·소속 발급·관측지 한 줄씩",
       "found": "2026-10-29",
       "links": [
         {

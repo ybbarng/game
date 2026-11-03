@@ -22,7 +22,7 @@ export default function StardrawPrivacyPage() {
         <h1 className="font-bold text-2xl text-white">개인정보처리방침</h1>
         <p>
           하늘의 별 따기(game.byb.kr/stardraw)가 무엇을 받고 어디에 쓰는지
-          적습니다. 2026년 10월 31일부터 적용합니다.
+          적습니다. 2026년 10월 31일부터 적용합니다(11월 3일 방문 통계를 고침).
         </p>
 
         <h2 className="font-bold text-base text-white">
@@ -72,7 +72,32 @@ export default function StardrawPrivacyPage() {
         </p>
 
         <h2 className="font-bold text-base text-white">방문 통계</h2>
-        <p>사이트 방문 수는 쿠키를 쓰지 않는 통계 도구(Umami)로 셉니다.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            방문 수는 직접 운영하는 통계 도구(Umami, stats.byb.kr)로 셉니다.
+            쿠키를 쓰지 않고 IP를 저장하지 않습니다. 통계 스크립트는 이 사이트가
+            직접 내보내는 고정된 파일입니다.
+          </li>
+          <li>
+            세는 것: 연 화면의 경로(주소의 ? 와 # 뒤는 지웁니다), 우주인
+            등록증을 만들었거나 신분증 제시로 찾았는지와 그 화면, 패스키가 막힌
+            까닭 종류(취소·지원 안 함·앱 안 브라우저 등), 예측을 시작했는지(그
+            회차에 첫 별을 담을 때, 이 기기의 첫 예측인지), 예측서를 내지 못한
+            까닭 종류, 공지 링크로 왔는지.
+          </li>
+          <li>
+            세지 않는 것: 고른 별, 공개 열쇠·등록번호·이름, 예측서와 접수증,
+            예측서를 낸 순간(접수 뒤 접수증 화면으로 옮기는 것도 세지 않습니다).
+          </li>
+          <li>아무것도 보내지 않는 화면: 소속 받기, 입상 확인, 국장 화면.</li>
+          <li>
+            브라우저에서 &quot;추적하지 말라&quot;(DNT·GPC)를 켰거나{" "}
+            <a href="/security" className="underline hover:text-white">
+              보안 설명
+            </a>
+            에서 끄면 보내지 않습니다.
+          </li>
+        </ul>
 
         <h2 className="font-bold text-base text-white">문의</h2>
         <p>

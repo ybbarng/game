@@ -350,6 +350,70 @@ umami 수집 끝점(`POST https://stats.byb.kr/api/send`)은 브라우저가 불
 
 ---
 
+## 11. 하늘의 별 따기 (2026-11-03)
+
+사용자 결정(2026-11-03): 「추천안 + 예측 시작 이벤트 남김 + 서버 숫자도」(앞선 제안서 2026-11-02의 추천안).
+
+- **다시 싣는 까닭**: 별 따기에서 통계를 뺀 것(docs/36 보안 표 I7)은 바깥 스크립트(`stats.byb.kr/script.js`)가 화면 코드 해시 밖이었기 때문이다. 2026-11-01부터 스크립트를 저장소에 고정해 같은 출처에서 내보내므로(`public/stats/umami-3.4.1.js`, 해시 시험 `stats/pinned-script.test.ts`) 화면 코드 해시 안에 있다. 그래서 `Analytics.tsx`의 별 따기 제외 줄을 지운다. 바깥으로 나가는 것은 보내기(`https://stats.byb.kr/api/send`)뿐이라 별 따기 CSP에는 `connect-src https://stats.byb.kr`만 더한다(`deploy/nginx.conf`, 스크립트는 `'self'`).
+- **실제 게임에서만**: 이벤트는 서버 장부일 때만 보낸다(`ns === GAME_NS && practice === null`, `getServices`가 `markReal`). 연습 장부·데모·시험 빌드(통계 ID 없음)는 보내지 않는다. 페이지 보기는 사이트 전체와 같이 umami가 센다.
+
+### 11-1. 아무것도 보내지 않는 곳
+
+| 곳 | 까닭 | 장치 |
+|---|---|---|
+| `/stardraw/qualify`(소속 받기) | 회사 계정 로그인과 방문을 맞춰 볼 수 있다 | 보내기 직전 함수의 별 따기 경로 허용 목록(`STARDRAW_COUNTED`, `stats/analytics.ts`). 목록에 없는 `/stardraw/…`는 페이지 보기도 이벤트도 보내지 않는다 |
+| `/stardraw/check`(입상 확인) | 입상자·확인하는 분의 방문 | 같음. `#토큰`은 원래 지운다 |
+| `/stardraw/admin`(국장 화면) | 운영자 활동 | 같음 |
+| `/stardraw/demo`, `/room`, `/awards`, 새로 생길 경로 | 시험용이거나 아직 검토하지 않음 | 같음(허용 목록에 없으면 빠진다. 새 경로를 셀 때는 목록에 더한다) |
+| 위 경로에서 앱 안 이동으로 온 다음 화면의 참조 주소 | 그 경로에 있었다는 흔적 | `scrubPayload`가 참조를 비운다 |
+| **예측서를 낸 순간** | 장부의 접수 시각과 방문(브라우저·지역)을 몇 초 차이로 맞춰 볼 수 있다 | 접수 순간 이벤트 없음. 접수 뒤 접수증으로 주소가 바뀌는 페이지 보기 하나를 버린다(`skipNextPageview`, 5초 안의 보기 하나), 그 접수증의 `sd-view`도 보내지 않는다 |
+
+### 11-2. 이벤트(이름·값은 `stats/track.ts`, 보내는 때는 `stardraw/sd-track.ts`)
+
+| 이름 | 값 | 언제 | 어디서 거나 |
+|---|---|---|---|
+| `sd-arrive` | `from: "notice"` | 공지 링크 꼬리표로 들어왔을 때 한 번. 꼬리표는 주소에서 지운다 | `StardrawApp`(장부를 받은 뒤) `trackArrival` |
+| `sd-key` | `how: "create"\|"present"`, `where`(화면 이름), `inApp` | 등록증 만들기 성공(create), 신분증 제시로 이 기기에 찾아옴(present) | 지갑 `createPasskey`·`recoverPasskey`를 감쌈(`instrument`) |
+| `sd-key-fail` | `step: "create"\|"present"\|"env"`, `kind`, `inApp` | 만들기·제시 실패, 또는 페이지를 열 때 패스키를 못 쓰는 브라우저(env, 탭마다 한 번) | 같음, env는 `trackKeyEnv` |
+| `sd-predict` | `kind: "first"\|"again"` | **예측 시작**: 그 회차에 처음 별을 바구니에 담을 때 한 번(쓰다 만 별 불러오기 포함). first는 이 기기에 앞서 낸 예측서가 없음 | `draft-paper.ts` `saveDraft` |
+| `sd-predict-fail` | `why`(`stardraw/errors.ts` `ErrorKind`) | 예측서 내기가 서버에서 거절·실패 | 장부 `submit`을 감쌈 |
+| `sd-view` | `view: "records"\|"receipt"\|"round"\|"draw"\|"predict"\|"observe"` | 주소 경로가 바뀌지 않는 화면(# 조각 화면, 지금 회차의 예측·관측)으로 바뀔 때 | `StardrawApp` |
+
+- `kind`(`sd-key-fail`): `cancelled`(창을 닫음·시간 초과, 브라우저는 「맞는 패스키 없음」도 같은 오류로 준다), `unsupported`(ES256·본인 확인 못 함), `not-found`(제시: 장부에 없는 등록증), `in-app`·`no-api`(env), `other`. 앱 안 브라우저에서 패스키를 해 보는 흐름(inapp-try)이 들어와도 `inApp: true`와 `kind`로 갈라 본다.
+- `where`: `home`·`enter`·`predict`·`observe`·`mine`·`records`·`receipt`·`rounds`·`round`·`draw`·`stats`·`timetable`·`other`(StardrawApp 밖, 입상 확인).
+- 「예측 시작」과 접수는 다른 순간이다. 사람이 별을 고르고 예측서를 내기까지 신분증 제출·작업 증명이 끼어 적어도 몇 초, 보통 몇십 초가 걸린다. 시작 시각으로 접수 시각을 맞혀 보기는 어렵다고 보고 사용자가 남기기로 했다.
+- 패스키 성공·실패와 접수 실패는 화면 부품이 아니라 `getServices`에서 지갑·장부를 한 번 감싸 센다. 화면을 고쳐도 빠지지 않는다. 예측서 서명(패스키 확인)을 취소한 것은 장부까지 오지 않아 `sd-predict-fail`에 없다.
+- 스크립트가 아직 실리지 않았을 때(afterInteractive) 페이지를 열자마자 나는 이벤트는 최대 10개를 10초까지 모아 두었다 보낸다(ID 없는 빌드는 모으지 않는다).
+- 지운 것: 별 따기 `game-start`(접수 순간에 보내던 것).
+
+**공지 링크 꼬리표 규칙**: 공지·메신저에 올리는 링크는 `https://game.byb.kr/stardraw?from=notice`. 값은 `notice` 하나만 센다(그 밖의 값은 무시). 다른 길을 더 세고 싶으면 `TrackEvents["sd-arrive"]`의 `from`에 값을 더하고 이 표에 적는다. 쿼리는 umami로 가지 않는다(`data-exclude-search`).
+
+### 11-3. 서버 숫자(로그 한 줄씩, 개인 값 없음)
+
+예측 몰림 줄(docs/36 11-43)과 같은 꼴로 `[stardraw] 이름 {JSON}`. 메모리에만 세고 로그에만 남긴다.
+
+| 줄 | 언제 | 값 |
+|---|---|---|
+| `예측 거절` | 회차 기록이 닫힐 때 | 그 회차 동안 받은 예측서 거절의 까닭별 수(`rejects.ts` `RejectCode`: `early`·`format`·`raw-key`·`wrong-round`·`stale`·`gate`·`unregistered`·`registration`·`director`·`credential-taken`·`signature`·`qual`·`duplicate`·`pow`·`pow-blocked`·`race-registered`). 몰림 줄이 세는 거절(503 줄 가득·기다림 상한, IP 앞부분 429, 마감 뒤 1분 안 도착)은 빼서 겹치지 않는다. 마감 뒤 1분이 지나 온 옛 탭은 `stale` |
+| `소속 발급` | 회차 기록이 닫힐 때(자격 기간이 있을 때만) | 자격 기간 id(공개 장부 값)별 발급·다시 발급 누계(`/api/state` `qualIssued`와 같다) |
+| `관측지` | 관측지가 닫힐 때(관측 + 7분) | `peakWatchers`(가장 많았던 언덕 아래 연결), `peakFaces`(가장 많았던 언덕 얼굴), `hill`(표를 받은 열쇠 수), `says`(말), `reported`(신고된 말), `meteors`·`twinkles`(응원) |
+
+예시:
+
+```
+[stardraw] 예측 몰림 {"round":512,"busy":0,"queueTimeout":0,"maxQueue":3,"maxWaitMs":420,"prefixEntry":0,"prefixRegister":0,"late":1,"entries":37,"void":false}
+[stardraw] 예측 거절 {"round":512,"duplicate":2,"gate":1,"stale":1}
+[stardraw] 소속 발급 {"round":512,"periods":[{"period":"9f…","issued":41,"reissued":1}]}
+[stardraw] 관측지 {"round":512,"peakWatchers":58,"peakFaces":21,"hill":24,"says":63,"reported":0,"meteors":140,"twinkles":88}
+```
+
+### 11-4. 시험
+
+- 단위: `stats/analytics.test.ts`(허용 경로만, 보내지 않는 경로의 참조 지우기, 접수 뒤 보기 하나 버리기), `stardraw/sd-track.test.ts`(실제 게임만, 지갑·장부 감싸기, 예측 시작 회차마다 한 번, 공지 꼬리표), 서버 `engine.test.ts`(거절 까닭 줄), `room.test.ts`(관측지 요약 줄).
+- 화면 시험 빌드에는 통계 ID가 없어 스크립트가 없다. 「보내지 않을 곳」은 보내기 직전 함수의 단위 시험이 맡는다.
+
+---
+
 ## 확인한 출처
 
 - star.byb.kr 저장소 `src/ui/Analytics.tsx`, `src/ui/track.ts`, `src/test/unit/track.test.ts`
