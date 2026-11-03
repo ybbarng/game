@@ -55,7 +55,7 @@ function drive(
       seat = active[nextInt(rng, active.length)] as number;
       action = {
         type: "shout",
-        seen: Math.max(0, state.version - nextInt(rng, 2)),
+        seen: Math.max(0, state.turnNo - nextInt(rng, 2)),
       };
     } else if (windows.length > 0 && r < 0.3) {
       const w = windows[0] as (typeof windows)[number];
@@ -147,6 +147,7 @@ describe("자리별 화면(viewOf)", () => {
     expect(view.handCounts).toEqual(s.hands.map((h) => h.length));
     expect(view.deckCount).toBe(s.deck.length);
     expect(view.version).toBe(s.version);
+    expect(view.turnNo).toBe(s.turnNo);
     const text = JSON.stringify(view);
     for (const seat of [0, 2, 3])
       for (const card of s.hands[seat] ?? [])

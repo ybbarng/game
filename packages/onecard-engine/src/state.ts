@@ -44,8 +44,8 @@ export interface DrawTask {
 
 /** 지난 판 번호에서 판정에 쓸 것만 남긴 기록(늦은 외침을 그 판으로 가린다) */
 export interface SeenMark {
-  version: number;
-  /** 그 판에서 외치지 않은 채 창이 열린 자리 */
+  turnNo: number;
+  /** 그 판이 시작될 때(차례 행동 직후) 외치지 않은 채 창이 열려 있던 자리 */
   exposed: number[];
 }
 
@@ -62,10 +62,13 @@ export interface OnecardResult {
 
 export interface OnecardState {
   rules: OnecardRules;
-  /**
-   * 판 번호 = 받아들인 행동 수(기록 길이). 외침의 `seen`이 가리키는 값이고, 화면은 `viewOf().version`을 그대로 보낸다
-   */
+  /** 받아들인 행동 수(기록 길이). 외침·창 시간 끝도 센다 */
   version: number;
+  /**
+   * 판 번호. 판 모양이 바뀌는 차례 행동(내기·먹기·다시 섞기·그만두기)에만 오른다(판 시작은 0).
+   * 외침의 `seen`이 가리키는 값이고, 화면은 `viewOf().turnNo`를 그대로 보낸다. 외침·창 시간 끝은 올리지 않는다
+   */
+  turnNo: number;
   phase: Phase;
   /** 지금 차례 */
   turn: number;
@@ -109,7 +112,7 @@ export type Action =
   /** 먹기. 공격이 쌓였으면 그만큼, 아니면 한 장. 먹으면 차례가 끝난다 */
   | { type: "draw" }
   /**
-   * "원카드!"(가운데 더미 치기). 누구나 언제든 보낸다. `seen`: 누른 순간 화면의 판 번호(`version`).
+   * "원카드!"(가운데 더미 치기). 누구나 언제든 보낸다. `seen`: 누른 순간 화면의 판 번호(`turnNo`).
    * 뜻은 엔진이 가린다(`judgeShout`): 미리 외침·본인 외침·잡기·헛외침
    */
   | { type: "shout"; seen: number }
@@ -170,8 +173,10 @@ export type GameEvent =
 export interface OnecardView {
   rules: OnecardRules;
   mySeat: number;
-  /** 지금 판 번호. 외칠 때 `seen`으로 보낸다 */
+  /** 기록 길이 */
   version: number;
+  /** 지금 판 번호. 외칠 때 `seen`으로 보낸다 */
+  turnNo: number;
   phase: Phase;
   turn: number;
   direction: 1 | -1;

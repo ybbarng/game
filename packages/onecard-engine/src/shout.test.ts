@@ -14,7 +14,7 @@ function ok(result: StepResult): OnecardState {
   return okEvents(result)[0];
 }
 
-function shout(state: OnecardState, seat: number, seen = state.version) {
+function shout(state: OnecardState, seat: number, seen = state.turnNo) {
   return okEvents(step(state, seat, { type: "shout", seen }));
 }
 
@@ -69,7 +69,7 @@ describe("미리 외침·본인 외침", () => {
       ],
       pile: ["H5"],
     });
-    expect(judgeShout(s, 1, s.version)).toEqual({ kind: "false" });
+    expect(judgeShout(s, 1, s.turnNo)).toEqual({ kind: "false" });
   });
 
   it("외치지 않고 한 장이 되면 본인 시간 P가 열리고, 그 안에 외치면 안전", () => {
@@ -145,7 +145,7 @@ describe("잡기 창 T", () => {
 
   it("창 안에 남이 외치면 잡힌다. 잡는 사람끼리 순서는 없고 처음 처리된 사람만 기록", () => {
     const s = catchOpen();
-    const seen = s.version;
+    const seen = s.turnNo;
     const [caught, events] = shout(s, 3, seen);
     expect(events).toEqual([
       { type: "shouted", seat: 3 },
@@ -167,7 +167,7 @@ describe("잡기 창 T", () => {
 
   it("본인 시간이 지난 뒤 본인 외침은 받지 않는다(벌칙도 없음, 여전히 잡힐 수 있다)", () => {
     const s = catchOpen();
-    expect(judgeShout(s, 0, s.version)).toEqual({ kind: "lateSelf" });
+    expect(judgeShout(s, 0, s.turnNo)).toEqual({ kind: "lateSelf" });
     const [after] = shout(s, 0);
     expect(counts(after)).toEqual([1, 3, 3, 3]);
     expect(after.called[0]).toBe(false);
@@ -175,18 +175,52 @@ describe("잡기 창 T", () => {
     expect(counts(caught)).toEqual([2, 3, 3, 3]);
   });
 
-  it("창이 닫힌 뒤 외치면 헛외침: 누른 사람이 먹는다", () => {
+  it("창이 닫힌 뒤: 같은 판을 보고 누르면 늦음(벌칙 없음), 다음 판부터는 헛외침", () => {
     const closed = ok(
       step(catchOpen(), 1, { type: "timeout", kind: "catchWindow", target: 0 }),
     );
     expect(shoutWindows(closed)).toEqual([]);
-    const [after, events] = shout(closed, 2);
+    expect(judgeShout(closed, 2, closed.turnNo)).toEqual({ kind: "late" });
+    const next = ok(step(closed, 1, { type: "draw" }));
+    const [after, events] = shout(next, 2);
     expect(events).toEqual([
       { type: "shouted", seat: 2 },
       { type: "falseShout", seat: 2 },
       { type: "drew", seat: 2, count: 1, reason: "falseShout" },
     ]);
-    expect(counts(after)).toEqual([1, 3, 4, 3]);
+    expect(counts(after)).toEqual([1, 4, 4, 3]);
+  });
+
+  it("잡기 창이 열리자 세 사람이 같은 판을 보고 연달아 외쳐도: 첫 사람만 잡고 나머지는 벌칙 없음", () => {
+    const s = catchOpen();
+    const seen = s.turnNo;
+    const [first, e1] = shout(s, 1, seen);
+    expect(e1).toContainEqual({ type: "caught", seat: 1, target: 0 });
+    const [second, e2] = shout(first, 2, seen);
+    const [third, e3] = shout(second, 3, seen);
+    // 외침과 벌칙 먹기는 판 번호를 올리지 않아 누구도 옛 판으로 버려지지 않는다
+    expect(third.turnNo).toBe(seen);
+    for (const e of [...e2, ...e3]) {
+      expect(e.type).toBe("shouted");
+    }
+    expect(judgeShout(second, 3, seen)).toEqual({ kind: "late" });
+    expect(counts(third)).toEqual([2, 3, 3, 3]);
+  });
+
+  it("본인 시간 끝 직후, 그 전 판 번호 그대로의 잡기가 받아진다", () => {
+    const s = forgot();
+    const seen = s.turnNo;
+    const opened = ok(
+      step(s, 2, { type: "timeout", kind: "selfWindow", target: 0 }),
+    );
+    expect(opened.turnNo).toBe(seen);
+    expect(judgeShout(opened, 3, seen)).toEqual({
+      kind: "catch",
+      targets: [0],
+      held: [],
+    });
+    const [caught] = shout(opened, 3, seen);
+    expect(counts(caught)).toEqual([2, 3, 3, 3]);
   });
 
   it("그 사람의 손패가 바뀌면 창이 일찍 닫히고, 늦은 시간 끝은 받지 않는다", () => {
@@ -249,21 +283,24 @@ describe("헛외침·판 번호(seen)", () => {
   it("한 장이 되기 전 판을 보고 누르면 그 판 기준으로 헛외침", () => {
     const before = table();
     const s = forgot();
-    expect(judgeShout(s, 2, before.version)).toEqual({ kind: "false" });
+    expect(judgeShout(s, 2, before.turnNo)).toEqual({ kind: "false" });
   });
 
   it("잊은 판을 보고 눌렀는데 그사이 본인이 외쳤으면 벌칙 없음(늦음)", () => {
     const s = forgot();
-    const seen = s.version;
+    const seen = s.turnNo;
     const [safe] = shout(s, 0);
     expect(judgeShout(safe, 2, seen)).toEqual({ kind: "late" });
-    // 외친 뒤 판을 보고 누르면 헛외침
-    expect(judgeShout(safe, 2, safe.version)).toEqual({ kind: "false" });
+    // 외침은 판 번호를 올리지 않으므로 같은 판이면 여전히 늦음
+    expect(safe.turnNo).toBe(seen);
+    // 다음 차례 행동 뒤 판을 보고 누르면 헛외침
+    const next = ok(step(safe, 1, { type: "draw" }));
+    expect(judgeShout(next, 2, next.turnNo)).toEqual({ kind: "false" });
   });
 
   it("2수 넘게 지난 판을 가리키면 벌칙 없이 버린다", () => {
     let s = table();
-    const seen = s.version;
+    const seen = s.turnNo;
     s = ok(step(s, 0, { type: "draw" }));
     s = ok(step(s, 1, { type: "draw" }));
     expect(judgeShout(s, 3, seen)).toEqual({ kind: "false" });
@@ -277,10 +314,10 @@ describe("헛외침·판 번호(seen)", () => {
 
   it("앞으로의 판 번호·빠진 자리는 받지 않는다", () => {
     const s = table();
-    expect(step(s, 1, { type: "shout", seen: s.version + 1 }).ok).toBe(false);
+    expect(step(s, 1, { type: "shout", seen: s.turnNo + 1 }).ok).toBe(false);
     expect(step(s, 1, { type: "shout", seen: -1 }).ok).toBe(false);
     const out = { ...s, finished: [1] };
-    expect(step(out, 1, { type: "shout", seen: s.version }).ok).toBe(false);
+    expect(step(out, 1, { type: "shout", seen: s.turnNo }).ok).toBe(false);
   });
 
   it("없는 창의 시간 끝은 받지 않는다", () => {

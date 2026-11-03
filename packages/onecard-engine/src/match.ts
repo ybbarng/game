@@ -147,7 +147,8 @@ export function createMatch(
     finished: [],
     bankrupt: [],
     bankruptCounts: new Array<number>(n).fill(0),
-    recent: [{ version: 0, exposed: [] }],
+    turnNo: 0,
+    recent: [{ turnNo: 0, exposed: [] }],
     result: null,
   };
   for (let i = 0; i < rules.handSize; i++)
@@ -350,9 +351,9 @@ export function judgeShout(
   if (state.phase === "over") return { kind: "error", error: "끝난 판이다" };
   if (!isActive(state, seat))
     return { kind: "error", error: "판에서 빠진 자리는 외칠 수 없다" };
-  if (!Number.isInteger(seen) || seen < 0 || seen > state.version)
+  if (!Number.isInteger(seen) || seen < 0 || seen > state.turnNo)
     return { kind: "error", error: "모르는 판 번호다" };
-  if (state.version - seen > STALE_SEEN) return { kind: "stale" };
+  if (state.turnNo - seen > STALE_SEEN) return { kind: "stale" };
   const own = state.windows.find((w) => w.seat === seat);
   if (own) return own.kind === "self" ? { kind: "self" } : { kind: "lateSelf" };
   if (
@@ -362,7 +363,7 @@ export function judgeShout(
     !state.preCalled[seat]
   )
     return { kind: "pre" };
-  const mark = state.recent.find((m) => m.version === seen);
+  const mark = state.recent.find((m) => m.turnNo === seen);
   const targets = (mark?.exposed ?? []).filter((s) => s !== seat);
   if (targets.length === 0) return { kind: "false" };
   const open = state.windows.filter((w) => targets.includes(w.seat));
@@ -480,18 +481,25 @@ function applyPlay(
 
 // ── 한 걸음 ──────────────────────────────────────────────
 
-/** 받아들인 행동마다 판 번호를 올리고, 그 판의 판정 재료를 남긴다 */
-function bump(state: OnecardState): void {
-  state.version += 1;
-  state.recent.push({
-    version: state.version,
-    exposed: state.windows.map((w) => w.seat),
-  });
-  if (state.recent.length > STALE_SEEN + 1) state.recent.shift();
-}
-
-function done(next: OnecardState, events: GameEvent[]): StepResult {
-  bump(next);
+/**
+ * 받아들인 행동마다 기록 길이(`version`)를 올린다. 판 모양이 바뀌는 차례 행동(내기·먹기·다시 섞기·그만두기)이면
+ * 판 번호(`turnNo`)도 올리고 그 판의 판정 재료(창이 열린 자리)를 남긴다.
+ * 외침·창 시간 끝은 판 번호를 올리지 않는다: 여럿이 거의 같이 누를 때 정직한 누름이 "옛 판"으로 버려지지 않게
+ */
+function done(
+  next: OnecardState,
+  events: GameEvent[],
+  board: boolean,
+): StepResult {
+  next.version += 1;
+  if (board) {
+    next.turnNo += 1;
+    next.recent.push({
+      turnNo: next.turnNo,
+      exposed: next.windows.map((w) => w.seat),
+    });
+    if (next.recent.length > STALE_SEEN + 1) next.recent.shift();
+  }
   return { ok: true, state: next, events };
 }
 
@@ -512,7 +520,11 @@ export function step(
     next.queue = [];
     next.retired = true;
     next.result = resultOf(next);
-    return done(next, [{ type: "ended", result: next.result, retired: true }]);
+    return done(
+      next,
+      [{ type: "ended", result: next.result, retired: true }],
+      true,
+    );
   }
 
   if (action.type === "shout") {
@@ -521,7 +533,7 @@ export function step(
     const next = clone(state);
     const events: GameEvent[] = [];
     applyShout(next, seat, verdict, events);
-    return done(next, events);
+    return done(next, events, false);
   }
 
   if (action.type === "timeout") {
@@ -541,7 +553,7 @@ export function step(
       w.id = next.nextWindowId++;
     }
     processQueue(next, events);
-    return done(next, events);
+    return done(next, events, false);
   }
 
   if (action.type === "reshuffle") {
@@ -560,7 +572,7 @@ export function step(
     next.phase = "play";
     const events: GameEvent[] = [{ type: "reshuffled", count: order.length }];
     processQueue(next, events);
-    return done(next, events);
+    return done(next, events, true);
   }
 
   if (state.phase !== "play") return fail("다시 섞기를 기다린다");
@@ -574,7 +586,7 @@ export function step(
     next.attack = 0;
     next.endTurnAfterQueue = true;
     processQueue(next, events);
-    return done(next, events);
+    return done(next, events, true);
   }
 
   if (action.type !== "play") return fail("모르는 행동이다");
@@ -589,7 +601,7 @@ export function step(
   const next = clone(state);
   const events: GameEvent[] = [];
   applyPlay(next, seat, card, action.suit, events);
-  return done(next, events);
+  return done(next, events, true);
 }
 
 // ── 바깥이 쓰는 것 ──────────────────────────────────────────────
@@ -650,6 +662,7 @@ export function viewOf(state: OnecardState, seat: number): OnecardView {
     rules: state.rules,
     mySeat: seat,
     version: state.version,
+    turnNo: state.turnNo,
     phase: state.phase,
     turn: state.turn,
     direction: state.direction,

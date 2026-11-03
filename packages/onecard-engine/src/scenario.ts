@@ -62,7 +62,8 @@ export function createOnecardScenario(
     finished: [],
     bankrupt: [],
     bankruptCounts: new Array<number>(n).fill(0),
-    recent: [{ version: 0, exposed: [] }],
+    turnNo: 0,
+    recent: [{ turnNo: 0, exposed: [] }],
     result: null,
   };
 }
