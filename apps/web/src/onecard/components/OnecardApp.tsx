@@ -4,8 +4,11 @@ import { MAX_PLAYERS, MIN_PLAYERS } from "@game/onecard-engine";
 import { useEffect, useState } from "react";
 
 import { GameHome } from "@/components/GameHome";
+import { LessonPlayer } from "@/components/tutorial/LessonPlayer";
+import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
+import { useOnecardTutorialProgress } from "@/tutorial/progress";
 
 import {
   ONECARD_LEVELS,
@@ -19,8 +22,10 @@ import {
   type OnecardSaved,
   useOnecard,
 } from "../store";
+import { ONECARD_LESSONS } from "../tutorial/lessons";
 import { OnecardCardView } from "./OnecardCard";
 import { ONECARD_BG, OnecardGame } from "./OnecardGame";
+import { onecardTutorial } from "./onecard-tutorial";
 
 function Chip({
   active,
@@ -216,14 +221,17 @@ function OnecardRulesScreen({ onBack }: { onBack: () => void }) {
 
 function OnecardHome({
   onStart,
+  onLearn,
   onOptions,
   onRules,
 }: {
   onStart: (saved?: OnecardSaved) => void;
+  onLearn: () => void;
   onOptions: () => void;
   onRules: () => void;
 }) {
   const s = useOnecardSettings();
+  const learned = useOnecardTutorialProgress((p) => p.completed.length);
   const [saved, setSaved] = useState<OnecardSaved | null>(null);
   const [soon, setSoon] = useState(false);
   useEffect(() => setSaved(loadOnecard()), []);
@@ -277,6 +285,13 @@ function OnecardHome({
         detail: "준비 중이에요",
         onClick: () => setSoon(true),
       }}
+      learn={{
+        title: "원카드 배우기",
+        learned,
+        total: ONECARD_LESSONS.length,
+        firstHint: `처음이라면 여기부터. 카드 내기부터 원카드 외치기까지 ${ONECARD_LESSONS.length}단원`,
+        onClick: onLearn,
+      }}
       onOptions={onOptions}
       aboutLabel="원카드는?"
       onAbout={onRules}
@@ -288,22 +303,25 @@ type Screen =
   | { kind: "start" }
   | { kind: "playing" }
   | { kind: "options" }
-  | { kind: "rules" };
+  | { kind: "rules" }
+  | { kind: "tutorial" }
+  | { kind: "lesson"; lessonId: string };
 
-/** 원카드(/onecard): 첫 화면, 옵션, 규칙, 대국 화면. 온라인·배우기는 다음 단계 */
+/** 원카드(/onecard): 첫 화면, 옵션, 규칙, 배우기, 대국 화면. 온라인은 다음 단계 */
 export function OnecardApp() {
   function leavePlay() {
     useOnecard.getState().leave();
   }
   const [screen, setScreen] = useScreenHistory<Screen>(
     { kind: "start" },
-    { leavePlay, restorable: ["options", "rules"] },
+    { leavePlay, restorable: ["options", "rules", "tutorial"] },
   );
   const view = useOnecard((s) => s.view);
 
-  // 끝난 게임은 이어하기에 남기지 않는다.
+  // 끝난 게임은 이어하기에 남기지 않는다(튜토리얼 미션은 이어하기 저장과 상관없다).
   useEffect(() => {
-    if (view?.phase === "over") clearOnecard();
+    if (view?.phase === "over" && !useOnecard.getState().practice)
+      clearOnecard();
   }, [view?.phase]);
 
   const backToStart = () => setScreen({ kind: "start" });
@@ -312,8 +330,26 @@ export function OnecardApp() {
   if (screen.kind === "options") return <OnecardOptions onBack={backToStart} />;
   if (screen.kind === "rules")
     return <OnecardRulesScreen onBack={backToStart} />;
+  if (screen.kind === "tutorial")
+    return (
+      <TutorialHome
+        tutorial={onecardTutorial}
+        onBack={backToStart}
+        onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
+      />
+    );
+  if (screen.kind === "lesson")
+    return (
+      <LessonPlayer
+        key={screen.lessonId}
+        tutorial={onecardTutorial}
+        lessonId={screen.lessonId}
+        onExit={() => setScreen({ kind: "tutorial" })}
+      />
+    );
   return (
     <OnecardHome
+      onLearn={() => setScreen({ kind: "tutorial" })}
       onOptions={() => setScreen({ kind: "options" })}
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {

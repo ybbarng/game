@@ -12,6 +12,7 @@ import {
 import { create } from "zustand";
 
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
+import type { KitBot } from "@/game/kit";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
 import { playUiCue } from "@/game/ui-sound";
 import { ArchiveRecorder } from "@/review/recorder";
@@ -149,8 +150,19 @@ interface OnecardStore {
   eventSeq: number;
   level: number;
   notice: string | null;
+  /** 튜토리얼 연습 판(이어하기 저장·내 기록·복기에 남기지 않는다) */
+  practice: boolean;
   newGame(options: { rules: OnecardRules; level: number; seed?: number }): void;
   resume(saved: OnecardSaved): void;
+  /**
+   * 튜토리얼 연습 판. 장면 상태(`initialState`)가 있으면 거기서, 없으면 `rules`로 처음부터.
+   * 컴퓨터는 넘겨받은 것(장면 대본 또는 실전 컴퓨터)을 쓴다
+   */
+  startPractice(options: {
+    rules: OnecardRules;
+    initialState?: OnecardState;
+    bot: KitBot<OnecardView, Action, GameEvent>;
+  }): void;
   submit(action: Action): SubmitResult;
   /** 혼자 하기를 그만두고 지금 순위로 끝낸다 */
   resign(): void;
@@ -204,6 +216,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       events: first.flatMap((s) => s.events),
       eventSeq: get().eventSeq + 1,
       notice: null,
+      practice: false,
     });
     persist();
     for (const snapshot of first) {
@@ -255,6 +268,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     eventSeq: 0,
     level: 1,
     notice: null,
+    practice: false,
 
     newGame({ rules, level, seed: given }) {
       track("game-start", { game: "onecard", mode: "solo", level });
@@ -268,6 +282,41 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         saved.level,
         saved.seed,
       );
+    },
+
+    startPractice({ rules, initialState, bot }) {
+      stop();
+      get().local?.dispose();
+      const local: OnecardLocalMatch = new LocalMatch({
+        kit: onecardKit,
+        rules,
+        seed: Math.floor(Math.random() * 2 ** 31),
+        humanSeat: 0,
+        bot,
+        pace: botPace,
+        ...(initialState ? { initialState } : {}),
+      });
+      const first = local.drain();
+      const events = first.flatMap((s) => s.events);
+      set({
+        host: local,
+        local,
+        level: 1,
+        view: local.current(),
+        events,
+        eventSeq: get().eventSeq + 1,
+        notice: null,
+        practice: true,
+      });
+      cuesFor(events, local.seat, local.current().rules, playCue);
+      unsubscribe = local.subscribe((snapshot) => {
+        set({
+          view: snapshot.view,
+          events: snapshot.events,
+          eventSeq: get().eventSeq + 1,
+        });
+        cuesFor(snapshot.events, local.seat, snapshot.view.rules, playCue);
+      });
     },
 
     submit(action) {
@@ -288,7 +337,13 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     leave() {
       stop();
       get().local?.dispose();
-      set({ host: null, local: null, view: null, events: [] });
+      set({
+        host: null,
+        local: null,
+        view: null,
+        events: [],
+        practice: false,
+      });
     },
 
     clearNotice() {

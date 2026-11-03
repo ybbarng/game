@@ -37,6 +37,7 @@ export function LessonPlayer<View, Event, Scenario, Action>({
 
   const step = lesson?.steps[index];
   const { Scene } = tutorial;
+  const Cards = tutorial.CardRow ?? CardRow;
 
   // 미션 중에는 화면이 재생하는 진행을 따라가며 성공·실패를 판단한다.
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt가 바뀌면 다시 건다
@@ -145,7 +146,7 @@ export function LessonPlayer<View, Event, Scenario, Action>({
                   <RichText text={line} />
                 </p>
               ))}
-              {step.cards && <CardRow cards={step.cards} />}
+              {step.cards && <Cards cards={step.cards} />}
               {step.scene !== undefined && Scene && (
                 <Scene scenario={step.scene} />
               )}
@@ -177,7 +178,7 @@ export function LessonPlayer<View, Event, Scenario, Action>({
               <h2 className="font-bold text-lg">
                 <RichText text={step.question} />
               </h2>
-              {step.cards && <CardRow cards={step.cards} />}
+              {step.cards && <Cards cards={step.cards} />}
               {step.scene !== undefined && Scene && (
                 <Scene scenario={step.scene} />
               )}
