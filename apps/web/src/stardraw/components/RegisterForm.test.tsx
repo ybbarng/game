@@ -86,7 +86,7 @@ describe("신청서 칸", () => {
     expect(writtenAt(Date.UTC(2026, 10, 3, 15, 30))).toBe("2026. 11. 4. 00:30");
   });
 
-  it("서명 전에는 성명·주소가 비어 있고 서명 칸에는 「(인)」만", () => {
+  it("서명 전에는 성명·주소가 비어 있고 서명 칸에는 도장이 없다", () => {
     const { container } = form("sign");
     for (const f of ["name", "address"])
       expect(
@@ -143,6 +143,72 @@ describe("서명 전: 지문 단추", () => {
       (b) => b.textContent === "취소",
     );
     expect(cancel?.className).toContain("pointer-events-none");
+  });
+});
+
+describe("서명 칸의 지문 자리(11-70)", () => {
+  const seal = (c: HTMLElement) =>
+    c.querySelector<HTMLElement>("[data-register-seal]");
+
+  it("서명 전에는 서명 칸에 빛나는 지문 자리가 있고, 아래 단추와 이름이 겹치지 않는다", () => {
+    const { container } = form("sign");
+    const s = seal(container) as HTMLElement;
+    expect(s.tagName).toBe("BUTTON");
+    expect(s.dataset.registerSeal).toBe("waiting");
+    expect(s.getAttribute("aria-label")).toBe("서명 칸에 지문으로 서명");
+    expect(s.getAttribute("aria-label")).not.toBe(
+      finger(container)?.getAttribute("aria-label"),
+    );
+    expect(s.closest("td")?.textContent).toContain("(인)");
+    expect(s.querySelector(".sd-seal-glow")).not.toBeNull();
+    // 아래 지문 단추와 같은 때 나타난다(신청서가 다 올라온 뒤)
+    expect(s.style.getPropertyValue("--finger-delay")).toBe(`${FX.sheetIn}ms`);
+  });
+
+  it("지문 자리를 누르면 그 처리기 안에서 바로 onSign(기다림 없이), 제출은 아니다", () => {
+    const { container, props } = form("sign");
+    fireEvent.click(seal(container) as HTMLElement);
+    expect(props.onSign).toHaveBeenCalledTimes(1);
+    expect(props.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("패스키를 만드는 동안은 빛남을 걷고 누를 수 없다", () => {
+    const { container } = form("signing");
+    const s = seal(container) as HTMLElement;
+    expect(s.dataset.registerSeal).toBe("signing");
+    expect(s.tagName).not.toBe("BUTTON");
+    expect(s.querySelector(".sd-seal-glow")).toBeNull();
+  });
+
+  it("서명하면 지문 자리는 사라지고 그 자리에 지문 도장이 남는다", () => {
+    for (const stage of ["stamp", "submit"] as const) {
+      const { container } = form(stage, { pub: PUB });
+      expect(seal(container)).toBeNull();
+      expect(
+        container.querySelector("[data-register-signed] [data-fingermark]"),
+      ).not.toBeNull();
+      cleanup();
+    }
+  });
+
+  it("가만히 있으면 손짓은 아래 지문 단추 위에 하나만 나오고, 그동안 지문 자리 빛남도 멈춘다", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = form("sign");
+      const glow = seal(container)?.querySelector<HTMLElement>(".sd-seal-glow");
+      expect(glow?.style.animationPlayState).toBe("running");
+      act(() => {
+        vi.advanceTimersByTime(FX.idleHint);
+      });
+      expect(glow?.style.animationPlayState).toBe("paused");
+      expect(seal(container)?.querySelector("[data-idle-hint]")).toBeNull();
+      expect(container.querySelectorAll("[data-idle-hint]").length).toBe(1);
+      expect(
+        finger(container)?.querySelector("[data-idle-hint]"),
+      ).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

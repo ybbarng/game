@@ -6,7 +6,8 @@ import { FingerMark } from "../astronaut/FingerMark";
 import { type Astronaut, astronautOf } from "../astronaut/identity";
 import { FX } from "../fx-timing";
 import { Sheet } from "./EnterSubmit";
-import { FingerButton } from "./IdFlyer";
+import { FingerButton, FingerprintIcon } from "./IdFlyer";
+import { useIdleHint } from "./IdleHint";
 import { StageOverlay } from "./StageOverlay";
 
 /**
@@ -71,7 +72,7 @@ export function fillPlan(a: Astronaut) {
 /**
  * 우주인 등록 신청서(관공서 서식, 2026-10-31 사용자 → 2026-11-03 지문 서명, docs/36 11-65). 오버레이 위쪽에 우주국 말,
  * 아래에서 신청서가 올라와 내 앞에 놓인다. 신청서 아래(엄지 자리, 「취소」 바로 위) 지문 단추를 누르면 그 처리기 안에서
- * 바로 `onSign`(패스키 만들기). 서명 전에는 신청서를 밀어 올려도 내지 않는다. 패스키가 만들어지면 서명 칸에 지문 도장이
+ * 바로 `onSign`(패스키 만들기). 서명 칸에는 같은 박자로 빛나는 지문 자리가 있어 거기를 눌러도 같다(11-71). 서명 전에는 신청서를 밀어 올려도 내지 않는다. 패스키가 만들어지면 서명 칸에 지문 도장이
  * 찍히고 성명·주소가 차례로 채워진 뒤, 밀어 올리거나 누르면(Enter·Space·↑도) `onSubmit`. 작은 「취소」로 닫는다
  */
 export function RegisterForm({
@@ -175,6 +176,9 @@ export function RegisterForm({
                     >
                       (인)
                     </span>
+                    {(stage === "sign" || stage === "signing") && (
+                      <SealSpot waiting={stage === "sign"} onPress={onSign} />
+                    )}
                     {signed && pub && (
                       <span
                         data-register-signed
@@ -233,6 +237,65 @@ export function RegisterForm({
         </button>
       </section>
     </StageOverlay>
+  );
+}
+
+/**
+ * 서명 칸의 지문 자리(2026-11-03 사용자, docs/36 11-71): 「(인)」 위에 아래 지문 단추와 같은 지문 그림을 인주색으로 두고,
+ * 아래 단추와 같은 박자로 은은하게 숨 쉬듯 빛나 「여기에 찍힌다」로 읽히게 한다. 아래 단추와 함께 나타나고(신청서가 다
+ * 올라온 뒤) 함께 생겨 박자가 맞는다. 가만히 있어 아래 단추 위에 손짓이 도는 동안은 같이 멈춘다(손짓은 아래 단추 하나).
+ * 이 자리를 눌러도 같은 서명이다(그 처리기 안에서 바로 `onPress`, 누름 직후에만 패스키 창을 여는 브라우저가 있다).
+ * 패스키를 만드는 동안(`waiting` 거짓)은 빛남을 걷고 옅게 멈춰 있다가, 서명되면 이 자리에 지문 도장이 찍힌다(빛남과
+ * 도장이 함께 움직이지 않게). 자리·크기는 도장(`data-register-signed`)과 같아 그 자리에서 바뀌어 보인다
+ */
+function SealSpot({
+  waiting,
+  onPress,
+}: {
+  waiting: boolean;
+  onPress: () => void;
+}) {
+  const hint = useIdleHint(waiting);
+  // 종이색 바탕이 「(인)」을 덮는다(지문 그림 선과 글자가 겹쳐 지저분했다). 빛남은 그 위 그림만 숨 쉬어 바탕은 그대로다
+  const mark = (
+    <span className="rounded-full bg-[#f3eedf]">
+      <span
+        className={cn(
+          "grid size-12 place-items-center rounded-full border border-rose-700/35 border-dashed text-rose-700 [@media(max-height:700px)]:size-10",
+          waiting ? "sd-seal-glow" : "opacity-35",
+        )}
+        style={
+          waiting
+            ? { animationPlayState: hint ? "paused" : "running" }
+            : undefined
+        }
+      >
+        <FingerprintIcon className="size-8 [@media(max-height:700px)]:size-7" />
+      </span>
+    </span>
+  );
+  const place =
+    "absolute inset-y-0 right-2 flex w-12 items-center justify-center";
+  if (!waiting)
+    return (
+      <span data-register-seal="signing" aria-hidden="true" className={place}>
+        {mark}
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      data-register-seal="waiting"
+      aria-label="서명 칸에 지문으로 서명"
+      onClick={onPress}
+      className={cn(
+        place,
+        "sd-finger-in rounded-full outline-none focus-visible:ring-2 focus-visible:ring-rose-700/60",
+      )}
+      style={{ ["--finger-delay" as string]: `${FX.sheetIn}ms` }}
+    >
+      {mark}
+    </button>
   );
 }
 

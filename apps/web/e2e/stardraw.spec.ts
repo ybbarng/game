@@ -1583,6 +1583,18 @@ test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려
   ]);
   await expect(form).not.toContainText("등록번호");
   await expect(form.locator("[data-register-field='name']")).toHaveText("");
+  // 서명 칸(「(인)」 자리)에 빛나는 지문 자리(11-70). 서명 칸 안에 들어 있다
+  const seal = form.getByRole("button", { name: "서명 칸에 지문으로 서명" });
+  await expect(seal).toBeVisible();
+  const sealBox = await seal.boundingBox();
+  const cellBox = await form
+    .locator("td:has([data-register-seal])")
+    .boundingBox();
+  if (!sealBox || !cellBox) throw new Error("서명 칸 자리 없음");
+  expect(sealBox.y).toBeGreaterThanOrEqual(cellBox.y);
+  expect(sealBox.y + sealBox.height).toBeLessThanOrEqual(
+    cellBox.y + cellBox.height,
+  );
   // 신청서·지문 단추·「취소」가 화면 안에서 겹치지 않는다(휴대폰은 작은 화면 360×640에서도)
   const fits = async () => {
     const view = page.viewportSize() as { width: number; height: number };
@@ -1631,6 +1643,8 @@ test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려
   await expect(
     form.locator("[data-register-signed] [data-fingermark]"),
   ).toBeVisible();
+  // 지문 자리는 걷히고 그 자리에 도장이 남았다
+  await expect(form.locator("[data-register-seal]")).toHaveCount(0);
   const name = form.locator("[data-register-field='name']");
   await expect(name).not.toHaveText("");
   await expect(form.locator("[data-register-field='address']")).toContainText(
