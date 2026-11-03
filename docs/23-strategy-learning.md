@@ -90,7 +90,8 @@
 - **데이터 형식**(`apps/web/src/study/line.ts`)
   - `StudyLine { id, name, summary, learner, moves, source }`
     - `id`: 진행 기록 열쇠. 문제 id와 겹치지 않게 `line-`으로 시작한다(목록에서 고른 id가 `line-`이면 수순 화면으로 연다)
-    - `learner`: 배우는 사람이 두는 편. 0은 수순 첫 수를 두는 편(체스 백, 장기 초, 바둑 흑), 1은 그 상대
+    - `learner`: 배우는 사람이 두는 편. 흑백·초한이 아니라 수순 안의 차례로 센다: 0은 `moves[0]`을 두는 편(체스 백·장기 초·바둑 흑이 보통), 1은 그 상대
+    - `start`(선택): 수순이 시작하는 판. 게임 글자 그대로 두고 틀은 읽지 않는다(게임의 `initial`이 읽음). 체스 FEN, 장기 상차림, 바둑 판 크기·놓인 돌 등. 없으면 게임의 처음 판
     - `source`: 수순을 확인한 자료 주소. 화면에는 안 보이고 고칠 사람이 본다
   - `LineNode { move, note?, branches? }`
     - `move`: 게임의 기보 글자(체스 SAN, 장기 "95", 바둑 "D4")
@@ -99,6 +100,9 @@
 - **화면**(`components/study/LineScreen.tsx`): `useLineRun`(흐름)과 `LineScreen`(틀). 게임은 넘긴다
   - `initial`(처음 판), `parse(state, 글자) → 수 | null`, `same(a, b)`, `apply(state, 수) → { state, capture } | null`(상대 수도 같은 함수로 둔다), `solve`·`miss`(진행 기록, 문제와 같은 저장소)
   - 판 그림, `moveLabel(ply, 글자)`(둔 수 목록 글자), 힌트(`run.expected()`로 둘 기물을 고른다), 수 보기(`run.reveal()` 뒤 `run.shown`만 갈 곳으로 보인다)
+  - `transforms`(선택): 대칭 변환 목록(0번은 그대로). 바둑 정석처럼 네 귀·뒤집기 어디서 둬도 같은 수순이면 여덟 방향을 넘긴다. 배우는 사람의 첫 수가 맞은 방향으로 수순 전체를 돌려 두고, 상대가 먼저 두면 그대로 방향이다(`matchMove`)
+  - `extraButtons`: 판 밖에서 두는 수(바둑 쉬기 등) 단추. 그 수는 `parse`가 글자(예: "pass")를 수로 바꾸고 `run.play(수)`로 둔다
+  - 장기는 문제 데이터와 같은 출발-도착 글자("48-44")를 쓰면 된다
   - 수순에 없는 수는 판에 두지 않고 "이 수순에서 두는 수가 아니에요"라고 알린다(틀린 횟수는 수순마다 한 번만 센다). 수 보기를 누른 뒤 끝내면 푼 것으로 치지 않는다
 - **목록**: `StudyHome`의 묶음에 `labels`(수순 이름)를 주면 번호 칸 대신 이름 목록으로 보인다
 - **검증 시험**: `allPaths(line)`으로 본줄기와 모든 갈래를 처음 판부터 엔진으로 다시 두어, 규칙에 맞고 글자가 엔진의 기보와 같은지 본다(체스 `chess/openings.test.ts`). 배우는 편의 수에 설명이 있는지도 본다
