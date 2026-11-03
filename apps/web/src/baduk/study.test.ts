@@ -3,9 +3,6 @@ import {
   captureMoves,
   groupOf,
   koRecapturePoint,
-  lifeKeyMoves,
-  lifeWrongMovesFail,
-  passAliveStones,
   pointName,
   snapbackGain,
   step,
@@ -18,7 +15,6 @@ import {
   defenseFor,
   explainSolved,
   judgeMove,
-  lifeProblem,
   PUZZLE_SIZE,
   puzzleState,
   solutionOf,
@@ -26,19 +22,14 @@ import {
 } from "./study";
 
 type Capture = Extract<BadukPuzzle, { kind: "capture" }>;
-type Life = Extract<BadukPuzzle, { kind: "life" }>;
 
 const all = BADUK_PUZZLE_SETS.flatMap((s) => s.puzzles);
 const captures = all.filter((p): p is Capture => p.kind === "capture");
-const lives = all.filter((p): p is Life => p.kind === "life");
 const snapbacks = captures.filter((p) => p.theme === "snapback");
 const kos = captures.filter((p) => p.theme === "ko");
 const rows = <T extends { id: string }>(ps: T[]) =>
   ps.map((p) => [p.id, p] as const);
 const name = (p: number) => pointName(p, PUZZLE_SIZE);
-
-/** 사활을 읽는 깊이(두 편 합): 빈 자리 수의 두 배와 조금 */
-const lifeDepth = (p: Life) => Math.min(16, 2 * p.area.length + 2);
 
 describe("바둑 문제 데이터", () => {
   it("문제 번호는 겹치지 않고, 묶음마다 다섯 개 이상이다", () => {
@@ -192,31 +183,4 @@ describe("패 문제", () => {
       });
     },
   );
-});
-
-describe("사활 문제(두 눈 만들기·눈 빼앗기)", () => {
-  it.each(rows(lives))(
-    "%s: 처음에는 산 모양이 아니고, 정답은 하나뿐이며 다른 수는 반대 결과가 된다",
-    (_id, p) => {
-      const { board } = puzzleState(p);
-      const problem = lifeProblem(p);
-      const owner = board[problem.target] as 1 | 2;
-      expect(passAliveStones(board, owner).has(problem.target)).toBe(false);
-      const keys = lifeKeyMoves(board, problem, 1, lifeDepth(p));
-      expect(keys.map(name)).toEqual([p.solution]);
-      expect(lifeWrongMovesFail(board, problem, 1, lifeDepth(p), keys)).toBe(
-        true,
-      );
-    },
-  );
-
-  it.each(rows(lives))("%s: 정답만 푼 것이고 해설이 나온다", (_id, p) => {
-    const state = puzzleState(p);
-    const other = p.area.find((a) => a !== p.solution) as string;
-    expect(judgeMove(p, state, solutionOf(p), 0)).toBe("solved");
-    expect(judgeMove(p, state, solutionOf({ ...p, solution: other }), 0)).toBe(
-      "wrong",
-    );
-    expect(explainSolved(p, state.board, solutionOf(p), 1).length).toBe(3);
-  });
 });

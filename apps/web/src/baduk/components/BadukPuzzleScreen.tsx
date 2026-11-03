@@ -20,6 +20,7 @@ import {
   type BadukPuzzle,
   type BadukPuzzleSet,
   type CaptureTheme,
+  LIFE_SHAPE_NAMES,
 } from "../puzzles";
 import {
   defenseFor,
@@ -136,6 +137,7 @@ function BadukPuzzleRun({
   const legal = status === "play" ? legalPoints(state) : [];
   const capture = puzzle.kind === "capture" ? CAPTURE_TEXT[puzzle.theme] : null;
   const live = puzzle.kind === "life" && puzzle.goal === "live";
+  const shape = puzzle.kind === "life" ? puzzle.shape : undefined;
   const goal = capture
     ? run.step === 0
       ? capture.prompt
@@ -187,9 +189,11 @@ function BadukPuzzleRun({
       wrongHint={
         capture
           ? capture.hint
-          : live
-            ? "눈 자리를 둘로 나누는 곳을 찾아요"
-            : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요"
+          : shape
+            ? `${LIFE_SHAPE_NAMES[shape]}의 급소를 먼저 차지해요`
+            : live
+              ? "눈 자리를 둘로 나누는 곳을 찾아요"
+              : "백이 두면 두 눈이 되는 자리(급소)를 먼저 차지해요"
       }
       shown={shown !== null}
       explain={run.explain}

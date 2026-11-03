@@ -1,15 +1,36 @@
 /*
  * 바둑 첫 수 배우기 문제(docs/23, docs/25). 9줄 판의 작은 장면이고, 늘 흑(나)이 둔다. 자리는 "D4"처럼 쓴다.
- * 장면은 엔진으로 무작위 판을 만들어 "정답이 하나뿐인 판"을 찾아 골랐고, study.test.ts가 모든 문제를 다시 확인한다.
+ * 장면은 엔진으로 무작위 판을 만들어 "정답이 하나뿐인 판"을 찾아 골랐고, study.test.ts(잡기)와 life.test.ts(사활)가 모든 문제를 다시 확인한다.
  * - 잡기(단수·축·장문·환격·패): `captureMoves`로 `within`수 안에 노리는 돌을 따내는 첫 수가 정답 하나뿐이고, 더 빨리는 못 따낸다.
  *   환격은 첫 수가 한 점을 내주는 수(`snapbackGain`), 패는 첫 수가 패를 따내는 수(`koRecapturePoint`)다
  * - 사활(두 눈 만들기·눈 빼앗기): `lifeKeyMoves`로 정한 빈 자리 안의 첫 수 가운데 정답이 하나뿐이고,
  *   다른 수는 반대 결과(사는 문제면 잡히고, 잡는 문제면 산다)가 된다(`lifeWrongMovesFail`)
+ * - 이름 있는 모양(직삼·곡삼·T자 네 집·오궁도화·뭉친 다섯 집·매화육궁): 무작위가 아니라 모양을 손으로 놓은 사활 문제다.
+ *   바깥을 둘러싼 돌은 귀에 한 집씩 두 눈을 가져 벤슨 방법으로 산 돌이다(안쪽 싸움만 남는다)
  * 해설은 장면에서 만든다(study.ts).
  */
 
 /** 잡기 문제의 모양: 단수 방향, 축, 장문, 환격, 패 */
 export type CaptureTheme = "atari" | "ladder" | "net" | "snapback" | "ko";
+
+/** 이름 있는 눈 모양: 직삼, 곡삼, T자 네 집, 오궁도화, 뭉친 다섯 집, 매화육궁 */
+export type LifeShape =
+  | "straight-three"
+  | "bent-three"
+  | "pyramid-four"
+  | "flower-five"
+  | "bulky-five"
+  | "rabbity-six";
+
+/** 눈 모양의 이름 */
+export const LIFE_SHAPE_NAMES: Record<LifeShape, string> = {
+  "straight-three": "직삼",
+  "bent-three": "곡삼",
+  "pyramid-four": "T자 네 집",
+  "flower-five": "오궁도화",
+  "bulky-five": "뭉친 다섯 집",
+  "rabbity-six": "매화육궁",
+};
 
 /**
  * 문제 하나. 늘 흑이 둔다.
@@ -31,6 +52,8 @@ export type BadukPuzzle = {
       goal: "live" | "kill";
       /** 사활을 읽는 빈 자리(둘러싸인 안쪽) */
       area: readonly string[];
+      /** 이름 있는 눈 모양 문제면 그 모양 */
+      shape?: LifeShape;
     }
 );
 
@@ -464,6 +487,324 @@ const KILL: readonly RawLife[] = [
   },
 ];
 
+type RawShape = RawLife & { goal: "live" | "kill"; shape: LifeShape };
+
+/**
+ * 이름 있는 모양. 눈 자리(`area`)가 그 모양이고, 정답은 모양의 급소다.
+ * 바깥 돌은 귀(A9·J9·A1·H1·F1 등)에 한 집씩 두 눈을 가진 한 무리라 그대로 산다
+ */
+const SHAPES: readonly RawShape[] = [
+  // 직삼: 위 변 D9·E9·F9, 가운데 E9
+  {
+    goal: "live",
+    shape: "straight-three",
+    black: ["C9", "C8", "D8", "E8", "F8", "G8", "G9"],
+    white: [
+      "A8",
+      "B9",
+      "B8",
+      "B7",
+      "C7",
+      "D7",
+      "E7",
+      "F7",
+      "G7",
+      "H7",
+      "H8",
+      "H9",
+      "J8",
+    ],
+    target: "C9",
+    area: ["D9", "E9", "F9"],
+    solution: "E9",
+  },
+  // 직삼: 왼쪽 변 A6·A5·A4, 가운데 A5
+  {
+    goal: "kill",
+    shape: "straight-three",
+    black: [
+      "B9",
+      "A8",
+      "B8",
+      "C8",
+      "C7",
+      "C6",
+      "C5",
+      "C4",
+      "C3",
+      "C2",
+      "B2",
+      "A2",
+      "B1",
+    ],
+    white: ["A7", "B7", "B6", "B5", "B4", "B3", "A3"],
+    target: "A7",
+    area: ["A6", "A5", "A4"],
+    solution: "A5",
+  },
+  // 곡삼: D9·E9·E8, 꺾인 자리 E9
+  {
+    goal: "live",
+    shape: "bent-three",
+    black: ["C9", "C8", "D8", "D7", "E7", "F7", "F8", "F9"],
+    white: [
+      "B9",
+      "A8",
+      "B8",
+      "B7",
+      "C7",
+      "C6",
+      "D6",
+      "E6",
+      "F6",
+      "G6",
+      "G7",
+      "G8",
+      "G9",
+      "H8",
+      "J8",
+      "J9",
+    ],
+    target: "C9",
+    area: ["D9", "E9", "E8"],
+    solution: "E9",
+  },
+  // 곡삼: 아래 변 D1·E1·E2, 꺾인 자리 E1
+  {
+    goal: "kill",
+    shape: "bent-three",
+    black: [
+      "A2",
+      "B1",
+      "B2",
+      "B3",
+      "C3",
+      "C4",
+      "D4",
+      "E4",
+      "F4",
+      "G4",
+      "G3",
+      "G2",
+      "G1",
+      "H2",
+      "J2",
+      "J1",
+    ],
+    white: ["C1", "C2", "D2", "D3", "E3", "F3", "F2", "F1"],
+    target: "C1",
+    area: ["D1", "E1", "E2"],
+    solution: "E1",
+  },
+  // T자 네 집: D9·E9·F9·E8, 가운데 E9
+  {
+    goal: "live",
+    shape: "pyramid-four",
+    black: ["C9", "C8", "D8", "D7", "E7", "F7", "F8", "G8", "G9"],
+    white: [
+      "A8",
+      "B9",
+      "B8",
+      "B7",
+      "C7",
+      "C6",
+      "D6",
+      "E6",
+      "F6",
+      "G6",
+      "G7",
+      "H7",
+      "H8",
+      "H9",
+      "J8",
+    ],
+    target: "C9",
+    area: ["D9", "E9", "F9", "E8"],
+    solution: "E9",
+  },
+  // T자 네 집: 오른쪽 변 J5·J4·J3·H4, 가운데 J4
+  {
+    goal: "kill",
+    shape: "pyramid-four",
+    black: [
+      "H9",
+      "H8",
+      "J8",
+      "J7",
+      "H7",
+      "G7",
+      "G6",
+      "F6",
+      "F5",
+      "F4",
+      "F3",
+      "F2",
+      "E2",
+      "E1",
+      "G2",
+      "G1",
+      "H1",
+      "J1",
+    ],
+    white: ["J6", "H6", "H5", "G5", "G4", "G3", "H3", "H2", "J2"],
+    target: "J6",
+    area: ["J5", "J4", "J3", "H4"],
+    solution: "J4",
+  },
+  // 오궁도화: 왼쪽 변 B6·A5·B5·C5·B4, 한가운데 B5
+  {
+    goal: "live",
+    shape: "flower-five",
+    black: [
+      "A7",
+      "A6",
+      "B7",
+      "C7",
+      "C6",
+      "D6",
+      "D5",
+      "D4",
+      "C4",
+      "C3",
+      "B3",
+      "A3",
+      "A4",
+    ],
+    white: [
+      "B9",
+      "A8",
+      "B8",
+      "C8",
+      "D8",
+      "D7",
+      "E7",
+      "E6",
+      "E5",
+      "E4",
+      "E3",
+      "D3",
+      "D2",
+      "C2",
+      "B2",
+      "A2",
+      "B1",
+    ],
+    target: "A7",
+    area: ["B6", "A5", "B5", "C5", "B4"],
+    solution: "B5",
+  },
+  // 오궁도화: E9·D8·E8·F8·E7, 한가운데 E8
+  {
+    goal: "kill",
+    shape: "flower-five",
+    black: [
+      "A8",
+      "B9",
+      "B8",
+      "B7",
+      "B6",
+      "C6",
+      "C5",
+      "D5",
+      "E5",
+      "F5",
+      "G5",
+      "G6",
+      "H6",
+      "H7",
+      "H8",
+      "H9",
+      "J8",
+    ],
+    white: [
+      "C9",
+      "D9",
+      "C8",
+      "C7",
+      "D7",
+      "D6",
+      "E6",
+      "F6",
+      "F7",
+      "G7",
+      "G8",
+      "G9",
+      "F9",
+    ],
+    target: "C9",
+    area: ["E9", "D8", "E8", "F8", "E7"],
+    solution: "E8",
+  },
+  // 뭉친 다섯 집: 네모 D9·E9·D8·E8에 F8, 세 집에 붙은 E8
+  {
+    goal: "kill",
+    shape: "bulky-five",
+    black: [
+      "A8",
+      "B9",
+      "B8",
+      "B7",
+      "B6",
+      "C6",
+      "D6",
+      "E6",
+      "F6",
+      "G6",
+      "H6",
+      "H7",
+      "H8",
+      "H9",
+      "J8",
+    ],
+    white: ["C9", "C8", "C7", "D7", "E7", "F7", "G7", "G8", "G9", "F9"],
+    target: "C9",
+    area: ["D9", "E9", "D8", "E8", "F8"],
+    solution: "E8",
+  },
+  // 매화육궁: E9·D8·E8·F8·E7·F7, 네 집에 붙은 E8
+  {
+    goal: "kill",
+    shape: "rabbity-six",
+    black: [
+      "A8",
+      "B9",
+      "B8",
+      "B7",
+      "B6",
+      "C6",
+      "C5",
+      "D5",
+      "E5",
+      "F5",
+      "G5",
+      "H5",
+      "H6",
+      "H7",
+      "H8",
+      "H9",
+      "J8",
+    ],
+    white: [
+      "C9",
+      "D9",
+      "C8",
+      "C7",
+      "D7",
+      "D6",
+      "E6",
+      "F6",
+      "G6",
+      "G7",
+      "G8",
+      "G9",
+      "F9",
+    ],
+    target: "C9",
+    area: ["E9", "D8", "E8", "F8", "E7", "F7"],
+    solution: "E8",
+  },
+];
+
 const captureSet = (
   id: CaptureTheme,
   title: string,
@@ -494,6 +835,21 @@ const lifeSet = (
     id: `${goal}-${i + 1}`,
     kind: "life",
     goal,
+    ...p,
+  })),
+});
+
+const shapeSet = (
+  title: string,
+  summary: string,
+  raws: readonly RawShape[],
+): BadukPuzzleSet => ({
+  id: "shapes",
+  title,
+  summary,
+  puzzles: raws.map((p, i) => ({
+    id: `shapes-${i + 1}`,
+    kind: "life",
     ...p,
   })),
 });
@@ -540,5 +896,10 @@ export const BADUK_PUZZLE_SETS: readonly BadukPuzzleSet[] = [
     "눈 빼앗기",
     "상대 눈 자리 한가운데(급소)에 두어 두 눈을 못 만들게 한다",
     KILL,
+  ),
+  shapeSet(
+    "이름 있는 모양",
+    "직삼·곡삼·T자 네 집·오궁도화·매화육궁처럼 이름 있는 눈 모양은 급소 하나로 살고 죽는다. 급소를 먼저 차지한다",
+    SHAPES,
   ),
 ];
