@@ -12,6 +12,7 @@ export {
   type ReductionSolution,
   type ReductionStage,
   type ReductionStageId,
+  ReductionStuckError,
   STAGE_NAMES,
   solveReduction,
   solveReductionColors,
