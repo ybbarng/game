@@ -195,17 +195,40 @@ export function DirectorConsole({
         )}
       </section>
 
-      <p
-        role="status"
-        aria-live="polite"
-        data-director-message={message ? (message.ok ? "ok" : "fail") : ""}
+      {/* 단추는 화면 곳곳(아래쪽 소속·일정 등)에 있어, 결과는 누른 자리에서 보이게 화면 아래에 띄운다 */}
+      <div
         className={cn(
-          "min-h-6 break-keep text-sm",
-          message?.ok ? "text-emerald-200" : "text-rose-200",
+          "pointer-events-none fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-xl justify-center",
+          !message && "sr-only",
         )}
       >
-        {message?.text}
-      </p>
+        <div
+          className={cn(
+            "pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur",
+            message?.ok
+              ? "border-emerald-300/40 bg-emerald-950/90 text-emerald-100"
+              : "border-rose-300/40 bg-rose-950/90 text-rose-100",
+          )}
+        >
+          <p
+            role="status"
+            aria-live="polite"
+            data-director-message={message ? (message.ok ? "ok" : "fail") : ""}
+            className="break-keep"
+          >
+            {message?.text}
+          </p>
+          {message && (
+            <button
+              type="button"
+              onClick={() => setMessage(null)}
+              className="shrink-0 rounded px-1 text-white/70 hover:text-white"
+            >
+              닫기
+            </button>
+          )}
+        </div>
+      </div>
 
       <Section title="국장 패스키">
         <p className="break-keep text-sm text-white/70">
