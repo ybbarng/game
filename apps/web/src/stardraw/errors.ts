@@ -7,6 +7,7 @@
  * |---|---|---|
  * | 패스키 취소·지원 안 함 | DOMException 이름 | passkeyFailText(그대로) |
  * | 서버 바쁨 | 503(응모·등록은 장부가 1·2·3·4초 뒤 네 번 다시 낸 뒤), 429 | 우주국이 너무 바빠 ○○하지 못했습니다. 잠시 뒤 다시 시도해 주세요. |
+ * | 관측지 붐빔·너무 잦음 | 429 + 서버 문구 「관측지가 붐벼요…」「조금 천천히 …」 | 서버 문구 그대로(마침표를 맞춘다) |
  * | 응모 마감 | 서버 문구 "마감됐어요(서버 시각 …)" | (응모는 반송 쪽지) 응모가 마감되어 ○○하지 못했습니다. |
  * | 이미 응모 | 409 + "이미 응모" | 이번 회차에는 이미 응모하셨습니다. |
  * | 회차가 바뀜 | 409 + "회차가 바뀌었습니다" | 회차가 바뀌어 ○○하지 못했습니다. 다시 시도해 주세요. |
@@ -45,6 +46,7 @@ export type ErrorKind =
   | "cancelled"
   | "unsupported"
   | "busy"
+  | "slow"
   | "closed"
   | "duplicate"
   | "round-changed"
@@ -76,6 +78,9 @@ export function errorKind(err: unknown): ErrorKind {
   const msg = err instanceof Error ? err.message : "";
   if (msg.includes("장부를 아직 받지 못했습니다")) return "behind";
   const status = statusOf(err);
+  // 관측지는 붐빔(방 전체 상한)과 너무 잦음(내 몫)을 서버 문구로 나눠 알린다. 둘 다 「우주국이 너무 바빠」로 뭉뚱그리면
+  // 많이 몰린 순간 왜 안 보내지는지 알 수 없다(2026-11-03, 200명 관측지 검토)
+  if (status === 429 && /천천히|붐벼요/.test(msg)) return "slow";
   if (status === 503 || status === 429) return "busy";
   if (status === 409) {
     if (msg.includes("이미 예측") || msg.includes("이미 응모"))
@@ -114,6 +119,8 @@ export function errorText(
       return passkeyFailText(err, cancelWhat);
     case "busy":
       return `우주국이 너무 바빠 ${failed}. 잠시 뒤 다시 시도해 주세요.`;
+    case "slow":
+      return sentence((err as Error).message.trim());
     case "closed":
       return `예측이 마감되어 ${failed}.`;
     case "duplicate":
