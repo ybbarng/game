@@ -2,7 +2,7 @@ import { expect, type Page, ready, speedUpAnimations, test } from "./test";
 
 /*
  * 원카드 친구와 하기(docs/42 16절): 탭 둘(방장 + 참가자)을 BroadcastChannel로 잇는다(?net=local).
- * 일반방은 기본으로 돌리고(대기실 → 시작 → 카드 내기 몇 번 → 참가자가 더미 치기 → 방장 화면에 말풍선),
+ * 일반방은 기본으로 돌리고(대기실 → 시작 → 참가자가 더미 치기 → 방장 화면에 외침 사건 → 카드 내기 몇 번),
  * 암호화방(멘탈 포커)은 섞기 계산이 무거워 FAIR_MULTI=1일 때만 시작과 카드 내기까지 본다.
  * 규칙·청구 판정·판 끝 검증은 단위·방 시험(onecard/room.test.ts, fair-room.test.ts)이 본다.
  */
@@ -97,7 +97,7 @@ async function slap(page: Page) {
   await page.keyboard.press("Space");
 }
 
-test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치면 청구가 방장 화면에도 외침 사건으로 들어간다", async ({
+test("원카드 일반방: 참가자가 더미를 치면 청구가 방장 화면에도 외침 사건으로 들어가고, 둘이 카드를 낸다", async ({
   context,
 }, info) => {
   test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
@@ -112,13 +112,10 @@ test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치�
   await expect(host.getByText("철수").first()).toBeVisible();
   await expect(guest.getByText("방장").first()).toBeVisible();
 
-  // 몇 수 둔다(누구 차례든 낸다, 컴퓨터 자리는 방장 기기가 둔다)
-  await playMoves([host, guest], 4);
-  await guest.screenshot({
-    path: test.info().outputPath("onecard-online-normal-guest.png"),
-  });
-
-  // 참가자가 더미를 친다: 청구가 모두에게 가고, 방장이 묶음으로 엔진에 넣는다(헛외침이든 외침이든).
+  // 판 시작 직후, 참가자가 아무것도 먹기 전에 더미를 친다. 몇 수 둔 뒤에 치면 컴퓨터가 쌓은 공격을 먹고
+  // 파산(20장)한 판에서 청구가 받아들여지지 않아 섞기 운에 따라 실패했다(CI run 41707050814).
+  // 7장에서 치면 헛외침(벌칙 1장)이고 파산할 수 없다.
+  // 청구가 모두에게 가고, 방장이 묶음으로 엔진에 넣는다(헛외침이든 외침이든).
   // 말풍선은 1.5초만 떠서 부하 아래 놓칠 수 있으므로, 남는 상태(화면이 받은 자리별 외침 사건 수 `data-shouts-by`)로
   // 참가자 자리의 외침·잡기·헛외침이 방장·참가자 두 화면에서 늘었는지 기다린다(빈 자리 컴퓨터의 외침은 세지 않는다)
   const root = (p: Page) => p.locator('[data-game="onecard"]');
@@ -136,6 +133,12 @@ test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치�
       .toBeGreaterThan(before[i] as number);
   await host.screenshot({
     path: test.info().outputPath("onecard-online-normal-host.png"),
+  });
+
+  // 몇 수 둔다(누구 차례든 낸다, 컴퓨터 자리는 방장 기기가 둔다)
+  await playMoves([host, guest], 2);
+  await guest.screenshot({
+    path: test.info().outputPath("onecard-online-normal-guest.png"),
   });
   expect(errors).toEqual([]);
 });
