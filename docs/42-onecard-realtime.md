@@ -334,3 +334,47 @@ IP 제한은 여기서 쓸 곳이 없다. 부정의 주체가 이미 방에 들�
 - docs/31 실시간 판정 조사, docs/30 나이롱뽕 2절(응답 창), docs/27 3절(화투 멘탈 포커·계산 시간), docs/15 "보내는 때", docs/13(ristretto255 계산값), docs/18 부류 C, docs/24
 - `packages/fair-play/src/device.ts`(`start`, `reshuffle`, `stagesOf`, `roundOf`), `hwatu-table.ts`(`HwatuFairSpec`, `hwatuDealId`, `deck` 요청), `protocol.ts`(`CARD_CODES`), `clock.ts`
 - `apps/web/src/game/kit.ts`(`offTurn`, `timing`), `apps/web/src/net/transport.ts`, `rtc-diag.ts`, `fairness.ts`
+
+---
+
+## 12. 엔진 구현 (2026-11-03)
+
+`packages/onecard-engine`(`@game/onecard-engine`)에 순수 함수로 만들었다. 화면·컴퓨터·온라인 방은 아직 없다.
+
+### 12-1. 고른 기본값과 옵션(`OnecardRules`, `STANDARD_ONECARD_RULES`)
+
+| 항목 | 기본 | 옵션 | 근거 |
+|---|---|---|---|
+| 인원 `players` | 4 | 2~5 | |
+| 처음 손패 `handSize` | 7 | 5 | 나무위키 |
+| 공격 `attack` | 2 = 2, A = 3, ♠A = 5, 흑백 조커 = 5, 컬러 조커 = 7 | 1~15장씩 | 2-1 표의 작은 쪽 |
+| 받아치기 | 2 위: 아무 2·같은 무늬 A·조커 / A(♠A 포함) 위: 아무 A·조커 / 조커 위: 조커 | (고정) | 2-1 표 |
+| 조커 색 제한 `jokerColor` | 끔 | 흑백 조커는 ♠·♣ 뒤, 컬러 조커는 ◆·♥ 뒤에만 | |
+| 마지막 카드 제한 `finish` | `attack`(2·A·조커로 못 끝냄) | `special`(7·J·Q·K도), `none` | 2-1 "공격·방어 카드로 끝낼 수 없음" |
+| 파산 `bankruptAt` | 20장 | 15·24·끔 | 파산한 사람 패는 버린 더미 밑으로 |
+| 판 끝 `endOnFirst` | 끔(한 사람 남을 때까지) | 한 명 나면 끝 | |
+| 잡기 벌칙 `catchPenalty` | 1장 | 2장 | 갈림길 4 |
+| 헛외침 벌칙 `falseShoutPenalty` | 1장 | 0·2장 | 갈림길 6 |
+| 본인 시간 P `selfWindowMs` | 1000 | 0·2000 | 갈림길 2 |
+| 잡기 창 T `catchWindowMs` | 3000 | 2000·5000 | 갈림길 3 |
+| 본인 외침 보상 `shoutReward` | 끔 | 남들이 한 장씩 | 갈림길 5 |
+| 늦은 `seen` 컷 `STALE_SEEN` | 2(상수) | — | docs/43 2-2의 단순판 |
+
+그 밖: 먹기는 "먹고 끝"(공격 중이면 쌓인 만큼). 낼 수 있어도 먹을 수 있다(4-1, 멘탈 포커에서 확인할 수 없는 규칙을 두지 않음). 7은 낸 사람이 무늬를 고르고(`play.suit`), 7 위에는 7도 낼 수 있다. 조커 뒤(공격을 먹은 뒤 포함)는 아무 카드나. Q는 둘만 남으면 K처럼, J는 둘이면 다시 내 차례. 첫 카드가 특수 카드면 더미 밑으로 보내고 다시 편다. 점수는 남은 손패 장 수(파산은 파산할 때 장 수), 순위는 다 낸 순서 → 남은 사람 장 수 → 늦게 파산한 순서.
+
+### 12-2. 외침(B안)과 판 번호
+
+- 판 번호 `version` = 받아들인 행동 수(기록 길이). 외침 `{type:"shout", seen}`의 `seen`은 화면의 `viewOf().version`.
+- 뜻은 `judgeShout`가 가린다. 자기 상태는 지금 판으로: 자기 창이 P면 본인 외침(안전), T면 받지 않음(벌칙 없음), 자기 차례·두 장이면 미리 외침(다음 낸 카드로 한 장이 되면 외친 것). 남을 잡는 것은 **`seen` 판에서 창이 열린 사람**이 있었나로: 있었고 지금 T면 잡기, 지금 P면 아무 일 없이 처음 사람만 적어 두고 P 끝에 본인이 안 외쳤으면 그 사람이 잡은 것, 그사이 창이 닫혔으면 벌칙 없음(늦음). 없었으면 헛외침(이미 외친 사람 잡기 포함). `version − seen > 2`면 벌칙 없이 버린다.
+- 창은 엔진이 재지 않는다. `shoutWindows(state)`가 열린 창의 `id`·주인·종류·길이를 주고, 바깥(방장 `LocalMatch`)이 시간이 다 되면 `{type:"timeout", kind:"selfWindow"|"catchWindow", target}`을 넣는다. P가 끝나 T로 바뀌면 창 번호가 새로 바뀐다. 손패가 바뀌면(먹음·다 냄) 창이 일찍 닫히고, 그 뒤 온 시간 끝은 받지 않는다(시계를 지우지 못한 경우).
+- 사건에는 "누가 잊었나"를 넣지 않는다(`shouted`, `caught`, `falseShout`만). `viewOf`는 창·외침 상태를 자기 것도 보이지 않는다(4-3 "늘 같은 모습").
+
+### 12-3. 다시 섞기
+
+엔진은 섞지 않는다. 판 시작은 섞인 덱(`OnecardSetup.deck`)을 받고, 먹다가 더미가 바닥나면 `reshuffleNeeded` 사건과 함께 `phase = "reshuffle"`이 되어 `reshuffleRequest(state)`(버린 더미에서 맨 위를 뺀 카드, 카드 순서)를 섞은 `{type:"reshuffle", order}`를 기다린다. 먹을 일은 줄(`queue`)로 두어 "몇 장 먹고 → 다시 섞기 → 나머지"로 이어지고, 버린 더미까지 모자라면 있는 만큼만 먹는다. 기다리는 동안에도 외침·창 끝은 받고 벌칙은 줄을 선다. 일반방·혼자 하기는 `seededReshuffle(state, seed)`.
+
+### 12-4. 아직 하지 않은 것
+
+- 멘탈 포커 판: 엔진은 모든 패를 아는 방장 엔진이다. 암호화방은 나이롱뽕 `fair`처럼 남의 패를 모른 채 돌리는 모양(낼 때 열린 카드로 확인, 먹은 카드는 받는 기기만 앎)이 따로 필요하다.
+- 여러 판(판 수·합계): 엔진 한 번이 한 판이다.
+- 카드 점수(장 수 대신 카드마다 점수): 흔한 기준을 찾지 못해 두지 않았다.
