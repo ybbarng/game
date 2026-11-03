@@ -495,6 +495,27 @@ describe("관측이 끝난 뒤", () => {
     at: later,
   });
 
+  it("언덕에 오르기는 관측 전에는 권장 단추, 끝난 뒤에는 평범한 단추(다음 회차 예측이 권장)", async () => {
+    const before = renderRoom(3, services);
+    await waitFor(() => {
+      expect(
+        before.container
+          .querySelector("[data-room-join]")
+          ?.getAttribute("data-room-join"),
+      ).toBe("cta");
+    });
+    cleanup();
+    vi.restoreAllMocks();
+    const view = renderAfter(null, []);
+    await waitFor(() => {
+      expect(
+        view.container
+          .querySelector("[data-room-join]")
+          ?.getAttribute("data-room-join"),
+      ).toBe("plain");
+    });
+  });
+
   it("당첨된 얼굴에만 등수 표지, 가장 높은 등수는 금빛", async () => {
     const view = renderAfter(null, []);
     await waitFor(() => {

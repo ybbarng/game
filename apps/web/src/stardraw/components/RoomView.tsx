@@ -1249,7 +1249,15 @@ export function RoomView({
                 type="button"
                 onClick={() => void ensurePass()}
                 disabled={setup.working !== null || registeringNow}
-                className="sd-cta w-full max-w-xs rounded-2xl py-2.5 font-bold text-slate-950 text-sm disabled:opacity-50"
+                data-room-join={phase === "after" ? "plain" : "cta"}
+                // 관측이 끝난 뒤에는 평범한 단추: 아래 「별 6개 고르기」(다음 회차 예측)가 권장 단추다. 금색 단추 둘이
+                // 나란히 있어 눈이 어지러웠다(2026-11-03 사용자)
+                className={cn(
+                  "w-full max-w-xs rounded-2xl py-2.5 font-bold text-sm disabled:opacity-50",
+                  phase === "after"
+                    ? "border border-white/20 bg-white/5 text-white/85 hover:bg-white/10"
+                    : "sd-cta text-slate-950",
+                )}
               >
                 {seat.join}
               </button>
