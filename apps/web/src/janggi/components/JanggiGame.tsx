@@ -1,6 +1,6 @@
 "use client";
 
-import { janggiBotFor } from "@game/janggi-ai";
+import { janggiBotFor, masterPlanFor } from "@game/janggi-ai";
 import {
   type JanggiView,
   type Kind,
@@ -30,6 +30,7 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
 import { piecesInDanger } from "../danger";
+import { planText } from "../plan-text";
 import { BIKJANG_INFO, JANGGI_LEVELS, useJanggiSettings } from "../settings";
 import { useJanggi } from "../store";
 import { JanggiBoard, pieceLabel, SIDE_COLOR } from "./JanggiBoard";
@@ -46,10 +47,13 @@ function PlayerPlate({
   view,
   seat,
   name,
+  note,
 }: {
   view: JanggiView;
   seat: number;
   name: string;
+  /** 자리 표 아래 한 줄(초고수의 노림) */
+  note?: string | null;
 }) {
   const labels = useJanggiSettings((s) => s.labels);
   const side = sideOfSeat(view, seat);
@@ -114,6 +118,11 @@ function PlayerPlate({
           </span>
         )}
       </div>
+      {note && (
+        <p data-plan className="truncate text-sky-200/90 text-xs">
+          {note}
+        </p>
+      )}
     </div>
   );
 }
@@ -309,7 +318,16 @@ export function JanggiGame({
 
       <div className="flex w-full max-w-xl gap-2 short-landscape:col-start-2 short-landscape:row-start-2 short-landscape:flex-col">
         <PlayerPlate view={view} seat={me} name="나" />
-        <PlayerPlate view={view} seat={1 - me} name={opponent} />
+        <PlayerPlate
+          view={view}
+          seat={1 - me}
+          name={opponent}
+          note={
+            !online && level >= 3 && view.phase === "play"
+              ? `노림: ${planText(masterPlanFor(view.board, other(mySide), view.played.length).id)}`
+              : null
+          }
+        />
       </div>
 
       {/* 판은 세로로 길다(9×10). 휴대폰 가로는 판이 화면 높이를 채우고 나머지는 오른쪽에 */}

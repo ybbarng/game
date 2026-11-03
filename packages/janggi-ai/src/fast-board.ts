@@ -5,7 +5,7 @@ import * as engine from "@game/janggi-engine";
 const { CELLS, HEIGHT, WIDTH } = engine;
 
 /*
- * 고수 탐색용 빠른 판. 엔진의 `pseudoTargets`·`attacked`와 같은 규칙을
+ * 초고수 탐색용 빠른 판. 엔진의 `pseudoTargets`·`attacked`와 같은 규칙을
  * 미리 계산한 표와 정수 배열로 다시 적었다(결과가 같은지는 fast-board.test.ts가 본다).
  *
  * 기물 부호: 0 빈칸, 편(초 0, 한 8) + 종류(궁 1 사 2 차 3 포 4 마 5 상 6 졸 7)

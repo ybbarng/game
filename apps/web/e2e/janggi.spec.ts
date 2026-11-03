@@ -494,3 +494,22 @@ test("장기 수 배우기: 잡힐 기물 지키기를 틀렸다 다시 풀고 �
   await expect(page.getByText(/차를 29로 비킨다/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("janggi-defend.png") });
 });
+
+test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 보이고 한 수를 받는다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "자리 표 한 줄이라 배치는 크기와 상관없다",
+  );
+  await page.goto("/janggi");
+  await startSolo(page, "초고수");
+  await page.getByRole("button", { name: "상마상마" }).click();
+  await expect(page.locator("[data-plan]")).toContainText("노림: ");
+  await playOne(page, false);
+  await expect(page.getByRole("status")).toContainText("내 차례", {
+    timeout: 15_000,
+  });
+  await expect(page.locator("[data-plan]")).toContainText("노림: ");
+  await page.screenshot({ path: info.outputPath("janggi-master.png") });
+});

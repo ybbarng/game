@@ -3,8 +3,8 @@ import type { TimePreset } from "@game/mighty-engine";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-/** 0 입문, 1 중수, 2 고수 */
-export type JanggiLevel = 0 | 1 | 2;
+/** 0 입문, 1 중수, 2 고수, 3 초고수 */
+export type JanggiLevel = 0 | 1 | 2 | 3;
 
 /** 나홀로 장기에서 내 편: 초(먼저)·한·무작위 */
 export type SidePick = "cho" | "han" | "random";
@@ -65,6 +65,12 @@ export const JANGGI_LEVELS: readonly {
     value: 2,
     label: "고수",
     description: "세 수 앞까지 읽는다. 외통을 놓치지 않는다",
+  },
+  {
+    value: 3,
+    label: "초고수",
+    description:
+      "판마다 노림을 세우고(전개·궁성 공격·외통 몰기) 더 깊이 읽는다. 고수에게 20전 20승",
   },
 ];
 

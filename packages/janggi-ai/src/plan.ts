@@ -147,3 +147,16 @@ export function masterPlanOf(view: JanggiView): MasterPlan | null {
   const plan = planFor(toFast(view.board), side, view.played.length);
   return { id: plan.id, label: MASTER_PLAN_LABELS[plan.id] };
 }
+
+/**
+ * 그 편이 이 판에서 세울 계획(차례와 상관없이). 화면이 상대 컴퓨터의 노림을 보일 때 쓴다.
+ * `played`는 이번 판에 둔 수(쉬기 포함). 왼·오른은 그 편에서 본 방향이다
+ */
+export function masterPlanFor(
+  board: JanggiView["board"],
+  side: engine.Side,
+  played: number,
+): MasterPlan {
+  const plan = planFor(toFast(board), sideIndex(side), played);
+  return { id: plan.id, label: MASTER_PLAN_LABELS[plan.id] };
+}

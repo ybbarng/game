@@ -13,7 +13,7 @@ import { createRng } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
 import { deepSearch } from "./deep";
-import { masterPlanOf } from "./plan";
+import { masterPlanFor, masterPlanOf } from "./plan";
 
 /** 가운데 판: 두 편 모두 기물을 다 끌어냈고 기물 점수는 비슷하다. 한은 오른쪽 사(판 기준 x=5)만 있다 */
 const MIDDLE: Record<string, Piece> = {
@@ -132,5 +132,14 @@ describe("같은 판 되풀이", () => {
     const again = deepSearch(withSeen(view, first.move), createRng(1), options);
     expect(again.move).toEqual(first.move);
     expect(again.score).toBe(first.score + 80);
+  });
+});
+
+describe("편을 받는 계획(masterPlanFor)", () => {
+  it("둘 차례인 편에서는 masterPlanOf와 같은 계획이다", () => {
+    const view = viewOf(createJanggiScenario({ pieces: MIDDLE, me: "c" }), 0);
+    expect(masterPlanFor(view.board, "c", view.played.length)).toEqual(
+      masterPlanOf(view),
+    );
   });
 });
