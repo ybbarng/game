@@ -122,7 +122,8 @@ export function attachBot(init: AttachBotInit): () => void {
       moves = null;
       scheduled = false;
       cancel?.();
-      // 기권한 컴퓨터는 남은 사람끼리 다시 하는 시도에서 계획을 세우지 않는다
+      // 계획은 섞기를 정한 뒤에 세우므로, 못 만들면 그 판에서 이 컴퓨터만 DNF로 빠지고 판은 그대로 간다
+      // (`retire`). 다른 까닭으로 다시 섞어도 그만둔 컴퓨터는 계획을 다시 세우지 않는다
       const fail = () => {
         if (stopped || k !== attempt) return;
         stopped = true;

@@ -45,6 +45,13 @@ export type RaceMessage =
     }
   | { type: "race-done"; race: string; attempt: number; n: number; t: number }
   | {
+      /** 섞기를 정한 뒤 그 판을 그만둔다(그 사람만 DNF, 판은 계속) */
+      type: "race-retire";
+      race: string;
+      attempt: number;
+      reason: string;
+    }
+  | {
       type: "race-bound";
       race: string;
       attempt: number;
@@ -107,6 +114,9 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
     case "race-done":
       if (!isInt(raw.n) || !isNum(raw.t)) return null;
       return { type: raw.type, ...base, n: raw.n as number, t: raw.t };
+    case "race-retire":
+      if (!isStr(raw.reason)) return null;
+      return { type: raw.type, ...base, reason: raw.reason };
     case "race-bound":
       if (!isStr(raw.of) || !(raw.bound === null || isNum(raw.bound)))
         return null;
