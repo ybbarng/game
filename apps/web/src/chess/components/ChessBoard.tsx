@@ -296,15 +296,30 @@ export function ChessBoard({
         const kind = cell[1] as Kind;
         const [x, y] = at(i);
         const piece = cell as `${Side}${Kind}`;
+        // 방금 옮긴 기물은 출발 칸에서 미끄러져 온다(장기와 같은 .jg-slide, 2026-11-03 사용자: 판 게임 모두 검토).
+        // 수마다 새로 그려 움직임이 다시 돈다. 캐슬링의 룩·앙파상으로 잡힌 폰은 따로 움직이지 않는다
+        const arrived = lastMove?.to === i;
+        const key = arrived && lastMove ? `${i}:${lastMove.from}` : i;
+        const slide = arrived && lastMove ? at(lastMove.from) : null;
+        const slideStyle = slide
+          ? ({
+              "--jg-dx": `${slide[0] - x}px`,
+              "--jg-dy": `${slide[1] - y}px`,
+            } as React.CSSProperties)
+          : undefined;
+        const pieceClass =
+          [movable.has(i) && "cursor-pointer", slide && "jg-slide"]
+            .filter(Boolean)
+            .join(" ") || undefined;
         if (set === "3d")
           return (
             <g
-              // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 정체다
-              key={i}
+              key={key}
               data-piece={cell}
               data-square={squareName(i)}
               aria-label={pieceLabel(piece, squareName(i))}
-              className={movable.has(i) ? "cursor-pointer" : undefined}
+              className={pieceClass}
+              style={slideStyle}
             >
               <PieceUse prefix={prefix} piece={piece} x={x} y={y} />
             </g>
@@ -312,8 +327,7 @@ export function ChessBoard({
         const style = PIECE_STYLE[side];
         return (
           <text
-            // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 정체다
-            key={i}
+            key={key}
             data-piece={cell}
             data-square={squareName(i)}
             aria-label={pieceLabel(piece, squareName(i))}
@@ -326,8 +340,8 @@ export function ChessBoard({
             stroke={style.stroke}
             strokeWidth={style.width}
             paintOrder="stroke"
-            className={movable.has(i) ? "cursor-pointer" : undefined}
-            style={{ fontFamily: PIECE_FONT }}
+            className={pieceClass}
+            style={{ fontFamily: PIECE_FONT, ...slideStyle }}
           >
             {GLYPH[kind]}
           </text>
