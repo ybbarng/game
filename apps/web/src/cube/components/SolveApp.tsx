@@ -136,7 +136,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       sync();
       if (!s.official) setNotice("임시 섞기");
     } catch {
-      if (!stale()) setNotice("섞기를 만들지 못했습니다");
+      if (!stale()) setNotice("섞기를 만들지 못했습니다.");
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
@@ -146,7 +146,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
       const r = session.input(move, notation);
       if (r === "blocked") {
-        setNotice("외우는 동안에는 면을 돌릴 수 없습니다");
+        setNotice("외우는 동안에는 면을 돌릴 수 없습니다.");
         return false;
       }
       return true;
@@ -344,7 +344,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               />
             </dl>
             {records.length === 0 ? (
-              <p className="text-white/50 text-xs">아직 기록이 없습니다</p>
+              <p className="text-white/50 text-xs">아직 기록이 없습니다.</p>
             ) : (
               <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
                 {records.slice(0, 30).map((r, i) => (

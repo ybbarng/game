@@ -319,12 +319,12 @@ export function importBook(book: TimerBook, text: string): TimerBook {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error("JSON으로 읽을 수 없는 파일입니다");
+    throw new Error("JSON으로 읽을 수 없는 파일입니다.");
   }
   if (!isObject(parsed) || parsed.format !== EXPORT_FORMAT)
-    throw new Error("큐브 타이머에서 내보낸 파일이 아닙니다");
+    throw new Error("큐브 타이머에서 내보낸 파일이 아닙니다.");
   const incoming = readBook(parsed);
-  if (!incoming) throw new Error("모르는 버전의 파일입니다");
+  if (!incoming) throw new Error("모르는 버전의 파일입니다.");
   const sessions = [...book.sessions];
   for (const s of incoming.sessions)
     if (!sessions.some((x) => x.id === s.id)) sessions.push(s);

@@ -277,7 +277,7 @@ export function CubeLab() {
               data-cube-no3d
               className="flex h-full items-center justify-center break-keep rounded border border-white/15 px-6 text-center text-sm text-white/70"
             >
-              이 기기에서는 3D 큐브를 그릴 수 없습니다
+              이 기기에서는 3D 큐브를 그릴 수 없습니다.
             </p>
           )}
           <canvas
