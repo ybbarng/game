@@ -53,8 +53,8 @@ const missions = JANGGI_LESSONS.flatMap((l) =>
 );
 
 describe("장기 튜토리얼 미션", () => {
-  it("장면이 있는 미션이 여섯이다(실전은 처음부터)", () => {
-    expect(missions).toHaveLength(6);
+  it("장면이 있는 미션이 여덟이다(실전은 처음부터)", () => {
+    expect(missions).toHaveLength(8);
   });
 
   it.each(missions)("%s: 정답이면 성공, 실수면 실패", (_title, mission) => {

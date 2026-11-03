@@ -123,7 +123,7 @@ test("장기 배우기: 첫 단원 미션에서 차로 졸을 잡는다", async 
   const touch = info.project.name.startsWith("phone");
   await page.goto("/janggi");
   await page.getByRole("button", { name: /장기 배우기/ }).click();
-  await expect(page.getByText("0/7")).toBeVisible();
+  await expect(page.getByText("0/8")).toBeVisible();
   await page.getByRole("button", { name: /장기는 어떤 게임/ }).click();
   await expect(board(page)).toBeVisible();
   for (let i = 0; i < 2; i++)

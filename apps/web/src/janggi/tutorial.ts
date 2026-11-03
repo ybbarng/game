@@ -107,6 +107,29 @@ const BLOCKED_HORSE: JanggiScene = {
   show: "73",
 };
 
+/** 상이 한 포를 잡는다. 지나는 두 칸(63·54)이 비어 있어야 간다 */
+const ELEPHANT_SCENE: JanggiScene = {
+  pieces: { ...KINGS, "73": "cE", "45": "hC", "19": "hP" },
+  show: "73",
+};
+
+/** 사는 궁성 안에서 한 칸씩. 가운데 자리에서는 대각선으로도 */
+const ADVISOR_SCENE: JanggiScene = {
+  pieces: { "96": "cK", "24": "hK", "95": "cA", "19": "hP" },
+  show: "95",
+};
+
+/** 차가 상대 궁성 모서리에 있으면 대각선 선을 따라서도 간다 */
+const PALACE_SCENE: JanggiScene = {
+  pieces: { "95": "cK", "24": "hK", "36": "cR", "19": "hP" },
+  show: "36",
+};
+
+/** 초가 점수에서 크게 앞선다. 궁을 옆으로 옮겨 빅장을 부르면 점수로 끝난다 */
+const BIKJANG_SCENE: JanggiScene = {
+  pieces: { "95": "cK", "24": "hK", "71": "cR", "79": "cR", "19": "hP" },
+};
+
 /** 한 차가 장군을 불렀다. 같은 줄의 내 차로 잡는다 */
 const CHECK_SCENE: JanggiScene = {
   pieces: { "95": "cK", "24": "hK", "75": "hR", "71": "cR", "18": "hP" },
@@ -235,6 +258,15 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         scene: BLOCKED_HORSE,
       },
       {
+        kind: "explain",
+        title: "상은 더 멀리, 더 잘 막혀요",
+        body: [
+          "**상(象)**은 앞뒤좌우로 한 칸 간 뒤 같은 쪽 대각선으로 **두 칸** 가요.",
+          "지나가는 두 칸 가운데 하나라도 막히면 그쪽으로는 못 가요. 점이 상이 갈 수 있는 곳이에요.",
+        ],
+        scene: ELEPHANT_SCENE,
+      },
+      {
         kind: "mission",
         title: "마로 차 잡기",
         objective: "**마**로 한 **차**를 잡으세요.",
@@ -246,13 +278,25 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         solution: [move("73", "54")],
         mistake: [move("73", "52")],
       },
+      {
+        kind: "mission",
+        title: "상으로 포 잡기",
+        objective: "**상**으로 한 **포**를 잡으세요.",
+        hint: "상 위쪽 한 칸(63)으로 간 뒤 오른쪽 위 대각선으로 두 칸이에요.",
+        scenario: ELEPHANT_SCENE,
+        check: firstTo("45"),
+        success: "잡았어요! 상은 멀리서 갑자기 기물을 노릴 수 있어요.",
+        fail: "그 자리에는 포가 없어요. 상이 갈 수 있는 점 가운데 포가 있는 곳을 찾아보세요.",
+        solution: [move("73", "45")],
+        mistake: [move("73", "41")],
+      },
     ],
   },
   {
     id: "check",
     title: "궁·사·졸과 장군",
     summary:
-      "궁과 사는 궁성 안에서, 졸은 앞과 옆으로. 장군을 받으면 반드시 푼다",
+      "궁과 사는 궁성 안에서, 졸은 앞과 옆으로. 궁성 대각선. 장군을 받으면 반드시 푼다",
     steps: [
       {
         kind: "explain",
@@ -260,9 +304,25 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         body: [
           "**궁**과 **사(士)**는 대각선이 그려진 **궁성** 안에서만 선을 따라 한 칸씩 움직여요.",
           "**졸(卒)·병(兵)**은 앞이나 옆으로 한 칸 가요. 뒤로는 못 가요.",
-          "차·포·졸은 궁성 안에서는 대각선 선을 따라서도 갈 수 있어요.",
         ],
-        scene: START,
+        scene: ADVISOR_SCENE,
+      },
+      {
+        kind: "explain",
+        title: "궁성의 대각선",
+        body: [
+          "궁성에 그려진 **대각선 위에서는** 궁·사뿐 아니라 **차·포**도 대각선을 따라 가요. 상대 궁성 안의 **졸**은 앞쪽 대각선으로도 가요.",
+          "그림의 차는 한 궁성 모서리에 있어 가로·세로에 더해 궁성 가운데 쪽 대각선으로도 갈 수 있어요.",
+        ],
+        scene: PALACE_SCENE,
+      },
+      {
+        kind: "quiz",
+        question: "궁성 대각선 선을 따라 움직이지 **않는** 기물은?",
+        options: ["차", "포", "마"],
+        answer: 2,
+        explain:
+          "궁성 대각선을 따라가는 것은 궁·사·차·포와 상대 궁성 안의 졸이에요. 마·상은 어디서든 자기 모양대로만 움직여요.",
       },
       {
         kind: "explain",
@@ -314,6 +374,60 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         fail: "아직 외통이 아니에요. 한 궁이 피할 곳이 없게 장군을 불러 보세요.",
         solution: [move("59", "19")],
         mistake: [move("59", "58")],
+      },
+    ],
+  },
+  {
+    id: "score",
+    title: "쉬기·빅장·점수",
+    summary: "외통 말고도 판이 끝나는 길. 남은 기물 점수로 가린다",
+    steps: [
+      {
+        kind: "explain",
+        title: "한 수 쉬기",
+        body: [
+          "장기는 둘 수가 마땅치 않으면 **한 수 쉴** 수 있어요(「한 수 쉬기」 단추). 다만 **장군을 받는 중에는** 쉴 수 없어요.",
+          "두 사람이 **잇달아 쉬면** 더 둘 게 없다고 보고 점수로 판을 끝내요.",
+        ],
+      },
+      {
+        kind: "explain",
+        title: "점수로 가리기",
+        body: [
+          "외통 없이 끝나면 **남은 기물 점수**를 더해 많은 쪽이 이겨요. 차 13 · 포 7 · 마 5 · 상 3 · 사 3 · 졸 2점이에요.",
+          "뒤에 두는 **한은 1.5점을 더** 받아요(덤). 그래서 점수가 같을 수 없어요.",
+          "**같은 판이 세 번** 되풀이되거나, 두 편 합쳐 **200수**가 지나도 점수로 끝나요. 자리 표의 점수가 지금 남은 점수예요.",
+        ],
+      },
+      {
+        kind: "explain",
+        title: "빅장",
+        body: [
+          "두 궁이 같은 세로줄에서 사이에 기물 없이 **마주 보면 빅장**이에요. 기본 규칙에서는 빅장이 되는 순간 점수로 판이 끝나요.",
+          "그래서 점수가 앞설 때는 빅장을 불러 이길 수 있고, 뒤질 때는 빅장을 피해야 해요. 옵션에서 **빅장 금지**로 바꾸면 빅장이 되는 수는 둘 수 없어요.",
+        ],
+        scene: BIKJANG_SCENE,
+      },
+      {
+        kind: "quiz",
+        question: "외통 없이 끝났고 남은 기물이 초 30점, 한 30점이면?",
+        options: ["초가 이긴다", "한이 이긴다", "비긴다"],
+        answer: 1,
+        explain:
+          "한은 뒤에 두는 대신 1.5점을 더 받아요. 30 대 31.5로 한이 이겨요.",
+      },
+      {
+        kind: "mission",
+        title: "빅장으로 끝내기",
+        objective:
+          "초가 점수로 크게 앞서요. **궁을 옮겨 빅장**을 만들어 점수로 이기세요.",
+        hint: "한 궁(24)과 같은 세로줄이 되게 내 궁(95)을 왼쪽(94)으로 옮겨 보세요.",
+        scenario: BIKJANG_SCENE,
+        check: (ctx) => (myFirstMove(ctx) ? (wonRound(ctx) ?? "fail") : null),
+        success: "빅장! 점수가 앞서 있어 이겼어요. 뒤질 때는 빅장을 조심해요.",
+        fail: "아직 빅장이 아니에요. 두 궁이 같은 세로줄에서 마주 보게 해 보세요.",
+        solution: [move("95", "94")],
+        mistake: [move("71", "72")],
       },
     ],
   },
