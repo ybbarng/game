@@ -614,6 +614,122 @@ const lightYears = (row) => {
   return d < 500 ? Math.round(d / 50) * 50 : Math.round(d / 100) * 100;
 };
 
+/**
+ * 판 위 별의 거리(광년): 문헌 값을 손으로 옮긴 표(docs/48 14절 「거리 값」). HR 번호 → [광년, 출처].
+ * BSC5 시차는 Hipparcos 전 측정이라 먼 별에서 크게 틀려(리겔 250광년, 실제 약 860광년)
+ * 하늘 파일에 놓인 별은 모두 이 표의 값으로 덮어쓴다. 표에 없는 판 위 별이 있으면 스크립트가 멈춘다.
+ * - 값: 10광년 안은 소수 첫째 자리, 100광년 안은 정수, 1,000광년 안은 10 단위, 그 밖은 100 단위 어림
+ * - 출처: 「van Leeuwen 2007」은 Hipparcos 신판 시차(A&A 474, 653)에서 낸 값, 그 밖은 적은 논문·목록
+ * - 확인하지 못한 별은 null(모른다). 지금은 없다
+ * 숫자 하나는 사실이라 옮겨도 된다(Hipparcos 목록 파일 자체는 쓰지 않는다, README 「출처」).
+ */
+const DISTANCE = {
+  15: [97, "van Leeuwen 2007"], // Alpheratz
+  21: [55, "van Leeuwen 2007"], // Caph
+  39: [390, "van Leeuwen 2007"], // Algenib
+  168: [230, "van Leeuwen 2007"], // Schedar
+  188: [96, "van Leeuwen 2007"], // Diphda
+  337: [200, "van Leeuwen 2007"], // Mirach
+  403: [99, "van Leeuwen 2007"], // Ruchbah
+  424: [430, "van Leeuwen 2007"], // Polaris
+  437: [350, "van Leeuwen 2007"], // Alpherg
+  472: [140, "van Leeuwen 2007"], // Achernar
+  510: [280, "van Leeuwen 2007"], // Torcular
+  553: [60, "van Leeuwen 2007"], // Sheratan
+  596: [150, "van Leeuwen 2007"], // Alrescha
+  603: [350, "van Leeuwen 2007"], // Almach
+  617: [66, "van Leeuwen 2007"], // Hamal
+  681: [300, "van Leeuwen 2007"], // Mira
+  834: [1000, "Gaia DR3"], // Miram
+  838: [170, "van Leeuwen 2007"], // Bharani
+  897: [160, "van Leeuwen 2007"], // Acamar
+  911: [250, "van Leeuwen 2007"], // Menkar
+  936: [90, "van Leeuwen 2007"], // Algol
+  1017: [510, "van Leeuwen 2007"], // Mirfak
+  1165: [440, "Melis 2014(플레이아데스 성단 VLBI)"], // Alcyone
+  1231: [200, "van Leeuwen 2007"], // Zaurak
+  1457: [65, "van Leeuwen 2007"], // Aldebaran
+  1666: [89, "van Leeuwen 2007"], // Cursa
+  1708: [43, "van Leeuwen 2007"], // Capella
+  1713: [860, "van Leeuwen 2007"], // Rigel
+  1790: [250, "van Leeuwen 2007"], // Bellatrix
+  1791: [130, "van Leeuwen 2007"], // Elnath
+  2061: [550, "Joyce 2020"], // Betelgeuse
+  2088: [81, "van Leeuwen 2007"], // Menkalinan
+  2095: [170, "van Leeuwen 2007"], // Mahasim
+  2326: [310, "van Leeuwen 2007"], // Canopus
+  2421: [110, "van Leeuwen 2007"], // Alhena
+  2491: [8.6, "van Leeuwen 2007"], // Sirius
+  2618: [430, "van Leeuwen 2007"], // Adhara
+  2693: [1600, "van Leeuwen 2007"], // Wezen
+  2891: [51, "van Leeuwen 2007"], // Castor
+  2990: [34, "van Leeuwen 2007"], // Pollux
+  3045: [1200, "van Leeuwen 2007"], // Azmidi
+  3165: [1100, "Howarth & van Leeuwen 2019"], // Naos
+  3185: [64, "van Leeuwen 2007"], // Tureis
+  3249: [290, "van Leeuwen 2007"], // Tarf
+  3307: [610, "van Leeuwen 2007"], // Avior
+  3461: [130, "van Leeuwen 2007"], // Asellus Australis
+  3485: [81, "van Leeuwen 2007"], // Alsephina
+  3634: [550, "van Leeuwen 2007"], // Suhail
+  3685: [110, "van Leeuwen 2007"], // Miaplacidus
+  3734: [570, "van Leeuwen 2007"], // Markeb
+  3982: [79, "van Leeuwen 2007"], // Regulus
+  4057: [130, "van Leeuwen 2007"], // Algieba
+  4534: [36, "van Leeuwen 2007"], // Denebola
+  4730: [320, "van Leeuwen 2007"], // Acrux
+  4763: [89, "van Leeuwen 2007"], // Gacrux
+  4853: [280, "van Leeuwen 2007"], // Mimosa
+  4932: [110, "van Leeuwen 2007"], // Vindemiatrix
+  5056: [250, "van Leeuwen 2007"], // Spica
+  5235: [37, "van Leeuwen 2007"], // Muphrid
+  5267: [390, "van Leeuwen 2007"], // Hadar
+  5288: [59, "van Leeuwen 2007"], // Menkent
+  5340: [37, "van Leeuwen 2007"], // Arcturus
+  5459: [4.4, "Kervella 2016"], // Rigil Kentaurus
+  5506: [200, "van Leeuwen 2007"], // Izar
+  5531: [76, "van Leeuwen 2007"], // Zubenelgenubi
+  5563: [130, "van Leeuwen 2007"], // Kochab
+  5685: [190, "van Leeuwen 2007"], // Zubeneschamali
+  5735: [490, "van Leeuwen 2007"], // Pherkad
+  6056: [170, "van Leeuwen 2007"], // Yed Prior
+  6132: [92, "van Leeuwen 2007"], // Athebyne
+  6134: [550, "van Leeuwen 2007"], // Antares
+  6378: [88, "van Leeuwen 2007"], // Sabik
+  6527: [570, "van Leeuwen 2007"], // Shaula
+  6536: [380, "van Leeuwen 2007"], // Rastaban
+  6553: [300, "van Leeuwen 2007"], // Sargas
+  6556: [49, "van Leeuwen 2007"], // Rasalhague
+  6705: [150, "van Leeuwen 2007"], // Eltanin
+  6879: [140, "van Leeuwen 2007"], // Kaus Australis
+  7001: [25, "van Leeuwen 2007"], // Vega
+  7106: [960, "van Leeuwen 2007"], // Sheliak
+  7121: [230, "van Leeuwen 2007"], // Nunki
+  7178: [620, "van Leeuwen 2007"], // Sulafat
+  7194: [89, "van Leeuwen 2007"], // Ascella
+  7235: [83, "van Leeuwen 2007"], // Okab
+  7525: [400, "van Leeuwen 2007"], // Tarazed
+  7557: [17, "van Leeuwen 2007"], // Altair
+  7602: [45, "van Leeuwen 2007"], // Alshain
+  7776: [330, "van Leeuwen 2007"], // Dabih
+  7796: [1800, "van Leeuwen 2007"], // Sadr
+  7924: [2600, "Schiller & Przybilla 2008"], // Deneb
+  7949: [73, "van Leeuwen 2007"], // Aljanah
+  8162: [49, "van Leeuwen 2007"], // Alderamin
+  8232: [540, "van Leeuwen 2007"], // Sadalsuud
+  8238: [690, "van Leeuwen 2007"], // Alfirk
+  8308: [690, "van Leeuwen 2007"], // Enif
+  8322: [39, "van Leeuwen 2007"], // Deneb Algedi
+  8353: [210, "van Leeuwen 2007"], // Aldhanab
+  8414: [520, "van Leeuwen 2007"], // Sadalmelik
+  8425: [100, "van Leeuwen 2007"], // Alnair
+  8636: [180, "van Leeuwen 2007"], // Tiaki
+  8709: [160, "van Leeuwen 2007"], // Skat
+  8775: [200, "van Leeuwen 2007"], // Scheat
+  8781: [130, "van Leeuwen 2007"], // Markab
+  8974: [45, "van Leeuwen 2007"], // Errai
+};
+
 const notes = { noKorean: [], noCon: [], renamed: [] };
 /** 별자리 약어 → 이름 있는 별(밝은 순) */
 const byCon = {};
@@ -938,6 +1054,22 @@ for (const [id, ko] of [
   skies.push(sky(id, ko, byRa(pool.slice(0, 8)), visibleTop));
 }
 
+// 5-1. 거리 덮어쓰기: 판 위 별은 모두 DISTANCE 표 값으로(표에 없으면 멈춘다).
+// 후보 목록에만 있는 별도 표에 있으면 같은 값으로 맞추고, 표에 없으면 BSC5 시차 값을 둔다
+const unknownDistance = [];
+for (const s of skies)
+  for (const c of s.board)
+    for (const star of c.stars) {
+      const row = DISTANCE[star.hr];
+      if (!row)
+        throw new Error(`거리 표에 없는 판 위 별: ${star.id}(HR ${star.hr})`);
+      star.ly = row[0];
+      if (row[0] === null) unknownDistance.push(star.id);
+    }
+for (const c of candidates)
+  for (const star of c.stars)
+    if (DISTANCE[star.hr]) star.ly = DISTANCE[star.hr][0];
+
 // 6. 스스로 검사: 하나라도 어긋나면 파일을 쓰지 않고 멈춘다
 const fail = (msg) => {
   throw new Error(`검사 실패: ${msg}`);
@@ -1025,6 +1157,9 @@ for (const c of [...skies[0].board].sort(
     `${c.ko} ${combined(c.stars).toFixed(2)}: ${c.stars.map((s) => `${s.ko}(${s.id}, ${s.bayer}) ${s.mag} ${s.k}K ${s.ly ?? "?"}ly`).join(", ")}`,
   );
 for (const [id, why] of dropped) console.log(`빠진 하늘 ${id}: ${why}`);
+console.log(
+  `거리를 모르는 판 위 별: ${[...new Set(unknownDistance)].join(", ") || "없음"}`,
+);
 console.log(
   `\n한글 이름이 없어 뺀 IAU 별 ${notes.noKorean.length}개: ${notes.noKorean.join(", ")}`,
 );
