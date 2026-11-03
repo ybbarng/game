@@ -279,7 +279,7 @@ function TopBar({
           {more && (
             <div
               ref={box}
-              className="absolute top-full right-0 mt-2 border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] w-64 overflow-y-auto rounded-2xl p-2 shadow-2xl"
+              className="absolute top-full right-0 mt-2 border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] w-64 overflow-y-auto overscroll-contain rounded-2xl p-2 shadow-2xl"
             >
               <MoreList services={services} keyInfo={keyInfo} />
             </div>
@@ -303,6 +303,17 @@ function BottomBar({
   onGo: (t: NavTarget) => void;
 }) {
   const [more, setMore] = useState(false);
+  // 목록이 열린 동안 뒤 페이지를 멈춘다: 목록 끝에서 남은 스크롤이나 어두운 뒷배경을 끄는 손짓이 뒤 페이지를 움직여
+  // 어색했다(2026-11-03 사용자). 목록 안 스크롤은 overscroll-contain으로 그 칸에서 멈춘다
+  useEffect(() => {
+    if (!more) return;
+    const root = document.documentElement;
+    const before = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = before;
+    };
+  }, [more]);
   const tab = (
     t: NavTarget | "more",
     label: string,
@@ -335,12 +346,12 @@ function BottomBar({
             type="button"
             aria-label="더 보기 닫기"
             onClick={() => setMore(false)}
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-40 touch-none bg-black/40"
           />
           <div
             role="dialog"
             aria-label="더 보기"
-            className="fixed inset-x-0 z-40 mx-auto border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] max-w-xl overflow-y-auto rounded-t-3xl px-3 pt-3"
+            className="fixed inset-x-0 z-40 mx-auto border border-white/10 bg-[#111a2c] max-h-[calc(100dvh-80px)] max-w-xl overflow-y-auto overscroll-contain rounded-t-3xl px-3 pt-3"
             style={{
               // 탭바 뒤까지 내려 틈이 생기지 않게 한다(위치를 탭바 높이 숫자로 맞추면 실제 높이와 어긋나 뒤 화면이 비쳤다)
               bottom: 0,

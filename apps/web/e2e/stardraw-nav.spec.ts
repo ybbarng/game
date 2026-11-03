@@ -342,6 +342,14 @@ test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 
       barBox?.y ?? Number.POSITIVE_INFINITY,
     );
     await page.screenshot({ path: info.outputPath("more-sheet.png") });
+    // 열린 동안 뒤 페이지는 스크롤되지 않고, 목록 안 스크롤은 목록에서 멈춘다(2026-11-03 사용자)
+    const rootOverflow = () =>
+      page.evaluate(() => document.documentElement.style.overflow);
+    expect(await rootOverflow()).toBe("hidden");
+    await expect(sheet).toHaveCSS("overscroll-behavior-y", "contain");
+    await page.getByRole("button", { name: "더 보기 닫기" }).click();
+    expect(await rootOverflow()).toBe("");
+    await page.locator("[data-tab='more']").click();
     await item.click();
   } else {
     await expect(games).toHaveCount(1);
