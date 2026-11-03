@@ -189,7 +189,7 @@ function ChessPuzzleRun({
         tactic
           ? `${TACTIC_NAMES[tactic]}!`
           : endgame
-            ? "이겼어요!"
+            ? "이기는 수예요!"
             : "체크메이트!"
       }
       wrongText={

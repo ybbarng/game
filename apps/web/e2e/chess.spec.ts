@@ -608,3 +608,29 @@ test("체스: 기물을 끌어 갈 칸에 놓으면 옮기고, 못 가는 칸에
   );
   await expect(page.getByTitle("기보")).toContainText("1. e4");
 });
+
+test("체스 수 배우기: 킹과 폰 문제에서 폰부터 밀면 틀리고, 킹을 앞세우면 이긴다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "문제 풀이 진행은 크기와 상관없다",
+  );
+  await page.goto("/chess");
+  await page.getByRole("button", { name: /체스 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const set = page.getByRole("region", { name: "킹과 폰" });
+  await set.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "백이 이기는 단 하나의 수를 찾으세요",
+  );
+  await tapSquare(page, "e5", false);
+  await tapSquare(page, "e6", false);
+  await expect(page.getByRole("status")).toHaveText("그 수는 흑이 막아 비겨요");
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await tapSquare(page, "c5", false);
+  await tapSquare(page, "d6", false);
+  await expect(page.getByRole("status")).toHaveText("이기는 수예요!");
+  await expect(page.getByText(/폰부터 밀면\(e6\)/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("chess-king-pawn.png") });
+});
