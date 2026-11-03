@@ -1018,6 +1018,51 @@
       ]
     },
     {
+      "id": "next-galaxy",
+      "title": "은하 한 바퀴(땅 사기 장르, /galaxy)",
+      "parent": "next-games",
+      "status": "building",
+      "size": 3,
+      "summary": "주사위로 계절 하늘 한 바퀴(32칸)를 돌며 실제 별을 사고 정거장 이용료를 받는다. 별자리 잇기(둘이면 선, 셋이면 완성), 제철 하늘, 봉인 입찰, 별 사실로 계산하는 우주국 공문, 하늘 고르기(사계절·황도 12궁·남쪽·계절·내가 고른 하늘). 주사위·공문은 윷놀이 해시 사슬, 입찰은 약속 후 공개. 기본 판 4인 20차례·35분 상한, 첫 운항 중단에 끝내고 자산 순위",
+      "next": "G1 별 자료·G2 엔진(나란히) → G3 컴퓨터·bench, G4 웹 혼자 하기(docs/48 12절)",
+      "since": "2026-11-03",
+      "found": "2026-11-03",
+      "links": [
+        {
+          "label": "은하 한 바퀴 검토와 기획",
+          "path": "docs/48-galaxy-loop.md"
+        },
+        {
+          "label": "새 게임 체크리스트",
+          "path": "docs/21-new-game-checklist.md"
+        }
+      ],
+      "signs": [
+        {
+          "id": "galaxy-forks",
+          "type": "fork",
+          "title": "은하 한 바퀴 갈림길 8개(docs/48 11절: 거래·공문 더미·경매·첫 파산 끝·돈 이름·인원·하늘 고르기·제철 하늘)",
+          "owner": "me",
+          "options": [
+            "추천대로(거래 한 번 제안·받기/거절, 사슬로 공문 뽑기, 봉인 입찰, 첫 파산에 끝, 별빛, 2~4명, 사계절 하늘부터, 제철 하늘 켬)",
+            "일부를 바꿔서"
+          ],
+          "recommend": "추천대로(사용자 지시로 추천안으로 구현 시작, 2026-11-03)",
+          "status": "open"
+        },
+        {
+          "id": "galaxy-trademark",
+          "type": "risk",
+          "title": "「은하 한 바퀴」 KIPRIS 상표 조회를 세션이 못 함(웹 검색에서는 겹침 없음)"
+        },
+        {
+          "id": "galaxy-winter-traffic",
+          "type": "risk",
+          "title": "소행성대 바로 뒤가 가장 비싼 겨울이라 많이 밟힌다. bench로 재고 docs/48 3-3 순서로 고친다"
+        }
+      ]
+    },
+    {
       "id": "next-mafia",
       "title": "마피아·라이어 게임",
       "parent": "next-games",
