@@ -1045,6 +1045,14 @@
           "path": "docs/50-hidden-ideas.md"
         },
         {
+          "label": "다듬는 틀(대국 → 흠 → 고침, 관문, 흠 목록)",
+          "path": "docs/50-hidden-loop.md"
+        },
+        {
+          "label": "서브에이전트 대국 기록",
+          "path": "docs/50-playtests/log.jsonl"
+        },
+        {
           "label": "멘탈 포커",
           "path": "docs/13-mental-poker.md"
         },
