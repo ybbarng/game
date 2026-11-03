@@ -110,14 +110,19 @@ function placeValue(kind: Kind | "KE", side: Side, at: number): number {
   return PST[kind][index] ?? 0;
 }
 
-/** 기물 값 합(킹·폰 빼고). 끝판인지 가늠할 때 쓴다 */
-function officers(board: Board, side: Side): number {
-  let sum = 0;
-  for (const cell of board)
-    if (cell !== "" && cell[0] === side && cell[1] !== "P")
-      sum += VALUE[cell[1] as Kind];
-  return sum;
+/** 자리 값 표를 편마다 칸 번호로 바로 읽게 펴 둔 것 */
+type FlatTables = Record<Kind | "KE", Int16Array>;
+function flatten(side: Side): FlatTables {
+  const out = {} as FlatTables;
+  for (const kind of Object.keys(PST) as (Kind | "KE")[]) {
+    const t = new Int16Array(64);
+    for (let at = 0; at < 64; at++) t[at] = placeValue(kind, side, at);
+    out[kind] = t;
+  }
+  return out;
 }
+const FLAT_W = flatten("w");
+const FLAT_B = flatten("b");
 
 /** 기물 값만 센 판 값(입문이 쓴다) */
 export function material(board: Board, side: Side): number {
@@ -135,26 +140,41 @@ export function material(board: Board, side: Side): number {
  * 기물 값 + 자리 값. 상대가 킹만(또는 거의) 남으면 상대 킹을 구석으로 몰고 내 킹을 붙이는 값을 더한다(끝내기)
  */
 export function evaluate(board: Board, side: Side): number {
-  const endgame = officers(board, "w") + officers(board, "b") <= 1300;
-  let score = 0;
+  // 판을 한 번만 훑는다. 킹 자리 값은 끝판인지 알아야 정해지므로 다 훑은 뒤에 더한다.
+  // (평가는 한 수에 수십만 번 불려, 자리 값 표를 칸 번호로 바로 읽게 미리 펴 둔다)
+  let white = 0; // 백 쪽에서 본 기물 값 + 자리 값(킹 빼고)
+  let lead = 0; // 백 쪽에서 본 기물 값
+  let officerSum = 0;
   let wk = -1;
   let bk = -1;
   for (let at = 0; at < 64; at++) {
-    const cell = board[at] ?? "";
-    if (cell === "") continue;
-    const s = cell[0] as Side;
+    const cell = board[at];
+    if (!cell) continue;
     const kind = cell[1] as Kind;
+    const w = cell[0] === "w";
     if (kind === "K") {
-      if (s === "w") wk = at;
+      if (w) wk = at;
       else bk = at;
+      continue;
     }
-    const table = kind === "K" && endgame ? "KE" : kind;
-    const v = VALUE[kind] + placeValue(table, s, at);
-    score += s === side ? v : -v;
+    const value = VALUE[kind];
+    if (kind !== "P") officerSum += value;
+    const place = (w ? FLAT_W : FLAT_B)[kind][at] as number;
+    if (w) {
+      white += value + place;
+      lead += value;
+    } else {
+      white -= value + place;
+      lead -= value;
+    }
   }
+  const endgame = officerSum <= 1300;
+  const kingTable = endgame ? "KE" : "K";
+  if (wk >= 0) white += FLAT_W[kingTable][wk] as number;
+  if (bk >= 0) white -= FLAT_B[kingTable][bk] as number;
+  let score = side === "w" ? white : -white;
   // 끝내기: 앞선 편이 상대 킹을 가장자리로 몰고 킹끼리 가까이 간다.
   if (endgame && wk >= 0 && bk >= 0) {
-    const lead = material(board, "w");
     const winner: Side | null = lead >= 300 ? "w" : lead <= -300 ? "b" : null;
     if (winner) {
       const loserKing = winner === "w" ? bk : wk;
