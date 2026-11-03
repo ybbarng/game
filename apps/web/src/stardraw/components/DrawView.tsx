@@ -2,13 +2,14 @@
 
 import { type Clock, realClock } from "@game/fair-play";
 import type { RoundRecord, Ticket } from "@game/stardraw-core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 
 import { winnersLine } from "../after-observe";
 import { celebrationPlan } from "../celebrate";
+import { EASE, FX } from "../fx-timing";
 import { drawGlows } from "../hdr-glow";
 import { drawOrder, myRank } from "../results";
 import {
@@ -152,13 +153,91 @@ export function DrawView({
     };
   }, [record.round, clock]);
 
+  /**
+   * 마무리(2026-11-03 사용자·지인 의견): 별이 다 뜨면 아래 공 줄을 작은 번호 순으로 다시 놓고(로또 발표처럼, 내 예측서와
+   * 맞춰 보기 쉽게), 그 순서로 별을 하나씩 다시 빛낸다(보너스는 마지막). 관측하는 동안은 뜬 순서 그대로 채운다(긴장감).
+   * 연출 없이 결과부터·움직임 줄이기·건너뛰기면 처음부터 작은 순으로 놓고 빛내기는 없다.
+   * 당첨 축하(별자리·직인·소리)는 마무리가 끝난 뒤에 시작한다(동시에 움직이지 않기)
+   */
+  const [sorted, setSorted] = useState(false);
+  /** 지금 다시 빛나는 공의 차례(작은 순 0~5, 보너스 6) */
+  const [shine, setShine] = useState<number | null>(null);
+  const [settled, setSettled] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  /** 공을 옮기기 직전 자리(번호 → 왼쪽 x). 다시 놓은 뒤 그 차이만큼에서 미끄러져 온다 */
+  const before = useRef<Map<number, number> | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 결과가 다 나온 순간에만 다시 돈다
   useEffect(() => {
-    if (done && rank && order.length > 0 && !instant)
-      play("starWin", { star: { rank } });
-  }, [done, rank, order.length, instant]);
+    if (!done) {
+      setSorted(false);
+      setShine(null);
+      setSettled(false);
+      return;
+    }
+    if (!animated || skipped.current) {
+      setSorted(true);
+      setSettled(true);
+      return;
+    }
+    const offs: (() => void)[] = [];
+    const at = (ms: number, fn: () => void) => offs.push(clock.after(ms, fn));
+    at(FX.sortWait, () => {
+      const m = new Map<number, number>();
+      for (const el of rowRef.current?.querySelectorAll<HTMLElement>(
+        "[data-sort-ball]",
+      ) ?? [])
+        m.set(Number(el.dataset.sortBall), el.getBoundingClientRect().left);
+      before.current = m;
+      setSorted(true);
+    });
+    const seq = [...order.slice(0, 6)]
+      .sort((a, b) => a - b)
+      .concat(order.slice(6, 7));
+    const first = FX.sortWait + FX.sortMove + FX.pause;
+    seq.forEach((n, i) => {
+      at(first + i * FX.sortShine, () => {
+        setShine(i);
+        play("starTick", { star: { n } });
+      });
+    });
+    at(first + seq.length * FX.sortShine + FX.pause, () => {
+      setShine(null);
+      setSettled(true);
+    });
+    return () => {
+      for (const off of offs) off();
+    };
+  }, [done, animated, clock]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 공을 다시 놓은 직후(sorted가 바뀐 그 그림)에만 돈다
+  useLayoutEffect(() => {
+    const m = before.current;
+    before.current = null;
+    if (!m || !rowRef.current) return;
+    for (const el of rowRef.current.querySelectorAll<HTMLElement>(
+      "[data-sort-ball]",
+    )) {
+      const was = m.get(Number(el.dataset.sortBall));
+      if (was === undefined) continue;
+      const dx = was - el.getBoundingClientRect().left;
+      if (Math.abs(dx) > 0.5)
+        el.animate?.(
+          [{ transform: `translateX(${dx}px)` }, { transform: "none" }],
+          { duration: FX.sortMove, easing: EASE },
+        );
+    }
+  }, [sorted]);
 
-  const main = frame.fixed.slice(0, 6);
+  useEffect(() => {
+    if (settled && rank && order.length > 0 && !instant)
+      play("starWin", { star: { rank } });
+  }, [settled, rank, order.length, instant]);
+
+  const drawn = frame.fixed.slice(0, 6);
+  const main = sorted ? [...drawn].sort((a, b) => a - b) : drawn;
   const bonus = frame.fixed.length >= 7 ? (frame.fixed[6] ?? null) : null;
+  /** 다시 빛나는 별(하늘에서는 룰렛 고리로 짚는다) */
+  const shining =
+    shine === null ? null : shine < 6 ? (main[shine] ?? null) : bonus;
   const mine = ticket?.numbers ?? [];
   const winners = winnersLine(record);
 
@@ -166,7 +245,7 @@ export function DrawView({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 결과·응모권이 정해지면 바뀌지 않는다
   const party = useMemo(
     () =>
-      done && rank && ticket
+      settled && rank && ticket
         ? celebrationPlan(
             rank,
             ticket.numbers.filter(
@@ -175,7 +254,7 @@ export function DrawView({
             ),
           )
         : null,
-    [done, rank, ticket, record.round],
+    [settled, rank, ticket, record.round],
   );
   /** 움직임 줄이기면 별자리·직인이 바로 보인다(HDR 번쩍임·떨림도 없다) */
   const [reduce, setReduce] = useState(false);
@@ -244,7 +323,7 @@ export function DrawView({
               focus: null,
               lit: main,
               bonus,
-              cursor: frame.cursor,
+              cursor: shining ?? frame.cursor,
             }}
             clock={clock}
             hdr={drawGlows({
@@ -267,6 +346,7 @@ export function DrawView({
           />
 
           <div
+            ref={rowRef}
             className="flex items-center justify-center gap-1.5 sm:gap-2"
             role="status"
             aria-label={`빛난 별 ${main.join(", ")}${bonus ? `, 보너스 ${bonus}` : ""}`}
@@ -275,12 +355,17 @@ export function DrawView({
             {[0, 1, 2, 3, 4, 5].map((i) => {
               const n = main[i];
               return n !== undefined ? (
-                <LottoBall
-                  key={n}
-                  n={n}
-                  ring={mine.includes(n)}
-                  className="sd-drop"
-                />
+                <span key={n} data-sort-ball={n} className="inline-flex">
+                  <LottoBall
+                    n={n}
+                    ring={mine.includes(n)}
+                    // 다시 놓으면 떨어짐을 지운다(옮겨 붙을 때 다시 떨어지지 않게)
+                    className={cn(
+                      !sorted && "sd-drop",
+                      shine === i && "sd-ball-shine",
+                    )}
+                  />
+                </span>
               ) : (
                 <Slot key={`s${i}`} />
               );
@@ -290,7 +375,10 @@ export function DrawView({
               <LottoBall
                 n={bonus}
                 ring={mine.includes(bonus)}
-                className="sd-drop"
+                className={cn(
+                  !sorted && "sd-drop",
+                  shine === 6 && "sd-ball-shine",
+                )}
               />
             ) : (
               <Slot dashed />

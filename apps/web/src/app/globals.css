@@ -1131,6 +1131,16 @@ button {
     opacity: 0;
   }
 }
+/* 관측 마무리: 작은 순으로 다시 놓은 공이 하나씩 다시 빛난다(DrawView) */
+.sd-ball-shine {
+  animation: sd-ball-shine 0.6s ease-out both;
+}
+@keyframes sd-ball-shine {
+  40% {
+    transform: scale(1.18);
+    filter: brightness(1.35) drop-shadow(0 0 10px rgba(255, 236, 190, 0.85));
+  }
+}
 .sd-rise {
   animation: sd-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -1956,6 +1966,7 @@ button {
   .sd-breathe,
   .sd-pop,
   .sd-drop,
+  .sd-ball-shine,
   .sd-rise,
   .sd-glory,
   .sd-green {
