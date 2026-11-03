@@ -154,6 +154,8 @@ export function ChessBoard({
     x: number;
     y: number;
   } | null>(null);
+  /** 끌어서 놓은 수. 손으로 옮겼으니 놓은 뒤 출발 칸에서 다시 미끄러져 오지 않게 한다 */
+  const dropped = useRef<Move | null>(null);
   /** 누른 순간의 정보: 이번 누르기로 기물을 새로 골랐나, 누른 자리(끌기 시작 판단) */
   const down = useRef<{
     from: number;
@@ -240,6 +242,7 @@ export function ChessBoard({
       // 갈 곳에 놓으면 옮긴다. 아니면 기물은 제자리로 돌아가고 고른 채로 둔다.
       const move = spot?.square != null ? targets.get(spot.square) : undefined;
       if (move) {
+        dropped.current = move;
         onSelect(null);
         onMove(move);
       }
@@ -380,7 +383,11 @@ export function ChessBoard({
         const [x, y] = at(i);
         // 방금 옮긴 기물은 출발 칸에서 미끄러져 온다(장기와 같은 .jg-slide, 2026-11-03 사용자: 판 게임 모두 검토).
         // 수마다 새로 그려 움직임이 다시 돈다. 캐슬링의 룩·앙파상으로 잡힌 폰은 따로 움직이지 않는다
-        const arrived = lastMove?.to === i;
+        const handMoved =
+          dropped.current !== null &&
+          lastMove?.from === dropped.current.from &&
+          lastMove?.to === dropped.current.to;
+        const arrived = lastMove?.to === i && !handMoved;
         const key = arrived && lastMove ? `${i}:${lastMove.from}` : i;
         const slide = arrived && lastMove ? at(lastMove.from) : null;
         const slideStyle = slide
