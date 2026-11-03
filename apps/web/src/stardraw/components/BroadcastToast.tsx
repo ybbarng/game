@@ -8,9 +8,9 @@ import { swipeResult } from "../broadcast-swipe";
 import { gateClock } from "../gate-status";
 import type { LedgerStatus } from "../local-ledger";
 import { roundShort } from "../round-label";
-import type { Services } from "../services";
+import { type Services, serverApi } from "../services";
 import { RoomIcon } from "./PlaceIcons";
-import { liveDrawRound } from "./RoomView";
+import { liveDrawRound, liveOver } from "./RoomView";
 
 /**
  * 지금 관측할 회차: 예측(응모)이 마감된 때부터 그 회차 관측(실시간 추첨 연출)이 끝날 때까지. 예측 중이면 null.
@@ -46,6 +46,25 @@ export function broadcastText(
   if (!live && status.now < drawAt)
     return `${name} 예측을 마감했습니다. 관측은 ${gateClock(drawAt)}입니다.`;
   return `${live ? "지금" : "곧"} ${name} 관측이 시작됩니다. 우주인 여러분은 관측지로 이동해 주시기 바랍니다.`;
+}
+
+/**
+ * 방송할 회차. 지금 관측할 회차(watchRound)이되, 실시간 관측 연출이 이미 끝난 회차는 빼고 null.
+ * 연출이 끝난 뒤에도 장부 상태가 다음 회차를 열기 전(관측 1분 중)에는 watchRound가 그 회차를 내놓아, 관측을 다 보고
+ * 홈으로 오면 「곧 n회 관측이 시작됩니다」가 잠깐 내려왔다 사라졌다(2026-11-03 지인 제보)
+ */
+export function broadcastRound(
+  services: Services,
+  status: LedgerStatus,
+): number | null {
+  const round = watchRound(services, status);
+  if (round === null) return null;
+  if (
+    serverApi() &&
+    liveOver(services, round, services.ledger.record(round), status.now * 1000)
+  )
+    return null;
+  return round;
 }
 
 /** 화면이 다 뜬 뒤 방송이 내려오기까지의 쉼(2026-11-02 사용자: 뜨자마자 덮으면 뒤의 화면을 못 본다) */
@@ -97,7 +116,7 @@ export function BroadcastToast({
     };
   }, [settled, screen]);
   const live = liveDrawRound(services, status);
-  const round = watchRound(services, status);
+  const round = broadcastRound(services, status);
   if (!ready || hidden || round === null || dismissed.has(round)) return null;
   const text = broadcastText(services, status, round, live !== null);
   const dismiss = () => setDismissed((s) => new Set(s).add(round));
