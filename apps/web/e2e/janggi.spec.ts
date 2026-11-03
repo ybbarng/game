@@ -525,16 +525,23 @@ test("장기: 초고수가 생각하는 동안에도 화면이 멈추지 않는�
   test.skip(info.project.name !== "desktop", "데스크톱에서만");
   await page.goto("/janggi");
   await startSolo(page, "초고수");
+  await page.getByRole("button", { name: "상마상마" }).click();
   await expect(page.getByRole("status")).toContainText("내 차례");
   await slowCpu(page, 4);
-  await playOne(page, false);
-  await watchFrames(page);
-  await expect(page.getByRole("status")).toContainText("생각하는 중");
-  // 컴퓨터가 답하면 다시 내 차례(느린 CPU라 넉넉히 기다린다).
-  await expect(page.getByRole("status")).toContainText("내 차례", {
-    timeout: 30_000,
-  });
-  const { maxGap, span } = await stopFrames(page);
+  // 첫 수는 초고수도 가볍게 답한다. 세 수를 이어 두며 컴퓨터가 생각하는 동안만 잰다(내 수를 그리는 때는 빼고).
+  let maxGap = 0;
+  let span = 0;
+  for (let i = 0; i < 3; i++) {
+    await playOne(page, false);
+    await watchFrames(page);
+    // 컴퓨터가 답하면 다시 내 차례(느린 CPU라 넉넉히 기다린다).
+    await expect(page.getByRole("status")).toContainText("내 차례", {
+      timeout: 30_000,
+    });
+    const round = await stopFrames(page);
+    maxGap = Math.max(maxGap, round.maxGap);
+    span += round.span;
+  }
   info.annotations.push({
     type: "frames",
     description: `가장 긴 프레임 간격 ${maxGap}ms, 잰 시간 ${span}ms`,
