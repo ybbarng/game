@@ -1,3 +1,4 @@
+import type { BotPlan } from "@game/cube-ai";
 import {
   type CubeMove,
   invertMoves,
@@ -12,7 +13,8 @@ import { describe, expect, it } from "vitest";
 import { DelayNet, runUntil } from "@/net/race/race-fixture";
 import { RaceSession } from "@/net/race/race-session";
 import type { RaceResult } from "@/net/race/types";
-import { attachBot, checkBotRun } from "./bot-racer";
+import { planInWorker } from "../worker";
+import { attachBot, botSeed, checkBotRun, planHere } from "./bot-racer";
 import { RaceHub } from "./hub";
 import {
   createCubeRaceGame,
@@ -167,7 +169,7 @@ describe("큐브 경주(어댑터)", () => {
     });
   });
 
-  it("방장 기기의 컴퓨터는 한 참가자처럼 끝까지 맞추고 순위에 든다. 다른 기기가 계획을 다시 계산해 확인한다", () => {
+  it("방장 기기의 컴퓨터는 한 참가자처럼 끝까지 맞추고 순위에 든다. 다른 기기가 계획을 다시 계산해 확인한다", async () => {
     const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
     const bot = sessions.get("bot1") as Session;
     const h = sessions.get("h") as Session;
@@ -190,7 +192,7 @@ describe("큐브 경주(어댑터)", () => {
     expect(r.players.bot1?.status).toBe("done");
     expect(r.players.h?.status).toBe("dnf");
     const seed = g.snapshot().seed as string;
-    expect(
+    await expect(
       checkBotRun(
         "beginner",
         2,
@@ -199,9 +201,21 @@ describe("큐브 경주(어댑터)", () => {
         "bot1",
         g.moveLog("bot1"),
       ),
-    ).toBe(true);
+    ).resolves.toBe(true);
+    // 워커 모듈(node에서는 같은 스레드로 대신)로 만든 계획도 같다
+    await expect(
+      checkBotRun(
+        "beginner",
+        2,
+        g.startState() as PuzzleState,
+        seed,
+        "bot1",
+        g.moveLog("bot1"),
+        planInWorker,
+      ),
+    ).resolves.toBe(true);
     // 다른 단계로 다시 계산하면 맞지 않는다
-    expect(
+    await expect(
       checkBotRun(
         "expert",
         2,
@@ -210,7 +224,44 @@ describe("큐브 경주(어댑터)", () => {
         "bot1",
         g.moveLog("bot1"),
       ),
-    ).toBe(false);
+    ).resolves.toBe(false);
+  });
+
+  it("계획이 풀린 뒤에 늦게 오면 늦은 만큼 미뤄 두고(몰아 두지 않음) 끝까지 맞춘다", async () => {
+    const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
+    const bot = sessions.get("bot1") as Session;
+    const g = sessions.get("g") as Session;
+    let release: (() => void) | undefined;
+    attachBot({
+      session: bot,
+      id: "bot1",
+      level: "beginner",
+      n: 2,
+      clock,
+      plan: (level, n, start, seed) =>
+        new Promise((resolve) => {
+          release = () => resolve(planHere(level, n, start, seed));
+        }),
+    });
+    runUntil(clock, () => bot.snapshot().phase === "race");
+    clock.advance(3_000);
+    expect(bot.snapshot().peers.find((p) => p.id === "bot1")?.moves).toBe(0);
+    const late = bot.snapshot().elapsed as number;
+    release?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    runUntil(clock, () => g.snapshot().result !== undefined, 600_000, 100);
+    const log = g.moveLog("bot1");
+    const plan = planHere(
+      "beginner",
+      2,
+      g.startState() as PuzzleState,
+      botSeed(g.snapshot().seed as string, "bot1"),
+    ) as BotPlan;
+    expect(log).toHaveLength(plan.moves.length);
+    // 첫 수는 계획 시각 + 늦은 만큼
+    expect(log[0]?.t).toBe((plan.moves[0]?.at as number) + late);
+    expect(g.snapshot().result?.players.bot1?.status).toBe("done");
   });
 
   it("남이 컴퓨터 이름으로 보낸 수는 받지 않는다", () => {

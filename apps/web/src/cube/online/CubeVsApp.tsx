@@ -4,7 +4,7 @@ import { BOT_LEVEL_LABELS, BOT_LEVELS, type BotLevel } from "@game/cube-ai";
 import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
-import { scrambleInWorker, warmUpScramble } from "../worker";
+import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom } from "./room";
@@ -35,6 +35,7 @@ export function CubeVsApp() {
       isHost: true,
       name: "나",
       scrambler: scrambleInWorker,
+      botPlan: planInWorker,
       settings: {
         n,
         format: "single",

@@ -8,7 +8,7 @@ import {
   solvedCube,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { RaceSnapshot } from "@/net/race/types";
 import { faceGrid } from "../bridge";
@@ -17,6 +17,7 @@ import { CubePlay, playCubeCue } from "../components/CubePlay";
 import type { Command } from "../input";
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
+import { planInWorker } from "../worker";
 import { checkBotRun } from "./bot-racer";
 import { stageLabel, turnCount } from "./race-game";
 import type { CubeRoom, RoundRecord } from "./room";
@@ -280,15 +281,34 @@ function ResultBox({
   const result = snap.result;
   const session = room.anySession();
   // 컴퓨터가 계획대로 두었는지 이 기기에서 다시 계산해 본다(판이 끝난 뒤 한 번)
-  const botChecks = useMemo(() => {
-    const out: Record<string, boolean> = {};
-    if (!round || !room.state) return out;
+  // 계획은 웹 워커에서 다시 만든다(해법기 표를 처음 만들 때 화면이 멈추지 않게)
+  const [botChecks, setBotChecks] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setBotChecks({});
+    if (!round || !room.state) return;
+    let alive = true;
     for (const p of room.state.players) {
-      if (!p.bot || !round.players.includes(p.id)) continue;
+      const level = p.bot;
+      if (!level || !round.players.includes(p.id)) continue;
       const log = round.logs[p.id] ?? [];
-      out[p.id] = checkBotRun(p.bot, n, round.start, round.seed, p.id, log);
+      void checkBotRun(
+        level,
+        n,
+        round.start,
+        round.seed,
+        p.id,
+        log,
+        planInWorker,
+      ).then(
+        (ok) => {
+          if (alive) setBotChecks((c) => ({ ...c, [p.id]: ok }));
+        },
+        () => undefined,
+      );
     }
-    return out;
+    return () => {
+      alive = false;
+    };
   }, [round, room, n]);
 
   if (!result) {

@@ -12,7 +12,7 @@ import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
 import { formatMs } from "../records";
-import { scrambleInWorker, warmUpScramble } from "../worker";
+import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botSupports } from "./bot-racer";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
@@ -97,6 +97,7 @@ export function CubeOnlineApp() {
         isHost,
         name: trimmed,
         scrambler: scrambleInWorker,
+        botPlan: planInWorker,
         onChat: (m) =>
           useChat.getState().receive({
             id: m.id,

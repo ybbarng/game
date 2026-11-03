@@ -27,14 +27,19 @@ export function botSupports(n: number): boolean {
   return n === 2 || n === 3;
 }
 
+/**
+ * 계획 만들기. 제품은 웹 워커(`planInWorker`, 해법기 표를 처음 만들 때 1초 넘게 걸려 화면이 멈추지 않게),
+ * 시험은 같은 스레드에서 바로 만든다
+ */
 export type PlanFn = (
   level: BotLevel,
   n: number,
   start: PuzzleState,
   seed: number,
-) => BotPlan;
+) => BotPlan | Promise<BotPlan>;
 
-const defaultPlan: PlanFn = (level, n, start, seed) =>
+/** 같은 스레드에서 바로(시험·워커를 못 쓸 때) */
+export const planHere: PlanFn = (level, n, start, seed) =>
   botPlan(level, n, start, seed);
 
 export interface AttachBotInit {
@@ -46,31 +51,53 @@ export interface AttachBotInit {
   plan?: PlanFn;
 }
 
-/** 경주 하나에 컴퓨터를 붙인다. 떼는 함수를 돌려준다 */
+/**
+ * 경주 하나에 컴퓨터를 붙인다. 떼는 함수를 돌려준다.
+ * 계획은 씨앗을 안 순간(살펴보기 동안) 만들기 시작한다. 풀린 뒤에야 계획이 오면 그만큼 늦게 시작한 것으로 친다
+ * (모든 시각을 늦은 만큼 미룬다. 한꺼번에 몰아 두지 않는다)
+ */
 export function attachBot(init: AttachBotInit): () => void {
   const { session, id, level, n, clock } = init;
-  const planOf = init.plan ?? defaultPlan;
+  const planOf = init.plan ?? planHere;
   let attempt = -1;
-  let moves: CubeMove[] = [];
+  let moves: CubeMove[] | null = null;
   let times: number[] = [];
+  /** 계획이 늦게 와서 미룬 시간(ms) */
+  let delay = 0;
   let scheduled = false;
   let cancel: (() => void) | undefined;
   let stopped = false;
 
-  const step = (j: number) => {
+  const step = (k: number, j: number) => {
     cancel = undefined;
-    if (stopped) return;
+    if (stopped || k !== attempt || !moves) return;
     const snap = session.snapshot();
-    if (snap.attempt !== attempt || snap.phase !== "race") return;
+    if (snap.attempt !== k || snap.phase !== "race") return;
     const r = session.play(moves[j] as CubeMove);
     if (!r.ok || r.solved || j + 1 >= moves.length) return;
-    schedule(j + 1);
+    schedule(k, j + 1);
   };
-  const schedule = (j: number) => {
+  const schedule = (k: number, j: number) => {
     const elapsed = session.snapshot().elapsed ?? 0;
-    cancel = clock.after(Math.max(0, (times[j] as number) - elapsed), () =>
-      step(j),
+    cancel = clock.after(
+      Math.max(0, (times[j] as number) + delay - elapsed),
+      () => step(k, j),
     );
+  };
+  const maybeStart = () => {
+    const snap = session.snapshot();
+    if (stopped || scheduled || !moves || snap.attempt !== attempt) return;
+    if (snap.phase !== "race") return;
+    scheduled = true;
+    if (moves.length > 0) schedule(attempt, 0);
+  };
+  const accept = (k: number, plan: BotPlan) => {
+    if (stopped || k !== attempt) return;
+    moves = plan.moves.map((m) => parseMoves(n, m.move)[0] as CubeMove);
+    times = plan.moves.map((m) => m.at);
+    const snap = session.snapshot();
+    delay = snap.phase === "race" ? (snap.elapsed ?? 0) : 0;
+    maybeStart();
   };
 
   const off = session.onChange((snap) => {
@@ -79,17 +106,20 @@ export function attachBot(init: AttachBotInit): () => void {
       // 새 섞기: 살펴보기 동안 계획을 세운다
       const start = session.startState();
       if (!start) return;
-      attempt = snap.attempt;
+      const k = snap.attempt;
+      attempt = k;
+      moves = null;
       scheduled = false;
       cancel?.();
-      const plan = planOf(level, n, start, botSeed(snap.seed, id));
-      moves = plan.moves.map((m) => parseMoves(n, m.move)[0] as CubeMove);
-      times = plan.moves.map((m) => m.at);
+      const made = planOf(level, n, start, botSeed(snap.seed, id));
+      if (made instanceof Promise)
+        made.then(
+          (plan) => accept(k, plan),
+          () => undefined, // 계획을 못 만들면 두지 않는다(제한 시간에 DNF)
+        );
+      else accept(k, made);
     }
-    if (snap.attempt === attempt && snap.phase === "race" && !scheduled) {
-      scheduled = true;
-      if (moves.length > 0) schedule(0);
-    }
+    maybeStart();
   });
   return () => {
     stopped = true;
@@ -99,17 +129,18 @@ export function attachBot(init: AttachBotInit): () => void {
 }
 
 /** 컴퓨터가 계획대로 두었나(다른 기기에서 다시 계산해 본다). 수 차례만 보고 시각은 보지 않는다 */
-export function checkBotRun(
+export async function checkBotRun(
   level: BotLevel,
   n: number,
   start: PuzzleState,
   raceSeed: string,
   botId: string,
   log: readonly { m: string }[],
-  plan: PlanFn = defaultPlan,
-): boolean {
-  const expected = plan(level, n, start, botSeed(raceSeed, botId)).moves.map(
-    (m) => formatMove(n, parseMoves(n, m.move)[0] as CubeMove),
+  plan: PlanFn = planHere,
+): Promise<boolean> {
+  const made = await plan(level, n, start, botSeed(raceSeed, botId));
+  const expected = made.moves.map((m) =>
+    formatMove(n, parseMoves(n, m.move)[0] as CubeMove),
   );
   if (expected.length !== log.length) return false;
   return log.every((x, i) => x.m === expected[i]);
