@@ -69,3 +69,20 @@ describe("킹과 폰 문제", () => {
     },
   );
 });
+
+describe("킹과 폰 해설", () => {
+  const set = CHESS_PUZZLE_SETS.find((s) => s.id === "king-pawn");
+  const explain = (id: string) => {
+    const puzzle = set?.puzzles.find((p) => p.id === id);
+    if (!puzzle) throw new Error(id);
+    const pos = parseFen(puzzle.fen);
+    return explainEndgame(pos, sanToMove(pos, puzzle.solution) as never)[1];
+  };
+
+  it("맞서기·폰 앞 칸 차지·옆으로 돌아 나가기를 가려 말한다", () => {
+    expect(explain("king-pawn-1")).toContain("맞서기");
+    expect(explain("king-pawn-6")).toContain("앞 칸을 먼저 차지");
+    expect(explain("king-pawn-7")).toContain("돌아 나간다");
+    expect(explain("king-pawn-8")).toContain("돌아 나간다");
+  });
+});
