@@ -284,6 +284,9 @@ importers:
       '@game/omok-engine':
         specifier: workspace:*
         version: link:../../packages/omok-engine
+      '@game/onecard-engine':
+        specifier: workspace:*
+        version: link:../../packages/onecard-engine
       '@game/stardraw-core':
         specifier: workspace:*
         version: link:../../packages/stardraw-core
@@ -409,11 +412,35 @@ importers:
         specifier: workspace:*
         version: link:../engine
 
+  packages/cube-ai:
+    dependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../cube-solver
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../puzzle-core
+
   packages/cube-engine:
     dependencies:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+      '@game/puzzle-core':
+        specifier: workspace:*
+        version: link:../puzzle-core
+
+  packages/cube-reduction:
+    dependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
+      '@game/cube-solver':
+        specifier: workspace:*
+        version: link:../cube-solver
       '@game/puzzle-core':
         specifier: workspace:*
         version: link:../puzzle-core
@@ -426,6 +453,10 @@ importers:
       '@game/mighty-engine':
         specifier: workspace:*
         version: link:../engine
+    devDependencies:
+      '@game/cube-engine':
+        specifier: workspace:*
+        version: link:../cube-engine
 
   packages/cube-solver: {}
 
@@ -449,6 +480,31 @@ importers:
       '@game/mighty-ai':
         specifier: workspace:*
         version: link:../ai
+
+  packages/galaxy-ai:
+    dependencies:
+      '@game/galaxy-engine':
+        specifier: workspace:*
+        version: link:../galaxy-engine
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/yut-engine':
+        specifier: workspace:*
+        version: link:../yut-engine
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
+
+  packages/galaxy-engine:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@game/yut-engine':
+        specifier: workspace:*
+        version: link:../yut-engine
 
   packages/gostop-ai:
     dependencies:
@@ -559,6 +615,12 @@ importers:
         version: link:../omok-engine
 
   packages/omok-engine:
+    dependencies:
+      '@game/mighty-engine':
+        specifier: workspace:*
+        version: link:../engine
+
+  packages/onecard-engine:
     dependencies:
       '@game/mighty-engine':
         specifier: workspace:*
