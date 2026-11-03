@@ -234,12 +234,12 @@ export function CubePlay({
           />
         )}
         {depth !== null && (
-          <span className="absolute top-2 left-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
+          <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
             다음 수 깊이 {depth}
           </span>
         )}
         {(showNet || failed) && (
-          <div className="absolute right-1 bottom-1 w-[34%] rounded-lg bg-black/45 p-1.5">
+          <div className="absolute top-1 left-1 w-[30%] rounded-lg bg-black/45 p-1.5">
             <CubeNet
               n={n}
               faces={faceGrid(n, state, mask)}
