@@ -7,6 +7,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 
 import { Avatar, EGG_LABEL } from "./Avatar";
+import { FingerMark } from "./FingerMark";
 import type { Astronaut } from "./identity";
 import { ART_H, ART_W, keyArt } from "./key-art";
 import { PasskeyMark, Seal } from "./marks";
@@ -121,7 +122,7 @@ function PathNames({
  *   30초 뒤 원래대로. 실패·취소면 조용히 "확인하지 못했습니다".
  *   "내 패스키가 이 카드 열쇠와 맞다"를 나에게 보여 주는 체험일 뿐, 남에게 보여 주는 증명이 아니다
  *   (가짜 페이지도 같은 표시를 흉내 낼 수 있다). 남에게 당첨을 증명하는 길은 당첨자 확인(별 세 개)이다.
- * - 뒷면(`pub`·`onReveal`이 있을 때): 옆으로 밀거나 「뒷면 보기」로 뒤집는다. 공개 열쇠로 그린 별 무늬와 가린 공개 열쇠 줄.
+ * - 뒷면(`pub`·`onReveal`이 있을 때): 옆으로 밀거나 「뒷면 보기」로 뒤집는다. 공개 열쇠로 그린 별 무늬, 지문 도장(「본인 서명」), 가린 공개 열쇠 줄.
  *   가린 줄을 누르면 본인 확인 뒤 공개 열쇠와 복사 단추를 보인다. 30초 뒤나 다시 뒤집으면 가린다.
  *   공개 열쇠는 비밀이 아니다(장부와 기기에 있다). 캡처·어깨너머로 장부 속 내 응모가 바로 찾히지 않게 하는 실수 방지다.
  *   앞면은 주인 확인, 뒷면은 열쇠 꺼내 보기로 역할을 나눈다. 앞면과 공유에는 공개 열쇠를 넣지 않는다.
@@ -642,6 +643,21 @@ export function AstronautCard({
               <span className="absolute top-[4.4cqw] left-[5cqw] text-[2.8cqw] text-sky-50/80 tracking-[0.08em]">
                 카노푸스 우주국
               </span>
+
+              {/* 신청서에 찍은 지문 도장(열쇠에서 정한 무늬, docs/36 11-64) */}
+              <div
+                data-back-fingermark
+                className="absolute top-[3.6cqw] right-[5cqw] flex flex-col items-center gap-[0.4cqw] rounded-[2cqw] border border-white/15 bg-slate-950/85 px-[2.2cqw] pt-[1.4cqw] pb-[1cqw]"
+              >
+                <FingerMark
+                  pub={pub}
+                  label="본인 서명 지문 도장"
+                  className="h-[15cqw] w-[12.5cqw] text-rose-400"
+                />
+                <span className="text-[2.2cqw] text-sky-50/70 tracking-[0.08em]">
+                  본인 서명
+                </span>
+              </div>
 
               <div className="absolute inset-x-[5cqw] bottom-[5cqw] flex flex-col gap-[1cqw] rounded-[2.4cqw] border border-white/15 bg-slate-950/85 px-[3cqw] py-[2.2cqw]">
                 <div className="flex h-[4.6cqw] items-center justify-between">

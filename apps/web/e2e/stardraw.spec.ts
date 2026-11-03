@@ -480,6 +480,10 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.locator("[data-flip-card]").click();
   const back = page.locator("[data-idcard-back]");
   await expect(back.locator("[data-key-mask]")).toBeVisible();
+  // 열쇠에서 정한 지문 도장이 「본인 서명」으로 찍혀 있다
+  await expect(
+    back.locator("[data-back-fingermark] [data-fingermark]"),
+  ).toBeVisible();
   await expect(back.locator("[data-public-key]")).toHaveCount(0);
   await back.locator("[data-key-mask]").click();
   // 연출이 있으면 열쇠 꺼내기도 신분증 제시 틀(등록증을 내밀면 확인)
