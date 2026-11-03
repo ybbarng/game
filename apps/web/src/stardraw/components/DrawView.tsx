@@ -19,6 +19,7 @@ import {
   rouletteAt,
 } from "../roulette";
 import { starOf } from "../sky";
+import { useWakeLock } from "../wake-lock";
 import { SkyCelebration, WinSeal } from "./Celebration";
 import { LottoBall, RANK_LABEL } from "./parts";
 import { SkyBoard } from "./SkyBoard";
@@ -163,6 +164,8 @@ export function DrawView({
   /** 지금 다시 빛나는 공의 차례(작은 순 0~5, 보너스 6) */
   const [shine, setShine] = useState<number | null>(null);
   const [settled, setSettled] = useState(false);
+  // 연출을 보는 동안 화면이 어두워지지 않게(2026-11-03 사용자). 마무리(정렬·다시 빛내기)까지
+  useWakeLock(animated && !settled);
   const rowRef = useRef<HTMLDivElement>(null);
   /** 공을 옮기기 직전 자리(번호 → 왼쪽 x). 다시 놓은 뒤 그 차이만큼에서 미끄러져 온다 */
   const before = useRef<Map<number, number> | null>(null);

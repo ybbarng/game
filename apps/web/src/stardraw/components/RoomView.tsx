@@ -56,6 +56,7 @@ import { roundTitle } from "../round-label";
 import { type Services, serverApi } from "../services";
 import { starOf } from "../sky";
 import { rowFaceLimit, useTypingFit } from "../typing-fit";
+import { useWakeLock } from "../wake-lock";
 import type { KeyInfo } from "../wallet";
 import { IssuedView, useAstronautSetup, WelcomeFlyer } from "./AstronautSetup";
 import { DrawView } from "./DrawView";
@@ -913,6 +914,8 @@ export function RoomView({
 
   const toShow = showStart - now;
   const phase = roomPhase(now, times.entryDeadline, showStart, showLength);
+  // 관측 안내부터 관측이 끝날 때까지 화면이 어두워지지 않게(2026-11-03 사용자)
+  useWakeLock(phase === "announce" || phase === "count" || phase === "live");
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"
