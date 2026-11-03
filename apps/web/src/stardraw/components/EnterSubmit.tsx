@@ -188,7 +188,7 @@ export const QUICK_SPARE_MS = 20_000;
 /**
  * 답안지 작성과 제출(오버레이 안, 움직임 줄이기가 아닐 때). 차례대로 하나씩:
  * 위쪽 "답안지를 작성해 주세요." → 고른 별 줄과 용지가 함께 아래에서 미끄러져 올라와 아래쪽에 붙음 → 별이 하나씩
- * 자기 칸으로 옮겨 가 칸을 칠함 → "답안지를 밀어 올려 응모해 주세요." → 사람이 용지를 위로 밀어 올리거나 용지를 한 번
+ * 자기 칸으로 옮겨 가 칸을 칠함 → "예측서를 밀어 올려서 제출해 주세요." → 사람이 용지를 위로 밀어 올리거나 용지를 한 번
  * 누름 → 용지가 위(우주국)로 올라가 사라지면 `onSubmitted`.
  * 용지는 아래(내 앞)에 두고 위로 제출한다(2026-10-31 사용자). 시간은 fx-timing의 FX.
  *
@@ -260,7 +260,7 @@ export function SubmitView({
         await wait(FX.paperAway);
         if (!alive) return;
         setOld("gone");
-        setText("예측서를 밀어 올려 내 주세요.");
+        setText("예측서를 밀어 올려서 제출해 주세요.");
         setAwaiting(true);
         return;
       }
@@ -269,7 +269,7 @@ export function SubmitView({
         setMarked(sorted);
         setFlown(sorted);
         setSheet("in");
-        setText("예측서를 밀어 올려 내 주세요.");
+        setText("예측서를 밀어 올려서 제출해 주세요.");
         await wait(FX.sheetIn);
         if (!alive) return;
         setAwaiting(true);
@@ -295,7 +295,7 @@ export function SubmitView({
       setRow("gone");
       await wait(FX.pause);
       if (!alive) return;
-      setText("예측서를 밀어 올려 내 주세요.");
+      setText("예측서를 밀어 올려서 제출해 주세요.");
       setAwaiting(true);
     })();
     return () => {
