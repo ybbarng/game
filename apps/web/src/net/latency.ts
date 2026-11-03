@@ -434,7 +434,7 @@ export class LatencyMeter {
             app.p95 === null || app.min === null
               ? null
               : round(app.p95 - app.min),
-          spikeRate: spikes === null ? null : round(spikes * 100) / 100,
+          spikeRate: spikes === null ? null : Math.round(spikes * 1000) / 1000,
           sent: pair.sent.o,
           lost: pair.sent.o - pair.received.o,
         },

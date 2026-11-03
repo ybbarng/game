@@ -1,7 +1,11 @@
+import { realClock } from "@game/fair-play";
 import { selfId } from "@trystero-p2p/core";
 
 import { type DiagContext, diag, startDiag } from "./diag";
+import { LATENCY_PROBE, withLatency } from "./latency";
+import { performanceClock } from "./monotonic-clock";
 import { trackedPeerConnections } from "./rtc-diag";
+import { negotiatedUnordered, rtcSample } from "./rtc-latency";
 import { joinRoom } from "./signal";
 import { sdpFingerprint, type Transport } from "./transport";
 import { turnConfig } from "./turn";
@@ -61,7 +65,7 @@ export async function joinP2P(
     for (const h of leaveHandlers) h(peerId);
   };
 
-  return {
+  const transport: Transport = {
     selfId,
     send: (message, to) => {
       void channel.send(
@@ -86,4 +90,24 @@ export async function joinP2P(
       return local && remote ? { local, remote } : null;
     },
   };
+  if (!LATENCY_PROBE.enabled) return transport;
+  // 쌍별 지연을 저절로 잰다(docs/43 5절 E2). 화면에는 보이지 않고 요약만 진단 기록으로 간다.
+  // 측정 메시지는 withLatency가 걸러 방 코드에 닿지 않는다.
+  const connectionOf = (peerId: string) => room.getPeers()[peerId];
+  return withLatency(transport, {
+    clock: realClock,
+    mono: performanceClock,
+    pingMs: LATENCY_PROBE.pingMs,
+    reportMs: LATENCY_PROBE.reportMs,
+    report: ({ elapsedMs, pairs }) => {
+      for (const pair of pairs) diag("latency", { elapsedMs, ...pair });
+    },
+    rtcStats: async (peerId) => {
+      const pc = connectionOf(peerId);
+      return pc ? rtcSample(pc) : null;
+    },
+    unordered: negotiatedUnordered(connectionOf),
+    hidden: () => document.visibilityState === "hidden",
+    beacon: context.role === "host",
+  });
 }
