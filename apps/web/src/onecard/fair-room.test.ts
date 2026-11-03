@@ -14,6 +14,7 @@ import {
   setupHwatu,
   until,
 } from "@/hwatu/fair-room-fixture";
+import type { ClaimsResolved } from "@/net/claim";
 import type { AuditResult } from "@/net/guest-room";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -291,6 +292,48 @@ describe("원카드 암호화방", () => {
     expect(lastClaimed).toBe(true);
     expect(audits).toEqual([{ ok: true }]);
     expect(incidents).toEqual([]);
+  }, 60_000);
+
+  it("방장이 발표는 바르게 하고 기록 속 청구 내용만 바꾸면(seen) 판 끝 검증이 짚는다", async () => {
+    const { audits } = await playFair((host) => {
+      const match = host.match;
+      if (!match) return;
+      (
+        host.claims as unknown as {
+          options: { apply?: (r: ClaimsResolved) => void };
+        }
+      ).options.apply = (resolved) => {
+        const action = onecardKit.claims?.action(resolved) as Action | null;
+        if (action?.type !== "claims") return;
+        match.submitHost(0, {
+          ...action,
+          shouts: action.shouts.map((s) => ({ ...s, seen: s.seen - 1 })),
+        });
+      };
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({ ok: false });
+    expect(audits[0]?.ok ? "" : audits[0]?.reason).toContain(
+      "방장 발표와 다르다",
+    );
+  }, 60_000);
+
+  it("방장이 발표하지 않은 청구 묶음을 기록에 넣으면 판 끝 검증이 짚는다", async () => {
+    const { audits } = await playFair((host) => {
+      const match = host.match;
+      if (!match) return;
+      const seen = (match.rawState() as OnecardState).turnNo;
+      match.submitHost(0, {
+        type: "claims",
+        batch: 99,
+        shouts: [{ seat: 1, seen, id: "fake" }],
+      });
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({ ok: false });
+    expect(audits[0]?.ok ? "" : audits[0]?.reason).toMatch(
+      /방장 발표와 다르다|없던 청구/,
+    );
   }, 60_000);
 
   it("방장이 발표는 바르게 하고 기록에서 청구를 빼면 판 끝 검증이 짚는다", async () => {
