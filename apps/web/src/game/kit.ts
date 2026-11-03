@@ -24,14 +24,20 @@ export interface KitBot<View, Action, Event = unknown> {
   } | null;
 }
 
-/** 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창). `key`가 같으면 같은 창이다 */
-export interface KitTimer<Action> {
+/**
+ * 엔진이 재지 않는 시간 창 하나(원카드 본인 시간·잡기 창, 은하 한 바퀴 결정 시간). `key`가 같으면 같은 창이다.
+ * 시간이 다 되면 이 자리로 `action`을 넣는다. 넣을 행동을 그때 정해야 하면(컴퓨터가 대신 정하기처럼 계산이 들거나
+ * 그때 남은 자리를 보고 고를 때) `action` 대신 `later`를 준다. null이면 넣지 않는다
+ */
+export type KitTimer<Action, State = unknown> = {
   key: string;
-  /** 시간이 다 되면 이 자리로 `action`을 넣는다 */
   seat: number;
   ms: number;
-  action: Action;
-}
+} & (
+  | { action: Action }
+  /** 시간이 다 된 순간의 엔진 상태를 받아 넣을 자리와 행동을 정한다 */
+  | { later: (state: State) => { seat: number; action: Action } | null }
+);
 
 export type StepOutcome<State, Event> =
   | { ok: true; state: State; events: Event[] }
@@ -176,7 +182,7 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    * 수마다 다시 걸어, 수가 오가도 그대로 흘러야 하는 창에는 맞지 않는다. LocalMatch가 걸음마다 이 목록을 보고
    * 새 `key`는 그때부터 재고, 사라진 `key`는 지운다
    */
-  timers?(state: State): KitTimer<Action>[];
+  timers?(state: State): KitTimer<Action, State>[];
   /**
    * 사람·컴퓨터가 아니라 대국을 돌리는 기기가 바로 넣는 행동(원카드 다시 섞기). 없으면 null.
    * `seed`는 대국 씨앗과 기록 길이로 만든 값이라 같은 기록이면 같은 행동이 나온다
@@ -197,6 +203,20 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   // biome-ignore lint/suspicious/noExplicitAny: 청구 내용·판·판정 모양은 게임마다 다르다
   claims?: KitClaims<View, Action, any, any, any>;
+  /**
+   * 사람이 보낸 것이 아닌 기록(방장 시계·방장이 넣은 행동: `timing.strip`이 null인 것 등)이 규칙대로인지
+   * 판 끝 다시 계산에서 본다. 그런 기록은 「내가 보낸 것」 대조와 컴퓨터 수 대조를 건너뛰므로, 꼬리표만 달면
+   * 아무 행동이나 넣을 수 있는 구멍을 막는다. null이면 통과, 글이면 판 끝 검증 실패 까닭
+   */
+  verifyUnsigned?(input: {
+    /** 이 기록을 넣기 직전 상태(다시 계산 중인 상태) */
+    before: State;
+    seat: number;
+    action: Action;
+    /** 기록 번호(0부터) */
+    index: number;
+    context: VerifyContext;
+  }): string | null;
 }
 
 /**
@@ -228,6 +248,14 @@ export interface KitClaims<
   action(resolved: ClaimsResolved<Body, Verdict>): Action | null;
   /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
   rules?: Partial<ClaimRules>;
+}
+
+/** `verifyUnsigned`에 주는 게임별 추가 재료 */
+export interface VerifyContext {
+  /** 원카드: 방장이 발표한 청구 판정(원카드가 채운다) */
+  claimsResolved?: readonly unknown[];
+  /** 대기실이 컴퓨터로 적은 자리 */
+  botSeats?: ReadonlySet<number>;
 }
 
 export interface KitTiming<State, Action> {

@@ -8,11 +8,19 @@ import {
   type ScenarioStar,
 } from "@game/galaxy-engine";
 import { useEffect, useState } from "react";
+import { BoardOnlineScreen } from "@/components/BoardOnlineScreen";
 import { GameHome } from "@/components/GameHome";
+import {
+  TimePresetPicker,
+  timePresetLabel,
+} from "@/components/TimePresetPicker";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
+import { type HostRestore, hostedRoom } from "@/net/host-store";
 
 import { GalaxyIconArt } from "../icon-art";
+import { galaxyOnline } from "../online";
+import { endGalaxySession } from "../session";
 import {
   GALAXY_LENGTHS,
   GALAXY_LEVELS,
@@ -153,6 +161,9 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
       </Section>
+      <Section title="개인 시간">
+        <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
+      </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
           {GALAXY_LEVELS.map((l) => (
@@ -233,10 +244,12 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
 
 function GalaxyHome({
   onStart,
+  onOnline,
   onOptions,
   onRules,
 }: {
   onStart: (saved?: GalaxySaved) => void;
+  onOnline: () => void;
   onOptions: () => void;
   onRules: () => void;
 }) {
@@ -273,11 +286,18 @@ function GalaxyHome({
           lengthDetail(rules).split(" · ")[1],
           s.trade ? "거래" : "거래 없음",
           s.seasonal ? "제철 하늘" : null,
+          timePresetLabel(rules.time),
           `컴퓨터 ${level}`,
         ]
           .filter(Boolean)
           .join(" · "),
         onClick: () => onStart(),
+      }}
+      together={{
+        icon: "👥",
+        title: "친구와 하기",
+        detail: "링크로 2~4명 · 빈자리는 컴퓨터",
+        onClick: onOnline,
       }}
       onOptions={onOptions}
       aboutLabel="은하 한 바퀴는?"
@@ -313,33 +333,66 @@ interface GalaxyTestHooks {
 
 type Screen =
   | { kind: "start" }
+  | {
+      kind: "online";
+      /** 초대 링크로 들어왔으면 방 코드, 방장이면 null */
+      room: string | null;
+      /** 방장이 새로고침했으면 이 탭이 연 방과 남긴 것 */
+      resume?: { room: string; restore: HostRestore };
+    }
   | { kind: "playing" }
   | { kind: "options" }
   | { kind: "rules" };
 
-/** 은하 한 바퀴(/galaxy): 첫 화면, 옵션, 규칙, 대국. 친구와 하기(G5)·배우기(G6)는 아직 없다 */
+/** 은하 한 바퀴(/galaxy): 첫 화면, 옵션, 규칙, 친구와 하기 방, 대국. 배우기(G6)는 아직 없다 */
 export function GalaxyApp() {
+  // 판·방을 떠날 때(나가기 단추든 뒤로가기든) 하는 정리
+  function leavePlay() {
+    endGalaxySession();
+    useGalaxy.getState().leave();
+  }
   const [screen, setScreen] = useScreenHistory<Screen>(
     { kind: "start" },
-    {
-      leavePlay: () => useGalaxy.getState().leave(),
-      restorable: ["options", "rules"],
-    },
+    { leavePlay, restorable: ["options", "rules"] },
   );
   const view = useGalaxy((s) => s.view);
+  const settings = useGalaxySettings();
 
-  // 다 끝난 게임은 이어하기에 남기지 않는다.
+  // 다 끝난 게임은 이어하기에 남기지 않는다(온라인 판은 저장하지 않는다).
   useEffect(() => {
-    if (view?.phase === "gameOver") clearGalaxy();
+    if (view?.phase === "gameOver" && useGalaxy.getState().local) clearGalaxy();
   }, [view?.phase]);
 
+  // 초대 링크로 왔으면 그 방으로, 방장이 새로고침했으면 연 방을 다시 연다.
+  useEffect(() => {
+    const room = new URLSearchParams(window.location.search).get("room");
+    if (room) {
+      setScreen({ kind: "online", room });
+      return;
+    }
+    const hosted = hostedRoom("galaxy");
+    if (hosted) setScreen({ kind: "online", room: null, resume: hosted });
+  }, [setScreen]);
+
   const backToStart = () => setScreen({ kind: "start" });
+  if (screen.kind === "online")
+    return (
+      <BoardOnlineScreen
+        game={galaxyOnline}
+        rules={rulesFromSettings(settings)}
+        roomFromUrl={screen.room}
+        {...(screen.resume ? { resume: screen.resume } : {})}
+        onBack={backToStart}
+        onPlaying={() => setScreen({ kind: "playing" })}
+      />
+    );
   if (screen.kind === "playing") return <GalaxyGame onExit={backToStart} />;
   if (screen.kind === "options") return <GalaxyOptions onBack={backToStart} />;
   if (screen.kind === "rules")
     return <GalaxyRulesScreen onBack={backToStart} />;
   return (
     <GalaxyHome
+      onOnline={() => setScreen({ kind: "online", room: null })}
       onOptions={() => setScreen({ kind: "options" })}
       onRules={() => setScreen({ kind: "rules" })}
       onStart={(saved) => {

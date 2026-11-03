@@ -52,7 +52,16 @@ export function GalaxySources() {
           >
             CC BY 4.0
           </a>
-          . HR 번호와 이름만 뽑아 옮겼습니다.
+          (원본{" "}
+          <a
+            className={LINK}
+            href="https://www.iau.org/public/themes/naming_stars/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            iau.org
+          </a>
+          ). HR 번호와 이름만 뽑아 옮겼습니다.
         </li>
         <li>
           밝기·색·온도: Hoffleit &amp; Warren(1991), Yale Bright Star Catalogue

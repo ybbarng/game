@@ -359,6 +359,11 @@ export interface AuctionView {
   passer: number;
   committed: boolean[];
   revealed: boolean[];
+  /**
+   * 이 자리가 낸 약속(해시, 아직 안 냈으면 null). 해시라 값이 드러나지 않는다. 내 기기·대신 두는 컴퓨터가
+   * 공개할 값과 소금이 이 약속과 맞는지 보려고 둔다(온라인에서 끊긴 사이 방장이 대신 낸 봉투인지 등)
+   */
+  myCommit: string | null;
 }
 
 /** 한 자리에서 본 화면. 남의 재료(`keys`)와 아직 끝나지 않은 입찰 값은 뺀다 */

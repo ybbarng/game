@@ -3,6 +3,7 @@ import {
   boardOfSky,
   type GameEvent,
   SHORT_RULES,
+  step,
   viewOf,
 } from "@game/galaxy-engine";
 import { describe, expect, it } from "vitest";
@@ -26,20 +27,26 @@ import { STAR_FACTS } from "./star-facts";
 const rules = { ...SHORT_RULES, players: 2 as const };
 
 /** 입문 둘이 짧은 판 하나를 끝까지 두고 사건을 모은다(결정적) */
+/** 컴퓨터 둘이 몇 돌림 두다가 1번 자리가 기권해 끝낸 판(판 끝까지 두지 않는다) */
 function playedGame() {
   const events: GameEvent[] = [];
   const log: { seat: number; action: unknown }[] = [];
   const bot = galaxyBotFor(0);
-  const { state } = playGalaxy({
+  const { state: played } = playGalaxy({
     bots: [bot, bot],
     rules,
     seed: 7,
+    until: (s) => s.round >= 5 && s.phase === "turn",
     onStep: (_before, seat, action, _after, evs) => {
       events.push(...evs);
       log.push({ seat, action });
     },
   });
-  return { state, events, log };
+  const resigned = step(played, 1, { type: "resign" });
+  if (!resigned.ok) throw new Error(resigned.error);
+  events.push(...resigned.events);
+  log.push({ seat: 1, action: { type: "resign" } });
+  return { state: resigned.state, events, log };
 }
 
 describe("은하 한 바퀴 kit", () => {

@@ -1282,6 +1282,18 @@ export class GuestRoom<
       const { seat, action } = entry;
       // 방장 시계가 남긴 기록(시간패, 응답 창 끝)은 누가 둔 수가 아니다. 엔진이 시간이 다 됐는지 확인한다.
       const byClock = this.kit.timing?.strip(action) === null;
+      // 사람이 보낸 것이 아닌 기록은 아래 대조를 건너뛰므로 게임 규칙으로 따로 본다(`verifyUnsigned`).
+      if (byClock && this.kit.verifyUnsigned) {
+        const problem = this.kit.verifyUnsigned({
+          before: state,
+          seat,
+          action,
+          index,
+          context: { botSeats },
+        });
+        if (problem)
+          return { ok: false, reason: `기록 ${index + 1}번째: ${problem}` };
+      }
       if (bot && !byClock) {
         if (botSeats.has(seat) && !entry.bot)
           return {

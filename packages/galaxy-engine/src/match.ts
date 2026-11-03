@@ -1631,6 +1631,7 @@ export function viewOf(state: GalaxyState, seat: number): GalaxyView {
           passer: auction.passer,
           committed: auction.commits.map((c) => c !== null),
           revealed: auction.reveals.map((r) => r !== null),
+          myCommit: auction.commits[seat] ?? null,
         }
       : null,
     mySeat: seat,

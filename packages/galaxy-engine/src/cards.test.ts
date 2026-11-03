@@ -78,7 +78,7 @@ describe("우주국 공문 16장(2-6)", () => {
     ]);
   });
 
-  it("6 정거장 안전 점검: 한 단마다 12, 큰 정거장마다 30(맡긴 별은 빼고)", () => {
+  it("6 정거장 안전 점검: 한 단마다 10, 큰 정거장마다 30(맡긴 별은 빼고)", () => {
     const { events } = draw(6, {
       stars: [
         { square: 1, owner: 0 },
@@ -88,7 +88,7 @@ describe("우주국 공문 16장(2-6)", () => {
         { square: 15, owner: 0, level: 3 },
       ],
     });
-    expect(amounts(events)).toEqual([[0, -1, 12 + 36 + 30 + 36]]);
+    expect(amounts(events)).toEqual([[0, -1, 10 + 30 + 30 + 30]]);
   });
 
   it("7 우주 먼지 청소: 40", () => {
