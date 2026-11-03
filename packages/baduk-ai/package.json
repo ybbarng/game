@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "바둑 컴퓨터 플레이어 — 입문·중수·고수",
+  "description": "바둑 컴퓨터 플레이어 — 입문·중수·고수·초고수",
   "exports": {
     ".": "./src/index.ts"
   },

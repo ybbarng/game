@@ -2,6 +2,7 @@ import type { Action, BadukView } from "@game/baduk-engine";
 import { nextInt, type RngState } from "@game/mighty-engine";
 
 import { type Color, FastBoard, PASS } from "./fast-board";
+import { masterSearch } from "./master";
 import { candidateMoves, search } from "./search";
 
 /** 컴퓨터 플레이어. 자기 자리 화면만 받는다(`KitBot`과 같은 모양) */
@@ -189,9 +190,42 @@ export function createBadukSearchBot(playouts = EXPERT_PLAYOUTS): BadukBot {
 
 export const badukExpertBot = createBadukSearchBot();
 
-/** 실력 단계(0 입문, 1 중수, 2 고수) */
+/** 초고수가 둬 볼 판 수(9줄). 무거운 플레이아웃이라 한 판이 고수보다 비싸다 */
+export const MASTER_PLAYOUTS = 10000;
+
+/**
+ * 초고수가 판 크기마다 둬 볼 판 수. 큰 판은 한 판이 길어 줄이되, 고수(×0.4·×0.15)보다는 덜 줄인다.
+ * 9줄 2초·19줄 3초(맥북) 안에 들도록 bench로 맞췄다
+ */
+function masterBudget(size: number, nine: number): number {
+  return Math.round(size <= 9 ? nine : size <= 13 ? nine * 0.6 : nine * 0.18);
+}
+
+/** 초고수: 바둑 지식을 더한 나무 탐색(무거운 플레이아웃, 사전 지식) */
+export function createBadukMasterBot(
+  playouts = MASTER_PLAYOUTS,
+  options: { purpose?: boolean } = {},
+): BadukBot {
+  const purpose = options.purpose ?? true;
+  return botWith(
+    `baduk-master${playouts === MASTER_PLAYOUTS ? "" : `-${playouts}`}${purpose ? "" : "-plain"}`,
+    (view, board, rng) =>
+      masterSearch(
+        board,
+        view.rules.komi,
+        masterBudget(view.rules.size, playouts),
+        rng,
+        { allowed: view.legal, purpose },
+      ).move,
+  );
+}
+
+export const badukMasterBot = createBadukMasterBot();
+
+/** 실력 단계(0 입문, 1 중수, 2 고수, 3 초고수) */
 export function badukBotFor(level: number): BadukBot {
   if (level <= 0) return badukBeginnerBot;
   if (level === 1) return badukIntermediateBot;
-  return badukExpertBot;
+  if (level === 2) return badukExpertBot;
+  return badukMasterBot;
 }

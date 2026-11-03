@@ -13,6 +13,7 @@ import {
   badukBotFor,
   badukExpertBot,
   badukIntermediateBot,
+  badukMasterBot,
   createBadukIntermediateBot,
   createBadukSearchBot,
 } from "./bots";
@@ -162,5 +163,6 @@ describe("바둑 컴퓨터", () => {
     expect(badukBotFor(0)).toBe(badukBeginnerBot);
     expect(badukBotFor(1)).toBe(badukIntermediateBot);
     expect(badukBotFor(2)).toBe(badukExpertBot);
+    expect(badukBotFor(3)).toBe(badukMasterBot);
   });
 });

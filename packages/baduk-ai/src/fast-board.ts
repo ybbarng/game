@@ -257,6 +257,117 @@ export class FastBoard {
     return this.nbr[at * 4 + k] as number;
   }
 
+  /** `scanGroup`이 모은 무리 돌(앞에서 `groupSize`개) */
+  groupStones: Int16Array = new Int16Array(0);
+  /** `scanGroup`이 모은 활로(앞에서 `libCount`개) */
+  groupLibs: Int16Array = new Int16Array(0);
+  groupSize = 0;
+  libCount = 0;
+
+  /** `at` 돌 무리의 돌과 활로를 모두 모은다(`groupStones`·`groupLibs`). 다음 부를 때 덮어쓴다 */
+  scanGroup(at: number): void {
+    const color = this.cells[at];
+    const s = this.nextStamp();
+    const { mark, nbr, cells } = this;
+    let stones = this.groupStones;
+    let libs = this.groupLibs;
+    if (stones.length < this.n) {
+      stones = new Int16Array(this.n);
+      libs = new Int16Array(this.n);
+      this.groupStones = stones;
+      this.groupLibs = libs;
+    }
+    let size = 0;
+    let nl = 0;
+    stones[size++] = at;
+    mark[at] = s;
+    for (let i = 0; i < size; i++) {
+      const base = (stones[i] as number) * 4;
+      for (let k = 0; k < 4; k++) {
+        const q = nbr[base + k] as number;
+        if (q < 0 || mark[q] === s) continue;
+        const c = cells[q];
+        if (c === 0) {
+          mark[q] = s;
+          libs[nl++] = q;
+        } else if (c === color) {
+          mark[q] = s;
+          stones[size++] = q;
+        }
+      }
+    }
+    this.groupSize = size;
+    this.libCount = nl;
+  }
+
+  /**
+   * `at` 둘레 3×3(가운데 뺀 여덟 자리)의 모양 번호. 자리마다 2비트: 0 빈 점, 1 흑, 2 백, 3 판 밖.
+   * 차례는 왼쪽 위, 위, 오른쪽 위, 왼쪽, 오른쪽, 왼쪽 아래, 아래, 오른쪽 아래(`patterns.ts`와 같다)
+   */
+  code3x3(at: number): number {
+    const base = at * 4;
+    const { nbr, diag, cells } = this;
+    const v = (q: number) => (q < 0 ? 3 : (cells[q] as number));
+    return (
+      v(diag[base] as number) |
+      (v(nbr[base] as number) << 2) |
+      (v(diag[base + 1] as number) << 4) |
+      (v(nbr[base + 2] as number) << 6) |
+      (v(nbr[base + 3] as number) << 8) |
+      (v(diag[base + 2] as number) << 10) |
+      (v(nbr[base + 1] as number) << 12) |
+      (v(diag[base + 3] as number) << 14)
+    );
+  }
+
+  /** 대각선 이웃(판 밖은 -1). k는 0 왼쪽 위, 1 오른쪽 위, 2 왼쪽 아래, 3 오른쪽 아래 */
+  diagonal(at: number, k: number): number {
+    return this.diag[at * 4 + k] as number;
+  }
+
+  /**
+   * 자리 주인(Tromp-Taylor)을 `acc`에 더한다: 흑 자리 +1, 백 자리 −1. 여러 판의 끝 모양을 모아 "이 자리는 누구 것이 되기 쉬운가"를 본다
+   */
+  addOwnership(acc: Int32Array): void {
+    const { cells, nbr, stack, mark } = this;
+    const s = this.nextStamp();
+    for (let i = 0; i < this.n; i++) {
+      const c = cells[i];
+      if (c === 1) acc[i] = (acc[i] as number) + 1;
+      else if (c === 2) acc[i] = (acc[i] as number) - 1;
+      else if (mark[i] !== s) {
+        // 빈 영역을 모으며 닿는 색을 본다. 영역 자리는 stack 뒤쪽에 쌓아 두고 나중에 더한다.
+        let top = 0;
+        let end = this.n;
+        let touches = 0;
+        stack[top++] = i;
+        mark[i] = s;
+        while (top > 0) {
+          const p = stack[--top] as number;
+          stack[--end] = p;
+          const base = p * 4;
+          for (let k = 0; k < 4; k++) {
+            const q = nbr[base + k] as number;
+            if (q < 0) continue;
+            const d = cells[q] as number;
+            if (d === 0) {
+              if (mark[q] !== s) {
+                mark[q] = s;
+                stack[top++] = q;
+              }
+            } else touches |= d;
+          }
+        }
+        const sign = touches === 1 ? 1 : touches === 2 ? -1 : 0;
+        if (sign !== 0)
+          for (let j = end; j < this.n; j++) {
+            const p = stack[j] as number;
+            acc[p] = (acc[p] as number) + sign;
+          }
+      }
+    }
+  }
+
   /** `at` 곁에 `color` 돌이 있나 */
   hasNeighbor(at: number, color: Color): boolean {
     const base = at * 4;
