@@ -105,6 +105,13 @@ function OmokPuzzleRun({
         ? `사로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
         : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
+  /** 금지 자리면 까닭을 알리고 true(틀린 것으로 치지 않는다) */
+  const warnForbidden = (at: number): boolean => {
+    const banned = view.forbidden.find((f) => f.at === at);
+    if (!banned) return false;
+    setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요`);
+    return true;
+  };
   const prompt =
     notice ?? (aim !== null ? `${pointName(aim)}: 한 번 더 누르면 둔다` : goal);
 
@@ -125,16 +132,13 @@ function OmokPuzzleRun({
           forbidden={status === "play" ? view.forbidden : []}
           aim={aim}
           onAim={(at) => {
-            setNotice(null);
+            // 금지 자리를 겨누면(손가락 첫 누름·화살표) 바로 까닭을 알린다. 겨눔은 그대로 둬 화살표로 지나갈 수 있다.
             setAim(at);
+            if (at === null || !warnForbidden(at)) setNotice(null);
           }}
           onPlace={(at) => {
             setAim(null);
-            const banned = view.forbidden.find((f) => f.at === at);
-            if (banned) {
-              setNotice(`${pointName(at)}: 흑은 ${banned.reason} 금지예요`);
-              return;
-            }
+            if (warnForbidden(at)) return;
             setNotice(null);
             run.play(at);
           }}
@@ -153,13 +157,18 @@ function OmokPuzzleRun({
       shown={shown !== null}
       explain={run.explain}
       canHint={run.step === 0}
-      onHint={() => setAim(answer)}
+      onHint={() => {
+        setNotice(null);
+        setAim(answer);
+      }}
       onReveal={() => {
         run.reveal(answer);
+        setNotice(null);
         setAim(answer);
       }}
       onRestart={() => {
         run.restart();
+        setNotice(null);
         setAim(null);
       }}
       onNext={nextId ? () => onOpen(nextId) : null}
