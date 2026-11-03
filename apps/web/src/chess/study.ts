@@ -1,4 +1,5 @@
 import {
+  type Action,
   applyMove,
   attacked,
   type Board,
@@ -16,6 +17,7 @@ import {
   squareName,
   viewOf,
 } from "@game/chess-engine";
+import { adviseWith } from "@/game/bot-runner";
 
 import { chessAdvisor } from "./advisor";
 import type { ChessPuzzle } from "./puzzles";
@@ -52,6 +54,15 @@ export function judgeMove(
 /** 상대(흑)의 받는 수: 고수(화면용 `chessAdvisor`)가 가장 오래 버티는 수를 고른다. 같은 문제는 늘 같은 수 */
 export function defenseFor(state: ChessState) {
   return chessAdvisor.decide(viewOf(state, 1), { seed: 7 });
+}
+
+/** `defenseFor`와 같은 수를 웹 워커에서 센다(문제 화면이 멈추지 않게) */
+export function defenseOffThread(state: ChessState): Promise<Action> {
+  return adviseWith<Action>(
+    { game: "chess", name: "advisor" },
+    viewOf(state, 1),
+    7,
+  );
 }
 
 /** 이 칸을 노리는 백 기물 종류 */

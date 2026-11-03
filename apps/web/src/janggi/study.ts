@@ -1,5 +1,6 @@
 import { janggiExpertBot } from "@game/janggi-ai";
 import {
+  type Action,
   applyMove,
   type Board,
   createJanggiScenario,
@@ -17,6 +18,7 @@ import {
   viewOf,
   xyOf,
 } from "@game/janggi-engine";
+import { adviseWith } from "@/game/bot-runner";
 
 import { threatenedPieces } from "./danger";
 import type { JanggiPuzzle } from "./puzzles";
@@ -62,6 +64,15 @@ export function judgeMove(
 /** 상대(한)의 받는 수: 고수가 가장 오래 버티는 수를 고른다. 같은 문제는 늘 같은 수 */
 export function defenseFor(state: JanggiState) {
   return janggiExpertBot.decide(viewOf(state, 1), { seed: 7 });
+}
+
+/** `defenseFor`와 같은 수를 웹 워커에서 센다(문제 화면이 멈추지 않게) */
+export function defenseOffThread(state: JanggiState): Promise<Action> {
+  return adviseWith<Action>(
+    { game: "janggi", name: "advisor" },
+    viewOf(state, 1),
+    7,
+  );
 }
 
 function attackers(board: Board, at: number, side: "c" | "h" = "c"): Kind[] {

@@ -1,4 +1,5 @@
 import { useTestSpeed } from "./fast";
+import { slowCpu, stopFrames, watchFrames } from "./frames";
 import { expect, type Page, ready, test } from "./test";
 
 const board = (page: Page) => page.getByRole("img", { name: /체스판/ });
@@ -705,4 +706,29 @@ test("체스: 잡힐 수 있는 내 기물에 주황 점선이 보이고, 옵션
   await expect(board(page)).toBeVisible();
   await expect(page.locator("[data-piece]")).toHaveCount(4);
   await expect(page.locator("[data-danger]")).toHaveCount(0);
+});
+
+test("체스: 고수가 생각하는 동안에도 화면이 멈추지 않는다(CPU 4배 느리게, 워커 계산)", async ({
+  page,
+}, info) => {
+  // CPU 느리게 하기는 Chromium CDP라 데스크톱 한 화면에서만 본다.
+  test.skip(info.project.name !== "desktop", "데스크톱에서만");
+  await page.goto("/chess");
+  await startSolo(page, "고수");
+  await expect(page.getByRole("status")).toContainText("내 차례");
+  await slowCpu(page, 4);
+  await playOne(page, false);
+  await watchFrames(page);
+  await expect(page.getByRole("status")).toContainText("생각하는 중");
+  // 컴퓨터가 답하면 다시 내 차례(느린 CPU라 넉넉히 기다린다).
+  await expect(page.getByRole("status")).toContainText("내 차례", {
+    timeout: 30_000,
+  });
+  const { maxGap, span } = await stopFrames(page);
+  info.annotations.push({
+    type: "frames",
+    description: `가장 긴 프레임 간격 ${maxGap}ms, 잰 시간 ${span}ms`,
+  });
+  console.info(`[체스 고수] 가장 긴 프레임 간격 ${maxGap}ms / ${span}ms`);
+  expect(maxGap).toBeLessThan(200);
 });

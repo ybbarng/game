@@ -1,8 +1,8 @@
 "use client";
 
 import { createRng } from "@game/mighty-engine";
-import { omokBotFor } from "@game/omok-ai";
 import {
+  type Action,
   type OmokView,
   pointName,
   seatToMove,
@@ -21,6 +21,7 @@ import {
   MissionOverlay,
   type MissionProps,
 } from "@/components/tutorial/MissionOverlay";
+import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
@@ -105,7 +106,7 @@ export function OmokGame({
   const [aim, setAim] = useState<number | null>(null);
   const played = view?.moves.length ?? 0;
   // 힌트: 고수가 이 판에서 고르는 자리(수가 오가면 저절로 지운다, 공통 useHint)
-  const { hint, showHint } = useHint<number>(played);
+  const { hint, showHint, thinking, ask } = useHint<number>(played);
 
   useEffect(() => {
     if (!notice) return;
@@ -289,16 +290,23 @@ export function OmokGame({
               online={online}
               mission={!!mission}
               myTurn={myTurn}
-              onHint={() => {
-                // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다).
-                const action = omokBotFor(2).decide(
-                  view,
-                  createRng(played + 1),
-                );
-                if (action.type !== "place") return;
-                showHint(action.at);
-                setAim(action.at);
-              }}
+              thinking={thinking}
+              onHint={() =>
+                // 고수가 이 판에서 고르는 자리를 보여 주고 겨눠 둔다(한 번 더 누르면 둔다). 워커에서 센다.
+                ask(
+                  () =>
+                    adviseWith<Action>(
+                      { game: "omok", name: "advisor" },
+                      view,
+                      createRng(played + 1).seed,
+                    ),
+                  (action) => {
+                    if (action.type !== "place") return;
+                    showHint(action.at);
+                    setAim(action.at);
+                  },
+                )
+              }
             />
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
             {(!online || myTurn) && (

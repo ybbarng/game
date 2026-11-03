@@ -52,8 +52,13 @@ export interface PuzzleRules<S, M> {
   judge: (state: S, move: M, step: number) => "solved" | "next" | "wrong";
   /** 내 수를 둔다. 둘 수 없으면 null */
   apply: (state: S, move: M) => Applied<S> | null;
-  /** 상대가 받는다. 받은 수(판에 보일 것)와 새 판 */
-  reply?: (state: S) => (Applied<S> & { move: M | null }) | null;
+  /** 상대가 받는다. 받은 수(판에 보일 것)와 새 판. 고수 계산을 워커에서 하면 Promise로 돌려준다 */
+  reply?: (
+    state: S,
+  ) =>
+    | (Applied<S> & { move: M | null })
+    | null
+    | Promise<(Applied<S> & { move: M | null }) | null>;
   /** 푼 뒤 해설. 둔 수 앞의 판과 둔 수로 만든다 */
   explain: (before: S, move: M) => string[];
   /** 수 소리. 없으면 기물 소리(`piece`·`capture`) */
@@ -77,21 +82,33 @@ export function usePuzzleRun<S, M>(rules: PuzzleRules<S, M>) {
   latest.current = rules;
   const hasReply = Boolean(rules.reply);
 
-  // 상대가 받는다.
+  // 상대가 받는다. 받는 수를 바로 세기 시작하고(워커), 잠깐 기다린 뒤와 답이 온 뒤 중 늦은 때에 둔다.
+  // 그사이 다시 하기·정답 보기로 판이 바뀌면 그 답은 버린다.
   useEffect(() => {
     if (status !== "waiting") return;
-    const timer = setTimeout(() => {
-      const answer = latest.current.reply?.(state);
-      if (!answer) return;
-      setState(answer.state);
-      if (answer.move !== null) {
-        setLastMove(answer.move);
-        playMoveCue(latest.current.sounds, answer.capture);
-      }
-      setStep((i) => i + 1);
-      setStatus("play");
-    }, REPLY_MS);
-    return () => clearTimeout(timer);
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const answer = Promise.resolve(latest.current.reply?.(state) ?? null);
+    const pause = new Promise<void>((done) => {
+      timer = setTimeout(done, REPLY_MS);
+    });
+    Promise.all([answer, pause]).then(
+      ([reply]) => {
+        if (!live || !reply) return;
+        setState(reply.state);
+        if (reply.move !== null) {
+          setLastMove(reply.move);
+          playMoveCue(latest.current.sounds, reply.capture);
+        }
+        setStep((i) => i + 1);
+        setStatus("play");
+      },
+      (err: unknown) => console.error("받는 수 계산 실패", err),
+    );
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
   }, [status, state]);
 
   const restart = () => {

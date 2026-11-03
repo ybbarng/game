@@ -23,7 +23,7 @@ import {
 } from "../puzzles";
 import { useJanggiSettings } from "../settings";
 import {
-  defenseFor,
+  defenseOffThread,
   explainSolved,
   judgeMove,
   parseMove,
@@ -141,8 +141,9 @@ function JanggiPuzzleRun({
       if (!result.ok) return null;
       return { state: result.state, capture: Boolean(state.board[move.to]) };
     },
-    reply: (state) => {
-      const answer = defenseFor(state);
+    reply: async (state) => {
+      // 고수가 받는 수를 워커에서 센다(화면이 멈추지 않게)
+      const answer = await defenseOffThread(state);
       const result = step(state, 1, answer);
       if (!result.ok) return null;
       const move =
