@@ -30,8 +30,8 @@ import { CubeNet } from "./CubeNet";
 import { EVENT_INFO, TIMER_EVENTS, type TimerEvent } from "./events";
 import { type Scramble, scrambleProvider } from "./fallback-scramble";
 import {
-  INSPECTION_DNF_MS,
   INSPECTION_MS,
+  inspectionPenalty,
   type MachineView,
   type Penalty,
   type TimerEventOut,
@@ -424,8 +424,8 @@ function faceText(
     view.inspectionStart !== null ? now - view.inspectionStart : null;
   const inspText = () => {
     if (insp === null) return null;
-    if (insp > INSPECTION_DNF_MS) return "DNF";
-    if (insp > INSPECTION_MS) return "+2";
+    const p = inspectionPenalty(insp);
+    if (p !== "none") return p;
     return String(Math.ceil((INSPECTION_MS - insp) / 1000));
   };
   switch (view.phase) {

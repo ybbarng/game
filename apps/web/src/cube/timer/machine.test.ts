@@ -114,21 +114,21 @@ describe("TimerMachine — 살펴보기", () => {
     return m.view().last;
   }
 
-  it("15초까지 시작하면 벌점이 없다", () => {
-    expect(penaltyWhenStartingAt(15_000)).toEqual({
+  it("15초 전에 시작하면 벌점이 없다", () => {
+    expect(penaltyWhenStartingAt(14_999)).toEqual({
       ms: 5000,
       penalty: "none",
-      inspectionMs: 15_000,
+      inspectionMs: 14_999,
     });
   });
 
-  it("15초를 넘겨 시작하면 +2", () => {
-    expect(penaltyWhenStartingAt(15_001)?.penalty).toBe("+2");
-    expect(penaltyWhenStartingAt(17_000)?.penalty).toBe("+2");
+  it("딱 15초부터 +2(A4d1+)", () => {
+    expect(penaltyWhenStartingAt(15_000)?.penalty).toBe("+2");
+    expect(penaltyWhenStartingAt(16_999)?.penalty).toBe("+2");
   });
 
-  it("17초를 넘겨 시작하면 DNF", () => {
-    expect(penaltyWhenStartingAt(17_001)?.penalty).toBe("DNF");
+  it("딱 17초부터 DNF(A4d2+)", () => {
+    expect(penaltyWhenStartingAt(17_000)?.penalty).toBe("DNF");
   });
 
   it("시작하면 남은 알림이 꺼진다", () => {
@@ -153,10 +153,10 @@ describe("TimerMachine — 살펴보기", () => {
   });
 
   it("벌점 경계", () => {
-    expect(inspectionPenalty(15_000)).toBe("none");
-    expect(inspectionPenalty(15_001)).toBe("+2");
-    expect(inspectionPenalty(17_000)).toBe("+2");
-    expect(inspectionPenalty(17_001)).toBe("DNF");
+    expect(inspectionPenalty(14_999)).toBe("none");
+    expect(inspectionPenalty(15_000)).toBe("+2");
+    expect(inspectionPenalty(16_999)).toBe("+2");
+    expect(inspectionPenalty(17_000)).toBe("DNF");
   });
 });
 
