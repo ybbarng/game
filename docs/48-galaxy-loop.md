@@ -368,18 +368,18 @@ docs/41의 카노푸스 우주국 세계를 쓴다. 이야기: 우주국이 서�
 
 | 자료 | 출처 | 라이선스·조건 | 판단 |
 |---|---|---|---|
-| 등급·색 지수·온도·시차 | Yale Bright Star Catalogue 5판(VizieR V/50), star.byb.kr 요약 | 공개 천문 목록, 출처 표기 | **씀**(별 따기가 이미 씀) |
-| 별 이름 | IAU 별 이름 실무단(WGSN) IAU Catalog of Star Names | 이름은 사실. 목록 글은 CC BY로 보이나 공식 문구 미확인 | 이름만 씀, 출처 표기 |
+| 등급·색 지수·온도·시차 | Hoffleit & Warren(1991) Yale Bright Star Catalogue 5판(VizieR V/50), star.byb.kr 요약 | 공개 천문 목록, 출처 표기 | **씀**(별 따기가 이미 씀) |
+| 별 이름 | IAU 별 이름 실무단(WGSN) IAU Catalog of Star Names(IAU-CSN, Mamajek 정리) | CC BY(IAU-CSN 머리말). 이름은 사실이기도 하다 | 이름만 씀, 출처 표기 |
 | 별자리 | IAU 88 별자리 | 사실 | 씀 |
 | 우리말 별자리·별 이름 | 한국천문연구원 표기(star.byb.kr `starNames.ts`가 모은 것) | 사실 | 씀. 구현 때 한국천문연구원 천문우주지식정보 별자리 목록과 대조 |
-| 별자리 선 | d3-celestial `constellations.lines.json`(star.byb.kr 경유) | BSD 3조항 | **씀** |
+| 별자리 선 | d3-celestial `constellations.lines.json`(star.byb.kr 경유) | BSD 3조항(Copyright (c) 2015, Olaf Frohn, 전문은 README) | **씀** |
 | 거리 | 판 위 별은 논문 값(대부분 van Leeuwen 2007 Hipparcos 신판 시차)을 별마다 손으로 옮긴 표, 후보 목록에만 있는 별은 BSC5 시차 | 숫자는 사실 | 씀(14절 「거리 값」) |
 | Hipparcos 목록 | ESA | CC BY-NC 3.0 IGO(비상업) | **쓰지 않는다.** MIT 저장소에 비상업 조건 자료를 섞지 않는다 |
 | Stellarium 「modern」 별자리 선 | Stellarium | CC BY-SA 4.0으로 보임 | **쓰지 않는다.** 같은 조건 상속을 피한다 |
 | 위키백과 글 | | CC BY-SA | 옮기지 않는다. 사실만 가져와 새로 쓴다 |
 
-- 출처는 `/galaxy` 시작 화면 아래 「별 자료 출처」와 저장소 `apps/web/src/galaxy/stars/README.md`에 적는다.
-- 자료는 스크립트로 한 번 만들어 고정한다(별 따기 `build-stardraw-sky.mjs`와 같은 방식, `apps/web/scripts/build-galaxy-stars.mjs`).
+- 출처는 `/galaxy` 시작 화면 아래 「별 자료 출처」와 저장소 `packages/galaxy-engine/src/sky/README.md`에 적는다.
+- 자료는 스크립트로 한 번 만들어 고정한다(별 따기 `build-stardraw-sky.mjs`와 같은 방식, `packages/galaxy-engine/scripts/build-sky.mjs`).
 
 ### 5-8. 판 위 24별(밝기는 BSC5, `packages/galaxy-engine/src/sky/seasons.json`)
 
