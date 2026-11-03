@@ -58,6 +58,7 @@ function clone(state: OnecardState): OnecardState {
     bankrupt: [...state.bankrupt],
     bankruptCounts: [...state.bankruptCounts],
     recent: state.recent.map((m) => ({ ...m, exposed: [...m.exposed] })),
+    ...(state.refill ? { refill: [...state.refill] } : {}),
   };
 }
 
@@ -162,6 +163,100 @@ export function createMatch(
   return { state, events };
 }
 
+/** 멘탈 포커 판의 처음 패(fair-play `OnecardPreset`과 같은 모양). 모르는 카드는 자리 표(`?_12`) */
+export interface OnecardFairPreset {
+  /** 자리 번호 순서 손패 */
+  hands: readonly (readonly string[])[];
+  /** 처음 펼친 카드(한 장, 모두에게 열린 진짜 카드) */
+  open: readonly string[];
+  /** 더미(앞이 맨 위) */
+  deck: readonly string[];
+}
+
+/** 아직 열리지 않은 카드 자리 표인가(fair-play `tokenOf`) */
+export function isHiddenCard(card: string): boolean {
+  return card.startsWith("?_");
+}
+
+/**
+ * 멘탈 포커 판을 만든다(암호화방). 손패는 섞기 사슬의 자리 순서대로 이미 나뉘어 있다(`onecardLayout`: 자리 순서로 손패,
+ * 그다음 펼칠 카드, 나머지는 더미). 처음 펼친 카드가 특수 카드면 버린 더미 밑으로 보내고 더미 맨 위를 다시 편다.
+ * 다시 펼 카드는 모두에게 열린 진짜 카드여야 한다(아니면 던진다: 방장이 먼저 모두에게 연다).
+ * 더미 순서는 바꾸지 않는다(섞기 사슬 자리 순서 = 엔진이 뽑는 순서)
+ */
+export function createFairMatch(
+  rules: OnecardRules,
+  preset: OnecardFairPreset,
+  first = 0,
+): { state: OnecardState; events: GameEvent[] } {
+  const n = rules.players;
+  if (!Number.isInteger(n) || n < MIN_PLAYERS || n > MAX_PLAYERS)
+    throw new Error(`원카드는 ${MIN_PLAYERS}~${MAX_PLAYERS}명이 한다`);
+  if (preset.hands.length !== n) throw new Error("손패 수가 인원과 다르다");
+  if (!Number.isInteger(first) || first < 0 || first >= n)
+    throw new Error("없는 자리가 먼저 낸다");
+  const opened = preset.open[0];
+  if (
+    preset.open.length !== 1 ||
+    opened === undefined ||
+    !isOnecardCard(opened)
+  )
+    throw new Error("처음 펼친 카드는 열린 카드 한 장이다");
+  const all = [...preset.hands.flat(), ...preset.open, ...preset.deck];
+  if (new Set(all).size !== all.length)
+    throw new Error("덱에 같은 카드가 있다");
+  if (all.some((c) => !isOnecardCard(c) && !isHiddenCard(c)))
+    throw new Error("덱에 모르는 카드가 있다");
+  const deck = [...preset.deck] as OnecardCard[];
+  const pile: OnecardCard[] = [];
+  const events: GameEvent[] = [];
+  let top: OnecardCard = opened;
+  while (isSpecialCard(top) && deck.length > 0) {
+    const next = deck[0] as string;
+    if (!isOnecardCard(next)) throw new Error("다시 펼칠 카드를 아직 모른다");
+    events.push({ type: "flipAgain", card: top });
+    pile.push(top);
+    top = deck.shift() as OnecardCard;
+  }
+  pile.push(top);
+  const state: OnecardState = {
+    rules,
+    version: 0,
+    phase: "play",
+    turn: first,
+    direction: 1,
+    deck,
+    pile,
+    hands: preset.hands.map((h) => [...h] as OnecardCard[]),
+    suit: suitOf(top),
+    attack: 0,
+    preCalled: new Array<boolean>(n).fill(false),
+    called: new Array<boolean>(n).fill(false),
+    windows: [],
+    nextWindowId: 1,
+    queue: [],
+    endTurnAfterQueue: false,
+    finished: [],
+    bankrupt: [],
+    bankruptCounts: new Array<number>(n).fill(0),
+    turnNo: 0,
+    recent: [{ turnNo: 0, exposed: [] }],
+    result: null,
+    fair: true,
+    refill: null,
+  };
+  events.push({ type: "dealt", first, top });
+  return { state, events };
+}
+
+/** 멘탈 포커 판: 다음 다시 섞기에 쓸 새 더미를 넣는다(null이면 지운다) */
+export function withRefill(
+  state: OnecardState,
+  deck: readonly string[] | null,
+): OnecardState {
+  return { ...state, refill: deck ? [...deck] : null };
+}
+
 // ── 판 끝 ──────────────────────────────────────────────
 
 export function resultOf(state: OnecardState): OnecardResult {
@@ -258,8 +353,9 @@ function goBankrupt(
   const cards = hand(state, seat);
   state.bankrupt.push(seat);
   state.bankruptCounts[seat] = cards.length;
-  // 파산한 사람의 패는 버린 더미 밑으로(다음 다시 섞기에 들어간다)
-  state.pile.unshift(...cards);
+  // 파산한 사람의 패는 버린 더미 밑으로(다음 다시 섞기에 들어간다). 멘탈 포커 판은 아무에게도 열리지 않은
+  // 카드라 다시 섞을 수 없어 판에서 뺀다
+  if (!state.fair) state.pile.unshift(...cards);
   state.hands[seat] = [];
   state.queue = state.queue.filter((t) => t.seat !== seat);
   // 공격을 받던 사람(차례인 사람)이 파산하면 공격은 그 사람에게서 끝난다. 다음 사람이 떠안지 않는다
@@ -545,7 +641,15 @@ export function step(
   const n = state.rules.players;
   if (!Number.isInteger(seat) || seat < 0 || seat >= n)
     return fail("없는 자리다");
-  if (state.phase === "over") return fail("끝난 판이다");
+  if (state.phase === "over") {
+    // 판이 끝난 뒤 닿은 청구 묶음도 기록에는 남긴다(아무 일 없음). 방장이 발표한 묶음은 모두 기록에 들어가야
+    // 참가자가 발표와 기록을 하나하나 맞춰 볼 수 있다
+    if (action.type === "claims" && Array.isArray(action.shouts)) {
+      const next = clone(state);
+      return done(next, [], false);
+    }
+    return fail("끝난 판이다");
+  }
 
   if (action.type === "retire") {
     const next = clone(state);
@@ -567,6 +671,27 @@ export function step(
     const next = clone(state);
     const events: GameEvent[] = [];
     applyShout(next, seat, verdict, action.seen, events);
+    return done(next, events, false);
+  }
+
+  if (action.type === "claims") {
+    if (
+      !Number.isSafeInteger(action.batch) ||
+      action.batch < 0 ||
+      !Array.isArray(action.shouts)
+    )
+      return fail("청구 묶음 모양이 맞지 않다");
+    const next = clone(state);
+    const events: GameEvent[] = [];
+    for (const claim of action.shouts) {
+      if (next.phase === "over") break;
+      if (typeof claim !== "object" || claim === null) continue;
+      if (!Number.isInteger(claim.seat) || claim.seat < 0 || claim.seat >= n)
+        continue;
+      const verdict = judgeShout(next, claim.seat, claim.seen);
+      if (verdict.kind === "error") continue;
+      applyShout(next, claim.seat, verdict, claim.seen, events);
+    }
     return done(next, events, false);
   }
 
@@ -598,6 +723,30 @@ export function step(
   if (action.type === "reshuffle") {
     const wanted = reshuffleRequest(state);
     if (!wanted) return fail("다시 섞을 때가 아니다");
+    // 멘탈 포커 판: 새 더미는 섞기 사슬이 정한 자리 순서(바깥이 넣은 `refill`)다. 행동의 순서는 쓰지 않는다.
+    // 방장 엔진의 `refill`은 자리 표라 카드 확인은 장 수만, 판 끝 다시 계산(진짜 카드)에서는 같은 카드인지까지 본다
+    if (state.fair) {
+      const refill = state.refill;
+      if (!refill) throw new Error("다시 섞은 더미를 아직 모른다");
+      const real = refill.every((c) => isOnecardCard(c));
+      if (
+        refill.length !== wanted.length ||
+        (real &&
+          sortOnecards(refill as OnecardCard[]).some((c, i) => c !== wanted[i]))
+      )
+        return fail("다시 섞을 카드가 맞지 않다");
+      const next = clone(state);
+      next.deck = [...refill] as OnecardCard[];
+      next.refill = null;
+      next.reshuffles = (next.reshuffles ?? 0) + 1;
+      next.pile = next.pile.slice(-1);
+      next.phase = "play";
+      const events: GameEvent[] = [
+        { type: "reshuffled", count: refill.length },
+      ];
+      processQueue(next, events);
+      return done(next, events, true);
+    }
     const order = action.order;
     if (
       !Array.isArray(order) ||
@@ -665,8 +814,17 @@ export function pendingSeats(state: OnecardState): number[] {
  */
 export function legalActions(state: OnecardState, seat: number): Action[] {
   if (state.phase !== "play" || state.turn !== seat) return [];
-  const face = faceOf(state);
-  const mine = hand(state, seat);
+  return movesOf(faceOf(state), hand(state, seat));
+}
+
+/**
+ * 이 판 모양과 손패로 낼 수 있는 차례 행동(7은 무늬마다, 맨 끝은 먹기).
+ * 멘탈 포커 화면이 자리 표를 진짜 카드로 바꾼 뒤 다시 셀 때도 쓴다
+ */
+export function movesOf(
+  face: TableFace,
+  mine: readonly OnecardCard[],
+): Action[] {
   const actions: Action[] = [];
   for (const card of sortOnecards(mine)) {
     if (playProblem(face, mine, card)) continue;
@@ -723,6 +881,7 @@ export function viewOf(state: OnecardState, seat: number): OnecardView {
     finished: [...state.finished],
     bankrupt: [...state.bankrupt],
     moves: legalActions(state, seat),
+    decision: state.phase === "play" && state.turn === seat ? "turn" : null,
     result: state.result,
     ...(state.retired ? { retired: true } : {}),
   };

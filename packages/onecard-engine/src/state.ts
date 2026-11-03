@@ -109,6 +109,17 @@ export interface OnecardState {
   result: OnecardResult | null;
   /** 끊긴 사람을 기다리지 않기로 해 중간에 끝났다 */
   retired?: boolean;
+  /**
+   * 멘탈 포커 판(암호화방, `createFairMatch`). 방장 엔진은 아직 열리지 않은 카드를 자리 표(`?_12`)로 든다.
+   * 다르게 도는 곳 셋: 다시 섞을 더미는 바깥이 넣은 `refill`을 쓴다(섞기 사슬), 파산한 사람의 패는 판에서 뺀다
+   * (아무에게도 열리지 않은 카드라 다시 섞을 수 없다), 처음 펼친 카드가 특수 카드면 더미 밑이 아니라 버린 더미 밑으로
+   * 보낸다(이미 모두에게 열린 카드라 다시 섞기에 들어갈 수 있다. 더미 순서는 섞기 사슬의 자리 순서 그대로 둔다)
+   */
+  fair?: true;
+  /** 멘탈 포커 판: 다음 다시 섞기에 쓸 새 더미(앞이 맨 위, 바깥이 넣는다). 없으면 null */
+  refill?: string[] | null;
+  /** 멘탈 포커 판: 이 판에서 다시 섞은 횟수(덱 조각 번호 − 1) */
+  reshuffles?: number;
 }
 
 export type Action =
@@ -134,8 +145,24 @@ export type Action =
     }
   /** 다시 섞은 더미 순서(앞이 맨 위). `reshuffleRequest`가 준 카드를 섞은 것이어야 한다 */
   | { type: "reshuffle"; order: OnecardCard[] }
+  /**
+   * 온라인 방의 청구 묶음(공정한 동시 판정 1층, docs/43 7-1). 방장이 한 묶음의 "원카드!" 청구를 정해진 순서
+   * (`seen`, 자리, 청구 아이디)로 넣는다. 청구 원문(누가·어느 판을 보고)만 싣고 판정은 싣지 않는다:
+   * 엔진이 하나씩 `judgeShout`로 가리므로 판 끝 다시 계산(`replay`)이 판정까지 다시 한다.
+   * 판정할 수 없는 청구(판에서 빠진 자리, 모르는 판 번호)는 건너뛴다(묶음 전체를 거절하지 않는다)
+   */
+  | { type: "claims"; batch: number; shouts: ClaimedShout[] }
   /** 게임을 중간에 끝낸다(끊긴 사람을 더 기다리지 않을 때) */
   | { type: "retire" };
+
+/** 청구 묶음 속 외침 하나(청구 원문) */
+export interface ClaimedShout {
+  seat: number;
+  /** 누른 순간 그 기기 화면의 판 번호 */
+  seen: number;
+  /** 청구 아이디(기록을 사람이 따라갈 때 쓴다. 판정에는 쓰지 않는다) */
+  id: string;
+}
 
 /** 외침 판정 결과(`judgeShout`) */
 export type ShoutVerdict =
@@ -205,6 +232,11 @@ export interface OnecardView {
   bankrupt: number[];
   /** 내가 지금 할 수 있는 차례 행동(내기·먹기). 외침은 늘 할 수 있어 넣지 않는다 */
   moves: Action[];
+  /**
+   * 내가 지금 차례 행동을 해야 하나("turn")(다른 게임 화면과 같은 칸, 온라인 참가자가 보낼 때 본다). 아니면 null.
+   * 외침은 차례와 상관없어 여기에 들지 않는다
+   */
+  decision: "turn" | null;
   result: OnecardResult | null;
   retired?: boolean;
 }

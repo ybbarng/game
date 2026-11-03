@@ -100,6 +100,7 @@ export const buttonClaims: KitClaims<
     );
     return { type: "resolve", batch: resolved.batch, hits };
   },
+  recorded: (action) => action.type === "resolve",
   rules: { windowMs: 50, staleBoards: 1, graceMs: 1_000 },
 };
 
