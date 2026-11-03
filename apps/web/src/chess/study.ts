@@ -122,7 +122,7 @@ export function explainMate(pos: Position, move: Move): string[] {
 
 /**
  * 킹과 폰 끝내기 해설: 왜 이 킹 수만 이기고 폰부터 밀면 비기나.
- * 승패표(`kpk.ts`)로 판단해 문제 데이터와 어긋나지 않는다
+ * 승패표(`@game/chess-ai`의 `kpk.ts`)로 판단해 문제 데이터와 어긋나지 않는다
  */
 export function explainEndgame(pos: Position, move: Move): string[] {
   const after = applyMove(pos, move);
