@@ -642,7 +642,7 @@ test("체스 수 배우기: 킹과 폰 문제에서 폰부터 밀면 틀리고, 
   await page.screenshot({ path: info.outputPath("chess-king-pawn.png") });
 });
 
-test("체스: 잡힐 수 있는 내 기물에 빨간 점선이 보이고, 옵션에서 감출 수 있다", async ({
+test("체스: 잡힐 수 있는 내 기물에 주황 점선이 보이고, 옵션에서 감출 수 있다", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "판 위 표시는 크기와 상관없다");

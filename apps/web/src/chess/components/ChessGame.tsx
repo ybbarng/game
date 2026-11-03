@@ -1,6 +1,5 @@
 "use client";
 
-import { chessBotFor } from "@game/chess-ai";
 import {
   type ChessView,
   KIND_NAMES,
@@ -32,6 +31,7 @@ import {
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { cn } from "@/lib/cn";
 
+import { chessAdvisor } from "../advisor";
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
 import { CHESS_LEVELS, useChessSettings } from "../settings";
@@ -251,7 +251,7 @@ export function ChessGame({
             ? "힌트: 초록 고리 칸으로 옮기면 고수가 고른 수예요"
             : "갈 칸을 누르세요"
           : danger.length > 0
-            ? "내 차례 — 잡힐 수 있는 기물이 있어요(빨간 점선)"
+            ? "내 차례 — 잡힐 수 있는 기물이 있어요(주황 점선)"
             : "내 차례 — 옮길 기물을 누르세요"
       : online
         ? `${opponent}의 차례`
@@ -447,7 +447,7 @@ export function ChessGame({
               myTurn={myMove}
               onHint={() => {
                 // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께).
-                const action = chessBotFor(2).decide(view, {
+                const action = chessAdvisor.decide(view, {
                   seed: played + 1,
                 });
                 if (action.type !== "move") return;

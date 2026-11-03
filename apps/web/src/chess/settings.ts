@@ -24,7 +24,7 @@ interface ChessSettings {
   coordinates: boolean;
   /** 기물을 입체 그림으로 그릴지 기호 글자로 그릴지 */
   pieces: PieceSet;
-  /** 잡힐 수 있는 내 기물을 판에 빨간 점선으로 보인다. 화면 도움일 뿐 규칙과 상관없다(바둑 「단수 표시」와 짝) */
+  /** 잡힐 수 있는 내 기물을 판에 주황 점선으로 보인다. 화면 도움일 뿐 규칙과 상관없다(바둑 「단수 표시」와 짝) */
   dangerHint: boolean;
   set(patch: Partial<Omit<ChessSettings, "set">>): void;
 }
