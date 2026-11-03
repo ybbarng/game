@@ -1140,13 +1140,13 @@ console.log(
 );
 console.log(`짝별이라 뺀 별: ${notes.pair.join(", ") || "없음"}`);
 console.log(
-  `| 하늘 | 별자리 | 1.5등급보다 밝은 별 | 1만 K 넘는 별 | 4,000 K 아래 별 | 500광년 넘는 별 | 거리 모름 |`,
+  `| 하늘 | 별자리 | 1.5등급보다 밝은 별 | 1만 K 넘는 별 | 4,000 K 아래 별 | 500광년 넘는 별 | 4,000~7,500 K 별 | 거리 모름 |`,
 );
-console.log("|---|---|---|---|---|---|---|");
+console.log("|---|---|---|---|---|---|---|---|");
 for (const s of skies) {
   const list = s.board.flatMap((c) => c.stars);
   console.log(
-    `| ${s.ko} | ${s.board.map((c) => c.ko).join(" · ")} | ${count(list, (x) => x.mag < 1.5)} | ${count(list, (x) => x.k > 10000)} | ${count(list, (x) => x.k < 4000)} | ${count(list, (x) => x.ly !== null && x.ly > 500)} | ${count(list, (x) => x.ly === null)} |`,
+    `| ${s.ko} | ${s.board.map((c) => c.ko).join(" · ")} | ${count(list, (x) => x.mag < 1.5)} | ${count(list, (x) => x.k > 10000)} | ${count(list, (x) => x.k < 4000)} | ${count(list, (x) => x.ly !== null && x.ly > 500)} | ${count(list, (x) => x.k >= 4000 && x.k <= 7500)} | ${count(list, (x) => x.ly === null)} |`,
   );
 }
 console.log("\n합친 밝기(사계절 하늘, 밝은 순)");
