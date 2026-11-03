@@ -1368,8 +1368,11 @@ async function holdHint(
   await set(false);
 }
 
-/** 예측판·예측서·등록증을 기다리며 가만히 있으면 손짓이 나오고(별·등록증은 누르기, 예측서는 밀어 올리기), 손을 대면 사라진다 */
-test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 등록증은 누르기", async ({
+/**
+ * 예측판·예측서·신분증을 기다리며 가만히 있으면 손짓이 나오고(별·지문 단추는 누르기, 예측서는 밀어 올리기), 손을 대면
+ * 사라진다. 신분증은 등록증이 가운데에 다 보이고 아래 지문 단추를 누른다(docs/36 11-63)
+ */
+test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 단추는 누르기", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
@@ -1413,14 +1416,41 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 등록�
   const card = page.locator(
     "[aria-label='신분증 제출'][aria-disabled='false']",
   );
-  const tap = card.locator("[data-idle-hint='tap']");
+  const finger = page.getByRole("button", {
+    name: "본인 확인으로 신분증 제출",
+  });
+  // 등록증이 가운데로 다 올라온 뒤(움직임이 끝난 뒤) 자리를 잰다
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await finger.isVisible()) &&
+      (await card.evaluate((el) => el.getAnimations().length === 0)),
+  );
+  // 휴대폰(터치)은 지문을 가리키는 문구. 등록증은 화면 안에 다 보이고, 지문 단추·「취소」와 겹치지 않는다
+  await expect(
+    page.getByText("지문을 눌러 신분증을 제출해 주세요.", { exact: true }),
+  ).toBeVisible();
+  await expect(finger).toContainText("본인 확인");
+  const view = page.viewportSize() as { width: number; height: number };
+  const cardBox = await card.boundingBox();
+  const fingerBox = await finger.boundingBox();
+  const cancelBox = await page
+    .getByRole("button", { name: "취소", exact: true })
+    .boundingBox();
+  if (!cardBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
+  expect(cardBox.y).toBeGreaterThanOrEqual(0);
+  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(fingerBox.y);
+  expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
+  expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
+  const tap = finger.locator("[data-idle-hint='tap']");
   await fastForwardUntil(page, () => tap.isVisible());
   await expect(tap).toHaveCSS("pointer-events", "none");
+  await expect(card.locator("[data-idle-hint]")).toHaveCount(0);
   await holdHint(tap, 0.4, () =>
     page.screenshot({ path: info.outputPath("stardraw-hint-tap.png") }),
   );
-  await card.press("Enter");
-  await expect(tap).toHaveCount(0);
+  await finger.click();
+  await expect(finger).toHaveCount(0);
   await untilStageGone(page);
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
 });

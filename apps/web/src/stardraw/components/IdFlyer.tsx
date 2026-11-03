@@ -11,8 +11,11 @@ import { useIssued } from "./AstronautPanel";
 import { IdleHint, useIdleHint } from "./IdleHint";
 import { useSwipeUp } from "./swipe-up";
 
-/** 등록증 자리: 아래에 숨음 / 아래에서 살짝 올라와 내밀기를 기다림 / 내밀어 조금 올라감 / 가운데 떠 있음 */
-export type CardSpot = "hidden" | "peek" | "lift" | "up";
+/**
+ * 등록증 자리: 아래에 숨음 / 가운데에서 지문 단추 누르기를 기다림 / 내밀어 살짝 떠오름 / 가운데 자리 잡음(확인 표시).
+ * 기다릴 때와 자리 잡을 때가 같은 가운데라, 확인 뒤에는 떠오른 등록증이 제자리로 내려앉기만 한다
+ */
+export type CardSpot = "hidden" | "ready" | "lift" | "up";
 
 /**
  * 신분증 제시 화면(입장·응모). Apple Pay의 카드 제시처럼 한 번에 하나씩: 위쪽 문구 → 인증 → 등록증이 아래에서 올라옴 →
@@ -39,9 +42,9 @@ export function IdFlyer({
   /** 아직 누구인지 모를 때(pub 없음) 실루엣 카드로 기다린다 */
   blank?: boolean;
   /**
-   * 사람이 할 일이 있을 때만: 등록증 자체가 단추다(「신분증 제출」). 위로 밀어 올리거나 한 번 누르면(Enter·Space·↑도)
-   * `onPress`를 그 동작 안에서 바로 부른다(패스키 창은 누름 직후에만 열리는 브라우저가 있다). 작은 「취소」로 돌아간다.
-   * 기다리기만 하면 되는 때는 없다
+   * 사람이 할 일이 있을 때만: 등록증 아래 지문 단추(「본인 확인」)를 누르면 `onPress`를 그 누름 안에서 바로 부른다
+   * (패스키 창은 누름 직후에만 열리는 브라우저가 있다). 등록증 자체도 단추로 남아 밀어 올리거나 누르면(Enter·Space·↑도)
+   * 같은 `onPress`. 작은 「취소」로 돌아간다. 기다리기만 하면 되는 때는 없다(docs/36 11-63)
    */
   press?:
     | { label: string; onPress: () => void; onCancel: () => void }
@@ -90,7 +93,8 @@ export function IdFlyer({
           {text}
         </p>
       )}
-      {note && (
+      {/* 앱 안 안내가 뜨면 작은 글은 걷는다(작은 휴대폰에서 등록증·지문 단추 자리가 모자라지 않게, 할 일은 안내가 말한다) */}
+      {note && !help && (
         <p
           data-id-note
           className="sd-text-in relative -mt-6 max-w-sm break-keep px-6 text-center text-sm text-white/70 leading-relaxed"
@@ -103,7 +107,14 @@ export function IdFlyer({
           {help}
         </div>
       )}
-      <div className="relative flex w-full flex-1 flex-col items-center justify-center gap-5">
+      <div
+        className={cn(
+          // 남은 높이(cqh)에 맞춰 등록증 너비를 줄인다(작은 휴대폰에 위쪽 안내가 길게 붙어도 지문 단추·「취소」와 겹치지 않게)
+          "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 [container-type:size]",
+          // 아래에 띄운 「취소」와 지문 단추가 겹치지 않게
+          press && "pb-12",
+        )}
+      >
         {(pub || blank) && (
           <FlyingCard
             services={services}
@@ -113,7 +124,15 @@ export function IdFlyer({
             label={press?.label}
           />
         )}
-        <CheckMark shown={checked} />
+        {/* 지문 단추와 확인 표시가 같은 자리를 나눠 쓴다(누르면 단추가 걷히고 그 자리에 확인 표시) */}
+        <div className="relative h-[5.75rem] w-full shrink-0">
+          <div className="absolute inset-x-0 top-0 flex justify-center">
+            <CheckMark shown={checked} />
+          </div>
+          {press && card === "ready" && (
+            <FingerButton label={press.label} onPress={press.onPress} />
+          )}
+        </div>
       </div>
       {/* 자리를 차지하지 않게 아래에 띄운다(사라질 때 등록증이 밀리지 않게) */}
       {press && (
@@ -133,9 +152,79 @@ export function IdFlyer({
 }
 
 /**
- * 움직이는 등록증. `onPress`가 있으면 등록증이 단추다(내 앞의 물건을 위로 내밀기: 밀어 올리거나 한 번 누르기).
+ * 지문 단추(2026-11-03 사용자: 신분증 화면에서 지문 인증을 해야 한다는 걸 알기 어려웠다). 둥근 단추 안 지문 그림과
+ * 아래 작은 글자 「본인 확인」이 한 덩어리로 눌린다(PC는 지문 그림만으로 무엇인지 모를 수 있다). 누르면(Enter·Space도,
+ * 단추라 브라우저가 click으로 바꾼다) `onPress`를 그 처리기 안에서 바로 부른다. 등록증이 가운데에 다 올라온 뒤 나타나고
+ * (동시에 움직이지 않기), 은은하게 숨 쉬듯 빛난다. 가만히 있으면 그 위에 누르는 손짓이 나오고, 손짓이 움직이는 동안
+ * 빛남은 멈춘다. 움직임 줄이기면 빛남도 멈춘다(globals.css)
+ */
+function FingerButton({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) {
+  const hint = useIdleHint(true);
+  return (
+    <button
+      type="button"
+      aria-label={`본인 확인으로 ${label}`}
+      data-id-finger
+      onClick={onPress}
+      className="sd-finger-in absolute top-0 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 rounded-2xl px-3 pt-0.5 pb-1 text-amber-100 outline-none focus-visible:ring-2 focus-visible:ring-amber-200/70"
+      style={{ ["--finger-delay" as string]: `${FX.idIn}ms` }}
+    >
+      <span
+        className="sd-finger-glow relative grid size-16 place-items-center rounded-full border border-amber-200/45 bg-amber-200/10"
+        style={{ animationPlayState: hint ? "paused" : "running" }}
+      >
+        <FingerprintIcon className="size-9" />
+        {/* 손끝(80칸 상자의 36.5, 19 자리)이 지문 가운데에 오게 */}
+        {hint && (
+          <span
+            className="pointer-events-none absolute size-20"
+            style={{ left: "calc(50% - 36.5px)", top: "calc(50% - 19px)" }}
+          >
+            <IdleHint kind="tap" shown />
+          </span>
+        )}
+      </span>
+      <span className="text-amber-100/85 text-xs">본인 확인</span>
+    </button>
+  );
+}
+
+/** 지문: 가운데 소용돌이를 둘러싼 고리들(PlaceIcons·손 그림과 같은 꼴: 24칸, 선 1.5, 글자색) */
+function FingerprintIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5.2 6.6A8.5 8.5 0 0 1 18.8 6.6" />
+      <path d="M3.8 10.2a8.5 8.5 0 0 0-.3 2.3" />
+      <path d="M20.2 10.2c.3 1 .4 2.1.3 3.3" />
+      <path d="M6.5 16.5c-.4-1.2-.6-2.6-.5-4a6 6 0 0 1 12 0v1c0 1.8-.3 3.6-.9 5.2" />
+      <path d="M8.8 19.6c-.8-1.8-1.3-3.7-1.3-5.6v-1.5a4.5 4.5 0 0 1 9 0v.8" />
+      <path d="M9.5 12.5a2.5 2.5 0 0 1 5 0v1.5c0 2.3-.5 4.6-1.5 6.6" />
+      <path d="M12 12.5v1.5c0 2.6-.6 5.1-1.8 7.4" />
+      <path d="M16.3 16.8c-.3 1.4-.7 2.7-1.3 4" />
+    </svg>
+  );
+}
+
+/**
+ * 움직이는 등록증. `onPress`가 있으면 등록증도 단추다(내 앞의 물건을 위로 내밀기: 밀어 올리거나 한 번 누르기).
  * 끄는 동안 손을 따라오고, 일정 거리·속도를 넘기거나 누르면 `onPress`를 그 동작 안에서 바로 부른다. 못 미치면 제자리.
- * 끌기 판정은 예측서와 같은 `useSwipeUp`(swipe-up.ts)
+ * 끌기 판정은 예측서와 같은 `useSwipeUp`(swipe-up.ts). 기다리는 동안 등록증은 가만히 있다(지문 단추가 빛나는 동안
+ * 함께 떠오르지 않게)
  */
 function FlyingCard({
   services,
@@ -151,24 +240,20 @@ function FlyingCard({
   onPress?: (() => void) | undefined;
   label?: string | undefined;
 }) {
-  const pressable = !!onPress && spot === "peek";
+  const pressable = !!onPress && spot === "ready";
   const swipe = useSwipeUp(pressable, () => onPress?.());
   const drag = swipe.drag;
-  /** 가만히 있으면 누르는 손짓. 손짓이 움직이는 동안 등록증의 떠오름은 멈춘다(동시에 움직이지 않기) */
-  const hint = useIdleHint(pressable);
   /** 실루엣으로 기다렸으면 확인된 등록증은 칸마다 채워지며 나타난다 */
   const sawBlank = useRef(!pub);
   if (!pub) sawBlank.current = true;
   const transform =
     drag !== null
-      ? `translateY(calc(var(--peek) + ${drag}px)) scale(0.98)`
-      : spot === "up"
-        ? "translateY(0) scale(1)"
-        : spot === "lift"
-          ? "translateY(calc(var(--peek) - 56px)) scale(1)"
-          : spot === "peek"
-            ? "translateY(var(--peek)) scale(0.98)"
-            : "translateY(110vh) scale(0.96)";
+      ? `translateY(${drag}px) scale(0.98)`
+      : spot === "lift"
+        ? "translateY(-14px) scale(1.02)"
+        : spot === "up" || spot === "ready"
+          ? "translateY(0) scale(1)"
+          : "translateY(110vh) scale(0.96)";
   const transition =
     drag !== null
       ? "none"
@@ -194,23 +279,17 @@ function FlyingCard({
         }
       }}
       className={cn(
-        "relative w-[min(20rem,86vw)] touch-none select-none rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.55)] outline-none [--peek:22vh]",
+        // 등록증 높이 = 너비 ÷ 1.586 + 아래 두께 자리(약 1.75rem). 7.25rem은 아래 지문 단추 자리와 사이 간격
+        "relative w-[min(20rem,86vw,calc((100cqh_-_9rem)_*_1.586))] shrink-0 touch-none select-none rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.55)] outline-none",
         // 초점 테두리는 내밀기를 기다릴 때만(낸 뒤에는 남지 않게)
         pressable && "focus-visible:ring-2 focus-visible:ring-amber-200/70",
-        // 떠오름은 지우지 않고 멈춘다(지우면 그만큼 튀어 보인다)
-        "sd-sheet-hint",
         pressable
           ? drag === null
             ? "cursor-grab"
             : "cursor-grabbing"
           : "pointer-events-none",
       )}
-      style={{
-        transform,
-        transition,
-        animationPlayState:
-          pressable && drag === null && !hint ? "running" : "paused",
-      }}
+      style={{ transform, transition }}
     >
       <div className="pointer-events-none">
         {pub ? (
@@ -221,7 +300,6 @@ function FlyingCard({
           <BlankAstronautCard />
         )}
       </div>
-      <IdleHint kind="tap" shown={hint} />
     </div>
   );
 }

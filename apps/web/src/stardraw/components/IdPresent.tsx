@@ -16,7 +16,7 @@ export interface IdPresent {
   /** 위쪽 문구 아래 작은 글(제시하는 까닭). 결과 문구로 바뀌면 걷힌다 */
   note: string | null;
   closing: boolean;
-  /** 사람이 등록증을 내밀기(밀어 올리거나 누르기)를 기다리는 중 */
+  /** 사람이 지문 단추(또는 등록증) 누르기를 기다리는 중 */
   asking: boolean;
   /** 카드 단추 이름(화면 읽기 프로그램) */
   label: string;
@@ -29,18 +29,27 @@ export interface IdPresent {
 /** 신분증 제시 틀의 목적 */
 export type IdVerb = "제시" | "제출" | "확인";
 
-/** 신분증 제시 틀의 위쪽 문구. 목적 자리만 다르다 */
 /**
- * 「패스키로」는 처음 온 사람에게 무엇을 하라는 말인지 와닿지 않았다(2026-11-03 지인: 지문 인증을 해야 한다는 걸 이해하기
- * 어려웠다). 휴대폰에서 실제로 하는 일(지문·얼굴)을 말한다. PC에서는 PIN·암호 창이 뜰 수도 있지만 손을 대는 사람
- * 대부분이 휴대폰이라 이쪽에 맞춘다
+ * 신분증 제시 틀의 위쪽 문구. 목적 자리만 다르고, 등록증 아래 지문 단추를 가리킨다(docs/36 11-63).
+ * 「패스키로」는 무엇을 하라는 말인지 와닿지 않았고(2026-11-03 지인), 「지문·얼굴 인증으로」도 화면에서 무엇을 누를지는
+ * 말하지 않았다. 터치 화면(`touch`)은 지문 그림을, PC(마우스)는 단추 글자 「본인 확인」을 가리킨다. 얼굴 인식 휴대폰도
+ * 지문 그림이면 본인 확인이라는 걸 알아볼 수 있고, 맥북 Touch ID는 지문이 맞지만 윈도우는 PIN 창이 뜰 수 있어서다
  */
-export const idText = (verb: IdVerb) =>
-  `지문·얼굴 인증으로 신분증을 ${verb}해 주세요.`;
+export const idText = (verb: IdVerb, touch: boolean) =>
+  touch
+    ? `지문을 눌러 신분증을 ${verb}해 주세요.`
+    : `「본인 확인」을 눌러 신분증을 ${verb}해 주세요.`;
+
+/**
+ * 터치 화면인지(주된 입력이 손가락). 문구는 사람이 단추를 누른 뒤 `run` 안에서 한 번 정해 상태에 담으므로 서버 렌더·첫
+ * 렌더와 어긋나지 않고, 기다리는 동안 바뀌지 않는다
+ */
+export const touchScreen = () =>
+  typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 /**
  * 신분증 제시 틀: 패스키 서명을 요구하는 곳이 같은 차례·같은 문구 틀·같은 시간으로 쓴다(2026-10-31 사용자:
- * 같은 행동은 어디서나 같게). "패스키로 신분증을 ○○해 주세요." → 패스키 → 등록증이 아래에서 올라옴 → 확인 표시 →
+ * 같은 행동은 어디서나 같게). 위쪽 문구(idText) → (지문 단추 누름) → 패스키 → 등록증이 가운데에 자리 잡음 → 확인 표시 →
  * 결과 문구 → 내려감 → 걷힘(Apple Pay의 카드 제시 리듬). 목적(제시·제출)과 결과 문구만 다르다.
  * 취소·실패면 등록증은 올라오지 않고 걷힌다. 움직임 줄이기면 연출 없이 패스키만. 반환 값은 `action`의 결과(없으면 null)
  */
@@ -84,8 +93,8 @@ export function useIdPresent(services: Services) {
       /** 끝에서 걷지 않고 남긴다(바로 다음 연출이 이어질 때) */
       keep?: boolean;
       /**
-       * 패스키 전에 사람이 등록증을 내밀게 한다(등록증이 아래에서 살짝 올라와 기다리고, 밀어 올리거나 누르면 그 동작 직후
-       * 패스키). 앞서 누른 단추에서 시간이 흘러(연출 등) 패스키 창이 막힐 수 있는 곳에 쓴다. 단추를 누르자마자 이 틀을
+       * 패스키 전에 사람이 지문 단추를 누르게 한다(등록증이 아래에서 가운데로 올라와 기다리고, 아래 지문 단추를 누르거나
+       * 등록증을 밀어 올리거나 누르면 그 동작 직후 패스키). 앞서 누른 단추에서 시간이 흘러(연출 등) 패스키 창이 막힐 수 있는 곳에 쓴다. 단추를 누르자마자 이 틀을
        * 부르는 곳은 그 누름이 곧 제시라 두지 않는다(같은 동작을 두 번 시키지 않는다). 취소하면 등록증은 그 자리에서 다시 기다린다
        */
       tap?: boolean;
@@ -100,7 +109,7 @@ export function useIdPresent(services: Services) {
       pub: opts.pub instanceof Uint8Array ? opts.pub : null,
       card: "hidden",
       checked: false,
-      text: opts.text ?? idText(opts.verb),
+      text: opts.text ?? idText(opts.verb, touchScreen()),
       note: opts.note ?? null,
       closing: false,
       asking: false,
@@ -116,8 +125,8 @@ export function useIdPresent(services: Services) {
     if (opts.readFirst) await wait(FX.read);
     let r: T | null = null;
     if (opts.tap) {
-      // 등록증이 아래에서 살짝 올라와 내밀기를 기다린다. 내밀면(누름 처리 안에서 이어져) 바로 패스키
-      go({ card: "peek" });
+      // 등록증이 아래에서 가운데로 올라와 지문 단추 누르기를 기다린다. 누르면(누름 처리 안에서 이어져) 바로 패스키
+      go({ card: "ready" });
       for (;;) {
         go({ asking: true });
         const ok = await new Promise<boolean>((res) => {
@@ -128,7 +137,7 @@ export function useIdPresent(services: Services) {
           setPresent(null);
           return null;
         }
-        // 내민 등록증이 조금 올라가는 동안 패스키를 연다(움직임은 보이기만, 패스키를 늦추지 않는다)
+        // 내민 등록증이 살짝 떠오르는 동안 패스키를 연다(움직임은 보이기만, 패스키를 늦추지 않는다)
         go({ asking: false, card: "lift" });
         try {
           r = await action();
@@ -137,14 +146,14 @@ export function useIdPresent(services: Services) {
           // 다시 내미는 것도 막지 않는다(2026-11-03 사용자: 막기보다 시도할 수 있게)
           const app = inAppFailed(err, navigator.userAgent);
           if (app || passkeyProblem(err) === "cancelled") {
-            go({ card: "peek", ...(app ? { inApp: app } : {}) });
+            go({ card: "ready", ...(app ? { inApp: app } : {}) });
             continue;
           }
           setPresent(null);
           throw err;
         }
         if (r !== null) break;
-        go({ card: "peek" });
+        go({ card: "ready" });
       }
     } else {
       try {
