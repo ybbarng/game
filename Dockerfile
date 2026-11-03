@@ -31,6 +31,7 @@ COPY packages/baduk-engine/package.json packages/baduk-engine/
 COPY packages/baduk-ai/package.json packages/baduk-ai/
 COPY packages/nyrongppong-engine/package.json packages/nyrongppong-engine/
 COPY packages/nyrongppong-ai/package.json packages/nyrongppong-ai/
+COPY packages/onecard-engine/package.json packages/onecard-engine/
 COPY packages/gostop-engine/package.json packages/gostop-engine/
 COPY packages/gostop-ai/package.json packages/gostop-ai/
 COPY packages/minhwatu-engine/package.json packages/minhwatu-engine/
@@ -39,6 +40,7 @@ COPY packages/baseball-engine/package.json packages/baseball-engine/
 COPY packages/baseball-ai/package.json packages/baseball-ai/
 COPY packages/yut-engine/package.json packages/yut-engine/
 COPY packages/yut-ai/package.json packages/yut-ai/
+COPY packages/galaxy-engine/package.json packages/galaxy-engine/
 COPY packages/stardraw-core/package.json packages/stardraw-core/
 COPY packages/stardraw-cli/package.json packages/stardraw-cli/
 COPY packages/puzzle-core/package.json packages/puzzle-core/
