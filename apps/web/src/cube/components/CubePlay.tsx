@@ -219,9 +219,14 @@ export function CubePlay({
   const colors = settings.colors;
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      <div className="relative aspect-square w-full max-w-[460px]">
+      {/* 키 입력 준비(data-input-ready)와 3D 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
+      <div
+        data-cube-stage
+        data-input-ready={interpreter && !locked ? "" : undefined}
+        className="relative aspect-square w-full max-w-[460px]"
+      >
         {failed ? (
-          <p className="p-6 text-center text-sm text-white/70">
+          <p data-cube-no3d className="p-6 text-center text-sm text-white/70">
             이 기기에서는 3D를 그릴 수 없습니다. 아래 펼친 그림을 보며 맞추세요.
           </p>
         ) : (
