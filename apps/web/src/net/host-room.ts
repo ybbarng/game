@@ -30,6 +30,7 @@ import { LocalMatch } from "@/game/local-match";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
 import type { HostRestore, HostSaved, HostStore } from "./host-store";
@@ -190,6 +191,8 @@ export class HostRoom<
    * 이 연결을 앉히면 떠난 연결이 자리를 영영 "연결됨"으로 차지한다(끊김 투표가 열리지 않는다)
    */
   private readonly gone = new Set<string>();
+  /** 실시간 청구 통로(`kit.claims`가 있는 게임). 방장은 묶음을 판정해 발표하고 엔진에 넣는다 */
+  readonly claims: ClaimHub<View> | null;
 
   constructor(
     options: HostRoomOptions<Rules, State, View, ActionT, Event, Extra>,
@@ -233,6 +236,24 @@ export class HostRoom<
     void commit(this.hostSecret).then((hash) => {
       this.hostCommit = hash;
     });
+    const claimSpec = this.kit.claims;
+    this.claims = claimSpec
+      ? new ClaimHub<View>({
+          transport: this.transport,
+          game: this.kit.id,
+          spec: claimSpec,
+          role: "host",
+          clock: this.clock,
+          mySeat: () => 0,
+          seatOfPeer: (peerId) => this.seatOf(peerId),
+          apply: (resolved) => {
+            const action = claimSpec.action(resolved) as ActionT | null;
+            if (action !== null && this.match)
+              this.match.submitAs(this.match.seat, action);
+          },
+          object: (seat, reason) => this.raiseIncident({ seat, reason }),
+        })
+      : null;
     if (options.restore) this.restoreRoom(options.restore);
 
     this.transport.onPeerJoin((peerId) => {
@@ -396,6 +417,7 @@ export class HostRoom<
         );
     }
     this.subscribeGuests(match);
+    this.watchClaims(match);
     match.refresh();
     // 멘탈 포커 판에서 돌아오지 않는 사람이 있으면 전처럼 투표로 끝낼 수 있게 한다.
     this.updateVote();
@@ -417,6 +439,21 @@ export class HostRoom<
           );
         if (this.kit.isOver(snapshot.view)) this.sendAudit();
       });
+  }
+
+  /**
+   * 실시간 청구: 걸음마다 방장 엔진 상태의 판을 남긴다. 미룬 화면이 아니라 엔진 상태로 보므로
+   * 방장의 판 번호는 어느 참가자 화면보다 늦지 않다(참가자가 발표의 판 번호를 맞춰 보는 기준)
+   */
+  private watchClaims(
+    match: LocalMatch<Rules, State, View, ActionT, Event, Extra>,
+  ): void {
+    const hub = this.claims;
+    if (!hub) return;
+    const look = () =>
+      hub.observe(this.kit.viewOf(match.rawState(), match.seat));
+    look();
+    match.onApplied(look);
   }
 
   /** 복기용 기록: 시드와 행동 기록, 멘탈 포커 판이면 판별 실제 패(다 연 판까지) */
@@ -729,6 +766,7 @@ export class HostRoom<
       // 첫 판이 바로 끝날 수 있다(고스톱 총통): 다음 판 섞기를 시작한다.
       table.after(match.rawState(), match.created);
       this.subscribeGuests(match);
+      this.watchClaims(match);
       for (const [seat, guest] of this.guests)
         if (guest.peerId)
           this.send(
@@ -774,6 +812,7 @@ export class HostRoom<
     }
     const startEvents = this.kit.startEvents(match.viewFor(0));
     this.subscribeGuests(match);
+    this.watchClaims(match);
     for (const [seat, guest] of this.guests) {
       if (guest.peerId)
         this.send(
@@ -1064,6 +1103,7 @@ export class HostRoom<
   close(): void {
     // 연결이 잠깐 끊긴 것과 구별하도록 닫는다고 먼저 알린다.
     this.send({ t: "closed" });
+    this.claims?.close();
     this.transport.leave();
     // 세던 컴퓨터 수는 버린다(워커 계산을 멈춘다).
     this.match?.dispose();
@@ -1428,8 +1468,8 @@ function mineOf(
   return match.actionLog().filter((e) => e.seat === seat).length;
 }
 
-/** 멘탈 포커 메시지가 속한 판 */
-function fairDealOf(message: FairMessage): number {
+/** 멘탈 포커 메시지가 속한 판(원카드 다시 섞기 알림도 `deal`을 싣는다) */
+export function fairDealOf(message: FairMessage): number {
   const m = message as { deal?: number; query?: { deal?: number } };
   return m.deal ?? m.query?.deal ?? 0;
 }

@@ -1,0 +1,22 @@
+{
+  "name": "@game/cube-ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "큐브 컴퓨터 상대 — 사람처럼 맞추는 해법(층별·CFOP)과 속도 흉내, 순수 함수",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@game/cube-engine": "workspace:*",
+    "@game/cube-reduction": "workspace:*",
+    "@game/cube-solver": "workspace:*",
+    "@game/puzzle-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@game/cube-scramble": "workspace:*"
+  }
+}
