@@ -143,8 +143,9 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
  * 형식: `g2-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
  *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본 `g2-4mtwr-seasons`, 짧은 판 2인 거래·제철·유성우 끔 `g2-2snn-seasons`, 빠른 시간이면 `g2-4mtwr-seasons-t1`.
- * 유성우의 밤을 더하기 전 문자열(r 없음)은 끈 판으로 읽힌다
+ * 예: 기본(유성우 끔) `g2-4mtw-seasons`, 유성우를 켜면 `g2-4mtwr-seasons`,
+ *     짧은 판 2인 거래·제철 끔 `g2-2snn-seasons`, 빠른 시간이면 `g2-4mtw-seasons-t1`.
+ * 긴 판은 마지막 돌림이 없어 유성우를 싣지 않는다(r 없음)
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
   return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;

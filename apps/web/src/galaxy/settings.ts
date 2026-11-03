@@ -29,7 +29,8 @@ export function rulesFromSettings(
     length: s.length,
     trade: s.trade,
     seasonal: s.seasonal,
-    meteor: s.meteor === true,
+    // 긴 판은 마지막 돌림이 없어 유성우의 밤이 오지 않는다. 같은 판이 문자열 둘이 되지 않게 끈다
+    meteor: s.meteor === true && s.length !== "long",
     sky: DEFAULT_SKY,
     ...(s.time && s.time !== "none" ? { time: s.time } : {}),
   };

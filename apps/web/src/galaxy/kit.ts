@@ -7,6 +7,7 @@ import {
   DEFAULT_SKY,
   decodeGalaxyRules,
   encodeGalaxyRules,
+  GALAXY_EDITION,
   type GalaxyRules,
   type GalaxyState,
   type GalaxyView,
@@ -257,6 +258,15 @@ const TIMED = new Set<Action["type"]>([
   "unmortgage",
   "end",
 ]);
+
+/** 기록의 규칙이 지금 판 번호(`GALAXY_EDITION`)인가. 옛 규칙 판은 다시 보기·통계에서 새 숫자로 다시 두지 않는다 */
+export function isCurrentEdition(rules: unknown): boolean {
+  return (
+    typeof rules === "object" &&
+    rules !== null &&
+    (rules as { edition?: unknown }).edition === GALAXY_EDITION
+  );
+}
 
 /** 은하 한 바퀴 엔진을 대국 진행·온라인 방에 잇는다. 판은 규칙의 하늘로 만든다(사계절 하늘은 늘 있다) */
 export const galaxyKit: GalaxyKit = {
