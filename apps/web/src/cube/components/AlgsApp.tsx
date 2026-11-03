@@ -542,6 +542,7 @@ function CaseDetail({
             {!result.ok && result.other && (
               <span className="text-amber-200" data-alg-check-other>
                 이건 {result.other.name}
+                {result.other.slot && `(${result.other.slot} 칸)`}
               </span>
             )}
             {result.htm !== undefined && (
