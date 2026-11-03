@@ -84,12 +84,17 @@ function attackers(board: Board, at: number, side: "c" | "h" = "c"): Kind[] {
   return kinds;
 }
 
-/** 끝 글자에 받침이 있나(을/를, 과/와를 고른다) */
-function hasBatchim(word: string): boolean {
-  const code = (word.at(-1) ?? "").charCodeAt(0) - 0xac00;
+/**
+ * 끝 글자에 받침이 있나(을/를, 과/와를 고른다). 자리 이름 숫자는 읽는 소리로 본다
+ * (0 영·1 일·3 삼·6 육·7 칠·8 팔은 받침이 있다)
+ */
+export function hasBatchim(word: string): boolean {
+  const last = word.at(-1) ?? "";
+  if (/[0-9]/.test(last)) return "013678".includes(last);
+  const code = last.charCodeAt(0) - 0xac00;
   return code >= 0 && code <= 11171 && code % 28 !== 0;
 }
-const obj = (word: string) => `${word}${hasBatchim(word) ? "을" : "를"}`;
+export const obj = (word: string) => `${word}${hasBatchim(word) ? "을" : "를"}`;
 
 /**
  * 「로·으로」: 받침이 없거나 ㄹ이면 로, 다른 받침이면 으로. 자리 이름 숫자는 읽는 소리로 본다

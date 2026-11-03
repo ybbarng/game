@@ -28,6 +28,9 @@ import {
 import type { Commentary, GameKit, KitStats, Verdict } from "@/game/kit";
 import type { RoundRecord } from "@/stats/records";
 
+import { reviewNotes } from "./review-notes";
+import { obj } from "./study";
+
 export type JanggiKit = GameKit<
   JanggiRules,
   JanggiState,
@@ -124,11 +127,15 @@ export function explainJanggi(
     `${state.roundNumber}판 ${state.played.length + 1}수째, ${name(next.seat)}(${SIDE_NAMES[side]}) 차례`,
   ];
   if (action.type !== "move") return { situation, verdict: null, reasons: [] };
+  // 처음 하는 사람용 짚기: 잡은 기물, 놓친 공짜, 새로 잡힐 위험(잡힐 위험 표시와 같은 계산)
+  const notes = reviewNotes(state.board, action, side, {
+    bikjangForbidden: state.rules.bikjang === "forbidden",
+  });
   const suggested = janggiBotFor(2).decide(viewOf(state, next.seat), {
     seed: 1,
   });
   if (suggested.type !== "move")
-    return { situation, verdict: null, reasons: [] };
+    return { situation, verdict: null, reasons: notes };
   const same = suggested.from === action.from && suggested.to === action.to;
   if (same)
     return {
@@ -136,6 +143,7 @@ export function explainJanggi(
       verdict: "good",
       reasons: [
         `${moveText(state, action.from, action.to)}: 고수도 같은 수를 둔다`,
+        ...notes,
       ],
     };
   const mine = moveValue(state, action.from, action.to);
@@ -144,8 +152,9 @@ export function explainJanggi(
     situation,
     verdict: verdictOf(best - mine),
     reasons: [
-      `${moveText(state, action.from, action.to)}를 뒀다`,
+      `${obj(moveText(state, action.from, action.to))} 뒀다`,
       `고수라면 ${moveText(state, suggested.from, suggested.to)}`,
+      ...notes,
     ],
   };
 }
