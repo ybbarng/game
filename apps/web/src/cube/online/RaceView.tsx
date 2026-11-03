@@ -221,7 +221,9 @@ export function RaceView({
                 <div className="flex items-baseline gap-2 text-sm">
                   <b className={p.id === room.me ? "text-amber-200" : ""}>
                     {room.playerName(p.id)}
-                    {p.id === room.me ? " (나)" : ""}
+                    {p.id === room.me && room.playerName(p.id) !== "나"
+                      ? " (나)"
+                      : ""}
                   </b>
                   {!p.connected && (
                     <span className="text-red-300 text-xs">끊김</span>
@@ -368,7 +370,9 @@ function ResultBox({
                 <td>{p?.status === "done" ? i + 1 : "-"}</td>
                 <td>
                   {room.playerName(id)}
-                  {id === room.me ? " (나)" : ""}
+                  {id === room.me && room.playerName(id) !== "나"
+                    ? " (나)"
+                    : ""}
                   {notes.length > 0 && (
                     <span className="block text-white/60 text-xs">
                       {notes.join(" · ")}
