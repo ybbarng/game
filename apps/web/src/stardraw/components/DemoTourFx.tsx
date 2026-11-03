@@ -17,10 +17,10 @@ import { IssuedView, type useAstronautSetup } from "./AstronautSetup";
 import { DemoUnlockPrompt } from "./DemoUnlockSheet";
 import { SubmitView } from "./EnterSubmit";
 import { BounceSlip, ErrorStage } from "./EntryDeadline";
-import { IdPresentView, useIdPresent } from "./IdPresent";
+import { IdPresentView, touchScreen, useIdPresent } from "./IdPresent";
 import { Receipt } from "./Receipt";
 import { ReceiptPrint } from "./ReceiptPrint";
-import { type ApplyStage, RegisterForm } from "./RegisterForm";
+import { type ApplyStage, fillPlan, RegisterForm } from "./RegisterForm";
 import { StageOverlay, useReducedMotion } from "./StageOverlay";
 import { Gate, RoundCard } from "./StardrawApp";
 
@@ -62,6 +62,10 @@ function stubSetup(
     pocket: noop,
     apply: null,
     applyInApp: null,
+    applyKey: null,
+    applyTouch: false,
+    applyAt: 0,
+    signApply: async () => {},
     submitApply: async () => {},
     cancelApply: noop,
     ...over,
@@ -272,21 +276,26 @@ function IssueFx({
   onDone: () => void;
 }) {
   const [pocketing, setPocketing] = useState(false);
-  // 실제 등록과 같은 차례: 신청서 → 내기 → 흉내 패스키 만들기 → 서명 → 위로 → 발급한 등록증
+  // 실제 등록과 같은 차례: 신청서 → 지문 단추 → 흉내 패스키 만들기 → 지문 도장·성명·주소 → 내기 → 위로 → 발급한 등록증
   const [apply, setApply] = useState<ApplyStage | null>("text");
+  const [touch] = useState(touchScreen);
+  const [at] = useState(Date.now);
   const { ask, open } = useAsk();
   useEffect(() => {
-    const t = window.setTimeout(() => setApply("waiting"), FX.read);
+    const t = window.setTimeout(() => setApply("sign"), FX.read);
     return () => window.clearTimeout(t);
   }, []);
-  const submit = async () => {
+  const sign = async () => {
     setApply("signing");
     if (!(await open())) {
-      setApply("waiting");
+      setApply("sign");
       return;
     }
-    setApply("signed");
-    await sleep(FX.idCheck + FX.pause);
+    setApply("stamp");
+    await sleep(fillPlan(astronautOf(pub)).end);
+    setApply("submit");
+  };
+  const submit = async () => {
     setApply("away");
     await sleep(FX.paperAway + FX.pause);
     setApply(null);
@@ -296,7 +305,10 @@ function IssueFx({
       <>
         <RegisterForm
           stage={apply}
-          now={Date.now()}
+          now={at}
+          touch={touch}
+          pub={pub}
+          onSign={() => void sign()}
           onSubmit={() => void submit()}
           onCancel={onDone}
         />

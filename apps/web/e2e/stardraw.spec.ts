@@ -1,10 +1,12 @@
 import sky from "../src/stardraw/sky-data.json" with { type: "json" };
 import {
+  animationsDone,
   expect,
   fastForwardUntil,
   fixStardrawClock,
   type Locator,
   type Page,
+  SAVE_SCREENSHOTS,
   speedUpAnimations,
   test,
 } from "./test";
@@ -50,6 +52,21 @@ async function pressWhenShown(page: Page, target: Locator) {
   await speedUpAnimations(page);
   await fastForwardUntil(page, () => target.isVisible());
   await target.press("Enter");
+}
+
+/**
+ * 연출을 켠 시험에서: 등록 신청서 아래 지문 단추로 서명하고(그 누름에 패스키 만들기), 도장·성명·주소가 채워져
+ * 내기를 기다리면 밀어 올려 낸다(docs/36 11-65)
+ */
+async function signAndSubmitApply(page: Page) {
+  await pressWhenShown(
+    page,
+    page.getByRole("button", { name: "본인 확인으로 신청서 서명" }),
+  );
+  await pressWhenShown(
+    page,
+    page.locator("[aria-label='신청서 제출'][aria-disabled='false']"),
+  );
 }
 
 /** 연출을 켠 시험에서: 연출 오버레이가 모두 걷힐 때까지 빨리 감는다 */
@@ -236,15 +253,9 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await noSideScroll(page);
   await page.screenshot({ path: info.outputPath("stardraw-key-setup.png") });
   await setup.getByRole("button", REGISTER).click();
-  // 연출이 있으면 신청서가 올라와 기다린다: 내면(키보드 Enter도 같다) 그 누름에 패스키 만들기.
-  // 연출 길이는 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
-  if (motion) {
-    await speedUpAnimations(page);
-    await pressWhenShown(
-      page,
-      page.locator("[aria-label='신청서 제출'][aria-disabled='false']"),
-    );
-  }
+  // 연출이 있으면 신청서가 올라와 기다린다: 아래 지문 단추를 누르면(키보드 Enter도 같다) 그 누름에 패스키 만들기,
+  // 도장·성명·주소가 채워진 뒤 신청서를 낸다. 연출 길이는 실제 시간으로 기다리지 않는다(CSS 20배, 타이머는 시계로 빨리 감기)
+  if (motion) await signAndSubmitApply(page);
   // 발급한 등록증이 뜬다(연출이 있으면 입구 위 화면 전체 오버레이로)
   await expect(page.locator("[data-issued='new']")).toBeVisible();
   // 패스키 만들기 창 하나만(장부 등록은 첫 응모 때 응모권과 함께)
@@ -609,10 +620,10 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
     .getByRole("dialog", { name: "카노푸스 우주국 편지" })
     .getByRole("button", { name: "우주인 등록", exact: true })
     .click();
-  const submit = first.locator(
-    "[aria-label='신청서 제출'][aria-disabled='false']",
-  );
-  await pressWhenShown(first, submit);
+  const finger = first.getByRole("button", {
+    name: "본인 확인으로 신청서 서명",
+  });
+  await pressWhenShown(first, finger);
   const help = first.locator(
     "[data-register-help] [data-in-app-notice='tried']",
   );
@@ -621,9 +632,17 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
     "카카오톡 안에서는 패스키 확인을 마치지 못했습니다",
   );
   await expect(help.getByRole("link", { name: "Safari로 열기" })).toBeVisible();
-  // 신청서는 그 자리에서 다시 기다린다(다시 낼 수 있다)
+  // 신청서는 서명 전으로 돌아가 지문 단추가 다시 기다린다(다시 서명할 수 있다)
   await expect(first.locator("[data-register-form]")).toBeVisible();
-  await expect(submit).toBeVisible();
+  await fastForwardUntil(first, () => finger.isVisible());
+  await expect(first.locator("[data-register-signed]")).toHaveCount(0);
+  // 안내가 붙어 길어져도 지문 단추와 「취소」는 겹치지 않는다(길면 오버레이 안에서 스크롤)
+  const fingerBox = await finger.boundingBox();
+  const cancelBox = await first
+    .getByRole("button", { name: "취소", exact: true })
+    .boundingBox();
+  if (!fingerBox || !cancelBox) throw new Error("자리 없음");
+  expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
   await first.screenshot({
     path: info.outputPath("stardraw-kakao-register-failed.png"),
   });
@@ -1461,6 +1480,130 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 �
   await expect(finger).toHaveCount(0);
   await untilStageGone(page);
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
+});
+
+/**
+ * 우주인 등록 신청서(docs/36 11-65): 서명 전에는 지문 단추와 안심 한 줄, 밀어 올려도 내지 않는다. 지문 단추를 누르면
+ * 패스키를 만들고 서명 칸에 지문 도장, 성명·주소가 채워진 뒤 밀어 올려 낸다. 낼 때 패스키 창은 다시 뜨지 않는다.
+ * 휴대폰은 지문, PC는 「본인 확인」을 가리키는 문구
+ */
+test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려 낸다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name === "phone-portrait";
+  test.skip(
+    !touch && info.project.name !== "desktop",
+    "휴대폰 세로와 PC 한 크기씩",
+  );
+  await virtualAuthenticator(page);
+  await countPasskeyCalls(page);
+  await toEntry(page);
+  // 편지 연출 없이 입구에서 바로 등록을 누르고, 신청서부터 연출을 켠다
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.locator("[data-key-setup]").getByRole("button", REGISTER).click();
+  await speedUpAnimations(page);
+  const form = page.locator("[data-register-form]");
+  const sheet = page.locator("[aria-label='신청서 제출']");
+  const finger = page.getByRole("button", {
+    name: "본인 확인으로 신청서 서명",
+  });
+  // 신청서가 다 올라오고 지문 단추가 나타난 뒤 자리를 잰다(되풀이하는 떠오름은 끝나지 않으니 뺀다)
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await finger.isVisible()) &&
+      (await sheet.evaluate((el) =>
+        el
+          .getAnimations()
+          .every((x) => x.effect?.getComputedTiming().iterations === Infinity),
+      )),
+  );
+  await expect(
+    page.getByText(
+      touch
+        ? "지문을 눌러 신청서에 서명해 주세요."
+        : "「본인 확인」을 눌러 신청서에 서명해 주세요.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.locator("[data-register-note]")).toHaveText(
+    "지문·얼굴 정보는 이 기기 밖으로 나가지 않습니다. 이름·이메일·비밀번호는 받지 않습니다.",
+  );
+  await expect(form.locator("th")).toHaveText([
+    "신청 구분",
+    "작성일",
+    "성명",
+    "주소",
+    "신분 확인",
+    "서명",
+  ]);
+  await expect(form).not.toContainText("등록번호");
+  await expect(form.locator("[data-register-field='name']")).toHaveText("");
+  // 신청서·지문 단추·「취소」가 화면 안에서 겹치지 않는다(휴대폰은 작은 화면 360×640에서도)
+  const fits = async () => {
+    const view = page.viewportSize() as { width: number; height: number };
+    const formBox = await form.boundingBox();
+    const fingerBox = await finger.boundingBox();
+    const cancelBox = await page
+      .getByRole("button", { name: "취소", exact: true })
+      .boundingBox();
+    if (!formBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
+    expect(formBox.y).toBeGreaterThanOrEqual(0);
+    expect(formBox.y + formBox.height).toBeLessThanOrEqual(fingerBox.y);
+    expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
+    expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
+  };
+  await fits();
+  if (touch) {
+    const size = page.viewportSize() as { width: number; height: number };
+    await page.setViewportSize({ width: 360, height: 640 });
+    await fits();
+    if (SAVE_SCREENSHOTS)
+      await page.screenshot({ path: info.outputPath("register-small.png") });
+    await page.setViewportSize(size);
+  }
+  // 서명 전에는 밀어 올려도 내지 않는다(패스키도 열지 않는다)
+  await expect(sheet).toHaveAttribute("aria-disabled", "true");
+  await sheet.press("Enter");
+  expect(await passkeyCalls(page)).toEqual({ create: 0, get: 0 });
+  // 가만히 있으면 지문 단추 위에 누르는 손짓
+  const tap = finger.locator("[data-idle-hint='tap']");
+  await fastForwardUntil(page, () => tap.isVisible());
+  await holdHint(tap, 0.4, () =>
+    page.screenshot({
+      path: info.outputPath(touch ? "register-sign.png" : "register-pc.png"),
+    }),
+  );
+
+  await finger.click();
+  const ready = page.locator(
+    "[aria-label='신청서 제출'][aria-disabled='false']",
+  );
+  await fastForwardUntil(page, () => ready.isVisible());
+  expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
+  await expect(
+    page.getByText("신청서를 밀어 올려서 제출해 주세요.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    form.locator("[data-register-signed] [data-fingermark]"),
+  ).toBeVisible();
+  const name = form.locator("[data-register-field='name']");
+  await expect(name).not.toHaveText("");
+  await expect(form.locator("[data-register-field='address']")).toContainText(
+    "›",
+  );
+  await expect(page.locator("[data-register-note]")).toHaveCount(0);
+  if (SAVE_SCREENSHOTS) {
+    await animationsDone(form);
+    await page.screenshot({ path: info.outputPath("register-signed.png") });
+  }
+  const who = (await name.textContent()) as string;
+  await ready.press("Enter");
+  const issued = page.locator("[data-issued='new']");
+  await fastForwardUntil(page, () => issued.isVisible());
+  await expect(issued).toContainText(`${who} 님,`);
+  // 낼 때 패스키 창은 다시 뜨지 않았다
+  expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
 });
 
 /** 내밀기를 미루다 마감을 넘겨 반송받고, 「이 답안지 보관하기」로 챙긴다 */

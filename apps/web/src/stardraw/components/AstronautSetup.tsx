@@ -18,9 +18,9 @@ import { ensureRegistered } from "../registrar";
 import { DEMO_NS, type Services } from "../services";
 import type { KeyInfo } from "../wallet";
 import { AstronautPanel } from "./AstronautPanel";
-import { IdPresentView, useIdPresent } from "./IdPresent";
+import { IdPresentView, touchScreen, useIdPresent } from "./IdPresent";
 import { InAppTriedNotice } from "./InAppNotice";
-import { type ApplyStage, RegisterForm } from "./RegisterForm";
+import { type ApplyStage, fillPlan, RegisterForm } from "./RegisterForm";
 import { StageOverlay } from "./StageOverlay";
 
 /**
@@ -57,9 +57,10 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * 우주인 등록(패스키 만들기)과 신분증 제시(이미 있는 패스키 찾기). 첫 화면 입구와 응모 화면이 같이 쓴다.
- * 등록은 신청서 내기(RegisterForm, `SetupOverlays`): 오버레이·우주국 말 → 아래에서 신청서가 올라옴 → 밀어 올리거나
- * 누르면 그 누름에 바로 패스키 만들기 → 서명란에 서명 → 신청서가 위로 → 발급한 등록증이 위에서 내려온다(`IssuedView`),
- * 계속하면 등록증만 아래로 내려가 사라진 뒤 `onReady`.
+ * 등록은 신청서 내기(RegisterForm, docs/36 11-65): 오버레이·우주국 말 → 아래에서 신청서가 올라옴 → 아래 지문 단추를
+ * 누르면 그 누름에 바로 패스키 만들기 → 서명 칸에 지문 도장, 성명·주소가 차례로 채워짐 → 밀어 올려 내면(패스키 창은
+ * 다시 뜨지 않는다) 신청서가 위로 → 발급한 등록증이 위에서 내려온다(`IssuedView`), 계속하면 등록증만 아래로 내려가
+ * 사라진 뒤 `onReady`.
  * 제시는 신분증 제시 틀(useIdPresent): 오버레이·"패스키로 신분증을 제시해 주세요." → 실루엣 카드가 올라와 기다림 →
  * 내밀면 그 누름에 바로 패스키 → 실제 등록증으로 바뀌며 확인 표시 → 인사 → 내려감(2026-10-31 사용자: 우주국 말 먼저).
  * 취소하면 신청서·카드는 그 자리에서 다시 기다리고, 작은 「취소」로 닫는다. 움직임 줄이기면 단추에서 바로 패스키
@@ -83,6 +84,12 @@ export function useAstronautSetup(
   const [apply, setApply] = useState<ApplyStage | null>(null);
   /** 앱 안 브라우저에서 신청서를 냈는데 패스키가 실패했으면 그 앱 이름(신청서 위에 바깥 브라우저 안내) */
   const [applyInApp, setApplyInApp] = useState<string | null>(null);
+  /** 신청서에 지문으로 서명해 만든 패스키(내기 전까지 들고 있다가 발급한다) */
+  const [applyKey, setApplyKey] = useState<KeyInfo | null>(null);
+  /** 신청서 위쪽 문구의 기기(터치 화면인지): 신청서를 열 때 한 번 정한다 */
+  const [applyTouch, setApplyTouch] = useState(false);
+  /** 신청서를 연 시각(작성일, 도중에 바뀌지 않게) */
+  const [applyAt, setApplyAt] = useState(0);
   const wait = (ms: number) =>
     new Promise<void>((r) => services.clock.after(ms, r));
 
@@ -130,11 +137,14 @@ export function useAstronautSetup(
     setNote(null);
     setError(null);
     setApplyInApp(null);
+    setApplyKey(null);
     if (blocked()) return;
     if (!reduced()) {
+      setApplyTouch(touchScreen());
+      setApplyAt(services.clock.now());
       setApply("text");
       await wait(FX.read);
-      setApply("waiting");
+      setApply("sign");
       return;
     }
     setWorking("create");
@@ -148,26 +158,24 @@ export function useAstronautSetup(
   };
 
   /**
-   * 신청서를 냈다(밀어 올리거나 누름): 그 누름 안에서 바로 패스키 만들기. 성공하면 서명이 찍히고 신청서가 위로 올라간 뒤
-   * 발급한 등록증이 내려온다. 취소하면 신청서가 그 자리에서 다시 기다린다
+   * 신청서 지문 단추를 눌렀다: 그 누름 안에서 바로 패스키 만들기(누름 직후에만 창을 여는 브라우저가 있다). 성공하면
+   * 서명 칸에 지문 도장이 찍히고 성명·주소가 차례로 채워진 뒤 내기를 기다린다. 취소하면 다시 지문 단추
    */
-  const submitApply = async () => {
+  const signApply = async () => {
     setApply("signing");
     setWorking("create");
     try {
       const made = await makeKey();
-      setApply("signed");
+      setApplyKey(made);
+      setApply("stamp");
       navigator.vibrate?.(20);
-      await wait(FX.idCheck + FX.pause);
-      setApply("away");
-      await wait(FX.paperAway + FX.pause);
-      setApply(null);
-      setIssued(made);
+      await wait(fillPlan(astronautOf(made.pub)).end);
+      setApply("submit");
     } catch (err) {
-      // 앱 안 브라우저에서 실패하면(취소처럼 보여도) 신청서는 다시 기다리고 바깥 브라우저 안내를 함께 보인다
+      // 앱 안 브라우저에서 실패하면(취소처럼 보여도) 지문 단추가 다시 기다리고 바깥 브라우저 안내를 함께 보인다
       const app = inAppFailed(err, navigator.userAgent);
       if (app) setApplyInApp(app);
-      if (app || passkeyProblem(err) === "cancelled") setApply("waiting");
+      if (app || passkeyProblem(err) === "cancelled") setApply("sign");
       else {
         setApply(null);
         setError(failureOf(err, "등록", "등록하지 않았어요"));
@@ -175,6 +183,17 @@ export function useAstronautSetup(
     } finally {
       setWorking(null);
     }
+  };
+
+  /** 서명한 신청서를 냈다(밀어 올리거나 누름): 이미 만든 패스키로 이어서 발급한다(패스키 창을 다시 열지 않는다) */
+  const submitApply = async () => {
+    const made = applyKey;
+    if (!made) return;
+    setApply("away");
+    await wait(FX.paperAway + FX.pause);
+    setApply(null);
+    setApplyKey(null);
+    setIssued(made);
   };
 
   /** 신분증 제시: 다른 기기에서 만든(따라온) 패스키를 찾아 장부의 등록을 확인한다 */
@@ -245,10 +264,15 @@ export function useAstronautSetup(
     id,
     apply,
     applyInApp,
+    applyKey,
+    applyTouch,
+    applyAt,
+    signApply,
     submitApply,
     cancelApply: () => {
       setApply(null);
       setApplyInApp(null);
+      setApplyKey(null);
     },
     create,
     recover,
@@ -385,12 +409,15 @@ export function WelcomeFlyer({
       {setup.apply && (
         <RegisterForm
           stage={setup.apply}
-          now={services.clock.now()}
+          now={setup.applyAt}
+          touch={setup.applyTouch}
+          pub={setup.applyKey?.pub ?? null}
           help={
-            setup.applyInApp && setup.apply === "waiting" ? (
+            setup.applyInApp && setup.apply === "sign" ? (
               <InAppTriedNotice app={setup.applyInApp} />
             ) : undefined
           }
+          onSign={() => void setup.signApply()}
           onSubmit={() => void setup.submitApply()}
           onCancel={setup.cancelApply}
         />

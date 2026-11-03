@@ -156,14 +156,18 @@ export function IdFlyer({
  * 아래 작은 글자 「본인 확인」이 한 덩어리로 눌린다(PC는 지문 그림만으로 무엇인지 모를 수 있다). 누르면(Enter·Space도,
  * 단추라 브라우저가 click으로 바꾼다) `onPress`를 그 처리기 안에서 바로 부른다. 등록증이 가운데에 다 올라온 뒤 나타나고
  * (동시에 움직이지 않기), 은은하게 숨 쉬듯 빛난다. 가만히 있으면 그 위에 누르는 손짓이 나오고, 손짓이 움직이는 동안
- * 빛남은 멈춘다. 움직임 줄이기면 빛남도 멈춘다(globals.css)
+ * 빛남은 멈춘다. 움직임 줄이기면 빛남도 멈춘다(globals.css). 우주인 등록 신청서의 지문 서명도 같은 단추를 같은 자리에 쓴다
+ * (RegisterForm, docs/36 11-65)
  */
-function FingerButton({
+export function FingerButton({
   label,
   onPress,
+  delay = FX.idIn,
 }: {
   label: string;
   onPress: () => void;
+  /** 나타나기 전 기다림(앞 물건이 다 올라온 뒤에 나타나게). 신분증은 등록증이 올라오는 시간 */
+  delay?: number;
 }) {
   const hint = useIdleHint(true);
   return (
@@ -173,7 +177,7 @@ function FingerButton({
       data-id-finger
       onClick={onPress}
       className="sd-finger-in absolute top-0 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 rounded-2xl px-3 pt-0.5 pb-1 text-amber-100 outline-none focus-visible:ring-2 focus-visible:ring-amber-200/70"
-      style={{ ["--finger-delay" as string]: `${FX.idIn}ms` }}
+      style={{ ["--finger-delay" as string]: `${delay}ms` }}
     >
       <span
         className="sd-finger-glow relative grid size-16 place-items-center rounded-full border border-amber-200/45 bg-amber-200/10"

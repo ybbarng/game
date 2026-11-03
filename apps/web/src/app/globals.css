@@ -793,6 +793,61 @@ button {
   }
 }
 
+/* 등록 신청서 지문 도장(docs/36 11-65): 살짝 크게 떠 있다가 내려와 눌려 찍히고, 그 둘레로 인주가 번졌다가 옅게 남는다.
+   번짐은 도장이 닿은 뒤(약 45%)에 시작해 둘이 함께 움직이지 않는다 */
+.sd-fingerstamp {
+  animation: sd-fingerstamp var(--stamp-ms, 1000ms)
+    cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sd-fingerstamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(1.45);
+  }
+  40% {
+    opacity: 0.95;
+    transform: translateY(0) scale(0.95);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.sd-ink-spread {
+  opacity: 0.14;
+  transform: scale(1.18);
+  animation: sd-ink-spread var(--stamp-ms, 1000ms) ease-out both;
+}
+@keyframes sd-ink-spread {
+  0%,
+  42% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  58% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.14;
+    transform: scale(1.18);
+  }
+}
+/* 등록 신청서 성명·주소: 타자기처럼 한 칸씩(--type-at에 나타난다). 글자 하나는 바로 찍히고(짧은 움직임) 자리는 처음부터
+   차지해 줄이 밀리지 않는다. opacity 대신 visibility: 아주 짧은 opacity 애니메이션은 Chrome 합성 단계에서 끝 상태를
+   남기지 못해 앞 글자가 안 보인 채 남았다 */
+.sd-type {
+  animation: sd-type 60ms linear var(--type-at, 0ms) both;
+}
+@keyframes sd-type {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
 /* 신분증 확인 표시: 원이 그려지고 체크가 그어진다 */
 .sd-check {
   opacity: 0;
@@ -1979,6 +2034,9 @@ button {
   .sd-sheet-hint,
   .sd-finger-in,
   .sd-finger-glow,
+  .sd-fingerstamp,
+  .sd-ink-spread,
+  .sd-type,
   .sd-printer-idle,
   .sd-live-dot::after,
   .sd-live-card,

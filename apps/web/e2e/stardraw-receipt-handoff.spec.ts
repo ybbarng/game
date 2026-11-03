@@ -63,6 +63,11 @@ test("영수증 넘김: 출력된 영수증이 뒤 화면의 같은 자리로 �
     page.getByRole("button", { name: "우주인 등록", exact: true }),
     click,
   );
+  // 신청서 아래 지문 단추로 서명하고(그 누름에 패스키), 도장·성명·주소가 채워진 뒤 낸다
+  await when(
+    page.getByRole("button", { name: "본인 확인으로 신청서 서명" }),
+    click,
+  );
   await when(
     page.locator("[aria-label='신청서 제출'][aria-disabled='false']"),
     press,
