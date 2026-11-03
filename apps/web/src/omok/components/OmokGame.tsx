@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
+import { ResignButton } from "@/components/ResignButton";
 import { ResultBanner } from "@/components/ResultBanner";
 import { RoundOutcome } from "@/components/RoundOutcome";
 import {
@@ -277,13 +278,10 @@ export function OmokGame({
             )}
             {/* 온라인 참가자는 내 차례에만 행동을 보낼 수 있다 */}
             {(!online || myTurn) && (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
-              >
-                기권
-              </button>
+              <ResignButton
+                resetKey={view.moves.length}
+                onResign={() => submit({ type: "resign" })}
+              />
             )}
           </>
         )}
