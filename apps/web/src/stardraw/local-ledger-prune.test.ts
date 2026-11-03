@@ -30,6 +30,14 @@ const START = 1793253300;
 const HOUR = 3600;
 /** 시험의 남길 회차 수 */
 const KEEP = 3;
+/**
+ * 쌓을 회차 수. 회차마다 같은 몫만 느는지는 비율로 보므로 실제 한도(약 15일)까지 쌓지 않아도 된다.
+ * 회차가 늘수록 저장·검사가 길어져(회차마다 장부 전체를 다시 저장) 150회차로 본다(예전 400회차)
+ */
+const ROUNDS = 150;
+/** 회차마다 느는 몫을 재는 구간(둘 다 지운 회차) */
+const EARLY = 43;
+const LATE = 143;
 
 const passkey = async () => softPasskeySigner(await generateSigner());
 
@@ -149,23 +157,27 @@ describe("연습 장부: 오래된 회차 지우기", () => {
     await nextDraw(clock, ledger);
     // 연습 참가자가 응모한 회차(지우기 전)의 크기
     const fullChars = roundChars(store.text, 3);
-    // 400회차까지: 10회차씩 흘려 회차마다 쌓이는 크기를 잰다
+    // ROUNDS회차까지: 10회차씩 흘려 회차마다 쌓이는 크기를 잰다
     const sizes = new Map<number, number>();
-    while (ledger.closed().length < 400) {
-      await nextDraw(clock, ledger, Math.min(10, 400 - ledger.closed().length));
+    while (ledger.closed().length < ROUNDS) {
+      await nextDraw(
+        clock,
+        ledger,
+        Math.min(10, ROUNDS - ledger.closed().length),
+      );
       sizes.set(ledger.closed().length, store.text?.length ?? 0);
     }
-    expect(ledger.closed()).toHaveLength(400);
-    expect(ledger.prunedRounds()).toBe(400 - KEEP);
+    expect(ledger.closed()).toHaveLength(ROUNDS);
+    expect(ledger.prunedRounds()).toBe(ROUNDS - KEEP);
     // 지운 회차는 응모권·등록을 지워 지우기 전보다 훨씬 작고(회차 3은 내 응모권을 남겼다),
-    // 400회차 내내 회차마다 같은 작은 몫만 는다
-    const lightChars = roundChars(store.text, 393);
+    // 회차 내내 회차마다 같은 작은 몫만 는다
+    const lightChars = roundChars(store.text, LATE);
     expect(fullChars).toBeGreaterThan(3 * lightChars);
     const perRound =
-      ((sizes.get(393) ?? 0) - (sizes.get(193) ?? 0)) / (393 - 193);
+      ((sizes.get(LATE) ?? 0) - (sizes.get(EARLY) ?? 0)) / (LATE - EARLY);
     expect(perRound).toBeLessThan(1.5 * lightChars);
     expect(store.text?.length).toBeLessThan(
-      KEEP * fullChars + 400 * 1.5 * lightChars,
+      KEEP * fullChars + ROUNDS * 1.5 * lightChars,
     );
 
     // 내 응모권(1등 회차·지운 회차)은 남는다
@@ -193,7 +205,7 @@ describe("연습 장부: 오래된 회차 지우기", () => {
 
     // 다시 열어도 같다
     const again = open(clock, store);
-    expect(again.prunedRounds()).toBe(400 - KEEP);
+    expect(again.prunedRounds()).toBe(ROUNDS - KEEP);
     expect(
       (await again.keyTickets([me.publicKey])).map((t) => t.round),
     ).toEqual([1, 3]);
