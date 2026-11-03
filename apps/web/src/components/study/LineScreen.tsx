@@ -11,6 +11,7 @@ import {
   type LineNode,
   learnerToMove,
   lineDone,
+  matchMove,
   opponentPick,
   type StudyLine,
   startCursor,
@@ -45,6 +46,11 @@ export interface LineRules<S, M> {
   roll?: () => number;
   /** 수 소리. 없으면 기물 소리(`piece`·`capture`) */
   sounds?: MoveSounds;
+  /**
+   * 대칭 변환(바둑 정석의 여덟 방향 등). 0번은 그대로. 배우는 사람의 첫 수가 맞은 방향으로 수순 전체를 돌려 둔다.
+   * 상대가 먼저 두는 수순이면 그대로(0번) 방향이다. 없으면 그대로만 본다(`matchMove`)
+   */
+  transforms?: readonly ((notation: string) => string)[];
   /** 진행 기록 */
   solve: () => void;
   miss: () => void;
@@ -58,10 +64,25 @@ export interface PlayedNode {
   mine: boolean;
 }
 
-/** 지금 자리에서 마디를 판의 수로 바꾼 후보들 */
-function movesAt<S, M>(rules: LineRules<S, M>, state: S, cursor: LineCursor) {
+/** 그대로 두는 변환(대칭을 쓰지 않는 게임) */
+const IDENTITY = [(s: string) => s] as const;
+
+/** 정해진 방향으로 마디 글자를 바꾼다 */
+function turned<S, M>(rules: LineRules<S, M>, orient: number | null) {
+  const list = rules.transforms ?? IDENTITY;
+  return list[orient ?? 0] ?? IDENTITY[0];
+}
+
+/** 지금 자리에서 마디를 판의 수로 바꾼 후보들(정해진 방향, 아직 없으면 그대로) */
+function movesAt<S, M>(
+  rules: LineRules<S, M>,
+  state: S,
+  cursor: LineCursor,
+  orient: number | null,
+) {
+  const turn = turned(rules, orient);
   return candidates(cursor)
-    .map((node) => ({ node, move: rules.parse(state, node.move) }))
+    .map((node) => ({ node, move: rules.parse(state, turn(node.move)) }))
     .filter((c): c is { node: LineNode; move: M } => c.move !== null);
 }
 
@@ -81,6 +102,8 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
   const [shown, setShown] = useState<M | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [missed, setMissed] = useState(false);
+  /** 대칭 방향. 배우는 사람의 첫 수나 상대의 첫 수에서 정한다 */
+  const [orient, setOrient] = useState<number | null>(null);
   const latest = useRef(rules);
   latest.current = rules;
 
@@ -115,7 +138,10 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
     const timer = setTimeout(() => {
       const rules = latest.current;
       const node = opponentPick(cursor, (rules.roll ?? Math.random)());
-      const move = node ? rules.parse(state, node.move) : null;
+      const move = node
+        ? rules.parse(state, turned(rules, orient)(node.move))
+        : null;
+      if (orient === null) setOrient(0);
       if (node && move) playNode(node, move, false);
     }, REPLY_MS);
     return () => clearTimeout(timer);
@@ -129,6 +155,7 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
     setLastMove(null);
     setMistake(false);
     setShown(null);
+    setOrient(null);
     // 수 보기로 본 표시도 지운다: 처음부터 다시 두어 보지 않고 끝까지 두면 푼 것으로 친다(문제 화면 usePuzzleRun과 같게)
     setRevealed(false);
   };
@@ -136,11 +163,17 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
   /** 내 수. 수순(본줄기나 갈래)에 있으면 두고, 없으면 두지 않고 안내한다 */
   const play = (move: M) => {
     if (status !== "play") return;
-    const found = movesAt(rules, state, cursor).find((c) =>
-      rules.same(c.move, move),
+    const found = matchMove(
+      cursor,
+      move,
+      (notation) => rules.parse(state, notation),
+      rules.same,
+      rules.transforms ?? IDENTITY,
+      orient,
     );
     if (found) {
       setMistake(false);
+      setOrient(found.orient);
       playNode(found.node, found.move, true);
       return;
     }
@@ -154,7 +187,9 @@ export function useLineRun<S, M>(rules: LineRules<S, M>) {
 
   /** 이 자리에서 수순이 두는 수(본줄기) */
   const expected = (): M | null =>
-    status === "play" ? (movesAt(rules, state, cursor)[0]?.move ?? null) : null;
+    status === "play"
+      ? (movesAt(rules, state, cursor, orient)[0]?.move ?? null)
+      : null;
 
   /** 수 보기: 다음 수를 판에 보인다. 본 뒤 끝까지 두어도 푼 것으로 치지 않는다 */
   const reveal = () => {
@@ -199,6 +234,7 @@ export function LineScreen({
   onRestart,
   onNext,
   onExit,
+  extraButtons,
 }: {
   /** `data-game` 값 */
   game: string;
@@ -223,6 +259,8 @@ export function LineScreen({
   /** 다음 수순. 묶음 끝이면 null */
   onNext: (() => void) | null;
   onExit: () => void;
+  /** 판 밖에서 두는 수 단추(바둑 쉬기 등). 내 차례에만 보인다 */
+  extraButtons?: ReactNode;
 }) {
   // 마지막 두 수(내 수와 상대 답)의 설명. 상대가 곧바로 받아도 내 수의 설명이 사라지지 않게 한다.
   const notes = history
@@ -316,6 +354,7 @@ export function LineScreen({
         <div className="flex flex-wrap justify-center gap-2">
           {status === "play" && (
             <>
+              {extraButtons}
               <button
                 type="button"
                 onClick={onHint}

@@ -25,8 +25,17 @@ export interface StudyLine {
   name: string;
   /** 한 줄 소개(노림) */
   summary: string;
-  /** 배우는 사람이 두는 편: 0은 수순의 첫 수를 두는 편, 1은 그 상대 */
+  /**
+   * 배우는 사람이 두는 편. 게임의 흑백·초한이 아니라 **수순 안의 차례**로 센다:
+   * 0은 `moves[0]`을 두는 편(체스 백·장기 초·바둑 흑이 보통 그렇다), 1은 그 상대.
+   * 시작 판에서 누가 먼저 두는지는 게임이 `start`로 정한다
+   */
   learner: 0 | 1;
+  /**
+   * 수순이 시작하는 판(게임의 글자, 없으면 게임의 처음 판). 틀은 읽지 않고 게임의 `initial`이 읽는다.
+   * 예: 체스 FEN, 장기 상차림(예: "c:NENE h:ENEN"), 바둑 판 크기와 놓인 돌
+   */
+  start?: string;
   /** 본줄기 */
   moves: readonly LineNode[];
   /** 출처(수순을 확인한 자료). 화면에는 보이지 않고 데이터를 고칠 사람이 본다 */
@@ -79,6 +88,32 @@ export function advance(
   const branch = node.branches?.find((b) => b[0] === played);
   if (!branch) return null;
   return { list: branch, index: 1, ply: cursor.ply + 1 };
+}
+
+/**
+ * 대칭 변환으로 둔 수를 수순 마디에 맞춰 본다(바둑 정석은 네 귀·뒤집기 여덟 방향 어디서나 같다).
+ * - `transforms[k]`는 수순 글자를 k번째 방향의 글자로 바꾼다. 0번은 그대로여야 한다
+ * - 방향이 정해지지 않았으면(`orient` null) 모든 방향을 차례로 보고, 맞은 방향을 함께 돌려준다
+ * - 방향이 정해졌으면 그 방향만 본다(한 수순 안에서 방향이 바뀌지 않는다)
+ * `parse`가 글자를 판의 수로 바꾸고, `same`이 둔 수와 같은지 본다. 맞는 마디가 없으면 null
+ */
+export function matchMove<M>(
+  cursor: LineCursor,
+  played: M,
+  parse: (notation: string) => M | null,
+  same: (a: M, b: M) => boolean,
+  transforms: readonly ((notation: string) => string)[],
+  orient: number | null,
+): { node: LineNode; move: M; orient: number } | null {
+  const ways = orient === null ? transforms.map((_, k) => k) : [orient];
+  for (const k of ways) {
+    const turn = transforms[k] ?? ((s: string) => s);
+    for (const node of candidates(cursor)) {
+      const move = parse(turn(node.move));
+      if (move !== null && same(move, played)) return { node, move, orient: k };
+    }
+  }
+  return null;
 }
 
 /** 상대 차례에 둘 마디. `roll`(0 이상 1 미만)로 본줄기와 갈래 가운데 하나를 고른다 */

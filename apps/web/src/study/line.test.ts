@@ -8,6 +8,7 @@ import {
   type LineNode,
   learnerToMove,
   lineDone,
+  matchMove,
   opponentPick,
   type StudyLine,
   startCursor,
@@ -78,5 +79,45 @@ describe("수순 따라 두기(공통 순수 함수)", () => {
       "e4 e5 Nf3 Nc6 Bc4 Nf6 d3 Bc5",
       "e4 e5 Nf3 Nc6 Bc4 Bc5 c3",
     ]);
+  });
+});
+
+describe("대칭 변환으로 수 맞추기(matchMove)", () => {
+  // 9줄 바둑 좌표(I 없이 A~J). 왼쪽·오른쪽 뒤집기만 쓰는 간단한 두 방향
+  const COLS = "ABCDEFGHJ";
+  const mirror = (p: string) =>
+    `${COLS[8 - COLS.indexOf(p[0] as string)]}${p.slice(1)}`;
+  const transforms = [(p: string) => p, mirror];
+  const corner: StudyLine = {
+    id: "line-corner",
+    name: "귀 굳힘",
+    summary: "",
+    learner: 0,
+    source: "시험용",
+    moves: [node("C3"), node("G7"), node("D3")],
+  };
+  const parse = (p: string) => p;
+  const same = (a: string, b: string) => a === b;
+
+  it("방향이 정해지지 않았으면 뒤집은 자리도 맞고, 맞은 방향을 돌려준다", () => {
+    const cursor = startCursor(corner);
+    expect(matchMove(cursor, "C3", parse, same, transforms, null)?.orient).toBe(
+      0,
+    );
+    const flipped = matchMove(cursor, "G3", parse, same, transforms, null);
+    expect(flipped?.orient).toBe(1);
+    expect(flipped?.node.move).toBe("C3");
+  });
+
+  it("방향이 정해지면 그 방향만 본다", () => {
+    const cursor = advance(
+      advance(startCursor(corner), corner.moves[0] as LineNode) as never,
+      corner.moves[1] as LineNode,
+    );
+    if (!cursor) throw new Error("자리 없음");
+    expect(matchMove(cursor, "F3", parse, same, transforms, 1)?.node.move).toBe(
+      "D3",
+    );
+    expect(matchMove(cursor, "D3", parse, same, transforms, 1)).toBeNull();
   });
 });
