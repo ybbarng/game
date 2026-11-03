@@ -91,17 +91,14 @@ export async function joinP2P(
     },
   };
   if (!LATENCY_PROBE.enabled) return transport;
-  // 쌍별 지연을 저절로 잰다(docs/43 5절 E2). 화면에는 보이지 않고 요약만 진단 기록으로 간다.
+  // 쌍별 지연을 방 안에서 잰다(docs/43 0-1). 요약은 서버(/diag)로 보내지 않는다 — 진단 기록은
+  // 디버깅 통로라 게임 자료를 쌓지 않는다. 방 안 판정을 만들 때 그 판정이 요약을 꺼내 쓰게 붙인다.
   // 측정 메시지는 withLatency가 걸러 방 코드에 닿지 않는다.
   const connectionOf = (peerId: string) => room.getPeers()[peerId];
   return withLatency(transport, {
     clock: realClock,
     mono: performanceClock,
     pingMs: LATENCY_PROBE.pingMs,
-    reportMs: LATENCY_PROBE.reportMs,
-    report: ({ elapsedMs, pairs }) => {
-      for (const pair of pairs) diag("latency", { elapsedMs, ...pair });
-    },
     rtcStats: async (peerId) => {
       const pc = connectionOf(peerId);
       return pc ? rtcSample(pc) : null;
