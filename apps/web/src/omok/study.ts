@@ -18,9 +18,9 @@ import {
 
 import type { OmokPuzzle } from "./puzzles";
 
-/** 문제의 규칙. 따로 적지 않으면 일반 규칙(흑·백 모두 3·3 금지, 정확히 다섯)이다 */
+/** 문제의 규칙. 모두 게임 기본값인 렌주(흑만 3·3·4·4·장목 금지, 2026-10-29 사용자)다 */
 export function variantOf(puzzle: OmokPuzzle): Variant {
-  return puzzle.variant ?? "standard";
+  return puzzle.variant ?? "renju";
 }
 
 /** 문제 장면에서 시작하는 판. 늘 흑(나, 0번 자리)이 둔다 */
@@ -73,7 +73,7 @@ export function judgeMove(
  */
 export function defenseFor(
   board: readonly Cell[],
-  variant: Variant = "standard",
+  variant: Variant = "renju",
 ): number | null {
   const block = blockFor(board, 1, variant);
   if (block !== null) return block;
@@ -192,7 +192,7 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
 
 /**
  * 렌주 문제의 함정: 금지가 없는 규칙(자유)이면 같은 수 안에 이기는 첫 수인데, 렌주에서는 흑에게 금지인 자리.
- * 일반 규칙 문제는 빈 배열
+ * 함정이 없으면 빈 배열(「렌주 금수 피하기」 묶음만 함정이 있다)
  */
 export function trapsOf(
   puzzle: OmokPuzzle,
