@@ -14,10 +14,14 @@ import {
   chessBotFor,
   chessExpertBot,
   chessIntermediateBot,
+  createChessExpertBot,
 } from "./bots";
 import { playGame } from "./simulate";
 
 const BOTS = [chessBeginnerBot, chessIntermediateBot, chessExpertBot];
+/** 규칙·시드·무승부처럼 판 수 상한과 상관없는 성질을 빨리 보려고 상한을 줄인 고수 */
+const quickExpert = createChessExpertBot(5_000);
+const QUICK_BOTS = [chessBeginnerBot, chessIntermediateBot, quickExpert];
 
 /** 장면에서 봇이 고른 수 */
 function choose(bot: (typeof BOTS)[number], fen: string, seed = 5) {
@@ -42,7 +46,7 @@ describe("체스 컴퓨터", () => {
     expect(end.result).not.toBeNull();
   });
 
-  it.each(BOTS.slice(1).map((b) => [b.name, b] as const))(
+  it.each(QUICK_BOTS.slice(1).map((b) => [b.name, b] as const))(
     "%s: 몇 수 동안 규칙에 맞는 수만 둔다",
     (_name, bot) => {
       let { state } = createMatch(STANDARD_RULES, 4);
@@ -99,8 +103,8 @@ describe("체스 컴퓨터", () => {
   it("고수는 같은 시드면 같은 수를 둔다", () => {
     const { state } = createMatch(STANDARD_RULES, 1);
     const view = viewOf(state, state.whiteSeat);
-    expect(chessExpertBot.decide(view, createRng(9))).toEqual(
-      chessExpertBot.decide(view, createRng(9)),
+    expect(quickExpert.decide(view, createRng(9))).toEqual(
+      quickExpert.decide(view, createRng(9)),
     );
   });
 
@@ -111,7 +115,7 @@ describe("체스 컴퓨터", () => {
   });
 
   it("무승부 제안은 기물로 크게 지고 있을 때만 받고, 아니면 그냥 두어 거절한다", () => {
-    for (const bot of BOTS) {
+    for (const bot of QUICK_BOTS) {
       // 흑(컴퓨터) 차례, 킹만 남았는데 백이 무승부를 제안했다.
       const behind = createChessScenario({
         fen: "4k3/8/8/8/8/8/8/3QK3 b - - 0 1",
