@@ -387,7 +387,7 @@ function KeymapSection({
                             : "bg-white/10 hover:bg-white/20",
                         )}
                       >
-                        {capturing === a.id ? "키를 누르세요" : "키 지정"}
+                        {capturing === a.id ? "키 기다리는 중" : "키 지정"}
                       </button>
                       {keysOf(keymap, a.id).length > 0 && (
                         <button

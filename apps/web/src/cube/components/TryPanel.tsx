@@ -204,10 +204,7 @@ export function TryPanel({
         </p>
       )}
       {answer.length === 0 && (
-        <p className="text-white/50 text-xs">
-          무작위 상황이라 정해진 모범 답이 없습니다. 앞에서 배운 차례대로 해
-          보세요.
-        </p>
+        <p className="text-white/50 text-xs">정해진 모범 답 없음</p>
       )}
 
       <CubePlay

@@ -741,7 +741,7 @@ function SolveList({
   if (solves.length === 0)
     return (
       <p className="rounded-xl bg-white/5 p-3 text-sm text-white/50">
-        아직 기록이 없습니다.
+        아직 기록이 없습니다
       </p>
     );
   const list = solves.map((s, i) => ({ s, no: i + 1 })).reverse();

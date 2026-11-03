@@ -104,6 +104,27 @@ describe("혼자 맞추기", () => {
     expect(records[0]?.ms).toBeNull();
   });
 
+  it("정리한 세션은 늦게 온 섞기로 다시 열리지 않고 소리·기록도 내지 않는다", () => {
+    // 섞기 준비 중에 크기를 바꾸면 옛 세션이 정리된 뒤 섞기 답이 온다
+    const { clock, cues, records, s } = setup();
+    s.dispose();
+    s.start(SCRAMBLE, 1);
+    expect(s.phase).toBe("free");
+    clock.advance(20_000);
+    expect(cues).toEqual([]);
+    expect(records).toEqual([]);
+  });
+
+  it("살펴보기 중에 정리하면 남은 알림·DNF가 나지 않는다", () => {
+    const { clock, cues, records, s } = setup();
+    s.start(SCRAMBLE);
+    clock.advance(5_000);
+    s.dispose();
+    clock.advance(20_000);
+    expect(cues).toEqual([]);
+    expect(records).toEqual([]);
+  });
+
   it("살펴보기를 끄면 섞은 뒤 첫 면 돌리기로 바로 시작", () => {
     const { clock, s, type } = setup({ inspection: false });
     s.start(SCRAMBLE);
