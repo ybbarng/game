@@ -153,6 +153,22 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
       { cue: "roundEnd", when: "이긴 편 없이 끝남" },
     ],
   },
+  {
+    title: "큐브 맞추기",
+    cues: [
+      { cue: "cubeTurn", when: "면·층·큐브를 한 번 돌림(키·단추·밀기)" },
+      { cue: "cubeInspect", when: "살펴보기 8초(한 번)·12초(두 번)" },
+      { cue: "cubeSolved", when: "다 맞춤(나·경주 상대)" },
+      {
+        cue: "invalid",
+        when: "지금 돌릴 수 없음(살펴보기·외우기 중 면 돌리기)",
+      },
+      { cue: "cubeTimerStart", when: "타이머: 손을 떼 시간이 가기 시작함" },
+      { cue: "cubeTimerStop", when: "타이머: 시간을 멈춤" },
+      { cue: "cubeBeat", when: "핑거 트릭: 박자 소리 한 번(한 수에 한 박)" },
+      { cue: "cubeBeatAccent", when: "핑거 트릭: 공식 첫 수의 센 박" },
+    ],
+  },
 ];
 
 interface Level {

@@ -37,7 +37,7 @@ import {
   type TimerEventOut,
   TimerMachine,
 } from "./machine";
-import { playTimerCue, unlockTimerAudio } from "./sound";
+import { playTimerCue } from "./sound";
 import {
   formatAverage,
   formatSingle,
@@ -204,7 +204,6 @@ export function CubeTimerApp() {
       if (e.key === " ") {
         e.preventDefault();
         if (e.repeat) return;
-        unlockTimerAudio();
         machine.press();
       } else if (e.key === "Escape") {
         machine.cancel();
@@ -228,7 +227,6 @@ export function CubeTimerApp() {
   const pointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
-    unlockTimerAudio();
     machine.press();
   };
   const pointerUp = () => machine.release();
