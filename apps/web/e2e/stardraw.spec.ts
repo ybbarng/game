@@ -1454,12 +1454,27 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 �
   const finger = page.getByRole("button", {
     name: "본인 확인으로 신분증 제출",
   });
-  // 등록증이 가운데로 다 올라온 뒤(움직임이 끝난 뒤) 자리를 잰다
+  const cancel = page.getByRole("button", { name: "취소", exact: true });
+  // 지문 단추·「취소」는 아래에서 살짝 올라오며 나타난다(끝나도 남는 연출). 숨 쉬듯 되풀이하는 것은 끝나지 않아 뺀다
+  const appeared = (target: Locator) =>
+    target.evaluate((el) =>
+      el
+        .getAnimations()
+        .every(
+          (a) =>
+            a.playState === "finished" ||
+            a.effect?.getComputedTiming().iterations === Infinity,
+        ),
+    );
+  // 등록증이 가운데로 다 올라오고 지문 단추·「취소」도 다 나타난 뒤(움직임이 끝난 뒤) 자리를 잰다.
+  // 등록증만 기다리면 부하 아래 단추가 아직 올라오는 중에 재어 위아래 순서가 어긋날 수 있다
   await fastForwardUntil(
     page,
     async () =>
       (await finger.isVisible()) &&
-      (await card.evaluate((el) => el.getAnimations().length === 0)),
+      (await card.evaluate((el) => el.getAnimations().length === 0)) &&
+      (await appeared(finger)) &&
+      (await appeared(cancel)),
   );
   // 휴대폰(터치)은 지문을 가리키는 문구. 등록증은 화면 안에 다 보이고, 지문 단추·「취소」와 겹치지 않는다
   await expect(
@@ -1469,9 +1484,7 @@ test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 �
   const view = page.viewportSize() as { width: number; height: number };
   const cardBox = await card.boundingBox();
   const fingerBox = await finger.boundingBox();
-  const cancelBox = await page
-    .getByRole("button", { name: "취소", exact: true })
-    .boundingBox();
+  const cancelBox = await cancel.boundingBox();
   if (!cardBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
   expect(cardBox.y).toBeGreaterThanOrEqual(0);
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(fingerBox.y);
