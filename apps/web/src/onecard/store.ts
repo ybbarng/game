@@ -84,6 +84,14 @@ export function clearOnecard(): void {
   }
 }
 
+/** 외침·잡기·헛외침 사건 수(`OnecardStore.shoutEvents`) */
+export function countShouts(events: readonly GameEvent[]): number {
+  return events.filter(
+    (e) =>
+      e.type === "shouted" || e.type === "caught" || e.type === "falseShout",
+  ).length;
+}
+
 /** 사건에 맞춰 소리를 낸다 */
 export function cuesFor(
   events: readonly GameEvent[],
@@ -155,6 +163,11 @@ interface OnecardStore {
   events: GameEvent[];
   /** 사건 묶음마다 오르는 번호(말풍선을 새로 띄운다) */
   eventSeq: number;
+  /**
+   * 이 대국에서 받은 외침·잡기·헛외침 사건 수(말풍선은 잠깐 떴다 사라지지만 이 값은 남는다).
+   * 화면 뿌리의 `data-shouts`로 보인다(화면 시험이 잠깐 뜨는 말풍선 대신 이 값을 기다린다)
+   */
+  shoutEvents: number;
   level: number;
   notice: string | null;
   /** 튜토리얼 연습 판(이어하기 저장·내 기록·복기에 남기지 않는다) */
@@ -237,6 +250,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       view: host.current(),
       events: first.flatMap((s) => s.events),
       eventSeq: get().eventSeq + 1,
+      shoutEvents: countShouts(first.flatMap((s) => s.events)),
       notice: null,
       practice: false,
     });
@@ -259,6 +273,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         view: snapshot.view,
         events: snapshot.events,
         eventSeq: get().eventSeq + 1,
+        shoutEvents: get().shoutEvents + countShouts(snapshot.events),
       });
       cuesFor(snapshot.events, host.seat, snapshot.view.rules, playCue);
     });
@@ -320,6 +335,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     view: null,
     events: [],
     eventSeq: 0,
+    shoutEvents: 0,
     level: 1,
     notice: null,
     practice: false,
@@ -381,6 +397,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         view: local.current(),
         events,
         eventSeq: get().eventSeq + 1,
+        shoutEvents: countShouts(events),
         notice: null,
         practice: true,
       });
@@ -390,6 +407,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
           view: snapshot.view,
           events: snapshot.events,
           eventSeq: get().eventSeq + 1,
+          shoutEvents: get().shoutEvents + countShouts(snapshot.events),
         });
         cuesFor(snapshot.events, local.seat, snapshot.view.rules, playCue);
       });
@@ -430,6 +448,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         seatNames: null,
         view: null,
         events: [],
+        shoutEvents: 0,
         reconnecting: false,
         hostLeft: false,
         offlineSeats: [],

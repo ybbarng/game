@@ -395,6 +395,7 @@ export function OnecardGame({
     reconnecting,
     hostLeft,
     offlineSeats,
+    shoutEvents,
   } = useOnecard();
   const submit = useOnecard((s) => s.submit);
   const shout = useOnecard((s) => s.shout);
@@ -511,6 +512,8 @@ export function OnecardGame({
   return (
     <main
       data-game="onecard"
+      // 받은 외침·잡기·헛외침 사건 수(말풍선은 잠깐이라 화면 시험은 이 값을 기다린다)
+      data-shouts={shoutEvents}
       className={cn(
         "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-2 text-white",
         ONECARD_BG,

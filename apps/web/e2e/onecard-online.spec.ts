@@ -97,7 +97,7 @@ async function slap(page: Page) {
   await page.keyboard.press("Space");
 }
 
-test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치면 청구가 방장 화면에도 말풍선으로 보인다", async ({
+test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치면 청구가 방장 화면에도 외침 사건으로 들어간다", async ({
   context,
 }, info) => {
   test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
@@ -118,11 +118,20 @@ test("원카드 일반방: 둘이 카드를 내고, 참가자가 더미를 치�
     path: test.info().outputPath("onecard-online-normal-guest.png"),
   });
 
-  // 참가자가 더미를 친다: 청구가 모두에게 가고, 방장이 묶음으로 엔진에 넣어 말풍선이 뜬다(헛외침이든 외침이든)
+  // 참가자가 더미를 친다: 청구가 모두에게 가고, 방장이 묶음으로 엔진에 넣는다(헛외침이든 외침이든).
+  // 말풍선은 1.5초만 떠서 부하 아래 놓칠 수 있으므로, 남는 상태(화면이 받은 외침 사건 수 `data-shouts`)를 기다린다
+  const shouts = (p: Page) =>
+    p
+      .locator('[data-game="onecard"]')
+      .getAttribute("data-shouts")
+      .then((v) => Number(v ?? 0));
+  // 빈 자리 컴퓨터도 외칠 수 있어 친 뒤 늘었는지로 본다
+  const before = [await shouts(host), await shouts(guest)];
   await slap(guest);
-  await expect(host.locator("[data-bubble]").first()).toBeVisible({
-    timeout: 10_000,
-  });
+  for (const [i, p] of [host, guest].entries())
+    await expect
+      .poll(() => shouts(p), { timeout: 30_000 })
+      .toBeGreaterThan(before[i] as number);
   await host.screenshot({
     path: test.info().outputPath("onecard-online-normal-host.png"),
   });
