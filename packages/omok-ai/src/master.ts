@@ -31,7 +31,7 @@ import {
   threatWin,
 } from "./threat";
 
-/** 읽기 양(노드 수). 맥북에서 한 수 가운데 300ms·가장 길게 1.5초 안쪽이 되게 맞췄다 */
+/** 읽기 양(노드 수). 목표는 맥북에서 한 수 가운데 300ms·가장 길게 1.5초 안쪽. 잰 값은 docs/20 3절(가운데 약 80ms, 가장 길게 약 300ms) */
 export interface MasterLimits {
   /** 사 몰아붙이기 길이(내 수, 마지막 다섯 포함)와 노드 */
   vcfMoves: number;

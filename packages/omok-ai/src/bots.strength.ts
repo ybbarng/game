@@ -26,21 +26,28 @@ const console = {
 declare const performance: { now(): number };
 
 const STANDARD: OmokRules = { variant: "standard", winsToFinish: 1 };
+/** 게임 기본값(2026-10-29 사용자) */
+const RENJU: OmokRules = { variant: "renju", winsToFinish: 1 };
 
 /** `strong`이 흑백을 번갈아 쥐고 `games`판 두어 이긴 판·비긴 판을 센다 */
-function duel(strong: OmokBot, weak: OmokBot, games: number) {
+function duel(
+  strong: OmokBot,
+  weak: OmokBot,
+  games: number,
+  rules: OmokRules = STANDARD,
+) {
   let wins = 0;
   let draws = 0;
   for (let seed = 1; seed <= games; seed++) {
     const seat = seed % 2;
     const bots: [OmokBot, OmokBot] =
       seat === 0 ? [strong, weak] : [weak, strong];
-    const end = playGame(bots, STANDARD, seed);
+    const end = playGame(bots, rules, seed);
     if (end.wins[seat] === 1) wins++;
     else if (end.result?.kind === "draw") draws++;
   }
   console.log(
-    `${strong.name} 대 ${weak.name}: ${wins}승 ${draws}무 / ${games}판`,
+    `${strong.name} 대 ${weak.name}(${rules.variant}): ${wins}승 ${draws}무 / ${games}판`,
   );
   return wins;
 }
@@ -68,10 +75,16 @@ it("초고수는 고수와 사 읽는 봇을 이긴다", () => {
 });
 
 /** `bot`이 `foe`와 몇 판 두며 한 수마다 걸린 시간을 잰다 */
-function timing(label: string, bot: OmokBot, foe: OmokBot, games: number) {
+function timing(
+  label: string,
+  bot: OmokBot,
+  foe: OmokBot,
+  games: number,
+  rules: OmokRules = STANDARD,
+) {
   const times: number[] = [];
   for (let seed = 1; seed <= games; seed++) {
-    let { state } = createMatch(STANDARD, seed);
+    let { state } = createMatch(rules, seed);
     const rng = createRng(seed + 1);
     const mine = seed % 2;
     while (state.phase === "play") {
@@ -87,11 +100,19 @@ function timing(label: string, bot: OmokBot, foe: OmokBot, games: number) {
   }
   times.sort((a, b) => a - b);
   console.log(
-    `${label} 한 수(${times.length}수): 가운데 ${times[times.length >> 1]?.toFixed(0)}ms, 90% ${times[Math.floor(times.length * 0.9)]?.toFixed(0)}ms, 가장 긴 ${times.at(-1)?.toFixed(0)}ms`,
+    `${label} 한 수(${rules.variant}, ${times.length}수): 가운데 ${times[times.length >> 1]?.toFixed(0)}ms, 90% ${times[Math.floor(times.length * 0.9)]?.toFixed(0)}ms, 가장 긴 ${times.at(-1)?.toFixed(0)}ms`,
   );
 }
 
 it("한 수에 걸리는 시간", () => {
   timing("고수", omokExpertBot, omokIntermediateBot, 2);
   timing("초고수", omokMasterBot, omokExpertBot, 6);
+});
+
+// 게임 기본값인 렌주로도 잰다(2026-11-03 game-85 검토). 아직 이 맥에서 돌리지 않았다(로컬 성능 측정 자제).
+it("렌주: 초고수는 고수를 이기고, 시간 안에 둔다", () => {
+  expect(duel(omokMasterBot, omokExpertBot, 20, RENJU)).toBeGreaterThanOrEqual(
+    14,
+  );
+  timing("초고수", omokMasterBot, omokExpertBot, 6, RENJU);
 });

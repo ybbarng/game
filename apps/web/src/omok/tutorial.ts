@@ -19,8 +19,11 @@ export type OmokScene = Omit<OmokScenarioOptions, "rules"> & {
 export type OmokLesson = Lesson<OmokView, GameEvent, OmokScene, Action>;
 type Context = MissionContext<OmokView, GameEvent>;
 
-/** 튜토리얼은 일반 규칙 한 판으로 한다 */
-export const OMOK_TUTORIAL_RULES = STANDARD_RULES;
+/** 튜토리얼은 게임 기본값인 렌주 한 판으로 한다(2026-10-29 사용자가 기본을 렌주로) */
+export const OMOK_TUTORIAL_RULES = {
+  ...STANDARD_RULES,
+  variant: "renju" as const,
+};
 
 /** 내가 처음 둔 자리 */
 function myFirstPlace({ view, events }: Context): number | null {
@@ -210,14 +213,15 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "forbidden",
     title: "금지 수",
-    summary: "일반 규칙은 3·3 금지, 렌주는 흑만 3·3·4·4·장목 금지",
+    summary:
+      "렌주(기본)는 흑만 3·3·4·4·장목 금지, 일반 규칙은 흑백 모두 3·3 금지",
     steps: [
       {
         kind: "explain",
         title: "3·3은 둘 수 없어요",
         body: [
           "한 수로 **열린 셋 두 개**가 한꺼번에 생기는 자리를 **3·3**이라고 해요. 막을 수 없는 공격이라 금지예요.",
-          "그림의 × 자리 H8에 흑을 두면 가로 셋과 세로 셋이 동시에 생겨요. **일반 규칙**에서는 흑과 백 모두 3·3에 둘 수 없어요.",
+          "그림의 × 자리 H8에 흑을 두면 가로 셋과 세로 셋이 동시에 생겨요. 기본 규칙인 **렌주**에서는 흑이 3·3에 둘 수 없어요(일반 규칙은 백도 금지).",
           "게임에서는 내 차례에 금지 자리를 ×로 보여 줘요(시작 화면에서 끌 수 있어요).",
         ],
         scene: DOUBLE_THREE_SCENE,
@@ -226,9 +230,9 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
         kind: "explain",
         title: "규칙 셋",
         body: [
+          "**렌주(기본)**: 먼저 두는 흑이 유리해서 **흑만** 3·3, 4·4(넷 두 개), 장목(여섯 이상)이 금지예요. 백은 다섯 이상이면 이겨요.",
           "**일반**: 정확히 다섯이어야 이겨요(여섯 이상은 아니에요). 흑백 모두 3·3 금지.",
           "**자유**: 다섯 이상이면 이겨요. 금지가 없어요.",
-          "**렌주**: 먼저 두는 흑이 유리해서 **흑만** 3·3, 4·4(넷 두 개), 장목(여섯 이상)이 금지예요. 백은 다섯 이상이면 이겨요.",
         ],
       },
       {
