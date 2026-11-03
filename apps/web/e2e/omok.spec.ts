@@ -446,6 +446,11 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
     .click();
   await play("F11");
   await expect(page.getByRole("status")).toHaveText("F11: 흑은 4·4 금지예요");
+  // 힌트를 누르면 금지 안내는 지워지고 힌트 자리를 겨눈다.
+  await page.getByRole("button", { name: "힌트" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "B11: 한 번 더 누르면 둔다",
+  );
   await play("B11");
   await expect(page.getByRole("status")).toHaveText(
     "계속 사로 몰아 다섯을 만드세요",

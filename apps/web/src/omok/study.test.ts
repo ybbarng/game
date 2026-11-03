@@ -80,7 +80,7 @@ describe("공격 문제(사로 몰아 이기기)", () => {
 
   it("렌주 문제는 금지가 없다면 이겼을 흑 자리(함정)가 있고, 그 자리는 정답이 아니다", () => {
     const renju = attacks.filter((p) => variantOf(p) === "renju");
-    expect(renju.length).toBeGreaterThanOrEqual(5);
+    expect(renju).toHaveLength(10);
     for (const p of renju) {
       const traps = trapsOf(p);
       expect(traps.length).toBeGreaterThan(0);
