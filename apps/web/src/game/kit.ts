@@ -286,8 +286,17 @@ export interface VerifyContext {
   claimsResolved?: readonly unknown[];
   /** 대기실이 컴퓨터로 적은 자리 */
   botSeats?: ReadonlySet<number>;
-  /** 끊긴 적이 있거나 새로고침으로 다시 들어와 받지 못한 발표가 있을 수 있다(받은 것이 빠짐없이 차례대로인지만 본다) */
+  /**
+   * 끊긴 적이 있거나 새로고침으로 다시 들어와 받지 못한 발표가 있을 수 있다. `gaps`가 없으면 받은 것이 빠짐없이
+   * 차례대로인지만 본다
+   */
   partial?: boolean;
+  /**
+   * 받지 못한 발표가 끼어 있을 수 있는 자리: 끊길 때(새로고침이면 0)까지 받아들인 발표 수(`claimsResolved` 안의 위치).
+   * 끊긴 뒤 다시 받은 첫 발표가 그 구간의 끝이다(발표는 차례대로 오므로 그 뒤의 것은 모두 받았다).
+   * `partial`이어도 이 자리 밖의 기록 속 청구 묶음은 받은 발표와 같아야 한다
+   */
+  gaps?: readonly number[];
   /** 기록이 끝까지다(게임 끝 검증). 아니면(판마다 검증) 뒤따를 기록이 있어 앞부분만 본다 */
   complete?: boolean;
 }

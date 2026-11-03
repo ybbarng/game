@@ -1,3 +1,4 @@
+import { ReductionStuckError } from "@game/cube-reduction";
 import type { PuzzleState } from "@game/puzzle-core";
 import { type BotLevel, solveHuman } from "./methods";
 import type { HumanSolve, SolveStage, StageName } from "./solve";
@@ -67,7 +68,7 @@ export interface BotPlan {
   stages: SolveStage[];
   /** 마지막 수를 둔 시각(ms). 수가 없으면 살펴보기 시간 */
   finishAt: number;
-  /** 고른 단계의 해법이 실패해 초고수 해를 그 단계 빠르기로 대신 두었다 */
+  /** 고른 단계의 3×3 해법이 실패해 초고수 해를 그 단계 빠르기로 대신 두었다 */
   fallback?: true;
 }
 
@@ -93,10 +94,15 @@ function rng(seed: number): () => number {
 const isRotationMove = (m: string) => /^[xyz]/.test(m);
 
 /**
- * 고른 단계의 해법이 실패하면(4×4·5×5 축소법이 막힘 `ReductionStuckError`, 3×3 사람 해법이
- * 못 맞춤 등) 초고수 해(축소법 + 2단계 3×3 해법)로 대신한다. 빠르기는 고른 단계 그대로라
- * 입문이 갑자기 빨라지지 않는다. 같은 상태면 늘 같은 대체라 다른 기기가 다시 계산해도 같은
- * 계획이 나온다. 초고수 해도 실패하면 그 오류를 그대로 던진다(화면이 그 판을 기권시킨다).
+ * 고른 단계의 해법이 실패하면(축소 뒤 3×3 사람 해법이 못 맞춤 등) 초고수 해(축소법 + 2단계
+ * 3×3 해법)로 대신한다. 빠르기는 고른 단계 그대로라 입문이 갑자기 빨라지지 않는다. 같은
+ * 상태면 늘 같은 대체라 다른 기기가 다시 계산해도 같은 계획이 나온다. 초고수 해도 실패하면
+ * 그 오류를 그대로 던진다(화면이 그 판을 기권시킨다).
+ *
+ * 4×4·5×5 축소법이 막힌 오류(`ReductionStuckError`)는 대신하지 않고 바로 던진다. 축소법은
+ * 모든 단계가 함께 쓰고(big.ts `reduction`, 돌려 쥐기까지 다 해 본 뒤의 오류) 같은 상태면
+ * 결과가 같아서, 초고수로 다시 풀어도 똑같이 막힌다. 다시 풀면 5×5 돌려 쥐기 여섯 번을 한 번
+ * 더 계산할 뿐이다.
  */
 function solveOrFallback(
   level: BotLevel,
@@ -108,6 +114,7 @@ function solveOrFallback(
     return { solve: solve(level, size, state), fallback: false };
   } catch (e) {
     if (level === "expert" || e instanceof RangeError) throw e;
+    if (e instanceof ReductionStuckError) throw e;
     return { solve: solve("expert", size, state), fallback: true };
   }
 }

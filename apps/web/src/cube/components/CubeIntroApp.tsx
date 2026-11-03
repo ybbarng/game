@@ -180,12 +180,27 @@ export function CubeIntroApp() {
                 밀면 큐브 전체가 돕니다. 화면 아래 표기 단추도 있습니다.
                 마우스로 끌면 보는 각만 바뀝니다.
               </p>
-              <a
-                href="/cube/settings"
-                className="self-start rounded-xl bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
-              >
-                키·색 설정 열기
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="/cube/keys/learn"
+                  data-intro-keys
+                  className="rounded-xl border border-sky-300/60 bg-sky-500/25 px-3 py-1.5 text-sm hover:bg-sky-500/35"
+                >
+                  키 익히기: 직접 쳐 보며 손에 익히기
+                </a>
+                <a
+                  href="/cube/keys"
+                  className="rounded-xl bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+                >
+                  단축키 표
+                </a>
+                <a
+                  href="/cube/settings"
+                  className="rounded-xl bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+                >
+                  키·색 설정 열기
+                </a>
+              </div>
             </>
           )}
           {step.id === "time" && (

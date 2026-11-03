@@ -482,3 +482,126 @@ test("은하 한 바퀴 온라인: 방장이 방을 만들고 친구가 링크�
     });
   expect(errors).toEqual([]);
 });
+
+test("은하 한 바퀴 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "desktop",
+    "배우기 진행은 크기와 상관없다(화면 배치는 아래 시험이 크기마다 본다)",
+  );
+  const next = () =>
+    page.getByRole("button", { name: "다음", exact: true }).click();
+  await page.goto("/galaxy");
+  await ready(page);
+  await page.getByRole("button", { name: /은하 한 바퀴 배우기/ }).click();
+  await expect(page.getByText("0/9")).toBeVisible();
+
+  // 1단원: 설명 둘 → 퀴즈 둘(틀리면 다시 풀기)
+  await page.getByRole("button", { name: /어떤 게임/ }).click();
+  await next();
+  await next();
+  await page.getByRole("button", { name: "다음 판으로 이어진다" }).click();
+  await expect(page.getByText("아쉬워요")).toBeVisible();
+  await page.getByRole("button", { name: "다시 풀기" }).click();
+  await page.getByRole("button", { name: "판과 함께 사라진다" }).click();
+  await expect(page.getByText("정답이에요!")).toBeVisible();
+  await next();
+  await page.getByRole("button", { name: /^자산/ }).click();
+  await next();
+  await expect(page.getByText("단원 완료!")).toBeVisible();
+  await page.getByRole("button", { name: "단원 목록으로" }).click();
+  await expect(page.getByText("1/9")).toBeVisible();
+
+  // 2단원 미션: 정해 둔 눈(1·1 → 2·3)으로 굴려 우주국에 멈춘다
+  await page.getByRole("button", { name: /주사위와 한 바퀴/ }).click();
+  await next();
+  await next();
+  await page.getByRole("button", { name: "8칸 가고 한 번 더 굴린다" }).click();
+  await next();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  for (let i = 0; i < 2; i++) await rollButton(page).click();
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await next();
+  await page.getByRole("button", { name: "단원 목록으로" }).click();
+
+  // 3단원 미션: 넘기면 실패 → 다시 하기 → 사면 성공
+  await page.getByRole("button", { name: /별 사기와 이용료/ }).click();
+  await next();
+  await next();
+  await page.getByRole("button", { name: "✦40" }).click();
+  await next();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await rollButton(page).click();
+  await passButton(page).click();
+  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await rollButton(page).click();
+  await expect(buyButton(page)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("galaxy-mission.png") });
+  await buyButton(page).click();
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await next();
+  await expect(page.getByText("단원 완료!")).toBeVisible();
+
+  // 미션 대국은 이어하기에 남지 않는다
+  await page.goto("/galaxy");
+  await ready(page);
+  await expect(page.getByText("3/9 단원 마침")).toBeVisible();
+  await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
+});
+
+test("은하 한 바퀴 배우기 화면: 단원 목록, 별자리 그림 퀴즈, 공문 퀴즈, 별자리 퀴즈", async ({
+  page,
+}, info) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "galaxy-tutorial",
+      JSON.stringify({
+        state: {
+          completed: ["goal", "dice", "buy", "link", "notice", "auction"],
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto("/galaxy");
+  await ready(page);
+  await page.getByRole("button", { name: /은하 한 바퀴 배우기/ }).click();
+  await expect(page.getByText("6/9")).toBeVisible();
+  expect(await noOverflow(page)).toBe(false);
+  await page.screenshot({ path: info.outputPath("galaxy-learn-home.png") });
+
+  // 7단원: 선 그림을 보고 별자리 이름 고르기
+  await page.getByRole("button", { name: /별자리 익히기 ①/ }).click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.locator('[data-scene-sky="Ori"]')).toBeVisible();
+  await page.getByRole("button", { name: "오리온자리" }).click();
+  await expect(page.getByText("정답이에요!")).toBeVisible();
+  expect(await noOverflow(page)).toBe(false);
+  await page.screenshot({ path: info.outputPath("galaxy-learn-sky.png") });
+  await page.getByRole("button", { name: "단원 나가기" }).click();
+
+  // 5단원(끝낸 단원 다시 보기): 공문 퀴즈의 판 그림과 공문 종이
+  await page.getByRole("button", { name: /우주국 공문과 소행성대/ }).click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.locator("[data-scene-card]")).toBeVisible();
+  await expect(page.locator("[data-galaxy-board]")).toBeVisible();
+  expect(await noOverflow(page)).toBe(false);
+  await page.screenshot({ path: info.outputPath("galaxy-learn-card.png") });
+  await page.getByRole("button", { name: "단원 나가기" }).click();
+
+  // 별자리 퀴즈: 하나 풀면 이 기기 기록이 쌓인다
+  await page.locator("[data-tutorial-extra]").click();
+  await expect(page.locator("[data-star-quiz-score]")).toContainText("0/0");
+  await page.locator("[data-star-option]").first().click();
+  await expect(page.locator("[data-star-quiz-score]")).toContainText("/1");
+  expect(await noOverflow(page)).toBe(false);
+  await page.screenshot({ path: info.outputPath("galaxy-star-quiz.png") });
+});

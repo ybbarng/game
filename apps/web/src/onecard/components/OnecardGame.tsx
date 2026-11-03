@@ -297,10 +297,14 @@ function Pile({
   turnNoRef.current = view.turnNo;
   const shoutRef = useRef(onShout);
   shoutRef.current = onShout;
+  const overRef = useRef(view.phase === "over");
+  overRef.current = view.phase === "over";
   const [slap, setSlap] = useState(0);
   const press = useRef<ShoutPress | null>(null);
   if (press.current === null)
     press.current = new ShoutPress(realClock, (s) => {
+      // 판이 끝난 뒤의 스페이스도 치지 않는다(단추는 `disabled`)
+      if (overRef.current) return;
       setSlap((n) => n + 1);
       shoutRef.current(s);
     });
@@ -327,11 +331,13 @@ function Pile({
   const under = view.pile.at(-2) ?? null;
   const release = (e: React.PointerEvent) =>
     press.current?.release(e.pointerId);
+  // 판이 끝나면 더미 치기를 끈다(모습은 그대로, 온라인 방은 판 끝에 청구 통로를 닫는다)
   return (
     <button
       type="button"
       aria-label="가운데 더미(치면 원카드!)"
       data-pile
+      disabled={view.phase === "over"}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         press.current?.press(e.pointerId, seenAt(e.timeStamp));
@@ -389,6 +395,7 @@ export function OnecardGame({
     reconnecting,
     hostLeft,
     offlineSeats,
+    shoutEvents,
   } = useOnecard();
   const submit = useOnecard((s) => s.submit);
   const shout = useOnecard((s) => s.shout);
@@ -505,6 +512,9 @@ export function OnecardGame({
   return (
     <main
       data-game="onecard"
+      // 받은 외침·잡기·헛외침 사건 수를 자리 순서로(말풍선은 잠깐이라 화면 시험은 이 값을 기다린다)
+      data-shouts-by={shoutEvents.join(",")}
+      data-my-seat={view.mySeat}
       className={cn(
         "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-2 text-white",
         ONECARD_BG,
