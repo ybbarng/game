@@ -40,6 +40,7 @@ COPY packages/baseball-engine/package.json packages/baseball-engine/
 COPY packages/baseball-ai/package.json packages/baseball-ai/
 COPY packages/yut-engine/package.json packages/yut-engine/
 COPY packages/yut-ai/package.json packages/yut-ai/
+COPY packages/galaxy-engine/package.json packages/galaxy-engine/
 COPY packages/stardraw-core/package.json packages/stardraw-core/
 COPY packages/stardraw-cli/package.json packages/stardraw-cli/
 COPY packages/puzzle-core/package.json packages/puzzle-core/
@@ -47,6 +48,7 @@ COPY packages/cube-engine/package.json packages/cube-engine/
 COPY packages/cube-reduction/package.json packages/cube-reduction/
 COPY packages/cube-solver/package.json packages/cube-solver/
 COPY packages/cube-scramble/package.json packages/cube-scramble/
+COPY packages/cube-ai/package.json packages/cube-ai/
 # lefthook 같은 개발용 설치 스크립트는 돌리지 않는다
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
