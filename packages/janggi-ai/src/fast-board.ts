@@ -1,12 +1,8 @@
-import {
-  type Board,
-  CELLS,
-  type Cell,
-  HEIGHT,
-  type Kind,
-  type Side,
-  WIDTH,
-} from "@game/janggi-engine";
+import type { Board, Cell, Kind, Side } from "@game/janggi-engine";
+import * as engine from "@game/janggi-engine";
+
+// 판 크기는 이 파일의 상수로 둔다(반복문마다 시험 환경의 모듈 연결을 거치지 않게).
+const { CELLS, HEIGHT, WIDTH } = engine;
 
 /*
  * 고수 탐색용 빠른 판. 엔진의 `pseudoTargets`·`attacked`와 같은 규칙을

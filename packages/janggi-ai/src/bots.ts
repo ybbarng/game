@@ -158,7 +158,7 @@ export function createJanggiDeepBot(
  * 초고수의 노드 예산(docs/22 3절). 시간이 아니라 노드로 끊어 어느 기기에서도 같은 수가 나온다
  * (온라인 판 끝 검증이 컴퓨터 수를 다시 계산한다). 바꾸면 옛 판의 다시 계산이 어긋난다
  */
-export const MASTER_BUDGET: DeepOptions = { nodes: 36_000, softNodes: 10_000 };
+export const MASTER_BUDGET: DeepOptions = { nodes: 50_000, softNodes: 16_000 };
 
 /**
  * 초고수: 수마다 계획(전개·궁성 공격·단순하게·외통 몰기·버티기, plan.ts)을 세우고,

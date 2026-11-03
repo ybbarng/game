@@ -1,21 +1,20 @@
-import {
-  CELLS,
-  type JanggiView,
-  MOVE_LIMIT,
-  type Move,
-  sideOfSeat,
-  WIDTH,
-} from "@game/janggi-engine";
+import type { JanggiView, Move } from "@game/janggi-engine";
+import * as engine from "@game/janggi-engine";
 import { nextInt, type RngState } from "@game/mighty-engine";
 
-import {
+import * as fast from "./fast-board";
+import { type PlanWeights, planFor } from "./plan";
+
+// 가져온 값·함수는 이 파일의 상수로 묶는다(탐색 반복문마다 시험 환경의 모듈 연결을 거치지 않게).
+const { CELLS, MOVE_LIMIT, WIDTH, sideOfSeat } = engine;
+const {
   A,
-  attacked as attackedFn,
+  attacked,
   C,
   codeOf,
   E,
   encodeMove,
-  generate as generateFn,
+  generate,
   K,
   N,
   P,
@@ -23,12 +22,7 @@ import {
   R,
   sideIndex,
   toFast,
-} from "./fast-board";
-import { type PlanWeights, planFor } from "./plan";
-
-// 자주 부르는 함수는 이 파일의 상수로 묶는다(시험 환경의 모듈 연결을 거치지 않게).
-const attacked = attackedFn;
-const generate = generateFn;
+} = fast;
 const moveFrom = (m: number) => m >> 7;
 const moveTo = (m: number) => m & 127;
 

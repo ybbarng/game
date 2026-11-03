@@ -1,6 +1,10 @@
-import { CELLS, type JanggiView, sideOfSeat, WIDTH } from "@game/janggi-engine";
+import type { JanggiView } from "@game/janggi-engine";
+import * as engine from "@game/janggi-engine";
 
-import { A, C, E, K, N, P, R, sideIndex, toFast } from "./fast-board";
+import * as fast from "./fast-board";
+
+const { CELLS, WIDTH, sideOfSeat } = engine;
+const { A, C, E, K, N, P, R, sideIndex, toFast } = fast;
 
 /*
  * 초고수의 계획(docs/22 3절). 수마다 지금 판을 보고 할 일을 하나 정한다.
