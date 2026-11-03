@@ -371,11 +371,11 @@ const beginnerPolicy: Policy = {
 /* ───────────── 중수 ───────────── */
 
 /**
- * 중수가 남길 돈: 지금 남의 별 이용료 가운데 가장 큰 값(적어도 60). 이용료를 두 배로 올리기 전(1단 0.1p)에는
- * 1.5배였다. 같은 배수면 남의 큰 정거장 하나에 사기·입찰이 모두 멈춘다
+ * 중수가 남길 돈: 지금 남의 별 이용료 가운데 가장 큰 값의 1.5배(적어도 60). 1배로 줄여 보았더니
+ * 정거장을 남길 돈 끝까지 지어 큰 정거장 한 번에 운항 중단이 잦았다(docs/48 3-6)
  */
 function intermediateReserve(ctx: Ctx): number {
-  return Math.max(60, maxOpponentRent(ctx.view, ctx.seat));
+  return Math.max(60, 1.5 * maxOpponentRent(ctx.view, ctx.seat));
 }
 
 /** 중수가 이 별을 더 쳐주는 몫: 내 별자리를 잇는 별 +0.5, 남의 별자리를 막는 별 +0.3 */
