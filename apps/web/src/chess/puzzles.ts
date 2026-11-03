@@ -57,6 +57,18 @@ const MATE_IN_TWO: readonly Raw[] = [
   { fen: "k7/1p6/p7/1Q6/3R4/3P4/P7/K7 w - - 0 30", solution: "Qb6" },
   { fen: "3k4/8/8/5Q2/1R6/8/3BK2P/8 w - - 0 30", solution: "Rb7" },
   { fen: "7k/7p/5Np1/R5p1/8/3P4/P1KQ4/8 w - - 0 30", solution: "Ra7" },
+  // 2026-11-03 더함(엔진으로 찾음). 끝줄로 끌어내기·막는 기물 떼어 내기
+  { fen: "7k/6pp/3b4/N7/8/P7/1R3PQ1/3K4 w - - 0 30", solution: "Qa8+" },
+  { fen: "7k/R2b2pp/8/8/N7/7P/3P4/K7 w - - 0 30", solution: "Ra8+" },
+  { fen: "8/1k6/1p6/pQ5R/8/8/1P3P2/2K5 w - - 0 30", solution: "Rh7+" },
+  { fen: "4kN2/3ppp2/4B3/8/2PQ4/8/8/3K4 w - - 0 30", solution: "Bxd7+" },
+  { fen: "6k1/4pppp/8/6R1/4PNR1/8/5K2/8 w - - 0 30", solution: "Rxg7+" },
+  // 조용한 첫 수: 그물을 먼저 치고 다음 수에 끝낸다
+  { fen: "6k1/5p1p/6p1/2R3B1/2Q3P1/5P2/8/K7 w - - 0 30", solution: "Bh6" },
+  { fen: "6Nk/7p/8/8/1P6/6R1/3K2P1/8 w - - 0 30", solution: "Nf6" },
+  { fen: "4N1k1/6pp/8/8/4Q3/4N2P/K3P3/8 w - - 0 30", solution: "Qe7" },
+  { fen: "k7/pp5n/8/8/1Q4B1/4P3/7P/1K6 w - - 0 30", solution: "Bf3" },
+  { fen: "1k6/p3p3/1pR5/1Q6/1P3P2/8/2K5/8 w - - 0 30", solution: "Qa6" },
 ];
 
 /*
