@@ -103,6 +103,17 @@ export function CubeHome() {
             키보드 두 손으로 돌리는 3D 큐브. 기록은 이 기기에만 남습니다.
           </p>
         </div>
+        <a
+          href="/cube/intro"
+          data-cube-intro-link
+          className="flex items-center justify-between gap-2 rounded-2xl border border-amber-300/50 bg-amber-400/15 px-4 py-2.5 text-sm hover:bg-amber-400/25"
+        >
+          <span>
+            <b>처음 오셨나요?</b>{" "}
+            <span className="text-white/75">표기·키·시간 규칙 안내</span>
+          </span>
+          <span aria-hidden>→</span>
+        </a>
         {ITEMS.map((item) => {
           const body = (
             <>
