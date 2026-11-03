@@ -180,7 +180,7 @@ export function CubeOnlineApp() {
         )}
         {room?.hostLeft && (
           <p role="status" className="text-center text-amber-300 text-sm">
-            방장이 나갔습니다
+            방장 연결이 끊김
           </p>
         )}
         {phase === "room" && room && !state && (
