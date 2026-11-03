@@ -80,7 +80,7 @@ export function playGame(
 
   const afterStep = (events: GameEvent[]) => {
     for (let s = 0; s < n; s++)
-      observe(memories[s] as OnecardMemory, events, viewOf(state, s));
+      observe(memories[s] as OnecardMemory, events, viewOf(state, s), now);
     if (!withShouts) return;
     for (const w of shoutWindows(state)) {
       if (timedWindows.has(w.id)) continue;
@@ -140,6 +140,7 @@ export function playGame(
             type: "timeout",
             kind: timer.window,
             target: timer.target,
+            id: timer.id,
           });
       } else {
         const action = shoutAction(

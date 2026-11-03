@@ -26,12 +26,13 @@ function table(options: OnecardScenarioOptions) {
       return state;
     },
     memories,
-    act(seat: number, action: Action) {
+    /** `now`: 받아들인 시각(ms). 없으면 기억이 시간을 따지지 않는다 */
+    act(seat: number, action: Action, now?: number) {
       const r = step(state, seat, action);
       if (!r.ok) throw new Error(r.error);
       state = r.state;
       memories.forEach((m, s) => {
-        observe(m, r.events, viewOf(state, s));
+        observe(m, r.events, viewOf(state, s), now);
       });
       return r.events;
     },
@@ -85,6 +86,69 @@ describe("기억", () => {
     expect(t.memories[1]?.marks[1]).toBe("exposed");
     t.act(1, { type: "shout", seen: t.state.turnNo });
     expect(t.memories[0]?.marks[1]).toBe("safe");
+  });
+
+  it("본인 시간 P가 지나 엔진이 받지 않은 본인 외침은 안전으로 보지 않고 잡으러 간다", () => {
+    // 시각 0에 1번이 외치지 않고 한 장이 된다
+    const t = table({
+      hands: [
+        ["D3", "D4", "C5"],
+        ["H9", "S3"],
+        ["C9", "D8", "SK"],
+      ],
+      pile: ["H5"],
+      turn: 1,
+    });
+    t.act(1, { type: "play", card: "H9" }, 0);
+    // 1초(P)가 지나 잡기 창이 됐고, 1.5초에 1번이 외친다 → 엔진은 받지 않는다(lateSelf)
+    t.act(1, { type: "timeout", kind: "selfWindow", target: 1 }, 1000);
+    expect(judgeShout(t.state, 1, t.state.turnNo).kind).toBe("lateSelf");
+    t.act(1, { type: "shout", seen: t.state.turnNo }, 1500);
+    const memory = t.memories[0] as OnecardMemory;
+    expect(memory.marks[1]).toBe("exposed");
+    // 그래서 0번은 여전히 잡을 수 있다
+    const plan = planShout(viewOf(t.state, 0), 2, createRng(1), memory);
+    expect(plan).toMatchObject({ reason: "catch", target: 1 });
+    const action = shoutAction(
+      plan as NonNullable<typeof plan>,
+      viewOf(t.state, 0),
+      memory,
+    );
+    expect(t.act(0, action as Action, 1600)).toContainEqual({
+      type: "caught",
+      seat: 0,
+      target: 1,
+    });
+  });
+
+  it("본인 시간 P 안(여유 포함)의 외침은 안전, 시각을 모르면 외침은 모두 안전", () => {
+    const inTime = exposedOne();
+    inTime.memories.forEach((m) => {
+      m.exposedAt[1] = 0;
+    });
+    inTime.act(1, { type: "shout", seen: inTime.state.turnNo }, 1200);
+    expect(inTime.memories[0]?.marks[1]).toBe("safe");
+
+    const noClock = exposedOne();
+    noClock.act(1, { type: "timeout", kind: "selfWindow", target: 1 });
+    noClock.act(1, { type: "shout", seen: noClock.state.turnNo });
+    expect(noClock.memories[0]?.marks[1]).toBe("safe");
+  });
+
+  it("P가 0이면 본인 외침은 늘 받지 않으므로 잡을 거리로 남는다", () => {
+    const t = table({
+      hands: [
+        ["D3", "D4", "C5"],
+        ["H9", "S3"],
+      ],
+      pile: ["H5"],
+      turn: 1,
+      rules: { selfWindowMs: 0 },
+    });
+    t.act(1, { type: "play", card: "H9" }, 0);
+    expect(judgeShout(t.state, 1, t.state.turnNo).kind).toBe("lateSelf");
+    t.act(1, { type: "shout", seen: t.state.turnNo }, 100);
+    expect(t.memories[0]?.marks[1]).toBe("exposed");
   });
 
   it("두 장인 차례에 미리 외치고 내면 처음부터 안전", () => {

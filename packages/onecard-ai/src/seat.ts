@@ -18,8 +18,11 @@ export interface OnecardSeatBot {
   chooseAction(view: OnecardView, rng: RngState): Action;
   /** 몇 ms 뒤에 외칠지. 없으면 null. 받아들인 행동마다 null이 나올 때까지 부른다 */
   planShout(view: OnecardView, rng: RngState): ShoutPlan | null;
-  /** 받아들인 행동 하나의 사건과 그 뒤 이 자리 화면 */
-  hear(events: readonly GameEvent[], view: OnecardView): void;
+  /**
+   * 받아들인 행동 하나의 사건과 그 뒤 이 자리 화면. `nowMs`(받아들인 시각)를 주면 본인 시간 P가 지난 늦은
+   * 본인 외침(엔진이 받지 않아 여전히 잡힌다)을 가려 잡으러 간다. 없으면 외침은 모두 안전으로 본다
+   */
+  hear(events: readonly GameEvent[], view: OnecardView, nowMs?: number): void;
   /**
    * 계획한 시간이 됐을 때 넣을 외침(`seen` = 지금 `turnNo`). 그사이 외쳤거나 먹어 누를 까닭이 없어졌으면 null.
    * 부르지 않고 바로 `{type:"shout", seen: view.turnNo}`를 넣어도 되지만, 그러면 헛외침이 늘어난다
@@ -37,7 +40,7 @@ export function createSeatBot(level: OnecardLevel): OnecardSeatBot {
     level,
     chooseAction: (view, rng) => chooseAction(view, level, rng, mind(view)),
     planShout: (view, rng) => planShout(view, level, rng, mind(view)),
-    hear: (events, view) => observe(mind(view), events, view),
+    hear: (events, view, nowMs) => observe(mind(view), events, view, nowMs),
     shoutNow: (plan, view) => shoutAction(plan, view, mind(view)),
   };
 }
