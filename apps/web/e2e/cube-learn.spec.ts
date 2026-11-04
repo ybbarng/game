@@ -86,6 +86,89 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   );
 });
 
+/** 「두 손」 배치(기본)의 면 수 → 키캡 글(keys/move-keys.ts `keycapLabel`) */
+const TWO_HAND: Record<string, string> = {
+  R: "I",
+  "R'": "K",
+  L: "D",
+  "L'": "E",
+  U: "J",
+  "U'": "F",
+  D: "S",
+  "D'": "L",
+  F: "H",
+  "F'": "G",
+  B: "W",
+  "B'": "O",
+};
+const twoHandCaps = (move: string) => {
+  const base = TWO_HAND[move.replace(/2$/, "")] as string;
+  return move.endsWith("2") ? `${base} ${base}` : base;
+};
+
+test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 키를 함께 보인다(R → I)", async ({
+  page,
+}, info) => {
+  // 키 배치를 저장하지 않으면 「두 손」
+  await page.goto("/cube/learn?lesson=333-notation");
+  const desktop = info.project.name === "desktop";
+  const section = page.locator("[data-step-kind]");
+  while ((await section.getAttribute("data-step-kind")) !== "demo")
+    await page.locator("[data-step-next]").click();
+  const demo = page.locator("[data-cube-demo]");
+  const first = demo.locator("[data-move-chip]").first();
+  const firstMove = (await first.getAttribute("data-move-chip")) as string;
+  if (desktop)
+    await expect(demo.locator("[data-move-keys]").first()).toHaveAttribute(
+      "data-move-keys",
+      twoHandCaps(firstMove),
+    );
+  else await expect(demo.locator("[data-move-keys]")).toHaveCount(0);
+  await shot(page, "learn-keys-demo", info.project.name);
+
+  while ((await section.getAttribute("data-step-kind")) !== "try")
+    await page.locator("[data-step-next]").click();
+  await inputReady(page);
+  await page.locator("[data-cube-hint-button]").click();
+  const hint = page.locator("[data-cube-hint]");
+  const move = (await hint.getAttribute("data-cube-hint")) as string;
+  if (!desktop) {
+    // 휴대폰은 키캡 없이 표기만
+    await expect(hint.locator("[data-move-keys]")).toHaveCount(0);
+    await shot(page, "learn-keys-hint", info.project.name);
+    return;
+  }
+  const caps = twoHandCaps(move);
+  await expect(hint.locator("[data-move-keys]")).toHaveAttribute(
+    "data-move-keys",
+    caps,
+  );
+  // 키 그림에서 칠 키가 빛난다
+  const code = `Key${caps.split(" ")[0]}`;
+  await expect(page.locator(`[data-key="${code}"][data-key-want]`)).toHaveCount(
+    1,
+  );
+  await shot(page, "learn-keys-hint", info.project.name);
+  for (const k of caps.split(" ")) await page.keyboard.press(`Key${k}`);
+  await expect(page.locator("[data-cube-pass]")).toBeVisible();
+
+  // 따라 하기: 본문 속 수와 칠 수에도 같은 키
+  while ((await section.getAttribute("data-step-kind")) !== "turn")
+    await page.locator("[data-step-next]").click();
+  await inputReady(page);
+  const turn = page.locator('[data-act="turn"] [data-move-keys]');
+  await expect(turn).toHaveCount(1);
+  const turnCaps = (await turn.getAttribute("data-move-keys")) as string;
+  await expect(
+    page.locator("[data-step-body] [data-move-keys]").first(),
+  ).toBeVisible();
+  for (const k of turnCaps.split(" ")) await page.keyboard.press(`Key${k}`);
+  await expect(page.locator('[data-act="turn"]')).toHaveAttribute(
+    "data-act-passed",
+    "",
+  );
+});
+
 test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", async ({
   page,
 }, info) => {

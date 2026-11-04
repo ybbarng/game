@@ -73,7 +73,7 @@ export function KeyCaps({
         <kbd
           // biome-ignore lint/suspicious/noArrayIndexKey: 같은 키가 되풀이된다(R2 = I I)
           key={i}
-          className="rounded border border-current/35 px-1 font-sans font-normal text-[10px] leading-4 opacity-85"
+          className="min-w-4 rounded border border-current/40 px-1 text-center font-sans font-semibold text-[11px] leading-4 opacity-90"
         >
           {keycapLabel(k)}
         </kbd>
