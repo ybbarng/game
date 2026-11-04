@@ -1,5 +1,13 @@
 import { useSyncExternalStore } from "react";
 
+import {
+  DEFAULT_HERO_SIZE,
+  findHeroMethod,
+  HERO_ALTERNATE,
+  type HeroChoice,
+  type HeroSize,
+  isHeroSize,
+} from "./hero/methods";
 import { DEFAULT_COLORS, type Quality } from "./view/types";
 
 /**
@@ -43,6 +51,10 @@ export interface CubeSettings {
   sound: boolean;
   /** 혼자 맞추기의 15초 살펴보기 */
   inspection: boolean;
+  /** 첫 화면 큐브 연출의 크기 */
+  heroSize: HeroSize;
+  /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
+  heroMethod: HeroChoice;
 }
 
 export const DEFAULT_SETTINGS: CubeSettings = {
@@ -55,6 +67,8 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   hidden: "black",
   sound: true,
   inspection: true,
+  heroSize: DEFAULT_HERO_SIZE,
+  heroMethod: HERO_ALTERNATE,
 };
 
 export const SETTINGS_KEY = "cube.settings.v1";
@@ -104,6 +118,13 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     d.quality === "high" || d.quality === "medium" || d.quality === "low"
       ? d.quality
       : DEFAULT_SETTINGS.quality;
+  const heroSize = isHeroSize(d.heroSize) ? d.heroSize : DEFAULT_HERO_SIZE;
+  // 그 크기의 해법이 아니면(표에서 빠졌거나 크기가 바뀜) 「번갈아」
+  const heroMethod =
+    typeof d.heroMethod === "string" &&
+    findHeroMethod(d.heroMethod)?.size === heroSize
+      ? d.heroMethod
+      : HERO_ALTERNATE;
   const bool = (v: unknown, fallback: boolean) =>
     typeof v === "boolean" ? v : fallback;
   return {
@@ -116,6 +137,8 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     hidden: d.hidden === "gray" ? "gray" : "black",
     sound: bool(d.sound, DEFAULT_SETTINGS.sound),
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
+    heroSize,
+    heroMethod,
   };
 }
 
