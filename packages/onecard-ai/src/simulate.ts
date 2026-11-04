@@ -9,6 +9,7 @@ import {
   type GameEvent,
   type OnecardRules,
   type OnecardState,
+  raceGather,
   seededReshuffle,
   shoutWindows,
   shuffledOnecardDeck,
@@ -35,8 +36,10 @@ type Timer =
       kind: "window";
       id: number;
       target: number;
-      window: "selfWindow" | "catchWindow";
+      window: "selfWindow" | "catchWindow" | "raceWindow";
     }
+  /** o2: 모으는 시간 끝 */
+  | { at: number; order: number; kind: "gather"; since: number; seat: number }
   | { at: number; order: number; kind: "shout"; seat: number; plan: ShoutPlan };
 
 export interface SimulatedGame {
@@ -66,6 +69,7 @@ export function playGame(
   const shouts = new Array<number>(n).fill(0);
   const timers: Timer[] = [];
   const timedWindows = new Set<number>();
+  const timedGathers = new Set<number>();
   let order = 0;
   let now = 0;
   let turnAt = turnMs;
@@ -92,6 +96,17 @@ export function playGame(
         id: w.id,
         target: w.seat,
         window: w.kind,
+      });
+    }
+    const gather = raceGather(state);
+    if (gather && !timedGathers.has(gather.since)) {
+      timedGathers.add(gather.since);
+      timers.push({
+        at: now + gather.ms,
+        order: order++,
+        kind: "gather",
+        since: gather.since,
+        seat: gather.seat,
       });
     }
     for (let s = 0; s < n; s++) {
@@ -134,7 +149,10 @@ export function playGame(
     if (first >= 0) {
       const [timer] = timers.splice(first, 1) as [Timer];
       now = timer.at;
-      if (timer.kind === "window") {
+      if (timer.kind === "gather") {
+        if (raceGather(state)?.since === timer.since)
+          apply(timer.seat, { type: "raceEnd" });
+      } else if (timer.kind === "window") {
         if (shoutWindows(state).some((w) => w.id === timer.id))
           apply(timer.target, {
             type: "timeout",

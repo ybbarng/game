@@ -41,6 +41,8 @@ export interface OnecardMemory {
   seat: number;
   /** 본인 시간 P(ms, 규칙) */
   selfWindowMs: number;
+  /** o2 겨루기 규칙(본인 시간·미리 외침이 없다. 한 장인 사람의 외침은 늘 받아들여졌거나 잡혔다) */
+  race: boolean;
   /** 지난 화면의 판 모양(먹은 까닭을 짐작할 때 쓴다) */
   counts: number[];
   turn: number;
@@ -52,6 +54,8 @@ export interface OnecardMemory {
   nextMarkId: number;
   /** 외치지 않은 채 한 장이 된 시각(ms). 시각을 받지 않았으면 null */
   exposedAt: (number | null)[];
+  /** 외치지 않은 채 한 장이 된 판 번호(o2 겨루기 누름의 `seen`). 모르면 null */
+  exposedTurn: (number | null)[];
   /** 자리별 없다고 짐작한 무늬 */
   voids: Suit[][];
   /** 자리별 조커가 없다고 짐작한다 */
@@ -67,6 +71,7 @@ export function createMemory(view: OnecardView): OnecardMemory {
   return {
     seat: view.mySeat,
     selfWindowMs: view.rules.selfWindowMs,
+    race: view.rules.race === true,
     counts: [...view.handCounts],
     turn: view.turn,
     suit: view.suit,
@@ -75,6 +80,7 @@ export function createMemory(view: OnecardView): OnecardMemory {
     markIds: new Array<number>(n).fill(0),
     nextMarkId: 1,
     exposedAt: new Array<number | null>(n).fill(null),
+    exposedTurn: new Array<number | null>(n).fill(null),
     voids: Array.from({ length: n }, () => [] as Suit[]),
     noJoker: new Array<boolean>(n).fill(false),
     fresh: new Array<number>(n).fill(0),
@@ -99,12 +105,14 @@ function onPlayed(
   seat: number,
   card: OnecardCard,
   now: number | undefined,
+  turnNo: number,
 ) {
   const count = (memory.counts[seat] ?? 1) - 1;
   memory.counts[seat] = count;
   if (count === 1 && memory.marks[seat] !== "pre") {
     setMark(memory, seat, "exposed");
     memory.exposedAt[seat] = now ?? null;
+    memory.exposedTurn[seat] = turnNo;
   } else setMark(memory, seat, count === 1 ? "safe" : "none");
   const suit = suitOf(card);
   if (suit)
@@ -144,6 +152,8 @@ function selfAccepted(
   now: number | undefined,
 ): boolean {
   const since = memory.exposedAt[seat];
+  // o2: 본인 시간이 없다. 한 장인 사람의 외침이 들렸으면 이긴 것이다(졌으면 잡힘·먹음 사건이 같이 온다)
+  if (memory.race) return true;
   if (now === undefined || since === null || since === undefined) return true;
   // P가 0이면 창이 처음부터 잡기 창이라 본인 외침은 늘 받지 않는다
   if (memory.selfWindowMs === 0) return false;
@@ -160,6 +170,7 @@ function onShouted(
     // 받지 않은 늦은 본인 외침이면 그대로 잡을 거리다
     if (selfAccepted(memory, seat, now)) setMark(memory, seat, "safe");
   } else if (
+    !memory.race &&
     mark !== "pre" &&
     seat === memory.turn &&
     memory.counts[seat] === 2
@@ -180,7 +191,7 @@ export function observe(
   for (const event of events) {
     switch (event.type) {
       case "played":
-        onPlayed(memory, event.seat, event.card, now);
+        onPlayed(memory, event.seat, event.card, now, view.turnNo);
         memory.suit = event.suit;
         memory.attack = event.attack;
         break;

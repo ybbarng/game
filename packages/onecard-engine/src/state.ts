@@ -12,13 +12,14 @@ export type Phase = "play" | "reshuffle" | "over";
  * 외치지 않고 한 장이 된 사람의 창(docs/42 B안 4·5번).
  * self: 본인 시간 P. 본인이 외치면 안전하다. 남의 외침은 헛외침도 잡기도 아니고 `heldBy`에 처음 사람만 적어 둔다
  * catch: 잡기 창 T. 남이 외치면 잡힌다
+ * race: 반응 속도 겨루기 창(o2, docs/42 17절). 본인·남 누구의 누름이든 반응 시간으로 겨룬다
  * 시간은 엔진이 재지 않는다. 바깥(방장 `LocalMatch`)이 `shoutWindows`로 창을 보고 시간이 다 되면 `timeout`을 넣는다
  */
 export interface ShoutWindow {
   /** 판 안에서 창마다 새 번호(바깥 시계가 창을 구별한다) */
   id: number;
   seat: number;
-  kind: "self" | "catch";
+  kind: "self" | "catch" | "race";
   /** 본인 시간 안에 외친 남(처음 처리된 사람). P가 끝날 때 본인이 안 외쳤으면 이 사람이 잡은 것이 된다 */
   heldBy: number | null;
 }
@@ -47,6 +48,16 @@ export interface SeenMark {
   turnNo: number;
   /** 그 판이 시작될 때(차례 행동 직후) 외치지 않은 채 창이 열려 있던 자리 */
   exposed: number[];
+  /** 그 판이 시작될 때 손패가 한 장이던 자리(o2 동점에서 본인을 가린다, 모두에게 보이는 정보). 옛 상태는 없다 */
+  ones?: number[];
+}
+
+/** o2: 모으는 중인 누름(혼자 하기·방장 기기의 컴퓨터, `raceEnd`나 다음 행동 전에 반응 시간 순으로 처리한다) */
+export interface PendingPress {
+  seat: number;
+  seen: number;
+  /** 반응 시간(ms) */
+  rt: number;
 }
 
 export interface OnecardResult {
@@ -106,6 +117,10 @@ export interface OnecardState {
    * 그다음부터는 헛외침이다(`judgeShout`). `STALE_SEEN`보다 오래된 것은 지운다. 없으면 빈 것
    */
   lateSeen?: { seat: number; turnNo: number }[];
+  /** o2: 모으는 중인 누름(없으면 빈 것) */
+  racePending?: PendingPress[];
+  /** o2: 모으기를 시작한 기록 길이(바깥 시계 열쇠) */
+  raceSince?: number;
   result: OnecardResult | null;
   /** 끊긴 사람을 기다리지 않기로 해 중간에 끝났다 */
   retired?: boolean;
@@ -131,7 +146,14 @@ export type Action =
    * "원카드!"(가운데 더미 치기). 누구나 언제든 보낸다. `seen`: 누른 순간 화면의 판 번호(`turnNo`).
    * 뜻은 엔진이 가린다(`judgeShout`): 미리 외침·본인 외침·잡기·헛외침
    */
-  | { type: "shout"; seen: number }
+  | {
+      type: "shout";
+      seen: number;
+      /** o2: 반응 시간(ms) = 누른 시각 − `seen` 판을 그린 시각. 없으면 창 길이로 본다(가장 느림) */
+      rt?: number;
+    }
+  /** o2: 모으는 시간이 끝났다(바깥 시계가 넣는다). 모은 누름을 반응 시간 순으로 처리한다 */
+  | { type: "raceEnd" }
   /**
    * 창 시간이 다 됐다(바깥 시계가 넣는다). `target`: 창 주인.
    * `id`: 시계를 건 창 번호(`shoutWindows`의 `id`). 지금 열린 창과 다르면 받지 않는다
@@ -139,7 +161,7 @@ export type Action =
    */
   | {
       type: "timeout";
-      kind: "selfWindow" | "catchWindow";
+      kind: "selfWindow" | "catchWindow" | "raceWindow";
       target: number;
       id?: number;
     }
@@ -162,6 +184,8 @@ export interface ClaimedShout {
   seen: number;
   /** 청구 아이디(기록을 사람이 따라갈 때 쓴다. 판정에는 쓰지 않는다) */
   id: string;
+  /** o2: 방장이 인정한 반응 시간(ms, 경계·하한 적용). 묶음은 이미 겨루기 순서다 */
+  rt?: number;
 }
 
 /** 외침 판정 결과(`judgeShout`) */
@@ -182,6 +206,10 @@ export type ShoutVerdict =
   | { kind: "catch"; targets: number[]; held: number[] }
   /** 본 판에서는 잡을 수 있었지만 그사이 창이 닫혔다 → 벌칙 없음 */
   | { kind: "late" }
+  /**
+   * o2 겨루기 창 안의 누름. `saved`: 본인이 이겨 안전, `caught`: 잡힌 남. 모으는 중이면 엔진은 처리를 미룬다
+   */
+  | { kind: "race"; saved: boolean; caught: number[] }
   /** 너무 옛 판을 보고 누름 → 벌칙 없이 버린다 */
   | { kind: "stale" }
   /** 그 밖 → 누른 사람이 먹는다 */

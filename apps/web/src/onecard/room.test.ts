@@ -11,6 +11,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { ClaimsResolved } from "@/net/claim";
+import { RACE_GATHER } from "@/net/claim-race";
 import { type AuditResult, GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { MemoryNetwork, type Transport } from "@/net/transport";
@@ -59,10 +60,13 @@ async function tick(clock: ManualClock, ms: number) {
   await flush();
 }
 
-/** 청구가 망을 건너 방장에게 닿은 뒤 묶음 창(100ms)을 지나 발표가 모두에게 닿을 때까지 */
+/**
+ * 청구가 망을 건너 방장에게 닿은 뒤 모으는 시간(o2 겨루기, 상한 `RACE_GATHER.maxMs`)을 지나 발표가 모두에게
+ * 닿을 때까지(발표는 겨루기 순서를 정한 뒤 마이크로태스크로 나간다)
+ */
 async function settleClaims(clock: ManualClock) {
   await flush();
-  await tick(clock, 150);
+  await tick(clock, RACE_GATHER.maxMs + 1);
   await tick(clock, 1);
 }
 
@@ -132,7 +136,7 @@ async function setup(
 }
 
 describe("원카드 일반방", () => {
-  it("한 판: 참가자는 청구로 미리 외치고, 방장은 늦게 본 판을 가리킨 청구로 잊은 참가자를 잡으며, 판 끝 검증을 통과한다", async () => {
+  it("한 판(o2): 방장이 더 빠른 반응으로 한 장이 된 참가자를 잡고, 다음에는 참가자가 먼저 쳐 안전, 판 끝 검증을 통과한다", async () => {
     const { clock, host, guests, match, troubles } = await setup(2);
     const guest = guests[0] as Guest;
     const audits: AuditResult[] = [];
@@ -143,7 +147,7 @@ describe("원카드 일반방", () => {
     // 방장은 손패가 많을 때만 내고 나머지는 먹어(파산하지 않게), 참가자가 두 장·한 장을 지나 다 내게 한다.
     const hostMove = (hv: OnecardView): Action =>
       hv.hand.length > 10 ? firstMove(hv) : { type: "draw" };
-    let preCalled = false;
+    let saved = false;
     let caught = false;
     for (let i = 0; i < 400; i++) {
       const state = match.rawState();
@@ -151,42 +155,25 @@ describe("원카드 일반방", () => {
       const gv = guest.match?.current();
       if (!gv) throw new Error("참가자 화면이 없다");
       const window = state.windows.find((w) => w.seat === 1);
-      if (
-        caught &&
-        !preCalled &&
-        gv.decision === "turn" &&
-        gv.hand.length === 2 &&
-        gv.turnNo === state.turnNo
-      ) {
-        // (잡혀서 두 장이 된 뒤) 참가자: 두 장일 때 더미를 친다 → 청구가 모두에게 가고, 방장 발표 뒤 엔진이 "미리 외침"으로 판정한다.
-        expect(guest.claims?.claim({}, { seen: gv.turnNo })).not.toBeNull();
-        await settleClaims(clock);
-        expect(match.rawState().preCalled[1]).toBe(true);
-        preCalled = true;
-        continue;
-      }
-      if (!caught && window?.kind === "self") {
-        // 참가자가 외치지 않고 한 장이 됐다: 본인 시간이 지나면 방장 시계가 잡기 창으로 바꾼다.
-        await tick(clock, state.rules.selfWindowMs + 1);
-        expect(match.rawState().windows.find((w) => w.seat === 1)?.kind).toBe(
-          "catch",
-        );
-        continue;
-      }
-      if (!caught && window?.kind === "catch") {
+      if (!caught && window?.kind === "race") {
+        // 참가자가 한 장이 됐다(겨루기 창). 같은 판을 보고 방장 300ms, 참가자 450ms: 방장이 빨라 잡힌다
         const seen = state.turnNo;
-        // 방장이 한 수 둔 뒤(판 번호가 오른 뒤) 앞 판을 보고 친 청구가 닿는다: 그 판 기준으로 잡기다.
-        const hv = match.current();
-        if (hv.decision === "turn") {
-          match.submit({ type: "draw" });
-          await tick(clock, 1);
-        }
-        if (match.rawState().phase === "over") break;
-        const before = match.rawState().hands[1]?.length ?? 0;
-        expect(host.claims?.claim({}, { seen })).not.toBeNull();
+        const before = state.hands[1]?.length ?? 0;
+        expect(host.claims?.claim({}, { seen, rtMs: 300 })).not.toBeNull();
+        expect(guest.claims?.claim({}, { seen, rtMs: 450 })).not.toBeNull();
         await settleClaims(clock);
         expect(match.rawState().hands[1]?.length).toBe(before + 1);
         caught = true;
+        continue;
+      }
+      if (caught && !saved && window?.kind === "race") {
+        // 다시 한 장: 이번엔 참가자가 더 빠르다(방장이 먼저 닿아도 반응 시간으로 진다)
+        const seen = state.turnNo;
+        expect(host.claims?.claim({}, { seen, rtMs: 400 })).not.toBeNull();
+        expect(guest.claims?.claim({}, { seen, rtMs: 220 })).not.toBeNull();
+        await settleClaims(clock);
+        expect(match.rawState().called[1]).toBe(true);
+        saved = true;
         continue;
       }
       const hv = match.current();
@@ -195,8 +182,8 @@ describe("원카드 일반방", () => {
       await tick(clock, 50);
     }
     // 비밀 값을 정해 둔 판이라 늘 같다: 두 장면이 다 나왔다.
-    expect(preCalled).toBe(true);
     expect(caught).toBe(true);
+    expect(saved).toBe(true);
     // 기록에는 청구 원문(누가·어느 판)만 남는다. 판정은 판 끝 다시 계산에서 엔진이 다시 한다.
     const claimEntries = match
       .actionLog()

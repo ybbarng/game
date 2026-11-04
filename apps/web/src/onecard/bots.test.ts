@@ -2,6 +2,7 @@ import { ManualClock } from "@game/fair-play";
 import type { OnecardSeatBot, ShoutPlan } from "@game/onecard-ai";
 import {
   createOnecardScenario,
+  type OnecardScenarioOptions,
   type OnecardView,
   viewOf,
 } from "@game/onecard-engine";
@@ -9,6 +10,13 @@ import { describe, expect, it } from "vitest";
 
 import { onecardBotFor, toKitBot } from "./bots";
 import { onecardKit } from "./kit";
+
+/** 이 파일은 옛 규칙(o1, B안)의 진행을 본다(이어하기로 남은 옛 판). o2 겨루기는 race.test.ts */
+const o1Scenario = (options: OnecardScenarioOptions) =>
+  createOnecardScenario({
+    ...options,
+    rules: { race: false, ...options.rules },
+  });
 
 /** 정해 둔 계획을 차례로 내고, `done`에 든 까닭의 계획은 할 일이 끝났다고 보는 자리 컴퓨터 */
 function scripted() {
@@ -37,7 +45,7 @@ function scripted() {
 }
 
 const VIEW: OnecardView = viewOf(
-  createOnecardScenario({
+  o1Scenario({
     hands: [
       ["S3", "D9"],
       ["S8", "S9"],
@@ -146,7 +154,7 @@ describe("원카드 컴퓨터 끼우기(toKitBot)", () => {
   });
 
   it("세 단계 모두 차례 수를 낼 수 있는 수 가운데서 고르고, 7에는 무늬를 붙인다", () => {
-    const state = createOnecardScenario({
+    const state = o1Scenario({
       hands: [
         ["S7", "H9", "C4"],
         ["C3", "D4"],

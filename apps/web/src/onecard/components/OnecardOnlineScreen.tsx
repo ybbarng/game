@@ -209,7 +209,11 @@ export function OnecardOnlineScreen({
             host.match,
             seatNamesOf(host.lobby()),
             stats,
-            (seen) => host.claims?.claim({}, { seen }) != null,
+            (seen, rtMs) =>
+              host.claims?.claim(
+                {},
+                { seen, ...(rtMs !== undefined ? { rtMs } : {}) },
+              ) != null,
             hostArchive(host),
           );
           bindHost(host);
@@ -292,7 +296,11 @@ export function OnecardOnlineScreen({
             match,
             seatNamesOf(guest.lobby ?? EMPTY_LOBBY),
             stats,
-            (seen) => guest.claims?.claim({}, { seen }) != null,
+            (seen, rtMs) =>
+              guest.claims?.claim(
+                {},
+                { seen, ...(rtMs !== undefined ? { rtMs } : {}) },
+              ) != null,
           );
           bindFair(useHwatuFair, guest.fair?.coordinator, null, (end) =>
             guest.vote(end),
@@ -316,7 +324,11 @@ export function OnecardOnlineScreen({
         match,
         seatNamesOf(host.lobby()),
         stats,
-        (seen) => host.claims?.claim({}, { seen }) != null,
+        (seen, rtMs) =>
+          host.claims?.claim(
+            {},
+            { seen, ...(rtMs !== undefined ? { rtMs } : {}) },
+          ) != null,
         hostArchive(host),
       );
       bindHost(host);

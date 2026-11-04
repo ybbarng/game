@@ -6,8 +6,12 @@ import { HOLD_MS, ShoutPress } from "./shout-press";
 function setup() {
   const clock = new ManualClock();
   const confirmed: number[] = [];
-  const press = new ShoutPress(clock, (seen) => confirmed.push(seen));
-  return { clock, confirmed, press };
+  const rts: (number | undefined)[] = [];
+  const press = new ShoutPress(clock, (seen, rt) => {
+    confirmed.push(seen);
+    rts.push(rt);
+  });
+  return { clock, confirmed, rts, press };
 }
 
 describe("더미 치기(원카드!) 누르기", () => {
@@ -51,9 +55,20 @@ describe("더미 치기(원카드!) 누르기", () => {
     expect(confirmed).toEqual([5]);
   });
 
-  it("키보드(스페이스)는 바로 확정한다", () => {
-    const { confirmed, press } = setup();
-    press.key(9);
+  it("키보드(스페이스)도 누르고 있기와 같은 시간 뒤에 확정한다(청구를 보내기까지가 늘 같게)", () => {
+    const { clock, confirmed, rts, press } = setup();
+    press.key(9, 240);
+    clock.advance(HOLD_MS - 1);
+    expect(confirmed).toEqual([]);
+    clock.advance(1);
     expect(confirmed).toEqual([9]);
+    expect(rts).toEqual([240]);
+  });
+
+  it("누르기 시작한 순간의 반응 시간을 그대로 넘긴다", () => {
+    const { clock, rts, press } = setup();
+    press.press(1, 3, 312);
+    clock.advance(HOLD_MS);
+    expect(rts).toEqual([312]);
   });
 });

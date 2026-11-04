@@ -16,6 +16,7 @@ import {
   attackValue,
   decodeOnecardRules,
   encodeOnecardRules,
+  O1_ONECARD_RULES,
   type OnecardRules,
   STANDARD_ONECARD_RULES,
 } from "./rules";
@@ -84,7 +85,7 @@ describe("공격 장 수", () => {
 
 describe("규칙 문자열", () => {
   it("기본 규칙", () => {
-    expect(encodeOnecardRules(STANDARD_ONECARD_RULES)).toBe(
+    expect(encodeOnecardRules(O1_ONECARD_RULES)).toBe(
       "o1-p4h7a2.3.5.5.7fab20e0c1x1w1000t3000r0j0",
     );
   });

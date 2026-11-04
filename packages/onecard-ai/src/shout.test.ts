@@ -19,7 +19,11 @@ import { playGame } from "./simulate";
 
 /** 판과 자리마다 기억을 함께 들고 행동을 넣는다 */
 function table(options: OnecardScenarioOptions) {
-  let state = createOnecardScenario(options);
+  // 이 파일의 계획 시험은 옛 규칙(o1). o2 겨루기는 race.test.ts
+  let state = createOnecardScenario({
+    ...options,
+    rules: { race: false, ...options.rules },
+  });
   const memories = state.hands.map((_, s) => createMemory(viewOf(state, s)));
   return {
     get state(): OnecardState {
@@ -455,6 +459,6 @@ describe("자리 컴퓨터(화면 모양)", () => {
     expect(plan).toMatchObject({ reason: "catch", target: 1 });
     expect(
       bot.shoutNow(plan as NonNullable<typeof plan>, viewOf(r.state, 0)),
-    ).toEqual({ type: "shout", seen: r.state.turnNo });
+    ).toMatchObject({ type: "shout", seen: r.state.turnNo }); // 기본 규칙(o2)은 rt도 싣는다
   });
 });

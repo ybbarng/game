@@ -63,9 +63,19 @@ export interface ClaimsResolved<Body = unknown, Verdict = unknown> {
   /** 묶음을 닫을 때 방장 기기의 판 번호. `stale` 판정의 기준이다 */
   at: number;
   entries: ResolvedClaim<Body, Verdict>[];
+  /**
+   * 2층(반응 시간 겨루기, `KitClaims.race`가 있는 게임): 항목마다 방장이 인정한 반응 시간. 이때 `entries`는
+   * 1층 순서가 아니라 겨루기 순서다(`claim-race.ts`). 1층만 쓰는 게임은 없다
+   */
+  race?: { rt: number[] };
 }
 
-export type ClaimWire = ClaimMessage | ClaimsResolved;
+/** 2층 왕복 재기(방 안 앱 핑). 판정 경계의 왕복 최소를 여기서만 잰다(`getStats`는 쓰지 않는다) */
+export type ClaimPing =
+  | { v: 1; kind: "claim-ping"; game: string; n: number }
+  | { v: 1; kind: "claim-pong"; game: string; n: number };
+
+export type ClaimWire = ClaimMessage | ClaimsResolved | ClaimPing;
 
 /** 판정 규칙 값. 게임마다 `KitClaims.rules`로 바꾼다 */
 export interface ClaimRules {
@@ -188,6 +198,17 @@ export function parseResolved(
       });
     else return null;
   }
+  let race: { rt: number[] } | undefined;
+  if (m.race !== undefined) {
+    const rt = (m.race as { rt?: unknown } | null)?.rt;
+    if (
+      !Array.isArray(rt) ||
+      rt.length !== entries.length ||
+      rt.some((x) => typeof x !== "number" || !Number.isFinite(x) || x < 0)
+    )
+      return null;
+    race = { rt: [...(rt as number[])] };
+  }
   return {
     v: 1,
     kind: "claims-resolved",
@@ -195,6 +216,7 @@ export function parseResolved(
     batch: m.batch,
     at: m.at,
     entries,
+    ...(race ? { race } : {}),
   };
 }
 
@@ -205,7 +227,10 @@ export function isClaimWire(value: unknown): value is ClaimWire {
   return (
     m.v === CLAIM_VERSION &&
     m.t === undefined &&
-    (m.kind === "claim" || m.kind === "claims-resolved")
+    (m.kind === "claim" ||
+      m.kind === "claims-resolved" ||
+      m.kind === "claim-ping" ||
+      m.kind === "claim-pong")
   );
 }
 

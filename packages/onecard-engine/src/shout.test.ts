@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { judgeShout, type StepResult, shoutWindows, step } from "./match";
 import type { OnecardRules } from "./rules";
-import { createOnecardScenario } from "./scenario";
+import { createOnecardScenario as scenario } from "./scenario";
 import type { Action, GameEvent, OnecardState } from "./state";
+
+/** 이 파일은 옛 규칙(o1, B안)의 판정을 본다. o2 겨루기는 race.test.ts */
+const createOnecardScenario = (options: Parameters<typeof scenario>[0]) =>
+  scenario({ ...options, rules: { race: false, ...options.rules } });
 
 function okEvents(result: StepResult): [OnecardState, GameEvent[]] {
   if (!result.ok) throw new Error(result.error);

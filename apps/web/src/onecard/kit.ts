@@ -12,6 +12,7 @@ import {
   type OnecardState,
   type OnecardView,
   pendingSeat,
+  raceGather,
   replay,
   seededReshuffle,
   shoutWindows,
@@ -136,9 +137,17 @@ export function describeAction(action: Action): string {
     case "draw":
       return "먹음";
     case "shout":
-      return "원카드!";
+      return action.rt !== undefined
+        ? `원카드! (${(action.rt / 1000).toFixed(2)}초)`
+        : "원카드!";
     case "timeout":
-      return action.kind === "selfWindow" ? "본인 시간 끝" : "잡기 시간 끝";
+      return action.kind === "selfWindow"
+        ? "본인 시간 끝"
+        : action.kind === "raceWindow"
+          ? "겨루기 시간 끝"
+          : "잡기 시간 끝";
+    case "raceEnd":
+      return "누름 모으기 끝";
     case "reshuffle":
       return "버린 더미를 다시 섞음";
     case "claims":
@@ -194,7 +203,17 @@ export const onecardKit: OnecardKit = {
   },
   playerCount: (rules) => rules.players,
   encodeRules: encodeOnecardRules,
-  decodeRules: decodeOnecardRules,
+  // 온라인 방은 o2(반응 속도 겨루기)만 받는다. 옛 화면이 연 o1 방에 들어가면 판정이 어긋나므로 막는다
+  // (옛 화면은 o2 문자열을 읽지 못해 새 방에 들어오지 못한다). 옛 기록 복기는 규칙 객체를 그대로 쓴다
+  decodeRules: (text) => {
+    const decoded = decodeOnecardRules(text);
+    if (decoded.ok && !decoded.rules.race)
+      return {
+        ok: false,
+        reason: "옛 원카드 방(o1)입니다. 방장이 새로고침해 새 방을 열어 주세요",
+      };
+    return decoded;
+  },
   startEvents: (view) => [
     {
       type: "dealt",
@@ -210,6 +229,7 @@ export const onecardKit: OnecardKit = {
   offTurn: (_view, action) => action.type === "shout",
   hostAction: (action) =>
     action.type === "timeout" ||
+    action.type === "raceEnd" ||
     action.type === "reshuffle" ||
     action.type === "claims" ||
     // 온라인 방의 사람 외침은 `claims`로만 들어오므로, 기록 속 `shout`은 방장 기기의 컴퓨터가 정한 시각에 친 것이다
@@ -247,13 +267,27 @@ export const onecardKit: OnecardKit = {
    * 외침 창(본인 시간 P·잡기 창 T, docs/42 B안 4·5·7번). 엔진은 시간을 재지 않고 열린 창만 알려 준다.
    * 대국을 돌리는 기기가 창 번호마다 시계를 걸고 다 되면 `timeout`을 넣는다. 창 번호는 P가 T로 바뀌면 새로 바뀐다
    */
-  timers: (state) =>
-    shoutWindows(state).map((w) => ({
+  timers: (state) => {
+    const windows = shoutWindows(state).map((w) => ({
       key: `w${w.id}`,
       seat: w.seat,
       ms: w.ms,
-      action: { type: "timeout", kind: w.kind, target: w.seat },
-    })),
+      action: { type: "timeout", kind: w.kind, target: w.seat } as Action,
+    }));
+    // o2: 모으는 누름(혼자 하기의 사람·방장 기기의 컴퓨터)은 모으는 시간이 끝나면 반응 시간 순으로 처리한다
+    const gather = raceGather(state);
+    return gather
+      ? [
+          ...windows,
+          {
+            key: `g${gather.since}`,
+            seat: gather.seat,
+            ms: gather.ms,
+            action: { type: "raceEnd" } as Action,
+          },
+        ]
+      : windows;
+  },
   /** 더미가 바닥나면 버린 더미를 씨앗으로 다시 섞는다(혼자 하기·일반방). 멘탈 포커 판은 섞기 사슬로 바꾼다 */
   autoAction: (state, seed) => {
     const action = seededReshuffle(state, seed);

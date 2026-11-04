@@ -1,5 +1,9 @@
 import { ManualClock } from "@game/fair-play";
-import type { Action, GameEvent } from "@game/onecard-engine";
+import {
+  type Action,
+  type GameEvent,
+  RACE_GATHER_MS,
+} from "@game/onecard-engine";
 import { describe, expect, it } from "vitest";
 
 import { LocalMatch } from "@/game/local-match";
@@ -36,9 +40,18 @@ function playMission(scene: OnecardScene, actions: readonly Action[]) {
       );
       continue;
     }
+    // 모으는 시간 끝은 대국 기기가 넣는다: 시계를 그만큼 감는다
+    if (action.type === "raceEnd") {
+      clock.advance(RACE_GATHER_MS);
+      continue;
+    }
     const sent =
       action.type === "shout"
-        ? { type: "shout" as const, seen: match.current().turnNo }
+        ? {
+            type: "shout" as const,
+            seen: match.current().turnNo,
+            ...(action.rt !== undefined ? { rt: action.rt } : {}),
+          }
         : action;
     expect(match.submit(sent).ok).toBe(true);
   }
@@ -64,14 +77,14 @@ describe("원카드 튜토리얼 미션 판(LocalMatch + 대본 컴퓨터 + 외�
     }
   });
 
-  it("잡기 미션: 컴퓨터가 한 장이 되고 본인 시간이 지나면 더미를 쳐 잡는다", () => {
+  it("잡기 미션(o2): 컴퓨터가 한 장이 되면 더미를 쳐 잡는다(모으는 시간 뒤)", () => {
     const step = missions.find(
       (m) => m.step.kind === "mission" && m.name.includes("잡기"),
     );
     if (!step) throw new Error("잡기 미션이 없다");
     const { view, events } = playMission(step.scene, [
-      { type: "timeout", kind: "selfWindow", target: 1 },
-      { type: "shout", seen: 0 },
+      { type: "shout", seen: 0, rt: 280 },
+      { type: "raceEnd" },
     ]);
     expect(events.some((e) => e.type === "caught" && e.seat === 0)).toBe(true);
     // 잡힌 컴퓨터는 한 장 먹어 두 장

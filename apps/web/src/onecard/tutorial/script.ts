@@ -17,14 +17,14 @@ import {
   viewOf,
 } from "@game/onecard-engine";
 
-/** 튜토리얼 규칙: 기본 규칙에 잡기 창 T만 넉넉히 5초(실전 3초). 본인 시간 P는 실전과 같은 1초 */
+/** 튜토리얼 규칙: 기본 규칙(o2 반응 속도 겨루기)에 겨루기 창만 넉넉히 5초(실전 3초) */
 export const ONECARD_TUTORIAL_RULES = {
   ...STANDARD_ONECARD_RULES,
   catchWindowMs: 5000 as const,
 };
 
 /**
- * 컴퓨터 대본 한 줄. 차례 행동(내기·먹기) 또는 미리 외침(`shout`, 판 번호는 그때 화면에서 채운다).
+ * 컴퓨터 대본 한 줄. 차례 행동(내기·먹기) 또는 외침(`shout`, 판 번호는 그때 화면에서 채운다).
  * 대본이 다 떨어지거나 지금 할 수 없는 줄이면 낼 수 있는 첫 카드(없으면 먹기)를 둔다
  */
 export type ScriptMove =

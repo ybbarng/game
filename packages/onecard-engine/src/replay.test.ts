@@ -24,7 +24,11 @@ import {
   step,
   viewOf,
 } from "./match";
-import { type OnecardRules, STANDARD_ONECARD_RULES } from "./rules";
+import {
+  O1_ONECARD_RULES,
+  type OnecardRules,
+  STANDARD_ONECARD_RULES,
+} from "./rules";
 import type { Action, LoggedAction, OnecardState } from "./state";
 
 function totalCards(state: OnecardState): number {
@@ -56,7 +60,10 @@ function drive(
       action = {
         type: "shout",
         seen: Math.max(0, state.turnNo - nextInt(rng, 2)),
+        ...(rules.race ? { rt: nextInt(rng, 800) } : {}),
       };
+    } else if ((state.racePending?.length ?? 0) > 0 && r < 0.2) {
+      action = { type: "raceEnd" };
     } else if (windows.length > 0 && r < 0.3) {
       const w = windows[0] as (typeof windows)[number];
       action = { type: "timeout", kind: w.kind, target: w.seat };
@@ -88,7 +95,7 @@ const SHORT_DECK: OnecardCard[] = ONECARD_DECK.filter(
 describe("다시 하기(replay)", () => {
   it("짧은 덱으로 판을 끝까지 두고, 기록으로 다시 하면 같은 상태가 나온다", () => {
     const rules: OnecardRules = {
-      ...STANDARD_ONECARD_RULES,
+      ...O1_ONECARD_RULES,
       players: 3,
       handSize: 5,
     };
@@ -103,7 +110,7 @@ describe("다시 하기(replay)", () => {
 
   it("틀린 기록은 몇 번째에서 틀렸는지 알려 준다", () => {
     const setup = { deck: shuffledOnecardDeck(3) };
-    const result = replay(STANDARD_ONECARD_RULES, setup, [
+    const result = replay(O1_ONECARD_RULES, setup, [
       { seat: 1, action: { type: "draw" } },
     ]);
     expect(result).toEqual({ ok: false, index: 0, error: "차례가 아니다" });
@@ -117,7 +124,7 @@ describe("다시 하기(replay)", () => {
         fc.constantFrom<OnecardRules["handSize"]>(5, 7),
         (seed, players, handSize) => {
           const rules = {
-            ...STANDARD_ONECARD_RULES,
+            ...O1_ONECARD_RULES,
             players,
             handSize,
             selfWindowMs: 0 as const,
@@ -132,9 +139,27 @@ describe("다시 하기(replay)", () => {
   });
 });
 
+describe("다시 하기(o2 겨루기)", () => {
+  it("무작위 판 여러 개: 모으기·겨루기가 섞여도 카드 수가 같고, 다시 하면 같다(결정적)", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 2 ** 30 }),
+        fc.integer({ min: 2, max: 5 }),
+        (seed, players) => {
+          const rules = { ...STANDARD_ONECARD_RULES, players };
+          const setup = { deck: shuffledOnecardDeck(seed) };
+          const { state, log } = drive(rules, setup, createRng(seed), 80);
+          expect(replay(rules, setup, log)).toEqual({ ok: true, state });
+        },
+      ),
+      { seed: 20261104, numRuns: 25 },
+    );
+  });
+});
+
 describe("자리별 화면(viewOf)", () => {
   it("남의 손패·더미 순서·외침 상태는 숨기고 장 수만 보인다", () => {
-    const { state } = createMatch(STANDARD_ONECARD_RULES, {
+    const { state } = createMatch(O1_ONECARD_RULES, {
       deck: shuffledOnecardDeck(8),
     });
     const s = (() => {

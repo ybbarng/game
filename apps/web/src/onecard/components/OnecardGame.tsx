@@ -290,7 +290,7 @@ function Pile({
 }: {
   view: OnecardView;
   width: number;
-  onShout: (seen: number) => void;
+  onShout: (seen: number, rtMs?: number) => void;
 }) {
   const { seen } = useStimulusShown(view.turnNo);
   const turnNoRef = useRef(view.turnNo);
@@ -302,15 +302,21 @@ function Pile({
   const [slap, setSlap] = useState(0);
   const press = useRef<ShoutPress | null>(null);
   if (press.current === null)
-    press.current = new ShoutPress(realClock, (s) => {
+    press.current = new ShoutPress(realClock, (s, rt) => {
       // 판이 끝난 뒤의 스페이스도 치지 않는다(단추는 `disabled`)
       if (overRef.current) return;
       setSlap((n) => n + 1);
-      shoutRef.current(s);
+      shoutRef.current(s, rt);
     });
   // `seen`은 대국 내내 같은 함수라 이것도 같다(키 처리기를 다시 걸지 않는다).
+  // 누른 순간의 판 번호와 반응 시간(누른 시각 − 그 판을 그린 프레임 시각, 같은 시계, docs/42 17-3)
   const seenAt = useCallback(
-    (at: number) => seen(at)?.stimulus ?? turnNoRef.current,
+    (at: number): [number, number | undefined] => {
+      const s = seen(at);
+      return s
+        ? [s.stimulus, Math.round(s.rtMs)]
+        : [turnNoRef.current, undefined];
+    },
     [seen],
   );
 
@@ -318,7 +324,7 @@ function Pile({
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "Space" || e.repeat) return;
       e.preventDefault();
-      press.current?.key(seenAt(e.timeStamp));
+      press.current?.key(...seenAt(e.timeStamp));
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -340,7 +346,7 @@ function Pile({
       disabled={view.phase === "over"}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
-        press.current?.press(e.pointerId, seenAt(e.timeStamp));
+        press.current?.press(e.pointerId, ...seenAt(e.timeStamp));
       }}
       onPointerUp={release}
       onPointerCancel={release}

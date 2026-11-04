@@ -2,6 +2,7 @@ import type { HwatuFairSpec, OnecardTableSpec } from "@game/fair-play";
 import type { RngState } from "@game/mighty-engine";
 
 import type { ClaimMessage, ClaimRules, ClaimsResolved } from "@/net/claim";
+import type { ClaimRaceSpec } from "@/net/claim-race";
 
 /** 컴퓨터 플레이어. 자기 자리에서 보이는 정보만 받는다(마이티·하트 공통 모양) */
 export interface KitBot<View, Action, Event = unknown> {
@@ -278,6 +279,11 @@ export interface KitClaims<
   direct?(action: Action): boolean;
   /** 판정 규칙 값(없으면 `CLAIM_RULES`) */
   rules?: Partial<ClaimRules>;
+  /**
+   * 2층: 같은 판을 두고 겨루는 순서를 반응 시간으로 정한다(원카드 o2, docs/43 7-2). 있으면 방장은 첫 청구 뒤
+   * 모으는 시간을 기다렸다가 인정 반응 시간으로 줄 세워 발표하고, 참가자는 같은 식으로 맞춰 본다
+   */
+  race?: ClaimRaceSpec<Board>;
 }
 
 /** `verifyUnsigned`에 주는 게임별 추가 재료 */
