@@ -209,7 +209,7 @@ test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) =>
   await expect(moves).toHaveText("1");
 
   // 빈 곳(모서리)을 밀면 큐브 전체를 돌린다: 펼친 그림은 바뀌지만 수로 세지 않는다
-  const net = page.locator("[data-cube-stage] [data-cube-net]");
+  const net = page.locator("[data-cube-net-side] [data-cube-net]");
   const before = await net.innerHTML();
   await canvas.evaluate((el) => {
     const r = el.getBoundingClientRect();

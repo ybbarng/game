@@ -33,6 +33,7 @@ import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { MoveChip, useMoveKeys } from "./MoveChip";
+import { StageWithNet } from "./StageWithNet";
 
 /**
  * 배우기 단계의 상호작용(docs/47 8-1): 정지 그림(글), 조각 찾기, 고르기 문제, 둘러보기, 한 수 해 보기.
@@ -125,34 +126,38 @@ export function StillCube({
   );
   return (
     <div className="flex w-full flex-col items-center gap-2" data-cube-still>
-      <div className="relative aspect-square w-full max-w-[360px]">
-        {failed ? (
-          <div data-cube-no3d className="flex h-full items-center p-4">
-            {net}
-          </div>
-        ) : (
-          <>
-            <canvas
-              ref={canvasRef}
-              data-cube-canvas
-              data-cube-ready={ready ? "" : undefined}
-              className={cn(
-                "h-full w-full touch-none",
-                onSticker
-                  ? "cursor-pointer"
-                  : "cursor-grab active:cursor-grabbing",
-              )}
-            />
-            {/* 뒤쪽 칸도 고를 수 있게 펼친 그림을 함께 둔다 */}
-            <div className="absolute top-1 left-1 w-[30%] rounded-lg bg-black/45 p-1.5">
-              {net}
+      {failed ? (
+        <div
+          data-cube-no3d
+          className="flex aspect-square w-full max-w-[360px] items-center p-4"
+        >
+          {net}
+        </div>
+      ) : (
+        <StageWithNet
+          maxWidth={360}
+          // 뒤쪽 칸도 고를 수 있게 펼친 그림을 곁에 둔다
+          net={net}
+          stage={
+            <div className="relative aspect-square w-full">
+              <canvas
+                ref={canvasRef}
+                data-cube-canvas
+                data-cube-ready={ready ? "" : undefined}
+                className={cn(
+                  "h-full w-full touch-none",
+                  onSticker
+                    ? "cursor-pointer"
+                    : "cursor-grab active:cursor-grabbing",
+                )}
+              />
             </div>
-          </>
-        )}
-      </div>
+          }
+        />
+      )}
       <p className="text-white/50 text-xs">
         {onSticker
-          ? "큐브나 왼쪽 위 펼친 그림에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
+          ? "큐브나 펼친 그림에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
           : "끌면 큐브를 둘러볼 수 있어요."}
       </p>
     </div>
