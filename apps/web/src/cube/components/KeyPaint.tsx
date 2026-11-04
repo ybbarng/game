@@ -73,7 +73,7 @@ export function useKeyLook(
 /** x·y·z·M·E·S의 두 색 화살(칸 아래 작은 띠) */
 export function SweepBar({ look }: { look: KeyLook | null }) {
   const { colors } = useCubeSettings();
-  if (!look || look.paint.kind !== "sweep") return null;
+  if (look?.paint.kind !== "sweep") return null;
   const { from, to, prime } = look.paint;
   const sw = (c: number) => ({
     backgroundColor: hexColor(colors[c] ?? 0),

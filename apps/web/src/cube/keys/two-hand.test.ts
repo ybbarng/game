@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   chordsFor,
   KeyInterpreter,
-  notationToMove,
   presetKeymap,
   resolveAction,
 } from "../input";
