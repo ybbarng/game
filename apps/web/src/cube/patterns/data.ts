@@ -282,6 +282,7 @@ export const PATTERNS: readonly Pattern[] = [
 export interface PatternLink {
   from: string;
   next: string;
+  /** 결과(문장) */
   result: string;
 }
 
@@ -289,12 +290,13 @@ export const PATTERN_LINKS: readonly PatternLink[] = [
   {
     from: "3-checkerboard",
     next: "3-six-spots",
-    result: "면마다 귀퉁이·모서리·가운데가 세 가지 색으로 엇갈리는 체커보드",
+    result:
+      "면마다 귀퉁이·모서리·가운데가 세 가지 색으로 엇갈리는 체커보드가 돼요.",
   },
   {
     from: "3-six-spots",
     next: "3-six-spots",
-    result: "점 색이 한 번 더 바뀐 여섯 점",
+    result: "점 색이 한 번 더 바뀐 여섯 점이 돼요.",
   },
 ];
 
