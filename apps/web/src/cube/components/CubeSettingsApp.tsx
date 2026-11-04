@@ -195,6 +195,7 @@ export function CubeSettingsApp() {
               ["stickerless", "스티커 없는 모양"],
               ["sound", "큐브 소리"],
               ["inspection", "혼자 맞추기 15초 살펴보기"],
+              ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-center gap-2">

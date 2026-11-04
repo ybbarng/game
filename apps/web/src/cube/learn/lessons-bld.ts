@@ -23,8 +23,22 @@ const setupOf = (
 /** 글자 하나 보내기: 준비 → 바꾸기 → 준비 되돌리기 */
 const send = (swap: string, setup: string) =>
   `${setup} ${swap} ${invertAlg(setup)}`.trim();
-const edge = (letter: string) => send(T, setupOf(BLD_EDGE_TARGETS, letter));
-const corner = (letter: string) => send(Y, setupOf(BLD_CORNER_TARGETS, letter));
+export const edge = (letter: string) =>
+  send(T, setupOf(BLD_EDGE_TARGETS, letter));
+export const corner = (letter: string) =>
+  send(Y, setupOf(BLD_CORNER_TARGETS, letter));
+/** 글자 줄을 차례로 보내는 풀이 */
+export const sendEdges = (letters: string) =>
+  letters.split(" ").map(edge).join(" ");
+export const sendCorners = (letters: string) =>
+  letters.split(" ").map(corner).join(" ");
+
+// 외우기 연습 상황(풀이의 거꾸로). flow-advanced.test.ts가 엔진으로 글자 줄을 따라가 맞는지 본다
+export const MEMO_EDGES_2 = "C U";
+export const MEMO_EDGES_4 = "C J W H";
+export const MEMO_CORNERS_2 = "C H";
+/** 제자리에서 뒤집힌 위-앞 모서리와 버퍼: 위-앞 조각의 두 글자 C, I를 차례로 */
+export const FLIPPED_EDGE = "C I";
 
 const intro: Lesson = {
   id: "bld-intro",
@@ -60,12 +74,22 @@ const letters: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "모서리 스티커 24개, 꼭짓점 스티커 24개에 A부터 X까지 글자를 붙여요. 면마다 위 칸부터 시계 방향으로 넷씩: 위 A~D, 왼쪽 E~H, 앞 I~L, 오른쪽 M~P, 뒤 Q~T, 아래 U~X. 모서리와 꼭짓점이 같은 글자를 따로 써요.",
+      body: "모서리 스티커 24개, 꼭짓점 스티커 24개에 A부터 X까지 글자를 붙여요. 면마다 넷씩: 위 A~D, 왼쪽 E~H, 앞 I~L, 오른쪽 M~P, 뒤 Q~T, 아래 U~X. 펼친 그림에서 면을 바로 보고 시계 방향으로 붙이는데, 모서리는 위 칸부터, 꼭짓점은 왼쪽 위 칸부터 시작해요. 모서리와 꼭짓점이 같은 글자를 따로 써요.",
       quiz: {
         question: "앞면 위 칸 모서리 스티커의 글자는 무엇일까요?",
         choices: ["A", "E", "I", "M"],
         answer: 2,
         why: "앞면은 I~L이고 위 칸부터 시작하니 I예요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "꼭짓점은 왼쪽 위 칸이 첫 글자예요. 앞면이면 왼쪽 위 I, 오른쪽 위 J, 오른쪽 아래 K, 왼쪽 아래 L.",
+      quiz: {
+        question: "앞면 오른쪽 위 꼭짓점 스티커의 글자는 무엇일까요?",
+        choices: ["I", "J", "K", "M"],
+        answer: 1,
+        why: "꼭짓점은 왼쪽 위 I부터 시계 방향이라 오른쪽 위는 J예요.",
       },
     },
     {
@@ -94,6 +118,18 @@ const letters: Lesson = {
         why: "고리를 깨서 이어 가면 남은 조각도 모두 보낼 수 있어요.",
       },
     },
+    {
+      kind: "quiz",
+      body: "제자리에 있지만 뒤집힌 모서리도 고리 깨기와 같아요. 그 조각의 스티커 글자 둘을 차례로 적어요. 모서리 하나만 뒤집힐 수는 없어서 늘 둘 이상 함께 뒤집혀요. 이 큐브는 버퍼(위-오른쪽)와 위-앞 모서리(윗면 칸 C, 앞면 칸 I)가 제자리에서 뒤집혀 있어요.",
+      setup: { alg: setupFor(sendEdges(FLIPPED_EDGE)) },
+      quiz: {
+        question:
+          "버퍼와 위-앞 모서리가 제자리에서 뒤집혔어요. 무엇을 외울까요?",
+        choices: ["C I", "C", "외울 것이 없어요"],
+        answer: 0,
+        why: "버퍼에 제 조각이 있으니 고리 깨기로 C부터 적어요. C로 보내면 위-앞 조각이 버퍼에 오고, I로 보내면 둘 다 바르게 돌아가요.",
+      },
+    },
   ],
 };
 
@@ -106,7 +142,8 @@ const edges: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "바꾸기 자리는 위-왼쪽(D)이에요. T퍼뮤는 버퍼 B와 D를 맞바꿔요(꼭짓점 둘도 함께 바뀌지만, 모서리를 두 번 보내면 다시 돌아와요). 글자마다 그 자리를 D로 옮기는 준비 수가 있어요. 준비 수는 버퍼와 T퍼뮤가 바꾸는 꼭짓점을 건드리지 않아요.",
+      body: "바꾸기 자리는 위-왼쪽(D)이에요. T퍼뮤(R U R' U' R' F R2 U' R' U' R U R' F')는 버퍼 B와 D를 맞바꿔요(꼭짓점 둘도 함께 바뀌지만, 모서리를 두 번 보내면 다시 돌아와요). 글자마다 그 자리를 D로 옮기는 준비 수가 있어요(아래 표). 준비 수는 버퍼와 T퍼뮤가 바꾸는 꼭짓점을 건드리지 않아요.",
+      sheet: "bld-edges",
       quiz: {
         question: "T퍼뮤는 버퍼 B와 어느 자리를 맞바꿀까요?",
         choices: ["A(위-뒤)", "C(위-앞)", "D(위-왼쪽)"],
@@ -122,7 +159,7 @@ const edges: Lesson = {
     },
     {
       kind: "demo",
-      body: "C(위-앞): 준비 l2 D L2 → T퍼뮤 → 되돌리기 L2 D' l2.",
+      body: "C(위-앞): 준비 l2 D L2 → T퍼뮤 → 되돌리기 L2 D' l2. l2는 왼쪽 두 층을 함께 두 번 돌리기예요(Lw2와 같아요).",
       setup: { alg: setupFor(edge("C")) },
       alg: edge("C"),
     },
@@ -141,10 +178,56 @@ const edges: Lesson = {
       goal: "solved",
     },
     {
+      kind: "quiz",
+      body: "표를 보지 않고 떠올려 봐요. 준비 수는 그 자리를 버퍼와 위 꼭짓점을 건드리지 않고 D로 옮기는 짧은 수예요.",
+      quiz: {
+        question: "글자 J(앞-오른쪽, 앞면 칸)의 준비 수는?",
+        choices: ["d2 L", "L'", "D2 L2"],
+        answer: 0,
+        why: "d2(아래 두 층 두 번)로 앞-오른쪽을 뒤-왼쪽으로, L로 그 칸을 D 자리로 올려요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "외우기 연습: 모서리 둘만 섞인 큐브예요. 버퍼(위-오른쪽)의 윗면 칸 색을 보고 그 색이 갈 자리의 글자를 적고, 그 자리에 있는 조각을 보고 다음 글자를 적어요. 버퍼 조각이 나오면 끝이에요.",
+      setup: { alg: setupFor(sendEdges(MEMO_EDGES_2)) },
+      quiz: {
+        question: "외울 글자 줄은 무엇일까요?",
+        choices: ["U C", "C U", "C I"],
+        answer: 1,
+        why: "버퍼의 흰-초록 조각(흰 칸)은 C로, C 자리의 노랑-초록 조각(노란 칸)은 U로 가요.",
+      },
+    },
+    {
       kind: "try",
-      body: "글자 둘(C, U)을 차례로 보내요. 두 번 보내면 T퍼뮤가 바꾼 꼭짓점도 돌아와요.",
-      setup: { alg: setupFor(`${edge("C")} ${edge("U")}`) },
-      alg: `${edge("C")} ${edge("U")}`,
+      body: "외운 글자 둘(C, U)을 차례로 보내요. 두 번 보내면 T퍼뮤가 바꾼 꼭짓점도 돌아와요.",
+      setup: { alg: setupFor(sendEdges(MEMO_EDGES_2)) },
+      alg: sendEdges(MEMO_EDGES_2),
+      goal: "solved",
+    },
+    {
+      kind: "quiz",
+      body: "글자 넷짜리로 넓혀요. 같은 방법으로 버퍼에서 시작해 따라가요.",
+      setup: { alg: setupFor(sendEdges(MEMO_EDGES_4)) },
+      quiz: {
+        question: "외울 글자 줄은 무엇일까요?",
+        choices: ["C J W H", "C W J H", "H W J C"],
+        answer: 0,
+        why: "버퍼 → C → J → W → H 차례로 이어지고, H 자리에 버퍼 조각이 있어 끝나요.",
+      },
+    },
+    {
+      kind: "try",
+      body: "외운 글자 넷(C J W H)을 차례로 보내요.",
+      setup: { alg: setupFor(sendEdges(MEMO_EDGES_4)) },
+      alg: sendEdges(MEMO_EDGES_4),
+      goal: "solved",
+    },
+    {
+      kind: "try",
+      body: "버퍼와 위-앞 모서리가 제자리에서 뒤집혔어요. 글자 C, I를 차례로 보내요.",
+      setup: { alg: setupFor(sendEdges(FLIPPED_EDGE)) },
+      alg: sendEdges(FLIPPED_EDGE),
       goal: "solved",
     },
   ],
@@ -158,7 +241,8 @@ const corners: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "바꾸기 자리는 오른-아래-앞(P)이에요. 변형 Y퍼뮤 R U' R' U' R U R' F' R U R' U' R' F R는 버퍼 A와 P를 맞바꿔요(모서리 위-왼쪽·위-뒤도 함께 바뀌어요). 준비 수는 R·D·F만 써서 버퍼와 그 두 모서리를 건드리지 않아요.",
+      body: "바꾸기 자리는 오른-아래-앞(P)이에요. 변형 Y퍼뮤 R U' R' U' R U R' F' R U R' U' R' F R는 버퍼 A와 P를 맞바꿔요(모서리 위-왼쪽·위-뒤도 함께 바뀌어요). 준비 수는 R·D·F만 써서 버퍼와 그 두 모서리를 건드리지 않아요(아래 표).",
+      sheet: "bld-corners",
       quiz: {
         question: "변형 Y퍼뮤가 버퍼 A와 맞바꾸는 자리는 어디일까요?",
         choices: ["P(오른-아래-앞)", "V(아래-앞-오른쪽)", "C(위-앞-오른쪽)"],
@@ -180,10 +264,21 @@ const corners: Lesson = {
       goal: "solved",
     },
     {
+      kind: "quiz",
+      body: "외우기 연습: 꼭짓점 둘만 섞인 큐브예요. 버퍼(위-뒤-왼쪽)의 윗면 칸 색부터 따라가요.",
+      setup: { alg: setupFor(sendCorners(MEMO_CORNERS_2)) },
+      quiz: {
+        question: "외울 글자 줄은 무엇일까요?",
+        choices: ["H C", "C H", "C F"],
+        answer: 1,
+        why: "버퍼 조각의 흰 칸은 C(위-앞-오른쪽)로, 그 자리 조각의 칸은 H로 가요.",
+      },
+    },
+    {
       kind: "try",
-      body: "글자 둘(C, H)을 차례로 보내요.",
-      setup: { alg: setupFor(`${corner("C")} ${corner("H")}`) },
-      alg: `${corner("C")} ${corner("H")}`,
+      body: "외운 글자 둘(C, H)을 차례로 보내요.",
+      setup: { alg: setupFor(sendCorners(MEMO_CORNERS_2)) },
+      alg: sendCorners(MEMO_CORNERS_2),
       goal: "solved",
     },
   ],
@@ -193,6 +288,7 @@ const parity: Lesson = {
   id: "bld-parity",
   size: 3,
   title: "패리티와 끝까지",
+  drill: "bld-op",
   summary:
     "모서리 글자가 홀수 개면 모서리 뒤에 패리티 공식 한 번. 그리고 섞인 큐브로 처음부터 끝까지.",
   steps: [

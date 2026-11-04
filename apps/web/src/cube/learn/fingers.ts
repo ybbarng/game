@@ -119,7 +119,7 @@ export const FINGER_DRILLS: FingerDrill[] = [
     "Jb퍼뮤",
     "R U R' F' R U R' U' R' F R2 U' R'",
     "RW RI RW LIf RW RI RW LI RW RIf RW LI RW",
-    "T퍼뮤와 손 모양이 거의 같아요.",
+    "윗층에서 이웃한 꼭짓점 둘과 모서리 둘을 바꾸는 PLL 공식이에요(공식 훈련 「PLL 21」). T퍼뮤와 손 모양이 거의 같아요.",
     5,
   ),
 ];

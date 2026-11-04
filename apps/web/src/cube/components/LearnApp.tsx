@@ -1,9 +1,16 @@
 "use client";
 
+import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { COURSES, type Course, type Lesson } from "../learn";
+import {
+  type BesideCube,
+  COURSES,
+  type Course,
+  courseById,
+  type Lesson,
+} from "../learn";
 import { demoOffersTurn, stepIsActive, stepPicture } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
@@ -13,8 +20,15 @@ import {
   markLessonOpened,
   markTryPassed,
 } from "../learn/progress";
-import { useCubeSettings } from "../settings";
+import { type CubeSettings, useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
+import {
+  CourseNext,
+  drillTitle,
+  LessonSheet,
+  lessonHref,
+  trainHref,
+} from "./LearnLinks";
 import {
   FindPanel,
   LookPanel,
@@ -22,6 +36,7 @@ import {
   StillCube,
   TurnPanel,
 } from "./LessonActs";
+import { MoveText } from "./MoveChip";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -92,8 +107,6 @@ export function LearnApp() {
     </div>
   );
 }
-
-const lessonHref = (id: string) => `/cube/learn?lesson=${id}`;
 
 function CourseList({ progress }: { progress: LearnProgress }) {
   const last = progress.last ? findLesson(progress.last) : null;
@@ -168,19 +181,63 @@ function CourseGrid({
         const done = course.lessons.filter(
           (l) => progress.lessons[l.id]?.done,
         ).length;
+        // 앞 과정(예: 3×3 초보자)을 다 끝냈고 이 과정은 아직이면 눈에 띄게
+        const before = COURSES.find((c) => c.id === course.recommendAfter);
+        const recommended =
+          before !== undefined &&
+          done < course.lessons.length &&
+          before.lessons.every((l) => progress.lessons[l.id]?.done);
         return (
           <section
             key={course.id}
             data-course={course.id}
-            className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
+            data-course-recommended={recommended ? "" : undefined}
+            className={cn(
+              "flex flex-col gap-2 rounded-2xl border p-4",
+              recommended
+                ? "border-sky-300/70 bg-sky-500/15"
+                : "border-white/15 bg-white/5",
+            )}
           >
             <div className="flex items-baseline gap-2">
               <h3 className="font-bold">{course.title}</h3>
+              {recommended && (
+                <span className="rounded-full bg-sky-400 px-2 py-0.5 font-semibold text-black text-xs">
+                  추천
+                </span>
+              )}
               <span className="ml-auto text-white/50 text-xs">
                 {done}/{course.lessons.length}
               </span>
             </div>
             <p className="break-keep text-white/60 text-xs">{course.summary}</p>
+            {course.requires && course.requires.length > 0 && (
+              <p
+                data-course-requires={course.requires.join(" ")}
+                className="break-keep text-[11px] text-amber-200/80"
+              >
+                먼저 배우면 좋아요:{" "}
+                {course.requires.map((id, i) => {
+                  const c = courseById(id);
+                  const first = c?.lessons[0];
+                  return (
+                    <span key={id}>
+                      {i > 0 && ", "}
+                      {first ? (
+                        <a
+                          href={lessonHref(first.id)}
+                          className="underline hover:text-amber-100"
+                        >
+                          {c?.title}
+                        </a>
+                      ) : (
+                        id
+                      )}
+                    </span>
+                  );
+                })}
+              </p>
+            )}
             <ol className="flex flex-col gap-1">
               {course.lessons.map((l, i) => {
                 const p = progress.lessons[l.id];
@@ -359,7 +416,22 @@ function LessonView({
         <p className="text-sky-300 text-xs">
           {KIND_LABEL[step.kind]} · {at + 1}/{lesson.steps.length}
         </p>
-        <p className="break-keep text-base leading-relaxed">{step.body}</p>
+        <p className="break-keep text-base leading-relaxed" data-step-body>
+          <MoveText
+            text={step.body}
+            n={lesson.size}
+            letters={lesson.id.startsWith("bld")}
+          />
+        </p>
+        {step.sheet && <LessonSheet name={step.sheet} />}
+        {step.beside && (
+          <Beside
+            key={`${lesson.id}-${at}-beside`}
+            beside={step.beside}
+            masked={masked}
+            settings={settings}
+          />
+        )}
         {step.kind === "text" && (
           <StillCube
             n={lesson.size}
@@ -481,6 +553,16 @@ function LessonView({
                 ? "끝낸 단원 ✓"
                 : "단원 끝내기"}
             </button>
+            {lesson.drill && (
+              <a
+                data-lesson-drill={lesson.drill}
+                href={trainHref(lesson.drill)}
+                onClick={() => setProgress(markLessonDone(lesson.id))}
+                className="rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm hover:bg-sky-500/30"
+              >
+                이 공식 훈련하기: {drillTitle(lesson.drill)}
+              </a>
+            )}
             {next && (
               <a
                 href={lessonHref(next.id)}
@@ -507,6 +589,42 @@ function LessonView({
           </button>
         )}
       </nav>
+      {isLast && !next && <CourseNext course={course} />}
     </>
+  );
+}
+
+/** 곁 그림: 다른 크기 큐브를 정지 그림으로(예: 2×2 단원의 꼭짓점만 보이는 3×3) */
+function Beside({
+  beside,
+  masked,
+  settings,
+}: {
+  beside: BesideCube;
+  masked: boolean;
+  settings: CubeSettings;
+}) {
+  const n = beside.size;
+  const state = useMemo(
+    () =>
+      beside.setup
+        ? applyMoves(n, solvedCube(n), parseMoves(n, beside.setup.alg))
+        : solvedCube(n),
+    [n, beside.setup],
+  );
+  const mask = useMemo(
+    () => (masked ? maskFor(n, beside.mask) : null),
+    [masked, n, beside.mask],
+  );
+  return (
+    <figure
+      className="mx-auto flex w-full max-w-[220px] flex-col items-center gap-1"
+      data-step-beside={n}
+    >
+      <StillCube n={n} state={state} mask={mask} settings={settings} />
+      <figcaption className="break-keep text-center text-white/60 text-xs">
+        {beside.caption}
+      </figcaption>
+    </figure>
   );
 }

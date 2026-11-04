@@ -4,6 +4,7 @@ import { type Clock, realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { AlgBook, ImportResult } from "../algs/store";
+import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
 import {
   type CubeJob,
@@ -44,6 +45,8 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   "algs-import": 30_000,
   // 4×4·5×5 축소법은 처음 표를 만들 때 오래 걸릴 수 있다
   hero: 40_000,
+  // 십자 표(색마다 수십 ms)와 3×3 해법기 표를 처음 만들 때
+  cross: 30_000,
 };
 
 export interface JobRunnerOptions {
@@ -212,6 +215,13 @@ export function importAlgsInWorker(
   text: string,
 ): Promise<ImportResult> {
   return request({ kind: "algs-import", book, text }) as Promise<ImportResult>;
+}
+
+/** 십자 훈련 한 판(어려움에 맞는 섞기와 최적 수·해) */
+export function crossRoundInWorker(
+  req: CrossRoundRequest,
+): Promise<CrossRound> {
+  return request({ kind: "cross", request: req }) as Promise<CrossRound>;
 }
 
 /** 표를 미리 만들어 두게 한다(화면을 열 때 불러 두면 첫 섞기가 빠르다) */

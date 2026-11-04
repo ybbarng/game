@@ -158,9 +158,17 @@ function transpose(m: Mat): Mat {
  * 끝에 남는 큐브 방향 차이는 판정(가운데 색 기준)과 상관없어 버린다.
  */
 export function removeRotations(n: number, alg: string): string {
+  return fmt(n, removeRotationMoves(n, parseMoves(n, alg)));
+}
+
+/** removeRotations의 엔진 수판. 친 수(훈련 기록)처럼 이미 수로 가진 것을 옮겨 적을 때 */
+export function removeRotationMoves(
+  n: number,
+  moves: readonly CubeMove[],
+): CubeMove[] {
   let frame: Mat = IDENTITY;
   const out: CubeMove[] = [];
-  for (const m of parseMoves(n, alg)) {
+  for (const m of moves) {
     if (isRotation(n, m)) {
       // 회전 행렬의 거꾸로는 전치
       frame = mul(frame, transpose(rotationMatrix(m)));
@@ -168,7 +176,7 @@ export function removeRotations(n: number, alg: string): string {
     }
     out.push(transformMove(n, m, frame));
   }
-  return fmt(n, out);
+  return out;
 }
 
 export type Grip = "y" | "y'" | "y2";

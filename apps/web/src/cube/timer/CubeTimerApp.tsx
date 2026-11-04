@@ -897,59 +897,81 @@ function SettingsPanel({
     </label>
   );
   return (
-    <details className="rounded-xl bg-white/5 p-3 text-sm">
-      <summary className="cursor-pointer text-white/70">설정·내보내기</summary>
-      <div className="mt-3 flex flex-col gap-2">
-        {check("15초 살펴보기", "inspection")}
-        {check("도는 동안 숫자 숨기기", "hideRunning")}
-        {check("소리", "sound")}
-        <label className="flex items-center gap-2">
-          준비까지 누르고 있기
-          <select
-            className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
-            value={s.holdMs}
-            onChange={(e) => {
-              onChange({ holdMs: Number(e.target.value) });
-              // 고른 뒤 포커스를 풀어 스페이스바가 다시 타이머로 가게 한다
-              e.currentTarget.blur();
-            }}
-          >
-            {HOLD_CHOICES.map((ms) => (
-              <option key={ms} value={ms}>
-                {(ms / 1000).toFixed(ms % 100 === 0 ? 1 : 2)}초
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={download}
-            className="rounded-md border border-white/20 px-3 py-1 hover:border-white/50"
-          >
-            내보내기(JSON)
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="rounded-md border border-white/20 px-3 py-1 hover:border-white/50"
-          >
-            가져오기
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void file.text().then(onImport);
-              e.target.value = "";
-            }}
-          />
+    <>
+      {/* 시간 규칙은 처음 안내에서 이곳으로 옮겼다(2026-11-04): 맞출 줄 알게 된 뒤에 필요한 것 */}
+      <details className="rounded-xl bg-white/5 p-3 text-sm" data-timer-rules>
+        <summary className="cursor-pointer text-white/70">시간 규칙</summary>
+        <ul className="mt-2 list-disc space-y-1.5 break-keep pl-5 text-white/85">
+          <li>
+            섞은 뒤 15초 살펴보기가 있어요. 이때는 보기만 하고, 면을 돌리면 그
+            순간 시간이 시작돼요. 8초·12초에 알림 소리가 나요.
+          </li>
+          <li>
+            15초를 넘겨 시작하면 +2초, 17초를 넘기면 DNF(기록 없음)예요. 아래
+            설정에서 살펴보기를 끌 수 있어요.
+          </li>
+          <li>
+            5번 평균은 가장 좋은 것과 나쁜 것을 빼고 셋의 평균이에요(대회 방식).
+            기록은 이 기기에만 남아요.
+          </li>
+        </ul>
+      </details>
+      <details className="rounded-xl bg-white/5 p-3 text-sm">
+        <summary className="cursor-pointer text-white/70">
+          설정·내보내기
+        </summary>
+        <div className="mt-3 flex flex-col gap-2">
+          {check("15초 살펴보기", "inspection")}
+          {check("도는 동안 숫자 숨기기", "hideRunning")}
+          {check("소리", "sound")}
+          <label className="flex items-center gap-2">
+            준비까지 누르고 있기
+            <select
+              className="rounded-md border border-white/20 bg-neutral-900 px-2 py-1"
+              value={s.holdMs}
+              onChange={(e) => {
+                onChange({ holdMs: Number(e.target.value) });
+                // 고른 뒤 포커스를 풀어 스페이스바가 다시 타이머로 가게 한다
+                e.currentTarget.blur();
+              }}
+            >
+              {HOLD_CHOICES.map((ms) => (
+                <option key={ms} value={ms}>
+                  {(ms / 1000).toFixed(ms % 100 === 0 ? 1 : 2)}초
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={download}
+              className="rounded-md border border-white/20 px-3 py-1 hover:border-white/50"
+            >
+              내보내기(JSON)
+            </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="rounded-md border border-white/20 px-3 py-1 hover:border-white/50"
+            >
+              가져오기
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void file.text().then(onImport);
+                e.target.value = "";
+              }}
+            />
+          </div>
+          {message && <p className="text-white/60">{message}</p>}
         </div>
-        {message && <p className="text-white/60">{message}</p>}
-      </div>
-    </details>
+      </details>
+    </>
   );
 }

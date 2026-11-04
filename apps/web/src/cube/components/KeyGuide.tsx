@@ -5,6 +5,7 @@ import {
   chordLabel,
   chordsFor,
   codeLabel,
+  type KeyChord,
   type Keymap,
   PRESET_LABEL,
 } from "../input/keymaps";
@@ -65,24 +66,37 @@ export function KeyGuide({
   n,
   keymap,
   lit,
+  want,
 }: {
   n: number;
   keymap: Keymap;
   /** 방금 누른 키(잠깐 빛난다) */
   lit: string | null;
+  /** 칠 키(배우기 힌트·따라 하기 단계의 다음 수). Shift·Alt와 함께 칠 키는 칸에 ⇧·Alt를 붙인다 */
+  want?: readonly KeyChord[] | null | undefined;
 }) {
   const cell = (code: string) => {
     const { plain, shift } = keyLayers(keymap, n, code);
+    const w = want?.find((c) => c.code === code);
     return (
       <div
         key={code}
         data-key={code}
-        className={`flex h-10 min-w-0 flex-1 flex-col items-center justify-center rounded border text-[10px] leading-tight transition-colors ${
+        data-key-want={w ? "" : undefined}
+        className={`relative flex h-10 min-w-0 flex-1 flex-col items-center justify-center rounded border text-[10px] leading-tight transition-colors ${
           lit === code
             ? "border-amber-300 bg-amber-300/30"
-            : "border-white/15 bg-white/5"
+            : w
+              ? "border-sky-300 bg-sky-400/30"
+              : "border-white/15 bg-white/5"
         }`}
       >
+        {w && (w.shift || w.alt) && (
+          <span className="absolute top-0 right-0.5 font-bold text-[9px] text-sky-200">
+            {w.alt ? "Alt" : ""}
+            {w.shift ? "⇧" : ""}
+          </span>
+        )}
         <span className="text-white/40">{codeLabel(code)}</span>
         <span className="font-semibold text-xs">
           {plain?.usable ? plain.label : ""}

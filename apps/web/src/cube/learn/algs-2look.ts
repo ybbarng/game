@@ -29,22 +29,57 @@ export const TWO_LOOK_OLL: AlgCase[] = [
   },
   ...(
     [
-      [21, "꼭짓점: H(헤드라이트 둘)", "R U2 R' U' R U R' U' R U' R'"],
-      [22, "꼭짓점: 파이", "R U2 R2 U' R2 U' R2 U2 R"],
-      [23, "꼭짓점: 헤드라이트", "R2 D' R U2 R' D R U2 R"],
-      [24, "꼭짓점: T", "r U R' U' r' F R F'"],
-      [25, "꼭짓점: 나비넥타이", "F' r U R' U' r' F R"],
-      [26, "꼭짓점: 안티수네", "R U2 R' U' R U' R'"],
-      [27, "꼭짓점: 수네", "R U R' U R U2 R'"],
+      [
+        21,
+        "꼭짓점: H(헤드라이트 둘)",
+        "R U2 R' U' R U R' U' R U' R'",
+        "위를 보는 노란 꼭짓점이 없고, 앞과 뒤 옆면에 노란 칸이 둘씩 마주 봐요.",
+      ],
+      [
+        22,
+        "꼭짓점: 파이",
+        "R U2 R2 U' R2 U' R2 U2 R",
+        "위를 보는 노란 꼭짓점이 없어요. 왼쪽 옆면에 노란 칸 둘(헤드라이트)을 두면, 오른쪽 두 꼭짓점의 노랑은 앞과 뒤를 봐요.",
+      ],
+      [
+        23,
+        "꼭짓점: 헤드라이트",
+        "R2 D' R U2 R' D R U2 R",
+        "노란 꼭짓점 둘이 앞쪽에서 위를 보고, 뒤 옆면에 노란 칸 둘(헤드라이트)이 나란히 있어요.",
+      ],
+      [
+        24,
+        "꼭짓점: T",
+        "r U R' U' r' F R F'",
+        "노란 꼭짓점 둘이 오른쪽에서 위를 보고, 왼쪽 두 꼭짓점의 노랑은 앞과 뒤를 봐요.",
+      ],
+      [
+        25,
+        "꼭짓점: 나비넥타이",
+        "F' r U R' U' r' F R",
+        "노란 꼭짓점 둘이 대각선(앞-왼쪽·뒤-오른쪽)에서 위를 보고, 앞-오른쪽 꼭짓점의 노랑은 앞을 봐요.",
+      ],
+      [
+        26,
+        "꼭짓점: 안티수네",
+        "R U2 R' U' R U' R'",
+        "위를 보는 노란 꼭짓점 하나를 뒤-오른쪽에 두면, 앞-왼쪽 꼭짓점의 노랑이 앞을 봐요.",
+      ],
+      [
+        27,
+        "꼭짓점: 수네",
+        "R U R' U R U2 R'",
+        "위를 보는 노란 꼭짓점 하나를 앞-왼쪽에 두면, 앞-오른쪽 꼭짓점의 노랑이 앞을 봐요.",
+      ],
     ] as const
   ).map(
-    ([n, name, alg]): AlgCase => ({
+    ([n, name, alg, look]): AlgCase => ({
       id: `2look-oll-${n}`,
       set: "2look-oll",
       name,
       group: "corners",
       algs: [alg],
-      note: `전체 OLL ${n}번과 같아요.`,
+      note: `${look} 전체 OLL ${n}번과 같아요.`,
     }),
   ),
 ];
@@ -56,7 +91,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "꼭짓점: 헤드라이트 하나(이웃 바꾸기, T퍼뮤)",
     group: "corners",
     algs: ["R U R' U' R' F R2 U' R' U' R U R' F'"],
-    note: "헤드라이트(옆면 같은 색 두 꼭짓점)를 왼쪽에 둬요.",
+    note: "헤드라이트(옆면 한 줄의 양 끝 꼭짓점 칸이 같은 색)를 왼쪽에 둬요. T퍼뮤는 오른쪽 두 꼭짓점을 맞바꿔요.",
   },
   {
     id: "2look-pll-diagonal",
@@ -72,7 +107,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "모서리: Ua(셋 돌리기)",
     group: "edges",
     algs: ["M2 U M U2 M' U M2"],
-    note: "다 맞은 면을 뒤로",
+    note: "다 맞은 면을 뒤로 두면 앞 모서리가 오른쪽 면 색이에요.",
   },
   {
     id: "2look-pll-ub",
@@ -80,7 +115,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "모서리: Ub(셋 반대로 돌리기)",
     group: "edges",
     algs: ["M2 U' M U2 M' U' M2"],
-    note: "다 맞은 면을 뒤로",
+    note: "다 맞은 면을 뒤로 두면 앞 모서리가 왼쪽 면 색이에요.",
   },
   {
     id: "2look-pll-h",
@@ -88,6 +123,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "모서리: H(맞은편끼리)",
     group: "edges",
     algs: ["M2 U M2 U2 M2 U M2"],
+    note: "앞·뒤 모서리끼리, 왼쪽·오른쪽 모서리끼리 바뀌어 있어요.",
   },
   {
     id: "2look-pll-z",
@@ -95,5 +131,6 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "모서리: Z(이웃끼리 두 쌍)",
     group: "edges",
     algs: ["M' U M2 U M2 U M' U2 M2"],
+    note: "옆에 붙은 두 면끼리 모서리가 바뀌어 있어요. 꼭짓점을 맞춘 채로 보면 공식 뒤에 U' 하나가 더 필요해요.",
   },
 ];

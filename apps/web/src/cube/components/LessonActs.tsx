@@ -23,6 +23,8 @@ import {
   lookMet,
   pieceAtSticker,
   pieceName,
+  revealFound,
+  slotCenterColors,
   stickerAtHit,
   turnProgress,
 } from "../learn/interact";
@@ -30,6 +32,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { MoveChip, useMoveKeys } from "./MoveChip";
 
 /**
  * 배우기 단계의 상호작용(docs/47 8-1): 정지 그림(글), 조각 찾기, 고르기 문제, 둘러보기, 한 수 해 보기.
@@ -213,16 +216,25 @@ export function FindPanel({
     }
     return out;
   }, [found, n, start]);
+  // 가린 큐브에서 찾은 조각은 3D·펼친 그림 모두 색을 드러낸다
+  const shown = useMemo(
+    () => revealFound(n, start, mask, found),
+    [n, start, mask, found],
+  );
 
   const onSticker = (sticker: number) => {
     if (passed) return;
     const hit = findHit(n, start, sticker, target);
     if (hit === null) {
       const p = pieceAtSticker(n, start, sticker);
+      // 자리 찾기는 조각 대신 그 자리가 어느 가운데 사이인지 알린다
+      const slot = target.at ? slotCenterColors(n, start, sticker) : [];
       setMiss(
-        p
-          ? `그건 ${p.colors.map((c) => COLOR_NAME[c]).join("-")} ${pieceName(p.type)}이에요. 다시 찾아보세요.`
-          : "다시 찾아보세요.",
+        slot.length > 1
+          ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요. 다시 찾아보세요.`
+          : p
+            ? `그건 ${p.colors.map((c) => COLOR_NAME[c]).join("-")} ${pieceName(p.type)}이에요. 다시 찾아보세요.`
+            : "다시 찾아보세요.",
       );
       playCubeCue(settings, "invalid");
       return;
@@ -255,7 +267,7 @@ export function FindPanel({
       <StillCube
         n={n}
         state={start}
-        mask={mask}
+        mask={shown}
         settings={settings}
         onSticker={onSticker}
         marked={marked}
@@ -487,6 +499,10 @@ export function TurnPanel({
   );
   const live = useRef({ passed, onPassed, settings });
   live.current = { passed, onPassed, settings };
+  // 칠 수(노란 칸)의 키를 칩과 키 그림에 함께 보인다
+  const { keysOf } = useMoveKeys(n);
+  const next = !passed ? tokens[progress.step] : undefined;
+  const want = next && keysOf ? keysOf(next) : null;
 
   const onMove = useCallback(
     (m: CubeMove) => {
@@ -521,7 +537,10 @@ export function TurnPanel({
                   : "bg-white/5",
             )}
           >
-            {t}
+            <MoveChip
+              notation={t}
+              keysOf={i === progress.step && !passed ? keysOf : null}
+            />
           </li>
         ))}
       </ol>
@@ -551,6 +570,7 @@ export function TurnPanel({
         settings={settings}
         onMove={onMove}
         onCommand={play.onCommand}
+        want={want}
       />
     </div>
   );

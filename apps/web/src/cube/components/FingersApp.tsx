@@ -243,6 +243,7 @@ export function FingersApp() {
                 tps={tps}
                 autoPlay
                 loop
+                showKeys={false}
                 labels={fingers}
               />
 

@@ -1,33 +1,115 @@
 // 2×2 초보자(docs/47 8-2): 첫 층 → 윗면(3×3의 수네 그대로) → 윗층 자리(3×3의 A퍼뮤 그대로).
 // 그다음 빠른 해법 오르테가를 소개한다. 2×2는 꼭짓점 여덟 개뿐이고 기준이 될 가운데가 없다.
+import { STUCK_CORNER } from "./lessons-333";
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
 const SEXY = "R U R' U'";
 const SUNE = "R U R' U R U2 R'";
 const A_PERM = "R' F R' B2 R F' R' B2 R2";
-const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
-const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
+export const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
+export const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
 
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
+
+// 조각(2026-11-04): 2×2는 꼭짓점뿐이라 면 색을 정해 줄 가운데가 없다
+const pieces: Lesson = {
+  id: "222-pieces",
+  size: 2,
+  title: "2×2의 조각",
+  summary: "꼭짓점 여덟 개뿐이에요. 가운데가 없어서 조각끼리 맞춰요.",
+  steps: [
+    {
+      kind: "quiz",
+      body: "2×2를 둘러보세요. 칸 하나하나가 아니라 조각으로 보면 어떤 조각이 있나요? 칸 셋이 한 조각이에요.",
+      mask: "all",
+      quiz: {
+        question: "2×2를 이루는 조각은?",
+        choices: [
+          "꼭짓점 8개뿐",
+          "가운데 6개 + 꼭짓점 8개",
+          "모서리 12개 + 꼭짓점 8개",
+        ],
+        answer: 0,
+        why: "2×2는 구석마다 꼭짓점 하나, 모두 여덟 개예요. 가운데도 모서리도 없어요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "흰색이 붙은 꼭짓점을 넷 모두 눌러 보세요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      find: { piece: "corner", has: ["U"] },
+      count: 4,
+    },
+    {
+      kind: "quiz",
+      body: "3×3에서는 움직이지 않는 가운데 색이 면 색과 조각의 제자리를 정했어요. 2×2에는 그 가운데가 없어요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      quiz: {
+        question: "그럼 2×2에서 조각의 제자리는 무엇으로 정할까요?",
+        choices: [
+          "꼭짓점 하나를 기준으로 삼고, 이웃 꼭짓점의 색이 이어지게",
+          "면 가운데 칸의 색으로",
+          "흰 스티커가 많은 쪽으로",
+        ],
+        answer: 0,
+        why: "기준 꼭짓점 하나를 정하면 나머지는 그 조각과 색이 이어지게 붙여요. 큐브를 어느 쪽으로 들어도 돼요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "흰-초록-빨강 꼭짓점을 기준으로 삼아요. 흰색과 초록을 함께 나눠 가질 이웃, 흰-초록-주황 꼭짓점을 찾아 눌러 보세요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      find: { piece: "corner", colors: ["U", "F", "L"] },
+    },
+  ],
+};
 
 const intro: Lesson = {
   id: "222-intro",
   size: 2,
   title: "2×2 살펴보기",
-  summary: "가운데도 모서리도 없는 작은 큐브. 3×3에서 배운 공식을 그대로 써요.",
+  summary:
+    "가운데가 없는 작은 큐브. 색의 짝과 차례로 자리를 정하고, 3×3 공식을 그대로 써요.",
   steps: [
     {
-      kind: "find",
-      body: "2×2는 꼭짓점 여덟 개로만 되어 있어요. 가운데 칸이 없어서 면의 색을 알려 주는 기준이 없어요. 그래서 「흰 면이 몇 색 옆에 있어야 하나」는 꼭짓점끼리 서로 맞춰서 정해요. 흰-초록-빨강 꼭짓점을 찾아 눌러 보세요.",
-      find: { piece: "corner", colors: ["U", "F", "R"] },
+      kind: "quiz",
+      body: "가운데가 없어도 색의 짝은 3×3과 같아요: 흰↔노랑, 초록↔파랑, 빨강↔주황이 언제나 맞은편이에요. 그래서 한 꼭짓점에 맞은편 두 색은 함께 붙지 않아요.",
+      mask: "all",
+      quiz: {
+        question: "빨강의 맞은편 색은 무엇일까요?",
+        choices: ["주황", "노랑", "초록"],
+        answer: 0,
+        why: "빨강↔주황이 맞은편이에요. 큐브를 둘러보며 확인해 보세요.",
+      },
     },
     {
-      kind: "turn",
-      body: "표기는 3×3과 같아요(R U F, ', 2). 3×3을 맞출 줄 안다면 꼭짓점 단계만 따라 하면 돼요. 몰라도 이 과정만으로 맞출 수 있어요. R 다음 U를 쳐 보세요.",
-      alg: "R U",
+      kind: "quiz",
+      body: "둘레 색의 차례도 정해져 있어요. 흰 면을 위로, 초록을 앞으로 들면 오른쪽은 빨강, 뒤는 파랑, 왼쪽은 주황이에요. 그래서 기준 꼭짓점 하나만 있으면 이웃 꼭짓점의 색이 정해져요.",
+      mask: "all",
+      quiz: {
+        question:
+          "흰-초록-빨강 꼭짓점이 위-앞-오른쪽에 있어요. 위-앞-왼쪽에 올 꼭짓점은?",
+        choices: ["흰-초록-주황", "흰-파랑-빨강", "흰-초록-노랑"],
+        answer: 0,
+        why: "흰과 초록을 함께 나누고, 오른쪽 빨강의 맞은편인 주황이 왼쪽에 와요. 흰-초록-노랑은 맞은편 색이 함께 붙어서 없는 꼭짓점이에요.",
+      },
     },
-    { kind: "demo", body: "R U R' U': 3×3과 똑같이 돌아요.", alg: SEXY },
+    {
+      kind: "find",
+      body: "표기는 3×3과 같아요(R U F, ', 2). 2×2에서 R을 돌리면 오른쪽 층의 꼭짓점 넷이 통째로 돌아요. 지금은 맞춘 큐브라 빨강이 붙은 꼭짓점이 그 넷이에요. 넷 모두 눌러 보세요.",
+      mask: "all",
+      find: { piece: "corner", has: ["R"] },
+      count: 4,
+    },
+    {
+      kind: "demo",
+      body: "R U R' U': 3×3과 똑같이 돌아요. 3×3을 맞출 줄 안다면 꼭짓점 단계만 따라 하면 되고, 몰라도 이 과정만으로 맞출 수 있어요.",
+      alg: SEXY,
+    },
   ],
 };
 
@@ -38,10 +120,24 @@ const firstLayer: Lesson = {
   summary: "흰 꼭짓점 넷을 아래에 모아요. 옆면 색까지 서로 맞게.",
   steps: [
     {
+      kind: "find",
+      body: "섞인 2×2에서는 먼저 흰 꼭짓점 아무거나 하나를 기준으로 골라요. 이 조각을 아래층에 두고 나머지를 여기에 맞춰 붙여요. 흰 꼭짓점을 하나 눌러 보세요.",
+      setup: { alg: "R U F' R2 U'" },
+      mask: "all",
+      find: { piece: "corner", has: ["U"] },
+    },
+    {
       kind: "look",
-      body: "흰 꼭짓점 하나를 아래층에 두고 기준으로 삼아요. 나머지 흰 꼭짓점은 3×3 첫 층과 같아요. 넣을 자리 위(앞-오른쪽 위)로 옮기고 R U R' U'을 맞을 때까지 되풀이해요. 먼저 큐브 전체를 돌려 흰 면을 아래로 보내 보세요.",
+      body: "나머지 흰 꼭짓점은 3×3 첫 층과 같아요. 넣을 자리 위(앞-오른쪽 위)로 옮기고 R U R' U'을 맞을 때까지 되풀이해요. 먼저 큐브 전체를 돌려 흰 면을 아래로 보내 보세요.",
       mask: "first-layer",
       look: { color: "U", on: "D" },
+    },
+    {
+      kind: "find",
+      body: "흰 면을 아래로 뒤집으면 오른쪽과 왼쪽이 바뀌어요. 기준 흰-초록-빨강 꼭짓점은 아래-앞-왼쪽에 있어요. 그 오른쪽(아래-앞-오른쪽)에 올 꼭짓점은 흰·초록을 함께 나누고 빨강의 맞은편 주황이 붙은 것이에요. 윗층에서 찾아 눌러 보세요.",
+      setup: flip(SEXY),
+      mask: "all",
+      find: { piece: "corner", colors: ["U", "F", "L"] },
     },
     {
       kind: "quiz",
@@ -81,7 +177,15 @@ const firstLayer: Lesson = {
     },
     {
       kind: "try",
-      body: "섞인 2×2에서 첫 층을 만들어요.",
+      body: "흰 꼭짓점이 아래층 엉뚱한 칸(앞-왼쪽)에 박혀 있어요. 큐브를 돌려(y') 그 칸을 앞-오른쪽으로 들고 R U R' U' 한 번으로 꺼낸 뒤, 다시 돌려 들고(y) 제 칸 위로 옮겨(U') 넣어요.",
+      setup: flip(STUCK_CORNER),
+      alg: STUCK_CORNER,
+      goal: "2x2-first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "섞인 2×2에서 첫 층을 만들어요. 기준 꼭짓점 하나를 아래에 두고, 옆색이 이어지는 꼭짓점을 차례로 넣어요.",
       setup: { rule: "2x2-random" },
       goal: "2x2-first-layer",
       mask: "first-layer",
@@ -213,7 +317,7 @@ const ortega: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "오르테가는 세 단계예요. ① 흰 칸 넷을 한 면에 모아요(옆색은 안 봐도 돼요). ② 그 면을 아래로 두고 윗면을 노랗게(OLL 7가지). ③ 위층과 아래층의 자리를 한 번에 맞춰요(PBL 5가지).",
+      body: "오르테가는 세 단계예요. ① 흰 칸 넷을 한 면에 모아요(옆색은 안 봐도 돼요). ② 그 면을 아래로 두고 윗면을 노랗게(OLL 7가지). ③ 위층과 아래층의 자리를 한 번에 맞춰요(PBL 5가지, 영어 Permutation of Both Layers의 줄임말로 「두 층 자리 바꾸기」).",
       setup: { alg: setupFor("R2 F2 R2", "z2") },
       quiz: {
         question: "오르테가 첫 단계에서 할 일은 무엇일까요?",
@@ -255,6 +359,13 @@ const ortega: Lesson = {
     },
     {
       kind: "try",
+      body: "둘째 단계: 흰 면을 아래로 두고 윗면을 노랗게 해요. 노란 칸 하나가 왼쪽 앞에 있는 모양은 초보자 과정과 같은 수네(R U R' U R U2 R') 한 번이에요. 오르테가에서는 이런 윗면 공식 일곱 개를 모양마다 하나씩 써요.",
+      setup: flip(SUNE),
+      alg: SUNE,
+      goal: "2x2-both-faces",
+    },
+    {
+      kind: "try",
       body: "위아래 면을 다 만들었다고 치고, 위층만 이웃 둘이 바뀐 상황을 풀어요(T퍼뮤와 같아요).",
       setup: { alg: setupFor(T_PERM, "z2") },
       alg: T_PERM,
@@ -269,5 +380,5 @@ export const BEGINNER_222: Course = {
   title: "2×2 처음 맞추기",
   summary:
     "첫 층 → 윗면 → 윗층 자리. 3×3 공식 세 개(R U R' U', 수네, A퍼뮤)면 돼요. 끝에 오르테가 소개.",
-  lessons: [intro, firstLayer, topFace, topLayer, ortega],
+  lessons: [pieces, intro, firstLayer, topFace, topLayer, ortega],
 };

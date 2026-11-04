@@ -6,6 +6,8 @@ import {
   cubeTopology,
   faceColors,
   parseMoves,
+  pieceFaces,
+  type StickerMask,
   solvedCube,
 } from "@game/cube-engine";
 import { type PuzzleState, statesEqual } from "@game/puzzle-core";
@@ -95,7 +97,50 @@ export function findHit(
     if (want.some((c, i) => c !== got.colors[i])) return null;
   }
   if (target.has?.some((c) => !got.colors.includes(FACE_INDEX[c]))) return null;
+  if (target.at) {
+    const want = target.at.map((c) => FACE_INDEX[c]).sort((a, b) => a - b);
+    const faces = pieceFaces(n, got.piece).sort((a, b) => a - b);
+    if (want.length !== faces.length) return null;
+    if (want.some((c, i) => c !== faces[i])) return null;
+  }
   return got.piece;
+}
+
+/**
+ * 가린 큐브에서 찾은 조각을 드러낸다: 찾은 자리(조각 자리 번호)에 지금 있는 조각의 스티커를 「보임」으로 바꾼 마스크.
+ * 「가운데만 보임」에서 꼭짓점을 찾으면 펼친 그림뿐 아니라 3D에서도 그 조각의 색이 보인다.
+ * 가리지 않았거나(null) 찾은 것이 없으면 받은 마스크를 그대로 돌려준다.
+ */
+export function revealFound(
+  n: number,
+  state: PuzzleState,
+  mask: StickerMask | null,
+  found: readonly number[],
+): StickerMask | null {
+  if (!mask || found.length === 0) return mask;
+  const topo = cubeTopology(n);
+  const out = [...mask];
+  for (const p of found)
+    for (const slot of topo.pieces[p]?.stickers ?? []) {
+      const sticker = state.perm[slot];
+      if (sticker !== undefined) out[sticker] = "visible";
+    }
+  return out;
+}
+
+/** 칸이 든 자리가 닿은 면의 가운데 색(면 번호). 자리 찾기에서 틀렸을 때 「그 자리는 ○-○ 가운데 사이」로 알린다 */
+export function slotCenterColors(
+  n: number,
+  state: PuzzleState,
+  sticker: number,
+): number[] {
+  const topo = cubeTopology(n);
+  const s = topo.stickers[sticker];
+  if (!s || n % 2 === 0) return [];
+  const colors = faceColors(n, state);
+  const nn = n * n;
+  const mid = (nn - 1) / 2;
+  return pieceFaces(n, s.piece).map((f) => colors[f * nn + mid] as number);
 }
 
 /** 누른 칸이 틀렸을 때 부드럽게 알려 줄 말(그 칸이 무엇이었는지) */
@@ -203,7 +248,10 @@ export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
     case "find": {
       if (
         !step.find ||
-        (!step.find.piece && !step.find.colors && !step.find.has)
+        (!step.find.piece &&
+          !step.find.colors &&
+          !step.find.has &&
+          !step.find.at)
       )
         return "찾을 조각이 없다";
       const start = setupState(n, step.setup);
