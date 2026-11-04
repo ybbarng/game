@@ -1,10 +1,21 @@
 import { sha256Hex } from "@game/baseball-engine";
-import { type BotLevel, type BotPlan, botPlan } from "@game/cube-ai";
-import { type CubeMove, formatMove, parseMoves } from "@game/cube-engine";
+import {
+  BOT_LEVELS,
+  type BotLevel,
+  type BotPlan,
+  botPlan,
+} from "@game/cube-ai";
+import {
+  type CubeMove,
+  formatMove,
+  isRotation,
+  parseMoves,
+} from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceSession } from "@/net/race/race-session";
+import { BOT_NO_PLAN } from "./race-game";
 
 /**
  * 대결에 든 컴퓨터(docs/47 9-1·10절). 방장 기기가 돌리지만 대결 틀에는 다른 사람과 똑같이 한 참가자다
@@ -30,9 +41,9 @@ export function botSupports(n: number): boolean {
 /**
  * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭. 고른 단계의 3×3 해법이 실패하면 `botPlan`이
  * 먼저 초고수 해로 대신하므로, 이것은 그것마저 실패했거나 4×4·5×5 축소법이 돌려 쥐어도 막혔을 때다
- * (축소법은 모든 단계가 함께 써서 초고수로 대신해도 똑같이 막힌다)
+ * (축소법은 모든 단계가 함께 써서 초고수로 대신해도 똑같이 막힌다). 글은 `race-game.ts`에 둔다(받는 쪽 까닭 목록)
  */
-export const BOT_NO_PLAN = "컴퓨터가 맞출 길을 찾지 못함";
+export { BOT_NO_PLAN };
 
 /**
  * 계획 만들기. 제품은 웹 워커(`planInWorker`, 해법기 표를 처음 만들 때 1초 넘게 걸려 화면이 멈추지 않게),
@@ -180,4 +191,51 @@ export async function checkBotRun(
       Math.abs(x.t - (made.moves[i]?.at as number) - delay) <=
       BOT_TIME_TOLERANCE_MS,
   );
+}
+
+/** 큐브 돌리기(x·y·z)를 뺀 수 차례(표기 글) */
+function turnsOnly(n: number, moves: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const text of moves)
+    for (const m of parseMoves(n, text))
+      if (!isRotation(n, m)) out.push(formatMove(n, m));
+  return out;
+}
+
+/** 「컴퓨터 풀이와 같음」을 보는 가장 적은 수(이보다 짧은 풀이는 우연히 같을 수 있다) */
+export const SAME_AS_BOT_MIN_TURNS = 10;
+
+/**
+ * 사람의 수 차례가 우리 컴퓨터 풀이(`solveHuman`, 어느 단계든)와 같은가(docs/47 9-2 의심 표시).
+ * 같으면 그 단계, 아니면 null. 콘솔에서 해법기 계획을 받아 그대로 두는 자동 풀이를 본다. 결과는 바꾸지 않는다.
+ * 큐브 돌리기는 빼고 견준다(y y′를 끼워 넣어 수를 채워도 같게 본다). 계획의 수 차례는 씨앗과 상관없다(시각만 씨앗).
+ * 판이 끝난 뒤 한 번, 워커에서 계획을 만든다(`planInWorker`)
+ */
+export async function sameAsBotSolve(
+  n: number,
+  start: PuzzleState,
+  log: readonly { m: string }[],
+  plan: PlanFn = planHere,
+): Promise<BotLevel | null> {
+  if (!botSupports(n)) return null;
+  const mine = turnsOnly(
+    n,
+    log.map((x) => x.m),
+  );
+  if (mine.length < SAME_AS_BOT_MIN_TURNS) return null;
+  for (const level of BOT_LEVELS) {
+    let made: BotPlan;
+    try {
+      made = await plan(level, n, start, 0);
+    } catch {
+      continue;
+    }
+    const theirs = turnsOnly(
+      n,
+      made.moves.map((m) => m.move),
+    );
+    if (theirs.length === mine.length && theirs.every((m, i) => m === mine[i]))
+      return level;
+  }
+  return null;
 }

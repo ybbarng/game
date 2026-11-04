@@ -429,6 +429,77 @@ describe("큐브 대결 방: 남의 결과를 꾸미지 못한다", () => {
   });
 });
 
+describe("큐브 대결 방: 한 기기·이름 흉내", () => {
+  it("④ 방장 기기의 사람과 컴퓨터가 함께 손님 하한을 크게 지어내도 기기 하나로만 세어(컴퓨터는 증인 아님) 손님 시간은 「확인 안 됨」(순위 없음)이다", () => {
+    const { clock, net, host, guest } = setup();
+    host.addBot("expert");
+    clock.advance(100);
+    // 방장 기기에서 나가는 손님 하한(방장 사람·컴퓨터 둘 다)을 9,999초 늘린다
+    net.filter = (m, from) => {
+      const env = m as {
+        type?: string;
+        m?: { type?: string; of?: string; bound?: number | null };
+      };
+      if (
+        from === "h" &&
+        env.type === "cube-race" &&
+        env.m?.type === "race-bound" &&
+        env.m.of === "g" &&
+        typeof env.m.bound === "number"
+      )
+        env.m.bound += 9_999_000;
+      return m;
+    };
+    solveWhenReleased(clock, guest, 300);
+    expect(host.startRound()).toBe(true);
+    runUntil(
+      clock,
+      () => guest.rounds.length === 1 && host.rounds.length === 1,
+      120_000,
+      50,
+    );
+    const g = guest.rounds[0]?.result.players.g;
+    expect(Object.keys(g?.bounds ?? {})).toEqual(["h"]);
+    expect(g?.disputed).toBe(true);
+    // 판에 셋(방장·컴퓨터·손님)이라 판 전체가 아니라 손님만 순위 없음
+    expect(g?.unranked).toBe(true);
+    expect(g?.accepted).toBeUndefined();
+    expect(guest.rounds[0]?.result.noDecision).toBeUndefined();
+    // 거짓을 보낸 방장 기기는 자기 참값을 가진다(컴퓨터 하한은 거기서도 쓰지 않는다)
+    expect(Object.keys(host.rounds[0]?.result.players.g?.bounds ?? {})).toEqual(
+      ["h"],
+    );
+  });
+
+  it("채팅은 메시지에 적힌 이름 대신 보낸 기기의 참가자 이름으로 보이고, 같은 이름은 「이름 (2)」로 구분한다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    const heard: { name: string; text: string }[] = [];
+    const host = new CubeRoom({
+      transport: net.join("h"),
+      clock,
+      isHost: true,
+      name: "방장",
+      scrambler: fake,
+      onChat: (m) => heard.push({ name: m.name, text: m.text }),
+    });
+    const t = net.join("g");
+    const guest = new CubeRoom({
+      transport: t,
+      clock,
+      isHost: false,
+      name: "방장",
+      scrambler: fake,
+    });
+    clock.advance(100);
+    t.send({ type: "cube-chat", id: "x", name: "방장", text: "내가 방장" });
+    clock.advance(100);
+    expect(heard).toEqual([{ name: "방장 (2)", text: "내가 방장" }]);
+    expect(host.playerName("h")).toBe("방장");
+    expect(guest.playerName("g")).toBe("방장 (2)");
+  });
+});
+
 describe("종합 순위", () => {
   it("5판 평균은 가장 좋은·나쁜 판을 빼고, 못 맞춘 판이 둘이면 DNF", () => {
     expect(averageOf5([10, 20, 30, 40, 50])).toBe(30);
@@ -454,5 +525,29 @@ describe("종합 순위", () => {
       id: "a",
       wins: 2,
     });
+  });
+
+  it("판정 없음(두 기기 기록이 다름) 판은 승수·평균·판 수에 넣지 않는다", () => {
+    const voided = {
+      result: {
+        ranking: ["b", "a"],
+        noDecision: true,
+        players: {
+          a: {
+            id: "a",
+            status: "done" as const,
+            moves: 1,
+            disputed: true,
+            unranked: true,
+            reported: 1,
+          },
+          b: { id: "b", status: "done" as const, moves: 1, accepted: 9 },
+        },
+      },
+    };
+    expect(matchOver("single", 1, [voided])).toBe(false);
+    expect(matchOver("firstTo", 1, [voided])).toBe(false);
+    const rows = standings("ao5", ["a", "b"], [voided]);
+    expect(rows.every((r) => r.times.length === 0 && r.wins === 0)).toBe(true);
   });
 });

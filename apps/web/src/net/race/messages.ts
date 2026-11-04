@@ -24,6 +24,8 @@ export type RaceMessage =
       attempt: number;
       nonce: string;
       salt: string;
+      /** 남의 공개값을 전할 때 그 주인. 없으면 보낸 사람 자신의 공개 */
+      of?: string;
     }
   | {
       type: "race-seed";
@@ -35,6 +37,8 @@ export type RaceMessage =
       start?: string;
       /** 보낸 기기의 판정 설정 지문(살펴보기·제한 시간 등). 다르면 섞기 어긋남과 같이 본다 */
       rules?: string;
+      /** 보낸 기기의 대결 틀 판(`RACE_PROTOCOL`). 없으면 옛 판 화면 */
+      v?: number;
     }
   | {
       type: "race-moves";
@@ -84,7 +88,14 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
     }
     case "race-reveal":
       if (!isStr(raw.nonce) || !isStr(raw.salt)) return null;
-      return { type: raw.type, ...base, nonce: raw.nonce, salt: raw.salt };
+      if (raw.of !== undefined && !isStr(raw.of)) return null;
+      return {
+        type: raw.type,
+        ...base,
+        nonce: raw.nonce,
+        salt: raw.salt,
+        ...(isStr(raw.of) ? { of: raw.of } : {}),
+      };
     case "race-seed": {
       if (!isObj(raw.commits)) return null;
       const commits: Record<string, string> = {};
@@ -94,12 +105,14 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
       }
       if (raw.start !== undefined && !isStr(raw.start)) return null;
       if (raw.rules !== undefined && !isStr(raw.rules)) return null;
+      if (raw.v !== undefined && !isInt(raw.v)) return null;
       return {
         type: raw.type,
         ...base,
         commits,
         ...(isStr(raw.start) ? { start: raw.start } : {}),
         ...(isStr(raw.rules) ? { rules: raw.rules } : {}),
+        ...(isInt(raw.v) ? { v: raw.v as number } : {}),
       };
     }
     case "race-moves": {

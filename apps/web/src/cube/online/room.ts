@@ -126,11 +126,25 @@ export interface CubeRoomInit {
   }) => void;
 }
 
-/** 그럴듯함 표시 기준(docs/46 3-4). 3×3 키보드에서 0.5초 안 20수 넘게, 30수 안쪽으로 맞춤 */
+/**
+ * 그럴듯함 표시 기준(docs/46 3-4, docs/47 9-2). 결과는 바꾸지 않고 표시만 한다. 사람을 의심하지 않게 넉넉히 잡는다.
+ * - 몰아친 수: 0.5초 안 20수 넘게(초당 40수. 키보드 기록자의 짧은 몰아치기도 초당 20수 안팎)
+ * - 수가 지나치게 적음(3×3): 큐브 돌리기를 뺀 수가 30수 안쪽(사람 빠른 방법은 50~60수, 2단계 해법은 20수 남짓)
+ * - 고른 간격: 센 수 30수 이상에서 수 사이 간격의 변동 계수가 0.2 아래. 사람은 공식 안 빠른 손놀림(0.1초 안팎)과
+ *   다음 모양을 살피는 멈춤(0.3~1초)이 섞여 변동 계수가 보통 0.6을 넘는다. 일정한 간격으로 흘리는 프로그램은 0.05 안쪽
+ * - 첫 수 빠르기: 풀린 뒤 첫 12수를 0.6초 안에(풀림에 반응하는 시간을 넣고도 초당 20수). 살펴보기 동안 몰래 풀어
+ *   두었다가 풀리자마자 흘려보내는 것을 본다. 사람은 첫 수까지 반응 시간이 있고 십자도 초당 10수 안팎
+ */
 function suspicionFor(n: number): SuspicionRules {
-  return n === 3
-    ? { windowMs: 500, maxMovesInWindow: 20, minMoves: 30 }
-    : { windowMs: 500, maxMovesInWindow: 20 };
+  const common: SuspicionRules = {
+    windowMs: 500,
+    maxMovesInWindow: 20,
+    evenCv: 0.2,
+    evenMinMoves: 30,
+    fastStartMoves: 12,
+    fastStartMs: 600,
+  };
+  return n === 3 ? { ...common, minMoves: 30 } : common;
 }
 
 export function cleanName(name: string): string {
@@ -249,8 +263,14 @@ export class CubeRoom {
     return device === this.me || this.connected.has(device);
   }
 
+  /** 보이는 이름. 같은 이름이 앞에 있으면 「이름 (2)」처럼 차례를 붙인다(남의 이름을 흉내 내도 구분되게) */
   playerName(id: string): string {
-    return this.state?.players.find((p) => p.id === id)?.name ?? "나간 사람";
+    const players = this.state?.players ?? [];
+    const at = players.findIndex((p) => p.id === id);
+    const me = players[at];
+    if (!me) return "나간 사람";
+    const same = players.slice(0, at).filter((p) => p.name === me.name).length;
+    return same === 0 ? me.name : `${me.name} (${same + 1})`;
   }
 
   chat(text: string): void {
@@ -413,11 +433,15 @@ export class CubeRoom {
       return;
     }
     if (msg.type === "cube-chat") {
-      if (typeof msg.text !== "string" || typeof msg.name !== "string") return;
-      if (!this.state?.players.some((p) => p.device === from)) return;
+      if (typeof msg.text !== "string") return;
+      // 이름은 메시지에 적힌 것을 쓰지 않고 보낸 기기의 참가자 이름으로(남의 이름 흉내 막기)
+      const sender = this.state?.players.find(
+        (p) => p.device === from && p.bot === undefined,
+      );
+      if (!sender) return;
       this.init.onChat?.({
-        id: String(msg.id),
-        name: cleanName(msg.name),
+        id: String(msg.id).slice(0, 32),
+        name: this.playerName(sender.id),
         text: msg.text.slice(0, 80),
         mine: false,
       });
@@ -444,6 +468,12 @@ export class CubeRoom {
     const local = s.players.filter(
       (p) => race.players.includes(p.id) && p.device === this.me,
     );
+    const bots = new Set(
+      s.players.filter((p) => p.bot !== undefined).map((p) => p.id),
+    );
+    // 하한은 기기 하나에 하나: 컴퓨터는 증인이 아니고, 같은 기기 안 참가자끼리는 서로의 증인이 아니다(game-85 ②)
+    const witness = (observer: string, of: string) =>
+      !bots.has(observer) && owners.get(observer) !== owners.get(of);
     const game = createCubeRaceGame(s.settings.n, this.init.scrambler);
     const options: RaceOptions = {
       inspectionMs: s.settings.inspection ? 15_000 : 0,
@@ -462,6 +492,7 @@ export class CubeRoom {
         race: race.id,
         players: race.players,
         options,
+        witness,
         ...(this.init.random ? { random: this.init.random } : {}),
       });
       sessions.set(p.id, session);

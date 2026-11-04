@@ -18,6 +18,12 @@ import type { PuzzleState } from "@game/puzzle-core";
 import type { RaceGame } from "@/net/race/types";
 
 /**
+ * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭(`bot-racer.ts`가 쓴다). 남이 보낸 그만두기 까닭은
+ * 대결 틀 목록과 이것 안에서만 받는다
+ */
+export const BOT_NO_PLAN = "컴퓨터가 맞출 길을 찾지 못함";
+
+/**
  * 큐브 맞추기를 대결 틀(`net/race`)에 붙이는 어댑터(docs/47 9절).
  *
  * 씨앗(모두의 약속 후 공개로 정한 글) → 해시로 uint32 → 대회 규칙 섞기(웹 워커) → 섞인 시작 상태.
@@ -121,6 +127,12 @@ export function createCubeRaceGame(
     },
     isSolved: (state) => isSolved(n, state),
     progress: (state) => solvedPieceRatio(n, state),
+    retireReasons: [BOT_NO_PLAN],
+    // 큐브 돌리기(x·y·z)는 수로 세지 않는다(의심 표시 「수가 지나치게 적음」 등)
+    isTurn(text) {
+      const move = parseMoves(n, text)[0];
+      return move !== undefined && !isRotation(n, move);
+    },
     encodeMove: (move) => formatMove(n, move),
     decodeMove(text) {
       const moves = parseMoves(n, text);
