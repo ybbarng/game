@@ -57,20 +57,29 @@ test.describe("카카오톡 아이폰", () => {
     await expect(
       page.getByRole("button", { name: "우주인 등록", exact: true }),
     ).toBeVisible();
-    // 띠 글을 누르면 메뉴 자리와 주소 복사
-    await band(page).getByRole("button", { expanded: false }).click();
-    await expect(band(page)).toContainText("공유 단추");
+    // 띠 글을 누르면 메뉴 자리와 주소 복사. 시스템 Chrome은 카카오톡 스킴으로 넘기면 (헤드리스라 보이지 않는) 바깥 앱 열기
+    // 확인 창을 띄워 이 탭의 입력을 막는다(CI run 41786121632). 그래서 이미 넘긴 탭처럼 시작하는 새 탭에서 누른다
+    const tab = await page.context().newPage();
+    await fixStardrawClock(tab);
+    await platformSays(tab, false);
+    await tab.addInitScript(() =>
+      sessionStorage.setItem("stardraw-auto-open", "seen"),
+    );
+    await tab.goto("/stardraw");
+    await band(tab).getByRole("button", { expanded: false }).click();
+    await expect(band(tab)).toContainText("공유 단추");
     await expect(
-      band(page).getByRole("button", { name: "주소 복사" }),
+      band(tab).getByRole("button", { name: "주소 복사" }),
     ).toBeVisible();
     // 본문이 띠 아래에서 시작한다
-    const bandBox = await band(page).boundingBox();
-    const main = await page.locator("main[data-game='stardraw']").boundingBox();
+    const bandBox = await band(tab).boundingBox();
+    const main = await tab.locator("main[data-game='stardraw']").boundingBox();
     expect(main?.y ?? 0).toBeGreaterThanOrEqual(
       (bandBox?.y ?? 0) + (bandBox?.height ?? 0) - 1,
     );
     if (process.env.E2E_SCREENSHOTS)
-      await page.screenshot({ path: info.outputPath("webview-home.png") });
+      await tab.screenshot({ path: info.outputPath("webview-home.png") });
+    await tab.close();
 
     // 다시 열어도 다시 넘기지 않는다(탭마다 한 번). 띠는 남는다
     await page.evaluate(() =>
