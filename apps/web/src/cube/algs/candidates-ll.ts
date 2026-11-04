@@ -79,7 +79,7 @@ export const LL_CANDIDATES: Record<string, CandidateSpec[]> = {
   ],
   "pll-gd": [{ alg: "R U R' y' R2 u' R U' R' U R' u R2" }],
 
-  // ── 2단계 OLL(모서리) · 2단계 PLL ──
+  // ── 2단계 OLL(엣지) · 2단계 PLL ──
   "2look-oll-l": [
     { alg: "U2 f R U R' U' f'" },
     { alg: "F R U R' U' F' U2 F R U R' U' F'" },
@@ -108,7 +108,7 @@ export const LL_CANDIDATES: Record<string, CandidateSpec[]> = {
   ],
   "2look-pll-z": [{ alg: "U M2 U M2 U M' U2 M2 U2 M'" }],
 
-  // ── OLL ── (2단계 OLL의 꼭짓점 일곱은 같은 번호의 OLL 후보를 함께 쓴다, candidates.ts)
+  // ── OLL ── (2단계 OLL의 코너 일곱은 같은 번호의 OLL 후보를 함께 쓴다, candidates.ts)
   "oll-2": [{ alg: "U' F R U R' U' F' f R U R' U' f'" }],
   "oll-3": [{ alg: "U' f R U R' U' f' U' F R U R' U' F'" }],
   "oll-4": [{ alg: "U' f R U R' U' f' U F R U R' U' F'" }],

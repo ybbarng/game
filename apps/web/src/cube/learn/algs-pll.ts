@@ -2,7 +2,7 @@
 // 이름은 굳은 이름(T퍼뮤 = T 퍼뮤테이션, 「자리 바꾸기 공식」)을 그대로 쓰고 설명을 곁들인다.
 // 수순 확인: PLL 이름(Ua·Ub·H·Z·Aa·Ab·E·T·F·Ja·Jb·Ra·Rb·V·Y·Na·Nb·Ga~Gd)은 널리 쓰는 이름을 기억으로 옮겼고,
 //   바깥 자료와 다시 대조하지는 못했다(2026-11-04) — 공식과 이름만 옮겼다. pll.test.ts가 21 상황이 서로 다르고
-//   묶음(이웃·대각 꼭짓점 바꿈 등)과 맞는지 시뮬레이터로 확인한다. 설명(note)은 우리말로 새로 썼다.
+//   묶음(이웃·대각 코너 바꿈 등)과 맞는지 시뮬레이터로 확인한다. 설명(note)은 우리말로 새로 썼다.
 import type { AlgCase } from "./types";
 
 const pll = (
@@ -14,56 +14,50 @@ const pll = (
 ): AlgCase => ({ id: `pll-${id}`, set: "pll", name, group, algs, ...extra });
 
 export const PLL_GROUPS = {
-  edges: "모서리만 바꿈",
-  corners: "꼭짓점만 바꿈",
-  adjacent: "이웃 꼭짓점 둘 + 모서리 바꿈",
-  diagonal: "대각 꼭짓점 둘 + 모서리 바꿈",
-  g: "G 묶음(꼭짓점 셋·모서리 셋 돌림)",
+  edges: "엣지만 바꿈",
+  corners: "코너만 바꿈",
+  adjacent: "이웃 코너 둘 + 엣지 바꿈",
+  diagonal: "대각 코너 둘 + 엣지 바꿈",
+  g: "G 묶음(코너 셋·엣지 셋 돌림)",
 } as const;
 
 export const PLL_CASES: AlgCase[] = [
   pll(
     "ua",
     "edges",
-    "Ua 퍼뮤(모서리 셋 돌리기, 시계 반대)",
+    "Ua 퍼뮤(엣지 셋 돌리기, 시계 반대)",
     ["M2 U M U2 M' U M2", "R U' R U R U R U' R' U' R2"],
     {
-      note: "한 면이 통째로 맞음. 나머지 모서리 셋이 돌아요.",
+      note: "한 면이 통째로 맞음. 나머지 엣지 셋이 돌아요.",
     },
   ),
-  pll("ub", "edges", "Ub 퍼뮤(모서리 셋 돌리기, 시계)", [
+  pll("ub", "edges", "Ub 퍼뮤(엣지 셋 돌리기, 시계)", [
     "M2 U' M U2 M' U' M2",
     "R2 U R U R' U' R' U' R' U R'",
   ]),
-  pll(
-    "h",
-    "edges",
-    "H 퍼뮤(맞은편 모서리끼리 바꾸기)",
-    ["M2 U M2 U2 M2 U M2"],
-    {
-      note: "네 옆면 모두 가운데 칸만 맞은편 색",
-    },
-  ),
-  pll("z", "edges", "Z 퍼뮤(이웃 모서리 두 쌍 바꾸기)", [
+  pll("h", "edges", "H 퍼뮤(맞은편 엣지끼리 바꾸기)", ["M2 U M2 U2 M2 U M2"], {
+    note: "네 옆면 모두 가운데 칸만 맞은편 색",
+  }),
+  pll("z", "edges", "Z 퍼뮤(이웃 엣지 두 쌍 바꾸기)", [
     "M' U M2 U M2 U M' U2 M2",
   ]),
   pll(
     "aa",
     "corners",
-    "Aa 퍼뮤(꼭짓점 셋 돌리기)",
+    "Aa 퍼뮤(코너 셋 돌리기)",
     ["x R' U R' D2 R U' R' D2 R2 x'", "R' F R' B2 R F' R' B2 R2"],
     {
-      note: "한쪽에 헤드라이트. 꼭짓점 셋의 자리만 바꾸고 방향은 지켜요.",
+      note: "한쪽에 헤드라이트. 코너 셋의 자리만 바꾸고 방향은 지켜요.",
     },
   ),
-  pll("ab", "corners", "Ab 퍼뮤(꼭짓점 셋 반대로 돌리기)", [
+  pll("ab", "corners", "Ab 퍼뮤(코너 셋 반대로 돌리기)", [
     "x R2 D2 R U R' D2 R U' R x'",
     "R2 B2 R F R' B2 R F' R",
   ]),
   pll(
     "e",
     "corners",
-    "E 퍼뮤(꼭짓점 두 쌍 바꾸기)",
+    "E 퍼뮤(코너 두 쌍 바꾸기)",
     ["x' R U' R' D R U R' D' R U R' D R U' R' D' x"],
     {
       note: "헤드라이트가 하나도 없음",

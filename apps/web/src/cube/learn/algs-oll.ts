@@ -22,9 +22,9 @@ const oll = (
 
 /** 모양 묶음. 키는 group 값, 값은 화면에 보일 설명 */
 export const OLL_GROUPS = {
-  dot: "점: 윗면 모서리가 하나도 노랗지 않음",
-  ocll: "십자: 모서리는 다 노랗고 꼭짓점만 남음",
-  "edges-only": "꼭짓점은 다 노랗고 모서리만 남음",
+  dot: "점: 윗면 엣지가 하나도 노랗지 않음",
+  ocll: "십자: 엣지는 다 노랗고 코너만 남음",
+  "edges-only": "코너는 다 노랗고 엣지만 남음",
   square: "네모",
   "small-lightning": "작은 번개",
   fish: "물고기",
@@ -45,11 +45,11 @@ export const OLL_CASES: AlgCase[] = [
     "r U r' U2 r U2 R' U2 R U' r'",
     "F R U R' U' F' f R U R' U' f'",
   ]),
-  oll(3, "dot", "점·왼쪽 앞 꼭짓점", [
+  oll(3, "dot", "점·왼쪽 앞 코너", [
     "r' R2 U R' U r U2 r' U M'",
     "f R U R' U' f' U' F R U R' U' F'",
   ]),
-  oll(4, "dot", "점·오른쪽 앞 꼭짓점", [
+  oll(4, "dot", "점·오른쪽 앞 코너", [
     "M U' r U2 r' U' R U' R' M'",
     "f R U R' U' f' U F R U R' U' F'",
   ]),
@@ -69,18 +69,18 @@ export const OLL_CASES: AlgCase[] = [
   oll(14, "knight", "기사 2", ["R' F R U R' F' R F U' F'"]),
   oll(15, "knight", "기사 3", ["l' U' l L' U' L U l' U l"]),
   oll(16, "knight", "기사 4", ["r U r' R U R' U' r U' r'"]),
-  oll(17, "dot", "점·대각 꼭짓점", [
+  oll(17, "dot", "점·대각 코너", [
     "F R' F' R2 r' U R U' R' U' M'",
     "R U R' U R' F R F' U2 R' F R F'",
   ]),
-  oll(18, "dot", "점·뒤 꼭짓점 둘", ["r U R' U R U2 r2 U' R U' R' U2 r"]),
+  oll(18, "dot", "점·뒤 코너 둘", ["r U R' U R U2 r2 U' R U' R' U2 r"]),
   oll(19, "dot", "점·화살촉", ["r' R U R U R' U' M' R' F R F'"]),
   oll(
     20,
     "dot",
-    "점·꼭짓점 다 노랑",
+    "점·코너 다 노랑",
     ["r U R' U' M2 U R U' R' U' M'"],
-    "꼭짓점 넷이 다 노랗고 모서리 넷이 모두 뒤집힌 「X」 모양",
+    "코너 넷이 다 노랗고 엣지 넷이 모두 뒤집힌 「X」 모양",
   ),
   oll(
     21,
@@ -94,14 +94,14 @@ export const OLL_CASES: AlgCase[] = [
     "ocll",
     "파이(Pi)",
     ["R U2 R2 U' R2 U' R2 U2 R"],
-    "왼쪽 옆면에 노란 칸 둘(헤드라이트), 오른쪽 두 꼭짓점의 노랑은 앞과 뒤를 봐요.",
+    "왼쪽 옆면에 노란 칸 둘(헤드라이트), 오른쪽 두 코너의 노랑은 앞과 뒤를 봐요.",
   ),
   oll(
     23,
     "ocll",
     "헤드라이트(U)",
     ["R2 D' R U2 R' D R U2 R"],
-    "윗면 노랑이 앞쪽 두 꼭짓점에, 뒤 옆면에 노란 칸 둘(헤드라이트)",
+    "윗면 노랑이 앞쪽 두 코너에, 뒤 옆면에 노란 칸 둘(헤드라이트)",
   ),
   oll(24, "ocll", "T(크로스 T)", ["r U R' U' r' F R F'"]),
   oll(25, "ocll", "나비넥타이(L)", ["F' r U R' U' r' F R"]),
@@ -110,14 +110,14 @@ export const OLL_CASES: AlgCase[] = [
     "ocll",
     "안티수네",
     ["R U2 R' U' R U' R'"],
-    "위를 보는 노란 꼭짓점 하나가 오른쪽 뒤, 왼쪽 앞 꼭짓점의 노랑은 앞을 봄",
+    "위를 보는 노란 코너 하나가 오른쪽 뒤, 왼쪽 앞 코너의 노랑은 앞을 봄",
   ),
   oll(
     27,
     "ocll",
     "수네",
     ["R U R' U R U2 R'"],
-    "위를 보는 노란 꼭짓점 하나가 왼쪽 앞, 오른쪽 앞 꼭짓점의 노랑은 앞을 봄",
+    "위를 보는 노란 코너 하나가 왼쪽 앞, 오른쪽 앞 코너의 노랑은 앞을 봄",
   ),
   oll(28, "edges-only", "화살표", ["r U R' U' M U R U' R'"]),
   oll(29, "awkward", "어색한 1", ["R U R' U' R U' R' F' U' F R U R'"]),
@@ -148,5 +148,5 @@ export const OLL_CASES: AlgCase[] = [
   oll(54, "small-l", "작은 L 6", ["r U2 R' U' R U R' U' R U' r'"]),
   oll(55, "i", "가로줄 3", ["R' F R U R U' R2 F' R2 U' R' U R U R'"]),
   oll(56, "i", "가로줄 4", ["r' U' r U' R' U R U' R' U R r' U r"]),
-  oll(57, "edges-only", "H(모서리 둘 뒤집힘)", ["R U R' U' M' U R U' r'"]),
+  oll(57, "edges-only", "H(엣지 둘 뒤집힘)", ["R U R' U' M' U R U' r'"]),
 ];

@@ -1,4 +1,4 @@
-// 추천 후보 공식: F2L 41, 2×2 오르테가, 4×4 패리티, 5×5 마지막 모서리.
+// 추천 후보 공식: F2L 41, 2×2 오르테가, 4×4 패리티, 5×5 마지막 엣지.
 // F2L의 「찾은 공식」(found)은 엔진으로 그 상황(앞-오른쪽 칸)을 R·U(없으면 R·U·F)만으로 가장 짧게 맞추는 수를 찾은 것이다
 // (2026-11-04, 깊이 우선 탐색: R·U는 10수, R·U·F는 7수까지). 나머지는 흔한 공식 모음의 공식을 기억으로 옮기고
 // 검사기(checkAlg)로 어느 상황을 푸는지 확인해 두었다(candidates.test.ts).
@@ -94,7 +94,7 @@ export const MORE_CANDIDATES: Record<string, CandidateSpec[]> = {
   "ortega-pbl-adj-adj": [{ alg: "R2 U R2 U2 F2 U F2" }],
   "ortega-pbl-adj-diag": [{ alg: "U2 R' U R' F2 R F' R" }],
 
-  // ── 4×4 패리티 · 5×5 마지막 모서리 ──
+  // ── 4×4 패리티 · 5×5 마지막 엣지 ──
   "parity-4x4-oll": [
     { alg: "Rw2 B2 U2 Lw U2 Rw' U2 Rw U2 F2 Rw F2 Lw' B2 Rw2" },
     { alg: "Rw U2 Rw U2 Rw' U2 Rw U2 Lw' U2 Rw U2 Rw' U2 Lw Rw2 U2 Rw'" },

@@ -27,7 +27,7 @@ const TABLE: Readonly<Record<string, readonly CandidateSpec[]>> = {
   ...MORE_CANDIDATES,
 };
 
-/** 자료에 적힌 후보(2단계 OLL 꼭짓점은 같은 번호의 OLL 후보를 함께 쓴다) */
+/** 자료에 적힌 후보(2단계 OLL 코너는 같은 번호의 OLL 후보를 함께 쓴다) */
 export function candidateSpecs(c: AlgCase): readonly CandidateSpec[] {
   const own = TABLE[c.id] ?? [];
   const m = /^2look-oll-(\d+)$/.exec(c.id);

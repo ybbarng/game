@@ -50,7 +50,7 @@ describe("OLL 57", () => {
     }
   });
 
-  it("모양 묶음이 모서리·꼭짓점 수와 맞는다", () => {
+  it("모양 묶음이 엣지·코너 수와 맞는다", () => {
     for (const c of OLL_CASES) {
       const alg = c.algs[0] as string;
       const e = edgesOriented(alg);

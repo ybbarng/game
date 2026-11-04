@@ -186,7 +186,7 @@ export function isCubeInCubeInCube(n: number, state: PuzzleState): boolean {
   return nestedFromCorner(n, state, (d) => (d === 0 ? 0 : d <= n - 2 ? 1 : 2));
 }
 
-/** 슈퍼플립(3×3): 모든 조각이 제자리이고, 모서리만 모두 뒤집혀 있다 */
+/** 슈퍼플립(3×3): 모든 조각이 제자리이고, 엣지만 모두 뒤집혀 있다 */
 export function isSuperflip(state: PuzzleState): boolean {
   const n = 3;
   const topo = cubeTopology(n);
