@@ -1,4 +1,11 @@
-import { isSolved } from "@game/cube-engine";
+import {
+  applyMoves,
+  type CubeMove,
+  faceColors,
+  isSolved,
+  parseMoves,
+  solvedCube,
+} from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
@@ -6,6 +13,8 @@ import { describe, expect, it } from "vitest";
 import {
   HeroLoop,
   heroTiming,
+  ORIENT_LABEL,
+  orientForSolve,
   randomScramble,
   SCRAMBLING_LABEL,
   scrambleSteps,
@@ -34,32 +43,93 @@ function seq(seed: number): () => number {
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));
 
 describe("randomScramble", () => {
-  it("같은 면을 잇달아 돌리지 않고, 같은 축을 셋 잇달아 돌리지 않는다", () => {
+  /** 겹치는 층(같은 축, 층 범위가 겹침)을 잇달아 두지 않고, 같은 축 셋을 잇달아 두지 않는다 */
+  function checkRules(n: number, s: readonly string[]) {
+    const ms = s.map((t) => parseMoves(n, t)[0] as CubeMove);
+    for (let i = 1; i < ms.length; i++) {
+      const a = ms[i] as CubeMove;
+      const b = ms[i - 1] as CubeMove;
+      expect(
+        a.axis === b.axis && a.from <= b.to && b.from <= a.to,
+        s.join(" "),
+      ).toBe(false);
+      if (i >= 2)
+        expect(a.axis === b.axis && a.axis === ms[i - 2]?.axis).toBe(false);
+    }
+  }
+  const isRotation = (t: string) => /^[xyz]/.test(t);
+
+  it("3×3: 면 돌리기에 큐브 돌리기(x y z)와 가운데 층(M E S)이 적어도 하나씩 섞인다", () => {
     const rng = seq(7);
-    const axis = (f: string) => "UDRLFB".indexOf(f) >> 1;
     for (let t = 0; t < 30; t++) {
       const s = randomScramble(rng);
       expect(s).toHaveLength(20);
-      const faces = s.map((m) => m[0] as string);
-      for (let i = 1; i < faces.length; i++) {
-        const a = faces[i] as string;
-        expect(a).not.toBe(faces[i - 1]);
-        if (i >= 2)
-          expect(
-            axis(a) === axis(faces[i - 1] as string) &&
-              axis(a) === axis(faces[i - 2] as string),
-          ).toBe(false);
-      }
-      for (const m of s) expect(m).toMatch(/^[UDRLFB]['2]?$/);
+      checkRules(3, s);
+      for (const m of s) expect(m).toMatch(/^[UDRLFBMESxyz]['2]?$/);
+      expect(s.some(isRotation)).toBe(true);
+      expect(s.some((m) => /^[MES]/.test(m))).toBe(true);
+      // 큐브 돌리기를 잇달아 두지 않는다
+      for (let i = 1; i < s.length; i++)
+        expect(
+          isRotation(s[i] as string) && isRotation(s[i - 1] as string),
+        ).toBe(false);
     }
   });
 
-  it("4×4 이상은 바깥 두 층도 섞는다", () => {
-    const s = randomScramble(seq(3), 40, 4);
-    expect(s.some((m) => m.includes("w"))).toBe(true);
-    for (const m of s) expect(m).toMatch(/^[UDRLFB]w?['2]?$/);
+  it("4×4는 바깥 두 층(Rw)·안쪽 한 층(2R)·큐브 돌리기를 섞고, 정가운데 층(M)은 없다", () => {
+    const rng = seq(3);
+    for (let t = 0; t < 10; t++) {
+      const s = randomScramble(rng, 30, 4);
+      checkRules(4, s);
+      for (const m of s)
+        expect(m).toMatch(/^(2?[UDRLFB]|[UDRLFB]w|[xyz])['2]?$/);
+      expect(s.some(isRotation)).toBe(true);
+      expect(s.some((m) => /^2/.test(m))).toBe(true);
+    }
+    expect(randomScramble(seq(3), 60, 4).some((m) => m.includes("w"))).toBe(
+      true,
+    );
+  });
+
+  it("5×5는 정가운데 층(M E S)과 둘째 층(2R)을 함께 쓰고, 2×2는 큐브 돌리기만 더한다", () => {
+    const five = randomScramble(seq(5), 80, 5);
+    checkRules(5, five);
+    expect(five.some((m) => /^[MES]/.test(m))).toBe(true);
+    expect(five.some((m) => /^2[UDRLFB]/.test(m))).toBe(true);
+    for (let t = 0; t < 10; t++) {
+      const two = randomScramble(seq(t + 1), 11, 2);
+      checkRules(2, two);
+      for (const m of two) expect(m).toMatch(/^[UDRLFBxyz]['2]?$/);
+      expect(two.some(isRotation)).toBe(true);
+    }
   });
 });
+
+describe("orientForSolve", () => {
+  const centersHome = (n: number, s: PuzzleState) => {
+    const c = (n - 1) / 2;
+    const colors = faceColors(n, s);
+    return [0, 1, 2, 3, 4, 5].every((f) => colors[f * n * n + c * n + c] === f);
+  };
+  it("홀수 크기는 섞기 뒤 가운데 조각이 제자리(흰 위·초록 앞)로 오게 돌리고, 짝수 크기는 돌리지 않는다", () => {
+    let turned = 0;
+    for (const n of [3, 5] as const)
+      for (let seed = 1; seed <= 20; seed++) {
+        const s = play(n, solvedCube(n), randomScramble(seq(seed), 20, n));
+        const o = orientForSolve(n, s);
+        expect(o.length).toBeLessThanOrEqual(2);
+        for (const t of o) expect(t).toMatch(/^[xyz]['2]?$/);
+        if (o.length) turned++;
+        expect(centersHome(n, play(n, s, o))).toBe(true);
+      }
+    expect(turned).toBeGreaterThan(0);
+    expect(orientForSolve(3, solvedCube(3))).toEqual([]);
+    expect(orientForSolve(4, play(4, solvedCube(4), ["x", "y"]))).toEqual([]);
+  });
+});
+
+const play = (n: number, s: PuzzleState, moves: readonly string[]) =>
+  moves.length ? applyMoves(n, s, parseMoves(n, moves.join(" "))) : s;
 
 describe("차례 만들기", () => {
   it("섞기는 「섞는 중」 수들 뒤에 해법 이름으로 멈춘다", () => {
@@ -106,6 +176,7 @@ function harness(
   solve: (m: string, s: PuzzleState) => Promise<HeroSolve>,
   n: HeroSize = 3,
   choice: string = HERO_ALTERNATE,
+  seed = 42,
 ) {
   const clock = new ManualClock();
   const moves: string[] = [];
@@ -116,7 +187,7 @@ function harness(
     n,
     methods: heroRotation(n, choice),
     clock,
-    rng: seq(42),
+    rng: seq(seed),
     solve: (m, s) => {
       const p = solve(m, s);
       last = p.catch(() => undefined);
@@ -131,7 +202,14 @@ function harness(
     await last;
     await flush();
   };
-  return { clock, loop, moves, labels, resets, settled };
+  /** 조건이 맞을 때까지 시계를 조금씩 감는다(상한은 멈춘 시험을 잡는 안전장치) */
+  const advanceUntil = (cond: () => boolean, step = 10) => {
+    for (let t = 0; !cond(); t += step) {
+      if (t > 600_000) throw new Error("조건이 맞지 않는다");
+      clock.advance(step);
+    }
+  };
+  return { clock, loop, moves, labels, resets, settled, advanceUntil };
 }
 
 describe("HeroLoop", () => {
@@ -140,31 +218,33 @@ describe("HeroLoop", () => {
     h.loop.start();
     expect(h.labels).toEqual([SCRAMBLING_LABEL]);
     expect(h.moves).toHaveLength(1);
-    h.clock.advance(T3.scrambleMove * 19);
+    h.advanceUntil(() => h.loop.currentLabel !== SCRAMBLING_LABEL);
     expect(h.moves).toHaveLength(20);
     expect(isSolved(3, h.loop.current)).toBe(false);
-    h.clock.advance(T3.scrambleMove);
     expect(h.loop.currentLabel).toBe("초보자 해법");
     await h.settled();
-    // 풀이가 와 있어도 섞은 뒤 멈춤은 지킨다
+    // 풀이가 와 있어도 섞은 뒤 멈춤은 지킨다(섞기 끝에서 이미 몇 ms 감았을 수 있어 한 걸음 앞에서 본다)
     const before = h.moves.length;
-    h.clock.advance(T3.afterScramble - 1);
+    h.clock.advance(T3.afterScramble - 10);
     expect(h.moves).toHaveLength(before);
-    h.clock.advance(1);
-    expect(h.loop.currentLabel).toBe("초보자 해법 · 십자");
+    h.advanceUntil(() => h.loop.currentLabel !== "초보자 해법", 1);
+    expect(["초보자 해법 · 십자", `초보자 해법 · ${ORIENT_LABEL}`]).toContain(
+      h.loop.currentLabel,
+    );
 
-    while (!h.loop.currentLabel.endsWith("맞춤")) h.clock.advance(50);
+    h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(3, h.loop.current)).toBe(true);
     expect(h.labels).toContain("초보자 해법 · 둘째 층 모서리");
 
     h.clock.advance(T3.solved);
     expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
     expect(h.loop.currentMethod).toBe("3-cfop");
-    h.clock.advance(T3.scrambleMove * 20);
+    h.advanceUntil(() => h.loop.currentLabel === "프리드리히");
     await h.settled();
-    h.clock.advance(T3.afterScramble);
+    h.advanceUntil(() => h.loop.currentLabel.includes("·"));
+    h.advanceUntil(() => !h.loop.currentLabel.endsWith(ORIENT_LABEL));
     expect(h.loop.currentLabel).toBe("프리드리히 · 십자");
-    while (!h.loop.currentLabel.endsWith("맞춤")) h.clock.advance(50);
+    h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(3, h.loop.current)).toBe(true);
     expect(h.labels.some((l) => l.startsWith("프리드리히 · F2L"))).toBe(true);
     expect(h.resets).toHaveLength(0);
@@ -174,16 +254,72 @@ describe("HeroLoop", () => {
     const h = harness(solveForHero, 2, "2-algs");
     const t = heroTiming(2);
     h.loop.start();
-    h.clock.advance(t.scrambleMove * t.scrambleLength);
-    expect(h.loop.currentLabel).toBe("공식 해법");
+    h.advanceUntil(() => h.loop.currentLabel === "공식 해법");
     await h.settled();
-    h.clock.advance(t.afterScramble);
+    h.advanceUntil(() => h.loop.currentLabel !== "공식 해법");
+    // 2×2는 가운데 조각이 없어 방향 맞추기 없이 바로 첫 단계
     expect(h.loop.currentLabel).toBe("공식 해법 · 첫 층");
-    while (!h.loop.currentLabel.endsWith("맞춤")) h.clock.advance(50);
+    h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(2, h.loop.current)).toBe(true);
     h.clock.advance(t.solved);
     expect(h.loop.currentMethod).toBe("2-algs");
   });
+
+  // 섞기에 큐브 돌리기·가운데 층이 섞여도 해법마다 섞기 → (방향 맞추기) → 단계 차례 → 맞춤까지 간다.
+  // 섞는 rng를 판마다 달리해 방향 맞추기가 있는 판과 없는 판을 함께 본다
+  it.each([
+    ["3-beginner", "십자", [1, 2, 3]],
+    ["3-cfop", "십자", [1, 2, 3]],
+    ["3-roux", "첫 블록", [1, 2]],
+    ["3-zz", "EO라인", [1, 2]],
+    ["2-beginner", "첫 층", [1, 2]],
+    ["4-cfop", "흰·노랑 가운데", [1]],
+  ] as const)(
+    "%s: 돌리기·가운데 층이 섞인 섞기 뒤에도 단계 차례대로 맞춘다",
+    async (id, first, seeds) => {
+      let oriented = 0;
+      for (const seed of seeds) {
+        const n = Number(id[0]) as HeroSize;
+        const h = harness(solveForHero, n, id, seed);
+        const label = heroRotation(n, id)[0]?.label as string;
+        h.loop.start();
+        h.advanceUntil(() => h.loop.currentLabel === label);
+        const scramble = [...h.moves];
+        expect(scramble.some((m) => /^[xyz]/.test(m))).toBe(true);
+        if (n >= 3)
+          expect(scramble.some((m) => /^([MES]|2[UDRLFB])/.test(m))).toBe(true);
+        const want = orientForSolve(n, h.loop.current);
+        await h.settled();
+        h.advanceUntil(() => h.loop.currentLabel !== label);
+        if (want.length) {
+          // 방향 맞추기를 먼저 보이고, 끝나면 가운데가 제자리(흰 위·초록 앞)에서 첫 단계가 시작한다
+          expect(h.loop.currentLabel).toBe(`${label} · ${ORIENT_LABEL}`);
+          h.advanceUntil(
+            () => h.moves.length === scramble.length + want.length,
+            1,
+          );
+          expect(orientForSolve(n, h.loop.current)).toEqual([]);
+          h.advanceUntil(() => !h.loop.currentLabel.endsWith(ORIENT_LABEL));
+          expect(
+            h.moves.slice(scramble.length, scramble.length + want.length),
+          ).toEqual(want);
+        }
+        expect(h.loop.currentLabel).toBe(`${label} · ${first}`);
+        const stages = new Set<string>();
+        h.advanceUntil(() => {
+          stages.add(h.loop.currentLabel);
+          return h.loop.currentLabel.endsWith("맞춤");
+        });
+        expect(isSolved(n, h.loop.current)).toBe(true);
+        // 단계가 셋 이상 차례로 지나간다(꼬리표가 바뀐다)
+        expect(stages.size).toBeGreaterThan(3);
+        expect(h.resets).toHaveLength(0);
+        if (want.length) oriented++;
+      }
+      // 홀수 크기는 고른 씨앗 가운데 방향 맞추기가 든 판이 있다(그 길도 본다)
+      if (Number(id[0]) % 2 === 1) expect(oriented).toBeGreaterThan(0);
+    },
+  );
 
   it("풀이가 늦으면 섞은 뒤 기다렸다가 오면 이어 간다", async () => {
     let resolve: ((s: HeroSolve) => void) | null = null;
@@ -194,7 +330,8 @@ describe("HeroLoop", () => {
         }),
     );
     h.loop.start();
-    h.clock.advance(T3.scrambleMove * 20 + T3.afterScramble);
+    // 섞기(큐브 돌리기는 조금 느리다)와 섞은 뒤 멈춤을 넉넉히 넘긴다
+    h.clock.advance(T3.scrambleMove * 20 * 2 + T3.afterScramble);
     h.clock.advance(5000);
     expect(h.moves).toHaveLength(20);
     expect(h.loop.currentLabel).toBe("초보자 해법");
@@ -205,22 +342,25 @@ describe("HeroLoop", () => {
     });
     await h.settled();
     expect(h.moves).toHaveLength(21);
-    expect(h.loop.currentLabel).toBe("초보자 해법 · 십자");
+    expect(["초보자 해법 · 십자", `초보자 해법 · ${ORIENT_LABEL}`]).toContain(
+      h.loop.currentLabel,
+    );
   });
 
   it("멈추면 시간이 흘러도 수를 두지 않고, 이으면 그 자리에서 간다", () => {
     const h = harness(solveForHero);
     h.loop.start();
-    h.clock.advance(T3.scrambleMove * 4);
-    expect(h.moves).toHaveLength(5);
+    h.advanceUntil(() => h.moves.length === 5, 1);
     h.loop.pause();
     h.clock.advance(10_000);
     expect(h.moves).toHaveLength(5);
     expect(h.clock.pending()).toBe(0);
     h.loop.resume();
     expect(h.moves).toHaveLength(5);
-    h.clock.advance(T3.scrambleMove);
-    expect(h.moves).toHaveLength(6);
+    // 멈춘 걸음을 처음부터 다시 기다린다(큐브 돌리기는 조금 느리다)
+    h.clock.advance(T3.scrambleMove - 1);
+    expect(h.moves).toHaveLength(5);
+    h.advanceUntil(() => h.moves.length === 6, 1);
     h.loop.stop();
     h.loop.resume();
     h.clock.advance(10_000);
@@ -230,7 +370,7 @@ describe("HeroLoop", () => {
   it("풀이를 못 만들면(축소법이 막힘 등) 그 판을 건너뛰고 맞춘 큐브에서 다음 해법으로 다시 섞는다", async () => {
     const h = harness(() => Promise.reject(new Error("막힘")));
     h.loop.start();
-    h.clock.advance(T3.scrambleMove * 20);
+    h.advanceUntil(() => h.loop.currentLabel !== SCRAMBLING_LABEL, 1);
     await h.settled();
     h.clock.advance(T3.afterScramble);
     expect(h.resets).toHaveLength(1);

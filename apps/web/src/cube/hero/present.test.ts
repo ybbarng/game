@@ -7,7 +7,7 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
-import { randomScramble } from "./loop";
+import { orientForSolve, randomScramble } from "./loop";
 import { findHeroMethod } from "./methods";
 import {
   insertKind,
@@ -35,9 +35,12 @@ const play = (n: number, s: PuzzleState, moves: readonly string[]) =>
 const sameState = (a: PuzzleState, b: PuzzleState) =>
   a.perm.every((v, i) => v === b.perm[i]);
 
+/** 연출처럼 섞고(큐브 돌리기·가운데 층 포함) 풀기 전 방향을 맞춘 상태(`HeroLoop`이 해법에 넘기는 것) */
 function scrambled(n: number, seed: number): PuzzleState {
   const len = n === 2 ? 11 : n === 3 ? 20 : 30;
-  return play(n, solvedCube(n), randomScramble(seq(seed), len, n));
+  const s = play(n, solvedCube(n), randomScramble(seq(seed), len, n));
+  const o = orientForSolve(n, s);
+  return o.length ? play(n, s, o) : s;
 }
 
 interface Case {
