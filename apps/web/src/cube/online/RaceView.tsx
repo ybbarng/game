@@ -1,5 +1,6 @@
 "use client";
 
+import { BOT_LEVEL_LABELS, type BotLevel } from "@game/cube-ai";
 import {
   applyMoves,
   type CubeMove,
@@ -9,7 +10,6 @@ import {
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { RaceSnapshot } from "@/net/race/types";
 import { faceGrid } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
@@ -18,7 +18,7 @@ import type { Command } from "../input";
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
 import { planInWorker } from "../worker";
-import { checkBotRun } from "./bot-racer";
+import { checkBotRun, sameAsBotSolve } from "./bot-racer";
 import { stageLabel, turnCount } from "./race-game";
 import type { CubeRoom, RoundRecord } from "./room";
 
@@ -314,6 +314,33 @@ function ResultBox({
     };
   }, [round, room, n]);
 
+  // 사람의 수 차례가 우리 컴퓨터 풀이와 같은지(의심 표시, 결과는 그대로). 판이 끝난 뒤 한 번 워커에서
+  const [botLike, setBotLike] = useState<Record<string, BotLevel>>({});
+  useEffect(() => {
+    setBotLike({});
+    if (!round || !room.state) return;
+    let alive = true;
+    for (const id of round.players) {
+      const p = room.state.players.find((x) => x.id === id);
+      if (!p || p.bot) continue;
+      if (round.result.players[id]?.status !== "done") continue;
+      void sameAsBotSolve(
+        n,
+        round.start,
+        round.logs[id] ?? [],
+        planInWorker,
+      ).then(
+        (level) => {
+          if (alive && level) setBotLike((c) => ({ ...c, [id]: level }));
+        },
+        () => undefined,
+      );
+    }
+    return () => {
+      alive = false;
+    };
+  }, [round, room, n]);
+
   if (!result) {
     const first = snap.peers
       .filter((p) => p.status === "done")
@@ -376,14 +403,30 @@ function ResultBox({
             const notes: string[] = [];
             if (extra > 0 && !local)
               notes.push(`연결 지연으로 +${(extra / 1000).toFixed(2)}초(하한)`);
-            if (p?.weak) notes.push("확인 약함(끊김)");
-            if (p?.flags?.burst)
+            if (p?.disputed && p.usedBound != null)
               notes.push(
-                `의심: 몰아친 수(순간 초당 ${p.flags.peakMovesPerSecond.toFixed(0)}수)`,
+                `확인 안 됨: 두 기기 기록이 다름(보고 ${formatMs(p.reported)} · 다른 기기가 잰 하한 ${formatMs(p.usedBound)})`,
               );
-            if (p?.flags?.fewMoves) notes.push("의심: 수가 지나치게 적음");
-            if (p?.reason && p.status !== "done") notes.push(p.reason);
+            if (p?.weak && !local) notes.push("확인 약함(끊김)");
             const bot = bots.get(id);
+            // 의심 표시는 사람에게만(컴퓨터는 아래 「계획 확인」으로 본다)
+            if (!bot) {
+              if (p?.flags?.burst)
+                notes.push(
+                  `의심: 몰아친 수(순간 초당 ${p.flags.peakMovesPerSecond.toFixed(0)}수)`,
+                );
+              if (p?.flags?.fewMoves) notes.push("의심: 수가 지나치게 적음");
+              if (p?.flags?.even)
+                notes.push("의심: 수 사이 간격이 지나치게 고름");
+              if (p?.flags?.fastStart)
+                notes.push("의심: 첫 수들이 사람 손 빠르기를 넘음");
+              const like = botLike[id];
+              if (like)
+                notes.push(
+                  `의심: 컴퓨터 풀이와 같음(${BOT_LEVEL_LABELS[like]})`,
+                );
+            }
+            if (p?.reason && p.status !== "done") notes.push(p.reason);
             if (bot && id in botChecks)
               notes.push(
                 botChecks[id] ? "컴퓨터 계획 확인 ✓" : "컴퓨터 계획과 다름 ⚠",
@@ -420,7 +463,49 @@ function ResultBox({
           })}
         </tbody>
       </table>
+      {!local && <ResultDetails room={room} snap={snap} />}
     </div>
+  );
+}
+
+/**
+ * 결과 자세히 보기(이 기기에서 본 것, 판정에는 쓰지 않는 값 포함): 몰아 보낸 수(수마다 하한보다 이른 시각을 단 수),
+ * 내가 잰 도착 하한과 인정 시간의 차이
+ */
+function ResultDetails({ room, snap }: { room: CubeRoom; snap: RaceSnapshot }) {
+  const result = snap.result;
+  if (!result) return null;
+  const rows = result.ranking
+    .filter((id) => id !== room.me)
+    .map((id) => {
+      const p = result.players[id];
+      const mine = p?.bounds?.[room.me];
+      const late = snap.lateMoves[id] ?? 0;
+      const parts: string[] = [`몰아 보낸 수 ${late}`];
+      if (p?.status === "done" && mine !== undefined)
+        parts.push(
+          mine === null
+            ? "내가 잰 하한: 확인 약함(끊김)"
+            : `내가 잰 하한 ${formatMs(Math.max(0, mine))} · 인정 시간과 차이 ${(((p.accepted ?? 0) - mine) / 1000).toFixed(2)}초`,
+        );
+      if (p?.flags?.intervalCv != null)
+        parts.push(
+          `수 간격 고르기(변동 계수) ${p.flags.intervalCv.toFixed(2)}`,
+        );
+      return { id, text: parts.join(" · ") };
+    });
+  if (rows.length === 0) return null;
+  return (
+    <details data-cube-result-details className="text-white/70 text-xs">
+      <summary className="cursor-pointer">자세히 보기</summary>
+      <ul className="mt-1 flex flex-col gap-0.5">
+        {rows.map((r) => (
+          <li key={r.id} data-cube-detail={r.id}>
+            {room.playerName(r.id)}: {r.text}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
