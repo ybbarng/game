@@ -29,7 +29,7 @@ const held = (alg: string) => play(3, solvedCube(3), `z2 ${alg}`);
 const met = (alg: string, goal: GoalName) => goalMet(3, held(alg), goal);
 
 describe("루 판정", () => {
-  it("M은 두 블록·CMLL을 지키지만 가운데가 옆으로 가 EO가 아니다", () => {
+  it("M은 두 블록·CMLL을 지키지만 센터가 옆으로 가 EO가 아니다", () => {
     expect(met("M", "roux-sb")).toBe(true);
     expect(met("M", "cmll")).toBe(true);
     expect(met("M", "lse-eo")).toBe(false);
@@ -48,7 +48,7 @@ describe("루 판정", () => {
     expect(met("R U R'", "cmll")).toBe(false);
   });
 
-  it("M U M'은 모서리 방향을 바꾼다", () => {
+  it("M U M'은 엣지 방향을 바꾼다", () => {
     expect(met("M U M'", "cmll")).toBe(true);
     expect(met("M U M'", "lse-eo")).toBe(false);
     expect(met("M U2 M'", "lse-eo")).toBe(true);
@@ -56,7 +56,7 @@ describe("루 판정", () => {
 });
 
 describe("ZZ·페트루스 판정", () => {
-  it("F·B 4분의 1 돌리기만 모서리 방향을 바꾼다", () => {
+  it("F·B 4분의 1 돌리기만 엣지 방향을 바꾼다", () => {
     expect(met("R U L D", "eo")).toBe(true);
     expect(met("F", "eo")).toBe(false);
     expect(met("F2 B2", "eo")).toBe(true);
@@ -76,12 +76,12 @@ describe("ZZ·페트루스 판정", () => {
 
 describe("야우 판정", () => {
   const play4 = (alg: string) => play(4, solvedCube(4), alg);
-  it("흰·노랑 가운데와 십자 모서리 줄을 센다", () => {
+  it("흰·노랑 센터와 십자 엣지 줄을 센다", () => {
     expect(goalMet(4, play4("Rw"), "yau-ud-centers")).toBe(false);
     expect(goalMet(4, play4("Uw"), "yau-ud-centers")).toBe(true);
     // Uw는 흰 십자 줄을 통째로 돌려 서로의 차례는 그대로다
     expect(goalMet(4, play4("Uw"), "yau-cross3")).toBe(true);
-    // 바깥 R은 흰 십자 줄 하나만 옮긴다(가운데는 그대로)
+    // 바깥 R은 흰 십자 줄 하나만 옮긴다(센터는 그대로)
     expect(goalMet(4, play4("R"), "yau-centers")).toBe(true);
     expect(goalMet(4, play4("R"), "yau-cross")).toBe(false);
     expect(goalMet(4, play4("R F"), "yau-cross3")).toBe(false);
@@ -102,12 +102,12 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     };
   };
   const nn = (n: number) => n * n;
-  /** 윗면 꼭짓점 칸 가운데 노란색인 수 */
+  /** 윗면 코너 칸 가운데 노란색인 수 */
   const yellowUpCorners = (n: number, s: PuzzleState) => {
     const c = faceColors(n, s);
     return [0, n - 1, nn(n) - n, nn(n) - 1].filter((k) => c[k] === D).length;
   };
-  /** 윗면 모서리(날개) 칸 가운데 노란색인 칸 수 */
+  /** 윗면 엣지(날개) 칸 가운데 노란색인 칸 수 */
   const yellowUpEdgeStickers = (n: number, s: PuzzleState) => {
     const c = faceColors(n, s);
     let count = 0;
@@ -120,8 +120,8 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     return count;
   };
   /**
-   * 3×3 자리(닿은 면들)의 모서리에서 기준 칸이 있는 면. 기준 칸은 위·아래 가운데 색 칸,
-   * 없으면(fb가 참일 때만) 앞·뒤 가운데 색 칸. 그런 칸이 없으면 null
+   * 3×3 자리(닿은 면들)의 엣지에서 기준 칸이 있는 면. 기준 칸은 위·아래 센터 색 칸,
+   * 없으면(fb가 참일 때만) 앞·뒤 센터 색 칸. 그런 칸이 없으면 null
    */
   const udStickerFace = (s: PuzzleState, at: number[], fb = false) => {
     const c = faceColors(3, s);
@@ -139,7 +139,7 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     }
     return null;
   };
-  /** 루 LSE 모서리 여섯(위 넷 + 아래 앞·뒤) 가운데 흰·노랑 칸이 위·아래를 보지 않는 수 */
+  /** 루 LSE 엣지 여섯(위 넷 + 아래 앞·뒤) 센터 흰·노랑 칸이 위·아래를 보지 않는 수 */
   const lseBad = (s: PuzzleState) =>
     [
       [U, F],
@@ -157,14 +157,14 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     expect(met("F", "roux-fb")).toBe(false);
   });
 
-  it("루 CMLL: 위를 보는 노란 꼭짓점 0개", () => {
+  it("루 CMLL: 위를 보는 노란 코너 0개", () => {
     const q = quiz("roux-cmll");
     expect(goalMet(3, q.state, "roux-sb")).toBe(true);
     expect(q.answer).toBe(`${yellowUpCorners(3, q.state)}개`);
     expect(q.answer).toBe("0개");
   });
 
-  it("루 LSE: 나쁜 모서리 4개, M' U M으로 모서리 방향이 맞는다", () => {
+  it("루 LSE: 나쁜 엣지 4개, M' U M으로 엣지 방향이 맞는다", () => {
     const q = quiz("roux-lse");
     expect(goalMet(3, q.state, "cmll")).toBe(true);
     expect(goalMet(3, q.state, "lse-eo")).toBe(false);
@@ -172,7 +172,7 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     expect(goalMet(3, play(3, q.state, LSE_EO4), "lse-eo")).toBe(true);
   });
 
-  it("ZZ: F 한 번 뒤 나쁜 모서리 4개", () => {
+  it("ZZ: F 한 번 뒤 나쁜 엣지 4개", () => {
     const q = quiz("zz-eo", 0);
     const bad = piecesOfKind(3, "edge").filter((p) => {
       const at = pieceFaces(3, p);
@@ -187,21 +187,21 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     const ul = quiz("zz-eo", 1);
     expect(udStickerFace(ul.state, [U, L])).toBe(U);
     expect(udStickerFace(ul.state, [U, F])).toBe(F);
-    expect(ul.answer).toBe("좋은 모서리예요");
+    expect(ul.answer).toBe("좋은 엣지예요");
     const fr = quiz("zz-eo", 2);
     // 가운데 층 자리는 앞·뒤를 봐야 좋은데 기준 칸이 오른쪽을 본다
     expect(udStickerFace(fr.state, [F, R])).toBe(R);
-    expect(fr.answer).toBe("나쁜 모서리예요");
+    expect(fr.answer).toBe("나쁜 엣지예요");
     expect(goalMet(3, play(3, fr.state, EO_CHECK), "eo")).toBe(true);
   });
 
-  it("ZZ 마지막 층: 위를 보는 노란 꼭짓점 1개", () => {
+  it("ZZ 마지막 층: 위를 보는 노란 코너 1개", () => {
     const q = quiz("zz-ll");
     expect(goalMet(3, q.state, "f2l")).toBe(true);
     expect(q.answer).toBe(`${yellowUpCorners(3, q.state)}개`);
   });
 
-  it("야우: 흰 면 아래·초록 앞이면 오른쪽 가운데가 주황", () => {
+  it("야우: 흰 면 아래·초록 앞이면 오른쪽 센터가 주황", () => {
     const q = quiz("yau-side-centers");
     const c = faceColors(4, q.state);
     expect(c[F * 16 + 5]).toBe(F);
@@ -209,7 +209,7 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     expect(q.answer).toBe("주황");
   });
 
-  it("야우 패리티: 위를 보는 노란 모서리 3개(홀수)", () => {
+  it("야우 패리티: 위를 보는 노란 엣지 3개(홀수)", () => {
     const q = quiz("yau-finish");
     expect(goalMet(4, q.state, "edges-paired")).toBe(true);
     expect(q.answer).toBe(`${yellowUpEdgeStickers(4, q.state) / 2}개`);

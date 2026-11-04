@@ -99,20 +99,20 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
     });
   }
 
-  it("힌트 1의 이름: 흰 십자는 모서리 색과 경우, 꼭짓점 방향은 노랑이 보는 쪽과 횟수", () => {
+  it("힌트 1의 이름: 흰 십자는 엣지 색과 경우, 코너 방향은 노랑이 보는 쪽과 횟수", () => {
     const cross = lessonOf("333-white-cross");
     const h = nextHint("cross", stepStart(cross, randomTry(cross), 3), null);
-    expect(h?.label).toMatch(/^흰-(빨강|초록|주황|파랑) 모서리: .+ 경우$/);
+    expect(h?.label).toMatch(/^흰-(빨강|초록|주황|파랑) 엣지: .+ 경우$/);
     const twist = lessonOf("333-ll-corner-twist");
     const t = nextHint(
       "ll-corner-twist",
       stepStart(twist, randomTry(twist), 2),
       null,
     );
-    expect(t?.label).toMatch(/^꼭짓점 방향: 노랑이 (앞|오른쪽), [24]번$/);
+    expect(t?.label).toMatch(/^코너 방향: 노랑이 (앞|오른쪽), [24]번$/);
   });
 
-  it("꼭짓점 방향 도중 R' D' R D를 하다 말아도 나머지부터 이어 간다", () => {
+  it("코너 방향 도중 R' D' R D를 하다 말아도 나머지부터 이어 간다", () => {
     const twist = lessonOf("333-ll-corner-twist");
     const start = stepStart(twist, randomTry(twist), 4);
     const plan = makeHintPlan("ll-corner-twist", start);

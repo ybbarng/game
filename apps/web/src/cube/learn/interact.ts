@@ -124,7 +124,7 @@ export function findHit(
 
 /**
  * 가린 큐브에서 찾은 조각을 드러낸다: 찾은 자리(조각 자리 번호)에 지금 있는 조각의 스티커를 「보임」으로 바꾼 마스크.
- * 「가운데만 보임」에서 꼭짓점을 찾으면 펼친 그림뿐 아니라 3D에서도 그 조각의 색이 보인다.
+ * 「센터만 보임」에서 코너를 찾으면 펼친 그림뿐 아니라 3D에서도 그 조각의 색이 보인다.
  * 가리지 않았거나(null) 찾은 것이 없으면 받은 마스크를 그대로 돌려준다.
  */
 export function revealFound(
@@ -214,7 +214,7 @@ export function focusPieces(
   return [...out].sort((a, b) => a - b);
 }
 
-/** 놀이판 가리기: 그 조각들(정체)만 색, 나머지는 까맣게. `centers`면 가운데도 색(제자리를 볼 기준) */
+/** 놀이판 가리기: 그 조각들(정체)만 색, 나머지는 까맣게. `centers`면 센터도 색(제자리를 볼 기준) */
 export function focusMask(
   n: number,
   pieces: readonly number[],
@@ -294,18 +294,18 @@ export function playPassed(spec: PlaySpec, count: PlayCount): boolean {
 }
 
 /**
- * 「다른 조각 보기」 단추: 크기마다 가운데·모서리·꼭짓점 하나(큰 큐브는 흰 면 가운데 전부, 흰-초록 모서리 줄).
- * 2×2는 꼭짓점뿐이다
+ * 「다른 조각 보기」 단추: 크기마다 센터·엣지·코너 하나(큰 큐브는 흰 면 센터 전부, 흰-초록 엣지 블럭 줄).
+ * 2×2는 코너뿐이다
  */
 export function playChoices(n: number): { label: string; focus: FindTarget }[] {
   const out: { label: string; focus: FindTarget }[] = [];
   if (n > 2)
     out.push(
-      { label: "가운데", focus: { piece: "center", colors: ["U"] } },
-      { label: "모서리", focus: { piece: "edge", colors: ["U", "F"] } },
+      { label: "센터", focus: { piece: "center", colors: ["U"] } },
+      { label: "엣지", focus: { piece: "edge", colors: ["U", "F"] } },
     );
   out.push({
-    label: "꼭짓점",
+    label: "코너",
     focus: { piece: "corner", colors: ["U", "F", "R"] },
   });
   return out;
@@ -322,7 +322,7 @@ export function pieceIdentityAt(
   return cubeTopology(n).stickers[id]?.piece ?? null;
 }
 
-/** 칸이 든 자리가 닿은 면의 가운데 색(면 번호). 자리 찾기에서 틀렸을 때 「그 자리는 ○-○ 가운데 사이」로 알린다 */
+/** 칸이 든 자리가 닿은 면의 센터 색(면 번호). 자리 찾기에서 틀렸을 때 「그 자리는 ○-○ 센터 사이」로 알린다 */
 export function slotCenterColors(
   n: number,
   state: PuzzleState,
@@ -340,10 +340,10 @@ export function slotCenterColors(
 /** 누른 칸이 틀렸을 때 부드럽게 알려 줄 말(그 칸이 무엇이었는지) */
 export function pieceName(type: PieceType): string {
   return type === "center"
-    ? "가운데 조각"
+    ? "센터 블럭"
     : type === "edge"
-      ? "모서리 조각"
-      : "꼭짓점 조각";
+      ? "엣지 블럭"
+      : "코너 블럭";
 }
 
 /** 둘러보기: 면 `on`의 칸 절반 넘게가 색 `color`인가(큐브를 통째로 돌린 뒤 그 색 면이 어디 있는지) */

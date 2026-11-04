@@ -58,12 +58,12 @@ describe("단계 지도", () => {
     const c = courseOf("333-beginner");
     expect(c.stages?.map((s) => s.title)).toEqual([
       "흰 십자",
-      "첫 층 꼭짓점",
-      "둘째 층 모서리",
+      "첫 층 코너",
+      "둘째 층 엣지",
       "노란 십자",
       "옆면 맞추기",
-      "꼭짓점 자리",
-      "꼭짓점 방향",
+      "코너 자리",
+      "코너 방향",
     ]);
     const ids = c.lessons.map((l) => l.id);
     expect(ids.indexOf("333-beginner-map")).toBe(
@@ -80,7 +80,7 @@ describe("단계 지도", () => {
       );
   });
 
-  it("고르기 답: 흰 십자 다음은 첫 층 꼭짓점, 마지막 단계 공식은 2단계에서", () => {
+  it("고르기 답: 흰 십자 다음은 첫 층 코너, 마지막 단계 공식은 2단계에서", () => {
     const map = courseOf("333-beginner").lessons.find(
       (l) => l.id === "333-beginner-map",
     );
@@ -89,10 +89,10 @@ describe("단계 지도", () => {
       const q = quizzes[i]?.quiz;
       return q?.choices[q.answer];
     };
-    expect(answer(0)).toBe("첫 층 꼭짓점");
-    expect(answer(1)).toBe("2단계(첫 층 꼭짓점)");
+    expect(answer(0)).toBe("첫 층 코너");
+    expect(answer(1)).toBe("2단계(첫 층 코너)");
     expect(answer(2)).toBe("여섯 개");
-    // 첫 층 꼭짓점과 꼭짓점 방향 단원이 같은 공식을 쓴다
+    // 첫 층 코너와 코너 방향 단원이 같은 공식을 쓴다
     const lessons = courseOf("333-beginner").lessons;
     for (const id of ["333-first-corners-up", "333-ll-corner-twist"])
       expect(

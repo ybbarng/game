@@ -92,7 +92,7 @@ const answer = (st: LessonStep) => {
 
 // ── CFOP ──────────────────────────────────────────────
 
-/** 흰 면 아래로 쥐었을 때 앞-오른쪽 칸 짝(꼭짓점 흰-초록-주황, 모서리 초록-주황)이 어떤가 */
+/** 흰 면 아래로 쥐었을 때 앞-오른쪽 칸 짝(코너 흰-초록-주황, 엣지 초록-주황)이 어떤가 */
 function pairState(s: PuzzleState): {
   corner: string;
   edge: string;
@@ -123,7 +123,7 @@ function pairState(s: PuzzleState): {
 
 describe("CFOP 십자", () => {
   const lesson = lessonOf("cfop-cross");
-  it("흰색이 위인 모서리 문제: 답의 수만 십자를 만든다", () => {
+  it("흰색이 위인 엣지 문제: 답의 수만 십자를 만든다", () => {
     const st = step(lesson, "quiz");
     const s = stateOf(st);
     expect(s).toEqual(held(CROSS_TOP_UP));
@@ -131,12 +131,12 @@ describe("CFOP 십자", () => {
     const ok = algs.map((a) => goalMet(3, play(3, a, s), "cross"));
     expect(ok).toEqual([false, true, false]);
     expect(st.quiz?.answer).toBe(1);
-    // 흰-초록 모서리가 위층에서 흰색이 위
+    // 흰-초록 엣지 블럭이 위층에서 흰색이 위
     expect(col(s, "UL")).toBe("U");
     expect(col(s, "LU")).toBe("F");
   });
 
-  it("가운데 줄·흰색이 옆인 모서리 해 보기는 그 모양에서 시작한다", () => {
+  it("가운데 줄·흰색이 옆인 엣지 해 보기는 그 모양에서 시작한다", () => {
     const tries = lesson.steps.filter((s) => s.kind === "try");
     const middle = stateOf(tries[1] as LessonStep);
     expect([col(middle, "FR"), col(middle, "RF")]).toEqual(["F", "U"]);
@@ -167,7 +167,7 @@ describe("CFOP F2L 짝", () => {
     });
   });
 
-  it("붙은 짝은 모서리 쪽에서 넣는다(오른쪽 R, 앞 F')", () => {
+  it("붙은 짝은 엣지 쪽에서 넣는다(오른쪽 R, 앞 F')", () => {
     expect(pairState(held(PAIR_FRONT))).toMatchObject({
       edge: "UF",
       kind: "붙음",
@@ -180,7 +180,7 @@ describe("CFOP F2L 짝", () => {
     expect(ok.indexOf(true)).toBe(st.quiz?.answer);
   });
 
-  it("떨어졌지만 바로 들어가는 자리: 흰색 오른쪽+모서리 뒤, 흰색 앞+모서리 왼쪽", () => {
+  it("떨어졌지만 바로 들어가는 자리: 흰색 오른쪽+엣지 뒤, 흰색 앞+엣지 왼쪽", () => {
     const r = held(JOIN_RIGHT);
     expect(pairState(r)).toMatchObject({ edge: "UB", kind: "떨어짐" });
     expect(col(r, "RUF")).toBe("U");
@@ -215,7 +215,7 @@ describe("CFOP F2L 짝", () => {
 });
 
 describe("CFOP 2단계 OLL", () => {
-  /** 위 꼭짓점마다 노랑(D)이 보는 면 */
+  /** 위 코너마다 노랑(D)이 보는 면 */
   const yellowAt = (s: PuzzleState) =>
     Object.fromEntries(
       ["UFL", "UFR", "UBR", "UBL"].map((p) => [
@@ -232,7 +232,7 @@ describe("CFOP 2단계 OLL", () => {
     "2look-oll-26": { UFL: "F", UFR: "R", UBR: "U", UBL: "L" },
     "2look-oll-27": { UFL: "U", UFR: "F", UBR: "R", UBL: "B" },
   };
-  it("꼭짓점 일곱 모양: 알아보는 법(note)이 상황과 맞는다", () => {
+  it("코너 일곱 모양: 알아보는 법(note)이 상황과 맞는다", () => {
     for (const c of TWO_LOOK_OLL.filter((x) => x.group === "corners"))
       expect(yellowAt(held(c.algs[0] as string)), c.id).toEqual(LOOK[c.id]);
   });
@@ -241,7 +241,7 @@ describe("CFOP 2단계 OLL", () => {
     const st = step(lessonOf("cfop-2look-oll"), "quiz", 1);
     const s = stateOf(st);
     const byName = (name: string) =>
-      TWO_LOOK_OLL.find((c) => c.name.replace(/^꼭짓점: /, "").startsWith(name))
+      TWO_LOOK_OLL.find((c) => c.name.replace(/^코너: /, "").startsWith(name))
         ?.algs[0] as string;
     const ok = (st.quiz as QuizSpec).choices.map((n) =>
       goalMet(3, play(3, byName(n), s), "oll"),
@@ -257,7 +257,7 @@ describe("CFOP 2단계 OLL", () => {
 });
 
 describe("CFOP 2단계 PLL", () => {
-  /** 옆면마다 위 줄 양 끝 꼭짓점 칸이 같은 색인가(헤드라이트) */
+  /** 옆면마다 위 줄 양 끝 코너 칸이 같은 색인가(헤드라이트) */
   const ROW: Record<string, [string, string, string]> = {
     F: ["FUL", "FU", "FUR"],
     R: ["RUF", "RU", "RUB"],
@@ -270,7 +270,7 @@ describe("CFOP 2단계 PLL", () => {
       return col(s, a) === col(s, b);
     });
 
-  it("T는 헤드라이트가 왼쪽 하나, Y는 없음, 모서리 공식은 네 면 모두", () => {
+  it("T는 헤드라이트가 왼쪽 하나, Y는 없음, 엣지 공식은 네 면 모두", () => {
     expect(headlights(held(T_PERM))).toEqual(["L"]);
     expect(headlights(held(Y_PERM))).toEqual([]);
     for (const id of ["2look-pll-ua", "2look-pll-ub", "2look-pll-h"])
@@ -280,7 +280,7 @@ describe("CFOP 2단계 PLL", () => {
     expect(headlights(held(Z_PERM_AUF))).toHaveLength(4);
   });
 
-  it("Z퍼뮤는 U'를 붙인 상황에서 꼭짓점이 옆 가운데와 맞는다", () => {
+  it("Z퍼뮤는 U'를 붙인 상황에서 코너가 옆 센터와 맞는다", () => {
     const centre = (s: PuzzleState, f: string) =>
       FACES[
         faceColors(3, s)[
@@ -299,7 +299,7 @@ describe("CFOP 2단계 PLL", () => {
       expect(col(s, (ROW[f] as string[])[0] as string), f).toBe(centre(s, f));
   });
 
-  it("T퍼뮤가 바꾸는 꼭짓점은 노랑-주황이 붙은 오른쪽 둘이다", () => {
+  it("T퍼뮤가 바꾸는 코너는 노랑-주황이 붙은 오른쪽 둘이다", () => {
     const moved = ["UFR", "URB", "UBL", "ULF"].filter((p) =>
       rotations(p).some((n) => col(held(T_PERM), n) !== col(held(""), n)),
     );
@@ -308,7 +308,7 @@ describe("CFOP 2단계 PLL", () => {
     expect(col(held(""), "RU")).toBe("L");
   });
 
-  it("Ua는 앞 모서리가 오른쪽 면 색, Ub는 왼쪽 면 색(뒤가 다 맞음)", () => {
+  it("Ua는 앞 엣지가 오른쪽 면 색, Ub는 왼쪽 면 색(뒤가 다 맞음)", () => {
     const of = (id: string) =>
       held(TWO_LOOK_PLL.find((c) => c.id === id)?.algs[0] ?? "");
     for (const [id, side] of [
@@ -321,7 +321,7 @@ describe("CFOP 2단계 PLL", () => {
     }
   });
 
-  it("고르기 문제: 헤드라이트 없음 → Y퍼뮤, 모서리 모양 → 답의 공식만 맞춘다", () => {
+  it("고르기 문제: 헤드라이트 없음 → Y퍼뮤, 엣지 모양 → 답의 공식만 맞춘다", () => {
     const lesson = lessonOf("cfop-2look-pll");
     const noLights = step(lesson, "quiz", 1);
     expect(headlights(stateOf(noLights))).toEqual([]);
@@ -373,7 +373,7 @@ describe("CFOP 한눈에 시연", () => {
 
 describe("4×4·5×5", () => {
   const nn = (n: number) => n * n;
-  /** 면 f의 가운데(바깥 줄이 아닌) 칸 색들 */
+  /** 면 f의 센터(바깥 줄이 아닌) 칸 색들 */
   const centerColors = (n: number, s: PuzzleState, f: number) => {
     const out: number[] = [];
     const colors = faceColors(n, s);
@@ -383,7 +383,7 @@ describe("4×4·5×5", () => {
     return out;
   };
 
-  it("노랑 모으기 상황은 흰 가운데가 다 맞은 채 시작한다", () => {
+  it("노랑 모으기 상황은 흰 센터가 다 맞은 채 시작한다", () => {
     const s = play(4, setupFor(CENTER_YELLOW));
     expect(centerColors(4, s, 0).every((c) => c === 0)).toBe(true);
     expect(centerColors(4, s, 3).every((c) => c === 3)).toBe(false);
@@ -397,7 +397,7 @@ describe("4×4·5×5", () => {
     expect(mixed).toEqual([0, 2]);
   });
 
-  it("꼭짓점 둘만 바뀐 4×4: 처음엔 모서리·가운데가 다 맞고 꼭짓점 칸만 다르다", () => {
+  it("코너 둘만 바뀐 4×4: 처음엔 엣지·센터가 다 맞고 코너 칸만 다르다", () => {
     const s = play(4, setupFor(CORNER_SWAP_444));
     const topo = cubeTopology(4);
     const diff = diffColors(4, s);
@@ -409,7 +409,7 @@ describe("4×4·5×5", () => {
     ).toBe(true);
   });
 
-  it("5×5 가운데: 대각선 조각은 대각선 자리끼리만 오간다(문제 답)", () => {
+  it("5×5 센터: 대각선 조각은 대각선 자리끼리만 오간다(문제 답)", () => {
     const topo = cubeTopology(5);
     const diagonal = (i: number) => {
       const p = topo.pieces[topo.stickers[i]?.piece ?? 0];
@@ -426,7 +426,7 @@ describe("4×4·5×5", () => {
     expect(answer(q)).toMatch(/^아니요/);
   });
 
-  it("4×4 모서리 찾기: 빨강-초록 날개 둘이 앞-오른쪽 위와 앞-왼쪽 아래에 있다", () => {
+  it("4×4 엣지 찾기: 빨강-초록 날개 둘이 앞-오른쪽 위와 앞-왼쪽 아래에 있다", () => {
     const s = play(4, "Dw'");
     const topo = cubeTopology(4);
     const colors = faceColors(4, s);
@@ -517,7 +517,7 @@ describe("블라인드 외우기", () => {
     ).toBe(answer(step(corners, "quiz", 1)));
   });
 
-  it("준비 수 문제와 꼭짓점 글자 문제의 답이 자료와 같다", () => {
+  it("준비 수 문제와 코너 글자 문제의 답이 자료와 같다", () => {
     const j = step(lessonOf("bld-edges"), "quiz", 1);
     expect(answer(j)).toBe(
       BLD_EDGE_TARGETS.find((t) => t.letter === "J")?.setup,
@@ -533,7 +533,7 @@ describe("블라인드 외우기", () => {
     ).toBe(true);
   });
 
-  it("제자리에서 뒤집힌 모서리: 버퍼와 위-앞 모서리 칸만 다르고, C I로 맞는다", () => {
+  it("제자리에서 뒤집힌 엣지: 버퍼와 위-앞 엣지 칸만 다르고, C I로 맞는다", () => {
     const s = play(3, setupFor(sendEdges(FLIPPED_EDGE)));
     expect(diffColors(3, s).sort()).toEqual(
       [sticker("UF"), sticker("FU"), sticker("UR"), sticker("RU")].sort(),

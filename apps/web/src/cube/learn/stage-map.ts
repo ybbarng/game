@@ -52,7 +52,7 @@ function scrambleFor(moves: string[]): string {
   return `${turns} ${invertAlg(all)}`.trim();
 }
 
-// 3×3 초보자: 흰 십자 → 첫 층 꼭짓점(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 꼭짓점 자리 → 방향
+// 3×3 초보자: 흰 십자 → 첫 층 코너(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 코너 자리 → 방향
 const BEGINNER_333_MOVES = [
   "F' D R' D2 L F2",
   `D ${TW} y' ${reps(TW, 3)} y' D2 ${reps(TW, 5)} y' D' ${TW}`,
@@ -84,24 +84,24 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     stages: [
       { title: "흰 십자", lessons: ["333-white-cross"], goal: "white-cross" },
       {
-        title: "첫 층 꼭짓점",
+        title: "첫 층 코너",
         lessons: ["333-first-corners-up"],
         goal: "first-layer",
       },
       {
-        title: "둘째 층 모서리",
+        title: "둘째 층 엣지",
         lessons: ["333-second-layer"],
         goal: "second-layer",
       },
       { title: "노란 십자", lessons: ["333-ll-cross"], goal: "yellow-cross" },
       { title: "옆면 맞추기", lessons: ["333-ll-edges"], goal: "yellow-edges" },
       {
-        title: "꼭짓점 자리",
+        title: "코너 자리",
         lessons: ["333-ll-corner-place"],
         goal: "ll-corners-placed",
       },
       {
-        title: "꼭짓점 방향",
+        title: "코너 방향",
         lessons: ["333-ll-corner-twist"],
         goal: "solved",
       },
@@ -114,14 +114,10 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question:
-          "마지막 단계(꼭짓점 방향)에서 다시 쓰는 공식은 몇 단계에서 처음 배우나요?",
-        choices: [
-          "2단계(첫 층 꼭짓점)",
-          "4단계(노란 십자)",
-          "6단계(꼭짓점 자리)",
-        ],
+          "마지막 단계(코너 방향)에서 다시 쓰는 공식은 몇 단계에서 처음 배우나요?",
+        choices: ["2단계(첫 층 코너)", "4단계(노란 십자)", "6단계(코너 자리)"],
         answer: 0,
-        why: "첫 층 꼭짓점에서 쓴 R' D' R D를 마지막에 다시 써요.",
+        why: "첫 층 코너에서 쓴 R' D' R D를 마지막에 다시 써요.",
       },
       {
         question: "끝까지 맞추는 데 외울 공식은 모두 몇 개일까요?",
@@ -151,7 +147,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "2×2 첫 층에서 되풀이하는 공식은?",
         choices: ["R' D' R D", "F R U R' U' F'"],
         answer: 0,
-        why: "3×3 첫 층 꼭짓점과 같은 R' D' R D예요. 2×2에는 모서리가 없어 노란 십자 공식은 안 써요.",
+        why: "3×3 첫 층 코너와 같은 R' D' R D예요. 2×2에는 엣지가 없어 노란 십자 공식은 안 써요.",
       },
     ],
   },
@@ -163,12 +159,12 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         goal: "2x2-first-layer",
       },
       {
-        title: "꼭짓점 자리",
+        title: "코너 자리",
         lessons: ["222-from333-corner-place"],
         goal: "2x2-corners-placed",
       },
       {
-        title: "꼭짓점 방향",
+        title: "코너 방향",
         lessons: ["222-from333-corner-twist"],
         goal: "solved",
       },
@@ -182,11 +178,11 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       {
         question: "이 세 단계는 3×3 초보자 과정의 어느 단계와 같을까요?",
         choices: [
-          "첫 층 꼭짓점·꼭짓점 자리·꼭짓점 방향",
-          "흰 십자·둘째 층 모서리·노란 십자",
+          "첫 층 코너·코너 자리·코너 방향",
+          "흰 십자·둘째 층 엣지·노란 십자",
         ],
         answer: 0,
-        why: "2×2는 꼭짓점뿐이라 3×3의 꼭짓점 단계만 남아요.",
+        why: "2×2는 코너뿐이라 3×3의 코너 단계만 남아요.",
       },
     ],
   },
@@ -210,9 +206,9 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question: "처음 배울 때 OLL은 두 번에 나눠요. 먼저 맞추는 것은?",
-        choices: ["모서리 방향(노란 십자)", "꼭짓점 방향"],
+        choices: ["엣지 방향(노란 십자)", "코너 방향"],
         answer: 0,
-        why: "2단계 OLL은 노란 십자를 먼저, 그다음 꼭짓점을 노랗게 해요. PLL도 꼭짓점 자리 → 모서리 자리 두 번으로 나눠요.",
+        why: "2단계 OLL은 노란 십자를 먼저, 그다음 코너를 노랗게 해요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",
       },
     ],
   },
@@ -238,7 +234,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "마지막 LSE에서 돌리는 것은?",
         choices: ["가운데 줄(M)과 윗면(U)만", "오른쪽(R)과 앞(F)"],
         answer: 0,
-        why: "두 블록과 꼭짓점을 지키려면 M과 U만 돌려요.",
+        why: "두 블록과 코너를 지키려면 M과 U만 돌려요.",
       },
     ],
   },
@@ -262,14 +258,14 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "EO라인을 만든 뒤 블록에서 돌리는 면은?",
         choices: ["R·U·L만", "F·B도 자주"],
         answer: 0,
-        why: "F·B를 4분의 1 돌리면 모서리 방향이 깨져요. 그래서 R·U·L만으로 블록을 쌓아요.",
+        why: "F·B를 4분의 1 돌리면 엣지 방향이 깨져요. 그래서 R·U·L만으로 블록을 쌓아요.",
       },
     ],
   },
   "444-reduction": {
     stages: [
-      { title: "가운데", lessons: ["444-centers"], goal: "centers" },
-      { title: "모서리 짝", lessons: ["444-edges"], goal: "edges-paired" },
+      { title: "센터", lessons: ["444-centers"], goal: "centers" },
+      { title: "엣지 짝", lessons: ["444-edges"], goal: "edges-paired" },
       {
         title: "3×3처럼(패리티)",
         lessons: ["444-as-333"],
@@ -290,19 +286,19 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       {
         question: "3×3처럼 풀 때 4×4에서만 생길 수 있는 것은?",
         choices: [
-          "패리티(모서리 하나가 뒤집히거나 둘이 바뀜)",
-          "가운데가 다시 흐트러짐",
+          "패리티(엣지 하나가 뒤집히거나 둘이 바뀜)",
+          "센터가 다시 흐트러짐",
         ],
         answer: 0,
-        why: "4×4는 가운데·모서리를 묶어 3×3처럼 풀지만, 3×3에는 없는 패리티가 나올 수 있어요.",
+        why: "4×4는 센터·엣지를 묶어 3×3처럼 풀지만, 3×3에는 없는 패리티가 나올 수 있어요.",
       },
     ],
   },
   "555-reduction": {
     stages: [
-      { title: "가운데", lessons: ["555-centers"], goal: "centers" },
+      { title: "센터", lessons: ["555-centers"], goal: "centers" },
       {
-        title: "모서리 셋 묶기",
+        title: "엣지 셋 묶기",
         lessons: ["555-edges", "555-last-two-edges"],
         goal: "edges-paired",
       },
@@ -321,33 +317,33 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question: "5×5에서 움직이지 않는 칸은?",
-        choices: ["면마다 한가운데 칸", "가운데 둘레 칸"],
+        choices: ["면마다 한가운데 칸", "센터 둘레 칸"],
         answer: 0,
-        why: "한가운데 칸은 3×3 가운데처럼 고정이라 면 색을 정해 줘요. 둘레 칸은 움직여요.",
+        why: "한가운데 칸은 3×3 센터처럼 고정이라 면 색을 정해 줘요. 둘레 칸은 움직여요.",
       },
     ],
   },
   "444-yau": {
     stages: [
-      { title: "흰·노랑 가운데", lessons: ["yau-ud-centers"] },
+      { title: "흰·노랑 센터", lessons: ["yau-ud-centers"] },
       { title: "흰 십자 셋", lessons: ["yau-cross3"] },
-      { title: "옆 가운데", lessons: ["yau-side-centers"] },
-      { title: "모서리 묶기", lessons: ["yau-edges"] },
+      { title: "옆 센터", lessons: ["yau-side-centers"] },
+      { title: "엣지 묶기", lessons: ["yau-edges"] },
       { title: "3×3처럼", lessons: ["yau-finish"] },
     ],
   },
   "bld-op": {
     stages: [
       { title: "외우기", lessons: ["bld-letters"] },
-      { title: "모서리", lessons: ["bld-edges"] },
-      { title: "꼭짓점", lessons: ["bld-corners", "bld-parity"] },
+      { title: "엣지", lessons: ["bld-edges"] },
+      { title: "코너", lessons: ["bld-corners", "bld-parity"] },
     ],
     quizzes: [
       {
         question: "블라인드에서 큐브를 보는 때는?",
         choices: ["외우기 단계에서만", "맞추는 내내"],
         answer: 0,
-        why: "외운 뒤에는 눈을 가리고 외운 글자 차례대로 모서리, 꼭짓점을 맞춰요.",
+        why: "외운 뒤에는 눈을 가리고 외운 글자 차례대로 엣지, 코너를 맞춰요.",
       },
     ],
   },

@@ -5,59 +5,58 @@ export type CubeSize = 2 | 3 | 4 | 5;
 
 /**
  * 맞아 있어야 할 조각 묶음 이름. "직접 해보기"의 통과 조건이다.
- * 엔진에서 구현할 것: 각 이름을 "어느 조각이 가운데 색 기준으로 제자리·제방향인가"로 판정한다.
- * 큐브를 어느 쪽으로 들고 있든 가운데 색으로 본다(흰 십자는 흰 가운데가 위든 아래든 같다).
+ * 엔진에서 구현할 것: 각 이름을 "어느 조각이 센터 색 기준으로 제자리·제방향인가"로 판정한다.
+ * 큐브를 어느 쪽으로 들고 있든 센터 색으로 본다(흰 십자는 흰 센터가 위든 아래든 같다).
  */
 export const GOALS = {
   solved: "다 맞춤",
   // 조각 하나(3×3 「큐브의 조각」). 이름은 엔진 pieceName(닿은 면 U·D, F·B, R·L 차례)
-  "piece:UFR": "흰-초록-빨강 꼭짓점이 제자리·바른 방향",
-  "piece:UF": "흰-초록 모서리가 제자리·바른 방향",
-  "white-cross": "흰 십자(흰 모서리 넷이 옆 가운데 색까지 맞음)",
-  cross: "십자(CFOP: 흰 모서리 넷, 흰 면이 아래)",
-  "first-layer": "첫 층(흰 십자 + 흰 꼭짓점 넷)",
-  "second-layer": "둘째 층까지(첫 층 + 가운데 줄 모서리 넷)",
+  "piece:UFR": "흰-초록-빨강 코너 블럭이 제자리·바른 방향",
+  "piece:UF": "흰-초록 엣지 블럭이 제자리·바른 방향",
+  "white-cross": "흰 십자(흰 엣지 넷이 옆 센터 색까지 맞음)",
+  cross: "십자(CFOP: 흰 엣지 넷, 흰 면이 아래)",
+  "first-layer": "첫 층(흰 십자 + 흰 코너 넷)",
+  "second-layer": "둘째 층까지(첫 층 + 가운데 줄 엣지 넷)",
   f2l: "F2L(아래 두 층 전부)",
-  "f2l-pair:FR": "앞-오른쪽 칸 짝(꼭짓점+모서리)",
+  "f2l-pair:FR": "앞-오른쪽 칸 짝(코너+엣지)",
   "f2l-pair:FL": "앞-왼쪽 칸 짝",
   "f2l-pair:BR": "뒤-오른쪽 칸 짝",
   "f2l-pair:BL": "뒤-왼쪽 칸 짝",
-  "yellow-cross": "노란 십자(아래 두 층 + 윗면 모서리 넷이 노란색 위)",
+  "yellow-cross": "노란 십자(아래 두 층 + 윗면 엣지 넷이 노란색 위)",
   oll: "윗면 한 색(아래 두 층 + 윗면 아홉 칸이 노랑)",
   "yellow-corners":
-    "위 꼭짓점 자리까지(윗면 노랑 + 꼭짓점 넷이 제자리, 윗면 돌리기로 맞출 수 있으면 됨)",
+    "위 코너 자리까지(윗면 노랑 + 코너 넷이 제자리, 윗면 돌리기로 맞출 수 있으면 됨)",
   ll: "윗층까지 다 맞음(윗면 돌리기 하나 남아도 됨)",
   "yellow-edges":
-    "옆면 맞추기까지(노란 십자 + 위 모서리 넷의 옆색이 가운데와 맞음, 윗면 돌리기 하나는 봐줌)",
+    "옆면 맞추기까지(노란 십자 + 위 엣지 넷의 옆색이 센터와 맞음, 윗면 돌리기 하나는 봐줌)",
   "ll-corners-placed":
-    "꼭짓점 자리까지(위 모서리 맞음 + 위 꼭짓점 넷이 제자리, 방향은 안 봄)",
-  "2x2-first-layer": "2×2 첫 층(흰 꼭짓점 넷이 옆색까지 맞음)",
+    "코너 자리까지(위 엣지 맞음 + 위 코너 넷이 제자리, 방향은 안 봄)",
+  "2x2-first-layer": "2×2 첫 층(흰 코너 넷이 옆색까지 맞음)",
   "2x2-top-face": "2×2 윗면 한 색(첫 층 + 윗면 노랑)",
   "2x2-corners-placed":
-    "2×2 위 꼭짓점 자리(첫 층 + 위 꼭짓점 넷이 아래층과 이어지는 자리, 방향은 안 봄)",
+    "2×2 위 코너 자리(첫 층 + 위 코너 넷이 아래층과 이어지는 자리, 방향은 안 봄)",
   "2x2-first-face": "2×2 오르테가 첫 면(흰 칸 넷이 한 면, 옆색은 안 봄)",
   "2x2-both-faces": "2×2 오르테가 위아래 면(흰 면·노란 면 모두, 옆색은 안 봄)",
-  centers: "큰 큐브 가운데 맞춤(면마다 가운데 조각이 한 색)",
-  "edges-paired":
-    "큰 큐브 모서리 묶기(가운데 + 모서리 조각이 같은 색끼리 한 줄)",
-  "edge-pair:UF": "큰 큐브 모서리 한 줄(위-앞 자리 날개가 한 색끼리 붙음)",
+  centers: "큰 큐브 센터 맞춤(면마다 센터 블럭이 한 색)",
+  "edges-paired": "큰 큐브 엣지 묶기(센터 + 엣지 블럭이 같은 색끼리 한 줄)",
+  "edge-pair:UF": "큰 큐브 엣지 한 줄(위-앞 자리 날개가 한 색끼리 붙음)",
   "edges-ten":
-    "큰 큐브 모서리 열 줄 묶기(가운데 맞음, 안 묶인 줄이 둘 이하. 마지막 둘은 따로 배운다)",
+    "큰 큐브 엣지 열 줄 묶기(센터 맞음, 안 묶인 줄이 둘 이하. 마지막 둘은 따로 배운다)",
   // 다른 해법(judge-methods.ts). 자리는 지금 들고 있는 방향으로 본다
   "roux-fb": "루 첫 블록(왼쪽 1×2×3)",
   "roux-sb": "루 두 블록(왼쪽·오른쪽 1×2×3)",
-  cmll: "두 블록 + 위 꼭짓점(윗면 돌리기 하나는 남아도 됨)",
-  "lse-eo": "위 꼭짓점까지 + 모서리 방향(흰·노랑 칸이 위아래)",
-  "lse-ulur": "모서리 방향 + 왼쪽·오른쪽 위 모서리",
-  eo: "모서리 방향(나쁜 모서리 없음)",
-  eoline: "EO라인(모서리 방향 + 아래 앞·뒤 모서리)",
+  cmll: "두 블록 + 위 코너(윗면 돌리기 하나는 남아도 됨)",
+  "lse-eo": "위 코너까지 + 엣지 방향(흰·노랑 칸이 위아래)",
+  "lse-ulur": "엣지 방향 + 왼쪽·오른쪽 위 엣지",
+  eo: "엣지 방향(나쁜 엣지 없음)",
+  eoline: "EO라인(엣지 방향 + 아래 앞·뒤 엣지)",
   "zz-left": "EO라인 + 왼쪽 블록",
   "petrus-222": "페트루스 2×2×2(왼쪽-뒤-아래)",
   "petrus-223": "페트루스 2×2×3(왼쪽 아래 두 층)",
-  "yau-ud-centers": "4×4 흰·노랑 가운데(맞은편 두 면)",
-  "yau-cross3": "4×4 흰·노랑 가운데 + 흰 십자 모서리 셋",
-  "yau-centers": "4×4 가운데 여섯 + 흰 십자 모서리 셋",
-  "yau-cross": "4×4 가운데 여섯 + 흰 십자 모서리 넷",
+  "yau-ud-centers": "4×4 흰·노랑 센터(맞은편 두 면)",
+  "yau-cross3": "4×4 흰·노랑 센터 + 흰 십자 엣지 셋",
+  "yau-centers": "4×4 센터 여섯 + 흰 십자 엣지 셋",
+  "yau-cross": "4×4 센터 여섯 + 흰 십자 엣지 넷",
 } as const;
 export type GoalName = keyof typeof GOALS;
 
@@ -67,22 +66,22 @@ export type GoalName = keyof typeof GOALS;
  */
 export const MASKS = {
   none: "모두 까맣게(조각을 찾아 누르면 그 조각 색이 드러난다)",
-  centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  centers: "센터 여섯만 보임(조각은 모두 까맣게)",
   "centers:UF":
     "위·앞 센터 블럭 둘만 보임(색 배치 문제: 나머지 센터 색으로 답이 드러나지 않게)",
-  corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
-  "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
-  "piece:UF": "흰-초록 모서리와 가운데만 보임",
-  cross: "십자 모서리와 가운데만 보임",
-  "first-layer": "첫 층(십자 + 꼭짓점)과 가운데만 보임",
-  f2l: "아래 두 층과 가운데만 보임",
+  corners: "코너만 보임(3×3에서 엣지·센터를 지우면 2×2)",
+  "piece:UFR": "흰-초록-빨강 코너 블럭과 센터만 보임",
+  "piece:UF": "흰-초록 엣지 블럭과 센터만 보임",
+  cross: "십자 엣지와 센터만 보임",
+  "first-layer": "첫 층(십자 + 코너)과 센터만 보임",
+  f2l: "아래 두 층과 센터만 보임",
   oll: "아래 두 층 + 윗면의 노란 칸만 보임(윗층 옆면은 회색)",
   pll: "아래 두 층 + 윗층 전부 보임(윗면은 회색으로 둬도 됨)",
   all: "모두 보임(가리지 않음)",
-  "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 가운데만 보임",
-  "roux-blocks": "루 두 블록과 가운데만 보임",
-  cmll: "루 두 블록 + 위 꼭짓점만 보임(나머지 모서리는 회색)",
-  "eo-edges": "모서리와 가운데만 보임(꼭짓점은 회색)",
+  "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 센터만 보임",
+  "roux-blocks": "루 두 블록과 센터만 보임",
+  cmll: "루 두 블록 + 위 코너만 보임(나머지 엣지는 회색)",
+  "eo-edges": "엣지와 센터만 보임(코너는 회색)",
 } as const;
 export type MaskName = keyof typeof MASKS;
 
@@ -98,34 +97,34 @@ export const SCRAMBLE_RULES = {
   "f2l-solved": "F2L 맞음, 윗층만 섞음(OLL 연습)",
   "oll-solved": "F2L과 윗면 맞음, 윗층 자리만 섞음(PLL 연습)",
   "yellow-cross-solved": "아래 두 층과 노란 십자 맞음",
-  "yellow-face-solved": "아래 두 층과 윗면 맞음(꼭짓점 자리 연습)",
-  "corners-placed": "윗층 꼭짓점까지 맞음(모서리 자리 연습)",
-  "white-cross-up": "흰 십자만 맞음, 흰 면 위(첫 층 꼭짓점 연습)",
+  "yellow-face-solved": "아래 두 층과 윗면 맞음(코너 자리 연습)",
+  "corners-placed": "윗층 코너까지 맞음(엣지 자리 연습)",
+  "white-cross-up": "흰 십자만 맞음, 흰 면 위(첫 층 코너 연습)",
   "ll-cross-solved": "아래 두 층과 노란 십자 맞음(옆면 맞추기 연습)",
-  "ll-edges-solved": "아래 두 층과 위 모서리 맞음(꼭짓점 자리 연습)",
-  "ll-corners-placed": "꼭짓점 방향만 남음(꼭짓점 방향 연습)",
+  "ll-edges-solved": "아래 두 층과 위 엣지 맞음(코너 자리 연습)",
+  "ll-corners-placed": "코너 방향만 남음(코너 방향 연습)",
   "f2l-one-slot": "십자와 F2L 칸 셋 맞음, 앞-오른쪽 짝만 흩어짐",
   "2x2-random": "2×2 모두 섞음",
   "2x2-first-layer-solved": "2×2 첫 층 맞음",
   "2x2-top-face-solved": "2×2 첫 층과 윗면 맞음",
-  "2x2-corners-placed": "2×2 꼭짓점 방향만 남음",
+  "2x2-corners-placed": "2×2 코너 방향만 남음",
   "4x4-random": "4×4 모두 섞음",
-  "4x4-centers-solved": "4×4 가운데만 맞음",
-  "4x4-reduced": "4×4 가운데와 모서리 묶기까지 맞음(3×3처럼 풀기)",
+  "4x4-centers-solved": "4×4 센터만 맞음",
+  "4x4-reduced": "4×4 센터와 엣지 묶기까지 맞음(3×3처럼 풀기)",
   "5x5-random": "5×5 모두 섞음",
-  "5x5-centers-solved": "5×5 가운데만 맞음",
-  "5x5-two-edges-left": "5×5 모서리 둘만 남음",
+  "5x5-centers-solved": "5×5 센터만 맞음",
+  "5x5-two-edges-left": "5×5 엣지 둘만 남음",
   "bld-random": "블라인드 연습용 모두 섞음",
   "roux-fb-solved": "루 첫 블록만 맞음(흰 면 아래)",
   "roux-blocks-solved": "루 두 블록 맞음",
-  "roux-cmll-solved": "루 두 블록과 꼭짓점 모두 맞음(LSE 연습)",
-  "roux-eo-solved": "루 LSE 모서리 방향까지 맞음(M2·U로 섞음)",
-  "roux-ulur-solved": "루 왼쪽·오른쪽 위 모서리까지 맞음(가운데 줄만 섞임)",
+  "roux-cmll-solved": "루 두 블록과 코너 모두 맞음(LSE 연습)",
+  "roux-eo-solved": "루 LSE 엣지 방향까지 맞음(M2·U로 섞음)",
+  "roux-ulur-solved": "루 왼쪽·오른쪽 위 엣지까지 맞음(가운데 줄만 섞임)",
   "zz-eoline-solved": "ZZ EO라인 맞음(R·U·L로 섞음)",
-  "4x4-yau-ud-centers": "4×4 흰·노랑 가운데만 맞음",
-  "4x4-yau-cross3": "4×4 흰·노랑 가운데와 흰 십자 모서리 셋 맞음",
-  "4x4-yau-centers": "4×4 가운데 여섯과 흰 십자 모서리 셋 맞음",
-  "4x4-yau-cross": "4×4 가운데 여섯과 흰 십자 모서리 넷 맞음",
+  "4x4-yau-ud-centers": "4×4 흰·노랑 센터만 맞음",
+  "4x4-yau-cross3": "4×4 흰·노랑 센터와 흰 십자 엣지 셋 맞음",
+  "4x4-yau-centers": "4×4 센터 여섯과 흰 십자 엣지 셋 맞음",
+  "4x4-yau-cross": "4×4 센터 여섯과 흰 십자 엣지 넷 맞음",
 } as const;
 export type ScrambleRule = keyof typeof SCRAMBLE_RULES;
 
@@ -145,7 +144,7 @@ export type LessonSetup = { alg: string } | { rule: ScrambleRule };
  *   정해진 수는 없고, 층을 몇 번 돌리거나 그 조각이 자리를 몇 번 옮기면 통과(`play`)
  * - welcome: 환영. 섞였다가 해법대로 맞춰지는 큐브(첫 화면 연출)와 「따라오세요」 단추. 누르면 다음 단계로
  * - parts: 스티커로 보기 / 조각으로 보기. 칸을 누르면 붙은 조각 전체가 들린다(3×3)
- * - build: 가상 분해·조립. 축 → 가운데 6 → 모서리 12 → 꼭짓점 8 차례로 빈자리를 눌러 끼운다(3×3, `learn/build.ts`)
+ * - build: 가상 분해·조립. 축 → 센터 6 → 엣지 12 → 코너 8 차례로 빈자리를 눌러 끼운다(3×3, `learn/build.ts`)
  */
 export type LessonStepKind =
   | "text"
@@ -163,15 +162,15 @@ export type LessonStepKind =
 /** 면 이름. 색은 맞춘 큐브에서 그 면에 있던 색(U 흰, R 빨강, F 초록, D 노랑, L 주황, B 파랑) */
 export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
 
-/** 조각 종류(큰 큐브의 날개 모서리는 edge, 안쪽 가운데는 center로 친다) */
+/** 조각 종류(큰 큐브의 날개 엣지는 edge, 안쪽 센터는 center로 친다) */
 export type PieceType = "center" | "edge" | "corner";
 
 /**
  * 찾을 조각. 여럿 주면 모두 맞아야 한다.
  * - piece: 그 종류 아무 조각
- * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
+ * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 엣지 블럭)
  * - has: 그 색이 붙어 있는 조각(예: ["D"] = 노란색이 붙은 조각 아무거나)
- * - at: 조각이 아니라 자리. 그 면들(가운데 기준)에 닿은 자리(예: ["U","R"] = 흰 가운데와 빨강 가운데 사이).
+ * - at: 조각이 아니라 자리. 그 면들(센터 기준)에 닿은 자리(예: ["U","R"] = 흰 센터와 빨강 센터 사이).
  *   지금 그 자리에 어떤 조각이 있든 맞다
  */
 export interface FindTarget {
@@ -198,11 +197,11 @@ export interface LookGoal {
  */
 export interface PlaySpec {
   focus: FindTarget | FindTarget[];
-  /** 가운데 조각에도 색을 넣는다(제자리를 볼 기준) */
+  /** 센터 블럭에도 색을 넣는다(제자리를 볼 기준) */
   centers?: boolean;
   turns?: number;
   moved?: number;
-  /** 「다른 조각 보기」: 가운데·모서리·꼭짓점 단추나 큐브의 칸을 눌러 색 넣을 조각을 바꾼다 */
+  /** 「다른 조각 보기」: 센터·엣지·코너 단추나 큐브의 칸을 눌러 색 넣을 조각을 바꾼다 */
   choose?: boolean;
 }
 
@@ -247,7 +246,7 @@ export interface LessonStep {
   play?: PlaySpec;
   /** 단계 아래에 펼쳐 둘 표(블라인드 글자마다 준비 수 등) */
   sheet?: SheetName;
-  /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 꼭짓점만 보이는 3×3). 정지 그림이다 */
+  /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 코너만 보이는 3×3). 정지 그림이다 */
   beside?: BesideCube;
   /** demo: 과정의 단계 지도 시연(단계마다 멈추고 띠의 칸으로 고른다). alg는 모든 단계 수를 이은 것 */
   stageMap?: boolean;
@@ -263,8 +262,8 @@ export interface BesideCube {
 
 /** 단계 아래에 보일 표. 화면은 이름으로 자료를 찾아 그린다 */
 export const SHEETS = {
-  "bld-edges": "블라인드 모서리 글자마다 준비 수(BLD_EDGE_TARGETS)",
-  "bld-corners": "블라인드 꼭짓점 글자마다 준비 수(BLD_CORNER_TARGETS)",
+  "bld-edges": "블라인드 엣지 글자마다 준비 수(BLD_EDGE_TARGETS)",
+  "bld-corners": "블라인드 코너 글자마다 준비 수(BLD_CORNER_TARGETS)",
 } as const;
 export type SheetName = keyof typeof SHEETS;
 

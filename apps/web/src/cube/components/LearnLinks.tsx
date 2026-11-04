@@ -127,12 +127,12 @@ export function stickerPlace(sticker: string): string {
 
 const SHEET_DATA = {
   "bld-edges": {
-    title: "모서리 글자마다 준비 수",
+    title: "엣지 글자마다 준비 수",
     note: "버퍼 B(위-오른쪽)와 같은 조각의 M은 없어요. 준비 → T퍼뮤 → 준비 거꾸로.",
     rows: BLD_EDGE_TARGETS,
   },
   "bld-corners": {
-    title: "꼭짓점 글자마다 준비 수",
+    title: "코너 글자마다 준비 수",
     note: "버퍼 A(위-뒤-왼쪽)와 같은 조각의 E·R은 없어요. 준비 → 변형 Y퍼뮤 → 준비 거꾸로.",
     rows: BLD_CORNER_TARGETS,
   },

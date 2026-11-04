@@ -1,6 +1,6 @@
 // 배우기·훈련 자료의 이름(GOALS·MASKS·SCRAMBLE_RULES)을 엔진으로 판정하는 얇은 층(docs/47 2-3, 8-1).
 // 모두 "지금 보이는 색"으로 본다. 홀수 크기는 면 정가운데 색이 기준이고(큐브를 어느 쪽으로 들든 같다),
-// 짝수 크기는 가운데가 움직이므로 큐브 전체 방향 24가지 중 하나라도 맞으면 맞은 것으로 본다.
+// 짝수 크기는 센터가 움직이므로 큐브 전체 방향 24가지 중 하나라도 맞으면 맞은 것으로 본다.
 import {
   applyMove,
   applyMoves,
@@ -118,7 +118,7 @@ function faceIs(n: number, colors: Uint8Array, f: number, color: number) {
   return true;
 }
 
-/** 마지막 층 모서리의 윗면 칸이 위 색인가 */
+/** 마지막 층 엣지의 윗면 칸이 위 색인가 */
 function topEdgesOriented(v: View, edges: readonly number[]): boolean {
   const topo = cubeTopology(v.n);
   return edges.every((p) =>
@@ -139,7 +139,7 @@ function turnFace(n: number, state: PuzzleState, f: number, k: number) {
 
 // ── 큰 큐브 ──────────────────────────────────────────────
 
-/** 면마다 가운데 조각(정가운데·안쪽 가운데) 칸이 한 색인가 */
+/** 면마다 센터 블럭(정가운데·안쪽 센터) 칸이 한 색인가 */
 export function centersSolved(n: number, state: PuzzleState): boolean {
   const topo = cubeTopology(n);
   const colors = faceColors(n, state);
@@ -156,7 +156,7 @@ export function centersSolved(n: number, state: PuzzleState): boolean {
   return true;
 }
 
-/** 모서리 자리(두 면 사이 한 줄)마다의 조각들. 열쇠는 닿은 두 면 */
+/** 엣지 자리(두 면 사이 한 줄)마다의 조각들. 열쇠는 닿은 두 면 */
 function edgeLines(n: number): Map<string, number[]> {
   const topo = cubeTopology(n);
   const lines = new Map<string, number[]>();
@@ -170,7 +170,7 @@ function edgeLines(n: number): Map<string, number[]> {
   return lines;
 }
 
-/** 모서리 한 줄이 두 면 모두 한 색으로 묶였나 */
+/** 엣지 한 줄이 두 면 모두 한 색으로 묶였나 */
 function linePaired(n: number, colors: Uint8Array, pieces: number[]) {
   const topo = cubeTopology(n);
   const byFace = new Map<number, number>();
@@ -185,7 +185,7 @@ function linePaired(n: number, colors: Uint8Array, pieces: number[]) {
   return true;
 }
 
-/** 묶이지 않은 모서리 줄 수 */
+/** 묶이지 않은 엣지 줄 수 */
 export function unpairedEdgeLines(n: number, state: PuzzleState): number {
   const colors = faceColors(n, state);
   let count = 0;
@@ -254,7 +254,7 @@ function frameGoal(goal: GoalName, v: View, state: PuzzleState): boolean {
       }
       return false;
     }
-    // 초보자 마지막 층(2026-11-04): 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향. 윗면 돌리기 하나는 봐준다
+    // 초보자 마지막 층(2026-11-04): 옆면 맞추기 → 코너 자리 → 코너 방향. 윗면 돌리기 하나는 봐준다
     case "yellow-edges":
       if (!allOk(v, g.f2l)) return false;
       return [0, 1, 2, 3].some((k) =>
@@ -296,7 +296,7 @@ export function goalMet(
   if (isMethodGoal(goal)) return methodGoalMet(n, state, goal);
   const colors = faceColors(n, state);
   if (goal.startsWith(PIECE_PREFIX)) {
-    // 조각 하나가 제자리·바른 방향(가운데 색 기준). 다른 조각은 보지 않는다
+    // 조각 하나가 제자리·바른 방향(센터 색 기준). 다른 조각은 보지 않는다
     // 그 조각이 지금 든 자리를 색으로 찾는다(큐브를 통째로 돌려도 같은 조각을 본다)
     const home = pieceByName(n, goal.slice(PIECE_PREFIX.length));
     if (home < 0) return false;
@@ -340,7 +340,7 @@ export function goalMet(
     case "edges-paired":
       return centersSolved(n, state) && unpairedEdgeLines(n, state) === 0;
     case "edges-ten":
-      // 5×5 모서리 셋 묶기 단원: 마지막 두 줄은 다음 단원에서 따로 묶는다
+      // 5×5 엣지 셋 묶기 단원: 마지막 두 줄은 다음 단원에서 따로 묶는다
       return centersSolved(n, state) && unpairedEdgeLines(n, state) <= 2;
     case "edge-pair:UF": {
       const pieces = edgeLines(n).get([U, FACE_INDEX.F].sort().join(","));
@@ -364,8 +364,8 @@ export function goalMet(
 }
 
 /**
- * 첫 층(흰 꼭짓점 넷)이 맞은 방향에서, 지금 위층 꼭짓점 중 제자리(방향은 안 봄)인 것의 수.
- * 첫 층이 맞은 방향이 없으면 -1. 초보자 「꼭짓점 자리」 단계의 고르기·시험이 쓴다
+ * 첫 층(흰 코너 넷)이 맞은 방향에서, 지금 위층 코너 중 제자리(방향은 안 봄)인 것의 수.
+ * 첫 층이 맞은 방향이 없으면 -1. 초보자 「코너 자리」 단계의 고르기·시험이 쓴다
  */
 export function placedTopCorners(n: number, state: PuzzleState): number {
   const colors = faceColors(n, state);
@@ -459,7 +459,7 @@ const FACE_D = FACE_INDEX.D as number;
 
 /**
  * 루 조각 묶음(맞춘 상태 기준). 흰 면을 아래로 쥐면(z2) 오른쪽 빨강이 왼쪽으로 가니,
- * 첫 블록은 빨강 면에 닿고 노랑(z2 뒤 위)에 닿지 않는 조각이다. 가운데는 모두 넣는다.
+ * 첫 블록은 빨강 면에 닿고 노랑(z2 뒤 위)에 닿지 않는 조각이다. 센터는 모두 넣는다.
  */
 function rouxPieces(n: number, what: "fb" | "blocks" | "cmll"): number[] {
   const centers = cubeGroups(n, U).centers;
@@ -541,7 +541,7 @@ const uTurn = (k: number) => ["", "U", "U2", "U'"][k] as string;
 
 /**
  * 공식 몇 개를 무작위 윗면 돌리기 사이에 이어 붙인다.
- * `conjugate`면 U·공식·U거꾸로로 끼워 윗층 꼭짓점 자리를 지킨다.
+ * `conjugate`면 U·공식·U거꾸로로 끼워 윗층 코너 자리를 지킨다.
  */
 function randomLastLayer(
   rng: RngState,
@@ -564,8 +564,8 @@ function randomLastLayer(
 }
 
 /**
- * 위층 꼭짓점 넷의 방향만 무작위로 돌린 수(흰 면 아래 기준). 꼭짓점마다 R' D' R D를 0·2·4번 하고 U로 넘긴다.
- * 모두 더해 6의 배수가 되게 마지막 꼭짓점 횟수를 정하니 아래 두 층과 자리는 그대로다
+ * 위층 코너 넷의 방향만 무작위로 돌린 수(흰 면 아래 기준). 코너마다 R' D' R D를 0·2·4번 하고 U로 넘긴다.
+ * 모두 더해 6의 배수가 되게 마지막 코너 횟수를 정하니 아래 두 층과 자리는 그대로다
  */
 function randomTwists(rng: RngState): string {
   const reps = [0, 0, 0].map(() => 2 * nextInt(rng, 3));
@@ -575,7 +575,7 @@ function randomTwists(rng: RngState): string {
     .join(" ");
 }
 
-/** 바깥 면만 돌리는 무작위 수(큰 큐브에서 가운데·모서리 묶음을 지킨다) */
+/** 바깥 면만 돌리는 무작위 수(큰 큐브에서 센터·엣지 묶음을 지킨다) */
 function randomOuterTurns(rng: RngState, count: number): string {
   const out: string[] = [];
   let prev = -1;
@@ -613,14 +613,14 @@ function randomOuterFaces(rng: RngState, faces: string, count: number) {
   return out.join(" ");
 }
 
-/** 고른 면들의 가운데 조각 */
+/** 고른 면들의 센터 블럭 */
 function centersOn(n: number, faces: readonly (number | undefined)[]) {
   return piecesOfKind(n, "center", "innerCenter").filter((p) =>
     faces.includes(pieceFaces(n, p)[0]),
   );
 }
 
-/** 흰 면(U) 쪽 십자 모서리 줄 `count`개(앞·오른쪽·뒤·왼쪽 차례)의 조각 */
+/** 흰 면(U) 쪽 십자 엣지 줄 `count`개(앞·오른쪽·뒤·왼쪽 차례)의 조각 */
 function whiteLines(n: number, count: number): number[] {
   const sides = ["F", "R", "B", "L"]
     .slice(0, count)
@@ -765,21 +765,21 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
     case "roux-cmll-solved":
       return z2(keepRandom(n, rng, rouxPieces(n, "cmll")));
     case "roux-eo-solved":
-      // M2와 U는 모서리 방향을 바꾸지 않는다
+      // M2와 U는 엣지 방향을 바꾸지 않는다
       return fromAlg(
         n,
         randomTurns(rng, ["M2"], ["U", "U2", "U'"], 12),
         z2Solved(),
       );
     case "roux-ulur-solved":
-      // 가운데 줄 모서리만 바꾸는 묶음(U2 두 번, M은 되돌림)을 이어 붙인다
+      // 가운데 줄 엣지만 바꾸는 묶음(U2 두 번, M은 되돌림)을 이어 붙인다
       return fromAlg(
         n,
         Array.from({ length: 4 }, () => pick(rng, FOUR_C)).join(" "),
         z2Solved(),
       );
     case "zz-eoline-solved":
-      // R·U·L은 모서리 방향과 아래 앞·뒤 모서리를 건드리지 않는다
+      // R·U·L은 엣지 방향과 아래 앞·뒤 엣지를 건드리지 않는다
       return fromAlg(n, randomOuterFaces(rng, "RUL", 25), z2Solved());
     case "4x4-yau-ud-centers":
       return keepRandom(n, rng, centersOn(n, [FACE_INDEX.U, FACE_D]));

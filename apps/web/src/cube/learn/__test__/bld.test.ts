@@ -80,21 +80,21 @@ describe("블라인드 올드 포흐만", () => {
     expect(new Set(BLD_CORNER_TARGETS.map((t) => t.letter)).size).toBe(21);
   });
 
-  it("모서리: 준비 → T퍼뮤 → 되돌리기가 버퍼(UR)와 그 글자만 바꾼다(꼭짓점 UFR·UBR은 곁다리)", () => {
+  it("엣지: 준비 → T퍼뮤 → 되돌리기가 버퍼(UR)와 그 글자만 바꾼다(코너 UFR·UBR은 곁다리)", () => {
     checkTargets(BLD_EDGE_TARGETS, alg("bld-op-edge"), where("UR"), [
       "2,2,2",
       "2,2,-2",
     ]);
   });
 
-  it("꼭짓점: 준비 → 변형 Y퍼뮤 → 되돌리기가 버퍼(UBL)와 그 글자만 바꾼다(모서리 UL·UB는 곁다리)", () => {
+  it("코너: 준비 → 변형 Y퍼뮤 → 되돌리기가 버퍼(UBL)와 그 글자만 바꾼다(엣지 UL·UB는 곁다리)", () => {
     checkTargets(BLD_CORNER_TARGETS, alg("bld-op-corner"), where("ULB"), [
       "-2,2,0",
       "0,2,-2",
     ]);
   });
 
-  it("패리티 공식은 꼭짓점 UFR·UBR과 모서리 UL·UB만 맞바꾼다", () => {
+  it("패리티 공식은 코너 UFR·UBR과 엣지 UL·UB만 맞바꾼다", () => {
     const m = moved(alg("bld-op-parity"));
     const pieces = new Set([...m.keys()].map((p) => p.split("|")[0]));
     expect([...pieces].sort()).toEqual(

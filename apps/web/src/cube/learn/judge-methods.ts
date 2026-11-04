@@ -1,7 +1,7 @@
 // 루·ZZ·페트루스·야우 단원의 목표 판정(docs/47 8-2). judge.ts의 goalMet이 이 이름들을 여기로 넘긴다.
 // 모두 "지금 들고 있는 방향"의 자리로 본다(왼쪽 블록 = 왼쪽 면 L에 닿고 윗면 U에 닿지 않는 자리).
-// 색은 큐브 전체 방향 24가지 중 하나라도 맞으면 된다. 루는 가운데 층(M)을 돌려 가운데가 움직이므로
-// 가운데 색 하나로 기준을 정하지 않는다. ZZ의 모서리 방향(EO)만 가운데 색을 기준으로 본다.
+// 색은 큐브 전체 방향 24가지 중 하나라도 맞으면 된다. 루는 가운데 층(M)을 돌려 센터가 움직이므로
+// 센터 색 하나로 기준을 정하지 않는다. ZZ의 엣지 방향(EO)만 센터 색을 기준으로 본다.
 import {
   applyMove,
   B,
@@ -62,7 +62,7 @@ function frames(n: number): Uint8Array[] {
   return hit;
 }
 
-/** 홀수 크기의 가운데 색 기준 */
+/** 홀수 크기의 센터 색 기준 */
 function centerFrame(n: number, colors: Uint8Array): Uint8Array {
   const nn = n * n;
   const mid = (nn - 1) / 2;
@@ -74,7 +74,7 @@ function centerFrame(n: number, colors: Uint8Array): Uint8Array {
 
 const slabCache = new Map<string, number[]>();
 
-/** 닿은 면 조건에 맞는 조각 자리(가운데 포함) */
+/** 닿은 면 조건에 맞는 조각 자리(센터 포함) */
 function slab(
   n: number,
   key: string,
@@ -110,14 +110,14 @@ function ok(
   );
 }
 
-/** 1×2×3 블록: 옆면 side에 닿고 윗면에 닿지 않는 자리(옆 가운데 포함) */
+/** 1×2×3 블록: 옆면 side에 닿고 윗면에 닿지 않는 자리(옆 센터 포함) */
 const block = (n: number, side: number) =>
   slab(n, `block${side}`, (f) => f.includes(side) && !f.includes(U));
 
 const topCorners = (n: number) =>
   slab(n, "topCorners", (f) => f.includes(U), ["corner"]);
 
-/** LSE가 다루는 모서리 여섯: 위 넷 + 아래 앞·뒤 */
+/** LSE가 다루는 엣지 여섯: 위 넷 + 아래 앞·뒤 */
 const lseEdges = (n: number) =>
   slab(
     n,
@@ -154,7 +154,7 @@ function stickerOn(
   return null;
 }
 
-/** 루: 두 블록 + 위 꼭짓점(윗면 돌리기 하나는 봐준다) + 단계마다 더 볼 것 */
+/** 루: 두 블록 + 위 코너(윗면 돌리기 하나는 봐준다) + 단계마다 더 볼 것 */
 function rouxLast(
   n: number,
   state: PuzzleState,
@@ -169,7 +169,7 @@ function rouxLast(
   return false;
 }
 
-/** LSE의 EO: 위·아래 가운데가 위·아래 색이고, 모서리 여섯의 위·아래 색 칸이 위나 아래를 본다 */
+/** LSE의 EO: 위·아래 센터가 위·아래 색이고, 엣지 여섯의 위·아래 색 칸이 위나 아래를 본다 */
 function lseOriented(n: number, colors: Uint8Array, fr: Uint8Array) {
   const nn = n * n;
   const mid = (nn - 1) / 2;
@@ -180,7 +180,7 @@ function lseOriented(n: number, colors: Uint8Array, fr: Uint8Array) {
 }
 
 /**
- * ZZ의 모서리 방향: F·B를 4분의 1 돌리지 않고 맞출 수 있는가. 모서리마다 기준 칸(위·아래 색, 없으면
+ * ZZ의 엣지 방향: F·B를 4분의 1 돌리지 않고 맞출 수 있는가. 엣지마다 기준 칸(위·아래 색, 없으면
  * 앞·뒤 색)이 기준 면(위·아래에 닿은 자리면 위·아래, 가운데 줄이면 앞·뒤)에 있으면 바른 방향이다.
  */
 function edgesOriented(n: number, colors: Uint8Array, fr: Uint8Array) {
@@ -201,7 +201,7 @@ const line = (n: number) =>
 
 // ── 큰 큐브(야우) ──────────────────────────────────────
 
-/** 면 f의 가운데 칸(정가운데·안쪽 가운데)이 모두 color인가 */
+/** 면 f의 가운데 칸(정가운데·안쪽 센터)이 모두 color인가 */
 function centerFaceIs(n: number, colors: Uint8Array, f: number, color: number) {
   const topo = cubeTopology(n);
   for (const p of piecesOfKind(n, "center", "innerCenter")) {
@@ -212,7 +212,7 @@ function centerFaceIs(n: number, colors: Uint8Array, f: number, color: number) {
   return true;
 }
 
-/** 흰 가운데가 있는 면(맞은편이 노랑). 없으면 -1 */
+/** 흰 센터가 있는 면(맞은편이 노랑). 없으면 -1 */
 function whiteCenterFace(n: number, colors: Uint8Array): number {
   for (let f = 0; f < 6; f++)
     if (
@@ -235,7 +235,7 @@ function allCentersOk(n: number, colors: Uint8Array) {
   return true;
 }
 
-/** 흰 면 쪽 십자 모서리 줄(옆면마다 한 줄) 가운데 맞은 줄 수, 가장 많이 맞는 방향 기준 */
+/** 흰 면 쪽 십자 엣지 줄(옆면마다 한 줄) 센터 맞은 줄 수, 가장 많이 맞는 방향 기준 */
 function crossLinesOk(n: number, colors: Uint8Array, white: number): number {
   const sides = [0, 1, 2, 3, 4, 5].filter(
     (g) => g !== white && g !== OPPOSITE_FACE[white as 0],

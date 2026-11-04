@@ -11,7 +11,7 @@ export interface FinaleSpec {
   drill?: AlgSet;
 }
 
-/** 차례 고르기 문제의 틀린 보기: 가운데 둘을 바꾼 것, 뒤 둘을 바꾼 것 */
+/** 차례 고르기 문제의 틀린 보기: 센터 둘을 바꾼 것, 뒤 둘을 바꾼 것 */
 function shuffledOrders(stages: string[]): string[][] {
   const swap = (i: number, j: number) => {
     const s = [...stages];

@@ -83,7 +83,7 @@ describe("흰 십자: 경우별 시연", () => {
     }
   });
 
-  it("글이 말하는 모서리 자리와 흰색이 보는 쪽", () => {
+  it("글이 말하는 엣지 자리와 흰색이 보는 쪽", () => {
     const at = (sol: string) => play(3, setupFor(sol));
     // 가운데 줄 앞-오른쪽: 흰색이 오른쪽 / 앞
     expect(faceOf(3, at(CROSS_MIDDLE.alg), ["F", "R"], WHITE)).toBe(F.R);
@@ -124,7 +124,7 @@ describe("흰 십자: 경우별 시연", () => {
 });
 
 describe("둘째 층", () => {
-  it("박힌 모서리: 앞-오른쪽 칸에 앞-왼쪽 칸의 모서리", () => {
+  it("박힌 엣지: 앞-오른쪽 칸에 앞-왼쪽 칸의 엣지", () => {
     const step = lessonOf("333-second-layer").steps.find((x) =>
       x.body.includes("다른 칸(앞-왼쪽)"),
     );
@@ -145,7 +145,7 @@ describe("2×2 자리 정하기", () => {
     expect(colorsAt(2, s, ["D", "F", "L"])).toEqual([0, 1, 2]);
   });
 
-  it("2×2 살펴보기 첫 단계는 조각 단원과 겹치는 꼭짓점 찾기가 아니다", () => {
+  it("2×2 살펴보기 첫 단계는 조각 단원과 겹치는 코너 찾기가 아니다", () => {
     const first = lessonOf("222-intro").steps[0];
     expect(first?.kind).toBe("quiz");
   });
@@ -160,7 +160,7 @@ describe("2×2 자리 정하기", () => {
 });
 
 describe("찾은 조각 드러내기", () => {
-  it("가운데만 보이는 큐브에서 찾은 꼭짓점의 세 칸만 보이게 된다", () => {
+  it("센터만 보이는 큐브에서 찾은 코너의 세 칸만 보이게 된다", () => {
     const s = play(3, "R");
     const mask = maskFor(3, "centers");
     const target = { colors: ["U", "F", "R"] as FaceLetter[] };

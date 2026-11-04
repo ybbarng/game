@@ -156,7 +156,7 @@ test("분해·조립: 휴대폰에서 끌어 돌린 채로 아래·뒤·왼쪽 �
   await tapCell(page, canvas, "L");
   await expect(build).toHaveAttribute("data-build-phase", "edges");
 
-  // 「처음 각도로」로 돌아와 위쪽 모서리 둘, 꼭짓점 하나
+  // 「처음 각도로」로 돌아와 위쪽 엣지 둘, 코너 하나
   await build.locator("[data-build-home-view]").click();
   await settled(canvas);
   expect(
