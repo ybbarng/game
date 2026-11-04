@@ -4,6 +4,7 @@ import { type Clock, realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { AlgBook, ImportResult } from "../algs/store";
+import type { HeroSolve } from "../hero/methods";
 import {
   type CubeJob,
   type CubeJobAnswer,
@@ -41,6 +42,8 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   solve: 20_000,
   plan: 30_000,
   "algs-import": 30_000,
+  // 4×4·5×5 축소법은 처음 표를 만들 때 오래 걸릴 수 있다
+  hero: 40_000,
 };
 
 export interface JobRunnerOptions {
@@ -185,6 +188,19 @@ export function planInWorker(
     twist: Array.from(state.twist),
     seed,
   }) as Promise<BotPlan>;
+}
+
+/** 첫 화면 연출의 사람 흉내 해법(`hero/methods.ts` 표의 id). 못 풀면 거부된다 */
+export function heroSolveInWorker(
+  method: string,
+  state: PuzzleState,
+): Promise<HeroSolve> {
+  return request({
+    kind: "hero",
+    method,
+    perm: Array.from(state.perm),
+    twist: Array.from(state.twist),
+  }) as Promise<HeroSolve>;
 }
 
 /**
