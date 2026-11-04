@@ -37,6 +37,7 @@ import {
   TurnPanel,
 } from "./LessonActs";
 import { MoveText } from "./MoveChip";
+import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -201,6 +202,14 @@ function CourseGrid({
           >
             <div className="flex items-baseline gap-2">
               <h3 className="font-bold">{course.title}</h3>
+              {course.stages && course.stages.length > 0 && (
+                <span
+                  data-course-stages={course.stages.length}
+                  className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70"
+                >
+                  {course.stages.length}단계
+                </span>
+              )}
               {recommended && (
                 <span className="rounded-full bg-sky-400 px-2 py-0.5 font-semibold text-black text-xs">
                   추천
@@ -381,6 +390,8 @@ function LessonView({
         )}
       </header>
 
+      <StageHeader course={course} lessonId={lesson.id} progress={progress} />
+
       {/* 단계 표시 */}
       <ol className="flex flex-wrap gap-1" aria-label="단계">
         {lesson.steps.map((s, i) => (
@@ -440,8 +451,20 @@ function LessonView({
             settings={settings}
           />
         )}
+        {lesson.stageMap && !step.stageMap && (
+          <StageStrip course={course} settings={settings} />
+        )}
+        {step.kind === "demo" && step.stageMap && (
+          <StageMapDemo
+            key={`${lesson.id}-${at}-map`}
+            course={course}
+            settings={settings}
+            onWatched={markActed}
+          />
+        )}
         {step.kind === "demo" &&
           step.alg &&
+          !step.stageMap &&
           (demoTurn ? (
             <TurnPanel
               key={`${lesson.id}-${at}-turn`}
@@ -462,20 +485,23 @@ function LessonView({
               arrowKeys
             />
           ))}
-        {step.kind === "demo" && step.alg && demoOffersTurn(lesson, at) && (
-          <button
-            type="button"
-            data-demo-turn
-            aria-pressed={demoTurn}
-            onClick={(e) => {
-              setDemoTurn((v) => !v);
-              e.currentTarget.blur();
-            }}
-            className="self-center rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-1.5 text-sm hover:bg-sky-500/30"
-          >
-            {demoTurn ? "시연 다시 보기" : "직접 해 보기"}
-          </button>
-        )}
+        {step.kind === "demo" &&
+          step.alg &&
+          !step.stageMap &&
+          demoOffersTurn(lesson, at) && (
+            <button
+              type="button"
+              data-demo-turn
+              aria-pressed={demoTurn}
+              onClick={(e) => {
+                setDemoTurn((v) => !v);
+                e.currentTarget.blur();
+              }}
+              className="self-center rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-1.5 text-sm hover:bg-sky-500/30"
+            >
+              {demoTurn ? "시연 다시 보기" : "직접 해 보기"}
+            </button>
+          )}
         {step.kind === "turn" && step.alg && (
           <TurnPanel
             key={`${lesson.id}-${at}`}

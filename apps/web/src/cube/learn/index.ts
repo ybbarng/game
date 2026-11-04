@@ -16,6 +16,7 @@ import { CFOP_INTRO } from "./lessons-cfop";
 import { ROUX } from "./lessons-roux";
 import { YAU_444 } from "./lessons-yau";
 import { PETRUS, ZZ } from "./lessons-zz";
+import { STAGE_SPECS, withStages } from "./stage-map";
 import type { AlgCase, AlgSet, Course, CubeSize, MaskName } from "./types";
 
 export { F2L_GROUPS } from "./algs-f2l";
@@ -24,6 +25,7 @@ export { PLL_GROUPS } from "./algs-pll";
 export { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS, type BldTarget } from "./bld";
 export { FINGER_DRILLS, FINGER_INTRO } from "./fingers";
 export { algTokens, invertAlg, setupFor } from "./notation";
+export { lessonPlace, mapLessonId, STAGE_SPECS } from "./stage-map";
 export * from "./types";
 
 /**
@@ -47,9 +49,15 @@ const needs = (c: Course): Course => {
   return requires ? { ...c, requires } : c;
 };
 
+/** 단계 지도를 단다(STAGE_SPECS에 있는 과정만). 마무리 단원보다 먼저 붙여 지도가 준비 단원 바로 뒤에 온다 */
+const staged = (c: Course): Course => {
+  const spec = STAGE_SPECS[c.id];
+  return spec ? withStages(c, spec) : c;
+};
+
 /** 배우기 과정(차례대로 보여 줄 순서). 끝에 섞인 큐브를 처음부터 맞추는 마무리가 없는 과정에는 붙인다 */
 export const COURSES: Course[] = [
-  withFinale(BEGINNER_333, {
+  withFinale(staged(BEGINNER_333), {
     rule: "random-cross",
     stages: [
       "흰 십자",
@@ -62,32 +70,32 @@ export const COURSES: Course[] = [
     ],
     drill: "2look-oll",
   }),
-  withFinale(BEGINNER_222, {
+  withFinale(staged(BEGINNER_222), {
     rule: "2x2-random",
     stages: ["첫 층", "윗면", "윗층 자리"],
     drill: "ortega-oll",
   }),
-  withFinale(FROM_333_222, {
+  withFinale(staged(FROM_333_222), {
     rule: "2x2-random",
     stages: ["첫 층", "꼭짓점 자리", "꼭짓점 방향"],
     drill: "ortega-oll",
   }),
-  withFinale(CFOP_INTRO, {
+  withFinale(staged(CFOP_INTRO), {
     rule: "random-cross",
     stages: ["아래 십자", "F2L 짝 넷", "OLL", "PLL"],
     drill: "f2l",
   }),
-  ROUX,
-  ZZ,
+  staged(ROUX),
+  staged(ZZ),
   PETRUS,
-  withFinale(REDUCTION_444, {
+  withFinale(staged(REDUCTION_444), {
     rule: "4x4-random",
     stages: ["가운데", "모서리 짝", "3×3처럼(패리티)"],
     drill: "parity-4x4",
   }),
-  YAU_444,
-  REDUCTION_555,
-  BLD_OP,
+  staged(YAU_444),
+  staged(REDUCTION_555),
+  staged(BLD_OP),
 ].map(needs);
 
 /** 이 과정 다음에 배우면 좋은 과정(그 과정을 먼저 배울 것으로 둔 과정들, COURSES 차례) */

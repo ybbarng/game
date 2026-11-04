@@ -208,6 +208,8 @@ export interface LessonStep {
   sheet?: SheetName;
   /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 꼭짓점만 보이는 3×3). 정지 그림이다 */
   beside?: BesideCube;
+  /** demo: 과정의 단계 지도 시연(단계마다 멈추고 띠의 칸으로 고른다). alg는 모든 단계 수를 이은 것 */
+  stageMap?: boolean;
 }
 
 export interface BesideCube {
@@ -234,6 +236,18 @@ export interface Lesson {
   steps: LessonStep[];
   /** 이 단원과 짝인 공식 훈련 묶음. 단원 끝에 「이 공식 훈련하기」로 잇는다 */
   drill?: AlgSet;
+  /** 과정의 단계 지도 단원(단계마다 그림이 붙은 띠를 크게 보인다) */
+  stageMap?: boolean;
+}
+
+/** 과정의 큰 단계 하나(단계 지도 띠의 칸, stage-map.ts) */
+export interface CourseStage {
+  /** 짧은 이름(띠 칸에 그대로 쓴다) */
+  title: string;
+  /** 이 단계를 가르치는 단원 id */
+  lessons: string[];
+  /** 이 단계가 끝난 모습(시험이 시연 경계를 확인한다) */
+  goal?: GoalName;
 }
 
 /** 단원을 차례로 묶은 과정(초보자 3×3 등) */
@@ -247,6 +261,10 @@ export interface Course {
   requires?: string[];
   /** 이 과정을 다 끝냈으면 목록에서 눈에 띄게 한다(예: 3×3 초보자 → 3×3을 아는 사람의 2×2) */
   recommendAfter?: string;
+  /** 큰 단계(준비 단원·마무리는 넣지 않는다). 단원 머리에 「n단계 중 k단계」 띠를 보인다 */
+  stages?: CourseStage[];
+  /** 단계 지도 시연(단계마다 나눈 수, stage-map.ts) */
+  stageDemo?: { scramble: string; moves: string[] };
 }
 
 export type AlgSet =
