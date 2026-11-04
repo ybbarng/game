@@ -203,7 +203,7 @@ export function crossCubie(
     }
     if (accepts(min, d)) return c;
   }
-  throw new Error("이 조건의 섞기를 찾지 못했습니다");
+  throw new Error("이 조건의 섞기를 찾지 못했어요");
 }
 
 /** 3×3 섞기 글(대회 섞기 방식) */

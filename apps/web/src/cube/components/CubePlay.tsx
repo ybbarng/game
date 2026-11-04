@@ -368,7 +368,7 @@ export function CubePlay({
                 data-cube-no3d
                 className="p-6 text-center text-sm text-white/70"
               >
-                이 기기에서는 3D를 그릴 수 없습니다.
+                이 기기에서는 3D를 그릴 수 없어요. 펼친 그림으로 보여 드려요.
               </p>
             ) : (
               <canvas

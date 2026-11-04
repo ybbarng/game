@@ -25,7 +25,7 @@ import type { PuzzleState, Vec3 } from "@game/puzzle-core";
 function orderedSlots(n: number, q: number): number[] {
   const topo = cubeTopology(n);
   const piece = topo.pieces[q];
-  if (!piece) throw new Error(`조각 자리가 없습니다: ${q}`);
+  if (!piece) throw new Error(`조각 자리가 없어요: ${q}`);
   const slots = [...piece.stickers];
   const rank = (s: number) => {
     const f = topo.stickers[s]?.face as number;
@@ -73,7 +73,7 @@ export function swapPieces(
 ): PuzzleState {
   const topo = cubeTopology(n);
   if (topo.pieces[a]?.kind !== topo.pieces[b]?.kind)
-    throw new Error("같은 종류 조각끼리만 바꿀 수 있습니다");
+    throw new Error("같은 종류 조각끼리만 바꿀 수 있어요");
   const sa = orderedSlots(n, a);
   const sb = orderedSlots(n, b);
   const out = cloneState(state);
