@@ -6,6 +6,7 @@ import {
   presetKeymap,
   resolveAction,
 } from "../input";
+import { canonicalNotation } from "../input/actions";
 import { handOf } from "./layout";
 import { keyRowOf, TWO_HAND_RULES } from "./two-hand";
 
@@ -23,8 +24,9 @@ describe("「두 손」 = 실물 핑거 트릭을 옮긴 배치", () => {
   const keymap = presetKeymap("twoHand");
 
   it.each(TWO_HAND_RULES)("$move: $code", (r) => {
-    // 표의 키가 실제 배치에서 그 수다
-    expect(resolveAction(keymap, press(r.code))).toBe(r.move);
+    // 표의 키가 실제 배치에서(3×3) 그 수다. 가운데 줄 키는 안쪽 한 층(2R')이라 3×3 이름(M)으로 본다
+    const action = resolveAction(keymap, press(r.code)) ?? "";
+    expect(canonicalNotation(3, action)).toBe(r.move);
     // 실물에서 그 수를 하는 손으로 친다
     expect(handOf(r.code)).toBe(r.hand);
     // 손이 움직이는 쪽으로 줄을 고른다(위 줄은 숫자 줄·위 줄, 가운데 줄, 아래 줄)
@@ -126,6 +128,23 @@ describe("「두 손」 = csTimer 자리 + Shift 넓게(2026-11-04)", () => {
     });
     // 다른 면은 층 수를 따르지 않는다
     expect(run(4, ["Digit7"], ["KeyJ"])).toMatchObject({ notation: "U" });
+  });
+
+  it("가운데 줄 키(. 6 X 5)는 csTimer처럼 잡은 층 바로 안쪽 한 층", () => {
+    // 3×3은 M·M'
+    expect(run(3, ["Digit6"])).toMatchObject({ notation: "M" });
+    expect(run(3, ["Digit5"])).toMatchObject({ notation: "M" });
+    expect(run(3, ["Period"])).toMatchObject({ notation: "M'" });
+    expect(run(3, ["KeyX"])).toMatchObject({ notation: "M'" });
+    // 4×4는 둘째 층 하나: . = 2R, 6 = 2R', 5 = 2L, X = 2L'
+    expect(run(4, ["Period"])).toMatchObject({ notation: "2R" });
+    expect(run(4, ["Digit6"])).toMatchObject({ notation: "2R'" });
+    expect(run(4, ["Digit5"])).toMatchObject({ notation: "2L" });
+    expect(run(4, ["KeyX"])).toMatchObject({ notation: "2L'" });
+    // 층 수를 올리면 한 층 더 안쪽: 5×5에서 7 → 6 = 3R' = M, 6×6에서 7 → . = 3R
+    expect(run(5, ["Digit7"], ["Digit6"])).toMatchObject({ notation: "M" });
+    expect(run(5, ["Digit6"])).toMatchObject({ notation: "2R'" });
+    expect(run(6, ["Digit7"], ["Period"])).toMatchObject({ notation: "3R" });
   });
 
   it("층 수는 섞기·맞춘 상태로 때 1로, Space로는 되돌리지 않는다", () => {

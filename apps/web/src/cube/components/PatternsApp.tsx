@@ -140,7 +140,10 @@ function PatternList({
   return (
     <>
       <header className="flex flex-wrap items-center gap-3">
-        <a href="/cube" className="text-sm text-white/70 hover:text-white">
+        <a
+          href="/cube"
+          className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+        >
           ← 큐브
         </a>
         <h1 className="font-bold text-lg">패턴 만들기</h1>
@@ -228,11 +231,6 @@ function PatternCard({
         className="h-auto w-full"
       />
       <span className="font-semibold leading-tight">{p.name}</span>
-      {p.en && (
-        <span className="-mt-1 text-[11px] text-white/50 leading-tight">
-          {p.en}
-        </span>
-      )}
       <span className="mt-auto flex items-center gap-1.5 text-white/70 text-xs">
         <span>{count}수</span>
         <LevelBadge level={level} />
@@ -425,17 +423,15 @@ function PatternView({
         <button
           type="button"
           onClick={onBack}
-          className="text-sm text-white/70 hover:text-white"
+          className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
         >
           ← 패턴 모음
         </button>
-        <h1 className="font-bold text-lg">
+        <h1
+          className="font-bold text-lg"
+          title={p.en ? `영어 이름 ${p.en}` : undefined}
+        >
           {p.name}
-          {p.en && (
-            <span className="ml-2 font-normal text-sm text-white/50">
-              {p.en}
-            </span>
-          )}
         </h1>
         <span className="flex items-center gap-1.5 text-sm text-white/70">
           {SIZE_LABEL(n)} · {count}수 <LevelBadge level={levelOf(count)} />

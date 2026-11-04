@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { play } from "@/game/sound";
 import { cn } from "@/lib/cn";
+import { presetKeymap } from "../input";
+import { keysForMove } from "../keys/move-keys";
+import { TWO_HAND_RULE, TWO_HAND_RULES } from "../keys/two-hand";
 import {
   algTokens,
   FINGER_DRILLS,
@@ -16,6 +19,11 @@ import {
 import { fingerQuiz } from "../learn/interact";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
+import { KeyCaps } from "./MoveChip";
+import { useNoKeyboard } from "./PracticeCube";
+
+/** 핑거 트릭 옆의 「두 손」 키(실물 손가락을 옮긴 배치, `keys/two-hand.ts`). 사용자 배치와 상관없이 두 손 배치로 보인다 */
+const TWO_HAND = presetKeymap("twoHand");
 
 /**
  * 핑거 트릭(`/cube/fingers`, docs/47 8-3). 실물 큐브를 들고 하는 연습.
@@ -47,6 +55,7 @@ export function FingersApp() {
   const tokens = useMemo(() => algTokens(drill.alg), [drill.alg]);
   const fingers = useMemo(() => drill.fingers.split(/\s+/), [drill.fingers]);
   const moves = useMemo(() => moveCount(drill.alg), [drill.alg]);
+  const noKeyboard = useNoKeyboard();
 
   const reset = useCallback(() => {
     setPhase("idle");
@@ -115,7 +124,10 @@ export function FingersApp() {
         data-fingers-phase={phase}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">핑거 트릭</h1>
@@ -162,6 +174,15 @@ export function FingersApp() {
 
           <section className="flex flex-col gap-3">
             <p className="break-keep text-sm text-white/80">{drill.note}</p>
+            {!noKeyboard && (
+              <p
+                className="break-keep text-white/55 text-xs"
+                data-fingers-keys-note
+              >
+                칸 아래 키는 「두 손」 배치에서 같은 수를 치는 키예요.{" "}
+                {TWO_HAND_RULE}
+              </p>
+            )}
             <ol className="flex flex-wrap gap-1.5">
               {tokens.map((t, i) => {
                 const f = fingers[i] as FingerToken | undefined;
@@ -183,6 +204,19 @@ export function FingersApp() {
                     {f && (
                       <span className="max-w-28 break-keep text-center text-[10px] leading-tight text-white/55">
                         {FINGER_NOTATION[f]?.split("(")[0]}
+                      </span>
+                    )}
+                    {!noKeyboard && (
+                      <span
+                        className="mt-0.5 flex items-center gap-1 text-[10px] text-sky-200"
+                        data-fingers-key={t}
+                        title={
+                          TWO_HAND_RULES.find((r) => r.move === t)?.finger ??
+                          undefined
+                        }
+                      >
+                        <span className="opacity-70">두 손</span>
+                        <KeyCaps keys={keysForMove(TWO_HAND, 3, t)} />
                       </span>
                     )}
                   </li>
@@ -207,6 +241,7 @@ export function FingersApp() {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className="size-4 shrink-0 accent-sky-400"
                   checked={metronome}
                   onChange={(e) => setMetronome(e.target.checked)}
                 />
@@ -348,7 +383,7 @@ function GripChecklist() {
                   e.currentTarget.blur();
                 }}
                 className={cn(
-                  "self-start rounded-md px-2 py-0.5",
+                  "min-h-8 self-start rounded-md px-3 py-1",
                   on
                     ? "bg-emerald-500/70 text-black"
                     : "bg-white/10 hover:bg-white/15",

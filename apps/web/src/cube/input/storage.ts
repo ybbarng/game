@@ -77,24 +77,24 @@ export function importKeymap(text: string): ImportResult {
   try {
     data = JSON.parse(text);
   } catch {
-    return { ok: false, error: "JSON 글이 아닙니다." };
+    return { ok: false, error: "JSON 글이 아니에요." };
   }
-  if (!isObj(data)) return { ok: false, error: "배치 모양이 아닙니다." };
+  if (!isObj(data)) return { ok: false, error: "배치 모양이 아니에요." };
   if (data.version !== 1)
-    return { ok: false, error: "지원하지 않는 배치 판입니다." };
+    return { ok: false, error: "지원하지 않는 배치 판이에요." };
   const preset = data.preset;
   if (typeof preset !== "string" || !PRESETS.includes(preset as KeymapPreset))
-    return { ok: false, error: "배치 묶음 이름이 맞지 않습니다." };
+    return { ok: false, error: "배치 묶음 이름이 맞지 않아요." };
   if (!optBool(data.mouseRotate))
-    return { ok: false, error: "mouseRotate는 참·거짓이어야 합니다." };
+    return { ok: false, error: "mouseRotate는 참·거짓이어야 해요." };
   const mouseRotate = data.mouseRotate === true;
   // 마우스 돌리기는 「사용자」 배치에서만 켠다. 기본 배치는 값이 있어도 받지 않는다
   if (preset !== "custom")
     return { ok: true, keymap: presetKeymap(preset as "twoHand" | "notation") };
   const raw = data.bindings;
-  if (!Array.isArray(raw)) return { ok: false, error: "키 목록이 없습니다." };
+  if (!Array.isArray(raw)) return { ok: false, error: "키 목록이 없어요." };
   if (raw.length > MAX_BINDINGS)
-    return { ok: false, error: "키가 너무 많습니다." };
+    return { ok: false, error: "키가 너무 많아요." };
   const bindings: KeyBinding[] = [];
   for (const [i, b] of raw.entries()) {
     if (
@@ -105,11 +105,11 @@ export function importKeymap(text: string): ImportResult {
       !optBool(b.alt) ||
       !optBool(b.ctrl)
     )
-      return { ok: false, error: `${i + 1}번째 키 모양이 맞지 않습니다.` };
+      return { ok: false, error: `${i + 1}번째 키 모양이 맞지 않아요.` };
     if (typeof b.action !== "string" || !isKnownAction(b.action))
       return {
         ok: false,
-        error: `${i + 1}번째 키의 동작(${String(b.action)})을 모릅니다.`,
+        error: `${i + 1}번째 키의 동작(${String(b.action)})을 몰라요.`,
       };
     bindings.push({
       code: b.code,

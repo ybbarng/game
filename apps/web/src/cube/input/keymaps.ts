@@ -210,7 +210,7 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *   ,  Uw   /  Dw'              C  Uw'  Z  Dw
  *   ;  y    P  z                A  y'   Q  z'
  *   Y  x    N  x'               T  x    B  x'
- *   6  M    .  M'               5  M    X  M'
+ *   6  M(2R')  .  M'(2R)      5  M(2L)  X  M'(2L')
  *
  * csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다(2026-11-04).
  * 숫자: 1 = S', 2 = E, 9 = E', 0 = S, 3·4 = 왼손 층 수 −1·+1, 7·8 = 오른손 층 수 +1·−1(R 키가 바깥 k층, Rw 키가 k+1층).
@@ -255,10 +255,12 @@ export function twoHandKeymap(): Keymap {
     key("KeyA", "y'"),
     key("KeyP", "z"),
     key("KeyQ", "z'"),
-    key("Digit5", "M"),
-    key("Digit6", "M"),
-    key("KeyX", "M'"),
-    key("Period", "M'"),
+    // 가운데 줄 키는 csTimer처럼 「손이 잡은 층 바로 안쪽 한 층」(2026-11-04): 3×3은 M·M', 4×4는 2L·2R' …,
+    // 층 수를 올리면 한 층씩 안쪽으로(4×4에서 7 → . = 3R). 5×5의 M은 7 → 6
+    key("Digit5", "2L"),
+    key("Digit6", "2R'"),
+    key("KeyX", "2L'"),
+    key("Period", "2R"),
     // csTimer와 같은 숫자 키(2026-11-04): E·S, 큰 큐브 층 수
     key("Digit1", "S'"),
     key("Digit2", "E"),

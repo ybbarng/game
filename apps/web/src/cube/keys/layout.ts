@@ -200,6 +200,10 @@ const SHORT_COMMAND: Record<string, string> = {
 };
 
 export function shortLabel(action: ActionId): string {
+  const p = parseAction(action);
+  // 층 수 키는 칸이 좁아 「오른손 층 +」로
+  if (p?.kind === "layers")
+    return `${p.side === "L" ? "왼손" : "오른손"} 층 ${p.delta > 0 ? "+" : "−"}`;
   return SHORT_COMMAND[action] ?? actionLabel(action);
 }
 

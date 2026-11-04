@@ -6,7 +6,14 @@ import { QUICK_CHATS, useChat } from "@/net/chat";
 import { CHAT_MAX_LENGTH } from "@/net/protocol";
 
 /** 채팅 기록과 입력. 대기실에 그대로 두거나 게임 화면에서 띄워 쓴다 */
-export function ChatBox({ mySeat }: { mySeat: number | null }) {
+export function ChatBox({
+  mySeat,
+  emptyText = "아직 아무 말도 없습니다",
+}: {
+  mySeat: number | null;
+  /** 말이 없을 때 글(게임마다 말투가 달라 바꿀 수 있다. 큐브는 해요체) */
+  emptyText?: string;
+}) {
   const messages = useChat((s) => s.messages);
   const send = useChat((s) => s.send);
   const [text, setText] = useState("");
@@ -30,7 +37,7 @@ export function ChatBox({ mySeat }: { mySeat: number | null }) {
         className="flex h-32 flex-col gap-1 overflow-y-auto rounded-xl bg-black/30 p-2 text-sm"
       >
         {messages.length === 0 ? (
-          <p className="m-auto text-xs opacity-50">아직 아무 말도 없습니다</p>
+          <p className="m-auto text-xs opacity-50">{emptyText}</p>
         ) : (
           messages.map((m) =>
             m.seat < 0 ? (

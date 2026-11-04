@@ -173,9 +173,9 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       clearMet();
       session.start(s.text, seed);
       sync();
-      if (!s.official) setNotice("임시 섞기");
+      if (!s.official) setNotice(TEMP_SCRAMBLE);
     } catch {
-      if (!stale()) setNotice("섞기를 만들지 못했습니다.");
+      if (!stale()) setNotice("섞기를 만들지 못했어요. 다시 눌러 보세요.");
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
@@ -185,7 +185,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
       const r = session.input(move, notation);
       if (r === "blocked") {
-        setNotice("외우는 동안에는 면을 돌릴 수 없습니다.");
+        setNotice(MEMO_BLOCKED);
         return false;
       }
       if (alertOn && myCases.current.length > 0) {
@@ -261,6 +261,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
 
   const result = session.result;
   const phase = session.phase;
+  // 「외우는 동안에는…」은 외우는 동안만. 맞추기를 시작하거나 끝나면 지운다
+  useEffect(() => {
+    if (phase !== "memo") setNotice((v) => (v === MEMO_BLOCKED ? null : v));
+  }, [phase]);
   const elapsed = session.elapsed();
   const inspecting = phase === "inspect";
   const last = records[0];
@@ -277,7 +281,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
         data-cube-version={version}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">
@@ -421,7 +428,9 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               />
             </dl>
             {records.length === 0 ? (
-              <p className="text-white/50 text-xs">아직 기록이 없습니다.</p>
+              <p className="text-white/50 text-xs">
+                아직 기록이 없어요. 섞고 맞추면 여기에 쌓여요.
+              </p>
             ) : (
               <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
                 {records.slice(0, 30).map((r, i) => (
@@ -471,6 +480,12 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+const MEMO_BLOCKED =
+  "외우는 동안에는 면을 돌릴 수 없어요. 큐브 돌리기(x·y·z)로 둘러보세요.";
+/** 4×4부터는 무작위 상태 섞기가 없어 무작위 수로 섞는다(타이머의 「임시: 무작위 수」와 같은 뜻) */
+const TEMP_SCRAMBLE =
+  "임시 섞기: 대회 방식(무작위 상태) 대신 무작위 수로 섞었어요.";
+
 function ResultBox({
   mode,
   result,
@@ -479,17 +494,24 @@ function ResultBox({
   result: NonNullable<SolveSession["result"]>;
 }) {
   const total = result.ms === null ? null : result.ms + result.penalty;
+  const dnf = result.ms === null;
   const tps =
     result.ms && result.ms > 0
       ? (result.moves / (result.ms / 1000)).toFixed(2)
-      : "-";
+      : null;
   return (
     <div
-      data-cube-result
+      data-cube-result={dnf ? "dnf" : "solved"}
       role="status"
-      className="flex flex-wrap items-baseline justify-center gap-x-5 gap-y-1 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-2"
+      className={`flex flex-wrap items-baseline justify-center gap-x-5 gap-y-1 rounded-xl border px-4 py-2 ${
+        dnf
+          ? "border-rose-400/40 bg-rose-500/10"
+          : "border-emerald-400/40 bg-emerald-400/10"
+      }`}
     >
-      <span className="font-bold text-emerald-300 text-xl">
+      <span
+        className={`font-bold text-xl ${dnf ? "text-rose-200" : "text-emerald-300"}`}
+      >
         {result.ms === null
           ? result.dnfReason === "inspection"
             ? "DNF(살펴보기 17초 넘김)"
@@ -502,7 +524,8 @@ function ResultBox({
         </span>
       )}
       <span className="text-sm">{result.moves}수</span>
-      <span className="text-sm">초당 {tps}수</span>
+      {/* DNF는 맞추지 못했으니 빠르기를 보이지 않는다 */}
+      {!dnf && tps && <span className="text-sm">초당 {tps}수</span>}
     </div>
   );
 }

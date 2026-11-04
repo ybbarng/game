@@ -13,6 +13,8 @@ import {
   keyLayers,
   type Layer,
 } from "../keys/layout";
+import { useCubeSettings } from "../settings";
+import { KeyOverlay } from "./KeyGuide";
 import { type KeyLook, SweepBar, useKeyLook } from "./KeyPaint";
 
 /**
@@ -102,6 +104,7 @@ export function KeyboardMap({
   const rows = keyboardCells(keymap, n);
   const glow = litCodes(lit);
   const look = useKeyLook(n);
+  const { keyPairs, keyFingers } = useCubeSettings();
 
   const state = (code: string) =>
     wrong === code
@@ -119,7 +122,7 @@ export function KeyboardMap({
       data-layer={layer}
     >
       <div
-        className="grid gap-[0.35cqw]"
+        className="relative grid gap-[0.35cqw]"
         style={{
           gridTemplateColumns: "repeat(60, minmax(0, 1fr))",
           gridAutoRows: "calc(100cqw / 15.6)",
@@ -148,6 +151,15 @@ export function KeyboardMap({
               />
             ),
           ),
+        )}
+        {/* 키 보고 맞히기(동작 글을 숨김)에서는 답이 보이지 않게 짝 선을 끈다 */}
+        {((keyPairs && !hideActions) || keyFingers) && (
+          <KeyOverlay
+            keymap={keymap}
+            n={n}
+            pairs={keyPairs && !hideActions}
+            fingers={keyFingers}
+          />
         )}
       </div>
     </div>

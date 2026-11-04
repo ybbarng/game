@@ -646,6 +646,53 @@ export class CubeView {
     this.invalidate();
   }
 
+  private hands: { left: THREE.Group; right: THREE.Group } | null = null;
+
+  /**
+   * 손 표시(csTimer `updateHandMarks`처럼, 2026-11-04): 큰 큐브 「두 손」에서 왼손(L·Lw 키)·오른손(R·Rw 키)이 잡은 층의
+   * 경계를 윗면 위의 세모와 윗면·앞면을 가로지르는 선으로 보인다. 왼손은 하늘색, 오른손은 주황(키 그림의 손 색).
+   * 손은 큐브가 아니라 보는 쪽에 붙어 있어 큐브 전체 돌리기에 따라 돌지 않는다. null이면 숨긴다
+   */
+  setHandMarks(layers: { left: number; right: number } | null): void {
+    if (layers && !this.hands) {
+      const make = (color: number) => {
+        const g = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.9,
+          toneMapped: false,
+        });
+        const n = this.n;
+        // 윗면을 앞뒤로 가로지르는 선, 앞면을 위아래로 내려오는 선, 윗면 위에 떠 있는 아래 향한 세모
+        const top = new THREE.BoxGeometry(0.06, 0.03, n + 0.1);
+        const front = new THREE.BoxGeometry(0.06, n + 0.1, 0.03);
+        const cone = new THREE.ConeGeometry(0.22, 0.4, 3);
+        this.disposables.push(mat, top, front, cone);
+        const a = new THREE.Mesh(top, mat);
+        a.position.set(0, n / 2 + 0.03, 0);
+        const b = new THREE.Mesh(front, mat);
+        b.position.set(0, 0, n / 2 + 0.03);
+        const c = new THREE.Mesh(cone, mat);
+        c.rotation.x = Math.PI;
+        c.position.set(0, n / 2 + 0.55, n / 2 - 0.2);
+        g.add(a, b, c);
+        this.scene.add(g);
+        return g;
+      };
+      this.hands = { left: make(0x38bdf8), right: make(0xfbbf24) };
+    }
+    if (this.hands) {
+      this.hands.left.visible = !!layers;
+      this.hands.right.visible = !!layers;
+      if (layers) {
+        this.hands.left.position.x = -this.n / 2 + layers.left;
+        this.hands.right.position.x = this.n / 2 - layers.right;
+      }
+    }
+    this.invalidate();
+  }
+
   // ---------------------------------------------------------------- 보기
 
   /** 보는 각(도). yaw는 위에서 봐서 오른쪽으로 돈 각, pitch는 위로 올라간 각 */

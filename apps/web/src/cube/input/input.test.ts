@@ -5,6 +5,7 @@ import {
   buttonMoves,
   isAvailable,
   isKnownAction,
+  moreButtonMoves,
   notationToMove,
   withDepth,
 } from "./actions";
@@ -209,6 +210,8 @@ describe("크기별 동작 목록", () => {
   });
 
   it("아래 단추 줄: 가운데 층 M은 홀수 크기에만, 단추마다 M'까지 수로 바뀐다", () => {
+    expect(moreButtonMoves(3)).toEqual(["E", "S"]);
+    expect(moreButtonMoves(4)).toEqual([]);
     expect(buttonMoves(2)).not.toContain("M");
     expect(buttonMoves(3)).toContain("M");
     expect(buttonMoves(4)).not.toContain("M");
@@ -299,7 +302,7 @@ describe("키 → 동작 → 수", () => {
 
   it("쓸 수 없는 크기의 동작은 키를 먹지 않는다", () => {
     expect(
-      new KeyInterpreter(4, twoHandKeymap()).handle(press("Digit5")),
+      new KeyInterpreter(2, twoHandKeymap()).handle(press("Digit5")),
     ).toBeNull();
     // 「두 손」 Shift = 넓게(2026-11-04): 3×3·4×4 모두 Shift+I = Rw
     for (const n of [3, 4])
@@ -407,7 +410,7 @@ describe("저장·내보내기·가져오기", () => {
         bindings: [{ code: "KeyR", action: "Q" }],
       }),
     );
-    expect(bad).toEqual({ ok: false, error: "1번째 키의 동작(Q)을 모릅니다." });
+    expect(bad).toEqual({ ok: false, error: "1번째 키의 동작(Q)을 몰라요." });
     expect(isKnownAction("depth:9")).toBe(false);
     expect(isKnownAction("7Rw")).toBe(true);
   });
