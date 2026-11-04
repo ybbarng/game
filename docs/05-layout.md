@@ -723,3 +723,4 @@ z: 아랫줄이 위
   - 바닥(`center`)은 "양옆 자리 판 사이·맞은편 아래"와 "모든 자리 판 아래" 중 넓은 사각형이다.
 - 뒷면 펼치기(`fanCardSize`·`fanSlot`)와 무대 크기(`useStageSize`, `layout/stage-size.ts`)는 마이티·하트가 함께 쓴다. 자리 판 틀은 `SeatPlateFrame`(`components/SeatPlate.tsx`, 차례 빛·부정 감지·연결 끊김·말풍선), 손패 조작은 `useHandControls<카드 id>`.
 - 고스톱의 카드 크기 고르기(먹은 패·바닥·더미)와 확인 시험은 `gostop/components/table-layout.ts`(.test.ts)에 있다. 시험은 화면 시험 세 크기를 포함한 여섯 크기 × 2·3인에서 서로 겹치지 않음, 바닥이 화면 절반 폭·4분의 1 높이 이상, 먹은 패 네 묶음이 자리 판에 들어감, 손패를 벌려도 내 자리 판·단추 칸과 겹치지 않음을 본다.
+- 마이티 밖 게임이 쓰는 공통 항목(2026-11-04): `SeatPlate`의 마이티 항목은 선택이다(`money` 없으면 돈 줄을 숨김). 게임마다 다른 것은 `badges`(이름 옆)·`extra`(아래 줄)로 넣는다(하트가 이렇게 쓴다). 펼친 손패 `OpenHand`는 `renderCard`, 카드 칩 `CardChip`은 `label`·`red`를 받는다. `computeLayout`의 `fanHeight`(뒷면 부채 카드 높이)를 주면 위쪽 자리 판 아래로 나온 부채(`FAN_PEEK` = 0.72장)만큼 바닥을 내린다. 부채 높이는 자리 판 높이로 정해지므로 한 번 계산한 배치로 `fanCardSize`를 구해 다시 부른다.
