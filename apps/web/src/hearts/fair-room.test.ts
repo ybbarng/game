@@ -89,4 +89,43 @@ describe("하트 멘탈 포커 온라인 대전", () => {
         .every((p) => !p.card.startsWith("?_")),
     ).toBe(true);
   });
+
+  it("마지막 판 카드가 아직 다 열리지 않은 손님에게 판 끝 기록이 먼저 와도, 다 열리길 기다려 검증을 통과한다", async () => {
+    // 방장은 모든 열쇠를 받자마자 판을 끝내고 판 끝 기록을 보낸다. 손님 기기는 다른 손님이 낸 마지막 열쇠를
+    // 그보다 늦게 받거나(손님끼리 연결이 더 느림) 아직 처리하는 중일 수 있다. 그 순서를 시험이 만든다:
+    // 0번 손님은 판 끝 기록을 받을 때까지 판 카드를 다 열지 못한다.
+    const { host, guests, incidents } = await setup(2);
+    const audits: AuditResult[] = [];
+    for (const g of guests) g.on("audit", (r) => audits.push(r));
+    let auditArrived = false;
+    guests[0]?.transport.onMessage((m) => {
+      if ((m as { t?: string }).t === "audit") auditArrived = true;
+    });
+    await host.start();
+    await until(() => guests.every((g) => g.match !== null));
+    const coordinator = (
+      (guests[0] as { fair: unknown }).fair as {
+        coordinator: { tryOpenAll(deal: number): void };
+      }
+    ).coordinator;
+    const open = coordinator.tryOpenAll.bind(coordinator);
+    const held = new Set<number>();
+    coordinator.tryOpenAll = (deal) => {
+      if (auditArrived) open(deal);
+      else held.add(deal);
+    };
+    const match = host.match as unknown as { current(): { phase: string } };
+    await playUntil(
+      host as never,
+      guests as never,
+      () => match.current().phase === "gameOver",
+      incidents,
+    );
+    await until(() => auditArrived);
+    // 판 끝 기록이 닿은 뒤에야 0번 손님이 맡아 둔 열쇠로 카드를 연다.
+    for (const deal of [...held].sort((a, b) => a - b)) open(deal);
+    await until(() => audits.length === guests.length);
+    expect(audits.filter((a) => !a.ok)).toEqual([]);
+    expect(incidents).toEqual([]);
+  });
 });

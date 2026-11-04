@@ -20,6 +20,7 @@ import {
   type BusyReason,
   type Incident,
   reportShuffleTamper,
+  whenRevealedOpened,
 } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import {
@@ -708,6 +709,15 @@ export class HeartsGuestSeat {
 
   deviceOf(seat: number): number {
     return this.guests.has(seat) ? seat : 0;
+  }
+
+  /** 열쇠를 공개한 판이 모두 열릴 때까지 기다린다(`whenRevealedOpened`) */
+  whenRevealedOpened(ms?: number): Promise<boolean> {
+    return whenRevealedOpened(
+      this.coordinator,
+      this.options.clock ?? realClock,
+      ms,
+    );
   }
 
   get halted(): boolean {

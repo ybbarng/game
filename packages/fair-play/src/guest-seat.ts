@@ -16,6 +16,7 @@ import {
   type Incident,
   type PublicView,
   roundDealOf,
+  whenRevealedOpened,
 } from "./coordinator";
 import { FairDevice, type FairWire, type GroupName } from "./device";
 import { revealSeatView } from "./host-table";
@@ -94,6 +95,11 @@ export class FairGuestSeat {
 
   deviceOf(seat: number): number {
     return this.guests.has(seat) ? seat : 0;
+  }
+
+  /** 열쇠를 공개한 판이 모두 열릴 때까지 기다린다(`whenRevealedOpened`) */
+  whenRevealedOpened(ms?: number): Promise<boolean> {
+    return whenRevealedOpened(this.coordinator, this.clock, ms);
   }
 
   get halted(): boolean {

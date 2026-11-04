@@ -1300,6 +1300,13 @@ export class GuestRoom<
           : null;
     if (isCardSeat(this.fair) && round !== null && !view?.retired)
       await this.fair.whenOpened(round);
+    // 마이티·하트도 마지막 판 열쇠보다 판 끝 기록이 먼저 올 수 있다. 열쇠를 공개한 판이 다 열리길 기다린다
+    // (화면은 한 걸음 늦을 수 있어 판 번호를 화면에서 읽지 않는다, `whenRevealedOpened`).
+    if (
+      this.fair instanceof HeartsGuestSeat ||
+      this.fair instanceof FairGuestSeat
+    )
+      await this.fair.whenRevealedOpened();
     const input = this.fairInput(log);
     if (!input) return { ok: false, reason: "검증할 정보가 없다" };
     // 끝까지 하지 못한 판(그만두기 등)은 열쇠가 다 모이지 않아 그 앞까지만 본다(verifyFairLog).

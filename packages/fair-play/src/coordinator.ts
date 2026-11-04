@@ -10,6 +10,7 @@ import {
 
 import type { RoundDeal } from "./audit";
 import { cardText, redealOwners, slotOfToken, tokenDeal } from "./blind";
+import type { Clock } from "./clock";
 import type { FairDevice } from "./device";
 import { RenegeWatch } from "./renege";
 
@@ -473,6 +474,38 @@ export class FairCoordinator {
     if (deal === this.deal) this.checkPlays();
     for (const l of this.openListeners) l(deal);
   }
+}
+
+/**
+ * 참가자 기기: 열쇠를 공개한 판이 모두 열릴 때까지 기다린다(마이티·하트의 게임 끝 검증 앞).
+ * 방장은 열쇠를 다 받자마자 판을 끝내고 판 끝 기록을 보내므로, 다른 참가자가 낸 마지막 열쇠가 이 기기에
+ * 늦게 닿거나 아직 처리 중이면 기록이 먼저 온다. 화면이 아니라 coordinator로 본다: 화면은 내 카드가
+ * 열려야 넘어가 한 걸음 늦을 수 있지만 사건은 화면을 받는 즉시 처리한다. 그만두기로 끝난 판처럼
+ * 공개하지 않은 판은 기다리지 않는다. `ms`가 지나면 false(`HwatuGuestSeat.whenOpened`와 같은 상한)
+ */
+export function whenRevealedOpened(
+  coordinator: {
+    readonly revealedDeals: ReadonlySet<number>;
+    readonly openedDeals: ReadonlyMap<number, unknown>;
+    onOpened(listener: (deal: number) => void): () => void;
+  },
+  clock: Clock,
+  ms = 30_000,
+): Promise<boolean> {
+  const ready = () =>
+    [...coordinator.revealedDeals].every((d) => coordinator.openedDeals.has(d));
+  if (ready()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const off = coordinator.onOpened(() => {
+      if (ready()) done(true);
+    });
+    const cancel = clock.after(ms, () => done(false));
+    const done = (ok: boolean) => {
+      off();
+      cancel();
+      resolve(ok);
+    };
+  });
 }
 
 /** 판 하나의 실제 패(진짜 카드로 다시 계산할 때). 아직 다 열지 못했으면 null */
