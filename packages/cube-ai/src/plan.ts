@@ -1,3 +1,4 @@
+import { applyMove, isSolved, parseMoves } from "@game/cube-engine";
 import { ReductionStuckError } from "@game/cube-reduction";
 import type { PuzzleState } from "@game/puzzle-core";
 import { type BotLevel, solveHuman } from "./methods";
@@ -119,7 +120,27 @@ function solveOrFallback(
   }
 }
 
-/** 컴퓨터가 맞추는 계획: 수와 둘 시각, 단계 경계 */
+/**
+ * 해법을 처음으로 맞춰지는 수까지만 쓴 길이. 사람 해법은 끝에 서로 지우는 수(`U' U`)가 남아 다 두기 전에
+ * 맞춰질 때가 있다(2×2 입문 150판 중 1판쯤). 대결은 맞춰지는 순간 그 사람의 수를 끝내므로(`isSolved`, 돌려
+ * 쥔 방향은 따지지 않음) 계획도 거기서 끝내야 컴퓨터가 둔 수와 다른 기기가 다시 계산한 계획이 같다
+ * (2026-11-04 #90 CI: 52수 계획이 50수째에 맞춰져 「컴퓨터 계획과 다름」)
+ */
+function solvedLength(
+  size: number,
+  start: PuzzleState,
+  moves: readonly string[],
+): number {
+  let state = start;
+  for (let i = 0; i < moves.length; i++) {
+    for (const m of parseMoves(size, moves[i] as string))
+      state = applyMove(size, state, m);
+    if (isSolved(size, state)) return i + 1;
+  }
+  return moves.length;
+}
+
+/** 컴퓨터가 맞추는 계획: 수와 둘 시각, 단계 경계. 처음 맞춰지는 수에서 끝난다 */
 export function botPlan(
   level: BotLevel,
   size: number,
@@ -138,12 +159,17 @@ export function botPlan(
   const wobble = (base: number) => base * (1 + speed.jitter * (2 * next() - 1));
   const step = 1000 / speed.tps;
   const looks = new Set(solve.looks);
+  const length = solvedLength(size, startState, solve.moves);
   let t = opts.inspectionMs ?? 0;
   const moves: BotMove[] = [];
+  const stages: SolveStage[] = [];
   for (const st of solve.stages) {
-    if (st.end > st.start)
+    if (st.start >= length && length < solve.moves.length) break;
+    const end = Math.min(st.end, length);
+    stages.push(end === st.end ? st : { ...st, end });
+    if (end > st.start)
       t += wobble(speed.pauseMs * (STAGE_PAUSE_FACTOR[st.name] ?? 1));
-    for (let i = st.start; i < st.end; i++) {
+    for (let i = st.start; i < end; i++) {
       const move = solve.moves[i] as string;
       if (i > st.start && looks.has(i)) t += wobble(speed.lookMs);
       t += wobble(step) * (isRotationMove(move) ? ROTATION_FACTOR : 1);
@@ -152,7 +178,7 @@ export function botPlan(
   }
   return {
     moves,
-    stages: solve.stages,
+    stages,
     finishAt: moves.at(-1)?.at ?? opts.inspectionMs ?? 0,
     ...(fallback ? { fallback: true as const } : {}),
   };

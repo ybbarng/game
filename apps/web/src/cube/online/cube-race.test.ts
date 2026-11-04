@@ -319,6 +319,41 @@ describe("큐브 대결(어댑터)", () => {
     ).resolves.toBe(true);
   });
 
+  it("해법이 다 두기 전에 맞춰지는 섞기도 컴퓨터가 계획대로 두었다고 확인된다", async () => {
+    // 2026-11-04 #90 CI: 입문 해법 52수가 50수째에 맞춰져, 컴퓨터는 50수에서 끝났는데 확인은 52수 계획과 견줘 「다름」
+    const ci: Scrambler = (event) => ({
+      event,
+      text: "R' F' U R F' U2 R2 U' F R U'",
+      official: false,
+    });
+    const { clock, sessions } = rig(
+      2,
+      { h: ["h", "bot1"], g: ["g"] },
+      () => ci,
+    );
+    const bot = sessions.get("bot1") as Session;
+    const g = sessions.get("g") as Session;
+    attachBot({ session: bot, id: "bot1", level: "beginner", n: 2, clock });
+    runUntil(
+      clock,
+      () => g.snapshot().peers.find((p) => p.id === "bot1")?.status === "done",
+      600_000,
+      50,
+    );
+    const log = g.moveLog("bot1");
+    expect(log).toHaveLength(50);
+    await expect(
+      checkBotRun(
+        "beginner",
+        2,
+        g.startState() as PuzzleState,
+        g.snapshot().seed as string,
+        "bot1",
+        log,
+      ),
+    ).resolves.toBe(true);
+  });
+
   it("계획을 끝내 못 만든 컴퓨터는 그 판에서만 빠지고(DNF) 까닭이 결과에 남는다. 살펴보던 섞기는 그대로다", async () => {
     const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
     const bot = sessions.get("bot1") as Session;
