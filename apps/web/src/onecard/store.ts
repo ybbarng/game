@@ -189,7 +189,7 @@ interface OnecardStore {
     host: OnecardHost,
     seatNames: string[],
     stats: StatsTarget,
-    claim: (seen: number) => boolean,
+    claim: (seen: number, rtMs?: number) => boolean,
     archive?: ArchiveTarget,
   ): void;
   setSeatNames(seatNames: string[]): void;
@@ -203,8 +203,8 @@ interface OnecardStore {
     bot: KitBot<OnecardView, Action, GameEvent>;
   }): void;
   submit(action: Action): SubmitResult;
-  /** 가운데 더미 치기. 혼자 하기는 바로 행동으로, 온라인은 청구로 */
-  shout(seen: number): void;
+  /** 가운데 더미 치기. 혼자 하기는 바로 행동으로, 온라인은 청구로. `rtMs`: 그 판을 그린 뒤 누르기까지(o2 겨루기) */
+  shout(seen: number, rtMs?: number): void;
   /** 혼자 하기를 그만두고 지금 순위로 끝낸다 */
   resign(): void;
   leave(): void;
@@ -213,7 +213,7 @@ interface OnecardStore {
 
 let unsubscribe: (() => void) | null = null;
 /** 온라인 방의 청구 보내기(혼자 하기면 null) */
-let claimShout: ((seen: number) => boolean) | null = null;
+let claimShout: ((seen: number, rtMs?: number) => boolean) | null = null;
 
 function stop(): void {
   unsubscribe?.();
@@ -431,14 +431,20 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       return result;
     },
 
-    shout(seen) {
+    shout(seen, rtMs) {
       // 판이 끝나면 더미 치기를 받지 않는다(온라인 방은 판 끝에 청구 통로를 닫는다)
-      if (get().view?.phase === "over") return;
+      const view = get().view;
+      if (view?.phase === "over") return;
       if (claimShout) {
-        if (!claimShout(seen)) playUiCue("invalid");
+        if (!claimShout(seen, rtMs)) playUiCue("invalid");
         return;
       }
-      get().submit({ type: "shout", seen });
+      // o2 겨루기는 반응 시간을 싣는다(옛 규칙은 싣지 않는다)
+      get().submit(
+        view?.rules.race && rtMs !== undefined
+          ? { type: "shout", seen, rt: rtMs }
+          : { type: "shout", seen },
+      );
     },
 
     resign() {

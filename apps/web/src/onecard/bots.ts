@@ -21,6 +21,8 @@ import type { Action, GameEvent, OnecardView } from "@game/onecard-engine";
 
 import type { KitBot } from "@/game/kit";
 
+import { HOLD_MS } from "./shout-press";
+
 /** 0 입문, 1 중수, 2 고수 */
 export type OnecardBotLevel = 0 | 1 | 2;
 
@@ -118,7 +120,10 @@ export function toKitBot(
       for (let guard = 0; guard < 16; guard++) {
         const plan = bot.planShout(view, rng, now);
         if (!plan) break;
-        queue.push({ plan, dueAt: now + Math.max(0, plan.delayMs) });
+        // o2 겨루기: 사람 누름처럼 누르고 있기 확인 시간만큼 늦게 닿게 한다(반응 시간은 계획 그대로 싣는다).
+        // 그래야 모으는 시간(RACE_GATHER_MS)이 사람 화면의 그리기 지연만 덮으면 된다
+        const hold = view.rules.race ? HOLD_MS : 0;
+        queue.push({ plan, dueAt: now + Math.max(0, plan.delayMs) + hold });
       }
       pending.set(seat, queue);
       if (queue.length === 0) return null;

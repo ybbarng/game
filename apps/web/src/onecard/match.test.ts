@@ -17,6 +17,13 @@ import { LocalMatch } from "@/game/local-match";
 import { onecardBotFor, toKitBot } from "./bots";
 import { onecardKit } from "./kit";
 
+/** 이 파일은 옛 규칙(o1, B안)의 진행을 본다(이어하기로 남은 옛 판). o2 겨루기는 race.test.ts */
+const o1Scenario = (options: OnecardScenarioOptions) =>
+  createOnecardScenario({
+    ...options,
+    rules: { race: false, ...options.rules },
+  });
+
 /** 외치지 않고 낼 수 있는 첫 카드를 내는 컴퓨터(외침·잡기 시험에서 컴퓨터가 끼어들지 않게) */
 const quietBot: KitBot<OnecardView, Action> = {
   name: "quiet",
@@ -32,7 +39,7 @@ function scenario(
   pace?: (clock: ManualClock) => (next: () => void) => void,
 ) {
   const clock = new ManualClock();
-  const initialState = createOnecardScenario(options);
+  const initialState = o1Scenario(options);
   const match = new LocalMatch({
     kit: onecardKit,
     rules: initialState.rules,
@@ -133,7 +140,7 @@ describe("원카드 대국 진행(LocalMatch + onecardKit)", () => {
 
   it("방장 자리 행동을 준비하는 중에 온 청구 묶음(submitHost)도 거절하지 않고 줄 끝에 세워 넣는다", async () => {
     const clock = new ManualClock();
-    const initialState = createOnecardScenario(ONE_LEFT);
+    const initialState = o1Scenario(ONE_LEFT);
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => {
       release = r;
@@ -175,7 +182,7 @@ describe("원카드 대국 진행(LocalMatch + onecardKit)", () => {
 
   it("준비 줄(prepare, 멘탈 포커)이 있으면 창 시간 끝도 그 줄을 탄다", async () => {
     const clock = new ManualClock();
-    const initialState = createOnecardScenario(ONE_LEFT);
+    const initialState = o1Scenario(ONE_LEFT);
     const prepared: string[] = [];
     const match = new LocalMatch({
       kit: onecardKit,
@@ -203,7 +210,7 @@ describe("원카드 대국 진행(LocalMatch + onecardKit)", () => {
 
   it("엔진이 창 시간 끝을 거절하면 창 시계를 다시 건다(다음 걸음을 기다리지 않는다)", () => {
     const clock = new ManualClock();
-    const initialState = createOnecardScenario(ONE_LEFT);
+    const initialState = o1Scenario(ONE_LEFT);
     let refuse = 1;
     const match = new LocalMatch({
       kit: onecardKit,

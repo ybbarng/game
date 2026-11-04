@@ -13,10 +13,27 @@ import {
   type ResolvedClaim,
   resolveClaimBatch,
 } from "./claim";
+import {
+  allowedRt,
+  type ClaimRaceSpec,
+  MAX_LATENCY_CREDIT_MS,
+  RACE_CHECK_MARGIN_MS,
+  RACE_GATHER,
+  RACE_GATHER_DEFAULT_MS,
+  RACE_SLACK_MS,
+  type RaceItem,
+  raceArrange,
+} from "./claim-race";
 import { randomId, type Transport } from "./transport";
 
 /** 청구 기억(아이디 목록 등)의 상한. 넘치면 오래된 것부터 지운다 */
 const MAX_REMEMBERED = 512;
+
+/** 2층 앱 핑 간격(ms)과 상대마다 남기는 왕복 표본 수 */
+export const RACE_PING_MS = 2_000;
+const RTT_SAMPLES = 20;
+/** "최근 최대"를 볼 표본 수 */
+const RTT_RECENT = 5;
 
 /** 넣은 순서가 오래된 것부터 지워 크기를 맞춘다 */
 function trim(items: Map<string, unknown> | Set<string>, max: number): void {
@@ -111,13 +128,71 @@ export class ClaimHub<View = unknown> {
     (resolved: ClaimsResolved) => void
   >();
   private closed = false;
+  /** 2층(반응 시간 겨루기). 없으면 1층만 */
+  private readonly race: ClaimRaceSpec | null;
+  /** 연결 → 앱 핑 왕복 표본(뒤가 최근) */
+  private readonly rtts = new Map<string, number[]>();
+  /** 보낸 핑 번호 → 보낸 시각 */
+  private readonly pings = new Map<number, number>();
+  private pingSeq = 0;
+  private pingTimer: (() => void) | null = null;
+  /** 방장: 청구 아이디 → 받은 시각과 보낸 연결(내 것은 null) */
+  private readonly arrivals = new Map<
+    string,
+    { at: number; from: string | null }
+  >();
+  /** 방장: 발표를 차례대로(겨루기 순서 계산은 함께 뽑기로 기다릴 수 있다) */
+  private announcing: Promise<void> = Promise.resolve();
 
   constructor(options: ClaimHubOptions<View>) {
     this.options = options;
     this.rules = { ...CLAIM_RULES, ...(options.spec.rules ?? {}) };
+    this.race = options.spec.race ?? null;
     options.transport.onMessage((message, from) => {
       if (!this.closed && isClaimWire(message)) this.receive(message, from);
     });
+    if (this.race) this.schedulePing();
+  }
+
+  /** 2층: 방 안 앱 핑을 드물게 보낸다(서버로 보내지 않는다, docs/43 0-1) */
+  private schedulePing(): void {
+    this.pingTimer = this.options.clock.after(RACE_PING_MS, () => {
+      if (this.closed) return;
+      const n = this.pingSeq++;
+      this.pings.set(n, this.options.clock.now());
+      if (this.pings.size > 16) this.pings.delete(n - 16);
+      this.options.transport.send({
+        v: 1,
+        kind: "claim-ping",
+        game: this.options.game,
+        n,
+      });
+      this.schedulePing();
+    });
+  }
+
+  /** 2층: 그 연결과의 앱 핑 왕복(가장 짧은 값과 최근 최대). 표본이 없으면 null */
+  rttOf(peerId: string): { min: number; recentMax: number } | null {
+    const list = this.rtts.get(peerId);
+    if (!list || list.length === 0) return null;
+    return {
+      min: Math.min(...list),
+      recentMax: Math.max(...list.slice(-RTT_RECENT)),
+    };
+  }
+
+  /** 2층: 방장이 첫 청구 뒤 기다리는 시간(늦게 닿는 더 빠른 청구를 기다린다) */
+  private gatherMs(): number {
+    let worst: number | null = null;
+    for (const peer of this.rtts.keys()) {
+      const r = this.rttOf(peer);
+      if (r) worst = Math.max(worst ?? 0, r.recentMax);
+    }
+    if (worst === null) return RACE_GATHER_DEFAULT_MS;
+    return Math.min(
+      RACE_GATHER.maxMs,
+      Math.max(RACE_GATHER.minMs, Math.round(worst + RACE_GATHER.marginMs)),
+    );
   }
 
   /** 판 번호가 바뀐 화면을 받으면 부른다. 같은 판 번호의 판은 처음 것을 남긴다 */
@@ -229,6 +304,8 @@ export class ClaimHub<View = unknown> {
    */
   close(): void {
     this.closed = true;
+    this.pingTimer?.();
+    this.pingTimer = null;
     this.windowTimer?.();
     this.windowTimer = null;
     this.pending = [];
@@ -241,11 +318,31 @@ export class ClaimHub<View = unknown> {
     const sender = this.options.seatOfPeer(from);
     if (sender === null) return;
     const kind = (message as { kind?: unknown }).kind;
+    if (kind === "claim-ping" || kind === "claim-pong") {
+      const m = message as { game?: unknown; n?: unknown };
+      if (!this.race || m.game !== this.options.game) return;
+      if (!Number.isSafeInteger(m.n)) return;
+      const n = m.n as number;
+      if (kind === "claim-ping") {
+        this.options.transport.send(
+          { v: 1, kind: "claim-pong", game: this.options.game, n },
+          from,
+        );
+        return;
+      }
+      const sent = this.pings.get(n);
+      if (sent === undefined) return;
+      const list = this.rtts.get(from) ?? [];
+      list.push(this.options.clock.now() - sent);
+      if (list.length > RTT_SAMPLES) list.shift();
+      this.rtts.set(from, list);
+      return;
+    }
     if (kind === "claim") {
       const claim = parseClaim(message, this.options.game, this.isBody);
       // 남의 자리를 사칭한 청구는 버린다(모든 기기가 같은 연결-자리 표로 본다).
       if (!claim || claim.seat !== sender) return;
-      this.accept(claim);
+      this.accept(claim, from);
       return;
     }
     if (this.options.role !== "guest" || sender !== 0) return;
@@ -253,8 +350,8 @@ export class ClaimHub<View = unknown> {
     if (resolved) this.check(resolved);
   }
 
-  /** 청구 하나를 받아들인다(내 것도) */
-  private accept(claim: ClaimMessage): void {
+  /** 청구 하나를 받아들인다(내 것도, 그때 `from`은 null) */
+  private accept(claim: ClaimMessage, from: string | null = null): void {
     if (this.seenIds.has(claim.claimId)) {
       // 참가자: 같은 아이디로 내용이 다른 청구가 또 오면 방장 발표와 견줄 때 드러난다(첫 것을 남긴다).
       return;
@@ -269,8 +366,16 @@ export class ClaimHub<View = unknown> {
     this.seenIds.set(claim.claimId, claim.seen);
     if (this.options.role === "host") {
       this.pending.push(claim);
-      this.windowTimer ??= this.options.clock.after(this.rules.windowMs, () =>
-        this.flush(),
+      if (this.race) {
+        this.arrivals.set(claim.claimId, {
+          at: this.options.clock.now(),
+          from,
+        });
+        trim(this.arrivals as Map<string, unknown>, MAX_REMEMBERED);
+      }
+      this.windowTimer ??= this.options.clock.after(
+        this.race ? this.gatherMs() : this.rules.windowMs,
+        () => this.flush(),
       );
       return;
     }
@@ -306,17 +411,84 @@ export class ClaimHub<View = unknown> {
     if (this.closed || this.pending.length === 0) return;
     const claims = this.pending.splice(0, this.pending.length);
     const at = this.latest ?? 0;
-    const resolved: ClaimsResolved = {
-      v: 1,
-      kind: "claims-resolved",
-      game: this.options.game,
-      batch: this.batch++,
-      at,
-      entries: this.judgeBatch(claims, at),
-    };
+    const batch = this.batch++;
+    const entries = this.judgeBatch(claims, at);
+    const race = this.race;
+    if (!race) {
+      this.announce({
+        v: 1,
+        kind: "claims-resolved",
+        game: this.options.game,
+        batch,
+        at,
+        entries,
+      });
+      return;
+    }
+    // 2층: 인정 반응 시간(경계·하한)으로 겨루기 순서를 정해 발표한다. 잡는 사람끼리 동점이면 함께 뽑기를 기다린다
+    const items = entries.map((e) => ({
+      entry: e,
+      item: {
+        claim: e.claim,
+        rt: this.hostAllowed(race, e.claim),
+        owner: this.isOwner(race, e.claim),
+      },
+    }));
+    this.announcing = this.announcing.then(async () => {
+      const arranged = await raceArrange(
+        items.map((x) => x.item),
+        race.tieMs,
+        `b${batch}`,
+      );
+      if (this.closed) return;
+      const byItem = new Map(items.map((x) => [x.item, x.entry]));
+      this.announce({
+        v: 1,
+        kind: "claims-resolved",
+        game: this.options.game,
+        batch,
+        at,
+        entries: arranged.map((i) => byItem.get(i) as ResolvedClaim),
+        race: { rt: arranged.map((i) => i.rt) },
+      });
+    });
+  }
+
+  private announce(resolved: ClaimsResolved): void {
     this.options.transport.send(resolved);
     for (const l of this.resolvedListeners) l(resolved);
     this.options.apply?.(resolved);
+  }
+
+  /** 발표를 다 냈을 때(시험·판 끝이 기다린다) */
+  settled(): Promise<void> {
+    return this.announcing;
+  }
+
+  /** 그 판에서 이 청구를 낸 자리가 본인인가(판을 모르면 아니다) */
+  private isOwner(race: ClaimRaceSpec, claim: ClaimMessage): boolean {
+    const board = this.boards.get(claim.seen);
+    return board !== undefined && race.isOwner(board, claim);
+  }
+
+  /** 방장이 인정하는 반응 시간. 내 청구는 보고 그대로(하한만), 손님 청구는 받은 시각과 왕복으로 아래 경계를 씌운다 */
+  private hostAllowed(race: ClaimRaceSpec, claim: ClaimMessage): number {
+    const arrival = this.arrivals.get(claim.claimId);
+    this.arrivals.delete(claim.claimId);
+    const shown = this.shownAt.get(claim.seen);
+    if (!arrival || arrival.from === null || shown === undefined)
+      return allowedRt({
+        rtMs: claim.rtMs,
+        elapsedMs: null,
+        rttMinMs: null,
+        spec: race,
+      });
+    return allowedRt({
+      rtMs: claim.rtMs,
+      elapsedMs: arrival.at - shown,
+      rttMinMs: this.rttOf(arrival.from)?.min ?? null,
+      spec: race,
+    });
   }
 
   private judgeBatch(claims: readonly ClaimMessage[], at: number) {
@@ -346,16 +518,21 @@ export class ClaimHub<View = unknown> {
     const ids = new Set(claims.map((c) => c.claimId));
     if (ids.size !== claims.length)
       this.raise(`${tag}:dup`, 0, "방장 발표에 같은 청구가 두 번 있다");
+    // 1층 순서는 (판, 자리, 아이디). 2층 게임은 겨루기 순서라 따로 맞춰 본다(`checkRace`)
     const ordered = [...claims].sort(compareClaims);
-    if (ordered.some((c, i) => c !== claims[i]))
+    if (!this.race && ordered.some((c, i) => c !== claims[i]))
       this.raise(
         `${tag}:order`,
         0,
         "방장 발표의 처리 순서가 정해진 순서와 다르다",
       );
     const me = this.options.mySeat();
-    const expected = this.judgeBatch(claims, resolved.at);
-    for (const [i, entry] of resolved.entries.entries()) {
+    const expected = new Map(
+      this.judgeBatch(claims, resolved.at).map((e) => [e.claim.claimId, e]),
+    );
+    /** 2층 확인 재료: 내가 직접 받은 시각 */
+    const gotAt = new Map<string, number>();
+    for (const entry of resolved.entries.values()) {
       const id = entry.claim.claimId;
       if (
         entry.claim.seat === me &&
@@ -373,16 +550,89 @@ export class ClaimHub<View = unknown> {
         got.cancel?.();
         got.cancel = null;
         this.received.delete(id);
+        gotAt.set(id, got.at);
         this.compareContent(entry.claim, got.claim);
         this.checkStaleDelay(entry, got);
       } else if (!this.seenIds.has(id)) {
         // 직접 받은 것이 오면 견준다(이미 받아 정리한 청구가 다시 발표된 것이면 둘 일이 없다).
         this.announced.set(id, entry.claim);
       }
-      this.compareOutcome(tag, entry, expected[i]);
+      this.compareOutcome(tag, entry, expected.get(id));
     }
+    if (this.race) void this.checkRace(this.race, resolved, gotAt);
     this.prune();
     for (const l of this.resolvedListeners) l(resolved);
+  }
+
+  /**
+   * 2층 확인(방장과 같은 식): 인정 반응 시간이 보고·하한보다 짧지 않나, 내 청구를 부풀리지 않았나, 방장 자기 청구를
+   * 내가 잰 경계보다 짧게 잡지 않았나, 순서가 겨루기 순서(동점 본인 우선, 잡는 사람끼리 함께 뽑기)와 같나
+   */
+  private async checkRace(
+    race: ClaimRaceSpec,
+    resolved: ClaimsResolved,
+    gotAt: ReadonlyMap<string, number>,
+  ): Promise<void> {
+    const tag = `batch${resolved.batch}`;
+    const info = resolved.race;
+    if (!info) {
+      this.raise(`${tag}:race`, 0, "방장 발표에 반응 시간이 없다");
+      return;
+    }
+    const me = this.options.mySeat();
+    const host = [...this.rtts.keys()].find(
+      (p) => this.options.seatOfPeer(p) === 0,
+    );
+    const toHost = host ? this.rttOf(host) : null;
+    let boardsKnown = true;
+    const items: RaceItem[] = resolved.entries.map((entry, i) => {
+      const claim = entry.claim;
+      const rt = info.rt[i] as number;
+      const reported = Math.max(claim.rtMs ?? 0, race.floorMs);
+      if (rt < reported)
+        this.raise(
+          `${tag}:rt-low:${claim.claimId}`,
+          0,
+          `방장이 ${claim.seat}번 자리의 반응 시간을 보고보다 줄였다`,
+        );
+      if (claim.seat === me && this.mine.has(claim.claimId) && toHost) {
+        // 정직한 방장이 늘릴 수 있는 것: 그때 왕복 − 봐준 왕복(상한 C) + 그리기·흔들림
+        const tolerance =
+          toHost.recentMax -
+          Math.min(toHost.min, MAX_LATENCY_CREDIT_MS) +
+          RACE_CHECK_MARGIN_MS;
+        if (rt - reported > tolerance)
+          this.raise(
+            `${tag}:rt-high:${claim.claimId}`,
+            0,
+            "방장이 내 반응 시간을 늘려 발표했다",
+          );
+      }
+      const got = gotAt.get(claim.claimId);
+      const shown = this.shownAt.get(claim.seen);
+      if (claim.seat === 0 && got !== undefined && shown !== undefined) {
+        // 방장 청구: 내가 판을 받은 뒤 청구가 닿기까지에서 보냄 지연·여유를 뺀 값보다 짧으면 깎아 보고한 것
+        const lower =
+          got - shown - race.sendDelayMs - RACE_SLACK_MS - RACE_CHECK_MARGIN_MS;
+        if (rt < lower)
+          this.raise(
+            `${tag}:host-rt:${claim.claimId}`,
+            0,
+            "방장이 자기 반응 시간을 줄여 발표했다",
+          );
+      }
+      if (!this.boards.has(claim.seen)) boardsKnown = false;
+      return { claim, rt, owner: this.isOwner(race, claim) };
+    });
+    // 판을 모르면(늦게 들어옴) 본인 여부를 몰라 순서는 맞춰 보지 않는다
+    if (!boardsKnown) return;
+    const arranged = await raceArrange(items, race.tieMs, `b${resolved.batch}`);
+    if (arranged.some((item, i) => item !== items[i]))
+      this.raise(
+        `${tag}:race-order`,
+        0,
+        "방장 발표의 순서가 반응 시간 겨루기 순서와 다르다",
+      );
   }
 
   /**
