@@ -77,8 +77,33 @@ test("3D: 첫 화면 연출(CubeHero)", async ({ page }, info) => {
   await only(page, info.project.name);
   // 시험 기본은 움직임 줄이기라 연출을 끈다. 여기서만 켠다
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  // 3D가 준비된 순간에 대기 그림이 아직 있었는지(겹쳐 바꾸기) 적어 둔다
+  await page.addInitScript(() => {
+    const w = window as { __posterAtReady?: boolean };
+    new MutationObserver(() => {
+      if (w.__posterAtReady !== undefined) return;
+      if (document.querySelector("[data-cube-hero][data-hero-ready]"))
+        w.__posterAtReady =
+          document.querySelector("[data-cube-hero] [data-hero-poster]") !==
+          null;
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
+  });
   await page.goto("/cube");
   await expect(page.locator("[data-cube-hero][data-hero-ready]")).toBeVisible(
     SCENE,
   );
+  // 3D가 다 나타나면 대기 그림을 치운다
+  await expect(page.locator("[data-cube-hero][data-hero-shown]")).toBeVisible();
+  await expect(page.locator("[data-cube-hero] [data-hero-poster]")).toHaveCount(
+    0,
+  );
+  expect(
+    await page.evaluate(
+      () => (window as { __posterAtReady?: boolean }).__posterAtReady,
+    ),
+  ).toBe(true);
 });
