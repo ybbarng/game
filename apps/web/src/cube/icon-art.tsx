@@ -1,6 +1,7 @@
 /**
- * 큐브 맞추기 앱 아이콘 그림(`next/og` ImageResponse용 JSX): 위층을 살짝 들어 돌리는 중인 섞인 3×3 큐브.
- * 상표 로고처럼 보이지 않게 맞춘 큐브의 반듯한 세 면이 아니라, 색이 섞이고 위층이 떠 있는 모습으로 그린다.
+ * 큐브 맞추기 앱 아이콘 그림(`next/og` ImageResponse용 JSX): 섞인 3×3 큐브.
+ * 상표 로고처럼 보이지 않게 맞춘 큐브의 반듯한 세 면이 아니라 색이 섞인 모습으로 그린다.
+ * (위층을 띄워 돌리는 모습은 틈이 가운데 굵은 검은 선으로 보여 큐브 같지 않았다, 2026-11-04 사용자)
  * 공통 `IconArt`가 `game === "cube"`이면 이것을 그린다. 글꼴을 넣지 않으려고 글자는 쓰지 않는다
  */
 import type { ReactNode } from "react";
@@ -15,8 +16,8 @@ const B = "#2563eb";
 /** 등축 투영: x는 오른쪽 위, z는 왼쪽 위, y는 위. 가장 가까운 아래 꼭짓점이 (50, 88) */
 const U = 12;
 const DX = U * 0.866;
-/** 위층을 들어 올린 높이 */
-const LIFT = 4.5;
+/** 위층을 들어 올린 높이(0: 틈 없는 온전한 큐브) */
+const LIFT = 0;
 
 function pt(x: number, z: number, y: number, lifted: boolean): string {
   const sx = 50 + (x - z) * DX;
@@ -80,21 +81,8 @@ const LEFT = [
 export function CubeIconArt({ maskable = false }: { maskable?: boolean }) {
   const body = "#111114";
   const parts: ReactNode[] = [];
-  // 아래 두 층 몸통(위층이 떠서 그 틈으로 윗면이 조금 보인다)
+  // 아래 두 층 몸통
   parts.push(
-    <polygon
-      key="low-top"
-      points={quad(
-        [
-          [0, 0, 2],
-          [3, 0, 2],
-          [3, 3, 2],
-          [0, 3, 2],
-        ],
-        false,
-      )}
-      fill="#000000"
-    />,
     <polygon
       key="low-right"
       points={quad(
