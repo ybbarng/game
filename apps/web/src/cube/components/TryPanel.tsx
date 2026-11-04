@@ -84,7 +84,10 @@ export function TryPanel({
     };
   }, [taught]);
   const beginner = taught === "finale" ? courseById(BEGINNER_COURSE_ID) : null;
-  const [level, setLevel] = useState<0 | 1 | 2>(0);
+  const [opened, setOpened] = useState<{ seg: string; level: 0 | 1 | 2 }>({
+    seg: "",
+    level: 0,
+  });
   const planRef = useRef<HintPlan | null>(null);
   const taughtHint = useMemo((): TaughtHint | null | undefined => {
     if (!hintMod || !taught) return undefined;
@@ -93,18 +96,16 @@ export function TryPanel({
       ? hintMod.finaleHint(state, prev)
       : hintMod.nextHint(taught, state, prev);
   }, [hintMod, taught, state]);
-  // 계획을 이어 쓰고, 다음 경우(토막)로 넘어가면 힌트를 접는다(스스로 다음 경우를 보게)
+  // 계획을 이어 쓰고, 다음 경우(토막)로 넘어가면 힌트를 접는다(스스로 다음 경우를 보게).
+  // 연 단계는 그 토막에만 붙여 두어, 넘어가는 그 그림에서 바로 접힌다(한 번 그렸다 접는 깜빡임 없이)
   const segKey = taughtHint
     ? `${taughtHint.plan.keys[0]}:${taughtHint.segment}`
     : "";
-  const lastSeg = useRef(segKey);
   useEffect(() => {
     if (taughtHint) planRef.current = taughtHint.plan;
-    if (lastSeg.current !== segKey) {
-      lastSeg.current = segKey;
-      setLevel(0);
-    }
-  }, [taughtHint, segKey]);
+  }, [taughtHint]);
+  const level = opened.seg === segKey ? opened.level : 0;
+  const setLevel = (l: 0 | 1 | 2) => setOpened({ seg: segKey, level: l });
   const reached = useMemo(() => {
     if (!hintMod || taught !== "finale") return null;
     const fromGoals = hintMod.finaleReached(state);
@@ -146,7 +147,7 @@ export function TryPanel({
       setHistory([]);
       setPassed(false);
       setHints(0);
-      setLevel(0);
+      setOpened({ seg: "", level: 0 });
       planRef.current = null;
       setSyncToken((t) => t + 1);
     },
@@ -244,7 +245,7 @@ export function TryPanel({
               aria-pressed={level >= 1}
               disabled={taughtHint === undefined}
               onClick={(e) => {
-                setLevel((l) => (l >= 1 ? l : 1));
+                setLevel(level >= 1 ? level : 1);
                 e.currentTarget.blur();
               }}
               className={cn(

@@ -698,20 +698,23 @@ function LessonView({
                 이 공식 훈련하기: {drillTitle(lesson.drill)}
               </a>
             )}
-            {next && lastTry >= 0 && !passed.includes(lastTry) && (
-              <button
-                type="button"
-                data-lesson-try-left={lastTry}
-                onClick={(e) => {
-                  setAt(lastTry);
-                  e.currentTarget.blur();
-                }}
-                title="단원 마지막 해 보기로 가기"
-                className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
-              >
-                혼자 해 보기 남음
-              </button>
-            )}
+            {next &&
+              lastTry >= 0 &&
+              at !== lastTry &&
+              !passed.includes(lastTry) && (
+                <button
+                  type="button"
+                  data-lesson-try-left={lastTry}
+                  onClick={(e) => {
+                    setAt(lastTry);
+                    e.currentTarget.blur();
+                  }}
+                  title="단원 마지막 해 보기로 가기"
+                  className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
+                >
+                  혼자 해 보기 남음
+                </button>
+              )}
             {next && (
               <a
                 href={lessonHref(next.id)}

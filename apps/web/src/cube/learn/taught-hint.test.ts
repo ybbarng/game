@@ -38,6 +38,8 @@ function follow(
   done: (s: PuzzleState) => boolean,
   hint: (s: PuzzleState, prev: HintPlan | null) => ReturnType<typeof nextHint>,
   disturb?: (s: PuzzleState, i: number) => PuzzleState,
+  /** 반 바퀴를 4분의 1씩 친다(「표기」 배치는 같은 키 두 번 = 반 바퀴, 사이마다 힌트를 다시 본다) */
+  quarters = false,
 ): number | null {
   let s = start;
   let plan: HintPlan | null = null;
@@ -46,7 +48,7 @@ function follow(
     const h = hint(s, plan);
     if (!h) return null;
     plan = h.plan;
-    s = move(s, h.move);
+    s = move(s, quarters ? h.move.replace(/2$/, "") : h.move);
     if (disturb) s = disturb(s, i);
   }
   return null;
@@ -84,6 +86,15 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
           (s, prev) => nextHint(stage, s, prev),
         );
         expect(used, `${stage} 씨앗 ${seed}`).not.toBeNull();
+        // 반 바퀴를 키 두 번으로 쳐도(첫 4분의 1 뒤 같은 계획에서 나머지) 목표에 이른다
+        const byQuarters = follow(
+          start,
+          (s) => goalMet(3, s, step.goal ?? "solved"),
+          (s, prev) => nextHint(stage, s, prev),
+          undefined,
+          true,
+        );
+        expect(byQuarters, `${stage} 씨앗 ${seed} 4분의 1씩`).not.toBeNull();
       }
     });
   }
@@ -141,6 +152,19 @@ describe("3×3 초보자 마무리 힌트·진행", () => {
       expect(isSolved(3, s), `씨앗 ${seed}`).toBe(true);
       expect(top).toBe(7);
       expect(finaleReached(s)).toBe(7);
+    }
+  });
+
+  it("반 바퀴를 키 두 번으로 쳐도 끝까지 맞춘다", () => {
+    for (let seed = 1; seed <= 4; seed++) {
+      const used = follow(
+        stepStart(finale, step, seed),
+        (x) => isSolved(3, x),
+        (x, prev) => finaleHint(x, prev),
+        undefined,
+        true,
+      );
+      expect(used, `씨앗 ${seed}`).not.toBeNull();
     }
   });
 

@@ -179,6 +179,26 @@ function hintAt(plan: HintPlan, k: number): TaughtHint {
 }
 
 /**
+ * 계획을 따라오고 있는가. 반 바퀴(`U2`)를 키 두 번으로 치는 배치에서는 첫 번째 4분의 1 뒤가 계획 밖이라,
+ * 그 자리면 같은 계획에서 나머지 4분의 1을 낸다(다시 계산하면 U2 ↔ U2 사이를 맴돌 수 있었다)
+ */
+function onPlan(plan: HintPlan, state: PuzzleState): TaughtHint | null {
+  const k = planIndex(plan, state);
+  if (k >= 0) return hintAt(plan, k);
+  for (const [j, m] of plan.moves.entries()) {
+    const half = /^([URFDLBxyz])2$/.exec(m)?.[1];
+    if (!half) continue;
+    for (const [did, undo] of [
+      [half, `${half}'`],
+      [`${half}'`, half],
+    ] as const)
+      if (keyOf(apply(state, [undo])) === plan.keys[j])
+        return { ...hintAt(plan, j), move: did };
+  }
+  return null;
+}
+
+/**
  * 다음 힌트. 앞 계획(`prev`)대로 오고 있으면 그것을 이어 쓰고, 아니면 지금 상태에서 다시 계산한다.
  * 이미 그 단계가 끝났거나 끝낼 수 없으면 null
  */
@@ -188,8 +208,8 @@ export function nextHint(
   prev: HintPlan | null,
 ): TaughtHint | null {
   if (prev && prev.stage === stage) {
-    const k = planIndex(prev, state);
-    if (k >= 0) return hintAt(prev, k);
+    const h = onPlan(prev, state);
+    if (h) return h;
   }
   const plan = makeHintPlan(stage, state);
   if (!plan) return null;
@@ -218,8 +238,8 @@ export function finaleHint(
   prev: HintPlan | null,
 ): TaughtHint | null {
   if (prev) {
-    const k = planIndex(prev, state);
-    if (k >= 0) return hintAt(prev, k);
+    const h = onPlan(prev, state);
+    if (h) return h;
   }
   const reached = finaleReached(state);
   const stage = TAUGHT_STAGES[reached];
