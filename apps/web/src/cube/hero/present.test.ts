@@ -216,6 +216,32 @@ describe("보여 주기 변환", () => {
     }
   });
 
+  it("초보자 마지막 층(노란 십자~꼭짓점 방향)은 해법 수 그대로, 꼭짓점 방향에는 큐브 돌리기가 없다", async () => {
+    const LL = ["eo", "ll-edges", "ll-corner-place", "ll-corner-twist"];
+    for (const [id, seeds] of [
+      ["3-beginner", [1, 2, 3, 4]],
+      ["2-beginner", [1, 2, 3]],
+    ] as const) {
+      for (const seed of seeds) {
+        const { raw, shown } = await run(id, seed);
+        for (const name of LL) {
+          const a = raw.stages.find((s) => s.name === name);
+          const b = shown.stages.find((s) => s.name === name);
+          if (id === "2-beginner" && (name === "eo" || name === "ll-edges"))
+            continue;
+          if (!a || !b) throw new Error(`${id} ${name}`);
+          expect(shown.moves.slice(b.start, b.end)).toEqual(
+            raw.moves.slice(a.start, a.end),
+          );
+          if (name === "ll-corner-twist")
+            expect(
+              shown.moves.slice(b.start, b.end).some((m) => /^[xyz]/.test(m)),
+            ).toBe(false);
+        }
+      }
+    }
+  });
+
   it("넣는 차례 안에는 연출이 둔 y 말고 큐브 돌리기가 없다(해법의 y는 켤레로 녹인다)", async () => {
     for (const seed of [1, 2, 3]) {
       const { shown } = await run("3-cfop", seed);

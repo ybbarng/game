@@ -23,7 +23,16 @@ import {
 } from "./ll";
 import { coordsOf, heuristic, idaSearch, type Tracked } from "./search";
 import { type HumanSolve, Solve, type StageName, uTurn, yTurn } from "./solve";
-import { cornersTaught, crossTaught, whiteUp } from "./taught";
+import {
+  cornerPlace2Taught,
+  cornersTaught,
+  crossTaught,
+  llCornerPlaceTaught,
+  llCornerTwistTaught,
+  llEdgesTaught,
+  whiteUp,
+  yellowCrossTaught,
+} from "./taught";
 
 /**
  * 사람 흉내 해법. 모두 상태 → 수 목록(WCA 표기)과 단계 경계. 같은 상태면 늘 같은 수가 나온다.
@@ -389,8 +398,31 @@ export const BEGINNER3_TAUGHT_STEPS: readonly Step[] = [
     middleEdges(s);
     s.stage("middle");
   },
-  ...lastLayerBeginner(),
+  ...lastLayerTaught(),
 ];
+
+/**
+ * 배우는 방식 마지막 층(첫 화면 연출만): 노란 십자 → 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향.
+ * 4×4 PLL 패리티는 모서리 둘·꼭짓점 둘 바뀜 짝이 어긋난 것이라 모서리 자리를 맞추기 전에 고친다.
+ */
+function lastLayerTaught(): Step[] {
+  return [
+    "oll-parity",
+    (s) => {
+      yellowCrossTaught(s);
+      s.stage("eo");
+    },
+    "pll-parity",
+    (s) => {
+      llEdgesTaught(s);
+      s.stage("ll-edges");
+      llCornerPlaceTaught(s);
+      s.stage("ll-corner-place");
+      llCornerTwistTaught(s);
+      s.stage("ll-corner-twist");
+    },
+  ];
+}
 
 function lastLayerBeginner(): Step[] {
   return [
@@ -468,7 +500,8 @@ function run3(steps: readonly Step[], state: PuzzleState): HumanSolve {
 }
 
 /**
- * 사람 해법 선택지. `taught`면 흰 십자·첫 층을 배우기에서 가르치는 방식(흰 면 위)으로 둔다.
+ * 사람 해법 선택지. `taught`면 배우기에서 가르치는 방식으로 둔다: 흰 십자·첫 층은 흰 면 위,
+ * 마지막 층은 노란 십자 → 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향(2×2는 꼭짓점 자리·방향만).
  * 첫 화면 연출만 쓴다. 컴퓨터 대결 계획은 기본(없음) 그대로라 기기끼리 계획이 어긋나지 않는다.
  */
 export interface HumanOptions {
@@ -549,7 +582,10 @@ function lastLayer2(s: Solve): void {
   s.stage("pll");
 }
 
-/** 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리. `taught`면 첫 층을 흰 면 위에서 `R' D' R D`로 */
+/**
+ * 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리. `taught`면 첫 층을 흰 면 위에서 `R' D' R D`로 맞추고
+ * 꼭짓점 자리(`U R U' L' U R' U' L`) → 꼭짓점 방향(`R' D' R D`)으로 마친다
+ */
 export function solveBeginner2(
   state: PuzzleState,
   opts: HumanOptions = {},
@@ -559,7 +595,15 @@ export function solveBeginner2(
     s.apply("z2");
     cornersTaught(s);
     s.apply("z2");
-  } else firstLayerCorners(s);
+    s.stage("first-layer");
+    // 배우기(3×3을 아는 사람의 2×2)와 같은 꼭짓점 자리 → 꼭짓점 방향
+    cornerPlace2Taught(s);
+    s.stage("ll-corner-place");
+    llCornerTwistTaught(s);
+    s.stage("ll-corner-twist");
+    return finish(s);
+  }
+  firstLayerCorners(s);
   s.stage("first-layer");
   yellowFace(s);
   s.stage("co");
