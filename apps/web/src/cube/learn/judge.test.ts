@@ -49,13 +49,14 @@ describe("목표 판정", () => {
         "solved",
         "centers",
         "edges-paired",
+        "edges-ten",
         "edge-pair:UF",
         "yau-ud-centers",
         "yau-cross3",
         "yau-centers",
         "yau-cross",
       ],
-      5: ["solved", "centers", "edges-paired", "edge-pair:UF"],
+      5: ["solved", "centers", "edges-paired", "edges-ten", "edge-pair:UF"],
     };
     for (const [n, goals] of Object.entries(bySize))
       for (const g of goals)
@@ -143,7 +144,10 @@ describe("스스로 섞기 규칙", () => {
     "4x4-reduced": { yes: ["edges-paired"], no: ["solved"] },
     "5x5-random": { yes: [], no: ["centers"] },
     "5x5-centers-solved": { yes: ["centers"], no: ["edges-paired"] },
-    "5x5-two-edges-left": { yes: ["centers"], no: ["edges-paired"] },
+    "5x5-two-edges-left": {
+      yes: ["centers", "edges-ten"],
+      no: ["edges-paired"],
+    },
     "roux-fb-solved": { yes: ["roux-fb"], no: ["roux-sb"] },
     "roux-blocks-solved": { yes: ["roux-sb"], no: ["cmll"] },
     "roux-cmll-solved": { yes: ["cmll"], no: ["lse-eo"] },

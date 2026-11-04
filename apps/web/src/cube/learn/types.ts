@@ -32,6 +32,8 @@ export const GOALS = {
   "edges-paired":
     "큰 큐브 모서리 묶기(가운데 + 모서리 조각이 같은 색끼리 한 줄)",
   "edge-pair:UF": "큰 큐브 모서리 한 줄(위-앞 자리 날개가 한 색끼리 붙음)",
+  "edges-ten":
+    "큰 큐브 모서리 열 줄 묶기(가운데 맞음, 안 묶인 줄이 둘 이하. 마지막 둘은 따로 배운다)",
   // 다른 해법(judge-methods.ts). 자리는 지금 들고 있는 방향으로 본다
   "roux-fb": "루 첫 블록(왼쪽 1×2×3)",
   "roux-sb": "루 두 블록(왼쪽·오른쪽 1×2×3)",
@@ -181,7 +183,16 @@ export interface LessonStep {
   look?: LookGoal;
   /** quiz: 문제 */
   quiz?: QuizSpec;
+  /** 단계 아래에 펼쳐 둘 표(블라인드 글자마다 준비 수 등) */
+  sheet?: SheetName;
 }
+
+/** 단계 아래에 보일 표. 화면은 이름으로 자료를 찾아 그린다 */
+export const SHEETS = {
+  "bld-edges": "블라인드 모서리 글자마다 준비 수(BLD_EDGE_TARGETS)",
+  "bld-corners": "블라인드 꼭짓점 글자마다 준비 수(BLD_CORNER_TARGETS)",
+} as const;
+export type SheetName = keyof typeof SHEETS;
 
 export interface Lesson {
   id: string;
@@ -190,6 +201,8 @@ export interface Lesson {
   /** 한 줄 소개 */
   summary: string;
   steps: LessonStep[];
+  /** 이 단원과 짝인 공식 훈련 묶음. 단원 끝에 「이 공식 훈련하기」로 잇는다 */
+  drill?: AlgSet;
 }
 
 /** 단원을 차례로 묶은 과정(초보자 3×3 등) */
@@ -199,6 +212,8 @@ export interface Course {
   title: string;
   summary: string;
   lessons: Lesson[];
+  /** 먼저 배우면 좋은 과정 id. 목록에 보이기만 하고 잠그지 않는다. 과정 끝 「다음에 할 것」은 이것의 거꾸로다 */
+  requires?: string[];
 }
 
 export type AlgSet =

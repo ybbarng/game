@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { COURSES, type Course, type Lesson } from "../learn";
+import { COURSES, type Course, courseById, type Lesson } from "../learn";
 import { demoOffersTurn, stepIsActive, stepPicture } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
@@ -15,6 +15,13 @@ import {
 } from "../learn/progress";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
+import {
+  CourseNext,
+  drillTitle,
+  LessonSheet,
+  lessonHref,
+  trainHref,
+} from "./LearnLinks";
 import {
   FindPanel,
   LookPanel,
@@ -93,8 +100,6 @@ export function LearnApp() {
     </div>
   );
 }
-
-const lessonHref = (id: string) => `/cube/learn?lesson=${id}`;
 
 function CourseList({ progress }: { progress: LearnProgress }) {
   const last = progress.last ? findLesson(progress.last) : null;
@@ -182,6 +187,33 @@ function CourseGrid({
               </span>
             </div>
             <p className="break-keep text-white/60 text-xs">{course.summary}</p>
+            {course.requires && course.requires.length > 0 && (
+              <p
+                data-course-requires={course.requires.join(" ")}
+                className="break-keep text-[11px] text-amber-200/80"
+              >
+                먼저 배우면 좋아요:{" "}
+                {course.requires.map((id, i) => {
+                  const c = courseById(id);
+                  const first = c?.lessons[0];
+                  return (
+                    <span key={id}>
+                      {i > 0 && ", "}
+                      {first ? (
+                        <a
+                          href={lessonHref(first.id)}
+                          className="underline hover:text-amber-100"
+                        >
+                          {c?.title}
+                        </a>
+                      ) : (
+                        id
+                      )}
+                    </span>
+                  );
+                })}
+              </p>
+            )}
             <ol className="flex flex-col gap-1">
               {course.lessons.map((l, i) => {
                 const p = progress.lessons[l.id];
@@ -366,6 +398,7 @@ function LessonView({
             letters={lesson.id.startsWith("bld")}
           />
         </p>
+        {step.sheet && <LessonSheet name={step.sheet} />}
         {step.kind === "text" && (
           <StillCube
             n={lesson.size}
@@ -487,6 +520,16 @@ function LessonView({
                 ? "끝낸 단원 ✓"
                 : "단원 끝내기"}
             </button>
+            {lesson.drill && (
+              <a
+                data-lesson-drill={lesson.drill}
+                href={trainHref(lesson.drill)}
+                onClick={() => setProgress(markLessonDone(lesson.id))}
+                className="rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm hover:bg-sky-500/30"
+              >
+                이 공식 훈련하기: {drillTitle(lesson.drill)}
+              </a>
+            )}
             {next && (
               <a
                 href={lessonHref(next.id)}
@@ -513,6 +556,7 @@ function LessonView({
           </button>
         )}
       </nav>
+      {isLast && !next && <CourseNext course={course} />}
     </>
   );
 }

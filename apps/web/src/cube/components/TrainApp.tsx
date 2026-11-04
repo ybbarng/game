@@ -95,6 +95,10 @@ export function TrainApp() {
 
   const [algBook, setAlgBook] = useState<AlgBook>({});
   useEffect(() => {
+    // 배우기 단원의 「이 공식 훈련하기」는 `?set=`으로 묶음을 골라 연다
+    const want = new URLSearchParams(window.location.search).get("set");
+    const found = ALG_SETS.find((s) => s.set === want);
+    if (found) setSetId(found.set);
     setBook(loadTrain());
     setAlgBook(loadAlgBook());
     // 공식 모음을 다른 탭에서 고치면 다시 읽는다

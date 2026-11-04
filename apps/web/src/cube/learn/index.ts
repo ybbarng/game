@@ -6,6 +6,7 @@ import { OLL_CASES } from "./algs-oll";
 import { ORTEGA_OLL, ORTEGA_PBL } from "./algs-ortega";
 import { PLL_CASES } from "./algs-pll";
 import { BLD_ALGS } from "./bld";
+import { withFinale } from "./finale";
 import { BEGINNER_222 } from "./lessons-222";
 import { BEGINNER_333 } from "./lessons-333";
 import { REDUCTION_444, REDUCTION_555 } from "./lessons-big";
@@ -24,19 +25,74 @@ export { FINGER_DRILLS, FINGER_INTRO } from "./fingers";
 export { algTokens, invertAlg, setupFor } from "./notation";
 export * from "./types";
 
-/** 배우기 과정(차례대로 보여 줄 순서) */
+/**
+ * 먼저 배우면 좋은 과정(목록에 보이기만 하고 잠그지 않는다). 과정 끝 「다음에 할 것」은 이 표의 거꾸로다.
+ * 2×2는 3×3 공식을, 큰 큐브는 3×3 풀이를, 루·ZZ·블라인드는 CFOP의 F2L 짝·PLL 공식을 쓴다.
+ */
+const REQUIRES: Record<string, string[]> = {
+  "222-beginner": ["333-beginner"],
+  cfop: ["333-beginner"],
+  roux: ["cfop"],
+  zz: ["cfop"],
+  petrus: ["zz"],
+  "444-reduction": ["333-beginner"],
+  "444-yau": ["444-reduction", "cfop"],
+  "555-reduction": ["444-reduction"],
+  "bld-op": ["cfop"],
+};
+
+const needs = (c: Course): Course => {
+  const requires = REQUIRES[c.id];
+  return requires ? { ...c, requires } : c;
+};
+
+/** 배우기 과정(차례대로 보여 줄 순서). 끝에 섞인 큐브를 처음부터 맞추는 마무리가 없는 과정에는 붙인다 */
 export const COURSES: Course[] = [
-  BEGINNER_333,
-  BEGINNER_222,
-  CFOP_INTRO,
+  withFinale(BEGINNER_333, {
+    rule: "random-cross",
+    stages: [
+      "흰 십자",
+      "첫 층 꼭짓점",
+      "둘째 층 모서리",
+      "노란 십자",
+      "노란 면",
+      "위 꼭짓점 자리",
+      "위 모서리 자리",
+    ],
+    drill: "2look-oll",
+  }),
+  withFinale(BEGINNER_222, {
+    rule: "2x2-random",
+    stages: ["첫 층", "윗면 노랗게", "윗층 자리"],
+    drill: "ortega-oll",
+  }),
+  withFinale(CFOP_INTRO, {
+    rule: "random-cross",
+    stages: ["아래 십자", "F2L 짝 넷", "OLL", "PLL"],
+    drill: "f2l",
+  }),
   ROUX,
   ZZ,
   PETRUS,
-  REDUCTION_444,
+  withFinale(REDUCTION_444, {
+    rule: "4x4-random",
+    stages: ["가운데", "모서리 짝", "3×3처럼(패리티)"],
+    drill: "parity-4x4",
+  }),
   YAU_444,
   REDUCTION_555,
   BLD_OP,
-];
+].map(needs);
+
+/** 이 과정 다음에 배우면 좋은 과정(그 과정을 먼저 배울 것으로 둔 과정들, COURSES 차례) */
+export function nextCourses(course: Course): Course[] {
+  return COURSES.filter((c) => c.requires?.includes(course.id));
+}
+
+/** 과정 id → 과정 */
+export function courseById(id: string): Course | undefined {
+  return COURSES.find((c) => c.id === id);
+}
 
 export interface AlgSetInfo {
   set: AlgSet;

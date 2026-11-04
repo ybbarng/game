@@ -263,6 +263,9 @@ export function goalMet(
       return centersSolved(n, state);
     case "edges-paired":
       return centersSolved(n, state) && unpairedEdgeLines(n, state) === 0;
+    case "edges-ten":
+      // 5×5 모서리 셋 묶기 단원: 마지막 두 줄은 다음 단원에서 따로 묶는다
+      return centersSolved(n, state) && unpairedEdgeLines(n, state) <= 2;
     case "edge-pair:UF": {
       const pieces = edgeLines(n).get([U, FACE_INDEX.F].sort().join(","));
       return pieces !== undefined && linePaired(n, colors, pieces);
