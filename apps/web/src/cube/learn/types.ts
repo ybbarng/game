@@ -68,6 +68,8 @@ export type GoalName = keyof typeof GOALS;
 export const MASKS = {
   none: "모두 까맣게(조각을 찾아 누르면 그 조각 색이 드러난다)",
   centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  "centers:UF":
+    "위·앞 센터 블럭 둘만 보임(색 배치 문제: 나머지 센터 색으로 답이 드러나지 않게)",
   corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
   "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
   "piece:UF": "흰-초록 모서리와 가운데만 보임",

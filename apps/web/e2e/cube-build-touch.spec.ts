@@ -1,5 +1,11 @@
 import { goToStep, shot } from "./cube";
-import { expect, type Locator, type Page, test } from "./test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  SAVE_SCREENSHOTS,
+  test,
+} from "./test";
 
 /**
  * 분해·조립을 휴대폰 3D 장면에서 손가락으로(2026-11-05 사용자 「폰으로 할 때 돌아가지 않고 돌아오니까 노란 조각을
@@ -76,6 +82,33 @@ async function tapCell(page: Page, canvas: Locator, cell: keyof typeof CELL) {
   expect(p, `${cell} 칸이 보인다`).not.toBeNull();
   await page.touchscreen.tap(p?.x ?? 0, p?.y ?? 0);
 }
+
+test("색 배치 문제: 3D에서도 위·앞 센터 블럭만 색이 보인다(스크린샷)", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 하나로");
+  // 사람이 3D 그림을 보는 용도라 스크린샷을 찍을 때만 돈다(판정은 펼친 그림 시험 cube-learn-acts가 한다)
+  test.skip(!SAVE_SCREENSHOTS, "스크린샷을 찍을 때만");
+  await page.addInitScript(() =>
+    sessionStorage.setItem("mighty-splash-seen", "1"),
+  );
+  await page.goto("/cube/learn?lesson=333-start");
+  await goToStep(page, "quiz");
+  await expect(page.locator("[data-learn-quiz]")).toContainText(
+    "오른쪽 센터 블럭은",
+  );
+  await expect(
+    page.locator("[data-cube-still] [data-cube-ready]").first(),
+  ).toBeAttached(SCENE);
+  // 장면이 실제로 그려질 때까지(그리기 두 번) 기다린 뒤 찍는다
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => done())),
+      ),
+  );
+  await shot(page, "color-scheme-quiz-3d", info.project.name);
+});
 
 test("분해·조립: 휴대폰에서 끌어 돌린 채로 아래·뒤·왼쪽 빈자리를 눌러 끝까지 끼운다", async ({
   page,

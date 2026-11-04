@@ -231,7 +231,16 @@ describe("고르기 문제의 답", () => {
       1,
     );
     expect(pick?.kind).toBe("quiz");
-    expect(pick?.mask).toBe("none");
+    // 위(흰색)·앞(초록색) 센터 블럭만 보인다. 오른쪽(답)을 비롯한 나머지는 가린다
+    expect(pick?.mask).toBe("centers:UF");
+    const mask = maskFor(3, pick?.mask);
+    const shown = (mask ?? [])
+      .map((v, i) => (v === "visible" ? i : -1))
+      .filter((i) => i >= 0);
+    expect(shown).toEqual([
+      (FACE_INDEX.U as number) * 9 + 4,
+      (FACE_INDEX.F as number) * 9 + 4,
+    ]);
     expect(pick?.quiz?.choices[pick.quiz.answer]).toBe("빨간색");
   });
 

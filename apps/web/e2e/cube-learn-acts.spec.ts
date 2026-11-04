@@ -184,6 +184,18 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가�
   await shot(page, "learn-color-scheme-find", info.project.name);
   // 흰색 위·초록색 앞이면 오른쪽은? 주황색은 틀림, 빨간색이 맞음
   await goStep(page, 4);
+  // 위(흰색, 칸 4)·앞(초록색, 칸 22) 센터 블럭만 보이고, 답인 오른쪽(칸 13)은 가려 있다
+  await expect(
+    page.locator("[data-net-sticker]:not([data-net-hidden])"),
+  ).toHaveCount(2);
+  for (const cell of [4, 22])
+    await expect(
+      page.locator(`[data-net-sticker="${cell}"]`),
+    ).not.toHaveAttribute("data-net-hidden", "");
+  await expect(page.locator('[data-net-sticker="13"]')).toHaveAttribute(
+    "data-net-hidden",
+    "",
+  );
   const pick = page.locator('[data-act="quiz"]');
   await page.locator("[data-learn-quiz] [data-choice='1']").click();
   await expect(pick).not.toHaveAttribute("data-act-passed", "");

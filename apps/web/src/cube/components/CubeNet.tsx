@@ -79,7 +79,9 @@ export function CubeNet({
                   strokeWidth={mark ? 1.6 : 0.6}
                   data-net-mark={tone ?? undefined}
                   data-net-cell={onCell ? sticker : undefined}
-                  data-net-hidden={onCell && c === null ? "" : undefined}
+                  // 누를 수 없는 그림(문제 그림 등)도 시험이 칸과 가림을 읽는다
+                  data-net-sticker={sticker}
+                  data-net-hidden={c === null ? "" : undefined}
                   role={onCell ? "button" : undefined}
                   tabIndex={onCell ? 0 : undefined}
                   aria-label={onCell ? `칸 ${sticker + 1}` : undefined}
