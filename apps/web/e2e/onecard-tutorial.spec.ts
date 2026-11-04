@@ -23,8 +23,26 @@ async function noOverflow(page: Page) {
   expect(overflow).toBe(false);
 }
 
-/** 가운데 더미를 150ms 넘게 누르고 있다 떼기(원카드!) */
+/**
+ * 지금 판을 그린 프레임이 적힐 때까지 시계를 한 프레임씩 감는다. 판 번호가 화면에 들어온 직후
+ * 그 프레임 기록(requestAnimationFrame)이 아직 돌지 않았으면 누름이 앞 판 청구가 된다
+ */
+async function untilDrawn(page: Page) {
+  await fastForwardUntil(
+    page,
+    () =>
+      pile(page).evaluate(
+        (el) =>
+          el.getAttribute("data-shown-turn") ===
+          el.getAttribute("data-turn-no"),
+      ),
+    { step: 16 },
+  );
+}
+
+/** 가운데 더미를 150ms 넘게 누르고 있다 떼기(원카드!). 지금 판이 그려진 뒤에 친다 */
 async function slap(page: Page) {
+  await untilDrawn(page);
   await pile(page).dispatchEvent("pointerdown", {
     pointerId: 1,
     button: 0,

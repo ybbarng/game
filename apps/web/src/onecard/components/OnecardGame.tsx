@@ -294,7 +294,11 @@ function Pile({
   width: number;
   onShout: (seen: number, rtMs?: number) => void;
 }) {
-  const { seen } = useStimulusShown(view.turnNo);
+  // 마지막으로 그린 프레임을 적은 판 번호. 화면 시험이 "이 판을 다 그렸다"를 조건으로 기다린다
+  const [shownTurn, setShownTurn] = useState<number | null>(null);
+  const { seen } = useStimulusShown(view.turnNo, {
+    onShown: (entry) => setShownTurn(entry.stimulus),
+  });
   const turnNoRef = useRef(view.turnNo);
   turnNoRef.current = view.turnNo;
   const shoutRef = useRef(onShout);
@@ -345,6 +349,8 @@ function Pile({
       type="button"
       aria-label="가운데 더미(치면 원카드!)"
       data-pile
+      data-turn-no={view.turnNo}
+      data-shown-turn={shownTurn ?? undefined}
       disabled={view.phase === "over"}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
@@ -619,6 +625,38 @@ export function OnecardGame({
       }
     : { x: 0, y: 0 };
   const canResign = !over && !online && !mission;
+  // 판 가운데 칸: computeLayout의 바닥(center)에서, 위쪽 자리 판 아래로 삐져나온 뒷면 부채와
+  // 손패 위 차례 안내를 피한다(낮은 가로 화면에서 겹치지 않게). 카드 크기는 남은 높이에 맞춘다.
+  const middle = layout
+    ? (() => {
+        const c = layout.center;
+        const fanBottom = Math.max(
+          0,
+          ...layout.seats
+            .slice(1)
+            .map((s) => s.plate)
+            .filter((p) => p.x < c.x + c.w && c.x < p.x + p.w)
+            .filter((p) => p.y + p.h / 2 < c.y + c.h / 2)
+            .map((p) => p.y + p.h + fanCard.h * 0.72),
+        );
+        const top = Math.max(c.y, fanBottom + 4);
+        const bottom = Math.max(
+          top + 80,
+          Math.min(c.y + c.h, layout.hand.top - 32),
+        );
+        const h = bottom - top;
+        // 낮으면 무늬 줄·먹기 단추를 버린 더미 오른쪽 세로 줄로 옮겨 높이를 모두 더미에 준다
+        const side = h < 200;
+        // 버린 더미(위아래 여백 16) + 아래 무늬 줄(약 34)
+        const pileW = Math.max(
+          44,
+          Math.min(layout.trick.card.w, (h - 16 - (side ? 0 : 34)) / 1.4),
+        );
+        // 낮은 가로 화면은 옆으로 늘어놓으므로 폭을 조금 넓힌다(양옆 자리 판은 가장자리에 있다)
+        const w = side ? Math.max(c.w, 340) : c.w;
+        return { x: c.x + c.w / 2 - w / 2, y: top, w, h, pileW, side };
+      })()
+    : null;
 
   return (
     <main
@@ -777,19 +815,24 @@ export function OnecardGame({
           {/* 판 가운데: 더미(먹기)·버린 더미(치면 원카드!)·맞출 무늬·공격·방향 */}
           <section
             aria-label="가운데"
-            className="absolute z-[40] flex flex-col items-center justify-center gap-1.5"
+            className={cn(
+              "absolute z-[40] flex items-center justify-center",
+              middle?.side ? "flex-row gap-3" : "flex-col gap-1.5",
+            )}
             style={{
-              left: layout.center.x - layout.gutter,
-              top: layout.center.y,
-              width: layout.center.w + 2 * layout.gutter,
-              height: layout.center.h,
+              left: (middle?.x ?? 0) - layout.gutter,
+              top: middle?.y ?? 0,
+              width: (middle?.w ?? 0) + 2 * layout.gutter,
+              height: middle?.h ?? 0,
             }}
           >
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-center gap-1" data-deck>
                 <OnecardCardView
                   card={null}
-                  width={Math.round(layout.trick.card.w * 0.75)}
+                  width={Math.round(
+                    (middle?.pileW ?? 0) * (middle?.side ? 0.55 : 0.7),
+                  )}
                   label={`더미 ${view.deckCount}장`}
                 />
                 <span className="text-white/70 text-xs tabular-nums">
@@ -807,11 +850,18 @@ export function OnecardGame({
               </div>
               <Pile
                 view={view}
-                width={Math.round(layout.trick.card.w)}
+                width={Math.round(middle?.pileW ?? 0)}
                 onShout={shout}
               />
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+            <div
+              className={cn(
+                "flex gap-1.5 text-xs",
+                middle?.side
+                  ? "shrink-0 flex-col items-start whitespace-nowrap"
+                  : "flex-wrap items-center justify-center",
+              )}
+            >
               <SuitChip suit={view.suit} />
               {changedSuit && (
                 <span className="text-white/70" data-changed-suit>
