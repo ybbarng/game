@@ -50,7 +50,11 @@ async function ctl(path, body = {}) {
 const times = (round) => ctl("times", { round });
 const kst = (s) => new Date((s + 9 * 3600) * 1000).toISOString().slice(11, 19);
 
-const browser = await chromium.launch();
+// 번들 Chromium은 보안 수정 전 버전이라 패치된 시스템 Chrome을 샌드박스를 켜고 띄운다(apps/web/e2e/browser.ts)
+const browser = await chromium.launch({
+  channel: "chrome",
+  chromiumSandbox: true,
+});
 const context = await browser.newContext({
   viewport: { width: 412, height: 915 },
   deviceScaleFactor: 2,
