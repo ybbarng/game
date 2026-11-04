@@ -7,7 +7,12 @@
  * 같은 상황(자리의 한 장 상태 번호)에는 계획을 한 번만 세운다(외치지 않기로 한 것도 기억한다).
  */
 import { nextFloat, type RngState } from "@game/mighty-engine";
-import type { Action, OnecardView } from "@game/onecard-engine";
+import {
+  type Action,
+  HUMAN_RT_FLOOR_MS,
+  type OnecardView,
+  STALE_SEEN,
+} from "@game/onecard-engine";
 
 import { levelInfo, type OnecardLevel } from "./levels";
 import type { OnecardMemory } from "./memory";
@@ -25,6 +30,10 @@ export interface ShoutPlan {
   targets: number[];
   /** 지금부터 누르기까지(ms) */
   delayMs: number;
+  /** o2 겨루기: 누를 때 보고할 반응 시간(ms, 한 장이 된 때부터). 하한 100ms 이상 */
+  rtMs?: number;
+  /** o2 겨루기: 누를 때 보낼 판 번호(한 장이 된 판). 없으면 그때 화면의 판 */
+  seen?: number;
 }
 
 /** 잡기 창이 닫히기 이만큼 전까지 닿지 못하면 누르지 않는다(ms, 지연·시계 차이 여유) */
@@ -38,9 +47,106 @@ function catchDeadline(
   now: number,
 ): number {
   const since = memory.exposedAt[seat] ?? now;
-  return (
-    since + view.rules.selfWindowMs + view.rules.catchWindowMs - CATCH_MARGIN_MS
-  );
+  const self = view.rules.race ? 0 : view.rules.selfWindowMs;
+  return since + self + view.rules.catchWindowMs - CATCH_MARGIN_MS;
+}
+
+/**
+ * o2 겨루기 계획(docs/42 17-4). 본인 외침·잡기 모두 한 장이 된 때부터 단계별 반응 시간 뒤에 누른다.
+ * 미리 외침은 없다. 반응 시간은 사람 하한(100ms) 아래로 내려가지 않는다
+ */
+function planRace(
+  view: OnecardView,
+  level: OnecardLevel,
+  rng: RngState,
+  memory: OnecardMemory,
+  now: number | undefined,
+): ShoutPlan | null {
+  const me = view.mySeat;
+  const profile = levelInfo(level).shout;
+  const reaction = (range: readonly [number, number], seats: number[]) => {
+    const rt = Math.max(HUMAN_RT_FLOOR_MS, between(rng, range));
+    const known = seats.flatMap((s) => {
+      const t = memory.exposedAt[s];
+      return t === null || t === undefined ? [] : [t];
+    });
+    const at = now ?? (known.length > 0 ? Math.max(...known) : 0);
+    const base = known.length > 0 ? Math.max(...known) : at;
+    const pressAt = Math.max(at, base + rt);
+    const turns = seats.flatMap((s) => {
+      const t = memory.exposedTurn[s];
+      return t === null || t === undefined ? [] : [t];
+    });
+    return {
+      at,
+      pressAt,
+      delayMs: Math.max(0, Math.round(pressAt - at)),
+      rtMs: Math.max(HUMAN_RT_FLOOR_MS, Math.round(pressAt - base)),
+      ...(turns.length > 0 ? { seen: Math.max(...turns) } : {}),
+    };
+  };
+
+  if (
+    memory.marks[me] === "exposed" &&
+    firstTime(memory, `self:${memory.markIds[me]}`) &&
+    nextFloat(rng) < profile.shout
+  ) {
+    const r = reaction(profile.raceSelfMs, [me]);
+    if (catchDeadline(view, memory, me, r.at) >= r.pressAt)
+      return {
+        reason: "self",
+        target: me,
+        targets: [me],
+        delayMs: r.delayMs,
+        rtMs: r.rtMs,
+        ...(r.seen !== undefined ? { seen: r.seen } : {}),
+      };
+  }
+
+  const fresh: number[] = [];
+  for (let seat = 0; seat < view.rules.players; seat++) {
+    if (seat === me || !isActiveSeat(view, seat)) continue;
+    if (
+      memory.marks[seat] === "exposed" &&
+      firstTime(memory, `catch:${seat}:${memory.markIds[seat]}`)
+    )
+      fresh.push(seat);
+  }
+  if (fresh.length > 0 && nextFloat(rng) < profile.catch) {
+    const r = reaction(profile.raceCatchMs, fresh);
+    const targets = fresh.filter(
+      (s) => catchDeadline(view, memory, s, r.at) >= r.pressAt,
+    );
+    if (targets.length > 0)
+      return {
+        reason: "catch",
+        target: targets[0] as number,
+        targets,
+        delayMs: r.delayMs,
+        rtMs: r.rtMs,
+        ...(r.seen !== undefined ? { seen: r.seen } : {}),
+      };
+  }
+
+  for (let seat = 0; seat < view.rules.players; seat++) {
+    if (seat === me || !isActiveSeat(view, seat)) continue;
+    if (
+      memory.marks[seat] === "safe" &&
+      profile.falseShout > 0 &&
+      firstTime(memory, `false:${seat}:${memory.markIds[seat]}`) &&
+      nextFloat(rng) < profile.falseShout
+    ) {
+      const rt = Math.max(HUMAN_RT_FLOOR_MS, between(rng, profile.raceCatchMs));
+      return {
+        reason: "false",
+        target: seat,
+        targets: [seat],
+        delayMs: rt,
+        rtMs: rt,
+      };
+    }
+  }
+  return null;
 }
 
 function between(rng: RngState, [lo, hi]: readonly [number, number]): number {
@@ -73,6 +179,7 @@ export function planShout(
   if (view.phase === "over") return null;
   const me = view.mySeat;
   if (!isActiveSeat(view, me)) return null;
+  if (view.rules.race) return planRace(view, level, rng, memory, now);
   const profile = levelInfo(level).shout;
   const selfMs = view.rules.selfWindowMs;
 
@@ -180,7 +287,18 @@ export function shoutAction(
 ): Action | null {
   if (view.phase === "over" || !isActiveSeat(view, view.mySeat)) return null;
   const me = view.mySeat;
-  const shout: Action = { type: "shout", seen: view.turnNo };
+  // o2: 한 장이 된 판을 본 것으로, 그 판부터 잰 반응 시간을 싣는다(너무 옛 판이면 지금 판)
+  const raceSeen =
+    plan.seen !== undefined && view.turnNo - plan.seen <= STALE_SEEN
+      ? plan.seen
+      : view.turnNo;
+  const shout: Action = view.rules.race
+    ? {
+        type: "shout",
+        seen: raceSeen,
+        rt: Math.max(HUMAN_RT_FLOOR_MS, plan.rtMs ?? plan.delayMs),
+      }
+    : { type: "shout", seen: view.turnNo };
   switch (plan.reason) {
     case "self":
       return memory.marks[me] === "exposed" ? shout : null;

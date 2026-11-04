@@ -24,6 +24,13 @@ export interface ShoutProfile {
   catchAt: readonly [number, number];
   /** 이미 외친 한 장짜리를 잡으려고 누를(헛외침) 확률 */
   falseShout: number;
+  /**
+   * o2 겨루기: 한 장이 된 내가 누르기까지 반응 시간(ms). 사람 하한(100ms) 아래로 내려가지 않는다.
+   * 사람의 보통 반응(250~400ms)을 참고해 고수도 빠른 사람에게는 질 수 있게 둔다
+   */
+  raceSelfMs: readonly [number, number];
+  /** o2 겨루기: 남이 외치지 않고 한 장이 된 것을 보고 누르기까지 반응 시간(ms, 하한 100ms 이상) */
+  raceCatchMs: readonly [number, number];
 }
 
 export interface OnecardLevelInfo {
@@ -46,6 +53,8 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       catch: 0.2,
       catchAt: [0.5, 0.95],
       falseShout: 0.15,
+      raceSelfMs: [450, 900],
+      raceCatchMs: [700, 1600],
     },
   },
   {
@@ -60,6 +69,8 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       catch: 0.5,
       catchAt: [0.25, 0.75],
       falseShout: 0,
+      raceSelfMs: [320, 600],
+      raceCatchMs: [400, 800],
     },
   },
   {
@@ -74,6 +85,8 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
       catch: 0.9,
       catchAt: [0.125, 0.5],
       falseShout: 0,
+      raceSelfMs: [220, 380],
+      raceCatchMs: [260, 420],
     },
   },
 ];
