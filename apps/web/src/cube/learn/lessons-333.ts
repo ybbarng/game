@@ -19,6 +19,248 @@ const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
 
 const SIDES = ["앞", "오른쪽", "뒤", "왼쪽"];
 
+// 「큐브의 조각」에서 따라가는 수와 마무리 해 보기(시험이 엔진으로 자리·정답을 확인한다)
+/** 흰-초록-빨강 꼭짓점을 R U2로 옮기면 위-앞-왼쪽 자리로 간다. 되돌리기 U2 R' */
+export const TRACK_CORNER = "R U2";
+/** 흰-초록 모서리를 F R로 옮기면 위-오른쪽 자리로 간다. 되돌리기 R' F' */
+export const TRACK_EDGE = "F R";
+/** 흰-초록 모서리가 제자리에서 뒤집힘(다른 조각은 가린다) */
+export const FLIPPED_EDGE = "R U' R' F'";
+/** 흰-초록-빨강 꼭짓점이 제자리에서 돌아감 */
+export const TWISTED_CORNER = "R' F'";
+
+/**
+ * 공식보다 먼저: 큐브는 색이 아니라 조각 26개다(2026-11-04 사용자 요청).
+ * 세 종류의 조각을 찾고, 가운데는 움직이지 않고, 조각의 색은 함께 다니고, 제자리는 가운데 색이 정하고,
+ * 같은 자리에서도 방향이 있다는 것을 직접 눌러 보고 돌려 보며 익힌다. 공식은 하나도 외우지 않는다.
+ */
+const pieces: Lesson = {
+  id: "333-pieces",
+  size: 3,
+  title: "큐브의 조각",
+  summary:
+    "큐브는 스티커 54장이 아니라 조각 26개예요. 색이 아니라 조각을 옮겨요.",
+  steps: [
+    {
+      kind: "find",
+      body: "큐브를 스티커 한 장 한 장으로 보지 말고 조각으로 봐요. 면 한가운데 칸은 색이 하나뿐인 「가운데 조각」이에요. 흰 가운데를 눌러 보세요.",
+      mask: "all",
+      find: { piece: "center", colors: ["U"] },
+    },
+    {
+      kind: "find",
+      body: "두 면이 만나는 곳에는 색이 둘 붙은 「모서리 조각」이 있어요. 흰-초록 모서리를 눌러 보세요. 흰 칸을 눌러도 초록 칸을 눌러도 같은 조각이에요.",
+      mask: "all",
+      find: { piece: "edge", colors: ["U", "F"] },
+    },
+    {
+      kind: "find",
+      body: "세 면이 만나는 구석에는 색이 셋 붙은 「꼭짓점 조각」이 있어요. 흰-초록-빨강 꼭짓점을 눌러 보세요.",
+      mask: "all",
+      find: { piece: "corner", colors: ["U", "F", "R"] },
+    },
+    {
+      kind: "find",
+      body: "노란색이 붙은 모서리 조각을 넷 모두 찾아 보세요. 아랫면은 왼쪽 위 펼친 그림에서 누르면 쉬워요.",
+      mask: "all",
+      find: { piece: "edge", has: ["D"] },
+      count: 4,
+    },
+    {
+      kind: "quiz",
+      body: "가운데는 면마다 하나라 여섯 개예요. 모서리는 면과 면이 만나는 선마다 하나, 꼭짓점은 구석마다 하나 있어요. 큐브를 둘러보며 세어 보세요.",
+      mask: "all",
+      quiz: {
+        question: "모서리 조각은 몇 개이고, 색은 몇 개씩 붙어 있나요?",
+        choices: ["8개, 색 셋씩", "12개, 색 둘씩", "24개, 색 하나씩"],
+        answer: 1,
+        why: "선이 열두 개라 모서리도 열두 개, 색은 둘씩이에요. 꼭짓점은 여덟 개이고 색이 셋씩이에요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "가운데 6, 모서리 12, 꼭짓점 8. 큐브 속 한가운데는 축이라 돌아가지 않아요.",
+      mask: "all",
+      quiz: {
+        question: "큐브를 이루는 조각은 모두 몇 개일까요?",
+        choices: ["54개", "27개", "26개"],
+        answer: 2,
+        why: "6 + 12 + 8 = 26개예요. 54는 스티커 수예요. 큐브를 맞춘다는 건 스티커 54장이 아니라 조각 26개를 제자리에 두는 거예요.",
+      },
+    },
+    {
+      kind: "turn",
+      body: "이제 몇 수 돌려 봐요. R U F'을 쳐 보며 면 한가운데 칸을 지켜보세요.",
+      mask: "all",
+      alg: "R U F'",
+    },
+    {
+      kind: "quiz",
+      body: "방금처럼 돌린 큐브예요. 모서리와 꼭짓점은 흩어졌어요. 가운데는 어떻게 됐을까요?",
+      setup: { alg: "R U F'" },
+      mask: "all",
+      quiz: {
+        question: "흰 가운데는 지금 어디 있나요?",
+        choices: ["위 그대로", "앞으로 옮겨 갔어요", "아래로 옮겨 갔어요"],
+        answer: 0,
+        why: "면을 돌려도 가운데는 제자리에서 돌기만 해요. 가운데끼리의 자리는 바뀌지 않아요. 그래서 가운데 색이 그 면의 색이에요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "가운데는 서로 자리가 정해져 있어요. 흰 가운데 맞은편은 언제나 노랑이에요.",
+      mask: "centers",
+      quiz: {
+        question: "초록 가운데의 맞은편은 무슨 색일까요?",
+        choices: ["노랑", "파랑", "빨강"],
+        answer: 1,
+        why: "흰↔노랑, 초록↔파랑, 빨강↔주황이 맞은편이에요. 큐브를 둘러보며 확인해 보세요.",
+      },
+    },
+    {
+      kind: "turn",
+      body: "조각의 색은 함께 다녀요. 흰-초록-빨강 꼭짓점만 보이게 가렸어요. R을 쳐 보며 이 꼭짓점이 어디로 가는지 눈으로 따라가 보세요.",
+      mask: "piece:UFR",
+      alg: "R",
+    },
+    {
+      kind: "find",
+      body: "R을 돌렸어요. 이번에는 가운데만 보여요. 흰-초록-빨강 꼭짓점은 지금 어디 있나요? 눌러 보세요.",
+      setup: { alg: "R" },
+      mask: "centers",
+      find: { piece: "corner", colors: ["U", "F", "R"] },
+    },
+    {
+      kind: "demo",
+      body: `같은 꼭짓점을 ${TRACK_CORNER}로 옮겨 봐요. 세 색이 늘 붙어서 한 조각으로 움직여요.`,
+      alg: TRACK_CORNER,
+      mask: "piece:UFR",
+    },
+    {
+      kind: "find",
+      body: `${TRACK_CORNER}을 돌렸어요. 흰-초록-빨강 꼭짓점은 지금 어디 있나요? 막히면 「보통」으로 색을 볼 수 있어요.`,
+      setup: { alg: TRACK_CORNER },
+      mask: "centers",
+      find: { piece: "corner", colors: ["U", "F", "R"] },
+    },
+    {
+      kind: "demo",
+      body: `이번엔 흰-초록 모서리를 ${TRACK_EDGE}로 옮겨요. 두 색은 절대 떨어지지 않아요.`,
+      alg: TRACK_EDGE,
+      mask: "piece:UF",
+    },
+    {
+      kind: "find",
+      body: `${TRACK_EDGE}을 돌렸어요. 흰-초록 모서리는 지금 어디 있나요? 눌러 보세요.`,
+      setup: { alg: TRACK_EDGE },
+      mask: "centers",
+      find: { piece: "edge", colors: ["U", "F"] },
+    },
+    {
+      kind: "quiz",
+      body: "앞에서 따라간 꼭짓점과 모서리가 어디로 갔는지 떠올려 보세요.",
+      setup: { alg: "R U F" },
+      mask: "all",
+      quiz: {
+        question: "흰-초록-빨강 꼭짓점이 갈 수 있는 자리는 어디일까요?",
+        choices: [
+          "꼭짓점 자리 여덟 곳 중 하나",
+          "모서리 자리에도 갈 수 있어요",
+          "아무 자리나 갈 수 있어요",
+        ],
+        answer: 0,
+        why: "꼭짓점은 꼭짓점 자리로만, 모서리는 모서리 자리로만 가요. 어떻게 돌려도 섞이지 않아요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "조각마다 돌아갈 「제자리」가 있어요. 가운데는 움직이지 않으니, 제자리는 조각의 색과 같은 가운데들이 정해요.",
+      setup: { alg: "R U F" },
+      mask: "centers",
+      quiz: {
+        question: "흰-빨강 모서리의 제자리는 어디일까요?",
+        choices: [
+          "흰 가운데와 빨강 가운데 사이",
+          "흰 가운데와 초록 가운데 사이",
+          "지금 그 조각이 있는 곳",
+        ],
+        answer: 0,
+        why: "모서리의 두 색과 같은 가운데 둘 사이가 제자리예요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "그럼 초록-주황 모서리의 제자리는 어디일까요? 조각이 아니라 자리를 찾아요. 그 자리의 칸을 눌러 보세요.",
+      setup: { alg: "R U F" },
+      mask: "centers",
+      find: { at: ["F", "L"] },
+    },
+    {
+      kind: "find",
+      body: "노랑-파랑-빨강 꼭짓점의 제자리를 눌러 보세요. 세 가운데가 만나는 구석이에요.",
+      setup: { alg: "R U F" },
+      mask: "centers",
+      find: { at: ["D", "B", "R"] },
+    },
+    {
+      kind: "quiz",
+      body: "같은 자리에 있어도 뒤집혀 있을 수 있어요. 흰-초록 모서리만 보이게 가렸어요. 흰 가운데와 초록 가운데를 보며 판단해요.",
+      setup: { alg: FLIPPED_EDGE },
+      mask: "piece:UF",
+      quiz: {
+        question: "흰-초록 모서리는 지금 어떤 상태인가요?",
+        choices: ["제자리, 바른 방향", "제자리지만 뒤집혔어요", "다른 자리"],
+        answer: 1,
+        why: "흰 가운데와 초록 가운데 사이에 있지만 흰 칸이 초록 면을 봐요. 모서리는 한 자리에서 두 가지 방향이 있어요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "꼭짓점도 제자리에서 돌아가 있을 수 있어요. 흰-초록-빨강 꼭짓점이 제자리에 있지만 흰색이 위를 보지 않아요.",
+      setup: { alg: TWISTED_CORNER },
+      mask: "piece:UFR",
+      quiz: {
+        question: "꼭짓점은 한 자리에서 몇 가지 방향으로 놓일 수 있을까요?",
+        choices: ["두 가지", "세 가지", "네 가지"],
+        answer: 1,
+        why: "흰색이 위, 앞, 오른쪽을 보는 세 가지예요. 바른 방향은 그중 하나뿐이에요.",
+      },
+    },
+    {
+      kind: "try",
+      body: "흰-초록-빨강 꼭짓점만 보여요. 이 조각을 제자리(흰·초록·빨강 가운데 사이)로, 흰색이 위를 보게 돌려 놓아 보세요. 다른 조각은 신경 쓰지 않아도 돼요.",
+      setup: { alg: TRACK_CORNER },
+      alg: "U2 R'",
+      goal: "piece:UFR",
+      mask: "piece:UFR",
+    },
+    {
+      kind: "try",
+      body: "이번엔 흰-초록 모서리예요. 흰 가운데와 초록 가운데 사이로, 흰 칸이 위를 보게 돌려 놓아 보세요.",
+      setup: { alg: TRACK_EDGE },
+      alg: "R' F'",
+      goal: "piece:UF",
+      mask: "piece:UF",
+    },
+    {
+      kind: "quiz",
+      body: "앞으로 배울 공식은 모두 「어떤 조각을 어디로 옮기는가」예요. 스티커 색이 아니라 조각을 보고 제자리·바른 방향으로 옮겨요.",
+      mask: "all",
+      quiz: {
+        question:
+          "다음 단원들에서 배울 「흰 십자」는 무엇을 옮기는 단계일까요?",
+        choices: [
+          "흰색이 붙은 모서리 조각 넷을 제자리로",
+          "흰 스티커 아무거나 위로",
+          "흰색이 붙은 꼭짓점 넷을 제자리로",
+        ],
+        answer: 0,
+        why: "흰 십자는 흰 모서리 조각 넷을 흰 가운데와 옆 가운데 사이(제자리)로, 흰 칸이 위를 보게 옮기는 단계예요.",
+      },
+    },
+  ],
+};
+
 const notation: Lesson = {
   id: "333-notation",
   size: 3,
@@ -118,7 +360,7 @@ const whiteCross: Lesson = {
   steps: [
     {
       kind: "find",
-      body: "면 가운데 칸은 움직이지 않아요. 그래서 가운데 색이 그 면의 색이에요. 흰 면을 위로 들고, 흰색과 다른 색이 한 칸씩 붙은 모서리 조각 넷을 흰 가운데 둘레로 모아요. 먼저 흰-초록 모서리를 찾아 눌러 보세요.",
+      body: "앞에서 본 것처럼 가운데는 움직이지 않고, 모서리 조각의 제자리는 두 가운데 사이예요. 흰 면을 위로 들고, 흰색이 붙은 모서리 조각 넷을 흰 가운데 둘레의 제자리로 옮겨요. 먼저 흰-초록 모서리를 찾아 눌러 보세요.",
       setup: { alg: "F2" },
       mask: "cross",
       find: { piece: "edge", colors: ["U", "F"] },
@@ -224,7 +466,7 @@ const firstCorners: Lesson = {
     },
     {
       kind: "find",
-      body: "흰색이 붙은 꼭짓점을 윗층에서 찾아요. 그 꼭짓점의 다른 두 색을 보고, 넣을 자리(두 색 가운데 사이 아래) 바로 위로 윗면을 돌려 옮겨요. 그 자리를 앞-오른쪽으로 오게 들고 R U R' U'을 맞을 때까지 되풀이해요. 윗층의 흰 꼭짓점을 눌러 보세요.",
+      body: "흰색이 붙은 꼭짓점을 윗층에서 찾아요. 앞에서 본 것처럼 꼭짓점의 제자리는 세 색 가운데가 만나는 구석이에요. 다른 두 색을 보고, 넣을 자리 바로 위로 윗면을 돌려 옮겨요. 그 자리를 앞-오른쪽으로 오게 들고 R U R' U'을 맞을 때까지 되풀이해요. 윗층의 흰 꼭짓점을 눌러 보세요.",
       setup: flip(SEXY),
       mask: "first-layer",
       find: { piece: "corner", colors: ["U", "F", "L"] },
@@ -706,8 +948,10 @@ export const BEGINNER_333: Course = {
   id: "333-beginner",
   size: 3,
   title: "3×3 처음 맞추기(층별)",
-  summary: "표기부터 마지막 층까지 여덟 단원. 공식 여덟 개로 끝까지 맞춰요.",
+  summary:
+    "조각과 표기부터 마지막 층까지 아홉 단원. 공식 여덟 개로 끝까지 맞춰요.",
   lessons: [
+    pieces,
     notation,
     whiteCross,
     firstCorners,

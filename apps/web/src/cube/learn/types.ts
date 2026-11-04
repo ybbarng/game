@@ -10,6 +10,9 @@ export type CubeSize = 2 | 3 | 4 | 5;
  */
 export const GOALS = {
   solved: "다 맞춤",
+  // 조각 하나(3×3 「큐브의 조각」). 이름은 엔진 pieceName(닿은 면 U·D, F·B, R·L 차례)
+  "piece:UFR": "흰-초록-빨강 꼭짓점이 제자리·바른 방향",
+  "piece:UF": "흰-초록 모서리가 제자리·바른 방향",
   "white-cross": "흰 십자(흰 모서리 넷이 옆 가운데 색까지 맞음)",
   cross: "십자(CFOP: 흰 모서리 넷, 흰 면이 아래)",
   "first-layer": "첫 층(흰 십자 + 흰 꼭짓점 넷)",
@@ -55,6 +58,9 @@ export type GoalName = keyof typeof GOALS;
  * 엔진에서 구현할 것: 스티커마다 「보임 / 까맣게 / 회색」을 돌려주는 함수(docs/47 2-3).
  */
 export const MASKS = {
+  centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
+  "piece:UF": "흰-초록 모서리와 가운데만 보임",
   cross: "십자 모서리와 가운데만 보임",
   "first-layer": "첫 층(십자 + 꼭짓점)과 가운데만 보임",
   f2l: "아래 두 층과 가운데만 보임",
@@ -139,11 +145,14 @@ export type PieceType = "center" | "edge" | "corner";
  * - piece: 그 종류 아무 조각
  * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
  * - has: 그 색이 붙어 있는 조각(예: ["D"] = 노란색이 붙은 조각 아무거나)
+ * - at: 조각이 아니라 자리. 그 면들(가운데 기준)에 닿은 자리(예: ["U","R"] = 흰 가운데와 빨강 가운데 사이).
+ *   지금 그 자리에 어떤 조각이 있든 맞다
  */
 export interface FindTarget {
   piece?: PieceType;
   colors?: FaceLetter[];
   has?: FaceLetter[];
+  at?: FaceLetter[];
 }
 
 /** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */

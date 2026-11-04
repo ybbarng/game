@@ -155,6 +155,23 @@ export function goalMet(goal: GoalName, raw: Cube, size: 2 | 3 = 3): boolean {
     }
   }
   const c = alignByCenters(raw);
+  if (goal.startsWith("piece:")) {
+    // 조각 하나: 그 이름 자리(U y+, R x+, F z+ …)의 조각이 맞음
+    const pos = [0, 0, 0];
+    const AXIS: Record<string, [number, number]> = {
+      U: [1, 2],
+      D: [1, -2],
+      R: [0, 2],
+      L: [0, -2],
+      F: [2, 2],
+      B: [2, -2],
+    };
+    for (const ch of goal.slice(6)) {
+      const [axis, v] = AXIS[ch] as [number, number];
+      pos[axis] = v;
+    }
+    return check(c, (p) => p.pos === pos.join(","), pieceSolved);
+  }
   switch (goal) {
     case "solved":
       return check(c, () => true, pieceSolved);

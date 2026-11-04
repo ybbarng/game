@@ -6,6 +6,7 @@ import {
   cubeTopology,
   faceColors,
   parseMoves,
+  pieceFaces,
   solvedCube,
 } from "@game/cube-engine";
 import { type PuzzleState, statesEqual } from "@game/puzzle-core";
@@ -95,7 +96,28 @@ export function findHit(
     if (want.some((c, i) => c !== got.colors[i])) return null;
   }
   if (target.has?.some((c) => !got.colors.includes(FACE_INDEX[c]))) return null;
+  if (target.at) {
+    const want = target.at.map((c) => FACE_INDEX[c]).sort((a, b) => a - b);
+    const faces = pieceFaces(n, got.piece).sort((a, b) => a - b);
+    if (want.length !== faces.length) return null;
+    if (want.some((c, i) => c !== faces[i])) return null;
+  }
   return got.piece;
+}
+
+/** 칸이 든 자리가 닿은 면의 가운데 색(면 번호). 자리 찾기에서 틀렸을 때 「그 자리는 ○-○ 가운데 사이」로 알린다 */
+export function slotCenterColors(
+  n: number,
+  state: PuzzleState,
+  sticker: number,
+): number[] {
+  const topo = cubeTopology(n);
+  const s = topo.stickers[sticker];
+  if (!s || n % 2 === 0) return [];
+  const colors = faceColors(n, state);
+  const nn = n * n;
+  const mid = (nn - 1) / 2;
+  return pieceFaces(n, s.piece).map((f) => colors[f * nn + mid] as number);
 }
 
 /** 누른 칸이 틀렸을 때 부드럽게 알려 줄 말(그 칸이 무엇이었는지) */
@@ -203,7 +225,10 @@ export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
     case "find": {
       if (
         !step.find ||
-        (!step.find.piece && !step.find.colors && !step.find.has)
+        (!step.find.piece &&
+          !step.find.colors &&
+          !step.find.has &&
+          !step.find.at)
       )
         return "찾을 조각이 없다";
       const start = setupState(n, step.setup);

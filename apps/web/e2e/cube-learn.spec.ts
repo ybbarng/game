@@ -172,6 +172,43 @@ test("배우기: 흰 십자 단원은 조각 찾기와 고르기 문제로 시�
   await shot(page, "learn-white-cross-quiz", info.project.name);
 });
 
+test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn");
+  // 3×3 처음 맞추기의 첫 단원
+  await expect(
+    page.locator('[data-course="333-beginner"] [data-lesson]').first(),
+  ).toHaveAttribute("data-lesson", "333-pieces");
+
+  await page.goto("/cube/learn?lesson=333-pieces");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  const find = page.locator('[data-act="find"]');
+  // 흰 가운데 찾기: 모서리 칸(위 앞 가운데)은 틀림, 윗면 한가운데(칸 4)가 맞음
+  await page.locator('[data-net-cell="7"]').click();
+  await expect(find.getByRole("status")).toContainText("모서리 조각");
+  await page.locator('[data-net-cell="4"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-find", info.project.name);
+
+  // 조각 따라가기: R을 돌린 뒤 가운데만 보이게 가린 큐브에서 흰-초록-빨강 꼭짓점 찾기
+  await page
+    .locator('[aria-label="단계"] li')
+    .nth(10)
+    .locator("button")
+    .click();
+  await expect(section).toHaveAttribute("data-step", "10");
+  await expect(section).toContainText("R을 돌렸어요");
+  // 원래 자리(위-앞-오른쪽, 칸 8)에는 이제 다른 꼭짓점이 있다
+  await page.locator('[data-net-cell="8"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  // R 뒤에는 위-뒤-오른쪽(윗면 칸 2)
+  await page.locator('[data-net-cell="2"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-track", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {
