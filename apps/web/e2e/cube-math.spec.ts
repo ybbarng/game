@@ -23,7 +23,9 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
     "배치가 세로 휴대폰과 같다",
   );
   await page.goto("/cube");
-  const link = page.locator("[data-cube-group='배우기'] a[href='/cube/math']");
+  const link = page.locator(
+    "[data-cube-group='더 알아보기'] a[href='/cube/math']",
+  );
   await expect(link).toBeVisible();
   if (SAVE_SCREENSHOTS)
     await page.screenshot({

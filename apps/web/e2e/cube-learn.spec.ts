@@ -157,11 +157,18 @@ test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", asy
   const size3 = page.locator('[data-course-size="3"]');
   await expect(size3.locator('[data-course="roux"]')).toBeVisible();
   await expect(size3.locator('[data-course="zz"]')).toBeVisible();
+  // 크기 탭: 4×4를 고르면 4×4 과정만
+  await page.locator('[data-size-tab="4"]').click();
   await expect(
     page.locator('[data-course-size="4"] [data-course="444-yau"]'),
   ).toBeVisible();
+  await expect(page.locator('[data-course-size="3"]')).toHaveCount(0);
+  await page.locator('[data-size-tab="3"]').click();
 
-  // ZZ 모서리 방향: 모서리만 보이는 가리기로 해 보기
+  // 첫 과정이 아닌 과정의 단원 목록은 접혀 있다. 펼쳐서 ZZ 모서리 방향으로
+  const zz = page.locator('[data-course-lessons="zz"]');
+  await expect(zz).not.toHaveAttribute("open", "");
+  await zz.locator("summary").click();
   await page.locator('[data-lesson="zz-eo"]').click();
   await goToStep(page, "try");
   await inputReady(page);
