@@ -182,7 +182,7 @@ export function LiveCube({
     <div className={className} data-practice-cube>
       {failed ? (
         <p className="p-4 text-center text-sm text-white/60">
-          이 기기에서는 3D를 그릴 수 없습니다.
+          이 기기에서는 3D를 그릴 수 없어요. 펼친 그림으로 보여 드려요.
         </p>
       ) : (
         <canvas

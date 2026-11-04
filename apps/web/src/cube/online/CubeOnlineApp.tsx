@@ -132,7 +132,10 @@ export function CubeOnlineApp() {
         data-cube-online={state?.status ?? phase}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">온라인 대결</h1>
@@ -148,7 +151,8 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 대결은 키보드가 있는 기기에서만 참가할 수 있습니다.
+            온라인 대결은 키보드가 있는 기기에서만 참가할 수 있어요. 컴퓨터나
+            키보드를 연결한 태블릿으로 들어와 주세요.
           </p>
         )}
 
@@ -175,7 +179,7 @@ export function CubeOnlineApp() {
         {phase === "connecting" && <ConnectingNotice isHost={isHost} />}
         {phase === "error" && (
           <p className="text-center text-red-300 text-sm">
-            연결하지 못했습니다.
+            연결하지 못했어요. 잠시 뒤 다시 들어와 보세요.
           </p>
         )}
         {room?.hostLeft && (
@@ -193,13 +197,17 @@ export function CubeOnlineApp() {
               <Lobby room={room} roomCode={roomCode} />
             ) : (
               <>
-                <RaceView room={room} version={version} />
+                <RaceView
+                  room={room}
+                  version={version}
+                  resultActions={<NextActions room={room} />}
+                />
                 <Standings room={room} />
               </>
             )}
             <section className="flex flex-col gap-1">
               <h2 className="font-semibold text-sm">채팅</h2>
-              <ChatBox mySeat={0} />
+              <ChatBox mySeat={0} emptyText="아직 아무 말도 없어요" />
             </section>
           </>
         )}
@@ -411,13 +419,49 @@ function Field({
   );
 }
 
+/**
+ * 판이 끝난 뒤 다음 길(결과 상자 안). 방장은 「다음 판」·「새 경기」, 손님은 기다린다는 글.
+ * 예전에는 종합 순위 옆에 있어 휴대폰·작은 창에서 화면 밖으로 밀렸다(2026-11-04 점검)
+ */
+function NextActions({ room }: { room: CubeRoom }) {
+  const state = room.state;
+  if (!state || (state.status !== "between" && state.status !== "over"))
+    return null;
+  if (!room.isHost)
+    return (
+      <span className="text-white/60 text-xs">
+        {state.status === "over"
+          ? "경기가 끝났어요. 방장이 새 경기를 열기를 기다리는 중"
+          : "방장이 다음 판을 열기를 기다리는 중"}
+      </span>
+    );
+  return state.status === "between" ? (
+    <button
+      type="button"
+      data-cube-next
+      onClick={() => room.startRound()}
+      className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
+    >
+      다음 판
+    </button>
+  ) : (
+    <button
+      type="button"
+      data-cube-new-match
+      onClick={() => room.newMatch()}
+      className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
+    >
+      새 경기(대기실로)
+    </button>
+  );
+}
+
 function Standings({ room }: { room: CubeRoom }) {
   const state = room.state;
   if (!state || room.rounds.length === 0) return null;
   const s = state.settings;
   const players = state.race?.players ?? state.players.map((p) => p.id);
   const rows = standings(s.format, players, room.rounds);
-  const host = room.isHost;
   return (
     <section
       className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3"
@@ -429,25 +473,6 @@ function Standings({ room }: { room: CubeRoom }) {
           {s.format === "firstTo" ? `(${s.target}판)` : ""}
           {state.status === "over" ? " · 경기 끝" : ""}
         </h2>
-        {host && state.status === "between" && (
-          <button
-            type="button"
-            data-cube-next
-            onClick={() => room.startRound()}
-            className="ml-auto rounded-lg bg-sky-500 px-3 py-1 font-semibold text-black text-sm"
-          >
-            다음 판
-          </button>
-        )}
-        {host && state.status === "over" && (
-          <button
-            type="button"
-            onClick={() => room.newMatch()}
-            className="ml-auto rounded-lg bg-sky-500 px-3 py-1 font-semibold text-black text-sm"
-          >
-            새 경기(대기실로)
-          </button>
-        )}
       </div>
       <ol className="flex flex-col gap-1 text-sm">
         {rows.map((r, i) => (

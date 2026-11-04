@@ -132,10 +132,13 @@ export function createJobRunner(opts: JobRunnerOptions): {
       }
       const id = nextId++;
       pending.set(id, p);
-      // 답 없이 멈춘 워커: 끝내고 남은 일은 화면 스레드에서(다음 일은 새 워커가 받는다)
-      p.stopLimit = opts.clock.after(limits[job.kind], () => {
-        if (pending.has(id)) abandon(target);
-      });
+      // 답 없이 멈춘 워커: 끝내고 남은 일은 화면 스레드에서(다음 일은 새 워커가 받는다).
+      // 상한이 무한이면 걸지 않는다(화면 시험, 아래 `noJobLimit`)
+      const limit = limits[job.kind];
+      if (Number.isFinite(limit))
+        p.stopLimit = opts.clock.after(limit, () => {
+          if (pending.has(id)) abandon(target);
+        });
       try {
         target.postMessage({ id, job });
       } catch {
@@ -153,7 +156,27 @@ function spawn(): WorkerLike | null {
   return new Worker(new URL("./cube-worker", import.meta.url));
 }
 
-const runner = createJobRunner({ spawn, clock: realClock });
+/**
+ * 화면 시험은 Playwright 가짜 시계를 멈출 때 시각을 크게 건너뛴다(e2e/cube.ts `pauseClock`). 그때 걸려 있던
+ * 시간 상한이 터지면 멀쩡한 워커를 버리게 되므로, 시험은 `window.__cubeNoJobLimit`으로 상한을 끈다.
+ * 상한은 멈춘 워커를 잡는 안전장치라 시험에서는 시험 시간 상한이 그 일을 한다
+ */
+function noJobLimit(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    (window as { __cubeNoJobLimit?: boolean }).__cubeNoJobLimit === true
+  );
+}
+
+const NO_LIMITS = Object.fromEntries(
+  Object.keys(JOB_LIMIT_MS).map((k) => [k, Number.POSITIVE_INFINITY]),
+) as Record<CubeJob["kind"], number>;
+
+const runner = createJobRunner({
+  spawn,
+  clock: realClock,
+  ...(noJobLimit() ? { limits: NO_LIMITS } : {}),
+});
 const request = runner.request;
 
 /** 대회 규칙 섞기(종목·씨앗). 3×3·2×2는 처음 부를 때 표를 만드느라 몇 초 걸릴 수 있다 */

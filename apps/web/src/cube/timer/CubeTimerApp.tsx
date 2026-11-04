@@ -3,7 +3,6 @@
 import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { BackToGames } from "@/components/BackToGames";
 import { cn } from "@/lib/cn";
 
 import {
@@ -308,7 +307,12 @@ export function CubeTimerApp() {
     >
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 lg:py-6">
         <header className="flex flex-wrap items-center gap-3">
-          <BackToGames />
+          <a
+            href="/cube"
+            className="inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
+            ← 큐브
+          </a>
           <h1 className="font-bold text-xl">큐브 타이머</h1>
           {saveFailed && (
             <span
@@ -316,7 +320,7 @@ export function CubeTimerApp() {
               className="text-amber-300 text-sm"
               data-cube-save-failed
             >
-              저장하지 못했습니다.
+              저장하지 못했어요.
             </span>
           )}
         </header>
@@ -339,6 +343,7 @@ export function CubeTimerApp() {
               onNext={() => nextScramble(event)}
             />
             <TimerFace
+              waiting={!scramble && phase === "idle"}
               view={view}
               blind={info.blind}
               hideRunning={book.settings.hideRunning}
@@ -373,10 +378,10 @@ export function CubeTimerApp() {
                 try {
                   const next = importBook(latest.current.book, text);
                   update(() => next);
-                  setMessage("가져왔습니다.");
+                  setMessage("가져왔어요.");
                 } catch (err) {
                   setMessage(
-                    err instanceof Error ? err.message : "가져오지 못했습니다.",
+                    err instanceof Error ? err.message : "가져오지 못했어요.",
                   );
                 }
               }}
@@ -481,14 +486,22 @@ function ScrambleBox({
               </span>
             ))
           : failed
-            ? "섞기를 만들지 못했습니다."
+            ? "섞기를 만들지 못했어요. 「다음 섞기」를 눌러 보세요."
             : "섞는 중…"}
       </p>
-      {scramble && (
-        <div className="flex justify-center">
+      {/* 섞기가 나오기 전에도 펼친 그림 자리를 잡아 둔다(나온 뒤 아래 누름 자리가 밀리지 않게) */}
+      <div className="flex justify-center">
+        {scramble ? (
           <CubeNet n={n} scramble={scramble.text} />
-        </div>
-      )}
+        ) : (
+          <div
+            aria-hidden
+            data-cube-net-placeholder
+            className="w-full max-w-xs animate-pulse rounded-lg bg-white/5 sm:max-w-md"
+            style={{ aspectRatio: `${4 * n + 1.1} / ${3 * n + 0.8}` }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -570,12 +583,16 @@ interface FaceProps {
 }
 
 function TimerFace({
+  waiting = false,
   view,
   hideRunning,
   onPointerDown,
   onPointerUp,
   onPointerCancel,
-}: FaceProps) {
+}: FaceProps & {
+  /** 섞기를 만드는 중이라 누름을 받지 않는다 */
+  waiting?: boolean;
+}) {
   const { text, tone, sub } = faceText(view, hideRunning, 0);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: 휴대폰 길게 누르기 자리다. 키보드(스페이스바)는 창 전체에서 받는다
@@ -586,17 +603,26 @@ function TimerFace({
       onPointerCancel={onPointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       data-cube-face
+      data-cube-face-waiting={waiting ? "" : undefined}
+      aria-disabled={waiting || undefined}
     >
       <div
         className={cn(
           "font-mono font-bold text-6xl tabular-nums sm:text-8xl",
           tone,
+          waiting && "opacity-30",
         )}
         data-cube-time
       >
         {text}
       </div>
-      {sub && <div className="text-white/60">{sub}</div>}
+      {waiting ? (
+        <div className="text-sky-200/80 text-sm" data-cube-face-hint>
+          섞는 중이에요. 섞기가 나오면 시작할 수 있어요.
+        </div>
+      ) : (
+        sub && <div className="text-white/60">{sub}</div>
+      )}
     </div>
   );
 }
@@ -741,7 +767,7 @@ function SolveList({
   if (solves.length === 0)
     return (
       <p className="rounded-xl bg-white/5 p-3 text-sm text-white/50">
-        아직 기록이 없습니다.
+        아직 기록이 없어요. 한 번 재면 여기에 쌓여요.
       </p>
     );
   const list = solves.map((s, i) => ({ s, no: i + 1 })).reverse();
@@ -890,6 +916,7 @@ function SettingsPanel({
     <label className="flex items-center gap-2">
       <input
         type="checkbox"
+        className="size-4 shrink-0 accent-sky-400"
         checked={s[key]}
         onChange={(e) => onChange({ [key]: e.target.checked })}
       />
@@ -903,8 +930,10 @@ function SettingsPanel({
         <summary className="cursor-pointer text-white/70">시간 규칙</summary>
         <ul className="mt-2 list-disc space-y-1.5 break-keep pl-5 text-white/85">
           <li>
-            섞은 뒤 15초 살펴보기가 있어요. 이때는 보기만 하고, 면을 돌리면 그
-            순간 시간이 시작돼요. 8초·12초에 알림 소리가 나요.
+            섞은 큐브를 받으면 15초 살펴보기가 있어요. 이때는 큐브를 들고 보기만
+            하고 면은 돌리지 않아요. 준비되면 스페이스바(휴대폰은 화면)를 누르고
+            있다가 초록이 되면 떼요. 떼는 순간 시간이 시작돼요(대회 타이머에서
+            두 손을 떼는 것과 같아요). 8초·12초에 알림 소리가 나요.
           </li>
           <li>
             15초를 넘겨 시작하면 +2초, 17초를 넘기면 DNF(기록 없음)예요. 아래

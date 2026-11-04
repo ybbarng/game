@@ -57,7 +57,10 @@ export function CubeMathApp() {
         data-cube-math={card.id}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-xl">큐브의 수학</h1>
@@ -73,7 +76,7 @@ export function CubeMathApp() {
               onClick={() => go(i)}
               aria-current={i === index ? "step" : undefined}
               className={cn(
-                "rounded-lg px-2 py-1 text-xs",
+                "min-h-8 rounded-lg px-2.5 py-1 text-xs",
                 i === index ? "bg-sky-500/30 font-semibold" : "bg-white/5",
               )}
             >

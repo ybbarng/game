@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BackToGames } from "@/components/BackToGames";
 import { MadeWith } from "@/components/brand/MadeWith";
+
 import { cn } from "@/lib/cn";
+import { loadLearn } from "../learn/progress";
 import { CubeHero } from "./CubeHero";
 
 /**
  * 큐브 첫 화면(`/cube`). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 아래에는 고를 것을
- * 묶음(맞추기·대결·배우기·실물 큐브)으로 나눈 2열 격자. 항목은 아이콘과 짧은 이름만 둔다
+ * 묶음 여섯(맞추기·대결·배우기·연습·더 알아보기·실물 큐브)으로 나눈 2열 격자. 항목은 아이콘과 짧은 이름만 둔다
  * (고를 것이 많아 무엇부터 볼지 헷갈리지 않게, docs/47 0절 2026-11-04).
  */
 
@@ -30,62 +33,102 @@ interface Group {
   items: Item[];
 }
 
-const GROUPS: Group[] = [
-  {
-    title: "맞추기",
-    items: [
-      {
-        icon: "🧊",
-        title: "혼자 맞추기",
-        href: "/cube/solo",
-        // 한 줄 전체로 두면 블라인드 옆 칸이 비어 어색했다(2026-11-04). 나란히 두고 색으로만 강조
-        tone: "sky",
-      },
-      { icon: "🙈", title: "블라인드", href: "/cube/blind" },
-    ],
-  },
-  {
-    title: "대결",
-    items: [
-      { icon: "🏁", title: "친구와 대결", href: "/cube/online" },
-      { icon: "🤖", title: "컴퓨터와 대결", href: "/cube/vs" },
-    ],
-  },
-  {
-    title: "배우기",
-    items: [
-      {
-        icon: "👋",
-        title: "처음이라면",
-        href: "/cube/intro",
-        tone: "amber",
-        attr: "data-cube-intro-link",
-      },
-      { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
-      { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
-      { icon: "🔢", title: "큐브의 수학", href: "/cube/math" },
-    ],
-  },
-  {
-    // 배우기에 다 넣으면 여덟 칸이라 손을 익히는 것을 따로 묶는다(2026-11-04)
-    title: "연습",
-    items: [
-      { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
-      { icon: "✚", title: "십자 훈련", href: "/cube/train/cross" },
-      { icon: "📒", title: "내 공식", href: "/cube/algs" },
-      { icon: "🎨", title: "패턴 만들기", href: "/cube/patterns" },
-    ],
-  },
-  {
-    title: "실물 큐브",
-    items: [
-      { icon: "⏱", title: "타이머", href: "/cube/timer" },
-      { icon: "✋", title: "핑거 트릭", href: "/cube/fingers" },
-    ],
-  },
-];
+/** 배우기 묶음 첫 칸: 처음 온 사람은 「처음이라면」, 진도가 있으면 그 자리가 「이어서 배우기: ○○」 */
+const FIRST_TIME: Item = {
+  icon: "👋",
+  title: "처음이라면",
+  href: "/cube/intro",
+  tone: "amber",
+  span: true,
+  attr: "data-cube-intro-link",
+};
+
+/**
+ * 묶음 여섯(2026-11-04 점검 뒤): 맞추기 → 대결 → 배우기 → 연습 → 더 알아보기 → 실물 큐브. 강조는 배우기 첫 칸 하나뿐
+ * (처음 온 사람이 못 하는 「혼자 맞추기」와 함께 빛나 길이 갈렸다). 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다
+ */
+function groups(learnFirst: Item): Group[] {
+  return [
+    {
+      title: "맞추기",
+      items: [
+        { icon: "🧊", title: "혼자 맞추기", href: "/cube/solo" },
+        { icon: "🙈", title: "블라인드", href: "/cube/blind" },
+      ],
+    },
+    {
+      title: "대결",
+      items: [
+        { icon: "🏁", title: "친구와 대결", href: "/cube/online" },
+        { icon: "🤖", title: "컴퓨터와 대결", href: "/cube/vs" },
+      ],
+    },
+    {
+      title: "배우기",
+      items: [
+        learnFirst,
+        { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
+        { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
+      ],
+    },
+    {
+      title: "연습",
+      items: [
+        { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
+        { icon: "✚", title: "십자 훈련", href: "/cube/train/cross" },
+        { icon: "📒", title: "내 공식", href: "/cube/algs", span: true },
+      ],
+    },
+    {
+      // 재미로 읽고 만들어 보는 것(배우기 다음 차례로 오해하지 않게 따로, 2026-11-04 점검)
+      title: "더 알아보기",
+      items: [
+        { icon: "🔢", title: "큐브의 수학", href: "/cube/math" },
+        { icon: "🎨", title: "패턴 만들기", href: "/cube/patterns" },
+      ],
+    },
+    {
+      title: "실물 큐브",
+      items: [
+        { icon: "⏱", title: "타이머", href: "/cube/timer" },
+        { icon: "✋", title: "핑거 트릭", href: "/cube/fingers" },
+      ],
+    },
+  ];
+}
+
+/** 진도(이 기기)의 마지막 단원 → 「이어서 배우기」 칸. 단원 자료는 첫 화면 꾸러미에 싣지 않게 불러온다 */
+function useContinueItem(): Item | null {
+  const [item, setItem] = useState<Item | null>(null);
+  useEffect(() => {
+    const last = loadLearn().last;
+    if (!last) return;
+    let live = true;
+    import("../learn").then(({ COURSES }) => {
+      if (!live) return;
+      const lesson = COURSES.flatMap((c) => c.lessons).find(
+        (l) => l.id === last,
+      );
+      if (lesson)
+        setItem({
+          icon: "▶️",
+          title: `이어서 배우기: ${lesson.title}`,
+          href: `/cube/learn?lesson=${lesson.id}`,
+          tone: "amber",
+          span: true,
+          attr: "data-cube-continue",
+        });
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return item;
+}
 
 export function CubeHome() {
+  const continueItem = useContinueItem();
+  const GROUPS = groups(continueItem ?? FIRST_TIME);
   return (
     <main
       data-game="cube"
@@ -113,7 +156,7 @@ export function CubeHome() {
                   href={item.href}
                   {...(item.attr ? { [item.attr]: "" } : {})}
                   className={cn(
-                    "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-3 transition",
+                    "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-3 transition active:scale-[0.98]",
                     item.wide && "col-span-2 justify-center py-3.5",
                     item.span && "col-span-2",
                     !item.tone &&

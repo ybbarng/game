@@ -350,6 +350,7 @@ function SeeDrill({
         <label className="ml-2 flex items-center gap-1.5">
           <input
             type="checkbox"
+            className="size-4 shrink-0 accent-sky-400"
             checked={showCube}
             onChange={(e) => setShowCube(e.target.checked)}
           />

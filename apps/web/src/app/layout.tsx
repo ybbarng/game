@@ -5,6 +5,7 @@ import { SITE } from "@/components/brand/brand";
 import { LeaveConfirm } from "@/components/LeaveConfirm";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { StoreHydration } from "@/components/StoreHydration";
+import { ConsoleEgg } from "@/console-egg/ConsoleEgg";
 
 import { cardCondensed, cardSerif } from "./fonts";
 import "./globals.css";
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <LeaveConfirm />
         <ServiceWorker />
+        <ConsoleEgg />
       </body>
     </html>
   );

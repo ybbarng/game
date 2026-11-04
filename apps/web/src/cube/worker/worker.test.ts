@@ -49,7 +49,7 @@ class FakeWorker implements WorkerLike {
   }
 }
 
-function setup() {
+function setup(limits?: Record<CubeJob["kind"], number>) {
   const clock = new ManualClock();
   const workers: FakeWorker[] = [];
   const inline: CubeJob[] = [];
@@ -64,6 +64,7 @@ function setup() {
       inline.push(job);
       return "화면 스레드";
     },
+    ...(limits ? { limits } : {}),
   });
   return { clock, workers, inline, runner };
 }
@@ -97,6 +98,22 @@ describe("워커 시간 상한", () => {
     await expect(answer).resolves.toBe("워커");
     clock.advance(60_000);
     expect(w.terminated).toBe(false);
+    expect(inline).toEqual([]);
+  });
+
+  it("상한이 무한이면(화면 시험) 시계를 크게 건너뛰어도 워커를 버리지 않는다", () => {
+    const inf = Number.POSITIVE_INFINITY;
+    const { clock, workers, inline, runner } = setup({
+      scramble: inf,
+      solve: inf,
+      plan: inf,
+      "algs-import": inf,
+      hero: inf,
+      cross: inf,
+    });
+    void runner.request(SOLVE);
+    clock.advance(600_000);
+    expect(workers[0]?.terminated).toBe(false);
     expect(inline).toEqual([]);
   });
 

@@ -154,6 +154,8 @@ export function KeyLearnApp() {
         (a) => pressesFor(keymap, TUTORIAL_N, a)[0] ?? [],
       );
     if (current.kind === "solve") return [];
+    // 맞히기는 키를 빛내지 않는다
+    if (current.ask) return [];
     return pressesFor(keymap, TUTORIAL_N, current.notation)[0] ?? [];
   }, [keymap, current]);
 
@@ -276,7 +278,9 @@ export function KeyLearnApp() {
                             ? ""
                             : noKeyboard
                               ? ""
-                              : keyOf(keymap, t)}
+                              : t.kind === "move" && t.ask && state !== "done"
+                                ? "?"
+                                : keyOf(keymap, t)}
                       </span>
                     </li>
                   );
@@ -299,6 +303,17 @@ export function KeyLearnApp() {
                       {COLOR_NAME[facing.front]}
                     </span>
                   )}
+                </p>
+              )}
+              {current?.kind === "move" && current.ask && (
+                <p
+                  data-learn-ask={current.notation}
+                  className="flex flex-wrap items-center gap-2 break-keep text-sm"
+                >
+                  <span className="rounded bg-amber-400/20 px-1.5 font-mono font-semibold text-amber-200">
+                    {current.notation}
+                  </span>
+                  <span>실마리: {current.ask}. 어느 키일까요? 쳐 보세요.</span>
                 </p>
               )}
               {current?.kind === "solve" && (
@@ -374,6 +389,7 @@ export function KeyLearnApp() {
             lit={finished ? [] : lit}
             pressed={pressed}
             wrong={wrong}
+            hideActions={current?.kind === "move" && !!current.ask}
           />
         )}
         {noKeyboard && (

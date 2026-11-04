@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import {
@@ -11,11 +11,13 @@ import {
 } from "../hero/methods";
 import {
   type ActionGroup,
+  actionLabel,
   actionsFor,
   chordLabel,
   exportKeymap,
   findConflicts,
   importKeymap,
+  type KeyChord,
   type Keymap,
   loadKeymap,
   PRESET_LABEL,
@@ -24,10 +26,14 @@ import {
   unbind,
 } from "../input";
 import {
+  assignedText,
   assignKey,
+  checkAssign,
   chordFromEvent,
   clearAction,
+  conflictQuestion,
   customFrom,
+  keylessActions,
   keysOf,
   toCustom,
 } from "../keymap-editor";
@@ -89,7 +95,10 @@ export function CubeSettingsApp() {
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5">
         <header className="flex items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-xl">큐브 설정</h1>
@@ -197,11 +206,15 @@ export function CubeSettingsApp() {
               ["inspection", "혼자 맞추기 15초 살펴보기"],
               ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
               ["keyColors", "키 그림에 면 색"],
+              ["keyPairs", "키 그림에서 같은 면의 두 키 잇기"],
+              ["keyFingers", "키 그림에 손가락 자리"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-center gap-2">
               <input
                 type="checkbox"
+                data-setting={k}
+                className="size-4 shrink-0 accent-sky-400"
                 checked={settings[k]}
                 onChange={(e) =>
                   updateSettings({ ...settings, [k]: e.target.checked })
@@ -274,6 +287,14 @@ function KeymapSection({
   const [n, setN] = useState(3);
   const [capturing, setCapturing] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  /** 이미 다른 동작이 놓인 키를 지정하려 할 때 바꿀지 묻는 중 */
+  const [pending, setPending] = useState<{
+    action: string;
+    chord: KeyChord;
+    current: string;
+  } | null>(null);
+  const keyless = useMemo(() => keylessActions(keymap, n), [keymap, n]);
+  const applyRef = useRef<(action: string, chord: KeyChord) => void>(() => {});
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const conflicts = useMemo(() => findConflicts(keymap), [keymap]);
@@ -292,18 +313,37 @@ function KeymapSection({
       }
       const chord = chordFromEvent(e);
       if (!chord) return;
-      const r = assignKey(keymap, capturing, chord);
-      setKeymap(r.keymap);
-      setMessage(
-        r.replaced
-          ? `${chordLabel(chord)} → 「${capturing}」 · 「${r.replaced}」에서 뺐습니다.`
-          : `${chordLabel(chord)} → 「${capturing}」`,
-      );
       setCapturing(null);
+      const check = checkAssign(keymap, capturing, chord);
+      // 이미 다른 동작이 놓인 키: 저장 전에 묻는다(설계 4-1)
+      if (check.current) {
+        setPending({ action: capturing, chord, current: check.current });
+        setMessage(null);
+        return;
+      }
+      applyRef.current(capturing, chord);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [capturing, keymap, setKeymap]);
+  }, [capturing, keymap]);
+
+  /** 키를 놓고 무엇이 바뀌었는지 알린다 */
+  function apply(action: string, chord: KeyChord) {
+    const r = assignKey(keymap, action, chord);
+    setKeymap(r.keymap);
+    setPending(null);
+    const rest = r.replaced ? keysOf(r.keymap, r.replaced).map(chordLabel) : [];
+    setMessage(
+      assignedText(
+        chordLabel(chord),
+        actionLabel(action),
+        r.replaced ? actionLabel(r.replaced) : null,
+        rest,
+      ),
+    );
+  }
+
+  applyRef.current = apply;
 
   const groups = [...new Set(actions.map((a) => a.group))];
 
@@ -363,7 +403,7 @@ function KeymapSection({
               onChange={(e) =>
                 setKeymap({ ...keymap, mouseRotate: e.target.checked })
               }
-              className="mt-0.5"
+              className="mt-0.5 size-4 shrink-0 accent-sky-400"
             />
             <span className="break-keep">
               마우스로 끌어 큐브 전체 돌리기(x·y·z)
@@ -393,7 +433,7 @@ function KeymapSection({
                 type="button"
                 onClick={() => {
                   setKeymap(customFrom(p));
-                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸습니다.`);
+                  setMessage(`「${PRESET_LABEL[p]}」 배치로 되돌렸어요.`);
                 }}
                 className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/15"
               >
@@ -401,9 +441,54 @@ function KeymapSection({
               </button>
             ))}
           </div>
+          {pending && (
+            <div
+              role="alertdialog"
+              aria-label="키 바꾸기 확인"
+              data-keymap-conflict={`${pending.current}>${pending.action}`}
+              className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200/40 bg-amber-200/10 py-2 pr-2 pl-4"
+            >
+              <span className="min-w-0 flex-1 break-keep font-semibold text-amber-50 text-sm">
+                {conflictQuestion(
+                  chordLabel(pending.chord),
+                  actionLabel(pending.current),
+                  actionLabel(pending.action),
+                )}
+              </span>
+              <button
+                type="button"
+                data-conflict-yes
+                onClick={() => apply(pending.action, pending.chord)}
+                className="min-h-9 shrink-0 rounded-lg bg-amber-200 px-3 font-bold text-slate-950 text-sm hover:bg-amber-100"
+              >
+                바꾸기
+              </button>
+              <button
+                type="button"
+                data-conflict-no
+                onClick={() => setPending(null)}
+                className="min-h-9 shrink-0 rounded-lg px-3 text-amber-100/80 text-sm hover:bg-white/10"
+              >
+                그만두기
+              </button>
+            </div>
+          )}
           {message && (
-            <p className="text-amber-300 text-xs" role="status">
+            <p
+              className="break-keep text-amber-200 text-xs"
+              role="status"
+              data-keymap-message
+            >
               {message}
+            </p>
+          )}
+          {keyless.length > 0 && (
+            <p
+              className="break-keep text-rose-200 text-xs"
+              data-keymap-keyless={keyless.join(" ")}
+            >
+              키가 없는 동작: {keyless.map(actionLabel).join(", ")}. 「키
+              지정」으로 놓아 주세요.
             </p>
           )}
           {conflicts.length > 0 && (
@@ -431,6 +516,14 @@ function KeymapSection({
                         {a.label}
                       </span>
                       <span className="flex flex-1 flex-wrap gap-1">
+                        {keyless.includes(a.id) && (
+                          <span
+                            data-no-key
+                            className="rounded bg-rose-500/20 px-1.5 text-rose-200 text-xs"
+                          >
+                            키 없음
+                          </span>
+                        )}
                         {keysOf(keymap, a.id).map((c) => (
                           <button
                             key={chordLabel(c)}
@@ -449,6 +542,7 @@ function KeymapSection({
                         onClick={() => {
                           setCapturing(a.id);
                           setMessage(null);
+                          setPending(null);
                         }}
                         className={cn(
                           "shrink-0 rounded px-2 py-0.5 text-xs",
@@ -514,7 +608,7 @@ function KeymapSection({
                 if (r.ok) {
                   setKeymap(r.keymap);
                   setImportError(null);
-                  setMessage("배치를 가져왔습니다.");
+                  setMessage("배치를 가져왔어요.");
                 } else setImportError(r.error);
               }}
               className="self-start rounded bg-white/10 px-2 py-1"

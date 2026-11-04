@@ -57,36 +57,13 @@ export function CubeVsApp() {
         data-cube-vs={status ?? "setup"}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">컴퓨터와 대결</h1>
-          {room && status !== "racing" && (
-            <button
-              type="button"
-              data-cube-again
-              onClick={() => {
-                room.newMatch();
-                room.startRound();
-              }}
-              className="ml-auto rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black text-sm"
-            >
-              한 판 더
-            </button>
-          )}
-          {room && status !== "racing" && (
-            <button
-              type="button"
-              onClick={() => {
-                room.dispose();
-                roomRef.current = null;
-                setRoom(null);
-              }}
-              className="rounded-lg bg-white/10 px-3 py-1.5 text-sm"
-            >
-              다시 고르기
-            </button>
-          )}
         </header>
 
         {!room ? (
@@ -125,6 +102,7 @@ export function CubeVsApp() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                className="size-4 shrink-0 accent-sky-400"
                 checked={inspection}
                 onChange={(e) => setInspection(e.target.checked)}
               />
@@ -140,7 +118,37 @@ export function CubeVsApp() {
             </button>
           </section>
         ) : (
-          <RaceView room={room} version={version} local />
+          <RaceView
+            room={room}
+            version={version}
+            local
+            resultActions={
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    room.dispose();
+                    roomRef.current = null;
+                    setRoom(null);
+                  }}
+                  className="min-h-10 rounded-lg bg-white/10 px-3 text-sm hover:bg-white/15"
+                >
+                  다시 고르기
+                </button>
+                <button
+                  type="button"
+                  data-cube-again
+                  onClick={() => {
+                    room.newMatch();
+                    room.startRound();
+                  }}
+                  className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
+                >
+                  한 판 더
+                </button>
+              </>
+            }
+          />
         )}
       </main>
     </div>

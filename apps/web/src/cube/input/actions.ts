@@ -102,6 +102,11 @@ export function buttonMoves(n: number): string[] {
   return ["R", "L", "U", "D", "F", "B", ...slice, "x", "y", "z"];
 }
 
+/** 단추 줄 「더 보기」에 접어 둘 수(홀수 크기의 E·S). 자주 쓰지 않아 휴대폰 한 줄을 늘리지 않는다 */
+export function moreButtonMoves(n: number): string[] {
+  return ["E", "S"].filter((m) => notationToMove(n, m) !== null);
+}
+
 /** 표기 한 수 → 계약의 수. 그 크기에서 뜻이 없으면 null(짝수 크기의 M, 크기보다 깊은 층 등) */
 export function notationToMove(n: number, text: string): CubeMove | null {
   const m = MOVE_RE.exec(text);

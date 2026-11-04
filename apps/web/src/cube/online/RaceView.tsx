@@ -9,7 +9,14 @@ import {
   solvedCube,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import type { RaceSnapshot } from "@/net/race/types";
 import { faceGrid } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
@@ -50,12 +57,15 @@ export function RaceView({
   room,
   version,
   local = false,
+  resultActions,
 }: {
   room: CubeRoom;
   /** 방이 바뀔 때마다 오르는 값(다시 그리기) */
   version: number;
   /** 이 기기 안에서만 도는 대결(컴퓨터와 대결). 연결이 없으니 연결 지연 표시를 숨긴다 */
   local?: boolean;
+  /** 판이 끝난 뒤 결과 상자 안에 둘 다음 길(온라인의 「다음 판」·「새 경기」) */
+  resultActions?: ReactNode;
 }) {
   const settings = useCubeSettings();
   const n = room.state?.settings.n ?? 3;
@@ -65,6 +75,10 @@ export function RaceView({
   const phase = snap?.phase ?? "commit";
   useTicker(phase === "inspect" || phase === "race" || phase === "waiting");
   const [notice, setNotice] = useState<string | null>(null);
+  // 「살펴보기 중에는…」 알림은 살펴보기 동안만. 판이 열리거나 끝나면 지운다
+  useEffect(() => {
+    if (phase !== "inspect") setNotice(null);
+  }, [phase]);
   const [showSmall, setShowSmall] = useState(true);
 
   const myState: PuzzleState =
@@ -94,7 +108,9 @@ export function RaceView({
         return true;
       }
       if (r.reason === "살펴보기 중")
-        setNotice("살펴보기 중에는 돌릴 수 없습니다.");
+        setNotice(
+          "살펴보기 중에는 면도 큐브도 돌릴 수 없어요. 끌거나 ←·↓ 키로 둘러보세요.",
+        );
       return false;
     },
     [room],
@@ -115,7 +131,7 @@ export function RaceView({
   if (!snap || !session) {
     return (
       <p className="rounded-xl bg-white/5 p-4 text-center text-sm">
-        이번 판에는 들지 않았습니다.
+        이번 판에는 들지 않았어요.
       </p>
     );
   }
@@ -167,15 +183,37 @@ export function RaceView({
       >
         {scramble}
       </p>
-      {notice && (
-        <p role="status" className="text-center text-amber-300 text-xs">
+      {/* 판 시작 전·살펴보기 동안: 무엇을 할 수 있는지 미리 알린다 */}
+      {(phase === "commit" || phase === "reveal" || phase === "inspect") &&
+        mine && (
+          <p
+            data-cube-inspect-hint
+            className="mx-auto break-keep rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-center text-sky-100 text-xs"
+          >
+            살펴보기: 보기만 해요(끌거나 ←·↓ 키로 둘러보기). 시간이 열리면 면을
+            돌려요.
+          </p>
+        )}
+      {notice && phase === "inspect" && (
+        <p
+          role="status"
+          data-cube-notice
+          className="text-center text-amber-300 text-xs"
+        >
           {notice}
         </p>
       )}
 
       {/* 아무도 못 맞춰도 판이 끝나면 결과(모두 DNF)를 보인다 */}
       {(finishedFirst.length > 0 || snap.result) && (
-        <ResultBox room={room} snap={snap} round={round} n={n} local={local} />
+        <ResultBox
+          room={room}
+          snap={snap}
+          round={round}
+          n={n}
+          local={local}
+          actions={resultActions}
+        />
       )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_280px]">
@@ -272,12 +310,14 @@ function ResultBox({
   round,
   n,
   local,
+  actions,
 }: {
   room: CubeRoom;
   snap: RaceSnapshot;
   round: RoundRecord | undefined;
   n: number;
   local: boolean;
+  actions?: ReactNode;
 }) {
   const result = snap.result;
   const session = room.anySession();
@@ -355,7 +395,7 @@ function ResultBox({
           {first?.id === room.me
             ? "내가"
             : `${room.playerName(first?.id ?? "")}이(가)`}{" "}
-          먼저 맞췄습니다 · {formatMs(first?.reported)}
+          먼저 맞췄어요 · {formatMs(first?.reported)}
         </b>
         <p className="text-white/70 text-xs">
           {snap.peers.find((p) => p.id === room.me)?.status === "playing"
@@ -369,15 +409,37 @@ function ResultBox({
   const bots = new Map(
     room.state?.players.filter((p) => p.bot).map((p) => [p.id, p.bot]) ?? [],
   );
+  const myRank = result.ranking.indexOf(room.me);
+  const mine = result.players[room.me];
+  const solved = mine?.status === "done";
+  const headline = !mine
+    ? "판이 끝났어요"
+    : solved
+      ? myRank === 0
+        ? `1위예요 · ${formatMs(mine.accepted)}`
+        : `${myRank + 1}위 · ${formatMs(mine.accepted)}`
+      : mine.status === "forfeit"
+        ? "이번 판은 기권했어요"
+        : "이번 판은 맞추지 못했어요(DNF)";
   return (
     <div
       data-cube-result="final"
+      data-cube-result-mine={mine?.status}
       role="status"
-      className="flex flex-col gap-1 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2"
+      className={`flex flex-col gap-1 rounded-xl border px-3 py-2 ${
+        solved || !mine
+          ? "border-emerald-400/40 bg-emerald-400/10"
+          : "border-white/15 bg-white/5"
+      }`}
     >
+      <p
+        className={`font-bold text-base ${solved ? "text-emerald-300" : "text-white/80"}`}
+      >
+        {headline}
+      </p>
       {result.cancelled && (
         <p className="text-amber-300 text-sm">
-          판을 열지 못했습니다: {result.cancelled}
+          판을 열지 못했어요: {result.cancelled}
         </p>
       )}
       <table className="w-full text-sm">
@@ -408,6 +470,7 @@ function ResultBox({
                 `확인 안 됨: 두 기기 기록이 다름(보고 ${formatMs(p.reported)} · 다른 기기가 잰 하한 ${formatMs(p.usedBound)})`,
               );
             if (p?.weak && !local) notes.push("확인 약함(끊김)");
+            if (p?.reason && p.status !== "done") notes.push(p.reason);
             const bot = bots.get(id);
             // 의심 표시는 사람에게만(컴퓨터는 아래 「계획 확인」으로 본다)
             if (!bot) {
@@ -415,7 +478,9 @@ function ResultBox({
                 notes.push(
                   `의심: 몰아친 수(순간 초당 ${p.flags.peakMovesPerSecond.toFixed(0)}수)`,
                 );
-              if (p?.flags?.fewMoves) notes.push("의심: 수가 지나치게 적음");
+              // 맞추지 못한 판(DNF·기권)의 0수는 의심할 까닭이 없다
+              if (p?.flags?.fewMoves && p.status === "done")
+                notes.push("의심: 수가 지나치게 적음");
               if (p?.flags?.even)
                 notes.push("의심: 수 사이 간격이 지나치게 고름");
               if (p?.flags?.fastStart)
@@ -464,6 +529,14 @@ function ResultBox({
         </tbody>
       </table>
       {!local && <ResultDetails room={room} snap={snap} />}
+      {actions && (
+        <div
+          data-cube-result-actions
+          className="mt-1 flex flex-wrap items-center justify-end gap-2 border-white/10 border-t pt-2"
+        >
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

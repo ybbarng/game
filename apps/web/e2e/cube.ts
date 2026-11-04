@@ -23,22 +23,34 @@ export async function no3d(
   });
 }
 
+/** 가짜 시계의 시작 시각(2026-01-01 00:00 UTC). 멈출 시각을 이것에서 정해, 페이지에서 시각을 다시 읽지 않는다 */
+export const CLOCK_START = Date.UTC(2026, 0, 1);
+/** 시작에서 멈출 때까지 넉넉한 틈. 느린 CI에서 화면을 띄우고 섞기를 받는 데 걸리는 시간보다 훨씬 길다 */
+const CLOCK_PAUSE_AFTER = 10 * 60_000;
+
 /**
- * `page.clock.install()`로 흐르던 가짜 시계를 곧 멈춘다(이제 시간은 `fastForward`로만 흐른다).
- * 「지금 + 5초」로 멈추게 했더니 느린 CI에서는 시각을 읽은 뒤 `pauseAt`을 부르기 전에 5초가 넘게 지나
- * 「Cannot fast-forward to the past」로 실패했다(2026-11-04 main CI, 십자 훈련). 지금 시각을 다시 읽어
- * 조금 뒤로 다시 건다. 화면은 그 사이 몇 초 흐른 것과 같아 판정에 영향이 없다(아직 섞기 전이다)
+ * Playwright 가짜 시계를 정해 둔 시각(`CLOCK_START`)에서 흐르게 건다. `page.goto` 전에 부르고, 준비가 끝나면
+ * `pauseClock`으로 멈춘다(그 뒤로는 `fastForward`로만 흐른다).
+ *
+ * 큐브 워커의 시간 상한(`createJobRunner`, 20~40초)은 끈다(`window.__cubeNoJobLimit`): 멈출 때 시계가
+ * `CLOCK_PAUSE_AFTER`만큼 건너뛰면서 그 사이에 걸린 상한이 터져 멀쩡한 워커를 버릴 수 있어서다. 상한은 멈춘 워커를
+ * 잡는 안전장치이고, 시험에서는 시험 시간 상한이 그 일을 한다.
  */
-export async function pauseClockSoon(page: Page): Promise<void> {
-  for (let i = 0; ; i++) {
-    const now = await page.evaluate(() => Date.now());
-    try {
-      await page.clock.pauseAt(now + 1_000);
-      return;
-    } catch (e) {
-      if (i >= 4 || !String(e).includes("past")) throw e;
-    }
-  }
+export async function installClock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as { __cubeNoJobLimit?: boolean }).__cubeNoJobLimit = true;
+  });
+  await page.clock.install({ time: CLOCK_START });
+}
+
+/**
+ * 가짜 시계를 멈춘다(2026-11-04, 다시 시도하는 고리를 없앴다). 예전에는 페이지에서 지금 시각을 읽고 「지금 + 1초」로
+ * 멈췄는데, 느린 CI에서 읽은 뒤 멈추기 전에 1초가 넘게 지나 「Cannot fast-forward to the past」로 실패해 다시 시도했다.
+ * 이제는 `installClock`의 시작 시각 + 10분으로 멈춰, 시험이 10분 안에 여기 오는 한 언제나 미래다. 건너뛴 사이의
+ * 시간 재기(살펴보기 등)는 아직 시작 전이라 판정에 영향이 없다.
+ */
+export async function pauseClock(page: Page): Promise<void> {
+  await page.clock.pauseAt(CLOCK_START + CLOCK_PAUSE_AFTER);
 }
 
 /** 키 배치를 「표기」로(R = R, Shift+R = R', 두 번 = R2) */
