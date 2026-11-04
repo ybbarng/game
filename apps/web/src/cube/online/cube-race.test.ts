@@ -20,7 +20,9 @@ import {
   BOT_NO_PLAN,
   botSeed,
   checkBotRun,
+  type PlanFn,
   planHere,
+  sameAsBotSolve,
 } from "./bot-racer";
 import { RaceHub } from "./hub";
 import {
@@ -126,6 +128,14 @@ function solveByInverse(
     };
     clock.after(startMs, () => step(0));
   });
+}
+
+/** 맞춘 큐브에 수를 둔 상태 */
+function applyMovesTo(n: number, text: string): PuzzleState {
+  let state = solvedCube(n);
+  for (const m of parseMoves(n, text))
+    state = createCubeRaceGame(n, fake).apply(state, m);
+  return state;
 }
 
 const allDone = (sessions: Session[]) => () =>
@@ -451,6 +461,30 @@ describe("큐브 대결(어댑터)", () => {
       expect(r.players[id]?.moves).toBe(moves);
       expect(r.players[id]?.reported).toBe(400 + 200 * (moves - 1));
     }
+  });
+
+  it("⑤ 사람의 수 차례가 컴퓨터 풀이(어느 단계든)와 같으면 그 단계를 알린다. 큐브 돌리기를 끼워도 같게 본다", async () => {
+    const start = applyMovesTo(2, "R U F' R2 U' F R U2 F'");
+    const plan = (await planHere("beginner", 2, start, 7)) as BotPlan;
+    const log = plan.moves.flatMap((m, i) =>
+      i === 3 ? [{ m: "y" }, { m: "y'" }, { m: m.move }] : [{ m: m.move }],
+    );
+    expect(await sameAsBotSolve(2, start, log)).toBe("beginner");
+    // 다른 풀이(섞기 거꾸로 + 한 바퀴 더)는 같지 않다
+    const own = "F U2 R' F' U R2 F U' R' R R' R R'"
+      .split(" ")
+      .map((m) => ({ m }));
+    const stub: PlanFn = () => ({ moves: [{ move: "R", at: 0 }] }) as BotPlan;
+    expect(await sameAsBotSolve(2, start, own, stub)).toBeNull();
+    // 너무 짧은 풀이는 보지 않는다
+    expect(await sameAsBotSolve(2, start, own.slice(0, 5))).toBeNull();
+  });
+
+  it("큐브 어댑터: 큐브 돌리기는 센 수가 아니고, 컴퓨터 기권 까닭을 받는 목록에 넣는다", () => {
+    const game = createCubeRaceGame(3, fake);
+    expect(game.isTurn?.("R")).toBe(true);
+    expect(game.isTurn?.("y'")).toBe(false);
+    expect(game.retireReasons).toContain(BOT_NO_PLAN);
   });
 
   it("남이 컴퓨터 이름으로 보낸 수는 받지 않는다", () => {

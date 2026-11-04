@@ -26,6 +26,13 @@ export interface RaceGame<Move, State> {
    * 기기마다 섞기를 다르게 만들었으면(해법기 판이 다름 등) 다른 사람을 "섞기 어긋남"으로 본다
    */
   startFingerprint?(seed: string, options: unknown): string;
+  /** 이 게임이 쓰는 그만두기 까닭(`RaceSession.retire`). 남이 보낸 까닭은 대결 틀 목록과 이것 안에서만 받는다 */
+  retireReasons?: readonly string[];
+  /**
+   * 이 수(`encodeMove` 글)가 수 수로 세는 수인가. 큐브는 큐브 돌리기(x·y·z)를 세지 않는다.
+   * 없으면 모두 센다. 의심 표시(수가 적음·고른 간격·첫 수 빠르기)가 이것으로 센다
+   */
+  isTurn?(move: string): boolean;
 }
 
 /** 그럴듯함 검사 기준. 게임이 넘긴다. 결과(순위)는 바꾸지 않고 표시만 한다(docs/46 3-4) */
@@ -34,8 +41,17 @@ export interface SuspicionRules {
   windowMs?: number;
   /** 창 안 수가 이보다 많으면 표시. 없으면 보지 않는다 */
   maxMovesInWindow?: number;
-  /** 전체 수 수가 이보다 적으면 표시. 없으면 보지 않는다 */
+  /** 센 수(`RaceGame.isTurn`)가 이보다 적으면 표시. 없으면 보지 않는다 */
   minMoves?: number;
+  /**
+   * 수 사이 간격이 지나치게 고르면 표시: 센 수가 `evenMinMoves` 이상이고 간격의 변동 계수(표준편차/평균)가
+   * `evenCv`보다 작을 때. 없으면 보지 않는다
+   */
+  evenCv?: number;
+  evenMinMoves?: number;
+  /** 풀린 뒤 첫 `fastStartMoves`수(센 수)를 `fastStartMs` 안에 두면 표시. 없으면 보지 않는다 */
+  fastStartMoves?: number;
+  fastStartMs?: number;
 }
 
 export interface RaceOptions {
@@ -45,6 +61,11 @@ export interface RaceOptions {
   timeLimitMs: number;
   /** 도착 시각 하한의 고정 여유(ms). 기본 200(docs/46 3-2) */
   capMs?: number;
+  /**
+   * 하한을 낸 기기가 하나뿐일 때(1:1 등) 하한이 보고보다 이만큼(ms) 넘게 늦으면 가르지 않고 「확인 안 됨」으로 둔다.
+   * 기본 1000(docs/47 9-2)
+   */
+  disputeMs?: number;
   /** 수를 묶어 보내는 간격(ms). 기본 50 */
   batchMs?: number;
   /** 시도를 시작하고 약속을 기다리는 시간(ms). 기본 5000 */
@@ -72,6 +93,12 @@ export interface SuspicionFlags {
   peakMovesPerSecond: number;
   burst: boolean;
   fewMoves: boolean;
+  /** 수 사이 간격이 지나치게 고름(사람 손이라기엔). 기준이 없으면 false */
+  even: boolean;
+  /** 풀린 뒤 첫 몇 수가 사람 손 빠르기를 넘음. 기준이 없으면 false */
+  fastStart: boolean;
+  /** 간격의 변동 계수(센 수가 둘 이하면 null) */
+  intervalCv: number | null;
 }
 
 export type PlayerStatus = "done" | "dnf" | "forfeit";
@@ -91,8 +118,15 @@ export interface PlayerResult {
   bounds?: Record<string, number | null>;
   /** 쓴 하한(약하지 않은 하한의 가운데 값). 없으면 null */
   usedBound?: number | null;
-  /** 쓸 수 있는 하한이 하나도 없어 보고 시간을 그대로 쓴 판 */
+  /** 증인이 있었는데 쓸 수 있는 하한이 하나도 없어(끊김) 보고 시간을 그대로 쓴 판 */
   weak?: boolean;
+  /**
+   * 「확인 안 됨: 두 기기 기록이 다름」. 하한을 낸 기기가 하나뿐인데 하한이 보고보다 `disputeMs` 넘게 늦다.
+   * 누가 거짓인지 가릴 수 없어 인정 시간은 보고 시간으로 두고, 두 값(reported·usedBound)을 함께 보인다
+   */
+  disputed?: boolean;
+  /** 센 수(`RaceGame.isTurn`). 게임이 넘기지 않으면 없다 */
+  turns?: number;
   flags?: SuspicionFlags;
 }
 

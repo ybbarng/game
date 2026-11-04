@@ -106,7 +106,7 @@ describe("대결 틀: 시작 상태", () => {
     expect(a.session.moveLog("p1")[0]?.t).toBe(300);
   });
 
-  it("시작 상태를 만들지 못한 기기는 그 판 기권, 남은 사람끼리 대결한다", async () => {
+  it("시작 상태를 만들지 못한 기기는 그 판 기권, 남은 사람끼리 그 섞기 그대로 대결한다", async () => {
     const slow = slowPrepare();
     const { clock, devices } = setupRace(3, {}, undefined, (id) =>
       id === "p3" ? slow.game : sortPuzzle,
@@ -126,6 +126,9 @@ describe("대결 틀: 시작 상태", () => {
     });
     expect(r.ranking.slice(0, 2).sort()).toEqual(["p1", "p2"]);
     expect(b.session.snapshot().result).toEqual(r);
+    // 그만둔 기기가 섞기를 이미 보았을 수 있어 다시 섞지 않는다
+    expect(a.session.snapshot().attempt).toBe(0);
+    expect(c.session.snapshot().result?.cancelled).toBe("섞기를 만들지 못함");
   });
 
   it("지문이 같으면 그대로 대결한다", () => {
@@ -219,7 +222,7 @@ describe("대결 틀: 시작 상태", () => {
     });
   });
 
-  it("3명에서 한 기기의 시작 상태만 다르면 그 사람만 빠지고 남은 둘이 새 섞기로 대결한다", () => {
+  it("3명에서 한 기기의 시작 상태만 다르면 그 사람만 빠지고 남은 둘이 그 섞기 그대로 대결한다(다수 둘의 섞기는 같다)", () => {
     const { clock, devices } = setupRace(3, {}, undefined, (id) =>
       withFingerprint(id === "p3"),
     );
@@ -229,7 +232,7 @@ describe("대결 틀: 시작 상태", () => {
     runUntil(clock, finished([a, b]));
     const r = a.session.snapshot().result as RaceResult;
     expect(b.session.snapshot().result).toEqual(r);
-    expect(a.session.snapshot().attempt).toBe(1);
+    expect(a.session.snapshot().attempt).toBe(0);
     expect(r.ranking).toEqual(["p1", "p2", "p3"]);
     expect(r.players.p3).toMatchObject({
       status: "forfeit",

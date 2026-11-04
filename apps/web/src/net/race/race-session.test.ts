@@ -152,7 +152,7 @@ describe("대결 틀", () => {
     expect(c.session.snapshot().seed).toBe(a.session.snapshot().seed);
   });
 
-  it("공개가 일부 기기에만 닿아 기기마다 판단이 갈려도, 기권 목록을 합쳐 한 섞기로 모인다", () => {
+  it("공개가 일부 기기에만 닿아도 받은 기기가 공개값을 전해 주어 모두 같은 섞기로 대결한다(판단이 갈리지 않는다)", () => {
     const { clock, devices } = setupRace(3, {}, (n) => {
       n.filter = (m, from, to) =>
         from === "p3" &&
@@ -166,15 +166,15 @@ describe("대결 틀", () => {
     autoSolve(clock, b, 400, 100);
     runUntil(clock, finished(devices));
     const r = expectSameEverywhere(devices);
+    expect(a.session.snapshot().attempt).toBe(0);
     expect(r.players.p3).toMatchObject({
-      status: "forfeit",
-      reason: "공개 안 함",
+      status: "dnf",
+      reason: "시간 안에 맞추지 못함",
     });
-    expect(a.session.snapshot().seed).toBe(b.session.snapshot().seed);
     expect(r.ranking).toEqual(["p1", "p2", "p3"]);
   });
 
-  it("한 사람이 기기마다 다른 약속을 보내면 섞기 어긋남으로 기권", () => {
+  it("한 사람이 한 기기에만 다른 약속을 보내도, 공개값이 다수 기기의 약속과 맞으면 그 약속을 써서 아무도 빠지지 않는다", () => {
     const { clock, devices } = setupRace(3, {}, (n) => {
       n.filter = (m, from, to) => {
         const msg = m as { type: string; commit?: string; attempt: number };
@@ -190,8 +190,9 @@ describe("대결 틀", () => {
     autoSolve(clock, a, 300, 100);
     autoSolve(clock, b, 400, 100);
     runUntil(clock, finished(devices));
-    const r = expectSameEverywhere(devices.slice(0, 2));
-    expect(r.players.p3?.status).toBe("forfeit");
+    const r = expectSameEverywhere(devices);
+    expect(devices[1]?.session.snapshot().attempt).toBe(0);
+    expect(r.players.p3?.status).toBe("dnf");
     expect(r.ranking).toEqual(["p1", "p2", "p3"]);
   });
 

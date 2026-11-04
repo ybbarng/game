@@ -33,10 +33,27 @@ export function lowerMedian(values: number[]): number | null {
   return sorted[Math.floor((sorted.length - 1) / 2)] as number;
 }
 
-/** 보고된 수 시각으로 본 그럴듯함 표시. 결과는 바꾸지 않는다 */
+/** 수 사이 간격의 변동 계수(표준편차 / 평균). 간격이 둘 아래이거나 평균이 0이면 null */
+export function intervalCv(times: number[]): number | null {
+  if (times.length < 3) return null;
+  const gaps: number[] = [];
+  for (let i = 1; i < times.length; i++)
+    gaps.push((times[i] as number) - (times[i - 1] as number));
+  const mean = gaps.reduce((x, y) => x + y, 0) / gaps.length;
+  if (mean <= 0) return null;
+  const variance =
+    gaps.reduce((x, g) => x + (g - mean) * (g - mean), 0) / gaps.length;
+  return Math.sqrt(variance) / mean;
+}
+
+/**
+ * 보고된 수 시각으로 본 그럴듯함 표시. 결과는 바꾸지 않는다.
+ * `moveTimes`는 모든 수(몰아친 수), `turnTimes`는 센 수(수가 적음·고른 간격·첫 수 빠르기). 없으면 모든 수로 센다
+ */
 export function suspicionFlags(
   moveTimes: number[],
   rules: SuspicionRules | undefined,
+  turnTimes: number[] = moveTimes,
 ): SuspicionFlags {
   const windowMs = rules?.windowMs ?? 500;
   let best = 0;
@@ -46,13 +63,26 @@ export function suspicionFlags(
       lo++;
     best = Math.max(best, hi - lo + 1);
   }
+  const cv = intervalCv(turnTimes);
+  const firstN = rules?.fastStartMoves;
   return {
     maxMovesInWindow: best,
     peakMovesPerSecond: (best * 1000) / windowMs,
     burst:
       rules?.maxMovesInWindow !== undefined && best > rules.maxMovesInWindow,
     fewMoves:
-      rules?.minMoves !== undefined && moveTimes.length < rules.minMoves,
+      rules?.minMoves !== undefined && turnTimes.length < rules.minMoves,
+    even:
+      rules?.evenCv !== undefined &&
+      turnTimes.length >= (rules.evenMinMoves ?? 0) &&
+      cv !== null &&
+      cv < rules.evenCv,
+    fastStart:
+      firstN !== undefined &&
+      rules?.fastStartMs !== undefined &&
+      turnTimes.length >= firstN &&
+      (turnTimes[firstN - 1] as number) <= rules.fastStartMs,
+    intervalCv: cv,
   };
 }
 
@@ -64,6 +94,8 @@ export interface PlayerRecord {
   reason?: string;
   /** 보고된 수 시각(순서대로, 확인된 만큼) */
   moveTimes: number[];
+  /** 그 가운데 센 수의 시각(`RaceGame.isTurn`). 없으면 모든 수를 센다 */
+  turnTimes?: number[];
   reported?: number;
 }
 
@@ -72,6 +104,11 @@ export interface JudgeInput {
   /** bounds[of][observer] = 관측자가 본 하한(null = 확인 약함). 관측자 = of를 뺀 판의 사람 */
   bounds: Record<string, Record<string, number | null>>;
   suspicion?: SuspicionRules;
+  /**
+   * 하한을 낸 기기가 하나뿐일 때 하한 − 보고가 이보다 크면 가르지 않는다(「확인 안 됨」, 보고 시간을 쓴다).
+   * 없으면 늘 하한을 쓴다
+   */
+  disputeMs?: number;
   cancelled?: string;
 }
 
@@ -85,10 +122,15 @@ export function judge(input: JudgeInput): RaceResult {
       id: rec.id,
       status,
       moves: rec.moveTimes.length,
+      ...(rec.turnTimes !== undefined ? { turns: rec.turnTimes.length } : {}),
       ...(reason !== undefined ? { reason } : {}),
     };
     if (status !== "forfeit")
-      result.flags = suspicionFlags(rec.moveTimes, input.suspicion);
+      result.flags = suspicionFlags(
+        rec.moveTimes,
+        input.suspicion,
+        rec.turnTimes,
+      );
     if (status === "done" && rec.reported !== undefined) {
       const bounds = input.bounds[rec.id] ?? {};
       const sortedBounds: Record<string, number | null> = {};
@@ -101,9 +143,17 @@ export function judge(input: JudgeInput): RaceResult {
       result.reported = rec.reported;
       result.bounds = sortedBounds;
       result.usedBound = used;
-      result.weak = used === null;
+      // 증인이 아무도 없으면(같은 기기의 컴퓨터만 있는 판) 약한 것이 아니라 잴 사람이 없는 것이다
+      result.weak = used === null && Object.keys(bounds).length > 0;
+      // 1:1처럼 하한을 낸 기기가 하나뿐이면 그 한 기기가 마음대로 늘릴 수 있다(game-85 ①). 폭을 넘으면 가르지 않는다
+      const disputed =
+        used !== null &&
+        strong.length === 1 &&
+        input.disputeMs !== undefined &&
+        used - rec.reported > input.disputeMs;
+      if (disputed) result.disputed = true;
       result.accepted =
-        used === null ? rec.reported : Math.max(rec.reported, used);
+        used === null || disputed ? rec.reported : Math.max(rec.reported, used);
     }
     players[rec.id] = result;
   }
