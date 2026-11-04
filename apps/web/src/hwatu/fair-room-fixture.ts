@@ -116,7 +116,10 @@ export async function setupHwatu(options: {
 
 /** 방장 엔진 상태에 이 자리들의 진짜 카드가 없는지(자리 표뿐인지) */
 export function expectHidden(cards: readonly string[]): void {
-  for (const id of cards) expect(isHiddenId(id), `숨은 카드 ${id}`).toBe(true);
+  // 걸음마다 모든 카드를 보므로 카드마다 `expect`를 만들지 않고 드러난 카드만 모아 한 번에 확인한다
+  // (카드마다 만들면 시험 시간의 열에 하나쯤을 썼다)
+  const shown = cards.filter((id) => !isHiddenId(id));
+  if (shown.length > 0) expect(shown, "숨은 카드여야 한다").toEqual([]);
 }
 
 /**
