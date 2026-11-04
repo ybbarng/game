@@ -14,7 +14,6 @@ import {
   setupHwatu,
   until,
 } from "@/hwatu/fair-room-fixture";
-import type { ClaimsResolved } from "@/net/claim";
 import type { AuditResult } from "@/net/guest-room";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -244,11 +243,14 @@ function resolvedSeen(guest: AnyGuest): number {
 }
 
 describe("원카드 암호화방", () => {
-  it("판 도중 뽑기·다시 섞기(새 사슬)·외침 청구를 거쳐 끝나고, 방장 엔진에는 남의 손패·더미가 자리 표뿐이며 판 끝 검증을 통과한다", async () => {
-    const { host, guest, incidents, audits, state, shouted } = await playFair();
+  // 정직한 판 하나에 마지막 카드 직전 청구(판이 끝나는 걸음과 묶음 창이 겹침)까지 함께 일으킨다
+  it("판 도중 뽑기·다시 섞기(새 사슬)·외침 청구·마지막 카드 직전 청구를 거쳐 끝나고, 방장 엔진에는 남의 손패·더미가 자리 표뿐이며 판 끝 검증을 통과한다", async () => {
+    const { host, guest, incidents, audits, state, shouted, lastClaimed } =
+      await playFair(undefined, { claimBeforeLast: true });
     expect(incidents).toEqual([]);
     expect(state.phase).toBe("over");
     expect(shouted).toBe(true);
+    expect(lastClaimed).toBe(true);
     expect(
       state.preCalled[1] || state.called[1] || state.finished.length > 0,
     ).toBe(true);
@@ -267,6 +269,9 @@ describe("원카드 암호화방", () => {
     expect(audits).toEqual([{ ok: true }]);
   }, 60_000);
 
+  // 방장이 기록 속 청구를 고치는 경우의 판정(kit.verifyUnsigned)은 일반방이 모두 본다(room.test.ts: 지어낸 외침,
+  // 발표하지 않은 묶음, seen만 바꿈, 뺀 청구). 여기서는 암호화방 판 끝 검증이 그 판정을 잇는지만 본다:
+  // 걸음마다 판정(unsigned)은 지어낸 외침으로, 끝에서 하는 판정(unsignedDone)은 뺀 청구로.
   it("방장이 사람 자리의 외침을 지어내 넣으면(청구 없이) 판 끝 검증이 짚는다", async () => {
     const { incidents, audits } = await playFair((host) => {
       const match = host.match;
@@ -280,59 +285,6 @@ describe("원카드 암호화방", () => {
     ];
     expect(reasons.some((r) => r.includes("청구 통로를 거치지 않고"))).toBe(
       true,
-    );
-  }, 60_000);
-
-  it("정직한 방장: 마지막 카드 직전 청구로 판이 끝나는 걸음과 묶음 창이 겹쳐도 짚히지 않는다", async () => {
-    const { incidents, audits, state, lastClaimed } = await playFair(
-      undefined,
-      { claimBeforeLast: true },
-    );
-    expect(state.phase).toBe("over");
-    expect(lastClaimed).toBe(true);
-    expect(audits).toEqual([{ ok: true }]);
-    expect(incidents).toEqual([]);
-  }, 60_000);
-
-  it("방장이 발표는 바르게 하고 기록 속 청구 내용만 바꾸면(seen) 판 끝 검증이 짚는다", async () => {
-    const { audits } = await playFair((host) => {
-      const match = host.match;
-      if (!match) return;
-      (
-        host.claims as unknown as {
-          options: { apply?: (r: ClaimsResolved) => void };
-        }
-      ).options.apply = (resolved) => {
-        const action = onecardKit.claims?.action(resolved) as Action | null;
-        if (action?.type !== "claims") return;
-        match.submitHost(0, {
-          ...action,
-          shouts: action.shouts.map((s) => ({ ...s, seen: s.seen - 1 })),
-        });
-      };
-    });
-    expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({ ok: false });
-    expect(audits[0]?.ok ? "" : audits[0]?.reason).toContain(
-      "방장 발표와 다르다",
-    );
-  }, 60_000);
-
-  it("방장이 발표하지 않은 청구 묶음을 기록에 넣으면 판 끝 검증이 짚는다", async () => {
-    const { audits } = await playFair((host) => {
-      const match = host.match;
-      if (!match) return;
-      const seen = (match.rawState() as OnecardState).turnNo;
-      match.submitHost(0, {
-        type: "claims",
-        batch: 99,
-        shouts: [{ seat: 1, seen, id: "fake" }],
-      });
-    });
-    expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({ ok: false });
-    expect(audits[0]?.ok ? "" : audits[0]?.reason).toMatch(
-      /방장 발표와 다르다|없던 청구/,
     );
   }, 60_000);
 

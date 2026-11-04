@@ -147,3 +147,63 @@ describe("원카드 멘탈 포커 연결 코드", () => {
     });
   });
 });
+
+/*
+ * 카드 표 약속에서 「어느 카드를 누구에게 여나」(암호 없이). 진짜 암호로 이어 붙인 한 판은 fair-room.test.ts가 본다
+ */
+describe("원카드 카드 표 약속: 어느 카드를 누구에게 여나", () => {
+  it("낸 카드만 모두에게 열고, 먹기·외침·다시 섞기는 손패를 열지 않는다", () => {
+    expect(onecardFair.revealsOf({ type: "play", card: "H3" })).toEqual(["H3"]);
+    const others: Action[] = [
+      { type: "draw" },
+      { type: "shout", seen: 0 },
+      { type: "reshuffle", order: [] },
+    ];
+    for (const action of others)
+      expect(onecardFair.revealsOf(action)).toEqual([]);
+  });
+
+  it("더미에서 먹은 카드는 먹은 장수만큼 먹은 자리에게만 연다", () => {
+    expect(
+      onecardFair.drawsOf([
+        { type: "drew", seat: 1, count: 2, reason: "attack" },
+        { type: "drew", seat: 0, count: 1, reason: "draw" },
+      ]),
+    ).toEqual([1, 1, 0]);
+    let state = createFairMatch(rules, preset).state;
+    const played = step(state, 0, { type: "play", card: "H3" });
+    if (!played.ok) throw new Error(played.error);
+    expect(onecardFair.drawsOf(played.events)).toEqual([]);
+    state = played.state;
+    const drew = step(state, 1, { type: "draw" });
+    if (!drew.ok) throw new Error(drew.error);
+    expect(onecardFair.drawsOf(drew.events)).toEqual([1]);
+  });
+
+  it("짧은 판 내내 자리마다 화면에 남의 손패가 없다", () => {
+    let state = createFairMatch(rules, preset).state;
+    const check = () => {
+      for (const seat of [0, 1]) {
+        const view = onecardFair.refreshView(onecardFair.viewOf(state, seat));
+        const text = JSON.stringify(view);
+        const other = state.hands[1 - seat] ?? [];
+        expect(other.filter((c) => text.includes(`"${c}"`))).toEqual([]);
+        // 내 손패는 진짜 카드로 다 보인다
+        expect([...view.hand].sort()).toEqual(
+          [...(state.hands[seat] ?? [])].sort(),
+        );
+      }
+    };
+    check();
+    for (const entry of LOG) {
+      const r = step(
+        entry.action.type === "reshuffle" ? withRefill(state, REFILL) : state,
+        entry.seat,
+        entry.action,
+      );
+      if (!r.ok) throw new Error(r.error);
+      state = r.state;
+      check();
+    }
+  });
+});
