@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -31,6 +32,9 @@ async function shot(page: Page, name: string, project: string) {
 
 const ready = (page: Page) =>
   expect(page.locator("main[data-keys-ready]")).toBeVisible();
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("단축키 표: 키 자리에 배치대로 동작이 적히고 찾을 수 있다", async ({
   page,

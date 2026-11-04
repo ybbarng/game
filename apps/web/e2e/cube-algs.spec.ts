@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -12,6 +13,9 @@ async function shot(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("내 공식: 맞는 공식은 넣고 틀린 공식은 막고, 좌우 대칭으로 만든 공식도 검사한다", async ({
   page,

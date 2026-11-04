@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import {
   expect,
   fastForwardUntil,
@@ -22,6 +23,9 @@ async function shot(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상자가 뜬다", async ({
   page,
@@ -133,6 +137,7 @@ test("컴퓨터와 대결: 4×4 입문 컴퓨터가 맞추면 결과 상자가 �
 test("온라인 대결: 방장과 손님 두 탭 + 컴퓨터", async ({ context }, info) => {
   test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
   test.skip(info.project.name !== "desktop", "키보드 기기만 참가");
+  await no3d(context);
   const host = await context.newPage();
   await host.goto("/cube/online?net=local");
   await host.locator("[data-cube-enter]").click();

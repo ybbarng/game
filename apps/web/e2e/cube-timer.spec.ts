@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -12,6 +13,9 @@ async function phase(page: Page, value: string): Promise<void> {
     value,
   );
 }
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("한 번 재면 기록 한 줄이 생긴다", async ({ page }, info) => {
   test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
