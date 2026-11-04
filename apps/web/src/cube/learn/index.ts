@@ -56,9 +56,9 @@ export const COURSES: Course[] = [
       "첫 층 꼭짓점",
       "둘째 층 모서리",
       "노란 십자",
-      "노란 면",
-      "위 꼭짓점 자리",
-      "위 모서리 자리",
+      "옆면 맞추기",
+      "꼭짓점 자리",
+      "꼭짓점 방향",
     ],
     drill: "2look-oll",
   }),
@@ -69,7 +69,7 @@ export const COURSES: Course[] = [
   }),
   withFinale(FROM_333_222, {
     rule: "2x2-random",
-    stages: ["첫 층", "윗면 노랗게", "위 꼭짓점 자리"],
+    stages: ["첫 층", "꼭짓점 자리", "꼭짓점 방향"],
     drill: "ortega-oll",
   }),
   withFinale(CFOP_INTRO, {

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { COURSES } from "./index";
+
 import {
   averageMs,
   LEARN_KEY,
+  LESSON_RENAMES,
   loadLearn,
   loadTrain,
   markLessonDone,
@@ -38,6 +41,37 @@ describe("배우기 진도", () => {
     expect(p.lessons["333-notation"]).toEqual({ passed: [3, 8], done: true });
     expect(p.lessons["333-white-cross"]).toEqual({ passed: [], done: false });
     expect(p.last).toBe("333-white-cross");
+  });
+
+  it("새로 짠 단원(2026-11-04)은 옛 단원의 끝냄만 옮기고, 해 보기 번호와 이미 있는 새 진도는 건드리지 않는다", () => {
+    const s = memory();
+    s.setItem(
+      LEARN_KEY,
+      JSON.stringify({
+        lessons: {
+          "333-yellow-face": { passed: [3, 4], done: true },
+          "333-yellow-corners": { passed: [3], done: false },
+          "333-first-corners": { passed: [1], done: true },
+          "333-first-corners-up": { passed: [7], done: false },
+        },
+        last: "333-yellow-edges",
+      }),
+    );
+    const p = loadLearn(s);
+    expect(p.lessons["333-ll-edges"]).toEqual({ passed: [], done: true });
+    expect(p.lessons["333-ll-corner-place"]).toEqual({
+      passed: [],
+      done: false,
+    });
+    expect(p.lessons["333-first-corners-up"]).toEqual({
+      passed: [7],
+      done: false,
+    });
+    expect(p.last).toBe("333-ll-corner-twist");
+    // 옮긴 새 id는 모두 지금 과정에 있다
+    const ids = new Set(COURSES.flatMap((c) => c.lessons.map((l) => l.id)));
+    for (const to of Object.values(LESSON_RENAMES))
+      expect(ids.has(to), to).toBe(true);
   });
 
   it("깨진 값이나 막힌 저장소에서도 빈 진도로 돈다", () => {

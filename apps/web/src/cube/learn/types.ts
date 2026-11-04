@@ -27,8 +27,14 @@ export const GOALS = {
   "yellow-corners":
     "위 꼭짓점 자리까지(윗면 노랑 + 꼭짓점 넷이 제자리, 윗면 돌리기로 맞출 수 있으면 됨)",
   ll: "윗층까지 다 맞음(윗면 돌리기 하나 남아도 됨)",
+  "yellow-edges":
+    "옆면 맞추기까지(노란 십자 + 위 모서리 넷의 옆색이 가운데와 맞음, 윗면 돌리기 하나는 봐줌)",
+  "ll-corners-placed":
+    "꼭짓점 자리까지(위 모서리 맞음 + 위 꼭짓점 넷이 제자리, 방향은 안 봄)",
   "2x2-first-layer": "2×2 첫 층(흰 꼭짓점 넷이 옆색까지 맞음)",
   "2x2-top-face": "2×2 윗면 한 색(첫 층 + 윗면 노랑)",
+  "2x2-corners-placed":
+    "2×2 위 꼭짓점 자리(첫 층 + 위 꼭짓점 넷이 아래층과 이어지는 자리, 방향은 안 봄)",
   "2x2-first-face": "2×2 오르테가 첫 면(흰 칸 넷이 한 면, 옆색은 안 봄)",
   "2x2-both-faces": "2×2 오르테가 위아래 면(흰 면·노란 면 모두, 옆색은 안 봄)",
   centers: "큰 큐브 가운데 맞춤(면마다 가운데 조각이 한 색)",
@@ -91,10 +97,15 @@ export const SCRAMBLE_RULES = {
   "yellow-cross-solved": "아래 두 층과 노란 십자 맞음",
   "yellow-face-solved": "아래 두 층과 윗면 맞음(꼭짓점 자리 연습)",
   "corners-placed": "윗층 꼭짓점까지 맞음(모서리 자리 연습)",
+  "white-cross-up": "흰 십자만 맞음, 흰 면 위(첫 층 꼭짓점 연습)",
+  "ll-cross-solved": "아래 두 층과 노란 십자 맞음(옆면 맞추기 연습)",
+  "ll-edges-solved": "아래 두 층과 위 모서리 맞음(꼭짓점 자리 연습)",
+  "ll-corners-placed": "꼭짓점 방향만 남음(꼭짓점 방향 연습)",
   "f2l-one-slot": "십자와 F2L 칸 셋 맞음, 앞-오른쪽 짝만 흩어짐",
   "2x2-random": "2×2 모두 섞음",
   "2x2-first-layer-solved": "2×2 첫 층 맞음",
   "2x2-top-face-solved": "2×2 첫 층과 윗면 맞음",
+  "2x2-corners-placed": "2×2 꼭짓점 방향만 남음",
   "4x4-random": "4×4 모두 섞음",
   "4x4-centers-solved": "4×4 가운데만 맞음",
   "4x4-reduced": "4×4 가운데와 모서리 묶기까지 맞음(3×3처럼 풀기)",

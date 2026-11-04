@@ -15,7 +15,6 @@ import { COURSES } from "./index";
 import { findHit, revealFound } from "./interact";
 import { goalMet, maskFor } from "./judge";
 import {
-  A_PERM,
   CROSS_DOWN_SIDE,
   CROSS_DOWN_SIDE_TRY,
   CROSS_FLIPPED,
@@ -27,7 +26,6 @@ import {
   CROSS_WRONG_TOP,
   CROSS_WRONG_TOP_TRY,
   SEXY,
-  STUCK_CORNER,
 } from "./lessons-333";
 import { setupFor } from "./notation";
 import type { FaceLetter, GoalName, Lesson } from "./types";
@@ -66,11 +64,8 @@ const colorsAt = (n: number, s: PuzzleState, at: FaceLetter[]) =>
   slot(n, s, at)
     .stickers.map((x) => x.color)
     .sort();
-const centerOf = (n: number, s: PuzzleState, f: FaceLetter) =>
-  faceColors(n, s)[F[f] * n * n + (n * n - 1) / 2] as number;
 
 const WHITE = F.U;
-const YELLOW = F.D;
 
 describe("흰 십자: 경우별 시연", () => {
   const lesson = lessonOf("333-white-cross");
@@ -128,56 +123,7 @@ describe("흰 십자: 경우별 시연", () => {
   });
 });
 
-describe("첫 층 꼭짓점", () => {
-  const held = (alg: string) => play(3, setupFor(alg, "z2"));
-
-  it("뒤집은 뒤 오른쪽 가운데는 주황", () => {
-    expect(centerOf(3, play(3, "z2"), "R")).toBe(F.L);
-  });
-
-  it("두 옆색으로 고른 칸이 그 꼭짓점의 제자리다", () => {
-    const done = play(3, "z2");
-    // 흰-초록-주황 → 아래-앞-오른쪽, 흰-파랑-빨강 → 아래-뒤-왼쪽
-    expect(colorsAt(3, done, ["D", "F", "R"])).toEqual([0, 2, 4]);
-    expect(colorsAt(3, done, ["D", "B", "L"])).toEqual([0, 1, 5]);
-    const step = lessonOf("333-first-corners").steps.find(
-      (s) => s.find?.at?.join() === "D,F,R",
-    );
-    expect(step?.find?.at).toEqual(["D", "F", "R"]);
-  });
-
-  it("U'를 치면 흰-초록-주황이 넣을 칸 바로 위에 온다", () => {
-    const s = play(3, "U'", held(`U' ${SEXY}`));
-    expect(colorsAt(3, s, ["U", "F", "R"])).toEqual([0, 2, 4]);
-  });
-
-  it("제 칸에서 돌아감: 흰색이 오른쪽이면 두 번, 앞이면 네 번", () => {
-    const two = held(`${SEXY} ${SEXY}`);
-    expect(colorsAt(3, two, ["D", "F", "R"])).toEqual([0, 2, 4]);
-    expect(faceOf(3, two, ["D", "F", "R"], WHITE)).toBe(F.R);
-    const four = held(`${SEXY} ${SEXY} ${SEXY} ${SEXY}`);
-    expect(faceOf(3, four, ["D", "F", "R"], WHITE)).toBe(F.F);
-    for (const [s, k] of [
-      [two, 2],
-      [four, 4],
-    ] as const) {
-      expect(
-        goalMet(3, play(3, Array(k).fill(SEXY).join(" "), s), "first-layer"),
-      ).toBe(true);
-      expect(goalMet(3, play(3, SEXY, s), "first-layer")).toBe(false);
-    }
-  });
-
-  it("박힌 꼭짓점: 앞-왼쪽 아래 칸에 다른 흰 꼭짓점이 있다", () => {
-    const s = held(STUCK_CORNER);
-    const c = colorsAt(3, s, ["D", "F", "L"]);
-    expect(c).toContain(WHITE);
-    expect(c).not.toEqual([0, 1, 2]); // 흰-빨강-초록(제자리 조각)이 아니다
-    expect(goalMet(3, s, "white-cross")).toBe(true);
-  });
-});
-
-describe("둘째 층·마지막 층", () => {
+describe("둘째 층", () => {
   it("박힌 모서리: 앞-오른쪽 칸에 앞-왼쪽 칸의 모서리", () => {
     const step = lessonOf("333-second-layer").steps.find((x) =>
       x.body.includes("다른 칸(앞-왼쪽)"),
@@ -186,47 +132,6 @@ describe("둘째 층·마지막 층", () => {
     const s = play(3, step.setup.alg);
     // 앞-왼쪽 칸 조각 = 초록·빨강 (흰 면 아래로 쥐면 왼쪽이 빨강)
     expect(colorsAt(3, s, ["F", "R"])).toEqual([1, 2]);
-  });
-
-  it("ㄱ자 노란 모서리는 왼쪽과 뒤", () => {
-    const s = play(3, setupFor("F U R U' R' F'", "z2"));
-    const up = (["L", "R", "F", "B"] as const).filter(
-      (f) => faceOf(3, s, ["U", f], YELLOW) === F.U,
-    );
-    expect(up.sort()).toEqual(["B", "L"]);
-  });
-
-  it("노란 면 쥐는 법: 0개는 U로 노랑이 왼쪽, 2개는 U'로 노랑이 앞", () => {
-    const zero = play(3, setupFor("R U2 R' U' R U R' U' R U' R'", "z2"));
-    expect(faceOf(3, play(3, "U", zero), ["U", "F", "L"], YELLOW)).toBe(F.L);
-    const two = play(3, setupFor("F' r U R' U' r' F R", "z2"));
-    expect(faceOf(3, play(3, "U'", two), ["U", "F", "L"], YELLOW)).toBe(F.F);
-  });
-
-  it("A퍼뮤는 앞-왼쪽 꼭짓점만 그대로 둔다, U퍼뮤는 뒤 모서리만 그대로 둔다", () => {
-    const moved = (alg: string, at: FaceLetter[][]) => {
-      const s = play(3, setupFor(alg, "z2"));
-      const after = play(3, alg, s);
-      return at.map(
-        (a) => colorsAt(3, s, a).join() !== colorsAt(3, after, a).join(),
-      );
-    };
-    expect(
-      moved(A_PERM, [
-        ["U", "F", "L"],
-        ["U", "F", "R"],
-        ["U", "B", "L"],
-        ["U", "B", "R"],
-      ]),
-    ).toEqual([false, true, true, true]);
-    expect(
-      moved("R U' R U R U R U' R' U' R2", [
-        ["U", "F"],
-        ["U", "R"],
-        ["U", "B"],
-        ["U", "L"],
-      ]),
-    ).toEqual([true, true, false, true]);
   });
 });
 

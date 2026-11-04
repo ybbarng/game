@@ -129,6 +129,17 @@ describe("스스로 섞기 규칙", () => {
     "yellow-cross-solved": { yes: ["yellow-cross"], no: ["oll"] },
     "yellow-face-solved": { yes: ["oll"], no: ["yellow-corners"] },
     "corners-placed": { yes: ["yellow-corners"], no: ["ll"] },
+    "white-cross-up": { yes: ["white-cross"], no: ["first-layer"] },
+    "ll-cross-solved": { yes: ["yellow-cross"], no: ["yellow-edges"] },
+    "ll-edges-solved": {
+      yes: ["yellow-edges"],
+      no: ["ll-corners-placed"],
+    },
+    "ll-corners-placed": { yes: ["ll-corners-placed"], no: ["solved"] },
+    "2x2-corners-placed": {
+      yes: ["2x2-corners-placed"],
+      no: ["solved"],
+    },
     "f2l-one-slot": {
       yes: ["cross", "f2l-pair:FL", "f2l-pair:BR", "f2l-pair:BL"],
       no: ["f2l-pair:FR"],

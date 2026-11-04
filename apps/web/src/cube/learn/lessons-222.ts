@@ -1,10 +1,9 @@
-// 2×2 초보자(docs/47 8-2): 첫 층 → 윗면(3×3의 수네 그대로) → 윗층 자리(3×3의 A퍼뮤 그대로).
+// 2×2 초보자(docs/47 8-2): 첫 층(흰 면 위, R' D' R D) → 윗면(수네) → 윗층 자리(A퍼뮤).
 // 그다음 빠른 해법 오르테가를 소개한다. 2×2는 꼭짓점 여덟 개뿐이고 기준이 될 가운데가 없다.
-import { STUCK_CORNER } from "./lessons-333";
+import { CORNER_TWIST, reps, STUCK_CORNER_UP } from "./lessons-333";
 import { setupFor } from "./notation";
-import type { Course, Lesson } from "./types";
+import type { Course, Lesson, LessonStep } from "./types";
 
-const SEXY = "R U R' U'";
 const SUNE = "R U R' U R U2 R'";
 const A_PERM = "R' F R' B2 R F' R' B2 R2";
 export const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
@@ -107,46 +106,48 @@ const intro: Lesson = {
     },
     {
       kind: "demo",
-      body: "R U R' U': 3×3과 똑같이 돌아요. 3×3을 맞출 줄 안다면 꼭짓점 단계만 따라 하면 되고, 몰라도 이 과정만으로 맞출 수 있어요.",
-      alg: SEXY,
+      body: "R' D' R D: 3×3과 똑같이 돌아요. 첫 층은 이 공식 하나로 맞춰요. 3×3을 맞출 줄 안다면 꼭짓점 단계만 따라 하면 되고, 몰라도 이 과정만으로 맞출 수 있어요.",
+      alg: CORNER_TWIST,
     },
   ],
 };
 
-const firstLayer: Lesson = {
-  id: "222-first-layer",
-  size: 2,
-  title: "첫 층",
-  summary: "흰 꼭짓점 넷을 아래에 모아요. 옆면 색까지 서로 맞게.",
-  steps: [
+/**
+ * 2×2 첫 층(2026-11-04): 3×3 첫 층 꼭짓점과 같이 흰 면을 위에 둔 채 아래층의 꼭짓점을 칸 밑으로 옮겨
+ * R' D' R D를 흰색이 위로 올 때까지 되풀이한다. 다 되면 뒤집어 흰 면을 아래로 둔다.
+ * 「3×3을 아는 사람의 2×2」도 이 단계를 쓴다(첫 설명만 다르다).
+ */
+export function firstLayerUpSteps(first: string): LessonStep[] {
+  return [
     {
       kind: "find",
-      body: "섞인 2×2에서는 먼저 흰 꼭짓점 아무거나 하나를 기준으로 골라요. 이 조각을 아래층에 두고 나머지를 여기에 맞춰 붙여요. 흰 꼭짓점을 하나 눌러 보세요.",
+      body: first,
       setup: { alg: "R U F' R2 U'" },
       mask: "all",
       find: { piece: "corner", has: ["U"] },
     },
     {
-      kind: "look",
-      body: "나머지 흰 꼭짓점은 3×3 첫 층과 같아요. 넣을 자리 위(앞-오른쪽 위)로 옮기고 R U R' U'을 맞을 때까지 되풀이해요. 먼저 큐브 전체를 돌려 흰 면을 아래로 보내 보세요.",
-      mask: "first-layer",
-      look: { color: "U", on: "D" },
+      kind: "find",
+      body: "기준 꼭짓점은 흰색이 위를 보게 위층에 둬요. 지금 흰-초록-주황이 기준으로 앞-왼쪽 위에 있어요. 그 오른쪽(앞-오른쪽 위)에 올 꼭짓점은 흰·초록을 함께 나누고 주황의 맞은편 빨강이 붙은 것이에요. 아래층에서 찾아 눌러 보세요.",
+      setup: { alg: setupFor(`D ${CORNER_TWIST}`) },
+      mask: "all",
+      find: { piece: "corner", colors: ["U", "F", "R"] },
     },
     {
-      kind: "find",
-      body: "흰 면을 아래로 뒤집으면 오른쪽과 왼쪽이 바뀌어요. 기준 흰-초록-빨강 꼭짓점은 아래-앞-왼쪽에 있어요. 그 오른쪽(아래-앞-오른쪽)에 올 꼭짓점은 흰·초록을 함께 나누고 빨강의 맞은편 주황이 붙은 것이에요. 윗층에서 찾아 눌러 보세요.",
-      setup: flip(SEXY),
-      mask: "all",
-      find: { piece: "corner", colors: ["U", "F", "L"] },
+      kind: "turn",
+      body: "3×3처럼 아랫면을 돌려 그 꼭짓점을 넣을 칸 바로 밑(앞-오른쪽 아래)으로 옮겨요. D를 쳐 보세요.",
+      setup: { alg: setupFor(`D ${CORNER_TWIST}`) },
+      mask: "first-layer",
+      alg: "D",
     },
     {
       kind: "quiz",
-      body: "넣을 자리는 옆색으로 정해요. 꼭짓점의 두 옆색이 이미 아래에 있는 흰 꼭짓점들의 옆색과 이어져야 해요. 흰색이 오른쪽을 보면 한 번, 위를 보면 세 번, 앞을 보면 다섯 번.",
-      setup: flip(`${SEXY} ${SEXY} ${SEXY} ${SEXY} ${SEXY}`),
+      body: "칸 밑에 왔으면 R' D' R D를 흰색이 위를 볼 때까지 되풀이해요. 흰색이 오른쪽을 보면 한 번, 아래를 보면 세 번, 앞을 보면 다섯 번.",
+      setup: { alg: setupFor(reps(CORNER_TWIST, 5)) },
       mask: "first-layer",
       quiz: {
         question:
-          "앞-오른쪽 위 꼭짓점은 흰색이 앞을 봐요. R U R' U'을 몇 번 할까요?",
+          "앞-오른쪽 아래 꼭짓점은 흰색이 앞을 봐요. R' D' R D를 몇 번 할까요?",
         choices: ["한 번", "세 번", "다섯 번"],
         answer: 2,
         why: "흰색이 앞을 보면 다섯 번이에요.",
@@ -154,58 +155,74 @@ const firstLayer: Lesson = {
     },
     {
       kind: "demo",
-      body: "흰색이 위를 봐요. 세 번.",
-      setup: flip(`${SEXY} ${SEXY} ${SEXY}`),
-      alg: `${SEXY} ${SEXY} ${SEXY}`,
+      body: "흰색이 아래를 봐요. 세 번.",
+      setup: { alg: setupFor(reps(CORNER_TWIST, 3)) },
+      alg: reps(CORNER_TWIST, 3),
       mask: "first-layer",
     },
     {
       kind: "try",
-      body: "흰색이 오른쪽을 봐요.",
-      setup: flip(SEXY),
-      alg: SEXY,
+      body: "흰색이 오른쪽을 봐요. 칸 밑으로 옮기고(D) 한 번.",
+      setup: { alg: setupFor(`D ${CORNER_TWIST}`) },
+      alg: `D ${CORNER_TWIST}`,
       goal: "2x2-first-layer",
       mask: "first-layer",
     },
     {
       kind: "try",
       body: "흰색이 앞을 봐요.",
-      setup: flip(`${SEXY} ${SEXY} ${SEXY} ${SEXY} ${SEXY}`),
-      alg: `${SEXY} ${SEXY} ${SEXY} ${SEXY} ${SEXY}`,
+      setup: { alg: setupFor(reps(CORNER_TWIST, 5)) },
+      alg: reps(CORNER_TWIST, 5),
       goal: "2x2-first-layer",
       mask: "first-layer",
     },
     {
       kind: "try",
-      body: "흰 꼭짓점이 아래층 엉뚱한 칸(앞-왼쪽)에 박혀 있어요. 큐브를 돌려(y') 그 칸을 앞-오른쪽으로 들고 R U R' U' 한 번으로 꺼낸 뒤, 다시 돌려 들고(y) 제 칸 위로 옮겨(U') 넣어요.",
-      setup: flip(STUCK_CORNER),
-      alg: STUCK_CORNER,
+      body: "앞-오른쪽 위 칸에 다른 흰 꼭짓점이 박혀 있어요. 칸을 앞-오른쪽에 둔 채 R' D' R D 한 번으로 빼고, 빠진 것은 아랫면을 돌려(D) 제 칸 밑으로 옮긴 뒤 큐브를 돌려(y) 쥐고 넣어요.",
+      setup: { alg: setupFor(STUCK_CORNER_UP) },
+      alg: STUCK_CORNER_UP,
       goal: "2x2-first-layer",
       mask: "first-layer",
     },
     {
       kind: "try",
-      body: "섞인 2×2에서 첫 층을 만들어요. 기준 꼭짓점 하나를 아래에 두고, 옆색이 이어지는 꼭짓점을 차례로 넣어요.",
+      body: "섞인 2×2에서 첫 층을 만들어요. 기준 꼭짓점 하나를 흰색이 위를 보게 두고, 옆색이 이어지는 꼭짓점을 차례로 넣어요.",
       setup: { rule: "2x2-random" },
       goal: "2x2-first-layer",
       mask: "first-layer",
     },
     {
       kind: "quiz",
-      body: "흔한 실수: 흰 면만 모으고 옆색을 안 보는 것. 옆에서 봤을 때 아래 두 칸이 같은 색이어야 해요.",
-      setup: { alg: "z2" },
+      body: "흔한 실수: 흰 면만 모으고 옆색을 안 보는 것. 옆에서 봤을 때 위 두 칸이 같은 색이어야 해요.",
       mask: "first-layer",
       quiz: {
         question: "첫 층이 다 됐는지 어떻게 알까요?",
         choices: [
-          "아랫면 네 칸이 모두 흰색이면 돼요",
-          "아랫면이 흰색이고, 옆에서 볼 때 아래 두 칸도 같은 색이어야 해요",
+          "윗면 네 칸이 모두 흰색이면 돼요",
+          "윗면이 흰색이고, 옆에서 볼 때 위 두 칸도 같은 색이어야 해요",
         ],
         answer: 1,
         why: "옆색까지 이어져야 다음 단계에서 깨지지 않아요.",
       },
     },
-  ],
+    {
+      kind: "look",
+      body: "첫 층이 끝났어요. 다음 단계부터는 흰 면을 아래에 두고 해요. 큐브 전체를 뒤집어(z2) 흰 면을 아래로 보내 보세요.",
+      mask: "first-layer",
+      look: { color: "U", on: "D" },
+    },
+  ];
+}
+
+const firstLayer: Lesson = {
+  id: "222-first-layer-up",
+  size: 2,
+  title: "첫 층",
+  summary:
+    "흰 면을 위에 둔 채 흰 꼭짓점 넷을 R' D' R D로 모아요. 옆면 색까지 서로 맞게.",
+  steps: firstLayerUpSteps(
+    "섞인 2×2에서는 먼저 흰 꼭짓점 아무거나 하나를 기준으로 골라요. 이 조각을 흰색이 위를 보게 위층에 두고 나머지를 여기에 맞춰 붙여요. 흰 꼭짓점을 하나 눌러 보세요.",
+  ),
 };
 
 const topFace: Lesson = {
@@ -379,6 +396,6 @@ export const BEGINNER_222: Course = {
   size: 2,
   title: "2×2 처음 맞추기",
   summary:
-    "첫 층 → 윗면 → 윗층 자리. 3×3 공식 세 개(R U R' U', 수네, A퍼뮤)면 돼요. 끝에 오르테가 소개.",
+    "첫 층 → 윗면 → 윗층 자리. 공식 세 개(R' D' R D, 수네, A퍼뮤)면 돼요. 끝에 오르테가 소개.",
   lessons: [pieces, intro, firstLayer, topFace, topLayer, ortega],
 };
