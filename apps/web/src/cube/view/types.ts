@@ -63,6 +63,16 @@ export interface Sticker {
  */
 export type MarkTone = "pick" | "right" | "wrong" | "focus";
 
+/**
+ * 조각 하나의 놓임(배우기의 스티커·조각 보기, 분해·조립). 기본은 제자리·크기 1·몸통 보임.
+ * `shift`는 제자리에서 옮긴 거리(세계 좌표), `scale` 0이면 안 보인다, `body` false면 몸통 없이 스티커만 뜬다
+ */
+export interface PieceLayout {
+  shift?: readonly [number, number, number];
+  scale?: number;
+  body?: boolean;
+}
+
 /** 표시 색(3D 고리와 펼친 그림 테두리가 함께 쓴다) */
 export const MARK_COLOR: Record<MarkTone, number> = {
   pick: 0x38bdf8,

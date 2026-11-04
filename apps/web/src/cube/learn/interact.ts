@@ -389,7 +389,10 @@ export function stepIsActive(step: LessonStep): boolean {
     step.kind === "find" ||
     step.kind === "quiz" ||
     step.kind === "turn" ||
-    step.kind === "play"
+    step.kind === "play" ||
+    step.kind === "parts" ||
+    step.kind === "build" ||
+    step.kind === "welcome"
   );
 }
 
@@ -473,6 +476,8 @@ export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
       if (q.choices.length < 2) return "고를 것이 둘보다 적다";
       if (q.answer < 0 || q.answer >= q.choices.length)
         return "답 차례가 틀렸다";
+      if (q.pictures && q.pictures.length !== q.choices.length)
+        return "그림 수가 고를 것과 다르다";
       return null;
     }
     case "turn":

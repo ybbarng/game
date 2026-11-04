@@ -41,8 +41,10 @@ import {
   QuizPanel,
   StillCube,
   TurnPanel,
+  WelcomePanel,
 } from "./LessonActs";
 import { MoveText } from "./MoveChip";
+import { BuildPanel, PartsPanel } from "./PieceStage";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -67,6 +69,9 @@ const KIND_LABEL = {
   quiz: "문제",
   turn: "따라 하기",
   play: "돌려 보기",
+  welcome: "환영",
+  parts: "조각 보기",
+  build: "분해·조립",
 } as const;
 
 const KIND_MARK = {
@@ -77,6 +82,9 @@ const KIND_MARK = {
   quiz: "?",
   turn: "✋",
   play: "✦",
+  welcome: "★",
+  parts: "▦",
+  build: "⚙",
 } as const;
 
 export function LearnApp() {
@@ -332,7 +340,10 @@ function LessonView({
       step &&
       step.kind !== "demo" &&
       step.kind !== "try" &&
-      step.kind !== "play"
+      step.kind !== "play" &&
+      step.kind !== "welcome" &&
+      step.kind !== "parts" &&
+      step.kind !== "build"
         ? stepPicture(lesson, at)
         : { setup: step?.setup, mask: step?.mask },
     [lesson, at, step],
@@ -536,6 +547,28 @@ function LessonView({
             step={step}
             start={start}
             mask={mask}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "welcome" && (
+          <WelcomePanel
+            onStart={() => {
+              markActed();
+              setAt((i) => Math.min(i + 1, lesson.steps.length - 1));
+            }}
+          />
+        )}
+        {step.kind === "parts" && (
+          <PartsPanel
+            key={`${lesson.id}-${at}`}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "build" && (
+          <BuildPanel
+            key={`${lesson.id}-${at}`}
             settings={settings}
             onPassed={markActed}
           />

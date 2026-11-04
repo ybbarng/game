@@ -7,12 +7,19 @@ import {
   faceColors,
   OPPOSITE_FACE,
   parseMoves,
+  pieceFaces,
   solvedCube,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
 import { homeOf } from "./__test__/pieces";
+
+const LETTER = ["U", "R", "F", "D", "L", "B"] as const;
+/** 맞춘 큐브에서 그 조각의 색(찾기 목표용) */
+const colorsOf = (p: number) =>
+  pieceFaces(3, p).map((f) => LETTER[f] as (typeof LETTER)[number]);
+
 import { apply, solved } from "./__test__/sim";
 import { COURSES } from "./index";
 import {
@@ -25,7 +32,9 @@ import {
 } from "./interact";
 import { goalMet, maskFor, pieceByName } from "./judge";
 import {
+  FACE_ONLY,
   FLIPPED_EDGE,
+  LAYER_DONE,
   TRACK_CORNER,
   TRACK_EDGE,
   TWISTED_CORNER,
@@ -56,7 +65,7 @@ const UF = { colors: ["U", "F"] } as FindTarget;
 
 describe("과정 맨 앞의 조각 단원", () => {
   it.each([
-    ["333-beginner", "333-pieces"],
+    ["333-beginner", "333-start"],
     ["222-beginner", "222-pieces"],
     ["444-reduction", "444-pieces"],
     ["555-reduction", "555-pieces"],
@@ -113,30 +122,74 @@ describe("고르기 문제의 답", () => {
     return { step: s, answer: s.quiz.choices[s.quiz.answer] };
   };
 
-  it("세기: 까만 큐브에서 가운데 6·모서리 12·꼭짓점 8, 모두 26", () => {
+  it("세기: 까만 큐브에서 가운데 6, 조립으로 모서리 12·꼭짓점 8, 모두 26", () => {
     const topo = cubeTopology(3);
     const kinds = topo.pieces.map((p) => p.stickers.length);
     expect(kinds.filter((k) => k === 2)).toHaveLength(12);
     expect(kinds.filter((k) => k === 3)).toHaveLength(8);
     expect(kinds.filter((k) => k === 1)).toHaveLength(6);
     expect(topo.pieces).toHaveLength(26);
-    const counts = l.steps.filter((x) => (x.count ?? 1) > 1);
+    const first = lessonOf("333-start");
+    const counts = first.steps.filter((x) => (x.count ?? 1) > 1);
     expect(counts.map((x) => [x.find?.piece, x.count, x.mask])).toEqual([
       ["center", 6, "none"],
-      ["edge", 12, "none"],
-      ["corner", 8, "none"],
+    ]);
+    expect(first.steps.map((x) => x.kind)).toEqual([
+      "welcome",
+      "parts",
+      "find",
+      "build",
+      "quiz",
     ]);
     // 세는 개수가 큐브에 있는 그 조각 수와 같다(모자라지도 남지도 않는다)
     for (const x of counts)
       expect(hitSlots(3, solvedCube(3), x.find as FindTarget)).toHaveLength(
         x.count as number,
       );
-    expect(quiz("모두 몇 개").answer).toBe("26개");
+    const total = first.steps.find((x) =>
+      x.quiz?.question.includes("모두 몇 개"),
+    );
+    expect(total?.quiz?.choices[total.quiz.answer]).toBe("26개");
   });
 
-  it("초록 맞은편은 파랑", () => {
+  it("한 면을 맞춘 상태: (가)는 흰 면만 흰색(자리 틀림), (나)는 흰 조각이 제자리", () => {
+    const { step, answer } = quiz("한 면을 맞춘 상태");
+    expect(answer).toBe("(나)");
+    expect(step.quiz?.pictures?.map((p) => p.alg)).toEqual([
+      FACE_ONLY,
+      LAYER_DONE,
+    ]);
+    const ga = play(3, FACE_ONLY);
+    const na = play(3, LAYER_DONE);
+    // 둘 다 윗면 아홉 칸이 흰색
+    for (const s of [ga, na])
+      expect(
+        faceColors(3, s)
+          .slice(0, 9)
+          .every((c) => c === FACE_INDEX.U),
+      ).toBe(true);
+    expect(goalMet(3, na, "first-layer")).toBe(true);
+    expect(goalMet(3, ga, "first-layer")).toBe(false);
+    expect(goalMet(3, na, "solved")).toBe(false);
+    // (가): 흰 조각 여덟이 모두 제자리가 아니다
+    const whites = cubeTopology(3)
+      .pieces.map((_, i) => i)
+      .filter((p) => cubeTopology(3).pieces[p]?.kind !== "center")
+      .filter((p) => pieceFaces(3, p).includes(FACE_INDEX.U as number));
+    expect(whites).toHaveLength(8);
+    for (const p of whites) {
+      const home = cubeTopology(3).pieces[p]?.stickers[0] as number;
+      expect(findHit(3, ga, home, { colors: colorsOf(p) })).toBeNull();
+      expect(findHit(3, na, home, { colors: colorsOf(p) })).toBe(p);
+    }
+    // 옆면 첫 줄은 (가)에서 가운데 색과 모두 다르다
+    const c = faceColors(3, ga);
+    for (const f of [1, 2, 4, 5])
+      for (const k of [0, 1, 2]) expect(c[f * 9 + k]).not.toBe(f);
+  });
+
+  it("초록 맞은편은 파랑(분해·조립의 가운데 규칙, build.test.ts)", () => {
     expect(OPPOSITE_FACE[FACE_INDEX.F as 0]).toBe(FACE_INDEX.B);
-    expect(quiz("초록 가운데의 맞은편").answer).toBe("파랑");
   });
 
   it("뒤집힌 모서리·돌아간 꼭짓점 그림은 제자리지만 방향이 틀렸다", () => {

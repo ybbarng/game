@@ -2,9 +2,11 @@
 
 import {
   applyMove,
+  applyMoves,
   type CubeMove,
   invertMove,
   isRotation,
+  parseMoves,
   type StickerMask,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -44,6 +46,7 @@ import {
 } from "../learn/interact";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView, type MarkTone } from "../view";
+import { CubeHero } from "./CubeHero";
 import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { MoveChip, useMoveKeys } from "./MoveChip";
@@ -392,6 +395,13 @@ export function QuizPanel({
 }) {
   const quiz = step.quiz;
   const [choice, setChoice] = useState<number | null>(null);
+  const n = lesson.size;
+  const pictures = useMemo(
+    () =>
+      quiz?.pictures?.map((p) => applyMoves(n, start, parseMoves(n, p.alg))) ??
+      null,
+    [quiz, n, start],
+  );
   if (!quiz) return null;
   const right = choice === quiz.answer;
   return (
@@ -400,12 +410,35 @@ export function QuizPanel({
       data-act="quiz"
       data-act-passed={right ? "" : undefined}
     >
-      <StillCube
-        n={lesson.size}
-        state={start}
-        mask={mask}
-        settings={settings}
-      />
+      {pictures ? (
+        <div className="grid w-full max-w-2xl grid-cols-2 gap-2">
+          {pictures.map((s, i) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: 고를 것 차례가 곧 열쇠다
+              key={i}
+              data-quiz-picture={i}
+              className={cn(
+                "flex flex-col items-center rounded-xl p-2",
+                choice === i
+                  ? i === quiz.answer
+                    ? "bg-emerald-500/20"
+                    : "bg-red-500/20"
+                  : "bg-white/5",
+              )}
+            >
+              <MiniCube n={n} state={s} mask={mask} settings={settings} />
+              <span className="font-bold text-sm">{quiz.choices[i]}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <StillCube
+          n={lesson.size}
+          state={start}
+          mask={mask}
+          settings={settings}
+        />
+      )}
       <div
         className="flex w-full max-w-md flex-col gap-2 rounded-xl bg-black/25 p-3"
         data-learn-quiz
@@ -851,6 +884,105 @@ export function PlayPanel({
             : undefined
         }
       />
+    </div>
+  );
+}
+
+// ── 작은 그림 큐브(그림 고르기) ───────────────────────────
+
+/** 3D 정지 그림 하나(끌면 둘러보기만). 3D를 못 그리면 펼친 그림 */
+function MiniCube({
+  n,
+  state,
+  mask,
+  settings,
+}: {
+  n: number;
+  state: PuzzleState;
+  mask: StickerMask | null;
+  settings: CubeSettings;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const live = useRef({ state, mask });
+  live.current = { state, mask };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let disposed = false;
+    let view: CubeView | null = null;
+    const ro = new ResizeObserver(() =>
+      view?.resize(canvas.clientWidth, canvas.clientHeight),
+    );
+    void loadCubeView()
+      .then(({ CubeView }) => {
+        if (disposed) return;
+        view = CubeView.create(canvas, {
+          n,
+          quality: settings.quality,
+          colors: settings.colors,
+          stickerless: settings.stickerless,
+          hidden: settings.hidden,
+        });
+        view.setStickers(
+          stickersFromState(n, live.current.state, live.current.mask),
+        );
+        ro.observe(canvas);
+        setReady(true);
+      })
+      .catch(() => setFailed(true));
+    return () => {
+      disposed = true;
+      ro.disconnect();
+      view?.dispose();
+    };
+  }, [
+    n,
+    settings.quality,
+    settings.colors,
+    settings.stickerless,
+    settings.hidden,
+  ]);
+  return failed ? (
+    <div data-cube-no3d className="w-full p-2">
+      <CubeNet
+        n={n}
+        faces={faceGrid(n, state, mask)}
+        colors={settings.colors}
+        hidden={settings.hidden}
+        className="h-auto w-full"
+      />
+    </div>
+  ) : (
+    <div className="aspect-square w-full max-w-[240px]">
+      <canvas
+        ref={canvasRef}
+        data-cube-canvas
+        data-cube-ready={ready ? "" : undefined}
+        className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
+      />
+    </div>
+  );
+}
+
+// ── 환영 ────────────────────────────────────────────
+
+/** 환영: 섞였다가 해법대로 맞춰지는 큐브(첫 화면 연출을 그대로 쓴다)와 「따라오세요」 */
+export function WelcomePanel({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3" data-act="welcome">
+      <div className="w-full max-w-sm">
+        <CubeHero />
+      </div>
+      <button
+        type="button"
+        data-welcome-start
+        onClick={onStart}
+        className="rounded-xl bg-sky-500 px-6 py-2.5 font-bold text-black"
+      >
+        큐브를 맞춰 보고 싶다면, 따라오세요 →
+      </button>
     </div>
   );
 }

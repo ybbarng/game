@@ -20,6 +20,7 @@ import {
   type MarkTone,
   MIN_CUBE_SIZE,
   type Normal,
+  type PieceLayout,
   type Quality,
   type Sticker,
 } from "./types";
@@ -88,6 +89,12 @@ interface Cubie {
   pos: THREE.Vector3;
   quat: THREE.Quaternion;
   stickers: number[];
+  /** 놓임(setLayout): 지금 값과 옮겨 가는 처음·끝 값 */
+  shift: THREE.Vector3;
+  scale: number;
+  body: boolean;
+  from: { shift: THREE.Vector3; scale: number };
+  to: { shift: THREE.Vector3; scale: number };
 }
 
 interface StickerSlot {
@@ -204,7 +211,7 @@ const tmpM2 = new THREE.Matrix4();
 const tmpQ = new THREE.Quaternion();
 const tmpQ2 = new THREE.Quaternion();
 const tmpV = new THREE.Vector3();
-const ONE = new THREE.Vector3(1, 1, 1);
+const tmpS = new THREE.Vector3(1, 1, 1);
 
 export class CubeView {
   readonly n: number;
@@ -245,6 +252,11 @@ export class CubeView {
     hit: SwipeHit | null;
     done: boolean;
   } | null = null;
+
+  /** 놓임이 바뀌는 중(시작 시각·걸리는 시간) */
+  private layoutAnim: { start: number; ms: number } | null = null;
+  /** 큐브 속 축(가운데를 잇는 심). setCore(true)일 때만 만든다 */
+  private core: THREE.Group | null = null;
 
   private queue: CubeMove[] = [];
   private running: Running | null = null;
@@ -353,6 +365,11 @@ export class CubeView {
         pos: new THREE.Vector3(...home),
         quat: new THREE.Quaternion(),
         stickers: [],
+        shift: new THREE.Vector3(),
+        scale: 1,
+        body: true,
+        from: { shift: new THREE.Vector3(), scale: 1 },
+        to: { shift: new THREE.Vector3(), scale: 1 },
       });
     const h = (this.n - 1) / 2;
     const zAxis = new THREE.Vector3(0, 0, 1);
@@ -540,6 +557,60 @@ export class CubeView {
     this.invalidate();
   }
 
+  /**
+   * 조각마다 놓임을 정한다(배우기의 스티커·조각 보기, 분해·조립). `of`는 조각의 제자리(맞춘 큐브의 중심)를 받아
+   * 놓임을 돌려준다(null이면 기본). `ms`가 있으면 그동안 부드럽게 옮긴다. 회전과 함께 쓰지 않는다(놓임은 세계 좌표)
+   */
+  setLayout(
+    of: (home: readonly [number, number, number]) => PieceLayout | null,
+    ms = 0,
+  ): void {
+    const now = typeof performance === "undefined" ? 0 : performance.now();
+    const t = this.reduced?.matches ? 0 : ms;
+    this.cubies.forEach((c, i) => {
+      const l = of(c.home) ?? {};
+      c.body = l.body ?? true;
+      c.from.shift.copy(c.shift);
+      c.from.scale = c.scale;
+      c.to.shift.set(...(l.shift ?? [0, 0, 0]));
+      c.to.scale = l.scale ?? 1;
+      if (t <= 0) {
+        c.shift.copy(c.to.shift);
+        c.scale = c.to.scale;
+      }
+      this.writeCubie(i);
+    });
+    this.layoutAnim = t > 0 ? { start: now, ms: t } : null;
+    this.invalidate();
+  }
+
+  /** 큐브 속 축(가운데 여섯을 잇는 심)을 그린다. 분해한 큐브에서 보인다 */
+  setCore(show: boolean): void {
+    if (show && !this.core) {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x8a8f98,
+        roughness: 0.45,
+        metalness: 0.3,
+      });
+      const len = this.n - 1;
+      const rod = new THREE.CylinderGeometry(0.09, 0.09, len, 12);
+      const ball = new THREE.SphereGeometry(0.32, 20, 14);
+      this.disposables.push(mat, rod, ball);
+      g.add(new THREE.Mesh(ball, mat));
+      for (const axis of ["x", "y", "z"] as const) {
+        const m = new THREE.Mesh(rod, mat);
+        if (axis === "x") m.rotation.z = Math.PI / 2;
+        if (axis === "z") m.rotation.x = Math.PI / 2;
+        g.add(m);
+      }
+      this.scene.add(g);
+      this.core = g;
+    }
+    if (this.core) this.core.visible = show;
+    this.invalidate();
+  }
+
   // ---------------------------------------------------------------- 보기
 
   /** 보는 각(도). yaw는 위에서 봐서 오른쪽으로 돈 각, pitch는 위로 올라간 각 */
@@ -625,8 +696,10 @@ export class CubeView {
       tmpV.copy(c.pos);
       tmpQ.copy(c.quat);
     }
-    tmpM.compose(tmpV, tmpQ, ONE);
-    this.body.setMatrixAt(i, tmpM);
+    tmpV.add(c.shift);
+    tmpS.setScalar(c.scale);
+    tmpM.compose(tmpV, tmpQ, tmpS);
+    this.body.setMatrixAt(i, c.body ? tmpM : ZERO);
     for (const si of c.stickers) {
       const slot = this.slots[si];
       if (!slot) continue;
@@ -705,6 +778,20 @@ export class CubeView {
       busy = true;
     }
     if (this.queue.length > 0) busy = true;
+
+    // 놓임(벌리기·날아오기)
+    const la = this.layoutAnim;
+    if (la) {
+      const p = clamp((now - la.start) / la.ms, 0, 1);
+      const e = easeInOut(p);
+      this.cubies.forEach((c, i) => {
+        c.shift.lerpVectors(c.from.shift, c.to.shift, e);
+        c.scale = c.from.scale + (c.to.scale - c.from.scale) * e;
+        this.writeCubie(i);
+      });
+      if (p >= 1) this.layoutAnim = null;
+      else busy = true;
+    }
 
     // 보기(끌어 돌린 뒤 천천히 제자리로)
     if (this.returning) {

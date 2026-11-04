@@ -130,6 +130,9 @@ export type LessonSetup = { alg: string } | { rule: ScrambleRule };
  * - turn: 한 수 해 보기. 시작 상황에서 `alg`를 직접 쳐서 같은 모양이 되면 통과
  * - play: 놀이판. 보고 싶은 조각만 색을 넣고 나머지는 까맣게 가린 큐브를 모든 키·밀기로 마음대로 돌려 본다.
  *   정해진 수는 없고, 층을 몇 번 돌리거나 그 조각이 자리를 몇 번 옮기면 통과(`play`)
+ * - welcome: 환영. 섞였다가 해법대로 맞춰지는 큐브(첫 화면 연출)와 「따라오세요」 단추. 누르면 다음 단계로
+ * - parts: 스티커로 보기 / 조각으로 보기. 칸을 누르면 붙은 조각 전체가 들린다(3×3)
+ * - build: 가상 분해·조립. 축 → 가운데 6 → 모서리 12 → 꼭짓점 8 차례로 빈자리를 눌러 끼운다(3×3, `learn/build.ts`)
  */
 export type LessonStepKind =
   | "text"
@@ -139,7 +142,10 @@ export type LessonStepKind =
   | "find"
   | "quiz"
   | "turn"
-  | "play";
+  | "play"
+  | "welcome"
+  | "parts"
+  | "build";
 
 /** 면 이름. 색은 맞춘 큐브에서 그 면에 있던 색(U 흰, R 빨강, F 초록, D 노랑, L 주황, B 파랑) */
 export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
@@ -189,6 +195,11 @@ export interface QuizSpec {
   answer: number;
   /** 고른 뒤 보여 줄 까닭 한두 문장 */
   why: string;
+  /**
+   * 고를 것마다 큐브 그림(그림을 보고 고르는 문제). 있으면 단계 큐브 대신 고를 것 곁에 그림을 하나씩 둔다.
+   * 차례는 `choices`와 같다
+   */
+  pictures?: { alg: string }[];
 }
 
 export interface LessonStep {
