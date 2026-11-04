@@ -45,6 +45,7 @@ import {
 } from "./LessonActs";
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
+import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -217,6 +218,14 @@ function CourseGrid({
           >
             <div className="flex items-baseline gap-2">
               <h3 className="font-bold">{course.title}</h3>
+              {course.stages && course.stages.length > 0 && (
+                <span
+                  data-course-stages={course.stages.length}
+                  className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70"
+                >
+                  {course.stages.length}단계
+                </span>
+              )}
               {recommended && (
                 <span className="rounded-full bg-sky-400 px-2 py-0.5 font-semibold text-black text-xs">
                   추천
@@ -408,6 +417,8 @@ function LessonView({
         )}
       </header>
 
+      <StageHeader course={course} lessonId={lesson.id} progress={progress} />
+
       {/* 단계 표시 */}
       <ol className="flex flex-wrap gap-1" aria-label="단계">
         {lesson.steps.map((s, i) => (
@@ -486,7 +497,18 @@ function LessonView({
             settings={settings}
           />
         )}
-        {step.kind === "demo" && step.alg && (
+        {lesson.stageMap && !step.stageMap && (
+          <StageStrip course={course} settings={settings} />
+        )}
+        {step.kind === "demo" && step.stageMap && (
+          <StageMapDemo
+            key={`${lesson.id}-${at}-map`}
+            course={course}
+            settings={settings}
+            onWatched={markActed}
+          />
+        )}
+        {step.kind === "demo" && step.alg && !step.stageMap && (
           <DemoPhases
             offersTurn={demoOffersTurn(lesson, at)}
             turning={demoTurn}
@@ -496,6 +518,7 @@ function LessonView({
         )}
         {step.kind === "demo" &&
           step.alg &&
+          !step.stageMap &&
           (demoTurn ? (
             <TurnPanel
               key={`${lesson.id}-${at}-turn`}

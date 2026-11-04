@@ -23,6 +23,7 @@ import {
 } from "./ll";
 import { coordsOf, heuristic, idaSearch, type Tracked } from "./search";
 import { type HumanSolve, Solve, type StageName, uTurn, yTurn } from "./solve";
+import { cornersTaught, crossTaught, whiteUp } from "./taught";
 
 /**
  * 사람 흉내 해법. 모두 상태 → 수 목록(WCA 표기)과 단계 경계. 같은 상태면 늘 같은 수가 나온다.
@@ -370,21 +371,45 @@ function firstTwoLayersBeginner(s: Solve, smartCorners = false): void {
 /** 입문: 층별 맞추기(초보자 공식만) */
 export const BEGINNER3_STEPS: readonly Step[] = [
   (s) => firstTwoLayersBeginner(s),
-  "oll-parity",
-  (s) => {
-    yellowCross(s);
-    s.stage("eo");
-    yellowFace(s);
-    s.stage("co");
-  },
-  "pll-parity",
-  (s) => {
-    topCorners(s);
-    s.stage("cp");
-    topEdges(s);
-    s.stage("ep");
-  },
+  ...lastLayerBeginner(),
 ];
+
+/**
+ * 배우는 방식 첫 층(첫 화면 연출만, `taught.ts`): 흰 면을 위로 들고 흰 십자와 첫 층 꼭짓점을
+ * 가르치는 그대로 맞춘 뒤 뒤집어(z2) 흰 면을 아래로 보낸다. 둘째 층부터는 입문과 같다.
+ */
+export const BEGINNER3_TAUGHT_STEPS: readonly Step[] = [
+  (s) => {
+    whiteUp(s);
+    crossTaught(s);
+    s.stage("cross");
+    cornersTaught(s);
+    s.apply("z2");
+    s.stage("corners");
+    middleEdges(s);
+    s.stage("middle");
+  },
+  ...lastLayerBeginner(),
+];
+
+function lastLayerBeginner(): Step[] {
+  return [
+    "oll-parity",
+    (s) => {
+      yellowCross(s);
+      s.stage("eo");
+      yellowFace(s);
+      s.stage("co");
+    },
+    "pll-parity",
+    (s) => {
+      topCorners(s);
+      s.stage("cp");
+      topEdges(s);
+      s.stage("ep");
+    },
+  ];
+}
 
 /**
  * 중수: 층별 + 짧은 공식. 첫 층 꼭짓점은 되풀이 공식 대신 짧은 수로 넣고(익숙해진 사람처럼),
@@ -442,9 +467,20 @@ function run3(steps: readonly Step[], state: PuzzleState): HumanSolve {
   return finish(s);
 }
 
+/**
+ * 사람 해법 선택지. `taught`면 흰 십자·첫 층을 배우기에서 가르치는 방식(흰 면 위)으로 둔다.
+ * 첫 화면 연출만 쓴다. 컴퓨터 대결 계획은 기본(없음) 그대로라 기기끼리 계획이 어긋나지 않는다.
+ */
+export interface HumanOptions {
+  taught?: boolean;
+}
+
 /** 3×3 입문: 층별 맞추기(초보자 공식만) */
-export function solveBeginner3(state: PuzzleState): HumanSolve {
-  return run3(BEGINNER3_STEPS, state);
+export function solveBeginner3(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
+  return run3(opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS, state);
 }
 
 /** 3×3 중수: 층별 + 2단계 OLL·PLL */
@@ -513,10 +549,17 @@ function lastLayer2(s: Solve): void {
   s.stage("pll");
 }
 
-/** 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리 */
-export function solveBeginner2(state: PuzzleState): HumanSolve {
+/** 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리. `taught`면 첫 층을 흰 면 위에서 `R' D' R D`로 */
+export function solveBeginner2(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
   const s = start2(state);
-  firstLayerCorners(s);
+  if (opts.taught) {
+    s.apply("z2");
+    cornersTaught(s);
+    s.apply("z2");
+  } else firstLayerCorners(s);
   s.stage("first-layer");
   yellowFace(s);
   s.stage("co");
@@ -567,22 +610,28 @@ export function solveHuman(
   size: number,
   state: PuzzleState,
   limits?: ReductionLimits,
+  opts: HumanOptions = {},
 ): HumanSolve {
   if (size === 3) {
-    if (level === "beginner") return solveBeginner3(state);
+    if (level === "beginner") return solveBeginner3(state, opts);
     if (level === "intermediate") return solveIntermediate3(state);
     if (level === "advanced") return solveCfop(state);
     return solveExpert3(state);
   }
   if (size === 2) {
-    if (level === "beginner") return solveBeginner2(state);
+    if (level === "beginner") return solveBeginner2(state, opts);
     if (level === "intermediate") return solveIntermediate2(state);
     if (level === "advanced") return solveAdvanced2(state);
     return solveExpert2(state);
   }
   if (size === 4 || size === 5) {
     if (level === "beginner")
-      return solveBigHuman(BEGINNER3_STEPS, size, state, limits);
+      return solveBigHuman(
+        opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS,
+        size,
+        state,
+        limits,
+      );
     if (level === "intermediate")
       return solveBigHuman(INTERMEDIATE3_STEPS, size, state, limits);
     if (level === "advanced")

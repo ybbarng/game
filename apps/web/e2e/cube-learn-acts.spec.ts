@@ -270,18 +270,19 @@ test("배우기: 놀이판에서 모든 키로 돌려 보고, 다른 조각을 �
   );
   await shot(page, "learn-pieces-play", info.project.name);
 });
-test("배우기: 첫 층 꼭짓점은 두 옆색으로 넣을 칸을 고른다", async ({
+
+test("배우기: 첫 층 꼭짓점은 세 색 가운데로 넣을 칸을 고른다", async ({
   page,
 }, info) => {
-  await page.goto("/cube/learn?lesson=333-first-corners");
-  // 3번: 흰-초록-주황이 들어갈 칸(아래-앞-오른쪽) 누르기
-  await goStep(page, 3);
+  await page.goto("/cube/learn?lesson=333-first-corners-up");
+  // 1번: 흰-초록-빨강이 들어갈 칸(흰 면 위, 위-앞-오른쪽) 누르기
+  await goStep(page, 1);
   const find = page.locator('[data-act="find"]');
-  // 앞면 왼쪽 아래(24)는 아래-앞-왼쪽 칸이라 틀림
-  await page.locator('[data-net-cell="24"]').click();
+  // 앞면 왼쪽 위(18)는 위-앞-왼쪽 칸이라 틀림
+  await page.locator('[data-net-cell="18"]').click();
   await expect(find.getByRole("status")).toContainText("가운데 사이");
-  // 앞면 오른쪽 아래(26) = 아래-앞-오른쪽 칸
-  await page.locator('[data-net-cell="26"]').click();
+  // 앞면 오른쪽 위(20) = 위-앞-오른쪽 칸
+  await page.locator('[data-net-cell="20"]').click();
   await expect(find).toHaveAttribute("data-act-passed", "");
   await shot(page, "learn-corner-slot", info.project.name);
 });
