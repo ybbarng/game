@@ -16,6 +16,13 @@ export const test = base.extend<{
   stardrawIntro: boolean;
 }>({
   stardrawIntro: [false, { option: true }],
+  page: async ({ page }, use) => {
+    if (CPU_SLOW > 1) {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_SLOW });
+    }
+    await use(page);
+  },
   context: async ({ context, stardrawIntro }, use) => {
     if (!stardrawIntro)
       await context.addInitScript(() => {
@@ -26,6 +33,12 @@ export const test = base.extend<{
     await use(context);
   },
 });
+
+/**
+ * `E2E_CPU_SLOW=4`처럼 주면 기본 탭의 CPU를 그 배수만큼 느리게 한다(CDP, Chromium만). GPU 없는 느린 CI에서만
+ * 드러나는 문제를 이 맥에서 재현할 때 쓴다(2026-11-04 #90). 웹 워커는 느려지지 않는다
+ */
+const CPU_SLOW = Number(process.env.E2E_CPU_SLOW ?? 0);
 
 function prepare(page: Page): void {
   waitForReady(page);

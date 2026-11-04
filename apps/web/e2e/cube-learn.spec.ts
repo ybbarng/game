@@ -41,6 +41,21 @@ async function goStep(page: Page, i: number) {
   );
 }
 
+/**
+ * 단계 표시에서 그 종류의 첫 단계 단추를 눌러 바로 간다. 「다음」으로 차례로 넘기면 단계마다 3D 장면을 새로 만들어,
+ * GPU 없는 CI(소프트웨어 렌더링)에서는 넘김 한 번에 약 9초가 걸려 시험이 90초 제한을 넘었다(2026-11-04 #90)
+ */
+async function goToStep(page: Page, kind: string) {
+  await page
+    .locator(`[aria-label="단계"] [data-step-to="${kind}"]`)
+    .first()
+    .click();
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    kind,
+  );
+}
+
 async function shot(page: Page, name: string, project: string) {
   if (!SAVE_SCREENSHOTS) return;
   await page.screenshot({
@@ -65,14 +80,11 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
     "data-cube-learn",
     "333-notation",
   );
-  const section = page.locator("[data-step-kind]");
   // 시연 단계 하나 보기
-  while ((await section.getAttribute("data-step-kind")) !== "demo")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
   await shot(page, "learn-demo", info.project.name);
-  while ((await section.getAttribute("data-step-kind")) !== "try")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "try");
   await inputReady(page);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
@@ -121,9 +133,7 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   // 키 배치를 저장하지 않으면 「두 손」
   await page.goto("/cube/learn?lesson=333-notation");
   const desktop = info.project.name === "desktop";
-  const section = page.locator("[data-step-kind]");
-  while ((await section.getAttribute("data-step-kind")) !== "demo")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "demo");
   const demo = page.locator("[data-cube-demo]");
   const first = demo.locator("[data-move-chip]").first();
   const firstMove = (await first.getAttribute("data-move-chip")) as string;
@@ -135,8 +145,7 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   else await expect(demo.locator("[data-move-keys]")).toHaveCount(0);
   await shot(page, "learn-keys-demo", info.project.name);
 
-  while ((await section.getAttribute("data-step-kind")) !== "try")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "try");
   await inputReady(page);
   await page.locator("[data-cube-hint-button]").click();
   const hint = page.locator("[data-cube-hint]");
@@ -162,8 +171,7 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   await expect(page.locator("[data-cube-pass]")).toBeVisible();
 
   // 따라 하기: 본문 속 수와 칠 수에도 같은 키
-  while ((await section.getAttribute("data-step-kind")) !== "turn")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "turn");
   await inputReady(page);
   const turn = page.locator('[data-act="turn"] [data-move-keys]');
   await expect(turn).toHaveCount(1);
@@ -178,7 +186,7 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   );
 });
 
-test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", async ({
+test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", async ({
   page,
 }, info) => {
   await useNotationKeys(page);
@@ -192,26 +200,26 @@ test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", as
 
   // ZZ 모서리 방향: 모서리만 보이는 가리기로 해 보기
   await page.locator('[data-lesson="zz-eo"]').click();
-  const section = page.locator("[data-step-kind]");
-  while ((await section.getAttribute("data-step-kind")) !== "try")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "try");
   await inputReady(page);
   await shot(page, "learn-zz-eo", info.project.name);
+});
 
-  // 야우 모서리 묶기 시연
+test("배우기: 야우 모서리 묶기 시연", async ({ page }, info) => {
   await page.goto("/cube/learn?lesson=yau-edges");
-  while ((await section.getAttribute("data-step-kind")) !== "demo")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
   await shot(page, "learn-yau-demo", info.project.name);
+});
 
+test("배우기: 루 해 보기(가운데 층 M)", async ({ page }, info) => {
+  await useNotationKeys(page);
   await page.goto("/cube/learn?lesson=roux-intro");
   await expect(page.locator("main")).toHaveAttribute(
     "data-cube-learn",
     "roux-intro",
   );
-  while ((await section.getAttribute("data-step-kind")) !== "try")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "try");
   await inputReady(page);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
@@ -234,11 +242,7 @@ test("배우기: 흰 십자 단원은 조각 찾기와 고르기 문제로 시�
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "find");
   // 글 단계에도 큐브 그림이 있다(3D 첫 그림 대신 준비 표시 또는 펼친 그림 대체를 기다린다)
-  await expect(
-    page.locator(
-      "[data-cube-still] [data-cube-ready], [data-cube-still] [data-cube-no3d]",
-    ),
-  ).toHaveCount(1);
+  await expect(page.locator("[data-cube-still]")).toHaveCount(1);
   await shot(page, "learn-white-cross-find", info.project.name);
 
   // 조각 찾기: F2로 내려간 흰-초록 모서리. 틀린 칸(앞 가운데)은 부드럽게 다시
@@ -270,11 +274,7 @@ test("배우기: 루 첫 블록은 조각 찾기, ZZ 모서리 방향은 고르�
   await page.goto("/cube/learn?lesson=roux-fb");
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "find");
-  await expect(
-    page.locator(
-      "[data-cube-still] [data-cube-ready], [data-cube-still] [data-cube-no3d]",
-    ),
-  ).toHaveCount(1);
+  await expect(page.locator("[data-cube-still]")).toHaveCount(1);
   // 섞인 큐브의 흰-빨강 모서리: 오른쪽 면 아랫줄 가운데(16)와 아랫면(32). 앞 가운데(22)는 틀림
   const find = page.locator('[data-act="find"]');
   await page.locator('[data-net-cell="22"]').click();

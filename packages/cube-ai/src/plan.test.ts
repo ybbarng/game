@@ -1,4 +1,10 @@
-import { randomCubeState } from "@game/cube-engine";
+import {
+  applyMoves,
+  isSolved,
+  parseMoves,
+  randomCubeState,
+  solvedCube,
+} from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 import { BOT_LEVELS, solveHuman } from "./methods";
 import { BOT_SPEEDS, botPlan } from "./plan";
@@ -62,5 +68,38 @@ describe("botPlan", () => {
       const gap = (p.moves[i]?.at as number) - (p.moves[i - 1]?.at as number);
       expect(gap).toBeGreaterThan(minGap);
     }
+  });
+
+  it("해법이 다 두기 전에 맞춰지면 계획은 처음 맞춰지는 수에서 끝난다(대결이 거기서 수를 끝낸다)", () => {
+    // 2026-11-04 #90 CI의 섞기: 입문 해법은 52수인데 끝이 `… U' U`라 50수째에 맞춰진다
+    const start = applyMoves(
+      2,
+      solvedCube(2),
+      parseMoves(2, "R' F' U R F' U2 R2 U' F R U'"),
+    );
+    const solve = solveHuman("beginner", 2, start);
+    expect(solve.moves).toHaveLength(52);
+    const p = botPlan("beginner", 2, start, 1);
+    expect(p.moves).toHaveLength(50);
+    let state = start;
+    p.moves.forEach((m, i) => {
+      state = applyMoves(2, state, parseMoves(2, m.move));
+      expect(isSolved(2, state)).toBe(i === p.moves.length - 1);
+    });
+    // 단계는 끊은 데까지, 앞 수들의 시각은 끊지 않은 해법과 같다(난수를 같은 차례로 뽑는다)
+    expect(p.stages.at(-1)?.end).toBe(50);
+    expect(p.stages.every((s) => s.end <= 50)).toBe(true);
+    expect(p.finishAt).toBe(p.moves.at(-1)?.at);
+    const cut = (k: number) => ({
+      ...solve,
+      moves: solve.moves.slice(0, k),
+      stages: solve.stages.map((s) => ({
+        ...s,
+        start: Math.min(s.start, k),
+        end: Math.min(s.end, k),
+      })),
+    });
+    const short = botPlan("beginner", 2, start, 1, { solve: () => cut(49) });
+    expect(short.moves).toEqual(p.moves.slice(0, 49));
   });
 });

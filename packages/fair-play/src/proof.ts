@@ -62,7 +62,7 @@ export interface KeyStatement {
 }
 
 /** A = Π (I^k)^w, B = Π O^w. 가중치는 공개한 값의 해시(64비트) */
-async function combineStatement(
+export async function combineStatement(
   g: SraGroup,
   st: KeyStatement,
 ): Promise<{ A: bigint; B: bigint }> {
@@ -72,10 +72,16 @@ async function combineStatement(
     st.v,
     ...st.items.flatMap((i) => [i.slot, i.input, i.output, i.key]),
   ]);
+  // 가중치 해시는 서로 기대지 않아 한꺼번에 기다린다(하나씩 기다리면 그 사이 CPU가 논다)
+  const ws = await Promise.all(
+    st.items.map(
+      async (_, index) => (await hash([seed, index])) & 0xffff_ffff_ffff_ffffn,
+    ),
+  );
   let A = g.one;
   let B = g.one;
   for (const [index, item] of st.items.entries()) {
-    const w = (await hash([seed, index])) & 0xffff_ffff_ffff_ffffn;
+    const w = ws[index] as bigint;
     A = g.mul(A, g.pow(item.input, (item.key * w) % g.q));
     B = g.mul(B, g.pow(item.output, w));
   }
