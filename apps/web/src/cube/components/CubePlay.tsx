@@ -36,7 +36,11 @@ import {
   orientFromCenters,
 } from "../keys/key-colors";
 import { stickerAtHit } from "../learn/interact";
-import type { CubeSettings } from "../settings";
+import {
+  type CubeSettings,
+  updateSettings,
+  useCubeSettings,
+} from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { KeyGuide } from "./KeyGuide";
@@ -125,6 +129,9 @@ export function CubePlay({
   const [showNet, setShowNet] = useState(true);
   const [prime, setPrime] = useState(false);
   const [moreButtons, setMoreButtons] = useState(false);
+  // 휴대폰에서 단추 줄 대신 키보드 그림으로 치기(설정 그대로, 화면에서도 바꾼다). 부모가 바꿔 넘긴 설정이 아니라 저장된 설정을 본다
+  const saved = useCubeSettings();
+  const keysMode = saved.touchKeyboard;
 
   // 바뀌는 값은 ref로 넘겨 키 연결을 한 번만 건다
   const live = useRef({
@@ -405,8 +412,11 @@ export function CubePlay({
         }
       />
 
-      {/* 휴대폰·마우스용 표기 단추 줄 */}
-      <div className="flex flex-wrap justify-center gap-1" data-cube-buttons>
+      {/* 휴대폰·마우스용 표기 단추 줄(휴대폰에서 키보드로 치면 숨긴다) */}
+      <div
+        className={`${keysMode ? "hidden sm:flex" : "flex"} flex-wrap justify-center gap-1`}
+        data-cube-buttons
+      >
         {[
           ...buttonMoves(n),
           ...(extraButtons ?? []).filter((b) => !buttonMoves(n).includes(b)),
@@ -464,9 +474,20 @@ export function CubePlay({
           type="button"
           onClick={() => setShowKeys((v) => !v)}
           aria-expanded={showKeys}
-          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
+          className="hidden min-h-8 items-center px-1 underline-offset-2 hover:underline sm:inline-flex"
         >
           {showKeys ? "키 그림 접기" : "키 그림 펴기"}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            updateSettings({ ...saved, touchKeyboard: !saved.touchKeyboard })
+          }
+          aria-pressed={keysMode}
+          data-cube-input-toggle={keysMode ? "keys" : "buttons"}
+          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline sm:hidden"
+        >
+          {keysMode ? "단추로 치기" : "키보드로 치기"}
         </button>
         {back.mode !== "off" && (
           <button
@@ -498,8 +519,12 @@ export function CubePlay({
           키·색 설정
         </a>
       </div>
-      {showKeys && keymap && (
-        <div className="hidden w-full max-w-2xl sm:block">
+      {/* 키 그림: 데스크톱은 펴고 접기, 휴대폰은 키보드로 칠 때만. 칸을 누르면 그 키를 친 것과 같다 */}
+      {keymap && (
+        <div
+          data-cube-keys-wrap
+          className={`w-full max-w-2xl ${keysMode ? "block" : "hidden"} ${showKeys ? "sm:block" : "sm:hidden"}`}
+        >
           <KeyGuide
             n={n}
             keymap={keymap}
@@ -507,6 +532,7 @@ export function CubePlay({
             want={want}
             orient={orientFromCenters(n, state) ?? evenOrient}
             layers={handMarks ? layers : null}
+            pressable
           />
         </div>
       )}

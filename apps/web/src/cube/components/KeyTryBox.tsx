@@ -84,6 +84,7 @@ export function KeyTryBox() {
         keymap={keymap}
         lit={null}
         want={target ? keysOf(target) : null}
+        pressable
       />
     </div>
   );

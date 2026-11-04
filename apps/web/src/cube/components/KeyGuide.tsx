@@ -19,6 +19,7 @@ import { keyLayers } from "../keys/layout";
 import type { HandLayers } from "../keys/reach";
 import { hexColor, useCubeSettings } from "../settings";
 import { KeyBar, useKeyLook } from "./KeyPaint";
+import { PRESS_CLASS, useVirtualKeys } from "./VirtualKeys";
 
 /**
  * 키 그림(지금 배치). 칸의 굵은 글은 그냥 칠 때, 아래 작은 글은 Shift와 함께 칠 때. Shift를 누르고 있는 동안은
@@ -92,6 +93,8 @@ export function KeyGuide({
   want,
   orient,
   layers,
+  pressable = false,
+  hideActions = false,
 }: {
   n: number;
   keymap: Keymap;
@@ -103,8 +106,16 @@ export function KeyGuide({
   want?: readonly KeyChord[] | null | undefined;
   /** 큰 큐브 「두 손」의 지금 층 수(csTimer의 3·4·7·8 키). 없으면 보이지 않는다 */
   layers?: HandLayers | null | undefined;
+  /** 칸을 눌러 칠 수 있다(화면 키보드, `VirtualKeys`). 아래에 Shift·Alt 토글과 되돌리기 줄이 붙는다 */
+  pressable?: boolean;
+  /** 동작 글을 숨긴다(키 보고 맞히기) */
+  hideActions?: boolean;
 }) {
   const look = useKeyLook(n, orient);
+  const vk = useVirtualKeys();
+  const usesAlt = keymap.bindings.some((b) => b.alt);
+  const undoChord =
+    chordsFor(keymap, "undo").find((c) => !c.ctrl && !c.alt) ?? null;
   const { keyPairs, keyFingers } = useCubeSettings();
   // Shift를 누르고 있는 동안은 Shift 층을 굵게 보인다
   const [held, setHeld] = useState(false);
@@ -122,8 +133,16 @@ export function KeyGuide({
   }, []);
   const cell = (code: string) => {
     const kl = heldNames(keyLayers(keymap, n, code), n, layers);
-    const plain = held ? kl.shift : kl.plain;
-    const shift = held ? undefined : kl.shift;
+    // 진짜 Shift를 누르고 있거나 화면의 Shift·Alt를 켰으면 그 층을 굵게
+    const shiftOn = held || vk.mods.shift;
+    const plain = vk.mods.alt
+      ? shiftOn
+        ? kl.altShift
+        : kl.alt
+      : shiftOn
+        ? kl.shift
+        : kl.plain;
+    const shift = shiftOn || vk.mods.alt ? undefined : kl.shift;
     const w = want?.find((c) => c.code === code);
     // 층 수를 잡고 바뀐 칸 글(5 = 2L → 2R')이면 그 수의 면 색으로
     const paint = look(
@@ -139,6 +158,15 @@ export function KeyGuide({
         key={code}
         data-key={code}
         data-key-want={w ? "" : undefined}
+        data-key-state={lit === code ? "pressed" : undefined}
+        {...(pressable
+          ? {
+              role: "button",
+              "aria-label": codeLabel(code),
+              "data-key-press": "",
+              ...vk.keyProps(code),
+            }
+          : {})}
         data-key-paint={
           paint
             ? paint.paint.kind === "face"
@@ -147,7 +175,7 @@ export function KeyGuide({
             : undefined
         }
         style={tinted ? { ...paint.style, color: paint.ink } : undefined}
-        className={`relative flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded border pb-1 text-[10px] leading-tight transition-colors ${
+        className={`relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center rounded border pb-1.5 text-[10px] leading-tight transition-colors ${pressable ? PRESS_CLASS : ""} ${
           lit === code
             ? "border-amber-300 bg-amber-300/30"
             : w
@@ -167,10 +195,10 @@ export function KeyGuide({
           {codeLabel(code)}
         </span>
         <span className="font-semibold text-xs">
-          {plain?.usable ? plain.label : ""}
+          {plain?.usable && !hideActions ? plain.label : ""}
         </span>
         <span className={tinted ? "opacity-70" : "text-white/50"}>
-          {shift?.usable ? shift.label : ""}
+          {shift?.usable && !hideActions ? shift.label : ""}
         </span>
         <KeyBar look={paint} />
       </div>
@@ -188,17 +216,48 @@ export function KeyGuide({
             {row.map(cell)}
           </div>
         ))}
-        {(keyPairs || keyFingers) && (
+        {((keyPairs && !hideActions) || keyFingers) && (
           <KeyOverlay
             keymap={keymap}
             n={n}
             orient={orient}
-            pairs={keyPairs}
+            pairs={keyPairs && !hideActions}
             fingers={keyFingers}
           />
         )}
       </div>
-      <p className="mt-1 break-keep text-white/55 text-xs">
+      {pressable && (
+        <div className="flex gap-1" data-key-mods>
+          <ModKey
+            label="⇧ Shift"
+            on={vk.mods.shift}
+            onToggle={() => vk.toggle("shift")}
+            name="shift"
+          />
+          {usesAlt && (
+            <ModKey
+              label="Alt"
+              on={vk.mods.alt}
+              onToggle={() => vk.toggle("alt")}
+              name="alt"
+            />
+          )}
+          {undoChord && (
+            <button
+              type="button"
+              tabIndex={-1}
+              data-key-press="undo"
+              {...vk.chordProps(undoChord)}
+              className={`flex h-11 flex-1 items-center justify-center rounded border border-white/15 bg-white/5 text-white/80 text-xs ${PRESS_CLASS}`}
+            >
+              되돌리기
+            </button>
+          )}
+        </div>
+      )}
+      <p
+        className={`mt-1 break-keep text-white/55 text-xs ${pressable ? "hidden sm:block" : ""}`}
+      >
         {layers && (
           <span data-key-layers={`${layers.left}-${layers.right}`}>
             <b className="text-sky-300">{handLayersText(layers)}</b>
@@ -218,6 +277,39 @@ export function KeyGuide({
         })}
       </p>
     </div>
+  );
+}
+
+/** 화면 Shift·Alt 토글(한 번 켜면 다음 키 하나에 붙고 꺼진다) */
+function ModKey({
+  label,
+  on,
+  onToggle,
+  name,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: () => void;
+  name: string;
+}) {
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-pressed={on}
+      data-key-mod={name}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        onToggle();
+      }}
+      className={`h-11 flex-1 rounded border text-xs ${PRESS_CLASS} ${
+        on
+          ? "border-sky-300 bg-sky-400/30 font-semibold text-sky-100"
+          : "border-white/15 bg-white/5 text-white/80"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

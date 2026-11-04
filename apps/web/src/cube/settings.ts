@@ -75,6 +75,11 @@ export interface CubeSettings {
    * 펼친 그림으로 보인다. 끄면 큐브만. 3D를 못 그리는 기기는 늘 펼친 그림
    */
   backView: BackView;
+  /**
+   * 휴대폰에서 수 단추 줄 대신 키보드 그림을 눌러 친다(2026-11-05, 기본 꺼짐). 데스크톱과 같은 키 배치로 손에 익힌다.
+   * 데스크톱은 늘 둘 다 보이고 키 그림도 누를 수 있다
+   */
+  touchKeyboard: boolean;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -96,6 +101,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   keyPairs: true,
   keyFingers: true,
   backView: "mirror",
+  touchKeyboard: false,
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -174,6 +180,7 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
       d.backView === "net" || d.backView === "off" || d.backView === "mirror"
         ? d.backView
         : DEFAULT_SETTINGS.backView,
+    touchKeyboard: bool(d.touchKeyboard, DEFAULT_SETTINGS.touchKeyboard),
     heroSize,
     heroMethod,
   };

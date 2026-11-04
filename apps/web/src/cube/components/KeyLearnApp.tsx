@@ -26,6 +26,7 @@ import {
 } from "../keys";
 import { hexColor, useCubeSettings } from "../settings";
 import { KeyboardMap } from "./KeyboardMap";
+import { KeyGuide } from "./KeyGuide";
 import { KeysHeader, useKeymap } from "./KeysApp";
 import { MoveChip, type MoveKeysOf } from "./MoveChip";
 import {
@@ -159,12 +160,11 @@ export function KeyLearnApp() {
     return pressesFor(keymap, TUTORIAL_N, current.notation)[0] ?? [];
   }, [keymap, current]);
 
+  // 키보드 없는 기기도 화면 키 그림으로 치므로 키캡을 보인다
   const keysOf: MoveKeysOf | null = useMemo(
     () =>
-      keymap && !noKeyboard
-        ? (nota: string) => keysForMove(keymap, TUTORIAL_N, nota)
-        : null,
-    [keymap, noKeyboard],
+      keymap ? (nota: string) => keysForMove(keymap, TUTORIAL_N, nota) : null,
+    [keymap],
   );
   const facing = run?.facing;
 
@@ -276,11 +276,9 @@ export function KeyLearnApp() {
                             )
                           : t.kind === "code" || t.kind === "solve"
                             ? ""
-                            : noKeyboard
-                              ? ""
-                              : t.kind === "move" && t.ask && state !== "done"
-                                ? "?"
-                                : keyOf(keymap, t)}
+                            : t.kind === "move" && t.ask && state !== "done"
+                              ? "?"
+                              : keyOf(keymap, t)}
                       </span>
                     </li>
                   );
@@ -382,19 +380,32 @@ export function KeyLearnApp() {
           </div>
         )}
 
-        {keymap && (
-          <KeyboardMap
-            keymap={keymap}
-            n={TUTORIAL_N}
-            lit={finished ? [] : lit}
-            pressed={pressed}
-            wrong={wrong}
-            hideActions={current?.kind === "move" && !!current.ask}
-          />
-        )}
+        {/* 키를 눌러 칠 수 있다(화면 키보드). 키보드 없는 기기는 큰 그림 대신 누르기 쉬운 작은 키 그림 */}
+        {keymap &&
+          (noKeyboard ? (
+            <KeyGuide
+              n={TUTORIAL_N}
+              keymap={keymap}
+              lit={pressed}
+              want={finished ? [] : lit}
+              hideActions={current?.kind === "move" && !!current.ask}
+              pressable
+            />
+          ) : (
+            <KeyboardMap
+              keymap={keymap}
+              n={TUTORIAL_N}
+              lit={finished ? [] : lit}
+              pressed={pressed}
+              wrong={wrong}
+              hideActions={current?.kind === "move" && !!current.ask}
+              pressable
+            />
+          ))}
         {noKeyboard && (
-          <p className="text-amber-200 text-xs" data-learn-no-keyboard>
-            키보드가 필요해요.
+          <p className="text-white/60 text-xs" data-learn-no-keyboard>
+            키보드가 없으면 키 그림을 눌러 쳐요. 데스크톱 키보드와 같은 자리라
+            그대로 손에 익어요.
           </p>
         )}
       </main>

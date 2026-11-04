@@ -16,6 +16,7 @@ import {
 import { useCubeSettings } from "../settings";
 import { KeyOverlay } from "./KeyGuide";
 import { KeyBar, type KeyLook, useKeyLook } from "./KeyPaint";
+import { PRESS_CLASS, useVirtualKeys, type VirtualKeys } from "./VirtualKeys";
 
 /**
  * 키보드 그림(단축키 표·키 익히기·조작 훈련). 실제 키보드 비례로 그리고, 키마다 지금 배치의 동작을 층별로 적는다.
@@ -88,6 +89,8 @@ export interface KeyboardMapProps {
   wrong?: string | null;
   /** 동작 글을 숨긴다(키 보고 맞히기) */
   hideActions?: boolean;
+  /** 칸을 눌러 칠 수 있다(화면 키보드, `VirtualKeys`). Shift·Alt 칸은 토글 */
+  pressable?: boolean;
   className?: string;
 }
 
@@ -99,12 +102,15 @@ export function KeyboardMap({
   pressed = null,
   wrong = null,
   hideActions = false,
+  pressable = false,
   className,
 }: KeyboardMapProps) {
   const rows = keyboardCells(keymap, n);
   const glow = litCodes(lit);
   const look = useKeyLook(n);
   const { keyPairs, keyFingers } = useCubeSettings();
+  const vk = useVirtualKeys();
+  const press = pressable ? vk : null;
 
   const state = (code: string) =>
     wrong === code
@@ -138,6 +144,7 @@ export function KeyboardMap({
                 n={n}
                 state={state}
                 hideActions={hideActions}
+                press={press}
               />
             ) : (
               <Key
@@ -148,6 +155,7 @@ export function KeyboardMap({
                 state={state(cell.code)}
                 hideActions={hideActions}
                 look={look}
+                press={press}
               />
             ),
           ),
@@ -178,9 +186,10 @@ function Key({
   cell,
   first,
   layer,
-  state,
   hideActions,
   look,
+  press,
+  state: given,
 }: {
   cell: KeyCell;
   /** 줄의 첫 키(새 줄에서 시작) */
@@ -189,10 +198,39 @@ function Key({
   state: KeyState;
   hideActions: boolean;
   look: (action: string | undefined) => KeyLook | null;
+  press: VirtualKeys | null;
 }) {
   const w = Math.round(cell.width * 4);
   const span = { gridColumn: first ? `1 / span ${w}` : `span ${w}` };
   if (cell.code === "Gap") return <div style={span} aria-hidden />;
+  const mod = /^Shift/.test(cell.code)
+    ? "shift"
+    : /^Alt/.test(cell.code)
+      ? "alt"
+      : null;
+  const modOn = !!(press && mod && press.mods[mod]);
+  // 켠 화면 Shift·Alt는 빛난다
+  const state: KeyState = given ?? (modOn ? "lit" : null);
+  const pressProps = !press
+    ? {}
+    : mod
+      ? {
+          role: "button",
+          "aria-pressed": modOn,
+          "data-key-mod": mod,
+          onPointerDown: (e: { preventDefault: () => void }) => {
+            e.preventDefault();
+            press.toggle(mod);
+          },
+        }
+      : cell.modifier
+        ? {}
+        : {
+            role: "button",
+            "aria-label": cell.cap,
+            "data-key-press": "",
+            ...press.keyProps(cell.code),
+          };
   const l = cell.layers;
   const main = layer === "all" ? l.plain : l[layer];
   const paint =
@@ -219,6 +257,7 @@ function Key({
     <div
       data-key={cell.code}
       data-key-state={state ?? undefined}
+      {...pressProps}
       data-key-paint={
         paint
           ? paint.paint.kind === "face"
@@ -234,6 +273,7 @@ function Key({
           : borderOf(main),
         !cell.modifier && !tinted && tint,
         state && STATE_CLASS[state],
+        press && (mod || !cell.modifier) && PRESS_CLASS,
       )}
     >
       <span
@@ -279,11 +319,13 @@ function Arrows({
   n,
   state,
   hideActions,
+  press,
 }: {
   keymap: Keymap;
   n: number;
   state: (code: string) => KeyState;
   hideActions: boolean;
+  press: VirtualKeys | null;
 }) {
   const one = (code: string, pos: string) => {
     const a = keyLayers(keymap, n, code).plain;
@@ -293,11 +335,20 @@ function Arrows({
         key={code}
         data-key={code}
         data-key-state={s ?? undefined}
+        {...(press
+          ? {
+              role: "button",
+              "aria-label": capOf(code),
+              "data-key-press": "",
+              ...press.keyProps(code),
+            }
+          : {})}
         className={cn(
           "flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-[0.5cqw] border bg-white/[0.04] leading-none print:bg-white",
           borderOf(a),
           pos,
           s && STATE_CLASS[s],
+          press && PRESS_CLASS,
         )}
       >
         <span className="text-white/45 print:text-neutral-500">
