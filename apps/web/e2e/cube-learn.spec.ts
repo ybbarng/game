@@ -32,20 +32,6 @@ function keysFor(alg: string): string[] {
   return keys;
 }
 
-/**
- * 그 종류의 단계가 나올 때까지 「다음」을 누른다. 누를 때마다 단계 번호가 실제로 바뀐 것을 확인하고 다음 종류를 읽는다
- * (느린 CI에서 바뀌기 전 값을 읽어 한 번 더 누르면 찾는 단계를 지나쳤다, 2026-11-04 #90)
- */
-async function nextUntil(page: Page, kind: string) {
-  const section = page.locator("[data-step-kind]");
-  for (;;) {
-    const step = await section.getAttribute("data-step");
-    if ((await section.getAttribute("data-step-kind")) === kind) return;
-    await page.locator("[data-step-next]").click();
-    await expect(section).not.toHaveAttribute("data-step", step ?? "");
-  }
-}
-
 /** 단계 목록에서 i번째(0부터) 단계로 바로 간다 */
 async function goStep(page: Page, i: number) {
   await page.locator('[aria-label="단계"] li').nth(i).locator("button").click();
@@ -341,7 +327,8 @@ test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기
     .locator("button")
     .click();
   await expect(section).toHaveAttribute("data-step", "10");
-  await expect(section).toContainText("R을 돌렸어요");
+  // 본문 속 수 R 옆에는 데스크톱에서 키캡이 붙으므로 수 다음 글로 본다
+  await expect(section).toContainText("이번에는 가운데만 보여요");
   // 원래 자리(위-앞-오른쪽, 칸 8)에는 이제 다른 꼭짓점이 있다
   await page.locator('[data-net-cell="8"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
