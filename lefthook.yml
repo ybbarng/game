@@ -10,5 +10,7 @@ pre-push:
       run: pnpm lint
     - name: typecheck
       run: pnpm typecheck
+    # 단위 시험은 origin/main과 갈라진 뒤 바뀐 파일을 불러오는 시험만(2026-11-04, vitest --changed는 merge-base 기준이고
+    # 커밋 안 한 파일도 본다). 설정 파일이 바뀌면 vitest.config.ts의 forceRerunTriggers로 전부. origin/main이 없으면 전부
     - name: test
-      run: pnpm test
+      run: if git rev-parse -q --verify origin/main > /dev/null; then pnpm test:changed; else pnpm test; fi

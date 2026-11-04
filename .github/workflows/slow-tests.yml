@@ -20,10 +20,11 @@ concurrency:
 
 jobs:
   report:
-    # 성공한 main push만(포크에서 main이라는 이름의 브랜치로 연 PR은 빼려고 event·저장소도 본다)
+    # 성공한 main push와 매일 전부 실행(schedule)만(포크에서 main이라는 이름의 브랜치로 연 PR은 빼려고 event·저장소도 본다).
+    # push 실행은 바뀐 것만 시험하므로(2026-11-04) 고르기 기록(test-times-selection)으로 무엇을 쟀는지 함께 넘긴다
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'schedule') &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
@@ -56,3 +57,4 @@ jobs:
           --unit test-times/test-times-unit/unit.json
           --e2e test-times/test-times-e2e-1/e2e.json
           --e2e test-times/test-times-e2e-2/e2e.json
+          --selection test-times/test-times-selection/selection.json
