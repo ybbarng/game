@@ -313,12 +313,17 @@ export function FindPanel({
       const id = start.perm[sticker];
       const hidden =
         shown !== null && id !== undefined && shown[id] !== "visible";
+      // 제자리가 아닌 블럭 세기: 같은 종류인데 틀렸으면 그 블럭은 제자리다
+      const home =
+        target.misplaced && p && (!target.piece || p.type === target.piece);
       setMiss(
-        slot.length > 1
-          ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요. 다시 찾아보세요.`
-          : p
-            ? `그건 ${hidden ? "" : `${colorNames(p.colors)} `}${pieceName(p.type)}이에요. 다시 찾아보세요.`
-            : "다시 찾아보세요.",
+        home
+          ? "그 블럭은 제자리예요. 색이 닿은 센터 블럭 색과 같아요."
+          : slot.length > 1
+            ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요. 다시 찾아보세요.`
+            : p
+              ? `그건 ${hidden ? "" : `${colorNames(p.colors)} `}${pieceName(p.type)}이에요. 다시 찾아보세요.`
+              : "다시 찾아보세요.",
       );
       if (r.piece !== null)
         setFlash({ piece: r.piece, tone: "wrong", at: Date.now() });

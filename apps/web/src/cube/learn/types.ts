@@ -177,6 +177,11 @@ export interface FindTarget {
   colors?: FaceLetter[];
   has?: FaceLetter[];
   at?: FaceLetter[];
+  /**
+   * 제자리가 아닌 조각만(홀수 큐브). 조각의 색이 그 자리가 닿은 센터 블럭 색들과 다르면 맞다. 방향은 보지 않는다
+   * (2026-11-05 「방향은 맞는데 자리는 틀린」 블럭 세기)
+   */
+  misplaced?: boolean;
 }
 
 /** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */

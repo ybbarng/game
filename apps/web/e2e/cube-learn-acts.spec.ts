@@ -224,7 +224,7 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가�
   await expect(page.locator("[data-net-cell][data-net-hidden]")).toHaveCount(0);
 });
 
-test("배우기: 조각의 움직임은 센터 → 엣지 → 코너 차례", async ({
+test("배우기: 조각의 움직임은 센터 → 엣지 → 코너, 자리와 방향을 손으로 가른다", async ({
   page,
 }, info) => {
   // 옛 주소(333-pieces)도 새 단원으로 연다
@@ -233,6 +233,7 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너 차례", as
     "data-cube-learn",
     "333-piece-moves",
   );
+  const section = page.locator("[data-step-kind]");
   const find = page.locator('[data-act="find"]');
 
   // 따라가기 확인 1: F R 뒤 흰-초록 엣지 블럭은 위-오른쪽(윗면 칸 5). 원래 자리(칸 7)는 틀림
@@ -253,8 +254,36 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너 차례", as
   await expect(corner).not.toHaveAttribute("data-net-hidden", "");
   await shot(page, "learn-pieces-track", info.project.name);
 
+  // U 한 번: 흰 면은 그대로인데 자리가 틀림. 윗면을 세 번 더 돌려(= U') 되돌린다
+  await goStep(page, 7);
+  await expect(section).toHaveAttribute("data-step-kind", "try");
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "흰 면은 그대로 다 흰색",
+  );
+  await inputReady(page);
+  await shot(page, "learn-pieces-u-once", info.project.name);
+  const buttons = page.locator("[data-cube-buttons] button");
+  for (let i = 0; i < 3; i++) await buttons.filter({ hasText: /^U$/ }).click();
+  await expect(page.locator("[data-cube-try]")).toHaveAttribute(
+    "data-cube-passed",
+    "",
+  );
+
+  // 제자리가 아닌 엣지 블럭 세기: 뒤(칸 1)는 제자리, 앞·왼쪽·오른쪽(칸 7·3·5)이 틀린 자리
+  await goStep(page, 8);
+  const count = find.locator("[data-find-count]");
+  await expect(count).toHaveAttribute("data-find-count", "0/3");
+  await page.locator('[data-net-cell="1"]').click();
+  await expect(find.getByRole("status")).toContainText("제자리예요");
+  await expect(count).toHaveAttribute("data-find-count", "0/3");
+  for (const cell of [7, 3, 5])
+    await page.locator(`[data-net-cell="${cell}"]`).click();
+  await expect(count).toHaveAttribute("data-find-count", "3/3");
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-misplaced", info.project.name);
+
   // 평가: 한 면을 맞춘 상태는? (가) 흰 면만 흰색 / (나) 흰 블럭이 제자리
-  await goStep(page, 6);
+  await goStep(page, 9);
   const quiz = page.locator('[data-act="quiz"]');
   await expect(quiz.locator("[data-quiz-picture]")).toHaveCount(2);
   await page.locator("[data-learn-quiz] [data-choice='0']").click();
@@ -263,8 +292,15 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너 차례", as
   await expect(quiz).toHaveAttribute("data-act-passed", "");
   await expect(quiz).toContainText("제자리에 바른 방향");
 
+  // 자리 × 방향 정리
+  await goStep(page, 12);
+  await expect(page.locator("[data-step-body]")).toContainText("자리 ✓·방향 ✗");
+  await page.locator("[data-learn-quiz] [data-choice='2']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-place-turn", info.project.name);
+
   // 해 보기는 엣지 → 코너
-  await goStep(page, 10);
+  await goStep(page, 13);
   await expect(page.locator("[data-step-body]")).toContainText(
     "흰-초록 엣지 블럭",
   );

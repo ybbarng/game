@@ -32,6 +32,7 @@ import {
 } from "./interact";
 import { goalMet, maskFor, pieceByName } from "./judge";
 import {
+  EDGE_CYCLE,
   FACE_ONLY,
   FLIPPED_EDGE,
   LAYER_DONE,
@@ -80,8 +81,9 @@ describe("과정 맨 앞의 조각 단원", () => {
   });
 });
 
-describe("조각의 움직임: 센터 → 엣지 → 코너", () => {
+describe("조각의 움직임: 센터 → 엣지 → 코너, 자리와 방향", () => {
   const l = lessonOf("333-piece-moves");
+  const U = { piece: "edge", misplaced: true } as FindTarget;
 
   it("놀이판·따라가기·해 보기가 모두 센터 → 엣지 → 코너 차례다", () => {
     const kindOf = (t: FindTarget | FindTarget[] | undefined) => {
@@ -97,13 +99,49 @@ describe("조각의 움직임: 센터 → 엣지 → 코너", () => {
     const tracks = l.steps.filter((s) => s.kind === "find" && s.find?.colors);
     expect(tracks.map((s) => s.find?.piece)).toEqual(["edge", "corner"]);
     const tries = l.steps.filter((s) => s.kind === "try").map((s) => s.goal);
-    expect(tries).toEqual(["piece:UF", "piece:UFR"]);
+    expect(tries).toEqual(["solved", "piece:UF", "piece:UFR"]);
     // 표기 안내는 첫 해 보기에만
     const firstTry = l.steps.find((s) => s.kind === "try");
     expect(firstTry?.body).toContain("표기는 아직 몰라도 괜찮아요");
     expect(
       l.steps.filter((s) => s.body.includes("표기는 아직 몰라도")),
     ).toHaveLength(1);
+  });
+
+  it("U 한 번: 흰 면은 그대로인데 윗층 엣지 넷이 제자리가 아니고, U'로 돌아온다", () => {
+    const s = l.steps.find((x) => x.kind === "try" && x.goal === "solved");
+    const start = play(3, (s?.setup as { alg: string } | undefined)?.alg ?? "");
+    const colors = faceColors(3, start);
+    for (let i = 0; i < 9; i++) expect(colors[i]).toBe(FACE_INDEX.U);
+    expect(hitSlots(3, start, U)).toHaveLength(4);
+    expect(goalMet(3, play(3, s?.alg ?? "", start), "solved")).toBe(true);
+  });
+
+  it(`제자리가 아닌 엣지 세기(${EDGE_CYCLE}): 흰 면은 다 흰색, 엣지 셋만 자리가 틀림`, () => {
+    const s = l.steps.find((x) => x.find?.misplaced);
+    expect(s?.setup).toEqual({ alg: EDGE_CYCLE });
+    const start = play(3, EDGE_CYCLE);
+    const colors = faceColors(3, start);
+    for (let i = 0; i < 9; i++) expect(colors[i]).toBe(FACE_INDEX.U);
+    expect(hitSlots(3, start, U)).toHaveLength(s?.count as number);
+    expect(s?.count).toBe(3);
+    // 코너는 모두 제자리
+    expect(hitSlots(3, start, { piece: "corner", misplaced: true })).toEqual(
+      [],
+    );
+    // 맞춘 큐브에는 제자리가 아닌 블럭이 없다
+    expect(hitSlots(3, solvedCube(3), U)).toEqual([]);
+  });
+
+  it("자리 × 방향 정리: 자리와 방향 둘 다", () => {
+    const s = l.steps.find((x) => x.quiz?.question.includes("맞췄다고"));
+    expect(s?.quiz?.choices[s.quiz.answer]).toContain("바른 방향");
+    // 평가 「한 면을 맞춘 상태」 앞에 손으로 해 보는 단계(U 한 번·엣지 세기)가 온다
+    const at = (f: (x: (typeof l.steps)[number]) => boolean) =>
+      l.steps.findIndex(f);
+    const face = at((x) => !!x.quiz?.question.includes("한 면을 맞춘"));
+    expect(at((x) => x.goal === "solved")).toBeLessThan(face);
+    expect(at((x) => !!x.find?.misplaced)).toBeLessThan(face);
   });
 });
 
