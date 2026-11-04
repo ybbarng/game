@@ -332,6 +332,7 @@ function LessonView({
             <button
               type="button"
               onClick={() => setAt(i)}
+              data-step-to={s.kind}
               aria-current={i === at ? "step" : undefined}
               title={KIND_LABEL[s.kind]}
               className={cn(

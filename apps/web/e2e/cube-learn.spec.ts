@@ -33,17 +33,18 @@ function keysFor(alg: string): string[] {
 }
 
 /**
- * 그 종류의 단계가 나올 때까지 「다음」을 누른다. 누를 때마다 단계 번호가 실제로 바뀐 것을 확인하고 다음 종류를 읽는다
- * (느린 CI에서 바뀌기 전 값을 읽어 한 번 더 누르면 찾는 단계를 지나쳤다, 2026-11-04 #90)
+ * 단계 표시에서 그 종류의 첫 단계 단추를 눌러 바로 간다. 「다음」으로 차례로 넘기면 단계마다 3D 장면을 새로 만들어,
+ * GPU 없는 CI(소프트웨어 렌더링)에서는 넘김 한 번에 약 9초가 걸려 시험이 90초 제한을 넘었다(2026-11-04 #90)
  */
-async function nextUntil(page: Page, kind: string) {
-  const section = page.locator("[data-step-kind]");
-  for (;;) {
-    const step = await section.getAttribute("data-step");
-    if ((await section.getAttribute("data-step-kind")) === kind) return;
-    await page.locator("[data-step-next]").click();
-    await expect(section).not.toHaveAttribute("data-step", step ?? "");
-  }
+async function goToStep(page: Page, kind: string) {
+  await page
+    .locator(`[aria-label="단계"] [data-step-to="${kind}"]`)
+    .first()
+    .click();
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    kind,
+  );
 }
 
 async function shot(page: Page, name: string, project: string) {
@@ -71,10 +72,10 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
     "333-notation",
   );
   // 시연 단계 하나 보기
-  await nextUntil(page, "demo");
+  await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
   await shot(page, "learn-demo", info.project.name);
-  await nextUntil(page, "try");
+  await goToStep(page, "try");
   await inputReady(page);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
@@ -97,7 +98,7 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   );
 });
 
-test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", async ({
+test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", async ({
   page,
 }, info) => {
   await useNotationKeys(page);
@@ -111,22 +112,26 @@ test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", as
 
   // ZZ 모서리 방향: 모서리만 보이는 가리기로 해 보기
   await page.locator('[data-lesson="zz-eo"]').click();
-  await nextUntil(page, "try");
+  await goToStep(page, "try");
   await inputReady(page);
   await shot(page, "learn-zz-eo", info.project.name);
+});
 
-  // 야우 모서리 묶기 시연
+test("배우기: 야우 모서리 묶기 시연", async ({ page }, info) => {
   await page.goto("/cube/learn?lesson=yau-edges");
-  await nextUntil(page, "demo");
+  await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
   await shot(page, "learn-yau-demo", info.project.name);
+});
 
+test("배우기: 루 해 보기(가운데 층 M)", async ({ page }, info) => {
+  await useNotationKeys(page);
   await page.goto("/cube/learn?lesson=roux-intro");
   await expect(page.locator("main")).toHaveAttribute(
     "data-cube-learn",
     "roux-intro",
   );
-  await nextUntil(page, "try");
+  await goToStep(page, "try");
   await inputReady(page);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
