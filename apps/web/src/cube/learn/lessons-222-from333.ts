@@ -1,13 +1,21 @@
 // 3×3을 아는 사람의 2×2(2026-11-04 사용자 요청): 2×2는 3×3의 꼭짓점만 남긴 큐브라
-// 3×3 초보자 과정의 꼭짓점 단계(첫 층 꼭짓점·노란 면·위 꼭짓점 자리)를 같은 이름·같은 공식으로 그대로 쓴다.
-// 다른 점은 둘: 가운데가 없어 제자리를 꼭짓점끼리의 관계로 보고, 모서리 단계(흰 십자·둘째 층·노란 십자·위 모서리)가 없다.
-// 공식 상수는 3×3 레슨에서 가져오고, 판정은 2×2 목표(2x2-first-layer·2x2-top-face·solved)를 쓴다.
-import { T_PERM, Y_PERM } from "./lessons-222";
-import { A_PERM, SEXY, STUCK_CORNER, SUNE } from "./lessons-333";
+// 3×3 초보자 과정의 꼭짓점 단계(첫 층 꼭짓점·꼭짓점 자리·꼭짓점 방향)를 같은 이름·같은 공식으로 그대로 쓴다.
+// 다른 점은 둘: 가운데가 없어 제자리를 꼭짓점끼리의 관계로 보고, 모서리 단계(흰 십자·둘째 층·노란 십자·옆면 맞추기)가 없다.
+// 모서리가 없으니 「꼭짓점 자리」에서 윗면(U)을 돌려도 된다. 그래서 제자리 꼭짓점이 꼭 하나인 U 자리를 찾는다.
+// 공식 상수는 3×3 레슨에서 가져오고, 판정은 2×2 목표(2x2-first-layer·2x2-corners-placed·solved)를 쓴다.
+import { firstLayerUpSteps, T_PERM, Y_PERM } from "./lessons-222";
+import { CORNER_CYCLE, CORNER_TWIST, TWIST_TWO } from "./lessons-333";
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
+
+/** 2×2 대각 바꿈(Y퍼뮤 상황, 어느 U에서도 제자리가 꼭 하나가 아님) */
+export const DIAGONAL_222 = Y_PERM;
+/** 그 풀이: U로 제자리 0인 자리 → 한 번 → 앞-왼쪽 위가 제자리 → y'로 쥐고 한 번(from333.test.ts가 확인) */
+export const DIAGONAL_222_SOLVE = `U ${CORNER_CYCLE} y' ${CORNER_CYCLE}`;
+/** 이웃 둘 바뀜(T퍼뮤 상황): U 한 번이면 앞-오른쪽 위가 제자리 하나 → 한 번 */
+export const NEIGHBORS_222_SOLVE = `U ${CORNER_CYCLE}`;
 
 const corners: Lesson = {
   id: "222-from333-corners",
@@ -27,8 +35,8 @@ const corners: Lesson = {
       quiz: {
         question: "3×3 공식 중 2×2에서도 그대로 쓸 수 있는 것은?",
         choices: [
-          "꼭짓점만 바꾸거나, 모서리는 흐트러져도 되는 공식(R U R' U', 수네, A퍼뮤)",
-          "모서리만 옮기는 공식(U퍼뮤)",
+          `꼭짓점만 바꾸거나, 모서리는 흐트러져도 되는 공식(${CORNER_TWIST}, ${CORNER_CYCLE})`,
+          "모서리만 옮기는 공식(옆면 맞추기)",
           "가운데 줄을 돌리는 공식(M)",
         ],
         answer: 0,
@@ -37,17 +45,17 @@ const corners: Lesson = {
     },
     {
       kind: "quiz",
-      body: `둘 다 ${SEXY}를 한 큐브예요. 3×3에서는 모서리도 흐트러지지만, 꼭짓점만 보면 2×2와 똑같아요.`,
+      body: `둘 다 ${CORNER_TWIST}를 한 큐브예요. 3×3에서는 모서리도 흐트러지지만, 꼭짓점만 보면 2×2와 똑같아요.`,
       beside: {
         size: 3,
-        caption: `3×3에 ${SEXY}(꼭짓점만 보임)`,
-        setup: { alg: SEXY },
+        caption: `3×3에 ${CORNER_TWIST}(꼭짓점만 보임)`,
+        setup: { alg: CORNER_TWIST },
         mask: "corners",
       },
-      setup: { alg: SEXY },
+      setup: { alg: CORNER_TWIST },
       mask: "all",
       quiz: {
-        question: `${SEXY}는 3×3에서 모서리도 움직여요. 2×2에서 써도 될까요?`,
+        question: `${CORNER_TWIST}는 3×3에서 모서리도 움직여요. 2×2에서 써도 될까요?`,
         choices: [
           "네, 2×2에는 모서리가 없으니 꼭짓점 움직임만 보면 돼요",
           "아니요, 모서리가 흐트러지니 못 써요",
@@ -86,73 +94,26 @@ const corners: Lesson = {
       quiz: {
         question: "3×3 초보자 과정에서 2×2에는 없는 단계는?",
         choices: [
-          "흰 십자, 둘째 층 모서리, 노란 십자, 위 모서리 자리",
-          "첫 층 꼭짓점과 노란 면",
-          "위 꼭짓점 자리",
+          "흰 십자, 둘째 층 모서리, 노란 십자, 옆면 맞추기",
+          "첫 층 꼭짓점과 꼭짓점 자리",
+          "꼭짓점 방향",
         ],
         answer: 0,
-        why: "모두 모서리를 맞추는 단계예요. 2×2는 첫 층 → 노란 면 → 위 꼭짓점 자리, 세 단계면 끝나요.",
+        why: "모두 모서리를 맞추는 단계예요. 2×2는 첫 층 → 꼭짓점 자리 → 꼭짓점 방향, 세 단계면 끝나요.",
       },
     },
   ],
 };
 
 const firstLayer: Lesson = {
-  id: "222-from333-first-layer",
+  id: "222-from333-first-layer-up",
   size: 2,
   title: "첫 층",
-  summary: "3×3의 「첫 층 꼭짓점」과 같아요. R U R' U' 하나로.",
+  summary: "3×3의 「첫 층 꼭짓점」과 같아요. 흰 면 위에서 R' D' R D 하나로.",
   steps: [
-    {
-      kind: "look",
-      body: "3×3에서 했던 「첫 층 꼭짓점」 단계와 같아요. 흰 꼭짓점 하나를 아래층 기준으로 두고 큐브를 뒤집어 흰 면을 아래로 보내 보세요.",
-      mask: "first-layer",
-      look: { color: "U", on: "D" },
-    },
-    {
-      kind: "quiz",
-      body: "3×3처럼 넣을 자리 위(앞-오른쪽 위)로 옮기고 R U R' U'을 되풀이해요. 횟수도 같아요: 흰색이 오른쪽이면 한 번, 위면 세 번, 앞이면 다섯 번.",
-      setup: flip(`${SEXY} ${SEXY} ${SEXY}`),
-      mask: "first-layer",
-      quiz: {
-        question:
-          "앞-오른쪽 위 꼭짓점은 흰색이 위를 봐요. R U R' U'을 몇 번 할까요?",
-        choices: ["한 번", "세 번", "다섯 번"],
-        answer: 1,
-        why: "3×3과 같아요. 흰색이 위를 보면 세 번이에요.",
-      },
-    },
-    {
-      kind: "try",
-      body: "흰색이 위를 봐요. R U R' U'을 세 번.",
-      setup: flip(`${SEXY} ${SEXY} ${SEXY}`),
-      alg: `${SEXY} ${SEXY} ${SEXY}`,
-      goal: "2x2-first-layer",
-      mask: "first-layer",
-    },
-    {
-      kind: "try",
-      body: "꼭짓점이 넣을 자리 위에 있지 않아요. 3×3처럼 먼저 윗면을 돌려(U') 옮겨요.",
-      setup: flip(`U' ${SEXY}`),
-      alg: `U' ${SEXY}`,
-      goal: "2x2-first-layer",
-      mask: "first-layer",
-    },
-    {
-      kind: "try",
-      body: "3×3처럼 흰 꼭짓점이 아래층 엉뚱한 칸(앞-왼쪽)에 박힐 때도 있어요. 그 칸을 앞-오른쪽으로 들고(y') R U R' U' 한 번으로 꺼낸 뒤, 다시 돌려 들고(y) 제 칸 위로 옮겨 넣어요.",
-      setup: flip(STUCK_CORNER),
-      alg: STUCK_CORNER,
-      goal: "2x2-first-layer",
-      mask: "first-layer",
-    },
-    {
-      kind: "try",
-      body: "섞인 2×2에서 첫 층을 만들어요. 기준 꼭짓점 하나를 아래에 두고, 옆색이 이어지는 꼭짓점을 차례로 넣어요.",
-      setup: { rule: "2x2-random" },
-      goal: "2x2-first-layer",
-      mask: "first-layer",
-    },
+    ...firstLayerUpSteps(
+      "3×3에서 했던 「첫 층 꼭짓점」 단계와 같아요. 흰 면을 위에 두고, 아래층의 흰 꼭짓점을 칸 밑으로 옮겨 R' D' R D를 되풀이해요. 먼저 기준이 될 흰 꼭짓점을 아무거나 하나 눌러 보세요.",
+    ),
     {
       kind: "quiz",
       body: "2×2만의 함정: 첫 층이 다 됐는데 옆에서 보면 위층과 색이 어긋나 보일 수 있어요. 3×3에는 가운데가 있어 이렇게 보이지 않았어요.",
@@ -172,87 +133,114 @@ const firstLayer: Lesson = {
   ],
 };
 
-const yellowFace: Lesson = {
-  id: "222-from333-yellow-face",
+const cornerPlace: Lesson = {
+  id: "222-from333-corner-place",
   size: 2,
-  title: "노란 면",
-  summary: "3×3의 「노란 면」과 같아요. 수네(R U R' U R U2 R')를 되풀이.",
+  title: "꼭짓점 자리",
+  summary:
+    "3×3의 「꼭짓점 자리」와 같아요. U R U' L' U R' U' L, 다만 윗면을 돌려 제자리를 찾아요.",
   steps: [
     {
       kind: "quiz",
-      body: "3×3에서 했던 「노란 면」 단계와 같아요. 노란 십자가 없어도 돼요(모서리가 없으니까요). 위를 보는 노란 칸이 하나면 그것을 왼쪽 앞에 두고 수네.",
-      setup: flip(SUNE),
-      mask: "oll",
+      body: "3×3에서 했던 「꼭짓점 자리」 단계와 같아요. 방향은 상관없이, 위 꼭짓점의 두 옆색이 그 밑 아래층 꼭짓점의 옆색과 이어지면 제자리예요. 3×3과 다른 점: 위 모서리가 없으니 윗면(U)을 돌려도 돼요. U를 돌려 가며 제자리 꼭짓점이 꼭 하나인 자리를 찾아 그것을 앞-오른쪽 위에 둬요.",
+      setup: flip(`U ${CORNER_CYCLE}`),
+      mask: "all",
       quiz: {
-        question: "위를 보는 노란 칸은 몇 개일까요?",
-        choices: ["0개", "1개", "2개"],
-        answer: 1,
-        why: "하나가 왼쪽 앞에 있어요. 3×3처럼 수네 한 번이면 돼요.",
+        question:
+          "지금은 제자리 꼭짓점이 둘이에요. 공식을 하기 전에 무엇을 할까요?",
+        choices: [
+          "U를 돌려 제자리가 꼭 하나인 자리를 찾아요",
+          "그대로 공식을 해요",
+          "처음부터 다시 해요",
+        ],
+        answer: 0,
+        why: "제자리가 둘인 자리에서는 공식이 맞지 않아요. U를 한 칸 돌리면 제자리가 하나가 돼요.",
       },
     },
     {
       kind: "try",
-      body: "수네를 한 번 해 보세요.",
-      setup: flip(SUNE),
-      alg: SUNE,
-      goal: "2x2-top-face",
-      mask: "oll",
+      body: "U로 제자리가 하나인 자리를 찾고(U), 그 꼭짓점이 앞-오른쪽 위에 있으니 공식을 해요.",
+      setup: flip(`U ${CORNER_CYCLE}`),
+      alg: `U ${CORNER_CYCLE}`,
+      goal: "2x2-corners-placed",
+      mask: "all",
     },
     {
       kind: "try",
-      body: "위를 보는 노란 칸이 없어요. 3×3처럼 왼쪽 앞 꼭짓점의 노란색이 왼쪽 면을 보게 들고 수네, 그다음 하나 남은 모양으로 한 번 더.",
-      // 2×2 초보자 과정과 같은 상황(위를 보는 노란 칸 0개, 시험으로 확인)
-      setup: { alg: setupFor("R U2 R' U' R U R' U' R U' R'", "z2") },
-      alg: `U ${SUNE} ${SUNE}`,
-      goal: "2x2-top-face",
-      mask: "oll",
+      body: "3×3처럼 한 번에 안 되면 같은 쥐는 법으로 한 번 더 해요.",
+      setup: flip(`${CORNER_CYCLE} ${CORNER_CYCLE}`),
+      alg: `${CORNER_CYCLE} ${CORNER_CYCLE}`,
+      goal: "2x2-corners-placed",
+      mask: "all",
+    },
+    {
+      kind: "quiz",
+      body: "2×2만의 함정: 대각선 두 꼭짓점이 바뀌어 있으면 U를 어떻게 돌려도 제자리가 둘이거나 없어요.",
+      setup: flip(DIAGONAL_222),
+      mask: "all",
+      quiz: {
+        question: "U를 돌려도 제자리가 꼭 하나인 자리가 없어요. 어떻게 할까요?",
+        choices: [
+          "제자리가 없는 자리에서 아무 쪽으로나 공식을 한 번 하고 다시 찾아요",
+          "제자리가 둘인 자리에서 공식을 해요",
+        ],
+        answer: 0,
+        why: "한 번 하면 U로 제자리가 하나인 자리가 생겨요. 그다음은 앞의 방법대로 해요.",
+      },
     },
     {
       kind: "try",
-      body: "첫 층이 맞은 2×2에서 노란 면을 끝내요.",
+      body: "대각선 두 꼭짓점이 바뀌었어요. U를 돌려 제자리가 없는 자리에서 한 번 하고, 생긴 제자리 꼭짓점(앞-왼쪽 위)을 앞-오른쪽 위로 쥐고(y') 다시.",
+      setup: flip(DIAGONAL_222),
+      alg: DIAGONAL_222_SOLVE,
+      goal: "2x2-corners-placed",
+      mask: "all",
+    },
+    {
+      kind: "try",
+      body: "이웃한 두 꼭짓점이 바뀐 상황이에요. U를 돌려 제자리가 하나인 자리를 찾고 공식.",
+      setup: { alg: setupFor(T_PERM, "z2") },
+      alg: NEIGHBORS_222_SOLVE,
+      goal: "2x2-corners-placed",
+      mask: "all",
+    },
+    {
+      kind: "try",
+      body: "첫 층이 맞은 2×2에서 꼭짓점 자리를 맞춰요.",
       setup: { rule: "2x2-first-layer-solved" },
-      goal: "2x2-top-face",
-      mask: "oll",
+      goal: "2x2-corners-placed",
+      mask: "all",
     },
   ],
 };
 
-const yellowCorners: Lesson = {
-  id: "222-from333-yellow-corners",
+const cornerTwist: Lesson = {
+  id: "222-from333-corner-twist",
   size: 2,
-  title: "위 꼭짓점 자리",
-  summary: "3×3의 「위 꼭짓점 자리」와 같아요. A퍼뮤 뒤 U로 끝.",
+  title: "꼭짓점 방향",
+  summary:
+    "3×3의 「꼭짓점 방향」과 같아요. R' D' R D를 꼭짓점마다 2번 또는 4번.",
   steps: [
     {
       kind: "quiz",
-      body: "3×3에서 했던 「위 꼭짓점 자리」 단계와 같아요. 헤드라이트를 뒤에 두고 A퍼뮤. 2×2는 모서리 단계가 없으니, 끝나면 U를 돌려 맞추면 다 맞아요.",
-      setup: flip(`${A_PERM} U2`),
-      mask: "pll",
+      body: "3×3에서 했던 「꼭짓점 방향」 단계와 같아요. 풀 꼭짓점을 앞-오른쪽 위에 두고 노란색이 위를 볼 때까지 R' D' R D, 다음 꼭짓점은 윗면(U)만 돌려 가져와요. 중간에 아래층이 흐트러져도 끝나면 돌아와요.",
+      setup: flip(TWIST_TWO),
+      mask: "all",
       quiz: {
-        question: "A퍼뮤 다음 2×2에서 할 일은?",
-        choices: [
-          "U를 돌려 위층을 아래층에 맞추면 끝",
-          "3×3처럼 U퍼뮤로 모서리를 맞춰요",
-        ],
+        question:
+          "앞-오른쪽 위 꼭짓점의 노란색이 오른쪽을 봐요. R' D' R D를 몇 번 할까요?",
+        choices: ["두 번", "네 번", "여섯 번"],
         answer: 0,
-        why: "모서리가 없으니 위 모서리 자리 단계는 건너뛰어요.",
+        why: "3×3과 같아요. 오른쪽이면 두 번, 앞이면 네 번이에요.",
       },
     },
     {
       kind: "try",
-      body: "헤드라이트를 뒤로 옮겨(U) A퍼뮤, 그리고 U를 돌려 끝내요.",
-      setup: { alg: setupFor(`U ${A_PERM} U2`, "z2") },
-      alg: `U ${A_PERM} U2`,
+      body: "두 번 → U → 네 번 → 마지막에 윗면을 돌려 맞춰요.",
+      setup: flip(TWIST_TWO),
+      alg: TWIST_TWO,
       goal: "solved",
-      mask: "pll",
-    },
-    {
-      kind: "try",
-      body: "2×2만의 함정: 헤드라이트가 하나도 없으면 대각선 두 꼭짓점이 바뀐 거예요. 3×3처럼 A퍼뮤를 한 번 하면 헤드라이트가 생겨요. 그 면을 뒤로 옮겨 한 번 더.",
-      setup: { alg: setupFor(Y_PERM, "z2") },
-      alg: `${A_PERM} U ${A_PERM} U2`,
-      goal: "solved",
-      mask: "pll",
+      mask: "all",
     },
     {
       kind: "try",
@@ -263,11 +251,10 @@ const yellowCorners: Lesson = {
     },
     {
       kind: "try",
-      body: "헤드라이트가 다른 쪽에 있는 상황이에요(이웃 둘이 바뀜). 마지막까지 맞춰요.",
-      setup: { alg: setupFor(T_PERM, "z2") },
-      alg: `U ${A_PERM} U2`,
+      body: "꼭짓점 자리까지 맞은 2×2를 끝내요.",
+      setup: { rule: "2x2-corners-placed" },
       goal: "solved",
-      mask: "pll",
+      mask: "all",
     },
   ],
 };
@@ -277,7 +264,7 @@ export const FROM_333_222: Course = {
   size: 2,
   title: "3×3을 아는 사람의 2×2",
   summary:
-    "3×3 초보자 과정을 마쳤다면: 꼭짓점 단계만 떠올려 같은 공식 셋으로 맞춰요.",
-  lessons: [corners, firstLayer, yellowFace, yellowCorners],
+    "3×3 초보자 과정을 마쳤다면: 꼭짓점 단계만 떠올려 같은 공식 둘로 맞춰요.",
+  lessons: [corners, firstLayer, cornerPlace, cornerTwist],
   recommendAfter: "333-beginner",
 };

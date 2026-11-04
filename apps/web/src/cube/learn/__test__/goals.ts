@@ -81,6 +81,27 @@ const yellowCorners = (c: Cube) =>
   D_TURNS.some((d) =>
     check(apply(c, d), (p) => isCorner(p) && homeHas(p, YELLOW), pieceSolved),
   );
+/** 제자리(방향은 안 봄): 그 자리 색들이 맞춘 상태의 그 자리 색들과 같다 */
+const piecePlaced = (p: Piece) =>
+  p.stickers
+    .map((x) => x.color)
+    .sort()
+    .join() ===
+  p.stickers
+    .map((x) => REF.get(`${p.pos}|${x.normal}`))
+    .sort()
+    .join();
+const yellowEdgesOk = (c: Cube) =>
+  check(c, (p) => isEdge(p) && homeHas(p, YELLOW), pieceSolved);
+const yellowEdges = (c: Cube) =>
+  secondLayer(c) && D_TURNS.some((d) => yellowEdgesOk(apply(c, d)));
+const llCornersPlaced = (c: Cube) =>
+  secondLayer(c) &&
+  D_TURNS.some(
+    (d) =>
+      yellowEdgesOk(apply(c, d)) &&
+      check(apply(c, d), (p) => isCorner(p) && homeHas(p, YELLOW), piecePlaced),
+  );
 const llDone = (c: Cube) =>
   D_TURNS.some((d) => check(apply(c, d), () => true, pieceSolved));
 
@@ -125,6 +146,14 @@ export function goalMet(goal: GoalName, raw: Cube, size: 2 | 3 = 3): boolean {
           (x) =>
             corners2(x, (p) => homeHas(p, WHITE), pieceSolved) &&
             corners2(x, (p) => homeHas(p, YELLOW), yellowFacing),
+        );
+      case "2x2-corners-placed":
+        return anyRotation(
+          (x) =>
+            corners2(x, (p) => homeHas(p, WHITE), pieceSolved) &&
+            D_TURNS.some((d) =>
+              corners2(apply(x, d), (p) => homeHas(p, YELLOW), piecePlaced),
+            ),
         );
       case "2x2-first-face":
         return anyRotation((x) =>
@@ -194,6 +223,10 @@ export function goalMet(goal: GoalName, raw: Cube, size: 2 | 3 = 3): boolean {
       return oll(c);
     case "yellow-corners":
       return yellowCorners(c);
+    case "yellow-edges":
+      return yellowEdges(c);
+    case "ll-corners-placed":
+      return llCornersPlaced(c);
     case "ll":
       return llDone(c);
     default:

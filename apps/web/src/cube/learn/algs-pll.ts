@@ -53,7 +53,7 @@ export const PLL_CASES: AlgCase[] = [
     "Aa 퍼뮤(꼭짓점 셋 돌리기)",
     ["x R' U R' D2 R U' R' D2 R2 x'", "R' F R' B2 R F' R' B2 R2"],
     {
-      note: "한쪽에 헤드라이트. 초보자 해법의 「위 꼭짓점 자리」 공식과 같아요.",
+      note: "한쪽에 헤드라이트. 꼭짓점 셋의 자리만 바꾸고 방향은 지켜요.",
     },
   ),
   pll("ab", "corners", "Ab 퍼뮤(꼭짓점 셋 반대로 돌리기)", [

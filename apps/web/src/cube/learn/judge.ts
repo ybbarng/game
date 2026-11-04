@@ -36,6 +36,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { EDGES_5X5 } from "./algs-big";
 import type { AlgSetInfo } from "./index";
 import { isMethodGoal, methodGoalMet } from "./judge-methods";
+import { CORNER_TWIST } from "./lessons-333";
 import type {
   AlgCase,
   CubeSize,
@@ -95,6 +96,20 @@ function pieceOk(v: View, piece: number): boolean {
 
 const allOk = (v: View, pieces: readonly number[]) =>
   pieces.every((p) => pieceOk(v, p));
+
+/** 조각 하나가 제자리인가(방향은 안 본다): 그 자리 색들이 그 자리 면의 기준 색들과 같다 */
+function piecePlaced(v: View, piece: number): boolean {
+  const topo = cubeTopology(v.n);
+  const stickers = topo.pieces[piece]?.stickers ?? [];
+  const have = stickers.map((s) => v.colors[s] as number).sort();
+  const want = stickers
+    .map((s) => v.frame[topo.stickers[s]?.face as number] as number)
+    .sort();
+  return have.every((c, i) => c === want[i]);
+}
+
+const cornersPlaced = (v: View, pieces: readonly number[]) =>
+  pieces.every((p) => piecePlaced(v, p));
 
 /** 자리 면 f의 칸이 모두 color인가 */
 function faceIs(n: number, colors: Uint8Array, f: number, color: number) {
@@ -239,6 +254,34 @@ function frameGoal(goal: GoalName, v: View, state: PuzzleState): boolean {
       }
       return false;
     }
+    // 초보자 마지막 층(2026-11-04): 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향. 윗면 돌리기 하나는 봐준다
+    case "yellow-edges":
+      if (!allOk(v, g.f2l)) return false;
+      return [0, 1, 2, 3].some((k) =>
+        allOk(
+          { ...v, colors: faceColors(n, turnFace(n, state, v.top, k)) },
+          g.lastLayerEdges,
+        ),
+      );
+    case "ll-corners-placed":
+      if (!allOk(v, g.f2l)) return false;
+      return [0, 1, 2, 3].some((k) => {
+        const tv = {
+          ...v,
+          colors: faceColors(n, turnFace(n, state, v.top, k)),
+        };
+        return (
+          allOk(tv, g.lastLayerEdges) && cornersPlaced(tv, g.lastLayerCorners)
+        );
+      });
+    case "2x2-corners-placed":
+      if (!allOk(v, g.firstLayerCorners)) return false;
+      return [0, 1, 2, 3].some((k) =>
+        cornersPlaced(
+          { ...v, colors: faceColors(n, turnFace(n, state, v.top, k)) },
+          g.lastLayerCorners,
+        ),
+      );
     default:
       return false;
   }
@@ -318,6 +361,28 @@ export function goalMet(
     if (frameGoal(goal, v, state)) return true;
   }
   return false;
+}
+
+/**
+ * 첫 층(흰 꼭짓점 넷)이 맞은 방향에서, 지금 위층 꼭짓점 중 제자리(방향은 안 봄)인 것의 수.
+ * 첫 층이 맞은 방향이 없으면 -1. 초보자 「꼭짓점 자리」 단계의 고르기·시험이 쓴다
+ */
+export function placedTopCorners(n: number, state: PuzzleState): number {
+  const colors = faceColors(n, state);
+  for (const frame of framesOf(n, colors)) {
+    const white = frame.indexOf(WHITE);
+    const v: View = {
+      n,
+      colors,
+      frame,
+      white,
+      top: OPPOSITE_FACE[white as 0] as number,
+    };
+    const g = cubeGroups(n, white);
+    if (!allOk(v, g.firstLayerCorners)) continue;
+    return g.lastLayerCorners.filter((p) => piecePlaced(v, p)).length;
+  }
+  return -1;
 }
 
 // ── 가리기 ──────────────────────────────────────────────
@@ -409,10 +474,15 @@ const RULE_SIZE: Record<ScrambleRule, CubeSize> = {
   "yellow-cross-solved": 3,
   "yellow-face-solved": 3,
   "corners-placed": 3,
+  "white-cross-up": 3,
+  "ll-cross-solved": 3,
+  "ll-edges-solved": 3,
+  "ll-corners-placed": 3,
   "f2l-one-slot": 3,
   "2x2-random": 2,
   "2x2-first-layer-solved": 2,
   "2x2-top-face-solved": 2,
+  "2x2-corners-placed": 2,
   "4x4-random": 4,
   "4x4-centers-solved": 4,
   "4x4-reduced": 4,
@@ -478,6 +548,18 @@ function randomLastLayer(
   }
   parts.push(uTurn(nextInt(rng, 4)));
   return parts.join(" ");
+}
+
+/**
+ * 위층 꼭짓점 넷의 방향만 무작위로 돌린 수(흰 면 아래 기준). 꼭짓점마다 R' D' R D를 0·2·4번 하고 U로 넘긴다.
+ * 모두 더해 6의 배수가 되게 마지막 꼭짓점 횟수를 정하니 아래 두 층과 자리는 그대로다
+ */
+function randomTwists(rng: RngState): string {
+  const reps = [0, 0, 0].map(() => 2 * nextInt(rng, 3));
+  reps.push((6 - (reps.reduce((a, b) => a + b, 0) % 6)) % 6);
+  return reps
+    .map((r) => `${Array(r).fill(CORNER_TWIST).join(" ")} U`)
+    .join(" ");
 }
 
 /** 바깥 면만 돌리는 무작위 수(큰 큐브에서 가운데·모서리 묶음을 지킨다) */
@@ -558,10 +640,15 @@ const RULE_NEXT: Record<ScrambleRule, GoalName> = {
   "yellow-cross-solved": "oll",
   "yellow-face-solved": "yellow-corners",
   "corners-placed": "ll",
+  "white-cross-up": "first-layer",
+  "ll-cross-solved": "yellow-edges",
+  "ll-edges-solved": "ll-corners-placed",
+  "ll-corners-placed": "solved",
   "f2l-one-slot": "f2l-pair:FR",
   "2x2-random": "2x2-first-layer",
   "2x2-first-layer-solved": "2x2-top-face",
   "2x2-top-face-solved": "solved",
+  "2x2-corners-placed": "solved",
   "4x4-random": "centers",
   "4x4-centers-solved": "edges-paired",
   "4x4-reduced": "solved",
@@ -605,6 +692,13 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
       return keepRandom(n, rng, []);
     case "cross-solved":
       return z2(keepRandom(n, rng, g.cross));
+    case "white-cross-up":
+      return keepRandom(n, rng, g.cross);
+    case "ll-edges-solved":
+      return z2(keepRandom(n, rng, [...g.f2l, ...g.lastLayerEdges]));
+    case "ll-corners-placed":
+    case "2x2-corners-placed":
+      return fromAlg(n, randomTwists(rng), z2Solved());
     case "first-layer-solved":
     case "2x2-first-layer-solved":
       return z2(keepRandom(n, rng, [...g.cross, ...g.firstLayerCorners]));
@@ -636,6 +730,7 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
     case "yellow-face-solved":
       return fromAlg(n, randomLastLayer(rng, PLL_ALGS, 4), z2Solved());
     case "yellow-cross-solved":
+    case "ll-cross-solved":
       return fromAlg(
         n,
         randomLastLayer(rng, [...SUNES, ...PLL_ALGS], 5),

@@ -51,14 +51,45 @@ export interface LearnProgress {
   last?: string;
 }
 
+/**
+ * 내용을 새로 짠 단원의 옛 id → 새 id(2026-11-04 초보자 마지막 층·흰 면 위 첫 층). 단계 차례가 달라져
+ * 해 보기 번호는 옮기지 않고 「끝냄」만 옮긴다. 옛 단원과 같은 차례의 새 단원으로 잇는다.
+ */
+export const LESSON_RENAMES: Readonly<Record<string, string>> = {
+  "333-first-corners": "333-first-corners-up",
+  "333-yellow-cross": "333-ll-cross",
+  "333-yellow-face": "333-ll-edges",
+  "333-yellow-corners": "333-ll-corner-place",
+  "333-yellow-edges": "333-ll-corner-twist",
+  "222-first-layer": "222-first-layer-up",
+  "222-from333-first-layer": "222-from333-first-layer-up",
+  "222-from333-yellow-face": "222-from333-corner-place",
+  "222-from333-yellow-corners": "222-from333-corner-twist",
+};
+
+function migrate(
+  lessons: Record<string, LessonProgress>,
+): Record<string, LessonProgress> {
+  const out = { ...lessons };
+  for (const [from, to] of Object.entries(LESSON_RENAMES)) {
+    const old = lessons[from];
+    if (!old || out[to]) continue;
+    out[to] = { passed: [], done: old.done === true };
+  }
+  return out;
+}
+
 export function loadLearn(storage = defaultStorage()): LearnProgress {
   const raw = readJson<LearnProgress>(storage, LEARN_KEY);
   const lessons =
-    typeof raw.lessons === "object" && raw.lessons !== null ? raw.lessons : {};
-  return {
-    lessons,
-    ...(typeof raw.last === "string" ? { last: raw.last } : {}),
-  };
+    typeof raw.lessons === "object" && raw.lessons !== null
+      ? migrate(raw.lessons)
+      : {};
+  const last =
+    typeof raw.last === "string"
+      ? (LESSON_RENAMES[raw.last] ?? raw.last)
+      : undefined;
+  return { lessons, ...(last ? { last } : {}) };
 }
 
 function updateLesson(
