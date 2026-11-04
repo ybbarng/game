@@ -6,10 +6,66 @@ import type { Course, Lesson } from "./types";
 const SEXY = "R U R' U'";
 const SUNE = "R U R' U R U2 R'";
 const A_PERM = "R' F R' B2 R F' R' B2 R2";
-const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
-const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
+export const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
+export const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
 
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
+
+// 조각(2026-11-04): 2×2는 꼭짓점뿐이라 면 색을 정해 줄 가운데가 없다
+const pieces: Lesson = {
+  id: "222-pieces",
+  size: 2,
+  title: "2×2의 조각",
+  summary: "꼭짓점 여덟 개뿐이에요. 가운데가 없어서 조각끼리 맞춰요.",
+  steps: [
+    {
+      kind: "quiz",
+      body: "2×2를 둘러보세요. 칸 하나하나가 아니라 조각으로 보면 어떤 조각이 있나요? 칸 셋이 한 조각이에요.",
+      mask: "all",
+      quiz: {
+        question: "2×2를 이루는 조각은?",
+        choices: [
+          "꼭짓점 8개뿐",
+          "가운데 6개 + 꼭짓점 8개",
+          "모서리 12개 + 꼭짓점 8개",
+        ],
+        answer: 0,
+        why: "2×2는 구석마다 꼭짓점 하나, 모두 여덟 개예요. 가운데도 모서리도 없어요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "흰색이 붙은 꼭짓점을 넷 모두 눌러 보세요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      find: { piece: "corner", has: ["U"] },
+      count: 4,
+    },
+    {
+      kind: "quiz",
+      body: "3×3에서는 움직이지 않는 가운데 색이 면 색과 조각의 제자리를 정했어요. 2×2에는 그 가운데가 없어요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      quiz: {
+        question: "그럼 2×2에서 조각의 제자리는 무엇으로 정할까요?",
+        choices: [
+          "꼭짓점 하나를 기준으로 삼고, 이웃 꼭짓점의 색이 이어지게",
+          "면 가운데 칸의 색으로",
+          "흰 스티커가 많은 쪽으로",
+        ],
+        answer: 0,
+        why: "기준 꼭짓점 하나를 정하면 나머지는 그 조각과 색이 이어지게 붙여요. 큐브를 어느 쪽으로 들어도 돼요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "흰-초록-빨강 꼭짓점을 기준으로 삼아요. 흰색과 초록을 함께 나눠 가질 이웃, 흰-초록-주황 꼭짓점을 찾아 눌러 보세요.",
+      setup: { alg: "R U" },
+      mask: "all",
+      find: { piece: "corner", colors: ["U", "F", "L"] },
+    },
+  ],
+};
 
 const intro: Lesson = {
   id: "222-intro",
@@ -269,5 +325,5 @@ export const BEGINNER_222: Course = {
   title: "2×2 처음 맞추기",
   summary:
     "첫 층 → 윗면 → 윗층 자리. 3×3 공식 세 개(R U R' U', 수네, A퍼뮤)면 돼요. 끝에 오르테가 소개.",
-  lessons: [intro, firstLayer, topFace, topLayer, ortega],
+  lessons: [pieces, intro, firstLayer, topFace, topLayer, ortega],
 };
