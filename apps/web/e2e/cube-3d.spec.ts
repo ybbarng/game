@@ -9,7 +9,7 @@ import { expect, type Page, test } from "./test";
  * | 부품 | 화면 |
  * |---|---|
  * | CubePlay(혼자·해 보기·훈련·대결·패턴 만들어 보기·십자 훈련) | /cube/solo |
- * | DemoCube(시연: 배우기·공식·패턴·핑거 트릭) | 표기 단원의 시연 단계 |
+ * | DemoCube(시연: 배우기·공식·패턴·핑거 트릭) | /cube/fingers |
  * | StillCube(배우기 글·찾기·문제 단계) | 흰 십자 단원 첫 단계 |
  * | PracticeCube(키 익히기·조작 훈련) | /cube/keys/learn |
  * | StateCube(큐브의 수학) | 방향과 짝 카드 |
@@ -37,11 +37,9 @@ test("3D: 혼자 맞추기 큐브(CubePlay)", async ({ page }, info) => {
 
 test("3D: 시연 큐브(DemoCube)", async ({ page }, info) => {
   await only(page, info.project.name);
-  await page.goto("/cube/learn?lesson=333-notation");
-  await page
-    .locator('[aria-label="단계"] [data-step-to="demo"]')
-    .first()
-    .click();
+  // 핑거 트릭은 첫 화면에 시연 큐브 하나만 띄운다. 배우기 단원으로 가면 정지 큐브 장면을 먼저 만들고 시연 단계로
+  // 넘어가 장면을 둘 만들었다(CI 14초, 2026-11-04 game-85). 시연이 도는 것은 기다리지 않고 장면이 생겼는지만 본다
+  await page.goto("/cube/fingers");
   await expect(
     page.locator("[data-cube-demo] [data-cube-canvas][data-cube-ready]"),
   ).toBeVisible(SCENE);

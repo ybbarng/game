@@ -1,4 +1,4 @@
-import { no3d, pauseClockSoon } from "./cube";
+import { installClock, no3d, pauseClock } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -20,13 +20,13 @@ test.beforeEach(({ page }) => no3d(page));
 test("한 번 재면 기록 한 줄이 생긴다", async ({ page }, info) => {
   test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
   const phone = info.project.name === "phone-portrait";
-  await page.clock.install();
+  await installClock(page);
   await page.goto("/cube/timer");
   await expect(page.locator("[data-cube-timer][data-loaded]")).toBeAttached();
   await expect(page.locator("[data-cube-net]")).toBeVisible();
   await expect(page.locator("[data-cube-solve]")).toHaveCount(0);
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 잰 시간이 늘지 않는다
-  await pauseClockSoon(page);
+  await pauseClock(page);
 
   const face = page.locator("[data-cube-face]");
   const box = await face.boundingBox();

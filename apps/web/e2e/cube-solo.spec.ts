@@ -1,4 +1,4 @@
-import { no3d, pauseClockSoon, shot, useNotationKeys } from "./cube";
+import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -33,7 +33,7 @@ function inverseKeys(scramble: string): string[] {
  * 시계는 Playwright 가짜 시계로 멈춰 두고 `fastForward`로만 흘린다: 살펴보기 15·17초가 기기 속도와 상관없이 정확하다.
  */
 test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
-  await page.clock.install();
+  await installClock(page);
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
@@ -41,7 +41,7 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   );
   await expect(main).toHaveAttribute("data-cube-phase", "free");
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 살펴보기가 DNF로 흐르지 않는다
-  await pauseClockSoon(page);
+  await pauseClock(page);
 
   await page.locator("[data-cube-scramble-button]").click();
   const scramble = page.locator("[data-cube-scramble]");
