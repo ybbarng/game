@@ -29,13 +29,13 @@ export const COURSES: Course[] = [
   BEGINNER_333,
   BEGINNER_222,
   CFOP_INTRO,
-  REDUCTION_444,
-  REDUCTION_555,
-  BLD_OP,
   ROUX,
   ZZ,
   PETRUS,
+  REDUCTION_444,
   YAU_444,
+  REDUCTION_555,
+  BLD_OP,
 ];
 
 export interface AlgSetInfo {

@@ -86,6 +86,55 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   );
 });
 
+test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn");
+  const size3 = page.locator('[data-course-size="3"]');
+  await expect(size3.locator('[data-course="roux"]')).toBeVisible();
+  await expect(size3.locator('[data-course="zz"]')).toBeVisible();
+  await expect(
+    page.locator('[data-course-size="4"] [data-course="444-yau"]'),
+  ).toBeVisible();
+
+  // ZZ 모서리 방향: 모서리만 보이는 가리기로 해 보기
+  await page.locator('[data-lesson="zz-eo"]').click();
+  const section = page.locator("[data-step-kind]");
+  while ((await section.getAttribute("data-step-kind")) !== "try")
+    await page.locator("[data-step-next]").click();
+  await inputReady(page);
+  await shot(page, "learn-zz-eo", info.project.name);
+
+  // 야우 모서리 묶기 시연
+  await page.goto("/cube/learn?lesson=yau-edges");
+  while ((await section.getAttribute("data-step-kind")) !== "demo")
+    await page.locator("[data-step-next]").click();
+  await expect(page.locator("[data-cube-demo]")).toBeVisible();
+  await shot(page, "learn-yau-demo", info.project.name);
+
+  await page.goto("/cube/learn?lesson=roux-intro");
+  await expect(page.locator("main")).toHaveAttribute(
+    "data-cube-learn",
+    "roux-intro",
+  );
+  while ((await section.getAttribute("data-step-kind")) !== "try")
+    await page.locator("[data-step-next]").click();
+  await inputReady(page);
+
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  // 힌트는 한 수씩 보여 준다(M' U2 M, 세 수)
+  for (let i = 0; i < 3; i++) {
+    await page.locator("[data-cube-hint-button]").click();
+    const hint = page.locator("[data-cube-hint]");
+    await expect(hint).toHaveCount(1);
+    for (const k of keysFor((await hint.getAttribute("data-cube-hint")) ?? ""))
+      await page.keyboard.press(k);
+  }
+  await expect(page.locator("[data-cube-pass]")).toBeVisible();
+  await shot(page, "learn-roux-passed", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {
