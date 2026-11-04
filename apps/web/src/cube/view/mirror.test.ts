@@ -75,6 +75,21 @@ describe("거울 판 배치", () => {
           ).toBeGreaterThan(0);
     });
 
+  it("판은 그 면과 평행하고, 판의 칸 줄은 그 면의 두 세계 축(큐브 테두리 선)과 나란하다", () => {
+    const axes = {
+      "-z": { right: [1, 0, 0], up: [0, 1, 0], facing: [0, 0, 1] },
+      "-x": { right: [0, 0, -1], up: [0, 1, 0], facing: [1, 0, 0] },
+      "-y": { right: [1, 0, 0], up: [0, 0, -1], facing: [0, 1, 0] },
+    };
+    for (const n of [2, 3, 4])
+      for (const p of mirrorPanels(n)) {
+        const want = axes[p.normal];
+        expect(p.right.map((x) => x + 0)).toEqual(want.right);
+        expect(p.up.map((x) => x + 0)).toEqual(want.up);
+        expect(p.facing.map((x) => x + 0)).toEqual(want.facing);
+      }
+  });
+
   it("화면 맞추기: 바라보는 점에서 큐브와 판 모두가 시야 안에 든다", () => {
     const n = 3;
     const panels = mirrorPanels(n);
