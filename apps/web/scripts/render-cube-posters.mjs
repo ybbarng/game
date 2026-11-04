@@ -37,9 +37,10 @@ if (
 }
 mkdirSync(outDir, { recursive: true });
 
+// pnpm을 거치지 않고 serve를 바로 띄운다(pnpm 아래 자식은 server.kill()로 꺼지지 않는다)
 const server = spawn(
-  "pnpm",
-  ["exec", "serve", "out", "-l", String(PORT), "--no-port-switching"],
+  join(web, "node_modules/.bin/serve"),
+  ["out", "-l", String(PORT), "--no-port-switching"],
   { cwd: web, stdio: "ignore" },
 );
 const base = `http://localhost:${PORT}`;
