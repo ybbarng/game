@@ -106,68 +106,97 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           이어서 하기: {last.course.title} · {last.lesson.title}
         </a>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {COURSES.map((course) => {
-          const done = course.lessons.filter(
-            (l) => progress.lessons[l.id]?.done,
-          ).length;
-          return (
-            <section
-              key={course.id}
-              data-course={course.id}
-              className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
-            >
-              <div className="flex items-baseline gap-2">
-                <h2 className="font-bold">{course.title}</h2>
-                <span className="ml-auto text-white/50 text-xs">
-                  {done}/{course.lessons.length}
-                </span>
-              </div>
-              <p className="break-keep text-white/60 text-xs">
-                {course.summary}
-              </p>
-              <ol className="flex flex-col gap-1">
-                {course.lessons.map((l, i) => {
-                  const p = progress.lessons[l.id];
-                  const tries = l.steps.filter((s) => s.kind === "try").length;
-                  return (
-                    <li key={l.id}>
-                      <a
-                        href={lessonHref(l.id)}
-                        data-lesson={l.id}
-                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
-                      >
-                        <span
-                          className={cn(
-                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
-                            p?.done
-                              ? "bg-emerald-500 text-black"
-                              : "bg-white/10 text-white/70",
-                          )}
-                        >
-                          {p?.done ? "✓" : i + 1}
-                        </span>
-                        <span className="flex flex-1 flex-col">
-                          <span className="text-sm">{l.title}</span>
-                          <span className="break-keep text-[11px] text-white/50">
-                            {l.summary}
-                          </span>
-                        </span>
-                        {tries > 0 && (
-                          <span className="shrink-0 text-[11px] text-white/50">
-                            해보기 {p?.passed.length ?? 0}/{tries}
-                          </span>
-                        )}
-                      </a>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-          );
-        })}
-      </div>
+      {COURSES_BY_SIZE.map(([size, courses]) => (
+        <section
+          key={size}
+          data-course-size={size}
+          className="flex flex-col gap-2"
+        >
+          <h2 className="font-bold text-lg">
+            {size}×{size}
+          </h2>
+          <CourseGrid courses={courses} progress={progress} />
+        </section>
+      ))}
     </>
+  );
+}
+
+/** 크기별로 과정을 묶는다(3×3 → 2×2 → 4×4 → 5×5, 크기 안에서는 COURSES 차례) */
+const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
+  .map((size): [number, Course[]] => [
+    size,
+    COURSES.filter((c) => c.size === size),
+  ])
+  .filter(([, list]) => list.length > 0);
+
+function CourseGrid({
+  courses,
+  progress,
+}: {
+  courses: Course[];
+  progress: LearnProgress;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {courses.map((course) => {
+        const done = course.lessons.filter(
+          (l) => progress.lessons[l.id]?.done,
+        ).length;
+        return (
+          <section
+            key={course.id}
+            data-course={course.id}
+            className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
+          >
+            <div className="flex items-baseline gap-2">
+              <h3 className="font-bold">{course.title}</h3>
+              <span className="ml-auto text-white/50 text-xs">
+                {done}/{course.lessons.length}
+              </span>
+            </div>
+            <p className="break-keep text-white/60 text-xs">{course.summary}</p>
+            <ol className="flex flex-col gap-1">
+              {course.lessons.map((l, i) => {
+                const p = progress.lessons[l.id];
+                const tries = l.steps.filter((s) => s.kind === "try").length;
+                return (
+                  <li key={l.id}>
+                    <a
+                      href={lessonHref(l.id)}
+                      data-lesson={l.id}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
+                          p?.done
+                            ? "bg-emerald-500 text-black"
+                            : "bg-white/10 text-white/70",
+                        )}
+                      >
+                        {p?.done ? "✓" : i + 1}
+                      </span>
+                      <span className="flex flex-1 flex-col">
+                        <span className="text-sm">{l.title}</span>
+                        <span className="break-keep text-[11px] text-white/50">
+                          {l.summary}
+                        </span>
+                      </span>
+                      {tries > 0 && (
+                        <span className="shrink-0 text-[11px] text-white/50">
+                          해보기 {p?.passed.length ?? 0}/{tries}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

@@ -11,6 +11,9 @@ import { BEGINNER_333 } from "./lessons-333";
 import { REDUCTION_444, REDUCTION_555 } from "./lessons-big";
 import { BLD_OP } from "./lessons-bld";
 import { CFOP_INTRO } from "./lessons-cfop";
+import { ROUX } from "./lessons-roux";
+import { YAU_444 } from "./lessons-yau";
+import { PETRUS, ZZ } from "./lessons-zz";
 import type { AlgCase, AlgSet, Course, CubeSize, MaskName } from "./types";
 
 export { F2L_GROUPS } from "./algs-f2l";
@@ -29,6 +32,10 @@ export const COURSES: Course[] = [
   REDUCTION_444,
   REDUCTION_555,
   BLD_OP,
+  ROUX,
+  ZZ,
+  PETRUS,
+  YAU_444,
 ];
 
 export interface AlgSetInfo {

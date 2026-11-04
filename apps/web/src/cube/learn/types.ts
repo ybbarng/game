@@ -32,6 +32,22 @@ export const GOALS = {
   "edges-paired":
     "큰 큐브 모서리 묶기(가운데 + 모서리 조각이 같은 색끼리 한 줄)",
   "edge-pair:UF": "큰 큐브 모서리 한 줄(위-앞 자리 날개가 한 색끼리 붙음)",
+  // 다른 해법(judge-methods.ts). 자리는 지금 들고 있는 방향으로 본다
+  "roux-fb": "루 첫 블록(왼쪽 1×2×3, 옆 가운데 포함)",
+  "roux-sb": "루 두 블록(왼쪽·오른쪽 1×2×3)",
+  cmll: "루 CMLL(두 블록 + 위 꼭짓점 넷, 윗면 돌리기 하나 남아도 됨)",
+  "lse-eo":
+    "루 LSE 모서리 방향(CMLL까지 + 모서리 여섯의 흰·노랑 칸이 위아래, 가운데도 위아래)",
+  "lse-ulur": "루 LSE 왼쪽·오른쪽 위 모서리까지",
+  eo: "ZZ 모서리 방향(앞·뒤를 4분의 1 돌리지 않고 맞출 수 있음, 가운데 색 기준)",
+  eoline: "ZZ EO라인(모서리 방향 + 아래 앞·뒤 모서리)",
+  "zz-left": "ZZ EO라인 + 왼쪽 블록",
+  "petrus-222": "페트루스 2×2×2(왼쪽-뒤-아래)",
+  "petrus-223": "페트루스 2×2×3(왼쪽 아래 두 층)",
+  "yau-ud-centers": "4×4 흰·노랑 가운데(맞은편 두 면)",
+  "yau-cross3": "4×4 흰·노랑 가운데 + 흰 십자 모서리 셋",
+  "yau-centers": "4×4 가운데 여섯 + 흰 십자 모서리 셋",
+  "yau-cross": "4×4 가운데 여섯 + 흰 십자 모서리 넷",
 } as const;
 export type GoalName = keyof typeof GOALS;
 
@@ -46,6 +62,10 @@ export const MASKS = {
   oll: "아래 두 층 + 윗면의 노란 칸만 보임(윗층 옆면은 회색)",
   pll: "아래 두 층 + 윗층 전부 보임(윗면은 회색으로 둬도 됨)",
   all: "모두 보임(가리지 않음)",
+  "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 가운데만 보임",
+  "roux-blocks": "루 두 블록과 가운데만 보임",
+  cmll: "루 두 블록 + 위 꼭짓점만 보임(나머지 모서리는 회색)",
+  "eo-edges": "모서리와 가운데만 보임(꼭짓점은 회색)",
 } as const;
 export type MaskName = keyof typeof MASKS;
 
@@ -74,6 +94,16 @@ export const SCRAMBLE_RULES = {
   "5x5-centers-solved": "5×5 가운데만 맞음",
   "5x5-two-edges-left": "5×5 모서리 둘만 남음",
   "bld-random": "블라인드 연습용 모두 섞음",
+  "roux-fb-solved": "루 첫 블록만 맞음(흰 면 아래)",
+  "roux-blocks-solved": "루 두 블록 맞음",
+  "roux-cmll-solved": "루 두 블록과 꼭짓점 모두 맞음(LSE 연습)",
+  "roux-eo-solved": "루 LSE 모서리 방향까지 맞음(M2·U로 섞음)",
+  "roux-ulur-solved": "루 왼쪽·오른쪽 위 모서리까지 맞음(가운데 줄만 섞임)",
+  "zz-eoline-solved": "ZZ EO라인 맞음(R·U·L로 섞음)",
+  "4x4-yau-ud-centers": "4×4 흰·노랑 가운데만 맞음",
+  "4x4-yau-cross3": "4×4 흰·노랑 가운데와 흰 십자 모서리 셋 맞음",
+  "4x4-yau-centers": "4×4 가운데 여섯과 흰 십자 모서리 셋 맞음",
+  "4x4-yau-cross": "4×4 가운데 여섯과 흰 십자 모서리 넷 맞음",
 } as const;
 export type ScrambleRule = keyof typeof SCRAMBLE_RULES;
 

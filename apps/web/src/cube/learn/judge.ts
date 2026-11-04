@@ -19,6 +19,7 @@ import {
   maskFromPieces,
   OPPOSITE_FACE,
   parseMoves,
+  pieceFaces,
   piecesOfKind,
   randomCubeState,
   rotatedSolved,
@@ -33,6 +34,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 
 import { EDGES_5X5 } from "./algs-big";
 import type { AlgSetInfo } from "./index";
+import { isMethodGoal, methodGoalMet } from "./judge-methods";
 import type {
   AlgCase,
   CubeSize,
@@ -236,6 +238,7 @@ export function goalMet(
   state: PuzzleState,
   goal: GoalName,
 ): boolean {
+  if (isMethodGoal(goal)) return methodGoalMet(n, state, goal);
   const colors = faceColors(n, state);
   switch (goal) {
     case "solved":
@@ -300,9 +303,50 @@ export function maskFor(
         ...g.centers,
       ]);
     }
+    case "roux-fb":
+      return maskFromPieces(n, rouxPieces(n, "fb"));
+    case "roux-blocks":
+      return maskFromPieces(n, rouxPieces(n, "blocks"));
+    case "cmll":
+      return maskFromPieces(n, rouxPieces(n, "cmll"), "gray");
+    case "eo-edges":
+      return maskFromPieces(
+        n,
+        [...piecesOfKind(n, "edge", "wing"), ...cubeGroups(n, U).centers],
+        "gray",
+      );
     default:
       return stageMask(n, name);
   }
+}
+
+/** 닿은 면(맞춘 상태 기준)이 조건에 맞는 조각 */
+function piecesWhere(n: number, pred: (faces: number[]) => boolean): number[] {
+  return cubeTopology(n)
+    .pieces.map((_, p) => p)
+    .filter((p) => pred(pieceFaces(n, p)));
+}
+
+const FACE_R = FACE_INDEX.R as number;
+const FACE_L = FACE_INDEX.L as number;
+const FACE_D = FACE_INDEX.D as number;
+
+/**
+ * 루 조각 묶음(맞춘 상태 기준). 흰 면을 아래로 쥐면(z2) 오른쪽 빨강이 왼쪽으로 가니,
+ * 첫 블록은 빨강 면에 닿고 노랑(z2 뒤 위)에 닿지 않는 조각이다. 가운데는 모두 넣는다.
+ */
+function rouxPieces(n: number, what: "fb" | "blocks" | "cmll"): number[] {
+  const centers = cubeGroups(n, U).centers;
+  const sides = what === "fb" ? [FACE_R] : [FACE_R, FACE_L];
+  const blocks = piecesWhere(
+    n,
+    (f) => sides.some((s) => f.includes(s)) && !f.includes(FACE_D),
+  );
+  const corners =
+    what === "cmll"
+      ? piecesWhere(n, (f) => f.length === 3 && f.includes(FACE_D))
+      : [];
+  return [...new Set([...blocks, ...corners, ...centers])];
 }
 
 // ── 스스로 섞기 규칙 ──────────────────────────────────────
@@ -328,6 +372,16 @@ const RULE_SIZE: Record<ScrambleRule, CubeSize> = {
   "5x5-centers-solved": 5,
   "5x5-two-edges-left": 5,
   "bld-random": 3,
+  "roux-fb-solved": 3,
+  "roux-blocks-solved": 3,
+  "roux-cmll-solved": 3,
+  "roux-eo-solved": 3,
+  "roux-ulur-solved": 3,
+  "zz-eoline-solved": 3,
+  "4x4-yau-ud-centers": 4,
+  "4x4-yau-cross3": 4,
+  "4x4-yau-centers": 4,
+  "4x4-yau-cross": 4,
 };
 
 export function ruleSize(rule: ScrambleRule): CubeSize {
@@ -343,6 +397,7 @@ const PLL_ALGS = [
   "R' F R' B2 R F' R' B2 R2", // Aa
   "R U R' F' R U R' U' R' F R2 U' R'", // Jb
 ];
+const FOUR_C = ["M' U2 M U2", "M U2 M' U2", "M2 U2 M2 U2"];
 const SUNES = ["R U R' U R U2 R'", "R U2 R' U' R U' R'"];
 const EDGE_CYCLES = [PLL_ALGS[1] as string, PLL_ALGS[2] as string];
 const PLL_222 = [PLL_ALGS[4] as string, PLL_ALGS[3] as string];
@@ -390,6 +445,49 @@ function randomOuterTurns(rng: RngState, count: number): string {
   return out.join(" ");
 }
 
+/** 두 묶음에서 번갈아 고른 수 `pairs`쌍 */
+function randomTurns(
+  rng: RngState,
+  first: readonly string[],
+  second: readonly string[],
+  pairs: number,
+): string {
+  const out: string[] = [];
+  for (let i = 0; i < pairs; i++) out.push(pick(rng, first), pick(rng, second));
+  return out.join(" ");
+}
+
+/** 고른 면만 무작위로(같은 면을 잇달아 두지 않는다) */
+function randomOuterFaces(rng: RngState, faces: string, count: number) {
+  const out: string[] = [];
+  let prev = "";
+  for (let i = 0; i < count; i++) {
+    let f = faces[nextInt(rng, faces.length)] as string;
+    if (f === prev) f = faces[(faces.indexOf(f) + 1) % faces.length] as string;
+    prev = f;
+    out.push(`${f}${["", "2", "'"][nextInt(rng, 3)]}`);
+  }
+  return out.join(" ");
+}
+
+/** 고른 면들의 가운데 조각 */
+function centersOn(n: number, faces: readonly (number | undefined)[]) {
+  return piecesOfKind(n, "center", "innerCenter").filter((p) =>
+    faces.includes(pieceFaces(n, p)[0]),
+  );
+}
+
+/** 흰 면(U) 쪽 십자 모서리 줄 `count`개(앞·오른쪽·뒤·왼쪽 차례)의 조각 */
+function whiteLines(n: number, count: number): number[] {
+  const sides = ["F", "R", "B", "L"]
+    .slice(0, count)
+    .map((s) => FACE_INDEX[s] as number);
+  return piecesOfKind(n, "edge", "wing").filter((p) => {
+    const f = pieceFaces(n, p);
+    return f.includes(U) && sides.some((s) => f.includes(s));
+  });
+}
+
 function keepRandom(n: number, rng: RngState, keep: readonly number[]) {
   return randomCubeState(n, rng, { keep });
 }
@@ -422,6 +520,16 @@ const RULE_NEXT: Record<ScrambleRule, GoalName> = {
   "5x5-random": "centers",
   "5x5-centers-solved": "edges-paired",
   "5x5-two-edges-left": "edges-paired",
+  "roux-fb-solved": "roux-sb",
+  "roux-blocks-solved": "cmll",
+  "roux-cmll-solved": "lse-eo",
+  "roux-eo-solved": "lse-ulur",
+  "roux-ulur-solved": "solved",
+  "zz-eoline-solved": "zz-left",
+  "4x4-yau-ud-centers": "yau-cross3",
+  "4x4-yau-cross3": "yau-centers",
+  "4x4-yau-centers": "yau-cross",
+  "4x4-yau-cross": "edges-paired",
 };
 
 /** 스스로 섞기 규칙으로 상황을 만든다. 같은 씨앗이면 같은 상황이다 */
@@ -494,6 +602,52 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
       return keepRandom(n, rng, piecesOfKind(n, "center", "innerCenter"));
     case "4x4-reduced":
       return fromAlg(n, randomOuterTurns(rng, 30));
+    case "roux-fb-solved":
+      return z2(keepRandom(n, rng, rouxPieces(n, "fb")));
+    case "roux-blocks-solved":
+      return z2(keepRandom(n, rng, rouxPieces(n, "blocks")));
+    case "roux-cmll-solved":
+      return z2(keepRandom(n, rng, rouxPieces(n, "cmll")));
+    case "roux-eo-solved":
+      // M2와 U는 모서리 방향을 바꾸지 않는다
+      return fromAlg(
+        n,
+        randomTurns(rng, ["M2"], ["U", "U2", "U'"], 12),
+        z2Solved(),
+      );
+    case "roux-ulur-solved":
+      // 가운데 줄 모서리만 바꾸는 묶음(U2 두 번, M은 되돌림)을 이어 붙인다
+      return fromAlg(
+        n,
+        Array.from({ length: 4 }, () => pick(rng, FOUR_C)).join(" "),
+        z2Solved(),
+      );
+    case "zz-eoline-solved":
+      // R·U·L은 모서리 방향과 아래 앞·뒤 모서리를 건드리지 않는다
+      return fromAlg(n, randomOuterFaces(rng, "RUL", 25), z2Solved());
+    case "4x4-yau-ud-centers":
+      return keepRandom(n, rng, centersOn(n, [FACE_INDEX.U, FACE_D]));
+    case "4x4-yau-cross3":
+      return z2(
+        keepRandom(n, rng, [
+          ...centersOn(n, [FACE_INDEX.U, FACE_D]),
+          ...whiteLines(n, 3),
+        ]),
+      );
+    case "4x4-yau-centers":
+      return z2(
+        keepRandom(n, rng, [
+          ...piecesOfKind(n, "center", "innerCenter"),
+          ...whiteLines(n, 3),
+        ]),
+      );
+    case "4x4-yau-cross":
+      return z2(
+        keepRandom(n, rng, [
+          ...piecesOfKind(n, "center", "innerCenter"),
+          ...whiteLines(n, 4),
+        ]),
+      );
     case "5x5-two-edges-left": {
       const pairAlg =
         EDGES_5X5.find((c) => c.id === "edges-5x5-pair")?.algs[0] ?? "";

@@ -45,7 +45,16 @@ describe("목표 판정", () => {
         "2x2-both-faces",
       ],
       3: (Object.keys(GOALS) as GoalName[]).filter((g) => !g.startsWith("2x2")),
-      4: ["solved", "centers", "edges-paired", "edge-pair:UF"],
+      4: [
+        "solved",
+        "centers",
+        "edges-paired",
+        "edge-pair:UF",
+        "yau-ud-centers",
+        "yau-cross3",
+        "yau-centers",
+        "yau-cross",
+      ],
       5: ["solved", "centers", "edges-paired", "edge-pair:UF"],
     };
     for (const [n, goals] of Object.entries(bySize))
@@ -135,6 +144,16 @@ describe("스스로 섞기 규칙", () => {
     "5x5-random": { yes: [], no: ["centers"] },
     "5x5-centers-solved": { yes: ["centers"], no: ["edges-paired"] },
     "5x5-two-edges-left": { yes: ["centers"], no: ["edges-paired"] },
+    "roux-fb-solved": { yes: ["roux-fb"], no: ["roux-sb"] },
+    "roux-blocks-solved": { yes: ["roux-sb"], no: ["cmll"] },
+    "roux-cmll-solved": { yes: ["cmll"], no: ["lse-eo"] },
+    "roux-eo-solved": { yes: ["lse-eo"], no: ["lse-ulur"] },
+    "roux-ulur-solved": { yes: ["lse-ulur"], no: ["solved"] },
+    "zz-eoline-solved": { yes: ["eo", "eoline"], no: ["zz-left"] },
+    "4x4-yau-ud-centers": { yes: ["yau-ud-centers"], no: ["yau-cross3"] },
+    "4x4-yau-cross3": { yes: ["yau-cross3"], no: ["yau-centers"] },
+    "4x4-yau-centers": { yes: ["yau-centers"], no: ["yau-cross"] },
+    "4x4-yau-cross": { yes: ["yau-cross", "centers"], no: ["edges-paired"] },
   };
 
   it("규칙 이름을 모두 다룬다", () => {
