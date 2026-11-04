@@ -225,7 +225,7 @@ function SquareInfo({
           </p>
           {rents && (
             <p className="text-white/45 text-xs">
-              1단 {money(rents.single)} · 둘 {money(rents.pair)} · 완성{" "}
+              1단 {money(rents.single)} · 별 둘 {money(rents.pair)} · 완성{" "}
               {money(rents.complete)} · 2단 {money(rents.level2)} · 3단{" "}
               {money(rents.level3)} · 큰 정거장 {money(rents.grand)}
             </p>
@@ -750,7 +750,7 @@ export function GalaxyGame({
           {lengthName}
           {limit
             ? ` · ${Math.min(view.round, limit)}/${limit}차례`
-            : ` · ${view.round}돌림`}
+            : ` · ${view.round}차례째`}
           {online ? "" : ` · 컴퓨터 ${levelName}`}
         </span>
       </header>

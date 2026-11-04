@@ -221,7 +221,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
-  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스. 9돌림이라 이번 돌림이 끝나면 겨울 하늘이 된다
+  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스. 9차례째라 이번 차례가 끝나면 겨울 하늘이 된다
   await page.addInitScript(() => {
     (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
       rules: {
@@ -282,7 +282,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   );
   await expect(page.locator("[data-my-group=Ori]")).toContainText("완성");
 
-  // 이번 돌림을 마치면 겨울 하늘 공문이 위에서 내려온다(그 전에 공문 칸에 멈춰도 같은 종이)
+  // 모두 이번 차례를 마치면 겨울 하늘 공문이 위에서 내려온다(그 전에 공문 칸에 멈춰도 같은 종이)
   for (let i = 0; i < 40; i++) {
     if (await page.locator("[data-notice-paper]").isVisible()) break;
     for (const button of [
@@ -304,7 +304,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
 
-test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌림이 시작될 때 공문이 내려오고 판에 유성이 흐른다", async ({
+test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 차례가 시작될 때 공문이 내려오고 판에 유성이 흐른다", async ({
   page,
 }, info) => {
   test.skip(
@@ -313,7 +313,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
-  // 2인 기본 판은 36차례: 34돌림이 끝나면 유성우의 밤(35·36돌림)
+  // 2인 기본 판은 36차례: 34차례가 끝나면 유성우의 밤(35·36차례)
   await page.addInitScript(() => {
     (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
       rules: {

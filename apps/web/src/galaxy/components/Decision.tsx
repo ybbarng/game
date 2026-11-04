@@ -137,7 +137,7 @@ export function BuySheet({
       <StarFacts view={view} square={square} />
       {rents && (
         <p className="mt-2 text-white/60 text-xs">
-          이용료 1단 {money(rents.single)} · 둘 {money(rents.pair)} · 완성{" "}
+          이용료 1단 {money(rents.single)} · 별 둘 {money(rents.pair)} · 완성{" "}
           {money(rents.complete)}
         </p>
       )}

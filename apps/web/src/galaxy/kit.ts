@@ -233,7 +233,7 @@ export function explainGalaxy(
   name: (seat: number) => string,
 ): Commentary {
   const situation = [
-    `${state.round}돌림`,
+    `${state.round}차례째`,
     `${name(state.turn.seat)}의 차례`,
     describeGalaxy(next.action),
   ];

@@ -172,7 +172,7 @@ function ReplayBody({
         </button>
       </div>
       <p role="status" className="text-sm text-white/80">
-        {state.round}돌림 · {at}/{last}
+        {state.round}차례째 · {at}/{last}
         {state.phase === "gameOver" ? " · 판 끝" : ""}
       </p>
       {commentary && (

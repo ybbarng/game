@@ -107,7 +107,7 @@ export function eventLine(
     case "meteorShower":
       return "유성우의 밤 · 판 끝까지 이용료 2배";
     case "timeUp":
-      return "시간 상한 · 이번 돌림을 마치면 끝나요";
+      return "시간이 다 됐어요 · 모두 이번 차례를 마치면 끝나요";
     default:
       return null;
   }
