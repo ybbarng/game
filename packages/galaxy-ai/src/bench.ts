@@ -2,6 +2,7 @@ import {
   type Action,
   boardOfSky,
   cardById,
+  type GalaxyBoard,
   type GalaxyRules,
   type GalaxyState,
   type GameEvent,
@@ -163,9 +164,11 @@ function runSet(
   seatBots: (game: number) => GalaxyBot[],
   seedBase: number,
   onGame?: (state: GalaxyState, game: number) => void,
+  /** 판(배치 시험, layouts.ts). 없으면 하늘의 판 */
+  givenBoard?: GalaxyBoard,
 ): Tally {
   const tally = newTally();
-  const board = boardOfSky(rules.sky);
+  const board = givenBoard ?? boardOfSky(rules.sky);
   const leaderRound = 11;
   const limit = turnLimitOf(rules);
   const lateRound = limit === null ? null : limit - LATE_ROUNDS + 1;
@@ -611,4 +614,101 @@ export function benchMarkdown(report: BenchReport): string {
     "",
   ];
   return lines.join("\n");
+}
+
+/** 배치 견주기 한 줄(docs/48 15-3) */
+export interface LayoutRow {
+  name: string;
+  length: "standard" | "short";
+  games: number;
+  /** 평균 돌림 · 차례 · 결정 · 어림 분 */
+  rounds: number;
+  turns: number;
+  decisions: number;
+  minutes: number;
+  /** 첫 별자리 완성 돌림: 아래 사분위·중앙값·위 사분위(완성이 나온 판만) */
+  firstComplete: [number, number, number] | null;
+  completionGames: number;
+  /** 자리 순서(첫 차례부터) 1등 몫 */
+  seats: number[];
+  bankrupt: number;
+  lateFlip: number;
+  bigRentGames: number;
+  /** 별자리 「완성한 사람이 1등」 가장 높은 것 − 낮은 것 */
+  groupSpread: number | null;
+  limit: number;
+}
+
+/**
+ * 판 배치 견주기(docs/48 15-3): 4인 중수 ×4로 같은 시드(기본 판 10_000~, 짧은 판 60_000~)를 배치마다 둔다.
+ * 엔진 규칙은 그대로이고 별 칸만 옮긴 판을 넣는다
+ */
+export function runLayoutBench(
+  layouts: readonly { name: string; board: GalaxyBoard }[],
+  games: { standard: number; short: number },
+  sky = "seasons",
+): LayoutRow[] {
+  const mid = galaxyIntermediateBot;
+  const all = () => [mid, mid, mid, mid];
+  const rows: LayoutRow[] = [];
+  for (const layout of layouts)
+    for (const length of ["standard", "short"] as const) {
+      const rules: GalaxyRules = {
+        ...(length === "standard" ? STANDARD_RULES : SHORT_RULES),
+        sky,
+      };
+      const t = runSet(
+        games[length],
+        rules,
+        all,
+        length === "standard" ? 10_000 : 60_000,
+        undefined,
+        layout.board,
+      );
+      const g = Math.max(1, t.games);
+      const firsts = [...t.firstComplete].sort((a, b) => a - b);
+      const rates = layout.board.groups.flatMap((_, i) => {
+        const c = t.groupComplete[i] ?? 0;
+        return c > 0 ? [(t.groupCompleteWins[i] ?? 0) / c] : [];
+      });
+      rows.push({
+        name: layout.name,
+        length,
+        games: t.games,
+        rounds: t.rounds / g,
+        turns: t.turns / g,
+        decisions: t.decisions / g,
+        minutes: ((t.turns / g + t.auctions / g) * 15) / 60,
+        firstComplete: firsts.length
+          ? [
+              quantile(firsts, 0.25),
+              quantile(firsts, 0.5),
+              quantile(firsts, 0.75),
+            ]
+          : null,
+        completionGames: t.completionGames / g,
+        seats: t.firstBySeatOrder.map((w) => w / g),
+        bankrupt: t.bankruptEnds / g,
+        lateFlip: t.lateFlipped / Math.max(1, t.lateChecked),
+        bigRentGames: t.bigRents.filter((x) => x > 0).length / g,
+        groupSpread: rates.length
+          ? Math.max(...rates) - Math.min(...rates)
+          : null,
+        limit: turnLimitOf(rules) ?? 0,
+      });
+    }
+  return rows;
+}
+
+/** 배치 견주기 표(마크다운) */
+export function layoutMarkdown(rows: readonly LayoutRow[]): string {
+  return [
+    "| 배치 | 판 | 판 수 | 돌림 · 차례 · 결정 · 어림 | 첫 완성 돌림(사분위 아래·중앙·위) | 완성 나온 판 | 자리 순서 1등 | 운항 중단 | 마지막 5돌림 1위 바뀜 | 300 넘는 이용료 나온 판 | 별자리 1등 비율 차이 |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
+    ...rows.map(
+      (r) =>
+        `| ${r.name} | ${r.length === "short" ? "짧은" : "기본"} | ${r.games} | ${r.rounds.toFixed(1)}/${r.limit} · ${r.turns.toFixed(1)} · ${r.decisions.toFixed(0)} · ${r.minutes.toFixed(0)}분 | ${r.firstComplete ? r.firstComplete.map((x) => x.toFixed(1)).join(" · ") : "—"} | ${pct(r.completionGames)} | ${r.seats.map((s) => pct(s)).join(" · ")} | ${pct(r.bankrupt)} | ${pct(r.lateFlip)} | ${pct(r.bigRentGames)} | ${r.groupSpread === null ? "—" : `${(r.groupSpread * 100).toFixed(1)}%p`} |`,
+    ),
+    "",
+  ].join("\n");
 }
