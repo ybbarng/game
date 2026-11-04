@@ -32,6 +32,7 @@ import {
 import {
   FindPanel,
   LookPanel,
+  PlayPanel,
   QuizPanel,
   StillCube,
   TurnPanel,
@@ -60,6 +61,7 @@ const KIND_LABEL = {
   find: "찾아보기",
   quiz: "문제",
   turn: "따라 하기",
+  play: "돌려 보기",
 } as const;
 
 const KIND_MARK = {
@@ -69,6 +71,7 @@ const KIND_MARK = {
   find: "◎",
   quiz: "?",
   turn: "✋",
+  play: "✦",
 } as const;
 
 export function LearnApp() {
@@ -316,7 +319,10 @@ function LessonView({
   // 시연·해보기가 아닌 단계는 단원이 노리는 조각이 보이게 그림을 고른다(stepPicture)
   const picture = useMemo(
     () =>
-      step && step.kind !== "demo" && step.kind !== "try"
+      step &&
+      step.kind !== "demo" &&
+      step.kind !== "try" &&
+      step.kind !== "play"
         ? stepPicture(lesson, at)
         : { setup: step?.setup, mask: step?.mask },
     [lesson, at, step],
@@ -505,6 +511,16 @@ function LessonView({
             step={step}
             start={start}
             mask={mask}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "play" && (
+          <PlayPanel
+            key={`${lesson.id}-${at}`}
+            lesson={lesson}
+            step={step}
+            start={start}
             settings={settings}
             onPassed={markActed}
           />

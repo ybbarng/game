@@ -7,7 +7,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
 
-import { faceGrid, stickersFromState } from "../bridge";
+import {
+  faceGrid,
+  marksAtSlots,
+  type StickerMarks,
+  stickersFromState,
+} from "../bridge";
 import {
   attachKeyboard,
   buttonMoves,
@@ -18,6 +23,7 @@ import {
   type KeyResult,
   loadKeymap,
 } from "../input";
+import { stickerAtHit } from "../learn/interact";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
@@ -63,6 +69,13 @@ export interface CubePlayProps {
   onView?: (view: CubeView | null) => void;
   /** 키 그림에서 밝힐 칠 키(배우기의 힌트·따라 하기). 키 그림은 그대로 접고 펼 수 있다 */
   want?: readonly KeyChord[] | null;
+  /**
+   * 칸 표시(스티커 정체마다, 배우기 놀이판의 따라가는 조각). 마스크처럼 `syncToken`이 바뀔 때 장면에 칠하고,
+   * 그 뒤로는 조각을 따라 돈다
+   */
+  marks?: StickerMarks | null;
+  /** 칸을 누르면(3D 누르기·펼친 그림) 그 스티커 자리 번호를 준다. 없으면 누르기를 받지 않는다 */
+  onSticker?: ((sticker: number) => void) | undefined;
 }
 
 export function CubePlay({
@@ -76,6 +89,8 @@ export function CubePlay({
   locked = false,
   onView,
   want,
+  marks,
+  onSticker,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -97,8 +112,20 @@ export function CubePlay({
     onCommand,
     locked,
     onView,
+    marks,
+    onSticker,
   });
-  live.current = { state, mask, settings, onMove, onCommand, locked, onView };
+  live.current = {
+    state,
+    mask,
+    settings,
+    onMove,
+    onCommand,
+    locked,
+    onView,
+    marks,
+    onSticker,
+  };
 
   useEffect(() => setKeymap(loadKeymap()), []);
   // 마우스 돌리기(키 배치 「사용자」)는 배치를 읽은 뒤·장면을 만든 뒤에 알린다
@@ -138,9 +165,20 @@ export function CubePlay({
             if (live.current.locked) return;
             moveRef.current(m, formatMove(n, m));
           },
+          onTap: (hit) => {
+            const pick = live.current.onSticker;
+            if (!pick) return;
+            const i = stickerAtHit(n, hit.center, hit.normal);
+            if (i !== null) pick(i);
+          },
         });
         view.setStickers(
-          stickersFromState(n, live.current.state, live.current.mask),
+          stickersFromState(
+            n,
+            live.current.state,
+            live.current.mask,
+            live.current.marks,
+          ),
         );
         viewRef.current = view;
         ro.observe(canvas);
@@ -170,7 +208,12 @@ export function CubePlay({
   // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 다시 칠한다
   useEffect(() => {
     viewRef.current?.setStickers(
-      stickersFromState(n, live.current.state, live.current.mask),
+      stickersFromState(
+        n,
+        live.current.state,
+        live.current.mask,
+        live.current.marks,
+      ),
     );
   }, [syncToken, n]);
 
@@ -263,6 +306,8 @@ export function CubePlay({
               colors={colors}
               hidden={settings.hidden}
               className="h-auto w-full"
+              marks={marksAtSlots(state, marks)}
+              onCell={onSticker}
             />
           ) : null
         }

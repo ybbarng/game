@@ -15,7 +15,9 @@ import {
   type CubeMove,
   type CubeViewOptions,
   DEFAULT_COLORS,
+  MARK_COLOR,
   MAX_CUBE_SIZE,
+  type MarkTone,
   MIN_CUBE_SIZE,
   type Normal,
   type Quality,
@@ -94,6 +96,7 @@ interface StickerSlot {
   normal: Normal;
   local: THREE.Matrix4;
   color: number | null;
+  mark: MarkTone | null;
 }
 
 interface Running {
@@ -161,6 +164,21 @@ function stickerGeometry(
   return g;
 }
 
+/** 칸 표시 고리(스티커 둘레를 감싸는 둥근 테, 스티커보다 조금 위). 배우기의 고른 조각·맞음·틀림 */
+function frameGeometry(spec: QualitySpec): THREE.BufferGeometry {
+  const shape = roundedRect(0.96, 0.14);
+  const hole = roundedRect(0.74, 0.1);
+  shape.holes.push(
+    new THREE.Path(hole.getPoints(spec.curveSegments).reverse()),
+  );
+  const g = new THREE.ShapeGeometry(shape, spec.curveSegments);
+  g.translate(0, 0, CUBIE / 2 + 0.03);
+  return g;
+}
+
+/** 표시가 없는 칸의 고리는 크기 0으로 둔다 */
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+
 /** 바닥에 까는 부드러운 그림자(가운데가 짙고 가장자리로 사라진다) */
 function shadowTexture(): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -202,6 +220,7 @@ export class CubeView {
   private readonly stickerMesh: THREE.InstancedMesh;
   private readonly bodyMaterial: THREE.MeshStandardMaterial;
   private readonly stickerMaterial: THREE.MeshStandardMaterial;
+  private readonly frameMesh: THREE.InstancedMesh;
   private readonly shadow: THREE.Mesh | null = null;
   private readonly envTexture: THREE.Texture | null = null;
   private readonly disposables: { dispose(): void }[] = [];
@@ -350,7 +369,13 @@ export class CubeView {
           );
           this.slotIndex.set(slotKey(c.home, normal), this.slots.length);
           c.stickers.push(this.slots.length);
-          this.slots.push({ cubie: ci, normal, local, color: null });
+          this.slots.push({
+            cubie: ci,
+            normal,
+            local,
+            color: null,
+            mark: null,
+          });
         }
       });
     });
@@ -365,7 +390,21 @@ export class CubeView {
       this.stickerMaterial,
       this.slots.length,
     );
-    for (const m of [this.body, this.stickerMesh]) {
+    // 칸 표시: 빛을 받지 않는 밝은 색이라 어느 면에서도 같은 색으로 보인다
+    const frameMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    const frameGeo = frameGeometry(this.spec);
+    this.disposables.push(frameMat, frameGeo);
+    this.frameMesh = new THREE.InstancedMesh(
+      frameGeo,
+      frameMat,
+      this.slots.length,
+    );
+    this.frameMesh.visible = false;
+    for (const m of [this.body, this.stickerMesh, this.frameMesh]) {
       m.frustumCulled = false;
       this.scene.add(m);
     }
@@ -413,11 +452,17 @@ export class CubeView {
       c.pos.set(...c.home);
       c.quat.identity();
     }
-    for (const s of this.slots) s.color = null;
+    for (const s of this.slots) {
+      s.color = null;
+      s.mark = null;
+    }
     for (const s of stickers) {
       const i = this.slotIndex.get(slotKey(s.center, s.normal));
       const slot = i === undefined ? undefined : this.slots[i];
-      if (slot) slot.color = s.color;
+      if (slot) {
+        slot.color = s.color;
+        slot.mark = s.mark ?? null;
+      }
     }
     this.cubies.forEach((_, i) => {
       this.writeCubie(i);
@@ -530,6 +575,7 @@ export class CubeView {
     this.stickerMesh.geometry.dispose();
     this.body.dispose();
     this.stickerMesh.dispose();
+    this.frameMesh.dispose();
     for (const d of this.disposables) d.dispose();
     this.envTexture?.dispose();
     this.renderer.dispose();
@@ -556,9 +602,16 @@ export class CubeView {
           ? HIDDEN_COLOR[this.hidden]
           : (this.colors[s.color] ?? HIDDEN_COLOR[this.hidden]);
       this.stickerMesh.setColorAt(i, color.setHex(hex));
+      this.frameMesh.setColorAt(
+        i,
+        color.setHex(s.mark ? MARK_COLOR[s.mark] : 0xffffff),
+      );
     });
     if (this.stickerMesh.instanceColor)
       this.stickerMesh.instanceColor.needsUpdate = true;
+    if (this.frameMesh.instanceColor)
+      this.frameMesh.instanceColor.needsUpdate = true;
+    this.frameMesh.visible = this.slots.some((s) => s.mark !== null);
   }
 
   /** 조각 하나(와 그 스티커)의 행렬을 쓴다. `extra`가 있으면 그 회전을 바깥에 더한다(도는 중) */
@@ -579,9 +632,11 @@ export class CubeView {
       if (!slot) continue;
       tmpM2.multiplyMatrices(tmpM, slot.local);
       this.stickerMesh.setMatrixAt(si, tmpM2);
+      this.frameMesh.setMatrixAt(si, slot.mark ? tmpM2 : ZERO);
     }
     this.body.instanceMatrix.needsUpdate = true;
     this.stickerMesh.instanceMatrix.needsUpdate = true;
+    this.frameMesh.instanceMatrix.needsUpdate = true;
   }
 
   private start(move: CubeMove, now: number, duration: number): Running {

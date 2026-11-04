@@ -15,7 +15,14 @@ import { describe, expect, it } from "vitest";
 import { homeOf } from "./__test__/pieces";
 import { apply, solved } from "./__test__/sim";
 import { COURSES } from "./index";
-import { findHit, slotCenterColors } from "./interact";
+import {
+  findHit,
+  focusPieces,
+  focusSlots,
+  type PlayCount,
+  playCount,
+  slotCenterColors,
+} from "./interact";
 import { goalMet, maskFor, pieceByName } from "./judge";
 import {
   FLIPPED_EDGE,
@@ -90,7 +97,7 @@ describe("조각 따라가기", () => {
     const tracks = l.steps.filter(
       (s) => s.kind === "find" && s.mask === "centers" && s.find?.colors,
     );
-    expect(tracks.length).toBeGreaterThanOrEqual(3);
+    expect(tracks.length).toBeGreaterThanOrEqual(1);
     for (const s of tracks) {
       const start = play(3, (s.setup as { alg: string }).alg);
       expect(hitSlots(3, start, s.find as FindTarget)).toHaveLength(1);
@@ -106,24 +113,25 @@ describe("고르기 문제의 답", () => {
     return { step: s, answer: s.quiz.choices[s.quiz.answer] };
   };
 
-  it("조각 수: 모서리 12(색 둘), 모두 26", () => {
+  it("세기: 까만 큐브에서 가운데 6·모서리 12·꼭짓점 8, 모두 26", () => {
     const topo = cubeTopology(3);
     const kinds = topo.pieces.map((p) => p.stickers.length);
     expect(kinds.filter((k) => k === 2)).toHaveLength(12);
     expect(kinds.filter((k) => k === 3)).toHaveLength(8);
     expect(kinds.filter((k) => k === 1)).toHaveLength(6);
     expect(topo.pieces).toHaveLength(26);
-    expect(quiz("모서리 조각은 몇 개").answer).toBe("12개, 색 둘씩");
+    const counts = l.steps.filter((x) => (x.count ?? 1) > 1);
+    expect(counts.map((x) => [x.find?.piece, x.count, x.mask])).toEqual([
+      ["center", 6, "none"],
+      ["edge", 12, "none"],
+      ["corner", 8, "none"],
+    ]);
+    // 세는 개수가 큐브에 있는 그 조각 수와 같다(모자라지도 남지도 않는다)
+    for (const x of counts)
+      expect(hitSlots(3, solvedCube(3), x.find as FindTarget)).toHaveLength(
+        x.count as number,
+      );
     expect(quiz("모두 몇 개").answer).toBe("26개");
-  });
-
-  it("면을 돌려도 흰 가운데는 위 그대로", () => {
-    const { step, answer } = quiz("흰 가운데는 지금 어디");
-    const s = play(3, (step.setup as { alg: string }).alg);
-    expect(faceColors(3, s)[(FACE_INDEX.U as number) * 9 + 4]).toBe(
-      FACE_INDEX.U,
-    );
-    expect(answer).toBe("위 그대로");
   });
 
   it("초록 맞은편은 파랑", () => {
@@ -143,9 +151,9 @@ describe("고르기 문제의 답", () => {
     expect(quiz("몇 가지 방향").answer).toBe("세 가지");
   });
 
-  it("자리 찾기: 초록-주황 자리는 앞-왼쪽, 노랑-파랑-빨강 자리는 아래-뒤-오른쪽", () => {
+  it("자리 찾기: 초록-주황 자리는 앞-왼쪽", () => {
     const steps = l.steps.filter((s) => s.find?.at);
-    expect(steps).toHaveLength(2);
+    expect(steps).toHaveLength(1);
     for (const s of steps) {
       const start = play(3, (s.setup as { alg: string }).alg);
       const at = s.find?.at ?? [];
@@ -213,5 +221,76 @@ describe("큰 큐브와 2×2 조각 단원", () => {
     expect(
       hitSlots(2, play(2, "R U"), { colors: ["U", "F", "L"] }),
     ).toHaveLength(1);
+  });
+});
+
+describe("놀이판", () => {
+  const zero: PlayCount = { turns: 0, moved: 0 };
+  /** 공식을 한 수씩 두며 놀이판 셈을 쌓는다 */
+  const tally = (n: number, pieces: number[], alg: string) => {
+    let s = solvedCube(n);
+    let c = zero;
+    for (const m of parseMoves(n, alg)) {
+      const next = applyMoves(n, s, [m]);
+      c = playCount(n, s, next, m, pieces, c);
+      s = next;
+    }
+    return c;
+  };
+
+  it("3×3 단원에 가운데·꼭짓점·모서리·색이 함께 다니는 놀이판이 있다", () => {
+    const plays = lessonOf("333-pieces").steps.filter((s) => s.kind === "play");
+    expect(plays).toHaveLength(4);
+    const sizes = plays.map((s) => focusPieces(3, s.play?.focus ?? {}).length);
+    expect(sizes).toEqual([6, 1, 1, 2]);
+  });
+
+  it("3×3: 면을 돌려도 가운데는 자리를 옮기지 않는다. 가운데 층은 옮긴다", () => {
+    const centers = focusPieces(3, { piece: "center" });
+    expect(tally(3, centers, "R U F' L D B R2")).toEqual({
+      turns: 7,
+      moved: 0,
+    });
+    // 가운데 하나만 보면 가운데 층(M)은 그 가운데를 옮긴다(여섯 묶음으로는 같은 자리들)
+    const white = focusPieces(3, { piece: "center", colors: ["U"] });
+    expect(tally(3, white, "R U F' L D B").moved).toBe(0);
+    expect(tally(3, white, "M").moved).toBe(1);
+    expect(tally(3, centers, "M").moved).toBe(0);
+    // 큐브 전체 돌리기는 세지 않는다
+    expect(tally(3, centers, "x y z")).toEqual(zero);
+  });
+
+  it("3×3: 꼭짓점은 꼭짓점 자리로만, 모서리는 모서리 자리로만", () => {
+    const topo = cubeTopology(3);
+    const corner = focusPieces(3, UFR);
+    const edge = focusPieces(3, UF);
+    let s = solvedCube(3);
+    for (const m of parseMoves(3, "R U F' L2 D B' M E S R U2")) {
+      s = applyMoves(3, s, [m]);
+      const [c] = focusSlots(3, s, corner);
+      const [e] = focusSlots(3, s, edge);
+      expect(topo.pieces[c as number]?.kind).toBe("corner");
+      expect(topo.pieces[e as number]?.kind).toBe("edge");
+    }
+    expect(tally(3, corner, "R U R").moved).toBe(3);
+  });
+
+  it("4×4: 바깥 면을 돌리면 초록 가운데 넷이 함께 돌고, 안쪽 층이면 흩어진다", () => {
+    const green = focusPieces(4, { piece: "center", colors: ["F"] });
+    expect(green).toHaveLength(4);
+    expect(tally(4, green, "F F'")).toEqual({ turns: 2, moved: 0 });
+    expect(tally(4, green, "2R").moved).toBe(1);
+  });
+
+  it("5×5: 한가운데 칸만 늘 제자리, 둘레는 안쪽 층에 옮겨 간다", () => {
+    const white = focusPieces(5, { piece: "center", colors: ["U"] });
+    expect(white).toHaveLength(9);
+    const middle = white.filter(
+      (p) => cubeTopology(5).pieces[p]?.kind === "center",
+    );
+    expect(middle).toHaveLength(1);
+    const ring = white.filter((p) => !middle.includes(p));
+    expect(tally(5, middle, "2R 2U R U 2F' L D").moved).toBe(0);
+    expect(tally(5, ring, "2R").moved).toBe(1);
   });
 });

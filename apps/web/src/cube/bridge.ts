@@ -6,7 +6,22 @@ import {
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import type { Normal, Sticker } from "./view/types";
+import type { MarkTone, Normal, Sticker } from "./view/types";
+
+/**
+ * 칸 표시(배우기). 마스크처럼 **스티커 정체**(맞춘 큐브에서의 자리 번호)마다 하나라 조각을 따라 다닌다.
+ * null이면 표시 없음
+ */
+export type StickerMarks = readonly (MarkTone | null)[];
+
+/** 정체별 표시 → 지금 자리별 표시(펼친 그림용) */
+export function marksAtSlots(
+  state: PuzzleState,
+  marks: StickerMarks | null | undefined,
+): (MarkTone | null)[] | null {
+  if (!marks) return null;
+  return Array.from(state.perm, (sticker) => marks[sticker] ?? null);
+}
 
 /**
  * 엔진 상태 → 3D 장면의 스티커(docs/47 2-2). 엔진이 기준이고 장면은 이 결과로 다시 칠하거나 수를 따라 돈다.
@@ -18,10 +33,13 @@ export function stickersFromState(
   n: number,
   state: PuzzleState,
   mask?: StickerMask | null,
+  marks?: StickerMarks | null,
 ): Sticker[] {
   const colors = faceColors(n, state);
   const visibility = mask ? maskAtSlots(state, mask) : null;
+  const marked = marksAtSlots(state, marks);
   return stickerGeometry(n).map((g) => ({
+    ...(marked?.[g.index] ? { mark: marked[g.index] } : {}),
     center: g.center,
     normal: `${g.sign > 0 ? "+" : "-"}${g.axis}` as Normal,
     color:

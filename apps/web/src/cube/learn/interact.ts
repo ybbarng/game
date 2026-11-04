@@ -3,15 +3,22 @@
 // 이 번호로 바꿔 넘긴다.
 import {
   applyMoves,
+  type CubeMove,
+  cubeGroups,
   cubeTopology,
   faceColors,
+  isRotation,
+  maskFromPieces,
   parseMoves,
   pieceFaces,
   type StickerMask,
   solvedCube,
+  U,
 } from "@game/cube-engine";
 import { type PuzzleState, statesEqual } from "@game/puzzle-core";
 
+import type { StickerMarks } from "../bridge";
+import type { MarkTone } from "../view/types";
 import {
   type FaceLetter,
   FINGER_NOTATION,
@@ -23,6 +30,7 @@ import {
   type LookGoal,
   type MaskName,
   type PieceType,
+  type PlaySpec,
 } from "./types";
 
 const FACE_INDEX: Record<FaceLetter, number> = {
@@ -128,6 +136,184 @@ export function revealFound(
   return out;
 }
 
+// ── 고르기와 세기 ─────────────────────────────────────
+
+/**
+ * 칸 하나를 눌렀을 때(찾기·세기). `found`는 이미 고른 조각 자리 번호들, `need`는 찾을 개수.
+ * - add: 맞는 조각을 새로 골랐다 · remove: 세기(need > 1)에서 고른 조각을 다시 눌러 풀었다
+ * - again: 하나 찾기에서 이미 찾은 조각 · wrong: 찾는 조각이 아니다(세지 않는다) · none: 칸이 아니거나 이미 다 찾음
+ * `piece`는 누른 칸이 든 조각 자리(틀림 표시용)
+ */
+export function pickPiece(
+  n: number,
+  state: PuzzleState,
+  sticker: number,
+  target: FindTarget,
+  found: readonly number[],
+  need: number,
+): {
+  kind: "add" | "remove" | "again" | "wrong" | "none";
+  piece: number | null;
+  found: number[];
+} {
+  const at = cubeTopology(n).stickers[sticker]?.piece ?? null;
+  if (at === null || found.length >= need)
+    return { kind: "none", piece: at, found: [...found] };
+  const hit = findHit(n, state, sticker, target);
+  if (hit === null) return { kind: "wrong", piece: at, found: [...found] };
+  if (found.includes(hit))
+    return need > 1
+      ? { kind: "remove", piece: hit, found: found.filter((p) => p !== hit) }
+      : { kind: "again", piece: hit, found: [...found] };
+  return { kind: "add", piece: hit, found: [...found, hit] };
+}
+
+/**
+ * 조각 자리(지금 상태에서 그 자리에 든 조각)마다 표시 → 스티커 정체별 표시(3D와 펼친 그림이 함께 쓴다).
+ * 뒤에 준 것이 앞의 것을 덮는다(틀림을 고름 위에 잠깐 보일 때)
+ */
+export function marksForSlots(
+  n: number,
+  state: PuzzleState,
+  tones: readonly (readonly [number, MarkTone])[],
+): StickerMarks {
+  const topo = cubeTopology(n);
+  const out: (MarkTone | null)[] = new Array(topo.stickerCount).fill(null);
+  for (const [p, tone] of tones)
+    for (const slot of topo.pieces[p]?.stickers ?? []) {
+      const sticker = state.perm[slot];
+      if (sticker !== undefined) out[sticker] = tone;
+    }
+  return out;
+}
+
+// ── 놀이판 ────────────────────────────────────────────
+
+/** 맞춘 큐브에서 찾기 목표에 맞는 조각들(조각 정체 = 맞춘 큐브의 자리 번호). 놀이판에서 색을 넣을 조각 */
+export function focusPieces(
+  n: number,
+  focus: FindTarget | readonly FindTarget[],
+): number[] {
+  const solved = solvedCube(n);
+  const list = Array.isArray(focus) ? focus : [focus as FindTarget];
+  const out = new Set<number>();
+  const all = cubeTopology(n).stickers.length;
+  for (const t of list)
+    for (let i = 0; i < all; i++) {
+      const p = findHit(n, solved, i, t);
+      if (p !== null) out.add(p);
+    }
+  return [...out].sort((a, b) => a - b);
+}
+
+/** 놀이판 가리기: 그 조각들(정체)만 색, 나머지는 까맣게. `centers`면 가운데도 색(제자리를 볼 기준) */
+export function focusMask(
+  n: number,
+  pieces: readonly number[],
+  centers = false,
+): StickerMask {
+  return maskFromPieces(n, [
+    ...pieces,
+    ...(centers ? cubeGroups(n, U).centers : []),
+  ]);
+}
+
+/** 조각 정체마다 같은 표시(「보통」으로 볼 때 따라가는 조각에 노란 테) */
+export function marksForPieces(
+  n: number,
+  pieces: readonly number[],
+  tone: MarkTone,
+): StickerMarks {
+  const topo = cubeTopology(n);
+  const out: (MarkTone | null)[] = new Array(topo.stickerCount).fill(null);
+  for (const p of pieces)
+    for (const s of topo.pieces[p]?.stickers ?? []) out[s] = tone;
+  return out;
+}
+
+/** 조각들(정체)이 지금 든 자리 번호들(작은 것부터) */
+export function focusSlots(
+  n: number,
+  state: PuzzleState,
+  pieces: readonly number[],
+): number[] {
+  const topo = cubeTopology(n);
+  const want = new Set<number>();
+  for (const p of pieces)
+    for (const s of topo.pieces[p]?.stickers ?? []) want.add(s);
+  const slots = new Set<number>();
+  state.perm.forEach((sticker, pos) => {
+    if (want.has(sticker)) {
+      const slot = topo.stickers[pos]?.piece;
+      if (slot !== undefined) slots.add(slot);
+    }
+  });
+  return [...slots].sort((a, b) => a - b);
+}
+
+export interface PlayCount {
+  /** 층 돌리기 수(큐브 전체 돌리기는 세지 않는다) */
+  turns: number;
+  /** 색 넣은 조각이 자리를 옮긴 횟수 */
+  moved: number;
+}
+
+/**
+ * 놀이판에서 수 하나를 둔 뒤의 셈. 큐브 전체 돌리기는 둘 다 세지 않는다(조각끼리의 자리는 그대로다).
+ * 되돌리기도 한 수로 센다(돌려 본 것이니까)
+ */
+export function playCount(
+  n: number,
+  before: PuzzleState,
+  after: PuzzleState,
+  move: CubeMove,
+  pieces: readonly number[],
+  count: PlayCount,
+): PlayCount {
+  if (isRotation(n, move)) return count;
+  const a = focusSlots(n, before, pieces);
+  const b = focusSlots(n, after, pieces);
+  const moved = a.length !== b.length || a.some((v, i) => v !== b[i]);
+  return { turns: count.turns + 1, moved: count.moved + (moved ? 1 : 0) };
+}
+
+/** 놀이판 통과: 층 돌리기 `turns`번 또는 조각 옮김 `moved`번 중 하나라도 채움 */
+export function playPassed(spec: PlaySpec, count: PlayCount): boolean {
+  return (
+    (spec.turns !== undefined && count.turns >= spec.turns) ||
+    (spec.moved !== undefined && count.moved >= spec.moved)
+  );
+}
+
+/**
+ * 「다른 조각 보기」 단추: 크기마다 가운데·모서리·꼭짓점 하나(큰 큐브는 흰 면 가운데 전부, 흰-초록 모서리 줄).
+ * 2×2는 꼭짓점뿐이다
+ */
+export function playChoices(n: number): { label: string; focus: FindTarget }[] {
+  const out: { label: string; focus: FindTarget }[] = [];
+  if (n > 2)
+    out.push(
+      { label: "가운데", focus: { piece: "center", colors: ["U"] } },
+      { label: "모서리", focus: { piece: "edge", colors: ["U", "F"] } },
+    );
+  out.push({
+    label: "꼭짓점",
+    focus: { piece: "corner", colors: ["U", "F", "R"] },
+  });
+  return out;
+}
+
+/** 놀이판에서 칸을 눌러 고른 조각: 그 칸에 지금 든 조각의 정체 */
+export function pieceIdentityAt(
+  n: number,
+  state: PuzzleState,
+  sticker: number,
+): number | null {
+  const id = state.perm[sticker];
+  if (id === undefined) return null;
+  return cubeTopology(n).stickers[id]?.piece ?? null;
+}
+
 /** 칸이 든 자리가 닿은 면의 가운데 색(면 번호). 자리 찾기에서 틀렸을 때 「그 자리는 ○-○ 가운데 사이」로 알린다 */
 export function slotCenterColors(
   n: number,
@@ -202,7 +388,8 @@ export function stepIsActive(step: LessonStep): boolean {
     step.kind === "look" ||
     step.kind === "find" ||
     step.kind === "quiz" ||
-    step.kind === "turn"
+    step.kind === "turn" ||
+    step.kind === "play"
   );
 }
 
@@ -276,6 +463,14 @@ export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
     case "turn":
     case "demo":
       return step.alg ? null : "공식이 없다";
+    case "play": {
+      const p = step.play;
+      if (!p) return "놀이판이 없다";
+      if (p.turns === undefined && p.moved === undefined)
+        return "통과 조건이 없다";
+      if (focusPieces(n, p.focus).length === 0) return "색 넣을 조각이 없다";
+      return null;
+    }
     case "look": {
       if (!step.look) return null;
       const start = setupState(n, step.setup);

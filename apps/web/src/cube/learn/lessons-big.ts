@@ -46,10 +46,13 @@ const pieces4: Lesson = {
       count: 4,
     },
     {
-      kind: "turn",
-      body: "안쪽 한 층(2R)을 돌려 보세요. 가운데 칸이 다른 면으로 옮겨 가요.",
-      mask: "all",
-      alg: "2R",
+      kind: "play",
+      body: "초록 가운데 칸 넷만 색이 있어요. 바깥 면(F)을 돌리면 넷이 함께 돌고, 안쪽 층(2R·2U)을 돌리면 다른 면으로 흩어져요. 마음대로 돌려 보세요.",
+      play: {
+        focus: { piece: "center", colors: ["F"] },
+        turns: 4,
+        choose: true,
+      },
     },
     {
       kind: "quiz",
@@ -101,10 +104,13 @@ const pieces5: Lesson = {
     "한가운데 칸은 고정, 둘레 여덟 칸은 움직여요. 모서리는 세 칸 한 줄이에요.",
   steps: [
     {
-      kind: "turn",
-      body: "안쪽 한 층(2R)을 돌려 보며 면 한가운데 칸을 지켜보세요.",
-      mask: "all",
-      alg: "2R",
+      kind: "play",
+      body: "흰 면 가운데 아홉 칸만 색이 있어요. 2R·2U 같은 안쪽 층을 돌려 보세요. 둘레 여덟 칸은 옮겨 가지만 한가운데 칸은 늘 제자리예요. 가운데 줄(M)은 큐브 전체처럼 가운데를 함께 옮겨요.",
+      play: {
+        focus: { piece: "center", colors: ["U"] },
+        turns: 4,
+        choose: true,
+      },
     },
     {
       kind: "quiz",

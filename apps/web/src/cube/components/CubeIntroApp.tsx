@@ -16,7 +16,8 @@ import { FindPanel, TurnPanel } from "./LessonActs";
  * 키 배치 → 배우기로 이어 가기. 큐브는 판 게임과 달리 미션(대국)이 없어 공통 TutorialKit 대신
  * 설명과 작은 퀴즈만 두고, 자세한 표기(x·y·z, 큰 큐브)와 해보기는 배우기(`/cube/learn`) 첫 과정에 맡긴다.
  * 시간 규칙(살펴보기·+2·DNF)은 맞출 줄 모르는 사람에게 이르므로 타이머 화면에 맡긴다(2026-11-04).
- * 맨 앞은 조각(2026-11-04): 공식보다 먼저 「색이 아니라 조각을 옮긴다」를 세 종류의 조각 찾기로 익힌다.
+ * 맨 앞은 조각(2026-11-04): 공식보다 먼저 「색이 아니라 조각을 옮긴다」를 맛본다. 아무 칸이나 누르면 그 조각 전체가
+ * 밝아지고 무슨 조각인지 알려 준다. 세기·놀이판 같은 깊은 상호작용은 배우기 「큐브의 조각」 단원에 둔다(겹치지 않게).
  */
 
 interface Quiz {
@@ -64,7 +65,7 @@ const STEPS: Step[] = [
 /** 배우기 첫 단원: 3×3 초보자 과정의 맨 앞(지금은 「큐브의 조각」). 과정이 바뀌어도 따라간다 */
 const FIRST_LESSON = COURSES.find((c) => c.id === "333-beginner")?.lessons[0];
 
-/** 조각 찾기 셋(배우기의 찾기 판정을 그대로 쓴다) */
+/** 조각 맛보기(배우기의 찾기 부품을 「눌러 보기」로 쓴다) */
 const PIECE_LESSON: Lesson = {
   id: "intro-pieces",
   size: 3,
@@ -72,20 +73,7 @@ const PIECE_LESSON: Lesson = {
   summary: "",
   steps: [],
 };
-const PIECE_FINDS: { name: string; step: LessonStep }[] = [
-  {
-    name: "가운데(색 하나)",
-    step: { kind: "find", body: "", find: { piece: "center" } },
-  },
-  {
-    name: "모서리(색 둘)",
-    step: { kind: "find", body: "", find: { piece: "edge" } },
-  },
-  {
-    name: "꼭짓점(색 셋)",
-    step: { kind: "find", body: "", find: { piece: "corner" } },
-  },
-];
+const PIECE_TASTE: LessonStep = { kind: "find", body: "", find: {} };
 
 const LETTERS: [string, string][] = [
   ["R", "오른쪽 면"],
@@ -100,8 +88,8 @@ export function CubeIntroApp() {
   const settings = useCubeSettings();
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<Record<string, number>>({});
-  // 조각 찾기를 몇 개 했나(가운데 → 모서리 → 꼭짓점)
-  const [piecesFound, setPiecesFound] = useState(0);
+  // 조각 맛보기: 칸을 한 번이라도 눌렀나
+  const [tasted, setTasted] = useState(false);
   const step = STEPS[index] ?? (STEPS[0] as Step);
   const start = useMemo(() => solvedCube(3), []);
   const twoHand = useMemo(() => presetKeymap("twoHand"), []);
@@ -110,9 +98,7 @@ export function CubeIntroApp() {
   const quiz = step.quiz;
   const choice = picked[step.id];
   const quizDone =
-    (!quiz || choice === quiz.answer) &&
-    (step.id !== "pieces" || piecesFound >= PIECE_FINDS.length);
-  const pieceFind = PIECE_FINDS[piecesFound];
+    (!quiz || choice === quiz.answer) && (step.id !== "pieces" || tasted);
 
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
@@ -155,46 +141,26 @@ export function CubeIntroApp() {
                 가운데 6, 둘인 모서리 12, 셋인 꼭짓점 8. 돌리면 조각이 통째로
                 움직여요. <b>색이 아니라 조각을 옮겨요.</b>
               </p>
-              <ol className="flex gap-1 text-xs" data-intro-pieces>
-                {PIECE_FINDS.map((f, i) => (
-                  <li
-                    key={f.name}
-                    className={cn(
-                      "flex-1 rounded-lg px-2 py-1.5 text-center",
-                      i < piecesFound
-                        ? "bg-emerald-500/30"
-                        : i === piecesFound
-                          ? "bg-sky-500/30 font-semibold"
-                          : "bg-white/5 text-white/60",
-                    )}
-                  >
-                    {i < piecesFound ? "✓ " : ""}
-                    {f.name}
-                  </li>
-                ))}
-              </ol>
-              {pieceFind ? (
-                <>
-                  <p className="break-keep text-sm" data-intro-piece-ask>
-                    {pieceFind.name.split("(")[0]} 조각을 아무거나 눌러 보세요.
-                  </p>
-                  <FindPanel
-                    key={piecesFound}
-                    lesson={PIECE_LESSON}
-                    step={pieceFind.step}
-                    start={start}
-                    mask={null}
-                    settings={settings}
-                    onPassed={() => setPiecesFound((k) => k + 1)}
-                  />
-                </>
-              ) : (
+              <p className="break-keep text-sm" data-intro-piece-ask>
+                아무 칸이나 눌러 보세요. 그 칸이 든 조각 전체가 밝아져요.
+              </p>
+              <FindPanel
+                lesson={PIECE_LESSON}
+                step={PIECE_TASTE}
+                start={start}
+                mask={null}
+                settings={settings}
+                onPassed={() => setTasted(true)}
+                explore
+              />
+              {tasted && (
                 <p
                   className="break-keep text-emerald-300 text-sm"
                   role="status"
+                  data-intro-tasted
                 >
-                  세 종류를 다 찾았어요. 앞으로 배울 공식은 모두 「어떤 조각을
-                  어디로 옮기는가」예요.
+                  다른 칸도 눌러 보세요. 세 종류를 세어 보고 직접 돌려 보는 것은
+                  배우기 「큐브의 조각」에서 해요.
                 </p>
               )}
             </>
