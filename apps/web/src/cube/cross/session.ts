@@ -256,6 +256,18 @@ export class CrossSession {
     this.finish(false, "gaveUp");
   }
 
+  /** 판을 기록 없이 접는다(조건을 바꿨을 때) */
+  abandon(): void {
+    this.clearTimers();
+    this.phase = "idle";
+    this.round = null;
+    this.state = null;
+    this.result = null;
+    this.counted = [];
+    this.undoStack = [];
+    this.changed();
+  }
+
   dispose(): void {
     this.disposedFlag = true;
     this.clearTimers();
