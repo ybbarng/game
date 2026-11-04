@@ -412,18 +412,23 @@ function ResultBox({
   const myRank = result.ranking.indexOf(room.me);
   const mine = result.players[room.me];
   const solved = mine?.status === "done";
-  const headline = !mine
-    ? "판이 끝났어요"
-    : solved
-      ? myRank === 0
-        ? `1위예요 · ${formatMs(mine.accepted)}`
-        : `${myRank + 1}위 · ${formatMs(mine.accepted)}`
-      : mine.status === "forfeit"
-        ? "이번 판은 기권했어요"
-        : "이번 판은 맞추지 못했어요(DNF)";
+  const headline = result.noDecision
+    ? "이 판은 두 기기 기록이 달라 판정하지 않았어요"
+    : !mine
+      ? "판이 끝났어요"
+      : mine.unranked
+        ? "맞췄지만 두 기기 기록이 달라 순위에 넣지 않았어요"
+        : solved
+          ? myRank === 0
+            ? `1위예요 · ${formatMs(mine.accepted)}`
+            : `${myRank + 1}위 · ${formatMs(mine.accepted)}`
+          : mine.status === "forfeit"
+            ? "이번 판은 기권했어요"
+            : "이번 판은 맞추지 못했어요(DNF)";
   return (
     <div
       data-cube-result="final"
+      data-cube-no-decision={result.noDecision ? "" : undefined}
       data-cube-result-mine={mine?.status}
       role="status"
       className={`flex flex-col gap-1 rounded-xl border px-3 py-2 ${
@@ -470,7 +475,6 @@ function ResultBox({
                 `확인 안 됨: 두 기기 기록이 다름(보고 ${formatMs(p.reported)} · 다른 기기가 잰 하한 ${formatMs(p.usedBound)})`,
               );
             if (p?.weak && !local) notes.push("확인 약함(끊김)");
-            if (p?.reason && p.status !== "done") notes.push(p.reason);
             const bot = bots.get(id);
             // 의심 표시는 사람에게만(컴퓨터는 아래 「계획 확인」으로 본다)
             if (!bot) {
@@ -498,7 +502,11 @@ function ResultBox({
               );
             return (
               <tr key={id} data-cube-rank={id} className="align-top">
-                <td>{p?.status === "done" ? i + 1 : "-"}</td>
+                <td>
+                  {p?.status === "done" && !p.unranked && !result.noDecision
+                    ? i + 1
+                    : "-"}
+                </td>
                 <td>
                   {room.playerName(id)}
                   {id === room.me && room.playerName(id) !== "나"
@@ -512,7 +520,9 @@ function ResultBox({
                 </td>
                 <td className="text-right font-mono tabular-nums">
                   {p?.status === "done"
-                    ? formatMs(time)
+                    ? p.unranked
+                      ? "확인 안 됨"
+                      : formatMs(time)
                     : p?.status === "forfeit"
                       ? "기권"
                       : "DNF"}
@@ -559,7 +569,9 @@ function ResultDetails({ room, snap }: { room: CubeRoom; snap: RaceSnapshot }) {
         parts.push(
           mine === null
             ? "내가 잰 하한: 확인 약함(끊김)"
-            : `내가 잰 하한 ${formatMs(Math.max(0, mine))} · 인정 시간과 차이 ${(((p.accepted ?? 0) - mine) / 1000).toFixed(2)}초`,
+            : p.accepted === undefined
+              ? `내가 잰 하한 ${formatMs(Math.max(0, mine))} · 인정 시간 없음(판정하지 않음)`
+              : `내가 잰 하한 ${formatMs(Math.max(0, mine))} · 인정 시간과 차이 ${((p.accepted - mine) / 1000).toFixed(2)}초`,
         );
       if (p?.flags?.intervalCv != null)
         parts.push(

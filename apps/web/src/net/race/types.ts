@@ -112,7 +112,7 @@ export interface PlayerResult {
   moves: number;
   /** 본인이 보고한 시간(ms, 풀림 기준) */
   reported?: number;
-  /** 인정한 시간 = max(보고, 쓴 하한) */
+  /** 인정한 시간 = max(보고, 쓴 하한). 다툼이면 없다 */
   accepted?: number;
   /** 다른 사람마다 본 하한. null이면 끊김 등으로 "확인 약함"이라 쓰지 않은 값 */
   bounds?: Record<string, number | null>;
@@ -122,20 +122,28 @@ export interface PlayerResult {
   weak?: boolean;
   /**
    * 「확인 안 됨: 두 기기 기록이 다름」. 하한을 낸 기기가 하나뿐인데 하한이 보고보다 `disputeMs` 넘게 늦다.
-   * 누가 거짓인지 가릴 수 없어 인정 시간은 보고 시간으로 두고, 두 값(reported·usedBound)을 함께 보인다
+   * 누가 거짓인지(증인이 부풀렸나, 본인이 줄였나) 가릴 수 없어 어느 값도 믿지 않는다: `accepted`가 없고
+   * 순위 없음(`unranked`). 두 값(reported·usedBound)을 함께 보인다
    */
   disputed?: boolean;
+  /** 맞췄지만 시간을 판정하지 못해 순위에 넣지 않는다(지금은 `disputed`일 때) */
+  unranked?: boolean;
   /** 센 수(`RaceGame.isTurn`). 게임이 넘기지 않으면 없다 */
   turns?: number;
   flags?: SuspicionFlags;
 }
 
 export interface RaceResult {
-  /** 앞선 순서. 맞춘 사람(인정 시간 순) → 못 맞춘 사람 → 기권 */
+  /** 앞선 순서. 맞춘 사람(인정 시간 순) → 맞췄지만 순위 없음(다툼) → 못 맞춘 사람 → 기권 */
   ranking: string[];
   players: Record<string, PlayerResult>;
   /** 남은 사람이 둘 아래라 대결을 열지 못했을 때 */
   cancelled?: string;
+  /**
+   * 판정 없음(무효): 판에 든 사람이 둘 이하인데 한 사람의 시간이 다툼(`disputed`)이다. 순위·승패를 매기지 않고
+   * 경기 누적(먼저 N판·5판 평균)에도 넣지 않는다
+   */
+  noDecision?: boolean;
 }
 
 export type RacePhase =

@@ -158,7 +158,7 @@ describe("대결 틀: 공격 재현", () => {
     });
   });
 
-  it("③ 1:1에서 상대 하한을 크게 지어내도 그대로 쓰지 않고 「확인 안 됨」으로 두 값을 남긴다. 폭 안쪽은 하한을 쓴다", () => {
+  it("③ 1:1에서 상대 하한을 크게 지어내면 그 판은 판정 없음(두 값을 남기고 순위·승패 없음). 폭 안쪽은 하한을 쓴다", () => {
     const run = (extra: number) => {
       const { clock, devices } = setupRace(2, {}, (net) => {
         net.filter = (m, from) => {
@@ -177,14 +177,35 @@ describe("대결 틀: 공격 재현", () => {
     const lied = run(9_999_000);
     const p2 = lied.players.p2;
     expect(p2?.disputed).toBe(true);
-    expect(p2?.accepted).toBe(p2?.reported);
+    expect(p2?.unranked).toBe(true);
+    expect(p2?.accepted).toBeUndefined();
+    expect(p2?.reported).toBeLessThan(3000);
     expect(p2?.usedBound).toBeGreaterThan(9_000_000);
-    expect(lied.ranking).toEqual(["p2", "p1"]);
+    // 느린 공격자가 이기지 못한다: 그 판은 판정하지 않는다
+    expect(lied.noDecision).toBe(true);
     // 폭(1초) 안쪽: 지금처럼 하한을 쓴다(조용히 깎지 않는다)
     const small = run(800).players.p2;
     expect(small?.disputed).toBeUndefined();
     expect(small?.accepted).toBe(small?.usedBound);
     expect(small?.accepted).toBeGreaterThan(small?.reported as number);
+  });
+
+  it("③ 1:1에서 공격자가 자기 시간을 짧게 거짓 보고해도(시계를 15초 돌림) 1위가 되지 않고 판정 없음이다(두 기기 같은 결과)", () => {
+    const { clock, devices } = setupRace(2);
+    const [cheat, honest] = devices as [Device, Device];
+    // 실제로는 정직한 사람보다 훨씬 늦게 맞추지만 첫 수 전에 시계를 15초 뒤로 돌린다
+    const s = autoSolve(clock, cheat, 15_000, 100, () => {
+      cheat.clock.offset -= 15_000;
+    });
+    autoSolve(clock, honest, 2_000, 100);
+    runUntil(clock, finished(devices));
+    const r = sameEverywhere(devices);
+    const p1 = r.players.p1;
+    expect(p1?.reported).toBe(100 * (s.moves() - 1));
+    expect(p1?.disputed).toBe(true);
+    expect(p1?.accepted).toBeUndefined();
+    expect(r.noDecision).toBe(true);
+    expect(r.ranking[0]).toBe("p2");
   });
 
   it("기권·DNF 까닭 글은 정한 목록 안에서만 받고, 밖이면 「기타」", () => {

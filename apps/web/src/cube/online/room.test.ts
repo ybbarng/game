@@ -430,7 +430,7 @@ describe("큐브 대결 방: 남의 결과를 꾸미지 못한다", () => {
 });
 
 describe("큐브 대결 방: 한 기기·이름 흉내", () => {
-  it("④ 방장 기기의 사람과 컴퓨터가 함께 손님 하한을 크게 지어내도 기기 하나로만 세어(컴퓨터는 증인 아님) 손님 시간은 「확인 안 됨」으로 보고 시간이다", () => {
+  it("④ 방장 기기의 사람과 컴퓨터가 함께 손님 하한을 크게 지어내도 기기 하나로만 세어(컴퓨터는 증인 아님) 손님 시간은 「확인 안 됨」(순위 없음)이다", () => {
     const { clock, net, host, guest } = setup();
     host.addBot("expert");
     clock.advance(100);
@@ -461,8 +461,10 @@ describe("큐브 대결 방: 한 기기·이름 흉내", () => {
     const g = guest.rounds[0]?.result.players.g;
     expect(Object.keys(g?.bounds ?? {})).toEqual(["h"]);
     expect(g?.disputed).toBe(true);
-    expect(g?.accepted).toBe(g?.reported);
-    expect(guest.rounds[0]?.result.ranking[0]).toBe("g");
+    // 판에 셋(방장·컴퓨터·손님)이라 판 전체가 아니라 손님만 순위 없음
+    expect(g?.unranked).toBe(true);
+    expect(g?.accepted).toBeUndefined();
+    expect(guest.rounds[0]?.result.noDecision).toBeUndefined();
     // 거짓을 보낸 방장 기기는 자기 참값을 가진다(컴퓨터 하한은 거기서도 쓰지 않는다)
     expect(Object.keys(host.rounds[0]?.result.players.g?.bounds ?? {})).toEqual(
       ["h"],
@@ -523,5 +525,29 @@ describe("종합 순위", () => {
       id: "a",
       wins: 2,
     });
+  });
+
+  it("판정 없음(두 기기 기록이 다름) 판은 승수·평균·판 수에 넣지 않는다", () => {
+    const voided = {
+      result: {
+        ranking: ["b", "a"],
+        noDecision: true,
+        players: {
+          a: {
+            id: "a",
+            status: "done" as const,
+            moves: 1,
+            disputed: true,
+            unranked: true,
+            reported: 1,
+          },
+          b: { id: "b", status: "done" as const, moves: 1, accepted: 9 },
+        },
+      },
+    };
+    expect(matchOver("single", 1, [voided])).toBe(false);
+    expect(matchOver("firstTo", 1, [voided])).toBe(false);
+    const rows = standings("ao5", ["a", "b"], [voided]);
+    expect(rows.every((r) => r.times.length === 0 && r.wins === 0)).toBe(true);
   });
 });

@@ -145,25 +145,30 @@ export function judge(input: JudgeInput): RaceResult {
       result.usedBound = used;
       // 증인이 아무도 없으면(같은 기기의 컴퓨터만 있는 판) 약한 것이 아니라 잴 사람이 없는 것이다
       result.weak = used === null && Object.keys(bounds).length > 0;
-      // 1:1처럼 하한을 낸 기기가 하나뿐이면 그 한 기기가 마음대로 늘릴 수 있다(game-85 ①). 폭을 넘으면 가르지 않는다
+      // 1:1처럼 하한을 낸 기기가 하나뿐이면 둘 중 누가 거짓인지 가릴 수 없다: 증인이 하한을 부풀렸을 수도(game-85 ①),
+      // 본인이 시간을 줄여 보고했을 수도 있다. 폭을 넘으면 어느 값도 믿지 않는다(인정 시간 없음, 순위 없음)
       const disputed =
         used !== null &&
         strong.length === 1 &&
         input.disputeMs !== undefined &&
         used - rec.reported > input.disputeMs;
-      if (disputed) result.disputed = true;
-      result.accepted =
-        used === null || disputed ? rec.reported : Math.max(rec.reported, used);
+      if (disputed) {
+        result.disputed = true;
+        result.unranked = true;
+      } else
+        result.accepted =
+          used === null ? rec.reported : Math.max(rec.reported, used);
     }
     players[rec.id] = result;
   }
-  const order: Record<string, number> = { done: 0, dnf: 1, forfeit: 2 };
+  // 맞춘 사람(순위 있음) → 맞췄지만 판정 못 함(순위 없음) → 못 맞춤 → 기권
+  const rank = (p: PlayerResult) =>
+    p.status === "done" ? (p.unranked ? 1 : 0) : p.status === "dnf" ? 2 : 3;
   const ranking = Object.values(players)
     .sort((x, y) => {
-      const byStatus =
-        (order[x.status] as number) - (order[y.status] as number);
+      const byStatus = rank(x) - rank(y);
       if (byStatus) return byStatus;
-      if (x.status === "done") {
+      if (x.status === "done" && !x.unranked) {
         const byTime =
           (x.accepted as number) - (y.accepted as number) ||
           (x.reported as number) - (y.reported as number);
@@ -172,9 +177,17 @@ export function judge(input: JudgeInput): RaceResult {
       return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
     })
     .map((p) => p.id);
+  // 판에 든 사람(기권 빼고)이 둘 이하인데 다툼이 있으면 그 판은 판정하지 않는다(승패·누적에 넣지 않는다).
+  // 셋 이상이면 다툼인 사람만 순위 없음으로 빼고 나머지끼리 가른다
+  const inRace = Object.values(players).filter((p) => p.status !== "forfeit");
+  const noDecision =
+    input.cancelled === undefined &&
+    inRace.length <= 2 &&
+    inRace.some((p) => p.disputed);
   return {
     ranking,
     players,
+    ...(noDecision ? { noDecision: true } : {}),
     ...(input.cancelled !== undefined ? { cancelled: input.cancelled } : {}),
   };
 }

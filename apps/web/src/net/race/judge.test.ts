@@ -72,7 +72,22 @@ describe("판정 계산", () => {
       bounds: { a: { b: 9_000_000 } },
       disputeMs: 1000,
     });
-    expect(one.players.a).toMatchObject({ disputed: true, accepted: 5_000 });
+    expect(one.players.a).toMatchObject({ disputed: true, unranked: true });
+    expect(one.players.a?.accepted).toBeUndefined();
+    // 판에 든 사람이 둘 이하면 판정 없음, 셋이면 그 사람만 순위 없음
+    expect(one.noDecision).toBe(true);
+    const three = judge({
+      records: [
+        ...records,
+        { id: "b", status: "done", moveTimes: [100], reported: 7_000 },
+        { id: "c", status: "done", moveTimes: [100], reported: 6_000 },
+      ],
+      bounds: { a: { b: 9_000_000 }, b: { a: 6_900 }, c: { a: 5_900 } },
+      disputeMs: 1000,
+    });
+    expect(three.noDecision).toBeUndefined();
+    expect(three.players.a?.unranked).toBe(true);
+    expect(three.ranking).toEqual(["c", "b", "a"]);
     const near = judge({
       records,
       bounds: { a: { b: 5_900 } },

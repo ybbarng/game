@@ -27,10 +27,18 @@ export interface StandingRow {
   wins: number;
 }
 
-/** 판의 인정 시간(못 맞췄으면 null) */
+/** 판의 인정 시간(못 맞췄거나 다툼으로 판정하지 못했으면 null) */
 export function roundTime(result: RaceResult, id: string): number | null {
   const p = result.players[id];
-  return p?.status === "done" ? (p.accepted ?? null) : null;
+  return p?.status === "done" && !p.unranked ? (p.accepted ?? null) : null;
+}
+
+/**
+ * 경기 누적에 넣는 판. 판정 없음(1:1에서 두 기기 기록이 다름) 판은 승패·평균에 넣지 않는다(docs/47 9-2).
+ * 그 판은 판 수에도 세지 않아 경기가 한 판 더 간다
+ */
+export function decidedRounds<R extends RoundSummary>(rounds: R[]): R[] {
+  return rounds.filter((r) => !r.result.noDecision);
 }
 
 /** 5판(또는 그보다 적은 판) 평균. 5판이면 가장 좋은·나쁜 것 빼고, 못 맞춘 판은 가장 나쁜 것으로 */
@@ -52,8 +60,10 @@ export function averageOf5(times: (number | null)[]): number | null {
 }
 
 function winnerOf(result: RaceResult): string | null {
+  if (result.noDecision) return null;
   const first = result.ranking[0];
-  return first !== undefined && result.players[first]?.status === "done"
+  const p = first === undefined ? undefined : result.players[first];
+  return first !== undefined && p?.status === "done" && !p.unranked
     ? first
     : null;
 }
@@ -62,8 +72,9 @@ function winnerOf(result: RaceResult): string | null {
 export function standings(
   format: MatchFormat,
   players: string[],
-  rounds: RoundSummary[],
+  all: RoundSummary[],
 ): StandingRow[] {
+  const rounds = decidedRounds(all);
   const rows = players.map((id) => {
     const times = rounds.map((r) => roundTime(r.result, id));
     const wins = rounds.filter((r) => winnerOf(r.result) === id).length;
@@ -93,8 +104,9 @@ export function standings(
 export function matchOver(
   format: MatchFormat,
   target: number,
-  rounds: RoundSummary[],
+  all: RoundSummary[],
 ): boolean {
+  const rounds = decidedRounds(all);
   if (format === "single") return rounds.length >= 1;
   if (format === "ao5") return rounds.length >= 5;
   const wins = new Map<string, number>();
