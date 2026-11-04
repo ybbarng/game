@@ -52,7 +52,7 @@ function reach(keymap: Keymap, notation: string): KeyChord[][] {
   if (d) {
     const depthKey = chordsFor(keymap, `depth:${d[1]}`)[0];
     const rest = reach(keymap, d[2] as string)[0];
-    return depthKey && rest ? [[depthKey, ...rest]] : [];
+    if (depthKey && rest) return [[depthKey, ...rest]];
   }
   return [];
 }

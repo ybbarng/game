@@ -13,6 +13,7 @@ import {
   keyLayers,
   type Layer,
 } from "../keys/layout";
+import { type KeyLook, SweepBar, useKeyLook } from "./KeyPaint";
 
 /**
  * 키보드 그림(단축키 표·키 익히기·조작 훈련). 실제 키보드 비례로 그리고, 키마다 지금 배치의 동작을 층별로 적는다.
@@ -100,6 +101,7 @@ export function KeyboardMap({
 }: KeyboardMapProps) {
   const rows = keyboardCells(keymap, n);
   const glow = litCodes(lit);
+  const look = useKeyLook(n);
 
   const state = (code: string) =>
     wrong === code
@@ -142,6 +144,7 @@ export function KeyboardMap({
                 layer={layer}
                 state={state(cell.code)}
                 hideActions={hideActions}
+                look={look}
               />
             ),
           ),
@@ -165,6 +168,7 @@ function Key({
   layer,
   state,
   hideActions,
+  look,
 }: {
   cell: KeyCell;
   /** 줄의 첫 키(새 줄에서 시작) */
@@ -172,12 +176,18 @@ function Key({
   layer: LayerView;
   state: KeyState;
   hideActions: boolean;
+  look: (action: string | undefined) => KeyLook | null;
 }) {
   const w = Math.round(cell.width * 4);
   const span = { gridColumn: first ? `1 / span ${w}` : `span ${w}` };
   if (cell.code === "Gap") return <div style={span} aria-hidden />;
   const l = cell.layers;
   const main = layer === "all" ? l.plain : l[layer];
+  const paint =
+    cell.modifier || hideActions
+      ? null
+      : look(main?.usable ? main.action : undefined);
+  const tinted = paint?.paint.kind === "face" && !state;
   const tint =
     cell.hand === "left"
       ? "bg-sky-400/[0.07]"
@@ -197,17 +207,30 @@ function Key({
     <div
       data-key={cell.code}
       data-key-state={state ?? undefined}
-      style={span}
+      data-key-paint={
+        paint
+          ? paint.paint.kind === "face"
+            ? `${paint.paint.color}${paint.paint.prime ? "'" : ""}`
+            : "sweep"
+          : undefined
+      }
+      style={tinted ? { ...span, ...paint.style, color: paint.ink } : span}
       className={cn(
         "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border-2 px-[0.3cqw] py-[0.15cqw] leading-[1.15] transition-colors print:bg-white",
         cell.modifier
           ? "border-white/10 bg-white/[0.02] text-white/40 print:border-neutral-300 print:text-neutral-500"
           : borderOf(main),
-        !cell.modifier && tint,
+        !cell.modifier && !tinted && tint,
         state && STATE_CLASS[state],
       )}
     >
-      <span className="text-white/45 print:text-neutral-500">{cell.cap}</span>
+      <span
+        className={cn(
+          tinted ? "opacity-60" : "text-white/45 print:text-neutral-500",
+        )}
+      >
+        {cell.cap}
+      </span>
       {!cell.modifier && !hideActions && (
         <span className="flex min-w-0 flex-1 flex-col justify-end">
           {lines.map(({ key, a, strong }) =>
@@ -218,8 +241,13 @@ function Key({
                 className={cn(
                   "truncate",
                   strong
-                    ? "font-semibold text-[1.25em] text-white print:text-black"
-                    : "text-white/65 print:text-neutral-700",
+                    ? cn(
+                        "font-semibold text-[1.25em] print:text-black",
+                        !tinted && "text-white",
+                      )
+                    : tinted
+                      ? "opacity-75"
+                      : "text-white/65 print:text-neutral-700",
                   !a.usable && "opacity-30",
                 )}
               >
@@ -229,6 +257,7 @@ function Key({
           )}
         </span>
       )}
+      <SweepBar look={paint} />
     </div>
   );
 }

@@ -292,8 +292,8 @@ function StepBody({ id, onDone }: { id: string; onDone: () => void }) {
             ))}
           </ul>
           <p className="break-keep text-white/60 text-xs">
-            「두 손」 배치는 숫자 → 면 키로 몇째 층을 쳐요. E는 2 → D 키, S는 2
-            → F 키예요. 넓게는 Shift + 면 키예요.
+            「두 손」 배치에서 E는 2, E'은 9, S는 0, S'은 1 키예요(csTimer와
+            같아요). 넓게는 Shift + 면 키로도 쳐요.
           </p>
           <TurnPanel
             n={3}
@@ -605,9 +605,11 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
             ))}
           </ul>
           <p className="break-keep text-white/60 text-xs">
-            {TWO_HAND_RULES.find((r) => r.exception)?.exception} 보탬 키: Shift
-            + 면 키 = 넓게(두 층), 숫자 → 면 키 = 몇째 층(3×3의 2 → J = E'),
-            숫자 → Shift + 면 키 = 그 층까지 넓게.
+            {TWO_HAND_RULES.find((r) => r.exception)?.exception} csTimer 같은
+            가상 큐브 사이트와 같은 배치라 다른 곳에서도 그대로 써요. 덧붙인 것:
+            Shift + 면 키 = 넓게. csTimer와 다른 곳: Space는 살펴보기·블라인드
+            시작이에요. 큰 큐브는 3·4(왼손)·7·8(오른손)로 함께 돌릴 층 수를
+            골라요.
           </p>
         </div>
       )}

@@ -308,13 +308,13 @@ describe("키 → 동작 → 수", () => {
           press("KeyI", { shiftKey: true }),
         ),
       ).toMatchObject({ notation: "Rw" });
-    // 숫자 = 몇째 층: 4×4의 2 → I = 2R, 3×3의 2 → I = 가운데 층 M'
+    // csTimer 숫자 키: 3×3의 2 = E, 4×4의 7 = 오른손 층 수 +1
+    expect(
+      new KeyInterpreter(3, twoHandKeymap()).handle(press("Digit2")),
+    ).toMatchObject({ notation: "E" });
     const four = new KeyInterpreter(4, twoHandKeymap());
-    four.handle(press("Digit2"));
-    expect(four.handle(press("KeyI"))).toMatchObject({ notation: "2R" });
-    const three = new KeyInterpreter(3, twoHandKeymap());
-    three.handle(press("Digit2"));
-    expect(three.handle(press("KeyI"))).toMatchObject({ notation: "M'" });
+    four.handle(press("Digit7"));
+    expect(four.handle(press("KeyI"))).toMatchObject({ notation: "Rw" });
   });
 
   it("표기: 숫자로 다음 수 깊이를 고르고, 한 수에만 붙는다", () => {

@@ -6,6 +6,8 @@ import type { Axis, CubeMove } from "../view/types";
  * 동작 이름(문자열, 배치 JSON에 그대로 저장):
  * - 수: WCA 표기 한 수. `R` `R'` `R2` `Rw` `3Rw'` `2R` `r` `M` `E'` `S2` `x` `y'` `z2`
  * - 다음 수 깊이: `depth:2` … `depth:7`(다음 면 수 앞에 숫자를 붙인다. `R` → `3R`, `Rw` → `3Rw`)
+ * - 층 수(2026-11-04, csTimer와 같음): `layers:L-` `layers:L+` `layers:R+` `layers:R-`. 왼손(L·Lw)·오른손(R·Rw) 키가
+ *   돌리는 바깥 층 수를 하나 줄이거나 늘린다. 큰 큐브(4×4부터)
  * - 명령: `undo`(되돌리기) `reset`(맞춘 상태로) `scramble`(다시 섞기) `inspectionSkip`(살펴보기 접기·블라인드 시작/끝)
  *   `peekBack`·`peekDown`(누르는 동안 뒤·아래 살짝 보기)
  */
@@ -34,6 +36,7 @@ export const COMMAND_LABEL: Record<Command, string> = {
 export type ParsedAction =
   | { kind: "move"; notation: string }
   | { kind: "depth"; depth: number }
+  | { kind: "layers"; side: "L" | "R"; delta: 1 | -1 }
   | { kind: "command"; command: Command };
 
 /** 이 프로그램이 다루는 가장 큰 큐브 */
@@ -130,6 +133,13 @@ export function notationToMove(n: number, text: string): CubeMove | null {
 export function parseAction(id: ActionId): ParsedAction | null {
   if ((COMMANDS as readonly string[]).includes(id))
     return { kind: "command", command: id as Command };
+  const ly = /^layers:([LR])([+-])$/.exec(id);
+  if (ly)
+    return {
+      kind: "layers",
+      side: ly[1] as "L" | "R",
+      delta: ly[2] === "+" ? 1 : -1,
+    };
   const d = /^depth:(\d+)$/.exec(id);
   if (d) {
     const depth = Number(d[1]);
@@ -203,6 +213,9 @@ export function actionsFor(n: number): ActionInfo[] {
   }
   if (n >= 3 && n % 2 === 1) for (const s of ["M", "E", "S"]) moves("slice", s);
   for (const r of ["x", "y", "z"]) moves("rotate", r);
+  if (n >= 4)
+    for (const id of ["layers:L-", "layers:L+", "layers:R+", "layers:R-"])
+      out.push({ id, group: "depth", label: layersLabel(id) });
   if (n >= 4)
     for (let d = 2; d <= n - 1; d++)
       out.push({
@@ -313,6 +326,7 @@ export function isAvailable(n: number, id: ActionId): boolean {
   const p = parseAction(id);
   if (!p) return false;
   if (p.kind === "command") return true;
+  if (p.kind === "layers") return n >= 4;
   // 다음 수 깊이: 3×3부터, 1~n층을 모두 받는다(적을 때는 가장 짧은 이름, canonicalNotation)
   if (p.kind === "depth") return n >= 3 && p.depth <= n;
   // 3×3의 둘째 층(2U 등)은 가운데 층(E'·S …)으로 받는다
@@ -323,9 +337,17 @@ export function isAvailable(n: number, id: ActionId): boolean {
   return notationToMove(n, p.notation) !== null;
 }
 
+/** 층 수 동작의 이름 */
+export function layersLabel(id: ActionId): string {
+  const p = parseAction(id);
+  if (p?.kind !== "layers") return id;
+  return `${p.side === "L" ? "왼손" : "오른손"} 층 수 ${p.delta > 0 ? "+1" : "−1"}`;
+}
+
 export function actionLabel(id: ActionId): string {
   const p = parseAction(id);
   if (!p) return id;
+  if (p.kind === "layers") return layersLabel(id);
   if (p.kind === "command") return COMMAND_LABEL[p.command];
   if (p.kind === "depth") return `깊이 ${p.depth}`;
   return p.notation;

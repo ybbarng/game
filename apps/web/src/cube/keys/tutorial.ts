@@ -191,7 +191,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
 
   const presetLine =
     keymap.preset === "twoHand"
-      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 쳐요. ${faceHandLine(keymap)}`
+      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 쳐요. ${faceHandLine(keymap)} csTimer 같은 가상 큐브 사이트와 같은 배치라 다른 곳에서도 그대로 써요(다른 곳: Space는 살펴보기).`
       : keymap.preset === "notation"
         ? "「표기」 배치는 글자 그대로 쳐요. Shift를 함께 누르면 반대 방향이에요."
         : `「${PRESET_LABEL.custom}」 배치로 안내해요. 키는 설정에서 바꾼 대로 나와요.`;
@@ -303,7 +303,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
         `Rw(오른쪽 두 층 함께)는 ${k("Rw")} 키, Rw'은 ${k("Rw'")} 키예요.`,
         keymap.preset === "notation"
           ? `넓게는 Alt + 면 키, E·S는 ${k("E")}·${k("S")} 키예요.`
-          : `Shift + 면 키 = 넓게(두 층), 숫자 → 면 키 = 몇째 층이에요. E(적도, D와 같은 쪽)는 ${k("E")}, S(서 있는 층, F와 같은 쪽)는 ${k("S")}예요.`,
+          : `E(적도, D와 같은 쪽)는 ${k("E")}, S(서 있는 층, F와 같은 쪽)는 ${k("S")} 키예요(csTimer와 같아요). 넓게는 Shift + 면 키로도 쳐요.`,
       ],
       ...moves("M", "M'", "Rw", "Rw'", "E", "S"),
     },

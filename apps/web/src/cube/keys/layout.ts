@@ -130,7 +130,7 @@ export type FaceLetter = "R" | "L" | "U" | "D" | "F" | "B";
 export function kindOf(id: ActionId): { kind: ActionKind; face?: FaceLetter } {
   const p = parseAction(id);
   if (!p || p.kind === "command") return { kind: "command" };
-  if (p.kind === "depth") return { kind: "layer" };
+  if (p.kind === "depth" || p.kind === "layers") return { kind: "layer" };
   const t = p.notation;
   if (/^[RLUDFB]['2]?$/.test(t))
     return { kind: "face", face: t[0] as FaceLetter };

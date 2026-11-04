@@ -47,7 +47,22 @@ test("단축키 표: 키 자리에 배치대로 동작이 적히고 찾을 수 �
   await expect(line("KeyE", "plain")).toHaveText("L'");
   await expect(line("KeyR", "plain")).toHaveText("Lw'");
   await expect(line("KeyI", "plain")).toHaveText("R");
-  await expect(line("KeyI", "alt")).toHaveText("Rw");
+  // 키 그림 면 색: R(I)은 빨강(면 1) 꽉 채움, R'(K)은 같은 색 빗금, x(T)는 두 색 화살
+  await expect(page.locator('[data-key="KeyI"]')).toHaveAttribute(
+    "data-key-paint",
+    "1",
+  );
+  await expect(page.locator('[data-key="KeyK"]')).toHaveAttribute(
+    "data-key-paint",
+    "1'",
+  );
+  await expect(page.locator('[data-key="KeyT"]')).toHaveAttribute(
+    "data-key-paint",
+    "sweep",
+  );
+  // 「두 손」 Shift = 넓게(2026-11-04), Alt는 쓰지 않는다
+  await expect(line("KeyI", "shift")).toHaveText("Rw");
+  await expect(line("KeyI", "alt")).toHaveCount(0);
   // 휴대폰에서도 가로로 넘치지 않는다
   const overflow = await page.evaluate(
     () =>
@@ -61,10 +76,11 @@ test("단축키 표: 키 자리에 배치대로 동작이 적히고 찾을 수 �
   await expect(page.locator("[data-keys-table] tbody tr")).toHaveCount(1);
   await expect(page.locator('tr[data-action="R\'"]')).toContainText("K");
 
-  // 크기 4: 안쪽 층(Shift+I = 2R)이 흐리지 않다
+  // 크기 4: csTimer와 같은 층 수 키(7 = 오른손 층 수 +1)와 csTimer 안내
   await page.locator('[data-size="4"]').click();
-  await expect(line("KeyI", "shift")).toHaveText("2R");
-  await expect(line("KeyI", "shift")).not.toHaveClass(/opacity-30/);
+  await page.locator("[data-keys-search]").fill("오른손 층 수");
+  await expect(page.locator('tr[data-action="layers:R+"]')).toContainText("7");
+  await expect(page.locator("[data-keys-cstimer]")).toContainText("Space");
 });
 
 test("키 익히기: 안내된 키를 치면 다음 단계로 넘어간다", async ({

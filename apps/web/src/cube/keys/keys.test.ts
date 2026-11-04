@@ -87,12 +87,14 @@ describe("키 차례", () => {
     expect(keyTextFor(notationKeymap(), 3, "R'")).toBe("Shift+R");
     expect(keyTextFor(twoHandKeymap(), 3, "R2")).toBe("I 두 번");
     expect(keyTextFor(notationKeymap(), 4, "2R")).toBe("2 → R");
-    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBe("2 → I");
+    // 「두 손」은 csTimer처럼 안쪽 한 층 키가 없다(키캡은 Rw R'로, move-keys)
+    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBeNull();
     expect(keyTextFor(twoHandKeymap(), 4, "Rw")).toBe("U / Shift+I");
-    expect(keyTextFor(twoHandKeymap(), 5, "3Rw")).toBe("3 → U");
+    expect(keyTextFor(notationKeymap(), 5, "3Rw")).toBe("3 → Alt+R");
     expect(keyTextFor(twoHandKeymap(), 3, "undo")).toBe("⌫ / Ctrl+Z");
-    // 3×3의 가운데 층은 숫자 2 → 면 키(E = 2 → S)
-    expect(keyTextFor(twoHandKeymap(), 3, "E")).toBe("2 → S");
+    // csTimer 숫자 키: E = 2, S' = 1
+    expect(keyTextFor(twoHandKeymap(), 3, "E")).toBe("2");
+    expect(keyTextFor(twoHandKeymap(), 3, "S'")).toBe("1");
     expect(pressLabel([{ code: "KeyI" }, { code: "KeyJ" }])).toBe("I → J");
   });
 

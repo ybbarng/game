@@ -23,6 +23,12 @@ import {
   type KeyResult,
   loadKeymap,
 } from "../input";
+import {
+  HOME_ORIENT,
+  type Orient,
+  orientAfter,
+  orientFromCenters,
+} from "../keys/key-colors";
 import { stickerAtHit } from "../learn/interact";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
@@ -105,6 +111,10 @@ export function CubePlay({
   const [keymap, setKeymap] = useState<Keymap | null>(null);
   const [lit, setLit] = useState<string | null>(null);
   const [depth, setDepth] = useState<number | null>(null);
+  /** 짝수 큐브의 들고 있는 방향(받은 수를 따라간다, 키 색의 기준). 홀수는 가운데 칸으로 읽는다 */
+  const [evenOrient, setEvenOrient] = useState<Orient>(HOME_ORIENT);
+  /** 큰 큐브의 층 수(csTimer의 3·4·7·8 키). 1·1이면 보이지 않는다 */
+  const [layers, setLayers] = useState({ left: 1, right: 1 });
   const [showKeys, setShowKeys] = useState(true);
   const [showNet, setShowNet] = useState(true);
   const [prime, setPrime] = useState(false);
@@ -216,6 +226,7 @@ export function CubePlay({
   // 한꺼번에 바뀐 상태로 다시 칠하기
   // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 다시 칠한다
   useEffect(() => {
+    setEvenOrient(HOME_ORIENT);
     viewRef.current?.setStickers(
       stickersFromState(
         n,
@@ -234,6 +245,7 @@ export function CubePlay({
       return;
     }
     viewRef.current?.enqueue(move);
+    if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
     playCubeCue(c.settings, "cubeTurn");
   });
 
@@ -241,6 +253,7 @@ export function CubePlay({
   const handleRef = useRef((r: KeyResult) => {
     const c = live.current;
     setDepth(interpreterRef.current?.pendingDepth ?? null);
+    if (interpreterRef.current) setLayers(interpreterRef.current.layers);
     if (r.kind === "move") {
       moveRef.current(r.move, r.notation);
       return;
@@ -253,6 +266,7 @@ export function CubePlay({
     }
     const m = c.onCommand(r.command);
     if (m) {
+      if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, m));
       viewRef.current?.enqueue(m);
       playCubeCue(c.settings, "cubeTurn");
     }
@@ -342,6 +356,14 @@ export function CubePlay({
                 className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
               />
             )}
+            {(layers.left > 1 || layers.right > 1) && (
+              <span
+                data-cube-layers={`${layers.left}-${layers.right}`}
+                className="absolute top-2 left-2 rounded bg-sky-400/90 px-2 py-0.5 font-semibold text-black text-xs"
+              >
+                층 수 왼손 {layers.left} · 오른손 {layers.right}
+              </span>
+            )}
             {depth !== null && (
               <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
                 다음 수 깊이 {depth}
@@ -420,7 +442,13 @@ export function CubePlay({
       </div>
       {showKeys && keymap && (
         <div className="hidden w-full max-w-2xl sm:block">
-          <KeyGuide n={n} keymap={keymap} lit={lit} want={want} />
+          <KeyGuide
+            n={n}
+            keymap={keymap}
+            lit={lit}
+            want={want}
+            orient={orientFromCenters(n, state) ?? evenOrient}
+          />
         </div>
       )}
     </div>

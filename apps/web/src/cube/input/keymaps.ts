@@ -212,8 +212,10 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *   Y  x    N  x'               T  x    B  x'
  *   6  M    .  M'               5  M    X  M'
  *
- * 보탬 키(2026-11-04): Shift+면 키 = 넓게(두 층, Rw …), 숫자 2·3·4 → 면 키 = 그 층 하나(3×3의 2 → J = E',
- * 4×4의 2 → I = 2R), 숫자 → Shift+면 키 = 그 층까지 넓게(3Rw). Alt는 쓰지 않는다(브라우저 단축키와 부딪친다).
+ * csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다(2026-11-04).
+ * 숫자: 1 = S', 2 = E, 9 = E', 0 = S, 3·4 = 왼손 층 수 −1·+1, 7·8 = 오른손 층 수 +1·−1(R 키가 바깥 k층, Rw 키가 k+1층).
+ * csTimer에 없는 덧붙임: Shift+면 키 = 넓게(Rw …, 큰 큐브는 층 수 + 1층). Alt는 쓰지 않는다(브라우저 단축키와 부딪친다).
+ * csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라 살펴보기·블라인드 시작이다(층 수는 섞기·맞춘 상태로 때 1로).
  */
 const TWO_HAND_FACE: [code: string, action: string][] = [
   ["KeyI", "R"],
@@ -257,9 +259,15 @@ export function twoHandKeymap(): Keymap {
     key("Digit6", "M"),
     key("KeyX", "M'"),
     key("Period", "M'"),
-    key("Digit2", "depth:2"),
-    key("Digit3", "depth:3"),
-    key("Digit4", "depth:4"),
+    // csTimer와 같은 숫자 키(2026-11-04): E·S, 큰 큐브 층 수
+    key("Digit1", "S'"),
+    key("Digit2", "E"),
+    key("Digit9", "E'"),
+    key("Digit0", "S"),
+    key("Digit3", "layers:L-"),
+    key("Digit4", "layers:L+"),
+    key("Digit7", "layers:R+"),
+    key("Digit8", "layers:R-"),
     ...COMMON_COMMANDS,
   );
   return { version: 1, preset: "twoHand", bindings, mouseRotate: false };

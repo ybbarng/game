@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  chordsFor,
   KeyInterpreter,
-  middleSliceName,
   notationToMove,
   presetKeymap,
   resolveAction,
@@ -64,7 +64,7 @@ describe("「두 손」 = 실물 핑거 트릭을 옮긴 배치", () => {
   });
 });
 
-describe("「두 손」 보탬 키: Shift = 넓게, 숫자 = 몇째 층(2026-11-04)", () => {
+describe("「두 손」 = csTimer 자리 + Shift 넓게(2026-11-04)", () => {
   const keymap = presetKeymap("twoHand");
   const run = (n: number, ...keys: [string, boolean?][]) => {
     const it = new KeyInterpreter(n, keymap);
@@ -75,65 +75,71 @@ describe("「두 손」 보탬 키: Shift = 넓게, 숫자 = 몇째 층(2026-11-
   };
 
   it.each([
+    ["Digit1", "S'"],
+    ["Digit2", "E"],
+    ["Digit9", "E'"],
+    ["Digit0", "S"],
+  ])("csTimer 숫자 키 %s = %s(3×3)", (code, move) => {
+    expect(resolveAction(keymap, press(code))).toBe(move);
+    expect(run(3, [code])).toMatchObject({ kind: "move", notation: move });
+  });
+
+  it.each([
     ["KeyI", "Rw"],
     ["KeyK", "Rw'"],
     ["KeyJ", "Uw"],
     ["KeyF", "Uw'"],
     ["KeyH", "Fw"],
     ["KeyD", "Lw"],
-  ])("Shift+%s = %s(모든 크기)", (code, wide) => {
+  ])("Shift+%s = %s, Alt는 쓰지 않는다", (code, wide) => {
     for (const n of [3, 4, 5])
-      expect(run(n, [code, true])).toMatchObject({
-        kind: "move",
-        notation: wide,
-      });
-    // Alt는 쓰지 않는다(브라우저 단축키와 부딪친다)
+      expect(run(n, [code, true])).toMatchObject({ notation: wide });
     expect(resolveAction(keymap, { ...press(code), altKey: true })).toBeNull();
   });
 
-  it.each([
-    ["KeyJ", "2U", "E'"],
-    ["KeyF", "2U'", "E"],
-    ["KeyS", "2D", "E"],
-    ["KeyH", "2F", "S"],
-    ["KeyW", "2B", "S'"],
-    ["KeyI", "2R", "M'"],
-    ["KeyD", "2L", "M"],
-  ])("3×3의 2 → %s = %s = %s", (code, layer, slice) => {
-    // 엔진에서 같은 돌리기다
-    expect(notationToMove(3, layer)).toEqual(notationToMove(3, slice));
-    expect(middleSliceName(3, layer)).toBe(slice);
-    // 해석기는 받아들이고 보통 이름으로 적는다
-    expect(run(3, ["Digit2"], [code])).toMatchObject({
-      kind: "move",
-      notation: slice,
-    });
+  it("깊이 숫자 키는 없다(csTimer에 없는 우리 방식은 거둠)", () => {
+    for (let d = 2; d <= 7; d++)
+      expect(chordsFor(keymap, `depth:${d}`)).toHaveLength(0);
   });
 
-  it("5×5: 3 → J = E', 4×4: 2 → I = 2R, 숫자 → Shift = 그 층까지 넓게", () => {
-    expect(notationToMove(5, "3U")).toEqual(notationToMove(5, "E'"));
-    expect(run(5, ["Digit3"], ["KeyJ"])).toMatchObject({ notation: "E'" });
-    expect(middleSliceName(5, "3F2")).toBe("S2");
-    expect(run(4, ["Digit2"], ["KeyI"])).toMatchObject({ notation: "2R" });
-    expect(run(4, ["Digit3"], ["KeyI", true])).toMatchObject({
+  it("층 수: 7·8은 오른손, 3·4는 왼손. R 키는 바깥 k층, Rw·Shift는 k+1층", () => {
+    // 4×4: 7 한 번 → 오른손 2층. R = Rw, Rw = 3Rw, Shift+I = 3Rw
+    expect(run(4, ["Digit7"])).toMatchObject({ kind: "layers", right: 2 });
+    expect(run(4, ["Digit7"], ["KeyI"])).toMatchObject({ notation: "Rw" });
+    expect(run(4, ["Digit7"], ["KeyU"])).toMatchObject({ notation: "3Rw" });
+    expect(run(4, ["Digit7"], ["KeyI", true])).toMatchObject({
       notation: "3Rw",
     });
-    expect(run(5, ["Digit4"], ["KeyI", true])).toMatchObject({
-      notation: "4Rw",
+    // 층 수는 유지된다(다음 수에도)
+    expect(run(4, ["Digit7"], ["KeyI"], ["KeyK"])).toMatchObject({
+      notation: "Rw'",
     });
-    expect(middleSliceName(4, "2U")).toBeNull();
-    expect(middleSliceName(5, "2U")).toBeNull();
+    // 8로 되돌림, 1 아래로는 안 내려간다
+    expect(run(4, ["Digit7"], ["Digit8"], ["Digit8"], ["KeyI"])).toMatchObject({
+      notation: "R",
+    });
+    // 왼손: 4 한 번 → L = Lw. 오른손은 그대로
+    expect(run(5, ["Digit4"], ["KeyD"])).toMatchObject({ notation: "Lw" });
+    expect(run(5, ["Digit4"], ["KeyI"])).toMatchObject({ notation: "R" });
+    // 넓게가 큐브 전체가 되면 x로 적는다(4×4 오른손 3층 + Rw = 4층)
+    expect(run(4, ["Digit7"], ["Digit7"], ["Digit7"], ["KeyU"])).toMatchObject({
+      notation: "x",
+    });
+    // 다른 면은 층 수를 따르지 않는다
+    expect(run(4, ["Digit7"], ["KeyJ"])).toMatchObject({ notation: "U" });
   });
 
-  it("숫자는 1~n층을 다 받고, 가장 짧은 이름으로 적는다", () => {
-    expect(run(3, ["Digit3"], ["KeyI"])).toMatchObject({ notation: "L'" });
-    expect(run(4, ["Digit3"], ["KeyI"])).toMatchObject({ notation: "2L'" });
-    expect(run(4, ["Digit4"], ["KeyI"])).toMatchObject({ notation: "L'" });
-    expect(run(3, ["Digit3"], ["KeyI", true])).toMatchObject({
-      notation: "x",
+  it("층 수는 섞기·맞춘 상태로 때 1로, Space로는 되돌리지 않는다", () => {
+    expect(run(4, ["Digit7"], ["Space"], ["KeyI"])).toMatchObject({
+      notation: "Rw",
     });
-    expect(run(4, ["Digit4"], ["KeyI", true])).toMatchObject({
-      notation: "x",
+    expect(run(4, ["Digit7"], ["Escape"], ["KeyI"])).toMatchObject({
+      notation: "R",
     });
+    expect(run(4, ["Digit7"], ["Enter"], ["KeyI"])).toMatchObject({
+      notation: "R",
+    });
+    // 3×3에는 층 수 키가 없다
+    expect(run(3, ["Digit7"])).toBeNull();
   });
 });

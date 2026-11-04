@@ -196,6 +196,7 @@ export function CubeSettingsApp() {
               ["sound", "큐브 소리"],
               ["inspection", "혼자 맞추기 15초 살펴보기"],
               ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
+              ["keyColors", "키 그림에 면 색"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-center gap-2">
