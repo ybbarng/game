@@ -106,13 +106,15 @@ export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
 export type PieceType = "center" | "edge" | "corner";
 
 /**
- * 찾을 조각. 둘 다 주면 둘 다 맞아야 한다.
+ * 찾을 조각. 여럿 주면 모두 맞아야 한다.
  * - piece: 그 종류 아무 조각
- * - colors: 그 색들이 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
+ * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
+ * - has: 그 색이 붙어 있는 조각(예: ["D"] = 노란색이 붙은 조각 아무거나)
  */
 export interface FindTarget {
   piece?: PieceType;
   colors?: FaceLetter[];
+  has?: FaceLetter[];
 }
 
 /** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */

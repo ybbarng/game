@@ -8,6 +8,7 @@ import {
   findHit,
   lookMet,
   pieceAtSticker,
+  stepIsActive,
   stepPicture,
   stepProblem,
   stickerAtHit,
@@ -139,6 +140,27 @@ describe("배우기 자료", () => {
       l.steps.map((step, i) => ({ id: `${l.id}#${i}`, lesson: l, step })),
     ),
   );
+
+  it("글만 읽고 넘기는 단계가 없다", () => {
+    expect(
+      steps.filter(({ step }) => step.kind === "text").map((s) => s.id),
+    ).toEqual([]);
+  });
+
+  it("단원마다 직접 하는 단계가 있다", () => {
+    for (const c of COURSES)
+      for (const l of c.lessons)
+        expect(l.steps.some(stepIsActive), l.id).toBe(true);
+  });
+
+  it("고르기 문제의 답이 고를 것 안에 있고 고를 것끼리 겹치지 않는다", () => {
+    for (const { id, step } of steps) {
+      if (!step.quiz) continue;
+      expect(new Set(step.quiz.choices).size, id).toBe(
+        step.quiz.choices.length,
+      );
+    }
+  });
 
   it.each(steps)("$id 자료가 제 종류에 맞다", ({ lesson, step }) => {
     expect(stepProblem(lesson, step)).toBeNull();

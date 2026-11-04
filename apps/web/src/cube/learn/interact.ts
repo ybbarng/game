@@ -92,6 +92,7 @@ export function findHit(
     if (want.length !== got.colors.length) return null;
     if (want.some((c, i) => c !== got.colors[i])) return null;
   }
+  if (target.has?.some((c) => !got.colors.includes(FACE_INDEX[c]))) return null;
   return got.piece;
 }
 
@@ -198,7 +199,10 @@ export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
   const n = lesson.size;
   switch (step.kind) {
     case "find": {
-      if (!step.find || (!step.find.piece && !step.find.colors))
+      if (
+        !step.find ||
+        (!step.find.piece && !step.find.colors && !step.find.has)
+      )
         return "찾을 조각이 없다";
       const start = setupState(n, step.setup);
       if (!start) return null;
