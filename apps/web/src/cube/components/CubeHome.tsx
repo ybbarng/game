@@ -63,8 +63,16 @@ const GROUPS: Group[] = [
       },
       { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
       { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
-      { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
       { icon: "🔢", title: "큐브의 수학", href: "/cube/math" },
+    ],
+  },
+  {
+    // 배우기에 다 넣으면 여덟 칸이라 손을 익히는 것을 따로 묶는다(2026-11-04)
+    title: "연습",
+    items: [
+      { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
+      { icon: "✚", title: "십자 훈련", href: "/cube/train/cross" },
+      { icon: "📒", title: "내 공식", href: "/cube/algs" },
       { icon: "🎨", title: "패턴 만들기", href: "/cube/patterns" },
     ],
   },

@@ -45,8 +45,8 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await expect(
     page.getByRole("heading", { name: "큐브 맞추기" }),
   ).toBeVisible();
-  // 메뉴는 묶음 넷(맞추기·대결·배우기·실물 큐브)과 설정. 항목은 이름만
-  await expect(page.locator("[data-cube-group]")).toHaveCount(4);
+  // 메뉴는 묶음 다섯(맞추기·대결·배우기·연습·실물 큐브)과 설정. 항목은 이름만
+  await expect(page.locator("[data-cube-group]")).toHaveCount(5);
   await expect(
     page.locator("[data-cube-group='대결'] a").first(),
   ).toHaveAttribute("href", "/cube/online");
