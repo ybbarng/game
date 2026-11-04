@@ -15,7 +15,7 @@ import {
 } from "../keys/layout";
 import { useCubeSettings } from "../settings";
 import { KeyOverlay } from "./KeyGuide";
-import { type KeyLook, SweepBar, useKeyLook } from "./KeyPaint";
+import { KeyBar, type KeyLook, useKeyLook } from "./KeyPaint";
 
 /**
  * 키보드 그림(단축키 표·키 익히기·조작 훈련). 실제 키보드 비례로 그리고, 키마다 지금 배치의 동작을 층별로 적는다.
@@ -25,12 +25,12 @@ import { type KeyLook, SweepBar, useKeyLook } from "./KeyPaint";
 export type LayerView = Layer | "all";
 
 const FACE_BORDER: Record<FaceLetter, string> = {
-  R: "border-red-500",
-  L: "border-orange-400",
-  U: "border-neutral-100 print:border-neutral-400",
-  D: "border-yellow-300",
-  F: "border-green-500",
-  B: "border-blue-500",
+  R: "border-red-500/60",
+  L: "border-orange-400/60",
+  U: "border-neutral-100/50 print:border-neutral-400",
+  D: "border-yellow-300/60",
+  F: "border-green-500/60",
+  B: "border-blue-500/60",
 };
 const FACE_DOT: Record<FaceLetter, string> = {
   R: "bg-red-500",
@@ -41,8 +41,8 @@ const FACE_DOT: Record<FaceLetter, string> = {
   B: "bg-blue-500",
 };
 const KIND_BORDER: Record<Exclude<ActionKind, "face">, string> = {
-  layer: "border-violet-400",
-  rotate: "border-fuchsia-400",
+  layer: "border-violet-400/50",
+  rotate: "border-fuchsia-400/50",
   command: "border-neutral-500",
 };
 const KIND_DOT: Record<Exclude<ActionKind, "face">, string> = {
@@ -228,7 +228,7 @@ function Key({
       }
       style={tinted ? { ...span, ...paint.style, color: paint.ink } : span}
       className={cn(
-        "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border-2 px-[0.3cqw] py-[0.15cqw] leading-[1.15] transition-colors print:bg-white",
+        "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border-2 px-[0.3cqw] pt-[0.15cqw] pb-[0.7cqw] leading-[1.15] transition-colors print:bg-white",
         cell.modifier
           ? "border-white/10 bg-white/[0.02] text-white/40 print:border-neutral-300 print:text-neutral-500"
           : borderOf(main),
@@ -269,7 +269,7 @@ function Key({
           )}
         </span>
       )}
-      <SweepBar look={paint} />
+      <KeyBar look={paint} />
     </div>
   );
 }

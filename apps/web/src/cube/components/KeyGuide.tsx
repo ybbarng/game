@@ -18,7 +18,7 @@ import { FINGER_HOMES, facePairs, pairPath } from "../keys/key-pairs";
 import { keyLayers } from "../keys/layout";
 import type { HandLayers } from "../keys/reach";
 import { hexColor, useCubeSettings } from "../settings";
-import { SweepBar, useKeyLook } from "./KeyPaint";
+import { KeyBar, useKeyLook } from "./KeyPaint";
 
 /**
  * 키 그림(지금 배치). 칸의 굵은 글은 그냥 칠 때, 아래 작은 글은 Shift와 함께 칠 때. Shift를 누르고 있는 동안은
@@ -147,7 +147,7 @@ export function KeyGuide({
             : undefined
         }
         style={tinted ? { ...paint.style, color: paint.ink } : undefined}
-        className={`relative flex h-10 min-w-0 flex-1 flex-col items-center justify-center rounded border text-[10px] leading-tight transition-colors ${
+        className={`relative flex h-11 min-w-0 flex-1 flex-col items-center justify-center rounded border pb-1 text-[10px] leading-tight transition-colors ${
           lit === code
             ? "border-amber-300 bg-amber-300/30"
             : w
@@ -172,7 +172,7 @@ export function KeyGuide({
         <span className={tinted ? "opacity-70" : "text-white/50"}>
           {shift?.usable ? shift.label : ""}
         </span>
-        <SweepBar look={paint} />
+        <KeyBar look={paint} />
       </div>
     );
   };
