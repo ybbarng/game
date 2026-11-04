@@ -291,6 +291,56 @@ test("배우기: 루 첫 블록은 조각 찾기, ZZ 모서리 방향은 고르�
   await shot(page, "learn-zz-eo-quiz", info.project.name);
 });
 
+/** 단계 표시 줄에서 i번째(0부터) 단계 단추를 눌러 바로 간다 */
+async function goStep(page: Page, i: number) {
+  await page.locator('ol[aria-label="단계"] button').nth(i).click();
+  await expect(page.locator("[data-step]")).toHaveAttribute(
+    "data-step",
+    String(i),
+  );
+}
+
+test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인드 글자 표", async ({
+  page,
+}, info) => {
+  // 목록: 먼저 배울 과정이 보인다(잠그지 않음)
+  await page.goto("/cube/learn");
+  await expect(
+    page.locator('[data-course="cfop"] [data-course-requires]'),
+  ).toHaveAttribute("data-course-requires", "333-beginner");
+
+  // F2L 진짜 짝 문제
+  await page.goto("/cube/learn?lesson=cfop-f2l-pair");
+  await goStep(page, 1);
+  const quiz = page.locator('[data-act="quiz"]');
+  await expect(quiz.locator("[data-cube-still]")).toBeVisible();
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-f2l-pair-quiz", info.project.name);
+
+  // 과정 끝: CFOP 마무리 단원의 마지막 단계
+  await page.goto("/cube/learn?lesson=cfop-finale");
+  const steps = page.locator('ol[aria-label="단계"] button');
+  await goStep(page, (await steps.count()) - 1);
+  const next = page.locator('[data-course-next="cfop"]');
+  await expect(next).toBeVisible();
+  await expect(next.locator('[data-next-course="roux"]')).toBeVisible();
+  await expect(next.locator('[data-next-drill="f2l"]')).toHaveAttribute(
+    "href",
+    "/cube/train?set=f2l",
+  );
+  await expect(next.locator("[data-next-timer]")).toBeVisible();
+  await shot(page, "learn-course-next", info.project.name);
+
+  // 블라인드: 글자마다 준비 수 표
+  await page.goto("/cube/learn?lesson=bld-edges");
+  const sheet = page.locator('[data-sheet="bld-edges"]');
+  await expect(sheet.locator('[data-sheet-letter="J"]')).toContainText("d2");
+  await expect(sheet.locator("[data-sheet-letter]")).toHaveCount(22);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {
