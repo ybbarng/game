@@ -15,8 +15,8 @@ interface Item {
   icon: string;
   title: string;
   href: string;
-  /** 눈에 띄게 */
-  primary?: boolean;
+  /** 눈에 띄게 할 강조 색 */
+  tone?: "sky" | "amber";
   /** 한 줄 전체 */
   wide?: boolean;
   /** 화면 시험이 찾는 표시 */
@@ -36,8 +36,8 @@ const GROUPS: Group[] = [
         icon: "🧊",
         title: "혼자 맞추기",
         href: "/cube/solo",
-        primary: true,
-        wide: true,
+        // 한 줄 전체로 두면 블라인드 옆 칸이 비어 어색했다(2026-11-04). 나란히 두고 색으로만 강조
+        tone: "sky",
       },
       { icon: "🙈", title: "블라인드", href: "/cube/blind" },
     ],
@@ -56,7 +56,7 @@ const GROUPS: Group[] = [
         icon: "👋",
         title: "처음이라면",
         href: "/cube/intro",
-        primary: true,
+        tone: "amber",
         attr: "data-cube-intro-link",
       },
       { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
@@ -103,13 +103,11 @@ export function CubeHome() {
                   className={cn(
                     "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-3 transition",
                     item.wide && "col-span-2 justify-center py-3.5",
-                    !item.primary &&
+                    !item.tone &&
                       "border-white/15 bg-white/5 hover:bg-white/10",
-                    item.primary &&
-                      item.wide &&
+                    item.tone === "sky" &&
                       "border-sky-300/60 bg-sky-500/25 hover:bg-sky-500/35",
-                    item.primary &&
-                      !item.wide &&
+                    item.tone === "amber" &&
                       "border-amber-300/60 bg-amber-400/15 hover:bg-amber-400/25",
                   )}
                 >
