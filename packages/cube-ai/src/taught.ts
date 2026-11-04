@@ -273,7 +273,7 @@ export function yellowCrossTaught(s: Solve): void {
 }
 
 /** 위 모서리(UR UF UL UB)의 옆색이 옆 가운데와 같은가 */
-const edgeSidesMatched = (rel: string) =>
+export const edgeSidesMatched = (rel: string) =>
   CROSS_SIDE.map((i) => rel[i] === faceOf(i));
 
 /**
@@ -317,7 +317,7 @@ export function llEdgesTaught(s: Solve): void {
 }
 
 /** 제자리(방향은 상관없이) 위 꼭짓점 번호 */
-const placedTop = (s: Solve) => {
+export const placedTop = (s: Solve) => {
   const cp = s.cubie().cp;
   return [0, 1, 2, 3].filter((j) => cp[j] === j);
 };
