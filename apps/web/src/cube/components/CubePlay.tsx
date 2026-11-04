@@ -76,6 +76,8 @@ export interface CubePlayProps {
   marks?: StickerMarks | null;
   /** 칸을 누르면(3D 누르기·펼친 그림) 그 스티커 자리 번호를 준다. 없으면 누르기를 받지 않는다 */
   onSticker?: ((sticker: number) => void) | undefined;
+  /** 세 축 화살표를 보인다(처음 안내의 x·y·z) */
+  axes?: boolean;
 }
 
 export function CubePlay({
@@ -91,6 +93,7 @@ export function CubePlay({
   want,
   marks,
   onSticker,
+  axes = false,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -128,6 +131,9 @@ export function CubePlay({
   };
 
   useEffect(() => setKeymap(loadKeymap()), []);
+  useEffect(() => {
+    if (ready) viewRef.current?.setAxes(axes);
+  }, [axes, ready]);
   // 마우스 돌리기(키 배치 「사용자」)는 배치를 읽은 뒤·장면을 만든 뒤에 알린다
   useEffect(() => {
     if (ready)

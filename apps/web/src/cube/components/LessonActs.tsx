@@ -612,6 +612,7 @@ export function TurnPanel({
   mask,
   settings,
   onPassed,
+  axes = false,
 }: {
   n: number;
   start: PuzzleState;
@@ -619,6 +620,8 @@ export function TurnPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 세 축 화살표(처음 안내의 x·y·z) */
+  axes?: boolean;
 }) {
   const play = usePlay(n, start);
   const [passed, setPassed] = useState(false);
@@ -701,6 +704,7 @@ export function TurnPanel({
         onMove={onMove}
         onCommand={play.onCommand}
         want={want}
+        axes={axes}
       />
     </div>
   );

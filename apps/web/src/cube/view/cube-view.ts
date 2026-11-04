@@ -584,6 +584,41 @@ export class CubeView {
     this.invalidate();
   }
 
+  private axes: THREE.Group | null = null;
+
+  /**
+   * 세 축 화살표(x 빨강 = 왼쪽 → 오른쪽, y 초록 = 아래 → 위, z 파랑 = 뒤 → 앞). 처음 안내의 x·y·z 설명이 쓴다.
+   * 큐브를 꿰뚫고 양쪽으로 삐져나온다
+   */
+  setAxes(show: boolean): void {
+    if (show && !this.axes) {
+      const g = new THREE.Group();
+      const half = this.n / 2 + 0.9;
+      const dirs: [THREE.Vector3, number][] = [
+        [new THREE.Vector3(1, 0, 0), 0xff4d4d],
+        [new THREE.Vector3(0, 1, 0), 0x4dff88],
+        [new THREE.Vector3(0, 0, 1), 0x4d9bff],
+      ];
+      for (const [d, color] of dirs) {
+        const a = new THREE.ArrowHelper(
+          d,
+          d.clone().multiplyScalar(-half),
+          half * 2,
+          color,
+          0.5,
+          0.28,
+        );
+        for (const m of [a.line.material, a.cone.material])
+          (m as THREE.Material & { toneMapped?: boolean }).toneMapped = false;
+        g.add(a);
+      }
+      this.scene.add(g);
+      this.axes = g;
+    }
+    if (this.axes) this.axes.visible = show;
+    this.invalidate();
+  }
+
   /** 큐브 속 축(가운데 여섯을 잇는 심)을 그린다. 분해한 큐브에서 보인다 */
   setCore(show: boolean): void {
     if (show && !this.core) {
