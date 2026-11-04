@@ -200,6 +200,7 @@
 
 새 구성요소(2026-11-04, 원카드 온라인): 실시간 청구는 `GameKit.claims`(공정한 동시 판정 1층, docs/43 7-1) — 화면은 `room.claims.claim(body, {seen})`, 방장 발표는 엔진 행동으로 기록에 남아 판 끝 다시 계산이 판정까지 다시 한다. 방장 기기가 넣은 행동(창 시간 끝·다시 섞기·청구 묶음)은 `GameKit.hostAction`으로 판 끝 검증의 "내 행동"·"컴퓨터 수" 맞춰 보기에서 뺀다. 기억을 쓰는 컴퓨터는 `KitBot.observe`로 판 끝 검증 때 같은 사건을 듣는다. 판 도중 뽑기·다시 섞기가 있는 카드 게임의 멘탈 포커는 `GameKit.cardTable`에 `kind: "onecard"` 모양(fair-play `OnecardTableSpec`)으로 넣는다.
 새 구성요소(2026-11-04, 은하 한 바퀴 배우기): 주사위 게임 미션은 굴림 눈을 장면에 적어 두고 `LocalMatch`의 `step`을 바꿔 그 눈으로 굴린다(`galaxy/practice.ts` `scriptedDiceStep`, 엔진 `stepWithDice`). 배우기 첫 화면의 단원 아래 칸(`TutorialHome` `extra`)에 아이콘(`icon`)을 줄 수 있다.
+새 구성요소(2026-11-05, 은하 한 바퀴 별 칸): 실제 별을 칸·카드 크기로 그릴 때는 `components/star/StarGlyph`(진한 색 원반·이글거리는 쌀알 무늬·숨 쉬는 빛무리, 크기는 등급, 움직임 줄이기면 멈춤)를 쓴다. 값 계산은 `components/star/star-look.ts`(docs/48 15-2).
 
 새 구성요소(2026-11-04, 은하 한 바퀴):
 - `GameHome`의 `together`(친구와 하기)는 빼도 된다(혼자 하기만 먼저 올릴 때). 아래 `footer` 칸에는 출처 접는 칸 같은 것을 둔다.

@@ -180,6 +180,41 @@ html:has([data-game="galaxy"]) body {
   background: #070d1c;
 }
 
+/* 별 원반(components/star/StarGlyph): 쌀알 무늬 두 겹이 서로 반대로 천천히 돌고, 빛무리가 숨 쉰다.
+   transform·opacity만 움직여 그림을 다시 그리지 않는다(별 수십 개도 가볍다). 움직임 줄이기면 멈춘다 */
+@keyframes star-boil {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes star-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.06);
+    opacity: 1;
+  }
+}
+.star-boil {
+  animation: star-boil 30s linear infinite;
+}
+.star-boil-back {
+  animation: star-boil 40s linear infinite reverse;
+}
+.star-breathe {
+  animation: star-breathe 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star-boil,
+  .star-boil-back,
+  .star-breathe {
+    animation: none;
+  }
+}
+
 /* 은하 한 바퀴 연출(시간은 galaxy/fx-timing.ts, 움직임 줄이기면 연출 자체가 없다) */
 @keyframes galaxy-twinkle {
   0%,

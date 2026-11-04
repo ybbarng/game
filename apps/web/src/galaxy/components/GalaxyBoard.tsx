@@ -8,8 +8,8 @@ import {
   starAt,
 } from "@game/galaxy-engine";
 import { type CSSProperties, useMemo } from "react";
+import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
-
 import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
@@ -24,6 +24,7 @@ import { cellOf, SKY_SIZE, skyArt, squareCenter } from "../sky-art";
 import { groupColor, magScale, starRgb } from "../star-color";
 import { prefersReducedMotion } from "../store";
 import { DiceFace, NoticePaper, ShipToken } from "./parts";
+import { nebulaStyle, TileSky } from "./TileSky";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 
@@ -463,28 +464,37 @@ export function GalaxyBoard({
               {star ? (
                 <>
                   <span
+                    aria-hidden="true"
+                    className="absolute inset-0"
+                    style={nebulaStyle(sq.index, groupColor(board, star.group))}
+                  />
+                  {art[star.group] && (
+                    <TileSky
+                      art={art[star.group] as (typeof art)[number]}
+                      square={sq.index}
+                      owner={owner}
+                    />
+                  )}
+                  <span
                     className="absolute inset-x-0 top-0 h-[13%]"
                     style={{
                       background: groupColor(board, star.group),
                       opacity: 0.85,
                     }}
                   />
-                  <span
-                    aria-hidden="true"
-                    className="block rounded-full"
-                    style={{
-                      width: `${34 * magScale(star.star.mag)}%`,
-                      height: `${34 * magScale(star.star.mag)}%`,
-                      background: `radial-gradient(circle, #fff 0%, ${starRgb(star.star.k)} 32%, ${starRgb(star.star.k, 0.25)} 60%, transparent 72%)`,
-                    }}
+                  <StarGlyph
+                    k={star.star.k}
+                    mag={star.star.mag}
+                    seed={sq.index}
+                    className="@min-[30rem]:top-[46%]"
                   />
-                  <span className="@max-[30rem]:hidden mt-[2%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/80 leading-none">
+                  <span className="@max-[30rem]:hidden absolute bottom-[8%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/85 leading-none [text-shadow:0_1px_2px_#000]">
                     {star.star.ko}
                   </span>
                   {level > 0 && o >= 0 && (
                     <span
                       aria-hidden="true"
-                      className="absolute bottom-[7%] flex gap-[6%]"
+                      className="absolute top-[17%] right-[8%] flex gap-[6%]"
                       data-level={level}
                     >
                       {level >= 4 ? (
@@ -617,7 +627,7 @@ function CenterHub({
         )
       )}
       <span className="text-[clamp(7px,1.6cqw,11px)] text-white/45">
-        {view.round}돌림
+        {view.round}차례째
       </span>
       {shown && (
         <span
