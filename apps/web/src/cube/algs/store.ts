@@ -1,7 +1,9 @@
 // 내 공식(이 기기 localStorage). 상황마다 내가 넣은 공식 여러 개와 「쓰는 공식」 하나를 둔다.
 // 넣을 때·가져올 때 모두 검사기(checkAlg)를 거쳐 그 상황의 역할에 맞는 것만 남긴다.
 import { ALG_SETS, type AlgCase, type AlgSetInfo } from "../learn";
+import { candidatesOf } from "./candidates";
 import { caseById, checkAlg, MAX_ALG_LENGTH, shortName } from "./check";
+import type { HabitState } from "./habit";
 import { tidyAlg } from "./transform";
 
 export const ALGS_KEY = "cube.algs.v1";
@@ -11,7 +13,13 @@ export interface CaseAlgs {
   mine: string[];
   /** 쓰는 공식. 없으면 자료의 대표 공식 */
   use?: string;
+  /** 버릇 상태(2026-11-04). 없으면 「안 정함」, 들이는 중·익숙함은 내 훈련 목록에 든다 */
+  habit?: HabitState;
 }
+
+const HABITS: readonly HabitState[] = ["learning", "known"];
+const isHabit = (v: unknown): v is HabitState =>
+  HABITS.includes(v as HabitState);
 
 export type AlgBook = Record<string, CaseAlgs>;
 
@@ -36,12 +44,13 @@ function sanitize(data: unknown): AlgBook {
     return out;
   for (const [id, v] of Object.entries(data)) {
     if (typeof v !== "object" || v === null) continue;
-    const raw = v as { mine?: unknown; use?: unknown };
+    const raw = v as { mine?: unknown; use?: unknown; habit?: unknown };
     const mine = Array.isArray(raw.mine)
       ? raw.mine.filter((x): x is string => typeof x === "string")
       : [];
     const entry: CaseAlgs = { mine };
     if (typeof raw.use === "string") entry.use = raw.use;
+    if (isHabit(raw.habit)) entry.habit = raw.habit;
     out[id] = entry;
   }
   return out;
@@ -64,10 +73,13 @@ function readStored(storage: StorageLike | null): AlgBook | null {
   }
 }
 
+/** 남길 것이 있는 칸인가(내 공식·쓰는 공식·버릇 중 하나) */
+const kept = (v: CaseAlgs) => v.mine.length > 0 || !!v.use || !!v.habit;
+
 /** 자료에 없는 상황 id(내 공식이나 쓰는 공식이 남아 있는 것만) */
 export function unknownCaseIds(book: AlgBook): string[] {
   return Object.entries(book)
-    .filter(([id, v]) => !caseById(id) && (v.mine.length > 0 || v.use))
+    .filter(([id, v]) => !caseById(id) && kept(v))
     .map(([id]) => id);
 }
 
@@ -152,11 +164,53 @@ export function algsOf(
   ];
 }
 
+/** 쓸 수 있는 공식인가: 자료(대표·대안)·내 공식·추천 후보 중 하나 */
+export function knownAlg(book: AlgBook, c: AlgCase, alg: string): boolean {
+  return (
+    algsOf(book, c).some((x) => x.alg === alg) ||
+    candidatesOf(c).some((x) => x.alg === alg)
+  );
+}
+
 /** 쓰는 공식. 고른 공식이 목록에 없으면(지웠으면) 대표 공식 */
 export function usedAlg(book: AlgBook, c: AlgCase): string {
   const use = book[c.id]?.use;
-  if (use && algsOf(book, c).some((x) => x.alg === use)) return use;
+  if (use && knownAlg(book, c, use)) return use;
   return c.algs[0] as string;
+}
+
+/** 쓰는 공식이 배우기에서 보이는 대표 공식과 다른가 */
+export function differsFromLesson(book: AlgBook, c: AlgCase): boolean {
+  return usedAlg(book, c) !== c.algs[0];
+}
+
+/** 버릇 상태. 없으면 undefined(안 정함) */
+export function habitOf(book: AlgBook, c: AlgCase): HabitState | undefined {
+  return book[c.id]?.habit;
+}
+
+/** 버릇 상태 바꾸기. undefined면 「안 정함」으로 */
+export function setHabit(
+  book: AlgBook,
+  c: AlgCase,
+  habit: HabitState | undefined,
+): AlgBook {
+  const entry = book[c.id] ?? { mine: [] };
+  const next: CaseAlgs = { ...entry };
+  if (habit) next.habit = habit;
+  else delete next.habit;
+  return { ...book, [c.id]: next };
+}
+
+/** 내 훈련 목록: 버릇 상태가 있는 상황(자료에 있는 것만, 묶음 차례) */
+export function habitList(book: AlgBook): { c: AlgCase; state: HabitState }[] {
+  const out: { c: AlgCase; state: HabitState }[] = [];
+  for (const s of ALG_SETS)
+    for (const c of s.cases) {
+      const state = book[c.id]?.habit;
+      if (state) out.push({ c, state });
+    }
+  return out;
 }
 
 /** 상황마다 내 공식 개수 상한 */
@@ -195,6 +249,7 @@ export function removeMine(book: AlgBook, c: AlgCase, alg: string): AlgBook {
   if (!entry) return book;
   const next: CaseAlgs = { mine: entry.mine.filter((a) => a !== alg) };
   if (entry.use && entry.use !== alg) next.use = entry.use;
+  if (entry.habit) next.habit = entry.habit;
   return { ...book, [c.id]: next };
 }
 
@@ -203,6 +258,7 @@ export function setUsed(book: AlgBook, c: AlgCase, alg: string): AlgBook {
   const entry = book[c.id] ?? { mine: [] };
   const next: CaseAlgs = { mine: entry.mine };
   if (alg !== c.algs[0]) next.use = alg;
+  if (entry.habit) next.habit = entry.habit;
   return { ...book, [c.id]: next };
 }
 
@@ -212,8 +268,7 @@ const FORMAT = "cube-algs";
 
 export function exportAlgBook(book: AlgBook): string {
   const cases: AlgBook = {};
-  for (const [id, v] of Object.entries(book))
-    if (v.mine.length > 0 || v.use) cases[id] = v;
+  for (const [id, v] of Object.entries(book)) if (kept(v)) cases[id] = v;
   return JSON.stringify({ format: FORMAT, version: 1, cases }, null, 2);
 }
 
@@ -257,7 +312,7 @@ export function importAlgBook(book: AlgBook, text: string): ImportResult {
   const rejected: ImportResult["rejected"] = [];
   for (const [id, raw] of Object.entries(d.cases as Record<string, unknown>)) {
     const c = caseById(id);
-    const v = raw as { mine?: unknown; use?: unknown };
+    const v = raw as { mine?: unknown; use?: unknown; habit?: unknown };
     const mine = Array.isArray(v?.mine) ? v.mine : [];
     for (const alg of mine) {
       if (typeof alg !== "string") continue;
@@ -293,9 +348,9 @@ export function importAlgBook(book: AlgBook, text: string): ImportResult {
     if (!c) continue;
     if (typeof v?.use === "string") {
       const use = tidyAlg(v.use);
-      if (algsOf(next, c).some((x) => x.alg === use))
-        next = setUsed(next, c, use);
+      if (knownAlg(next, c, use)) next = setUsed(next, c, use);
     }
+    if (isHabit(v?.habit)) next = setHabit(next, c, v.habit);
   }
   return { book: next, added, rejected };
 }
