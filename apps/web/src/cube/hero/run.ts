@@ -9,7 +9,7 @@ import { type HeroChoice, type HeroSize, heroRotation } from "./methods";
 
 /**
  * 첫 화면 큐브 연출을 캔버스에 띄운다(3D 장면 + `HeroLoop`). 첫 화면은 이 파일을 늦게 불러와
- * 첫 묶음에 three.js·엔진을 싣지 않는다. WebGL이 없으면 던진다(화면은 펼친 그림을 그대로 둔다).
+ * 첫 묶음에 three.js·엔진을 싣지 않는다. WebGL이 없으면 던진다(화면은 대기 그림을 그대로 둔다).
  */
 
 export interface HeroOptions {
@@ -26,6 +26,17 @@ export interface HeroHandle {
   resume(): void;
   setColors(colors: readonly number[]): void;
   dispose(): void;
+}
+
+function nextFrames(count: number): Promise<void> {
+  if (typeof requestAnimationFrame === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
+    const step = (left: number) => {
+      if (left <= 0) resolve();
+      else requestAnimationFrame(() => step(left - 1));
+    };
+    step(count);
+  });
 }
 
 export async function startHero(
@@ -65,6 +76,9 @@ export async function startHero(
     view.resize(canvas.clientWidth, canvas.clientHeight),
   );
   ro.observe(canvas);
+  // 첫 장면(맞춘 큐브)을 다 그린 뒤에 돌려준다. 화면은 그때부터 캔버스를 대기 그림 위로 서서히 띄운다
+  view.resize(canvas.clientWidth, canvas.clientHeight);
+  await nextFrames(2);
   return {
     pause: () => loop.pause(),
     resume: () => loop.resume(),
