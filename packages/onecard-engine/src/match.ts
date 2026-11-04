@@ -14,6 +14,8 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   type OnecardRules,
+  RACE_GATHER_MS,
+  raceOrder,
   STALE_SEEN,
 } from "./rules";
 import type {
@@ -24,6 +26,7 @@ import type {
   OnecardResult,
   OnecardState,
   OnecardView,
+  PendingPress,
   ShoutVerdict,
   ShoutWindow,
 } from "./state";
@@ -57,7 +60,14 @@ function clone(state: OnecardState): OnecardState {
     finished: [...state.finished],
     bankrupt: [...state.bankrupt],
     bankruptCounts: [...state.bankruptCounts],
-    recent: state.recent.map((m) => ({ ...m, exposed: [...m.exposed] })),
+    recent: state.recent.map((m) => ({
+      ...m,
+      exposed: [...m.exposed],
+      ...(m.ones ? { ones: [...m.ones] } : {}),
+    })),
+    ...(state.racePending
+      ? { racePending: state.racePending.map((p) => ({ ...p })) }
+      : {}),
     ...(state.refill ? { refill: [...state.refill] } : {}),
   };
 }
@@ -315,7 +325,11 @@ function openWindow(state: OnecardState, seat: number): void {
   state.windows.push({
     id: state.nextWindowId++,
     seat,
-    kind: state.rules.selfWindowMs > 0 ? "self" : "catch",
+    kind: state.rules.race
+      ? "race"
+      : state.rules.selfWindowMs > 0
+        ? "self"
+        : "catch",
     heldBy: null,
   });
 }
@@ -452,6 +466,7 @@ export function judgeShout(
   if (!Number.isInteger(seen) || seen < 0 || seen > state.turnNo)
     return { kind: "error", error: "모르는 판 번호다" };
   if (state.turnNo - seen > STALE_SEEN) return { kind: "stale" };
+  if (state.rules.race) return judgeRace(state, seat, seen);
   const own = state.windows.find((w) => w.seat === seat);
   if (own) return own.kind === "self" ? { kind: "self" } : { kind: "lateSelf" };
   const mark = state.recent.find((m) => m.turnNo === seen);
@@ -487,6 +502,87 @@ export function judgeShout(
   return caught.length > 0
     ? { kind: "catch", targets: caught, held }
     : { kind: "hold", targets: held };
+}
+
+/** 늦음은 같은 자리·같은 seen으로 한 번만 봐준다(o2) */
+function lateOrFalse(
+  state: OnecardState,
+  seat: number,
+  seen: number,
+): ShoutVerdict {
+  const used = (state.lateSeen ?? []).some(
+    (l) => l.seat === seat && l.turnNo === seen,
+  );
+  return used ? { kind: "false" } : { kind: "late" };
+}
+
+/**
+ * o2 겨루기 판정(docs/42 17절). 모두 누른 사람이 본 판(`seen`)으로: 그 판에 외치지 않은 한 장짜리(본인 포함)가 있었고
+ * 그 창이 아직 열려 있으면 겨루기 누름(본인이면 안전, 남이면 잡기). 그 판에 그런 사람이 없었으면 헛외침,
+ * 있었지만 창이 닫혔으면(더 빠른 누름이 이겼거나 시간이 끝남) 늦음(한 번만 봐준다). 미리 외침은 없다
+ */
+function judgeRace(
+  state: OnecardState,
+  seat: number,
+  seen: number,
+): ShoutVerdict {
+  const mark = state.recent.find((m) => m.turnNo === seen);
+  const exposed = mark?.exposed ?? [];
+  const open = state.windows.filter(
+    (w) => w.kind === "race" && exposed.includes(w.seat),
+  );
+  if (open.length === 0)
+    return exposed.length === 0
+      ? { kind: "false" }
+      : lateOrFalse(state, seat, seen);
+  return {
+    kind: "race",
+    saved: open.some((w) => w.seat === seat),
+    caught: open.filter((w) => w.seat !== seat).map((w) => w.seat),
+  };
+}
+
+/** o2: 그 판에서 한 장이던 자리인가(동점에서 본인 우선, 모두에게 보이는 정보) */
+export function wasOneAt(
+  state: OnecardState,
+  seat: number,
+  seen: number,
+): boolean {
+  return (
+    state.recent.find((m) => m.turnNo === seen)?.ones?.includes(seat) ?? false
+  );
+}
+
+/** o2: 누름 하나를 지금 판으로 다시 판정해 처리한다(판정할 수 없으면 건너뛴다) */
+function applyRacePress(
+  state: OnecardState,
+  press: { seat: number; seen: number },
+  events: GameEvent[],
+): void {
+  if (state.phase === "over") return;
+  const verdict = judgeShout(state, press.seat, press.seen);
+  if (verdict.kind === "error") return;
+  applyShout(state, press.seat, verdict, press.seen, events);
+}
+
+/**
+ * o2: 모은 누름(과 같이 온 청구 묶음)을 겨루기 순서로 처리한다. 묶음은 방장이 이미 겨루기 순서로 넣었으므로
+ * 모은 누름이 없으면 그 차례 그대로, 있으면 함께 `raceOrder`로 다시 줄 세운다(동점 잡는 사람끼리는 들어온 차례)
+ */
+function flushRace(
+  state: OnecardState,
+  events: GameEvent[],
+  claims: readonly PendingPress[] = [],
+): void {
+  const pending = state.racePending ?? [];
+  delete state.racePending;
+  delete state.raceSince;
+  const all = [...claims, ...pending];
+  const order =
+    pending.length === 0
+      ? all
+      : raceOrder(all, (p) => wasOneAt(state, p.seat, p.seen));
+  for (const press of order) applyRacePress(state, press, events);
 }
 
 function catchSeat(
@@ -537,6 +633,15 @@ function applyShout(
     case "false":
       events.push({ type: "falseShout", seat });
       enqueue(state, seat, state.rules.falseShoutPenalty, "falseShout");
+      break;
+    case "race":
+      if (verdict.saved) {
+        closeWindows(state, seat);
+        state.called[seat] = true;
+        reward(state, seat);
+      }
+      for (const target of verdict.caught)
+        catchSeat(state, seat, target, events);
       break;
     case "late":
       // 벌칙은 없지만 한 번 봐준 것을 적어 둔다(같은 seen으로 되풀이하면 헛외침)
@@ -621,6 +726,13 @@ function done(
     next.recent.push({
       turnNo: next.turnNo,
       exposed: next.windows.map((w) => w.seat),
+      ...(next.rules.race
+        ? {
+            ones: next.hands.flatMap((h, s) =>
+              h.length === 1 && isActive(next, s) ? [s] : [],
+            ),
+          }
+        : {}),
     });
     if (next.recent.length > STALE_SEEN + 1) next.recent.shift();
     // 적어 둔 늦음이 있을 때만 `seen`으로 더는 못 가리키는 것을 지운다.
@@ -634,6 +746,35 @@ function done(
 }
 
 export function step(
+  state: OnecardState,
+  seat: number,
+  action: Action,
+): StepResult {
+  // o2: 모으는 중인 누름은 다음 행동 전에 겨루기 순서로 먼저 처리한다(외침·모으기 끝·청구 묶음은 따로 다룬다)
+  if (
+    state.rules.race &&
+    (state.racePending?.length ?? 0) > 0 &&
+    typeof action === "object" &&
+    action !== null &&
+    action.type !== "shout" &&
+    action.type !== "raceEnd" &&
+    action.type !== "claims"
+  ) {
+    const flushed = clone(state);
+    const early: GameEvent[] = [];
+    flushRace(flushed, early);
+    const result = stepCore(flushed, seat, action);
+    // 모은 누름이 창을 닫았으면 그 창의 시간 끝은 할 일이 없다(모은 누름 처리만 남긴다)
+    if (!result.ok && action.type === "timeout")
+      return done(flushed, early, false);
+    return result.ok
+      ? { ...result, events: [...early, ...result.events] }
+      : result;
+  }
+  return stepCore(state, seat, action);
+}
+
+function stepCore(
   state: OnecardState,
   seat: number,
   action: Action,
@@ -656,6 +797,8 @@ export function step(
     next.phase = "over";
     next.windows = [];
     next.queue = [];
+    delete next.racePending;
+    delete next.raceSince;
     next.retired = true;
     next.result = resultOf(next);
     return done(
@@ -668,9 +811,38 @@ export function step(
   if (action.type === "shout") {
     const verdict = judgeShout(state, seat, action.seen);
     if (verdict.kind === "error") return fail(verdict.error);
+    if (
+      action.rt !== undefined &&
+      (typeof action.rt !== "number" ||
+        !Number.isFinite(action.rt) ||
+        action.rt < 0)
+    )
+      return fail("반응 시간이 맞지 않다");
     const next = clone(state);
+    if (verdict.kind === "race") {
+      // o2: 겨루기 누름은 모았다가(`raceEnd`·다음 행동 전) 반응 시간 순으로 처리한다
+      next.racePending = [
+        ...(next.racePending ?? []),
+        {
+          seat,
+          seen: action.seen,
+          rt: action.rt ?? state.rules.catchWindowMs,
+        },
+      ];
+      next.raceSince ??= next.version;
+      return done(next, [], false);
+    }
     const events: GameEvent[] = [];
     applyShout(next, seat, verdict, action.seen, events);
+    return done(next, events, false);
+  }
+
+  if (action.type === "raceEnd") {
+    if (!state.rules.race || (state.racePending?.length ?? 0) === 0)
+      return fail("모으는 누름이 없다");
+    const next = clone(state);
+    const events: GameEvent[] = [];
+    flushRace(next, events);
     return done(next, events, false);
   }
 
@@ -683,6 +855,30 @@ export function step(
       return fail("청구 묶음 모양이 맞지 않다");
     const next = clone(state);
     const events: GameEvent[] = [];
+    if (state.rules.race) {
+      // o2: 묶음은 방장이 정한 겨루기 순서다. 모으는 중인 누름(방장 기기의 컴퓨터)이 있으면 함께 줄 세운다
+      const claims = action.shouts.flatMap((c) =>
+        typeof c === "object" &&
+        c !== null &&
+        Number.isInteger(c.seat) &&
+        c.seat >= 0 &&
+        c.seat < n &&
+        Number.isInteger(c.seen)
+          ? [
+              {
+                seat: c.seat,
+                seen: c.seen,
+                rt:
+                  typeof c.rt === "number" && Number.isFinite(c.rt) && c.rt >= 0
+                    ? c.rt
+                    : state.rules.catchWindowMs,
+              },
+            ]
+          : [],
+      );
+      flushRace(next, events, claims);
+      return done(next, events, false);
+    }
     for (const claim of action.shouts) {
       if (next.phase === "over") break;
       if (typeof claim !== "object" || claim === null) continue;
@@ -696,9 +892,18 @@ export function step(
   }
 
   if (action.type === "timeout") {
-    if (action.kind !== "selfWindow" && action.kind !== "catchWindow")
+    if (
+      action.kind !== "selfWindow" &&
+      action.kind !== "catchWindow" &&
+      action.kind !== "raceWindow"
+    )
       return fail("모르는 창 종류다");
-    const kind = action.kind === "selfWindow" ? "self" : "catch";
+    const kind =
+      action.kind === "selfWindow"
+        ? "self"
+        : action.kind === "catchWindow"
+          ? "catch"
+          : "race";
     const window = state.windows.find(
       (w) => w.seat === action.target && w.kind === kind,
     );
@@ -709,7 +914,7 @@ export function step(
     const next = clone(state);
     const events: GameEvent[] = [];
     const w = next.windows.find((x) => x.id === window.id) as ShoutWindow;
-    if (kind === "catch") closeWindows(next, w.seat);
+    if (kind === "catch" || kind === "race") closeWindows(next, w.seat);
     else if (w.heldBy !== null) catchSeat(next, w.heldBy, w.seat, events);
     else {
       // 본인 시간이 끝났다 → 잡기 창(새 번호라 바깥 시계가 새로 잰다)
@@ -843,24 +1048,43 @@ export function movesOf(
 export function shoutWindows(state: OnecardState): {
   id: number;
   seat: number;
-  kind: "selfWindow" | "catchWindow";
+  kind: "selfWindow" | "catchWindow" | "raceWindow";
   ms: number;
 }[] {
   return state.windows.map((w) =>
-    w.kind === "self"
+    w.kind === "race"
       ? {
           id: w.id,
           seat: w.seat,
-          kind: "selfWindow",
-          ms: state.rules.selfWindowMs,
-        }
-      : {
-          id: w.id,
-          seat: w.seat,
-          kind: "catchWindow",
+          kind: "raceWindow",
           ms: state.rules.catchWindowMs,
-        },
+        }
+      : w.kind === "self"
+        ? {
+            id: w.id,
+            seat: w.seat,
+            kind: "selfWindow",
+            ms: state.rules.selfWindowMs,
+          }
+        : {
+            id: w.id,
+            seat: w.seat,
+            kind: "catchWindow",
+            ms: state.rules.catchWindowMs,
+          },
   );
+}
+
+/**
+ * o2: 모으는 중인 누름이 있으면 그 시계(`since`는 모으기를 시작한 기록 길이, 바깥 시계 열쇠). 시간이 다 되면
+ * `{type:"raceEnd"}`를 넣는다. 혼자 하기·방장 기기의 컴퓨터 누름만 모은다(온라인 사람 청구는 방장이 모아 묶음으로 넣는다)
+ */
+export function raceGather(
+  state: OnecardState,
+): { since: number; seat: number; ms: number } | null {
+  const first = state.racePending?.[0];
+  if (!state.rules.race || !first || state.phase === "over") return null;
+  return { since: state.raceSince ?? 0, seat: first.seat, ms: RACE_GATHER_MS };
 }
 
 export function viewOf(state: OnecardState, seat: number): OnecardView {
