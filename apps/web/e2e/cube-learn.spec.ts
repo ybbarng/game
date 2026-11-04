@@ -88,13 +88,25 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   const demo = page.locator("[data-cube-demo]");
   const first = demo.locator("[data-move-chip]").first();
   const firstMove = (await first.getAttribute("data-move-chip")) as string;
-  if (desktop)
-    await expect(demo.locator("[data-move-keys]").first()).toHaveAttribute(
-      "data-move-keys",
-      twoHandCaps(firstMove),
-    );
-  else await expect(demo.locator("[data-move-keys]")).toHaveCount(0);
+  // 시연은 「보기」 먼저: 키캡 없이 보고, 「해 보기」에서 내 키를 보인다
+  await expect(page.locator('[data-demo-phase="see"]')).toBeVisible();
+  await expect(demo.locator("[data-move-keys]")).toHaveCount(0);
+  await expect(page.locator("[data-step-body] [data-move-keys]")).toHaveCount(
+    0,
+  );
   await shot(page, "learn-keys-demo", info.project.name);
+  const toTurn = page.locator("[data-demo-turn]");
+  if ((await toTurn.count()) > 0) {
+    await toTurn.click();
+    await expect(page.locator('[data-demo-phase="do"]')).toBeVisible();
+    const caps = page.locator('[data-act="turn"] [data-move-keys]');
+    if (desktop)
+      await expect(caps.first()).toHaveAttribute(
+        "data-move-keys",
+        twoHandCaps(firstMove),
+      );
+    else await expect(caps).toHaveCount(0);
+  }
 
   await goToStep(page, "try");
   await inputReady(page);

@@ -428,6 +428,21 @@ export function demoOffersTurn(lesson: Lesson, index: number): boolean {
   );
 }
 
+/** 직접 치라는 말(시연 「보기」 상태에서는 흐리게 둔다) */
+const DO_WORDS = /쳐\s?(보|봐)|치면|직접|해 보세요|키를|눌러 보세요/;
+
+/**
+ * 시연 본문을 문장으로 나눠 「보기」 문장과 「해 보기」 문장을 가른다. 레슨 글은 「R: 오른쪽 면을… 쳐 보세요」처럼
+ * 보는 말과 치는 말이 섞여 있어, 시연은 「보기」 상태에서 치는 말을 흐리게, 「해 보기」 상태에서 모두 또렷하게 보인다.
+ * 문장 끝(마침표·물음표·느낌표 + 빈칸)에서 자르고, 자른 조각을 이으면 본문 그대로다
+ */
+export function demoBodyParts(
+  body: string,
+): { text: string; doing: boolean }[] {
+  const parts = body.match(/[^.?!]+[.?!]*\s*/g) ?? [body];
+  return parts.map((text) => ({ text, doing: DO_WORDS.test(text) }));
+}
+
 /** 단계 자료가 제 종류에 필요한 것을 갖췄나(자료 시험용). 문제가 있으면 까닭, 없으면 null */
 export function stepProblem(lesson: Lesson, step: LessonStep): string | null {
   const n = lesson.size;

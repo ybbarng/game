@@ -113,12 +113,16 @@ export function MoveText({
   text,
   n,
   letters = false,
+  keys = true,
 }: {
   text: string;
   n: number;
   letters?: boolean;
+  /** 수 옆에 내 키캡을 붙인다(시연 「보기」 상태에서는 끈다) */
+  keys?: boolean;
 }) {
-  const { keysOf } = useMoveKeys(n);
+  const { keysOf: mine } = useMoveKeys(n);
+  const keysOf = keys ? mine : null;
   return (
     <>
       {splitMoveText(text, { letters }).map((p, i) =>

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { COURSES } from "./index";
 import {
+  demoBodyParts,
   demoOffersTurn,
   findHit,
   fingerQuiz,
@@ -236,6 +237,23 @@ describe("단계 그림과 시연 따라 하기", () => {
   it("마스크가 없는 글 단계는 가장 가까운 단계의 마스크를 맞춘 큐브에 씌운다", () => {
     expect(stepPicture(lesson, 0)).toEqual({ setup: undefined, mask: "cross" });
     expect(stepPicture(lesson, 4)).toEqual({ setup: undefined, mask: "f2l" });
+  });
+
+  it("시연 본문은 보는 말과 치는 말로 갈리고, 이으면 그대로다", () => {
+    const body =
+      "R은 오른쪽 면을 돌려요. 앞면 칸이 위로 올라가요. 이제 R을 쳐 보세요.";
+    const parts = demoBodyParts(body);
+    expect(parts.map((p) => p.text).join("")).toBe(body);
+    expect(parts.map((p) => p.doing)).toEqual([false, false, true]);
+    for (const c of COURSES)
+      for (const l of c.lessons)
+        for (const st of l.steps)
+          if (st.kind === "demo")
+            expect(
+              demoBodyParts(st.body)
+                .map((p) => p.text)
+                .join(""),
+            ).toBe(st.body);
   });
 
   it("같은 해보기가 있는 시연에는 「직접 해 보기」를 붙이지 않는다", () => {

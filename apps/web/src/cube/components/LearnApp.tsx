@@ -11,7 +11,12 @@ import {
   courseById,
   type Lesson,
 } from "../learn";
-import { demoOffersTurn, stepIsActive, stepPicture } from "../learn/interact";
+import {
+  demoBodyParts,
+  demoOffersTurn,
+  stepIsActive,
+  stepPicture,
+} from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
   type LearnProgress,
@@ -311,10 +316,15 @@ function LessonView({
 
   // 이 화면에서 해낸 상호작용 단계(해보기는 진도에 남고, 나머지는 단원을 여는 동안만)
   const [acted, setActed] = useState<number[]>([]);
-  // 시연 단계의 「직접 해 보기」를 열었나
+  // 시연 단계는 한 번에 하나만: 「보기」(재생·한 수씩) → 「해 보기」(그 공식을 쳐 보기)
   const [demoTurn, setDemoTurn] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계를 옮길 때마다 닫는다
-  useEffect(() => setDemoTurn(false), [at]);
+  // 재생을 끝까지 봤나(「이제 해 보세요」로 넘긴다)
+  const [demoSeen, setDemoSeen] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계를 옮길 때마다 처음(보기)으로
+  useEffect(() => {
+    setDemoTurn(false);
+    setDemoSeen(false);
+  }, [at]);
 
   // 시연·해보기가 아닌 단계는 단원이 노리는 조각이 보이게 그림을 고른다(stepPicture)
   const picture = useMemo(
@@ -423,11 +433,30 @@ function LessonView({
           {KIND_LABEL[step.kind]} · {at + 1}/{lesson.steps.length}
         </p>
         <p className="break-keep text-base leading-relaxed" data-step-body>
-          <MoveText
-            text={step.body}
-            n={lesson.size}
-            letters={lesson.id.startsWith("bld")}
-          />
+          {step.kind === "demo" ? (
+            // 시연: 「보기」에서는 치라는 말을 흐리게, 키캡은 「해 보기」에서만
+            demoBodyParts(step.body).map((part, i) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: 문장 차례가 곧 열쇠다
+                key={i}
+                data-body-doing={part.doing ? "" : undefined}
+                className={cn(part.doing && !demoTurn && "text-white/40")}
+              >
+                <MoveText
+                  text={part.text}
+                  n={lesson.size}
+                  letters={lesson.id.startsWith("bld")}
+                  keys={demoTurn}
+                />
+              </span>
+            ))
+          ) : (
+            <MoveText
+              text={step.body}
+              n={lesson.size}
+              letters={lesson.id.startsWith("bld")}
+            />
+          )}
         </p>
         {step.sheet && <LessonSheet name={step.sheet} />}
         {step.beside && (
@@ -444,6 +473,14 @@ function LessonView({
             state={start}
             mask={mask}
             settings={settings}
+          />
+        )}
+        {step.kind === "demo" && step.alg && (
+          <DemoPhases
+            offersTurn={demoOffersTurn(lesson, at)}
+            turning={demoTurn}
+            seen={demoSeen}
+            onTurning={setDemoTurn}
           />
         )}
         {step.kind === "demo" &&
@@ -466,22 +503,10 @@ function LessonView({
               mask={mask}
               settings={settings}
               arrowKeys
+              showKeys={false}
+              onEnd={() => setDemoSeen(true)}
             />
           ))}
-        {step.kind === "demo" && step.alg && demoOffersTurn(lesson, at) && (
-          <button
-            type="button"
-            data-demo-turn
-            aria-pressed={demoTurn}
-            onClick={(e) => {
-              setDemoTurn((v) => !v);
-              e.currentTarget.blur();
-            }}
-            className="self-center rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-1.5 text-sm hover:bg-sky-500/30"
-          >
-            {demoTurn ? "시연 다시 보기" : "직접 해 보기"}
-          </button>
-        )}
         {step.kind === "turn" && step.alg && (
           <TurnPanel
             key={`${lesson.id}-${at}`}
@@ -642,5 +667,80 @@ function Beside({
         {beside.caption}
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * 시연 단계의 두 상태 띠: ① 보기(재생·한 수씩, 키 안내 없음) → ② 해 보기(그 공식을 쳐 보기, 키캡·「쳐 보세요」).
+ * 재생을 끝까지 보면 「해 보기」 칸이 「이제 해 보세요」로 눈에 띈다. 같은 공식의 해 보기가 단원에 따로 있으면
+ * 「해 보기」 칸 대신 「다음 단계에서 해 봐요」로 적는다
+ */
+function DemoPhases({
+  offersTurn,
+  turning,
+  seen,
+  onTurning,
+}: {
+  offersTurn: boolean;
+  turning: boolean;
+  seen: boolean;
+  onTurning: (v: boolean) => void;
+}) {
+  const tab = (on: boolean) =>
+    cn(
+      "flex-1 rounded-md px-3 py-1.5 text-sm",
+      on ? "bg-sky-500 font-semibold text-black" : "bg-white/5 text-white/70",
+    );
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div
+        className="flex w-full max-w-sm items-center gap-1 rounded-lg bg-white/5 p-1"
+        data-demo-phase={turning ? "do" : "see"}
+      >
+        <button
+          type="button"
+          aria-pressed={!turning}
+          onClick={(e) => {
+            onTurning(false);
+            e.currentTarget.blur();
+          }}
+          className={tab(!turning)}
+        >
+          ① 보기
+        </button>
+        <span className="text-white/40" aria-hidden>
+          →
+        </span>
+        {offersTurn ? (
+          <button
+            type="button"
+            data-demo-turn
+            aria-pressed={turning}
+            onClick={(e) => {
+              onTurning(true);
+              e.currentTarget.blur();
+            }}
+            className={cn(
+              tab(turning),
+              !turning && seen && "animate-pulse bg-amber-400 text-black",
+            )}
+          >
+            ② 해 보기
+          </button>
+        ) : (
+          <span className="flex-1 px-3 py-1.5 text-center text-white/50 text-xs">
+            해 보기는 다음 단계에서
+          </span>
+        )}
+      </div>
+      {/* 「해 보기」의 안내는 따라 하기 칸이 맡는다 */}
+      {!turning && (
+        <p className="text-white/60 text-xs" data-demo-say>
+          {seen && offersTurn
+            ? "다 봤어요. 이제 「해 보기」로 직접 쳐 보세요."
+            : "먼저 보세요. ▶ 재생이나 한 수씩 넘겨 봐요."}
+        </p>
+      )}
+    </div>
   );
 }
