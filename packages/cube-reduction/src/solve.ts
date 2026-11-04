@@ -70,10 +70,10 @@ export interface ReductionSolution {
 }
 
 export const STAGE_NAMES: Readonly<Record<ReductionStageId, string>> = {
-  "centers-ud": "흰·노랑 가운데",
-  "centers-rest": "나머지 가운데",
-  edges: "모서리 짝",
-  "last-edges": "마지막 두 모서리",
+  "centers-ud": "흰·노랑 센터",
+  "centers-rest": "나머지 센터",
+  edges: "엣지 짝",
+  "last-edges": "마지막 두 엣지",
   "oll-parity": "OLL 패리티",
   "pll-parity": "PLL 패리티",
   three: "3×3",
