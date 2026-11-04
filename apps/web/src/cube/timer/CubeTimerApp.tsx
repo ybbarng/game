@@ -916,6 +916,7 @@ function SettingsPanel({
     <label className="flex items-center gap-2">
       <input
         type="checkbox"
+        className="size-4 shrink-0 accent-sky-400"
         checked={s[key]}
         onChange={(e) => onChange({ [key]: e.target.checked })}
       />

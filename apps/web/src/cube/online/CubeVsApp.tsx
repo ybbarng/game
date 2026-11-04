@@ -57,7 +57,10 @@ export function CubeVsApp() {
         data-cube-vs={status ?? "setup"}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">컴퓨터와 대결</h1>
@@ -125,6 +128,7 @@ export function CubeVsApp() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                className="size-4 shrink-0 accent-sky-400"
                 checked={inspection}
                 onChange={(e) => setInspection(e.target.checked)}
               />

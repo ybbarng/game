@@ -118,9 +118,9 @@ export function Meter({
       data-meter={attr}
       data-ok={ok ? "" : undefined}
     >
-      <span className="text-[11px] text-white/60">{label}</span>
-      <span className="font-bold font-mono text-lg">{value}</span>
-      <span className="text-[11px] text-white/70">
+      <span className="break-keep text-[11px] text-white/60">{label}</span>
+      <span className="break-keep font-bold font-mono text-lg">{value}</span>
+      <span className="break-keep text-[11px] text-white/70">
         {ok ? "✓" : "✗"} {rule}
       </span>
     </div>

@@ -364,8 +364,8 @@ function Factor({
       data-factor-broken={broken ? "" : undefined}
     >
       <b className="font-mono text-lg">{n}</b>
-      <span className="font-semibold">{title}</span>
-      <span className="text-white/60">{rule}</span>
+      <span className="break-keep font-semibold">{title}</span>
+      <span className="break-keep text-white/60">{rule}</span>
     </div>
   );
 }

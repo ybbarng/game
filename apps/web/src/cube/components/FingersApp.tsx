@@ -124,7 +124,10 @@ export function FingersApp() {
         data-fingers-phase={phase}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">핑거 트릭</h1>
@@ -238,6 +241,7 @@ export function FingersApp() {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className="size-4 shrink-0 accent-sky-400"
                   checked={metronome}
                   onChange={(e) => setMetronome(e.target.checked)}
                 />
@@ -379,7 +383,7 @@ function GripChecklist() {
                   e.currentTarget.blur();
                 }}
                 className={cn(
-                  "self-start rounded-md px-2 py-0.5",
+                  "min-h-8 self-start rounded-md px-3 py-1",
                   on
                     ? "bg-emerald-500/70 text-black"
                     : "bg-white/10 hover:bg-white/15",

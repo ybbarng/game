@@ -281,7 +281,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
         data-cube-version={version}
       >
         <header className="flex flex-wrap items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">

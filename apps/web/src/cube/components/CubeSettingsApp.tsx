@@ -95,7 +95,10 @@ export function CubeSettingsApp() {
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5">
         <header className="flex items-center gap-3">
-          <a href="/cube" className="text-sm text-white/70 hover:text-white">
+          <a
+            href="/cube"
+            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
+          >
             ← 큐브
           </a>
           <h1 className="font-bold text-xl">큐브 설정</h1>
@@ -211,6 +214,7 @@ export function CubeSettingsApp() {
               <input
                 type="checkbox"
                 data-setting={k}
+                className="size-4 shrink-0 accent-sky-400"
                 checked={settings[k]}
                 onChange={(e) =>
                   updateSettings({ ...settings, [k]: e.target.checked })
@@ -399,7 +403,7 @@ function KeymapSection({
               onChange={(e) =>
                 setKeymap({ ...keymap, mouseRotate: e.target.checked })
               }
-              className="mt-0.5"
+              className="mt-0.5 size-4 shrink-0 accent-sky-400"
             />
             <span className="break-keep">
               마우스로 끌어 큐브 전체 돌리기(x·y·z)
