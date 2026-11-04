@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-
+import {
+  findHeroMethod,
+  HERO_ALTERNATE,
+  HERO_SIZES,
+  heroMethodsFor,
+} from "../hero/methods";
 import {
   type ActionGroup,
   actionsFor,
@@ -203,6 +208,54 @@ export function CubeSettingsApp() {
               {label}
             </label>
           ))}
+        </section>
+
+        <section className="flex flex-col gap-3 text-sm" data-settings-hero>
+          <h2 className="font-semibold text-lg">첫 화면 큐브</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            크기
+            {HERO_SIZES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                data-hero-size={n}
+                aria-pressed={settings.heroSize === n}
+                onClick={() =>
+                  updateSettings({
+                    ...settings,
+                    heroSize: n,
+                    heroMethod:
+                      findHeroMethod(settings.heroMethod)?.size === n
+                        ? settings.heroMethod
+                        : HERO_ALTERNATE,
+                  })
+                }
+                className={chip(settings.heroSize === n)}
+              >
+                {n}×{n}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            해법
+            {[
+              { id: HERO_ALTERNATE, label: "번갈아" },
+              ...heroMethodsFor(settings.heroSize),
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                data-hero-method={m.id}
+                aria-pressed={settings.heroMethod === m.id}
+                onClick={() =>
+                  updateSettings({ ...settings, heroMethod: m.id })
+                }
+                className={chip(settings.heroMethod === m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </section>
       </main>
     </div>

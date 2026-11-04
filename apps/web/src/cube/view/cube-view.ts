@@ -206,6 +206,8 @@ export class CubeView {
   private readonly envTexture: THREE.Texture | null = null;
   private readonly disposables: { dispose(): void }[] = [];
   private readonly reduced: MediaQueryList | null;
+  private readonly interactive: boolean;
+  private readonly maxDpr: number;
 
   private colors: readonly number[];
   private stickerless: boolean;
@@ -258,6 +260,8 @@ export class CubeView {
     this.onMoveDone = o.onMoveDone;
     this.onSwipe = o.onSwipe;
     this.swipeMouse = o.swipeMouse ?? false;
+    this.interactive = o.interactive ?? true;
+    this.maxDpr = Math.min(o.maxDpr ?? this.spec.maxDpr, this.spec.maxDpr);
 
     this.renderer = new THREE.WebGLRenderer({
       canvas,
@@ -380,11 +384,13 @@ export class CubeView {
 
     this.reduced = prefersReducedMotion();
     this.reduced?.addEventListener("change", this.invalidate);
-    canvas.style.touchAction = "none";
-    canvas.addEventListener("pointerdown", this.onPointerDown);
-    canvas.addEventListener("pointermove", this.onPointerMove);
-    canvas.addEventListener("pointerup", this.onPointerUp);
-    canvas.addEventListener("pointercancel", this.onPointerUp);
+    if (this.interactive) {
+      canvas.style.touchAction = "none";
+      canvas.addEventListener("pointerdown", this.onPointerDown);
+      canvas.addEventListener("pointermove", this.onPointerMove);
+      canvas.addEventListener("pointerup", this.onPointerUp);
+      canvas.addEventListener("pointercancel", this.onPointerUp);
+    }
 
     this.resize(canvas.clientWidth || 300, canvas.clientHeight || 300);
   }
@@ -493,7 +499,7 @@ export class CubeView {
     this.height = Math.max(1, height);
     const dpr =
       typeof window === "undefined" ? 1 : (window.devicePixelRatio ?? 1);
-    this.renderer.setPixelRatio(Math.min(dpr, this.spec.maxDpr));
+    this.renderer.setPixelRatio(Math.min(dpr, this.maxDpr));
     this.renderer.setSize(this.width, this.height, false);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
