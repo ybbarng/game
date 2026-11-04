@@ -1,7 +1,13 @@
 // 3×3 루(Roux, docs/47 8-2): 첫 블록 → 둘째 블록 → CMLL → LSE(EO → UL·UR → 가운데 줄).
 // 시연·해 보기의 수는 `@game/cube-ai`의 solveRoux가 대회 섞기(3×3 씨앗 21·7)를 실제로 푼 단계별 수다.
 // 맞는지는 judge.test.ts가 엔진으로 확인한다(상황에서는 아직 목표가 아니고, 모범 답을 두면 목표가 된다).
+import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
+
+/** 위 꼭짓점이 모두 옆을 보는 모양(더블 수네). 흰 면 아래로 쥔 두 블록은 지킨다 */
+export const CMLL_H = "R U R' U R U' R' U R U2 R'";
+/** 나쁜 모서리 넷(위 왼쪽·오른쪽·앞, 아래 앞)을 고치는 수 */
+export const LSE_EO4 = "M' U M";
 
 /** 섞기와 앞 단계까지의 수를 이어 「이 단계 시작 상황」을 만든다 */
 const upTo = (...parts: string[]) => ({ alg: parts.join(" ") });
@@ -31,8 +37,12 @@ const intro: Lesson = {
   summary: "블록 둘을 만들고, 가운데 층(M)과 윗면(U)만으로 끝내요.",
   steps: [
     {
-      kind: "text",
-      body: "루는 질 루(Gilles Roux)가 만든 방법이에요. 왼쪽과 오른쪽에 1×2×3 블록을 하나씩 만들고, 위 꼭짓점 넷을 맞춘 뒤, 남은 모서리 여섯을 가운데 층과 윗면만 돌려 끝내요. 수가 적고 외울 공식도 적어요.",
+      kind: "find",
+      body: "루는 질 루(Gilles Roux)가 만든 방법이에요. 왼쪽과 오른쪽에 1×2×3 블록을 하나씩 만들고, 위 꼭짓점 넷을 맞춘 뒤, 남은 모서리 여섯을 가운데 층과 윗면만 돌려 끝내요. 흰 면을 아래로 든 큐브예요. 왼쪽 블록의 꼭짓점 둘(흰색과 빨간색이 붙은 것)을 눌러 보세요.",
+      setup: { alg: "z2" },
+      mask: "roux-blocks",
+      find: { piece: "corner", has: ["U", "R"] },
+      count: 2,
     },
     {
       kind: "demo",
@@ -62,8 +72,11 @@ const firstBlock: Lesson = {
   summary: "왼쪽에 1×2×3 블록. 사각형(1×2×2)을 먼저, 그다음 짝 하나.",
   steps: [
     {
-      kind: "text",
-      body: "흰 면을 아래로 들고 왼쪽에 블록을 만들어요. 왼쪽 가운데, 아래 왼쪽 모서리, 왼쪽 앞·뒤 모서리, 아래 왼쪽 꼭짓점 둘이에요. 정해진 공식은 없어요. 조각을 보며 짧게 모아요.",
+      kind: "find",
+      body: "왼쪽 블록은 왼쪽 가운데, 아래 왼쪽 모서리, 왼쪽 앞·뒤 모서리, 꼭짓점 둘이에요. 정해진 공식은 없어서 조각을 보며 짧게 모아요. 섞인 큐브에 빨간 블록 조각만 보이게 했어요. 블록 바닥에 갈 흰-빨강 모서리를 찾아 눌러 보세요.",
+      setup: upTo(S21),
+      mask: "roux-fb",
+      find: { piece: "edge", colors: ["U", "R"] },
     },
     {
       kind: "demo",
@@ -94,8 +107,16 @@ const secondBlock: Lesson = {
   summary: "오른쪽에 같은 블록. 첫 블록을 지키려고 R·r·M·U만 돌려요.",
   steps: [
     {
-      kind: "text",
-      body: "오른쪽에도 1×2×3 블록을 만들어요. 이제 첫 블록을 지켜야 하니 오른쪽 면(R), 오른쪽 두 층(r, 화면 표기 Rw), 가운데 층(M), 윗면(U)만 돌려요. 가운데 층은 마음대로 돌려도 괜찮아요.",
+      kind: "quiz",
+      body: "오른쪽에도 1×2×3 블록을 만들어요. 이제 첫 블록을 지켜야 하니 오른쪽 면(R), 오른쪽 두 층(r, 화면 표기 Rw), 가운데 층(M), 윗면(U)만 돌려요.",
+      setup: { alg: "z2" },
+      mask: "roux-fb",
+      quiz: {
+        question: "왼쪽 블록이 다 됐어요. 돌리면 블록이 깨지는 것은?",
+        choices: ["R", "M", "F"],
+        answer: 2,
+        why: "F는 블록의 앞쪽 조각을 끌고 가요. R과 M은 왼쪽 블록에 닿지 않아요.",
+      },
     },
     {
       kind: "demo",
@@ -127,8 +148,16 @@ const cmll: Lesson = {
   summary: "두 블록을 지키며 위 꼭짓점 넷을 맞춰요. 처음엔 두 번에 나눠요.",
   steps: [
     {
-      kind: "text",
-      body: "CMLL(Corners of the Last Layer, 마지막 층 꼭짓점)은 위 꼭짓점 넷의 방향과 자리를 맞추는 단계예요. 모서리는 신경 쓰지 않아요. 공식 42개로 한 번에 하지만, 처음엔 노란 면 맞추기(수네 등 7개) → 꼭짓점 자리(2개)로 나눠도 돼요.",
+      kind: "quiz",
+      body: "CMLL(Corners of the Last Layer, 마지막 층 꼭짓점)은 위 꼭짓점 넷의 방향과 자리를 맞춰요. 모서리는 신경 쓰지 않아요. 공식 42개로 한 번에 하지만, 처음엔 노란 면 맞추기(수네 등 7개) → 꼭짓점 자리(2개)로 나눠도 돼요. 노란 면 공식은 위를 보는 노란 꼭짓점 수로 골라요.",
+      setup: { alg: setupFor(CMLL_H, "z2") },
+      mask: "cmll",
+      quiz: {
+        question: "위를 보는 노란 꼭짓점은 몇 개일까요?",
+        choices: ["0개", "1개", "2개"],
+        answer: 0,
+        why: "하나도 없어요. 노란 칸이 모두 옆을 봐요. 옆을 보는 노란 칸 모양을 보고 공식을 골라요.",
+      },
     },
     {
       kind: "demo",
@@ -161,8 +190,17 @@ const lse: Lesson = {
     "M과 U만으로 세 걸음: 모서리 방향 → 왼쪽·오른쪽 위 모서리 → 가운데 줄.",
   steps: [
     {
-      kind: "text",
+      kind: "quiz",
       body: "LSE(Last Six Edges, 남은 모서리 여섯)는 M과 U만 돌려요. 먼저 모서리 방향(EO)을 맞춰요. 흰·노랑 칸이 위나 아래를 보면 좋은 모서리, 옆을 보면 나쁜 모서리예요. 위·아래 가운데도 흰·노랑으로 둬요.",
+      setup: { alg: setupFor(LSE_EO4, "z2") },
+      mask: "eo-edges",
+      quiz: {
+        question:
+          "윗층과 아래 앞·뒤의 모서리 여섯 중 나쁜 모서리는 몇 개일까요?",
+        choices: ["0개", "2개", "4개"],
+        answer: 2,
+        why: "위 왼쪽·오른쪽·앞, 아래 앞 모서리의 흰·노랑 칸이 옆을 봐요. M' U M 한 번이면 넷이 함께 고쳐져요.",
+      },
     },
     {
       kind: "demo",
