@@ -22,6 +22,7 @@ import {
   type Keymap,
   type KeyResult,
   loadKeymap,
+  moreButtonMoves,
 } from "../input";
 import {
   resetHandLayers,
@@ -123,6 +124,7 @@ export function CubePlay({
   const [showKeys, setShowKeys] = useState(true);
   const [showNet, setShowNet] = useState(true);
   const [prime, setPrime] = useState(false);
+  const [moreButtons, setMoreButtons] = useState(false);
 
   // 바뀌는 값은 ref로 넘겨 키 연결을 한 번만 건다
   const live = useRef({
@@ -400,6 +402,9 @@ export function CubePlay({
         {[
           ...buttonMoves(n),
           ...(extraButtons ?? []).filter((b) => !buttonMoves(n).includes(b)),
+          ...(moreButtons
+            ? moreButtonMoves(n).filter((b) => !extraButtons?.includes(b))
+            : []),
         ].map((m) => (
           <button
             key={m}
@@ -419,6 +424,17 @@ export function CubePlay({
         >
           ′ 반대
         </button>
+        {moreButtonMoves(n).some((b) => !extraButtons?.includes(b)) && (
+          <button
+            type="button"
+            data-cube-more-buttons
+            aria-expanded={moreButtons}
+            onClick={() => setMoreButtons((v) => !v)}
+            className="h-9 rounded-lg bg-white/10 px-2 text-sm"
+          >
+            {moreButtons ? "접기" : `${moreButtonMoves(n).join("·")} 더 보기`}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -435,12 +451,12 @@ export function CubePlay({
         </button>
       </div>
 
-      <div className="flex gap-3 text-white/60 text-xs">
+      <div className="flex flex-wrap justify-center gap-x-3 text-white/60 text-xs">
         <button
           type="button"
           onClick={() => setShowKeys((v) => !v)}
           aria-expanded={showKeys}
-          className="underline-offset-2 hover:underline"
+          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
         >
           {showKeys ? "키 그림 접기" : "키 그림 펴기"}
         </button>
@@ -448,17 +464,20 @@ export function CubePlay({
           type="button"
           onClick={() => setShowNet((v) => !v)}
           aria-pressed={showNet}
-          className="underline-offset-2 hover:underline"
+          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
         >
           {showNet ? "펼친 그림 숨기기" : "펼친 그림 보기"}
         </button>
         <a
           href="/cube/keys"
-          className="hidden underline-offset-2 hover:underline sm:inline"
+          className="hidden min-h-8 items-center px-1 underline-offset-2 hover:underline sm:inline-flex"
         >
           단축키 표
         </a>
-        <a href="/cube/settings" className="underline-offset-2 hover:underline">
+        <a
+          href="/cube/settings"
+          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
+        >
           키·색 설정
         </a>
       </div>

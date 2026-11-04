@@ -5,6 +5,7 @@ import {
   buttonMoves,
   isAvailable,
   isKnownAction,
+  moreButtonMoves,
   notationToMove,
   withDepth,
 } from "./actions";
@@ -209,6 +210,8 @@ describe("크기별 동작 목록", () => {
   });
 
   it("아래 단추 줄: 가운데 층 M은 홀수 크기에만, 단추마다 M'까지 수로 바뀐다", () => {
+    expect(moreButtonMoves(3)).toEqual(["E", "S"]);
+    expect(moreButtonMoves(4)).toEqual([]);
     expect(buttonMoves(2)).not.toContain("M");
     expect(buttonMoves(3)).toContain("M");
     expect(buttonMoves(4)).not.toContain("M");
