@@ -127,6 +127,11 @@ export interface CubeViewOptions {
    * 판 위 칸을 누르면 `onTap`이 그 칸이 비추는 큐브 칸을 준다
    */
   mirror?: boolean;
+  /**
+   * 끌어 돌린 보기를 손을 뗀 뒤에도 그대로 둔다(2026-11-05, 분해·조립). 기본 끔: 손을 떼면 천천히 처음 각으로
+   * 돌아온다. 켜면 아래·뒤 칸을 돌려 본 채로 누를 수 있고, 처음 각으로는 `resetView`로 돌아간다
+   */
+  keepView?: boolean;
   /** 픽셀 비율 상한. 빠지면 품질에 따른 값 */
   maxDpr?: number;
 }

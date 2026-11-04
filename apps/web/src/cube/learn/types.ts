@@ -68,6 +68,8 @@ export type GoalName = keyof typeof GOALS;
 export const MASKS = {
   none: "모두 까맣게(조각을 찾아 누르면 그 조각 색이 드러난다)",
   centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  "centers:UF":
+    "위·앞 센터 블럭 둘만 보임(색 배치 문제: 나머지 센터 색으로 답이 드러나지 않게)",
   corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
   "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
   "piece:UF": "흰-초록 모서리와 가운데만 보임",
@@ -177,6 +179,11 @@ export interface FindTarget {
   colors?: FaceLetter[];
   has?: FaceLetter[];
   at?: FaceLetter[];
+  /**
+   * 제자리가 아닌 조각만(홀수 큐브). 조각의 색이 그 자리가 닿은 센터 블럭 색들과 다르면 맞다. 방향은 보지 않는다
+   * (2026-11-05 「방향은 맞는데 자리는 틀린」 블럭 세기)
+   */
+  misplaced?: boolean;
 }
 
 /** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */

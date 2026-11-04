@@ -111,6 +111,14 @@ export function findHit(
     if (want.length !== faces.length) return null;
     if (want.some((c, i) => c !== faces[i])) return null;
   }
+  if (target.misplaced) {
+    const home = slotCenterColors(n, state, sticker).sort((a, b) => a - b);
+    if (
+      home.length === got.colors.length &&
+      home.every((c, i) => c === got.colors[i])
+    )
+      return null;
+  }
   return got.piece;
 }
 

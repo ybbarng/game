@@ -32,6 +32,7 @@ import {
 } from "./interact";
 import { goalMet, maskFor, pieceByName } from "./judge";
 import {
+  EDGE_CYCLE,
   FACE_ONLY,
   FLIPPED_EDGE,
   LAYER_DONE,
@@ -74,9 +75,73 @@ describe("과정 맨 앞의 조각 단원", () => {
   });
 
   it("3×3 조각 단원은 공식을 외우게 하지 않는다(해 보기 정답이 두 수 안쪽)", () => {
-    for (const s of lessonOf("333-pieces").steps)
+    for (const s of lessonOf("333-piece-moves").steps)
       if (s.kind === "try")
         expect(parseMoves(3, s.alg ?? "").length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("조각의 움직임: 센터 → 엣지 → 코너, 자리와 방향", () => {
+  const l = lessonOf("333-piece-moves");
+  const U = { piece: "edge", misplaced: true } as FindTarget;
+
+  it("놀이판·따라가기·해 보기가 모두 센터 → 엣지 → 코너 차례다", () => {
+    const kindOf = (t: FindTarget | FindTarget[] | undefined) => {
+      const one = Array.isArray(t) ? t[0] : t;
+      const n = one?.colors?.length ?? 0;
+      return one?.piece ?? (n === 2 ? "edge" : n === 3 ? "corner" : "?");
+    };
+    expect(
+      l.steps
+        .filter((s) => s.kind === "play")
+        .map((s) => kindOf(s.play?.focus)),
+    ).toEqual(["center", "edge", "corner", "edge"]);
+    const tracks = l.steps.filter((s) => s.kind === "find" && s.find?.colors);
+    expect(tracks.map((s) => s.find?.piece)).toEqual(["edge", "corner"]);
+    const tries = l.steps.filter((s) => s.kind === "try").map((s) => s.goal);
+    expect(tries).toEqual(["solved", "piece:UF", "piece:UFR"]);
+    // 표기 안내는 첫 해 보기에만
+    const firstTry = l.steps.find((s) => s.kind === "try");
+    expect(firstTry?.body).toContain("표기는 아직 몰라도 괜찮아요");
+    expect(
+      l.steps.filter((s) => s.body.includes("표기는 아직 몰라도")),
+    ).toHaveLength(1);
+  });
+
+  it("U 한 번: 흰 면은 그대로인데 윗층 엣지 넷이 제자리가 아니고, U'로 돌아온다", () => {
+    const s = l.steps.find((x) => x.kind === "try" && x.goal === "solved");
+    const start = play(3, (s?.setup as { alg: string } | undefined)?.alg ?? "");
+    const colors = faceColors(3, start);
+    for (let i = 0; i < 9; i++) expect(colors[i]).toBe(FACE_INDEX.U);
+    expect(hitSlots(3, start, U)).toHaveLength(4);
+    expect(goalMet(3, play(3, s?.alg ?? "", start), "solved")).toBe(true);
+  });
+
+  it(`제자리가 아닌 엣지 세기(${EDGE_CYCLE}): 흰 면은 다 흰색, 엣지 셋만 자리가 틀림`, () => {
+    const s = l.steps.find((x) => x.find?.misplaced);
+    expect(s?.setup).toEqual({ alg: EDGE_CYCLE });
+    const start = play(3, EDGE_CYCLE);
+    const colors = faceColors(3, start);
+    for (let i = 0; i < 9; i++) expect(colors[i]).toBe(FACE_INDEX.U);
+    expect(hitSlots(3, start, U)).toHaveLength(s?.count as number);
+    expect(s?.count).toBe(3);
+    // 코너는 모두 제자리
+    expect(hitSlots(3, start, { piece: "corner", misplaced: true })).toEqual(
+      [],
+    );
+    // 맞춘 큐브에는 제자리가 아닌 블럭이 없다
+    expect(hitSlots(3, solvedCube(3), U)).toEqual([]);
+  });
+
+  it("자리 × 방향 정리: 자리와 방향 둘 다", () => {
+    const s = l.steps.find((x) => x.quiz?.question.includes("맞췄다고"));
+    expect(s?.quiz?.choices[s.quiz.answer]).toContain("바른 방향");
+    // 평가 「한 면을 맞춘 상태」 앞에 손으로 해 보는 단계(U 한 번·엣지 세기)가 온다
+    const at = (f: (x: (typeof l.steps)[number]) => boolean) =>
+      l.steps.findIndex(f);
+    const face = at((x) => !!x.quiz?.question.includes("한 면을 맞춘"));
+    expect(at((x) => x.goal === "solved")).toBeLessThan(face);
+    expect(at((x) => !!x.find?.misplaced)).toBeLessThan(face);
   });
 });
 
@@ -102,7 +167,7 @@ describe("조각 따라가기", () => {
   });
 
   it("단원의 따라가기 찾기는 그 조각 하나만 맞는다", () => {
-    const l = lessonOf("333-pieces");
+    const l = lessonOf("333-piece-moves");
     const tracks = l.steps.filter(
       (s) => s.kind === "find" && s.mask === "centers" && s.find?.colors,
     );
@@ -115,7 +180,7 @@ describe("조각 따라가기", () => {
 });
 
 describe("고르기 문제의 답", () => {
-  const l = lessonOf("333-pieces");
+  const l = lessonOf("333-piece-moves");
   const quiz = (q: string) => {
     const s = l.steps.find((x) => x.quiz?.question.includes(q));
     if (!s?.quiz) throw new Error(q);
@@ -138,6 +203,8 @@ describe("고르기 문제의 답", () => {
       "welcome",
       "parts",
       "find",
+      "find",
+      "quiz",
       "build",
       "quiz",
     ]);
@@ -150,6 +217,31 @@ describe("고르기 문제의 답", () => {
       x.quiz?.question.includes("모두 몇 개"),
     );
     expect(total?.quiz?.choices[total.quiz.answer]).toBe("26개");
+  });
+
+  it("표준 색 배치: 분해·조립 앞에서 흰색 맞은편 노란색을 찾고, 흰 위·초록 앞의 오른쪽(빨간색)을 고른다", () => {
+    const first = lessonOf("333-start");
+    const build = first.steps.findIndex((x) => x.kind === "build");
+    const [find, pick] = first.steps.slice(build - 2, build);
+    // 까만 큐브에서 노란 가운데 하나만 맞다
+    expect(find?.kind).toBe("find");
+    expect(find?.mask).toBe("none");
+    expect(find?.find).toEqual({ piece: "center", colors: ["D"] });
+    expect(hitSlots(3, solvedCube(3), find?.find as FindTarget)).toHaveLength(
+      1,
+    );
+    expect(pick?.kind).toBe("quiz");
+    // 위(흰색)·앞(초록색) 센터 블럭만 보인다. 오른쪽(답)을 비롯한 나머지는 가린다
+    expect(pick?.mask).toBe("centers:UF");
+    const mask = maskFor(3, pick?.mask);
+    const shown = (mask ?? [])
+      .map((v, i) => (v === "visible" ? i : -1))
+      .filter((i) => i >= 0);
+    expect(shown).toEqual([
+      (FACE_INDEX.U as number) * 9 + 4,
+      (FACE_INDEX.F as number) * 9 + 4,
+    ]);
+    expect(pick?.quiz?.choices[pick.quiz.answer]).toBe("빨간색");
   });
 
   it("한 면을 맞춘 상태: (가)는 흰 면만 흰색(자리 틀림), (나)는 흰 조각이 제자리", () => {
@@ -196,7 +288,9 @@ describe("고르기 문제의 답", () => {
     const e = play(3, FLIPPED_EDGE);
     expect(hitSlots(3, e, UF)).toEqual([pieceByName(3, "UF")]);
     expect(goalMet(3, e, "piece:UF")).toBe(false);
-    expect(quiz("흰-초록 모서리는 지금").answer).toBe("제자리지만 뒤집혔어요");
+    expect(quiz("흰-초록 엣지 블럭은 지금").answer).toBe(
+      "제자리지만 뒤집혔어요",
+    );
 
     const c = play(3, TWISTED_CORNER);
     expect(hitSlots(3, c, UFR)).toEqual([pieceByName(3, "UFR")]);
@@ -292,7 +386,9 @@ describe("놀이판", () => {
   };
 
   it("3×3 단원에 가운데·꼭짓점·모서리·색이 함께 다니는 놀이판이 있다", () => {
-    const plays = lessonOf("333-pieces").steps.filter((s) => s.kind === "play");
+    const plays = lessonOf("333-piece-moves").steps.filter(
+      (s) => s.kind === "play",
+    );
     expect(plays).toHaveLength(4);
     const sizes = plays.map((s) => focusPieces(3, s.play?.focus ?? {}).length);
     expect(sizes).toEqual([6, 1, 1, 2]);

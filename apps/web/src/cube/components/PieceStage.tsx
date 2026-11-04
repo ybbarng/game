@@ -3,7 +3,6 @@
 import {
   cubeTopology,
   maskFromPieces,
-  OPPOSITE_FACE,
   pieceFaces,
   solvedCube,
 } from "@game/cube-engine";
@@ -12,17 +11,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { faceGrid, marksAtSlots, stickersFromState } from "../bridge";
 import {
+  BUILD_COLOR,
   BUILD_START,
   type BuildState,
-  type BuildVerdict,
   buildAsks,
   buildBegin,
   buildCount,
   buildFill,
   buildNext,
   buildOrder,
+  buildSay,
   buildTakeApart,
   buildTap,
+  PART_NAME,
+  topic,
 } from "../learn/build";
 import { marksForSlots, pieceName, stickerAtHit } from "../learn/interact";
 import { type CubeSettings, hexColor } from "../settings";
@@ -59,6 +61,7 @@ function useStage(
   settings: CubeSettings,
   onSticker: (sticker: number) => void,
   paint: (view: CubeView) => void,
+  keepView = false,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -83,6 +86,7 @@ function useStage(
           colors: settings.colors,
           stickerless: settings.stickerless,
           hidden: settings.hidden,
+          keepView,
           onTap: (hit) => {
             const i = stickerAtHit(N, hit.center, hit.normal);
             if (i !== null) live.current.onSticker(i);
@@ -105,6 +109,7 @@ function useStage(
     settings.colors,
     settings.stickerless,
     settings.hidden,
+    keepView,
   ]);
 
   return { canvasRef, viewRef, ready, failed };
@@ -165,6 +170,14 @@ const pieceLabel = (p: number) => {
   const type =
     faces.length === 1 ? "center" : faces.length === 2 ? "edge" : "corner";
   return `${faces.map((f) => COLOR_NAME[f]).join("-")} ${pieceName(type)}`;
+};
+
+/** 분해·조립의 조각 이름(2026-11-05 용어: 센터·엣지·코너 블럭, 예: 흰-초록 엣지 블럭) */
+const blockLabel = (p: number) => {
+  const faces = pieceFaces(N, p);
+  const part =
+    faces.length === 1 ? "centers" : faces.length === 2 ? "edges" : "corners";
+  return `${faces.map((f) => COLOR_NAME[f]).join("-")} ${PART_NAME[part]}`;
 };
 
 // ── 스티커로 보기 / 조각으로 보기 ──────────────────────────────
@@ -303,8 +316,6 @@ export function PartsPanel({
 
 // ── 분해·조립 ────────────────────────────────────────────
 
-const PART_NAME = { centers: "가운데", edges: "모서리", corners: "꼭짓점" };
-
 /** 지금 끼울 종류의 빈자리 */
 function ghostsOf(s: BuildState): number[] {
   if (s.phase !== "centers" && s.phase !== "edges" && s.phase !== "corners")
@@ -324,28 +335,6 @@ function stickersOf(s: BuildState) {
       ghostsOf(s).map((p) => [p, "pick"] as const),
     ),
   );
-}
-
-function verdictText(v: BuildVerdict, b: BuildState): string {
-  const next = buildNext(b);
-  switch (v.kind) {
-    case "ok":
-      return "맞아요!";
-    case "taken":
-      return "이미 끼운 자리예요.";
-    case "kind":
-      return `지금은 ${PART_NAME[b.phase as keyof typeof PART_NAME] ?? "조각"} 자리를 골라요.`;
-    case "opposite": {
-      if (v.across)
-        return `그 자리는 ${COLOR_NAME[v.pair]} 맞은편이라 ${COLOR_NAME[OPPOSITE_FACE[v.pair as 0] as number]} 자리예요.`;
-      const color = next === null ? 0 : (pieceFaces(N, next)[0] as number);
-      return `${COLOR_NAME[color]}은 ${COLOR_NAME[v.pair]} 맞은편에 와요.`;
-    }
-    case "mirror":
-      return "여기 끼우면 맞출 수 없는 큐브가 돼요. 흰-초록-빨강 꼭짓점의 세 색은 정해진 돌림 차례로 붙어 있어요. 빨강·주황 가운데를 바꿔 끼우면 그 차례가 거울처럼 뒤집혀, 꼭짓점을 어떻게 돌려 끼워도 세 색이 함께 맞지 않아요.";
-    case "slot":
-      return `그 자리는 ${v.between.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요.`;
-  }
 }
 
 /**
@@ -412,6 +401,8 @@ export function BuildPanel({
       view.setLayout(layoutFor(next), 450);
     }
     if (next.phase === "done" && b.phase !== "done") {
+      // 다 끼우면 처음 각으로 돌아와 맞춘 모습을 보인다
+      view?.resetView();
       playCubeCue(settings, "cubeSolved");
       live.current.onPassed();
     }
@@ -422,14 +413,15 @@ export function BuildPanel({
     const cur = live.current.b;
     if (slot === undefined || !buildAsks(cur)) return;
     const r = buildTap(cur, slot);
-    setSay({ text: verdictText(r.verdict, cur), ok: r.verdict.kind === "ok" });
+    setSay({ text: buildSay(r.verdict, cur), ok: r.verdict.kind === "ok" });
     setMirror(r.verdict.kind === "mirror");
     if (r.verdict.kind === "ok") {
       playCubeCue(settings, "cubeTurn");
       update(r.state);
     } else playCubeCue(settings, "invalid");
   };
-  const stage = useStage(settings, tap, (v) => paint(v));
+  // 아래·뒤 빈자리를 끌어 돌려 본 채로 누를 수 있게, 손을 떼도 보기를 남긴다(휴대폰은 돌아가는 사이에 누를 수 없었다)
+  const stage = useStage(settings, tap, (v) => paint(v), true);
 
   const takeApart = () => {
     const view = stage.viewRef.current;
@@ -486,7 +478,7 @@ export function BuildPanel({
               onClick={() => update(buildBegin(b))}
               className="rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black"
             >
-              가운데 끼우기
+              센터 블럭 끼우기
             </button>
           </>
         )}
@@ -501,8 +493,24 @@ export function BuildPanel({
         )}
         {asks && next !== null && (
           <span className="break-keep" data-build-ask={next}>
-            다음 조각 <Swatches piece={next} settings={settings} />{" "}
-            {pieceLabel(next)}은 어디에? 빈자리를 눌러요.
+            다음 블럭 <Swatches piece={next} settings={settings} />{" "}
+            {topic(blockLabel(next))} 어디에? 빈자리를 눌러요.
+          </span>
+        )}
+        {b.phase === "centers" && (
+          <span
+            data-build-pairs
+            className="break-keep rounded-lg bg-white/5 px-2 py-1 text-white/70 text-xs"
+          >
+            맞은편 짝{" "}
+            {PAIRS.map(([a, z], i) => (
+              <span key={a} className="whitespace-nowrap">
+                {i > 0 && " · "}
+                <Chip face={a} settings={settings} />↔
+                <Chip face={z} settings={settings} />
+              </span>
+            ))}{" "}
+            · 흰색 위·초록색 앞이면 빨간색은 오른쪽
           </span>
         )}
         {!asks && next !== null && (
@@ -572,7 +580,7 @@ export function BuildPanel({
       )}
       <Stage
         stage={stage}
-        label="빈자리를 눌러 끼워요. 끌면 둘러볼 수 있어요."
+        label="빈자리를 눌러 끼워요. 끌어 돌린 각도는 그대로 남아요."
         net={
           <CubeNet
             n={N}
@@ -584,6 +592,33 @@ export function BuildPanel({
           />
         }
       />
+      {stage.ready && b.phase !== "whole" && b.phase !== "done" && (
+        <button
+          type="button"
+          data-build-home-view
+          onClick={() => stage.viewRef.current?.resetView()}
+          className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+        >
+          처음 각도로
+        </button>
+      )}
     </div>
+  );
+}
+
+/** 가운데 맞은편 짝(면 차례 U R F D L B): 흰↔노랑, 초록↔파랑, 빨강↔주황 */
+const PAIRS = [
+  [0, 3],
+  [2, 5],
+  [1, 4],
+] as const;
+
+function Chip({ face, settings }: { face: number; settings: CubeSettings }) {
+  return (
+    <span
+      title={BUILD_COLOR[face]}
+      className="mx-0.5 inline-block h-3 w-3 rounded-sm border border-black/40 align-middle"
+      style={{ background: hexColor(settings.colors[face] ?? 0) }}
+    />
   );
 }

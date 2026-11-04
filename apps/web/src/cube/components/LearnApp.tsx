@@ -20,6 +20,7 @@ import {
 } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
+  LESSON_RENAMES,
   type LearnProgress,
   loadLearn,
   markLessonDone,
@@ -58,8 +59,10 @@ import { TryPanel } from "./TryPanel";
  */
 
 function findLesson(id: string): { course: Course; lesson: Lesson } | null {
+  // 새로 짠 단원의 옛 주소(`?lesson=<옛 id>`)도 새 단원으로 연다
+  const want = LESSON_RENAMES[id] ?? id;
   for (const course of COURSES) {
-    const lesson = course.lessons.find((l) => l.id === id);
+    const lesson = course.lessons.find((l) => l.id === want);
     if (lesson) return { course, lesson };
   }
   return null;

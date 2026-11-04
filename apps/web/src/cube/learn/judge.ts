@@ -400,6 +400,17 @@ export function maskFor(
       return maskFromPieces(n, []);
     case "centers":
       return maskFromPieces(n, cubeGroups(n, U).centers);
+    case "centers:UF": {
+      const up = FACE_INDEX.U as number;
+      const front = FACE_INDEX.F as number;
+      return maskFromPieces(
+        n,
+        cubeGroups(n, U).centers.filter((p) => {
+          const f = pieceFaces(n, p)[0];
+          return f === up || f === front;
+        }),
+      );
+    }
     case "corners":
       return maskFromPieces(n, piecesOfKind(n, "corner"));
     case "piece:UFR":

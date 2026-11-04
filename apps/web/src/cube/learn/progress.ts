@@ -84,6 +84,8 @@ export const LESSON_RENAMES: Readonly<Record<string, string>> = {
   "222-from333-first-layer": "222-from333-first-layer-up",
   "222-from333-yellow-face": "222-from333-corner-place",
   "222-from333-yellow-corners": "222-from333-corner-twist",
+  // 2026-11-05 「조각의 움직임」을 센터 → 엣지 → 코너 차례로 바꾸고 자리·방향 단계를 더함(해 보기 번호가 달라짐)
+  "333-pieces": "333-piece-moves",
 };
 
 function migrate(
