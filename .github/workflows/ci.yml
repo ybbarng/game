@@ -61,7 +61,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm --filter @game/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @game/web exec playwright install --with-deps chrome
       - run: pnpm e2e --shard=${{ matrix.shard }}/2
       # 시험마다 걸린 시간(playwright.config.ts의 json reporter). 느린 시험 워크플로가 받아 본다
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

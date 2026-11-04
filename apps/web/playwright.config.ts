@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { BROWSER } from "./e2e/browser";
 
 /** 다른 작업 트리가 같은 포트로 띄운 서버를 재사용하지 않게 `E2E_PORT`로 바꿀 수 있다 */
 const PORT = Number(process.env.E2E_PORT ?? 4173);
@@ -6,6 +7,8 @@ const PORT = Number(process.env.E2E_PORT ?? 4173);
 /** 실제 정적 빌드(out/)를 띄워 화면 크기별로 한 판을 끝까지 해 본다 */
 export default defineConfig({
   testDir: "e2e",
+  // 뜨는 브라우저가 보안 수정 뒤 버전인지 먼저 본다(e2e/browser.ts)
+  globalSetup: "./e2e/global-setup.ts",
   // 멈춤을 빨리 드러내는 안전장치. 가장 긴 보통 시험이 이 기계에서 약 14초(2026-10-30, docs/38).
   // 여러 탭 멘탈 포커처럼 무거운 시험은 파일 안에서 따로 정한다
   timeout: 90_000,
@@ -28,15 +31,19 @@ export default defineConfig({
   // 자르는데, 휴대폰 화면은 시험 안에서 건너뛰는 것이 많아 실제 일은 데스크톱에 몰린다(시간 합의 약 60%).
   // 데스크톱을 맨 앞에 두면 조각 1이 데스크톱 전부를 맡아(약 585초 대 294초, 2026-11-01) 가운데에 둔다(약 480 대 400)
   projects: [
-    { name: "phone-portrait", use: { ...devices["Pixel 7"] } },
+    { name: "phone-portrait", use: { ...devices["Pixel 7"], ...BROWSER } },
     {
       name: "desktop",
       use: {
         ...devices["Desktop Chrome"],
+        ...BROWSER,
         viewport: { width: 1280, height: 720 },
       },
     },
-    { name: "phone-landscape", use: { ...devices["Pixel 7 landscape"] } },
+    {
+      name: "phone-landscape",
+      use: { ...devices["Pixel 7 landscape"], ...BROWSER },
+    },
   ],
   webServer: {
     command: `pnpm exec serve out -l ${PORT} --no-port-switching`,
