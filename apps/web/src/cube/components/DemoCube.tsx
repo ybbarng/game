@@ -58,6 +58,8 @@ export function DemoCube({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
   const [failed, setFailed] = useState(false);
+  /** 3D 장면을 만들었다(화면 시험이 3D 길을 확인하는 표시) */
+  const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(autoPlay);
 
@@ -104,6 +106,7 @@ export function DemoCube({
         );
         viewRef.current = view;
         ro.observe(canvas);
+        setReady(true);
       })
       .catch(() => setFailed(true));
     return () => {
@@ -197,6 +200,7 @@ export function DemoCube({
           <canvas
             ref={canvasRef}
             data-cube-canvas
+            data-cube-ready={ready ? "" : undefined}
             className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
           />
         )}
