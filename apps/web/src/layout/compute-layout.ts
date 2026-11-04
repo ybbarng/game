@@ -43,6 +43,12 @@ export interface LayoutInput {
    * 내 단추 칸(`actions`)은 손패 옆(자리가 모자라면 손패 바로 위)에 두고, 남은 가장 넓은 곳을 바닥으로 쓴다
    */
   board?: "trick" | "floor";
+  /**
+   * 다른 사람 손패 뒷면 부채의 카드 높이(`fanCardSize(layout).h`). 주면 위쪽 자리 판 아래로 나온 부채만큼
+   * 바닥을 내려 겹치지 않게 한다. 기본(주지 않음)은 마이티·하트처럼 부채가 바닥 위쪽에 조금 걸쳐도 둔다.
+   * 부채 높이는 자리 판 높이로 정해지므로, 한 번 계산한 배치로 `fanCardSize`를 구해 다시 부른다
+   */
+  fanHeight?: number;
 }
 
 export interface SeatLayout {
@@ -76,6 +82,9 @@ export const PLATE_MIN_H = 44;
 export const MY_PLATE_SLIM_H = 26;
 /** 이 높이보다 낮으면 자리 판을 한 줄로 줄여 그린다 */
 export const PLATE_COMPACT_H = 58;
+
+/** 뒷면 부채가 자리 판 끝에서 판 쪽으로 나오는 길이(카드 높이 배): 가운데 0.22 + 반 장 */
+export const FAN_PEEK = 0.72;
 
 /** 카드 그림(250×350)의 높이/폭 */
 export const CARD_RATIO = 350 / 250;
@@ -223,8 +232,21 @@ export function computeLayout(input: LayoutInput): Layout {
     plate = { w: plate.w * 0.85, h: Math.max(PLATE_MIN_H, plate.h * 0.9) };
   }
 
+  // 위쪽 자리 판 아래로 나온 뒷면 부채(fanSlot: 카드 가운데가 판 끝에서 0.22장 아래)
+  const peek = (input.fanHeight ?? 0) * FAN_PEEK;
   if (floorBoard)
-    return floorLayout({ W, H, g, portrait, hud, table, hand, seats, plate });
+    return floorLayout({
+      W,
+      H,
+      g,
+      portrait,
+      hud,
+      table,
+      hand,
+      seats,
+      plate,
+      peek,
+    });
 
   // 바닥
   let center: Rect;
@@ -233,7 +255,7 @@ export function computeLayout(input: LayoutInput): Layout {
     const platesBottom = Math.max(
       ...seats.slice(1).map((s) => s.plate.y + s.plate.h),
     );
-    const top = platesBottom + g;
+    const top = platesBottom + peek + g;
     const room = table.y + table.h - top;
     // 자리 판 아래 공간이 너무 좁으면(아주 낮은 화면) 겹치더라도 일정 크기를 지킨다.
     const side = Math.min(table.w * 0.8, Math.max(room, table.h * 0.4));
@@ -259,7 +281,10 @@ export function computeLayout(input: LayoutInput): Layout {
           center.x < p.x + p.w &&
           p.y < center.y + center.h / 2,
       );
-    const top = Math.max(center.y, ...above.map((p) => p.y + p.h + g / 2));
+    const top = Math.max(
+      center.y,
+      ...above.map((p) => p.y + p.h + peek + g / 2),
+    );
     if (top > center.y) {
       const bottom = Math.min(
         table.y + table.h,
@@ -342,8 +367,10 @@ function floorLayout(p: {
   hand: Layout["hand"];
   seats: SeatLayout[];
   plate: Size;
+  /** 위쪽 자리 판 아래로 나온 뒷면 부채 높이 */
+  peek: number;
 }): Layout {
-  const { W, H, g, table, hand, seats, plate } = p;
+  const { W, H, g, table, hand, seats, plate, peek } = p;
   const xs = hand.slots.map((s) => s.x);
   const handW =
     xs.length > 0 ? Math.max(...xs) - Math.min(...xs) + hand.card.w : 0;
@@ -372,7 +399,9 @@ function floorLayout(p: {
   const right = others.filter((r) => r.x > mid);
   const across = others.filter((r) => !left.includes(r) && !right.includes(r));
   const below = (rs: Rect[]) =>
-    rs.length > 0 ? Math.max(...rs.map((r) => r.y + r.h)) + g / 2 : table.y;
+    rs.length > 0
+      ? Math.max(...rs.map((r) => r.y + r.h)) + peek + g / 2
+      : table.y;
   // 양옆 자리 판 사이(맞은편 아래)와 모든 자리 판 아래 중 넓은 쪽
   const between: Rect = (() => {
     const x0 =

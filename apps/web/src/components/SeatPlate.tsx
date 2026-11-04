@@ -13,27 +13,43 @@ interface SeatPlateProps {
   rect: Rect;
   name: string;
   handCount: number;
-  points: Card[] | null;
-  pointCount: number;
-  money: number;
-  declarer: boolean;
-  friend: boolean;
-  ruling: boolean;
+  /** 지금 차례 */
   active: boolean;
-  leader: boolean;
-  dead: boolean;
+  /** 마이티: 딴 점수 카드(null이면 장수만). 주지 않으면 점수 카드 줄이 없다 */
+  points?: Card[] | null;
+  pointCount?: number;
+  /** 마이티 돈(10배로 보인다). 주지 않거나 null이면 돈 줄을 숨긴다 */
+  money?: number | null;
+  declarer?: boolean;
+  friend?: boolean;
+  /** 이번 판을 이끄는 쪽(마이티 주공 편) */
+  ruling?: boolean;
+  /** 선(먼저 내는 사람) */
+  leader?: boolean;
+  /** 탈락 */
+  dead?: boolean;
   /** 온라인 대전에서 연결이 끊겨 컴퓨터가 대신 두는 중 */
   offline?: boolean;
   /** 멘탈 포커 판: 컴퓨터가 대신할 수 없어 돌아오기를 기다린다 */
   waiting?: boolean;
   /** 내 기기가 이 자리의 부정을 찾았다 */
   accused?: boolean;
-  bubble: string | null;
+  bubble?: string | null;
   /** 포기했거나 다른 사람에게 밀린 공약 */
   bubbleDim?: boolean;
-  compact: boolean;
+  /** 점수 카드를 글자 대신 장수로만 보인다 */
+  compact?: boolean;
   /** 내 자리: 손패가 보이므로 장수를 빼고, 자리가 모자라면 한 줄로 줄인다 */
   mine?: boolean;
+  /** 이름 옆에 더 붙일 표(예: 하트 넘기기를 골랐다는 ✓) */
+  badges?: ReactNode;
+  /**
+   * 아래 줄에 게임마다 보일 것(하트 이번 판·합 점수, 화투 먹은 패 요약 등). 주면 마이티 점수 카드·돈 줄 대신
+   * 이것을 그린다
+   */
+  extra?: ReactNode;
+  /** 화면 읽기·시험용 이름표(예: 「민준 자리」) */
+  label?: string;
 }
 
 /** 이보다 낮으면 한 줄로 줄인 판 */
@@ -43,9 +59,14 @@ function isRed(card: Card): boolean {
   return card.startsWith("H") || card.startsWith("D");
 }
 
-/** 자리 판. 장수·딴 점수 카드·상태를 보여 준다. 다른 사람 손패 뒷면은 GameTable이 판 뒤에 펼친다. */
+/**
+ * 자리 판(마이티·하트 공통, 원카드·화투도 쓸 수 있다). 이름·장수·표와 아래 줄(마이티는 딴 점수 카드·돈,
+ * 다른 게임은 `extra`)을 보여 준다. 다른 사람 손패 뒷면은 판 쪽이 자리 판 뒤에 펼친다(`fanSlot`)
+ */
 export function SeatPlate(props: SeatPlateProps) {
   const { rect } = props;
+  const pointCount = props.pointCount ?? 0;
+  const money = props.money ?? null;
   // 낮은 화면에서는 점수 카드 줄을 접어 한 줄로 보여 준다.
   const compact = rect.h < PLATE_COMPACT_H;
   // 내 자리 판을 줄였을 때는 이름·표시·점수 장수·돈을 한 줄에 놓는다.
@@ -53,14 +74,15 @@ export function SeatPlate(props: SeatPlateProps) {
   return (
     <SeatPlateFrame
       rect={rect}
-      ruling={props.ruling}
+      ruling={props.ruling ?? false}
       active={props.active}
-      dead={props.dead}
+      dead={props.dead ?? false}
       accused={props.accused ?? false}
       offline={props.offline ?? false}
       waiting={props.waiting ?? false}
-      bubble={props.bubble}
+      bubble={props.bubble ?? null}
       bubbleDim={props.bubbleDim ?? false}
+      {...(props.label ? { label: props.label } : {})}
     >
       <div className={cn("flex items-center gap-1", slim && "h-full")}>
         <span className="min-w-[3.5em] truncate font-semibold">
@@ -90,35 +112,38 @@ export function SeatPlate(props: SeatPlateProps) {
             선
           </Term>
         )}
-        {slim ? (
-          <span className="ml-auto shrink-0 whitespace-nowrap text-[10px] tabular-nums opacity-70">
-            {props.pointCount > 0 ? `점수 ${props.pointCount}장 · ` : ""}
-            {props.money * 10}
-          </span>
-        ) : (
-          !props.mine && (
-            <span
-              className="ml-auto shrink-0 whitespace-nowrap tabular-nums opacity-80"
-              title="남은 손패"
-            >
-              {props.dead ? "탈락" : `${props.handCount}장`}
-            </span>
-          )
-        )}
+        {props.badges}
+        {slim
+          ? (pointCount > 0 || money !== null) && (
+              <span className="ml-auto shrink-0 whitespace-nowrap text-[10px] tabular-nums opacity-70">
+                {pointCount > 0
+                  ? `점수 ${pointCount}장${money !== null ? " · " : ""}`
+                  : ""}
+                {money !== null ? money * 10 : ""}
+              </span>
+            )
+          : !props.mine && (
+              <span
+                className="ml-auto shrink-0 whitespace-nowrap tabular-nums opacity-80"
+                title="남은 손패"
+              >
+                {props.dead ? "탈락" : `${props.handCount}장`}
+              </span>
+            )}
       </div>
-      {slim ? null : compact ? (
+      {slim ? null : props.extra !== undefined ? (
+        props.extra
+      ) : compact ? (
         <div className="flex items-center justify-between text-[10px] tabular-nums opacity-70">
-          <span>
-            {props.pointCount > 0 ? `점수 ${props.pointCount}장` : ""}
-          </span>
-          <span>{props.money * 10}</span>
+          <span>{pointCount > 0 ? `점수 ${pointCount}장` : ""}</span>
+          {money !== null && <span>{money * 10}</span>}
         </div>
       ) : (
         <>
           <div className="flex h-4 flex-nowrap items-center gap-0.5 overflow-hidden">
-            {props.points === null || props.compact
-              ? props.pointCount > 0 && (
-                  <span className="opacity-80">점수 {props.pointCount}장</span>
+            {props.points == null || props.compact
+              ? pointCount > 0 && (
+                  <span className="opacity-80">점수 {pointCount}장</span>
                 )
               : props.points.map((card) => (
                   <span
@@ -132,9 +157,11 @@ export function SeatPlate(props: SeatPlateProps) {
                   </span>
                 ))}
           </div>
-          <div className="text-[10px] tabular-nums opacity-60">
-            {props.money * 10}
-          </div>
+          {money !== null && (
+            <div className="text-[10px] tabular-nums opacity-60">
+              {money * 10}
+            </div>
+          )}
         </>
       )}
     </SeatPlateFrame>

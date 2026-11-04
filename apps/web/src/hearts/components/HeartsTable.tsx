@@ -18,6 +18,7 @@ import { PlayingCard } from "@/components/PlayingCard";
 import { ActionButton, Panel } from "@/components/panels/common";
 import { ResultBanner } from "@/components/ResultBanner";
 import { useRelayoutFade } from "@/components/relayout";
+import { SeatPlate } from "@/components/SeatPlate";
 import { SuitText } from "@/components/SuitText";
 import {
   MissionOverlay,
@@ -456,65 +457,42 @@ export function HeartsTable({
             const active = view.turn === seat && view.phase === "play";
             const ready = view.phase === "passing" && view.passReady[seat];
             return (
-              <div
+              <SeatPlate
                 key={seat}
-                className={cn(
-                  "absolute flex flex-col justify-between rounded-xl border border-white/15 bg-black/45 px-2 py-1 text-xs shadow-lg backdrop-blur-sm transition-[box-shadow]",
-                  active &&
-                    "shadow-[0_0_0_2px_#fde68a,0_0_20px_2px_rgba(253,230,138,0.55)]",
-                )}
-                style={{
-                  left: p.x,
-                  top: p.y,
-                  width: p.w,
-                  height: p.h,
-                  zIndex: 20,
-                }}
-              >
-                <div className="flex items-center gap-1">
-                  <span className="min-w-[3.5em] truncate font-semibold">
-                    {seatName(seat)}
-                  </span>
-                  {ready && (
+                rect={p}
+                name={seatName(seat)}
+                handCount={view.handCounts[seat] ?? 0}
+                active={active}
+                offline={offlineSeats.includes(seat)}
+                waiting={fair}
+                accused={incident?.seat === seat}
+                badges={
+                  ready && (
                     <span
                       className="shrink-0 rounded bg-emerald-400 px-1 text-[10px] text-black"
                       title="넘길 카드를 골랐다"
                     >
                       ✓
                     </span>
-                  )}
-                  <span className="ml-auto shrink-0 tabular-nums opacity-80">
-                    {view.handCounts[seat] ?? 0}장
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] tabular-nums">
-                  <span
-                    className={cn(
-                      (plateView.takenPoints[seat] ?? 0) > 0
-                        ? "text-red-300"
-                        : "opacity-50",
-                    )}
-                  >
-                    이번 판 {plateView.takenPoints[seat] ?? 0}
-                  </span>
-                  <span className="opacity-70">
-                    합 {plateView.scores[seat] ?? 0}
-                  </span>
-                </div>
-                {incident?.seat === seat ? (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-bold text-[10px] shadow">
-                    ⚠ 부정 감지
-                  </div>
-                ) : (
-                  offlineSeats.includes(seat) && (
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-semibold text-[10px] shadow">
-                      {fair
-                        ? "연결 끊김 · 기다리는 중"
-                        : "연결 끊김 · 컴퓨터가 대신"}
-                    </div>
                   )
-                )}
-              </div>
+                }
+                extra={
+                  <div className="flex items-center justify-between text-[11px] tabular-nums">
+                    <span
+                      className={cn(
+                        (plateView.takenPoints[seat] ?? 0) > 0
+                          ? "text-red-300"
+                          : "opacity-50",
+                      )}
+                    >
+                      이번 판 {plateView.takenPoints[seat] ?? 0}
+                    </span>
+                    <span className="opacity-70">
+                      합 {plateView.scores[seat] ?? 0}
+                    </span>
+                  </div>
+                }
+              />
             );
           })}
 
