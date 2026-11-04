@@ -5,8 +5,18 @@ import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { caseById, shortName } from "../algs/check";
+import { spotCase } from "../algs/spot";
+import {
+  type AlgBook,
+  habitList,
+  loadAlgBook,
+  usedAlg,
+  watchAlgBook,
+} from "../algs/store";
 import { stickersFromState as stickersOf } from "../bridge";
 import type { Command } from "../input";
+import type { AlgCase } from "../learn";
 import {
   addRecord,
   averageOf,
@@ -22,7 +32,9 @@ import { type SessionCue, SolveSession } from "../solve-session";
 import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
 import { scrambleInWorker, warmUpScramble } from "../worker";
+import { AlgChips } from "./AlgChips";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { useMoveKeys } from "./MoveChip";
 
 /**
  * 혼자 맞추기(`/cube/solo`)와 가상 블라인드(`/cube/blind`) 화면(docs/47 1·7절).
@@ -70,6 +82,25 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const scrambleRequest = useRef(0);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  // 상황 알림(설정에서 켰을 때, 혼자 맞추기 3×3): 내 목록 상황에 이르면 구석에 이름과 내 공식
+  const [algBook, setAlgBook] = useState<AlgBook>({});
+  const [spotted, setSpotted] = useState<AlgCase | null>(null);
+  /** 이번 판에서 만난 내 목록 상황(기록에 남긴다) */
+  const metRef = useRef<string[]>([]);
+  const [met, setMet] = useState<string[]>([]);
+  const alertOn = settings.caseAlert && mode === "solo" && n === 3;
+  const myCases = useRef<AlgCase[]>([]);
+  myCases.current = habitList(algBook).map((x) => x.c);
+  const { keysOf } = useMoveKeys(3);
+  useEffect(() => {
+    setAlgBook(loadAlgBook());
+    return watchAlgBook(setAlgBook);
+  }, []);
+  const clearMet = useCallback(() => {
+    metRef.current = [];
+    setMet([]);
+    setSpotted(null);
+  }, []);
 
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const sync = useCallback(() => setSyncToken((v) => v + 1), []);
@@ -90,7 +121,14 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       clock: realClock,
       onChange: bump,
       onCue,
-      onRecord: (r) => setRecords(addRecord(r)),
+      onRecord: (r) =>
+        setRecords(
+          addRecord(
+            metRef.current.length > 0
+              ? { ...r, myCases: [...metRef.current] }
+              : r,
+          ),
+        ),
     });
   }, `${n}-${mode}`);
   session.inspection = settings.inspection;
@@ -132,6 +170,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     try {
       const s = await scrambleInWorker(eventFor(n, mode), seed);
       if (stale()) return;
+      clearMet();
       session.start(s.text, seed);
       sync();
       if (!s.official) setNotice("임시 섞기");
@@ -140,7 +179,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
-  }, [preparing, n, mode, session, sync, stopReplay]);
+  }, [preparing, n, mode, session, sync, stopReplay, clearMet]);
 
   const onMove = useCallback(
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
@@ -149,9 +188,20 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
         setNotice("외우는 동안에는 면을 돌릴 수 없습니다.");
         return false;
       }
+      if (alertOn && myCases.current.length > 0) {
+        const c =
+          session.phase === "solving"
+            ? spotCase(3, session.state, myCases.current)
+            : null;
+        setSpotted(c);
+        if (c && !metRef.current.includes(c.id)) {
+          metRef.current = [...metRef.current, c.id];
+          setMet(metRef.current);
+        }
+      }
       return true;
     },
-    [session],
+    [session, alertOn],
   );
 
   const onCommand = useCallback(
@@ -159,6 +209,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       if (c === "undo") return session.undo();
       if (c === "reset") {
         stopReplay();
+        clearMet();
         session.reset();
         sync();
       } else if (c === "scramble") {
@@ -169,7 +220,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       }
       return null;
     },
-    [session, sync, doScramble, stopReplay],
+    [session, sync, doScramble, stopReplay, clearMet],
   );
 
   /** 기록 하나를 다시 본다: 섞인 상태에서 수를 그때 시각대로 */
@@ -275,7 +326,20 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
         </header>
 
         <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-          <section className="flex flex-col items-center gap-2">
+          <section className="relative flex flex-col items-center gap-2">
+            {alertOn && spotted && phase === "solving" && (
+              <div
+                data-case-alert={spotted.id}
+                className="pointer-events-none absolute right-0 bottom-0 z-10 flex max-w-64 flex-col gap-0.5 rounded-lg bg-black/60 px-2 py-1 text-xs"
+              >
+                <span className="font-semibold">{shortName(spotted)}</span>
+                <AlgChips
+                  alg={usedAlg(algBook, spotted)}
+                  keysOf={keysOf}
+                  className="font-mono text-[11px] text-white/80"
+                />
+              </div>
+            )}
             <div className="flex w-full flex-wrap items-baseline justify-center gap-x-6 gap-y-1">
               <span
                 data-cube-clock
@@ -314,6 +378,19 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
 
             {phase === "done" && result && (
               <ResultBox mode={mode} result={result} />
+            )}
+            {phase === "done" && met.length > 0 && (
+              <p
+                className="text-white/70 text-xs"
+                data-cube-met={met.join(" ")}
+              >
+                만난 내 상황:{" "}
+                {met
+                  .map((id) => caseById(id))
+                  .filter((c): c is AlgCase => !!c)
+                  .map(shortName)
+                  .join(" · ")}
+              </p>
             )}
 
             <CubePlay

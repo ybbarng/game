@@ -393,6 +393,18 @@ function solvesWith(
 }
 
 /**
+ * 이 큐브(그 상황의 쥔 방향, 흰 면 아래)에서 공식이 그 상황의 목표를 만드나(앞 윗면 돌리기는 봐준다).
+ * 맞추는 도중의 큐브가 어느 상황인지 알아볼 때(spot.ts)
+ */
+export function solvesFrom(
+  c: AlgCase,
+  moves: readonly CubeMove[],
+  start: PuzzleState,
+): boolean {
+  return solvesWith(c, moves, start) !== null;
+}
+
+/**
  * F2L 상황을 다른 칸으로 옮긴 시작 큐브(큐브를 y·y2·y'로 돌려 쥠). 자료는 모두 FR 칸이라
  * 거울(좌우 대칭)로 만든 공식은 FL 칸을 푼다
  */

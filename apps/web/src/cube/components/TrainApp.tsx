@@ -5,12 +5,26 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { setOf } from "../algs/check";
+import {
+  type HabitLog,
+  habitAverage,
+  loadHabit,
+  pickHabitCase,
+  readyForKnown,
+  recordHabitFail,
+  recordHabitSolve,
+} from "../algs/habit";
 import { algLink } from "../algs/link";
+import { sameAlg } from "../algs/same-alg";
 import {
   type AlgBook,
   algsOf,
   commitAlgBook,
+  habitList,
+  habitOf,
   loadAlgBook,
+  setHabit,
   setUsed,
   usedAlg,
   watchAlgBook,
@@ -50,7 +64,7 @@ import { KeyCaps, useMoveKeys } from "./MoveChip";
  * 시간은 첫 면 돌리기에서 시작해 목표 모양이 되는 순간 멈춘다(큐브 전체 돌리기는 수로 세지 않는다).
  */
 
-type Pick = "all" | "picked" | "weak";
+type Pick = "all" | "picked" | "weak" | "mine";
 type Phase = "ready" | "solving" | "done" | "gaveUp";
 
 interface Current {
@@ -70,7 +84,21 @@ const PICK_LABEL: Record<Pick, string> = {
   all: "전부",
   picked: "고른 것",
   weak: "약한 것",
+  mine: "내 목록",
 };
+
+/** 앞뒤 윗면 돌리기를 봐주는 묶음(훈련 상황에 무작위 윗면 돌리기를 붙이는 묶음) */
+const AUF_SETS = new Set([
+  "oll",
+  "pll",
+  "f2l",
+  "2look-oll",
+  "2look-pll",
+  "ortega-oll",
+]);
+
+/** 이번 판이 내 공식으로 풀렸나(버릇 상태가 있는 상황만 본다) */
+type SameResult = "mine" | "other" | null;
 
 export function TrainApp() {
   const settings = useCubeSettings();
@@ -90,6 +118,8 @@ export function TrainApp() {
     null,
   );
   const [showAlgs, setShowAlgs] = useState(false);
+  const [same, setSame] = useState<SameResult>(null);
+  const [habitLog, setHabitLog] = useState<HabitLog>({});
   const [syncToken, setSyncToken] = useState(0);
   const [, tick] = useState(0);
 
@@ -97,6 +127,10 @@ export function TrainApp() {
   useEffect(() => {
     setBook(loadTrain());
     setAlgBook(loadAlgBook());
+    setHabitLog(loadHabit());
+    // 일람표의 「내 목록 훈련」 링크
+    if (new URLSearchParams(window.location.search).get("pick") === "mine")
+      setPick("mine");
     // 공식 모음을 다른 탭에서 고치면 다시 읽는다
     return watchAlgBook(setAlgBook);
   }, []);
@@ -111,15 +145,55 @@ export function TrainApp() {
     return ids;
   }, [set, pick, picked, book]);
 
-  const live = useRef({ cur, state, history, phase, startedAt, settings });
-  live.current = { cur, state, history, phase, startedAt, settings };
+  const live = useRef({
+    cur,
+    state,
+    history,
+    phase,
+    startedAt,
+    settings,
+    algBook,
+  });
+  live.current = {
+    cur,
+    state,
+    history,
+    phase,
+    startedAt,
+    settings,
+    algBook,
+  };
 
+  const [empty, setEmpty] = useState(false);
   const nextCase = useCallback(() => {
     const prev = live.current.cur?.c.id;
-    const choices = pool.length > 1 ? pool.filter((id) => id !== prev) : pool;
-    const id = choices[Math.floor(Math.random() * choices.length)];
-    const c = set.cases.find((x) => x.id === id) ?? (set.cases[0] as AlgCase);
-    const t = makeTrainCase(set, c, mode, randomSeed());
+    let c: AlgCase;
+    if (pick === "mine") {
+      // 내 목록: 묶음과 상관없이, 덜 익은 것을 더 자주(저장소를 바로 읽는다: 처음 열 때도 맞게)
+      const list = habitList(loadAlgBook());
+      const id = pickHabitCase(
+        list.map((x) => ({ id: x.c.id, state: x.state })),
+        loadHabit(),
+        Date.now(),
+        Math.random(),
+        prev,
+      );
+      const hit = list.find((x) => x.c.id === id);
+      setEmpty(!hit);
+      if (!hit) {
+        live.current.cur = null;
+        setCur(null);
+        setState(null);
+        return;
+      }
+      c = hit.c;
+    } else {
+      setEmpty(false);
+      const choices = pool.length > 1 ? pool.filter((id) => id !== prev) : pool;
+      const id = choices[Math.floor(Math.random() * choices.length)];
+      c = set.cases.find((x) => x.id === id) ?? (set.cases[0] as AlgCase);
+    }
+    const t = makeTrainCase(setOf(c), c, mode, randomSeed());
     live.current.state = t.state;
     live.current.phase = "ready";
     setCur({ c, t });
@@ -128,8 +202,9 @@ export function TrainApp() {
     setHistory([]);
     setPhase("ready");
     setResult(null);
+    setSame(null);
     setSyncToken((v) => v + 1);
-  }, [pool, set, mode]);
+  }, [pool, set, mode, pick]);
 
   // 묶음·고르기·가리기가 바뀌면 새 상황
   // biome-ignore lint/correctness/useExhaustiveDependencies: 고른 값이 바뀔 때만
@@ -163,6 +238,16 @@ export function TrainApp() {
       setPhase("done");
       setResult({ ms, moves });
       setBook(recordSolve(c.cur.c.id, ms, moves));
+      const caseNow = c.cur.c;
+      if (habitOf(c.algBook, caseNow)) {
+        const mine = sameAlg(n, c.history, usedAlg(c.algBook, caseNow), {
+          auf: AUF_SETS.has(caseNow.set),
+        });
+        setSame(mine ? "mine" : "other");
+        setHabitLog(
+          recordHabitSolve(caseNow.id, { ms, mine, now: Date.now() }),
+        );
+      }
       playCubeCue(c.settings, "cubeSolved");
     }
     return true;
@@ -175,6 +260,8 @@ export function TrainApp() {
     setPhase("gaveUp");
     setShowAlgs(true);
     setBook(recordFail(c.cur.c.id));
+    if (habitOf(c.algBook, c.cur.c))
+      setHabitLog(recordHabitFail(c.cur.c.id, Date.now()));
   }, []);
 
   const onCommand = useCallback(
@@ -200,6 +287,7 @@ export function TrainApp() {
         setHistory([]);
         setPhase("ready");
         setResult(null);
+        setSame(null);
         setSyncToken((v) => v + 1);
       }
       return null;
@@ -221,6 +309,8 @@ export function TrainApp() {
           cur ? `${cur.t.preAuf} ${usedAlg(algBook, cur.c)}`.trim() : undefined
         }
         data-train-phase={phase}
+        data-train-pick={pick}
+        data-train-same={same ?? undefined}
       >
         <header className="flex flex-wrap items-center gap-3">
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
@@ -231,7 +321,7 @@ export function TrainApp() {
             href="/cube/algs"
             className="ml-auto text-sm text-white/70 hover:text-white"
           >
-            공식 모음
+            내 공식
           </a>
           <a
             href="/cube/learn"
@@ -273,7 +363,7 @@ export function TrainApp() {
           <Toggle
             label="상황"
             value={pick}
-            options={(["all", "picked", "weak"] as const).map((p) => [
+            options={(["all", "picked", "weak", "mine"] as const).map((p) => [
               p,
               PICK_LABEL[p],
             ])}
@@ -292,6 +382,20 @@ export function TrainApp() {
 
         <div className="grid gap-4 md:grid-cols-[1fr_300px]">
           <section className="flex flex-col items-center gap-2">
+            {empty && (
+              <p
+                className="rounded-xl bg-white/5 p-4 text-sm text-white/70"
+                data-train-empty
+              >
+                내 목록이 비었어요.{" "}
+                <a
+                  href="/cube/algs"
+                  className="text-sky-300 hover:text-sky-200"
+                >
+                  내 공식 일람표
+                </a>
+              </p>
+            )}
             {cur && (
               <>
                 <div className="flex w-full flex-wrap items-baseline justify-center gap-x-5 gap-y-1">
@@ -319,6 +423,41 @@ export function TrainApp() {
                       맞춤! {formatMs(result.ms)} · {result.moves}수
                     </span>
                   )}
+                  {phase === "done" && same && (
+                    <span
+                      data-train-same-message
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs",
+                        same === "mine"
+                          ? "bg-sky-500/20 text-sky-200"
+                          : "bg-amber-500/20 text-amber-200",
+                      )}
+                    >
+                      {same === "mine"
+                        ? `내 공식으로 · 연속 ${habitLog[cur.c.id]?.streak ?? 0}`
+                        : "다른 공식으로 풀었어요"}
+                    </span>
+                  )}
+                  {phase === "done" &&
+                    habitOf(algBook, cur.c) === "learning" &&
+                    readyForKnown(habitLog[cur.c.id], cur.c.set) && (
+                      <button
+                        type="button"
+                        data-train-promote
+                        onClick={(e) => {
+                          setAlgBook(
+                            commitAlgBook(
+                              algBook,
+                              setHabit(algBook, cur.c, "known"),
+                            ),
+                          );
+                          e.currentTarget.blur();
+                        }}
+                        className="rounded-lg bg-emerald-500 px-3 py-1.5 font-semibold text-black"
+                      >
+                        익숙함으로 옮기기
+                      </button>
+                    )}
                   {phase === "gaveUp" && (
                     <span className="rounded-full bg-red-500/20 px-4 py-1 text-red-200">
                       포기
@@ -398,58 +537,67 @@ export function TrainApp() {
                 <Stat label="실패" value={String(stats.fails)} />
               </dl>
             )}
-            <h2 className="font-semibold">{set.title} 상황</h2>
-            <ul
-              data-train-stats
-              className="flex max-h-[28rem] flex-col gap-0.5 overflow-y-auto pr-1"
-            >
-              {set.cases.map((c) => {
-                const s = book[c.id];
-                const on = picked.has(c.id);
-                return (
-                  <li
-                    key={c.id}
-                    data-case={c.id}
-                    data-solves={s?.solves ?? 0}
-                    className={cn(
-                      "flex items-center gap-2 rounded px-1 py-0.5",
-                      cur?.c.id === c.id && "bg-sky-500/15",
-                      pool.includes(c.id) ? "" : "opacity-50",
-                    )}
-                  >
-                    {pick === "picked" && (
-                      <input
-                        type="checkbox"
-                        data-case-pick={c.id}
-                        checked={on}
-                        aria-label={c.name}
-                        onChange={() =>
-                          setPicked((p) => {
-                            const nextSet = new Set(p);
-                            if (on) nextSet.delete(c.id);
-                            else nextSet.add(c.id);
-                            return nextSet;
-                          })
-                        }
-                      />
-                    )}
-                    <span className="flex-1 truncate text-xs" title={c.name}>
-                      {c.name}
-                    </span>
-                    <span className="w-12 text-right font-mono text-xs tabular-nums">
-                      {formatMs(s?.best ?? undefined)}
-                    </span>
-                    <span className="w-12 text-right font-mono text-white/60 text-xs tabular-nums">
-                      {formatMs(averageMs(s) ?? undefined)}
-                    </span>
-                    <span className="w-6 text-right text-red-300/80 text-xs">
-                      {s?.fails ? `✗${s.fails}` : ""}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="text-white/40 text-xs">최고 · 최근 평균 · 실패</p>
+            {pick === "mine" ? (
+              <MineList book={algBook} log={habitLog} current={cur?.c.id} />
+            ) : (
+              <>
+                <h2 className="font-semibold">{set.title} 상황</h2>
+                <ul
+                  data-train-stats
+                  className="flex max-h-[28rem] flex-col gap-0.5 overflow-y-auto pr-1"
+                >
+                  {set.cases.map((c) => {
+                    const s = book[c.id];
+                    const on = picked.has(c.id);
+                    return (
+                      <li
+                        key={c.id}
+                        data-case={c.id}
+                        data-solves={s?.solves ?? 0}
+                        className={cn(
+                          "flex items-center gap-2 rounded px-1 py-0.5",
+                          cur?.c.id === c.id && "bg-sky-500/15",
+                          pool.includes(c.id) ? "" : "opacity-50",
+                        )}
+                      >
+                        {pick === "picked" && (
+                          <input
+                            type="checkbox"
+                            data-case-pick={c.id}
+                            checked={on}
+                            aria-label={c.name}
+                            onChange={() =>
+                              setPicked((p) => {
+                                const nextSet = new Set(p);
+                                if (on) nextSet.delete(c.id);
+                                else nextSet.add(c.id);
+                                return nextSet;
+                              })
+                            }
+                          />
+                        )}
+                        <span
+                          className="flex-1 truncate text-xs"
+                          title={c.name}
+                        >
+                          {c.name}
+                        </span>
+                        <span className="w-12 text-right font-mono text-xs tabular-nums">
+                          {formatMs(s?.best ?? undefined)}
+                        </span>
+                        <span className="w-12 text-right font-mono text-white/60 text-xs tabular-nums">
+                          {formatMs(averageMs(s) ?? undefined)}
+                        </span>
+                        <span className="w-6 text-right text-red-300/80 text-xs">
+                          {s?.fails ? `✗${s.fails}` : ""}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-white/40 text-xs">최고 · 최근 평균 · 실패</p>
+              </>
+            )}
           </aside>
         </div>
       </main>
@@ -540,9 +688,62 @@ function AlgView({
         data-train-algs-link
         className="self-start text-sky-300 text-xs hover:text-sky-200"
       >
-        공식 모음
+        내 공식 일람표
       </a>
     </div>
+  );
+}
+
+/** 내 목록(버릇 들이는 중·익숙함)과 상황별 연속·평균 */
+function MineList({
+  book,
+  log,
+  current,
+}: {
+  book: AlgBook;
+  log: HabitLog;
+  current: string | undefined;
+}) {
+  const list = habitList(book);
+  return (
+    <>
+      <h2 className="font-semibold">내 목록 {list.length}</h2>
+      <ul
+        data-train-mine-list
+        className="flex max-h-[28rem] flex-col gap-0.5 overflow-y-auto pr-1"
+      >
+        {list.map(({ c, state }) => {
+          const s = log[c.id];
+          return (
+            <li
+              key={c.id}
+              data-mine-case={c.id}
+              className={cn(
+                "flex items-center gap-2 rounded px-1 py-0.5",
+                current === c.id && "bg-sky-500/15",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  state === "known" ? "bg-emerald-400" : "bg-amber-400",
+                )}
+              />
+              <span className="flex-1 truncate text-xs" title={c.name}>
+                {c.name}
+              </span>
+              <span className="w-8 text-right font-mono text-xs tabular-nums">
+                {s?.streak ?? 0}
+              </span>
+              <span className="w-12 text-right font-mono text-white/60 text-xs tabular-nums">
+                {formatMs(habitAverage(s) ?? undefined)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-white/40 text-xs">연속(내 공식) · 평균</p>
+    </>
   );
 }
 

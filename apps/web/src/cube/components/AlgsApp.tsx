@@ -4,6 +4,7 @@ import type { Clock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { type Candidate, candidatesOf, dataAlgTags } from "../algs/candidates";
 import {
   caseById,
   caseStart,
@@ -12,6 +13,13 @@ import {
   setOf,
   shortName,
 } from "../algs/check";
+import {
+  type HabitLog,
+  type HabitState,
+  habitAverage,
+  loadHabit,
+  readyForKnown,
+} from "../algs/habit";
 import { algLink, parseAlgLink } from "../algs/link";
 import { useSettled } from "../algs/settle";
 import {
@@ -19,12 +27,16 @@ import {
   addMine,
   algsOf,
   commitAlgBook,
+  differsFromLesson,
   exportAlgBook,
+  habitList,
+  habitOf,
   type ImportResult,
   loadAlgBook,
   MAX_IMPORT_BYTES,
   removeMine,
   setAsText,
+  setHabit,
   setUsed,
   unknownCaseIds,
   usedAlg,
@@ -42,13 +54,31 @@ import {
 } from "../algs/transform";
 import { ALG_SETS, type AlgCase, type AlgSet, type AlgSetInfo } from "../learn";
 import { movesOf } from "../learn/judge";
+import { formatMs } from "../records";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { importAlgsInWorker } from "../worker";
+import { AlgChips } from "./AlgChips";
 import { AlgPicture } from "./AlgPicture";
 import { DemoCube } from "./DemoCube";
+import { type MoveKeysOf, useMoveKeys } from "./MoveChip";
+
+/** 일람표 걸러 보기 */
+type Filter = "all" | "none" | HabitState;
+const FILTERS: [Filter, string][] = [
+  ["all", "전체"],
+  ["none", "안 정함"],
+  ["learning", "버릇 들이는 중"],
+  ["known", "익숙함"],
+];
+const HABIT_LABEL: Record<HabitState, string> = {
+  learning: "버릇 들이는 중",
+  known: "익숙함",
+};
+const filterOf = (h: HabitState | undefined): Filter => h ?? "none";
 
 /**
- * 공식 모음(`/cube/algs`). 묶음·상황마다 대표·대안·내 공식을 보고, 쓰는 공식을 고르고, 새 공식을 검사해 넣는다.
+ * 내 공식 일람표(`/cube/algs`, 2026-11-04). 배우기와 따로, 상황마다 내가 쓰는 공식과 버릇 상태를 한눈에 본다.
+ * 상황을 열면 대표·대안·내 공식·추천 후보를 견주어 시연하고 고르고, 「버릇 들이기」로 내 훈련 목록에 넣는다. 묶음·상황마다 대표·대안·내 공식을 보고, 쓰는 공식을 고르고, 새 공식을 검사해 넣는다.
  * 거울·거꾸로·돌려 쥐기로 만든 공식도 바로 검사한다. 주소 `?case=&alg=`로 받은 공식은 시연하고 넣을 수 있다.
  */
 
@@ -79,6 +109,8 @@ export function AlgsApp() {
   );
   const [notice, setNotice] = useState("");
   const [imported, setImported] = useState<ImportResult | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [habitLog, setHabitLog] = useState<HabitLog>({});
   const fileRef = useRef<HTMLInputElement>(null);
   const setTextRef = useRef<HTMLPreElement>(null);
   const bookRef = useRef<AlgBook>({});
@@ -89,6 +121,7 @@ export function AlgsApp() {
 
   useEffect(() => {
     setBook(loadAlgBook());
+    setHabitLog(loadHabit());
     const l = parseAlgLink(window.location.search);
     const c = l && caseById(l.caseId);
     if (l && c) {
@@ -114,6 +147,7 @@ export function AlgsApp() {
   const set =
     ALG_SETS.find((s) => s.set === setId) ?? (ALG_SETS[0] as AlgSetInfo);
   const open = openId ? caseById(openId) : undefined;
+  const { keysOf } = useMoveKeys(set.size);
 
   const openCase = (id: string | null) => {
     setOpenId(id);
@@ -133,10 +167,17 @@ export function AlgsApp() {
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
             ← 큐브
           </a>
-          <h1 className="font-bold text-lg">공식 모음</h1>
+          <h1 className="font-bold text-lg">내 공식 일람표</h1>
+          <a
+            href="/cube/train?pick=mine"
+            data-algs-train-mine
+            className="ml-auto rounded-lg bg-white/10 px-2.5 py-1 text-sm hover:bg-white/15"
+          >
+            내 목록 훈련 {habitList(book).length}
+          </a>
           <a
             href="/cube/train"
-            className="ml-auto text-sm text-white/70 hover:text-white"
+            className="text-sm text-white/70 hover:text-white"
           >
             훈련
           </a>
@@ -172,6 +213,36 @@ export function AlgsApp() {
               {s.title}
             </button>
           ))}
+        </fieldset>
+
+        <fieldset
+          className="flex min-w-0 flex-wrap gap-1.5 text-sm"
+          aria-label="버릇 상태"
+        >
+          {FILTERS.map(([f, label]) => {
+            const n =
+              f === "all"
+                ? set.cases.length
+                : set.cases.filter((c) => filterOf(habitOf(book, c)) === f)
+                    .length;
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={filter === f}
+                data-algs-filter={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "rounded-lg px-2.5 py-1",
+                  filter === f
+                    ? "bg-white/25 font-semibold"
+                    : "bg-white/5 text-white/70 hover:bg-white/10",
+                )}
+              >
+                {label} <span className="tabular-nums opacity-70">{n}</span>
+              </button>
+            );
+          })}
         </fieldset>
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -276,6 +347,8 @@ export function AlgsApp() {
             c={open}
             book={book}
             onBook={updateBook}
+            habitLog={habitLog}
+            keysOf={keysOf}
             initialAlg={linked?.id === open.id ? linked.alg : null}
             settings={settings}
             onClose={() => openCase(null)}
@@ -284,45 +357,70 @@ export function AlgsApp() {
         )}
 
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {set.cases.map((c) => {
-            const used = usedAlg(book, c);
-            const mine = (book[c.id]?.mine ?? []).includes(used);
-            return (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  data-case-open={c.id}
-                  aria-pressed={openId === c.id}
-                  onClick={() => openCase(c.id)}
-                  className={cn(
-                    "flex h-full w-full flex-col items-center gap-1 rounded-xl p-2 text-left",
-                    openId === c.id
-                      ? "bg-sky-500/20 ring-1 ring-sky-400"
-                      : "bg-white/5 hover:bg-white/10",
-                  )}
-                >
-                  <AlgPicture
-                    set={c.set}
-                    n={set.size}
-                    state={caseStart(c)}
-                    colors={settings.colors}
-                    className="h-16 w-auto"
-                  />
-                  <span className="w-full truncate text-center font-semibold text-xs">
-                    {shortName(c)}
-                  </span>
-                  <span
+          {set.cases
+            .filter(
+              (c) => filter === "all" || filterOf(habitOf(book, c)) === filter,
+            )
+            .map((c) => {
+              const used = usedAlg(book, c);
+              const differs = differsFromLesson(book, c);
+              const habit = habitOf(book, c);
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    data-case-open={c.id}
+                    aria-pressed={openId === c.id}
+                    onClick={() => openCase(c.id)}
                     className={cn(
-                      "w-full truncate text-center font-mono text-[11px]",
-                      mine ? "text-amber-200" : "text-white/60",
+                      "flex h-full w-full flex-col items-center gap-1 rounded-xl p-2 text-left",
+                      openId === c.id
+                        ? "bg-sky-500/20 ring-1 ring-sky-400"
+                        : "bg-white/5 hover:bg-white/10",
                     )}
                   >
-                    {used}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+                    <AlgPicture
+                      set={c.set}
+                      n={set.size}
+                      state={caseStart(c)}
+                      colors={settings.colors}
+                      className="h-16 w-auto"
+                    />
+                    <span className="w-full truncate text-center font-semibold text-xs">
+                      {shortName(c)}
+                    </span>
+                    <span className="flex flex-wrap justify-center gap-1 text-[10px]">
+                      {habit && (
+                        <span
+                          data-case-habit={habit}
+                          className={cn(
+                            "rounded px-1",
+                            habit === "known"
+                              ? "bg-emerald-400/20 text-emerald-200"
+                              : "bg-amber-400/20 text-amber-200",
+                          )}
+                        >
+                          {HABIT_LABEL[habit]}
+                        </span>
+                      )}
+                      {differs && (
+                        <span
+                          data-case-differs
+                          className="rounded bg-sky-400/20 px-1 text-sky-200"
+                        >
+                          배우기와 다름
+                        </span>
+                      )}
+                    </span>
+                    <AlgChips
+                      alg={used}
+                      keysOf={keysOf}
+                      className="w-full justify-center font-mono text-[11px] text-white/80"
+                    />
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       </main>
     </div>
@@ -340,6 +438,8 @@ function CaseDetail({
   c,
   book,
   onBook,
+  habitLog,
+  keysOf,
   initialAlg,
   settings,
   onClose,
@@ -349,6 +449,8 @@ function CaseDetail({
   c: AlgCase;
   book: AlgBook;
   onBook: (b: AlgBook) => void;
+  habitLog: HabitLog;
+  keysOf: MoveKeysOf | null;
   initialAlg: string | null;
   settings: CubeSettings;
   onClose: () => void;
@@ -440,6 +542,19 @@ function CaseDetail({
         </button>
       </div>
 
+      <HabitBar
+        c={c}
+        habit={habitOf(book, c)}
+        stats={habitLog[c.id]}
+        onHabit={(h) => onBook(setHabit(book, c, h))}
+      />
+      <div className="flex flex-col gap-1" data-alg-used-chips>
+        <span className="text-white/50 text-xs">
+          쓰는 공식{differsFromLesson(book, c) && " · 배우기와 다름"}
+        </span>
+        <AlgChips alg={used} keysOf={keysOf} className="text-sm" />
+      </div>
+
       <ol className="flex flex-col gap-1.5" data-alg-list>
         {list.map(({ alg, kind }, i) => {
           const counts = moveCounts(n, movesOf(n, alg));
@@ -459,13 +574,14 @@ function CaseDetail({
               </span>
               <span
                 data-alg-text
-                className="min-w-0 flex-1 break-words font-mono text-sm"
+                className="min-w-0 basis-full break-words font-mono text-sm sm:basis-0 sm:flex-1"
               >
                 {alg}
               </span>
               <span className="text-white/50 text-xs tabular-nums">
                 {counts.htm} HTM · {counts.stm} STM
               </span>
+              {kind !== "mine" && <Tags tags={dataAlgTags(c, alg)} />}
               <span className="flex flex-wrap gap-1 text-xs">
                 <RowButton
                   pressed={isUsed}
@@ -510,6 +626,19 @@ function CaseDetail({
           );
         })}
       </ol>
+
+      <CandidateList
+        c={c}
+        book={book}
+        used={used}
+        onUse={(alg) => onBook(setUsed(book, c, alg))}
+        onDemo={setDemo}
+        onAdd={(alg) => {
+          const r = addMine(book, c, alg, { findOther: false });
+          onNotice(r.message);
+          if (r.ok) onBook(r.book);
+        }}
+      />
 
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-1 text-sm">
@@ -629,6 +758,154 @@ function CaseDetail({
         arrowKeys
       />
     </section>
+  );
+}
+
+function HabitBar({
+  c,
+  habit,
+  stats,
+  onHabit,
+}: {
+  c: AlgCase;
+  habit: HabitState | undefined;
+  stats: HabitLog[string] | undefined;
+  onHabit: (h: HabitState | undefined) => void;
+}) {
+  const ready = habit === "learning" && readyForKnown(stats, c.set);
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm"
+      data-alg-habit={habit ?? "none"}
+    >
+      <fieldset
+        aria-label="버릇 상태"
+        className="flex rounded-lg bg-white/10 p-0.5 text-xs"
+      >
+        {(
+          [
+            [undefined, "안 정함"],
+            ["learning", "버릇 들이기"],
+            ["known", "익숙함"],
+          ] as const
+        ).map(([h, label]) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={habit === h}
+            data-habit-set={h ?? "none"}
+            onClick={() => onHabit(h)}
+            className={cn(
+              "rounded-md px-2.5 py-1",
+              habit === h && "bg-white/25 font-semibold",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </fieldset>
+      {stats && (
+        <span className="text-white/60 text-xs tabular-nums" data-habit-stats>
+          연속 {stats.streak} · 평균{" "}
+          {formatMs(habitAverage(stats) ?? undefined)}
+          {stats.last > 0 &&
+            ` · 마지막 ${new Date(stats.last).toLocaleDateString("ko-KR")}`}
+        </span>
+      )}
+      {ready && (
+        <button
+          type="button"
+          data-habit-promote
+          onClick={() => onHabit("known")}
+          className="rounded-lg bg-emerald-500 px-2.5 py-1 font-semibold text-black text-xs"
+        >
+          익숙함으로 옮기기
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Tags({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  return (
+    <span className="flex flex-wrap gap-1" data-alg-tags={tags.join(",")}>
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="rounded bg-white/10 px-1.5 text-[10px] text-white/70"
+        >
+          {t}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** 추천 후보: 시연·쓰기·내 공식에 넣기 */
+function CandidateList({
+  c,
+  book,
+  used,
+  onUse,
+  onDemo,
+  onAdd,
+}: {
+  c: AlgCase;
+  book: AlgBook;
+  used: string;
+  onUse: (alg: string) => void;
+  onDemo: (alg: string) => void;
+  onAdd: (alg: string) => void;
+}) {
+  const list: Candidate[] = candidatesOf(c);
+  if (list.length === 0) return null;
+  const mine = new Set(book[c.id]?.mine ?? []);
+  return (
+    <div className="flex flex-col gap-1.5" data-alg-candidates>
+      <h3 className="text-white/60 text-xs">추천 후보</h3>
+      <ol className="flex flex-col gap-1.5">
+        {list.map((x) => {
+          const isUsed = x.alg === used;
+          return (
+            <li
+              key={x.alg}
+              data-alg-candidate={x.alg}
+              data-alg-used={isUsed ? "" : undefined}
+              className={cn(
+                "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-2 py-1.5",
+                isUsed ? "bg-sky-500/15" : "bg-white/5",
+              )}
+            >
+              <span className="min-w-0 basis-full break-words font-mono text-sm sm:basis-0 sm:flex-1">
+                {x.alg}
+              </span>
+              <span className="text-white/50 text-xs tabular-nums">
+                {x.htm} HTM · {x.stm} STM
+              </span>
+              <Tags tags={x.tags} />
+              <span className="flex flex-wrap gap-1 text-xs">
+                <RowButton
+                  pressed={isUsed}
+                  onClick={() => onUse(x.alg)}
+                  data-candidate-use
+                >
+                  {isUsed ? "쓰는 중" : "쓰기"}
+                </RowButton>
+                <RowButton onClick={() => onDemo(x.alg)}>시연</RowButton>
+                <RowButton
+                  onClick={() => onAdd(x.alg)}
+                  pressed={mine.has(x.alg)}
+                  data-candidate-add
+                >
+                  {mine.has(x.alg) ? "내 공식에 있음" : "내 공식에 넣기"}
+                </RowButton>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

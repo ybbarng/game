@@ -31,6 +31,7 @@ describe("큐브 설정 저장", () => {
       hidden: "gray" as const,
       sound: false,
       inspection: false,
+      caseAlert: true,
     };
     expect(saveSettings(s, store)).toBe(true);
     expect(loadSettings(store)).toEqual(s);
@@ -58,6 +59,8 @@ describe("큐브 설정 저장", () => {
     expect(s.quality).toBe("high");
     expect(s.sound).toBe(true);
     expect(s.hidden).toBe("gray");
+    // 옛 설정(상황 알림 칸 없음)은 꺼짐
+    expect(s.caseAlert).toBe(false);
   });
 
   it("색 묶음을 고르면 그 묶음의 색, 직접 고른 색이 이상하면 표준", () => {
