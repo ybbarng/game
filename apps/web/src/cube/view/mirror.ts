@@ -11,7 +11,8 @@ import type { MarkTone, Normal, Sticker } from "./types";
  * 붙은 뒷면 칸은 뒤 판의 위-오른쪽에 온다(모서리와 판의 자리가 바로 이어진다).
  *
  * 판은 늘 그때 세계의 -x·-y·-z를 향한 칸을 보이므로, 큐브 전체 돌리기(x·y·z) 뒤에는 저절로 다른 면이 온다.
- * 판은 카메라 쪽으로 조금 기울여 읽기 쉽게 한다(기울여도 판 위 칸의 차례는 그대로라 거울상은 지켜진다).
+ * 판은 그 면과 **평행**하게 둔다(2026-11-05). 판의 칸 줄이 큐브 테두리 선과 나란해, 화면에서 판이 그 면을 옮겨 놓은
+ * 것처럼 보이고 칸 하나하나를 큐브 칸으로 따라가기 쉽다(카메라 쪽으로 기울였던 판은 화면에서 제각각 돌아 보여 헷갈렸다).
  */
 
 export type BackNormal = "-z" | "-x" | "-y";
@@ -29,7 +30,7 @@ export const MIRROR_CELL = 0.6;
 /** 판 테두리 여백(판 칸 단위, 한 변 n + 2·PAD 칸) */
 export const MIRROR_PAD = 0.28;
 
-/** 기울이기 전 판의 오른쪽·위(카메라에서 그 면 쪽 거울을 볼 때의 화면 방향) */
+/** 판의 오른쪽·위(그 면의 두 세계 축. 카메라에서 볼 때 화면의 오른쪽·위 쪽을 향한다) */
 const FLAT: Record<BackNormal, { right: Vec3; up: Vec3 }> = {
   "-z": { right: [1, 0, 0], up: [0, 1, 0] },
   "-x": { right: [0, 0, -1], up: [0, 1, 0] },
@@ -41,9 +42,6 @@ const OUT: Record<BackNormal, Vec3> = {
   "-x": [-1, 0, 0],
   "-y": [0, -1, 0],
 };
-
-/** 판을 카메라 쪽으로 기울이는 정도(0 = 면과 나란히, 클수록 카메라를 똑바로 본다) */
-const TILT = 0.75;
 
 export interface MirrorPanel {
   normal: BackNormal;
@@ -76,23 +74,11 @@ const add = (a: Vec3, b: Vec3, s = 1): Vec3 => [
   a[2] + b[2] * s,
 ];
 const scale = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
-const cross = (a: Vec3, b: Vec3): Vec3 => [
-  a[1] * b[2] - a[2] * b[1],
-  a[2] * b[0] - a[0] * b[2],
-  a[0] * b[1] - a[1] * b[0],
-];
 const norm = (a: Vec3): Vec3 => {
   const l = Math.hypot(a[0], a[1], a[2]) || 1;
   return [a[0] / l, a[1] / l, a[2] / l];
 };
 const rad = (deg: number) => (deg * Math.PI) / 180;
-
-/** 축 k(단위)로 각 t 돌린다(로드리게스) */
-function rotate(v: Vec3, k: Vec3, t: number): Vec3 {
-  const c = Math.cos(t);
-  const s = Math.sin(t);
-  return add(add(scale(v, c), cross(k, v), s), k, dot(k, v) * (1 - c));
-}
 
 /** 보는 쪽(원점에서 카메라로, 단위 벡터). cube-view의 카메라 자리와 같은 식 */
 export function viewDir(yaw: number, pitch: number): Vec3 {
@@ -222,14 +208,9 @@ export function mirrorPanels(
   const margin = marginFor(n);
   return BACK_NORMALS.map((normal) => {
     const out = OUT[normal];
-    const flatFacing = scale(out, -1);
-    const facing = norm(add(flatFacing, toward, TILT));
-    const axisRaw = cross(flatFacing, facing);
-    const sin = Math.hypot(...axisRaw);
-    const angle = Math.atan2(sin, dot(flatFacing, facing));
-    const axis = sin < 1e-9 ? ([1, 0, 0] as Vec3) : norm(axisRaw);
-    const right = rotate(FLAT[normal].right, axis, angle);
-    const up = rotate(FLAT[normal].up, axis, angle);
+    // 판은 그 면과 평행하고 큐브 쪽(카메라 쪽)을 본다. 칸 줄이 큐브 테두리 선과 나란하다
+    const facing = scale(out, -1);
+    const { right, up } = FLAT[normal];
     // 면 바깥으로 조금 띄운 뒤, 그 면이 화면에 비칠 쪽(바깥 방향을 화면에 놓은 쪽)으로 화면과 나란히 옮긴다.
     // 뒤로만 밀면 화면에서 조금씩만 움직여(뒤 판은 한 칸 밀 때 0.65칸) 큐브가 작아졌다
     const base = scale(out, n / 2 + 0.35);
