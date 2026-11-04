@@ -227,6 +227,7 @@ export function CubeSettingsApp() {
               ["keyColors", "키 그림에 면 색"],
               ["keyPairs", "키 그림에서 같은 면의 두 키 잇기"],
               ["keyFingers", "키 그림에 손가락 자리"],
+              ["touchKeyboard", "휴대폰에서 단추 대신 키보드 그림을 눌러 치기"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-center gap-2">

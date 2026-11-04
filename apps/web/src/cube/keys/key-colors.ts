@@ -118,10 +118,51 @@ export function keyPaint(
     : { kind: "sweep", from, to, prime };
 }
 
-/** 그 색 위에서 읽히는 글자색: 흰·노랑 위는 검정 */
-export function inkOn(rgb: number): "#000" | "#fff" {
-  const r = (rgb >> 16) & 255;
-  const g = (rgb >> 8) & 255;
-  const b = rgb & 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#000" : "#fff";
+/**
+ * 키 칸 색의 토큰(2026-11-05 사용자 「키보드 색이 너무 또렷해서 눈이 아파」). 칸을 면 색으로 꽉 채우지 않고 어두운
+ * 바탕에 옅게 섞고, 면 색 그대로는 칸 아래 띠에만 쓴다. 반대 방향(')은 더 옅게 + 띠를 끊어(무늬라 색약이어도 구별).
+ * 글자는 어느 칸이든 밝은 글자라 흰·노랑 칸에서도 눈부시지 않다.
+ */
+export const KEY_TONE = {
+  /** 페이지 바탕(neutral-900) */
+  page: 0x171717,
+  /** 칸 바탕에 섞는 면 색 비율 */
+  fill: 0.2,
+  primeFill: 0.1,
+  /** 테두리에 섞는 면 색 비율 */
+  border: 0.6,
+  primeBorder: 0.35,
+} as const;
+
+/** 두 색 섞기: rgb를 alpha만큼, 나머지는 base */
+export function mixRgb(
+  rgb: number,
+  alpha: number,
+  base: number = KEY_TONE.page,
+): number {
+  const ch = (shift: number) =>
+    Math.round(
+      ((rgb >> shift) & 255) * alpha + ((base >> shift) & 255) * (1 - alpha),
+    );
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
+/** 면 돌리기 키 칸의 바탕·테두리 색 */
+export function keyTone(
+  rgb: number,
+  prime: boolean,
+): { fill: number; border: number } {
+  return {
+    fill: mixRgb(rgb, prime ? KEY_TONE.primeFill : KEY_TONE.fill),
+    border: mixRgb(rgb, prime ? KEY_TONE.primeBorder : KEY_TONE.border),
+  };
+}
+
+/** 밝기(0~255) */
+export function lumaOf(rgb: number): number {
+  return (
+    0.299 * ((rgb >> 16) & 255) +
+    0.587 * ((rgb >> 8) & 255) +
+    0.114 * (rgb & 255)
+  );
 }

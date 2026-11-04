@@ -1,10 +1,12 @@
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
+import { COLOR_SCHEMES } from "../settings";
 import {
   HOME_ORIENT,
-  inkOn,
   keyPaint,
+  keyTone,
+  lumaOf,
   type Orient,
   orientAfter,
   orientFromCenters,
@@ -91,10 +93,18 @@ describe("키 칠하기", () => {
     expect(keyPaint(3, o, "x")).toMatchObject({ from: R, to: U });
   });
 
-  it("글자색: 흰·노랑 위는 검정, 빨강·파랑 위는 흰", () => {
-    expect(inkOn(0xffffff)).toBe("#000");
-    expect(inkOn(0xffd500)).toBe("#000");
-    expect(inkOn(0xc8102e)).toBe("#fff");
-    expect(inkOn(0x0046ad)).toBe("#fff");
+  it("칸 바탕은 어둡게: 흰·노랑 키도 밝은 글자가 읽히는 어두운 칸, 반대 방향은 더 옅다", () => {
+    const schemes = Object.values(COLOR_SCHEMES);
+    for (const colors of schemes)
+      for (const rgb of colors) {
+        const plain = keyTone(rgb, false);
+        const prime = keyTone(rgb, true);
+        // 흰 글자(255)와 넉넉히 떨어진 어두운 바탕
+        expect(lumaOf(plain.fill)).toBeLessThan(80);
+        expect(lumaOf(prime.fill)).toBeLessThan(lumaOf(plain.fill) + 0.01);
+        expect(prime.fill).not.toBe(plain.fill);
+      }
+    // 흰 키도 꽉 찬 흰색이 아니다
+    expect(lumaOf(keyTone(0xffffff, false).fill)).toBeLessThan(70);
   });
 });
