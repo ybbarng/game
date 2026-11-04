@@ -13,7 +13,7 @@ import {
   type Suit,
   unplayableReason,
 } from "@game/mighty-engine";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { effectFor } from "@/game/effects";
 import { mightyResultBanner } from "@/game/result-banner";
@@ -30,7 +30,13 @@ import {
   unplayableText,
 } from "@/game/terms";
 import { playUiCue } from "@/game/ui-sound";
-import { computeLayout, type Point } from "@/layout/compute-layout";
+import {
+  computeLayout,
+  fanCardSize,
+  fanSlot as fanSlotOf,
+  type Point,
+} from "@/layout/compute-layout";
+import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
@@ -57,25 +63,6 @@ import { SettingsMenu } from "./SettingsMenu";
 import { SuitText } from "./SuitText";
 import { Term, TermProvider } from "./TermHint";
 import { MissionOverlay, type MissionProps } from "./tutorial/MissionOverlay";
-
-function useStageSize() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry)
-        setSize({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return { ref, ...size };
-}
 
 /** 카드 id로 정한 작은 기울기. 같은 판을 다시 그려도 같은 각도다 */
 function tilt(card: Card): number {
@@ -377,36 +364,11 @@ export function GameTable({
   };
 
   // 다른 사람 손패는 자리 판 뒤에 뒷면으로 펼쳐 둔다. 마주 앉아 보므로 그 사람의 왼쪽 끝이 내 쪽에서는 오른쪽 끝이다.
-  const fanCard = layout
-    ? (() => {
-        const h = Math.min(
-          56,
-          Math.max(30, (layout.seats[1]?.plate.h ?? 40) * 1.05),
-        );
-        return { w: (h * 5) / 7, h };
-      })()
-    : { w: 0, h: 0 };
-  const fanSlot = (seat: number, index: number, count: number) => {
-    const p = layout?.seats[offsetOf(seat)]?.plate;
-    if (!p) return { x: 0, y: 0, rotate: 0 };
-    const mirrored = count - 1 - index;
-    const centered = mirrored - (count - 1) / 2;
-    const step =
-      count > 1
-        ? Math.min(fanCard.w * 0.42, (p.w * 0.85 - fanCard.w) / (count - 1))
-        : 0;
-    // 손에 든 카드는 판 쪽을 향한다. 판 가운데보다 위에 앉은 사람은 자리 판 아래로, 아래에 앉은 사람은 위로 펼친다.
-    const towardTable =
-      p.y + p.h / 2 < (layout ? layout.center.y + layout.center.h / 2 : 0)
-        ? 1
-        : -1;
-    const edge = towardTable === 1 ? p.y + p.h : p.y;
-    return {
-      x: p.x + p.w / 2 + centered * step,
-      y: edge + towardTable * (fanCard.h * 0.22 - Math.abs(centered) * 0.6),
-      rotate: centered * 2.5 * -towardTable,
-    };
-  };
+  const fanCard = layout ? fanCardSize(layout) : { w: 0, h: 0 };
+  const fanSlot = (seat: number, index: number, count: number) =>
+    layout
+      ? fanSlotOf(layout, offsetOf(seat), index, count, fanCard)
+      : { x: 0, y: 0, rotate: 0 };
   // 이번에 받은 진행에서 누가 손패 몇 번째 카드를 냈는가
   if (view.phase === "exchange" && layout) {
     exchangeSlots.current = new Map(

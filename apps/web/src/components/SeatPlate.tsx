@@ -1,6 +1,7 @@
 "use client";
 
 import type { Card } from "@game/mighty-engine";
+import type { ReactNode } from "react";
 import { cardLabel } from "@/game/terms";
 import { PLATE_COMPACT_H, type Rect } from "@/layout/compute-layout";
 import { cn } from "@/lib/cn";
@@ -50,26 +51,16 @@ export function SeatPlate(props: SeatPlateProps) {
   // 내 자리 판을 줄였을 때는 이름·표시·점수 장수·돈을 한 줄에 놓는다.
   const slim = rect.h < SLIM_H;
   return (
-    <div
-      className={cn(
-        "absolute flex flex-col justify-between overflow-visible rounded-xl border px-2 py-1 text-xs shadow-lg backdrop-blur-sm transition-[box-shadow,background-color,opacity] duration-300",
-        props.ruling
-          ? "border-amber-300/70 bg-amber-950/70"
-          : "border-white/15 bg-black/45",
-        props.active &&
-          "shadow-[0_0_0_2px_#fde68a,0_0_20px_2px_rgba(253,230,138,0.55)]",
-        props.dead && "opacity-40",
-        props.accused &&
-          "border-rose-400 shadow-[0_0_0_2px_#fb7185,0_0_22px_4px_rgba(244,63,94,0.6)]",
-      )}
-      // 손패 뒷면(z 1~13)보다 위, 카드 무대(손패 10~, 바닥 100~)와는 겹치지 않는다.
-      style={{
-        left: rect.x,
-        top: rect.y,
-        width: rect.w,
-        height: rect.h,
-        zIndex: 20,
-      }}
+    <SeatPlateFrame
+      rect={rect}
+      ruling={props.ruling}
+      active={props.active}
+      dead={props.dead}
+      accused={props.accused ?? false}
+      offline={props.offline ?? false}
+      waiting={props.waiting ?? false}
+      bubble={props.bubble}
+      bubbleDim={props.bubbleDim ?? false}
     >
       <div className={cn("flex items-center gap-1", slim && "h-full")}>
         <span className="min-w-[3.5em] truncate font-semibold">
@@ -115,29 +106,6 @@ export function SeatPlate(props: SeatPlateProps) {
           )
         )}
       </div>
-      {props.accused ? (
-        <div
-          className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-bold text-[10px] shadow"
-          title="이 자리에서 규칙 위반이나 조작을 찾았습니다"
-        >
-          ⚠ 부정 감지
-        </div>
-      ) : (
-        props.offline && (
-          <div
-            className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-semibold text-[10px] shadow"
-            title={
-              props.waiting
-                ? "연결이 끊겼습니다. 이 사람 카드는 이 사람만 열 수 있어 돌아오기를 기다립니다"
-                : "연결이 끊겨 컴퓨터가 대신 둡니다"
-            }
-          >
-            {props.waiting
-              ? "연결 끊김 · 기다리는 중"
-              : "연결 끊김 · 컴퓨터가 대신"}
-          </div>
-        )
-      )}
       {slim ? null : compact ? (
         <div className="flex items-center justify-between text-[10px] tabular-nums opacity-70">
           <span>
@@ -168,6 +136,83 @@ export function SeatPlate(props: SeatPlateProps) {
             {props.money * 10}
           </div>
         </>
+      )}
+    </SeatPlateFrame>
+  );
+}
+
+interface SeatPlateFrameProps {
+  rect: Rect;
+  /** 이번 판을 이끄는 사람(마이티 주공 쪽) */
+  ruling?: boolean;
+  /** 지금 차례 */
+  active: boolean;
+  dead?: boolean;
+  accused?: boolean;
+  offline?: boolean;
+  waiting?: boolean;
+  bubble?: string | null;
+  bubbleDim?: boolean;
+  children: ReactNode;
+  /** 화면 읽기·시험용 이름표(예: 「민준 자리」) */
+  label?: string;
+  /** 판 안 내용 배치(기본: 위아래로 벌려 놓기) */
+  className?: string;
+}
+
+/**
+ * 둘러앉은 판의 자리 판 틀(마이티·화투 공통): 놓일 자리, 차례 빛, 탈락·부정 감지·연결 끊김 표, 말풍선.
+ * 안의 내용(이름·장수·딴 카드)은 게임마다 넣는다
+ */
+export function SeatPlateFrame(props: SeatPlateFrameProps) {
+  const { rect } = props;
+  return (
+    <div
+      {...(props.label ? { role: "region", "aria-label": props.label } : {})}
+      className={cn(
+        "absolute flex flex-col justify-between overflow-visible rounded-xl border px-2 py-1 text-xs shadow-lg backdrop-blur-sm transition-[box-shadow,background-color,opacity] duration-300",
+        props.ruling
+          ? "border-amber-300/70 bg-amber-950/70"
+          : "border-white/15 bg-black/45",
+        props.active &&
+          "shadow-[0_0_0_2px_#fde68a,0_0_20px_2px_rgba(253,230,138,0.55)]",
+        props.dead && "opacity-40",
+        props.accused &&
+          "border-rose-400 shadow-[0_0_0_2px_#fb7185,0_0_22px_4px_rgba(244,63,94,0.6)]",
+        props.className,
+      )}
+      // 손패 뒷면(z 1~13)보다 위, 카드 무대(손패 10~, 바닥 100~)와는 겹치지 않는다.
+      style={{
+        left: rect.x,
+        top: rect.y,
+        width: rect.w,
+        height: rect.h,
+        zIndex: 20,
+      }}
+    >
+      {props.children}
+      {props.accused ? (
+        <div
+          className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-bold text-[10px] shadow"
+          title="이 자리에서 규칙 위반이나 조작을 찾았습니다"
+        >
+          ⚠ 부정 감지
+        </div>
+      ) : (
+        props.offline && (
+          <div
+            className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-semibold text-[10px] shadow"
+            title={
+              props.waiting
+                ? "연결이 끊겼습니다. 이 사람 카드는 이 사람만 열 수 있어 돌아오기를 기다립니다"
+                : "연결이 끊겨 컴퓨터가 대신 둡니다"
+            }
+          >
+            {props.waiting
+              ? "연결 끊김 · 기다리는 중"
+              : "연결 끊김 · 컴퓨터가 대신"}
+          </div>
+        )
       )}
       {props.bubble && (
         <div

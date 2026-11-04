@@ -1,7 +1,7 @@
 "use client";
 
 import { cardOf, type HwatuCard } from "@game/hwatu";
-import { type ReactNode, useId } from "react";
+import { type CSSProperties, type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -148,6 +148,7 @@ export function HwatuCardView({
   highlight = false,
   onClick,
   className,
+  style,
 }: {
   id?: string;
   faceDown?: boolean;
@@ -160,6 +161,8 @@ export function HwatuCardView({
   highlight?: boolean;
   onClick?: () => void;
   className?: string;
+  /** 겹쳐 놓기 등 놓는 쪽이 정하는 자리 */
+  style?: CSSProperties;
 }) {
   const card = id && !faceDown ? cardOf(id) : null;
   const lite = width < LITE_BELOW;
@@ -192,6 +195,7 @@ export function HwatuCardView({
       data-card={id}
       onClick={onClick}
       className={classes}
+      style={style}
     >
       {svg}
     </button>
@@ -201,6 +205,7 @@ export function HwatuCardView({
       aria-label={label}
       data-card={card ? id : undefined}
       className={cn(classes, "inline-block")}
+      style={style}
     >
       {svg}
     </span>
