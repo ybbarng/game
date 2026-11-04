@@ -2,6 +2,7 @@ import type { CubeMove } from "../view/types";
 import {
   type ActionId,
   type Command,
+  canonicalNotation,
   isAvailable,
   notationToMove,
   parseAction,
@@ -56,9 +57,11 @@ export class KeyInterpreter {
       this.depth = null;
       return { kind: "command", action, command: p.command };
     }
-    const notation =
-      this.depth === null ? p.notation : withDepth(p.notation, this.depth);
+    const depth = this.depth;
     this.depth = null;
+    const raw = depth === null ? p.notation : withDepth(p.notation, depth);
+    // 기록·공식에는 가장 짧은 이름으로 적는다(3×3의 2 → J = E', 3 → I = L', 넓게 n층 = x·y·z)
+    const notation = canonicalNotation(this.n, raw);
     const move = notationToMove(this.n, notation);
     if (!move) return null;
     return { kind: "move", action, notation, move };

@@ -2,6 +2,7 @@ import {
   type ActionId,
   actionLabel,
   actionsFor,
+  canonicalNotation,
   isAvailable,
   parseAction,
 } from "../input/actions";
@@ -176,7 +177,11 @@ export function keyLayers(
     if (action === null) continue;
     out[layer] = {
       action,
-      label: shortLabel(action),
+      // 3×3의 둘째 층(2U)은 가운데 층 이름(E')으로 적는다
+      label:
+        parseAction(action)?.kind === "move"
+          ? canonicalNotation(n, action)
+          : shortLabel(action),
       ...kindOf(action),
       usable: isAvailable(n, action),
     };

@@ -212,7 +212,8 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *   Y  x    N  x'               T  x    B  x'
  *   6  M    .  M'               5  M    X  M'
  *
- * 큰 큐브: Shift+면 키 = 안쪽 둘째 층(2R …), Alt+면 키 = 넓게(Rw …), 숫자 2·3·4 = 다음 수 깊이.
+ * 보탬 키(2026-11-04): Shift+면 키 = 넓게(두 층, Rw …), 숫자 2·3·4 → 면 키 = 그 층 하나(3×3의 2 → J = E',
+ * 4×4의 2 → I = 2R), 숫자 → Shift+면 키 = 그 층까지 넓게(3Rw). Alt는 쓰지 않는다(브라우저 단축키와 부딪친다).
  */
 const TWO_HAND_FACE: [code: string, action: string][] = [
   ["KeyI", "R"],
@@ -233,8 +234,7 @@ export function twoHandKeymap(): Keymap {
   const bindings: KeyBinding[] = [];
   for (const [code, action] of TWO_HAND_FACE) {
     bindings.push(key(code, action));
-    bindings.push(key(code, `2${action}`, { shift: true }));
-    bindings.push(key(code, action.replace(/^(\w)/, "$1w"), { alt: true }));
+    bindings.push(key(code, action.replace(/^(\w)/, "$1w"), { shift: true }));
   }
   bindings.push(
     key("KeyU", "Rw"),

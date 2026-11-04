@@ -216,11 +216,107 @@ export function actionsFor(n: number): ActionInfo[] {
 }
 
 /** 크기 n에서 이 동작을 쓸 수 있는지 */
+/**
+ * 홀수 크기에서 한가운데 층을 면 글자와 깊이로 적은 수(3×3의 2U, 5×5의 3U)의 보통 이름(E'·S·M …).
+ * 「두 손」의 Shift(둘째 층)가 3×3에서는 가운데 층이 된다(2026-11-04). 그 밖의 수는 null
+ */
+const SLICE_OF: Record<string, [string, boolean]> = {
+  // 면 → 가운데 층 이름, 그 면과 같은 쪽인가(E는 D, S는 F, M은 L과 같은 쪽)
+  U: ["E", false],
+  D: ["E", true],
+  F: ["S", true],
+  B: ["S", false],
+  R: ["M", false],
+  L: ["M", true],
+};
+export function middleSliceName(n: number, notation: string): string | null {
+  if (n % 2 === 0) return null;
+  const m = /^(\d+)([RLUDFB])(2'?|'?)$/.exec(notation);
+  if (!m || Number(m[1]) !== (n + 1) / 2) return null;
+  const [name, same] = SLICE_OF[m[2] as string] as [string, boolean];
+  const suffix = m[3] ?? "";
+  if (suffix.startsWith("2")) return `${name}2`;
+  const prime = suffix === "'";
+  return `${name}${prime === same ? "'" : ""}`;
+}
+
+const OPPOSITE_LETTER: Record<string, string> = {
+  R: "L",
+  L: "R",
+  U: "D",
+  D: "U",
+  F: "B",
+  B: "F",
+};
+/** 면 → 큐브 전체 돌리기(그 면과 같은 쪽인가) */
+const ROTATION_OF: Record<string, [string, boolean]> = {
+  R: ["x", true],
+  L: ["x", false],
+  U: ["y", true],
+  D: ["y", false],
+  F: ["z", true],
+  B: ["z", false],
+};
+
+/**
+ * 수를 가장 짧은 이름으로(2026-11-04): 입력은 「숫자 + 면 키」로 1~n층을 다 받고, 기록·공식·수 칩에는 이렇게 적는다.
+ * - k층이 반대쪽에서 더 가까우면 반대쪽 면의 반대 방향(3×3의 3R → L', 4×4의 3R → 2L')
+ * - 홀수 크기의 한가운데 층은 M·E·S(3×3의 2R → M', 5×5의 3U → E')
+ * - 넓게 n층은 큐브 전체(3×3의 3Rw → x), 넓게 1층은 그 면, 넓게 2층은 Rw
+ * 바꿀 것이 없으면 그대로 돌려준다. 같은 돌리기인지는 `canonical.test.ts`가 엔진으로 본다
+ */
+export function canonicalNotation(n: number, notation: string): string {
+  const m = /^(\d+)?([RLUDFB])(w)?(2'?|'?)$/.exec(notation);
+  if (!m) return notation;
+  const [, num, face, wide, suffix = ""] = m as unknown as [
+    string,
+    string | undefined,
+    string,
+    string | undefined,
+    string | undefined,
+  ];
+  const flip = (sfx: string) =>
+    sfx.startsWith("2") ? sfx : sfx === "'" ? "" : "'";
+  if (wide) {
+    const k = num === undefined ? 2 : Number(num);
+    if (k >= n) {
+      const [rot, same] = ROTATION_OF[face] as [string, boolean];
+      return `${rot}${same ? suffix : flip(suffix)}`;
+    }
+    if (k === 1) return `${face}${suffix}`;
+    return k === 2 ? `${face}w${suffix}` : `${k}${face}w${suffix}`;
+  }
+  if (num === undefined) return notation;
+  const k = Number(num);
+  const slice = middleSliceName(n, `${k}${face}${suffix}`);
+  if (slice) return slice;
+  const back = n + 1 - k;
+  if (back < k) {
+    const other = OPPOSITE_LETTER[face] as string;
+    return back === 1
+      ? `${other}${flip(suffix)}`
+      : `${back}${other}${flip(suffix)}`;
+  }
+  return k === 1 ? `${face}${suffix}` : notation;
+}
+
+/** 가운데 층 이름 → 깊이 꼴(3×3의 E → 2D, S' → 2F', M → 2L). 짝수 크기나 다른 수는 null */
+export function sliceAsDepth(n: number, notation: string): string | null {
+  if (n % 2 === 0) return null;
+  const m = /^([MES])(2'?|'?)$/.exec(notation);
+  if (!m) return null;
+  const face = { M: "L", E: "D", S: "F" }[m[1] as "M" | "E" | "S"];
+  return `${(n + 1) / 2}${face}${m[2] ?? ""}`;
+}
+
 export function isAvailable(n: number, id: ActionId): boolean {
   const p = parseAction(id);
   if (!p) return false;
   if (p.kind === "command") return true;
-  if (p.kind === "depth") return n >= 4 && p.depth <= n - 1;
+  // 다음 수 깊이: 3×3부터, 1~n층을 모두 받는다(적을 때는 가장 짧은 이름, canonicalNotation)
+  if (p.kind === "depth") return n >= 3 && p.depth <= n;
+  // 3×3의 둘째 층(2U 등)은 가운데 층(E'·S …)으로 받는다
+  if (n === 3 && middleSliceName(n, p.notation) !== null) return true;
   // 안쪽 한 층(2R 등)과 깊이 붙은 넓게(3Rw)는 4×4부터, 넓게는 3×3부터
   if (/^\d/.test(p.notation) && n < 4) return false;
   if (/^[RLUDFB]w|^[rludfb]/.test(p.notation) && n < 3) return false;

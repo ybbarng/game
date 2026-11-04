@@ -301,8 +301,11 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       lines: [
         `M(가운데 세로 층, L과 같은 방향)은 ${k("M")} 키, M'은 ${k("M'")} 키예요.`,
         `Rw(오른쪽 두 층 함께)는 ${k("Rw")} 키, Rw'은 ${k("Rw'")} 키예요.`,
+        keymap.preset === "notation"
+          ? `넓게는 Alt + 면 키, E·S는 ${k("E")}·${k("S")} 키예요.`
+          : `Shift + 면 키 = 넓게(두 층), 숫자 → 면 키 = 몇째 층이에요. E(적도, D와 같은 쪽)는 ${k("E")}, S(서 있는 층, F와 같은 쪽)는 ${k("S")}예요.`,
       ],
-      ...moves("M", "M'", "Rw", "Rw'"),
+      ...moves("M", "M'", "Rw", "Rw'", "E", "S"),
     },
     {
       id: "formula",

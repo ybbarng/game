@@ -87,10 +87,12 @@ describe("키 차례", () => {
     expect(keyTextFor(notationKeymap(), 3, "R'")).toBe("Shift+R");
     expect(keyTextFor(twoHandKeymap(), 3, "R2")).toBe("I 두 번");
     expect(keyTextFor(notationKeymap(), 4, "2R")).toBe("2 → R");
-    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBe("Shift+I");
+    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBe("2 → I");
+    expect(keyTextFor(twoHandKeymap(), 4, "Rw")).toBe("U / Shift+I");
     expect(keyTextFor(twoHandKeymap(), 5, "3Rw")).toBe("3 → U");
     expect(keyTextFor(twoHandKeymap(), 3, "undo")).toBe("⌫ / Ctrl+Z");
-    expect(keyTextFor(twoHandKeymap(), 3, "2R")).toBeNull();
+    // 3×3의 가운데 층은 숫자 2 → 면 키(E = 2 → S)
+    expect(keyTextFor(twoHandKeymap(), 3, "E")).toBe("2 → S");
     expect(pressLabel([{ code: "KeyI" }, { code: "KeyJ" }])).toBe("I → J");
   });
 
@@ -125,7 +127,7 @@ describe("키 차례", () => {
     expect(describeInput(km, 3, press({ code: "Quote" })).text).toBe(
       "' 키에는 동작이 없어요.",
     );
-    expect(describeInput(km, 3, press({ code: "Digit2" })).text).toMatch(
+    expect(describeInput(km, 3, press({ code: "Digit4" })).text).toMatch(
       /이 크기에서는 쓰지 않아요\.$/,
     );
     // 친 수가 키의 동작과 같으면 덧붙이지 않고, 다르면 문장으로 잇는다(마침표가 겹치지 않게)
@@ -184,8 +186,8 @@ describe("키보드 그림", () => {
     expect(r?.hand).toBe("left");
     const i = cells.find((c) => c.code === "KeyI");
     expect(i?.layers.plain).toMatchObject({ label: "R", kind: "face" });
-    expect(i?.layers.shift).toMatchObject({ label: "2R", usable: false });
-    expect(i?.layers.alt).toMatchObject({ label: "Rw", usable: true });
+    expect(i?.layers.shift).toMatchObject({ label: "Rw", usable: true });
+    expect(i?.layers.alt).toBeUndefined();
     expect(i?.hand).toBe("right");
     const n = keyLayers(notationKeymap(), 4, "KeyR");
     expect(n.plain?.label).toBe("R");
@@ -211,10 +213,10 @@ describe("키보드 그림", () => {
     expect(searchRows(rows, "R’")[0]?.action).toBe("R'");
     expect(searchRows(rows, "Ri")[0]?.action).toBe("R'");
     expect(searchRows(rows, "되돌리기")[0]?.action).toBe("undo");
-    expect(searchRows(rows, "shift+i").length).toBe(0); // 3×3에는 2R이 없다
+    expect(searchRows(rows, "shift+i")[0]?.action).toBe("Rw");
     expect(
       searchRows(actionRows(twoHandKeymap(), 4), "shift+i")[0]?.action,
-    ).toBe("2R");
+    ).toBe("Rw");
     expect(searchRows(rows, "").length).toBe(rows.length);
   });
 });

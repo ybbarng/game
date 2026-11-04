@@ -46,6 +46,7 @@ import {
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
+import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -60,33 +61,6 @@ function findLesson(id: string): { course: Course; lesson: Lesson } | null {
   }
   return null;
 }
-
-const KIND_LABEL = {
-  text: "설명",
-  demo: "시연",
-  try: "해보기",
-  look: "둘러보기",
-  find: "찾아보기",
-  quiz: "문제",
-  turn: "따라 하기",
-  play: "돌려 보기",
-  welcome: "환영",
-  parts: "조각 보기",
-  build: "분해·조립",
-} as const;
-
-const KIND_MARK = {
-  demo: "▶",
-  try: "✋",
-  look: "↻",
-  find: "◎",
-  quiz: "?",
-  turn: "✋",
-  play: "✦",
-  welcome: "★",
-  parts: "▦",
-  build: "⚙",
-} as const;
 
 export function LearnApp() {
   // undefined: 주소를 아직 안 읽음(미리 그린 HTML과 첫 그리기를 맞춘다)

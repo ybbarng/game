@@ -605,6 +605,11 @@ export function LookPanel({
 
 // ── 한 수 해 보기 ────────────────────────────────────────
 
+/** 공식의 수에서 방향 표시(' 2)를 뗀 단추 이름들(겹침 없이) */
+function baseMoves(tokens: readonly string[]): string[] {
+  return [...new Set(tokens.map((t) => t.replace(/['2]+$/, "")))];
+}
+
 export function TurnPanel({
   n,
   start,
@@ -705,6 +710,7 @@ export function TurnPanel({
         onCommand={play.onCommand}
         want={want}
         axes={axes}
+        extraButtons={baseMoves(tokens)}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import {
   isAvailable,
   notationToMove,
   parseAction,
+  sliceAsDepth,
 } from "../input/actions";
 import {
   chordLabel,
@@ -29,7 +30,11 @@ export function pressesFor(
   notation: string,
 ): KeyChord[][] {
   if (!isAvailable(n, notation)) return [];
-  return reach(keymap, notation);
+  const found = reach(keymap, notation);
+  if (found.length > 0) return found;
+  // 가운데 층 전용 키가 없으면(「두 손」의 E·S) 깊이 꼴로: 3×3의 E = 2 → D 키
+  const depth = sliceAsDepth(n, notation);
+  return depth ? reach(keymap, depth) : [];
 }
 
 function reach(keymap: Keymap, notation: string): KeyChord[][] {

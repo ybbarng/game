@@ -78,6 +78,8 @@ export interface CubePlayProps {
   onSticker?: ((sticker: number) => void) | undefined;
   /** 세 축 화살표를 보인다(처음 안내의 x·y·z) */
   axes?: boolean;
+  /** 단추 줄에 더할 수(따라 하기의 Rw·E·S·2R 등, 휴대폰에서도 칠 수 있게) */
+  extraButtons?: readonly string[];
 }
 
 export function CubePlay({
@@ -94,6 +96,7 @@ export function CubePlay({
   marks,
   onSticker,
   axes = false,
+  extraButtons,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -350,7 +353,10 @@ export function CubePlay({
 
       {/* 휴대폰·마우스용 표기 단추 줄 */}
       <div className="flex flex-wrap justify-center gap-1" data-cube-buttons>
-        {buttonMoves(n).map((m) => (
+        {[
+          ...buttonMoves(n),
+          ...(extraButtons ?? []).filter((b) => !buttonMoves(n).includes(b)),
+        ].map((m) => (
           <button
             key={m}
             type="button"

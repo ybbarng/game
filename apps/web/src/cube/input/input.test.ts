@@ -301,16 +301,20 @@ describe("키 → 동작 → 수", () => {
     expect(
       new KeyInterpreter(4, twoHandKeymap()).handle(press("Digit5")),
     ).toBeNull();
-    expect(
-      new KeyInterpreter(3, twoHandKeymap()).handle(
-        press("KeyI", { shiftKey: true }),
-      ),
-    ).toBeNull();
-    expect(
-      new KeyInterpreter(4, twoHandKeymap()).handle(
-        press("KeyI", { shiftKey: true }),
-      ),
-    ).toMatchObject({ notation: "2R" });
+    // 「두 손」 Shift = 넓게(2026-11-04): 3×3·4×4 모두 Shift+I = Rw
+    for (const n of [3, 4])
+      expect(
+        new KeyInterpreter(n, twoHandKeymap()).handle(
+          press("KeyI", { shiftKey: true }),
+        ),
+      ).toMatchObject({ notation: "Rw" });
+    // 숫자 = 몇째 층: 4×4의 2 → I = 2R, 3×3의 2 → I = 가운데 층 M'
+    const four = new KeyInterpreter(4, twoHandKeymap());
+    four.handle(press("Digit2"));
+    expect(four.handle(press("KeyI"))).toMatchObject({ notation: "2R" });
+    const three = new KeyInterpreter(3, twoHandKeymap());
+    three.handle(press("Digit2"));
+    expect(three.handle(press("KeyI"))).toMatchObject({ notation: "M'" });
   });
 
   it("표기: 숫자로 다음 수 깊이를 고르고, 한 수에만 붙는다", () => {
@@ -333,10 +337,11 @@ describe("키 → 동작 → 수", () => {
     });
   });
 
-  it("3×3에서는 깊이 고르기 키가 없다", () => {
-    expect(
-      new KeyInterpreter(3, notationKeymap()).handle(press("Digit2")),
-    ).toBeNull();
+  it("3×3에서도 깊이 2·3을 고르고(가장 짧은 이름으로 적음), 4는 없다", () => {
+    const it3 = new KeyInterpreter(3, notationKeymap());
+    expect(it3.handle(press("Digit4"))).toBeNull();
+    expect(it3.handle(press("Digit2"))).toMatchObject({ kind: "depth" });
+    expect(it3.handle(press("KeyU"))).toMatchObject({ notation: "E'" });
   });
 });
 
