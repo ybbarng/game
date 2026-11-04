@@ -16,6 +16,7 @@ export {
   solveIntermediate2,
   solveIntermediate3,
 } from "./methods";
+export { solveRoux, solveZZ } from "./methods-roux-zz";
 export * from "./plan";
 export {
   type HumanSolve,

@@ -41,7 +41,18 @@ export type StageName =
   | "last-edges"
   | "oll-parity"
   | "pll-parity"
-  | "three";
+  | "three"
+  // 루(Roux)
+  | "fb"
+  | "sb"
+  | "cmll"
+  | "lse-eo"
+  | "lse-ulur"
+  | "lse-ep"
+  // ZZ
+  | "eoline"
+  | "zz-left"
+  | "zz-right";
 
 export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   solve: "맞추기",
@@ -66,6 +77,15 @@ export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   "oll-parity": "패리티(모서리 뒤집기)",
   "pll-parity": "패리티(모서리 맞바꾸기)",
   three: "3×3 맞추기",
+  fb: "첫 블록",
+  sb: "둘째 블록",
+  cmll: "위 꼭짓점(CMLL)",
+  "lse-eo": "모서리 방향(EO)",
+  "lse-ulur": "왼쪽·오른쪽 위 모서리",
+  "lse-ep": "가운데 줄 모서리",
+  eoline: "EO라인",
+  "zz-left": "왼쪽 블록",
+  "zz-right": "오른쪽 블록",
 };
 
 export interface SolveStage {
@@ -103,7 +123,8 @@ export class Solve {
   constructor(n: number, facelets: string, frame: Face[] | null = null) {
     this.n = n;
     this.f = facelets.split("");
-    this.frame = n === 3 ? null : (frame ?? [...SOLVED_FRAME]);
+    // 3×3은 보통 가운데 색이 기준이다. 가운데 층(M)을 돌리는 해법(루)은 처음 기준을 넘겨 고정한다
+    this.frame = frame ? [...frame] : n === 3 ? null : [...SOLVED_FRAME];
     this.moves = [];
     this.stageList = [];
     this.lookList = [];
