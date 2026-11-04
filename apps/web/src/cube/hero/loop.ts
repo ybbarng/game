@@ -39,6 +39,11 @@ export interface HeroTiming {
   solved: number;
   /** 섞는 수 */
   scrambleLength: number;
+  /**
+   * 섞기를 다 두고 풀이를 기다리는 상한. 넘으면 그 풀이를 버리고 못 푼 판처럼 넘어간다(해법 이름만 띄운 채
+   * 큐브가 멈춰 있지 않게). 멈춘 동안(안 보임·탭 숨김)은 재지 않는다
+   */
+  solveWait: number;
 }
 
 /** 크기마다 시간(ms). 큰 큐브는 풀이가 길어 수를 빠르게 둔다(휴대폰에서 오래 무겁지 않게) */
@@ -49,12 +54,28 @@ export function heroTiming(n: HeroSize): HeroTiming {
     look: 220,
     solved: 1800,
   };
+  // 풀이는 섞는 동안 미리 만들어 보통 섞기가 끝나기 전에 온다. 상한은 멈춘 워커를 잡는 안전장치라 넉넉히
   if (n === 2)
-    return { ...base, scrambleMove: 120, solveMove: 280, scrambleLength: 11 };
+    return {
+      ...base,
+      scrambleMove: 120,
+      solveMove: 280,
+      scrambleLength: 11,
+      solveWait: 8000,
+    };
   if (n === 3)
-    return { ...base, scrambleMove: 110, solveMove: 240, scrambleLength: 20 };
+    return {
+      ...base,
+      scrambleMove: 110,
+      solveMove: 240,
+      scrambleLength: 20,
+      solveWait: 8000,
+    };
   return {
     ...base,
+    // 축소법은 느린 휴대폰에서 몇 초 걸릴 수 있다. 워커 상한(`JOB_LIMIT_MS.hero`)을 넘겨 화면 스레드에서
+    // 다시 푼 답도 받게 그보다 길게
+    solveWait: 25_000,
     stage: 350,
     look: 120,
     scrambleMove: 80,
@@ -292,6 +313,8 @@ export class HeroLoop {
   private orient: string[] = [];
   private phase: "scramble" | "solve" = "scramble";
   private cancel: (() => void) | null = null;
+  /** 섞기를 다 두고 풀이를 기다리는 상한(`solveWait`) 끄기 */
+  private waitTimer: (() => void) | null = null;
   private running = false;
   private stopped = false;
   private label = "";
@@ -331,6 +354,13 @@ export class HeroLoop {
     this.running = false;
     this.cancel?.();
     this.cancel = null;
+    // 멈춘 동안은 풀이 기다림을 재지 않는다(이으면 처음부터 다시 잰다)
+    this.clearWait();
+  }
+
+  private clearWait(): void {
+    this.waitTimer?.();
+    this.waitTimer = null;
   }
 
   resume(): void {
@@ -402,7 +432,18 @@ export class HeroLoop {
     if (!this.running || this.cancel) return;
     if (this.index >= this.steps.length) {
       if (this.phase === "scramble") {
-        if (this.solved === undefined) return; // 풀이를 기다린다(오면 다시 부른다)
+        if (this.solved === undefined) {
+          // 풀이를 기다린다(오면 다시 부른다). 상한을 넘으면 그 풀이를 버리고 못 푼 판처럼 넘어간다
+          this.waitTimer ??= this.o.clock.after(this.t.solveWait, () => {
+            this.waitTimer = null;
+            if (this.solved !== undefined) return;
+            this.pendingSolve = null;
+            this.solved = null;
+            this.run();
+          });
+          return;
+        }
+        this.clearWait();
         const solve = this.solved;
         this.pendingSolve = null;
         if (!solve) {

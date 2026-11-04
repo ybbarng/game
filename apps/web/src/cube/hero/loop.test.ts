@@ -131,6 +131,9 @@ describe("orientForSolve", () => {
 const play = (n: number, s: PuzzleState, moves: readonly string[]) =>
   moves.length ? applyMoves(n, s, parseMoves(n, moves.join(" "))) : s;
 
+/** 연출이 3×3 해법에 넘기는 상태(섞은 뒤 방향 맞추기까지) */
+const stateForSolve = (s: PuzzleState) => play(3, s, orientForSolve(3, s));
+
 describe("차례 만들기", () => {
   it("섞기는 「섞는 중」 수들 뒤에 해법 이름으로 멈춘다", () => {
     const steps = scrambleSteps(["R", "U'"], "프리드리히", T3);
@@ -345,6 +348,89 @@ describe("HeroLoop", () => {
     expect(["초보자 해법 · 십자", `초보자 해법 · ${ORIENT_LABEL}`]).toContain(
       h.loop.currentLabel,
     );
+  });
+
+  /** 답하지 않는 풀이(멈춘 워커처럼). 나중에 답하게 할 수 있다 */
+  function silentSolve() {
+    const answers: ((s: HeroSolve) => void)[] = [];
+    const solve = () =>
+      new Promise<HeroSolve>((r) => {
+        answers.push(r);
+      });
+    return { solve, answers };
+  }
+
+  /** 섞기와 섞은 뒤 멈춤을 다 두고 풀이를 기다리기 시작한 순간까지 */
+  function untilWaiting(h: ReturnType<typeof harness>) {
+    h.advanceUntil(() => h.loop.currentLabel === "초보자 해법", 1);
+    h.clock.advance(T3.afterScramble);
+  }
+
+  it("풀이가 상한 안에 안 오면 해법 이름만 띄운 채 멈춰 있지 않고, 맞춘 큐브에서 다음 해법으로 다시 섞는다", async () => {
+    const s = silentSolve();
+    const h = harness(s.solve);
+    h.loop.start();
+    untilWaiting(h);
+    const moves = h.moves.length;
+    h.clock.advance(T3.solveWait - 1);
+    expect(h.loop.currentLabel).toBe("초보자 해법");
+    expect(h.moves).toHaveLength(moves);
+    expect(h.resets).toHaveLength(0);
+    h.clock.advance(1);
+    expect(h.resets).toHaveLength(1);
+    expect(isSolved(3, h.resets[0] as PuzzleState)).toBe(true);
+    expect(h.loop.currentMethod).toBe("3-cfop");
+    expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
+    // 늦게 온 앞 판의 답은 버린다(지금 판의 섞기를 그대로 이어 간다)
+    s.answers[0]?.({
+      moves: ["R"],
+      stages: [{ label: "십자", start: 0, end: 1 }],
+      looks: [],
+    });
+    await flush();
+    expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
+    expect(h.loop.currentMethod).toBe("3-cfop");
+    h.clock.advance(T3.scrambleMove * 2);
+    expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
+  });
+
+  it("멈춘 동안(안 보임·탭 숨김)은 풀이 기다림을 재지 않고, 이으면 처음부터 다시 잰다", () => {
+    const s = silentSolve();
+    const h = harness(s.solve);
+    h.loop.start();
+    untilWaiting(h);
+    h.clock.advance(T3.solveWait - 100);
+    h.loop.pause();
+    expect(h.clock.pending()).toBe(0);
+    h.clock.advance(T3.solveWait * 10);
+    expect(h.resets).toHaveLength(0);
+    h.loop.resume();
+    expect(h.loop.currentLabel).toBe("초보자 해법");
+    h.clock.advance(T3.solveWait - 1);
+    expect(h.resets).toHaveLength(0);
+    h.clock.advance(1);
+    expect(h.resets).toHaveLength(1);
+  });
+
+  it("풀이가 상한 앞에 오면 상한은 꺼지고 그대로 맞춘다", async () => {
+    const s = silentSolve();
+    const h = harness((m, st) => {
+      const p = s.solve();
+      // 첫 판만 늦게 답한다(상한 바로 앞에)
+      if (s.answers.length > 1) return solveForHero(m, st);
+      return p;
+    });
+    h.loop.start();
+    untilWaiting(h);
+    const state = h.loop.current;
+    h.clock.advance(T3.solveWait - 1);
+    s.answers[0]?.(await solveForHero("3-beginner", stateForSolve(state)));
+    await flush();
+    expect(h.loop.currentLabel).not.toBe("초보자 해법");
+    expect(h.clock.pending()).toBe(1);
+    h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
+    expect(isSolved(3, h.loop.current)).toBe(true);
+    expect(h.resets).toHaveLength(0);
   });
 
   it("멈추면 시간이 흘러도 수를 두지 않고, 이으면 그 자리에서 간다", () => {
