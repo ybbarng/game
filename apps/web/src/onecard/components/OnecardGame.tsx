@@ -198,6 +198,7 @@ function SeatPlate({
         </span>
       </div>
       <div className="flex min-h-4 items-center gap-1 text-[11px]">
+        {turn && <span className="font-semibold text-amber-200">차례</span>}
         {place >= 0 && (
           <span className="shrink-0 rounded bg-amber-400 px-1 text-[10px] text-black">
             {place + 1}등
@@ -410,7 +411,13 @@ function fanSlot(
  * 미션 띠 자리: 막대 바로 아래 가운데. 위쪽 자리 판을 가리면 가로 화면은 그 왼쪽 빈 곳으로 좁히고,
  * 세로 화면은 그 아래로 내린다(하트와 같은 규칙, 자리가 몇이든)
  */
-function missionPlace(layout: Layout, width: number, height: number) {
+function missionPlace(
+  layout: Layout,
+  width: number,
+  height: number,
+  /** 자리 판 아래로 삐져나온 뒷면 부채 높이 */
+  fanBelow: number,
+) {
   const below = layout.hud.y + layout.hud.h + 8;
   const bandW = Math.min(width * 0.92, 480);
   const bandX = width / 2 - bandW / 2;
@@ -427,7 +434,7 @@ function missionPlace(layout: Layout, width: number, height: number) {
   const left = Math.min(...blocking.map((p) => p.x)) - 2 * layout.gutter;
   if (width > height && left >= MISSION_BAND_MIN_W)
     return { top: below, span: { left: layout.gutter, width: left } };
-  return { top: Math.max(...blocking.map((p) => p.y + p.h)) + 8 };
+  return { top: Math.max(...blocking.map((p) => p.y + p.h)) + fanBelow + 8 };
 }
 
 /** 대국 화면. `mission`이 있으면 튜토리얼 미션 띠를 얹는다 */
@@ -975,7 +982,7 @@ export function OnecardGame({
             {bubbles.get(me) && (
               <BubbleTag
                 bubble={bubbles.get(me) as Bubble}
-                className="-top-1 right-4"
+                className="top-0 left-1/2 -translate-x-1/2"
               />
             )}
             {hand.map((card, i) => {
@@ -1008,7 +1015,12 @@ export function OnecardGame({
           {mission && (
             <MissionOverlay
               mission={mission}
-              {...missionPlace(layout, stage.width, stage.height)}
+              {...missionPlace(
+                layout,
+                stage.width,
+                stage.height,
+                fanCard.h * 0.72,
+              )}
             />
           )}
 
