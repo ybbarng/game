@@ -72,6 +72,7 @@ export function CubeNet({
                   stroke={mark ? "#38bdf8" : "#000"}
                   strokeWidth={mark ? 1.6 : 0.6}
                   data-net-cell={onCell ? sticker : undefined}
+                  data-net-hidden={onCell && c === null ? "" : undefined}
                   role={onCell ? "button" : undefined}
                   tabIndex={onCell ? 0 : undefined}
                   aria-label={onCell ? `칸 ${sticker + 1}` : undefined}

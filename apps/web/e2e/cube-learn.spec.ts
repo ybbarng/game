@@ -32,6 +32,29 @@ function keysFor(alg: string): string[] {
   return keys;
 }
 
+/**
+ * 그 종류의 단계가 나올 때까지 「다음」을 누른다. 누를 때마다 단계 번호가 실제로 바뀐 것을 확인하고 다음 종류를 읽는다
+ * (느린 CI에서 바뀌기 전 값을 읽어 한 번 더 누르면 찾는 단계를 지나쳤다, 2026-11-04 #90)
+ */
+async function nextUntil(page: Page, kind: string) {
+  const section = page.locator("[data-step-kind]");
+  for (;;) {
+    const step = await section.getAttribute("data-step");
+    if ((await section.getAttribute("data-step-kind")) === kind) return;
+    await page.locator("[data-step-next]").click();
+    await expect(section).not.toHaveAttribute("data-step", step ?? "");
+  }
+}
+
+/** 단계 목록에서 i번째(0부터) 단계로 바로 간다 */
+async function goStep(page: Page, i: number) {
+  await page.locator('[aria-label="단계"] li').nth(i).locator("button").click();
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step",
+    String(i),
+  );
+}
+
 async function shot(page: Page, name: string, project: string) {
   if (!SAVE_SCREENSHOTS) return;
   await page.screenshot({
@@ -323,9 +346,60 @@ test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기
   await page.locator('[data-net-cell="8"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
   // R 뒤에는 위-뒤-오른쪽(윗면 칸 2)
+  await expect(page.locator('[data-net-cell="2"]')).toHaveAttribute(
+    "data-net-hidden",
+    "",
+  );
   await page.locator('[data-net-cell="2"]').click();
   await expect(find).toHaveAttribute("data-act-passed", "");
+  // 찾은 꼭짓점은 가리기가 풀려 색이 드러난다(3D도 같은 마스크를 쓴다)
+  await expect(page.locator('[data-net-cell="2"]')).not.toHaveAttribute(
+    "data-net-hidden",
+    "",
+  );
   await shot(page, "learn-pieces-track", info.project.name);
+});
+
+test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면으로 올리기)", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  // 7번: 흰색이 앞을 보는 가운데 줄 모서리를 R로 올린다
+  await goStep(page, 7);
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "try");
+  await expect(section).toContainText("가운데 줄 모서리");
+  await inputReady(page);
+  await shot(page, "learn-cross-case", info.project.name);
+
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await page.locator("[data-cube-hint-button]").click();
+  const hint = (await page
+    .locator("[data-cube-hint]")
+    .getAttribute("data-cube-hint")) as string;
+  expect(hint).toBe("R");
+  for (const k of keysFor(hint)) await page.keyboard.press(k);
+  await expect(page.locator("[data-cube-try]")).toHaveAttribute(
+    "data-cube-passed",
+    "",
+  );
+});
+
+test("배우기: 첫 층 꼭짓점은 두 옆색으로 넣을 칸을 고른다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=333-first-corners");
+  // 3번: 흰-초록-주황이 들어갈 칸(아래-앞-오른쪽) 누르기
+  await goStep(page, 3);
+  const find = page.locator('[data-act="find"]');
+  // 앞면 왼쪽 아래(24)는 아래-앞-왼쪽 칸이라 틀림
+  await page.locator('[data-net-cell="24"]').click();
+  await expect(find.getByRole("status")).toContainText("가운데 사이");
+  // 앞면 오른쪽 아래(26) = 아래-앞-오른쪽 칸
+  await page.locator('[data-net-cell="26"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-corner-slot", info.project.name);
 });
 
 test("배우기: 3×3을 아는 사람의 2×2는 꼭짓점만 보이는 3×3을 곁에 둔다", async ({

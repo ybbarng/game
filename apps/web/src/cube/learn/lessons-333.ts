@@ -19,6 +19,38 @@ const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
 
 const SIDES = ["앞", "오른쪽", "뒤", "왼쪽"];
 
+// 흰 십자의 경우별 풀이(상황은 그 거꾸로, 흰 면 위). where는 처음 모서리 자리. 시험이 엔진으로 자리·방향을 확인한다
+/** 가운데 줄, 옆색이 그 면 가운데와 같음: 흰-초록이 앞-오른쪽, 흰색이 오른쪽 */
+export const CROSS_MIDDLE = {
+  alg: "F'",
+  where: "앞-오른쪽, 흰색이 오른쪽을 봐요",
+};
+/** 가운데 줄: 흰-빨강이 앞-오른쪽, 흰색이 앞(오른쪽 면을 돌려 올림) */
+export const CROSS_MIDDLE_R = {
+  alg: "R",
+  where: "앞-오른쪽, 흰색이 앞을 봐요",
+};
+/** 가운데 줄, 옆색이 다른 면: 윗면으로 비켜 놓고 올리고 되돌리기 */
+export const CROSS_GUARD = {
+  alg: "U F' U'",
+  where: "앞-오른쪽, 흰색이 오른쪽을 봐요",
+};
+export const CROSS_GUARD_TRY = { alg: "U' R U", where: "앞-오른쪽" };
+/** 아래층, 흰색이 옆: 한 번 돌려 가운데 줄로 올린 뒤 둘째 경우 */
+export const CROSS_DOWN_SIDE = { alg: "F' U' R U", where: "아래-앞" };
+export const CROSS_DOWN_SIDE_TRY = { alg: "R U F' U'", where: "아래-오른쪽" };
+/** 윗층 제자리에서 뒤집힘: 한 번 돌려 가운데 줄로 내린 뒤 둘째 경우 */
+export const CROSS_FLIPPED = { alg: "F U' R U", where: "위-앞" };
+export const CROSS_FLIPPED_TRY = { alg: "R' U F' U'", where: "위-오른쪽" };
+/** 윗층 흰색 위, 엉뚱한 자리: 반 바퀴로 내려 첫째 경우 */
+export const CROSS_WRONG_TOP = { alg: "R2 D' F2", where: "위-오른쪽" };
+export const CROSS_WRONG_TOP_TRY = { alg: "F2 D R2", where: "위-앞" };
+
+/** 첫 층: 앞-왼쪽 아래 칸에 엉뚱한 흰 꼭짓점이 박힘. 돌려 들고 꺼낸 뒤 제 칸에 넣는다 */
+export const STUCK_CORNER = `y' ${SEXY} y U' ${SEXY}`;
+/** 둘째 층: 앞-오른쪽 칸에 앞-왼쪽 칸의 모서리가 박힘 */
+const STUCK_EDGE = `${RIGHT} U' y' ${RIGHT} y`;
+
 // 「큐브의 조각」에서 따라가는 수와 마무리 해 보기(시험이 엔진으로 자리·정답을 확인한다)
 /** 흰-초록-빨강 꼭짓점을 R U2로 옮기면 위-앞-왼쪽 자리로 간다. 되돌리기 U2 R' */
 export const TRACK_CORNER = "R U2";
@@ -288,7 +320,7 @@ const notation: Lesson = {
     },
     {
       kind: "demo",
-      body: "R: 오른쪽 면을 오른쪽에서 봤을 때 시계 방향. 앞면 칸이 위로 올라가요.",
+      body: "R: 오른쪽 면을 오른쪽에서 봤을 때 시계 방향. 오른쪽 층의 조각 아홉 개(가운데 1·모서리 4·꼭짓점 4)가 통째로 돌아, 앞면 칸이 위로 올라가요.",
       alg: "R",
     },
     {
@@ -308,12 +340,32 @@ const notation: Lesson = {
     },
     {
       kind: "look",
-      body: "x·y·z는 큐브 전체를 돌려요(x는 R 방향, y는 U 방향, z는 F 방향). Rw(또는 r)는 오른쪽 두 층을 함께, M은 가운데 세로줄을 L 방향으로 돌려요. 큐브 전체를 돌려 초록 면이 위로 오게 해 보세요.",
+      body: "x·y·z는 면 하나가 아니라 큐브 전체를 돌려 쥐는 거예요(x는 R 방향, y는 U 방향, z는 F 방향). 조각끼리의 자리는 그대로이고 보는 쪽만 바뀌어요. 큐브 전체를 돌려 초록 면이 위로 오게 해 보세요.",
       look: { color: "F", on: "U" },
     },
     {
+      kind: "look",
+      body: "앞으로 「그 칸을 앞-오른쪽으로 오게 들고」 같은 말이 자주 나와요. 그때는 큐브를 옆으로 돌려 쥐어요(y). 큐브 전체를 옆으로 돌려 빨강 면이 앞에 오게 해 보세요.",
+      look: { color: "R", on: "F" },
+    },
+    {
+      kind: "quiz",
+      body: "U와 y는 같은 방향으로 돌지만 하는 일이 달라요.",
+      setup: { alg: "R U F'" },
+      quiz: {
+        question: "윗면 돌리기 U와 큐브 돌려 쥐기 y는 무엇이 다를까요?",
+        choices: [
+          "U는 윗층만 돌아 모양이 바뀌고, y는 큐브 전체가 돌아 섞인 모양은 그대로예요",
+          "둘은 똑같아요",
+          "y는 아래층만 돌려요",
+        ],
+        answer: 0,
+        why: "y는 손에 쥔 방향만 바꿔요. 조각끼리의 자리는 그대로라 섞인 모양이 바뀌지 않아요.",
+      },
+    },
+    {
       kind: "demo",
-      body: "z2: 큐브 전체를 앞면 축으로 반 바퀴. 흰 면이 아래로 가요.",
+      body: "z2: 큐브 전체를 앞면 축으로 반 바퀴. 흰 면이 아래로 가요. 흰 십자를 만든 뒤 이렇게 뒤집어요.",
       alg: "z2",
     },
     {
@@ -383,59 +435,150 @@ const whiteCross: Lesson = {
     },
     {
       kind: "demo",
-      body: "흰 모서리가 아래층에 있고 옆색(초록)이 이미 앞 가운데와 같아요. 앞면을 반 바퀴 돌리면 위로 올라가요.",
+      body: "첫째 경우: 흰 모서리가 아래층에 있고 흰색이 아래를 봐요. 옆색(초록)이 이미 앞 가운데와 같아요. 그 면(앞)을 반 바퀴 돌리면 모서리 조각이 통째로 위로 올라가요.",
       setup: { alg: "F2" },
       alg: "F2",
       mask: "cross",
     },
     {
       kind: "demo",
-      body: "흰 모서리가 아래층 오른쪽에 있어요. 옆색이 앞 가운데와 같아질 때까지 아랫면을 돌린 뒤(D') 앞면을 반 바퀴.",
+      body: "옆색이 가운데와 다르면 아랫면(D)을 돌려 옆색이 같은 가운데 아래로 옮겨요. 아랫면은 흰 십자에 닿지 않아 마음껏 돌려도 돼요. 아랫면을 돌린 뒤(D') 앞면을 반 바퀴.",
       setup: { alg: "F2 D" },
       alg: "D' F2",
       mask: "cross",
     },
     {
-      kind: "demo",
-      body: "흰 모서리가 가운데 줄에 있어요(앞-오른쪽, 흰색이 오른쪽을 봐요). 앞면을 반시계로 한 번 돌리면 올라가요.",
-      setup: { alg: "F" },
-      alg: "F'",
-      mask: "cross",
-    },
-    {
       kind: "try",
-      body: "흰 모서리 하나가 아래에 있어요. 옆색을 맞추고 올려 보세요.",
+      body: "흰 모서리 하나가 아래에 있어요(흰색이 아래). 아랫면으로 옆색을 맞추고 반 바퀴로 올려 보세요.",
       setup: { alg: "R2 D2" },
       alg: "D2 R2",
       goal: "white-cross",
       mask: "cross",
     },
     {
+      kind: "demo",
+      body: `둘째 경우: 흰 모서리가 가운데 줄에 있어요(${CROSS_MIDDLE.where}). 흰색이 아닌 쪽 색(초록)이 붙은 면, 곧 앞면을 돌리면 흰색이 위로 올라가요. 초록이 앞 가운데와 같으니 반시계로 한 번(F')이면 제자리예요.`,
+      setup: { alg: setupFor(CROSS_MIDDLE.alg) },
+      alg: CROSS_MIDDLE.alg,
+      mask: "cross",
+    },
+    {
+      kind: "quiz",
+      body: "가운데 줄 모서리는 흰색이 아닌 쪽 색이 붙은 면을 돌려 올려요. 그 면을 돌려야 흰 칸이 위로 가요.",
+      setup: { alg: setupFor(CROSS_MIDDLE_R.alg) },
+      mask: "cross",
+      quiz: {
+        question: `이 모서리(${CROSS_MIDDLE_R.where})는 어느 면을 돌려 올릴까요?`,
+        choices: ["앞면", "오른쪽 면", "윗면"],
+        answer: 1,
+        why: "옆색 빨강이 오른쪽 면에 붙어 있어요. 오른쪽 면을 돌리면(R) 흰 칸이 위로, 빨강은 오른쪽 가운데 위로 가요.",
+      },
+    },
+    {
       kind: "try",
-      body: "흰 모서리 둘이 아래층에 있어요. 하나씩 옆색을 맞춰 올려요.",
-      setup: { alg: "F2 R2 D" },
-      alg: "D' F2 R2",
+      body: "흰색이 앞을 보는 가운데 줄 모서리예요. 옆색(빨강)이 붙은 오른쪽 면을 돌려 올려 보세요.",
+      setup: { alg: setupFor(CROSS_MIDDLE_R.alg) },
+      alg: CROSS_MIDDLE_R.alg,
       goal: "white-cross",
       mask: "cross",
     },
     {
-      kind: "try",
-      body: "흰 모서리 둘이 흐트러져 있어요(하나는 가운데 줄, 하나는 아래층). 하나를 올릴 때 다른 것이 내려가지 않는지 보며 하나씩 올려요.",
-      setup: { alg: "R' F" },
-      alg: "F' R",
-      goal: "white-cross",
+      kind: "demo",
+      body: `옆색이 그 면 가운데와 다르면 바로 올리면 안 돼요. 이 모서리(${CROSS_GUARD.where})는 흰-빨강인데 옆색 빨강이 앞면에 붙어 있어요. 이미 넣은 모서리를 지키는 요령: 윗면을 돌려(U) 빨강 자리를 앞으로 데려오고, 앞면으로 올리고(F'), 윗면을 되돌려요(U'). 이미 넣은 흰 모서리도 윗면과 함께 돌았다가 제자리로 돌아와요.`,
+      setup: { alg: setupFor(CROSS_GUARD.alg) },
+      alg: CROSS_GUARD.alg,
       mask: "cross",
     },
     {
       kind: "try",
-      body: "아무렇게나 섞인 큐브에서 흰 십자를 만들어요.",
-      setup: { rule: "random-cross" },
+      body: "흰-초록 모서리가 가운데 줄에 있는데 옆색 초록이 오른쪽 면에 붙어 있어요. 윗면으로 초록 자리를 비켜 놓고, 올리고, 되돌려 보세요.",
+      setup: { alg: setupFor(CROSS_GUARD_TRY.alg) },
+      alg: CROSS_GUARD_TRY.alg,
       goal: "white-cross",
       mask: "cross",
     },
     {
       kind: "quiz",
-      body: "흔한 실수: 흰색만 위로 모으고(흰 꽃) 옆색을 안 보는 것. 옆면을 돌려 보면 십자 둘레 색이 가운데와 달라요. 모서리를 올리기 전에 아랫면을 돌려 옆색부터 맞춰요.",
+      body: "셋째 경우: 흰 모서리가 아래층에 있는데 흰색이 옆을 봐요. 이럴 땐 그 면을 한 번 돌려 가운데 줄로 올리면 둘째 경우가 돼요.",
+      setup: { alg: setupFor(CROSS_DOWN_SIDE.alg) },
+      mask: "cross",
+      quiz: {
+        question:
+          "아래-앞의 흰-초록 모서리는 흰색이 앞을 봐요. 먼저 무엇을 할까요?",
+        choices: [
+          "앞면을 한 번 돌려 가운데 줄로 올려요",
+          "앞면을 반 바퀴 돌려 바로 올려요",
+          "아랫면만 돌려요",
+        ],
+        answer: 0,
+        why: "반 바퀴로 올리면 흰색이 앞을 보는 채로 올라가 뒤집혀요. 한 번 돌려 가운데 줄로 보내면 둘째 경우로 풀 수 있어요.",
+      },
+    },
+    {
+      kind: "demo",
+      body: `앞면을 한 번(F') 돌려 가운데 줄로 올렸어요. 이제 옆색 초록이 오른쪽 면에 붙었으니 둘째 경우의 요령대로: 윗면으로 초록 자리를 비켜 놓고(U'), 오른쪽 면으로 올리고(R), 되돌려요(U).`,
+      setup: { alg: setupFor(CROSS_DOWN_SIDE.alg) },
+      alg: CROSS_DOWN_SIDE.alg,
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "흰-빨강 모서리가 아래-오른쪽에 있고 흰색이 오른쪽을 봐요. 한 번 돌려 가운데 줄로 올린 뒤 둘째 경우처럼 올려 보세요.",
+      setup: { alg: setupFor(CROSS_DOWN_SIDE_TRY.alg) },
+      alg: CROSS_DOWN_SIDE_TRY.alg,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "demo",
+      body: "넷째 경우: 흰 모서리가 윗층 제자리에 있지만 뒤집혔어요(흰색이 앞을 봐요). 앞면을 한 번(F) 돌려 가운데 줄로 내리면 둘째 경우가 돼요. 그다음 비켜 놓고(U'), 올리고(R), 되돌려요(U).",
+      setup: { alg: setupFor(CROSS_FLIPPED.alg) },
+      alg: CROSS_FLIPPED.alg,
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "흰-빨강 모서리가 제자리에서 뒤집혔어요. 오른쪽 면을 한 번 돌려 가운데 줄로 내리고, 둘째 경우처럼 올려 보세요.",
+      setup: { alg: setupFor(CROSS_FLIPPED_TRY.alg) },
+      alg: CROSS_FLIPPED_TRY.alg,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "demo",
+      body: "다섯째 경우: 흰색은 위를 보지만 옆색이 가운데와 달라요(엉뚱한 자리). 그 면을 반 바퀴(R2) 돌려 아래로 내리면 첫째 경우가 돼요. 마침 아래에 있던 흰-빨강이 함께 올라오고, 흰-초록은 아랫면으로 옮겨(D') 앞면으로 올려요.",
+      setup: { alg: setupFor(CROSS_WRONG_TOP.alg) },
+      alg: CROSS_WRONG_TOP.alg,
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "흰-빨강 모서리가 앞 위에 잘못 들어가 있어요. 반 바퀴로 내리고, 아랫면으로 옮겨, 빨강 쪽으로 올려 보세요.",
+      setup: { alg: setupFor(CROSS_WRONG_TOP_TRY.alg) },
+      alg: CROSS_WRONG_TOP_TRY.alg,
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "quiz",
+      body: "정리: 어느 경우든 「흰색이 아래를 보는 아래층」이나 「가운데 줄」로 바꾸면 풀 수 있어요. 이 모서리는 다섯 경우 중 어디일까요?",
+      setup: { alg: setupFor(CROSS_FLIPPED_TRY.alg) },
+      mask: "cross",
+      quiz: {
+        question: "흰-빨강 모서리는 지금 어떤 경우일까요?",
+        choices: [
+          "아래층, 흰색이 아래",
+          "가운데 줄",
+          "아래층, 흰색이 옆",
+          "윗층 제자리지만 뒤집힘",
+        ],
+        answer: 3,
+        why: "흰 가운데와 빨강 가운데 사이에 있지만 흰 칸이 오른쪽을 봐요. 한 번 돌려 가운데 줄로 내려요.",
+      },
+    },
+    {
+      kind: "quiz",
+      body: "흔한 실수: 흰색만 위로 모으고(흰 꽃) 옆색을 안 보는 것. 옆면을 돌려 보면 십자 둘레 색이 가운데와 달라요. 모서리를 올리기 전에 옆색부터 맞춰요.",
       setup: { alg: "U" },
       mask: "cross",
       quiz: {
@@ -447,6 +590,21 @@ const whiteCross: Lesson = {
         answer: 1,
         why: "옆색까지 맞아야 십자예요. 이 큐브는 U'로 윗면을 돌리면 맞아요.",
       },
+    },
+    {
+      kind: "try",
+      body: "흰 모서리 둘이 흐트러져 있어요(하나는 가운데 줄, 하나는 아래층). 하나씩 경우를 보고 올려요. 이미 넣은 것이 내려가면 비켜 놓기 요령을 써요.",
+      setup: { alg: "R' F" },
+      alg: "F' R",
+      goal: "white-cross",
+      mask: "cross",
+    },
+    {
+      kind: "try",
+      body: "아무렇게나 섞인 큐브에서 흰 십자를 만들어요. 모서리마다 다섯 경우 중 어디인지 보고 하나씩 넣어요.",
+      setup: { rule: "random-cross" },
+      goal: "white-cross",
+      mask: "cross",
     },
   ],
 };
@@ -460,20 +618,53 @@ const firstCorners: Lesson = {
   steps: [
     {
       kind: "look",
-      body: "이제 큐브를 뒤집어(z2) 흰 십자를 아래로, 노란 가운데를 위로 둬요. 앞은 그대로 초록이에요. 큐브 전체를 돌려 흰 면을 아래로 보내 보세요.",
+      body: "이제 큐브를 뒤집어(z2) 흰 십자를 아래로, 노란 가운데를 위로 둬요. 까닭: 맞춘 층을 아래에 두면 앞으로 쓸 공식이 윗층만 흐트러뜨리고, 넣을 조각은 위에서 찾기 쉬워요. 앞은 그대로 초록이에요. 큐브 전체를 돌려 흰 면을 아래로 보내 보세요.",
       mask: "first-layer",
       look: { color: "U", on: "D" },
     },
     {
+      kind: "quiz",
+      body: "큐브만 통째로 돌렸으니 가운데끼리의 자리는 그대로예요. 다만 앞면 축으로 반 바퀴 돌아서 오른쪽과 왼쪽이 바뀌었어요.",
+      setup: { alg: "z2" },
+      mask: "first-layer",
+      quiz: {
+        question: "뒤집은 뒤 오른쪽 가운데는 무슨 색일까요?",
+        choices: ["빨강", "주황", "파랑"],
+        answer: 1,
+        why: "흰 면이 위일 때 왼쪽이던 주황이 오른쪽으로 와요. 앞으로 「오른쪽 주황, 왼쪽 빨강」으로 들고 해요.",
+      },
+    },
+    {
       kind: "find",
-      body: "흰색이 붙은 꼭짓점을 윗층에서 찾아요. 앞에서 본 것처럼 꼭짓점의 제자리는 세 색 가운데가 만나는 구석이에요. 다른 두 색을 보고, 넣을 자리 바로 위로 윗면을 돌려 옮겨요. 그 자리를 앞-오른쪽으로 오게 들고 R U R' U'을 맞을 때까지 되풀이해요. 윗층의 흰 꼭짓점을 눌러 보세요.",
+      body: "흰색이 붙은 꼭짓점을 윗층에서 찾아요. 앞에서 본 것처럼 꼭짓점의 제자리는 세 색 가운데가 만나는 구석이에요. 윗층의 흰-초록-주황 꼭짓점을 눌러 보세요.",
       setup: flip(SEXY),
       mask: "first-layer",
       find: { piece: "corner", colors: ["U", "F", "L"] },
     },
     {
+      kind: "find",
+      body: "이 꼭짓점이 들어갈 칸은 흰색이 아닌 두 색(초록·주황)으로 정해요. 초록 가운데(앞)와 주황 가운데(오른쪽) 사이, 아래층 구석이에요. 조각이 아니라 그 칸을 눌러 보세요.",
+      setup: flip(SEXY),
+      mask: "first-layer",
+      find: { at: ["D", "F", "R"] },
+    },
+    {
+      kind: "find",
+      body: "하나 더 해 봐요. 흰-파랑-빨강 꼭짓점은 어느 칸에 들어갈까요? 파랑 가운데와 빨강 가운데를 찾고, 그 사이 아래 구석을 눌러요. 큐브를 끌어 뒤쪽도 보세요.",
+      setup: flip(SEXY),
+      mask: "first-layer",
+      find: { at: ["D", "B", "L"] },
+    },
+    {
+      kind: "turn",
+      body: "넣을 칸을 찾았으면 윗면을 돌려 꼭짓점을 그 칸 바로 위(앞-오른쪽 위)로 옮겨요. 윗면만 돌리니 아래 흰 십자는 그대로예요. U'를 쳐서 흰-초록-주황 꼭짓점을 칸 위로 옮겨 보세요.",
+      setup: flip(`U' ${SEXY}`),
+      mask: "first-layer",
+      alg: "U'",
+    },
+    {
       kind: "quiz",
-      body: "되풀이 횟수는 흰색이 보는 쪽으로 정해져요. 흰색이 오른쪽을 보면 한 번, 위를 보면 세 번, 앞을 보면 다섯 번.",
+      body: "칸 위에 왔으면 R U R' U'을 맞을 때까지 되풀이해요. 이 공식은 앞-오른쪽 위 꼭짓점과 아래 칸 꼭짓점을 바꾸며 돌려요. 횟수는 흰색이 보는 쪽으로 정해져요: 흰색이 오른쪽을 보면 한 번, 위를 보면 세 번, 앞을 보면 다섯 번.",
       setup: flip(`${SEXY} ${SEXY} ${SEXY}`),
       mask: "first-layer",
       quiz: {
@@ -508,24 +699,45 @@ const firstCorners: Lesson = {
     },
     {
       kind: "try",
-      body: "꼭짓점이 넣을 자리 위에 있지 않아요. 먼저 윗면을 돌려(U') 자리 위로 옮겨요.",
+      body: "꼭짓점이 넣을 칸 위에 있지 않아요. 먼저 윗면을 돌려(U') 칸 위로 옮기고 R U R' U'.",
       setup: flip(`U' ${SEXY}`),
       alg: `U' ${SEXY}`,
       goal: "first-layer",
       mask: "first-layer",
     },
     {
+      kind: "quiz",
+      body: "꼭짓점이 제 칸에 들어가 있지만 돌아가 있을 때도 있어요. 칸을 앞-오른쪽에 두고 같은 공식을 되풀이해요. 흰색이 오른쪽을 보면 두 번, 앞을 보면 네 번이에요.",
+      setup: flip(`${SEXY} ${SEXY}`),
+      mask: "first-layer",
+      quiz: {
+        question:
+          "앞-오른쪽 아래 꼭짓점은 제 칸에 있지만 흰색이 오른쪽을 봐요. R U R' U'을 몇 번 할까요?",
+        choices: ["한 번", "두 번", "네 번"],
+        answer: 1,
+        why: "제 칸에서 흰색이 오른쪽을 보면 두 번, 앞을 보면 네 번이면 흰색이 아래로 와요.",
+      },
+    },
+    {
       kind: "try",
-      body: "꼭짓점이 제자리에 들어가 있지만 돌아가 있어요(흰색이 옆을 봐요). 같은 공식을 더 돌리면 맞아요.",
+      body: "꼭짓점이 제 칸에 들어가 있지만 흰색이 앞을 봐요. 같은 공식을 네 번 해요.",
       setup: flip(`${SEXY} ${SEXY} ${SEXY} ${SEXY}`),
       alg: `${SEXY} ${SEXY} ${SEXY} ${SEXY}`,
       goal: "first-layer",
       mask: "first-layer",
     },
     {
+      kind: "demo",
+      body: "윗층에 넣을 흰 꼭짓점이 없는데 첫 층이 안 맞을 때: 흰 꼭짓점이 다른 칸에 박혀 있어요. 여기선 앞-왼쪽 아래 칸의 꼭짓점 색이 초록·빨강 가운데와 달라요. 큐브를 돌려(y') 그 칸을 앞-오른쪽으로 들고 R U R' U' 한 번으로 꺼내요. 다시 돌려 들고(y) 꺼낸 꼭짓점을 제 칸 위로 옮겨(U') 넣어요.",
+      setup: flip(STUCK_CORNER),
+      alg: STUCK_CORNER,
+      mask: "first-layer",
+    },
+    {
       kind: "try",
-      body: "흰 십자만 맞은 큐브에서 첫 층을 끝내요.",
-      setup: { rule: "cross-solved" },
+      body: "엉뚱한 칸에 박힌 흰 꼭짓점을 꺼내 제 칸에 넣어 보세요. 꺼낼 때 위에 있던 꼭짓점이 대신 들어가기도 해요.",
+      setup: flip(STUCK_CORNER),
+      alg: STUCK_CORNER,
       goal: "first-layer",
       mask: "first-layer",
     },
@@ -545,6 +757,13 @@ const firstCorners: Lesson = {
         why: "공식을 끝까지 하면 흐트러진 조각이 돌아와요.",
       },
     },
+    {
+      kind: "try",
+      body: "흰 십자만 맞은 큐브에서 첫 층을 끝내요. 꼭짓점마다 칸 고르기 → 칸 위로 옮기기 → 공식 되풀이. 윗층에 흰 꼭짓점이 없으면 박힌 것을 꺼내요.",
+      setup: { rule: "cross-solved" },
+      goal: "first-layer",
+      mask: "first-layer",
+    },
   ],
 };
 
@@ -557,14 +776,14 @@ const secondLayer: Lesson = {
   steps: [
     {
       kind: "find",
-      body: "윗층에서 노란색이 없는 모서리를 찾아요. 그 모서리의 앞쪽 색이 앞 가운데와 같아지게 윗면을 돌려요(뒤집힌 T 모양). 노란색이 없는 윗층 모서리를 눌러 보세요.",
+      body: "둘째 층(가운데 줄)의 모서리 넷을 넣어요. 노란색이 없는 모서리가 이 칸들의 조각이에요. 노란색이 없는 윗층 모서리를 눌러 보세요.",
       setup: flip(RIGHT),
       mask: "all",
       find: { piece: "edge", colors: ["F", "L"] },
     },
     {
       kind: "quiz",
-      body: "모서리의 위쪽 색이 오른쪽 면 색이면 오른쪽으로, 왼쪽 면 색이면 왼쪽으로 넣어요.",
+      body: "그 모서리의 앞쪽 색이 앞 가운데와 같아지게 윗면을 돌려요. 그러면 앞면 가운데 세로줄(위 모서리 칸·가운데 칸·아래 칸)이 한 색으로 이어져, 아래 줄과 함께 ⊥(뒤집힌 T) 모양이 돼요. 그다음 모서리의 위쪽 색이 오른쪽 면 색이면 오른쪽으로, 왼쪽 면 색이면 왼쪽으로 넣어요.",
       setup: flip(RIGHT),
       mask: "all",
       quiz: {
@@ -577,14 +796,14 @@ const secondLayer: Lesson = {
     },
     {
       kind: "demo",
-      body: "오른쪽으로 넣기: U R U' R' U' F' U F를 해요.",
+      body: "오른쪽으로 넣기: U R U' R' U' F' U F. 앞 위 모서리를 앞-오른쪽 칸으로 옮겨요. 공식 가운데에 첫 층 꼭짓점이 잠깐 빠졌다가 끝에 함께 돌아와요.",
       setup: flip(RIGHT),
       alg: RIGHT,
       mask: "f2l",
     },
     {
       kind: "demo",
-      body: "왼쪽으로 넣기: U' L' U L U F U' F'를 해요.",
+      body: "왼쪽으로 넣기: U' L' U L U F U' F'. 오른쪽 넣기를 거울에 비춘 모양이에요. 앞 위 모서리를 앞-왼쪽 칸으로 옮겨요.",
       setup: flip(LEFT),
       alg: LEFT,
       mask: "f2l",
@@ -606,10 +825,25 @@ const secondLayer: Lesson = {
       mask: "f2l",
     },
     {
+      kind: "find",
+      body: "흔한 실수: 노란색이 붙은 모서리를 넣으려는 것. 노란 모서리는 윗층 것이에요. 넣으면 안 되는 모서리(노란색이 붙은 것)를 하나 눌러 보세요.",
+      setup: flip(RIGHT),
+      mask: "all",
+      find: { piece: "edge", has: ["D"] },
+    },
+    {
       kind: "try",
-      body: "모서리가 앞-오른쪽 칸에 들어가 있지만 뒤집혀 있어요. 오른쪽 넣기 공식으로 일단 빼내고(아무 모서리나 넣으면 빠져요), 다시 찾아 넣어요.",
+      body: "윗층에 넣을 모서리가 하나도 없으면 칸에 잘못 들어간 모서리가 있어요. 이 모서리는 앞-오른쪽 칸에 들어가 있지만 뒤집혔어요. 오른쪽 넣기 공식으로 일단 빼내고(위의 아무 모서리나 넣으면 빠져요), 다시 찾아 넣어요.",
       setup: flip(`${RIGHT} U2 ${RIGHT}`),
       alg: `${RIGHT} U2 ${RIGHT}`,
+      goal: "second-layer",
+      mask: "f2l",
+    },
+    {
+      kind: "try",
+      body: "이번엔 앞-오른쪽 칸에 다른 칸(앞-왼쪽)의 모서리가 들어가 있어요. 오른쪽 넣기로 빼내면 위에 있던 모서리가 대신 들어가요. 빠져나온 모서리는 위에서 찾아, 그 칸을 앞-오른쪽으로 오게 큐브를 돌려 들고(y') 넣어요.",
+      setup: flip(STUCK_EDGE),
+      alg: STUCK_EDGE,
       goal: "second-layer",
       mask: "f2l",
     },
@@ -619,13 +853,6 @@ const secondLayer: Lesson = {
       setup: { rule: "first-layer-solved" },
       goal: "second-layer",
       mask: "f2l",
-    },
-    {
-      kind: "find",
-      body: "흔한 실수: 노란색이 붙은 모서리를 넣으려는 것. 노란 모서리는 윗층 것이에요. 넣을 모서리가 위에 하나도 없으면 칸에 잘못 들어간 모서리를 빼내요. 넣으면 안 되는 모서리(노란색이 붙은 것)를 하나 눌러 보세요.",
-      setup: flip(RIGHT),
-      mask: "all",
-      find: { piece: "edge", has: ["D"] },
     },
   ],
 };
@@ -639,7 +866,7 @@ const yellowCross: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "윗면에서 노란 모서리만 봐요(꼭짓점은 아직 안 봐요). 가운데만 노란 「점」, 둘이 꺾인 「ㄱ자」, 둘이 마주 본 「가로줄」, 다 된 「십자」 넷 중 하나예요.",
+      body: "윗면에서 노란 칸이 위를 보는 모서리만 봐요(꼭짓점은 아직 안 봐요). 노란 가운데 하나만 있는 「점」, 노란 모서리 둘이 가운데와 꺾여 이어진 「ㄱ자」, 둘이 가운데를 사이에 두고 마주 본 「가로줄」, 넷 다인 「십자」 중 하나예요. 노란 모서리가 1개나 3개면 앞 단계에서 조각이 빠졌거나 실물 큐브가 튄 거예요(늘 짝수예요).",
       setup: flip(EO),
       mask: "oll",
       quiz: {
@@ -651,10 +878,22 @@ const yellowCross: Lesson = {
     },
     {
       kind: "demo",
-      body: "가로줄: 줄이 가로(왼쪽-오른쪽)가 되게 들고 F R U R' U' F'.",
+      body: "가로줄: 줄이 가로(왼쪽-오른쪽)가 되게 들고 F R U R' U' F'. 이 공식은 아래 두 층은 그대로 두고 윗층 모서리 둘을 뒤집어 노란색을 위로 올려요.",
       setup: flip(EO),
       alg: EO,
       mask: "oll",
+    },
+    {
+      kind: "quiz",
+      body: "ㄱ자는 쥐는 방향이 정해져 있어요.",
+      setup: flip(EO_L),
+      mask: "oll",
+      quiz: {
+        question: "이 ㄱ자의 노란 모서리 둘은 어디에 있나요?",
+        choices: ["왼쪽과 뒤", "오른쪽과 앞", "앞과 뒤"],
+        answer: 0,
+        why: "왼쪽과 뒤예요. ㄱ자는 이렇게 노란 두 칸이 왼쪽·뒤에 오게 들고 공식을 해요.",
+      },
     },
     {
       kind: "demo",
@@ -680,6 +919,13 @@ const yellowCross: Lesson = {
       mask: "oll",
     },
     {
+      kind: "turn",
+      body: "흔한 실수: ㄱ자를 다른 방향으로 들고 공식을 하는 것. 그러면 다시 ㄱ자나 점이 돼요. 이 ㄱ자는 한 칸 비껴 있어요. U를 쳐서 노란 두 칸을 왼쪽과 뒤로 옮겨 보세요.",
+      setup: { alg: `${setupFor(EO_L, "z2")} U'` },
+      alg: "U",
+      mask: "oll",
+    },
+    {
       kind: "try",
       body: "점: F R U R' U' F'을 하면 ㄱ자가 돼요. 윗면을 돌려 ㄱ자를 왼쪽·뒤에 두고 ㄱ자 공식.",
       setup: flip(`${EO} U2 ${EO_L}`),
@@ -692,13 +938,6 @@ const yellowCross: Lesson = {
       body: "둘째 층까지 맞은 큐브에서 노란 십자를 만들어요.",
       setup: { rule: "second-layer-solved" },
       goal: "yellow-cross",
-      mask: "oll",
-    },
-    {
-      kind: "turn",
-      body: "흔한 실수: ㄱ자를 다른 방향으로 들고 공식을 하는 것. 그러면 다시 ㄱ자나 점이 돼요. 노란 두 칸이 왼쪽과 뒤에 오는지 확인해요. 이 ㄱ자는 한 칸 비껴 있어요. U를 쳐서 왼쪽과 뒤로 옮겨 보세요.",
-      setup: { alg: `${setupFor(EO_L, "z2")} U'` },
-      alg: "U",
       mask: "oll",
     },
   ],
@@ -724,7 +963,7 @@ const yellowFace: Lesson = {
     },
     {
       kind: "find",
-      body: "그렇게 들고 수네(R U R' U R U2 R')를 해요. 한 번에 안 끝나면 다시 세어서 되풀이해요. 노란 십자는 깨지지 않아요. 왼쪽 앞에 둘 꼭짓점(노란색이 위를 보는 것)을 눌러 보세요.",
+      body: "그렇게 들고 수네(R U R' U R U2 R')를 해요. 수네는 노란 십자와 아래 두 층은 그대로 두고, 윗층 꼭짓점 셋을 돌려 노란색 방향을 바꿔요(자리도 조금 바뀌지만 다음 단계에서 맞춰요). 한 번에 안 끝나면 다시 세어서 되풀이해요. 왼쪽 앞에 둘 꼭짓점(노란색이 위를 보는 것)을 눌러 보세요.",
       setup: flip(SUNE),
       mask: "oll",
       find: { piece: "corner", colors: ["D", "L", "B"] },
@@ -753,6 +992,13 @@ const yellowFace: Lesson = {
       mask: "oll",
     },
     {
+      kind: "turn",
+      body: "위를 보는 노란 꼭짓점이 없어요. 이때는 왼쪽 앞 꼭짓점의 노란색이 왼쪽 면을 보게 들어요. 지금 왼쪽 앞 꼭짓점은 노란색이 앞을 봐요. U를 쳐서 노란색이 왼쪽을 보는 꼭짓점을 왼쪽 앞으로 옮겨 보세요.",
+      setup: { alg: setupFor("R U2 R' U' R U R' U' R U' R'", "z2") },
+      alg: "U",
+      mask: "oll",
+    },
+    {
       kind: "try",
       body: "위를 보는 노란 꼭짓점이 없어요. 쥐는 법대로 돌린 뒤 수네, 다시 세어 수네.",
       setup: { alg: setupFor("R U2 R' U' R U R' U' R U' R'", "z2") },
@@ -761,17 +1007,17 @@ const yellowFace: Lesson = {
       mask: "oll",
     },
     {
-      kind: "try",
-      body: "위를 보는 노란 꼭짓점이 둘(대각선)이에요. 수네를 세 번 하게 돼요.",
+      kind: "turn",
+      body: "위를 보는 노란 꼭짓점이 둘이에요. 이때는 왼쪽 앞 꼭짓점의 노란색이 앞면을 보게 들어요. U'를 쳐서 노란색이 앞을 보는 꼭짓점을 왼쪽 앞으로 옮겨 보세요.",
       setup: { alg: setupFor("F' r U R' U' r' F R", "z2") },
-      alg: `U' ${SUNE} ${SUNE} U2 ${SUNE}`,
-      goal: "oll",
+      alg: "U'",
       mask: "oll",
     },
     {
       kind: "try",
-      body: "노란 십자까지 맞은 큐브에서 윗면을 끝내요.",
-      setup: { rule: "yellow-cross-solved" },
+      body: "위를 보는 노란 꼭짓점이 둘(대각선)이에요. 수네를 세 번 하게 돼요.",
+      setup: { alg: setupFor("F' r U R' U' r' F R", "z2") },
+      alg: `U' ${SUNE} ${SUNE} U2 ${SUNE}`,
       goal: "oll",
       mask: "oll",
     },
@@ -788,6 +1034,13 @@ const yellowFace: Lesson = {
         why: "일곱 수를 다 하면 아래 두 층이 돌아와요.",
       },
     },
+    {
+      kind: "try",
+      body: "노란 십자까지 맞은 큐브에서 윗면을 끝내요.",
+      setup: { rule: "yellow-cross-solved" },
+      goal: "oll",
+      mask: "oll",
+    },
   ],
 };
 
@@ -799,7 +1052,7 @@ const yellowCorners: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "옆면에서 위층 꼭짓점 두 칸이 같은 색이면 「헤드라이트」라고 해요. 헤드라이트가 있는 면을 뒤로 두고 R' F R' B2 R F' R' B2 R2를 해요. 큐브를 끌어 옆면을 둘러보세요.",
+      body: "이제 윗면은 노랗고, 꼭짓점의 자리만 맞추면 돼요. 옆면에서 위층 꼭짓점 두 칸이 같은 색이면 자동차 앞등 같다고 「헤드라이트」라고 불러요. 그 두 꼭짓점은 서로 맞는 자리에 있다는 뜻이에요. 큐브를 끌어 옆면을 둘러보세요.",
       setup: flip(A_PERM),
       mask: "pll",
       quiz: {
@@ -810,27 +1063,23 @@ const yellowCorners: Lesson = {
       },
     },
     {
-      kind: "quiz",
-      body: "헤드라이트가 하나도 없으면 아무 쪽에서나 한 번 하면 헤드라이트가 생겨요. 네 면 모두 헤드라이트면 꼭짓점은 다 맞았어요. 끝나면 윗면을 돌려 옆색을 맞춰요.",
-      setup: flip(`${A_PERM} U ${A_PERM}`),
-      mask: "pll",
-      quiz: {
-        question: "헤드라이트가 하나도 없어요. 어떻게 할까요?",
-        choices: [
-          "아무 쪽에서나 공식을 한 번 해요",
-          "윗면만 돌려 맞춰요",
-          "처음부터 다시 섞어요",
-        ],
-        answer: 0,
-        why: "한 번 하면 헤드라이트가 생겨요. 그 면을 뒤로 두고 한 번 더 해요.",
-      },
-    },
-    {
       kind: "demo",
-      body: "헤드라이트가 뒤에 있어요.",
+      body: "헤드라이트를 뒤에 두고 R' F R' B2 R F' R' B2 R2. 이렇게 조각의 자리만 바꾸는 공식을 「퍼뮤」(영어 permutation, 자리 바꾸기)라고 불러요. 이 공식은 A퍼뮤예요.",
       setup: flip(A_PERM),
       alg: A_PERM,
       mask: "pll",
+    },
+    {
+      kind: "quiz",
+      body: "A퍼뮤는 꼭짓점 넷 중 하나는 그대로 두고 나머지 셋을 돌려 바꿔요. 시연을 다시 보며 자리가 그대로인 꼭짓점을 찾아보세요.",
+      setup: flip(A_PERM),
+      mask: "pll",
+      quiz: {
+        question: "A퍼뮤가 움직이지 않는 꼭짓점은 어디일까요?",
+        choices: ["앞-왼쪽", "앞-오른쪽", "뒤-왼쪽", "뒤-오른쪽"],
+        answer: 0,
+        why: "앞-왼쪽은 그대로이고, 나머지 셋(앞-오른쪽·뒤-오른쪽·뒤-왼쪽)이 돌며 바뀌어요. 헤드라이트를 뒤에 두면 이 셋이 돌아 제자리로 들어가요.",
+      },
     },
     {
       kind: "try",
@@ -849,6 +1098,22 @@ const yellowCorners: Lesson = {
       mask: "pll",
     },
     {
+      kind: "quiz",
+      body: "헤드라이트가 하나도 없으면 아무 쪽에서나 한 번 하면 헤드라이트가 생겨요. 네 면 모두 헤드라이트면 꼭짓점은 다 맞았어요. 끝나면 윗면을 돌려 옆색을 맞춰요.",
+      setup: flip(`${A_PERM} U ${A_PERM}`),
+      mask: "pll",
+      quiz: {
+        question: "헤드라이트가 하나도 없어요. 어떻게 할까요?",
+        choices: [
+          "아무 쪽에서나 공식을 한 번 해요",
+          "윗면만 돌려 맞춰요",
+          "처음부터 다시 섞어요",
+        ],
+        answer: 0,
+        why: "한 번 하면 헤드라이트가 생겨요. 그 면을 뒤로 두고 한 번 더 해요.",
+      },
+    },
+    {
       kind: "try",
       body: "헤드라이트가 없어요. 한 번 하고, 생긴 헤드라이트를 뒤로 옮겨 한 번 더.",
       setup: flip(`${A_PERM} U ${A_PERM}`),
@@ -857,16 +1122,16 @@ const yellowCorners: Lesson = {
       mask: "pll",
     },
     {
+      kind: "turn",
+      body: "흔한 실수: B2를 B로 한 번만 돌리는 것. 뒷면은 반 바퀴예요. 뒤를 돌리기 어려우면 x를 넣은 같은 공식(x R' U R' D2 R U' R' D2 R2 x')을 써도 돼요. B2를 직접 쳐 보세요.",
+      alg: "B2",
+    },
+    {
       kind: "try",
       body: "윗면이 노란 큐브에서 꼭짓점 자리를 맞춰요.",
       setup: { rule: "yellow-face-solved" },
       goal: "yellow-corners",
       mask: "pll",
-    },
-    {
-      kind: "turn",
-      body: "흔한 실수: B2를 B로 한 번만 돌리는 것. 뒷면은 반 바퀴예요. 뒤를 돌리기 어려우면 x를 넣은 같은 공식(x R' U R' D2 R U' R' D2 R2 x')을 써도 돼요. B2를 직접 쳐 보세요.",
-      alg: "B2",
     },
   ],
 };
@@ -879,7 +1144,7 @@ const yellowEdges: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "옆면 하나가 통째로 맞았으면 그 면을 뒤로 두고 R U' R U R U R U' R' U' R2를 해요. 안 맞으면 한 번 더 하면 돼요(반대로 도는 공식 R2 U R U R' U' R' U' R' U R'을 외워도 좋아요). 큐브를 끌어 옆면을 둘러보세요.",
+      body: "마지막은 윗층 모서리의 자리예요. 옆면 하나가 통째로 맞았으면 그 면을 뒤로 두고 R U' R U R U R U' R' U' R2를 해요. 모서리 셋의 자리를 바꾸는 퍼뮤라 U퍼뮤라고 불러요. 큐브를 끌어 옆면을 둘러보세요.",
       setup: flip(U_PERM),
       quiz: {
         question: "통째로 맞은 옆면은 어디일까요?",
@@ -889,16 +1154,21 @@ const yellowEdges: Lesson = {
       },
     },
     {
-      kind: "turn",
-      body: "통째로 맞은 면이 없으면 아무 쪽에서나 한 번 하면 생겨요. 마지막에 윗면을 돌려 맞춰요. 이 큐브는 윗면만 한 칸 돌아가 있어요. U'를 쳐서 맞춰 보세요.",
-      setup: { alg: "z2 U" },
-      alg: "U'",
-    },
-    {
       kind: "demo",
       body: "맞은 면이 뒤에 있어요.",
       setup: flip(U_PERM),
       alg: U_PERM,
+    },
+    {
+      kind: "quiz",
+      body: "U퍼뮤는 꼭짓점은 하나도 건드리지 않고, 모서리 넷 중 셋만 돌려 바꿔요.",
+      setup: flip(U_PERM),
+      quiz: {
+        question: "U퍼뮤가 움직이지 않는 모서리는 어디일까요?",
+        choices: SIDES,
+        answer: 2,
+        why: "뒤 모서리는 그대로예요. 그래서 통째로 맞은 면을 뒤에 둬요.",
+      },
     },
     {
       kind: "try",
@@ -909,27 +1179,27 @@ const yellowEdges: Lesson = {
     },
     {
       kind: "try",
-      body: "반대 방향이에요. 같은 공식을 두 번 해도 되고, 반대 공식을 한 번 해도 돼요.",
+      body: "반대 방향이에요. 같은 공식을 두 번 해도 되고, 반대로 도는 공식(R2 U R U R' U' R' U' R' U R')을 한 번 해도 돼요.",
       setup: flip(U_PERM_B),
       alg: U_PERM_B,
       goal: "solved",
     },
     {
       kind: "try",
-      body: "맞은 면이 없어요(맞은편끼리 바뀜). 한 번 하고, 생긴 맞은 면을 뒤로 옮겨 다시.",
+      body: "통째로 맞은 면이 없어요(맞은편끼리 바뀜). 아무 쪽에서나 한 번 하면 맞은 면이 생겨요. 그 면을 뒤로 옮겨 다시.",
       setup: flip(`${U_PERM} U ${U_PERM} U'`),
       alg: `${U_PERM} U ${U_PERM} U'`,
       goal: "solved",
     },
     {
-      kind: "try",
-      body: "꼭짓점까지 맞은 큐브를 끝내요. 축하해요, 큐브를 다 맞췄어요!",
-      setup: { rule: "corners-placed" },
-      goal: "solved",
+      kind: "turn",
+      body: "모서리가 다 제자리인데 윗층만 한 칸 돌아가 있을 때가 있어요. 마지막에 윗면을 돌려 맞춰요. U'를 쳐서 맞춰 보세요.",
+      setup: { alg: "z2 U" },
+      alg: "U'",
     },
     {
       kind: "quiz",
-      body: "흔한 실수: 공식 끝의 R2를 R로 돌리는 것. 마지막은 반 바퀴예요. 다 맞추면 처음부터 다시 섞어, 단계 이름을 떠올리며 끝까지 해 봐요.",
+      body: "흔한 실수: 공식 끝의 R2를 R로 돌리는 것. 마지막은 반 바퀴예요.",
       quiz: {
         question: "R U' R U R U R U' R' U' R2의 마지막 수는 어떻게 돌릴까요?",
         choices: [
@@ -940,6 +1210,12 @@ const yellowEdges: Lesson = {
         answer: 1,
         why: "R2는 반 바퀴예요. 여기서 R만 하면 큐브가 다 맞지 않아요.",
       },
+    },
+    {
+      kind: "try",
+      body: "꼭짓점까지 맞은 큐브를 끝내요. 축하해요, 큐브를 다 맞췄어요!",
+      setup: { rule: "corners-placed" },
+      goal: "solved",
     },
   ],
 };

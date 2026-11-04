@@ -7,15 +7,15 @@ import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
 import { COURSES, type Lesson, type LessonStep } from "../learn";
 import { useCubeSettings } from "../settings";
-import { DemoCube } from "./DemoCube";
 import { KeyGuide } from "./KeyGuide";
 import { KeyTryBox } from "./KeyTryBox";
-import { FindPanel } from "./LessonActs";
+import { FindPanel, TurnPanel } from "./LessonActs";
 
 /**
- * 처음 오셨나요(`/cube/intro`). 다른 게임의 튜토리얼 첫 단원처럼 짧게: 조각 → 표기 읽기 → 키 배치 →
- * 살펴보기·시간 규칙 → 배우기로 이어 가기. 큐브는 판 게임과 달리 미션(대국)이 없어 공통 TutorialKit 대신
- * 설명과 작은 퀴즈만 두고, 직접 해보기는 배우기(`/cube/learn`) 첫 과정에 맡긴다.
+ * 처음 오셨나요(`/cube/intro`). 다른 게임의 튜토리얼 첫 단원처럼 짧게: 조각 → 표기 읽기(R 한 수 쳐 보기) →
+ * 키 배치 → 배우기로 이어 가기. 큐브는 판 게임과 달리 미션(대국)이 없어 공통 TutorialKit 대신
+ * 설명과 작은 퀴즈만 두고, 자세한 표기(x·y·z, 큰 큐브)와 해보기는 배우기(`/cube/learn`) 첫 과정에 맡긴다.
+ * 시간 규칙(살펴보기·+2·DNF)은 맞출 줄 모르는 사람에게 이르므로 타이머 화면에 맡긴다(2026-11-04).
  * 맨 앞은 조각(2026-11-04): 공식보다 먼저 「색이 아니라 조각을 옮긴다」를 세 종류의 조각 찾기로 익힌다.
  */
 
@@ -56,16 +56,6 @@ const STEPS: Step[] = [
       choices: ["R", "R'", "R2"],
       answer: 1,
       why: "Shift는 반대 방향이에요. 같은 키를 두 번 치면 R2예요. 「키 익히기」에서 직접 쳐 볼 수 있어요.",
-    },
-  },
-  {
-    id: "time",
-    title: "살펴보기와 시간",
-    quiz: {
-      question: "살펴보기 16초째에 첫 면을 돌리면?",
-      choices: ["그대로 인정", "기록에 2초를 더해요(+2)", "기록 없음(DNF)"],
-      answer: 1,
-      why: "15초를 넘기면 +2, 17초를 넘기면 DNF예요(대회 규칙).",
     },
   },
   { id: "next", title: "이제 배우러 가기" },
@@ -212,7 +202,9 @@ export function CubeIntroApp() {
           {step.id === "notation" && (
             <>
               <p className="break-keep text-sm text-white/85">
-                공식은 글자로 적어요. 글자 하나가 면 하나이고, 그 면을{" "}
+                면을 돌리면 그 면에 붙은 <b>조각 아홉 개</b>(가운데 1·모서리
+                4·꼭짓점 4)가 통째로 돌아요. 공식은 어느 면을 돌릴지 글자로
+                적어요. 글자 하나가 면 하나이고, 그 면을{" "}
                 <b>그 면 쪽에서 바라볼 때 시계 방향</b>으로 90° 돌린다는
                 뜻이에요.
               </p>
@@ -234,26 +226,23 @@ export function CubeIntroApp() {
                 <li>
                   <b>2</b>는 두 번: U2 = 윗면 180°
                 </li>
-                <li>
-                  <b>x·y·z</b>는 큐브 전체 돌리기(x는 R, y는 U, z는 F와 같은
-                  방향)
-                </li>
-                <li>
-                  큰 큐브: <b>Rw</b>는 바깥 두 층, <b>2R</b>은 안쪽 한 층
-                </li>
               </ul>
-              <div className="mx-auto w-full max-w-xs">
-                <DemoCube
-                  n={3}
-                  start={start}
-                  alg="R U R' U'"
-                  mask={null}
-                  settings={settings}
-                  tps={1}
-                  autoPlay
-                  loop
-                />
-              </div>
+              <p className="break-keep text-white/70 text-xs">
+                큐브 전체를 돌려 쥐는 x·y·z와 큰 큐브의 표기는 배우기에서 직접
+                돌려 보며 익혀요.
+              </p>
+              <p className="break-keep text-sm" data-intro-turn-ask>
+                R을 직접 쳐 보세요. 오른쪽 층이 통째로 돌아 앞면 칸이 위로
+                올라가요.
+              </p>
+              <TurnPanel
+                n={3}
+                start={start}
+                alg="R"
+                mask={null}
+                settings={settings}
+                onPassed={() => {}}
+              />
             </>
           )}
           {step.id === "keys" && (
@@ -305,30 +294,13 @@ export function CubeIntroApp() {
               </div>
             </>
           )}
-          {step.id === "time" && (
-            <ul className="list-disc space-y-1.5 break-keep pl-5 text-sm text-white/85">
-              <li>
-                섞은 뒤 <b>15초 살펴보기</b>가 있어요. 이때는 큐브 전체
-                돌리기(x·y·z)와 보기만 되고, 면을 돌리면 그 순간 시간이
-                시작돼요.
-              </li>
-              <li>8초·12초에 알림 소리가 나요.</li>
-              <li>
-                15초를 넘겨 시작하면 <b>+2초</b>, 17초를 넘기면 <b>DNF</b>(기록
-                없음)이에요. 설정에서 살펴보기를 끌 수 있어요.
-              </li>
-              <li>
-                <b>5번 평균</b>은 가장 좋은 것과 나쁜 것을 빼고 셋의
-                평균이에요(대회 방식). 기록은 이 기기에만 남아요.
-              </li>
-            </ul>
-          )}
           {step.id === "next" && (
             <>
               <p className="break-keep text-sm text-white/85">
                 처음이라면 배우기의 첫 단원부터 따라 하세요. 조각을 직접 찾아
                 따라가 보고, 표기를 쳐 보고, 흰 십자부터 마지막 층까지 차례로
-                맞춰요.
+                맞춰요. 시간 재기 규칙(15초 살펴보기 등)은 맞출 줄 알게 된 뒤
+                타이머에서 알려 줘요.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <a

@@ -135,6 +135,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       lines: [
         `x·y·z는 큐브 전체를 돌려요. x는 ${k("x")} 키, y는 ${k("y")} 키, z는 ${k("z")} 키, y'은 ${k("y'")} 키예요.`,
         "x는 R, y는 U, z는 F와 같은 방향이에요. 섞인 모양은 그대로이고 보는 쪽만 바뀌어요.",
+        "U와 y는 같은 쪽으로 돌지만, U는 윗층만 돌아 모양이 바뀌고 y는 큐브 전체가 돌아 모양이 그대로예요.",
       ],
       ...rot,
     },
