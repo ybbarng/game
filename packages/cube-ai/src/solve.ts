@@ -34,6 +34,10 @@ export type StageName =
   | "oll"
   | "pll"
   | "first-layer"
+  // 배우는 방식 마지막 층(첫 화면 연출만, taught.ts). 노란 십자는 `eo`
+  | "ll-edges"
+  | "ll-corner-place"
+  | "ll-corner-twist"
   // 4×4·5×5(축소법)
   | "centers-ud"
   | "centers-rest"
@@ -70,6 +74,9 @@ export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   oll: "윗면(OLL)",
   pll: "윗층 자리(PLL)",
   "first-layer": "첫 층",
+  "ll-edges": "옆면 맞추기",
+  "ll-corner-place": "꼭짓점 자리",
+  "ll-corner-twist": "꼭짓점 방향",
   "centers-ud": "흰·노랑 가운데",
   "centers-rest": "나머지 가운데",
   edges: "모서리 짝",
