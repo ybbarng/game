@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   B,
+  BUILD_COLOR,
   BUILD_START,
   buildAsks,
   buildBegin,
@@ -15,6 +16,7 @@ import {
   buildFill,
   buildNext,
   buildOrder,
+  buildSay,
   buildTakeApart,
   buildTap,
   buildVerdict,
@@ -23,6 +25,7 @@ import {
   handedness,
   L,
   R,
+  topic,
   U,
 } from "./build";
 
@@ -69,7 +72,7 @@ describe("분해·조립 차례", () => {
 
 describe("가운데 규칙", () => {
   const start = buildBegin(buildTakeApart());
-  it("맞은편 짝: 노랑은 흰 맞은편, 초록 맞은편 자리는 파랑 자리", () => {
+  it("맞은편 짝: 노란색은 흰색 맞은편, 초록색 맞은편 자리는 파란색 자리", () => {
     expect(buildNext(start)).toBe(center(D));
     expect(buildVerdict(start, center(R))).toEqual({
       kind: "opposite",
@@ -108,5 +111,41 @@ describe("가운데 규칙", () => {
     });
     e = buildTap(e, first).state;
     expect(e.placed).toContain(first);
+  });
+});
+
+describe("안내 글", () => {
+  const start = buildBegin(buildTakeApart());
+  const say = (b: typeof start, slot: number) =>
+    buildSay(buildVerdict(b, slot), b);
+
+  it("맞은편 짝은 「~색」 이름과 「위치해요」로 알린다", () => {
+    expect(say(start, center(R))).toBe("노란색은 흰색 맞은편에 위치해요.");
+    expect(say(start, center(B))).toBe(
+      "그 자리는 초록색 맞은편이라 파란색 자리예요.",
+    );
+    expect(say(start, center(D))).toBe("맞아요!");
+    expect(say(start, center(U))).toBe("이미 끼운 자리예요.");
+  });
+
+  it("거울·종류·자리 글도 같은 색 이름을 쓴다", () => {
+    const b = buildTap(start, center(D)).state;
+    expect(say(b, center(L))).toContain("빨간색·주황색 센터 블럭을 바꿔");
+    const edge = cubeTopology(3).pieces.findIndex((p) => p.kind === "edge");
+    expect(say(b, edge)).toBe("지금은 센터 블럭 자리를 골라요.");
+    const e = buildFill(b);
+    const second = buildOrder().edges[1] as number;
+    expect(say(e, second)).toBe(
+      `그 자리는 ${pieceFaces(3, second)
+        .map((f) => BUILD_COLOR[f])
+        .join("·")} 센터 블럭 사이예요.`,
+    );
+    expect(say(e, second)).toContain("흰색·빨간색");
+  });
+
+  it("「은/는」은 받침으로 고른다", () => {
+    expect(topic("노랑 센터 블럭")).toBe("노랑 센터 블럭은");
+    expect(topic("엣지")).toBe("엣지는");
+    expect(topic("노란색")).toBe("노란색은");
   });
 });

@@ -203,4 +203,52 @@ export function handedness(
   return Math.sign(det);
 }
 
+/** 안내 글의 색 이름(면 차례 U R F D L B). 모두 「~색」이라 받침이 있어 「은」·「이」가 붙는다 */
+export const BUILD_COLOR = [
+  "흰색",
+  "빨간색",
+  "초록색",
+  "노란색",
+  "주황색",
+  "파란색",
+] as const;
+
+/** 조각 종류 이름(2026-11-05 사용자가 정한 용어: 센터·엣지·코너 블럭) */
+export const PART_NAME: Record<Part, string> = {
+  centers: "센터 블럭",
+  edges: "엣지 블럭",
+  corners: "코너 블럭",
+};
+
+/** 판정 `v`를 알릴 글. `b`는 누르기 전 상태 */
+export function buildSay(v: BuildVerdict, b: BuildState): string {
+  const color = (f: number) => BUILD_COLOR[f] ?? "";
+  switch (v.kind) {
+    case "ok":
+      return "맞아요!";
+    case "taken":
+      return "이미 끼운 자리예요.";
+    case "kind":
+      return `지금은 ${isPart(b.phase) ? PART_NAME[b.phase] : "조각"} 자리를 골라요.`;
+    case "opposite": {
+      if (v.across)
+        return `그 자리는 ${color(v.pair)} 맞은편이라 ${color(OPPOSITE_FACE[v.pair as 0] as number)} 자리예요.`;
+      const next = buildNext(b);
+      const mine = next === null ? 0 : (facesOf(next)[0] as number);
+      return `${color(mine)}은 ${color(v.pair)} 맞은편에 위치해요.`;
+    }
+    case "mirror":
+      return "여기 끼우면 맞출 수 없는 큐브가 돼요. 흰색이 위, 초록색이 앞이면 빨간색은 오른쪽에 위치해요. 흰-초록-빨강 코너 블럭의 세 색은 정해진 돌림 차례로 붙어 있어서, 빨간색·주황색 센터 블럭을 바꿔 끼우면 그 차례가 거울처럼 뒤집혀요. 그러면 코너 블럭을 어떻게 돌려 끼워도 세 색이 함께 맞지 않아요.";
+    case "slot":
+      return `그 자리는 ${v.between.map(color).join("·")} 센터 블럭 사이예요.`;
+  }
+}
+
+/** 낱말 뒤 「은/는」(마지막 글자 받침으로 고른다) */
+export function topic(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  const batchim = code >= 0 && code < 11172 && code % 28 !== 0;
+  return `${word}${batchim ? "은" : "는"}`;
+}
+
 export { B, D, F, L, R, U };

@@ -121,7 +121,7 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
   await expect(sheet.locator("[data-sheet-letter]")).toHaveCount(22);
 });
 
-test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가운데 여섯 세기 → 분해·조립", async ({
+test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가운데 여섯 세기 → 표준 색 배치 → 분해·조립", async ({
   page,
 }, info) => {
   await page.goto("/cube/learn");
@@ -173,8 +173,27 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가�
   await expect(top).toHaveAttribute("data-net-mark", "right");
   await shot(page, "learn-pieces-count", info.project.name);
 
-  // 분해·조립: 분해 → 축 → 가운데(흰·초록은 먼저) → 모서리 둘 → 나머지 → 꼭짓점 하나 → 나머지
+  // 표준 색 배치: 까만 큐브에서 흰색 맞은편 노란색 가운데 찾기(위 가운데는 틀림, 아래 가운데 31이 맞음)
   await goStep(page, 3);
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  await expect(page.locator("[data-step-body]")).toContainText("표준 색 배치");
+  await page.locator('[data-net-cell="4"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await page.locator('[data-net-cell="31"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-color-scheme-find", info.project.name);
+  // 흰색 위·초록색 앞이면 오른쪽은? 주황색은 틀림, 빨간색이 맞음
+  await goStep(page, 4);
+  const pick = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(pick).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(pick).toHaveAttribute("data-act-passed", "");
+  await expect(pick).toContainText("거울에 비친 큐브");
+  await shot(page, "learn-color-scheme-quiz", info.project.name);
+
+  // 분해·조립: 분해 → 축 → 가운데(흰·초록은 먼저) → 모서리 둘 → 나머지 → 꼭짓점 하나 → 나머지
+  await goStep(page, 5);
   const build = page.locator('[data-act="build"]');
   await build.locator("[data-build-start]").click();
   await expect(build).toHaveAttribute("data-build-phase", "core");
@@ -182,9 +201,10 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가�
   const built = build.locator("[data-build-count]");
   await expect(built).toHaveAttribute("data-build-count", "2/6");
   const say = build.locator("[data-build-say]");
-  // 노랑을 오른쪽에: 흰 맞은편에 와야 한다
+  // 노랑을 오른쪽에: 흰색 맞은편에 와야 한다
+  await expect(build.locator("[data-build-pairs]")).toBeVisible();
   await page.locator('[data-net-cell="13"]').click();
-  await expect(say).toContainText("흰 맞은편");
+  await expect(say).toHaveText("노란색은 흰색 맞은편에 위치해요.");
   await page.locator('[data-net-cell="31"]').click();
   await expect(built).toHaveAttribute("data-build-count", "3/6");
   // 빨강을 왼쪽에: 맞출 수 없는 큐브(거울)

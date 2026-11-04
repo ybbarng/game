@@ -138,6 +138,8 @@ describe("고르기 문제의 답", () => {
       "welcome",
       "parts",
       "find",
+      "find",
+      "quiz",
       "build",
       "quiz",
     ]);
@@ -150,6 +152,22 @@ describe("고르기 문제의 답", () => {
       x.quiz?.question.includes("모두 몇 개"),
     );
     expect(total?.quiz?.choices[total.quiz.answer]).toBe("26개");
+  });
+
+  it("표준 색 배치: 분해·조립 앞에서 흰색 맞은편 노란색을 찾고, 흰 위·초록 앞의 오른쪽(빨간색)을 고른다", () => {
+    const first = lessonOf("333-start");
+    const build = first.steps.findIndex((x) => x.kind === "build");
+    const [find, pick] = first.steps.slice(build - 2, build);
+    // 까만 큐브에서 노란 가운데 하나만 맞다
+    expect(find?.kind).toBe("find");
+    expect(find?.mask).toBe("none");
+    expect(find?.find).toEqual({ piece: "center", colors: ["D"] });
+    expect(hitSlots(3, solvedCube(3), find?.find as FindTarget)).toHaveLength(
+      1,
+    );
+    expect(pick?.kind).toBe("quiz");
+    expect(pick?.mask).toBe("none");
+    expect(pick?.quiz?.choices[pick.quiz.answer]).toBe("빨간색");
   });
 
   it("한 면을 맞춘 상태: (가)는 흰 면만 흰색(자리 틀림), (나)는 흰 조각이 제자리", () => {
