@@ -99,7 +99,7 @@ describe("십자 표", () => {
     }
   });
 
-  it("큐브 전체를 돌려도(가운데가 옮겨 가도) 같은 십자로 읽는다", () => {
+  it("큐브 전체를 돌려도(센터가 옮겨 가도) 같은 십자로 읽는다", () => {
     const text = randomMoves(7, 15);
     const base = stateOf(text);
     for (const rot of ["x", "y'", "z2", "x y"]) {

@@ -139,7 +139,7 @@ describe("보여 주기 변환", () => {
         const last = up.at(-1);
         if (!first || !last) throw new Error("위 단계가 없다");
         const states = statesAt(n, start, shown.moves);
-        // 들어 올린 뒤(첫 돌리기 뒤)부터 내리기 전까지 흰 가운데(2×2는 흰 꼭짓점 층)가 위
+        // 들어 올린 뒤(첫 돌리기 뒤)부터 내리기 전까지 흰 센터(2×2는 흰 코너 층)가 위
         let i = first.start;
         while (/^[xyz]/.test(shown.moves[i] ?? "")) i++;
         expect(shown.moves[last.end - 1]).toBe("z2");
@@ -193,7 +193,7 @@ describe("보여 주기 변환", () => {
   }
 
   it("3×3 프리드리히: F2L 짝마다 끝에 앞-오른쪽 칸(DFR·FR)이 맞고, 마지막 층은 해법 수 그대로다", async () => {
-    // Kociemba 스티커 번호: DFR = D29 F26 R15, FR = F23 R12, 가운데 = 면×9+4
+    // Kociemba 스티커 번호: DFR = D29 F26 R15, FR = F23 R12, 센터 = 면×9+4
     const pair = [29, 26, 15, 23, 12];
     for (const seed of [1, 2, 3, 4, 5, 6]) {
       const { start, raw, shown } = await run("3-cfop", seed);
@@ -219,7 +219,7 @@ describe("보여 주기 변환", () => {
     }
   });
 
-  it("초보자 마지막 층(노란 십자~꼭짓점 방향)은 해법 수 그대로, 꼭짓점 방향에는 큐브 돌리기가 없다", async () => {
+  it("초보자 마지막 층(노란 십자~코너 방향)은 해법 수 그대로, 코너 방향에는 큐브 돌리기가 없다", async () => {
     const LL = ["eo", "ll-edges", "ll-corner-place", "ll-corner-twist"];
     for (const [id, seeds] of [
       ["3-beginner", [1, 2, 3, 4]],

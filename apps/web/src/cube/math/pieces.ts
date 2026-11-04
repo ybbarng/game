@@ -46,7 +46,7 @@ function cloneState(s: PuzzleState): { perm: Uint16Array; twist: Uint8Array } {
   return { perm: new Uint16Array(s.perm), twist: new Uint8Array(s.twist) };
 }
 
-/** 조각 자리 q의 조각을 뽑아 제자리에서 한 칸 돌려 끼운다(모서리는 뒤집기, 꼭짓점은 비틀기) */
+/** 조각 자리 q의 조각을 뽑아 제자리에서 한 칸 돌려 끼운다(엣지는 뒤집기, 코너는 비틀기) */
 export function rotatePieceInPlace(
   n: number,
   state: PuzzleState,
@@ -88,13 +88,13 @@ export function swapPieces(
 }
 
 export interface Invariants {
-  /** 꼭짓점 비틀림 합(나머지를 내지 않은 값) */
+  /** 코너 비틀림 합(나머지를 내지 않은 값) */
   twistSum: number;
-  /** 모서리 뒤집힘 합 */
+  /** 엣지 뒤집힘 합 */
   flipSum: number;
-  /** 꼭짓점 자리 짝(0 짝, 1 홀) */
+  /** 코너 자리 짝(0 짝, 1 홀) */
   cornerParity: number;
-  /** 가운데 모서리 자리 짝 */
+  /** 가운데 엣지 자리 짝 */
   edgeParity: number;
   /** 정가운데 칸 회전 합(90° 단위, 나머지를 내지 않은 값) */
   centerTurnSum: number;
@@ -121,7 +121,7 @@ export function invariants(n: number, state: PuzzleState): Invariants {
   };
 }
 
-/** 면 돌리기(바깥 한 층)인가. 가운데 방향 계기는 이 수만 받는다 */
+/** 면 돌리기(바깥 한 층)인가. 센터 방향 계기는 이 수만 받는다 */
 export function isFaceTurn(n: number, m: CubeMove): boolean {
   return m.from === m.to && (m.from === 1 || m.from === n) && !isRotation(n, m);
 }
@@ -133,7 +133,7 @@ export function pieceAtSlot(n: number, state: PuzzleState, q: number): number {
   return topo.stickers[state.perm[slot] as number]?.piece as number;
 }
 
-/** 제자리·제 방향이 아닌 조각 수(종류별). 가운데는 색만 본다(방향은 보지 않는다) */
+/** 제자리·제 방향이 아닌 조각 수(종류별). 센터는 색만 본다(방향은 보지 않는다) */
 export function changedPieces(
   n: number,
   state: PuzzleState,

@@ -454,7 +454,7 @@ export type TutorialEvent =
 
 export type StepOutcome = "hit" | "partial" | "miss" | "done" | "ignore";
 
-/** 위·앞 가운데 조각의 색 */
+/** 위·앞 센터 블럭의 색 */
 export interface CubeFacing {
   up: ColorId;
   front: ColorId;

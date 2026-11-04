@@ -4,11 +4,11 @@ import type { PuzzleState } from "@game/puzzle-core";
 /**
  * 3×3 십자 최적 풀이(십자 훈련 `/cube/train/cross`, docs/47 8절).
  *
- * 십자 색 X의 모서리 넷만 본다. 조각마다 "X 스티커가 어느 자리에 있나"(모서리 스티커 자리 24곳)만 알면 자리와
- * 방향이 함께 정해지므로, 상태는 서로 다른 모서리에 놓인 네 값(24·22·20·18 = 190,080가지)이다.
+ * 십자 색 X의 엣지 넷만 본다. 조각마다 "X 스티커가 어느 자리에 있나"(엣지 스티커 자리 24곳)만 알면 자리와
+ * 방향이 함께 정해지므로, 상태는 서로 다른 엣지에 놓인 네 값(24·22·20·18 = 190,080가지)이다.
  * 표는 빈칸을 두고 24^4 = 331,776칸을 그대로 쓴다(번호 매기기 계산이 없어 빠르다, 한 색에 324KB).
  *
- * 면 번호는 엔진과 같다(U R F D L B = 0~5). 스티커 자리 (a, b)는 "면 a 위, 면 b와 맞닿은 모서리의 스티커"다.
+ * 면 번호는 엔진과 같다(U R F D L B = 0~5). 스티커 자리 (a, b)는 "면 a 위, 면 b와 맞닿은 엣지의 스티커"다.
  * 면 m을 시계 방향으로 돌리면 m에 닿은 자리의 두 면이 m 둘레 차례(`RING`)로 한 칸씩 옮겨 간다.
  * 반 바퀴는 한 수로 센다(HTM). 거리표는 맞춘 십자에서 너비 우선으로 채운다(수 묶음이 거꾸로에 닫혀 있어 거리가 같다).
  */
@@ -290,7 +290,7 @@ function slots3(): { edges: EdgeSlot[]; centers: number[] } {
 
 /**
  * 지금 쥔 방향에서 색 `color`(맞춘 상태의 면 번호) 십자를 읽는다.
- * `face`는 그 색 가운데가 지금 있는 면, `key`는 그 면 기준 표 번호. 가운데가 옮겨 가도(x·y·z, 가운데 층) 맞게 읽는다.
+ * `face`는 그 색 센터가 지금 있는 면, `key`는 그 면 기준 표 번호. 센터가 옮겨 가도(x·y·z, 가운데 층) 맞게 읽는다.
  */
 export function readCross(
   state: PuzzleState,
@@ -298,7 +298,7 @@ export function readCross(
 ): { face: number; key: number } {
   const { edges, centers } = slots3();
   const colors = faceColors(3, state);
-  /** 색 → 지금 그 색 가운데가 있는 면 */
+  /** 색 → 지금 그 색 센터가 있는 면 */
   const faceOf = new Array<number>(6);
   for (let f = 0; f < 6; f++)
     faceOf[colors[centers[f] as number] as number] = f;
@@ -325,7 +325,7 @@ export function crossDepth(state: PuzzleState, color: number): number {
   return crossDistance(face, key);
 }
 
-/** 색 `color` 십자가 다 되었나(가운데 기준) */
+/** 색 `color` 십자가 다 되었나(센터 기준) */
 export function crossDone(state: PuzzleState, color: number): boolean {
   const { face, key } = readCross(state, color);
   return key === solvedKey(face);

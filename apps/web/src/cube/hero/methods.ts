@@ -15,7 +15,7 @@ import type { HeroView } from "./present";
  * - `view`는 화면에 보이는 방향 규칙(`present.ts`): 첫 층을 위에서 보일 단계(`up`), y2로 돌려 보일 단계
  *   (`mirror`). 넣는 단계는 늘 넣을 칸을 앞-오른쪽으로 돌려 보인다. 해법이 낸 수는 바꾸지 않는다.
  * - 초보자 해법은 배우기에서 가르치는 방식(흰 면 위 십자·첫 층, 마지막 층은 노란 십자 → 옆면 맞추기 →
- *   꼭짓점 자리 → 꼭짓점 방향, `{ taught: true }`)으로 푼다.
+ *   코너 자리 → 코너 방향, `{ taught: true }`)으로 푼다.
  *   컴퓨터 대결은 이 선택지를 쓰지 않는다.
  */
 
@@ -34,7 +34,7 @@ export interface HeroMethodDef {
 }
 
 const TAUGHT = { taught: true } as const;
-/** 배우는 방식: 흰 십자와 첫 층 꼭짓점을 위에서, 끝나면 z2 */
+/** 배우는 방식: 흰 십자와 첫 층 코너를 위에서, 끝나면 z2 */
 const TAUGHT_VIEW: HeroView = { up: ["cross", "corners"] };
 /** 프리드리히: 십자를 위에서 보이고 뒤집어, F2L은 맞춘 면 아래 */
 const CROSS_VIEW: HeroView = { up: ["cross"] };
