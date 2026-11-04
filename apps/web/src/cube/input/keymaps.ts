@@ -212,7 +212,10 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *   Y  x    N  x'               T  x    B  x'
  *   6  M    .  M'               5  M    X  M'
  *
- * 큰 큐브: Shift+면 키 = 안쪽 둘째 층(2R …), Alt+면 키 = 넓게(Rw …), 숫자 2·3·4 = 다음 수 깊이.
+ * csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다(2026-11-04).
+ * 숫자: 1 = S', 2 = E, 9 = E', 0 = S, 3·4 = 왼손 층 수 −1·+1, 7·8 = 오른손 층 수 +1·−1(R 키가 바깥 k층, Rw 키가 k+1층).
+ * csTimer에 없는 덧붙임: Shift+면 키 = 넓게(Rw …, 큰 큐브는 층 수 + 1층). Alt는 쓰지 않는다(브라우저 단축키와 부딪친다).
+ * csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라 살펴보기·블라인드 시작이다(층 수는 섞기·맞춘 상태로 때 1로).
  */
 const TWO_HAND_FACE: [code: string, action: string][] = [
   ["KeyI", "R"],
@@ -233,8 +236,7 @@ export function twoHandKeymap(): Keymap {
   const bindings: KeyBinding[] = [];
   for (const [code, action] of TWO_HAND_FACE) {
     bindings.push(key(code, action));
-    bindings.push(key(code, `2${action}`, { shift: true }));
-    bindings.push(key(code, action.replace(/^(\w)/, "$1w"), { alt: true }));
+    bindings.push(key(code, action.replace(/^(\w)/, "$1w"), { shift: true }));
   }
   bindings.push(
     key("KeyU", "Rw"),
@@ -257,9 +259,15 @@ export function twoHandKeymap(): Keymap {
     key("Digit6", "M"),
     key("KeyX", "M'"),
     key("Period", "M'"),
-    key("Digit2", "depth:2"),
-    key("Digit3", "depth:3"),
-    key("Digit4", "depth:4"),
+    // csTimer와 같은 숫자 키(2026-11-04): E·S, 큰 큐브 층 수
+    key("Digit1", "S'"),
+    key("Digit2", "E"),
+    key("Digit9", "E'"),
+    key("Digit0", "S"),
+    key("Digit3", "layers:L-"),
+    key("Digit4", "layers:L+"),
+    key("Digit7", "layers:R+"),
+    key("Digit8", "layers:R-"),
     ...COMMON_COMMANDS,
   );
   return { version: 1, preset: "twoHand", bindings, mouseRotate: false };

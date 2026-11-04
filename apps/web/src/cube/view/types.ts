@@ -53,7 +53,33 @@ export interface Sticker {
   center: readonly [number, number, number];
   normal: Normal;
   color: number | null;
+  /** 칸 둘레에 그릴 표시(배우기의 고른 조각·맞음·틀림·따라가는 조각). 없으면 그리지 않는다 */
+  mark?: MarkTone | null;
 }
+
+/**
+ * 칸 표시의 뜻. pick = 고름(하늘색), right = 맞음(초록), wrong = 틀림(빨강), focus = 따라가는 조각(노랑).
+ * 표시는 조각에 붙어 회전을 따라 돈다
+ */
+export type MarkTone = "pick" | "right" | "wrong" | "focus";
+
+/**
+ * 조각 하나의 놓임(배우기의 스티커·조각 보기, 분해·조립). 기본은 제자리·크기 1·몸통 보임.
+ * `shift`는 제자리에서 옮긴 거리(세계 좌표), `scale` 0이면 안 보인다, `body` false면 몸통 없이 스티커만 뜬다
+ */
+export interface PieceLayout {
+  shift?: readonly [number, number, number];
+  scale?: number;
+  body?: boolean;
+}
+
+/** 표시 색(3D 고리와 펼친 그림 테두리가 함께 쓴다) */
+export const MARK_COLOR: Record<MarkTone, number> = {
+  pick: 0x38bdf8,
+  right: 0x34d399,
+  wrong: 0xf87171,
+  focus: 0xfbbf24,
+};
 
 /**
  * 그릴 수 있는 크기. 엔진 `packages/cube-engine`의 `MIN_SIZE`·`MAX_SIZE`와 같은 값이다.

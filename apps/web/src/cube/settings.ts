@@ -53,6 +53,11 @@ export interface CubeSettings {
   inspection: boolean;
   /** 혼자 맞추기 「상황 알림」: 내 목록의 윗면 상황에 이르면 구석에 이름과 내 공식(2026-11-04, 기본 꺼짐) */
   caseAlert: boolean;
+  /**
+   * 키 그림에 면 색(2026-11-04, 기본 켬): 면 돌리기 키를 들고 있는 방향의 그 면 색으로, 반대 방향은 연하게·빗금.
+   * 끄면 단색
+   */
+  keyColors: boolean;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -70,6 +75,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   sound: true,
   inspection: true,
   caseAlert: false,
+  keyColors: true,
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -141,6 +147,7 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     sound: bool(d.sound, DEFAULT_SETTINGS.sound),
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
     caseAlert: bool(d.caseAlert, DEFAULT_SETTINGS.caseAlert),
+    keyColors: bool(d.keyColors, DEFAULT_SETTINGS.keyColors),
     heroSize,
     heroMethod,
   };

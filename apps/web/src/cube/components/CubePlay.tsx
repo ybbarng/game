@@ -7,7 +7,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
 
-import { faceGrid, stickersFromState } from "../bridge";
+import {
+  faceGrid,
+  marksAtSlots,
+  type StickerMarks,
+  stickersFromState,
+} from "../bridge";
 import {
   attachKeyboard,
   buttonMoves,
@@ -18,6 +23,13 @@ import {
   type KeyResult,
   loadKeymap,
 } from "../input";
+import {
+  HOME_ORIENT,
+  type Orient,
+  orientAfter,
+  orientFromCenters,
+} from "../keys/key-colors";
+import { stickerAtHit } from "../learn/interact";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
@@ -63,6 +75,17 @@ export interface CubePlayProps {
   onView?: (view: CubeView | null) => void;
   /** 키 그림에서 밝힐 칠 키(배우기의 힌트·따라 하기). 키 그림은 그대로 접고 펼 수 있다 */
   want?: readonly KeyChord[] | null;
+  /**
+   * 칸 표시(스티커 정체마다, 배우기 놀이판의 따라가는 조각). 마스크처럼 `syncToken`이 바뀔 때 장면에 칠하고,
+   * 그 뒤로는 조각을 따라 돈다
+   */
+  marks?: StickerMarks | null;
+  /** 칸을 누르면(3D 누르기·펼친 그림) 그 스티커 자리 번호를 준다. 없으면 누르기를 받지 않는다 */
+  onSticker?: ((sticker: number) => void) | undefined;
+  /** 세 축 화살표를 보인다(처음 안내의 x·y·z) */
+  axes?: boolean;
+  /** 단추 줄에 더할 수(따라 하기의 Rw·E·S·2R 등, 휴대폰에서도 칠 수 있게) */
+  extraButtons?: readonly string[];
 }
 
 export function CubePlay({
@@ -76,6 +99,10 @@ export function CubePlay({
   locked = false,
   onView,
   want,
+  marks,
+  onSticker,
+  axes = false,
+  extraButtons,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -84,6 +111,10 @@ export function CubePlay({
   const [keymap, setKeymap] = useState<Keymap | null>(null);
   const [lit, setLit] = useState<string | null>(null);
   const [depth, setDepth] = useState<number | null>(null);
+  /** 짝수 큐브의 들고 있는 방향(받은 수를 따라간다, 키 색의 기준). 홀수는 가운데 칸으로 읽는다 */
+  const [evenOrient, setEvenOrient] = useState<Orient>(HOME_ORIENT);
+  /** 큰 큐브의 층 수(csTimer의 3·4·7·8 키). 1·1이면 보이지 않는다 */
+  const [layers, setLayers] = useState({ left: 1, right: 1 });
   const [showKeys, setShowKeys] = useState(true);
   const [showNet, setShowNet] = useState(true);
   const [prime, setPrime] = useState(false);
@@ -97,10 +128,25 @@ export function CubePlay({
     onCommand,
     locked,
     onView,
+    marks,
+    onSticker,
   });
-  live.current = { state, mask, settings, onMove, onCommand, locked, onView };
+  live.current = {
+    state,
+    mask,
+    settings,
+    onMove,
+    onCommand,
+    locked,
+    onView,
+    marks,
+    onSticker,
+  };
 
   useEffect(() => setKeymap(loadKeymap()), []);
+  useEffect(() => {
+    if (ready) viewRef.current?.setAxes(axes);
+  }, [axes, ready]);
   // 마우스 돌리기(키 배치 「사용자」)는 배치를 읽은 뒤·장면을 만든 뒤에 알린다
   useEffect(() => {
     if (ready)
@@ -138,9 +184,20 @@ export function CubePlay({
             if (live.current.locked) return;
             moveRef.current(m, formatMove(n, m));
           },
+          onTap: (hit) => {
+            const pick = live.current.onSticker;
+            if (!pick) return;
+            const i = stickerAtHit(n, hit.center, hit.normal);
+            if (i !== null) pick(i);
+          },
         });
         view.setStickers(
-          stickersFromState(n, live.current.state, live.current.mask),
+          stickersFromState(
+            n,
+            live.current.state,
+            live.current.mask,
+            live.current.marks,
+          ),
         );
         viewRef.current = view;
         ro.observe(canvas);
@@ -169,8 +226,14 @@ export function CubePlay({
   // 한꺼번에 바뀐 상태로 다시 칠하기
   // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 다시 칠한다
   useEffect(() => {
+    setEvenOrient(HOME_ORIENT);
     viewRef.current?.setStickers(
-      stickersFromState(n, live.current.state, live.current.mask),
+      stickersFromState(
+        n,
+        live.current.state,
+        live.current.mask,
+        live.current.marks,
+      ),
     );
   }, [syncToken, n]);
 
@@ -182,6 +245,7 @@ export function CubePlay({
       return;
     }
     viewRef.current?.enqueue(move);
+    if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
     playCubeCue(c.settings, "cubeTurn");
   });
 
@@ -189,6 +253,7 @@ export function CubePlay({
   const handleRef = useRef((r: KeyResult) => {
     const c = live.current;
     setDepth(interpreterRef.current?.pendingDepth ?? null);
+    if (interpreterRef.current) setLayers(interpreterRef.current.layers);
     if (r.kind === "move") {
       moveRef.current(r.move, r.notation);
       return;
@@ -201,6 +266,7 @@ export function CubePlay({
     }
     const m = c.onCommand(r.command);
     if (m) {
+      if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, m));
       viewRef.current?.enqueue(m);
       playCubeCue(c.settings, "cubeTurn");
     }
@@ -263,6 +329,8 @@ export function CubePlay({
               colors={colors}
               hidden={settings.hidden}
               className="h-auto w-full"
+              marks={marksAtSlots(state, marks)}
+              onCell={onSticker}
             />
           ) : null
         }
@@ -288,6 +356,14 @@ export function CubePlay({
                 className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
               />
             )}
+            {(layers.left > 1 || layers.right > 1) && (
+              <span
+                data-cube-layers={`${layers.left}-${layers.right}`}
+                className="absolute top-2 left-2 rounded bg-sky-400/90 px-2 py-0.5 font-semibold text-black text-xs"
+              >
+                층 수 왼손 {layers.left} · 오른손 {layers.right}
+              </span>
+            )}
             {depth !== null && (
               <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
                 다음 수 깊이 {depth}
@@ -299,7 +375,10 @@ export function CubePlay({
 
       {/* 휴대폰·마우스용 표기 단추 줄 */}
       <div className="flex flex-wrap justify-center gap-1" data-cube-buttons>
-        {buttonMoves(n).map((m) => (
+        {[
+          ...buttonMoves(n),
+          ...(extraButtons ?? []).filter((b) => !buttonMoves(n).includes(b)),
+        ].map((m) => (
           <button
             key={m}
             type="button"
@@ -363,7 +442,13 @@ export function CubePlay({
       </div>
       {showKeys && keymap && (
         <div className="hidden w-full max-w-2xl sm:block">
-          <KeyGuide n={n} keymap={keymap} lit={lit} want={want} />
+          <KeyGuide
+            n={n}
+            keymap={keymap}
+            lit={lit}
+            want={want}
+            orient={orientFromCenters(n, state) ?? evenOrient}
+          />
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { hexColor } from "../settings";
+import { MARK_COLOR, type MarkTone } from "../view/types";
 
 /**
  * 펼친 그림(전개도). 위(U) 아래로 왼쪽·앞·오른쪽·뒤(L F R B)가 한 줄, 그 아래 아래(D).
@@ -23,6 +24,7 @@ export function CubeNet({
   className,
   onCell,
   marked,
+  marks,
 }: {
   n: number;
   faces: readonly (readonly (number | null)[])[];
@@ -33,6 +35,8 @@ export function CubeNet({
   onCell?: ((sticker: number) => void) | undefined;
   /** 테두리로 표시할 스티커 자리(찾은 조각) */
   marked?: ReadonlySet<number> | undefined;
+  /** 자리별 표시(고름·맞음·틀림·따라가는 조각). `marked`보다 앞선다 */
+  marks?: readonly (MarkTone | null)[] | null | undefined;
 }) {
   const cell = 10;
   const gap = 4;
@@ -57,7 +61,9 @@ export function CubeNet({
           <g key={f}>
             {grid.map((c, k) => {
               const sticker = f * n * n + k;
-              const mark = marked?.has(sticker) ?? false;
+              const tone = marks?.[sticker] ?? null;
+              const mark = tone !== null || (marked?.has(sticker) ?? false);
+              const stroke = tone ? hexColor(MARK_COLOR[tone]) : "#38bdf8";
               return (
                 // biome-ignore lint/a11y/noStaticElementInteractions: 누를 수 있을 때만 role="button"을 준다
                 <rect
@@ -69,8 +75,9 @@ export function CubeNet({
                   height={cell - 1}
                   rx={1.5}
                   fill={c === null ? hiddenFill : hexColor(colors[c] ?? 0)}
-                  stroke={mark ? "#38bdf8" : "#000"}
+                  stroke={mark ? stroke : "#000"}
                   strokeWidth={mark ? 1.6 : 0.6}
+                  data-net-mark={tone ?? undefined}
                   data-net-cell={onCell ? sticker : undefined}
                   data-net-hidden={onCell && c === null ? "" : undefined}
                   role={onCell ? "button" : undefined}

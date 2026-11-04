@@ -1,4 +1,11 @@
-import { goStep, no3d, shot } from "./cube";
+import {
+  goStep,
+  goToStep,
+  inputReady,
+  no3d,
+  shot,
+  useNotationKeys,
+} from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -114,49 +121,154 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
   await expect(sheet.locator("[data-sheet-letter]")).toHaveCount(22);
 });
 
-test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기로 시작한다", async ({
+test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가운데 여섯 세기 → 분해·조립", async ({
   page,
 }, info) => {
   await page.goto("/cube/learn");
   // 3×3 처음 맞추기의 첫 단원
   await expect(
     page.locator('[data-course="333-beginner"] [data-lesson]').first(),
-  ).toHaveAttribute("data-lesson", "333-pieces");
+  ).toHaveAttribute("data-lesson", "333-start");
 
-  await page.goto("/cube/learn?lesson=333-pieces");
+  await page.goto("/cube/learn?lesson=333-start");
   const section = page.locator("[data-step-kind]");
+  // 환영: 「따라오세요」를 누르면 다음 단계
+  await expect(section).toHaveAttribute("data-step-kind", "welcome");
+  await page.locator("[data-welcome-start]").click();
+  await expect(section).toHaveAttribute("data-step-kind", "parts");
+  // 스티커로 보기 → 칸을 누르면 그 조각이 들린다 → 조각으로 보기
+  const parts = page.locator('[data-act="parts"]');
+  await page.locator('[data-net-cell="7"]').click();
+  await expect(parts.getByRole("status")).toContainText("흰-초록 모서리 조각");
+  // 흰-초록 모서리의 다른 칸(앞면 윗줄 가운데, 19)도 함께 표시된다
+  await expect(page.locator('[data-net-cell="19"]')).toHaveAttribute(
+    "data-net-mark",
+    "pick",
+  );
+  await parts.locator('[data-parts-to="piece"]').click();
+  await expect(parts).toHaveAttribute("data-act-passed", "");
+
+  await goStep(page, 2);
   await expect(section).toHaveAttribute("data-step-kind", "find");
   const find = page.locator('[data-act="find"]');
-  // 흰 가운데 찾기: 모서리 칸(위 앞 가운데)은 틀림, 윗면 한가운데(칸 4)가 맞음
+  const count = find.locator("[data-find-count]");
+  await expect(count).toHaveAttribute("data-find-count", "0/6");
+  // 모서리 칸(위 앞 가운데)은 틀림: 세지 않고 빨강으로 알린다
   await page.locator('[data-net-cell="7"]').click();
   await expect(find.getByRole("status")).toContainText("모서리 조각");
-  await page.locator('[data-net-cell="4"]').click();
+  await expect(count).toHaveAttribute("data-find-count", "0/6");
+  // 가운데 하나를 고르면 색이 드러나고 표시가 붙는다. 다시 누르면 풀린다
+  const top = page.locator('[data-net-cell="4"]');
+  await expect(top).toHaveAttribute("data-net-hidden", "");
+  await top.click();
+  await expect(count).toHaveAttribute("data-find-count", "1/6");
+  await expect(top).not.toHaveAttribute("data-net-hidden", "");
+  await expect(top).toHaveAttribute("data-net-mark", "pick");
+  await top.click();
+  await expect(count).toHaveAttribute("data-find-count", "0/6");
+  for (const cell of [4, 13, 22, 31, 40, 49])
+    await page.locator(`[data-net-cell="${cell}"]`).click();
+  await expect(count).toHaveAttribute("data-find-count", "6/6");
   await expect(find).toHaveAttribute("data-act-passed", "");
-  await shot(page, "learn-pieces-find", info.project.name);
+  await expect(top).toHaveAttribute("data-net-mark", "right");
+  await shot(page, "learn-pieces-count", info.project.name);
 
-  // 조각 따라가기: R을 돌린 뒤 가운데만 보이게 가린 큐브에서 흰-초록-빨강 꼭짓점 찾기
-  await goStep(page, 10);
-  // 본문 속 수 R 옆에는 데스크톱에서 키캡이 붙으므로 수 다음 글과 수 칩으로 본다
-  await expect(section).toContainText("이번에는 가운데만 보여요");
-  await expect(
-    section.locator('[data-step-body] [data-move-chip="R"]'),
-  ).toHaveCount(1);
+  // 분해·조립: 분해 → 축 → 가운데(흰·초록은 먼저) → 모서리 둘 → 나머지 → 꼭짓점 하나 → 나머지
+  await goStep(page, 3);
+  const build = page.locator('[data-act="build"]');
+  await build.locator("[data-build-start]").click();
+  await expect(build).toHaveAttribute("data-build-phase", "core");
+  await build.locator("[data-build-next]").click();
+  const built = build.locator("[data-build-count]");
+  await expect(built).toHaveAttribute("data-build-count", "2/6");
+  const say = build.locator("[data-build-say]");
+  // 노랑을 오른쪽에: 흰 맞은편에 와야 한다
+  await page.locator('[data-net-cell="13"]').click();
+  await expect(say).toContainText("흰 맞은편");
+  await page.locator('[data-net-cell="31"]').click();
+  await expect(built).toHaveAttribute("data-build-count", "3/6");
+  // 빨강을 왼쪽에: 맞출 수 없는 큐브(거울)
+  await page.locator('[data-net-cell="40"]').click();
+  await expect(say).toContainText("맞출 수 없는 큐브");
+  for (const cell of [13, 49, 40])
+    await page.locator(`[data-net-cell="${cell}"]`).click();
+  await expect(build).toHaveAttribute("data-build-phase", "edges");
+  // 흰-초록(위 앞 가운데 7), 흰-빨강(위 오른쪽 가운데 5)
+  for (const cell of [7, 5])
+    await page.locator(`[data-net-cell="${cell}"]`).click();
+  await build.locator("[data-build-fill]").click();
+  await expect(build).toHaveAttribute("data-build-phase", "corners");
+  await page.locator('[data-net-cell="8"]').click();
+  await build.locator("[data-build-fill]").click();
+  await expect(build).toHaveAttribute("data-act-passed", "");
+  await expect(page.locator("[data-net-cell][data-net-hidden]")).toHaveCount(0);
+
+  // 확인 문제: R U2를 돌린 뒤 가운데만 보이게 가린 큐브에서 흰-초록-빨강 꼭짓점 찾기
+  await page.goto("/cube/learn?lesson=333-pieces");
+  await goStep(page, 4);
   // 원래 자리(위-앞-오른쪽, 칸 8)에는 이제 다른 꼭짓점이 있다
   await page.locator('[data-net-cell="8"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
-  // R 뒤에는 위-뒤-오른쪽(윗면 칸 2)
-  await expect(page.locator('[data-net-cell="2"]')).toHaveAttribute(
-    "data-net-hidden",
-    "",
-  );
-  await page.locator('[data-net-cell="2"]').click();
+  // R U2 뒤에는 위-앞-왼쪽(윗면 칸 6)
+  const corner = page.locator('[data-net-cell="6"]');
+  await expect(corner).toHaveAttribute("data-net-hidden", "");
+  await corner.click();
   await expect(find).toHaveAttribute("data-act-passed", "");
   // 찾은 꼭짓점은 가리기가 풀려 색이 드러난다(3D도 같은 마스크를 쓴다)
-  await expect(page.locator('[data-net-cell="2"]')).not.toHaveAttribute(
+  await expect(corner).not.toHaveAttribute("data-net-hidden", "");
+  await shot(page, "learn-pieces-track", info.project.name);
+
+  // 평가: 한 면을 맞춘 상태는? (가) 흰 면만 흰색 / (나) 흰 조각이 제자리
+  await goStep(page, 5);
+  const quiz = page.locator('[data-act="quiz"]');
+  await expect(quiz.locator("[data-quiz-picture]")).toHaveCount(2);
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await expect(quiz).toContainText("조각이 제자리");
+});
+
+test("배우기: 놀이판에서 모든 키로 돌려 보고, 다른 조각을 골라 따라간다", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-pieces");
+  await goToStep(page, "play");
+  const play = page.locator('[data-act="play"]');
+  await inputReady(page);
+  // 가운데만 색: 펼친 그림에서 보이는 칸은 여섯
+  const shown = page.locator("[data-net-cell]:not([data-net-hidden])");
+  await expect(shown).toHaveCount(6);
+  if (info.project.name === "desktop") {
+    // 큐브 전체 돌리기(x)는 세지 않는다. 면·가운데 층·넓게 돌리기는 센다
+    await page.keyboard.press("KeyX");
+    await expect(play).toHaveAttribute("data-play-turns", "0");
+    for (const k of ["KeyR", "Shift+KeyU", "KeyM", "Alt+KeyF"])
+      await page.keyboard.press(k);
+    await expect(play).toHaveAttribute("data-play-turns", "4");
+    // 되돌리기(Backspace)도 한 수
+    await page.keyboard.press("Backspace");
+  } else {
+    // 휴대폰: 표기 단추 줄
+    const buttons = page.locator("[data-cube-buttons] button");
+    for (const b of ["R", "U", "F", "L", "D"])
+      await buttons.filter({ hasText: new RegExp(`^${b}$`) }).click();
+  }
+  await expect(play).toHaveAttribute("data-play-turns", "5");
+  await expect(play).toHaveAttribute("data-act-passed", "");
+  // 가운데는 그대로 보인다
+  await expect(shown).toHaveCount(6);
+  // 다른 조각 보기: 꼭짓점 하나만 색(칸 셋)
+  await play.locator('[data-play-choose="꼭짓점"]').click();
+  await expect(shown).toHaveCount(3);
+  // 처음으로
+  await play.locator("[data-play-reset]").click();
+  await expect(page.locator('[data-net-cell="8"]')).not.toHaveAttribute(
     "data-net-hidden",
     "",
   );
-  await shot(page, "learn-pieces-track", info.project.name);
+  await shot(page, "learn-pieces-play", info.project.name);
 });
 
 test("배우기: 첫 층 꼭짓점은 세 색 가운데로 넣을 칸을 고른다", async ({

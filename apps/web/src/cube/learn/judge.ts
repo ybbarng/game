@@ -396,6 +396,8 @@ export function maskFor(
     case undefined:
     case "all":
       return null;
+    case "none":
+      return maskFromPieces(n, []);
     case "centers":
       return maskFromPieces(n, cubeGroups(n, U).centers);
     case "corners":

@@ -159,6 +159,14 @@ export function KeysApp() {
                 : `${LAYER_LABEL[layer as Layer]} 층만 보입니다. 흐린 글은 이 크기에서 쓰지 않습니다.`}
             </p>
             <KeyLegend />
+            {keymap.preset === "twoHand" && (
+              <p className="break-keep text-white/60 text-xs" data-keys-cstimer>
+                「두 손」은 csTimer와 같은 자리예요. 덧붙인 것: Shift + 면 키 =
+                넓게. csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라
+                살펴보기·블라인드 시작이에요. 큰 큐브의 층 수(3·4·7·8)는
+                섞기·맞춘 상태로 때 1로 돌아가요.
+              </p>
+            )}
           </section>
         )}
 

@@ -33,7 +33,18 @@ export function keysForMove(
 ): KeyChord[] | null {
   const name = normalizeMove(notation);
   const options = pressesFor(keymap, n, name);
-  return options[0] ?? null;
+  if (options[0]) return options[0];
+  // 둘째 층 하나(2R)는 넓게 + 바깥 반대로(Rw R'). 「두 손」은 csTimer처럼 안쪽 한 층 키가 없다.
+  // 두 수라 조작 훈련 문제에는 넣지 않고(pressesFor), 배우기 키캡에만 보인다
+  const inner = /^2([RLUDFB])(2|')?$/.exec(name);
+  if (inner && n >= 4) {
+    const sfx = inner[2] ?? "";
+    const back = sfx === "2" ? "2" : sfx === "'" ? "" : "'";
+    const wide = pressesFor(keymap, n, `${inner[1]}w${sfx}`)[0];
+    const face = pressesFor(keymap, n, `${inner[1]}${back}`)[0];
+    if (wide && face) return [...wide, ...face];
+  }
+  return null;
 }
 
 /** 키 하나를 키캡에 넣을 짧은 글로(`⇧I`, `Alt+R`, `;`) */

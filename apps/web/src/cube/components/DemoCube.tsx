@@ -39,6 +39,8 @@ export interface DemoCubeProps {
   arrowKeys?: boolean;
   /** 수 아래에 그 사람의 키 배치 키캡(기본 켬. 실물 큐브 핑거 트릭은 끈다) */
   showKeys?: boolean;
+  /** 재생이 끝까지 가면(배우기: 「이제 해 보세요」로 넘긴다) */
+  onEnd?: () => void;
 }
 
 export function DemoCube({
@@ -53,7 +55,10 @@ export function DemoCube({
   labels,
   arrowKeys = false,
   showKeys = true,
+  onEnd,
 }: DemoCubeProps) {
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
   const { keysOf } = useMoveKeys(n);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -149,6 +154,7 @@ export function DemoCube({
         }
       }
       setIndex(i);
+      if (i === last && i > 0) onEndRef.current?.();
     },
     [n, moves],
   );

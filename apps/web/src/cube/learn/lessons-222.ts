@@ -19,8 +19,15 @@ const pieces: Lesson = {
   summary: "꼭짓점 여덟 개뿐이에요. 가운데가 없어서 조각끼리 맞춰요.",
   steps: [
     {
+      kind: "find",
+      body: "2×2를 칸 하나하나가 아니라 조각으로 봐요. 칸 셋이 한 조각이에요. 까만 2×2에서 조각을 모두 눌러 세어 보세요. 누르면 색이 드러나요. 뒤쪽은 끌어서 둘러보거나 펼친 그림에서 눌러요.",
+      mask: "none",
+      find: { piece: "corner" },
+      count: 8,
+    },
+    {
       kind: "quiz",
-      body: "2×2를 둘러보세요. 칸 하나하나가 아니라 조각으로 보면 어떤 조각이 있나요? 칸 셋이 한 조각이에요.",
+      body: "몇 개를 셌나요? 조각마다 색이 몇 개 붙어 있었는지도 떠올려 보세요.",
       mask: "all",
       quiz: {
         question: "2×2를 이루는 조각은?",
@@ -40,6 +47,11 @@ const pieces: Lesson = {
       mask: "all",
       find: { piece: "corner", has: ["U"] },
       count: 4,
+    },
+    {
+      kind: "play",
+      body: "흰-초록-빨강 꼭짓점만 색이 있어요. 아무 면이나 돌려 보세요. 어디로 가든 세 색은 늘 함께 다녀요. 큐브의 칸을 눌러 다른 꼭짓점도 따라가 보세요.",
+      play: { focus: { colors: ["U", "F", "R"] }, moved: 3, choose: true },
     },
     {
       kind: "quiz",

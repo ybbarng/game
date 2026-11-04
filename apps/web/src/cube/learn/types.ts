@@ -66,6 +66,7 @@ export type GoalName = keyof typeof GOALS;
  * 엔진에서 구현할 것: 스티커마다 「보임 / 까맣게 / 회색」을 돌려주는 함수(docs/47 2-3).
  */
 export const MASKS = {
+  none: "모두 까맣게(조각을 찾아 누르면 그 조각 색이 드러난다)",
   centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
   corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
   "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
@@ -138,6 +139,11 @@ export type LessonSetup = { alg: string } | { rule: ScrambleRule };
  * - find: 조각 찾기. 큐브에서 `find`에 맞는 칸을 누르면(3D·펼친 그림 모두) 통과
  * - quiz: 고르기 문제. 큐브 그림을 보고 `quiz.choices`에서 고른다
  * - turn: 한 수 해 보기. 시작 상황에서 `alg`를 직접 쳐서 같은 모양이 되면 통과
+ * - play: 놀이판. 보고 싶은 조각만 색을 넣고 나머지는 까맣게 가린 큐브를 모든 키·밀기로 마음대로 돌려 본다.
+ *   정해진 수는 없고, 층을 몇 번 돌리거나 그 조각이 자리를 몇 번 옮기면 통과(`play`)
+ * - welcome: 환영. 섞였다가 해법대로 맞춰지는 큐브(첫 화면 연출)와 「따라오세요」 단추. 누르면 다음 단계로
+ * - parts: 스티커로 보기 / 조각으로 보기. 칸을 누르면 붙은 조각 전체가 들린다(3×3)
+ * - build: 가상 분해·조립. 축 → 가운데 6 → 모서리 12 → 꼭짓점 8 차례로 빈자리를 눌러 끼운다(3×3, `learn/build.ts`)
  */
 export type LessonStepKind =
   | "text"
@@ -146,7 +152,11 @@ export type LessonStepKind =
   | "look"
   | "find"
   | "quiz"
-  | "turn";
+  | "turn"
+  | "play"
+  | "welcome"
+  | "parts"
+  | "build";
 
 /** 면 이름. 색은 맞춘 큐브에서 그 면에 있던 색(U 흰, R 빨강, F 초록, D 노랑, L 주황, B 파랑) */
 export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
@@ -175,6 +185,20 @@ export interface LookGoal {
   on: FaceLetter;
 }
 
+/**
+ * 놀이판(play) 자료. 색을 넣을 조각은 맞춘 큐브에서 `focus`에 맞는 조각들이다(여럿 주면 모두 더한다).
+ * 통과는 둘 중 하나라도 채우면: 층 돌리기(큐브 전체 돌리기 빼고) `turns`번, 색 넣은 조각이 자리를 옮긴 것 `moved`번
+ */
+export interface PlaySpec {
+  focus: FindTarget | FindTarget[];
+  /** 가운데 조각에도 색을 넣는다(제자리를 볼 기준) */
+  centers?: boolean;
+  turns?: number;
+  moved?: number;
+  /** 「다른 조각 보기」: 가운데·모서리·꼭짓점 단추나 큐브의 칸을 눌러 색 넣을 조각을 바꾼다 */
+  choose?: boolean;
+}
+
 export interface QuizSpec {
   question: string;
   choices: string[];
@@ -182,6 +206,11 @@ export interface QuizSpec {
   answer: number;
   /** 고른 뒤 보여 줄 까닭 한두 문장 */
   why: string;
+  /**
+   * 고를 것마다 큐브 그림(그림을 보고 고르는 문제). 있으면 단계 큐브 대신 고를 것 곁에 그림을 하나씩 둔다.
+   * 차례는 `choices`와 같다
+   */
+  pictures?: { alg: string }[];
 }
 
 export interface LessonStep {
@@ -198,12 +227,17 @@ export interface LessonStep {
   mask?: MaskName;
   /** find: 찾을 조각 */
   find?: FindTarget;
-  /** find: 서로 다른 조각을 몇 개 찾아야 하나. 기본 1 */
+  /**
+   * find: 서로 다른 조각을 몇 개 찾아야 하나. 기본 1. 둘 이상이면 세기: 누를 때마다 골랐다는 표시가 붙고(가린 큐브면
+   * 색이 드러난다) 「3 / 6」처럼 센다. 다시 누르면 고르기가 풀리고, 틀린 조각은 빨강으로 잠깐 보이고 세지 않는다
+   */
   count?: number;
   /** look: 맞출 방향. 없으면 큐브 전체를 한 번 돌리면 통과 */
   look?: LookGoal;
   /** quiz: 문제 */
   quiz?: QuizSpec;
+  /** play: 놀이판 */
+  play?: PlaySpec;
   /** 단계 아래에 펼쳐 둘 표(블라인드 글자마다 준비 수 등) */
   sheet?: SheetName;
   /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 꼭짓점만 보이는 3×3). 정지 그림이다 */

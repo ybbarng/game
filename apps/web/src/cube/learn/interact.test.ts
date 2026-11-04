@@ -4,11 +4,18 @@ import { describe, expect, it } from "vitest";
 
 import { COURSES } from "./index";
 import {
+  demoBodyParts,
   demoOffersTurn,
   findHit,
   fingerQuiz,
+  focusMask,
+  focusPieces,
   lookMet,
+  marksForSlots,
+  pickPiece,
   pieceAtSticker,
+  pieceIdentityAt,
+  playPassed,
   stepIsActive,
   stepPicture,
   stepProblem,
@@ -63,6 +70,84 @@ describe("조각 찾기", () => {
     expect(findHit(3, s, at(3, 0, 2, 1), target)).toBeNull();
     expect(findHit(3, s, at(3, 2, 1, 1), { piece: "center" })).not.toBeNull();
     expect(findHit(3, s, front, { piece: "corner" })).toBeNull();
+  });
+});
+
+describe("고르기와 세기", () => {
+  const s = solvedCube(3);
+  const center = { piece: "center" } as const;
+  // 앞면 가운데(22)·윗면 가운데(4)·앞면 왼쪽 위(18, 꼭짓점)
+  it("누를 때마다 더하고, 다시 누르면 풀고, 틀린 조각은 세지 않는다", () => {
+    const a = pickPiece(3, s, 22, center, [], 6);
+    expect(a.kind).toBe("add");
+    expect(a.found).toHaveLength(1);
+    const b = pickPiece(3, s, 4, center, a.found, 6);
+    expect(b.found).toHaveLength(2);
+    const off = pickPiece(3, s, 22, center, b.found, 6);
+    expect(off.kind).toBe("remove");
+    expect(off.found).toEqual(b.found.filter((p) => p !== a.piece));
+    const wrong = pickPiece(3, s, 18, center, b.found, 6);
+    expect(wrong.kind).toBe("wrong");
+    expect(wrong.found).toEqual(b.found);
+    expect(wrong.piece).not.toBeNull();
+  });
+
+  it("하나 찾기는 다시 눌러도 풀리지 않고, 다 찾은 뒤에는 받지 않는다", () => {
+    const a = pickPiece(3, s, 22, center, [], 1);
+    expect(pickPiece(3, s, 22, center, a.found, 1).kind).toBe("none");
+    const b = pickPiece(3, s, 22, center, [], 2);
+    expect(pickPiece(3, s, 22, center, b.found, 2).kind).toBe("remove");
+  });
+
+  it("고른 조각의 스티커 모두에 표시가 붙고, 뒤의 표시가 앞을 덮는다", () => {
+    const corner = pickPiece(3, s, 18, { piece: "corner" }, [], 1)
+      .piece as number;
+    const m = marksForSlots(3, s, [
+      [corner, "pick"],
+      [corner, "wrong"],
+    ]);
+    expect(m.filter((t) => t === "wrong")).toHaveLength(3);
+    expect(m.filter((t) => t !== null)).toHaveLength(3);
+  });
+
+  it("표시는 조각을 따라 다닌다: 돌린 큐브에서 고른 자리의 지금 조각에 붙는다", () => {
+    const r = play(3, "R");
+    // R 뒤 위-앞-오른쪽 자리(윗면 칸 8)에 든 조각
+    const slot = pickPiece(3, r, 8, { piece: "corner" }, [], 1).piece as number;
+    const m = marksForSlots(3, r, [[slot, "pick"]]);
+    const id = pieceIdentityAt(3, r, 8) as number;
+    // 표시가 붙은 스티커 정체는 그 조각의 것
+    const marked = m.flatMap((t, i) => (t ? [i] : []));
+    expect(
+      marked.every((i) => pieceIdentityAt(3, solvedCube(3), i) === id),
+    ).toBe(true);
+  });
+});
+
+describe("놀이판 가리기와 통과", () => {
+  it("그 조각만 색, 가운데를 더하면 가운데도", () => {
+    const corner = focusPieces(3, { colors: ["U", "F", "R"] });
+    expect(corner).toHaveLength(1);
+    const visible = (m: readonly string[]) =>
+      m.filter((v) => v === "visible").length;
+    expect(visible(focusMask(3, corner))).toBe(3);
+    expect(visible(focusMask(3, corner, true))).toBe(3 + 6);
+    // 여럿 주면 모두 더한다
+    expect(
+      focusPieces(3, [{ colors: ["U", "R"] }, { colors: ["U", "R", "B"] }]),
+    ).toHaveLength(2);
+  });
+
+  it("층 돌리기 수나 조각 옮김 중 하나라도 채우면 통과", () => {
+    expect(playPassed({ focus: {}, turns: 3 }, { turns: 2, moved: 9 })).toBe(
+      false,
+    );
+    expect(playPassed({ focus: {}, turns: 3 }, { turns: 3, moved: 0 })).toBe(
+      true,
+    );
+    expect(
+      playPassed({ focus: {}, moved: 2, turns: 9 }, { turns: 2, moved: 2 }),
+    ).toBe(true);
   });
 });
 
@@ -152,6 +237,23 @@ describe("단계 그림과 시연 따라 하기", () => {
   it("마스크가 없는 글 단계는 가장 가까운 단계의 마스크를 맞춘 큐브에 씌운다", () => {
     expect(stepPicture(lesson, 0)).toEqual({ setup: undefined, mask: "cross" });
     expect(stepPicture(lesson, 4)).toEqual({ setup: undefined, mask: "f2l" });
+  });
+
+  it("시연 본문은 보는 말과 치는 말로 갈리고, 이으면 그대로다", () => {
+    const body =
+      "R은 오른쪽 면을 돌려요. 앞면 칸이 위로 올라가요. 이제 R을 쳐 보세요.";
+    const parts = demoBodyParts(body);
+    expect(parts.map((p) => p.text).join("")).toBe(body);
+    expect(parts.map((p) => p.doing)).toEqual([false, false, true]);
+    for (const c of COURSES)
+      for (const l of c.lessons)
+        for (const st of l.steps)
+          if (st.kind === "demo")
+            expect(
+              demoBodyParts(st.body)
+                .map((p) => p.text)
+                .join(""),
+            ).toBe(st.body);
   });
 
   it("같은 해보기가 있는 시연에는 「직접 해 보기」를 붙이지 않는다", () => {

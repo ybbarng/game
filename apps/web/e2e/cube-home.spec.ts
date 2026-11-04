@@ -87,34 +87,46 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await shot(page, "cube-home", info.project.name);
 
   await page.locator("[data-cube-intro-link]").click();
-  await expect(page.locator("[data-cube-intro]")).toHaveAttribute(
-    "data-cube-intro",
-    "pieces",
-  );
-  // 조각 셋(가운데·모서리·꼭짓점)을 찾아야 다음으로
+  const intro = page.locator("[data-cube-intro]");
+  await expect(intro).toHaveAttribute("data-cube-intro", "words");
+  // 세 가지 말: 공식을 고르면 통과
   const next = page.locator("[data-intro-next]");
-  await expect(next).toBeDisabled();
-  for (const cell of ["4", "7", "8"]) {
-    await expect(page.locator("[data-intro-piece-ask]")).toBeVisible();
+  await expect(next).toHaveText("건너뛰기");
+  await page.locator("[data-intro-quiz] [data-choice='1']").click();
+  await expect(next).toHaveText("다음");
+  await next.click();
+  // 면 여섯: R U F L D B 차례로 그 면의 칸을 누른다(펼친 그림의 면 가운데)
+  await expect(intro).toHaveAttribute("data-cube-intro", "faces");
+  const ask = page.locator("[data-intro-face]");
+  await page.locator('[data-net-cell="4"]').click();
+  await expect(ask).toContainText("그건 위 면이에요");
+  for (const [letter, cell] of [
+    ["R", 13],
+    ["U", 4],
+    ["F", 22],
+    ["L", 40],
+    ["D", 31],
+    ["B", 49],
+  ] as const) {
+    await expect(ask).toHaveAttribute("data-intro-face", letter);
     await page.locator(`[data-net-cell="${cell}"]`).click();
   }
-  await expect(page.locator("[data-intro-piece-ask]")).toHaveCount(0);
-  await shot(page, "intro-pieces", info.project.name);
-  await next.click();
-  await expect(page.locator("[data-cube-intro]")).toHaveAttribute(
-    "data-cube-intro",
-    "notation",
-  );
-  // 퀴즈를 맞혀야 다음으로
-  await expect(next).toBeDisabled();
-  await page.locator("[data-intro-quiz] [data-choice='1']").click();
-  await next.click();
-  await expect(page.locator("[data-cube-intro]")).toHaveAttribute(
-    "data-cube-intro",
-    "keys",
-  );
-  await shot(page, "intro-keys", info.project.name);
+  await expect(ask).toHaveAttribute("data-intro-face", "done");
+  await shot(page, "intro-faces", info.project.name);
 
+  // 키 배치: 「외우기 쉬운 표기」를 고르면 설정에 남고 그 규칙을 보인다
+  await page
+    .getByRole("navigation", { name: "안내 차례" })
+    .getByText("키 배치")
+    .click();
+  await expect(intro).toHaveAttribute("data-cube-intro", "layout");
+  await expect(page.locator('[data-layout-rule="twoHand"]')).toBeVisible();
+  await page.locator('[data-layout-pick="notation"]').click();
+  await expect(page.locator('[data-layout-rule="notation"]')).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("cube.keymap.v1")),
+  ).toContain('"notation"');
+  await shot(page, "intro-layout", info.project.name);
   if (info.project.name === "desktop" && SAVE_SCREENSHOTS) {
     // 아이콘과 공유 그림(사람이 보는 용도). 그림 주소는 화면이 아니라(준비 표시가 없다) 파일로 받아 둔다
     for (const [url, file] of [

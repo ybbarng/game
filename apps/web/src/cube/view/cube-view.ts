@@ -15,9 +15,12 @@ import {
   type CubeMove,
   type CubeViewOptions,
   DEFAULT_COLORS,
+  MARK_COLOR,
   MAX_CUBE_SIZE,
+  type MarkTone,
   MIN_CUBE_SIZE,
   type Normal,
+  type PieceLayout,
   type Quality,
   type Sticker,
 } from "./types";
@@ -86,6 +89,12 @@ interface Cubie {
   pos: THREE.Vector3;
   quat: THREE.Quaternion;
   stickers: number[];
+  /** 놓임(setLayout): 지금 값과 옮겨 가는 처음·끝 값 */
+  shift: THREE.Vector3;
+  scale: number;
+  body: boolean;
+  from: { shift: THREE.Vector3; scale: number };
+  to: { shift: THREE.Vector3; scale: number };
 }
 
 interface StickerSlot {
@@ -94,6 +103,7 @@ interface StickerSlot {
   normal: Normal;
   local: THREE.Matrix4;
   color: number | null;
+  mark: MarkTone | null;
 }
 
 interface Running {
@@ -161,6 +171,21 @@ function stickerGeometry(
   return g;
 }
 
+/** 칸 표시 고리(스티커 둘레를 감싸는 둥근 테, 스티커보다 조금 위). 배우기의 고른 조각·맞음·틀림 */
+function frameGeometry(spec: QualitySpec): THREE.BufferGeometry {
+  const shape = roundedRect(0.96, 0.14);
+  const hole = roundedRect(0.74, 0.1);
+  shape.holes.push(
+    new THREE.Path(hole.getPoints(spec.curveSegments).reverse()),
+  );
+  const g = new THREE.ShapeGeometry(shape, spec.curveSegments);
+  g.translate(0, 0, CUBIE / 2 + 0.03);
+  return g;
+}
+
+/** 표시가 없는 칸의 고리는 크기 0으로 둔다 */
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+
 /** 바닥에 까는 부드러운 그림자(가운데가 짙고 가장자리로 사라진다) */
 function shadowTexture(): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -186,7 +211,7 @@ const tmpM2 = new THREE.Matrix4();
 const tmpQ = new THREE.Quaternion();
 const tmpQ2 = new THREE.Quaternion();
 const tmpV = new THREE.Vector3();
-const ONE = new THREE.Vector3(1, 1, 1);
+const tmpS = new THREE.Vector3(1, 1, 1);
 
 export class CubeView {
   readonly n: number;
@@ -202,6 +227,7 @@ export class CubeView {
   private readonly stickerMesh: THREE.InstancedMesh;
   private readonly bodyMaterial: THREE.MeshStandardMaterial;
   private readonly stickerMaterial: THREE.MeshStandardMaterial;
+  private readonly frameMesh: THREE.InstancedMesh;
   private readonly shadow: THREE.Mesh | null = null;
   private readonly envTexture: THREE.Texture | null = null;
   private readonly disposables: { dispose(): void }[] = [];
@@ -226,6 +252,11 @@ export class CubeView {
     hit: SwipeHit | null;
     done: boolean;
   } | null = null;
+
+  /** 놓임이 바뀌는 중(시작 시각·걸리는 시간) */
+  private layoutAnim: { start: number; ms: number } | null = null;
+  /** 큐브 속 축(가운데를 잇는 심). setCore(true)일 때만 만든다 */
+  private core: THREE.Group | null = null;
 
   private queue: CubeMove[] = [];
   private running: Running | null = null;
@@ -334,6 +365,11 @@ export class CubeView {
         pos: new THREE.Vector3(...home),
         quat: new THREE.Quaternion(),
         stickers: [],
+        shift: new THREE.Vector3(),
+        scale: 1,
+        body: true,
+        from: { shift: new THREE.Vector3(), scale: 1 },
+        to: { shift: new THREE.Vector3(), scale: 1 },
       });
     const h = (this.n - 1) / 2;
     const zAxis = new THREE.Vector3(0, 0, 1);
@@ -350,7 +386,13 @@ export class CubeView {
           );
           this.slotIndex.set(slotKey(c.home, normal), this.slots.length);
           c.stickers.push(this.slots.length);
-          this.slots.push({ cubie: ci, normal, local, color: null });
+          this.slots.push({
+            cubie: ci,
+            normal,
+            local,
+            color: null,
+            mark: null,
+          });
         }
       });
     });
@@ -365,7 +407,21 @@ export class CubeView {
       this.stickerMaterial,
       this.slots.length,
     );
-    for (const m of [this.body, this.stickerMesh]) {
+    // 칸 표시: 빛을 받지 않는 밝은 색이라 어느 면에서도 같은 색으로 보인다
+    const frameMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    const frameGeo = frameGeometry(this.spec);
+    this.disposables.push(frameMat, frameGeo);
+    this.frameMesh = new THREE.InstancedMesh(
+      frameGeo,
+      frameMat,
+      this.slots.length,
+    );
+    this.frameMesh.visible = false;
+    for (const m of [this.body, this.stickerMesh, this.frameMesh]) {
       m.frustumCulled = false;
       this.scene.add(m);
     }
@@ -413,11 +469,17 @@ export class CubeView {
       c.pos.set(...c.home);
       c.quat.identity();
     }
-    for (const s of this.slots) s.color = null;
+    for (const s of this.slots) {
+      s.color = null;
+      s.mark = null;
+    }
     for (const s of stickers) {
       const i = this.slotIndex.get(slotKey(s.center, s.normal));
       const slot = i === undefined ? undefined : this.slots[i];
-      if (slot) slot.color = s.color;
+      if (slot) {
+        slot.color = s.color;
+        slot.mark = s.mark ?? null;
+      }
     }
     this.cubies.forEach((_, i) => {
       this.writeCubie(i);
@@ -495,6 +557,95 @@ export class CubeView {
     this.invalidate();
   }
 
+  /**
+   * 조각마다 놓임을 정한다(배우기의 스티커·조각 보기, 분해·조립). `of`는 조각의 제자리(맞춘 큐브의 중심)를 받아
+   * 놓임을 돌려준다(null이면 기본). `ms`가 있으면 그동안 부드럽게 옮긴다. 회전과 함께 쓰지 않는다(놓임은 세계 좌표)
+   */
+  setLayout(
+    of: (home: readonly [number, number, number]) => PieceLayout | null,
+    ms = 0,
+  ): void {
+    const now = typeof performance === "undefined" ? 0 : performance.now();
+    const t = this.reduced?.matches ? 0 : ms;
+    this.cubies.forEach((c, i) => {
+      const l = of(c.home) ?? {};
+      c.body = l.body ?? true;
+      c.from.shift.copy(c.shift);
+      c.from.scale = c.scale;
+      c.to.shift.set(...(l.shift ?? [0, 0, 0]));
+      c.to.scale = l.scale ?? 1;
+      if (t <= 0) {
+        c.shift.copy(c.to.shift);
+        c.scale = c.to.scale;
+      }
+      this.writeCubie(i);
+    });
+    this.layoutAnim = t > 0 ? { start: now, ms: t } : null;
+    this.invalidate();
+  }
+
+  private axes: THREE.Group | null = null;
+
+  /**
+   * 세 축 화살표(x 빨강 = 왼쪽 → 오른쪽, y 초록 = 아래 → 위, z 파랑 = 뒤 → 앞). 처음 안내의 x·y·z 설명이 쓴다.
+   * 큐브를 꿰뚫고 양쪽으로 삐져나온다
+   */
+  setAxes(show: boolean): void {
+    if (show && !this.axes) {
+      const g = new THREE.Group();
+      const half = this.n / 2 + 0.9;
+      const dirs: [THREE.Vector3, number][] = [
+        [new THREE.Vector3(1, 0, 0), 0xff4d4d],
+        [new THREE.Vector3(0, 1, 0), 0x4dff88],
+        [new THREE.Vector3(0, 0, 1), 0x4d9bff],
+      ];
+      for (const [d, color] of dirs) {
+        const a = new THREE.ArrowHelper(
+          d,
+          d.clone().multiplyScalar(-half),
+          half * 2,
+          color,
+          0.5,
+          0.28,
+        );
+        for (const m of [a.line.material, a.cone.material])
+          (m as THREE.Material & { toneMapped?: boolean }).toneMapped = false;
+        g.add(a);
+      }
+      this.scene.add(g);
+      this.axes = g;
+    }
+    if (this.axes) this.axes.visible = show;
+    this.invalidate();
+  }
+
+  /** 큐브 속 축(가운데 여섯을 잇는 심)을 그린다. 분해한 큐브에서 보인다 */
+  setCore(show: boolean): void {
+    if (show && !this.core) {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x8a8f98,
+        roughness: 0.45,
+        metalness: 0.3,
+      });
+      const len = this.n - 1;
+      const rod = new THREE.CylinderGeometry(0.09, 0.09, len, 12);
+      const ball = new THREE.SphereGeometry(0.32, 20, 14);
+      this.disposables.push(mat, rod, ball);
+      g.add(new THREE.Mesh(ball, mat));
+      for (const axis of ["x", "y", "z"] as const) {
+        const m = new THREE.Mesh(rod, mat);
+        if (axis === "x") m.rotation.z = Math.PI / 2;
+        if (axis === "z") m.rotation.x = Math.PI / 2;
+        g.add(m);
+      }
+      this.scene.add(g);
+      this.core = g;
+    }
+    if (this.core) this.core.visible = show;
+    this.invalidate();
+  }
+
   // ---------------------------------------------------------------- 보기
 
   /** 보는 각(도). yaw는 위에서 봐서 오른쪽으로 돈 각, pitch는 위로 올라간 각 */
@@ -530,6 +681,7 @@ export class CubeView {
     this.stickerMesh.geometry.dispose();
     this.body.dispose();
     this.stickerMesh.dispose();
+    this.frameMesh.dispose();
     for (const d of this.disposables) d.dispose();
     this.envTexture?.dispose();
     this.renderer.dispose();
@@ -556,9 +708,16 @@ export class CubeView {
           ? HIDDEN_COLOR[this.hidden]
           : (this.colors[s.color] ?? HIDDEN_COLOR[this.hidden]);
       this.stickerMesh.setColorAt(i, color.setHex(hex));
+      this.frameMesh.setColorAt(
+        i,
+        color.setHex(s.mark ? MARK_COLOR[s.mark] : 0xffffff),
+      );
     });
     if (this.stickerMesh.instanceColor)
       this.stickerMesh.instanceColor.needsUpdate = true;
+    if (this.frameMesh.instanceColor)
+      this.frameMesh.instanceColor.needsUpdate = true;
+    this.frameMesh.visible = this.slots.some((s) => s.mark !== null);
   }
 
   /** 조각 하나(와 그 스티커)의 행렬을 쓴다. `extra`가 있으면 그 회전을 바깥에 더한다(도는 중) */
@@ -572,16 +731,20 @@ export class CubeView {
       tmpV.copy(c.pos);
       tmpQ.copy(c.quat);
     }
-    tmpM.compose(tmpV, tmpQ, ONE);
-    this.body.setMatrixAt(i, tmpM);
+    tmpV.add(c.shift);
+    tmpS.setScalar(c.scale);
+    tmpM.compose(tmpV, tmpQ, tmpS);
+    this.body.setMatrixAt(i, c.body ? tmpM : ZERO);
     for (const si of c.stickers) {
       const slot = this.slots[si];
       if (!slot) continue;
       tmpM2.multiplyMatrices(tmpM, slot.local);
       this.stickerMesh.setMatrixAt(si, tmpM2);
+      this.frameMesh.setMatrixAt(si, slot.mark ? tmpM2 : ZERO);
     }
     this.body.instanceMatrix.needsUpdate = true;
     this.stickerMesh.instanceMatrix.needsUpdate = true;
+    this.frameMesh.instanceMatrix.needsUpdate = true;
   }
 
   private start(move: CubeMove, now: number, duration: number): Running {
@@ -650,6 +813,20 @@ export class CubeView {
       busy = true;
     }
     if (this.queue.length > 0) busy = true;
+
+    // 놓임(벌리기·날아오기)
+    const la = this.layoutAnim;
+    if (la) {
+      const p = clamp((now - la.start) / la.ms, 0, 1);
+      const e = easeInOut(p);
+      this.cubies.forEach((c, i) => {
+        c.shift.lerpVectors(c.from.shift, c.to.shift, e);
+        c.scale = c.from.scale + (c.to.scale - c.from.scale) * e;
+        this.writeCubie(i);
+      });
+      if (p >= 1) this.layoutAnim = null;
+      else busy = true;
+    }
 
     // 보기(끌어 돌린 뒤 천천히 제자리로)
     if (this.returning) {
