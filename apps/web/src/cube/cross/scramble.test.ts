@@ -95,7 +95,7 @@ describe("십자 섞기 거르기", () => {
     }
   });
 
-  it("「아래에서」는 첫 색 가운데를 아래로 쥐고, 해도 그 방향으로 적는다", () => {
+  it("「아래에서」는 첫 색 센터를 아래로 쥐고, 해도 그 방향으로 적는다", () => {
     for (let c = 0; c < 6; c++) {
       const r = analyzeRound(SEQS[0] as string, [c], true);
       expect(r.hold).toBe(HOLD_DOWN[c]);

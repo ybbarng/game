@@ -4,7 +4,7 @@ import { cycleParity, pieceCycles } from "./pieces";
 
 /**
  * 크기마다 날개 고리와 안쪽 한 층 돌리기의 홀짝(「크기와 패리티」 카드). 엔진의 조각 자리로 센다.
- * 날개 고리 = 큐브 전체를 돌려 서로 옮겨 가는 날개 조각 묶음(엔진의 궤도).
+ * 날개 고리 = 큐브 전체를 돌려 서로 옮겨 가는 날개 묶음(엔진의 궤도).
  */
 
 export interface SliceEffect {
@@ -12,9 +12,9 @@ export interface SliceEffect {
   move: string;
   /** 날개 고리마다 움직인 고리 길이(움직이지 않으면 빈 목록) */
   wings: number[][];
-  /** 가운데 모서리 고리 길이 */
+  /** 가운데 엣지 고리 길이 */
   midges: number[];
-  /** 꼭짓점 고리 길이 */
+  /** 코너 고리 길이 */
   corners: number[];
 }
 
@@ -22,15 +22,15 @@ export interface SizeFacts {
   n: number;
   /** 날개 고리 수 */
   wingOrbits: number;
-  /** 한가운데 모서리(3×3 모서리처럼 움직이는 조각)가 있나 */
+  /** 한가운데 엣지(3×3 엣지처럼 움직이는 조각)가 있나 */
   midges: boolean;
   /** 안쪽 층 하나씩 90° 돌렸을 때 */
   slices: SliceEffect[];
-  /** 3×3처럼 맞추는 단계에서 모서리 하나만 뒤집힌 꼴(OLL 패리티)이 보일 수 있나 */
+  /** 3×3처럼 맞추는 단계에서 엣지 하나만 뒤집힌 꼴(OLL 패리티)이 보일 수 있나 */
   ollParity: boolean;
-  /** 3×3처럼 맞추는 단계에서 모서리 둘만 바뀐 꼴(PLL 패리티)이 보일 수 있나 */
+  /** 3×3처럼 맞추는 단계에서 엣지 둘만 바뀐 꼴(PLL 패리티)이 보일 수 있나 */
   pllParity: boolean;
-  /** 모서리 짝짓기 마지막에 날개 짝 하나가 뒤집힌 꼴이 보일 수 있나(가운데 모서리가 기준이 되는 홀수 크기) */
+  /** 엣지 짝짓기 마지막에 날개 짝 하나가 뒤집힌 꼴이 보일 수 있나(가운데 엣지가 기준이 되는 홀수 크기) */
   pairingParity: boolean;
 }
 

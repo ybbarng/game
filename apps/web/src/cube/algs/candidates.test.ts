@@ -59,7 +59,7 @@ describe("추천 후보 공식", () => {
     expect(count("2look-pll")).toBe(6);
   });
 
-  it("2단계 OLL 꼭짓점은 같은 번호의 OLL 후보를 함께 쓴다", () => {
+  it("2단계 OLL 코너는 같은 번호의 OLL 후보를 함께 쓴다", () => {
     const two = candidateSpecs(byId("2look-oll-26")).map((x) => x.alg);
     for (const { alg } of LL_CANDIDATES["oll-26"] ?? [])
       expect(two).toContain(alg);

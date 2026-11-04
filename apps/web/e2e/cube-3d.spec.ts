@@ -15,7 +15,7 @@ import { expect, type Page, test } from "./test";
  * | PracticeCube(키 익히기·조작 훈련) | /cube/keys/learn |
  * | StateCube(큐브의 수학) | 방향과 짝 카드 |
  * | CubeHero(첫 화면 연출) | /cube |
- * | 거울 판(뒷면 보기, StillCube) | 조각과 만나기 「가운데 조각 세기」 |
+ * | 거울 판(뒷면 보기, StillCube) | 조각과 만나기 「센터 블럭 세기」 |
  */
 
 /** GPU 없는 CI는 첫 장면에 5초 넘게 걸린다(멈춘 시험을 잡는 상한) */
@@ -167,7 +167,7 @@ test("3D: 뒷면 거울 판이 생기고, 판 칸을 눌러 뒤쪽 조각을 찾
   await page.addInitScript(() => {
     (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
   });
-  // 조각과 만나기의 「가운데 조각 세기」: 기본 설정(뒷면 보기 = 거울)이라 판 셋이 뜬다
+  // 조각과 만나기의 「센터 블럭 세기」: 기본 설정(뒷면 보기 = 거울)이라 판 셋이 뜬다
   await page.goto("/cube/learn?lesson=333-start");
   await goToStep(page, "find");
   const canvas = page.locator(
@@ -176,7 +176,7 @@ test("3D: 뒷면 거울 판이 생기고, 판 칸을 눌러 뒤쪽 조각을 찾
   await expect(canvas).toHaveAttribute("data-cube-mirror", "on", SCENE);
   await expect(page.locator("[data-cube-net-side]")).toHaveCount(0);
   await expect(page.locator("[data-step-body]")).toContainText("거울에서");
-  // 뒤·왼쪽·아래 판의 가운데 칸 = 안 보이는 세 면의 가운데 조각
+  // 뒤·왼쪽·아래 판의 가운데 칸 = 안 보이는 세 면의 센터 블럭
   const count = page.locator("[data-find-count]");
   for (const [i, panel] of ["-z", "-x", "-y"].entries()) {
     const at = await canvas.evaluate(

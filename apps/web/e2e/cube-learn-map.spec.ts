@@ -33,7 +33,7 @@ test("배우기: 3×3 초보자 지도는 일곱 단계 띠와 단계별 시연,
   await expect(page.locator("[data-stage-strip='7'] li")).toHaveCount(7);
   await page.locator("[data-stage-next]").click();
   await expect(demo).toHaveAttribute("data-stage-demo", "1");
-  await expect(page.locator("[data-stage-now]")).toContainText("첫 층 꼭짓점");
+  await expect(page.locator("[data-stage-now]")).toContainText("첫 층 코너");
   // 띠의 마지막 칸을 누르면 그 단계 시연
   await page.locator("[data-stage-pick='6']").click();
   await expect(demo).toHaveAttribute("data-stage-demo", "6");

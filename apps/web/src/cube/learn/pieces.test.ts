@@ -146,20 +146,20 @@ describe("조각의 움직임: 센터 → 엣지 → 코너, 자리와 방향", 
 });
 
 describe("조각 따라가기", () => {
-  it("R을 돌리면 흰-초록-빨강 꼭짓점은 위-뒤-오른쪽으로 간다", () => {
+  it("R을 돌리면 흰-초록-빨강 코너 블럭은 위-뒤-오른쪽으로 간다", () => {
     expect(hitSlots(3, play(3, "R"), UFR)).toEqual([pieceByName(3, "UBR")]);
     // 시뮬레이터: 위-뒤-오른쪽 자리(x 2, y 2, z -2)의 조각이 원래 위-앞-오른쪽 것
     expect(homeOf(apply(solved(3), "R"), [2, 2, -2])).toBe("2,2,2");
   });
 
-  it(`${TRACK_CORNER}을 돌리면 흰-초록-빨강 꼭짓점은 위-앞-왼쪽으로 간다`, () => {
+  it(`${TRACK_CORNER}을 돌리면 흰-초록-빨강 코너 블럭은 위-앞-왼쪽으로 간다`, () => {
     expect(hitSlots(3, play(3, TRACK_CORNER), UFR)).toEqual([
       pieceByName(3, "UFL"),
     ]);
     expect(homeOf(apply(solved(3), TRACK_CORNER), [-2, 2, 2])).toBe("2,2,2");
   });
 
-  it(`${TRACK_EDGE}을 돌리면 흰-초록 모서리는 위-오른쪽으로 간다`, () => {
+  it(`${TRACK_EDGE}을 돌리면 흰-초록 엣지 블럭은 위-오른쪽으로 간다`, () => {
     expect(hitSlots(3, play(3, TRACK_EDGE), UF)).toEqual([
       pieceByName(3, "UR"),
     ]);
@@ -187,7 +187,7 @@ describe("고르기 문제의 답", () => {
     return { step: s, answer: s.quiz.choices[s.quiz.answer] };
   };
 
-  it("세기: 까만 큐브에서 가운데 6, 조립으로 모서리 12·꼭짓점 8, 모두 26", () => {
+  it("세기: 까만 큐브에서 센터 6, 조립으로 엣지 12·코너 8, 모두 26", () => {
     const topo = cubeTopology(3);
     const kinds = topo.pieces.map((p) => p.stickers.length);
     expect(kinds.filter((k) => k === 2)).toHaveLength(12);
@@ -223,7 +223,7 @@ describe("고르기 문제의 답", () => {
     const first = lessonOf("333-start");
     const build = first.steps.findIndex((x) => x.kind === "build");
     const [find, pick] = first.steps.slice(build - 2, build);
-    // 까만 큐브에서 노란 가운데 하나만 맞다
+    // 까만 큐브에서 노란 센터 하나만 맞다
     expect(find?.kind).toBe("find");
     expect(find?.mask).toBe("none");
     expect(find?.find).toEqual({ piece: "center", colors: ["D"] });
@@ -274,17 +274,17 @@ describe("고르기 문제의 답", () => {
       expect(findHit(3, ga, home, { colors: colorsOf(p) })).toBeNull();
       expect(findHit(3, na, home, { colors: colorsOf(p) })).toBe(p);
     }
-    // 옆면 첫 줄은 (가)에서 가운데 색과 모두 다르다
+    // 옆면 첫 줄은 (가)에서 센터 색과 모두 다르다
     const c = faceColors(3, ga);
     for (const f of [1, 2, 4, 5])
       for (const k of [0, 1, 2]) expect(c[f * 9 + k]).not.toBe(f);
   });
 
-  it("초록 맞은편은 파랑(분해·조립의 가운데 규칙, build.test.ts)", () => {
+  it("초록 맞은편은 파랑(분해·조립의 센터 규칙, build.test.ts)", () => {
     expect(OPPOSITE_FACE[FACE_INDEX.F as 0]).toBe(FACE_INDEX.B);
   });
 
-  it("뒤집힌 모서리·돌아간 꼭짓점 그림은 제자리지만 방향이 틀렸다", () => {
+  it("뒤집힌 엣지·돌아간 코너 그림은 제자리지만 방향이 틀렸다", () => {
     const e = play(3, FLIPPED_EDGE);
     expect(hitSlots(3, e, UF)).toEqual([pieceByName(3, "UF")]);
     expect(goalMet(3, e, "piece:UF")).toBe(false);
@@ -332,7 +332,7 @@ describe("조각 하나 목표", () => {
     );
   });
 
-  it("조각 하나 가리기: 그 조각과 가운데만 보인다", () => {
+  it("조각 하나 가리기: 그 조각과 센터만 보인다", () => {
     const m = maskFor(3, "piece:UFR") ?? [];
     expect(m.filter((v) => v === "visible")).toHaveLength(3 + 6);
     expect(
@@ -345,7 +345,7 @@ describe("조각 하나 목표", () => {
 });
 
 describe("큰 큐브와 2×2 조각 단원", () => {
-  it("4×4: 2R로 흰-초록 날개 둘이 떨어지고, 가운데가 옮겨 간다", () => {
+  it("4×4: 2R로 흰-초록 날개 둘이 떨어지고, 센터가 옮겨 간다", () => {
     const s = play(4, "2R");
     expect(hitSlots(4, s, UF)).toHaveLength(2);
     // 윗면 가운데 칸 넷 중 흰색이 아닌 것이 생긴다
@@ -354,7 +354,7 @@ describe("큰 큐브와 2×2 조각 단원", () => {
     expect(centers.some((x) => x !== FACE_INDEX.U)).toBe(true);
   });
 
-  it("5×5: 2R로 한가운데 칸은 그대로, 흰-초록 모서리 셋이 갈라진다", () => {
+  it("5×5: 2R로 한가운데 칸은 그대로, 흰-초록 엣지 블럭 셋이 갈라진다", () => {
     const s = play(5, "2R");
     expect(faceColors(5, s)[12]).toBe(FACE_INDEX.U);
     expect(hitSlots(5, s, UF)).toHaveLength(3);
@@ -364,7 +364,7 @@ describe("큰 큐브와 2×2 조각 단원", () => {
     ).toBe(true);
   });
 
-  it("2×2: 흰-초록-주황 꼭짓점이 하나 있다", () => {
+  it("2×2: 흰-초록-주황 코너 블럭이 하나 있다", () => {
     expect(
       hitSlots(2, play(2, "R U"), { colors: ["U", "F", "L"] }),
     ).toHaveLength(1);
@@ -385,7 +385,7 @@ describe("놀이판", () => {
     return c;
   };
 
-  it("3×3 단원에 가운데·꼭짓점·모서리·색이 함께 다니는 놀이판이 있다", () => {
+  it("3×3 단원에 센터·코너·엣지·색이 함께 다니는 놀이판이 있다", () => {
     const plays = lessonOf("333-piece-moves").steps.filter(
       (s) => s.kind === "play",
     );
@@ -394,13 +394,13 @@ describe("놀이판", () => {
     expect(sizes).toEqual([6, 1, 1, 2]);
   });
 
-  it("3×3: 면을 돌려도 가운데는 자리를 옮기지 않는다. 가운데 층은 옮긴다", () => {
+  it("3×3: 면을 돌려도 센터는 자리를 옮기지 않는다. 가운데 층은 옮긴다", () => {
     const centers = focusPieces(3, { piece: "center" });
     expect(tally(3, centers, "R U F' L D B R2")).toEqual({
       turns: 7,
       moved: 0,
     });
-    // 가운데 하나만 보면 가운데 층(M)은 그 가운데를 옮긴다(여섯 묶음으로는 같은 자리들)
+    // 가운데 하나만 보면 가운데 층(M)은 그 센터를 옮긴다(여섯 묶음으로는 같은 자리들)
     const white = focusPieces(3, { piece: "center", colors: ["U"] });
     expect(tally(3, white, "R U F' L D B").moved).toBe(0);
     expect(tally(3, white, "M").moved).toBe(1);
@@ -409,7 +409,7 @@ describe("놀이판", () => {
     expect(tally(3, centers, "x y z")).toEqual(zero);
   });
 
-  it("3×3: 꼭짓점은 꼭짓점 자리로만, 모서리는 모서리 자리로만", () => {
+  it("3×3: 코너는 코너 자리로만, 엣지는 엣지 자리로만", () => {
     const topo = cubeTopology(3);
     const corner = focusPieces(3, UFR);
     const edge = focusPieces(3, UF);
@@ -424,7 +424,7 @@ describe("놀이판", () => {
     expect(tally(3, corner, "R U R").moved).toBe(3);
   });
 
-  it("4×4: 바깥 면을 돌리면 초록 가운데 넷이 함께 돌고, 안쪽 층이면 흩어진다", () => {
+  it("4×4: 바깥 면을 돌리면 초록 센터 넷이 함께 돌고, 안쪽 층이면 흩어진다", () => {
     const green = focusPieces(4, { piece: "center", colors: ["F"] });
     expect(green).toHaveLength(4);
     expect(tally(4, green, "F F'")).toEqual({ turns: 2, moved: 0 });

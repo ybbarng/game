@@ -165,7 +165,7 @@ export const PATTERNS: readonly Pattern[] = [
     name: "슈퍼플립",
     en: "Superflip",
     alg: "U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2",
-    look: "모든 조각이 제자리인데 모서리 열두 개만 다 뒤집혀 있어요. 맞추기 가장 먼 상태 중 하나예요(20수).",
+    look: "모든 조각이 제자리인데 엣지 열두 개만 다 뒤집혀 있어요. 맞추기 가장 먼 상태 중 하나예요(20수).",
     check: "property",
   },
   // ---------- 2×2 ----------
@@ -291,7 +291,7 @@ export const PATTERN_LINKS: readonly PatternLink[] = [
     from: "3-checkerboard",
     next: "3-six-spots",
     result:
-      "면마다 귀퉁이·모서리·가운데가 세 가지 색으로 엇갈리는 체커보드가 돼요.",
+      "면마다 코너·엣지·센터 칸이 세 가지 색으로 엇갈리는 체커보드가 돼요.",
   },
   {
     from: "3-six-spots",

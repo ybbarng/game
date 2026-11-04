@@ -35,7 +35,7 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
   await link.click();
   await expect(page.locator("[data-cube-math='count']")).toBeVisible();
 
-  // 경우의 수: 3×3 첫 질문(꼭짓점 자리)을 맞히면 8! 이 쌓인다
+  // 경우의 수: 3×3 첫 질문(코너 자리)을 맞히면 8! 이 쌓인다
   await page
     .locator("[data-math-quiz='count-corner-places'] [data-choice='1']")
     .click();
@@ -57,7 +57,7 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
     "impossible",
   );
   await expect(page.locator("[data-factor-broken]")).toHaveCount(1);
-  // 한 번 더 뒤집으면(같은 모서리) 다시 풀린다
+  // 한 번 더 뒤집으면(같은 엣지) 다시 풀린다
   await page.locator("[data-op-preset='flip']").click();
   await page.locator("[data-guess='yes']").click();
   await expect(page.locator("[data-verdict]")).toHaveAttribute(
@@ -68,7 +68,7 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
   await page.locator("[data-guess='no']").click();
   await shot(page, "reassemble", info.project.name);
 
-  // 셋째 카드: 방향과 짝 계기(가운데 180° 공식을 넣어도 규칙은 지켜진다)
+  // 셋째 카드: 방향과 짝 계기(센터 180° 공식을 넣어도 규칙은 지켜진다)
   await page.locator("[data-math-next]").click();
   await expect(page.locator("[data-cube-math='orient']")).toBeVisible();
   await page.locator("[data-orient-center-alg]").click();

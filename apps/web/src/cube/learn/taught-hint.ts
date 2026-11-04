@@ -53,8 +53,8 @@ export interface HintPlan {
 }
 
 /**
- * 꼭짓점 방향 도중 `R' D' R D`를 하다 만 자리에서 이어 칠 나머지(짧은 것부터). 한 꼭짓점에 공식을 홀수 번 친
- * 자리면 앞-오른쪽 위에 다른 꼭짓점이 와 있어, 한 번 더 쳐 짝수 번(2·4번)으로 맞춘다
+ * 코너 방향 도중 `R' D' R D`를 하다 만 자리에서 이어 칠 나머지(짧은 것부터). 한 코너에 공식을 홀수 번 친
+ * 자리면 앞-오른쪽 위에 다른 코너가 와 있어, 한 번 더 쳐 짝수 번(2·4번)으로 맞춘다
  */
 const TRIGGER_REST = [
   "D",
@@ -97,7 +97,7 @@ function build(
   const plan = taughtStagePlan(stage, apply(state, lead));
   const parts: { label: string; moves: string[] }[] = [
     ...(lead.length > 0
-      ? [{ label: "하던 꼭짓점을 마저 돌려요(R' D' R D 끝까지)", moves: lead }]
+      ? [{ label: "하던 코너를 마저 돌려요(R' D' R D 끝까지)", moves: lead }]
       : []),
     ...plan.segments.map((g) => ({
       label: caseLabel(g.info),
@@ -125,7 +125,7 @@ function build(
 
 /**
  * 지금 상태에서 그 단계를 끝내는 힌트 계획. 끝낼 수 없으면(앞 단계가 흐트러짐 등) null.
- * 꼭짓점 방향은 아래 두 층이 흐트러진 도중이 많아, 공식을 하다 만 자리면 나머지를 앞에 붙인다.
+ * 코너 방향은 아래 두 층이 흐트러진 도중이 많아, 공식을 하다 만 자리면 나머지를 앞에 붙인다.
  */
 export function makeHintPlan(
   stage: TaughtStage,
@@ -219,7 +219,7 @@ export function nextHint(
 
 /**
  * 마무리: 지금 상태가 몇 단계까지 맞았나(0~7, 7이면 다 맞음). 이미 있는 목표 판정을 차례로 보고, 처음 안 맞은
- * 단계가 지금 단계다. 꼭짓점 방향 도중에는 아래 두 층이 흐트러지므로, 꼭짓점 방향만으로 끝낼 수 있는 상태면 마지막 단계로 본다.
+ * 단계가 지금 단계다. 코너 방향 도중에는 아래 두 층이 흐트러지므로, 코너 방향만으로 끝낼 수 있는 상태면 마지막 단계로 본다.
  */
 export function finaleReached(state: PuzzleState): number {
   if (isSolved(3, state)) return TAUGHT_STAGES.length;
@@ -275,7 +275,7 @@ const SIDE: Record<"right" | "down" | "front", string> = {
   front: "앞",
 };
 
-/** 경우 자료 → 「흰-빨강 모서리: 가운데 줄 경우」 같은 짧은 이름 */
+/** 경우 자료 → 「흰-빨강 엣지: 가운데 줄 경우」 같은 짧은 이름 */
 export function caseLabel(c: TaughtCase): string {
   switch (c.kind) {
     case "hold":
@@ -283,17 +283,17 @@ export function caseLabel(c: TaughtCase): string {
         ? "흰 면을 위로 들어요(흰 십자·첫 층은 흰 면 위에서)"
         : "첫 층 끝: 큐브를 뒤집어(z2) 흰 면을 아래로";
     case "cross":
-      return `${colors(c.colors)} 모서리: ${CROSS_CASE[c.case]} 경우`;
+      return `${colors(c.colors)} 엣지: ${CROSS_CASE[c.case]} 경우`;
     case "corner":
       if (c.from === "stuck")
-        return `${colors(c.colors)} 꼭짓점이 엉뚱한 칸에 박힘: 한 번 빼기`;
+        return `${colors(c.colors)} 코너가 엉뚱한 칸에 박힘: 한 번 빼기`;
       return c.from === "slot"
-        ? `${colors(c.colors)} 꼭짓점: 제 칸에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`
-        : `${colors(c.colors)} 꼭짓점: 칸 밑에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`;
+        ? `${colors(c.colors)} 코너: 제 칸에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`
+        : `${colors(c.colors)} 코너: 칸 밑에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`;
     case "middle":
       return c.side === "stuck"
-        ? `${colors(c.colors)} 모서리가 칸에 잘못 들어감: 오른쪽 넣기로 빼내기`
-        : `${colors(c.colors)} 모서리: ${c.side === "right" ? "오른쪽" : "왼쪽"}으로 넣기`;
+        ? `${colors(c.colors)} 엣지가 칸에 잘못 들어감: 오른쪽 넣기로 빼내기`
+        : `${colors(c.colors)} 엣지: ${c.side === "right" ? "오른쪽" : "왼쪽"}으로 넣기`;
     case "eo":
       return c.shape === "dot"
         ? "노란 십자: 점, 아무 방향에서 한 번"
@@ -306,10 +306,10 @@ export function caseLabel(c: TaughtCase): string {
         : "옆면: 마주 본 둘이 맞음, 아무 쪽에서 한 번";
     case "corner-place":
       return c.placed === 1
-        ? "꼭짓점 자리: 제자리 하나, 앞-오른쪽 위에 쥐기"
-        : "꼭짓점 자리: 제자리 없음, 아무 쪽에서 한 번";
+        ? "코너 자리: 제자리 하나, 앞-오른쪽 위에 쥐기"
+        : "코너 자리: 제자리 없음, 아무 쪽에서 한 번";
     case "twist":
-      return `꼭짓점 방향: 노랑이 ${c.yellow === "right" ? "오른쪽" : "앞"}, ${c.reps}번`;
+      return `코너 방향: 노랑이 ${c.yellow === "right" ? "오른쪽" : "앞"}, ${c.reps}번`;
     case "auf":
       return "윗면을 돌려 옆색 맞추기";
   }

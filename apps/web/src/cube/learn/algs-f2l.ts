@@ -4,11 +4,11 @@
 //   — 공식과 번호만 옮겼다. f2l.test.ts가 41 상황이 서로 다르고 다른 칸을 지키는지 시뮬레이터로 확인한다. 이름은 우리말로 새로 지었다.
 import type { AlgCase } from "./types";
 
-/** 묶음: 꼭짓점과 모서리가 위층에 있나, 칸(넣을 자리)에 있나 */
+/** 묶음: 코너와 엣지가 위층에 있나, 칸(넣을 자리)에 있나 */
 export const F2L_GROUPS = {
-  "corner-top/edge-top": "꼭짓점·모서리 모두 위층",
-  "corner-top/edge-slot": "꼭짓점은 위층, 모서리는 칸에",
-  "corner-slot/edge-top": "꼭짓점은 칸에, 모서리는 위층",
+  "corner-top/edge-top": "코너·엣지 모두 위층",
+  "corner-top/edge-slot": "코너는 위층, 엣지는 칸에",
+  "corner-slot/edge-top": "코너는 칸에, 엣지는 위층",
   "corner-slot/edge-slot": "둘 다 칸에 있지만 틀림",
 } as const;
 
@@ -76,55 +76,47 @@ export const F2L_CASES: AlgCase[] = [
   f2l(24, "corner-top/edge-top", "흰색 위·뒤집힌 짝 2", [
     "F U R U' R' F' R U' R'",
   ]),
-  f2l(25, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 1", [
+  f2l(25, "corner-slot/edge-top", "코너 칸에·엣지 위 1", [
     "U' R' F R F' R U R'",
   ]),
-  f2l(26, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 2", [
+  f2l(26, "corner-slot/edge-top", "코너 칸에·엣지 위 2", [
     "U R U' R' F R' F' R",
   ]),
-  f2l(27, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 3", [
-    "R U' R' U R U' R'",
-  ]),
-  f2l(28, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 4", [
-    "F' U F U' F' U F",
-  ]),
-  f2l(29, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 5", [
-    "R U' R' F' U' F",
-  ]),
-  f2l(30, "corner-slot/edge-top", "꼭짓점 칸에·모서리 위 6", [
-    "R U R' U' R U R'",
-  ]),
-  f2l(31, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 1", [
+  f2l(27, "corner-slot/edge-top", "코너 칸에·엣지 위 3", ["R U' R' U R U' R'"]),
+  f2l(28, "corner-slot/edge-top", "코너 칸에·엣지 위 4", ["F' U F U' F' U F"]),
+  f2l(29, "corner-slot/edge-top", "코너 칸에·엣지 위 5", ["R U' R' F' U' F"]),
+  f2l(30, "corner-slot/edge-top", "코너 칸에·엣지 위 6", ["R U R' U' R U R'"]),
+  f2l(31, "corner-top/edge-slot", "엣지 칸에·코너 위 1", [
     "U' R' F R F' R U' R'",
   ]),
-  f2l(32, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 2", [
+  f2l(32, "corner-top/edge-slot", "엣지 칸에·코너 위 2", [
     "U R U' R' U R U' R' U R U' R'",
   ]),
-  f2l(33, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 3", [
+  f2l(33, "corner-top/edge-slot", "엣지 칸에·코너 위 3", [
     "U' R U' R' U2 R U' R'",
   ]),
-  f2l(34, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 4", [
+  f2l(34, "corner-top/edge-slot", "엣지 칸에·코너 위 4", [
     "U R U R' U2 R U R'",
   ]),
-  f2l(35, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 5", [
+  f2l(35, "corner-top/edge-slot", "엣지 칸에·코너 위 5", [
     "U2 R U' R' U' F' U' F",
   ]),
-  f2l(36, "corner-top/edge-slot", "모서리 칸에·꼭짓점 위 6", [
+  f2l(36, "corner-top/edge-slot", "엣지 칸에·코너 위 6", [
     "U F' U' F U' R U R'",
   ]),
-  f2l(37, "corner-slot/edge-slot", "모서리만 뒤집힘", [
+  f2l(37, "corner-slot/edge-slot", "엣지만 뒤집힘", [
     "R2 U2 F R2 F' U2 R' U R'",
   ]),
-  f2l(38, "corner-slot/edge-slot", "꼭짓점 돌아감·모서리 맞음 1", [
+  f2l(38, "corner-slot/edge-slot", "코너 돌아감·엣지 맞음 1", [
     "R U' R' U' R U R' U2 R U' R'",
   ]),
-  f2l(39, "corner-slot/edge-slot", "꼭짓점 돌아감·모서리 맞음 2", [
+  f2l(39, "corner-slot/edge-slot", "코너 돌아감·엣지 맞음 2", [
     "R U' R' U R U2 R' U R U' R'",
   ]),
-  f2l(40, "corner-slot/edge-slot", "꼭짓점 돌아감·모서리 뒤집힘 1", [
+  f2l(40, "corner-slot/edge-slot", "코너 돌아감·엣지 뒤집힘 1", [
     "r U' r' U2 r U r' R U R'",
   ]),
-  f2l(41, "corner-slot/edge-slot", "꼭짓점 돌아감·모서리 뒤집힘 2", [
+  f2l(41, "corner-slot/edge-slot", "코너 돌아감·엣지 뒤집힘 2", [
     "R U' R' r U' r' U2 r U r'",
   ]),
 ];

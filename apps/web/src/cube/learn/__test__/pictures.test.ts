@@ -22,7 +22,7 @@ const NORMAL: Record<Dir, number[]> = {
   R: [1, 0, 0],
 };
 
-// 자리 이름: 꼭짓점 FL·FR·BL·BR, 모서리 F·B·L·R. 층은 y(2 위, -2 아래)
+// 자리 이름: 코너 FL·FR·BL·BR, 엣지 F·B·L·R. 층은 y(2 위, -2 아래)
 function posOf(name: string, y: number): number[] {
   const x = name.includes("L") ? -2 : name.includes("R") ? 2 : 0;
   const z = name.includes("F") ? 2 : name.includes("B") ? -2 : 0;
@@ -60,7 +60,7 @@ const byId = (id: string): AlgCase => {
 const yellow = (c: Cube, where: string, dir: Dir) =>
   colorAt(c, posOf(where, 2), dir) === TOP;
 
-/** y층의 side 옆면에서 두 꼭짓점 칸이 같은 색(헤드라이트) */
+/** y층의 side 옆면에서 두 코너 칸이 같은 색(헤드라이트) */
 const headlights = (c: Cube, side: "F" | "B" | "L" | "R", y = 2) => {
   const corners =
     side === "F" || side === "B"
@@ -160,7 +160,7 @@ const CLAIMS: [id: string, alg: number, claims: Claim[]][] = [
     [
       lights("L"),
       [
-        "L 가운데만 다른 색",
+        "L 센터만 다른 색",
         (c) =>
           colorAt(c, posOf("L", 2), "L") !== colorAt(c, posOf("FL", 2), "L"),
       ],
@@ -213,7 +213,7 @@ describe("상황 그림 표", () => {
       "# 위층 상황 그림(pictures.test.ts가 만든다)",
       "# 위에서 내려다봄: 맨 윗줄 = 뒷면, 맨 아랫줄 = 앞면, 양옆 = 왼쪽·오른쪽 면의 위층 칸",
       "# OLL: # 노랑(윗면 색), . 다른 색 / PLL: 옆면 칸이 원래 있던 면(f 앞, r 오른쪽, b 뒤, l 왼쪽)",
-      "# 2×2(오르테가)는 꼭짓점만 그린다",
+      "# 2×2(오르테가)는 코너만 그린다",
       "",
     ];
     for (const c of ALL) {

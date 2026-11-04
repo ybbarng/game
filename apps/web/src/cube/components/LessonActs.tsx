@@ -307,7 +307,7 @@ export function FindPanel({
     if (r.kind === "none") return;
     if (r.kind === "wrong") {
       const p = pieceAtSticker(n, start, sticker);
-      // 자리 찾기는 조각 대신 그 자리가 어느 가운데 사이인지 알린다
+      // 자리 찾기는 조각 대신 그 자리가 어느 센터 사이인지 알린다
       const slot = target.at ? slotCenterColors(n, start, sticker) : [];
       // 가린 칸이면 색 이름 없이 종류만 알린다(답을 미리 알려 주지 않게)
       const id = start.perm[sticker];
@@ -320,7 +320,7 @@ export function FindPanel({
         home
           ? "그 블럭은 제자리예요. 색이 닿은 센터 블럭 색과 같아요."
           : slot.length > 1
-            ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요. 다시 찾아보세요.`
+            ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 센터 사이예요. 다시 찾아보세요.`
             : p
               ? `그건 ${hidden ? "" : `${colorNames(p.colors)} `}${pieceName(p.type)}이에요. 다시 찾아보세요.`
               : "다시 찾아보세요.",

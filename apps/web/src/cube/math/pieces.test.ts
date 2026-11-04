@@ -41,7 +41,7 @@ const piece = (n: number, name: string) => {
 describe("뽑아서 다시 끼우기", () => {
   const s0 = solvedCube(3);
 
-  it("모서리 하나 뒤집기는 못 푼다(뒤집힘 합 홀수)", () => {
+  it("엣지 하나 뒤집기는 못 푼다(뒤집힘 합 홀수)", () => {
     const s = rotatePieceInPlace(3, s0, piece(3, "UF"));
     const v = invariants(3, s);
     expect(v.flipSum).toBe(1);
@@ -49,7 +49,7 @@ describe("뽑아서 다시 끼우기", () => {
     expect(v.solvable).toBe(false);
   });
 
-  it("꼭짓점 하나 비틀기는 못 푼다, 반대로 하나 더 비틀면 풀린다", () => {
+  it("코너 하나 비틀기는 못 푼다, 반대로 하나 더 비틀면 풀린다", () => {
     const a = rotatePieceInPlace(3, s0, piece(3, "UFR"));
     expect(invariants(3, a).twistSum % 3).not.toBe(0);
     expect(invariants(3, a).solvable).toBe(false);
@@ -65,7 +65,7 @@ describe("뽑아서 다시 끼우기", () => {
     expect(rotatePieceInPlace(3, twice, q).perm).toEqual(s0.perm);
   });
 
-  it("조각 둘만 맞바꾸면 못 푼다, 꼭짓점 둘·모서리 둘을 함께 바꾸면 풀린다", () => {
+  it("조각 둘만 맞바꾸면 못 푼다, 코너 둘·엣지 둘을 함께 바꾸면 풀린다", () => {
     const e = swapPieces(3, s0, piece(3, "UF"), piece(3, "UR"));
     const ve = invariants(3, e);
     expect([ve.edgeParity, ve.cornerParity, ve.flipSum]).toEqual([1, 0, 0]);
@@ -77,7 +77,7 @@ describe("뽑아서 다시 끼우기", () => {
     expect(invariants(3, both).solvable).toBe(true);
   });
 
-  it("다른 층 모서리끼리 바꿔도 방향 기준이 맞는다", () => {
+  it("다른 층 엣지끼리 바꿔도 방향 기준이 맞는다", () => {
     const s = swapPieces(3, s0, piece(3, "UF"), piece(3, "FR"));
     expect(invariants(3, s).flipSum).toBe(0);
     const s2 = swapPieces(3, s0, piece(3, "UFR"), piece(3, "DBL"));
@@ -97,7 +97,7 @@ describe("방향과 짝 계기", () => {
     }
   });
 
-  it("F 한 번은 모서리 넷을 뒤집고 짝을 홀로 바꾼다", () => {
+  it("F 한 번은 엣지 넷을 뒤집고 짝을 홀로 바꾼다", () => {
     const v = invariants(3, stateAfter(3, "F"));
     expect(v.flipSum).toBe(4);
     expect(v.cornerParity).toBe(1);
@@ -105,7 +105,7 @@ describe("방향과 짝 계기", () => {
     expect(v.centerTurnSum % 4).not.toBe(0);
   });
 
-  it("가운데 하나만 180° 돌리는 공식", () => {
+  it("센터 하나만 180° 돌리는 공식", () => {
     const s = stateAfter(3, CENTER_HALF_TURN);
     const topo = cubeTopology(3);
     // 색 자리는 모두 맞다
@@ -124,12 +124,12 @@ describe("방향과 짝 계기", () => {
 });
 
 describe("신의 수", () => {
-  it("슈퍼플립 공식은 20수이고 모든 모서리만 제자리에서 뒤집는다", () => {
+  it("슈퍼플립 공식은 20수이고 모든 엣지만 제자리에서 뒤집는다", () => {
     expect(parseMoves(3, SUPERFLIP)).toHaveLength(20);
     const s = stateAfter(3, SUPERFLIP);
     expect(edgeFlips(3, s).every((e) => e.flip === 1)).toBe(true);
     expect(changedPieces(3, s)).toEqual({ edge: 12 });
-    // 모서리는 모두 제자리(뒤집혔을 뿐)
+    // 엣지는 모두 제자리(뒤집혔을 뿐)
     const cycles = pieceCycles(3, parseMoves(3, SUPERFLIP));
     for (const c of cycles) expect(c.cycles).toEqual([]);
     expect(isSolvable(3, s)).toBe(true);
@@ -146,7 +146,7 @@ describe("되풀이하면 돌아온다", () => {
     expect(orderOf(3, parseMoves(3, SUPERFLIP))).toBe(2);
   });
 
-  it("R U: 모서리 7-고리, 꼭짓점 5-고리(비틀려서 15번)", () => {
+  it("R U: 엣지 7-고리, 코너 5-고리(비틀려서 15번)", () => {
     const c = pieceCycles(3, parseMoves(3, "R U"));
     expect(c.find((x) => x.kind === "edge")?.cycles).toEqual([7]);
     expect(c.find((x) => x.kind === "corner")?.cycles).toEqual([5]);
@@ -206,7 +206,7 @@ describe("크기와 패리티", () => {
     ]);
   });
 
-  it("5×5: 가운데 모서리가 있어 3×3 단계 패리티는 없고 짝짓기 때 생긴다", () => {
+  it("5×5: 가운데 엣지가 있어 3×3 단계 패리티는 없고 짝짓기 때 생긴다", () => {
     const f = sizeFacts(5);
     expect(f.wingOrbits).toBe(1);
     expect(f.midges).toBe(true);
@@ -231,7 +231,7 @@ describe("크기와 패리티", () => {
     }
   });
 
-  it("바깥 면 R은 꼭짓점 4-고리 하나, 날개는 4-고리 둘(짝)", () => {
+  it("바깥 면 R은 코너 4-고리 하나, 날개는 4-고리 둘(짝)", () => {
     const c = pieceCycles(4, parseMoves(4, "R"));
     expect(c.find((x) => x.kind === "corner")?.cycles).toEqual([4]);
     expect(c.find((x) => x.kind === "wing")?.cycles).toEqual([4, 4]);
@@ -243,9 +243,9 @@ describe("크기와 패리티", () => {
       const c = faceColors(4, stateAfter(4, alg));
       return c.filter((v, i) => v !== solved[i]).length;
     };
-    // OLL 패리티(둘째 공식): 한 모서리 짝만 뒤집힘 = 칸 4개
+    // OLL 패리티(둘째 공식): 한 엣지 짝만 뒤집힘 = 칸 4개
     expect(diff(PARITY_4X4[0]?.algs[1] as string)).toBe(4);
-    // PLL 패리티: 맞은편 두 모서리 짝 맞바꿈 = 옆면 칸 4개
+    // PLL 패리티: 맞은편 두 엣지 짝 맞바꿈 = 옆면 칸 4개
     expect(diff(PARITY_4X4[1]?.algs[0] as string)).toBe(4);
   });
 });

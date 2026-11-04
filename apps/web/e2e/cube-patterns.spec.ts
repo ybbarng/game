@@ -80,17 +80,15 @@ test("패턴: 내 패턴을 넣으면 모양을 미리 보고 저장한다", asy
   await expect(mine.getByRole("alert")).toContainText("Q");
   await expect(mine.locator("[data-mine-save]")).toBeDisabled();
   await mine.locator("[data-mine-alg]").fill("M2 E2 S2");
-  await mine.locator("[data-mine-name]").fill("가운데 체커");
+  await mine.locator("[data-mine-name]").fill("센터 체커");
   await expect(mine.locator("[data-cube-net]")).toBeVisible();
   await mine.locator("[data-mine-save]").click();
   const card = mine.locator("[data-pattern-card]");
-  await expect(card).toContainText("가운데 체커");
+  await expect(card).toContainText("센터 체커");
 
   // 다시 열어도 남아 있다
   await page.reload();
-  await expect(mine.locator("[data-pattern-card]")).toContainText(
-    "가운데 체커",
-  );
+  await expect(mine.locator("[data-pattern-card]")).toContainText("센터 체커");
 });
 
 test("패턴: 직접 만들어 보기 — 공식을 치면 통과하고, 되돌리면 맞춘 큐브로", async ({

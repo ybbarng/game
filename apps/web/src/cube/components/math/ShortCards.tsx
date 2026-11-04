@@ -105,7 +105,7 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
         반 바퀴도 한 수 / 90°만 한 수
       </p>
       <Lead>
-        정확히 20수가 드는 모양 가운데 하나가 「슈퍼플립」이에요. 모든 모서리가
+        정확히 20수가 드는 모양 가운데 하나가 「슈퍼플립」이에요. 모든 엣지가
         제자리에서 뒤집혀 있어요.
       </Lead>
       <div className="flex gap-1.5">
@@ -328,7 +328,7 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
         </div>
       </div>
       <Lead>
-        R U는 모서리 7개가 한 고리로 돌아 7번마다 제자리에 오고, 꼭짓점 5개는 한
+        R U는 엣지 7개가 한 고리로 돌아 7번마다 제자리에 오고, 코너 5개는 한
         고리로 돌면서 비틀려 15번마다 제자리에 와요. 둘이 함께 맞는 건 7과 15의
         최소공배수인 105번째예요.
       </Lead>
@@ -370,7 +370,7 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
         <p className="font-mono text-sky-200 text-sm">{alg}</p>
         <Big>
           <span data-comm-changed={corner + edge}>
-            꼭짓점 {corner} · 모서리 {edge}
+            코너 {corner} · 엣지 {edge}
           </span>
         </Big>
         <p className="text-white/60 text-xs">

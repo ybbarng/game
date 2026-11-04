@@ -61,12 +61,12 @@ export const COURSES: Course[] = [
     rule: "random-cross",
     stages: [
       "흰 십자",
-      "첫 층 꼭짓점",
-      "둘째 층 모서리",
+      "첫 층 코너",
+      "둘째 층 엣지",
       "노란 십자",
       "옆면 맞추기",
-      "꼭짓점 자리",
-      "꼭짓점 방향",
+      "코너 자리",
+      "코너 방향",
     ],
     // 공식 훈련 묶음은 잇지 않는다: 2단계 OLL(10)은 이 과정에서 안 배운 공식이 대부분이다(다음 과정 CFOP에서)
   }),
@@ -77,7 +77,7 @@ export const COURSES: Course[] = [
   }),
   withFinale(staged(FROM_333_222), {
     rule: "2x2-random",
-    stages: ["첫 층", "꼭짓점 자리", "꼭짓점 방향"],
+    stages: ["첫 층", "코너 자리", "코너 방향"],
     // 오르테가 OLL은 이 과정에서 배우지 않는다(2×2 처음 맞추기의 오르테가 단원에서)
   }),
   withFinale(staged(CFOP_INTRO), {
@@ -90,7 +90,7 @@ export const COURSES: Course[] = [
   PETRUS,
   withFinale(staged(REDUCTION_444), {
     rule: "4x4-random",
-    stages: ["가운데", "모서리 짝", "3×3처럼(패리티)"],
+    stages: ["센터", "엣지 짝", "3×3처럼(패리티)"],
     drill: "parity-4x4",
   }),
   staged(YAU_444),
@@ -160,7 +160,7 @@ export const ALG_SETS: AlgSetInfo[] = [
   {
     set: "edges-5x5",
     size: 5,
-    title: "5×5 마지막 모서리(2)",
+    title: "5×5 마지막 엣지(2)",
     mask: "all",
     cases: EDGES_5X5,
   },

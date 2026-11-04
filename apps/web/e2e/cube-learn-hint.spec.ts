@@ -50,7 +50,7 @@ test("무작위 해 보기: 힌트 1은 지금 경우, 힌트 2는 다음 수, �
   await page.locator("[data-cube-hint-case]").click();
   await expect(page.locator("[data-cube-taught-case]")).toHaveAttribute(
     "data-cube-taught-case",
-    /^흰-(빨강|초록|주황|파랑) 모서리: .+ 경우$/,
+    /^흰-(빨강|초록|주황|파랑) 엣지: .+ 경우$/,
   );
   await expect(page.locator("[data-cube-hint]")).toHaveCount(0);
   await shot(page, "learn-hint-case", info.project.name);
@@ -111,7 +111,7 @@ test("진도: 마지막으로 본 단계로 다시 열고, 해 보기가 남으�
     "data-step",
     "3",
   );
-  // 마지막 단계가 해 보기가 아닌 단원(첫 층 꼭짓점: 끝에 뒤집기 둘러보기·고르기)의 끝에서 꼬리표
+  // 마지막 단계가 해 보기가 아닌 단원(첫 층 코너: 끝에 뒤집기 둘러보기·고르기)의 끝에서 꼬리표
   await page.goto("/cube/learn?lesson=333-first-corners-up");
   await goLast(page);
   const left = page.locator("[data-lesson-try-left]");

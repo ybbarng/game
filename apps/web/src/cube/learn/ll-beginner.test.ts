@@ -67,12 +67,12 @@ const faceOf = (s: PuzzleState, at: FaceLetter[], c: number) =>
 const centerOf = (s: PuzzleState, f: FaceLetter) =>
   faceColors(3, s)[F[f] * 9 + 4] as number;
 const SIDES: FaceLetter[] = ["F", "R", "B", "L"];
-/** 윗면에서 노란 칸이 위를 보는 모서리 쪽 */
+/** 윗면에서 노란 칸이 위를 보는 엣지 쪽 */
 const yellowUp = (s: PuzzleState) =>
   SIDES.filter((f) => faceOf(s, ["U", f], centerOf(s, "U")) === F.U)
     .sort()
     .join("");
-/** 위 모서리의 옆색이 옆 가운데와 맞는 쪽 */
+/** 위 엣지의 옆색이 옆 센터와 맞는 쪽 */
 const matched = (s: PuzzleState) =>
   SIDES.filter((f) =>
     slot(s, ["U", f]).some(
@@ -83,10 +83,10 @@ const matched = (s: PuzzleState) =>
     .join("");
 const ADJACENT = new Set(["FR", "BR", "BL", "FL"]);
 
-describe("첫 층 꼭짓점(흰 면 위)", () => {
+describe("첫 층 코너(흰 면 위)", () => {
   const lesson = lessonOf("333-first-corners-up");
 
-  it("칸 밑 꼭짓점: 흰색이 오른쪽 1번, 아래 3번, 앞 5번. 제 칸에서 오른쪽 2번, 앞 4번", () => {
+  it("칸 밑 코너: 흰색이 오른쪽 1번, 아래 3번, 앞 5번. 제 칸에서 오른쪽 2번, 앞 4번", () => {
     const want: Record<number, [FaceLetter[], number]> = {
       1: [["D", "F", "R"], F.R],
       2: [["U", "F", "R"], F.R],
@@ -129,7 +129,7 @@ describe("첫 층 꼭짓점(흰 면 위)", () => {
     expect(centerOf(play("y", s), "F")).toBe(F.F);
   });
 
-  it("박힌 꼭짓점: 위 칸에 흰-파랑-빨강, 한 번 빼면 D로 오른쪽-뒤 밑, y로 쥐면 앞-오른쪽 밑", () => {
+  it("박힌 코너: 위 칸에 흰-파랑-빨강, 한 번 빼면 D로 오른쪽-뒤 밑, y로 쥐면 앞-오른쪽 밑", () => {
     const s = play(setupFor(STUCK_CORNER_UP));
     expect(colorsAt(s, ["U", "F", "R"])).toEqual([0, 1, 5]);
     const out = play(CORNER_TWIST, s);
@@ -190,7 +190,7 @@ describe("노란 십자: 같은 공식을 모양마다", () => {
       expect(ADJACENT.has(yellowUp(play(`${y} ${EO}`, dot))), y).toBe(true);
   });
 
-  it("둘째 층까지 맞은 큐브는 점·ㄱ자·가로줄·십자뿐(노란 모서리 짝수)", () => {
+  it("둘째 층까지 맞은 큐브는 점·ㄱ자·가로줄·십자뿐(노란 엣지 짝수)", () => {
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
       const n = yellowUp(stateForRule("second-layer-solved", seed)).length;
       expect([0, 2, 4]).toContain(n);
@@ -263,8 +263,8 @@ describe("옆면 맞추기: R U R' U R U2 R' U", () => {
   });
 });
 
-describe("꼭짓점 자리: U R U' L' U R' U' L", () => {
-  it("앞-오른쪽 위를 두고 나머지 셋을 위에서 볼 때 시계 반대로 돌린다, 모서리·아래 두 층은 그대로", () => {
+describe("코너 자리: U R U' L' U R' U' L", () => {
+  it("앞-오른쪽 위를 두고 나머지 셋을 위에서 볼 때 시계 반대로 돌린다, 엣지·아래 두 층은 그대로", () => {
     const z = play("z2");
     const s = play(CORNER_CYCLE, z);
     expect(goalMet(3, s, "yellow-edges")).toBe(true);
@@ -326,7 +326,7 @@ describe("꼭짓점 자리: U R U' L' U R' U' L", () => {
     );
   });
 
-  it("위 모서리까지 맞은 큐브의 제자리 꼭짓점은 0·1·4개뿐", () => {
+  it("위 엣지까지 맞은 큐브의 제자리 코너는 0·1·4개뿐", () => {
     for (let seed = 1; seed <= 24; seed++)
       expect([0, 1, 4]).toContain(
         placedTopCorners(3, stateForRule("ll-edges-solved", seed)),
@@ -334,7 +334,7 @@ describe("꼭짓점 자리: U R U' L' U R' U' L", () => {
   });
 });
 
-describe("꼭짓점 방향: R' D' R D 2번 또는 4번", () => {
+describe("코너 방향: R' D' R D 2번 또는 4번", () => {
   it("노랑이 오른쪽이면 두 번, 그사이 아래 두 층이 흐트러지고, U로 다음 것(노랑 앞) 네 번이면 돌아온다", () => {
     const s = held(TWIST_TWO);
     expect(faceOf(s, ["U", "F", "R"], YELLOW)).toBe(F.R);
@@ -349,7 +349,7 @@ describe("꼭짓점 방향: R' D' R D 2번 또는 4번", () => {
     expect(goalMet(3, play("U'", end), "solved")).toBe(true);
   });
 
-  it("R' D' R D는 위층에서 앞-오른쪽 위 꼭짓점 하나만 건드린다", () => {
+  it("R' D' R D는 위층에서 앞-오른쪽 위 코너 하나만 건드린다", () => {
     const s = held(TWIST_THREE);
     const t = play(CORNER_TWIST, s);
     for (const at of [
@@ -364,13 +364,13 @@ describe("꼭짓점 방향: R' D' R D 2번 또는 4번", () => {
       expect(slot(t, at), at.join("")).toEqual(slot(s, at));
   });
 
-  it("셋이 돌아간 상황도 꼭짓점마다 두 번씩, 윗면만 돌려 끝난다", () => {
+  it("셋이 돌아간 상황도 코너마다 두 번씩, 윗면만 돌려 끝난다", () => {
     const s = held(TWIST_THREE);
     expect(goalMet(3, s, "ll-corners-placed")).toBe(true);
     expect(goalMet(3, play(TWIST_THREE, s), "solved")).toBe(true);
   });
 
-  it("방향을 먼저 맞추는 방식: A퍼뮤는 방향·모서리를 지키며 꼭짓점 셋만 바꾸고, 자리 공식은 방향을 바꾼다", () => {
+  it("방향을 먼저 맞추는 방식: A퍼뮤는 방향·엣지를 지키며 코너 셋만 바꾸고, 자리 공식은 방향을 바꾼다", () => {
     const z = play("z2");
     const a = play(A_PERM, z);
     expect(goalMet(3, a, "oll")).toBe(true);

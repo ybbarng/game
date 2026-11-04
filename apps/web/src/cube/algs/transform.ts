@@ -155,7 +155,7 @@ function transpose(m: Mat): Mat {
 
 /**
  * 큐브 돌리기를 빼고 옮겨 적는다. 돌린 뒤의 수를 처음 쥔 방향의 수로 바꾼다.
- * 끝에 남는 큐브 방향 차이는 판정(가운데 색 기준)과 상관없어 버린다.
+ * 끝에 남는 큐브 방향 차이는 판정(센터 색 기준)과 상관없어 버린다.
  */
 export function removeRotations(n: number, alg: string): string {
   return fmt(n, removeRotationMoves(n, parseMoves(n, alg)));

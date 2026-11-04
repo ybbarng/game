@@ -53,12 +53,12 @@ export function homeOf(c: Cube, pos: V): string {
   return h;
 }
 
-/** 꼭짓점 방향: 위·아래 색(흰·노랑) 스티커가 세로면이면 0, 시계 방향 다음 면이면 1, 그다음이면 2 */
+/** 코너 방향: 위·아래 색(흰·노랑) 스티커가 세로면이면 0, 시계 방향 다음 면이면 1, 그다음이면 2 */
 export function cornerOri(c: Cube, pos: V): number {
   const st = stickersAt(c, pos);
   const vert = st.find((s) => s.normal[1] !== 0);
   const sides = st.filter((s) => s.normal[1] === 0);
-  if (!vert || sides.length !== 2) throw new Error("꼭짓점이 아니다");
+  if (!vert || sides.length !== 2) throw new Error("코너가 아니다");
   let [s1, s2] = sides as [(typeof sides)[number], (typeof sides)[number]];
   if (det(vert.normal, s1.normal, s2.normal) > 0) [s1, s2] = [s2, s1];
   const order = [vert, s1, s2];
@@ -66,7 +66,7 @@ export function cornerOri(c: Cube, pos: V): number {
   return i;
 }
 
-/** 모서리 방향: 기준색(위·아래 색, 없으면 앞·뒤 색)이 기준면(위·아래, 가운데 줄이면 앞·뒤)에 있으면 0 */
+/** 엣지 방향: 기준색(위·아래 색, 없으면 앞·뒤 색)이 기준면(위·아래, 가운데 줄이면 앞·뒤)에 있으면 0 */
 export function edgeOri(c: Cube, pos: V): number {
   const st = stickersAt(c, pos);
   const refColor = st.some((s) => s.color === U_COLOR || s.color === D_COLOR)
@@ -74,7 +74,7 @@ export function edgeOri(c: Cube, pos: V): number {
     : (s: number) => s === 2 || s === 5;
   const onRefFace = (n: V) => (pos[1] !== 0 ? n[1] !== 0 : n[2] !== 0);
   const r = st.find((s) => refColor(s.color));
-  if (!r) throw new Error("모서리가 아니다");
+  if (!r) throw new Error("엣지가 아니다");
   return onRefFace(r.normal) ? 0 : 1;
 }
 
@@ -92,7 +92,7 @@ export const LL_EDGES: V[] = [
   [2, 2, 0],
 ];
 
-/** 아래 두 층(위층을 뺀 모든 스티커)이 맞아 있나. 큐브 방향은 가운데 기준으로 맞춘 뒤 본다 */
+/** 아래 두 층(위층을 뺀 모든 스티커)이 맞아 있나. 큐브 방향은 센터 기준으로 맞춘 뒤 본다 */
 export function f2lIntact(c: Cube): boolean {
   const n = normalize(c);
   const ref = colorMap(solved(3));
@@ -101,7 +101,7 @@ export function f2lIntact(c: Cube): boolean {
   );
 }
 
-/** 아래층 십자(아래 모서리 넷)가 맞아 있나 */
+/** 아래층 십자(아래 엣지 넷)가 맞아 있나 */
 export function crossIntact(c: Cube): boolean {
   const n = normalize(c);
   const ref = colorMap(solved(3));
@@ -124,7 +124,7 @@ export function otherSlotsIntact(c: Cube): boolean {
   });
 }
 
-/** 위층 방향 무늬(꼭짓점 4 + 모서리 4) */
+/** 위층 방향 무늬(코너 4 + 엣지 4) */
 export function llOrientation(c: Cube): string {
   const n = normalize(c);
   return [
@@ -174,7 +174,7 @@ export function llSolvedUpToAuf(c: Cube): boolean {
   );
 }
 
-/** 꼭짓점 네 개 자리만 본 바꿈 종류: 맞음 / 이웃 둘 바꿈 / 대각 둘 바꿈 / 기타 */
+/** 코너 네 개 자리만 본 바꿈 종류: 맞음 / 이웃 둘 바꿈 / 대각 둘 바꿈 / 기타 */
 export function cornerPermClass(
   perm: number[],
 ): "solved" | "adjacent" | "diagonal" | "other" {
@@ -199,7 +199,7 @@ export function llCornerPerm(c: Cube): number[] {
   );
 }
 
-// 아래층 꼭짓점(2×2 오르테가용). U 한 번과 같은 방향으로 돈다
+// 아래층 코너(2×2 오르테가용). U 한 번과 같은 방향으로 돈다
 export const DL_CORNERS: V[] = [
   [2, -2, 2],
   [-2, -2, 2],
@@ -214,13 +214,13 @@ export function dlCornerPerm(c: Cube): number[] {
   );
 }
 
-/** 꼭짓점 여덟 개가 모두 위·아래 색을 위·아래로 두고 있나 */
+/** 코너 여덟 개가 모두 위·아래 색을 위·아래로 두고 있나 */
 export function allCornersOriented(c: Cube): boolean {
   const n = normalize(c);
   return [...LL_CORNERS, ...DL_CORNERS].every((p) => cornerOri(n, p) === 0);
 }
 
-/** 위층 꼭짓점 방향만(2×2·OCLL) */
+/** 위층 코너 방향만(2×2·OCLL) */
 export function llCornerOriKey(c: Cube): string {
   let best = "";
   for (const a of AUF) {
@@ -231,7 +231,7 @@ export function llCornerOriKey(c: Cube): string {
   return best;
 }
 
-/** 아래층 꼭짓점이 제자리·제방향인가(옆색까지) */
+/** 아래층 코너가 제자리·제방향인가(옆색까지) */
 export function dlCornersIntact(c: Cube): boolean {
   const n = normalize(c);
   const ref = colorMap(solved(3));
@@ -271,7 +271,7 @@ export function f2lKey(inverseAlg: string): string {
   return best;
 }
 
-/** F2L 상황 묶음: 꼭짓점·모서리가 위층(top)인지 칸(slot)인지 */
+/** F2L 상황 묶음: 코너·엣지가 위층(top)인지 칸(slot)인지 */
 export function f2lGroup(inverseAlg: string): string {
   const s = pairState(apply(solved(3), inverseAlg));
   const [c, e] = s.split(" ") as [string, string];

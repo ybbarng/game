@@ -33,14 +33,14 @@ const at = (n: number, f: number, r: number, c: number) =>
 
 describe("조각 찾기", () => {
   it("3D에서 누른 칸(조각 중심·법선)을 스티커 자리로 바꾼다", () => {
-    // 앞면 가운데
+    // 앞면 센터
     expect(stickerAtHit(3, [0, 0, 1], "+z")).toBe(at(3, 2, 1, 1));
-    // 윗면 앞 가운데 칸(흰-초록 모서리의 흰 칸)
+    // 윗면 앞 가운데 칸(흰-초록 엣지의 흰 칸)
     expect(stickerAtHit(3, [0, 1, 1], "+y")).toBe(at(3, 0, 2, 1));
     expect(stickerAtHit(3, [0, 0, 0], "+y")).toBeNull();
   });
 
-  it("조각 종류와 붙은 색을 안다(큰 큐브 날개는 모서리)", () => {
+  it("조각 종류와 붙은 색을 안다(큰 큐브 날개는 엣지)", () => {
     expect(pieceAtSticker(3, solvedCube(3), at(3, 2, 1, 1))).toMatchObject({
       type: "center",
       colors: [2],
@@ -61,7 +61,7 @@ describe("조각 찾기", () => {
   it("색으로 찾으면 조각이 옮겨 간 자리에서 맞는다(어느 칸을 눌러도)", () => {
     const s = play(3, "F2");
     const target = { colors: ["U", "F"] as ("U" | "F")[] };
-    // F2 뒤 흰-초록 모서리는 아래-앞
+    // F2 뒤 흰-초록 엣지 블럭은 아래-앞
     const down = at(3, 3, 0, 1);
     const front = at(3, 2, 2, 1);
     expect(findHit(3, s, down, target)).not.toBeNull();
@@ -76,7 +76,7 @@ describe("조각 찾기", () => {
 describe("고르기와 세기", () => {
   const s = solvedCube(3);
   const center = { piece: "center" } as const;
-  // 앞면 가운데(22)·윗면 가운데(4)·앞면 왼쪽 위(18, 꼭짓점)
+  // 앞면 센터(22)·윗면 센터(4)·앞면 왼쪽 위(18, 코너)
   it("누를 때마다 더하고, 다시 누르면 풀고, 틀린 조각은 세지 않는다", () => {
     const a = pickPiece(3, s, 22, center, [], 6);
     expect(a.kind).toBe("add");
@@ -125,7 +125,7 @@ describe("고르기와 세기", () => {
 });
 
 describe("놀이판 가리기와 통과", () => {
-  it("그 조각만 색, 가운데를 더하면 가운데도", () => {
+  it("그 조각만 색, 센터를 더하면 센터도", () => {
     const corner = focusPieces(3, { colors: ["U", "F", "R"] });
     expect(corner).toHaveLength(1);
     const visible = (m: readonly string[]) =>

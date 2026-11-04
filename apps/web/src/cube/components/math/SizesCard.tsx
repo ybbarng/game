@@ -37,9 +37,9 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3" data-sizes={n}>
       <Lead>
-        4×4를 3×3처럼 만들어(가운데 모으기, 모서리 짝짓기) 맞추다 보면 3×3에서는
-        절대 안 나오는 모양이 나와요. 모서리 하나만 뒤집힌 꼴(OLL 패리티),
-        모서리 둘만 바뀐 꼴(PLL 패리티)이에요.
+        4×4를 3×3처럼 만들어(센터 모으기, 엣지 짝짓기) 맞추다 보면 3×3에서는
+        절대 안 나오는 모양이 나와요. 엣지 하나만 뒤집힌 꼴(OLL 패리티), 엣지
+        둘만 바뀐 꼴(PLL 패리티)이에요.
       </Lead>
       <div className="grid grid-cols-2 gap-2">
         {[
@@ -59,10 +59,10 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
         ))}
       </div>
       <Lead>
-        까닭은 날개 조각에 있어요. 안쪽 한 층을 90° 돌리면 날개 조각 4개가 한
-        바퀴 돌아요. 4개 고리는 맞바꾸기 3번이라 홀이에요. 그런데 짝수 큐브는
-        가운데도 움직이고 같은 색 가운데는 서로 구별이 안 돼서, 이 홀짝을
-        바로잡아 줄 기준이 없어요. 그래서 3×3 단계까지 남아 패리티로 보여요.
+        까닭은 날개에 있어요. 안쪽 한 층을 90° 돌리면 날개 4개가 한 바퀴 돌아요.
+        4개 고리는 맞바꾸기 3번이라 홀이에요. 그런데 짝수 큐브는 센터도 움직이고
+        같은 색 센터는 서로 구별이 안 돼서, 이 홀짝을 바로잡아 줄 기준이 없어요.
+        그래서 3×3 단계까지 남아 패리티로 보여요.
       </Lead>
 
       <div className="flex flex-wrap gap-1.5">
@@ -82,7 +82,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
       </div>
       <p className="text-white/60 text-xs">
         OLL·PLL 패리티는 3×3처럼 맞추는 단계에서 보이는지, 짝짓기 끝 뒤집힘은
-        모서리 짝짓기 마지막 두 짝에서 날개 짝 하나가 뒤집혀 보이는지예요.
+        엣지 짝짓기 마지막 두 짝에서 날개 짝 하나가 뒤집혀 보이는지예요.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[340px] text-center text-xs">
@@ -90,7 +90,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
             <tr>
               <th className="p-1">크기</th>
               <th className="p-1">날개 고리</th>
-              <th className="p-1">가운데 모서리</th>
+              <th className="p-1">가운데 엣지</th>
               <th className="p-1">OLL 패리티</th>
               <th className="p-1">PLL 패리티</th>
               <th className="p-1">짝짓기 끝 뒤집힘</th>
@@ -138,7 +138,7 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
             return `${name} ${w.join("·")}개가 한 바퀴(맞바꾸기 ${swaps}번, ${swaps % 2 ? "홀" : "짝"})`;
           })
           .join(", ")}
-        {sl.midges.length > 0 ? ", 한가운데 모서리도 함께 돌아요" : ""}
+        {sl.midges.length > 0 ? ", 한가운데 엣지도 함께 돌아요" : ""}
       </p>
       <div className="mx-auto w-full max-w-xs">
         <DemoCube
@@ -156,15 +156,15 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
 
       {f.midges ? (
         <Lead>
-          {n}×{n}에는 3×3 모서리처럼 움직이는 한가운데 모서리와 움직이지 않는
-          한가운데 칸이 있어요. 한가운데 모서리의 자리 짝은 꼭짓점 짝과 묶여
-          있어서, 3×3처럼 맞추는 단계에서 갑자기 나타나는 패리티는 없어요. 대신
-          날개 고리의 홀짝은 모서리 짝짓기 마지막 두 짝에서 날개 짝 하나가
-          뒤집힌 꼴로 나타나고, 그때 공식으로 고쳐요.
+          {n}×{n}에는 3×3 엣지처럼 움직이는 한가운데 엣지와 움직이지 않는
+          한가운데 칸이 있어요. 한가운데 엣지의 자리 짝은 코너 짝과 묶여 있어서,
+          3×3처럼 맞추는 단계에서 갑자기 나타나는 패리티는 없어요. 대신 날개
+          고리의 홀짝은 엣지 짝짓기 마지막 두 짝에서 날개 짝 하나가 뒤집힌 꼴로
+          나타나고, 그때 공식으로 고쳐요.
         </Lead>
       ) : (
         <Lead>
-          {n}×{n}에는 한가운데 모서리도 고정된 한가운데 칸도 없어요.{" "}
+          {n}×{n}에는 한가운데 엣지도 고정된 한가운데 칸도 없어요.{" "}
           {f.wingOrbits > 1
             ? "날개 고리가 둘이라 고리마다 홀짝이 따로 생기고, 4×4처럼 3×3 단계에서 패리티가 다시 나와요."
             : "날개 고리의 홀짝이 3×3 단계까지 남아 OLL·PLL 패리티로 보여요."}
@@ -173,13 +173,13 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
       <Quiz
         key={n}
         id={`sizes-${n}`}
-        question={`${n}×${n}을 3×3처럼 맞추는 단계에서 PLL 패리티(모서리 둘만 바뀐 꼴)가 생길 수 있을까요?`}
+        question={`${n}×${n}을 3×3처럼 맞추는 단계에서 PLL 패리티(엣지 둘만 바뀐 꼴)가 생길 수 있을까요?`}
         choices={["생길 수 있다", "생기지 않는다"]}
         answer={f.pllParity ? 0 : 1}
         why={
           f.pllParity
-            ? "짝수 큐브라 날개 고리의 홀짝을 바로잡을 한가운데 모서리가 없어요."
-            : "한가운데 모서리가 꼭짓점과 짝을 맞춰 줘요."
+            ? "짝수 큐브라 날개 고리의 홀짝을 바로잡을 한가운데 엣지가 없어요."
+            : "한가운데 엣지가 코너와 짝을 맞춰 줘요."
         }
       />
       <Source>

@@ -4,9 +4,9 @@
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
-/** 위 꼭짓점이 모두 옆을 보는 모양(더블 수네). 흰 면 아래로 쥔 두 블록은 지킨다 */
+/** 위 코너가 모두 옆을 보는 모양(더블 수네). 흰 면 아래로 쥔 두 블록은 지킨다 */
 export const CMLL_H = "R U R' U R U' R' U R U2 R'";
-/** 나쁜 모서리 넷(위 왼쪽·오른쪽·앞, 아래 앞)을 고치는 수 */
+/** 나쁜 엣지 넷(위 왼쪽·오른쪽·앞, 아래 앞)을 고치는 수 */
 export const LSE_EO4 = "M' U M";
 
 /** 섞기와 앞 단계까지의 수를 이어 「이 단계 시작 상황」을 만든다 */
@@ -38,7 +38,7 @@ const intro: Lesson = {
   steps: [
     {
       kind: "find",
-      body: "루는 질 루(Gilles Roux)가 만든 방법이에요. 왼쪽과 오른쪽에 1×2×3 블록을 하나씩 만들고, 위 꼭짓점 넷을 맞춘 뒤, 남은 모서리 여섯을 가운데 층과 윗면만 돌려 끝내요. 흰 면을 아래로 든 큐브예요. 왼쪽 블록의 꼭짓점 둘(흰색과 빨간색이 붙은 것)을 눌러 보세요.",
+      body: "루는 질 루(Gilles Roux)가 만든 방법이에요. 왼쪽과 오른쪽에 1×2×3 블록을 하나씩 만들고, 위 코너 넷을 맞춘 뒤, 남은 엣지 여섯을 가운데 층과 윗면만 돌려 끝내요. 흰 면을 아래로 든 큐브예요. 왼쪽 블록의 코너 둘(흰색과 빨간색이 붙은 것)을 눌러 보세요.",
       setup: { alg: "z2" },
       mask: "roux-blocks",
       find: { piece: "corner", has: ["U", "R"] },
@@ -46,7 +46,7 @@ const intro: Lesson = {
     },
     {
       kind: "demo",
-      body: "섞인 큐브를 루로 끝까지 맞춰 볼게요. 왼쪽 블록 → 오른쪽 블록 → 위 꼭짓점 → 모서리 여섯 차례예요.",
+      body: "섞인 큐브를 루로 끝까지 맞춰 볼게요. 왼쪽 블록 → 오른쪽 블록 → 위 코너 → 엣지 여섯 차례예요.",
       setup: upTo(S21),
       alg: [FB21, SB21, CMLL21, EO21, ULUR21, EP21].join(" "),
     },
@@ -73,14 +73,14 @@ const firstBlock: Lesson = {
   steps: [
     {
       kind: "find",
-      body: "왼쪽 블록은 왼쪽 가운데, 아래 왼쪽 모서리, 왼쪽 앞·뒤 모서리, 꼭짓점 둘이에요. 정해진 공식은 없어서 조각을 보며 짧게 모아요. 섞인 큐브에 빨간 블록 조각만 보이게 했어요. 블록 바닥에 갈 흰-빨강 모서리를 찾아 눌러 보세요.",
+      body: "왼쪽 블록은 왼쪽 센터, 아래 왼쪽 엣지, 왼쪽 앞·뒤 엣지, 코너 둘이에요. 정해진 공식은 없어서 조각을 보며 짧게 모아요. 섞인 큐브에 빨간 블록 조각만 보이게 했어요. 블록 바닥에 갈 흰-빨강 엣지 블럭을 찾아 눌러 보세요.",
       setup: upTo(S21),
       mask: "roux-fb",
       find: { piece: "edge", colors: ["U", "R"] },
     },
     {
       kind: "demo",
-      body: "아래 왼쪽 모서리와 앞쪽 짝으로 사각형을 먼저 만들고, 뒤쪽 짝을 붙여요. 처음에 큐브를 돌려 블록이 가장 쉬운 쪽을 왼쪽에 둬요.",
+      body: "아래 왼쪽 엣지와 앞쪽 짝으로 사각형을 먼저 만들고, 뒤쪽 짝을 붙여요. 처음에 큐브를 돌려 블록이 가장 쉬운 쪽을 왼쪽에 둬요.",
       setup: upTo(S21),
       alg: FB21,
     },
@@ -120,7 +120,7 @@ const secondBlock: Lesson = {
     },
     {
       kind: "demo",
-      body: "아래 오른쪽 모서리를 M과 U로 데려와 사각형을 만들고, 남은 짝을 R·U로 넣어요.",
+      body: "아래 오른쪽 엣지를 M과 U로 데려와 사각형을 만들고, 남은 짝을 R·U로 넣어요.",
       setup: upTo(S21, FB21),
       alg: SB21,
     },
@@ -144,16 +144,16 @@ const secondBlock: Lesson = {
 const cmll: Lesson = {
   id: "roux-cmll",
   size: 3,
-  title: "위 꼭짓점(CMLL)",
-  summary: "두 블록을 지키며 위 꼭짓점 넷을 맞춰요. 처음엔 두 번에 나눠요.",
+  title: "위 코너(CMLL)",
+  summary: "두 블록을 지키며 위 코너 넷을 맞춰요. 처음엔 두 번에 나눠요.",
   steps: [
     {
       kind: "quiz",
-      body: "CMLL(Corners of the Last Layer, 마지막 층 꼭짓점)은 위 꼭짓점 넷의 방향과 자리를 맞춰요. 모서리는 신경 쓰지 않아요. 공식 42개로 한 번에 하지만, 처음엔 노란 면 맞추기(수네 등 7개) → 꼭짓점 자리(2개)로 나눠도 돼요. 노란 면 공식은 위를 보는 노란 꼭짓점 수로 골라요.",
+      body: "CMLL(Corners of the Last Layer, 마지막 층 코너)는 위 코너 넷의 방향과 자리를 맞춰요. 엣지는 신경 쓰지 않아요. 공식 42개로 한 번에 하지만, 처음엔 노란 면 맞추기(수네 등 7개) → 코너 자리(2개)로 나눠도 돼요. 노란 면 공식은 위를 보는 노란 코너 수로 골라요.",
       setup: { alg: setupFor(CMLL_H, "z2") },
       mask: "cmll",
       quiz: {
-        question: "위를 보는 노란 꼭짓점은 몇 개일까요?",
+        question: "위를 보는 노란 코너는 몇 개일까요?",
         choices: ["0개", "1개", "2개"],
         answer: 0,
         why: "하나도 없어요. 노란 칸이 모두 옆을 봐요. 옆을 보는 노란 칸 모양을 보고 공식을 골라요.",
@@ -161,20 +161,20 @@ const cmll: Lesson = {
     },
     {
       kind: "demo",
-      body: "꼭짓점이 수네 모양이에요. 수네를 거꾸로 돌리면 한 번에 맞아요.",
+      body: "코너가 수네 모양이에요. 수네를 거꾸로 돌리면 한 번에 맞아요.",
       setup: upTo(S21, FB21, SB21),
       alg: CMLL21,
     },
     {
       kind: "try",
-      body: "노란 면을 먼저 맞추고(전조등 모양), 꼭짓점 자리를 맞춰 보세요.",
+      body: "노란 면을 먼저 맞추고(전조등 모양), 코너 자리를 맞춰 보세요.",
       setup: upTo(S7, FB7, SB7),
       alg: CMLL7,
       goal: "cmll",
     },
     {
       kind: "try",
-      body: "두 블록이 맞은 큐브에서 위 꼭짓점을 맞춰 보세요.",
+      body: "두 블록이 맞은 큐브에서 위 코너를 맞춰 보세요.",
       setup: { rule: "roux-blocks-solved" },
       goal: "cmll",
       mask: "cmll",
@@ -185,51 +185,49 @@ const cmll: Lesson = {
 const lse: Lesson = {
   id: "roux-lse",
   size: 3,
-  title: "남은 모서리 여섯(LSE)",
-  summary:
-    "M과 U만으로 세 걸음: 모서리 방향 → 왼쪽·오른쪽 위 모서리 → 가운데 줄.",
+  title: "남은 엣지 여섯(LSE)",
+  summary: "M과 U만으로 세 걸음: 엣지 방향 → 왼쪽·오른쪽 위 엣지 → 가운데 줄.",
   steps: [
     {
       kind: "quiz",
-      body: "LSE(Last Six Edges, 남은 모서리 여섯)는 M과 U만 돌려요. 먼저 모서리 방향(EO)을 맞춰요. 흰·노랑 칸이 위나 아래를 보면 좋은 모서리, 옆을 보면 나쁜 모서리예요. 위·아래 가운데도 흰·노랑으로 둬요.",
+      body: "LSE(Last Six Edges, 남은 엣지 여섯)는 M과 U만 돌려요. 먼저 엣지 방향(EO)을 맞춰요. 흰·노랑 칸이 위나 아래를 보면 좋은 엣지, 옆을 보면 나쁜 엣지예요. 위·아래 센터도 흰·노랑으로 둬요.",
       setup: { alg: setupFor(LSE_EO4, "z2") },
       mask: "eo-edges",
       quiz: {
-        question:
-          "윗층과 아래 앞·뒤의 모서리 여섯 중 나쁜 모서리는 몇 개일까요?",
+        question: "윗층과 아래 앞·뒤의 엣지 여섯 중 나쁜 엣지는 몇 개일까요?",
         choices: ["0개", "2개", "4개"],
         answer: 2,
-        why: "위 왼쪽·오른쪽·앞, 아래 앞 모서리의 흰·노랑 칸이 옆을 봐요. M' U M 한 번이면 넷이 함께 고쳐져요.",
+        why: "위 왼쪽·오른쪽·앞, 아래 앞 엣지의 흰·노랑 칸이 옆을 봐요. M' U M 한 번이면 넷이 함께 고쳐져요.",
       },
     },
     {
       kind: "demo",
-      body: "나쁜 모서리를 M' U M 같은 짧은 수로 고쳐요.",
+      body: "나쁜 엣지를 M' U M 같은 짧은 수로 고쳐요.",
       setup: upTo(S21, FB21, SB21, CMLL21),
       alg: EO21,
     },
     {
       kind: "try",
-      body: "나쁜 모서리를 고쳐 보세요.",
+      body: "나쁜 엣지를 고쳐 보세요.",
       setup: upTo(S7, FB7, SB7, CMLL7),
       alg: EO7,
       goal: "lse-eo",
     },
     {
       kind: "try",
-      body: "다른 상황에서도 모서리 방향을 맞춰 보세요.",
+      body: "다른 상황에서도 엣지 방향을 맞춰 보세요.",
       setup: { rule: "roux-cmll-solved" },
       goal: "lse-eo",
     },
     {
       kind: "demo",
-      body: "다음은 왼쪽 위(UL)와 오른쪽 위(UR) 모서리예요. 둘을 아래(앞·뒤)에 모았다가 M2로 함께 올려요.",
+      body: "다음은 왼쪽 위(UL)와 오른쪽 위(UR) 엣지예요. 둘을 아래(앞·뒤)에 모았다가 M2로 함께 올려요.",
       setup: upTo(S21, FB21, SB21, CMLL21, EO21),
       alg: ULUR21,
     },
     {
       kind: "try",
-      body: "왼쪽·오른쪽 위 모서리를 제자리에 넣어 보세요.",
+      body: "왼쪽·오른쪽 위 엣지를 제자리에 넣어 보세요.",
       setup: upTo(S7, FB7, SB7, CMLL7, EO7),
       alg: ULUR7,
       goal: "lse-ulur",
@@ -242,13 +240,13 @@ const lse: Lesson = {
     },
     {
       kind: "demo",
-      body: "마지막으로 가운데 줄 모서리 넷(4c)을 M과 U2로 맞춰요.",
+      body: "마지막으로 가운데 줄 엣지 넷(4c)을 M과 U2로 맞춰요.",
       setup: upTo(S21, FB21, SB21, CMLL21, EO21, ULUR21),
       alg: EP21,
     },
     {
       kind: "try",
-      body: "가운데 줄 모서리를 맞춰 끝내 보세요.",
+      body: "가운데 줄 엣지를 맞춰 끝내 보세요.",
       setup: upTo(S7, FB7, SB7, CMLL7, EO7, ULUR7),
       alg: EP7,
       goal: "solved",
@@ -266,6 +264,6 @@ export const ROUX: Course = {
   id: "roux",
   size: 3,
   title: "루(Roux)",
-  summary: "왼쪽 블록 → 오른쪽 블록 → 위 꼭짓점(CMLL) → 남은 모서리 여섯(LSE).",
+  summary: "왼쪽 블록 → 오른쪽 블록 → 위 코너(CMLL) → 남은 엣지 여섯(LSE).",
   lessons: [intro, firstBlock, secondBlock, cmll, lse],
 };

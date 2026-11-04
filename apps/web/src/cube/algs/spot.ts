@@ -39,7 +39,7 @@ const cached = (map: Map<string, CubeMove[]>, text: string) => {
   return m;
 };
 
-/** 흰 가운데가 아래(D)에 오게 쥔 방향들(3×3, 넷) */
+/** 흰 센터가 아래(D)에 오게 쥔 방향들(3×3, 넷) */
 function whiteDownHolds(s: PuzzleState): PuzzleState[] {
   const down = OPPOSITE_FACE[U as 0] as number;
   const out: PuzzleState[] = [];

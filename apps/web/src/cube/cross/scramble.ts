@@ -31,7 +31,7 @@ import {
  *
  * - 「무작위」: 대회 규칙 섞기(`@game/cube-scramble` 3×3) 그대로라 실제 대회 분포다.
  * - 수를 고르면: 대회 섞기와 같은 방식(무작위 상태 → 해법기 → 그 해의 거꾸로)으로 만들되, 무작위 상태를 뽑을 때
- *   한 색의 십자 모서리를 그 거리의 상태 가운데 하나로 놓고 나머지는 무작위로 둔다. 다른 색이 더 짧으면 버리고
+ *   한 색의 십자 엣지를 그 거리의 상태 가운데 하나로 놓고 나머지는 무작위로 둔다. 다른 색이 더 짧으면 버리고
  *   다시 뽑는다(표 찾기라 한 번에 몇 μs). 8수는 무작위 상태의 0.05%뿐이라 이렇게 해야 바로 나온다.
  *   모든 색에서 8수(여섯 색 모두 8수)는 거의 없는 상태라 고를 수 없게 한다(`difficultyAvailable`).
  */
@@ -65,7 +65,7 @@ export function difficultyAvailable(
 /** 이 섞기에서 이 수를 넘는 뽑기는 포기한다(멈춘 계산을 막는 안전장치) */
 export const MAX_TRIES = 400_000;
 
-/** 해법기 모서리 자리(cube-solver `EDGE_COLORS`와 같은 차례: UR UF UL UB DR DF DL DB FR FL BL BR) */
+/** 해법기 엣지 자리(cube-solver `EDGE_COLORS`와 같은 차례: UR UF UL UB DR DF DL DB FR FL BL BR) */
 const EDGE_FACES: readonly (readonly [number, number])[] = [
   [0, 1],
   [0, 2],
@@ -113,8 +113,8 @@ function randomCubie(rng: RngState): CubieCube {
 }
 
 /**
- * 색 x 십자 모서리를 표 번호 `key`대로 놓고 나머지 모서리는 무작위로 둔다.
- * 모서리 방향 합·순열 홀짝은 십자가 아닌 조각으로 맞춘다.
+ * 색 x 십자 엣지를 표 번호 `key`대로 놓고 나머지 엣지는 무작위로 둔다.
+ * 엣지 방향 합·순열 홀짝은 십자가 아닌 조각으로 맞춘다.
  */
 function placeEdges(
   c: CubieCube,

@@ -33,7 +33,7 @@ const center = (f: number) =>
   buildOrder().centers.find((p) => pieceFaces(3, p)[0] === f) as number;
 
 describe("분해·조립 차례", () => {
-  it("축 → 가운데 6 → 모서리 12 → 꼭짓점 8(붙은 색 1 → 2 → 3)", () => {
+  it("축 → 센터 6 → 엣지 12 → 코너 8(붙은 색 1 → 2 → 3)", () => {
     const o = buildOrder();
     expect(o.centers).toHaveLength(6);
     expect(o.edges).toHaveLength(12);
@@ -44,7 +44,7 @@ describe("분해·조립 차례", () => {
     expect(BUILD_START.placed).toHaveLength(26);
   });
 
-  it("가운데는 흰 위·초록 앞을 잡아 두고 넷을 고른다, 모서리 둘·꼭짓점 하나를 고른 뒤 나머지를 끼운다", () => {
+  it("센터는 흰 위·초록 앞을 잡아 두고 넷을 고른다, 엣지 둘·코너 하나를 고른 뒤 나머지를 끼운다", () => {
     let b = buildBegin(buildTakeApart());
     expect(b.phase).toBe("centers");
     expect(buildCount(b)).toEqual({ done: 2, total: 6 });
@@ -70,7 +70,7 @@ describe("분해·조립 차례", () => {
   });
 });
 
-describe("가운데 규칙", () => {
+describe("센터 규칙", () => {
   const start = buildBegin(buildTakeApart());
   it("맞은편 짝: 노란색은 흰색 맞은편, 초록색 맞은편 자리는 파란색 자리", () => {
     expect(buildNext(start)).toBe(center(D));
@@ -92,7 +92,7 @@ describe("가운데 규칙", () => {
     const b = buildTap(start, center(D)).state;
     expect(buildNext(b)).toBe(center(R));
     expect(buildVerdict(b, center(L))).toEqual({ kind: "mirror" });
-    // 흰-초록-빨강 꼭짓점의 세 면 돌림 차례가 거울 자리에서는 거꾸로다
+    // 흰-초록-빨강 코너의 세 면 돌림 차례가 거울 자리에서는 거꾸로다
     const n = (f: number) => FACE_NORMALS[f] as readonly number[];
     expect(handedness(n(U), n(F), n(R))).toBe(-handedness(n(U), n(F), n(L)));
     expect(OPPOSITE_FACE[R as 0]).toBe(L);

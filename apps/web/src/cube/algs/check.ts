@@ -1,6 +1,6 @@
 // 공식 역할 확인(검사기). 상황(AlgCase)을 만든 큐브에 새 공식을 해 보고, 그 묶음의 목표가 되는지 본다.
 // 상황은 훈련의 「가리기」와 같다: 맞춘 큐브(마지막 층·F2L·오르테가는 흰 면 아래로 쥠) + 상황 만드는 공식
-// (없으면 대표 공식의 거꾸로). 판정은 가운데 색 기준이라 공식 안의 x·y·z, 넓게·가운데 층이 섞여도 큐브 방향과 상관없다.
+// (없으면 대표 공식의 거꾸로). 판정은 센터 색 기준이라 공식 안의 x·y·z, 넓게·가운데 층이 섞여도 큐브 방향과 상관없다.
 import {
   type CubeMove,
   cubeGroups,
@@ -68,7 +68,7 @@ export function caseStart(c: AlgCase): PuzzleState {
   return s;
 }
 
-// ── 조각 보기(3×3·5×5처럼 가운데가 있는 크기) ─────────────────────
+// ── 조각 보기(3×3·5×5처럼 센터가 있는 크기) ─────────────────────
 
 interface View {
   n: number;
@@ -94,7 +94,7 @@ function pieceOk(v: View, piece: number): boolean {
   );
 }
 
-/** 윗면 돌리기 넷 중 가장 적게 남는 윗층 꼭짓점·모서리 수 */
+/** 윗면 돌리기 넷 중 가장 적게 남는 윗층 코너·엣지 수 */
 function lastLayerLeft(n: number, s: PuzzleState) {
   let best = { corners: 9, edges: 9 };
   for (const k of AUF) {
@@ -115,15 +115,15 @@ const count = (k: number) => COUNT[k] ?? String(k);
 function leftMessage(corners: number, edges: number): string {
   if (corners + edges === 0) return "다 맞지 않음";
   const parts: string[] = [];
-  if (corners > 0) parts.push(`꼭짓점 ${count(corners)}`);
-  if (edges > 0) parts.push(`모서리 ${count(edges)}`);
+  if (corners > 0) parts.push(`코너 ${count(corners)}`);
+  if (edges > 0) parts.push(`엣지 ${count(edges)}`);
   const last = corners > 0 && edges === 0 ? corners : edges;
   return `${parts.join("·")}${last === 1 ? "가" : "이"} 남음`;
 }
 
 /**
  * 윗면 돌리기 하나만 남았거나 다 맞음(훈련의 「ll」보다 좁다: 마지막 F' 하나 빠진 공식을 받지 않는다).
- * 2×2는 가운데가 없어 위·아래 층 돌리기를 모두 봐준다(PBL)
+ * 2×2는 센터가 없어 위·아래 층 돌리기를 모두 봐준다(PBL)
  */
 function llDone(n: number, s: PuzzleState): boolean {
   if (n % 2 === 1) {
@@ -170,7 +170,7 @@ function permParity(p: number[]): number {
   return (p.length - cycles) % 2;
 }
 
-/** 윗층 모서리 줄·꼭짓점 보기(아래가 맞게 방향을 맞춘 뒤). 줄은 묶여 있다고 본다 */
+/** 윗층 엣지 줄·코너 보기(아래가 맞게 방향을 맞춘 뒤). 줄은 묶여 있다고 본다 */
 function topPieces(n: number, t: PuzzleState) {
   const topo = cubeTopology(n);
   const colors = faceColors(n, t);
@@ -307,9 +307,9 @@ function roleOf(c: AlgCase): Role {
       const pll = c.id === "parity-4x4-pll";
       const reduced = (s: PuzzleState) =>
         !centersSolved(n, s)
-          ? "가운데가 깨짐"
+          ? "센터가 깨짐"
           : unpairedEdgeLines(n, s) > 0
-            ? `묶이지 않은 모서리 ${unpairedEdgeLines(n, s)}줄`
+            ? `묶이지 않은 엣지 ${unpairedEdgeLines(n, s)}줄`
             : null;
       const judge = (s: PuzzleState): string | null => {
         const r = reduced(s);
@@ -317,9 +317,9 @@ function roleOf(c: AlgCase): Role {
         const t = alignBelowTop(n, s);
         if (!t) return "아래 두 층이 깨짐";
         const top = topPieces(n, t);
-        if (!pll) return top.flips % 2 === 1 ? "뒤집힌 모서리가 홀수" : null;
+        if (!pll) return top.flips % 2 === 1 ? "뒤집힌 엣지가 홀수" : null;
         if (!top.topOneColor) return "윗면이 한 색이 아님";
-        return top.parityOk ? null : "모서리 둘이 바뀌어 있음";
+        return top.parityOk ? null : "엣지 둘이 바뀌어 있음";
       };
       return {
         auf: true,
@@ -333,8 +333,8 @@ function roleOf(c: AlgCase): Role {
         met: (s) => met(s, "edges-paired"),
         why: (s) =>
           centersSolved(n, s)
-            ? `묶이지 않은 모서리 ${unpairedEdgeLines(n, s)}줄`
-            : "가운데가 깨짐",
+            ? `묶이지 않은 엣지 ${unpairedEdgeLines(n, s)}줄`
+            : "센터가 깨짐",
       };
     case "bld-op":
       return {

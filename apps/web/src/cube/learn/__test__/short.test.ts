@@ -18,7 +18,7 @@ import { apply, type Cube, colorMap, invert, normalize, solved } from "./sim";
 
 const stateOf = (alg: string) => apply(solved(3), invert(alg));
 
-// 옆면(앞·오른·뒤·왼) 중 위층(또는 아래층) 꼭짓점 두 스티커가 같은 색인 면
+// 옆면(앞·오른·뒤·왼) 중 위층(또는 아래층) 코너 두 스티커가 같은 색인 면
 function headlights(c: Cube, y: 2 | -2): string[] {
   const m = colorMap(normalize(c));
   const sides: [string, string, string][] = [
@@ -36,14 +36,14 @@ function headlights(c: Cube, y: 2 | -2): string[] {
 }
 
 describe("2단계 OLL", () => {
-  it("모서리 공식 셋: 아래 두 층을 지키고 윗면 모서리 무늬가 이름과 맞는다", () => {
+  it("엣지 공식 셋: 아래 두 층을 지키고 윗면 엣지 무늬가 이름과 맞는다", () => {
     const edges = TWO_LOOK_OLL.filter((c) => c.group === "edges");
     expect(edges).toHaveLength(3);
     const oriented = (alg: string) =>
       [...llOrientation(stateOf(alg)).slice(4)]
         .map((x, i) => (x === "0" ? i : -1))
         .filter((i) => i >= 0);
-    // 위층 모서리 자리 순서: 앞 0, 왼 1, 뒤 2, 오른 3
+    // 위층 엣지 자리 순서: 앞 0, 왼 1, 뒤 2, 오른 3
     for (const c of edges)
       expect(f2lIntact(stateOf(c.algs[0] as string)), c.name).toBe(true);
     expect(oriented("F R U R' U' F'")).toEqual([1, 3]);
@@ -52,7 +52,7 @@ describe("2단계 OLL", () => {
     expect(oriented("F R U R' U' F' f R U R' U' f'")).toEqual([]);
   });
 
-  it("꼭짓점 공식 일곱은 OLL 21~27과 같은 상황이다", () => {
+  it("코너 공식 일곱은 OLL 21~27과 같은 상황이다", () => {
     const corners = TWO_LOOK_OLL.filter((c) => c.group === "corners");
     expect(corners).toHaveLength(7);
     for (const c of corners) {
@@ -66,7 +66,7 @@ describe("2단계 OLL", () => {
 });
 
 describe("2단계 PLL", () => {
-  it("꼭짓점 공식 둘: 이웃·대각 바꿈", () => {
+  it("코너 공식 둘: 이웃·대각 바꿈", () => {
     const cls = (id: string) =>
       cornerPermClass(
         llCornerPerm(
@@ -83,7 +83,7 @@ describe("2단계 PLL", () => {
     ).toEqual(["왼"]);
   });
 
-  it("모서리 공식 넷은 PLL의 U·H·Z와 같다", () => {
+  it("엣지 공식 넷은 PLL의 U·H·Z와 같다", () => {
     const edges = TWO_LOOK_PLL.filter((c) => c.group === "edges");
     expect(edges).toHaveLength(4);
     for (const c of edges) {
@@ -100,7 +100,7 @@ describe("2단계 PLL", () => {
 });
 
 describe("2×2 오르테가", () => {
-  it("OLL 7: 아래 꼭짓점 넷이 흰 면을 지키고, 일곱 상황이 서로 다르다", () => {
+  it("OLL 7: 아래 코너 넷이 흰 면을 지키고, 일곱 상황이 서로 다르다", () => {
     expect(ORTEGA_OLL).toHaveLength(7);
     const keys = new Set<string>();
     for (const c of ORTEGA_OLL) {
@@ -118,7 +118,7 @@ describe("2×2 오르테가", () => {
     }
   });
 
-  it("PBL: 꼭짓점 방향은 그대로, 위·아래 자리 바꿈이 묶음과 맞는다", () => {
+  it("PBL: 코너 방향은 그대로, 위·아래 자리 바꿈이 묶음과 맞는다", () => {
     for (const c of ORTEGA_PBL) {
       const s = stateOf(c.algs[0] as string);
       expect(allCornersOriented(s), c.name).toBe(true);

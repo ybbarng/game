@@ -46,7 +46,7 @@ describe("PLL 21", () => {
     }
   });
 
-  it("묶음이 꼭짓점·모서리 바꿈과 맞는다", () => {
+  it("묶음이 코너·엣지 바꿈과 맞는다", () => {
     for (const c of PLL_CASES) {
       const s = stateOf(c.algs[0] as string);
       const cls = cornerPermClass(llCornerPerm(s));

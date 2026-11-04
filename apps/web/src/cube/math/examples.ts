@@ -2,10 +2,10 @@ import type { PieceKind } from "@game/cube-engine";
 
 /** 「큐브의 수학」에서 쓰는 공식과 예. 값은 모두 `pieces.test.ts`가 엔진으로 확인한다 */
 
-/** 슈퍼플립: 모든 모서리를 제자리에서 뒤집는 20수(반 바퀴도 한 수) 공식 */
+/** 슈퍼플립: 모든 엣지를 제자리에서 뒤집는 20수(반 바퀴도 한 수) 공식 */
 export const SUPERFLIP = "U R2 F B R B2 R U2 L B2 R U' D' R2 F R' L B2 U2 F2";
 
-/** 윗면 가운데만 180° 돌리는 공식(나머지는 그대로) */
+/** 윗면 센터만 180° 돌리는 공식(나머지는 그대로) */
 export const CENTER_HALF_TURN = "U R L U2 R' L' U R L U2 R' L'";
 
 export interface OrderPreset {
@@ -25,7 +25,7 @@ export const ORDER_PRESETS: OrderPreset[] = [
 export interface CommutatorExample {
   a: string;
   b: string;
-  /** 바뀐 조각 수(가운데 빼고) */
+  /** 바뀐 조각 수(센터 빼고) */
   changed: Partial<Record<PieceKind, number>>;
   note?: string;
 }
@@ -42,7 +42,7 @@ export const COMMUTATOR_EXAMPLES: CommutatorExample[] = [
     a: "R U R'",
     b: "D",
     changed: { corner: 3 },
-    note: "꼭짓점 셋만 돈다(3-고리)",
+    note: "코너 셋만 돈다(3-고리)",
   },
-  { a: "M'", b: "U2", changed: { edge: 3 }, note: "모서리 셋만 돈다" },
+  { a: "M'", b: "U2", changed: { edge: 3 }, note: "엣지 셋만 돈다" },
 ];

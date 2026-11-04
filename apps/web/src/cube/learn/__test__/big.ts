@@ -10,7 +10,7 @@ const isCenterSticker = (
   return pos.every((v, i) => normal[i] !== 0 || Math.abs(v) < m);
 };
 
-/** 면마다 가운데 조각이 그 면 색으로 맞아 있나 */
+/** 면마다 센터 블럭이 그 면 색으로 맞아 있나 */
 export function centersSolved(c: Cube): boolean {
   const nc = normalize(c);
   const ref = colorMap(solved(c.n));
@@ -21,7 +21,7 @@ export function centersSolved(c: Cube): boolean {
   );
 }
 
-/** 묶이지 않은(한 줄의 날개 색이 서로 다른) 모서리 수 */
+/** 묶이지 않은(한 줄의 날개 색이 서로 다른) 엣지 수 */
 export function unpairedEdges(c: Cube): number {
   const m = c.n - 1;
   const lines = new Map<string, Map<string, Set<number>>>();

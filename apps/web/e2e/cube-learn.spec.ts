@@ -149,7 +149,7 @@ test("배우기: 「두 손」 배치면 시연·힌트·따라 하기에 그 �
   );
 });
 
-test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", async ({
+test("배우기: 크기별 해법 목록과 ZZ 엣지 방향 해 보기", async ({
   page,
 }, info) => {
   await useNotationKeys(page);
@@ -165,7 +165,7 @@ test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", asy
   await expect(page.locator('[data-course-size="3"]')).toHaveCount(0);
   await page.locator('[data-size-tab="3"]').click();
 
-  // 첫 과정이 아닌 과정의 단원 목록은 접혀 있다. 펼쳐서 ZZ 모서리 방향으로
+  // 첫 과정이 아닌 과정의 단원 목록은 접혀 있다. 펼쳐서 ZZ 엣지 방향으로
   const zz = page.locator('[data-course-lessons="zz"]');
   await expect(zz).not.toHaveAttribute("open", "");
   await zz.locator("summary").click();
@@ -175,7 +175,7 @@ test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", asy
   await shot(page, "learn-zz-eo", info.project.name);
 });
 
-test("배우기: 야우 모서리 묶기 시연", async ({ page }, info) => {
+test("배우기: 야우 엣지 묶기 시연", async ({ page }, info) => {
   await page.goto("/cube/learn?lesson=yau-edges");
   await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
@@ -210,11 +210,11 @@ test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면�
 }, info) => {
   await useNotationKeys(page);
   await page.goto("/cube/learn?lesson=333-white-cross");
-  // 7번: 흰색이 앞을 보는 가운데 줄 모서리를 R로 올린다
+  // 7번: 흰색이 앞을 보는 가운데 줄 엣지를 R로 올린다
   await goStep(page, 7);
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "try");
-  await expect(section).toContainText("가운데 줄 모서리");
+  await expect(section).toContainText("가운데 줄 엣지");
   await inputReady(page);
   await shot(page, "learn-cross-case", info.project.name);
 

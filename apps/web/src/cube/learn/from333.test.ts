@@ -1,4 +1,4 @@
-// 「3×3을 아는 사람의 2×2」: 3×3 공식이 2×2 꼭짓점을 똑같이 움직이는지, 과정 자리와 단원 첫머리를 엔진으로 확인한다.
+// 「3×3을 아는 사람의 2×2」: 3×3 공식이 2×2 코너를 똑같이 움직이는지, 과정 자리와 단원 첫머리를 엔진으로 확인한다.
 // 해 보기(상황 → 모범 답 → 목표)는 judge.test.ts·__test__/lessons.test.ts가 모든 과정에 대해 본다.
 import {
   applyMoves,
@@ -28,7 +28,7 @@ import {
 } from "./lessons-333";
 import { setupFor } from "./notation";
 
-/** 꼭짓점 자리 이름(UFR 등) → 그 자리 칸들의 (면, 색) */
+/** 코너 자리 이름(UFR 등) → 그 자리 칸들의 (면, 색) */
 function cornerColors(n: number, alg: string): Map<string, string> {
   const s = applyMoves(n, solvedCube(n), parseMoves(n, alg));
   const colors = faceColors(n, s);
@@ -60,15 +60,15 @@ describe("3×3을 아는 사람의 2×2", () => {
     CORNERS_NONE,
     STUCK_CORNER_UP,
     `z2 ${TWIST_TWO}`,
-  ])("%s는 2×2와 3×3의 꼭짓점을 똑같이 옮긴다", (alg) => {
+  ])("%s는 2×2와 3×3의 코너를 똑같이 옮긴다", (alg) => {
     expect(cornerColors(2, alg)).toEqual(cornerColors(3, alg));
   });
 
   it("단원마다 3×3의 어느 단계와 같은지 첫머리에 적는다", () => {
     for (const [id, name] of [
-      ["222-from333-first-layer-up", "첫 층 꼭짓점"],
-      ["222-from333-corner-place", "꼭짓점 자리"],
-      ["222-from333-corner-twist", "꼭짓점 방향"],
+      ["222-from333-first-layer-up", "첫 층 코너"],
+      ["222-from333-corner-place", "코너 자리"],
+      ["222-from333-corner-twist", "코너 방향"],
     ]) {
       const l = course?.lessons.find((x) => x.id === id);
       expect(l?.steps[0]?.body, id).toContain(`3×3에서 했던 「${name}」`);
@@ -88,7 +88,7 @@ describe("3×3을 아는 사람의 2×2", () => {
   const byU = (s: ReturnType<typeof solvedCube>) =>
     U4.map((k) => placedTopCorners(2, p2(k, s)));
 
-  it("꼭짓점 자리 고르기: 제자리 둘 → U로 하나", () => {
+  it("코너 자리 고르기: 제자리 둘 → U로 하나", () => {
     const s = p2(setupFor(`U ${CORNER_CYCLE}`, "z2"));
     expect(placedTopCorners(2, s)).toBe(2);
     expect(placedTopCorners(2, p2("U", s))).toBe(1);
@@ -131,7 +131,7 @@ describe("3×3을 아는 사람의 2×2", () => {
     }
   });
 
-  it("꼭짓점 방향: 2×2에서도 두 번 → U → 네 번 → U'로 끝난다", () => {
+  it("코너 방향: 2×2에서도 두 번 → U → 네 번 → U'로 끝난다", () => {
     const s = p2(setupFor(TWIST_TWO, "z2"));
     expect(goalMet(2, p2(reps(CORNER_TWIST, 2), s), "2x2-first-layer")).toBe(
       false,
@@ -139,7 +139,7 @@ describe("3×3을 아는 사람의 2×2", () => {
     expect(goalMet(2, p2(TWIST_TWO, s), "solved")).toBe(true);
   });
 
-  it("꼭짓점 가리기: 3×3에서 꼭짓점 8 × 3칸만 보인다", () => {
+  it("코너 가리기: 3×3에서 코너 8 × 3칸만 보인다", () => {
     const m = maskFor(3, "corners") ?? [];
     expect(m.filter((v) => v === "visible")).toHaveLength(24);
   });

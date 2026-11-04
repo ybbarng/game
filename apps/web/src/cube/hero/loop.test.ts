@@ -111,7 +111,7 @@ describe("orientForSolve", () => {
     const colors = faceColors(n, s);
     return [0, 1, 2, 3, 4, 5].every((f) => colors[f * n * n + c * n + c] === f);
   };
-  it("홀수 크기는 섞기 뒤 가운데 조각이 제자리(흰 위·초록 앞)로 오게 돌리고, 짝수 크기는 돌리지 않는다", () => {
+  it("홀수 크기는 섞기 뒤 센터 블럭이 제자리(흰 위·초록 앞)로 오게 돌리고, 짝수 크기는 돌리지 않는다", () => {
     let turned = 0;
     for (const n of [3, 5] as const)
       for (let seed = 1; seed <= 20; seed++) {
@@ -150,8 +150,8 @@ describe("차례 만들기", () => {
       moves: ["F", "R", "U", "R'", "U'"],
       stages: [
         { label: "십자", start: 0, end: 2 },
-        { label: "첫 층 꼭짓점", start: 2, end: 2 },
-        { label: "둘째 층 모서리", start: 2, end: 5 },
+        { label: "첫 층 코너", start: 2, end: 2 },
+        { label: "둘째 층 엣지", start: 2, end: 5 },
       ],
       looks: [4],
     };
@@ -161,10 +161,10 @@ describe("차례 만들기", () => {
     ).toEqual([
       "F",
       "R",
-      "(초보자 해법 · 둘째 층 모서리)",
+      "(초보자 해법 · 둘째 층 엣지)",
       "U",
       "R'",
-      "(초보자 해법 · 둘째 층 모서리)",
+      "(초보자 해법 · 둘째 층 엣지)",
       "U'",
       "(초보자 해법 · 맞춤)",
     ]);
@@ -237,7 +237,7 @@ describe("HeroLoop", () => {
 
     h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(3, h.loop.current)).toBe(true);
-    expect(h.labels).toContain("초보자 해법 · 둘째 층 모서리");
+    expect(h.labels).toContain("초보자 해법 · 둘째 층 엣지");
 
     h.clock.advance(T3.solved);
     expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
@@ -260,7 +260,7 @@ describe("HeroLoop", () => {
     h.advanceUntil(() => h.loop.currentLabel === "공식 해법");
     await h.settled();
     h.advanceUntil(() => h.loop.currentLabel !== "공식 해법");
-    // 2×2는 가운데 조각이 없어 방향 맞추기 없이 바로 첫 단계
+    // 2×2는 센터 블럭이 없어 방향 맞추기 없이 바로 첫 단계
     expect(h.loop.currentLabel).toBe("공식 해법 · 첫 층");
     h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(2, h.loop.current)).toBe(true);
@@ -276,7 +276,7 @@ describe("HeroLoop", () => {
     ["3-roux", "첫 블록", [1, 2]],
     ["3-zz", "EO라인", [1, 2]],
     ["2-beginner", "첫 층", [1, 2]],
-    ["4-cfop", "흰·노랑 가운데", [1]],
+    ["4-cfop", "흰·노랑 센터", [1]],
   ] as const)(
     "%s: 돌리기·가운데 층이 섞인 섞기 뒤에도 단계 차례대로 맞춘다",
     async (id, first, seeds) => {
@@ -295,7 +295,7 @@ describe("HeroLoop", () => {
         await h.settled();
         h.advanceUntil(() => h.loop.currentLabel !== label);
         if (want.length) {
-          // 방향 맞추기를 먼저 보이고, 끝나면 가운데가 제자리(흰 위·초록 앞)에서 첫 단계가 시작한다
+          // 방향 맞추기를 먼저 보이고, 끝나면 센터가 제자리(흰 위·초록 앞)에서 첫 단계가 시작한다
           expect(h.loop.currentLabel).toBe(`${label} · ${ORIENT_LABEL}`);
           h.advanceUntil(
             () => h.moves.length === scramble.length + want.length,

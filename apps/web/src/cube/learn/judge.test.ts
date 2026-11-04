@@ -72,7 +72,7 @@ describe("목표 판정", () => {
     expect(goalMet(3, play(3, solvedCube(3), "x y2"), "solved")).toBe(true);
   });
 
-  it("2×2는 가운데가 없어 어느 방향으로 들어도 첫 층을 알아본다", () => {
+  it("2×2는 센터가 없어 어느 방향으로 들어도 첫 층을 알아본다", () => {
     const s = play(2, solvedCube(2), "x2 y U");
     expect(goalMet(2, s, "2x2-first-layer")).toBe(true);
     expect(goalMet(2, play(2, s, "R"), "2x2-first-layer")).toBe(false);
@@ -191,7 +191,7 @@ describe("스스로 섞기 규칙", () => {
     expect(stateForRule(rule, 7).perm).toEqual(stateForRule(rule, 7).perm);
   });
 
-  it("5×5 모서리 둘만 남음: 묶이지 않은 줄이 둘", () => {
+  it("5×5 엣지 둘만 남음: 묶이지 않은 줄이 둘", () => {
     expect(unpairedEdgeLines(5, stateForRule("5x5-two-edges-left", 4))).toBe(2);
   });
 });
@@ -207,7 +207,7 @@ describe("가리기", () => {
     }
   });
 
-  it("첫 층 가리기: 3×3은 흰 십자·흰 꼭짓점·가운데 = 8 + 12 + 6 칸이 보인다", () => {
+  it("첫 층 가리기: 3×3은 흰 십자·흰 코너·센터 = 8 + 12 + 6 칸이 보인다", () => {
     const m = maskFor(3, "first-layer") ?? [];
     expect(m.filter((v) => v === "visible")).toHaveLength(8 + 12 + 6);
   });

@@ -131,20 +131,20 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
       <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
         <Factor
           n="× 2"
-          title="모서리 방향"
+          title="엣지 방향"
           rule="뒤집힘 합이 짝수"
           broken={!flipRule}
         />
         <Factor
           n="× 3"
-          title="꼭짓점 방향"
+          title="코너 방향"
           rule="비틀림 합이 3의 배수"
           broken={!twistRule}
         />
         <Factor
           n="× 2"
           title="자리 짝"
-          rule="꼭짓점 짝 = 모서리 짝"
+          rule="코너 짝 = 엣지 짝"
           broken={!parityRule}
         />
       </div>
@@ -173,10 +173,10 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           />
           <p className="text-white/70 text-xs" data-reassemble-picked>
             {swapFrom !== null
-              ? `${pieceName(N, swapFrom)}와 바꿀 ${topo.pieces[swapFrom]?.kind === "corner" ? "꼭짓점" : "모서리"}을 누르세요`
+              ? `${pieceName(N, swapFrom)}와 바꿀 ${topo.pieces[swapFrom]?.kind === "corner" ? "코너" : "엣지"}를 누르세요`
               : picked !== null
-                ? `고른 조각: ${pieceName(N, picked)} (${kind === "corner" ? "꼭짓점" : "모서리"})`
-                : "꼭짓점이나 모서리 칸을 누르세요"}
+                ? `고른 조각: ${pieceName(N, picked)} (${kind === "corner" ? "코너" : "엣지"})`
+                : "코너나 엣지 칸을 누르세요"}
           </p>
           <div className="flex flex-wrap gap-1.5 text-sm">
             <button
@@ -215,7 +215,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          모서리 하나 뒤집기
+          엣지 하나 뒤집기
         </button>
         <button
           type="button"
@@ -227,7 +227,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          꼭짓점 하나 비틀기
+          코너 하나 비틀기
         </button>
         <button
           type="button"
@@ -239,7 +239,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          모서리 둘 맞바꾸기
+          엣지 둘 맞바꾸기
         </button>
         <button
           type="button"
@@ -307,19 +307,19 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
             </p>
             <div className="grid grid-cols-3 gap-1.5">
               <Meter
-                label="모서리 뒤집힘 합"
+                label="엣지 뒤집힘 합"
                 value={v.flipSum}
                 rule="짝수"
                 ok={flipRule}
               />
               <Meter
-                label="꼭짓점 비틀림 합"
+                label="코너 비틀림 합"
                 value={v.twistSum}
                 rule="3의 배수"
                 ok={twistRule}
               />
               <Meter
-                label="꼭짓점 짝 / 모서리 짝"
+                label="코너 짝 / 엣지 짝"
                 value={`${v.cornerParity ? "홀수" : "짝수"} / ${v.edgeParity ? "홀수" : "짝수"}`}
                 rule="같다"
                 ok={parityRule}
@@ -329,9 +329,9 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
         )}
       </div>
       <Lead>
-        한 번 어긴 규칙은 같은 규칙을 한 번 더 어기면 풀려요. 모서리 둘을
-        뒤집거나, 한 꼭짓점은 한 번·다른 꼭짓점은 두 번 비틀거나, 모서리 둘과
-        꼭짓점 둘을 함께 바꿔 보세요.
+        한 번 어긴 규칙은 같은 규칙을 한 번 더 어기면 풀려요. 엣지 둘을
+        뒤집거나, 한 코너는 한 번·다른 코너는 두 번 비틀거나, 엣지 둘과 코너
+        둘을 함께 바꿔 보세요.
       </Lead>
       <Source>
         세 규칙(방향 합, 짝)과 그것으로 12가 나오는 셈은 군론(되돌릴 수 있는

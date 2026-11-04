@@ -87,10 +87,10 @@ describe("역할 확인: 까닭", () => {
 
   it("PLL: 남은 조각 수를 말한다", () => {
     const c = byId("pll-t");
-    // Ua 퍼뮤는 모서리 셋만 돈다 → T 상황에서는 F2L·윗면은 그대로, 조각이 남는다
+    // Ua 퍼뮤는 엣지 셋만 돈다 → T 상황에서는 F2L·윗면은 그대로, 조각이 남는다
     const r = checkAlg(c, "R U' R U R U R U' R' U' R2");
     expect(r.ok).toBe(false);
-    expect(r.message).toMatch(/^(꼭짓점|모서리) .+ 남음$/);
+    expect(r.message).toMatch(/^(코너|엣지) .+ 남음$/);
     expect(checkAlg(c, "R U R' U' R' F R2 U' R' U' R U R'").message).toBe(
       "F2L이 깨짐",
     );
@@ -146,12 +146,12 @@ describe("역할 확인: 까닭", () => {
     const oll = byId("parity-4x4-oll");
     expect(checkAlg(oll, "R U R'").message).toBe("아래 두 층이 깨짐");
     const pll = byId("parity-4x4-pll");
-    expect(checkAlg(pll, "U").message).toBe("모서리 둘이 바뀌어 있음");
+    expect(checkAlg(pll, "U").message).toBe("엣지 둘이 바뀌어 있음");
   });
 
-  it("5×5 모서리: 묶이지 않은 줄 수", () => {
+  it("5×5 엣지: 묶이지 않은 줄 수", () => {
     expect(checkAlg(byId("edges-5x5-flip"), "U").message).toBe(
-      "묶이지 않은 모서리 1줄",
+      "묶이지 않은 엣지 1줄",
     );
   });
 });
