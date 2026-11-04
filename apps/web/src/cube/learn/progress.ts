@@ -43,6 +43,25 @@ export interface LessonProgress {
   passed: number[];
   /** 단원을 끝까지 봤다 */
   done: boolean;
+  /**
+   * 마지막으로 본 단계 번호(2026-11-04 더함). 단원을 다시 열면 여기서 연다. 옛 기록에는 없고(0부터),
+   * 모양이 틀린 값은 읽을 때 버린다
+   */
+  step?: number;
+}
+
+/** 저장된 단계 번호가 쓸 만한가(0 이상의 정수) */
+const validStep = (v: unknown): v is number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 0;
+
+/** 다시 열 단계: 저장된 번호가 단원 안이면 그것, 아니면 0 */
+export function resumeStep(
+  progress: LearnProgress,
+  lessonId: string,
+  stepCount: number,
+): number {
+  const at = progress.lessons[lessonId]?.step;
+  return validStep(at) && at < stepCount ? at : 0;
 }
 
 export interface LearnProgress {
@@ -70,7 +89,16 @@ export const LESSON_RENAMES: Readonly<Record<string, string>> = {
 function migrate(
   lessons: Record<string, LessonProgress>,
 ): Record<string, LessonProgress> {
-  const out = { ...lessons };
+  const out: Record<string, LessonProgress> = {};
+  for (const [id, p] of Object.entries(lessons)) {
+    if (typeof p !== "object" || p === null) continue;
+    const passed = Array.isArray(p.passed) ? p.passed.filter(validStep) : [];
+    out[id] = {
+      passed,
+      done: p.done === true,
+      ...(validStep(p.step) ? { step: p.step } : {}),
+    };
+  }
   for (const [from, to] of Object.entries(LESSON_RENAMES)) {
     const old = lessons[from];
     if (!old || out[to]) continue;
@@ -131,6 +159,15 @@ export function markLessonDone(
   storage = defaultStorage(),
 ): LearnProgress {
   return updateLesson(lessonId, (p) => ({ ...p, done: true }), storage);
+}
+
+/** 단계를 봤다(다시 열 때 여기서 연다) */
+export function markStepSeen(
+  lessonId: string,
+  step: number,
+  storage = defaultStorage(),
+): LearnProgress {
+  return updateLesson(lessonId, (p) => ({ ...p, step }), storage);
 }
 
 /** 단원을 열었다(「이어서 하기」용) */

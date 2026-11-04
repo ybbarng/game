@@ -2766,3 +2766,23 @@ button {
     animation: none;
   }
 }
+
+/* 큐브 배우기: 힌트·꼬리표가 살짝 떠오르며 나타난다(움직임 줄이기면 그냥 보인다) */
+@keyframes cube-rise {
+  from {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.cube-rise {
+  animation: cube-rise 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-rise {
+    animation: none;
+  }
+}

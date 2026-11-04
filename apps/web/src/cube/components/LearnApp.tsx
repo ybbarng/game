@@ -23,7 +23,9 @@ import {
   loadLearn,
   markLessonDone,
   markLessonOpened,
+  markStepSeen,
   markTryPassed,
+  resumeStep,
 } from "../learn/progress";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
@@ -101,6 +103,8 @@ export function LearnApp() {
 
 function CourseList({ progress }: { progress: LearnProgress }) {
   const last = progress.last ? findLesson(progress.last) : null;
+  // 처음 보이는 크기: 마지막으로 연 단원의 크기, 없으면 3×3
+  const [size, setSize] = useState<number>(() => last?.course.size ?? 3);
   return (
     <>
       <header className="flex flex-wrap items-center gap-3">
@@ -135,15 +139,44 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           이어서 하기: {last.course.title} · {last.lesson.title}
         </a>
       )}
-      {COURSES_BY_SIZE.map(([size, courses]) => (
+      {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
+      <div
+        role="tablist"
+        aria-label="큐브 크기"
+        className="flex gap-1 self-start rounded-xl bg-white/5 p-1"
+      >
+        {COURSES_BY_SIZE.map(([s, courses]) => (
+          <button
+            key={s}
+            type="button"
+            role="tab"
+            aria-selected={s === size}
+            data-size-tab={s}
+            onClick={(e) => {
+              setSize(s);
+              e.currentTarget.blur();
+            }}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm transition active:scale-[0.97]",
+              s === size
+                ? "bg-white/15 font-semibold text-white"
+                : "text-white/60 hover:bg-white/10 hover:text-white",
+            )}
+          >
+            {s}×{s}
+            <span className="ml-1 text-[11px] text-white/45">
+              {courses.length}
+            </span>
+          </button>
+        ))}
+      </div>
+      {COURSES_BY_SIZE.filter(([s]) => s === size).map(([s, courses]) => (
         <section
-          key={size}
-          data-course-size={size}
-          className="flex flex-col gap-2"
+          key={s}
+          data-course-size={s}
+          role="tabpanel"
+          className="cube-rise flex flex-col gap-2"
         >
-          <h2 className="font-bold text-lg">
-            {size}×{size}
-          </h2>
           <CourseGrid courses={courses} progress={progress} />
         </section>
       ))}
@@ -168,10 +201,13 @@ function CourseGrid({
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {courses.map((course) => {
+      {courses.map((course, index) => {
         const done = course.lessons.filter(
           (l) => progress.lessons[l.id]?.done,
         ).length;
+        // 단원 목록은 그 크기의 첫 과정과 손댄 과정만 펼친다(나머지는 눌러서)
+        const open =
+          index === 0 || course.lessons.some((l) => progress.lessons[l.id]);
         // 앞 과정(예: 3×3 초보자)을 다 끝냈고 이 과정은 아직이면 눈에 띄게
         const before = COURSES.find((c) => c.id === course.recommendAfter);
         const recommended =
@@ -237,43 +273,58 @@ function CourseGrid({
                 })}
               </p>
             )}
-            <ol className="flex flex-col gap-1">
-              {course.lessons.map((l, i) => {
-                const p = progress.lessons[l.id];
-                const tries = l.steps.filter((s) => s.kind === "try").length;
-                return (
-                  <li key={l.id}>
-                    <a
-                      href={lessonHref(l.id)}
-                      data-lesson={l.id}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
-                    >
-                      <span
-                        className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
-                          p?.done
-                            ? "bg-emerald-500 text-black"
-                            : "bg-white/10 text-white/70",
-                        )}
+            <details
+              data-course-lessons={course.id}
+              open={open}
+              className="group"
+            >
+              <summary className="flex cursor-pointer list-none items-center gap-1 rounded-lg px-2 py-1 text-white/60 text-xs hover:bg-white/5 hover:text-white">
+                <span
+                  aria-hidden
+                  className="inline-block transition-transform group-open:rotate-90"
+                >
+                  ▸
+                </span>
+                단원 {course.lessons.length}개{done > 0 && ` · ${done}개 끝냄`}
+              </summary>
+              <ol className="flex flex-col gap-1">
+                {course.lessons.map((l, i) => {
+                  const p = progress.lessons[l.id];
+                  const tries = l.steps.filter((s) => s.kind === "try").length;
+                  return (
+                    <li key={l.id}>
+                      <a
+                        href={lessonHref(l.id)}
+                        data-lesson={l.id}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
                       >
-                        {p?.done ? "✓" : i + 1}
-                      </span>
-                      <span className="flex flex-1 flex-col">
-                        <span className="text-sm">{l.title}</span>
-                        <span className="break-keep text-[11px] text-white/50">
-                          {l.summary}
+                        <span
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
+                            p?.done
+                              ? "bg-emerald-500 text-black"
+                              : "bg-white/10 text-white/70",
+                          )}
+                        >
+                          {p?.done ? "✓" : i + 1}
                         </span>
-                      </span>
-                      {tries > 0 && (
-                        <span className="shrink-0 text-[11px] text-white/50">
-                          해보기 {p?.passed.length ?? 0}/{tries}
+                        <span className="flex flex-1 flex-col">
+                          <span className="text-sm">{l.title}</span>
+                          <span className="break-keep text-[11px] text-white/50">
+                            {l.summary}
+                          </span>
                         </span>
-                      )}
-                    </a>
-                  </li>
-                );
-              })}
-            </ol>
+                        {tries > 0 && (
+                          <span className="shrink-0 text-[11px] text-white/50">
+                            해보기 {p?.passed.length ?? 0}/{tries}
+                          </span>
+                        )}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
           </section>
         );
       })}
@@ -293,7 +344,10 @@ function LessonView({
   setProgress: (p: LearnProgress) => void;
 }) {
   const settings = useCubeSettings();
-  const [at, setAt] = useState(0);
+  // 나갔다 들어오면 마지막으로 본 단계로 연다(진도는 단원을 그리기 전에 읽혀 있다)
+  const [at, setAt] = useState(() =>
+    resumeStep(progress, lesson.id, lesson.steps.length),
+  );
   const [masked, setMasked] = useState(true);
   const step = lesson.steps[at] ?? lesson.steps[0];
   const lessonIndex = course.lessons.indexOf(lesson);
@@ -304,6 +358,10 @@ function LessonView({
   useEffect(() => {
     setProgress(markLessonOpened(lesson.id));
   }, [lesson.id]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계를 옮길 때마다 남긴다
+  useEffect(() => {
+    setProgress(markStepSeen(lesson.id, at));
+  }, [lesson.id, at]);
 
   // 이 화면에서 해낸 상호작용 단계(해보기는 진도에 남고, 나머지는 단원을 여는 동안만)
   const [acted, setActed] = useState<number[]>([]);
@@ -341,6 +399,8 @@ function LessonView({
   );
   if (!step || !start) return null;
   const isLast = at === lesson.steps.length - 1;
+  // 단원 마지막 해 보기(「혼자 해 보기 남음」 꼬리표)
+  const lastTry = lesson.steps.findLastIndex((s) => s.kind === "try");
   const hasMask = picture.mask !== undefined && picture.mask !== "all";
   const done =
     !stepIsActive(step) ||
@@ -512,7 +572,11 @@ function LessonView({
               settings={settings}
               arrowKeys
               showKeys={false}
-              onEnd={() => setDemoSeen(true)}
+              onEnd={() => {
+                setDemoSeen(true);
+                // 끝까지 본 시연도 단계 표시를 초록으로
+                markActed();
+              }}
             />
           ))}
         {step.kind === "turn" && step.alg && (
@@ -633,6 +697,20 @@ function LessonView({
               >
                 이 공식 훈련하기: {drillTitle(lesson.drill)}
               </a>
+            )}
+            {next && lastTry >= 0 && !passed.includes(lastTry) && (
+              <button
+                type="button"
+                data-lesson-try-left={lastTry}
+                onClick={(e) => {
+                  setAt(lastTry);
+                  e.currentTarget.blur();
+                }}
+                title="단원 마지막 해 보기로 가기"
+                className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
+              >
+                혼자 해 보기 남음
+              </button>
             )}
             {next && (
               <a

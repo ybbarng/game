@@ -1198,7 +1198,7 @@ const llCornerTwist: Lesson = {
     },
     {
       kind: "try",
-      body: "꼭짓점 자리까지 맞은 큐브를 끝내요. 축하해요, 큐브를 다 맞췄어요!",
+      body: "꼭짓점 자리까지 맞은 큐브를 끝까지 맞춰요. 이것까지 맞추면 큐브 하나를 처음부터 끝까지 맞추는 길을 다 배운 거예요.",
       setup: { rule: "ll-corners-placed" },
       goal: "solved",
     },

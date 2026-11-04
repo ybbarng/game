@@ -7,6 +7,7 @@ import { courseById } from "./index";
 import { goalMet, stepStart } from "./judge";
 import {
   BEGINNER_FINALE_ID,
+  BEGINNER_TAUGHT,
   beginnerStages,
   finaleHint,
   finaleReached,
@@ -56,6 +57,8 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
 
   it("일곱 단계의 단원·목표가 배우는 방식 단계와 같은 차례다", () => {
     expect(stages.map((st) => st.title)).toHaveLength(TAUGHT_STAGES.length);
+    // 화면이 처음 그릴 때 쓰는 가벼운 표가 cube-ai 차례와 같다
+    expect(BEGINNER_TAUGHT).toEqual(TAUGHT_STAGES);
     stages.forEach((st, i) => {
       const lesson = lessonOf(st.lessons[0] as string);
       expect(taughtHintKind(lesson, randomTry(lesson))).toBe(TAUGHT_STAGES[i]);

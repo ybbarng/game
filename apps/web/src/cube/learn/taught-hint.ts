@@ -14,33 +14,23 @@ import { applyMoves, isSolved, parseMoves } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { courseById } from "./index";
-import { goalMet, stepIsRandom } from "./judge";
-import type { Course, CourseStage, Lesson, LessonStep } from "./types";
+import { goalMet } from "./judge";
+import { BEGINNER_COURSE_ID } from "./taught-kind";
+import type { Course, CourseStage } from "./types";
 
-export const BEGINNER_COURSE_ID = "333-beginner";
-export const BEGINNER_FINALE_ID = `${BEGINNER_COURSE_ID}-finale`;
+export {
+  BEGINNER_FINALE_ID,
+  BEGINNER_TAUGHT,
+  taughtHintKind,
+} from "./taught-kind";
 
-/** 3×3 초보자 과정의 일곱 단계(단계 지도 자료)와 배우는 방식 단계 이름. 차례가 같다 */
+/** 3×3 초보자 과정의 일곱 단계(단계 지도 자료). 차례가 `TAUGHT_STAGES`와 같다 */
 export function beginnerStages(): {
   course: Course;
   stages: CourseStage[];
 } {
   const course = courseById(BEGINNER_COURSE_ID) as Course;
   return { course, stages: course.stages ?? [] };
-}
-
-/** 이 해 보기의 힌트 방식: 한 단계(단원의 무작위 해 보기), 마무리(지금 단계를 스스로 찾음), 없음 */
-export function taughtHintKind(
-  lesson: Lesson,
-  step: LessonStep,
-): TaughtStage | "finale" | null {
-  if (step.kind !== "try" || step.alg || !stepIsRandom(step)) return null;
-  if (lesson.id === BEGINNER_FINALE_ID) return "finale";
-  const { stages } = beginnerStages();
-  const i = stages.findIndex(
-    (st) => st.lessons.includes(lesson.id) && st.goal === step.goal,
-  );
-  return i >= 0 ? (TAUGHT_STAGES[i] ?? null) : null;
 }
 
 const keyOf = (s: PuzzleState) => toFacelets(3, s);

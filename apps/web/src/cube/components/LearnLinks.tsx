@@ -26,6 +26,9 @@ const linkClass =
 /** 과정 마지막 단원의 마지막 단계에 보이는 「다음에 할 것」 */
 export function CourseNext({ course }: { course: Course }) {
   const next = nextCourses(course);
+  // 다음 과정 셋이 같은 무게면 무엇부터 할지 헷갈린다: 「이 과정 뒤 추천」으로 둔 과정(없으면 첫째)만 강조
+  const recommended =
+    next.find((c) => c.recommendAfter === course.id) ?? next[0];
   const drills = [
     ...new Set(course.lessons.flatMap((l) => (l.drill ? [l.drill] : []))),
   ];
@@ -43,16 +46,29 @@ export function CourseNext({ course }: { course: Course }) {
         <div className="flex flex-col gap-1.5">
           <h3 className="text-white/60 text-xs">다음 과정</h3>
           <div className="flex flex-wrap gap-2">
-            {next.map((c) => (
-              <a
-                key={c.id}
-                data-next-course={c.id}
-                href={lessonHref(c.lessons[0]?.id ?? "")}
-                className="rounded-lg bg-sky-500 px-3 py-1.5 font-semibold text-black text-sm"
-              >
-                {c.title} →
-              </a>
-            ))}
+            {next.map((c) => {
+              const pick = c.id === recommended?.id;
+              return (
+                <a
+                  key={c.id}
+                  data-next-course={c.id}
+                  data-next-recommended={pick ? "" : undefined}
+                  href={lessonHref(c.lessons[0]?.id ?? "")}
+                  className={
+                    pick
+                      ? "flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-1.5 font-semibold text-black text-sm transition active:scale-[0.97]"
+                      : linkClass
+                  }
+                >
+                  {pick && (
+                    <span className="rounded-full bg-black/15 px-1.5 text-[11px]">
+                      추천
+                    </span>
+                  )}
+                  {c.title} →
+                </a>
+              );
+            })}
           </div>
         </div>
       )}

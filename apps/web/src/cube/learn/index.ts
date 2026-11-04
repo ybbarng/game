@@ -68,7 +68,7 @@ export const COURSES: Course[] = [
       "꼭짓점 자리",
       "꼭짓점 방향",
     ],
-    drill: "2look-oll",
+    // 공식 훈련 묶음은 잇지 않는다: 2단계 OLL(10)은 이 과정에서 안 배운 공식이 대부분이다(다음 과정 CFOP에서)
   }),
   withFinale(staged(BEGINNER_222), {
     rule: "2x2-random",
@@ -78,7 +78,7 @@ export const COURSES: Course[] = [
   withFinale(staged(FROM_333_222), {
     rule: "2x2-random",
     stages: ["첫 층", "꼭짓점 자리", "꼭짓점 방향"],
-    drill: "ortega-oll",
+    // 오르테가 OLL은 이 과정에서 배우지 않는다(2×2 처음 맞추기의 오르테가 단원에서)
   }),
   withFinale(staged(CFOP_INTRO), {
     rule: "random-cross",

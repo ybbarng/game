@@ -117,6 +117,105 @@ export function StageHeader({
   );
 }
 
+/**
+ * 마무리 해 보기의 진행 띠(docs/47 8-1): 지금 큐브가 몇 단계까지 맞았는지(`reached`, 이미 있는 목표 판정)와
+ * 지금 할 단계. 칸마다 그 단원으로 가는 링크(「다시 보기」), 흰 면 위에서 하는 단계 표시와 뒤집기 안내.
+ * `upTo`: 흰 면을 위로 들고 하는 단계 수(3×3 초보자는 흰 십자·첫 층 꼭짓점 둘)
+ */
+export function StageProgress({
+  course,
+  reached,
+  upTo,
+}: {
+  course: Course;
+  reached: number;
+  upTo: number;
+}) {
+  const stages = course.stages ?? [];
+  const all = reached >= stages.length;
+  const now = stages[Math.min(reached, stages.length - 1)];
+  const review = now?.lessons[0];
+  return (
+    <nav
+      aria-label="맞춘 단계"
+      data-finale-progress={reached}
+      className="flex w-full max-w-xl flex-col gap-1.5"
+    >
+      <ol className="grid grid-cols-4 gap-1 sm:grid-cols-7">
+        {stages.map((st, i) => {
+          const done = i < reached;
+          const current = i === reached;
+          const first = st.lessons[0];
+          return (
+            <li
+              key={st.title}
+              data-finale-cell={i}
+              data-done={done ? "" : undefined}
+              aria-current={current ? "step" : undefined}
+            >
+              <a
+                href={first ? `/cube/learn?lesson=${first}` : undefined}
+                aria-label={`${i + 1}단계 ${st.title}${done ? "(맞음)" : ""} 단원 다시 보기`}
+                title="이 단원 다시 보기"
+                className={cn(
+                  "flex h-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-center text-[11px] leading-tight",
+                  current
+                    ? "bg-sky-500 font-bold text-black"
+                    : done
+                      ? "bg-emerald-500/30 text-emerald-100 hover:bg-emerald-500/40"
+                      : "bg-white/10 text-white/60 hover:bg-white/15",
+                )}
+              >
+                <span>{done ? "✓" : i + 1}</span>
+                <span className="break-keep">{st.title}</span>
+                {i < upTo && (
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      current ? "text-black/70" : "text-white/45",
+                    )}
+                  >
+                    흰 면 위
+                  </span>
+                )}
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+      <p
+        className="flex flex-wrap items-center justify-center gap-x-2 text-center text-white/70 text-xs"
+        data-finale-now
+      >
+        {all ? (
+          <span>일곱 단계를 다 맞췄어요</span>
+        ) : (
+          <>
+            <span>
+              지금 {reached + 1}단계 · {now?.title}
+            </span>
+            {review && (
+              <a
+                data-finale-review={review}
+                href={`/cube/learn?lesson=${review}`}
+                className="text-sky-300 underline hover:text-sky-200"
+              >
+                이 단원 다시 보기 →
+              </a>
+            )}
+          </>
+        )}
+      </p>
+      {upTo > 0 && (
+        <p className="break-keep text-center text-[11px] text-white/45">
+          1~{upTo}단계는 흰 면을 위로 들고 해요. 첫 층이 끝나면 큐브를
+          뒤집어(z2) 흰 면을 아래로 두고 나머지를 해요.
+        </p>
+      )}
+    </nav>
+  );
+}
+
 /** 지도 단원의 그림 띠. `active`가 있으면 그 칸을 밝히고, `onPick`이 있으면 칸을 눌러 고른다 */
 export function StageStrip({
   course,
