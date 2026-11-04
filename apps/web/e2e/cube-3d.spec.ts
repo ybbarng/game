@@ -108,6 +108,57 @@ test("3D: 첫 화면 연출(CubeHero)", async ({ page }, info) => {
   ).toBe(true);
 });
 
+test("3D: 첫 화면 연출이 숨었다 돌아와 WebGL 문맥을 잃었으면 대기 그림을 보이고 새로 띄운다", async ({
+  page,
+}, info) => {
+  await only(page, info.project.name);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/cube");
+  const hero = page.locator("[data-cube-hero]");
+  await expect(page.locator("[data-cube-hero][data-hero-shown]")).toBeVisible(
+    SCENE,
+  );
+  // 창 최소화를 흉내: 탭을 숨기고, 숨은 사이에 브라우저가 WebGL 문맥을 버린다
+  const setHidden = (hidden: boolean) =>
+    page.evaluate((h) => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => h,
+      });
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => (h ? "hidden" : "visible"),
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    }, hidden);
+  await setHidden(true);
+  await page.evaluate(() => {
+    const canvas = document.querySelector(
+      "[data-cube-hero] canvas",
+    ) as HTMLCanvasElement | null;
+    const gl = canvas?.getContext("webgl2") ?? canvas?.getContext("webgl");
+    const ext = gl?.getExtension("WEBGL_lose_context");
+    if (!ext) throw new Error("문맥을 버릴 수 없다");
+    ext.loseContext();
+  });
+  // 큐브가 사라진 채 꼬리표만 넘어가지 않게 연출을 치우고 대기 그림(맞춘 큐브)을 다시 보인다.
+  // 받는 중인 이미지는 투명하게 두어 깨진 이미지 표시가 보이지 않는다
+  await expect(hero).not.toHaveAttribute("data-hero-ready");
+  await expect(hero.locator("[data-hero-poster]").first()).toBeVisible();
+  for (const opacity of await hero
+    .locator("img[data-hero-poster]:not([data-hero-poster-ready])")
+    .evaluateAll((els) => els.map((e) => getComputedStyle(e).opacity)))
+    expect(opacity).toBe("0");
+  await expect(hero.locator("[data-hero-label]")).toHaveText("");
+  // 돌아오면 새 캔버스로 다시 띄우고 섞기부터 이어 간다
+  await setHidden(false);
+  await expect(page.locator("[data-cube-hero][data-hero-shown]")).toBeVisible(
+    SCENE,
+  );
+  await expect(hero.locator("[data-hero-poster]")).toHaveCount(0);
+  await expect(hero.locator("[data-hero-label]")).not.toHaveText("");
+});
+
 test("3D: 뒷면 거울 판이 생기고, 판 칸을 눌러 뒤쪽 조각을 찾는다", async ({
   page,
 }, info) => {

@@ -88,11 +88,17 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     "/cube/settings",
   );
   // 위 그림: 시험은 움직임 줄이기라 연출 없이 대기 그림(3D 첫 장면을 찍은 이미지)만(3D를 띄우지도 기다리지도 않는다)
-  const poster = page.locator("[data-cube-hero] img[data-hero-poster='image']");
+  const poster = page.locator(
+    "[data-cube-hero] img[data-hero-poster='image'][data-hero-poster-ready]",
+  );
   await expect(poster).toBeVisible();
-  await expect
-    .poll(() => poster.evaluate((el) => (el as HTMLImageElement).naturalWidth))
-    .toBeGreaterThan(0);
+  expect(
+    await poster.evaluate((el) => (el as HTMLImageElement).naturalWidth),
+  ).toBeGreaterThan(0);
+  // 이미지가 뜨면 받는 동안 대신 보이던 SVG는 치운다
+  await expect(
+    page.locator("[data-cube-hero] [data-hero-poster='svg']"),
+  ).toHaveCount(0);
   await expect(page.locator("[data-cube-hero] canvas")).toHaveCount(0);
   expect(
     await page.evaluate(
@@ -167,6 +173,24 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
       writeFileSync(`test-results/screens/${file}`, await res.body());
     }
   }
+});
+
+test("첫 화면 큐브: 대기 이미지를 못 받으면 깨진 이미지 대신 같은 각도의 SVG를 보인다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만");
+  await no3d(page);
+  // 창을 최소화했다 돌아와 다시 불러올 때 연결이 끊겨 있던 것처럼 이미지 받기를 실패시킨다
+  // (화면 코드가 붙기 전에 실패해 onError를 놓치는 길도 함께 탄다)
+  await page.route("**/cube/hero/*.webp", (route) => route.abort("failed"));
+  await page.goto("/cube");
+  await expect(
+    page.locator("[data-cube-hero] [data-hero-poster='svg'] svg"),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-cube-hero] img[data-hero-poster]"),
+  ).toHaveCount(0);
+  await shot(page, "hero-poster-failed", info.project.name);
 });
 
 test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 고를 수 있다", async ({
