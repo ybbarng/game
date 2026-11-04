@@ -25,5 +25,6 @@ function testNo3d(): boolean {
 
 export type { CubeView } from "./cube-view";
 export * from "./geometry";
+export * from "./mirror";
 export * from "./swipe";
 export * from "./types";

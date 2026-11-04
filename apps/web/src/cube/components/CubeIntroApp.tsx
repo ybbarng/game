@@ -752,28 +752,88 @@ const LOOK_STEP: LessonStep = {
   look: { color: "F", on: "U" },
 };
 
+/** 뒤에 숨은 세 면(아래 D, 왼쪽 L, 뒤 B)의 면 번호. 거울 판 차례(뒤·왼쪽·아래)로 묻는다 */
+const BACK_FACES = [5, 4, 3] as const;
+
 function ViewStep({ onDone }: { onDone: () => void }) {
   const settings = useCubeSettings();
   const start = useMemo(() => solvedCube(3), []);
+  const back = settings.backView;
+  const where = back === "mirror" ? "거울" : "펼친 그림";
+  // 뒷면 보기를 끈 사람은 뒤 면 찾기를 건너뛴다
+  const [seen, setSeen] = useState<number[]>([]);
+  const [miss, setMiss] = useState<string | null>(null);
+  const backDone = back === "off" || seen.length >= BACK_FACES.length;
+  const ask = BACK_FACES.find((f) => !seen.includes(f));
   return (
     <>
       <ul className="flex list-disc flex-col gap-1 break-keep pl-5 text-sm text-white/80">
         <li>큐브를 끌면 보는 각만 바뀌어요(큐브는 돌지 않아요).</li>
-        <li>큐브 곁의 펼친 그림으로 뒤·아래 면도 한눈에 봐요.</li>
+        {back === "mirror" ? (
+          <li data-intro-mirror>
+            큐브 둘레의 작은 판 셋은 거울이에요. 안 보이는 뒤(오른쪽
+            위)·왼쪽·아래 면이 비쳐 보여요. 거울에 비친 모습이라 큐브 모서리와
+            판의 칸이 바로 이어져요. 큐브를 둘러보는 동안에는 판이 흐려져요.
+          </li>
+        ) : back === "net" ? (
+          <li>큐브 곁의 펼친 그림으로 뒤·아래 면도 한눈에 봐요.</li>
+        ) : null}
         <li>휴대폰은 칸 위를 밀면 그 줄이, 빈 곳을 밀면 큐브 전체가 돌아요.</li>
+        <li>
+          뒷면 보기(거울·펼친 그림·끔)는{" "}
+          <a href="/cube/settings" className="underline">
+            설정
+          </a>
+          에서 바꿔요.
+        </li>
       </ul>
-      <p className="break-keep text-sm">
-        해 봐요: 초록 면이 위로 오게 큐브 전체를 돌려 보세요(x, 또는 빈 곳을
-        위로 밀기).
-      </p>
-      <LookPanel
-        lesson={LOOK_LESSON}
-        step={LOOK_STEP}
-        start={start}
-        mask={null}
-        settings={settings}
-        onPassed={onDone}
-      />
+      {!backDone ? (
+        <>
+          <p
+            className="break-keep text-sm"
+            role="status"
+            data-intro-back={ask === undefined ? "done" : FACE_NAME[ask]}
+          >
+            {miss ??
+              `해 봐요: ${where}에서 ${FACE_NAME[ask ?? 5]} 면의 칸을 눌러 보세요.`}
+          </p>
+          <StillCube
+            n={3}
+            state={start}
+            mask={null}
+            settings={settings}
+            marks={faceMarks(seen, "right")}
+            onSticker={(sticker) => {
+              if (ask === undefined) return;
+              const face = Math.floor(sticker / 9);
+              if (face === ask) {
+                setMiss(null);
+                setSeen((s) => [...s, face]);
+              } else
+                setMiss(
+                  `그건 ${FACE_NAME[face]} 면이에요. ${FACE_NAME[ask]} 면은 ${where}에서 찾아요.`,
+                );
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <p className="break-keep text-sm">
+            해 봐요: 초록 면이 위로 오게 큐브 전체를 돌려 보세요(x, 또는 빈 곳을
+            위로 밀기).
+            {back === "mirror" &&
+              " 큐브를 돌리면 거울에는 그때 안 보이는 면이 비쳐요."}
+          </p>
+          <LookPanel
+            lesson={LOOK_LESSON}
+            step={LOOK_STEP}
+            start={start}
+            mask={null}
+            settings={settings}
+            onPassed={onDone}
+          />
+        </>
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
-import { no3d } from "./cube";
+import { no3d, useBackView } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -42,6 +42,8 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     "배치가 세로 휴대폰과 같다",
   );
   await no3dUnlessShots(page);
+  // 3D를 켠 로컬 스크린샷에서도 펼친 그림 칸을 누른다(기본 뒷면 보기는 거울)
+  await useBackView(page, "net");
   await page.addInitScript(() =>
     sessionStorage.setItem("mighty-splash-seen", "1"),
   );
@@ -168,6 +170,8 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
 }, info) => {
   test.skip(info.project.name !== "desktop", "데스크톱에서만");
   await no3dUnlessShots(page);
+  // 3D를 켠 로컬 스크린샷에서도 펼친 그림 칸을 누른다(기본 뒷면 보기는 거울)
+  await useBackView(page, "net");
   await page.goto("/cube/settings");
   const hero = page.locator("[data-settings-hero]");
   await hero.locator("[data-hero-method='3-cfop']").click();
@@ -204,6 +208,8 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
 
 test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로에서만");
+  // 큐브 전체 돌리기를 곁의 펼친 그림으로 본다(기본 뒷면 보기는 거울)
+  await useBackView(page, "net");
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
   await expect(main).toHaveAttribute("data-cube-phase", "free");

@@ -23,6 +23,22 @@ export async function no3d(
   });
 }
 
+/**
+ * 뒷면 보기 설정(`cube.settings.v1`의 `backView`). 기본은 거울이라, 3D를 켠 채(로컬 스크린샷 등) 펼친 그림 칸을
+ * 누르거나 읽는 시험은 「펼친 그림」으로 둔다
+ */
+export async function useBackView(
+  page: Pick<Page, "addInitScript">,
+  back: "mirror" | "net" | "off",
+): Promise<void> {
+  await page.addInitScript((b) => {
+    const raw = localStorage.getItem("cube.settings.v1");
+    const s = raw ? JSON.parse(raw) : { version: 1 };
+    s.backView = b;
+    localStorage.setItem("cube.settings.v1", JSON.stringify(s));
+  }, back);
+}
+
 /** 가짜 시계의 시작 시각(2026-01-01 00:00 UTC). 멈출 시각을 이것에서 정해, 페이지에서 시각을 다시 읽지 않는다 */
 export const CLOCK_START = Date.UTC(2026, 0, 1);
 /** 시작에서 멈출 때까지 넉넉한 틈. 느린 CI에서 화면을 띄우고 섞기를 받는 데 걸리는 시간보다 훨씬 길다 */

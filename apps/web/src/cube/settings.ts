@@ -36,6 +36,14 @@ export const COLOR_SCHEMES: Record<
   colorblind: [0xffffff, 0xd55e00, 0x009e73, 0xf0e442, 0xe69f00, 0x0072b2],
 };
 
+export type BackView = "mirror" | "net" | "off";
+
+export const BACK_VIEW_LABEL: Record<BackView, string> = {
+  mirror: "거울",
+  net: "펼친 그림",
+  off: "끔",
+};
+
 export interface CubeSettings {
   version: 1;
   colorScheme: ColorScheme;
@@ -62,6 +70,11 @@ export interface CubeSettings {
   keyPairs: boolean;
   /** 키 그림에 가운데 줄 손가락 자리(검지·중지·약지·새끼)를 옅게 겹친다(2026-11-04, 기본 켬) */
   keyFingers: boolean;
+  /**
+   * 뒷면 보기(2026-11-04, 기본 거울): 안 보이는 세 면(뒤·왼쪽·아래)을 큐브 둘레에 떠 있는 거울 판으로, 또는 곁의
+   * 펼친 그림으로 보인다. 끄면 큐브만. 3D를 못 그리는 기기는 늘 펼친 그림
+   */
+  backView: BackView;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -82,6 +95,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   keyColors: true,
   keyPairs: true,
   keyFingers: true,
+  backView: "mirror",
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -156,6 +170,10 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     keyColors: bool(d.keyColors, DEFAULT_SETTINGS.keyColors),
     keyPairs: bool(d.keyPairs, DEFAULT_SETTINGS.keyPairs),
     keyFingers: bool(d.keyFingers, DEFAULT_SETTINGS.keyFingers),
+    backView:
+      d.backView === "net" || d.backView === "off" || d.backView === "mirror"
+        ? d.backView
+        : DEFAULT_SETTINGS.backView,
     heroSize,
     heroMethod,
   };

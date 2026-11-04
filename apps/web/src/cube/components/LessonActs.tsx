@@ -50,7 +50,7 @@ import { CubeHero } from "./CubeHero";
 import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { MoveChip, useMoveKeys } from "./MoveChip";
-import { StageWithNet } from "./StageWithNet";
+import { StageWithNet, useBackView } from "./StageWithNet";
 
 /**
  * 배우기 단계의 상호작용(docs/47 8-1·8-4): 정지 그림(글), 조각 찾기·세기, 고르기 문제, 둘러보기, 한 수 해 보기,
@@ -83,6 +83,11 @@ export function StillCube({
   const [failed, setFailed] = useState(false);
   const live = useRef({ state, mask, onSticker, marks });
   live.current = { state, mask, onSticker, marks };
+  const back = useBackView(settings.backView, !failed);
+  const mirror = back.mode === "mirror";
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirror);
+  }, [mirror, ready]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -159,9 +164,10 @@ export function StillCube({
         </div>
       ) : (
         <StageWithNet
-          maxWidth={360}
-          // 뒤쪽 칸도 고를 수 있게 펼친 그림을 곁에 둔다
-          net={net}
+          boxRef={back.ref}
+          maxWidth={mirror ? 440 : 360}
+          // 뒤쪽 칸도 고를 수 있게 거울 판이나 펼친 그림을 둔다
+          net={back.mode === "net" ? net : null}
           stage={
             <div className="relative aspect-square w-full">
               <canvas
@@ -181,7 +187,11 @@ export function StillCube({
       )}
       <p className="text-white/50 text-xs">
         {onSticker
-          ? "큐브나 펼친 그림에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
+          ? back.mode === "mirror"
+            ? "큐브나 거울에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
+            : back.mode === "net"
+              ? "큐브나 펼친 그림에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
+              : "큐브에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
           : "끌면 큐브를 둘러볼 수 있어요."}
       </p>
     </div>

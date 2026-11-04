@@ -4,6 +4,7 @@ import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { backViewText } from "../back-view";
 import {
   type BesideCube,
   COURSES,
@@ -508,7 +509,7 @@ function LessonView({
             ))
           ) : (
             <MoveText
-              text={step.body}
+              text={backViewText(step.body, settings.backView)}
               n={lesson.size}
               letters={lesson.id.startsWith("bld")}
             />
