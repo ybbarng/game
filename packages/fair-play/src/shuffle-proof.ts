@@ -109,27 +109,34 @@ export async function nonceCommit(nonce: string): Promise<string> {
   return (await hash(["nc", nonce])).toString(16);
 }
 
-async function secretsOf(
+export async function secretsOf(
   g: SraGroup,
   e: bigint,
   l: ShuffleLabel,
   r: number,
   n: number,
 ): Promise<{ sigma: number[]; t: bigint }> {
-  const h = await hash(["t", e, ...labelParts(l), r]);
+  const lp = labelParts(l);
+  const short = g.q > 1n << T_BITS;
+  // 해시는 모두 e·이름·회 번호·자리에서만 정해져 서로 기대지 않으므로 한꺼번에 기다린다.
+  // 섞기(뒤에서부터 맞바꾸기)는 받은 해시로 원래 순서대로 한다.
+  const [h, h2, swaps] = await Promise.all([
+    hash(["t", e, ...lp, r]),
+    short ? 0n : hash(["t2", e, ...lp, r]),
+    Promise.all(
+      Array.from({ length: Math.max(n - 1, 0) }, (_, k) =>
+        hash(["s", e, ...lp, r, n - 1 - k]),
+      ),
+    ),
+  ]);
   // 곱셈군은 q가 커서 짧은 t(해시 그대로)를 쓴다. 타원곡선은 q가 해시보다 작아, 해시 둘(512비트)을
   // 이어 q 안으로 줄여 고르게 뽑는다(D = g^(e/t)가 e를 드러내지 않게).
-  const t =
-    g.q > 1n << T_BITS
-      ? 1n + (h % (1n << T_BITS))
-      : 1n +
-        (((h << 256n) | (await hash(["t2", e, ...labelParts(l), r]))) %
-          (g.q - 1n));
+  const t = short
+    ? 1n + (h % (1n << T_BITS))
+    : 1n + (((h << 256n) | h2) % (g.q - 1n));
   const sigma = Array.from({ length: n }, (_, i) => i);
   for (let i = n - 1; i > 0; i--) {
-    const j = Number(
-      (await hash(["s", e, ...labelParts(l), r, i])) % BigInt(i + 1),
-    );
+    const j = Number((swaps[n - 1 - i] as bigint) % BigInt(i + 1));
     [sigma[i], sigma[j]] = [sigma[j] as number, sigma[i] as number];
   }
   return { sigma, t };
@@ -158,8 +165,14 @@ export async function commitShuffle(
     sigmas: [],
     ts: [],
   };
+  // 회마다의 비밀(σ·t)은 서로 기대지 않으므로 해시를 한꺼번에 기다린다
+  const secrets = await Promise.all(
+    Array.from({ length: SHUFFLE_ROUNDS }, (_, r) =>
+      secretsOf(g, e, l, r, input.length),
+    ),
+  );
   for (let r = 0; r < SHUFFLE_ROUNDS; r++) {
-    const { sigma, t } = await secretsOf(g, e, l, r, input.length);
+    const { sigma, t } = secrets[r] as { sigma: number[]; t: bigint };
     const z: bigint[] = [];
     for (const [j, from] of sigma.entries()) {
       z.push(g.pow(input[from] as bigint, t));
@@ -281,15 +294,18 @@ function isPermutation(list: unknown, n: number): list is number[] {
 }
 
 /** 가중치(64비트). 확인하는 값 모두의 해시에서 정한다 */
-async function weights(
+export async function weights(
   parts: readonly (string | number | bigint)[],
   n: number,
 ) {
   const seed = await hash(parts);
-  const out: bigint[] = [];
-  for (let i = 0; i < n; i++)
-    out.push((await hash([seed, i])) & 0xffff_ffff_ffff_ffffn);
-  return out;
+  // 자리마다의 해시는 서로 기대지 않으므로 한꺼번에 기다린다(결과는 자리 순서 그대로)
+  return Promise.all(
+    Array.from(
+      { length: n },
+      async (_, i) => (await hash([seed, i])) & 0xffff_ffff_ffff_ffffn,
+    ),
+  );
 }
 
 /**
