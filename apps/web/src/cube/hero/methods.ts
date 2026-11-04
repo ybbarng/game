@@ -1,6 +1,8 @@
 import type { HumanSolve } from "@game/cube-ai";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import type { HeroView } from "./present";
+
 /**
  * 첫 화면 큐브 연출이 쓰는 해법 표. 설정 화면(「첫 화면 큐브」)과 연출이 모두 이 표만 본다.
  * 새 해법(예: 4×4 야우, 풀이 함수가 생기면)을 더하려면 `HERO_METHODS`에 한 줄을 더하면 된다:
@@ -10,6 +12,10 @@ import type { PuzzleState } from "@game/puzzle-core";
  * - `solve`는 워커 안에서 부른다(`worker/jobs.ts`의 `hero` 일). 무거운 해법 패키지는 여기서 늦게 불러와,
  *   이 표를 읽는 설정 화면 묶음에 싣지 않는다. 못 풀면 던진다(연출은 그 판을 건너뛰고 다시 섞는다).
  * - 단계 이름은 `HumanSolve.stages`의 `name`을 `STAGE_LABELS`로 바꿔 꼬리표에 쓴다.
+ * - `view`는 화면에 보이는 방향 규칙(`present.ts`): 첫 층을 위에서 보일 단계(`up`), y2로 돌려 보일 단계
+ *   (`mirror`). 넣는 단계는 늘 넣을 칸을 앞-오른쪽으로 돌려 보인다. 해법이 낸 수는 바꾸지 않는다.
+ * - 초보자 해법은 배우기에서 가르치는 방식(흰 면 위 십자·첫 층, `{ taught: true }`)으로 푼다.
+ *   컴퓨터 대결은 이 선택지를 쓰지 않는다.
  */
 
 export type HeroSize = 2 | 3 | 4 | 5;
@@ -23,7 +29,14 @@ export interface HeroMethodDef {
   /** 설정·꼬리표에 보이는 이름 */
   label: string;
   solve: (state: PuzzleState) => Promise<HumanSolve>;
+  view: HeroView;
 }
+
+const TAUGHT = { taught: true } as const;
+/** 배우는 방식: 흰 십자와 첫 층 꼭짓점을 위에서, 끝나면 z2 */
+const TAUGHT_VIEW: HeroView = { up: ["cross", "corners"] };
+/** 프리드리히: 십자를 위에서 보이고 뒤집어, F2L은 맞춘 면 아래 */
+const CROSS_VIEW: HeroView = { up: ["cross"] };
 
 const ai = () => import("@game/cube-ai");
 
@@ -32,61 +45,75 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     id: "2-beginner",
     size: 2,
     label: "초보자 해법",
-    solve: async (s) => (await ai()).solveBeginner2(s),
+    solve: async (s) => (await ai()).solveBeginner2(s, TAUGHT),
+    view: { up: ["first-layer"] },
   },
   {
     id: "2-algs",
     size: 2,
     label: "공식 해법",
     solve: async (s) => (await ai()).solveIntermediate2(s),
+    view: {},
   },
   {
     id: "3-beginner",
     size: 3,
     label: "초보자 해법",
-    solve: async (s) => (await ai()).solveBeginner3(s),
+    solve: async (s) => (await ai()).solveBeginner3(s, TAUGHT),
+    view: TAUGHT_VIEW,
   },
   {
     id: "3-cfop",
     size: 3,
     label: "프리드리히",
     solve: async (s) => (await ai()).solveCfop(s),
+    view: CROSS_VIEW,
   },
   {
     id: "3-roux",
     size: 3,
     label: "루",
     solve: async (s) => (await ai()).solveRoux(s),
+    // 첫 블록은 왼쪽 아래라 카메라(위-앞-오른쪽)에서 가려진다: y2로 돌려 오른쪽에 보이고 되돌린다
+    view: { mirror: ["fb"] },
   },
   {
     id: "3-zz",
     size: 3,
     label: "ZZ",
     solve: async (s) => (await ai()).solveZZ(s),
+    // 왼쪽 블록도 같은 까닭으로 y2
+    view: { mirror: ["zz-left"] },
   },
   {
     id: "4-beginner",
     size: 4,
     label: "축소법(초보자)",
-    solve: async (s) => (await ai()).solveHuman("beginner", 4, s),
+    solve: async (s) =>
+      (await ai()).solveHuman("beginner", 4, s, undefined, TAUGHT),
+    view: TAUGHT_VIEW,
   },
   {
     id: "4-cfop",
     size: 4,
     label: "축소법(프리드리히)",
     solve: async (s) => (await ai()).solveHuman("advanced", 4, s),
+    view: CROSS_VIEW,
   },
   {
     id: "5-beginner",
     size: 5,
     label: "축소법(초보자)",
-    solve: async (s) => (await ai()).solveHuman("beginner", 5, s),
+    solve: async (s) =>
+      (await ai()).solveHuman("beginner", 5, s, undefined, TAUGHT),
+    view: TAUGHT_VIEW,
   },
   {
     id: "5-cfop",
     size: 5,
     label: "축소법(프리드리히)",
     solve: async (s) => (await ai()).solveHuman("advanced", 5, s),
+    view: CROSS_VIEW,
   },
 ];
 
@@ -123,18 +150,26 @@ export interface HeroSolve {
   looks: number[];
 }
 
-/** 표의 해법으로 풀어 꼬리표를 붙인다(워커 안에서). 표에 없는 해법이면 던진다 */
+/**
+ * 표의 해법으로 풀고 보여 주기 변환(`present.ts`)을 거쳐 꼬리표를 붙인다(워커 안에서).
+ * 표에 없는 해법이면 던진다
+ */
 export async function solveForHero(
   methodId: string,
   state: PuzzleState,
 ): Promise<HeroSolve> {
   const def = findHeroMethod(methodId);
   if (!def) throw new Error(`모르는 해법: ${methodId}`);
-  const [solve, { STAGE_LABELS }] = await Promise.all([def.solve(state), ai()]);
+  const [raw, { STAGE_LABELS }, { presentSolve }] = await Promise.all([
+    def.solve(state),
+    ai(),
+    import("./present"),
+  ]);
+  const solve = presentSolve(def.size, state, raw, def.view);
   return {
     moves: solve.moves,
     stages: solve.stages.map((s) => ({
-      label: STAGE_LABELS[s.name] ?? s.name,
+      label: STAGE_LABELS[s.name as keyof typeof STAGE_LABELS] ?? s.name,
       start: s.start,
       end: s.end,
     })),

@@ -145,7 +145,11 @@ export function solveSteps(
       if (move === undefined) continue;
       if (i !== stage.start && looks.has(i))
         steps.push({ kind: "wait", ms: t.look, label });
-      steps.push({ kind: "move", move, ms: t.solveMove, label });
+      // 큐브 전체 돌리기(연출이 돌려 쥔 것)는 조금 느리게: 무엇을 했는지 보이게
+      const ms = isRotationToken(move)
+        ? Math.round(t.solveMove * ROTATION_SLOWER)
+        : t.solveMove;
+      steps.push({ kind: "move", move, ms, label });
     }
   }
   steps.push({
@@ -155,6 +159,10 @@ export function solveSteps(
   });
   return steps;
 }
+
+/** 큐브 전체 돌리기는 보통 수보다 이만큼 느리게 */
+export const ROTATION_SLOWER = 1.5;
+const isRotationToken = (move: string) => /^[xyz]/.test(move);
 
 export interface HeroLoopOptions {
   n: HeroSize;

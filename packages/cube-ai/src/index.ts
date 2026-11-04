@@ -6,6 +6,7 @@ export {
   BOT_LEVEL_LABELS,
   BOT_LEVELS,
   type BotLevel,
+  type HumanOptions,
   solveAdvanced2,
   solveBeginner2,
   solveBeginner3,
@@ -24,3 +25,4 @@ export {
   STAGE_LABELS,
   type StageName,
 } from "./solve";
+export { TAUGHT_CORNER_TRIGGER } from "./taught";
