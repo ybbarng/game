@@ -153,22 +153,28 @@ describe("단원 장면이 엔진 규칙과 맞다", () => {
     expect(legalActions(state, 0)).toEqual([{ type: "draw" }]);
   });
 
-  it("잡기: 1초 안에 치면 적어 두고, 1초가 지나면 잡기, 창이 닫힌 뒤면 늦음", () => {
+  it("잡기(o2): 컴퓨터가 한 장이 된 판을 보고 치면 겨루기, 컴퓨터보다 빠르면 잡고, 창이 닫힌 뒤면 늦음", () => {
     const started = runScene(CATCH_SCENE, []).state;
     expect(started.turnNo).toBe(1);
-    expect(judgeShout(started, 0, 1)).toEqual({ kind: "hold", targets: [1] });
-    // 1초 안에 쳐도 컴퓨터가 끝내 안 외치면 1초가 지날 때 잡힌다
-    const held = runScene(CATCH_SCENE, [
-      { type: "shout", seen: 1 },
-      { type: "timeout", kind: "selfWindow", target: 1 },
+    expect(judgeShout(started, 0, 1)).toEqual({
+      kind: "race",
+      saved: false,
+      caught: [1],
+    });
+    const caught = runScene(CATCH_SCENE, [
+      { type: "shout", seen: 1, rt: 300 },
+      { type: "raceEnd" },
     ]);
-    expect(held.events).toContainEqual({ type: "caught", seat: 0, target: 1 });
-    expect(held.state.hands[1]).toHaveLength(2);
-    // 잡기 창(배우기 5초)까지 지나면 벌칙 없이 아무 일 없다
+    expect(caught.events).toContainEqual({
+      type: "caught",
+      seat: 0,
+      target: 1,
+    });
+    expect(caught.state.hands[1]).toHaveLength(2);
+    // 겨루기 창(배우기 5초)까지 지나면 벌칙 없이 아무 일 없다
     const late = runScene(CATCH_SCENE, [
-      { type: "timeout", kind: "selfWindow", target: 1 },
-      { type: "timeout", kind: "catchWindow", target: 1 },
-      { type: "shout", seen: 1 },
+      { type: "timeout", kind: "raceWindow", target: 1 },
+      { type: "shout", seen: 1, rt: 5100 },
     ]);
     expect(late.events.some((e) => e.type === "caught")).toBe(false);
     expect(late.events.some((e) => e.type === "falseShout")).toBe(false);
@@ -190,25 +196,26 @@ describe("단원 장면이 엔진 규칙과 맞다", () => {
     });
   });
 
-  it("외치기: 두 장일 때 치면 미리 외침, 내고 나면 잡을 창이 없다", () => {
-    expect(judgeShout(sceneState(CALL_SCENE), 0, 0)).toEqual({ kind: "pre" });
+  it("외치기(o2): 두 장일 때 미리 치면 헛외침, 내고 나서 치면 안전", () => {
+    expect(judgeShout(sceneState(CALL_SCENE), 0, 0)).toEqual({
+      kind: "false",
+    });
     const called = runScene(CALL_SCENE, [
-      { type: "shout", seen: 0 },
       { type: "play", card: "H5" },
+      { type: "shout", seen: 1, rt: 250 },
+      { type: "raceEnd" },
     ]);
     expect(called.state.called[0]).toBe(true);
     expect(shoutWindows(called.state)).toEqual([]);
     const forgot = runScene(CALL_SCENE, [{ type: "play", card: "H5" }]);
     expect(shoutWindows(forgot.state).map((w) => w.seat)).toEqual([0]);
-    // 두 번 치면 두 번째는 헛외침이라 실패
     const mission = missions.find(([t]) => t === "원카드 외치기")?.[1];
     if (!mission) throw new Error("외치기 미션이 없다");
-    const twice = judge(mission, [
-      { type: "shout", seen: 0 },
+    const early = judge(mission, [
       { type: "shout", seen: 0 },
       { type: "play", card: "H5" },
     ]);
-    expect(twice.status).toBe("fail");
+    expect(early.status).toBe("fail");
   });
 
   it("파산: 먹으면 다시 섞은 뒤 20장이 되어 파산, 받아치면 컴퓨터가 6장", () => {

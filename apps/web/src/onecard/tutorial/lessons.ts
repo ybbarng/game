@@ -50,7 +50,7 @@ function caughtComputer({ view, events }: Context): MissionStatus {
     if (e.type === "caught" && e.seat === me) return "success";
     if (e.type === "falseShout" && e.seat === me) return "fail";
     if (e.type === "shouted" && e.seat === me) pressed = true;
-    // 1초 안에 치고 카드를 내도 1초가 지나면 잡힌다. 치지 않고 내면 실패
+    // 쳐 두고 바로 카드를 내도 모은 누름이 먼저 처리돼 잡힌다. 치지 않고 내면 실패
     if ((e.type === "played" || e.type === "drew") && e.seat === me && !pressed)
       return "fail";
     // 잡지 못한 채 컴퓨터가 다 냈다
@@ -59,17 +59,23 @@ function caughtComputer({ view, events }: Context): MissionStatus {
   return null;
 }
 
-/** 카드를 내기 전에 더미를 쳐 두고 한 장이 되면 성공. 치지 않고 내거나 헛외침이면 실패 */
-function calledBeforePlay({ view, events }: Context): MissionStatus {
+/**
+ * 한 장을 낸 뒤 더미를 쳐 외치면 성공(o2 겨루기: 한 장이 된 화면이 뜬 뒤에 친다). 내기 전에 치면 헛외침이라 실패,
+ * 잡히거나 외치지 않은 채 다음 차례 행동을 해도 실패
+ */
+function calledAfterPlay({ view, events }: Context): MissionStatus {
   const me = view.mySeat;
-  let pressed = false;
+  let played = false;
   for (const e of events) {
     if (e.type === "caught" && e.target === me) return "fail";
     if (!("seat" in e) || e.seat !== me) continue;
     if (e.type === "falseShout") return "fail";
-    if (e.type === "shouted") pressed = true;
-    if (e.type === "played") return pressed ? "success" : "fail";
-    if (e.type === "drew") return "fail";
+    if (e.type === "shouted" && played) return "success";
+    if (e.type === "played" || e.type === "drew") {
+      if (played) return "fail";
+      played = e.type === "played";
+      if (!played) return "fail";
+    }
   }
   return null;
 }
@@ -393,15 +399,15 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
   {
     id: "shout",
     title: "원카드! 외치기와 잡기",
-    summary: "두 장일 때 가운데 더미를 치고, 깜빡한 사람을 잡는다",
+    summary: "한 장이 되면 가장 빨리 더미를 친 사람이 이긴다",
     steps: [
       {
         kind: "explain",
         title: '더미를 치면 "원카드!"',
         body: [
-          '카드가 **두 장**일 때 한 장을 내면 한 장이 남아요. 이때 **가운데 버린 더미를 쳐서** "원카드!"를 외쳐요. PC는 스페이스 키예요.',
+          '카드를 내고 **한 장**이 남으면 **가운데 버린 더미를 쳐서** "원카드!"를 외쳐요. PC는 스페이스 키예요.',
           "더미는 살짝 **누르고 있어야** 쳐져요. 스치기만 해서는 안 쳐져요.",
-          "**카드를 내기 전에** 쳐 두거나, **낸 뒤 1초 안에** 치면 돼요.",
+          "**카드를 낸 뒤에** 치세요. 내기 전에 미리 치면 헛외침이에요.",
         ],
       },
       {
@@ -414,19 +420,20 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
       },
       {
         kind: "explain",
-        title: "깜빡한 사람 잡기",
+        title: "누가 더 빨랐나",
         body: [
-          "누가 한 장이 됐는데 1초 안에 외치지 않으면, 그 뒤 **3초 안에** 더미를 쳐서 **잡을 수** 있어요. 잡힌 사람은 **1장** 먹어요.",
-          "1초 안에 먼저 쳐도 손해는 없어요. 그 사람이 1초 안에 외치면 아무 일 없고, 끝내 안 외치면 잡혀요.",
-          "배우기에서는 잡을 시간을 5초로 넉넉히 줘요.",
+          "누가 한 장이 되면 **3초** 동안 누구나 더미를 칠 수 있어요. **가장 빨리 친 사람**이 이겨요.",
+          "한 장이 된 **본인**이 가장 빠르면 안전, **남**이 더 빠르면 본인이 **1장** 먹어요(잡힘). 아무도 안 치면 그냥 지나가요.",
+          "빠르기는 각자 기기에서 **한 장이 된 화면이 뜬 때부터 친 때까지**로 재요. 0.1초보다 빠르면 모두 0.1초로 치고, 비기면 본인이 이겨요.",
+          "배우기에서는 3초 대신 5초를 줘요.",
         ],
       },
       {
         kind: "explain",
         title: "괜히 치면 내가 먹어요",
         body: [
-          "외칠 때도, 잡을 사람도 없는데 더미를 치면 **헛외침**이에요. 친 사람이 **1장** 먹어요.",
-          "이미 외친 사람을 잡으려 해도 헛외침이에요.",
+          "한 장인 사람이 없는데 더미를 치면 **헛외침**이에요. 친 사람이 **1장** 먹어요.",
+          "이미 외친 사람을 잡으려 해도 헛외침이에요. 누가 먼저 쳐서 겨루기가 끝난 뒤 늦게 친 것은 한 번은 봐줘요.",
         ],
       },
       {
@@ -439,47 +446,43 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
       {
         kind: "quiz",
         question:
-          "남이 한 장이 된 바로 그때(1초 안에) 더미를 쳤어요. 그 사람이 끝내 안 외치면?",
-        options: [
-          "내가 헛외침으로 먹는다",
-          "1초가 지나는 순간 그 사람이 잡힌다",
-        ],
+          "컴퓨터가 한 장이 됐어요. 컴퓨터는 0.4초 만에, 나는 0.3초 만에 더미를 쳤어요. 어떻게 될까요?",
+        options: ["컴퓨터가 안전하다", "컴퓨터가 잡혀 1장 먹는다"],
         answer: 1,
         explain:
-          "1초 안에 친 것은 적어 두었다가, 그 사람이 안 외치면 잡기가 돼요.",
+          "내가 더 빨랐으니 잡기예요. 늦게 닿아도 한 장이 된 화면을 본 때부터 잰 빠르기로 견줘요.",
       },
       {
         kind: "mission",
         title: "깜빡한 컴퓨터 잡기",
         objective:
-          "컴퓨터가 카드를 내고 **한 장**이 됐어요. 외치지 않으면 **더미를 쳐서 잡으세요.**",
-        hint: '컴퓨터 카드 수를 보세요. 한 장인데 "원카드!" 소리가 없었다면 가운데 더미를 치세요.',
+          "컴퓨터가 카드를 내고 **한 장**이 됐어요. 컴퓨터보다 **먼저 더미를 쳐서 잡으세요.**",
+        hint: "컴퓨터 카드 수를 보세요. 한 장이면 바로 가운데 더미를 치세요.",
         scenario: CATCH_SCENE,
         check: caughtComputer,
         success: "잡았어요! 깜빡한 컴퓨터가 1장 먹었어요.",
         fail: "카드를 내기 전에 먼저 더미를 쳐서 잡아 보세요.",
-        // 컴퓨터가 낸 뒤 판 번호는 1. 1초(본인 시간)가 지난 뒤 친다
-        solution: [
-          { type: "timeout", kind: "selfWindow", target: 1 },
-          { type: "shout", seen: 1 },
-        ],
+        // 컴퓨터가 낸 뒤 판 번호는 1. 그 판을 보고 0.3초 만에 친다(모으는 시간이 지나면 잡힌다)
+        solution: [{ type: "shout", seen: 1, rt: 300 }, { type: "raceEnd" }],
         mistake: [{ type: "play", card: "D6" }],
       },
       {
         kind: "mission",
         title: "원카드 외치기",
         objective:
-          "내 카드가 **두 장**이에요. **카드를 내기 전에 더미를 치고** 한 장을 내세요.",
-        hint: "가운데 버린 더미를 먼저 치고, ♥5나 ♥9를 내세요.",
+          "내 카드가 **두 장**이에요. 한 장을 **낸 뒤 바로 더미를 쳐서** 외치세요.",
+        hint: "♥5나 ♥9를 내고, 한 장이 되면 가운데 버린 더미를 치세요.",
         scenario: CALL_SCENE,
-        check: calledBeforePlay,
-        success: "외치고 냈어요! 이제 아무도 나를 잡을 수 없어요.",
-        fail: "외치지 않고 한 장이 되면 잡힐 수 있어요. 내기 전에 더미를 먼저 쳐 보세요.",
+        check: calledAfterPlay,
+        success: "외쳤어요! 남보다 먼저 쳐서 안전해요.",
+        fail: "내기 전에 치면 헛외침이에요. 한 장을 낸 뒤에 더미를 쳐 보세요.",
+        // 낸 뒤 판 번호는 1(컴퓨터가 이어 내도 그 판을 본 것으로 친다)
         solution: [
-          { type: "shout", seen: 0 },
           { type: "play", card: "H5" },
+          { type: "shout", seen: 1, rt: 250 },
+          { type: "raceEnd" },
         ],
-        mistake: [{ type: "play", card: "H5" }],
+        mistake: [{ type: "shout", seen: 0 }],
       },
     ],
   },
@@ -547,7 +550,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         kind: "mission",
         title: "실전 한 판",
         objective: "컴퓨터와 **한 판을 끝까지** 해 보세요.",
-        hint: "두 장일 때 더미 치기를 잊지 마세요. 남이 한 장인데 조용하면 잡으세요.",
+        hint: "한 장이 되면 바로 더미를 치세요. 남이 한 장이 되면 먼저 쳐서 잡으세요.",
         scenario: null,
         check: finishedMatch,
         success: "한 판을 끝냈어요. 이제 원카드를 할 수 있어요!",
