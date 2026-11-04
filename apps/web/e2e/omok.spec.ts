@@ -354,10 +354,11 @@ test("오목 개인 시간: 빠른 3분으로 두면 내 시계가 가고, 다 �
     "빠른 3분",
   );
   await page.getByRole("button", { name: /나홀로 오목/ }).click();
-  await expect(page.locator("[data-clock]").first()).toHaveText("3:00");
+  const myClock = page.locator('[data-seat="me"] [data-clock]');
+  await expect(myClock).toHaveText("3:00");
 
   await page.clock.runFor(20_000);
-  await expect(page.locator("[data-clock]").first()).toHaveText("2:40");
+  await expect(myClock).toHaveText("2:40");
   await placeOne(page, false);
   await expect(page.getByRole("status")).toContainText("내 차례", {
     timeout: 10_000,
