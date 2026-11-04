@@ -43,6 +43,7 @@ import {
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { KeyCaps, useMoveKeys } from "./MoveChip";
 
 /**
  * 공식 훈련(`/cube/train`, docs/47 8-1). 묶음 → 상황 고르기 → 무작위로 내고, 결과 모양으로 채점해 시간·수를 남긴다.
@@ -471,6 +472,8 @@ function AlgView({
   const fingers = c.fingers?.split(/\s+/) ?? [];
   const used = usedAlg(book, c);
   const list = algsOf(book, c);
+  // 쓰는 공식에만 그 사람의 키를 붙인다(줄마다 붙이면 복잡해진다)
+  const { keysOf } = useMoveKeys(t.n);
   return (
     <div className="flex w-full max-w-xl flex-col gap-2 rounded-xl bg-white/5 p-3 text-sm">
       {t.preAuf && (
@@ -515,7 +518,10 @@ function AlgView({
                     title={f ? FINGER_NOTATION[f as FingerToken] : undefined}
                     className="flex min-w-8 flex-col items-center rounded bg-white/10 px-1"
                   >
-                    {tok}
+                    <span data-move-chip={tok}>{tok}</span>
+                    {alg === used && keysOf && (
+                      <KeyCaps keys={keysOf(tok)} className="text-white/80" />
+                    )}
                     {f && (
                       <span className="font-sans text-[10px] text-amber-200/80">
                         {f}

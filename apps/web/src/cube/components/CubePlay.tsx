@@ -12,6 +12,7 @@ import {
   attachKeyboard,
   buttonMoves,
   type Command,
+  type KeyChord,
   KeyInterpreter,
   type Keymap,
   type KeyResult,
@@ -59,6 +60,8 @@ export interface CubePlayProps {
   locked?: boolean;
   /** 장면이 준비되면 받는다(다시 보기처럼 장면을 직접 움직일 때) */
   onView?: (view: CubeView | null) => void;
+  /** 키 그림에서 밝힐 칠 키(배우기의 힌트·따라 하기). 키 그림은 그대로 접고 펼 수 있다 */
+  want?: readonly KeyChord[] | null;
 }
 
 export function CubePlay({
@@ -71,6 +74,7 @@ export function CubePlay({
   onCommand,
   locked = false,
   onView,
+  want,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -350,7 +354,7 @@ export function CubePlay({
       </div>
       {showKeys && keymap && (
         <div className="hidden w-full max-w-2xl sm:block">
-          <KeyGuide n={n} keymap={keymap} lit={lit} />
+          <KeyGuide n={n} keymap={keymap} lit={lit} want={want} />
         </div>
       )}
     </div>

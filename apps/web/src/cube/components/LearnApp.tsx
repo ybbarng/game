@@ -22,6 +22,7 @@ import {
   StillCube,
   TurnPanel,
 } from "./LessonActs";
+import { MoveText } from "./MoveChip";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -358,7 +359,13 @@ function LessonView({
         <p className="text-sky-300 text-xs">
           {KIND_LABEL[step.kind]} · {at + 1}/{lesson.steps.length}
         </p>
-        <p className="break-keep text-base leading-relaxed">{step.body}</p>
+        <p className="break-keep text-base leading-relaxed" data-step-body>
+          <MoveText
+            text={step.body}
+            n={lesson.size}
+            letters={lesson.id.startsWith("bld")}
+          />
+        </p>
         {step.kind === "text" && (
           <StillCube
             n={lesson.size}
