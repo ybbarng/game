@@ -73,29 +73,7 @@ describe("바둑 컴퓨터", () => {
     expect(end.result?.kind).toBe("score");
   });
 
-  it.each(BOTS.map((b) => [b.name, b] as const))(
-    "%s: 단수에 걸린 석 점을 따낸다",
-    (_name, bot) => {
-      const state = createBadukScenario({
-        black: ["D6", "E6", "F6", "D4", "E4", "F4", "C5"],
-        white: ["D5", "E5", "F5"],
-      });
-      const action = bot.decide(viewOf(state, 0), createRng(5));
-      expect(action).toEqual({ type: "place", at: at("G5") });
-    },
-  );
-
-  it.each(BOTS.map((b) => [b.name, b] as const))(
-    "%s: 단수에 걸린 내 석 점을 살린다",
-    (_name, bot) => {
-      const state = createBadukScenario({
-        black: ["D5", "E5", "F5"],
-        white: ["D6", "E6", "F6", "D4", "E4", "F4", "C5"],
-      });
-      const action = bot.decide(viewOf(state, 0), createRng(5));
-      expect(action).toEqual({ type: "place", at: at("G5") });
-    },
-  );
+  // 단수 장면(따내기·살리기)은 bots-atari.test.ts가 본다(고수 탐색이 무거워 파일을 나눠 동시에 돈다)
 
   /** 백이 쉰 뒤 흑 차례인 판 */
   function afterWhitePass(black: string[], white: string[]) {
