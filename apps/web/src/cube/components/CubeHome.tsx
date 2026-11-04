@@ -64,8 +64,8 @@ const GROUPS: Group[] = [
       { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
       { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
       { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
-      // 다섯째 칸이라 한 줄을 채운다(2026-11-04, 빈칸 없이)
-      { icon: "🔢", title: "큐브의 수학", href: "/cube/math", span: true },
+      { icon: "🔢", title: "큐브의 수학", href: "/cube/math" },
+      { icon: "🎨", title: "패턴 만들기", href: "/cube/patterns" },
     ],
   },
   {
