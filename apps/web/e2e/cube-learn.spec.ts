@@ -172,6 +172,42 @@ test("배우기: 흰 십자 단원은 조각 찾기와 고르기 문제로 시�
   await shot(page, "learn-white-cross-quiz", info.project.name);
 });
 
+test("배우기: 루 첫 블록은 조각 찾기, ZZ 모서리 방향은 고르기 문제로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=roux-fb");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  await expect(
+    page.locator(
+      "[data-cube-still] [data-cube-ready], [data-cube-still] [data-cube-no3d]",
+    ),
+  ).toHaveCount(1);
+  // 섞인 큐브의 흰-빨강 모서리: 오른쪽 면 아랫줄 가운데(16)와 아랫면(32). 앞 가운데(22)는 틀림
+  const find = page.locator('[data-act="find"]');
+  await page.locator('[data-net-cell="22"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await page.locator('[data-net-cell="16"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-roux-fb-find", info.project.name);
+
+  // ZZ 모서리 방향: 셋째 단계 「위-왼쪽 모서리는 좋은 모서리일까요?」
+  await page.goto("/cube/learn?lesson=zz-eo");
+  const next = page.locator("[data-step-next]");
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "demo");
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  const quiz = page.locator('[data-act="quiz"]');
+  await expect(quiz).toContainText("위-왼쪽 모서리");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-zz-eo-quiz", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {
