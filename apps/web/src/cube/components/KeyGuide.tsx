@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { actionLabel } from "../input/actions";
+import { actionLabel, canonicalNotation, parseAction } from "../input/actions";
+import { withLayers } from "../input/interpreter";
 import {
   chordLabel,
   chordsFor,
@@ -120,11 +121,18 @@ export function KeyGuide({
     };
   }, []);
   const cell = (code: string) => {
-    const kl = keyLayers(keymap, n, code);
+    const kl = heldNames(keyLayers(keymap, n, code), n, layers);
     const plain = held ? kl.shift : kl.plain;
     const shift = held ? undefined : kl.shift;
     const w = want?.find((c) => c.code === code);
-    const paint = look(plain?.usable ? plain.action : undefined);
+    // 층 수를 잡고 바뀐 칸 글(5 = 2L → 2R')이면 그 수의 면 색으로
+    const paint = look(
+      plain?.usable
+        ? parseAction(plain.label)?.kind === "move"
+          ? plain.label
+          : plain.action
+        : undefined,
+    );
     const tinted = paint?.paint.kind === "face" && lit !== code && !w;
     return (
       <div
@@ -214,6 +222,29 @@ export function KeyGuide({
 }
 
 /**
+ * 층 수를 잡고 있으면(csTimer의 3·4·7·8) R·L 쪽 키가 지금 치면 도는 수로 칸 글을 바꾼다(I = R → 층 수 2면 Rw)
+ */
+function heldNames(
+  kl: ReturnType<typeof keyLayers>,
+  n: number,
+  layers: HandLayers | null | undefined,
+): ReturnType<typeof keyLayers> {
+  if (!layers || (layers.left === 1 && layers.right === 1)) return kl;
+  const out: ReturnType<typeof keyLayers> = {};
+  for (const [k, a] of Object.entries(kl) as [
+    keyof typeof kl,
+    NonNullable<(typeof kl)[keyof typeof kl]>,
+  ][]) {
+    const now =
+      a.usable && parseAction(a.action)?.kind === "move"
+        ? canonicalNotation(n, withLayers(a.action, layers.left, layers.right))
+        : null;
+    out[k] = now ? { ...a, label: now } : a;
+  }
+  return out;
+}
+
+/**
  * 키 그림 위에 옅게 겹치는 그림(SVG): 같은 면 두 키를 잇는 선(면 색), 가운데 줄 손가락 자리(손 색).
  * 칸 자리를 그려진 칸에서 재어 그린다. 누르기를 가로채지 않는다
  */
@@ -274,25 +305,54 @@ export function KeyOverlay({
       width={size.w}
       height={size.h}
     >
-      {list.map((p) => {
+      {list.map((p, i) => {
         const a = boxes[p.cw];
         const b = boxes[p.ccw];
         if (!a || !b) return null;
         const paint = look(p.face)?.paint;
         const color =
           paint?.kind === "face" ? hexColor(colors[paint.color] ?? 0) : "#fff";
+        // 같은 틈을 지나는 선(J·F와 S·L)이 겹치지 않게 번갈아 비킨다
+        const d = pairPath(a, b, 4, i % 2 === 0 ? -1.2 : 1.2);
+        const ends = [a, b].map((k) => ({
+          x: k.x + k.w / 2,
+          y:
+            Math.abs(a.y - b.y) < 1 || k.y < Math.max(a.y, b.y)
+              ? k.y + k.h
+              : k.y,
+        }));
         return (
-          <path
-            key={p.face}
-            data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}
-            d={pairPath(a, b, 4)}
-            fill="none"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={0.75}
-          />
+          <g key={p.face} data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}>
+            {/* 어두운 테두리 위에 면 색: 같은 색 칸 옆에서도 보이게 */}
+            <path
+              d={d}
+              fill="none"
+              stroke="#000"
+              strokeOpacity={0.7}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={d}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {ends.map((e) => (
+              <circle
+                key={`${e.x}-${e.y}`}
+                cx={e.x}
+                cy={e.y}
+                r={2.5}
+                fill={color}
+                stroke="#000"
+                strokeOpacity={0.7}
+              />
+            ))}
+          </g>
         );
       })}
       {fingers &&

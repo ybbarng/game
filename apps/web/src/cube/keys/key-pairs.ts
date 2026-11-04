@@ -49,18 +49,24 @@ export interface Box {
  * - 같은 줄: 두 키 아래 가장자리에서 줄 아래 틈으로 내려가 옆으로 간 뒤 다시 올라온다
  * - 다른 줄: 위 키 아래 가장자리 → 두 줄 사이 틈 → 옆으로 → 아래 키 위 가장자리
  */
-export function pairPath(a: Box, b: Box, gap: number): string {
+export function pairPath(
+  a: Box,
+  b: Box,
+  gap: number,
+  /** 같은 틈을 지나는 선끼리 겹치지 않게 위아래로 비킨다(px) */
+  shift = 0,
+): string {
   const r = (v: number) => Math.round(v * 10) / 10;
   const ax = a.x + a.w / 2;
   const bx = b.x + b.w / 2;
   if (Math.abs(a.y - b.y) < 1) {
     const bottom = Math.max(a.y + a.h, b.y + b.h);
-    const y = bottom + gap / 2;
+    const y = bottom + gap / 2 + shift;
     return `M${r(ax)} ${r(a.y + a.h)} V${r(y)} H${r(bx)} V${r(b.y + b.h)}`;
   }
   const [up, down] = a.y < b.y ? [a, b] : [b, a];
   const ux = up.x + up.w / 2;
   const dx = down.x + down.w / 2;
-  const y = (up.y + up.h + down.y) / 2;
+  const y = (up.y + up.h + down.y) / 2 + shift;
   return `M${r(ux)} ${r(up.y + up.h)} V${r(y)} H${r(dx)} V${r(down.y)}`;
 }
