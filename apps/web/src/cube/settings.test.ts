@@ -95,6 +95,21 @@ describe("큐브 설정 저장", () => {
     expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
   });
 
+  it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
+    expect(parseSettings(JSON.stringify({ version: 1 })).backView).toBe(
+      "mirror",
+    );
+    expect(parseSettings(JSON.stringify({ backView: "net" })).backView).toBe(
+      "net",
+    );
+    expect(parseSettings(JSON.stringify({ backView: "off" })).backView).toBe(
+      "off",
+    );
+    expect(parseSettings(JSON.stringify({ backView: "유리" })).backView).toBe(
+      "mirror",
+    );
+  });
+
   it("저장소가 막혀 있어도 오류 없이 기본값·false", () => {
     const broken = {
       getItem: () => {

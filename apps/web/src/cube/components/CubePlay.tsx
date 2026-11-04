@@ -40,7 +40,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { KeyGuide } from "./KeyGuide";
-import { StageWithNet } from "./StageWithNet";
+import { StageWithNet, useBackView } from "./StageWithNet";
 
 /**
  * 큐브 한 판의 화면 조각(혼자 맞추기·블라인드·나중에 배우기·대결이 함께 쓴다).
@@ -149,6 +149,13 @@ export function CubePlay({
     marks,
     onSticker,
   };
+
+  // 뒷면 보기: 거울이면 3D 장면에 판을 띄우고, 펼친 그림이면 곁에 둔다(「숨기기」로 둘 다 접는다)
+  const back = useBackView(settings.backView, !failed);
+  const mirror = back.mode === "mirror" && showNet;
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirror);
+  }, [mirror, ready]);
 
   useEffect(() => setKeymap(loadKeymap()), []);
   useEffect(() => {
@@ -343,9 +350,10 @@ export function CubePlay({
     <div className="flex w-full flex-col items-center gap-3">
       {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
       <StageWithNet
-        maxWidth={460}
+        boxRef={back.ref}
+        maxWidth={mirror ? 600 : 460}
         net={
-          showNet || failed ? (
+          (back.mode === "net" && showNet) || failed ? (
             <CubeNet
               n={n}
               faces={faceGrid(n, state, mask)}
@@ -460,14 +468,23 @@ export function CubePlay({
         >
           {showKeys ? "키 그림 접기" : "키 그림 펴기"}
         </button>
-        <button
-          type="button"
-          onClick={() => setShowNet((v) => !v)}
-          aria-pressed={showNet}
-          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
-        >
-          {showNet ? "펼친 그림 숨기기" : "펼친 그림 보기"}
-        </button>
+        {back.mode !== "off" && (
+          <button
+            type="button"
+            onClick={() => setShowNet((v) => !v)}
+            aria-pressed={showNet}
+            data-back-toggle={back.mode}
+            className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
+          >
+            {back.mode === "mirror"
+              ? showNet
+                ? "거울 숨기기"
+                : "거울 보기"
+              : showNet
+                ? "펼친 그림 숨기기"
+                : "펼친 그림 보기"}
+          </button>
+        )}
         <a
           href="/cube/keys"
           className="hidden min-h-8 items-center px-1 underline-offset-2 hover:underline sm:inline-flex"

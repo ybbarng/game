@@ -10,6 +10,20 @@ import {
   solvedStickers,
   type Vec3,
 } from "./geometry";
+import {
+  type BackNormal,
+  cellPoint,
+  type Frame,
+  MIRROR_CELL,
+  MIRROR_PAD,
+  type MirrorPanel,
+  mirrorAlpha,
+  mirrorCells,
+  mirrorFrame,
+  mirrorHitAt,
+  mirrorPanels,
+  rayPanel,
+} from "./mirror";
 import { cellOfPoint, type SwipeHit, swipeToMove } from "./swipe";
 import {
   type CubeMove,
@@ -183,6 +197,67 @@ function frameGeometry(spec: QualitySpec): THREE.BufferGeometry {
   return g;
 }
 
+/** 거울 판 바탕(어두운 유리, 옅은 테두리, 비스듬한 반사 띠). 판 한 장 크기의 정사각형 그림 */
+function glassTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const g = c.getContext("2d") as CanvasRenderingContext2D;
+  const r = 26;
+  const path = (inset: number) => {
+    const a = inset;
+    const b = size - inset;
+    g.beginPath();
+    g.moveTo(a + r, a);
+    g.arcTo(b, a, b, b, r);
+    g.arcTo(b, b, a, b, r);
+    g.arcTo(a, b, a, a, r);
+    g.arcTo(a, a, b, a, r);
+    g.closePath();
+  };
+  path(2);
+  const base = g.createLinearGradient(0, 0, size, size);
+  base.addColorStop(0, "rgba(46,56,78,0.62)");
+  base.addColorStop(1, "rgba(14,18,28,0.5)");
+  g.fillStyle = base;
+  g.fill();
+  // 반사 띠: 왼쪽 위에서 오른쪽 아래로 비스듬히 지나는 옅은 빛
+  g.save();
+  g.clip();
+  const band = g.createLinearGradient(0, size * 0.15, size * 0.6, size * 0.75);
+  band.addColorStop(0, "rgba(255,255,255,0)");
+  band.addColorStop(0.45, "rgba(255,255,255,0.09)");
+  band.addColorStop(0.55, "rgba(255,255,255,0.03)");
+  band.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = band;
+  g.fillRect(0, 0, size, size);
+  g.restore();
+  path(2);
+  g.lineWidth = 2.5;
+  g.strokeStyle = "rgba(255,255,255,0.26)";
+  g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** 거울 판의 장면 조각(판 셋을 한 번에) */
+interface Mirror {
+  panels: MirrorPanel[];
+  group: THREE.Group;
+  plateMat: THREE.MeshBasicMaterial;
+  cells: THREE.InstancedMesh;
+  cellMat: THREE.MeshBasicMaterial;
+  marks: THREE.InstancedMesh;
+  markMat: THREE.MeshBasicMaterial;
+  /** 칸 인스턴스 번호(판·u·v) */
+  index: Map<string, number>;
+}
+
+/** 거울 판 칸의 색은 큐브보다 조금 어둡게(비친 모습) */
+const MIRROR_TINT = 0.86;
+
 /** 표시가 없는 칸의 고리는 크기 0으로 둔다 */
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
@@ -277,6 +352,11 @@ export class CubeView {
   } | null = null;
   private returning: { start: number; yaw: number; pitch: number } | null =
     null;
+  /** 거울 판(뒷면 보기). 켤 때 만든다 */
+  private mirror: Mirror | null = null;
+  private mirrorOn = false;
+  /** 지금 판이 보이는 정도(0~1, 보는 각에 따라) */
+  private mirrorShown = 0;
   private width = 1;
   private height = 1;
 
@@ -457,6 +537,13 @@ export class CubeView {
     }
 
     this.resize(canvas.clientWidth || 300, canvas.clientHeight || 300);
+    if (o.mirror) this.setMirror(true);
+    // 화면 시험만: 캔버스에서 장면을 찾아 판 칸 자리를 묻는다(제품은 이 값을 넣지 않는다)
+    if (
+      typeof window !== "undefined" &&
+      (window as { __cubeTestHooks?: boolean }).__cubeTestHooks
+    )
+      (canvas as unknown as { __cubeView?: CubeView }).__cubeView = this;
   }
 
   // ---------------------------------------------------------------- 상태
@@ -485,7 +572,46 @@ export class CubeView {
       this.writeCubie(i);
     });
     this.writeColors();
+    this.writeMirror();
     this.invalidate();
+  }
+
+  /**
+   * 뒷면 거울 판(docs/47 5절)을 켜고 끈다. 켜면 안 보이는 세 면(세계의 뒤·왼쪽·아래)을 큐브 둘레에 거울상으로
+   * 띄우고, 화면에 판까지 들어오게 카메라를 조금 물린다. 둘러보거나 살짝 보기로 각이 멀어지면 판은 흐려지고
+   * 카메라는 큐브만 담는 자리로 돌아온다
+   */
+  setMirror(on: boolean): void {
+    this.mirrorOn = on;
+    if (on && !this.mirror) this.mirror = this.buildMirror();
+    this.writeMirror();
+    this.invalidate();
+  }
+
+  /** 판이 지금 보이는지(시험·화면 표시) */
+  get mirrorVisible(): boolean {
+    return this.mirrorShown > 0.5;
+  }
+
+  /**
+   * 판 위 칸 가운데의 화면 좌표(client px). 판이 없거나 보이지 않으면 null. 화면 시험이 판 칸을 누를 때 쓴다
+   */
+  mirrorCellClient(
+    panel: BackNormal,
+    u: number,
+    v: number,
+  ): { x: number; y: number } | null {
+    const p = this.mirror?.panels.find((q) => q.normal === panel);
+    if (!p) return null;
+    this.placeCamera();
+    if (!this.mirrorVisible) return null;
+    this.camera.updateMatrixWorld();
+    const w = new THREE.Vector3(...cellPoint(p, u, v)).project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + ((w.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - w.y) / 2) * rect.height,
+    };
   }
 
   /**
@@ -528,9 +654,12 @@ export class CubeView {
         | "onSwipe"
         | "onTap"
         | "swipeMouse"
+        | "mirror"
       >
     >,
   ): void {
+    if (o.mirror !== undefined && o.mirror !== this.mirrorOn)
+      this.setMirror(o.mirror);
     if (o.moveMs !== undefined) this.moveMs = clampMs(o.moveMs);
     if (o.overshoot !== undefined) this.overshoot = o.overshoot;
     if ("onMoveDone" in o) this.onMoveDone = o.onMoveDone;
@@ -553,7 +682,10 @@ export class CubeView {
       old.dispose();
       this.applyStickerless();
     }
-    if (recolor) this.writeColors();
+    if (recolor) {
+      this.writeColors();
+      this.writeMirror();
+    }
     this.invalidate();
   }
 
@@ -581,6 +713,7 @@ export class CubeView {
       this.writeCubie(i);
     });
     this.layoutAnim = t > 0 ? { start: now, ms: t } : null;
+    this.writeMirror();
     this.invalidate();
   }
 
@@ -729,6 +862,8 @@ export class CubeView {
     this.body.dispose();
     this.stickerMesh.dispose();
     this.frameMesh.dispose();
+    this.mirror?.cells.dispose();
+    this.mirror?.marks.dispose();
     for (const d of this.disposables) d.dispose();
     this.envTexture?.dispose();
     this.renderer.dispose();
@@ -822,6 +957,7 @@ export class CubeView {
       this.writeCubie(i);
     }
     if (this.running === r) this.running = null;
+    this.writeMirror();
     this.done++;
     this.onMoveDone?.(this.done);
   }
@@ -889,21 +1025,214 @@ export class CubeView {
   }
 
   private placeCamera(): void {
-    const yaw = THREE.MathUtils.degToRad(this.yaw + this.dragYaw);
-    const pitch = THREE.MathUtils.degToRad(
-      clamp(this.pitch + this.dragPitch, -PITCH_LIMIT, PITCH_LIMIT),
+    const yawDeg = this.yaw + this.dragYaw;
+    const pitchDeg = clamp(
+      this.pitch + this.dragPitch,
+      -PITCH_LIMIT,
+      PITCH_LIMIT,
     );
+    const yaw = THREE.MathUtils.degToRad(yawDeg);
+    const pitch = THREE.MathUtils.degToRad(pitchDeg);
     // 큐브를 감싸는 공이 화면 짧은 쪽에 들어가도록 거리를 잡는다
     const radius = (this.n * Math.sqrt(3)) / 2;
     const vFov = THREE.MathUtils.degToRad(this.camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * this.camera.aspect);
-    const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.02;
+    let dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.02;
+    const target = new THREE.Vector3();
+    // 거울 판: 기준 각에 가까울수록 판이 짙고, 카메라는 판까지 담는 자리로 물러난다
+    const shown = this.mirrorReady() ? mirrorAlpha(yawDeg, pitchDeg) : 0;
+    if (shown !== this.mirrorShown) {
+      this.mirrorShown = shown;
+      this.applyMirrorAlpha();
+    }
+    if (this.mirror && shown > 0) {
+      const f: Frame = mirrorFrame(
+        this.n,
+        this.mirror.panels,
+        this.camera.aspect,
+        this.camera.fov,
+      );
+      const e = easeInOut(shown);
+      dist += (f.dist - dist) * e;
+      target.set(...f.target).multiplyScalar(e);
+    }
     this.camera.position.set(
-      dist * Math.cos(pitch) * Math.sin(yaw),
-      dist * Math.sin(pitch),
-      dist * Math.cos(pitch) * Math.cos(yaw),
+      target.x + dist * Math.cos(pitch) * Math.sin(yaw),
+      target.y + dist * Math.sin(pitch),
+      target.z + dist * Math.cos(pitch) * Math.cos(yaw),
     );
-    this.camera.lookAt(0, 0, 0);
+    this.camera.lookAt(target);
+  }
+
+  /** 판을 보일 수 있는지: 켰고, 조각을 벌리거나 숨긴 놓임(분해·조각 보기)이 아니다 */
+  private mirrorReady(): boolean {
+    if (!this.mirrorOn || !this.mirror) return false;
+    return this.cubies.every(
+      (c) =>
+        c.body &&
+        c.to.scale === 1 &&
+        c.to.shift.lengthSq() < 1e-6 &&
+        c.shift.lengthSq() < 1e-6,
+    );
+  }
+
+  private applyMirrorAlpha(): void {
+    const m = this.mirror;
+    if (!m) return;
+    const a = this.mirrorShown;
+    m.group.visible = a > 0.01;
+    m.plateMat.opacity = a;
+    m.cellMat.opacity = a;
+    m.markMat.opacity = a;
+    this.canvas.dataset.cubeMirror = a > 0.5 ? "on" : "off";
+  }
+
+  private buildMirror(): Mirror {
+    const n = this.n;
+    const panels = mirrorPanels(n);
+    const group = new THREE.Group();
+    const tex = glassTexture();
+    const plateMat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const plateSize = (n + MIRROR_PAD * 2) * MIRROR_CELL;
+    const plateGeo = new THREE.PlaneGeometry(plateSize, plateSize);
+    const cellGeo = new THREE.ShapeGeometry(
+      roundedRect(0.86 * MIRROR_CELL, 0.12 * MIRROR_CELL),
+      this.spec.curveSegments,
+    );
+    const ring = roundedRect(0.98 * MIRROR_CELL, 0.16 * MIRROR_CELL);
+    ring.holes.push(
+      new THREE.Path(
+        roundedRect(0.7 * MIRROR_CELL, 0.1 * MIRROR_CELL)
+          .getPoints(this.spec.curveSegments)
+          .reverse(),
+      ),
+    );
+    const markGeo = new THREE.ShapeGeometry(ring, this.spec.curveSegments);
+    const cellMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const markMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    this.disposables.push(
+      tex,
+      plateMat,
+      plateGeo,
+      cellGeo,
+      markGeo,
+      cellMat,
+      markMat,
+    );
+    const basis = (p: MirrorPanel, at: readonly number[], lift: number) =>
+      new THREE.Matrix4()
+        .makeBasis(
+          new THREE.Vector3(...p.right),
+          new THREE.Vector3(...p.up),
+          new THREE.Vector3(...p.facing),
+        )
+        .setPosition(
+          (at[0] ?? 0) + p.facing[0] * lift,
+          (at[1] ?? 0) + p.facing[1] * lift,
+          (at[2] ?? 0) + p.facing[2] * lift,
+        );
+    for (const p of panels) {
+      const plate = new THREE.Mesh(plateGeo, plateMat);
+      plate.matrixAutoUpdate = false;
+      plate.matrix.copy(basis(p, p.center, 0));
+      plate.renderOrder = 1;
+      group.add(plate);
+    }
+    const count = panels.length * n * n;
+    const cells = new THREE.InstancedMesh(cellGeo, cellMat, count);
+    const marks = new THREE.InstancedMesh(markGeo, markMat, count);
+    cells.renderOrder = 2;
+    marks.renderOrder = 3;
+    const index = new Map<string, number>();
+    const h = (n - 1) / 2;
+    let k = 0;
+    for (const p of panels)
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n; j++) {
+          const u = j - h;
+          const v = i - h;
+          index.set(`${p.normal}:${u}:${v}`, k);
+          cells.setMatrixAt(k, basis(p, cellPoint(p, u, v), 0.004));
+          marks.setMatrixAt(k, ZERO);
+          k++;
+        }
+    for (const m of [cells, marks]) {
+      m.frustumCulled = false;
+      group.add(m);
+    }
+    group.visible = false;
+    this.scene.add(group);
+    return { panels, group, plateMat, cells, cellMat, marks, markMat, index };
+  }
+
+  /** 지금 조각 자리에서 세계의 스티커(조각 중심·향하는 쪽·색·표시)를 읽는다 */
+  private worldStickers(): Sticker[] {
+    return this.slots.map((s) => {
+      const c = this.cubies[s.cubie] as Cubie;
+      const nv = new THREE.Vector3(...normalVec(s.normal)).applyQuaternion(
+        c.quat,
+      );
+      const ax = Math.abs(nv.x);
+      const ay = Math.abs(nv.y);
+      const az = Math.abs(nv.z);
+      const normal = (
+        ax >= ay && ax >= az
+          ? `${nv.x > 0 ? "+" : "-"}x`
+          : ay >= az
+            ? `${nv.y > 0 ? "+" : "-"}y`
+            : `${nv.z > 0 ? "+" : "-"}z`
+      ) as Normal;
+      return {
+        center: [c.pos.x + 0, c.pos.y + 0, c.pos.z + 0],
+        normal,
+        color: s.color,
+        mark: s.mark,
+      };
+    });
+  }
+
+  /** 판 칸의 색·표시를 지금 상태로 다시 칠한다 */
+  private writeMirror(): void {
+    const m = this.mirror;
+    if (!m) return;
+    const color = new THREE.Color();
+    for (const c of mirrorCells(this.worldStickers())) {
+      const k = m.index.get(`${c.panel}:${c.u}:${c.v}`);
+      if (k === undefined) continue;
+      const hex =
+        c.color === null
+          ? HIDDEN_COLOR[this.hidden]
+          : (this.colors[c.color] ?? HIDDEN_COLOR[this.hidden]);
+      m.cells.setColorAt(k, color.setHex(hex).multiplyScalar(MIRROR_TINT));
+      m.marks.setColorAt(
+        k,
+        color.setHex(c.mark ? MARK_COLOR[c.mark] : 0xffffff),
+      );
+      if (c.mark) {
+        m.cells.getMatrixAt(k, tmpM);
+        tmpM2.makeTranslation(0, 0, 0.004);
+        m.marks.setMatrixAt(k, tmpM.multiply(tmpM2));
+      } else m.marks.setMatrixAt(k, ZERO);
+    }
+    if (m.cells.instanceColor) m.cells.instanceColor.needsUpdate = true;
+    if (m.marks.instanceColor) m.marks.instanceColor.needsUpdate = true;
+    m.marks.instanceMatrix.needsUpdate = true;
+    this.mirrorShown = -1;
   }
 
   private readonly invalidate = (): void => {
@@ -931,7 +1260,11 @@ export class CubeView {
   }
 
   /** 화면의 한 점 아래 큐브 겉의 칸(큐브를 감싼 상자와 만나는 점으로 정한다). 빈 곳이면 null */
-  private hitAt(clientX: number, clientY: number): SwipeHit | null {
+  private hitAt(
+    clientX: number,
+    clientY: number,
+    panels = false,
+  ): SwipeHit | null {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
     const ndc = new THREE.Vector2(
@@ -948,13 +1281,24 @@ export class CubeView {
       new THREE.Vector3(h, h, h),
     );
     const p = ray.ray.intersectBox(box, new THREE.Vector3());
-    return p ? cellOfPoint(this.n, [p.x, p.y, p.z]) : null;
+    if (p) return cellOfPoint(this.n, [p.x, p.y, p.z]);
+    // 거울 판 위 칸: 그 칸이 비추는 큐브 칸을 누른 것과 같다
+    if (!panels || !this.mirror || !this.mirrorVisible) return null;
+    const o = ray.ray.origin;
+    const d = ray.ray.direction;
+    for (const panel of this.mirror.panels) {
+      const at = rayPanel(panel, [o.x, o.y, o.z], [d.x, d.y, d.z]);
+      if (!at) continue;
+      const hit = mirrorHitAt(this.n, panel, at.point);
+      if (hit) return hit;
+    }
+    return null;
   }
 
   /** 누르기(거의 움직이지 않고 뗌): 그 점 아래 칸을 알린다 */
   private tap(clientX: number, clientY: number): void {
     if (!this.onTap) return;
-    const hit = this.hitAt(clientX, clientY);
+    const hit = this.hitAt(clientX, clientY, true);
     if (hit) this.onTap(hit);
   }
 

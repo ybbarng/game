@@ -38,6 +38,7 @@ import {
   toCustom,
 } from "../keymap-editor";
 import {
+  BACK_VIEW_LABEL,
   COLOR_SCHEME_LABEL,
   hexColor,
   updateSettings,
@@ -185,6 +186,24 @@ export function CubeSettingsApp() {
               </button>
             ))}
           </div>
+          <div className="flex flex-wrap items-center gap-2" data-back-view>
+            뒷면 보기
+            {(["mirror", "net", "off"] as const).map((b) => (
+              <button
+                key={b}
+                type="button"
+                aria-pressed={settings.backView === b}
+                onClick={() => updateSettings({ ...settings, backView: b })}
+                className={chip(settings.backView === b)}
+              >
+                {BACK_VIEW_LABEL[b]}
+              </button>
+            ))}
+          </div>
+          <p className="-mt-2 break-keep text-white/50 text-xs">
+            거울은 안 보이는 뒤·왼쪽·아래 면을 큐브 둘레에 비춰 보여요. 좁은
+            자리나 3D를 못 그리는 기기에서는 펼친 그림으로 보여요.
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             가린 스티커
             {(["black", "gray"] as const).map((h) => (
