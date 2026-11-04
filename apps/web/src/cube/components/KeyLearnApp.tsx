@@ -6,9 +6,14 @@ import { cn } from "@/lib/cn";
 import type { Command } from "../input/actions";
 import { chordsFor, codeLabel, type KeyChord } from "../input/keymaps";
 import {
+  COLOR_NAME,
+  type ColorId,
   describeInput,
+  keysForMove,
   keyTextFor,
   loadLearn,
+  migrateLearnDone,
+  orientGoalText,
   pressesFor,
   rightKeyTag,
   StepRun,
@@ -19,9 +24,10 @@ import {
   targetLabel,
   tutorialSteps,
 } from "../keys";
-import { useCubeSettings } from "../settings";
+import { hexColor, useCubeSettings } from "../settings";
 import { KeyboardMap } from "./KeyboardMap";
 import { KeysHeader, useKeymap } from "./KeysApp";
+import { MoveChip, type MoveKeysOf } from "./MoveChip";
 import {
   LiveCube,
   type PracticeCube,
@@ -54,9 +60,12 @@ export function KeyLearnApp() {
   const cube = usePracticeCube(TUTORIAL_N, settings);
   const noKeyboard = useNoKeyboard();
 
+  // 옛 단계 id로 남은 진도는 지금 단계로 옮겨 다시 남긴다
   useEffect(() => {
-    const p = loadLearn();
-    setDone(p.done);
+    const saved = loadLearn().done;
+    const next = migrateLearnDone(saved);
+    if (next.join() !== saved.join()) saveLearn({ done: next });
+    setDone(next);
   }, []);
 
   // 처음 열면 아직 안 마친 첫 단계로
@@ -70,9 +79,11 @@ export function KeyLearnApp() {
 
   const step = steps[index];
   const runRef = useRef<StepRunT | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계가 바뀌면 처음부터
+  // 단계가 바뀌면 처음부터. 큐브도 맞춘 상태로 둔다(StepRun이 맞춘 상태에서 모양을 따라간다)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계·배치가 바뀔 때만
   useEffect(() => {
     runRef.current = step ? new StepRun(TUTORIAL_N, step) : null;
+    cube.reset();
     setFeedback(null);
     setWrong(null);
     bump((x) => x + 1);
@@ -124,7 +135,7 @@ export function KeyLearnApp() {
       } else if (outcomes.includes("hit"))
         setFeedback({ kind: "ok", text: "맞아요" });
       else if (outcomes.includes("partial"))
-        setFeedback({ kind: "ok", text: "한 번 더" });
+        setFeedback({ kind: "ok", text: partialText(before, r) });
     },
     [keymap, cube, step, markDone],
   );
@@ -137,8 +148,23 @@ export function KeyLearnApp() {
     if (current.kind === "code") return [{ code: current.code }];
     if (current.kind === "command")
       return chordsFor(keymap, current.command).slice(0, 1);
+    // 목표 모양: 큐브 돌리기 키를 모두 빛낸다. 혼자 풀기는 답을 알려 주지 않는다
+    if (current.kind === "orient")
+      return ["x", "y", "z"].flatMap(
+        (a) => pressesFor(keymap, TUTORIAL_N, a)[0] ?? [],
+      );
+    if (current.kind === "solve") return [];
     return pressesFor(keymap, TUTORIAL_N, current.notation)[0] ?? [];
   }, [keymap, current]);
+
+  const keysOf: MoveKeysOf | null = useMemo(
+    () =>
+      keymap && !noKeyboard
+        ? (nota: string) => keysForMove(keymap, TUTORIAL_N, nota)
+        : null,
+    [keymap, noKeyboard],
+  );
+  const facing = run?.facing;
 
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
@@ -148,6 +174,7 @@ export function KeyLearnApp() {
         data-keys-ready={keymap ? "" : undefined}
         data-learn-step={step?.id}
         data-learn-finished={finished ? "" : undefined}
+        data-learn-facing={facing ? `${facing.up}-${facing.front}` : undefined}
       >
         <KeysHeader current="/cube/keys/learn" keymap={keymap} />
         <ol className="flex flex-wrap gap-1" aria-label="단계">
@@ -178,9 +205,22 @@ export function KeyLearnApp() {
         {step && run && keymap && (
           <div className="grid gap-4 md:grid-cols-[1fr_260px]">
             <section className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4">
-              <h2 className="font-bold text-lg">
-                {index + 1}. {step.title}
-              </h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 className="font-bold text-lg">
+                  {index + 1}. {step.title}
+                </h2>
+                {step.hand && (
+                  <p
+                    data-learn-hand={step.hand.label}
+                    className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-0.5 text-sm"
+                  >
+                    <span className="font-semibold">{step.hand.label}</span>
+                    {step.hand.moves.map((m) => (
+                      <MoveChip key={m} notation={m} keysOf={keysOf} />
+                    ))}
+                  </p>
+                )}
+              </div>
               {step.lines.map((l) => (
                 <p key={l} className="break-keep text-sm text-white/85">
                   {l}
@@ -212,16 +252,61 @@ export function KeyLearnApp() {
                         state === "next" && "bg-white/5 text-white/60",
                       )}
                     >
-                      <span className="font-mono font-semibold">
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          t.kind === "move" && "font-mono",
+                        )}
+                      >
                         {targetLabel(t)}
                       </span>
-                      <span className="text-[10px] text-white/60">
-                        {t.kind === "code" ? "" : keyOf(keymap, t)}
+                      <span className="flex min-h-[15px] items-center gap-0.5 text-[10px] text-white/60">
+                        {t.kind === "orient"
+                          ? [t.up, t.front].map((c, j) =>
+                              c === undefined ? null : (
+                                <Swatch
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: 위·앞 두 칸
+                                  key={j}
+                                  color={c}
+                                  colors={settings.colors}
+                                />
+                              ),
+                            )
+                          : t.kind === "code" || t.kind === "solve"
+                            ? ""
+                            : noKeyboard
+                              ? ""
+                              : keyOf(keymap, t)}
                       </span>
                     </li>
                   );
                 })}
               </ol>
+              {current?.kind === "orient" && (
+                <p
+                  data-learn-goal
+                  className="flex flex-wrap items-center gap-2 break-keep text-sm"
+                >
+                  <span className="font-semibold">
+                    {orientGoalText(current)}
+                  </span>
+                  {facing && (
+                    <span className="flex items-center gap-1 text-white/70 text-xs">
+                      지금 위
+                      <Swatch color={facing.up} colors={settings.colors} />
+                      {COLOR_NAME[facing.up]}, 앞
+                      <Swatch color={facing.front} colors={settings.colors} />
+                      {COLOR_NAME[facing.front]}
+                    </span>
+                  )}
+                </p>
+              )}
+              {current?.kind === "solve" && (
+                <p data-learn-goal className="break-keep text-sm">
+                  혼자 풀어 보세요. 나중에 친 것부터 거꾸로 쳐요. 틀려도
+                  되돌리기로 돌아올 수 있어요.
+                </p>
+              )}
               <p
                 role="status"
                 data-learn-feedback={feedback?.kind}
@@ -313,12 +398,44 @@ function keyOf(
 ): string {
   const a =
     t.kind === "move" ? t.notation : t.kind === "command" ? t.command : "";
-  return keyTextFor(keymap, TUTORIAL_N, a) ?? "";
+  return a ? (keyTextFor(keymap, TUTORIAL_N, a) ?? "") : "";
 }
 
 function hint(
   keymap: Parameters<typeof keyTextFor>[0],
   t: TutorialTarget,
 ): string {
+  if (t.kind === "orient") {
+    const keys = ["x", "y", "z"]
+      .map((a) => keyTextFor(keymap, TUTORIAL_N, a))
+      .filter(Boolean)
+      .join("·");
+    return `면을 돌려도 보는 쪽은 그대로예요. 큐브 전체를 돌려요(${keys}).`;
+  }
+  if (t.kind === "solve") return "";
   return rightKeyTag(t.kind === "code" ? codeLabel(t.code) : keyOf(keymap, t));
+}
+
+/** 맞았지만 아직 그 칸을 마치지 않았을 때 */
+function partialText(t: TutorialTarget | undefined, run: StepRunT): string {
+  if (t?.kind === "orient") {
+    const f = run.facing;
+    return f
+      ? `지금 위는 ${COLOR_NAME[f.up]}, 앞은 ${COLOR_NAME[f.front]}이에요.`
+      : "";
+  }
+  if (t?.kind === "solve") return "아직이에요. 나중에 친 것부터 거꾸로.";
+  return "한 번 더";
+}
+
+/** 색 칸(사용자 색 설정대로) */
+function Swatch({ color, colors }: { color: ColorId; colors: number[] }) {
+  return (
+    <span
+      data-swatch={color}
+      title={COLOR_NAME[color]}
+      className="inline-block size-3 rounded-sm ring-1 ring-black/40"
+      style={{ background: hexColor(colors[color] ?? 0) }}
+    />
+  );
 }

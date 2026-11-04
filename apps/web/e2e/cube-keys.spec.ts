@@ -85,16 +85,74 @@ test("키 익히기: 안내된 키를 치면 다음 단계로 넘어간다", asy
   await page.keyboard.press("KeyJ");
   await expect(main).toHaveAttribute("data-learn-finished", "");
   await page.locator("[data-learn-next]").click();
-  await expect(main).toHaveAttribute("data-learn-step", "right");
-  await expect(page.locator('[data-key="KeyI"]')).toHaveAttribute(
+  // 둘째 단계는 큐브 둘러보기(x·y·z)
+  await expect(main).toHaveAttribute("data-learn-step", "rotate");
+  await expect(page.locator('[data-key="KeyT"]')).toHaveAttribute(
     "data-key-state",
     "lit",
   );
-  await page.keyboard.press("KeyI");
+  await page.keyboard.press("KeyT");
   await expect(
     page.locator('[data-learn-targets] li[data-target-state="done"]'),
   ).toHaveCount(1);
   await shot(page, "keys-learn", info.project.name);
+});
+
+test("키 익히기: 둘러보기는 말한 색 면을 오게 돌리고, 한 면 단계는 돌린 뒤 되돌린다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 기기만");
+  // 손 자리는 마친 사람(옛 단계 id 「right」도 함께: 새 단계 「오른쪽 면」으로 옮겨진다)
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "cube.keylearn.v1",
+      JSON.stringify({ done: ["home", "right"] }),
+    ),
+  );
+  await page.goto("/cube/keys/learn");
+  await ready(page);
+  const main = page.locator("main[data-learn-step]");
+  await expect(main).toHaveAttribute("data-learn-step", "rotate");
+  await expect(page.locator('[data-learn-tab="face-R"]')).toContainText("✓");
+  const done = page.locator(
+    '[data-learn-targets] li[data-target-state="done"]',
+  );
+  // x·y·z를 한 번씩(두 손: T ; P)
+  for (const [i, code] of ["KeyT", "Semicolon", "KeyP"].entries()) {
+    await page.keyboard.press(code);
+    await expect(done).toHaveCount(i + 1);
+  }
+  // 첫 목표: 초록 위. 면을 돌리면 보는 쪽이 그대로라고 알린다
+  await expect(page.locator("[data-learn-goal]")).toContainText(
+    "초록 면을 위로",
+  );
+  await page.keyboard.press("KeyI");
+  await expect(page.locator("[data-learn-feedback=miss]")).toContainText(
+    "큐브 전체를 돌려요",
+  );
+  await page.keyboard.press("KeyK");
+  await expect(main).toHaveAttribute("data-learn-facing", "3-1");
+  // z'(Q)로 초록이 위로
+  await page.keyboard.press("KeyQ");
+  await expect(done).toHaveCount(4);
+  await shot(page, "keys-learn-rotate", info.project.name);
+
+  // 한 면 단계: 오른손 I·K, 돌리고 되돌려 맞춘다
+  await page.locator('[data-learn-tab="face-L"]').click();
+  await expect(main).toHaveAttribute("data-learn-step", "face-L");
+  // 단계를 열면 큐브는 맞춘 상태(흰 위·초록 앞)
+  await expect(main).toHaveAttribute("data-learn-facing", "0-2");
+  const hand = page.locator("[data-learn-hand]");
+  await expect(hand).toHaveAttribute("data-learn-hand", "왼손");
+  await expect(hand.locator('[data-move-chip="L"]')).toContainText("D");
+  await expect(hand.locator('[data-move-chip="L\'"]')).toContainText("E");
+  for (const [i, code] of ["KeyD", "KeyE", "KeyE"].entries()) {
+    await page.keyboard.press(code);
+    await expect(done).toHaveCount(i + 1);
+  }
+  await shot(page, "keys-learn-face", info.project.name);
+  await page.keyboard.press("KeyD");
+  await expect(main).toHaveAttribute("data-learn-finished", "");
 });
 
 test("조작 훈련: 문제를 맞히면 키별 기록이 남는다", async ({ page }, info) => {
