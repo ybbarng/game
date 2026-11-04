@@ -14,6 +14,22 @@ export default defineConfig({
         },
       },
     ],
+    // `--changed <기준>`(CI·push 전 검사, 2026-11-04)은 바뀐 파일을 불러오는 시험만 돌린다. 아래 파일이 바뀌면 전부 돈다.
+    // 기본값(package.json, vitest·vite 설정)에 더해: 타입·의존·런타임 설정, CI 자체, 그리고 시험이 import가 아니라
+    // 파일로 읽는 것(모듈 그래프에 안 잡힌다): stats/pinned-script.test.ts가 읽는 public/stats,
+    // stardraw-cli/site.test.ts가 실행하는 build-hashes.mjs
+    forceRerunTriggers: [
+      "**/package.json",
+      "**/{vitest,vite}.config.*",
+      "**/tsconfig*.json",
+      "**/pnpm-lock.yaml",
+      "**/pnpm-workspace.yaml",
+      "**/biome.json",
+      "**/.node-version",
+      "**/.github/workflows/ci.yml",
+      "**/apps/web/public/stats/**",
+      "**/apps/web/scripts/build-hashes.mjs",
+    ],
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**", "apps/*/src/**"],
