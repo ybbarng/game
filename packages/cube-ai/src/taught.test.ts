@@ -7,12 +7,19 @@ import {
 } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 import { toFacelets } from "./facelets";
-import { solveBeginner2, solveBeginner3 } from "./methods";
+import {
+  BEGINNER3_TAUGHT_STEPS,
+  solveBeginner2,
+  solveBeginner3,
+  solveHuman,
+} from "./methods";
 import { Solve } from "./solve";
 import {
   type CrossCase,
+  cornerPlace2Taught,
   cornersTaught,
   crossTaught,
+  llCornerTwistTaught,
   nextCrossEdge,
   whiteUp,
 } from "./taught";
@@ -51,7 +58,7 @@ const crossDone = (s: Solve) => {
 const fmt = (s: Solve, from: number, to: number) =>
   s.moves
     .slice(from, to)
-    .map((m) => formatMove(3, m))
+    .map((m) => formatMove(s.n, m))
     .join(" ");
 
 describe("배우는 방식 흰 십자", () => {
@@ -138,6 +145,235 @@ describe("taught 선택지", () => {
       const end = applyMoves(2, start, parseMoves(2, solve.moves.join(" ")));
       expect(isSolved(2, end)).toBe(true);
       expect(solve.moves.join(" ")).toContain("R' D' R D");
+    }
+  });
+});
+
+// ---------- 마지막 층(배우기 lessons-333.ts 「노란 십자」~「꼭짓점 방향」과 같은 순서·쥐는 법·횟수) ----------
+
+const EO = "F R U R' U' F'";
+const EDGE_SWAP = "R U R' U R U2 R' U";
+const CYCLE = "U R U' L' U R' U' L";
+const TWIST = "R' D' R D";
+
+/** 단계 하나를 살피는 멈춤 자리로 자른 조각들(둔 수 그대로, 합치기 전) */
+function segments(s: Solve, name: string): string[] {
+  const st = s.stageList.find((x) => x.name === name);
+  if (!st) throw new Error(`단계 없음: ${name}`);
+  const cuts = [
+    st.start,
+    ...s.lookList.filter((l) => l > st.start && l < st.end),
+    st.end,
+  ];
+  const out: string[] = [];
+  for (let i = 0; i + 1 < cuts.length; i++)
+    out.push(fmt(s, cuts[i] as number, cuts[i + 1] as number));
+  return out;
+}
+
+const count = (segs: string[], alg: string) =>
+  segs.filter((x) => x.includes(alg)).length;
+
+/** 2×2·3×3 공통: 꼭짓점 방향 조각은 U만 돌려 가져와 R' D' R D 2번 또는 4번, 큐브는 돌려 쥐지 않는다 */
+const TWIST_SEG = new RegExp(
+  `^((U['2]? )?${TWIST} ${TWIST}( ${TWIST} ${TWIST})?( U['2]?)?|U['2]?|)$`,
+);
+
+const runTaught3 = (seed: number) => {
+  const s = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
+  for (const step of BEGINNER3_TAUGHT_STEPS)
+    if (typeof step === "function") step(s);
+  return s;
+};
+
+describe("배우는 방식 마지막 층(3×3)", () => {
+  const FORM: Record<string, RegExp> = {
+    eo: new RegExp(`^((U['2]? )?${EO}|)$`),
+    "ll-edges": new RegExp(
+      `^((U['2]? )?(y['2]? )?${EDGE_SWAP}( U['2]?)?|U['2]?|)$`,
+    ),
+    "ll-corner-place": new RegExp(`^((y['2]? )?${CYCLE}|)$`),
+    "ll-corner-twist": TWIST_SEG,
+  };
+  const LIMIT: Record<string, [string, number]> = {
+    eo: [EO, 3],
+    "ll-edges": [EDGE_SWAP, 2],
+    "ll-corner-place": [CYCLE, 2],
+    "ll-corner-twist": [TWIST, 4],
+  };
+
+  it("노란 십자 → 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향, 단계마다 그 공식만 레슨 규칙 횟수 안에서", () => {
+    const seen = { eo3: false, edges2: false, place2: false, twist4: false };
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = runTaught3(seed);
+      expect(s.isSolved(), `${seed}`).toBe(true);
+      expect(s.stageList.map((x) => x.name)).toEqual([
+        "cross",
+        "corners",
+        "middle",
+        "eo",
+        "ll-edges",
+        "ll-corner-place",
+        "ll-corner-twist",
+      ]);
+      for (const [name, form] of Object.entries(FORM)) {
+        const segs = segments(s, name);
+        for (const seg of segs) expect(seg, `${seed} ${name}`).toMatch(form);
+        // 꼭짓점 방향은 돌아간 꼭짓점(많아야 넷)마다 한 조각
+        const [alg, limit] = LIMIT[name] as [string, number];
+        expect(count(segs, alg), `${seed} ${name}`).toBeLessThanOrEqual(limit);
+      }
+      if (count(segments(s, "eo"), EO) === 3) seen.eo3 = true;
+      if (count(segments(s, "ll-edges"), EDGE_SWAP) === 2) seen.edges2 = true;
+      if (count(segments(s, "ll-corner-place"), CYCLE) === 2)
+        seen.place2 = true;
+      if (segments(s, "ll-corner-twist").some((x) => x.split(TWIST).length > 4))
+        seen.twist4 = true;
+    }
+    // 여러 경우(점, 마주 본 모서리, 두 번 도는 꼭짓점, 네 번 돌리기)를 지나왔다
+    expect(seen).toEqual({
+      eo3: true,
+      edges2: true,
+      place2: true,
+      twist4: true,
+    });
+  });
+
+  it("꼭짓점 방향 도중에는 아래 두 층이 흐트러졌다가 끝나면 돌아온다", () => {
+    let messed = false;
+    for (let seed = 1; seed <= 12 && !messed; seed++) {
+      const s = runTaught3(seed);
+      const st = s.stageList.find((x) => x.name === "ll-corner-twist");
+      if (!st || st.end - st.start < 8) continue;
+      const t = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
+      t.apply(fmt(s, 0, st.start + 5));
+      if ([...t.rel().slice(27, 36)].some((c) => c !== "D")) messed = true;
+    }
+    expect(messed).toBe(true);
+  });
+
+  it("solveBeginner3 결과의 단계 이름도 같은 차례다", () => {
+    for (let seed = 1; seed <= 4; seed++) {
+      const solve = solveBeginner3(randomCubeState(3, seed), { taught: true });
+      expect(solve.stages.map((x) => x.name).slice(3)).toEqual([
+        "eo",
+        "ll-edges",
+        "ll-corner-place",
+        "ll-corner-twist",
+      ]);
+    }
+  });
+});
+
+describe("배우는 방식 마지막 층(4×4·5×5 축소법의 3×3 단계)", () => {
+  const LL = ["eo", "ll-edges", "ll-corner-place", "ll-corner-twist"];
+  it.each([
+    [4, [1, 2, 3, 4]],
+    [5, [1]],
+  ])(
+    "%i×%i: 패리티는 옆면 맞추기 전에 고치고, 같은 마지막 층으로 다 맞춘다",
+    (n, seeds) => {
+      const parities = new Set<string>();
+      for (const seed of seeds as number[]) {
+        const start = randomCubeState(n as number, seed);
+        const solve = solveHuman("beginner", n as number, start, undefined, {
+          taught: true,
+        });
+        const end = applyMoves(
+          n as number,
+          start,
+          parseMoves(n as number, solve.moves.join(" ")),
+        );
+        expect(isSolved(n as number, end), `${seed}`).toBe(true);
+        const names = solve.stages.map((x) => x.name);
+        for (const p of names.filter((x) => x.endsWith("parity")))
+          parities.add(p);
+        expect(
+          names.filter((x) => LL.includes(x)),
+          `${seed}`,
+        ).toEqual(LL);
+        // PLL 패리티는 노란 십자 뒤·옆면 맞추기 앞
+        const pll = names.indexOf("pll-parity");
+        if (pll >= 0) {
+          expect(names[pll - 1]).toBe("eo");
+          expect(names[pll + 1]).toBe("ll-edges");
+        }
+      }
+      if (n === 4) expect(parities.has("pll-parity")).toBe(true);
+    },
+  );
+});
+
+describe("배우는 방식 마지막 층(2×2)", () => {
+  const SOLVED2 = "UUUURRRRFFFFDDDDLLLLBBBB";
+  const SUNE = "R U R' U R U2 R'";
+  const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
+  const GEN = [SUNE, Y_PERM, CYCLE, "U", "U'"];
+
+  /** 첫 층이 맞은 2×2 윗층 섞기(결정적) */
+  function llState(i: number): Solve {
+    const s = new Solve(2, SOLVED2);
+    let x = i * 7919 + 13;
+    for (let k = 0; k < 6; k++) {
+      x = (x * 1103515245 + 12345) % 2147483648;
+      s.apply(GEN[(x >> 8) % GEN.length] as string);
+    }
+    return new Solve(2, s.f.join(""));
+  }
+
+  const placed = (s: Solve) => {
+    const cp = s.cubie().cp;
+    return [0, 1, 2, 3].filter((j) => cp[j] === j).length;
+  };
+  const U4 = ["", "U", "U2", "U'"];
+
+  it("꼭짓점 자리는 제자리가 꼭 하나인 U 자리에서(없으면 0인 자리에서 한 번), 꼭짓점 방향은 2·4번씩", () => {
+    let diagonal = false;
+    for (let i = 0; i < 80; i++) {
+      const start = llState(i);
+      const s = start.clone();
+      cornerPlace2Taught(s);
+      s.stage("ll-corner-place");
+      llCornerTwistTaught(s);
+      s.stage("ll-corner-twist");
+      expect(s.isSolved(), `${i}`).toBe(true);
+      const segs = segments(s, "ll-corner-place");
+      const replay = start.clone();
+      for (const seg of segs) {
+        expect(seg, `${i}`).toMatch(
+          new RegExp(`^((U['2]? )?(y['2]? )?${CYCLE}|U['2]?|)$`),
+        );
+        const at = seg.indexOf(CYCLE);
+        const pre = at >= 0 ? seg.slice(0, at) : seg;
+        const byU = U4.map((u) => placed(replay.clone().apply(u)));
+        replay.apply(pre);
+        if (at < 0) continue;
+        if (byU.includes(1)) {
+          // 제자리가 하나인 U 자리에서 그것을 앞-오른쪽 위에 둔다
+          expect(placed(replay), `${i}`).toBe(1);
+          expect(replay.cubie().cp[0], `${i}`).toBe(0);
+        } else {
+          // 대각 바꿈: 제자리가 없는 자리에서 한 번
+          diagonal = true;
+          expect(placed(replay), `${i}`).toBe(0);
+        }
+        replay.apply(CYCLE);
+      }
+      expect(count(segs, CYCLE), `${i}`).toBeLessThanOrEqual(3);
+      for (const seg of segments(s, "ll-corner-twist"))
+        expect(seg, `${i}`).toMatch(TWIST_SEG);
+    }
+    expect(diagonal).toBe(true);
+  });
+
+  it("solveBeginner2 taught: 첫 층 → 꼭짓점 자리 → 꼭짓점 방향", () => {
+    for (const seed of SEEDS.slice(0, 8)) {
+      const solve = solveBeginner2(randomCubeState(2, seed), { taught: true });
+      expect(solve.stages.map((x) => x.name)).toEqual([
+        "first-layer",
+        "ll-corner-place",
+        "ll-corner-twist",
+      ]);
     }
   });
 });
