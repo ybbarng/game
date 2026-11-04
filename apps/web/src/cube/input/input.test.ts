@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   actionsFor,
+  buttonMoves,
   isAvailable,
   isKnownAction,
   notationToMove,
@@ -204,6 +205,18 @@ describe("크기별 동작 목록", () => {
         expect(isAvailable(n, a.id), `${n} ${a.id}`).toBe(true);
         if (["face", "wide", "inner", "slice", "rotate"].includes(a.group))
           expect(notationToMove(n, a.id), `${n} ${a.id}`).not.toBeNull();
+      }
+  });
+
+  it("아래 단추 줄: 가운데 층 M은 홀수 크기에만, 단추마다 M'까지 수로 바뀐다", () => {
+    expect(buttonMoves(2)).not.toContain("M");
+    expect(buttonMoves(3)).toContain("M");
+    expect(buttonMoves(4)).not.toContain("M");
+    expect(buttonMoves(5)).toContain("M");
+    for (const n of [2, 3, 4, 5])
+      for (const m of buttonMoves(n)) {
+        expect(isAvailable(n, m), `${n} ${m}`).toBe(true);
+        expect(isAvailable(n, `${m}'`), `${n} ${m}'`).toBe(true);
       }
   });
 });
