@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   issueTitle,
   parseState,
+  ranOf,
   readPlaywright,
   readVitest,
   renderBody,
@@ -74,17 +75,32 @@ function playwrightReport(tests, duration = 100_000) {
   };
 }
 
-/** 한 번의 CI 실행 결과를 기록에 더한다 */
-function run(prevBody, { unit = {}, e2e = [] }, at) {
+/**
+ * 한 번의 CI 실행 결과를 기록에 더한다. selection은 CI 고르기 기록(없으면 전부 돈 실행으로 본다:
+ * 옛 실행과 같은 길)
+ */
+function run(
+  prevBody,
+  { unit = {}, e2e = [], selection },
+  at,
+  config = CONFIG,
+) {
   const v = readVitest(vitestReport(unit), ROOT);
   const p = readPlaywright(playwrightReport(e2e), ROOT);
   const r = update(
     parseState(prevBody),
-    { items: [...v.items, ...p.items], unitMs: v.totalMs, e2eMs: [p.totalMs] },
-    CONFIG,
+    {
+      items: [...v.items, ...p.items],
+      unitMs: v.totalMs,
+      e2eMs: [p.totalMs],
+      ...(selection
+        ? { ran: ranOf(selection, { unit: v.files, e2e: p.files }) }
+        : {}),
+    },
+    config,
     { at, sha: `${at}abcdef` },
   );
-  return { ...r, body: renderBody(r.state, r.slow, CONFIG) };
+  return { ...r, body: renderBody(r.state, r.slow, config) };
 }
 
 describe("시험 시간 읽기", () => {
@@ -203,6 +219,74 @@ describe("기준 비교와 흔들림", () => {
     const e2e = [["a.spec.ts", 1, "딱 기준", "desktop", 15_000]];
     const a = run(null, { e2e }, "2026-11-01");
     expect(run(a.body, { e2e }, "2026-11-02").slow).toEqual([]);
+  });
+});
+
+describe("바뀐 것만 돈 실행(2026-11-04)", () => {
+  const KEEP = { ...CONFIG, keep: 10 };
+  const slowFile = { "apps/web/src/slow.test.ts": [["느림", 6000]] };
+  const otherFile = { "packages/x/src/fast.test.ts": [["빠름", 10]] };
+  const partial = { unit: "changed", e2e: "none" };
+
+  it("그 시험이 빠진 실행은 세지 않는다(빠졌다고 빨라진 것이 아니다)", () => {
+    let body = null;
+    body = run(body, { unit: slowFile }, "2026-11-01", KEEP).body;
+    body = run(body, { unit: slowFile }, "2026-11-02", KEEP).body;
+    for (const at of ["2026-11-03", "2026-11-04", "2026-11-05"]) {
+      body = run(body, { unit: otherFile, selection: partial }, at, KEEP).body;
+    }
+    const r = run(
+      body,
+      { unit: otherFile, selection: partial },
+      "2026-11-06",
+      KEEP,
+    );
+    expect(r.slow.map((s) => [s.kind, s.times])).toEqual([
+      ["unit-file", [6000, 6000]],
+      ["unit-test", [6000, 6000]],
+    ]);
+  });
+
+  it("그 시험을 잰 일부 실행은 센다", () => {
+    let body = null;
+    body = run(body, { unit: slowFile }, "2026-11-01", KEEP).body;
+    body = run(
+      body,
+      { unit: { ...slowFile, ...otherFile }, selection: partial },
+      "2026-11-02",
+      KEEP,
+    ).body;
+    const fast = { "apps/web/src/slow.test.ts": [["느림", 100]] };
+    const r = run(body, { unit: fast, selection: partial }, "2026-11-03", KEEP);
+    expect(r.slow[0].times).toEqual([6000, 6000, null]);
+    const r2 = run(
+      r.body,
+      { unit: fast, selection: partial },
+      "2026-11-04",
+      KEEP,
+    );
+    // 잰 최근 3번 가운데 넘은 것이 1번만 남아 빠진다
+    expect(r2.slow).toEqual([]);
+  });
+
+  it("전체 시간 표에 일부 실행을 표시한다", () => {
+    const r = run(
+      null,
+      { unit: otherFile, selection: partial },
+      "2026-11-03",
+      KEEP,
+    );
+    expect(r.body).toContain("| 2026-11-03 `2026-11` | 0.0초 (일부 1파일) |");
+  });
+
+  it("고르기 기록: 전부면 null, 아니면 결과에 나온 파일, 기록이 없으면 결과에 나온 파일", () => {
+    const files = { unit: ["a.test.ts"], e2e: ["e2e/x.spec.ts"] };
+    expect(ranOf({ unit: "all", e2e: "all" }, files)).toEqual({
+      unit: null,
+      e2e: null,
+    });
+    expect(ranOf({ unit: "changed", e2e: "some" }, files)).toEqual(files);
+    expect(ranOf(null, files)).toEqual(files);
   });
 });
 

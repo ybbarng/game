@@ -4,7 +4,10 @@
 // 지난 실행 기록은 그 이슈 본문 끝의 숨긴 JSON 블록에 이어 둔다(따로 저장소·artifact를 뒤지지 않는다).
 // .github/workflows/slow-tests.yml이 main push CI가 성공한 뒤 돌린다. 어떤 일이 있어도 0으로 끝난다.
 //
-//   node scripts/slow-tests.mjs --unit unit.json --e2e e2e-1.json --e2e e2e-2.json [--dry-run]
+//   node scripts/slow-tests.mjs --unit unit.json --e2e e2e-1.json --e2e e2e-2.json [--selection selection.json] [--dry-run]
+//
+// CI가 바뀐 것만 시험하게 된 뒤(2026-11-04) 실행마다 돈 시험이 다르다. --selection(CI의 고르기 기록)과 결과에 나온
+// 파일로 실행마다 무엇을 쟀는지 남기고, 시험마다 그 시험을 잰 실행만 센다(돌지 않은 시험을 빨라졌다고 읽지 않게).
 //
 // GITHUB_TOKEN·GITHUB_REPOSITORY가 없거나 --dry-run이면 이슈를 건드리지 않고 본문만 찍는다.
 import { createHash } from "node:crypto";
@@ -42,10 +45,12 @@ function itemId(kind, name, file) {
 /** vitest JSON reporter 결과 → 파일·시험별 시간과 전체 시간 */
 export function readVitest(report, root) {
   const items = [];
+  const files = [];
   const start = report.startTime;
   let end = start;
   for (const f of report.testResults ?? []) {
     const file = toRepoPath(f.name, root);
+    files.push(file);
     if (Number.isFinite(f.startTime) && Number.isFinite(f.endTime)) {
       end = Math.max(end, f.endTime);
       items.push({
@@ -68,16 +73,18 @@ export function readVitest(report, root) {
       });
     }
   }
-  return { items, totalMs: Math.round(end - start) };
+  return { items, files, totalMs: Math.round(end - start) };
 }
 
 /** playwright JSON reporter 결과 → 화면 시험별 시간과 조각 전체 시간. 건너뛴 시험은 뺀다 */
 export function readPlaywright(report, root) {
   const items = [];
+  const files = new Set();
   const base = report.config?.rootDir ?? root;
   const walk = (suite, titles) => {
     for (const spec of suite.specs ?? []) {
       const file = toRepoPath(path.resolve(base, spec.file), root);
+      files.add(file);
       for (const test of spec.tests ?? []) {
         const last = test.results?.at(-1);
         if (!last || last.status === "skipped" || test.status === "skipped") {
@@ -97,7 +104,11 @@ export function readPlaywright(report, root) {
   };
   // 맨 위 묶음은 파일이라 제목에 넣지 않는다
   for (const s of report.suites ?? []) walk(s, []);
-  return { items, totalMs: Math.round(report.stats?.duration ?? 0) };
+  return {
+    items,
+    files: [...files],
+    totalMs: Math.round(report.stats?.duration ?? 0),
+  };
 }
 
 /** 이슈 본문에서 숨긴 기록을 꺼낸다. 없거나 깨졌으면 빈 기록 */
@@ -129,12 +140,30 @@ function stateBlock(state) {
   return `${STATE_OPEN}\n${json}\n${STATE_CLOSE}`;
 }
 
+const fileId = (file) =>
+  createHash("sha1").update(file).digest("hex").slice(0, 8);
+
+const KIND_GROUP = { "unit-file": "unit", "unit-test": "unit", e2e: "e2e" };
+
+/**
+ * 그 실행에서 이 시험을 쟀는가. CI가 바뀐 것만 시험하게 된 뒤(2026-11-04) 실행마다 돈 파일이 다르다.
+ * run.ran이 없거나(옛 기록) 종류별 값이 null이면 전부 돈 실행, 배열이면 그 파일(fileId)만 돌았다
+ */
+function measured(run, item) {
+  const ran = run.ran?.[KIND_GROUP[item.kind]];
+  return ran == null || ran.includes(fileId(item.file));
+}
+
 /**
  * 이번 실행을 기록에 더하고 이슈에 올릴 시험을 고른다.
- * current: { items, unitMs, e2eMs: number[] }, meta: { at: "YYYY-MM-DD", sha }
+ * current: { items, unitMs, e2eMs: number[], ran?: { unit, e2e } }(ran은 종류별로 null=전부 또는 돈 파일 경로 배열),
+ * meta: { at: "YYYY-MM-DD", sha }.
+ * 시험마다 "그 시험을 잰" 최근 window번 실행으로 판단한다. 고른 시험만 돈 실행에서 빠진 시험을 "빨라졌다"로 읽지
+ * 않게(빠진 실행은 세지 않는다). 그래서 실행 기록은 window보다 넉넉히(config.keep) 둔다
  */
 export function update(prev, current, config, meta) {
   const { limits, window, minHits, watchRatio } = config;
+  const keep = Math.max(config.keep ?? window, window);
   const items = { ...prev.items };
   const times = {};
   for (const it of current.items) {
@@ -151,6 +180,8 @@ export function update(prev, current, config, meta) {
       ...(it.project ? { project: it.project } : {}),
     };
   }
+  const ranIds = (files) => (files == null ? null : files.map(fileId).sort());
+  const partial = current.ran?.unit != null || current.ran?.e2e != null;
   let runs = [
     ...prev.runs,
     {
@@ -159,11 +190,22 @@ export function update(prev, current, config, meta) {
       unitMs: current.unitMs ?? null,
       e2eMs: current.e2eMs ?? [],
       times,
+      ...(partial
+        ? {
+            ran: {
+              unit: ranIds(current.ran.unit),
+              e2e: ranIds(current.ran.e2e),
+            },
+          }
+        : {}),
     },
-  ].slice(-window);
+  ].slice(-keep);
 
+  // 그 시험을 잰 최근 window번
+  const recent = (id, rs = runs) =>
+    rs.filter((r) => items[id] && measured(r, items[id])).slice(-window);
   const overIn = (id) =>
-    runs.filter((r) => (r.times[id] ?? 0) > limits[items[id]?.kind]);
+    recent(id).filter((r) => (r.times[id] ?? 0) > limits[items[id]?.kind]);
   const slowIds = Object.keys(items).filter(
     (id) => items[id] && overIn(id).length >= minHits,
   );
@@ -188,7 +230,7 @@ export function update(prev, current, config, meta) {
       id,
       ...items[id],
       limit: limits[items[id].kind],
-      times: state.runs.map((r) => r.times[id] ?? null),
+      times: recent(id, state.runs).map((r) => r.times[id] ?? null),
       firstSeen: firstSeen[id],
     }))
     .sort(
@@ -225,7 +267,7 @@ export function renderBody(state, slow, config, meta = {}) {
   const last = state.runs.at(-1);
   const lines = [];
   lines.push(
-    `main CI가 성공할 때마다 시험 시간을 재서, 기준을 자꾸 넘는 시험을 여기에 모은다. 최근 ${window}번 실행 가운데 ${minHits}번 이상 넘은 것만 올린다(한 번 우연히 느린 것은 뺀다).`,
+    `main CI가 성공할 때마다 시험 시간을 재서, 기준을 자꾸 넘는 시험을 여기에 모은다. 그 시험을 잰 최근 ${window}번 실행 가운데 ${minHits}번 이상 넘은 것만 올린다(한 번 우연히 느린 것은 뺀다. CI는 바뀐 것만 시험하므로 그 시험이 돌지 않은 실행은 세지 않는다).`,
     "",
     `기준(CI에서 잰 시간, \`scripts/slow-tests.json\`): 단위 시험 파일 ${sec(limits["unit-file"])} · 단위 시험 하나 ${sec(limits["unit-test"])} · 화면 시험 하나 ${sec(limits.e2e)}.`,
     `마지막 갱신: ${last?.at ?? "-"} ${shortSha(last?.sha)}${meta.runUrl ? ` ([CI 실행](${meta.runUrl}))` : ""}`,
@@ -237,7 +279,7 @@ export function renderBody(state, slow, config, meta = {}) {
     lines.push(
       `### 기준을 넘는 시험 ${slow.length}개`,
       "",
-      "| 종류 | 시험 | 파일 | 최근 시간(옛 → 새) | 기준 | 처음 본 날 |",
+      "| 종류 | 시험 | 파일 | 잰 최근 시간(옛 → 새) | 기준 | 처음 본 날 |",
       "|---|---|---|---|---|---|",
     );
     for (const s of slow) {
@@ -249,7 +291,7 @@ export function renderBody(state, slow, config, meta = {}) {
     }
     lines.push(
       "",
-      "`—`는 그 실행에서 기준의 80% 아래였다는 뜻이다(기록을 줄이려고 적지 않는다).",
+      "`—`는 그 실행에서 기준의 80% 아래였다는 뜻이다(기록을 줄이려고 적지 않는다). 그 시험이 돌지 않은 실행은 칸에 넣지 않는다.",
       "",
       "#### 혼자 돌려 보기(저장소 맨 위에서. 화면 시험은 먼저 `pnpm --filter @game/web build`)",
       "",
@@ -267,9 +309,11 @@ export function renderBody(state, slow, config, meta = {}) {
     "| 실행 | 단위 시험 전체 | 화면 시험 조각 |",
     "|---|---|---|",
   );
+  // 고른 시험만 돈 실행은 「일부」를 붙인다(전체 시간이 줄어도 빨라진 것이 아니다)
+  const part = (ran) => (ran == null ? "" : ` (일부 ${ran.length}파일)`);
   for (const r of state.runs) {
     lines.push(
-      `| ${r.at} ${shortSha(r.sha)} | ${r.unitMs == null ? "—" : sec(r.unitMs)} | ${r.e2eMs.length ? r.e2eMs.map(sec).join(" · ") : "—"} |`,
+      `| ${r.at} ${shortSha(r.sha)} | ${r.unitMs == null ? "—" : `${sec(r.unitMs)}${part(r.ran?.unit)}`} | ${r.e2eMs.length ? `${r.e2eMs.map(sec).join(" · ")}${part(r.ran?.e2e)}` : "—"} |`,
     );
   }
   lines.push("", stateBlock(state), "");
@@ -313,6 +357,17 @@ async function findIssue() {
   return issues.find((i) => i.state === "open") ?? issues[0] ?? null;
 }
 
+/**
+ * CI 고르기 기록(scripts/affected-e2e.mjs --selection-out)과 결과에 나온 파일로, 종류마다 전부 돌았는지(null)
+ * 돈 파일 목록인지 정한다. 기록이 없으면 결과에 나온 파일만 잰 것으로 본다(전부 돈 실행이어도 결과는 같다)
+ */
+export function ranOf(selection, ranFiles) {
+  return {
+    unit: selection?.unit === "all" ? null : ranFiles.unit,
+    e2e: selection?.e2e === "all" ? null : ranFiles.e2e,
+  };
+}
+
 function parseArgs(argv) {
   const args = { unit: [], e2e: [], dryRun: false };
   for (let i = 0; i < argv.length; i++) {
@@ -320,6 +375,7 @@ function parseArgs(argv) {
     if (a === "--unit") args.unit.push(argv[++i]);
     else if (a === "--e2e") args.e2e.push(argv[++i]);
     else if (a === "--limits") args.limits = argv[++i];
+    else if (a === "--selection") args.selection = argv[++i];
     else if (a === "--dry-run") args.dryRun = true;
   }
   return args;
@@ -342,11 +398,13 @@ async function main() {
   );
 
   const current = { items: [], unitMs: null, e2eMs: [] };
+  const ranFiles = { unit: [], e2e: [] };
   for (const f of args.unit) {
     const r = readJson(f);
     if (!r) continue;
     const v = readVitest(r, root);
     current.items.push(...v.items);
+    ranFiles.unit.push(...v.files);
     current.unitMs = v.totalMs;
   }
   for (const f of args.e2e) {
@@ -354,8 +412,13 @@ async function main() {
     if (!r) continue;
     const p = readPlaywright(r, root);
     current.items.push(...p.items);
+    ranFiles.e2e.push(...p.files);
     current.e2eMs.push(p.totalMs);
   }
+  current.ran = ranOf(
+    args.selection ? readJson(args.selection) : null,
+    ranFiles,
+  );
   if (current.items.length === 0) {
     console.log("::warning::시험 시간이 하나도 없어 이슈를 건드리지 않는다");
     return;
