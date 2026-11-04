@@ -42,7 +42,17 @@ import {
   pressLabel,
 } from "./reach";
 import { emptyRecord, loadDrill, loadLearn, saveDrill } from "./storage";
-import { faceHandLine, faceHands, StepRun, tutorialSteps } from "./tutorial";
+import {
+  faceHandLine,
+  faceHands,
+  migrateLearnDone,
+  ORIENT_GOALS,
+  orientGoalText,
+  StepRun,
+  TUTORIAL_IDS,
+  targetLabel,
+  tutorialSteps,
+} from "./tutorial";
 
 const mv = (n: number, t: string) => {
   const m = notationToMove(n, t);
@@ -333,9 +343,12 @@ describe("키 익히기", () => {
   it("배치에서 키를 읽어 문구를 만든다", () => {
     const two = tutorialSteps(twoHandKeymap());
     const nota = tutorialSteps(notationKeymap());
-    expect(two.map((s) => s.id)).toEqual(nota.map((s) => s.id));
-    expect(two[1]?.lines[0]).toContain("I");
-    expect(nota[1]?.lines[0]).toContain("Shift+R");
+    expect(two.map((s) => s.id)).toEqual([...TUTORIAL_IDS]);
+    expect(nota.map((s) => s.id)).toEqual([...TUTORIAL_IDS]);
+    const rTwo = two.find((s) => s.id === "face-R");
+    const rNota = nota.find((s) => s.id === "face-R");
+    expect(rTwo?.lines[0]).toContain("I 키(R), 반대로는 K 키(R')");
+    expect(rNota?.lines[0]).toContain("Shift+R 키(R')");
     expect(two[0]?.lines[2]).toContain("「U'」");
     expect(two[0]?.lines[2]).toContain(
       "이 배치에서 F 키는 「U'」, J 키는 「U」 수예요.",
@@ -380,9 +393,135 @@ describe("키 익히기", () => {
 
   it("배치에 없는 수는 빼고 알린다", () => {
     const km = unbind(twoHandKeymap(), { code: "KeyK" });
-    const right = tutorialSteps(km).find((s) => s.id === "right");
+    const right = tutorialSteps(km).find((s) => s.id === "face-R");
     expect(right?.missing).toEqual(["R'"]);
     expect(right?.targets).toHaveLength(2);
+    expect(right?.hand).toBeUndefined();
+  });
+
+  it("한 면 단계: 어느 손인지 보이고, 돌린 뒤 되돌려 맞춘다", () => {
+    const two = tutorialSteps(twoHandKeymap());
+    const hand = (f: string) => two.find((s) => s.id === `face-${f}`)?.hand;
+    expect(hand("R")).toEqual({ label: "오른손", moves: ["R", "R'"] });
+    expect(hand("L")?.label).toBe("왼손");
+    expect(hand("U")?.label).toBe("두 손");
+    // 「표기」 배치의 R·Shift+R은 왼손
+    const nota = tutorialSteps(notationKeymap());
+    expect(nota.find((s) => s.id === "face-R")?.hand?.label).toBe("왼손");
+
+    const step = two.find((s) => s.id === "face-F");
+    expect(step?.targets.map(targetLabel)).toEqual(["F", "F'", "F'", "F"]);
+    const run = new StepRun(3, step as never);
+    expect(run.feed({ kind: "move", move: mv(3, "F") })).toBe("hit");
+    expect(run.facing).toEqual({ up: 0, front: 2 });
+    expect(run.feed({ kind: "move", move: mv(3, "F'") })).toBe("hit");
+    expect(run.feed({ kind: "move", move: mv(3, "F'") })).toBe("hit");
+    expect(run.feed({ kind: "move", move: mv(3, "F") })).toBe("done");
+  });
+
+  it("큐브 둘러보기: x·y·z 뒤 말한 색 면이 오게 돌린다. 목표는 이미 이뤄져 있지 않다", () => {
+    const step = tutorialSteps(twoHandKeymap()).find((s) => s.id === "rotate");
+    if (!step) throw new Error("rotate");
+    expect(step.targets.slice(3)).toEqual(ORIENT_GOALS);
+    const run = new StepRun(3, step);
+    for (const t of ["x", "y", "z"])
+      expect(run.feed({ kind: "move", move: mv(3, t) })).toBe("hit");
+    // 면을 돌리면 보는 쪽이 바뀌지 않으니 틀림
+    expect(run.feed({ kind: "move", move: mv(3, "R") })).toBe("miss");
+    expect(run.feed({ kind: "move", move: mv(3, "R'") })).toBe("miss");
+    const ROT = ["x", "x'", "y", "y'", "z", "z'"];
+    for (const goal of ORIENT_GOALS) {
+      if (goal.kind !== "orient") throw new Error("orient");
+      expect(run.current).toEqual(goal);
+      const f = run.facing;
+      if (!f) throw new Error("facing");
+      // 목표가 열릴 때 이미 그 모양이면 치지 않아도 넘어가 버린다
+      expect(
+        (goal.up === undefined || goal.up === f.up) &&
+          (goal.front === undefined || goal.front === f.front),
+      ).toBe(false);
+      // 닿는 가장 짧은 길(세 번 안쪽)을 찾아 친다
+      const reaches = (seq: string[]) => {
+        // 대상 없이 모양만 따라가는 판에 지금까지의 수와 seq를 넣는다
+        const probe = new StepRun(3, { ...step, targets: [] });
+        for (const m of [...run.played, ...seq.map((s) => mv(3, s))])
+          probe.feed({ kind: "move", move: m });
+        const g = probe.facing;
+        return (
+          !!g &&
+          (goal.up === undefined || goal.up === g.up) &&
+          (goal.front === undefined || goal.front === g.front)
+        );
+      };
+      let frontier: string[][] = [[]];
+      let path: string[] | undefined;
+      for (let depth = 0; depth < 3 && !path; depth++) {
+        frontier = frontier.flatMap((p) => ROT.map((r) => [...p, r]));
+        path = frontier.find(reaches);
+      }
+      if (!path) throw new Error("닿지 못함");
+      const out = path.map((s) => run.feed({ kind: "move", move: mv(3, s) }));
+      expect(out.slice(0, -1).every((o) => o === "partial")).toBe(true);
+      expect(["hit", "done"]).toContain(out.at(-1));
+    }
+    expect(run.done).toBe(true);
+    expect(run.facing).toEqual({ up: 0, front: 2 });
+    expect(orientGoalText({ up: 2 })).toBe("초록 면을 위로 오게 돌려요.");
+    expect(targetLabel({ kind: "orient", up: 0, front: 2 })).toBe(
+      "흰 위·초록 앞",
+    );
+  });
+
+  it("섞고 풀기: 나중 것부터 거꾸로 쳐야 풀린다. 맞춘 상태로는 풀기로 치지 않는다", () => {
+    const step = tutorialSteps(twoHandKeymap()).find((s) => s.id === "unwind");
+    if (!step) throw new Error("unwind");
+    const run = new StepRun(3, step);
+    for (const t of ["R", "U", "U'", "R'", "F", "R"])
+      expect(run.feed({ kind: "move", move: mv(3, t) })).toBe("hit");
+    expect(targetLabel(run.current as never)).toBe("혼자 풀기");
+    expect(run.feed({ kind: "command", command: "reset" })).toBe("ignore");
+    expect(run.current?.kind).toBe("solve");
+    // 맞춘 상태로 뒤에 다시 F R로 섞고, 먼저 친 것부터 풀면 안 풀린다
+    run.feed({ kind: "move", move: mv(3, "F") });
+    run.feed({ kind: "move", move: mv(3, "R") });
+    expect(run.feed({ kind: "move", move: mv(3, "F'") })).toBe("partial");
+    expect(run.feed({ kind: "command", command: "undo" })).toBe("partial");
+    expect(run.feed({ kind: "move", move: mv(3, "R'") })).toBe("partial");
+    expect(run.feed({ kind: "move", move: mv(3, "F'") })).toBe("done");
+  });
+
+  it("옛 진도를 새 단계로 옮긴다", () => {
+    // 옛 단계를 모두 마쳤으면 모두 마친 것으로
+    expect(
+      migrateLearnDone([
+        "home",
+        "right",
+        "left",
+        "fdb",
+        "rotate",
+        "layer",
+        "commands",
+        "formula",
+      ]),
+    ).toEqual([...TUTORIAL_IDS]);
+    expect(migrateLearnDone(["home", "right"])).toEqual(["home", "face-R"]);
+    expect(migrateLearnDone(["left", "right", "zzz"])).toEqual([
+      "face-R",
+      "face-L",
+      "face-U",
+    ]);
+    expect(migrateLearnDone(["fdb", "rotate"])).toEqual([
+      "rotate",
+      "face-F",
+      "face-D",
+      "face-B",
+    ]);
+    // 새 id는 그대로, 모르는 id는 버린다
+    expect(migrateLearnDone(["unwind", "x", "home"])).toEqual([
+      "home",
+      "unwind",
+    ]);
+    expect(migrateLearnDone([])).toEqual([]);
   });
 
   it("단계 진행: 키 자리 → 수 → 명령", () => {
@@ -403,9 +542,9 @@ describe("키 익히기", () => {
 
   it("사용자 배치로 바꾼 키가 문구에 나온다", () => {
     const km = bind(twoHandKeymap(), { code: "KeyQ" }, "R");
-    expect(tutorialSteps(km)[1]?.lines[0]).toContain(
-      "R(오른쪽 면을 시계 방향)은 I / Q",
-    );
+    expect(
+      tutorialSteps(km).find((s) => s.id === "face-R")?.lines[0],
+    ).toContain("I / Q 키(R)");
   });
 });
 
