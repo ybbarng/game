@@ -306,6 +306,10 @@
         {
           "label": "보안",
           "path": "docs/07-security.md"
+        },
+        {
+          "label": "공정성의 두 결(증명하는 판정·고르게 하는 통신)",
+          "path": "docs/50-fairness-two-tracks.md"
         }
       ]
     },
