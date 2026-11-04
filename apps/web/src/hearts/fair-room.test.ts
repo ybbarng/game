@@ -8,9 +8,9 @@ import { replayArchive } from "@/review/replay";
 import { playUntil, setup, until } from "./fair-room-fixture";
 import { heartsKit } from "./kit";
 
-/** 끝까지 두기와 복기. 새로고침·끊김·부정은 fair-room-reload.test.ts가 본다 */
+/** 끝까지 두기와 복기(같은 게임으로 본다). 새로고침·끊김·부정은 fair-room-reload.test.ts가 본다 */
 describe("하트 멘탈 포커 온라인 대전", () => {
-  it("방장도 남의 패를 모른 채 카드를 넘기고 게임을 끝까지 두며(적어도 두 판), 판마다 모두가 다시 계산해 확인한다", async () => {
+  it("방장도 남의 패를 모른 채 카드를 넘기고 게임을 끝까지 두며(적어도 두 판), 판마다 모두가 다시 계산해 확인하고, 방장 기록을 다시 돌리면 실제 카드로 같은 판이 나온다", async () => {
     const { host, guests, incidents } = await setup(
       2,
       undefined,
@@ -59,22 +59,7 @@ describe("하트 멘탈 포커 온라인 대전", () => {
         .filter((m) => m.includes('"handover"'))
         .every((m) => m.includes(`"to":${guests[0]?.seat}`)),
     ).toBe(true);
-  });
-
-  it("복기: 방장이 남기는 기록(판별 실제 패 포함)을 다시 돌리면 실제 카드로 같은 판이 나온다", async () => {
-    const { host, guests, incidents } = await setup(2);
-    await host.start();
-    await until(() => guests.every((g) => g.match !== null));
-    const match = host.match as unknown as {
-      current(): { phase: string };
-    };
-    // 끝 점수 10점이라 대개 한 판, 드물게 두 판에 끝난다
-    await playUntil(
-      host as never,
-      guests as never,
-      () => match.current().phase === "gameOver",
-      incidents,
-    );
+    // 복기: 방장이 남기는 기록(판별 실제 패 포함)을 다시 돌리면 실제 카드로 같은 판이 나온다.
     const source = (
       host as unknown as { archiveSource(): ArchiveSource }
     ).archiveSource();
@@ -87,20 +72,20 @@ describe("하트 멘탈 포커 온라인 대전", () => {
       ...source,
       seat: 0,
       seatNames: null,
-      rounds: 1,
-      over: false,
+      rounds,
+      over: true,
     });
     expect(replayed.error).toBeNull();
     const scoredAt = replayed.events.findIndex((e) =>
       (e as { type: string }[]).some((x) => x.type === "roundScored"),
     );
     expect(scoredAt).toBeGreaterThan(0);
-    const state = replayed.states[scoredAt] as {
+    const scoredState = replayed.states[scoredAt] as {
       round: { tricks: { plays: { card: string }[] }[] };
     };
     expect(
-      state.round.tricks
-        .flatMap((t) => t.plays)
+      scoredState.round.tricks
+        .flatMap((tr) => tr.plays)
         .every((p) => !p.card.startsWith("?_")),
     ).toBe(true);
   });
