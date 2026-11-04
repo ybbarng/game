@@ -2,9 +2,9 @@ import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /*
  * 원카드 배우기 화면 시험(docs/42 15절). 단원 열기 → 첫 단원 미션(카드 내기)으로 단원 끝 →
- * 외치기 단원의 잡기 미션(컴퓨터가 한 장이 되고 본인 시간이 지난 뒤 더미 치기)과 외치기 미션(치고 내기).
+ * 외치기 단원의 잡기 미션(컴퓨터가 한 장이 되면 더미 치기)과 외치기 미션(내고 나서 치기, o2 반응 속도 겨루기).
  * 미션 판정은 단위 시험(onecard/tutorial)이 본다. 여기서는 화면으로 끝까지 갈 수 있는지를 본다.
- * 컴퓨터 대기·본인 시간 1초는 `page.clock`으로 감고(실제 시간으로 기다리지 않는다), 더미를 누르고 있는 시간도
+ * 컴퓨터 대기·누름 모으는 시간은 `page.clock`으로 감고(실제 시간으로 기다리지 않는다), 더미를 누르고 있는 시간도
  * 시계로 만든다
  */
 
@@ -105,34 +105,43 @@ test("원카드 배우기: 첫 단원을 끝내고, 깜빡한 컴퓨터를 잡�
   await next(page, 4);
   await page.getByRole("button", { name: "내가 한 장 먹는다" }).click();
   await next(page);
-  await page
-    .getByRole("button", { name: "1초가 지나는 순간 그 사람이 잡힌다" })
-    .click();
+  await page.getByRole("button", { name: "컴퓨터가 잡혀 1장 먹는다" }).click();
   await next(page);
 
-  // 잡기: 컴퓨터가 ◆4를 내고 한 장이 됐는데 외치지 않는다. 본인 시간(1초)이 지난 뒤 더미를 친다.
+  // 잡기: 컴퓨터가 ◆4를 내고 한 장이 됐는데 외치지 않는다. 한 장이 된 것을 보고 더미를 친다.
   await page.getByRole("button", { name: "미션 시작" }).click();
-  // 컴퓨터가 낼 때까지 시계를 감는다. 한 장이 된 순간부터 본인 시간이 흐른다.
+  // 컴퓨터가 낼 때까지 시계를 감는다.
   await fastForwardUntil(
     page,
     async () => (await page.locator('[data-count="1"]').count()) > 0,
     { step: 50 },
   );
   await expect(page.locator('[data-count="1"]')).toHaveText("1장");
-  await page.clock.fastForward(1_100);
   await slap(page);
+  // 누름은 모으는 시간(150ms) 뒤 반응 시간 순으로 처리된다
+  await fastForwardUntil(
+    page,
+    async () => (await page.locator('[data-bubble="caught"]').count()) > 0,
+    { step: 50 },
+  );
   await expect(page.locator('[data-bubble="caught"]')).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("onecard-learn-catch.png") });
   await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible();
   await next(page);
 
-  // 외치기: 두 장일 때 먼저 더미를 치고 한 장을 낸다.
+  // 외치기: 두 장에서 한 장을 내고, 한 장이 된 뒤 더미를 친다(미리 치면 헛외침).
   await page.getByRole("button", { name: "미션 시작" }).click();
   await expect(hand(page).getByRole("button")).toHaveCount(2);
-  await slap(page);
-  await expect(hand(page).locator('[data-bubble="shout"]')).toBeVisible();
   await playCard(page, "H5", touch);
+  await expect(hand(page).getByRole("button")).toHaveCount(1);
+  await slap(page);
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await page.getByRole("dialog", { name: "미션 성공" }).count()) > 0,
+    { step: 50 },
+  );
   await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("onecard-learn-shout.png") });
