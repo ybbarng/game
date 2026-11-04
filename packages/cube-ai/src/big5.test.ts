@@ -12,22 +12,22 @@ import { botPlan } from "./plan";
 /**
  * 5×5 사람 흉내: 축소법 단계 뒤 같은 단계의 3×3 해법. 5×5는 4×4 같은 패리티가 없다
  * (모서리 패리티는 축소법의 모서리 짝 단계 안에서 고친다). 축소법이 상태마다 수백 ms라
- * 무작위 상태는 둘만 보고, 네 단계가 같은 축소 결과를 함께 쓴다.
+ * 무작위 상태는 하나만 보고, 네 단계가 같은 축소 결과를 함께 쓴다. 이 파일은 축소 단계 뒤에
+ * 단계별 3×3 해법이 이어 붙는지를 본다. 여러 상태(모서리 패리티가 생기는 것 포함)를 축소법이
+ * 푸는지는 cube-reduction의 reduction5.test.ts가 본다(2026-11-04, 상태 둘이면 CI 약 3초).
  */
 
 describe("5×5", () => {
-  const first = randomCubeState(5, 21);
-  const starts = [first, randomCubeState(5, 22)];
+  // 씨앗 22는 축소법이 보통 길이(약 250ms). 21은 그 두 배쯤이라 뺐다
+  const first = randomCubeState(5, 22);
 
   it.each(BOT_LEVELS)("%s: 엔진에서 맞춰지고 단계가 이어진다", (level) => {
-    for (const start of starts) {
-      const solve = solveHuman(level, 5, start);
-      checkSolve(5, start, solve);
-      expect(stageNames(solve)).toEqual([
-        ...REDUCTION_STAGES,
-        ...THREE_STAGES[level],
-      ]);
-    }
+    const solve = solveHuman(level, 5, first);
+    checkSolve(5, first, solve);
+    expect(stageNames(solve)).toEqual([
+      ...REDUCTION_STAGES,
+      ...THREE_STAGES[level],
+    ]);
   });
 
   it("같은 단계의 3×3보다 오래 걸린다", () => {

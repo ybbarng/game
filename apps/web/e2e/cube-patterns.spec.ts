@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -38,6 +39,9 @@ async function shot(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("패턴: 크기별 카드를 보고, 카드를 열면 시연이 나온다", async ({
   page,

@@ -1,3 +1,4 @@
+import { no3d, pauseClockSoon } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -43,6 +44,9 @@ async function shot(page: Page, name: string, project: string) {
   });
 }
 
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
+
 test("십자 훈련: 최적 해로 성공, 계획 후 가리고는 큐브를 가린다", async ({
   page,
 }, info) => {
@@ -53,8 +57,7 @@ test("십자 훈련: 최적 해로 성공, 계획 후 가리고는 큐브를 가
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
     { timeout: ROUND_TIMEOUT },
   );
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 5_000);
+  await pauseClockSoon(page);
 
   await page.locator('[data-cross-option="수 제한:opt"]').click();
   await page.locator('[data-cross-option="어려움:5"]').click();

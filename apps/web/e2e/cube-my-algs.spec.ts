@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -14,6 +15,9 @@ async function shot(page: Page, name: string, project: string) {
 }
 
 const UA_CANDIDATE = "F2 U' L R' F2 L' R U' F2";
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("후보를 쓰는 공식으로 고르고 버릇 들이기를 켜면 내 목록 훈련에 그 상황이 나온다", async ({
   page,

@@ -1,3 +1,4 @@
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -12,6 +13,9 @@ async function shot(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
+
+// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+test.beforeEach(({ page }) => no3d(page));
 
 test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, info) => {
   test.skip(

@@ -1,12 +1,21 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
  * 큐브 맞추기를 게임 목록에 올린 것(docs/47 12절 C8): 첫 화면 목록에서 /cube로 가고, 처음 오셨나요 안내로
  * 이어진다. 휴대폰은 큐브를 밀어서 돌린다(밀기 계산은 view/swipe.test.ts가 보고, 여기서는 화면에서 수가
  * 들어가는지만 본다).
+ *
+ * 사람이 보는 스크린샷을 찍지 않을 때(CI)는 3D를 끈다(`no3d`): 판정은 펼친 그림과 링크로 하고, 3D 첫 화면 연출은
+ * 스크린샷에만 쓴다. 밀기 시험은 3D 위를 미는 것이라 켠다.
  */
+
+/** 스크린샷을 찍지 않으면 3D를 끈다(스크린샷은 3D 연출이 돈 뒤에 찍는다) */
+async function no3dUnlessShots(page: Page) {
+  if (!SAVE_SCREENSHOTS) await no3d(page);
+}
 
 async function shot(page: Page, name: string, project: string) {
   if (!SAVE_SCREENSHOTS) return;
@@ -32,6 +41,7 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     info.project.name === "phone-landscape",
     "배치가 세로 휴대폰과 같다",
   );
+  await no3dUnlessShots(page);
   await page.addInitScript(() =>
     sessionStorage.setItem("mighty-splash-seen", "1"),
   );
@@ -124,6 +134,7 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "데스크톱에서만");
+  await no3dUnlessShots(page);
   await page.goto("/cube/settings");
   const hero = page.locator("[data-settings-hero]");
   await hero.locator("[data-hero-method='3-cfop']").click();

@@ -1,27 +1,20 @@
-import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
+import { no3d, pauseClockSoon, shot, useNotationKeys } from "./cube";
+import { expect, test } from "./test";
 
 /**
- * 큐브 혼자 맞추기(/cube/solo, docs/47). 섞고, 키로 섞기의 거꾸로를 쳐서 맞추면 결과 상자가 뜬다.
+ * 큐브 혼자 맞추기(/cube/solo)·블라인드(/cube/blind, docs/47). 섞고, 키로 섞기의 거꾸로를 쳐서 맞추면 결과 상자가 뜬다.
  * 「표기」 배치로 친다(R = R, Shift+R = R', 두 번 = R2). 움직임 줄이기라 장면 회전은 바로 끝난다.
- * 3×3 섞기는 워커가 처음에 표를 만들어 몇 초 걸린다(기다림 상한은 멈춘 시험을 잡는 안전장치).
- * 시계는 Playwright 가짜 시계로 멈춰 두고 `fastForward`로만 흘린다: 살펴보기 15·17초가 기기 속도와 상관없이 정확하다.
+ * 3×3 섞기는 워커가 처음에 표를 만들어 몇 초 걸린다(기다림 상한은 멈춘 시험을 잡는 안전장치). 페이지를 새로 열면
+ * 워커도 새로 떠 표를 다시 만들므로, 섞기를 두 번 보는 혼자 맞추기와 블라인드는 시험을 나눴다(2026-11-04 #1).
+ * 3D 그림은 보지 않으므로 끈다(`no3d`). 키·섞기·결과는 펼친 그림과 상태 표시로 본다.
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
 
-async function useNotationKeys(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      "cube.keymap.v1",
-      JSON.stringify({
-        version: 1,
-        preset: "notation",
-        bindings: [],
-        mouseRotate: false,
-      }),
-    );
-  });
-}
+test.beforeEach(async ({ page }) => {
+  await no3d(page);
+  await useNotationKeys(page);
+});
 
 /** 섞기 글의 거꾸로를 「표기」 배치 키로 */
 function inverseKeys(scramble: string): string[] {
@@ -36,34 +29,19 @@ function inverseKeys(scramble: string): string[] {
   return keys;
 }
 
-async function shot(page: Page, name: string, project: string) {
-  if (!SAVE_SCREENSHOTS) return;
-  await page.screenshot({
-    path: `test-results/screens/cube-${name}-${project}.png`,
-    fullPage: true,
-  });
-}
-
+/**
+ * 시계는 Playwright 가짜 시계로 멈춰 두고 `fastForward`로만 흘린다: 살펴보기 15·17초가 기기 속도와 상관없이 정확하다.
+ */
 test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
-  await useNotationKeys(page);
   await page.clock.install();
-  await page.goto("/cube");
-  await expect(
-    page.getByRole("heading", { name: "큐브 맞추기" }),
-  ).toBeVisible();
-  await shot(page, "home", info.project.name);
-
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
-  // 3D 그림이 아니라 입력 준비를 기다린다: CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸리고,
-  // 이 시험은 그림 없이도 키·섞기·결과를 본다(그림 준비를 기다리다 5초 상한에 걸려 흔들렸다, 2026-11-04)
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
     { timeout: SCRAMBLE_TIMEOUT },
   );
   await expect(main).toHaveAttribute("data-cube-phase", "free");
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 살펴보기가 DNF로 흐르지 않는다
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 5_000);
+  await pauseClockSoon(page);
 
   await page.locator("[data-cube-scramble-button]").click();
   const scramble = page.locator("[data-cube-scramble]");
@@ -101,9 +79,14 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   await expect(moves).toHaveText(String(keys.length));
   await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
   await shot(page, "solo-done", info.project.name);
+});
 
-  // 블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF
+test("블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
   await page.goto("/cube/blind");
+  const main = page.locator("main[data-cube-phase]");
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
     { timeout: SCRAMBLE_TIMEOUT },
   );
@@ -117,9 +100,14 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   await shot(page, "blind-hidden", info.project.name);
   await page.keyboard.press("Space");
   await expect(main).toHaveAttribute("data-cube-phase", "done");
-  await expect(result).toContainText("DNF");
+  await expect(page.locator("[data-cube-result]")).toContainText("DNF");
   await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
+});
 
+test("설정: 키 배치 「사용자」를 고르면 키 편집기가 열린다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
   await page.goto("/cube/settings");
   await page.getByRole("button", { name: "사용자", exact: true }).click();
   await expect(page.locator("[data-keymap-editor]")).toBeVisible();
