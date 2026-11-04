@@ -93,6 +93,7 @@ describe("경우의 수", () => {
     expect(years / UNIVERSE_YEARS).toBe(99n);
     expect(koreanApprox(COUNT_PLANS[3].total)).toBe("약 4,325경");
     expect(koreanApprox(COUNT_PLANS[2].total)).toBe("약 367만");
+    expect(koreanApprox(years)).toBe("약 1조 3,705억");
     expect(groupDigits(COUNT_PLANS[2].total)).toBe("3,674,160");
   });
 });

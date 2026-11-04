@@ -17,8 +17,10 @@ interface Item {
   href: string;
   /** 눈에 띄게 할 강조 색 */
   tone?: "sky" | "amber";
-  /** 한 줄 전체 */
+  /** 한 줄 전체(크게) */
   wide?: boolean;
+  /** 한 줄 전체(글 크기는 그대로). 묶음 칸 수가 홀수일 때 마지막 칸이 빈칸 없이 줄을 채운다 */
+  span?: boolean;
   /** 화면 시험이 찾는 표시 */
   attr?: string;
 }
@@ -62,6 +64,8 @@ const GROUPS: Group[] = [
       { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
       { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
       { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
+      // 다섯째 칸이라 한 줄을 채운다(2026-11-04, 빈칸 없이)
+      { icon: "🔢", title: "큐브의 수학", href: "/cube/math", span: true },
     ],
   },
   {
@@ -103,6 +107,7 @@ export function CubeHome() {
                   className={cn(
                     "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-3 transition",
                     item.wide && "col-span-2 justify-center py-3.5",
+                    item.span && "col-span-2",
                     !item.tone &&
                       "border-white/15 bg-white/5 hover:bg-white/10",
                     item.tone === "sky" &&

@@ -146,6 +146,13 @@ describe("되풀이하면 돌아온다", () => {
     expect(orderOf(3, parseMoves(3, SUPERFLIP))).toBe(2);
   });
 
+  it("R U: 모서리 7-고리, 꼭짓점 5-고리(비틀려서 15번)", () => {
+    const c = pieceCycles(3, parseMoves(3, "R U"));
+    expect(c.find((x) => x.kind === "edge")?.cycles).toEqual([7]);
+    expect(c.find((x) => x.kind === "corner")?.cycles).toEqual([5]);
+    expect(orderOf(3, parseMoves(3, "R U R U R U R U R U"))).toBe(21);
+  });
+
   it("미리 고른 묶음의 차수가 표와 같다", () => {
     for (const p of ORDER_PRESETS) {
       expect(orderOf(3, parseMoves(3, p.alg))).toBe(p.order);

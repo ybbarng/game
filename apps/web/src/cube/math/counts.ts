@@ -309,7 +309,13 @@ export function koreanApprox(v: bigint): string {
   if (unit === 0) return groupDigits(v);
   if (unit >= KOREAN_UNITS.length) return `약 ${scientific(v)}`;
   const head = v / 10n ** BigInt(unit * 4);
-  return `약 ${groupDigits(head)}${KOREAN_UNITS[unit]}`;
+  const top = `약 ${groupDigits(head)}${KOREAN_UNITS[unit]}`;
+  // 맨 앞이 한 자리면 다음 단위까지(약 1조 3,705억)
+  if (head >= 10n || unit < 2) return top;
+  const next = (v / 10n ** BigInt((unit - 1) * 4)) % 10_000n;
+  return next === 0n
+    ? top
+    : `${top} ${groupDigits(next)}${KOREAN_UNITS[unit - 1]}`;
 }
 
 /** 한 해(365.25일)의 초 */

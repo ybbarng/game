@@ -140,7 +140,7 @@ export function changedPieces(
 ): Partial<Record<PieceKind, number>> {
   const topo = cubeTopology(n);
   const out: Partial<Record<PieceKind, number>> = {};
-  topo.pieces.forEach((p, q) => {
+  topo.pieces.forEach((p) => {
     if (p.stickers.every((s) => state.perm[s] === s)) return;
     out[p.kind] = (out[p.kind] ?? 0) + 1;
   });
