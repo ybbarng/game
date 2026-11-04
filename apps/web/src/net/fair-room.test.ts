@@ -11,10 +11,11 @@ import { hostBidsTop, playRounds, setup, until } from "./fair-room-fixture";
 import type { AuditResult } from "./guest-room";
 
 describe("멘탈 포커 온라인 대전", () => {
-  // 판이 바뀌어도 이어 가는지(두 판)는 가장 가벼운 2마로 보고, 5마·6마(죽이기·다시 나누기)는 한 판으로 본다
+  // 판이 바뀌어도 이어 가는지(두 판)는 가장 가벼운 2마로 보고, 6마(죽이기·다시 나누기)는 한 판으로 본다.
+  // 5마 끝까지 두기는 같은 확인(사고 없음·판마다 검증·게임 끝 검증)을 방장 새로고침 시험이 두 판으로 하고
+  // (fair-room-host-reload.test.ts "5마(두 판)"), 참가자 새로고침·복기 시험도 5마 한 판을 끝까지 둔다(fair-room-reconnect.test.ts)
   it.each([
     { name: "2마", preset: "standard2", guestCount: 1, rounds: 2 },
-    { name: "5마", preset: "standard5", guestCount: 2, rounds: 1 },
     { name: "6마", preset: "standard6", guestCount: 3, rounds: 1 },
   ] as const)(
     "$name: 방장도 남의 패를 모른 채 끝까지 두고(판 수 $rounds), 판마다 모두가 진짜 카드로 다시 계산해 확인한다",

@@ -162,20 +162,6 @@ describe("멘탈 포커 온라인 대전: 끊김과 기록", () => {
       [guestSources.at(-1) as ArchiveSource, guests[0]?.seat as number],
     ] as const) {
       const replayed = replayArchive(mightyKit, archive(source, seat));
-      console.log(
-        "DBG",
-        seat,
-        replayed.states.length,
-        JSON.stringify(
-          replayed.events
-            .map((e) => e.map((x) => x.type).join("+"))
-            .filter(Boolean),
-        ).slice(0, 1500),
-        (replayed.states.at(-1) as MatchState).roundNumber,
-        (replayed.states.at(-1) as MatchState).round.phase,
-        host.match?.rawState().roundNumber,
-        host.match?.rawState().round.phase,
-      );
       expect(replayed.error).toBeNull();
       const states = replayed.states as MatchState[];
       // 자리 표가 아니라 실제 카드로 돌았다.
