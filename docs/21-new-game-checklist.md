@@ -158,7 +158,7 @@
 
 - [ ] 제한 시간이 있는 코드는 `Clock`을 받는다(기본 `realClock`). 시험은 `ManualClock`을 넣고 `advance`로 시간을 옮긴다. 시험에서 실제 시간을 기다려 결과를 얻지 않는다(CLAUDE.md "flaky 시험은 두지 않는다")
 - [ ] 기다림은 조건으로 한다. 기록 저장처럼 비동기인 것도 "쓰였는지"를 확인한 뒤 넘어간다(예: `omok.spec`의 `finishedOmokGames`)
-- [ ] 화면 시험 `e2e/<게임>.spec.ts`. 화면으로만 확인할 수 있는 것만 본다(규칙·진행은 단위 시험이 본다). **빠르고 결정적으로**(CLAUDE.md 2026-10-30):
+- [ ] 화면 시험 `e2e/<게임>.spec.ts`(여럿이면 `<게임>-<무엇>.spec.ts`). CI는 이 이름과 `src/<게임>/`·`src/app/<게임>/`·`packages/<게임>-*` 경로로 그 게임이 바뀌었을 때만 돌린다(`scripts/affected-e2e.mjs`, docs/38 16절). 화면으로만 확인할 수 있는 것만 본다(규칙·진행은 단위 시험이 본다). **빠르고 결정적으로**(CLAUDE.md 2026-10-30):
   - `import { expect, test } from "./test"`(이동·새로고침 뒤 화면 준비 끝을 기다린다). 움직임 줄이기는 설정 기본이고, 연출이 있는 길은 시험 하나만 켠다. 컴퓨터 대기는 `useTestSpeed(context)`(카드 게임은 `prepareFast`)로 줄인다. `expect.poll`은 `intervals: [50]`
   - 세 화면 크기(desktop, phone-portrait, phone-landscape): 배치가 크기마다 다른 것만. 목록에서 들어가 두다가 **판 끝 화면까지 가장 짧은 길**(기권, 작은 판·말 수, 정해진 시드)로 간다. 판 끝 화면이 정산처럼 자연스럽게 끝나야만 보이는 게임만 끝까지 둔다
   - 가로로 넘치지 않는다

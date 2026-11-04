@@ -13,15 +13,16 @@
 
 ## 명령
 - 개발 서버: `pnpm dev` (포트 3456)
-- 시험: `pnpm test`(단위, 약 20초) · `pnpm lint` · `pnpm typecheck`
+- 시험: `pnpm test`(단위 전부, 약 20초) · `pnpm test:changed`(origin/main 뒤 바뀐 파일을 불러오는 시험만) · `pnpm lint` · `pnpm typecheck`
+- 돌릴 화면 시험 고르기: `node scripts/affected-e2e.mjs --base origin/main`(또는 `--files <경로…>`). CI가 쓰는 것과 같다
 - 화면 시험: `pnpm --filter @game/web build` 뒤 `pnpm --filter @game/web exec playwright test`. 여러 탭 멘탈 포커는 `FAIR_MULTI=1`
 - 멘탈 포커 계산 시간: `pnpm --filter @game/fair-play bench`
 
 ## 작업 규칙(사용자가 정한 것)
 - `main`에서 바로 작은 단위로 커밋하고 push한다. 커밋 메시지는 한국어, 끝에 Co-Authored-By 줄.
-- push하면 CI가 돈다(약 4분. 단위 시험과 화면 시험 2조각을 동시에). **CI가 성공해야** Image 워크플로가 그 커밋으로 이미지를 만들어 서버에 배포한다(2026-10-30, 깨진 커밋이 사이트에 올라가지 않게).
+- push하면 CI가 돈다. **바뀐 것과 그것에 기대는 것만 시험한다(2026-11-04)**: 기준은 마지막으로 CI가 성공한 main 커밋(PR은 base와의 merge-base), 단위 시험은 `vitest --changed`, 화면 시험은 `scripts/affected-e2e.mjs`가 고른 spec만(여러 게임이 쓰는 코드·설정·lockfile이 바뀌면 전부, 문서만이면 없음). 매일 한 번과 손으로 돌리기는 전부(docs/38 16절). **CI가 성공해야** Image 워크플로가 그 커밋으로 이미지를 만들어 서버에 배포한다(2026-10-30, 깨진 커밋이 사이트에 올라가지 않게).
 - **개발 맥의 자원을 아낀다(2026-10-30).** 사용자가 같은 맥으로 다른 일을 한다. 백그라운드 작업은 한 번에 하나씩, 시험·빌드는 `nice -n 15`로, 단위 시험은 바꾼 패키지만, 화면 시험은 바꾼 화면의 spec 하나를 `--workers=1~2`로. 전체 화면 시험은 CI가 맡는다(올리기 전 이 맥에서 돌리지 않는다).
-- push 전 검사(lefthook: lint·typecheck·test)는 약 30초 걸린다(2026-11-01). 예전처럼 오래 걸려 GitHub 연결이 끊기면 시험을 직접 돌려 통과를 확인한 뒤 `--no-verify`로 올린다. 오래 걸리는 시험 파일은 나눠서 동시에 돌게 한다(한 파일 안의 시험은 차례로 돈다).
+- push 전 검사(lefthook: lint·typecheck·`test:changed`)는 바뀐 것만 시험해 보통 30초보다 짧다(2026-11-04, 설정 파일을 바꾸면 전부). 시험이 import 대신 파일로 읽는 입력을 새로 두면 `vitest.config.ts`의 `forceRerunTriggers`에 더한다. 예전처럼 오래 걸려 GitHub 연결이 끊기면 시험을 직접 돌려 통과를 확인한 뒤 `--no-verify`로 올린다. 오래 걸리는 시험 파일은 나눠서 동시에 돌게 한다(한 파일 안의 시험은 차례로 돈다).
 - 기능은 따로 말하지 않아도 **마이티와 하트 모두**에 넣는다. 공통 모듈(GameKit, HostRoom, GuestRoom, LocalMatch, 공통 화면 조각)에 두고, 게임마다 다른 부분은 `GameKit`의 필수 항목으로 둔다(`retireAction`, `stats`, `review` 등).
 - 화면을 바꾸면 화면 시험 스크린샷으로 직접 확인한다.
 - **flaky 시험은 두지 않는다(2026-10-29).** 결과가 기기 속도에 따라 달라지면 안 된다.

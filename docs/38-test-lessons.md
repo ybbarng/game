@@ -129,6 +129,17 @@
 - 진짜 암호 시험 42개 → 30개. 대상 파일을 작업자 하나로 차례로 돌린 시험 시간 합 51.1초 → 41.4초(부하 6~9, 같은 조건). 그대로 둔 마이티 파일만 따로 보면 21.1초 → 24.9초로 실행마다 크게 흔들려서, 바꾼 몫(화투·원카드·하트)은 29.3초 → 16.5초로 본다.
 - 새로고침한 참가자는 되살린 판의 판마다 검증을 일부러 건너뛴다(guest-room `verifyRound`). 새로고침 시험에서 `roundVerified`를 기다리면 멈춘다.
 
+## 16. 바뀐 것만 시험한다(2026-11-04)
+
+사용자 방향: 무엇이 바뀌든 모든 게임의 단위·화면 시험을 다 돌려서, 큐브 시험 실패가 하트 고침 배포를 막았고 CI가 7분에서 16분으로 늘었다. 모노레포답게 바뀐 것과 그것에 기대는 것만 시험한다(저장소는 나누지 않는다).
+
+- **기준 커밋**: PR은 base와의 merge-base. main push는 직전 커밋이 아니라 **마지막으로 CI가 성공한 main 커밋**(`ci.yml` plan 작업이 `gh api`로 찾고, 지금 커밋의 조상인지 본다). 앞 실행이 취소·실패했으면 그 변경도 다음 실행이 함께 시험한다. 못 찾으면 전부.
+- **단위 시험**: `vitest run --changed <기준>`. vite 모듈 그래프로 바뀐 파일을 (패키지를 건너서도) 불러오는 시험만 돈다. `${기준}...HEAD`와 커밋 안 한 파일을 본다. projects 설정과 함께 동작한다(큐브 풀이기 한 파일 → cube-ai·cube-reduction·cube-scramble·cube-solver·web 30파일). 그래프에 안 잡히는 입력은 루트 `vitest.config.ts`의 `forceRerunTriggers`로 전부: package.json·vitest 설정(기본값), tsconfig·lockfile·작업 공간·biome·`.node-version`·`ci.yml`, 그리고 시험이 파일로 읽는 `apps/web/public/stats/`·`apps/web/scripts/build-hashes.mjs`. **시험이 import 대신 `readFileSync`나 다른 프로그램 실행으로 읽는 파일을 새로 두면 여기에 더한다.** 영향받는 시험이 없으면 0으로 끝난다.
+- **화면 시험**: `scripts/affected-e2e.mjs`가 고른다. 게임은 `games/registry.ts`의 id, 그 게임의 `src/<id>/`·`src/app/<id>/`·`public/<id>/`·`e2e/<id>*.spec.ts`. 게임 사이 기댐(은하가 별 따기를 불러 쓴다 등)과 패키지를 쓰는 게임은 실행 때마다 웹 import·package.json에서 계산한다. 여러 게임이 쓰는 웹 코드(net·components·game·review·stats 등)·시험 도구·playwright 설정·lockfile·CI·짝 모르는 파일은 **전부**. 문서·단위 시험 파일·별 따기 서버·CLI만이면 **없음**(작업을 건너뛰고 CI 성공). 일부일 때는 홈·없는 주소·뒤로 가기와 어느 게임에도 안 든 spec을 늘 함께, spec이 12개 이상이면 2조각.
+- 마이티 엔진(`packages/engine`)은 거의 모든 패키지가 기대고, fair-play는 net이 쓰므로 그 둘(과 그것을 거치는 hwatu·hearts-engine)은 늘 전부다. 큐브·바둑·윷 같은 게임 패키지는 그 게임만(`game/bot-registry.ts`는 게임마다 갈래로 컴퓨터를 부르는 곳이라 공통으로 세지 않는다).
+- **안전망**: 매일 한 번(schedule, 한국 시각 03:17)과 손으로 돌리기는 전부. 배포로 이어지지 않는다(Image는 push CI만 본다). 느린 시험 기록은 시험마다 "그 시험을 잰" 실행만 센다(`slow-tests.mjs`의 `ran`).
+- playwright `--only-changed`는 spec이 불러오는 파일만 따라가고 빌드된 앱 코드는 못 따라가서 쓰지 않았다. Turborepo도 견줘 봤다: 화면 시험은 apps/web 한 패키지 안에서 갈라야 해서 스크립트가 어차피 필요하고, 패키지가 소스를 그대로 내보내 build가 없고 typecheck 전체가 4초라 캐시로 줄일 것이 거의 없으며, 원격 캐시는 바깥 서비스나 서버가 든다.
+
 ## 남은 것
 
 - 고스톱 온라인 방 멈춤은 다른 작업이 고쳤다(`89d42b5`, `cea0d6d`, 화투 공통 `useSentLock`).
