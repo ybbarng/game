@@ -28,7 +28,7 @@ export const PLL_CASES: AlgCase[] = [
     "Ua 퍼뮤(모서리 셋 돌리기, 시계 반대)",
     ["M2 U M U2 M' U M2", "R U' R U R U R U' R' U' R2"],
     {
-      note: "한 면이 통째로 맞음. 나머지 모서리 셋이 돈다.",
+      note: "한 면이 통째로 맞음. 나머지 모서리 셋이 돌아요.",
     },
   ),
   pll("ub", "edges", "Ub 퍼뮤(모서리 셋 돌리기, 시계)", [
@@ -53,7 +53,7 @@ export const PLL_CASES: AlgCase[] = [
     "Aa 퍼뮤(꼭짓점 셋 돌리기)",
     ["x R' U R' D2 R U' R' D2 R2 x'", "R' F R' B2 R F' R' B2 R2"],
     {
-      note: "한쪽에 헤드라이트. 초보자 해법의 「위 꼭짓점 자리」 공식과 같다.",
+      note: "한쪽에 헤드라이트. 초보자 해법의 「위 꼭짓점 자리」 공식과 같아요.",
     },
   ),
   pll("ab", "corners", "Ab 퍼뮤(꼭짓점 셋 반대로 돌리기)", [

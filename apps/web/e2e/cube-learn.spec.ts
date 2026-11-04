@@ -135,6 +135,43 @@ test("배우기: 크기별 해법 목록과 루 해 보기(가운데 층 M)", as
   await shot(page, "learn-roux-passed", info.project.name);
 });
 
+test("배우기: 흰 십자 단원은 조각 찾기와 고르기 문제로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  // 글 단계에도 큐브 그림이 있다(3D 첫 그림 대신 준비 표시 또는 펼친 그림 대체를 기다린다)
+  await expect(
+    page.locator(
+      "[data-cube-still] [data-cube-ready], [data-cube-still] [data-cube-no3d]",
+    ),
+  ).toHaveCount(1);
+  await shot(page, "learn-white-cross-find", info.project.name);
+
+  // 조각 찾기: F2로 내려간 흰-초록 모서리. 틀린 칸(앞 가운데)은 부드럽게 다시
+  const find = page.locator('[data-act="find"]');
+  const next = page.locator("[data-step-next]");
+  await expect(next).toHaveText("건너뛰기 →");
+  await page.locator('[data-net-cell="22"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await expect(find.getByRole("status")).toContainText("다시 찾아보세요");
+  // 앞면 아랫줄 가운데 = 흰-초록 모서리의 초록 칸
+  await page.locator('[data-net-cell="25"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await expect(next).toHaveText("다음 →");
+
+  // 고르기 문제: 틀리면 다시, 맞히면 통과
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  const quiz = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-white-cross-quiz", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {

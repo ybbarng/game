@@ -147,8 +147,8 @@ export class MoveMatcher {
 }
 
 /**
- * 눌린 키를 사람에게 완결된 문장으로: 「K 키는 「R'」입니다.」 / 「Q 키에는 동작이 없습니다.」.
- * `played`(실제로 돌아간 수, 깊이 키 뒤의 `2R` 등)가 키의 동작과 다르면 「친 수는 2R입니다.」를 잇는다.
+ * 눌린 키를 사람에게 완결된 문장으로: 「K 키는 「R'」 동작이에요.」 / 「Q 키에는 동작이 없어요.」.
+ * `played`(실제로 돌아간 수, 깊이 키 뒤의 `2R` 등)가 키의 동작과 다르면 「실제로 돈 수는 「2R」 수예요.」를 잇는다.
  */
 export function describeInput(
   keymap: Keymap,
@@ -164,13 +164,13 @@ export function describeInput(
   });
   const action = resolveAction(keymap, { ...input, repeat: false });
   if (action === null)
-    return { chord, action, text: `${chord} 키에는 동작이 없습니다.` };
+    return { chord, action, text: `${chord} 키에는 동작이 없어요.` };
   const said = isAvailable(n, action)
-    ? `${chord} 키는 「${actionLabel(action)}」입니다.`
-    : `${chord} 키는 「${actionLabel(action)}」이지만 이 크기에서는 쓰지 않습니다.`;
+    ? `${chord} 키는 「${actionLabel(action)}」 동작이에요.`
+    : `${chord} 키는 「${actionLabel(action)}」 동작이지만 이 크기에서는 쓰지 않아요.`;
   const tail =
     played !== undefined && played !== action
-      ? ` 친 수는 ${played}입니다.`
+      ? ` 실제로 돈 수는 「${played}」 수예요.`
       : "";
   return { chord, action, text: said + tail };
 }
