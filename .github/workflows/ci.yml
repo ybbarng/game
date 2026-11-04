@@ -1,13 +1,23 @@
 name: CI
 
+# 바뀐 것과 그것에 기대는 것만 시험한다(2026-11-04 사용자). 단위 시험은 vitest --changed(바뀐 파일을 불러오는 시험만),
+# 화면 시험은 scripts/affected-e2e.mjs가 고른 spec만. 기준 커밋은 PR이면 base와의 merge-base, main push면 직전 커밋이
+# 아니라 "마지막으로 CI가 성공한 main 커밋"이다(앞 실행이 취소·실패했으면 그 변경도 함께 시험한다). 기준을 못 찾거나,
+# 매일 실행(schedule)·손으로 돌리기(workflow_dispatch)는 전부. 고른 시험만 돌아도 성공이면 Image가 배포한다.
 on:
   push:
     branches: [main]
   pull_request:
+  # 안전망: 매일 한 번 전부(한국 시각 새벽 3시 17분). 실패하면 GitHub이 실패 알림을 보내고 Actions에 빨갛게 남는다.
+  # 배포로 이어지지 않는다(Image는 push로 돈 CI만 본다)
+  schedule:
+    - cron: "17 18 * * *"
+  workflow_dispatch:
 
-# 짧은 사이에 여러 번 올리면 앞선 실행을 취소하고 마지막 것만 돌린다(사용 시간 절약).
+# 짧은 사이에 여러 번 올리면 앞선 실행을 취소하고 마지막 것만 돌린다(사용 시간 절약). 취소된 커밋의 변경은 다음 실행의
+# 기준(마지막 성공 커밋)에 들어 있어 시험 없이 지나가지 않는다. 매일 실행이 push 실행을 취소하지 않게 이벤트로도 나눈다
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 # 시험 안의 의존 패키지 코드가 저장소에 쓰지 못하게 읽기 권한만(D6)
@@ -15,23 +25,108 @@ permissions:
   contents: read
 
 jobs:
+  # 기준 커밋을 정하고 돌릴 화면 시험을 고른다. 의존 설치 없이 node만 쓴다
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # 지난 CI 실행 찾기
+    outputs:
+      base: ${{ steps.base.outputs.base }}
+      e2e: ${{ steps.pick.outputs.e2e }}
+      specs: ${{ steps.pick.outputs.specs }}
+      shards: ${{ steps.pick.outputs.shards }}
+      shard_total: ${{ steps.pick.outputs.shard_total }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - id: base
+        name: 기준 커밋
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base=""
+          case "$EVENT" in
+            pull_request)
+              base=$(git merge-base "$PR_BASE" HEAD 2>/dev/null || true)
+              ;;
+            push)
+              # 이 저장소 main에서 성공한 CI(push·매일·손으로)의 커밋 가운데, 지금 커밋의 조상인 가장 새 것
+              runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=50" \
+                --jq '.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == env.GITHUB_REPOSITORY) | .head_sha' \
+                || true)
+              for sha in $runs; do
+                if [ "$sha" != "$SHA" ] && git merge-base --is-ancestor "$sha" "$SHA" 2>/dev/null; then
+                  base=$sha
+                  break
+                fi
+              done
+              ;;
+          esac
+          if [ -n "$base" ]; then
+            echo "기준 커밋 $base"
+          else
+            echo "기준 커밋이 없어 전부 돌린다($EVENT)"
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - id: pick
+        name: 화면 시험 고르기
+        env:
+          BASE: ${{ steps.base.outputs.base }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BASE" ]; then
+            node scripts/affected-e2e.mjs --github --selection-out selection.json --base "$BASE"
+          else
+            node scripts/affected-e2e.mjs --github --selection-out selection.json --all
+          fi
+      # 느린 시험 워크플로가 고른 시험만 돈 실행을 "빨라졌다"로 읽지 않게, 무엇을 돌렸는지 남긴다
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        continue-on-error: true
+        with:
+          name: test-times-selection
+          path: selection.json
+          retention-days: 7
+
   check:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # vitest --changed가 기준 커밋과 git diff 한다
+          fetch-depth: 0
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # lint·typecheck는 전체로(합쳐 몇 초)
       - run: pnpm lint
       - run: pnpm typecheck
       # 사람이 보는 출력(default·github-actions)은 그대로 두고, 파일·시험별 시간을 JSON으로도 남긴다.
-      # 느린 시험 워크플로(slow-tests.yml)가 이 artifact를 받아 기준과 비교한다
-      - run: pnpm test --reporter=default --reporter=github-actions --reporter=json --outputFile.json=test-times/unit.json
+      # 느린 시험 워크플로(slow-tests.yml)가 이 artifact를 받아 기준과 비교한다.
+      # 기준 커밋이 있으면 바뀐 파일을 불러오는 시험만. 설정 파일이 바뀌면 vitest.config.ts의 forceRerunTriggers로 전부
+      - name: 단위 시험
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+        run: |
+          set -euo pipefail
+          changed=()
+          if [ -n "$BASE" ]; then changed=(--changed "$BASE"); fi
+          pnpm test "${changed[@]}" --reporter=default --reporter=github-actions --reporter=json --outputFile.json=test-times/unit.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         continue-on-error: true
         with:
@@ -42,14 +137,16 @@ jobs:
       - name: nginx 설정 검사
         run: docker run --rm -v "$PWD/deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.31.8-alpine nginx -t
 
-  # 화면 시험을 둘로 나눠 동시에 돌린다. 2026-10-30 시험을 줄여(시간 합 약 1,935초 → 623초, docs/38)
-  # 셋에서 둘로 줄였다. 조각마다 설치·빌드를 따로 하므로 조각이 적을수록 CI 사용 시간이 준다.
+  # 화면 시험. 전부면 둘로 나눠 동시에 돌린다(2026-10-30 시험을 줄여 셋에서 둘로, docs/38). 조각마다 설치·빌드를 따로 하므로
+  # 고른 spec이 적으면 한 조각만 쓴다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
   e2e:
+    needs: plan
+    if: needs.plan.outputs.e2e != 'none'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -62,7 +159,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @game/web exec playwright install --with-deps chrome
-      - run: pnpm e2e --shard=${{ matrix.shard }}/2
+      # SPECS가 비면(전부) 모든 spec. 조각에 시험이 하나도 안 떨어져도 성공으로 끝난다
+      - name: 화면 시험
+        env:
+          SPECS: ${{ needs.plan.outputs.specs }}
+          SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.shard_total }}
+        run: |
+          set -euo pipefail
+          read -r -a specs <<< "$SPECS"
+          pnpm e2e --shard="$SHARD" --pass-with-no-tests "${specs[@]}"
       # 시험마다 걸린 시간(playwright.config.ts의 json reporter). 느린 시험 워크플로가 받아 본다
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         continue-on-error: true
