@@ -209,6 +209,17 @@ test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기
   await shot(page, "learn-pieces-track", info.project.name);
 });
 
+test("배우기: 3×3을 아는 사람의 2×2는 꼭짓점만 보이는 3×3을 곁에 둔다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=222-from333-corners");
+  await expect(page.locator("[data-step-beside='3']")).toBeVisible();
+  const quiz = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-222-from333", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
-import type { Lesson, LessonStep } from "../learn";
+import { COURSES, type Lesson, type LessonStep } from "../learn";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import { KeyGuide } from "./KeyGuide";
@@ -69,6 +69,9 @@ const STEPS: Step[] = [
   },
   { id: "next", title: "이제 배우러 가기" },
 ];
+
+/** 배우기 첫 단원: 3×3 초보자 과정의 맨 앞(지금은 「큐브의 조각」). 과정이 바뀌어도 따라간다 */
+const FIRST_LESSON = COURSES.find((c) => c.id === "333-beginner")?.lessons[0];
 
 /** 조각 찾기 셋(배우기의 찾기 판정을 그대로 쓴다) */
 const PIECE_LESSON: Lesson = {
@@ -322,11 +325,11 @@ export function CubeIntroApp() {
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <a
-                  href="/cube/learn?lesson=333-pieces"
+                  href={`/cube/learn?lesson=${FIRST_LESSON?.id ?? ""}`}
                   data-intro-learn
                   className="flex-1 rounded-xl border border-sky-300/60 bg-sky-500/25 px-4 py-3 text-center font-semibold hover:bg-sky-500/35"
                 >
-                  배우기 첫 단원: 큐브의 조각
+                  배우기 첫 단원: {FIRST_LESSON?.title}
                 </a>
                 <a
                   href="/cube/solo"

@@ -5,13 +5,13 @@
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
-const SEXY = "R U R' U'";
+export const SEXY = "R U R' U'";
 const RIGHT = "U R U' R' U' F' U F";
 const LEFT = "U' L' U L U F U' F'";
 const EO = "F R U R' U' F'";
 const EO_L = "F U R U' R' F'";
-const SUNE = "R U R' U R U2 R'";
-const A_PERM = "R' F R' B2 R F' R' B2 R2";
+export const SUNE = "R U R' U R U2 R'";
+export const A_PERM = "R' F R' B2 R F' R' B2 R2";
 const U_PERM = "R U' R U R U R U' R' U' R2";
 const U_PERM_B = "R2 U R U R' U' R' U' R' U R'";
 

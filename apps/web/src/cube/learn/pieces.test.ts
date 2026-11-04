@@ -120,7 +120,9 @@ describe("고르기 문제의 답", () => {
   it("면을 돌려도 흰 가운데는 위 그대로", () => {
     const { step, answer } = quiz("흰 가운데는 지금 어디");
     const s = play(3, (step.setup as { alg: string }).alg);
-    expect(faceColors(3, s)[(FACE_INDEX.U as number) * 9 + 4]).toBe(FACE_INDEX.U);
+    expect(faceColors(3, s)[(FACE_INDEX.U as number) * 9 + 4]).toBe(
+      FACE_INDEX.U,
+    );
     expect(answer).toBe("위 그대로");
   });
 

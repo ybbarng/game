@@ -59,6 +59,7 @@ export type GoalName = keyof typeof GOALS;
  */
 export const MASKS = {
   centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
   "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
   "piece:UF": "흰-초록 모서리와 가운데만 보임",
   cross: "십자 모서리와 가운데만 보임",
@@ -190,6 +191,16 @@ export interface LessonStep {
   look?: LookGoal;
   /** quiz: 문제 */
   quiz?: QuizSpec;
+  /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 꼭짓점만 보이는 3×3). 정지 그림이다 */
+  beside?: BesideCube;
+}
+
+export interface BesideCube {
+  size: CubeSize;
+  /** 그림 아래 한 줄 */
+  caption: string;
+  setup?: { alg: string };
+  mask?: MaskName;
 }
 
 export interface Lesson {
@@ -208,6 +219,8 @@ export interface Course {
   title: string;
   summary: string;
   lessons: Lesson[];
+  /** 이 과정을 다 끝냈으면 목록에서 눈에 띄게 한다(예: 3×3 초보자 → 3×3을 아는 사람의 2×2) */
+  recommendAfter?: string;
 }
 
 export type AlgSet =

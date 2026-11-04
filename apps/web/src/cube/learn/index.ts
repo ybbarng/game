@@ -7,6 +7,7 @@ import { ORTEGA_OLL, ORTEGA_PBL } from "./algs-ortega";
 import { PLL_CASES } from "./algs-pll";
 import { BLD_ALGS } from "./bld";
 import { BEGINNER_222 } from "./lessons-222";
+import { FROM_333_222 } from "./lessons-222-from333";
 import { BEGINNER_333 } from "./lessons-333";
 import { REDUCTION_444, REDUCTION_555 } from "./lessons-big";
 import { BLD_OP } from "./lessons-bld";
@@ -28,6 +29,7 @@ export * from "./types";
 export const COURSES: Course[] = [
   BEGINNER_333,
   BEGINNER_222,
+  FROM_333_222,
   CFOP_INTRO,
   ROUX,
   ZZ,

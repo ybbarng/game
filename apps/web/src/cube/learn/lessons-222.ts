@@ -6,8 +6,8 @@ import type { Course, Lesson } from "./types";
 const SEXY = "R U R' U'";
 const SUNE = "R U R' U R U2 R'";
 const A_PERM = "R' F R' B2 R F' R' B2 R2";
-const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
-const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
+export const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
+export const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
 
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
 

@@ -330,6 +330,8 @@ export function maskFor(
       return null;
     case "centers":
       return maskFromPieces(n, cubeGroups(n, U).centers);
+    case "corners":
+      return maskFromPieces(n, piecesOfKind(n, "corner"));
     case "piece:UFR":
     case "piece:UF": {
       const p = pieceByName(n, name.slice(PIECE_PREFIX.length));
