@@ -18,6 +18,7 @@ import {
 } from "../learn/judge";
 import type { CubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { MoveChip, useMoveKeys } from "./MoveChip";
 
 function randomSeed(): number {
   try {
@@ -137,6 +138,10 @@ export function TryPanel({
   );
 
   const faceMoves = history.filter((m) => countsAsMove(n, m)).length;
+  // 힌트로 연 마지막 수의 키를 키 그림에서 밝힌다(통과하면 끈다)
+  const { keysOf } = useMoveKeys(n);
+  const hinted = hints > 0 && !passed ? answer[hints - 1] : undefined;
+  const want = hinted && keysOf ? keysOf(hinted) : null;
   return (
     <div
       className="flex flex-col items-center gap-2"
@@ -212,7 +217,11 @@ export function TryPanel({
                 i === hints - 1 ? "bg-amber-400 text-black" : "bg-white/10",
               )}
             >
-              {t}
+              <MoveChip
+                notation={t}
+                keysOf={i === hints - 1 ? keysOf : null}
+                link
+              />
             </span>
           ))}
           {hints < answer.length && <span className="text-white/40">…</span>}
@@ -239,6 +248,7 @@ export function TryPanel({
         settings={settings}
         onMove={onMove}
         onCommand={onCommand}
+        want={want}
       />
     </div>
   );

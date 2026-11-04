@@ -30,6 +30,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { MoveChip, useMoveKeys } from "./MoveChip";
 
 /**
  * 배우기 단계의 상호작용(docs/47 8-1): 정지 그림(글), 조각 찾기, 고르기 문제, 둘러보기, 한 수 해 보기.
@@ -487,6 +488,10 @@ export function TurnPanel({
   );
   const live = useRef({ passed, onPassed, settings });
   live.current = { passed, onPassed, settings };
+  // 칠 수(노란 칸)의 키를 칩과 키 그림에 함께 보인다
+  const { keysOf } = useMoveKeys(n);
+  const next = !passed ? tokens[progress.step] : undefined;
+  const want = next && keysOf ? keysOf(next) : null;
 
   const onMove = useCallback(
     (m: CubeMove) => {
@@ -521,7 +526,10 @@ export function TurnPanel({
                   : "bg-white/5",
             )}
           >
-            {t}
+            <MoveChip
+              notation={t}
+              keysOf={i === progress.step && !passed ? keysOf : null}
+            />
           </li>
         ))}
       </ol>
@@ -551,6 +559,7 @@ export function TurnPanel({
         settings={settings}
         onMove={onMove}
         onCommand={play.onCommand}
+        want={want}
       />
     </div>
   );

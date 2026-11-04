@@ -8,6 +8,7 @@ import { presetKeymap } from "../input";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import { KeyGuide } from "./KeyGuide";
+import { KeyTryBox } from "./KeyTryBox";
 
 /**
  * 처음 오셨나요(`/cube/intro`). 다른 게임의 튜토리얼 첫 단원처럼 짧게: 표기 읽기 → 키 배치 →
@@ -176,14 +177,20 @@ export function CubeIntroApp() {
                 키로나 바꿀 수 있어요. 칸의 굵은 글은 그냥 칠 때, 흐린 글은
                 Shift와 함께 칠 때 도는 수예요.
               </p>
-              <h3 className="font-semibold text-sm">
-                「표기」: 글자 그대로(처음에 쉽다)
-              </h3>
-              <KeyGuide n={3} keymap={notation} lit={null} />
-              <h3 className="mt-2 font-semibold text-sm">
-                「두 손」: 실물에서 그 면을 돌리는 손으로(빠르다, 기본)
-              </h3>
-              <KeyGuide n={3} keymap={twoHand} lit={null} />
+              <KeyTryBox />
+              <details className="text-sm" data-intro-presets>
+                <summary className="cursor-pointer text-white/70 text-xs">
+                  두 배치 견주어 보기
+                </summary>
+                <h3 className="mt-2 font-semibold text-sm">
+                  「표기」: 글자 그대로(처음에 쉽다)
+                </h3>
+                <KeyGuide n={3} keymap={notation} lit={null} />
+                <h3 className="mt-2 font-semibold text-sm">
+                  「두 손」: 실물에서 그 면을 돌리는 손으로(빠르다, 기본)
+                </h3>
+                <KeyGuide n={3} keymap={twoHand} lit={null} />
+              </details>
               <p className="break-keep text-white/70 text-xs">
                 휴대폰은 큐브를 밀어서 돌려요. 칸 위를 밀면 그 줄이, 빈 곳을
                 밀면 큐브 전체가 돌아요. 화면 아래 표기 단추도 있어요. 마우스로

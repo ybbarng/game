@@ -15,6 +15,7 @@ import { algTokens } from "../learn";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
+import { KeyCaps, useMoveKeys } from "./MoveChip";
 
 /**
  * 시연 큐브(배우기·핑거 트릭). 시작 상황에서 공식을 한 수씩 앞뒤로 돌려 보이고, 지금 수를 강조한다.
@@ -36,6 +37,8 @@ export interface DemoCubeProps {
   labels?: readonly string[];
   /** ←·→ 키로 한 수씩 */
   arrowKeys?: boolean;
+  /** 수 아래에 그 사람의 키 배치 키캡(기본 켬. 실물 큐브 핑거 트릭은 끈다) */
+  showKeys?: boolean;
 }
 
 export function DemoCube({
@@ -49,7 +52,9 @@ export function DemoCube({
   loop = false,
   labels,
   arrowKeys = false,
+  showKeys = true,
 }: DemoCubeProps) {
+  const { keysOf } = useMoveKeys(n);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
   const [failed, setFailed] = useState(false);
@@ -219,7 +224,8 @@ export function DemoCube({
                     : "bg-white/5 text-white",
               )}
             >
-              <span>{t}</span>
+              <span data-move-chip={t}>{t}</span>
+              {showKeys && keysOf && <KeyCaps keys={keysOf(t)} />}
               {labels?.[i] && (
                 <span className="font-sans text-[10px] opacity-75">
                   {labels[i]}
