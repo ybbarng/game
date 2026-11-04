@@ -73,7 +73,7 @@ function guard(count: number, limit: number, what: string): void {
 // ---------- 3×3 공통 단계 ----------
 
 /** 흰 가운데를 아래로 */
-function whiteDown(s: Solve): void {
+export function whiteDown(s: Solve): void {
   for (const r of ["", "z2", "x", "x'", "z", "z'"]) {
     const t = s.clone().apply(r);
     if (t.f[31] === "U") {
@@ -163,7 +163,7 @@ function firstLayerCorners(s: Solve): void {
 }
 
 /** 둘째 층 모서리(초보자 방법) */
-function middleEdges(s: Solve): void {
+export function middleEdges(s: Solve): void {
   const ok = (ep: number[], eo: number[], i: number) =>
     ep[i] === i && eo[i] === 0;
   for (let iter = 0; ; iter++) {

@@ -10,10 +10,12 @@ import {
   loadTrain,
   markLessonDone,
   markLessonOpened,
+  markStepSeen,
   markTryPassed,
   RECENT_TIMES,
   recordFail,
   recordSolve,
+  resumeStep,
   TRAIN_KEY,
   weakCases,
 } from "./progress";
@@ -41,6 +43,43 @@ describe("배우기 진도", () => {
     expect(p.lessons["333-notation"]).toEqual({ passed: [3, 8], done: true });
     expect(p.lessons["333-white-cross"]).toEqual({ passed: [], done: false });
     expect(p.last).toBe("333-white-cross");
+  });
+
+  it("마지막으로 본 단계를 남기고 다시 열 때 그 단계로 연다(옛 기록·틀린 값은 0부터)", () => {
+    const s = memory();
+    markTryPassed("333-white-cross", 4, s);
+    markStepSeen("333-white-cross", 7, s);
+    const p = loadLearn(s);
+    expect(p.lessons["333-white-cross"]).toEqual({
+      passed: [4],
+      done: false,
+      step: 7,
+    });
+    expect(resumeStep(p, "333-white-cross", 20)).toBe(7);
+    // 단원이 짧아져 그 단계가 없으면 처음부터
+    expect(resumeStep(p, "333-white-cross", 5)).toBe(0);
+    // 단계 번호가 없는 옛 기록과 모양이 틀린 값
+    s.setItem(
+      LEARN_KEY,
+      JSON.stringify({
+        lessons: {
+          "333-notation": { passed: [1, "x", 2.5], done: true },
+          "333-pieces": { passed: [], done: false, step: -1 },
+          "333-start": { passed: [], done: false, step: "3" },
+          "333-bad": null,
+        },
+      }),
+    );
+    const old = loadLearn(s);
+    expect(old.lessons["333-notation"]).toEqual({ passed: [1], done: true });
+    expect(resumeStep(old, "333-notation", 10)).toBe(0);
+    expect(old.lessons["333-pieces"]).toEqual({ passed: [], done: false });
+    expect(resumeStep(old, "333-start", 10)).toBe(0);
+    expect(old.lessons["333-bad"]).toBeUndefined();
+    // 해 보기 통과를 더해도 본 단계는 그대로 남는다
+    markStepSeen("333-notation", 2, s);
+    markTryPassed("333-notation", 5, s);
+    expect(loadLearn(s).lessons["333-notation"]?.step).toBe(2);
   });
 
   it("새로 짠 단원(2026-11-04)은 옛 단원의 끝냄만 옮기고, 해 보기 번호와 이미 있는 새 진도는 건드리지 않는다", () => {

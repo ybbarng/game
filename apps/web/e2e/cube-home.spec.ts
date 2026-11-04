@@ -55,8 +55,29 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await expect(
     page.getByRole("heading", { name: "큐브 맞추기" }),
   ).toBeVisible();
-  // 메뉴는 묶음 다섯(맞추기·대결·배우기·연습·실물 큐브)과 설정. 항목은 이름만
-  await expect(page.locator("[data-cube-group]")).toHaveCount(5);
+  // 메뉴는 묶음 여섯(맞추기·대결·배우기·연습·더 알아보기·실물 큐브)과 설정. 항목은 이름만
+  const groups = page.locator("[data-cube-group]");
+  await expect(groups).toHaveCount(6);
+  expect(
+    await groups.evaluateAll((els) =>
+      els.map((e) => e.getAttribute("data-cube-group")),
+    ),
+  ).toEqual(["맞추기", "대결", "배우기", "연습", "더 알아보기", "실물 큐브"]);
+  // 처음 온 사람: 강조는 배우기 첫 칸 「처음이라면」 하나
+  await expect(
+    page.locator("[data-cube-group='배우기'] a").first(),
+  ).toHaveAttribute("data-cube-intro-link", "");
+  await expect(page.locator("[data-cube-continue]")).toHaveCount(0);
+  // 묶음마다 2열이 빈칸 없이 찬다(칸 너비 합이 줄 수 × 2)
+  for (const cols of await groups.evaluateAll((els) =>
+    els.map((g) =>
+      [...g.querySelectorAll("a")].reduce(
+        (n, a) => n + (a.classList.contains("col-span-2") ? 2 : 1),
+        0,
+      ),
+    ),
+  ))
+    expect(cols % 2).toBe(0);
   await expect(
     page.locator("[data-cube-group='대결'] a").first(),
   ).toHaveAttribute("href", "/cube/online");
