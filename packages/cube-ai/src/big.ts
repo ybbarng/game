@@ -55,7 +55,7 @@ export function liftMove(n: number, m: CubeMove): CubeMove {
 }
 
 /**
- * 축소법은 5×5에서 수백 ms 걸린다. 같은 섞기를 여러 단계 컴퓨터가 함께 풀 때(경주) 한 번만
+ * 축소법은 5×5에서 수백 ms 걸린다. 같은 섞기를 여러 단계 컴퓨터가 함께 풀 때(대결) 한 번만
  * 계산하도록 최근 몇 개를 기억한다. 결과는 상태로만 정해지므로 기억해도 답이 바뀌지 않는다.
  */
 const reductionCache = new Map<string, ReductionSolution>();

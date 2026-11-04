@@ -23,7 +23,7 @@ import { stageLabel, turnCount } from "./race-game";
 import type { CubeRoom, RoundRecord } from "./room";
 
 /**
- * 경주 한 판의 화면(온라인 방·컴퓨터와 경주가 함께 쓴다, docs/47 9-1).
+ * 대결 한 판의 화면(온라인 방·컴퓨터와 대결이 함께 쓴다, docs/47 9-1).
  * 내 큐브는 크게(`CubePlay`), 다른 사람은 진행 막대·단계 이름·순위, 사람이 셋 이하이면 작은 펼친 그림.
  * 판이 끝나면 결과(시간·수·초당 수·인정 시간과 하한, 확인 약함·의심 표시)와 모두의 풀이 다시 보기.
  */
@@ -54,7 +54,7 @@ export function RaceView({
   room: CubeRoom;
   /** 방이 바뀔 때마다 오르는 값(다시 그리기) */
   version: number;
-  /** 이 기기 안에서만 도는 경주(컴퓨터와 경주). 연결이 없으니 연결 지연 표시를 숨긴다 */
+  /** 이 기기 안에서만 도는 대결(컴퓨터와 대결). 연결이 없으니 연결 지연 표시를 숨긴다 */
   local?: boolean;
 }) {
   const settings = useCubeSettings();

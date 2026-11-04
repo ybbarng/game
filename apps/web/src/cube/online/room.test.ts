@@ -8,7 +8,7 @@ import { type Scrambler, scrambleSeed } from "./race-game";
 import { CubeRoom, type RoomState } from "./room";
 import { averageOf5, matchOver, standings } from "./standings";
 
-/** 큐브 경주 방: 대기실 → 판 → 결과(ManualClock·DelayNet, 결정적) */
+/** 큐브 대결 방: 대기실 → 판 → 결과(ManualClock·DelayNet, 결정적) */
 
 const SHORT = ["R U", "F R'", "U2 R F'"];
 const fake: Scrambler = (event, seed) => ({
@@ -39,7 +39,7 @@ function setup() {
   return { clock, net, host, guest };
 }
 
-/** 내 경주가 풀리면 `delay` 뒤 섞기의 거꾸로를 한 번에 둔다 */
+/** 내 대결이 풀리면 `delay` 뒤 섞기의 거꾸로를 한 번에 둔다 */
 function solveWhenReleased(clock: ManualClock, room: CubeRoom, delay: number) {
   let done = "";
   room.onChange(() => {
@@ -58,7 +58,7 @@ function solveWhenReleased(clock: ManualClock, room: CubeRoom, delay: number) {
   });
 }
 
-describe("큐브 경주 방", () => {
+describe("큐브 대결 방", () => {
   it("손님이 들어오면 이름이 실린 방 상태를 받고, 방장이 컴퓨터를 더해 판을 열면 모두 같은 결과를 낸다", () => {
     const { clock, host, guest } = setup();
     expect(guest.state?.players.map((p) => p.name)).toEqual([
@@ -205,7 +205,7 @@ function sendFakeSolve(
   );
 }
 
-describe("큐브 경주 방: 남의 결과를 꾸미지 못한다", () => {
+describe("큐브 대결 방: 남의 결과를 꾸미지 못한다", () => {
   const raceOn = (clock: ManualClock, rooms: Record<string, CubeRoom>) =>
     runUntil(clock, () =>
       Object.values(rooms).every(

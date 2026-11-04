@@ -3,7 +3,7 @@ import { faceColors, isSolved, rotatedSolved } from "./state";
 import { CUBE_ROTATIONS, cubeTopology, OPPOSITE_FACE } from "./topology";
 
 /**
- * 진행 표시(온라인 경주의 진행 막대·단계 이름, docs/47 9-1).
+ * 진행 표시(온라인 대결의 진행 막대·단계 이름, docs/47 9-1).
  * 모두 지금 보이는 색만 본다. 큐브 전체 방향과 상관없다.
  */
 

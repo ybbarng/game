@@ -11,8 +11,8 @@ import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { useCubeRoom } from "./use-room";
 
 /**
- * 컴퓨터와 경주(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
- * 온라인 방과 같은 길(경주 틀 + 컴퓨터 참가자)을 진짜 연결 없이 쓴다.
+ * 컴퓨터와 대결(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
+ * 온라인 방과 같은 길(대결 틀 + 컴퓨터 참가자)을 진짜 연결 없이 쓴다.
  */
 
 const SIZES = [2, 3, 4, 5] as const;
@@ -60,7 +60,7 @@ export function CubeVsApp() {
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
             ← 큐브
           </a>
-          <h1 className="font-bold text-lg">컴퓨터와 경주</h1>
+          <h1 className="font-bold text-lg">컴퓨터와 대결</h1>
           {room && status !== "racing" && (
             <button
               type="button"

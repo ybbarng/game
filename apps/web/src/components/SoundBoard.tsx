@@ -204,7 +204,7 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     cues: [
       { cue: "cubeTurn", when: "면·층·큐브를 한 번 돌림(키·단추·밀기)" },
       { cue: "cubeInspect", when: "살펴보기 8초(한 번)·12초(두 번)" },
-      { cue: "cubeSolved", when: "다 맞춤(나·경주 상대)" },
+      { cue: "cubeSolved", when: "다 맞춤(나·대결 상대)" },
       {
         cue: "invalid",
         when: "지금 돌릴 수 없음(살펴보기·외우기 중 면 돌리기)",

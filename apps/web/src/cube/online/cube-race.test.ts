@@ -32,7 +32,7 @@ import {
 } from "./race-game";
 
 /**
- * 큐브 어댑터로 여러 기기 경주(ManualClock·DelayNet, 결정적). 섞기는 표를 만드는 해법기 대신 짧은 가짜 섞기를 넣는다.
+ * 큐브 어댑터로 여러 기기 대결(ManualClock·DelayNet, 결정적). 섞기는 표를 만드는 해법기 대신 짧은 가짜 섞기를 넣는다.
  */
 
 const SHORT = ["R U", "F R'", "U2 R F'"];
@@ -131,7 +131,7 @@ function solveByInverse(
 const allDone = (sessions: Session[]) => () =>
   sessions.every((s) => s.snapshot().result !== undefined);
 
-describe("큐브 경주(어댑터)", () => {
+describe("큐브 대결(어댑터)", () => {
   it("2명: 같은 섞기를 받고 거꾸로 두어 맞추면 모든 기기가 같은 순위", () => {
     const { clock, sessions } = rig(3, { a: ["a"], b: ["b"] });
     const a = sessions.get("a") as Session;
@@ -360,7 +360,7 @@ describe("큐브 경주(어댑터)", () => {
     expect(asked).toBe(1);
   });
 
-  it("살펴보기를 끈 방에서 계획이 경주 중에 늦게 와 실패해도 판은 계속되고 사람 결과는 그대로다", async () => {
+  it("살펴보기를 끈 방에서 계획이 대결 중에 늦게 와 실패해도 판은 계속되고 사람 결과는 그대로다", async () => {
     const { clock, sessions } = rig(
       2,
       { h: ["h", "bot1"], g: ["g"] },

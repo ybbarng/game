@@ -3,9 +3,9 @@ import type { Clock } from "@game/fair-play";
 import type { Transport } from "@/net/transport";
 
 /**
- * 한 기기 안의 여러 경주 참가자(나 + 방장 기기가 돌리는 컴퓨터)를 경주 틀에 각각 한 사람처럼 보이게 하는 창구.
+ * 한 기기 안의 여러 대결 참가자(나 + 방장 기기가 돌리는 컴퓨터)를 대결 틀에 각각 한 사람처럼 보이게 하는 창구.
  *
- * - 경주 메시지는 모두 `{type: "cube-race", f: 보낸 참가자, to?, m: 경주 메시지}` 봉투에 싸서 진짜 연결로 보낸다.
+ * - 대결 메시지는 모두 `{type: "cube-race", f: 보낸 참가자, to?, m: 대결 메시지}` 봉투에 싸서 진짜 연결로 보낸다.
  * - 받는 쪽은 봉투의 `f`가 보낸 기기 자신이거나 **그 기기가 맡은 컴퓨터**일 때만 받는다(`owner`로 확인).
  *   `owner`는 판을 열 때 고정한 표(사람은 자기 기기, 컴퓨터는 방장 기기)라 판 도중 방 상태로 바꿀 수 없다.
  *   그래서 아무나 남의 이름이나 컴퓨터 이름으로 수를 보낼 수 없다.
@@ -27,7 +27,7 @@ type Handlers = {
 };
 
 export interface RaceHubInit {
-  /** 진짜 연결. 혼자 하기(컴퓨터와 경주)는 없다 */
+  /** 진짜 연결. 혼자 하기(컴퓨터와 대결)은 없다 */
   transport?: Transport;
   clock: Clock;
   /** 참가자 아이디 → 그 참가자를 맡은 기기(연결 아이디). 모르는 참가자면 undefined */
@@ -73,7 +73,7 @@ export class RaceHub {
     });
   }
 
-  /** 이 기기 안 참가자 하나의 창구. 경주 틀(`RaceSession`)에 그대로 넘긴다 */
+  /** 이 기기 안 참가자 하나의 창구. 대결 틀(`RaceSession`)에 그대로 넘긴다 */
   local(id: string): Transport {
     const handlers: Handlers = { message: [], join: [], leave: [] };
     this.locals.set(id, handlers);
@@ -110,7 +110,7 @@ export class RaceHub {
     };
   }
 
-  /** 경주가 끝나면 그 판 참가자 창구를 모두 뗀다 */
+  /** 대결이 끝나면 그 판 참가자 창구를 모두 뗀다 */
   clear(): void {
     this.locals.clear();
   }

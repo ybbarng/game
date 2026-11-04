@@ -1,9 +1,9 @@
 /**
- * 경주 틀(docs/47 9절, docs/46 3절)의 계약. 이 틀은 게임을 모른다.
+ * 대결 틀(docs/47 9절, docs/46 3절)의 계약. 이 틀은 게임을 모른다.
  * 같은 섞기를 여럿이 각자 풀고 시간으로 겨루는 게임(큐브 맞추기 등)이 `RaceGame`만 넘겨 붙는다.
  */
 
-/** 게임이 경주 틀에 넘기는 것. 모두 순수 함수여야 한다(같은 입력 → 같은 출력) */
+/** 게임이 대결 틀에 넘기는 것. 모두 순수 함수여야 한다(같은 입력 → 같은 출력) */
 export interface RaceGame<Move, State> {
   id: string;
   /** 씨앗 → 섞인 시작 상태. 기기마다 같은 상태가 나와야 한다 */
@@ -100,7 +100,7 @@ export interface RaceResult {
   /** 앞선 순서. 맞춘 사람(인정 시간 순) → 못 맞춘 사람 → 기권 */
   ranking: string[];
   players: Record<string, PlayerResult>;
-  /** 남은 사람이 둘 아래라 경주를 열지 못했을 때 */
+  /** 남은 사람이 둘 아래라 대결을 열지 못했을 때 */
   cancelled?: string;
 }
 

@@ -41,13 +41,13 @@ const ITEMS: Item[] = [
   },
   {
     icon: "🏁",
-    title: "온라인 경주",
+    title: "온라인 대결",
     detail: "친구 2~8명이 같은 섞기로 겨룹니다(키보드 기기).",
     href: "/cube/online",
   },
   {
     icon: "🤖",
-    title: "컴퓨터와 경주",
+    title: "컴퓨터와 대결",
     detail: "단계를 골라 같은 섞기로 나란히 맞춥니다.",
     href: "/cube/vs",
   },
