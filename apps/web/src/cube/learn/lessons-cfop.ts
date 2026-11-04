@@ -1,6 +1,6 @@
 // 프리드리히(CFOP) 소개(docs/47 8-2 고급). 십자를 아래에서 → F2L 짝 → 2단계 OLL·PLL → 전체 OLL 57·PLL 21.
 // 상황 연습(훈련)은 algs-*.ts의 상황 묶음을 쓰고, 여기는 개념을 익히는 단원이다.
-// 단계 글이 말하는 모양(짝이 붙었나, 노랑이 어느 쪽을 보나, 헤드라이트 자리 등)은 cfop-flow.test.ts가 엔진으로 확인한다.
+// 단계 글이 말하는 모양(짝이 붙었나, 노랑이 어느 쪽을 보나, 헤드라이트 자리 등)은 flow-advanced.test.ts가 엔진으로 확인한다.
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
 import { setupFor } from "./notation";
 import type {

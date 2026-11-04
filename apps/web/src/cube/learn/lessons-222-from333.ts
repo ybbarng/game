@@ -3,7 +3,7 @@
 // 다른 점은 둘: 가운데가 없어 제자리를 꼭짓점끼리의 관계로 보고, 모서리 단계(흰 십자·둘째 층·노란 십자·위 모서리)가 없다.
 // 공식 상수는 3×3 레슨에서 가져오고, 판정은 2×2 목표(2x2-first-layer·2x2-top-face·solved)를 쓴다.
 import { T_PERM, Y_PERM } from "./lessons-222";
-import { A_PERM, SEXY, SUNE } from "./lessons-333";
+import { A_PERM, SEXY, STUCK_CORNER, SUNE } from "./lessons-333";
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
@@ -135,6 +135,14 @@ const firstLayer: Lesson = {
       body: "꼭짓점이 넣을 자리 위에 있지 않아요. 3×3처럼 먼저 윗면을 돌려(U') 옮겨요.",
       setup: flip(`U' ${SEXY}`),
       alg: `U' ${SEXY}`,
+      goal: "2x2-first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "3×3처럼 흰 꼭짓점이 아래층 엉뚱한 칸(앞-왼쪽)에 박힐 때도 있어요. 그 칸을 앞-오른쪽으로 들고(y') R U R' U' 한 번으로 꺼낸 뒤, 다시 돌려 들고(y) 제 칸 위로 옮겨 넣어요.",
+      setup: flip(STUCK_CORNER),
+      alg: STUCK_CORNER,
       goal: "2x2-first-layer",
       mask: "first-layer",
     },

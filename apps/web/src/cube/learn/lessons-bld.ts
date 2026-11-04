@@ -33,7 +33,7 @@ export const sendEdges = (letters: string) =>
 export const sendCorners = (letters: string) =>
   letters.split(" ").map(corner).join(" ");
 
-// 외우기 연습 상황(풀이의 거꾸로). bld-flow.test.ts가 엔진으로 글자 줄을 따라가 맞는지 본다
+// 외우기 연습 상황(풀이의 거꾸로). flow-advanced.test.ts가 엔진으로 글자 줄을 따라가 맞는지 본다
 export const MEMO_EDGES_2 = "C U";
 export const MEMO_EDGES_4 = "C J W H";
 export const MEMO_CORNERS_2 = "C H";

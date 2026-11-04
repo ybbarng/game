@@ -15,7 +15,7 @@ const FLIP_5 = algOf(EDGES_5X5, "edges-5x5-flip");
 const OLL_PARITY = algOf(PARITY_4X4, "parity-4x4-oll");
 const PLL_PARITY = algOf(PARITY_4X4, "parity-4x4-pll");
 
-// 가운데 만들기 작은 상황(flow.test.ts가 엔진으로 확인)
+// 가운데 만들기 작은 상황(flow-advanced.test.ts가 엔진으로 확인)
 /** 앞면의 흰 막대를 F'로 오른쪽 줄에 세우고 2R로 올려 흰 막대 둘을 합친다 */
 export const CENTER_BARS = "F' 2R";
 /** 흰 면을 지키며 노란 막대를 아래로: 2R로 흰 줄을 비키고, F2로 노란 막대를 옮기고, 2R'로 내리며 흰 줄을 되돌린다 */

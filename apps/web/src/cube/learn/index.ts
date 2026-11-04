@@ -64,7 +64,7 @@ export const COURSES: Course[] = [
   }),
   withFinale(BEGINNER_222, {
     rule: "2x2-random",
-    stages: ["첫 층", "윗면 노랗게", "윗층 자리"],
+    stages: ["첫 층", "윗면", "윗층 자리"],
     drill: "ortega-oll",
   }),
   withFinale(FROM_333_222, {

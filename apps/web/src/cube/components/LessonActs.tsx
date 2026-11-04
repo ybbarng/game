@@ -23,6 +23,7 @@ import {
   lookMet,
   pieceAtSticker,
   pieceName,
+  revealFound,
   slotCenterColors,
   stickerAtHit,
   turnProgress,
@@ -215,6 +216,11 @@ export function FindPanel({
     }
     return out;
   }, [found, n, start]);
+  // 가린 큐브에서 찾은 조각은 3D·펼친 그림 모두 색을 드러낸다
+  const shown = useMemo(
+    () => revealFound(n, start, mask, found),
+    [n, start, mask, found],
+  );
 
   const onSticker = (sticker: number) => {
     if (passed) return;
@@ -261,7 +267,7 @@ export function FindPanel({
       <StillCube
         n={n}
         state={start}
-        mask={mask}
+        mask={shown}
         settings={settings}
         onSticker={onSticker}
         marked={marked}
