@@ -22,6 +22,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { KeyGuide } from "./KeyGuide";
+import { StageWithNet } from "./StageWithNet";
 
 /**
  * 큐브 한 판의 화면 조각(혼자 맞추기·블라인드·나중에 배우기·대결이 함께 쓴다).
@@ -252,31 +253,10 @@ export function CubePlay({
   return (
     <div className="flex w-full flex-col items-center gap-3">
       {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
-      <div
-        data-cube-stage
-        data-input-ready={interpreter && !locked ? "" : undefined}
-        className="relative aspect-square w-full max-w-[460px]"
-      >
-        {failed ? (
-          <p data-cube-no3d className="p-6 text-center text-sm text-white/70">
-            이 기기에서는 3D를 그릴 수 없습니다.
-          </p>
-        ) : (
-          <canvas
-            key={`${n}-${quality}`}
-            ref={canvasRef}
-            data-cube-canvas
-            data-cube-ready={ready ? "" : undefined}
-            className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
-          />
-        )}
-        {depth !== null && (
-          <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
-            다음 수 깊이 {depth}
-          </span>
-        )}
-        {(showNet || failed) && (
-          <div className="absolute top-1 left-1 w-[30%] rounded-lg bg-black/45 p-1.5">
+      <StageWithNet
+        maxWidth={460}
+        net={
+          showNet || failed ? (
             <CubeNet
               n={n}
               faces={faceGrid(n, state, mask)}
@@ -284,9 +264,38 @@ export function CubePlay({
               hidden={settings.hidden}
               className="h-auto w-full"
             />
+          ) : null
+        }
+        stage={
+          <div
+            data-cube-stage
+            data-input-ready={interpreter && !locked ? "" : undefined}
+            className="relative aspect-square w-full"
+          >
+            {failed ? (
+              <p
+                data-cube-no3d
+                className="p-6 text-center text-sm text-white/70"
+              >
+                이 기기에서는 3D를 그릴 수 없습니다.
+              </p>
+            ) : (
+              <canvas
+                key={`${n}-${quality}`}
+                ref={canvasRef}
+                data-cube-canvas
+                data-cube-ready={ready ? "" : undefined}
+                className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
+              />
+            )}
+            {depth !== null && (
+              <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
+                다음 수 깊이 {depth}
+              </span>
+            )}
           </div>
-        )}
-      </div>
+        }
+      />
 
       {/* 휴대폰·마우스용 표기 단추 줄 */}
       <div className="flex flex-wrap justify-center gap-1" data-cube-buttons>
