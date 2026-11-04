@@ -87,8 +87,12 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     "href",
     "/cube/settings",
   );
-  // 위 그림: 시험은 움직임 줄이기라 연출 없이 펼친 그림만(3D를 띄우지도 기다리지도 않는다)
-  await expect(page.locator("[data-cube-hero] [data-cube-net]")).toBeVisible();
+  // 위 그림: 시험은 움직임 줄이기라 연출 없이 대기 그림(3D 첫 장면을 찍은 이미지)만(3D를 띄우지도 기다리지도 않는다)
+  const poster = page.locator("[data-cube-hero] img[data-hero-poster='image']");
+  await expect(poster).toBeVisible();
+  await expect
+    .poll(() => poster.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
   await expect(page.locator("[data-cube-hero] canvas")).toHaveCount(0);
   expect(
     await page.evaluate(
