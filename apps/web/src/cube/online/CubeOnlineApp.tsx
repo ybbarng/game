@@ -21,8 +21,8 @@ import { FORMAT_LABELS, type MatchFormat, standings } from "./standings";
 import { useCubeRoom } from "./use-room";
 
 /**
- * 온라인 n명 경주(`/cube/online`, docs/47 9절). 방장이 방을 만들어 초대 링크를 보내고(`?room=`), 2~8명이 같은 섞기로 겨룬다.
- * 연결은 다른 게임과 같은 WebRTC 그물(`?net=local`이면 같은 브라우저 탭끼리). 판정은 경주 틀이 모든 기기에서 한다.
+ * 온라인 n명 대결(`/cube/online`, docs/47 9절). 방장이 방을 만들어 초대 링크를 보내고(`?room=`), 2~8명이 같은 섞기로 겨룬다.
+ * 연결은 다른 게임과 같은 WebRTC 그물(`?net=local`이면 같은 브라우저 탭끼리). 판정은 대결 틀이 모든 기기에서 한다.
  * 키보드 기기만 참가한다(휴대폰은 안내만).
  */
 
@@ -135,7 +135,7 @@ export function CubeOnlineApp() {
           <a href="/cube" className="text-sm text-white/70 hover:text-white">
             ← 큐브
           </a>
-          <h1 className="font-bold text-lg">온라인 경주</h1>
+          <h1 className="font-bold text-lg">온라인 대결</h1>
           {state && state.round > 0 && (
             <span className="text-sm text-white/60">
               {state.round}번째 판 · {FORMAT_LABELS[state.settings.format]}
@@ -148,7 +148,7 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 경주는 키보드가 있는 기기에서만 참가할 수 있습니다.
+            온라인 대결은 키보드가 있는 기기에서만 참가할 수 있습니다.
           </p>
         )}
 
@@ -225,7 +225,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <InviteLink
             link={link}
             roomCode={roomCode}
-            shareTitle="큐브 경주하자"
+            shareTitle="큐브 대결하자"
           />
         )}
         <div className="rounded-2xl bg-white/5 p-3">

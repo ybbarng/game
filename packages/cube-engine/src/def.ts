@@ -12,7 +12,7 @@ import { cubeTopology, FACE_DEFS } from "./topology";
 
 const defs = new Map<number, PuzzleDef<CubeMove>>();
 
-/** n×n 큐브를 퍼즐 공통 계약으로(화면·경주 틀처럼 퍼즐을 모르는 쪽이 쓴다) */
+/** n×n 큐브를 퍼즐 공통 계약으로(화면·대결 틀처럼 퍼즐을 모르는 쪽이 쓴다) */
 export function cubeDef(n: number): PuzzleDef<CubeMove> {
   const hit = defs.get(n);
   if (hit) return hit;

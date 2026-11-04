@@ -3,163 +3,138 @@
 import { BackToGames } from "@/components/BackToGames";
 import { MadeWith } from "@/components/brand/MadeWith";
 import { cn } from "@/lib/cn";
-import { useCubeSettings } from "../settings";
-import { CubeNet } from "./CubeNet";
+import { CubeHero } from "./CubeHero";
 
 /**
- * 큐브 첫 화면(`/cube`). 게임 첫 화면 틀(GameHome)과 같은 모양이지만 고를 것이 달라(혼자·타이머·블라인드·배우기)
- * 따로 둔다.
+ * 큐브 첫 화면(`/cube`). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 아래에는 고를 것을
+ * 묶음(맞추기·대결·배우기·실물 큐브)으로 나눈 2열 격자. 항목은 아이콘과 짧은 이름만 둔다
+ * (고를 것이 많아 무엇부터 볼지 헷갈리지 않게, docs/47 0절 2026-11-04).
  */
 
 interface Item {
   icon: string;
   title: string;
-  detail: string;
-  href?: string;
-  primary?: boolean;
+  href: string;
+  /** 눈에 띄게 할 강조 색 */
+  tone?: "sky" | "amber";
+  /** 한 줄 전체 */
+  wide?: boolean;
+  /** 화면 시험이 찾는 표시 */
+  attr?: string;
 }
 
-const ITEMS: Item[] = [
-  {
-    icon: "🧊",
-    title: "혼자 맞추기",
-    detail: "가상 큐브를 섞고 맞춰 시간을 잽니다(2×2~7×7).",
-    href: "/cube/solo",
-    primary: true,
-  },
-  {
-    icon: "⏱",
-    title: "타이머",
-    detail: "실물 큐브용. 대회 규칙 섞기와 15초 살펴보기",
-    href: "/cube/timer",
-  },
-  {
-    icon: "🙈",
-    title: "블라인드",
-    detail: "보고 외운 뒤, 스티커가 모두 가려진 채 맞춥니다.",
-    href: "/cube/blind",
-  },
-  {
-    icon: "🏁",
-    title: "온라인 경주",
-    detail: "친구 2~8명이 같은 섞기로 겨룹니다(키보드 기기).",
-    href: "/cube/online",
-  },
-  {
-    icon: "🤖",
-    title: "컴퓨터와 경주",
-    detail: "단계를 골라 같은 섞기로 나란히 맞춥니다.",
-    href: "/cube/vs",
-  },
-  {
-    icon: "⌨️",
-    title: "키 익히기",
-    detail: "키보드 그림 단축키 표, 단계별 튜토리얼, 조작 훈련",
-    href: "/cube/keys/learn",
-  },
-  {
-    icon: "🎓",
-    title: "배우기",
-    detail: "처음부터 끝까지 따라 하는 초보자 해법(2×2~5×5, CFOP, 블라인드)",
-    href: "/cube/learn",
-  },
-  {
-    icon: "🎯",
-    title: "공식 훈련",
-    detail: "OLL·PLL·F2L·오르테가 상황을 무작위로 내고 시간을 잽니다.",
-    href: "/cube/train",
-  },
-  {
-    icon: "✋",
-    title: "핑거 트릭",
-    detail: "실물 큐브로 손가락 쓰는 법을 반복 연습합니다.",
-    href: "/cube/fingers",
-  },
-];
+interface Group {
+  title: string;
+  items: Item[];
+}
 
-// 첫 화면 그림용 섞인 모양(면마다 칸 색 번호)
-const HERO_FACES = [
-  [0, 0, 2, 0, 0, 0, 5, 0, 0],
-  [1, 1, 1, 3, 1, 1, 1, 1, 4],
-  [2, 2, 0, 2, 2, 2, 2, 1, 2],
-  [3, 3, 3, 3, 3, 4, 3, 3, 3],
-  [4, 4, 4, 4, 4, 4, 5, 4, 4],
-  [5, 2, 5, 5, 5, 5, 5, 5, 5],
+const GROUPS: Group[] = [
+  {
+    title: "맞추기",
+    items: [
+      {
+        icon: "🧊",
+        title: "혼자 맞추기",
+        href: "/cube/solo",
+        // 한 줄 전체로 두면 블라인드 옆 칸이 비어 어색했다(2026-11-04). 나란히 두고 색으로만 강조
+        tone: "sky",
+      },
+      { icon: "🙈", title: "블라인드", href: "/cube/blind" },
+    ],
+  },
+  {
+    title: "대결",
+    items: [
+      { icon: "🏁", title: "친구와 대결", href: "/cube/online" },
+      { icon: "🤖", title: "컴퓨터와 대결", href: "/cube/vs" },
+    ],
+  },
+  {
+    title: "배우기",
+    items: [
+      {
+        icon: "👋",
+        title: "처음이라면",
+        href: "/cube/intro",
+        tone: "amber",
+        attr: "data-cube-intro-link",
+      },
+      { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
+      { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
+      { icon: "🎯", title: "공식 훈련", href: "/cube/train" },
+    ],
+  },
+  {
+    title: "실물 큐브",
+    items: [
+      { icon: "⏱", title: "타이머", href: "/cube/timer" },
+      { icon: "✋", title: "핑거 트릭", href: "/cube/fingers" },
+    ],
+  },
 ];
 
 export function CubeHome() {
-  const settings = useCubeSettings();
   return (
     <main
       data-game="cube"
       className="flex min-h-dvh items-center justify-center bg-neutral-900 p-4 text-white"
     >
-      <div className="flex w-full max-w-sm flex-col gap-3">
+      <div className="flex w-full max-w-sm flex-col gap-4">
         <BackToGames />
-        <div className="mb-2 flex flex-col items-center text-center">
-          <CubeNet
-            n={3}
-            faces={HERO_FACES}
-            colors={settings.colors}
-            hidden="black"
-            className="h-24 w-auto"
-          />
-          <h1 className="mt-2 font-bold text-2xl">큐브 맞추기</h1>
+        <div className="flex flex-col items-center text-center">
+          <CubeHero />
+          <h1 className="mt-1 font-bold text-2xl">큐브 맞추기</h1>
         </div>
-        <a
-          href="/cube/intro"
-          data-cube-intro-link
-          className="flex items-center justify-between gap-2 rounded-2xl border border-amber-300/50 bg-amber-400/15 px-4 py-2.5 text-sm hover:bg-amber-400/25"
-        >
-          <b>처음 오셨나요?</b>
-          <span aria-hidden>→</span>
-        </a>
-        {ITEMS.map((item) => {
-          const body = (
-            <>
-              <span className="w-7 text-center text-2xl">{item.icon}</span>
-              <span className="flex flex-1 flex-col">
-                <span className="font-bold text-base">{item.title}</span>
-                <span
+        {GROUPS.map((group) => (
+          <section
+            key={group.title}
+            className="flex flex-col gap-1.5"
+            data-cube-group={group.title}
+          >
+            <h2 className="px-1 font-semibold text-white/50 text-xs">
+              {group.title}
+            </h2>
+            <div className="grid grid-cols-2 gap-2">
+              {group.items.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  {...(item.attr ? { [item.attr]: "" } : {})}
                   className={cn(
-                    "text-xs",
-                    item.primary ? "opacity-80" : "opacity-60",
+                    "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-3 transition",
+                    item.wide && "col-span-2 justify-center py-3.5",
+                    !item.tone &&
+                      "border-white/15 bg-white/5 hover:bg-white/10",
+                    item.tone === "sky" &&
+                      "border-sky-300/60 bg-sky-500/25 hover:bg-sky-500/35",
+                    item.tone === "amber" &&
+                      "border-amber-300/60 bg-amber-400/15 hover:bg-amber-400/25",
                   )}
                 >
-                  {item.detail}
-                </span>
-              </span>
-            </>
-          );
-          const cls = cn(
-            "flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition",
-            item.primary
-              ? "border-sky-300/60 bg-sky-500/25 hover:bg-sky-500/35"
-              : "border-white/15 bg-white/5 hover:bg-white/10",
-          );
-          return item.href ? (
-            <a key={item.title} href={item.href} className={cls}>
-              {body}
-            </a>
-          ) : (
-            <div
-              key={item.title}
-              aria-disabled
-              className={cn(cls, "cursor-default opacity-50 hover:bg-white/5")}
-            >
-              {body}
+                  <span aria-hidden className="text-xl">
+                    {item.icon}
+                  </span>
+                  <span
+                    className={cn(
+                      "truncate font-bold",
+                      item.wide ? "text-lg" : "text-sm",
+                    )}
+                  >
+                    {item.title}
+                  </span>
+                </a>
+              ))}
             </div>
-          );
-        })}
-        <div className="mt-1 flex justify-center gap-2">
-          <a
-            href="/cube/settings"
-            className="rounded-xl bg-white/10 px-4 py-2 text-center text-sm hover:bg-white/15"
-          >
-            설정(키·색)
-          </a>
-        </div>
-        <p className="mt-2 text-center text-[11px] opacity-40">
+          </section>
+        ))}
+        <a
+          href="/cube/settings"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2.5 text-sm text-white/80 hover:bg-white/10"
+        >
+          <span aria-hidden>⚙️</span>
+          설정
+        </a>
+        <p className="mt-1 text-center text-[11px] opacity-40">
           <MadeWith />
         </p>
       </div>

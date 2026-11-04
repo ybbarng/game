@@ -8,7 +8,7 @@ import {
 } from "./test";
 
 /**
- * 큐브 컴퓨터와 경주(/cube/vs)·온라인 경주(/cube/online, docs/47 9·10절).
+ * 큐브 컴퓨터와 대결(/cube/vs)·온라인 대결(/cube/online, docs/47 9·10절).
  * 컴퓨터가 맞추는 시간을 실제로 기다리지 않는다: 시계를 감아(`fastForward`) 컴퓨터가 먼저 맞춰 결과 상자가 뜨는 것을 조건으로 본다.
  * 키 입력은 3D 그림과 따로 준비된다(`[data-cube-stage][data-input-ready]`). WebGL이 없는 환경에서도 입력 준비로 기다린다.
  */
@@ -23,7 +23,7 @@ async function shot(page: Page, name: string, project: string) {
   });
 }
 
-test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상자가 뜬다", async ({
+test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상자가 뜬다", async ({
   page,
 }, info) => {
   await page.clock.install();
@@ -94,7 +94,7 @@ test("컴퓨터와 경주: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
  * 4×4 컴퓨터(축소법 + 3×3 사람 해법)도 같은 길로 돈다. 계획은 워커에서 만들고, 입문은 3~4분 걸려
  * 시계를 크게 감는다. 화면 크기와 상관없는 길이라 desktop 하나로 본다
  */
-test("컴퓨터와 경주: 4×4 입문 컴퓨터가 맞추면 결과 상자가 뜬다", async ({
+test("컴퓨터와 대결: 4×4 입문 컴퓨터가 맞추면 결과 상자가 뜬다", async ({
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "크기만 다른 같은 길");
@@ -127,10 +127,10 @@ test("컴퓨터와 경주: 4×4 입문 컴퓨터가 맞추면 결과 상자가 �
 });
 
 /**
- * 여러 탭 온라인 경주(같은 브라우저 탭끼리 `?net=local`). 이 맥에서는 돌리지 않는다: `CUBE_MULTI=1`일 때만.
+ * 여러 탭 온라인 대결(같은 브라우저 탭끼리 `?net=local`). 이 맥에서는 돌리지 않는다: `CUBE_MULTI=1`일 때만.
  * 방장이 방을 만들고 손님이 초대 링크로 들어와, 컴퓨터 하나를 더해 판을 열면 세 참가자가 모두 보인다.
  */
-test("온라인 경주: 방장과 손님 두 탭 + 컴퓨터", async ({ context }, info) => {
+test("온라인 대결: 방장과 손님 두 탭 + 컴퓨터", async ({ context }, info) => {
   test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
   test.skip(info.project.name !== "desktop", "키보드 기기만 참가");
   const host = await context.newPage();

@@ -22,7 +22,7 @@ function expectSameEverywhere(devices: Device[]): RaceResult {
   return first as RaceResult;
 }
 
-describe("경주 틀", () => {
+describe("대결 틀", () => {
   it("정직한 2명: 두 기기가 같은 섞기·같은 순위를 내고, 빠른 연결이면 보고 시간을 그대로 인정한다", () => {
     const { clock, devices } = setupRace(2);
     const [a, b] = devices as [Device, Device];
@@ -127,7 +127,7 @@ describe("경주 틀", () => {
     expect(r.ranking).toEqual(["p2", "p1"]);
   });
 
-  it("약속 뒤 공개하지 않은 사람은 그 판 기권, 남은 사람끼리 다시 약속해 경주한다", () => {
+  it("약속 뒤 공개하지 않은 사람은 그 판 기권, 남은 사람끼리 다시 약속해 대결한다", () => {
     const { clock, net, devices } = setupRace(3, {}, (n) => {
       n.filter = (m, from) =>
         from === "p3" && (m as { type: string }).type === "race-reveal"
@@ -240,7 +240,7 @@ describe("경주 틀", () => {
     expect(r.ranking).toEqual(["p2", "p1"]);
   });
 
-  it("경주 중 끊겼다 돌아오면 못 받은 수를 다시 받아 확인하고, 그 판은 '확인 약함'으로 보고 시간을 쓴다", () => {
+  it("대결 중 끊겼다 돌아오면 못 받은 수를 다시 받아 확인하고, 그 판은 '확인 약함'으로 보고 시간을 쓴다", () => {
     const { clock, net, devices } = setupRace(2);
     const [flaky, steady] = devices as [Device, Device];
     autoSolve(clock, flaky, 300, 100);

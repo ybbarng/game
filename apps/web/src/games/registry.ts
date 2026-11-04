@@ -152,7 +152,7 @@ export const GAMES: readonly GameEntry[] = [
     name: "큐브 맞추기",
     englishName: "Cube",
     tagline:
-      "키보드 두 손으로 돌리는 3D 큐브. 실물 타이머·배우기·공식 훈련, 같은 섞기로 경주",
+      "키보드 두 손으로 돌리는 3D 큐브. 실물 타이머·배우기·공식 훈련, 같은 섞기로 대결",
     players: "1~8명",
     path: "/cube",
   },

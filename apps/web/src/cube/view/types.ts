@@ -86,4 +86,10 @@ export interface CubeViewOptions {
   onSwipe?: (move: CubeMove) => void;
   /** 마우스로 끌어도 큐브 전체를 돌린다(키 배치 「사용자」의 마우스 돌리기). 기본 끔: 마우스 끌기는 보기만 */
   swipeMouse?: boolean;
+  /**
+   * 포인터 입력을 받는다(끌어서 보기 돌리기·밀기). 기본 켬. 끄면 장식 그림이라 페이지 스크롤도 막지 않는다
+   */
+  interactive?: boolean;
+  /** 픽셀 비율 상한. 빠지면 품질에 따른 값 */
+  maxDpr?: number;
 }

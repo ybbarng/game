@@ -18,10 +18,10 @@ import type { PuzzleState } from "@game/puzzle-core";
 import type { RaceGame } from "@/net/race/types";
 
 /**
- * 큐브 맞추기를 경주 틀(`net/race`)에 붙이는 어댑터(docs/47 9절).
+ * 큐브 맞추기를 대결 틀(`net/race`)에 붙이는 어댑터(docs/47 9절).
  *
  * 씨앗(모두의 약속 후 공개로 정한 글) → 해시로 uint32 → 대회 규칙 섞기(웹 워커) → 섞인 시작 상태.
- * 섞기는 해법기를 거쳐 오래 걸릴 수 있어 `prepare`에서 미리 만들어 둔다(경주 틀이 끝날 때까지 기다린다).
+ * 섞기는 해법기를 거쳐 오래 걸릴 수 있어 `prepare`에서 미리 만들어 둔다(대결 틀이 끝날 때까지 기다린다).
  * 섞기 글을 시작 상태 지문으로 실어 모든 기기가 같은 섞기를 만들었는지 맞춰 본다(해법기 판이 달라
  * 같은 씨앗에서 다른 섞기가 나오면 "섞기 어긋남").
  */
@@ -39,7 +39,7 @@ export interface CubeRaceGame extends RaceGame<CubeMove, PuzzleState> {
   scrambleFor(seed: string): Scramble | undefined;
 }
 
-/** 경주 씨앗(글) → 섞기 씨앗(uint32). 판·시도마다 씨앗이 다르므로 섞기도 다르다 */
+/** 대결 씨앗(글) → 섞기 씨앗(uint32). 판·시도마다 씨앗이 다르므로 섞기도 다르다 */
 export function scrambleSeed(seed: string): number {
   return Number.parseInt(sha256Hex(`cube-scramble|${seed}`).slice(0, 8), 16);
 }

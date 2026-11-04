@@ -70,6 +70,28 @@ describe("큐브 설정 저장", () => {
     ).toEqual(COLOR_SCHEMES.standard);
   });
 
+  it("첫 화면 큐브: 옛 저장값에 칸이 없으면 3×3·번갈아, 크기에 맞지 않는 해법은 번갈아", () => {
+    const old = parseSettings(
+      JSON.stringify({ version: 1, colorScheme: "standard", sound: false }),
+    );
+    expect(old.heroSize).toBe(3);
+    expect(old.heroMethod).toBe("alternate");
+    expect(old.sound).toBe(false);
+
+    const ok = parseSettings(
+      JSON.stringify({ heroSize: 2, heroMethod: "2-algs" }),
+    );
+    expect([ok.heroSize, ok.heroMethod]).toEqual([2, "2-algs"]);
+    const mismatch = parseSettings(
+      JSON.stringify({ heroSize: 4, heroMethod: "3-cfop" }),
+    );
+    expect([mismatch.heroSize, mismatch.heroMethod]).toEqual([4, "alternate"]);
+    const bad = parseSettings(
+      JSON.stringify({ heroSize: 7, heroMethod: "없는 해법" }),
+    );
+    expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
+  });
+
   it("저장소가 막혀 있어도 오류 없이 기본값·false", () => {
     const broken = {
       getItem: () => {

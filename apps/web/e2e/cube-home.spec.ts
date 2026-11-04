@@ -16,6 +16,15 @@ async function shot(page: Page, name: string, project: string) {
   });
 }
 
+/** 3D 연출이 떠서 나타나는 전환까지 끝났을 때(스크린샷용. GPU 없는 브라우저는 첫 그림이 느려 상한을 넉넉히) */
+async function heroShown(page: Page) {
+  const canvas = page.locator("[data-cube-hero][data-hero-ready] canvas");
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(() => canvas.evaluate((el) => getComputedStyle(el).opacity))
+    .toBe("1");
+}
+
 test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간다", async ({
   page,
 }, info) => {
@@ -36,11 +45,35 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await expect(
     page.getByRole("heading", { name: "큐브 맞추기" }),
   ).toBeVisible();
+  // 메뉴는 묶음 넷(맞추기·대결·배우기·실물 큐브)과 설정. 항목은 이름만
+  await expect(page.locator("[data-cube-group]")).toHaveCount(4);
+  await expect(
+    page.locator("[data-cube-group='대결'] a").first(),
+  ).toHaveAttribute("href", "/cube/online");
+  await expect(page.getByRole("link", { name: "설정" })).toHaveAttribute(
+    "href",
+    "/cube/settings",
+  );
+  // 위 그림: 시험은 움직임 줄이기라 연출 없이 펼친 그림만(3D를 띄우지도 기다리지도 않는다)
+  await expect(page.locator("[data-cube-hero] [data-cube-net]")).toBeVisible();
+  await expect(page.locator("[data-cube-hero] canvas")).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth,
     ),
   ).toBe(false);
+  if (SAVE_SCREENSHOTS) {
+    // 사람이 보는 스크린샷은 연출을 켜고 3D가 돌기 시작한 뒤에(GPU 없는 브라우저는 첫 그림이 느려 상한을 넉넉히)
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await heroShown(page);
+    await expect(page.locator("[data-cube-hero][data-hero-ready]")).toBeVisible(
+      { timeout: 30_000 },
+    );
+    await expect(page.locator("[data-hero-label]")).not.toHaveAttribute(
+      "data-hero-label",
+      "",
+    );
+  }
   await shot(page, "cube-home", info.project.name);
 
   await page.locator("[data-cube-intro-link]").click();
@@ -71,6 +104,44 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
       mkdirSync("test-results/screens", { recursive: true });
       writeFileSync(`test-results/screens/${file}`, await res.body());
     }
+  }
+});
+
+test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 고를 수 있다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만");
+  await page.goto("/cube/settings");
+  const hero = page.locator("[data-settings-hero]");
+  await hero.locator("[data-hero-method='3-cfop']").click();
+  await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // 4×4로 바꾸면 3×3 해법은 없어지고 「번갈아」로
+  await hero.locator("[data-hero-size='4']").click();
+  await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveCount(0);
+  await expect(hero.locator("[data-hero-method='alternate']")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
+  await shot(page, "settings-hero", info.project.name);
+
+  if (SAVE_SCREENSHOTS) {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/cube");
+    await heroShown(page);
+    await expect(page.locator("[data-cube-hero][data-hero-ready]")).toBeVisible(
+      { timeout: 30_000 },
+    );
+    // 축소법 단계까지 보이게(풀이 계산을 기다린다)
+    await expect(page.locator("[data-hero-label]")).toHaveAttribute(
+      "data-hero-label",
+      / · /,
+      { timeout: 60_000 },
+    );
+    await shot(page, "cube-home-4x4", info.project.name);
   }
 });
 

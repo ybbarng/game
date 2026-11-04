@@ -2,11 +2,12 @@ import type { BotLevel, BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 
 import type { AlgBook, ImportResult } from "../algs/store";
+import type { HeroSolve } from "../hero/methods";
 
 /**
  * 큐브 워커가 받는 일과 돌려주는 답. 섞기(`cube-scramble`)와 3×3 풀이(`cube-solver`)는 처음 부를 때
  * 표를 만들어 오래 걸리므로 화면 스레드가 아니라 워커에서 한다. 컴퓨터 계획(`cube-ai` botPlan)도 해법기를 써서
- * 처음에는 1초 넘게 걸릴 수 있어 워커에서 만든다(경주 화면이 멈추지 않게).
+ * 처음에는 1초 넘게 걸릴 수 있어 워커에서 만든다(대결 화면이 멈추지 않게).
  * 내 공식 가져오기(`algs-import`)도 공식마다 검사기를 돌려 길어질 수 있어 워커에서 한다.
  */
 export type CubeJob =
@@ -21,10 +22,22 @@ export type CubeJob =
       twist: number[];
       seed: number;
     }
-  | { kind: "algs-import"; book: AlgBook; text: string };
+  | { kind: "algs-import"; book: AlgBook; text: string }
+  | {
+      /** 첫 화면 연출의 사람 흉내 해법(`hero/methods.ts` 표의 id) */
+      kind: "hero";
+      method: string;
+      perm: number[];
+      twist: number[];
+    };
 
 /** 워커가 돌려주는 답 */
-export type CubeJobAnswer = Scramble | string | BotPlan | ImportResult;
+export type CubeJobAnswer =
+  | Scramble
+  | string
+  | BotPlan
+  | ImportResult
+  | HeroSolve;
 
 export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
   ? Scramble
@@ -32,7 +45,9 @@ export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
     ? BotPlan
     : J extends { kind: "algs-import" }
       ? ImportResult
-      : string;
+      : J extends { kind: "hero" }
+        ? HeroSolve
+        : string;
 
 export type CubeJobMessage = { id: number; job: CubeJob };
 export type CubeJobReply =
@@ -49,6 +64,13 @@ export async function runCubeJob(job: CubeJob): Promise<CubeJobAnswer> {
       { perm: Uint16Array.from(job.perm), twist: Uint8Array.from(job.twist) },
       job.seed,
     );
+  }
+  if (job.kind === "hero") {
+    const { solveForHero } = await import("../hero/methods");
+    return solveForHero(job.method, {
+      perm: Uint16Array.from(job.perm),
+      twist: Uint8Array.from(job.twist),
+    });
   }
   if (job.kind === "algs-import") {
     const { importAlgBook } = await import("../algs/store");

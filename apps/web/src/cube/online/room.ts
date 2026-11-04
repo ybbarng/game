@@ -21,13 +21,13 @@ import {
 import { type MatchFormat, matchOver, type RoundSummary } from "./standings";
 
 /**
- * 큐브 경주 방(docs/47 9절). 대기실·판 시작·판 결과 모으기를 맡고, 한 판의 공정한 진행은 경주 틀(`RaceSession`)이 한다.
+ * 큐브 대결 방(docs/47 9절). 대기실·판 시작·판 결과 모으기를 맡고, 한 판의 공정한 진행은 대결 틀(`RaceSession`)이 한다.
  *
  * - 방장이 방 상태(설정·참가자·지금 판)를 정해 모두에게 알린다(`cube-room`). 판정에는 끼지 않는다.
  * - 손님은 들어오면 이름을 알린다(`cube-hello`). 판 도중에 온 사람은 다음 판부터 든다.
- * - 컴퓨터는 방장 기기가 돌린다. 경주 틀에는 방장 기기가 맡은 참가자 하나로 보인다(`RaceHub`).
- * - 판 결과는 각 기기가 자기 경주 틀에서 얻는다(같은 메시지를 받았으면 같은 값). 종합 순위도 각자 계산한다.
- * - 진짜 연결이 없으면(컴퓨터와 경주) 방장 혼자 + 컴퓨터로 같은 길을 쓴다.
+ * - 컴퓨터는 방장 기기가 돌린다. 대결 틀에는 방장 기기가 맡은 참가자 하나로 보인다(`RaceHub`).
+ * - 판 결과는 각 기기가 자기 대결 틀에서 얻는다(같은 메시지를 받았으면 같은 값). 종합 순위도 각자 계산한다.
+ * - 진짜 연결이 없으면(컴퓨터와 대결) 방장 혼자 + 컴퓨터로 같은 길을 쓴다.
  */
 
 export interface RoomSettings {
@@ -106,7 +106,7 @@ type RoomMessage =
   | { type: "cube-chat"; id: string; name: string; text: string };
 
 export interface CubeRoomInit {
-  /** 없으면 혼자(컴퓨터와 경주) */
+  /** 없으면 혼자(컴퓨터와 대결) */
   transport?: Transport;
   clock: Clock;
   isHost: boolean;
@@ -173,7 +173,7 @@ export class CubeRoom {
     this.hub = new RaceHub({
       ...(init.transport ? { transport: init.transport } : {}),
       clock: init.clock,
-      // 경주 메시지는 판을 열 때 고정한 표로만 누구 것인지 정한다
+      // 대결 메시지는 판을 열 때 고정한 표로만 누구 것인지 정한다
       owner: (p) => this.current?.owners.get(p),
       participantsOf: (d) =>
         [...(this.current?.owners ?? [])]
@@ -217,12 +217,12 @@ export class CubeRoom {
 
   // ---- 모두 ----
 
-  /** 지금 판의 내 경주(내가 든 판일 때) */
+  /** 지금 판의 내 대결(내가 든 판일 때) */
   session(): RaceSession<CubeMove, PuzzleState> | undefined {
     return this.current?.sessions.get(this.me);
   }
 
-  /** 지금 판의 아무 경주(보기만 하는 손님은 없다) */
+  /** 지금 판의 아무 대결(보기만 하는 손님은 없다) */
   anySession(): RaceSession<CubeMove, PuzzleState> | undefined {
     const c = this.current;
     return c
@@ -510,7 +510,7 @@ export class CubeRoom {
     const c = this.current;
     if (!c || c.race !== race || this.rounds.some((r) => r.race === race))
       return;
-    // 결과는 내 경주(내가 든 판), 없으면 처음 끝난 경주의 것
+    // 결과는 내 대결(내가 든 판), 없으면 처음 끝난 대결의 것
     const own = c.sessions.get(this.me);
     const source = own ?? [...c.sessions.values()][0];
     if (own && !own.snapshot().result) return;

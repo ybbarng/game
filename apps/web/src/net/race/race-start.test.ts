@@ -58,7 +58,7 @@ async function flush(): Promise<void> {
   for (let i = 0; i < 5; i++) await Promise.resolve();
 }
 
-describe("경주 틀: 시작 상태", () => {
+describe("대결 틀: 시작 상태", () => {
   it("시작 상태를 늦게 만든 기기도 풀림 시각은 씨앗을 안 때부터 잰다", async () => {
     const slow = slowPrepare();
     const { clock, devices } = setupRace(2, {}, undefined, (id) =>
@@ -106,7 +106,7 @@ describe("경주 틀: 시작 상태", () => {
     expect(a.session.moveLog("p1")[0]?.t).toBe(300);
   });
 
-  it("시작 상태를 만들지 못한 기기는 그 판 기권, 남은 사람끼리 경주한다", async () => {
+  it("시작 상태를 만들지 못한 기기는 그 판 기권, 남은 사람끼리 대결한다", async () => {
     const slow = slowPrepare();
     const { clock, devices } = setupRace(3, {}, undefined, (id) =>
       id === "p3" ? slow.game : sortPuzzle,
@@ -128,7 +128,7 @@ describe("경주 틀: 시작 상태", () => {
     expect(b.session.snapshot().result).toEqual(r);
   });
 
-  it("지문이 같으면 그대로 경주한다", () => {
+  it("지문이 같으면 그대로 대결한다", () => {
     const { clock, devices } = setupRace(2, {}, undefined, () =>
       withFingerprint(),
     );
@@ -181,7 +181,7 @@ describe("경주 틀: 시작 상태", () => {
     });
   });
 
-  it("3명에서 한 기기만 살펴보기 시간이 다르면 그 사람만 빠지고 남은 둘이 경주한다", () => {
+  it("3명에서 한 기기만 살펴보기 시간이 다르면 그 사람만 빠지고 남은 둘이 대결한다", () => {
     const { clock, devices } = setupRace(3, {}, undefined, undefined, (id) =>
       id === "p3" ? { inspectionMs: 0 } : {},
     );
@@ -219,7 +219,7 @@ describe("경주 틀: 시작 상태", () => {
     });
   });
 
-  it("3명에서 한 기기의 시작 상태만 다르면 그 사람만 빠지고 남은 둘이 새 섞기로 경주한다", () => {
+  it("3명에서 한 기기의 시작 상태만 다르면 그 사람만 빠지고 남은 둘이 새 섞기로 대결한다", () => {
     const { clock, devices } = setupRace(3, {}, undefined, (id) =>
       withFingerprint(id === "p3"),
     );
