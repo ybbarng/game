@@ -222,38 +222,59 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 가�
   await build.locator("[data-build-fill]").click();
   await expect(build).toHaveAttribute("data-act-passed", "");
   await expect(page.locator("[data-net-cell][data-net-hidden]")).toHaveCount(0);
+});
 
-  // 확인 문제: R U2를 돌린 뒤 가운데만 보이게 가린 큐브에서 흰-초록-빨강 꼭짓점 찾기
+test("배우기: 조각의 움직임은 센터 → 엣지 → 코너 차례", async ({
+  page,
+}, info) => {
+  // 옛 주소(333-pieces)도 새 단원으로 연다
   await page.goto("/cube/learn?lesson=333-pieces");
+  await expect(page.locator("[data-cube-learn]")).toHaveAttribute(
+    "data-cube-learn",
+    "333-piece-moves",
+  );
+  const find = page.locator('[data-act="find"]');
+
+  // 따라가기 확인 1: F R 뒤 흰-초록 엣지 블럭은 위-오른쪽(윗면 칸 5). 원래 자리(칸 7)는 틀림
   await goStep(page, 4);
-  // 원래 자리(위-앞-오른쪽, 칸 8)에는 이제 다른 꼭짓점이 있다
+  await page.locator('[data-net-cell="7"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await page.locator('[data-net-cell="5"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  // 따라가기 확인 2: R U2 뒤 흰-초록-빨강 코너 블럭은 위-앞-왼쪽(윗면 칸 6)
+  await goStep(page, 5);
   await page.locator('[data-net-cell="8"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
-  // R U2 뒤에는 위-앞-왼쪽(윗면 칸 6)
   const corner = page.locator('[data-net-cell="6"]');
   await expect(corner).toHaveAttribute("data-net-hidden", "");
   await corner.click();
   await expect(find).toHaveAttribute("data-act-passed", "");
-  // 찾은 꼭짓점은 가리기가 풀려 색이 드러난다(3D도 같은 마스크를 쓴다)
+  // 찾은 코너 블럭은 가리기가 풀려 색이 드러난다(3D도 같은 마스크를 쓴다)
   await expect(corner).not.toHaveAttribute("data-net-hidden", "");
   await shot(page, "learn-pieces-track", info.project.name);
 
-  // 평가: 한 면을 맞춘 상태는? (가) 흰 면만 흰색 / (나) 흰 조각이 제자리
-  await goStep(page, 5);
+  // 평가: 한 면을 맞춘 상태는? (가) 흰 면만 흰색 / (나) 흰 블럭이 제자리
+  await goStep(page, 6);
   const quiz = page.locator('[data-act="quiz"]');
   await expect(quiz.locator("[data-quiz-picture]")).toHaveCount(2);
   await page.locator("[data-learn-quiz] [data-choice='0']").click();
   await expect(quiz).not.toHaveAttribute("data-act-passed", "");
   await page.locator("[data-learn-quiz] [data-choice='1']").click();
   await expect(quiz).toHaveAttribute("data-act-passed", "");
-  await expect(quiz).toContainText("조각이 제자리");
+  await expect(quiz).toContainText("제자리에 바른 방향");
+
+  // 해 보기는 엣지 → 코너
+  await goStep(page, 10);
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "흰-초록 엣지 블럭",
+  );
 });
 
 test("배우기: 놀이판에서 모든 키로 돌려 보고, 다른 조각을 골라 따라간다", async ({
   page,
 }, info) => {
   await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=333-pieces");
+  await page.goto("/cube/learn?lesson=333-piece-moves");
   await goToStep(page, "play");
   const play = page.locator('[data-act="play"]');
   await inputReady(page);
