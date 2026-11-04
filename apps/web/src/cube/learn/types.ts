@@ -80,20 +80,76 @@ export type ScrambleRule = keyof typeof SCRAMBLE_RULES;
 /** 상황 만들기: 맞춘 큐브에 적용할 공식, 또는 스스로 섞기 규칙 */
 export type LessonSetup = { alg: string } | { rule: ScrambleRule };
 
-export type LessonStepKind = "text" | "demo" | "try";
+/**
+ * 단계 종류. 글만 읽고 넘기는 단계는 두지 않는다(사용자가 직접 하는 것이 있어야 한다, 2026-11-04).
+ * - text: 글과 정지한 큐브 그림(남겨 둔 옛 자료용. 새 자료는 아래 상호작용 종류를 쓴다)
+ * - demo: 공식을 천천히 돌려 보인다. 끝에 「직접 해 보기」로 같은 수를 쳐 볼 수 있다
+ * - try: 정해진 상황에서 목표 모양(goal)을 만들면 통과
+ * - look: 둘러보기. 큐브 전체 돌리기(x·y·z, 빈 곳 밀기)만 된다. `look`이 있으면 그 색이 그 면에 와야 통과
+ * - find: 조각 찾기. 큐브에서 `find`에 맞는 칸을 누르면(3D·펼친 그림 모두) 통과
+ * - quiz: 고르기 문제. 큐브 그림을 보고 `quiz.choices`에서 고른다
+ * - turn: 한 수 해 보기. 시작 상황에서 `alg`를 직접 쳐서 같은 모양이 되면 통과
+ */
+export type LessonStepKind =
+  | "text"
+  | "demo"
+  | "try"
+  | "look"
+  | "find"
+  | "quiz"
+  | "turn";
+
+/** 면 이름. 색은 맞춘 큐브에서 그 면에 있던 색(U 흰, R 빨강, F 초록, D 노랑, L 주황, B 파랑) */
+export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
+
+/** 조각 종류(큰 큐브의 날개 모서리는 edge, 안쪽 가운데는 center로 친다) */
+export type PieceType = "center" | "edge" | "corner";
+
+/**
+ * 찾을 조각. 둘 다 주면 둘 다 맞아야 한다.
+ * - piece: 그 종류 아무 조각
+ * - colors: 그 색들이 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
+ */
+export interface FindTarget {
+  piece?: PieceType;
+  colors?: FaceLetter[];
+}
+
+/** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */
+export interface LookGoal {
+  color: FaceLetter;
+  on: FaceLetter;
+}
+
+export interface QuizSpec {
+  question: string;
+  choices: string[];
+  /** 맞는 답의 차례(0부터) */
+  answer: number;
+  /** 고른 뒤 보여 줄 까닭 한두 문장 */
+  why: string;
+}
 
 export interface LessonStep {
   kind: LessonStepKind;
-  /** 짧은 한국어 문단 */
+  /** 짧은 한국어 문단(해요체) */
   body: string;
-  /** demo: 천천히 돌려 보일 공식. try: 모범 답(힌트로 보여 줌, 채점은 goal로 한다) */
+  /** demo: 천천히 돌려 보일 공식. try: 모범 답(힌트로 보여 줌, 채점은 goal로 한다). turn: 직접 칠 수 */
   alg?: string;
-  /** demo·try의 시작 상황. 없으면 맞춘 큐브 */
+  /** 시작 상황(모든 종류). 없으면 맞춘 큐브 */
   setup?: LessonSetup;
   /** try: 통과 조건 */
   goal?: GoalName;
   /** 「가리기」 모드에서 쓸 마스크 */
   mask?: MaskName;
+  /** find: 찾을 조각 */
+  find?: FindTarget;
+  /** find: 서로 다른 조각을 몇 개 찾아야 하나. 기본 1 */
+  count?: number;
+  /** look: 맞출 방향. 없으면 큐브 전체를 한 번 돌리면 통과 */
+  look?: LookGoal;
+  /** quiz: 문제 */
+  quiz?: QuizSpec;
 }
 
 export interface Lesson {

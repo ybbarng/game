@@ -214,6 +214,7 @@ export class CubeView {
   private hidden: "black" | "gray";
   private onMoveDone: ((done: number) => void) | undefined;
   private onSwipe: ((move: CubeMove) => void) | undefined;
+  private onTap: ((hit: SwipeHit) => void) | undefined;
   private swipeMouse: boolean;
   /** 밀기 하나(누른 곳에서 정한 칸, 이미 수를 냈는지) */
   private gesture: {
@@ -234,7 +235,13 @@ export class CubeView {
   private pitch = DEFAULT_PITCH;
   private dragYaw = 0;
   private dragPitch = 0;
-  private drag: { id: number; x: number; y: number } | null = null;
+  private drag: {
+    id: number;
+    x: number;
+    y: number;
+    x0: number;
+    y0: number;
+  } | null = null;
   private returning: { start: number; yaw: number; pitch: number } | null =
     null;
   private width = 1;
@@ -257,6 +264,7 @@ export class CubeView {
     this.hidden = o.hidden ?? "black";
     this.onMoveDone = o.onMoveDone;
     this.onSwipe = o.onSwipe;
+    this.onTap = o.onTap;
     this.swipeMouse = o.swipeMouse ?? false;
 
     this.renderer = new THREE.WebGLRenderer({
@@ -450,6 +458,7 @@ export class CubeView {
         | "hidden"
         | "onMoveDone"
         | "onSwipe"
+        | "onTap"
         | "swipeMouse"
       >
     >,
@@ -458,6 +467,7 @@ export class CubeView {
     if (o.overshoot !== undefined) this.overshoot = o.overshoot;
     if ("onMoveDone" in o) this.onMoveDone = o.onMoveDone;
     if ("onSwipe" in o) this.onSwipe = o.onSwipe;
+    if ("onTap" in o) this.onTap = o.onTap;
     if (o.swipeMouse !== undefined) this.swipeMouse = o.swipeMouse;
     let recolor = false;
     if (o.colors) {
@@ -711,6 +721,13 @@ export class CubeView {
     return p ? cellOfPoint(this.n, [p.x, p.y, p.z]) : null;
   }
 
+  /** 누르기(거의 움직이지 않고 뗌): 그 점 아래 칸을 알린다 */
+  private tap(clientX: number, clientY: number): void {
+    if (!this.onTap) return;
+    const hit = this.hitAt(clientX, clientY);
+    if (hit) this.onTap(hit);
+  }
+
   private readonly onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0 || this.drag || this.gesture) return;
     const mouse = e.pointerType === "mouse";
@@ -726,7 +743,13 @@ export class CubeView {
       this.capture(e.pointerId, true);
       return;
     }
-    this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    this.drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      x0: e.clientX,
+      y0: e.clientY,
+    };
     this.returning = null;
     this.capture(e.pointerId, true);
   };
@@ -774,12 +797,17 @@ export class CubeView {
 
   private readonly onPointerUp = (e: PointerEvent): void => {
     if (this.gesture && this.gesture.id === e.pointerId) {
+      const tapped = !this.gesture.done;
       this.gesture = null;
       this.capture(e.pointerId, false);
+      if (tapped) this.tap(e.clientX, e.clientY);
       return;
     }
     if (!this.drag || this.drag.id !== e.pointerId) return;
+    const d = this.drag;
     this.drag = null;
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < SWIPE_PX)
+      this.tap(e.clientX, e.clientY);
     this.capture(e.pointerId, false);
     this.returning = {
       start: performance.now(),
