@@ -19,6 +19,7 @@ import {
 import { handOf, keyLayers } from "./layout";
 import { keysForMove } from "./move-keys";
 import { keyTextFor, MoveMatcher } from "./reach";
+import { TWO_HAND_RULE, TWO_HAND_RULES } from "./two-hand";
 
 /**
  * 키 익히기 튜토리얼(`/cube/keys/learn`, docs/47 4-4절). 지금 배치를 읽어 단계마다 설명과 칠 것을 만든다.
@@ -44,7 +45,11 @@ export const COLOR_NAME = [
 
 export type TutorialTarget =
   | { kind: "code"; code: string }
-  | { kind: "move"; notation: string }
+  /**
+   * 수 하나. `ask`가 있으면 맞히기: 키 그림의 글을 가리고 키를 알려 주지 않는다. `ask`는 실물에서 그 수를 하는 손가락
+   * (「왼 손목을 아래에서 위로」), 규칙으로 키를 떠올리게 한다
+   */
+  | { kind: "move"; notation: string; ask?: string }
   | { kind: "command"; command: Command }
   /** 큐브 전체를 돌려 이 색 면을 위·앞으로(적은 쪽만 본다) */
   | { kind: "orient"; up?: ColorId; front?: ColorId }
@@ -76,6 +81,7 @@ export const TUTORIAL_N = 3;
 export const TUTORIAL_IDS = [
   "home",
   "rotate",
+  "rule",
   "face-R",
   "commands",
   "face-L",
@@ -261,6 +267,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       ],
       ...rot,
     },
+    ruleStep(keymap, n),
     faceStep("R"),
     {
       id: "commands",
@@ -317,6 +324,76 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       ...moves(...SEXY, ...SUNE),
     },
   ];
+}
+
+/** 「두 손」 대응표에서 수 하나의 손가락(규칙 맞히기의 실마리) */
+const fingerOf = (move: string) =>
+  TWO_HAND_RULES.find((r) => r.move === move)?.finger ?? "";
+
+/**
+ * 배치 규칙(2026-11-04): 키를 하나씩 외우기 전에 규칙 하나로 떠올리게 한다. 「두 손」은 실물 핑거 트릭을 옮긴 배치
+ * (csTimer와 같음)라 「R은 I, 그럼 L'은?」을 손가락으로 맞힌다. 「표기」는 「R은 R, 그럼 R'은?」. 문제의 키는
+ * `two-hand.ts` 대응표와 지금 배치에서 읽고, 배치에 없는 수는 뺀다.
+ */
+function ruleStep(keymap: Keymap, n: number): TutorialStep {
+  const k = (a: string) => keyTextFor(keymap, n, a);
+  const has = (a: string) => k(a) !== null;
+  const show = (m: string): TutorialTarget => ({ kind: "move", notation: m });
+  const ask = (m: string, hint: string): TutorialTarget => ({
+    kind: "move",
+    notation: m,
+    ask: hint,
+  });
+  if (keymap.preset === "twoHand") {
+    const targets: TutorialTarget[] = [];
+    // 보여 주고 → 짝을 맞히기: R(보기) → L'(왼손 거울) → L, U(보기) → U'(다른 손 같은 자리)
+    for (const [m, asked] of [
+      ["R", false],
+      ["L'", true],
+      ["L", true],
+      ["U", false],
+      ["U'", true],
+      ["F'", true],
+    ] as const)
+      if (has(m)) targets.push(asked ? ask(m, fingerOf(m)) : show(m));
+    return {
+      id: "rule",
+      title: "배치 규칙",
+      lines: [
+        "「두 손」은 실물 큐브의 핑거 트릭을 키보드로 옮긴 배치예요. csTimer 가상 큐브와 같은 자리라 거기서도 그대로 쳐요.",
+        `규칙 하나만 기억해요: ${TWO_HAND_RULE}`,
+        `예를 들어 R은 오른 손목을 아래에서 위로 올리니 오른손 위 줄 ${k("R") ?? "I"}, R'은 내리니 가운데 줄 ${k("R'") ?? "K"}예요. U는 오른 검지로 미니 ${k("U") ?? "J"}.`,
+        "물음표 칸은 키를 가렸어요. 손가락을 떠올려 맞는 키를 쳐 보세요.",
+      ],
+      targets,
+      missing: [],
+    };
+  }
+  if (keymap.preset === "notation")
+    return {
+      id: "rule",
+      title: "배치 규칙",
+      lines: [
+        "「표기」는 공식 글자 그대로 쳐요. R은 R 키, U는 U 키예요.",
+        "반대 방향(')은 Shift와 함께, 넓게(w)는 Alt와 함께 쳐요.",
+        "물음표 칸은 키를 가렸어요. 규칙대로 쳐 보세요.",
+      ],
+      targets: [
+        show("R"),
+        ask("R'", "R 키를 Shift와 함께"),
+        ask("U'", "U 키를 Shift와 함께"),
+      ],
+      missing: [],
+    };
+  return {
+    id: "rule",
+    title: "배치 규칙",
+    lines: [
+      "「사용자」 배치는 설정에서 바꾼 대로예요. 키 그림을 보며 R과 R'을 쳐 보세요.",
+    ],
+    targets: (["R", "R'"] as const).filter(has).map(show),
+    missing: [],
+  };
 }
 
 /**
@@ -510,7 +587,7 @@ export class StepRun {
 /** 칠 것을 글로(`R`, `되돌리기`, `F 키`, `초록 위`, `혼자 풀기`) */
 export function targetLabel(t: TutorialTarget): string {
   if (t.kind === "code") return `${codeLabel(t.code)} 키`;
-  if (t.kind === "move") return t.notation;
+  if (t.kind === "move") return t.ask ? `${t.notation} ?` : t.notation;
   if (t.kind === "orient") return orientLabel(t);
   if (t.kind === "solve") return "혼자 풀기";
   return COMMAND_LABEL[t.command];
