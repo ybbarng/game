@@ -1,4 +1,4 @@
-import { no3d, shot, useNotationKeys } from "./cube";
+import { no3d, pauseClockSoon, shot, useNotationKeys } from "./cube";
 import { expect, test } from "./test";
 
 /**
@@ -41,8 +41,7 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   );
   await expect(main).toHaveAttribute("data-cube-phase", "free");
   // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 살펴보기가 DNF로 흐르지 않는다
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 5_000);
+  await pauseClockSoon(page);
 
   await page.locator("[data-cube-scramble-button]").click();
   const scramble = page.locator("[data-cube-scramble]");

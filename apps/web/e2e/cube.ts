@@ -23,6 +23,24 @@ export async function no3d(
   });
 }
 
+/**
+ * `page.clock.install()`로 흐르던 가짜 시계를 곧 멈춘다(이제 시간은 `fastForward`로만 흐른다).
+ * 「지금 + 5초」로 멈추게 했더니 느린 CI에서는 시각을 읽은 뒤 `pauseAt`을 부르기 전에 5초가 넘게 지나
+ * 「Cannot fast-forward to the past」로 실패했다(2026-11-04 main CI, 십자 훈련). 지금 시각을 다시 읽어
+ * 조금 뒤로 다시 건다. 화면은 그 사이 몇 초 흐른 것과 같아 판정에 영향이 없다(아직 섞기 전이다)
+ */
+export async function pauseClockSoon(page: Page): Promise<void> {
+  for (let i = 0; ; i++) {
+    const now = await page.evaluate(() => Date.now());
+    try {
+      await page.clock.pauseAt(now + 1_000);
+      return;
+    } catch (e) {
+      if (i >= 4 || !String(e).includes("past")) throw e;
+    }
+  }
+}
+
 /** 키 배치를 「표기」로(R = R, Shift+R = R', 두 번 = R2) */
 export async function useNotationKeys(page: Page): Promise<void> {
   await page.addInitScript(() => {
