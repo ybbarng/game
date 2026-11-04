@@ -412,9 +412,10 @@ export function AlgsApp() {
                         </span>
                       )}
                     </span>
+                    {/* 목록 카드는 표기만(키캡까지 붙이면 카드가 빽빽했다, 2026-11-04). 키캡은 상황을 열면 보인다 */}
                     <AlgChips
                       alg={used}
-                      keysOf={keysOf}
+                      keysOf={null}
                       className="w-full justify-center font-mono text-[11px] text-white/80"
                     />
                   </button>
