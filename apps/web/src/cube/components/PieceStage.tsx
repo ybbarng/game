@@ -59,6 +59,7 @@ function useStage(
   settings: CubeSettings,
   onSticker: (sticker: number) => void,
   paint: (view: CubeView) => void,
+  keepView = false,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -83,6 +84,7 @@ function useStage(
           colors: settings.colors,
           stickerless: settings.stickerless,
           hidden: settings.hidden,
+          keepView,
           onTap: (hit) => {
             const i = stickerAtHit(N, hit.center, hit.normal);
             if (i !== null) live.current.onSticker(i);
@@ -105,6 +107,7 @@ function useStage(
     settings.colors,
     settings.stickerless,
     settings.hidden,
+    keepView,
   ]);
 
   return { canvasRef, viewRef, ready, failed };
@@ -412,6 +415,8 @@ export function BuildPanel({
       view.setLayout(layoutFor(next), 450);
     }
     if (next.phase === "done" && b.phase !== "done") {
+      // 다 끼우면 처음 각으로 돌아와 맞춘 모습을 보인다
+      view?.resetView();
       playCubeCue(settings, "cubeSolved");
       live.current.onPassed();
     }
@@ -429,7 +434,8 @@ export function BuildPanel({
       update(r.state);
     } else playCubeCue(settings, "invalid");
   };
-  const stage = useStage(settings, tap, (v) => paint(v));
+  // 아래·뒤 빈자리를 끌어 돌려 본 채로 누를 수 있게, 손을 떼도 보기를 남긴다(휴대폰은 돌아가는 사이에 누를 수 없었다)
+  const stage = useStage(settings, tap, (v) => paint(v), true);
 
   const takeApart = () => {
     const view = stage.viewRef.current;
@@ -572,7 +578,7 @@ export function BuildPanel({
       )}
       <Stage
         stage={stage}
-        label="빈자리를 눌러 끼워요. 끌면 둘러볼 수 있어요."
+        label="빈자리를 눌러 끼워요. 끌어 돌린 각도는 그대로 남아요."
         net={
           <CubeNet
             n={N}
@@ -584,6 +590,16 @@ export function BuildPanel({
           />
         }
       />
+      {stage.ready && b.phase !== "whole" && b.phase !== "done" && (
+        <button
+          type="button"
+          data-build-home-view
+          onClick={() => stage.viewRef.current?.resetView()}
+          className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
+        >
+          처음 각도로
+        </button>
+      )}
     </div>
   );
 }

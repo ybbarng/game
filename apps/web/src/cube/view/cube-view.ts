@@ -319,6 +319,7 @@ export class CubeView {
   private onSwipe: ((move: CubeMove) => void) | undefined;
   private onTap: ((hit: SwipeHit) => void) | undefined;
   private swipeMouse: boolean;
+  private keepView: boolean;
   /** 밀기 하나(누른 곳에서 정한 칸, 이미 수를 냈는지) */
   private gesture: {
     id: number;
@@ -379,6 +380,7 @@ export class CubeView {
     this.onSwipe = o.onSwipe;
     this.onTap = o.onTap;
     this.swipeMouse = o.swipeMouse ?? false;
+    this.keepView = o.keepView ?? false;
     this.interactive = o.interactive ?? true;
     this.maxDpr = Math.min(o.maxDpr ?? this.spec.maxDpr, this.spec.maxDpr);
 
@@ -655,6 +657,7 @@ export class CubeView {
         | "onTap"
         | "swipeMouse"
         | "mirror"
+        | "keepView"
       >
     >,
   ): void {
@@ -666,6 +669,7 @@ export class CubeView {
     if ("onSwipe" in o) this.onSwipe = o.onSwipe;
     if ("onTap" in o) this.onTap = o.onTap;
     if (o.swipeMouse !== undefined) this.swipeMouse = o.swipeMouse;
+    if (o.keepView !== undefined) this.keepView = o.keepView;
     let recolor = false;
     if (o.colors) {
       this.colors = o.colors;
@@ -833,6 +837,49 @@ export class CubeView {
     this.yaw = yaw;
     this.pitch = clamp(pitch, -PITCH_LIMIT, PITCH_LIMIT);
     this.invalidate();
+  }
+
+  /** 끌어 돌린 보기를 처음 각으로 천천히 되돌린다(`keepView`일 때 쓴다) */
+  resetView(): void {
+    if (this.drag) return;
+    if (this.dragYaw === 0 && this.dragPitch === 0) return;
+    this.returning = {
+      start: performance.now(),
+      yaw: this.dragYaw,
+      pitch: this.dragPitch,
+    };
+    this.invalidate();
+  }
+
+  /** 끌어 돌린 보기가 처음 각에서 벗어나 있는지 */
+  get viewTurned(): boolean {
+    return this.dragYaw !== 0 || this.dragPitch !== 0;
+  }
+
+  /** 보기가 움직이는 중인지(끄는 중이거나 처음 각으로 돌아가는 중). 화면 시험이 멈출 때를 기다린다 */
+  get viewMoving(): boolean {
+    return this.drag !== null || this.returning !== null;
+  }
+
+  /**
+   * 큐브 겉의 점(세계 좌표)의 화면 좌표(client px). 그 점이 붙은 면(`normal`)이 카메라 반대쪽을 보면 null.
+   * 화면 시험이 3D 칸을 누를 때 쓴다
+   */
+  pointClient(
+    point: readonly [number, number, number],
+    normal: readonly [number, number, number],
+  ): { x: number; y: number } | null {
+    this.placeCamera();
+    this.camera.updateMatrixWorld();
+    const p = new THREE.Vector3(...point);
+    const toCamera = this.camera.position.clone().sub(p);
+    if (toCamera.dot(new THREE.Vector3(...normal)) <= 0) return null;
+    const w = p.project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + ((w.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - w.y) / 2) * rect.height,
+    };
   }
 
   resize(width: number, height: number): void {
@@ -1362,8 +1409,18 @@ export class CubeView {
     if (!d || d.id !== e.pointerId) return;
     this.dragYaw -= (e.clientX - d.x) * 0.45;
     this.dragPitch += (e.clientY - d.y) * 0.45;
-    this.dragYaw = clamp(this.dragYaw, -180, 180);
-    this.dragPitch = clamp(this.dragPitch, -PITCH_LIMIT * 2, PITCH_LIMIT * 2);
+    if (this.keepView) {
+      // 남겨 두는 보기: 옆으로는 끝없이 돌고(한 바퀴마다 감음), 위아래는 보이는 끝에서 멈춘다(거꾸로 끌면 바로 움직인다)
+      this.dragYaw = ((((this.dragYaw + 180) % 360) + 360) % 360) - 180;
+      this.dragPitch = clamp(
+        this.dragPitch,
+        -PITCH_LIMIT - this.pitch,
+        PITCH_LIMIT - this.pitch,
+      );
+    } else {
+      this.dragYaw = clamp(this.dragYaw, -180, 180);
+      this.dragPitch = clamp(this.dragPitch, -PITCH_LIMIT * 2, PITCH_LIMIT * 2);
+    }
     d.x = e.clientX;
     d.y = e.clientY;
     this.invalidate();
@@ -1383,11 +1440,12 @@ export class CubeView {
     if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < SWIPE_PX)
       this.tap(e.clientX, e.clientY);
     this.capture(e.pointerId, false);
-    this.returning = {
-      start: performance.now(),
-      yaw: this.dragYaw,
-      pitch: this.dragPitch,
-    };
+    if (!this.keepView)
+      this.returning = {
+        start: performance.now(),
+        yaw: this.dragYaw,
+        pitch: this.dragPitch,
+      };
     this.invalidate();
   };
 }
