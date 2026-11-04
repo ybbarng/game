@@ -95,13 +95,19 @@ export class KeyInterpreter {
 
 /**
  * 층 수를 붙인다(csTimer와 같음): R·L 키는 바깥 k층, Rw·Lw(r·l, Shift)는 k+1층. 층 수가 1이면 그대로
- * (R → R, Rw → Rw). 다른 면·가운데 층·큐브 돌리기는 그대로
+ * (R → R, Rw → Rw). 안쪽 한 층 키(`2R`·`2L`, 「두 손」의 . 6 X 5)는 잡은 층 바로 안쪽 한 층(k+1번째 층).
+ * 다른 면·가운데 층·큐브 돌리기는 그대로
  */
 export function withLayers(
   notation: string,
   left: number,
   right: number,
 ): string {
+  const inner = /^2([RL])(2|')?$/.exec(notation);
+  if (inner) {
+    const face = inner[1] as string;
+    return `${(face === "R" ? right : left) + 1}${face}${inner[2] ?? ""}`;
+  }
   const m =
     /^([RL])(w)?(2|')?$/.exec(notation) ?? /^([rl])()(2|')?$/.exec(notation);
   if (!m) return notation;

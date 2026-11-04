@@ -197,11 +197,14 @@ export function CubeSettingsApp() {
               ["inspection", "혼자 맞추기 15초 살펴보기"],
               ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
               ["keyColors", "키 그림에 면 색"],
+              ["keyPairs", "키 그림에서 같은 면의 두 키 잇기"],
+              ["keyFingers", "키 그림에 손가락 자리"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-center gap-2">
               <input
                 type="checkbox"
+                data-setting={k}
                 checked={settings[k]}
                 onChange={(e) =>
                   updateSettings({ ...settings, [k]: e.target.checked })

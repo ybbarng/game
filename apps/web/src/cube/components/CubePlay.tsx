@@ -24,6 +24,11 @@ import {
   loadKeymap,
 } from "../input";
 import {
+  resetHandLayers,
+  setHandLayers,
+  usesHandLayers,
+} from "../keys/hand-layers";
+import {
   HOME_ORIENT,
   type Orient,
   orientAfter,
@@ -158,6 +163,18 @@ export function CubePlay({
   );
   const interpreterRef = useRef(interpreter);
   interpreterRef.current = interpreter;
+  // 새 해석기(크기·배치가 바뀜)는 층 수 1·1에서 시작한다. 이 큐브가 사라지면 배우기 키캡도 1·1로
+  useEffect(() => {
+    if (!interpreter) return;
+    setLayers(interpreter.layers);
+    setHandLayers(interpreter.n, interpreter.layers);
+    return () => resetHandLayers();
+  }, [interpreter]);
+  // 큰 큐브 「두 손」: 큐브 위에 손이 잡은 층(csTimer의 손 표시)
+  const handMarks = !!keymap && usesHandLayers(keymap, n);
+  useEffect(() => {
+    if (ready) viewRef.current?.setHandMarks(handMarks ? layers : null);
+  }, [ready, handMarks, layers]);
 
   // 장면: 크기·품질이 바뀌면 다시 만든다
   const quality = settings.quality;
@@ -253,7 +270,11 @@ export function CubePlay({
   const handleRef = useRef((r: KeyResult) => {
     const c = live.current;
     setDepth(interpreterRef.current?.pendingDepth ?? null);
-    if (interpreterRef.current) setLayers(interpreterRef.current.layers);
+    const it = interpreterRef.current;
+    if (it) {
+      setLayers(it.layers);
+      setHandLayers(it.n, it.layers);
+    }
     if (r.kind === "move") {
       moveRef.current(r.move, r.notation);
       return;
@@ -359,9 +380,10 @@ export function CubePlay({
             {(layers.left > 1 || layers.right > 1) && (
               <span
                 data-cube-layers={`${layers.left}-${layers.right}`}
-                className="absolute top-2 left-2 rounded bg-sky-400/90 px-2 py-0.5 font-semibold text-black text-xs"
+                className="absolute top-2 left-2 rounded bg-black/70 px-2 py-0.5 font-semibold text-xs"
               >
-                층 수 왼손 {layers.left} · 오른손 {layers.right}
+                층 수 <span className="text-sky-300">왼손 {layers.left}</span> ·{" "}
+                <span className="text-amber-300">오른손 {layers.right}</span>
               </span>
             )}
             {depth !== null && (
@@ -448,6 +470,7 @@ export function CubePlay({
             lit={lit}
             want={want}
             orient={orientFromCenters(n, state) ?? evenOrient}
+            layers={handMarks ? layers : null}
           />
         </div>
       )}

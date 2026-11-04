@@ -87,8 +87,9 @@ describe("키 차례", () => {
     expect(keyTextFor(notationKeymap(), 3, "R'")).toBe("Shift+R");
     expect(keyTextFor(twoHandKeymap(), 3, "R2")).toBe("I 두 번");
     expect(keyTextFor(notationKeymap(), 4, "2R")).toBe("2 → R");
-    // 「두 손」은 csTimer처럼 안쪽 한 층 키가 없다(키캡은 Rw R'로, move-keys)
-    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBeNull();
+    // 「두 손」의 안쪽 한 층은 csTimer처럼 가운데 줄 키(4×4의 . = 2R)
+    expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBe(".");
+    expect(keyTextFor(twoHandKeymap(), 3, "M")).toBe("5 / 6");
     expect(keyTextFor(twoHandKeymap(), 4, "Rw")).toBe("U / Shift+I");
     expect(keyTextFor(notationKeymap(), 5, "3Rw")).toBe("3 → Alt+R");
     expect(keyTextFor(twoHandKeymap(), 3, "undo")).toBe("⌫ / Ctrl+Z");

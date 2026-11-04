@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { notationToMove } from "../input/actions";
+import { KeyInterpreter } from "../input/interpreter";
 import { bind, type KeyChord, presetKeymap, unbind } from "../input/keymaps";
 import {
   keycapLabel,
@@ -27,12 +29,65 @@ describe("수 → 키(배우기·튜토리얼이 보이는 키)", () => {
     expect(caps(keysForMove(twoHand, 3, "M'"))).toBe("X");
   });
 
-  test("「두 손」: 안쪽 한 층은 넓게 + 바깥 반대(csTimer처럼 전용 키 없음)", () => {
-    expect(caps(keysForMove(twoHand, 4, "2R"))).toBe("U K");
-    expect(caps(keysForMove(twoHand, 4, "2R'"))).toBe("M I");
+  test("「두 손」: 안쪽 한 층은 csTimer의 가운데 줄 키 하나(수 하나라 중간 모양이 없다)", () => {
+    expect(caps(keysForMove(twoHand, 4, "2R"))).toBe(".");
+    expect(caps(keysForMove(twoHand, 4, "2R'"))).toBe("6");
+    expect(caps(keysForMove(twoHand, 4, "2L"))).toBe("5");
+    expect(caps(keysForMove(twoHand, 4, "2L'"))).toBe("X");
+    expect(caps(keysForMove(twoHand, 4, "2R2"))).toBe(". .");
     expect(caps(keysForMove(twoHand, 4, "Rw"))).toBe("U");
-    // 깊이 붙은 넓게(3Rw)는 층 수 키(7)를 먼저 치는 상태라 키캡 한 줄로 적지 않는다
-    expect(keysForMove(twoHand, 5, "3Rw")).toBeNull();
+  });
+
+  test("「두 손」: 층 수 키를 포함한 차례(3Rw = 7 → U), 지금 층 수에서 시작", () => {
+    expect(caps(keysForMove(twoHand, 5, "3Rw"))).toBe("7 U");
+    expect(caps(keysForMove(twoHand, 5, "3Lw'"))).toBe("4 R");
+    expect(caps(keysForMove(twoHand, 5, "M"))).toBe("7 6");
+    expect(caps(keysForMove(twoHand, 6, "3R"))).toBe("7 .");
+    expect(caps(keysForMove(twoHand, 7, "4Rw"))).toBe("7 7 U");
+    // 오른손 층 수 2를 잡고 있으면: R은 8로 되돌린 뒤 I, Rw(2층)는 그대로 I, 3Rw는 U
+    const two = { left: 1, right: 2 };
+    expect(caps(keysForMove(twoHand, 5, "R", two))).toBe("8 I");
+    expect(caps(keysForMove(twoHand, 5, "Rw", two))).toBe("I");
+    expect(caps(keysForMove(twoHand, 5, "3Rw", two))).toBe("U");
+    // 층 수를 따르지 않는 면은 그대로
+    expect(caps(keysForMove(twoHand, 5, "U", two))).toBe("J");
+    // U·D·F·B 쪽 깊은 넓게는 csTimer에도 키가 없다
+    expect(keysForMove(twoHand, 5, "3Uw")).toBeNull();
+    // 3×3에는 층 수 키가 없다
+    expect(keysForMove(twoHand, 3, "3Rw")).toBeNull();
+  });
+
+  test("키 차례를 해석기로 치면 그 수 하나만 돈다", () => {
+    for (const [n, nota] of [
+      [4, "2R"],
+      [5, "3Rw"],
+      [5, "M"],
+      [6, "3R'"],
+      [7, "3Lw"],
+      [4, "R2"],
+    ] as const) {
+      const keys = keysForMove(twoHand, n, nota);
+      expect(keys).not.toBeNull();
+      const it = new KeyInterpreter(n, twoHand);
+      const moves = (keys ?? [])
+        .map((k) =>
+          it.handle({
+            code: k.code,
+            shiftKey: !!k.shift,
+            altKey: !!k.alt,
+            ctrlKey: false,
+            metaKey: false,
+            repeat: false,
+          }),
+        )
+        .filter((r) => r?.kind === "move");
+      const want = notationToMove(n, nota);
+      if (nota.endsWith("2")) expect(moves).toHaveLength(2);
+      else {
+        expect(moves).toHaveLength(1);
+        expect(moves[0]).toMatchObject({ move: want });
+      }
+    }
   });
 
   test("「두 손」: E·S는 csTimer 숫자 키", () => {

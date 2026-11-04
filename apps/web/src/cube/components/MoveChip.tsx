@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { type KeyChord, type Keymap, loadKeymap } from "../input";
+import { useHandLayers } from "../keys/hand-layers";
 import { keycapLabel, keysForMove, splitMoveText } from "../keys/move-keys";
 import { useNoKeyboard } from "./PracticeCube";
 
@@ -23,9 +24,12 @@ export function useMoveKeys(n: number): {
   const [keymap, setKeymap] = useState<Keymap | null>(null);
   useEffect(() => setKeymap(loadKeymap()), []);
   const noKeyboard = useNoKeyboard();
+  // 큰 큐브 「두 손」은 지금 손이 잡은 층 수에서 시작하는 키 차례(3Rw = 7 → U 뒤의 R은 8 → I)
+  const layers = useHandLayers(n);
   const keysOf = useCallback(
-    (notation: string) => (keymap ? keysForMove(keymap, n, notation) : null),
-    [keymap, n],
+    (notation: string) =>
+      keymap ? keysForMove(keymap, n, notation, layers) : null,
+    [keymap, n, layers],
   );
   return { keymap, keysOf: keymap && !noKeyboard ? keysOf : null };
 }
@@ -70,13 +74,18 @@ export function KeyCaps({
       className={cn("inline-flex items-center gap-0.5", className)}
     >
       {keys.map((k, i) => (
-        <kbd
-          // biome-ignore lint/suspicious/noArrayIndexKey: 같은 키가 되풀이된다(R2 = I I)
-          key={i}
-          className="min-w-4 rounded border border-current/40 px-1 text-center font-sans font-semibold text-[11px] leading-4 opacity-90"
-        >
-          {keycapLabel(k)}
-        </kbd>
+        // biome-ignore lint/suspicious/noArrayIndexKey: 같은 키가 되풀이된다(R2 = I I)
+        <Fragment key={i}>
+          {/* 다른 키로 이어지면 차례 화살(층 수 7 → U, 깊이 2 → R). 같은 키 두 번(I I)은 나란히 */}
+          {i > 0 && keycapLabel(keys[i - 1] as KeyChord) !== keycapLabel(k) && (
+            <span aria-hidden className="text-[9px] opacity-60">
+              →
+            </span>
+          )}
+          <kbd className="min-w-4 rounded border border-current/40 px-1 text-center font-sans font-semibold text-[11px] leading-4 opacity-90">
+            {keycapLabel(k)}
+          </kbd>
+        </Fragment>
       ))}
     </span>
   );

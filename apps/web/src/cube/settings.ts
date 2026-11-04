@@ -58,6 +58,10 @@ export interface CubeSettings {
    * 끄면 단색
    */
   keyColors: boolean;
+  /** 키 그림에서 같은 면의 시계·반시계 두 키를 선으로 잇는다(2026-11-04, 기본 켬) */
+  keyPairs: boolean;
+  /** 키 그림에 가운데 줄 손가락 자리(검지·중지·약지·새끼)를 옅게 겹친다(2026-11-04, 기본 켬) */
+  keyFingers: boolean;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -76,6 +80,8 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   inspection: true,
   caseAlert: false,
   keyColors: true,
+  keyPairs: true,
+  keyFingers: true,
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -148,6 +154,8 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
     caseAlert: bool(d.caseAlert, DEFAULT_SETTINGS.caseAlert),
     keyColors: bool(d.keyColors, DEFAULT_SETTINGS.keyColors),
+    keyPairs: bool(d.keyPairs, DEFAULT_SETTINGS.keyPairs),
+    keyFingers: bool(d.keyFingers, DEFAULT_SETTINGS.keyFingers),
     heroSize,
     heroMethod,
   };

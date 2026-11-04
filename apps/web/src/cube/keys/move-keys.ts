@@ -1,5 +1,5 @@
 import type { KeyChord, Keymap } from "../input/keymaps";
-import { pressesFor } from "./reach";
+import { type HandLayers, HOME_LAYERS, routeFor } from "./reach";
 
 /**
  * 배우기·튜토리얼이 수 표기 옆에 그 사람의 키를 보이기 위한 변환(docs/47 4-4, 8절).
@@ -23,28 +23,20 @@ export function normalizeMove(notation: string): string {
 /**
  * 수 하나(표기) → 그 배치에서 치는 키 차례. 쓸 수 없거나 놓인 키가 없으면 null(「키 없음」).
  * 여러 길이 있으면 조합 키가 적은 것을 고른다(키 익히기 `/cube/keys/learn`과 같은 것).
+ * 키 차례는 언제나 수 하나만 일으킨다(층 수·깊이 키는 수가 아니다). 그래서 해 보기 중 중간 모양이 「다른 모양」으로 보이지 않는다.
  *
- * 예(「두 손」): `R` → I, `R'` → K, `R2` → I I, `Rw` → U, `2R` → Shift+I, `3Rw` → 3 → U
+ * `layers`는 지금 손이 잡은 층 수(큰 큐브 「두 손」의 3·4·7·8 키, 기본 1·1). 층 수를 바꿔야 하는 수는 층 수 키를 앞에 붙인다.
+ *
+ * 예(「두 손」): `R` → I, `R'` → K, `R2` → I I, `Rw` → U, 4×4 `2R` → .(csTimer의 안쪽 한 층 키), `3Rw` → 7 → U,
+ * 층 수 2에서 `R` → 8 → I. 「표기」: `2R` → 2 → R
  */
 export function keysForMove(
   keymap: Keymap,
   n: number,
   notation: string,
+  layers: HandLayers = HOME_LAYERS,
 ): KeyChord[] | null {
-  const name = normalizeMove(notation);
-  const options = pressesFor(keymap, n, name);
-  if (options[0]) return options[0];
-  // 둘째 층 하나(2R)는 넓게 + 바깥 반대로(Rw R'). 「두 손」은 csTimer처럼 안쪽 한 층 키가 없다.
-  // 두 수라 조작 훈련 문제에는 넣지 않고(pressesFor), 배우기 키캡에만 보인다
-  const inner = /^2([RLUDFB])(2|')?$/.exec(name);
-  if (inner && n >= 4) {
-    const sfx = inner[2] ?? "";
-    const back = sfx === "2" ? "2" : sfx === "'" ? "" : "'";
-    const wide = pressesFor(keymap, n, `${inner[1]}w${sfx}`)[0];
-    const face = pressesFor(keymap, n, `${inner[1]}${back}`)[0];
-    if (wide && face) return [...wide, ...face];
-  }
-  return null;
+  return routeFor(keymap, n, normalizeMove(notation), layers)?.presses ?? null;
 }
 
 /** 키 하나를 키캡에 넣을 짧은 글로(`⇧I`, `Alt+R`, `;`) */

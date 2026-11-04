@@ -299,7 +299,7 @@ describe("키 → 동작 → 수", () => {
 
   it("쓸 수 없는 크기의 동작은 키를 먹지 않는다", () => {
     expect(
-      new KeyInterpreter(4, twoHandKeymap()).handle(press("Digit5")),
+      new KeyInterpreter(2, twoHandKeymap()).handle(press("Digit5")),
     ).toBeNull();
     // 「두 손」 Shift = 넓게(2026-11-04): 3×3·4×4 모두 Shift+I = Rw
     for (const n of [3, 4])
