@@ -120,7 +120,7 @@ export function KeyLearnApp() {
       setWrong(null);
       if (outcomes.includes("done")) {
         if (step) markDone(step.id);
-        setFeedback({ kind: "ok", text: "이 단계를 마쳤습니다." });
+        setFeedback({ kind: "ok", text: "이 단계를 마쳤어요." });
       } else if (outcomes.includes("hit"))
         setFeedback({ kind: "ok", text: "맞아요" });
       else if (outcomes.includes("partial"))
@@ -188,7 +188,7 @@ export function KeyLearnApp() {
               ))}
               {step.missing.length > 0 && (
                 <p className="break-keep text-amber-200 text-xs">
-                  이 배치에는 {step.missing.join(", ")} 키가 없어 건너뜁니다.{" "}
+                  이 배치에는 {step.missing.join(", ")} 키가 없어 건너뛰어요.{" "}
                   <a href="/cube/settings" className="underline">
                     설정에서 놓기
                   </a>
@@ -293,7 +293,7 @@ export function KeyLearnApp() {
         )}
         {noKeyboard && (
           <p className="text-amber-200 text-xs" data-learn-no-keyboard>
-            키보드가 필요합니다.
+            키보드가 필요해요.
           </p>
         )}
       </main>

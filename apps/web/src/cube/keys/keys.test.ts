@@ -110,20 +110,20 @@ describe("키 차례", () => {
   it("친 키를 알려 준다", () => {
     const km = twoHandKeymap();
     expect(describeInput(km, 3, press({ code: "KeyK" })).text).toBe(
-      "K 키는 「R'」입니다.",
+      "K 키는 「R'」 동작이에요.",
     );
     expect(describeInput(km, 3, press({ code: "Quote" })).text).toBe(
-      "' 키에는 동작이 없습니다.",
+      "' 키에는 동작이 없어요.",
     );
     expect(describeInput(km, 3, press({ code: "Digit2" })).text).toMatch(
-      /이 크기에서는 쓰지 않습니다\.$/,
+      /이 크기에서는 쓰지 않아요\.$/,
     );
     // 친 수가 키의 동작과 같으면 덧붙이지 않고, 다르면 문장으로 잇는다(마침표가 겹치지 않게)
     expect(describeInput(km, 3, press({ code: "KeyK" }), "R'").text).toBe(
-      "K 키는 「R'」입니다.",
+      "K 키는 「R'」 동작이에요.",
     );
     expect(describeInput(km, 4, press({ code: "KeyI" }), "2R").text).toBe(
-      "I 키는 「R」입니다. 친 수는 2R입니다.",
+      "I 키는 「R」 동작이에요. 실제로 돈 수는 「2R」 수예요.",
     );
   });
 });
@@ -338,10 +338,10 @@ describe("키 익히기", () => {
     expect(nota[1]?.lines[0]).toContain("Shift+R");
     expect(two[0]?.lines[2]).toContain("「U'」");
     expect(two[0]?.lines[2]).toContain(
-      "이 배치에서 F는 「U'」, J는 「U」입니다.",
+      "이 배치에서 F 키는 「U'」, J 키는 「U」 수예요.",
     );
     expect(nota[0]?.lines[2]).toContain(
-      "이 배치에서 F는 「F」입니다. J 키에는 동작이 없습니다.",
+      "이 배치에서 F 키는 「F」 수예요. J 키에는 동작이 없어요.",
     );
     for (const s of [...two, ...nota]) {
       expect(s.missing).toEqual([]);
@@ -370,10 +370,10 @@ describe("키 익히기", () => {
 
     const line = tutorialSteps(km)[0]?.lines[1] ?? "";
     expect(line).toContain(
-      "R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 칩니다.",
+      "R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 쳐요.",
     );
     expect(line).toContain(
-      "U·U'은 J·F, D·D'은 S·L, F·F'은 H·G, B·B'은 W·O로 두 손이 나눠 칩니다.",
+      "U·U'은 J·F, D·D'은 S·L, F·F'은 H·G, B·B'은 W·O로 두 손이 나눠 쳐요.",
     );
     expect(faceHandLine(km)).not.toContain("같은 자리");
   });

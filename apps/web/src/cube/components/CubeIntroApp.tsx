@@ -40,18 +40,27 @@ const STEPS: Step[] = [
         "윗면을 180°",
       ],
       answer: 1,
-      why: "' (프라임)은 반대 방향입니다. 2가 붙으면 두 번(180°)이에요.",
+      why: "' (프라임)은 반대 방향이에요. 2가 붙으면 두 번(180°)이에요.",
     },
   },
-  { id: "keys", title: "키 배치" },
+  {
+    id: "keys",
+    title: "키 배치",
+    quiz: {
+      question: "「표기」 배치에서 Shift를 누른 채 R을 치면 어떤 수가 될까요?",
+      choices: ["R", "R'", "R2"],
+      answer: 1,
+      why: "Shift는 반대 방향이에요. 같은 키를 두 번 치면 R2예요. 「키 익히기」에서 직접 쳐 볼 수 있어요.",
+    },
+  },
   {
     id: "time",
     title: "살펴보기와 시간",
     quiz: {
       question: "살펴보기 16초째에 첫 면을 돌리면?",
-      choices: ["그대로 인정", "기록에 2초를 더한다(+2)", "기록 없음(DNF)"],
+      choices: ["그대로 인정", "기록에 2초를 더해요(+2)", "기록 없음(DNF)"],
       answer: 1,
-      why: "15초를 넘기면 +2, 17초를 넘기면 DNF입니다(대회 규칙).",
+      why: "15초를 넘기면 +2, 17초를 넘기면 DNF예요(대회 규칙).",
     },
   },
   { id: "next", title: "이제 배우러 가기" },
@@ -116,9 +125,9 @@ export function CubeIntroApp() {
           {step.id === "notation" && (
             <>
               <p className="break-keep text-sm text-white/85">
-                공식은 글자로 적습니다. 글자 하나가 면 하나이고, 그 면을{" "}
+                공식은 글자로 적어요. 글자 하나가 면 하나이고, 그 면을{" "}
                 <b>그 면 쪽에서 바라볼 때 시계 방향</b>으로 90° 돌린다는
-                뜻입니다.
+                뜻이에요.
               </p>
               <ul className="grid grid-cols-3 gap-1 text-sm sm:grid-cols-6">
                 {LETTERS.map(([l, name]) => (
@@ -163,9 +172,9 @@ export function CubeIntroApp() {
           {step.id === "keys" && (
             <>
               <p className="break-keep text-sm text-white/85">
-                큐브는 키보드로 돌립니다. 배치는 둘 가운데 고르고, 설정에서 아무
-                키로나 바꿀 수 있습니다. 칸의 굵은 글은 그냥 칠 때, 흐린 글은
-                Shift와 함께 칠 때 도는 수입니다.
+                큐브는 키보드로 돌려요. 배치는 둘 가운데 고르고, 설정에서 아무
+                키로나 바꿀 수 있어요. 칸의 굵은 글은 그냥 칠 때, 흐린 글은
+                Shift와 함께 칠 때 도는 수예요.
               </p>
               <h3 className="font-semibold text-sm">
                 「표기」: 글자 그대로(처음에 쉽다)
@@ -176,9 +185,9 @@ export function CubeIntroApp() {
               </h3>
               <KeyGuide n={3} keymap={twoHand} lit={null} />
               <p className="break-keep text-white/70 text-xs">
-                휴대폰은 큐브를 밀어서 돌립니다. 칸 위를 밀면 그 줄이, 빈 곳을
-                밀면 큐브 전체가 돕니다. 화면 아래 표기 단추도 있습니다.
-                마우스로 끌면 보는 각만 바뀝니다.
+                휴대폰은 큐브를 밀어서 돌려요. 칸 위를 밀면 그 줄이, 빈 곳을
+                밀면 큐브 전체가 돌아요. 화면 아래 표기 단추도 있어요. 마우스로
+                끌면 보는 각만 바뀌어요.
               </p>
               <div className="flex flex-wrap gap-2">
                 <a
@@ -206,18 +215,18 @@ export function CubeIntroApp() {
           {step.id === "time" && (
             <ul className="list-disc space-y-1.5 break-keep pl-5 text-sm text-white/85">
               <li>
-                섞은 뒤 <b>15초 살펴보기</b>가 있습니다. 이때는 큐브 전체
+                섞은 뒤 <b>15초 살펴보기</b>가 있어요. 이때는 큐브 전체
                 돌리기(x·y·z)와 보기만 되고, 면을 돌리면 그 순간 시간이
-                시작됩니다.
+                시작돼요.
               </li>
-              <li>8초·12초에 알림 소리가 납니다.</li>
+              <li>8초·12초에 알림 소리가 나요.</li>
               <li>
                 15초를 넘겨 시작하면 <b>+2초</b>, 17초를 넘기면 <b>DNF</b>(기록
-                없음)입니다. 설정에서 살펴보기를 끌 수 있습니다.
+                없음)이에요. 설정에서 살펴보기를 끌 수 있어요.
               </li>
               <li>
                 <b>5번 평균</b>은 가장 좋은 것과 나쁜 것을 빼고 셋의
-                평균입니다(대회 방식). 기록은 이 기기에만 남습니다.
+                평균이에요(대회 방식). 기록은 이 기기에만 남아요.
               </li>
             </ul>
           )}
@@ -225,7 +234,7 @@ export function CubeIntroApp() {
             <>
               <p className="break-keep text-sm text-white/85">
                 처음이라면 배우기의 첫 단원부터 따라 하세요. 표기를 직접 쳐
-                보고, 흰 십자부터 마지막 층까지 차례로 맞춥니다.
+                보고, 흰 십자부터 마지막 층까지 차례로 맞춰요.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <a

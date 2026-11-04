@@ -10,15 +10,17 @@ import {
 } from "@game/cube-engine";
 import { type PuzzleState, statesEqual } from "@game/puzzle-core";
 
-import type {
-  FaceLetter,
-  FindTarget,
-  Lesson,
-  LessonSetup,
-  LessonStep,
-  LookGoal,
-  MaskName,
-  PieceType,
+import {
+  type FaceLetter,
+  FINGER_NOTATION,
+  type FindTarget,
+  type FingerToken,
+  type Lesson,
+  type LessonSetup,
+  type LessonStep,
+  type LookGoal,
+  type MaskName,
+  type PieceType,
 } from "./types";
 
 const FACE_INDEX: Record<FaceLetter, number> = {
@@ -243,4 +245,41 @@ function setupState(n: number, setup: LessonSetup | undefined) {
   if ("alg" in setup)
     return applyMoves(n, solvedCube(n), parseMoves(n, setup.alg));
   return null;
+}
+
+// ── 핑거 트릭: 손가락 고르기 ─────────────────────────────
+
+/**
+ * 공식의 수 하나를 내고 그 수를 돌리는 손가락을 셋 중에서 고르게 한다(round마다 다음 수).
+ * 틀린 보기 둘은 같은 공식에 나오는 다른 손가락을 먼저, 모자라면 표기 목록에서 채운다. 차례는 round로 정해진다.
+ */
+export function fingerQuiz(
+  tokens: readonly string[],
+  fingers: readonly string[],
+  round: number,
+): {
+  index: number;
+  move: string;
+  answer: FingerToken;
+  choices: FingerToken[];
+} {
+  const total = Math.max(1, Math.min(tokens.length, fingers.length));
+  const index = ((round % total) + total) % total;
+  const answer = fingers[index] as FingerToken;
+  const pool: FingerToken[] = [];
+  for (const f of [
+    ...fingers,
+    ...Object.keys(FINGER_NOTATION),
+  ] as FingerToken[])
+    if (f !== answer && f !== "rot" && !pool.includes(f)) pool.push(f);
+  const wrong = [pool[round % pool.length], pool[(round + 1) % pool.length]];
+  const choices = [answer, ...(wrong as FingerToken[])];
+  // 답 자리를 돌려 가며 둔다
+  const shift = round % choices.length;
+  return {
+    index,
+    move: tokens[index] ?? "",
+    answer,
+    choices: [...choices.slice(shift), ...choices.slice(0, shift)],
+  };
 }

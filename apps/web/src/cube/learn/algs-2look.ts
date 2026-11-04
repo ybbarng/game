@@ -9,7 +9,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "모서리: 가로줄",
     group: "edges",
     algs: ["F R U R' U' F'"],
-    note: "노란 모서리 둘이 가로로 한 줄. 줄을 앞에서 봤을 때 가로가 되게 든다.",
+    note: "노란 모서리 둘이 가로로 한 줄. 줄을 앞에서 봤을 때 가로가 되게 들어요.",
   },
   {
     id: "2look-oll-l",
@@ -17,7 +17,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "모서리: ㄱ자(작은 L)",
     group: "edges",
     algs: ["F U R U' R' F'", "f R U R' U' f'"],
-    note: "노란 모서리 둘이 ㄱ자. 대표 공식은 노란 모서리가 왼쪽·뒤에 오게, 둘째 공식은 앞·오른쪽에 오게 든다.",
+    note: "노란 모서리 둘이 ㄱ자. 대표 공식은 노란 모서리가 왼쪽·뒤에 오게, 둘째 공식은 앞·오른쪽에 오게 들어요.",
   },
   {
     id: "2look-oll-dot",
@@ -25,7 +25,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "모서리: 점",
     group: "edges",
     algs: ["F R U R' U' F' f R U R' U' f'"],
-    note: "가운데만 노랑. 가로줄 공식과 ㄱ자 공식을 이어서 한다.",
+    note: "가운데만 노랑. 가로줄 공식과 ㄱ자 공식을 이어서 해요.",
   },
   ...(
     [
@@ -44,7 +44,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
       name,
       group: "corners",
       algs: [alg],
-      note: `전체 OLL ${n}번과 같다.`,
+      note: `전체 OLL ${n}번과 같아요.`,
     }),
   ),
 ];
@@ -56,7 +56,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "꼭짓점: 헤드라이트 하나(이웃 바꾸기, T퍼뮤)",
     group: "corners",
     algs: ["R U R' U' R' F R2 U' R' U' R U R' F'"],
-    note: "헤드라이트(옆면 같은 색 두 꼭짓점)를 왼쪽에 둔다.",
+    note: "헤드라이트(옆면 같은 색 두 꼭짓점)를 왼쪽에 둬요.",
   },
   {
     id: "2look-pll-diagonal",
@@ -64,7 +64,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "꼭짓점: 헤드라이트 없음(대각 바꾸기, Y퍼뮤)",
     group: "corners",
     algs: ["F R U' R' U' R U R' F' R U R' U' R' F R F'"],
-    note: "어느 면에도 헤드라이트가 없으면 대각선 꼭짓점 둘을 바꾼다.",
+    note: "어느 면에도 헤드라이트가 없으면 대각선 꼭짓점 둘을 바꿔요.",
   },
   {
     id: "2look-pll-ua",

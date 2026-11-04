@@ -6,6 +6,7 @@ import { COURSES } from "./index";
 import {
   demoOffersTurn,
   findHit,
+  fingerQuiz,
   lookMet,
   pieceAtSticker,
   stepIsActive,
@@ -73,6 +74,32 @@ describe("둘러보기", () => {
     expect(lookMet(3, play(3, "x2"), goal)).toBe(true);
     expect(lookMet(2, play(2, "x2"), goal)).toBe(true);
     expect(lookMet(4, play(4, "x"), { color: "F", on: "U" })).toBe(true);
+  });
+});
+
+describe("핑거 트릭 손가락 고르기", () => {
+  const tokens = ["R", "U", "R'", "U'"];
+  const fingers = ["RW", "RI", "RW", "LI"];
+
+  it("round마다 다음 수를 내고, 답이 보기 셋 안에 한 번 있다", () => {
+    for (let round = 0; round < 8; round++) {
+      const q = fingerQuiz(tokens, fingers, round);
+      expect(q.index).toBe(round % 4);
+      expect(q.move).toBe(tokens[round % 4]);
+      expect(q.answer).toBe(fingers[round % 4]);
+      expect(q.choices).toHaveLength(3);
+      expect(new Set(q.choices).size).toBe(3);
+      expect(q.choices.filter((c) => c === q.answer)).toHaveLength(1);
+      expect(q.choices).not.toContain("rot");
+    }
+  });
+
+  it("답 자리가 고정되지 않는다", () => {
+    const at = [0, 1, 2].map((r) => {
+      const q = fingerQuiz(tokens, fingers, r);
+      return q.choices.indexOf(q.answer);
+    });
+    expect(new Set(at).size).toBeGreaterThan(1);
   });
 });
 
