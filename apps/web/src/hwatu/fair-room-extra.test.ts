@@ -11,10 +11,8 @@ import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 
 import {
-  type AnyGuest,
   type AnyHost,
   hwatuHostOptions,
-  type memoryFairStore,
   playHwatu,
   setupHwatu,
   until,
@@ -38,53 +36,10 @@ const phase = (host: AnyHost) =>
   (host.match?.current() as MinhwatuView | undefined)?.phase;
 
 describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
-  it("참가자가 새로고침해도 같은 자리에서 이어 치고, 판마다 검증을 통과한다", async () => {
-    const { net, clock, host, guests, incidents, verified } = await setup(1);
-    await host.start();
-    const match = host.match;
-    if (!match) throw new Error("시작하지 않았다");
-    await playHwatu({
-      host,
-      guests,
-      bot: minhwatuBeginnerBot,
-      incidents,
-      done: () => match.actionLog().length >= 5,
-    });
-    const old = guests[0] as AnyGuest;
-    const store = (old as unknown as { fairStore: unknown }).fairStore;
-    net.disconnect("g0");
-    old.leave();
-    const fresh = new GuestRoom({
-      kit: minhwatuKit,
-      transport: net.join("g0-reloaded"),
-      name: "손님0",
-      token: old.token,
-      secret: old.secret,
-      fairStore: store as ReturnType<typeof memoryFairStore>,
-      clock,
-    });
-    fresh.on("incident", (n) => incidents.push(n as never));
-    fresh.on("roundVerified", (r) => verified.push(r));
-    await until(
-      () => (fresh.match?.current().hand.length ?? 0) > 0,
-      "새로고침한 참가자 화면",
-    );
-    await playHwatu({
-      host,
-      guests: [fresh as never],
-      bot: minhwatuBeginnerBot,
-      incidents,
-      done: () => phase(host) === "gameOver",
-    });
-    expect(incidents).toEqual([]);
-    await until(() => verified.length >= 1, "판마다 검증");
-  });
-
-  it("방장이 판 중간과 다음 판에서 새로고침해도 이어 치고, 모두의 검증을 통과한다", async () => {
-    const { net, clock, host, guests, incidents, audits, store } = await setup(
-      1,
-      true,
-    );
+  // 참가자 새로고침은 나이롱뽕(가져온 카드는 그 사람만 알아 되살릴 것이 가장 많다)으로 본다: nyrongppong-reload.test.ts
+  it("방장이 판 중간과 다음 판에서 새로고침해도 이어 치고, 판마다·게임 끝 검증을 통과한다", async () => {
+    const { net, clock, host, guests, incidents, audits, verified, store } =
+      await setup(1, true);
     await host.start();
     let current = host;
     for (const [k, point] of [4, 18].entries()) {
@@ -130,10 +85,12 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
     current.finish();
     await until(() => audits.length === 1, "판 끝 검증");
     expect(audits).toEqual([{ ok: true }]);
+    await until(() => verified.length === 2, "판마다 검증");
+    expect(verified).toEqual([1, 2]);
   });
 
   it("한 판짜리 게임도 마지막 판 카드가 열린 뒤에 게임 끝 검증을 통과한다", async () => {
-    const { host, guests, incidents, audits } = await setupHwatu({
+    const { host, guests, incidents, audits, verified } = await setupHwatu({
       kit: minhwatuKit,
       rules: { ...STANDARD_RULES, rounds: 1 },
       guests: 2,
@@ -152,6 +109,7 @@ describe("화투 암호화방: 새로고침과 끊긴 사람", () => {
     });
     await until(() => audits.length === 2, "판 끝 검증");
     expect(audits).toEqual([{ ok: true }, { ok: true }]);
+    await until(() => verified.length === 2, "판마다 검증");
     expect(incidents).toEqual([]);
   });
 

@@ -2,19 +2,16 @@
 // 부정 시험(fair-room-extra.test에서 나눠 동시에 돈다). 머리는 그 파일과 같다
 /**
  * 화투 암호화방(멘탈 포커) 공통 진행의 시험: 새로고침·재연결·끊긴 사람, 그리고 고친 프로그램(부정).
- * 세 게임이 같은 진행(fair-play HwatuHostTable)을 쓰므로 가장 단순한 민화투로 본다. 끝까지 치는 시험은
- * 게임마다 따로 있다(minhwatu·gostop·nyrongppong `fair-room.test.ts`)
+ * 세 게임이 같은 진행(fair-play HwatuHostTable)을 쓰므로 가장 단순한 민화투로 본다. 게임마다 다른 카드 표
+ * 약속은 암호 없이 게임마다 본다(`gostop·minhwatu·nyrongppong/fair.test.ts`, `card-table-sim.ts`), 진짜 암호로
+ * 이어 붙인 한 판은 `nyrongppong-reload.test.ts`와 `gostop/fair-room.test.ts`(총통)가 본다
  */
 import { type HwatuGuestSeat, Party } from "@game/fair-play";
 import {
   minhwatuBeginnerBot,
   minhwatuIntermediateBot,
 } from "@game/minhwatu-ai";
-import {
-  type MinhwatuState,
-  type MinhwatuView,
-  STANDARD_RULES,
-} from "@game/minhwatu-engine";
+import { type MinhwatuView, STANDARD_RULES } from "@game/minhwatu-engine";
 import { describe, expect, it } from "vitest";
 
 import { minhwatuKit } from "@/minhwatu/kit";
@@ -23,7 +20,6 @@ import { HostRoom } from "@/net/host-room";
 
 import {
   type AnyGuest,
-  type AnyHost,
   playHwatu,
   setupHwatu,
   until,
@@ -46,8 +42,6 @@ const setup = (guests: number, hostStore = false) =>
 // biome-ignore lint/suspicious/noExplicitAny: 시험에서 진행 속을 들여다본다
 type Seat = HwatuGuestSeat<any, any, MinhwatuView, any, any>;
 
-const phase = (host: AnyHost) =>
-  (host.match?.current() as MinhwatuView | undefined)?.phase;
 describe("화투 암호화방: 고친 프로그램(부정)", () => {
   it("참가자가 남의 자리 카드를 내려 하면 방장이 바로 그 자리를 짚는다", async () => {
     const { host, guests, incidents } = await setup(1);
@@ -186,30 +180,6 @@ describe("화투 암호화방: 고친 프로그램(부정)", () => {
     expect(own?.reason).toMatch(/미리 보기/);
   });
 
-  it("방장 엔진 상태에는 판이 끝나기 전까지 참가자 손패의 진짜 카드가 없다", async () => {
-    const { host, guests, incidents } = await setup(1);
-    await host.start();
-    const match = host.match;
-    if (!match) throw new Error("시작하지 않았다");
-    const seen = new Set<string>();
-    await playHwatu({
-      host,
-      guests,
-      bot: minhwatuBeginnerBot,
-      incidents,
-      done: () => phase(host) !== "play" && phase(host) !== "pick",
-      check: () => {
-        const gv = guests[0]?.match?.current() as MinhwatuView | undefined;
-        const raw = match.rawState() as MinhwatuState;
-        if (!gv || gv.roundNumber !== raw.roundNumber) return;
-        // 참가자 손에 아직 있는 카드는 방장 엔진 어디에도 없다(바닥·먹은 패·더미·손패).
-        const text = JSON.stringify(raw);
-        for (const card of gv.hand) {
-          seen.add(card);
-          expect(text).not.toContain(`"${card}"`);
-        }
-      },
-    });
-    expect(seen.size).toBeGreaterThan(0);
-  });
+  // 방장 엔진 상태에 참가자 손패의 진짜 카드가 없는지는 진짜 암호 한 판(nyrongppong-reload.test.ts)이 걸음마다,
+  // 약속 쪽은 게임마다 암호 없이(card-table-sim.ts) 본다
 });

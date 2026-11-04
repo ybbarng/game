@@ -1,24 +1,37 @@
 // @vitest-environment node
 /**
- * 나이롱뽕 암호화방 새로고침 시험: 참가자·방장이 판 중간에 새로고침해도 이어 치고 모두의 검증을 통과한다.
- * 나이롱뽕은 가져온 카드를 그 사람만 알아 새로고침 뒤 되살리는 것이 많다. 다른 시험과 떨어져 혼자 돌게
- * 따로 둔다(같은 파일의 앞 시험이 남긴 계산과 겹치면 느려진다)
+ * 화투 모양 게임을 진짜 암호로 이어 붙인 시험(가장 작게: 두 사람, 한 판). 나이롱뽕은 화투 셋 가운데 카드가
+ * 가장 여러 길로 열린다(가져온 카드는 그 사람만, 버린 카드·뽕은 모두, 판이 끝나는 걸음 전에 모두).
+ * - 걸음마다: 방장 엔진에는 손패·더미가 자리 표뿐이고, 참가자 손에 있는 카드는 방장 상태 어디에도 없으며,
+ *   참가자 화면의 내 손패는 진짜 카드다
+ * - 참가자·방장이 판 중간에 한 번씩 새로고침해도 이어 친다(가져온 카드는 그 사람만 알아 되살리는 것이 많다)
+ * - 게임 끝 검증을 통과하고, 참가자 복기가 진짜 패로 게임 끝까지 돈다(새로고침한 참가자는 되살린 판의
+ *   판마다 검증을 건너뛴다: guest-room `verifyRound`. 판마다 검증은 `fair-room-extra.test.ts`가 본다)
+ * 인원·판 수를 넓힌 카드 표 약속은 암호 없이 게임마다 본다(`nyrongppong/fair.test.ts` 등, `card-table-sim.ts`).
+ * 다른 시험과 떨어져 혼자 돌게 따로 둔다(같은 파일의 앞 시험이 남긴 계산과 겹치면 느려진다)
  */
 import {
   nyrongppongBeginnerBot,
   nyrongppongIntermediateBot,
 } from "@game/nyrongppong-ai";
-import { STANDARD_RULES as NYRONGPPONG_RULES } from "@game/nyrongppong-engine";
+import {
+  STANDARD_RULES as NYRONGPPONG_RULES,
+  type NyrongppongState,
+  type NyrongppongView,
+} from "@game/nyrongppong-engine";
 import { describe, expect, it } from "vitest";
 
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
 import { nyrongppongKit } from "@/nyrongppong/kit";
 import { ONLINE_CALL_SECONDS, onlineRules } from "@/nyrongppong/settings";
+import type { ArchiveSource } from "@/review/recorder";
+import { replayArchive } from "@/review/replay";
 
 import {
   type AnyGuest,
   type AnyHost,
+  expectHidden,
   hwatuHostOptions,
   playHwatu,
   setupHwatu,
@@ -26,7 +39,7 @@ import {
 } from "./fair-room-fixture";
 
 describe("화투 암호화방: 나이롱뽕(가져온 카드는 그 사람만) 새로고침", () => {
-  it("참가자와 방장이 한 번씩 새로고침해도 이어 치고, 모두의 검증을 통과한다", () =>
+  it("참가자와 방장이 한 번씩 새로고침해도 이어 치고, 방장 엔진에는 남의 손패·더미가 자리 표뿐이며 모두의 검증과 복기를 통과한다", () =>
     nyrongppongReloadScenario());
 });
 
@@ -90,6 +103,23 @@ async function nyrongppongReloadScenario(): Promise<void> {
     if (views.some((v) => (v as { decision?: unknown })?.decision)) return;
     clock.advance(ONLINE_CALL_SECONDS * 1000 + 1);
   };
+  /** 걸음마다: 방장 엔진은 자리 표뿐이고, 참가자 손에 있는 카드는 방장 상태 어디에도 없다 */
+  let seen = 0;
+  const check = () => {
+    const raw = current.match?.rawState() as NyrongppongState | undefined;
+    if (!raw || raw.phase === "roundEnd" || raw.phase === "gameOver") return;
+    for (const hand of raw.hands) expectHidden(hand);
+    expectHidden(raw.deck);
+    const gv = guests[0]?.match?.current() as NyrongppongView | undefined;
+    if (!gv || gv.roundNumber !== raw.roundNumber || gv.phase === "roundEnd")
+      return;
+    expect(gv.hand.some((id) => id.startsWith("?_"))).toBe(false);
+    const text = JSON.stringify(raw);
+    const leaked = gv.hand.filter((card) => text.includes(`"${card}"`));
+    if (leaked.length > 0)
+      expect(leaked, "방장 상태에 참가자 카드").toEqual([]);
+    seen += gv.hand.length;
+  };
   await host.start();
   const play = (done: () => boolean, bot = nyrongppongBeginnerBot) =>
     playHwatu({
@@ -99,6 +129,7 @@ async function nyrongppongReloadScenario(): Promise<void> {
       incidents,
       tick,
       done,
+      check,
     });
   const over = () =>
     (current.match?.current() as { phase?: string } | undefined)?.phase ===
@@ -126,6 +157,8 @@ async function nyrongppongReloadScenario(): Promise<void> {
   // 새로고침 전 참가자 객체의 알림(방장이 기록 없이 나갔다)은 보지 않는다.
   const freshAudits: typeof audits = [];
   fresh.on("audit", (r) => freshAudits.push(r));
+  const archives: ArchiveSource[] = [];
+  fresh.on("archive", (s) => archives.push(s));
   guests[0] = fresh as never;
   await until(
     () => (fresh.match?.current().hand.length ?? 0) > 0,
@@ -189,4 +222,19 @@ async function nyrongppongReloadScenario(): Promise<void> {
   current.finish();
   await until(() => freshAudits.length >= 1, "판 끝 검증");
   expect(freshAudits).toEqual([{ ok: true }]);
+  expect(seen).toBeGreaterThan(0);
+  // 참가자 복기: 판 끝 검증과 판마다 검증이 차례 없이 끝나므로 진짜 패가 가장 많은 기록을 본다.
+  const last = [...archives].sort(
+    (a, b) =>
+      Object.keys(b.deals ?? {}).length - Object.keys(a.deals ?? {}).length ||
+      b.log.length - a.log.length,
+  )[0];
+  if (!last) throw new Error("복기 기록이 없다");
+  const replayed = replayArchive(nyrongppongKit, {
+    v: 1,
+    game: "nyrongppong",
+    ...last,
+  } as never);
+  expect(replayed.error).toBeNull();
+  expect((replayed.states.at(-1) as NyrongppongState).phase).toBe("gameOver");
 }
