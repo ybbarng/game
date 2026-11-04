@@ -20,6 +20,7 @@ import {
   OPPOSITE_FACE,
   parseMoves,
   pieceFaces,
+  pieceName,
   piecesOfKind,
   randomCubeState,
   rotatedSolved,
@@ -178,6 +179,17 @@ export function unpairedEdgeLines(n: number, state: PuzzleState): number {
   return count;
 }
 
+// ── 조각 하나 ──────────────────────────────────────────────
+
+/** 조각 이름(엔진 pieceName, 예: UFR·UF·U) → 조각 자리 번호. 없으면 -1 */
+export function pieceByName(n: number, name: string): number {
+  const count = cubeTopology(n).pieces.length;
+  for (let p = 0; p < count; p++) if (pieceName(n, p) === name) return p;
+  return -1;
+}
+
+const PIECE_PREFIX = "piece:";
+
 // ── 목표 판정 ──────────────────────────────────────────────
 
 function frameGoal(goal: GoalName, v: View, state: PuzzleState): boolean {
@@ -240,6 +252,27 @@ export function goalMet(
 ): boolean {
   if (isMethodGoal(goal)) return methodGoalMet(n, state, goal);
   const colors = faceColors(n, state);
+  if (goal.startsWith(PIECE_PREFIX)) {
+    // 조각 하나가 제자리·바른 방향(가운데 색 기준). 다른 조각은 보지 않는다
+    // 그 조각이 지금 든 자리를 색으로 찾는다(큐브를 통째로 돌려도 같은 조각을 본다)
+    const home = pieceByName(n, goal.slice(PIECE_PREFIX.length));
+    if (home < 0) return false;
+    const want = pieceFaces(n, home)
+      .sort((a, b) => a - b)
+      .join(",");
+    const topo = cubeTopology(n);
+    const slot = topo.pieces.findIndex(
+      (pc) =>
+        pc.stickers
+          .map((s) => colors[s] as number)
+          .sort((a, b) => a - b)
+          .join(",") === want,
+    );
+    if (slot < 0) return false;
+    return framesOf(n, colors).some((frame) =>
+      pieceOk({ n, colors, frame, white: 0, top: 0 }, slot),
+    );
+  }
   switch (goal) {
     case "solved":
       // 엔진과 같은 기준: 큐브 전체 방향만 봐주고 층 돌리기는 봐주지 않는다(2×2 포함, #45 검토)
@@ -298,6 +331,18 @@ export function maskFor(
     case undefined:
     case "all":
       return null;
+    case "centers":
+      return maskFromPieces(n, cubeGroups(n, U).centers);
+    case "corners":
+      return maskFromPieces(n, piecesOfKind(n, "corner"));
+    case "piece:UFR":
+    case "piece:UF": {
+      const p = pieceByName(n, name.slice(PIECE_PREFIX.length));
+      return maskFromPieces(n, [
+        ...(p < 0 ? [] : [p]),
+        ...cubeGroups(n, U).centers,
+      ]);
+    }
     case "first-layer": {
       const g = cubeGroups(n, U);
       return maskFromPieces(n, [

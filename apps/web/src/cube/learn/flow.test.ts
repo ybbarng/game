@@ -13,12 +13,7 @@ import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
-import {
-  CENTER_LAST_TWO,
-  CENTER_YELLOW,
-  CORNER_SWAP_444,
-  REDUCTION_555,
-} from "./lessons-big";
+import { CENTER_LAST_TWO, CENTER_YELLOW, CORNER_SWAP_444 } from "./lessons-big";
 import {
   FLIPPED_EDGE,
   MEMO_CORNERS_2,
@@ -427,7 +422,7 @@ describe("4×4·5×5", () => {
       if (here === null) continue;
       expect(diagonal(s.perm[i] as number)).toBe(here);
     }
-    const q = step(REDUCTION_555.lessons[0] as Lesson, "quiz");
+    const q = step(lessonOf("555-centers"), "quiz");
     expect(answer(q)).toMatch(/^아니요/);
   });
 
@@ -574,7 +569,7 @@ describe("과정 끝과 먼저 배울 과정", () => {
         expect(courseById(r), c.id).toBeDefined();
     const base = courseById("333-beginner");
     expect(base && nextCourses(base).map((c) => c.id)).toEqual([
-      "222-beginner",
+      "222-from333",
       "cfop",
       "444-reduction",
     ]);

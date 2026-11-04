@@ -154,31 +154,78 @@ function pieceReferenceAt(
   return slots.find((s) => colorOf(s) === F || colorOf(s) === B) as number;
 }
 
-/** 꼭짓점 방향 합(3으로 나눈 나머지). 맞출 수 있으면 0 */
-export function cornerTwistSum(n: number, state: PuzzleState): number {
+/**
+ * 꼭짓점 자리마다 그 자리 조각의 비틀림(0·1·2). 조각 번호 차례로, 꼭짓점이 아닌 자리는 빠진다.
+ * 기준: 흰·노랑 칸(U·D 색)이 그 자리의 위·아래 면을 보면 0, 한쪽으로 한 칸 돌아가 있으면 1, 반대쪽이면 2.
+ */
+export function cornerTwists(
+  n: number,
+  state: PuzzleState,
+): { piece: number; twist: number }[] {
   const topo = cubeTopology(n);
-  let sum = 0;
+  const out: { piece: number; twist: number }[] = [];
   topo.pieces.forEach((piece, q) => {
     if (piece.kind !== "corner") return;
     const ref = referenceSlot(topo, q);
     const at = pieceReferenceAt(topo, state, q);
-    if (at === ref) return;
+    if (at === ref) {
+      out.push({ piece: q, twist: 0 });
+      return;
+    }
     const a = topo.stickers[ref]?.normal as Vec3;
     const b = topo.stickers[at]?.normal as Vec3;
-    sum += dot(cross(a, b), piece.position) > 0 ? 1 : 2;
+    out.push({ piece: q, twist: dot(cross(a, b), piece.position) > 0 ? 1 : 2 });
   });
-  return sum % 3;
+  return out;
+}
+
+/**
+ * 가운데 모서리 자리마다 그 자리 조각의 뒤집힘(0·1). 기준: 조각의 흰·노랑 칸(없으면 초록·파랑 칸)이
+ * 그 자리의 위·아래 면(없으면 앞·뒤 면)을 보면 0. 짝수 크기에는 가운데 모서리가 없어 빈 목록이다.
+ */
+export function edgeFlips(
+  n: number,
+  state: PuzzleState,
+): { piece: number; flip: number }[] {
+  const topo = cubeTopology(n);
+  const out: { piece: number; flip: number }[] = [];
+  topo.pieces.forEach((piece, q) => {
+    if (piece.kind !== "edge") return;
+    out.push({
+      piece: q,
+      flip: pieceReferenceAt(topo, state, q) === referenceSlot(topo, q) ? 0 : 1,
+    });
+  });
+  return out;
+}
+
+/**
+ * 홀수 크기의 정가운데 칸마다 그 자리 칸이 돌아간 정도(90° 단위 0~3). 그림 큐브(가운데 방향까지 맞추기)용.
+ * 상태의 `twist`를 읽는다. 큐브 전체 돌리기·가운데 줄 돌리기(M·E·S)는 가운데를 다른 자리로 옮기므로,
+ * 「가운데 회전 합의 홀짝 = 꼭짓점 자리 짝」 같은 규칙은 면 돌리기만 했을 때 그대로 읽힌다.
+ */
+export function centerTwists(
+  n: number,
+  state: PuzzleState,
+): { piece: number; twist: number }[] {
+  const topo = cubeTopology(n);
+  const out: { piece: number; twist: number }[] = [];
+  topo.pieces.forEach((piece, q) => {
+    if (piece.kind !== "center") return;
+    const slot = piece.stickers[0] as number;
+    out.push({ piece: q, twist: state.twist[slot] as number });
+  });
+  return out;
+}
+
+/** 꼭짓점 방향 합(3으로 나눈 나머지). 맞출 수 있으면 0 */
+export function cornerTwistSum(n: number, state: PuzzleState): number {
+  return cornerTwists(n, state).reduce((s, c) => s + c.twist, 0) % 3;
 }
 
 /** 가운데 모서리 방향 합(2로 나눈 나머지). 맞출 수 있으면 0. 짝수 크기는 늘 0 */
 export function edgeFlipSum(n: number, state: PuzzleState): number {
-  const topo = cubeTopology(n);
-  let sum = 0;
-  topo.pieces.forEach((piece, q) => {
-    if (piece.kind !== "edge") return;
-    if (pieceReferenceAt(topo, state, q) !== referenceSlot(topo, q)) sum++;
-  });
-  return sum % 2;
+  return edgeFlips(n, state).reduce((s, e) => s + e.flip, 0) % 2;
 }
 
 /**

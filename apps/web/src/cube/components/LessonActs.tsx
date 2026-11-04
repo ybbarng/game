@@ -23,6 +23,7 @@ import {
   lookMet,
   pieceAtSticker,
   pieceName,
+  slotCenterColors,
   stickerAtHit,
   turnProgress,
 } from "../learn/interact";
@@ -220,10 +221,14 @@ export function FindPanel({
     const hit = findHit(n, start, sticker, target);
     if (hit === null) {
       const p = pieceAtSticker(n, start, sticker);
+      // 자리 찾기는 조각 대신 그 자리가 어느 가운데 사이인지 알린다
+      const slot = target.at ? slotCenterColors(n, start, sticker) : [];
       setMiss(
-        p
-          ? `그건 ${p.colors.map((c) => COLOR_NAME[c]).join("-")} ${pieceName(p.type)}이에요. 다시 찾아보세요.`
-          : "다시 찾아보세요.",
+        slot.length > 1
+          ? `그 자리는 ${slot.map((c) => COLOR_NAME[c]).join("·")} 가운데 사이예요. 다시 찾아보세요.`
+          : p
+            ? `그건 ${p.colors.map((c) => COLOR_NAME[c]).join("-")} ${pieceName(p.type)}이에요. 다시 찾아보세요.`
+            : "다시 찾아보세요.",
       );
       playCubeCue(settings, "invalid");
       return;

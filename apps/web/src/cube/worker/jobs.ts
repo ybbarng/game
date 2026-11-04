@@ -2,6 +2,7 @@ import type { BotLevel, BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 
 import type { AlgBook, ImportResult } from "../algs/store";
+import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
 
 /**
@@ -29,6 +30,11 @@ export type CubeJob =
       method: string;
       perm: number[];
       twist: number[];
+    }
+  | {
+      /** 십자 훈련 한 판(어려움에 맞는 섞기 + 최적 수·해, `cross/scramble.ts`) */
+      kind: "cross";
+      request: CrossRoundRequest;
     };
 
 /** 워커가 돌려주는 답 */
@@ -37,7 +43,8 @@ export type CubeJobAnswer =
   | string
   | BotPlan
   | ImportResult
-  | HeroSolve;
+  | HeroSolve
+  | CrossRound;
 
 export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
   ? Scramble
@@ -47,7 +54,9 @@ export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
       ? ImportResult
       : J extends { kind: "hero" }
         ? HeroSolve
-        : string;
+        : J extends { kind: "cross" }
+          ? CrossRound
+          : string;
 
 export type CubeJobMessage = { id: number; job: CubeJob };
 export type CubeJobReply =
@@ -71,6 +80,10 @@ export async function runCubeJob(job: CubeJob): Promise<CubeJobAnswer> {
       perm: Uint16Array.from(job.perm),
       twist: Uint8Array.from(job.twist),
     });
+  }
+  if (job.kind === "cross") {
+    const { makeCrossRound } = await import("../cross/scramble");
+    return makeCrossRound(job.request);
   }
   if (job.kind === "algs-import") {
     const { importAlgBook } = await import("../algs/store");

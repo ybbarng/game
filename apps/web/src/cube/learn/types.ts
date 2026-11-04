@@ -10,6 +10,9 @@ export type CubeSize = 2 | 3 | 4 | 5;
  */
 export const GOALS = {
   solved: "다 맞춤",
+  // 조각 하나(3×3 「큐브의 조각」). 이름은 엔진 pieceName(닿은 면 U·D, F·B, R·L 차례)
+  "piece:UFR": "흰-초록-빨강 꼭짓점이 제자리·바른 방향",
+  "piece:UF": "흰-초록 모서리가 제자리·바른 방향",
   "white-cross": "흰 십자(흰 모서리 넷이 옆 가운데 색까지 맞음)",
   cross: "십자(CFOP: 흰 모서리 넷, 흰 면이 아래)",
   "first-layer": "첫 층(흰 십자 + 흰 꼭짓점 넷)",
@@ -57,6 +60,10 @@ export type GoalName = keyof typeof GOALS;
  * 엔진에서 구현할 것: 스티커마다 「보임 / 까맣게 / 회색」을 돌려주는 함수(docs/47 2-3).
  */
 export const MASKS = {
+  centers: "가운데 여섯만 보임(조각은 모두 까맣게)",
+  corners: "꼭짓점만 보임(3×3에서 모서리·가운데를 지우면 2×2)",
+  "piece:UFR": "흰-초록-빨강 꼭짓점과 가운데만 보임",
+  "piece:UF": "흰-초록 모서리와 가운데만 보임",
   cross: "십자 모서리와 가운데만 보임",
   "first-layer": "첫 층(십자 + 꼭짓점)과 가운데만 보임",
   f2l: "아래 두 층과 가운데만 보임",
@@ -141,11 +148,14 @@ export type PieceType = "center" | "edge" | "corner";
  * - piece: 그 종류 아무 조각
  * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
  * - has: 그 색이 붙어 있는 조각(예: ["D"] = 노란색이 붙은 조각 아무거나)
+ * - at: 조각이 아니라 자리. 그 면들(가운데 기준)에 닿은 자리(예: ["U","R"] = 흰 가운데와 빨강 가운데 사이).
+ *   지금 그 자리에 어떤 조각이 있든 맞다
  */
 export interface FindTarget {
   piece?: PieceType;
   colors?: FaceLetter[];
   has?: FaceLetter[];
+  at?: FaceLetter[];
 }
 
 /** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */
@@ -185,6 +195,16 @@ export interface LessonStep {
   quiz?: QuizSpec;
   /** 단계 아래에 펼쳐 둘 표(블라인드 글자마다 준비 수 등) */
   sheet?: SheetName;
+  /** 곁에 함께 보일 다른 크기 큐브(예: 2×2 단원에서 꼭짓점만 보이는 3×3). 정지 그림이다 */
+  beside?: BesideCube;
+}
+
+export interface BesideCube {
+  size: CubeSize;
+  /** 그림 아래 한 줄 */
+  caption: string;
+  setup?: { alg: string };
+  mask?: MaskName;
 }
 
 /** 단계 아래에 보일 표. 화면은 이름으로 자료를 찾아 그린다 */
@@ -214,6 +234,8 @@ export interface Course {
   lessons: Lesson[];
   /** 먼저 배우면 좋은 과정 id. 목록에 보이기만 하고 잠그지 않는다. 과정 끝 「다음에 할 것」은 이것의 거꾸로다 */
   requires?: string[];
+  /** 이 과정을 다 끝냈으면 목록에서 눈에 띄게 한다(예: 3×3 초보자 → 3×3을 아는 사람의 2×2) */
+  recommendAfter?: string;
 }
 
 export type AlgSet =

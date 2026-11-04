@@ -15,7 +15,7 @@ const FLIP_5 = algOf(EDGES_5X5, "edges-5x5-flip");
 const OLL_PARITY = algOf(PARITY_4X4, "parity-4x4-oll");
 const PLL_PARITY = algOf(PARITY_4X4, "parity-4x4-pll");
 
-// 가운데 만들기 작은 상황(big-flow.test.ts가 엔진으로 확인)
+// 가운데 만들기 작은 상황(flow.test.ts가 엔진으로 확인)
 /** 앞면의 흰 막대를 F'로 오른쪽 줄에 세우고 2R로 올려 흰 막대 둘을 합친다 */
 export const CENTER_BARS = "F' 2R";
 /** 흰 면을 지키며 노란 막대를 아래로: 2R로 흰 줄을 비키고, F2로 노란 막대를 옮기고, 2R'로 내리며 흰 줄을 되돌린다 */
@@ -31,23 +31,129 @@ export const EDGE_PAIR_UP_LEFT = "Uw' L' U' L F' L F L' Uw";
 /** 4×4 꼭짓점 둘만 바뀐 모양: PLL 패리티로 모서리 둘을 바꿔 T퍼뮤 모양으로 만든 뒤 T퍼뮤(y로 돌려 쥠) */
 export const CORNER_SWAP_444 = `${PLL_PARITY} y R U R' U' R' F R2 U' R' U' R U R' F' y'`;
 
+// 조각(2026-11-04): 3×3 「큐브의 조각」처럼 무엇이 움직이고 무엇이 고정인지 먼저 본다
+const pieces4: Lesson = {
+  id: "444-pieces",
+  size: 4,
+  title: "4×4의 조각",
+  summary: "가운데 칸이 한 면에 넷이고 움직여요. 모서리는 두 칸짜리 짝이에요.",
+  steps: [
+    {
+      kind: "find",
+      body: "4×4는 면마다 가운데 칸이 넷이에요. 3×3의 가운데처럼 보이지만 넷이 하나하나 따로 움직이는 조각이에요. 초록 가운데 칸 넷을 모두 눌러 보세요.",
+      mask: "all",
+      find: { piece: "center", colors: ["F"] },
+      count: 4,
+    },
+    {
+      kind: "turn",
+      body: "안쪽 한 층(2R)을 돌려 보세요. 가운데 칸이 다른 면으로 옮겨 가요.",
+      mask: "all",
+      alg: "2R",
+    },
+    {
+      kind: "quiz",
+      body: "3×3에서는 가운데가 움직이지 않아 면 색을 정해 줬어요. 4×4의 가운데는 움직여요.",
+      setup: { alg: "2R" },
+      mask: "all",
+      quiz: {
+        question: "그럼 4×4는 무엇부터 맞출까요?",
+        choices: [
+          "가운데 칸을 모아 면 색부터 정해요",
+          "3×3처럼 흰 십자부터",
+          "꼭짓점부터",
+        ],
+        answer: 0,
+        why: "가운데가 움직이니 면 색이 정해져 있지 않아요. 가운데부터 모아야 다른 조각의 제자리도 정해져요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "모서리는 두 칸짜리 짝(날개)이에요. 2R로 흰-초록 날개 둘이 떨어졌어요. 둘 다 찾아 눌러 보세요.",
+      setup: { alg: "2R" },
+      mask: "all",
+      find: { piece: "edge", colors: ["U", "F"] },
+      count: 2,
+    },
+    {
+      kind: "quiz",
+      body: "가운데를 모으고, 날개 짝을 붙이면 3×3과 같은 모양이 돼요. 이것을 「축소법」이라고 해요.",
+      mask: "all",
+      quiz: {
+        question: "4×4 축소법의 차례는?",
+        choices: [
+          "가운데 → 모서리 짝 → 3×3처럼",
+          "3×3처럼 → 가운데 → 모서리 짝",
+          "모서리 짝 → 꼭짓점 → 가운데",
+        ],
+        answer: 0,
+        why: "가운데로 면 색을 정하고, 모서리 짝을 붙인 뒤, 3×3처럼 풀어요.",
+      },
+    },
+  ],
+};
+
+const pieces5: Lesson = {
+  id: "555-pieces",
+  size: 5,
+  title: "5×5의 조각",
+  summary:
+    "한가운데 칸은 고정, 둘레 여덟 칸은 움직여요. 모서리는 세 칸 한 줄이에요.",
+  steps: [
+    {
+      kind: "turn",
+      body: "안쪽 한 층(2R)을 돌려 보며 면 한가운데 칸을 지켜보세요.",
+      mask: "all",
+      alg: "2R",
+    },
+    {
+      kind: "quiz",
+      body: "2R을 돌린 5×5예요. 가운데 아홉 칸 중 몇 칸이 옆면으로 옮겨 갔어요.",
+      setup: { alg: "2R" },
+      mask: "all",
+      quiz: {
+        question: "흰 면 한가운데 칸은 어떻게 됐나요?",
+        choices: ["그대로 흰색이에요", "다른 면으로 옮겨 갔어요"],
+        answer: 0,
+        why: "5×5의 한가운데 칸은 3×3 가운데처럼 고정이라 면 색을 정해 줘요. 둘레 여덟 칸은 4×4처럼 움직여요.",
+      },
+    },
+    {
+      kind: "find",
+      body: "5×5 모서리는 세 칸 한 줄이에요(가운데 모서리 하나 + 날개 둘). 2R로 떨어진 흰-초록 모서리 조각 셋을 모두 찾아 눌러 보세요.",
+      setup: { alg: "2R" },
+      mask: "all",
+      find: { piece: "edge", colors: ["U", "F"] },
+      count: 3,
+    },
+    {
+      kind: "quiz",
+      body: "면 색은 한가운데 칸이 정해 주지만, 둘레 가운데 칸과 모서리 셋은 모아야 해요.",
+      mask: "all",
+      quiz: {
+        question: "5×5 축소법의 차례는?",
+        choices: [
+          "가운데 → 모서리 셋 묶기 → 3×3처럼",
+          "모서리 셋 묶기 → 3×3처럼 → 가운데",
+          "3×3처럼 → 가운데 → 모서리",
+        ],
+        answer: 0,
+        why: "4×4와 같은 차례예요. 다만 면 색은 처음부터 정해져 있어요.",
+      },
+    },
+  ],
+};
+
 const centers4: Lesson = {
   id: "444-centers",
   size: 4,
   title: "4×4 가운데",
   summary:
-    "막대를 만들어 합치기 → 흰색과 노랑 → 나머지 넷은 순서를 지켜서 → 마지막 두 면.",
+    "표기(2R·Rw·Uw) → 막대를 만들어 합치기 → 흰색과 노랑 → 나머지 넷은 순서를 지켜서 → 마지막 두 면.",
   steps: [
     {
-      kind: "find",
-      body: "4×4에는 움직이지 않는 가운데가 없어요. 면마다 가운데 2×2 네 칸을 직접 모아야 해요. 먼저 흰 가운데를 만들고, 그 맞은편에 노란 가운데를 만들어요. 흩어진 흰 가운데 조각 넷을 모두 찾아 눌러 보세요(뒤쪽은 펼친 그림에서).",
-      setup: { alg: "2R" },
-      find: { piece: "center", colors: ["U"] },
-      count: 4,
-    },
-    {
       kind: "demo",
-      body: "안쪽 층 하나만 돌리기(2R)와 두 층 함께 돌리기(Rw). 가운데를 옮길 때는 안쪽 층 하나를 써요.",
+      body: "큰 큐브는 층이 많아 표기가 둘 더 있어요. 숫자를 앞에 붙인 2R은 바깥에서 둘째 층 하나, w를 붙인 Rw는 바깥 두 층을 함께 돌려요. 가운데를 옮길 때는 안쪽 층 하나를 써요. 2R과 Rw를 차례로 보세요.",
       alg: "2R 2R' Rw Rw'",
     },
     {
@@ -63,6 +169,18 @@ const centers4: Lesson = {
         answer: 1,
         why: "w는 넓게(두 층)예요. 둘째 층 하나만은 2R이에요.",
       },
+    },
+    {
+      kind: "turn",
+      body: "위·아래도 같아요. Uw는 위 두 층, Dw는 아래 두 층을 함께 돌려요(모서리 짝을 맞출 때 써요). Uw를 쳐 보세요.",
+      alg: "Uw",
+    },
+    {
+      kind: "find",
+      body: "4×4에는 움직이지 않는 가운데가 없어요. 면마다 가운데 2×2 네 칸을 직접 모아야 해요. 먼저 흰 가운데를 만들고, 그 맞은편에 노란 가운데를 만들어요. 흩어진 흰 가운데 조각 넷을 모두 찾아 눌러 보세요(뒤쪽은 펼친 그림에서).",
+      setup: { alg: "2R" },
+      find: { piece: "center", colors: ["U"] },
+      count: 4,
     },
     {
       kind: "try",
@@ -410,7 +528,7 @@ export const REDUCTION_444: Course = {
   size: 4,
   title: "4×4 축소법",
   summary: "가운데 → 모서리 짝 → 3×3처럼 → 패리티 둘.",
-  lessons: [centers4, edges4, solve4],
+  lessons: [pieces4, centers4, edges4, solve4],
 };
 
 export const REDUCTION_555: Course = {
@@ -419,5 +537,5 @@ export const REDUCTION_555: Course = {
   title: "5×5 축소법",
   summary:
     "가운데(가운데 줄 먼저) → 모서리 셋 묶기 → 마지막 두 모서리 → 3×3처럼.",
-  lessons: [centers5, edges5, lastEdges5],
+  lessons: [pieces5, centers5, edges5, lastEdges5],
 };

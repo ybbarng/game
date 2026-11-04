@@ -8,6 +8,7 @@ import { PLL_CASES } from "./algs-pll";
 import { BLD_ALGS } from "./bld";
 import { withFinale } from "./finale";
 import { BEGINNER_222 } from "./lessons-222";
+import { FROM_333_222 } from "./lessons-222-from333";
 import { BEGINNER_333 } from "./lessons-333";
 import { REDUCTION_444, REDUCTION_555 } from "./lessons-big";
 import { BLD_OP } from "./lessons-bld";
@@ -27,10 +28,10 @@ export * from "./types";
 
 /**
  * 먼저 배우면 좋은 과정(목록에 보이기만 하고 잠그지 않는다). 과정 끝 「다음에 할 것」은 이 표의 거꾸로다.
- * 2×2는 3×3 공식을, 큰 큐브는 3×3 풀이를, 루·ZZ·블라인드는 CFOP의 F2L 짝·PLL 공식을 쓴다.
+ * 3×3을 아는 사람의 2×2는 3×3 초보자 과정을, 큰 큐브는 3×3 풀이를, 루·ZZ·블라인드는 CFOP의 F2L 짝·PLL 공식을 쓴다.
  */
 const REQUIRES: Record<string, string[]> = {
-  "222-beginner": ["333-beginner"],
+  "222-from333": ["333-beginner"],
   cfop: ["333-beginner"],
   roux: ["cfop"],
   zz: ["cfop"],
@@ -64,6 +65,11 @@ export const COURSES: Course[] = [
   withFinale(BEGINNER_222, {
     rule: "2x2-random",
     stages: ["첫 층", "윗면 노랗게", "윗층 자리"],
+    drill: "ortega-oll",
+  }),
+  withFinale(FROM_333_222, {
+    rule: "2x2-random",
+    stages: ["첫 층", "윗면 노랗게", "위 꼭짓점 자리"],
     drill: "ortega-oll",
   }),
   withFinale(CFOP_INTRO, {

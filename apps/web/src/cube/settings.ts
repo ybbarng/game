@@ -51,6 +51,8 @@ export interface CubeSettings {
   sound: boolean;
   /** 혼자 맞추기의 15초 살펴보기 */
   inspection: boolean;
+  /** 혼자 맞추기 「상황 알림」: 내 목록의 윗면 상황에 이르면 구석에 이름과 내 공식(2026-11-04, 기본 꺼짐) */
+  caseAlert: boolean;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -67,6 +69,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   hidden: "black",
   sound: true,
   inspection: true,
+  caseAlert: false,
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -137,6 +140,7 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     hidden: d.hidden === "gray" ? "gray" : "black",
     sound: bool(d.sound, DEFAULT_SETTINGS.sound),
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
+    caseAlert: bool(d.caseAlert, DEFAULT_SETTINGS.caseAlert),
     heroSize,
     heroMethod,
   };

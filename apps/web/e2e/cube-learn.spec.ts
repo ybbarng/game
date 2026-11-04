@@ -341,6 +341,53 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
   await expect(sheet.locator("[data-sheet-letter]")).toHaveCount(22);
 });
 
+test("배우기: 큐브의 조각 단원은 조각 찾기와 조각 따라가기로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn");
+  // 3×3 처음 맞추기의 첫 단원
+  await expect(
+    page.locator('[data-course="333-beginner"] [data-lesson]').first(),
+  ).toHaveAttribute("data-lesson", "333-pieces");
+
+  await page.goto("/cube/learn?lesson=333-pieces");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  const find = page.locator('[data-act="find"]');
+  // 흰 가운데 찾기: 모서리 칸(위 앞 가운데)은 틀림, 윗면 한가운데(칸 4)가 맞음
+  await page.locator('[data-net-cell="7"]').click();
+  await expect(find.getByRole("status")).toContainText("모서리 조각");
+  await page.locator('[data-net-cell="4"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-find", info.project.name);
+
+  // 조각 따라가기: R을 돌린 뒤 가운데만 보이게 가린 큐브에서 흰-초록-빨강 꼭짓점 찾기
+  await goStep(page, 10);
+  // 데스크톱은 본문 속 R 옆에 키캡이 붙으니 수 칩으로 본다
+  await expect(section).toContainText("을 돌렸어요");
+  await expect(
+    section.locator('[data-step-body] [data-move-chip="R"]'),
+  ).toHaveCount(1);
+  // 원래 자리(위-앞-오른쪽, 칸 8)에는 이제 다른 꼭짓점이 있다
+  await page.locator('[data-net-cell="8"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  // R 뒤에는 위-뒤-오른쪽(윗면 칸 2)
+  await page.locator('[data-net-cell="2"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-pieces-track", info.project.name);
+});
+
+test("배우기: 3×3을 아는 사람의 2×2는 꼭짓점만 보이는 3×3을 곁에 둔다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=222-from333-corners");
+  await expect(page.locator("[data-step-beside='3']")).toBeVisible();
+  const quiz = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-222-from333", info.project.name);
+});
+
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
   page,
 }, info) => {

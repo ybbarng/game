@@ -30,6 +30,8 @@ export interface SolveRecord {
   memoMs?: number;
   /** 다시 보기용: 수와 시각(맞추기 시작부터 ms). "R@120 U'@380" 꼴 */
   replay?: string;
+  /** 혼자 맞추기 「상황 알림」을 켰을 때 이번 판에서 만난 내 목록 상황 id(만난 차례, 2026-11-04) */
+  myCases?: string[];
 }
 
 export const RECORDS_KEY = "cube.records.v1";

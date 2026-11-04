@@ -1,9 +1,16 @@
 "use client";
 
+import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { COURSES, type Course, courseById, type Lesson } from "../learn";
+import {
+  type BesideCube,
+  COURSES,
+  type Course,
+  courseById,
+  type Lesson,
+} from "../learn";
 import { demoOffersTurn, stepIsActive, stepPicture } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
@@ -13,7 +20,7 @@ import {
   markLessonOpened,
   markTryPassed,
 } from "../learn/progress";
-import { useCubeSettings } from "../settings";
+import { type CubeSettings, useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import {
   CourseNext,
@@ -174,14 +181,31 @@ function CourseGrid({
         const done = course.lessons.filter(
           (l) => progress.lessons[l.id]?.done,
         ).length;
+        // 앞 과정(예: 3×3 초보자)을 다 끝냈고 이 과정은 아직이면 눈에 띄게
+        const before = COURSES.find((c) => c.id === course.recommendAfter);
+        const recommended =
+          before !== undefined &&
+          done < course.lessons.length &&
+          before.lessons.every((l) => progress.lessons[l.id]?.done);
         return (
           <section
             key={course.id}
             data-course={course.id}
-            className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
+            data-course-recommended={recommended ? "" : undefined}
+            className={cn(
+              "flex flex-col gap-2 rounded-2xl border p-4",
+              recommended
+                ? "border-sky-300/70 bg-sky-500/15"
+                : "border-white/15 bg-white/5",
+            )}
           >
             <div className="flex items-baseline gap-2">
               <h3 className="font-bold">{course.title}</h3>
+              {recommended && (
+                <span className="rounded-full bg-sky-400 px-2 py-0.5 font-semibold text-black text-xs">
+                  추천
+                </span>
+              )}
               <span className="ml-auto text-white/50 text-xs">
                 {done}/{course.lessons.length}
               </span>
@@ -399,6 +423,14 @@ function LessonView({
           />
         </p>
         {step.sheet && <LessonSheet name={step.sheet} />}
+        {step.beside && (
+          <Beside
+            key={`${lesson.id}-${at}-beside`}
+            beside={step.beside}
+            masked={masked}
+            settings={settings}
+          />
+        )}
         {step.kind === "text" && (
           <StillCube
             n={lesson.size}
@@ -558,5 +590,40 @@ function LessonView({
       </nav>
       {isLast && !next && <CourseNext course={course} />}
     </>
+  );
+}
+
+/** 곁 그림: 다른 크기 큐브를 정지 그림으로(예: 2×2 단원의 꼭짓점만 보이는 3×3) */
+function Beside({
+  beside,
+  masked,
+  settings,
+}: {
+  beside: BesideCube;
+  masked: boolean;
+  settings: CubeSettings;
+}) {
+  const n = beside.size;
+  const state = useMemo(
+    () =>
+      beside.setup
+        ? applyMoves(n, solvedCube(n), parseMoves(n, beside.setup.alg))
+        : solvedCube(n),
+    [n, beside.setup],
+  );
+  const mask = useMemo(
+    () => (masked ? maskFor(n, beside.mask) : null),
+    [masked, n, beside.mask],
+  );
+  return (
+    <figure
+      className="mx-auto flex w-full max-w-[220px] flex-col items-center gap-1"
+      data-step-beside={n}
+    >
+      <StillCube n={n} state={state} mask={mask} settings={settings} />
+      <figcaption className="break-keep text-center text-white/60 text-xs">
+        {beside.caption}
+      </figcaption>
+    </figure>
   );
 }
