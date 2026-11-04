@@ -38,18 +38,18 @@ const SUNE = ["R", "U", "R'", "U", "R", "U2", "R'"];
 export function tutorialSteps(keymap: Keymap): TutorialStep[] {
   const n = TUTORIAL_N;
   const k = (a: string) => keyTextFor(keymap, n, a) ?? "(키 없음)";
-  // 「이 배치에서 F는 「U'」, J는 「U」입니다.」 동작이 없는 키는 「J 키에는 동작이 없습니다.」로 따로
+  // 「이 배치에서 F 키는 「U'」, J 키는 「U」 수예요.」 동작이 없는 키는 「J 키에는 동작이 없어요.」로 따로
   const homeKeysLine = (() => {
     const has: string[] = [];
     const none: string[] = [];
     for (const code of ["KeyF", "KeyJ"]) {
       const l = keyLayers(keymap, n, code).plain;
-      if (l) has.push(`${codeLabel(code)}는 「${l.label}」`);
+      if (l) has.push(`${codeLabel(code)} 키는 「${l.label}」`);
       else none.push(codeLabel(code));
     }
     const out: string[] = [];
-    if (has.length > 0) out.push(`이 배치에서 ${has.join(", ")}입니다.`);
-    if (none.length > 0) out.push(`${none.join("·")} 키에는 동작이 없습니다.`);
+    if (has.length > 0) out.push(`이 배치에서 ${has.join(", ")} 수예요.`);
+    if (none.length > 0) out.push(`${none.join("·")} 키에는 동작이 없어요.`);
     out.push("차례로 눌러 보세요.");
     return out.join(" ");
   })();
@@ -65,10 +65,10 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
 
   const presetLine =
     keymap.preset === "twoHand"
-      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 칩니다. ${faceHandLine(keymap)}`
+      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 쳐요. ${faceHandLine(keymap)}`
       : keymap.preset === "notation"
-        ? "「표기」 배치는 글자 그대로 칩니다. Shift를 함께 누르면 반대 방향입니다."
-        : `「${PRESET_LABEL.custom}」 배치로 안내합니다. 키는 설정에서 바꾼 대로 나옵니다.`;
+        ? "「표기」 배치는 글자 그대로 쳐요. Shift를 함께 누르면 반대 방향이에요."
+        : `「${PRESET_LABEL.custom}」 배치로 안내해요. 키는 설정에서 바꾼 대로 나와요.`;
 
   const right = moves("R", "R'", "U");
   const left = moves("L", "L'", "U'");
@@ -92,7 +92,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "home",
       title: "손 자리",
       lines: [
-        `두 검지를 ${codeLabel("KeyF")}와 ${codeLabel("KeyJ")}에 올립니다. 두 키에는 작은 돌기가 있어 보지 않고도 손 자리를 찾을 수 있습니다.`,
+        `두 검지를 ${codeLabel("KeyF")}와 ${codeLabel("KeyJ")}에 올려요. 두 키에는 작은 돌기가 있어 보지 않고도 손 자리를 찾을 수 있어요.`,
         presetLine,
         homeKeysLine,
       ],
@@ -106,8 +106,8 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "right",
       title: "R·R'·U",
       lines: [
-        `R(오른쪽 면을 시계 방향)은 ${k("R")}, R'(반대 방향)은 ${k("R'")}, U(윗면)는 ${k("U")}입니다.`,
-        "실물에서는 R을 오른 손목으로, U를 오른 검지로 돌립니다.",
+        `R(오른쪽 면을 시계 방향)은 ${k("R")} 키, R'(반대 방향)은 ${k("R'")} 키, U(윗면)는 ${k("U")} 키예요.`,
+        "실물에서는 R을 오른 손목으로, U를 오른 검지로 돌려요.",
       ],
       ...right,
     },
@@ -115,8 +115,8 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "left",
       title: "L·L'·U'",
       lines: [
-        `L(왼쪽 면)은 ${k("L")}, L'은 ${k("L'")}, U'(윗면 반대)은 ${k("U'")}입니다.`,
-        "L은 오른쪽에서 보면 R'과 같은 쪽으로 돕니다. 왼쪽 면을 왼쪽에서 바라볼 때 시계 방향이기 때문입니다.",
+        `L(왼쪽 면)은 ${k("L")} 키, L'은 ${k("L'")} 키, U'(윗면 반대)은 ${k("U'")} 키예요.`,
+        "L은 오른쪽에서 보면 R'과 같은 쪽으로 돌아요. 왼쪽 면을 왼쪽에서 바라볼 때 시계 방향이기 때문이에요.",
       ],
       ...left,
     },
@@ -124,8 +124,8 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "fdb",
       title: "F·D·B",
       lines: [
-        `F(앞면)는 ${k("F")}, F'은 ${k("F'")}, D(아랫면)는 ${k("D")}, D'은 ${k("D'")}입니다.`,
-        `B(뒷면)는 ${k("B")}, B'은 ${k("B'")}입니다. 뒷면은 뒤에서 바라볼 때 시계 방향이라 앞에서 보면 거꾸로 돕니다.`,
+        `F(앞면)는 ${k("F")} 키, F'은 ${k("F'")} 키, D(아랫면)는 ${k("D")} 키, D'은 ${k("D'")} 키예요.`,
+        `B(뒷면)는 ${k("B")} 키, B'은 ${k("B'")} 키예요. 뒷면은 뒤에서 바라볼 때 시계 방향이라 앞에서 보면 거꾸로 돌아요.`,
       ],
       ...fdb,
     },
@@ -133,8 +133,8 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "rotate",
       title: "큐브 돌리기",
       lines: [
-        `x·y·z는 큐브 전체를 돌립니다. x는 ${k("x")}, y는 ${k("y")}, z는 ${k("z")}, y'은 ${k("y'")}입니다.`,
-        "x는 R, y는 U, z는 F와 같은 방향입니다. 섞인 모양은 그대로이고 보는 쪽만 바뀝니다.",
+        `x·y·z는 큐브 전체를 돌려요. x는 ${k("x")} 키, y는 ${k("y")} 키, z는 ${k("z")} 키, y'은 ${k("y'")} 키예요.`,
+        "x는 R, y는 U, z는 F와 같은 방향이에요. 섞인 모양은 그대로이고 보는 쪽만 바뀌어요.",
       ],
       ...rot,
     },
@@ -142,8 +142,8 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "layer",
       title: "넓게·가운데 층",
       lines: [
-        `M(가운데 세로 층, L과 같은 방향)은 ${k("M")}, M'은 ${k("M'")}입니다.`,
-        `Rw(오른쪽 두 층 함께)는 ${k("Rw")}, Rw'은 ${k("Rw'")}입니다.`,
+        `M(가운데 세로 층, L과 같은 방향)은 ${k("M")} 키, M'은 ${k("M'")} 키예요.`,
+        `Rw(오른쪽 두 층 함께)는 ${k("Rw")} 키, Rw'은 ${k("Rw'")} 키예요.`,
       ],
       ...layer,
     },
@@ -152,7 +152,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       title: "되돌리기·섞기",
       lines: [
         `R을 한 번 친 뒤 되돌리기(${k("undo")})로 되돌려 보세요.`,
-        `이어서 섞기(${k("scramble")}), 맞춘 상태로(${k("reset")})를 칩니다.`,
+        `이어서 섞기(${k("scramble")}), 맞춘 상태로(${k("reset")})를 쳐 보세요.`,
       ],
       targets: commandTargets,
       missing: commandMissing,
@@ -161,7 +161,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       id: "formula",
       title: "짧은 공식",
       lines: [
-        `섹시 무브 R U R' U'와 수네 R U R' U R U2 R'을 이어서 칩니다. U2는 ${k("U")}를 두 번 칩니다.`,
+        `섹시 무브 R U R' U'와 수네 R U R' U R U2 R'을 이어서 쳐 보세요. U2는 ${k("U")} 키를 두 번 쳐요.`,
       ],
       ...formula,
     },
@@ -195,7 +195,7 @@ export function faceHands(keymap: Keymap): FaceHand[] {
 }
 
 /**
- * 「R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 칩니다. U·U'은 J·F, …로 두 손이 나눠 칩니다.」처럼
+ * 「R·R'은 오른손 I·K, L·L'은 왼손 D·E로 한 손에서 쳐요. U·U'은 J·F, …로 두 손이 나눠 쳐요.」처럼
  * 지금 배치의 키에서 만든다.
  */
 export function faceHandLine(keymap: Keymap): string {
@@ -205,10 +205,9 @@ export function faceHandLine(keymap: Keymap): string {
   const one = all.filter((f) => f.hand);
   const two = all.filter((f) => !f.hand);
   const out: string[] = [];
-  if (one.length > 0)
-    out.push(`${one.map(pair).join(", ")}로 한 손에서 칩니다.`);
+  if (one.length > 0) out.push(`${one.map(pair).join(", ")}로 한 손에서 쳐요.`);
   if (two.length > 0)
-    out.push(`${two.map(pair).join(", ")}로 두 손이 나눠 칩니다.`);
+    out.push(`${two.map(pair).join(", ")}로 두 손이 나눠 쳐요.`);
   return out.join(" ");
 }
 

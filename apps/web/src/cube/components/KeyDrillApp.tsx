@@ -416,7 +416,7 @@ function SeeDrill({
               )}
               {pool.length === 0 ? (
                 <p className="text-amber-200 text-sm">
-                  이 배치에는 이 단계에서 칠 수 있는 키가 없습니다.
+                  이 배치에는 이 단계에서 칠 수 있는 키가 없어요.
                 </p>
               ) : (
                 <button
@@ -620,7 +620,7 @@ function QuizDrill({ keymap, record, save, clock }: DrillProps) {
         </>
       ) : (
         <p className="text-amber-200 text-sm">
-          이 단계에서 키 하나로 치는 동작이 넷보다 적어 퀴즈를 낼 수 없습니다.
+          이 단계에서 키 하나로 치는 동작이 넷보다 적어 퀴즈를 낼 수 없어요.
         </p>
       )}
       <StatsTable

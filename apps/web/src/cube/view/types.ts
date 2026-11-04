@@ -11,6 +11,7 @@
  */
 
 import type { CubeMove } from "@game/cube-engine";
+import type { SwipeHit } from "./swipe";
 
 export type { Axis, CubeMove } from "@game/cube-engine";
 
@@ -84,6 +85,11 @@ export interface CubeViewOptions {
    * 장면은 스스로 돌리지 않는다(받은 쪽이 엔진에 넣고 받아들였으면 `enqueue`한다). 없으면 끌기는 보기만 돌린다
    */
   onSwipe?: (move: CubeMove) => void;
+  /**
+   * 누르기(손가락·마우스로 거의 움직이지 않고 뗌). 그 점 아래 칸(조각 중심과 칸이 향하는 쪽)을 준다.
+   * 배우기의 「조각 찾기」가 쓴다. 빈 곳을 누르면 부르지 않는다
+   */
+  onTap?: (hit: SwipeHit) => void;
   /** 마우스로 끌어도 큐브 전체를 돌린다(키 배치 「사용자」의 마우스 돌리기). 기본 끔: 마우스 끌기는 보기만 */
   swipeMouse?: boolean;
   /**

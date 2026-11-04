@@ -88,6 +88,17 @@ function faceMove(
   };
 }
 
+/**
+ * 휴대폰·마우스용 아래 표기 단추 줄의 수. 가운데 층 M은 정가운데 층이 있는 홀수 크기(3×3·5×5)에만 둔다.
+ * 3D 기기는 가운데 줄을 밀어도 M·E·S가 되지만(`view/swipe.ts`), 3D를 못 그리는 기기는 이 줄밖에 없고
+ * 루의 LSE처럼 M을 여러 번 정확히 쳐야 할 때가 있어 M을 단추로 둔다. 「′ 반대」와 함께 M'도 된다.
+ * E·S는 배우기 자료가 쓰지 않아 밀기에 맡긴다.
+ */
+export function buttonMoves(n: number): string[] {
+  const slice = notationToMove(n, "M") ? ["M"] : [];
+  return ["R", "L", "U", "D", "F", "B", ...slice, "x", "y", "z"];
+}
+
 /** 표기 한 수 → 계약의 수. 그 크기에서 뜻이 없으면 null(짝수 크기의 M, 크기보다 깊은 층 등) */
 export function notationToMove(n: number, text: string): CubeMove | null {
   const m = MOVE_RE.exec(text);

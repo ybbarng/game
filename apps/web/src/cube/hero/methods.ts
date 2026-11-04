@@ -3,7 +3,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 
 /**
  * 첫 화면 큐브 연출이 쓰는 해법 표. 설정 화면(「첫 화면 큐브」)과 연출이 모두 이 표만 본다.
- * 새 해법(예: 3×3 루·ZZ, 4×4 야우)을 더하려면 `HERO_METHODS`에 한 줄을 더하면 된다:
+ * 새 해법(예: 4×4 야우, 풀이 함수가 생기면)을 더하려면 `HERO_METHODS`에 한 줄을 더하면 된다:
  * 설정의 해법 고르기와 「번갈아」 차례에 저절로 나온다.
  *
  * - `id`는 저장값이라 한 번 정하면 바꾸지 않는다(바꾸면 옛 설정이 「번갈아」로 읽힌다).
@@ -51,6 +51,18 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     size: 3,
     label: "프리드리히",
     solve: async (s) => (await ai()).solveCfop(s),
+  },
+  {
+    id: "3-roux",
+    size: 3,
+    label: "루",
+    solve: async (s) => (await ai()).solveRoux(s),
+  },
+  {
+    id: "3-zz",
+    size: 3,
+    label: "ZZ",
+    solve: async (s) => (await ai()).solveZZ(s),
   },
   {
     id: "4-beginner",

@@ -10,6 +10,7 @@ import { type Cue, play } from "@/game/sound";
 import { faceGrid, stickersFromState } from "../bridge";
 import {
   attachKeyboard,
+  buttonMoves,
   type Command,
   KeyInterpreter,
   type Keymap,
@@ -285,7 +286,7 @@ export function CubePlay({
 
       {/* 휴대폰·마우스용 표기 단추 줄 */}
       <div className="flex flex-wrap justify-center gap-1" data-cube-buttons>
-        {["R", "L", "U", "D", "F", "B", "x", "y", "z"].map((m) => (
+        {buttonMoves(n).map((m) => (
           <button
             key={m}
             type="button"

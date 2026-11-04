@@ -259,6 +259,23 @@ describe("해법 표", () => {
     ]);
   });
 
+  it.each(["3-roux", "3-zz"])(
+    "%s는 섞인 큐브를 맞추고 단계마다 이름 꼬리표가 붙는다",
+    async (id) => {
+      const { applyMoves, parseMoves, randomCubeState, isSolved } =
+        await import("@game/cube-engine");
+      const { STAGE_LABELS } = await import("@game/cube-ai");
+      const names = new Set(Object.values(STAGE_LABELS));
+      const start = randomCubeState(3, 5);
+      const r = await solveForHero(id, start);
+      expect(
+        isSolved(3, applyMoves(3, start, parseMoves(3, r.moves.join(" ")))),
+      ).toBe(true);
+      expect(r.stages.length).toBeGreaterThan(2);
+      for (const s of r.stages) expect(names.has(s.label), s.label).toBe(true);
+    },
+  );
+
   it("표에 없는 해법은 거부한다", async () => {
     await expect(
       solveForHero("없음", (await import("@game/cube-engine")).solvedCube(3)),

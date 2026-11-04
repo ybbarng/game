@@ -21,12 +21,18 @@ export function CubeNet({
   colors,
   hidden,
   className,
+  onCell,
+  marked,
 }: {
   n: number;
   faces: readonly (readonly (number | null)[])[];
   colors: readonly number[];
   hidden: "black" | "gray";
   className?: string;
+  /** 칸을 누르면 그 스티커 자리 번호(f*n*n + k)를 준다(배우기 「조각 찾기」) */
+  onCell?: ((sticker: number) => void) | undefined;
+  /** 테두리로 표시할 스티커 자리(찾은 조각) */
+  marked?: ReadonlySet<number> | undefined;
 }) {
   const cell = 10;
   const gap = 4;
@@ -49,20 +55,41 @@ export function CubeNet({
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: 면 번호가 곧 자리
           <g key={f}>
-            {grid.map((c, k) => (
-              <rect
-                // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 자리
-                key={k}
-                x={ox + (k % n) * cell + 0.5}
-                y={oy + Math.floor(k / n) * cell + 0.5}
-                width={cell - 1}
-                height={cell - 1}
-                rx={1.5}
-                fill={c === null ? hiddenFill : hexColor(colors[c] ?? 0)}
-                stroke="#000"
-                strokeWidth={0.6}
-              />
-            ))}
+            {grid.map((c, k) => {
+              const sticker = f * n * n + k;
+              const mark = marked?.has(sticker) ?? false;
+              return (
+                // biome-ignore lint/a11y/noStaticElementInteractions: 누를 수 있을 때만 role="button"을 준다
+                <rect
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 자리
+                  key={k}
+                  x={ox + (k % n) * cell + 0.5}
+                  y={oy + Math.floor(k / n) * cell + 0.5}
+                  width={cell - 1}
+                  height={cell - 1}
+                  rx={1.5}
+                  fill={c === null ? hiddenFill : hexColor(colors[c] ?? 0)}
+                  stroke={mark ? "#38bdf8" : "#000"}
+                  strokeWidth={mark ? 1.6 : 0.6}
+                  data-net-cell={onCell ? sticker : undefined}
+                  role={onCell ? "button" : undefined}
+                  tabIndex={onCell ? 0 : undefined}
+                  aria-label={onCell ? `칸 ${sticker + 1}` : undefined}
+                  onClick={onCell ? () => onCell(sticker) : undefined}
+                  onKeyDown={
+                    onCell
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onCell(sticker);
+                          }
+                        }
+                      : undefined
+                  }
+                  className={onCell ? "cursor-pointer" : undefined}
+                />
+              );
+            })}
           </g>
         );
       })}

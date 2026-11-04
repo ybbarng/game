@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { COURSES, type Course, type Lesson } from "../learn";
+import { demoOffersTurn, stepIsActive, stepPicture } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
 import {
   type LearnProgress,
@@ -14,6 +15,13 @@ import {
 } from "../learn/progress";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
+import {
+  FindPanel,
+  LookPanel,
+  QuizPanel,
+  StillCube,
+  TurnPanel,
+} from "./LessonActs";
 import { TryPanel } from "./TryPanel";
 
 /**
@@ -29,7 +37,24 @@ function findLesson(id: string): { course: Course; lesson: Lesson } | null {
   return null;
 }
 
-const KIND_LABEL = { text: "설명", demo: "시연", try: "해보기" } as const;
+const KIND_LABEL = {
+  text: "설명",
+  demo: "시연",
+  try: "해보기",
+  look: "둘러보기",
+  find: "찾아보기",
+  quiz: "문제",
+  turn: "따라 하기",
+} as const;
+
+const KIND_MARK = {
+  demo: "▶",
+  try: "✋",
+  look: "↻",
+  find: "◎",
+  quiz: "?",
+  turn: "✋",
+} as const;
 
 export function LearnApp() {
   // undefined: 주소를 아직 안 읽음(미리 그린 HTML과 첫 그리기를 맞춘다)
@@ -106,68 +131,97 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           이어서 하기: {last.course.title} · {last.lesson.title}
         </a>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {COURSES.map((course) => {
-          const done = course.lessons.filter(
-            (l) => progress.lessons[l.id]?.done,
-          ).length;
-          return (
-            <section
-              key={course.id}
-              data-course={course.id}
-              className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
-            >
-              <div className="flex items-baseline gap-2">
-                <h2 className="font-bold">{course.title}</h2>
-                <span className="ml-auto text-white/50 text-xs">
-                  {done}/{course.lessons.length}
-                </span>
-              </div>
-              <p className="break-keep text-white/60 text-xs">
-                {course.summary}
-              </p>
-              <ol className="flex flex-col gap-1">
-                {course.lessons.map((l, i) => {
-                  const p = progress.lessons[l.id];
-                  const tries = l.steps.filter((s) => s.kind === "try").length;
-                  return (
-                    <li key={l.id}>
-                      <a
-                        href={lessonHref(l.id)}
-                        data-lesson={l.id}
-                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
-                      >
-                        <span
-                          className={cn(
-                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
-                            p?.done
-                              ? "bg-emerald-500 text-black"
-                              : "bg-white/10 text-white/70",
-                          )}
-                        >
-                          {p?.done ? "✓" : i + 1}
-                        </span>
-                        <span className="flex flex-1 flex-col">
-                          <span className="text-sm">{l.title}</span>
-                          <span className="break-keep text-[11px] text-white/50">
-                            {l.summary}
-                          </span>
-                        </span>
-                        {tries > 0 && (
-                          <span className="shrink-0 text-[11px] text-white/50">
-                            해보기 {p?.passed.length ?? 0}/{tries}
-                          </span>
-                        )}
-                      </a>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-          );
-        })}
-      </div>
+      {COURSES_BY_SIZE.map(([size, courses]) => (
+        <section
+          key={size}
+          data-course-size={size}
+          className="flex flex-col gap-2"
+        >
+          <h2 className="font-bold text-lg">
+            {size}×{size}
+          </h2>
+          <CourseGrid courses={courses} progress={progress} />
+        </section>
+      ))}
     </>
+  );
+}
+
+/** 크기별로 과정을 묶는다(3×3 → 2×2 → 4×4 → 5×5, 크기 안에서는 COURSES 차례) */
+const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
+  .map((size): [number, Course[]] => [
+    size,
+    COURSES.filter((c) => c.size === size),
+  ])
+  .filter(([, list]) => list.length > 0);
+
+function CourseGrid({
+  courses,
+  progress,
+}: {
+  courses: Course[];
+  progress: LearnProgress;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {courses.map((course) => {
+        const done = course.lessons.filter(
+          (l) => progress.lessons[l.id]?.done,
+        ).length;
+        return (
+          <section
+            key={course.id}
+            data-course={course.id}
+            className="flex flex-col gap-2 rounded-2xl border border-white/15 bg-white/5 p-4"
+          >
+            <div className="flex items-baseline gap-2">
+              <h3 className="font-bold">{course.title}</h3>
+              <span className="ml-auto text-white/50 text-xs">
+                {done}/{course.lessons.length}
+              </span>
+            </div>
+            <p className="break-keep text-white/60 text-xs">{course.summary}</p>
+            <ol className="flex flex-col gap-1">
+              {course.lessons.map((l, i) => {
+                const p = progress.lessons[l.id];
+                const tries = l.steps.filter((s) => s.kind === "try").length;
+                return (
+                  <li key={l.id}>
+                    <a
+                      href={lessonHref(l.id)}
+                      data-lesson={l.id}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs",
+                          p?.done
+                            ? "bg-emerald-500 text-black"
+                            : "bg-white/10 text-white/70",
+                        )}
+                      >
+                        {p?.done ? "✓" : i + 1}
+                      </span>
+                      <span className="flex flex-1 flex-col">
+                        <span className="text-sm">{l.title}</span>
+                        <span className="break-keep text-[11px] text-white/50">
+                          {l.summary}
+                        </span>
+                      </span>
+                      {tries > 0 && (
+                        <span className="shrink-0 text-[11px] text-white/50">
+                          해보기 {p?.passed.length ?? 0}/{tries}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 
@@ -195,17 +249,37 @@ function LessonView({
     setProgress(markLessonOpened(lesson.id));
   }, [lesson.id]);
 
-  const demoStart = useMemo(
-    () => (step && step.kind === "demo" ? stepStart(lesson, step, 1) : null),
+  // 이 화면에서 해낸 상호작용 단계(해보기는 진도에 남고, 나머지는 단원을 여는 동안만)
+  const [acted, setActed] = useState<number[]>([]);
+  // 시연 단계의 「직접 해 보기」를 열었나
+  const [demoTurn, setDemoTurn] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 단계를 옮길 때마다 닫는다
+  useEffect(() => setDemoTurn(false), [at]);
+
+  // 시연·해보기가 아닌 단계는 단원이 노리는 조각이 보이게 그림을 고른다(stepPicture)
+  const picture = useMemo(
+    () =>
+      step && step.kind !== "demo" && step.kind !== "try"
+        ? stepPicture(lesson, at)
+        : { setup: step?.setup, mask: step?.mask },
+    [lesson, at, step],
+  );
+  const start = useMemo(
+    () => (step ? stepStart(lesson, step, 1) : null),
     [lesson, step],
   );
-  const demoMask = useMemo(
-    () => (masked ? maskFor(lesson.size, step?.mask) : null),
-    [masked, lesson.size, step?.mask],
+  const mask = useMemo(
+    () => (masked ? maskFor(lesson.size, picture.mask) : null),
+    [masked, lesson.size, picture.mask],
   );
-  if (!step) return null;
+  if (!step || !start) return null;
   const isLast = at === lesson.steps.length - 1;
-  const hasMask = step.mask !== undefined && step.mask !== "all";
+  const hasMask = picture.mask !== undefined && picture.mask !== "all";
+  const done =
+    !stepIsActive(step) ||
+    acted.includes(at) ||
+    (step.kind === "try" && passed.includes(at));
+  const markActed = () => setActed((a) => (a.includes(at) ? a : [...a, at]));
 
   return (
     <>
@@ -258,18 +332,20 @@ function LessonView({
             <button
               type="button"
               onClick={() => setAt(i)}
+              data-step-to={s.kind}
               aria-current={i === at ? "step" : undefined}
               title={KIND_LABEL[s.kind]}
               className={cn(
                 "h-7 min-w-7 rounded-md px-1.5 text-xs",
                 i === at
                   ? "bg-sky-500 font-bold text-black"
-                  : s.kind === "try" && passed.includes(i)
+                  : (s.kind === "try" && passed.includes(i)) ||
+                      acted.includes(i)
                     ? "bg-emerald-500/70 text-black"
                     : "bg-white/10 text-white/70",
               )}
             >
-              {s.kind === "try" ? "✋" : s.kind === "demo" ? "▶" : i + 1}
+              {s.kind === "text" ? i + 1 : KIND_MARK[s.kind]}
             </button>
           </li>
         ))}
@@ -284,14 +360,92 @@ function LessonView({
           {KIND_LABEL[step.kind]} · {at + 1}/{lesson.steps.length}
         </p>
         <p className="break-keep text-base leading-relaxed">{step.body}</p>
-        {step.kind === "demo" && demoStart && step.alg && (
-          <DemoCube
+        {step.kind === "text" && (
+          <StillCube
             n={lesson.size}
-            start={demoStart}
-            alg={step.alg}
-            mask={demoMask}
+            state={start}
+            mask={mask}
             settings={settings}
-            arrowKeys
+          />
+        )}
+        {step.kind === "demo" &&
+          step.alg &&
+          (demoTurn ? (
+            <TurnPanel
+              key={`${lesson.id}-${at}-turn`}
+              n={lesson.size}
+              start={start}
+              alg={step.alg}
+              mask={mask}
+              settings={settings}
+              onPassed={markActed}
+            />
+          ) : (
+            <DemoCube
+              n={lesson.size}
+              start={start}
+              alg={step.alg}
+              mask={mask}
+              settings={settings}
+              arrowKeys
+            />
+          ))}
+        {step.kind === "demo" && step.alg && demoOffersTurn(lesson, at) && (
+          <button
+            type="button"
+            data-demo-turn
+            aria-pressed={demoTurn}
+            onClick={(e) => {
+              setDemoTurn((v) => !v);
+              e.currentTarget.blur();
+            }}
+            className="self-center rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-1.5 text-sm hover:bg-sky-500/30"
+          >
+            {demoTurn ? "시연 다시 보기" : "직접 해 보기"}
+          </button>
+        )}
+        {step.kind === "turn" && step.alg && (
+          <TurnPanel
+            key={`${lesson.id}-${at}`}
+            n={lesson.size}
+            start={start}
+            alg={step.alg}
+            mask={mask}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "find" && (
+          <FindPanel
+            key={`${lesson.id}-${at}`}
+            lesson={lesson}
+            step={step}
+            start={start}
+            mask={mask}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "quiz" && (
+          <QuizPanel
+            key={`${lesson.id}-${at}`}
+            lesson={lesson}
+            step={step}
+            start={start}
+            mask={mask}
+            settings={settings}
+            onPassed={markActed}
+          />
+        )}
+        {step.kind === "look" && (
+          <LookPanel
+            key={`${lesson.id}-${at}`}
+            lesson={lesson}
+            step={step}
+            start={start}
+            mask={mask}
+            settings={settings}
+            onPassed={markActed}
           />
         )}
         {step.kind === "try" && (
@@ -342,9 +496,14 @@ function LessonView({
             type="button"
             data-step-next
             onClick={() => setAt((i) => i + 1)}
-            className="ml-auto rounded-lg bg-sky-500 px-4 py-2 font-semibold text-black text-sm"
+            className={cn(
+              "ml-auto rounded-lg px-4 py-2 text-sm",
+              done
+                ? "bg-sky-500 font-semibold text-black"
+                : "bg-white/10 text-white/70",
+            )}
           >
-            다음 →
+            {done ? "다음 →" : "건너뛰기 →"}
           </button>
         )}
       </nav>

@@ -62,7 +62,7 @@ export const ORTEGA_PBL: AlgCase[] = [
     name: "위만 이웃 바꾸기",
     group: "adjacent/solved",
     algs: ["R U R' U' R' F R2 U' R' U' R U R' F'"],
-    note: "3×3의 T퍼뮤와 같다. 헤드라이트를 왼쪽에",
+    note: "3×3의 T퍼뮤와 같아요. 헤드라이트를 왼쪽에",
   },
   {
     id: "ortega-pbl-diag-top",
@@ -70,7 +70,7 @@ export const ORTEGA_PBL: AlgCase[] = [
     name: "위만 대각 바꾸기",
     group: "diagonal/solved",
     algs: ["F R U' R' U' R U R' F' R U R' U' R' F R F'"],
-    note: "3×3의 Y퍼뮤와 같다.",
+    note: "3×3의 Y퍼뮤와 같아요.",
   },
   {
     id: "ortega-pbl-adj-adj",
@@ -78,7 +78,7 @@ export const ORTEGA_PBL: AlgCase[] = [
     name: "위아래 모두 이웃 바꾸기",
     group: "adjacent/adjacent",
     algs: ["R2 U' B2 U2 R2 U' R2"],
-    note: "두 층의 헤드라이트를 모두 앞에 둔다.",
+    note: "두 층의 헤드라이트를 모두 앞에 둬요.",
   },
   {
     id: "ortega-pbl-diag-diag",
@@ -93,6 +93,6 @@ export const ORTEGA_PBL: AlgCase[] = [
     name: "위 이웃·아래 대각",
     group: "adjacent/diagonal",
     algs: ["R U' R F2 R' U R'"],
-    note: "위층 헤드라이트를 앞에. 아래만 바꿀 때는 큐브를 뒤집어(x2) 위 공식을 쓴다.",
+    note: "위층 헤드라이트를 앞에. 아래만 바꿀 때는 큐브를 뒤집어(x2) 위 공식을 써요.",
   },
 ];

@@ -13,6 +13,7 @@ import {
   type FingerDrill,
   type FingerToken,
 } from "../learn";
+import { fingerQuiz } from "../learn/interact";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 
@@ -145,15 +146,9 @@ export function FingersApp() {
                 </span>
               </button>
             ))}
+            <GripChecklist />
             <details className="mt-2 rounded-lg bg-white/5 p-2 text-xs">
-              <summary className="cursor-pointer">쥐는 법·표기</summary>
-              <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-white/70">
-                {FINGER_INTRO.map((t) => (
-                  <li key={t} className="break-keep">
-                    {t}
-                  </li>
-                ))}
-              </ul>
+              <summary className="cursor-pointer">손가락 표기 모음</summary>
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-white/70">
                 {Object.entries(FINGER_NOTATION).map(([k, v]) => (
                   <div key={k} className="contents">
@@ -194,6 +189,7 @@ export function FingersApp() {
                 );
               })}
             </ol>
+            <FingerQuiz key={drill.id} tokens={tokens} fingers={fingers} />
 
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <label className="flex items-center gap-2">
@@ -315,6 +311,130 @@ export function FingersApp() {
           </section>
         </div>
       </main>
+    </div>
+  );
+}
+
+/** 쥐는 법: 실물 큐브로 한 줄씩 따라 하고 「따라 했어요」를 누른다 */
+function GripChecklist() {
+  const [done, setDone] = useState<number[]>([]);
+  return (
+    <section
+      className="mt-2 flex flex-col gap-1.5 rounded-lg bg-white/5 p-2 text-xs"
+      data-fingers-grip={done.length}
+    >
+      <h2 className="font-semibold text-sm">
+        쥐는 법 따라 하기 {done.length}/{FINGER_INTRO.length}
+      </h2>
+      <ol className="flex flex-col gap-1.5">
+        {FINGER_INTRO.map((t, i) => {
+          const on = done.includes(i);
+          return (
+            <li key={t} className="flex flex-col gap-1">
+              <span
+                className={cn(
+                  "break-keep",
+                  on ? "text-white/50" : "text-white/80",
+                )}
+              >
+                {i + 1}. {t}
+              </span>
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={(e) => {
+                  setDone((d) => (on ? d.filter((x) => x !== i) : [...d, i]));
+                  e.currentTarget.blur();
+                }}
+                className={cn(
+                  "self-start rounded-md px-2 py-0.5",
+                  on
+                    ? "bg-emerald-500/70 text-black"
+                    : "bg-white/10 hover:bg-white/15",
+                )}
+              >
+                {on ? "✓ 따라 했어요" : "따라 했어요"}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+/** 손가락 맞히기: 공식의 수마다 어느 손가락으로 돌리는지 셋 중에서 고른다 */
+function FingerQuiz({
+  tokens,
+  fingers,
+}: {
+  tokens: readonly string[];
+  fingers: readonly string[];
+}) {
+  const [round, setRound] = useState(0);
+  const [picked, setPicked] = useState<FingerToken | null>(null);
+  const [score, setScore] = useState(0);
+  const q = useMemo(
+    () => fingerQuiz(tokens, fingers, round),
+    [tokens, fingers, round],
+  );
+  const right = picked === q.answer;
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-xl bg-black/25 p-3"
+      data-fingers-quiz={q.index}
+    >
+      <p className="text-sm">
+        손가락 맞히기 ({score}개 맞힘): <b className="font-mono">{q.move}</b>
+        {` 는 어느 손가락으로 돌릴까요?`}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {q.choices.map((c) => (
+          <button
+            key={c}
+            type="button"
+            data-choice={c}
+            onClick={(e) => {
+              e.currentTarget.blur();
+              if (right) return;
+              setPicked(c);
+              if (c === q.answer) setScore((s) => s + 1);
+            }}
+            className={cn(
+              "break-keep rounded-lg px-3 py-1.5 text-left text-xs",
+              picked === c
+                ? c === q.answer
+                  ? "bg-emerald-500/30"
+                  : "bg-red-500/30"
+                : "bg-white/5 hover:bg-white/10",
+            )}
+          >
+            <span className="font-mono text-amber-200">{c}</span>{" "}
+            {FINGER_NOTATION[c]?.split("(")[0]}
+          </button>
+        ))}
+      </div>
+      {picked && (
+        <p role="status" className="flex flex-wrap items-center gap-2 text-xs">
+          {right
+            ? "맞아요! 실물로도 한 번 돌려 보세요."
+            : "아쉬워요. 다시 골라 보세요."}
+          {right && (
+            <button
+              type="button"
+              data-fingers-quiz-next
+              onClick={(e) => {
+                setRound((r) => r + 1);
+                setPicked(null);
+                e.currentTarget.blur();
+              }}
+              className="rounded-md bg-sky-500 px-2 py-0.5 font-semibold text-black"
+            >
+              다음 수 →
+            </button>
+          )}
+        </p>
+      )}
     </div>
   );
 }

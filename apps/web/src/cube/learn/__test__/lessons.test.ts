@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALL_ALG_CASES, COURSES } from "../index";
+import { isMethodGoal } from "../judge-methods";
 import { invertAlg } from "../notation";
 import { GOALS, MASKS, SCRAMBLE_RULES } from "../types";
 import { goalMet } from "./goals";
@@ -59,6 +60,8 @@ describe("배우기 과정", () => {
     ({ lesson, step }) =>
       step.kind === "try" &&
       (lesson.size === 2 || lesson.size === 3) &&
+      // 다른 해법 목표(루·ZZ 등)는 엔진 판정 시험(judge.test.ts)이 본다
+      !isMethodGoal(step.goal ?? "") &&
       step.setup !== undefined &&
       "alg" in step.setup &&
       step.alg !== undefined,

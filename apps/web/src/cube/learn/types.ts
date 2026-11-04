@@ -32,6 +32,21 @@ export const GOALS = {
   "edges-paired":
     "큰 큐브 모서리 묶기(가운데 + 모서리 조각이 같은 색끼리 한 줄)",
   "edge-pair:UF": "큰 큐브 모서리 한 줄(위-앞 자리 날개가 한 색끼리 붙음)",
+  // 다른 해법(judge-methods.ts). 자리는 지금 들고 있는 방향으로 본다
+  "roux-fb": "루 첫 블록(왼쪽 1×2×3)",
+  "roux-sb": "루 두 블록(왼쪽·오른쪽 1×2×3)",
+  cmll: "두 블록 + 위 꼭짓점(윗면 돌리기 하나는 남아도 됨)",
+  "lse-eo": "위 꼭짓점까지 + 모서리 방향(흰·노랑 칸이 위아래)",
+  "lse-ulur": "모서리 방향 + 왼쪽·오른쪽 위 모서리",
+  eo: "모서리 방향(나쁜 모서리 없음)",
+  eoline: "EO라인(모서리 방향 + 아래 앞·뒤 모서리)",
+  "zz-left": "EO라인 + 왼쪽 블록",
+  "petrus-222": "페트루스 2×2×2(왼쪽-뒤-아래)",
+  "petrus-223": "페트루스 2×2×3(왼쪽 아래 두 층)",
+  "yau-ud-centers": "4×4 흰·노랑 가운데(맞은편 두 면)",
+  "yau-cross3": "4×4 흰·노랑 가운데 + 흰 십자 모서리 셋",
+  "yau-centers": "4×4 가운데 여섯 + 흰 십자 모서리 셋",
+  "yau-cross": "4×4 가운데 여섯 + 흰 십자 모서리 넷",
 } as const;
 export type GoalName = keyof typeof GOALS;
 
@@ -46,6 +61,10 @@ export const MASKS = {
   oll: "아래 두 층 + 윗면의 노란 칸만 보임(윗층 옆면은 회색)",
   pll: "아래 두 층 + 윗층 전부 보임(윗면은 회색으로 둬도 됨)",
   all: "모두 보임(가리지 않음)",
+  "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 가운데만 보임",
+  "roux-blocks": "루 두 블록과 가운데만 보임",
+  cmll: "루 두 블록 + 위 꼭짓점만 보임(나머지 모서리는 회색)",
+  "eo-edges": "모서리와 가운데만 보임(꼭짓점은 회색)",
 } as const;
 export type MaskName = keyof typeof MASKS;
 
@@ -74,26 +93,94 @@ export const SCRAMBLE_RULES = {
   "5x5-centers-solved": "5×5 가운데만 맞음",
   "5x5-two-edges-left": "5×5 모서리 둘만 남음",
   "bld-random": "블라인드 연습용 모두 섞음",
+  "roux-fb-solved": "루 첫 블록만 맞음(흰 면 아래)",
+  "roux-blocks-solved": "루 두 블록 맞음",
+  "roux-cmll-solved": "루 두 블록과 꼭짓점 모두 맞음(LSE 연습)",
+  "roux-eo-solved": "루 LSE 모서리 방향까지 맞음(M2·U로 섞음)",
+  "roux-ulur-solved": "루 왼쪽·오른쪽 위 모서리까지 맞음(가운데 줄만 섞임)",
+  "zz-eoline-solved": "ZZ EO라인 맞음(R·U·L로 섞음)",
+  "4x4-yau-ud-centers": "4×4 흰·노랑 가운데만 맞음",
+  "4x4-yau-cross3": "4×4 흰·노랑 가운데와 흰 십자 모서리 셋 맞음",
+  "4x4-yau-centers": "4×4 가운데 여섯과 흰 십자 모서리 셋 맞음",
+  "4x4-yau-cross": "4×4 가운데 여섯과 흰 십자 모서리 넷 맞음",
 } as const;
 export type ScrambleRule = keyof typeof SCRAMBLE_RULES;
 
 /** 상황 만들기: 맞춘 큐브에 적용할 공식, 또는 스스로 섞기 규칙 */
 export type LessonSetup = { alg: string } | { rule: ScrambleRule };
 
-export type LessonStepKind = "text" | "demo" | "try";
+/**
+ * 단계 종류. 글만 읽고 넘기는 단계는 두지 않는다(사용자가 직접 하는 것이 있어야 한다, 2026-11-04).
+ * - text: 글과 정지한 큐브 그림(남겨 둔 옛 자료용. 새 자료는 아래 상호작용 종류를 쓴다)
+ * - demo: 공식을 천천히 돌려 보인다. 끝에 「직접 해 보기」로 같은 수를 쳐 볼 수 있다
+ * - try: 정해진 상황에서 목표 모양(goal)을 만들면 통과
+ * - look: 둘러보기. 큐브 전체 돌리기(x·y·z, 빈 곳 밀기)만 된다. `look`이 있으면 그 색이 그 면에 와야 통과
+ * - find: 조각 찾기. 큐브에서 `find`에 맞는 칸을 누르면(3D·펼친 그림 모두) 통과
+ * - quiz: 고르기 문제. 큐브 그림을 보고 `quiz.choices`에서 고른다
+ * - turn: 한 수 해 보기. 시작 상황에서 `alg`를 직접 쳐서 같은 모양이 되면 통과
+ */
+export type LessonStepKind =
+  | "text"
+  | "demo"
+  | "try"
+  | "look"
+  | "find"
+  | "quiz"
+  | "turn";
+
+/** 면 이름. 색은 맞춘 큐브에서 그 면에 있던 색(U 흰, R 빨강, F 초록, D 노랑, L 주황, B 파랑) */
+export type FaceLetter = "U" | "R" | "F" | "D" | "L" | "B";
+
+/** 조각 종류(큰 큐브의 날개 모서리는 edge, 안쪽 가운데는 center로 친다) */
+export type PieceType = "center" | "edge" | "corner";
+
+/**
+ * 찾을 조각. 여럿 주면 모두 맞아야 한다.
+ * - piece: 그 종류 아무 조각
+ * - colors: 꼭 그 색들만 붙은 조각(색 차례 상관없음, 예: ["U","F"] = 흰-초록 모서리)
+ * - has: 그 색이 붙어 있는 조각(예: ["D"] = 노란색이 붙은 조각 아무거나)
+ */
+export interface FindTarget {
+  piece?: PieceType;
+  colors?: FaceLetter[];
+  has?: FaceLetter[];
+}
+
+/** 둘러보기 목표: 색 `color`(맞춘 큐브의 그 면 색)가 면 `on`으로 오게 큐브를 돌린다 */
+export interface LookGoal {
+  color: FaceLetter;
+  on: FaceLetter;
+}
+
+export interface QuizSpec {
+  question: string;
+  choices: string[];
+  /** 맞는 답의 차례(0부터) */
+  answer: number;
+  /** 고른 뒤 보여 줄 까닭 한두 문장 */
+  why: string;
+}
 
 export interface LessonStep {
   kind: LessonStepKind;
-  /** 짧은 한국어 문단 */
+  /** 짧은 한국어 문단(해요체) */
   body: string;
-  /** demo: 천천히 돌려 보일 공식. try: 모범 답(힌트로 보여 줌, 채점은 goal로 한다) */
+  /** demo: 천천히 돌려 보일 공식. try: 모범 답(힌트로 보여 줌, 채점은 goal로 한다). turn: 직접 칠 수 */
   alg?: string;
-  /** demo·try의 시작 상황. 없으면 맞춘 큐브 */
+  /** 시작 상황(모든 종류). 없으면 맞춘 큐브 */
   setup?: LessonSetup;
   /** try: 통과 조건 */
   goal?: GoalName;
   /** 「가리기」 모드에서 쓸 마스크 */
   mask?: MaskName;
+  /** find: 찾을 조각 */
+  find?: FindTarget;
+  /** find: 서로 다른 조각을 몇 개 찾아야 하나. 기본 1 */
+  count?: number;
+  /** look: 맞출 방향. 없으면 큐브 전체를 한 번 돌리면 통과 */
+  look?: LookGoal;
+  /** quiz: 문제 */
+  quiz?: QuizSpec;
 }
 
 export interface Lesson {

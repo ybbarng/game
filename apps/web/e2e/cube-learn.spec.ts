@@ -32,6 +32,21 @@ function keysFor(alg: string): string[] {
   return keys;
 }
 
+/**
+ * 단계 표시에서 그 종류의 첫 단계 단추를 눌러 바로 간다. 「다음」으로 차례로 넘기면 단계마다 3D 장면을 새로 만들어,
+ * GPU 없는 CI(소프트웨어 렌더링)에서는 넘김 한 번에 약 9초가 걸려 시험이 90초 제한을 넘었다(2026-11-04 #90)
+ */
+async function goToStep(page: Page, kind: string) {
+  await page
+    .locator(`[aria-label="단계"] [data-step-to="${kind}"]`)
+    .first()
+    .click();
+  await expect(page.locator("[data-step-kind]")).toHaveAttribute(
+    "data-step-kind",
+    kind,
+  );
+}
+
 async function shot(page: Page, name: string, project: string) {
   if (!SAVE_SCREENSHOTS) return;
   await page.screenshot({
@@ -56,14 +71,11 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
     "data-cube-learn",
     "333-notation",
   );
-  const section = page.locator("[data-step-kind]");
   // 시연 단계 하나 보기
-  while ((await section.getAttribute("data-step-kind")) !== "demo")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "demo");
   await expect(page.locator("[data-cube-demo]")).toBeVisible();
   await shot(page, "learn-demo", info.project.name);
-  while ((await section.getAttribute("data-step-kind")) !== "try")
-    await page.locator("[data-step-next]").click();
+  await goToStep(page, "try");
   await inputReady(page);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
@@ -84,6 +96,120 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   await expect(page.locator('[data-lesson="333-notation"]')).toContainText(
     "해보기 1/",
   );
+});
+
+test("배우기: 크기별 해법 목록과 ZZ 모서리 방향 해 보기", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn");
+  const size3 = page.locator('[data-course-size="3"]');
+  await expect(size3.locator('[data-course="roux"]')).toBeVisible();
+  await expect(size3.locator('[data-course="zz"]')).toBeVisible();
+  await expect(
+    page.locator('[data-course-size="4"] [data-course="444-yau"]'),
+  ).toBeVisible();
+
+  // ZZ 모서리 방향: 모서리만 보이는 가리기로 해 보기
+  await page.locator('[data-lesson="zz-eo"]').click();
+  await goToStep(page, "try");
+  await inputReady(page);
+  await shot(page, "learn-zz-eo", info.project.name);
+});
+
+test("배우기: 야우 모서리 묶기 시연", async ({ page }, info) => {
+  await page.goto("/cube/learn?lesson=yau-edges");
+  await goToStep(page, "demo");
+  await expect(page.locator("[data-cube-demo]")).toBeVisible();
+  await shot(page, "learn-yau-demo", info.project.name);
+});
+
+test("배우기: 루 해 보기(가운데 층 M)", async ({ page }, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=roux-intro");
+  await expect(page.locator("main")).toHaveAttribute(
+    "data-cube-learn",
+    "roux-intro",
+  );
+  await goToStep(page, "try");
+  await inputReady(page);
+
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  // 힌트는 한 수씩 보여 준다(M' U2 M, 세 수)
+  for (let i = 0; i < 3; i++) {
+    await page.locator("[data-cube-hint-button]").click();
+    const hint = page.locator("[data-cube-hint]");
+    await expect(hint).toHaveCount(1);
+    for (const k of keysFor((await hint.getAttribute("data-cube-hint")) ?? ""))
+      await page.keyboard.press(k);
+  }
+  await expect(page.locator("[data-cube-pass]")).toBeVisible();
+  await shot(page, "learn-roux-passed", info.project.name);
+});
+
+test("배우기: 흰 십자 단원은 조각 찾기와 고르기 문제로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=333-white-cross");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  // 글 단계에도 큐브 그림이 있다(3D 첫 그림 대신 준비 표시 또는 펼친 그림 대체를 기다린다)
+  await expect(page.locator("[data-cube-still]")).toHaveCount(1);
+  await shot(page, "learn-white-cross-find", info.project.name);
+
+  // 조각 찾기: F2로 내려간 흰-초록 모서리. 틀린 칸(앞 가운데)은 부드럽게 다시
+  const find = page.locator('[data-act="find"]');
+  const next = page.locator("[data-step-next]");
+  await expect(next).toHaveText("건너뛰기 →");
+  await page.locator('[data-net-cell="22"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await expect(find.getByRole("status")).toContainText("다시 찾아보세요");
+  // 앞면 아랫줄 가운데 = 흰-초록 모서리의 초록 칸
+  await page.locator('[data-net-cell="25"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await expect(next).toHaveText("다음 →");
+
+  // 고르기 문제: 틀리면 다시, 맞히면 통과
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  const quiz = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-white-cross-quiz", info.project.name);
+});
+
+test("배우기: 루 첫 블록은 조각 찾기, ZZ 모서리 방향은 고르기 문제로 시작한다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/learn?lesson=roux-fb");
+  const section = page.locator("[data-step-kind]");
+  await expect(section).toHaveAttribute("data-step-kind", "find");
+  await expect(page.locator("[data-cube-still]")).toHaveCount(1);
+  // 섞인 큐브의 흰-빨강 모서리: 오른쪽 면 아랫줄 가운데(16)와 아랫면(32). 앞 가운데(22)는 틀림
+  const find = page.locator('[data-act="find"]');
+  await page.locator('[data-net-cell="22"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await page.locator('[data-net-cell="16"]').click();
+  await expect(find).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-roux-fb-find", info.project.name);
+
+  // ZZ 모서리 방향: 셋째 단계 「위-왼쪽 모서리는 좋은 모서리일까요?」
+  await page.goto("/cube/learn?lesson=zz-eo");
+  const next = page.locator("[data-step-next]");
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "demo");
+  await next.click();
+  await expect(section).toHaveAttribute("data-step-kind", "quiz");
+  const quiz = page.locator('[data-act="quiz"]');
+  await expect(quiz).toContainText("위-왼쪽 모서리");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-zz-eo-quiz", info.project.name);
 });
 
 test("훈련: PLL 하나를 모범 답으로 풀면 기록이 생긴다", async ({
