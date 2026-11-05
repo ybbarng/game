@@ -25,6 +25,7 @@ import {
   CROSS_MIDDLE_R,
   CROSS_WRONG_TOP,
   CROSS_WRONG_TOP_TRY,
+  SAFE_SETUP,
   SEXY,
 } from "./lessons-333";
 import { setupFor } from "./notation";
@@ -67,6 +68,43 @@ const colorsAt = (n: number, s: PuzzleState, at: FaceLetter[]) =>
     .sort();
 
 const WHITE = F.U;
+
+describe("안전한 회전·위험한 회전", () => {
+  const lesson = lessonOf("333-safe-turns");
+  const cross = (s: PuzzleState) => goalMet(3, s, "white-cross");
+  const start = play(3, SAFE_SETUP);
+
+  it("시작 큐브는 흰 십자만 맞고 나머지는 흐트러졌다", () => {
+    expect(cross(start)).toBe(true);
+    expect(goalMet(3, start, "first-layer")).toBe(false);
+  });
+
+  it("반대 면(아랫면)은 어느 쪽으로 돌려도 십자가 그대로다", () => {
+    for (const m of ["D", "D'", "D2"])
+      expect(cross(play(3, m, start))).toBe(true);
+  });
+
+  it("맞춘 면(윗면)을 돌리면 십자가 어긋나고, 되돌리면 다시 맞는다", () => {
+    for (const m of ["U", "U'", "U2"])
+      expect(cross(play(3, m, start))).toBe(false);
+    expect(cross(play(3, "U U'", start))).toBe(true);
+  });
+
+  it("단계: 아랫면 → 윗면 → 되돌리기 → 고르기", () => {
+    const [safe, danger, undo, quiz] = lesson.steps;
+    expect(safe?.kind).toBe("turn");
+    expect(safe?.alg).toMatch(/^D/);
+    expect(danger?.kind).toBe("turn");
+    expect(danger?.alg).toMatch(/^U/);
+    expect(undo?.kind).toBe("try");
+    expect(undo?.goal).toBe("white-cross");
+    const s = play(3, `${SAFE_SETUP} U`);
+    expect(undo?.setup).toEqual({ alg: `${SAFE_SETUP} U` });
+    expect(cross(s)).toBe(false);
+    expect(cross(play(3, undo?.alg as string, s))).toBe(true);
+    expect(quiz?.quiz?.choices[quiz.quiz.answer]).toMatch(/반대 면/);
+  });
+});
 
 describe("흰 십자: 경우별 시연", () => {
   const lesson = lessonOf("333-white-cross");
