@@ -1,7 +1,14 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { COLOR_PATTERNS, GRAY, patternStyle, shownColor } from "../item-look";
+import {
+  COLOR_PATTERNS,
+  GRAY,
+  KEY_PATTERN_EM,
+  KEY_PATTERN_INK,
+  patternStyle,
+  shownColor,
+} from "../item-look";
 import {
   calmLine,
   calmTint,
@@ -63,7 +70,9 @@ export function useKeyLook(
         ? {
             backgroundColor: hexColor(calmTint(rgb, p.prime)),
             ...(striped ? { backgroundImage: stripeImage(rgb, p.prime) } : {}),
-            ...(pattern ? patternStyle(pattern) : {}),
+            ...(pattern
+              ? patternStyle(pattern, KEY_PATTERN_INK, KEY_PATTERN_EM)
+              : {}),
           }
         : {},
     };

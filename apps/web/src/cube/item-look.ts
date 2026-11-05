@@ -20,6 +20,10 @@ export const oppositeColor = (c: number): number => (c + 3) % 6;
 export const GRAY = 0x8f8f8f;
 /** 무늬 색(회색 위에서 잘 보이는 짙은 회색) */
 export const PATTERN_INK = 0x262626;
+/** 키 그림의 무늬 색: 칸 바탕이 옅은(어두운) 회색이라 밝은 회색으로 그린다(같은 무늬, 색만 거꾸로) */
+export const KEY_PATTERN_INK = 0x8c8c8c;
+/** 키 그림 무늬 자리 한 변(em): 키 글자 둘레만큼. 글자는 무늬 위에 그대로 읽힌다 */
+export const KEY_PATTERN_EM = 2.4;
 
 /**
  * 무늬. 방향이 없는 것만(점·고리). 많고 적음·크고 작음·속이 찼나 비었나로 갈린다.
@@ -122,13 +126,21 @@ const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
  * CSS 바탕 조각(HTML 칸, 키 그림): 점·고리마다 `radial-gradient` 한 장을 그 크기·자리에 둔다(칸 크기와 상관없이 같은 모양,
  * 방향 없음). 바탕색은 따로(`backgroundColor`)
  */
-export function patternStyle(p: StickerPattern): {
+export function patternStyle(
+  p: StickerPattern,
+  /** 무늬 색. 어두운 칸(키 그림의 옅은 바탕)에서는 밝은 색을 넘긴다 */
+  inkColor: number = PATTERN_INK,
+  /**
+   * 무늬 자리 한 변(em). 주면 칸 가운데의 정사각 자리에 그린다(가로로 긴 키 칸에서도 점이 동그랗다). 없으면 칸 전체(정사각 칸)
+   */
+  squareEm?: number,
+): {
   backgroundImage?: string;
   backgroundSize?: string;
   backgroundPosition?: string;
   backgroundRepeat?: string;
 } {
-  const ink = hex(PATTERN_INK);
+  const ink = hex(inkColor);
   const s = patternShape(p);
   const layers: { image: string; x: number; y: number; r: number }[] = [
     ...s.dots.map((d) => ({
@@ -149,6 +161,20 @@ export function patternStyle(p: StickerPattern): {
     }),
   ];
   if (layers.length === 0) return {};
+  if (squareEm !== undefined) {
+    // 50%는 그림 가운데를 칸 가운데에 둔다. 거기서 em으로 옮긴다
+    const em = (v: number) => `${(v * squareEm).toFixed(3)}em`;
+    return {
+      backgroundImage: layers.map((l) => l.image).join(", "),
+      backgroundSize: layers
+        .map((l) => `${em(l.r * 2)} ${em(l.r * 2)}`)
+        .join(", "),
+      backgroundPosition: layers
+        .map((l) => `calc(50% + ${em(l.x - 0.5)}) calc(50% + ${em(l.y - 0.5)})`)
+        .join(", "),
+      backgroundRepeat: "no-repeat",
+    };
+  }
   const pos = (c: number, size: number) =>
     size >= 1 ? 50 : ((c - size / 2) / (1 - size)) * 100;
   return {

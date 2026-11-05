@@ -1175,6 +1175,7 @@ export class CubeRoom {
       return;
     c.seen.delete(heldKey);
     if (item === "rewind") bot.afterRewind(undone);
+    else bot.afterItem();
   }
 
   private endRace(): void {

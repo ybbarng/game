@@ -82,6 +82,11 @@ export interface BotHandle {
   afterHit(moves: string): void;
   /** 되감기를 썼다: 되돌린 수(둔 차례대로)를 다시 둔다 */
   afterRewind(undone: readonly CubeMove[]): void;
+  /**
+   * 아이템을 썼다(그 수는 지금 시각으로 적힌다): 뒤 계획 수를 그 뒤로 미룬다. 계획보다 늦게 두는 중에 지금 시각의 수가 끼면
+   * 뒤 계획 수 시각이 거꾸로 가기 때문이다
+   */
+  afterItem(): void;
   /** 화면 방해를 맞았다: 그만큼 멈춘다 */
   pause(ms: number): void;
   /** 계획 밖의 수가 남지 않았다(아이템을 써도 된다) */
@@ -111,6 +116,8 @@ export function attachBot(init: AttachBotInit): BotHandle {
   let forced: CubeMove[] = [];
   /** 멈춤이 끝나는 때(풀림 기준 ms) */
   let pausedUntil = 0;
+  /** 마지막 계획 밖의 수를 둔 때(없으면 -1) */
+  let forcedAt = -1;
 
   const elapsedNow = () => session.snapshot().elapsed ?? 0;
   const step = (k: number) => {
@@ -119,8 +126,10 @@ export function attachBot(init: AttachBotInit): BotHandle {
     const snap = session.snapshot();
     if (snap.attempt !== k || snap.phase !== "race") return;
     let r: ReturnType<typeof session.play>;
-    if (forced.length > 0) r = session.play(forced.shift() as CubeMove);
-    else {
+    if (forced.length > 0) {
+      r = session.play(forced.shift() as CubeMove);
+      forcedAt = elapsedNow();
+    } else {
       if (j >= moves.length) return;
       // 계획 시각(+ 미룬 만큼)으로 적는다. 다른 기기가 계획과 시각까지 맞춰 본다(`checkBotRun`)
       r = session.play(moves[j] as CubeMove, (times[j] as number) + delay);
@@ -136,8 +145,11 @@ export function attachBot(init: AttachBotInit): BotHandle {
     let at: number;
     if (forced.length > 0) at = Math.max(elapsed + BOT_FORCED_MS, pausedUntil);
     else {
-      const want = Math.max(elapsed, pausedUntil);
-      // 계획 밖의 수·멈춤 뒤로 계획을 미룬다(미룬 양은 줄지 않는다)
+      // 계획 밖의 수·멈춤 뒤로만 계획을 미룬다(미룬 양은 줄지 않는다). 타이머가 늦게 불린 것은 미루지 않는다(계획 시각 그대로 적는다)
+      const want = Math.max(
+        pausedUntil,
+        forcedAt < 0 ? 0 : forcedAt + BOT_FORCED_MS,
+      );
       if ((times[j] as number) + delay < want)
         delay = want - (times[j] as number);
       at = (times[j] as number) + delay;
@@ -178,6 +190,7 @@ export function attachBot(init: AttachBotInit): BotHandle {
       j = 0;
       forced = [];
       pausedUntil = 0;
+      forcedAt = -1;
       cancel?.();
       // 계획은 섞기를 정한 뒤에 세우므로, 못 만들면 그 판에서 이 컴퓨터만 DNF로 빠지고 판은 그대로 간다
       // (`retire`). 다른 까닭으로 다시 섞어도 그만둔 컴퓨터는 계획을 다시 세우지 않는다
@@ -206,10 +219,16 @@ export function attachBot(init: AttachBotInit): BotHandle {
     },
     afterHit(text) {
       forced = [...undoMoves(n, text), ...forced];
+      forcedAt = elapsedNow();
       nudge();
     },
     afterRewind(undone) {
       forced = [...undone, ...forced];
+      forcedAt = elapsedNow();
+      nudge();
+    },
+    afterItem() {
+      forcedAt = elapsedNow();
       nudge();
     },
     pause(ms) {
