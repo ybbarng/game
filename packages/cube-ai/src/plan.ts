@@ -362,6 +362,8 @@ function timeSolve(
   speed: BotSpeed,
   inspectionMs: number | undefined,
   done: (state: PuzzleState) => boolean,
+  /** 모양 공식 단계(`shape`)의 빠르기. 없으면 `speed` */
+  shapeSpeed: BotSpeed = speed,
 ): Pick<BotPlan, "moves" | "stages" | "finishAt"> {
   const next = rng(seed);
   const form = 1 + speed.form * (2 * next() - 1);
@@ -379,20 +381,21 @@ function timeSolve(
     if (st.start >= length && length < solve.moves.length) break;
     const end = Math.min(st.end, length);
     const startAt = st.start + extra;
+    const sp = st.name === "shape" ? shapeSpeed : speed;
     if (end > st.start)
-      t += wobble(speed.pauseMs * (STAGE_PAUSE_FACTOR[st.name] ?? 1));
-    const step = 1000 / (ALG_STAGES.has(st.name) ? speed.tps : speed.searchTps);
+      t += wobble(sp.pauseMs * (STAGE_PAUSE_FACTOR[st.name] ?? 1));
+    const step = 1000 / (ALG_STAGES.has(st.name) ? sp.tps : sp.searchTps);
     for (let i = st.start; i < end; i++) {
       const move = solve.moves[i] as string;
-      if (i > st.start && looks.has(i)) t += wobble(speed.lookMs);
+      if (i > st.start && looks.has(i)) t += wobble(sp.lookMs);
       const parsed = parseMoves(size, move);
       const one = parsed.length === 1 ? (parsed[0] as CubeMove) : null;
       if (
-        speed.slip > 0 &&
+        sp.slip > 0 &&
         !isRotationMove(move) &&
         one &&
         !isRotation(size, one) &&
-        next() < speed.slip
+        next() < sp.slip
       ) {
         const wrong = slipOf(one);
         const after = applyMove(size, state, wrong);
@@ -404,7 +407,7 @@ function timeSolve(
             at: Math.round(t),
             slip: true,
           });
-          t += wobble(speed.slipMs);
+          t += wobble(sp.slipMs);
           t += wobble(step);
           moves.push({
             move: formatMove(size, invertMove(wrong)),
@@ -474,9 +477,28 @@ function shapePlan(
     looks: first.looks,
   };
   const speed = botSpeed(level, size, opts.scale ?? scale);
+  // 공식 치는 손 빠르기는 크기의 맞추기 배율을 따르지 않는다: 2×2는 맞추기 해법이 단계마다 길이가 크게 달라 배율이 거꾸로
+  // 가는 데가 있어(중수 0.37·고수 1.01) 3×3 배율을 쓴다. 4×4·5×5는 그 크기 배율(큰 큐브는 손이 느리다)
+  const shapeSpeed =
+    opts.scale !== undefined
+      ? speed
+      : size <= 3
+        ? botSpeed(
+            level,
+            3,
+            levelScale(level, 3) * (scale / levelScale(level, size)),
+          )
+        : speed;
   return {
-    ...timeSolve(solve, size, startState, seed, speed, opts.inspectionMs, (s) =>
-      matcher.matches(s),
+    ...timeSolve(
+      solve,
+      size,
+      startState,
+      seed,
+      speed,
+      opts.inspectionMs,
+      (s) => matcher.matches(s),
+      shapeSpeed,
     ),
     ...(fallback ? { fallback: true as const } : {}),
   };
