@@ -21,6 +21,40 @@ export function cardNoMatch(
 }
 
 /**
+ * 사건 한 줄의 주인공 자리(줄 머리에 그 우주선을 붙인다). 줄에서 먼저 이름이 나오는 사람, 우주국이거나 없으면 null
+ */
+export function eventSeat(e: GameEvent): number | null {
+  let seat: number | null = null;
+  switch (e.type) {
+    case "pay":
+      switch (e.reason) {
+        case "salary":
+        case "observatory":
+        case "sell":
+        case "mortgage":
+        case "request":
+          seat = e.to;
+          break;
+        case "card":
+          seat = e.from === BANK ? e.to : e.from;
+          break;
+        default:
+          seat = e.from;
+      }
+      break;
+    case "auctionStarted":
+      seat = e.passer;
+      break;
+    case "auctionEnded":
+      seat = e.result.winner;
+      break;
+    default:
+      seat = "seat" in e && typeof e.seat === "number" ? e.seat : null;
+  }
+  return seat === null || seat === BANK || seat < 0 ? null : seat;
+}
+
+/**
  * 사건 한 줄(오른쪽 「기록」 칸·다시 보기). 돈이 누구에게서 누구에게 왜 갔는지를 보인다(docs/48 13절 1번).
  * 화면에 남길 것이 없는 사건(약속·공개·차례 시작 등)은 null
  */

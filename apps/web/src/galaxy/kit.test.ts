@@ -1,5 +1,6 @@
 import { galaxyBotFor, playGalaxy } from "@game/galaxy-ai";
 import {
+  BANK,
   boardOfSky,
   GALAXY_EDITION,
   type GameEvent,
@@ -13,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { SKY_STARS } from "@/stardraw/sky";
 import type { RoundRecord } from "@/stats/records";
 
-import { eventLine } from "./events";
+import { eventLine, eventSeat } from "./events";
 import { subject } from "./format";
 import {
   buildTimeline,
@@ -406,6 +407,23 @@ describe("만난 별과 사건 줄", () => {
     expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
       "유성우의 밤",
     );
+  });
+
+  it("줄 머리의 우주선은 줄에서 먼저 나오는 사람(우주국·없으면 비운다)", () => {
+    const pay = (
+      reason: "rent" | "salary" | "card",
+      from: number,
+      to: number,
+    ): GameEvent => ({ type: "pay", reason, from, to, amount: 30 });
+    expect(eventSeat(pay("rent", 1, 0))).toBe(1);
+    expect(eventSeat(pay("salary", BANK, 2))).toBe(2);
+    expect(eventSeat(pay("card", BANK, 3))).toBe(3);
+    expect(eventSeat(pay("card", 1, BANK))).toBe(1);
+    expect(
+      eventSeat({ type: "auctionStarted", index: 0, square: 9, passer: 2 }),
+    ).toBe(2);
+    expect(eventSeat({ type: "observed", seat: 1, amount: 0 })).toBe(1);
+    expect(eventSeat({ type: "meteorShower" })).toBeNull();
   });
 
   it("누가 어디에 도착해서 무엇을 했는지 보인다", () => {
