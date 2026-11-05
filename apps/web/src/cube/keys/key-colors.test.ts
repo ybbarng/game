@@ -3,13 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { COLOR_SCHEMES } from "../settings";
 import {
+  calmTint,
+  capRepeats,
   HOME_ORIENT,
+  KEY_LOOK_DEFAULT,
   keyPaint,
   keyTone,
   lumaOf,
   type Orient,
   orientAfter,
   orientFromCenters,
+  parseKeyLook,
 } from "./key-colors";
 
 const [U, R, F, D, L, B] = [0, 1, 2, 3, 4, 5];
@@ -106,5 +110,37 @@ describe("키 칠하기", () => {
       }
     // 흰 키도 꽉 찬 흰색이 아니다
     expect(lumaOf(keyTone(0xffffff, false).fill)).toBeLessThan(70);
+  });
+});
+
+describe("차분한 키 그림(2026-11-05 「어지러움」)", () => {
+  it("키 글자와 수가 같은 글자면 한 번만 적는다", () => {
+    // 「표기」: R 키 = R·R'·Rw, X 키 = x
+    expect(capRepeats("R", "R")).toBe(true);
+    expect(capRepeats("R", "R'")).toBe(true);
+    expect(capRepeats("R", "Rw")).toBe(true);
+    expect(capRepeats("X", "x")).toBe(true);
+    // 「두 손」: L 키 = D', I 키 = R은 따로
+    expect(capRepeats("L", "D'")).toBe(false);
+    expect(capRepeats("I", "R")).toBe(false);
+    // 동작 글이 없거나 낱말이면 키 글자를 적는다
+    expect(capRepeats("3", undefined)).toBe(false);
+    expect(capRepeats("2", "깊이 2")).toBe(false);
+  });
+
+  it("모르는 안 이름은 권하는 안으로", () => {
+    expect(parseKeyLook("dot")).toBe("dot");
+    expect(parseKeyLook(null)).toBe(KEY_LOOK_DEFAULT);
+    expect(parseKeyLook("vivid")).toBe(KEY_LOOK_DEFAULT);
+  });
+
+  it("옅은 바탕 안: 어느 배색이든 밝은 글자가 읽히는 어두운 칸, 반대 방향은 더 옅다", () => {
+    for (const colors of Object.values(COLOR_SCHEMES))
+      for (const rgb of colors) {
+        expect(lumaOf(calmTint(rgb, false))).toBeLessThan(65);
+        expect(lumaOf(calmTint(rgb, true))).toBeLessThan(
+          lumaOf(calmTint(rgb, false)),
+        );
+      }
   });
 });

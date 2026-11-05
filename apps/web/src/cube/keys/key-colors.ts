@@ -158,6 +158,55 @@ export function keyTone(
   };
 }
 
+/**
+ * 차분한 키 그림(2026-11-05 다시, 사용자 「키보드 아직 너무 어지러움」, docs/47 4-5). 칸 바탕·테두리는 무채색으로 두고
+ * 면 색은 작은 표시 하나에만 쓴다. 안 셋을 견주었고 `KEY_LOOK_DEFAULT`가 권하는 안이다. 다른 안은 이 기기
+ * localStorage `cube.keyLook`에 이름을 넣어 볼 수 있다(견주기용, 설정 화면에는 없다).
+ * - `line`: 칸 아래에 얇은 면 색 선
+ * - `dot`: 칸 오른쪽 위에 면 색 점
+ * - `tint`: 칸 바탕에 면 색을 아주 옅게(선·점 없음)
+ * 반대 방향(')은 색을 바꾸지 않고 ′ 표시와 밝기(글자·표시를 흐리게)로만 구별한다.
+ */
+export type KeyLookStyle = "line" | "dot" | "tint";
+export const KEY_LOOK_STYLES: readonly KeyLookStyle[] = ["line", "dot", "tint"];
+export const KEY_LOOK_DEFAULT: KeyLookStyle = "line";
+export const KEY_LOOK_STORAGE = "cube.keyLook";
+export const KEY_LOOK_LABEL: Record<KeyLookStyle, string> = {
+  line: "아래선",
+  dot: "점",
+  tint: "옅은 바탕",
+};
+
+export function parseKeyLook(v: unknown): KeyLookStyle {
+  return KEY_LOOK_STYLES.includes(v as KeyLookStyle)
+    ? (v as KeyLookStyle)
+    : KEY_LOOK_DEFAULT;
+}
+
+/** 차분한 키 그림의 비율 */
+export const KEY_CALM = {
+  /** `tint` 안: 칸 바탕에 섞는 면 색 비율 */
+  tint: 0.16,
+  primeTint: 0.08,
+  /** 반대 방향 표시(선·점)의 불투명도 */
+  primeMark: 0.6,
+} as const;
+
+/** `tint` 안의 칸 바탕 */
+export function calmTint(rgb: number, prime: boolean): number {
+  return mixRgb(rgb, prime ? KEY_CALM.primeTint : KEY_CALM.tint);
+}
+
+/**
+ * 칸에 키 글자를 따로 적을지. 동작 이름이 키 글자와 같은 글자면(「표기」 배치의 R 키 = R, X 키 = x) 한 번만 적는다.
+ * 「두 손」의 L 키 = D'처럼 다르면 키 글자를 작게 따로 적는다
+ */
+export function capRepeats(cap: string, label: string | undefined): boolean {
+  if (!label) return false;
+  const core = label.replace(/['′2w]/g, "");
+  return core.length === 1 && core.toUpperCase() === cap.toUpperCase();
+}
+
 /** 밝기(0~255) */
 export function lumaOf(rgb: number): number {
   return (

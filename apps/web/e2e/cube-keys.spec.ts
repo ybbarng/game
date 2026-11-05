@@ -47,7 +47,7 @@ test("단축키 표: 키 자리에 배치대로 동작이 적히고 찾을 수 �
   await expect(line("KeyE", "plain")).toHaveText("L'");
   await expect(line("KeyR", "plain")).toHaveText("Lw'");
   await expect(line("KeyI", "plain")).toHaveText("R");
-  // 키 그림 면 색: R(I)은 빨강(면 1) 꽉 채움, R'(K)은 같은 색 빗금, x(T)는 두 색 화살
+  // 키 그림 면 색: R(I)은 빨강(면 1), R'(K)은 같은 색을 흐리게, x(T)는 큐브 돌리기(색 없음)
   await expect(page.locator('[data-key="KeyI"]')).toHaveAttribute(
     "data-key-paint",
     "1",
