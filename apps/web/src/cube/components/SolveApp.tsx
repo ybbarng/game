@@ -15,6 +15,20 @@ import {
   watchAlgBook,
 } from "../algs/store";
 import { stickersFromState as stickersOf } from "../bridge";
+import {
+  beginDaily,
+  DAILY_SIZES,
+  type DailyEntry,
+  dailyEntry,
+  dailyEvent,
+  dailySeed,
+  dailyStreak,
+  finishDaily,
+  kstDate,
+  loadDaily,
+  markString,
+  shortDate,
+} from "../daily";
 import { COMBO_SHOW } from "../flow/strip";
 import type { Command } from "../input";
 import type { AlgCase } from "../learn";
@@ -44,6 +58,7 @@ import {
 } from "../worker";
 import { AlgChips } from "./AlgChips";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
 
@@ -77,9 +92,42 @@ const PHASE_HINT: Record<string, string> = {
   done: "끝",
 };
 
-export function SolveApp({ mode }: { mode: SolveMode }) {
+/** 오늘의 섞기 한 판: 그날 처음 받은 섞기면 기록(official), 아니면 연습 */
+interface DailyAttempt {
+  kind: "official" | "practice";
+  date: string;
+  startedAt: number;
+}
+
+/**
+ * `daily`: 오늘의 섞기(`/cube/daily`, docs/51 2-4). 혼자 맞추기와 같은 판에 날짜 씨앗 섞기·하루 한 번 기록·공유 글을 더한다.
+ * 살펴보기는 설정과 상관없이 늘 켠다(모두 같은 조건으로 견주게)
+ */
+export function SolveApp({
+  mode,
+  daily = false,
+}: {
+  mode: SolveMode;
+  daily?: boolean;
+}) {
   const settings = useCubeSettings();
   const [n, setN] = useState(3);
+  const sizes: readonly number[] = daily ? DAILY_SIZES : SIZES;
+  // 오늘의 섞기: 날짜(한국 시각), 이 기기의 날마다 기록, 지금 판
+  const [today, setToday] = useState("");
+  const [dailyList, setDailyList] = useState<DailyEntry[]>([]);
+  const [attempt, setAttempt] = useState<DailyAttempt | null>(null);
+  const attemptRef = useRef<DailyAttempt | null>(null);
+  attemptRef.current = attempt;
+  const officialLiveRef = useRef(false);
+  useEffect(() => {
+    const check = () => setToday(kstDate(Date.now()));
+    check();
+    setDailyList(loadDaily());
+    // 화면을 켜 둔 채 자정을 넘기면 날짜를 바꾼다
+    const id = window.setInterval(check, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [version, setVersion] = useState(0);
   const [syncToken, setSyncToken] = useState(0);
   const [preparing, setPreparing] = useState(false);
@@ -131,24 +179,43 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       else if (cue === "solved") playCubeCue(s, "cubeSolved");
       else playCubeCue(s, "invalid");
     };
-    return new SolveSession({
+    const made: SolveSession = new SolveSession({
       n,
       mode,
       inspection: true,
       clock: realClock,
       onChange: bump,
       onCue,
-      onRecord: (r) =>
+      onRecord: (r) => {
+        const a = attemptRef.current;
+        if (daily) {
+          // 연습은 어디에도 남기지 않는다. 기록 시도는 혼자 맞추기 기록(평균·골드)과 날마다 기록에 함께
+          if (a?.kind !== "official") return;
+          const before = loadRecords(mode, n);
+          setRecords(addRecord({ ...r, daily: a.date }));
+          setDailyList(
+            finishDaily(a.date, {
+              ...r,
+              ...(made.result?.dnfReason
+                ? { dnfReason: made.result.dnfReason }
+                : {}),
+              marks: markString(made.splits, averagesFor(a.startedAt, before)),
+            }),
+          );
+          return;
+        }
         setRecords(
           addRecord(
             metRef.current.length > 0
               ? { ...r, myCases: [...metRef.current] }
               : r,
           ),
-        ),
+        );
+      },
     });
+    return made;
   }, `${n}-${mode}`);
-  session.inspection = settings.inspection;
+  session.inspection = daily || settings.inspection;
 
   useEffect(() => {
     setRecords(loadRecords(mode, n));
@@ -183,12 +250,23 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     setNotice(null);
     const id = ++scrambleRequest.current;
     const stale = () => id !== scrambleRequest.current || session.disposed;
-    const seed = randomSeed();
+    const date = kstDate(Date.now());
+    const seed = daily ? dailySeed(date, n) : randomSeed();
     try {
-      const s = await scrambleInWorker(eventFor(n, mode), seed);
+      const s = await scrambleInWorker(
+        daily ? dailyEvent(n) : eventFor(n, mode),
+        seed,
+      );
       if (stale()) return;
       clearMet();
       setPrior(loadRecords(mode, n));
+      if (daily) {
+        const now = Date.now();
+        const begun = beginDaily({ date, n, seed, scramble: s.text, now });
+        setDailyList(begun.entries);
+        setToday(date);
+        setAttempt({ kind: begun.kind, date, startedAt: now });
+      }
       session.start(s.text, seed);
       sync();
       if (!s.official) setNotice(TEMP_SCRAMBLE);
@@ -197,7 +275,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
-  }, [preparing, n, mode, session, sync, stopReplay, clearMet]);
+  }, [preparing, n, mode, daily, session, sync, stopReplay, clearMet]);
 
   const onMove = useCallback(
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
@@ -225,6 +303,9 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const onCommand = useCallback(
     (c: Command) => {
       if (c === "undo") return session.undo();
+      // 오늘의 섞기 기록 시도 중에는 섞기·처음으로 키를 받지 않는다(잘못 눌러 하루 한 번을 날리지 않게)
+      if ((c === "reset" || c === "scramble") && officialLiveRef.current)
+        return null;
       if (c === "reset") {
         stopReplay();
         clearMet();
@@ -279,6 +360,14 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
 
   const result = session.result;
   const phase = session.phase;
+  /** 오늘의 섞기 기록 시도가 진행 중(크기 바꾸기·섞기를 막는다) */
+  const officialLive =
+    daily &&
+    attempt?.kind === "official" &&
+    (phase === "inspect" || phase === "ready" || phase === "solving");
+  officialLiveRef.current = officialLive;
+  const todayEntry = today ? dailyEntry(dailyList, today, n) : undefined;
+  const doneToday = !!todayEntry && !officialLive;
   // 「외우는 동안에는…」은 외우는 동안만. 맞추기를 시작하거나 끝나면 지운다
   useEffect(() => {
     if (phase !== "memo") setNotice((v) => (v === MEMO_BLOCKED ? null : v));
@@ -374,24 +463,43 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">
-            {mode === "blind" ? "블라인드(가상)" : "혼자 맞추기"}
+            {daily
+              ? "오늘의 섞기"
+              : mode === "blind"
+                ? "블라인드(가상)"
+                : "혼자 맞추기"}
           </h1>
+          {daily && today && (
+            <span className="text-sm text-white/60 tabular-nums">
+              {shortDate(today)}
+            </span>
+          )}
+          {daily && doneToday && (
+            <span
+              data-cube-daily-done
+              className="rounded-full border border-emerald-300/50 bg-emerald-400/15 px-2 py-0.5 font-semibold text-emerald-200 text-xs"
+            >
+              오늘 완료
+            </span>
+          )}
+          {!daily && mode === "solo" && <DailyLink />}
           <label className="ml-auto flex items-center gap-1 text-sm">
             크기
             <select
               data-cube-size
               value={n}
-              disabled={preparing}
+              disabled={preparing || officialLive}
               onChange={(e) => {
                 stopReplay();
                 scrambleRequest.current++;
                 setPreparing(false);
+                setAttempt(null);
                 setN(Number(e.target.value));
                 e.target.blur();
               }}
               className="rounded bg-white/10 px-2 py-1 disabled:opacity-60"
             >
-              {SIZES.map((s) => (
+              {sizes.map((s) => (
                 <option key={s} value={s} className="bg-neutral-800">
                   {s}×{s}
                 </option>
@@ -402,10 +510,20 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
             type="button"
             data-cube-scramble-button
             onClick={() => void doScramble()}
-            disabled={preparing}
-            className="rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black text-sm disabled:opacity-60"
+            disabled={preparing || officialLive}
+            className={`rounded-lg px-4 py-1.5 font-semibold text-sm disabled:opacity-60 ${
+              daily && doneToday
+                ? "border border-white/25 bg-white/10 text-white"
+                : "bg-sky-500 text-black"
+            }`}
           >
-            {preparing ? "섞기 준비 중…" : "섞기"}
+            {preparing
+              ? "섞기 준비 중…"
+              : !daily
+                ? "섞기"
+                : doneToday
+                  ? "연습으로 다시"
+                  : "오늘의 섞기 받기"}
           </button>
           {(phase === "memo" || phase === "blindSolve") && (
             <button
@@ -418,7 +536,10 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
           )}
         </header>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_260px]">
+        <div
+          className="grid gap-4 md:grid-cols-[1fr_260px]"
+          data-cube-daily-attempt={daily ? (attempt?.kind ?? "") : undefined}
+        >
           <section className="relative flex flex-col items-center gap-2">
             {alertOn && spotted && phase === "solving" && (
               <div
@@ -497,6 +618,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                   prior,
                 )}
                 combo={session.longestCombo}
+                practice={daily && attempt?.kind === "practice"}
                 short={
                   short && short.scramble === session.scramble
                     ? short.value
@@ -504,6 +626,16 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                 }
               />
             )}
+            {phase === "done" &&
+              daily &&
+              attempt?.kind === "official" &&
+              todayEntry?.status === "done" &&
+              todayEntry.date === attempt.date && (
+                <div className="flex items-center gap-3 md:hidden">
+                  {todayEntry.marks && entryMarks(todayEntry)}
+                  <DailyShare entry={todayEntry} />
+                </div>
+              )}
             {phase === "done" && met.length > 0 && (
               <p
                 className="text-white/70 text-xs"
@@ -536,57 +668,70 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
             />
           </section>
 
-          <aside className="flex flex-col gap-2 text-sm" data-cube-records>
-            <h2 className="font-semibold">
-              {n}×{n} 기록
-            </h2>
-            <dl className="grid grid-cols-3 gap-1 text-center">
-              <Stat label="최고" value={formatMs(best ?? undefined)} />
-              <Stat label="5번 평균" value={formatMs(averageOf(records, 5))} />
-              <Stat
-                label="12번 평균"
-                value={formatMs(averageOf(records, 12))}
-              />
-            </dl>
-            {records.length === 0 ? (
-              <p className="text-white/50 text-xs">
-                아직 기록이 없어요. 섞고 맞추면 여기에 쌓여요.
-              </p>
-            ) : (
-              <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
-                {records.slice(0, 30).map((r, i) => (
-                  <li
-                    key={`${r.at}-${r.scramble}`}
-                    title={splitTitle(r)}
-                    className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
-                  >
-                    <span className="w-6 text-right text-white/40 text-xs">
-                      {r.no ?? records.length - i}
-                    </span>
-                    <span className="w-16 font-mono tabular-nums">
-                      {formatMs(resultMs(r))}
-                      {r.penalty > 0 && r.ms !== null ? "+" : ""}
-                    </span>
-                    <span className="text-white/50 text-xs">{r.moves}수</span>
-                    {r.replay && (
-                      <button
-                        type="button"
-                        onClick={() => replay(r)}
-                        className="ml-auto text-sky-300 text-xs hover:underline"
-                      >
-                        다시 보기
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-            {last && (
-              <p className="break-all text-white/40 text-xs">
-                지난 섞기: {last.scramble}
-              </p>
-            )}
-          </aside>
+          {daily ? (
+            <DailyPanel
+              today={today}
+              n={n}
+              entries={dailyList}
+              streak={today ? dailyStreak(dailyList, today) : 0}
+              live={officialLive}
+            />
+          ) : (
+            <aside className="flex flex-col gap-2 text-sm" data-cube-records>
+              <h2 className="font-semibold">
+                {n}×{n} 기록
+              </h2>
+              <dl className="grid grid-cols-3 gap-1 text-center">
+                <Stat label="최고" value={formatMs(best ?? undefined)} />
+                <Stat
+                  label="5번 평균"
+                  value={formatMs(averageOf(records, 5))}
+                />
+                <Stat
+                  label="12번 평균"
+                  value={formatMs(averageOf(records, 12))}
+                />
+              </dl>
+              {records.length === 0 ? (
+                <p className="text-white/50 text-xs">
+                  아직 기록이 없어요. 섞고 맞추면 여기에 쌓여요.
+                </p>
+              ) : (
+                <ol className="flex max-h-80 flex-col gap-0.5 overflow-y-auto pr-1">
+                  {records.slice(0, 30).map((r, i) => (
+                    <li
+                      key={`${r.at}-${r.scramble}`}
+                      title={splitTitle(r)}
+                      className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
+                    >
+                      <span className="w-6 text-right text-white/40 text-xs">
+                        {r.no ?? records.length - i}
+                      </span>
+                      <span className="w-16 font-mono tabular-nums">
+                        {formatMs(resultMs(r))}
+                        {r.penalty > 0 && r.ms !== null ? "+" : ""}
+                      </span>
+                      <span className="text-white/50 text-xs">{r.moves}수</span>
+                      {r.replay && (
+                        <button
+                          type="button"
+                          onClick={() => replay(r)}
+                          className="ml-auto text-sky-300 text-xs hover:underline"
+                        >
+                          다시 보기
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {last && (
+                <p className="break-all text-white/40 text-xs">
+                  지난 섞기: {last.scramble}
+                </p>
+              )}
+            </aside>
+          )}
         </div>
       </main>
     </div>
@@ -622,6 +767,7 @@ function ResultBox({
   gold,
   best,
   combo,
+  practice,
   short,
 }: {
   mode: SolveMode;
@@ -633,6 +779,8 @@ function ResultBox({
   best: boolean;
   /** 가장 긴 흐름 콤보 */
   combo: number;
+  /** 오늘의 섞기 연습(기록에 넣지 않았다) */
+  practice: boolean;
   short: ShortSolution | null;
 }) {
   const total = result.ms === null ? null : result.ms + result.penalty;
@@ -660,7 +808,15 @@ function ResultBox({
             : "DNF(맞지 않음)"
           : `${formatMs(total)}${result.penalty ? " (+2)" : ""}`}
       </span>
-      {best && (
+      {practice && (
+        <span
+          data-cube-practice
+          className="rounded-full border border-white/25 px-2 py-0.5 font-semibold text-white/70 text-xs"
+        >
+          연습
+        </span>
+      )}
+      {best && !practice && (
         <span
           data-cube-pb
           className="cube-gold rounded-full border px-2 py-0.5 font-semibold text-xs"
@@ -690,5 +846,33 @@ function ResultBox({
       )}
       {!dnf && <SplitList splits={splits} gold={gold} />}
     </div>
+  );
+}
+
+function entryMarks(e: DailyEntry) {
+  return (
+    <span data-cube-daily-marks={e.marks} className="text-sm tracking-wider">
+      {e.marks}
+    </span>
+  );
+}
+
+/** 혼자 맞추기 머리의 「오늘의 섞기」 길. 오늘 이 기기에서 한 크기가 있으면 「완료」 */
+function DailyLink() {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const today = kstDate(Date.now());
+    setDone(loadDaily().some((e) => e.date === today));
+  }, []);
+  return (
+    <a
+      href="/cube/daily"
+      data-cube-daily-link
+      data-cube-daily-done={done ? "" : undefined}
+      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/15 px-2.5 text-white/80 text-xs hover:bg-white/10"
+    >
+      오늘의 섞기
+      {done && <span className="text-emerald-300">✓</span>}
+    </a>
   );
 }

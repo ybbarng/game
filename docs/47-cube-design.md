@@ -444,6 +444,17 @@ three.js(이미 의존성, 큐브 화면에서만 늦게 불러오기).
 - 시험: `race-stages.test.ts`(기기마다 같음·말 그대로·차례·톡 고르기·구간 열), `progress/gold.test.ts`(옛 기록 없음·구간 없는 옛 기록과 섞임·벌점), `flow/strip.test.ts` 「흐름 콤보」(ManualClock), `solve-session.test.ts` 「가장 긴 흐름 콤보」, `settings.test.ts` 「대결 알림」. 화면 `cube-online.spec.ts`(컴퓨터 칸의 칩·결과 상자 구간 표·휴대폰 위 줄·1280×720·톡), `cube-solo.spec.ts` 「흐름 콤보와 구간 골드」(씨앗을 고정해 같은 섞기를 느리게·빠르게 두 번).
 - 남은 것: 소리(이정표 띵·골드 반짝·개인 최고 팡파르·콤보 음 높이), 공식 덩어리 「×n」, 이론 최고(해법 고르기와 함께), 여러 기기 대결에서 실제로 보기(`CUBE_MULTI=1`).
 
+### 8-9. 오늘의 섞기(2026-11-05, docs/51 2-4)
+
+- **주소** `/cube/daily`. 화면은 혼자 맞추기(`SolveApp`)에 `daily`를 켠 것이다: 크기는 3×3(기본)·2×2·4×4, 살펴보기는 늘 켬, 기록 칸 자리에 `DailyPanel`(오늘 결과·공유 글·연속 일수·지난 날). 들어가는 길은 첫 화면 「맞추기」 묶음의 한 줄 칸(`data-cube-daily-link`, 오늘 했으면 「오늘 완료」)과 혼자 맞추기 머리의 「오늘의 섞기」(✓).
+- **날짜·씨앗**(`cube/daily.ts`, 순수 함수): `kstDate(now)`는 한국 시각(UTC+9) 날짜, `dailySeed(date, n)`는 `cube-daily:날짜:크기`의 FNV-1a 32비트. 섞기는 `scrambleInWorker(dailyEvent(n), seed)`(2×2·3×3 무작위 상태, 4×4 임시 무작위 수). 화면은 `Date.now()`를 섞기를 받는 순간에 읽고, 켜 둔 채 자정을 넘기면 30초마다 날짜를 다시 본다.
+- **하루 한 번**: `beginDaily`가 그날 그 크기의 기록이 없으면 「시작함」(`status: "started"`)을 적고 기록 시도(official), 있으면 연습(practice, 아무것도 적지 않음). `finishDaily`는 「시작함」인 기록만 채운다. 시작함으로 남은 기록(끝내지 않고 떠남)은 DNF(떠남)로 보인다. 기록 시도 중에는 섞기·처음으로 명령과 크기 고르기를 막는다. 연습 결과 상자에는 「연습」을 붙이고 개인 최고는 보이지 않는다.
+- **저장 형식(새로 둠)**: `cube.daily.v1` = `{ version: 1, entries: DailyEntry[] }`, 날짜·크기마다 하나(새 날이 앞, 400개까지). 칸: `date`·`n`·`seed`·`scramble`(이 기기 안에만)·`startedAt`·`status`·`at`·`ms`(DNF면 null)·`penalty`·`moves`·`splits`(`records.ts` 꼴)·`combo`·`marks`(🟩🟨🟥⬜ 글)·`dnfReason`(`inspection`·`unsolved`·`left`). 읽을 때 깨진 칸·모르는 꼴·겹친 날짜는 건너뛰고 모르는 칸은 그대로 둔다(`daily.test.ts` 「깨진 저장·모르는 칸·옛 꼴과 섞여도 읽힌다」). 기록 시도는 `cube.records.v1`의 혼자 맞추기 기록에도 더하고 선택 칸 `daily`(날짜)를 단다. 칸이 없는 옛 기록은 그대로 읽힌다.
+- **공유 글**(`shareText`): 4줄(제목·날짜·크기 / 시간·칩 모양 / 단계 이름 / 주소), 섞기는 넣지 않는다. 칩 모양(`markString`)은 구간(`segmentsOf`)마다 이 시도 전의 같은 크기 혼자 맞추기 기록 평균(`segmentAverages`)과 견준다(5% 넘게 빠름 🟩·±5% 🟨·느림 🟥·처음 ⬜). 복사는 `navigator.clipboard`, 못 하면 글을 골라 둔다.
+- **연속 일수**(`dailyStreak`): 맞춘 날이 이어진 수(크기 상관없이 하루, 오늘 아직이면 어제까지).
+- 순위표를 두지 않은 까닭: 서버가 없는 정적 사이트라 기록을 모을 곳이 없다. 친구끼리는 공유 글로 견준다.
+- 시험: `daily.test.ts`(UTC 15:00 앞뒤 날짜, 같은 날짜 같은 씨앗·섞기, 하루 한 번·연습·떠남 DNF, 연속 일수, 공유 글에 섞기 없음), 화면 `cube-daily.spec.ts`(데스크톱·휴대폰 세로: 첫 화면에서 들어가 받고 풀기, 결과·공유 글 복사, 다시 들어가면 「오늘 완료」와 같은 섞기의 연습, 1280×720 큐브 칸).
+
 ## 9. 여럿이 하기
 
 ### 9-1. 판 모양

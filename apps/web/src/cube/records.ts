@@ -37,6 +37,11 @@ export interface SolveRecord {
   splits?: string;
   /** 가장 긴 흐름 콤보(2026-11-05, docs/51 2-1). 4수 아래면 남기지 않는다 */
   combo?: number;
+  /**
+   * 오늘의 섞기로 기록한 시도면 그 날짜(한국 시각 "YYYY-MM-DD", 2026-11-05, docs/51 2-4). 연습은 기록에 넣지 않는다.
+   * 날마다의 결과는 따로 `cube.daily.v1`(`daily.ts`)에도 둔다
+   */
+  daily?: string;
   /** 혼자 맞추기 「상황 알림」을 켰을 때 이번 판에서 만난 내 목록 상황 id(만난 차례, 2026-11-04) */
   myCases?: string[];
 }

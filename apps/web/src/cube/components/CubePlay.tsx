@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
+import { cn } from "@/lib/cn";
 
 import {
   faceGrid,
@@ -455,7 +456,11 @@ export function CubePlay({
             {failed ? (
               <p
                 data-cube-no3d
-                className="p-6 text-center text-sm text-white/70"
+                // 휴대폰에서는 수 흐름 띠가 칸 위쪽에 겹치니 그만큼 내린다
+                className={cn(
+                  "p-6 text-center text-sm text-white/70",
+                  flowSize && "max-sm:pt-14",
+                )}
               >
                 이 기기에서는 3D를 그릴 수 없어요. 펼친 그림으로 보여 드려요.
               </p>
