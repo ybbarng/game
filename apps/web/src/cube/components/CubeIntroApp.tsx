@@ -850,7 +850,7 @@ function NextStep({ onDone }: { onDone: () => void }) {
         data-intro-learn
         className="rounded-xl border border-sky-300/60 bg-sky-500/25 px-4 py-3 hover:bg-sky-500/35"
       >
-        <b>해법 배우기</b>
+        <b>맞추는 법 배우기</b>
         <span className="block text-white/70 text-xs">
           처음 맞춰 본다면. 첫 단원 「{FIRST_LESSON?.title}」부터
         </span>

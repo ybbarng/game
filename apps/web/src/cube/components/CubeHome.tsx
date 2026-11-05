@@ -11,7 +11,7 @@ import { CubeHero } from "./CubeHero";
 
 /**
  * 큐브 첫 화면(`/cube`). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 아래에는 고를 것을
- * 묶음 여섯(맞추기·대결·배우기·연습·더 알아보기·실물 큐브)으로 나눈 2열 격자. 항목은 아이콘과 짧은 이름만 둔다
+ * 묶음 여섯(배우기·맞추기·대결·연습·더 알아보기·실물 큐브)으로 나눈 2열 격자. 항목은 아이콘과 짧은 이름만 둔다
  * (고를 것이 많아 무엇부터 볼지 헷갈리지 않게, docs/47 0절 2026-11-04).
  */
 
@@ -39,7 +39,7 @@ interface Group {
 /** 배우기 묶음 첫 칸: 처음 온 사람은 「처음이라면」, 진도가 있으면 그 자리가 「이어서 배우기: ○○」 */
 const FIRST_TIME: Item = {
   icon: "👋",
-  title: "처음이라면",
+  title: "처음이라면: 화면 쓰는 법",
   href: "/cube/intro",
   tone: "amber",
   span: true,
@@ -47,11 +47,20 @@ const FIRST_TIME: Item = {
 };
 
 /**
- * 묶음 여섯(2026-11-04 점검 뒤): 맞추기 → 대결 → 배우기 → 연습 → 더 알아보기 → 실물 큐브. 강조는 배우기 첫 칸 하나뿐
- * (처음 온 사람이 못 하는 「혼자 맞추기」와 함께 빛나 길이 갈렸다). 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다
+ * 묶음 여섯(2026-11-05 점검 뒤): 배우기 → 맞추기 → 대결 → 연습 → 더 알아보기 → 실물 큐브. 처음 온 사람의 길이 맨 위에
+ * 오게 배우기를 앞에 둔다. 강조는 배우기 첫 칸 하나뿐(처음 온 사람이 못 하는 「혼자 맞추기」와 함께 빛나 길이 갈렸다).
+ * 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다
  */
 function groups(learnFirst: Item, dailyDone: boolean): Group[] {
   return [
+    {
+      title: "배우기",
+      items: [
+        learnFirst,
+        { icon: "🎓", title: "맞추는 법 배우기", href: "/cube/learn" },
+        { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
+      ],
+    },
     {
       title: "맞추기",
       items: [
@@ -79,14 +88,6 @@ function groups(learnFirst: Item, dailyDone: boolean): Group[] {
       items: [
         { icon: "🏁", title: "친구와 대결", href: "/cube/online" },
         { icon: "🤖", title: "컴퓨터와 대결", href: "/cube/vs" },
-      ],
-    },
-    {
-      title: "배우기",
-      items: [
-        learnFirst,
-        { icon: "🎓", title: "해법 배우기", href: "/cube/learn" },
-        { icon: "⌨️", title: "키 익히기", href: "/cube/keys/learn" },
       ],
     },
     {
