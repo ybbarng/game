@@ -38,7 +38,7 @@ import {
   TimerMachine,
 } from "./machine";
 import { ScramblePicture } from "./ScramblePicture";
-import { playTimerCue } from "./sound";
+import { playTimerCue, WARN_CUE } from "./sound";
 import {
   formatAverage,
   formatSingle,
@@ -156,7 +156,7 @@ export function CubeTimerApp() {
       const sound = b.settings.sound;
       switch (e.type) {
         case "inspection-warning":
-          if (sound) playTimerCue(e.at === 8_000 ? "warn8" : "warn12");
+          if (sound) playTimerCue(WARN_CUE[e.at]);
           break;
         case "start":
           runScramble.current = s;

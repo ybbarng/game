@@ -90,6 +90,30 @@ describe("혼자 맞추기", () => {
     expect(records[0]?.splits).toMatch(/^cross@0 .*ll@1500$/);
   });
 
+  it("이정표 소리: 같은 수에 여럿이 켜져도 칩 하나에 한 번, 다 맞춘 수는 맞춤 소리만", () => {
+    const { clock, cues, s, type } = setup({ inspection: false });
+    s.start("U R");
+    type("R'");
+    expect(cues).toEqual(["milestone"]);
+    type("U");
+    type("U'");
+    // 이미 켜진 칩으로 돌아와도 다시 나지 않는다
+    expect(cues).toEqual(["milestone"]);
+    clock.advance(1_000);
+    type("U'");
+    expect(s.phase).toBe("done");
+    expect(cues).toEqual(["milestone", "solved"]);
+  });
+
+  it("살펴보기 15초에 다른 알림(지금부터 +2)", () => {
+    const { clock, cues, s } = setup();
+    s.start(SCRAMBLE);
+    clock.advance(14_999);
+    expect(cues).toEqual(["inspect8", "inspect12"]);
+    clock.advance(1);
+    expect(cues).toEqual(["inspect8", "inspect12", "inspect15"]);
+  });
+
   it("가장 긴 흐름 콤보: 1초 안쪽으로 이어 친 면 돌리기를 세어 기록에 남긴다(4수부터)", () => {
     const { clock, records, s, type } = setup({ inspection: false });
     s.start("R U R' U' R2");

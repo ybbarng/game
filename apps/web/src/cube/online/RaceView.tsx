@@ -22,14 +22,16 @@ import {
 import type { RaceSnapshot } from "@/net/race/types";
 import { faceGrid, type StickerMarks } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
-import { CubePlay, playCubeCue } from "../components/CubePlay";
+import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { useMoveKeys } from "../components/MoveChip";
+import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
 import { type CubeLook, lookColors, lookPatterns } from "../item-look";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
+import { INSPECTION_MS } from "../solve-session";
 import { planInWorker } from "../worker";
 import { checkBotRun, sameAsBotSolve } from "./bot-racer";
 import {
@@ -168,7 +170,7 @@ export function RaceView({
     (partyRound?.party?.knockedOut[id] ?? partyLive?.knockedOut[id]) !==
     undefined;
   const myHp = partyHp(room.me);
-  // 내 체력이 20% 아래로 내려가면 가벼운 경고(소리는 살펴보기 알림을 다시 쓴다), 판마다 한 번
+  // 내 체력이 20% 아래로 내려가면 가벼운 경고음(제한 도전과 같은 `cubeLow`), 판마다 한 번
   const myLow =
     myHp !== undefined &&
     myHp > 0 &&
@@ -179,7 +181,7 @@ export function RaceView({
   useEffect(() => {
     if (!myLow || warned.current === syncKey) return;
     warned.current = syncKey;
-    playCubeCue(settings, "cubeInspect");
+    playCubeCue(settings, "cubeLow");
   });
 
   const myState: PuzzleState =
@@ -275,7 +277,7 @@ export function RaceView({
   const shownMove =
     hintMove ?? (helpLevel >= 2 ? (helpHint?.move ?? null) : null);
   const hintKeys = shownMove && keysOf ? keysOf(shownMove) : null;
-  // 받기·맞기 소리(기존 효과음을 다시 쓴다): 새 아이템 → 타이머 시작음, 맞음 → 틀린 수 소리
+  // 받기·맞기 소리: 새 아이템 → cubeItemGet, 맞음 → cubeItemHit(막으면 소리 없음)
   const itemCue = useRef({ key: "", slot: "", notices: new Set<string>() });
   useEffect(() => {
     if (!itemsOn) return;
@@ -286,13 +288,12 @@ export function RaceView({
       cue.notices = new Set();
     }
     const slotNow = myItem ?? "";
-    if (slotNow && slotNow !== cue.slot)
-      playCubeCue(settings, "cubeTimerStart");
+    if (slotNow && slotNow !== cue.slot) playCubeCue(settings, "cubeItemGet");
     cue.slot = slotNow;
     for (const nt of screen?.notices ?? [])
       if (!cue.notices.has(nt.key)) {
         cue.notices.add(nt.key);
-        if (!nt.blocked) playCubeCue(settings, "invalid");
+        if (!nt.blocked) playCubeCue(settings, "cubeItemHit");
       }
   });
   // 되감기·맞은 섞기는 내 수가 아니어서 장면이 따라 돌지 않는다: 그만큼 다시 칠한다
@@ -370,6 +371,17 @@ export function RaceView({
     );
     const prev = leader.current;
     leader.current = order[0];
+    // 소리(docs/51 5절): 1등이 바뀌면 짧게, 아니면 내가 지났을 때만 띵(상대 이정표는 소리 없음). 톡 설정과 따로 간다
+    playCubeSound(
+      settings,
+      raceMilestoneSound({
+        passed,
+        me: room.me,
+        prevLeader: prev,
+        leader: order[0],
+        meDone: snap.peers.find((p) => p.id === room.me)?.status === "done",
+      }),
+    );
     if (alerts !== "on") return;
     const now = snap.elapsed ?? 0;
     const shown: Record<string, Toast> = {};
@@ -396,10 +408,26 @@ export function RaceView({
     toastTimers.current.push(timer);
   });
 
-  // 살펴보기·풀림·맞춤 소리
+  // 살펴보기·출발·맞춤 소리. 살펴보기는 들어설 때 한 번, 대회처럼 8초 한 번·12초 두 번, 15초에 모두 출발하면 「삐-뽀」
   const lastCue = useRef("");
+  const lastPhase = useRef<{ key: string; phase: string }>({
+    key: "",
+    phase: "",
+  });
+  const inspectSeen = useRef<{ key: string; ms: number }>({ key: "", ms: 0 });
   useEffect(() => {
     const me = snap?.peers.find((p) => p.id === room.me);
+    if (phase === "inspect" && snap?.inspectionLeft !== undefined) {
+      const ms = INSPECTION_MS - snap.inspectionLeft;
+      const seen = inspectSeen.current;
+      const prevMs = seen.key === syncKey ? seen.ms : ms;
+      inspectSeen.current = { key: syncKey, ms };
+      playCubeSound(settings, raceInspectSound(prevMs, ms));
+    }
+    const was = lastPhase.current;
+    lastPhase.current = { key: syncKey, phase };
+    if (was.key === syncKey && was.phase === "inspect" && phase === "race")
+      playCubeCue(settings, "cubeInspectEnd");
     const key = `${syncKey}|${phase}|${me?.status}`;
     if (key === lastCue.current) return;
     lastCue.current = key;

@@ -49,6 +49,10 @@ export type SolvePhase =
 export type SessionCue =
   | "inspect8"
   | "inspect12"
+  /** 살펴보기 15초: 지금 시작하면 +2(대회의 끝 알림) */
+  | "inspect15"
+  /** 맞추는 동안 이정표 칩 하나가 새로 켜짐(같은 수에 여럿이 켜져도 한 번, 다 맞춘 수는 빼고) */
+  | "milestone"
   | "solved"
   | "dnf"
   /** 제한 도전: 체력이 20% 아래로 내려감 */
@@ -76,7 +80,13 @@ export interface MoveEntry {
 
 export const INSPECTION_MS = 15_000;
 export const INSPECTION_DNF_MS = 17_000;
-export const INSPECTION_ALERTS = [8_000, 12_000] as const;
+/** 살펴보기 알림 시각. 대회처럼 8·12초, 15초에는 다른 소리(docs/51 5절) */
+export const INSPECTION_ALERTS = [8_000, 12_000, 15_000] as const;
+const ALERT_CUE: Record<(typeof INSPECTION_ALERTS)[number], SessionCue> = {
+  8000: "inspect8",
+  12000: "inspect12",
+  15000: "inspect15",
+};
 
 export interface SolveSessionOptions {
   n: number;
@@ -230,11 +240,7 @@ export class SolveSession {
     } else if (this.inspection) {
       this.phase = "inspect";
       for (const at of INSPECTION_ALERTS)
-        this.timers.push(
-          this.clock.after(at, () =>
-            this.cue(at === 8_000 ? "inspect8" : "inspect12"),
-          ),
-        );
+        this.timers.push(this.clock.after(at, () => this.cue(ALERT_CUE[at])));
       this.timers.push(
         this.clock.after(INSPECTION_DNF_MS, () => this.inspectionTimeout()),
       );
@@ -515,6 +521,8 @@ export class SolveSession {
         this.splits.push({ id, ms: t });
         fresh = true;
       }
+    // 칩 하나에 한 번. 다 맞춘 수는 맞춤 소리가 맡는다
+    if (fresh && !solved) this.cue("milestone");
     // 시간 체력: 새 칩 하나에 한 번 채운다(다 맞춘 수는 채우지 않는다)
     const l = this.limit;
     if (fresh && !solved && l?.kind === "time") {

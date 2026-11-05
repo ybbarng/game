@@ -2,7 +2,7 @@
 
 import type { CubeMove } from "@game/cube-engine";
 import { realClock } from "@game/fair-play";
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import {
   comboLevel,
@@ -39,16 +39,33 @@ export function moveFace(n: number, m: CubeMove): number {
 
 export type FlowSize = "large" | "small";
 
-/** 띠 상태와 더하기·비우기. `orient`는 수를 둔 때 들고 있는 방향(키 그림과 같은 기준) */
+/**
+ * 띠 상태와 더하기·비우기. `orient`는 수를 둔 때 들고 있는 방향(키 그림과 같은 기준).
+ * 더하기는 앞뒤 띠를 돌려준다(콤보 단계 소리가 단계를 넘은 순간을 본다). 빠르게 이어 쳐도 앞 수를 놓치지 않게
+ * 마지막 띠를 ref로도 들고 있는다
+ */
 export function useFlowStrip(n: number) {
   const [strip, setStrip] = useState<FlowStripState>(EMPTY_FLOW);
+  const latest = useRef<FlowStripState>(EMPTY_FLOW);
   return {
     strip,
-    push: (m: CubeMove, orient: Orient) =>
-      setStrip((s) =>
-        pushFlow(s, n, m, orient[moveFace(n, m)] ?? null, realClock.now()),
-      ),
-    clear: () => setStrip(EMPTY_FLOW),
+    push: (m: CubeMove, orient: Orient) => {
+      const before = latest.current;
+      const after = pushFlow(
+        before,
+        n,
+        m,
+        orient[moveFace(n, m)] ?? null,
+        realClock.now(),
+      );
+      latest.current = after;
+      setStrip(after);
+      return { before, after };
+    },
+    clear: () => {
+      latest.current = EMPTY_FLOW;
+      setStrip(EMPTY_FLOW);
+    },
   };
 }
 

@@ -106,6 +106,11 @@ describe("TimerMachine — 살펴보기", () => {
       { type: "inspection-warning", at: 8_000 },
       { type: "inspection-warning", at: 12_000 },
     ]);
+    // 15초(지금부터 +2)에 다른 알림
+    clock.advance(3_000);
+    expect(
+      events.filter((e) => e.type === "inspection-warning").at(-1),
+    ).toEqual({ type: "inspection-warning", at: 15_000 });
   });
 
   it("살펴보기 중 누르고 있기를 일찍 떼면 살펴보기로 돌아간다", () => {
