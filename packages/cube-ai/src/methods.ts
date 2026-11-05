@@ -390,6 +390,7 @@ export const BEGINNER3_STEPS: readonly Step[] = [
  */
 export const BEGINNER3_TAUGHT_STEPS: readonly Step[] = [
   (s) => {
+    s.lookBarrier = true;
     whiteUp(s);
     crossTaught(s);
     s.stage("cross");
@@ -540,8 +541,9 @@ export function solveExpert3(state: PuzzleState): HumanSolve {
 /**
  * 2×2 기준 방향: 흰 꼭짓점 하나(아래층에 있으면 그것)를 "아래 앞 오른쪽" 조각으로 본다.
  * 그 조각의 스티커를 흰색부터 시계 방향으로 읽으면 (아래, 앞, 오른쪽) 색이다.
+ * 시험도 같은 기준으로 수를 다시 둔다(`taught-one.test.ts`).
  */
-function start2(state: PuzzleState): Solve {
+export function start2(state: PuzzleState): Solve {
   const f = toFacelets(2, state);
   const slots = cornerFacelets(2);
   const order = [4, 5, 6, 7, 0, 1, 2, 3];
@@ -593,6 +595,7 @@ export function solveBeginner2(
 ): HumanSolve {
   const s = start2(state);
   if (opts.taught) {
+    s.lookBarrier = true;
     s.apply("z2");
     cornersTaught(s);
     s.apply("z2");
