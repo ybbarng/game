@@ -163,7 +163,7 @@ export interface PartyOutcome {
   knockedOut: Record<string, number>;
   /** 대결 틀이 빼거나(틀린 수 등) 시각을 판정하지 못해 빠진 때, 아이템 규칙을 어겨 빠진 때 */
   left: Record<string, number>;
-  /** 순위에 넣지 않는 사람(셋 이상 판에서 시각이 다툼인 사람) */
+  /** 순위에 넣지 않는 사람(셋 이상 판에서 시각이 다툼인 사람, `PartyInput.exclude`로 처음부터 뺀 사람) */
   unranked: string[];
   hits: PartyHit[];
   /** 아이템전이면 */
@@ -190,6 +190,12 @@ export interface PartyInput {
   hp?: boolean;
   /** 아이템전: 판 씨앗(뽑기·섞을 수). `draw`는 시험만 넣는다(모든 기기가 같은 것을 넣는다. 제품은 `drawItem`) */
   items?: { seed: string; draw?: typeof drawItem };
+  /**
+   * 판정에서 처음부터 뺄 사람(이 기기가 계획을 맞춰 보지 못한 컴퓨터, docs/47 10-2). 그 사람의 이정표·아이템·맞춤은
+   * 판정에 끼지 않는다(남을 깎거나 1등 견제 대상이 되지 않고, 판을 정하지 않는다). 순위 없음으로 끝에 둔다.
+   * 기기마다 본 것으로 정하므로 기기마다 다를 수 있다
+   */
+  exclude?: readonly string[];
 }
 
 type Event =
@@ -235,9 +241,12 @@ export function judgeParty(input: PartyInput): PartyOutcome {
   const seed = input.items?.seed;
   const draw = input.items?.draw ?? drawItem;
   const ladder = partyLadder(n);
+  const excluded = new Set(input.exclude ?? []);
   const fight = [...input.players]
     .sort()
-    .filter((id) => logs[id] && logs[id]?.status !== "forfeit");
+    .filter(
+      (id) => logs[id] && logs[id]?.status !== "forfeit" && !excluded.has(id),
+    );
   const hp: Record<string, number> = {};
   if (withHp) for (const id of fight) hp[id] = PARTY_HP;
   const damage = ladder.damage / Math.max(1, fight.length - 1);
@@ -596,13 +605,19 @@ export function judgeParty(input: PartyInput): PartyOutcome {
       items.owed[o.to] = list;
     }
 
+  // 뺀 사람(기권하지 않은 사람만): 순위 없음
+  const dropped = [...input.players]
+    .sort()
+    .filter(
+      (id) => excluded.has(id) && logs[id] && logs[id]?.status !== "forfeit",
+    );
   const out: PartyOutcome = {
     hp: Object.fromEntries(
       Object.entries(hp).map(([p, v]) => [p, Math.max(0, v)]),
     ),
     knockedOut,
     left,
-    unranked,
+    unranked: [...unranked, ...dropped],
     hits,
     ...(items ? { items } : {}),
     until,
@@ -611,23 +626,26 @@ export function judgeParty(input: PartyInput): PartyOutcome {
   };
   if (decided) {
     out.decided = decided;
-    rank(out, fight, active, input.players);
+    rank(out, fight, active, input.players, dropped);
   }
   return out;
 }
 
-/** 정해진 판의 차례: 이긴 사람 → 남은 사람(체력 순) → 0이 됐거나 빠진 사람(늦게 빠진 순) → 순위 없음 → 기권 */
+/** 정해진 판의 차례: 이긴 사람 → 남은 사람(체력 순) → 0이 됐거나 빠진 사람(늦게 빠진 순) → 순위 없음(뺀 사람 포함) → 기권 */
 function rank(
   out: PartyOutcome,
   fight: readonly string[],
   active: ReadonlySet<string>,
   players: readonly string[],
+  dropped: readonly string[],
 ): void {
   const d = out.decided as NonNullable<PartyOutcome["decided"]>;
   const unranked = new Set(out.unranked);
-  const forfeit = [...players].sort().filter((p) => !fight.includes(p));
+  const forfeit = [...players]
+    .sort()
+    .filter((p) => !fight.includes(p) && !dropped.includes(p));
   if (d.end === "noDecision") {
-    out.ranking = [...fight, ...forfeit];
+    out.ranking = [...fight, ...dropped, ...forfeit];
     return;
   }
   const outAt = (p: string) =>
@@ -647,6 +665,7 @@ function rank(
   out.ranking = [
     ...ranked,
     ...fight.filter((p) => unranked.has(p)),
+    ...dropped,
     ...forfeit,
   ];
   for (const [i, p] of ranked.entries()) {

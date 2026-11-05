@@ -32,7 +32,7 @@ import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
 import { INSPECTION_MS } from "../solve-session";
 import { planInWorker } from "../worker";
-import { checkBotRun, sameAsBotSolve } from "./bot-racer";
+import { BOT_UNVERIFIED_NOTE, checkBotRun, sameAsBotSolve } from "./bot-racer";
 import {
   type ActiveHandicap,
   goalLabel,
@@ -78,7 +78,7 @@ import {
   splitCell,
   splitColumns,
 } from "./race-stages";
-import type { CubeRoom, RoundRecord } from "./room";
+import { type CubeRoom, excludeUnverified, type RoundRecord } from "./room";
 
 /**
  * 대결 한 판의 화면(온라인 방·컴퓨터와 대결이 함께 쓴다, docs/47 9-1).
@@ -958,7 +958,13 @@ function ResultBox({
   party: PartyOutcome | undefined;
 }) {
   // 판 기록이 있으면 그 결과(「평균 대비」·체력바면 순위를 다시 매긴 것). 체력바는 판 기록이 생기기 전 결과를 보이지 않는다
-  const result = round?.result ?? (party ? undefined : snap.result);
+  // 계획을 맞춰 보지 못한 컴퓨터는 이 기기에서 순위에서 뺀다(판 기록이 생기기 전 결과도 같게)
+  const unverified = round?.unverified ?? room.unverifiedBots();
+  const result =
+    round?.result ??
+    (party || !snap.result
+      ? undefined
+      : excludeUnverified(snap.result, unverified));
   const hp = round?.party;
   const score = round?.score;
   const session = room.anySession();
@@ -974,6 +980,8 @@ function ResultBox({
     for (const p of room.state.players) {
       const level = p.bot;
       if (!level || !round.players.includes(p.id)) continue;
+      // 맞춰 보지 못하는 컴퓨터는 판을 열 때 이미 뺐다(「계획 확인 못 함 · 순위에서 뺌」)
+      if (round.unverified?.includes(p.id)) continue;
       // 기권한 컴퓨터는 둔 수가 없다(계획을 못 만들었거나 그 판을 떠났다)
       if (round.result.players[p.id]?.status === "forfeit") continue;
       const log = round.logs[p.id] ?? [];
@@ -1198,7 +1206,9 @@ function ResultBox({
               !(hp && PARTY_REASONS.includes(p.reason))
             )
               notes.push(p.reason);
-            if (bot && id in botChecks)
+            const dropped = !!bot && unverified.includes(id);
+            if (dropped) notes.push(BOT_UNVERIFIED_NOTE);
+            else if (bot && id in botChecks)
               notes.push(
                 botChecks[id] === null
                   ? "컴퓨터 계획 확인 못 함(다른 버전)"
@@ -1229,7 +1239,9 @@ function ResultBox({
                 <td className="text-right font-mono tabular-nums">
                   {p?.status === "done"
                     ? p.unranked
-                      ? "확인 안 됨"
+                      ? dropped
+                        ? "확인 못 함"
+                        : "확인 안 됨"
                       : formatMs(time)
                     : p?.status === "forfeit"
                       ? "기권"

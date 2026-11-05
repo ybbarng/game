@@ -265,6 +265,20 @@ export function attachBot(init: AttachBotInit): BotHandle {
   };
 }
 
+/**
+ * 이 기기가 그 컴퓨터의 계획을 다시 계산해 맞춰 볼 수 있나(docs/47 10-2). 모르는 계획 표 버전(「9:pro」 등)이면 못 한다.
+ * 옛 단계 글은 모양 만들기 계획이 없어 모양 판에서도 못 한다(새 방장은 옛 글을 만들지 않는다).
+ * 못 하는 컴퓨터는 아무 시각에나 끝냈다고 해도 가려낼 수 없으므로 이 기기에서는 순위·승자·점수에서 뺀다(`excludeUnverified`)
+ */
+export function botVerifiable(level: string, shape: boolean): boolean {
+  const skill = readBotSkill(level);
+  if (!skill) return false;
+  return !(shape && skill.kind === "legacy");
+}
+
+/** 계획을 맞춰 보지 못해 순위에서 뺀 컴퓨터에 붙이는 글(결과 상자) */
+export const BOT_UNVERIFIED_NOTE = "계획 확인 못 함 · 순위에서 뺌";
+
 /** 시각 비교 허용 오차(ms). 계획 시각은 정수, 늦게 온 만큼(delay)은 소수일 수 있어 뺄셈 오차만 둔다 */
 export const BOT_TIME_TOLERANCE_MS = 1;
 
@@ -272,7 +286,8 @@ export const BOT_TIME_TOLERANCE_MS = 1;
  * 컴퓨터가 계획대로 두었나(다른 기기에서 다시 계산해 본다). 수 차례와 시각을 함께 본다.
  * 시각: 보고 시각 − 계획 시각이 모든 수에서 0 이상의 같은 값이어야 한다(계획이 늦게 와서 한꺼번에 미룬 만큼).
  * 그래서 방장이 컴퓨터를 계획보다 빨리 두고 보고 시각을 작게 적으면 드러난다.
- * 단계 글이 이 기기가 모르는 계획 표 버전이면 다시 계산하지 않고 null(「확인 못 함」, 다른 버전 기기끼리 잘못 의심하지 않게)
+ * 단계 글이 이 기기가 모르는 계획 표 버전이면 다시 계산하지 않고 null(「확인 못 함」, 다른 버전 기기끼리 잘못 의심하지 않게).
+ * 그런 컴퓨터는 순위에서 뺀다(`botVerifiable`)
  */
 export async function checkBotRun(
   level: string,
@@ -287,10 +302,7 @@ export async function checkBotRun(
   /** 모양 만들기 판의 목표 모양 아이디 */
   shape?: string,
 ): Promise<boolean | null> {
-  const skill = readBotSkill(level);
-  if (!skill) return null;
-  // 옛 단계 글은 모양 만들기 계획이 없다(새 방장은 옛 글을 만들지 않는다)
-  if (shape !== undefined && skill.kind === "legacy") return null;
+  if (!botVerifiable(level, shape !== undefined)) return null;
   const seed = botSeed(raceSeed, botId);
   const made = await (shape === undefined
     ? plan(level, n, start, seed)
