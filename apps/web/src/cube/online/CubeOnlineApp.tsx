@@ -16,6 +16,7 @@ import { botSupports } from "./bot-racer";
 import { HandicapPanel } from "./HandicapPanel";
 import { localAverages } from "./handicap";
 import { nextLabel } from "./MatchBoard";
+import { PARTY_MODE_LABELS, PARTY_MODES } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
@@ -184,7 +185,9 @@ export function CubeOnlineApp() {
           {state && state.round > 0 && (
             <span className="text-sm text-white/60">
               {state.round}번째 판 · {FORMAT_LABELS[state.settings.format]}
-              {state.settings.party ? " · 체력바" : ""}
+              {state.settings.party
+                ? ` · ${PARTY_MODE_LABELS[state.settings.party].replace("파티: ", "")}`
+                : ""}
             </span>
           )}
         </header>
@@ -365,16 +368,20 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             data-cube-party
             value={s.party ?? "normal"}
             onChange={(e) =>
-              room.setParty(e.target.value === "hp" ? "hp" : null)
+              room.setParty(
+                PARTY_MODES.find((m) => m === e.target.value) ?? null,
+              )
             }
             className="rounded bg-white/10 px-2 py-1"
           >
             <option value="normal" className="bg-neutral-800">
               일반
             </option>
-            <option value="hp" className="bg-neutral-800">
-              파티: 체력바
-            </option>
+            {PARTY_MODES.map((m) => (
+              <option key={m} value={m} className="bg-neutral-800">
+                {PARTY_MODE_LABELS[m]}
+              </option>
+            ))}
           </select>
         </Field>
         <Field label="방식">

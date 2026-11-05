@@ -15,7 +15,8 @@ import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceSession } from "@/net/race/race-session";
-import { BOT_NO_PLAN } from "./race-game";
+import { isItemText, parseItemText, undoMoves } from "./items";
+import { BOT_NO_PLAN, type CubeAct } from "./race-game";
 
 /**
  * 대결에 든 컴퓨터(docs/47 9-1·10절). 방장 기기가 돌리지만 대결 틀에는 다른 사람과 똑같이 한 참가자다
@@ -61,7 +62,7 @@ export const planHere: PlanFn = (level, n, start, seed) =>
   botPlan(level, n, start, seed);
 
 export interface AttachBotInit {
-  session: RaceSession<CubeMove, PuzzleState>;
+  session: RaceSession<CubeAct, PuzzleState>;
   id: string;
   level: BotLevel;
   n: number;
@@ -71,46 +72,100 @@ export interface AttachBotInit {
   onPlanned?: (attempt: number) => void;
 }
 
+/** 컴퓨터가 계획 밖의 수(맞은 섞기 되돌리기, 되감은 수 다시 두기)를 두는 간격(ms) */
+export const BOT_FORCED_MS = 250;
+
+/** 붙인 컴퓨터를 다루는 손잡이(아이템전: 방이 판정을 보고 부른다) */
+export interface BotHandle {
+  detach: () => void;
+  /** 맞은 한 수 섞기(넣은 수 글)를 넣었다: 바로 되돌리는 수를 둔다 */
+  afterHit(moves: string): void;
+  /** 되감기를 썼다: 되돌린 수(둔 차례대로)를 다시 둔다 */
+  afterRewind(undone: readonly CubeMove[]): void;
+  /**
+   * 아이템을 썼다(그 수는 지금 시각으로 적힌다): 뒤 계획 수를 그 뒤로 미룬다. 계획보다 늦게 두는 중에 지금 시각의 수가 끼면
+   * 뒤 계획 수 시각이 거꾸로 가기 때문이다
+   */
+  afterItem(): void;
+  /** 화면 방해를 맞았다: 그만큼 멈춘다 */
+  pause(ms: number): void;
+  /** 계획 밖의 수가 남지 않았다(아이템을 써도 된다) */
+  idle(): boolean;
+}
+
 /**
- * 대결 하나에 컴퓨터를 붙인다. 떼는 함수를 돌려준다.
+ * 대결 하나에 컴퓨터를 붙인다. 떼는 손잡이를 돌려준다.
  * 계획은 씨앗을 안 순간(살펴보기 동안) 만들기 시작한다. 풀린 뒤에야 계획이 오면 그만큼 늦게 시작한 것으로 친다
- * (모든 시각을 늦은 만큼 미룬다. 한꺼번에 몰아 두지 않는다)
+ * (모든 시각을 늦은 만큼 미룬다. 한꺼번에 몰아 두지 않는다).
+ * 아이템전에서는 계획 밖의 수(`forced`)를 먼저 두고, 그만큼 뒤 계획 시각을 미룬다(미룬 양은 늘기만 한다, `checkBotRun`이 본다)
  */
-export function attachBot(init: AttachBotInit): () => void {
+export function attachBot(init: AttachBotInit): BotHandle {
   const { session, id, level, n, clock } = init;
   const planOf = init.plan ?? planHere;
   let attempt = -1;
   let moves: CubeMove[] | null = null;
   let times: number[] = [];
-  /** 계획이 늦게 와서 미룬 시간(ms) */
+  /** 계획이 늦게 와서(또는 아이템으로) 미룬 시간(ms) */
   let delay = 0;
   let scheduled = false;
   let cancel: (() => void) | undefined;
   let stopped = false;
+  /** 다음에 둘 계획 수 */
+  let j = 0;
+  /** 계획 밖의 수(먼저 둔다) */
+  let forced: CubeMove[] = [];
+  /** 멈춤이 끝나는 때(풀림 기준 ms) */
+  let pausedUntil = 0;
+  /** 마지막 계획 밖의 수를 둔 때(없으면 -1) */
+  let forcedAt = -1;
 
-  const step = (k: number, j: number) => {
+  const elapsedNow = () => session.snapshot().elapsed ?? 0;
+  const step = (k: number) => {
     cancel = undefined;
     if (stopped || k !== attempt || !moves) return;
     const snap = session.snapshot();
     if (snap.attempt !== k || snap.phase !== "race") return;
-    // 계획 시각(+ 늦게 온 만큼)으로 적는다. 다른 기기가 계획과 시각까지 맞춰 본다(`checkBotRun`)
-    const r = session.play(moves[j] as CubeMove, (times[j] as number) + delay);
-    if (!r.ok || r.solved || j + 1 >= moves.length) return;
-    schedule(k, j + 1);
+    let r: ReturnType<typeof session.play>;
+    if (forced.length > 0) {
+      r = session.play(forced.shift() as CubeMove);
+      forcedAt = elapsedNow();
+    } else {
+      if (j >= moves.length) return;
+      // 계획 시각(+ 미룬 만큼)으로 적는다. 다른 기기가 계획과 시각까지 맞춰 본다(`checkBotRun`)
+      r = session.play(moves[j] as CubeMove, (times[j] as number) + delay);
+      j++;
+    }
+    if (!r.ok || r.solved) return;
+    if (forced.length === 0 && j >= moves.length) return;
+    schedule(k);
   };
-  const schedule = (k: number, j: number) => {
-    const elapsed = session.snapshot().elapsed ?? 0;
-    cancel = clock.after(
-      Math.max(0, (times[j] as number) + delay - elapsed),
-      () => step(k, j),
-    );
+  const schedule = (k: number) => {
+    cancel?.();
+    const elapsed = elapsedNow();
+    let at: number;
+    if (forced.length > 0) at = Math.max(elapsed + BOT_FORCED_MS, pausedUntil);
+    else {
+      // 계획 밖의 수·멈춤 뒤로만 계획을 미룬다(미룬 양은 줄지 않는다). 타이머가 늦게 불린 것은 미루지 않는다(계획 시각 그대로 적는다)
+      const want = Math.max(
+        pausedUntil,
+        forcedAt < 0 ? 0 : forcedAt + BOT_FORCED_MS,
+      );
+      if ((times[j] as number) + delay < want)
+        delay = want - (times[j] as number);
+      at = (times[j] as number) + delay;
+    }
+    cancel = clock.after(Math.max(0, at - elapsed), () => step(k));
+  };
+  const nudge = () => {
+    if (!scheduled || stopped || !moves) return;
+    schedule(attempt);
   };
   const maybeStart = () => {
     const snap = session.snapshot();
     if (stopped || scheduled || !moves || snap.attempt !== attempt) return;
     if (snap.phase !== "race") return;
     scheduled = true;
-    if (moves.length > 0) schedule(attempt, 0);
+    if (moves.length > 0) schedule(attempt);
   };
   const accept = (k: number, plan: BotPlan) => {
     if (stopped || k !== attempt) return;
@@ -132,6 +187,10 @@ export function attachBot(init: AttachBotInit): () => void {
       attempt = k;
       moves = null;
       scheduled = false;
+      j = 0;
+      forced = [];
+      pausedUntil = 0;
+      forcedAt = -1;
       cancel?.();
       // 계획은 섞기를 정한 뒤에 세우므로, 못 만들면 그 판에서 이 컴퓨터만 DNF로 빠지고 판은 그대로 간다
       // (`retire`). 다른 까닭으로 다시 섞어도 그만둔 컴퓨터는 계획을 다시 세우지 않는다
@@ -152,10 +211,31 @@ export function attachBot(init: AttachBotInit): () => void {
     }
     maybeStart();
   });
-  return () => {
-    stopped = true;
-    cancel?.();
-    off();
+  return {
+    detach: () => {
+      stopped = true;
+      cancel?.();
+      off();
+    },
+    afterHit(text) {
+      forced = [...undoMoves(n, text), ...forced];
+      forcedAt = elapsedNow();
+      nudge();
+    },
+    afterRewind(undone) {
+      forced = [...undone, ...forced];
+      forcedAt = elapsedNow();
+      nudge();
+    },
+    afterItem() {
+      forcedAt = elapsedNow();
+      nudge();
+    },
+    pause(ms) {
+      pausedUntil = Math.max(pausedUntil, elapsedNow() + ms);
+      nudge();
+    },
+    idle: () => forced.length === 0,
   };
 }
 
@@ -179,6 +259,8 @@ export async function checkBotRun(
   stopped = false,
 ): Promise<boolean> {
   const made = await plan(level, n, start, botSeed(raceSeed, botId));
+  if (log.some((x) => isItemText(x.m)))
+    return checkItemBotRun(n, made, log, stopped);
   const expected = made.moves
     .map((m) => formatMove(n, parseMoves(n, m.move)[0] as CubeMove))
     .slice(0, stopped ? log.length : undefined);
@@ -195,11 +277,62 @@ export async function checkBotRun(
   );
 }
 
+/**
+ * 아이템전의 컴퓨터 확인: 계획 밖의 수(맞은 섞기를 되돌린 수, 되감은 수를 다시 둔 수)를 `attachBot`과 같은 규칙으로 걸러 내고,
+ * 나머지가 계획 차례 그대로인지, 미룬 양(보고 시각 − 계획 시각)이 0 이상이고 줄지 않는지 본다(계획보다 빨리 두면 드러난다).
+ * 계획 밖의 수 시각은 판정이 확실해진 때라 기기마다 달라 보지 않는다
+ */
+function checkItemBotRun(
+  n: number,
+  made: BotPlan,
+  log: readonly { m: string; t: number }[],
+  stopped: boolean,
+): boolean {
+  const expected = made.moves.map((m) =>
+    formatMove(n, parseMoves(n, m.move)[0] as CubeMove),
+  );
+  let forced: string[] = [];
+  let recent: string[] = [];
+  let k = 0;
+  let last = -BOT_TIME_TOLERANCE_MS;
+  for (const x of log) {
+    if (isItemText(x.m)) {
+      const act = parseItemText(n, x.m);
+      if (!act) return false;
+      if (act.item === "hit") {
+        forced = [
+          ...undoMoves(n, act.moves).map((m) => formatMove(n, m)),
+          ...forced,
+        ];
+        recent = [];
+      } else if (act.kind === "rewind") {
+        if (forced.length > 0) return false;
+        forced = [...recent];
+        recent = [];
+      }
+      continue;
+    }
+    if (forced.length > 0) {
+      if (x.m !== forced[0]) return false;
+      forced.shift();
+    } else {
+      if (x.m !== expected[k]) return false;
+      const d = x.t - (made.moves[k]?.at as number);
+      if (d < last - BOT_TIME_TOLERANCE_MS) return false;
+      last = Math.max(last, d);
+      k++;
+    }
+    recent = [...recent, x.m].slice(-3);
+  }
+  return stopped || (k === expected.length && forced.length === 0);
+}
+
 /** 큐브 돌리기(x·y·z)를 뺀 수 차례(표기 글) */
 function turnsOnly(n: number, moves: readonly string[]): string[] {
   const out: string[] = [];
+  // 아이템전의 특별한 수(쓰기·맞은 섞기)는 사람 손의 수가 아니다
   for (const text of moves)
-    for (const m of parseMoves(n, text))
+    for (const m of isItemText(text) ? [] : parseMoves(n, text))
       if (!isRotation(n, m)) out.push(formatMove(n, m));
   return out;
 }

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
+import { PATTERN_INK, patternShape, type StickerPattern } from "../item-look";
 import {
   cubiePositions,
   inMove,
@@ -254,6 +255,8 @@ interface Mirror {
   cellMat: THREE.MeshBasicMaterial;
   marks: THREE.InstancedMesh;
   markMat: THREE.MeshBasicMaterial;
+  /** 흑백 화면의 무늬 판(무늬마다 하나, 칸 위에 겹친다) */
+  patterns: { key: StickerPattern; mesh: THREE.InstancedMesh }[];
   /** 칸 인스턴스 번호(판·u·v) */
   index: Map<string, number>;
 }
@@ -277,6 +280,42 @@ function shadowTexture(): THREE.CanvasTexture {
   g.fillStyle = r;
   g.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(c);
+}
+
+/** 흑백 화면의 무늬(민무늬 빼고). 무늬마다 겹친 판 하나(InstancedMesh)를 둔다 */
+const PATTERN_KEYS: readonly StickerPattern[] = [
+  "dot",
+  "ring",
+  "dots4",
+  "dots9",
+  "ringDot",
+];
+
+/** 무늬 그림(투명 바탕에 짙은 점·고리). 칸 한 변 = 그림 한 변 */
+function patternTexture(p: StickerPattern): THREE.CanvasTexture {
+  const size = 128;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const g = c.getContext("2d") as CanvasRenderingContext2D;
+  const ink = `#${PATTERN_INK.toString(16).padStart(6, "0")}`;
+  const s = patternShape(p);
+  g.fillStyle = ink;
+  for (const d of s.dots) {
+    g.beginPath();
+    g.arc(d.x * size, d.y * size, d.r * size, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = ink;
+  for (const r of s.rings) {
+    g.lineWidth = r.w * size;
+    g.beginPath();
+    g.arc(r.x * size, r.y * size, r.r * size, 0, Math.PI * 2);
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 function prefersReducedMotion(): MediaQueryList | null {
@@ -306,6 +345,10 @@ export class CubeView {
   private readonly bodyMaterial: THREE.MeshStandardMaterial;
   private readonly stickerMaterial: THREE.MeshStandardMaterial;
   private readonly frameMesh: THREE.InstancedMesh;
+  /** 흑백 화면: 색 번호마다 무늬(없으면 끔). 무늬 판은 처음 켤 때 만든다 */
+  private patterns: readonly (StickerPattern | null)[] | null = null;
+  private patternMeshes: { key: StickerPattern; mesh: THREE.InstancedMesh }[] =
+    [];
   private readonly shadow: THREE.Mesh | null = null;
   private readonly envTexture: THREE.Texture | null = null;
   private readonly disposables: { dispose(): void }[] = [];
@@ -614,6 +657,38 @@ export class CubeView {
    * 띄우고, 화면에 판까지 들어오게 카메라를 조금 물린다. 둘러보거나 살짝 보기로 각이 멀어지면 판은 흐려지고
    * 카메라는 큐브만 담는 자리로 돌아온다
    */
+  /**
+   * 흑백 화면(아이템전, docs/47 9-7): 색 번호(면 번호)마다 붙일 무늬. null이면 끈다. 색은 `setOptions({ colors })`로 따로
+   * 바꾼다(같은 회색). 무늬는 스티커 위에 조금 떠 있는 판이라 조각과 함께 돌고 거울 판에도 같은 무늬가 비친다
+   */
+  setPatterns(patterns: readonly (StickerPattern | null)[] | null): void {
+    this.patterns = patterns;
+    if (patterns && this.patternMeshes.length === 0) {
+      const size = this.stickerless ? CUBIE - 0.06 : 0.76;
+      const geo = new THREE.PlaneGeometry(size, size);
+      geo.translate(0, 0, CUBIE / 2 + LIFT + 0.024);
+      this.disposables.push(geo);
+      for (const key of PATTERN_KEYS) {
+        const tex = patternTexture(key);
+        const mat = new THREE.MeshBasicMaterial({
+          map: tex,
+          transparent: true,
+          depthWrite: false,
+          toneMapped: false,
+        });
+        this.disposables.push(tex, mat);
+        const mesh = new THREE.InstancedMesh(geo, mat, this.slots.length);
+        mesh.frustumCulled = false;
+        this.scene.add(mesh);
+        this.patternMeshes.push({ key, mesh });
+      }
+    }
+    for (const p of this.patternMeshes) p.mesh.visible = !!patterns;
+    for (let i = 0; i < this.cubies.length; i++) this.writeCubie(i);
+    this.writeMirror();
+    this.invalidate();
+  }
+
   setMirror(on: boolean): void {
     this.mirrorOn = on;
     if (on && !this.mirror) this.mirror = this.buildMirror();
@@ -942,6 +1017,8 @@ export class CubeView {
     this.frameMesh.dispose();
     this.mirror?.cells.dispose();
     this.mirror?.marks.dispose();
+    for (const p of this.mirror?.patterns ?? []) p.mesh.dispose();
+    for (const p of this.patternMeshes) p.mesh.dispose();
     for (const d of this.disposables) d.dispose();
     this.envTexture?.dispose();
     this.renderer.dispose();
@@ -1001,7 +1078,14 @@ export class CubeView {
       tmpM2.multiplyMatrices(tmpM, slot.local);
       this.stickerMesh.setMatrixAt(si, tmpM2);
       this.frameMesh.setMatrixAt(si, slot.mark ? tmpM2 : ZERO);
+      if (this.patterns) {
+        const want = slot.color === null ? null : this.patterns[slot.color];
+        for (const p of this.patternMeshes)
+          p.mesh.setMatrixAt(si, p.key === want ? tmpM2 : ZERO);
+      }
     }
+    for (const p of this.patternMeshes)
+      p.mesh.instanceMatrix.needsUpdate = true;
     this.body.instanceMatrix.needsUpdate = true;
     this.stickerMesh.instanceMatrix.needsUpdate = true;
     this.frameMesh.instanceMatrix.needsUpdate = true;
@@ -1249,13 +1333,42 @@ export class CubeView {
           marks.setMatrixAt(k, ZERO);
           k++;
         }
-    for (const m of [cells, marks]) {
+    const patternGeo = new THREE.PlaneGeometry(
+      0.8 * MIRROR_CELL,
+      0.8 * MIRROR_CELL,
+    );
+    this.disposables.push(patternGeo);
+    const patterns = PATTERN_KEYS.map((key) => {
+      const tex = patternTexture(key);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      this.disposables.push(tex, mat);
+      const mesh = new THREE.InstancedMesh(patternGeo, mat, count);
+      mesh.renderOrder = 3;
+      for (let i = 0; i < count; i++) mesh.setMatrixAt(i, ZERO);
+      return { key, mesh };
+    });
+    for (const m of [cells, marks, ...patterns.map((p) => p.mesh)]) {
       m.frustumCulled = false;
       group.add(m);
     }
     group.visible = false;
     this.scene.add(group);
-    return { panels, group, plateMat, cells, cellMat, marks, markMat, index };
+    return {
+      panels,
+      group,
+      plateMat,
+      cells,
+      cellMat,
+      marks,
+      markMat,
+      patterns,
+      index,
+    };
   }
 
   /** 지금 조각 자리에서 세계의 스티커(조각 중심·향하는 쪽·색·표시)를 읽는다 */
@@ -1306,7 +1419,17 @@ export class CubeView {
         tmpM2.makeTranslation(0, 0, 0.004);
         m.marks.setMatrixAt(k, tmpM.multiply(tmpM2));
       } else m.marks.setMatrixAt(k, ZERO);
+      const want =
+        this.patterns && c.color !== null ? this.patterns[c.color] : null;
+      for (const p of m.patterns) {
+        if (p.key === want) {
+          m.cells.getMatrixAt(k, tmpM);
+          tmpM2.makeTranslation(0, 0, 0.003);
+          p.mesh.setMatrixAt(k, tmpM.multiply(tmpM2));
+        } else p.mesh.setMatrixAt(k, ZERO);
+      }
     }
+    for (const p of m.patterns) p.mesh.instanceMatrix.needsUpdate = true;
     if (m.cells.instanceColor) m.cells.instanceColor.needsUpdate = true;
     if (m.marks.instanceColor) m.marks.instanceColor.needsUpdate = true;
     m.marks.instanceMatrix.needsUpdate = true;

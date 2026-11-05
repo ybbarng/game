@@ -26,6 +26,7 @@ import {
 } from "./bot-racer";
 import { RaceHub } from "./hub";
 import {
+  type CubeAct,
   createCubeRaceGame,
   type Scrambler,
   scrambleSeed,
@@ -50,7 +51,7 @@ const skewed: Scrambler = (event, seed) => ({
   official: false,
 });
 
-type Session = RaceSession<CubeMove, PuzzleState>;
+type Session = RaceSession<CubeAct, PuzzleState>;
 
 interface Rig {
   clock: ManualClock;

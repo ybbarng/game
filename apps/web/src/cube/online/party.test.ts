@@ -508,7 +508,7 @@ describe("체력바 대결(기기마다)", () => {
     clock.advance(100);
     expect(guest.state?.v).toBe(2);
     expect(guest.state?.settings.party).toBeUndefined();
-    old.send(state(3, { party: "items" }));
+    old.send(state(3, { party: "freeze" }));
     old.send(state(4, { party: "hp", format: "ao5" }));
     clock.advance(100);
     expect(guest.state?.v).toBe(2);

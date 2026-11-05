@@ -1,5 +1,7 @@
+import type { StickerPattern } from "../item-look";
 import { hexColor } from "../settings";
 import { MARK_COLOR, type MarkTone } from "../view/types";
+import { PatternGlyph } from "./PatternGlyph";
 
 /**
  * 펼친 그림(전개도). 위(U) 아래로 왼쪽·앞·오른쪽·뒤(L F R B)가 한 줄, 그 아래 아래(D).
@@ -25,7 +27,10 @@ export function CubeNet({
   onCell,
   marked,
   marks,
+  patterns,
 }: {
+  /** 흑백 화면(아이템전): 색 번호마다 무늬. 칠할 색은 `colors`로 함께 넘긴다 */
+  patterns?: readonly (StickerPattern | null)[] | null | undefined;
   n: number;
   faces: readonly (readonly (number | null)[])[];
   colors: readonly number[];
@@ -100,6 +105,21 @@ export function CubeNet({
                 />
               );
             })}
+            {patterns &&
+              grid.map((c, k) => {
+                const p = c === null ? null : patterns[c];
+                if (!p || p === "none") return null;
+                const x = ox + (k % n) * cell + 0.5;
+                const y = oy + Math.floor(k / n) * cell + 0.5;
+                return (
+                  <PatternGlyph
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 칸 번호가 곧 자리
+                    key={`p${k}`}
+                    pattern={p}
+                    transform={`translate(${x} ${y}) scale(${cell - 1})`}
+                  />
+                );
+              })}
           </g>
         );
       })}

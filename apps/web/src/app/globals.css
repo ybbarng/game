@@ -214,6 +214,29 @@ html:has([data-game="cube"]) body {
 .cube-race-toast {
   animation: cube-race-toast 900ms ease-out both;
 }
+/* 아이템전 맞은 쪽 표시(docs/47 9-7): 한 번 살짝 커졌다 자리 잡는다. 움직임 줄이기면 붙이지 않는다 */
+@keyframes cube-item-hit {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  45% {
+    transform: none;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+.cube-item-hit {
+  animation: cube-item-hit 1600ms ease-out both;
+}
 /*
  * 흐름 콤보(docs/51 2-1): 콤보가 오를수록 띠 바탕이 조금씩 데워진다. 번쩍이지 않게 색만 천천히 옮긴다
  */

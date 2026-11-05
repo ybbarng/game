@@ -1,7 +1,14 @@
 "use client";
 
 import type { CSSProperties } from "react";
-
+import {
+  COLOR_PATTERNS,
+  GRAY,
+  KEY_PATTERN_EM,
+  KEY_PATTERN_INK,
+  patternStyle,
+  shownColor,
+} from "../item-look";
 import {
   calmLine,
   calmTint,
@@ -16,6 +23,7 @@ import {
   stripeImage,
 } from "../keys/key-colors";
 import { hexColor, useCubeSettings } from "../settings";
+import { useCubeLook } from "./PatternGlyph";
 
 /**
  * 키 그림의 면 색(2026-11-04, `keys/key-colors.ts`, docs/47 4-5). 2026-11-05에 여러 번 고쳐 지금은 한 모양이다.
@@ -43,13 +51,17 @@ export function useKeyLook(
   orient: Orient = HOME_ORIENT,
 ): (action: string | undefined) => KeyLook | null {
   const { colors, colorScheme, keyColors } = useCubeSettings();
+  // 아이템전 화면 방해(docs/47 9-7): 색 뒤집기면 맞은편 색 번호로, 흑백 화면이면 같은 회색 + 색 번호의 무늬로 칠한다
+  const look = useCubeLook();
   return (action) => {
     if (!keyColors || !action) return null;
     const p = keyPaint(n, orient, action);
     if (!p) return null;
-    const rgb = colors[p.color] ?? 0;
+    const shown = shownColor(p.color, look);
+    const rgb = look?.gray ? GRAY : (colors[shown] ?? 0);
     const face = p.kind === "face";
-    const striped = face && stripedColor(colorScheme, p.color);
+    const striped = face && !look?.gray && stripedColor(colorScheme, shown);
+    const pattern = face && look?.gray ? COLOR_PATTERNS[shown] : undefined;
     return {
       paint: p,
       line: hexColor(calmLine(rgb)),
@@ -58,6 +70,9 @@ export function useKeyLook(
         ? {
             backgroundColor: hexColor(calmTint(rgb, p.prime)),
             ...(striped ? { backgroundImage: stripeImage(rgb, p.prime) } : {}),
+            ...(pattern
+              ? patternStyle(pattern, KEY_PATTERN_INK, KEY_PATTERN_EM)
+              : {}),
           }
         : {},
     };
