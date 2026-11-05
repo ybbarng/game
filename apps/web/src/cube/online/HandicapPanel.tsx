@@ -7,12 +7,15 @@ import {
   DELAY_CHOICES,
   goalChoices,
   type Handicap,
+  HELPS,
+  type Help,
+  helpLabel,
   recommendDelays,
 } from "./handicap";
 import type { CubeRoom } from "./room";
 
 /**
- * 대기실의 핸디캡 칸(docs/51 4절, docs/47 9-5). 방장이 사람마다 출발 늦추기·목표를, 방 전체에 점수(시간·평균 대비)를
+ * 대기실의 핸디캡 칸(docs/51 4절, docs/47 9-5·9-8). 방장이 사람마다 출발 늦추기·목표·도움을, 방 전체에 점수(시간·평균 대비)를
  * 고른다. 손님은 보기만 한다. 컴퓨터는 단계로 이미 맞추니 줄에 넣지 않는다.
  */
 export function HandicapPanel({ room }: { room: CubeRoom }) {
@@ -36,14 +39,14 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
     },
   ) => {
     const next = { ...h, ...patch } as Handicap;
-    for (const k of ["delay", "goal"] as const) {
+    for (const k of ["delay", "goal", "help"] as const) {
       const v = next[k];
       if (v && Object.keys(v).length === 0) delete next[k];
     }
     if (next.score === undefined) delete next.score;
     room.setHandicap(next);
   };
-  const setOne = <K extends "delay" | "goal">(
+  const setOne = <K extends "delay" | "goal" | "help">(
     k: K,
     id: string,
     value: NonNullable<Handicap[K]>[string] | null,
@@ -62,7 +65,7 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
       <div className="flex flex-wrap items-baseline gap-x-2">
         <h2 className="font-semibold">핸디캡</h2>
         <span className="text-white/50 text-xs">
-          친구끼리 믿는 모드 · 평균은 각 기기 기록
+          친구끼리 믿는 모드 · 평균과 도움은 각 기기에서
         </span>
       </div>
       {!ao5 && (
@@ -95,6 +98,7 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
             <th className="text-right font-normal">평균</th>
             <th className="pl-2 text-right font-normal">출발</th>
             {!avg && <th className="pl-2 text-right font-normal">목표</th>}
+            <th className="pl-2 text-right font-normal">도움</th>
           </tr>
         </thead>
         <tbody>
@@ -158,6 +162,31 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
                     </select>
                   </td>
                 )}
+                <td className="pl-2 text-right">
+                  <select
+                    disabled={!host}
+                    aria-label={`${room.playerName(p.id)} 도움`}
+                    data-cube-handicap-help={p.id}
+                    value={h.help?.[p.id] ?? ""}
+                    onChange={(e) =>
+                      setOne(
+                        "help",
+                        p.id,
+                        e.target.value ? (e.target.value as Help) : null,
+                      )
+                    }
+                    className="max-w-28 rounded bg-white/10 px-1 py-0.5"
+                  >
+                    <option value="" className="bg-neutral-800">
+                      그대로
+                    </option>
+                    {HELPS.map((k) => (
+                      <option key={k} value={k} className="bg-neutral-800">
+                        {helpLabel(s.n, k)}
+                      </option>
+                    ))}
+                  </select>
+                </td>
               </tr>
             );
           })}
