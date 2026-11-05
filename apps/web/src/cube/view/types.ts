@@ -55,13 +55,18 @@ export interface Sticker {
   color: number | null;
   /** 칸 둘레에 그릴 표시(배우기의 고른 조각·맞음·틀림·따라가는 조각). 없으면 그리지 않는다 */
   mark?: MarkTone | null;
+  /**
+   * 스티커 정체(맞춘 큐브에서의 자리 번호, 엔진 `state.perm`의 값). 장면의 `setMarks`가 정체로 칸을 찾는다.
+   * 없으면 그 칸은 `setMarks`로 표시하지 않는다
+   */
+  id?: number;
 }
 
 /**
- * 칸 표시의 뜻. pick = 고름(하늘색), right = 맞음(초록), wrong = 틀림(빨강), focus = 따라가는 조각(노랑).
- * 표시는 조각에 붙어 회전을 따라 돈다
+ * 칸 표시의 뜻. pick = 고름(하늘색), right = 맞음(초록), wrong = 틀림(빨강), focus = 따라가는 조각(노랑),
+ * glow = 옅은 빛(첫 화면 연출의 넣을 곳·찾은 조각·맞춘 조각). 표시는 조각에 붙어 회전을 따라 돈다
  */
-export type MarkTone = "pick" | "right" | "wrong" | "focus";
+export type MarkTone = "pick" | "right" | "wrong" | "focus" | "glow";
 
 /**
  * 조각 하나의 놓임(배우기의 스티커·조각 보기, 분해·조립). 기본은 제자리·크기 1·몸통 보임.
@@ -79,6 +84,7 @@ export const MARK_COLOR: Record<MarkTone, number> = {
   right: 0x34d399,
   wrong: 0xf87171,
   focus: 0xfbbf24,
+  glow: 0xfff3c4,
 };
 
 /**

@@ -107,6 +107,34 @@ html:has([data-game="cube"]) body {
 .cube-flow-bump {
   animation: cube-flow-bump 180ms ease-out both;
 }
+/* 흐름 콤보(docs/51 2-1): 수가 늘 때마다 숫자가 위로 톡 튄다. 단계(4·12·24·40수)가 오르면 글자 둘레에 빛이 한 번 번진다 */
+@keyframes cube-combo-tick {
+  0% {
+    transform: translateY(-3px) scale(1.45);
+  }
+  100% {
+    transform: none;
+  }
+}
+.cube-combo-tick {
+  animation: cube-combo-tick 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cube-combo-level {
+  0% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 0 rgba(253, 230, 138, 0.55);
+  }
+  45% {
+    box-shadow: 0 0 0 5px rgba(253, 230, 138, 0.18);
+  }
+  100% {
+    transform: none;
+    box-shadow: 0 0 0 0 rgba(253, 230, 138, 0);
+  }
+}
+.cube-combo-level {
+  animation: cube-combo-level 520ms ease-out both;
+}
 .cube-flow-track {
   mask-image: linear-gradient(to right, transparent, #000 22%);
 }
@@ -234,6 +262,8 @@ html:has([data-game="cube"]) body {
 @media (prefers-reduced-motion: reduce) {
   .cube-flow-pop,
   .cube-flow-bump,
+  .cube-combo-tick,
+  .cube-combo-level,
   .cube-milestone-in,
   .cube-gold,
   .cube-hp-refill,

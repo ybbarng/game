@@ -10,8 +10,11 @@ import { ManualClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
+import type { PieceMark } from "../piece-marks";
+import type { HeroHighlight } from "./highlight";
 import {
   HeroLoop,
+  type HeroStep,
   heroTiming,
   ORIENT_LABEL,
   orientForSolve,
@@ -591,5 +594,158 @@ describe("해법 표", () => {
     await expect(
       solveForHero("없음", (await import("@game/cube-engine")).solvedCube(3)),
     ).rejects.toThrow();
+  });
+});
+
+describe("조각 강조", () => {
+  /** 한 판을 섞기부터 「맞춤」까지 돌리며, 수마다 그때 빛나던 것과 강조 알림을 모은다 */
+  async function onePlay(id: string, mode: HeroHighlight, seed: number) {
+    const clock = new ManualClock();
+    let shown: readonly PieceMark[] = [];
+    const atMove: { move: string; shown: readonly PieceMark[] }[] = [];
+    const notices: (readonly PieceMark[])[] = [];
+    let asked: Promise<unknown> = Promise.resolve();
+    const loop = new HeroLoop({
+      n: 3,
+      methods: heroRotation(3, id),
+      clock,
+      rng: seq(seed),
+      solve: (m, s) => {
+        const p = solveForHero(m, s);
+        asked = p;
+        return p;
+      },
+      highlight: mode,
+      onMove: (move) => atMove.push({ move, shown }),
+      onLabel: () => {},
+      onReset: () => {},
+      onMarks: (marks) => {
+        shown = marks;
+        notices.push(marks);
+      },
+    });
+    const label = heroRotation(3, id)[0]?.label as string;
+    const until = (cond: () => boolean) => {
+      for (let t = 0; !cond(); t += 10) {
+        if (t > 600_000) throw new Error("조건이 맞지 않는다");
+        clock.advance(10);
+      }
+    };
+    loop.start();
+    until(() => loop.currentLabel === label);
+    await asked;
+    await flush();
+    const scrambleMoves = atMove.length;
+    until(() => loop.currentLabel.endsWith("맞춤"));
+    return {
+      loop,
+      clock,
+      solveMoves: atMove.slice(scrambleMoves),
+      notices,
+      shown: () => shown,
+      until,
+    };
+  }
+
+  it.each(["3-beginner", "3-cfop"])(
+    "%s 잠깐: 넣기 전·넣은 뒤 멈춤에만 빛나고 넣는 수 동안에는 꺼져 있으며, 끝에는 다 맞는다",
+    async (id) => {
+      for (const seed of [1, 2]) {
+        const r = await onePlay(id, "brief", seed);
+        expect(isSolved(3, r.loop.current)).toBe(true);
+        // 수를 두는 동안에는 아무것도 빛나지 않는다
+        for (const m of r.solveMoves) expect(m.shown, m.move).toEqual([]);
+        // 조각마다 넣기 전(넣을 곳·찾은 조각) 다음에는 넣은 뒤(맞춘 조각)를 알렸다
+        const kinds = r.notices
+          .filter((n) => n.length)
+          .map((n) => n.map((m) => m.kind).join("+"));
+        expect(kinds.filter((k) => k === "slot+found").length).toBeGreaterThan(
+          4,
+        );
+        kinds.forEach((k, i) => {
+          if (k === "slot+found") expect(kinds[i + 1]).toBe("placed");
+        });
+        // 마지막 층은 맞출 칸(넣을 곳)과 알아볼 모양(찾은 조각)을 따로 알린다
+        expect(kinds).toContain("slot");
+        expect(kinds).toContain("found");
+      }
+    },
+  );
+
+  it("계속: 맞춘 조각은 판 끝까지 빛난 채 남고, 다음 섞기에서 꺼진다", async () => {
+    const r = await onePlay("3-cfop", "keep", 3);
+    let most = 0;
+    for (const m of r.solveMoves) {
+      const placed = m.shown.filter((k) => k.kind === "placed").length;
+      // 넣는 수 동안에도 넣기 전 강조(넣을 곳·찾은 조각)는 없고, 맞춘 조각은 줄지 않는다
+      expect(m.shown.every((k) => k.kind === "placed")).toBe(true);
+      expect(placed).toBeGreaterThanOrEqual(most);
+      most = placed;
+    }
+    expect(most).toBeGreaterThan(3);
+    r.until(() => r.loop.currentLabel === SCRAMBLING_LABEL);
+    expect(r.shown()).toEqual([]);
+  });
+
+  it("끄기: 아무것도 빛내지 않는다(찾는 돌리기는 그대로)", async () => {
+    const r = await onePlay("3-beginner", "off", 1);
+    expect(r.notices.every((n) => n.length === 0)).toBe(true);
+    expect(isSolved(3, r.loop.current)).toBe(true);
+  });
+
+  it("찾는 돌리기는 보통 큐브 돌리기보다 빠르고, 강조 멈춤은 「잠깐」에만 늘어난다", () => {
+    const solve: HeroSolve = {
+      moves: ["y", "R", "U", "y", "F"],
+      stages: [{ label: "십자", start: 0, end: 5 }],
+      looks: [],
+      searches: [0],
+      marks: [
+        { at: 1, mark: { kind: "slot", stickers: [1] } },
+        { at: 1, mark: { kind: "found", stickers: [2] } },
+        { at: 3, mark: { kind: "placed", stickers: [2] } },
+      ],
+    };
+    const brief = solveSteps(solve, "x", T3, "brief");
+    const off = solveSteps(solve, "x", T3, "off");
+    const moveMs = (steps: HeroStep[], move: string) =>
+      steps
+        .filter((s) => s.kind === "move" && s.move === move)
+        .map((s) => s.ms);
+    // 찾는 y(0번)는 searchMove, 돌려 쥐는 y(3번)는 1.5배
+    expect(moveMs(brief, "y")).toEqual([
+      T3.searchMove,
+      Math.round(T3.solveMove * 1.5),
+    ]);
+    expect(T3.searchMove).toBeLessThan(Math.round(T3.solveMove * 1.5));
+    const marked = brief.filter((s) => s.kind === "wait" && s.marks);
+    expect(marked.map((s) => s.ms)).toEqual([T3.mark, T3.mark]);
+    expect(off.some((s) => s.kind === "wait" && s.marks)).toBe(false);
+    // 끄기여도 찾은 뒤에는 살피듯 잠깐 멈춘다
+    expect(off[1]).toMatchObject({ kind: "wait", ms: T3.look });
+  });
+
+  it("따로 빛낼 사건(solo)은 멈춤 하나씩, 이미 맞은 조각 확인은 끄기여도 잠깐 멈춘다", () => {
+    const solve: HeroSolve = {
+      moves: ["y", "R", "U"],
+      stages: [{ label: "노란 십자", start: 0, end: 3 }],
+      looks: [],
+      marks: [
+        {
+          at: 1,
+          mark: { kind: "placed", stickers: [5], solo: true, check: true },
+        },
+        { at: 2, mark: { kind: "slot", stickers: [1], solo: true } },
+        { at: 2, mark: { kind: "found", stickers: [2], solo: true } },
+      ],
+    };
+    const brief = solveSteps(solve, "x", T3, "brief");
+    const marked = brief.filter((s) => s.kind === "wait" && s.marks);
+    expect(
+      marked.map((s) => (s.kind === "wait" ? s.marks?.[0]?.kind : "")),
+    ).toEqual(["placed", "slot", "found"]);
+    const off = solveSteps(solve, "x", T3, "off");
+    // 확인 뒤(1번 수 앞)에 살피는 멈춤
+    expect(off[1]).toMatchObject({ kind: "wait", ms: T3.look });
+    expect(off.some((s) => s.kind === "wait" && s.marks)).toBe(false);
   });
 });

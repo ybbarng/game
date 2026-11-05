@@ -40,6 +40,7 @@ export function stickersFromState(
   const marked = marksAtSlots(state, marks);
   return stickerGeometry(n).map((g) => ({
     ...(marked?.[g.index] ? { mark: marked[g.index] } : {}),
+    id: state.perm[g.index] as number,
     center: g.center,
     normal: `${g.sign > 0 ? "+" : "-"}${g.axis}` as Normal,
     color:
