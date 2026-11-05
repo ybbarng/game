@@ -18,6 +18,12 @@ import { toFaceletMove } from "./facelets";
  * `D y`는 `y D`와 같다). 새 토막은 공식이 F로 끝난 뒤에만 시작한다. F·D만으로는 흰색이 옆(앞면)을 보는 엣지를
  * 세울 수 없어, 그런 엣지는 「빼기」 토막 뒤 「넣기」 토막으로 나뉜다. 고르는 차례: 토막이 적은 것, 짧은 것, y가 적은 것.
  * 예전(D를 y 앞에 두던 때)과 견주어 문제 672가지의 수 합은 2796 → 2800, 최대 8 그대로다.
+ *
+ * 목표 엣지만 넣는다(2026-11-05 사용자 「'강조한' 것들을 맞추려는 의도를 가지고 진행되기를 바래. 표시랑 다르게
+ * 동작하지 말고」): 아직 안 넣은 다른 흰 엣지(`others`)가 토막 끝(다음 토막의 큐브 돌리기 앞, 그리고 맨 끝)에
+ * 제자리에 와 있는 답은 고르지 않는다. 「빼기」 토막은 F로 끝나야 해서 그 F가 아랫면의 다른 흰 엣지를 올려
+ * 넣는 일이 잦았다(섞기 300개의 십자 토막 약 1200개 가운데 167개). 화면에서는 강조한 엣지가 아닌 엣지를 일부러
+ * 넣는 것처럼 보인다. 그런 답밖에 없으면 예전처럼 고른다(그때 맞은 엣지는 연출이 「함께 맞은 조각」으로 짚는다).
  */
 
 const MOVES = ["D", "D'", "D2", "F", "F'", "F2", "y", "y'", "y2"] as const;
@@ -48,6 +54,12 @@ const partnerOf = (i: number): number => {
 
 const memo = new Map<string, string>();
 
+/** 아직 안 넣은 다른 흰 엣지: 흰 스티커 자리와 다른 색이 와야 할 면 */
+export interface OtherEdge {
+  white: number;
+  color: SideFace;
+}
+
 /**
  * `white`: 넣을 엣지의 흰 스티커 자리(흰 면 위, 지금 쥔 방향), `color`: 그 엣지의 다른 색이 와야 할 면,
  * `solved`: 이미 맞은 십자 자리 번호(0 UR, 1 UF, 2 UL, 3 UB). 그 자리는 끝에도 맞아 있다.
@@ -56,11 +68,16 @@ export function frontCrossInsert(
   white: number,
   color: SideFace,
   solved: readonly number[],
+  others: readonly OtherEdge[] = [],
 ): string {
-  const key = `${white}|${color}|${[...solved].sort().join("")}`;
+  const rest = others
+    .map((o) => `${o.white}${o.color}`)
+    .sort()
+    .join(",");
+  const key = `${white}|${color}|${[...solved].sort().join("")}|${rest}`;
   const hit = memo.get(key);
   if (hit !== undefined) return hit;
-  const alg = search(white, color, solved);
+  const alg = search(white, color, solved, others);
   memo.set(key, alg);
   return alg;
 }
@@ -69,6 +86,7 @@ function search(
   white: number,
   color: SideFace,
   solved: readonly number[],
+  others: readonly OtherEdge[],
 ): string {
   // 쫓는 스티커: [센터 R F L B, 넣을 엣지 흰·옆, 맞은 엣지마다 흰·옆]
   // 엣지마다 와야 할 센터 번호(0..3)
@@ -78,6 +96,17 @@ function search(
     start.push(CROSS_WHITE[j] as number, CROSS_SIDE[j] as number);
     want.push(j);
   }
+  // 다른 흰 엣지는 맞은 엣지 뒤에 쫓는다
+  const from = start.length;
+  for (const o of others) start.push(o.white, partnerOf(o.white));
+  const placed = (p: readonly number[], at: number, c: number) =>
+    (p[at] as number) < 9 &&
+    Math.floor((p[at + 1] as number) / 9) === Math.floor((p[c] as number) / 9);
+  /** 다른 흰 엣지 가운데 하나라도 제자리에 와 있나 */
+  const stray = (p: readonly number[]) =>
+    others.some((o, k) =>
+      placed(p, from + k * 2, FACE_OF_SIDE.indexOf(o.color)),
+    );
   const done = (p: readonly number[]) =>
     want.every((c, e) => {
       const w = p[4 + e * 2] as number;
@@ -90,10 +119,12 @@ function search(
     Math.floor((p[5] as number) / 9) === 3;
   const v0 = low(start);
   if (done(start)) return "";
-  for (let maxRounds = 1; maxRounds <= MAX_ROUNDS; maxRounds++) {
-    const found = searchRounds(start, v0, low, done, maxRounds);
-    if (found !== null) return found;
-  }
+  // 다른 엣지를 넣지 않는 답부터, 없으면 그런 답도
+  for (const guard of others.length ? [stray, null] : [null])
+    for (let maxRounds = 1; maxRounds <= MAX_ROUNDS; maxRounds++) {
+      const found = searchRounds(start, v0, low, done, maxRounds, guard);
+      if (found !== null) return found;
+    }
   throw new Error("F·D·y로 십자 엣지를 넣지 못했다");
 }
 
@@ -109,6 +140,8 @@ function searchRounds(
   low: (p: readonly number[]) => boolean,
   done: (p: readonly number[]) => boolean,
   maxRounds: number,
+  /** 토막 끝에 있으면 안 되는 상태(목표 아닌 엣지가 제자리) */
+  stray: ((p: readonly number[]) => boolean) | null,
 ): string | null {
   type Node = {
     p: number[];
@@ -138,6 +171,8 @@ function searchRounds(
           if (node.phase === 0) phase = 1;
           else if (node.phase === 3 && lastLayer === 1) {
             if (rounds >= maxRounds) continue;
+            // 앞 토막 끝: 다른 흰 엣지를 제자리에 둔 채 끝난 토막은 두지 않는다
+            if (stray?.(node.p)) continue;
             rounds++;
             phase = 1;
           } else continue;
@@ -166,6 +201,7 @@ function searchRounds(
           rounds,
         };
         if (v && done(p)) {
+          if (stray?.(p)) continue;
           if (!best || child.ys < best.ys) best = child;
           continue;
         }

@@ -133,7 +133,16 @@ export function nextCrossEdge(
   for (const kind of CASE_ORDER) {
     let best: { color: FaceLetter; alg: string } | null = null;
     for (const e of todo.filter((x) => caseOf(x) === kind)) {
-      const alg = frontCrossInsert(e.white, e.color as SideFace, solved);
+      // 다른 흰 엣지는 이 엣지를 넣는 동안 제자리에 들이지 않는다(`cross-front.ts`)
+      const others = todo
+        .filter((x) => x !== e)
+        .map((x) => ({ white: x.white, color: x.color as SideFace }));
+      const alg = frontCrossInsert(
+        e.white,
+        e.color as SideFace,
+        solved,
+        others,
+      );
       if (best === null || length(alg) < length(best.alg))
         best = { color: e.color, alg };
     }
