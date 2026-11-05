@@ -132,6 +132,7 @@ export function BoardSeat({
   score,
   extra,
   below,
+  className,
 }: {
   /** 내 자리인가 상대 자리인가(`data-seat`) */
   who: "me" | "opponent";
@@ -149,6 +150,8 @@ export function BoardSeat({
   extra?: ReactNode;
   /** 자리판 아래 온 너비로 놓을 줄(장기 초고수의 노림 등). 시계에 밀려 잘리지 않는다 */
   below?: ReactNode;
+  /** 자리판 상자에 더할 모양(숫자야구는 기록 상자를 담아 높이를 나눠 쓴다) */
+  className?: string;
 }) {
   return (
     <section
@@ -160,6 +163,7 @@ export function BoardSeat({
         turn
           ? "border-amber-300 bg-amber-300/15 shadow-[0_0_18px_rgba(253,230,138,0.35)]"
           : "border-white/10 bg-white/5",
+        className,
       )}
     >
       <div className="flex min-h-9 items-center gap-2.5">

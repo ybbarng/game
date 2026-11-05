@@ -208,15 +208,18 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
     /^\d+회 [초말]$/,
   );
   await expect(page.locator("[data-team]")).toHaveCount(2);
-  // 휴대폰 세로는 두 팀 기록을 탭으로 나눠 본다.
-  const theirs = page.locator('[data-log="theirs"]');
-  if (info.project.name === "phone-portrait") {
-    await expect(theirs).toBeHidden();
-    await page.getByRole("tab", { name: /상대 공격/ }).click();
-    await expect(theirs).toBeVisible();
-    await expect(page.locator('[data-log="mine"]')).toBeHidden();
-    await page.getByRole("tab", { name: /내 공격/ }).click();
-  } else await expect(theirs).toBeVisible();
+  // 마주 앉은 경기: 상대 기록은 전광판 너머 상대 자리에, 내 기록은 전광판 아래 내 자리에 함께 보인다.
+  const theirs = page.locator('[data-seat="opponent"] [data-log="theirs"]');
+  const mine = page.locator('[data-seat="me"] [data-log="mine"]');
+  await expect(theirs).toBeVisible();
+  await expect(mine).toBeVisible();
+  const board = await page
+    .getByRole("region", { name: "전광판" })
+    .boundingBox();
+  const theirBox = await theirs.boundingBox();
+  const myBox = await mine.boundingBox();
+  expect(theirBox && board && theirBox.y < board.y).toBe(true);
+  expect(myBox && board && myBox.y > board.y).toBe(true);
   if (!lastChance) {
     await page.getByRole("button", { name: "무르기" }).click();
     await expect(myRows(page)).toHaveCount(0);
