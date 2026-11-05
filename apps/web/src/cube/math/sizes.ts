@@ -3,14 +3,14 @@ import { cubeTopology, parseMoves } from "@game/cube-engine";
 import { cycleParity, pieceCycles } from "./pieces";
 
 /**
- * 크기마다 날개 고리와 안쪽 한 층 돌리기의 홀짝(「크기와 패리티」 카드). 엔진의 조각 자리로 센다.
- * 날개 고리 = 큐브 전체를 돌려 서로 옮겨 가는 날개 묶음(엔진의 궤도).
+ * 크기마다 날개 묶음과 안쪽 한 층 돌리기의 홀짝(「크기와 패리티」 카드). 엔진의 조각 자리로 센다.
+ * 날개 묶음 = 서로 자리를 바꿀 수 있는 날개 무리(엔진의 궤도). 「고리」는 한 바퀴 도는 자리 순환이다.
  */
 
 export interface SliceEffect {
   /** 안쪽 한 층 표기(예: 2R, 3R) */
   move: string;
-  /** 날개 고리마다 움직인 고리 길이(움직이지 않으면 빈 목록) */
+  /** 날개 묶음마다 움직인 고리 길이(움직이지 않으면 빈 목록) */
   wings: number[][];
   /** 가운데 엣지 고리 길이 */
   midges: number[];
@@ -20,7 +20,7 @@ export interface SliceEffect {
 
 export interface SizeFacts {
   n: number;
-  /** 날개 고리 수 */
+  /** 날개 묶음 수 */
   wingOrbits: number;
   /** 한가운데 엣지(3×3 엣지처럼 움직이는 조각)가 있나 */
   midges: boolean;
@@ -57,7 +57,7 @@ export function sizeFacts(n: number): SizeFacts {
     wingOrbits: wingOrbitIds.length,
     midges,
     slices,
-    // 짝수 크기: 날개 고리의 홀짝을 정해 줄 기준 조각이 없어 3×3 단계까지 남는다
+    // 짝수 크기: 날개 자리의 홀짝을 정해 줄 기준 조각이 없어 3×3 단계까지 남는다
     ollParity: !midges && wingOdd,
     pllParity: !midges && wingOdd,
     pairingParity: midges && wingOdd,

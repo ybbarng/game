@@ -85,7 +85,7 @@ describe("뽑아서 다시 끼우기", () => {
   });
 });
 
-describe("방향과 짝 계기", () => {
+describe("방향과 홀짝 계기", () => {
   it("면 돌리기를 아무리 해도 규칙이 지켜진다", () => {
     const algs = ["R", "F", "R U F' D2 L B'", "U R2 F' D L' B2 U' R F2"];
     for (const alg of algs) {

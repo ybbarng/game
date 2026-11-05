@@ -31,18 +31,28 @@ export interface CommutatorExample {
 }
 
 export const COMMUTATOR_EXAMPLES: CommutatorExample[] = [
-  { a: "R", b: "L", changed: {}, note: "안 닿는 두 면: 아무것도 안 바뀐다" },
+  {
+    a: "R",
+    b: "L",
+    changed: {},
+    note: "함께 움직이는 조각이 없는 두 면: 아무것도 안 바뀐다",
+  },
   {
     a: "R",
     b: "U",
     changed: { corner: 4, edge: 3 },
-    note: "두 면이 함께 닿는 조각이 셋뿐이라 7조각만 바뀐다",
+    note: "R과 U가 함께 움직이는 조각이 셋뿐이라 7조각만 바뀐다",
   },
   {
     a: "R U R'",
     b: "D",
     changed: { corner: 3 },
-    note: "코너 셋만 돈다(3-고리)",
+    note: "코너 셋만 한 바퀴 돈다(3개 고리)",
   },
-  { a: "M'", b: "U2", changed: { edge: 3 }, note: "엣지 셋만 돈다" },
+  {
+    a: "M'",
+    b: "U2",
+    changed: { edge: 3 },
+    note: "엣지 셋만 한 바퀴 돈다(3개 고리)",
+  },
 ];

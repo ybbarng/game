@@ -62,6 +62,46 @@ export function Quiz({
   );
 }
 
+/**
+ * 표기 읽는 법. 표기가 처음 나오는 「뽑아서 다시 끼우면」 카드에서는 펼쳐 두고, 뒤 카드에서는 접어 둔다
+ * (카드 차례 단추로 바로 넘어온 사람도 찾아 읽을 수 있게).
+ */
+export function Notation({ open = false }: { open?: boolean }) {
+  return (
+    <details
+      open={open}
+      className="rounded-xl bg-black/25 p-3 text-sm text-white/85"
+      data-math-notation
+    >
+      <summary className="cursor-pointer font-semibold">
+        표기 읽는 법(R, U', UFR …)
+      </summary>
+      <ul className="mt-2 flex list-disc flex-col gap-1 break-keep pl-5">
+        <li>
+          면 이름은 영어 머리글자예요. U 위 · D 아래 · F 앞 · B 뒤 · R 오른쪽 ·
+          L 왼쪽.
+        </li>
+        <li>
+          <b className="font-mono">R</b>은 오른쪽 면을, 그 면을 마주 볼 때 시계
+          방향으로 90° 돌려요. <b className="font-mono">R'</b>은 반대 방향으로
+          90°, <b className="font-mono">R2</b>는 반 바퀴(180°)예요.{" "}
+          <b className="font-mono">M</b>은 L과 R 사이의 가운데 층을 L과 같은
+          방향으로 돌려요.
+        </li>
+        <li>
+          한 번 돌리는 것을 한 「수」라고 세요. 정해진 일을 하도록 수를 이어
+          놓은 묶음을 「공식」이라고 해요.
+        </li>
+        <li>
+          조각은 닿은 면의 글자를 이어 불러요. <b className="font-mono">UFR</b>
+          은 위-앞-오른쪽 코너 블럭, <b className="font-mono">UF</b>는 위-앞
+          엣지 블럭이에요.
+        </li>
+      </ul>
+    </details>
+  );
+}
+
 export function Big({
   children,
   className,

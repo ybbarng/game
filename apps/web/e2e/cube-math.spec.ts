@@ -68,7 +68,7 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
   await page.locator("[data-guess='no']").click();
   await shot(page, "reassemble", info.project.name);
 
-  // 셋째 카드: 방향과 짝 계기(센터 180° 공식을 넣어도 규칙은 지켜진다)
+  // 셋째 카드: 방향과 홀짝 계기(센터 180° 공식을 넣어도 규칙은 지켜진다)
   await page.locator("[data-math-next]").click();
   await expect(page.locator("[data-cube-math='orient']")).toBeVisible();
   await page.locator("[data-orient-center-alg]").click();
@@ -92,6 +92,16 @@ test("큐브의 수학 카드를 넘기며 직접 해 본다", async ({ page }, 
   await page.locator("[data-order-preset='R U']").click();
   await expect(page.locator("[data-order-value]")).toHaveText("105");
   await shot(page, "order", info.project.name);
+
+  // 신의 수·교환자 카드는 글만 본다(스크린샷용)
+  if (SAVE_SCREENSHOTS) {
+    await page.locator("nav[aria-label='카드 차례'] button").nth(4).click();
+    await expect(page.locator("[data-cube-math='god']")).toBeVisible();
+    await shot(page, "god", info.project.name);
+    await page.locator("nav[aria-label='카드 차례'] button").nth(6).click();
+    await expect(page.locator("[data-cube-math='commutator']")).toBeVisible();
+    await shot(page, "commutator", info.project.name);
+  }
 
   expect(
     await page.evaluate(

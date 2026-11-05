@@ -58,8 +58,9 @@ export function CountCard() {
   return (
     <div className="flex flex-col gap-3" data-count-size={size}>
       <Lead>
-        큐브를 섞으면 나올 수 있는 모양은 몇 가지일까요? 조각을 하나씩 넣어 보며
-        곱해 가요.
+        큐브를 섞으면 나올 수 있는 모양은 몇 가지일까요? 큐브는 작은 조각 여러
+        개가 맞물려 있어요. 조각을 종류마다 빈자리에 하나씩 넣어 본다고
+        생각하고, 넣는 방법의 수를 곱해 가요.
       </Lead>
       <div className="flex flex-wrap gap-1.5">
         {SIZES.map((s) => (
@@ -73,6 +74,9 @@ export function CountCard() {
           </Pill>
         ))}
       </div>
+      <Lead>
+        <span data-count-intro>{plan.intro}</span>
+      </Lead>
 
       <div className="flex flex-col gap-1 rounded-xl bg-black/30 p-3">
         <p
@@ -169,8 +173,9 @@ export function CountCard() {
         )}
       </div>
       <Source>
-        2×2 3,674,160 · 3×3 43,252,003,274,489,856,000 · 4×4 약 7.4 × 10^45 ·
-        5×5 약 2.8 × 10^74. 숫자는 이 페이지가 직접 곱해 맞춘 값이에요.
+        2×2 3,674,160 · 3×3 43,252,003,274,489,856,000 · 4×4 약 7.4 ×
+        10^45(10^45는 1 뒤에 0이 45개인 수) · 5×5 약 2.8 × 10^74. 숫자는 이
+        페이지가 직접 곱해 맞춘 값이에요.
       </Source>
     </div>
   );

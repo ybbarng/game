@@ -19,7 +19,7 @@ import { SizesCard } from "./SizesCard";
 const CARDS = [
   { id: "count", title: "섞는 경우의 수" },
   { id: "reassemble", title: "뽑아서 다시 끼우면" },
-  { id: "orient", title: "방향과 짝" },
+  { id: "orient", title: "방향과 홀짝" },
   { id: "sizes", title: "크기와 패리티" },
   { id: "god", title: "신의 수" },
   { id: "order", title: "되풀이하면 돌아온다" },

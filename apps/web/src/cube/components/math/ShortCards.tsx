@@ -30,7 +30,7 @@ import type { CubeView } from "../../view";
 import { CubePlay } from "../CubePlay";
 import { DemoCube } from "../DemoCube";
 import { StateCube } from "./StateCube";
-import { Big, Lead, Pill, Source } from "./ui";
+import { Big, Lead, Notation, Pill, Source } from "./ui";
 
 const N = 3;
 
@@ -88,9 +88,11 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
-        어떤 섞인 3×3도 20수 안에 풀 수 있어요(반 바퀴도 한 수로 셀 때). 이 20을
-        「신의 수」라고 불러요. 90°만 한 수로 세면 26수예요.
+        3×3을 아무리 섞어도, 가장 짧게 푸는 길은 20수를 넘지 않아요(반 바퀴 R2도
+        한 수로 셀 때). 모든 길을 다 아는 신이 풀어도 드는 수라서 이 20을 「신의
+        수」라고 불러요. 90°만 한 수로 세면(R2는 두 수) 26수예요.
       </Lead>
+      <Notation />
       <div className="grid grid-cols-2 gap-2 text-center">
         <div className="rounded-xl bg-black/30 p-2">
           <p className="text-white/60 text-xs">3×3</p>
@@ -105,8 +107,9 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
         반 바퀴도 한 수 / 90°만 한 수
       </p>
       <Lead>
-        정확히 20수가 드는 모양 가운데 하나가 「슈퍼플립」이에요. 모든 엣지가
-        제자리에서 뒤집혀 있어요.
+        가장 짧게 풀어도 꼭 20수가 드는 모양 가운데 하나가 「슈퍼플립」이에요.
+        모든 엣지 블럭이 제자리에서 뒤집혀 있어요. 아래 20수 공식으로 만들 수
+        있어요.
       </Lead>
       <div className="flex gap-1.5">
         <Pill active={mode === "watch"} onClick={() => setMode("watch")}>
@@ -232,10 +235,13 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
-        같은 수 묶음을 계속 되풀이하면 언젠가 반드시 처음 모양으로 돌아와요.
-        모양의 수가 정해져 있으니 언젠가는 같은 모양을 다시 만나기 때문이에요.
-        돌아오는 데 드는 횟수를 그 묶음의 「차수」라고 해요.
+        맞춘 큐브에 R U R' U' 같은 수 묶음을 계속 되풀이하면 언젠가 반드시 처음
+        모양으로 돌아와요. 모양의 수가 정해져 있으니 언젠가는 같은 모양을 다시
+        만나요. 그리고 수는 모두 거꾸로 되돌릴 수 있어서, 처음으로 다시 만나는
+        모양은 바로 처음 모양이에요. 돌아오는 데 드는 횟수를 그 묶음의
+        「차수」라고 해요.
       </Lead>
+      <Notation />
       <div className="flex flex-wrap gap-1.5">
         {ORDER_PRESETS.map((p) => (
           <Pill
@@ -328,9 +334,11 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
         </div>
       </div>
       <Lead>
-        R U는 엣지 7개가 한 고리로 돌아 7번마다 제자리에 오고, 코너 5개는 한
-        고리로 돌면서 비틀려 15번마다 제자리에 와요. 둘이 함께 맞는 건 7과 15의
-        최소공배수인 105번째예요.
+        R U를 한 번 하면 엣지 블럭 7개가 차례로 한 칸씩 자리를 옮겨요(7개 고리).
+        그래서 7번마다 제자리에 와요. 코너 블럭 5개도 고리로 도는데, 한
+        바퀴(5번) 돌고 나면 방향이 비틀려 있어서 세 바퀴인 15번마다 제자리·바른
+        방향에 와요. 둘이 함께 맞는 건 7과 15의 최소공배수(둘 다로
+        나누어떨어지는 가장 작은 수)인 105번째예요.
       </Lead>
       <Source>3×3에서 가장 큰 차수는 1260이에요(R U2 D' B D'가 한 예).</Source>
     </div>
@@ -350,10 +358,12 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
-        A를 하고, B를 하고, A를 되돌리고, B를 되돌리는 꼴(A B A' B')을
-        「교환자」라고 해요. A와 B가 겹치는 조각이 적을수록 적게 바뀌어요. 공식
-        대부분이 이렇게 만들어져요.
+        A와 B를 수 묶음 둘이라고 할게요. A를 하고, B를 하고, A를 되돌리고, B를
+        되돌리는 꼴(A B A' B', A'는 A를 거꾸로 되돌리는 것)을 「교환자」라고
+        해요. A와 B가 함께 움직이는 조각이 적을수록 적게 바뀌어요. 조각 몇 개만
+        옮기는 공식 대부분이 이렇게 만들어져요.
       </Lead>
+      <Notation />
       <div className="flex flex-wrap gap-1.5">
         {COMMUTATOR_EXAMPLES.map((e, k) => (
           <Pill
@@ -374,7 +384,8 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
           </span>
         </Big>
         <p className="text-white/60 text-xs">
-          바뀐 조각(20개 중){ex.note ? ` · ${ex.note}` : ""}
+          바뀐 조각(코너 8 + 엣지 12 = 20개 중)
+          {ex.note ? ` · ${ex.note}` : ""}
         </p>
       </div>
       <div className="mx-auto w-full max-w-xs">
@@ -390,8 +401,10 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
       </div>
       <Lead>
         「켤레」는 A B A' 꼴이에요. A로 조각을 B가 일하기 좋은 자리로 옮기고,
-        B를 하고, A로 되돌려 놓아요. 예를 들어 {conjugate("R", "U")}는 U가 하는
-        일을 다른 자리에서 해요.
+        B를 하고, A'로 되돌려 놓아요. 예를 들어 {conjugate("R", "U")}는 R로
+        오른쪽 조각을 윗면으로 올려 U로 돌린 뒤 R'로 내려놓아서, U가 하는 일을
+        다른 자리에서 해요. 공식을 다른 자리에 쓰고 싶을 때 앞뒤에 A와 A'를
+        붙이면 돼요.
       </Lead>
       <Source>바뀐 조각 수는 이 페이지의 큐브 엔진이 세어요.</Source>
     </div>
