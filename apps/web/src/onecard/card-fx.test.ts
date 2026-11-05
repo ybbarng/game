@@ -73,11 +73,7 @@ describe("원카드 카드 연출 계획", () => {
       events,
       ctx({ prevHand: ["S2"], hand: ["S2", "H9", "CJ"] as OnecardCard[] }),
     );
-    expect(steps.map((s) => fly(s).hideCard ?? fly(s).hideSeat)).toEqual([
-      "H9",
-      "CJ",
-      1,
-    ]);
+    expect(steps.map((s) => fly(s).hide)).toEqual(["H9", "CJ", "fan-1-3"]);
     expect(steps.map((s) => s.at)).toEqual([
       0,
       DRAW_GAP_MS,
@@ -117,6 +113,7 @@ describe("원카드 카드 연출 계획", () => {
     const shuffle = steps.at(-1) as FxStep;
     expect(shuffle.kind).toBe("shuffle");
     expect(shuffle.ms).toBe(RESHUFFLE_MS);
+    if (shuffle.kind === "shuffle") expect(shuffle.deck).toBe(deck);
     const lastGather = gather.at(-1) as FxStep;
     expect(shuffle.at).toBeGreaterThanOrEqual(lastGather.at + lastGather.ms);
   });

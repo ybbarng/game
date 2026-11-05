@@ -9,6 +9,7 @@ import { useMemo } from "react";
 
 import { CardArt } from "@/components/card-art/CardArt";
 import type { CardTheme } from "@/components/card-art/themes";
+import { type CardKind, cardHeight, PLAYING_CARD } from "@/components/card-fx";
 import { useCardTheme } from "@/game/settings";
 import { cn } from "@/lib/cn";
 
@@ -68,7 +69,7 @@ export function OnecardCardView({
 }) {
   const theme = useJokerTheme(card);
   const art = card === COLOR_JOKER ? "JK" : card;
-  const height = Math.round(width * 1.4);
+  const height = Math.round(cardHeight(PLAYING_CARD, width));
   const name = label ?? (card ? cardName(card) : "뒷면 카드");
   const body = <CardArt card={art} theme={theme} />;
   if (decorative)
@@ -118,3 +119,9 @@ export function OnecardCardView({
     </button>
   );
 }
+
+/** 원카드 카드 종류: 트럼프(`PLAYING_CARD`)에 두 조커 그림만 원카드 것으로 */
+export const ONECARD_CARD: CardKind<OnecardCard> = {
+  ...PLAYING_CARD,
+  renderFace: (card, w) => <OnecardCardView card={card} width={w} decorative />,
+};

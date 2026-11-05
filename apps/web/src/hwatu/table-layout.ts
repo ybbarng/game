@@ -1,3 +1,4 @@
+import { cardWidth, HWATU_SHAPE } from "@/components/card-fx/kind";
 import {
   computeLayout,
   type Layout,
@@ -5,9 +6,6 @@ import {
   rectsOverlap,
   type Size,
 } from "@/layout/compute-layout";
-
-/** 화투 카드 높이/폭(5:8) */
-export const HWATU_RATIO = 8 / 5;
 
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
@@ -80,7 +78,7 @@ export function hwatuLayout(
     height,
     playerCount: players,
     handCount: handMax,
-    cardRatio: HWATU_RATIO,
+    card: HWATU_SHAPE,
     handShare: short
       ? { landscape: 0.2, portrait: 0.2 }
       : { landscape: 0.17, portrait: 0.2 },
@@ -92,7 +90,7 @@ export function hwatuLayout(
   const first = computeLayout(input);
   const plateH = first.seats[1]?.plate.h ?? 60;
   const fanH = Math.round(clamp(plateH * 0.4, 28, 46));
-  const fan = { w: fanH / HWATU_RATIO, h: fanH };
+  const fan = { w: cardWidth(HWATU_SHAPE, fanH), h: fanH };
   const layout = computeLayout({ ...input, fanHeight: fanH });
 
   const plates = [...layout.seats.slice(1).map((s) => s.plate), layout.myPlate];
@@ -100,7 +98,11 @@ export function hwatuLayout(
   const platW = Math.min(...plates.map((p) => p.w));
   // 자리 판: 이름 줄(약 20px)·묶음 이름(14px)·위아래 여백을 빼고 남는 높이에, 네 묶음이 한 줄로 들어가게
   const captured = Math.floor(
-    clamp(Math.min((platH - 54) / HWATU_RATIO, (platW - 40) / 4), 12, 30),
+    clamp(
+      Math.min(cardWidth(HWATU_SHAPE, platH - 54), (platW - 40) / 4),
+      12,
+      30,
+    ),
   );
   const { center, hand } = layout;
   // 바닥: 같은 달끼리 겹친 묶음이 여남은 개(넉넉히 12묶음, 묶음 하나는 카드 1.3장 폭). 한 줄~세 줄 중 카드가
@@ -109,7 +111,7 @@ export function hwatuLayout(
     Math.max(
       ...[1, 2, 3].map((rows) =>
         Math.min(
-          (center.h - 52) / (rows * HWATU_RATIO + (rows - 1) * 0.12),
+          (center.h - 52) / (rows * HWATU_SHAPE.ratio + (rows - 1) * 0.12),
           (center.w - w - 40) / (Math.ceil(12 / rows) * 1.3),
         ),
       ),

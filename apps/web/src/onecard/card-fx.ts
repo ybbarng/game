@@ -10,32 +10,25 @@
  */
 import type { GameEvent, OnecardCard } from "@game/onecard-engine";
 
+import {
+  type FlightStep,
+  fxStart,
+  type Spot,
+} from "@/components/card-fx/flight-plan";
 import { FLIGHT_MS, SHUFFLE_MS } from "@/game/timing";
 
-/** 카드 가운데 자리와 너비(px, 무대 기준) */
-export interface Spot {
-  x: number;
-  y: number;
-  w: number;
-  rotate?: number;
-}
+export { fxStart, type Spot };
 
-export type FxStep =
-  | {
-      kind: "fly";
-      /** null이면 뒷면 */
-      card: OnecardCard | null;
-      from: Spot;
-      to: Spot;
-      /** 이 걸음의 연출 시작부터(ms) */
-      at: number;
-      ms: number;
-      /** 내려앉을 때까지 손패에서 가려 둘 카드(내가 먹은 카드) */
-      hideCard?: OnecardCard;
-      /** 내려앉을 때까지 그 자리 뒷면 부채에서 가려 둘 한 장(남이 먹은 카드) */
-      hideSeat?: number;
-    }
-  | { kind: "shuffle"; at: number; ms: number };
+/**
+ * 원카드 연출 한 걸음(card-fx `FlightStep`). 내가 먹은 카드는 손패의 그 카드(`hide`: 카드 id), 남이 먹은 카드는
+ * 그 자리 뒷면 부채의 그 장(`hide`: `fanFlipId`)을 내려앉을 때까지 가린다
+ */
+export type FxStep = FlightStep<OnecardCard>;
+
+/** 남의 뒷면 부채 `index`번째 장의 이름(`data-flip`) */
+export function fanFlipId(seat: number, index: number): string {
+  return `fan-${seat}-${index}`;
+}
 
 /** 카드 한 장을 내는 연출(천천히, 무엇을 냈는지 알아볼 만큼) */
 export const PLAY_MS = 420;
@@ -120,7 +113,7 @@ export function planFx(
             to,
             at: t + k * DRAW_GAP_MS,
             ms: DRAW_MS,
-            hideCard: card,
+            hide: card,
           });
         } else {
           const to = ctx.fanSpot(e.seat, had + k, total);
@@ -132,7 +125,7 @@ export function planFx(
             to,
             at: t + k * DRAW_GAP_MS,
             ms: DRAW_MS,
-            hideSeat: e.seat,
+            hide: fanFlipId(e.seat, had + k),
           });
         }
         any = true;
@@ -158,27 +151,12 @@ export function planFx(
         next();
       }
     } else if (e.type === "reshuffled") {
-      steps.push({ kind: "shuffle", at: t, ms: RESHUFFLE_MS });
+      steps.push({ kind: "shuffle", deck: ctx.deck, at: t, ms: RESHUFFLE_MS });
       t += RESHUFFLE_MS;
       next();
     }
   }
   return { steps, duration: Math.max(0, t - STEP_PAUSE_MS) };
-}
-
-/**
- * 앞 연출이 남아 있으면 이번 연출을 언제 시작하나. 너무 밀렸으면(`maxLagMs` 넘게) 남은 것을 버리고 바로 시작한다
- * (연출이 판 상태보다 한참 뒤처져 엉뚱한 때 날지 않게)
- */
-export function fxStart(
-  now: number,
-  busyUntil: number,
-  maxLagMs = 900,
-): { delay: number; flush: boolean } {
-  const lag = busyUntil - now;
-  if (lag <= 0) return { delay: 0, flush: false };
-  if (lag > maxLagMs) return { delay: 0, flush: true };
-  return { delay: lag, flush: false };
 }
 
 /** 원카드 나눠 주기 묶음: 손패를 두 번에 나눠 준다(7장은 3·4, 5장은 2·3) */

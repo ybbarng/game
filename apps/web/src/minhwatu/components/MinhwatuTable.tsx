@@ -13,7 +13,6 @@ import {
   yaksOf,
 } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
-import { useCardFlip } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -23,7 +22,12 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
-import { HwatuDeal, hwatuDealMs, useHwatuDealing } from "@/hwatu/card-fx";
+import {
+  HwatuDeal,
+  hwatuDealMs,
+  useHwatuDealing,
+  useHwatuFlights,
+} from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
@@ -327,7 +331,7 @@ export function MinhwatuTable({
     events.some((e) => e.type === "roundStarted"),
     hwatuDealMs(minhwatuDealCounts(players)),
   );
-  useCardFlip({
+  const fx = useHwatuFlights({
     stage: stage.ref,
     scene: view,
     skip: dealing,
@@ -360,6 +364,7 @@ export function MinhwatuTable({
       background={MINHWATU_BG}
       mission={mission}
       stageRef={stage.ref}
+      fx={fx}
       handlers={controls.handlers}
     >
       {children}
