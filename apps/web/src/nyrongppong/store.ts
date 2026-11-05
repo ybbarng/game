@@ -16,6 +16,7 @@ import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 
+import { nyrongppongDealMs } from "./card-fx";
 import { nyrongppongKit } from "./kit";
 
 export type NyrongppongLocalMatch = LocalMatch<
@@ -46,9 +47,23 @@ export type NyrongppongSaved = SavedMatch<
  */
 export const BOT_PACE_MS = 450;
 
-/** 컴퓨터 행동 사이를 늦춘다(브라우저가 그림을 그리고 입력을 받는다) */
+/** 판 시작 나눠 주기 연출이 끝나는 시각. 컴퓨터는 그 뒤에 첫 행동을 한다 */
+let dealUntil = 0;
+
+/** 판 시작 장면이면 나눠 주는 동안 컴퓨터를 기다리게 한다 */
+function noteDeal(events: readonly GameEvent[], players: number): void {
+  if (events.some((e) => e.type === "roundStarted"))
+    dealUntil = Date.now() + nyrongppongDealMs(players);
+}
+
+/** 컴퓨터 행동 사이를 늦춘다(브라우저가 그림을 그리고 입력을 받는다). 나눠 주는 중이면 끝날 때까지 */
 function botPace(next: () => void): void {
-  setTimeout(next, BOT_PACE_MS);
+  setTimeout(() => {
+    // 쉬는 사이 판이 시작됐을 수 있어 깨어날 때 본다
+    const extra = dealUntil - Date.now();
+    if (extra > 0) setTimeout(next, extra);
+    else next();
+  }, BOT_PACE_MS);
 }
 
 const SAVE_KEY = "nyrongppong-save";
@@ -180,6 +195,10 @@ export const useNyrongppong = create<NyrongppongStore>((set, get) => {
       if (local && !practice) saveNyrongppong({ ...local.save(), level });
     };
     const first = host.drain();
+    noteDeal(
+      first.flatMap((s) => s.events),
+      host.current().rules.players,
+    );
     set({
       host,
       local,
@@ -203,6 +222,7 @@ export const useNyrongppong = create<NyrongppongStore>((set, get) => {
       persist();
       recorder?.observe(snapshot);
       archiver?.observe(snapshot);
+      noteDeal(snapshot.events, snapshot.view.rules.players);
       set({
         view: snapshot.view,
         events: snapshot.events,

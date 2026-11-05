@@ -12,7 +12,8 @@ import {
   YAK_NAMES,
 } from "@game/nyrongppong-engine";
 import { useEffect, useRef, useState } from "react";
-
+import { useCardFlip } from "@/components/card-fx";
+import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { SeatPlateFrame } from "@/components/SeatPlate";
@@ -20,6 +21,7 @@ import type { MissionProps } from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
+import { HwatuDeal, useHwatuDealing } from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import { HwatuDeck } from "@/hwatu/components/HwatuLayout";
@@ -41,6 +43,12 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 
+import {
+  NYRONGPPONG_DEAL_PATTERN,
+  NYRONGPPONG_STEP_MS,
+  nyrongppongDealMs,
+  nyrongppongMoves,
+} from "../card-fx";
 import { NYRONGPPONG_LEVELS } from "../settings";
 import { useNyrongppong } from "../store";
 
@@ -137,7 +145,7 @@ function Melds({
       {melds.map((meld) => (
         <div key={meld[0]} className="flex -space-x-2" data-meld={seat}>
           {meld.map((id) => (
-            <HwatuCardView key={id} id={id} width={width} />
+            <HwatuCardView key={id} id={id} flip={id} width={width} />
           ))}
         </div>
       ))}
@@ -201,7 +209,7 @@ function SeatPlate({
           {view.totals[seat] ?? 0}점
         </span>
       </div>
-      <div className="flex min-h-0 flex-wrap items-end gap-1.5 overflow-hidden">
+      <div className="flex min-h-0 flex-wrap items-end gap-1.5">
         {revealed && (
           <div className="flex -space-x-2" data-revealed={seat}>
             {revealed.map((id) => (
@@ -260,6 +268,31 @@ export function NyrongppongGame({
   const sent = useSentLock(view, notice);
   /** 판 끝 결과 띠가 떠 있는 동안은 점수표 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
   const [bannerUp, setBannerUp] = useState(false);
+  const controls = useHandControls<string>();
+  // 카드 연출(docs/05 4.12): 판 시작에 섞어 나눠 주고, 장면마다 가져오기·버리기·뽕을 차례로 옮긴다
+  const players = view?.rules.players ?? 4;
+  const mySeat = host?.seat ?? 0;
+  const dealing = useHwatuDealing(
+    view,
+    events.some((e) => e.type === "roundStarted"),
+    nyrongppongDealMs(players),
+  );
+  useCardFlip({
+    stage: stage.ref,
+    scene: view,
+    skip: dealing,
+    stepMs: NYRONGPPONG_STEP_MS,
+    moves: (prev, next) =>
+      view
+        ? nyrongppongMoves(
+            prev,
+            next,
+            events,
+            view,
+            (seat) => (seat - mySeat + players) % players,
+          )
+        : [],
+  });
 
   useEffect(() => {
     if (!notice) return;
@@ -288,6 +321,7 @@ export function NyrongppongGame({
       background={NYRONGPPONG_BG}
       mission={mission}
       stageRef={stage.ref}
+      handlers={controls.handlers}
     >
       {children}
     </HwatuStage>
@@ -333,10 +367,25 @@ export function NyrongppongGame({
   const onCard = (card: string) => {
     const touch = pointer.current === "touch" || pointer.current === "pen";
     pointer.current = "mouse";
-    if (!myDiscard) return;
+    // 훑거나 끈 것은 손을 뗄 때 손패 조작이 처리한다
+    if (!myDiscard || controls.gestureMoved()) return;
     if (!touch || selected === card) discard(card);
     else setSelected(card);
   };
+
+  // 손패 훑기·위로 끌어 버리기·←→ Enter(마이티·하트·화투와 같은 손패 조작)
+  controls.update({
+    stage: stage.ref.current,
+    hand: view.hand,
+    playable: myDiscard ? new Set(view.hand) : null,
+    selected,
+    setSelected,
+    canPlay: myDiscard,
+    handTop: layout.hand.top,
+    cardHeight: layout.hand.card.h,
+    play: discard,
+    cancel: () => setSelected(null),
+  });
 
   let status: string;
   if (result) {
@@ -429,7 +478,20 @@ export function NyrongppongGame({
       />
 
       {/* 다른 사람 손패 뒷면(자리 판 뒤에서 판 쪽으로)과 자리 판 */}
+      {dealing && (
+        <HwatuDeal
+          layout={layout}
+          seats={n}
+          dealerOffset={(view.dealer - me + n) % n}
+          hand={HAND_SIZE}
+          floor={0}
+          deckLeft={view.deckCount}
+          dealKey={String(view.roundNumber)}
+          pattern={NYRONGPPONG_DEAL_PATTERN}
+        />
+      )}
       {!roundOver &&
+        !dealing &&
         others.map((seat, i) => (
           <HwatuFan
             key={`fan-${seat}`}
@@ -475,7 +537,12 @@ export function NyrongppongGame({
           />
         }
       >
-        <div className="flex w-full items-center justify-center gap-8">
+        <div
+          className={cn(
+            "flex w-full items-center justify-center gap-8",
+            dealing && "invisible",
+          )}
+        >
           <HwatuDeck count={view.deckCount} width={pileW * 0.85} />
           <div className="flex flex-col items-center gap-1">
             <div
@@ -486,7 +553,12 @@ export function NyrongppongGame({
               )}
             >
               {top ? (
-                <HwatuCardView id={top} width={pileW} className="pile-top" />
+                <HwatuCardView
+                  id={top}
+                  flip={top}
+                  width={pileW}
+                  className="pile-top"
+                />
               ) : (
                 <div
                   className="rounded-md border border-white/20 border-dashed"
@@ -650,11 +722,15 @@ export function NyrongppongGame({
 
       {/* 내 손패 */}
       <div
-        className="pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto",
+          dealing && "invisible",
+        )}
         style={{ top: layout.hand.top, bottom: layout.gutter, zIndex: 30 }}
       >
         <section
           aria-label="내 손패"
+          data-flip-zone="hand"
           onPointerDownCapture={(e) => {
             pointer.current = e.pointerType;
           }}
@@ -664,6 +740,7 @@ export function NyrongppongGame({
             <HwatuCardView
               key={id}
               id={id}
+              flip={id}
               width={layout.hand.card.w}
               selected={selected === id}
               highlight={
@@ -677,6 +754,11 @@ export function NyrongppongGame({
                     style: {
                       marginLeft:
                         handStepFor(layout, myHand.length) - layout.hand.card.w,
+                      ...(controls.dragArmed && selected === id
+                        ? {
+                            translate: `0 -${Math.round(layout.hand.card.w * 0.6)}px`,
+                          }
+                        : {}),
                     },
                   }
                 : {})}
