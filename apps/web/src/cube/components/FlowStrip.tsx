@@ -115,9 +115,18 @@ export function FlowStripView({
                   : "text-sky-200/80"
           }`}
         >
+          {/* 숫자가 바뀔 때마다 톡 튀고, 단계가 오를 때는 빛이 한 번 번진다(2026-11-05 사용자 「콤보 n 문구가 바뀔
+              때마다 강조되는 애니메이션」) */}
           {level > 0 && (
-            <span key={level} className="cube-flow-bump inline-block">
-              콤보 {combo}
+            <span
+              key={level}
+              data-cube-combo-level-up=""
+              className="cube-combo-level inline-block rounded px-0.5"
+            >
+              콤보{" "}
+              <span key={combo} className="cube-combo-tick inline-block">
+                {combo}
+              </span>
             </span>
           )}
         </span>

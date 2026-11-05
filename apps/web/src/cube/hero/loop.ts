@@ -8,6 +8,8 @@ import {
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import type { PieceMark } from "../piece-marks";
+import { DEFAULT_HERO_HIGHLIGHT, type HeroHighlight } from "./highlight";
 import type { HeroSize, HeroSolve } from "./methods";
 
 /**
@@ -39,6 +41,13 @@ export interface HeroTiming {
   stage: number;
   /** 단계 안에서 다음 모양을 살피는 멈춤 */
   look: number;
+  /**
+   * 조각을 찾는 둘러보기와 그 되돌리기 한 번(2026-11-05). 살짝 기울였다 돌아오는 느낌으로 보통 수보다도 빠르게
+   * (큐브 돌리기는 보통 수의 1.5배)
+   */
+  searchMove: number;
+  /** 강조(넣을 곳·찾은 조각, 맞춘 조각)를 보이는 멈춤 */
+  mark: number;
   /** 다 맞춘 뒤 멈춤 */
   solved: number;
   /** 섞는 수 */
@@ -63,6 +72,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     workerWait: 2000,
     stage: 450,
     look: 220,
+    mark: 500,
     solved: 1800,
   };
   // 풀이는 섞는 동안 미리 만들어 보통 섞기가 끝나기 전에 온다. 워커가 늦으면 `workerWait` 뒤 화면 스레드에서
@@ -72,6 +82,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
       ...base,
       scrambleMove: 120,
       solveMove: 280,
+      searchMove: 180,
       scrambleLength: 11,
       solveWait: 8000,
     };
@@ -80,6 +91,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
       ...base,
       scrambleMove: 110,
       solveMove: 240,
+      searchMove: 160,
       scrambleLength: 20,
       solveWait: 8000,
     };
@@ -91,6 +103,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     look: 120,
     scrambleMove: 80,
     solveMove: n === 4 ? 120 : 100,
+    searchMove: 80,
     scrambleLength: n === 4 ? 30 : 36,
   };
 }
@@ -204,7 +217,13 @@ export function orientForSolve(n: number, state: PuzzleState): string[] {
 
 export type HeroStep =
   | { kind: "move"; move: string; ms: number; label: string }
-  | { kind: "wait"; ms: number; label: string };
+  | {
+      kind: "wait";
+      ms: number;
+      label: string;
+      /** 이 멈춤 동안 잠깐 빛낼 것(넣기 전: 넣을 곳·찾은 조각, 넣은 뒤: 맞춘 조각) */
+      marks?: PieceMark[];
+    };
 
 /** 섞기 차례: 수마다 빠르게(큐브 돌리기는 무엇을 했는지 보이게 조금 느리게), 끝에 해법 이름을 보이며 멈춘다 */
 export function scrambleSteps(
@@ -227,37 +246,104 @@ export function scrambleSteps(
 /**
  * 맞추기 차례: 단계마다 꼬리표(「초보자 해법 · 십자」)를 바꾸고, 단계 사이와 살피는 자리에서 잠깐 멈춘다.
  * 수 없이 지나간 단계는 건너뛴다. 끝에 「맞춤」으로 멈춘다.
+ *
+ * 강조(`highlight`가 끄기가 아니면): 조각마다 넣기 전에 넣을 곳·찾은 조각을, 넣은 뒤에 맞춘 조각을 `mark`만큼
+ * 멈춰 빛낸다(살피는 멈춤·단계 사이 멈춤과 겹치면 하나로 둔다). 넣는 수 동안에는 빛내지 않는다. 찾는 돌리기
+ * (`searches`)는 `searchMove`로 조금 빠르게 둔다. 같은 자리의 사건은 차례대로 멈춤 하나씩이고(맞춘 조각끼리,
+ * 넣을 곳·찾은 조각끼리는 하나로 묶는다), `solo`인 사건은 따로 멈춘다. 끄기여도 이미 맞은 조각을 앞으로 돌려
+ * 확인한 뒤(`check`)에는 살피듯 잠깐 멈춘다.
  */
 export function solveSteps(
   solve: HeroSolve,
   methodLabel: string,
   t: HeroTiming,
+  highlight: HeroHighlight = DEFAULT_HERO_HIGHLIGHT,
 ): HeroStep[] {
   const looks = new Set(solve.looks);
+  const searches = new Set(solve.searches ?? []);
+  const marksAt = new Map<number, PieceMark[]>();
+  for (const { at, mark } of solve.marks ?? [])
+    marksAt.set(at, [...(marksAt.get(at) ?? []), mark]);
+  const on = highlight !== "off";
   const steps: HeroStep[] = [];
+  /** 수 i 앞의 사건을 멈춤 하나씩으로 묶는다 */
+  const groupsAt = (i: number): PieceMark[][] => {
+    const out: PieceMark[][] = [];
+    for (const m of marksAt.get(i) ?? []) {
+      const last = out.at(-1);
+      const prev = last?.at(-1);
+      const join =
+        last &&
+        prev &&
+        !m.solo &&
+        !prev.solo &&
+        (m.kind === "placed") === (prev.kind === "placed");
+      if (join) last.push(m);
+      else out.push([m]);
+    }
+    return out;
+  };
+  const isPlaced = (g: readonly PieceMark[]) => g[0]?.kind === "placed";
+  /** 수 i 앞의 멈춤들(맞춘 조각 → 단계 사이 → 넣을 곳·찾은 조각, 사건이 쌓인 차례) */
+  const pauses = (i: number, label: string, stageStart: boolean) => {
+    const groups = groupsAt(i);
+    const wait = (ms: number, m: readonly PieceMark[]) => {
+      const step: HeroStep = { kind: "wait", ms, label };
+      if (on && m.length) step.marks = [...m];
+      steps.push(step);
+    };
+    let k = 0;
+    if (stageStart) {
+      // 단계 사이 멈춤에 맞춘 조각을 싣는다
+      const g = groups[0] && isPlaced(groups[0]) ? groups[k++] : null;
+      wait(on && g ? Math.max(t.stage, t.mark) : t.stage, g ?? []);
+    }
+    let look = !stageStart && looks.has(i);
+    if (on)
+      for (; k < groups.length; k++) {
+        const g = groups[k] as PieceMark[];
+        // 살피는 멈춤은 넣을 곳·찾은 조각 멈춤과 하나로
+        const ms = !isPlaced(g) && look ? Math.max(t.look, t.mark) : t.mark;
+        if (!isPlaced(g)) look = false;
+        wait(ms, g);
+      }
+    const target = groups.some((g) => !isPlaced(g));
+    const checked = groups.some((g) => g.some((m) => m.check));
+    if (on) {
+      if (look) wait(t.look, []);
+    } else if (look || checked || (target && searches.has(i - 1)))
+      // 끄기여도 찾은 뒤·맞은 조각을 확인한 뒤에는 살피듯 잠깐 멈춘다
+      wait(t.look, []);
+  };
   let first = true;
   for (const stage of solve.stages) {
     if (stage.end <= stage.start) continue;
     const label = `${methodLabel} · ${stage.label}`;
-    if (!first) steps.push({ kind: "wait", ms: t.stage, label });
+    pauses(stage.start, label, !first);
     first = false;
     for (let i = stage.start; i < stage.end; i++) {
       const move = solve.moves[i];
       if (move === undefined) continue;
-      if (i !== stage.start && looks.has(i))
-        steps.push({ kind: "wait", ms: t.look, label });
-      // 큐브 전체 돌리기(연출이 돌려 쥔 것)는 조금 느리게: 무엇을 했는지 보이게
-      const ms = isRotationToken(move)
-        ? Math.round(t.solveMove * ROTATION_SLOWER)
-        : t.solveMove;
+      if (i !== stage.start) pauses(i, label, false);
+      // 큐브 전체 돌리기(연출이 돌려 쥔 것)는 조금 느리게: 무엇을 했는지 보이게. 찾는 돌리기는 조금 빠르게
+      const ms = searches.has(i)
+        ? t.searchMove
+        : isRotationToken(move)
+          ? Math.round(t.solveMove * ROTATION_SLOWER)
+          : t.solveMove;
       steps.push({ kind: "move", move, ms, label });
     }
   }
-  steps.push({
+  const end = (marksAt.get(solve.moves.length) ?? []).filter(
+    (m) => m.kind === "placed",
+  );
+  const done: HeroStep = {
     kind: "wait",
     ms: t.solved,
     label: `${methodLabel} · ${SOLVED_LABEL}`,
-  });
+  };
+  if (on && end.length) done.marks = end;
+  steps.push(done);
   return steps;
 }
 
@@ -305,6 +391,12 @@ export interface HeroLoopOptions {
   onLabel: (label: string) => void;
   /** 그림을 이 상태로 바로 바꾼다(풀이 실패 뒤 맞춘 큐브로) */
   onReset: (state: PuzzleState) => void;
+  /** 강조(기본 「잠깐」). 바꾸려면 `setHighlight` */
+  highlight?: HeroHighlight;
+  /**
+   * 지금 빛낼 스티커(정체 번호)가 바뀔 때. 「계속」이면 맞춘 조각이 판이 끝날 때까지 남는다. 빈 목록이면 끈다
+   */
+  onMarks?: (marks: readonly PieceMark[]) => void;
   /** 시간(기본 `heroTiming(n)`) */
   timing?: HeroTiming;
 }
@@ -344,6 +436,11 @@ export class HeroLoop {
   private label = "";
   /** 지금 걸음의 수를 이미 두었는지(멈췄다 이어 갈 때 다시 두지 않게) */
   private entered = false;
+  private highlight: HeroHighlight;
+  /** 「계속」에서 이 판에 맞춘 조각 */
+  private kept: PieceMark[] = [];
+  /** 마지막으로 알린 강조 */
+  private shownMarks: readonly PieceMark[] = [];
 
   constructor(options: HeroLoopOptions) {
     if (options.methods.length === 0) throw new Error("해법이 없다");
@@ -353,6 +450,44 @@ export class HeroLoop {
     this.state = solvedCube(this.n);
     this.target = this.state;
     this.method = options.methods[0] as { id: string; label: string };
+    this.highlight = options.highlight ?? DEFAULT_HERO_HIGHLIGHT;
+  }
+
+  /** 강조를 바꾼다. 다음 판의 걸음부터 따른다(지금 판의 남긴 표시는 끄기면 바로 지운다) */
+  setHighlight(mode: HeroHighlight): void {
+    this.highlight = mode;
+    if (mode !== "keep") this.kept = [];
+    if (mode === "off") this.showMarks([]);
+  }
+
+  get currentHighlight(): HeroHighlight {
+    return this.highlight;
+  }
+
+  private showMarks(marks: readonly PieceMark[]): void {
+    const same =
+      marks.length === this.shownMarks.length &&
+      marks.every((m, i) => m === this.shownMarks[i]);
+    if (same) return;
+    this.shownMarks = marks;
+    this.o.onMarks?.(marks);
+  }
+
+  /** 걸음에 들어설 때: 그 멈춤의 강조와 「계속」으로 남긴 것을 보인다 */
+  private enterMarks(step: HeroStep): void {
+    const brief =
+      step.kind === "wait" && this.highlight !== "off"
+        ? (step.marks ?? [])
+        : [];
+    if (this.highlight === "keep")
+      for (const m of brief) if (m.kind === "placed") this.kept.push(m);
+    const extra =
+      this.highlight === "keep"
+        ? brief.filter((m) => m.kind !== "placed")
+        : brief;
+    this.showMarks(
+      this.kept.length || extra.length ? [...this.kept, ...extra] : [],
+    );
   }
 
   /** 지금 상태(엔진). 연출이 그린 것과 같다 */
@@ -407,6 +542,7 @@ export class HeroLoop {
       label: string;
     };
     this.cycle++;
+    this.kept = [];
     const scramble = randomScramble(this.o.rng, this.t.scrambleLength, this.n);
     let after = this.state;
     for (const m of scramble)
@@ -517,7 +653,7 @@ export class HeroLoop {
           this.phase = "solve";
           this.steps = [
             ...orientSteps(this.orient, this.method.label, this.t),
-            ...solveSteps(solve, this.method.label, this.t),
+            ...solveSteps(solve, this.method.label, this.t, this.highlight),
           ];
           this.index = 0;
           this.entered = false;
@@ -532,6 +668,7 @@ export class HeroLoop {
     if (this.phase === "scramble" && this.index === this.steps.length - 1)
       this.armHere();
     this.setLabel(step.label);
+    if (!this.entered) this.enterMarks(step);
     if (step.kind === "move" && !this.entered) {
       const parsed = parseMoves(this.n, step.move);
       this.state = applyMoves(this.n, this.state, parsed);
