@@ -57,14 +57,14 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await expect(
     page.getByRole("heading", { name: "큐브 맞추기" }),
   ).toBeVisible();
-  // 메뉴는 묶음 여섯(맞추기·대결·배우기·연습·더 알아보기·실물 큐브)과 설정. 항목은 이름만
+  // 메뉴는 묶음 여섯(배우기·맞추기·대결·연습·더 알아보기·실물 큐브)과 설정. 처음 온 사람의 길(배우기)이 맨 위
   const groups = page.locator("[data-cube-group]");
   await expect(groups).toHaveCount(6);
   expect(
     await groups.evaluateAll((els) =>
       els.map((e) => e.getAttribute("data-cube-group")),
     ),
-  ).toEqual(["맞추기", "대결", "배우기", "연습", "더 알아보기", "실물 큐브"]);
+  ).toEqual(["배우기", "맞추기", "대결", "연습", "더 알아보기", "실물 큐브"]);
   // 처음 온 사람: 강조는 배우기 첫 칸 「처음이라면」 하나
   await expect(
     page.locator("[data-cube-group='배우기'] a").first(),
