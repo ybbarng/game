@@ -6,6 +6,7 @@ import {
   cubiePositions,
   inMove,
   moveAngle,
+  moveDuration,
   normalVec,
   solvedStickers,
   type Vec3,
@@ -1053,7 +1054,7 @@ export class CubeView {
     }
     while (!this.running && this.queue.length > 0) {
       const m = this.queue.shift() as CubeMove;
-      const base = this.effectiveMs() * (m.turns === 2 ? 1.4 : 1);
+      const base = moveDuration(this.effectiveMs(), m);
       // 줄에 남은 수가 많을수록 빨리
       const r = this.start(m, now, base / (1 + this.queue.length));
       if (r.duration <= 0) this.finish(r);

@@ -50,6 +50,10 @@ import {
  *     판정은 상태만 본다(`piece-marks.ts` `llTargetIds` 등). 해법의 돌리기(U·y)는 그대로 보인다.
  * - `keepY`(배우는 방식 흰 십자): 해법의 y를 녹이지 않고 그대로 보인다. 넣을 자리를 y로 앞에 가져와 앞면(F)으로
  *   올리는 모습이 화면에도 그대로 나온다(사용자 2026-11-05 「항상 D면으로 내려서 옮겨서 올려」).
+ * - 조각 하나의 차례(사용자 2026-11-05 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을
+ *   앞으로 가져와서 넣어줘」): 둘러보기·되돌리기 → 큐브 돌리기(넣을 칸을 앞으로) → 반대 면(조각을 칸 밑으로) → 공식.
+ *   해법(`taught.ts`·`cross-front.ts`)이 이 차례로 수를 내고, 이 변환은 큐브 돌리기를 층 돌리기 사이에 끼우지 않는다.
+ *   `bring` 단계는 반대 면 수 뒤 공식 앞 자리를 `gaps`로 내어 연출이 잠깐 쉰다(`loop.ts` `order`).
  */
 
 export interface HeroView {
@@ -61,6 +65,11 @@ export interface HeroView {
   search?: boolean;
   /** 해법의 y를 그대로 보일 단계(녹이지 않는다) */
   keepY?: readonly string[];
+  /**
+   * 흰 면 위에서 조각을 아랫면(D)으로 칸 밑에 두고 넣는 단계. 그 D 뒤 공식 앞에 쉬는 자리(`gaps`)를 낸다
+   * (사용자 2026-11-05 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로 가져와서 넣어줘」)
+   */
+  bring?: readonly string[];
 }
 
 export interface PresentInput {
@@ -77,6 +86,8 @@ export type PresentOutput = {
   searches: number[];
   /** 강조 사건: 이 번호의 수 앞에서(수 수와 같으면 다 맞춘 뒤) 차례대로 */
   marks: { at: number; mark: PieceMark }[];
+  /** 아랫면으로 조각을 칸 밑에 둔 뒤 공식을 시작하는 수(`bring` 단계, 이 번호의 수 앞에서 쉰다) */
+  gaps: number[];
 };
 
 /** 해법의 돌리기를 그대로 두는 단계(축소, 루·ZZ의 블록 단계) */
@@ -667,7 +678,39 @@ export function presentSolve(
     // 마지막으로 돌려 쥔 단계 끝에서 해법의 쥔 방향으로 돌아온다(마지막 층 공식이 R·U 그대로 보이게)
     if (si === lastShaped && !same(g, I)) turn(tokensFor(transpose(g)), si);
   });
-  return finish(n, out, solve.stages, pending);
+  return finish(n, out, solve.stages, pending, new Set(view.bring ?? []));
+}
+
+const isRotationName = (move: string) => /^[xyz]/.test(move);
+
+/**
+ * `bring` 단계에서 「반대 면(D)으로 칸 밑에 두기 → 공식」의 경계. 토막 맨 앞(단계 시작·살피는 자리·강조 뒤)이나
+ * 큐브 돌리기 바로 뒤의 D는 칸 밑에 두는 수다(십자·코너 공식은 D로 시작하지 않는다). 그 다음 수가 D도 큐브
+ * 돌리기도 아니면 그 앞이 공식의 시작이다
+ */
+function bringGaps(
+  moves: readonly string[],
+  stages: PresentOutput["stages"],
+  names: readonly string[],
+  bring: ReadonlySet<string>,
+  cuts: ReadonlySet<number>,
+): number[] {
+  const out: number[] = [];
+  stages.forEach((st, si) => {
+    if (!bring.has(names[si] ?? "")) return;
+    for (let i = st.start + 1; i < st.end; i++) {
+      const prev = moves[i - 1] as string;
+      const cur = moves[i] as string;
+      if (!prev.startsWith("D") || cur.startsWith("D") || isRotationName(cur))
+        continue;
+      const lead =
+        i - 1 === st.start ||
+        cuts.has(i - 1) ||
+        isRotationName(moves[i - 2] as string);
+      if (lead && !cuts.has(i)) out.push(i);
+    }
+  });
+  return out;
 }
 
 /**
@@ -679,6 +722,7 @@ function finish(
   out: readonly Out[],
   stages: PresentInput["stages"],
   tail: readonly PieceMark[],
+  bring: ReadonlySet<string>,
 ): PresentOutput {
   const merged: Out[] = [];
   let carry = false;
@@ -753,5 +797,13 @@ function finish(
   });
   for (const mark of [...carryEvents, ...tail])
     marks.push({ at: moves.length, mark });
-  return { moves, stages: result, looks, searches, marks };
+  const cuts = new Set([...looks, ...marks.map((m) => m.at)]);
+  const gaps = bringGaps(
+    moves,
+    result,
+    stages.map((s) => s.name),
+    bring,
+    cuts,
+  );
+  return { moves, stages: result, looks, searches, marks, gaps };
 }

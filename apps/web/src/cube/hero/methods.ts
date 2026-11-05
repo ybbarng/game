@@ -65,7 +65,13 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     label: "초보자 해법",
     solve: async (s) => (await ai()).solveBeginner3(s, TAUGHT),
     // 흰 십자는 넣을 자리를 y로 앞에 가져와 앞면으로 올리는 모습을 그대로 보인다
-    view: { ...TAUGHT_VIEW, search: true, keepY: ["cross"] },
+    // 조각마다 「큐브 돌리기 → 반대 면(D) → 공식」 사이를 쉬어 보인다
+    view: {
+      ...TAUGHT_VIEW,
+      search: true,
+      keepY: ["cross"],
+      bring: ["cross", "corners"],
+    },
   },
   {
     id: "3-cfop",
@@ -157,6 +163,8 @@ export interface HeroSolve {
   searches?: number[];
   /** 강조 사건(이 번호의 수 앞, 차례대로). 옛 워커 답에는 없다 */
   marks?: { at: number; mark: PieceMark }[];
+  /** 반대 면으로 조각을 칸 밑에 둔 뒤 공식 앞에서 쉬는 자리(이 번호의 수 앞). 옛 워커 답에는 없다 */
+  gaps?: number[];
 }
 
 /**
@@ -185,5 +193,6 @@ export async function solveForHero(
     looks: solve.looks,
     searches: solve.searches,
     marks: solve.marks,
+    gaps: solve.gaps,
   };
 }
