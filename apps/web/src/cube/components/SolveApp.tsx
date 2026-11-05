@@ -17,12 +17,15 @@ import {
 import { stickersFromState as stickersOf } from "../bridge";
 import type { Command } from "../input";
 import type { AlgCase } from "../learn";
+import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
+import { groupSplits } from "../progress/splits";
 import {
   addRecord,
   averageOf,
   formatMs,
   loadRecords,
   parseReplay,
+  parseSplits,
   resultMs,
   type SolveMode,
   type SolveRecord,
@@ -31,10 +34,16 @@ import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
 import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
-import { scrambleInWorker, warmUpScramble } from "../worker";
+import {
+  distanceInWorker,
+  scrambleInWorker,
+  shortSolutionInWorker,
+  warmUpScramble,
+} from "../worker";
 import { AlgChips } from "./AlgChips";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { useMoveKeys } from "./MoveChip";
+import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
 
 /**
  * 혼자 맞추기(`/cube/solo`)와 가상 블라인드(`/cube/blind`) 화면(docs/47 1·7절).
@@ -265,8 +274,56 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   useEffect(() => {
     if (phase !== "memo") setNotice((v) => (v === MEMO_BLOCKED ? null : v));
   }, [phase]);
+  // 완성까지 거리(2×2·3×3, 8수 안쪽일 때만 보인다). 수마다 워커에 묻고, 답이 왔을 때 상태가 바뀌었으면 버린다
+  const [near, setNear] = useState<number | null>(null);
+  const tracking = mode === "solo" && n <= 3 && phase === "solving";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 수마다(version) 다시 묻는다
+  useEffect(() => {
+    if (!tracking) {
+      setNear(null);
+      return;
+    }
+    const asked = session.state;
+    let live = true;
+    distanceInWorker(n, asked, NEAR_LIMIT)
+      .then((d) => {
+        if (live && session.state === asked) setNear(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [tracking, version, n, session]);
+  // 이 섞기의 짧은 풀이(결과 상자, 2×2·3×3)
+  const [short, setShort] = useState<{
+    scramble: string;
+    value: ShortSolution;
+  } | null>(null);
+  const solvedScramble =
+    mode === "solo" && n <= 3 && phase === "done" && session.result?.ms != null
+      ? session.scramble
+      : null;
+  useEffect(() => {
+    if (!solvedScramble) return;
+    let live = true;
+    const start = applyMoves(n, solvedCube(n), parseMoves(n, solvedScramble));
+    shortSolutionInWorker(n, start)
+      .then((v) => {
+        if (live && v) setShort({ scramble: solvedScramble, value: v });
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [solvedScramble, n]);
   const elapsed = session.elapsed();
   const inspecting = phase === "inspect";
+  const showProgress =
+    mode === "solo" &&
+    (phase === "inspect" ||
+      phase === "ready" ||
+      phase === "solving" ||
+      phase === "done");
   const last = records[0];
   const best = records.reduce<number | null>((b, r) => {
     const t = resultMs(r);
@@ -383,8 +440,28 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               </p>
             )}
 
+            {showProgress && (
+              <>
+                <ProgressMeter
+                  n={n}
+                  progress={session.progress}
+                  best={session.bestProgress}
+                  near={phase === "solving" ? near : null}
+                />
+                {phase !== "done" && <MilestoneChips splits={session.splits} />}
+              </>
+            )}
             {phase === "done" && result && (
-              <ResultBox mode={mode} result={result} />
+              <ResultBox
+                mode={mode}
+                result={result}
+                splits={session.splits}
+                short={
+                  short && short.scramble === session.scramble
+                    ? short.value
+                    : null
+                }
+              />
             )}
             {phase === "done" && met.length > 0 && (
               <p
@@ -412,6 +489,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               onView={(v) => {
                 viewRef.current = v;
               }}
+              flow={mode === "solo" ? "large" : undefined}
             />
           </section>
 
@@ -436,6 +514,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                 {records.slice(0, 30).map((r, i) => (
                   <li
                     key={`${r.at}-${r.scramble}`}
+                    title={splitTitle(r)}
                     className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white/5"
                   >
                     <span className="w-6 text-right text-white/40 text-xs">
@@ -486,12 +565,23 @@ const MEMO_BLOCKED =
 const TEMP_SCRAMBLE =
   "임시 섞기: 대회 방식(무작위 상태) 대신 무작위 수로 섞었어요.";
 
+/** 기록 줄에 대면 보이는 구간 기록 */
+function splitTitle(r: SolveRecord): string | undefined {
+  const groups = groupSplits(parseSplits(r.splits));
+  if (groups.length === 0) return undefined;
+  return groups.map((g) => `${g.label} ${formatMs(g.ms)}`).join(" · ");
+}
+
 function ResultBox({
   mode,
   result,
+  splits,
+  short,
 }: {
   mode: SolveMode;
   result: NonNullable<SolveSession["result"]>;
+  splits: SolveSession["splits"];
+  short: ShortSolution | null;
 }) {
   const total = result.ms === null ? null : result.ms + result.penalty;
   const dnf = result.ms === null;
@@ -526,6 +616,14 @@ function ResultBox({
       <span className="text-sm">{result.moves}수</span>
       {/* DNF는 맞추지 못했으니 빠르기를 보이지 않는다 */}
       {!dnf && tps && <span className="text-sm">초당 {tps}수</span>}
+      {!dnf && short && (
+        <span className="text-sm text-white/70" data-cube-short={short.moves}>
+          {short.exact
+            ? `이 섞기의 가장 짧은 풀이 ${short.moves}수`
+            : `컴퓨터 풀이 ${short.moves}수`}
+        </span>
+      )}
+      {!dnf && <SplitList splits={splits} />}
     </div>
   );
 }

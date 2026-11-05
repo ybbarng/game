@@ -43,6 +43,7 @@ import {
 } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
+import { type FlowSize, FlowStripView, useFlowStrip } from "./FlowStrip";
 import { KeyGuide } from "./KeyGuide";
 import { StageWithNet, useBackView } from "./StageWithNet";
 
@@ -96,6 +97,11 @@ export interface CubePlayProps {
   axes?: boolean;
   /** 단추 줄에 더할 수(따라 하기의 Rw·E·S·2R 등, 휴대폰에서도 칠 수 있게) */
   extraButtons?: readonly string[];
+  /**
+   * 수 흐름 띠(docs/51 1-1): 이 화면의 크기. 설정이 「작게」면 늘 작게, 「끔」이면 없다. 없으면 띠를 두지 않는다.
+   * 데스크톱은 큐브 위 한 줄, 휴대폰은 큐브 위쪽 가장자리에 반투명 띠로 겹친다. `syncToken`이 바뀌면 비운다
+   */
+  flow?: FlowSize | undefined;
 }
 
 export function CubePlay({
@@ -113,6 +119,7 @@ export function CubePlay({
   onSticker,
   axes = false,
   extraButtons,
+  flow,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -123,6 +130,20 @@ export function CubePlay({
   const [depth, setDepth] = useState<number | null>(null);
   /** 짝수 큐브의 들고 있는 방향(받은 수를 따라간다, 키 색의 기준). 홀수는 가운데 칸으로 읽는다 */
   const [evenOrient, setEvenOrient] = useState<Orient>(HOME_ORIENT);
+  // 수·명령 처리(아래 moveRef·handleRef)는 한 번만 만들어 크기를 ref로 읽는다
+  const nRef = useRef(n);
+  nRef.current = n;
+  const evenRef = useRef<Orient>(HOME_ORIENT);
+  evenRef.current = evenOrient;
+  const flowStrip = useFlowStrip(n);
+  const flowRef = useRef(flowStrip);
+  flowRef.current = flowStrip;
+  const flowSize: FlowSize | null =
+    !flow || settings.flowStrip === "off"
+      ? null
+      : settings.flowStrip === "small"
+        ? "small"
+        : flow;
   /** 큰 큐브의 층 수(csTimer의 3·4·7·8 키). 1·1이면 보이지 않는다 */
   const [layers, setLayers] = useState({ left: 1, right: 1 });
   const [showKeys, setShowKeys] = useState(true);
@@ -260,6 +281,7 @@ export function CubePlay({
   // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 다시 칠한다
   useEffect(() => {
     setEvenOrient(HOME_ORIENT);
+    flowRef.current.clear();
     viewRef.current?.setStickers(
       stickersFromState(
         n,
@@ -273,11 +295,14 @@ export function CubePlay({
   /** 수 하나를 엔진에 넣고, 받아들였으면 장면이 따라 돈다(키·단추·밀기가 함께 쓴다) */
   const moveRef = useRef((move: CubeMove, notation: string) => {
     const c = live.current;
+    // 띠의 색은 수를 두기 전 들고 있는 방향으로 고른다(키 그림과 같은 기준)
+    const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
     if (!c.onMove(move, notation)) {
       playCubeCue(c.settings, "invalid");
       return;
     }
     viewRef.current?.enqueue(move);
+    flowRef.current.push(move, before);
     if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
     playCubeCue(c.settings, "cubeTurn");
   });
@@ -301,8 +326,10 @@ export function CubePlay({
       viewRef.current?.setView(p.yaw, p.pitch);
       return;
     }
+    const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
     const m = c.onCommand(r.command);
     if (m) {
+      flowRef.current.push(m, before);
       if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, m));
       viewRef.current?.enqueue(m);
       playCubeCue(c.settings, "cubeTurn");
@@ -354,7 +381,15 @@ export function CubePlay({
 
   const colors = settings.colors;
   return (
-    <div className="flex w-full flex-col items-center gap-3">
+    <div className="relative flex w-full flex-col items-center gap-3">
+      {flowSize && (
+        <FlowStripView
+          strip={flowStrip.strip}
+          size={flowSize}
+          colors={colors}
+          className="max-sm:absolute max-sm:inset-x-0 max-sm:top-0 max-sm:z-10 max-sm:mx-auto max-sm:rounded-b-lg max-sm:bg-neutral-900/55 max-sm:px-2"
+        />
+      )}
       {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
       <StageWithNet
         boxRef={back.ref}

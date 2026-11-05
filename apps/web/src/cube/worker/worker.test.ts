@@ -1,9 +1,11 @@
+import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import { scramble } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 import {
   createJobRunner,
   createLanedRunner,
+  distanceInWorker,
   importAlgsInWorker,
   scrambleInWorker,
   type WorkerLike,
@@ -16,6 +18,11 @@ describe("큐브 워커 모듈", () => {
     const s = await scrambleInWorker("555", 3);
     expect(s).toEqual(scramble("555", 3));
     expect(s.text.split(" ")).toHaveLength(60);
+  });
+
+  it("완성까지 거리도 워커를 못 쓰면 같은 스레드에서 셈한다(2×2)", async () => {
+    const s = applyMoves(2, solvedCube(2), parseMoves(2, "R U R'"));
+    expect(await distanceInWorker(2, s, 8)).toBe(3);
   });
 
   it("내 공식 가져오기도 워커를 못 쓰면 같은 스레드에서 한다", async () => {
@@ -111,6 +118,8 @@ describe("워커 시간 상한", () => {
       "algs-import": inf,
       hero: inf,
       cross: inf,
+      distance: inf,
+      short: inf,
     });
     void runner.request(SOLVE);
     clock.advance(600_000);

@@ -462,6 +462,7 @@ export function LookPanel({
             : "x·y·z(또는 빈 곳 밀기)로 큐브 전체를 돌려 보세요."}
       </Status>
       <CubePlay
+        flow="large"
         n={n}
         state={play.state}
         mask={mask}
@@ -575,6 +576,7 @@ export function TurnPanel({
         처음 상황으로
       </button>
       <CubePlay
+        flow="large"
         n={n}
         state={play.state}
         mask={mask}
@@ -751,6 +753,7 @@ export function PlayPanel({
         </p>
       )}
       <CubePlay
+        flow="large"
         n={n}
         state={play.state}
         mask={mask}
