@@ -102,6 +102,8 @@ export interface CubePlayProps {
    * 데스크톱은 큐브 위 한 줄, 휴대폰은 큐브 위쪽 가장자리에 반투명 띠로 겹친다. `syncToken`이 바뀌면 비운다
    */
   flow?: FlowSize | undefined;
+  /** 수 흐름 띠 끝에 흐름 콤보(docs/51 2-1)를 보인다(혼자 맞추기) */
+  combo?: boolean;
   /**
    * 데스크톱(폭 640px 이상)에서 큐브 칸을 남은 화면 높이에 맞춘다(혼자 맞추기: 1280×720 노트북에서도 큐브와 거울 판이
    * 첫 화면에 다 들어오게). 칸 위 끝의 자리를 재어 `100dvh - 위 끝 - 여백`을 넘지 않게 한다. 휴대폰은 그대로
@@ -125,6 +127,7 @@ export function CubePlay({
   axes = false,
   extraButtons,
   flow,
+  combo = false,
   fitViewport = false,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -416,6 +419,7 @@ export function CubePlay({
           strip={flowStrip.strip}
           size={flowSize}
           colors={colors}
+          combo={combo}
           className="max-sm:absolute max-sm:inset-x-0 max-sm:top-0 max-sm:z-10 max-sm:mx-auto max-sm:rounded-b-lg max-sm:bg-neutral-900/55 max-sm:px-2"
         />
       )}

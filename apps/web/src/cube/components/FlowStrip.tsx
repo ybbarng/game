@@ -5,6 +5,8 @@ import { realClock } from "@game/fair-play";
 import { type CSSProperties, useEffect, useState } from "react";
 
 import {
+  comboLevel,
+  comboNow,
   EMPTY_FLOW,
   FLOW_SPEED_WINDOW,
   type FlowItem,
@@ -54,11 +56,14 @@ export function FlowStripView({
   strip,
   size,
   colors,
+  combo: showCombo = false,
   className = "",
 }: {
   strip: FlowStripState;
   size: FlowSize;
   colors: readonly number[];
+  /** 흐름 콤보(docs/51 2-1)를 띠 끝에 보인다(혼자 맞추기) */
+  combo?: boolean;
   className?: string;
 }) {
   // 빠르기는 수가 없어도 줄어들어야 하니, 최근 수가 남아 있는 동안만 0.25초마다 다시 그린다
@@ -73,15 +78,19 @@ export function FlowStripView({
     }, 250);
     return () => window.clearInterval(id);
   }, [lastAt]);
-  const tps = flowSpeed(strip, realClock.now());
+  const now = realClock.now();
+  const tps = flowSpeed(strip, now);
   const large = size === "large";
+  const combo = showCombo ? comboNow(strip, now) : 0;
+  const level = comboLevel(combo);
   return (
     <div
       data-cube-flow={size}
+      data-combo-level={showCombo ? level : undefined}
       aria-hidden
       className={`pointer-events-none flex w-full max-w-xl items-center gap-2 ${
         large ? "h-9" : "h-7"
-      } ${className}`}
+      } ${showCombo ? "cube-combo-track" : ""} ${className}`}
     >
       <div
         className="cube-flow-track flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden"
@@ -91,6 +100,28 @@ export function FlowStripView({
           <Chip key={item.id} item={item} large={large} colors={colors} />
         ))}
       </div>
+      {showCombo && (
+        <span
+          data-cube-combo={level > 0 ? combo : undefined}
+          className={`w-16 shrink-0 whitespace-nowrap text-right font-semibold tabular-nums transition-colors duration-500 ${
+            large ? "text-xs" : "text-[10px]"
+          } ${
+            level === 0
+              ? "text-transparent"
+              : level >= 3
+                ? "text-amber-200"
+                : level === 2
+                  ? "text-sky-100"
+                  : "text-sky-200/80"
+          }`}
+        >
+          {level > 0 && (
+            <span key={level} className="cube-flow-bump inline-block">
+              콤보 {combo}
+            </span>
+          )}
+        </span>
+      )}
       <span
         data-cube-tps
         className={`w-14 shrink-0 text-right font-mono text-white/45 tabular-nums ${

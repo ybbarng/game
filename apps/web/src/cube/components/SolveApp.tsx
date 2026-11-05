@@ -3,7 +3,7 @@
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { caseById, shortName } from "../algs/check";
 import { spotCase } from "../algs/spot";
@@ -15,9 +15,11 @@ import {
   watchAlgBook,
 } from "../algs/store";
 import { stickersFromState as stickersOf } from "../bridge";
+import { COMBO_SHOW } from "../flow/strip";
 import type { Command } from "../input";
 import type { AlgCase } from "../learn";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
+import { bestSegments, goldSplits, isPersonalBest } from "../progress/gold";
 import { groupSplits } from "../progress/splits";
 import {
   addRecord,
@@ -82,6 +84,12 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   const [syncToken, setSyncToken] = useState(0);
   const [preparing, setPreparing] = useState(false);
   const [records, setRecords] = useState<SolveRecord[]>([]);
+  /**
+   * 이번 판을 섞은 때의 기록(구간 골드·개인 최고를 견줄 옛 기록, docs/51 2-2). 판이 끝나 기록이 더해져도 이번 판과
+   * 견주지 않게 섞을 때 떠 둔다
+   */
+  const [prior, setPrior] = useState<SolveRecord[]>([]);
+  const bests = useMemo(() => bestSegments(prior), [prior]);
   const [notice, setNotice] = useState<string | null>(null);
   const [replaying, setReplaying] = useState(false);
   const [, tick] = useState(0);
@@ -180,6 +188,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
       const s = await scrambleInWorker(eventFor(n, mode), seed);
       if (stale()) return;
       clearMet();
+      setPrior(loadRecords(mode, n));
       session.start(s.text, seed);
       sync();
       if (!s.official) setNotice(TEMP_SCRAMBLE);
@@ -449,7 +458,12 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                   best={session.bestProgress}
                   near={phase === "solving" ? near : null}
                 />
-                {phase !== "done" && <MilestoneChips splits={session.splits} />}
+                {phase !== "done" && (
+                  <MilestoneChips
+                    splits={session.splits}
+                    gold={goldSplits(session.splits, bests)}
+                  />
+                )}
               </>
             )}
             {phase === "done" && result && (
@@ -457,6 +471,12 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                 mode={mode}
                 result={result}
                 splits={session.splits}
+                gold={goldSplits(session.splits, bests)}
+                best={isPersonalBest(
+                  result.ms === null ? null : result.ms + result.penalty,
+                  prior,
+                )}
+                combo={session.longestCombo}
                 short={
                   short && short.scramble === session.scramble
                     ? short.value
@@ -491,6 +511,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                 viewRef.current = v;
               }}
               flow={mode === "solo" ? "large" : undefined}
+              combo={mode === "solo"}
               fitViewport
             />
           </section>
@@ -578,11 +599,20 @@ function ResultBox({
   mode,
   result,
   splits,
+  gold,
+  best,
+  combo,
   short,
 }: {
   mode: SolveMode;
   result: NonNullable<SolveSession["result"]>;
   splits: SolveSession["splits"];
+  /** 골드 구간(칩 시각 ms) */
+  gold: ReadonlySet<number>;
+  /** 개인 최고(이 크기·방식의 옛 기록보다 빠름) */
+  best: boolean;
+  /** 가장 긴 흐름 콤보 */
+  combo: number;
   short: ShortSolution | null;
 }) {
   const total = result.ms === null ? null : result.ms + result.penalty;
@@ -610,6 +640,14 @@ function ResultBox({
             : "DNF(맞지 않음)"
           : `${formatMs(total)}${result.penalty ? " (+2)" : ""}`}
       </span>
+      {best && (
+        <span
+          data-cube-pb
+          className="cube-gold rounded-full border px-2 py-0.5 font-semibold text-xs"
+        >
+          개인 최고
+        </span>
+      )}
       {mode === "blind" && result.memoMs !== undefined && (
         <span className="text-sm">
           외우기 {formatMs(result.memoMs)} · 맞추기 {formatMs(result.execMs)}
@@ -618,6 +656,11 @@ function ResultBox({
       <span className="text-sm">{result.moves}수</span>
       {/* DNF는 맞추지 못했으니 빠르기를 보이지 않는다 */}
       {!dnf && tps && <span className="text-sm">초당 {tps}수</span>}
+      {!dnf && combo >= COMBO_SHOW && (
+        <span className="text-sm text-white/70" data-cube-best-combo={combo}>
+          가장 긴 콤보 {combo}
+        </span>
+      )}
       {!dnf && short && (
         <span className="text-sm text-white/70" data-cube-short={short.moves}>
           {short.exact
@@ -625,7 +668,7 @@ function ResultBox({
             : `컴퓨터 풀이 ${short.moves}수`}
         </span>
       )}
-      {!dnf && <SplitList splits={splits} />}
+      {!dnf && <SplitList splits={splits} gold={gold} />}
     </div>
   );
 }

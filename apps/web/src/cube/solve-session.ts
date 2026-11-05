@@ -17,6 +17,7 @@ import {
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import { COMBO_SHOW, longestCombo } from "./flow/strip";
 import {
   formatSplits,
   type SolveMode,
@@ -236,6 +237,19 @@ export class SolveSession {
     return value;
   }
 
+  /**
+   * 이번 판 가장 긴 흐름 콤보(docs/51 2-1): 맞추는 동안 면 돌리기 사이가 1초 안쪽으로 이어진 수.
+   * 수 흐름 띠와 같은 규칙(`flow/strip.ts`)이다. 블라인드는 세지 않는다
+   */
+  get longestCombo(): number {
+    if (this.mode !== "solo") return 0;
+    return longestCombo(
+      this.history
+        .filter((e) => e.t >= 0 && !isRotation(this.n, e.move))
+        .map((e) => e.t),
+    );
+  }
+
   /** 지나간 이정표 하나의 시각(없으면 undefined) */
   splitOf(id: MilestoneId): number | undefined {
     return this.splits.find((x) => x.id === id)?.ms;
@@ -394,6 +408,7 @@ export class SolveSession {
       ...(this.seed === undefined ? {} : { seed: this.seed }),
       ...(r.memoMs === undefined ? {} : { memoMs: r.memoMs }),
       ...(this.splits.length > 0 ? { splits: formatSplits(this.splits) } : {}),
+      ...(this.longestCombo >= COMBO_SHOW ? { combo: this.longestCombo } : {}),
       replay: this.history
         .map((e) => `${e.notation}@${Math.round(e.t)}`)
         .join(" "),
