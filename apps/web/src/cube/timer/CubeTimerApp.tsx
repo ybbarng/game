@@ -27,7 +27,6 @@ import {
   solvesOf,
   type TimerBook,
 } from "./book";
-import { CubeNet } from "./CubeNet";
 import { EVENT_INFO, TIMER_EVENTS, type TimerEvent } from "./events";
 import { type Scramble, scrambleProvider } from "./fallback-scramble";
 import {
@@ -38,6 +37,7 @@ import {
   type TimerEventOut,
   TimerMachine,
 } from "./machine";
+import { ScramblePicture } from "./ScramblePicture";
 import { playTimerCue } from "./sound";
 import {
   formatAverage,
@@ -489,19 +489,8 @@ function ScrambleBox({
             ? "섞기를 만들지 못했어요. 「다음 섞기」를 눌러 보세요."
             : "섞는 중…"}
       </p>
-      {/* 섞기가 나오기 전에도 펼친 그림 자리를 잡아 둔다(나온 뒤 아래 누름 자리가 밀리지 않게) */}
-      <div className="flex justify-center">
-        {scramble ? (
-          <CubeNet n={n} scramble={scramble.text} />
-        ) : (
-          <div
-            aria-hidden
-            data-cube-net-placeholder
-            className="w-full max-w-xs animate-pulse rounded-lg bg-white/5 sm:max-w-md"
-            style={{ aspectRatio: `${4 * n + 1.1} / ${3 * n + 0.8}` }}
-          />
-        )}
-      </div>
+      {/* 섞기가 나오기 전에도 그림 자리를 잡아 둔다(나온 뒤 아래 누름 자리가 밀리지 않게) */}
+      <ScramblePicture n={n} scramble={scramble?.text ?? null} />
     </div>
   );
 }

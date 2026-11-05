@@ -14,70 +14,103 @@ async function phase(page: Page, value: string): Promise<void> {
   );
 }
 
-// 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
-test.beforeEach(({ page }) => no3d(page));
+/** 섞기가 나온 섞인 모습 그림(기다리는 동안의 흐린 그림이 아니라) */
+function scramblePicture(page: Page) {
+  return page.locator("[data-cube-scramble-picture]:not([data-waiting])");
+}
 
-test("한 번 재면 기록 한 줄이 생긴다", async ({ page }, info) => {
-  test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
-  const phone = info.project.name === "phone-portrait";
-  await installClock(page);
-  await page.goto("/cube/timer");
-  await expect(page.locator("[data-cube-timer][data-loaded]")).toBeAttached();
-  await expect(page.locator("[data-cube-net]")).toBeVisible();
-  await expect(page.locator("[data-cube-solve]")).toHaveCount(0);
-  // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 잰 시간이 늘지 않는다
-  await pauseClock(page);
-
-  const face = page.locator("[data-cube-face]");
-  const box = await face.boundingBox();
-  if (!box) throw new Error("누름 자리가 보이지 않는다");
-  const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  const down = async () => {
-    if (phone) {
-      await page.mouse.move(at.x, at.y);
-      await page.mouse.down();
-    } else await page.keyboard.down("Space");
-  };
-  const up = async () => {
-    if (phone) await page.mouse.up();
-    else await page.keyboard.up("Space");
-  };
-
-  // 첫 누름: 15초 살펴보기
-  await down();
-  await up();
-  await phase(page, "inspecting");
-  await page.clock.fastForward(3000);
-  // 누르고 있다가 준비(초록) → 떼면 시작
-  await down();
-  await phase(page, "holding");
-  await page.clock.fastForward(400);
-  await phase(page, "ready");
-  await up();
-  await phase(page, "running");
-  await page.clock.fastForward(2500);
-  if (SAVE_SCREENSHOTS)
-    await page.screenshot({ path: info.outputPath("cube-timer-running.png") });
-  // 멈춤: 데스크톱은 아무 키, 휴대폰은 화면 누르기
-  if (phone) {
-    await page.mouse.down();
-    await page.mouse.up();
-  } else await page.keyboard.press("a");
-  await phase(page, "idle");
-
-  const rows = page.locator("[data-cube-solve]");
-  await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("2.50");
-  // 기록을 남기면 새 섞기가 나온다
-  await expect(page.locator("[data-cube-net]")).toBeVisible();
-  if (SAVE_SCREENSHOTS)
+test.describe("섞인 모습 3D", () => {
+  // 3D 큐브는 사람이 스크린샷으로 본다. CI는 GPU가 없어 3D를 띄우지 않는다(e2e/cube.ts `no3d`)
+  test.skip(!SAVE_SCREENSHOTS, "스크린샷을 찍을 때만(E2E_SCREENSHOTS=1)");
+  test("섞인 모습을 3D 큐브로 보인다", async ({ page }, info) => {
+    test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/cube/timer");
+    await expect(scramblePicture(page)).toHaveAttribute(
+      "data-cube-scramble-picture",
+      "3d",
+    );
+    await expect(
+      scramblePicture(page).locator("[data-cube-canvas][data-cube-ready]"),
+    ).toBeAttached();
     await page.screenshot({
-      path: info.outputPath("cube-timer.png"),
+      path: info.outputPath("cube-timer-3d.png"),
       fullPage: true,
     });
+  });
+});
 
-  // 새로고침해도 기록이 남는다
-  await page.reload();
-  await expect(page.locator("[data-cube-timer][data-loaded]")).toBeAttached();
-  await expect(page.locator("[data-cube-solve]")).toHaveCount(1);
+test.describe("3D 없이", () => {
+  // 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
+  test.beforeEach(({ page }) => no3d(page));
+
+  test("한 번 재면 기록 한 줄이 생긴다", async ({ page }, info) => {
+    test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
+    const phone = info.project.name === "phone-portrait";
+    await installClock(page);
+    await page.goto("/cube/timer");
+    await expect(page.locator("[data-cube-timer][data-loaded]")).toBeAttached();
+    // 3D를 끄고 움직임 줄이기라 섞인 모습은 비스듬한 큐브 둘(위·앞·오른쪽, 아래·왼쪽·뒤)
+    await expect(
+      scramblePicture(page).locator("[data-cube-poster]"),
+    ).toHaveCount(2);
+    await expect(page.locator("[data-cube-solve]")).toHaveCount(0);
+    // 시계를 멈춘다: 이제 시간은 fastForward로만 흘러, 부하로 늦어져도 잰 시간이 늘지 않는다
+    await pauseClock(page);
+
+    const face = page.locator("[data-cube-face]");
+    const box = await face.boundingBox();
+    if (!box) throw new Error("누름 자리가 보이지 않는다");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const down = async () => {
+      if (phone) {
+        await page.mouse.move(at.x, at.y);
+        await page.mouse.down();
+      } else await page.keyboard.down("Space");
+    };
+    const up = async () => {
+      if (phone) await page.mouse.up();
+      else await page.keyboard.up("Space");
+    };
+
+    // 첫 누름: 15초 살펴보기
+    await down();
+    await up();
+    await phase(page, "inspecting");
+    await page.clock.fastForward(3000);
+    // 누르고 있다가 준비(초록) → 떼면 시작
+    await down();
+    await phase(page, "holding");
+    await page.clock.fastForward(400);
+    await phase(page, "ready");
+    await up();
+    await phase(page, "running");
+    await page.clock.fastForward(2500);
+    if (SAVE_SCREENSHOTS)
+      await page.screenshot({
+        path: info.outputPath("cube-timer-running.png"),
+      });
+    // 멈춤: 데스크톱은 아무 키, 휴대폰은 화면 누르기
+    if (phone) {
+      await page.mouse.down();
+      await page.mouse.up();
+    } else await page.keyboard.press("a");
+    await phase(page, "idle");
+
+    const rows = page.locator("[data-cube-solve]");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("2.50");
+    // 기록을 남기면 새 섞기가 나온다
+    await expect(scramblePicture(page)).toBeVisible();
+    if (SAVE_SCREENSHOTS)
+      await page.screenshot({
+        path: info.outputPath("cube-timer.png"),
+        fullPage: true,
+      });
+
+    // 새로고침해도 기록이 남는다
+    await page.reload();
+    await expect(page.locator("[data-cube-timer][data-loaded]")).toBeAttached();
+    await expect(page.locator("[data-cube-solve]")).toHaveCount(1);
+  });
 });

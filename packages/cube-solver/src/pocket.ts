@@ -104,22 +104,37 @@ export function init2x2(): void {
 
   const dist = new Uint8Array(POCKET_STATE_COUNT).fill(255);
   dist[0] = 0;
+  // 너비 우선. 반 넘게 차면 거꾸로(빈 칸에서 거리 d인 이웃을 찾는 쪽으로) 채워 빨리 끝낸다.
+  // 쓰는 수 묶음(U·U2·U' 등)이 거꾸로 수를 함께 갖고 있어 두 방향 모두 같은 거리가 나온다.
+  // 칸마다 나눗셈을 하지 않게 순열·방향 두 겹 고리로 돈다(타이머 첫 2×2 섞기가 이 표를 기다린다)
   let filled = 1;
+  const row = new Int32Array(9);
   for (let d = 0; filled < POCKET_STATE_COUNT; d++) {
-    for (let s = 0; s < POCKET_STATE_COUNT; s++) {
-      if (dist[s] !== d) continue;
-      const p = Math.floor(s / ORI_COUNT);
-      const o = s - p * ORI_COUNT;
-      for (let k = 0; k < 9; k++) {
-        const t =
-          (permMove[p * 9 + k] as number) * ORI_COUNT +
-          (oriMove[o * 9 + k] as number);
-        if (dist[t] === 255) {
-          dist[t] = d + 1;
-          filled++;
+    const backward = filled > POCKET_STATE_COUNT / 2;
+    const want = backward ? 255 : d;
+    const before = filled;
+    for (let p = 0, s = 0; p < PERM_COUNT; p++) {
+      for (let k = 0; k < 9; k++)
+        row[k] = (permMove[p * 9 + k] as number) * ORI_COUNT;
+      for (let o = 0; o < ORI_COUNT; o++, s++) {
+        if (dist[s] !== want) continue;
+        const col = o * 9;
+        for (let k = 0; k < 9; k++) {
+          const t = (row[k] as number) + (oriMove[col + k] as number);
+          if (backward) {
+            if (dist[t] === d) {
+              dist[s] = d + 1;
+              filled++;
+              break;
+            }
+          } else if (dist[t] === 255) {
+            dist[t] = d + 1;
+            filled++;
+          }
         }
       }
     }
+    if (filled === before) throw new Error("2×2 거리표를 다 채우지 못했다");
   }
   tables = { permMove, oriMove, dist };
 }

@@ -34,6 +34,17 @@ describe("씨앗에서 결정적", () => {
     }
   });
 
+  it("해법기 표 만드는 법을 고쳐도 같은 씨앗은 예전과 같은 섞기다(대결·복기가 씨앗으로 다시 만든다)", () => {
+    expect(scramble("333", 1).text).toBe(
+      "L2 F2 D F2 L2 D L2 B2 D L2 D R' D' B L2 U L R' D2 B F'",
+    );
+    expect(scramble("333", 2).text).toBe(
+      "D' L2 B2 F2 U L2 R2 B2 L F2 L' U R' F' L D2 R B2 U'",
+    );
+    expect(scramble("222", 1).text).toBe("R' F U' R' U R2 U' R' U' R U2");
+    expect(scramble("222", 2).text).toBe("U2 R F' R2 U' F R2 U' R' U2 R'");
+  });
+
   it("공식 방식 여부: 4×4 무작위 수만 공식이 아니다", () => {
     const official = SCRAMBLE_EVENTS.filter((e) => scramble(e, 1).official);
     expect(official).toEqual(["222", "333", "333bf", "555", "666", "777"]);

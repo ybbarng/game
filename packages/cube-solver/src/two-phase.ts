@@ -153,6 +153,55 @@ function buildMoveTable(
 }
 
 /**
+ * 순열 좌표(0..n!-1)의 수 표. `buildMoveTable`과 같은 표를 내지만, 4만 개 순열마다 조각 표현을 만들고
+ * 곱하는 대신 작은 배열 하나로 풀고 접어 표 만들기 시간을 줄인다(타이머 첫 섞기가 이 표를 기다린다).
+ * `perms[k][i]`는 수 k 뒤 자리 i에 오는 조각이 수 앞에 있던 자리(곱셈 A·M에서 M.cp/ep의 앞 n칸).
+ */
+function buildPermMoveTable(
+  n: number,
+  perms: readonly (readonly number[])[],
+): Uint16Array {
+  let count = 1;
+  for (let i = 2; i <= n; i++) count *= i;
+  const fact = new Int32Array(n + 1);
+  fact[0] = 1;
+  for (let i = 1; i <= n; i++) fact[i] = (fact[i - 1] as number) * i;
+  const nm = perms.length;
+  const table = new Uint16Array(count * nm);
+  const p = new Int8Array(n);
+  const q = new Int8Array(n);
+  const left = new Int8Array(n);
+  for (let x = 0; x < count; x++) {
+    // 번호 x → 순열 p(`unrankPermutation`과 같은 차례)
+    for (let i = 0; i < n; i++) left[i] = i;
+    let r = x;
+    let size = n;
+    for (let i = 0; i < n; i++) {
+      const f = fact[n - 1 - i] as number;
+      const k = Math.floor(r / f);
+      r -= k * f;
+      p[i] = left[k] as number;
+      for (let j = k; j < size - 1; j++) left[j] = left[j + 1] as number;
+      size--;
+    }
+    for (let m = 0; m < nm; m++) {
+      const perm = perms[m] as readonly number[];
+      for (let i = 0; i < n; i++) q[i] = p[perm[i] as number] as number;
+      // 순열 q → 번호(`rankPermutation`과 같다)
+      let rank = 0;
+      for (let i = 0; i < n; i++) {
+        let smaller = 0;
+        const v = q[i] as number;
+        for (let j = i + 1; j < n; j++) if ((q[j] as number) < v) smaller++;
+        rank += smaller * (fact[n - 1 - i] as number);
+      }
+      table[x * nm + m] = rank;
+    }
+  }
+  return table;
+}
+
+/**
  * 두 좌표 짝(a: 가운데 층 쪽, b: 다른 쪽)의 거리표. 번호는 a × countB + b.
  * 칸이 반 넘게 차면 거꾸로(빈 칸에서 이미 찬 칸을 찾는 쪽으로) 채워 빨리 끝낸다.
  */
@@ -168,26 +217,30 @@ function buildPruneTable(
   const t = new Uint8Array(total).fill(255);
   t[startA * countB] = 0;
   let filled = 1;
+  // a·b를 두 겹 고리로 돌아 칸마다 나눗셈을 하지 않는다(표 만들기 시간을 줄인다, 결과는 같다)
+  const rowA = new Int32Array(nMoves);
   for (let d = 0; filled < total; d++) {
     const backward = filled > total / 2;
+    const want = backward ? 255 : d;
     const before = filled;
-    for (let i = 0; i < total; i++) {
-      if (backward ? t[i] !== 255 : t[i] !== d) continue;
-      const a = Math.floor(i / countB);
-      const b = i - a * countB;
-      for (let m = 0; m < nMoves; m++) {
-        const j =
-          (moveA[a * nMoves + m] as number) * countB +
-          (moveB[b * nMoves + m] as number);
-        if (backward) {
-          if (t[j] === d) {
-            t[i] = d + 1;
+    for (let a = 0, i = 0; a < countA; a++) {
+      for (let m = 0; m < nMoves; m++)
+        rowA[m] = (moveA[a * nMoves + m] as number) * countB;
+      for (let b = 0; b < countB; b++, i++) {
+        if (t[i] !== want) continue;
+        const rowB = b * nMoves;
+        for (let m = 0; m < nMoves; m++) {
+          const j = (rowA[m] as number) + (moveB[rowB + m] as number);
+          if (backward) {
+            if (t[j] === d) {
+              t[i] = d + 1;
+              filled++;
+              break;
+            }
+          } else if (t[j] === 255) {
+            t[j] = d + 1;
             filled++;
-            break;
           }
-        } else if (t[j] === 255) {
-          t[j] = d + 1;
-          filled++;
         }
       }
     }
@@ -203,23 +256,16 @@ export function init3x3(): void {
   const twistMove = buildMoveTable(N_TWIST, all18, setTwist, twistOf, "corner");
   const flipMove = buildMoveTable(N_FLIP, all18, setFlip, flipOf, "edge");
   const sliceMove = buildMoveTable(N_SLICE, all18, setSlice, sliceOf, "edge");
-  const cpermMove = buildMoveTable(
-    N_PERM8,
-    P2_MOVES,
-    (c, x) => {
-      c.cp = unrankPermutation(x, 8);
-    },
-    cpermOf,
-    "corner",
+  // 2단계 수는 위아래 층 엣지를 위아래 층 안에서만 옮기므로 ep의 앞 8칸만 보면 된다
+  const all = faceMoveCubies();
+  const p2 = P2_MOVES.map((m) => all[m] as CubieCube);
+  const cpermMove = buildPermMoveTable(
+    8,
+    p2.map((c) => c.cp),
   );
-  const udEdgeMove = buildMoveTable(
-    N_PERM8,
-    P2_MOVES,
-    (c, x) => {
-      c.ep = [...unrankPermutation(x, 8), 8, 9, 10, 11];
-    },
-    udEdgeOf,
-    "edge",
+  const udEdgeMove = buildPermMoveTable(
+    8,
+    p2.map((c) => c.ep.slice(0, 8)),
   );
   const slicePermMove = Uint8Array.from(
     buildMoveTable(
