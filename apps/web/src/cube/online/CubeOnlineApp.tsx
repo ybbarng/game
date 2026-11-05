@@ -11,6 +11,8 @@ import { useChat } from "@/net/chat";
 import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
+import { shapeSupports } from "../patterns/race";
+import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botChoices } from "./bot-choices";
 import { botSupports } from "./bot-racer";
@@ -189,6 +191,7 @@ export function CubeOnlineApp() {
               {state.settings.party
                 ? ` · ${PARTY_MODE_LABELS[state.settings.party].replace("파티: ", "")}`
                 : ""}
+              {state.settings.shape ? " · 모양 만들기" : ""}
             </span>
           )}
         </header>
@@ -372,12 +375,17 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <select
             disabled={!host}
             data-cube-party
-            value={s.party ?? "normal"}
-            onChange={(e) =>
+            value={s.shape ? "shape" : (s.party ?? "normal")}
+            onChange={(e) => {
+              if (e.target.value === "shape") {
+                room.setShape({ start: "solved", pick: "easy" });
+                return;
+              }
+              if (s.shape) room.setShape(s.shape, false);
               room.setParty(
                 PARTY_MODES.find((m) => m === e.target.value) ?? null,
-              )
-            }
+              );
+            }}
             className="rounded bg-white/10 px-2 py-1"
           >
             <option value="normal" className="bg-neutral-800">
@@ -388,8 +396,23 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                 {PARTY_MODE_LABELS[m]}
               </option>
             ))}
+            {shapeSupports(s.n) && (
+              <option value="shape" className="bg-neutral-800">
+                모양 만들기
+              </option>
+            )}
           </select>
         </Field>
+        {s.shape && (
+          <ShapeRulePicker
+            n={s.n}
+            start={s.shape.start}
+            pick={s.shape.pick}
+            disabled={!host}
+            onStart={(start) => s.shape && room.setShape({ ...s.shape, start })}
+            onPick={(pick) => s.shape && room.setShape({ ...s.shape, pick })}
+          />
+        )}
         <Field label="방식">
           <select
             disabled={!host}

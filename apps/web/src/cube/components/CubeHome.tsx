@@ -81,6 +81,12 @@ function groups(learnFirst: Item, dailyDone: boolean): Group[] {
           span: true,
           attr: "data-cube-challenge-link",
         },
+        {
+          icon: "🧩",
+          title: "모양 만들기",
+          href: "/cube/shape",
+          span: true,
+        },
       ],
     },
     {

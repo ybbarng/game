@@ -24,6 +24,8 @@ export type CubeJob =
       perm: number[];
       twist: number[];
       seed: number;
+      /** 모양 만들기: 목표 모양 공식 */
+      shape?: string;
     }
   | { kind: "algs-import"; book: AlgBook; text: string }
   | {
@@ -96,6 +98,7 @@ export async function runCubeJob(job: CubeJob): Promise<CubeJobAnswer> {
       job.size,
       { perm: Uint16Array.from(job.perm), twist: Uint8Array.from(job.twist) },
       job.seed,
+      job.shape === undefined ? {} : { shape: job.shape },
     );
   }
   if (job.kind === "hero") {

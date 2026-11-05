@@ -5,6 +5,14 @@ import type { MilestoneId } from "@game/cube-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
+import { randomId } from "@/net/transport";
+import {
+  type ShapePick,
+  type ShapeStart,
+  shapePicks,
+  shapeSupports,
+} from "../patterns/race";
+import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
 import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { BotLevelPicker } from "./BotLevelPicker";
@@ -26,7 +34,7 @@ import { eventForSize } from "./race-game";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
-import { testVsBots, testVsSeed } from "./vs-seed";
+import { testVsBots, testVsSeed, testVsShapeKey } from "./vs-seed";
 
 /**
  * 컴퓨터와 대결(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
@@ -72,7 +80,17 @@ export function CubeVsApp() {
   const [help, setHelp] = useState<Help | "">("");
   /** 파티 모드(체력바·아이템전, docs/51 3-2·3-3). 「평균 대비」와는 함께 쓰지 않는다 */
   const [partyMode, setPartyMode] = useState<PartyMode | null>(null);
+  /** 모양 만들기(docs/47 9-10). 파티 모드와는 함께 쓰지 않는다 */
+  const [shapeOn, setShapeOn] = useState(false);
+  const [shapeStart, setShapeStart] = useState<ShapeStart>("solved");
+  const [shapePick, setShapePick] = useState<ShapePick>("easy");
   const party = partyMode !== null;
+  const shapeNow = shapeOn && shapeSupports(n);
+  // 크기를 바꿔 고른 어려움이 없으면 그 크기의 첫 어려움으로
+  useEffect(() => {
+    const picks = shapePicks(n);
+    if (!picks.includes(shapePick)) setShapePick(picks[0] ?? "easy");
+  }, [n, shapePick]);
   const [averages, setAverages] = useState<Record<string, number>>();
   useEffect(() => setAverages(localAverages()), []);
   // 크기를 바꾸면 그 크기의 목표가 아니므로 비운다
@@ -104,15 +122,24 @@ export function CubeVsApp() {
           : { format: "single" as const }),
         inspection,
         timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
-        ...(partyMode ? { party: partyMode } : {}),
+        ...(partyMode && !shapeNow ? { party: partyMode } : {}),
+        ...(shapeNow
+          ? {
+              shape: {
+                start: shapeStart,
+                pick: shapePick,
+                key: testVsShapeKey() ?? randomId(8),
+              },
+            }
+          : {}),
       },
       ...testItemDraw(),
     });
     for (let k = testVsBots() ?? botCount; k > 0; k--) r.addBot(level);
     const handicap: Handicap = {};
     if (delay > 0) handicap.delay = { [r.me]: delay };
-    const average = byAverage && !party;
-    if (goal && !average) handicap.goal = { [r.me]: goal };
+    const average = byAverage && !party && !shapeNow;
+    if (goal && !average && !shapeNow) handicap.goal = { [r.me]: goal };
     if (average) handicap.score = "avg";
     if (help) handicap.help = { [r.me]: help };
     r.setHandicap(handicap);
@@ -191,15 +218,41 @@ export function CubeVsApp() {
                     key={m ?? "normal"}
                     type="button"
                     data-cube-vs-party={m ?? "normal"}
-                    aria-pressed={partyMode === m}
-                    onClick={() => setPartyMode(m)}
-                    className={`rounded-lg px-3 py-1.5 ${partyMode === m ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                    aria-pressed={!shapeOn && partyMode === m}
+                    onClick={() => {
+                      setPartyMode(m);
+                      setShapeOn(false);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 ${!shapeOn && partyMode === m ? "bg-amber-400 text-black" : "bg-white/10"}`}
                   >
                     {m ? PARTY_MODE_LABELS[m] : "일반"}
                   </button>
                 ))}
+                {shapeSupports(n) && (
+                  <button
+                    type="button"
+                    data-cube-vs-party="shape"
+                    aria-pressed={shapeOn}
+                    onClick={() => {
+                      setShapeOn(true);
+                      setPartyMode(null);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 ${shapeOn ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                  >
+                    모양 만들기
+                  </button>
+                )}
               </div>
             </fieldset>
+            {shapeNow && (
+              <ShapeRulePicker
+                n={n}
+                start={shapeStart}
+                pick={shapePick}
+                onStart={setShapeStart}
+                onPick={setShapePick}
+              />
+            )}
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">판 수</legend>
               <div className="flex flex-wrap gap-1">
@@ -255,7 +308,7 @@ export function CubeVsApp() {
                 </select>
               </label>
               <label
-                className={`flex items-center justify-between ${party ? "hidden" : ""}`}
+                className={`flex items-center justify-between ${party || shapeNow ? "hidden" : ""}`}
               >
                 순위
                 <select
@@ -272,7 +325,7 @@ export function CubeVsApp() {
                   </option>
                 </select>
               </label>
-              {byAverage && !party ? (
+              {shapeNow ? null : byAverage && !party ? (
                 <p className="text-white/50 text-xs" data-cube-vs-average>
                   내 평균{" "}
                   {myAverage === undefined
