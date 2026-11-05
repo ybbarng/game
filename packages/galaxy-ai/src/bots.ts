@@ -129,7 +129,7 @@ export function derivedChainAction(view: GalaxyView): Action | null {
 
 /** 한 단계의 판단. 값을 정하는 결정마다 하나씩 */
 interface Policy {
-  /** 봉인 입찰에 낼 값(0은 내지 않음). 약속과 공개에서 같은 값이 나와야 해 화면만으로 정한다 */
+  /** 봉투 입찰에 낼 값(0은 내지 않음). 약속과 공개에서 같은 값이 나와야 해 화면만으로 정한다 */
   bid(ctx: Ctx, square: number, rng: RngState): number;
   buy(ctx: Ctx, square: number, price: number, rng: RngState): boolean;
   /** 차례 안의 관리(정거장 올리기·되찾기). 할 것이 없으면 null */

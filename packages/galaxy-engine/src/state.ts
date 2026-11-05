@@ -7,7 +7,7 @@ import type { GalaxyRules } from "./rules";
  * 게임의 흐름(docs/48 2-4).
  * commit 자리마다 사슬 약속 → (짧은 판은 reveal로 시작 별 나누기) → turn 차례인 사람이 굴리기·관리
  * → reveal 모든 자리가 고리 공개(눈이 정해져 움직이고 멈춘 칸의 일을 한다)
- * → buy 사기·넘기기 → bid·bidReveal 봉인 입찰 → trade 거래 답 → debt 빚 정리 → turn … → gameOver
+ * → buy 사기·넘기기 → bid·bidReveal 봉투 입찰 → trade 거래 답 → debt 빚 정리 → turn … → gameOver
  */
 export type Phase =
   | "commit"
@@ -70,7 +70,7 @@ export type PayReason =
 /** 우주국(돈이 사라지거나 생기는 곳) */
 export const BANK = -1;
 
-/** 봉인 입찰에서 공개한 값 */
+/** 봉투 입찰에서 공개한 값 */
 export interface BidReveal {
   value: number;
   salt: string;
@@ -78,7 +78,7 @@ export interface BidReveal {
   valid: boolean;
 }
 
-/** 진행 중인 봉인 입찰 */
+/** 진행 중인 봉투 입찰 */
 export interface Auction {
   /** 입찰 번호(약속 해시에 들어간다) */
   index: number;
@@ -90,7 +90,7 @@ export interface Auction {
   reveals: (BidReveal | null)[];
 }
 
-/** 끝난 봉인 입찰 */
+/** 끝난 봉투 입찰 */
 export interface AuctionResult {
   index: number;
   square: number;
@@ -207,7 +207,7 @@ export interface GalaxyState {
   revealFor: RevealPurpose | null;
   lastRoll: LastRoll | null;
   auction: Auction | null;
-  /** 지금까지 연 봉인 입찰 수 */
+  /** 지금까지 연 봉투 입찰 수 */
   auctionCount: number;
   lastAuction: AuctionResult | null;
   trade: TradeOffer | null;
@@ -240,11 +240,11 @@ export type Action =
   | { type: "payFine"; spent?: number }
   /** 멈춘 별을 산다 */
   | { type: "buy"; spent?: number }
-  /** 사지 않고 넘긴다 → 봉인 입찰 */
+  /** 사지 않고 넘긴다 → 봉투 입찰 */
   | { type: "pass"; spent?: number }
-  /** 봉인 입찰 약속(`bidCommitment`) */
+  /** 봉투 입찰 약속(`bidCommitment`) */
   | { type: "bid"; hash: string }
-  /** 봉인 입찰 공개(값 0은 내지 않음) */
+  /** 봉투 입찰 공개(값 0은 내지 않음) */
   | { type: "bidReveal"; value: number; salt: string }
   /** 거래 제안(굴리기 전 한 번) */
   | {

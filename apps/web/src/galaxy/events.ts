@@ -68,8 +68,8 @@ export function eventLine(
       return `${name(e.seat)} · ${squareName(board, e.square)} 샀어요 ${money(e.price)}`;
     case "auctionEnded":
       return e.result.winner === null
-        ? `봉인 입찰 · ${squareName(board, e.result.square)} · 아무도 내지 않음`
-        : `봉인 입찰 · ${name(e.result.winner)} ${squareName(board, e.result.square)} ${money(e.result.price)}`;
+        ? `봉투 입찰 · ${squareName(board, e.result.square)} · 아무도 내지 않음`
+        : `봉투 입찰 · ${name(e.result.winner)} ${squareName(board, e.result.square)} ${money(e.result.price)}`;
     case "observed":
       return e.amount > 0
         ? null

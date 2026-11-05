@@ -53,7 +53,7 @@ const BID = 50;
 
 /**
  * 한 사람의 기기: 주사위 사슬 씨앗과 봉투 소금은 이 안에만 있다. 약속·공개는 화면 저장소처럼 자동으로,
- * 봉투는 늘 50, 나머지는 중수 컴퓨터처럼. `passBuy`면 별을 사지 않고 넘겨 봉인 입찰을 연다
+ * 봉투는 늘 50, 나머지는 중수 컴퓨터처럼. `passBuy`면 별을 사지 않고 넘겨 봉투 입찰을 연다
  */
 class Device {
   readonly secrets: GalaxySecrets;
@@ -205,7 +205,7 @@ describe("은하 한 바퀴 온라인 방", () => {
   it("방장은 참가자 씨앗·아직 공개하지 않은 고리·공개 전 봉투를 모르고, 기권으로 끝낸 판이 검증을 통과한다", async () => {
     const room = await setup();
     const { seat } = room;
-    // 참가자는 별을 사지 않고 넘겨 봉인 입찰을 연다.
+    // 참가자는 별을 사지 않고 넘겨 봉투 입찰을 연다.
     room.guestDevice.passBuy = true;
     let checks = 0;
     let sealedChecks = 0;
@@ -272,7 +272,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const room = await setup();
     const { seat } = room;
     room.guestDevice.passBuy = true;
-    // 방장이 넘겨 봉인 입찰이 열릴 때까지(참가자는 봉투를 내지 않고 기다린다).
+    // 방장이 넘겨 봉투 입찰이 열릴 때까지(참가자는 봉투를 내지 않고 기다린다).
     room.hostDevice.passBuy = true;
     room.guestDevice.hold = (view) => view.decision?.kind === "bid";
     await play(room, () => {

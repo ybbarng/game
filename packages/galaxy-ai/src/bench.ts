@@ -528,7 +528,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const decisionsMean = main.decisions / Math.max(1, main.games);
   const auctionsMean = main.auctions / Math.max(1, main.games);
   const turnsMean = main.turns / Math.max(1, main.games);
-  // 2-11 시간 어림: 차례마다 15초, 봉인 입찰마다 15초
+  // 2-11 시간 어림: 차례마다 15초, 봉투 입찰마다 15초
   const minutes = ((turnsMean + auctionsMean) * 15) / 60;
   rows.push({
     item: "판 길이(돌림 수 × 결정 수)",

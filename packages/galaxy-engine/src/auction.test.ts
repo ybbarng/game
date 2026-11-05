@@ -12,7 +12,7 @@ import {
   scene,
 } from "./test-utils";
 
-/** `seat`이 시리우스(14)에 멈춰 넘긴 상태(봉인 입찰 시작) */
+/** `seat`이 시리우스(14)에 멈춰 넘긴 상태(봉투 입찰 시작) */
 function passed(seat = 0, cash = [1000, 1000, 1000, 1000]): GalaxyState {
   const positions = [0, 0, 0, 0].map((p, i) => (i === seat ? 14 : p));
   const s: GalaxyState = {
@@ -22,7 +22,7 @@ function passed(seat = 0, cash = [1000, 1000, 1000, 1000]): GalaxyState {
   return must(s, seat, { type: "pass" }).state;
 }
 
-describe("봉인 입찰(2-7)", () => {
+describe("봉투 입찰(2-7)", () => {
   it("모두 몰래 내고 공개하면 가장 높은 값을 낸 사람이 그 값에 산다", () => {
     const s = passed();
     expect(s.phase).toBe("bid");

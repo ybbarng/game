@@ -589,7 +589,7 @@ export function GalaxyGame({
         status = "이 별을 살까요?";
         break;
       case "bid":
-        status = "봉인 입찰에 낼 값을 골라요.";
+        status = "봉투 입찰에 낼 값을 골라요.";
         break;
       case "trade":
         status = "거래 제안이 왔어요.";

@@ -49,7 +49,7 @@ export type GalaxyHost = MatchHost<GalaxyView, Action, GameEvent> & {
   drain(): Snapshot<GalaxyView, GameEvent>[];
 };
 
-/** 봉인 입찰에 낸 값(약속을 낸 뒤 공개할 때 쓴다. 새로고침해도 공개할 수 있게 저장에도 남긴다) */
+/** 봉투 입찰에 낸 값(약속을 낸 뒤 공개할 때 쓴다. 새로고침해도 공개할 수 있게 저장에도 남긴다) */
 export interface PendingBid {
   index: number;
   value: number;
@@ -150,7 +150,7 @@ interface GalaxyStore {
   ): void;
   setSeatNames(seatNames: string[]): void;
   submit(action: Action): SubmitResult;
-  /** 봉인 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
+  /** 봉투 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
   placeBid(value: number): SubmitResult;
   leave(): void;
   clearNotice(): void;

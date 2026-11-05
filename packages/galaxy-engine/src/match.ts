@@ -1080,7 +1080,7 @@ function resolveReveal(s: GalaxyState, events: GameEvent[]): void {
   applyDice(s, purpose, diceFrom(hash), hash, index, events);
 }
 
-/** 봉인 입찰을 판정한다(2-7) */
+/** 봉투 입찰을 판정한다(2-7) */
 function resolveAuction(s: GalaxyState, events: GameEvent[]): void {
   const auction = s.auction;
   if (!auction) return;

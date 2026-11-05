@@ -184,7 +184,7 @@ describe("은하 한 바퀴 컴퓨터", () => {
 
   it("봉투는 자리 재료의 소금으로 낸 것만 대신 공개한다(사람이 자기 소금으로 낸 봉투는 기다린다)", () => {
     const rules = { ...STANDARD_RULES, players: 3 as const };
-    // 0번 자리가 시리우스(14)에 멈춰 넘겼다 → 봉인 입찰
+    // 0번 자리가 시리우스(14)에 멈춰 넘겼다 → 봉투 입찰
     let state: GalaxyState = {
       ...createGalaxyScenario({ board, rules, positions: [14, 0, 0] }),
       phase: "buy",

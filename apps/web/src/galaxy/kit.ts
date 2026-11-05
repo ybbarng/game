@@ -177,9 +177,9 @@ export function describeGalaxy(action: unknown): string {
   const at = (square: number) => squareName(board, square);
   switch (a.type) {
     case "commit":
-      return "주사위 사슬 약속";
+      return "주사위 약속";
     case "reveal":
-      return "주사위 고리 공개";
+      return "주사위 공개";
     case "roll":
       return "주사위 굴리기";
     case "payFine":
@@ -187,7 +187,7 @@ export function describeGalaxy(action: unknown): string {
     case "buy":
       return "별 사기";
     case "pass":
-      return "넘기기(봉인 입찰)";
+      return "넘기기(봉투 입찰)";
     case "bid":
       return "입찰 봉투 내기";
     case "bidReveal":

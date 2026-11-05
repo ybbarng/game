@@ -201,7 +201,7 @@ const AUCTION: BoardScene = {
   marked: [squareOfStar("Regulus")],
 };
 
-/** 봉인 입찰 미션의 내 봉투(시험이 쓴다. 화면에서는 저장소가 같은 소금으로 만든다) */
+/** 봉투 입찰 미션의 내 봉투(시험이 쓴다. 화면에서는 저장소가 같은 소금으로 만든다) */
 function myBid(value: number): Action[] {
   const key = sceneState(AUCTION).keys[0] ?? "";
   const index = 0;
@@ -441,7 +441,7 @@ const buyMission: Mission = {
       ),
   ),
   success: `${ko("Sirius")}를 샀어요! 이제 남이 멈추면 이용료를 받아요.`,
-  fail: "넘기면 봉인 입찰이 열려요. 이번엔 **사기**를 눌러 보세요.",
+  fail: "넘기면 봉투 입찰이 열려요. 이번엔 **사기**를 눌러 보세요.",
   solution: [{ type: "roll" }, { type: "buy" }],
   mistake: [{ type: "roll" }, { type: "pass" }],
 };
@@ -737,12 +737,12 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
   },
   {
     id: "auction",
-    title: "봉인 입찰과 거래",
+    title: "봉투 입찰과 거래",
     summary: "사지 않은 별은 모두가 몰래 값을 적어 낸다",
     steps: [
       {
         kind: "explain",
-        title: "봉인 입찰",
+        title: "봉투 입찰",
         body: [
           "멈춘 사람이 별을 사지 않고 **넘기면**, 모두가 봉투에 값을 **몰래 한 번** 적어 내요(✦10부터 10 단위, 가진 별빛까지).",
           "가장 높은 값을 낸 사람이 그 값에 사요. 같으면 넘긴 사람 **다음** 사람부터 앞서요. 아무도 안 내면 주인 없는 별로 남아요.",

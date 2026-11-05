@@ -147,7 +147,7 @@ export function scene(
   return createGalaxyScenario({ board: BOARD, ...options });
 }
 
-/** 봉인 입찰 약속(재료에서 소금) */
+/** 봉투 입찰 약속(재료에서 소금) */
 export function bidOf(state: GalaxyState, seat: number, value: number): Action {
   const index = state.auction?.index ?? 0;
   const salt = bidSalt(state.keys[seat] as string, index);

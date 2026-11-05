@@ -801,7 +801,7 @@ function FxOverlay({
             style={toastStyle(step.dur)}
           >
             <p className="text-center font-bold text-sm">
-              봉인 입찰 · {squareName(board, r.square)}
+              봉투 입찰 · {squareName(board, r.square)}
             </p>
             <div className="flex flex-wrap justify-center gap-1.5">
               {r.bids.map((bid, seat) =>
