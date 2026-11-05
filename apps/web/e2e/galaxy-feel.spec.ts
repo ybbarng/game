@@ -24,12 +24,14 @@ const SCENARIO = {
   level: 0,
   seed: 11,
   round: 9,
+  cash: [950, 450],
   stars: [
     // 나: 오리온 완성(3단·3단·큰 정거장), 페가수스 하나, 독수리 하나는 맡김
     { square: 9, owner: 0, level: 3 },
     { square: 10, owner: 0, level: 3 },
     { square: 27, owner: 0, level: 4 },
     { square: 1, owner: 0 },
+    { square: 2, owner: 0 },
     { square: 13, owner: 0, mortgaged: true },
     // 컴퓨터: 큰개 둘(선 하나), 거문고 완성(2단)
     { square: 14, owner: 1 },
@@ -63,8 +65,8 @@ test("은하 한 바퀴 칸: 이용료 단계마다 모양이 다르고, 누르�
 
   // 단계별 모양: 완성 칸은 빛 테(오리온 셋·거문고 셋), 둘은 큰개 둘, 큰 정거장 고리 하나
   await expect(board(page).locator("[data-complete]")).toHaveCount(6);
-  await expect(board(page).locator('[data-tier="pair"]')).toHaveCount(2);
-  await expect(board(page).locator('[data-tier="owned"]')).toHaveCount(2);
+  await expect(board(page).locator('[data-tier="pair"]')).toHaveCount(4);
+  await expect(board(page).locator('[data-tier="owned"]')).toHaveCount(1);
   await expect(
     board(page).locator('[data-square="27"] [data-level="4"]'),
   ).toHaveCount(1);
@@ -104,6 +106,21 @@ test("은하 한 바퀴 칸: 이용료 단계마다 모양이 다르고, 누르�
   // 정거장 관리 설명
   await page.getByText("정거장 관리").click();
   await expect(page.locator("[data-manage-help]")).toBeVisible();
+
+  // 판 끝: 판 돌아보기(1등과 항목별 차이, 놓친 기회). 나는 기권해 꼴찌라 1등 컴퓨터와 견준다
+  await page.getByRole("button", { name: "기권" }).click();
+  await page.getByRole("button", { name: "기권하기" }).click();
+  const recap = page.locator("[data-recap]");
+  await expect(recap).toBeVisible();
+  await expect(recap.locator('[data-recap-row="completeBonus"]')).toContainText(
+    "✦100",
+  );
+  // 놓친 기회: 페가수스 2/3, 1등보다 많이 남긴 별빛
+  const missed = recap.locator("[data-recap-missed]");
+  await expect(missed).toContainText("2/3에서 멈춘 별자리 1개(페가수스자리)");
+  await expect(missed).toContainText("쓰지 않은 별빛 ✦950");
+  await recap.scrollIntoViewIfNeeded();
+  await shot(page, info.outputPath("galaxy-recap.png"));
 });
 
 test("은하 한 바퀴 주사위: 둘이 던져져 튕기며 구르다 결과 눈으로 멈춘다", async ({

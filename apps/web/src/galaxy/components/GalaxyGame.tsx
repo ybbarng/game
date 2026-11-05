@@ -55,6 +55,7 @@ import {
   TradeComposer,
 } from "./Decision";
 import { GalaxyBoard } from "./GalaxyBoard";
+import { GameRecap } from "./GameRecap";
 import { ShipToken } from "./parts";
 import { SeatCard, type SeatCardProps } from "./SeatCard";
 import { cornerHelp, SquareCard } from "./SquareCard";
@@ -834,6 +835,7 @@ export function GalaxyGame({
       {gameOver && (
         <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
           <Standings view={view} name={name} />
+          <GameRecap view={view} history={history} name={name} />
           <MetStars view={view} history={history} firstMet={firstMet} />
         </div>
       )}
