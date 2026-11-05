@@ -43,6 +43,7 @@ import {
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
+  endBoxRect,
   type HwatuLayout,
   handStepFor,
   hwatuLayout,
@@ -563,38 +564,11 @@ export function MinhwatuTable({
           )
         }
         overlay={
-          <>
-            {over && !bannerUp && (
-              <HwatuEndBox
-                rect={center}
-                main={
-                  <>
-                    {outcomeView}
-                    {endButtons}
-                  </>
-                }
-                side={
-                  <>
-                    {result && (
-                      <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
-                        <ScoreTable
-                          result={result}
-                          totals={view.totals}
-                          name={name}
-                        />
-                      </div>
-                    )}
-                    {online && <HwatuVerifyLines />}
-                  </>
-                }
-              />
-            )}
-            <ResultBanner
-              banner={banner}
-              seq={view.roundNumber * 2 + (gameOver ? 1 : 0)}
-              onShowChange={setBannerUp}
-            />
-          </>
+          <ResultBanner
+            banner={banner}
+            seq={view.roundNumber * 2 + (gameOver ? 1 : 0)}
+            onShowChange={setBannerUp}
+          />
         }
       >
         <div className="flex shrink-0 flex-col items-center gap-2">
@@ -619,6 +593,33 @@ export function MinhwatuTable({
           />
         </div>
       </HwatuBoard>
+
+      {/* 판 끝 결과 상자(판이 낮으면 비는 손패 줄까지 넓힌다) */}
+      {over && !bannerUp && (
+        <HwatuEndBox
+          rect={endBoxRect(layout, stage.height)}
+          main={
+            <>
+              {outcomeView}
+              {endButtons}
+            </>
+          }
+          side={
+            <>
+              {result && (
+                <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
+                  <ScoreTable
+                    result={result}
+                    totals={view.totals}
+                    name={name}
+                  />
+                </div>
+              )}
+              {online && <HwatuVerifyLines />}
+            </>
+          }
+        />
+      )}
 
       {online && (
         <HwatuOnlineNotes

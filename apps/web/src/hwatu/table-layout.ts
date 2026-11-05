@@ -1,4 +1,10 @@
-import { computeLayout, type Layout, type Size } from "@/layout/compute-layout";
+import {
+  computeLayout,
+  type Layout,
+  type Rect,
+  rectsOverlap,
+  type Size,
+} from "@/layout/compute-layout";
 
 /** 화투 카드 높이/폭(5:8) */
 export const HWATU_RATIO = 8 / 5;
@@ -128,4 +134,29 @@ export function handStepFor(layout: HwatuLayout, count: number): number {
     hand.card.w * 0.3,
     Math.min(hand.card.w * 1.06, (avail - hand.card.w) / (count - 1)),
   );
+}
+
+/** 판 끝 결과 상자를 판에만 두기에 이보다 낮으면 아래(손패 줄)까지 넓힌다 */
+const END_BOX_MIN_H = 220;
+
+/**
+ * 판 끝 결과 상자 자리. 보통은 가운데 판이고, 판이 낮으면(휴대폰 가로에 여럿) 판이 끝나 비는 손패 줄까지 아래로
+ * 넓힌다. 손패 옆 내 자리 판·단추 칸은 가리지 않게 그 사이 폭만 쓴다. 그 폭이 판보다 많이 좁으면 판 그대로
+ */
+export function endBoxRect(layout: HwatuLayout, height: number): Rect {
+  const { center, gutter: g, myPlate, actions } = layout;
+  if (center.h >= END_BOX_MIN_H) return center;
+  const y = center.y;
+  const h = height - g - y;
+  let x0 = center.x;
+  let x1 = center.x + center.w;
+  const probe: Rect = { x: x0, y, w: x1 - x0, h };
+  for (const r of [myPlate, actions]) {
+    if (!r || !rectsOverlap(probe, r)) continue;
+    if (r.x + r.w / 2 < center.x + center.w / 2)
+      x0 = Math.max(x0, r.x + r.w + g / 2);
+    else x1 = Math.min(x1, r.x - g / 2);
+  }
+  if (x1 - x0 < center.w * 0.6) return center;
+  return { x: x0, y, w: x1 - x0, h };
 }

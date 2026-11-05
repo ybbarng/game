@@ -44,6 +44,7 @@ import {
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
+  endBoxRect,
   type HwatuLayout,
   handStepFor,
   hwatuLayout,
@@ -532,35 +533,7 @@ export function GostopTable({
           )
         }
         overlay={
-          <>
-            {ended && result && !bannerUp && (
-              <HwatuEndBox
-                rect={center}
-                main={
-                  <>
-                    {outcomeView}
-                    {endButtons}
-                  </>
-                }
-                side={
-                  <>
-                    <SettlementBox
-                      s={result}
-                      name={name}
-                      players={n}
-                      className="bg-black/60"
-                    />
-                    {online && <HwatuVerifyLines />}
-                  </>
-                }
-              />
-            )}
-            <ResultBanner
-              banner={banner}
-              seq={seq}
-              onShowChange={setBannerUp}
-            />
-          </>
+          <ResultBanner banner={banner} seq={seq} onShowChange={setBannerUp} />
         }
       >
         <div className="flex shrink-0 flex-col items-center gap-1">
@@ -608,6 +581,30 @@ export function GostopTable({
           />
         </div>
       </HwatuBoard>
+
+      {/* 판 끝 결과 상자(판이 낮으면 비는 손패 줄까지 넓힌다) */}
+      {ended && result && !bannerUp && (
+        <HwatuEndBox
+          rect={endBoxRect(layout, stage.height)}
+          main={
+            <>
+              {outcomeView}
+              {endButtons}
+            </>
+          }
+          side={
+            <>
+              <SettlementBox
+                s={result}
+                name={name}
+                players={n}
+                className="bg-black/60"
+              />
+              {online && <HwatuVerifyLines />}
+            </>
+          }
+        />
+      )}
 
       {online && (
         <HwatuOnlineNotes

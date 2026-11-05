@@ -36,7 +36,7 @@ import {
 } from "@/hwatu/components/HwatuTable";
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
-import { handStepFor, hwatuLayout } from "@/hwatu/table-layout";
+import { endBoxRect, handStepFor, hwatuLayout } from "@/hwatu/table-layout";
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
@@ -468,56 +468,11 @@ export function NyrongppongGame({
           )
         }
         overlay={
-          <>
-            {roundOver && !bannerUp && (
-              <HwatuEndBox
-                rect={center}
-                main={
-                  <>
-                    {outcomeView}
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {view.phase === "roundEnd" && !view.continued[me] && (
-                        <button
-                          type="button"
-                          onClick={() => send({ type: "continue" })}
-                          className={HWATU_PRIMARY}
-                        >
-                          다음 판
-                        </button>
-                      )}
-                      {view.phase === "gameOver" && !mission && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={onExit}
-                            className={HWATU_PRIMARY}
-                          >
-                            다시 하기
-                          </button>
-                          <a href="/" className={HWATU_SECONDARY}>
-                            게임 목록
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  </>
-                }
-                side={
-                  <>
-                    <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
-                      <RoundTable view={view} name={name} />
-                    </div>
-                    {online && <HwatuVerifyLines />}
-                  </>
-                }
-              />
-            )}
-            <ResultBanner
-              banner={banner}
-              seq={view.roundNumber}
-              onShowChange={setBannerUp}
-            />
-          </>
+          <ResultBanner
+            banner={banner}
+            seq={view.roundNumber}
+            onShowChange={setBannerUp}
+          />
         }
       >
         <div className="flex w-full items-center justify-center gap-8">
@@ -545,6 +500,51 @@ export function NyrongppongGame({
           </div>
         </div>
       </HwatuBoard>
+
+      {/* 판 끝 결과 상자(판이 낮으면 비는 손패 줄까지 넓힌다) */}
+      {roundOver && !bannerUp && (
+        <HwatuEndBox
+          rect={endBoxRect(layout, stage.height)}
+          main={
+            <>
+              {outcomeView}
+              <div className="flex flex-wrap justify-center gap-2">
+                {view.phase === "roundEnd" && !view.continued[me] && (
+                  <button
+                    type="button"
+                    onClick={() => send({ type: "continue" })}
+                    className={HWATU_PRIMARY}
+                  >
+                    다음 판
+                  </button>
+                )}
+                {view.phase === "gameOver" && !mission && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onExit}
+                      className={HWATU_PRIMARY}
+                    >
+                      다시 하기
+                    </button>
+                    <a href="/" className={HWATU_SECONDARY}>
+                      게임 목록
+                    </a>
+                  </>
+                )}
+              </div>
+            </>
+          }
+          side={
+            <>
+              <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
+                <RoundTable view={view} name={name} />
+              </div>
+              {online && <HwatuVerifyLines />}
+            </>
+          }
+        />
+      )}
 
       {online && (
         <HwatuOnlineNotes

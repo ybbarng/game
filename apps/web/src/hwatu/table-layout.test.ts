@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { fanSlot, type Rect, rectsOverlap } from "@/layout/compute-layout";
 
-import { handStepFor, hwatuLayout } from "./table-layout";
+import { endBoxRect, handStepFor, hwatuLayout } from "./table-layout";
 
 /** 화면 시험 세 크기(PC 1280×720, Pixel 7 세로·가로)와 큰 PC, 작은 휴대폰 */
 const SCREENS = [
@@ -84,6 +84,17 @@ describe.each(cases)(
         for (const r of [layout.center, layout.myPlate, actions, ...plates])
           expect(rectsOverlap(card, r)).toBe(false);
       for (const r of all) expect(inside(r, screen)).toBe(true);
+    });
+
+    it("판 끝 결과 상자는 판을 품고, 자리 판·내 자리 판·단추 칸을 가리지 않는다", () => {
+      const box = endBoxRect(layout, height);
+      expect(
+        inside(layout.center, { ...box, h: Math.max(box.h, layout.center.h) }),
+      ).toBe(true);
+      expect(inside(box, screen)).toBe(true);
+      for (const r of [layout.myPlate, actions, ...plates, layout.hud])
+        expect(rectsOverlap(box, r)).toBe(false);
+      expect(box.h).toBeGreaterThanOrEqual(Math.min(layout.center.h, 220));
     });
 
     it("바닥은 화면을 넓게 쓴다", () => {

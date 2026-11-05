@@ -190,7 +190,8 @@ export function HwatuBoard({
 }
 
 /**
- * 판 끝 결과 상자: 흐린 판 위에 띄운다. 판이 낮고 넓으면(휴대폰 가로) 결과와 점수표를 옆으로 나란히 놓는다
+ * 판 끝 결과 상자: 흐린 판 위에 띄운다(무대 위 `rect`, 보통 `endBoxRect`). 상자가 낮고 넓으면(휴대폰 가로)
+ * 결과와 점수표를 옆으로 나란히 놓는다. 판(`HwatuBoard`) 밖, 무대에 바로 놓는다
  */
 export function HwatuEndBox({
   rect,
@@ -203,10 +204,13 @@ export function HwatuEndBox({
   /** 점수표·검증 줄 */
   side: ReactNode;
 }) {
-  const wide = rect.w > rect.h * 2.4;
+  const wide = rect.w > rect.h * 1.8;
   // 안쪽 상자를 m-auto로 가운데 둔다. 넘치면 위가 잘리지 않고 굴려 볼 수 있다(items-center는 위를 잘랐다)
   return (
-    <div className="pop-in absolute inset-0 flex overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm">
+    <div
+      className="pop-in absolute z-[200] flex overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm"
+      style={at(rect)}
+    >
       <div
         className={cn(
           "m-auto flex w-full items-center justify-center gap-2",
