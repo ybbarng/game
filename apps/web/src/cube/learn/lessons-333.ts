@@ -50,18 +50,20 @@ export const CROSS_MIDDLE_R = {
   alg: "R",
   where: "앞-오른쪽, 흰색이 앞을 봐요",
 };
-/** 가운데 줄, 옆색이 다른 면: 윗면으로 비켜 놓고 올리고 되돌리기 */
+// 흰 면(위)은 돌리지 않는다(2026-11-05 사용자). 엣지를 아래층으로 빼서 아랫면만 돌려 자리를 잡고 올린다.
+// 모범 답은 배우는 방식 해법(`@game/cube-ai` nextCrossEdge)이 같은 상황에서 내는 수와 같다
+/** 가운데 줄, 옆색이 다른 면: 옆색 면으로 내리고, 아랫면으로 비켜 놓고, 되돌린 뒤 첫째 경우 */
 export const CROSS_GUARD = {
-  alg: "U F' U'",
+  alg: "F D F' R2",
   where: "앞-오른쪽, 흰색이 오른쪽을 봐요",
 };
-export const CROSS_GUARD_TRY = { alg: "U' R U", where: "앞-오른쪽" };
-/** 아래층, 흰색이 옆: 한 번 돌려 가운데 줄로 올린 뒤 둘째 경우 */
-export const CROSS_DOWN_SIDE = { alg: "F' U' R U", where: "아래-앞" };
-export const CROSS_DOWN_SIDE_TRY = { alg: "R U F' U'", where: "아래-오른쪽" };
-/** 윗층 제자리에서 뒤집힘: 한 번 돌려 가운데 줄로 내린 뒤 둘째 경우 */
-export const CROSS_FLIPPED = { alg: "F U' R U", where: "위-앞" };
-export const CROSS_FLIPPED_TRY = { alg: "R' U F' U'", where: "위-오른쪽" };
+export const CROSS_GUARD_TRY = { alg: "R' D' R F2", where: "앞-오른쪽" };
+/** 아래층, 흰색이 옆: 아랫면으로 옆색 센터 옆면 밑에 두고, 그 옆면으로 올렸다가 옆색 면으로 넣고 되돌린다 */
+export const CROSS_DOWN_SIDE = { alg: "D R F' R'", where: "아래-앞" };
+export const CROSS_DOWN_SIDE_TRY = { alg: "D B R' B'", where: "아래-오른쪽" };
+/** 윗층 제자리에서 뒤집힘: 반 바퀴로 아래층에 내린 뒤 셋째 경우 */
+export const CROSS_FLIPPED = { alg: "F2 D R F' R'", where: "위-앞" };
+export const CROSS_FLIPPED_TRY = { alg: "R2 D B R' B'", where: "위-오른쪽" };
 /** 윗층 흰색 위, 엉뚱한 자리: 반 바퀴로 내려 첫째 경우 */
 export const CROSS_WRONG_TOP = { alg: "R2 D' F2", where: "위-오른쪽" };
 export const CROSS_WRONG_TOP_TRY = { alg: "F2 D R2", where: "위-앞" };
@@ -513,14 +515,14 @@ const whiteCross: Lesson = {
     },
     {
       kind: "demo",
-      body: `옆색이 그 면 센터와 다르면 바로 올리면 안 돼요. 이 엣지(${CROSS_GUARD.where})는 흰-빨강인데 옆색 빨강이 앞면에 붙어 있어요. 이미 넣은 엣지를 지키는 요령: 윗면을 돌려(U) 빨강 자리를 앞으로 데려오고, 앞면으로 올리고(F'), 윗면을 되돌려요(U'). 이미 넣은 흰 엣지도 윗면과 함께 돌았다가 제자리로 돌아와요.`,
+      body: `옆색이 그 면 센터와 다르면 바로 올리면 안 돼요. 이 엣지(${CROSS_GUARD.where})는 흰-빨강인데 옆색 빨강이 앞면에 붙어 있어요. 윗면(흰 면)은 돌리지 않아요. 이미 넣은 흰 엣지가 함께 돌아가요. 앞면으로 아래층에 내리고(F), 함께 내려간 흰-초록을 지키려 아랫면으로 비켜 놓고(D), 앞면을 되돌려요(F'). 이제 흰-빨강이 빨강 센터 밑이니 반 바퀴(R2).`,
       setup: { alg: setupFor(CROSS_GUARD.alg) },
       alg: CROSS_GUARD.alg,
       mask: "cross",
     },
     {
       kind: "try",
-      body: "흰-초록 엣지 블럭이 가운데 줄에 있는데 옆색 초록이 오른쪽 면에 붙어 있어요. 윗면으로 초록 자리를 비켜 놓고, 올리고, 되돌려 보세요.",
+      body: "흰-초록 엣지 블럭이 가운데 줄에 있는데 옆색 초록이 오른쪽 면에 붙어 있어요. 오른쪽 면으로 내리고, 아랫면으로 비켜 놓고, 되돌린 뒤 초록 센터 밑에서 올려 보세요.",
       setup: { alg: setupFor(CROSS_GUARD_TRY.alg) },
       alg: CROSS_GUARD_TRY.alg,
       goal: "white-cross",
@@ -528,31 +530,31 @@ const whiteCross: Lesson = {
     },
     {
       kind: "quiz",
-      body: "셋째 경우: 흰 엣지가 아래층에 있는데 흰색이 옆을 봐요. 이럴 땐 그 면을 한 번 돌려 가운데 줄로 올리면 둘째 경우가 돼요.",
+      body: "셋째 경우: 흰 엣지가 아래층에 있는데 흰색이 옆을 봐요. 이럴 땐 아랫면을 돌려 옆색 센터의 옆면 밑으로 옮겨요.",
       setup: { alg: setupFor(CROSS_DOWN_SIDE.alg) },
       mask: "cross",
       quiz: {
         question:
           "아래-앞의 흰-초록 엣지 블럭은 흰색이 앞을 봐요. 먼저 무엇을 할까요?",
         choices: [
-          "앞면을 한 번 돌려 가운데 줄로 올려요",
+          "아랫면을 돌려 오른쪽 면 밑으로 옮겨요",
           "앞면을 반 바퀴 돌려 바로 올려요",
-          "아랫면만 돌려요",
+          "윗면을 돌려요",
         ],
         answer: 0,
-        why: "반 바퀴로 올리면 흰색이 앞을 보는 채로 올라가 뒤집혀요. 한 번 돌려 가운데 줄로 보내면 둘째 경우로 풀 수 있어요.",
+        why: "반 바퀴로 올리면 흰색이 앞을 보는 채로 올라가 뒤집혀요. 윗면을 돌리면 이미 넣은 흰 엣지가 흐트러져요. 아랫면만 돌려 초록 센터 옆(오른쪽) 밑에 두면 오른쪽 면으로 올려 넣을 수 있어요.",
       },
     },
     {
       kind: "demo",
-      body: `앞면을 한 번(F') 돌려 가운데 줄로 올렸어요. 이제 옆색 초록이 오른쪽 면에 붙었으니 둘째 경우의 요령대로: 윗면으로 초록 자리를 비켜 놓고(U'), 오른쪽 면으로 올리고(R), 되돌려요(U).`,
+      body: `아랫면으로 오른쪽 면 밑에 옮기고(D), 오른쪽 면으로 가운데 줄에 올리면(R) 옆색 초록이 앞면에 붙어요. 앞면으로 올리고(F'), 함께 올라간 오른쪽 면을 되돌려요(R').`,
       setup: { alg: setupFor(CROSS_DOWN_SIDE.alg) },
       alg: CROSS_DOWN_SIDE.alg,
       mask: "cross",
     },
     {
       kind: "try",
-      body: "흰-빨강 엣지 블럭이 아래-오른쪽에 있고 흰색이 오른쪽을 봐요. 한 번 돌려 가운데 줄로 올린 뒤 둘째 경우처럼 올려 보세요.",
+      body: "흰-빨강 엣지 블럭이 아래-오른쪽에 있고 흰색이 오른쪽을 봐요. 아랫면으로 빨강 센터의 옆면 밑에 옮긴 뒤 같은 요령으로 올려 보세요.",
       setup: { alg: setupFor(CROSS_DOWN_SIDE_TRY.alg) },
       alg: CROSS_DOWN_SIDE_TRY.alg,
       goal: "white-cross",
@@ -560,14 +562,14 @@ const whiteCross: Lesson = {
     },
     {
       kind: "demo",
-      body: "넷째 경우: 흰 엣지가 윗층 제자리에 있지만 뒤집혔어요(흰색이 앞을 봐요). 앞면을 한 번(F) 돌려 가운데 줄로 내리면 둘째 경우가 돼요. 그다음 비켜 놓고(U'), 올리고(R), 되돌려요(U).",
+      body: "넷째 경우: 흰 엣지가 윗층 제자리에 있지만 뒤집혔어요(흰색이 앞을 봐요). 앞면을 반 바퀴(F2) 돌려 아래층으로 내리면 셋째 경우가 돼요. 그다음 오른쪽 면 밑에 옮기고(D), 올리고(R F'), 되돌려요(R').",
       setup: { alg: setupFor(CROSS_FLIPPED.alg) },
       alg: CROSS_FLIPPED.alg,
       mask: "cross",
     },
     {
       kind: "try",
-      body: "흰-빨강 엣지 블럭이 제자리에서 뒤집혔어요. 오른쪽 면을 한 번 돌려 가운데 줄로 내리고, 둘째 경우처럼 올려 보세요.",
+      body: "흰-빨강 엣지 블럭이 제자리에서 뒤집혔어요. 오른쪽 면을 반 바퀴 돌려 아래층으로 내리고, 셋째 경우처럼 올려 보세요.",
       setup: { alg: setupFor(CROSS_FLIPPED_TRY.alg) },
       alg: CROSS_FLIPPED_TRY.alg,
       goal: "white-cross",
@@ -590,7 +592,7 @@ const whiteCross: Lesson = {
     },
     {
       kind: "quiz",
-      body: "정리: 어느 경우든 「흰색이 아래를 보는 아래층」이나 「가운데 줄」로 바꾸면 풀 수 있어요. 이 엣지는 다섯 경우 중 어디일까요?",
+      body: "정리: 어느 경우든 아래층으로 내리면 첫째나 셋째 경우로 풀 수 있어요. 이 엣지는 다섯 경우 중 어디일까요?",
       setup: { alg: setupFor(CROSS_FLIPPED_TRY.alg) },
       mask: "cross",
       quiz: {
@@ -602,7 +604,7 @@ const whiteCross: Lesson = {
           "윗층 제자리지만 뒤집힘",
         ],
         answer: 3,
-        why: "흰 센터와 빨강 센터 사이에 있지만 흰 칸이 오른쪽을 봐요. 한 번 돌려 가운데 줄로 내려요.",
+        why: "흰 센터와 빨강 센터 사이에 있지만 흰 칸이 오른쪽을 봐요. 반 바퀴로 아래층에 내려요.",
       },
     },
     {
@@ -617,7 +619,7 @@ const whiteCross: Lesson = {
           "아니요, 옆색이 옆면 센터와 달라요",
         ],
         answer: 1,
-        why: "옆색까지 맞아야 십자예요. 이 큐브는 U'로 윗면을 돌리면 맞아요.",
+        why: "옆색까지 맞아야 십자예요. 엉뚱한 자리의 엣지는 반 바퀴로 아래층에 내려 다시 넣어요.",
       },
     },
     {

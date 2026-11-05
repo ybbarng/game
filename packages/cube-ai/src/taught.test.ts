@@ -33,14 +33,17 @@ const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
 
 const SEEDS = Array.from({ length: 24 }, (_, i) => i + 1);
 
-/** 레슨(learn/lessons-333.ts 「흰 십자」)의 경우별 꼴. 마지막 옆면 돌리기가 모서리를 올린다 */
-const UP_MIDDLE = "(U['2]? )?[RFLB]'?( U['2]?)?";
+/**
+ * 레슨(learn/lessons-333.ts 「흰 십자」)의 경우별 꼴. U는 없다: 아래층으로 빼고(윗층은 반 바퀴, 가운데 줄은
+ * 옆면 하나, 흐트러지면 D로 비켜 놓고 되돌리기) D로 자리를 잡아 넣는다(반 바퀴, 또는 옆면 올리기 + 되돌리기)
+ */
+const INSERT = "(D['2]? )?([RFLB]2|[RFLB]'? [RFLB]'?( [RFLB]'?)?)";
 const FORM: Record<CrossCase, RegExp> = {
   "down-white-down": /^(D['2]? )?[RFLB]2$/,
-  "top-wrong": /^(U['2]?|[RFLB]2 (D['2]? )?[RFLB]2)$/,
-  middle: new RegExp(`^${UP_MIDDLE}$`),
-  "down-white-side": new RegExp(`^(D['2]? )?[RFLB]'? ${UP_MIDDLE}$`),
-  "top-flipped": new RegExp(`^[RFLB]'? ${UP_MIDDLE}$`),
+  "down-white-side": /^(D['2]? )?[RFLB]'? [RFLB]'?( [RFLB]'?)?$/,
+  middle: new RegExp(`^[RFLB]'?( D['2]? [RFLB]'?)? ${INSERT}$`),
+  "top-wrong": new RegExp(`^[RFLB]2 ${INSERT}$`),
+  "top-flipped": new RegExp(`^[RFLB]2 ${INSERT}$`),
 };
 
 const crossDone = (s: Solve) => {
@@ -81,23 +84,25 @@ describe("배우는 방식 흰 십자", () => {
   });
 
   // 레슨의 시연 상황(모범 답의 거꾸로)에서 같은 경우로 보고 같은 수를 낸다
+  // (가운데 줄을 바로 올리는 F'는 내렸다 올리는 「F F2」로 나오고 해법 출력에서 F'로 합쳐진다)
   const LESSON: [CrossCase, string, string][] = [
     ["down-white-down", "F2", "F2"],
     ["down-white-down", "D' F2", "F2 D"],
-    ["middle", "F'", "F"],
-    ["middle", "U F' U'", "U F U'"],
-    ["down-white-side", "F' U' R U", "U' R' U F"],
-    ["top-flipped", "F U' R U", "U' R' U F'"],
-    ["top-wrong", "U'", "U"],
+    ["middle", "F F2", "F"],
+    ["middle", "F D F' R2", "R2 F D' F'"],
+    ["down-white-side", "D R F' R'", "R F R' D'"],
+    ["top-flipped", "F2 D R F' R'", "R F R' D' F2"],
+    // 레슨 다섯째 경우(R2 D' F2)는 R2로 흰-빨강이 먼저 올라와 첫째 경우부터 나온다
+    ["down-white-down", "R2", "F2 D R2"],
+    ["top-wrong", "R2 D B2", "U"],
   ];
   for (const [kind, alg, setup] of LESSON) {
     it(`레슨 상황 ${setup} → ${kind} ${alg}`, () => {
       const start = new Solve(3, SOLVED).apply(setup);
       const next = nextCrossEdge(start);
       expect(next?.kind).toBe(kind);
-      // 같은 길이의 다른 손(F' 대신 F 등)도 레슨과 같은 꼴이다
       expect(next?.alg).toMatch(FORM[kind]);
-      expect(next?.alg.split(" ").length).toBe(alg.split(" ").length);
+      expect(next?.alg).toBe(alg);
     });
   }
 });
@@ -285,6 +290,18 @@ describe("배우는 방식 마지막 층(4×4·5×5 축소법의 3×3 단계)", 
           parseMoves(n as number, solve.moves.join(" ")),
         );
         expect(isSolved(n as number, end), `${seed}`).toBe(true);
+        // 3×3 단계의 첫 두 층도 맞춘 면(십자·코너는 U, 둘째 층은 z2 뒤 D)을 돌리지 않는다
+        for (const [name, face] of [
+          ["cross", "U"],
+          ["corners", "U"],
+          ["middle", "D"],
+        ] as const) {
+          const st = solve.stages.find((x) => x.name === name);
+          const turns = solve.moves.slice(st?.start, st?.end);
+          expect(turns.length, `${seed} ${name}`).toBeGreaterThan(0);
+          for (const m of turns)
+            expect(m[0], `${seed} ${name} ${m}`).not.toBe(face);
+        }
         const names = solve.stages.map((x) => x.name);
         for (const p of names.filter((x) => x.endsWith("parity")))
           parities.add(p);

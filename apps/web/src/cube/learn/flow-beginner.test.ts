@@ -28,6 +28,7 @@ import {
   SEXY,
 } from "./lessons-333";
 import { setupFor } from "./notation";
+import { makeHintPlan } from "./taught-hint";
 import type { FaceLetter, GoalName, Lesson } from "./types";
 
 const F: Record<FaceLetter, number> = { U: 0, R: 1, F: 2, D: 3, L: 4, B: 5 };
@@ -107,6 +108,25 @@ describe("흰 십자: 경우별 시연", () => {
     expect(colorsAt(3, at(CROSS_WRONG_TOP_TRY.alg), ["U", "F"])).toEqual([
       0, 1,
     ]);
+  });
+
+  it("경우별 모범 답은 힌트(배우는 방식 해법)가 내는 수와 같고, 흰 면(U)을 돌리지 않는다", () => {
+    for (const { alg } of [
+      CROSS_MIDDLE,
+      CROSS_MIDDLE_R,
+      CROSS_GUARD,
+      CROSS_GUARD_TRY,
+      CROSS_DOWN_SIDE,
+      CROSS_DOWN_SIDE_TRY,
+      CROSS_FLIPPED,
+      CROSS_FLIPPED_TRY,
+      CROSS_WRONG_TOP,
+      CROSS_WRONG_TOP_TRY,
+    ]) {
+      const plan = makeHintPlan("cross", play(3, setupFor(alg)));
+      expect(plan?.moves.join(" "), alg).toBe(alg);
+      expect(alg).not.toMatch(/U/);
+    }
   });
 
   it("고르기: 가운데 줄은 옆색이 붙은 면을 돌려 올린다", () => {
