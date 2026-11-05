@@ -50,6 +50,12 @@ import {
   type LobbyState,
   type Reveal,
 } from "./protocol";
+import {
+  ArrivalBook,
+  arrivalsByState,
+  spentOf,
+  witnessTimes,
+} from "./time-witness";
 import { connectionFingerprints, type Transport } from "./transport";
 
 export type AuditResult = { ok: true } | { ok: false; reason: string };
@@ -323,6 +329,10 @@ export class GuestRoom<
   /** 방장이 나간 것으로 보는 타이머를 끄는 함수 */
   private reconnectTimer: (() => void) | null = null;
   private readonly clock: Clock;
+  /** 받은 화면이 닿은 시각(`match.seen`과 같은 차례). 판 끝에 방장이 적은 시간을 내 시계로 맞춰 본다 */
+  private readonly arrivals: ArrivalBook;
+  /** 화면 가려짐 듣기를 끈다 */
+  private readonly unwatchVisibility: () => void;
   /** 지금 보이는 상대들. 방장이 끊긴 사이 새로 보인 상대도 기억해 끊김을 안 뒤 들어가 본다 */
   private readonly peers = new Set<string>();
   /** 마지막으로 확인한 방장 연결. 다른 연결로 돌아오면 방장이 새로고침한 것이다 */
@@ -469,6 +479,10 @@ export class GuestRoom<
     this.commitHash = commit(this.secret);
     this.reconnectTimeoutMs = options.reconnectTimeoutMs ?? 60_000;
     this.clock = options.clock ?? realClock;
+    this.arrivals = new ArrivalBook(this.clock);
+    this.unwatchVisibility = watchVisibility((hidden) =>
+      this.arrivals.setHidden(hidden),
+    );
     this.hostFingerprint = options.hostFingerprint ?? null;
     this.fairStore = options.fairStore ?? null;
     this.claims = this.kit.claims
@@ -513,6 +527,7 @@ export class GuestRoom<
       }
       this.everDisconnected = true;
       this.markClaimGap();
+      this.arrivals.breakSegment();
       // 잠깐 끊겼을 수 있으니 바로 끝내지 않고 다시 연결되기를 기다린다.
       for (const l of this.listeners.connection) l("reconnecting");
       this.reconnectTimer?.();
@@ -550,6 +565,7 @@ export class GuestRoom<
     this.reconnectTimer = null;
     if (this.hostId) this.send({ t: "leave" }, this.hostId);
     this.claims?.close();
+    this.unwatchVisibility();
     this.transport.leave();
   }
 
@@ -816,6 +832,7 @@ export class GuestRoom<
     if (this.seat === null) return;
     const mine = this.mineQueue.shift();
     this.claims?.observe(snapshot.view);
+    this.arrivals.record();
     if (this.match) {
       this.match.receive(snapshot, mine);
       return;
@@ -1135,6 +1152,7 @@ export class GuestRoom<
           this.resendOwnFair(from);
           // 끊김을 알기 전에 새로고침한 방장이 먼저 보였을 수 있다: 받지 못한 발표는 지금까지 받은 것 뒤에 낀다.
           this.markClaimGap();
+          this.arrivals.breakSegment();
         }
         this.seat = message.seat;
         this.token = message.token;
@@ -1196,6 +1214,8 @@ export class GuestRoom<
       }
       case "snapshot": {
         if (from !== this.hostId || this.seat === null) return;
+        // 다시 맞춘 화면은 끊김 뒤에 온다: 그 앞뒤로 사이를 재지 않는다.
+        if (message.resync) this.arrivals.breakSegment();
         if (message.resync && this.checkLost) {
           this.checkLost = false;
           if (typeof message.mine === "number")
@@ -1410,8 +1430,26 @@ export class GuestRoom<
     let { state } = this.kit.createMatch(rules.rules, seed.seed);
     const replayedViews = [JSON.stringify(this.kit.viewOf(state, this.seat))];
     const context = this.verifyContext(true);
+    // 손님 시계 확인에 쓸 상태마다의 시계 차례·열린 시간 창과 기록마다의 쓴 시간(`witnessTimes`)
+    const timing = this.kit.timing;
+    const clockKey = this.kit.clockKey;
+    const timers = clockKey ? this.kit.timers : undefined;
+    const turns = timing ? [timing.turn(state)] : [];
+    const windowsOf = (s: State) =>
+      new Map((timers?.(s) ?? []).map((t) => [t.key, t.ms] as const));
+    const windows = timers ? [windowsOf(state)] : [];
+    const timed: Parameters<typeof witnessTimes>[0]["entries"][number][] = [];
     for (const [index, entry] of log.entries()) {
       const { seat, action } = entry;
+      if (timing || timers) {
+        const bare = timing ? (timing.strip(action) ?? action) : action;
+        timed.push({
+          seat,
+          spent: timing ? spentOf(action) : null,
+          keeps: timing?.keepsTurn?.(bare) ?? false,
+          window: clockKey?.(action) ?? null,
+        });
+      }
       // 방장 시계가 남긴 기록(시간패, 응답 창 끝)과 방장 기기가 넣은 행동(`hostAction`)은 누가 둔 수가 아니다.
       // 엔진이 받아들일 수 있는지는 아래 `step`이 그대로 본다.
       const byClock =
@@ -1460,6 +1498,8 @@ export class GuestRoom<
           reason: `기록 ${index + 1}번째 행동이 규칙에 맞지 않는다`,
         };
       state = result.state;
+      if (timing) turns.push(timing.turn(state));
+      if (timers) windows.push(windowsOf(state));
       // 기억을 쓰는 컴퓨터(원카드 고수)는 대국 중 걸음마다 사건을 들었다. 같은 사건을 들려줘야 같은 수가 나온다.
       if (bot?.observe)
         for (const s of botSeats)
@@ -1474,7 +1514,6 @@ export class GuestRoom<
     // 기록 속 내 자리 행동이 내가 보낸 행동과 같아야 한다(방장의 바꿔치기, 모의 침투 A3).
     // 끊긴 적이 있으면 그동안 컴퓨터가 대신 둔 수가 끼어 있을 수 있으므로, 내가 보낸 것이 빠짐없이 차례대로 들어 있는지만 본다.
     // 개인 시간: 방장이 실은 쓴 시간(spent)과 방장 시계가 남긴 시간패는 내가 보낸 것이 아니라 빼고 본다.
-    const timing = this.kit.timing;
     const mineInLog = log
       .filter(
         (entry) =>
@@ -1508,8 +1547,43 @@ export class GuestRoom<
           reason: `게임 중 받은 ${i + 1}번째 화면이 기록과 맞지 않는다`,
         };
     }
+    // 방장이 적은 시간(쓴 시간·시간패·시간 상한)이 내 기기에서 잰 사이와 맞는가(손님 시계 확인, docs/50 3-2)
+    if (timing || timers) {
+      const problem = witnessTimes({
+        turns,
+        windows,
+        entries: timed,
+        arrivalOf: arrivalsByState(
+          this.match.seen,
+          this.arrivals.arrivals,
+          replayedViews,
+        ),
+        botSeats,
+      });
+      if (problem) return { ok: false, reason: problem };
+    }
     return { ok: true };
   }
+}
+
+/**
+ * 화면이 가려지고 다시 보이는 것을 듣는다(휴대폰 잠금·다른 탭). 가려진 동안 기기가 멈추면 받은 화면을 늦게 처리해
+ * 닿은 시각이 늦게 적힌다. 브라우저가 아니면 듣지 않는다. 끄는 함수를 돌려준다
+ */
+function watchVisibility(onChange: (hidden: boolean) => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const listener = () => onChange(document.hidden);
+  // 창이 얼면(브라우저가 멈춘 탭) 가려진 것으로 보고, 풀리면 지금 가려짐을 다시 읽는다.
+  const frozen = () => onChange(true);
+  listener();
+  document.addEventListener("visibilitychange", listener);
+  document.addEventListener("freeze", frozen);
+  document.addEventListener("resume", listener);
+  return () => {
+    document.removeEventListener("visibilitychange", listener);
+    document.removeEventListener("freeze", frozen);
+    document.removeEventListener("resume", listener);
+  };
 }
 
 /** 바닥·더미가 있는 카드 게임(화투 셋·원카드)의 멘탈 포커 좌석인가 */
