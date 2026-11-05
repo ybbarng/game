@@ -923,6 +923,18 @@ describe("관측 카운트다운 진동", () => {
     expect(calls).toEqual([60]);
   });
 
+  it("마지막 3초에 들어오면 시작 알림 없이 짧은 톡 [15] 하나(docs/36 11-73)", async () => {
+    // 시각을 멈춰 둔다(흐르면 다음 초의 톡이 더해진다)
+    vi.spyOn(Date, "now").mockReturnValue(showStart - 2_500);
+    const view = renderRoom(1);
+    await waitFor(() => {
+      expect(
+        view.container.querySelector("[data-room-countdown]"),
+      ).not.toBeNull();
+    });
+    expect(calls).toEqual([15]);
+  });
+
   it("마감 뒤 기다리는 동안(카운트다운 전)에는 울리지 않는다", async () => {
     deviceAt(showStart - 60_000);
     const view = renderRoom(1);

@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { winnersLine } from "../after-observe";
 import { celebrationPlan } from "../celebrate";
 import { EASE, FX } from "../fx-timing";
-import { buzz } from "../haptics";
+import { ballBuzz, buzz } from "../haptics";
 import { drawGlows } from "../hdr-glow";
 import { drawOrder, myRank } from "../results";
 import {
@@ -103,6 +103,9 @@ export function DrawView({
   const [animated, setAnimated] = useState(false);
   /** 건너뛰었는지(연출을 멈추고 바로 결과, 끝까지 본 것으로 치지 않는다) */
   const skipped = useRef(false);
+  /** 내 예측 별(연출 도중 예측서가 늦게 와도 공 진동이 따른다) */
+  const myStars = useRef<readonly number[]>([]);
+  myStars.current = ticket?.numbers ?? [];
   const done = frame.done;
   const rank = ticket ? myRank(record, ticket) : null;
 
@@ -131,6 +134,9 @@ export function DrawView({
         const index = next.fixed.length - 1;
         const n = next.fixed[index] as number;
         play("starBall", { star: { n, index, temp: starOf(n).k } });
+        // 공 하나에 아주 가벼운 톡, 내 별이면 톡톡(docs/36 11-73). 한꺼번에 여럿이면 울리지 않는다
+        const kind = ballBuzz(last.fixed, next.fixed, myStars.current);
+        if (kind) buzz(kind);
       } else if (
         next.cursor !== null &&
         next.cursor !== last.cursor &&
