@@ -1,6 +1,7 @@
 import type { HumanSolve } from "@game/cube-ai";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import type { PieceMark } from "../piece-marks";
 import type { HeroView } from "./present";
 
 /**
@@ -14,6 +15,8 @@ import type { HeroView } from "./present";
  * - 단계 이름은 `HumanSolve.stages`의 `name`을 `STAGE_LABELS`로 바꿔 꼬리표에 쓴다.
  * - `view`는 화면에 보이는 방향 규칙(`present.ts`): 첫 층을 위에서 보일 단계(`up`), y2로 돌려 보일 단계
  *   (`mirror`). 넣는 단계는 늘 넣을 칸을 앞-오른쪽으로 돌려 보인다. 해법이 낸 수는 바꾸지 않는다.
+ * - `search`(3×3 초보자·프리드리히): 조각 하나·짝 하나를 넣기 전에 보이는 세 면에서 찾아 돌리고, 넣을 곳·찾은
+ *   조각·맞춘 조각 강조 사건을 낸다(`present.ts`, `../piece-marks.ts`). 루·ZZ·2×2·큰 큐브는 아직 찾지 않는다.
  * - 초보자 해법은 배우기에서 가르치는 방식(흰 면 위 십자·첫 층, 마지막 층은 노란 십자 → 옆면 맞추기 →
  *   코너 자리 → 코너 방향, `{ taught: true }`)으로 푼다.
  *   컴퓨터 대결은 이 선택지를 쓰지 않는다.
@@ -61,14 +64,14 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     size: 3,
     label: "초보자 해법",
     solve: async (s) => (await ai()).solveBeginner3(s, TAUGHT),
-    view: TAUGHT_VIEW,
+    view: { ...TAUGHT_VIEW, search: true },
   },
   {
     id: "3-cfop",
     size: 3,
     label: "프리드리히",
     solve: async (s) => (await ai()).solveCfop(s),
-    view: CROSS_VIEW,
+    view: { ...CROSS_VIEW, search: true },
   },
   {
     id: "3-roux",
@@ -149,6 +152,10 @@ export interface HeroSolve {
   stages: { label: string; start: number; end: number }[];
   /** 단계 안에서 살피느라 잠깐 멈추는 자리(이 번호의 수 앞) */
   looks: number[];
+  /** 조각을 찾는 돌리기(이 번호의 수). 옛 워커 답에는 없다 */
+  searches?: number[];
+  /** 강조 사건(이 번호의 수 앞, 차례대로). 옛 워커 답에는 없다 */
+  marks?: { at: number; mark: PieceMark }[];
 }
 
 /**
@@ -175,5 +182,7 @@ export async function solveForHero(
       end: s.end,
     })),
     looks: solve.looks,
+    searches: solve.searches,
+    marks: solve.marks,
   };
 }

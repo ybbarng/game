@@ -8,6 +8,16 @@ import {
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import {
+  type PieceMark,
+  type PieceUnit,
+  searchTurns,
+  splitByUnits,
+  slotStickers as unitSlotStickers,
+  unitStickers,
+  unitsForStage,
+} from "../piece-marks";
+
 /**
  * 첫 화면 연출의 보여 주기 변환(docs/47 0절 2026-11-04). 해법이 낸 수는 그대로 두고(컴퓨터 대결·배우기가
  * 같은 해법을 쓴다), 화면에 보일 수열만 새로 만든다. 순수 함수다.
@@ -21,6 +31,10 @@ import type { PuzzleState } from "@game/puzzle-core";
  * - 그 밖의 단계(마지막 층, 4×4·5×5 축소, 루·ZZ)는 해법의 돌리기를 그대로 둔다(공식이 R·U 그대로 보인다).
  *   초보자 코너 방향(`ll-corner-twist`)도 돌려 쥐지 않아, 아래 두 층이 흐트러졌다 돌아오는 모습이 그대로 보인다. `mirror` 단계는 y2로 돌려 보이고
  *   끝나면 되돌린다(왼쪽에 쌓는 블록이 카메라 쪽 오른쪽에 보이게).
+ * - `search`(3×3 초보자·프리드리히, 2026-11-05): 조각 하나(십자 엣지·첫 층 코너·둘째 층 엣지·F2L 짝)를 넣기 전에,
+ *   그 조각이 지금 보이는 세 면(위·앞·오른쪽)에 없으면 사람이 찾듯 `SEARCH_ORDER`(y 세 번, 그다음 x2)대로 돌려
+ *   처음 보이는 걸음에서 멈춘다(`piece-marks.ts`). 찾는 동안은 보이는 면만 본다. 그다음은 위 규칙 그대로다.
+ *   넣을 곳·찾은 조각(넣기 전)과 맞춘 조각(넣은 뒤) 사건을 `marks`로 낸다. 넣는 동안에는 사건이 없다.
  */
 
 export interface HeroView {
@@ -28,6 +42,8 @@ export interface HeroView {
   up?: readonly string[];
   /** y2로 돌려 보일 단계 */
   mirror?: readonly string[];
+  /** 조각마다 보이는 세 면에서 찾아 돌리고 강조 사건을 낸다(3×3) */
+  search?: boolean;
 }
 
 export interface PresentInput {
@@ -40,6 +56,10 @@ export type PresentOutput = {
   moves: string[];
   stages: { name: string; start: number; end: number }[];
   looks: number[];
+  /** 찾는 돌리기(이 번호의 수) */
+  searches: number[];
+  /** 강조 사건: 이 번호의 수 앞에서(수 수와 같으면 다 맞춘 뒤) 차례대로 */
+  marks: { at: number; mark: PieceMark }[];
 };
 
 /** 해법의 돌리기를 그대로 두는 단계(축소, 루·ZZ의 블록 단계) */
@@ -271,6 +291,10 @@ interface Out {
   m: CubeMove;
   look: boolean;
   stage: number;
+  /** 찾는 돌리기(합치지 않는다) */
+  search?: boolean;
+  /** 이 수 앞에 낼 강조 사건(합치지 않는다) */
+  events?: PieceMark[];
 }
 
 export function presentSolve(
@@ -287,20 +311,43 @@ export function presentSolve(
   let g: Mat = I;
   let state = start;
   let carryLook = false;
+  /** 다음 수 앞에 낼 강조 사건 */
+  let pending: PieceMark[] = [];
 
-  const push = (m: CubeMove, stage: number, look: boolean) => {
-    out.push({ m, look: look || carryLook, stage });
+  const push = (m: CubeMove, stage: number, look: boolean, search = false) => {
+    const item: Out = { m, look: look || carryLook, stage };
+    if (search) item.search = true;
+    if (pending.length) {
+      item.events = pending;
+      pending = [];
+    }
+    out.push(item);
     carryLook = false;
     state = applyMoves(n, state, [m]);
   };
   /** 연출이 정한 돌리기를 둔다 */
-  const turn = (tokens: readonly string[], stage: number, look = false) => {
+  const turn = (
+    tokens: readonly string[],
+    stage: number,
+    look = false,
+    search = false,
+  ) => {
     tokens.forEach((t, i) => {
       const [m] = parseMoves(n, t) as [CubeMove];
-      push(m, stage, look && i === 0);
+      push(m, stage, look && i === 0, search);
       g = mul(tokenMat(t), g);
     });
   };
+  /** 해법 수 i 앞 상태(해법 좌표). 센터 기준으로 맞았는지만 보므로 화면 방향과 상관없다 */
+  const rawStates: PuzzleState[] = [];
+  if (view.search) {
+    let s = start;
+    rawStates.push(s);
+    for (const ms of parsed) {
+      s = applyMoves(n, s, ms);
+      rawStates.push(s);
+    }
+  }
   /** 해법의 수 [from, to)를 둔다. `keep`이면 돌리기도 그대로 */
   const play = (from: number, to: number, stage: number, keep: boolean) => {
     for (let i = from; i < to; i++) {
@@ -329,6 +376,32 @@ export function presentSolve(
         st = applyMoves(n, st, [conjugate(n, gg, m)]);
       }
     return st;
+  };
+
+  /**
+   * 묶음을 넣기 전: 보이는 세 면에 없으면 찾는 차례대로 돌려 처음 보이는 걸음에서 멈추고, 넣을 곳과 찾은 조각
+   * 사건을 낸다. 찾느라 x2를 했으면(아랫면을 봄) 다시 x2로 돌아와 원래 쥔 면에서 넣는다
+   */
+  const findUnits = (
+    units: readonly PieceUnit[],
+    from: number,
+    stageStart: number,
+    stage: number,
+  ) => {
+    const tokens = searchTurns(state, units) ?? [];
+    const look = lookSet.has(from) && from !== stageStart;
+    if (tokens.length) {
+      turn(tokens, stage, look, true);
+      if (look) lookSet.delete(from);
+    }
+    pending.push(
+      {
+        kind: "slot",
+        stickers: units.flatMap((u) => unitSlotStickers(state, u)),
+      },
+      { kind: "found", stickers: units.flatMap(unitStickers) },
+    );
+    if (tokens.includes("x2")) turn(["x2"], stage);
   };
 
   const upStages = solve.stages.filter((s) => up.includes(s.name));
@@ -373,46 +446,89 @@ export function presentSolve(
         si,
       );
     }
-    if (!kind) play(st.start, st.end, si, false);
+    const units = view.search ? unitsForStage(n, st.name) : null;
+    if (!kind && !units) play(st.start, st.end, si, false);
     else {
-      const slot: Slot =
-        kind === "corner" && up.includes(st.name) ? "top-corner" : kind;
+      const slot: Slot | null = !kind
+        ? null
+        : kind === "corner" && up.includes(st.name)
+          ? "top-corner"
+          : kind;
       const cuts = [
         st.start,
         ...solve.looks.filter((l) => l > st.start && l < st.end),
         st.end,
       ];
       for (let c = 0; c + 1 < cuts.length; c++) {
-        const from = cuts[c] as number;
-        const to = cuts[c + 1] as number;
-        const k = slotTurn(n, state, peek(from, to, false), slot);
-        const look = lookSet.has(from) && from !== st.start;
-        if (k) {
-          turn([Y_TURNS[k] as string], si, look);
-          if (look) lookSet.delete(from);
+        const cutFrom = cuts[c] as number;
+        const cutTo = cuts[c + 1] as number;
+        // 묶음(조각 하나·짝 하나)을 맞춘 걸음으로 더 나눈다(최적 십자는 살피는 자리가 없다)
+        const parts: { from: number; to: number; units: PieceUnit[] }[] = [];
+        let prev = cutFrom;
+        if (units)
+          for (const g of splitByUnits(
+            rawStates,
+            cutFrom,
+            cutTo,
+            units,
+            // 살피는 자리가 없는 위 단계(최적 십자)만 엣지 하나씩 나눈다. 넣는 단계는 살피는 자리 하나가 한 묶음
+            !kind && cuts.length === 2,
+          )) {
+            parts.push({ from: prev, to: g.at, units: g.units });
+            prev = g.at;
+          }
+        if (prev < cutTo) parts.push({ from: prev, to: cutTo, units: [] });
+        for (const part of parts) {
+          const { from, to } = part;
+          if (part.units.length) findUnits(part.units, from, st.start, si);
+          if (slot) {
+            const k = slotTurn(n, state, peek(from, to, false), slot);
+            const look = lookSet.has(from) && from !== st.start;
+            if (k) {
+              turn([Y_TURNS[k] as string], si, look);
+              if (look) lookSet.delete(from);
+            }
+          }
+          play(from, to, si, false);
+          if (part.units.length)
+            pending.push({
+              kind: "placed",
+              stickers: part.units.flatMap(unitStickers),
+            });
         }
-        play(from, to, si, false);
       }
     }
     if (st === lastUp) turn(["z2"], si);
     // 마지막으로 돌려 쥔 단계 끝에서 해법의 쥔 방향으로 돌아온다(마지막 층 공식이 R·U 그대로 보이게)
     if (si === lastShaped && !same(g, I)) turn(tokensFor(transpose(g)), si);
   });
-  return finish(n, out, solve.stages);
+  return finish(n, out, solve.stages, pending);
 }
 
-/** 이어진 같은 층 수·돌리기를 합치고(멈춤 자리는 앞에), 단계 경계를 다시 센다 */
+/**
+ * 이어진 같은 층 수·돌리기를 합치고(멈춤 자리는 앞에), 단계 경계를 다시 센다. 찾는 돌리기와 강조 사건이 붙은
+ * 수는 앞 수와 합치지 않는다(찾는 걸음이 하나씩 보이고, 사건 자리가 흐트러지지 않게)
+ */
 function finish(
   n: number,
   out: readonly Out[],
   stages: PresentInput["stages"],
+  tail: readonly PieceMark[],
 ): PresentOutput {
   const merged: Out[] = [];
   let carry = false;
+  let carryEvents: PieceMark[] = [];
+  /** 합쳐져 사라진 수의 멈춤·사건을 다음 수로 넘긴다 */
+  const drop = (item: Out) => {
+    carry = carry || item.look;
+    if (item.events) carryEvents.push(...item.events);
+  };
   for (const item of out) {
     const last = merged.at(-1);
     const m = item.m;
-    if (last && last.stage === item.stage && !item.look) {
+    const barrier =
+      item.look || item.search || !!item.events?.length || !!last?.search;
+    if (last && last.stage === item.stage && !barrier) {
       if (
         last.m.axis === m.axis &&
         last.m.from === m.from &&
@@ -422,7 +538,7 @@ function finish(
         merged.pop();
         if (turns)
           merged.push({ ...last, m: { ...m, turns: turns as 1 | 2 | 3 } });
-        else carry = carry || last.look;
+        else drop(last);
         continue;
       }
       if (isWhole(n, last.m) && isWhole(n, m)) {
@@ -436,27 +552,41 @@ function finish(
           merged.pop();
           for (const t of tokens) {
             const [r] = parseMoves(n, t) as [CubeMove];
-            merged.push({ m: r, look: last.look, stage: item.stage });
+            const next: Out = { m: r, look: last.look, stage: item.stage };
+            if (last.events) next.events = last.events;
+            merged.push(next);
           }
-          if (!tokens.length) carry = carry || last.look;
+          if (!tokens.length) drop(last);
           continue;
         }
       }
     }
-    merged.push({ ...item, look: item.look || carry });
+    const next: Out = { ...item, look: item.look || carry };
+    const events = [...carryEvents, ...(item.events ?? [])];
+    if (events.length) next.events = events;
+    else delete next.events;
+    merged.push(next);
     carry = false;
+    carryEvents = [];
   }
   const moves: string[] = [];
   const looks: number[] = [];
+  const searches: number[] = [];
+  const marks: PresentOutput["marks"] = [];
   const result: PresentOutput["stages"] = [];
   stages.forEach((st, si) => {
     const startAt = moves.length;
     for (const item of merged) {
       if (item.stage !== si) continue;
       if (item.look && moves.length > startAt) looks.push(moves.length);
+      for (const mark of item.events ?? [])
+        marks.push({ at: moves.length, mark });
+      if (item.search) searches.push(moves.length);
       moves.push(formatMove(n, item.m));
     }
     result.push({ name: st.name, start: startAt, end: moves.length });
   });
-  return { moves, stages: result, looks };
+  for (const mark of [...carryEvents, ...tail])
+    marks.push({ at: moves.length, mark });
+  return { moves, stages: result, looks, searches, marks };
 }

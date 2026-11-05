@@ -253,11 +253,110 @@ describe("보여 주기 변환", () => {
           const seg = shown.moves.slice(from, to);
           // 마지막 짝 끝의 되돌리기(원래 방향으로)는 빼고 센다
           while (/^[xyz]/.test(seg.at(-1) ?? "")) seg.pop();
-          const rest = seg.filter((m) => /^[xyz]/.test(m));
+          // 조각을 찾는 돌리기도 빼고 센다(아래 시험이 따로 본다)
+          const rest = seg.filter(
+            (m, k) => /^[xyz]/.test(m) && !shown.searches.includes(from + k),
+          );
           expect(rest.every((m) => /^y/.test(m))).toBe(true);
           expect(rest.length).toBeLessThanOrEqual(1);
         }
       }
+    }
+  });
+});
+
+/** 스티커 정체 가운데 하나라도 위·앞·오른쪽(U·R·F) 면에 있나 */
+const anyVisible = (s: PuzzleState, ids: readonly number[]) =>
+  ids.some((id) => Math.floor(s.perm.indexOf(id) / 9) <= 2);
+
+/** 스티커(정체)가 모두 센터 색과 같은 면에 있나 */
+const placedOk = (s: PuzzleState, ids: readonly number[]) => {
+  const colors = faceColors(3, s);
+  return ids.every((id) => {
+    const at = s.perm.indexOf(id);
+    return colors[at] === colors[Math.floor(at / 9) * 9 + 4];
+  });
+};
+
+describe("조각 찾기와 강조 사건(3×3 초보자·프리드리히)", () => {
+  const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+  for (const id of ["3-beginner", "3-cfop"]) {
+    it(`${id}: 섞기가 같으면 찾는 돌리기가 늘 같다`, async () => {
+      for (const seed of SEEDS.slice(0, 4)) {
+        const a = await run(id, seed);
+        const b = await run(id, seed);
+        expect(b.shown.moves).toEqual(a.shown.moves);
+        expect(b.shown.searches).toEqual(a.shown.searches);
+        expect(b.shown.marks).toEqual(a.shown.marks);
+      }
+    });
+
+    it(`${id}: 찾는 동안 조각이 보이기 전에는 멈추지 않고, 처음 보이는 걸음에서 멈춘다`, async () => {
+      let searched = 0;
+      for (const seed of SEEDS) {
+        const { start, shown } = await run(id, seed);
+        const states = statesAt(3, start, shown.moves);
+        const searches = new Set(shown.searches);
+        for (const s of shown.searches)
+          expect(shown.moves[s]).toMatch(/^(y|x2)$/);
+        for (const { at, mark } of shown.marks) {
+          if (mark.kind !== "found") continue;
+          // 바로 앞에 이어진 찾는 돌리기들
+          let from = at;
+          while (searches.has(from - 1)) from--;
+          for (let j = from; j < at; j++)
+            expect(
+              anyVisible(states[j] as PuzzleState, mark.stickers),
+              `${id} ${seed} 찾는 ${j - from + 1}번째 앞`,
+            ).toBe(false);
+          expect(anyVisible(states[at] as PuzzleState, mark.stickers)).toBe(
+            true,
+          );
+          if (at > from) searched++;
+        }
+      }
+      expect(searched).toBeGreaterThan(0);
+    });
+
+    it(`${id}: 넣기 전(넣을 곳·찾은 조각)과 넣은 뒤(맞춘 조각)에만 사건이 있고, 다 맞춘다`, async () => {
+      for (const seed of SEEDS) {
+        const { start, shown } = await run(id, seed);
+        const states = statesAt(3, start, shown.moves);
+        const kinds = shown.marks.map((m) => m.mark.kind);
+        // 묶음마다 넣을 곳 → 찾은 조각 → 맞춘 조각
+        expect(kinds.length % 3).toBe(0);
+        expect(kinds.length).toBeGreaterThan(0);
+        for (let i = 0; i < kinds.length; i += 3) {
+          expect(kinds.slice(i, i + 3)).toEqual(["slot", "found", "placed"]);
+          const found = shown.marks[i + 1] as (typeof shown.marks)[number];
+          const placed = shown.marks[i + 2] as (typeof shown.marks)[number];
+          // 넣는 수가 하나 이상 있고, 그 사이에는 사건이 없다(차례가 slot·found·placed로 이어진다)
+          expect(placed.at).toBeGreaterThan(found.at);
+          expect(placed.mark.stickers).toEqual(found.mark.stickers);
+          expect(
+            placedOk(states[placed.at] as PuzzleState, placed.mark.stickers),
+          ).toBe(true);
+          expect(
+            placedOk(states[found.at] as PuzzleState, found.mark.stickers),
+          ).toBe(false);
+        }
+        // 사건은 마지막 층 앞에서 끝난다
+        const ll = shown.stages.find((s) =>
+          ["eo", "oll"].includes(s.name),
+        ) as PresentOutput["stages"][number];
+        for (const m of shown.marks) expect(m.at).toBeLessThanOrEqual(ll.start);
+        const end = states.at(-1) as PuzzleState;
+        expect(placedOk(end, [...end.perm])).toBe(true);
+      }
+    });
+  }
+
+  it("찾기를 켜지 않은 해법(루·ZZ·2×2·4×4)은 찾는 돌리기와 사건이 없다", async () => {
+    for (const id of ["3-roux", "3-zz", "2-beginner", "4-cfop"]) {
+      const seed = CASES.find((c) => c.id === id)?.seeds[0] ?? 1;
+      const { shown } = await run(id, seed);
+      expect(shown.searches).toEqual([]);
+      expect(shown.marks).toEqual([]);
     }
   });
 });
