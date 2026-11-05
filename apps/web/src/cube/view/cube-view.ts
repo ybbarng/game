@@ -118,6 +118,8 @@ interface StickerSlot {
   local: THREE.Matrix4;
   color: number | null;
   mark: MarkTone | null;
+  /** 스티커 정체(`Sticker.id`). 모르면 null */
+  id: number | null;
 }
 
 interface Running {
@@ -474,6 +476,7 @@ export class CubeView {
             local,
             color: null,
             mark: null,
+            id: null,
           });
         }
       });
@@ -561,6 +564,7 @@ export class CubeView {
     for (const s of this.slots) {
       s.color = null;
       s.mark = null;
+      s.id = null;
     }
     for (const s of stickers) {
       const i = this.slotIndex.get(slotKey(s.center, s.normal));
@@ -568,11 +572,37 @@ export class CubeView {
       if (slot) {
         slot.color = s.color;
         slot.mark = s.mark ?? null;
+        slot.id = s.id ?? null;
       }
     }
     this.cubies.forEach((_, i) => {
       this.writeCubie(i);
     });
+    this.writeColors();
+    this.writeMirror();
+    this.invalidate();
+  }
+
+  /**
+   * 칸 표시만 바꾼다(색·놓임·돌고 있는 회전은 그대로). `marks`는 스티커 정체(`Sticker.id`)마다 표시다
+   * (bridge `StickerMarks`와 같다). 표시는 조각에 붙어 다니므로 수를 두는 도중에 불러도 된다. null이면 모두 끈다.
+   * 첫 화면 연출의 강조가 쓴다(docs/47 0절 2026-11-05)
+   */
+  setMarks(marks: readonly (MarkTone | null)[] | null): void {
+    let changed = false;
+    this.slots.forEach((s, si) => {
+      const want = (s.id !== null && marks?.[s.id]) || null;
+      if (want === s.mark) return;
+      s.mark = want;
+      changed = true;
+      // 돌고 있는 조각도 그 자리에 그리도록 스티커의 지금 행렬을 그대로 쓴다
+      if (want) {
+        this.stickerMesh.getMatrixAt(si, tmpM2);
+        this.frameMesh.setMatrixAt(si, tmpM2);
+      } else this.frameMesh.setMatrixAt(si, ZERO);
+    });
+    if (!changed) return;
+    this.frameMesh.instanceMatrix.needsUpdate = true;
     this.writeColors();
     this.writeMirror();
     this.invalidate();

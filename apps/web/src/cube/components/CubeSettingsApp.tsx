@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { HERO_HIGHLIGHT_LABEL, HERO_HIGHLIGHTS } from "../hero/highlight";
 import {
   findHeroMethod,
   HERO_ALTERNATE,
@@ -321,6 +322,23 @@ export function CubeSettingsApp() {
                 className={chip(settings.heroMethod === m.id)}
               >
                 {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            강조
+            {HERO_HIGHLIGHTS.map((h) => (
+              <button
+                key={h}
+                type="button"
+                data-hero-highlight={h}
+                aria-pressed={settings.heroHighlight === h}
+                onClick={() =>
+                  updateSettings({ ...settings, heroHighlight: h })
+                }
+                className={chip(settings.heroHighlight === h)}
+              >
+                {HERO_HIGHLIGHT_LABEL[h]}
               </button>
             ))}
           </div>
