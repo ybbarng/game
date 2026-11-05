@@ -90,6 +90,23 @@ describe("혼자 맞추기", () => {
     expect(records[0]?.splits).toMatch(/^cross@0 .*ll@1500$/);
   });
 
+  it("가장 긴 흐름 콤보: 1초 안쪽으로 이어 친 면 돌리기를 세어 기록에 남긴다(4수부터)", () => {
+    const { clock, records, s, type } = setup({ inspection: false });
+    s.start("R U R' U' R2");
+    // 거꾸로 R2 U R U′ R′ — 0.3초 간격 넷(콤보 4), 1.5초 쉬고 R′로 맞춤(끊김)
+    type("R2");
+    for (const m of ["U", "R", "U'"]) {
+      clock.advance(300);
+      type(m);
+    }
+    expect(s.longestCombo).toBe(4);
+    clock.advance(1_500);
+    type("R'");
+    expect(s.phase).toBe("done");
+    expect(s.longestCombo).toBe(4);
+    expect(records[0]?.combo).toBe(4);
+  });
+
   it("구간 기록은 새 판·맞춘 상태로에서 지우고, 블라인드는 재지 않는다", () => {
     const { s, type } = setup({ inspection: false });
     s.start("U R");

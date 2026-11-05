@@ -1,11 +1,15 @@
 import { type CubeMove, parseMoves } from "@game/cube-engine";
+import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
 import {
+  comboLevel,
+  comboNow,
   EMPTY_FLOW,
   FLOW_KEEP,
   type FlowStrip,
   flowSpeed,
+  longestCombo,
   pushFlow,
 } from "./strip";
 
@@ -83,5 +87,75 @@ describe("빠르기", () => {
     expect(flowSpeed(s, 4_000)).toBeNull();
     // 2초 뒤: 10수 / 2.9초
     expect(flowSpeed(s, 2_900)).toBeCloseTo(10 / 2.9);
+  });
+});
+
+describe("흐름 콤보(docs/51 2-1)", () => {
+  /** 시계를 감으며 수를 둔다: [수, 앞 수부터 감을 ms] */
+  function playAt(
+    clock: ManualClock,
+    steps: [string, number][],
+    from: FlowStrip = EMPTY_FLOW,
+  ) {
+    let strip = from;
+    for (const [s, wait] of steps) {
+      clock.advance(wait);
+      strip = pushFlow(strip, 3, m(3, s), 0, clock.now());
+    }
+    return strip;
+  }
+
+  it("1초 안쪽으로 이어 치면 쌓이고, 1초 넘게 멈추면 끊겨 다시 1부터", () => {
+    const clock = new ManualClock();
+    let strip = playAt(clock, [
+      ["R", 0],
+      ["U", 300],
+      ["R'", 1_000], // 꼭 1초는 이어진 것
+      ["U'", 200],
+    ]);
+    expect(comboNow(strip, clock.now())).toBe(4);
+    // 멈춘 채 1초까지는 보이고, 넘으면 보이지 않는다
+    clock.advance(1_000);
+    expect(comboNow(strip, clock.now())).toBe(4);
+    clock.advance(1);
+    expect(comboNow(strip, clock.now())).toBe(0);
+    // 그 뒤 수는 1부터
+    strip = pushFlow(strip, 3, m(3, "F"), 0, clock.now());
+    expect(strip.combo).toBe(1);
+  });
+
+  it("합친 수·지운 수(U U′)도 친 수로 센다. 큐브 돌리기는 올리지도 끊지도 않는다", () => {
+    const clock = new ManualClock();
+    const strip = playAt(clock, [
+      ["U", 0],
+      ["U", 100], // U2로 합침
+      ["U'", 100], // U로 줄어듦
+      ["y", 100],
+      ["R", 500], // 앞 면 돌리기(U′)부터 600ms
+    ]);
+    expect(texts(strip)).toEqual(["U", "y", "R"]);
+    expect(comboNow(strip, clock.now())).toBe(4);
+    // 돌리기만 하며 오래 멈추면 다음 면 돌리기에서 끊긴다
+    const after = playAt(
+      clock,
+      [
+        ["y", 800],
+        ["F", 800],
+      ],
+      strip,
+    );
+    expect(after.combo).toBe(1);
+  });
+
+  it("강조 단계는 4·12·24·40수에서 한 단계씩", () => {
+    expect([3, 4, 11, 12, 23, 24, 39, 40, 99].map(comboLevel)).toEqual([
+      0, 1, 1, 2, 2, 3, 3, 4, 4,
+    ]);
+  });
+
+  it("가장 긴 콤보", () => {
+    expect(longestCombo([])).toBe(0);
+    expect(longestCombo([0, 500, 1_400, 3_000, 3_100, 3_200, 3_300])).toBe(4);
+    expect(longestCombo([0, 2_000, 4_000])).toBe(1);
   });
 });

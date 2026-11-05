@@ -35,6 +35,8 @@ export interface SolveRecord {
    * ms), 지난 차례대로. 다시 보기 글과 같은 꼴 "cross@3210 f2l1@8020". 이 칸이 없는 옛 기록도 그대로 읽힌다
    */
   splits?: string;
+  /** 가장 긴 흐름 콤보(2026-11-05, docs/51 2-1). 4수 아래면 남기지 않는다 */
+  combo?: number;
   /** 혼자 맞추기 「상황 알림」을 켰을 때 이번 판에서 만난 내 목록 상황 id(만난 차례, 2026-11-04) */
   myCases?: string[];
 }

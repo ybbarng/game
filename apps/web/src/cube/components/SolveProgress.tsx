@@ -82,7 +82,14 @@ export function ProgressMeter({
  * 지나간 이정표 칩(같은 순간은 하나로, 가장 나아간 단계 + 나머지 수). 한 줄 안에 두고, 넘치면 앞(오래된) 칩이
  * 왼쪽으로 밀려 사라진다. 칩을 누르면 그 순간 켜진 단계를 모두 보인다. 새로 켜진 칩은 살짝 떠오른다
  */
-export function MilestoneChips({ splits }: { splits: readonly Split[] }) {
+export function MilestoneChips({
+  splits,
+  gold = NO_GOLD,
+}: {
+  splits: readonly Split[];
+  /** 골드 칩의 시각(ms, docs/51 2-2): 내 최고 구간보다 빠른 칩은 금색 */
+  gold?: ReadonlySet<number>;
+}) {
   const [open, setOpen] = useState<number | null>(null);
   // 한 줄에 최근 넷까지
   const groups = groupSplits(splits).slice(-4);
@@ -96,13 +103,16 @@ export function MilestoneChips({ splits }: { splits: readonly Split[] }) {
           <button
             type="button"
             data-milestone={g.ids.join("+")}
+            data-gold={gold.has(g.ms) ? "" : undefined}
             title={g.full}
             aria-expanded={g.ids.length > 1 ? open === g.ms : undefined}
             onClick={() => setOpen((v) => (v === g.ms ? null : g.ms))}
-            className="cube-milestone-in block max-w-[18rem] truncate rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[11px] text-sky-100"
+            className={`${gold.has(g.ms) ? "cube-gold" : "cube-milestone-in"} block max-w-[18rem] truncate rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[11px] text-sky-100`}
           >
             {open === g.ms ? g.full : g.label}{" "}
-            <span className="font-mono text-sky-200/80 tabular-nums">
+            <span
+              className={`font-mono tabular-nums ${gold.has(g.ms) ? "text-amber-200" : "text-sky-200/80"}`}
+            >
               {formatMs(g.ms)}
             </span>
           </button>
@@ -113,19 +123,38 @@ export function MilestoneChips({ splits }: { splits: readonly Split[] }) {
 }
 
 /** 결과 상자의 구간 기록: 이정표마다 지난 시각과 걸린 구간 */
-export function SplitList({ splits }: { splits: readonly Split[] }) {
+export function SplitList({
+  splits,
+  gold = NO_GOLD,
+}: {
+  splits: readonly Split[];
+  gold?: ReadonlySet<number>;
+}) {
   const groups = groupSplits(splits);
   if (groups.length === 0) return null;
   return (
     <ol
       data-cube-splits={groups.map((g) => g.ids.join("+")).join(" ")}
+      data-cube-gold-splits={groups
+        .filter((g) => gold.has(g.ms))
+        .map((g) => g.ids.join("+"))
+        .join(" ")}
       className="flex w-full flex-wrap justify-center gap-x-3 gap-y-0.5 text-xs"
     >
       {groups.map((g) => (
-        <li key={`${g.ms}-${g.ids.join("+")}`} className="whitespace-nowrap">
-          <span className="text-white/70">{g.full}</span>{" "}
+        <li
+          key={`${g.ms}-${g.ids.join("+")}`}
+          data-gold={gold.has(g.ms) ? "" : undefined}
+          className="whitespace-nowrap"
+        >
+          <span className={gold.has(g.ms) ? "text-amber-200" : "text-white/70"}>
+            {g.full}
+          </span>{" "}
           <span className="font-mono tabular-nums">{formatMs(g.ms)}</span>{" "}
-          <span className="font-mono text-white/45 tabular-nums">
+          <span
+            className={`font-mono tabular-nums ${gold.has(g.ms) ? "rounded bg-amber-400/15 px-1 text-amber-200" : "text-white/45"}`}
+            title={gold.has(g.ms) ? "이 구간 내 최고" : undefined}
+          >
             +{formatMs(g.lap)}
           </span>
         </li>
@@ -133,5 +162,7 @@ export function SplitList({ splits }: { splits: readonly Split[] }) {
     </ol>
   );
 }
+
+const NO_GOLD: ReadonlySet<number> = new Set();
 
 const trim = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));

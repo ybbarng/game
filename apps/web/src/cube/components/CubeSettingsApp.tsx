@@ -42,6 +42,7 @@ import {
   COLOR_SCHEME_LABEL,
   FLOW_STRIP_LABEL,
   hexColor,
+  RACE_ALERT_LABEL,
   updateSettings,
   useCubeSettings,
   withFaceColor,
@@ -216,6 +217,23 @@ export function CubeSettingsApp() {
                 className={chip(settings.flowStrip === v)}
               >
                 {FLOW_STRIP_LABEL[v]}
+              </button>
+            ))}
+          </div>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-race-alert-setting
+          >
+            대결 알림
+            {(["on", "quiet", "off"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={settings.raceAlerts === v}
+                onClick={() => updateSettings({ ...settings, raceAlerts: v })}
+                className={chip(settings.raceAlerts === v)}
+              >
+                {RACE_ALERT_LABEL[v]}
               </button>
             ))}
           </div>

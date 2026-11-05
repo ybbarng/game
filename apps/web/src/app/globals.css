@@ -131,11 +131,95 @@ html:has([data-game="cube"]) body {
 .cube-milestone-in {
   animation: cube-milestone-in 700ms ease-out both;
 }
+/*
+ * 구간 골드(docs/51 2-2): 내 최고 구간보다 빠른 칩은 금색. 켜질 때 금빛이 칩 위를 한 번 스치고 가라앉는다
+ * (되풀이하지 않는다)
+ */
+@keyframes cube-gold-shine {
+  0% {
+    background-position: 120% 0;
+    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.55);
+  }
+  45% {
+    box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.2);
+  }
+  100% {
+    background-position: -40% 0;
+    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0);
+  }
+}
+.cube-gold {
+  border-color: rgba(252, 211, 77, 0.55);
+  color: #fef3c7;
+  background-color: rgba(245, 158, 11, 0.14);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(253, 230, 138, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: cube-gold-shine 900ms ease-out both;
+}
+/*
+ * 대결 단계 톡(docs/51 1-3): 사람 칸 안에서만 살짝 떠올랐다 0.9초 안에 사라진다. 칸 밖으로 나가지 않는다
+ */
+@keyframes cube-race-toast {
+  0% {
+    transform: translateY(4px) scale(0.96);
+    opacity: 0;
+  }
+  18% {
+    transform: none;
+    opacity: 1;
+  }
+  72% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0;
+  }
+}
+.cube-race-toast {
+  animation: cube-race-toast 900ms ease-out both;
+}
+/*
+ * 흐름 콤보(docs/51 2-1): 콤보가 오를수록 띠 바탕이 조금씩 데워진다. 번쩍이지 않게 색만 천천히 옮긴다
+ */
+.cube-combo-track {
+  border-radius: 0.5rem;
+  transition:
+    background-color 600ms ease,
+    box-shadow 600ms ease;
+}
+.cube-combo-track[data-combo-level="1"] {
+  background-color: rgba(56, 189, 248, 0.05);
+}
+.cube-combo-track[data-combo-level="2"] {
+  background-color: rgba(56, 189, 248, 0.09);
+  box-shadow: inset 0 -1px 0 rgba(125, 211, 252, 0.25);
+}
+.cube-combo-track[data-combo-level="3"] {
+  background-color: rgba(251, 191, 36, 0.08);
+  box-shadow: inset 0 -1px 0 rgba(252, 211, 77, 0.35);
+}
+.cube-combo-track[data-combo-level="4"] {
+  background-color: rgba(251, 191, 36, 0.13);
+  box-shadow: inset 0 -2px 0 rgba(252, 211, 77, 0.45);
+}
 @media (prefers-reduced-motion: reduce) {
   .cube-flow-pop,
   .cube-flow-bump,
-  .cube-milestone-in {
+  .cube-milestone-in,
+  .cube-gold,
+  .cube-race-toast {
     animation: none;
+  }
+  .cube-combo-track {
+    transition: none;
   }
 }
 

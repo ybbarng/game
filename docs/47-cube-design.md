@@ -431,6 +431,19 @@ three.js(이미 의존성, 큐브 화면에서만 늦게 불러오기).
 - **수 흐름 띠**(`flow/strip.ts` 순수 함수, `components/FlowStrip.tsx`, `CubePlay`의 `flow`): 같은 층을 이어 돌리면 합친다(U U → U2, U U U → U′, U U′ → 지움, 되돌리기도 반대 수라 지운다). x·y·z는 회색으로 작게, 빠르기에 세지 않는다. 칠하기는 키 그림과 같은 옅은 색조(`KEY_TONE`, 바탕 20%·테두리 60%·아래 띠만 면 색, 반대 방향은 더 옅게 + 끊긴 띠). 색은 수를 두기 전 들고 있는 방향의 그 면 색, 반대 방향은 표기 글의 ′로 본다(엔진의 `turns`는 + 쪽에서 본 방향이라 L·D·B는 거꾸로다). 끝에 최근 3초 초당 수. 14개만 남긴다. 새 수는 크게 떴다 작아지며 자리를 넓혀 앞 수를 민다(CSS `cube-flow-pop`, 합친 수는 `cube-flow-bump`), 움직임 줄이기면 글자만. 데스크톱은 큐브 위 한 줄, 휴대폰은 큐브 칸 위쪽 가장자리에 반투명 띠로 겹친다. 혼자 맞추기·배우기(단원 해 보기)는 크게, 대결은 작게, 설정 「수 흐름 띠: 켬·작게·끔」(`flowStrip`, 기본 켬).
 - 시험: `solve-progress.test.ts`(맞춘 큐브 20점, 통째로 돌려도 같음, 면 하나 19.5, 슈퍼플립 14, 해법별 대표 상태의 이정표), `flow/strip.test.ts`, `solve-session.test.ts` 「구간 기록」, `progress/*.test.ts`, 화면 `cube-solo.spec.ts`(한 수 남은 큐브의 칩·완성까지 1수·19.5, 결과 상자 구간 기록·짧은 풀이, 띠 합치기·되돌리기·휴대폰 겹침).
 
+### 8-8. 대결 단계 표시·흐름 콤보·구간 골드(2026-11-05, docs/51 1-3·2-1·2-2)
+
+- **대결 단계**(`cube/online/race-stages.ts`, `RaceView`): 사람마다 `StageTracker`가 이 기기가 받은 수 기록(`RaceSession.moveLog`)을 시작 상태에 이어서 적용하며 `milestonesOf`로 이정표를 처음 지난 시각을 찾는다(큐브 돌리기는 판정하지 않음, 혼자 맞추기와 같다). 시각은 수에 단 시각(풀림 기준)이라 기기마다 같다. 보내는 말은 바꾸지 않았다(`race-stages.test.ts`가 두 기기에서 같은 칩·시각과 오간 말 종류·`race-moves` 칸 이름을 본다). 칩 묶기는 `groupSplits`(대표 단계 `main`을 더함).
+  - 사람 칸: 이름 · 맞춘 시간(맞추는 중에는 비움) · 칩 한 줄(최근 셋, 마지막 칩만 시각). 수 수·진행 막대는 「대결 알림: 끔」일 때만(예전 모습). 작은 펼친 그림(3명 이하)은 데스크톱만.
+  - 휴대폰(폭 768px 아래)은 사람 목록이 큐브 위 가로 한 줄(칸 너비 9rem, 넘치면 옆으로 밀기), 데스크톱은 옆. 대결 큐브 칸도 `fitViewport`.
+  - 톡: 칸 안 오른쪽 위에 「첫 층 3.21초」 0.9초(CSS `cube-race-toast`). 4명이 넘으면 `pickToasts`가 1등이 바뀐 때의 새 1등·나·내 앞뒤만 고른다(1등은 `liveOrder`). 지난 지 2초 넘은 이정표는 띄우지 않는다. 화면 시험은 띄운 수(`data-cube-toasts-shown`)로 본다.
+  - 설정 「대결 알림: 켬 / 조용히(칩만) / 끔」(`raceAlerts`, 기본 켬). 움직임 줄이기면 켬도 조용히(`effectiveRaceAlerts`).
+  - 결과 상자 「구간」 표(`RaceSplits`): 순위 차례로 사람마다 한 줄, 열은 사람들 칩의 대표 단계(`splitColumns`, 진행 차례), 열마다 가장 빠른 칸을 밝게, 다 맞춘 순간에 함께 지난 단계는 「-」(`splitCell`).
+- **흐름 콤보**(`flow/strip.ts`의 `combo`·`turnAt`·`comboNow`·`comboLevel`·`longestCombo`): 면 돌리기 사이 1초(`COMBO_GAP_MS`) 안쪽이면 이어진 것. 큐브 돌리기는 올리지도 끊지도 않는다. 4수(`COMBO_SHOW`)부터 띠 끝에 「콤보 n」, 12·24·40수에서 띠 바탕이 한 단계씩 데워진다(`cube-combo-track[data-combo-level]`, 색만 0.6초에 걸쳐). 혼자 맞추기만(`CubePlay`의 `combo`). `SolveSession.longestCombo`를 결과 상자에 보이고 기록 칸 `combo`에 남긴다.
+- **구간 골드**(`progress/gold.ts`): 구간 = 칩 하나가 앞 칩부터 걸린 시간, 이름은 「앞 대표 단계>이 대표 단계」(`segmentsOf`). `SolveApp`이 섞을 때 같은 크기·방식 기록을 떠 두고(`prior`) `bestSegments`와 견준다(`goldSplits`). 구간 칸이 없는 옛 기록은 건너뛰고, 처음 만난 구간·같은 시간은 골드가 아니다. 골드 칩은 `cube-gold`(금색, 한 번 스치는 빛), 결과 상자 구간(`SplitList`)의 걸린 시간도 금색. 개인 최고(`isPersonalBest`, 벌점 포함)면 결과 상자에 「개인 최고」.
+- 시험: `race-stages.test.ts`(기기마다 같음·말 그대로·차례·톡 고르기·구간 열), `progress/gold.test.ts`(옛 기록 없음·구간 없는 옛 기록과 섞임·벌점), `flow/strip.test.ts` 「흐름 콤보」(ManualClock), `solve-session.test.ts` 「가장 긴 흐름 콤보」, `settings.test.ts` 「대결 알림」. 화면 `cube-online.spec.ts`(컴퓨터 칸의 칩·결과 상자 구간 표·휴대폰 위 줄·1280×720·톡), `cube-solo.spec.ts` 「흐름 콤보와 구간 골드」(씨앗을 고정해 같은 섞기를 느리게·빠르게 두 번).
+- 남은 것: 소리(이정표 띵·골드 반짝·개인 최고 팡파르·콤보 음 높이), 공식 덩어리 「×n」, 이론 최고(해법 고르기와 함께), 여러 기기 대결에서 실제로 보기(`CUBE_MULTI=1`).
+
 ## 9. 여럿이 하기
 
 ### 9-1. 판 모양

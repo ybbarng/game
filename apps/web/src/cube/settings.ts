@@ -56,6 +56,26 @@ export const FLOW_STRIP_LABEL: Record<FlowStripMode, string> = {
   off: "끔",
 };
 
+/**
+ * 대결 알림(docs/51 1-3). 「켬」: 사람마다 단계 칩 + 이정표를 지나면 그 칸에 「십자 3.21초」 톡.
+ * 「조용히」: 칩만. 「끔」: 칩도 톡도 없이 진행 막대와 단계 이름만(예전 모습).
+ * 움직임 줄이기를 켠 기기에서는 「켬」도 「조용히」로 보인다(`effectiveRaceAlerts`)
+ */
+export type RaceAlertMode = "on" | "quiet" | "off";
+
+export const RACE_ALERT_LABEL: Record<RaceAlertMode, string> = {
+  on: "켬",
+  quiet: "조용히(칩만)",
+  off: "끔",
+};
+
+export function effectiveRaceAlerts(
+  mode: RaceAlertMode,
+  reducedMotion: boolean,
+): RaceAlertMode {
+  return mode === "on" && reducedMotion ? "quiet" : mode;
+}
+
 export interface CubeSettings {
   version: 1;
   colorScheme: ColorScheme;
@@ -94,6 +114,8 @@ export interface CubeSettings {
   touchKeyboard: boolean;
   /** 수 흐름 띠(2026-11-05, 기본 켬) */
   flowStrip: FlowStripMode;
+  /** 대결 알림(2026-11-05, 기본 켬) */
+  raceAlerts: RaceAlertMode;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -117,6 +139,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   backView: "mirror",
   touchKeyboard: false,
   flowStrip: "on",
+  raceAlerts: "on",
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -200,6 +223,10 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
       typeof d.flowStrip === "string" && d.flowStrip in FLOW_STRIP_LABEL
         ? (d.flowStrip as FlowStripMode)
         : DEFAULT_SETTINGS.flowStrip,
+    raceAlerts:
+      typeof d.raceAlerts === "string" && d.raceAlerts in RACE_ALERT_LABEL
+        ? (d.raceAlerts as RaceAlertMode)
+        : DEFAULT_SETTINGS.raceAlerts,
     heroSize,
     heroMethod,
   };
