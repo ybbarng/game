@@ -463,6 +463,8 @@ export function OnecardGame({
   const [seven, setSeven] = useState<OnecardCard | null>(null);
   const [confirmResign, setConfirmResign] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // 결과 띠가 떠 있는 동안은 판 끝 결과 상자를 띄우지 않는다(둘이 한꺼번에 뜨지 않게, 고스톱과 같이)
+  const [bannerUp, setBannerUp] = useState(false);
   const pointer = useRef<string>("mouse");
   // 손패를 훑거나 끌어 낸 손은 카드 누르기로 치지 않는다(useHandControls가 손을 뗄 때 처리한다)
   const gestured = useRef(false);
@@ -923,8 +925,8 @@ export function OnecardGame({
             </div>
           </section>
 
-          {/* 판 끝: 결과·순위표·다시 하기(하트 판 결과 패널 자리) */}
-          {over && (
+          {/* 판 끝: 결과·순위표·다시 하기(하트 판 결과 패널 자리). 결과 띠가 사라진 뒤에 띄운다 */}
+          {over && !bannerUp && (
             <div
               className="absolute z-[200] flex items-end justify-center"
               style={{
@@ -1191,6 +1193,7 @@ export function OnecardGame({
             seq={eventSeq}
             center={tableCenter}
             stageHeight={stage.height}
+            onShowChange={setBannerUp}
           />
 
           {online && chatOpen && (
