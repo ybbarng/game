@@ -176,7 +176,7 @@ export function galaxyTimers(
  * 판 끝 검증: 방장이 넣은 기록(꼬리표·시간 상한·시간패)이 규칙대로인가(`GameKit.verifyUnsigned`).
  * 꼬리표만 달면 「내가 보낸 것」·컴퓨터 수 대조를 건너뛰므로, 대신 정한 수는 사람 자리일 것, 그 자리가 정할
  * 때였을 것, `standInAction`과 같을 것을 본다. 시간패는 엔진이 남은 시간으로 확인한다. 시간 상한은 방장 자리로만
- * 받고 시각은 확인할 수 없다(docs/48 4-5 한계)
+ * 받는다. 시간패·시간 상한이 실제로 그만큼 지난 뒤였는지는 참가자 기기가 자기 시계로 본다(`clockKey`, net/time-witness)
  */
 export function verifyLate(
   before: GalaxyState,
@@ -211,6 +211,9 @@ export const galaxyOnlineKit: GalaxyKit = {
     action.type !== "timeout" &&
     action.type !== "timeUp",
   timers: galaxyTimers,
+  // 시간 상한은 판이 시작할 때 열린 창이 닫혀 넣는다(참가자 기기가 그만큼 지났는지 본다). 결정 시간 창은 방장 기기가
+  // 이 차례에 한 번 넘긴 사람을 기억해 바로 닫기도 해(`lateTurn`) 길이를 다시 계산할 수 없으므로 돌려주지 않는다.
+  clockKey: (action) => (action.type === "timeUp" ? "timeUp" : null),
   verifyUnsigned: ({ before, seat, action, context }) =>
     verifyLate(before, seat, action, context.botSeats),
   timing: {

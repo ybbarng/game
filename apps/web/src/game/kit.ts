@@ -190,6 +190,12 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
    */
   timers?(state: State): KitTimer<Action, State>[];
   /**
+   * 기록 속 이 행동이 `timers`의 어느 창이 닫혀 넣은 것인가(그 창 `key`). 아니면 null.
+   * 있으면 참가자 기기가 판 끝에 그 창이 열린 뒤 창 길이만큼 정말 지났는지 자기 시계로 본다(`net/time-witness.ts`).
+   * 창 길이가 방장 기기 사정(그 기기만 아는 값)에 따라 달라지는 창은 돌려주지 않는다
+   */
+  clockKey?(action: Action): string | null;
+  /**
    * 사람·컴퓨터가 아니라 대국을 돌리는 기기가 바로 넣는 행동(원카드 다시 섞기). 없으면 null.
    * `seed`는 대국 씨앗과 기록 길이로 만든 값이라 같은 기록이면 같은 행동이 나온다
    */
@@ -310,7 +316,10 @@ export interface VerifyContext {
 export interface KitTiming<State, Action> {
   /** 지금 시계가 가는 자리와 그 사람이 쓸 수 있는 남은 시간(ms). 시간 규칙이 없거나 둘 때가 아니면 null */
   turn(state: State): { seat: number; left: number } | null;
-  /** 이 행동에 쓴 시간(ms)을 싣는다. 시간과 상관없는 행동(다음 판·기권 등)은 그대로 */
+  /**
+   * 이 행동에 쓴 시간(ms)을 `spent`에 싣는다. 시간과 상관없는 행동(다음 판·기권 등)은 그대로.
+   * 참가자 기기가 판 끝에 `spent`를 자기 시계로 잰 사이와 견준다(`net/time-witness.ts`)
+   */
   stamp(action: Action, spent: number): Action;
   /** 시간을 다 썼을 때 그 자리로 기록에 남기는 행동 */
   timeout(spent: number): Action;
