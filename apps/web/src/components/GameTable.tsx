@@ -41,7 +41,13 @@ import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
-import { collectTo, DealAnimation } from "./card-fx";
+import {
+  collectTo,
+  DEALT_SCALE,
+  DealAnimation,
+  PLAYING_CARD,
+  spreadDelay,
+} from "./card-fx";
 import { FairOverlays, FairStatus } from "./FairOverlays";
 import { useHandControls } from "./hand-controls";
 import { OpenHand } from "./OpenHand";
@@ -755,7 +761,8 @@ export function GameTable({
               <DealAnimation
                 key={dealing.key}
                 center={tableCenter}
-                card={layout.trick.card}
+                kind={PLAYING_CARD}
+                width={layout.trick.card.w}
                 targets={dealTargets}
                 handSize={dealing.handSize}
                 kittyCount={view.kittyCount}
@@ -819,9 +826,9 @@ export function GameTable({
                     from={
                       view.phase === "exchange"
                         ? { ...tableCenter, scale: 0.6, opacity: 0 }
-                        : { ...myPile, scale: 0.55, opacity: 0.6 }
+                        : { ...myPile, scale: DEALT_SCALE, opacity: 0.6 }
                     }
-                    delay={Math.min(i * 25, 300)}
+                    delay={spreadDelay(i)}
                     z={10 + i}
                     dim={
                       (playable !== null && !canPlay) ||

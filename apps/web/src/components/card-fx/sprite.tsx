@@ -5,6 +5,8 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import type { Point } from "@/layout/compute-layout";
 import { cn } from "@/lib/cn";
 
+import { type CardShape, cardHeight } from "./kind";
+
 /*
  * 카드 연출의 바탕(마이티·하트·원카드·화투 공통, docs/05 4.12). 카드 그림과 상관없이 "무대 위 한 장이 어디에서
  * 어디로 가나"만 다룬다. 카드 그림은 쓰는 쪽이 `children`으로 넣는다
@@ -89,10 +91,12 @@ export function spriteStyle({
   };
 }
 
-/** 위치가 바뀌면 그 자리로 날아가는 카드 한 장(그림은 `children`). 누르기는 받지 않는다 */
+/**
+ * 위치가 바뀌면 그 자리로 날아가는 카드 한 장(그림은 `children`, 높이는 카드 종류가 정한다). 누르기는 받지 않는다
+ */
 export function CardSprite({
+  kind,
   width,
-  height,
   at,
   from,
   rotate = 0,
@@ -102,8 +106,8 @@ export function CardSprite({
   className,
   children,
 }: {
+  kind: CardShape;
   width: number;
-  height: number;
   at: CardPosition;
   /** 처음 나타날 때 출발하는 곳 */
   from?: CardPosition;
@@ -116,6 +120,7 @@ export function CardSprite({
   children: ReactNode;
 }) {
   const arrived = useArrival(from !== undefined);
+  const height = cardHeight(kind, width);
   return (
     <div
       aria-hidden="true"

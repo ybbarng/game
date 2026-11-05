@@ -2,6 +2,11 @@
  * 화면 크기와 인원으로 카드·자리 판의 좌표를 계산한다 (docs/05-layout.md 4절).
  * 순수 함수라 화면 크기별로 테스트할 수 있다. 모든 좌표는 무대 왼쪽 위 기준 px.
  */
+import {
+  type CardShape,
+  cardWidth,
+  PLAYING_SHAPE,
+} from "@/components/card-fx/kind";
 
 export interface Rect {
   x: number;
@@ -26,8 +31,8 @@ export interface LayoutInput {
   playerCount: number;
   /** 내 손패 장수 */
   handCount: number;
-  /** 카드 높이/폭. 기본은 서양 카드(350/250), 화투는 8/5 */
-  cardRatio?: number;
+  /** 카드 모양(card-fx `CardShape`). 기본은 트럼프 `PLAYING_SHAPE`, 화투는 `HWATU_SHAPE` */
+  card?: CardShape;
   /**
    * 손패 카드 크기의 몫. 가로 화면은 화면 높이의 이만큼을 카드 높이로, 세로 화면은 화면 폭의 이만큼을 카드 폭으로
    * 잡는다(넘으면 줄인다). 기본 0.24·0.2(마이티·하트)
@@ -85,9 +90,6 @@ export const PLATE_COMPACT_H = 58;
 
 /** 뒷면 부채가 자리 판 끝에서 판 쪽으로 나오는 길이(카드 높이 배): 가운데 0.22 + 반 장 */
 export const FAN_PEEK = 0.72;
-
-/** 카드 그림(250×350)의 높이/폭 */
-export const CARD_RATIO = 350 / 250;
 
 /** 나부터 차례 순서로 k번째 사람의 각도(0° = 오른쪽, 90° = 아래). docs/05-layout.md 3.6절 */
 const SEAT_ANGLES: Record<number, number[]> = {
@@ -158,7 +160,7 @@ export function computeLayout(input: LayoutInput): Layout {
   const portrait = W / H < 1;
   const g = clamp(Math.min(W, H) * 0.02, 8, 24);
 
-  const ratio = input.cardRatio ?? CARD_RATIO;
+  const ratio = (input.card ?? PLAYING_SHAPE).ratio;
   const floorBoard = input.board === "floor";
   const hand = handLayout(
     W,
@@ -262,10 +264,10 @@ export function computeLayout(input: LayoutInput): Layout {
     const cy = room >= side ? top + room / 2 : table.y + table.h - side / 2;
     center = { x: W / 2 - side / 2, y: cy - side / 2, w: side, h: side };
     const tw = Math.min(side * 0.28, hand.card.w);
-    trickCard = { w: tw, h: tw * CARD_RATIO };
+    trickCard = { w: tw, h: tw * ratio };
   } else {
     const tw = hand.card.w * 0.85;
-    trickCard = { w: tw, h: tw * CARD_RATIO };
+    trickCard = { w: tw, h: tw * ratio };
     const w = Math.min(tw * 3.4, table.w * 0.42);
     const h = Math.min(trickCard.h * 2.4, table.h * 0.62);
     const cx = table.x + table.w / 2;
@@ -293,7 +295,7 @@ export function computeLayout(input: LayoutInput): Layout {
       center = { ...center, y: top, h: bottom - top };
       if (trickCard.h > center.h * 0.75) {
         const th = center.h * 0.75;
-        trickCard = { w: th / CARD_RATIO, h: th };
+        trickCard = { w: th / ratio, h: th };
       }
     }
   }
@@ -455,11 +457,14 @@ function floorLayout(p: {
 
 /**
  * 다른 사람 손패 뒷면 한 장의 크기. 자리 판 높이에 맞춘다(마이티·하트는 자리 판 뒤에 펼친다).
- * `ratio`는 카드 높이/폭
+ * `kind`는 카드 모양
  */
-export function fanCardSize(layout: Layout, ratio = CARD_RATIO): Size {
+export function fanCardSize(
+  layout: Layout,
+  kind: CardShape = PLAYING_SHAPE,
+): Size {
   const h = Math.min(56, Math.max(30, (layout.seats[1]?.plate.h ?? 40) * 1.05));
-  return { w: h / ratio, h };
+  return { w: cardWidth(kind, h), h };
 }
 
 /**

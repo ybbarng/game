@@ -10,7 +10,13 @@ import type { Card } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
-import { collectTo, DealAnimation } from "@/components/card-fx";
+import {
+  collectTo,
+  DEALT_SCALE,
+  DealAnimation,
+  PLAYING_CARD,
+  spreadDelay,
+} from "@/components/card-fx";
 import { FairOverlays, FairStatus } from "@/components/FairOverlays";
 import { useHandControls } from "@/components/hand-controls";
 import { OpenHand } from "@/components/OpenHand";
@@ -500,7 +506,8 @@ export function HeartsTable({
             <DealAnimation
               key={dealing.key}
               center={tableCenter}
-              card={layout.trick.card}
+              kind={PLAYING_CARD}
+              width={layout.trick.card.w}
               targets={dealTargets}
               handSize={dealing.handSize}
               kittyCount={0}
@@ -554,8 +561,8 @@ export function HeartsTable({
                           ? 0
                           : -layout.hand.card.h * 0.04),
                   }}
-                  from={{ ...myPile, scale: 0.55, opacity: 0.6 }}
-                  delay={Math.min(i * 25, 300)}
+                  from={{ ...myPile, scale: DEALT_SCALE, opacity: 0.6 }}
+                  delay={spreadDelay(i)}
                   z={10 + i}
                   dim={
                     (playable !== null && !canPlay) ||

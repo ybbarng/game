@@ -9,13 +9,14 @@ import {
 import { memo, type ReactNode } from "react";
 
 import { SPADE_PATH } from "../brand/brand";
+import { PLAYING_SHAPE } from "../card-fx/kind";
 import { CourtFigure, TraditionalFigure } from "./court";
 import { SuitShape } from "./suits";
 import { type CardTheme, CLASSIC } from "./themes";
 
-/** 카드 그림의 크기. 비율은 5:7 */
-export const CARD_W = 250;
-export const CARD_H = 350;
+/** 카드 그림의 크기(트럼프 모양 `PLAYING_SHAPE`, 5:7) */
+export const CARD_W = PLAYING_SHAPE.art.w;
+export const CARD_H = PLAYING_SHAPE.art.h;
 
 const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 const SERIF = "ui-serif, Georgia, 'Times New Roman', serif";

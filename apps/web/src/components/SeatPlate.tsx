@@ -50,6 +50,12 @@ interface SeatPlateProps {
   extra?: ReactNode;
   /** 화면 읽기·시험용 이름표(예: 「민준 자리」) */
   label?: string;
+  /** 자리 번호. 주면 판에 `data-seat`·`data-turn`, 장수에 `data-count`를 단다(화면 시험이 찾는다) */
+  seat?: number;
+  /** 연결이 끊겼을 때 보일 글(기본은 컴퓨터가 대신하는지·기다리는지) */
+  offlineLabel?: string;
+  /** 판 틀에 더할 class(예: 파산한 자리를 흐리게) */
+  className?: string;
 }
 
 /** 이보다 낮으면 한 줄로 줄인 판 */
@@ -83,6 +89,11 @@ export function SeatPlate(props: SeatPlateProps) {
       bubble={props.bubble ?? null}
       bubbleDim={props.bubbleDim ?? false}
       {...(props.label ? { label: props.label } : {})}
+      {...(props.offlineLabel ? { offlineLabel: props.offlineLabel } : {})}
+      {...(props.className ? { className: props.className } : {})}
+      {...(props.seat === undefined
+        ? {}
+        : { seat: props.seat, turn: props.active })}
     >
       <div className={cn("flex items-center gap-1", slim && "h-full")}>
         <span className="min-w-[3.5em] truncate font-semibold">
@@ -126,6 +137,7 @@ export function SeatPlate(props: SeatPlateProps) {
               <span
                 className="ml-auto shrink-0 whitespace-nowrap tabular-nums opacity-80"
                 title="남은 손패"
+                data-count={props.seat}
               >
                 {props.dead ? "탈락" : `${props.handCount}장`}
               </span>
@@ -185,6 +197,11 @@ interface SeatPlateFrameProps {
   label?: string;
   /** 판 안 내용 배치(기본: 위아래로 벌려 놓기) */
   className?: string;
+  /** 연결이 끊겼을 때 보일 글 */
+  offlineLabel?: string;
+  /** 자리 번호(`data-seat`)와 차례(`data-turn`) 표시 */
+  seat?: number;
+  turn?: boolean;
 }
 
 /**
@@ -196,6 +213,8 @@ export function SeatPlateFrame(props: SeatPlateFrameProps) {
   return (
     <div
       {...(props.label ? { role: "region", "aria-label": props.label } : {})}
+      data-seat={props.seat}
+      data-turn={props.turn || undefined}
       className={cn(
         "absolute flex flex-col justify-between overflow-visible rounded-xl border px-2 py-1 text-xs shadow-lg backdrop-blur-sm transition-[box-shadow,background-color,opacity] duration-300",
         props.ruling
@@ -235,9 +254,10 @@ export function SeatPlateFrame(props: SeatPlateFrameProps) {
                 : "연결이 끊겨 컴퓨터가 대신 둡니다"
             }
           >
-            {props.waiting
-              ? "연결 끊김 · 기다리는 중"
-              : "연결 끊김 · 컴퓨터가 대신"}
+            {props.offlineLabel ??
+              (props.waiting
+                ? "연결 끊김 · 기다리는 중"
+                : "연결 끊김 · 컴퓨터가 대신")}
           </div>
         )
       )}
