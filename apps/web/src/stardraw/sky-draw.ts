@@ -1,5 +1,5 @@
 import { createRng, nextFloat } from "@game/mighty-engine";
-
+import { FX } from "./fx-timing";
 import {
   SKY_LINES,
   SKY_STARS,
@@ -45,6 +45,23 @@ export interface SkyState {
    * 켜진 별을 그리는 코드는 추첨 하늘과 같다(빛 모양을 화면마다 따로 맞추지 않는다)
    */
   motion?: SkyMotion;
+  /**
+   * 관측 마무리의 다시 빛내기(docs/36 11-72): 아래 공 줄에서 n번 공이 빛나는 그 순간(at, SkyBoard clock 기준 ms)
+   * 하늘의 같은 별도 그 별빛 색으로 잠깐 밝아졌다가 켜진 모습으로 돌아온다. 켜진 별(lit·bonus)에만 그린다.
+   * 층에 넣지 않고 프레임마다 그린다(stateKey에 넣지 않는다)
+   */
+  glow?: { n: number; at: number } | null;
+}
+
+/**
+ * 다시 빛내기 세기(0에서 1): at부터 FX.sortShinePeak까지 오르고(공이 가장 밝은 때와 같다),
+ * 다음 공이 빛나기 전(FX.sortShine)까지 0으로 내려온다. 그래서 하늘에서 두 별이 함께 움직이지 않는다
+ */
+export function glowLevel(at: number, now: number): number {
+  const t = now - at;
+  if (t <= 0 || t >= FX.sortShine) return 0;
+  if (t <= FX.sortShinePeak) return t / FX.sortShinePeak;
+  return (FX.sortShine - t) / (FX.sortShine - FX.sortShinePeak);
 }
 
 export interface SkyMotion {
@@ -598,6 +615,24 @@ function paintLive(g: Ctx, sc: Scene, f: FrameInput) {
           lw * 1.2,
           st.isBonus,
         );
+      }
+      // 다시 빛내기: 아래 공과 같은 박자로 빛 번짐·빛줄기가 크게 번졌다가 돌아오고 가운데가 하얗게 달아오른다
+      const gw = sc.state.glow;
+      const gl = gw && gw.n === s.n ? glowLevel(gw.at, now) : 0;
+      if (gl > 0) {
+        halo(g, x, y, (30 + 70 * gl) * scale, tone, gl);
+        halo(g, x, y, (20 + 30 * gl) * scale, whiter(tone, 0.3), 0.9 * gl);
+        cross(
+          g,
+          x,
+          y,
+          whiter(tone, 0.2),
+          (15 + 45 * gl) * scale,
+          gl,
+          lw * 1.7,
+          st.isBonus,
+        );
+        halo(g, x, y, look.core * (5 + 8 * gl), "255,252,240", 0.9 * gl);
       }
       g.globalAlpha = 1;
     } else if (st.mine && !dark) {

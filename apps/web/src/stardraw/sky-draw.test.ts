@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FX } from "./fx-timing";
 import { SKY_STARS } from "./sky";
 import {
   drawSky,
   type FrameInput,
+  glowLevel,
   HIT,
   type SkyState,
   scaleOf,
@@ -34,6 +36,38 @@ describe("starAt: 별 누르는 범위", () => {
       }
     }
     expect(checked).toBeGreaterThan(10);
+  });
+});
+
+describe("glowLevel: 관측 마무리에서 하늘 별을 다시 빛내는 세기(docs/36 11-72)", () => {
+  it("시작 전과 다음 공이 빛나는 때부터는 0이다", () => {
+    expect(glowLevel(1000, 999)).toBe(0);
+    expect(glowLevel(1000, 1000)).toBe(0);
+    expect(glowLevel(1000, 1000 + FX.sortShine)).toBe(0);
+    expect(glowLevel(1000, 1000 + FX.sortShine + 50)).toBe(0);
+  });
+
+  it("공이 가장 밝은 때(sortShinePeak)에 가장 밝고, 오르는 동안 늘고 내리는 동안 준다", () => {
+    expect(glowLevel(0, FX.sortShinePeak)).toBe(1);
+    expect(glowLevel(0, FX.sortShinePeak / 2)).toBeCloseTo(0.5);
+    expect(glowLevel(0, FX.sortShinePeak / 4)).toBeLessThan(
+      glowLevel(0, FX.sortShinePeak / 2),
+    );
+    expect(glowLevel(0, FX.sortShinePeak + 50)).toBeGreaterThan(
+      glowLevel(0, FX.sortShinePeak + 100),
+    );
+    expect(glowLevel(0, FX.sortShine - 1)).toBeLessThan(0.01);
+  });
+
+  it("다시 빛내기는 층에 넣지 않는다(빛날 때마다 층을 다시 만들지 않는다)", () => {
+    const draw: SkyState = {
+      mode: "draw",
+      picked: [],
+      focus: null,
+      lit: [7, 8],
+      bonus: 9,
+    };
+    expect(stateKey({ ...draw, glow: { n: 7, at: 0 } })).toBe(stateKey(draw));
   });
 });
 
