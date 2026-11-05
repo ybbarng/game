@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from "react";
-
+import {
+  DEFAULT_HERO_HIGHLIGHT,
+  HERO_HIGHLIGHTS,
+  type HeroHighlight,
+} from "./hero/highlight";
 import {
   DEFAULT_HERO_SIZE,
   findHeroMethod,
@@ -120,6 +124,8 @@ export interface CubeSettings {
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
   heroMethod: HeroChoice;
+  /** 첫 화면 큐브의 조각 강조(넣을 곳·찾은 조각·맞춘 조각): 끄기 / 잠깐 / 계속 */
+  heroHighlight: HeroHighlight;
 }
 
 export const DEFAULT_SETTINGS: CubeSettings = {
@@ -142,6 +148,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   raceAlerts: "on",
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
+  heroHighlight: DEFAULT_HERO_HIGHLIGHT,
 };
 
 export const SETTINGS_KEY = "cube.settings.v1";
@@ -229,6 +236,11 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
         : DEFAULT_SETTINGS.raceAlerts,
     heroSize,
     heroMethod,
+    heroHighlight: (HERO_HIGHLIGHTS as readonly unknown[]).includes(
+      d.heroHighlight,
+    )
+      ? (d.heroHighlight as HeroHighlight)
+      : DEFAULT_HERO_HIGHLIGHT,
   };
 }
 

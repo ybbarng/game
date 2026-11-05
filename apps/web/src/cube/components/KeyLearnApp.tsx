@@ -179,6 +179,20 @@ export function KeyLearnApp() {
         data-learn-facing={facing ? `${facing.up}-${facing.front}` : undefined}
       >
         <KeysHeader current="/cube/keys/learn" keymap={keymap} />
+        {/* 키보드 없는 휴대폰도 막다른 길이 되지 않게 맨 위에서 알린다(2026-11-05 점검) */}
+        {noKeyboard && (
+          <p
+            className="break-keep rounded-xl bg-amber-400/10 px-3 py-2 text-amber-100 text-sm"
+            data-learn-no-keyboard
+          >
+            키보드가 없으면 아래 키 그림을 눌러 쳐요. 데스크톱 키보드와 같은
+            자리라 그대로 손에 익어요. 휴대폰으로만 할 거라면 키 대신{" "}
+            <a href="/cube/learn" className="underline">
+              맞추는 법 배우기
+            </a>
+            로 바로 가도 돼요.
+          </p>
+        )}
         <ol className="flex flex-wrap gap-1" aria-label="단계">
           {steps.map((s, i) => (
             <li key={s.id}>
@@ -370,6 +384,15 @@ export function KeyLearnApp() {
                     조작 훈련으로
                   </a>
                 )}
+                {finished && index === steps.length - 1 && (
+                  <a
+                    href="/cube/learn"
+                    data-learn-to-lessons
+                    className="rounded-lg bg-white/10 px-4 py-1.5 text-sm hover:bg-white/15"
+                  >
+                    맞추는 법 배우기
+                  </a>
+                )}
               </div>
             </section>
             <LiveCube
@@ -402,12 +425,6 @@ export function KeyLearnApp() {
               pressable
             />
           ))}
-        {noKeyboard && (
-          <p className="text-white/60 text-xs" data-learn-no-keyboard>
-            키보드가 없으면 키 그림을 눌러 쳐요. 데스크톱 키보드와 같은 자리라
-            그대로 손에 익어요.
-          </p>
-        )}
       </main>
     </div>
   );

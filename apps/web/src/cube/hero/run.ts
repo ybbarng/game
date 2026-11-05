@@ -2,8 +2,9 @@ import { realClock } from "@game/fair-play";
 
 import { stickersFromState } from "../bridge";
 import { loadCubeView } from "../view";
-import type { Quality } from "../view/types";
+import type { MarkTone, Quality } from "../view/types";
 import { heroSolveInWorker } from "../worker";
+import type { HeroHighlight } from "./highlight";
 import { HeroLoop } from "./loop";
 import {
   type HeroChoice,
@@ -23,6 +24,8 @@ export interface HeroOptions {
   colors: readonly number[];
   quality: Quality;
   stickerless: boolean;
+  /** 조각 강조(설정 「첫 화면 큐브」의 강조) */
+  highlight: HeroHighlight;
   onLabel: (label: string) => void;
 }
 
@@ -30,6 +33,7 @@ export interface HeroHandle {
   pause(): void;
   resume(): void;
   setColors(colors: readonly number[]): void;
+  setHighlight(mode: HeroHighlight): void;
   dispose(): void;
 }
 
@@ -78,6 +82,16 @@ export async function startHero(
     },
     onLabel: o.onLabel,
     onReset: (state) => view.setStickers(stickersFromState(o.n, state)),
+    highlight: o.highlight,
+    onMarks: (marks) => {
+      if (!marks.length) {
+        view.setMarks(null);
+        return;
+      }
+      const tones: (MarkTone | null)[] = new Array(6 * o.n * o.n).fill(null);
+      for (const m of marks) for (const id of m.stickers) tones[id] = "glow";
+      view.setMarks(tones);
+    },
   });
   const ro = new ResizeObserver(() =>
     view.resize(canvas.clientWidth, canvas.clientHeight),
@@ -90,6 +104,7 @@ export async function startHero(
     pause: () => loop.pause(),
     resume: () => loop.resume(),
     setColors: (colors) => view.setOptions({ colors }),
+    setHighlight: (mode) => loop.setHighlight(mode),
     dispose: () => {
       loop.stop();
       ro.disconnect();
