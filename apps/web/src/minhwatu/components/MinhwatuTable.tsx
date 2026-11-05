@@ -2,74 +2,65 @@
 
 import { cardOf, sortCards } from "@game/hwatu";
 import {
+  DEAL_SIZES,
   floorMatches,
   type MinhwatuView,
+  type PlayerCount,
   type RoundResult,
   sumPoints,
   type TurnRecord,
   YAK_NAMES,
   yaksOf,
 } from "@game/minhwatu-engine";
-import { type ReactNode, useEffect, useState } from "react";
-
-import { ChatBox } from "@/components/ChatBox";
+import { useEffect, useState } from "react";
+import { useCardFlip } from "@/components/card-fx";
+import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
-import {
-  MissionOverlay,
-  type MissionProps,
-} from "@/components/tutorial/MissionOverlay";
+import { SeatPlateFrame } from "@/components/SeatPlate";
+import type { MissionProps } from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
+import { HwatuDeal, hwatuDealMs, useHwatuDealing } from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
+import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
-  HwatuBacks,
   HwatuCaptured,
   HwatuDeck,
   HwatuFloor,
 } from "@/hwatu/components/HwatuLayout";
+import {
+  at,
+  HWATU_PRIMARY,
+  HWATU_SECONDARY,
+  HwatuBoard,
+  HwatuEndBox,
+  HwatuHud,
+  HwatuOnlineNotes,
+  HwatuStage,
+  HwatuVerifyLines,
+} from "@/hwatu/components/HwatuTable";
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
+import {
+  endBoxRect,
+  type HwatuLayout,
+  handStepFor,
+  hwatuLayout,
+} from "@/hwatu/table-layout";
+import type { Rect } from "@/layout/compute-layout";
+import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 
+import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
 import { useMinhwatu } from "../store";
 
 /** 민화투 화면 바탕 */
 export const MINHWATU_BG =
   "bg-[radial-gradient(ellipse_at_top,#166534_0%,#052e16_75%)]";
-
-/** 화면 크기에 맞춘 카드 너비(px). 미리 그린 HTML은 PC 크기다 */
-function useCardSizes(handLength: number) {
-  const [size, setSize] = useState({ w: 1280, h: 720 });
-  useEffect(() => {
-    const update = () =>
-      setSize({ w: window.innerWidth, h: window.innerHeight });
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-  const { w, h } = size;
-  const shortLandscape = w > h && h <= 600;
-  const n = Math.max(handLength, 5);
-  if (shortLandscape) {
-    // 높이가 모자라 카드를 작게 둔다(손패 높이 ≈ 너비 × 1.6)
-    const hand = Math.min(44, Math.floor((h - 260) / 1.6));
-    return { hand: Math.max(30, hand), floor: 30, captured: 15, back: 13 };
-  }
-  if (w < 640) {
-    const hand = Math.min(56, Math.floor((w - 32 - (n - 1) * 4) / n));
-    return {
-      hand,
-      floor: Math.min(42, Math.floor(w / 9.5)),
-      captured: 17,
-      back: 13,
-    };
-  }
-  return { hand: 60, floor: 52, captured: 22, back: 18 };
-}
 
 /** 이 자리의 이름 */
 export function useSeatName(view: MinhwatuView | null) {
@@ -115,56 +106,6 @@ function CapturedSummary({ view, seat }: { view: MinhwatuView; seat: number }) {
         </span>
       ))}
     </span>
-  );
-}
-
-/** 상대 한 사람: 이름·손패 장수·먹은 패 */
-function Opponent({
-  view,
-  seat,
-  name,
-  cardWidth,
-  backWidth,
-}: {
-  view: MinhwatuView;
-  seat: number;
-  name: string;
-  cardWidth: number;
-  backWidth: number;
-}) {
-  const turn =
-    (view.phase === "play" || view.phase === "pick") && view.turn === seat;
-  return (
-    <section
-      aria-label={`${name} 자리`}
-      data-turn={turn || undefined}
-      className={cn(
-        "flex min-w-0 flex-col gap-1 rounded-xl border px-2 py-1.5",
-        turn
-          ? "border-amber-300 bg-amber-300/15"
-          : "border-white/10 bg-black/20",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className="truncate font-semibold text-sm">{name}</span>
-        {view.dealer === seat && (
-          <span className="rounded bg-white/15 px-1 text-[10px]">선</span>
-        )}
-        <CapturedSummary view={view} seat={seat} />
-        <span className="ml-auto shrink-0">
-          <HwatuBacks count={view.handCounts[seat] ?? 0} width={backWidth} />
-        </span>
-        <span className="shrink-0 text-[10px] text-white/60 tabular-nums">
-          {view.handCounts[seat] ?? 0}장
-        </span>
-      </div>
-      <HwatuCaptured
-        piCount="cards"
-        ids={view.captured[seat] ?? []}
-        width={cardWidth}
-        label={name}
-      />
-    </section>
   );
 }
 
@@ -223,17 +164,84 @@ export function ScoreTable({
   );
 }
 
+/**
+ * 자리 판(둘러앉은 판의 `SeatPlateFrame`): 이름, 선, 카드 점수·약, 남은 손패 장수, 먹은 패.
+ * 내 자리는 손패가 보이므로 장수를 빼고 손패 옆(좁으면 손패 위)에 둔다
+ */
+function SeatPlate({
+  view,
+  seat,
+  name,
+  rect,
+  layout,
+  mine = false,
+}: {
+  view: MinhwatuView;
+  seat: number;
+  name: string;
+  rect: Rect;
+  layout: HwatuLayout;
+  mine?: boolean;
+}) {
+  const turn =
+    (view.phase === "play" || view.phase === "pick") && view.turn === seat;
+  return (
+    <SeatPlateFrame
+      rect={rect}
+      active={turn}
+      label={mine ? "내 먹은 패" : `${name} 자리`}
+      className="justify-start gap-1 py-1.5"
+    >
+      <div
+        data-seat={seat}
+        data-turn={turn || undefined}
+        className="flex min-w-0 items-center gap-1.5"
+      >
+        <span className="min-w-0 truncate font-semibold text-sm">{name}</span>
+        {view.dealer === seat && (
+          <span className="shrink-0 rounded bg-white/15 px-1 text-[10px]">
+            선
+          </span>
+        )}
+        <CapturedSummary view={view} seat={seat} />
+        {!mine && (
+          <span
+            className="ml-auto shrink-0 tabular-nums text-white/70"
+            title="남은 손패"
+            data-hand-count={seat}
+          >
+            {view.handCounts[seat] ?? 0}장
+          </span>
+        )}
+      </div>
+      <HwatuCaptured
+        piCount="cards"
+        ids={view.captured[seat] ?? []}
+        width={layout.captured}
+        label={name}
+        fitWidth={rect.w - 16}
+      />
+    </SeatPlateFrame>
+  );
+}
+
 /** 내 손패. 마우스는 올리면 짝이 보이고 누르면 낸다. 터치는 한 번 눌러 겨누고 다시 눌러 낸다 */
 function MyHand({
   ids,
   width,
+  step,
   enabled,
   selected,
+  lifted,
   onPreview,
   onAct,
 }: {
   ids: readonly string[];
+  /** 위로 끌어 낼 준비가 된 카드(더 높이 들어 올린다) */
+  lifted: boolean;
   width: number;
+  /** 카드 사이 간격(왼쪽 끝에서 다음 카드 왼쪽 끝까지) */
+  step: number;
   enabled: boolean;
   selected: string | null;
   onPreview: (id: string | null) => void;
@@ -243,13 +251,15 @@ function MyHand({
   return (
     <section
       aria-label="내 손패"
-      className="flex flex-wrap justify-center gap-1 pt-2"
+      data-flip-zone="hand"
+      className="flex justify-center"
     >
-      {sortCards(ids).map((id) => (
+      {sortCards(ids).map((id, i) => (
         // biome-ignore lint/a11y/noStaticElementInteractions: 누르기는 안쪽 카드 단추가 받고, 여기서는 마우스 올림(미리 보기)과 누른 도구(터치·마우스)만 본다
         <span
           key={id}
           className="inline-flex"
+          style={i > 0 ? { marginLeft: step - width } : undefined}
           onPointerDown={(e) => setTouch(e.pointerType !== "mouse")}
           onPointerEnter={(e) => {
             if (e.pointerType === "mouse" && enabled) onPreview(id);
@@ -261,9 +271,13 @@ function MyHand({
         >
           <HwatuCardView
             id={id}
+            flip={id}
             width={width}
             selected={selected === id}
             dim={!enabled}
+            {...(lifted && selected === id
+              ? { style: { translate: `0 -${Math.round(width * 0.6)}px` } }
+              : {})}
             {...(enabled ? { onClick: () => onAct(id, touch) } : {})}
           />
         </span>
@@ -272,7 +286,11 @@ function MyHand({
   );
 }
 
-/** 대국 화면 */
+/**
+ * 대국 화면. 둘러앉은 판(docs/05 4.11, `hwatuLayout`): 다른 사람은 판 위 끝(넷이면 양옆과 맞은편) 자리 판에
+ * 앉아 손패 뒷면을 판 쪽으로 펼치고, 가운데 넓은 판에 바닥과 더미, 아래에 내 손패, 그 양옆에 내 자리 판과 단추.
+ * 판이 끝나면 결과 띠가 먼저 뜨고, 사라진 뒤 점수표 상자를 판 위에 띄운다
+ */
 export function MinhwatuTable({
   onExit,
   mission,
@@ -291,13 +309,35 @@ export function MinhwatuTable({
   const canUndo = useMinhwatu((s) => s.canUndo());
   const clearNotice = useMinhwatu((s) => s.clearNotice);
   const name = useSeatName(view);
-  const sizes = useCardSizes(view?.hand.length ?? 7);
+  const stage = useStageSize();
   /** 터치로 겨눈 카드, 또는 같은 달 둘 중 고르기를 기다리는 카드 */
   const [selected, setSelected] = useState<string | null>(null);
   const [needTarget, setNeedTarget] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   /** 보낸 행동의 결과(다음 장면이나 거절)를 기다리는 동안은 결정을 다시 보이지 않는다 */
   const sent = useSentLock(view, notice);
+  /** 판 끝 결과 띠가 떠 있는 동안은 점수표 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
+  const [bannerUp, setBannerUp] = useState(false);
+  const controls = useHandControls<string>();
+  // 카드 연출(docs/05 4.12): 판 시작에 섞어 나눠 주고, 장면마다 낸·뒤집은 패와 먹은 패를 차례로 옮긴다
+  const players = view?.handCounts.length ?? 3;
+  const mySeat = view?.seat ?? 0;
+  const dealing = useHwatuDealing(
+    view,
+    events.some((e) => e.type === "roundStarted"),
+    hwatuDealMs(minhwatuDealCounts(players)),
+  );
+  useCardFlip({
+    stage: stage.ref,
+    scene: view,
+    skip: dealing,
+    moves: (prev) =>
+      minhwatuMoves(
+        prev,
+        events,
+        (seat) => (seat - mySeat + players) % players,
+      ),
+  });
 
   useEffect(() => {
     if (!notice) return;
@@ -314,10 +354,28 @@ export function MinhwatuTable({
     setPreview(null);
   }, [turnKey]);
 
+  const shell = (children: React.ReactNode) => (
+    <HwatuStage
+      game="minhwatu"
+      background={MINHWATU_BG}
+      mission={mission}
+      stageRef={stage.ref}
+      handlers={controls.handlers}
+    >
+      {children}
+    </HwatuStage>
+  );
   if (!view || !host) return null;
+  if (stage.width === 0) return shell(null);
   const me = view.seat;
   const n = view.handCounts.length;
   const online = local === null;
+  const layout = hwatuLayout(
+    stage.width,
+    stage.height,
+    n,
+    Math.max(DEAL_SIZES[n as PlayerCount]?.hand ?? 7, view.hand.length),
+  );
   // 행동을 보낸 뒤 다음 장면이 오기 전에는 손패·바닥 고르기를 닫는다(두 번 내기 방지)
   const decision = sent.waiting ? null : view.decision;
   const myPlay = decision?.kind === "play";
@@ -347,7 +405,8 @@ export function MinhwatuTable({
   };
 
   const onAct = (id: string, touch: boolean) => {
-    if (!myPlay) return;
+    // 훑거나 끈 것은 손을 뗄 때 손패 조작이 처리한다
+    if (!myPlay || controls.gestureMoved()) return;
     // 터치: 처음 누르면 겨누기만 한다
     if (touch && selected !== id) {
       playUiCue("pickCard");
@@ -371,6 +430,33 @@ export function MinhwatuTable({
     }
     if (myPlay && selected && targets.includes(target)) play(selected, target);
   };
+
+  // 손패 훑기·위로 끌어 내기·←→ Enter(마이티·하트·고스톱과 같은 손패 조작)
+  const sortedHand = sortCards(view.hand);
+  controls.update({
+    stage: stage.ref.current,
+    hand: sortedHand,
+    playable: myPlay && !needTarget ? new Set(sortedHand) : null,
+    selected,
+    setSelected: (card) => {
+      setSelected(card);
+      setNeedTarget(false);
+    },
+    canPlay: myPlay && !needTarget,
+    handTop: layout.hand.top,
+    cardHeight: layout.hand.card.h,
+    play: (card) => {
+      const matches = floorMatches(view.floor, card);
+      if (matches.length === 2) {
+        setSelected(card);
+        setNeedTarget(true);
+      } else play(card);
+    },
+    cancel: () => {
+      setSelected(null);
+      setNeedTarget(false);
+    },
+  });
 
   const result = view.result;
   const gameOver = view.phase === "gameOver";
@@ -442,216 +528,260 @@ export function MinhwatuTable({
         : "win"
       : "loss";
   }
-  const summary: ReactNode = result ? (
-    <ScoreTable result={result} totals={view.totals} name={name} />
-  ) : null;
 
   const lastTurn = view.current ?? view.last;
   const hint =
     hints && myPlay
       ? view.hand.find((id) => floorMatches(view.floor, id).length > 0)
       : undefined;
-
-  return (
-    <main
-      data-game="minhwatu"
-      className={cn(
-        "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-3 text-white",
-        "short-landscape:grid short-landscape:grid-cols-[minmax(0,1fr)_minmax(0,17rem)] short-landscape:grid-rows-[auto_auto_1fr_auto] short-landscape:items-start short-landscape:gap-x-3 short-landscape:py-2",
-        MINHWATU_BG,
-        mission && "pt-16 short-landscape:pt-16",
-      )}
-    >
-      {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full max-w-3xl items-center gap-2 text-sm short-landscape:col-start-2 short-landscape:row-start-1">
+  const { center, hud } = layout;
+  const outcomeView = (
+    <RoundOutcome
+      outcome={outcome}
+      status={notice ?? status}
+      {...(over ? { className: "max-w-md px-4 py-2" } : {})}
+    />
+  );
+  const endButtons = (
+    <div className="flex flex-wrap justify-center gap-2">
+      {view.phase === "roundEnd" && !view.continued[me] && (
         <button
           type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
+          onClick={() => submit({ type: "continue" })}
+          className={HWATU_PRIMARY}
         >
-          ← 민화투
+          다음 판
         </button>
-        <span className="ml-auto text-white/60">
-          {online ? "친구와" : `컴퓨터(${levelName})`} · {view.roundNumber}/
-          {view.rules.rounds}판
-        </span>
-      </header>
-
-      {online && <HwatuFairBar me={me} over={view.phase === "gameOver"} />}
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-3xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm short-landscape:col-start-2"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
-        </p>
       )}
+      {view.phase === "roundEnd" && view.continued[me] && (
+        <span className="py-2 text-sm text-white/70">
+          다른 사람을 기다리는 중…
+        </span>
+      )}
+      {gameOver && !mission && (
+        <>
+          <button type="button" onClick={onExit} className={HWATU_PRIMARY}>
+            다시 하기
+          </button>
+          <a href="/" className={HWATU_SECONDARY}>
+            게임 목록
+          </a>
+        </>
+      )}
+    </div>
+  );
 
-      <div
-        className={cn(
-          "grid w-full max-w-3xl gap-1.5 short-landscape:col-start-1 short-landscape:row-start-1",
-          n === 4 ? "sm:grid-cols-3" : n === 3 ? "sm:grid-cols-2" : "",
-          n >= 3 &&
-            "short-landscape:grid-cols-[repeat(auto-fit,minmax(0,1fr))]",
-        )}
-      >
-        {others.map((seat) => (
-          <Opponent
+  return shell(
+    <>
+      <HwatuHud
+        rect={hud}
+        title="← 민화투"
+        onExit={onExit}
+        online={online}
+        mySeat={me}
+        info={
+          <>
+            {online ? "친구와" : `컴퓨터(${levelName})`} · {view.roundNumber}/
+            {view.rules.rounds}판
+          </>
+        }
+      />
+
+      {/* 다른 사람 손패 뒷면(자리 판 뒤에서 판 쪽으로)과 자리 판 */}
+      {dealing && (
+        <HwatuDeal
+          layout={layout}
+          seats={n}
+          dealerOffset={(view.dealer - me + n) % n}
+          hand={DEAL_SIZES[n as PlayerCount]?.hand ?? 7}
+          floor={DEAL_SIZES[n as PlayerCount]?.floor ?? 6}
+          deckLeft={view.deckCount}
+          dealKey={String(view.roundNumber)}
+        />
+      )}
+      {!dealing &&
+        others.map((seat, i) => (
+          <HwatuFan
+            key={`fan-${seat}`}
+            layout={layout}
+            offset={i + 1}
+            count={view.handCounts[seat] ?? 0}
+          />
+        ))}
+      {others.map((seat, i) => {
+        const rect = layout.seats[i + 1]?.plate;
+        return rect ? (
+          <SeatPlate
             key={seat}
             view={view}
             seat={seat}
             name={name(seat)}
-            cardWidth={sizes.captured}
-            backWidth={sizes.back}
+            rect={rect}
+            layout={layout}
           />
-        ))}
-      </div>
+        ) : null;
+      })}
 
-      <section
-        aria-label="판"
-        className="relative flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-black/15 p-2 short-landscape:col-start-1 short-landscape:row-start-2 short-landscape:row-span-2 short-landscape:min-h-0"
+      <HwatuBoard
+        rect={center}
+        dim={over}
+        footer={
+          !over && (
+            <>
+              <p
+                aria-live="polite"
+                className="max-w-full truncate text-[11px] text-white/65"
+              >
+                {lastTurn ? turnText(lastTurn, name) : ""}
+              </p>
+              {outcomeView}
+            </>
+          )
+        }
+        overlay={
+          <ResultBanner
+            banner={banner}
+            seq={view.roundNumber * 2 + (gameOver ? 1 : 0)}
+            onShowChange={setBannerUp}
+          />
+        }
       >
-        <div className="flex w-full items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <HwatuFloor
-              ids={view.floor}
-              width={sizes.floor}
-              highlight={(id) => targets.includes(id)}
-              {...(myPick || needTarget ? { onPick: onFloorPick } : {})}
-            />
-          </div>
-          <div className="flex shrink-0 flex-col items-center gap-2">
-            <HwatuDeck count={view.deckCount} width={sizes.floor * 0.8} />
-            {view.pending && (
-              <div className="flex flex-col items-center gap-0.5 text-[10px] text-amber-200">
-                <HwatuCardView
-                  id={view.pending.flipped}
-                  width={sizes.floor * 0.8}
-                  highlight
-                />
-                뒤집은 패
-              </div>
-            )}
-          </div>
-        </div>
-        <p
-          aria-live="polite"
-          className="min-h-4 text-center text-white/75 text-xs"
+        <div
+          className={cn(
+            "flex shrink-0 flex-col items-center gap-2",
+            dealing && "invisible",
+          )}
         >
-          {lastTurn ? turnText(lastTurn, name) : ""}
-        </p>
-        <ResultBanner
-          banner={banner}
-          seq={view.roundNumber * 2 + (gameOver ? 1 : 0)}
-        />
-      </section>
-
-      <section
-        aria-label="내 먹은 패"
-        className="flex w-full max-w-3xl items-center gap-2 short-landscape:col-start-2 short-landscape:row-start-2"
-      >
-        <div className="flex shrink-0 flex-col items-start gap-0.5">
-          <span className="font-semibold text-sm">
-            나
-            {view.dealer === me && (
-              <span className="ml-1 rounded bg-white/15 px-1 text-[10px]">
-                선
-              </span>
-            )}
-          </span>
-          <CapturedSummary view={view} seat={me} />
+          <HwatuDeck count={view.deckCount} width={layout.deck} />
+          {view.pending && (
+            <div className="flex flex-col items-center gap-0.5 text-[10px] text-amber-200">
+              <HwatuCardView
+                id={view.pending.flipped}
+                flip={view.pending.flipped}
+                width={layout.deck}
+                highlight
+              />
+              뒤집은 패
+            </div>
+          )}
         </div>
-        <HwatuCaptured
-          piCount="cards"
-          ids={view.captured[me] ?? []}
-          width={sizes.captured + 2}
-          label="나"
-        />
-      </section>
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col items-center justify-center",
+            dealing && "invisible",
+          )}
+        >
+          <HwatuFloor
+            ids={view.floor}
+            width={layout.floor}
+            highlight={(id) => targets.includes(id)}
+            {...(myPick || needTarget ? { onPick: onFloorPick } : {})}
+          />
+        </div>
+      </HwatuBoard>
 
-      <RoundOutcome
-        outcome={outcome}
-        status={notice ?? status}
-        summary={summary}
-        className="short-landscape:col-start-2 short-landscape:row-start-3"
+      {/* 판 끝 결과 상자(판이 낮으면 비는 손패 줄까지 넓힌다) */}
+      {over && !bannerUp && (
+        <HwatuEndBox
+          rect={endBoxRect(layout, stage.height)}
+          main={
+            <>
+              {outcomeView}
+              {endButtons}
+            </>
+          }
+          side={
+            <>
+              {result && (
+                <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
+                  <ScoreTable
+                    result={result}
+                    totals={view.totals}
+                    name={name}
+                  />
+                </div>
+              )}
+              {online && <HwatuVerifyLines />}
+            </>
+          }
+        />
+      )}
+
+      {online && (
+        <HwatuOnlineNotes
+          rect={center}
+          reconnecting={reconnecting}
+          hostLeft={hostLeft}
+        >
+          <HwatuFairBar me={me} over={gameOver} />
+        </HwatuOnlineNotes>
+      )}
+
+      {/* 내 자리 */}
+      <SeatPlate
+        view={view}
+        seat={me}
+        name="나"
+        rect={layout.myPlate}
+        layout={layout}
+        mine
       />
 
-      <div className="w-full max-w-3xl short-landscape:col-start-1 short-landscape:row-start-4">
+      {/* 내 단추 */}
+      {layout.actions && (
+        <div
+          className="absolute flex flex-wrap content-center items-center justify-center gap-2"
+          style={at(layout.actions)}
+        >
+          {hint && (
+            <p className="w-full text-center text-amber-200 text-xs">
+              추천: {cardOf(hint).name}(바닥에 짝이 있어요)
+            </p>
+          )}
+          {!over && !online && !mission && (
+            <>
+              <button
+                type="button"
+                disabled={!canUndo}
+                onClick={() => {
+                  setSelected(null);
+                  undo();
+                }}
+                className={HWATU_SECONDARY}
+              >
+                무르기
+              </button>
+              <button
+                type="button"
+                onClick={() => submit({ type: "retire" })}
+                className={HWATU_SECONDARY}
+              >
+                그만하기
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 내 손패 */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto",
+          dealing && "invisible",
+        )}
+        style={{ top: layout.hand.top, bottom: layout.gutter, zIndex: 30 }}
+      >
         <MyHand
           ids={view.hand}
-          width={sizes.hand}
+          width={layout.hand.card.w}
+          step={handStepFor(layout, view.hand.length)}
           enabled={myPlay}
           selected={selected}
+          lifted={controls.dragArmed}
           onPreview={setPreview}
           onAct={onAct}
         />
-        {hint && (
-          <p className="mt-1 text-center text-amber-200 text-xs">
-            추천: {cardOf(hint).name}(바닥에 짝이 있어요)
-          </p>
-        )}
       </div>
-
-      <div className="flex w-full max-w-3xl flex-wrap justify-center gap-2 short-landscape:col-start-2 short-landscape:row-start-4">
-        {!over && !online && !mission && (
-          <button
-            type="button"
-            disabled={!canUndo}
-            onClick={() => {
-              setSelected(null);
-              undo();
-            }}
-            className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
-          >
-            무르기
-          </button>
-        )}
-        {!over && !online && !mission && (
-          <button
-            type="button"
-            onClick={() => submit({ type: "retire" })}
-            className="rounded-xl bg-white/10 px-4 py-2"
-          >
-            그만하기
-          </button>
-        )}
-        {view.phase === "roundEnd" && !view.continued[me] && (
-          <button
-            type="button"
-            onClick={() => submit({ type: "continue" })}
-            className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-          >
-            다음 판
-          </button>
-        )}
-        {view.phase === "roundEnd" && view.continued[me] && (
-          <span className="py-2 text-sm text-white/70">
-            다른 사람을 기다리는 중…
-          </span>
-        )}
-        {gameOver && !mission && (
-          <>
-            <button
-              type="button"
-              onClick={onExit}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다시 하기
-            </button>
-            <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-              게임 목록
-            </a>
-          </>
-        )}
-      </div>
-
-      {online && (
-        <div className="w-full max-w-3xl short-landscape:col-start-2">
-          <ChatBox mySeat={me} />
-        </div>
-      )}
-    </main>
+    </>,
   );
 }

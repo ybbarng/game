@@ -37,12 +37,29 @@ export function dealPlan(
   players: number,
   pattern?: readonly number[],
 ): { flights: { player: number; delay: number }[]; duration: number } {
-  const packets = dealPackets(handSize, pattern);
+  return dealPlanFor(
+    Array.from({ length: players }, () => handSize),
+    pattern,
+  );
+}
+
+/**
+ * 받는 곳마다 장수가 다른 나눠 주기(화투: 손패와 바닥). `counts[t]`장을 `pattern` 묶음으로 나눠, 한 바퀴에
+ * 받는 곳마다 묶음 하나씩 준다. `flights[k].player`는 받는 곳 번호
+ */
+export function dealPlanFor(
+  counts: readonly number[],
+  pattern?: readonly number[],
+): { flights: { player: number; delay: number }[]; duration: number } {
+  const packets = counts.map((n) => dealPackets(n, pattern));
+  const rounds = Math.max(0, ...packets.map((p) => p.length));
   // 원작(MFSM_Server, PlayerHuman::OnDeal)은 묶음 하나를 날리고 도착할 때까지 기다린 뒤 다음 묶음을 날린다.
   const flights: { player: number; delay: number }[] = [];
   let at = 0;
-  for (const size of packets) {
-    for (let player = 0; player < players; player++) {
+  for (let r = 0; r < rounds; r++) {
+    for (let player = 0; player < counts.length; player++) {
+      const size = packets[player]?.[r] ?? 0;
+      if (size === 0) continue;
       for (let c = 0; c < size; c++)
         flights.push({ player, delay: at + c * IN_PACKET_MS });
       at += (size - 1) * IN_PACKET_MS + FLIGHT_MS + PACKET_PAUSE_MS;

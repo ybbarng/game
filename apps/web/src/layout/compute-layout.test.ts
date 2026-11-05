@@ -1,7 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { computeLayout, type Rect, rectsOverlap } from "./compute-layout";
+import {
+  computeLayout,
+  fanCardSize,
+  fanSlot,
+  type Rect,
+  rectsOverlap,
+} from "./compute-layout";
 
 const SCREENS = [
   [1920, 1080],
@@ -152,6 +158,56 @@ describe.each(cases)(
         ).toBe(false);
       for (const seat of layout.seats.slice(1))
         expect(rectsOverlap(myPlate, seat.plate)).toBe(false);
+    });
+  },
+);
+
+/**
+ * 뒷면 부채 높이(`fanHeight`): 위쪽 자리 판 아래로 나온 부채가 바닥과 겹치지 않는다. 낮은 가로 화면 2인
+ * (원카드)에서 겹치던 것. 마이티·하트처럼 손패 13장·10장, 2~4인
+ */
+const fanCases = [
+  [844, 390],
+  [863, 360],
+  [915, 412],
+  [1280, 720],
+  [390, 844],
+].flatMap(([width, height]) =>
+  [2, 3, 4].flatMap((playerCount) =>
+    [7, 13].map((handCount) => ({
+      width: width as number,
+      height: height as number,
+      playerCount,
+      handCount,
+    })),
+  ),
+);
+
+describe.each(fanCases)(
+  "뒷면 부채 $width×$height / 인원 $playerCount / 손패 $handCount",
+  (input) => {
+    const first = computeLayout(input);
+    const fan = fanCardSize(first);
+    const layout = computeLayout({ ...input, fanHeight: fan.h });
+
+    it("자리 판 크기·자리는 그대로다", () => {
+      expect(layout.seats).toEqual(first.seats);
+    });
+
+    it("위쪽 자리 판의 부채가 바닥과 겹치지 않는다", () => {
+      for (const seat of layout.seats.slice(1)) {
+        const p = seat.plate;
+        if (p.y + p.h / 2 >= layout.center.y + layout.center.h / 2) continue;
+        for (let i = 0; i < input.handCount; i++) {
+          const at = fanSlot(layout, seat.offset, i, input.handCount, fan);
+          const card: Rect = {
+            x: at.x - fan.w / 2,
+            y: at.y - fan.h / 2,
+            ...fan,
+          };
+          expect(rectsOverlap(card, layout.center)).toBe(false);
+        }
+      }
     });
   },
 );
