@@ -10,7 +10,7 @@ import type { Card } from "@game/mighty-engine";
 import { useEffect, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
-import { DealAnimation } from "@/components/DealAnimation";
+import { collectTo, DealAnimation } from "@/components/card-fx";
 import { FairOverlays, FairStatus } from "@/components/FairOverlays";
 import { useHandControls } from "@/components/hand-controls";
 import { OpenHand } from "@/components/OpenHand";
@@ -624,11 +624,7 @@ export function HeartsTable({
                   card={play.card}
                   width={layout.trick.card.w}
                   height={layout.trick.card.h}
-                  at={{
-                    ...target,
-                    scale: collecting ? 0.3 : 1,
-                    opacity: collecting ? 0 : 1,
-                  }}
+                  at={collecting ? collectTo(target) : target}
                   {...(from ? { from } : {})}
                   rotate={tilt(play.card)}
                   z={100 + order}

@@ -41,7 +41,7 @@ import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 import { ChatBox } from "./ChatBox";
 import { CardArt } from "./card-art/CardArt";
-import { DealAnimation } from "./DealAnimation";
+import { collectTo, DealAnimation } from "./card-fx";
 import { FairOverlays, FairStatus } from "./FairOverlays";
 import { useHandControls } from "./hand-controls";
 import { OpenHand } from "./OpenHand";
@@ -855,11 +855,7 @@ export function GameTable({
                     card={play.card}
                     width={layout.trick.card.w}
                     height={layout.trick.card.h}
-                    at={{
-                      ...target,
-                      scale: collecting ? 0.3 : 1,
-                      opacity: collecting ? 0 : 1,
-                    }}
+                    at={collecting ? collectTo(target) : target}
                     // 다른 사람 카드는 그 사람 손패에서 실제로 뽑은 자리에서 날아온다.
                     {...(offset === 0
                       ? {}
