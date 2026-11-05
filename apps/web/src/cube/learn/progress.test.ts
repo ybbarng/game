@@ -10,6 +10,7 @@ import {
   loadTrain,
   markLessonDone,
   markLessonOpened,
+  markStepActed,
   markStepSeen,
   markTryPassed,
   RECENT_TIMES,
@@ -80,6 +81,32 @@ describe("배우기 진도", () => {
     markStepSeen("333-notation", 2, s);
     markTryPassed("333-notation", 5, s);
     expect(loadLearn(s).lessons["333-notation"]?.step).toBe(2);
+  });
+
+  it("해 보기 밖의 마친 단계도 남는다(옛 기록은 빈 목록, 틀린 값은 버림)", () => {
+    const s = memory();
+    markStepActed("333-notation", 3, s);
+    markStepActed("333-notation", 1, s);
+    markStepActed("333-notation", 3, s);
+    markStepSeen("333-notation", 4, s);
+    expect(loadLearn(s).lessons["333-notation"]).toEqual({
+      passed: [],
+      done: false,
+      step: 4,
+      acted: [1, 3],
+    });
+    s.setItem(
+      LEARN_KEY,
+      JSON.stringify({
+        lessons: {
+          "333-notation": { passed: [], done: false, acted: [2, "x", -1] },
+          "333-start": { passed: [], done: false, acted: "1" },
+        },
+      }),
+    );
+    const p = loadLearn(s);
+    expect(p.lessons["333-notation"]?.acted).toEqual([2]);
+    expect(p.lessons["333-start"]).toEqual({ passed: [], done: false });
   });
 
   it("새로 짠 단원(2026-11-04)은 옛 단원의 끝냄만 옮기고, 해 보기 번호와 이미 있는 새 진도는 건드리지 않는다", () => {
