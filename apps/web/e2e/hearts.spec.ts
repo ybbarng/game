@@ -454,8 +454,10 @@ test("하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서
   const card = myCards(page).first();
   const id = (await card.getAttribute("data-card")) as string;
   const fromY = (await card.boundingBox())?.y ?? 0;
-  // 제 속도로 내면 그 카드가 손패 자리에서 움직이기 시작한다
-  await speedUpAnimations(page, 1);
+  // 낸 카드가 손패 자리에서 움직이기 시작한다. 날아가는 CSS 연출은 page.clock이 아니라 실제 시간으로 돌아,
+  // 제 속도(0.3초)로 두면 바쁜 CI에서 확인 한 번 사이에 내려앉아 「날아가는 중」을 놓친다(2026-11-05 #137 CI).
+  // 1/20 빠르기로 늦춰 그 순간을 몇 초로 늘린다
+  await speedUpAnimations(page, 0.05);
   await card.click({ position: { x: 8, y: 8 } });
   /**
    * 낸 카드의 상태: 판 쪽으로 날아가는 중(마우스를 올려 살짝 뜨는 것보다 훨씬 위, 움직임이 도는 중), 판 위에
