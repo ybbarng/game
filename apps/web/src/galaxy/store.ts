@@ -174,7 +174,7 @@ function stop(): void {
   lastAuto = null;
 }
 
-/** 이 걸음에 컴퓨터가 눈에 보이는 결정을 했나(굴리기·사기·넘기기·짓기·거래 제안) */
+/** 이 걸음에 컴퓨터가 눈에 보이는 결정을 했나(굴리기·사기·넘기기·짓기·사들이기) */
 function botActed(events: readonly GameEvent[], me: number): boolean {
   return events.some(
     (e) =>
@@ -186,7 +186,7 @@ function botActed(events: readonly GameEvent[], me: number): boolean {
         e.type === "unmortgaged") &&
         e.seat !== me) ||
       (e.type === "auctionStarted" && e.passer !== me) ||
-      (e.type === "tradeOffered" && e.offer.from !== me),
+      (e.type === "takenOver" && e.seat !== me),
   );
 }
 

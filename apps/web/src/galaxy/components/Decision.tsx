@@ -3,17 +3,15 @@
 import { asState } from "@game/galaxy-ai";
 import {
   type Action,
+  buildCostOf,
   debtPlan,
   type GalaxyView,
   legalActions,
-  levelCostAt,
   NUMBERS,
   rentOf,
   round10,
   STAR_SQUARES,
   starAt,
-  type TradeOffer,
-  tradeProblem,
   unmortgageCost,
 } from "@game/galaxy-engine";
 import { type ReactNode, useState } from "react";
@@ -23,7 +21,6 @@ import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { money, squareName, starInfo, starLine, subject } from "../format";
 import { GALAXY_FX } from "../fx-timing";
 import { STAR_FACTS } from "../star-facts";
-import { ShipToken } from "./parts";
 
 export const PRIMARY =
   "rounded-xl bg-amber-200 px-4 py-2.5 font-bold text-slate-950 shadow-[0_0_18px_rgba(253,230,138,0.35)] active:scale-[0.98] disabled:opacity-40";
@@ -170,6 +167,56 @@ export function BuySheet({
   );
 }
 
+/** 도착 인수(docs/48 2-8, g5): 이용료를 낸 남의 별을 사들이기·넘기기 */
+export function TakeoverSheet({
+  view,
+  square,
+  owner,
+  price,
+  name,
+  submit,
+}: {
+  view: GalaxyView;
+  square: number;
+  owner: number;
+  price: number;
+  name: (seat: number) => string;
+  submit: (a: Action) => void;
+}) {
+  const info = starInfo(view.board, square);
+  return (
+    <Sheet testId="takeover">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="font-black text-lg">
+          ✶ {info?.star.ko}{" "}
+          <span className="font-normal text-sm text-white/60">
+            {name(owner)}의 별
+          </span>
+        </p>
+        <p className="font-bold text-amber-200">{money(price)}</p>
+      </div>
+      <div className="mt-1 flex gap-2">
+        <button
+          type="button"
+          data-takeover
+          onClick={() => submit({ type: "takeover" })}
+          className={cn(PRIMARY, "flex-1")}
+        >
+          사들이기 {money(price)}
+        </button>
+        <button
+          type="button"
+          data-decline-takeover
+          onClick={() => submit({ type: "declineTakeover" })}
+          className={cn(SECONDARY, "flex-1")}
+        >
+          넘기기
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 /** 봉투 입찰: 숫자 하나만 고른다(docs/48 7-5) */
 export function BidSheet({
   view,
@@ -261,230 +308,6 @@ export function BidSheet({
   );
 }
 
-function TradeSides({
-  view,
-  offer,
-  name,
-}: {
-  view: GalaxyView;
-  offer: TradeOffer;
-  name: (seat: number) => string;
-}) {
-  const side = (title: string, stars: number[], cash: number) => (
-    <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-2">
-      <p className="mb-1 text-[11px] text-white/50">{title}</p>
-      {stars.map((sq) => (
-        <p key={sq} className="text-sm">
-          ✶ {squareName(view.board, sq)}
-        </p>
-      ))}
-      {cash > 0 && <p className="text-amber-100 text-sm">{money(cash)}</p>}
-      {stars.length === 0 && cash === 0 && (
-        <p className="text-sm text-white/40">없음</p>
-      )}
-    </div>
-  );
-  return (
-    <div className="flex gap-2">
-      {side(`${name(offer.from)} · 주는 것`, offer.give.stars, offer.give.cash)}
-      {side(`${name(offer.to)} · 주는 것`, offer.get.stars, offer.get.cash)}
-    </div>
-  );
-}
-
-/** 받은 거래 제안: 받기·거절 */
-export function TradeAnswer({
-  view,
-  offer,
-  name,
-  submit,
-}: {
-  view: GalaxyView;
-  offer: TradeOffer;
-  name: (seat: number) => string;
-  submit: (a: Action) => void;
-}) {
-  return (
-    <Sheet title={`${name(offer.from)}의 거래 제안`} testId="trade-answer">
-      <TradeSides view={view} offer={offer} name={name} />
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => submit({ type: "acceptTrade" })}
-          className={cn(PRIMARY, "flex-1")}
-        >
-          받기
-        </button>
-        <button
-          type="button"
-          onClick={() => submit({ type: "rejectTrade" })}
-          className={cn(SECONDARY, "flex-1")}
-        >
-          거절
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
-/** 거래 제안 만들기(두 걸음: 누구와 → 판에서 별 담기) */
-export function TradeComposer({
-  view,
-  partner,
-  setPartner,
-  marked,
-  clearMarked,
-  name,
-  submit,
-  onClose,
-}: {
-  view: GalaxyView;
-  partner: number | null;
-  setPartner: (seat: number) => void;
-  marked: ReadonlySet<number>;
-  clearMarked: () => void;
-  name: (seat: number) => string;
-  submit: (a: Action) => void;
-  onClose: () => void;
-}) {
-  const me = view.mySeat;
-  const [giveCash, setGiveCash] = useState(0);
-  const [getCash, setGetCash] = useState(0);
-  const others = view.cash
-    .map((_, s) => s)
-    .filter((s) => s !== me && !view.out[s]);
-  if (partner === null)
-    return (
-      <Sheet title="누구와 거래할까요?" testId="trade-partner">
-        <p className="mb-2 text-white/60 text-xs leading-snug">
-          내 별·별빛과 상대의 별·별빛을 맞바꾸자고 제안해요. 상대가 받거나
-          거절해요.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {others.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setPartner(s)}
-              className={cn(SECONDARY, "flex items-center gap-1.5")}
-            >
-              <ShipToken seat={s} size={12} />
-              {name(s)}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-2 text-white/60 text-xs underline"
-        >
-          그만두기
-        </button>
-      </Sheet>
-    );
-  const give = [...marked].filter((sq) => view.owners[sq] === me);
-  const get = [...marked].filter((sq) => view.owners[sq] === partner);
-  const offer: TradeOffer = {
-    from: me,
-    to: partner,
-    give: { stars: give, cash: giveCash },
-    get: { stars: get, cash: getCash },
-  };
-  const problem = tradeProblem(asState(view), offer);
-  const cashInput = (value: number, set: (n: number) => void, max: number) => (
-    <span className="mt-1 flex items-center gap-1 text-xs">
-      <button
-        type="button"
-        onClick={() => set(Math.max(0, value - 100))}
-        className="rounded bg-white/10 px-1"
-      >
-        −100
-      </button>
-      <button
-        type="button"
-        onClick={() => set(Math.max(0, value - 10))}
-        className="rounded bg-white/10 px-1"
-      >
-        −10
-      </button>
-      <span className="min-w-12 text-center text-amber-100">
-        {money(value)}
-      </span>
-      <button
-        type="button"
-        onClick={() => set(Math.min(max, value + 10))}
-        className="rounded bg-white/10 px-1"
-      >
-        +10
-      </button>
-      <button
-        type="button"
-        data-cash-plus100
-        onClick={() => set(Math.min(max, value + 100))}
-        className="rounded bg-white/10 px-1"
-      >
-        +100
-      </button>
-    </span>
-  );
-  return (
-    <Sheet title={`거래 · ${name(partner)}`} testId="trade-compose">
-      <div className="flex gap-2">
-        <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-2">
-          <p className="text-[11px] text-white/50">주는 것</p>
-          {give.map((sq) => (
-            <p key={sq} className="text-sm">
-              ✶ {squareName(view.board, sq)}
-            </p>
-          ))}
-          {cashInput(giveCash, setGiveCash, view.cash[me] ?? 0)}
-        </div>
-        <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-2">
-          <p className="text-[11px] text-white/50">받는 것</p>
-          {get.map((sq) => (
-            <p key={sq} className="text-sm">
-              ✶ {squareName(view.board, sq)}
-            </p>
-          ))}
-          {cashInput(getCash, setGetCash, view.cash[partner] ?? 0)}
-        </div>
-      </div>
-      {problem && marked.size > 0 && (
-        <p className="mt-1 text-rose-200/80 text-xs">{problem}</p>
-      )}
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={problem !== null}
-          onClick={() => {
-            submit({
-              type: "offer",
-              to: partner,
-              give: offer.give,
-              get: offer.get,
-            });
-            clearMarked();
-            onClose();
-          }}
-          className={cn(PRIMARY, "flex-1")}
-        >
-          제안 보내기
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            clearMarked();
-            onClose();
-          }}
-          className={cn(SECONDARY, "flex-1")}
-        >
-          그만두기
-        </button>
-      </div>
-    </Sheet>
-  );
-}
-
 /** 빚 정리: 모자란 별빛과 제안한 정리 순서 */
 export function DebtSheet({
   view,
@@ -561,7 +384,7 @@ export function ManagePanel({
   if (mine.length === 0) return null;
   const cost = (a: Action) =>
     a.type === "build"
-      ? `−${money(levelCostAt(view.board, a.square))}`
+      ? `−${money(buildCostOf(view, me, a.square))}`
       : a.type === "unmortgage"
         ? `−${money(unmortgageCost(view.board, a.square))}`
         : "";

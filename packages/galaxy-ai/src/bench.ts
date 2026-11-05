@@ -1,5 +1,7 @@
 import {
   type Action,
+  activeSeats,
+  assetsOf,
   boardOfSky,
   cardById,
   type GalaxyBoard,
@@ -11,6 +13,7 @@ import {
   SHORT_RULES,
   STANDARD_RULES,
   standingsOf,
+  starAt,
   turnLimitOf,
 } from "@game/galaxy-engine";
 
@@ -19,6 +22,7 @@ import {
   galaxyBeginnerBot,
   galaxyExpertBot,
   galaxyIntermediateBot,
+  galaxyStrategyBot,
 } from "./bots";
 import { landingOdds } from "./odds";
 import { playGalaxy } from "./simulate";
@@ -31,9 +35,9 @@ import { playGalaxy } from "./simulate";
 
 /** 판 수(기본). 워크플로 입력이 이 값을 바꿀 수 있다 */
 export const BENCH_GAMES = {
-  /** 4인 중수 × 4, 기본 판, 거래 켬(자리 순서·눈덩이·공문·칸 밟힘 등) */
+  /** 4인 중수 × 4, 기본 판, 인수 켬(자리 순서·눈덩이·공문·칸 밟힘 등) */
   main: 2000,
-  /** 같은 판, 거래 끔(별자리 완성 비율) */
+  /** 같은 판, 인수 끔(별자리 완성 비율) */
   noTrade: 1000,
   /** 고수 1 대 중수 3, 중수 1 대 입문 3(각각) */
   strength: 1000,
@@ -300,7 +304,7 @@ function timed(bot: GalaxyBot, record: (ms: number) => void): GalaxyBot {
 }
 
 /** 한 단계 1 대 다른 단계 3(자리를 돌려 가며). 1 쪽이 1등인 몫 */
-function strengthOf(
+export function strengthOf(
   n: number,
   one: GalaxyBot,
   three: GalaxyBot,
@@ -409,7 +413,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const main = runSet(options.main, rules, () => [mid, mid, mid, mid], 10_000);
   const noTrade = runSet(
     options.noTrade,
-    { ...rules, trade: false },
+    { ...rules, takeover: false },
     () => [mid, mid, mid, mid],
     20_000,
   );
@@ -518,7 +522,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const withoutTrade = noTrade.completionGames / Math.max(1, noTrade.games);
   rows.push({
     item: "별자리 완성이 한 번이라도 나온 판",
-    value: `거래 켬 ${pct(withTrade)} · 끔 ${pct(withoutTrade)}`,
+    value: `인수 켬 ${pct(withTrade)} · 끔 ${pct(withoutTrade)}`,
     target: "켬 80% 넘게(끔은 참고, docs/48 3-5)",
     pass: withTrade > 0.8,
   });
@@ -595,7 +599,7 @@ export function benchMarkdown(report: BenchReport): string {
   const lines = [
     `# 은하 한 바퀴 밸런스 bench(${report.options.sky})`,
     "",
-    `판 수: 기본 ${report.options.main} · 거래 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength} · 긴장 지표 각 ${report.options.tension}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
+    `판 수: 기본 ${report.options.main} · 인수 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength} · 긴장 지표 각 ${report.options.tension}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
     "",
     "| 잴 것 | 값 | 기준 | 판정 |",
     "|---|---|---|---|",
@@ -742,5 +746,148 @@ export function layoutMarkdown(rows: readonly LayoutRow[]): string {
         `| ${r.name} | ${r.length === "short" ? "짧은" : "기본"} | ${r.games} | ${r.rounds.toFixed(1)}/${r.limit} · ${r.turns.toFixed(1)} · ${r.decisions.toFixed(0)} · ${r.minutes.toFixed(0)}분 | ${r.firstComplete ? r.firstComplete.map((x) => x.toFixed(1)).join(" · ") : "—"} | ${pct(r.completionGames)} | ${r.seats.map((s) => pct(s)).join(" · ")} | ${pct(r.bankrupt)} | ${pct(r.lateFlip)} | ${pct(r.bigRentGames)} | ${r.groupSpread === null ? "—" : `${(r.groupSpread * 100).toFixed(1)}%p`} | ${r.requestDone === null ? "—" : `${pct(r.requestDone)} · ${pct(r.requestFlip)}`} |`,
     ),
     "",
+  ].join("\n");
+}
+
+/* ───────────── 규칙 g5 저울질 bench(docs/48 16절) ───────────── */
+
+/** 돈의 흐름 한 줄: 한 사람이 한 판에 주고받은 평균(까닭마다) */
+export interface FlowRow {
+  reason: string;
+  /** 우주국 → 사람(+), 사람 → 우주국(−). 사람끼리 오간 것(이용료·인수)은 받은 쪽 기준 합 */
+  perPlayer: number;
+}
+
+export interface BalanceReport {
+  games: number;
+  /** 다 사기 2 대 골라 사기 2(자리를 번갈아): 다 사기 쪽 1등 몫(같은 1등은 나눈다), 평균 자산 */
+  duel: { allShare: number; allAssets: number; pickyAssets: number };
+  /** 돌림이 시작될 때 남은 사람의 평균 별빛·자산(4인 중수 ×4, 기본 판) */
+  cash: { round: number; cash: number; assets: number }[];
+  flows: FlowRow[];
+  /** 1등 판 끝 자산 가운데 별빛 몫 */
+  cashShare: number;
+  layout: LayoutRow[];
+  strength: { expert: number; intermediate: number };
+  /** 도착 인수: 판마다 평균 횟수, 인수가 별자리를 완성한 비율 */
+  takeovers: { perGame: number; completing: number };
+  seconds: number;
+}
+
+/** 규칙 g5 저울질 bench: 전략 견주기·돈 곡선·돈의 흐름·3-4 기준 묶음 */
+export function runBalanceBench(n: number, sky = "seasons"): BalanceReport {
+  const started = now();
+  const rules: GalaxyRules = { ...STANDARD_RULES, sky };
+  const all = galaxyStrategyBot("all");
+  const picky = galaxyStrategyBot("picky");
+  let allShare = 0;
+  let allAssets = 0;
+  let pickyAssets = 0;
+  runSet(
+    n,
+    rules,
+    (g) => [0, 1, 2, 3].map((s) => ((s + g) % 2 === 0 ? all : picky)),
+    70_000,
+    (state, g) => {
+      const winners = winnersOf(state);
+      for (const w of winners)
+        if ((w + g) % 2 === 0) allShare += 1 / winners.length;
+      for (const st of state.result?.standings ?? []) {
+        if ((st.seat + g) % 2 === 0) allAssets += st.assets / 2;
+        else pickyAssets += st.assets / 2;
+      }
+    },
+  );
+  const mid = galaxyIntermediateBot;
+  const limit = turnLimitOf(rules) ?? 20;
+  const sums = new Array(limit + 1).fill(0).map(() => ({ c: 0, a: 0, k: 0 }));
+  const flow = new Map<string, number>();
+  let takeovers = 0;
+  let completing = 0;
+  let cashShare = 0;
+  let games = 0;
+  for (let g = 0; g < n; g++) {
+    const seen = new Set<number>();
+    const { state } = playGalaxy({
+      bots: [mid, mid, mid, mid],
+      rules,
+      seed: 80_000 + g,
+      onStep(_before, _seat, _action, after, events) {
+        for (const e of events) {
+          if (e.type === "turnStarted" && !seen.has(e.round)) {
+            seen.add(e.round);
+            const row = sums[e.round];
+            if (row)
+              for (const s of activeSeats(after)) {
+                row.c += after.cash[s] ?? 0;
+                row.a += assetsOf(after, s);
+                row.k += 1;
+              }
+          } else if (e.type === "pay") {
+            const sign = e.to === -1 ? -1 : 1;
+            flow.set(e.reason, (flow.get(e.reason) ?? 0) + sign * e.amount);
+          } else if (e.type === "takenOver") {
+            takeovers += 1;
+            const group = starAt(after.board, e.square)?.group ?? -1;
+            if (isComplete(after, e.seat, group)) completing += 1;
+          }
+        }
+      },
+    });
+    games += 1;
+    const top = state.result?.standings[0];
+    if (top && top.assets > 0) cashShare += top.cash / top.assets;
+  }
+  const players = games * rules.players;
+  const layout = runLayoutBench(
+    [{ name: "지금 규칙", board: boardOfSky(sky) }],
+    { standard: n, short: n },
+    sky,
+  );
+  const strength = {
+    expert: strengthOf(n, galaxyExpertBot, mid, 30_000, rules),
+    intermediate: strengthOf(n, mid, galaxyBeginnerBot, 40_000, rules),
+  };
+  return {
+    games: n,
+    duel: {
+      allShare: allShare / n,
+      allAssets: allAssets / n,
+      pickyAssets: pickyAssets / n,
+    },
+    cash: sums.flatMap((row, round) =>
+      row.k > 0 ? [{ round, cash: row.c / row.k, assets: row.a / row.k }] : [],
+    ),
+    flows: [...flow.entries()]
+      .map(([reason, total]) => ({ reason, perPlayer: total / players }))
+      .sort((a, b) => b.perPlayer - a.perPlayer),
+    cashShare: cashShare / Math.max(1, games),
+    layout,
+    strength,
+    takeovers: {
+      perGame: takeovers / Math.max(1, games),
+      completing: takeovers ? completing / takeovers : 0,
+    },
+    seconds: (now() - started) / 1000,
+  };
+}
+
+/** 저울질 bench 결과(마크다운) */
+export function balanceMarkdown(r: BalanceReport): string {
+  const pick = [1, 5, 10, 15, 20];
+  return [
+    `# 규칙 저울질 bench(판 수 ${r.games}, ${r.seconds.toFixed(0)}초)`,
+    "",
+    `- 다 사기 2 대 골라 사기 2: 다 사기 1등 몫 ${pct(r.duel.allShare)}, 평균 자산 다 사기 ${r.duel.allAssets.toFixed(0)} · 골라 사기 ${r.duel.pickyAssets.toFixed(0)}`,
+    `- 돌림 시작 평균 별빛(자산): ${r.cash
+      .filter((c) => pick.includes(c.round))
+      .map((c) => `${c.round}차례 ${c.cash.toFixed(0)}(${c.assets.toFixed(0)})`)
+      .join(" · ")}`,
+    `- 1등 자산 가운데 별빛 몫 ${pct(r.cashShare)}`,
+    `- 돈의 흐름(한 사람 한 판): ${r.flows.map((f) => `${f.reason} ${f.perPlayer.toFixed(0)}`).join(" · ")}`,
+    `- 세기: 고수 1등 ${pct(r.strength.expert)} · 중수 1등 ${pct(r.strength.intermediate)}`,
+    `- 도착 인수: 판마다 ${r.takeovers.perGame.toFixed(2)}번, 그 가운데 별자리 완성 ${pct(r.takeovers.completing)}`,
+    "",
+    layoutMarkdown(r.layout),
   ].join("\n");
 }

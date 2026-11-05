@@ -150,6 +150,20 @@ describe("큐브 설정 저장", () => {
     );
   });
 
+  it("키 그림 접기·뒷면 숨기기: 옛 저장값·틀린 값은 펴 둠, 접은 것은 남는다", () => {
+    const old = parseSettings(JSON.stringify({ version: 1 }));
+    expect(old.keyGuideOpen).toBe(true);
+    expect(old.backViewShown).toBe(true);
+    const folded = parseSettings(
+      JSON.stringify({ keyGuideOpen: false, backViewShown: false }),
+    );
+    expect(folded.keyGuideOpen).toBe(false);
+    expect(folded.backViewShown).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyGuideOpen: "no" })).keyGuideOpen,
+    ).toBe(true);
+  });
+
   it("저장소가 막혀 있어도 오류 없이 기본값·false", () => {
     const broken = {
       getItem: () => {

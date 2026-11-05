@@ -70,7 +70,7 @@ export interface BoardProps {
   name: (seat: number) => string;
   /** 휴대폰 세로: 우주선이 움직이는 동안 그 변을 크게 따라간다 */
   follow?: boolean;
-  /** 거래 고르기 중 담은 별 */
+  /** 테두리로 짚어 줄 칸(배우기 장면) */
   marked?: ReadonlySet<number>;
   /** 칸 카드로 크게 보는 칸: 같은 별자리 칸을 함께 밝히고 나머지는 한 발 물러난다 */
   focus?: number | null;
@@ -743,19 +743,6 @@ function FxOverlay({
             style={toastStyle(step.dur)}
           >
             {name(step.seat)} · 소행성대에 걸렸어요.
-          </p>
-        </div>
-      );
-    case "trade":
-      return (
-        <div className={cn(box, "items-center")}>
-          <p
-            className="galaxy-toast rounded-xl bg-slate-800/90 px-3 py-2 text-center font-semibold text-sm shadow-xl"
-            style={toastStyle(step.dur)}
-          >
-            {step.accepted
-              ? `${name(step.from)} ↔ ${name(step.to)} 거래가 이뤄졌어요.`
-              : `${name(step.to)} · 거래를 거절했어요.`}
           </p>
         </div>
       );

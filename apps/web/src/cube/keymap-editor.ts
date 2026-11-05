@@ -134,13 +134,18 @@ export function checkAssign(
   return { current, orphan: left.length === 0 };
 }
 
-/** 묻는 글: 「J 키는 지금 「U」 동작이에요. 「R」 동작으로 바꿀까요?」(글자 키 이름 뒤 조사가 어색하지 않게 「키는」) */
+/**
+ * 묻는 글: 「J 키는 지금 「U」 동작이에요. 「R」 동작으로 바꿀까요?」(글자 키 이름 뒤 조사가 어색하지 않게 「키는」).
+ * 바꾸면 그 동작에 남는 키가 없으면(`orphan`) 저장 전에 그것도 알린다(설계 4-1)
+ */
 export function conflictQuestion(
   key: string,
   current: string,
   next: string,
+  orphan = false,
 ): string {
-  return `${key} 키는 지금 「${current}」 동작이에요. 「${next}」 동작으로 바꿀까요?`;
+  const q = `${key} 키는 지금 「${current}」 동작이에요. 「${next}」 동작으로 바꿀까요?`;
+  return orphan ? `${q} 바꾸면 「${current}」 동작에는 키가 없어요.` : q;
 }
 
 /**

@@ -1,6 +1,13 @@
 "use client";
 
-import { type GalaxyView, NUMBERS, rentOf, starAt } from "@game/galaxy-engine";
+import {
+  canTakeOver,
+  type GalaxyView,
+  NUMBERS,
+  rentOf,
+  starAt,
+  takeoverPriceOf,
+} from "@game/galaxy-engine";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
 
@@ -19,6 +26,7 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
     case "base":
       return [
         `출발 칸이에요. 지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`,
+        `별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 5분의 1만큼 덜 받아요.`,
       ];
     case "asteroid":
       return [
@@ -162,6 +170,14 @@ export function SquareCard({
   );
 }
 
+/** 남의 별에 멈춰 이용료를 낸 뒤 사들이는 값, 사들일 수 없으면 까닭(docs/48 2-8) */
+function takeoverText(view: GalaxyView, square: number): string {
+  if (canTakeOver(view, view.mySeat, square))
+    return `멈추면 사들이기 ${money(takeoverPriceOf(view.board, square))}`;
+  if (view.mortgaged[square]) return "맡긴 별이라 사들일 수 없어요";
+  return "주인이 별자리를 완성해 사들일 수 없어요";
+}
+
 function StarBody({
   view,
   square,
@@ -197,6 +213,11 @@ function StarBody({
                 <span className="text-white/50 text-xs">· 맡김</span>
               )}
             </p>
+            {owner !== view.mySeat && view.rules.takeover && (
+              <p data-card-takeover className="mt-0.5 text-white/70 text-xs">
+                {takeoverText(view, square)}
+              </p>
+            )}
             {tier && (
               <p data-card-tier className="mt-0.5 text-white/70 text-xs">
                 {tier}

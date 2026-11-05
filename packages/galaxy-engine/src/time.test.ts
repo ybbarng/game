@@ -8,7 +8,15 @@ import {
   STANDARD_RULES,
 } from "./rules";
 import type { GalaxyState } from "./state";
-import { bidOf, must, refused, revealAll, scene, started } from "./test-utils";
+import {
+  bidOf,
+  must,
+  refused,
+  revealAll,
+  roll,
+  scene,
+  started,
+} from "./test-utils";
 
 const FAST: GalaxyRules = { ...STANDARD_RULES, time: "fast" };
 
@@ -34,7 +42,7 @@ describe("개인 시간(docs/24)", () => {
     expect(after.clocks?.[seat]?.main).toBe(140_000);
   });
 
-  it("입찰 동안은 재지 않고, 거래 답은 받는 사람 시계가 간다", () => {
+  it("입찰 동안은 재지 않고, 도착 인수는 차례인 사람 시계가 간다", () => {
     const buy: GalaxyState = {
       ...scene({ rules: FAST, positions: [14, 0, 0, 0] }),
       phase: "buy",
@@ -46,23 +54,17 @@ describe("개인 시간(docs/24)", () => {
     );
     const s = scene({
       rules: FAST,
-      stars: [
-        { square: 1, owner: 0 },
-        { square: 2, owner: 1 },
-      ],
+      positions: [8, 0, 0, 0],
+      stars: [{ square: 14, owner: 1 }],
     });
-    const offered = must(s, 0, {
-      type: "offer",
-      to: 1,
-      give: { stars: [1], cash: 0 },
-      get: { stars: [2], cash: 0 },
-    }).state;
-    expect(clockTurn(offered)?.seat).toBe(1);
-    const answered = must(offered, 1, {
-      type: "rejectTrade",
+    const landed = roll(s, [2, 4]).state;
+    expect(landed.phase).toBe("takeover");
+    expect(clockTurn(landed)?.seat).toBe(0);
+    const answered = must(landed, 0, {
+      type: "declineTakeover",
       spent: 5_000,
     }).state;
-    expect(answered.clocks?.[1]?.main).toBe(175_000);
+    expect(answered.clocks?.[0]?.main).toBe(175_000);
   });
 
   it("시간을 넘긴 결정은 하지 않고 시간패로 끝난다", () => {

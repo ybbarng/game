@@ -1,7 +1,6 @@
 import { createRng, nextInt, type RngState } from "@game/mighty-engine";
 import { describe, expect, it } from "vitest";
 
-import { STAR_SQUARES } from "./board";
 import {
   createMatch,
   debtPlan,
@@ -10,7 +9,6 @@ import {
   pendingSeats,
   replay,
   startTotal,
-  step,
 } from "./match";
 import { type GalaxyRules, LONG_RULES, STANDARD_RULES } from "./rules";
 import type { Action, GalaxyState } from "./state";
@@ -60,15 +58,11 @@ function play(rules: GalaxyRules, seed: number, steps: number) {
       case "debt":
         act(seat, debtPlan(state)[0] as Action);
         break;
-      case "trade":
-        act(seat, { type: nextInt(rng, 2) ? "acceptTrade" : "rejectTrade" });
+      case "takeover":
+        // 사들여 별자리가 완성돼야 정거장을 올리는 갈래까지 지난다
+        act(seat, { type: nextInt(rng, 8) ? "takeover" : "declineTakeover" });
         break;
       default: {
-        const offer = tradeIdea(state, seat, rng);
-        if (offer) {
-          act(seat, offer);
-          break;
-        }
         const options = legalActions(state, seat);
         const build = options.filter((o) => o.type === "build");
         const pick =
@@ -88,41 +82,12 @@ function play(rules: GalaxyRules, seed: number, steps: number) {
   return { state, log };
 }
 
-/** 가끔 별 하나를 바꾸자고 제안한다 */
-function tradeIdea(
-  state: GalaxyState,
-  seat: number,
-  rng: RngState,
-): Action | null {
-  if (!state.rules.trade || state.phase !== "turn") return null;
-  if (state.turn.rolls > 0 || state.turn.offered || nextInt(rng, 5))
-    return null;
-  const mine = STAR_SQUARES.find(
-    (sq) => state.owners[sq] === seat && !state.mortgaged[sq],
-  );
-  const theirs = STAR_SQUARES.find(
-    (sq) =>
-      (state.owners[sq] ?? -1) >= 0 &&
-      state.owners[sq] !== seat &&
-      !state.mortgaged[sq],
-  );
-  if (mine === undefined || theirs === undefined) return null;
-  const to = state.owners[theirs] as number;
-  const action: Action = {
-    type: "offer",
-    to,
-    give: { stars: [mine], cash: 0 },
-    get: { stars: [theirs], cash: 0 },
-  };
-  return step(state, seat, action).ok ? action : null;
-}
-
 describe("돈 합과 다시 두기", () => {
   it("새 판의 돈 합은 시작 합이고, 걸음마다 「별빛 합 + 사라진 것 − 준 것」이 그대로다", () => {
     // 내리기(sell)는 빚 정리에서만 나와 end.test가 따로 본다
-    const { state, log } = play(STANDARD_RULES, 1, 260);
+    const { state, log } = play(STANDARD_RULES, 1, 420);
     const kinds = new Set(log.map((e) => e.action.type));
-    for (const kind of ["buy", "pass", "bidReveal", "offer", "build"])
+    for (const kind of ["buy", "pass", "bidReveal", "takeover", "build"])
       expect(kinds).toContain(kind);
     expect(state.revealCount).toBeGreaterThan(20);
     expect(state.owners.filter((o) => o >= 0).length).toBeGreaterThan(5);
@@ -131,7 +96,7 @@ describe("돈 합과 다시 두기", () => {
     if (again.ok) expect(again.state).toEqual(state);
     // 판 번호가 다른(옛 규칙) 기록은 지금 숫자로 다시 두지 않는다
     const old = replay(
-      { ...STANDARD_RULES, edition: 3 as unknown as 4 },
+      { ...STANDARD_RULES, edition: 4 as unknown as 5 },
       1,
       BOARD,
       log,
