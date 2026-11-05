@@ -65,6 +65,13 @@ function groups(learnFirst: Item, dailyDone: boolean): Group[] {
           attr: "data-cube-daily-link",
           ...(dailyDone ? { note: "오늘 완료" } : {}),
         },
+        {
+          icon: "⏳",
+          title: "제한 도전",
+          href: "/cube/challenge",
+          span: true,
+          attr: "data-cube-challenge-link",
+        },
       ],
     },
     {

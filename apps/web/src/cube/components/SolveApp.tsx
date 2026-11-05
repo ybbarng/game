@@ -16,6 +16,25 @@ import {
 } from "../algs/store";
 import { stickersFromState as stickersOf } from "../bridge";
 import {
+  addChallenge,
+  bestScore,
+  CHALLENGE_KINDS,
+  CHALLENGE_LEVELS,
+  CHALLENGE_SIZES,
+  type ChallengeEntry,
+  type ChallengeKind,
+  type ChallengeLevel,
+  type ChallengePick,
+  challengeScore,
+  KIND_LABEL,
+  LEVEL_LABEL,
+  limitFor,
+  loadChallenges,
+  loadPick,
+  savePick,
+  stageCount,
+} from "../challenge";
+import {
   beginDaily,
   DAILY_SIZES,
   type DailyEntry,
@@ -57,6 +76,12 @@ import {
   warmUpScramble,
 } from "../worker";
 import { AlgChips } from "./AlgChips";
+import {
+  ChallengePanel,
+  ChallengeResult,
+  HpBar,
+  REFILL_SHOW_MS,
+} from "./ChallengeParts";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
@@ -99,20 +124,54 @@ interface DailyAttempt {
   startedAt: number;
 }
 
+/** 제한 도전 한 판: 고른 것과 그때의 최고 점수(결과 상자의 「최고 점수」) */
+interface ChallengeRun {
+  pick: ChallengePick;
+  budget: number;
+  short: number | null;
+  priorBest: number | null;
+}
+
 /**
+ * `challenge`: 제한 도전(`/cube/challenge`, docs/51 2-3). 혼자 맞추기 판에 시간·수 체력을 단다(크기 2×2·3×3). 살펴보기는
+ * 늘 켜고(같은 조건으로 견주게), 기록은 혼자 맞추기 기록이 아니라 `cube.challenge.v1`에 둔다.
+ *
  * `daily`: 오늘의 섞기(`/cube/daily`, docs/51 2-4). 혼자 맞추기와 같은 판에 날짜 씨앗 섞기·하루 한 번 기록·공유 글을 더한다.
  * 살펴보기는 설정과 상관없이 늘 켠다(모두 같은 조건으로 견주게)
  */
 export function SolveApp({
   mode,
   daily = false,
+  challenge = false,
 }: {
   mode: SolveMode;
   daily?: boolean;
+  challenge?: boolean;
 }) {
   const settings = useCubeSettings();
   const [n, setN] = useState(3);
-  const sizes: readonly number[] = daily ? DAILY_SIZES : SIZES;
+  const sizes: readonly number[] = daily
+    ? DAILY_SIZES
+    : challenge
+      ? CHALLENGE_SIZES
+      : SIZES;
+  // 제한 도전: 고른 체력·어려움(크기는 n), 이 기기 기록, 지금 판
+  const [kind, setKind] = useState<ChallengeKind>("time");
+  const [level, setLevel] = useState<ChallengeLevel>("normal");
+  const [challenges, setChallenges] = useState<ChallengeEntry[]>([]);
+  const [run, setRun] = useState<ChallengeRun | null>(null);
+  const runRef = useRef<ChallengeRun | null>(null);
+  runRef.current = run;
+  const [lastEntry, setLastEntry] = useState<ChallengeEntry | null>(null);
+  useEffect(() => {
+    if (!challenge) return;
+    const p = loadPick();
+    setN(p.n);
+    setKind(p.kind);
+    setLevel(p.level);
+    setChallenges(loadChallenges());
+  }, [challenge]);
+  const pick: ChallengePick = { n, kind, level };
   // 오늘의 섞기: 날짜(한국 시각), 이 기기의 날마다 기록, 지금 판
   const [today, setToday] = useState("");
   const [dailyList, setDailyList] = useState<DailyEntry[]>([]);
@@ -177,6 +236,7 @@ export function SolveApp({
       if (cue === "inspect8" || cue === "inspect12")
         playCubeCue(s, "cubeInspect");
       else if (cue === "solved") playCubeCue(s, "cubeSolved");
+      else if (cue === "low") playCubeCue(s, "cubeInspect");
       else playCubeCue(s, "invalid");
     };
     const made: SolveSession = new SolveSession({
@@ -187,6 +247,39 @@ export function SolveApp({
       onChange: bump,
       onCue,
       onRecord: (r) => {
+        if (challenge) {
+          // 제한 도전은 혼자 맞추기 기록(평균)에 넣지 않고 따로 둔다
+          const c = runRef.current;
+          if (!c) return;
+          const stages = stageCount(made.splits);
+          const left = made.hpLeft() ?? 0;
+          const reason = made.result?.dnfReason;
+          const entry: ChallengeEntry = {
+            at: r.at,
+            n: r.n,
+            kind: c.pick.kind,
+            level: c.pick.level,
+            ok: r.ms !== null,
+            score: challengeScore(c.pick.kind, stages, left),
+            stages,
+            left,
+            ms: made.playedMs,
+            moves: c.pick.kind === "moves" ? made.limitMoves : made.moveCount,
+            budget: c.budget,
+            ...(c.short === null ? {} : { short: c.short }),
+            scramble: r.scramble,
+            ...(r.seed === undefined ? {} : { seed: r.seed }),
+            ...(r.splits ? { splits: r.splits } : {}),
+            ...(reason === "time" ||
+            reason === "moves" ||
+            reason === "inspection"
+              ? { reason }
+              : {}),
+          };
+          setLastEntry(entry);
+          setChallenges(addChallenge(entry));
+          return;
+        }
         const a = attemptRef.current;
         if (daily) {
           // 연습은 어디에도 남기지 않는다. 기록 시도는 혼자 맞추기 기록(평균·골드)과 날마다 기록에 함께
@@ -196,7 +289,8 @@ export function SolveApp({
           setDailyList(
             finishDaily(a.date, {
               ...r,
-              ...(made.result?.dnfReason
+              ...(made.result?.dnfReason === "inspection" ||
+              made.result?.dnfReason === "unsolved"
                 ? { dnfReason: made.result.dnfReason }
                 : {}),
               marks: markString(made.splits, averagesFor(a.startedAt, before)),
@@ -215,7 +309,7 @@ export function SolveApp({
     });
     return made;
   }, `${n}-${mode}`);
-  session.inspection = daily || settings.inspection;
+  session.inspection = daily || challenge || settings.inspection;
 
   useEffect(() => {
     setRecords(loadRecords(mode, n));
@@ -258,6 +352,28 @@ export function SolveApp({
         seed,
       );
       if (stale()) return;
+      // 제한 도전: 수 체력은 이 섞기의 짧은 풀이가 있어야 정해진다
+      let limit: ReturnType<typeof limitFor> | undefined;
+      if (challenge) {
+        let shortMoves: number | null = null;
+        if (kind === "moves") {
+          try {
+            const start = applyMoves(n, solvedCube(n), parseMoves(n, s.text));
+            shortMoves = (await shortSolutionInWorker(n, start))?.moves ?? null;
+          } catch {
+            shortMoves = null;
+          }
+          if (stale()) return;
+        }
+        limit = limitFor(n, kind, level, shortMoves);
+        setRun({
+          pick: { n, kind, level },
+          budget: limit.kind === "time" ? limit.startMs : limit.budget,
+          short: shortMoves,
+          priorBest: bestScore(loadChallenges(), { n, kind, level }),
+        });
+        setLastEntry(null);
+      }
       clearMet();
       setPrior(loadRecords(mode, n));
       if (daily) {
@@ -267,7 +383,7 @@ export function SolveApp({
         setToday(date);
         setAttempt({ kind: begun.kind, date, startedAt: now });
       }
-      session.start(s.text, seed);
+      session.start(s.text, seed, limit);
       sync();
       if (!s.official) setNotice(TEMP_SCRAMBLE);
     } catch {
@@ -275,7 +391,19 @@ export function SolveApp({
     } finally {
       if (id === scrambleRequest.current) setPreparing(false);
     }
-  }, [preparing, n, mode, daily, session, sync, stopReplay, clearMet]);
+  }, [
+    preparing,
+    n,
+    mode,
+    daily,
+    challenge,
+    kind,
+    level,
+    session,
+    sync,
+    stopReplay,
+    clearMet,
+  ]);
 
   const onMove = useCallback(
     (move: Parameters<SolveSession["input"]>[0], notation: string) => {
@@ -366,6 +494,16 @@ export function SolveApp({
     attempt?.kind === "official" &&
     (phase === "inspect" || phase === "ready" || phase === "solving");
   officialLiveRef.current = officialLive;
+  /** 제한 도전이 진행 중(크기·체력·어려움 바꾸기를 막는다) */
+  const challengeLive =
+    challenge &&
+    (phase === "inspect" || phase === "ready" || phase === "solving");
+  const choosePick = (next: Partial<ChallengePick>) => {
+    const p = { ...pick, ...next };
+    savePick(p);
+    if (next.kind) setKind(next.kind);
+    if (next.level) setLevel(next.level);
+  };
   const todayEntry = today ? dailyEntry(dailyList, today, n) : undefined;
   const doneToday = !!todayEntry && !officialLive;
   // 「외우는 동안에는…」은 외우는 동안만. 맞추기를 시작하거나 끝나면 지운다
@@ -418,7 +556,11 @@ export function SolveApp({
     value: ShortSolution;
   } | null>(null);
   const solvedScramble =
-    mode === "solo" && n <= 3 && phase === "done" && session.result?.ms != null
+    mode === "solo" &&
+    !challenge &&
+    n <= 3 &&
+    phase === "done" &&
+    session.result?.ms != null
       ? session.scramble
       : null;
   useEffect(() => {
@@ -465,9 +607,11 @@ export function SolveApp({
           <h1 className="font-bold text-lg">
             {daily
               ? "오늘의 섞기"
-              : mode === "blind"
-                ? "블라인드(가상)"
-                : "혼자 맞추기"}
+              : challenge
+                ? "제한 도전"
+                : mode === "blind"
+                  ? "블라인드(가상)"
+                  : "혼자 맞추기"}
           </h1>
           {daily && today && (
             <span className="text-sm text-white/60 tabular-nums">
@@ -482,18 +626,54 @@ export function SolveApp({
               오늘 완료
             </span>
           )}
-          {!daily && mode === "solo" && <DailyLink />}
-          <label className="ml-auto flex items-center gap-1 text-sm">
+          {!daily && !challenge && mode === "solo" && (
+            <>
+              <DailyLink />
+              <a
+                href="/cube/challenge"
+                data-cube-challenge-link
+                className="inline-flex min-h-8 items-center rounded-full border border-white/15 px-2.5 text-white/80 text-xs hover:bg-white/10"
+              >
+                제한 도전
+              </a>
+            </>
+          )}
+          {challenge && (
+            <div className="ml-auto flex items-center gap-3">
+              <PickSelect
+                label="체력"
+                attr="data-cube-challenge-kind"
+                value={kind}
+                options={CHALLENGE_KINDS.map((k) => [k, KIND_LABEL[k]])}
+                disabled={preparing || challengeLive}
+                onChange={(v) => choosePick({ kind: v as ChallengeKind })}
+              />
+              <PickSelect
+                label="어려움"
+                attr="data-cube-challenge-level"
+                value={level}
+                options={CHALLENGE_LEVELS.map((l) => [l, LEVEL_LABEL[l]])}
+                disabled={preparing || challengeLive}
+                onChange={(v) => choosePick({ level: v as ChallengeLevel })}
+              />
+            </div>
+          )}
+          <label
+            className={`${challenge ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
+          >
             크기
             <select
               data-cube-size
               value={n}
-              disabled={preparing || officialLive}
+              disabled={preparing || officialLive || challengeLive}
               onChange={(e) => {
                 stopReplay();
                 scrambleRequest.current++;
                 setPreparing(false);
                 setAttempt(null);
+                setRun(null);
+                setLastEntry(null);
+                if (challenge) savePick({ ...pick, n: Number(e.target.value) });
                 setN(Number(e.target.value));
                 e.target.blur();
               }}
@@ -591,6 +771,23 @@ export function SolveApp({
               </p>
             )}
 
+            {challenge && run && phase !== "free" && (
+              <HpBar
+                kind={run.pick.kind}
+                left={session.hpLeft() ?? 0}
+                max={session.hpMax ?? 1}
+                refill={
+                  run.pick.kind === "time" &&
+                  phase === "solving" &&
+                  session.lastRefillAt !== null &&
+                  Date.now() - session.lastRefillAt < REFILL_SHOW_MS
+                    ? session.limit?.kind === "time"
+                      ? session.limit.refillMs
+                      : null
+                    : null
+                }
+              />
+            )}
             {showProgress && (
               <>
                 <ProgressMeter
@@ -607,7 +804,18 @@ export function SolveApp({
                 )}
               </>
             )}
-            {phase === "done" && result && (
+            {phase === "done" && result && challenge && lastEntry && (
+              <ChallengeResult
+                entry={lastEntry}
+                best={
+                  lastEntry.score > 0 &&
+                  (run?.priorBest == null || lastEntry.score > run.priorBest)
+                }
+                splits={session.splits}
+                gold={goldSplits(session.splits, bests)}
+              />
+            )}
+            {phase === "done" && result && !challenge && (
               <ResultBox
                 mode={mode}
                 result={result}
@@ -668,7 +876,9 @@ export function SolveApp({
             />
           </section>
 
-          {daily ? (
+          {challenge ? (
+            <ChallengePanel pick={pick} entries={challenges} />
+          ) : daily ? (
             <DailyPanel
               today={today}
               n={n}
@@ -735,6 +945,45 @@ export function SolveApp({
         </div>
       </main>
     </div>
+  );
+}
+
+/** 머리의 작은 고르기(체력·어려움) */
+function PickSelect({
+  label,
+  attr,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  attr: string;
+  value: string;
+  options: readonly (readonly [string, string])[];
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1 text-sm">
+      {label}
+      <select
+        {...{ [attr]: "" }}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => {
+          onChange(e.target.value);
+          e.target.blur();
+        }}
+        className="rounded bg-white/10 px-2 py-1 disabled:opacity-60"
+      >
+        {options.map(([v, text]) => (
+          <option key={v} value={v} className="bg-neutral-800">
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

@@ -17,6 +17,7 @@ import {
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import { LOW_RATIO, MoveCounter, type SessionLimit } from "./challenge";
 import { COMBO_SHOW, longestCombo } from "./flow/strip";
 import {
   formatSplits,
@@ -45,7 +46,13 @@ export type SolvePhase =
   | "blindSolve"
   | "done";
 
-export type SessionCue = "inspect8" | "inspect12" | "solved" | "dnf";
+export type SessionCue =
+  | "inspect8"
+  | "inspect12"
+  | "solved"
+  | "dnf"
+  /** 제한 도전: 체력이 20% 아래로 내려감 */
+  | "low";
 
 export interface SolveResult {
   /** 맞춘 시간(ms, 벌점 빼고). DNF면 null */
@@ -57,7 +64,7 @@ export interface SolveResult {
   /** 블라인드: 맞추기만의 시간 */
   execMs?: number;
   /** 왜 DNF인가 */
-  dnfReason?: "inspection" | "unsolved";
+  dnfReason?: "inspection" | "unsolved" | "time" | "moves";
 }
 
 export interface MoveEntry {
@@ -130,6 +137,23 @@ export class SolveSession {
   private disposedFlag = false;
   inspection: boolean;
 
+  /**
+   * 제한 도전의 체력(docs/51 2-3). `start`에서 판마다 정한다. 없으면 보통 혼자 맞추기.
+   * 시간 체력은 첫 면 돌리기부터 줄고(살펴보기 +2초 벌점은 체력에서 뺀다), 칩 하나마다 채워진다(다 맞춘 수는 빼고).
+   * 수 체력은 `MoveCounter`(HTM)로 세어 체력을 넘는 수를 두면 끝난다
+   */
+  limit: SessionLimit | null = null;
+  private counter = new MoveCounter();
+  /** 시간 체력: 0이 되는 시각(clock) */
+  private deadline = 0;
+  private limitTimers: (() => void)[] = [];
+  /** 시간 체력: 채운 횟수와 마지막으로 채운 시각(clock, 화면의 「+10초」) */
+  refills = 0;
+  lastRefillAt: number | null = null;
+  /** 끝났을 때 남은 체력 */
+  private leftAtEnd: number | null = null;
+  private lowCued = false;
+
   constructor(opts: SolveSessionOptions) {
     this.opts = opts;
     this.n = opts.n;
@@ -174,9 +198,11 @@ export class SolveSession {
   }
 
   /** 섞기 글을 받아 새 판을 연다 */
-  start(scramble: string, seed?: number): void {
+  start(scramble: string, seed?: number, limit?: SessionLimit): void {
     if (this.disposedFlag) return;
     this.clearTimers();
+    this.clearLimit();
+    this.limit = limit ?? null;
     const moves = parseMoves(this.n, scramble);
     let s = solvedCube(this.n);
     for (const m of moves) s = applyMove(this.n, s, m);
@@ -190,6 +216,12 @@ export class SolveSession {
     this.penalty = 0;
     this.splits = [];
     this.bestProgress = 0;
+    this.counter.reset();
+    this.refills = 0;
+    this.lastRefillAt = null;
+    this.leftAtEnd = null;
+    this.lowCued = false;
+    this.solveEnd = 0;
     const now = this.clock.now();
     this.phaseStart = now;
     if (this.mode === "blind") {
@@ -215,6 +247,8 @@ export class SolveSession {
   /** 맞춘 상태로(판을 버린다) */
   reset(): void {
     this.clearTimers();
+    this.clearLimit();
+    this.limit = null;
     this.phase = "free";
     this.state = solvedCube(this.n);
     this.scramble = "";
@@ -225,7 +259,36 @@ export class SolveSession {
     this.result = null;
     this.splits = [];
     this.bestProgress = 0;
+    this.counter.reset();
+    this.refills = 0;
+    this.lastRefillAt = null;
+    this.leftAtEnd = null;
+    this.lowCued = false;
+    this.solveEnd = 0;
     this.changed();
+  }
+
+  /** 제한 도전: 처음 체력(시간은 ms, 수는 수). 막대의 100% */
+  get hpMax(): number | null {
+    const l = this.limit;
+    if (!l) return null;
+    return l.kind === "time" ? l.startMs : l.budget;
+  }
+
+  /** 제한 도전: 체력으로 센 수(HTM) */
+  get limitMoves(): number {
+    return this.counter.count;
+  }
+
+  /** 제한 도전: 지금 남은 체력(시간은 ms, 수는 수). 체력이 없는 판이면 null */
+  hpLeft(): number | null {
+    const l = this.limit;
+    if (!l) return null;
+    if (this.leftAtEnd !== null) return this.leftAtEnd;
+    if (l.kind === "moves") return Math.max(0, l.budget - this.counter.count);
+    if (this.phase === "solving")
+      return Math.max(0, this.deadline - this.clock.now());
+    return l.startMs - (this.phase === "ready" ? this.penalty : 0);
   }
 
   /** 지금 상태의 진행(조각 점수·큰 큐브 숫자). 같은 상태면 다시 계산하지 않는다 */
@@ -276,11 +339,13 @@ export class SolveSession {
     if (counting || this.phase === "inspect" || this.phase === "ready")
       this.history.push({ notation, move, t: now - this.solveStart });
     if (!rotation) this.moveCount++;
+    const solved = this.phase === "solving" && isSolved(this.n, this.state);
     // 큐브 돌리기는 색 기준 판정을 바꾸지 않으니 세지 않는다
     if (this.phase === "solving" && this.mode === "solo" && !rotation)
-      this.track(now - this.solveStart);
-    if (this.phase === "solving" && isSolved(this.n, this.state))
-      this.finishSolo(now);
+      this.track(now - this.solveStart, solved);
+    if (this.phase === "solving" && this.limit?.kind === "moves")
+      this.countLimit(move, rotation, solved, now);
+    if (this.phase === "solving" && solved) this.finishSolo(now);
     this.changed();
     return "applied";
   }
@@ -339,6 +404,7 @@ export class SolveSession {
   dispose(): void {
     this.disposedFlag = true;
     this.clearTimers();
+    this.clearLimit();
   }
 
   get disposed(): boolean {
@@ -354,20 +420,120 @@ export class SolveSession {
     this.solveStart = now;
     this.phase = "solving";
     if (wasInspect) this.penalty = inspected > INSPECTION_MS ? 2_000 : 0;
+    const l = this.limit;
+    if (l?.kind === "time") {
+      this.deadline = now + l.startMs - this.penalty;
+      this.armTime();
+    }
+  }
+
+  /** 시간 체력: 0이 되는 때와 20% 아래로 내려가는 때를 건다 */
+  private armTime(): void {
+    const l = this.limit;
+    if (l?.kind !== "time") return;
+    this.clearLimit();
+    const now = this.clock.now();
+    const left = this.deadline - now;
+    const lowAt = left - l.startMs * LOW_RATIO;
+    if (lowAt > 0) {
+      this.lowCued = false;
+      this.limitTimers.push(this.clock.after(lowAt, () => this.lowCue()));
+    } else if (left > 0) this.lowCue();
+    this.limitTimers.push(
+      this.clock.after(Math.max(0, left), () => this.limitOut("time")),
+    );
+  }
+
+  /** 수 체력: 한 수를 세고, 넘으면 끝 */
+  private countLimit(
+    move: CubeMove,
+    rotation: boolean,
+    solved: boolean,
+    now: number,
+  ): void {
+    const l = this.limit;
+    if (l?.kind !== "moves") return;
+    this.counter.push(move, rotation, this.n);
+    if (solved) return;
+    const left = l.budget - this.counter.count;
+    if (left < 0) {
+      this.limitOut("moves", now);
+      return;
+    }
+    if (left < l.budget * LOW_RATIO) this.lowCue();
+    else this.lowCued = false;
+  }
+
+  private lowCue(): void {
+    if (this.lowCued) return;
+    this.lowCued = true;
+    this.cue("low");
+  }
+
+  /** 체력이 다했다 */
+  private limitOut(reason: "time" | "moves", at?: number): void {
+    if (this.disposedFlag || this.phase !== "solving") return;
+    const now = at ?? this.clock.now();
+    this.leftAtEnd = 0;
+    this.result = {
+      ms: null,
+      penalty: this.penalty,
+      moves: this.moveCount,
+      dnfReason: reason,
+    };
+    this.solveEnd = now;
+    this.phase = "done";
+    this.clearTimers();
+    this.clearLimit();
+    this.cue("dnf");
+    this.record();
+    this.changed();
+  }
+
+  /** 끝난 판이 맞추기 시작부터 걸린 시간(ms, 살펴보기에서 끝났으면 0) */
+  get playedMs(): number {
+    return this.phase === "done"
+      ? Math.max(0, this.solveEnd - this.solveStart)
+      : 0;
+  }
+  private solveEnd = 0;
+
+  private clearLimit(): void {
+    for (const off of this.limitTimers) off();
+    this.limitTimers = [];
   }
 
   private penalty = 0;
 
   /** 이정표·막대 눈금을 고친다(맞추는 동안 수마다) */
-  private track(t: number): void {
+  private track(t: number, solved: boolean): void {
     const value = this.progress.value;
     if (value > this.bestProgress) this.bestProgress = value;
+    let fresh = false;
     for (const id of milestonesOf(this.n, this.state))
-      if (!this.splits.some((x) => x.id === id))
+      if (!this.splits.some((x) => x.id === id)) {
         this.splits.push({ id, ms: t });
+        fresh = true;
+      }
+    // 시간 체력: 새 칩 하나에 한 번 채운다(다 맞춘 수는 채우지 않는다)
+    const l = this.limit;
+    if (fresh && !solved && l?.kind === "time") {
+      this.deadline += l.refillMs;
+      this.refills++;
+      this.lastRefillAt = this.clock.now();
+      this.armTime();
+    }
   }
 
   private finishSolo(now: number): void {
+    if (this.limit) {
+      this.leftAtEnd =
+        this.limit.kind === "time"
+          ? Math.max(0, this.deadline - now)
+          : Math.max(0, this.limit.budget - this.counter.count);
+      this.clearLimit();
+    }
+    this.solveEnd = now;
     this.result = {
       ms: now - this.solveStart,
       penalty: this.penalty,
@@ -381,6 +547,7 @@ export class SolveSession {
 
   private inspectionTimeout(): void {
     if (this.disposedFlag || this.phase !== "inspect") return;
+    if (this.limit) this.leftAtEnd = 0;
     this.result = {
       ms: null,
       penalty: 0,

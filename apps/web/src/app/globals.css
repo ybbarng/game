@@ -210,11 +210,33 @@ html:has([data-game="cube"]) body {
   background-color: rgba(251, 191, 36, 0.13);
   box-shadow: inset 0 -2px 0 rgba(252, 211, 77, 0.45);
 }
+/* 제한 도전: 시간 체력을 채운 「+10초」가 살짝 떠오르며 사라진다(docs/51 2-3). 보이는 동안은 화면이 정한다 */
+@keyframes cube-hp-refill {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.cube-hp-refill {
+  animation: cube-hp-refill 1200ms ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
   .cube-flow-pop,
   .cube-flow-bump,
   .cube-milestone-in,
   .cube-gold,
+  .cube-hp-refill,
   .cube-race-toast {
     animation: none;
   }
