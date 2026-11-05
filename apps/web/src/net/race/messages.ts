@@ -63,6 +63,11 @@ export type RaceMessage =
       of: string;
       /** 보낸 기기가 본 하한(ms). null이면 끊김 등으로 확인 약함 */
       bound: number | null;
+      /**
+       * 중간 지점 하한이면 그 수 번호(1부터, `RaceOptions.checkpoints`를 켠 판만). 없으면 맞춘 시각의 하한.
+       * 켠 판은 판정 설정 지문이 달라 이 칸을 모르는 옛 판 화면과는 판이 열리지 않는다
+       */
+      at?: number;
     };
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -133,7 +138,15 @@ export function parseRaceMessage(raw: unknown): RaceMessage | null {
     case "race-bound":
       if (!isStr(raw.of) || !(raw.bound === null || isNum(raw.bound)))
         return null;
-      return { type: raw.type, ...base, of: raw.of, bound: raw.bound };
+      if (raw.at !== undefined && !(isInt(raw.at) && (raw.at as number) >= 1))
+        return null;
+      return {
+        type: raw.type,
+        ...base,
+        of: raw.of,
+        bound: raw.bound,
+        ...(isInt(raw.at) ? { at: raw.at as number } : {}),
+      };
     default:
       return null;
   }

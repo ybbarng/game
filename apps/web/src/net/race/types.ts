@@ -37,6 +37,45 @@ export interface RaceGame<Move, State> {
    * 없으면 모두 센다. 의심 표시(수가 적음·고른 간격·첫 수 빠르기)가 이것으로 센다
    */
   isTurn?(move: string): boolean;
+  /**
+   * 그 상태가 지난 중간 지점 이름들(체력바 대결의 이정표 등). `RaceOptions.checkpoints`를 켠 판에서만 부른다.
+   * 처음 지난 수마다 대결 틀이 증인 하한을 모아 그 시각을 확인한다(`RaceSession.checkpointLog`)
+   */
+  checkpointsOf?(state: State, player?: string): readonly string[];
+}
+
+/** 한 사람이 처음 지난 중간 지점 하나(`RaceSession.checkpointLog`) */
+export interface CheckpointMark {
+  /** 몇 번째 수에서(1부터) */
+  at: number;
+  /** 그 사람이 수에 단 시각(풀림 기준 ms) */
+  t: number;
+  /** 이 수에서 처음 지난 지점 */
+  ids: readonly string[];
+  /** 증인마다 본 하한(null은 끊김 등으로 확인 약함) */
+  bounds: Record<string, number | null>;
+  /** 이 기기가 기다릴 증인 하한을 다 받았나(끊긴 증인은 기다리지 않는다) */
+  settled: boolean;
+}
+
+/** 중간 지점을 쓰는 게임이 판정에 쓰는 한 사람의 기록(이 기기가 받은 만큼) */
+export interface CheckpointLog {
+  status: "playing" | PlayerStatus;
+  reason?: string;
+  /**
+   * 이 시각보다 이른 수는 모두 받았다(풀림 기준 ms). 끝났거나 빠진 사람은 Infinity, 나는 지금 시각,
+   * 남은 받은 마지막 수의 시각(수는 차례대로 오고 시각이 거꾸로 가지 않는다)
+   */
+  horizon: number;
+  /** 받은(둔) 마지막 수의 시각. 수가 없으면 0 */
+  last: number;
+  marks: CheckpointMark[];
+  /** 맞췄다(대결 틀이 확인한 뒤): 알린 시각과 증인 하한 */
+  done?: {
+    t: number;
+    bounds: Record<string, number | null>;
+    settled: boolean;
+  };
 }
 
 /** 그럴듯함 검사 기준. 게임이 넘긴다. 결과(순위)는 바꾸지 않고 표시만 한다(docs/46 3-4) */
@@ -85,6 +124,11 @@ export interface RaceOptions {
    * 0보다 큰 값이 있으면 판정 설정 지문에 넣는다(없으면 예전 지문 그대로)
    */
   startDelayMs?: Record<string, number>;
+  /**
+   * 중간 지점 시각 확인(`RaceGame.checkpointsOf`, 체력바 대결 docs/47 9-6). 켜면 증인이 남의 지점을 처음 지난 수를 받을 때마다
+   * 도착 하한을 `race-bound`(`at` = 수 번호)로 모두에게 알리고, 판 끝은 그 하한도 기다린다. 켜면 판정 설정 지문에 넣는다
+   */
+  checkpoints?: boolean;
   /** `startState`에 그대로 넘긴다 */
   gameOptions?: unknown;
 }

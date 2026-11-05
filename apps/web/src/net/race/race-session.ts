@@ -37,6 +37,8 @@ import { arrivalBound, judge, type PlayerRecord } from "./judge";
 import { type OutEntry, parseRaceMessage, type RaceMessage } from "./messages";
 import { raceCommitment, raceSeed } from "./seed";
 import type {
+  CheckpointLog,
+  CheckpointMark,
   PeerView,
   PlayResult,
   RaceGame,
@@ -87,6 +89,9 @@ export const RACE_REASONS: readonly string[] = [
 /** 받은 수 순서 번호는 이미 적용한 수 + 이만큼까지만 받아 둔다(앞 수가 빠진 채 쌓이는 메모리) */
 export const MOVES_AHEAD = 512;
 
+/** 아직 적용하지 않은 수에 대한 중간 지점 하한은 한 사람마다 이만큼만 받아 둔다(엉뚱한 수 번호로 쌓아 두는 메모리) */
+const MARK_BOUNDS_AHEAD = 64;
+
 /**
  * 나를 기권으로 넣은 약속을 받은 뒤 다른 사람의 같은 말을 기다리는 시간(ms). 기한이 기기마다 지연만큼 다르게 끝나서
  * 정직한 기기들의 말은 몇백 ms 안에 모인다. 지나도 모두가 같은 말을 하지 않으면 말한 사람이 판을 떠난 것으로 본다
@@ -135,6 +140,12 @@ interface Record_<State> {
   /** 이 사람에 대해 증인들이 본 하한 */
   bounds: Map<string, number | null>;
   lateMoves: number;
+  /** 중간 지점(켠 판만): 처음 지난 수 번호(1부터) → 단 시각·지점 */
+  marks: Map<number, { t: number; ids: string[] }>;
+  /** 이미 지난 지점 */
+  passed: Set<string>;
+  /** 중간 지점 하한: 수 번호 → 증인 → 하한 */
+  markBounds: Map<number, Map<string, number | null>>;
 }
 
 /** 한 기기가 `race-seed`로 알린 것 */
@@ -205,6 +216,8 @@ export class RaceSession<Move, State> {
   private readonly rules: string;
   /** 사람마다 출발 늦추기(ms, 0보다 큰 것만) */
   private readonly startDelay: Map<string, number>;
+  /** 중간 지점 시각 확인(`RaceOptions.checkpoints`) */
+  private readonly checkpoints: boolean;
 
   private readonly out = new Map<string, string>();
   private readonly connected: Set<string>;
@@ -249,6 +262,7 @@ export class RaceSession<Move, State> {
     const delays = [...this.startDelay].sort(([a], [b]) =>
       a < b ? -1 : a > b ? 1 : 0,
     );
+    this.checkpoints = o.checkpoints === true && !!init.game.checkpointsOf;
     this.rules = JSON.stringify([
       this.inspectionMs,
       this.timeLimitMs,
@@ -259,6 +273,8 @@ export class RaceSession<Move, State> {
       this.disputeMs,
       // 출발 늦추기가 없으면 예전 지문 그대로(옛 판 화면과 함께 간다)
       ...(delays.length > 0 ? [delays] : []),
+      // 중간 지점도 켠 판만(끄면 예전 지문 그대로)
+      ...(this.checkpoints ? ["checkpoints"] : []),
     ]);
     this.connected = new Set(this.roster.filter((id) => id !== this.self));
     this.a = this.emptyAttempt([]);
@@ -328,6 +344,7 @@ export class RaceSession<Move, State> {
     rec.moveTimes.push(t);
     const m = this.game.encodeMove(move);
     rec.log.push({ m, t });
+    this.noteMark(rec, t);
     a.batch.push({ i, m, t });
     const solved = this.game.isSolved(next, this.self);
     if (solved) {
@@ -652,6 +669,28 @@ export class RaceSession<Move, State> {
         if (!rec) {
           this.future.push({ msg, from });
           return;
+        }
+        if (msg.at !== undefined) {
+          // 중간 지점 하한(켠 판만). 이미 지난 지점이거나, 아직 못 받은 수(앞쪽 몇 개)만 받아 둔다
+          if (!this.checkpoints) return;
+          let got = rec.markBounds.get(msg.at);
+          if (!got) {
+            const ahead =
+              msg.at > rec.applied && msg.at <= rec.applied + MOVES_AHEAD;
+            const pending = [...rec.markBounds.keys()].filter(
+              (k) => !rec.marks.has(k),
+            ).length;
+            if (
+              !rec.marks.has(msg.at) &&
+              !(ahead && pending < MARK_BOUNDS_AHEAD)
+            )
+              return;
+            got = new Map();
+            rec.markBounds.set(msg.at, got);
+          }
+          if (!got.has(from)) got.set(from, msg.bound);
+          this.maybeFinalize();
+          break;
         }
         if (!rec.bounds.has(from)) rec.bounds.set(from, msg.bound);
         this.maybeFinalize();
@@ -985,6 +1024,9 @@ export class RaceSession<Move, State> {
         raw: new Map(),
         bounds: new Map(),
         lateMoves: 0,
+        marks: new Map(),
+        passed: new Set(),
+        markBounds: new Map(),
       });
     if (!a.spectator) {
       const commits: Record<string, string> = {};
@@ -1172,6 +1214,29 @@ export class RaceSession<Move, State> {
       // 수마다 같은 하한: 몰아서 보낸 수는 보고 시각이 하한보다 이르다(표시만, docs/46 3-3)
       const lb = this.boundAt(rec.id, mv.arrivedAt);
       if (lb !== null && mv.t < lb) rec.lateMoves++;
+      // 중간 지점을 처음 지난 수: 증인이면 이 수가 닿은 시각으로 하한을 재어 모두에게 알린다(맞춘 시각과 같은 규칙)
+      if (
+        this.noteMark(rec, mv.t) &&
+        !this.a.spectator &&
+        this.a.revealedAt !== undefined &&
+        this.witness(this.self, rec.id)
+      ) {
+        const at = rec.applied;
+        let got = rec.markBounds.get(at);
+        if (!got) {
+          got = new Map();
+          rec.markBounds.set(at, got);
+        }
+        got.set(this.self, lb);
+        this.broadcast({
+          type: "race-bound",
+          race: this.race,
+          attempt: this.attemptNo,
+          of: rec.id,
+          bound: lb,
+          at,
+        });
+      }
     }
     const done = rec.done;
     if (!done || rec.applied < done.n) return null;
@@ -1211,18 +1276,98 @@ export class RaceSession<Move, State> {
     return arrivalBound(s, arrivedAt, this.inspectionMs, this.capMs);
   }
 
+  /**
+   * 중간 지점(켠 판만)을 처음 지났나 본다. 처음 지난 지점이 있으면 그 수(지금 `applied`번째)에 적어 두고 true.
+   * 지점 판정은 게임이 상태만 보고 하므로 같은 수 기록을 받은 기기는 같은 지점·같은 수 번호를 적는다
+   */
+  private noteMark(rec: Record_<State>, t: number): boolean {
+    if (!this.checkpoints || rec.state === undefined) return false;
+    const ids = (this.game.checkpointsOf?.(rec.state, rec.id) ?? []).filter(
+      (x) => !rec.passed.has(x),
+    );
+    if (ids.length === 0) return false;
+    for (const x of ids) rec.passed.add(x);
+    rec.marks.set(rec.applied, { t, ids: [...ids] });
+    return true;
+  }
+
+  /** 이 사람의 시각에 대해 기다릴 증인 하한을 다 받았나(빠진·끊긴 증인은 기다리지 않는다) */
+  private boundsSettled(
+    id: string,
+    bounds: Map<string, number | null> | undefined,
+  ): boolean {
+    for (const obs of this.a.members) {
+      if (obs === id || bounds?.has(obs)) continue;
+      if (this.out.has(obs) || !this.witness(obs, id)) continue;
+      if (obs === this.self || this.connected.has(obs)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * 중간 지점을 쓰는 게임(`RaceOptions.checkpoints`)이 판정에 쓰는 한 사람의 기록. 이 기기가 받은 만큼이다.
+   * 시각은 그 사람이 단 시각과 증인 하한을 함께 준다(인정 시각은 `judge.ts`의 `checkTime`으로 맞춘 시각과 같은 규칙).
+   * 판 끝(결과)에는 모든 기기가 기다릴 하한을 다 받은 뒤라, 같은 메시지를 받은 기기는 같은 기록을 낸다
+   */
+  checkpointLog(id: string): CheckpointLog | undefined {
+    const a = this.a;
+    const rec = a.records.get(id);
+    if (!rec) return undefined;
+    const out = this.out.get(id);
+    const status: CheckpointLog["status"] =
+      out !== undefined ? "forfeit" : rec.status;
+    const last = rec.moveTimes.at(-1) ?? 0;
+    let horizon: number;
+    if (status !== "playing" || this.result) horizon = Number.POSITIVE_INFINITY;
+    else if (id === this.self)
+      horizon =
+        a.released && a.releaseAt !== undefined
+          ? this.clock.now() - a.releaseAt
+          : 0;
+    else horizon = last;
+    const marks: CheckpointMark[] = [...rec.marks]
+      .sort(([x], [y]) => x - y)
+      .map(([at, m]) => {
+        const got = rec.markBounds.get(at);
+        return {
+          at,
+          t: m.t,
+          ids: m.ids,
+          bounds: Object.fromEntries(got ?? []),
+          settled: this.boundsSettled(id, got),
+        };
+      });
+    const reason = out ?? rec.reason;
+    return {
+      status,
+      ...(reason !== undefined ? { reason } : {}),
+      horizon,
+      last,
+      marks,
+      ...(rec.status === "done" && rec.done && out === undefined
+        ? {
+            done: {
+              t: rec.done.t,
+              bounds: Object.fromEntries(rec.bounds),
+              settled: this.boundsSettled(id, rec.bounds),
+            },
+          }
+        : {}),
+    };
+  }
+
   private maybeFinalize(): void {
     const a = this.a;
     if (this.result || a.seed === undefined) return;
     for (const id of a.members) {
       const rec = a.records.get(id) as Record_<State>;
       if (rec.status === "playing") return;
-      if (rec.status !== "done" || this.out.has(id)) continue;
-      for (const obs of a.members) {
-        if (obs === id || rec.bounds.has(obs)) continue;
-        if (this.out.has(obs) || !this.witness(obs, id)) continue;
-        if (obs === this.self || this.connected.has(obs)) return;
-      }
+      if (this.out.has(id)) continue;
+      // 중간 지점 하한도 기다린다(그 시각을 판정에 쓰는 게임이 기기마다 같은 값을 갖게)
+      for (const at of rec.marks.keys())
+        if (!this.boundsSettled(id, rec.markBounds.get(at))) return;
+      if (rec.status !== "done") continue;
+      if (!this.boundsSettled(id, rec.bounds)) return;
     }
     this.finalize();
   }
