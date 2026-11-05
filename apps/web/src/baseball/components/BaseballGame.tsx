@@ -312,8 +312,9 @@ export function BaseballGame({
       </span>
     ) : null;
   };
-  /** 기록 상자: 휴대폰은 몇 줄만 보이고(넘치면 상자 안에서 내린다), 넓은 PC는 자리판의 남은 높이를 채운다 */
-  const logClass = "mt-1.5 mb-1 max-h-28 lg:max-h-none lg:min-h-0 lg:flex-1";
+  /** 기록 상자: 휴대폰은 마지막 한 줄만 보이고(지난 줄은 상자 안에서 올려 본다), 넓은 PC는 자리판의 남은 높이를 채운다 */
+  const logClass =
+    "mt-1 mb-0.5 max-h-[4.25rem] lg:max-h-none lg:min-h-0 lg:flex-1";
   /** 넓은 PC에서 두 자리판이 왼쪽 기둥의 남은 높이를 나눠 쓴다 */
   const seatClass = "flex flex-col lg:min-h-0 lg:flex-1";
 
@@ -383,8 +384,14 @@ export function BaseballGame({
       name={opponent}
       score={`${view.wins[opp] ?? 0}승`}
       token={badgeTokenOf(opp)}
-      detail={
-        view.commits[opp] && !roundOver ? "상대 수는 잠겨 있어요 🔒" : null
+      // 이름 줄 끝에 둬 자리판 머리가 한 줄로 끝난다
+      extra={
+        view.commits[opp] &&
+        !roundOver && (
+          <span className="min-w-0 truncate text-white/50 text-xs">
+            상대 수는 잠겨 있어요 🔒
+          </span>
+        )
       }
       clock={clockOf(opp)}
       className={seatClass}
@@ -412,7 +419,7 @@ export function BaseballGame({
     <main
       data-game="baseball"
       className={cn(
-        "ballpark relative isolate flex min-h-dvh flex-col items-center gap-3 overflow-x-clip px-4 py-3 text-white split:grid split:grid-cols-[minmax(0,40rem)_minmax(0,21rem)] split:content-start split:items-start split:justify-center split:gap-x-5 lg:gap-x-8 lg:py-5",
+        "ballpark relative isolate flex min-h-dvh flex-col items-center gap-2 overflow-x-clip px-4 py-3 sm:gap-3 short-landscape:gap-y-1.5 short-landscape:py-2 text-white split:grid split:grid-cols-[minmax(0,40rem)_minmax(0,21rem)] split:content-start split:items-start split:justify-center split:gap-x-5 lg:gap-x-8 lg:py-5",
         mission && "pt-16",
       )}
     >
@@ -468,7 +475,7 @@ export function BaseballGame({
 
       {/* 마주 앉은 경기: 위(맞은편)에 상대 자리, 가운데 전광판, 아래(내 쪽)에 내 자리.
           가로 화면은 이 기둥이 왼쪽 높이를 채우고 타석과 숫자 패드는 오른쪽에 */}
-      <div className="flex w-full max-w-xl flex-col gap-2 split:col-start-1 split:row-span-6 split:row-start-2 lg:h-[max(26rem,calc(100dvh-4.5rem))] split:max-w-none">
+      <div className="flex w-full max-w-xl flex-col gap-2 split:col-start-1 split:row-start-2 lg:h-[max(26rem,calc(100dvh-4.5rem))] split:max-w-none">
         {theirSeat}
         <div className="shrink-0">
           <Scoreboard
@@ -483,105 +490,108 @@ export function BaseballGame({
         {mySeat}
       </div>
 
-      {/* 아래(세로)·오른쪽(가로): 타석과 숫자 패드, 상태, 단추 */}
-      {showPad && (
-        <div className="flex w-full max-w-xl flex-col items-center gap-2 split:col-start-2 split:row-start-2">
-          <PadArea
-            key={`${view.roundNumber}:${setup}:${padReset}`}
-            commit={decision?.kind === "commit"}
-            myTurn={myTurn}
-            rules={view.rules}
-            memo={memo}
-            onMemo={setMemo}
+      {/* 아래(세로)·오른쪽(가로): 타석과 숫자 패드, 상태, 단추. 가로 화면은 한 칸에 모아
+          왼쪽 기둥 높이에 밀려 줄 사이가 벌어지지 않게 한다 */}
+      <div className="contents split:col-start-2 split:row-start-2 split:flex split:min-w-0 split:flex-col split:items-center split:gap-3 short-landscape:gap-1.5">
+        {showPad && (
+          <div className="flex w-full max-w-xl flex-col items-center gap-2 split:col-start-2 split:row-start-2">
+            <PadArea
+              key={`${view.roundNumber}:${setup}:${padReset}`}
+              commit={decision?.kind === "commit"}
+              myTurn={myTurn}
+              rules={view.rules}
+              memo={memo}
+              onMemo={setMemo}
+            />
+          </div>
+        )}
+
+        {roundOver && (
+          <RevealPanel view={view} me={me} opponent={opponent} book={secrets} />
+        )}
+
+        <div className="relative w-full max-w-xl split:col-start-2">
+          <RoundOutcome
+            outcome={outcome}
+            status={notice ?? status}
+            summary={
+              puzzle
+                ? `${cluesOf(view, me).length}번 물음`
+                : `나 ${view.wins[me] ?? 0} : ${view.wins[opp] ?? 0} ${opponent}${view.rules.winsToFinish > 1 ? ` · ${view.rules.winsToFinish}승 먼저` : ""}`
+            }
           />
+          <ResultBanner banner={banner} seq={view.roundNumber} />
         </div>
-      )}
 
-      {roundOver && (
-        <RevealPanel view={view} me={me} opponent={opponent} book={secrets} />
-      )}
-
-      <div className="relative w-full max-w-xl split:col-start-2">
-        <RoundOutcome
-          outcome={outcome}
-          status={notice ?? status}
-          summary={
-            puzzle
-              ? `${cluesOf(view, me).length}번 물음`
-              : `나 ${view.wins[me] ?? 0} : ${view.wins[opp] ?? 0} ${opponent}${view.rules.winsToFinish > 1 ? ` · ${view.rules.winsToFinish}승 먼저` : ""}`
-          }
-        />
-        <ResultBanner banner={banner} seq={view.roundNumber} />
-      </div>
-
-      <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
-        {(playing || view.phase === "setup") && (
-          <>
-            {!online && !mission && (
-              <button
-                type="button"
-                disabled={!canUndo}
-                onClick={() => {
-                  setPadReset((n) => n + 1);
-                  undo();
-                }}
-                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
-              >
-                무르기
-              </button>
-            )}
-            {/* 혼자 푸는 문제는 잃을 판이 없으니 묻지 않고 바로 답을 보인다 */}
-            {puzzle ? (
-              <button
-                type="button"
-                onClick={() => submit({ type: "resign" })}
-                className={SMALL_BUTTON}
-              >
-                그만두고 답 보기
-              </button>
-            ) : (
-              <ResignButton
-                resetKey={view.guesses.length}
-                onResign={() => submit({ type: "resign" })}
-                className={SMALL_BUTTON}
-                keepLabel="계속 하기"
-              />
-            )}
-          </>
-        )}
-        {view.phase === "roundEnd" && !view.continued[me] && (
-          <button
-            type="button"
-            onClick={() => submit({ type: "continue" })}
-            className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-          >
-            다음 판
-          </button>
-        )}
-        {gameOver && !mission && (
-          <>
+        <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 split:col-start-2">
+          {(playing || view.phase === "setup") && (
+            <>
+              {!online && !mission && (
+                <button
+                  type="button"
+                  disabled={!canUndo}
+                  onClick={() => {
+                    setPadReset((n) => n + 1);
+                    undo();
+                  }}
+                  className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-sm disabled:opacity-40"
+                >
+                  무르기
+                </button>
+              )}
+              {/* 혼자 푸는 문제는 잃을 판이 없으니 묻지 않고 바로 답을 보인다 */}
+              {puzzle ? (
+                <button
+                  type="button"
+                  onClick={() => submit({ type: "resign" })}
+                  className={SMALL_BUTTON}
+                >
+                  그만두고 답 보기
+                </button>
+              ) : (
+                <ResignButton
+                  resetKey={view.guesses.length}
+                  onResign={() => submit({ type: "resign" })}
+                  className={SMALL_BUTTON}
+                  keepLabel="계속 하기"
+                />
+              )}
+            </>
+          )}
+          {view.phase === "roundEnd" && !view.continued[me] && (
             <button
               type="button"
-              onClick={onExit}
+              onClick={() => submit({ type: "continue" })}
               className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
             >
-              다시 하기
+              다음 판
             </button>
-            <a
-              href="/"
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
-            >
-              게임 목록
-            </a>
-          </>
+          )}
+          {gameOver && !mission && (
+            <>
+              <button
+                type="button"
+                onClick={onExit}
+                className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+              >
+                다시 하기
+              </button>
+              <a
+                href="/"
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-2"
+              >
+                게임 목록
+              </a>
+            </>
+          )}
+        </div>
+
+        {online && (
+          <div className="w-full max-w-xl split:col-start-2">
+            <ChatBox mySeat={me} />
+          </div>
         )}
       </div>
-
-      {online && (
-        <div className="w-full max-w-xl split:col-start-2">
-          <ChatBox mySeat={me} />
-        </div>
-      )}
 
       {calls.current && (
         <PitchCall

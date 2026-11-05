@@ -241,6 +241,67 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
 
+test("숫자야구: 휴대폰 세로·가로에서 숫자 패드·물어보기·기권이 내리지 않아도 첫 화면 안에 있다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== "phone-portrait",
+    "두 화면 크기를 이 시험 안에서 바꿔 본다",
+  );
+  // 판을 늘 같게 둔다(첫 시험과 같은 씨앗)
+  await page.addInitScript(() => {
+    let s = 1;
+    Math.random = () => {
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+    };
+  });
+  await page.goto("/baseball");
+  await startSolo(page);
+  await chooseRandomSecret(page);
+  // 두 사람 기록에 줄이 쌓인 뒤에 본다(기록이 늘어도 패드가 밀려나지 않아야 한다).
+  for (let i = 0; i < 3; i++) {
+    await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
+      timeout: 15_000,
+    });
+    await askNext(page, true);
+  }
+  await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
+    timeout: 15_000,
+  });
+  const targets = [
+    page.getByRole("img", { name: /^넣은 수 / }),
+    page.getByRole("button", { name: "1", exact: true }),
+    page.getByRole("button", { name: "지우기", exact: true }),
+    page.getByRole("button", { name: "물어보기" }),
+    page.getByRole("button", { name: "기권" }),
+  ];
+  for (const size of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    for (const target of targets)
+      await expect(async () => {
+        const box = await target.first().boundingBox();
+        expect(box).not.toBeNull();
+        if (!box) return;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.y).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+        expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      }).toPass({ intervals: [50], timeout: 5_000 });
+    await page.screenshot({
+      path: info.outputPath(
+        `baseball-fit-${size.width > size.height ? "landscape" : "portrait"}.png`,
+      ),
+    });
+  }
+});
+
 test("숫자야구 퍼즐: 컴퓨터 수만 맞히기", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "흐름은 화면 크기와 상관없다");
   await page.goto("/baseball");
