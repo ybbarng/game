@@ -46,6 +46,8 @@ export const GALAXY_FX = {
   completeSegment: 220,
   /** 별자리 완성: 다 이은 뒤 이름이 떠올라 머무는 시간 */
   completeName: 1500,
+  /** 별자리 완성: 선이 닿는 별 칸이 한 칸씩 반짝이는 시간 */
+  completeFlash: 700,
   /** 소행성대에 걸림 */
   jail: 1300,
   /**

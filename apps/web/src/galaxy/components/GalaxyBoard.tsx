@@ -9,10 +9,9 @@ import {
   requestById,
   starAt,
 } from "@game/galaxy-engine";
-import { type CSSProperties, useMemo } from "react";
-import { StarGlyph } from "@/components/star/StarGlyph";
+import { type CSSProperties, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/cn";
-import { BureauLogo } from "@/stardraw/components/BureauMarks";
+import { HDR_GLOWS_ON, useHdrScreen } from "@/stardraw/hdr-glow";
 import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
@@ -24,12 +23,12 @@ import {
   type Timeline,
 } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
-import { cellOf, SKY_SIZE, skyArt, squareCenter } from "../sky-art";
-import { groupColor, magScale, starRgb } from "../star-color";
+import { SKY_SIZE, skyArt, squareCenter } from "../sky-art";
+import { magScale, starRgb } from "../star-color";
 import { prefersReducedMotion } from "../store";
+import { BoardTile, type StationFx, type TileTier } from "./BoardTile";
 import { Die3D } from "./Dice3D";
 import { NoticePaper, ShipToken } from "./parts";
-import { nebulaStyle, TileSky } from "./TileSky";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 
@@ -54,71 +53,9 @@ const FIELD = Array.from({ length: 70 }, (_, i) => {
   };
 });
 
-/** 모퉁이 그림(칸 안 작은 그림) */
 /** 판 위 알림 상자가 그 단계 동안 떠 있게(`galaxy-toast` 애니메이션 길이) */
 function toastStyle(dur: number): CSSProperties {
   return { "--galaxy-toast-ms": `${dur}ms` } as CSSProperties;
-}
-
-function CornerArt({ kind }: { kind: string }) {
-  const common = "size-[62%] opacity-90";
-  if (kind === "base")
-    // 카노푸스 우주국: 별 따기와 같은 로고를 금빛 한 색으로(docs/48 15-4)
-    return (
-      <span aria-hidden="true" className={cn(common, "block text-amber-300")}>
-        <BureauLogo className="size-full drop-shadow-[0_0_6px_rgba(252,211,77,0.45)]" />
-      </span>
-    );
-  if (kind === "asteroid")
-    return (
-      <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-        <path d="M6 22 L11 15 L18 16 L21 23 L15 28 L8 27 Z" fill="#78716c" />
-        <path d="M22 12 L27 9 L32 12 L31 18 L25 19 Z" fill="#a8a29e" />
-        <path d="M24 26 L29 24 L33 28 L30 33 L25 32 Z" fill="#57534e" />
-        <circle cx="16" cy="9" r="1.6" fill="#a8a29e" />
-      </svg>
-    );
-  if (kind === "observatory")
-    return (
-      <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-        <path d="M8 32 H32 V26 Q20 12 8 26 Z" fill="#cbd5e1" />
-        <rect
-          x="18"
-          y="13"
-          width="5"
-          height="12"
-          fill="#1e293b"
-          transform="rotate(30 20 20)"
-        />
-        <circle cx="31" cy="8" r="1.6" fill="#fff" />
-        <circle cx="25" cy="5" r="1" fill="#fff" />
-      </svg>
-    );
-  if (kind === "comet")
-    return (
-      <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-        <defs>
-          <linearGradient id="galaxy-comet" x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="#7dd3fc" stopOpacity="0" />
-            <stop offset="1" stopColor="#e0f2fe" stopOpacity="0.9" />
-          </linearGradient>
-        </defs>
-        <path d="M5 35 L28 10 L33 14 Z" fill="url(#galaxy-comet)" />
-        <circle cx="30" cy="11" r="4" fill="#f0f9ff" />
-      </svg>
-    );
-  // 우주국 공문: 접힌 종이와 붉은 인장
-  return (
-    <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-      <path d="M9 9 H31 V31 H9 Z" fill="#f6efe0" />
-      <path
-        d="M13 15 H27 M13 19 H27 M13 23 H22"
-        stroke="#a8a29e"
-        strokeWidth="1.6"
-      />
-      <rect x="22" y="23" width="7" height="7" rx="1" fill="#cf3b26" />
-    </svg>
-  );
 }
 
 export interface BoardProps {
@@ -135,6 +72,10 @@ export interface BoardProps {
   follow?: boolean;
   /** 거래 고르기 중 담은 별 */
   marked?: ReadonlySet<number>;
+  /** 칸 카드로 크게 보는 칸: 같은 별자리 칸을 함께 밝히고 나머지는 한 발 물러난다 */
+  focus?: number | null;
+  /** 판 가운데 하늘 위에 띄울 칸 카드 */
+  card?: ReactNode;
 }
 
 /** 9 × 9 네모 고리 판과 가운데 하늘(docs/48 7-1) */
@@ -148,8 +89,13 @@ export function GalaxyBoard({
   name,
   follow = false,
   marked,
+  focus = null,
+  card,
 }: BoardProps) {
   const board = view.board;
+  const hdr = useHdrScreen() && HDR_GLOWS_ON;
+  const focusGroup =
+    focus === null ? null : (starAt(board, focus)?.group ?? null);
   const art = useMemo(() => skyArt(board), [board]);
   const step = activeStep(timeline, elapsed);
   const playing = elapsed < timeline.total;
@@ -403,140 +349,86 @@ export function GalaxyBoard({
 
         {/* 칸 32개 */}
         {board.squares.map((sq) => {
-          const { col, row } = cellOf(sq.index);
           const star = sq.star;
           const o = owner(sq.index);
-          const level = view.levels[sq.index] ?? 0;
-          const inSeason =
-            season !== null &&
-            star !== null &&
-            board.groups[star.group]?.home === season;
-          const dim = star !== null && moonlit === star.group;
-          const ownerColor = o >= 0 ? shipOf(o).color : null;
+          const group = star ? board.groups[star.group] : undefined;
+          const owned =
+            star && o >= 0
+              ? ((groupOwners[star.group] as Map<number, number[]>).get(o)
+                  ?.length ?? 0)
+              : 0;
+          const tier: TileTier =
+            !star || o < 0
+              ? "free"
+              : owned >= (group?.squares.length ?? 3)
+                ? "complete"
+                : owned >= 2
+                  ? "pair"
+                  : "owned";
+          // 별자리 완성 순간: 하늘의 선이 이 별에 닿는 박자에 이 칸이 반짝인다(한 칸씩)
+          let flash = false;
+          if (
+            linkStep &&
+            star &&
+            linkStep.group === star.group &&
+            linkStep.owned >= linkStep.size
+          ) {
+            const k = group?.squares.indexOf(sq.index) ?? 0;
+            const segs = art[star.group]?.segments.length ?? 3;
+            const start =
+              linkStep.at +
+              Math.round((k * Math.max(3, segs)) / Math.max(1, linkStep.size)) *
+                GALAXY_FX.completeSegment;
+            flash =
+              elapsed >= start && elapsed < start + GALAXY_FX.completeFlash;
+          }
+          const station: StationFx =
+            step?.kind === "build" && step.square === sq.index
+              ? step.what === "built"
+                ? "built"
+                : step.what === "sold"
+                  ? "sold"
+                  : null
+              : null;
           const label = star
-            ? `${star.star.ko}, ${board.groups[star.group]?.ko ?? ""}, ${money(star.value)}${o >= 0 ? `, ${name(o)}의 별` : ""}`
+            ? `${star.star.ko}, ${group?.ko ?? ""}, ${money(star.value)}${o >= 0 ? `, ${name(o)}의 별` : ""}`
             : squareName(board, sq.index);
           return (
-            <button
+            <BoardTile
               key={sq.index}
-              type="button"
-              data-square={sq.index}
-              data-owner={o >= 0 ? o : undefined}
-              data-selected={selected === sq.index || undefined}
-              data-moonlit={dim || undefined}
-              aria-label={label}
-              onClick={() => onPick?.(sq.index)}
-              onPointerEnter={(e) =>
-                e.pointerType === "mouse" && onHover?.(sq.index)
+              board={board}
+              sq={sq}
+              art={star ? art[star.group] : undefined}
+              owner={owner}
+              ownerName={o >= 0 ? name(o) : null}
+              tier={tier}
+              level={view.levels[sq.index] ?? 0}
+              mortgaged={view.mortgaged[sq.index] ?? false}
+              inSeason={
+                season !== null && star !== null && group?.home === season
               }
-              onPointerLeave={(e) =>
-                e.pointerType === "mouse" && onHover?.(null)
+              moonlit={star !== null && moonlit === star.group}
+              selected={selected === sq.index}
+              kin={
+                focusGroup !== null &&
+                star !== null &&
+                star.group === focusGroup &&
+                focus !== sq.index
               }
-              className={cn(
-                "absolute flex flex-col items-center justify-center overflow-hidden rounded-[10%] border bg-slate-900/55 p-0 outline-none transition-[box-shadow,border-color]",
-                "focus-visible:ring-2 focus-visible:ring-white",
-                ownerColor ? "border-2" : "border-white/10",
-                inSeason && "galaxy-season",
-                selected === sq.index && "ring-2 ring-white/80",
-                marked?.has(sq.index) && "ring-2 ring-amber-200",
-                pulseSquare === sq.index && "galaxy-pulse",
-                cardSquares.has(sq.index) && "galaxy-sparkle",
-                view.mortgaged[sq.index] && "opacity-55",
-              )}
-              style={{
-                left: `calc(${pct(col)} + 1px)`,
-                top: `calc(${pct(row)} + 1px)`,
-                width: `calc(${pct(1)} - 2px)`,
-                height: `calc(${pct(1)} - 2px)`,
-                ...(ownerColor
-                  ? {
-                      borderColor: ownerColor,
-                      boxShadow: `0 0 10px ${ownerColor}55, inset 0 0 8px ${ownerColor}33`,
-                    }
-                  : {}),
-              }}
-            >
-              {star ? (
-                <>
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0"
-                    style={nebulaStyle(sq.index, groupColor(board, star.group))}
-                  />
-                  {art[star.group] && (
-                    <TileSky
-                      art={art[star.group] as (typeof art)[number]}
-                      square={sq.index}
-                      owner={owner}
-                    />
-                  )}
-                  <span
-                    className="absolute inset-x-0 top-0 h-[13%]"
-                    style={{
-                      background: groupColor(board, star.group),
-                      opacity: 0.85,
-                    }}
-                  />
-                  <StarGlyph
-                    k={star.star.k}
-                    mag={star.star.mag}
-                    seed={sq.index}
-                    className={cn(
-                      "@min-[30rem]:top-[46%] transition-opacity duration-700",
-                      dim && "opacity-45",
-                    )}
-                  />
-                  {dim && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(241,245,249,0.32),rgba(241,245,249,0.06)_55%,transparent_75%)]"
-                    />
-                  )}
-                  <span className="@max-[30rem]:hidden absolute bottom-[8%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/85 leading-none [text-shadow:0_1px_2px_#000]">
-                    {star.star.ko}
-                  </span>
-                  {level > 0 && o >= 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-[17%] right-[8%] flex gap-[6%]"
-                      data-level={level}
-                    >
-                      {level >= 4 ? (
-                        <span
-                          className="block size-[0.42rem] rounded-full border-2"
-                          style={{ borderColor: ownerColor ?? "#fff" }}
-                        />
-                      ) : (
-                        Array.from({ length: level }, (_, i) => (
-                          <span
-                            // biome-ignore lint/suspicious/noArrayIndexKey: 단 점은 차례만 있다
-                            key={i}
-                            className="block size-[0.22rem] rounded-full"
-                            style={{ background: ownerColor ?? "#fff" }}
-                          />
-                        ))
-                      )}
-                    </span>
-                  )}
-                  {view.mortgaged[sq.index] && (
-                    <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[clamp(6px,1.2cqw,9px)] text-white/80">
-                      맡김
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <CornerArt kind={sq.kind} />
-                  <span className="@max-[30rem]:hidden max-w-full truncate px-0.5 text-[clamp(7px,1.3cqw,10px)] text-white/70 leading-none">
-                    {sq.kind === "base"
-                      ? "우주국"
-                      : sq.kind === "notice"
-                        ? "공문"
-                        : squareName(board, sq.index)}
-                  </span>
-                </>
-              )}
-            </button>
+              faded={
+                focusGroup !== null &&
+                !(star !== null && star.group === focusGroup)
+              }
+              marked={marked?.has(sq.index) ?? false}
+              pulse={pulseSquare === sq.index}
+              sparkle={cardSquares.has(sq.index)}
+              flash={flash}
+              station={station}
+              label={label}
+              hdr={hdr}
+              onPick={onPick}
+              onHover={onHover}
+            />
           );
         })}
 
@@ -589,6 +481,19 @@ export function GalaxyBoard({
           />
         )}
       </div>
+      {card && (
+        <div
+          className="pointer-events-none absolute z-30 flex items-center justify-center"
+          style={{
+            left: `calc(${pct(1)} + 4px)`,
+            top: `calc(${pct(1)} + 4px)`,
+            width: `calc(${pct(7)} - 8px)`,
+            height: `calc(${pct(7)} - 8px)`,
+          }}
+        >
+          {card}
+        </div>
+      )}
     </div>
   );
 }

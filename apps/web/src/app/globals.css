@@ -515,6 +515,118 @@ html:has([data-game="galaxy"]) body {
   outline: 1px solid rgba(253, 230, 138, 0.28);
   outline-offset: -1px;
 }
+/*
+ * 이용료 단계(BoardTile, 2026-11-05): 완성한 별자리 칸은 주인 색 빛 테가 천천히 숨 쉰다(--owner).
+ * 움직임 줄이기면 숨 쉬지 않고 빛 테만 남는다
+ */
+@keyframes galaxy-complete {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px color-mix(in srgb, var(--owner) 55%, transparent),
+      inset 0 0 6px color-mix(in srgb, var(--owner) 30%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--owner) 90%, transparent),
+      inset 0 0 10px color-mix(in srgb, var(--owner) 50%, transparent);
+  }
+}
+.galaxy-complete {
+  border-width: 2px;
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--owner) 75%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--owner) 40%, transparent);
+  animation: galaxy-complete 3.2s ease-in-out infinite;
+}
+/* 별자리 완성 순간: 하늘의 선이 닿는 박자에 별 칸이 한 칸씩 반짝인다(GALAXY_FX.completeFlash) */
+@keyframes galaxy-tile-flash {
+  0% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  35% {
+    filter: brightness(1.9);
+    transform: scale(1.08);
+  }
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+.galaxy-tile-flash {
+  z-index: 5;
+  animation: galaxy-tile-flash 0.7s ease-out 1;
+}
+/* 정거장 점: 별 둘레 궤도를 천천히 돈다 */
+@keyframes galaxy-orbit {
+  to {
+    rotate: 360deg;
+  }
+}
+.galaxy-orbit {
+  animation: galaxy-orbit 24s linear infinite;
+}
+/* 정거장을 올린 순간: 새 점이 크게 빛나며 궤도에 붙는다 */
+@keyframes galaxy-dot-in {
+  0% {
+    scale: 3;
+    opacity: 0;
+    filter: brightness(2);
+  }
+  60% {
+    scale: 1.4;
+    opacity: 1;
+  }
+  100% {
+    scale: 1;
+    filter: brightness(1);
+  }
+}
+.galaxy-dot-in {
+  animation: galaxy-dot-in 0.65s ease-out both;
+}
+/* 정거장을 내린 순간: 점 하나가 궤도에서 떨어져 나가며 사라진다 */
+@keyframes galaxy-dot-out {
+  0% {
+    opacity: 1;
+    translate: -50% -50%;
+  }
+  100% {
+    opacity: 0;
+    translate: 60% 120%;
+  }
+}
+.galaxy-dot-out {
+  animation: galaxy-dot-out 0.65s ease-in both;
+}
+/* 큰 정거장이 선 순간: 고리가 넓게 퍼졌다가 별을 감싼다 */
+@keyframes galaxy-ring-in {
+  0% {
+    scale: 1.8;
+    opacity: 0;
+  }
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+.galaxy-ring-in {
+  animation: galaxy-ring-in 0.65s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-complete,
+  .galaxy-tile-flash,
+  .galaxy-orbit,
+  .galaxy-dot-in,
+  .galaxy-dot-out,
+  .galaxy-ring-in {
+    animation: none;
+  }
+  .galaxy-dot-out {
+    display: none;
+  }
+}
 /* 유성우의 밤: 판 전체가 조금 푸르고, 유성이 비스듬히 천천히 흐른다(제철 빛남처럼 은은하게) */
 .galaxy-meteor-sky {
   background-image: radial-gradient(
@@ -563,6 +675,25 @@ html:has([data-game="galaxy"]) body {
 }
 .galaxy-sheet {
   animation: galaxy-sheet 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 칸 카드: 누른 칸이 판 가운데에 크게 떠오른다 */
+@keyframes galaxy-card {
+  from {
+    scale: 0.92;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+.galaxy-card {
+  animation: galaxy-card 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-card {
+    animation: none;
+  }
 }
 /* 둘러앉은 판(docs/48 15-6). 넓은 화면: 판을 화면 높이에 맞춰 가운데, 자리 카드는 판 아래(나)·왼쪽·위·오른쪽, 결정·기록은 오른쪽 칸 */
 .galaxy-table-wide {

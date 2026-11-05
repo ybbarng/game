@@ -2,7 +2,8 @@
 // 보통 흰색보다 밝게 그린 그림 두 장을 만든다: 가로세로(＋) 빛줄기, 보너스 별용 대각선(✕) 빛줄기.
 // 보너스를 CSS로 돌리지 않는 것은 Safari가 transform이 걸린 HDR 그림을 SDR로 그린 적이 있어서다(아래).
 //
-//   node apps/web/scripts/build-stardraw-hdr-glow.mjs
+//   node apps/web/scripts/build-stardraw-hdr-glow.mjs                      (모두)
+//   node apps/web/scripts/build-stardraw-hdr-glow.mjs star-disc-hdr.avif   (은하 한 바퀴 칸 별 원반만)
 //
 // 형식: AVIF, BT.2020 색역 + PQ 전송 함수(CICP 9/16/9), 10비트, 알파 포함.
 // - PQ는 밝기를 절대값(nit)으로 적는다. 보통 흰색(HDR 기준 흰색)은 203 nit(ITU-R BT.2408).
@@ -43,12 +44,36 @@ const SPIKE_LEN = 0.62;
 const SPIKE_HALF = 0.016;
 const SPIKE_A = 0.85;
 
+/**
+ * 은하 한 바퀴 칸의 별 원반(docs/48 15-9): 빛줄기 없이 원반 가운데가 흰색보다 밝고 둘레로 번진다.
+ * 칸의 별 원반(StarGlyph) 지름의 2.4배로 그려 원반 = 그림 반지름 약 0.42. 가운데 흰 핵은 원반보다 조금 작게
+ */
+const GALAXY = {
+  disc: 0.24,
+  glowSigma: 0.36,
+  glowA: 0.45,
+  tailR: 0.14,
+  tailA: 0.06,
+  spikes: false,
+  tint: [1, 1, 1],
+};
+const STARDRAW = {
+  disc: DISC,
+  glowSigma: GLOW_SIGMA,
+  glowA: GLOW_A,
+  tailR: TAIL_R,
+  tailA: TAIL_A,
+  spikes: true,
+  tint: TINT,
+};
+
 const OUTS = [
-  { diag: false, name: "star-glow-hdr.avif" },
-  { diag: true, name: "star-glow-hdr-diag.avif" },
+  { diag: false, shape: STARDRAW, dir: "stardraw", name: "star-glow-hdr.avif" },
+  { diag: true, shape: STARDRAW, dir: "stardraw", name: "star-glow-hdr-diag.avif" },
+  { diag: false, shape: GALAXY, dir: "galaxy", name: "star-disc-hdr.avif" },
 ].map((o) => ({
   ...o,
-  path: fileURLToPath(new URL(`../public/stardraw/${o.name}`, import.meta.url)),
+  path: fileURLToPath(new URL(`../public/${o.dir}/${o.name}`, import.meta.url)),
 }));
 
 /** SMPTE ST 2084(PQ): 밝기(nit) → 0~1 신호 */
@@ -76,17 +101,17 @@ function spike(along, perp, len) {
 }
 
 /** 한 점(가운데에서 dx, dy, 그림 반지름 1 기준)의 알파. 색은 늘 NITS다 */
-function alphaAt(dx0, dy0, diag) {
+function alphaAt(dx0, dy0, diag, s) {
   // 대각선(✕)은 좌표를 45도 돌려 같은 빛줄기를 그린다(가로세로 길이는 같게)
   const k = Math.SQRT1_2;
   const dx = diag ? (dx0 + dy0) * k : dx0;
   const dy = diag ? (dy0 - dx0) * k : dy0;
   const r = Math.hypot(dx, dy);
-  const disc = 1 - smoothstep(DISC * 0.7, DISC * 1.25, r);
+  const disc = 1 - smoothstep(s.disc * 0.7, s.disc * 1.25, r);
   const glow =
-    GLOW_A * Math.exp(-((r / GLOW_SIGMA) ** 2)) +
-    TAIL_A / (1 + (r / TAIL_R) ** 2);
-  const spikes = Math.max(
+    s.glowA * Math.exp(-((r / s.glowSigma) ** 2)) +
+    s.tailA / (1 + (r / s.tailR) ** 2);
+  const spikes = !s.spikes ? 0 : Math.max(
     spike(Math.abs(dx), dy, SPIKE_LEN),
     spike(Math.abs(dy), dx, SPIKE_LEN * (diag ? 1 : 1.15)),
   );
@@ -95,15 +120,15 @@ function alphaAt(dx0, dy0, diag) {
   return a * (1 - smoothstep(0.85, 1, r));
 }
 
-function rgba16(diag) {
+function rgba16(diag, shape) {
   const stride = 1 + SIZE * 8;
   const raw = Buffer.alloc(stride * SIZE);
   const c = (SIZE - 1) / 2;
-  const signal = TINT.map((t) => Math.round(pq(NITS * t) * 65535));
+  const signal = shape.tint.map((t) => Math.round(pq(NITS * t) * 65535));
   for (let y = 0; y < SIZE; y++) {
     raw[y * stride] = 0; // 줄 필터 없음
     for (let x = 0; x < SIZE; x++) {
-      const alpha = alphaAt((x - c) / (SIZE / 2), (y - c) / (SIZE / 2), diag);
+      const alpha = alphaAt((x - c) / (SIZE / 2), (y - c) / (SIZE / 2), diag, shape);
       const o = y * stride + 1 + x * 8;
       for (let ch = 0; ch < 3; ch++) raw.writeUInt16BE(signal[ch], o + ch * 2);
       raw.writeUInt16BE(Math.round(alpha * 65535), o + 6);
@@ -121,7 +146,7 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-function png16(diag) {
+function png16(diag, shape) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(SIZE, 0);
   ihdr.writeUInt32BE(SIZE, 4);
@@ -130,20 +155,24 @@ function png16(diag) {
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(rgba16(diag), { level: 9 })),
+    chunk("IDAT", deflateSync(rgba16(diag, shape), { level: 9 })),
     chunk("IEND", Buffer.alloc(0)),
   ]);
 }
 
+/** 이름을 주면 그 그림만 만든다(예: star-disc-hdr.avif). 없으면 모두 */
 function main() {
-  for (const out of OUTS) build(out.diag, out.path);
+  const only = process.argv.slice(2);
+  for (const out of OUTS)
+    if (only.length === 0 || only.includes(out.name))
+      build(out.diag, out.shape, out.path);
 }
 
-function build(diag, OUT) {
+function build(diag, shape, OUT) {
   const dir = mkdtempSync(join(tmpdir(), "stardraw-hdr-"));
   try {
     const png = join(dir, "glow.png");
-    writeFileSync(png, png16(diag));
+    writeFileSync(png, png16(diag, shape));
     execFileSync(
       "avifenc",
       [
