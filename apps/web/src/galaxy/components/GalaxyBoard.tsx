@@ -1,6 +1,12 @@
 "use client";
 
-import { BANK, cardById, type GalaxyView, starAt } from "@game/galaxy-engine";
+import {
+  BANK,
+  cardById,
+  type GalaxyView,
+  moonGroup,
+  starAt,
+} from "@game/galaxy-engine";
 import { type CSSProperties, useMemo } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
@@ -159,6 +165,8 @@ export function GalaxyBoard({
   const owner = (sq: number) => (hidden.has(sq) ? -1 : (view.owners[sq] ?? -1));
   // 유성우의 밤에는 제철 1.5배 대신 모든 별이 2배라 제철 빛남을 끄고 판 전체에 유성을 흘린다
   const season = view.meteor ? null : view.season;
+  // 달 아래 별자리(이용료 절반): 그 별자리 칸은 달빛에 별이 흐리다
+  const moonlit = moonGroup(view);
   // 움직임 줄이기면 우주선도 미끄러지지 않고 바로 그 칸에 선다.
   const reduced = prefersReducedMotion();
 
@@ -410,7 +418,10 @@ export function GalaxyBoard({
           const o = owner(sq.index);
           const level = view.levels[sq.index] ?? 0;
           const inSeason =
-            season !== null && sq.side !== null && sq.side === season;
+            season !== null &&
+            star !== null &&
+            board.groups[star.group]?.home === season;
+          const dim = star !== null && moonlit === star.group;
           const ownerColor = o >= 0 ? shipOf(o).color : null;
           const label = star
             ? `${star.star.ko}, ${board.groups[star.group]?.ko ?? ""}, ${money(star.value)}${o >= 0 ? `, ${name(o)}의 별` : ""}`
@@ -422,6 +433,7 @@ export function GalaxyBoard({
               data-square={sq.index}
               data-owner={o >= 0 ? o : undefined}
               data-selected={selected === sq.index || undefined}
+              data-moonlit={dim || undefined}
               aria-label={label}
               onClick={() => onPick?.(sq.index)}
               onPointerEnter={(e) =>
@@ -479,8 +491,17 @@ export function GalaxyBoard({
                     k={star.star.k}
                     mag={star.star.mag}
                     seed={sq.index}
-                    className="@min-[30rem]:top-[46%]"
+                    className={cn(
+                      "@min-[30rem]:top-[46%] transition-opacity duration-700",
+                      dim && "opacity-45",
+                    )}
                   />
+                  {dim && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(241,245,249,0.32),rgba(241,245,249,0.06)_55%,transparent_75%)]"
+                    />
+                  )}
                   <span className="@max-[30rem]:hidden absolute bottom-[8%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/85 leading-none [text-shadow:0_1px_2px_#000]">
                     {star.star.ko}
                   </span>
@@ -529,6 +550,10 @@ export function GalaxyBoard({
           );
         })}
 
+        {view.moon !== null && (
+          <MoonToken square={view.moon} reduced={reduced} />
+        )}
+
         {/* 우주선 */}
         {ships.map((s, seat) => {
           if (view.out[seat]) return null;
@@ -575,6 +600,33 @@ export function GalaxyBoard({
         )}
       </div>
     </div>
+  );
+}
+
+/** 달의 길: 칸 위쪽 모서리에 뜬 달. 차례가 넘어가면 다음 칸으로 천천히 미끄러진다 */
+function MoonToken({ square, reduced }: { square: number; reduced: boolean }) {
+  const c = squareCenter(square);
+  return (
+    <span
+      data-moon={square}
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute z-[9] -translate-x-1/2 -translate-y-1/2 rounded-full",
+        !reduced && "transition-[left,top] duration-[1400ms] ease-in-out",
+      )}
+      style={{
+        left: pct(c.x + 0.3),
+        top: pct(c.y - 0.3),
+        width: pct(0.28),
+        height: pct(0.28),
+        background:
+          "radial-gradient(circle at 38% 35%, #ffffff 0%, #e2e8f0 45%, #94a3b8 100%)",
+        boxShadow: "0 0 10px 3px rgba(226,232,240,0.45)",
+      }}
+    >
+      <span className="absolute top-[22%] left-[52%] size-[18%] rounded-full bg-slate-400/50" />
+      <span className="absolute top-[55%] left-[30%] size-[12%] rounded-full bg-slate-400/40" />
+    </span>
   );
 }
 

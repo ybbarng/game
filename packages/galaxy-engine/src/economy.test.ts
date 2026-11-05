@@ -5,7 +5,7 @@ import { observatoryGrant, rentOf } from "./match";
 import { STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 import { TEST_CONSTELLATIONS, TEST_SKY } from "./test-sky";
-import { must, paysOf, refused, roll, scene } from "./test-utils";
+import { auctionWith, must, paysOf, refused, roll, scene } from "./test-utils";
 
 /** 시리우스(14)를 1번 자리가 가진 장면 */
 function sirius(
@@ -110,6 +110,38 @@ describe("정거장 이용료(2-2)", () => {
     ]);
     expect(state.phase).toBe("turn");
     expect(state.turn.next).toBe("end");
+  });
+});
+
+describe("달의 길(15-5 2번)", () => {
+  it("달 아래 별의 별자리는 이용료가 절반(적어도 10), 다른 별자리는 그대로", () => {
+    const stars = [
+      { square: 14, owner: 1 },
+      { square: 2, owner: 1 },
+    ];
+    const plain = scene({ stars });
+    expect(plain.moon).toBe(16);
+    // 큰개자리(13·14·15) 가운데 13 위에 달이 있다
+    const over = scene({ stars, moon: 13 });
+    expect(rentOf(over, 14)).toBe(Math.max(10, rentOf(plain, 14) / 2));
+    expect(rentOf(over, 2)).toBe(rentOf(plain, 2));
+    expect(
+      rentOf(scene({ rules: { ...STANDARD_RULES, moon: false }, stars }), 14),
+    ).toBe(rentOf(plain, 14));
+    expect(
+      scene({ rules: { ...STANDARD_RULES, moon: false } }).moon,
+    ).toBeNull();
+  });
+
+  it("달은 차례가 넘어갈 때마다 한 칸씩 돈다(32칸 뒤 우주국으로)", () => {
+    let s = scene({ moon: 31 });
+    s = roll(s, [1, 2]).state;
+    if (s.phase === "buy") s = must(s, 0, { type: "pass" }).state;
+    while (s.phase === "bid" || s.phase === "bidReveal")
+      s = auctionWith(s, [0, 0, 0, 0]).state;
+    s = must(s, 0, { type: "end" }).state;
+    expect(s.turn.seat).toBe(1);
+    expect(s.moon).toBe(0);
   });
 });
 

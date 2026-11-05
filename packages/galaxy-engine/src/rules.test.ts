@@ -14,14 +14,18 @@ import {
 describe("규칙 문자열", () => {
   it("기본·짧은·긴 판과 시간 꼬리가 왕복한다", () => {
     const cases: [GalaxyRules, string][] = [
-      [STANDARD_RULES, "g4-4mtw-seasons"],
-      [{ ...STANDARD_RULES, meteor: true }, "g4-4mtwr-seasons"],
-      [{ ...SHORT_RULES, players: 2 }, "g4-2stw-seasons"],
-      [{ ...SHORT_RULES, players: 2, trade: false }, "g4-2snw-seasons"],
-      [{ ...LONG_RULES, players: 3, seasonal: false }, "g4-3ltn-seasons"],
+      [STANDARD_RULES, "g4-4mtwo-seasons"],
+      [{ ...STANDARD_RULES, moon: false }, "g4-4mtw-seasons"],
+      [{ ...STANDARD_RULES, meteor: true }, "g4-4mtwro-seasons"],
+      [{ ...SHORT_RULES, players: 2 }, "g4-2stwo-seasons"],
+      [
+        { ...SHORT_RULES, players: 2, trade: false, moon: false },
+        "g4-2snw-seasons",
+      ],
+      [{ ...LONG_RULES, players: 3, seasonal: false }, "g4-3ltno-seasons"],
       [
         { ...STANDARD_RULES, meteor: true, time: "fast" },
-        "g4-4mtwr-seasons-t1",
+        "g4-4mtwro-seasons-t1",
       ],
     ];
     for (const [rules, text] of cases) {
@@ -31,7 +35,7 @@ describe("규칙 문자열", () => {
     // 쓰기는 하늘을 가리지 않는다(내가 고른 하늘 문자열 모양)
     expect(
       encodeGalaxyRules({ ...STANDARD_RULES, sky: "custom.Ori.CMa" }),
-    ).toBe("g4-4mtw-custom.Ori.CMa");
+    ).toBe("g4-4mtwo-custom.Ori.CMa");
   });
 
   it("형식이 틀린 문자열은 받지 않는다", () => {
@@ -41,6 +45,7 @@ describe("규칙 문자열", () => {
       "g5-4mtw-seasons",
       "g4-4mtw-",
       "g4-4mtwrr-seasons",
+      "g4-4mtwor-seasons",
       "g4-4mtw-seasons-t9",
       "y1-2s4b6p",
       // 없는 하늘, 자료는 있지만 아직 열지 않은 하늘

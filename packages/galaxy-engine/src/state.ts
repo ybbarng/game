@@ -177,6 +177,8 @@ export interface GalaxyState {
   season: number | null;
   /** 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 끈 판·긴 판은 늘 false */
   meteor: boolean;
+  /** 달의 길(15-5 2번): 달이 있는 칸. 끈 판은 null */
+  moon: number | null;
   /** 첫 차례 자리(돌림은 이 자리에서 시작한다) */
   starter: number;
   turn: TurnInfo;

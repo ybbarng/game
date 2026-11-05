@@ -179,6 +179,16 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
           </div>
         </Section>
       )}
+      <Section title="달의 길">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip active={rules.moon} onClick={() => s.set({ moon: true })}>
+            켬
+          </Chip>
+          <Chip active={!rules.moon} onClick={() => s.set({ moon: false })}>
+            끔
+          </Chip>
+        </div>
+      </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -228,6 +238,10 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     [
       "제철 하늘·유성우의 밤",
       "제철 하늘을 켜면 판 길이의 4분의 1마다 계절이 바뀌고, 지금 계절 별자리 별의 이용료가 1.5배예요. 유성우의 밤을 켜면 마지막 두 차례 동안 모든 별 이용료가 2배예요.",
+    ],
+    [
+      "달의 길",
+      "달이 관측지에서 떠서 차례가 넘어갈 때마다 한 칸씩 돌아요. 달 아래 별의 별자리는 달빛에 별이 흐려 이용료가 절반이에요.",
     ],
     [
       "모퉁이",
@@ -312,6 +326,7 @@ function GalaxyHome({
           s.trade ? "거래" : "거래 없음",
           s.seasonal ? "제철 하늘" : null,
           s.meteor && s.length !== "long" ? "유성우의 밤" : null,
+          rules.moon ? "달의 길" : null,
           timePresetLabel(rules.time),
           `컴퓨터 ${level}`,
         ]

@@ -115,6 +115,7 @@ export function createMatch(
     round: 1,
     season: seasonFor(rules, 1),
     meteor: meteorFor(rules, 1),
+    moon: rules.moon ? NUMBERS.moonStart : null,
     starter,
     turn: {
       seat: starter,
@@ -200,22 +201,36 @@ export function isComplete(
   return squares.length > 0 && squares.every((sq) => state.owners[sq] === seat);
 }
 
+/** 달 아래 별의 별자리(달이 별 칸에 없거나 달의 길을 끈 판은 null) */
+export function moonGroup(
+  state: Pick<GalaxyState, "board"> & { moon?: number | null },
+): number | null {
+  if (state.moon === null || state.moon === undefined) return null;
+  return starAt(state.board, state.moon)?.group ?? null;
+}
+
 /**
  * 이 칸에 머물면 내는 이용료(주인 없음·맡긴 별은 0, 2-2). 제철이면 1.5배(적어도 10 더),
- * 유성우의 밤에는 제철 대신 모든 별이 2배(2-12)
+ * 유성우의 밤에는 제철 대신 모든 별이 2배(2-12). 달 아래 별자리는 그 값의 절반(적어도 10, 15-5 2번)
  */
 export function rentOf(
   state: Pick<
     GalaxyState,
     "board" | "owners" | "levels" | "mortgaged" | "season"
-  > & { meteor?: boolean },
+  > & { meteor?: boolean; moon?: number | null },
   square: number,
 ): number {
-  if (state.meteor) {
-    const plain = baseRentOf({ ...state, season: null }, square);
-    return round10(plain, NUMBERS.meteor);
-  }
-  return baseRentOf(state, square);
+  const rent = state.meteor
+    ? round10(baseRentOf({ ...state, season: null }, square), NUMBERS.meteor)
+    : baseRentOf(state, square);
+  const group = moonGroup(state);
+  if (
+    rent <= 0 ||
+    group === null ||
+    starAt(state.board, square)?.group !== group
+  )
+    return rent;
+  return Math.max(10, round10(rent, NUMBERS.moonRent));
 }
 
 function baseRentOf(
@@ -598,6 +613,7 @@ function endTurn(s: GalaxyState, events: GameEvent[]): void {
     if (meteor && !s.meteor) events.push({ type: "meteorShower" });
     s.meteor = meteor;
   }
+  if (s.moon !== null) s.moon = (s.moon + 1) % BOARD_SIZE;
   startTurn(s, next, events);
 }
 

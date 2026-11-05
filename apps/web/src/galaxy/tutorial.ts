@@ -73,6 +73,7 @@ export const GALAXY_TUTORIAL_RULES = {
   ...STANDARD_RULES,
   players: 2 as const,
   seasonal: false,
+  moon: false,
 };
 
 /** 실전 단원: 짧은 판 둘이서 */
