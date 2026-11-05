@@ -14,14 +14,14 @@ import {
 describe("규칙 문자열", () => {
   it("기본·짧은·긴 판과 시간 꼬리가 왕복한다", () => {
     const cases: [GalaxyRules, string][] = [
-      [STANDARD_RULES, "g3-4mtw-seasons"],
-      [{ ...STANDARD_RULES, meteor: true }, "g3-4mtwr-seasons"],
-      [{ ...SHORT_RULES, players: 2 }, "g3-2stw-seasons"],
-      [{ ...SHORT_RULES, players: 2, trade: false }, "g3-2snw-seasons"],
-      [{ ...LONG_RULES, players: 3, seasonal: false }, "g3-3ltn-seasons"],
+      [STANDARD_RULES, "g4-4mtw-seasons"],
+      [{ ...STANDARD_RULES, meteor: true }, "g4-4mtwr-seasons"],
+      [{ ...SHORT_RULES, players: 2 }, "g4-2stw-seasons"],
+      [{ ...SHORT_RULES, players: 2, trade: false }, "g4-2snw-seasons"],
+      [{ ...LONG_RULES, players: 3, seasonal: false }, "g4-3ltn-seasons"],
       [
         { ...STANDARD_RULES, meteor: true, time: "fast" },
-        "g3-4mtwr-seasons-t1",
+        "g4-4mtwr-seasons-t1",
       ],
     ];
     for (const [rules, text] of cases) {
@@ -31,22 +31,22 @@ describe("규칙 문자열", () => {
     // 쓰기는 하늘을 가리지 않는다(내가 고른 하늘 문자열 모양)
     expect(
       encodeGalaxyRules({ ...STANDARD_RULES, sky: "custom.Ori.CMa" }),
-    ).toBe("g3-4mtw-custom.Ori.CMa");
+    ).toBe("g4-4mtw-custom.Ori.CMa");
   });
 
   it("형식이 틀린 문자열은 받지 않는다", () => {
     for (const text of [
-      "g3-5mtw-seasons",
-      "g3-4xtw-seasons",
-      "g4-4mtw-seasons",
-      "g3-4mtw-",
-      "g3-4mtwrr-seasons",
-      "g3-4mtw-seasons-t9",
+      "g4-5mtw-seasons",
+      "g4-4xtw-seasons",
+      "g5-4mtw-seasons",
+      "g4-4mtw-",
+      "g4-4mtwrr-seasons",
+      "g4-4mtw-seasons-t9",
       "y1-2s4b6p",
       // 없는 하늘, 자료는 있지만 아직 열지 않은 하늘
-      "g3-4mtw-custom.Ori.CMa",
-      "g3-4mtw-nowhere",
-      "g3-4mtw-zodiac",
+      "g4-4mtw-custom.Ori.CMa",
+      "g4-4mtw-nowhere",
+      "g4-4mtw-zodiac",
     ])
       expect(decodeGalaxyRules(text).ok).toBe(false);
   });
@@ -69,8 +69,12 @@ describe("규칙 문자열", () => {
     expect(round10(45)).toBe(50);
   });
 
-  it("옛 판 번호(g1·g2) 문자열은 옛 규칙 판으로 알아보고 받지 않는다", () => {
-    for (const text of ["g1-4mtw-seasons", "g2-4mtw-seasons"]) {
+  it("옛 판 번호(g1~g3) 문자열은 옛 규칙 판으로 알아보고 받지 않는다", () => {
+    for (const text of [
+      "g1-4mtw-seasons",
+      "g2-4mtw-seasons",
+      "g3-4mtw-seasons",
+    ]) {
       const result = decodeGalaxyRules(text);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toContain("옛 규칙");

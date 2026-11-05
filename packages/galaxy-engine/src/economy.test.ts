@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { buildBoard, STAR_SQUARES, sideOf } from "./board";
 import { observatoryGrant, rentOf } from "./match";
 import { STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
+import { TEST_CONSTELLATIONS, TEST_SKY } from "./test-sky";
 import { must, paysOf, refused, roll, scene } from "./test-utils";
 
 /** 시리우스(14)를 1번 자리가 가진 장면 */
@@ -26,9 +28,9 @@ describe("정거장 이용료(2-2)", () => {
       scene({
         stars: [13, 14, 15].map((square) => ({ square, owner: 1, level })),
       });
-    expect(rentOf(leveled(2), 14)).toBe(200);
-    expect(rentOf(leveled(3), 14)).toBe(350);
-    expect(rentOf(leveled(4), 14)).toBe(530);
+    expect(rentOf(leveled(2), 14)).toBe(180);
+    expect(rentOf(leveled(3), 14)).toBe(310);
+    expect(rentOf(leveled(4), 14)).toBe(440);
     expect(
       rentOf(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] }), 14),
     ).toBe(0);
@@ -50,7 +52,7 @@ describe("정거장 이용료(2-2)", () => {
       round: 6,
       stars: [13, 14, 15].map((square) => ({ square, owner: 1, level: 2 })),
     });
-    expect(rentOf(full, 14)).toBe(300);
+    expect(rentOf(full, 14)).toBe(260);
     const autumn = scene({ round: 6, stars: [{ square: 2, owner: 1 }] });
     expect(rentOf(autumn, 2)).toBe(20);
     const off = scene({
@@ -60,6 +62,27 @@ describe("정거장 이용료(2-2)", () => {
     });
     expect(off.season).toBeNull();
     expect(rentOf(off, 14)).toBe(40);
+  });
+
+  it("제철 하늘은 별자리로 정한다(g4): 맞은편 변에 선 별도 제 계절에 오르고, 그 변의 남의 별은 오르지 않는다", () => {
+    const board = buildBoard(TEST_SKY, TEST_CONSTELLATIONS);
+    const cma = board.groups.findIndex((g) => g.id === "CMa");
+    const group = board.groups[cma] as (typeof board.groups)[number];
+    expect(group.home).toBe(1);
+    const away = group.squares.find((sq) => sideOf(sq) !== 1) as number;
+    expect(sideOf(away)).toBe(3);
+    // 겨울 변(1)에 선 맞은편 별자리 별
+    const stranger = STAR_SQUARES.find(
+      (sq) =>
+        sideOf(sq) === 1 &&
+        board.squares[sq]?.star?.group !== cma &&
+        board.groups[board.squares[sq]?.star?.group ?? 0]?.home !== 1,
+    ) as number;
+    const at = (round: number, square: number) =>
+      rentOf(scene({ board, round, stars: [{ square, owner: 1 }] }), square);
+    // 1돌림 가을, 6돌림 겨울
+    expect(at(6, away)).toBeGreaterThan(at(1, away));
+    expect(at(6, stranger)).toBe(at(1, stranger));
   });
 
   it("제철 하늘: 반올림으로 1.5배가 같아져도 적어도 10 더 낸다", () => {

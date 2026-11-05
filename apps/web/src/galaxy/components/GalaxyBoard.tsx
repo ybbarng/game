@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  BANK,
-  cardById,
-  type GalaxyView,
-  sideOf,
-  starAt,
-} from "@game/galaxy-engine";
+import { BANK, cardById, type GalaxyView, starAt } from "@game/galaxy-engine";
 import { type CSSProperties, useMemo } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
@@ -248,8 +242,7 @@ export function GalaxyBoard({
           {art.map((g) => {
             const group = board.groups[g.group];
             if (!group) return null;
-            const inSeason =
-              season !== null && sideOf(group.squares[0] ?? 0) === season;
+            const inSeason = season !== null && group.home === season;
             const owners = groupOwners[g.group] as Map<number, number[]>;
             const completeBy = [...owners.entries()].find(
               ([, sqs]) => sqs.length >= group.squares.length,

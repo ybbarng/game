@@ -1,6 +1,7 @@
 import {
   type Action,
   BANK,
+  BOARD_SIZE,
   bidCommitment,
   bidSalt,
   boardOfSky,
@@ -162,29 +163,34 @@ function until(
 
 /* ───────────── 장면 ───────────── */
 
-/** 2단원 미션: 술라팟 칸에서 1·1(내 별 셸리악, 한 번 더) → 2·3으로 우주국에 멈춘다 */
+/** 이 별에서 `steps`칸 뒤 칸(장면을 판 배치가 바뀌어도 맞게 별에서 거꾸로 센다) */
+function stepsBefore(id: string, steps: number): number {
+  return (squareOfStar(id) - steps + BOARD_SIZE) % BOARD_SIZE;
+}
+
+/** 2단원 미션: 1·1로 내 별 벨라트릭스(한 번 더) → 2·3으로 우주국에 멈춘다 */
 const SALARY: BoardScene = {
   kind: "board",
-  positions: [squareOfStar("Sulafat"), 0],
-  stars: mine("Sheliak"),
+  positions: [stepsBefore("Bellatrix", 2), 0],
+  stars: mine("Bellatrix"),
   dice: [
     [1, 1],
     [2, 3],
   ],
 };
 
-/** 3단원 미션: 소행성대 자리에서 2·4로 시리우스에 멈춘다 */
+/** 3단원 미션: 3·4로 시리우스에 멈춘다 */
 const BUY: BoardScene = {
   kind: "board",
-  positions: [8, 0],
-  dice: [[2, 4]],
+  positions: [stepsBefore("Sirius", 7), 0],
+  dice: [[3, 4]],
   marked: [squareOfStar("Sirius")],
 };
 
-/** 4단원 미션: 베텔게우스·리겔을 가졌고, 미라크 칸에서 2·4로 벨라트릭스에 멈춘다 */
+/** 4단원 미션: 베텔게우스·리겔을 가졌고, 2·4로 벨라트릭스에 멈춘다 */
 const COMPLETE: BoardScene = {
   kind: "board",
-  positions: [squareOfStar("Mirach"), 0],
+  positions: [stepsBefore("Bellatrix", 6), 0],
   stars: mine("Betelgeuse", "Rigel"),
   dice: [[2, 4]],
   marked: [squareOfStar("Bellatrix")],
@@ -192,10 +198,10 @@ const COMPLETE: BoardScene = {
 
 /** 6단원 미션에서 컴퓨터가 가진 별빛(입문은 별 값 안에서 내므로 이 값을 낸다) */
 const AUCTION_BOT_CASH = 50;
-/** 6단원 미션: 12번 칸에서 2·4로 레굴루스에 멈춘다. 컴퓨터는 별빛이 ✦50뿐이다 */
+/** 6단원 미션: 2·4로 레굴루스에 멈춘다. 컴퓨터는 별빛이 ✦50뿐이다 */
 const AUCTION: BoardScene = {
   kind: "board",
-  positions: [12, 0],
+  positions: [stepsBefore("Regulus", 6), 0],
   cash: [NUMBERS.startFunds.standard, AUCTION_BOT_CASH],
   dice: [[2, 4]],
   marked: [squareOfStar("Regulus")],

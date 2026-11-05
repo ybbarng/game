@@ -16,7 +16,8 @@ import {
 
 /* 시험에서만 쓰는 도움 함수. 패키지 밖으로 내보내지 않는다 */
 
-export const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS);
+// 진행 논리 시험은 칸 번호를 외우기 쉬운 붙인 배치로 둔다. 실제 판 배치(split)는 board.test·skies.test가 본다
+export const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS, "grouped");
 export const PAIR_BOARD = buildBoard(TEST_PAIR_SKY, TEST_PAIR_CONSTELLATIONS);
 
 /** 사슬 고리 전체(0이 약속). 같은 씨앗은 한 번만 계산한다 */

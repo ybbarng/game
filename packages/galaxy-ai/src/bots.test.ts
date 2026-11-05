@@ -53,7 +53,7 @@ describe("은하 한 바퀴 컴퓨터", () => {
     const { state } = playGalaxy({
       bots: [0, 1, 2].map(galaxyBotFor),
       rules: { ...SHORT_RULES, players: 3, trade: true },
-      seed: 9, // 2돌림에 사기·입찰·짓기가 모두 나온다(짧은 판 3인은 17돌림)
+      seed: 35, // 2돌림에 사기·입찰·짓기가 모두 나온다(짧은 판 3인은 17돌림)
       board,
       onStep: (_before, _seat, _action, _after, events) => {
         for (const e of events) seen.add(e.type);

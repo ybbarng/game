@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-
+import { sideOf } from "./board";
 import { activeCards } from "./cards";
 import { createMatch } from "./match";
 import { STANDARD_RULES } from "./rules";
@@ -42,12 +42,36 @@ describe("하늘 자료로 판 만들기(docs/48 5-9)", () => {
     }
   });
 
-  it("사계절 하늘은 2-1 배치이고 큰개자리가 가장 비싸다", () => {
+  it("사계절 하늘은 반쯤 섞은 배치(15-3)이고 큰개자리가 가장 비싸다", () => {
     const board = boardOfSky("seasons");
-    expect(board.squares[14]?.star?.star.id).toBe("Sirius");
-    const byId = Object.fromEntries(board.groups.map((g) => [g.id, g.base]));
-    expect(byId.CMa).toBe(200);
-    expect(byId.Peg).toBe(60);
+    const byId = Object.fromEntries(board.groups.map((g) => [g.id, g]));
+    expect(byId.CMa?.base).toBe(200);
+    expect(byId.Peg?.base).toBe(60);
+    // 변마다 [A 둘, 맞은편 C 하나, 공문, 맞은편 D 하나, B 둘]
+    board.groups.forEach((g, i) => {
+      expect(g.home).toBe(Math.floor(i / 2));
+      const sides = g.squares.map((sq) => sideOf(sq));
+      expect(sides.filter((s) => s === g.home)).toHaveLength(2);
+      expect(sides.filter((s) => s === (g.home + 2) % 4)).toHaveLength(1);
+      // 맞은편에 간 별은 가장 어둡다(가장 밝은 별은 제 변에 남는다)
+      const away = g.squares.find((sq) => sideOf(sq) !== g.home) as number;
+      const awayMag = board.squares[away]?.star?.star.mag ?? 0;
+      for (const sq of g.squares)
+        expect(board.squares[sq]?.star?.star.mag ?? 0).toBeLessThanOrEqual(
+          awayMag,
+        );
+      expect(board.squares[away]?.star?.brightest).toBe(false);
+    });
+    // 큰개자리(겨울, 1변)의 시리우스는 제 변에, 공문 옆(3·5칸째)에는 맞은편 별자리가 선다
+    expect(
+      byId.CMa?.squares.some(
+        (sq) =>
+          board.squares[sq]?.star?.star.id === "Sirius" && sideOf(sq) === 1,
+      ),
+    ).toBe(true);
+    expect(board.squares[11]?.star?.group).not.toBe(
+      board.squares[9]?.star?.group,
+    );
   });
 
   it("공문은 해당 별이 없는 하늘에서 빠진다(가을 하늘에는 1등성이 없다)", () => {

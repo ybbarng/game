@@ -237,7 +237,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
       stars: [
         { square: 9, owner: 0 },
         { square: 10, owner: 0 },
-        { square: 11, owner: 1 },
+        { square: 27, owner: 1 },
       ],
     };
   });
@@ -253,7 +253,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   await page
     .locator('[data-decision="trade-partner"] button', { hasText: "컴퓨터" })
     .click();
-  await page.locator('[data-square="11"]').click();
+  await page.locator('[data-square="27"]').click();
   for (let i = 0; i < 4; i++)
     await page.locator("[data-cash-plus100]").first().click();
   if (SAVE_SCREENSHOTS)
@@ -328,7 +328,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 차
       seed: 5,
       round: 34,
       stars: [
-        { square: 13, owner: 0 },
+        { square: 15, owner: 0 },
         { square: 14, owner: 0 },
         { square: 26, owner: 1 },
       ],

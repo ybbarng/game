@@ -241,7 +241,10 @@ function baseRentOf(
       owned >= size ? rates.complete : owned >= 2 ? rates.pair : rates.single;
   }
   const plain = Math.max(10, round10(star.value, rate));
-  const inSeason = state.season !== null && sideOf(square) === state.season;
+  // g4: 제철은 변이 아니라 별자리의 제 변으로 정한다(반쯤 섞은 판에서 맞은편에 선 별도 제 계절에 오른다)
+  const inSeason =
+    state.season !== null &&
+    state.board.groups[star.group]?.home === state.season;
   if (!inSeason) return plain;
   return Math.max(
     plain + NUMBERS.seasonalMin,
