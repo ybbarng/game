@@ -28,8 +28,8 @@ import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
+import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
-  HwatuBacks,
   HwatuCaptured,
   HwatuDeck,
   HwatuFloor,
@@ -37,6 +37,11 @@ import {
 } from "@/hwatu/components/HwatuLayout";
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
+import {
+  type HwatuLayout,
+  handStepFor,
+  hwatuLayout,
+} from "@/hwatu/table-layout";
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
@@ -44,7 +49,6 @@ import { useChat } from "@/net/chat";
 
 import { GOSTOP_LEVELS } from "../settings";
 import { useGostop } from "../store";
-import { type GostopLayout, gostopLayout, handStepFor } from "./table-layout";
 
 /** 튜토리얼 미션 띠 자리(판 위에 따로 둔다) */
 const MISSION_INSET = 64;
@@ -80,7 +84,7 @@ function SeatPlate({
   seat: number;
   name: string;
   rect: Rect;
-  layout: GostopLayout;
+  layout: HwatuLayout;
   mine?: boolean;
 }) {
   const turn = view.phase === "play" && view.turn === seat;
@@ -113,11 +117,12 @@ function SeatPlate({
           </span>
         ))}
         {!mine && (
-          <span className="flex shrink-0 items-center gap-1">
-            <HwatuBacks
-              count={view.handCounts[seat] ?? 0}
-              width={layout.backs}
-            />
+          <span
+            className="shrink-0 tabular-nums text-white/70"
+            title="남은 손패"
+            data-hand-count={seat}
+          >
+            {view.handCounts[seat] ?? 0}장
           </span>
         )}
         {revealed.length > 0 && (
@@ -127,7 +132,7 @@ function SeatPlate({
             data-revealed={seat}
           >
             {revealed.map((id) => (
-              <HwatuCardView key={id} id={id} width={layout.backs} />
+              <HwatuCardView key={id} id={id} width={14} />
             ))}
           </span>
         )}
@@ -298,6 +303,8 @@ export function GostopTable({
   const [asking, setAsking] = useState<string | null>(null);
   /** 보낸 행동의 결과(다음 장면이나 거절)를 기다리는 동안은 결정을 다시 보이지 않는다 */
   const sent = useSentLock(seq, notice);
+  /** 판 끝 결과 띠가 떠 있는 동안은 결과·정산 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
+  const [bannerUp, setBannerUp] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -341,7 +348,7 @@ export function GostopTable({
   const n = view.rules.players;
   const others = Array.from({ length: n - 1 }, (_, i) => (me + 1 + i) % n);
   const online = local === null;
-  const layout = gostopLayout(
+  const layout = hwatuLayout(
     stage.width,
     stage.height,
     n,
@@ -521,6 +528,16 @@ export function GostopTable({
         )}
       </header>
 
+      {/* 상대 손패 뒷면(자리 판 뒤에서 판 쪽으로) */}
+      {others.map((seat, i) => (
+        <HwatuFan
+          key={`fan-${seat}`}
+          layout={layout}
+          offset={i + 1}
+          count={view.handCounts[seat] ?? 0}
+        />
+      ))}
+
       {/* 상대 자리 */}
       {others.map((seat, i) => {
         const rect = layout.seats[i + 1]?.plate;
@@ -543,7 +560,7 @@ export function GostopTable({
       >
         <div
           className={cn(
-            "flex h-full items-center gap-3 px-3 pt-2 pb-9 transition-opacity",
+            "flex h-full items-center gap-3 px-3 pt-2 pb-12 transition-opacity",
             ended && "opacity-25",
           )}
         >
@@ -604,10 +621,10 @@ export function GostopTable({
             {outcomeView}
           </div>
         )}
-        {ended && result && (
+        {ended && result && !bannerUp && (
           <div
             className={cn(
-              "absolute inset-0 flex items-center justify-center gap-2 overflow-y-auto rounded-[2rem] bg-black/35 p-2",
+              "pop-in absolute inset-0 flex items-center justify-center gap-2 overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm",
               wideCenter ? "flex-row" : "flex-col",
             )}
           >
@@ -634,7 +651,7 @@ export function GostopTable({
             </div>
           </div>
         )}
-        <ResultBanner banner={banner} seq={seq} />
+        <ResultBanner banner={banner} seq={seq} onShowChange={setBannerUp} />
       </div>
 
       {online && (

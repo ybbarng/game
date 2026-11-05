@@ -419,8 +419,25 @@ function floorLayout(p: {
     const y0 = below(others);
     return { x: table.x, y: y0, w: table.w, h: bottom - y0 };
   })();
+  // 판 위 끝에 붙은 자리 판 줄 아래, 양옆에 따로 앉은 자리 판(위 끝에 붙지 않은 것) 사이(다섯 명 넘게 둘러앉을 때)
+  const middle: Rect = (() => {
+    const tops = others.filter((r) => r.y <= table.y + 0.5);
+    const sides = others.filter((r) => !tops.includes(r));
+    const x0 = Math.max(
+      table.x,
+      ...sides.filter((r) => r.x + r.w < mid).map((r) => r.x + r.w + g / 2),
+    );
+    const x1 = Math.min(
+      table.x + table.w,
+      ...sides.filter((r) => r.x > mid).map((r) => r.x - g / 2),
+    );
+    const y0 = below(tops);
+    return { x: x0, y: y0, w: x1 - x0, h: bottom - y0 };
+  })();
   const area = (r: Rect) => Math.max(0, r.w) * Math.max(0, r.h);
-  const center = area(between) >= area(under) ? between : under;
+  const center = [between, under, middle].reduce((best, r) =>
+    area(r) > area(best) ? r : best,
+  );
 
   return {
     orientation: p.portrait ? "portrait" : "landscape",

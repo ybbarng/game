@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { type Rect, rectsOverlap } from "@/layout/compute-layout";
+import { fanSlot, type Rect, rectsOverlap } from "@/layout/compute-layout";
 
-import { gostopLayout, handStepFor } from "./table-layout";
+import { handStepFor, hwatuLayout } from "./table-layout";
 
 /** 화면 시험 세 크기(PC 1280×720, Pixel 7 세로·가로)와 큰 PC, 작은 휴대폰 */
 const SCREENS = [
@@ -15,11 +15,15 @@ const SCREENS = [
   [915, 412],
 ] as const;
 
-/** 맞고는 손패 10장, 셋이서는 7장 */
+/**
+ * 고스톱 맞고 10장·셋이서 7장, 민화투 둘 10장·셋 7장·넷 5장, 나이롱뽕 2~5명 5장(가져오면 6장)
+ */
 const cases = SCREENS.flatMap(([width, height]) =>
   [
     { players: 2, handMax: 10 },
     { players: 3, handMax: 7 },
+    { players: 4, handMax: 6 },
+    { players: 5, handMax: 6 },
   ].map((p) => ({ width, height, ...p })),
 );
 
@@ -36,7 +40,7 @@ function inside(inner: Rect, outer: Rect): boolean {
 describe.each(cases)(
   "$width×$height / 인원 $players",
   ({ width, height, players, handMax }) => {
-    const layout = gostopLayout(width, height, players, handMax);
+    const layout = hwatuLayout(width, height, players, handMax);
     const plates = layout.seats.slice(1).map((s) => s.plate);
     const actions = layout.actions as Rect;
     const screen: Rect = { x: 0, y: 0, w: width, h: height };
@@ -48,7 +52,8 @@ describe.each(cases)(
 
     it("상대는 맞은편(2인)·위 양옆(3인)에 판 위 끝에 붙어 앉는다", () => {
       expect(plates).toHaveLength(players - 1);
-      for (const p of plates) expect(p.y).toBe(layout.table.y);
+      if (players <= 3)
+        for (const p of plates) expect(p.y).toBe(layout.table.y);
       if (players === 3) {
         const [left, right] = plates as [Rect, Rect];
         expect(left.x + left.w / 2).toBeLessThan(width / 2);
@@ -76,6 +81,33 @@ describe.each(cases)(
     it("바닥은 화면을 넓게 쓴다", () => {
       expect(layout.center.w).toBeGreaterThanOrEqual(width * 0.5);
       expect(layout.center.h).toBeGreaterThanOrEqual(height * 0.25);
+    });
+
+    it("손패 뒷면 부채는 바닥·다른 자리 판·내 자리 판·단추 칸·손패와 겹치지 않는다", () => {
+      for (const seat of layout.seats.slice(1)) {
+        const count = handMax;
+        for (let i = 0; i < count; i++) {
+          const at = fanSlot(layout, seat.offset, i, count, layout.fan);
+          // 기울기(최대 몇 도)만큼 넉넉히 1px 줄여 본다
+          const card: Rect = {
+            x: at.x - layout.fan.w / 2 + 1,
+            y: at.y - layout.fan.h / 2 + 1,
+            w: layout.fan.w - 2,
+            h: layout.fan.h - 2,
+          };
+          const rest = plates.filter((p) => p !== seat.plate);
+          for (const r of [
+            layout.center,
+            layout.myPlate,
+            actions,
+            layout.hud,
+            ...rest,
+          ])
+            expect(rectsOverlap(card, r)).toBe(false);
+          for (const c of handCards) expect(rectsOverlap(card, c)).toBe(false);
+          expect(inside(card, screen)).toBe(true);
+        }
+      }
     });
 
     it("먹은 패 네 묶음이 자리 판 안에 들어갈 크기다", () => {

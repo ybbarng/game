@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import type { Point } from "@/layout/compute-layout";
@@ -21,6 +21,7 @@ export function ResultBanner({
   seq,
   center,
   stageHeight,
+  onShowChange,
 }: {
   banner: Banner | null;
   /** 장면 번호. 같은 장면에서 다시 띄우지 않는다 */
@@ -29,6 +30,11 @@ export function ResultBanner({
   center?: Point;
   /** 무대 높이. 세로 화면은 판 가운데가 아래쪽이라 결과 상자를 가리지 않게 위로 올린다 */
   stageHeight?: number;
+  /**
+   * 띠가 떠 있는지 알린다. 판 끝 결과 상자를 띠가 사라진 뒤에 띄우려는 쪽이 쓴다(둘이 한꺼번에 뜨지 않게).
+   * 칠하기 전에 알려 결과 상자가 한 순간 비치지 않는다
+   */
+  onShowChange?: (showing: boolean) => void;
 }) {
   const [shownFor, setShownFor] = useState<number | null>(null);
   const [current, setCurrent] = useState<{ banner: Banner; key: number }>();
@@ -42,6 +48,12 @@ export function ResultBanner({
     const timer = setTimeout(() => setCurrent(undefined), SHOW_MS);
     return () => clearTimeout(timer);
   }, [key]);
+  const showing = current !== undefined;
+  const notify = useRef(onShowChange);
+  notify.current = onShowChange;
+  useLayoutEffect(() => {
+    notify.current?.(showing);
+  }, [showing]);
   if (!current) return null;
   const { won, draw, detail } = current.banner;
   const gold = won && !draw;
