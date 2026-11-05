@@ -37,7 +37,6 @@ export type FxStep =
   | { kind: "season"; season: number }
   | { kind: "meteor" }
   | { kind: "build"; seat: number; square: number; what: string }
-  | { kind: "trade"; accepted: boolean; from: number; to: number }
   | { kind: "bankrupt"; seat: number }
   /** 판 끝 관측 의뢰서가 한 장씩 펼쳐진다 */
   | { kind: "request"; seat: number; card: number; done: boolean };
@@ -168,18 +167,6 @@ export function buildTimeline(
             what: e.type,
           },
           FX.build,
-        );
-        break;
-      case "tradeAccepted":
-      case "tradeRejected":
-        push(
-          {
-            kind: "trade",
-            accepted: e.type === "tradeAccepted",
-            from: e.offer.from,
-            to: e.offer.to,
-          },
-          FX.trade,
         );
         break;
       case "bankrupt":

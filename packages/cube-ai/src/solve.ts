@@ -126,6 +126,13 @@ export class Solve {
   readonly stageList: { name: StageName; start: number; end: number }[];
   /** 살피는 멈춤이 드는 자리(`moves` 번호). `look()`으로 더한다 */
   readonly lookList: number[];
+  /**
+   * 살피는 자리를 넘어 수를 합치지 않는다(배우는 방식, 첫 화면 연출만). 조각 하나의 끝 수와 다음 조각의 첫 수가
+   * 같은 면이면(`F2 | F'`) 합쳐 `F` 하나가 되고 살피는 자리가 그 수로 옮겨, 앞 조각을 마저 넣는 수가 다음 조각
+   * 차례 안으로 들어간다. 연출은 살피는 자리마다 조각 하나를 강조하므로 강조와 실제 넣는 조각이 어긋났다
+   * (2026-11-05 사용자 「녹색을 맞추는 과정에서 빨간색이 먼저 맞았는데」). 컴퓨터 대결은 예전처럼 합친다
+   */
+  lookBarrier = false;
 
   constructor(n: number, facelets: string, frame: Face[] | null = null) {
     this.n = n;
@@ -139,6 +146,7 @@ export class Solve {
 
   clone(): Solve {
     const s = new Solve(this.n, this.f.join(""), this.frame && [...this.frame]);
+    s.lookBarrier = this.lookBarrier;
     return s;
   }
 
@@ -204,7 +212,7 @@ export class Solve {
       const raw = this.moves
         .slice(st.start, st.end)
         .map((m, i) => ({ m, look: lookSet.has(st.start + i) }));
-      const merged = mergeMarked(raw);
+      const merged = mergeMarked(raw, this.lookBarrier);
       const start = moves.length;
       merged.forEach(({ m, look }, i) => {
         if (look && i > 0) looks.push(moves.length);
@@ -225,8 +233,12 @@ export interface Marked {
  * 합치기와 같고, 멈춤 표시는 합쳐진 수의 앞쪽에, 지워진 수의 표시는 다음 수에 넘긴다.
  * 지워진 뒤 다음 수가 앞 수와 합쳐지면(U R R' U → U2) 넘긴 표시는 그 합친 수가 받는다.
  * 받지 않으면 표시가 그 뒤의 다른 수로 한 수 밀린다.
+ * `barrier`면 표시가 붙은 수는 앞 수와 합치지 않는다(살피는 자리 앞뒤는 따로 둔다, `Solve.lookBarrier`).
  */
-export function mergeMarked(list: readonly Marked[]): Marked[] {
+export function mergeMarked(
+  list: readonly Marked[],
+  barrier = false,
+): Marked[] {
   const out: Marked[] = [];
   let carry = false;
   for (const item of list) {
@@ -234,6 +246,7 @@ export function mergeMarked(list: readonly Marked[]): Marked[] {
     const m = item.m;
     if (
       last &&
+      !(barrier && (item.look || carry)) &&
       last.m.axis === m.axis &&
       last.m.from === m.from &&
       last.m.to === m.to

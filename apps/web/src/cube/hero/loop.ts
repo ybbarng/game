@@ -9,6 +9,7 @@ import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { PieceMark } from "../piece-marks";
+import { moveDuration } from "../view/geometry";
 import { DEFAULT_HERO_HIGHLIGHT, type HeroHighlight } from "./highlight";
 import type { HeroSize, HeroSolve } from "./methods";
 
@@ -48,6 +49,12 @@ export interface HeroTiming {
   searchMove: number;
   /** 강조(넣을 곳·찾은 조각, 맞춘 조각)를 보이는 멈춤 */
   mark: number;
+  /**
+   * 차례가 바뀌는 자리의 짧은 쉼(2026-11-05 사용자 「x, y, z 회전하면서 동시에 다른 거 돌리니까 어지러워」):
+   * 큐브 돌리기와 층 돌리기가 바뀌는 자리(① 큐브 돌리기 → ② 반대 면), 반대 면으로 조각을 칸 밑에 둔 뒤
+   * (② → ③ 공식, `HeroSolve.gaps`). 회전은 걸음 시간 안에 끝나므로(`heroMoveMs`) 그 뒤에 이만큼 멈춰 있다
+   */
+  order: number;
   /** 다 맞춘 뒤 멈춤 */
   solved: number;
   /** 섞는 수 */
@@ -73,6 +80,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     stage: 450,
     look: 220,
     mark: 500,
+    order: 250,
     solved: 1800,
   };
   // 풀이는 섞는 동안 미리 만들어 보통 섞기가 끝나기 전에 온다. 워커가 늦으면 `workerWait` 뒤 화면 스레드에서
@@ -101,6 +109,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     solveWait: 25_000,
     stage: 350,
     look: 120,
+    order: 150,
     scrambleMove: 80,
     solveMove: n === 4 ? 120 : 100,
     searchMove: 80,
@@ -252,6 +261,9 @@ export function scrambleSteps(
  * (`searches`)는 `searchMove`로 조금 빠르게 둔다. 같은 자리의 사건은 차례대로 멈춤 하나씩이고(맞춘 조각끼리,
  * 넣을 곳·찾은 조각끼리는 하나로 묶는다), `solo`인 사건은 따로 멈춘다. 끄기여도 이미 맞은 조각을 앞으로 돌려
  * 확인한 뒤(`check`)에는 살피듯 잠깐 멈춘다.
+ *
+ * 차례(2026-11-05): 큐브 돌리기와 층 돌리기가 바뀌는 자리, 반대 면으로 조각을 칸 밑에 둔 자리(`gaps`)에서
+ * `order`만큼 쉰다. 그래서 「큐브 돌리기 → 반대 면 → 공식」이 화면에서 따로따로 보인다.
  */
 export function solveSteps(
   solve: HeroSolve,
@@ -261,6 +273,7 @@ export function solveSteps(
 ): HeroStep[] {
   const looks = new Set(solve.looks);
   const searches = new Set(solve.searches ?? []);
+  const gaps = new Set(solve.gaps ?? []);
   const marksAt = new Map<number, PieceMark[]>();
   for (const { at, mark } of solve.marks ?? [])
     marksAt.set(at, [...(marksAt.get(at) ?? []), mark]);
@@ -324,7 +337,17 @@ export function solveSteps(
     for (let i = stage.start; i < stage.end; i++) {
       const move = solve.moves[i];
       if (move === undefined) continue;
-      if (i !== stage.start) pauses(i, label, false);
+      if (i !== stage.start) {
+        const before = steps.length;
+        pauses(i, label, false);
+        // 차례가 바뀌는 자리(큐브 돌리기 ↔ 층 돌리기, 칸 밑에 둔 뒤 공식)에서 짧게 쉰다. 다른 멈춤이 있으면 그것으로
+        const prev = solve.moves[i - 1] as string;
+        if (
+          steps.length === before &&
+          (isRotationToken(prev) !== isRotationToken(move) || gaps.has(i))
+        )
+          steps.push({ kind: "wait", ms: t.order, label });
+      }
       // 큐브 전체 돌리기(연출이 돌려 쥔 것)는 조금 느리게: 무엇을 했는지 보이게. 찾는 돌리기는 조금 빠르게
       const ms = searches.has(i)
         ? t.searchMove
@@ -370,6 +393,27 @@ export function orientSteps(
 /** 큐브 전체 돌리기는 보통 수보다 이만큼 느리게 */
 export const ROTATION_SLOWER = 1.5;
 const isRotationToken = (move: string) => /^[xyz]/.test(move);
+
+/** 걸음 시간 가운데 3D 회전이 쓰는 몫. 나머지는 회전이 다 끝나고 멈춰 있는 시간(그리기가 한 장 늦어도 겹치지 않게) */
+export const HERO_ANIM_SHARE = 0.75;
+/** 3D 장면 `moveMs` 상한(`CubeView`가 자르는 값) */
+const VIEW_MOVE_MS_MAX = 200;
+
+/**
+ * 걸음 시간 `stepMs`인 수 `parsed`를 3D 장면이 돌릴 `moveMs`. 반 바퀴는 장면이 1.4배 길게 돌리므로 그만큼 줄여,
+ * 회전(`moveDuration`)이 늘 걸음 시간의 `HERO_ANIM_SHARE` 안에 끝난다. 예전에는 반 바퀴가 걸음보다 길어(240ms 걸음에
+ * 252ms) 다음 수가 오면 끝까지 못 돌고 튀었다
+ */
+export function heroMoveMs(
+  stepMs: number,
+  parsed: readonly CubeMove[],
+): number {
+  const longest = Math.max(1, ...parsed.map((m) => moveDuration(1, m)));
+  return Math.min(
+    VIEW_MOVE_MS_MAX,
+    Math.floor((stepMs * HERO_ANIM_SHARE) / longest),
+  );
+}
 
 export interface HeroLoopOptions {
   n: HeroSize;

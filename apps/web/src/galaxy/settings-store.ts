@@ -15,7 +15,8 @@ export type GalaxyLevel = 0 | 1 | 2;
 export interface GalaxySettings {
   players: 2 | 3 | 4;
   length: GalaxyLength;
-  trade: boolean;
+  /** 도착 인수(사들이기, docs/48 2-8). g4까지의 저장값 `trade`는 읽지 않는다(처음값 켬) */
+  takeover: boolean;
   /** 제철 하늘(docs/48 2-12 1번) */
   seasonal: boolean;
   /** 유성우의 밤(docs/48 2-12 7번): 마지막 두 돌림 이용료 2배. 기본 끔 */
@@ -25,7 +26,7 @@ export interface GalaxySettings {
   /** 관측 의뢰(docs/48 15-5 1번). 기본 켬 */
   requests: boolean;
   level: GalaxyLevel;
-  /** 개인 시간(docs/24). 굴리기·사기·차례 마치기·거래 답·빚 정리에만 시계가 간다 */
+  /** 개인 시간(docs/24). 굴리기·사기·차례 마치기·도착 인수·빚 정리에만 시계가 간다 */
   time: TimePreset;
   /** 휴대폰 세로에서 우주선이 움직이는 동안 살짝 당겨 따라가 보기(움직임 줄이기면 쓰지 않는다). 기본 끔(판 전체 보기) */
   follow: boolean;
@@ -37,7 +38,7 @@ export const useGalaxySettings = create<GalaxySettings>()(
     (set) => ({
       players: 2,
       length: "standard",
-      trade: true,
+      takeover: true,
       seasonal: true,
       meteor: false,
       moon: true,

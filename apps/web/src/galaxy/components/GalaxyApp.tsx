@@ -115,7 +115,7 @@ function SubScreen({
   );
 }
 
-/** 은하 한 바퀴 옵션: 인원·판 길이·거래·제철 하늘·컴퓨터 실력·따라가는 시점 */
+/** 은하 한 바퀴 옵션: 인원·판 길이·사들이기·제철 하늘·컴퓨터 실력·따라가는 시점 */
 function GalaxyOptions({ onBack }: { onBack: () => void }) {
   const s = useGalaxySettings();
   const rules = rulesFromSettings(s);
@@ -149,12 +149,12 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">{lengthDetail(rules)}</p>
       </Section>
-      <Section title="거래">
+      <Section title="사들이기">
         <div className="flex flex-wrap gap-1.5">
-          <Chip active={s.trade} onClick={() => s.set({ trade: true })}>
+          <Chip active={s.takeover} onClick={() => s.set({ takeover: true })}>
             켬
           </Chip>
-          <Chip active={!s.trade} onClick={() => s.set({ trade: false })}>
+          <Chip active={!s.takeover} onClick={() => s.set({ takeover: false })}>
             끔
           </Chip>
         </div>
@@ -247,15 +247,19 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "목표",
-      "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별 값, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 100을 더한 것이에요.",
+      "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별 값의 80%, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 그 별자리 별 하나 값을 더한 것이에요.",
     ],
     [
       "별 사기",
-      "주인 없는 별에 멈추면 살 수 있어요. 사지 않으면 모두가 한 번에 몰래 값을 적어 내는 봉투 입찰로 넘어가요. 밝은 별자리일수록 비싸요.",
+      "주인 없는 별에 멈추면 살 수 있어요. 사지 않으면 모두가 한 번에 몰래 값을 적어 내는 봉투 입찰로 넘어가요. 밝은 별자리일수록 비싸고, 이용료와 완성했을 때 더하는 자산도 그만큼 커요.",
     ],
     [
       "이용료",
       "남의 별에 멈추면 정거장 이용료를 내요. 같은 별자리 별을 둘 가지면 선이 이어져 1.5배, 셋 모두면 별자리 완성으로 2배이고 정거장을 올릴 수 있어요.",
+    ],
+    [
+      "사들이기·내 별",
+      "남의 별에 멈춰 이용료를 낸 뒤, 그 별을 값의 1.5배에 주인에게서 사들일 수 있어요. 주인이 완성한 별자리의 별은 사들일 수 없어요. 내 별에 멈춘 차례에는 그 별자리 정거장 한 단을 반값에 올려요.",
     ],
     [
       "제철 하늘·유성우의 밤",
@@ -271,7 +275,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "모퉁이",
-      `카노푸스 우주국을 지나면 지원금 ${NUMBERS.salary}, 관측지에 멈추면 뒤처진 사람일수록 많은 관측 지원금, 혜성에서는 한 번 더 굴려 더 가요. 소행성대에 걸리면 ${NUMBERS.asteroidFine}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`,
+      `카노푸스 우주국을 지나면 지원금 ${NUMBERS.salary}(별빛이 ${NUMBERS.salaryFree} 넘게 있으면 넘는 몫의 5분의 1만큼 줄어요), 관측지에 멈추면 뒤처진 사람일수록 많은 관측 지원금, 혜성에서는 한 번 더 굴려 더 가요. 소행성대에 걸리면 ${NUMBERS.asteroidFine}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`,
     ],
     [
       "우주국 공문",
@@ -355,16 +359,15 @@ function GalaxyHome({
         icon: "🚀",
         title: "컴퓨터와 시작",
         detail: [
-          `${s.players}명`,
+          `컴퓨터 ${level} ${s.players - 1}명`,
           length,
           lengthDetail(rules).split(" · ")[1],
-          s.trade ? "거래" : "거래 없음",
+          s.takeover ? "사들이기" : "사들이기 없음",
           s.seasonal ? "제철 하늘" : null,
           s.meteor && s.length !== "long" ? "유성우의 밤" : null,
           rules.moon ? "달의 길" : null,
           rules.requests ? "관측 의뢰" : null,
           timePresetLabel(rules.time),
-          `컴퓨터 ${level}`,
         ]
           .filter(Boolean)
           .join(" · "),
@@ -412,6 +415,8 @@ interface GalaxyTestHooks {
     cash?: number[];
     positions?: number[];
     round?: number;
+    /** 굴림 눈을 차례로(누가 굴리든, 다 쓰면 보통 사슬) */
+    dice?: [number, number][];
   };
 }
 
@@ -515,13 +520,14 @@ export function GalaxyApp() {
         const scene = hooks.__galaxyScenario;
         if (saved) useGalaxy.getState().resume(saved);
         else if (scene) {
-          const { level, ...options } = scene;
+          const { level, dice, ...options } = scene;
           useGalaxy.getState().startPractice(
             createGalaxyScenario({
               ...options,
               board: boardOfSky(scene.rules.sky),
             }),
             level,
+            dice,
           );
         } else {
           const s = useGalaxySettings.getState();

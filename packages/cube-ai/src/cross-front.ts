@@ -11,7 +11,19 @@ import { toFaceletMove } from "./facelets";
  *
  * 너비 우선으로 찾는다. 쫓는 것은 넣을 엣지, 이미 맞춘 십자 엣지, 옆 센터 넷의 스티커 자리뿐이라
  * 상태가 작다. 문제는 (넣을 엣지의 흰 스티커 자리, 그 색, 이미 맞춘 자리) 하나로 정해지므로 답을 모아 둔다.
- * 길이가 같으면 y가 적은 것, 그다음 앞선 수 차례(D → F → y)를 고른다.
+ *
+ * 수 차례(2026-11-05 사용자 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로
+ * 가져와서 넣어줘」): 답은 토막을 이은 꼴이고, 토막 하나는 「큐브 돌리기(y, 없어도 됨) → 칸 밑으로 D(없어도 됨)
+ * → F로 시작하는 공식(F·D)」이다. 큐브 돌리기는 토막 맨 앞에만 오고 D 바로 뒤에는 오지 않는다(D와 y는 같은 축이라
+ * `D y`는 `y D`와 같다). 새 토막은 공식이 F로 끝난 뒤에만 시작한다. F·D만으로는 흰색이 옆(앞면)을 보는 엣지를
+ * 세울 수 없어, 그런 엣지는 「빼기」 토막 뒤 「넣기」 토막으로 나뉜다. 고르는 차례: 토막이 적은 것, 짧은 것, y가 적은 것.
+ * 예전(D를 y 앞에 두던 때)과 견주어 문제 672가지의 수 합은 2796 → 2800, 최대 8 그대로다.
+ *
+ * 목표 엣지만 넣는다(2026-11-05 사용자 「'강조한' 것들을 맞추려는 의도를 가지고 진행되기를 바래. 표시랑 다르게
+ * 동작하지 말고」): 아직 안 넣은 다른 흰 엣지(`others`)가 토막 끝(다음 토막의 큐브 돌리기 앞, 그리고 맨 끝)에
+ * 제자리에 와 있는 답은 고르지 않는다. 「빼기」 토막은 F로 끝나야 해서 그 F가 아랫면의 다른 흰 엣지를 올려
+ * 넣는 일이 잦았다(섞기 300개의 십자 토막 약 1200개 가운데 167개). 화면에서는 강조한 엣지가 아닌 엣지를 일부러
+ * 넣는 것처럼 보인다. 그런 답밖에 없으면 예전처럼 고른다(그때 맞은 엣지는 연출이 「함께 맞은 조각」으로 짚는다).
  */
 
 const MOVES = ["D", "D'", "D2", "F", "F'", "F2", "y", "y'", "y2"] as const;
@@ -42,6 +54,12 @@ const partnerOf = (i: number): number => {
 
 const memo = new Map<string, string>();
 
+/** 아직 안 넣은 다른 흰 엣지: 흰 스티커 자리와 다른 색이 와야 할 면 */
+export interface OtherEdge {
+  white: number;
+  color: SideFace;
+}
+
 /**
  * `white`: 넣을 엣지의 흰 스티커 자리(흰 면 위, 지금 쥔 방향), `color`: 그 엣지의 다른 색이 와야 할 면,
  * `solved`: 이미 맞은 십자 자리 번호(0 UR, 1 UF, 2 UL, 3 UB). 그 자리는 끝에도 맞아 있다.
@@ -50,11 +68,16 @@ export function frontCrossInsert(
   white: number,
   color: SideFace,
   solved: readonly number[],
+  others: readonly OtherEdge[] = [],
 ): string {
-  const key = `${white}|${color}|${[...solved].sort().join("")}`;
+  const rest = others
+    .map((o) => `${o.white}${o.color}`)
+    .sort()
+    .join(",");
+  const key = `${white}|${color}|${[...solved].sort().join("")}|${rest}`;
   const hit = memo.get(key);
   if (hit !== undefined) return hit;
-  const alg = search(white, color, solved);
+  const alg = search(white, color, solved, others);
   memo.set(key, alg);
   return alg;
 }
@@ -63,6 +86,7 @@ function search(
   white: number,
   color: SideFace,
   solved: readonly number[],
+  others: readonly OtherEdge[],
 ): string {
   // 쫓는 스티커: [센터 R F L B, 넣을 엣지 흰·옆, 맞은 엣지마다 흰·옆]
   // 엣지마다 와야 할 센터 번호(0..3)
@@ -72,6 +96,17 @@ function search(
     start.push(CROSS_WHITE[j] as number, CROSS_SIDE[j] as number);
     want.push(j);
   }
+  // 다른 흰 엣지는 맞은 엣지 뒤에 쫓는다
+  const from = start.length;
+  for (const o of others) start.push(o.white, partnerOf(o.white));
+  const placed = (p: readonly number[], at: number, c: number) =>
+    (p[at] as number) < 9 &&
+    Math.floor((p[at + 1] as number) / 9) === Math.floor((p[c] as number) / 9);
+  /** 다른 흰 엣지 가운데 하나라도 제자리에 와 있나 */
+  const stray = (p: readonly number[]) =>
+    others.some((o, k) =>
+      placed(p, from + k * 2, FACE_OF_SIDE.indexOf(o.color)),
+    );
   const done = (p: readonly number[]) =>
     want.every((c, e) => {
       const w = p[4 + e * 2] as number;
@@ -84,34 +119,89 @@ function search(
     Math.floor((p[5] as number) / 9) === 3;
   const v0 = low(start);
   if (done(start)) return "";
-  const seen = new Set<string>([`${start.join(",")}|${v0}`]);
-  type Node = { p: number[]; path: number[]; ys: number; v: boolean };
-  let layer: Node[] = [{ p: start, path: [], ys: 0, v: v0 }];
+  // 다른 엣지를 넣지 않는 답부터, 없으면 그런 답도
+  for (const guard of others.length ? [stray, null] : [null])
+    for (let maxRounds = 1; maxRounds <= MAX_ROUNDS; maxRounds++) {
+      const found = searchRounds(start, v0, low, done, maxRounds, guard);
+      if (found !== null) return found;
+    }
+  throw new Error("F·D·y로 십자 엣지를 넣지 못했다");
+}
+
+/** 한 엣지에 드는 토막 수 상한(문제 672가지 모두 이 안에서 풀린다) */
+const MAX_ROUNDS = 3;
+
+/** 토막 안 자리: 0 시작(아무 수나), 1 큐브 돌리기 뒤(D나 F), 2 칸 밑으로 D 뒤(F만), 3 공식 안 */
+type Phase = 0 | 1 | 2 | 3;
+
+function searchRounds(
+  start: number[],
+  v0: boolean,
+  low: (p: readonly number[]) => boolean,
+  done: (p: readonly number[]) => boolean,
+  maxRounds: number,
+  /** 토막 끝에 있으면 안 되는 상태(목표 아닌 엣지가 제자리) */
+  stray: ((p: readonly number[]) => boolean) | null,
+): string | null {
+  type Node = {
+    p: number[];
+    path: number[];
+    ys: number;
+    v: boolean;
+    phase: Phase;
+    rounds: number;
+  };
+  const seen = new Set<string>();
+  let layer: Node[] = [
+    { p: start, path: [], ys: 0, v: v0, phase: 0, rounds: 1 },
+  ];
   for (let depth = 1; depth <= 14; depth++) {
     const next: Node[] = [];
     let best: Node | null = null;
     for (const node of layer) {
       const last = node.path.at(-1);
+      const lastLayer = last === undefined ? -1 : (LAYER[last] as number);
       for (let mi = 0; mi < MOVES.length; mi++) {
-        if (last !== undefined) {
+        const kind = LAYER[mi] as number;
+        let phase: Phase;
+        let rounds = node.rounds;
+        if (kind === 2) {
+          // 큐브 돌리기는 토막 맨 앞에만: 처음, 또는 공식이 F로 끝난 뒤(새 토막). D 뒤의 y는 y 뒤의 D와 같아
+          // (같은 축) 늘 y를 앞에 둔다
+          if (node.phase === 0) phase = 1;
+          else if (node.phase === 3 && lastLayer === 1) {
+            if (rounds >= maxRounds) continue;
+            // 앞 토막 끝: 다른 흰 엣지를 제자리에 둔 채 끝난 토막은 두지 않는다
+            if (stray?.(node.p)) continue;
+            rounds++;
+            phase = 1;
+          } else continue;
+        } else if (kind === 0) {
+          // D: 토막 앞에서 칸 밑으로 한 번, 또는 공식 안
+          if (node.phase === 2 || lastLayer === 0) continue;
+          phase = node.phase === 3 ? 3 : 2;
+        } else {
           // 가운데 줄 엣지를 내렸다 올리는 F F2(합치면 F')만 같은 층을 잇는다
           const lowerRaise = (last === 3 || last === 4) && mi === 5;
-          if (LAYER[mi] === LAYER[last] && !lowerRaise) continue;
-          if (LAYER[mi] === 0 && LAYER[last] === 2) continue;
+          if (lastLayer === 1 && !lowerRaise) continue;
+          phase = 3;
         }
         const perm = PERMS[mi] as number[];
         const p = node.p.map((i) => perm[i] as number);
         const v = node.v || low(p);
-        const k = `${p.join(",")}|${v}`;
+        const k = `${p.join(",")}|${v}|${phase}|${rounds}|${kind}`;
         if (seen.has(k)) continue;
         seen.add(k);
-        const child = {
+        const child: Node = {
           p,
           path: [...node.path, mi],
-          ys: node.ys + (LAYER[mi] === 2 ? 1 : 0),
+          ys: node.ys + (kind === 2 ? 1 : 0),
           v,
+          phase,
+          rounds,
         };
         if (v && done(p)) {
+          if (stray?.(p)) continue;
           if (!best || child.ys < best.ys) best = child;
           continue;
         }
@@ -121,5 +211,5 @@ function search(
     if (best) return best.path.map((i) => MOVES[i]).join(" ");
     layer = next;
   }
-  throw new Error("F·D·y로 십자 엣지를 넣지 못했다");
+  return null;
 }

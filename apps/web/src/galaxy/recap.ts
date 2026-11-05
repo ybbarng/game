@@ -1,13 +1,15 @@
 import {
   BANK,
+  completeBonusOf,
   type GalaxyBoard,
   type GameEvent,
   isComplete,
-  mortgageValue,
+  mortgagedAssetOf,
   NUMBERS,
   requestById,
   STAR_SQUARES,
   sellValue,
+  starAssetOf,
   starAt,
 } from "@game/galaxy-engine";
 
@@ -95,19 +97,26 @@ export function recapLine(
     if (state.owners[sq] !== seat) continue;
     const star = starAt(state.board, sq);
     if (!star) continue;
-    stars += state.mortgaged[sq] ? mortgageValue(state.board, sq) : star.value;
+    stars += state.mortgaged[sq]
+      ? mortgagedAssetOf(state.board, sq)
+      : starAssetOf(state.board, sq);
     stations +=
       Math.max(0, (state.levels[sq] ?? 1) - 1) * sellValue(state.board, sq);
   }
-  const complete = state.board.groups.filter((_, g) =>
-    isComplete({ board: state.board, owners: [...state.owners] }, seat, g),
-  ).length;
+  // 완성 덤은 별자리마다 그 별자리 값(g5)
+  const completeBonus = state.board.groups.reduce(
+    (total, _, g) =>
+      isComplete({ board: state.board, owners: [...state.owners] }, seat, g)
+        ? total + completeBonusOf(state.board, g)
+        : total,
+    0,
+  );
   return {
     rentIn,
     rentOut,
     grants,
     request,
-    completeBonus: complete * NUMBERS.completeBonus,
+    completeBonus,
     cash: state.cash[seat] ?? 0,
     stars,
     stations,
@@ -143,6 +152,9 @@ export function recapOf(
   };
 }
 
+/** 판 끝에 이만큼 넘게 남긴 별빛을 「쓰지 않은 별빛」으로 짚는다 */
+const LEFTOVER_CASH = 300;
+
 function missedChances(
   events: readonly GameEvent[],
   state: RecapState,
@@ -169,12 +181,12 @@ function missedChances(
         ? `${size - 1}/${size}에서 멈춘 별자리 ${near.length}개(${names})`
         : `하나 모자라 완성하지 못한 별자리 ${near.length}개(${names})`;
     out.push(
-      `${label} · 하나만 완성했어도 자산 ${money(NUMBERS.completeBonus)} 더, 이용료 2배`,
+      `${label} · 하나만 완성했어도 자산 ${money(Math.min(...near.map((g) => completeBonusOf(state.board, state.board.groups.indexOf(g)))))} 더, 이용료 2배`,
     );
   }
   // 끝날 때 쓰지 않은 별빛: 1등보다 많이 남겼을 때만(정거장·별로 바꾸지 않은 별빛)
   const cash = state.cash[me] ?? 0;
-  if (cash >= NUMBERS.completeBonus * 3 && them && cash > them.cash)
+  if (cash >= LEFTOVER_CASH && them && cash > them.cash)
     out.push(`끝날 때 쓰지 않은 별빛 ${money(cash)}`);
   return out.slice(0, 3);
 }

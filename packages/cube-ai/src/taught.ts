@@ -15,10 +15,13 @@ import { type Solve, uTurn, yTurn } from "./solve";
  * 십자(「항상 D면으로 내려서 옮겨서 올려」): 엣지는 늘 앞면(F)으로 내리고 올린다. 넣을 자리를 y로 앞에
  * 가져오고, 수는 F·D·y뿐이다(`cross-front.ts`가 경우마다 가장 짧은 꼴을 찾는다). 경우 이름은
  * `learn/lessons-333.ts` 「흰 십자」의 다섯 경우다.
- * 1. 아래층, 흰색이 아래: D로 자리 밑에 두고 y로 앞에 가져와 `F2`.
- * 2. 아래층, 흰색이 옆: 가운데 줄로 올렸다가 y로 돌려 F로 올린다(`D y F y' F'`).
- * 3. 가운데 줄: F로 아래층에 내렸다가 올린다(`F F2`, 합치면 `F'`).
- * 4. 윗층 흰색 위, 엉뚱한 자리: y로 앞에 가져와 `F2`로 내린 뒤 1.
+ * 차례(2026-11-05 사용자 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로 가져와서
+ * 넣어줘」): 토막마다 ① 큐브 돌리기(y) ② 반대 면(D)으로 칸 밑에 ③ 앞면 공식. 큐브 돌리기는 토막 맨 앞에만 둔다.
+ * F·D만으로는 흰색이 옆을 보는 엣지를 바로 세울 수 없어, 그런 엣지는 「빼기」 토막 뒤 「넣기」 토막으로 나뉜다.
+ * 1. 아래층, 흰색이 아래: y로 자리를 앞에 가져오고 D로 그 밑에 두고 `F2`(`y D2 F2`).
+ * 2. 아래층, 흰색이 옆: 앞면을 비켜 놓으며 가운데 줄로 올린 뒤, y로 돌려 F로 올린다(`F D' F' y F`).
+ * 3. 가운데 줄: F로 아래층에 내렸다가 올린다(`F F2`, 합치면 `F'`). 옆색이 오른쪽이면 `y F`.
+ * 4. 윗층 흰색 위, 엉뚱한 자리: `F2`로 내린 뒤 1(`F2 y D F2`).
  * 5. 윗층에서 뒤집힘: F로 내린 뒤 2.
  *
  * 첫 층 꼭짓점: 넣을 칸을 앞-오른쪽 위(UFR)에 오게 y로 돌려 쥐고, 그 흰 꼭짓점을 D로 바로 밑(DFR)에
@@ -130,7 +133,16 @@ export function nextCrossEdge(
   for (const kind of CASE_ORDER) {
     let best: { color: FaceLetter; alg: string } | null = null;
     for (const e of todo.filter((x) => caseOf(x) === kind)) {
-      const alg = frontCrossInsert(e.white, e.color as SideFace, solved);
+      // 다른 흰 엣지는 이 엣지를 넣는 동안 제자리에 들이지 않는다(`cross-front.ts`)
+      const others = todo
+        .filter((x) => x !== e)
+        .map((x) => ({ white: x.white, color: x.color as SideFace }));
+      const alg = frontCrossInsert(
+        e.white,
+        e.color as SideFace,
+        solved,
+        others,
+      );
       if (best === null || length(alg) < length(best.alg))
         best = { color: e.color, alg };
     }

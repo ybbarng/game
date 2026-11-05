@@ -5,7 +5,7 @@ import { loadCubeView } from "../view";
 import type { MarkTone, Quality } from "../view/types";
 import { heroSolveInWorker } from "../worker";
 import type { HeroHighlight } from "./highlight";
-import { HeroLoop } from "./loop";
+import { HeroLoop, heroMoveMs } from "./loop";
 import {
   type HeroChoice,
   type HeroSize,
@@ -73,7 +73,8 @@ export async function startHero(
     // 워커가 늦으면(멈춘 워커, 옛 코드를 받은 워커 등) 섞은 뒤 멈춤 동안 화면 스레드에서 푼다(loop.ts `workerWait`)
     solveHere: solveForHero,
     onMove: (_move, ms, parsed) => {
-      const want = Math.min(200, Math.round(ms * 0.75));
+      // 회전이 걸음 시간 안에 끝나게(다음 수·큐브 돌리기와 화면에서 겹치지 않게)
+      const want = heroMoveMs(ms, parsed);
       if (want !== moveMs) {
         moveMs = want;
         view.setOptions({ moveMs });

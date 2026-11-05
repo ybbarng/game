@@ -11,13 +11,17 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
 import type { PieceMark } from "../piece-marks";
+import { moveDuration } from "../view/geometry";
 import type { HeroHighlight } from "./highlight";
 import {
+  HERO_ANIM_SHARE,
   HeroLoop,
   type HeroStep,
+  heroMoveMs,
   heroTiming,
   ORIENT_LABEL,
   orientForSolve,
+  ROTATION_SLOWER,
   randomScramble,
   SCRAMBLING_LABEL,
   scrambleSteps,
@@ -747,5 +751,118 @@ describe("조각 강조", () => {
     // 확인 뒤(1번 수 앞)에 살피는 멈춤
     expect(off[1]).toMatchObject({ kind: "wait", ms: T3.look });
     expect(off.some((s) => s.kind === "wait" && s.marks)).toBe(false);
+  });
+});
+
+describe("회전이 겹치지 않는 차례(2026-11-05 사용자 「x, y, z 회전하면서 동시에 다른 거 돌리니까 어지러워」)", () => {
+  const isRot = (move: string) => /^[xyz]/.test(move);
+
+  it("반 바퀴도 걸음 시간 안에 다 돈다(예전: 240ms 걸음에 252ms)", () => {
+    for (const n of [2, 3, 4, 5] as const) {
+      const t = heroTiming(n);
+      const steps = [
+        t.scrambleMove,
+        t.solveMove,
+        t.searchMove,
+        Math.round(t.solveMove * ROTATION_SLOWER),
+      ];
+      for (const ms of steps)
+        for (const move of ["R", "R2", "y", "y2"]) {
+          const parsed = parseMoves(n, move);
+          const anim = moveDuration(
+            heroMoveMs(ms, parsed),
+            parsed[0] as CubeMove,
+          );
+          expect(anim, `${n} ${move} ${ms}`).toBeLessThanOrEqual(
+            ms * HERO_ANIM_SHARE,
+          );
+        }
+    }
+  });
+
+  it("차례가 바뀌는 자리(큐브 돌리기 ↔ 층 돌리기, 칸 밑에 둔 뒤 공식)에서 order만큼 쉰다", () => {
+    const solve: HeroSolve = {
+      moves: ["y", "D", "R'", "D'", "R", "y2", "y'"],
+      stages: [{ label: "첫 층 코너", start: 0, end: 7 }],
+      looks: [],
+      gaps: [2],
+    };
+    const steps = solveSteps(solve, "x", T3, "off");
+    const kinds = steps.map((s) =>
+      s.kind === "move" ? s.move : s.ms === T3.order ? "|" : "wait",
+    );
+    expect(kinds).toEqual([
+      "y",
+      "|",
+      "D",
+      "|",
+      "R'",
+      "D'",
+      "R",
+      "|",
+      "y2",
+      "y'",
+      "wait",
+    ]);
+  });
+
+  it("3×3 초보자 한 판: 회전은 다음 수 전에 끝나고, 큐브 돌리기와 층 돌리기가 바뀌는 자리에서는 회전이 끝난 뒤 order만큼 더 쉰다", async () => {
+    const clock = new ManualClock();
+    const played: {
+      at: number;
+      move: string;
+      ms: number;
+      parsed: readonly CubeMove[];
+    }[] = [];
+    let asked: Promise<unknown> = Promise.resolve();
+    const loop = new HeroLoop({
+      n: 3,
+      methods: heroRotation(3, "3-beginner"),
+      clock,
+      rng: seq(11),
+      solve: (m, s) => {
+        const p = solveForHero(m, s);
+        asked = p;
+        return p;
+      },
+      onMove: (move, ms, parsed) =>
+        played.push({ at: clock.now(), move, ms, parsed }),
+      onLabel: () => {},
+      onReset: () => {},
+    });
+    const until = (cond: () => boolean) => {
+      for (let t = 0; !cond(); t += 50) {
+        if (t > 600_000) throw new Error("조건이 맞지 않는다");
+        clock.advance(50);
+      }
+    };
+    loop.start();
+    until(() => loop.currentLabel === "초보자 해법");
+    await asked;
+    await flush();
+    const solveFrom = played.length;
+    until(() => loop.currentLabel.endsWith("맞춤"));
+    let switches = 0;
+    for (let i = 0; i + 1 < played.length; i++) {
+      const a = played[i] as (typeof played)[number];
+      const b = played[i + 1] as (typeof played)[number];
+      // 3D 장면이 이 수를 돌리는 시간. 그리기가 한 장 늦게 시작해도 걸음 안에 끝나게 여유(1 - 몫)를 남긴다
+      const anim = moveDuration(
+        heroMoveMs(a.ms, a.parsed),
+        a.parsed[0] as CubeMove,
+      );
+      expect(b.at - a.at, `${i} ${a.move} → ${b.move}`).toBeGreaterThanOrEqual(
+        anim + (1 - HERO_ANIM_SHARE) * a.ms,
+      );
+      if (i >= solveFrom && isRot(a.move) !== isRot(b.move)) {
+        switches++;
+        expect(
+          b.at - a.at,
+          `${i} ${a.move} → ${b.move}`,
+        ).toBeGreaterThanOrEqual(a.ms + T3.order);
+      }
+    }
+    expect(switches).toBeGreaterThan(10);
+    expect(isSolved(3, loop.current)).toBe(true);
   });
 });

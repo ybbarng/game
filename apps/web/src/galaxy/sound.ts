@@ -38,8 +38,6 @@ function cuesOfStep(step: TimedStep): [Cue, number][] {
       return [["galaxyBid", 0]];
     case "build":
       return [["pickCard", 0]];
-    case "trade":
-      return [[step.accepted ? "galaxyLink" : "pass", 0]];
     case "bankrupt":
       return [["galaxyAsteroid", 0]];
   }

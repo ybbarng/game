@@ -190,8 +190,6 @@ export const CARD_AMOUNTS = {
   near: 20,
   lineSurvey: 30,
   lineSurveyComplete: 50,
-  /** 13 관측지 초청으로 우주국을 지날 때 받는 지원금(지원금 120의 반) */
-  inviteSalary: 60,
 } as const;
 
 export function cardById(id: number): NoticeCard {
