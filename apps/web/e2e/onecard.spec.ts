@@ -33,6 +33,17 @@ const waitTurn = (page: Page) => fastForwardUntil(page, () => myTurn(page));
 
 /** 가운데 더미를 150ms 넘게 누르고 있다 떼기(원카드!). 누르는 시간은 시계를 옮겨 만든다 */
 async function slap(page: Page) {
+  // 지금 판을 그린 프레임이 적힌 뒤에 친다(앞 판 청구가 되지 않게)
+  await fastForwardUntil(
+    page,
+    () =>
+      pile(page).evaluate(
+        (el) =>
+          el.getAttribute("data-shown-turn") ===
+          el.getAttribute("data-turn-no"),
+      ),
+    { step: 16 },
+  );
   await pile(page).dispatchEvent("pointerdown", {
     pointerId: 1,
     button: 0,
