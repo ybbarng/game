@@ -293,6 +293,38 @@ test("블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않�
   await expect(main).toHaveAttribute("data-cube-phase", "done");
   await expect(page.locator("[data-cube-result]")).toContainText("DNF");
   await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
+  // 블라인드 기록은 혼자 맞추기와 따로 쌓인다는 것이 제목에 보인다
+  await expect(page.locator("[data-cube-records-title]")).toHaveText(
+    "3×3 블라인드 기록",
+  );
+  await shot(page, "blind-done", info.project.name);
+});
+
+test("혼자 맞추기: 키 그림 접기·거울 숨기기는 새로 고쳐도 남는다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키 그림 접기는 데스크톱만");
+  await page.goto("/cube/solo");
+  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
+  const keys = page.locator("[data-cube-keys-wrap]");
+  const back = page.locator("[data-back-toggle]");
+  await expect(keys).toBeVisible();
+  await page.getByRole("button", { name: "키 그림 접기" }).click();
+  await back.click();
+  await expect(keys).toBeHidden();
+  await expect(back).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
+  await expect(keys).toBeHidden();
+  await expect(back).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("button", { name: "키 그림 펴기" }),
+  ).toBeVisible();
+  await shot(page, "solo-folded", info.project.name);
 });
 
 test("설정: 키 배치 「사용자」를 고르면 키 편집기가 열린다", async ({
