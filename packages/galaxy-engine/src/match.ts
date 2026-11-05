@@ -346,6 +346,17 @@ export function starAssetOf(board: GalaxyBoard, square: number): number {
   return star ? permille(star.value, NUMBERS.starAsset) : 0;
 }
 
+/**
+ * 맡긴 별이 자산에 들어가는 값(g5): 별 자산 몫(80%)에서 되찾을 값(55%)을 뺀 25%. 맡기며 받은 별빛(50%)과 더하면
+ * 75%라 맡기면 자산이 되찾기 웃돈(5%)만큼 준다. g4까지처럼 맡긴 값(50%)으로 세면 맡기기만 해도 자산이 20% 는다
+ */
+export function mortgagedAssetOf(board: GalaxyBoard, square: number): number {
+  return Math.max(
+    0,
+    starAssetOf(board, square) - unmortgageCost(board, square),
+  );
+}
+
 /** 이 별자리를 완성하면 판 끝에 자산에 더하는 값(g5: 별자리 기본 값의 `completeBonusRate`) */
 export function completeBonusOf(board: GalaxyBoard, group: number): number {
   return permille(board.groups[group]?.base ?? 0, NUMBERS.completeBonusRate);
@@ -369,7 +380,7 @@ export function assetsOf(
     const star = starAt(state.board, sq);
     if (!star) continue;
     total += state.mortgaged[sq]
-      ? mortgageValue(state.board, sq)
+      ? mortgagedAssetOf(state.board, sq)
       : starAssetOf(state.board, sq);
     total +=
       Math.max(0, (state.levels[sq] ?? 1) - 1) * sellValue(state.board, sq);

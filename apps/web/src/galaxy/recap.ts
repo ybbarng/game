@@ -4,7 +4,7 @@ import {
   type GalaxyBoard,
   type GameEvent,
   isComplete,
-  mortgageValue,
+  mortgagedAssetOf,
   NUMBERS,
   requestById,
   STAR_SQUARES,
@@ -98,7 +98,7 @@ export function recapLine(
     const star = starAt(state.board, sq);
     if (!star) continue;
     stars += state.mortgaged[sq]
-      ? mortgageValue(state.board, sq)
+      ? mortgagedAssetOf(state.board, sq)
       : starAssetOf(state.board, sq);
     stations +=
       Math.max(0, (state.levels[sq] ?? 1) - 1) * sellValue(state.board, sq);

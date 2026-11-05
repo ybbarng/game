@@ -235,14 +235,18 @@ describe("끝과 순위(2-10)", () => {
     expect(ended.result?.kind).toBe("timeUp");
   });
 
-  it("자산 = 별빛 + 별 값의 80%(맡긴 별은 절반) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 그 별자리 값", () => {
+  it("자산 = 별빛 + 별 값의 80%(맡긴 별은 그 80%에서 되찾을 값을 뺀 몫) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 그 별자리 값", () => {
     const s = scene({
       cash: [500, 1000, 1000, 1000],
       stars: [...cma(0, 2), { square: 1, owner: 0, mortgaged: true }],
     });
-    // 큰개자리 200·220·200의 80%, 2단 셋(한 단 100의 절반씩), 맡긴 페가수스 별 60의 절반, 완성 큰개자리 200
-    expect(assetsOf(s, 0)).toBe(500 + 496 + 150 + 30 + 200);
+    // 큰개자리 200·220·200의 80%, 2단 셋(한 단 100의 절반씩), 맡긴 마르카브 60은 48 − 되찾기 33 = 15, 완성 큰개자리 200
+    expect(assetsOf(s, 0)).toBe(500 + 496 + 150 + 15 + 200);
     expect(standingsOf(s)[0]?.seat).toBe(0);
+    // 맡기면 자산이 되찾기 웃돈만큼 준다(맡기기로 자산을 늘릴 수 없다)
+    const plain = scene({ stars: [{ square: 14, owner: 0 }] });
+    const after = must(plain, 0, { type: "mortgage", square: 14 }).state;
+    expect(assetsOf(after, 0)).toBeLessThan(assetsOf(plain, 0));
   });
 
   it("기권하면 끝나고 기권한 사람이 꼴찌", () => {
