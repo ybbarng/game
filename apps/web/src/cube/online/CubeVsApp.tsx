@@ -21,6 +21,7 @@ import { eventForSize } from "./race-game";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
+import { testVsSeed } from "./vs-seed";
 
 /**
  * 컴퓨터와 대결(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
@@ -84,6 +85,8 @@ export function CubeVsApp() {
       ...(averages ? { avgs: averages } : {}),
       scrambler: scrambleInWorker,
       botPlan: planInWorker,
+      // 화면 시험만: 섞기 씨앗을 정해 둔다(`__cubeTestHooks` + `__cubeVsSeed`, vs-seed.ts)
+      ...testVsSeed(),
       settings: {
         n,
         ...(rounds > 1

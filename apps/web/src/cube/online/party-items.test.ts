@@ -237,6 +237,37 @@ describe("아이템 판정", () => {
   });
 });
 
+it("미뤄 둔 몫과 시간 줍기가 같은 순간이면 깎기 먼저, 그다음 시간 줍기, 탈락은 둘 다 센 뒤에 본다(그 순간의 탈락을 막는다)", () => {
+  const ladder = ["cross", "f2l1", "f2l2", "f2l3", "layer1"];
+  const r = judgeParty({
+    n: 3,
+    players: ["a", "b"],
+    logs: {
+      // a는 b보다 늦게 십자를 지나 시간 줍기를 받고, 8초(미뤄 둔 윗면 몫과 같은 판정 시각)에 쓴다
+      a: log([
+        [5_500, ["cross"]],
+        [8_000, ["!u1:heal"]],
+        [9_000, []],
+      ]),
+      // b는 다섯을 따로(a 100 → 20), 7초에 둘째 층·윗면을 한꺼번에(7초에 −16 → 4, 8초에 미뤄 둔 −16)
+      b: log([
+        ...ladder.map((id, k) => [1_000 * (k + 1), [id]] as MarkSpec),
+        [7_000, ["layer2", "oll"]],
+      ]),
+    },
+    disputeMs: 1_000,
+    final: false,
+    hp: true,
+    items: { seed: "s", draw: stub({ a: ["heal"] }) },
+  });
+  expect(r.hits.map((h) => h.at)).toEqual([
+    1_000, 2_000, 3_000, 4_000, 5_000, 7_000, 8_000,
+  ]);
+  expect(r.items?.uses[0]).toMatchObject({ at: 8_000, item: "heal" });
+  expect(r.knockedOut).toEqual({});
+  expect(r.hp.a).toBe(4);
+});
+
 // ---- 기기마다 RaceHub 하나 ----
 
 /** 2×2 섞기: 거꾸로 두면 2수째 첫 층, 9수째 윗면, 26수째 다 맞춤(party.test.ts와 같다) */

@@ -237,6 +237,8 @@ export interface CubeRoomInit {
   settings?: Partial<RoomSettings>;
   /** 시험: 정해진 공개값·컴퓨터 계획 */
   random?: () => string;
+  /** 시험: 판 아이디 꼬리(대결 씨앗에 들어간다). 공개값과 함께 정하면 섞기가 늘 같다(`vs-seed.ts`) */
+  raceTag?: () => string;
   botPlan?: PlanFn;
   /** 시험만: 아이템 뽑기(모든 기기에 같은 것을 넣는다). 제품은 `drawItem` */
   drawItem?: typeof drawItem;
@@ -709,7 +711,7 @@ export class CubeRoom {
     if (s.players.length < 2) return false;
     s.round += 1;
     s.race = {
-      id: `${s.round}-${randomId(8)}`,
+      id: `${s.round}-${this.init.raceTag?.() ?? randomId(8)}`,
       players: s.players.map((p) => p.id),
     };
     s.status = "racing";
