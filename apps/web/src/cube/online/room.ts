@@ -22,6 +22,7 @@ import {
   attachBot,
   type BotHandle,
   botSupports,
+  botVerifiable,
   type PlanFn,
 } from "./bot-racer";
 import {
@@ -200,6 +201,10 @@ export interface RoundRecord extends RoundSummary {
   items?: ItemsSummary;
   /** 모양 만들기 판의 목표 */
   shape?: RaceShape;
+  /**
+   * 이 기기가 계획을 맞춰 보지 못해 순위·승자·점수에서 뺀 컴퓨터(모르는 계획 표 버전 등, docs/47 10-2). 기기마다 다를 수 있다
+   */
+  unverified?: string[];
 }
 
 /** 아이템전 판 기록(결과 상자) */
@@ -415,6 +420,8 @@ export class CubeRoom {
     blinds: Map<string, number[]>;
     /** 체력바 판: 참가자마다 시간이 흘러야 풀리는 판정을 다시 볼 예약 */
     recheck: Map<string, () => void>;
+    /** 이 기기가 계획을 맞춰 보지 못하는 컴퓨터(판을 열 때 고정, `botVerifiable`). 순위·판정에서 뺀다 */
+    unverified: string[];
   };
   private readonly listeners = new Set<() => void>();
   private disposed = false;
@@ -488,6 +495,11 @@ export class CubeRoom {
     return c
       ? (c.sessions.get(this.me) ?? [...c.sessions.values()][0])
       : undefined;
+  }
+
+  /** 지금(또는 마지막) 판에서 이 기기가 계획을 맞춰 보지 못해 순위에서 빼는 컴퓨터 */
+  unverifiedBots(): readonly string[] {
+    return this.current?.unverified ?? [];
   }
 
   /** 이 기기 컴퓨터가 지금 시도의 계획을 다 세웠나(화면 시험이 시계를 감기 전에 기다린다) */
@@ -1012,6 +1024,16 @@ export class CubeRoom {
       averageOf: (id) => this.averageOf(id),
     });
     const shape = shapeOfRound(s.settings, s.round);
+    // 계획을 맞춰 보지 못하는 컴퓨터(고친 방장이 모르는 버전 글을 붙였거나 버전이 다른 기기): 아무 시각에나 끝냈다고 해도
+    // 가려낼 수 없으므로 이 기기에서는 순위·승자·점수·파티 판정에서 뺀다(9-2 「직접 확인한 만큼만 따른다」)
+    const unverified = s.players
+      .filter(
+        (p) =>
+          p.bot !== undefined &&
+          race.players.includes(p.id) &&
+          !botVerifiable(p.bot, !!shape),
+      )
+      .map((p) => p.id);
     const game = createCubeRaceGame(
       s.settings.n,
       this.init.scrambler,
@@ -1081,6 +1103,7 @@ export class CubeRoom {
       finds: new Map(),
       blinds: new Map(),
       recheck: new Map(),
+      unverified,
     };
     for (const session of sessions.values()) session.start();
     this.emit();
@@ -1114,6 +1137,7 @@ export class CubeRoom {
       start: source?.startState() as PuzzleState,
       ...(hasHandicap(c.handicap) ? { handicap: c.handicap } : {}),
       ...(c.game.shape ? { shape: c.game.shape } : {}),
+      ...(c.unverified.length > 0 ? { unverified: [...c.unverified] } : {}),
     };
     // 체력바: 순위·승자를 체력 판정으로 다시 매긴다. 판이 정해진 뒤의 일은 판정에 끼지 않으므로(판 도중 판정과 같다)
     // 모든 기기가 같은 값을 낸다
@@ -1139,6 +1163,8 @@ export class CubeRoom {
       else if (hasHp(c.mode)) delete final.noDecision;
       if (outcome.items) record.items = summarizeItems(outcome.items, players);
     }
+    // 계획을 맞춰 보지 못한 컴퓨터는 순위 없음으로 뺀다(체력바는 판정에서 이미 뺐다: 차례는 그대로 두고 표시만)
+    final = excludeUnverified(final, c.unverified, !hasHp(c.mode));
     // 「평균 대비」: 이 판의 순위를 평균 대비 점수로 다시 매긴다. 기준(평균, 없으면 이 경기에서 처음 맞춘 판)은 모든 기기가
     // 같은 값을 가진다(평균은 지문으로 맞춰 봤고, 앞선 판 결과는 같다)
     const avg = c.handicap.avg;
@@ -1179,6 +1205,9 @@ export class CubeRoom {
       disputeMs: DISPUTE_MS,
       final,
       hp: hasHp(mode ?? "hp"),
+      ...(this.current?.unverified.length
+        ? { exclude: this.current.unverified }
+        : {}),
       ...(hasItems(mode) && seed !== undefined
         ? {
             items: {
@@ -1389,6 +1418,45 @@ export function disqualify(
   const dnf = rest.filter((id) => players[id]?.status === "dnf");
   const forfeit = rest.filter((id) => players[id]?.status === "forfeit");
   return { ...result, players, ranking: [...done, ...dnf, ...forfeit] };
+}
+
+/**
+ * 계획을 맞춰 보지 못한 컴퓨터(`CubeRoom.unverifiedBots`)를 순위에서 뺀다: 맞췄어도 순위 없음(`unranked`, 인정 시간 없음)으로
+ * 다툼과 같이 다룬다. 그래서 승자·점수제 점수·5판 평균·평균 대비에 들지 않는다(`standings.ts`). `reorder`면 차례를
+ * 맞춘 사람 → 순위 없음 → 못 맞춤 → 기권으로 다시 놓는다(체력바는 판정이 이미 뒤로 놓았다).
+ * 판정 없음(2명 이하 판의 다툼)이 뺀 컴퓨터 때문이었으면 남은 사람끼리 판정한다.
+ * 이 기기가 본 것으로 정하므로 같은 버전 기기(확인한 기기)와 결과가 다를 수 있다
+ */
+export function excludeUnverified(
+  result: RaceResult,
+  ids: readonly string[],
+  reorder = true,
+): RaceResult {
+  const drop = new Set(ids.filter((id) => result.players[id]));
+  if (drop.size === 0) return result;
+  const players = { ...result.players };
+  for (const id of drop) {
+    const p = players[id];
+    if (p?.status !== "done") continue;
+    const next = { ...p, unranked: true };
+    delete next.accepted;
+    players[id] = next;
+  }
+  const out: RaceResult = { ...result, players };
+  if (
+    out.noDecision &&
+    !Object.values(players).some((p) => p.disputed && !drop.has(p.id))
+  )
+    delete out.noDecision;
+  if (!reorder) return out;
+  const at = (id: string) => {
+    const p = players[id];
+    if (p?.status === "done") return drop.has(id) || p.unranked ? 1 : 0;
+    return p?.status === "dnf" ? 2 : 3;
+  };
+  // 같은 무리 안 차례는 그대로 둔다(정렬은 안정적이다)
+  out.ranking = [...result.ranking].sort((x, y) => at(x) - at(y));
+  return out;
 }
 
 /** 판정의 아이템 기록을 판 기록으로 줄인다(결과 상자) */
