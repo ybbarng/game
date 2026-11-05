@@ -11,15 +11,24 @@
 export type BuzzKind =
   | "broadcast" // 방송 토스트가 내려올 때(회차마다 한 번)
   | "countdown" // 관측 10초 카운트다운이 시작될 때(회차마다 한 번)
+  | "count" // 카운트다운 마지막 3·2·1초(초마다 한 번)
+  | "ball" // 관측 연출에서 공이 하나 나올 때
+  | "ballMine" // 나온 공이 내가 예측한 별일 때(그 공은 "ball" 대신 이것만)
   | "seal1" // 1등 입상 직인이 찍힐 때
   | "seal" // 2·3등 입상 직인이 찍힐 때
   | "confirm" // 등록증 발급·신분증 확인·예측서 제출
   | "tap"; // 풍등 길게 누르기
 
-/** 무늬(ms). 짧게, 과하지 않게: 알림 둘은 「톡톡」과 「톡」 하나 */
+/**
+ * 무늬(ms). 짧게, 과하지 않게: 알림 둘은 「톡톡」과 「톡」 하나. 관측 박자(3·2·1, 공)는 그보다 더 짧은 톡,
+ * 내 별은 「톡톡」으로 구별한다(docs/36 11-73)
+ */
 export const BUZZ_PATTERN: Record<BuzzKind, number | number[]> = {
   broadcast: [30, 80, 30],
   countdown: 60,
+  count: 15,
+  ball: 12,
+  ballMine: [25, 50, 25],
   seal1: [40, 60, 80],
   seal: 40,
   confirm: 20,
@@ -95,4 +104,41 @@ export function buzzOnce(kind: BuzzKind, key: string | number): boolean {
 /** 시험: 한 번 낸 기록을 지운다 */
 export function forgetBuzzed(): void {
   done.clear();
+}
+
+/** 관측까지 남은 시간(ms)에 울릴 진동: 한 순간에 하나만(docs/36 11-73) */
+export interface CountBuzz {
+  kind: "countdown" | "count";
+  /** buzzOnce 열쇠(회차, 3·2·1은 회차와 초) */
+  key: string;
+}
+
+/**
+ * 카운트다운 진동. 10~4초는 시작 알림 `countdown`(회차마다 한 번이라 처음 본 그 초에만 울린다), 3·2·1초는 초마다 `count`.
+ * 3초 안쪽에 늦게 들어오면 시작 알림 없이 남은 초만 울린다(같은 순간 둘이 울리지 않게). 카운트다운 밖이면 null
+ */
+export function countdownBuzz(
+  round: number,
+  toShowMs: number,
+): CountBuzz | null {
+  if (toShowMs <= 0) return null;
+  const sec = Math.ceil(toShowMs / 1000);
+  if (sec > 10) return null;
+  if (sec > 3) return { kind: "countdown", key: String(round) };
+  return { kind: "count", key: `${round}:${sec}` };
+}
+
+/**
+ * 관측 연출의 공 진동: 앞 그림보다 공이 꼭 하나 늘었을 때만, 내 별이면 `ballMine`, 아니면 `ball`.
+ * 한꺼번에 여러 개가 보이면(건너뛰기·움직임 줄이기·숨은 탭에서 돌아옴) 울리지 않는다
+ */
+export function ballBuzz(
+  before: readonly number[],
+  after: readonly number[],
+  mine: readonly number[],
+): "ball" | "ballMine" | null {
+  if (after.length !== before.length + 1) return null;
+  const n = after.at(-1);
+  if (n === undefined) return null;
+  return mine.includes(n) ? "ballMine" : "ball";
 }

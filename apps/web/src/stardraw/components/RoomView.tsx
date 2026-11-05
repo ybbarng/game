@@ -35,7 +35,7 @@ import { astronautOf, residentPhrase } from "../astronaut/identity";
 import { celebrationPlan } from "../celebrate";
 import { errorText } from "../errors";
 import { EASE, FX } from "../fx-timing";
-import { buzz, buzzOnce } from "../haptics";
+import { buzz, buzzOnce, countdownBuzz } from "../haptics";
 import { inAppFailed } from "../passkey-env";
 import { ensureRegistered, registering } from "../registrar";
 import { drawOrder, myRank } from "../results";
@@ -917,10 +917,14 @@ export function RoomView({
   const phase = roomPhase(now, times.entryDeadline, showStart, showLength);
   // 관측 안내부터 관측이 끝날 때까지 화면이 어두워지지 않게(2026-11-03 사용자)
   useWakeLock(phase === "announce" || phase === "count" || phase === "live");
-  // 10초 카운트다운이 시작되는 순간 한 번 톡(회차마다 한 번)
+  // 10초 카운트다운이 시작되는 순간 한 번 톡(회차마다 한 번), 마지막 3·2·1초에 아주 짧은 톡(docs/36 11-73)
+  const countSec = phase === "count" ? Math.ceil(toShow / 1000) : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 남은 초가 바뀔 때만(toShow는 그 초 안의 값)
   useEffect(() => {
-    if (phase === "count") buzzOnce("countdown", round);
-  }, [phase, round]);
+    if (countSec === null) return;
+    const b = countdownBuzz(round, toShow);
+    if (b) buzzOnce(b.kind, b.key);
+  }, [countSec, round]);
   const title = roundTitle(schedule, round);
   const statusLine =
     phase === "open"

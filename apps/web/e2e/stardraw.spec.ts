@@ -1932,6 +1932,60 @@ test("당첨 축하 연출: 1등은 별똥별 비, 직인이 찍히는 순간 �
   await page.screenshot({ path: info.outputPath("stardraw-win-1-motion.png") });
 });
 
+/**
+ * 관측 박자 진동(docs/36 11-73): 공이 하나 나올 때마다 아주 짧은 톡(12ms), 내가 예측한 별이면 톡톡([25, 50, 25]).
+ * 움직임 줄이기라 공이 한꺼번에 보이면 울리지 않는다. 카운트다운 3·2·1은 관측지(서버) 화면이라 단위 시험이 맡는다
+ */
+test("관측 진동: 공마다 톡, 내 별은 톡톡, 한꺼번에 보이면 없음", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+  await page.addInitScript(() => {
+    const w = window as unknown as { __vibrated: unknown[] };
+    w.__vibrated = [];
+    Object.defineProperty(navigator, "vibrate", {
+      configurable: true,
+      value: (p: unknown) => {
+        w.__vibrated.push(p);
+        return true;
+      },
+    });
+  });
+  const vibrated = () =>
+    page.evaluate(() =>
+      (window as unknown as { __vibrated: unknown[] }).__vibrated.map((p) =>
+        JSON.stringify(p),
+      ),
+    );
+  const row = page.locator("[data-tour-screen] [data-roulette-stop='7']");
+  const hits = row.locator(".sd-ball-hit");
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/stardraw/demo#tour-draw");
+  await expect(page.locator("[data-tour-screen] canvas[data-sky]")).toBeVisible(
+    { timeout: 30_000 },
+  );
+  await page.clock.pauseAt(
+    new Date((await page.evaluate(() => Date.now())) + 1000),
+  );
+  await speedUpAnimations(page);
+  await fastForwardUntil(page, () => row.isVisible(), { step: 200 });
+  const mine = await hits.count();
+  expect(mine).toBeGreaterThan(0);
+  expect((await vibrated()).sort()).toEqual(
+    [...Array(7 - mine).fill("12"), ...Array(mine).fill("[25,50,25]")].sort(),
+  );
+
+  // 움직임 줄이기: 공 일곱이 바로 보이고 공 진동은 없다
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await page.clock.fastForward(2000);
+  expect(
+    (await vibrated()).filter((p) => p === "12" || p === "[25,50,25]"),
+  ).toEqual([]);
+});
+
 test("HDR 별빛: HDR 화면에서만 맞은 내 별 위에 HDR 그림을 겹치고, 응모 하늘에는 늘 켜진 HDR이 없다", async ({
   page,
 }, info) => {
