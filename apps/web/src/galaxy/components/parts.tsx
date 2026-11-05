@@ -122,11 +122,13 @@ export function DiceFace({
           </radialGradient>
         </defs>
       )}
+      {/* 정육면체 면은 둘레 1.5를 비운다. 3D로 돌린 층의 가장자리는 브라우저가 부드럽게 다듬지 않아(특히 휴대폰)
+          계단이 지는데, 층 끝이 투명하면 보이는 가장자리는 SVG가 직접 부드럽게 그린 선이 된다 */}
       <rect
-        x={decorative ? 0 : 4}
-        y={decorative ? 0 : 4}
-        width={decorative ? 100 : 92}
-        height={decorative ? 100 : 92}
+        x={decorative ? 1.5 : 4}
+        y={decorative ? 1.5 : 4}
+        width={decorative ? 97 : 92}
+        height={decorative ? 97 : 92}
         rx={decorative ? 14 : 20}
         fill={decorative ? "url(#galaxy-die-face)" : "#f8fafc"}
         stroke="#cbd5e1"
