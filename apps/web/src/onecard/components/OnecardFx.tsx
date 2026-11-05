@@ -3,7 +3,7 @@
 import type { OnecardCard } from "@game/onecard-engine";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ShuffleLoop } from "@/components/DealAnimation";
+import { ShuffleLoop } from "@/components/card-fx";
 
 import { type FxStep, fxStart, type Spot } from "../card-fx";
 import { OnecardCardView } from "./OnecardCard";
