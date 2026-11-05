@@ -562,9 +562,9 @@ function ResultBox({
       >
         <b className="text-emerald-300">
           {first?.id === room.me
-            ? "내가"
-            : `${room.playerName(first?.id ?? "")}이(가)`}{" "}
-          먼저 맞췄어요 · {formatMs(first?.reported)}
+            ? "내가 먼저 맞췄어요"
+            : `먼저 맞췄어요: ${room.playerName(first?.id ?? "")}`}{" "}
+          · {formatMs(first?.reported)}
         </b>
         <p className="text-white/70 text-xs">
           {snap.peers.find((p) => p.id === room.me)?.status === "playing"
