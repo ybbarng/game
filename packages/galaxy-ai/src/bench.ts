@@ -35,9 +35,9 @@ import { playGalaxy } from "./simulate";
 
 /** 판 수(기본). 워크플로 입력이 이 값을 바꿀 수 있다 */
 export const BENCH_GAMES = {
-  /** 4인 중수 × 4, 기본 판, 거래 켬(자리 순서·눈덩이·공문·칸 밟힘 등) */
+  /** 4인 중수 × 4, 기본 판, 인수 켬(g4까지는 거래)(자리 순서·눈덩이·공문·칸 밟힘 등) */
   main: 2000,
-  /** 같은 판, 거래 끔(별자리 완성 비율) */
+  /** 같은 판, 인수 끔(별자리 완성 비율) */
   noTrade: 1000,
   /** 고수 1 대 중수 3, 중수 1 대 입문 3(각각) */
   strength: 1000,
@@ -522,7 +522,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const withoutTrade = noTrade.completionGames / Math.max(1, noTrade.games);
   rows.push({
     item: "별자리 완성이 한 번이라도 나온 판",
-    value: `거래 켬 ${pct(withTrade)} · 끔 ${pct(withoutTrade)}`,
+    value: `인수 켬 ${pct(withTrade)} · 끔 ${pct(withoutTrade)}`,
     target: "켬 80% 넘게(끔은 참고, docs/48 3-5)",
     pass: withTrade > 0.8,
   });
@@ -599,7 +599,7 @@ export function benchMarkdown(report: BenchReport): string {
   const lines = [
     `# 은하 한 바퀴 밸런스 bench(${report.options.sky})`,
     "",
-    `판 수: 기본 ${report.options.main} · 거래 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength} · 긴장 지표 각 ${report.options.tension}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
+    `판 수: 기본 ${report.options.main} · 인수 끔 ${report.options.noTrade} · 세기 각 ${report.options.strength} · 긴장 지표 각 ${report.options.tension}. 걸린 시간 ${report.seconds.toFixed(0)}초. docs/48 3-4.`,
     "",
     "| 잴 것 | 값 | 기준 | 판정 |",
     "|---|---|---|---|",

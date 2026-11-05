@@ -59,7 +59,8 @@ function play(rules: GalaxyRules, seed: number, steps: number) {
         act(seat, debtPlan(state)[0] as Action);
         break;
       case "takeover":
-        act(seat, { type: nextInt(rng, 4) ? "takeover" : "declineTakeover" });
+        // 사들여 별자리가 완성돼야 정거장을 올리는 갈래까지 지난다
+        act(seat, { type: nextInt(rng, 8) ? "takeover" : "declineTakeover" });
         break;
       default: {
         const options = legalActions(state, seat);
