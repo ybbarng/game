@@ -18,6 +18,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceGame } from "@/net/race/types";
 import { goalReached } from "./handicap";
+import { PARTY_REASONS, partyCheckpoints } from "./party";
 
 /**
  * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭(`bot-racer.ts`가 쓴다). 남이 보낸 그만두기 까닭은
@@ -97,6 +98,8 @@ export function createCubeRaceGame(
   scrambler: Scrambler,
   event: ScrambleEvent = eventForSize(n),
   goals: Readonly<Record<string, MilestoneId>> = {},
+  /** 체력바 대결(docs/47 9-6): 깎는 이정표를 대결 틀의 중간 지점으로 넘긴다 */
+  party = false,
 ): CubeRaceGame {
   const cache = new Map<number, Scramble>();
   const scrambleOf = (seed: string) => cache.get(scrambleSeed(seed));
@@ -137,7 +140,10 @@ export function createCubeRaceGame(
         ? goalReached(n, state, goals[player])
         : isSolved(n, state),
     progress: (state) => solvedPieceRatio(n, state),
-    retireReasons: [BOT_NO_PLAN],
+    retireReasons: [BOT_NO_PLAN, ...PARTY_REASONS],
+    ...(party
+      ? { checkpointsOf: (state: PuzzleState) => partyCheckpoints(n, state) }
+      : {}),
     // 큐브 돌리기(x·y·z)는 수로 세지 않는다(의심 표시 「수가 지나치게 적음」 등)
     isTurn(text) {
       const move = parseMoves(n, text)[0];

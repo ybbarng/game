@@ -24,6 +24,7 @@ import {
   scoreByAverage,
 } from "./handicap";
 import { RaceHub } from "./hub";
+import { judgeParty, PARTY_KO, PARTY_OVER, type PartyOutcome } from "./party";
 import {
   type CubeRaceGame,
   createCubeRaceGame,
@@ -34,6 +35,7 @@ import {
   type MatchFormat,
   type MatchRules,
   matchOver,
+  type PartySummary,
   POINTS_ROUNDS,
   type RoundSummary,
   SCORING_LABELS,
@@ -67,7 +69,17 @@ export interface RoomSettings {
   timeLimitSec: number;
   /** 실력 차 균형(docs/51 4절). 옛 판 방장은 보내지 않는다. 쓸 때만 판정 설정 지문에 넣는다(`raceOptionsFor`) */
   handicap?: Handicap;
+  /**
+   * 파티 모드(docs/51 3-2, docs/47 9-6). `"hp"`면 체력바 대결. 옛 판 방장은 보내지 않는다(일반 대결).
+   * 5판 평균(시간 평균)·핸디캡 「평균 대비」와는 함께 쓰지 않는다
+   */
+  party?: PartyMode;
 }
+
+export type PartyMode = "hp";
+
+/** 대결 틀의 다툼 폭(기본값과 같다). 체력 판정이 중간 지점 시각을 같은 규칙으로 본다 */
+const DISPUTE_MS = 1_000;
 
 /**
  * 크기별 기본 제한 시간(초). 가장 느린 컴퓨터(입문, 초당 2수·층별)도 시간 안에 맞추게 넉넉히 둔다.
@@ -139,6 +151,8 @@ export interface RoundRecord extends RoundSummary {
   baseline?: Record<string, Baseline>;
 }
 
+export type { PartySummary };
+
 type RoomMessage =
   | { type: "cube-hello"; name: string; avgs?: Record<string, number> }
   | { type: "cube-room"; state: RoomState }
@@ -201,6 +215,11 @@ export function raceOptionsFor(
     suspicion: suspicionFor(s.n),
   };
   const game: Record<string, unknown> = {};
+  // 체력바: 이정표 시각을 대결 틀이 증인 하한으로 확인한다(중간 지점). 쓰지 않으면 예전 지문 그대로
+  if (s.party === "hp") {
+    options.checkpoints = true;
+    game.party = "hp";
+  }
   if (s.format === "points") {
     const r = matchRules(s);
     Object.assign(game, {
@@ -271,6 +290,10 @@ export class CubeRoom {
     planned: Map<string, number>;
     /** 이 판의 핸디캡(판을 열 때 고정) */
     handicap: ActiveHandicap;
+    /** 체력바 판 */
+    party: boolean;
+    /** 체력바 판: 참가자마다 시간이 흘러야 풀리는 판정을 다시 볼 예약 */
+    recheck: Map<string, () => void>;
   };
   private readonly listeners = new Set<() => void>();
   private disposed = false;
@@ -380,6 +403,21 @@ export class CubeRoom {
     );
   }
 
+  /**
+   * 체력바 판의 지금 판정(이 기기가 받은 만큼, 확실한 데까지). 판이 끝났으면 판 기록의 것. 체력바 판이 아니면 없다
+   */
+  party(): PartyOutcome | undefined {
+    const c = this.current;
+    if (!c?.party) return undefined;
+    const session = c.sessions.get(this.me) ?? [...c.sessions.values()][0];
+    if (!session) return undefined;
+    return this.partyOf(
+      session,
+      [...c.owners.keys()],
+      !!session.snapshot().result,
+    );
+  }
+
   play(move: CubeMove): PlayResult {
     return this.session()?.play(move) ?? { ok: false, reason: "관전" };
   }
@@ -426,6 +464,10 @@ export class CubeRoom {
     if (!this.isHost || !s || s.status === "racing") return;
     const sizeChanged = patch.n !== undefined && patch.n !== s.settings.n;
     s.settings = { ...s.settings, ...patch };
+    if (s.settings.party === undefined) delete s.settings.party;
+    // 체력바는 시간 평균(5판 평균)과 함께 쓰지 않는다: 한 판으로 돌린다
+    if (s.settings.party && s.settings.format === "ao5")
+      s.settings.format = "single";
     // 목표는 크기마다 다르다: 크기를 바꾸면 비운다
     const h = s.settings.handicap;
     if (sizeChanged && h?.goal) {
@@ -625,10 +667,11 @@ export class CubeRoom {
     const witness = (observer: string, of: string) =>
       !bots.has(observer) && owners.get(observer) !== owners.get(of);
     // 핸디캡은 사람에게만. 평균은 내 칸만 이 기기가 알린 값으로 넣어 지문을 만든다: 방장이 내 평균을 바꿔 적었으면
-    // 지문이 달라 드러난다(남의 평균은 확인할 수 없다)
+    // 지문이 달라 드러난다(남의 평균은 확인할 수 없다). 「평균 대비」는 시간 순위라 체력바와 함께 쓰지 않는다
     const humans = race.players.filter((id) => !bots.has(id));
+    const party = s.settings.party === "hp";
     const handicap = activeHandicap(s.settings.handicap, humans, {
-      ao5: s.settings.format === "ao5",
+      ao5: s.settings.format === "ao5" || party,
       averageOf: (id) => this.averageOf(id),
     });
     const game = createCubeRaceGame(
@@ -636,6 +679,7 @@ export class CubeRoom {
       this.init.scrambler,
       undefined,
       handicap.goal,
+      party,
     );
     const options = raceOptionsFor(s.settings, handicap);
     const sessions = new Map<string, RaceSession<CubeMove, PuzzleState>>();
@@ -673,7 +717,10 @@ export class CubeRoom {
         session.onChange((snap) => {
           if (snap.result)
             this.finishRound(race.id, round, race.players, snap.result);
-          else this.emit();
+          else {
+            if (party) this.partyStep(p.id, session, race.players);
+            this.emit();
+          }
         }),
       );
     }
@@ -686,6 +733,8 @@ export class CubeRoom {
       off,
       planned,
       handicap,
+      party,
+      recheck: new Map(),
     };
     for (const session of sessions.values()) session.start();
     this.emit();
@@ -719,6 +768,24 @@ export class CubeRoom {
       start: source?.startState() as PuzzleState,
       ...(hasHandicap(c.handicap) ? { handicap: c.handicap } : {}),
     };
+    // 체력바: 순위·승자를 체력 판정으로 다시 매긴다. 판이 정해진 뒤의 일은 판정에 끼지 않으므로(판 도중 판정과 같다)
+    // 모든 기기가 같은 값을 낸다
+    if (c.party && source && !final.cancelled) {
+      const outcome = this.partyOf(source, players, true);
+      const d = outcome.decided;
+      const noDecision = d?.end === "noDecision";
+      final = { ...final, ranking: outcome.ranking };
+      if (noDecision) final.noDecision = true;
+      else delete final.noDecision;
+      record.party = {
+        winner: d?.winner ?? null,
+        end: d?.end ?? "time",
+        places: outcome.places,
+        hp: outcome.hp,
+        knockedOut: outcome.knockedOut,
+        ...(d && Number.isFinite(d.at) ? { at: d.at } : {}),
+      };
+    }
     // 「평균 대비」: 이 판의 순위를 평균 대비 점수로 다시 매긴다. 기준(평균, 없으면 이 경기에서 처음 맞춘 판)은 모든 기기가
     // 같은 값을 가진다(평균은 지문으로 맞춰 봤고, 앞선 판 결과는 같다)
     const avg = c.handicap.avg;
@@ -743,10 +810,61 @@ export class CubeRoom {
     this.emit();
   }
 
+  private partyOf(
+    session: RaceSession<CubeMove, PuzzleState>,
+    players: readonly string[],
+    final: boolean,
+  ): PartyOutcome {
+    const logs: Record<string, ReturnType<typeof session.checkpointLog>> = {};
+    for (const id of players) logs[id] = session.checkpointLog(id);
+    return judgeParty({
+      n: this.state?.settings.n ?? 3,
+      players,
+      logs,
+      disputeMs: DISPUTE_MS,
+      final,
+    });
+  }
+
+  /**
+   * 체력바 판에서 이 기기가 맡은 참가자를 멈춘다(확실한 판정만 보고): 체력이 0이 되면 「체력 0」, 판이 정해지면
+   * 「판이 끝남」으로 그만둔다(`race-retire`). 다른 기기는 그 사람의 수가 더 오지 않는다는 것을 알게 되어 판정을 이어 간다
+   */
+  private partyStep(
+    id: string,
+    session: RaceSession<CubeMove, PuzzleState>,
+    players: readonly string[],
+  ): void {
+    const snap = session.snapshot();
+    if (snap.spectator || snap.phase !== "race") return;
+    const outcome = this.partyOf(session, players, false);
+    if (outcome.knockedOut[id] !== undefined) session.retire(PARTY_KO);
+    else if (outcome.decided) session.retire(PARTY_OVER);
+    else {
+      // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 그때 다시 본다. 메시지가 없어도 시간은 흐른다
+      const elapsed = snap.elapsed ?? 0;
+      const c = this.current;
+      if (!c || !Number.isFinite(outcome.until) || outcome.until < elapsed)
+        return;
+      c.recheck.get(id)?.();
+      c.recheck.set(
+        id,
+        this.init.clock.after(Math.max(1, outcome.until - elapsed + 1), () => {
+          c.recheck.delete(id);
+          if (this.current === c && !this.disposed) {
+            this.partyStep(id, session, players);
+            this.emit();
+          }
+        }),
+      );
+    }
+  }
+
   private endRace(): void {
     const c = this.current;
     if (!c) return;
     for (const f of c.off) f();
+    for (const cancel of c.recheck.values()) cancel();
     for (const s of c.sessions.values()) s.dispose();
     this.hub.clear();
     delete this.current;
@@ -767,6 +885,12 @@ function pointsSettingsOk(s: RoomSettings): boolean {
     typeof s.scoring === "string" &&
     Object.hasOwn(SCORING_LABELS, s.scoring)
   );
+}
+
+/** 파티 모드는 정한 값만, 5판 평균과는 함께 쓰지 않는다 */
+function partySettingsOk(s: RoomSettings): boolean {
+  if (s.party === undefined) return true;
+  return s.party === "hp" && s.format !== "ao5";
 }
 
 /**
@@ -794,6 +918,7 @@ function isRoomState(v: unknown): v is RoomState {
       [2, 3, 4, 5].includes(s.settings.n) &&
       typeof s.settings.timeLimitSec === "number" &&
       pointsSettingsOk(s.settings) &&
+      partySettingsOk(s.settings) &&
       handicapOk(s.settings.handicap, s.settings.n) &&
       s.players.every((p) => p.avgs === undefined || averagesOk(p.avgs))
     )
