@@ -22,8 +22,9 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
   const host = room.isHost;
   const h: Handicap = s.handicap ?? {};
   const humans = state.players.filter((p) => p.bot === undefined);
-  const avg = h.score === "avg";
-  const ao5 = s.format === "ao5";
+  // 「평균 대비」는 시간 순위라 5판 평균·체력바와는 함께 쓰지 않는다
+  const ao5 = s.format === "ao5" || !!s.party;
+  const avg = h.score === "avg" && !ao5;
   const goals = goalChoices(s.n);
   const averages = Object.fromEntries(
     humans.map((p) => [p.id, room.averageOf(p.id)]),

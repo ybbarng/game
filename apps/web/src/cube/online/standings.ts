@@ -1,4 +1,5 @@
 import type { RaceResult } from "@/net/race/types";
+import type { PartyEnd } from "./party";
 
 /**
  * 여러 판을 묶은 경기 방식과 종합 순위(docs/47 9-1·9-3).
@@ -44,6 +45,25 @@ export interface RoundSummary {
    * 이것으로 가른다. 판 결과의 `ranking`도 이 차례로 다시 매겨 둔다(`room.ts`)
    */
   score?: Record<string, number>;
+  /**
+   * 파티 모드 체력바 판(docs/47 9-6). 있으면 판의 승자·등수를 이것으로 정한다(맞춘 시간이 아니라 체력 판정).
+   * 판 결과의 `ranking`도 이 차례로 다시 매겨 둔다(`room.ts`)
+   */
+  party?: PartySummary;
+}
+
+/** 체력바 판의 결과(모든 기기가 같은 값) */
+export interface PartySummary {
+  winner: string | null;
+  end: PartyEnd;
+  /** 등수(1부터, 같으면 같은 등수). 순위 없음·기권은 없다 */
+  places: Record<string, number>;
+  /** 판이 정해진 때 남은 체력 */
+  hp: Record<string, number>;
+  /** 체력이 0이 된 시각(풀림 기준 ms) */
+  knockedOut: Record<string, number>;
+  /** 판이 정해진 시각(제한 시간까지 갔으면 없음) */
+  at?: number;
 }
 
 export interface StandingRow {
@@ -93,8 +113,10 @@ export function averageOf5(times: (number | null)[]): number | null {
   return sorted.reduce((s, t) => s + t, 0) / 3;
 }
 
-function winnerOf(result: RaceResult): string | null {
+function winnerOf(r: RoundSummary): string | null {
+  const result = r.result;
   if (result.noDecision) return null;
+  if (r.party) return r.party.winner;
   const first = result.ranking[0];
   const p = first === undefined ? undefined : result.players[first];
   return first !== undefined && p?.status === "done" && !p.unranked
@@ -106,7 +128,12 @@ function winnerOf(result: RaceResult): string | null {
 function ranked(
   result: RaceResult,
   score?: Record<string, number>,
+  party?: PartySummary,
 ): { id: string; value: number }[] {
+  if (party)
+    return result.noDecision
+      ? []
+      : Object.entries(party.places).map(([id, value]) => ({ id, value }));
   return Object.values(result.players)
     .filter(
       (p) =>
@@ -128,11 +155,13 @@ function ranked(
 export function rankPoints(
   result: RaceResult,
   score?: Record<string, number>,
+  party?: PartySummary,
 ): Record<string, number> {
   const out: Record<string, number> = {};
   if (result.noDecision) return out;
   const m = Object.keys(result.players).length;
-  const done = ranked(result, score);
+  // 체력바 판은 체력 판정의 등수로(0이 된 사람도 늦게 빠진 차례로 점수가 있다)
+  const done = ranked(result, score, party);
   for (const p of done) {
     const place = 1 + done.filter((q) => q.value < p.value).length;
     out[p.id] = m - place + 1;
@@ -141,8 +170,8 @@ export function rankPoints(
 }
 
 function roundScore(scoring: Scoring, r: RoundSummary, id: string): number {
-  if (scoring === "wins") return winnerOf(r.result) === id ? 1 : 0;
-  return rankPoints(r.result, r.score)[id] ?? 0;
+  if (scoring === "wins") return winnerOf(r) === id ? 1 : 0;
+  return rankPoints(r.result, r.score, r.party)[id] ?? 0;
 }
 
 /** 서든데스 판의 승자: 동점자 가운데 인정 시간이 홀로 가장 빠른 사람. 없으면(모두 못 맞춤·같은 시간) null */
@@ -150,7 +179,9 @@ function suddenDeathWinner(
   r: RoundSummary,
   tied: readonly string[],
 ): string | null {
-  const done = ranked(r.result, r.score).filter((p) => tied.includes(p.id));
+  const done = ranked(r.result, r.score, r.party).filter((p) =>
+    tied.includes(p.id),
+  );
   if (done.length === 0) return null;
   const best = Math.min(...done.map((p) => p.value));
   const top = done.filter((p) => p.value === best);
@@ -262,7 +293,7 @@ function pointsStandings(
       roundPoints: main.map((r) =>
         id in r.result.players ? roundScore(scoring, r, id) : null,
       ),
-      wins: main.filter((r) => winnerOf(r.result) === id).length,
+      wins: main.filter((r) => winnerOf(r) === id).length,
       place: 0,
     };
   });
@@ -295,7 +326,7 @@ export function standings(
   const rounds = decidedRounds(all);
   const rows = players.map((id) => {
     const times = rounds.map((r) => roundTime(r.result, id));
-    const wins = rounds.filter((r) => winnerOf(r.result) === id).length;
+    const wins = rounds.filter((r) => winnerOf(r) === id).length;
     let value: number | null;
     if (format === "ao5") value = averageOf5(times);
     else if (format === "firstTo") value = wins;
@@ -331,7 +362,7 @@ export function matchOver(match: MatchRules, all: RoundSummary[]): boolean {
   if (format === "ao5") return rounds.length >= 5;
   const wins = new Map<string, number>();
   for (const r of rounds) {
-    const w = winnerOf(r.result);
+    const w = winnerOf(r);
     if (w) wins.set(w, (wins.get(w) ?? 0) + 1);
   }
   return [...wins.values()].some((n) => n >= target);

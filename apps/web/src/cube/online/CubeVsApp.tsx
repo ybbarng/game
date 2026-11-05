@@ -38,6 +38,8 @@ export function CubeVsApp() {
   const [delay, setDelay] = useState(0);
   const [goal, setGoal] = useState<MilestoneId | "">("");
   const [byAverage, setByAverage] = useState(false);
+  /** 파티 모드 체력바(docs/51 3-2). 「평균 대비」와는 함께 쓰지 않는다 */
+  const [party, setParty] = useState(false);
   const [averages, setAverages] = useState<Record<string, number>>();
   useEffect(() => setAverages(localAverages()), []);
   // 크기를 바꾸면 그 크기의 목표가 아니므로 비운다
@@ -67,13 +69,15 @@ export function CubeVsApp() {
           : { format: "single" as const }),
         inspection,
         timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
+        ...(party ? { party: "hp" as const } : {}),
       },
     });
     r.addBot(level);
     const handicap: Handicap = {};
     if (delay > 0) handicap.delay = { [r.me]: delay };
-    if (goal && !byAverage) handicap.goal = { [r.me]: goal };
-    if (byAverage) handicap.score = "avg";
+    const average = byAverage && !party;
+    if (goal && !average) handicap.goal = { [r.me]: goal };
+    if (average) handicap.score = "avg";
     r.setHandicap(handicap);
     roomRef.current = r;
     setRoom(r);
@@ -138,6 +142,23 @@ export function CubeVsApp() {
               </div>
             </fieldset>
             <fieldset className="flex flex-col gap-1 text-sm">
+              <legend className="mb-1">규칙</legend>
+              <div className="flex flex-wrap gap-1">
+                {[false, true].map((on) => (
+                  <button
+                    key={String(on)}
+                    type="button"
+                    data-cube-vs-party={on ? "hp" : "normal"}
+                    aria-pressed={party === on}
+                    onClick={() => setParty(on)}
+                    className={`rounded-lg px-3 py-1.5 ${party === on ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                  >
+                    {on ? "파티: 체력바" : "일반"}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">판 수</legend>
               <div className="flex flex-wrap gap-1">
                 {[1, ...POINTS_ROUNDS].map((k) => (
@@ -191,7 +212,9 @@ export function CubeVsApp() {
                   ))}
                 </select>
               </label>
-              <label className="flex items-center justify-between">
+              <label
+                className={`flex items-center justify-between ${party ? "hidden" : ""}`}
+              >
                 순위
                 <select
                   data-cube-vs-score
@@ -207,7 +230,7 @@ export function CubeVsApp() {
                   </option>
                 </select>
               </label>
-              {byAverage ? (
+              {byAverage && !party ? (
                 <p className="text-white/50 text-xs" data-cube-vs-average>
                   내 평균{" "}
                   {myAverage === undefined

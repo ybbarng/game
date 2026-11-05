@@ -112,6 +112,47 @@ export interface JudgeInput {
   cancelled?: string;
 }
 
+/** 한 시각(맞춘 시각·중간 지점 시각)을 증인 하한으로 확인한 값 */
+export interface CheckedTime {
+  /** 인정 시각 = max(보고, 쓴 하한). 다툼이면 없다 */
+  accepted?: number;
+  /** 쓴 하한(약하지 않은 하한의 가운데 값, 짝수면 낮은 쪽). 없으면 null */
+  used: number | null;
+  /** 하한을 낸 기기가 하나뿐이고 하한이 보고보다 `disputeMs` 넘게 늦다(누가 거짓인지 가릴 수 없다) */
+  disputed: boolean;
+  /** 증인이 있었는데 쓸 수 있는 하한이 하나도 없다(끊김) */
+  weak: boolean;
+}
+
+/**
+ * 보고 시각과 증인들이 본 하한으로 인정 시각을 정한다. 맞춘 시각(`judge`)과 중간 지점 시각(체력바 대결 등)이 같은 규칙을 쓴다.
+ * 1:1처럼 하한을 낸 기기가 하나뿐이면 둘 중 누가 거짓인지 가릴 수 없다: 증인이 하한을 부풀렸을 수도(game-85 ①),
+ * 본인이 시간을 줄여 보고했을 수도 있다. 폭을 넘으면 어느 값도 믿지 않는다(인정 시각 없음)
+ */
+export function checkTime(
+  reported: number,
+  bounds: Record<string, number | null>,
+  disputeMs?: number,
+): CheckedTime {
+  const strong = Object.values(bounds).filter((b): b is number => b !== null);
+  const used = lowerMedian(strong);
+  // 증인이 아무도 없으면(같은 기기의 컴퓨터만 있는 판) 약한 것이 아니라 잴 사람이 없는 것이다
+  const weak = used === null && Object.keys(bounds).length > 0;
+  const disputed =
+    used !== null &&
+    strong.length === 1 &&
+    disputeMs !== undefined &&
+    used - reported > disputeMs;
+  return disputed
+    ? { used, disputed, weak }
+    : {
+        accepted: used === null ? reported : Math.max(reported, used),
+        used,
+        disputed,
+        weak,
+      };
+}
+
 export function judge(input: JudgeInput): RaceResult {
   const players: Record<string, PlayerResult> = {};
   for (const rec of input.records) {
@@ -136,28 +177,16 @@ export function judge(input: JudgeInput): RaceResult {
       const sortedBounds: Record<string, number | null> = {};
       for (const k of Object.keys(bounds).sort())
         sortedBounds[k] = bounds[k] as number | null;
-      const strong = Object.values(bounds).filter(
-        (b): b is number => b !== null,
-      );
-      const used = lowerMedian(strong);
+      const checked = checkTime(rec.reported, bounds, input.disputeMs);
       result.reported = rec.reported;
       result.bounds = sortedBounds;
-      result.usedBound = used;
-      // 증인이 아무도 없으면(같은 기기의 컴퓨터만 있는 판) 약한 것이 아니라 잴 사람이 없는 것이다
-      result.weak = used === null && Object.keys(bounds).length > 0;
-      // 1:1처럼 하한을 낸 기기가 하나뿐이면 둘 중 누가 거짓인지 가릴 수 없다: 증인이 하한을 부풀렸을 수도(game-85 ①),
-      // 본인이 시간을 줄여 보고했을 수도 있다. 폭을 넘으면 어느 값도 믿지 않는다(인정 시간 없음, 순위 없음)
-      const disputed =
-        used !== null &&
-        strong.length === 1 &&
-        input.disputeMs !== undefined &&
-        used - rec.reported > input.disputeMs;
-      if (disputed) {
+      result.usedBound = checked.used;
+      result.weak = checked.weak;
+      // 다툼이면 인정 시간 없음, 순위 없음
+      if (checked.disputed) {
         result.disputed = true;
         result.unranked = true;
-      } else
-        result.accepted =
-          used === null ? rec.reported : Math.max(rec.reported, used);
+      } else result.accepted = checked.accepted as number;
     }
     players[rec.id] = result;
   }

@@ -184,6 +184,7 @@ export function CubeOnlineApp() {
           {state && state.round > 0 && (
             <span className="text-sm text-white/60">
               {state.round}번째 판 · {FORMAT_LABELS[state.settings.format]}
+              {state.settings.party ? " · 체력바" : ""}
             </span>
           )}
         </header>
@@ -358,6 +359,24 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             ))}
           </select>
         </Field>
+        <Field label="규칙">
+          <select
+            disabled={!host}
+            data-cube-party
+            value={s.party ?? "normal"}
+            onChange={(e) =>
+              room.setParty(e.target.value === "hp" ? "hp" : null)
+            }
+            className="rounded bg-white/10 px-2 py-1"
+          >
+            <option value="normal" className="bg-neutral-800">
+              일반
+            </option>
+            <option value="hp" className="bg-neutral-800">
+              파티: 체력바
+            </option>
+          </select>
+        </Field>
         <Field label="방식">
           <select
             disabled={!host}
@@ -367,11 +386,14 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             }
             className="rounded bg-white/10 px-2 py-1"
           >
-            {(Object.keys(FORMAT_LABELS) as MatchFormat[]).map((f) => (
-              <option key={f} value={f} className="bg-neutral-800">
-                {FORMAT_LABELS[f]}
-              </option>
-            ))}
+            {(Object.keys(FORMAT_LABELS) as MatchFormat[])
+              // 체력바는 시간 평균을 내지 않는다
+              .filter((f) => !(s.party && f === "ao5"))
+              .map((f) => (
+                <option key={f} value={f} className="bg-neutral-800">
+                  {FORMAT_LABELS[f]}
+                </option>
+              ))}
           </select>
         </Field>
         {s.format === "points" && (
