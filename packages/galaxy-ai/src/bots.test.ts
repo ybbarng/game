@@ -6,6 +6,9 @@ import {
   createMatch,
   debtPlan,
   type GalaxyState,
+  requestCommitOf,
+  requestOf,
+  requestSecretOf,
   SHORT_RULES,
   STANDARD_RULES,
   step,
@@ -13,7 +16,7 @@ import {
   viewOf,
 } from "@game/galaxy-engine";
 import { createRng } from "@game/mighty-engine";
-import { chainCommit, derivedSeed } from "@game/yut-engine";
+import { chainCommit, chainLink, derivedSeed } from "@game/yut-engine";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -22,6 +25,7 @@ import {
   galaxyBotFor,
   galaxyExpertBot,
   galaxyIntermediateBot,
+  myRequest,
 } from "./bots";
 import { playGalaxy } from "./simulate";
 
@@ -160,17 +164,25 @@ describe("은하 한 바퀴 컴퓨터", () => {
     }
   });
 
-  it("사람이 만든 사슬은 대신 공개하지 않는다", () => {
+  it("사람이 만든 사슬은 대신 공개하지 않는다(관측 의뢰도)", () => {
     let { state } = createMatch({ ...STANDARD_RULES, players: 2 }, 5, board);
     // 0번 자리는 사람이 자기 씨앗으로 약속했다. 1번은 컴퓨터 재료로 약속했다
+    const human = "ab".repeat(32);
     state = must(state, 0, {
       type: "commit",
-      hash: chainCommit("ab".repeat(32)),
+      hash: chainCommit(human),
+      request: requestCommitOf(0, human),
     });
-    state = must(state, 1, {
+    const botCommit = galaxyExpertBot.decide(viewOf(state, 1), createRng(1));
+    expect(botCommit).toEqual({
       type: "commit",
       hash: chainCommit(derivedSeed(state.keys[1] as string, 0)),
+      request: requestCommitOf(1, derivedSeed(state.keys[1] as string, 0)),
     });
+    state = must(state, 1, botCommit);
+    const ending: GalaxyState = { ...state, phase: "requestReveal" };
+    expect(botKnowsChain(viewOf(ending, 0))).toBe(false);
+    expect(botKnowsChain(viewOf(ending, 1))).toBe(true);
     state = must(state, state.turn.seat, { type: "roll" });
     expect(state.phase).toBe("reveal");
     expect(botKnowsChain(viewOf(state, 0))).toBe(false);
@@ -180,6 +192,18 @@ describe("은하 한 바퀴 컴퓨터", () => {
     ).toThrow();
     const reveal = galaxyExpertBot.decide(viewOf(state, 1), createRng(1));
     expect(step(state, 1, reveal).ok).toBe(true);
+    // 첫 공개 뒤 컴퓨터는 자기 의뢰만 안다(사람 자리는 모른다)
+    state = must(state, 0, { type: "reveal", link: chainLink(human, 1) });
+    state = must(state, 1, reveal);
+    const anchor = state.requests?.anchor as string;
+    expect(myRequest(viewOf(state, 1))).toBe(
+      requestOf(
+        board,
+        requestSecretOf(derivedSeed(state.keys[1] as string, 0)),
+        anchor,
+      ),
+    );
+    expect(myRequest(viewOf(state, 0))).toBeNull();
   });
 
   it("봉투는 자리 재료의 소금으로 낸 것만 대신 공개한다(사람이 자기 소금으로 낸 봉투는 기다린다)", () => {

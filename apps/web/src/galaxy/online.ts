@@ -240,6 +240,7 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
     rules.seasonal ? "제철 하늘" : null,
     rules.meteor && rules.length !== "long" ? "유성우의 밤" : null,
     rules.moon ? "달의 길" : null,
+    rules.requests ? "관측 의뢰" : null,
   ]
     .filter(Boolean)
     .join(" · ");

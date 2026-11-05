@@ -8,8 +8,14 @@ import {
   type GalaxyView,
   isComplete,
   levelCostAt,
+  matchesFact,
   NUMBERS,
   rentOf,
+  requestById,
+  requestCommitOf,
+  requestOf,
+  requestProgress,
+  requestSecretOf,
   STAR_SQUARES,
   sellValue,
   starAt,
@@ -88,6 +94,11 @@ function chainLinks(seed: string): string[] {
  */
 export function botKnowsChain(view: GalaxyView): boolean {
   if (view.decision?.kind === "bidReveal") return committedBid(view) !== null;
+  if (view.decision?.kind === "requestReveal")
+    return (
+      view.requests?.commits[view.mySeat] ===
+      requestCommitOf(view.mySeat, firstSeedOf(view))
+    );
   if (view.decision?.kind !== "reveal") return true;
   return view.chains[view.mySeat]?.commit === chainLinks(botSeedOf(view))[0];
 }
@@ -108,11 +119,43 @@ export function committedBid(view: GalaxyView): number | null {
   return null;
 }
 
-/** 재료로 만든 사슬로 약속·공개한다(컴퓨터·혼자 하기의 내 자리) */
+/** 이 자리 재료로 만든 0세대 사슬 씨앗(관측 의뢰 비밀을 여기서 만든다) */
+function firstSeedOf(view: Pick<GalaxyView, "botKey">): string {
+  return derivedSeed(view.botKey, 0);
+}
+
+/**
+ * 이 자리가 재료로 약속한 관측 의뢰(의뢰를 끈 판, 닻이 아직 없거나 사람이 자기 씨앗으로 약속한 자리는 null).
+ * 컴퓨터는 자기 의뢰만 안다
+ */
+export function myRequest(view: GalaxyView): number | null {
+  const requests = view.requests;
+  if (!requests?.anchor) return null;
+  const seed = firstSeedOf(view);
+  if (requests.commits[view.mySeat] !== requestCommitOf(view.mySeat, seed))
+    return null;
+  return requestOf(view.board, requestSecretOf(seed), requests.anchor);
+}
+
+/** 재료로 만든 사슬로 약속·공개한다(컴퓨터·혼자 하기의 내 자리). 관측 의뢰 약속·공개도 */
 export function derivedChainAction(view: GalaxyView): Action | null {
   const kind = view.decision?.kind;
   if (kind === "commit")
-    return { type: "commit", hash: chainLinks(botSeedOf(view))[0] as string };
+    return {
+      type: "commit",
+      hash: chainLinks(botSeedOf(view))[0] as string,
+      ...(view.requests && view.generation === 0
+        ? { request: requestCommitOf(view.mySeat, firstSeedOf(view)) }
+        : {}),
+    };
+  if (kind === "requestReveal") {
+    if (!botKnowsChain(view))
+      throw new Error("이 자리 의뢰는 사람이 만들어 컴퓨터가 펼칠 수 없다");
+    return {
+      type: "requestReveal",
+      secret: requestSecretOf(firstSeedOf(view)),
+    };
+  }
   if (kind === "reveal") {
     if (!botKnowsChain(view))
       throw new Error("이 자리의 사슬은 사람이 만들어 컴퓨터가 공개할 수 없다");
@@ -148,6 +191,8 @@ interface Ctx {
   rate: readonly number[];
   /** 남은 상대 차례 수 */
   turns: number;
+  /** 내 관측 의뢰(모르거나 없으면 null) */
+  request: number | null;
 }
 
 function ctxOf(view: GalaxyView): Ctx {
@@ -157,6 +202,7 @@ function ctxOf(view: GalaxyView): Ctx {
     seat: view.mySeat,
     rate: landingRate(view.board),
     turns: opponentTurns(view, view.mySeat),
+    request: myRequest(view),
   };
 }
 
@@ -378,10 +424,38 @@ function intermediateReserve(ctx: Ctx): number {
   return Math.max(60, 1.5 * maxOpponentRent(ctx.view, ctx.seat));
 }
 
-/** 중수가 이 별을 더 쳐주는 몫: 내 별자리를 잇는 별 +0.5, 남의 별자리를 막는 별 +0.3 */
+/**
+ * 내 관측 의뢰(15-5 1번)에 보탬이 되는 별인가: 아직 이루지 않았고, 별 사실 의뢰면 그 사실에 맞는 별,
+ * 계절 의뢰면 그 계절 별자리 별, 넓은 순찰이면 아직 별이 없는 별자리 별
+ */
+function requestHelps(ctx: Ctx, square: number): boolean {
+  const card = ctx.request;
+  if (card === null) return false;
+  const progress = requestProgress(ctx.view, ctx.seat, card);
+  if (progress.have >= progress.need) return false;
+  const star = starAt(ctx.view.board, square);
+  if (!star) return false;
+  const goal = requestById(card).goal;
+  if (goal.kind === "fact") return matchesFact(star.star, goal.fact);
+  if (goal.kind === "season")
+    return ctx.view.board.groups[star.group]?.season === goal.season;
+  return ownedIn(ctx, ctx.seat, star.group) === 0;
+}
+
+/** 의뢰에 보탬이 되는 별 하나의 몫(남은 수로 지원금을 나눈다). 고수가 값에 더한다 */
+function requestWorth(ctx: Ctx, square: number): number {
+  if (!requestHelps(ctx, square) || ctx.request === null) return 0;
+  const { have, need } = requestProgress(ctx.view, ctx.seat, ctx.request);
+  return NUMBERS.requestBonus / Math.max(1, need - have);
+}
+
+/**
+ * 중수가 이 별을 더 쳐주는 몫: 내 별자리를 잇는 별 +0.5, 남의 별자리를 막는 별 +0.3,
+ * 내 관측 의뢰에 보탬이 되는 별 +0.4
+ */
 function intermediateBonus(ctx: Ctx, square: number): number {
   const group = groupOf(ctx, square);
-  let bonus = 0;
+  let bonus = requestHelps(ctx, square) ? 0.4 : 0;
   if (ownedIn(ctx, ctx.seat, group) > 0) bonus += 0.5;
   for (const other of activeSeats(ctx.view))
     if (other !== ctx.seat && ownedIn(ctx, other, group) > 0) {
@@ -610,7 +684,9 @@ function tradeDelta(ctx: Ctx, offer: TradeOffer): { from: number; to: number } {
 const expertPolicy: Policy = {
   bid(ctx, square) {
     // 본전(기대 자산 이득) + 막는 값까지는 내도 되고, 남이 낼 만한 값보다 10 더 내면 충분하다
-    const mine = worthGain(ctx.view, ctx.seat, square, ctx.rate, ctx.turns);
+    const mine =
+      worthGain(ctx.view, ctx.seat, square, ctx.rate, ctx.turns) +
+      requestWorth(ctx, square);
     const limit = mine + 0.5 * denialValue(ctx, square);
     const enough = opponentBidGuess(ctx, square) + 10;
     const spare = myCash(ctx) - 0.5 * expertReserve(ctx);
@@ -624,7 +700,8 @@ const expertPolicy: Policy = {
     const extra =
       worthGain(ctx.view, ctx.seat, square, ctx.rate, ctx.turns) -
       price +
-      denialValue(ctx, square);
+      denialValue(ctx, square) +
+      requestWorth(ctx, square);
     return extra > price * 0.3 && left >= reserve / 2;
   },
   manage(ctx) {

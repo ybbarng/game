@@ -21,6 +21,7 @@ export function rulesFromSettings(
   s: Pick<GalaxySettings, "players" | "length" | "trade" | "seasonal"> & {
     meteor?: boolean;
     moon?: boolean;
+    requests?: boolean;
     time?: TimePreset;
   },
 ): GalaxyRules {
@@ -34,6 +35,7 @@ export function rulesFromSettings(
     meteor: s.meteor === true && s.length !== "long",
     // 달의 길을 들이기 전에 저장된 설정(값 없음)은 켠 것으로 본다
     moon: s.moon !== false,
+    requests: s.requests !== false,
     sky: DEFAULT_SKY,
     ...(s.time && s.time !== "none" ? { time: s.time } : {}),
   };

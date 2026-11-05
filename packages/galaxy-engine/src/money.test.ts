@@ -44,6 +44,7 @@ function play(rules: GalaxyRules, seed: number, steps: number) {
     switch (state.phase) {
       case "commit":
       case "reveal":
+      case "requestReveal":
         for (const s of seats) act(s, chainAction(state, s));
         break;
       case "bid":

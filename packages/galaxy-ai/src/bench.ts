@@ -7,6 +7,7 @@ import {
   type GalaxyState,
   type GameEvent,
   isComplete,
+  NUMBERS,
   SHORT_RULES,
   STANDARD_RULES,
   standingsOf,
@@ -94,6 +95,10 @@ interface Tally {
   firstComplete: number[];
   /** 2단 이상 정거장이 선 판 */
   level2Games: number;
+  /** 관측 의뢰: 펼친 의뢰 수, 이룬 의뢰 수, 의뢰 지원금이 1등을 바꾼 판 */
+  requestsShown: number;
+  requestsDone: number;
+  requestFlips: number;
 }
 
 function newTally(): Tally {
@@ -120,6 +125,9 @@ function newTally(): Tally {
     bigRents: [],
     firstComplete: [],
     level2Games: 0,
+    requestsShown: 0,
+    requestsDone: 0,
+    requestFlips: 0,
   };
 }
 
@@ -213,6 +221,10 @@ function runSet(
             // 빚 정리로 미룬 이용료도 갚을 때 같은 pay 사건이 난다
             bigRents += 1;
           else if (e.type === "built" && e.level >= 2) level2 = true;
+          else if (e.type === "requestRevealed") {
+            tally.requestsShown += 1;
+            if (e.done) tally.requestsDone += 1;
+          }
         }
         cardGains(events, tally);
       },
@@ -254,6 +266,21 @@ function runSet(
     const first = firstComplete as number | null;
     if (first !== null) tally.firstComplete.push(first);
     if (level2) tally.level2Games += 1;
+    // 의뢰 지원금을 뺀 자산으로 1등이 달랐나
+    const done = state.requests?.reveals.map((r) => r?.done === true) ?? [];
+    if (done.some(Boolean) && finals.length > 0) {
+      const plain = finals.map((f) => ({
+        seat: f.seat,
+        out: f.out,
+        assets: f.assets - (done[f.seat] ? NUMBERS.requestBonus : 0),
+      }));
+      const best = Math.max(
+        ...plain.filter((p) => !p.out).map((p) => p.assets),
+      );
+      const before = plain.filter((p) => !p.out && p.assets === best);
+      if (!before.some((p) => winners.includes(p.seat)))
+        tally.requestFlips += 1;
+    }
     onGame?.(state, g);
   }
   return tally;
@@ -637,6 +664,9 @@ export interface LayoutRow {
   /** 별자리 「완성한 사람이 1등」 가장 높은 것 − 낮은 것 */
   groupSpread: number | null;
   limit: number;
+  /** 관측 의뢰를 이룬 비율(펼친 의뢰 가운데), 의뢰 지원금이 1등을 바꾼 판 비율 */
+  requestDone: number | null;
+  requestFlip: number;
 }
 
 /**
@@ -695,6 +725,8 @@ export function runLayoutBench(
           ? Math.max(...rates) - Math.min(...rates)
           : null,
         limit: turnLimitOf(rules) ?? 0,
+        requestDone: t.requestsShown ? t.requestsDone / t.requestsShown : null,
+        requestFlip: t.requestFlips / g,
       });
     }
   return rows;
@@ -703,11 +735,11 @@ export function runLayoutBench(
 /** 배치 견주기 표(마크다운) */
 export function layoutMarkdown(rows: readonly LayoutRow[]): string {
   return [
-    "| 배치 | 판 | 판 수 | 돌림 · 차례 · 결정 · 어림 | 첫 완성 돌림(사분위 아래·중앙·위) | 완성 나온 판 | 자리 순서 1등 | 운항 중단 | 마지막 5돌림 1위 바뀜 | 300 넘는 이용료 나온 판 | 별자리 1등 비율 차이 |",
-    "|---|---|---|---|---|---|---|---|---|---|---|",
+    "| 배치 | 판 | 판 수 | 돌림 · 차례 · 결정 · 어림 | 첫 완성 돌림(사분위 아래·중앙·위) | 완성 나온 판 | 자리 순서 1등 | 운항 중단 | 마지막 5돌림 1위 바뀜 | 300 넘는 이용료 나온 판 | 별자리 1등 비율 차이 | 의뢰 이룸 · 1등 바뀜 |",
+    "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ...rows.map(
       (r) =>
-        `| ${r.name} | ${r.length === "short" ? "짧은" : "기본"} | ${r.games} | ${r.rounds.toFixed(1)}/${r.limit} · ${r.turns.toFixed(1)} · ${r.decisions.toFixed(0)} · ${r.minutes.toFixed(0)}분 | ${r.firstComplete ? r.firstComplete.map((x) => x.toFixed(1)).join(" · ") : "—"} | ${pct(r.completionGames)} | ${r.seats.map((s) => pct(s)).join(" · ")} | ${pct(r.bankrupt)} | ${pct(r.lateFlip)} | ${pct(r.bigRentGames)} | ${r.groupSpread === null ? "—" : `${(r.groupSpread * 100).toFixed(1)}%p`} |`,
+        `| ${r.name} | ${r.length === "short" ? "짧은" : "기본"} | ${r.games} | ${r.rounds.toFixed(1)}/${r.limit} · ${r.turns.toFixed(1)} · ${r.decisions.toFixed(0)} · ${r.minutes.toFixed(0)}분 | ${r.firstComplete ? r.firstComplete.map((x) => x.toFixed(1)).join(" · ") : "—"} | ${pct(r.completionGames)} | ${r.seats.map((s) => pct(s)).join(" · ")} | ${pct(r.bankrupt)} | ${pct(r.lateFlip)} | ${pct(r.bigRentGames)} | ${r.groupSpread === null ? "—" : `${(r.groupSpread * 100).toFixed(1)}%p`} | ${r.requestDone === null ? "—" : `${pct(r.requestDone)} · ${pct(r.requestFlip)}`} |`,
     ),
     "",
   ].join("\n");

@@ -199,7 +199,13 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     const { host, view, queue, playing } = get();
     if (!host || !view || queue.length > 0 || playing) return;
     const kind = view.decision?.kind;
-    if (kind !== "commit" && kind !== "reveal" && kind !== "bidReveal") return;
+    if (
+      kind !== "commit" &&
+      kind !== "reveal" &&
+      kind !== "bidReveal" &&
+      kind !== "requestReveal"
+    )
+      return;
     const key = `${view.generation}:${view.revealCount}:${view.auctionCount}:${kind}:${view.chains[view.mySeat]?.used ?? 0}`;
     if (lastAuto === key) return;
     let action: Action | null;
@@ -217,7 +223,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
           set({ secrets });
           saveSecrets(secretKey, secrets);
         }
-        action = commitAction(seed);
+        action = commitAction(seed, view);
       } else action = revealFor(view, secrets);
     } else if (kind === "bidReveal") {
       const bid = get().bid;

@@ -10,6 +10,8 @@ import {
   createGalaxyScenario,
   type GalaxyRules,
   type GalaxyView,
+  requestCommitOf,
+  requestSecretOf,
   SHORT_RULES,
   step,
 } from "@game/galaxy-engine";
@@ -83,10 +85,11 @@ class Device {
     let action: Action | null;
     switch (view.decision.kind) {
       case "commit":
-        action = commitAction(this.seed);
+        action = commitAction(this.seed, view);
         break;
       case "reveal":
       case "bidReveal":
+      case "requestReveal":
         action = revealFor(view, this.secrets);
         break;
       case "bid": {
@@ -225,6 +228,11 @@ describe("은하 한 바퀴 온라인 방", () => {
         // 방장 엔진 상태와 받은 메시지 어디에도 참가자 씨앗이 없고, 아직 공개하지 않은 다음 고리도 없다.
         expect(seen).not.toContain(GUEST_SEED);
         if (state.reveals[seat] === null) expect(seen).not.toContain(next);
+        // 관측 의뢰: 약속은 갔지만 판 끝에 펼치기 전에는 비밀이 방장에게 없다.
+        expect(state.requests?.commits[seat]).toBe(
+          requestCommitOf(seat, GUEST_SEED),
+        );
+        expect(seen).not.toContain(requestSecretOf(GUEST_SEED));
         // 봉투를 냈지만 공개하기 전에는 참가자 소금(과 값)이 방장에게 없다.
         const auction = state.auction;
         if (

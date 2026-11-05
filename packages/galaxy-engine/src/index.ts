@@ -2,6 +2,7 @@ export * from "./board";
 export * from "./cards";
 export * from "./dice";
 export * from "./match";
+export * from "./requests";
 export * from "./rules";
 export * from "./scenario";
 export * from "./skies";

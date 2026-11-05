@@ -3,6 +3,7 @@ import {
   cardById,
   type GalaxyBoard,
   type GameEvent,
+  requestById,
 } from "@game/galaxy-engine";
 
 import { money, SEASON_NAMES, squareName } from "./format";
@@ -59,6 +60,8 @@ export function eventLine(
           return `${who(e.from)} → ${who(e.to)} · 거래 ${money(e.amount)}`;
         case "bankrupt":
           return `${who(e.from)} → ${who(e.to)} · 남은 별빛 ${money(e.amount)}`;
+        case "request":
+          return `${who(e.to)} · 관측 의뢰 지원금 ${money(e.amount)}`;
         // 사기·입찰은 아래 bought·auctionEnded 줄이 함께 말한다.
         default:
           return null;
@@ -108,6 +111,8 @@ export function eventLine(
       return "유성우의 밤 · 판 끝까지 이용료 2배";
     case "timeUp":
       return "시간이 다 됐어요 · 모두 이번 차례를 마치면 끝나요";
+    case "requestRevealed":
+      return `${name(e.seat)} · 관측 의뢰 「${requestById(e.card).title}」 ${e.done ? "이룸" : "못 이룸"}`;
     default:
       return null;
   }

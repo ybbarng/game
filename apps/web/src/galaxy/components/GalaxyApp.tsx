@@ -189,6 +189,22 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
       </Section>
+      <Section title="관측 의뢰">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            active={rules.requests}
+            onClick={() => s.set({ requests: true })}
+          >
+            켬
+          </Chip>
+          <Chip
+            active={!rules.requests}
+            onClick={() => s.set({ requests: false })}
+          >
+            끔
+          </Chip>
+        </div>
+      </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -238,6 +254,10 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     [
       "제철 하늘·유성우의 밤",
       "제철 하늘을 켜면 판 길이의 4분의 1마다 계절이 바뀌고, 지금 계절 별자리 별의 이용료가 1.5배예요. 유성우의 밤을 켜면 마지막 두 차례 동안 모든 별 이용료가 2배예요.",
+    ],
+    [
+      "관측 의뢰",
+      `판 처음 우주국 의뢰서 한 장을 몰래 받아요(1등성 둘, 겨울 별자리 하나 완성 같은). 판이 끝날 때 모두의 의뢰서를 펼쳐, 이룬 사람은 ${NUMBERS.requestBonus}을 더 받아요.`,
     ],
     [
       "달의 길",
@@ -327,6 +347,7 @@ function GalaxyHome({
           s.seasonal ? "제철 하늘" : null,
           s.meteor && s.length !== "long" ? "유성우의 밤" : null,
           rules.moon ? "달의 길" : null,
+          rules.requests ? "관측 의뢰" : null,
           timePresetLabel(rules.time),
           `컴퓨터 ${level}`,
         ]

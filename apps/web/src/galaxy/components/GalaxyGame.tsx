@@ -375,6 +375,8 @@ function togetherWaiting(view: GalaxyView): number[] {
           return view.auction?.committed[seat] === false;
         case "bidReveal":
           return view.auction?.revealed[seat] === false;
+        case "requestReveal":
+          return view.requests?.reveals[seat] === null;
         default:
           return false;
       }
@@ -547,7 +549,8 @@ export function GalaxyGame({
     view.phase === "commit" ||
     view.phase === "reveal" ||
     view.phase === "bid" ||
-    view.phase === "bidReveal";
+    view.phase === "bidReveal" ||
+    view.phase === "requestReveal";
   const waitingOffline =
     online &&
     !gameOver &&
@@ -571,7 +574,9 @@ export function GalaxyGame({
         ? "모두가 봉투를 내는 중이에요"
         : view.phase === "commit" || view.phase === "reveal"
           ? "모두의 기기가 주사위를 함께 정하는 중이에요"
-          : `${turnName}의 차례예요`;
+          : view.phase === "requestReveal"
+            ? "모두의 관측 의뢰서를 펼치는 중이에요"
+            : `${turnName}의 차례예요`;
   } else
     switch (decision.kind) {
       case "roll":

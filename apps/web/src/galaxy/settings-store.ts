@@ -22,6 +22,8 @@ export interface GalaxySettings {
   meteor: boolean;
   /** 달의 길(docs/48 15-5 2번). 기본 켬 */
   moon: boolean;
+  /** 관측 의뢰(docs/48 15-5 1번). 기본 켬 */
+  requests: boolean;
   level: GalaxyLevel;
   /** 개인 시간(docs/24). 굴리기·사기·차례 마치기·거래 답·빚 정리에만 시계가 간다 */
   time: TimePreset;
@@ -39,6 +41,7 @@ export const useGalaxySettings = create<GalaxySettings>()(
       seasonal: true,
       meteor: false,
       moon: true,
+      requests: true,
       level: 0,
       time: "none",
       follow: true,

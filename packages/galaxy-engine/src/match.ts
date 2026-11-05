@@ -44,6 +44,7 @@ import {
   rollHash,
   SALT_PATTERN,
 } from "./dice";
+import { requestCommitment, requestDone, requestOf } from "./requests";
 import {
   endsOnFirstBankrupt,
   GALAXY_EDITION,
@@ -116,6 +117,14 @@ export function createMatch(
     season: seasonFor(rules, 1),
     meteor: meteorFor(rules, 1),
     moon: rules.moon ? NUMBERS.moonStart : null,
+    requests: rules.requests
+      ? {
+          commits: seats.map(() => null),
+          anchor: null,
+          reveals: seats.map(() => null),
+          ending: null,
+        }
+      : null,
     starter,
     turn: {
       seat: starter,
@@ -430,6 +439,8 @@ export function pendingSeats(state: GalaxyState): number[] {
       return state.trade ? [state.trade.to] : [];
     case "debt":
       return state.debt ? [state.debt.seat] : [];
+    case "requestReveal":
+      return active.filter((s) => state.requests?.reveals[s] === null);
     default:
       return [];
   }
@@ -477,6 +488,14 @@ function clone(state: GalaxyState): GalaxyState {
       : null,
     clocks: state.clocks ? state.clocks.map((c) => ({ ...c })) : null,
     keys: [...state.keys],
+    requests: state.requests
+      ? {
+          commits: [...state.requests.commits],
+          anchor: state.requests.anchor,
+          reveals: state.requests.reveals.map((r) => (r ? { ...r } : null)),
+          ending: state.requests.ending ? { ...state.requests.ending } : null,
+        }
+      : null,
   };
 }
 
@@ -549,6 +568,28 @@ function finish(
   events.push({ type: "gameEnded", result });
 }
 
+/**
+ * 판이 정해진 대로 끝났다(차례 수·시간 상한·운항 중단·한 사람만 남음). 관측 의뢰를 켠 판이면 먼저 모두 의뢰 비밀을
+ * 공개하는 단계로 가고, 공개를 마치면 끝낸다(기권·시간패·끝내기는 의뢰를 펼치지 않고 바로 끝난다)
+ */
+function conclude(
+  s: GalaxyState,
+  kind: GameResult["kind"],
+  seat: number | null,
+  events: GameEvent[],
+): void {
+  if (!s.requests || s.requests.anchor === null) {
+    finish(s, kind, seat, events);
+    return;
+  }
+  s.requests.ending = { kind, seat };
+  s.phase = "requestReveal";
+  s.auction = null;
+  s.trade = null;
+  s.debt = null;
+  events.push({ type: "requestsOpened" });
+}
+
 function startTurn(s: GalaxyState, seat: number, events: GameEvent[]): void {
   s.turn = {
     seat,
@@ -579,7 +620,7 @@ function endTurn(s: GalaxyState, events: GameEvent[]): void {
   if (s.phase === "gameOver") return;
   if (s.endAfterTurn) {
     const outSeat = s.out.indexOf(true);
-    finish(s, "bankrupt", outSeat >= 0 ? outSeat : null, events);
+    conclude(s, "bankrupt", outSeat >= 0 ? outSeat : null, events);
     return;
   }
   const n = s.rules.players;
@@ -596,11 +637,11 @@ function endTurn(s: GalaxyState, events: GameEvent[]): void {
   if (crossed) {
     const limit = turnLimitOf(s.rules);
     if (s.timeUp) {
-      finish(s, "timeUp", null, events);
+      conclude(s, "timeUp", null, events);
       return;
     }
     if (limit !== null && s.round >= limit) {
-      finish(s, "turns", null, events);
+      conclude(s, "turns", null, events);
       return;
     }
     s.round += 1;
@@ -649,7 +690,8 @@ function bankrupt(
   events.push({ type: "bankrupt", seat, to });
   if (to !== BANK) announceLinks(s, to, stars, events);
   if (endsOnFirstBankrupt(s.rules)) s.endAfterTurn = true;
-  else if (activeSeats(s).length <= 1) finish(s, "lastStanding", null, events);
+  else if (activeSeats(s).length <= 1)
+    conclude(s, "lastStanding", null, events);
 }
 
 /**
@@ -1089,6 +1131,8 @@ function resolveReveal(s: GalaxyState, events: GameEvent[]): void {
   const index = s.revealCount;
   const hash = rollHash(index, links);
   const purpose = s.revealFor ?? "roll";
+  // 첫 공개의 해시가 관측 의뢰의 닻이다(requests.ts)
+  if (s.requests && s.requests.anchor === null) s.requests.anchor = hash;
   s.revealCount += 1;
   s.reveals = s.reveals.map(() => null);
   s.revealFor = null;
@@ -1342,6 +1386,7 @@ function retire(state: GalaxyState): StepResult {
   const together =
     state.phase === "commit" ||
     state.phase === "reveal" ||
+    state.phase === "requestReveal" ||
     state.phase === "bid" ||
     state.phase === "bidReveal";
   if (together && pending.length === 1) {
@@ -1409,6 +1454,15 @@ export function step(
       if (!chain || chain.commit !== null) return fail("이미 약속했어요");
       if (typeof action.hash !== "string" || !LINK_PATTERN.test(action.hash))
         return fail("약속 형식이 아니에요");
+      // 관측 의뢰: 판 처음(0세대) 약속에는 의뢰 비밀 약속도 함께 낸다
+      if (next.requests && state.generation === 0) {
+        if (
+          typeof action.request !== "string" ||
+          !HASH_PATTERN.test(action.request)
+        )
+          return fail("관측 의뢰 약속이 없어요");
+        next.requests.commits[seat] = action.request;
+      }
       next.chains[seat] = { commit: action.hash, last: action.hash, used: 0 };
       events.push({ type: "committed", seat });
       if (activeSeats(next).every((s) => next.chains[s]?.commit !== null)) {
@@ -1435,6 +1489,32 @@ export function step(
       events.push({ type: "revealed", seat });
       if (activeSeats(next).every((s) => next.reveals[s] !== null))
         resolveReveal(next, events);
+      return done();
+    }
+    case "requestReveal": {
+      const requests = next.requests;
+      if (state.phase !== "requestReveal" || !requests)
+        return fail("의뢰를 펼칠 때가 아니에요");
+      if (requests.reveals[seat] !== null) return fail("이미 펼쳤어요");
+      if (
+        typeof action.secret !== "string" ||
+        !HASH_PATTERN.test(action.secret)
+      )
+        return fail("의뢰 비밀 형식이 아니에요");
+      if (requestCommitment(seat, action.secret) !== requests.commits[seat])
+        return fail("약속한 의뢰와 달라요");
+      const card = requestOf(state.board, action.secret, requests.anchor ?? "");
+      const isDone = requestDone(next, seat, card);
+      requests.reveals[seat] = { secret: action.secret, card, done: isDone };
+      events.push({ type: "requestRevealed", seat, card, done: isDone });
+      if (activeSeats(next).every((p) => requests.reveals[p] !== null)) {
+        for (const p of activeSeats(next))
+          if (requests.reveals[p]?.done)
+            pay(next, events, BANK, p, NUMBERS.requestBonus, "request");
+        const ending = requests.ending ?? { kind: "turns", seat: null };
+        requests.ending = null;
+        finish(next, ending.kind, ending.seat, events);
+      }
       return done();
     }
     case "roll": {
@@ -1678,6 +1758,8 @@ function decisionFor(state: GalaxyState, seat: number): Decision | null {
         : null;
     case "debt":
       return state.debt ? { kind: "debt", debt: { ...state.debt } } : null;
+    case "requestReveal":
+      return { kind: "requestReveal" };
     default:
       return null;
   }

@@ -13,6 +13,7 @@ import { OPEN_SKIES } from "./sky-ids";
  * - trade 거래(2-8)
  * - seasonal 제철 하늘(2-12 1번)
  * - meteor 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 차례 수가 있는 판(짧은·기본)에만
+ * - requests 관측 의뢰(15-5 1번): 판 처음 몰래 받은 의뢰를 판 끝에 펼쳐 이루었으면 지원금
  * - moon 달의 길(15-5 2번): 달이 차례마다 한 칸씩 돌고, 달 아래 별의 별자리는 이용료 절반
  * - sky 하늘 id(5-9, 예: "seasons")
  * - time 개인 시간(docs/24). 없으면 시간 없음
@@ -37,6 +38,7 @@ export interface GalaxyRules {
   seasonal: boolean;
   meteor: boolean;
   moon: boolean;
+  requests: boolean;
   sky: string;
   time?: TimePreset;
 }
@@ -49,6 +51,7 @@ export const STANDARD_RULES: GalaxyRules = {
   seasonal: true,
   meteor: false,
   moon: true,
+  requests: true,
   sky: "seasons",
 };
 
@@ -123,6 +126,8 @@ export const NUMBERS = {
   /** 달의 길: 판 처음 달이 있는 칸(관측지, 우주국 맞은편)과 달 아래 별자리의 이용료 배수(천분율) */
   moonStart: 16,
   moonRent: 500,
+  /** 관측 의뢰를 이루면 우주국이 주는 별빛 */
+  requestBonus: 150,
   /** 긴 판의 제철 하늘은 이만큼의 돌림마다 바뀐다(차례 수가 없으므로) */
   longSeasonRounds: 8,
   /** 별 값 범위(5-9): 가장 어두운 별자리 ~ 가장 밝은 별자리, 별자리 안 가장 밝은 별 더함 */
@@ -157,15 +162,15 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
  * 형식: `g4-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
- *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + 달의 길(켜면 o)
+ *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + 달의 길(켜면 o) + 관측 의뢰(켜면 q)
  *       + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본(유성우 끔, 달 켬) `g4-4mtwo-seasons`, 유성우를 켜면 `g4-4mtwro-seasons`,
- *     짧은 판 2인 거래·제철·달 끔 `g4-2snn-seasons`, 빠른 시간이면 `g4-4mtwo-seasons-t1`.
+ * 예: 기본(유성우 끔, 달·의뢰 켬) `g4-4mtwoq-seasons`, 유성우를 켜면 `g4-4mtwroq-seasons`,
+ *     짧은 판 2인 거래·제철·달·의뢰 끔 `g4-2snn-seasons`, 빠른 시간이면 `g4-4mtwoq-seasons-t1`.
  * 긴 판은 마지막 돌림이 없어 유성우를 싣지 않는다(r 없음)
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
-  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
+  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}${rules.requests ? "q" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 /**
@@ -176,7 +181,7 @@ export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
   const match =
-    /^g4-([234])([sml])([tn])([wn])(r?)(o?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
+    /^g4-([234])([sml])([tn])([wn])(r?)(o?)(q?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
       text.trim(),
     );
   if (!match && /^g[123]-/.test(text.trim()))
@@ -187,7 +192,18 @@ export function decodeGalaxyRules(
     };
   if (!match)
     return { ok: false, reason: "은하 한 바퀴 규칙 문자열 형식이 아니에요" };
-  const [, players, length, trade, seasonal, meteor, moon, sky, tail] = match;
+  const [
+    ,
+    players,
+    length,
+    trade,
+    seasonal,
+    meteor,
+    moon,
+    requests,
+    sky,
+    tail,
+  ] = match;
   const time = decodeTimePreset(tail);
   if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요" };
   if (!OPEN_SKIES.includes(sky as string))
@@ -205,6 +221,7 @@ export function decodeGalaxyRules(
       seasonal: seasonal === "w",
       meteor: meteor === "r",
       moon: moon === "o",
+      requests: requests === "q",
       sky: sky as string,
       ...(time === "none" ? {} : { time }),
     },

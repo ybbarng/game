@@ -4,6 +4,7 @@ import { expect } from "vitest";
 import { buildBoard } from "./board";
 import { bidCommitment, bidSalt } from "./dice";
 import { createMatch, type StepResult, step, stepWithDice } from "./match";
+import { requestCommitOf, requestSecretOf } from "./requests";
 import { type GalaxyRules, STANDARD_RULES } from "./rules";
 import { createGalaxyScenario } from "./scenario";
 import type { Action, GalaxyState, GameEvent } from "./state";
@@ -34,11 +35,23 @@ export function chainOf(key: string, generation: number): string[] {
   return links;
 }
 
-/** 이 자리의 약속 또는 다음 고리 공개 */
+/** 이 자리의 약속 또는 다음 고리 공개(의뢰를 켠 판의 첫 약속은 의뢰 약속도, 판 끝에는 의뢰 공개) */
 export function chainAction(state: GalaxyState, seat: number): Action {
-  const links = chainOf(state.keys[seat] as string, state.generation);
+  const key = state.keys[seat] as string;
+  if (state.phase === "requestReveal")
+    return {
+      type: "requestReveal",
+      secret: requestSecretOf(derivedSeed(key, 0)),
+    };
+  const links = chainOf(key, state.generation);
   if (state.phase === "commit")
-    return { type: "commit", hash: links[0] as string };
+    return {
+      type: "commit",
+      hash: links[0] as string,
+      ...(state.requests && state.generation === 0
+        ? { request: requestCommitOf(seat, derivedSeed(key, 0)) }
+        : {}),
+    };
   const used = state.chains[seat]?.used ?? 0;
   return { type: "reveal", link: links[used + 1] as string };
 }
