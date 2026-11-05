@@ -29,15 +29,19 @@ import { prefersReducedMotion } from "../store";
 import { BoardTile, type StationFx, type TileTier } from "./BoardTile";
 import { Die3D } from "./Dice3D";
 import { NoticePaper, ShipToken } from "./parts";
+import { ShipPiece } from "./Ship";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 
+/** 우주선 크기(칸 하나 = 1) */
+const SHIP_SIZE = 0.4;
+
 /** 우주선 자리 안 어긋남(칸 하나 = 1). 넷이 한 칸에 모여도 겹치지 않는다 */
 const SHIP_OFFSET: [number, number][] = [
-  [-0.2, -0.17],
-  [0.2, -0.17],
-  [-0.2, 0.19],
-  [0.2, 0.19],
+  [-0.21, -0.18],
+  [0.21, -0.18],
+  [-0.21, 0.2],
+  [0.21, 0.2],
 ];
 
 /** 하늘에 깔린 잔별(늘 같은 자리) */
@@ -446,6 +450,8 @@ export function GalaxyBoard({
               key={seat}
               data-ship={seat}
               data-ship-square={s.square}
+              data-ship-heading={s.heading}
+              data-ship-thrust={(s.thrust && !reduced) || undefined}
               className={cn(
                 "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2",
                 // 움직이는 동안은 화면 그리기마다 자리를 바로 준다(칸 사이를 이어 미끄러진다, fx.ts shipPositions)
@@ -454,12 +460,19 @@ export function GalaxyBoard({
               style={{
                 left: pct(s.x + dx),
                 top: pct(s.y + dy),
-                width: pct(0.36),
-                height: pct(0.36),
-                transitionDuration: "260ms",
+                width: pct(SHIP_SIZE),
+                height: pct(SHIP_SIZE),
+                // 길이만 남기면 transition-property 기본값(all)으로 움직이는 동안에도 자리가 뒤처져 따라온다
+                transitionDuration: !reduced && !s.moving ? "260ms" : undefined,
               }}
             >
-              <ShipToken seat={seat} size={64} className="size-full" />
+              <ShipPiece
+                seat={seat}
+                heading={s.heading}
+                thrust={s.thrust}
+                moving={s.moving}
+                reduced={reduced}
+              />
               {view.jailed[seat] && (
                 <span className="absolute -top-1 -right-1 text-[8px]">⛓</span>
               )}
@@ -773,7 +786,7 @@ function FxOverlay({
                     )}
                   >
                     <span className="flex items-center gap-1">
-                      <ShipToken seat={seat} size={9} />
+                      <ShipToken seat={seat} size={11} />
                       {name(seat)}
                     </span>
                     <span className="font-bold tabular-nums">
