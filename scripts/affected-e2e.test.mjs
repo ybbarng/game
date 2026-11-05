@@ -16,6 +16,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ctx = loadContext(ROOT);
 const pick = (...files) => selectE2e(ctx, files);
 const cubeSpecs = ctx.specs.filter((s) => s.startsWith("cube-"));
+// 은하 spec은 늘어난다(galaxy-feel 등). 바뀐 파일만 다시 도는 단위 시험은 spec이 새로 생겨도 이 파일을 다시 돌리지 않아,
+// 이름을 적어 두면 main에서 늦게 깨진다(2026-11-05). 지금 목록에서 고른다
+const galaxySpecs = ctx.specs.filter(
+  (s) => s === "galaxy" || s.startsWith("galaxy-"),
+);
 
 describe("게임과 spec 짝", () => {
   it("registry.ts의 게임은 모두 묶음이 된다", () => {
@@ -108,7 +113,7 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
   it("윷 엔진: 윷과, 윷 엔진에 기대는 은하", () => {
     const r = pick("packages/yut-engine/src/index.ts");
     expect(r.mode).toBe("some");
-    expect(r.specs).toEqual(["galaxy", "yut", ...BASE_SPECS].sort());
+    expect(r.specs).toEqual([...galaxySpecs, "yut", ...BASE_SPECS].sort());
   });
 
   it("net/ 공통: 전부", () => {
