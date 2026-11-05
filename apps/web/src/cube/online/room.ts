@@ -97,7 +97,10 @@ export interface RoomSettings {
   inspection: boolean;
   /** 제한 시간(초) */
   timeLimitSec: number;
-  /** 실력 차 균형(docs/51 4절). 옛 판 방장은 보내지 않는다. 쓸 때만 판정 설정 지문에 넣는다(`raceOptionsFor`) */
+  /**
+   * 실력 차 균형(docs/51 4절: 출발 늦추기·목표·평균 대비·도움). 옛 판 방장은 보내지 않는다. 쓸 때만 판정 설정 지문에
+   * 넣는다(`raceOptionsFor`)
+   */
   handicap?: Handicap;
   /**
    * 파티 모드(docs/51 3-2·3-3, docs/47 9-6·9-7). `"hp"` 체력바, `"items"` 아이템전, `"hp-items"` 둘 다.
@@ -307,10 +310,12 @@ export function raceOptionsFor(
         delays.map(([id, sec]) => [id, sec * 1000]),
       );
     const goals = Object.keys(handicap.goal).length > 0;
-    if (goals || handicap.avg)
+    // 도움(docs/47 9-8)은 각 기기 화면에서만 그려 확인할 수 없지만, 서로 같은 설정을 받았는지는 지문으로 맞춰 본다
+    if (goals || handicap.avg || handicap.help)
       game.handicap = {
         ...(goals ? { goal: handicap.goal } : {}),
         ...(handicap.avg ? { avg: handicap.avg } : {}),
+        ...(handicap.help ? { help: handicap.help } : {}),
       };
   }
   if (Object.keys(game).length > 0) options.gameOptions = game;

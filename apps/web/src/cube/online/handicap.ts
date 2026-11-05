@@ -10,6 +10,8 @@ import { loadRecords, resultMs, type SolveRecord } from "../records";
  * - 출발 늦추기: 그 사람은 풀림 뒤 k초가 지나야 첫 수를 둔다(대결 틀 `startDelayMs`가 막고 확인한다).
  * - 목표 다르게: 그 이정표(`milestonesOf`)에 닿은 수에서 끝난다. 닿은 시각이 기록이다.
  * - 점수 다르게: 순위를 「내 평균 대비 몇 %」로 매긴다. 평균은 각 기기가 알린 값이라 친구끼리 믿는 모드다.
+ * - 도움 다르게(docs/47 9-8): 그 사람 화면에서만 힌트·펼친 그림을 열거나 닫고, 「가리고 맞추기」면 풀린 뒤 큐브를 가린다.
+ *   각 기기가 스스로 그리므로 아무도 확인할 수 없다(친구끼리 믿는 모드). 같은 설정을 쓰는지만 지문으로 맞춰 본다.
  * 모두 판을 열 때 방 상태에서 정해 고정하고(`activeHandicap`), 판정 설정 지문에 넣어 기기끼리 맞춰 본다(`room.ts`).
  */
 
@@ -20,6 +22,24 @@ export interface Handicap {
   goal?: Record<string, MilestoneId>;
   /** 「평균 대비」 순위 */
   score?: "avg";
+  /** 사람 아이디 → 도움(없으면 지금처럼: 펼친 그림·거울은 자기 설정대로, 힌트 없음) */
+  help?: Record<string, Help>;
+}
+
+/**
+ * 도움(docs/51 4절 「도움 다르게」). 판정은 바꾸지 않고 그 사람 화면만 바꾼다.
+ * - `hint`: 힌트 허용(3×3은 배우기 두 단계 힌트, 펼친 그림·거울도 자기 설정대로)
+ * - `plain`: 3D만(펼친 그림·거울 끔)
+ * - `blind`: 가리고 맞추기(살펴보기 동안 보고, 풀리면 맞출 때까지 모든 스티커를 가린다)
+ */
+export type Help = "hint" | "plain" | "blind";
+
+export const HELPS: readonly Help[] = ["hint", "plain", "blind"];
+
+/** 대기실·결과 상자에 적는 도움 이름. 힌트는 3×3만 있어 다른 크기는 「펼친 그림 허용」 */
+export function helpLabel(n: number, help: Help): string {
+  if (help === "hint") return n === 3 ? "힌트 허용" : "펼친 그림 허용";
+  return help === "plain" ? "3D만" : "가리고 맞추기";
 }
 
 export const MAX_DELAY_SEC = 30;
@@ -89,6 +109,11 @@ export function handicapOk(h: unknown, n: number): boolean {
     const ids = new Set(goalChoices(n).map((g) => g.id));
     for (const v of Object.values(x.goal))
       if (!ids.has(v as MilestoneId)) return false;
+  }
+  if (x.help !== undefined) {
+    if (typeof x.help !== "object" || x.help === null) return false;
+    for (const v of Object.values(x.help))
+      if (!HELPS.includes(v as Help)) return false;
   }
   return true;
 }
@@ -170,6 +195,8 @@ export interface ActiveHandicap {
   goal: Record<string, MilestoneId>;
   /** 「평균 대비」면 사람마다 평균(ms, 없으면 null). 평균 대비가 아니면 없다 */
   avg?: Record<string, number | null>;
+  /** 사람마다 도움(고른 사람만). 아무도 고르지 않았으면 없다 */
+  help?: Record<string, Help>;
 }
 
 /**
@@ -183,6 +210,7 @@ export function activeHandicap(
 ): ActiveHandicap {
   const delaySec: Record<string, number> = {};
   const goal: Record<string, MilestoneId> = {};
+  const help: Record<string, Help> = {};
   const sorted = [...humans].sort();
   const score = h?.score === "avg" && !opts.ao5;
   for (const id of sorted) {
@@ -190,8 +218,12 @@ export function activeHandicap(
     if (d !== undefined && d > 0) delaySec[id] = d;
     const g = h?.goal?.[id];
     if (g !== undefined && !score) goal[id] = g;
+    const a = h?.help?.[id];
+    if (a !== undefined) help[id] = a;
   }
   const out: ActiveHandicap = { delaySec, goal };
+  // 도움을 아무도 고르지 않았으면 칸을 두지 않는다(예전 판 기록·지문 그대로)
+  if (Object.keys(help).length > 0) out.help = help;
   if (score) {
     const avg: Record<string, number | null> = {};
     for (const id of sorted) avg[id] = opts.averageOf(id);
@@ -205,7 +237,8 @@ export function hasHandicap(a: ActiveHandicap | undefined): boolean {
     !!a &&
     (Object.keys(a.delaySec).length > 0 ||
       Object.keys(a.goal).length > 0 ||
-      a.avg !== undefined)
+      a.avg !== undefined ||
+      a.help !== undefined)
   );
 }
 
@@ -221,7 +254,40 @@ export function handicapTags(
   if (d) tags.push(`+${d}초 늦게 출발`);
   const g = a.goal[id];
   if (g) tags.push(`목표: ${goalLabel(n, g)}`);
+  const help = a.help?.[id];
+  if (help) tags.push(helpLabel(n, help));
   return tags;
+}
+
+/**
+ * 도움이 이 화면에 지금 하는 일. 판정이 아니라 보이기만 한다(각 기기가 스스로 그린다).
+ * - `back`: 펼친 그림·거울(「3D만」이면 끈다)
+ * - `hint`: 두 단계 힌트(3×3 「힌트 허용」, 살펴보기·맞추는 동안)
+ * - `hidden`: 모든 스티커를 가린다(「가리고 맞추기」: 풀린 뒤 내가 맞추는 동안. 맞추거나 판이 끝나면 다시 보인다)
+ */
+export function helpScreen(
+  help: Help | undefined,
+  n: number,
+  now: { phase: string; playing: boolean },
+): { back: boolean; hint: boolean; hidden: boolean } {
+  const solving = now.playing && now.phase === "race";
+  return {
+    back: help !== "plain",
+    hint:
+      help === "hint" &&
+      n === 3 &&
+      now.playing &&
+      (now.phase === "inspect" || now.phase === "race"),
+    hidden: help === "blind" && solving,
+  };
+}
+
+/** 그 사람의 도움(없으면 undefined = 지금처럼) */
+export function helpOf(
+  a: ActiveHandicap | undefined,
+  id: string,
+): Help | undefined {
+  return a?.help?.[id];
 }
 
 /** 「평균 대비」의 기준: 알린 평균, 없으면 이 경기에서 처음 맞춘 판의 인정 시간 */

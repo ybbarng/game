@@ -7,6 +7,7 @@ import {
   milestoneLabel,
   type StickerMask,
   solvedCube,
+  stageMask,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import {
@@ -35,6 +36,9 @@ import {
   type ActiveHandicap,
   goalLabel,
   handicapTags,
+  helpLabel,
+  helpOf,
+  helpScreen,
   ratioText,
 } from "./handicap";
 import { GrayLegend, ItemIcon, ItemNotices, ItemSlot } from "./ItemBar";
@@ -181,6 +185,17 @@ export function RaceView({
   const myState: PuzzleState =
     mine?.stateOf(room.me) ?? mine?.startState() ?? solvedCube(n);
 
+  // 도움(docs/47 9-8): 이 화면에서만 펼친 그림·힌트를 열고 닫고, 「가리고 맞추기」면 풀린 뒤 내 큐브를 가린다
+  const myHelp = mine ? helpOf(handicapNow, room.me) : undefined;
+  const myPlaying =
+    snap?.peers.find((p) => p.id === room.me)?.status === "playing";
+  const helpNow = helpScreen(myHelp, n, { phase, playing: myPlaying });
+  const hiddenMask = useMemo(() => stageMask(n, "all-hidden"), [n]);
+  const playSettings = useMemo(
+    () => (helpNow.back ? settings : { ...settings, backView: "off" as const }),
+    [settings, helpNow.back],
+  );
+
   // 아이템전(docs/51 3-3): 내 아이템·방패, 이 화면에 그릴 효과(안개·한 면 가리기·색 뒤집기·흑백 화면·찾아 주기·힌트)
   const mode = room.partyMode();
   const itemsOn = hasItems(mode);
@@ -216,7 +231,13 @@ export function RaceView({
   const [hintMod, setHintMod] = useState<
     typeof import("../learn/taught-hint") | null
   >(null);
-  const wantHint = !!screen?.hint && n === 3;
+  // 도움 「힌트 허용」: 배우기와 같은 두 단계(1 지금 경우, 2 다음 수). 연 단계는 경우(토막)가 바뀌면 다시 접는다
+  const [opened, setOpened] = useState<{ level: 0 | 1 | 2; seg?: string }>({
+    level: 0,
+  });
+  const helpPlan = useRef<import("../learn/taught-hint").HintPlan | null>(null);
+  const wantHint =
+    (!!screen?.hint || (helpNow.hint && opened.level > 0)) && n === 3;
   useEffect(() => {
     if (!wantHint || hintMod) return;
     let live = true;
@@ -226,15 +247,34 @@ export function RaceView({
     };
   }, [wantHint, hintMod]);
   const hintMove = useMemo(() => {
-    if (!wantHint || !hintMod) return null;
+    if (!screen?.hint || n !== 3 || !hintMod) return null;
     try {
       return hintMod.finaleHint(myState, null)?.move ?? null;
     } catch {
       return null;
     }
-  }, [wantHint, hintMod, myState]);
+  }, [screen?.hint, n, hintMod, myState]);
+  const helpHint = useMemo(() => {
+    if (!helpNow.hint || opened.level === 0 || !hintMod) return null;
+    try {
+      const h = hintMod.finaleHint(myState, helpPlan.current);
+      helpPlan.current = h?.plan ?? null;
+      return h;
+    } catch {
+      return null;
+    }
+  }, [helpNow.hint, opened.level, hintMod, myState]);
+  const helpSeg = helpHint ? `${helpHint.stage}|${helpHint.segment}` : "";
+  useEffect(() => {
+    if (opened.level > 0 && opened.seg === undefined && helpHint)
+      setOpened({ level: opened.level, seg: helpSeg });
+  }, [opened, helpHint, helpSeg]);
+  const helpLevel =
+    opened.seg === undefined || opened.seg === helpSeg ? opened.level : 0;
   const { keysOf } = useMoveKeys(n);
-  const hintKeys = hintMove && keysOf ? keysOf(hintMove) : null;
+  const shownMove =
+    hintMove ?? (helpLevel >= 2 ? (helpHint?.move ?? null) : null);
+  const hintKeys = shownMove && keysOf ? keysOf(shownMove) : null;
   // 받기·맞기 소리(기존 효과음을 다시 쓴다): 새 아이템 → 타이머 시작음, 맞음 → 틀린 수 소리
   const itemCue = useRef({ key: "", slot: "", notices: new Set<string>() });
   useEffect(() => {
@@ -265,6 +305,11 @@ export function RaceView({
   const [syncToken, setSyncToken] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때(아이템전: 내 수 밖으로 상태가 바뀔 때)만 다시 칠한다
   useEffect(() => setSyncToken((v) => v + 1), [syncKey, jumps]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 새 섞기면 연 힌트를 접는다
+  useEffect(() => {
+    setOpened({ level: 0 });
+    helpPlan.current = null;
+  }, [syncKey]);
 
   // 단계 칩(docs/51 1-3): 이미 받은 수 기록에서 이 기기가 계산한다(새로 보내는 정보 없음, race-stages.ts)
   const start = snap?.seed ? session?.startState() : undefined;
@@ -311,6 +356,9 @@ export function RaceView({
       if (groups.length > (counts.get(p.id) ?? 0)) passed.push(p.id);
       counts.set(p.id, groups.length);
     }
+    // 가리고 맞추는 동안은 내 단계 톡을 띄우지 않는다(맞은 데를 알려 주게 된다)
+    if (helpNow.hidden && passed.includes(room.me))
+      passed.splice(passed.indexOf(room.me), 1);
     if (passed.length === 0) return;
     const order = liveOrder(
       snap.peers.map((p) => ({
@@ -469,11 +517,12 @@ export function RaceView({
         )}
       {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
       {mine &&
-        (myDelayMs > 0 || myGoal) &&
+        (myDelayMs > 0 || myGoal || myHelp) &&
         phase !== "finished" &&
         phase !== "waiting" && (
           <p
             data-cube-my-handicap
+            data-cube-my-help={myHelp}
             data-cube-start-wait={waiting ? Math.ceil(waitLeft / 1000) : 0}
             className={`mx-auto break-keep rounded-full border px-3 py-1 text-center text-xs ${
               waiting && phase === "race"
@@ -488,6 +537,7 @@ export function RaceView({
                   : `+${myDelayMs / 1000}초 늦게 출발`
                 : "",
               myGoal ? `목표: ${goalLabel(n, myGoal)}` : "",
+              myHelp ? helpLabel(n, myHelp) : "",
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -569,6 +619,21 @@ export function RaceView({
               )}
             </div>
           )}
+          {/* 도움 「힌트 허용」: 늘 같은 높이(연 힌트 글이 길어도 큐브가 밀리지 않게) */}
+          {mine && helpNow.hint && (
+            <HelpHintRow
+              level={helpLevel}
+              label={helpHint?.label ?? null}
+              move={helpLevel >= 2 ? (helpHint?.move ?? null) : null}
+              stuck={helpLevel > 0 && !!hintMod && !helpHint}
+              onOpen={(level) =>
+                setOpened({
+                  level,
+                  ...(level === 2 && helpSeg ? { seg: helpSeg } : {}),
+                })
+              }
+            />
+          )}
           {mine && screen && (
             <ItemNotices
               notices={screen.notices}
@@ -581,9 +646,9 @@ export function RaceView({
               flow="small"
               n={n}
               state={myState}
-              mask={blindMask}
+              mask={helpNow.hidden ? hiddenMask : blindMask}
               syncToken={syncToken}
-              settings={settings}
+              settings={playSettings}
               onMove={onMove}
               onCommand={onCommand}
               locked={phase !== "inspect" && phase !== "race"}
@@ -623,7 +688,9 @@ export function RaceView({
           </div>
           {[...(me ? [me] : []), ...others].map((p) => {
             const st = session.stateOf(p.id);
-            const groups = stages.get(p.id)?.groups ?? [];
+            // 가리고 맞추는 동안은 내 단계·진행을 보이지 않는다
+            const veiled = p.id === room.me && helpNow.hidden;
+            const groups = veiled ? [] : (stages.get(p.id)?.groups ?? []);
             const toast = toasts[p.id];
             const hp = partyHp(p.id);
             const knocked = hp !== undefined && partyOut(p.id);
@@ -696,11 +763,13 @@ export function RaceView({
                     <div className="h-2 overflow-hidden rounded-full bg-white/10">
                       <div
                         className={`h-full ${p.status === "done" ? "bg-emerald-400" : "bg-sky-400"}`}
-                        style={{ width: `${Math.round(p.progress * 100)}%` }}
+                        style={{
+                          width: `${veiled ? 0 : Math.round(p.progress * 100)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-white/60 text-xs">
-                      {st ? stageLabel(n, st) : "-"}
+                      {st && !veiled ? stageLabel(n, st) : "-"}
                     </span>
                   </>
                 )}
@@ -1160,6 +1229,70 @@ function itemNotes(round: RoundRecord | undefined, id: string): string[] {
   return out;
 }
 
+/**
+ * 도움 「힌트 허용」의 두 단계 힌트 줄(배우기 「힌트 1 · 지금 경우」「힌트 2 · 다음 수」와 같은 계산). 한 줄 높이로 고정한다
+ */
+function HelpHintRow({
+  level,
+  label,
+  move,
+  stuck,
+  onOpen,
+}: {
+  level: 0 | 1 | 2;
+  label: string | null;
+  move: string | null;
+  /** 지금 모양은 초보자 방식으로 바로 이어 갈 수 없다 */
+  stuck: boolean;
+  onOpen: (level: 1 | 2) => void;
+}) {
+  const button = (k: 1 | 2, text: string) => (
+    <button
+      type="button"
+      data-cube-help-hint={k}
+      aria-pressed={level >= k}
+      onClick={(e) => {
+        onOpen(level >= k ? (level as 1 | 2) : k);
+        e.currentTarget.blur();
+      }}
+      className={`h-7 shrink-0 rounded-full px-2.5 font-semibold text-xs transition active:scale-[0.97] ${
+        level >= k
+          ? "bg-amber-400/25 text-amber-100"
+          : level === k - 1
+            ? "bg-amber-400/90 text-black"
+            : "bg-white/10 text-white/80"
+      }`}
+    >
+      {text}
+    </button>
+  );
+  return (
+    <div
+      data-cube-help-hint-row
+      className="mb-2 flex h-7 w-full min-w-0 flex-nowrap items-center justify-center gap-2 overflow-hidden"
+    >
+      {button(1, "힌트 1")}
+      {button(2, "힌트 2")}
+      {level > 0 && (
+        <span
+          data-cube-help-case={label ?? undefined}
+          className="min-w-0 truncate text-amber-100 text-xs"
+        >
+          {stuck ? "지금은 힌트가 없어요" : label}
+        </span>
+      )}
+      {move && (
+        <span
+          data-cube-hint={move}
+          className="shrink-0 rounded bg-amber-400 px-1.5 font-mono text-black text-xs"
+        >
+          {move}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** 사람 칸 이름 옆의 짧은 핸디캡 표시(「+5초」·「첫 두 층」) */
 function PeerHandicap({
   handicap,
@@ -1172,14 +1305,19 @@ function PeerHandicap({
 }) {
   const d = handicap.delaySec[id];
   const g = handicap.goal[id];
-  if (!d && !g) return null;
+  const help = helpOf(handicap, id);
+  if (!d && !g && !help) return null;
   return (
     <span
       data-cube-peer-handicap={id}
       title={handicapTags(handicap, n, id).join(" · ")}
       className="shrink-0 truncate text-[11px] text-white/45"
     >
-      {[d ? `+${d}초` : "", g ? goalLabel(n, g) : ""]
+      {[
+        d ? `+${d}초` : "",
+        g ? goalLabel(n, g) : "",
+        help ? helpLabel(n, help) : "",
+      ]
         .filter(Boolean)
         .join(" · ")}
     </span>

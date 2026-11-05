@@ -11,6 +11,9 @@ import {
   DELAY_CHOICES,
   goalChoices,
   type Handicap,
+  HELPS,
+  type Help,
+  helpLabel,
   localAverages,
 } from "./handicap";
 import { drawItem, type ItemKind } from "./items";
@@ -60,6 +63,7 @@ export function CubeVsApp() {
   const [delay, setDelay] = useState(0);
   const [goal, setGoal] = useState<MilestoneId | "">("");
   const [byAverage, setByAverage] = useState(false);
+  const [help, setHelp] = useState<Help | "">("");
   /** 파티 모드(체력바·아이템전, docs/51 3-2·3-3). 「평균 대비」와는 함께 쓰지 않는다 */
   const [partyMode, setPartyMode] = useState<PartyMode | null>(null);
   const party = partyMode !== null;
@@ -104,6 +108,7 @@ export function CubeVsApp() {
     const average = byAverage && !party;
     if (goal && !average) handicap.goal = { [r.me]: goal };
     if (average) handicap.score = "avg";
+    if (help) handicap.help = { [r.me]: help };
     r.setHandicap(handicap);
     roomRef.current = r;
     setRoom(r);
@@ -289,6 +294,24 @@ export function CubeVsApp() {
                   </select>
                 </label>
               )}
+              <label className="flex items-center justify-between">
+                도움
+                <select
+                  data-cube-vs-help
+                  value={help}
+                  onChange={(e) => setHelp(e.target.value as Help | "")}
+                  className="rounded bg-white/10 px-2 py-1"
+                >
+                  <option value="" className="bg-neutral-800">
+                    그대로
+                  </option>
+                  {HELPS.map((k) => (
+                    <option key={k} value={k} className="bg-neutral-800">
+                      {helpLabel(n, k)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input
