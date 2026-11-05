@@ -1,5 +1,7 @@
+import type { StickerPattern } from "../item-look";
 import type { Normal, Sticker } from "../view/types";
 import { posterShapes } from "./cube-poster-art";
+import { PatternGlyph } from "./PatternGlyph";
 
 /**
  * 비스듬히 본 큐브 그림(SVG, three.js 없음). 3D 장면과 같은 카메라·같은 화면 크기로 그려
@@ -48,7 +50,10 @@ export function CubePoster({
   hidden = "black",
   shadow = true,
   className,
+  patterns,
 }: {
+  /** 흑백 화면(아이템전): 색 번호마다 무늬 */
+  patterns?: readonly (StickerPattern | null)[] | null | undefined;
   n: number;
   /** 스티커 전부(`stickersFromState`). 보이는 면의 것만 그린다 */
   stickers: readonly Sticker[];
@@ -116,14 +121,19 @@ export function CubePoster({
       {s.stickers.map((t, i) => {
         const k = FACE_SHADE[t.normal] ?? 0.85;
         const c = t.color === null ? HIDDEN[hidden] : (colors[t.color] ?? 0);
+        const p = t.color === null ? null : patterns?.[t.color];
         return (
-          <polygon
-            // biome-ignore lint/suspicious/noArrayIndexKey: 스티커 자리 차례가 곧 열쇠
-            key={i}
-            points={t.points}
-            fill={shade(c, k)}
-            data-poster-sticker={t.color ?? "hidden"}
-          />
+          // biome-ignore lint/suspicious/noArrayIndexKey: 스티커 자리 차례가 곧 열쇠
+          <g key={i}>
+            <polygon
+              points={t.points}
+              fill={shade(c, k)}
+              data-poster-sticker={t.color ?? "hidden"}
+            />
+            {p && p !== "none" && (
+              <PatternGlyph pattern={p} transform={t.frame} />
+            )}
+          </g>
         );
       })}
     </svg>

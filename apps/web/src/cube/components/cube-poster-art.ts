@@ -148,7 +148,13 @@ export interface PosterShapes {
   /** 보이는 면마다 검은 몸통(바깥 면) */
   body: { normal: Normal; points: string }[];
   /** 보이는 스티커(색 번호, null = 가림) */
-  stickers: { normal: Normal; points: string; color: number | null }[];
+  stickers: {
+    normal: Normal;
+    points: string;
+    color: number | null;
+    /** 칸 안 자리(0~1) → 그림 좌표 SVG 행렬 */
+    frame: string;
+  }[];
   /** 바닥 그림자(타원) */
   shadow: { cx: number; cy: number; rx: number; ry: number };
 }
@@ -191,10 +197,22 @@ export function posterShapes(
       s.center[1] + nv[1] * lift,
       s.center[2] + nv[2] * lift,
     ];
+    // 칸 안 자리(0~1)를 그림 좌표로 옮기는 행렬(흑백 화면의 무늬를 칸에 맞춰 그린다)
+    const [u, v] = faceAxes(nv);
+    const at = (x: number, y: number) =>
+      project(cam, [
+        c[0] + (u[0] * x + v[0] * y) * look.size,
+        c[1] + (u[1] * x + v[1] * y) * look.size,
+        c[2] + (u[2] * x + v[2] * y) * look.size,
+      ]);
+    const o = at(-0.5, -0.5);
+    const ux = at(0.5, -0.5);
+    const vy = at(-0.5, 0.5);
     return {
       normal: s.normal,
       points: pts(cam, roundedSquare(c, nv, look.size, look.radius, 3)),
       color: s.color,
+      frame: `matrix(${[ux[0] - o[0], ux[1] - o[1], vy[0] - o[0], vy[1] - o[1], o[0], o[1]].map((x) => x.toFixed(3)).join(" ")})`,
     };
   });
   // 그림자: cube-view.ts와 같은 높이·크기의 둥근 판을 투영한 테두리 상자
