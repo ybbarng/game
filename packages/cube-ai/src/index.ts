@@ -25,12 +25,17 @@ export {
   STAGE_LABELS,
   type StageName,
 } from "./solve";
-export { TAUGHT_CORNER_TRIGGER } from "./taught";
+export {
+  TAUGHT_CORNER_SHORTCUT,
+  TAUGHT_CORNER_SLOT,
+  TAUGHT_CORNER_TRIGGER,
+} from "./taught";
 export {
   type ColorLetter,
   TAUGHT_STAGES,
   type TaughtCase,
   type TaughtPlan,
+  type TaughtPlanOptions,
   type TaughtSegment,
   type TaughtStage,
   taughtStagePlan,

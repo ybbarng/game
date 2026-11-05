@@ -63,7 +63,8 @@ export type TaughtCase =
   | { kind: "cross"; colors: ColorLetter[]; case: CrossCase }
   /**
    * 첫 층 꼭짓점 하나. bottom: 아래층에서 칸 밑으로 데려와 넣기, slot: 제 칸에서 돌아감, stuck: 엉뚱한 칸에 박혀 한 번 빼기.
-   * white: 공식 직전 흰 스티커가 보는 쪽, reps: `R' D' R D` 횟수
+   * white: 공식 직전 흰 스티커가 보는 쪽. shortcut: 지름길(`TAUGHT_CORNER_SHORTCUT`·`TAUGHT_CORNER_SLOT`)로 넣음,
+   * 아니면 reps: `R' D' R D` 횟수(지름길이면 0)
    */
   | {
       kind: "corner";
@@ -71,6 +72,7 @@ export type TaughtCase =
       from: "bottom" | "slot" | "stuck";
       white: "right" | "down" | "front";
       reps: number;
+      shortcut: boolean;
     }
   /**
    * 둘째 층 엣지 하나. 늘 앞-오른쪽 칸에 넣는다. front: 앞 위에서, right: 오른쪽 위에서 들어옴,
@@ -103,14 +105,19 @@ export interface TaughtPlan {
   segments: TaughtSegment[];
 }
 
-const RUNS: Record<TaughtStage, (s: Solve) => void> = {
+export interface TaughtPlanOptions {
+  /** 첫 층 코너를 지름길 대신 `R' D' R D` 되풀이로(배우기에서 지름길을 배우기 전) */
+  cornerRepeat?: boolean;
+}
+
+const RUNS: Record<TaughtStage, (s: Solve, o: TaughtPlanOptions) => void> = {
   cross: (s) => {
     whiteUp(s);
     crossTaught(s);
   },
-  corners: (s) => {
+  corners: (s, o) => {
     whiteUp(s);
-    cornersTaught(s);
+    cornersTaught(s, { repeat: o.cornerRepeat === true });
   },
   middle: (s) => {
     whiteDown(s);
@@ -201,6 +208,7 @@ function classify(
   stage: TaughtStage,
   t: Solve,
   seg: readonly string[],
+  opts: TaughtPlanOptions,
 ): TaughtCase {
   if (seg.every((m) => parseMoves(3, m).every((x) => isRotation(3, x))))
     return {
@@ -218,12 +226,14 @@ function classify(
       };
     }
     case "corners": {
-      const i = indexOf(seg, TRIGGER);
+      // 공식은 처음 옆면(R·F) 수부터. 그 앞은 쥐기(y)와 칸 밑으로(D)
+      const i = seg.findIndex((m) => m[0] === "R" || m[0] === "F");
       if (i < 0) throw new Error("첫 층 토막에 공식이 없다");
       const t2 = t.clone().apply(seg.slice(0, i).join(" "));
       const c = t2.cubie();
       const rel = t2.rel();
-      const reps = repeats(seg, i, TRIGGER);
+      const shortcut = opts.cornerRepeat !== true;
+      const reps = shortcut ? 0 : repeats(seg, i, TRIGGER);
       if (c.cp[4] === 0) {
         // 칸 밑(앞-오른쪽 아래)의 흰 스티커: 아래 29, 앞 26, 오른쪽 15
         const white =
@@ -234,6 +244,7 @@ function classify(
           from: "bottom",
           white,
           reps,
+          shortcut,
         };
       }
       if (c.cp[0] === 0)
@@ -243,6 +254,7 @@ function classify(
           from: "slot",
           white: rel[9] === "U" ? "right" : "front",
           reps,
+          shortcut,
         };
       const piece = c.cp[0] as number;
       return {
@@ -251,6 +263,7 @@ function classify(
         from: "stuck",
         white: rel[9] === "U" ? "right" : rel[20] === "U" ? "front" : "down",
         reps,
+        shortcut,
       };
     }
     case "middle": {
@@ -321,14 +334,15 @@ function classify(
   }
 }
 
-/** 지금 상태에서 그 단계를 배우는 방식대로 끝내는 수와 경우별 토막 */
+/** 지금 상태에서 그 단계를 배우는 방식대로 끝내는 수와 경우별 토막. 첫 층 코너는 기본이 지름길 */
 export function taughtStagePlan(
   stage: TaughtStage,
   state: PuzzleState,
+  opts: TaughtPlanOptions = {},
 ): TaughtPlan {
   const start = new Solve(3, toFacelets(3, state));
   const s = start.clone();
-  RUNS[stage](s);
+  RUNS[stage](s, opts);
   const moves = s.moves.map((m) => formatMove(3, m));
   const cuts = new Set<number>([0, ...s.lookList]);
   // 끝의 윗면 돌리기(옆색 맞추기)는 따로 한 토막
@@ -349,7 +363,7 @@ export function taughtStagePlan(
     const end = bounds[i + 1] ?? moves.length;
     const seg = moves.slice(b, end);
     const t = start.clone().apply(moves.slice(0, b).join(" "));
-    return { start: b, end, info: classify(stage, t, seg) };
+    return { start: b, end, info: classify(stage, t, seg, opts) };
   });
   return { stage, moves, segments };
 }

@@ -22,8 +22,10 @@ import { type Solve, uTurn, yTurn } from "./solve";
  * 5. 윗층에서 뒤집힘: F로 내린 뒤 2.
  *
  * 첫 층 꼭짓점: 넣을 칸을 앞-오른쪽 위(UFR)에 오게 y로 돌려 쥐고, 그 흰 꼭짓점을 D로 바로 밑(DFR)에
- * 데려와 `R' D' R D`를 흰색이 위로 올 때까지 되풀이한다. 윗층 엉뚱한 자리에 박힌 꼭짓점은 그 칸을
- * UFR에 두고 `R' D' R D` 한 번으로 뺀다.
+ * 데려와 넣는다. 기본은 지름길(2026-11-05 사용자): 흰색이 오른쪽이면 `R' D' R`, 앞이면 `F D F'`, 아래면
+ * `R' D2 R D`로 오른쪽을 보게 돌린 뒤 `R' D' R`. 제 칸에서 돌아가 있으면 흰색이 보는 쪽 지름길로 한 번 빼고
+ * (끝에 D로 칸 밑에 되돌림) 같은 지름길로 넣는다. 윗층 엉뚱한 자리에 박힌 꼭짓점은 그 칸을 UFR에 두고
+ * `R' D' R D` 한 번으로 뺀다. `repeat`이면 배우기 첫 방법대로 `R' D' R D`를 흰색이 위로 올 때까지 되풀이한다.
  *
  * 모두 흰 가운데가 위에 있는 기준 방향 글자(`Solve.rel()`)로 판단한다.
  *
@@ -153,14 +155,85 @@ const cornerOk = (cp: number[], co: number[], slot: number) =>
 
 const dTurn = (a: number) => ["", "D", "D2", "D'"][a] as string;
 
-/** 배우는 방식 첫 층 꼭짓점(흰 면 위, `R' D' R D`) */
-export function cornersTaught(s: Solve): void {
+/**
+ * 첫 층 코너 지름길(흰 면 위, 넣는 칸은 앞-오른쪽 위). 칸 밑(앞-오른쪽 아래)에서 흰색이 보는 쪽마다.
+ * 아래는 오른쪽을 보게 돌린 뒤(`R' D2 R D`) 오른쪽 지름길. 맞춘 면(U)은 돌리지 않는다
+ */
+export const TAUGHT_CORNER_SHORTCUT = {
+  right: "R' D' R",
+  front: "F D F'",
+  down: "R' D2 R D R' D' R",
+} as const;
+
+/**
+ * 제 칸(앞-오른쪽 위)에서 돌아간 코너: 흰색이 보는 쪽 지름길로 빼고 D로 칸 밑에 되돌리면 흰색이 같은 쪽을
+ * 본다. 그대로 같은 지름길로 넣는다
+ */
+export const TAUGHT_CORNER_SLOT = {
+  right: "R' D' R D R' D' R",
+  front: "F D F' D' F D F'",
+} as const;
+
+export interface CornerOptions {
+  /** 지름길 대신 `R' D' R D`를 흰색이 위로 올 때까지 되풀이(배우기 첫 방법) */
+  repeat?: boolean;
+}
+
+/**
+ * 흰 스티커가 보는 쪽(조각 방향으로, 2×2·3×3 같음). 칸 밑(DFR): 0 아래, 1 앞, 2 오른쪽.
+ * 제 칸(UFR): 1 오른쪽, 2 앞
+ */
+const BOTTOM_WHITE = ["down", "front", "right"] as const;
+const SLOT_WHITE = { 1: "right", 2: "front" } as const;
+
+/**
+ * 지름길로 다음 코너 하나를 넣는다. 아래층 흰 코너 가운데 쥐기(y)·칸 밑으로(D)·공식을 합쳐 가장 짧은 것.
+ * 없으면 제 칸에서 돌아간 코너, 그것도 없으면 엉뚱한 칸에 박힌 코너를 한 번 뺀다
+ */
+function cornerShortcutStep(s: Solve): void {
+  let best: string | null = null;
+  for (let k = 0; k < 4; k++) {
+    const t = s.clone().apply(yTurn(k));
+    if (t.cubie().cp.indexOf(0) < 4) continue;
+    const a = [0, 1, 2, 3].find(
+      (a) => t.clone().apply(dTurn(a)).cubie().cp[4] === 0,
+    ) as number;
+    const co = t.clone().apply(dTurn(a)).cubie().co[4] as 0 | 1 | 2;
+    const white = BOTTOM_WHITE[co];
+    const alg = [yTurn(k), dTurn(a), TAUGHT_CORNER_SHORTCUT[white]]
+      .filter(Boolean)
+      .join(" ");
+    if (best === null || length(alg) < length(best)) best = alg;
+  }
+  if (best !== null) {
+    s.apply(best);
+    return;
+  }
+  const wrong = [0, 1, 2, 3].filter((j) => {
+    const t = s.clone().apply(yTurn(j)).cubie();
+    return !cornerOk(t.cp, t.co, 0);
+  });
+  const own = wrong.find((j) => s.clone().apply(yTurn(j)).cubie().cp[0] === 0);
+  if (own !== undefined) {
+    const co = s.clone().apply(yTurn(own)).cubie().co[0] as 1 | 2;
+    s.apply(yTurn(own)).apply(TAUGHT_CORNER_SLOT[SLOT_WHITE[co]]);
+    return;
+  }
+  s.apply(yTurn(wrong[0] as number)).apply(TAUGHT_CORNER_TRIGGER);
+}
+
+/** 배우는 방식 첫 층 꼭짓점(흰 면 위). 기본은 지름길, `repeat`이면 `R' D' R D` 되풀이 */
+export function cornersTaught(s: Solve, opts: CornerOptions = {}): void {
   const U_CORNERS = [0, 1, 2, 3];
   for (let iter = 0; ; iter++) {
     if (iter > 20) throw new Error("첫 층 꼭짓점 단계가 끝나지 않는다");
     const c = s.cubie();
     if (U_CORNERS.every((i) => cornerOk(c.cp, c.co, i))) return;
     s.look();
+    if (!opts.repeat) {
+      cornerShortcutStep(s);
+      continue;
+    }
     // 아래층에 흰 꼭짓점이 있으면: 그 제자리를 UFR로 돌려 쥐고, D로 바로 밑에 데려와 되풀이
     const k = [0, 1, 2, 3].find(
       (k) => s.clone().apply(yTurn(k)).cubie().cp.indexOf(0) >= 4,

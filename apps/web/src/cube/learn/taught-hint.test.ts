@@ -12,6 +12,7 @@ import {
   finaleHint,
   finaleReached,
   type HintPlan,
+  LESSON_PLAN,
   makeHintPlan,
   nextHint,
   taughtHintKind,
@@ -111,6 +112,32 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
       null,
     );
     expect(t?.label).toMatch(/^코너 방향: 노랑이 (앞|오른쪽), [24]번$/);
+  });
+
+  it("첫 층 코너: 단원 해 보기(지름길 단계 앞)는 되풀이, 마무리는 지름길 힌트", () => {
+    const corners = lessonOf("333-first-corners-up");
+    const repeat =
+      /: (칸 밑|제 칸)에서 흰색이 (오른쪽|아래|앞), \d번$|한 번 빼기$|^흰 면을 위로/;
+    const short =
+      /: (칸 밑에서 흰색이 (오른쪽, R' D' R|앞, F D F'|아래, R' D2 R D R' D' R)|제 칸에서 흰색이 (오른쪽, R' D' R D R' D' R|앞, F D F' D' F D F'))$|한 번 빼기$|^흰 면을 위로/;
+    const seenShort = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const start = stepStart(corners, randomTry(corners), seed);
+      const lesson = makeHintPlan("corners", start, LESSON_PLAN);
+      for (const g of lesson?.segments ?? [])
+        expect(g.label, `${seed}`).toMatch(repeat);
+      const finale = makeHintPlan("corners", start);
+      for (const g of finale?.segments ?? []) {
+        expect(g.label, `${seed}`).toMatch(short);
+        seenShort.add(g.label.replace(/^.+ 코너: /, ""));
+      }
+      // 단원 해 보기의 기본 힌트는 되풀이, 마무리 힌트는 지름길과 같은 계획
+      expect(nextHint("corners", start, null)?.plan.moves).toEqual(
+        lesson?.moves,
+      );
+      expect(finaleHint(start, null)?.plan.moves).toEqual(finale?.moves);
+    }
+    expect(seenShort.size).toBeGreaterThan(2);
   });
 
   it("코너 방향 도중 R' D' R D를 하다 말아도 나머지부터 이어 간다", () => {
