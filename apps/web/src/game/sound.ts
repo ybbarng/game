@@ -306,8 +306,9 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
-  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리 가운데값보다 약 10dB 작게(-42dB 근처).
-  // 0.05초짜리 "스윽 딸깍"이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다(2026-11-05 잡음만 쓰는 소리로 바꾸고 잼)
+  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게.
+  // 0.08초짜리 작은 "스슥"(스치는 소리, 울림 없음)이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다.
+  // 지금 사건 소리 가운데값보다 약 13.7dB 작다(2026-11-05 사용자 「크고 또렷하고 딱딱한 소리가 나지 않아」로 줄임)
   cubeTurn: 6,
   cubeSolved: 0,
   cubeInspect: 10,
@@ -368,9 +369,17 @@ const BIG: ReadonlySet<Cue> = new Set<Cue>([
   "onecardCaught",
 ]);
 
+/**
+ * 방 울림을 거치지 않는 소리. 손에 쥔 큐브는 바로 귀 앞에서 나는 짧은 소리라, 울림을 더하면 딱딱한 딸깍 뒤에
+ * 꼬리가 남아 메아리처럼 들린다(2026-11-05 사용자 「딱딱하면서 약간의 에코」)
+ */
+const DRY: ReadonlySet<Cue> = new Set<Cue>(["cubeTurn"]);
+
 interface Graph {
   /** 마른 소리와 울림으로 함께 보내는 입구 */
   out: GainNode;
+  /** 울림 없이 마른 소리만 보내는 입구(`DRY` 소리) */
+  dry: GainNode;
   /** 전체 음량 */
   master: GainNode;
   noise: AudioBuffer;
@@ -415,11 +424,13 @@ function buildGraph(ctx: BaseAudioContext, gain: number): Graph {
   const out = ctx.createGain();
   out.connect(master);
   out.connect(reverb);
+  const dry = ctx.createGain();
+  dry.connect(master);
 
   const noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
   const data = noise.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = random() * 2 - 1;
-  return { out, master, noise };
+  return { out, dry, master, noise };
 }
 
 function impulse(ctx: BaseAudioContext, seconds: number): AudioBuffer {
@@ -692,42 +703,40 @@ function woodClack(v: Voice, at: number, gain = 1, pitch = 1): void {
 }
 
 /**
- * 스피드큐브 한 층이 도는 소리: 플라스틱 층이 서로 미끄러지는 짧은 "스윽"과, 층이 자리에 걸리는 작은 "딸깍".
- * 음이 있는 소리(사인·삼각파)는 쓰지 않고 거른 잡음만 쓴다. 예전에는 나무 "탁"(`woodClack`)을 높여 썼는데
- * 그 안의 1.3kHz 삼각파가 음으로 들려 "띡띡" 삑 소리 같았다(2026-11-05 사용자 「실제 큐브소리랑 다르게 띡띡거리는
- * 소리가 나」). 높은 쪽(5kHz 넘게)은 거의 없게 해 빠르게 이어 돌려도 귀가 따갑지 않게 한다.
- * 수마다 높이·길이·딸깍 시각을 조금씩 달리해 똑같은 소리가 되풀이되는 기계음처럼 들리지 않게 한다.
+ * 스피드큐브 한 층이 도는 소리: 플라스틱 조각이 서로 스치는 작고 부드러운 "스슥". 딸깍·톡처럼 또렷하고 딱딱한
+ * 소리는 넣지 않는다(2026-11-05 사용자 「크고 또렷하고 딱딱한 소리가 나지 않아. 플라스틱 조각이 서로 스치는
+ * 소리일 뿐이야」). 처음에는 나무 "탁"(`woodClack`)을 높여 써서 1.3kHz 음이 "띡띡"으로 들렸고, 그다음
+ * 딸깍을 더한 판은 딱딱했다.
+ * - 몸통: 가운데 높이의 거른 잡음이 천천히 올라와(어택 약 0.02초) 조금 낮아지며 사라진다(약 0.08초).
+ * - 결: 아주 작은 잡음 알갱이 몇 개를 몸통 위에 흩어, 조각 모서리가 스치는 거친 느낌을 낸다. 알갱이도 어택을
+ *   두어 딸깍으로 튀지 않게 한다.
+ * - 음이 있는 소리(사인·삼각파)는 쓰지 않는다. 높은 쪽은 깎아 빠르게 이어 돌려도 귀가 따갑지 않게 한다.
+ * - 방 울림을 거치지 않는다(`DRY`). 울림을 더하면 짧은 소리 뒤에 꼬리가 남아 메아리처럼 들린다.
+ * 수마다 높이·길이·알갱이 자리를 조금씩 달리해 똑같은 소리가 되풀이되지 않게 한다.
  */
 function cubeTurnSound(v: Voice): void {
   const pitch = 0.88 + random() * 0.24;
   const len = 0.85 + random() * 0.3;
-  // 미끄러짐: 가운데 높이 잡음이 부드럽게 올라와 조금 낮아지며 빨리 사라진다
-  noise(v, 0, 0.05 * len, {
+  noise(v, 0, 0.08 * len, {
     filter: "bandpass",
-    freq: 1500 * pitch,
-    sweepTo: 1100 * pitch,
-    q: 0.8,
-    gain: 0.3,
-    attack: 0.006,
-    cut: 4000,
+    freq: 1300 * pitch,
+    sweepTo: 950 * pitch,
+    q: 0.6,
+    gain: 0.22,
+    attack: 0.02,
+    cut: 3200,
   });
-  // 딸깍: 층이 걸리는 아주 짧은 플라스틱 소리와 몸통의 낮고 둥근 "톡"
-  const at = (0.024 + random() * 0.012) * len;
-  noise(v, at, 0.014, {
-    filter: "bandpass",
-    freq: 2300 * pitch,
-    q: 1.2,
-    gain: 0.42,
-    attack: 0.001,
-    cut: 4500,
-  });
-  noise(v, at, 0.03, {
-    filter: "lowpass",
-    freq: 650 * pitch,
-    q: 0.7,
-    gain: 0.4,
-    attack: 0.0015,
-  });
+  const grains = 3 + Math.floor(random() * 2);
+  for (let i = 0; i < grains; i++) {
+    noise(v, (0.008 + random() * 0.05) * len, 0.012, {
+      filter: "bandpass",
+      freq: (1700 + random() * 500) * pitch,
+      q: 1,
+      gain: 0.05,
+      attack: 0.004,
+      cut: 3600,
+    });
+  }
 }
 
 /** 덱을 둘로 가르는 "스윽" */
@@ -988,7 +997,7 @@ export function play(
     tickAt = t0;
     bus.gain.value /= Math.sqrt(tickEnergy);
   }
-  bus.connect(a.out);
+  bus.connect(DRY.has(cue) ? a.dry : a.out);
   if (cue === "cubeTurn") {
     turnVoice?.gain.setTargetAtTime(0, t0, 0.008);
     turnVoice = bus;
@@ -1030,7 +1039,7 @@ export function renderCue(
     const g = buildGraph(ctx, 0.8);
     const bus = ctx.createGain();
     bus.gain.value = trim(cue);
-    bus.connect(g.out);
+    bus.connect(DRY.has(cue) ? g.dry : g.out);
     render(cue, { ctx, bus, noise: g.noise, t0: 0, star });
   } finally {
     random = Math.random;

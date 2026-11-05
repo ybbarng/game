@@ -18,6 +18,7 @@ import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 
+import { gostopSceneMs } from "./card-fx";
 import { gostopCues } from "./cues";
 import { gostopKit } from "./kit";
 
@@ -131,10 +132,13 @@ interface GostopStore {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
+/** 지금 보이는 장면의 카드 연출(나눠 주기·내기·가져가기)이 끝나는 시각. 다음 장면은 그 뒤에 보인다 */
+let fxUntil = 0;
 
 function stop(): void {
   if (timer !== null) clearTimeout(timer);
   timer = null;
+  fxUntil = 0;
   unsubscribe?.();
   unsubscribe = null;
 }
@@ -155,10 +159,15 @@ export const useGostop = create<GostopStore>((set, get) => {
         events: next.events,
         seq: get().seq + 1,
       });
+      fxUntil = Date.now() + gostopSceneMs(next.events, next.view.rules);
       for (const cue of gostopCues(next.events, me)) playUiCue(cue);
       advance();
     };
-    if (byOther(next.events, me)) timer = setTimeout(show, paced(BOT_DELAY_MS));
+    // 앞 장면의 카드 연출이 끝난 뒤, 남이 한 수는 조금 더 기다렸다가 보인다
+    const wait =
+      Math.max(0, fxUntil - Date.now()) +
+      (byOther(next.events, me) ? paced(BOT_DELAY_MS) : 0);
+    if (wait > 0) timer = setTimeout(show, wait);
     else show();
   };
 
@@ -188,6 +197,12 @@ export const useGostop = create<GostopStore>((set, get) => {
       if (local && !practice) saveGostop({ ...local.save(), level });
     };
     const first = host.drain();
+    // 판 시작 장면이면 나눠 주기 연출을 보인다(다른 사건은 이미 지난 것이라 다시 보이지 않는다)
+    const opening = (first.at(-1)?.events ?? []).filter(
+      (e) => e.type === "roundStarted",
+    );
+    const current = host.current();
+    fxUntil = current ? Date.now() + gostopSceneMs(opening, current.rules) : 0;
     set({
       host,
       local,
@@ -196,8 +211,8 @@ export const useGostop = create<GostopStore>((set, get) => {
       reconnecting: false,
       hostLeft: false,
       offlineSeats: [],
-      view: host.current(),
-      events: [],
+      view: current,
+      events: opening,
       seq: get().seq + 1,
       queue: [],
       notice: null,
@@ -344,6 +359,8 @@ export const useGostop = create<GostopStore>((set, get) => {
     undo() {
       const { local, level } = get();
       if (!local || !get().canUndo()) return false;
+      // 되돌린 장면은 연출을 기다리지 않고 바로 보인다
+      fxUntil = 0;
       const saved = local.save();
       const log = [...saved.log];
       // 내 마지막 차례까지 잘라 낸다(그 뒤 컴퓨터 수도 함께).

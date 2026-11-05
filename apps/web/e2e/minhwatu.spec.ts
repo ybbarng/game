@@ -26,10 +26,18 @@ async function chooseOptions(page: Page, rounds: string, level?: string) {
  * 낸 뒤 손패가 한 장 줄 때까지 기다린다. 게임이 끝났으면 false
  */
 async function playTurn(page: Page, touch: boolean): Promise<boolean> {
-  await expect(status(page)).toHaveText(/내 차례|먹을|1등|점$/, {
-    timeout: 20_000,
-  });
-  if ((await page.locator("[data-outcome]").count()) > 0) return false;
+  // 판 끝: 결과 띠가 먼저 뜨고, 띠가 사라진 뒤 결과 상자(data-outcome)가 뜬다
+  const ended = page.locator("[data-result-banner], [data-outcome]");
+  await expect
+    .poll(
+      async () =>
+        (await ended.count()) > 0 ||
+        // 띠가 떠 있는 동안 상태 줄이 없다. 기다리지 않고 읽는다
+        /내 차례|먹을/.test((await status(page).allTextContents()).join("")),
+      { timeout: 20_000, intervals: [50] },
+    )
+    .toBe(true);
+  if ((await ended.count()) > 0) return false;
   const text = (await status(page).textContent()) ?? "";
   if (/먹을 바닥 패를 고르세요/.test(text)) {
     await floorButtons(page).first().click();
@@ -137,8 +145,11 @@ test("민화투: 목록에서 들어가 컴퓨터와 한 판을 끝까지 치고
     if (!(await playTurn(page, touch))) break;
     await noOverflow(page);
   }
-  await expect(page.locator("[data-outcome]")).toBeVisible();
+  // 결과 띠가 먼저 뜨고, 띠가 사라진 뒤에야 점수표 상자가 뜬다(한꺼번에 뜨지 않는다)
   await expect(page.locator("[data-result-banner]")).toBeVisible();
+  await expect(page.locator("[data-outcome]")).toHaveCount(0);
+  await expect(page.locator("[data-result-banner]")).toHaveCount(0);
+  await expect(page.locator("[data-outcome]")).toBeVisible();
   await expect(page.locator("[data-seat-score]")).toHaveCount(3);
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("minhwatu-end.png") });

@@ -147,3 +147,98 @@ test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 �
   await page.screenshot({ path: info.outputPath("onecard-end.png") });
   expect(errors).toEqual([]);
 });
+
+const flights = async (page: Page) =>
+  Number((await page.locator("[data-fx]").getAttribute("data-fx")) ?? 0);
+
+/** 지금 판을 그린 프레임이 적힐 때까지(한 프레임씩) 감는다 */
+const untilShown = (page: Page) =>
+  fastForwardUntil(
+    page,
+    () =>
+      pile(page).evaluate(
+        (el) =>
+          el.getAttribute("data-shown-turn") ===
+          el.getAttribute("data-turn-no"),
+      ),
+    { step: 16 },
+  );
+
+test("원카드 연출: 섞고 나눠 준 뒤, 낸 카드는 더미로·먹은 카드는 손패로 날고 맨 위 카드는 판이 온 프레임에 그린다", async ({
+  page,
+}, info) => {
+  const touch = info.project.name.startsWith("phone");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // 화면 시험은 기본으로 움직임 줄이기라 연출이 없다. 이 시험만 켠다
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/onecard");
+  await ready(page);
+  await page.getByRole("button", { name: "옵션" }).click();
+  await page.getByRole("button", { name: "2명", exact: true }).click();
+  await page.getByRole("button", { name: "5장", exact: true }).click();
+  await page.getByRole("button", { name: "처음으로" }).click();
+  await page.goto("/onecard?seed=10");
+  await page.getByRole("button", { name: /혼자 하기/ }).click();
+
+  // 섞고 나눠 주는 동안은 손패를 가리고 내 차례도 아니다
+  await expect(page.locator("[data-dealing]")).toBeAttached();
+  await expect(hand(page).locator("[data-card]")).toHaveCount(0);
+  await page.clock.fastForward(2200);
+  await page.screenshot({ path: info.outputPath("onecard-fx-deal.png") });
+  // 다 나눠 주고 손패가 펼쳐질 때까지
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await page.locator("[data-dealing], [data-spreading]").count()) === 0,
+    { step: 100 },
+  );
+  await waitTurn(page);
+  await expect(hand(page).locator("[data-card]")).toHaveCount(5);
+
+  // 카드를 내면 맨 위 카드는 판이 온 프레임에 이미 그려져 있고(반응 시간의 기준),
+  // 낸 카드의 겉그림은 그 뒤에도 손패 자리에서 더미로 날고 있다
+  // 손패는 오른쪽 카드가 왼쪽 카드를 덮으므로 맨 오른쪽 낼 수 있는 카드를 낸다
+  const card = (await hand(page)
+    .locator("[data-playable]")
+    .last()
+    .getAttribute("data-card")) as string;
+  expect(card).not.toBeNull();
+  await speedUpAnimations(page, 0); // 스크린샷용으로 날기를 멈춰 둔다
+  await playCard(page, card, touch);
+  const suit = page.locator("[data-pick-suit]").first();
+  if (await suit.isVisible()) await suit.click();
+  await untilShown(page);
+  await expect(
+    pile(page).getByRole("img", { name: "맨 위 카드" }),
+  ).toHaveAttribute("data-card", card);
+  expect(await flights(page)).toBeGreaterThan(0);
+  await page.clock.fastForward(50);
+  await page.screenshot({ path: info.outputPath("onecard-fx-play.png") });
+  await speedUpAnimations(page);
+  await fastForwardUntil(page, async () => (await flights(page)) === 0, {
+    step: 50,
+  });
+
+  // 먹은 카드는 덱에서 날아와 내려앉은 뒤에야 손패에 보인다
+  await waitTurn(page);
+  const before = await hand(page).locator("[data-card]").count();
+  await speedUpAnimations(page, 0);
+  await drawButton(page).click();
+  await untilShown(page);
+  await expect(hand(page).locator("[data-card]")).toHaveCount(before + 1);
+  expect(await flights(page)).toBeGreaterThan(0);
+  const hidden = () =>
+    hand(page)
+      .locator("[data-card]")
+      .evaluateAll((els) => els.filter((e) => e.style.opacity === "0").length);
+  expect(await hidden()).toBe(1);
+  await page.clock.fastForward(50);
+  await page.screenshot({ path: info.outputPath("onecard-fx-draw.png") });
+  await speedUpAnimations(page);
+  await fastForwardUntil(page, async () => (await flights(page)) === 0, {
+    step: 50,
+  });
+  expect(await hidden()).toBe(0);
+  expect(errors).toEqual([]);
+});

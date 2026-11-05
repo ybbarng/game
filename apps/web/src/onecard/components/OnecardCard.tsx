@@ -48,6 +48,7 @@ export function OnecardCardView({
   className,
   label,
   style,
+  decorative = false,
 }: {
   /** null이면 뒷면 */
   card: OnecardCard | null;
@@ -62,12 +63,24 @@ export function OnecardCardView({
   /** 화면 읽기 이름(없으면 카드 이름) */
   label?: string;
   style?: React.CSSProperties | undefined;
+  /** 연출용 겉그림: 화면 읽기·화면 시험(`data-card`)에 잡히지 않는다 */
+  decorative?: boolean;
 }) {
   const theme = useJokerTheme(card);
   const art = card === COLOR_JOKER ? "JK" : card;
   const height = Math.round(width * 1.4);
   const name = label ?? (card ? cardName(card) : "뒷면 카드");
   const body = <CardArt card={art} theme={theme} />;
+  if (decorative)
+    return (
+      <span
+        aria-hidden
+        className={cn("block shrink-0 rounded-[6.4%] shadow-md", className)}
+        style={{ width, height, ...style }}
+      >
+        {body}
+      </span>
+    );
   if (!onClick)
     return (
       <span

@@ -246,7 +246,9 @@ describe("윷놀이 온라인 방", () => {
     // 다시 참가자가 결정할 때 시간을 다 쓰게 한다.
     await play(room, () => guestDecides());
     expect(guestClock()?.main).toBe(before - 5_000);
-    room.clock.advance(270_000);
+    // 시간패가 걸리는 순간까지만 감는다(더 감으면 참가자 기기가 시간패 화면을 그만큼 늦게 받은 것이 된다).
+    const left = guestClock();
+    room.clock.advance((left?.main ?? 0) + (left?.periods ?? 0) * 30_000 + 1);
     await until(() => room.host.match?.current().result != null);
     expect(room.host.match?.current().result).toEqual({
       kind: "time",

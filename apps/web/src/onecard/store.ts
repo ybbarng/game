@@ -10,15 +10,20 @@ import {
 } from "@game/onecard-engine";
 import { create } from "zustand";
 
+import { dealCues } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { KitBot } from "@/game/kit";
 import { LocalMatch, type SavedMatch } from "@/game/local-match";
+import { useSettings } from "@/game/settings";
+import { play as playSound } from "@/game/sound";
+import { dealPlan, prefersReducedMotion, SHUFFLE_MS } from "@/game/timing";
 import { playUiCue } from "@/game/ui-sound";
 import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 
 import { onecardBotFor, toKitBot } from "./bots";
+import { onecardDealPattern } from "./card-fx";
 import { type OnecardExtra, onecardKit } from "./kit";
 
 export type OnecardLocalMatch = LocalMatch<
@@ -52,7 +57,37 @@ export const BOT_PACE_MS = 700;
  */
 export function botPace(next: () => void): void {
   const fast = (globalThis as { __onecardPace?: number }).__onecardPace;
-  setTimeout(next, typeof fast === "number" ? fast : BOT_PACE_MS);
+  // 섞고 나눠 주는 연출 동안은 첫 수를 미룬다(하트가 연출 동안 화면을 붙잡는 것과 같은 효과).
+  // 판 상태를 늦추지 않고 컴퓨터만 기다리게 해, 연출이 외침 창·반응 시간을 건드리지 않는다
+  const go = () => {
+    const left = dealHoldLeft();
+    if (left > 0) setTimeout(go, left);
+    else next();
+  };
+  setTimeout(go, typeof fast === "number" ? fast : BOT_PACE_MS);
+}
+
+/** 이 기기에서 도는 나눠 주기 연출이 끝나기까지 남은 시간(ms, 없으면 0) */
+function dealHoldLeft(): number {
+  const dealing = useOnecard.getState().dealing;
+  return dealing ? Math.max(0, dealing.until - Date.now()) : 0;
+}
+
+/** 나눠 주기 연출(`OnecardStore.dealing`) */
+export interface OnecardDealing {
+  key: number;
+  handSize: number;
+  players: number;
+  /** 먼저 받는 자리(첫 차례) */
+  first: number;
+  shuffleMs: number;
+  /** 연출이 끝나는 시각(`Date.now()` 기준) */
+  until: number;
+}
+
+/** 나눠 주기 연출 시간(섞기 포함, ms) */
+export function dealDuration(handSize: number, players: number): number {
+  return dealPlan(handSize, players, onecardDealPattern(handSize)).duration;
 }
 
 const SAVE_KEY = "onecard-save";
@@ -105,13 +140,15 @@ export function cuesFor(
   me: number,
   rules: OnecardRules,
   play: (cue: Parameters<typeof playUiCue>[0], times?: number) => void,
+  /** 나눠 주기 연출을 하면 그 소리(섞기·묶음마다·시작)는 연출에 맞춰 따로 낸다 */
+  dealAnimated = false,
 ): void {
   // 벌칙으로 먹는 것은 잡힘·헛외침 소리가 대신한다.
   const penalty = new Set<number>();
   for (const e of events) {
     switch (e.type) {
       case "dealt":
-        play("deal");
+        if (!dealAnimated) play("deal");
         break;
       case "played": {
         const rank = rankOf(e.card);
@@ -177,6 +214,8 @@ interface OnecardStore {
   shoutEvents: readonly number[];
   level: number;
   notice: string | null;
+  /** 섞고 나눠 주는 연출 중(움직임 줄이기면 하지 않는다). 그동안 손패를 가리고 컴퓨터 첫 수를 미룬다 */
+  dealing: OnecardDealing | null;
   /** 튜토리얼 연습 판(이어하기 저장·내 기록·복기에 남기지 않는다) */
   practice: boolean;
   newGame(options: { rules: OnecardRules; level: number; seed?: number }): void;
@@ -212,17 +251,63 @@ interface OnecardStore {
 }
 
 let unsubscribe: (() => void) | null = null;
+let dealTimer: ReturnType<typeof setTimeout> | null = null;
 /** 온라인 방의 청구 보내기(혼자 하기면 null) */
 let claimShout: ((seen: number, rtMs?: number) => boolean) | null = null;
 
 function stop(): void {
   unsubscribe?.();
   unsubscribe = null;
+  if (dealTimer !== null) clearTimeout(dealTimer);
+  dealTimer = null;
 }
 
 export const useOnecard = create<OnecardStore>((set, get) => {
   const playCue = (cue: Parameters<typeof playUiCue>[0], times = 1) => {
     for (let i = 0; i < times; i++) setTimeout(() => playUiCue(cue), i * 160);
+  };
+
+  /**
+   * 사건의 소리를 내고, 새 판을 나눠 주면 섞고 나눠 주는 연출을 건다(하트 store와 같이 움직임 줄이기에서는 하지 않는다).
+   * 판 상태(`view`)는 늦추지 않는다
+   */
+  const react = (
+    events: readonly GameEvent[],
+    me: number,
+    rules: OnecardRules,
+  ) => {
+    const dealt = events.find(
+      (e): e is Extract<GameEvent, { type: "dealt" }> => e.type === "dealt",
+    );
+    const animate = dealt !== undefined && !prefersReducedMotion();
+    cuesFor(events, me, rules, playCue, animate);
+    if (!animate) return;
+    const { handSize, players } = rules;
+    const shuffleMs = SHUFFLE_MS;
+    const ms = dealDuration(handSize, players);
+    if (dealTimer !== null) clearTimeout(dealTimer);
+    set({
+      dealing: {
+        key: (get().dealing?.key ?? 0) + 1,
+        handSize,
+        players,
+        first: dealt.first,
+        shuffleMs,
+        until: Date.now() + ms,
+      },
+    });
+    dealTimer = setTimeout(() => {
+      dealTimer = null;
+      set({ dealing: null });
+    }, ms);
+    if (useSettings.getState().sound)
+      for (const { cue, delay = 0, times = 1 } of dealCues(
+        handSize,
+        players,
+        { startDelay: 0, shuffleMs },
+        onecardDealPattern(handSize),
+      ))
+        playSound(cue, { delay, times });
   };
 
   const attach = (
@@ -260,17 +345,17 @@ export const useOnecard = create<OnecardStore>((set, get) => {
       shoutEvents: countShouts(first.flatMap((s) => s.events)),
       notice: null,
       practice: false,
+      dealing: null,
     });
     persist();
     for (const snapshot of first) {
       recorder.observe(snapshot);
       archiver?.observe(snapshot);
     }
-    cuesFor(
+    react(
       first.flatMap((s) => s.events),
       host.seat,
       host.current().rules,
-      playCue,
     );
     unsubscribe = host.subscribe((snapshot) => {
       persist();
@@ -282,7 +367,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         eventSeq: get().eventSeq + 1,
         shoutEvents: countShouts(snapshot.events, get().shoutEvents),
       });
-      cuesFor(snapshot.events, host.seat, snapshot.view.rules, playCue);
+      react(snapshot.events, host.seat, snapshot.view.rules);
     });
   };
 
@@ -345,6 +430,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
     shoutEvents: [],
     level: 1,
     notice: null,
+    dealing: null,
     practice: false,
 
     newGame({ rules, level, seed: given }) {
@@ -407,8 +493,9 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         shoutEvents: countShouts(events),
         notice: null,
         practice: true,
+        dealing: null,
       });
-      cuesFor(events, local.seat, local.current().rules, playCue);
+      react(events, local.seat, local.current().rules);
       unsubscribe = local.subscribe((snapshot) => {
         set({
           view: snapshot.view,
@@ -416,7 +503,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
           eventSeq: get().eventSeq + 1,
           shoutEvents: countShouts(snapshot.events, get().shoutEvents),
         });
-        cuesFor(snapshot.events, local.seat, snapshot.view.rules, playCue);
+        react(snapshot.events, local.seat, snapshot.view.rules);
       });
     },
 
@@ -466,6 +553,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
         hostLeft: false,
         offlineSeats: [],
         practice: false,
+        dealing: null,
       });
     },
 
