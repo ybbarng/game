@@ -106,7 +106,7 @@ export const SALT_PATTERN = /^[0-9a-f]{32}$/;
 export const HASH_PATTERN = /^[0-9a-f]{64}$/;
 
 /**
- * 봉인 입찰 약속(4-3): SHA-256("galaxy-bid|" ‖ 입찰 번호 ‖ 값 ‖ 소금). 값 0은 「내지 않음」
+ * 봉투 입찰 약속(4-3): SHA-256("galaxy-bid|" ‖ 입찰 번호 ‖ 값 ‖ 소금). 값 0은 「내지 않음」
  */
 export function bidCommitment(
   index: number,

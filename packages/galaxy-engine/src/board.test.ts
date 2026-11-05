@@ -9,7 +9,8 @@ import {
   TEST_SKY,
 } from "./test-sky";
 
-const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS);
+const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS, "grouped");
+const SPLIT = buildBoard(TEST_SKY, TEST_CONSTELLATIONS);
 const PAIR_BOARD = buildBoard(TEST_PAIR_SKY, TEST_PAIR_CONSTELLATIONS);
 
 describe("판 만들기", () => {
@@ -74,6 +75,24 @@ describe("판 만들기", () => {
         TEST_CONSTELLATIONS,
       ),
     ).toThrow();
+  });
+
+  it("반쯤 섞기(g4 기본): 값·별은 그대로이고, 별자리마다 둘은 제 변·하나는 맞은편 변 공문 옆", () => {
+    expect(SPLIT.total).toBe(BOARD.total);
+    SPLIT.groups.forEach((g, i) => {
+      expect(g.home).toBe(BOARD.groups[i]?.home);
+      const sides = g.squares.map((sq) => SPLIT.squares[sq]?.side);
+      expect(sides.filter((s) => s === g.home)).toHaveLength(2);
+      const away = g.squares.find(
+        (sq) => SPLIT.squares[sq]?.side !== g.home,
+      ) as number;
+      expect(SPLIT.squares[away]?.side).toBe((g.home + 2) % 4);
+      expect([3, 5]).toContain(away % 8);
+    });
+    // 별자리 둘인 하늘(12 × 2)은 붙인 배치 그대로
+    expect(buildBoard(TEST_PAIR_SKY, TEST_PAIR_CONSTELLATIONS).squares).toEqual(
+      PAIR_BOARD.squares,
+    );
   });
 });
 

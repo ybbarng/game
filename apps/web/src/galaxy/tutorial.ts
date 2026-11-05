@@ -1,6 +1,7 @@
 import {
   type Action,
   BANK,
+  BOARD_SIZE,
   bidCommitment,
   bidSalt,
   boardOfSky,
@@ -72,6 +73,7 @@ export const GALAXY_TUTORIAL_RULES = {
   ...STANDARD_RULES,
   players: 2 as const,
   seasonal: false,
+  moon: false,
 };
 
 /** 실전 단원: 짧은 판 둘이서 */
@@ -162,29 +164,34 @@ function until(
 
 /* ───────────── 장면 ───────────── */
 
-/** 2단원 미션: 술라팟 칸에서 1·1(내 별 셸리악, 한 번 더) → 2·3으로 우주국에 멈춘다 */
+/** 이 별에서 `steps`칸 뒤 칸(장면을 판 배치가 바뀌어도 맞게 별에서 거꾸로 센다) */
+function stepsBefore(id: string, steps: number): number {
+  return (squareOfStar(id) - steps + BOARD_SIZE) % BOARD_SIZE;
+}
+
+/** 2단원 미션: 1·1로 내 별 벨라트릭스(한 번 더) → 2·3으로 우주국에 멈춘다 */
 const SALARY: BoardScene = {
   kind: "board",
-  positions: [squareOfStar("Sulafat"), 0],
-  stars: mine("Sheliak"),
+  positions: [stepsBefore("Bellatrix", 2), 0],
+  stars: mine("Bellatrix"),
   dice: [
     [1, 1],
     [2, 3],
   ],
 };
 
-/** 3단원 미션: 소행성대 자리에서 2·4로 시리우스에 멈춘다 */
+/** 3단원 미션: 3·4로 시리우스에 멈춘다 */
 const BUY: BoardScene = {
   kind: "board",
-  positions: [8, 0],
-  dice: [[2, 4]],
+  positions: [stepsBefore("Sirius", 7), 0],
+  dice: [[3, 4]],
   marked: [squareOfStar("Sirius")],
 };
 
-/** 4단원 미션: 베텔게우스·리겔을 가졌고, 미라크 칸에서 2·4로 벨라트릭스에 멈춘다 */
+/** 4단원 미션: 베텔게우스·리겔을 가졌고, 2·4로 벨라트릭스에 멈춘다 */
 const COMPLETE: BoardScene = {
   kind: "board",
-  positions: [squareOfStar("Mirach"), 0],
+  positions: [stepsBefore("Bellatrix", 6), 0],
   stars: mine("Betelgeuse", "Rigel"),
   dice: [[2, 4]],
   marked: [squareOfStar("Bellatrix")],
@@ -192,16 +199,16 @@ const COMPLETE: BoardScene = {
 
 /** 6단원 미션에서 컴퓨터가 가진 별빛(입문은 별 값 안에서 내므로 이 값을 낸다) */
 const AUCTION_BOT_CASH = 50;
-/** 6단원 미션: 12번 칸에서 2·4로 레굴루스에 멈춘다. 컴퓨터는 별빛이 ✦50뿐이다 */
+/** 6단원 미션: 2·4로 레굴루스에 멈춘다. 컴퓨터는 별빛이 ✦50뿐이다 */
 const AUCTION: BoardScene = {
   kind: "board",
-  positions: [12, 0],
+  positions: [stepsBefore("Regulus", 6), 0],
   cash: [NUMBERS.startFunds.standard, AUCTION_BOT_CASH],
   dice: [[2, 4]],
   marked: [squareOfStar("Regulus")],
 };
 
-/** 봉인 입찰 미션의 내 봉투(시험이 쓴다. 화면에서는 저장소가 같은 소금으로 만든다) */
+/** 봉투 입찰 미션의 내 봉투(시험이 쓴다. 화면에서는 저장소가 같은 소금으로 만든다) */
 function myBid(value: number): Action[] {
   const key = sceneState(AUCTION).keys[0] ?? "";
   const index = 0;
@@ -441,7 +448,7 @@ const buyMission: Mission = {
       ),
   ),
   success: `${ko("Sirius")}를 샀어요! 이제 남이 멈추면 이용료를 받아요.`,
-  fail: "넘기면 봉인 입찰이 열려요. 이번엔 **사기**를 눌러 보세요.",
+  fail: "넘기면 봉투 입찰이 열려요. 이번엔 **사기**를 눌러 보세요.",
   solution: [{ type: "roll" }, { type: "buy" }],
   mistake: [{ type: "roll" }, { type: "pass" }],
 };
@@ -737,12 +744,12 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
   },
   {
     id: "auction",
-    title: "봉인 입찰과 거래",
+    title: "봉투 입찰과 거래",
     summary: "사지 않은 별은 모두가 몰래 값을 적어 낸다",
     steps: [
       {
         kind: "explain",
-        title: "봉인 입찰",
+        title: "봉투 입찰",
         body: [
           "멈춘 사람이 별을 사지 않고 **넘기면**, 모두가 봉투에 값을 **몰래 한 번** 적어 내요(✦10부터 10 단위, 가진 별빛까지).",
           "가장 높은 값을 낸 사람이 그 값에 사요. 같으면 넘긴 사람 **다음** 사람부터 앞서요. 아무도 안 내면 주인 없는 별로 남아요.",

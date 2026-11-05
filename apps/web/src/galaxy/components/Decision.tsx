@@ -137,7 +137,7 @@ export function BuySheet({
       <StarFacts view={view} square={square} />
       {rents && (
         <p className="mt-2 text-white/60 text-xs">
-          이용료 1단 {money(rents.single)} · 둘 {money(rents.pair)} · 완성{" "}
+          이용료 1단 {money(rents.single)} · 별 둘 {money(rents.pair)} · 완성{" "}
           {money(rents.complete)}
         </p>
       )}
@@ -170,7 +170,7 @@ export function BuySheet({
   );
 }
 
-/** 봉인 입찰: 숫자 하나만 고른다(docs/48 7-5) */
+/** 봉투 입찰: 숫자 하나만 고른다(docs/48 7-5) */
 export function BidSheet({
   view,
   square,
@@ -193,7 +193,7 @@ export function BidSheet({
   const change = (d: number) =>
     setValue((v) => Math.max(10, Math.min(top, v + d)));
   return (
-    <Sheet title={`봉인 입찰 · ${info?.star.ko ?? ""}`} testId="bid">
+    <Sheet title={`봉투 입찰 · ${info?.star.ko ?? ""}`} testId="bid">
       <p className="text-white/60 text-xs">별 값 {money(info?.value ?? 0)}</p>
       <div className="my-3 flex items-center justify-center gap-1.5">
         {[-50, -10].map((d) => (

@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Seal } from "@/stardraw/astronaut/marks";
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
 
 import { shipOf } from "../format";
 
@@ -154,7 +155,8 @@ export function NoticePaper({
       className="galaxy-paper pointer-events-none relative w-[86%] max-w-80 rounded-md border border-amber-900/20 bg-[#f6efe0] px-4 pt-3 pb-4 text-slate-900 shadow-[0_18px_40px_rgba(0,0,0,0.55)]"
       style={{ "--galaxy-paper-ms": `${dur}ms` } as CSSProperties}
     >
-      <p className="border-amber-900/25 border-b pb-1 text-center font-semibold text-[10px] text-amber-950/70 tracking-[0.2em]">
+      <p className="flex items-center justify-center gap-1 border-amber-900/25 border-b pb-1 font-semibold text-[10px] text-amber-950/70 tracking-[0.2em]">
+        <BureauLogo className="size-3.5 shrink-0" />
         {heading}
       </p>
       <p className="mt-2 font-black text-base leading-tight">{title}</p>

@@ -31,6 +31,8 @@ export function createGalaxyScenario(options: {
   /** 남은 공문 더미(번호). 적지 않으면 판의 공문 모두 */
   deck?: number[];
   round?: number;
+  /** 달이 있는 칸(달의 길을 켠 판만). 적지 않으면 판 처음 자리 */
+  moon?: number;
 }): GalaxyState {
   const rules = options.rules ?? {
     ...STANDARD_RULES,
@@ -47,6 +49,7 @@ export function createGalaxyScenario(options: {
     round: options.round ?? 1,
     season: seasonFor(rules, options.round ?? 1),
     meteor: meteorFor(rules, options.round ?? 1),
+    moon: state.moon === null ? null : (options.moon ?? state.moon),
     starter: turn,
     revealFor: null,
     turn: {

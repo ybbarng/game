@@ -20,6 +20,8 @@ import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
+
 import { GalaxyIconArt } from "../icon-art";
 import { galaxyOnline } from "../online";
 import { useGalaxyTutorialProgress } from "../progress";
@@ -179,6 +181,32 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
           </div>
         </Section>
       )}
+      <Section title="달의 길">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip active={rules.moon} onClick={() => s.set({ moon: true })}>
+            켬
+          </Chip>
+          <Chip active={!rules.moon} onClick={() => s.set({ moon: false })}>
+            끔
+          </Chip>
+        </div>
+      </Section>
+      <Section title="관측 의뢰">
+        <div className="flex flex-wrap gap-1.5">
+          <Chip
+            active={rules.requests}
+            onClick={() => s.set({ requests: true })}
+          >
+            켬
+          </Chip>
+          <Chip
+            active={!rules.requests}
+            onClick={() => s.set({ requests: false })}
+          >
+            끔
+          </Chip>
+        </div>
+      </Section>
       <Section title="개인 시간">
         <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
@@ -214,12 +242,16 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
 function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
+      "카노푸스 우주국",
+      "카노푸스 우주국이 우주인 훈련용으로 만든 판 놀이입니다. 계절마다 뜨는 별자리를 돌며 별을 맡고 정거장을 짓습니다.",
+    ],
+    [
       "목표",
       "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별 값, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 100을 더한 것이에요.",
     ],
     [
       "별 사기",
-      "주인 없는 별에 멈추면 살 수 있어요. 사지 않으면 모두가 한 번에 몰래 값을 적어 내는 봉인 입찰로 넘어가요. 밝은 별자리일수록 비싸요.",
+      "주인 없는 별에 멈추면 살 수 있어요. 사지 않으면 모두가 한 번에 몰래 값을 적어 내는 봉투 입찰로 넘어가요. 밝은 별자리일수록 비싸요.",
     ],
     [
       "이용료",
@@ -227,7 +259,15 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "제철 하늘·유성우의 밤",
-      "제철 하늘을 켜면 판이 네 토막으로 나뉘어 토막마다 그 계절 변의 이용료가 1.5배예요. 유성우의 밤을 켜면 마지막 두 돌림 동안 모든 별 이용료가 2배예요.",
+      "제철 하늘을 켜면 판 길이의 4분의 1마다 계절이 바뀌고, 지금 계절 별자리 별의 이용료가 1.5배예요. 유성우의 밤을 켜면 마지막 두 차례 동안 모든 별 이용료가 2배예요.",
+    ],
+    [
+      "관측 의뢰",
+      `판 처음 우주국 의뢰서 한 장을 몰래 받아요(1등성 둘, 겨울 별자리 하나 완성 같은). 판이 끝날 때 모두의 의뢰서를 펼쳐, 이룬 사람은 ${NUMBERS.requestBonus}을 더 받아요.`,
+    ],
+    [
+      "달의 길",
+      "달이 관측지에서 떠서 차례가 넘어갈 때마다 한 칸씩 돌아요. 달 아래 별의 별자리는 달빛에 별이 흐려 이용료가 절반이에요.",
     ],
     [
       "모퉁이",
@@ -292,6 +332,15 @@ function GalaxyHome({
       primaryClass="border-amber-200 bg-amber-200 text-slate-950 hover:bg-amber-100"
       hero={
         <>
+          {/* 이 판 놀이를 낸 곳(별 따기와 같은 우주국, docs/48 15-4) */}
+          <a
+            href="/stardraw/bureau"
+            data-galaxy-bureau
+            className="mx-auto mb-3 flex w-fit items-center gap-1.5 font-semibold text-amber-100/70 text-xs tracking-[0.2em] hover:text-amber-100"
+          >
+            <BureauLogo className="size-5" />
+            카노푸스 우주국
+          </a>
           <div aria-hidden="true" className="mx-auto size-24 drop-shadow-xl">
             <GalaxyIconArt />
           </div>
@@ -312,6 +361,8 @@ function GalaxyHome({
           s.trade ? "거래" : "거래 없음",
           s.seasonal ? "제철 하늘" : null,
           s.meteor && s.length !== "long" ? "유성우의 밤" : null,
+          rules.moon ? "달의 길" : null,
+          rules.requests ? "관측 의뢰" : null,
           timePresetLabel(rules.time),
           `컴퓨터 ${level}`,
         ]

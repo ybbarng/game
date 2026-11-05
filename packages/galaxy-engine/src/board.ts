@@ -52,6 +52,11 @@ export interface BoardGroup {
   season: GalaxyConstellation["season"];
   /** 이 별자리 별이 있는 칸(판 차례) */
   squares: number[];
+  /**
+   * 제 변(0~3): 이 별자리 별 대부분이 서는 변. 제철 하늘은 이 변의 계절에 이 별자리 이용료를 올린다(g4부터
+   * 변이 아니라 별자리로 정한다, docs/48 15-3). 반쯤 섞은 판에서는 별 하나가 맞은편 변에 있어도 제 변은 하나다
+   */
+  home: number;
   /** 합친 밝기(등급) */
   magnitude: number;
   /** 밝기 순위(0이 가장 밝음) */
@@ -109,12 +114,64 @@ export function baseValue(rank: number, count: number): number {
 }
 
 /**
- * 하늘에서 판을 만든다. `constellations`에서 하늘이 적은 별자리를 찾아 판 차례대로 별 칸에 놓는다.
+ * 별 칸 배치(docs/48 15-3).
+ * - split(반쯤 섞기, g4 기본): 별자리마다 별 둘(가장 밝은 별 포함)은 제 변에 붙여 두고, 가장 어두운 하나를
+ *   맞은편 변 가운데(공문 양옆)에 둔다. 변 = [A 둘, 맞은편 C 하나, 공문, 맞은편 D 하나, B 둘].
+ *   별자리 8 × 별 3 하늘만 이렇게 하고, 다른 모양(12 × 2)은 grouped로 둔다
+ * - grouped: 별자리 별을 판 차례대로 붙여 둔다(g3까지의 판)
+ * - spread(완전히 섞기, bench 견주기용): 별 칸 차례 k = 별 번호 × 별자리 수 + 별자리 번호
+ */
+export type BoardLayout = "split" | "grouped" | "spread";
+
+/** 배치의 별 칸 차례대로 [별자리 번호, 별자리 안 별 번호]. `dimmest[g]`는 별자리 g의 가장 어두운 별 번호 */
+export function layoutOrder(
+  groups: number,
+  size: number,
+  layout: BoardLayout,
+  dimmest: readonly number[] = [],
+): [number, number][] {
+  const order: [number, number][] = [];
+  const kind =
+    layout === "split" && (groups !== 8 || size !== 3) ? "grouped" : layout;
+  if (kind === "grouped") {
+    for (let g = 0; g < groups; g++)
+      for (let i = 0; i < size; i++) order.push([g, i]);
+    return order;
+  }
+  if (kind === "spread") {
+    for (let i = 0; i < size; i++)
+      for (let g = 0; g < groups; g++) order.push([g, i]);
+    return order;
+  }
+  const kept = (g: number) =>
+    [0, 1, 2].filter((i) => i !== (dimmest[g] ?? 2)) as [number, number];
+  const moved = (g: number) => dimmest[g] ?? 2;
+  for (let s = 0; s < 4; s++) {
+    const a = 2 * s;
+    const b = a + 1;
+    const o = 2 * ((s + 2) % 4);
+    const [a0, a1] = kept(a);
+    const [b0, b1] = kept(b);
+    order.push(
+      [a, a0],
+      [a, a1],
+      [o, moved(o)],
+      [o + 1, moved(o + 1)],
+      [b, b0],
+      [b, b1],
+    );
+  }
+  return order;
+}
+
+/**
+ * 하늘에서 판을 만든다. `constellations`에서 하늘이 적은 별자리를 찾아 배치(`layout`)대로 별 칸에 놓는다.
  * 별자리마다 별 수가 같아야 하고 모두 합쳐 24개여야 한다(8 × 3 또는 12 × 2)
  */
 export function buildBoard(
   sky: GalaxySky,
   constellations: readonly GalaxyConstellation[],
+  layout: BoardLayout = "split",
 ): GalaxyBoard {
   const chosen = sky.constellations.map((id) => {
     const found = constellations.find((c) => c.id === id);
@@ -150,8 +207,19 @@ export function buildBoard(
     side: sideOf(i),
     star: null,
   }));
+  const dimmest = chosen.map((c) => {
+    let at = 0;
+    c.stars.forEach((s, i) => {
+      if (s.mag > (c.stars[at] as GalaxyStar).mag) at = i;
+    });
+    return at;
+  });
+  const slots = layoutOrder(chosen.length, size, layout, dimmest);
+  const slotOf = new Map<string, number>();
+  slots.forEach(([g, i], k) => {
+    slotOf.set(`${g}:${i}`, STAR_SQUARES[k] as number);
+  });
   const groups: BoardGroup[] = [];
-  let slot = 0;
   let total = 0;
   chosen.forEach((c, g) => {
     const rank = ranks[g] as number;
@@ -163,8 +231,7 @@ export function buildBoard(
     });
     const groupSquares: number[] = [];
     c.stars.forEach((s, i) => {
-      const square = STAR_SQUARES[slot] as number;
-      slot += 1;
+      const square = slotOf.get(`${g}:${i}`) as number;
       const brightest = i === brightestIndex;
       const value = base + (brightest ? NUMBERS.brightestBonus : 0);
       total += value;
@@ -177,11 +244,13 @@ export function buildBoard(
       };
       groupSquares.push(square);
     });
+    groupSquares.sort((x, y) => x - y);
     groups.push({
       id: c.id,
       ko: c.ko,
       season: c.season,
       squares: groupSquares,
+      home: homeSide(groupSquares),
       magnitude: magnitudes[g] as number,
       rank,
       base,
@@ -189,6 +258,20 @@ export function buildBoard(
     });
   });
   return { skyId: sky.id, skyKo: sky.ko, squares, groups, total };
+}
+
+/** 별자리 칸들의 제 변: 가장 많은 별이 선 변(같으면 앞 칸의 변) */
+function homeSide(squares: readonly number[]): number {
+  const count = [0, 0, 0, 0];
+  for (const sq of squares) {
+    const side = sideOf(sq);
+    if (side !== null) count[side] = (count[side] ?? 0) + 1;
+  }
+  let best = sideOf(squares[0] ?? 1) ?? 0;
+  count.forEach((n, side) => {
+    if (n > (count[best] ?? 0)) best = side;
+  });
+  return best;
 }
 
 /** 이 칸의 별(별 칸이 아니면 null) */

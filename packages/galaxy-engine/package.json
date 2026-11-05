@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "은하 한 바퀴 규칙 엔진 — 해시 사슬 주사위, 봉인 입찰, 순수 함수",
+  "description": "은하 한 바퀴 규칙 엔진 — 해시 사슬 주사위, 봉투 입찰, 순수 함수",
   "exports": {
     ".": "./src/index.ts"
   },

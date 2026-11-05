@@ -1,16 +1,19 @@
-import { botSeedOf, committedBid } from "@game/galaxy-ai";
+import { botSeedOf, committedBid, myRequest } from "@game/galaxy-ai";
 import {
   type Action,
   bidCommitment,
   bidSalt,
   type GalaxyView,
+  requestCommitOf,
+  requestOf,
+  requestSecretOf,
 } from "@game/galaxy-engine";
-import { chainCommit, chainLink } from "@game/yut-engine";
+import { chainCommit, chainLink, derivedSeed } from "@game/yut-engine";
 
 /**
  * 온라인에서 이 기기에만 두는 비밀(docs/48 4-1·4-3).
  * - 주사위 사슬 씨앗: 방장 엔진에는 약속(x_0)만 가고, 굴릴 때마다 이 기기가 다음 고리를 자동으로 공개한다
- * - 봉인 입찰: 낸 값과 소금. 방장 엔진에는 약속(해시)만 가고, 모두 낸 뒤 이 기기가 자동으로 공개한다
+ * - 봉투 입찰: 낸 값과 소금. 방장 엔진에는 약속(해시)만 가고, 모두 낸 뒤 이 기기가 자동으로 공개한다
  * 새로고침해도 같은 씨앗·소금으로 이어 가도록 탭 저장소(sessionStorage)에 남긴다(윷놀이와 같은 틀).
  * 혼자 하기는 자리 재료(시드)로 만든 씨앗·소금을 쓴다(`store.ts`)
  */
@@ -68,8 +71,42 @@ export function mySeed(
   return null;
 }
 
-export function commitAction(seed: string): Action {
-  return { type: "commit", hash: commitOf(seed) };
+/** 사슬 약속. 관측 의뢰를 켠 판의 첫 약속(0세대)이면 같은 씨앗으로 만든 의뢰 약속도 싣는다 */
+export function commitAction(
+  seed: string,
+  view?: Pick<GalaxyView, "requests" | "generation" | "mySeat">,
+): Action {
+  const withRequest = view?.requests && view.generation === 0;
+  return {
+    type: "commit",
+    hash: commitOf(seed),
+    ...(withRequest ? { request: requestCommitOf(view.mySeat, seed) } : {}),
+  };
+}
+
+/**
+ * 관측 의뢰 비밀을 만든 0세대 씨앗. 이 기기에 남긴 씨앗이 의뢰 약속과 맞으면 그것, 아니면 끊긴 사이 컴퓨터가 내 자리
+ * 재료로 대신 약속한 것인지 본다. 둘 다 아니면 null
+ */
+function requestSeed(view: GalaxyView, secrets: GalaxySecrets): string | null {
+  const commit = view.requests?.commits[view.mySeat] ?? null;
+  if (!commit) return null;
+  const kept = secrets.seeds[0];
+  if (kept && requestCommitOf(view.mySeat, kept) === commit) return kept;
+  const derived = derivedSeed(view.botKey, 0);
+  return requestCommitOf(view.mySeat, derived) === commit ? derived : null;
+}
+
+/** 내 관측 의뢰(닻이 아직 없거나 비밀을 모르면 null). 혼자 하기는 비밀 없이 자리 재료로 */
+export function myRequestCard(
+  view: GalaxyView,
+  secrets: GalaxySecrets | null,
+): number | null {
+  if (!secrets) return myRequest(view);
+  const anchor = view.requests?.anchor;
+  const seed = requestSeed(view, secrets);
+  if (!anchor || !seed) return null;
+  return requestOf(view.board, requestSecretOf(seed), anchor);
 }
 
 /** 이 사슬 씨앗으로 낼 다음 공개 */
@@ -107,7 +144,7 @@ export function myBid(
     : null;
 }
 
-/** 사람이 할 일이 없는 공개(주사위 고리·봉투). 내 씨앗·봉투를 모르면 null */
+/** 사람이 할 일이 없는 공개(주사위 고리·봉투·관측 의뢰). 내 씨앗·봉투를 모르면 null */
 export function revealFor(
   view: GalaxyView,
   secrets: GalaxySecrets,
@@ -120,6 +157,12 @@ export function revealFor(
   if (kind === "bidReveal") {
     const bid = myBid(view, secrets);
     return bid ? { type: "bidReveal", ...bid } : null;
+  }
+  if (kind === "requestReveal") {
+    const seed = requestSeed(view, secrets);
+    return seed
+      ? { type: "requestReveal", secret: requestSecretOf(seed) }
+      : null;
   }
   return null;
 }

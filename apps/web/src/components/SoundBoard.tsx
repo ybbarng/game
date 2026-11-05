@@ -191,7 +191,7 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
       { cue: "galaxyNotice", when: "우주국 공문·계절이 바뀌는 공문" },
       { cue: "galaxyAsteroid", when: "소행성대에 걸림·운항 중단" },
       { cue: "galaxySalary", when: "우주국 지원금·관측 지원금" },
-      { cue: "galaxyBid", when: "봉인 입찰 봉투가 한 번에 열림" },
+      { cue: "galaxyBid", when: "봉투 입찰 봉투가 한 번에 열림" },
       { cue: "pickCard", when: "정거장 올리기·내리기·맡기기" },
       { cue: "invalid", when: "할 수 없는 행동" },
       { cue: "win", when: "1등" },
