@@ -82,7 +82,11 @@ const CFOP_SCRAMBLE =
 export const STAGE_SPECS: Record<string, StageSpec> = {
   "333-beginner": {
     stages: [
-      { title: "흰 십자", lessons: ["333-white-cross"], goal: "white-cross" },
+      {
+        title: "흰 십자",
+        lessons: ["333-safe-turns", "333-white-cross"],
+        goal: "white-cross",
+      },
       {
         title: "첫 층 코너",
         lessons: ["333-first-corners-up"],

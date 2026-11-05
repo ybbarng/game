@@ -489,6 +489,7 @@ export function TurnPanel({
   settings,
   onPassed,
   axes = false,
+  passedText,
 }: {
   n: number;
   start: PuzzleState;
@@ -496,6 +497,8 @@ export function TurnPanel({
   mask: StickerMask | null;
   settings: CubeSettings;
   onPassed: () => void;
+  /** 다 쳤을 때 보일 말(없으면 칭찬) */
+  passedText?: string | undefined;
   /** 세 축 화살표(처음 안내의 x·y·z) */
   axes?: boolean;
 }) {
@@ -555,7 +558,7 @@ export function TurnPanel({
       </ol>
       <Status passed={passed}>
         {passed
-          ? "잘했어요! 같은 모양이 됐어요."
+          ? (passedText ?? "잘했어요! 같은 모양이 됐어요.")
           : progress.step < 0
             ? "공식과 다른 모양이 됐어요. 되돌리기나 「처음 상황으로」로 다시 해 보세요."
             : "노란 칸의 수를 직접 쳐 보세요."}

@@ -62,7 +62,8 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
     // 화면이 처음 그릴 때 쓰는 가벼운 표가 cube-ai 차례와 같다
     expect(BEGINNER_TAUGHT).toEqual(TAUGHT_STAGES);
     stages.forEach((st, i) => {
-      const lesson = lessonOf(st.lessons[0] as string);
+      // 단계의 본 단원(마지막. 흰 십자 앞의 「안전한 회전」에는 무작위 해 보기가 없다)
+      const lesson = lessonOf(st.lessons.at(-1) as string);
       expect(taughtHintKind(lesson, randomTry(lesson))).toBe(TAUGHT_STAGES[i]);
     });
     // 모범 답이 있는 해 보기는 그대로(이 힌트를 쓰지 않는다)
@@ -74,7 +75,7 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
   for (const [i, stage] of TAUGHT_STAGES.entries()) {
     const st = stages[i];
     it(`${st?.title}: 힌트 수를 따라가면 단원 목표에 이른다`, () => {
-      const lesson = lessonOf(st?.lessons[0] as string);
+      const lesson = lessonOf(st?.lessons.at(-1) as string);
       const step = randomTry(lesson);
       for (let seed = 1; seed <= 6; seed++) {
         const start = stepStart(lesson, step, seed);

@@ -230,3 +230,51 @@ test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면�
     "",
   );
 });
+
+test("배우기: 안전한 회전(반대 면은 십자 그대로, 맞춘 면은 어긋남)", async ({
+  page,
+}, info) => {
+  await useNotationKeys(page);
+  await page.goto("/cube/learn?lesson=333-safe-turns");
+  const section = page.locator("[data-step-kind]");
+  const turn = page.locator('[data-act="turn"]');
+  const desktop = info.project.name === "desktop";
+  // 0번: 반대 면(아랫면) 돌리기
+  await expect(section).toHaveAttribute("data-step-kind", "turn");
+  await expect(section).toContainText("안전한 회전");
+  await inputReady(page);
+  await shot(page, "learn-safe-turn", info.project.name);
+  if (desktop) {
+    for (const k of keysFor("D")) await page.keyboard.press(k);
+    await expect(turn).toHaveAttribute("data-act-passed", "");
+  }
+  // 1번: 맞춘 면 돌리기
+  await goStep(page, 1);
+  await expect(section).toContainText("위험한 회전");
+  await inputReady(page);
+  if (desktop) {
+    for (const k of keysFor("U")) await page.keyboard.press(k);
+    await expect(turn).toHaveAttribute("data-act-passed", "");
+  }
+  await shot(page, "learn-danger-turn", info.project.name);
+  // 2번: 되돌리기(목표 판정)
+  await goStep(page, 2);
+  await expect(section).toHaveAttribute("data-step-kind", "try");
+  await inputReady(page);
+  if (desktop) {
+    for (const k of keysFor("U'")) await page.keyboard.press(k);
+    await expect(page.locator("[data-cube-try]")).toHaveAttribute(
+      "data-cube-passed",
+      "",
+    );
+  }
+  await shot(page, "learn-safe-undo", info.project.name);
+  // 3번: 고르기
+  await goStep(page, 3);
+  const quiz = page.locator('[data-act="quiz"]');
+  await page.locator("[data-learn-quiz] [data-choice='0']").click();
+  await expect(quiz).not.toHaveAttribute("data-act-passed", "");
+  await page.locator("[data-learn-quiz] [data-choice='1']").click();
+  await expect(quiz).toHaveAttribute("data-act-passed", "");
+  await shot(page, "learn-safe-quiz", info.project.name);
+});
