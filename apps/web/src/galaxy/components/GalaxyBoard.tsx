@@ -17,6 +17,7 @@ import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
   activeStep,
+  followCamera,
   hiddenOwners,
   shipPositions,
   type TimedStep,
@@ -171,19 +172,19 @@ export function GalaxyBoard({
     return counts;
   });
 
-  // 따라가는 시점: 움직이는 우주선이 있는 변을 1.6배로
-  const movingSeat = ships.findIndex((s) => s.moving);
-  let camera: CSSProperties | undefined;
-  if (follow && movingSeat >= 0) {
-    const sq = ships[movingSeat]?.square ?? 0;
-    const c = squareCenter(sq);
-    const fx = Math.min(1, Math.max(0, (c.x - 0.5) / 8));
-    const fy = Math.min(1, Math.max(0, (c.y - 0.5) / 8));
-    camera = {
-      transform: `scale(${GALAXY_FX.followScale})`,
-      transformOrigin: `${fx * 100}% ${fy * 100}%`,
-    };
-  }
+  // 따라가는 시점: 우주선을 끊김 없이 살짝 당겨 따라간다(fx.ts followCamera). 따라가지 않을 때만 CSS로 천천히 돌아온다
+  const cam =
+    follow && !reduced ? followCamera(timeline, ships, elapsed) : null;
+  const camera: CSSProperties = cam
+    ? {
+        transform: `translate(${cam.x * 100}%, ${cam.y * 100}%) scale(${cam.scale})`,
+        transformOrigin: "0 0",
+        transition: "none",
+      }
+    : {
+        transformOrigin: "0 0",
+        transition: `transform ${GALAXY_FX.followZoom}ms ease-in-out`,
+      };
 
   const linkStep = step?.kind === "link" ? step : null;
   const cardSquares = new Set(step?.kind === "card" ? step.squares : []);
@@ -201,12 +202,9 @@ export function GalaxyBoard({
       className="@container relative aspect-square w-full select-none overflow-hidden rounded-2xl"
     >
       <div
-        className="absolute inset-0 transition-transform"
-        style={{
-          ...camera,
-          transitionDuration: `${GALAXY_FX.followZoom}ms`,
-          transitionDelay: camera ? "0ms" : `${GALAXY_FX.followRest}ms`,
-        }}
+        className="absolute inset-0"
+        style={camera}
+        data-follow={cam ? "" : undefined}
       >
         {/* 유리 판 */}
         <div className="absolute inset-0 rounded-2xl border border-sky-200/10 bg-[radial-gradient(ellipse_at_50%_40%,#132044_0%,#0a1230_55%,#070b1f_100%)] shadow-[inset_0_0_60px_rgba(56,189,248,0.08)]" />
@@ -548,7 +546,6 @@ export function GalaxyBoard({
         {/* 우주선 */}
         {ships.map((s, seat) => {
           if (view.out[seat]) return null;
-          const c = squareCenter(s.square);
           const [dx, dy] = SHIP_OFFSET[seat] ?? [0, 0];
           return (
             <span
@@ -558,14 +555,15 @@ export function GalaxyBoard({
               data-ship-square={s.square}
               className={cn(
                 "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2",
-                !reduced && "transition-[left,top] ease-out",
+                // 움직이는 동안은 화면 그리기마다 자리를 바로 준다(칸 사이를 이어 미끄러진다, fx.ts shipPositions)
+                !reduced && !s.moving && "transition-[left,top] ease-out",
               )}
               style={{
-                left: pct(c.x + dx),
-                top: pct(c.y + dy),
+                left: pct(s.x + dx),
+                top: pct(s.y + dy),
                 width: pct(0.36),
                 height: pct(0.36),
-                transitionDuration: s.moving ? "110ms" : "260ms",
+                transitionDuration: "260ms",
               }}
             >
               <ShipToken seat={seat} size={64} className="size-full" />
