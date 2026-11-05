@@ -27,8 +27,10 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
   const h: Handicap = s.handicap ?? {};
   const humans = state.players.filter((p) => p.bot === undefined);
   // 「평균 대비」는 시간 순위라 5판 평균·체력바와는 함께 쓰지 않는다
-  const ao5 = s.format === "ao5" || !!s.party;
+  // 모양 만들기는 시간 순위·완성 하나라 「평균 대비」와 「목표」를 쓰지 않는다
+  const ao5 = s.format === "ao5" || !!s.party || !!s.shape;
   const avg = h.score === "avg" && !ao5;
+  const noGoal = avg || !!s.shape;
   const goals = goalChoices(s.n);
   const averages = Object.fromEntries(
     humans.map((p) => [p.id, room.averageOf(p.id)]),
@@ -98,7 +100,7 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
             <th className="text-left font-normal">사람</th>
             <th className="text-right font-normal">평균</th>
             <th className="pl-2 text-right font-normal">출발</th>
-            {!avg && <th className="pl-2 text-right font-normal">목표</th>}
+            {!noGoal && <th className="pl-2 text-right font-normal">목표</th>}
             <th className="pl-2 text-right font-normal">도움</th>
           </tr>
         </thead>
@@ -130,7 +132,7 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
                     ))}
                   </select>
                 </td>
-                {!avg && (
+                {!noGoal && (
                   <td className="pl-2 text-right">
                     <select
                       disabled={!host}

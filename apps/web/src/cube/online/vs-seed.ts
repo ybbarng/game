@@ -39,3 +39,11 @@ export function testVsSeed(): {
   if (!w.__cubeTestHooks || typeof w.__cubeVsSeed !== "string") return {};
   return seededRace(w.__cubeVsSeed);
 }
+
+/** 화면 시험: 모양 만들기 열쇠를 정해 둔다(`__cubeVsSeed`가 있으면 그 씨앗, 갈고리가 켜졌을 때만). 없으면 null */
+export function testVsShapeKey(): string | null {
+  if (typeof window === "undefined") return null;
+  const w = window as { __cubeTestHooks?: boolean; __cubeVsSeed?: unknown };
+  if (!w.__cubeTestHooks || typeof w.__cubeVsSeed !== "string") return null;
+  return w.__cubeVsSeed.slice(0, 32);
+}

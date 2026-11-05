@@ -26,6 +26,7 @@ import { useMoveKeys } from "../components/MoveChip";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { CubeLook } from "../item-look";
+import { SHAPE_START_LABELS, shapeGoal, shapeProgress } from "../patterns/race";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -343,12 +344,15 @@ export function RaceView({
     helpPlan.current = null;
   }, [syncKey]);
 
+  // 모양 만들기(docs/47 9-10): 목표 모양. 단계 칩(십자·F2L…) 대신 목표까지의 진행을 보인다
+  const shape = room.game()?.shape;
+  const goal = shape ? shapeGoal(shape.id) : undefined;
   // 단계 칩(docs/51 1-3): 이미 받은 수 기록에서 이 기기가 계산한다(새로 보내는 정보 없음, race-stages.ts)
   const start = snap?.seed ? session?.startState() : undefined;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때만 새로 센다
   const tracker = useMemo(
-    () => (start ? new StageTracker(n, start) : null),
-    [syncKey, n, start !== undefined],
+    () => (start && !shape ? new StageTracker(n, start) : null),
+    [syncKey, n, start !== undefined, !shape],
   );
   const stages = new Map<string, { splits: Split[]; groups: SplitGroup[] }>();
   if (tracker && session && snap)
@@ -515,8 +519,8 @@ export function RaceView({
   const game = room.game();
   const scramble = snap.seed ? (game?.scrambleFor(snap.seed)?.text ?? "") : "";
   const others = snap.peers.filter((p) => p.id !== room.me);
-  /** 단계 칩으로 보이나(대결 알림 「끔」이면 예전처럼 진행 막대·단계 이름·수) */
-  const chips = alerts !== "off";
+  /** 단계 칩으로 보이나(대결 알림 「끔」이면 예전처럼 진행 막대·단계 이름·수). 모양 만들기는 목표까지의 진행 */
+  const chips = alerts !== "off" && !shape;
   const finishedFirst = snap.peers
     .filter((p) => p.status === "done" && p.reported !== undefined)
     .sort((a, b) => (a.reported as number) - (b.reported as number));
@@ -552,7 +556,8 @@ export function RaceView({
         PARTY_REASONS.includes(session.checkpointLog(p.id)?.reason ?? "")
         ? ""
         : "DNF";
-    return chips ? "" : `${p.moves}수`;
+    // 모양 만들기는 진행 글(목표 n%)이 따로 있어 수를 붙이지 않는다
+    return chips || shape ? "" : `${p.moves}수`;
   };
   const seat = (p: (typeof snap.peers)[number], shape: SeatLook) => {
     const st = session.stateOf(p.id);
@@ -584,7 +589,7 @@ export function RaceView({
         showCube={showSmall}
         chips={chips}
         progress={p.progress}
-        stageText={st ? stageLabel(n, st) : "-"}
+        stageText={st ? stageLabel(n, st, room.game()?.shape) : "-"}
       />
     );
   };
@@ -694,6 +699,7 @@ export function RaceView({
                   {mode
                     ? ` · ${PARTY_MODE_LABELS[mode].replace("파티: ", "")}`
                     : ""}
+                  {shape ? " · 모양 만들기" : ""}
                   {snap.attempt > 0 && phase !== "finished"
                     ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
                     : ""}
@@ -746,6 +752,23 @@ export function RaceView({
                 </span>
               )}
             </div>
+            {goal && shape && (
+              <ShapeTarget
+                name={goal.pattern.name}
+                start={shape.start}
+                n={n}
+                target={goal.target}
+                progress={
+                  mine && !helpNow.hidden
+                    ? shapeProgress(goal, myState, shape.start)
+                    : null
+                }
+                done={me?.status === "done"}
+                settings={settings}
+                look={look}
+                id={shape.id}
+              />
+            )}
             <p
               className="min-h-5 break-keep text-center font-mono text-white/70 text-xs"
               data-cube-scramble={scramble}
@@ -966,6 +989,7 @@ function ResultBox({
         log,
         planInWorker,
         stopped,
+        round.shape?.id,
       ).then(
         (ok) => {
           if (alive) setBotChecks((c) => ({ ...c, [p.id]: ok }));
@@ -982,7 +1006,8 @@ function ResultBox({
   const [botLike, setBotLike] = useState<Record<string, string>>({});
   useEffect(() => {
     setBotLike({});
-    if (!round || !room.state) return;
+    // 모양 만들기는 모양 공식이 정해져 있어 컴퓨터와 같은 수 차례가 흔하다: 보지 않는다
+    if (!round || !room.state || round.shape) return;
     let alive = true;
     for (const id of round.players) {
       const p = room.state.players.find((x) => x.id === id);
@@ -1584,5 +1609,63 @@ function Replay({
         })}
       </div>
     </section>
+  );
+}
+
+/**
+ * 모양 만들기의 목표 그림(docs/47 9-10): 펼친 그림이 아니라 비스듬한 큐브 그림 둘(위·앞·오른쪽 / 아래·왼쪽·뒤)과
+ * 이름·시작, 내 진행. 판 내내 같은 높이라 큐브가 밀리지 않는다
+ */
+function ShapeTarget({
+  id,
+  name,
+  start,
+  n,
+  target,
+  progress,
+  done,
+  settings,
+  look,
+}: {
+  id: string;
+  name: string;
+  start: keyof typeof SHAPE_START_LABELS;
+  n: number;
+  target: PuzzleState;
+  /** 내 진행(0~1). 보는 사람·가리고 맞추기는 null */
+  progress: number | null;
+  done: boolean;
+  settings: ReturnType<typeof useCubeSettings>;
+  look: CubeLook | null;
+}) {
+  return (
+    <div
+      data-cube-shape-target={id}
+      className="flex items-center gap-3 rounded-xl border border-violet-300/30 bg-violet-300/10 px-3 py-1.5"
+    >
+      <CubePosterPair
+        n={n}
+        state={target}
+        settings={settings}
+        look={look}
+        captions={false}
+        className="w-28 shrink-0 md:w-36"
+      />
+      <div className="flex min-w-0 flex-col gap-1 text-sm">
+        <span className="text-violet-100/70 text-xs">만들 모양</span>
+        <b className="break-keep text-violet-50">{name}</b>
+        <span className="text-white/60 text-xs">
+          {SHAPE_START_LABELS[start]}
+        </span>
+        {progress !== null && (
+          <span
+            data-cube-shape-progress={Math.round(progress * 100)}
+            className={`font-mono text-xs tabular-nums ${done ? "text-emerald-300" : "text-violet-100"}`}
+          >
+            {done ? "완성" : `목표 ${Math.round(progress * 100)}%`}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
