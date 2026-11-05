@@ -29,6 +29,10 @@ export type PieceMarkKind = "slot" | "found" | "placed";
 export interface PieceMark {
   kind: PieceMarkKind;
   stickers: number[];
+  /** 같은 자리의 다른 사건과 묶지 않고 따로 빛낸다(마지막 층 단계 시작·모양·단계 끝, 맞은 조각 확인) */
+  solo?: boolean;
+  /** 이미 맞은 조각을 앞으로 돌려 확인한 것(수 없이 지나간다) */
+  check?: boolean;
 }
 
 /**
@@ -227,4 +231,164 @@ export function splitByUnits(
   return [...groups.entries()]
     .sort((a, b) => a[0] - b[0])
     .map(([at, us]) => ({ at, units: us }));
+}
+
+/** 자리 `positions`에 지금 있는 스티커 정체 */
+export const idsAt = (state: PuzzleState, positions: readonly number[]) =>
+  positions.map((p) => state.perm[p] as number);
+
+/** 묶음의 조각이 지금 자리 `positions`(스티커 자리 번호)를 꼭 채우는가(방향은 따지지 않는다) */
+export function unitAt(
+  state: PuzzleState,
+  unit: PieceUnit,
+  positions: readonly number[],
+): boolean {
+  const want = new Set(unitStickers(unit));
+  const here = idsAt(state, positions);
+  return here.length === want.size && here.every((id) => want.has(id));
+}
+
+// ---------- 마지막 층 단계(윗면이 마지막 층, 3×3) ----------
+
+/** 윗면 엣지 칸 · 윗면 전부 · 위 엣지 옆 칸 · 위 코너(U 스티커 먼저) · 위층 옆 칸(면마다 왼쪽부터) */
+const U_EDGES = [1, 3, 5, 7];
+const U_ALL = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+const EDGE_SIDES = [10, 19, 37, 46];
+const TOP_CORNERS = [
+  [8, 9, 20],
+  [6, 18, 38],
+  [0, 36, 47],
+  [2, 45, 11],
+];
+const SIDE_ROWS = [
+  [18, 19, 20],
+  [9, 10, 11],
+  [45, 46, 47],
+  [36, 37, 38],
+];
+
+type LlKind = "u-edges" | "u-face" | "corners" | "edge-sides" | "side-rows";
+
+/**
+ * 마지막 층 단계마다 맞출 칸(docs/47 0절 2026-11-05 「마지막면 맞추는 건 무엇을 맞추는 단계인지 하이라이트」).
+ * 단계 이름은 `@game/cube-ai`의 `STAGE_LABELS`를 따른다. 초보자는 노란 십자(`eo`) → 옆면 맞추기(`ll-edges`) →
+ * 코너 자리(`ll-corner-place`) → 코너 방향(`ll-corner-twist`), 프리드리히는 `oll` → `pll`, 두 단계 공식은
+ * `eo`·`co`·`cp`·`ep`
+ */
+const LL_STAGES: Readonly<Record<string, LlKind>> = {
+  eo: "u-edges",
+  co: "u-face",
+  oll: "u-face",
+  "ll-corner-twist": "u-face",
+  cp: "corners",
+  "ll-corner-place": "corners",
+  ep: "edge-sides",
+  "ll-edges": "edge-sides",
+  pll: "side-rows",
+};
+
+export const isLlStage = (n: number, stage: string) =>
+  n === 3 && stage in LL_STAGES;
+
+function llPositions(kind: LlKind): number[] {
+  switch (kind) {
+    case "u-edges":
+      return U_EDGES;
+    case "u-face":
+      return U_ALL;
+    case "corners":
+      return TOP_CORNERS.flat();
+    case "edge-sides":
+      return EDGE_SIDES;
+    case "side-rows":
+      return SIDE_ROWS.flat();
+  }
+}
+
+/** 단계가 맞출 칸에 지금 있는 스티커 정체(단계 시작에 「넣을 곳」으로 빛낸다). 마지막 층 단계가 아니면 빈 목록 */
+export function llTargetIds(state: PuzzleState, stage: string): number[] {
+  const kind = LL_STAGES[stage];
+  return kind ? idsAt(state, llPositions(kind)) : [];
+}
+
+/** 맞출 칸 가운데 지금 맞은 칸(센터 색 기준)의 자리 */
+function llCorrectPositions(state: PuzzleState, kind: LlKind): number[] {
+  const colors = faceColors(3, state);
+  const centers = centerColors(state);
+  const face = (p: number) => Math.floor(p / 9);
+  const ok = (p: number) => colors[p] === centers[face(p)];
+  if (kind === "corners")
+    return TOP_CORNERS.filter((c) => {
+      const have = c.map((p) => colors[p]).sort();
+      const want = c.map((p) => centers[face(p)]).sort();
+      return have.every((v, i) => v === want[i]);
+    }).flat();
+  return llPositions(kind).filter(ok);
+}
+
+/** 맞출 칸 가운데 지금 맞은 칸의 스티커 정체 */
+export function llCorrectIds(state: PuzzleState, stage: string): number[] {
+  const kind = LL_STAGES[stage];
+  return kind ? idsAt(state, llCorrectPositions(state, kind)) : [];
+}
+
+/**
+ * 공식을 고르려고 알아보는 모양(「찾은 조각」으로 빛낸다). 상태만 본다.
+ * - 노란 십자: 윗면 센터와 노란 엣지 칸(점·ㄱ자·일자). 노란 면(OLL·코너 방향 공식): 위층의 노란 칸 전부.
+ *   초보자 코너 방향은 이 토막이 돌릴 코너(`after`에서 새로 노랑이 위를 본 코너).
+ * - 옆면 맞추기·위 엣지 자리: 윗면만 돌려 옆색이 가장 많이 맞는 자리에서 맞는 엣지의 옆 칸.
+ * - 코너 자리: 이미 제자리인 코너. PLL: 옆 칸 가운데 같은 줄 이웃과 색이 같은 칸(전조등·막대).
+ */
+export function llShapeIds(
+  state: PuzzleState,
+  stage: string,
+  after?: PuzzleState,
+): number[] {
+  const kind = LL_STAGES[stage];
+  if (!kind) return [];
+  const colors = faceColors(3, state);
+  const yellow = colors[4] as number;
+  if (stage === "ll-corner-twist" && after) {
+    const was = new Set(
+      idsAt(
+        state,
+        [0, 2, 6, 8].filter((p) => colors[p] === yellow),
+      ),
+    );
+    const now = faceColors(3, after);
+    const fixed = TOP_CORNERS.filter(
+      (c) => now[c[0] as number] === yellow,
+    ).filter((c) => !was.has(after.perm[c[0] as number] as number));
+    const ids = new Set(fixed.flatMap((c) => idsAt(after, c)));
+    return [...ids];
+  }
+  switch (kind) {
+    case "u-edges":
+      return idsAt(state, [4, ...U_EDGES.filter((p) => colors[p] === yellow)]);
+    case "u-face":
+      return idsAt(
+        state,
+        [...U_ALL, ...SIDE_ROWS.flat()].filter((p) => colors[p] === yellow),
+      );
+    case "edge-sides": {
+      let best: number[] = [];
+      for (const t of ["", "U", "U2", "U'"]) {
+        const s = t ? applyMoves(3, state, parseMoves(3, t)) : state;
+        const ids = idsAt(s, llCorrectPositions(s, "edge-sides"));
+        if (ids.length > best.length) best = ids;
+      }
+      return best;
+    }
+    case "corners":
+      return idsAt(state, llCorrectPositions(state, "corners"));
+    case "side-rows":
+      return idsAt(
+        state,
+        SIDE_ROWS.flatMap((row) =>
+          row.filter((p) =>
+            row.some((q) => q !== p && colors[q] === colors[p]),
+          ),
+        ),
+      );
+  }
 }

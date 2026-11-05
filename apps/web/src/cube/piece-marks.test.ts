@@ -9,6 +9,10 @@ import { describe, expect, it } from "vitest";
 
 import { randomScramble } from "./hero/loop";
 import {
+  isLlStage,
+  llCorrectIds,
+  llShapeIds,
+  llTargetIds,
   SEARCH_ORDER,
   searchTurns,
   slotStickers,
@@ -138,5 +142,46 @@ describe("splitByUnits", () => {
     // R 하나만 되돌리면 그 한 엣지를 끝에서
     const one = splitByUnits(states, 0, 1, units);
     expect(one.map((g) => [g.at, g.units.length])).toEqual([[1, 1]]);
+  });
+});
+
+describe("마지막 층 단계의 맞출 칸·모양(상태만 본다)", () => {
+  // 흰 면 아래(z2)로 쥔 맞춘 큐브에서 마지막 층만 흐트러뜨린다
+  const ll = (alg: string) => play(solvedCube(3), `z2 ${alg}`);
+
+  it("단계마다 맞출 칸 수: 노란 십자 4, 노란 면·OLL·코너 방향 9, 코너 자리 12, 옆면 4, PLL 12", () => {
+    const s = ll("");
+    const count = (stage: string) => llTargetIds(s, stage).length;
+    expect(count("eo")).toBe(4);
+    expect(count("oll")).toBe(9);
+    expect(count("ll-corner-twist")).toBe(9);
+    expect(count("ll-corner-place")).toBe(12);
+    expect(count("ll-edges")).toBe(4);
+    expect(count("pll")).toBe(12);
+    expect(count("middle")).toBe(0);
+    expect(isLlStage(3, "eo")).toBe(true);
+    expect(isLlStage(3, "cross")).toBe(false);
+    // 맞춘 큐브는 모두 맞다
+    for (const st of ["eo", "oll", "ll-corner-place", "ll-edges", "pll"])
+      expect(llCorrectIds(s, st)).toHaveLength(count(st));
+  });
+
+  it("노란 십자 모양: 점이면 센터만, 공식 한 번 뒤 ㄱ자는 센터 + 엣지 둘", () => {
+    const eo = "F R U R' U' F'";
+    // 점: 공식의 거꾸로를 세 번(점 → ㄱ자 → 일자 → 십자의 거꾸로)
+    const inv = "F U R U' R' F'";
+    const dot = ll(`${inv} ${inv} U2 ${inv}`);
+    expect(llShapeIds(dot, "eo")).toHaveLength(1);
+    const ell = play(dot, eo);
+    expect(llShapeIds(ell, "eo")).toHaveLength(3);
+    expect(llCorrectIds(ell, "eo")).toHaveLength(2);
+  });
+
+  it("옆면 맞추기 모양: 윗면만 돌려 가장 많이 맞는 엣지의 옆 칸", () => {
+    // 두 엣지만 맞바꾼 꼴(수네 + U의 거꾸로)
+    const s = ll("U' R U2 R' U' R U' R'");
+    const shape = llShapeIds(s, "ll-edges");
+    expect(shape.length).toBeGreaterThanOrEqual(2);
+    expect(shape.length).toBeLessThan(4);
   });
 });

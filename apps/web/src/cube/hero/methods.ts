@@ -64,7 +64,8 @@ export const HERO_METHODS: readonly HeroMethodDef[] = [
     size: 3,
     label: "초보자 해법",
     solve: async (s) => (await ai()).solveBeginner3(s, TAUGHT),
-    view: { ...TAUGHT_VIEW, search: true },
+    // 흰 십자는 넣을 자리를 y로 앞에 가져와 앞면으로 올리는 모습을 그대로 보인다
+    view: { ...TAUGHT_VIEW, search: true, keepY: ["cross"] },
   },
   {
     id: "3-cfop",

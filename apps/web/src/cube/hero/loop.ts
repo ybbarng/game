@@ -249,7 +249,9 @@ export function scrambleSteps(
  *
  * 강조(`highlight`가 끄기가 아니면): 조각마다 넣기 전에 넣을 곳·찾은 조각을, 넣은 뒤에 맞춘 조각을 `mark`만큼
  * 멈춰 빛낸다(살피는 멈춤·단계 사이 멈춤과 겹치면 하나로 둔다). 넣는 수 동안에는 빛내지 않는다. 찾는 돌리기
- * (`searches`)는 `searchMove`로 조금 빠르게 둔다.
+ * (`searches`)는 `searchMove`로 조금 빠르게 둔다. 같은 자리의 사건은 차례대로 멈춤 하나씩이고(맞춘 조각끼리,
+ * 넣을 곳·찾은 조각끼리는 하나로 묶는다), `solo`인 사건은 따로 멈춘다. 끄기여도 이미 맞은 조각을 앞으로 돌려
+ * 확인한 뒤(`check`)에는 살피듯 잠깐 멈춘다.
  */
 export function solveSteps(
   solve: HeroSolve,
@@ -264,36 +266,60 @@ export function solveSteps(
     marksAt.set(at, [...(marksAt.get(at) ?? []), mark]);
   const on = highlight !== "off";
   const steps: HeroStep[] = [];
-  /** 수 i 앞의 멈춤들(맞춘 조각 → 단계 사이 → 넣을 곳·찾은 조각 차례) */
+  /** 수 i 앞의 사건을 멈춤 하나씩으로 묶는다 */
+  const groupsAt = (i: number): PieceMark[][] => {
+    const out: PieceMark[][] = [];
+    for (const m of marksAt.get(i) ?? []) {
+      const last = out.at(-1);
+      const prev = last?.at(-1);
+      const join =
+        last &&
+        prev &&
+        !m.solo &&
+        !prev.solo &&
+        (m.kind === "placed") === (prev.kind === "placed");
+      if (join) last.push(m);
+      else out.push([m]);
+    }
+    return out;
+  };
+  const isPlaced = (g: readonly PieceMark[]) => g[0]?.kind === "placed";
+  /** 수 i 앞의 멈춤들(맞춘 조각 → 단계 사이 → 넣을 곳·찾은 조각, 사건이 쌓인 차례) */
   const pauses = (i: number, label: string, stageStart: boolean) => {
-    const marks = marksAt.get(i) ?? [];
-    const placed = marks.filter((m) => m.kind === "placed");
-    const target = marks.filter((m) => m.kind !== "placed");
-    const wait = (ms: number, m: PieceMark[]) => {
+    const groups = groupsAt(i);
+    const wait = (ms: number, m: readonly PieceMark[]) => {
       const step: HeroStep = { kind: "wait", ms, label };
-      if (on && m.length) step.marks = m;
+      if (on && m.length) step.marks = [...m];
       steps.push(step);
     };
+    let k = 0;
     if (stageStart) {
       // 단계 사이 멈춤에 맞춘 조각을 싣는다
-      wait(on && placed.length ? Math.max(t.stage, t.mark) : t.stage, placed);
-    } else if (on && placed.length) wait(t.mark, placed);
-    const look = !stageStart && looks.has(i);
-    if (on && target.length)
-      wait(look ? Math.max(t.look, t.mark) : t.mark, target);
-    else if (look || (target.length && searches.has(i - 1)))
-      // 끄기여도 찾은 뒤에는 살피듯 잠깐 멈춘다
+      const g = groups[0] && isPlaced(groups[0]) ? groups[k++] : null;
+      wait(on && g ? Math.max(t.stage, t.mark) : t.stage, g ?? []);
+    }
+    let look = !stageStart && looks.has(i);
+    if (on)
+      for (; k < groups.length; k++) {
+        const g = groups[k] as PieceMark[];
+        // 살피는 멈춤은 넣을 곳·찾은 조각 멈춤과 하나로
+        const ms = !isPlaced(g) && look ? Math.max(t.look, t.mark) : t.mark;
+        if (!isPlaced(g)) look = false;
+        wait(ms, g);
+      }
+    const target = groups.some((g) => !isPlaced(g));
+    const checked = groups.some((g) => g.some((m) => m.check));
+    if (on) {
+      if (look) wait(t.look, []);
+    } else if (look || checked || (target && searches.has(i - 1)))
+      // 끄기여도 찾은 뒤·맞은 조각을 확인한 뒤에는 살피듯 잠깐 멈춘다
       wait(t.look, []);
   };
   let first = true;
   for (const stage of solve.stages) {
     if (stage.end <= stage.start) continue;
     const label = `${methodLabel} · ${stage.label}`;
-    if (first) {
-      const marks = marksAt.get(stage.start) ?? [];
-      if (on && marks.length)
-        steps.push({ kind: "wait", ms: t.mark, label, marks });
-    } else pauses(stage.start, label, true);
+    pauses(stage.start, label, !first);
     first = false;
     for (let i = stage.start; i < stage.end; i++) {
       const move = solve.moves[i];

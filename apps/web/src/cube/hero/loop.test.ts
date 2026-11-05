@@ -655,15 +655,19 @@ describe("조각 강조", () => {
         expect(isSolved(3, r.loop.current)).toBe(true);
         // 수를 두는 동안에는 아무것도 빛나지 않는다
         for (const m of r.solveMoves) expect(m.shown, m.move).toEqual([]);
-        // 넣기 전(넣을 곳·찾은 조각)과 넣은 뒤(맞춘 조각)를 차례로 알렸다
+        // 조각마다 넣기 전(넣을 곳·찾은 조각) 다음에는 넣은 뒤(맞춘 조각)를 알렸다
         const kinds = r.notices
           .filter((n) => n.length)
           .map((n) => n.map((m) => m.kind).join("+"));
-        expect(kinds.length).toBeGreaterThan(4);
-        for (let i = 0; i + 1 < kinds.length; i += 2) {
-          expect(kinds[i]).toBe("slot+found");
-          expect(kinds[i + 1]).toBe("placed");
-        }
+        expect(kinds.filter((k) => k === "slot+found").length).toBeGreaterThan(
+          4,
+        );
+        kinds.forEach((k, i) => {
+          if (k === "slot+found") expect(kinds[i + 1]).toBe("placed");
+        });
+        // 마지막 층은 맞출 칸(넣을 곳)과 알아볼 모양(찾은 조각)을 따로 알린다
+        expect(kinds).toContain("slot");
+        expect(kinds).toContain("found");
       }
     },
   );
@@ -718,5 +722,30 @@ describe("조각 강조", () => {
     expect(off.some((s) => s.kind === "wait" && s.marks)).toBe(false);
     // 끄기여도 찾은 뒤에는 살피듯 잠깐 멈춘다
     expect(off[1]).toMatchObject({ kind: "wait", ms: T3.look });
+  });
+
+  it("따로 빛낼 사건(solo)은 멈춤 하나씩, 이미 맞은 조각 확인은 끄기여도 잠깐 멈춘다", () => {
+    const solve: HeroSolve = {
+      moves: ["y", "R", "U"],
+      stages: [{ label: "노란 십자", start: 0, end: 3 }],
+      looks: [],
+      marks: [
+        {
+          at: 1,
+          mark: { kind: "placed", stickers: [5], solo: true, check: true },
+        },
+        { at: 2, mark: { kind: "slot", stickers: [1], solo: true } },
+        { at: 2, mark: { kind: "found", stickers: [2], solo: true } },
+      ],
+    };
+    const brief = solveSteps(solve, "x", T3, "brief");
+    const marked = brief.filter((s) => s.kind === "wait" && s.marks);
+    expect(
+      marked.map((s) => (s.kind === "wait" ? s.marks?.[0]?.kind : "")),
+    ).toEqual(["placed", "slot", "found"]);
+    const off = solveSteps(solve, "x", T3, "off");
+    // 확인 뒤(1번 수 앞)에 살피는 멈춤
+    expect(off[1]).toMatchObject({ kind: "wait", ms: T3.look });
+    expect(off.some((s) => s.kind === "wait" && s.marks)).toBe(false);
   });
 });
