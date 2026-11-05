@@ -13,6 +13,7 @@ describe("구간 기록 묶기", () => {
     ).toEqual([
       {
         ids: ["roux1", "cross"],
+        main: "roux1",
         label: "첫 블록 +1",
         full: "첫 블록 · 십자",
         ms: 2_000,
@@ -20,6 +21,7 @@ describe("구간 기록 묶기", () => {
       },
       {
         ids: ["f2l1"],
+        main: "f2l1",
         label: "F2L 1/4",
         full: "F2L 1/4",
         ms: 5_500,
