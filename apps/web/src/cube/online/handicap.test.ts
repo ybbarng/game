@@ -16,6 +16,8 @@ import {
   goalReached,
   handicapOk,
   handicapTags,
+  helpChoices,
+  helpLabel,
   helpScreen,
   ratioText,
   recentAverage,
@@ -484,9 +486,22 @@ describe("도움 다르게(docs/47 9-8)", () => {
     });
     expect(handicapTags(active, 3, "a")).toEqual(["힌트 허용"]);
     expect(handicapTags(active, 3, "b")).toEqual(["가리고 맞추기"]);
-    // 힌트는 3×3만 있어 다른 크기는 펼친 그림만 허용
-    expect(handicapTags(active, 2, "a")).toEqual(["펼친 그림 허용"]);
+    // 힌트는 3×3만 있어 다른 크기는 고를 거리에서 빼고, 골라 둔 값은 「3×3만」으로 보인다
+    expect(handicapTags(active, 2, "a")).toEqual(["힌트 허용(3×3만)"]);
+    expect(helpChoices(3)).toEqual(["hint", "plain", "blind"]);
+    expect(helpChoices(2)).toEqual(["plain", "blind"]);
+    // 「거울 없이」는 예전 「3D만」과 같은 저장·전송 값 "plain"(옛 방 상태도 그대로 받는다)
     expect(handicapOk({ help: { a: "plain" } }, 2)).toBe(true);
+    expect(helpLabel(3, "plain")).toBe("거울 없이");
+    expect(
+      raceOptionsFor(
+        base,
+        activeHandicap({ help: { a: "plain" } }, ["a"], {
+          ao5: false,
+          averageOf: () => null,
+        }),
+      ),
+    ).toMatchObject({ gameOptions: { handicap: { help: { a: "plain" } } } });
     expect(handicapOk({ help: { a: "다 보기" } }, 3)).toBe(false);
     expect(handicapOk({ help: "hint" }, 3)).toBe(false);
     expect(raceOptionsFor(base, active)).toMatchObject({
@@ -501,7 +516,7 @@ describe("도움 다르게(docs/47 9-8)", () => {
     expect(raceOptionsFor(base, none)).toEqual(raceOptionsFor(base));
   });
 
-  it("화면: 3D만은 펼친 그림을 끄고, 힌트는 3×3에서 맞추는 동안만, 가리기는 풀린 뒤 내가 맞추는 동안만", () => {
+  it("화면: 거울 없이는 거울을 끄고, 힌트는 3×3에서 맞추는 동안만, 가리기는 풀린 뒤 내가 맞추는 동안만", () => {
     const race = { phase: "race", playing: true };
     expect(helpScreen(undefined, 3, race)).toEqual({
       back: true,

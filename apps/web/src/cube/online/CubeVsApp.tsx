@@ -13,6 +13,7 @@ import {
   type Handicap,
   HELPS,
   type Help,
+  helpChoices,
   helpLabel,
   localAverages,
 } from "./handicap";
@@ -305,7 +306,9 @@ export function CubeVsApp() {
                   <option value="" className="bg-neutral-800">
                     그대로
                   </option>
-                  {HELPS.map((k) => (
+                  {HELPS.filter(
+                    (k) => helpChoices(n).includes(k) || help === k,
+                  ).map((k) => (
                     <option key={k} value={k} className="bg-neutral-800">
                       {helpLabel(n, k)}
                     </option>
