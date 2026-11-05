@@ -28,6 +28,8 @@ export default defineConfig({
       "**/.node-version",
       "**/.github/workflows/ci.yml",
       "**/apps/web/public/stats/**",
+      // src/sw.test.ts가 읽어 돌리는 서비스 워커
+      "**/apps/web/public/sw.js",
       "**/apps/web/scripts/build-hashes.mjs",
     ],
     coverage: {
