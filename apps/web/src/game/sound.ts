@@ -306,9 +306,9 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
-  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리 가운데값보다 약 11dB 작게(-42dB 근처).
-  // 0.03초짜리 딸깍이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다(2026-11-04 /sounds에서 잼)
-  cubeTurn: 11,
+  // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리 가운데값보다 약 10dB 작게(-42dB 근처).
+  // 0.05초짜리 "스윽 딸깍"이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다(2026-11-05 잡음만 쓰는 소리로 바꾸고 잼)
+  cubeTurn: 6,
   cubeSolved: 0,
   cubeInspect: 10,
   cubeTimerStart: 10,
@@ -619,6 +619,8 @@ interface NoiseOptions {
   gain?: number;
   sweepTo?: number;
   attack?: number;
+  /** 한 번 더 거르는 낮은 쪽 통과(Hz). 높은 쪽을 가파르게 깎아 귀가 따갑지 않게 */
+  cut?: number;
 }
 
 function noise(
@@ -632,6 +634,7 @@ function noise(
     gain = 0.25,
     sweepTo,
     attack = 0.002,
+    cut,
   }: NoiseOptions = {},
 ): void {
   const { ctx } = v;
@@ -643,12 +646,19 @@ function noise(
   f.frequency.setValueAtTime(freq, t);
   if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + duration);
   f.Q.value = q;
+  let filtered: AudioNode = src.connect(f);
+  if (cut) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = cut;
+    filtered = filtered.connect(lp);
+  }
   const env = ctx.createGain();
   env.gain.setValueAtTime(0.0001, t);
   env.gain.exponentialRampToValueAtTime(gain, t + attack);
   env.gain.exponentialRampToValueAtTime(0.0001, t + duration);
   // 같은 잡음 버퍼를 매번 다른 곳에서 읽어 똑같이 들리지 않게 한다.
-  src.connect(f).connect(env).connect(v.bus);
+  filtered.connect(env).connect(v.bus);
   src.start(t, random() * 0.5, duration + 0.05);
 }
 
@@ -678,6 +688,45 @@ function woodClack(v: Voice, at: number, gain = 1, pitch = 1): void {
     gain: 0.08 * gain,
     endFreq: 640 * pitch * vary,
     attack: 0.001,
+  });
+}
+
+/**
+ * 스피드큐브 한 층이 도는 소리: 플라스틱 층이 서로 미끄러지는 짧은 "스윽"과, 층이 자리에 걸리는 작은 "딸깍".
+ * 음이 있는 소리(사인·삼각파)는 쓰지 않고 거른 잡음만 쓴다. 예전에는 나무 "탁"(`woodClack`)을 높여 썼는데
+ * 그 안의 1.3kHz 삼각파가 음으로 들려 "띡띡" 삑 소리 같았다(2026-11-05 사용자 「실제 큐브소리랑 다르게 띡띡거리는
+ * 소리가 나」). 높은 쪽(5kHz 넘게)은 거의 없게 해 빠르게 이어 돌려도 귀가 따갑지 않게 한다.
+ * 수마다 높이·길이·딸깍 시각을 조금씩 달리해 똑같은 소리가 되풀이되는 기계음처럼 들리지 않게 한다.
+ */
+function cubeTurnSound(v: Voice): void {
+  const pitch = 0.88 + random() * 0.24;
+  const len = 0.85 + random() * 0.3;
+  // 미끄러짐: 가운데 높이 잡음이 부드럽게 올라와 조금 낮아지며 빨리 사라진다
+  noise(v, 0, 0.05 * len, {
+    filter: "bandpass",
+    freq: 1500 * pitch,
+    sweepTo: 1100 * pitch,
+    q: 0.8,
+    gain: 0.3,
+    attack: 0.006,
+    cut: 4000,
+  });
+  // 딸깍: 층이 걸리는 아주 짧은 플라스틱 소리와 몸통의 낮고 둥근 "톡"
+  const at = (0.024 + random() * 0.012) * len;
+  noise(v, at, 0.014, {
+    filter: "bandpass",
+    freq: 2300 * pitch,
+    q: 1.2,
+    gain: 0.42,
+    attack: 0.001,
+    cut: 4500,
+  });
+  noise(v, at, 0.03, {
+    filter: "lowpass",
+    freq: 650 * pitch,
+    q: 0.7,
+    gain: 0.4,
+    attack: 0.0015,
   });
 }
 
@@ -1484,8 +1533,7 @@ function render(cue: Cue, v: Voice): void {
       });
       break;
     case "cubeTurn":
-      // 플라스틱 조각이 맞물리며 도는 짧고 가벼운 "딸깍"
-      woodClack(v, 0, 0.8, 1.6);
+      cubeTurnSound(v);
       break;
     case "cubeSolved":
       // 다 맞춘 "띠리링"(위로 올라가는 세 음)
