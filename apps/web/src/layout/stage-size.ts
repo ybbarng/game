@@ -3,11 +3,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
 /**
- * 판 무대(화면 전체를 덮는 절대 좌표 층)의 크기. `computeLayout`에 넣는다(마이티·하트·화투 공통).
+ * 판 무대(화면 전체를 덮는 절대 좌표 층)의 크기. `computeLayout`에 넣는다(마이티·하트·원카드·화투 공통).
  * ResizeObserver가 없는 곳(jsdom 단위 시험)은 창 크기를 쓴다
  */
-export function useStageSize() {
-  const ref = useRef<HTMLDivElement>(null);
+export function useStageSize<T extends HTMLElement = HTMLDivElement>() {
+  const ref = useRef<T>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   useLayoutEffect(() => {
     const el = ref.current;

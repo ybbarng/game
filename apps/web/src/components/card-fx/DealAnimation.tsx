@@ -1,68 +1,55 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { dealPlanFor, FLIGHT_MS, SHUFFLE_MS } from "@/game/timing";
-import type { Point, Size } from "@/layout/compute-layout";
+import type { Point } from "@/layout/compute-layout";
 
-import { PlayingCard } from "../PlayingCard";
+import type { CardKind } from "./kind";
 import { type CardPosition, CardSprite } from "./sprite";
-
-/** 뒷면 한 장을 그린다(없으면 서양 카드 뒷면). 화투처럼 다른 카드는 쓰는 쪽이 넣는다 */
-export type RenderBack = (size: Size) => ReactNode;
 
 /** 덱 연출용 뒷면 한 장 */
 function Back({
-  renderBack,
-  card,
+  kind,
+  width,
   at,
   rotate,
   z,
   duration,
 }: {
-  renderBack: RenderBack | undefined;
-  card: Size;
+  kind: CardKind;
+  width: number;
   at: CardPosition;
   rotate: number;
   z: number;
   duration: number;
 }) {
-  return renderBack ? (
+  return (
     <CardSprite
-      width={card.w}
-      height={card.h}
+      kind={kind}
+      width={width}
       at={at}
       rotate={rotate}
       z={z}
       duration={duration}
     >
-      {renderBack(card)}
+      {kind.renderBack(width)}
     </CardSprite>
-  ) : (
-    <PlayingCard
-      card={null}
-      width={card.w}
-      height={card.h}
-      at={at}
-      rotate={rotate}
-      z={z}
-      delay={0}
-      duration={duration}
-    />
   );
 }
 
 interface DealAnimationProps {
   center: Point;
-  card: Size;
+  /** 카드 종류(뒷면 그림과 높이) */
+  kind: CardKind;
+  /** 덱 카드 한 장 너비 */
+  width: number;
   /** 선부터 차례로, 카드를 받을 곳 */
   targets: Point[];
   /** 받는 곳마다 같은 장수일 때 한 곳의 장수 */
   handSize: number;
   /** 받는 곳마다 장수가 다르면 곳마다의 장수(화투: 손패와 바닥). 주면 `handSize` 대신 쓴다 */
   counts?: readonly number[];
-  /** 뒷면 그리기(없으면 서양 카드 뒷면) */
-  renderBack?: RenderBack;
   kittyCount: number;
   /** 다른 연출(딜미스 알림 등)이 끝난 뒤 시작한다 */
   startDelay: number;
@@ -74,6 +61,12 @@ interface DealAnimationProps {
    */
   shuffleMs?: number;
 }
+
+/**
+ * 나눠 받은 카드가 받는 자리에 내려앉을 때의 크기(덱 카드 대비). 손패가 받은 자리에서 펼쳐지기 시작하는 크기도
+ * 이것이다(`useHandSpread`, 하트·마이티 손패의 `from`)
+ */
+export const DEALT_SCALE = 0.55;
 
 type Stage =
   | "stack"
@@ -90,11 +83,11 @@ type Stage =
  */
 export function DealAnimation({
   center,
-  card,
+  kind,
+  width,
   targets,
   handSize,
   counts,
-  renderBack,
   kittyCount,
   startDelay,
   pattern,
@@ -155,11 +148,11 @@ export function DealAnimation({
         const at = dealt
           ? {
               ...(targets[flight?.player ?? 0] as Point),
-              scale: 0.55,
+              scale: DEALT_SCALE,
               opacity: 0.9,
             }
           : {
-              x: center.x + (split ? half * card.w * 0.62 : 0),
+              x: center.x + (split ? half * width * 0.62 : 0),
               y: center.y - stack,
               // 다 나눈 뒤 남은 바닥 카드는 덱 자리에 그대로 둔다(게임 화면이 이어받는다).
               scale: 1,
@@ -168,8 +161,8 @@ export function DealAnimation({
           <Back
             // biome-ignore lint/suspicious/noArrayIndexKey: 덱 연출용 뒷면 카드는 순서가 곧 정체다
             key={i}
-            renderBack={renderBack}
-            card={card}
+            kind={kind}
+            width={width}
             at={at}
             rotate={split ? half * 6 : 0}
             // 덱에서는 맨 위 카드가 맨 위에 보이고 먼저 나간다. 덱을 떠난 카드는 나중에 떠날수록
@@ -189,14 +182,15 @@ export function DealAnimation({
  */
 export function ShuffleLoop({
   center,
-  card,
+  kind,
+  width,
   count,
-  renderBack,
 }: {
   center: Point;
-  card: Size;
+  kind: CardKind;
+  /** 덱 카드 한 장 너비 */
+  width: number;
   count: number;
-  renderBack?: RenderBack;
 }) {
   const [split, setSplit] = useState(false);
   useEffect(() => {
@@ -211,10 +205,10 @@ export function ShuffleLoop({
           <Back
             // biome-ignore lint/suspicious/noArrayIndexKey: 덱 연출용 뒷면 카드는 순서가 곧 정체다
             key={i}
-            renderBack={renderBack}
-            card={card}
+            kind={kind}
+            width={width}
             at={{
-              x: center.x + (split ? half * card.w * 0.62 : 0),
+              x: center.x + (split ? half * width * 0.62 : 0),
               y: center.y - i * 0.35,
               scale: 1,
             }}

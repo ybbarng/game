@@ -1,19 +1,22 @@
 "use client";
 
-import { monthOf } from "@game/hwatu";
-import { useEffect, useState } from "react";
+import { isCardId, monthOf } from "@game/hwatu";
+import { type RefObject, useEffect, useState } from "react";
 
 import {
+  type CardFlights,
   DealAnimation,
   FLIP_STEP_MS,
   type FlipMove,
   type FlipSpots,
   flipMs,
+  HWATU_CARD,
+  useCardFlights,
+  useCardFlip,
 } from "@/components/card-fx";
 import { dealPlanFor, prefersReducedMotion } from "@/game/timing";
 import type { Point } from "@/layout/compute-layout";
 
-import { HwatuCardView } from "./components/HwatuCard";
 import type { HwatuLayout } from "./table-layout";
 
 /*
@@ -75,6 +78,34 @@ export function useHwatuDealing(
   return dealingFor !== null && dealingFor === shownFor;
 }
 
+/** `data-flip` 이름의 앞면 카드: 카드 id면 그 카드, 뒷면 부채(`fan-…`)·더미(`deck`)는 뒷면 */
+export function hwatuFaceOf(id: string): string | null {
+  return isCardId(id) ? id : null;
+}
+
+/**
+ * 화투 장면 연출: 장면(`scene`)이 바뀔 때 `moves`대로 카드 겉그림이 앞 자리에서 새 자리로 날아간다. 돌려준 줄을
+ * `HwatuStage`의 `fx`로 넘기면 무대가 겉그림을 그리고 날아오는 카드를 가린다
+ */
+export function useHwatuFlights({
+  stage,
+  scene,
+  skip,
+  moves,
+  stepMs = FLIP_STEP_MS,
+}: {
+  stage: RefObject<HTMLElement | null>;
+  scene: unknown;
+  skip: boolean;
+  moves: (prev: FlipSpots, next: FlipSpots) => readonly FlipMove[];
+  /** 한 걸음 시간(나이롱뽕은 조금 짧다) */
+  stepMs?: number;
+}): CardFlights {
+  const fx = useCardFlights();
+  useCardFlip({ stage, scene, skip, fx, faceOf: hwatuFaceOf, moves, stepMs });
+  return fx;
+}
+
 /**
  * 판 시작 연출: 가운데 판에서 더미를 섞고, 선부터 자리 차례로 손패를, 마지막에 바닥 패를 나눠 준다.
  * `seats`는 나부터 차례 순서의 자리 수, `dealerOffset`은 선이 나부터 몇 번째인가
@@ -116,19 +147,18 @@ export function HwatuDeal({
     (_, k) => (dealerOffset + k) % seats,
   );
   const targets = [...order.map(placeOf), ...(floor > 0 ? [board] : [])];
-  const card = { w: deck, h: deck * 1.6 };
   return (
     <DealAnimation
       key={dealKey}
       center={{ x: center.x + Math.max(deck, 40), y: board.y }}
-      card={card}
+      kind={HWATU_CARD}
+      width={deck}
       targets={targets}
       handSize={hand}
       counts={dealCounts(seats, hand, floor)}
       kittyCount={deckLeft}
       startDelay={0}
       pattern={pattern}
-      renderBack={(size) => <HwatuCardView faceDown width={size.w} />}
     />
   );
 }
