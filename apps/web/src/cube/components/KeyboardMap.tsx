@@ -106,7 +106,7 @@ export function KeyboardMap({
   const rows = keyboardCells(keymap, n);
   const glow = litCodes(lit);
   const look = useKeyLook(n);
-  const { keyPairs, keyFingers } = useCubeSettings();
+  const { keyFingers } = useCubeSettings();
   const vk = useVirtualKeys();
   const press = pressable ? vk : null;
   const held = useHeldShift();
@@ -171,15 +171,7 @@ export function KeyboardMap({
             ),
           ),
         )}
-        {/* 키 보고 맞히기(동작 글을 숨김)에서는 답이 보이지 않게 짝 선을 끈다 */}
-        {((keyPairs && !hideActions) || keyFingers) && (
-          <KeyOverlay
-            keymap={keymap}
-            n={n}
-            pairs={keyPairs && !hideActions}
-            fingers={keyFingers}
-          />
-        )}
+        {keyFingers && <KeyOverlay />}
       </div>
     </div>
   );

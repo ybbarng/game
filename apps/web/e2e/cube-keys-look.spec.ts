@@ -5,7 +5,7 @@ import { expect, test } from "./test";
 
 /**
  * 차분한 키 그림(2026-11-05, 사용자 「키보드 아직 너무 어지러움」, docs/47 4-5). 칸 바탕은 무채색, 면 색은 작은 표시
- * 하나(기본 아래선), 칸에는 수 하나만 크게(키 글자는 작게, 같은 글자면 한 번만), Shift 층 글은 Shift를 누르는 동안만,
+ * 하나(기본 아래선: 면 돌리기 실선, x·y·z 점선, M·E·S 가운데 짧은 선), 칸에는 수 하나만 크게(키 글자는 작게, 같은 글자면 한 번만), Shift 층 글은 Shift를 누르는 동안만,
  * 동작 없는 키는 아주 흐리게. 혼자 맞추기·배우기·키 익히기·화면 키보드가 같은 규칙인지 본다.
  *
  * 견주기: `E2E_SCREENSHOTS=1 KEY_LOOK=line|dot|tint`로 돌리면 그 안으로 키 그림마다 스크린샷을 남긴다
@@ -91,8 +91,17 @@ test("혼자 맞추기 「두 손」: 수 하나만 크게, 면 색은 작은 �
   // 키 글자와 수가 다르면(L 키 = D') 키 글자는 작게 따로
   await expect(key("KeyL").locator("[data-key-cap]")).toHaveText("L");
   await expect(key("KeyL").locator("[data-key-label]")).toHaveText("D'");
-  // 큐브 돌리기(T = x)는 색 없음, 동작 없는 키(3×3의 3)는 흐리게
-  await expect(key("KeyT").locator("[data-key-mark]")).toHaveCount(0);
+  // 큐브 돌리기(T = x)는 R 색 점선, 가운데 층(M·E·S)은 가운데 짧은 선. 옅은 바탕 안에서도 같다(2026-11-05)
+  await expect(key("KeyT")).toHaveAttribute("data-key-paint", "sweep");
+  if (LOOK !== "dot") {
+    await expect(
+      key("KeyT").locator('[data-key-mark-shape="dotted"]'),
+    ).toHaveCount(1);
+    await expect(keys.locator('[data-key-mark-shape="short"]')).not.toHaveCount(
+      0,
+    );
+  }
+  // 동작 없는 키(3×3의 3)는 흐리게
   await expect(key("Digit3")).toHaveAttribute("data-key-idle", "");
   await snap(page, "[data-cube-keys]", "solo-two-hand", info.project.name);
 

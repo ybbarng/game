@@ -8,32 +8,9 @@ import {
   setHandLayers,
   usesHandLayers,
 } from "./hand-layers";
-import { FINGER_HOMES, facePairs, pairPath } from "./key-pairs";
+import { FINGER_HOMES } from "./key-pairs";
 
-describe("키 그림 짝 잇기", () => {
-  it("「두 손」의 같은 면 두 키", () => {
-    const pairs = facePairs(presetKeymap("twoHand"));
-    const of = (f: string) => pairs.find((p) => p.face === f);
-    expect(of("R")).toMatchObject({ cw: "KeyI", ccw: "KeyK" });
-    expect(of("L")).toMatchObject({ cw: "KeyD", ccw: "KeyE" });
-    expect(of("U")).toMatchObject({ cw: "KeyJ", ccw: "KeyF" });
-    expect(pairs).toHaveLength(6);
-    // 「표기」는 반대가 Shift라 조합 키 없는 짝이 없다
-    expect(facePairs(presetKeymap("notation"))).toHaveLength(0);
-  });
-
-  it("선은 키 글을 피해 틈으로 돈다", () => {
-    const a = { x: 0, y: 0, w: 10, h: 10 };
-    // 같은 줄: 아래 틈(10 + 2)으로
-    expect(pairPath(a, { x: 30, y: 0, w: 10, h: 10 }, 4)).toBe(
-      "M5 10 V12 H35 V10",
-    );
-    // 다른 줄: 위 키 아래 → 두 줄 사이 → 아래 키 위
-    expect(pairPath({ x: 30, y: 14, w: 10, h: 10 }, a, 4)).toBe(
-      "M5 10 V12 H35 V14",
-    );
-  });
-
+describe("키 그림 손가락 자리", () => {
   it("손가락 자리는 F·J에 검지", () => {
     expect(FINGER_HOMES.find((f) => f.code === "KeyF")?.finger).toBe("검지");
     expect(FINGER_HOMES.find((f) => f.code === "KeyJ")?.hand).toBe("right");

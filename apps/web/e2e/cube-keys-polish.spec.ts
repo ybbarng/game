@@ -32,10 +32,8 @@ test("키 익히기: 배치 규칙은 키 글을 가리고 손가락으로 맞�
   const main = page.locator("main[data-learn-step]");
   await expect(main).toHaveAttribute("data-learn-step", "rule");
   await expect(main).toContainText("핑거 트릭");
-  // 키 그림에 같은 면 두 키를 잇는 선(R = I·K)과 손가락 자리
-  await expect(
-    page.locator('[data-keyboard-map] [data-key-pair="R:KeyI-KeyK"]'),
-  ).toBeAttached();
+  // 키 그림에 손가락 자리. 같은 면 두 키를 잇던 선은 뺐다(2026-11-05, 두 키가 같은 면 색 아래선)
+  await expect(page.locator("[data-key-pair]")).toHaveCount(0);
   await expect(
     page.locator('[data-keyboard-map] [data-key-finger="left-검지"]'),
   ).toBeAttached();
@@ -61,10 +59,7 @@ test("5×5 「두 손」: 7로 오른손 층 수를 올리면 큐브와 키 그�
   await inputReady(page);
   await page.locator("[data-cube-size]").selectOption("5");
   await inputReady(page);
-  // 큐브 아래 키 그림에도 같은 면 두 키를 잇는 선
-  await expect(
-    page.locator('[data-cube-keys] [data-key-pair="U:KeyJ-KeyF"]'),
-  ).toBeAttached();
+  await expect(page.locator("[data-cube-keys]")).toBeVisible();
   await expect(page.locator("[data-key-layers]")).toHaveAttribute(
     "data-key-layers",
     "1-1",

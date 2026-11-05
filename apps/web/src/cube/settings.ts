@@ -102,8 +102,6 @@ export interface CubeSettings {
    * 끄면 단색
    */
   keyColors: boolean;
-  /** 키 그림에서 같은 면의 시계·반시계 두 키를 선으로 잇는다(2026-11-04, 기본 켬) */
-  keyPairs: boolean;
   /** 키 그림에 가운데 줄 손가락 자리(검지·중지·약지·새끼)를 옅게 겹친다(2026-11-04, 기본 켬) */
   keyFingers: boolean;
   /**
@@ -140,7 +138,6 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   inspection: true,
   caseAlert: false,
   keyColors: true,
-  keyPairs: true,
   keyFingers: true,
   backView: "mirror",
   touchKeyboard: false,
@@ -219,7 +216,7 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
     caseAlert: bool(d.caseAlert, DEFAULT_SETTINGS.caseAlert),
     keyColors: bool(d.keyColors, DEFAULT_SETTINGS.keyColors),
-    keyPairs: bool(d.keyPairs, DEFAULT_SETTINGS.keyPairs),
+    // keyPairs(키 그림 짝 잇기, 2026-11-05 뺐다)는 옛 저장값에 남아 있어도 읽지 않고 버린다
     keyFingers: bool(d.keyFingers, DEFAULT_SETTINGS.keyFingers),
     backView:
       d.backView === "net" || d.backView === "off" || d.backView === "mirror"
