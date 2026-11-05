@@ -91,10 +91,10 @@ const SWEEP_FACE: Record<string, number> = {
 };
 
 /**
- * 칸 아래 면 색 선의 모양(2026-11-05). 굵기는 모두 같고 칸마다 하나다.
- * - `solid`: 면 돌리기·넓게·안쪽 층. 칸 아래 실선
- * - `dotted`: 큐브 전체 돌리기(x·y·z). 같은 자리에 점선
- * - `short`: 가운데 층(M·E·S). 가운데에만 짧은 선(실선의 1/3쯤)
+ * 면 색 표시의 모양(2026-11-05). 칸마다 하나다.
+ * - `solid`: 면 돌리기·넓게·안쪽 층. 칸 바탕 전체를 옅게 칠하고 선은 두지 않는다
+ * - `dotted`: 큐브 전체 돌리기(x·y·z). 칸 아래 점선(칸 너비의 56%)
+ * - `short`: 가운데 층(M·E·S). 칸 아래 가운데에만 짧은 선(칸 너비의 20%)
  * 반대 방향(')은 모양을 바꾸지 않고 밝기와 ′ 표시로 구별한다.
  */
 export type KeyMarkShape = "solid" | "dotted" | "short";
@@ -193,42 +193,59 @@ export function keyTone(
 }
 
 /**
- * 차분한 키 그림(2026-11-05 다시, 사용자 「키보드 아직 너무 어지러움」, docs/47 4-5). 칸 바탕·테두리는 무채색으로 두고
- * 면 색은 작은 표시 하나에만 쓴다. 안 셋을 견주었고 `KEY_LOOK_DEFAULT`가 권하는 안이다. 다른 안은 이 기기
- * localStorage `cube.keyLook`에 이름을 넣어 볼 수 있다(견주기용, 설정 화면에는 없다).
- * - `line`: 칸 아래에 얇은 면 색 선
- * - `dot`: 칸 오른쪽 위에 면 색 점
- * - `tint`: 칸 바탕에 면 색을 아주 옅게(선·점 없음)
- * 반대 방향(')은 색을 바꾸지 않고 ′ 표시와 밝기(글자·표시를 흐리게)로만 구별한다.
+ * 차분한 키 그림(2026-11-05, docs/47 4-5). 칸 테두리는 무채색 하나, 면 색은 칸마다 한 가지로만 쓴다.
+ * - 면 돌리기(R·L·U·D·F·B, 넓게·안쪽 층 포함): 칸 바탕에 그 면 색을 옅게(`tint`). 선은 없다
+ * - x·y·z: 바탕은 무채색, 축 면 색의 점선 / M·E·S: 바탕은 무채색, 따라 도는 면 색의 가운데 짧은 선
+ * 사용자 「정식 색상은 배경색, 응용(xyz, mes)은 선색」. 선 색은 원색 그대로가 아니라 같은 면 색을 칸 바탕(무채색)과
+ * 섞은 색이라(`line`), 옅은 바탕과 한 식구로 보이면서 바탕(16%)보다 진해 선으로는 또렷하다.
+ * 반대 방향(')은 색을 바꾸지 않고 ′ 표시와 밝기(바탕을 더 옅게, 글자·선을 흐리게)로만 구별한다.
  */
-export type KeyLookStyle = "line" | "dot" | "tint";
-export const KEY_LOOK_STYLES: readonly KeyLookStyle[] = ["line", "dot", "tint"];
-export const KEY_LOOK_DEFAULT: KeyLookStyle = "line";
-export const KEY_LOOK_STORAGE = "cube.keyLook";
-export const KEY_LOOK_LABEL: Record<KeyLookStyle, string> = {
-  line: "아래선",
-  dot: "점",
-  tint: "옅은 바탕",
-};
-
-export function parseKeyLook(v: unknown): KeyLookStyle {
-  return KEY_LOOK_STYLES.includes(v as KeyLookStyle)
-    ? (v as KeyLookStyle)
-    : KEY_LOOK_DEFAULT;
-}
-
-/** 차분한 키 그림의 비율 */
 export const KEY_CALM = {
-  /** `tint` 안: 칸 바탕에 섞는 면 색 비율 */
+  /** 면 돌리기 칸 바탕에 섞는 면 색 비율 */
   tint: 0.16,
   primeTint: 0.08,
-  /** 반대 방향 표시(선·점)의 불투명도 */
+  /** x·y·z·M·E·S 선 색에 섞는 면 색 비율(나머지는 칸 바탕) */
+  line: 0.7,
+  /** 반대 방향 선의 불투명도 */
   primeMark: 0.6,
+  /** 무늬 칸(`KEY_STRIPE`)의 사선 색에 섞는 면 색 비율. 바탕보다 조금만 진해 옅게 보인다 */
+  stripe: 0.34,
+  primeStripe: 0.2,
 } as const;
 
-/** `tint` 안의 칸 바탕 */
+/** 면 돌리기 칸의 바탕 */
 export function calmTint(rgb: number, prime: boolean): number {
   return mixRgb(rgb, prime ? KEY_CALM.primeTint : KEY_CALM.tint);
+}
+
+/** x·y·z·M·E·S 선의 색: 같은 면 색을 칸 바탕과 섞어 옅은 바탕과 같은 톤으로(반대 방향은 불투명도로 흐리게) */
+export function calmLine(rgb: number): number {
+  return mixRgb(rgb, KEY_CALM.line);
+}
+
+/**
+ * 무늬를 넣는 면 색(2026-11-05, 사용자 「색약 친화에서는 진하기 연하기 대신에 사선 패턴 같은 걸로 하면 되지 않을까」).
+ * 옅은 바탕은 채도가 빠져 따뜻한 세 면(R·L·D)이 모두 갈색에 가까워진다. 16% 바탕의 색조가 색약 친화는
+ * R 26°·L 42°·D 56°, 높은 대비는 R 0°·L 32°·D 56°로 두 배색 모두 L(주황)이 R·D 사이 한가운데에 있어, L 한 면에만
+ * 사선을 넣으면 R·L과 L·D 두 쌍이 함께 갈린다(R·D는 30° 넘게 떨어져 색으로 갈린다). 여섯 면 모두 다른 무늬를 두면
+ * 어지러워서 한 면만 둔다. 표준 배색(R 350°·L 20°·D 50°)과 직접 고른 색은 무늬가 없다.
+ * 값은 면 자리가 아니라 색 번호라 큐브를 돌려 주황이 다른 키로 가도 무늬가 따라간다.
+ */
+export const KEY_STRIPE: Partial<Record<string, number>> = {
+  colorblind: 4,
+  highContrast: 4,
+};
+
+/** 그 배색에서 이 색(면 번호)의 칸에 사선 무늬를 넣는지 */
+export function stripedColor(scheme: string, color: number): boolean {
+  return KEY_STRIPE[scheme] === color;
+}
+
+/** 사선 무늬(칸 바탕 위, CSS `background-image`). 2px 선·5px 틈의 옅은 사선 */
+export function stripeImage(rgb: number, prime: boolean): string {
+  const c = mixRgb(rgb, prime ? KEY_CALM.primeStripe : KEY_CALM.stripe);
+  const hex = `#${c.toString(16).padStart(6, "0")}`;
+  return `repeating-linear-gradient(135deg, ${hex} 0 2px, transparent 2px 7px)`;
 }
 
 /**

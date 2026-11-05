@@ -122,6 +122,19 @@ describe("큐브 설정 저장", () => {
     expect(effectiveRaceAlerts("off", true)).toBe("off");
   });
 
+  it("손가락 자리: 새 칸 「모든 화면에서도」는 기본 끔, 옛 keyFingers(켬)는 이어 받지 않는다", () => {
+    expect(parseSettings(null).keyFingersAll).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyFingers: true })).keyFingersAll,
+    ).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyFingersAll: true })).keyFingersAll,
+    ).toBe(true);
+    expect(
+      "keyFingers" in parseSettings(JSON.stringify({ keyFingers: true })),
+    ).toBe(false);
+  });
+
   it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
     expect(parseSettings(JSON.stringify({ version: 1 })).backView).toBe(
       "mirror",

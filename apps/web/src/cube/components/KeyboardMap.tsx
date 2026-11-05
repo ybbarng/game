@@ -14,7 +14,6 @@ import {
   keyLayers,
   type Layer,
 } from "../keys/layout";
-import { useCubeSettings } from "../settings";
 import { KeyOverlay, useHeldShift } from "./KeyGuide";
 import {
   type KeyLook,
@@ -106,7 +105,6 @@ export function KeyboardMap({
   const rows = keyboardCells(keymap, n);
   const glow = litCodes(lit);
   const look = useKeyLook(n);
-  const { keyFingers } = useCubeSettings();
   const vk = useVirtualKeys();
   const press = pressable ? vk : null;
   const held = useHeldShift();
@@ -171,7 +169,9 @@ export function KeyboardMap({
             ),
           ),
         )}
-        {keyFingers && <KeyOverlay />}
+        {/* 손가락 자리: 이 그림을 쓰는 곳(단축키 표·키 익히기·조작 훈련)은 키를 익히는 화면이라 늘 보인다. 맞추는
+            화면의 키 그림(`KeyGuide`)은 설정 「손가락 자리를 모든 화면에서도 보이기」를 켜야 보인다(2026-11-05) */}
+        <KeyOverlay />
       </div>
     </div>
   );
@@ -261,6 +261,7 @@ function Key({
       data-key-idle={idle ? "" : undefined}
       {...pressProps}
       data-key-paint={paintAttr(paint)}
+      data-key-stripe={paint?.striped ? "" : undefined}
       style={state ? span : { ...span, ...paint?.cell }}
       className={cn(
         "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border px-[0.4cqw] pt-[0.25cqw] pb-[0.8cqw] leading-[1.15] transition-colors print:bg-white",

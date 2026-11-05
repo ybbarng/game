@@ -390,6 +390,7 @@ export function KeyLearnApp() {
               want={finished ? [] : lit}
               hideActions={current?.kind === "move" && !!current.ask}
               pressable
+              fingers
             />
           ) : (
             <KeyboardMap

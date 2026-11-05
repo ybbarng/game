@@ -23,7 +23,8 @@ import { PRESS_CLASS, useVirtualKeys } from "./VirtualKeys";
 
 /**
  * 키 그림(지금 배치). 칸의 굵은 글은 그냥 칠 때, 아래 작은 글은 Shift와 함께 칠 때. Shift를 누르고 있는 동안은
- * 굵은 글이 Shift 층으로 바뀐다. 면 돌리기 키는 들고 있는 방향의 그 면 색(설정 「키 그림에 면 색」, `KeyPaint`)
+ * 굵은 글이 Shift 층으로 바뀐다. 면 돌리기 키는 칸 바탕에 들고 있는 방향의 그 면 색을 옅게, x·y·z·M·E·S는 같은
+ * 톤의 선(설정 「키 그림에 면 색」, `KeyPaint`)
  */
 
 const KEY_ROWS = [
@@ -95,6 +96,7 @@ export function KeyGuide({
   layers,
   pressable = false,
   hideActions = false,
+  fingers = false,
 }: {
   n: number;
   keymap: Keymap;
@@ -110,13 +112,19 @@ export function KeyGuide({
   pressable?: boolean;
   /** 동작 글을 숨긴다(키 보고 맞히기) */
   hideActions?: boolean;
+  /**
+   * 손가락 자리를 늘 보인다(키 익히기). 맞추는 화면(혼자 맞추기·배우기·대결·화면 키보드)은 기본으로 끄고 설정
+   * 「손가락 자리를 모든 화면에서도 보이기」(`keyFingersAll`)를 켜야 보인다(2026-11-05, 사용자 「키 사이에 파란선, 노란선은 뭐야?」)
+   */
+  fingers?: boolean;
 }) {
   const look = useKeyLook(n, orient);
   const vk = useVirtualKeys();
   const usesAlt = keymap.bindings.some((b) => b.alt);
   const undoChord =
     chordsFor(keymap, "undo").find((c) => !c.ctrl && !c.alt) ?? null;
-  const { keyFingers } = useCubeSettings();
+  const { keyFingersAll } = useCubeSettings();
+  const showFingers = fingers || keyFingersAll;
   // Shift를 누르고 있는 동안만 Shift 층 글을 보인다
   const held = useHeldShift();
   const hasShift = keymap.bindings.some((b) => b.shift && !b.ctrl);
@@ -160,6 +168,7 @@ export function KeyGuide({
             }
           : {})}
         data-key-paint={paintAttr(paint)}
+        data-key-stripe={paint?.striped ? "" : undefined}
         style={state ? undefined : paint?.cell}
         className={`relative flex h-12 min-w-0 flex-1 items-center justify-center rounded border leading-none transition-colors ${pressable ? PRESS_CLASS : ""} ${
           state === "pressed"
@@ -210,7 +219,7 @@ export function KeyGuide({
             {row.map(cell)}
           </div>
         ))}
-        {keyFingers && <KeyOverlay />}
+        {showFingers && <KeyOverlay />}
       </div>
       {pressable && (
         <div className="flex gap-1" data-key-mods>
