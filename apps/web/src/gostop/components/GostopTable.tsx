@@ -11,18 +11,13 @@ import {
   settlementLines,
 } from "@game/gostop-engine";
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
-import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 
-import { ChatBox } from "@/components/ChatBox";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { SeatPlateFrame } from "@/components/SeatPlate";
-import {
-  MissionOverlay,
-  type MissionProps,
-} from "@/components/tutorial/MissionOverlay";
+import type { MissionProps } from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
@@ -35,6 +30,17 @@ import {
   HwatuFloor,
   HwatuHand,
 } from "@/hwatu/components/HwatuLayout";
+import {
+  at,
+  HWATU_PRIMARY,
+  HWATU_SECONDARY,
+  HwatuBoard,
+  HwatuEndBox,
+  HwatuHud,
+  HwatuOnlineNotes,
+  HwatuStage,
+  HwatuVerifyLines,
+} from "@/hwatu/components/HwatuTable";
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
 import {
@@ -45,20 +51,9 @@ import {
 import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
-import { useChat } from "@/net/chat";
 
 import { GOSTOP_LEVELS } from "../settings";
 import { useGostop } from "../store";
-
-/** 튜토리얼 미션 띠 자리(판 위에 따로 둔다) */
-const MISSION_INSET = 64;
-
-const at = (r: Rect): CSSProperties => ({
-  left: r.x,
-  top: r.y,
-  width: r.w,
-  height: r.h,
-});
 
 /** 이름 고르기: 온라인은 방 이름, 혼자 하기는 나·컴퓨터 이름 */
 export function useSeatName(me: number): (seat: number) => string {
@@ -260,9 +255,8 @@ function Prompt({
   );
 }
 
-const BUTTON = "rounded-xl px-4 py-2 text-sm";
-const PRIMARY = cn(BUTTON, "bg-amber-300 font-semibold text-black");
-const SECONDARY = cn(BUTTON, "bg-white/10 disabled:opacity-40");
+const PRIMARY = HWATU_PRIMARY;
+const SECONDARY = HWATU_SECONDARY;
 
 /**
  * 대국 화면. 둘러앉은 판(docs/05 4절, `gostopLayout`): 상대는 맞은편(2인)·위 양옆(3인) 자리 판에 손패 뒷면과
@@ -294,10 +288,6 @@ export function GostopTable({
   const clearNotice = useGostop((s) => s.clearNotice);
   const stage = useStageSize();
   const controls = useHandControls<string>();
-  const chatOpen = useChat((s) => s.open);
-  const setChatOpen = useChat((s) => s.setOpen);
-  const chatUnread = useChat((s) => s.unread);
-  const chatMessages = useChat((s) => s.messages);
   const [selected, setSelected] = useState<string | null>(null);
   /** 흔들기·폭탄을 물을 카드 */
   const [asking, setAsking] = useState<string | null>(null);
@@ -320,26 +310,16 @@ export function GostopTable({
   }, [seq]);
 
   const name = useSeatName(view?.mySeat ?? 0);
-  const inset = mission ? MISSION_INSET : 0;
-  const stageStyle: CSSProperties | undefined =
-    inset > 0
-      ? { marginTop: inset, height: `calc(100dvh - ${inset}px)` }
-      : undefined;
   const shell = (children: React.ReactNode) => (
-    <main
-      data-game="gostop"
-      className="relative h-dvh w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_75%)] text-white"
+    <HwatuStage
+      game="gostop"
+      background="bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_75%)]"
+      mission={mission}
+      stageRef={stage.ref}
+      handlers={controls.handlers}
     >
-      {mission && <MissionOverlay mission={mission} top={8} />}
-      <div
-        ref={stage.ref}
-        className="relative h-dvh w-full"
-        style={stageStyle}
-        {...controls.handlers}
-      >
-        {children}
-      </div>
-    </main>
+      {children}
+    </HwatuStage>
   );
   if (!view || !host) return null;
   if (stage.width === 0) return shell(null);
@@ -453,8 +433,6 @@ export function GostopTable({
   const last = lastStepText(events, name);
   const threshold = goThreshold(view.rules);
   const { center, hud } = layout;
-  // 가운데 판이 낮고 넓으면(휴대폰 가로) 판 끝 결과를 옆으로 나란히 놓는다
-  const wideCenter = center.w > center.h * 2.4;
 
   const outcomeView = (
     <RoundOutcome
@@ -494,39 +472,21 @@ export function GostopTable({
 
   return shell(
     <>
-      {/* 위 막대 */}
-      <header
-        className="absolute flex items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl bg-black/30 px-3 text-sm"
-        style={at(hud)}
-      >
-        <button
-          type="button"
-          onClick={onExit}
-          className="shrink-0 text-white/70 hover:text-white"
-        >
-          ← 고스톱
-        </button>
-        <span className="ml-auto min-w-0 truncate text-right text-white/60 text-xs">
-          {n === 2 ? "맞고" : "3명"} · {view.roundNumber}/{view.rules.rounds}판
-          · {threshold}점부터 고
-          {view.nagari > 0 ? ` · 나가리 ×${2 ** view.nagari}` : ""}
-          {online ? "" : ` · ${levelName}`}
-        </span>
-        {online && (
-          <button
-            type="button"
-            onClick={() => setChatOpen(!chatOpen)}
-            className="relative shrink-0 rounded-lg bg-white/10 px-1.5 py-0.5 text-xs hover:bg-white/20"
-          >
-            채팅
-            {chatUnread > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-rose-500 px-1 text-[10px] leading-4">
-                {chatUnread}
-              </span>
-            )}
-          </button>
-        )}
-      </header>
+      <HwatuHud
+        rect={hud}
+        title="← 고스톱"
+        onExit={onExit}
+        online={online}
+        mySeat={me}
+        info={
+          <>
+            {n === 2 ? "맞고" : "3명"} · {view.roundNumber}/{view.rules.rounds}
+            판 · {threshold}점부터 고
+            {view.nagari > 0 ? ` · 나가리 ×${2 ** view.nagari}` : ""}
+            {online ? "" : ` · ${levelName}`}
+          </>
+        }
+      />
 
       {/* 상대 손패 뒷면(자리 판 뒤에서 판 쪽으로) */}
       {others.map((seat, i) => (
@@ -554,123 +514,109 @@ export function GostopTable({
       })}
 
       {/* 가운데 판: 더미와 바닥. 판 끝 결과·정산도 여기에 띄운다 */}
-      <div
-        className="absolute rounded-[2rem] border border-white/10 bg-black/15 shadow-[inset_0_0_48px_rgba(0,0,0,0.35)]"
-        style={at(center)}
-      >
-        <div
-          className={cn(
-            "flex h-full items-center gap-3 px-3 pt-2 pb-12 transition-opacity",
-            ended && "opacity-25",
-          )}
-        >
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            <HwatuDeck count={view.deckCount} width={layout.deck} />
-            {view.stacks.length > 0 && (
-              <p className="max-w-24 text-center text-[10px] text-white/60">
-                뻑:{" "}
-                {view.stacks
-                  .map(
-                    (x) =>
-                      `${MONTH_NAMES[x.month]}${x.owner === null ? "" : `(${name(x.owner)})`}`,
-                  )
-                  .join(", ")}
+      <HwatuBoard
+        rect={center}
+        dim={ended}
+        footer={
+          !ended && (
+            <>
+              <p
+                aria-live="off"
+                data-last-step
+                className="max-w-full truncate text-[11px] text-white/65"
+              >
+                {last ?? ""}
               </p>
-            )}
-            {pendingCard && d?.kind === "choose" && (
-              <div className="flex flex-col items-center text-[10px] text-white/70">
-                {pendingFlip ? "뒤집은 카드" : "낸 카드"}
-                <HwatuCardView
-                  id={
-                    pendingFlip
-                      ? (view.pending?.flipped ?? pendingCard)
-                      : pendingCard
-                  }
-                  width={layout.deck}
-                  selected
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
-            <HwatuFloor
-              ids={view.floor}
-              width={layout.floor}
-              highlight={(id) =>
-                chooseOptions.length > 0
-                  ? chooseOptions.includes(id)
-                  : highlightMonth !== null && monthOf(id) === highlightMonth
-              }
-              {...(chooseOptions.length > 0
-                ? {
-                    onPick: (id: string) => send({ type: "choose", card: id }),
-                  }
-                : {})}
-            />
-          </div>
-        </div>
-        {!ended && (
-          <div className="absolute inset-x-2 bottom-1 flex flex-col items-center text-sm">
-            <p
-              aria-live="off"
-              data-last-step
-              className="max-w-full truncate text-[11px] text-white/65"
-            >
-              {last ?? ""}
-            </p>
-            {outcomeView}
-          </div>
-        )}
-        {ended && result && !bannerUp && (
-          <div
-            className={cn(
-              "pop-in absolute inset-0 flex items-center justify-center gap-2 overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm",
-              wideCenter ? "flex-row" : "flex-col",
-            )}
-          >
-            <div className="flex flex-col items-center gap-2">
               {outcomeView}
-              {endButtons}
-            </div>
-            <div className="flex w-full max-w-md flex-col gap-1">
-              <SettlementBox
-                s={result}
-                name={name}
-                players={n}
-                className="bg-black/60"
+            </>
+          )
+        }
+        overlay={
+          <>
+            {ended && result && !bannerUp && (
+              <HwatuEndBox
+                rect={center}
+                main={
+                  <>
+                    {outcomeView}
+                    {endButtons}
+                  </>
+                }
+                side={
+                  <>
+                    <SettlementBox
+                      s={result}
+                      name={name}
+                      players={n}
+                      className="bg-black/60"
+                    />
+                    {online && <HwatuVerifyLines />}
+                  </>
+                }
               />
-              {/* 판 끝 검증 결과는 채팅을 닫아 두어도 결과 곁에 보인다 */}
-              {online &&
-                chatMessages
-                  .filter((m) => m.seat < 0 && m.name === "검증")
-                  .map((m) => (
-                    <p key={m.id} className="text-white/75 text-xs">
-                      [{m.name}] {m.text}
-                    </p>
-                  ))}
+            )}
+            <ResultBanner
+              banner={banner}
+              seq={seq}
+              onShowChange={setBannerUp}
+            />
+          </>
+        }
+      >
+        <div className="flex shrink-0 flex-col items-center gap-1">
+          <HwatuDeck count={view.deckCount} width={layout.deck} />
+          {view.stacks.length > 0 && (
+            <p className="max-w-24 text-center text-[10px] text-white/60">
+              뻑:{" "}
+              {view.stacks
+                .map(
+                  (x) =>
+                    `${MONTH_NAMES[x.month]}${x.owner === null ? "" : `(${name(x.owner)})`}`,
+                )
+                .join(", ")}
+            </p>
+          )}
+          {pendingCard && d?.kind === "choose" && (
+            <div className="flex flex-col items-center text-[10px] text-white/70">
+              {pendingFlip ? "뒤집은 카드" : "낸 카드"}
+              <HwatuCardView
+                id={
+                  pendingFlip
+                    ? (view.pending?.flipped ?? pendingCard)
+                    : pendingCard
+                }
+                width={layout.deck}
+                selected
+              />
             </div>
-          </div>
-        )}
-        <ResultBanner banner={banner} seq={seq} onShowChange={setBannerUp} />
-      </div>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
+          <HwatuFloor
+            ids={view.floor}
+            width={layout.floor}
+            highlight={(id) =>
+              chooseOptions.length > 0
+                ? chooseOptions.includes(id)
+                : highlightMonth !== null && monthOf(id) === highlightMonth
+            }
+            {...(chooseOptions.length > 0
+              ? {
+                  onPick: (id: string) => send({ type: "choose", card: id }),
+                }
+              : {})}
+          />
+        </div>
+      </HwatuBoard>
 
       {online && (
-        <div
-          className="absolute z-[230] flex flex-col items-center gap-1"
-          style={{ left: center.x, width: center.w, top: center.y + 6 }}
+        <HwatuOnlineNotes
+          rect={center}
+          reconnecting={reconnecting}
+          hostLeft={hostLeft}
         >
           <HwatuFairBar me={me} over={view.phase === "gameOver"} />
-          {(reconnecting || hostLeft) && (
-            <p
-              role="alert"
-              className="rounded-xl bg-rose-700/90 px-3 py-1.5 text-center text-sm"
-            >
-              {hostLeft
-                ? "방장이 방을 나갔습니다"
-                : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
-            </p>
-          )}
-        </div>
+        </HwatuOnlineNotes>
       )}
 
       {/* 내 자리 */}
@@ -725,7 +671,7 @@ export function GostopTable({
 
       {/* 내 손패 */}
       <div
-        className="absolute inset-x-0 flex items-end justify-center"
+        className="pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto"
         style={{
           top: layout.hand.top,
           bottom: layout.gutter,
@@ -741,25 +687,6 @@ export function GostopTable({
           onSelect={pick}
         />
       </div>
-
-      {online && chatOpen && (
-        <div
-          className="absolute right-3 z-[380] w-[min(92%,22rem)] rounded-2xl border border-white/15 bg-[#0a3622]/95 p-3 shadow-2xl backdrop-blur"
-          style={{ top: hud.y + hud.h + 6 }}
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-sm">채팅</span>
-            <button
-              type="button"
-              onClick={() => setChatOpen(false)}
-              className="rounded bg-white/10 px-2 text-xs"
-            >
-              닫기
-            </button>
-          </div>
-          <ChatBox mySeat={me} />
-        </div>
-      )}
 
       {d?.kind === "goStop" && (
         <Prompt label="고 또는 스톱">

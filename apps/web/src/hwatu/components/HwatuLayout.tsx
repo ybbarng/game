@@ -241,7 +241,7 @@ export function HwatuCaptured({
           data-captured={g.key}
           className="flex flex-col items-start gap-0.5"
         >
-          <span className="text-[10px] text-white/70">
+          <span className="whitespace-nowrap text-[10px] text-white/70">
             {g.key} {g.count}
           </span>
           <div className={cn("flex", step === null && "-space-x-5")}>
