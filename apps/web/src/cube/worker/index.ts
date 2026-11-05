@@ -20,7 +20,8 @@ import {
  *   const s = await scrambleInWorker("333", seed);   // { event, text, official }
  *   const solution = await solveInWorker(facelets);   // WCA 표기 글
  *
- * - 워커 하나를 만들어 계속 쓴다(표는 워커 안에 한 번만 만든다). 일은 보낸 차례로 한다.
+ * - 워커를 만들어 계속 쓴다(표는 워커 안에 한 번만 만든다). 일은 보낸 차례로 한다. 섞기만 따로 워커 하나를 쓴다
+ *   (아래 `laneOf`, 다른 일 뒤에서 기다리지 않게).
  * - 워커를 만들 수 없거나 죽으면 그 뒤로는 화면 스레드에서 한다(느리지만 결과는 같다).
  * - 워커가 답 없이 일마다 정한 시간(`JOB_LIMIT_MS`)을 넘기면 그 워커를 끝내고 남은 일은 화면 스레드에서 한다.
  * - 같은 씨앗이면 같은 섞기가 나온다. 다만 해법기가 바뀌면 달라질 수 있으니 기록에는 섞기 글도 함께 남긴다.
@@ -39,7 +40,9 @@ export interface WorkerLike {
  * 넘으면 워커를 끝내고(다음 일은 새 워커가 받는다) 남은 일은 화면 스레드에서 한다.
  */
 export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
-  scramble: 20_000,
+  // 섞기 줄은 섞기만 받아, 표를 처음 만드는 첫 섞기도 이 맥에서 0.3초 안쪽이다(2026-11-05). 멈춘 워커에 오래
+  // 묶이지 않게 짧게 둔다(느린 휴대폰도 넉넉하다)
+  scramble: 10_000,
   solve: 20_000,
   plan: 30_000,
   "algs-import": 30_000,
@@ -151,6 +154,29 @@ export function createJobRunner(opts: JobRunnerOptions): {
   return { request };
 }
 
+/**
+ * 일을 받는 줄. 섞기는 따로 한 줄(워커 하나)을 쓴다: 한 워커는 일을 차례로 하므로, 같은 화면에서 컴퓨터 계획
+ * (대결)·풀이·십자 훈련 판이 먼저 들어가 있으면 다음 섞기가 그 뒤에서 기다리고, 그 일이 답 없이 멈추면 상한까지
+ * 「섞는 중」에 묶인다. 섞기 줄의 워커는 3×3·2×2 해법기 표만 만든다. 큐브 화면 사이는 페이지를 새로 여는 링크라
+ * 워커는 화면마다 새로 생긴다(첫 화면에서 데워 둘 수 없다, 2026-11-05 잼).
+ */
+export type JobLane = "scramble" | "main";
+
+export function laneOf(kind: CubeJob["kind"]): JobLane {
+  return kind === "scramble" ? "scramble" : "main";
+}
+
+/** 줄마다 워커 하나(`createJobRunner`)를 두고 일을 그 줄로 보낸다. 워커는 줄에 첫 일이 올 때 만든다 */
+export function createLanedRunner(opts: JobRunnerOptions): {
+  request: (job: CubeJob) => Promise<CubeJobAnswer>;
+} {
+  const lanes: Record<JobLane, ReturnType<typeof createJobRunner>> = {
+    scramble: createJobRunner(opts),
+    main: createJobRunner(opts),
+  };
+  return { request: (job) => lanes[laneOf(job.kind)].request(job) };
+}
+
 /** 번들러가 알아보는 모양 그대로 둔다(`new Worker(new URL(…, import.meta.url))`) */
 function spawn(): WorkerLike | null {
   if (typeof Worker === "undefined") return null;
@@ -173,7 +199,7 @@ const NO_LIMITS = Object.fromEntries(
   Object.keys(JOB_LIMIT_MS).map((k) => [k, Number.POSITIVE_INFINITY]),
 ) as Record<CubeJob["kind"], number>;
 
-const runner = createJobRunner({
+const runner = createLanedRunner({
   spawn,
   clock: realClock,
   ...(noJobLimit() ? { limits: NO_LIMITS } : {}),

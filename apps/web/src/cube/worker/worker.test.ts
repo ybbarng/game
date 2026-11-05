@@ -3,6 +3,7 @@ import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 import {
   createJobRunner,
+  createLanedRunner,
   importAlgsInWorker,
   scrambleInWorker,
   type WorkerLike,
@@ -117,6 +118,17 @@ describe("워커 시간 상한", () => {
     expect(inline).toEqual([]);
   });
 
+  it("섞기는 10초 안에 답이 없으면 화면 스레드에서 한다", async () => {
+    const { clock, workers, inline, runner } = setup();
+    const job: CubeJob = { kind: "scramble", event: "333", seed: 1 };
+    const s = runner.request(job);
+    clock.advance(9_999);
+    expect(inline).toEqual([]);
+    clock.advance(1);
+    expect(workers[0]?.terminated).toBe(true);
+    await expect(s).resolves.toBe("화면 스레드");
+  });
+
   it("계획은 30초까지 기다린다", () => {
     const { clock, workers, runner } = setup();
     void runner.request({
@@ -131,5 +143,33 @@ describe("워커 시간 상한", () => {
     expect(workers[0]?.terminated).toBe(false);
     clock.advance(10_000);
     expect(workers[0]?.terminated).toBe(true);
+  });
+});
+
+describe("섞기 줄", () => {
+  it("섞기는 다른 일과 다른 워커가 받아, 답 없는 연출 풀이 뒤에서 기다리지 않는다", async () => {
+    const clock = new ManualClock();
+    const workers: FakeWorker[] = [];
+    const runner = createLanedRunner({
+      clock,
+      spawn: () => {
+        const w = new FakeWorker();
+        workers.push(w);
+        return w;
+      },
+      runInline: async () => "화면 스레드",
+    });
+    void runner.request({ kind: "hero", method: "x", perm: [], twist: [] });
+    const s = runner.request({ kind: "scramble", event: "333", seed: 1 });
+    expect(workers).toHaveLength(2);
+    const [main, lane] = workers as [FakeWorker, FakeWorker];
+    expect(main.sent.map((m) => m.job.kind)).toEqual(["hero"]);
+    expect(lane.sent.map((m) => m.job.kind)).toEqual(["scramble"]);
+    lane.reply(lane.sent[0]?.id as number, "섞기");
+    await expect(s).resolves.toBe("섞기");
+    // 다음 섞기도 같은 섞기 워커가 받는다(표를 다시 만들지 않는다)
+    void runner.request({ kind: "scramble", event: "333", seed: 2 });
+    expect(workers).toHaveLength(2);
+    expect(lane.sent).toHaveLength(2);
   });
 });
