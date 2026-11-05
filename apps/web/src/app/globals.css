@@ -550,20 +550,6 @@ html:has([data-game="galaxy"]) body {
   opacity: 0;
   animation: galaxy-meteor 9s linear infinite;
 }
-@keyframes galaxy-dice-shake {
-  0% {
-    transform: translate(0, -6%) rotate(-8deg);
-  }
-  50% {
-    transform: translate(0, 4%) rotate(8deg);
-  }
-  100% {
-    transform: translate(0, -6%) rotate(-8deg);
-  }
-}
-.galaxy-dice-shake {
-  animation: galaxy-dice-shake 0.18s linear infinite;
-}
 /* 결정 창: 아래에서 올라온다(나는 아래, docs/41 6절) */
 @keyframes galaxy-sheet {
   from {
@@ -641,7 +627,6 @@ html:has([data-game="galaxy"]) body {
 @media (prefers-reduced-motion: reduce) {
   .galaxy-twinkle,
   .galaxy-sheet,
-  .galaxy-dice-shake,
   .galaxy-sparkle,
   .galaxy-pulse {
     animation: none;

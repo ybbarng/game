@@ -27,7 +27,8 @@ import { GALAXY_FX } from "../fx-timing";
 import { cellOf, SKY_SIZE, skyArt, squareCenter } from "../sky-art";
 import { groupColor, magScale, starRgb } from "../star-color";
 import { prefersReducedMotion } from "../store";
-import { DiceFace, NoticePaper, ShipToken } from "./parts";
+import { Die3D } from "./Dice3D";
+import { NoticePaper, ShipToken } from "./parts";
 import { nebulaStyle, TileSky } from "./TileSky";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
@@ -629,16 +630,19 @@ function CenterHub({
   step: TimedStep | null;
   elapsed: number;
 }) {
-  const rolling =
-    step?.kind === "dice" && elapsed - step.at < step.dur * 0.7 ? step : null;
-  const dice: [number, number] | null =
-    step?.kind === "dice" ? step.dice : (view.lastRoll?.dice ?? null);
-  const shown: [number, number] | null = rolling
-    ? [
-        1 + (Math.floor((elapsed - rolling.at) / 70) % 6),
-        1 + (Math.floor((elapsed - rolling.at) / 70 + 3) % 6),
-      ]
-    : dice;
+  // 주사위 둘이 던져져 튕기고 구르다 멈춘다(dice-throw.ts). 눈은 처음부터 정해진 결과 그대로다
+  const diceStep = step?.kind === "dice" ? step : null;
+  const progress = diceStep
+    ? (elapsed - diceStep.at) / Math.max(1, diceStep.dur * GALAXY_FX.diceSettle)
+    : 1;
+  const rolling = diceStep !== null && progress < 1;
+  const shown: [number, number] | null = diceStep
+    ? diceStep.dice
+    : (view.lastRoll?.dice ?? null);
+  // 굴림마다 다른 던짐 모양(같은 굴림은 늘 같은 모양)
+  const seed = diceStep
+    ? diceStep.at + diceStep.seat * 31 + diceStep.dice[0] * 7
+    : (view.lastRoll?.dice[0] ?? 0) * 7;
   return (
     <div
       className="pointer-events-none absolute flex flex-col items-center justify-center gap-[6%]"
@@ -665,22 +669,23 @@ function CenterHub({
       </span>
       {shown && (
         <span
-          className={cn("flex gap-[10%]", rolling && "galaxy-dice-shake")}
+          className="flex gap-[clamp(8px,3cqw,20px)] [--die:clamp(20px,7.5cqw,50px)]"
           data-dice={rolling ? undefined : `${shown[0]},${shown[1]}`}
+          data-dice-rolling={rolling || undefined}
         >
-          <DiceFace
+          <Die3D
             value={shown[0]}
-            className={cn(
-              "size-[clamp(18px,7cqw,46px)] drop-shadow-lg",
-              !step && "opacity-70",
-            )}
+            p={progress}
+            which={0}
+            seed={seed}
+            dim={!step}
           />
-          <DiceFace
+          <Die3D
             value={shown[1]}
-            className={cn(
-              "size-[clamp(18px,7cqw,46px)] drop-shadow-lg",
-              !step && "opacity-70",
-            )}
+            p={progress}
+            which={1}
+            seed={seed}
+            dim={!step}
           />
         </span>
       )}
