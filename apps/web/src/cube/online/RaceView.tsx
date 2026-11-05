@@ -37,6 +37,14 @@ import {
   ratioText,
 } from "./handicap";
 import { MatchBoard } from "./MatchBoard";
+import { PartyBar } from "./PartyBar";
+import {
+  PARTY_END_LABELS,
+  PARTY_HP,
+  PARTY_LOW,
+  PARTY_REASONS,
+  type PartyOutcome,
+} from "./party";
 import { stageLabel, turnCount } from "./race-game";
 import {
   liveOrder,
@@ -133,6 +141,29 @@ export function RaceView({
   }, [phase, waiting]);
   const [showSmall, setShowSmall] = useState(true);
   const alerts = effectiveRaceAlerts(settings.raceAlerts, useReducedMotion());
+
+  // 체력바 대결(docs/51 3-2): 이 기기가 받은 만큼, 확실한 데까지의 판정. 판이 끝났으면 판 기록의 것
+  const partyRound = room.rounds.find((r) => r.race === room.state?.race?.id);
+  const partyLive: PartyOutcome | undefined = room.party();
+  const partyHp = (id: string): number | undefined =>
+    partyRound?.party?.hp[id] ?? partyLive?.hp[id];
+  const partyOut = (id: string): boolean =>
+    (partyRound?.party?.knockedOut[id] ?? partyLive?.knockedOut[id]) !==
+    undefined;
+  const myHp = partyHp(room.me);
+  // 내 체력이 20% 아래로 내려가면 가벼운 경고(소리는 살펴보기 알림을 다시 쓴다), 판마다 한 번
+  const myLow =
+    myHp !== undefined &&
+    myHp > 0 &&
+    myHp < PARTY_LOW &&
+    !partyLive?.decided &&
+    phase === "race";
+  const warned = useRef("");
+  useEffect(() => {
+    if (!myLow || warned.current === syncKey) return;
+    warned.current = syncKey;
+    playCubeCue(settings, "cubeInspect");
+  });
 
   const myState: PuzzleState =
     mine?.stateOf(room.me) ?? mine?.startState() ?? solvedCube(n);
@@ -313,6 +344,7 @@ export function RaceView({
         </span>
         <span className="text-sm text-white/70" data-cube-phase-text>
           {snap.preparing ? "섞는 중…" : PHASE_TEXT[phase]}
+          {partyLive ? " · 체력바" : ""}
           {snap.attempt > 0 && phase !== "finished"
             ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
             : ""}
@@ -361,6 +393,15 @@ export function RaceView({
               .join(" · ")}
           </p>
         )}
+      {myLow && (
+        <p
+          role="status"
+          data-cube-hp-warning
+          className="mx-auto rounded-full border border-rose-300/40 bg-rose-400/10 px-3 py-1 text-center text-rose-100 text-xs"
+        >
+          체력이 얼마 안 남았어요 · {Math.ceil(myHp as number)}
+        </p>
+      )}
       {notice && (phase === "inspect" || waiting) && (
         <p
           role="status"
@@ -372,7 +413,10 @@ export function RaceView({
       )}
 
       {/* 아무도 못 맞춰도 판이 끝나면 결과(모두 DNF)를 보인다 */}
-      {(finishedFirst.length > 0 || snap.result) && (
+      {(finishedFirst.length > 0 ||
+        snap.result ||
+        partyLive?.decided ||
+        (myHp !== undefined && partyOut(room.me))) && (
         <ResultBox
           room={room}
           snap={snap}
@@ -382,6 +426,7 @@ export function RaceView({
           actions={resultActions}
           splitsOf={(id) => stages.get(id)?.splits ?? []}
           handicap={handicap}
+          party={partyLive}
         />
       )}
 
@@ -432,16 +477,25 @@ export function RaceView({
             const st = session.stateOf(p.id);
             const groups = stages.get(p.id)?.groups ?? [];
             const toast = toasts[p.id];
+            const hp = partyHp(p.id);
+            const knocked = hp !== undefined && partyOut(p.id);
             const status =
               p.status === "done"
                 ? formatMs(p.reported)
                 : p.status === "forfeit"
                   ? "기권"
-                  : p.status === "dnf"
-                    ? "DNF"
-                    : chips
-                      ? ""
-                      : `${p.moves}수`;
+                  : knocked
+                    ? "탈락"
+                    : p.status === "dnf"
+                      ? hp !== undefined &&
+                        PARTY_REASONS.includes(
+                          session.checkpointLog(p.id)?.reason ?? "",
+                        )
+                        ? ""
+                        : "DNF"
+                      : chips
+                        ? ""
+                        : `${p.moves}수`;
             return (
               <div
                 key={p.id}
@@ -477,6 +531,9 @@ export function RaceView({
                     {status}
                   </span>
                 </div>
+                {hp !== undefined && (
+                  <PartyBar id={p.id} hp={hp} out={knocked} />
+                )}
                 {chips ? (
                   <PeerStages groups={groups} />
                 ) : (
@@ -540,6 +597,7 @@ function ResultBox({
   actions,
   splitsOf,
   handicap,
+  party,
 }: {
   room: CubeRoom;
   snap: RaceSnapshot;
@@ -550,9 +608,12 @@ function ResultBox({
   /** 사람마다 구간 기록(이 기기가 수 기록에서 계산) */
   splitsOf: (id: string) => readonly Split[];
   handicap: ActiveHandicap | undefined;
+  /** 체력바 판의 지금 판정(판 기록이 생기기 전) */
+  party: PartyOutcome | undefined;
 }) {
-  // 판 기록이 있으면 그 결과(「평균 대비」면 순위를 다시 매긴 것)
-  const result = round?.result ?? snap.result;
+  // 판 기록이 있으면 그 결과(「평균 대비」·체력바면 순위를 다시 매긴 것). 체력바는 판 기록이 생기기 전 결과를 보이지 않는다
+  const result = round?.result ?? (party ? undefined : snap.result);
+  const hp = round?.party;
   const score = round?.score;
   const session = room.anySession();
   // 컴퓨터가 계획대로 두었는지 이 기기에서 다시 계산해 본다(판이 끝난 뒤 한 번)
@@ -568,6 +629,9 @@ function ResultBox({
       // 기권한 컴퓨터는 둔 수가 없다(계획을 못 만들었거나 그 판을 떠났다)
       if (round.result.players[p.id]?.status === "forfeit") continue;
       const log = round.logs[p.id] ?? [];
+      // 체력바 판에서 판이 정해져 멈춘 컴퓨터는 계획의 앞부분만 두었다
+      const stopped =
+        !!round.party && round.result.players[p.id]?.status !== "done";
       void checkBotRun(
         level,
         n,
@@ -576,6 +640,7 @@ function ResultBox({
         p.id,
         log,
         planInWorker,
+        stopped,
       ).then(
         (ok) => {
           if (alive) setBotChecks((c) => ({ ...c, [p.id]: ok }));
@@ -615,6 +680,37 @@ function ResultBox({
     };
   }, [round, room, n]);
 
+  if (!result && party) {
+    const me = room.me;
+    const d = party.decided;
+    const knocked = party.knockedOut[me] !== undefined;
+    return (
+      <div
+        data-cube-result="partial"
+        data-cube-party-end={d?.end}
+        role="status"
+        className={`rounded-xl border px-4 py-2 text-center ${
+          d?.winner === me
+            ? "border-emerald-400/40 bg-emerald-400/10"
+            : "border-white/15 bg-white/5"
+        }`}
+      >
+        <b className={d?.winner === me ? "text-emerald-300" : "text-white/85"}>
+          {d
+            ? d.end === "noDecision"
+              ? "두 기기 기록이 달라 판정하지 않아요"
+              : `${d.winner === me ? "이겼어요" : d.winner ? `${room.playerName(d.winner)} 승` : "승자 없음"} · ${PARTY_END_LABELS[d.end]}`
+            : knocked
+              ? "체력이 0이 되어 탈락했어요"
+              : ""}
+        </b>
+        <p className="text-white/70 text-xs">
+          {d ? "결과를 맞춰 보는 중" : "남은 사람을 보는 중"}
+        </p>
+      </div>
+    );
+  }
+
   if (!result) {
     const first = snap.peers
       .filter((p) => p.status === "done")
@@ -645,25 +741,28 @@ function ResultBox({
   );
   const myRank = result.ranking.indexOf(room.me);
   const mine = result.players[room.me];
-  const solved = mine?.status === "done";
-  const headline = result.noDecision
-    ? "이 판은 두 기기 기록이 달라 판정하지 않았어요"
-    : !mine
-      ? "판이 끝났어요"
-      : mine.unranked
-        ? "맞췄지만 두 기기 기록이 달라 순위에 넣지 않았어요"
-        : solved
-          ? `${myRank === 0 ? "1위예요" : `${myRank + 1}위`} · ${formatMs(mine.accepted)}${
-              score?.[room.me] !== undefined
-                ? ` · ${ratioText(score[room.me] as number)}`
-                : ""
-            }`
-          : mine.status === "forfeit"
-            ? "이번 판은 기권했어요"
-            : "이번 판은 맞추지 못했어요(DNF)";
+  const solved = hp ? hp.winner === room.me : mine?.status === "done";
+  const headline = hp
+    ? partyHeadline(hp, room.me, mine?.accepted, result.noDecision)
+    : result.noDecision
+      ? "이 판은 두 기기 기록이 달라 판정하지 않았어요"
+      : !mine
+        ? "판이 끝났어요"
+        : mine.unranked
+          ? "맞췄지만 두 기기 기록이 달라 순위에 넣지 않았어요"
+          : solved
+            ? `${myRank === 0 ? "1위예요" : `${myRank + 1}위`} · ${formatMs(mine.accepted)}${
+                score?.[room.me] !== undefined
+                  ? ` · ${ratioText(score[room.me] as number)}`
+                  : ""
+              }`
+            : mine.status === "forfeit"
+              ? "이번 판은 기권했어요"
+              : "이번 판은 맞추지 못했어요(DNF)";
   return (
     <div
       data-cube-result="final"
+      data-cube-party-end={hp?.end}
       data-cube-no-decision={result.noDecision ? "" : undefined}
       data-cube-result-mine={mine?.status}
       role="status"
@@ -689,6 +788,7 @@ function ResultBox({
             <th className="text-left">순위</th>
             <th className="text-left">이름</th>
             <th className="text-right">시간</th>
+            {hp && <th className="pl-2 text-right">체력</th>}
             {score && (
               <th className="pl-2 text-right" title="내 평균 대비">
                 대비
@@ -709,6 +809,9 @@ function ResultBox({
                 ? p.accepted - p.reported
                 : 0;
             const notes: string[] = handicapTags(handicap, n, id);
+            if (hp?.winner === id) notes.push(PARTY_END_LABELS[hp.end]);
+            const ko = hp?.knockedOut[id];
+            if (ko !== undefined) notes.push(`체력 0 · ${formatMs(ko)}`);
             const base = round?.baseline?.[id];
             if (score && base?.from === "first")
               notes.push(`기준: 첫 판 ${formatMs(base.ms)}`);
@@ -739,7 +842,12 @@ function ResultBox({
                   `의심: 컴퓨터 풀이와 같음(${BOT_LEVEL_LABELS[like]})`,
                 );
             }
-            if (p?.reason && p.status !== "done") notes.push(p.reason);
+            if (
+              p?.reason &&
+              p.status !== "done" &&
+              !(hp && PARTY_REASONS.includes(p.reason))
+            )
+              notes.push(p.reason);
             if (bot && id in botChecks)
               notes.push(
                 botChecks[id] ? "컴퓨터 계획 확인 ✓" : "컴퓨터 계획과 다름 ⚠",
@@ -747,9 +855,11 @@ function ResultBox({
             return (
               <tr key={id} data-cube-rank={id} className="align-top">
                 <td>
-                  {p?.status === "done" && !p.unranked && !result.noDecision
-                    ? i + 1
-                    : "-"}
+                  {hp
+                    ? (hp.places[id] ?? "-")
+                    : p?.status === "done" && !p.unranked && !result.noDecision
+                      ? i + 1
+                      : "-"}
                 </td>
                 <td>
                   {room.playerName(id)}
@@ -769,8 +879,24 @@ function ResultBox({
                       : formatMs(time)
                     : p?.status === "forfeit"
                       ? "기권"
-                      : "DNF"}
+                      : hp
+                        ? ko !== undefined
+                          ? "탈락"
+                          : "-"
+                        : "DNF"}
                 </td>
+                {hp && (
+                  <td
+                    className={`pl-2 text-right font-mono tabular-nums ${
+                      ko !== undefined ? "text-white/40" : ""
+                    }`}
+                    data-cube-result-hp={id}
+                  >
+                    {id in hp.hp
+                      ? Math.max(0, Math.ceil((hp.hp[id] as number) - 1e-9))
+                      : "-"}
+                  </td>
+                )}
                 {score && (
                   <td
                     className="pl-2 text-right font-mono tabular-nums"
@@ -808,6 +934,28 @@ function ResultBox({
       )}
     </div>
   );
+}
+
+/** 체력바 판 결과 머리: 「1위예요 · 끝까지 맞춤 · 12.34」, 「체력이 0이 되어 탈락했어요 · 2위」, 「2위 · 체력 50」 */
+function partyHeadline(
+  hp: NonNullable<RoundRecord["party"]>,
+  me: string,
+  accepted: number | undefined,
+  noDecision: boolean | undefined,
+): string {
+  if (noDecision) return "이 판은 두 기기 기록이 달라 판정하지 않았어요";
+  const place = hp.places[me];
+  if (hp.winner === me)
+    return `1위예요 · ${PARTY_END_LABELS[hp.end]}${
+      hp.end === "solved" && accepted !== undefined
+        ? ` · ${formatMs(accepted)}`
+        : ""
+    }`;
+  if (hp.knockedOut[me] !== undefined)
+    return `체력이 0이 되어 탈락했어요${place ? ` · ${place}위` : ""}`;
+  if (place === undefined) return "판이 끝났어요";
+  const left = Math.max(0, Math.ceil((hp.hp[me] ?? PARTY_HP) - 1e-9));
+  return `${place}위 · 체력 ${left}`;
 }
 
 /** 사람 칸 이름 옆의 짧은 핸디캡 표시(「+5초」·「첫 두 층」) */

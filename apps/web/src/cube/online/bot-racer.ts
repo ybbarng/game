@@ -175,11 +175,13 @@ export async function checkBotRun(
   botId: string,
   log: readonly { m: string; t: number }[],
   plan: PlanFn = planHere,
+  /** 판이 정해져 도중에 멈춘 컴퓨터(체력바 대결): 계획의 앞부분만 두었으면 된다 */
+  stopped = false,
 ): Promise<boolean> {
   const made = await plan(level, n, start, botSeed(raceSeed, botId));
-  const expected = made.moves.map((m) =>
-    formatMove(n, parseMoves(n, m.move)[0] as CubeMove),
-  );
+  const expected = made.moves
+    .map((m) => formatMove(n, parseMoves(n, m.move)[0] as CubeMove))
+    .slice(0, stopped ? log.length : undefined);
   if (expected.length !== log.length) return false;
   if (!log.every((x, i) => x.m === expected[i])) return false;
   const first = log[0];

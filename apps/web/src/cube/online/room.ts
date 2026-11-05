@@ -537,6 +537,18 @@ export class CubeRoom {
     this.setSettings({ handicap });
   }
 
+  /** 규칙(일반·파티 체력바)을 바꾼다(새 경기가 된다) */
+  setParty(party: PartyMode | null): void {
+    const s = this.state;
+    if (!this.isHost || !s || s.status === "racing") return;
+    if (party) {
+      this.setSettings({ party });
+      return;
+    }
+    delete s.settings.party;
+    this.setSettings({});
+  }
+
   /** 새 경기(판 기록을 비운다) */
   newMatch(): void {
     if (!this.isHost || this.state?.status === "racing") return;

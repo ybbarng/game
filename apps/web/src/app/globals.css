@@ -259,6 +259,46 @@ html:has([data-game="cube"]) body {
 .cube-hp-refill {
   animation: cube-hp-refill 1200ms ease-out both;
 }
+/*
+ * 체력바 대결(docs/51 3-2): 깎이면 막대가 0.4초에 걸쳐 줄고, 깎인 몫이 잠깐 밝게 남았다 사라진다. 「−16」이 칸 안에서 살짝 떨어진다
+ */
+.cube-party-fill {
+  transition:
+    width 400ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 300ms ease;
+}
+.cube-party-lag {
+  transition: width 700ms ease-in 250ms;
+}
+@keyframes cube-party-hit {
+  0% {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  15% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.cube-party-hit {
+  animation: cube-party-hit 900ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-party-fill,
+  .cube-party-lag {
+    transition: none;
+  }
+  .cube-party-hit {
+    display: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .cube-flow-pop,
   .cube-flow-bump,
