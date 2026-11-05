@@ -204,7 +204,22 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     cues: [
       { cue: "cubeTurn", when: "면·층·큐브를 한 번 돌림(키·단추·밀기)" },
       { cue: "cubeInspect", when: "살펴보기 8초(한 번)·12초(두 번)" },
+      {
+        cue: "cubeInspectEnd",
+        when: "살펴보기 15초(혼자 맞추기·타이머는 +2부터, 대결은 출발)",
+      },
       { cue: "cubeSolved", when: "다 맞춤(나·대결 상대)" },
+      { cue: "cubeMilestone", when: "내가 이정표(칩)를 지남" },
+      { cue: "cubeGold", when: "구간 골드: 옛 최고보다 빠른 칩(띵 대신)" },
+      { cue: "cubeBest", when: "개인 최고(맞춤 소리 대신)" },
+      {
+        cue: "cubeCombo",
+        when: "흐름 콤보가 4·12·24·40수를 넘음(단계마다 음이 오름)",
+      },
+      { cue: "cubeLead", when: "대결: 1등이 바뀜" },
+      { cue: "cubeLow", when: "제한 도전·체력바 대결: 체력이 20% 아래" },
+      { cue: "cubeItemGet", when: "아이템전: 아이템을 받음" },
+      { cue: "cubeItemHit", when: "아이템전: 아이템에 맞음" },
       {
         cue: "invalid",
         when: "지금 돌릴 수 없음(살펴보기·외우기 중 면 돌리기)",

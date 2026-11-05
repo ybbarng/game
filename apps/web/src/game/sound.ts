@@ -109,6 +109,24 @@ export type Cue =
   | "cubeSolved"
   /** 큐브: 살펴보기 8초·12초 알림 "삐" */
   | "cubeInspect"
+  /** 큐브: 살펴보기 15초(대회의 끝. 혼자 맞추기·타이머는 지금부터 +2, 대결은 출발) "삐-뽀" */
+  | "cubeInspectEnd"
+  /** 큐브: 내가 이정표(칩)를 지남 "띵" */
+  | "cubeMilestone"
+  /** 큐브: 구간 골드(옛 최고보다 빠른 구간) 반짝임 */
+  | "cubeGold"
+  /** 큐브: 개인 최고 팡파르 */
+  | "cubeBest"
+  /** 큐브: 흐름 콤보가 단계(4·12·24·40수)를 넘음. 단계(`step` 1~4)가 오를수록 높고 또렷하다 */
+  | "cubeCombo"
+  /** 큐브 대결: 1등이 바뀜 */
+  | "cubeLead"
+  /** 큐브 체력(제한 도전·체력바 대결): 20% 아래로 내려감 */
+  | "cubeLow"
+  /** 큐브 아이템전: 아이템을 받음 */
+  | "cubeItemGet"
+  /** 큐브 아이템전: 아이템에 맞음 */
+  | "cubeItemHit"
   /** 큐브 타이머: 손을 떼 시간이 가기 시작한 "삑" */
   | "cubeTimerStart"
   /** 큐브 타이머: 시간을 멈춘 "뚝" */
@@ -171,6 +189,8 @@ export type Cue =
 export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   starTick: "repeat",
   cubeTurn: "repeat",
+  // 콤보 단계는 면 돌기 위에 겹쳐 나는, 수에 가까운 소리라 반복 쪽 크기로 둔다
+  cubeCombo: "repeat",
   cubeBeat: "repeat",
   cubeBeatAccent: "repeat",
   galaxyTick: "repeat",
@@ -229,6 +249,15 @@ export const CUE_LABELS: Record<Cue, string> = {
   cubeTurn: "큐브: 면 돌기",
   cubeSolved: "큐브: 맞춤",
   cubeInspect: "큐브: 살펴보기 알림",
+  cubeInspectEnd: "큐브: 살펴보기 15초",
+  cubeMilestone: "큐브: 이정표",
+  cubeGold: "큐브: 구간 골드",
+  cubeBest: "큐브: 개인 최고",
+  cubeCombo: "큐브: 흐름 콤보 단계",
+  cubeLead: "큐브 대결: 1등이 바뀜",
+  cubeLow: "큐브: 체력 경고",
+  cubeItemGet: "큐브 아이템전: 받기",
+  cubeItemHit: "큐브 아이템전: 맞기",
   cubeTimerStart: "큐브 타이머: 시작",
   cubeTimerStop: "큐브 타이머: 멈춤",
   cubeBeat: "큐브 핑거 트릭: 박자",
@@ -308,10 +337,23 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   yutHome: 0,
   // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게.
   // 0.08초짜리 작은 "스슥"(스치는 소리, 울림 없음)이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다.
-  // 지금 사건 소리 가운데값보다 약 13.7dB 작다(2026-11-05 사용자 「크고 또렷하고 딱딱한 소리가 나지 않아」로 줄임)
+  // 지금 사건 소리 가운데값보다 약 14.7dB 작다(2026-11-05 사용자 「크고 또렷하고 딱딱한 소리가 나지 않아」로 줄임.
+  // 큐브 게임 사건 소리가 더해져 가운데값이 0.6dB 올라 13.7에서 14.7이 됐다)
   cubeTurn: 6,
   cubeSolved: 0,
   cubeInspect: 10,
+  // 큐브 게임의 사건 소리(docs/51 5절)는 다른 게임의 큰 사건 소리(프렌드 공개·별 따기 당첨, 약 -28.5dB)와
+  // 비슷하게 둔다. 강렬함은 크기가 아니라 모양(높은 음·겹친 화음·끝의 반짝임)으로 낸다
+  cubeInspectEnd: -1,
+  cubeMilestone: 2.5,
+  cubeGold: -1.7,
+  cubeBest: -3,
+  // 콤보 단계는 반복 소리(면 돌기보다 몇 dB 크게, 사건 가운데값보다 약 7~9dB 작게)
+  cubeCombo: 5,
+  cubeLead: 2,
+  cubeLow: 5.3,
+  cubeItemGet: 4,
+  cubeItemHit: 4.3,
   cubeTimerStart: 10,
   cubeTimerStop: 8,
   // 박자는 면 돌기처럼 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게
@@ -373,7 +415,7 @@ const BIG: ReadonlySet<Cue> = new Set<Cue>([
  * 방 울림을 거치지 않는 소리. 손에 쥔 큐브는 바로 귀 앞에서 나는 짧은 소리라, 울림을 더하면 딱딱한 딸깍 뒤에
  * 꼬리가 남아 메아리처럼 들린다(2026-11-05 사용자 「딱딱하면서 약간의 에코」)
  */
-const DRY: ReadonlySet<Cue> = new Set<Cue>(["cubeTurn"]);
+const DRY: ReadonlySet<Cue> = new Set<Cue>(["cubeTurn", "cubeCombo"]);
 
 interface Graph {
   /** 마른 소리와 울림으로 함께 보내는 입구 */
@@ -484,6 +526,8 @@ interface Voice {
   /** 소리가 시작하는 시각(AudioContext 시간) */
   t0: number;
   star?: StarSound | undefined;
+  /** 단계가 있는 소리(`cubeCombo`)의 단계 */
+  step?: number | undefined;
 }
 
 interface ToneOptions {
@@ -739,6 +783,134 @@ function cubeTurnSound(v: Voice): void {
   }
 }
 
+// ---------------------------------------------------------------- 큐브 게임 소리(docs/51 5절)
+// 계속 나는 소리(면 돌기·콤보 단계)는 작고 부드럽게 울림 없이 둔다. 한 번 나는 사건 소리(이정표·골드·개인 최고 등)는
+// 또렷하고 화려하게 하되, 크기가 아니라 모양(높은 음, 겹친 화음, 끝의 반짝임)으로 강렬함을 낸다. 크기는 다른 게임의
+// 큰 사건 소리(프렌드 공개·별 따기 당첨)와 비슷하게 맞춘다(2026-11-05 사용자 「게임의 특수효과 이런 건 좀 더
+// 강렬하거나 커도 돼」 「대신 소리들간의 크기가 너무 다르면 깜짝 놀랄 수 있으니까 적당하게」).
+
+/** 높은 곳에서 위로 흩어지는 반짝임(정해진 음들, 차례대로) */
+function cubeSparkle(
+  v: Voice,
+  base: number,
+  steps: readonly number[],
+  from: number,
+  every: number,
+  gain: number,
+): void {
+  steps.forEach((s, i) => {
+    tone(v, base * 2 ** (s / 12), from + i * every, 0.2, {
+      gain: gain * (1 - i * 0.08),
+      attack: 0.002,
+    });
+  });
+}
+
+/** 이정표 "띵": 맑은 종 한 번(레)에 5도 위 종을 살짝 겹치고 끝에 반짝 둘 */
+function cubeMilestoneSound(v: Voice): void {
+  bell(v, 1174.66, 0, 0.7, 0.13);
+  bell(v, 1760, 0.012, 0.45, 0.05);
+  cubeSparkle(v, 2349.32, [0, 7], 0.06, 0.05, 0.022);
+}
+
+/**
+ * 구간 골드: 높은 종 셋이 빠르게 올라가고(미·솔·시) 반짝임이 위로 흩어진다. 이정표 "띵" 대신 나서,
+ * 띵보다 한 단계 화려하게 들린다
+ */
+function cubeGoldSound(v: Voice): void {
+  bell(v, 1318.51, 0, 0.5, 0.1);
+  bell(v, 1567.98, 0.06, 0.55, 0.1);
+  bell(v, 1975.53, 0.12, 0.9, 0.11);
+  cubeSparkle(v, 2637.02, [0, 4, 7, 12, 16, 19], 0.16, 0.04, 0.03);
+}
+
+/**
+ * 개인 최고 팡파르: 금관이 "빠바밤" 올라가(솔·도·미) 마지막에 도·미·솔 화음을 길게 불고, 위에 종과 반짝임이
+ * 얹힌다. 승리(\`win\`)보다 짧다(약 1.2초)
+ */
+function cubeBestSound(v: Voice): void {
+  brass(v, G4, 0, 0.11, { gain: 0.07 });
+  brass(v, C5, 0.12, 0.11, { gain: 0.07 });
+  brass(v, E5, 0.24, 0.11, { gain: 0.07 });
+  for (const f of [C5, E5, G5])
+    brass(v, f, 0.36, 0.8, { gain: 0.045, vibrato: [5.5, 3] });
+  brass(v, C4, 0.36, 0.8, { gain: 0.05 });
+  thump(v, 0.36, 110, 55, 0.4, 0.16);
+  bell(v, C6, 0.4, 0.9, 0.05);
+  bell(v, G5 * 2, 0.46, 0.9, 0.045);
+  cubeSparkle(v, C6 * 2, [0, 4, 7, 12], 0.5, 0.06, 0.02);
+}
+
+/** 콤보 단계: 작고 둥근 "톡". 단계마다 5음 음계로 올라가고 위 배음이 늘어 조금씩 또렷해진다(면 돌기 위에서 들리게) */
+const COMBO_STEPS = [0, 2, 4, 7];
+function cubeComboSound(v: Voice): void {
+  const step = Math.min(4, Math.max(1, v.step ?? 1));
+  const f = 659.25 * 2 ** ((COMBO_STEPS[step - 1] as number) / 12);
+  tone(v, f, 0, 0.16, {
+    type: "triangle",
+    gain: 0.12 * (1 + 0.1 * (step - 1)),
+    attack: 0.006,
+    lowpass: 2600,
+  });
+  tone(v, f * 2, 0.003, 0.09, { gain: 0.012 * step, attack: 0.003 });
+}
+
+/** 1등이 바뀜: 마림바가 "따단" 올라가고 위에 작은 종 */
+function cubeLeadSound(v: Voice): void {
+  pluck(v, A5, 0, 0.16, 0.15);
+  pluck(v, D5 * 2, 0.08, 0.32, 0.17);
+  bell(v, A5 * 2, 0.1, 0.4, 0.035);
+}
+
+/** 살펴보기 15초: "삐-뽀". 8·12초의 짧은 "삐"와 달리 두 음이 내려간다 */
+function cubeInspectEndSound(v: Voice): void {
+  tone(v, 980, 0, 0.12, { gain: 0.18, attack: 0.004 });
+  tone(v, 735, 0.13, 0.24, { gain: 0.18, attack: 0.004 });
+}
+
+/** 체력 경고: 둥근 사각파 두 음 "뚜뚜"(살펴보기 "삐"와 다르게 낮고 둥글게, 한 옥타브 아래를 받친다) */
+function cubeLowSound(v: Voice): void {
+  for (const at of [0, 0.16]) {
+    tone(v, 466.16, at, 0.13, {
+      type: "square",
+      gain: 0.07,
+      attack: 0.005,
+      lowpass: 1500,
+    });
+    tone(v, 233.08, at, 0.13, { gain: 0.09, attack: 0.005 });
+  }
+}
+
+/** 아이템 받기: 위로 미끄러지는 "뿅"에 종과 반짝 */
+function cubeItemGetSound(v: Voice): void {
+  tone(v, 520, 0, 0.16, {
+    type: "triangle",
+    gain: 0.16,
+    endFreq: 1240,
+    attack: 0.004,
+  });
+  bell(v, 1567.98, 0.12, 0.45, 0.08);
+  cubeSparkle(v, 2093, [0, 7, 12], 0.16, 0.04, 0.02);
+}
+
+/** 아이템 맞기: 둔한 "퍽"과 아래로 떨어지는 음 */
+function cubeItemHitSound(v: Voice): void {
+  thump(v, 0, 240, 70, 0.22, 0.32);
+  noise(v, 0, 0.09, {
+    filter: "bandpass",
+    freq: 900,
+    q: 0.8,
+    gain: 0.35,
+    cut: 3000,
+  });
+  tone(v, 700, 0.03, 0.3, {
+    type: "triangle",
+    gain: 0.1,
+    endFreq: 240,
+    attack: 0.004,
+  });
+}
+
 /** 덱을 둘로 가르는 "스윽" */
 function cut(v: Voice, at: number): void {
   noise(v, at, 0.2, {
@@ -973,6 +1145,8 @@ export interface PlayOptions {
   /** 몇 번 이어서 낼지(득점 카드 장수, 키티 장수) */
   times?: number;
   star?: StarSound | undefined;
+  /** 단계가 있는 소리(`cubeCombo` 1~4) */
+  step?: number;
 }
 
 /** 지금 울리는 큐브 면 돌기 소리. 다음 돌기가 오면 재빨리 줄여 소리가 쌓이지 않게 한다 */
@@ -984,7 +1158,7 @@ let tickAt = 0;
 
 export function play(
   cue: Cue,
-  { delay = 0, times = 1, star }: PlayOptions = {},
+  { delay = 0, times = 1, star, step }: PlayOptions = {},
 ): void {
   const a = audio();
   if (!a) return;
@@ -1007,7 +1181,7 @@ export function play(
     bigVoice?.gain.setTargetAtTime(0, t0, 0.04);
     bigVoice = bus;
   }
-  const v: Voice = { ctx, bus, noise: a.noise, t0, star };
+  const v: Voice = { ctx, bus, noise: a.noise, t0, star, step };
   for (let i = 0; i < times; i++) render(cue, { ...v, t0: t0 + i * gap(cue) });
 }
 
@@ -1029,6 +1203,7 @@ export function renderCue(
   seconds = 3,
   seed = 1,
   star?: StarSound,
+  step?: number,
 ): Promise<AudioBuffer> {
   const rate = 44100;
   const ctx = new OfflineAudioContext(2, rate * seconds, rate);
@@ -1040,7 +1215,7 @@ export function renderCue(
     const bus = ctx.createGain();
     bus.gain.value = trim(cue);
     bus.connect(DRY.has(cue) ? g.dry : g.out);
-    render(cue, { ctx, bus, noise: g.noise, t0: 0, star });
+    render(cue, { ctx, bus, noise: g.noise, t0: 0, star, step });
   } finally {
     random = Math.random;
   }
@@ -1553,6 +1728,33 @@ function render(cue: Cue, v: Voice): void {
     case "cubeInspect":
       // 살펴보기 시간 알림 "삐"
       tone(v, 980, 0, 0.06, { gain: 0.2, attack: 0.003 });
+      break;
+    case "cubeInspectEnd":
+      cubeInspectEndSound(v);
+      break;
+    case "cubeMilestone":
+      cubeMilestoneSound(v);
+      break;
+    case "cubeGold":
+      cubeGoldSound(v);
+      break;
+    case "cubeBest":
+      cubeBestSound(v);
+      break;
+    case "cubeCombo":
+      cubeComboSound(v);
+      break;
+    case "cubeLead":
+      cubeLeadSound(v);
+      break;
+    case "cubeLow":
+      cubeLowSound(v);
+      break;
+    case "cubeItemGet":
+      cubeItemGetSound(v);
+      break;
+    case "cubeItemHit":
+      cubeItemHitSound(v);
       break;
     case "cubeTimerStart":
       // 시간이 가기 시작하는 높고 짧은 "삑"
