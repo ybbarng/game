@@ -1,8 +1,10 @@
 "use client";
 
+import { type BotPlan, botSkillText, fitTargetMs } from "@game/cube-ai";
 import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
+import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { caseById, shortName } from "../algs/check";
@@ -52,6 +54,8 @@ import { COMBO_SHOW } from "../flow/strip";
 import { soloSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { AlgCase } from "../learn";
+import { FIT_CHOICE } from "../online/bot-choices";
+import { recentAverage } from "../online/handicap";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
 import { bestSegments, goldSplits, isPersonalBest } from "../progress/gold";
 import { groupSplits } from "../progress/splits";
@@ -66,12 +70,14 @@ import {
   type SolveMode,
   type SolveRecord,
 } from "../records";
+import { type RivalOutcome, rivalOutcome, rivalSeed } from "../rival";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
 import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
 import {
   distanceInWorker,
+  planInWorker,
   scrambleInWorker,
   shortSolutionInWorker,
   warmUpScramble,
@@ -86,6 +92,7 @@ import {
 import { CubePlay, playCubeSound } from "./CubePlay";
 import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
+import { RivalPanel, RivalSelect } from "./RivalPanel";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
 
 /**
@@ -123,6 +130,16 @@ interface DailyAttempt {
   kind: "official" | "practice";
   date: string;
   startedAt: number;
+}
+
+/** 나란히 맞추는 컴퓨터(오늘의 섞기·제한 도전, `rival.ts`). 섞기마다 하나 */
+interface Rival {
+  scramble: string;
+  /** 단계 글(「내 실력에 맞춤」은 목표 시간을 넣은 글) */
+  bot: string;
+  start: PuzzleState;
+  plan: BotPlan | null;
+  outcome: RivalOutcome | null;
 }
 
 /** 제한 도전 한 판: 고른 것과 그때의 최고 점수(결과 상자의 「최고 점수」) */
@@ -188,6 +205,11 @@ export function SolveApp({
     const id = window.setInterval(check, 30_000);
     return () => window.clearInterval(id);
   }, []);
+  // 컴퓨터와 겨루기(오늘의 섞기·제한 도전): 고른 단계("" 없이), 이 섞기의 컴퓨터, 내가 출발한 때(realClock)
+  const [rivalPick, setRivalPick] = useState("");
+  const [rival, setRival] = useState<Rival | null>(null);
+  const [rivalStart, setRivalStart] = useState<number | null>(null);
+  const rivalOn = (daily || challenge) && mode === "solo" && rivalPick !== "";
   const [version, setVersion] = useState(0);
   const [syncToken, setSyncToken] = useState(0);
   const [preparing, setPreparing] = useState(false);
@@ -406,6 +428,32 @@ export function SolveApp({
       session.start(s.text, seed, limit);
       sync();
       if (!s.official) setNotice(TEMP_SCRAMBLE);
+      setRivalStart(null);
+      if (rivalOn) {
+        const bot =
+          rivalPick === FIT_CHOICE
+            ? botSkillText({
+                kind: "fit",
+                targetMs: fitTargetMs(n, recentAverage(loadRecords("solo", n))),
+              })
+            : rivalPick;
+        const start = applyMoves(n, solvedCube(n), parseMoves(n, s.text));
+        setRival({ scramble: s.text, bot, start, plan: null, outcome: null });
+        planInWorker(bot, n, start, rivalSeed(seed, n)).then(
+          (plan) => {
+            if (stale()) return;
+            const outcome = rivalOutcome(n, start, plan, limit ?? null);
+            setRival((r) =>
+              r && r.scramble === s.text ? { ...r, plan, outcome } : r,
+            );
+          },
+          () => {
+            if (stale()) return;
+            setRival(null);
+            setNotice("컴퓨터가 맞출 길을 찾지 못했어요. 혼자 맞춰 보세요.");
+          },
+        );
+      } else setRival(null);
     } catch {
       if (!stale()) setNotice("섞기를 만들지 못했어요. 다시 눌러 보세요.");
     } finally {
@@ -423,6 +471,8 @@ export function SolveApp({
     sync,
     stopReplay,
     clearMet,
+    rivalOn,
+    rivalPick,
   ]);
 
   const onMove = useCallback(
@@ -457,6 +507,8 @@ export function SolveApp({
       if (c === "reset") {
         stopReplay();
         clearMet();
+        setRival(null);
+        setRivalStart(null);
         session.reset();
         sync();
       } else if (c === "scramble") {
@@ -508,6 +560,20 @@ export function SolveApp({
 
   const result = session.result;
   const phase = session.phase;
+  // 컴퓨터는 내가 맞추기를 시작한 순간 출발한다(살펴보기 뒤 첫 면 돌리기)
+  useEffect(() => {
+    if (phase === "solving" && rival && rivalStart === null)
+      setRivalStart(realClock.now() - session.elapsed());
+  }, [phase, rival, rivalStart, session]);
+  const rivalT = rivalStart === null ? null : realClock.now() - rivalStart;
+  const rivalRunning =
+    rivalT !== null && !!rival?.outcome && rivalT < rival.outcome.endAt;
+  // 내 판이 끝난 뒤에도 컴퓨터가 끝날 때까지 다시 그린다
+  useEffect(() => {
+    if (!rivalRunning || session.running) return;
+    const id = window.setInterval(() => tick((t) => t + 1), 47);
+    return () => window.clearInterval(id);
+  }, [rivalRunning, session.running]);
   /** 오늘의 섞기 기록 시도가 진행 중(크기 바꾸기·섞기를 막는다) */
   const officialLive =
     daily &&
@@ -525,6 +591,11 @@ export function SolveApp({
     if (next.level) setLevel(next.level);
   };
   const todayEntry = today ? dailyEntry(dailyList, today, n) : undefined;
+  /** 「내 실력에 맞춤」 예상 시간을 보일 내 평균(그 크기 혼자 맞추기 최근) */
+  const rivalAverage = useMemo(
+    () => (daily || challenge ? recentAverage(records) : null),
+    [daily, challenge, records],
+  );
   const doneToday = !!todayEntry && !officialLive;
   // 「외우는 동안에는…」은 외우는 동안만. 맞추기를 시작하거나 끝나면 지운다
   useEffect(() => {
@@ -678,8 +749,23 @@ export function SolveApp({
               />
             </div>
           )}
+          {(daily || challenge) && mode === "solo" && (
+            <div className={challenge ? "" : "ml-auto"}>
+              <RivalSelect
+                n={n}
+                average={rivalAverage}
+                value={rivalPick}
+                disabled={preparing || officialLive || challengeLive}
+                onChange={(v) => {
+                  setRivalPick(v);
+                  setRival(null);
+                  setRivalStart(null);
+                }}
+              />
+            </div>
+          )}
           <label
-            className={`${challenge ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
+            className={`${challenge || daily ? "" : "ml-auto "}flex items-center gap-1 text-sm`}
           >
             크기
             <select
@@ -693,6 +779,8 @@ export function SolveApp({
                 setAttempt(null);
                 setRun(null);
                 setLastEntry(null);
+                setRival(null);
+                setRivalStart(null);
                 if (challenge) savePick({ ...pick, n: Number(e.target.value) });
                 setN(Number(e.target.value));
                 e.target.blur();
@@ -806,6 +894,29 @@ export function SolveApp({
                       : null
                     : null
                 }
+              />
+            )}
+            {rival && phase !== "free" && (
+              <RivalPanel
+                n={n}
+                bot={rival.bot}
+                start={rival.start}
+                plan={rival.plan}
+                outcome={rival.outcome}
+                t={rivalT}
+                mine={
+                  phase === "done" && result
+                    ? {
+                        total:
+                          result.ms === null
+                            ? null
+                            : result.ms + result.penalty,
+                        score: challenge ? (lastEntry?.score ?? null) : null,
+                      }
+                    : null
+                }
+                settings={settings}
+                scored={challenge}
               />
             )}
             {showProgress && (
