@@ -1,5 +1,5 @@
 import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
-import { expect, test } from "./test";
+import { expect, type Page, test } from "./test";
 
 /**
  * 큐브 혼자 맞추기(/cube/solo)·블라인드(/cube/blind, docs/47). 섞고, 키로 섞기의 거꾸로를 쳐서 맞추면 결과 상자가 뜬다.
@@ -15,6 +15,20 @@ test.beforeEach(async ({ page }) => {
   await no3d(page);
   await useNotationKeys(page);
 });
+
+/**
+ * 큐브 칸 아래 끝이 첫 화면 안에 있다(데스크톱 1280×720, 2026-11-05: 진행 막대·칩·띠가 큐브를 밀어 잘렸다).
+ * 칸은 남은 화면 높이에 맞춰 줄어든다(`CubePlay`의 `fitViewport`)
+ */
+async function expectStageOnScreen(page: Page) {
+  const height = page.viewportSize()?.height ?? 0;
+  await expect
+    .poll(async () => {
+      const box = await page.locator("[data-cube-stage]").boundingBox();
+      return box ? box.y + box.height : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(height);
+}
 
 /** 섞기 글의 거꾸로를 「표기」 배치 키로 */
 function inverseKeys(scramble: string): string[] {
@@ -77,7 +91,12 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   for (const k of keys.slice(1, -1)) await page.keyboard.press(k);
   // 한 수 남은 큐브: 이정표 칩이 켜지고(면 하나만 어긋남 = 십자·두 층 등), 완성까지 1수, 막대는 거의 끝
   await expect(page.locator("[data-cube-milestones]")).toBeVisible();
-  await expect(page.locator("[data-milestone]").first()).toContainText("십자");
+  // 한꺼번에 켜진 것은 칩 하나에 「가장 나아간 단계 +n」으로 한 줄
+  const chip = page.locator("[data-milestone]").first();
+  await expect(chip).toHaveAttribute("data-milestone", /(^|\+)cross(\+|$)/);
+  await expect(chip).toContainText(/\+\d+/);
+  const chipBox = await chip.boundingBox();
+  expect(chipBox?.height ?? 99).toBeLessThan(30);
   await expect(page.locator("[data-cube-near]")).toHaveAttribute(
     "data-cube-near",
     "1",
@@ -86,6 +105,7 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
     "data-cube-progress",
     "19.5",
   );
+  await expectStageOnScreen(page);
   await shot(page, "solo-near", info.project.name);
   await page.keyboard.press(keys.at(-1) as string);
 
@@ -142,6 +162,7 @@ test("수 흐름 띠: 같은 면은 합치고, 되돌리면 지우고, 휴대폰
     expect(strip.y + strip.height).toBeGreaterThan(stage.y);
   } else {
     expect(strip.y + strip.height).toBeLessThanOrEqual(stage.y + 1);
+    await expectStageOnScreen(page);
   }
   await shot(page, "solo-flow", info.project.name);
 });

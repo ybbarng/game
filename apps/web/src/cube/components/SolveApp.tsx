@@ -424,15 +424,16 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
               <span className="text-sm text-white/70">
                 수 <b data-cube-moves>{session.moveCount}</b>
               </span>
+              {/* 지금 단계(살펴보는 중·맞추는 중…)는 시간 줄 끝에 작게(큐브 칸 위를 납작하게) */}
+              <span className="text-white/55 text-xs">
+                {replaying ? "다시 보는 중" : PHASE_HINT[phase]}
+              </span>
             </div>
             <p
-              className="min-h-10 break-keep text-center font-mono text-sm text-white/80"
+              className="min-h-10 break-keep text-center font-mono text-sm text-white/80 sm:min-h-5"
               data-cube-scramble={session.scramble}
             >
               {preparing ? "섞기 준비 중…" : session.scramble || " "}
-            </p>
-            <p className="break-keep text-center text-white/55 text-xs">
-              {replaying ? "다시 보는 중" : PHASE_HINT[phase]}
             </p>
             {notice && (
               <p className="text-amber-300 text-xs" role="status">
@@ -490,6 +491,7 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
                 viewRef.current = v;
               }}
               flow={mode === "solo" ? "large" : undefined}
+              fitViewport
             />
           </section>
 

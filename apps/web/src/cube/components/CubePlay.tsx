@@ -102,6 +102,11 @@ export interface CubePlayProps {
    * 데스크톱은 큐브 위 한 줄, 휴대폰은 큐브 위쪽 가장자리에 반투명 띠로 겹친다. `syncToken`이 바뀌면 비운다
    */
   flow?: FlowSize | undefined;
+  /**
+   * 데스크톱(폭 640px 이상)에서 큐브 칸을 남은 화면 높이에 맞춘다(혼자 맞추기: 1280×720 노트북에서도 큐브와 거울 판이
+   * 첫 화면에 다 들어오게). 칸 위 끝의 자리를 재어 `100dvh - 위 끝 - 여백`을 넘지 않게 한다. 휴대폰은 그대로
+   */
+  fitViewport?: boolean;
 }
 
 export function CubePlay({
@@ -120,6 +125,7 @@ export function CubePlay({
   axes = false,
   extraButtons,
   flow,
+  fitViewport = false,
 }: CubePlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -180,6 +186,29 @@ export function CubePlay({
 
   // 뒷면 보기: 거울이면 3D 장면에 판을 띄우고, 펼친 그림이면 곁에 둔다(「숨기기」로 둘 다 접는다)
   const back = useBackView(settings.backView, !failed);
+  // 화면 높이에 맞추기: 큐브 칸 위 끝(문서 기준)을 잰다. 칸 크기는 위 끝을 바꾸지 않아 재기가 돌지 않는다
+  const [stageTop, setStageTop] = useState<number | null>(null);
+  useEffect(() => {
+    if (!fitViewport) return;
+    const measure = () => {
+      const el = back.ref.current;
+      if (!el) return;
+      if (!window.matchMedia("(min-width: 640px)").matches) {
+        setStageTop(null);
+        return;
+      }
+      const top = Math.round(el.getBoundingClientRect().top + window.scrollY);
+      setStageTop((t) => (t !== null && Math.abs(t - top) < 2 ? t : top));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener("resize", measure);
+      ro.disconnect();
+    };
+  }, [fitViewport, back.ref]);
   const mirror = back.mode === "mirror" && showNet;
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirror);
@@ -393,7 +422,13 @@ export function CubePlay({
       {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
       <StageWithNet
         boxRef={back.ref}
-        maxWidth={mirror ? 600 : 460}
+        maxWidth={
+          stageTop === null
+            ? mirror
+              ? 600
+              : 460
+            : `min(${mirror ? 600 : 460}px, max(280px, calc(100dvh - ${stageTop}px - 12px)))`
+        }
         net={
           (back.mode === "net" && showNet) || failed ? (
             <CubeNet

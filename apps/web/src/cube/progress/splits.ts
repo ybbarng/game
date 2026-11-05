@@ -8,13 +8,36 @@ import type { Split } from "../records";
 export interface SplitGroup {
   /** 이 순간 켜진 이정표(목록 차례) */
   readonly ids: readonly string[];
-  /** 칩 이름(「첫 블록 · 십자」) */
+  /** 칩 이름: 가장 나아간 단계 하나 + 나머지 수(「둘째 층 +6」). 칩이 한 줄을 넘지 않게 */
   readonly label: string;
+  /** 모두 늘어놓은 이름(「십자 · F2L 1/4 · …」, 자세히 볼 때) */
+  readonly full: string;
   /** 맞추기 시작부터 ms */
   readonly ms: number;
   /** 앞 묶음부터 걸린 시간(구간) */
   readonly lap: number;
 }
+
+/**
+ * 한 순간에 여럿이 켜졌을 때 칩에 크게 쓸 단계: 맞춘 큐브에 더 가까운 단계일수록 높다(층별 차례를 바탕으로
+ * 루·ZZ·코너 먼저 단계를 비슷한 진행 자리에 끼웠다)
+ */
+const RANK: Record<string, number> = {
+  centers: 10,
+  edges: 20,
+  cross: 30,
+  corners: 40,
+  eoline: 45,
+  f2l1: 50,
+  roux1: 55,
+  f2l2: 60,
+  layer1: 65,
+  f2l3: 70,
+  roux2: 75,
+  layer2: 80,
+  oll: 90,
+  ll: 100,
+};
 
 export function groupSplits(splits: readonly Split[]): SplitGroup[] {
   const byMs = new Map<number, string[]>();
@@ -24,9 +47,13 @@ export function groupSplits(splits: readonly Split[]): SplitGroup[] {
   for (const ms of [...byMs.keys()].sort((a, b) => a - b)) {
     const all = byMs.get(ms) ?? [];
     const ids = all.includes("ll") ? ["ll"] : all;
+    const main = ids.reduce((a, b) =>
+      (RANK[b] ?? 0) > (RANK[a] ?? 0) ? b : a,
+    );
     out.push({
       ids,
-      label: ids.map(milestoneLabel).join(" · "),
+      label: `${milestoneLabel(main)}${ids.length > 1 ? ` +${ids.length - 1}` : ""}`,
+      full: ids.map(milestoneLabel).join(" · "),
       ms,
       lap: ms - prev,
     });
