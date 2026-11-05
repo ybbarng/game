@@ -1,11 +1,14 @@
 import {
   applyMove,
+  applyMoves,
   type CubeMove,
   formatMove,
   invertMove,
   isRotation,
   isSolved,
   parseMoves,
+  shapeMatcher,
+  solvedCube,
 } from "@game/cube-engine";
 import { ReductionStuckError } from "@game/cube-reduction";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -158,6 +161,7 @@ const ALG_STAGES: ReadonlySet<StageName> = new Set<StageName>([
   "pll-parity",
   "solve",
   "three",
+  "shape",
 ]);
 
 /** 가운데·모서리 짝 단계는 흩어진 조각을 찾느라 단계 앞 멈춤이 더 길다(배수) */
@@ -167,6 +171,8 @@ export const STAGE_PAUSE_FACTOR: Readonly<Partial<Record<StageName, number>>> =
     "centers-rest": 2,
     edges: 2,
     "last-edges": 1.5,
+    // 모양 공식: 목표 그림을 보고 어느 공식인지 떠올린다
+    shape: 2,
   };
 
 /** 단계·크기의 시간 배율(목표 / 배율 1 평균) */
@@ -237,6 +243,11 @@ export interface BotPlanOptions {
   solve?: (method: SolveMethod, size: number, state: PuzzleState) => HumanSolve;
   /** bench만: 시간 배율을 정해 둔다(배율 1 평균을 잴 때) */
   scale?: number;
+  /**
+   * 모양 만들기(대결 docs/47 9-10): 목표 모양의 공식(맞춘 큐브에서 하면 그 모양). 섞인 큐브면 먼저 그 단계 해법으로 맞추고
+   * 공식을 한다. 계획은 목표와 같은 모양(`shapeMatcher`, 통째로 돌린 방향·쥐는 법 무시)이 처음 되는 수에서 끝난다
+   */
+  shape?: string;
 }
 
 /** 작은 결정적 난수(mulberry32), 0 이상 1 미만 */
@@ -287,12 +298,13 @@ function solvedLength(
   size: number,
   start: PuzzleState,
   moves: readonly string[],
+  done: (state: PuzzleState) => boolean = (s) => isSolved(size, s),
 ): number {
   let state = start;
   for (let i = 0; i < moves.length; i++) {
     for (const m of parseMoves(size, moves[i] as string))
       state = applyMove(size, state, m);
-    if (isSolved(size, state)) return i + 1;
+    if (done(state)) return i + 1;
   }
   return moves.length;
 }
@@ -315,9 +327,14 @@ export function botPlan(
 ): BotPlan {
   const read = typeof skill === "string" ? readBotSkill(skill) : skill;
   if (!read) throw new RangeError(`모르는 컴퓨터 단계: ${String(skill)}`);
-  if (read.kind === "legacy")
+  if (read.kind === "legacy") {
+    if (opts.shape !== undefined)
+      throw new RangeError("옛 단계는 모양 만들기를 모른다");
     return legacyPlan(read.level, size, startState, seed, opts);
+  }
   const { level, scale } = resolveSkill(read, size);
+  if (opts.shape !== undefined)
+    return shapePlan(level, scale, size, startState, seed, opts.shape, opts);
   const { solve, fallback } = solveOrFallback(
     levelMethod(level, size),
     size,
@@ -325,13 +342,34 @@ export function botPlan(
     opts.solve ?? solveHuman,
   );
   const speed = botSpeed(level, size, opts.scale ?? scale);
+  return {
+    ...timeSolve(solve, size, startState, seed, speed, opts.inspectionMs, (s) =>
+      isSolved(size, s),
+    ),
+    ...(fallback ? { fallback: true as const } : {}),
+  };
+}
+
+/**
+ * 해법 수에 둘 시각을 붙인다(단계 앞 멈춤·공식 묶음 사이 살피기·헛수·컨디션). `done`이 처음 참이 되는 수에서 끝난다
+ * (맞춤, 모양 만들기면 목표 모양). 헛수로 우연히 `done`이 되는 자리에서는 헛수를 두지 않는다
+ */
+function timeSolve(
+  solve: HumanSolve,
+  size: number,
+  startState: PuzzleState,
+  seed: number,
+  speed: BotSpeed,
+  inspectionMs: number | undefined,
+  done: (state: PuzzleState) => boolean,
+): Pick<BotPlan, "moves" | "stages" | "finishAt"> {
   const next = rng(seed);
   const form = 1 + speed.form * (2 * next() - 1);
   const wobble = (base: number) =>
     base * form * (1 + speed.jitter * (2 * next() - 1));
   const looks = new Set(solve.looks);
-  const length = solvedLength(size, startState, solve.moves);
-  let t = opts.inspectionMs ?? 0;
+  const length = solvedLength(size, startState, solve.moves, done);
+  let t = inspectionMs ?? 0;
   let state = startState;
   const moves: BotMove[] = [];
   const stages: SolveStage[] = [];
@@ -359,7 +397,7 @@ export function botPlan(
         const wrong = slipOf(one);
         const after = applyMove(size, state, wrong);
         // 헛수로 우연히 맞춰지면 대결이 거기서 끝나 계획과 어긋난다: 그때는 헛수를 두지 않는다
-        if (!isSolved(size, after)) {
+        if (!done(after)) {
           t += wobble(step);
           moves.push({
             move: formatMove(size, wrong),
@@ -385,7 +423,61 @@ export function botPlan(
   return {
     moves,
     stages,
-    finishAt: moves.at(-1)?.at ?? opts.inspectionMs ?? 0,
+    finishAt: moves.at(-1)?.at ?? inspectionMs ?? 0,
+  };
+}
+
+/**
+ * 모양 만들기 계획(docs/47 9-10): 사람처럼 섞인 큐브면 먼저 그 단계 해법으로 맞추고, 맞춘 큐브에서 목표 모양 공식을 한다
+ * (공식 단계는 외워 두는 단계 빠르기, 앞에 공식을 떠올리는 멈춤). 맞춘 큐브를 어느 방향으로 쥐었든 같은 공식이면 같은 모양으로
+ * 보므로(`shapeMatcher`) 맞춘 뒤 다시 쥐지 않는다
+ */
+function shapePlan(
+  level: BotLevel,
+  scale: number,
+  size: number,
+  startState: PuzzleState,
+  seed: number,
+  alg: string,
+  opts: BotPlanOptions,
+): BotPlan {
+  const algMoves = parseMoves(size, alg).map((m) => formatMove(size, m));
+  if (algMoves.length === 0) throw new RangeError("모양 공식이 비었다");
+  const target = applyMoves(size, solvedCube(size), parseMoves(size, alg));
+  const matcher = shapeMatcher(size, target);
+  let fallback = false;
+  let first: HumanSolve = { moves: [], stages: [], looks: [] };
+  if (!isSolved(size, startState)) {
+    const made = solveOrFallback(
+      levelMethod(level, size),
+      size,
+      startState,
+      opts.solve ?? solveHuman,
+    );
+    fallback = made.fallback;
+    const cut = solvedLength(size, startState, made.solve.moves);
+    first = {
+      moves: made.solve.moves.slice(0, cut),
+      stages: made.solve.stages
+        .filter((st) => st.start < cut)
+        .map((st) => ({ ...st, end: Math.min(st.end, cut) })),
+      looks: made.solve.looks.filter((i) => i < cut),
+    };
+  }
+  const k = first.moves.length;
+  const solve: HumanSolve = {
+    moves: [...first.moves, ...algMoves],
+    stages: [
+      ...first.stages,
+      { name: "shape", start: k, end: k + algMoves.length },
+    ],
+    looks: first.looks,
+  };
+  const speed = botSpeed(level, size, opts.scale ?? scale);
+  return {
+    ...timeSolve(solve, size, startState, seed, speed, opts.inspectionMs, (s) =>
+      matcher.matches(s),
+    ),
     ...(fallback ? { fallback: true as const } : {}),
   };
 }

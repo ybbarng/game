@@ -18,6 +18,7 @@ import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceSession } from "@/net/race/race-session";
+import { patternById } from "../patterns/data";
 import { isItemText, parseItemText, undoMoves } from "./items";
 import { BOT_NO_PLAN, type CubeAct } from "./race-game";
 
@@ -59,11 +60,20 @@ export type PlanFn = (
   n: number,
   start: PuzzleState,
   seed: number,
+  /** 모양 만들기(docs/47 9-10): 목표 모양 공식. 없으면 맞추기 */
+  shape?: string,
 ) => BotPlan | Promise<BotPlan>;
 
 /** 같은 스레드에서 바로(시험·워커를 못 쓸 때) */
-export const planHere: PlanFn = (level, n, start, seed) =>
-  botPlan(level, n, start, seed);
+export const planHere: PlanFn = (level, n, start, seed, shape) =>
+  botPlan(level, n, start, seed, shape === undefined ? {} : { shape });
+
+/** 모양 아이디 → 컴퓨터가 둘 공식. 모르는 모양이면 RangeError(그 컴퓨터는 그 판 기권) */
+export function shapeAlg(id: string): string {
+  const p = patternById(id);
+  if (!p) throw new RangeError(`모르는 모양: ${id}`);
+  return p.alg;
+}
 
 export interface AttachBotInit {
   session: RaceSession<CubeAct, PuzzleState>;
@@ -72,6 +82,8 @@ export interface AttachBotInit {
   level: string;
   n: number;
   clock: Clock;
+  /** 모양 만들기 판의 목표 모양 아이디(`patterns/data.ts`) */
+  shape?: string;
   plan?: PlanFn;
   /** 그 시도의 계획을 받았다(화면 표시·시험용) */
   onPlanned?: (attempt: number) => void;
@@ -206,7 +218,16 @@ export function attachBot(init: AttachBotInit): BotHandle {
       };
       let made: BotPlan | Promise<BotPlan>;
       try {
-        made = planOf(level, n, start, botSeed(snap.seed, id));
+        made =
+          init.shape === undefined
+            ? planOf(level, n, start, botSeed(snap.seed, id))
+            : planOf(
+                level,
+                n,
+                start,
+                botSeed(snap.seed, id),
+                shapeAlg(init.shape),
+              );
       } catch {
         fail();
         return;
@@ -263,9 +284,17 @@ export async function checkBotRun(
   plan: PlanFn = planHere,
   /** 판이 정해져 도중에 멈춘 컴퓨터(체력바 대결): 계획의 앞부분만 두었으면 된다 */
   stopped = false,
+  /** 모양 만들기 판의 목표 모양 아이디 */
+  shape?: string,
 ): Promise<boolean | null> {
-  if (!readBotSkill(level)) return null;
-  const made = await plan(level, n, start, botSeed(raceSeed, botId));
+  const skill = readBotSkill(level);
+  if (!skill) return null;
+  // 옛 단계 글은 모양 만들기 계획이 없다(새 방장은 옛 글을 만들지 않는다)
+  if (shape !== undefined && skill.kind === "legacy") return null;
+  const seed = botSeed(raceSeed, botId);
+  const made = await (shape === undefined
+    ? plan(level, n, start, seed)
+    : plan(level, n, start, seed, shapeAlg(shape)));
   if (log.some((x) => isItemText(x.m)))
     return checkItemBotRun(n, made, log, stopped);
   const expected = made.moves

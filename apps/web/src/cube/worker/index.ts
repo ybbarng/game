@@ -236,6 +236,8 @@ export function planInWorker(
   size: number,
   state: PuzzleState,
   seed: number,
+  /** 모양 만들기: 목표 모양 공식 */
+  shape?: string,
 ): Promise<BotPlan> {
   return request({
     kind: "plan",
@@ -244,6 +246,7 @@ export function planInWorker(
     perm: Array.from(state.perm),
     twist: Array.from(state.twist),
     seed,
+    ...(shape === undefined ? {} : { shape }),
   }) as Promise<BotPlan>;
 }
 

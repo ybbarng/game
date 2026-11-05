@@ -12,6 +12,13 @@ import type {
 } from "@/net/race/types";
 import { randomId, type Transport } from "@/net/transport";
 import {
+  type ShapeRule,
+  shapeFor,
+  shapePicks,
+  shapeRuleOk,
+  shapeSupports,
+} from "../patterns/race";
+import {
   attachBot,
   type BotHandle,
   botSupports,
@@ -58,6 +65,7 @@ import {
   type CubeAct,
   type CubeRaceGame,
   createCubeRaceGame,
+  type RaceShape,
   type Scrambler,
 } from "./race-game";
 import {
@@ -107,9 +115,14 @@ export interface RoomSettings {
    * 옛 판 방장은 보내지 않는다(일반 대결). 5판 평균(시간 평균)·핸디캡 「평균 대비」와는 함께 쓰지 않는다
    */
   party?: PartyMode;
+  /**
+   * 모양 만들기(docs/47 9-10): 판마다 목표 모양(`shapeFor`)을 먼저 만든 사람이 이긴다. 옛 판 방장은 보내지 않는다.
+   * 파티 모드·핸디캡 「목표 다르게」·「평균 대비」와는 함께 쓰지 않는다. 쓸 때만 판정 설정 지문에 넣는다(`raceOptionsFor`)
+   */
+  shape?: ShapeRule;
 }
 
-export type { PartyMode };
+export type { PartyMode, ShapeRule };
 
 /** 대결 틀의 다툼 폭(기본값과 같다). 체력 판정이 중간 지점 시각을 같은 규칙으로 본다 */
 const DISPUTE_MS = 1_000;
@@ -185,6 +198,8 @@ export interface RoundRecord extends RoundSummary {
   baseline?: Record<string, Baseline>;
   /** 아이템전 판: 사람마다 받은·쓴·맞은 아이템 */
   items?: ItemsSummary;
+  /** 모양 만들기 판의 목표 */
+  shape?: RaceShape;
 }
 
 /** 아이템전 판 기록(결과 상자) */
@@ -288,13 +303,17 @@ export function matchRules(s: RoomSettings): MatchRules {
 export function raceOptionsFor(
   s: RoomSettings,
   handicap?: ActiveHandicap,
+  /** 모양 만들기 판의 목표(`shapeOfRound`) */
+  shape?: RaceShape,
 ): RaceOptions {
   const options: RaceOptions = {
     inspectionMs: s.inspection ? 15_000 : 0,
     timeLimitMs: s.timeLimitSec * 1000,
-    suspicion: suspicionFor(s.n),
+    suspicion: suspicionFor(s.n, !!shape),
   };
   const game: Record<string, unknown> = {};
+  // 모양 만들기: 목표와 시작을 지문에 넣는다(방장이 기기마다 다른 목표를 보내면 「섞기 어긋남」). 쓰지 않으면 예전 지문 그대로
+  if (shape) game.shape = { id: shape.id, start: shape.start };
   // 파티 모드: 이정표(아이템전이면 쓰기·맞은 섞기도) 시각을 대결 틀이 증인 하한으로 확인한다(중간 지점).
   // 쓰지 않으면 예전 지문 그대로
   if (s.party) {
@@ -330,7 +349,8 @@ export function raceOptionsFor(
   return options;
 }
 
-function suspicionFor(n: number): SuspicionRules {
+/** 모양 만들기는 공식 몇 수로 끝날 수 있어 「수가 지나치게 적음」을 보지 않는다 */
+function suspicionFor(n: number, shape = false): SuspicionRules {
   const common: SuspicionRules = {
     windowMs: 500,
     maxMovesInWindow: 20,
@@ -339,7 +359,17 @@ function suspicionFor(n: number): SuspicionRules {
     fastStartMoves: 12,
     fastStartMs: 600,
   };
-  return n === 3 ? { ...common, minMoves: 30 } : common;
+  return n === 3 && !shape ? { ...common, minMoves: 30 } : common;
+}
+
+/** 그 판의 목표 모양(모양 만들기가 아니면 없다). 방 상태의 규칙·크기·판 번호로만 정해 모든 기기가 같다 */
+export function shapeOfRound(
+  s: RoomSettings,
+  round: number,
+): RaceShape | undefined {
+  const rule = s.shape;
+  if (!rule || !shapeSupports(s.n)) return undefined;
+  return { id: shapeFor(rule, s.n, round).id, start: rule.start };
 }
 
 export function cleanName(name: string): string {
@@ -700,6 +730,26 @@ export class CubeRoom {
     const sizeChanged = patch.n !== undefined && patch.n !== s.settings.n;
     s.settings = { ...s.settings, ...patch };
     if (s.settings.party === undefined) delete s.settings.party;
+    if (s.settings.shape === undefined) delete s.settings.shape;
+    // 모양 만들기는 그 크기에 모양이 있을 때만, 파티 모드·목표 다르게·평균 대비와는 함께 쓰지 않는다
+    // 크기를 바꿔 고른 어려움이 없으면 그 크기에서 고를 수 있는 첫 어려움으로
+    const sh: ShapeRule | undefined = s.settings.shape;
+    if (sh && !shapeRuleOk({ ...sh }, s.settings.n)) {
+      const pick = shapePicks(s.settings.n)[0];
+      const next = pick ? { ...sh, pick } : undefined;
+      if (next && shapeRuleOk(next, s.settings.n)) s.settings.shape = next;
+      else delete s.settings.shape;
+    }
+    if (s.settings.shape) {
+      delete s.settings.party;
+      const h = s.settings.handicap;
+      if (h?.goal || h?.score) {
+        const rest = { ...h };
+        delete rest.goal;
+        delete rest.score;
+        s.settings.handicap = rest;
+      }
+    }
     // 체력바는 시간 평균(5판 평균)과 함께 쓰지 않는다: 한 판으로 돌린다
     if (s.settings.party && s.settings.format === "ao5")
       s.settings.format = "single";
@@ -802,11 +852,26 @@ export class CubeRoom {
     const s = this.state;
     if (!this.isHost || !s || s.status === "racing") return;
     if (party) {
+      delete s.settings.shape;
       this.setSettings({ party });
       return;
     }
     delete s.settings.party;
     this.setSettings({});
+  }
+
+  /** 규칙 「모양 만들기」를 켜거나 끈다(새 경기가 된다). 열쇠가 없으면 새로 만든다 */
+  setShape(rule: Omit<ShapeRule, "key"> & { key?: string }, on = true): void {
+    const s = this.state;
+    if (!this.isHost || !s || s.status === "racing") return;
+    if (!on) {
+      delete s.settings.shape;
+      this.setSettings({});
+      return;
+    }
+    const shape = { ...rule, key: rule.key ?? randomId(8) };
+    if (!shapeRuleOk(shape, s.settings.n)) return;
+    this.setSettings({ shape });
   }
 
   /** 새 경기(판 기록을 비운다) */
@@ -946,15 +1011,17 @@ export class CubeRoom {
       ao5: s.settings.format === "ao5" || !!mode,
       averageOf: (id) => this.averageOf(id),
     });
+    const shape = shapeOfRound(s.settings, s.round);
     const game = createCubeRaceGame(
       s.settings.n,
       this.init.scrambler,
       undefined,
       handicap.goal,
       mode ?? false,
+      shape,
     );
     const botHandles = new Map<string, BotHandle>();
-    const options = raceOptionsFor(s.settings, handicap);
+    const options = raceOptionsFor(s.settings, handicap, shape);
     const sessions = new Map<string, RaceSession<CubeAct, PuzzleState>>();
     const off: (() => void)[] = [];
     const round = s.round;
@@ -978,6 +1045,7 @@ export class CubeRoom {
           level: p.bot,
           n: s.settings.n,
           clock: this.init.clock,
+          ...(shape ? { shape: shape.id } : {}),
           ...(this.init.botPlan ? { plan: this.init.botPlan } : {}),
           onPlanned: (attempt) => {
             planned.set(p.id, attempt);
@@ -1045,6 +1113,7 @@ export class CubeRoom {
       logs,
       start: source?.startState() as PuzzleState,
       ...(hasHandicap(c.handicap) ? { handicap: c.handicap } : {}),
+      ...(c.game.shape ? { shape: c.game.shape } : {}),
     };
     // 체력바: 순위·승자를 체력 판정으로 다시 매긴다. 판이 정해진 뒤의 일은 판정에 끼지 않으므로(판 도중 판정과 같다)
     // 모든 기기가 같은 값을 낸다
@@ -1284,6 +1353,17 @@ function partySettingsOk(s: RoomSettings): boolean {
   return PARTY_MODES.includes(s.party) && s.format !== "ao5";
 }
 
+/** 모양 만들기는 고를 수 있는 값만, 파티 모드·목표 다르게·평균 대비와는 함께 쓰지 않는다 */
+function shapeSettingsOk(s: RoomSettings): boolean {
+  if (s.shape === undefined) return true;
+  return (
+    shapeRuleOk(s.shape, s.n) &&
+    s.party === undefined &&
+    !s.handicap?.goal &&
+    !s.handicap?.score
+  );
+}
+
 /**
  * 아이템만인 판: 아이템 규칙을 어긴 사람(갖지 않은 아이템을 씀, 맞은 섞기를 넣지 않고 맞춤 등)을 DNF로 돌리고 순위를 다시 매긴다.
  * 판정이 같은 순수 함수라 모든 기기가 같은 값을 낸다
@@ -1356,6 +1436,7 @@ function isRoomState(v: unknown): v is RoomState {
       typeof s.settings.timeLimitSec === "number" &&
       pointsSettingsOk(s.settings) &&
       partySettingsOk(s.settings) &&
+      shapeSettingsOk(s.settings) &&
       handicapOk(s.settings.handicap, s.settings.n) &&
       s.players.every((p) => p.avgs === undefined || averagesOk(p.avgs))
     )

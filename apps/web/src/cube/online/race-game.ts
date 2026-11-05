@@ -17,6 +17,12 @@ import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceGame } from "@/net/race/types";
+import {
+  type ShapeStart,
+  shapeGoal,
+  shapeProgress,
+  shapeStageText,
+} from "../patterns/race";
 import { goalReached } from "./handicap";
 import {
   applyItemAct,
@@ -62,8 +68,17 @@ export const isItemAct = (m: CubeAct): m is ItemAct => "item" in m;
 export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   n: number;
   event: ScrambleEvent;
-  /** 이 씨앗으로 만든 섞기(`prepare`가 끝난 뒤) */
+  /** 이 씨앗으로 만든 섞기(`prepare`가 끝난 뒤). 맞춘 큐브에서 시작하는 모양 만들기는 없다 */
   scrambleFor(seed: string): Scramble | undefined;
+  /** 모양 만들기 판의 목표(docs/47 9-10). 일반 판은 없다 */
+  shape?: RaceShape;
+}
+
+/** 모양 만들기 판의 목표와 시작(판을 열 때 고정, 판정 설정 지문에도 넣는다) */
+export interface RaceShape {
+  /** 모양 아이디(`patterns/data.ts`) */
+  id: string;
+  start: ShapeStart;
 }
 
 /** 대결 씨앗(글) → 섞기 씨앗(uint32). 판·시도마다 씨앗이 다르므로 섞기도 다르다 */
@@ -76,7 +91,12 @@ export function eventForSize(n: number): ScrambleEvent {
 }
 
 /** 진행 단계 이름(docs/47 9-1). 3×3은 십자·F2L·OLL·끝을 알아보고, 다른 크기는 맞은 조각 비율 */
-export function stageLabel(n: number, state: PuzzleState): string {
+export function stageLabel(
+  n: number,
+  state: PuzzleState,
+  shape?: RaceShape,
+): string {
+  if (shape) return shapeStageText(shapeGoal(shape.id), state, shape.start);
   if (isSolved(n, state)) return "끝";
   if (n === 3) {
     const p = cube3Progress(state);
@@ -123,18 +143,32 @@ export function createCubeRaceGame(
    * 받아 다시 적용하고, 그 시각도 중간 지점으로 확인한다. `true`는 체력바(옛 부르기)
    */
   party: PartyMode | boolean = false,
+  /**
+   * 모양 만들기(docs/47 9-10): 끝 판정이 「목표 모양과 같은가」가 되고 진행도 목표에 가까운 정도다. 맞춘 큐브에서 시작하면
+   * 섞기를 만들지 않는다. 파티 모드·목표 다르게와는 함께 쓰지 않는다(방이 막는다)
+   */
+  shape?: RaceShape,
 ): CubeRaceGame {
   const mode: PartyMode | undefined =
     party === true ? "hp" : party === false ? undefined : party;
   const items = mode !== undefined && hasItems(mode);
   const cache = new Map<number, Scramble>();
   const scrambleOf = (seed: string) => cache.get(scrambleSeed(seed));
+  const goal = shape ? shapeGoal(shape.id) : undefined;
+  if (goal && goal.pattern.size !== n) throw new RangeError("크기가 다른 모양");
+  const fromSolved = shape?.start === "solved";
+  const shapeTag =
+    shape && goal
+      ? `|shape:${shape.id}:${shape.start}:${stateHash(goal.target)}`
+      : "";
   return {
     id: `cube-${event}`,
     n,
     event,
     scrambleFor: scrambleOf,
+    ...(shape ? { shape } : {}),
     prepare(seed) {
+      if (fromSolved) return;
       const key = scrambleSeed(seed);
       if (cache.has(key)) return;
       const made = scrambler(event, key);
@@ -146,16 +180,19 @@ export function createCubeRaceGame(
       keep(made);
     },
     startState(seed) {
+      if (fromSolved) return solvedCube(n);
       const s = scrambleOf(seed);
       if (!s) throw new Error("섞기를 아직 만들지 않았다");
       return applyMoves(n, solvedCube(n), parseMoves(n, s.text));
     },
     startFingerprint(seed) {
+      if (fromSolved)
+        return `${event}|solved|${stateHash(solvedCube(n))}${shapeTag}`;
       const s = scrambleOf(seed);
       if (!s) throw new Error("섞기를 아직 만들지 않았다");
       // 섞기 글만 맞춰 보면 엔진 판이 달라 같은 글에서 다른 상태가 나와도 못 잡는다: 시작 상태도 함께
       const start = applyMoves(n, solvedCube(n), parseMoves(n, s.text));
-      return `${event}|${s.text}|${stateHash(start)}`;
+      return `${event}|${s.text}|${stateHash(start)}${shapeTag}`;
     },
     apply(state, move) {
       if (isItemAct(move)) {
@@ -169,10 +206,15 @@ export function createCubeRaceGame(
         : applyMove(n, state, move);
     },
     isSolved: (state, player) =>
-      player !== undefined && Object.hasOwn(goals, player)
-        ? goalReached(n, state, goals[player])
-        : isSolved(n, state),
-    progress: (state) => solvedPieceRatio(n, state),
+      goal
+        ? goal.matcher.matches(state)
+        : player !== undefined && Object.hasOwn(goals, player)
+          ? goalReached(n, state, goals[player])
+          : isSolved(n, state),
+    progress: (state) =>
+      goal && shape
+        ? shapeProgress(goal, state, shape.start)
+        : solvedPieceRatio(n, state),
     retireReasons: [BOT_NO_PLAN, ...PARTY_REASONS],
     ...(mode
       ? {

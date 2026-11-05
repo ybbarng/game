@@ -56,7 +56,9 @@ export type StageName =
   // ZZ
   | "eoline"
   | "zz-left"
-  | "zz-right";
+  | "zz-right"
+  // 모양 만들기(대결, 맞춘 큐브에서 패턴 공식)
+  | "shape";
 
 export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   solve: "맞추기",
@@ -93,6 +95,7 @@ export const STAGE_LABELS: Readonly<Record<StageName, string>> = {
   eoline: "EO라인",
   "zz-left": "왼쪽 블록",
   "zz-right": "오른쪽 블록",
+  shape: "모양 공식",
 };
 
 export interface SolveStage {
