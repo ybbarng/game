@@ -21,7 +21,7 @@ import {
 } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
-import { DealAnimation } from "@/components/DealAnimation";
+import { DealAnimation } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
 import { ActionButton, Panel } from "@/components/panels/common";
 import { ResultBanner } from "@/components/ResultBanner";

@@ -1,10 +1,9 @@
 import { formatMove, isRotation, parseMoves } from "@game/cube-engine";
 import { FACES } from "@game/cube-solver";
 import type { PuzzleState } from "@game/puzzle-core";
-import { BEGINNER } from "./algs";
 import { cornerFacelets, EDGE_FACELETS } from "./cubie";
 import { toFacelets } from "./facelets";
-import { middleEdges, whiteDown } from "./methods";
+import { whiteDown } from "./methods";
 import { Solve, uTurn, yTurn } from "./solve";
 import {
   type CrossCase,
@@ -14,11 +13,14 @@ import {
   llCornerPlaceTaught,
   llCornerTwistTaught,
   llEdgesTaught,
+  middleTaught,
   nextCrossEdge,
   placedTop,
   TAUGHT_CORNER_CYCLE,
   TAUGHT_CORNER_TRIGGER,
   TAUGHT_EDGE_SWAP,
+  TAUGHT_MIDDLE_FROM_FRONT,
+  TAUGHT_MIDDLE_FROM_RIGHT,
   whiteUp,
   yellowCrossTaught,
 } from "./taught";
@@ -70,8 +72,11 @@ export type TaughtCase =
       white: "right" | "down" | "front";
       reps: number;
     }
-  /** 둘째 층 모서리 하나. stuck: 칸에 잘못 든 것을 오른쪽 넣기로 빼냄 */
-  | { kind: "middle"; colors: ColorLetter[]; side: "right" | "left" | "stuck" }
+  /**
+   * 둘째 층 엣지 하나. 늘 앞-오른쪽 칸에 넣는다. front: 앞 위에서, right: 오른쪽 위에서 들어옴,
+   * stuck: 칸에 잘못 든 것을 앞 공식으로 빼냄
+   */
+  | { kind: "middle"; colors: ColorLetter[]; side: "front" | "right" | "stuck" }
   /** 노란 십자: 지금 모양 */
   | { kind: "eo"; shape: "dot" | "ell" | "line" }
   /** 옆면 맞추기: 맞은 두 모서리가 이웃(ㄱ자)인지 마주 보는지(일자) */
@@ -109,7 +114,7 @@ const RUNS: Record<TaughtStage, (s: Solve) => void> = {
   },
   middle: (s) => {
     whiteDown(s);
-    middleEdges(s);
+    middleTaught(s);
   },
   eo: (s) => {
     whiteDown(s);
@@ -139,7 +144,8 @@ const tokens = (alg: string) => alg.split(" ");
 const TRIGGER = tokens(TAUGHT_CORNER_TRIGGER);
 const EDGE_SWAP = tokens(TAUGHT_EDGE_SWAP);
 const CYCLE = tokens(TAUGHT_CORNER_CYCLE);
-const RIGHT = tokens(BEGINNER.edgeRight);
+const FROM_FRONT = tokens(TAUGHT_MIDDLE_FROM_FRONT);
+const FROM_RIGHT = tokens(TAUGHT_MIDDLE_FROM_RIGHT);
 
 /** `list`의 `at`부터 `part`가 그대로 있는가 */
 const startsAt = (list: readonly string[], at: number, part: string[]) =>
@@ -249,7 +255,9 @@ function classify(
     }
     case "middle": {
       const tail = seg.slice(-8);
-      const right = startsAt(tail, 0, RIGHT);
+      const front = startsAt(tail, 0, FROM_FRONT);
+      if (!front && !startsAt(tail, 0, FROM_RIGHT))
+        throw new Error("둘째 층 토막에 공식이 없다");
       const t2 = t.clone().apply(seg.slice(0, -8).join(" "));
       const topHasEdge = [0, 1, 2, 3].some(
         (j) => (t.cubie().ep[j] as number) >= 8,
@@ -264,8 +272,10 @@ function classify(
       }
       return {
         kind: "middle",
-        colors: named([t2.f[19], t2.f[7]] as ColorLetter[]),
-        side: right ? "right" : "left",
+        colors: named(
+          (front ? [t2.f[19], t2.f[7]] : [t2.f[10], t2.f[5]]) as ColorLetter[],
+        ),
+        side: front ? "front" : "right",
       };
     }
     case "eo": {

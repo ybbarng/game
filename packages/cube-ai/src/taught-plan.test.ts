@@ -43,7 +43,7 @@ describe("taughtStagePlan", () => {
     expect(kinds.get("corners")).toContain("corner:bottom");
     expect(kinds.get("middle")).toContain("hold:down");
     expect(kinds.get("middle")).toContain("middle:right");
-    expect(kinds.get("middle")).toContain("middle:left");
+    expect(kinds.get("middle")).toContain("middle:front");
     expect(kinds.get("eo")).toContain("eo");
     expect(kinds.get("ll-corner-twist")).toContain("twist");
   });
