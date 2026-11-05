@@ -96,7 +96,7 @@ export function eventLine(
     case "unmortgaged":
       return `${name(e.seat)} · ${squareName(board, e.square)} 되찾음`;
     case "jailed":
-      return `${subject(name(e.seat))} ${e.by === "doubles" ? "같은 눈 세 번으로" : "공문으로"} 소행성대에 걸렸어요`;
+      return `${subject(name(e.seat))} ${e.by === "doubles" ? "한 차례에 더블 세 번으로" : "공문으로"} 소행성대에 걸렸어요`;
     case "freed":
       return e.by === "fine" ? null : `${name(e.seat)} · 소행성대를 나감`;
     case "takenOver":

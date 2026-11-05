@@ -417,8 +417,8 @@ function compareStep(
 const salaryMission: Mission = {
   kind: "mission",
   title: "우주국 지나기",
-  objective: `주사위를 굴려 **우주국**을 지나 지원금 ${money(NUMBERS.salary)}을 받으세요. 같은 눈이 나오면 한 번 더 굴려요.`,
-  hint: "**주사위 굴리기**를 눌러요. 같은 눈이면 한 번 더 눌러요.",
+  objective: `주사위를 굴려 **우주국**을 지나 지원금 ${money(NUMBERS.salary)}을 받으세요. 더블(주사위 두 개가 같은 숫자)이 나오면 한 번 더 굴려요.`,
+  hint: "**주사위 굴리기**를 눌러요. 더블이면 한 번 더 눌러요.",
   scenario: SALARY,
   check: until(({ view, events }) =>
     events.some(
@@ -589,7 +589,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "두 눈의 합만큼",
         body: [
           "주사위 **둘**을 굴려 나온 눈을 더한 만큼 앞으로 가요.",
-          "**같은 눈**이 나오면 멈춘 칸의 일을 하고 **한 번 더** 굴려요. 한 차례에 세 번째 같은 눈이면 **소행성대**에 걸려요.",
+          "**더블**(주사위 두 개가 같은 숫자)이 나오면 멈춘 칸의 일을 하고 **한 번 더** 굴려요. 한 차례에 더블이 세 번 연달아 나오면 움직이지 않고 **소행성대**에 걸려요.",
         ],
         scene: { kind: "board", marked: [8] },
       },
@@ -612,8 +612,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
           "8칸 가고 한 번 더 굴린다",
         ],
         answer: 3,
-        explain:
-          "같은 눈이라 **8칸** 가서 칸의 일을 한 뒤 **한 번 더** 굴려요.",
+        explain: "더블이라 **8칸** 가서 칸의 일을 한 뒤 **한 번 더** 굴려요.",
       },
       salaryMission,
     ],
@@ -724,7 +723,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         kind: "explain",
         title: "소행성대·관측지·혜성",
         body: [
-          `**소행성대**: 공문이나 세 번째 같은 눈으로 오면 걸려요. 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가거나, 굴려서 같은 눈이면 나가요. 아니면 한 차례 쉬고 그다음엔 그냥 나가요. 그냥 멈추면 지나가는 길이에요.`,
+          `**소행성대**: 주사위를 굴려 여기 멈추면 아무 일도 없어요. 공문 「궤도 이탈」을 받거나, 한 차례에 더블(주사위 두 개가 같은 숫자)이 세 번 연달아 나오면 여기에 걸려요. 걸리면 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가 굴리거나, 주사위를 굴려 더블이 나오면 그 눈만큼 나가요. 더블이 아니면 그 차례는 쉬고, 그다음 차례에 그냥 나가요.`,
           `**관측지**: 멈추면 자산 순위가 낮을수록 관측 지원금을 더 받아요(넷이면 꼴찌 ${money(grants[3])}, 1위는 없음).`,
           "**혜성**: 주사위를 한 번 더 굴려 그만큼 더 가요.",
         ],
@@ -740,7 +739,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
           "다른 우주인과 자리를 바꾼다",
         ],
         answer: 1,
-        explain: `${money(NUMBERS.asteroidFine)}을 내면 바로 나가 굴려요. 굴려서 같은 눈이 나와도 나가요.`,
+        explain: `${money(NUMBERS.asteroidFine)}을 내면 바로 나가 굴려요. 내지 않고 굴려서 더블이 나와도 나가요.`,
       },
     ],
   },

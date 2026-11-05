@@ -104,9 +104,32 @@ export function sizeOf(mag: number): number {
   return Math.min(1.4, Math.max(0.42, flux ** 0.22));
 }
 
-/** 빛줄기(＋ 모양)를 그릴 만큼 밝은가: 1등급보다 밝은 별 */
+/** 빛줄기(＋ 모양)를 그릴 만큼 밝은가: 1.6등급보다 밝은 별(어두운 별까지 그리면 작은 칸이 번잡하다) */
 export function spiked(mag: number): boolean {
-  return mag < 1;
+  return mag < 1.6;
+}
+
+/** 밝기 순위(0: 3.7등급쯤 ~ 1: 시리우스). 빛무리 세기·빛줄기 길이가 이것을 따른다(별 따기 `starLook`의 b) */
+export function brightness(mag: number): number {
+  return Math.min(1, Math.max(0, (2.2 - mag) / 3.7 + 0.15));
+}
+
+/**
+ * 빛 모양(원반 지름 d에 대한 배수). 별 따기 하늘의 별처럼 밝기는 원반 크기보다 빛 번짐·빛줄기로 낸다.
+ * - halo: 빛무리 지름, haloA: 빛무리 가운데 세기
+ * - spike: 빛줄기 한쪽 길이(가로. 세로는 1.15배, 별 따기와 같다), 0이면 없음
+ */
+export function glowOf(mag: number): {
+  halo: number;
+  haloA: number;
+  spike: number;
+} {
+  const b = brightness(mag);
+  return {
+    halo: 3 + b * 1.6,
+    haloA: 0.45 + b * 0.4,
+    spike: spiked(mag) ? 0.9 + b * 0.8 : 0,
+  };
 }
 
 /**
@@ -117,13 +140,20 @@ export function rhythm(seed: number): {
   boilMs: number;
   breatheMs: number;
   delayMs: number;
+  /** 반짝임 한 번의 주기(대부분은 가만히 있고 끝에 잠깐 반짝인다) */
+  twinkleMs: number;
+  twinkleDelayMs: number;
 } {
   const a = Math.sin(seed * 12.9898) * 43758.5453;
   const u = a - Math.floor(a);
+  const c = Math.sin(seed * 78.233 + 1.7) * 24634.6345;
+  const v = c - Math.floor(c);
   return {
     boilMs: Math.round(26000 + u * 18000),
-    breatheMs: Math.round(3600 + u * 2600),
+    breatheMs: Math.round(5200 + u * 2600),
     delayMs: -Math.round(u * 9000),
+    twinkleMs: Math.round(7000 + v * 6000),
+    twinkleDelayMs: -Math.round(v * 13000),
   };
 }
 

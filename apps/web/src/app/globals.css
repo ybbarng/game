@@ -422,7 +422,7 @@ html:has([data-game="galaxy"]) body {
   background: #070d1c;
 }
 
-/* 별 원반(components/star/StarGlyph): 쌀알 무늬 두 겹이 서로 반대로 천천히 돌고, 빛무리가 숨 쉰다.
+/* 별(components/star/StarGlyph): 원반 안쪽 쌀알 무늬가 천천히 돌고, 빛무리가 숨 쉬고, 핵과 빛줄기가 가끔 반짝인다.
    transform·opacity만 움직여 그림을 다시 그리지 않는다(별 수십 개도 가볍다). 움직임 줄이기면 멈춘다 */
 @keyframes star-boil {
   to {
@@ -432,13 +432,33 @@ html:has([data-game="galaxy"]) body {
 @keyframes star-breathe {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(0.92);
-    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0.88;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: translate(-50%, -50%) scale(1.03);
     opacity: 1;
   }
+}
+/* 반짝임: 한 주기(7~13초, 별마다 다르다)의 대부분은 가만히 있고, 끝에 1초쯤 핵과 빛줄기가 잠깐 밝아졌다 돌아온다 */
+@keyframes star-twinkle {
+  0%,
+  84%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.92;
+  }
+  88% {
+    transform: translate(-50%, -50%) scale(1.16);
+    opacity: 1;
+  }
+  92% {
+    transform: translate(-50%, -50%) scale(0.97);
+    opacity: 0.85;
+  }
+}
+.star-twinkle {
+  animation: star-twinkle 9s ease-in-out infinite;
 }
 .star-boil {
   animation: star-boil 30s linear infinite;
@@ -452,7 +472,8 @@ html:has([data-game="galaxy"]) body {
 @media (prefers-reduced-motion: reduce) {
   .star-boil,
   .star-boil-back,
-  .star-breathe {
+  .star-breathe,
+  .star-twinkle {
     animation: none;
   }
 }

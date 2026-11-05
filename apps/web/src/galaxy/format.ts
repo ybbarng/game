@@ -42,9 +42,12 @@ export function colorWord(k: number): string {
 
 /** 별 한 줄 사실(docs/48 5-3): 시리우스 · 큰개자리 · −1.5등급 · 8.6광년 · 흰색 9,900 K */
 export function starLine(star: GalaxyStar, constellation: string): string {
+  return [star.ko, constellation, starFacts(star)].filter(Boolean).join(" · ");
+}
+
+/** 별의 밝기·거리·색(이름·별자리가 이미 보이는 칸 카드 머리에서 쓴다) */
+export function starFacts(star: GalaxyStar): string {
   return [
-    star.ko,
-    constellation,
     magText(star.mag),
     lyText(star.ly),
     `${colorWord(star.k)} ${star.k.toLocaleString("ko-KR")} K`,

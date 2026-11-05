@@ -8,10 +8,16 @@ import {
   starAt,
   takeoverPriceOf,
 } from "@game/galaxy-engine";
+import { useLayoutEffect, useRef, useState } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
-
-import { money, SEASON_NAMES, squareName, starInfo, starLine } from "../format";
+import {
+  money,
+  SEASON_NAMES,
+  squareName,
+  starFacts,
+  starInfo,
+} from "../format";
 import { STAR_FACTS } from "../star-facts";
 import { rentTable } from "./Decision";
 import { ShipToken } from "./parts";
@@ -30,8 +36,9 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
       ];
     case "asteroid":
       return [
-        "그냥 멈추면 지나가는 길이에요.",
-        `공문이나 같은 눈 세 번으로 오면 걸려요. 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가거나, 굴려서 같은 눈이 나오면 나가요. 아니면 한 차례 쉬고 나가요.`,
+        "주사위를 굴려 여기 멈추면 아무 일도 없어요.",
+        "우주국 공문 「궤도 이탈」을 받거나, 한 차례에 더블(주사위 두 개가 같은 숫자)이 세 번 연달아 나오면 여기에 걸려요.",
+        `걸리면 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가 굴리거나, 주사위를 굴려 더블이 나오면 그 눈만큼 나가요. 더블이 아니면 그 차례는 쉬고, 그다음 차례에 그냥 나가요.`,
       ];
     case "observatory": {
       const amounts =
@@ -47,7 +54,7 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
     }
     case "comet":
       return [
-        "멈추면 주사위를 한 번 더 굴려 그만큼 더 가요. 이때 같은 눈이 나와도 한 번 더 굴리지 않아요.",
+        "멈추면 주사위를 한 번 더 굴려 그만큼 더 가요. 이때 더블(주사위 두 개가 같은 숫자)이 나와도 한 번 더 굴리지 않아요.",
       ];
     default:
       return [
@@ -100,10 +107,10 @@ export function SquareCard({
     <section
       data-square-card={square}
       aria-label={`${squareName(board, square)} 칸 카드`}
-      className="galaxy-card pointer-events-auto flex max-h-full w-full flex-col overflow-y-auto rounded-2xl border border-sky-100/20 bg-slate-950/92 p-3 text-white shadow-[0_18px_50px_rgba(0,0,0,0.65)] backdrop-blur"
+      className="galaxy-card pointer-events-auto relative flex max-h-full w-full flex-col overflow-y-auto rounded-2xl border border-sky-100/20 bg-slate-950/92 p-2.5 text-white shadow-[0_18px_50px_rgba(0,0,0,0.65)] backdrop-blur"
     >
-      <div className="flex items-start gap-3">
-        <div className="relative size-16 shrink-0 rounded-xl bg-slate-900/80">
+      <div className="flex items-start gap-2.5 pr-5">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-slate-900/80">
           {s && info ? (
             <StarGlyph
               k={info.star.k}
@@ -118,7 +125,7 @@ export function SquareCard({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-black text-lg leading-tight">
+          <p className="font-black text-base leading-tight">
             {squareName(board, square)}
           </p>
           {s && info && (
@@ -146,13 +153,21 @@ export function SquareCard({
               </span>
             </p>
           )}
+          {info && (
+            <p
+              data-star-line
+              className="mt-0.5 text-[11px] text-sky-100/80 leading-snug"
+            >
+              {starFacts(info.star)}
+            </p>
+          )}
         </div>
         <button
           type="button"
           aria-label="닫기"
           data-card-close
           onClick={onClose}
-          className="-mt-1 -mr-1 px-2 py-1 text-white/60 hover:text-white"
+          className="absolute top-1 right-1 px-2 py-1 text-white/60 hover:text-white"
         >
           ✕
         </button>
@@ -199,47 +214,39 @@ function StarBody({
   const inSeason =
     !view.meteor && view.season !== null && group?.home === view.season;
   return (
-    <div className="mt-2 flex flex-col gap-2 text-sm">
-      <p data-star-line className="text-sky-100/80 text-xs leading-snug">
-        {starLine(info.star, info.constellation)}
-      </p>
-      <div className="rounded-xl bg-white/5 px-2.5 py-2">
+    <div className="mt-1.5 flex flex-col gap-1 text-sm">
+      <div className="rounded-xl bg-white/5 px-2.5 py-1.5">
         {owner >= 0 ? (
           <>
-            <p className="flex items-center gap-1.5">
+            {/* 한 줄: 주인과 지금 이용료. 다음 줄: 단계·사들이기 */}
+            <p className="flex flex-wrap items-center gap-x-1.5">
               <ShipToken seat={owner} size={11} />
               <span className="font-semibold">{name(owner)}의 별</span>
               {view.mortgaged[square] && (
                 <span className="text-white/50 text-xs">· 맡김</span>
               )}
-            </p>
-            {owner !== view.mySeat && view.rules.takeover && (
-              <p data-card-takeover className="mt-0.5 text-white/70 text-xs">
-                {takeoverText(view, square)}
-              </p>
-            )}
-            {tier && (
-              <p data-card-tier className="mt-0.5 text-white/70 text-xs">
-                {tier}
-              </p>
-            )}
-            <p className="mt-1">
-              지금 이용료{" "}
-              <span
-                data-card-rent
-                className="font-black text-amber-200 text-base tabular-nums"
-              >
-                {money(rentOf(view, square))}
+              <span className="ml-auto">
+                지금 이용료{" "}
+                <span
+                  data-card-rent
+                  className="font-black text-amber-200 text-base tabular-nums"
+                >
+                  {money(rentOf(view, square))}
+                </span>
               </span>
-              {inSeason && (
-                <span className="ml-1 text-amber-100/70 text-xs">
-                  {SEASON_NAMES[view.season ?? 0]} 제철 1.5배
-                </span>
-              )}
-              {view.meteor && (
-                <span className="ml-1 text-sky-100/70 text-xs">
-                  유성우의 밤 2배
-                </span>
+            </p>
+            {(inSeason || view.meteor) && (
+              <p className="text-right text-amber-100/70 text-xs">
+                {view.meteor
+                  ? "유성우의 밤 2배"
+                  : `${SEASON_NAMES[view.season ?? 0]} 제철 1.5배`}
+              </p>
+            )}
+            <p className="mt-0.5 text-white/70 text-xs leading-snug">
+              {tier && <span data-card-tier>{tier}</span>}
+              {tier && owner !== view.mySeat && view.rules.takeover && " · "}
+              {owner !== view.mySeat && view.rules.takeover && (
+                <span data-card-takeover>{takeoverText(view, square)}</span>
               )}
             </p>
           </>
@@ -279,7 +286,7 @@ function StarBody({
               <li
                 key={sq}
                 className={cn(
-                  "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                  "flex items-center gap-1 rounded-full border px-1.5 text-[11px] leading-5",
                   sq === square
                     ? "border-sky-200/60 bg-sky-200/10"
                     : "border-white/10",
@@ -292,7 +299,45 @@ function StarBody({
           })}
         </ul>
       )}
-      {fact && <p className="text-white/75 text-xs leading-relaxed">{fact}</p>}
+      {fact && <StarStory key={square} text={fact} />}
+    </div>
+  );
+}
+
+/**
+ * 별 이야기: 두 줄까지 보이고 넘치면 「더 보기」로 편다. 휴대폰 세로에서 칸 카드가 판 안쪽에 스크롤 없이 들어가게
+ * (2026-11-05 사용자 「스크롤해야 하는 거 조금 불편」)
+ */
+function StarStory({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && !open) setLong(el.scrollHeight > el.clientHeight + 1);
+  }, [open]);
+  return (
+    <div data-star-story={open ? "open" : "short"} className="relative">
+      <p
+        ref={ref}
+        className={cn(
+          "text-white/75 text-xs leading-relaxed",
+          !open && "line-clamp-2",
+        )}
+      >
+        {text}
+      </p>
+      {/* 둘째 줄 끝에 겹쳐 둔다(줄을 하나 더 쓰지 않게) */}
+      {long && !open && (
+        <button
+          type="button"
+          data-star-more
+          onClick={() => setOpen(true)}
+          className="absolute right-0 bottom-0 bg-[linear-gradient(90deg,transparent,rgb(2_6_23)_1.2rem)] pl-6 text-sky-200/90 text-xs leading-relaxed underline-offset-2 hover:underline"
+        >
+          더 보기
+        </button>
+      )}
     </div>
   );
 }
