@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "bench": "vitest run --config vitest.strength.config.ts"
   },
   "dependencies": {
     "@game/cube-engine": "workspace:*",
@@ -17,6 +18,7 @@
     "@game/puzzle-core": "workspace:*"
   },
   "devDependencies": {
-    "@game/cube-scramble": "workspace:*"
+    "@game/cube-scramble": "workspace:*",
+    "@types/node": "26.6.5"
   }
 }

@@ -448,6 +448,9 @@ importers:
       '@game/cube-scramble':
         specifier: workspace:*
         version: link:../cube-scramble
+      '@types/node':
+        specifier: 26.6.5
+        version: 26.6.5
 
   packages/cube-engine:
     dependencies:

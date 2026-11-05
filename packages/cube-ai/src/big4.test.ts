@@ -13,7 +13,7 @@ import {
   THREE_STAGES,
   withoutParity,
 } from "./big-test-util";
-import { BOT_LEVELS, solveHuman } from "./methods";
+import { SOLVE_METHODS, solveHuman } from "./methods";
 
 /**
  * 4×4 사람 흉내: 축소법 단계 뒤 같은 단계의 3×3 해법. 패리티는 3×3 단계 도중에 고친다
@@ -24,13 +24,13 @@ import { BOT_LEVELS, solveHuman } from "./methods";
 describe("4×4", () => {
   const starts = [21, 22].map((seed) => randomCubeState(4, seed));
 
-  it.each(BOT_LEVELS)("%s: 엔진에서 맞춰지고 단계가 이어진다", (level) => {
+  it.each(SOLVE_METHODS)("%s: 엔진에서 맞춰지고 단계가 이어진다", (level) => {
     for (const start of starts) {
       const solve = solveHuman(level, 4, start);
       checkSolve(4, start, solve);
       expect(withoutParity(solve)).toEqual([
         ...REDUCTION_STAGES,
-        ...THREE_STAGES[level],
+        ...(THREE_STAGES[level] ?? []),
       ]);
     }
   });

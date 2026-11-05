@@ -6,7 +6,7 @@ import {
   stageNames,
   THREE_STAGES,
 } from "./big-test-util";
-import { BOT_LEVELS, solveHuman } from "./methods";
+import { SOLVE_METHODS, solveHuman } from "./methods";
 import { botPlan } from "./plan";
 
 /**
@@ -21,20 +21,21 @@ describe("5×5", () => {
   // 씨앗 22는 축소법이 보통 길이(약 250ms). 21은 그 두 배쯤이라 뺐다
   const first = randomCubeState(5, 22);
 
-  it.each(BOT_LEVELS)("%s: 엔진에서 맞춰지고 단계가 이어진다", (level) => {
+  it.each(SOLVE_METHODS)("%s: 엔진에서 맞춰지고 단계가 이어진다", (level) => {
     const solve = solveHuman(level, 5, first);
     checkSolve(5, first, solve);
     expect(stageNames(solve)).toEqual([
       ...REDUCTION_STAGES,
-      ...THREE_STAGES[level],
+      ...(THREE_STAGES[level] ?? []),
     ]);
   });
 
   it("같은 단계의 3×3보다 오래 걸린다", () => {
     const start3 = randomCubeState(3, 21);
-    for (const level of ["beginner", "expert"] as const) {
-      expect(botPlan(level, 5, first, 5).finishAt).toBeGreaterThan(
-        botPlan(level, 3, start3, 5).finishAt,
+    for (const level of ["novice", "pro"] as const) {
+      const skill = { kind: "level", level } as const;
+      expect(botPlan(skill, 5, first, 5).finishAt).toBeGreaterThan(
+        botPlan(skill, 3, start3, 5).finishAt,
       );
     }
   });

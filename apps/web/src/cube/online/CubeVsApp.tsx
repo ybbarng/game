@@ -1,12 +1,13 @@
 "use client";
 
-import { BOT_LEVEL_LABELS, BOT_LEVELS, type BotLevel } from "@game/cube-ai";
+import { levelText } from "@game/cube-ai";
 import type { MilestoneId } from "@game/cube-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
 import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import { BotLevelPicker } from "./BotLevelPicker";
 import {
   DELAY_CHOICES,
   goalChoices,
@@ -55,7 +56,8 @@ function testItemDraw(): { drawItem?: typeof drawItem } {
 
 export function CubeVsApp() {
   const [n, setN] = useState(2);
-  const [level, setLevel] = useState<BotLevel>("beginner");
+  /** 단계 글(`levelText`) 또는 「내 실력에 맞춤」(`"fit"`) */
+  const [level, setLevel] = useState(levelText("casual"));
   const [inspection, setInspection] = useState(true);
   /** 판 수: 1이면 한 판, 아니면 점수제(docs/51 3-1) */
   const [rounds, setRounds] = useState(1);
@@ -157,22 +159,12 @@ export function CubeVsApp() {
                 ))}
               </select>
             </label>
-            <fieldset className="flex flex-col gap-1 text-sm">
-              <legend className="mb-1">컴퓨터 단계</legend>
-              <div className="flex flex-wrap gap-1">
-                {BOT_LEVELS.map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    aria-pressed={level === l}
-                    onClick={() => setLevel(l)}
-                    className={`rounded-lg px-3 py-1.5 ${level === l ? "bg-amber-400 text-black" : "bg-white/10"}`}
-                  >
-                    {BOT_LEVEL_LABELS[l]}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <BotLevelPicker
+              n={n}
+              average={myAverage}
+              value={level}
+              onChange={setLevel}
+            />
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">규칙</legend>
               <div className="flex flex-wrap gap-1">

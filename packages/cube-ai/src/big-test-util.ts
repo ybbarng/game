@@ -2,7 +2,7 @@
 import { applyMoves, isSolved, parseMoves } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { expect } from "vitest";
-import type { BotLevel } from "./methods";
+import type { SolveMethod } from "./methods";
 import type { HumanSolve, StageName } from "./solve";
 
 /** 엔진에 수를 두면 맞춰지고, 단계가 빈틈없이 이어지고, 살피는 자리가 수 안에 있다 */
@@ -34,9 +34,22 @@ export const REDUCTION_STAGES: readonly StageName[] = [
 ];
 
 /** 축소 뒤 3×3 단계 차례(패리티 빼고) */
-export const THREE_STAGES: Readonly<Record<BotLevel, readonly StageName[]>> = {
+export const THREE_STAGES: Readonly<
+  Partial<Record<SolveMethod, readonly StageName[]>>
+> = {
   beginner: ["cross", "corners", "middle", "eo", "co", "cp", "ep"],
   intermediate: ["cross", "corners", "middle", "eo", "co", "cp", "ep"],
+  fourlook: [
+    "cross",
+    "f2l-1",
+    "f2l-2",
+    "f2l-3",
+    "f2l-4",
+    "eo",
+    "co",
+    "cp",
+    "ep",
+  ],
   advanced: ["cross", "f2l-1", "f2l-2", "f2l-3", "f2l-4", "oll", "pll"],
   expert: ["three"],
 };

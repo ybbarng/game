@@ -1,4 +1,4 @@
-import type { BotLevel } from "@game/cube-ai";
+import { botSkillText, fitTargetMs, readBotSkill } from "@game/cube-ai";
 import type { CubeMove } from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -115,18 +115,15 @@ export type { PartyMode };
 const DISPUTE_MS = 1_000;
 
 /**
- * 크기별 기본 제한 시간(초). 가장 느린 컴퓨터(입문, 초당 2수·층별)도 시간 안에 맞추게 넉넉히 둔다.
- * `botPlan("beginner")` 길이(2026-11-04): 2×2 씨앗 200개 중앙값 50초·최대 82초, 3×3 씨앗 40개 중앙값 104초·최대 130초.
- * 그래서 2×2 3분, 3×3 5분(최대의 2배 남짓).
- * 4×4·5×5도 컴퓨터가 있다(큰 큐브 빠르기, 입문 초당 1.5수). 같은 날 씨앗 1~40으로 잰 입문 길이(살펴보기 빼고):
- * 4×4 중앙값 202초·최대 237초, 5×5 중앙값 256초·최대 290초. 둘 다 10분(최대의 2배 남짓) 안이라 그대로 둔다.
- * 다른 단계는 더 짧다(5×5 중급 최대 124초, 고수 48초, 초고수 29초)
+ * 크기별 기본 제한 시간(초). 가장 느린 컴퓨터(입문)도 시간 안에 맞추게 넉넉히 둔다(가장 긴 판의 1.5배 넘게).
+ * 입문 계획 길이(2026-11-05 bench `balance.strength.ts`, docs/47 10-1 표): 2×2 평균 45초, 3×3 2분, 4×4 5분, 5×5 9분.
+ * 그래서 2×2 3분, 3×3 5분, 4×4 10분, 5×5 15분
  */
 export const TIME_LIMIT_SEC: Record<number, number> = {
   2: 180,
   3: 300,
   4: 600,
-  5: 600,
+  5: 900,
 };
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -147,7 +144,11 @@ export interface RoomPlayer {
   name: string;
   /** 이 참가자를 맡은 기기(연결 아이디) */
   device: string;
-  bot?: BotLevel;
+  /**
+   * 컴퓨터 단계 글(`@game/cube-ai` `botSkillText`: 「2:club」, 「내 실력에 맞춤」은 「2:fit:45000」). 앞 숫자는 계획 표
+   * 버전이라 다른 버전 기기는 계획을 맞춰 보지 않는다. 버전 없는 옛 값(「beginner」 등)은 옛 계획으로 맞춰 본다
+   */
+  bot?: string;
   /**
    * 그 사람 기기가 알린 크기별 내 평균(ms, 키 "2"~"5", 혼자 맞추기 기록, `recentAverage`). 「평균 대비」와 출발 늦추기
    * 추천에 쓴다. 각 기기의 기록이라 확인할 수 없다(친구끼리 믿는 모드)
@@ -712,26 +713,51 @@ export class CubeRoom {
     // 컴퓨터가 없는 크기면 컴퓨터를 뺀다
     if (!botSupports(s.settings.n))
       s.players = s.players.filter((p) => p.bot === undefined);
+    // 「내 실력에 맞춤」은 크기마다 내 평균이 다르다: 새 크기의 내 평균으로 다시 맞춘다
+    if (sizeChanged)
+      for (const p of s.players)
+        if (readBotSkill(p.bot)?.kind === "fit")
+          p.bot = this.fitText(s.settings.n);
     this.resetMatch();
   }
 
-  addBot(level: BotLevel): void {
+  /** 이 기기의 그 크기 내 평균(ms, 혼자 맞추기 최근 평균). 없으면 null */
+  myAverage(n: number): number | null {
+    return this.init.avgs?.[String(n)] ?? null;
+  }
+
+  /** 「내 실력에 맞춤」 글: 이 기기(방장)의 그 크기 내 평균(없으면 초보 목표)을 목표 시간 숫자로만 보낸다 */
+  fitText(n: number): string {
+    return botSkillText({
+      kind: "fit",
+      targetMs: fitTargetMs(n, this.myAverage(n)),
+    });
+  }
+
+  /**
+   * 컴퓨터 하나 더하기. `bot`은 단계 글(`levelText`, 「내 실력에 맞춤」은 `"fit"`이면 방장 평균으로 만든다).
+   * 새 방장은 지금 버전 글만 만든다(옛 값·모르는 글은 받지 않는다)
+   */
+  addBot(bot: string): void {
     const s = this.state;
     if (!this.isHost || !s || s.status === "racing") return;
     if (s.players.length >= MAX_PLAYERS || !botSupports(s.settings.n)) return;
+    const text = bot === "fit" ? this.fitText(s.settings.n) : bot;
+    const skill = readBotSkill(text);
+    if (!skill || skill.kind === "legacy") return;
     let k = 1;
     while (s.players.some((p) => p.id === `bot${k}`)) k++;
     s.players.push({
       id: `bot${k}`,
       name: `컴퓨터 ${k}`,
       device: this.me,
-      bot: level,
+      bot: text,
     });
     this.publish();
   }
 
   /** 빈자리를 모두 컴퓨터로 채운다 */
-  fillWithBots(level: BotLevel): void {
+  fillWithBots(level: string): void {
     const s = this.state;
     if (!s) return;
     while (s.players.length < MAX_PLAYERS && botSupports(s.settings.n)) {
@@ -1339,7 +1365,10 @@ function isRoomState(v: unknown): v is RoomState {
   if (ids.size !== s.players.length) return false;
   const rosterOk = s.players.every((p) =>
     p.bot !== undefined
-      ? BOT_ID.test(p.id) && p.device === s.host
+      ? BOT_ID.test(p.id) &&
+        p.device === s.host &&
+        typeof p.bot === "string" &&
+        p.bot.length <= 32
       : !BOT_ID.test(p.id) && p.device === p.id,
   );
   if (!rosterOk) return false;

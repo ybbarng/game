@@ -1,6 +1,6 @@
 "use client";
 
-import { BOT_LEVEL_LABELS, BOT_LEVELS, type BotLevel } from "@game/cube-ai";
+import { botSkillLabel, levelText } from "@game/cube-ai";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
@@ -12,6 +12,7 @@ import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import { botChoices } from "./bot-choices";
 import { botSupports } from "./bot-racer";
 import { HandicapPanel } from "./HandicapPanel";
 import { localAverages } from "./handicap";
@@ -261,7 +262,7 @@ export function CubeOnlineApp() {
 
 function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
   const state = room.state;
-  const [botLevel, setBotLevel] = useState<BotLevel>("intermediate");
+  const [botLevel, setBotLevel] = useState(levelText("casual"));
   const [link, setLink] = useState("");
   // 방장 연결 아이디를 실어 손님이 처음부터 방장을 알게 한다(먼저 방 상태를 보낸 다른 손님을 믿지 않게)
   useEffect(() => setLink(inviteUrl(roomCode, room.me)), [roomCode, room.me]);
@@ -289,7 +290,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                 <span>{p.bot ? "🤖" : "🧑"}</span>
                 <span className={p.id === room.me ? "text-amber-200" : ""}>
                   {p.name}
-                  {p.bot ? ` (${BOT_LEVEL_LABELS[p.bot]})` : ""}
+                  {p.bot ? ` (${botSkillLabel(p.bot, s.n)})` : ""}
                   {p.id === state.host ? " · 방장" : ""}
                 </span>
                 {!p.bot && !room.isConnected(p.device) && (
@@ -311,13 +312,18 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
               <select
                 value={botLevel}
-                onChange={(e) => setBotLevel(e.target.value as BotLevel)}
+                onChange={(e) => setBotLevel(e.target.value)}
                 className="rounded bg-white/10 px-2 py-1"
                 aria-label="컴퓨터 단계"
+                data-cube-bot-level
               >
-                {BOT_LEVELS.map((l) => (
-                  <option key={l} value={l} className="bg-neutral-800">
-                    {BOT_LEVEL_LABELS[l]}
+                {botChoices(s.n, room.myAverage(s.n)).map((c) => (
+                  <option
+                    key={c.value}
+                    value={c.value}
+                    className="bg-neutral-800"
+                  >
+                    {c.label} · {c.time}
                   </option>
                 ))}
               </select>

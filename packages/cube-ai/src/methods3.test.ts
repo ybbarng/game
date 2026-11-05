@@ -6,10 +6,11 @@ import {
 } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 import {
-  type BotLevel,
+  type SolveMethod,
   solveBeginner3,
   solveCfop,
   solveExpert3,
+  solveHuman,
   solveIntermediate3,
 } from "./methods";
 import type { HumanSolve } from "./solve";
@@ -36,7 +37,7 @@ function check(solve: HumanSolve, seed: number): void {
 }
 
 const cases: [
-  BotLevel,
+  SolveMethod,
   (s: ReturnType<typeof randomCubeState>) => HumanSolve,
   number,
   number,
@@ -57,6 +58,13 @@ const cases: [
     50,
     130,
     ["cross", "corners", "middle", "eo", "co", "cp", "ep"],
+  ],
+  [
+    "fourlook",
+    (s) => solveHuman("fourlook", 3, s),
+    45,
+    100,
+    ["cross", "f2l-1", "f2l-2", "f2l-3", "f2l-4", "eo", "co", "cp", "ep"],
   ],
   [
     "advanced",

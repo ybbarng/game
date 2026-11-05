@@ -1,3 +1,4 @@
+import { levelText } from "@game/cube-ai";
 import { type CubeMove, invertMoves, parseMoves } from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -27,6 +28,8 @@ import {
 } from "./party";
 import { type Scrambler, stateHash } from "./race-game";
 import { CubeRoom, DEFAULT_SETTINGS, raceOptionsFor } from "./room";
+
+const NOVICE = levelText("novice");
 
 /**
  * 아이템전(docs/51 3-3, docs/47 9-7). 순수 판정(`judgeParty` + 아이템)과 기기마다 RaceHub 하나인 방(ManualClock·DelayNet)으로 본다.
@@ -673,7 +676,7 @@ describe("아이템전(기기마다)", () => {
       drawItem: stub({ me: ["mix"], bot1: ["fog", "fog"] }),
       settings: { n: 2, inspection: false, timeLimitSec: 180, party: "items" },
     });
-    host.addBot("beginner");
+    host.addBot(NOVICE);
     at(clock, host, [
       { at: 300, run: play(SOLUTION.slice(0, 2)) },
       ...wiggles(500, 90_000, 400),
@@ -690,7 +693,7 @@ describe("아이템전(기기마다)", () => {
     expect(r?.result.players.bot1?.status).toBe("done");
     expect(
       await checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         r?.start as PuzzleState,
         r?.seed as string,
@@ -704,7 +707,7 @@ describe("아이템전(기기마다)", () => {
     );
     expect(
       await checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         r?.start as PuzzleState,
         r?.seed as string,

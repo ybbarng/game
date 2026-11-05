@@ -1,4 +1,4 @@
-import type { BotLevel, BotPlan } from "@game/cube-ai";
+import type { BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import { type Clock, realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
@@ -232,7 +232,7 @@ export function solveInWorker(
 
 /** 컴퓨터가 맞추는 계획(수와 둘 시각). 해법기 표를 처음 만들 때 1초 넘게 걸릴 수 있다 */
 export function planInWorker(
-  level: BotLevel,
+  level: string,
   size: number,
   state: PuzzleState,
   seed: number,
