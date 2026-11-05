@@ -17,16 +17,15 @@ import {
 import { ItemIcon } from "./ItemBar";
 import { ITEM_LABELS, type ItemKind } from "./items";
 import { PartyBar } from "./PartyBar";
+import type { SeatLook } from "./race-seats";
 
 /**
  * 대결 화면 테두리의 상대 자리 하나(docs/47 9-9). 작은 큐브 그림(비스듬한 SVG, 3D 장면은 만들지 않는다)이 상대가
  * 돌릴 때마다 바뀌고, 이름·단계 칩·체력바·맞은 방해·끝냄/기권/탈락을 붙인다. 칸 높이는 판 내내 같아(맞은 방해·톡은
  * 그림 위에 겹친다) 위 줄 자리가 내 큐브를 밀지 않는다.
  *
- * 꼴: `top`(데스크톱 위 줄, 그림 왼쪽·글 오른쪽), `side`(데스크톱 양옆, 글 위·그림 아래 크게),
- * `slim`(휴대폰 가로 양옆·휴대폰 세로 한두 자리, 작은 그림 왼쪽), `tiny`(휴대폰 세로 셋 이상, 글 위·작은 그림 아래)
+ * 꼴(`SeatLook`)과 폭은 `race-seats.ts`가 정한다
  */
-export type SeatLook = "top" | "side" | "slim" | "tiny";
 
 export interface SeatNotice {
   key: string;

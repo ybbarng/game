@@ -61,9 +61,15 @@ import {
   PARTY_REASONS,
   type PartyOutcome,
 } from "./party";
-import { PeerStages, RaceSeat, type SeatLook } from "./RaceSeat";
+import { PeerStages, RaceSeat } from "./RaceSeat";
 import { stageLabel, turnCount } from "./race-game";
-import { planSeats, type SeatMode, seatModeOf } from "./race-seats";
+import {
+  NARROW_ONE_PX,
+  planSeats,
+  type SeatLook,
+  type SeatMode,
+  seatModeOf,
+} from "./race-seats";
 import {
   liveOrder,
   pickToasts,
@@ -548,15 +554,7 @@ export function RaceView({
         : "DNF";
     return chips ? "" : `${p.moves}수`;
   };
-  const seatLookOf = (where: "top" | "side"): SeatLook =>
-    seatMode === "narrow"
-      ? plan.topColumns <= 2
-        ? "slim"
-        : "tiny"
-      : seatMode === "short"
-        ? "slim"
-        : where;
-  const seat = (p: (typeof snap.peers)[number], where: "top" | "side") => {
+  const seat = (p: (typeof snap.peers)[number], shape: SeatLook) => {
     const st = session.stateOf(p.id);
     const hp = partyHp(p.id);
     const knocked = hp !== undefined && partyOut(p.id);
@@ -565,7 +563,7 @@ export function RaceView({
         key={p.id}
         id={p.id}
         name={room.playerName(p.id)}
-        shape={seatLookOf(where)}
+        shape={shape}
         status={statusOf(p)}
         done={p.status === "done"}
         out={knocked || p.status === "forfeit" || p.status === "dnf"}
@@ -631,24 +629,31 @@ export function RaceView({
           <div
             data-cube-seats="top"
             className={
-              seatMode === "narrow"
-                ? `grid gap-1.5 ${plan.topColumns === 1 ? "mx-auto w-full max-w-72" : ""}`
+              plan.topSeatWidth === null
+                ? "mx-auto grid w-full gap-1.5"
                 : "flex flex-wrap justify-center gap-3"
             }
             style={
-              seatMode === "narrow"
+              plan.topSeatWidth === null
                 ? {
                     gridTemplateColumns: `repeat(${plan.topColumns}, minmax(0, 1fr))`,
+                    ...(plan.topColumns === 1
+                      ? { maxWidth: NARROW_ONE_PX }
+                      : {}),
                   }
                 : undefined
             }
           >
             {plan.top.map((p) =>
-              seatMode === "narrow" ? (
-                seat(p, "top")
+              plan.topSeatWidth === null ? (
+                seat(p, plan.topLook)
               ) : (
-                <div key={p.id} className="w-72 max-w-full">
-                  {seat(p, "top")}
+                <div
+                  key={p.id}
+                  className="max-w-full"
+                  style={{ width: plan.topSeatWidth }}
+                >
+                  {seat(p, plan.topLook)}
                 </div>
               ),
             )}
@@ -658,9 +663,10 @@ export function RaceView({
           {plan.left.length > 0 && (
             <div
               data-cube-seats="left"
-              className={`flex shrink-0 flex-col gap-2 ${seatMode === "short" ? "w-40" : "w-44"}`}
+              className="flex shrink-0 flex-col gap-2"
+              style={{ width: plan.sideWidth }}
             >
-              {plan.left.map((p) => seat(p, "side"))}
+              {plan.left.map((p) => seat(p, plan.sideLook))}
             </div>
           )}
           <div className="relative flex min-w-0 flex-1 flex-col items-center gap-2">
@@ -892,9 +898,10 @@ export function RaceView({
           {plan.right.length > 0 && (
             <div
               data-cube-seats="right"
-              className={`flex shrink-0 flex-col gap-2 ${seatMode === "short" ? "w-40" : "w-44"}`}
+              className="flex shrink-0 flex-col gap-2"
+              style={{ width: plan.sideWidth }}
             >
-              {plan.right.map((p) => seat(p, "side"))}
+              {plan.right.map((p) => seat(p, plan.sideLook))}
             </div>
           )}
         </div>
