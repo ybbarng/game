@@ -21,6 +21,7 @@ import {
 } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
+import { DealAnimation } from "@/components/DealAnimation";
 import { useHandControls } from "@/components/hand-controls";
 import { ActionButton, Panel } from "@/components/panels/common";
 import { ResultBanner } from "@/components/ResultBanner";
@@ -34,7 +35,8 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { useStimulusShown } from "@/game/stimulus-shown";
-import { HwatuFairBar } from "@/hwatu/fair-bar";
+import { prefersReducedMotion } from "@/game/timing";
+import { HwatuFairBar, useHwatuFair } from "@/hwatu/fair-bar";
 import {
   computeLayout,
   type Layout,
@@ -44,11 +46,13 @@ import {
 import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 
+import { onecardDealPattern, planFx, type Spot } from "../card-fx";
 import { isRedSuit, SUIT_NAMES, SUIT_SYMBOLS } from "../cards";
 import { ONECARD_LEVELS } from "../settings";
 import { ShoutPress } from "../shout-press";
 import { useOnecard } from "../store";
 import { OnecardCardView } from "./OnecardCard";
+import { DeckShuffle, FlightLayer, useCardFlights } from "./OnecardFx";
 import { OnecardSettingsMenu } from "./OnecardSettingsMenu";
 
 /** 원카드 화면 배경(짙은 남색 펠트). 하트는 붉은 펠트, 마이티는 초록 펠트 */
@@ -413,6 +417,39 @@ function fanSlot(
   };
 }
 
+/** 남의 손패 뒷면 한 장 크기(자리 판 높이에 맞춘다, 하트와 같다) */
+function fanCardOf(layout: Layout | null) {
+  if (!layout) return { w: 0, h: 0 };
+  const h = Math.min(56, Math.max(30, (layout.seats[1]?.plate.h ?? 40) * 1.05));
+  return { w: (h * 5) / 7, h };
+}
+
+/** 무대 기준 요소 가운데와 너비 */
+function spotOf(el: Element | null, stage: Element): Spot | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width === 0) return null;
+  const s = stage.getBoundingClientRect();
+  return {
+    x: r.left - s.left + r.width / 2,
+    y: r.top - s.top + r.height / 2,
+    w: r.width,
+  };
+}
+
+/** 덱과 버린 더미의 자리(가운데 칸은 flex로 놓여 그린 뒤에 잰다) */
+function measureTable(stage: Element | null) {
+  if (!stage) return null;
+  const deck = spotOf(stage.querySelector("[data-deck] > :first-child"), stage);
+  const pile = spotOf(stage.querySelector("[data-pile] > span"), stage);
+  return deck && pile ? { deck, pile } : null;
+}
+
+const sameSpot = (a: Spot, b: Spot) =>
+  Math.round(a.x) === Math.round(b.x) &&
+  Math.round(a.y) === Math.round(b.y) &&
+  Math.round(a.w) === Math.round(b.w);
+
 /**
  * 미션 띠 자리: 막대 바로 아래 가운데. 위쪽 자리 판을 가리면 가로 화면은 그 왼쪽 빈 곳으로 좁히고,
  * 세로 화면은 그 아래로 내린다(하트와 같은 규칙, 자리가 몇이든)
@@ -464,7 +501,9 @@ export function OnecardGame({
     hostLeft,
     offlineSeats,
     shoutEvents,
+    dealing,
   } = useOnecard();
+  const fairShuffling = useHwatuFair((s) => s.shuffling);
   const submit = useOnecard((s) => s.submit);
   const shout = useOnecard((s) => s.shout);
   const resign = useOnecard((s) => s.resign);
@@ -484,6 +523,12 @@ export function OnecardGame({
   // 손패를 훑거나 끌어 낸 손은 카드 누르기로 치지 않는다(useHandControls가 손을 뗄 때 처리한다)
   const gestured = useRef(false);
   const bubbles = useBubbles(events, eventSeq);
+  const fx = useCardFlights();
+  const [table, setTable] = useState<{ deck: Spot; pile: Spot } | null>(null);
+  // 나눠 준 뒤 손패가 손패 가운데에서 펼쳐진다(하트·마이티와 같다)
+  const [spread, setSpread] = useState<"idle" | "gathered" | "spreading">(
+    "idle",
+  );
 
   useEffect(() => {
     if (!notice) return;
@@ -516,10 +561,89 @@ export function OnecardGame({
           handCount: Math.max(hand.length, 1),
         })
       : null;
-  const myTurn = view?.phase === "play" && view.turn === me;
+  // 나눠 주는 동안은 내 차례여도 손패를 내지 않는다(하트 `canActHearts`와 같다)
+  const myTurn = view?.phase === "play" && view.turn === me && !dealing;
   const playable = new Set(
     (view?.moves ?? []).flatMap((a) => (a.type === "play" ? [a.card] : [])),
   );
+
+  // 덱·버린 더미 자리를 잰다(나눠 주기·다시 섞기 연출이 그 자리에서 돈다)
+  useLayoutEffect(() => {
+    const next = measureTable(stage.ref.current);
+    if (!next) return;
+    setTable((old) =>
+      old && sameSpot(old.deck, next.deck) && sameSpot(old.pile, next.pile)
+        ? old
+        : next,
+    );
+  });
+
+  // 걸음마다 카드 연출을 짠다. 판 상태는 이미 그렸고(맨 위 카드 포함) 연출은 그 위를 지나가는 겉그림이다
+  const prev = useRef<{
+    hand: readonly OnecardCard[];
+    counts: readonly number[];
+    layout: Layout | null;
+  }>({ hand: [], counts: [], layout: null });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 사건 묶음이 올 때만(eventSeq) 짠다
+  useLayoutEffect(() => {
+    if (!view || !layout || prefersReducedMotion()) return;
+    const measured = measureTable(stage.ref.current);
+    if (!measured) return;
+    const before = prev.current;
+    const fan = fanCardOf(layout);
+    const { steps, duration } = planFx(events, {
+      me,
+      prevHand: before.hand,
+      hand: view.hand,
+      prevCounts: before.counts,
+      deck: measured.deck,
+      pile: measured.pile,
+      prevHandSpot: (card) => {
+        const slot = before.layout?.hand.slots[before.hand.indexOf(card)];
+        return slot && before.layout
+          ? { x: slot.x, y: slot.y, w: before.layout.hand.card.w }
+          : null;
+      },
+      handSpot: (card) => {
+        const slot = layout.hand.slots[view.hand.indexOf(card)];
+        return slot ? { x: slot.x, y: slot.y, w: layout.hand.card.w } : null;
+      },
+      fanSpot: (seat, index, count) => {
+        const plate = layout.seats[(seat - me + n) % n]?.plate;
+        if (!plate || seat === me) return null;
+        const at = fanSlot(layout, plate, fan, index, count);
+        return { x: at.x, y: at.y, w: fan.w, rotate: at.rotate };
+      },
+    });
+    fx.run(steps, duration, measured.deck);
+  }, [eventSeq]);
+  // 다음 걸음이 "걸음 전" 손패·장 수·자리로 쓴다(연출 계획 뒤에 고친다)
+  useLayoutEffect(() => {
+    prev.current = {
+      hand: view?.hand ?? [],
+      counts: view?.handCounts ?? [],
+      layout,
+    };
+  });
+  // 대국이 바뀌면(다시 하기·온라인 방) 남은 연출을 버린다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 대국이 바뀔 때만
+  useEffect(() => fx.clear(), [host]);
+
+  const wasDealing = useRef(false);
+  useLayoutEffect(() => {
+    const was = wasDealing.current;
+    wasDealing.current = dealing !== null;
+    if (!was || dealing !== null) return;
+    setSpread("gathered");
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => setSpread("spreading"));
+    });
+    const end = setTimeout(() => setSpread("idle"), 700);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(end);
+    };
+  }, [dealing]);
 
   const send = (action: Action) => submit(action);
   const play = (card: OnecardCard) => {
@@ -609,15 +733,7 @@ export function OnecardGame({
     top !== null && view.suit !== null && suitOf(top) !== view.suit;
   const offsets = Array.from({ length: n - 1 }, (_, i) => i + 1);
   const seatOf = (offset: number) => (me + offset) % n;
-  const fanCard = layout
-    ? (() => {
-        const h = Math.min(
-          56,
-          Math.max(30, (layout.seats[1]?.plate.h ?? 40) * 1.05),
-        );
-        return { w: (h * 5) / 7, h };
-      })()
-    : { w: 0, h: 0 };
+  const fanCard = fanCardOf(layout);
   const tableCenter: Point = layout
     ? {
         x: layout.center.x + layout.center.w / 2,
@@ -767,7 +883,10 @@ export function OnecardGame({
                 </div>,
               ];
             }
+            if (dealing) return [];
             const count = view.handCounts[seat] ?? 0;
+            // 덱에서 날아오는 중인 카드는 내려앉을 때까지 가린다
+            const arriving = fx.hiddenSeats.get(seat) ?? 0;
             return [
               <span
                 key={`fan-${seat}`}
@@ -786,6 +905,7 @@ export function OnecardGame({
                       className="absolute top-0 left-0 transition-transform duration-300"
                       style={{
                         zIndex: 1 + i,
+                        ...(i >= count - arriving ? { opacity: 0 } : {}),
                         transform: `translate(${at.x - fanCard.w / 2}px, ${at.y - fanCard.h / 2}px) rotate(${at.rotate}deg)`,
                       }}
                     />
@@ -1000,18 +1120,21 @@ export function OnecardGame({
                   이 카드 내기
                 </button>
               )}
-              <RoundOutcome
-                outcome={null}
-                status={notice ?? status}
-                className={cn(
-                  "rounded-full px-3 py-0.5 text-xs shadow [&>p]:min-h-0",
-                  notice
-                    ? "bg-black/80"
-                    : myTurn
-                      ? "animate-pulse bg-amber-400 font-bold text-black"
-                      : "bg-black/45",
-                )}
-              />
+              {/* 나눠 주는 동안은 차례 안내를 띄우지 않는다(아직 아무도 둘 수 없다) */}
+              {(!dealing || notice) && (
+                <RoundOutcome
+                  outcome={null}
+                  status={notice ?? status}
+                  className={cn(
+                    "rounded-full px-3 py-0.5 text-xs shadow [&>p]:min-h-0",
+                    notice
+                      ? "bg-black/80"
+                      : myTurn
+                        ? "animate-pulse bg-amber-400 font-bold text-black"
+                        : "bg-black/45",
+                  )}
+                />
+              )}
             </div>
           )}
 
@@ -1019,6 +1142,8 @@ export function OnecardGame({
           <section
             aria-label="내 손패"
             data-turn={myTurn || undefined}
+            // 나눠 받은 패가 손패 가운데에서 펼쳐지는 중(화면 시험이 끝나기를 기다린다)
+            data-spreading={spread !== "idle" || undefined}
             onPointerDownCapture={(e) => {
               pointer.current = e.pointerType;
             }}
@@ -1035,10 +1160,15 @@ export function OnecardGame({
                 className="top-0 left-1/2 -translate-x-1/2"
               />
             )}
-            {hand.map((card, i) => {
+            {(dealing ? [] : hand).map((card, i) => {
               const slot = layout.hand.slots[i];
               if (!slot) return null;
               const { w, h } = layout.hand.card;
+              const arriving = fx.hiddenCards.has(card);
+              const at =
+                spread === "gathered"
+                  ? { x: stage.width / 2, scale: 0.55 }
+                  : { x: slot.x, scale: 1 };
               const lift =
                 controls.dragArmed && selected === card ? h * 0.4 : 0;
               const canPlay = myTurn && playable.has(card);
@@ -1054,13 +1184,63 @@ export function OnecardGame({
                   className="absolute top-0 left-0"
                   style={{
                     zIndex: 10 + i,
-                    transform: `translate(${slot.x - w / 2}px, ${slot.y - layout.hand.top - h / 2 - lift}px)`,
+                    transform: `translate(${at.x - w / 2}px, ${slot.y - layout.hand.top - h / 2 - lift}px) scale(${at.scale})`,
                     ...(canPlay ? { touchAction: "none" } : {}),
+                    ...(spread === "spreading"
+                      ? {
+                          transitionDuration: "300ms",
+                          transitionDelay: `${Math.min(i * 25, 300)}ms`,
+                        }
+                      : {}),
+                    ...(arriving
+                      ? { opacity: 0, pointerEvents: "none" as const }
+                      : {}),
                   }}
                 />
               );
             })}
           </section>
+
+          {/* 섞고 나눠 주기(하트와 같은 DealAnimation, 덱 자리에서) · 멘탈 포커로 섞는 동안 */}
+          {table &&
+            (dealing || (fairShuffling && fairShuffling !== "wait")) && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-[245]"
+              >
+                {dealing ? (
+                  <DealAnimation
+                    key={dealing.key}
+                    center={{ x: table.deck.x, y: table.deck.y }}
+                    card={{
+                      w: table.deck.w,
+                      h: Math.round(table.deck.w * 1.4),
+                    }}
+                    targets={Array.from({ length: n }, (_, k) => {
+                      const seat = (dealing.first + k) % n;
+                      if (seat === me)
+                        return {
+                          x: stage.width / 2,
+                          y: layout.hand.slots[0]?.y ?? layout.hand.top,
+                        };
+                      const plate = layout.seats[(seat - me + n) % n]?.plate;
+                      if (!plate) return tableCenter;
+                      const at = fanSlot(layout, plate, fanCard, 0, 1);
+                      return { x: at.x, y: at.y };
+                    })}
+                    handSize={dealing.handSize}
+                    kittyCount={0}
+                    startDelay={0}
+                    pattern={onecardDealPattern(dealing.handSize)}
+                    shuffleMs={dealing.shuffleMs}
+                  />
+                ) : (
+                  <DeckShuffle deck={table.deck} />
+                )}
+              </div>
+            )}
+          {/* 카드 내기·먹기·다시 섞기 겉그림(판 상태는 이미 그렸다) */}
+          <FlightLayer flights={fx.flights} onDone={fx.done} />
 
           {mission && (
             <MissionOverlay
