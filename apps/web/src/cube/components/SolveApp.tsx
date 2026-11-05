@@ -283,26 +283,46 @@ export function SolveApp({ mode }: { mode: SolveMode }) {
   useEffect(() => {
     if (phase !== "memo") setNotice((v) => (v === MEMO_BLOCKED ? null : v));
   }, [phase]);
-  // 완성까지 거리(2×2·3×3, 8수 안쪽일 때만 보인다). 수마다 워커에 묻고, 답이 왔을 때 상태가 바뀌었으면 버린다
+  // 완성까지 거리(2×2·3×3, 8수 안쪽일 때만 보인다). 워커에는 한 번에 하나만 묻는다: 수마다 물으면 워커가 일을
+  // 차례로 하므로 빠르게 칠수록 지난 상태들의 답을 다 기다린 뒤에야 지금 상태의 답이 온다(2026-11-05 CI에서
+  // 5초 넘게 늦음). 답이 왔을 때 그사이 상태가 바뀌었으면 그 답은 버리고 마지막 상태만 다시 묻는다
   const [near, setNear] = useState<number | null>(null);
   const tracking = mode === "solo" && n <= 3 && phase === "solving";
+  const nearAsk = useRef({ busy: false, live: false, n, session });
+  nearAsk.current.n = n;
+  nearAsk.current.session = session;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 수마다(version) 다시 묻는다
   useEffect(() => {
+    const ask = nearAsk.current;
+    ask.live = tracking;
     if (!tracking) {
       setNear(null);
       return;
     }
-    const asked = session.state;
-    let live = true;
-    distanceInWorker(n, asked, NEAR_LIMIT)
-      .then((d) => {
-        if (live && session.state === asked) setNear(d);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
+    if (ask.busy) return; // 지금 묻는 답이 오면 마지막 상태를 다시 묻는다
+    // 크기·세션이 바뀌어도 답이 온 때의 마지막 것을 본다(ref)
+    const run = () => {
+      const { n: size, session: s } = ask;
+      const asked = s.state;
+      ask.busy = true;
+      distanceInWorker(size, asked, NEAR_LIMIT)
+        .then((d) => {
+          if (ask.live && ask.session.state === asked) setNear(d);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          ask.busy = false;
+          if (ask.live && ask.session.state !== asked) run();
+        });
     };
+    run();
   }, [tracking, version, n, session]);
+  useEffect(
+    () => () => {
+      nearAsk.current.live = false;
+    },
+    [],
+  );
   // 이 섞기의 짧은 풀이(결과 상자, 2×2·3×3)
   const [short, setShort] = useState<{
     scramble: string;
