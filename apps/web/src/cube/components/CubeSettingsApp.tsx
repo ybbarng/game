@@ -1,5 +1,6 @@
 "use client";
 
+import { solvedCube } from "@game/cube-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -50,7 +51,7 @@ import {
   withScheme,
 } from "../settings";
 import type { Quality } from "../view/types";
-import { CubeNet } from "./CubeNet";
+import { CubePosterPair } from "./CubePosterPair";
 
 /** 큐브 설정 화면(`/cube/settings`): 키 배치·사용자 배치 편집, 색, 보기, 소리 */
 
@@ -76,9 +77,7 @@ const QUALITY_LABEL: Record<Quality, string> = {
   medium: "보통",
   low: "낮음",
 };
-const SOLVED_FACES = Array.from({ length: 6 }, (_, f) =>
-  new Array<number>(9).fill(f),
-);
+const SOLVED = solvedCube(3);
 
 const chip = (on: boolean) =>
   cn(
@@ -129,12 +128,12 @@ export function CubeSettingsApp() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <CubeNet
+            <CubePosterPair
               n={3}
-              faces={SOLVED_FACES}
-              colors={settings.colors}
-              hidden={settings.hidden}
-              className="h-24 w-auto"
+              state={SOLVED}
+              settings={settings}
+              captions={false}
+              className="w-48"
             />
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
               {FACE_LABEL.map((label, f) => (
@@ -191,7 +190,7 @@ export function CubeSettingsApp() {
           </div>
           <div className="flex flex-wrap items-center gap-2" data-back-view>
             뒷면 보기
-            {(["mirror", "net", "off"] as const).map((b) => (
+            {(["mirror", "off"] as const).map((b) => (
               <button
                 key={b}
                 type="button"
@@ -205,7 +204,7 @@ export function CubeSettingsApp() {
           </div>
           <p className="-mt-2 break-keep text-white/50 text-xs">
             거울은 안 보이는 뒤·왼쪽·아래 면을 큐브 둘레에 비춰 보여요. 좁은
-            자리나 3D를 못 그리는 기기에서는 펼친 그림으로 보여요.
+            자리에서는 거울 없이 큐브만 보이니 끌어서 둘러봐요.
           </p>
           <div className="flex flex-wrap items-center gap-2" data-flow-setting>
             수 흐름 띠

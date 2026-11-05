@@ -13,7 +13,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid, stickersFromState } from "../bridge";
+import { stickersFromState } from "../bridge";
 import type { Command } from "../input";
 import {
   algTokens as algTokensOf,
@@ -41,8 +41,8 @@ import {
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView, type MarkTone } from "../view";
 import { CubeHero } from "./CubeHero";
-import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { CubePosterPair } from "./CubePosterPair";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StillCube } from "./StillCube";
 
@@ -137,7 +137,7 @@ export function FindPanel({
     if (flash) tones.push([flash.piece, flash.tone]);
     return marksForSlots(n, start, tones);
   }, [found, flash, passed, counting, n, start]);
-  // 가린 큐브에서 고른 조각은 3D·펼친 그림 모두 색을 드러낸다
+  // 가린 큐브에서 고른 조각은 3D·큐브 그림 모두 색을 드러낸다
   const shown = useMemo(
     () => revealFound(n, start, mask, found),
     [n, start, mask, found],
@@ -777,7 +777,7 @@ export function PlayPanel({
 
 // ── 작은 그림 큐브(그림 고르기) ───────────────────────────
 
-/** 3D 정지 그림 하나(끌면 둘러보기만). 3D를 못 그리면 펼친 그림 */
+/** 3D 정지 그림 하나(끌면 둘러보기만). 3D를 못 그리면 비스듬한 큐브 그림 둘 */
 function MiniCube({
   n,
   state,
@@ -833,12 +833,13 @@ function MiniCube({
   ]);
   return failed ? (
     <div data-cube-no3d className="w-full p-2">
-      <CubeNet
+      <CubePosterPair
         n={n}
-        faces={faceGrid(n, state, mask)}
-        colors={settings.colors}
-        hidden={settings.hidden}
-        className="h-auto w-full"
+        state={state}
+        mask={mask}
+        settings={settings}
+        captions={false}
+        className="w-full"
       />
     </div>
   ) : (

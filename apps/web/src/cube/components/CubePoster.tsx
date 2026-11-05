@@ -1,5 +1,6 @@
 import type { StickerPattern } from "../item-look";
-import type { Normal, Sticker } from "../view/types";
+import { hexColor } from "../settings";
+import { MARK_COLOR, type Normal, type Sticker } from "../view/types";
 import { posterShapes } from "./cube-poster-art";
 import { PatternGlyph } from "./PatternGlyph";
 
@@ -51,7 +52,16 @@ export function CubePoster({
   shadow = true,
   className,
   patterns,
+  slotOf,
+  onSticker,
 }: {
+  /**
+   * 스티커 정체 → 지금 자리 번호(f*n*n + k). 주면 칸마다 자리·가림·표시를 속성(`data-sticker` 등)으로 달아
+   * 시험과 누르기가 읽는다. 뒤쪽 그림(돌려 쥔 상태)도 원래 상태의 자리를 알린다
+   */
+  slotOf?: ((id: number) => number) | undefined;
+  /** 칸을 누르면 그 자리 번호(배우기 「조각 찾기」). `slotOf`와 함께 준다 */
+  onSticker?: ((slot: number) => void) | undefined;
   /** 흑백 화면(아이템전): 색 번호마다 무늬 */
   patterns?: readonly (StickerPattern | null)[] | null | undefined;
   n: number;
@@ -122,13 +132,47 @@ export function CubePoster({
         const k = FACE_SHADE[t.normal] ?? 0.85;
         const c = t.color === null ? HIDDEN[hidden] : (colors[t.color] ?? 0);
         const p = t.color === null ? null : patterns?.[t.color];
+        const slot = slotOf && t.id !== undefined ? slotOf(t.id) : undefined;
+        const press = onSticker && slot !== undefined ? onSticker : undefined;
+        const mark = t.mark ?? null;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: 스티커 자리 차례가 곧 열쇠
           <g key={i}>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: 누를 수 있을 때만 role="button"을 준다 */}
             <polygon
               points={t.points}
               fill={shade(c, k)}
               data-poster-sticker={t.color ?? "hidden"}
+              data-sticker={slot}
+              data-sticker-hidden={
+                slot !== undefined && t.color === null ? "" : undefined
+              }
+              stroke={mark ? hexColor(MARK_COLOR[mark]) : undefined}
+              strokeWidth={mark ? 2.4 : undefined}
+              strokeLinejoin="round"
+              data-sticker-mark={
+                slot !== undefined ? (mark ?? undefined) : undefined
+              }
+              data-sticker-cell={press ? slot : undefined}
+              role={press ? "button" : undefined}
+              tabIndex={press ? 0 : undefined}
+              aria-label={
+                press && slot !== undefined ? `칸 ${slot + 1}` : undefined
+              }
+              onClick={
+                press && slot !== undefined ? () => press(slot) : undefined
+              }
+              onKeyDown={
+                press && slot !== undefined
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        press(slot);
+                      }
+                    }
+                  : undefined
+              }
+              className={press ? "cursor-pointer" : undefined}
             />
             {p && p !== "none" && (
               <PatternGlyph pattern={p} transform={t.frame} />

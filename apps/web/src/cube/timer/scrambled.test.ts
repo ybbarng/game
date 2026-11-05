@@ -1,7 +1,7 @@
 import { faceColors, solvedCube } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
-import { backSideState, scrambledNet, scrambledState } from "./net";
+import { backSideState, scrambledState } from "./scrambled";
 
 /** 면 번호 차례 U R F D L B */
 const U = 0;
@@ -33,7 +33,5 @@ describe("섞기 그림", () => {
     // 색마다 9장씩, 모두 54장
     for (let c = 0; c < 6; c++)
       expect(shown.filter((x) => x === c)).toHaveLength(9);
-    // 펼친 그림과 같은 상태에서 나온다
-    expect(scrambledNet(n, "R U R' U' F2 D L' B")).toHaveLength(54);
   });
 });

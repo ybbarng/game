@@ -5,17 +5,12 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import {
-  faceGrid,
-  marksAtSlots,
-  type StickerMarks,
-  stickersFromState,
-} from "../bridge";
+import { type StickerMarks, stickersFromState } from "../bridge";
 import { stickerAtHit } from "../learn/interact";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
-import { CubeNet } from "./CubeNet";
-import { StageWithNet, useBackView } from "./StageWithNet";
+import { CubePosterPair } from "./CubePosterPair";
+import { StageBox, useBackView } from "./StageBox";
 
 /** 정지한 큐브(돌리지 않음). 끌면 보는 각만 바뀌고, `onSticker`가 있으면 누른 칸을 알린다 */
 export function StillCube({
@@ -33,9 +28,9 @@ export function StillCube({
   mask: StickerMask | null;
   settings: CubeSettings;
   onSticker?: (sticker: number) => void;
-  /** 칸 표시(스티커 정체마다): 고른 조각·맞음·틀림을 3D 고리와 펼친 그림 테두리로 */
+  /** 칸 표시(스티커 정체마다): 고른 조각·맞음·틀림을 3D 고리와 큐브 그림 테두리로 */
   marks?: StickerMarks | null;
-  /** 3D를 못 그릴 때 대신 보일 것. 없으면 펼친 그림 */
+  /** 3D를 못 그릴 때 대신 보일 것. 없으면 비스듬한 큐브 그림 둘(앞쪽 셋·뒤쪽 셋, 칸을 누를 수 있다) */
   fallback?: ReactNode;
   /** 큐브 아래 「끌면 둘러볼 수 있어요」 안내 */
   hint?: boolean;
@@ -105,15 +100,15 @@ export function StillCube({
     viewRef.current?.setStickers(stickersFromState(n, state, mask, marks));
   }, [n, state, mask, marks]);
 
-  const net = (
-    <CubeNet
+  const posters = (
+    <CubePosterPair
       n={n}
-      faces={faceGrid(n, state, mask)}
-      colors={settings.colors}
-      hidden={settings.hidden}
-      className="h-auto w-full"
-      onCell={onSticker}
-      marks={marksAtSlots(state, marks)}
+      state={state}
+      mask={mask}
+      marks={marks}
+      settings={settings}
+      onSticker={onSticker}
+      className="w-full max-w-sm"
     />
   );
   return (
@@ -122,17 +117,16 @@ export function StillCube({
         (fallback ?? (
           <div
             data-cube-no3d
-            className="flex aspect-square w-full max-w-[360px] items-center p-4"
+            className="flex w-full max-w-[360px] items-center justify-center p-2"
           >
-            {net}
+            {posters}
           </div>
         ))
       ) : (
-        <StageWithNet
+        <StageBox
           boxRef={back.ref}
+          // 뒤쪽 칸도 고를 수 있게 거울 판까지 들인다
           maxWidth={mirror ? 440 : 360}
-          // 뒤쪽 칸도 고를 수 있게 거울 판이나 펼친 그림을 둔다
-          net={back.mode === "net" ? net : null}
           stage={
             <div className="relative aspect-square w-full">
               <canvas
@@ -150,15 +144,15 @@ export function StillCube({
           }
         />
       )}
-      {hint && !(failed && fallback) && (
+      {hint && !(failed && (fallback || !onSticker)) && (
         <p className="text-white/50 text-xs">
-          {onSticker
-            ? back.mode === "mirror"
-              ? "큐브나 거울에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
-              : back.mode === "net"
-                ? "큐브나 펼친 그림에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
+          {failed
+            ? "두 그림에서 칸을 눌러요."
+            : onSticker
+              ? back.mode === "mirror"
+                ? "큐브나 거울에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
                 : "큐브에서 칸을 눌러요. 끌면 둘러볼 수 있어요."
-            : "끌면 큐브를 둘러볼 수 있어요."}
+              : "끌면 큐브를 둘러볼 수 있어요."}
         </p>
       )}
     </div>

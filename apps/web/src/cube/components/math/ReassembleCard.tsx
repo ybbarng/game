@@ -11,11 +11,11 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid } from "../../bridge";
+import type { StickerMarks } from "../../bridge";
 import { COUNT_PLANS, groupDigits, reassemblyCount } from "../../math/counts";
 import { invariants, rotatePieceInPlace, swapPieces } from "../../math/pieces";
 import type { CubeSettings } from "../../settings";
-import { CubeNet } from "../CubeNet";
+import { CubePosterPair } from "../CubePosterPair";
 import { StateCube } from "./StateCube";
 import { Big, Lead, Meter, Notation, Source } from "./ui";
 
@@ -83,15 +83,16 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
     }
     setPicked(q);
   };
-  const marked = useMemo(
-    () =>
-      new Set(
-        [picked, swapFrom].flatMap((q) =>
-          q === null ? [] : [...(topo.pieces[q]?.stickers ?? [])],
-        ),
-      ),
-    [picked, swapFrom, topo],
-  );
+  // 고른 조각의 칸(자리) → 그 칸에 든 스티커 정체마다 「고름」 표시(큐브 그림은 정체로 칠한다)
+  const marks = useMemo((): StickerMarks | null => {
+    const slots = [picked, swapFrom].flatMap((q) =>
+      q === null ? [] : [...(topo.pieces[q]?.stickers ?? [])],
+    );
+    if (slots.length === 0) return null;
+    const out: ("pick" | null)[] = Array.from(state.perm, () => null);
+    for (const slot of slots) out[state.perm[slot] as number] = "pick";
+    return out;
+  }, [picked, swapFrom, topo, state]);
 
   const flipRule = v.flipSum % 2 === 0;
   const twistRule = v.twistSum % 3 === 0;
@@ -170,9 +171,9 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
       </div>
 
       <Lead>
-        직접 뽑아 보세요. 펼친 그림(큐브의 여섯 면을 평평하게 펼친 그림)에서
-        조각을 누르고 뒤집거나 비틀거나 다른 조각과 바꿔 끼워요. 고른 조각과 한
-        일은 아래 표기로 적혀요.
+        직접 뽑아 보세요. 옆의 큐브 그림 둘(앞쪽 세 면과 뒤집어 본 뒤쪽 세
+        면)에서 조각을 누르고 뒤집거나 비틀거나 다른 조각과 바꿔 끼워요. 고른
+        조각과 한 일은 아래 표기로 적혀요.
       </Lead>
       <Notation open />
       <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start">
@@ -184,14 +185,13 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           className="relative aspect-square w-full max-w-[240px]"
         />
         <div className="flex w-full max-w-[280px] flex-col gap-2">
-          <CubeNet
+          <CubePosterPair
             n={N}
-            faces={faceGrid(N, state)}
-            colors={settings.colors}
-            hidden={settings.hidden}
-            onCell={(s) => pick(topo.stickers[s]?.piece as number)}
-            marked={marked}
-            className="h-auto w-full"
+            state={state}
+            settings={settings}
+            marks={marks}
+            onSticker={(s) => pick(topo.stickers[s]?.piece as number)}
+            className="w-full"
           />
           <p className="text-white/70 text-xs" data-reassemble-picked>
             {swapFrom !== null

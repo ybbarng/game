@@ -1,4 +1,4 @@
-// 아이템전 화면 방해의 칠하기(docs/47 9-7): 색 뒤집기·흑백 화면. 3D 큐브·거울 판·펼친 그림·작은 큐브 그림·키 그림이
+// 아이템전 화면 방해의 칠하기(docs/47 9-7): 색 뒤집기·흑백 화면. 3D 큐브·거울 판·큐브 그림(SVG)·키 그림이
 // 모두 이 값으로 칠해 한꺼번에 바뀐다(일부만 바뀌면 화면이 틀린 것처럼 보인다). 큐브 상태·수·판정은 그대로다.
 //
 // - 색 번호는 면 번호(U R F D L B = 0~5)다. 칸의 색 번호는 맞춘 큐브에서 그 스티커가 있던 면이다.
@@ -64,7 +64,7 @@ export function shownColor(
   return look?.swap ? oppositeColor(c) : c;
 }
 
-/** 색 번호마다 칠할 색(장면·펼친 그림·작은 큐브 그림에 넘기는 `colors` 대신) */
+/** 색 번호마다 칠할 색(장면·큐브 그림(SVG)에 넘기는 `colors` 대신) */
 export function lookColors(
   colors: readonly number[],
   look: CubeLook | null | undefined,

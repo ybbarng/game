@@ -8,12 +8,7 @@ import { useSettings } from "@/game/settings";
 import { type Cue, play } from "@/game/sound";
 import { cn } from "@/lib/cn";
 
-import {
-  faceGrid,
-  marksAtSlots,
-  type StickerMarks,
-  stickersFromState,
-} from "../bridge";
+import { type StickerMarks, stickersFromState } from "../bridge";
 import { type CubeSound, comboSound, comboStep } from "../game-sounds";
 import {
   attachKeyboard,
@@ -50,11 +45,11 @@ import {
   useCubeSettings,
 } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
-import { CubeNet } from "./CubeNet";
+import { CubePosterPair } from "./CubePosterPair";
 import { type FlowSize, FlowStripView, useFlowStrip } from "./FlowStrip";
 import { KeyGuide } from "./KeyGuide";
 import { CubeLookContext } from "./PatternGlyph";
-import { StageWithNet, useBackView } from "./StageWithNet";
+import { StageBox, useBackView } from "./StageBox";
 
 /**
  * 큐브 한 판의 화면 조각(혼자 맞추기·블라인드·나중에 배우기·대결이 함께 쓴다).
@@ -112,7 +107,7 @@ export interface CubePlayProps {
    * 그 뒤로는 조각을 따라 돈다
    */
   marks?: StickerMarks | null;
-  /** 칸을 누르면(3D 누르기·펼친 그림) 그 스티커 자리 번호를 준다. 없으면 누르기를 받지 않는다 */
+  /** 칸을 누르면(3D 누르기·3D를 못 그릴 때의 큐브 그림) 그 스티커 자리 번호를 준다. 없으면 누르기를 받지 않는다 */
   onSticker?: ((sticker: number) => void) | undefined;
   /** 세 축 화살표를 보인다(처음 안내의 x·y·z) */
   axes?: boolean;
@@ -132,8 +127,8 @@ export interface CubePlayProps {
   fitViewport?: boolean;
   /**
    * 아이템전 화면 방해(docs/47 9-7). 상태·수·판정은 그대로이고 이 화면에서만 그린다.
-   * - `fog`(안개): 펼친 그림·거울 판·키 그림을 끈다(3D 큐브는 보인다)
-   * - `look`(색 뒤집기·흑백 화면): 3D 큐브·거울 판·펼친 그림·수 흐름 띠·키 그림을 한꺼번에 같은 색·무늬로
+   * - `fog`(안개): 거울 판·키 그림을 끈다(3D 큐브는 보인다)
+   * - `look`(색 뒤집기·흑백 화면): 3D 큐브·거울 판·큐브 그림·수 흐름 띠·키 그림을 한꺼번에 같은 색·무늬로
    * - `glow`(찾아 주기): 스티커 정체마다 빛낼 표시. 바뀌면 바로 장면에 칠한다(`marks`와 달리 `syncToken`을 기다리지 않는다)
    * - `mask`가 바뀌면(한 면 가리기) 그때 다시 칠한다
    */
@@ -204,7 +199,7 @@ export function CubePlay({
   const keysMode = saved.touchKeyboard;
   // 키 그림 접기·뒷면 숨기기도 저장해 새로 고쳐도 남는다(2026-11-05 점검)
   const showKeys = saved.keyGuideOpen;
-  const showNet = saved.backViewShown;
+  const showMirror = saved.backViewShown;
 
   // 바뀌는 값은 ref로 넘겨 키 연결을 한 번만 건다
   const live = useRef({
@@ -232,7 +227,7 @@ export function CubePlay({
     combo,
   };
 
-  // 뒷면 보기: 거울이면 3D 장면에 판을 띄우고, 펼친 그림이면 곁에 둔다(「숨기기」로 둘 다 접는다)
+  // 뒷면 보기: 거울이면 3D 장면에 판을 띄운다(「거울 숨기기」로 접는다)
   const back = useBackView(settings.backView, !failed);
   // 화면 높이에 맞추기: 큐브 칸 위 끝(문서 기준)을 잰다. 칸 크기는 위 끝을 바꾸지 않아 재기가 돌지 않는다
   const [stageTop, setStageTop] = useState<number | null>(null);
@@ -257,8 +252,8 @@ export function CubePlay({
       ro.disconnect();
     };
   }, [fitViewport, back.ref]);
-  // 안개(아이템전): 펼친 그림·거울 판·키 그림을 끈다. 3D를 못 그리는 기기는 펼친 그림이 큐브라 그대로 둔다
-  const mirror = back.mode === "mirror" && showNet && !fog;
+  // 안개(아이템전): 거울 판·키 그림을 끈다. 3D를 못 그리는 기기는 큐브 그림이 큐브라 그대로 둔다
+  const mirror = back.mode === "mirror" && showMirror && !fog;
   const shownRef = useRef(shownColors);
   shownRef.current = shownColors;
   useEffect(() => {
@@ -502,7 +497,7 @@ export function CubePlay({
 
   const colors = shownColors;
   // 칸 너비는 안개 동안에도 그대로(거울 판이 꺼져도 큐브 크기가 흔들리지 않게)
-  const wide = back.mode === "mirror" && showNet;
+  const wide = back.mode === "mirror" && showMirror;
   return (
     <div className="relative flex w-full flex-col items-center gap-3">
       {flowSize && (
@@ -515,7 +510,7 @@ export function CubePlay({
         />
       )}
       {/* 입력 준비(data-input-ready)와 그림 준비(canvas의 data-cube-ready)는 따로 붙는다 */}
-      <StageWithNet
+      <StageBox
         boxRef={back.ref}
         maxWidth={
           stageTop === null
@@ -524,25 +519,6 @@ export function CubePlay({
               : 460
             : `min(${wide ? 600 : 460}px, max(280px, calc(100dvh - ${stageTop}px - 12px)))`
         }
-        net={
-          (back.mode === "net" && showNet) || failed ? (
-            <div
-              className={fog && !failed ? "invisible" : undefined}
-              data-cube-fogged={fog && !failed ? "" : undefined}
-            >
-              <CubeNet
-                n={n}
-                faces={faceGrid(n, state, mask)}
-                colors={colors}
-                patterns={patterns}
-                hidden={settings.hidden}
-                className="h-auto w-full"
-                marks={marksAtSlots(state, glow ?? marks)}
-                onCell={onSticker}
-              />
-            </div>
-          ) : null
-        }
         stage={
           <div
             data-cube-stage
@@ -550,16 +526,29 @@ export function CubePlay({
             className="relative aspect-square w-full"
           >
             {failed ? (
-              <p
+              // 3D를 못 그리면 비스듬한 큐브 그림 둘(앞쪽 셋·뒤쪽 셋)이 큐브다. 휴대폰에서는 수 흐름 띠가 칸 위쪽에
+              // 겹치니 그만큼 내린다
+              <div
                 data-cube-no3d
-                // 휴대폰에서는 수 흐름 띠가 칸 위쪽에 겹치니 그만큼 내린다
                 className={cn(
-                  "p-6 text-center text-sm text-white/70",
-                  flowSize && "max-sm:pt-14",
+                  "flex h-full w-full flex-col items-center justify-center gap-2 p-2",
+                  flowSize && "max-sm:pt-12",
                 )}
               >
-                이 기기에서는 3D를 그릴 수 없어요. 펼친 그림으로 보여 드려요.
-              </p>
+                <CubePosterPair
+                  n={n}
+                  state={state}
+                  mask={mask}
+                  marks={glow ?? marks}
+                  settings={settings}
+                  look={lookNow}
+                  onSticker={onSticker}
+                  className="w-full"
+                />
+                <p className="text-center text-white/50 text-xs">
+                  이 기기에서는 3D를 그릴 수 없어 그림으로 보여 드려요.
+                </p>
+              </div>
             ) : (
               <canvas
                 key={`${n}-${quality}`}
@@ -666,7 +655,7 @@ export function CubePlay({
         >
           {keysMode ? "단추로 치기" : "키보드로 치기"}
         </button>
-        {back.mode !== "off" && (
+        {back.mode === "mirror" && (
           <button
             type="button"
             onClick={() =>
@@ -675,17 +664,11 @@ export function CubePlay({
                 backViewShown: !saved.backViewShown,
               })
             }
-            aria-pressed={showNet}
+            aria-pressed={showMirror}
             data-back-toggle={back.mode}
             className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"
           >
-            {back.mode === "mirror"
-              ? showNet
-                ? "거울 숨기기"
-                : "거울 보기"
-              : showNet
-                ? "펼친 그림 숨기기"
-                : "펼친 그림 보기"}
+            {showMirror ? "거울 숨기기" : "거울 보기"}
           </button>
         )}
         <a

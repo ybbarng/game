@@ -6,16 +6,16 @@ import { expect, test } from "./test";
 /**
  * 화면 키보드(2026-11-05, docs/47 4-5): 키 그림의 칸을 눌러 수를 친다. 칸은 진짜 키처럼 keydown을 보내므로 해석기·
  * 사용자 배치(기본 「두 손」: I = R, K = R', J = U, F = U', Shift = 넓게)를 그대로 따른다. 판정은 같은 길을 해석기에
- * 이어 보는 단위 시험(VirtualKeys.test.ts)이 맡고, 여기서는 누르면 큐브가 도는지를 펼친 그림 칸 색으로 본다.
+ * 이어 보는 단위 시험(VirtualKeys.test.ts)이 맡고, 여기서는 누르면 큐브가 도는지를 큐브 그림(3D를 끈 대신 그림) 칸 색으로 본다.
  * 3D 그림은 보지 않으므로 끈다.
  */
 
 test.beforeEach(({ page }) => no3d(page));
 
-/** 펼친 그림 칸 색(큐브 상태) */
-const netColors = (page: Page) =>
+/** 큐브 자리의 큐브 그림 칸 색(큐브 상태) */
+const cubeColors = (page: Page) =>
   page
-    .locator("[data-cube-net] rect")
+    .locator("[data-cube-stage] [data-cube-posters] [data-sticker]")
     .evaluateAll((rs) => rs.map((r) => r.getAttribute("fill")).join(","));
 
 async function press(target: Locator, phone: boolean): Promise<void> {
@@ -61,10 +61,10 @@ test("혼자 맞추기: 키 그림을 눌러 R·U'·Shift+R(넓게)을 치고 �
   );
   expect(overflow).toBeLessThanOrEqual(0);
 
-  const solved = await netColors(page);
+  const solved = await cubeColors(page);
   const turned = async () =>
-    expect.poll(() => netColors(page)).not.toBe(solved);
-  const back = async () => expect.poll(() => netColors(page)).toBe(solved);
+    expect.poll(() => cubeColors(page)).not.toBe(solved);
+  const back = async () => expect.poll(() => cubeColors(page)).toBe(solved);
 
   // R(I): 돌고, 누른 칸이 잠깐 빛난다
   await press(key("KeyI"), phone);
@@ -89,13 +89,13 @@ test("혼자 맞추기: 키 그림을 눌러 R·U'·Shift+R(넓게)을 치고 �
   await expect(key("KeyI")).toContainText("Rw");
   await press(key("KeyI"), phone);
   await expect(shift).toHaveAttribute("aria-pressed", "false");
-  const wide = await netColors(page);
+  const wide = await cubeColors(page);
   expect(wide).not.toBe(solved);
   // 넓게는 R과 다르다: R을 치고 견준다
   await press(key("KeyK"), phone);
-  await expect.poll(() => netColors(page)).not.toBe(wide);
+  await expect.poll(() => cubeColors(page)).not.toBe(wide);
   await press(key("KeyI"), phone);
-  await expect.poll(() => netColors(page)).toBe(wide);
+  await expect.poll(() => cubeColors(page)).toBe(wide);
   // Shift+K(Rw')로 되돌아온다
   await press(shift, phone);
   await press(key("KeyK"), phone);

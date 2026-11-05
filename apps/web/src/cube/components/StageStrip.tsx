@@ -5,11 +5,10 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid } from "../bridge";
 import { type Course, lessonPlace } from "../learn";
 import type { LearnProgress } from "../learn/progress";
 import type { CubeSettings } from "../settings";
-import { CubeNet } from "./CubeNet";
+import { CubePosterPair } from "./CubePosterPair";
 import { DemoCube } from "./DemoCube";
 
 /**
@@ -244,12 +243,12 @@ export function StageStrip({
         const body = (
           <>
             {after && (
-              <CubeNet
+              <CubePosterPair
                 n={course.size}
-                faces={faceGrid(course.size, after)}
-                colors={settings.colors}
-                hidden={settings.hidden}
-                className="h-auto w-full"
+                state={after}
+                settings={settings}
+                captions={false}
+                className="w-full"
               />
             )}
             <span className="flex items-baseline gap-1 break-keep text-[11px] leading-tight">

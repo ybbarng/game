@@ -81,7 +81,7 @@ test("패턴: 내 패턴을 넣으면 모양을 미리 보고 저장한다", asy
   await expect(mine.locator("[data-mine-save]")).toBeDisabled();
   await mine.locator("[data-mine-alg]").fill("M2 E2 S2");
   await mine.locator("[data-mine-name]").fill("센터 체커");
-  await expect(mine.locator("[data-cube-net]")).toBeVisible();
+  await expect(mine.locator("[data-cube-posters]")).toBeVisible();
   await mine.locator("[data-mine-save]").click();
   const card = mine.locator("[data-pattern-card]");
   await expect(card).toContainText("센터 체커");

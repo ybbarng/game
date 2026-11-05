@@ -4,12 +4,11 @@ import { solvedCube } from "@game/cube-engine";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid } from "../../bridge";
 import { PARITY_4X4 } from "../../learn/algs-big";
 import { invertText, stateAfter } from "../../math/pieces";
 import { sizeFacts } from "../../math/sizes";
 import type { CubeSettings } from "../../settings";
-import { CubeNet } from "../CubeNet";
+import { CubePosterPair } from "../CubePosterPair";
 import { DemoCube } from "../DemoCube";
 import { Lead, Notation, Pill, Quiz, Source } from "./ui";
 
@@ -55,12 +54,12 @@ export function SizesCard({ settings }: { settings: CubeSettings }) {
           { label: "PLL 패리티", s: pll },
         ].map(({ label, s }) => (
           <figure key={label} className="flex flex-col items-center gap-1">
-            <CubeNet
+            <CubePosterPair
               n={4}
-              faces={faceGrid(4, s)}
-              colors={settings.colors}
-              hidden={settings.hidden}
-              className="h-auto w-full max-w-[200px]"
+              state={s}
+              settings={settings}
+              captions={false}
+              className="w-full max-w-[240px]"
             />
             <figcaption className="text-white/70 text-xs">{label}</figcaption>
           </figure>

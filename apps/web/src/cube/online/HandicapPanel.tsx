@@ -9,6 +9,7 @@ import {
   type Handicap,
   HELPS,
   type Help,
+  helpChoices,
   helpLabel,
   recommendDelays,
 } from "./handicap";
@@ -180,7 +181,10 @@ export function HandicapPanel({ room }: { room: CubeRoom }) {
                     <option value="" className="bg-neutral-800">
                       그대로
                     </option>
-                    {HELPS.map((k) => (
+                    {HELPS.filter(
+                      (k) =>
+                        helpChoices(s.n).includes(k) || h.help?.[p.id] === k,
+                    ).map((k) => (
                       <option key={k} value={k} className="bg-neutral-800">
                         {helpLabel(s.n, k)}
                       </option>

@@ -136,9 +136,11 @@ test.describe("화면 시험(3D 없음)", () => {
     await expect(page.locator('[data-cube-gray-pattern="dots9"]')).toHaveCount(
       1,
     );
-    // 펼친 그림(3D를 못 그릴 때)도 같은 무늬를 단다
+    // 큐브 그림(3D를 못 그릴 때)도 같은 무늬를 단다
     await expect(
-      page.locator("[data-cube-net] [data-pattern]").first(),
+      page
+        .locator("[data-cube-stage] [data-cube-posters] [data-pattern]")
+        .first(),
     ).toBeVisible();
     if (info.project.name === "desktop") await stageFits(page);
     await shot(page, "items-gray", info.project.name);
@@ -174,7 +176,9 @@ test.describe("화면 시험(3D 없음)", () => {
     test.setTimeout(150_000);
     await fixDraw(page, "swap", "fog");
     await startItems(page);
-    const cell = page.locator("[data-cube-net] [data-net-sticker]").first();
+    const cell = page
+      .locator("[data-cube-stage] [data-cube-posters] [data-sticker]")
+      .first();
     const before = await cell.getAttribute("fill");
     const notice = page.locator('[data-cube-item-notice="swap"]');
     await waitMoving(page, async () => (await notice.count()) > 0);

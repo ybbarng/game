@@ -1,10 +1,10 @@
 import type { PuzzleState } from "@game/puzzle-core";
 
-import { faceGrid } from "../bridge";
+import { faceGrid, stickersFromState } from "../bridge";
 import { ALG_SETS, type AlgSet } from "../learn";
 import { maskFor } from "../learn/judge";
 import { hexColor } from "../settings";
-import { CubeNet } from "./CubeNet";
+import { CubePoster } from "./CubePoster";
 
 /** 위에서 본 그림을 쓰는 묶음(마지막 층·2×2) */
 const TOP_SETS: ReadonlySet<AlgSet> = new Set([
@@ -23,8 +23,9 @@ const L = 4;
 const B = 5;
 
 /**
- * 상황 그림. 마지막 층 묶음은 위에서 본 윗면 + 둘레 옆면 윗줄, 나머지는 펼친 그림.
- * 칸 차례는 펼친 그림(CubeNet)과 같다: 윗면은 뒤→앞 줄, 왼→오른 칸. 옆면 윗줄은 윗면에 닿은 줄이다.
+ * 상황 그림. 마지막 층 묶음은 위에서 본 윗면 + 둘레 옆면 윗줄, 나머지(F2L)는 비스듬히 본 큐브(위·앞·오른쪽,
+ * 넣을 칸이 앞-오른쪽이라 보통 공식 그림과 같다). 펼친 그림(전개도)은 쓰지 않는다(2026-11-05 사용자).
+ * 칸 차례는 엔진과 같다: 윗면은 뒤→앞 줄, 왼→오른 칸. 옆면 윗줄은 윗면에 닿은 줄이다.
  */
 export function AlgPicture({
   set,
@@ -48,11 +49,13 @@ export function AlgPicture({
   );
   if (!TOP_SETS.has(set))
     return (
-      <CubeNet
+      <CubePoster
         n={n}
-        faces={faces}
+        stickers={stickersFromState(n, state)}
         colors={colors}
-        hidden="black"
+        width={200}
+        height={200}
+        shadow={false}
         className={className}
       />
     );

@@ -760,7 +760,6 @@ function ViewStep({ onDone }: { onDone: () => void }) {
   const settings = useCubeSettings();
   const start = useMemo(() => solvedCube(3), []);
   const back = settings.backView;
-  const where = back === "mirror" ? "거울" : "펼친 그림";
   // 뒷면 보기를 끈 사람은 뒤 면 찾기를 건너뛴다
   const [seen, setSeen] = useState<number[]>([]);
   const [miss, setMiss] = useState<string | null>(null);
@@ -776,12 +775,10 @@ function ViewStep({ onDone }: { onDone: () => void }) {
             위)·왼쪽·아래 면이 비쳐 보여요. 거울에 비친 모습이라 큐브 모서리와
             판의 칸이 바로 이어져요. 큐브를 둘러보는 동안에는 판이 흐려져요.
           </li>
-        ) : back === "net" ? (
-          <li>큐브 곁의 펼친 그림으로 뒤·아래 면도 한눈에 봐요.</li>
         ) : null}
         <li>휴대폰은 칸 위를 밀면 그 줄이, 빈 곳을 밀면 큐브 전체가 돌아요.</li>
         <li>
-          뒷면 보기(거울·펼친 그림·끔)는{" "}
+          뒷면 보기(거울·끔)는{" "}
           <a href="/cube/settings" className="underline">
             설정
           </a>
@@ -796,7 +793,7 @@ function ViewStep({ onDone }: { onDone: () => void }) {
             data-intro-back={ask === undefined ? "done" : FACE_NAME[ask]}
           >
             {miss ??
-              `해 봐요: ${where}에서 ${FACE_NAME[ask ?? 5]} 면의 칸을 눌러 보세요.`}
+              `해 봐요: 거울에서 ${FACE_NAME[ask ?? 5]} 면의 칸을 눌러 보세요.`}
           </p>
           <StillCube
             n={3}
@@ -812,7 +809,7 @@ function ViewStep({ onDone }: { onDone: () => void }) {
                 setSeen((s) => [...s, face]);
               } else
                 setMiss(
-                  `그건 ${FACE_NAME[face]} 면이에요. ${FACE_NAME[ask]} 면은 ${where}에서 찾아요.`,
+                  `그건 ${FACE_NAME[face]} 면이에요. ${FACE_NAME[ask]} 면은 거울에서 찾아요.`,
                 );
             }}
           />

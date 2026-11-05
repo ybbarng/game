@@ -9,7 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid, marksAtSlots, stickersFromState } from "../bridge";
+import { stickersFromState } from "../bridge";
 import {
   BUILD_COLOR,
   BUILD_START,
@@ -31,12 +31,12 @@ import { type CubeSettings, hexColor } from "../settings";
 import type { CubeView } from "../view";
 import { loadCubeView } from "../view";
 import type { PieceLayout } from "../view/types";
-import { CubeNet } from "./CubeNet";
 import { playCubeCue } from "./CubePlay";
+import { CubePosterPair } from "./CubePosterPair";
 
 /**
  * 조각 단원의 3D 부품(docs/47 8-4): 「스티커로 보기 / 조각으로 보기」(PartsPanel)와 가상 분해·조립(BuildPanel).
- * 장면의 놓임(`CubeView.setLayout`)으로 조각을 벌리고 날려 끼운다. 3D를 못 그리면 펼친 그림으로 같은 일을 한다.
+ * 장면의 놓임(`CubeView.setLayout`)으로 조각을 벌리고 날려 끼운다. 3D를 못 그리면 비스듬한 큐브 그림 둘로 같은 일을 한다.
  * 판정은 `learn/build.ts`(순수 함수).
  */
 
@@ -117,18 +117,19 @@ function useStage(
 
 function Stage({
   stage,
-  net,
+  fallback,
   label,
 }: {
   stage: ReturnType<typeof useStage>;
-  net: React.ReactNode;
+  /** 3D를 못 그릴 때 그 자리(큐브 그림 둘) */
+  fallback: React.ReactNode;
   label: string;
 }) {
   return (
     <div className="flex w-full flex-col items-center gap-2">
       {stage.failed ? (
         <div data-cube-no3d className="w-full max-w-[360px] p-2">
-          {net}
+          {fallback}
         </div>
       ) : (
         <div className="relative aspect-square w-full max-w-[380px]">
@@ -298,15 +299,14 @@ export function PartsPanel({
       <Stage
         stage={stage}
         label="칸을 누르면 그 조각을 들어요. 끌면 둘러볼 수 있어요."
-        net={
-          <CubeNet
+        fallback={
+          <CubePosterPair
             n={N}
-            faces={faceGrid(N, SOLVED, null)}
-            colors={settings.colors}
-            hidden={settings.hidden}
-            className="h-auto w-full"
-            onCell={pick}
-            marks={marksAtSlots(SOLVED, marks)}
+            state={SOLVED}
+            settings={settings}
+            onSticker={pick}
+            marks={marks}
+            className="w-full"
           />
         }
       />
@@ -581,14 +581,14 @@ export function BuildPanel({
       <Stage
         stage={stage}
         label="빈자리를 눌러 끼워요. 끌어 돌린 각도는 그대로 남아요."
-        net={
-          <CubeNet
+        fallback={
+          <CubePosterPair
             n={N}
-            faces={faceGrid(N, SOLVED, mask)}
-            colors={settings.colors}
-            hidden={settings.hidden}
-            className="h-auto w-full"
-            onCell={tap}
+            state={SOLVED}
+            mask={mask}
+            settings={settings}
+            onSticker={tap}
+            className="w-full"
           />
         }
       />

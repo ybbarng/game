@@ -1,4 +1,4 @@
-import { parseMoves } from "@game/cube-engine";
+import { faceColors, parseMoves } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
 import { EVENT_INFO, TIMER_EVENTS } from "./events";
@@ -7,7 +7,7 @@ import {
   fallbackScramble,
   fallbackScrambleText,
 } from "./fallback-scramble";
-import { NET_SLOTS, scrambledNet } from "./net";
+import { scrambledState } from "./scrambled";
 
 const AXIS: Record<string, number> = { R: 0, L: 0, U: 1, D: 1, F: 2, B: 2 };
 const faceOf = (token: string) => token.replace(/[^RLUDFB]/g, "");
@@ -54,19 +54,16 @@ describe("임시 섞기", () => {
   });
 });
 
-describe("펼친 그림", () => {
+describe("섞인 모습", () => {
   it("R 한 번 뒤 U 면 오른쪽 줄은 F 색(초록), F 면 오른쪽 줄은 D 색(노랑)", () => {
-    const net = scrambledNet(3, "R");
-    const at = (face: number, row: number, col: number) => {
-      const [sx, sy] = NET_SLOTS[face] as readonly [number, number];
-      return net.find((s) => s.x === sx * 3 + col && s.y === sy * 3 + row)
-        ?.color;
-    };
+    const colors = faceColors(3, scrambledState(3, "R"));
+    const at = (face: number, row: number, col: number) =>
+      colors[face * 9 + row * 3 + col];
     for (let row = 0; row < 3; row++) {
       expect(at(0, row, 2)).toBe(2);
       expect(at(0, row, 0)).toBe(0);
       expect(at(2, row, 2)).toBe(3);
     }
-    expect(net).toHaveLength(54);
+    expect(colors).toHaveLength(54);
   });
 });

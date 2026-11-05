@@ -4,7 +4,6 @@ import { formatMoves, invertMoves, parseMoves } from "@game/cube-engine";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid } from "../bridge";
 import {
   LEVEL_LABEL,
   levelOf,
@@ -26,7 +25,7 @@ import {
 } from "../patterns/mine";
 import { patternState, repeatOrder } from "../patterns/shape";
 import { type CubeSettings, useCubeSettings } from "../settings";
-import { CubeNet } from "./CubeNet";
+import { CubePosterPair } from "./CubePosterPair";
 import { DemoCube } from "./DemoCube";
 import { PatternTry } from "./PatternTry";
 
@@ -210,10 +209,7 @@ function PatternCard({
   settings: CubeSettings;
   onOpen: (id: string) => void;
 }) {
-  const faces = useMemo(
-    () => faceGrid(p.size, patternState(p.size, p.alg)),
-    [p.size, p.alg],
-  );
+  const state = useMemo(() => patternState(p.size, p.alg), [p.size, p.alg]);
   const count = moveCount(p.size, p.alg);
   const level = levelOf(count);
   return (
@@ -223,12 +219,12 @@ function PatternCard({
       onClick={() => onOpen(p.id)}
       className="flex h-full w-full flex-col items-stretch gap-1.5 rounded-xl bg-white/5 p-2.5 text-left hover:bg-white/10"
     >
-      <CubeNet
+      <CubePosterPair
         n={p.size}
-        faces={faces}
-        colors={settings.colors}
-        hidden={settings.hidden}
-        className="h-auto w-full"
+        state={state}
+        settings={settings}
+        captions={false}
+        className="w-full"
       />
       <span className="font-semibold leading-tight">{p.name}</span>
       <span className="mt-auto flex items-center gap-1.5 text-white/70 text-xs">
@@ -275,7 +271,7 @@ function MinePatterns({
     [size, text],
   );
   const preview = useMemo(
-    () => (read?.ok ? faceGrid(size, patternState(size, read.alg)) : null),
+    () => (read?.ok ? patternState(size, read.alg) : null),
     [read, size],
   );
 
@@ -358,12 +354,11 @@ function MinePatterns({
         </form>
         <div className="flex w-full flex-col items-center justify-center gap-1 sm:w-56">
           {preview ? (
-            <CubeNet
+            <CubePosterPair
               n={size}
-              faces={preview}
-              colors={settings.colors}
-              hidden={settings.hidden}
-              className="h-auto w-full max-w-56"
+              state={preview}
+              settings={settings}
+              className="w-full max-w-56"
             />
           ) : (
             <p className="text-white/40 text-xs">공식을 넣으면 모양이 보여요</p>

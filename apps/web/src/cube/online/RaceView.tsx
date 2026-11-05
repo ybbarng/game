@@ -20,14 +20,13 @@ import {
 } from "react";
 
 import type { RaceSnapshot } from "@/net/race/types";
-import { faceGrid, type StickerMarks } from "../bridge";
-import { CubeNet } from "../components/CubeNet";
+import type { StickerMarks } from "../bridge";
 import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { useMoveKeys } from "../components/MoveChip";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
-import { type CubeLook, lookColors, lookPatterns } from "../item-look";
+import type { CubeLook } from "../item-look";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -75,7 +74,7 @@ import type { CubeRoom, RoundRecord } from "./room";
 
 /**
  * 대결 한 판의 화면(온라인 방·컴퓨터와 대결이 함께 쓴다, docs/47 9-1).
- * 내 큐브는 크게(`CubePlay`), 다른 사람은 진행 막대·단계 이름·순위, 사람이 셋 이하이면 작은 펼친 그림.
+ * 내 큐브는 크게(`CubePlay`), 다른 사람은 진행 막대·단계 이름·순위, 사람이 셋 이하이면 작은 큐브 그림(비스듬한 SVG 큐브 둘).
  * 판이 끝나면 결과(시간·수·초당 수·인정 시간과 하한, 확인 약함·의심 표시)와 모두의 풀이 다시 보기.
  */
 
@@ -187,15 +186,20 @@ export function RaceView({
   const myState: PuzzleState =
     mine?.stateOf(room.me) ?? mine?.startState() ?? solvedCube(n);
 
-  // 도움(docs/47 9-8): 이 화면에서만 펼친 그림·힌트를 열고 닫고, 「가리고 맞추기」면 풀린 뒤 내 큐브를 가린다
+  // 도움(docs/47 9-8): 이 화면에서만 거울·힌트를 열고 닫고, 「가리고 맞추기」면 풀린 뒤 내 큐브를 까맣게 가린다
+  // (같은 3D 장면에서 스티커 색만 빠진다. 가린 칸 색 설정이 회색이어도 까맣게)
   const myHelp = mine ? helpOf(handicapNow, room.me) : undefined;
   const myPlaying =
     snap?.peers.find((p) => p.id === room.me)?.status === "playing";
   const helpNow = helpScreen(myHelp, n, { phase, playing: myPlaying });
   const hiddenMask = useMemo(() => stageMask(n, "all-hidden"), [n]);
   const playSettings = useMemo(
-    () => (helpNow.back ? settings : { ...settings, backView: "off" as const }),
-    [settings, helpNow.back],
+    () => ({
+      ...settings,
+      ...(helpNow.back ? {} : { backView: "off" as const }),
+      ...(helpNow.hidden ? { hidden: "black" as const } : {}),
+    }),
+    [settings, helpNow.back, helpNow.hidden],
   );
 
   // 아이템전(docs/51 3-3): 내 아이템·방패, 이 화면에 그릴 효과(안개·한 면 가리기·색 뒤집기·흑백 화면·찾아 주기·힌트)
@@ -809,16 +813,6 @@ export function RaceView({
                     settings={settings}
                     look={look}
                     captions={false}
-                    fallback={
-                      <CubeNet
-                        n={n}
-                        faces={faceGrid(n, st)}
-                        colors={lookColors(settings.colors, look)}
-                        patterns={lookPatterns(look)}
-                        hidden={settings.hidden}
-                        className="h-auto w-32"
-                      />
-                    }
                     className={`w-36 self-center ${chips ? "max-md:hidden" : ""}`}
                   />
                 )}
@@ -1599,15 +1593,6 @@ function Replay({
                 state={state}
                 settings={settings}
                 captions={false}
-                fallback={
-                  <CubeNet
-                    n={n}
-                    faces={faceGrid(n, state)}
-                    colors={settings.colors}
-                    hidden={settings.hidden}
-                    className="h-auto w-32"
-                  />
-                }
                 className="w-44"
               />
               <figcaption className="text-xs">

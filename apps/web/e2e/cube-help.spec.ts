@@ -1,18 +1,54 @@
 import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
-import { expect, fastForwardUntil, type Page, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  type Page,
+  SAVE_SCREENSHOTS,
+  test,
+} from "./test";
 
 /**
  * 큐브 대결 핸디캡 「도움 다르게」(docs/51 4절, docs/47 9-8): 컴퓨터와 대결에서 내 도움을 고르고 한 판 한다.
  * 섞기는 씨앗으로 정해 둔다(`__cubeVsSeed`, vs-seed.ts). 섞기 글을 읽어 거꾸로 쳐서 맞춘다(「표기」 키).
- * 3D를 끄면 펼친 그림이 큐브 자리에 나오므로, 가리기는 펼친 그림 칸(`data-net-hidden`)으로 본다.
+ * 3D를 끄면 비스듬한 큐브 그림 둘이 큐브 자리에 나오므로, 가리기는 그 칸(`data-sticker-hidden`)으로 본다.
+ * 「가리고 맞추기」는 스크린샷을 찍을 때만 3D를 켜 같은 3D 장면에서 색만 빠지는지 보고, 가린 칸은 장면의 칸 색으로 센다.
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
 
-test.beforeEach(async ({ page }) => {
-  await no3d(page);
+test.beforeEach(async ({ page }, info) => {
+  if (!(SAVE_SCREENSHOTS && info.title.includes("가리고 맞추기")))
+    await no3d(page);
   await useNotationKeys(page);
 });
+
+/**
+ * 내 큐브(큐브 자리)에서 가린 칸 수. 3D면 장면의 칸 색(가림 = null, `__cubeTestHooks`), 3D를 못 그리면 큐브 그림 칸
+ */
+async function hiddenCount(page: Page): Promise<number> {
+  const posters = page.locator("[data-cube-stage] [data-cube-posters]");
+  if ((await posters.count()) > 0)
+    return posters.locator("[data-sticker-hidden]").count();
+  return page
+    .locator("[data-cube-stage] [data-cube-canvas][data-cube-ready]")
+    .evaluate((c) => {
+      const view = (
+        c as unknown as {
+          __cubeView?: { slots: { color: number | null }[] };
+        }
+      ).__cubeView;
+      return view ? view.slots.filter((s) => s.color === null).length : -1;
+    });
+}
+
+/** 내 큐브 그림이 떴다(3D 장면 또는 큐브 그림) */
+async function stageShown(page: Page): Promise<void> {
+  await expect(
+    page.locator(
+      "[data-cube-stage] [data-cube-posters], [data-cube-stage] [data-cube-canvas][data-cube-ready]",
+    ),
+  ).toBeVisible();
+}
 
 function inverse(alg: string): string {
   return alg
@@ -144,11 +180,9 @@ test("컴퓨터와 대결: 가리고 맞추기면 살펴보기 동안 보고, �
   });
   await page.locator("[data-cube-vs-start]").click();
   await phase(page, "inspect");
-  // 3D를 끈 화면에서는 내 큐브 자리 곁의 펼친 그림이 큐브다(상대 칸은 SVG 그림)
-  const net = page.locator("[data-cube-net]").first();
-  const hidden = net.locator("[data-net-hidden]");
-  await expect(net).toBeVisible();
-  await expect(hidden).toHaveCount(0);
+  // 살펴보기 동안은 색이 있는 큐브(같은 큐브 자리에서 판이 시작되면 색만 빠진다)
+  await stageShown(page);
+  await expect.poll(() => hiddenCount(page)).toBe(0);
   await expect(page.locator("[data-cube-my-handicap]")).toContainText(
     "가리고 맞추기",
   );
@@ -160,13 +194,14 @@ test("컴퓨터와 대결: 가리고 맞추기면 살펴보기 동안 보고, �
     async () => (await race.getAttribute("data-cube-race-phase")) === "race",
     { step: 1_000, timeout: 30_000 },
   );
-  // 2×2: 여섯 면 × 네 칸이 모두 가려진다
-  await expect(hidden).toHaveCount(24);
+  // 2×2: 여섯 면 × 네 칸이 모두 까맣게 가려진다
+  await expect.poll(() => hiddenCount(page)).toBe(24);
   await stageFits(page, info.project.name);
   await shot(page, "help-blind-solving", info.project.name);
 
   await solve(page, scramble);
-  await expect(hidden).toHaveCount(0);
+  await expect.poll(() => hiddenCount(page)).toBe(0);
+  await shot(page, "help-blind-solved", info.project.name);
   const result = await finalResult(page);
   await expect(result.locator('[data-cube-rank="me"]')).toContainText(
     "가리고 맞추기",
