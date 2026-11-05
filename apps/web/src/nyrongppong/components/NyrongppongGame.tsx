@@ -3,6 +3,7 @@
 import { cardOf } from "@game/hwatu";
 import {
   type GameEvent,
+  HAND_SIZE,
   handValue,
   type NyrongppongView,
   type RoundResult,
@@ -12,20 +13,32 @@ import {
 } from "@game/nyrongppong-engine";
 import { useEffect, useRef, useState } from "react";
 
-import { ChatBox } from "@/components/ChatBox";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
-import {
-  MissionOverlay,
-  type MissionProps,
-} from "@/components/tutorial/MissionOverlay";
+import { SeatPlateFrame } from "@/components/SeatPlate";
+import type { MissionProps } from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
+import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import { HwatuDeck } from "@/hwatu/components/HwatuLayout";
+import {
+  at,
+  HWATU_PRIMARY,
+  HWATU_SECONDARY,
+  HwatuBoard,
+  HwatuEndBox,
+  HwatuHud,
+  HwatuOnlineNotes,
+  HwatuStage,
+  HwatuVerifyLines,
+} from "@/hwatu/components/HwatuTable";
 import { HwatuFairBar } from "@/hwatu/fair-bar";
 import { useSentLock } from "@/hwatu/sent-lock";
+import { handStepFor, hwatuLayout } from "@/hwatu/table-layout";
+import type { Rect } from "@/layout/compute-layout";
+import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 
 import { NYRONGPPONG_LEVELS } from "../settings";
@@ -34,21 +47,6 @@ import { useNyrongppong } from "../store";
 /** 나이롱뽕 화면 배경(화투 확인 화면과 같은 짙은 녹색 담요) */
 export const NYRONGPPONG_BG =
   "bg-[radial-gradient(ellipse_at_top,#14532d_0%,#052e16_75%)]";
-
-/** 휴대폰 가로처럼 낮고 넓은 화면인가(카드를 작게 그린다) */
-function useShortLandscape(): boolean {
-  const [short, setShort] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia(
-      "(orientation: landscape) and (max-height: 600px)",
-    );
-    const update = () => setShort(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-  return short;
-}
 
 /** 뽕 응답 창에 남은 시간(ms). 화면을 받은 순간의 남은 시간에서 그 뒤 지난 시간을 뺀다 */
 function useCallLeft(view: NyrongppongView | null, viewAt: number): number {
@@ -83,100 +81,6 @@ export function endText(
     case "deckOut":
       return "더미가 떨어졌어요";
   }
-}
-
-/**
- * 남의 손패 뒷면과 장수. 공통 `HwatuBacks`는 겹침이 커서 작은 자리 표에서는 한 장처럼 보여
- * 덜 겹쳐 펼친다(docs/30 9절, 화투 기초에 겹침 정도를 고르는 값을 바란다)
- */
-function SeatBacks({ count, small }: { count: number; small: boolean }) {
-  const width = small ? 14 : 18;
-  return (
-    <span
-      role="img"
-      aria-label={`뒷면 ${count}장`}
-      className="flex items-end gap-1"
-    >
-      <span className="flex -space-x-2">
-        {Array.from({ length: count }, (_, i) => (
-          <HwatuCardView
-            // biome-ignore lint/suspicious/noArrayIndexKey: 뒷면은 순서가 곧 정체다
-            key={i}
-            faceDown
-            width={width}
-          />
-        ))}
-      </span>
-      <span className="text-[10px] text-white/60 tabular-nums">{count}</span>
-    </span>
-  );
-}
-
-/** 남의 자리: 이름, 선 표시, 손패 뒷면, 뽕한 묶음, 합계 */
-function SeatPlate({
-  view,
-  seat,
-  name,
-  shout,
-  small,
-}: {
-  view: NyrongppongView;
-  seat: number;
-  name: string;
-  /** 방금 뽕을 외쳤다 */
-  shout: boolean;
-  small: boolean;
-}) {
-  const turn =
-    (view.phase === "draw" || view.phase === "discard") && view.turn === seat;
-  const revealed = view.result?.hands[seat];
-  return (
-    <div
-      data-seat={seat}
-      data-turn={turn || undefined}
-      className={cn(
-        "relative flex min-w-0 flex-col gap-1 rounded-xl border px-2 py-1.5",
-        turn
-          ? "border-amber-300 bg-amber-300/15"
-          : "border-white/10 bg-black/20",
-      )}
-    >
-      <div className="flex items-center gap-1 text-xs">
-        <span className="truncate font-semibold">{name}</span>
-        {view.dealer === seat && (
-          <span className="shrink-0 rounded bg-rose-600 px-1 text-[10px]">
-            선
-          </span>
-        )}
-        <span className="ml-auto shrink-0 text-white/70 tabular-nums">
-          {view.totals[seat] ?? 0}점
-        </span>
-      </div>
-      <div className="flex min-h-7 items-end gap-1.5">
-        {revealed ? (
-          <div className="flex -space-x-2" data-revealed={seat}>
-            {revealed.map((id) => (
-              <HwatuCardView key={id} id={id} width={small ? 18 : 22} />
-            ))}
-          </div>
-        ) : (
-          <SeatBacks count={view.handCounts[seat] ?? 0} small={small} />
-        )}
-        {(view.melds[seat] ?? []).map((meld) => (
-          <div key={meld[0]} className="flex -space-x-2" data-meld={seat}>
-            {meld.map((id) => (
-              <HwatuCardView key={id} id={id} width={small ? 14 : 18} />
-            ))}
-          </div>
-        ))}
-      </div>
-      {shout && (
-        <span className="pop-in absolute -top-3 right-1 rounded-full bg-rose-600 px-2 py-0.5 font-black text-sm shadow-lg">
-          뽕!
-        </span>
-      )}
-    </div>
-  );
 }
 
 /** 판 끝 점수표: 자리마다 이번 판 점수·합계·남은 손패 */
@@ -218,7 +122,109 @@ function RoundTable({
   );
 }
 
-/** 대국 화면 */
+/** 뽕한 묶음(석 장씩 겹쳐 놓는다) */
+function Melds({
+  melds,
+  seat,
+  width,
+}: {
+  melds: readonly (readonly string[])[];
+  seat: number;
+  width: number;
+}) {
+  return (
+    <>
+      {melds.map((meld) => (
+        <div key={meld[0]} className="flex -space-x-2" data-meld={seat}>
+          {meld.map((id) => (
+            <HwatuCardView key={id} id={id} width={width} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/**
+ * 자리 판(둘러앉은 판의 `SeatPlateFrame`): 이름, 선, 합계, 남은 손패 장수, 뽕한 묶음. 판이 끝나면 손패를 펴 보인다.
+ * 손패 뒷면은 자리 판 뒤에서 판 쪽으로 펼친다(`HwatuFan`). 내 자리는 장수 대신 내 뽕을 보인다
+ */
+function SeatPlate({
+  view,
+  seat,
+  name,
+  rect,
+  shout,
+  mine = false,
+}: {
+  view: NyrongppongView;
+  seat: number;
+  name: string;
+  rect: Rect;
+  /** 방금 뽕을 외쳤다 */
+  shout: boolean;
+  mine?: boolean;
+}) {
+  const turn =
+    (view.phase === "draw" || view.phase === "discard") && view.turn === seat;
+  const revealed = mine ? undefined : view.result?.hands[seat];
+  // 뽕 묶음 카드: 이름 줄(약 20px)과 위아래 여백을 뺀 높이에 맞춘다
+  const card = Math.floor(Math.max(14, Math.min(30, (rect.h - 30) / 1.6)));
+  return (
+    <SeatPlateFrame
+      rect={rect}
+      active={turn}
+      label={mine ? "내 자리" : `${name} 자리`}
+      className="justify-start gap-1 py-1.5"
+    >
+      <div
+        {...(mine ? {} : { "data-seat": seat })}
+        data-turn={turn || undefined}
+        className="flex min-w-0 items-center gap-1.5"
+      >
+        <span className="min-w-0 truncate font-semibold text-sm">{name}</span>
+        {view.dealer === seat && (
+          <span className="shrink-0 rounded bg-rose-600 px-1 text-[10px]">
+            선
+          </span>
+        )}
+        {!mine && (
+          <span
+            className="shrink-0 tabular-nums text-white/70"
+            title="남은 손패"
+            data-hand-count={seat}
+          >
+            {view.handCounts[seat] ?? 0}장
+          </span>
+        )}
+        <span className="ml-auto shrink-0 tabular-nums text-white/80">
+          {view.totals[seat] ?? 0}점
+        </span>
+      </div>
+      <div className="flex min-h-0 flex-wrap items-end gap-1.5 overflow-hidden">
+        {revealed && (
+          <div className="flex -space-x-2" data-revealed={seat}>
+            {revealed.map((id) => (
+              <HwatuCardView key={id} id={id} width={card + 4} />
+            ))}
+          </div>
+        )}
+        <Melds melds={view.melds[seat] ?? []} seat={seat} width={card} />
+      </div>
+      {shout && (
+        <span className="pop-in absolute -top-3 right-1 rounded-full bg-rose-600 px-2 py-0.5 font-black text-sm shadow-lg">
+          뽕!
+        </span>
+      )}
+    </SeatPlateFrame>
+  );
+}
+
+/**
+ * 대국 화면. 둘러앉은 판(docs/05 4.11, `hwatuLayout`): 다른 사람은 판 둘레 자리 판에 앉아 손패 뒷면을 판 쪽으로
+ * 펼치고, 가운데 넓은 판에 더미와 버린 패, 아래에 내 손패, 그 양옆에 내 자리 판(내 뽕)과 단추(뽕·스톱·가져오기·
+ * 약 내기·버리기·무르기). 판이 끝나면 결과 띠가 먼저 뜨고, 사라진 뒤 점수표 상자를 판 위에 띄운다
+ */
 export function NyrongppongGame({
   onExit,
   mission,
@@ -244,7 +250,7 @@ export function NyrongppongGame({
   const canUndo = useNyrongppong((s) => s.canUndo());
   const clearNotice = useNyrongppong((s) => s.clearNotice);
   const botNames = useSettings((s) => s.botNames);
-  const small = useShortLandscape();
+  const stage = useStageSize();
   const [selected, setSelected] = useState<string | null>(null);
   const pointer = useRef<string>("mouse");
   const callLeft = useCallLeft(view, viewAt);
@@ -252,6 +258,8 @@ export function NyrongppongGame({
   const [shout, setShout] = useState<number | null>(null);
   /** 보낸 행동의 결과(다음 장면이나 거절)를 기다리는 동안은 결정을 다시 보이지 않는다 */
   const sent = useSentLock(view, notice);
+  /** 판 끝 결과 띠가 떠 있는 동안은 점수표 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
+  const [bannerUp, setBannerUp] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -274,7 +282,18 @@ export function NyrongppongGame({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 손패가 바뀔 때만 푼다
   useEffect(() => setSelected(null), [handKey]);
 
+  const shell = (children: React.ReactNode) => (
+    <HwatuStage
+      game="nyrongppong"
+      background={NYRONGPPONG_BG}
+      mission={mission}
+      stageRef={stage.ref}
+    >
+      {children}
+    </HwatuStage>
+  );
   if (!view || !host) return null;
+  if (stage.width === 0) return shell(null);
   const me = host.seat;
   const online = local === null;
   const n = view.rules.players;
@@ -287,6 +306,14 @@ export function NyrongppongGame({
         ? (seatNames?.[seat] ?? `자리 ${seat + 1}`)
         : botName(botNames, (seat - me + n) % n);
   const others = Array.from({ length: n - 1 }, (_, i) => (me + 1 + i) % n);
+  // 손패는 다섯 장에 가져온 한 장까지
+  const layout = hwatuLayout(
+    stage.width,
+    stage.height,
+    n,
+    Math.max(HAND_SIZE + 1, view.hand.length),
+    { compact: true },
+  );
   // 행동을 보낸 뒤 다음 장면이 오기 전에는 손패·단추를 닫는다(두 번 내기 방지)
   const d = sent.waiting ? null : view.decision;
   const myDiscard = d?.kind === "discard";
@@ -364,79 +391,137 @@ export function NyrongppongGame({
         : "win"
       : "loss";
 
-  const handWidth = small ? 40 : 54;
   const callOpen = view.call !== null;
+  const { center, hud } = layout;
+  // 가운데 판의 더미·버린 패: 판 높이에 맞추고 손패보다 크게 하지 않는다
+  const pileW = Math.floor(
+    Math.max(32, Math.min(layout.hand.card.w, (center.h - 80) / 1.6)),
+  );
+  const myHand = roundOver && result ? (result.hands[me] ?? []) : view.hand;
+  const outcomeView = (
+    <RoundOutcome
+      outcome={outcome}
+      status={notice ?? status}
+      {...(result
+        ? {
+            summary: endText(result, name, view.rules.bagaji),
+            className: "max-w-md px-4 py-2",
+          }
+        : {})}
+    />
+  );
 
-  return (
-    <main
-      data-game="nyrongppong"
-      className={cn(
-        "relative flex min-h-dvh flex-col items-center gap-2 overflow-x-hidden px-3 py-2 text-white",
-        NYRONGPPONG_BG,
-        "short-landscape:grid short-landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short-landscape:content-start short-landscape:items-start short-landscape:gap-x-4",
-        mission && "pt-16",
-      )}
-    >
-      {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full max-w-xl items-center gap-2 text-sm short-landscape:col-span-2 short-landscape:max-w-none">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 나이롱뽕
-        </button>
-        <span className="ml-auto truncate text-white/60 text-xs">
-          {view.roundNumber}/{view.rules.rounds}판
-          {online ? "" : ` · 컴퓨터(${levelName})`} · 뽕{" "}
-          {view.rules.callSeconds}초
-        </span>
-      </header>
+  return shell(
+    <>
+      <HwatuHud
+        rect={hud}
+        title="← 나이롱뽕"
+        onExit={onExit}
+        online={online}
+        mySeat={me}
+        info={
+          <>
+            {view.roundNumber}/{view.rules.rounds}판
+            {online ? "" : ` · 컴퓨터(${levelName})`} · 뽕{" "}
+            {view.rules.callSeconds}초
+          </>
+        }
+      />
 
-      {online && <HwatuFairBar me={me} over={view.phase === "gameOver"} />}
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm short-landscape:col-span-2"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
-        </p>
-      )}
+      {/* 다른 사람 손패 뒷면(자리 판 뒤에서 판 쪽으로)과 자리 판 */}
+      {!roundOver &&
+        others.map((seat, i) => (
+          <HwatuFan
+            key={`fan-${seat}`}
+            layout={layout}
+            offset={i + 1}
+            count={view.handCounts[seat] ?? 0}
+          />
+        ))}
+      {others.map((seat, i) => {
+        const rect = layout.seats[i + 1]?.plate;
+        return rect ? (
+          <SeatPlate
+            key={seat}
+            view={view}
+            seat={seat}
+            name={name(seat)}
+            rect={rect}
+            shout={shout === seat}
+          />
+        ) : null;
+      })}
 
-      {/* 왼쪽(가로 화면) 또는 위: 상대들과 가운데 더미·버린 패 */}
-      <div className="flex w-full max-w-xl flex-col gap-2 short-landscape:col-start-1">
-        <section
-          aria-label="상대"
-          className={cn(
-            "grid w-full gap-1.5",
-            others.length === 1
-              ? "grid-cols-1"
-              : others.length === 2
-                ? "grid-cols-2"
-                : others.length === 3
-                  ? "grid-cols-3"
-                  : "grid-cols-2",
-          )}
-        >
-          {others.map((seat) => (
-            <SeatPlate
-              key={seat}
-              view={view}
-              seat={seat}
-              name={name(seat)}
-              shout={shout === seat}
-              small={small || others.length >= 3}
+      <HwatuBoard
+        rect={center}
+        label="가운데"
+        dim={roundOver}
+        footer={
+          !roundOver && (
+            <>
+              {outcomeView}
+              <p className="text-white/60 text-xs">
+                손패 합 {handValue(view.hand)}
+                {view.drawn ? ` · 가져온 카드: ${cardOf(view.drawn).name}` : ""}
+              </p>
+            </>
+          )
+        }
+        overlay={
+          <>
+            {roundOver && !bannerUp && (
+              <HwatuEndBox
+                rect={center}
+                main={
+                  <>
+                    {outcomeView}
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {view.phase === "roundEnd" && !view.continued[me] && (
+                        <button
+                          type="button"
+                          onClick={() => send({ type: "continue" })}
+                          className={HWATU_PRIMARY}
+                        >
+                          다음 판
+                        </button>
+                      )}
+                      {view.phase === "gameOver" && !mission && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={onExit}
+                            className={HWATU_PRIMARY}
+                          >
+                            다시 하기
+                          </button>
+                          <a href="/" className={HWATU_SECONDARY}>
+                            게임 목록
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </>
+                }
+                side={
+                  <>
+                    <div className="rounded-2xl border border-white/15 bg-black/60 px-3 py-1">
+                      <RoundTable view={view} name={name} />
+                    </div>
+                    {online && <HwatuVerifyLines />}
+                  </>
+                }
+              />
+            )}
+            <ResultBanner
+              banner={banner}
+              seq={view.roundNumber}
+              onShowChange={setBannerUp}
             />
-          ))}
-        </section>
-
-        <section
-          aria-label="가운데"
-          className="relative flex items-center justify-center gap-6 rounded-2xl bg-black/15 py-2"
-        >
-          <HwatuDeck count={view.deckCount} width={small ? 32 : 40} />
+          </>
+        }
+      >
+        <div className="flex w-full items-center justify-center gap-8">
+          <HwatuDeck count={view.deckCount} width={pileW * 0.85} />
           <div className="flex flex-col items-center gap-1">
             <div
               className={cn(
@@ -446,18 +531,11 @@ export function NyrongppongGame({
               )}
             >
               {top ? (
-                <HwatuCardView
-                  id={top}
-                  width={small ? 40 : 52}
-                  className="pile-top"
-                />
+                <HwatuCardView id={top} width={pileW} className="pile-top" />
               ) : (
                 <div
                   className="rounded-md border border-white/20 border-dashed"
-                  style={{
-                    width: small ? 40 : 52,
-                    height: ((small ? 40 : 52) * 8) / 5,
-                  }}
+                  style={{ width: pileW, height: (pileW * 8) / 5 }}
                 />
               )}
             </div>
@@ -465,102 +543,67 @@ export function NyrongppongGame({
               버린 패 {view.pile.length}장
             </span>
           </div>
-          <ResultBanner banner={banner} seq={view.roundNumber} />
-        </section>
-      </div>
+        </div>
+      </HwatuBoard>
 
-      {/* 오른쪽(가로 화면) 또는 아래: 상태, 내 패, 단추 */}
-      <div className="flex w-full max-w-xl flex-col items-center gap-2 short-landscape:col-start-2 short-landscape:row-start-2">
-        <RoundOutcome
-          outcome={outcome}
-          status={notice ?? status}
-          summary={
-            result ? endText(result, name, view.rules.bagaji) : undefined
-          }
-        />
-
-        {d?.kind === "call" && view.call && (
-          <div className="flex w-full items-center gap-2">
-            <button
-              type="button"
-              onClick={() => send({ type: "call" })}
-              className="ppong-button relative flex-1 overflow-hidden rounded-2xl bg-rose-600 py-3 font-black text-3xl shadow-[0_0_24px_rgba(244,63,94,0.7)] hover:bg-rose-500"
-            >
-              뽕!
-              <span
-                aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-1.5 bg-amber-300"
-                style={{
-                  width: `${(callLeft / (view.rules.callSeconds * 1000)) * 100}%`,
-                }}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={() => send({ type: "pass" })}
-              className="rounded-2xl bg-white/10 px-4 py-4 text-sm"
-            >
-              넘기기
-            </button>
-          </div>
-        )}
-
-        {(view.melds[me]?.length ?? 0) > 0 && (
-          <div
-            data-meld={me}
-            className="flex flex-wrap items-center justify-center gap-2"
-          >
-            <span className="text-white/60 text-xs">뽕</span>
-            {(view.melds[me] ?? []).map((meld) => (
-              <div key={meld[0]} className="flex -space-x-3">
-                {meld.map((id) => (
-                  <HwatuCardView key={id} id={id} width={small ? 22 : 28} />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <section
-          aria-label="내 손패"
-          onPointerDownCapture={(e) => {
-            pointer.current = e.pointerType;
-          }}
-          className="flex flex-wrap justify-center gap-1"
+      {online && (
+        <HwatuOnlineNotes
+          rect={center}
+          reconnecting={reconnecting}
+          hostLeft={hostLeft}
         >
-          {(roundOver && result ? (result.hands[me] ?? []) : view.hand).map(
-            (id) => (
-              <HwatuCardView
-                key={id}
-                id={id}
-                width={handWidth}
-                selected={selected === id}
-                highlight={
-                  view.drawn === id ||
-                  (d?.kind === "call" &&
-                    view.call !== null &&
-                    cardOf(id).month === cardOf(view.call.card).month)
-                }
-                {...(myDiscard ? { onClick: () => onCard(id) } : {})}
-              />
-            ),
+          <HwatuFairBar me={me} over={view.phase === "gameOver"} />
+        </HwatuOnlineNotes>
+      )}
+
+      {/* 내 자리: 내 뽕 */}
+      <SeatPlate
+        view={view}
+        seat={me}
+        name="나"
+        rect={layout.myPlate}
+        shout={false}
+        mine
+      />
+
+      {/* 내 단추 */}
+      {layout.actions && (
+        <div
+          className="absolute flex flex-wrap content-center items-center justify-center gap-2"
+          style={at(layout.actions)}
+        >
+          {d?.kind === "call" && view.call && (
+            <div className="flex w-full items-center gap-2">
+              <button
+                type="button"
+                onClick={() => send({ type: "call" })}
+                className="ppong-button relative flex-1 overflow-hidden rounded-2xl bg-rose-600 py-2 font-black text-2xl shadow-[0_0_24px_rgba(244,63,94,0.7)] hover:bg-rose-500"
+              >
+                뽕!
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-1.5 bg-amber-300"
+                  style={{
+                    width: `${(callLeft / (view.rules.callSeconds * 1000)) * 100}%`,
+                  }}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => send({ type: "pass" })}
+                className="rounded-2xl bg-white/10 px-3 py-3 text-sm"
+              >
+                넘기기
+              </button>
+            </div>
           )}
-        </section>
-        <p className="text-white/60 text-xs">
-          손패 합 {handValue(view.hand)}
-          {view.drawn ? ` · 가져온 카드: ${cardOf(view.drawn).name}` : ""}
-        </p>
-
-        {roundOver && <RoundTable view={view} name={name} />}
-
-        <div className="flex flex-wrap justify-center gap-2">
           {d?.kind === "draw" && (
             <>
               {d.canStop && (
                 <button
                   type="button"
                   onClick={() => send({ type: "stop" })}
-                  className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+                  className={HWATU_PRIMARY}
                 >
                   스톱
                 </button>
@@ -568,7 +611,7 @@ export function NyrongppongGame({
               <button
                 type="button"
                 onClick={() => send({ type: "draw" })}
-                className="rounded-xl bg-white/15 px-4 py-2"
+                className={cn(HWATU_SECONDARY, "bg-white/15")}
               >
                 한 장 가져오기
               </button>
@@ -578,7 +621,7 @@ export function NyrongppongGame({
             <button
               type="button"
               onClick={() => send({ type: "declare" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+              className={HWATU_PRIMARY}
             >
               약 내기: {YAK_NAMES[d.yak.kind]}({d.yak.value}점)
             </button>
@@ -587,7 +630,7 @@ export function NyrongppongGame({
             <button
               type="button"
               onClick={() => discard(selected)}
-              className="rounded-xl bg-white/15 px-4 py-2"
+              className={cn(HWATU_SECONDARY, "bg-white/15")}
             >
               {cardOf(selected).name} 버리기
             </button>
@@ -597,42 +640,51 @@ export function NyrongppongGame({
               type="button"
               disabled={!canUndo}
               onClick={() => undo()}
-              className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
+              className={HWATU_SECONDARY}
             >
               무르기
             </button>
           )}
-          {view.phase === "roundEnd" && !view.continued[me] && (
-            <button
-              type="button"
-              onClick={() => send({ type: "continue" })}
-              className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-            >
-              다음 판
-            </button>
-          )}
-          {view.phase === "gameOver" && !mission && (
-            <>
-              <button
-                type="button"
-                onClick={onExit}
-                className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
-              >
-                다시 하기
-              </button>
-              <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-                게임 목록
-              </a>
-            </>
-          )}
-        </div>
-      </div>
-
-      {online && (
-        <div className="w-full max-w-xl short-landscape:col-start-1">
-          <ChatBox mySeat={me} />
         </div>
       )}
-    </main>
+
+      {/* 내 손패 */}
+      <div
+        className="pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto"
+        style={{ top: layout.hand.top, bottom: layout.gutter, zIndex: 30 }}
+      >
+        <section
+          aria-label="내 손패"
+          onPointerDownCapture={(e) => {
+            pointer.current = e.pointerType;
+          }}
+          className="flex justify-center"
+        >
+          {myHand.map((id, i) => (
+            <HwatuCardView
+              key={id}
+              id={id}
+              width={layout.hand.card.w}
+              selected={selected === id}
+              highlight={
+                view.drawn === id ||
+                (d?.kind === "call" &&
+                  view.call !== null &&
+                  cardOf(id).month === cardOf(view.call.card).month)
+              }
+              {...(i > 0
+                ? {
+                    style: {
+                      marginLeft:
+                        handStepFor(layout, myHand.length) - layout.hand.card.w,
+                    },
+                  }
+                : {})}
+              {...(myDiscard ? { onClick: () => onCard(id) } : {})}
+            />
+          ))}
+        </section>
+      </div>
+    </>,
   );
 }

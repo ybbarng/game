@@ -24,7 +24,15 @@ const cases = SCREENS.flatMap(([width, height]) =>
     { players: 3, handMax: 7 },
     { players: 4, handMax: 6 },
     { players: 5, handMax: 6 },
-  ].map((p) => ({ width, height, ...p })),
+  ]
+    .flatMap((p) => [
+      { ...p, compact: false },
+      // 나이롱뽕은 낮은 자리 판
+      ...(p.handMax === 6 || p.players === 2 || p.players === 3
+        ? [{ ...p, handMax: 6, compact: true }]
+        : []),
+    ])
+    .map((p) => ({ width, height, ...p })),
 );
 
 function inside(inner: Rect, outer: Rect): boolean {
@@ -38,9 +46,9 @@ function inside(inner: Rect, outer: Rect): boolean {
 }
 
 describe.each(cases)(
-  "$width×$height / 인원 $players",
-  ({ width, height, players, handMax }) => {
-    const layout = hwatuLayout(width, height, players, handMax);
+  "$width×$height / 인원 $players / 낮은 판 $compact",
+  ({ width, height, players, handMax, compact }) => {
+    const layout = hwatuLayout(width, height, players, handMax, { compact });
     const plates = layout.seats.slice(1).map((s) => s.plate);
     const actions = layout.actions as Rect;
     const screen: Rect = { x: 0, y: 0, w: width, h: height };
@@ -110,7 +118,7 @@ describe.each(cases)(
       }
     });
 
-    it("먹은 패 네 묶음이 자리 판 안에 들어갈 크기다", () => {
+    it.skipIf(compact)("먹은 패 네 묶음이 자리 판 안에 들어갈 크기다", () => {
       for (const p of [...plates, layout.myPlate]) {
         expect(4 * layout.captured + 3 * 8 + 16).toBeLessThanOrEqual(p.w);
         expect(layout.captured * 1.6 + 54).toBeLessThanOrEqual(p.h);

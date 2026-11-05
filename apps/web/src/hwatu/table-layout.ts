@@ -17,8 +17,16 @@ export interface HwatuLayout extends Layout {
   fan: Size;
 }
 
-/** 다른 사람 자리 판의 처음 크기. 셋 넘게 둘러앉으면 판을 좁혀 양옆·위에 나란히 앉힌다 */
-function plateSize(width: number, height: number, players: number): Size {
+/**
+ * 다른 사람 자리 판의 처음 크기. 셋 넘게 둘러앉으면 판을 좁혀 양옆·위에 나란히 앉힌다.
+ * `compact`는 먹은 패 네 묶음이 없는 판(나이롱뽕: 이름 줄과 뽕 묶음 한 줄)이라 낮게 잡는다
+ */
+function plateSize(
+  width: number,
+  height: number,
+  players: number,
+  compact: boolean,
+): Size {
   const portrait = width < height;
   const short = !portrait && height <= 600;
   const g = clamp(Math.min(width, height) * 0.02, 8, 24);
@@ -27,8 +35,9 @@ function plateSize(width: number, height: number, players: number): Size {
     const across = Math.min(others, 3);
     return {
       w: (width - (across + 1) * g) / across,
-      h:
-        others >= 4
+      h: compact
+        ? clamp(height * 0.09, 64, 80)
+        : others >= 4
           ? clamp(height * 0.11, 84, 108)
           : clamp(height * 0.12, 96, 116),
     };
@@ -37,11 +46,11 @@ function plateSize(width: number, height: number, players: number): Size {
   if (short)
     return {
       w: many ? clamp(width * 0.22, 180, 260) : clamp(width * 0.34, 240, 340),
-      h: clamp(height * 0.22, 76, 90),
+      h: compact ? clamp(height * 0.17, 56, 68) : clamp(height * 0.22, 76, 90),
     };
   return {
     w: many ? clamp(width * 0.22, 220, 320) : clamp(width * 0.3, 300, 440),
-    h: clamp(height * 0.16, 96, 132),
+    h: compact ? clamp(height * 0.11, 68, 92) : clamp(height * 0.16, 96, 132),
   };
 }
 
@@ -55,6 +64,8 @@ export function hwatuLayout(
   height: number,
   players: number,
   handMax: number,
+  /** 낮은 자리 판(`plateSize`) */
+  { compact = false }: { compact?: boolean } = {},
 ): HwatuLayout {
   const portrait = width < height;
   const short = !portrait && height <= 600;
@@ -67,7 +78,7 @@ export function hwatuLayout(
     handShare: short
       ? { landscape: 0.2, portrait: 0.2 }
       : { landscape: 0.17, portrait: 0.2 },
-    plate: plateSize(width, height, players),
+    plate: plateSize(width, height, players, compact),
     hudHeight: short ? 30 : 36,
     board: "floor" as const,
   };
