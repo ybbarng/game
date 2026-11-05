@@ -87,7 +87,7 @@ test("색 배치 문제: 3D에서도 위·앞 센터 블럭만 색이 보인다(
   page,
 }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 하나로");
-  // 사람이 3D 그림을 보는 용도라 스크린샷을 찍을 때만 돈다(판정은 펼친 그림 시험 cube-learn-acts가 한다)
+  // 사람이 3D 그림을 보는 용도라 스크린샷을 찍을 때만 돈다(판정은 큐브 그림 시험 cube-learn-acts가 한다)
   test.skip(!SAVE_SCREENSHOTS, "스크린샷을 찍을 때만");
   await page.addInitScript(() =>
     sessionStorage.setItem("mighty-splash-seen", "1"),

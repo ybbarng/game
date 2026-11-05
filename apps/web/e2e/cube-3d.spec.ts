@@ -3,7 +3,7 @@ import { expect, type Page, test } from "./test";
 
 /**
  * 3D 길 확인(2026-11-04, #1 느린 시험 줄이기와 함께). 다른 큐브 화면 시험은 시간을 아끼려고 「3D 끄기」(e2e/cube.ts
- * `no3d`)로 펼친 그림 길을 탄다. 그러면 3D 그림이 깨져도 그 시험들은 모두 통과하므로, 3D를 띄우는 부품마다 하나씩
+ * `no3d`)로 큐브 그림(SVG) 길을 탄다. 그러면 3D 그림이 깨져도 그 시험들은 모두 통과하므로, 3D를 띄우는 부품마다 하나씩
  * 3D를 켠 채로 장면이 만들어지는지(`data-cube-ready`/`data-hero-ready`) 여기서 본다. 장면 하나만 띄우고 끝낸다
  * (GPU 없는 CI는 장면 하나에 몇 초 걸린다). 친 수를 따라 그리는지는 cube-lab, 손가락 밀기는 cube-home이 본다.
  *
@@ -174,7 +174,9 @@ test("3D: 뒷면 거울 판이 생기고, 판 칸을 눌러 뒤쪽 조각을 찾
     "[data-cube-still] [data-cube-canvas][data-cube-ready]",
   );
   await expect(canvas).toHaveAttribute("data-cube-mirror", "on", SCENE);
-  await expect(page.locator("[data-cube-net-side]")).toHaveCount(0);
+  await expect(
+    page.locator("[data-cube-still] [data-cube-posters]"),
+  ).toHaveCount(0);
   await expect(page.locator("[data-step-body]")).toContainText("거울에서");
   // 뒤·왼쪽·아래 판의 가운데 칸 = 안 보이는 세 면의 센터 블럭
   const count = page.locator("[data-find-count]");

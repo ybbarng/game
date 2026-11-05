@@ -52,7 +52,7 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
       .getAttribute("data-cube-scramble")) ?? "";
   expect(scramble.split(" ").length).toBeGreaterThan(3);
   await shot(page, "vs-inspect", info.project.name);
-  // 상대의 작은 큐브는 펼친 그림이 아니라 비스듬한 큐브 둘(여섯 면). 휴대폰 세로(768px 아래)는 사람 목록이
+  // 상대의 작은 큐브는 비스듬한 큐브 둘(여섯 면). 휴대폰 세로(768px 아래)는 사람 목록이
   // 큐브 위 한 줄이라 좁아 숨기고, 휴대폰 가로·데스크톱은 목록이 큐브 옆 칸이라 보인다
   const botCube = page.locator('[data-cube-peer="bot1"] [data-cube-posters]');
   if (info.project.name === "phone-portrait")

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
-import { no3d, useBackView } from "./cube";
+import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -8,8 +8,8 @@ import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
  * 이어진다. 휴대폰은 큐브를 밀어서 돌린다(밀기 계산은 view/swipe.test.ts가 보고, 여기서는 화면에서 수가
  * 들어가는지만 본다).
  *
- * 사람이 보는 스크린샷을 찍지 않을 때(CI)는 3D를 끈다(`no3d`): 판정은 펼친 그림과 링크로 하고, 3D 첫 화면 연출은
- * 스크린샷에만 쓴다. 밀기 시험은 3D 위를 미는 것이라 켠다.
+ * 사람이 보는 스크린샷을 찍지 않을 때(CI)는 3D를 끈다(`no3d`): 판정은 큐브 그림(3D 대신 그림) 칸과 링크로 하고,
+ * 3D 첫 화면 연출은 스크린샷에만 쓴다. 밀기 시험은 3D 위를 미는 것이라 켠다.
  */
 
 /** 스크린샷을 찍지 않으면 3D를 끈다(스크린샷은 3D 연출이 돈 뒤에 찍는다) */
@@ -42,8 +42,6 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     "배치가 세로 휴대폰과 같다",
   );
   await no3dUnlessShots(page);
-  // 3D를 켠 로컬 스크린샷에서도 펼친 그림 칸을 누른다(기본 뒷면 보기는 거울)
-  await useBackView(page, "net");
   await page.addInitScript(() =>
     sessionStorage.setItem("mighty-splash-seen", "1"),
   );
@@ -119,6 +117,11 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   }
   await shot(page, "cube-home", info.project.name);
 
+  // 안내의 칸 누르기는 3D를 켠 로컬 스크린샷에서도 큐브 그림(3D 대신 그림) 칸을 누른다
+  await no3d(page);
+  await page.evaluate(() => {
+    (window as { __cubeNo3d?: boolean }).__cubeNo3d = true;
+  });
   await page.locator("[data-cube-intro-link]").click();
   const intro = page.locator("[data-cube-intro]");
   await expect(intro).toHaveAttribute("data-cube-intro", "words");
@@ -128,10 +131,10 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await page.locator("[data-intro-quiz] [data-choice='1']").click();
   await expect(next).toHaveText("다음");
   await next.click();
-  // 면 여섯: R U F L D B 차례로 그 면의 칸을 누른다(펼친 그림의 면 가운데)
+  // 면 여섯: R U F L D B 차례로 그 면의 칸을 누른다(큐브 그림의 면 가운데)
   await expect(intro).toHaveAttribute("data-cube-intro", "faces");
   const ask = page.locator("[data-intro-face]");
-  await page.locator('[data-net-cell="4"]').click();
+  await page.locator('[data-sticker-cell="4"]').click();
   await expect(ask).toContainText("그건 위 면이에요");
   for (const [letter, cell] of [
     ["R", 13],
@@ -142,7 +145,7 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
     ["B", 49],
   ] as const) {
     await expect(ask).toHaveAttribute("data-intro-face", letter);
-    await page.locator(`[data-net-cell="${cell}"]`).click();
+    await page.locator(`[data-sticker-cell="${cell}"]`).click();
   }
   await expect(ask).toHaveAttribute("data-intro-face", "done");
   await shot(page, "intro-faces", info.project.name);
@@ -198,8 +201,6 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
 }, info) => {
   test.skip(info.project.name !== "desktop", "데스크톱에서만");
   await no3dUnlessShots(page);
-  // 3D를 켠 로컬 스크린샷에서도 펼친 그림 칸을 누른다(기본 뒷면 보기는 거울)
-  await useBackView(page, "net");
   await page.goto("/cube/settings");
   const hero = page.locator("[data-settings-hero]");
   await hero.locator("[data-hero-method='3-cfop']").click();
@@ -250,8 +251,10 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
 
 test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) => {
   test.skip(info.project.name !== "phone-portrait", "휴대폰 세로에서만");
-  // 큐브 전체 돌리기를 곁의 펼친 그림으로 본다(기본 뒷면 보기는 거울)
-  await useBackView(page, "net");
+  // 큐브 전체 돌리기는 장면이 끝낸 회전 수(`__cubeView.done`)로 본다(화면 시험만 여는 고리)
+  await page.addInitScript(() => {
+    (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
+  });
   await page.goto("/cube/solo");
   const main = page.locator("main[data-cube-phase]");
   await expect(main).toHaveAttribute("data-cube-phase", "free");
@@ -289,9 +292,13 @@ test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) =>
   });
   await expect(moves).toHaveText("1");
 
-  // 빈 곳(모서리)을 밀면 큐브 전체를 돌린다: 펼친 그림은 바뀌지만 수로 세지 않는다
-  const net = page.locator("[data-cube-net-side] [data-cube-net]");
-  const before = await net.innerHTML();
+  // 빈 곳(모서리)을 밀면 큐브 전체를 돌린다: 장면은 한 번 더 돌지만 수로 세지 않는다
+  const turned = () =>
+    canvas.evaluate(
+      (el) =>
+        (el as unknown as { __cubeView: { done: number } }).__cubeView.done,
+    );
+  await expect.poll(turned, { intervals: [50] }).toBe(1);
   await canvas.evaluate((el) => {
     const r = el.getBoundingClientRect();
     const x = r.left + r.width * 0.03;
@@ -312,9 +319,7 @@ test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) =>
     fire("pointermove", 60);
     fire("pointerup", 60);
   });
-  await expect
-    .poll(() => net.innerHTML(), { intervals: [50] })
-    .not.toBe(before);
+  await expect.poll(turned, { intervals: [50] }).toBe(2);
   await expect(moves).toHaveText("1");
   await shot(page, "solo-swiped", info.project.name);
 });

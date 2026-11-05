@@ -13,7 +13,7 @@ import { expect, test } from "./test";
  * 큐브 배우기의 해 보기·시연(/cube/learn, docs/47 8절). 고르기·조각 찾기 단계는 cube-learn-acts, 훈련·핑거
  * 트릭은 cube-train이 본다(한 파일이 길어 CI 조각에 고르게 나뉘도록 나눴다, 2026-11-04).
  * 「표기」 배치로 친다(R = R, Shift+R = R', 두 번 = R2). 움직임 줄이기라 장면 회전은 바로 끝난다.
- * 3D 그림은 보지 않으므로 끄고(`no3d`) 펼친 그림으로 본다. 키 입력은 입력 준비를 기다린다.
+ * 3D 그림은 보지 않으므로 끄고(`no3d`) 큐브 그림(SVG)으로 본다. 키 입력은 입력 준비를 기다린다.
  */
 
 test.beforeEach(({ page }) => no3d(page));

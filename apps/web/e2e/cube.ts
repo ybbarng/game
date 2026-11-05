@@ -8,7 +8,7 @@ import {
 /**
  * 큐브 화면 시험이 함께 쓰는 것.
  *
- * `no3d`: 「3D 끄기」. 3D를 못 그리는 기기와 같은 길(펼친 그림)로 화면을 띄운다(`src/cube/view/index.ts`
+ * `no3d`: 「3D 끄기」. 3D를 못 그리는 기기와 같은 길(비스듬한 큐브 그림 둘)로 화면을 띄운다(`src/cube/view/index.ts`
  * `loadCubeView`). GPU 없는 CI는 three.js 장면 하나를 만들고 첫 그림을 그리는 데 몇 초씩 쓰고, 그동안 화면
  * 스레드가 막혀 키 입력·단계 넘김까지 늦어졌다. 소프트웨어 그리기는 CPU를 여럿 써서 같은 기계에서 함께 도는
  * 다른 시험까지 느려졌다(2026-11-04 #1, 배우기 시험 하나가 26~30초, 3D가 없는 핑거 트릭도 15초).
@@ -21,22 +21,6 @@ export async function no3d(
   await target.addInitScript(() => {
     (window as { __cubeNo3d?: boolean }).__cubeNo3d = true;
   });
-}
-
-/**
- * 뒷면 보기 설정(`cube.settings.v1`의 `backView`). 기본은 거울이라, 3D를 켠 채(로컬 스크린샷 등) 펼친 그림 칸을
- * 누르거나 읽는 시험은 「펼친 그림」으로 둔다
- */
-export async function useBackView(
-  page: Pick<Page, "addInitScript">,
-  back: "mirror" | "net" | "off",
-): Promise<void> {
-  await page.addInitScript((b) => {
-    const raw = localStorage.getItem("cube.settings.v1");
-    const s = raw ? JSON.parse(raw) : { version: 1 };
-    s.backView = b;
-    localStorage.setItem("cube.settings.v1", JSON.stringify(s));
-  }, back);
 }
 
 /** 가짜 시계의 시작 시각(2026-01-01 00:00 UTC). 멈출 시각을 이것에서 정해, 페이지에서 시각을 다시 읽지 않는다 */

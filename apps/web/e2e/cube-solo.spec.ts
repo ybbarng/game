@@ -6,13 +6,14 @@ import { expect, type Page, test } from "./test";
  * 「표기」 배치로 친다(R = R, Shift+R = R', 두 번 = R2). 움직임 줄이기라 장면 회전은 바로 끝난다.
  * 3×3 섞기는 워커가 처음에 표를 만들어 몇 초 걸린다(기다림 상한은 멈춘 시험을 잡는 안전장치). 페이지를 새로 열면
  * 워커도 새로 떠 표를 다시 만들므로, 섞기를 두 번 보는 혼자 맞추기와 블라인드는 시험을 나눴다(2026-11-04 #1).
- * 3D 그림은 보지 않으므로 끈다(`no3d`). 키·섞기·결과는 펼친 그림과 상태 표시로 본다.
+ * 3D 그림은 보지 않으므로 끈다(`no3d`). 키·섞기·결과는 큐브 그림(SVG)과 상태 표시로 본다.
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
 
-test.beforeEach(async ({ page }) => {
-  await no3d(page);
+test.beforeEach(async ({ page }, info) => {
+  // 거울 숨기기 단추는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다
+  if (!info.title.includes("거울 숨기기")) await no3d(page);
   await useNotationKeys(page);
 });
 
@@ -309,7 +310,7 @@ test("혼자 맞추기: 키 그림 접기·거울 숨기기는 새로 고쳐도 
     { timeout: SCRAMBLE_TIMEOUT },
   );
   const keys = page.locator("[data-cube-keys-wrap]");
-  const back = page.locator("[data-back-toggle]");
+  const back = page.locator('[data-back-toggle="mirror"]');
   await expect(keys).toBeVisible();
   await page.getByRole("button", { name: "키 그림 접기" }).click();
   await back.click();
