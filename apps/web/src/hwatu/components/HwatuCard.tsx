@@ -149,8 +149,11 @@ export function HwatuCardView({
   onClick,
   className,
   style,
+  flip,
 }: {
   id?: string;
+  /** 장면이 바뀔 때 옮겨 가 보일 이름(card-fx `useCardFlip`의 `data-flip`). 보통 카드 id */
+  flip?: string;
   faceDown?: boolean;
   width?: number;
   /** 고른 카드(위로 살짝 뜬다) */
@@ -193,7 +196,15 @@ export function HwatuCardView({
       aria-label={label}
       aria-pressed={selected}
       data-card={id}
+      data-flip={flip}
       onClick={onClick}
+      // Enter·Space는 여기서 처리하고 막는다(손패 조작의 Enter가 고른 카드를 한 번 더 내지 않게)
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={classes}
       style={style}
     >
@@ -204,6 +215,7 @@ export function HwatuCardView({
       role="img"
       aria-label={label}
       data-card={card ? id : undefined}
+      data-flip={flip}
       className={cn(classes, "inline-block")}
       style={style}
     >

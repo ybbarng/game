@@ -45,6 +45,7 @@ export function HwatuHand({
   return (
     <section
       aria-label="손패"
+      data-flip-zone="hand"
       className={cn(
         "flex justify-center",
         step === undefined && "flex-wrap",
@@ -57,6 +58,7 @@ export function HwatuHand({
           <HwatuCardView
             key={id}
             id={id}
+            flip={id}
             width={width}
             selected={selected === id}
             dim={!can}
@@ -122,6 +124,7 @@ export function HwatuFloor({
   return (
     <section
       aria-label="바닥"
+      data-flip-zone="floor"
       className="flex flex-wrap items-start justify-center gap-2"
     >
       {groups.length === 0 && (
@@ -142,6 +145,7 @@ export function HwatuFloor({
               >
                 <HwatuCardView
                   id={id}
+                  flip={id}
                   width={width}
                   highlight={on}
                   {...(onPick && on ? { onClick: () => onPick(id) } : {})}
@@ -170,7 +174,7 @@ export function HwatuDeck({
       aria-label={`더미 ${count}장`}
     >
       {count > 0 ? (
-        <HwatuCardView faceDown width={width} />
+        <HwatuCardView faceDown width={width} flip="deck" />
       ) : (
         <div
           className="rounded-md border border-white/20 border-dashed"
@@ -230,6 +234,7 @@ export function HwatuCaptured({
   return (
     <section
       aria-label={`${label} 먹은 패`}
+      data-flip-zone="captured"
       className={cn(
         "flex items-end gap-2",
         step === null ? "flex-wrap" : "flex-nowrap",
@@ -255,6 +260,7 @@ export function HwatuCaptured({
                 <HwatuCardView
                   key={id}
                   id={id}
+                  flip={id}
                   width={width}
                   {...(step !== null && i > 0
                     ? { style: { marginLeft: step - width } }

@@ -40,7 +40,7 @@ export function HwatuFan({
               zIndex: 1 + i,
             }}
           >
-            <HwatuCardView faceDown width={fan.w} />
+            <HwatuCardView faceDown width={fan.w} flip={`fan-${offset}-${i}`} />
           </span>
         );
       })}

@@ -12,7 +12,7 @@ import {
 } from "@game/gostop-engine";
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
-
+import { useCardFlip } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -22,6 +22,7 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
+import { HwatuDeal, hwatuDealMs, useHwatuDealing } from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
@@ -53,6 +54,7 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 
+import { gostopDealCounts, gostopMoves } from "../card-fx";
 import { GOSTOP_LEVELS } from "../settings";
 import { useGostop } from "../store";
 
@@ -311,6 +313,21 @@ export function GostopTable({
   }, [seq]);
 
   const name = useSeatName(view?.mySeat ?? 0);
+  // 카드 연출(docs/05 4.12): 판 시작에 섞어 나눠 주고, 장면마다 낸·뒤집은 카드와 먹은 패를 차례로 옮긴다
+  const players = view?.rules.players ?? 2;
+  const mySeat = host?.seat ?? 0;
+  const dealing = useHwatuDealing(
+    seq,
+    events.some((e) => e.type === "roundStarted"),
+    view ? hwatuDealMs(gostopDealCounts(view.rules)) : 0,
+  );
+  useCardFlip({
+    stage: stage.ref,
+    scene: seq,
+    skip: dealing,
+    moves: (prev) =>
+      gostopMoves(prev, events, (seat) => (seat - mySeat + players) % players),
+  });
   const shell = (children: React.ReactNode) => (
     <HwatuStage
       game="gostop"
@@ -490,14 +507,26 @@ export function GostopTable({
       />
 
       {/* 상대 손패 뒷면(자리 판 뒤에서 판 쪽으로) */}
-      {others.map((seat, i) => (
-        <HwatuFan
-          key={`fan-${seat}`}
+      {!dealing &&
+        others.map((seat, i) => (
+          <HwatuFan
+            key={`fan-${seat}`}
+            layout={layout}
+            offset={i + 1}
+            count={view.handCounts[seat] ?? 0}
+          />
+        ))}
+      {dealing && (
+        <HwatuDeal
           layout={layout}
-          offset={i + 1}
-          count={view.handCounts[seat] ?? 0}
+          seats={n}
+          dealerOffset={(view.dealer - me + n) % n}
+          hand={dealSizes(view.rules).hand}
+          floor={dealSizes(view.rules).floor}
+          deckLeft={view.deckCount}
+          dealKey={String(seq)}
         />
-      ))}
+      )}
 
       {/* 상대 자리 */}
       {others.map((seat, i) => {
@@ -536,7 +565,12 @@ export function GostopTable({
           <ResultBanner banner={banner} seq={seq} onShowChange={setBannerUp} />
         }
       >
-        <div className="flex shrink-0 flex-col items-center gap-1">
+        <div
+          className={cn(
+            "flex shrink-0 flex-col items-center gap-1",
+            dealing && "invisible",
+          )}
+        >
           <HwatuDeck count={view.deckCount} width={layout.deck} />
           {view.stacks.length > 0 && (
             <p className="max-w-24 text-center text-[10px] text-white/60">
@@ -564,7 +598,12 @@ export function GostopTable({
             </div>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col items-center justify-center gap-1",
+            dealing && "invisible",
+          )}
+        >
           <HwatuFloor
             ids={view.floor}
             width={layout.floor}
@@ -666,9 +705,12 @@ export function GostopTable({
         </div>
       )}
 
-      {/* 내 손패 */}
+      {/* 내 손패(나눠 주는 동안은 숨긴다) */}
       <div
-        className="pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto",
+          dealing && "invisible",
+        )}
         style={{
           top: layout.hand.top,
           bottom: layout.gutter,
