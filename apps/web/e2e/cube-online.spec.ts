@@ -52,10 +52,12 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
       .getAttribute("data-cube-scramble")) ?? "";
   expect(scramble.split(" ").length).toBeGreaterThan(3);
   await shot(page, "vs-inspect", info.project.name);
-  // 상대의 작은 큐브는 펼친 그림이 아니라 비스듬한 큐브 둘(여섯 면). 휴대폰은 위 줄이 좁아 숨긴다
+  // 상대의 작은 큐브는 펼친 그림이 아니라 비스듬한 큐브 둘(여섯 면). 휴대폰 세로(768px 아래)는 사람 목록이
+  // 큐브 위 한 줄이라 좁아 숨기고, 휴대폰 가로·데스크톱은 목록이 큐브 옆 칸이라 보인다
   const botCube = page.locator('[data-cube-peer="bot1"] [data-cube-posters]');
-  if (info.project.name === "desktop") await expect(botCube).toBeVisible();
-  else await expect(botCube).toBeHidden();
+  if (info.project.name === "phone-portrait")
+    await expect(botCube).toBeHidden();
+  else await expect(botCube).toBeVisible();
   // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
   await expect(
     page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
