@@ -15,10 +15,19 @@
 
 import type { Clock } from "@game/fair-play";
 
-/** 한 자리에 쌓인 어긋남의 허용 폭: 기본(ms). 지연 한 번 크게 흔들리는 것을 덮는다 */
-export const TURN_SLACK_MS = 3_000;
-/** 잰 차례마다 더하는 허용 폭(ms). 작은 흔들림이 차례마다 쌓이는 것을 덮는다 */
-export const TURN_SLACK_PER_TURN_MS = 50;
+/**
+ * 차례 하나의 어긋남 허용 폭(ms). 한 차례의 어긋남은 그 차례 처음·끝 화면의 내려받기 지연 차이라 지연이 흔들리는
+ * 폭(휴대폰 망에서 0.05~0.8초, 가끔 2초대로 튐)을 넘지 않는다. 일찍 낸 시간패를 판 길이와 상관없이 잡는다
+ */
+export const TURN_SLACK_MS = 5_000;
+/**
+ * 한 자리에 쌓인 어긋남(부호 있는 합)의 허용 폭: 기본(ms) + 잰 차례 수의 제곱근마다(ms).
+ * 정직한 방장이면 차례마다의 어긋남은 앞뒤 지연의 차이라 부호가 들쭉날쭉해 서로 상쇄되고, 합은 차례 수의 제곱근만큼만
+ * 자란다(차례마다 지연이 따로 흔들릴 때. 실제 망은 앞뒤 지연이 비슷해 더 작다). 방장이 차례마다 조금씩 가져가면 합이
+ * 차례 수에 비례해 자라 이 폭을 넘는다. 제곱근 폭은 지연 표준편차 0.4초(가끔 튀는 것 포함)일 때의 약 4.5배다
+ */
+export const DRIFT_BASE_MS = 3_000;
+export const DRIFT_SQRT_MS = 2_500;
 /** 시간 창(시간 상한 등)이 일찍 닫혔다고 볼 허용 폭(ms) */
 export const WINDOW_SLACK_MS = 3_000;
 
@@ -90,8 +99,10 @@ export interface WitnessInput {
  * 방장이 적은 시간을 내 기기가 잰 사이와 견준다. 문제가 없으면 null, 있으면 판 끝 검증 실패 까닭.
  *
  * - 차례마다: 시계를 다시 건 상태(앞 행동을 넣은 뒤, `LocalMatch.armClock`과 같은 규칙)부터 쓴 시간을 적은 행동을
- *   넣은 상태까지. 자리마다 어긋남(적은 시간 − 잰 사이)을 쌓아 허용 폭을 넘으면 실패다. 시간패도 쓴 시간을 적으므로
+ *   넣은 상태까지의 어긋남(적은 시간 − 잰 사이)이 `TURN_SLACK_MS`를 넘으면 실패다. 시간패도 쓴 시간을 적으므로
  *   일찍 낸 시간패가 여기서 잡힌다
+ * - 자리마다: 어긋남을 부호 있는 채로 더해 `DRIFT_BASE_MS + DRIFT_SQRT_MS × √(잰 차례 수)`를 넘으면 실패다
+ *   (차례마다 조금씩 가져가기). 컴퓨터 자리는 생각이 길어도 지지 않게 줄여 적으므로 많이 적은 차례만 본다
  * - 시간 창마다: 창이 열린 상태부터 그 창으로 넣은 행동까지가 창 길이보다 허용 폭 넘게 짧으면 실패다
  */
 export function witnessTimes(input: WitnessInput): string | null {
@@ -123,14 +134,21 @@ export function witnessTimes(input: WitnessInput): string | null {
       const a = arrivalOf.get(start);
       const b = arrivalOf.get(i + 1);
       if (a && b && a.segment === b.segment && !a.hidden && !b.hidden) {
-        let off = entry.spent - (b.at - a.at);
-        if (botSeats.has(entry.seat)) off = Math.max(0, off);
-        const d = drift.get(entry.seat) ?? { sum: 0, turns: 0 };
-        d.sum += off;
-        d.turns += 1;
-        drift.set(entry.seat, d);
-        if (Math.abs(d.sum) > TURN_SLACK_MS + TURN_SLACK_PER_TURN_MS * d.turns)
-          return `기록 ${i + 1}번째: ${entry.seat}번 자리 시간을 내 기기에서 잰 것보다 ${seconds(Math.abs(d.sum))}초 ${d.sum > 0 ? "많이" : "적게"} 적었다`;
+        const off = entry.spent - (b.at - a.at);
+        const bot = botSeats.has(entry.seat);
+        if (bot ? off > TURN_SLACK_MS : Math.abs(off) > TURN_SLACK_MS)
+          return differs(i, entry.seat, off);
+        if (!bot) {
+          const d = drift.get(entry.seat) ?? { sum: 0, turns: 0 };
+          d.sum += off;
+          d.turns += 1;
+          drift.set(entry.seat, d);
+          if (
+            Math.abs(d.sum) >
+            DRIFT_BASE_MS + DRIFT_SQRT_MS * Math.sqrt(d.turns)
+          )
+            return differs(i, entry.seat, d.sum);
+        }
       }
     }
     const after = turns[i + 1] ?? null;
@@ -142,6 +160,10 @@ export function witnessTimes(input: WitnessInput): string | null {
     if (!keep) start = i + 1;
   }
   return null;
+}
+
+function differs(index: number, seat: number, off: number): string {
+  return `기록 ${index + 1}번째: ${seat}번 자리 시간을 내 기기에서 잰 것보다 ${seconds(Math.abs(off))}초 ${off > 0 ? "많이" : "적게"} 적었다`;
 }
 
 function seconds(ms: number): string {

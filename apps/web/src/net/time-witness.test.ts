@@ -47,7 +47,88 @@ function alternating(
   };
 }
 
+/** 씨앗을 정한 난수(mulberry32, 0 이상 1 미만) */
+function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+/**
+ * 휴대폰 손님과 둔 판: 0번이 방장, 1번이 손님, 번갈아 `moves`수. 화면마다 내려받기 지연이 0.05~0.8초에서 따로 흔들리고
+ * 3%는 2초 더 늦는다(가장 나쁘게: 앞뒤 화면의 지연이 서로 상관없다). 수마다 실제로 1~10초를 쓴다.
+ * `steal`이면 방장이 수마다 그만큼 가져간다: 자기 수는 줄여 적고 손님 수는 부풀려 적는다(`side`로 한쪽만)
+ */
+function phoneGame(
+  seed: number,
+  moves: number,
+  steal = 0,
+  side: "both" | "guest" | "host" = "both",
+): WitnessInput {
+  const r = seeded(seed);
+  const delay = () => (r() < 0.03 ? 2_000 : 0) + 50 + r() * 750;
+  const arrivalOf = new Map<number, Arrival>([[0, at(delay())]]);
+  const turns: WitnessInput["turns"][number][] = [];
+  const entries: WitnessInput["entries"][number][] = [];
+  let t = 0;
+  for (let i = 0; i < moves; i++) {
+    const seat = i % 2;
+    const spent = 1_000 + r() * 9_000;
+    t += spent;
+    arrivalOf.set(i + 1, at(t + delay()));
+    turns.push({ seat, left: 600_000 });
+    const cheat =
+      seat === 1
+        ? side === "host"
+          ? 0
+          : steal
+        : side === "guest"
+          ? 0
+          : -steal;
+    entries.push({
+      seat,
+      spent: Math.round(spent + cheat),
+      keeps: false,
+      window: null,
+    });
+  }
+  turns.push(null);
+  return { turns, windows: [], entries, arrivalOf, botSeats: new Set() };
+}
+
 describe("손님 시계 확인(witnessTimes)", () => {
+  describe("흔들리는 휴대폰 망에서 긴 판(200수)", () => {
+    const SEEDS = Array.from({ length: 50 }, (_, i) => i + 1);
+
+    it("정직한 방장은 씨앗 50개 모두 통과한다(어긋남은 부호 있는 채로 더해 서로 상쇄된다)", () => {
+      for (const seed of SEEDS)
+        expect(witnessTimes(phoneGame(seed, 200)), `씨앗 ${seed}`).toBeNull();
+    });
+
+    it("방장이 수마다 0.5초씩 가져가면(자기 수 줄이기·손님 수 부풀리기) 씨앗 50개 모두 잡힌다", () => {
+      for (const seed of SEEDS)
+        expect(witnessTimes(phoneGame(seed, 200, 500)), `씨앗 ${seed}`).toMatch(
+          /번 자리 시간을 내 기기에서 잰 것보다/,
+        );
+    });
+
+    it("한쪽만 가져가도 잡힌다(손님 수만 부풀리기, 자기 수만 줄이기)", () => {
+      for (const seed of SEEDS) {
+        expect(witnessTimes(phoneGame(seed, 200, 500, "guest"))).toMatch(
+          /1번 자리 시간을 .*많이 적었다/,
+        );
+        expect(witnessTimes(phoneGame(seed, 200, 500, "host"))).toMatch(
+          /0번 자리 시간을 .*적게 적었다/,
+        );
+      }
+    });
+  });
+
   it("방장이 적은 시간이 닿은 사이와 같으면 통과한다", () => {
     expect(
       witnessTimes(
@@ -138,12 +219,12 @@ describe("손님 시계 확인(witnessTimes)", () => {
       windows: [],
       entries: [
         { seat: 0, spent: null, keeps: true, window: null },
-        { seat: 0, spent: 8_000, keeps: false, window: null },
+        { seat: 0, spent: 9_000, keeps: false, window: null },
       ],
       arrivalOf: new Map([
         [0, at(0)],
-        [1, at(5_000)],
-        [2, at(8_000)],
+        [1, at(6_000)],
+        [2, at(9_000)],
       ]),
       botSeats: new Set(),
     };
