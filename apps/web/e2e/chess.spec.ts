@@ -524,7 +524,9 @@ test("체스 개인 시간: 내 시계가 가고, 다 쓰면 시간패다", asyn
   await page.getByRole("button", { name: "백(먼저)" }).click();
   await page.getByRole("button", { name: "처음으로" }).click();
   await page.getByRole("button", { name: /나홀로 체스/ }).click();
-  await expect(page.locator("[data-clock]").first()).toHaveText("3:00");
+  await expect(page.locator('[data-seat="me"] [data-clock]')).toHaveText(
+    "3:00",
+  );
   await page.clock.runFor(270_001);
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await page.screenshot({ path: info.outputPath("chess-time.png") });

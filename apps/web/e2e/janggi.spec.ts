@@ -428,7 +428,9 @@ test("장기 개인 시간: 상차림 뒤부터 시계가 가고, 다 쓰면 시
   // 상차림을 고르는 동안은 시계가 가지 않는다.
   await page.clock.runFor(60_000);
   await page.getByRole("button", { name: "마상마상" }).click();
-  await expect(page.locator("[data-clock]").first()).toHaveText("3:00");
+  await expect(page.locator('[data-seat="me"] [data-clock]')).toHaveText(
+    "3:00",
+  );
   await page.clock.runFor(270_001);
   await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
   await page.screenshot({ path: info.outputPath("janggi-time.png") });

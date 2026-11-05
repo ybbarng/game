@@ -91,6 +91,7 @@ export function Scoreboard({
   secret,
   secretNote,
   candidates,
+  clocks = true,
 }: {
   view: BaseballView;
   me: number;
@@ -101,12 +102,14 @@ export function Scoreboard({
   secretNote?: React.ReactNode;
   /** 지금까지 답과 맞는 후보 수(도움말을 켰을 때) */
   candidates: number | null;
+  /** 아래 줄에 두 사람 시계를 보일지(마주 앉은 화면은 시계를 각 자리판에 둔다) */
+  clocks?: boolean;
 }) {
   const digits = view.rules.digits;
   const puzzle = view.rules.mode === "puzzle";
   const inning = inningOf(view);
   const last = lastAnswered(view.guesses);
-  const control = timeControlOf(view.rules);
+  const control = clocks ? timeControlOf(view.rules) : null;
   const order = puzzle ? [me] : [view.starter, 1 - view.starter];
   const perSeat = (seat: number) => view.guesses.filter((g) => g.seat === seat);
   const played = Math.max(...order.map((s) => perSeat(s).length), 0);

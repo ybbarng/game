@@ -19,6 +19,7 @@ import {
 } from "@game/chess-engine";
 import { useEffect, useRef, useState } from "react";
 
+import { BoardSeat, BoardTable } from "@/components/board-game/BoardTable";
 import { ChatBox } from "@/components/ChatBox";
 import { GameClock } from "@/components/GameClock";
 import { HintButton, useHint } from "@/components/HintButton";
@@ -31,7 +32,6 @@ import {
 } from "@/components/tutorial/MissionOverlay";
 import { adviseWith } from "@/game/bot-runner";
 import type { ResultBanner as Banner } from "@/game/result-banner";
-import { cn } from "@/lib/cn";
 
 import { hangingPieces } from "../danger";
 import { DRAW_LABEL } from "../kit";
@@ -61,18 +61,20 @@ export function moveListText(played: readonly Played[], firstWhite = true) {
   return parts.join(" ");
 }
 
-/** 자리 표: 색, 이름, 잡은 기물과 기물 점수 차이, 이긴 판 수, 시계 */
+/** 자리판: 색, 이름, 이긴 판 수, 잡은 기물과 기물 점수 차이, 대국 시계, 차례 빛 */
 function PlayerPlate({
   view,
   seat,
   name,
+  who,
 }: {
   view: ChessView;
   seat: number;
   name: string;
+  who: "me" | "opponent";
 }) {
   const side = sideOfSeat(view, seat);
-  const turn = seatToMove(view) === seat;
+  const turn = view.phase === "play" && seatToMove(view) === seat;
   const control = timeControlOf(view.rules);
   const captured = capturedPieces(view.played, side);
   // 잡은 기물 점수 차이(승급으로 생긴 기물은 셈하지 않는다)
@@ -80,22 +82,14 @@ function PlayerPlate({
     capturedPieces(view.played, s).reduce((n, k) => n + PIECE_POINTS[k], 0);
   const lead = points(side) - points(side === "w" ? "b" : "w");
   return (
-    <div
-      data-turn={turn || undefined}
-      className={cn(
-        "flex min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 py-1.5",
-        turn
-          ? "border-amber-300 bg-amber-300/15"
-          : "border-white/10 bg-white/5",
-      )}
-    >
-      <PieceIcon piece={`${side}K`} className="size-6 shrink-0" />
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate font-semibold text-sm">{name}</span>
-        <span
-          className="flex h-4 items-center text-white/70 text-xs"
-          title="잡은 기물"
-        >
+    <BoardSeat
+      who={who}
+      turn={turn}
+      name={name}
+      score={`${view.wins[seat] ?? 0}승`}
+      token={<PieceIcon piece={`${side}K`} className="block size-7" />}
+      detail={
+        <span className="flex h-4 items-center" title="잡은 기물">
           {captured.map((k, i) => (
             <PieceIcon
               // biome-ignore lint/suspicious/noArrayIndexKey: 같은 기물이 여럿이다
@@ -106,18 +100,19 @@ function PlayerPlate({
           ))}
           {lead > 0 && <span className="ml-1.5">+{lead}</span>}
         </span>
-      </span>
-      <span className="ml-auto whitespace-nowrap text-white/70 text-xs">
-        {view.wins[seat] ?? 0}승
-      </span>
-      {control && view.clocks?.[seat] && (
-        <GameClock
-          clock={view.clocks[seat]}
-          control={control}
-          running={turn && view.phase === "play"}
-        />
-      )}
-    </div>
+      }
+      clock={
+        control &&
+        view.clocks?.[seat] && (
+          <GameClock
+            clock={view.clocks[seat]}
+            control={control}
+            running={turn}
+            className="px-2.5 py-1 text-lg"
+          />
+        )
+      }
+    />
   );
 }
 
@@ -311,208 +306,198 @@ export function ChessGame({
   };
 
   return (
-    <main
-      data-game="chess"
-      className={cn(
-        "relative flex min-h-dvh flex-col items-center gap-2.5 bg-[#1c1917] px-4 py-3 text-white short-landscape:grid short-landscape:grid-cols-[auto_minmax(0,18rem)] short-landscape:grid-rows-[auto_auto_auto_auto_1fr] short-landscape:content-center short-landscape:justify-center short-landscape:gap-x-6",
-        // 미션 띠가 위에 놓일 자리를 비워 둔다.
-        mission && "pt-16",
-      )}
-    >
-      {mission && <MissionOverlay mission={mission} top={8} />}
-      <header className="flex w-full max-w-xl items-center gap-2 text-sm short-landscape:col-start-2 short-landscape:row-start-1">
-        <button
-          type="button"
-          onClick={onExit}
-          className="text-white/70 hover:text-white"
-        >
-          ← 체스
-        </button>
-        <span className="ml-auto text-white/60">
-          나는 {SIDE_NAMES[mySide]} · {view.roundNumber}판째
-          {view.draws > 0 ? ` · 비김 ${view.draws}` : ""}
-        </span>
-      </header>
-
-      {online && (reconnecting || hostLeft) && (
-        <p
-          role="alert"
-          className="w-full max-w-xl rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm short-landscape:col-start-2"
-        >
-          {hostLeft
-            ? "방장이 방을 나갔습니다"
-            : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
-        </p>
-      )}
-
-      <div className="flex w-full max-w-xl gap-2 short-landscape:col-start-2 short-landscape:row-start-2 short-landscape:flex-col">
-        <PlayerPlate view={view} seat={me} name="나" />
-        <PlayerPlate view={view} seat={1 - me} name={opponent} />
-      </div>
-
-      {/* 판은 정사각형. 휴대폰 가로는 판이 화면 높이를 채우고 나머지는 오른쪽에 */}
-      <div
-        className={cn(
-          "relative aspect-square w-[min(100%,calc(100dvh-17rem))] max-w-xl short-landscape:col-start-1 short-landscape:row-span-5 short-landscape:row-start-1 short-landscape:w-[calc(100dvh-1.5rem)]",
-          // 미션 띠 자리만큼 줄여 판 아래가 화면 밖으로 밀리지 않게 한다.
-          mission &&
-            "w-[min(100%,calc(100dvh-21rem))] short-landscape:w-[calc(100dvh-5.5rem)]",
-        )}
-      >
-        <ChessBoard
-          board={view.position.board}
-          flipped={mySide === "b"}
-          legal={promotion ? [] : view.legal}
-          selected={selected}
-          onSelect={setSelected}
-          onMove={onMove}
-          lastMove={last}
-          checkedKing={checkedKing}
-          coordinates={coordinates}
-          hint={hint}
-          danger={danger}
-        />
-        {promotion && (
-          <PromotionChooser
-            side={mySide}
-            onChoose={(p) => {
-              setPromotion(null);
-              submit({ type: "move", ...promotion, promotion: p });
-            }}
-            onCancel={() => setPromotion(null)}
+    <BoardTable
+      game="chess"
+      reserve="18rem"
+      mission={!!mission}
+      overlay={mission && <MissionOverlay mission={mission} top={8} />}
+      header={
+        <header className="flex w-full items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={onExit}
+            className="text-white/70 hover:text-white"
+          >
+            ← 체스
+          </button>
+          <span className="ml-auto text-white/60">
+            나는 {SIDE_NAMES[mySide]} · {view.roundNumber}판째
+            {view.draws > 0 ? ` · 비김 ${view.draws}` : ""}
+          </span>
+        </header>
+      }
+      alerts={
+        online &&
+        (reconnecting || hostLeft) && (
+          <p
+            role="alert"
+            className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
+          >
+            {hostLeft
+              ? "방장이 방을 나갔습니다"
+              : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+          </p>
+        )
+      }
+      opponent={
+        <PlayerPlate view={view} seat={1 - me} name={opponent} who="opponent" />
+      }
+      me={<PlayerPlate view={view} seat={me} name="나" who="me" />}
+      board={
+        <>
+          <ChessBoard
+            board={view.position.board}
+            flipped={mySide === "b"}
+            legal={promotion ? [] : view.legal}
+            selected={selected}
+            onSelect={setSelected}
+            onMove={onMove}
+            lastMove={last}
+            checkedKing={checkedKing}
+            coordinates={coordinates}
+            hint={hint}
+            danger={danger}
           />
-        )}
-        <ResultBanner banner={banner} seq={view.roundNumber} />
-      </div>
-
-      <RoundOutcome
-        outcome={outcome}
-        status={notice ?? status}
-        summary={`나 ${view.wins[me] ?? 0} : ${view.wins[1 - me] ?? 0} ${opponent}${result ? ` · ${resultDetail(result, me)}` : ""}`}
-        className="short-landscape:col-start-2 short-landscape:row-start-3"
-      />
-
-      {theirOffer && myMove && (
-        <div
-          role="alert"
-          className="flex w-full max-w-xl flex-wrap items-center justify-center gap-2 rounded-xl bg-sky-900/70 px-3 py-2 text-sm short-landscape:col-start-2"
-        >
-          <span>{opponent}이(가) 무승부를 제안했어요.</span>
-          <button
-            type="button"
-            onClick={() => submit({ type: "acceptDraw" })}
-            className="rounded-lg bg-amber-300 px-3 py-1 font-semibold text-black"
-          >
-            받기
-          </button>
-          <button
-            type="button"
-            onClick={() => submit({ type: "declineDraw" })}
-            className="rounded-lg bg-white/15 px-3 py-1"
-          >
-            거절
-          </button>
-          <span className="text-white/60 text-xs">그냥 두어도 거절이에요</span>
-        </div>
-      )}
-
-      <p
-        ref={list}
-        title="기보"
-        className="w-full max-w-xl overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs short-landscape:col-start-2 short-landscape:row-start-4"
-      >
-        {view.played.length === 0
-          ? "기보: 아직 둔 수가 없어요"
-          : moveListText(view.played, view.played[0]?.side === "w")}
-      </p>
-
-      <div className="flex w-full max-w-xl flex-wrap justify-center gap-2 short-landscape:col-start-2 short-landscape:row-start-5 short-landscape:content-start">
-        {view.phase === "play" && (
-          <>
-            {!online && !mission && (
-              <button
-                type="button"
-                disabled={!canUndo}
-                onClick={() => {
-                  setSelected(null);
-                  undo();
-                }}
-                className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
-              >
-                무르기
-              </button>
-            )}
-            <HintButton
-              online={online}
-              mission={!!mission}
-              myTurn={myMove}
-              thinking={thinking}
-              onHint={() =>
-                // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 워커에서 센다.
-                ask(
-                  () =>
-                    adviseWith<Action>(
-                      { game: "chess", name: "advisor" },
-                      view,
-                      played + 1,
-                    ),
-                  (action) => {
-                    if (action.type !== "move") return;
-                    showHint({ from: action.from, to: action.to });
-                    setSelected(action.from);
-                  },
-                )
-              }
+          {promotion && (
+            <PromotionChooser
+              side={mySide}
+              onChoose={(p) => {
+                setPromotion(null);
+                submit({ type: "move", ...promotion, promotion: p });
+              }}
+              onCancel={() => setPromotion(null)}
             />
-            {view.canOfferDraw && !mission && (
+          )}
+          <ResultBanner banner={banner} seq={view.roundNumber} />
+        </>
+      }
+      status={
+        <div className="flex w-full flex-col gap-2">
+          <RoundOutcome
+            outcome={outcome}
+            status={notice ?? status}
+            summary={`나 ${view.wins[me] ?? 0} : ${view.wins[1 - me] ?? 0} ${opponent}${result ? ` · ${resultDetail(result, me)}` : ""}`}
+          />
+          {theirOffer && myMove && (
+            <div
+              role="alert"
+              className="flex w-full flex-wrap items-center justify-center gap-2 rounded-xl bg-sky-900/70 px-3 py-2 text-sm"
+            >
+              <span>{opponent}이(가) 무승부를 제안했어요.</span>
               <button
                 type="button"
-                onClick={() => submit({ type: "offerDraw" })}
-                className="rounded-xl bg-white/10 px-4 py-2"
+                onClick={() => submit({ type: "acceptDraw" })}
+                className="rounded-lg bg-amber-300 px-3 py-1 font-semibold text-black"
               >
-                무승부 제안
+                받기
               </button>
-            )}
-            {/* 온라인 참가자는 내 차례에만 기권을 보낼 수 있다 */}
-            {(!online || myMove) && (
-              <ResignButton
-                resetKey={played}
-                onResign={() => submit({ type: "resign" })}
-              />
-            )}
-          </>
-        )}
-        {view.phase === "roundEnd" && !view.continued[me] && (
-          <button
-            type="button"
-            onClick={() => submit({ type: "continue" })}
-            className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+              <button
+                type="button"
+                onClick={() => submit({ type: "declineDraw" })}
+                className="rounded-lg bg-white/15 px-3 py-1"
+              >
+                거절
+              </button>
+              <span className="text-white/60 text-xs">
+                그냥 두어도 거절이에요
+              </span>
+            </div>
+          )}
+          <p
+            ref={list}
+            title="기보"
+            className="w-full overflow-x-auto whitespace-nowrap rounded-lg bg-white/5 px-2 py-1 font-mono text-white/70 text-xs"
           >
-            다음 판
-          </button>
-        )}
-        {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
-        {gameOver && !mission && (
-          <>
+            {view.played.length === 0
+              ? "기보: 아직 둔 수가 없어요"
+              : moveListText(view.played, view.played[0]?.side === "w")}
+          </p>
+        </div>
+      }
+      actions={
+        <div className="flex w-full flex-wrap justify-center gap-2">
+          {view.phase === "play" && (
+            <>
+              {!online && !mission && (
+                <button
+                  type="button"
+                  disabled={!canUndo}
+                  onClick={() => {
+                    setSelected(null);
+                    undo();
+                  }}
+                  className="rounded-xl bg-white/10 px-4 py-2 disabled:opacity-40"
+                >
+                  무르기
+                </button>
+              )}
+              <HintButton
+                online={online}
+                mission={!!mission}
+                myTurn={myMove}
+                thinking={thinking}
+                onHint={() =>
+                  // 고수가 이 판에서 고르는 수를 보여 준다(그 기물을 골라 갈 곳도 함께). 워커에서 센다.
+                  ask(
+                    () =>
+                      adviseWith<Action>(
+                        { game: "chess", name: "advisor" },
+                        view,
+                        played + 1,
+                      ),
+                    (action) => {
+                      if (action.type !== "move") return;
+                      showHint({ from: action.from, to: action.to });
+                      setSelected(action.from);
+                    },
+                  )
+                }
+              />
+              {view.canOfferDraw && !mission && (
+                <button
+                  type="button"
+                  onClick={() => submit({ type: "offerDraw" })}
+                  className="rounded-xl bg-white/10 px-4 py-2"
+                >
+                  무승부 제안
+                </button>
+              )}
+              {/* 온라인 참가자는 내 차례에만 기권을 보낼 수 있다 */}
+              {(!online || myMove) && (
+                <ResignButton
+                  resetKey={played}
+                  onResign={() => submit({ type: "resign" })}
+                />
+              )}
+            </>
+          )}
+          {view.phase === "roundEnd" && !view.continued[me] && (
             <button
               type="button"
-              onClick={onExit}
+              onClick={() => submit({ type: "continue" })}
               className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
             >
-              다시 하기
+              다음 판
             </button>
-            <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
-              게임 목록
-            </a>
-          </>
-        )}
-      </div>
-
-      {online && (
-        <div className="w-full max-w-xl short-landscape:col-start-2">
-          <ChatBox mySeat={me} />
+          )}
+          {/* 미션은 결과 창이 다음·다시 하기를 맡는다 */}
+          {gameOver && !mission && (
+            <>
+              <button
+                type="button"
+                onClick={onExit}
+                className="rounded-xl bg-amber-300 px-4 py-2 font-semibold text-black"
+              >
+                다시 하기
+              </button>
+              <a href="/" className="rounded-xl bg-white/10 px-4 py-2">
+                게임 목록
+              </a>
+            </>
+          )}
         </div>
-      )}
-    </main>
+      }
+      chat={online && <ChatBox mySeat={me} />}
+    />
   );
 }
