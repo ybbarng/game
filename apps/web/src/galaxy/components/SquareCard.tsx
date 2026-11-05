@@ -30,8 +30,9 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
       ];
     case "asteroid":
       return [
-        "그냥 멈추면 지나가는 길이에요.",
-        `공문이나 같은 눈 세 번으로 오면 걸려요. 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가거나, 굴려서 같은 눈이 나오면 나가요. 아니면 한 차례 쉬고 나가요.`,
+        "주사위를 굴려 여기 멈추면 아무 일도 없어요.",
+        "우주국 공문 「궤도 이탈」을 받거나, 한 차례에 더블(주사위 두 개가 같은 숫자)이 세 번 연달아 나오면 여기에 걸려요.",
+        `걸리면 다음 차례에 ${money(NUMBERS.asteroidFine)}을 내고 바로 나가 굴리거나, 주사위를 굴려 더블이 나오면 그 눈만큼 나가요. 더블이 아니면 그 차례는 쉬고, 그다음 차례에 그냥 나가요.`,
       ];
     case "observatory": {
       const amounts =
@@ -47,7 +48,7 @@ export function cornerHelp(view: GalaxyView, square: number): string[] {
     }
     case "comet":
       return [
-        "멈추면 주사위를 한 번 더 굴려 그만큼 더 가요. 이때 같은 눈이 나와도 한 번 더 굴리지 않아요.",
+        "멈추면 주사위를 한 번 더 굴려 그만큼 더 가요. 이때 더블(주사위 두 개가 같은 숫자)이 나와도 한 번 더 굴리지 않아요.",
       ];
     default:
       return [
