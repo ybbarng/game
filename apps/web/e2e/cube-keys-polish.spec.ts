@@ -85,18 +85,29 @@ test("5×5 「두 손」: 7로 오른손 층 수를 올리면 큐브와 키 그�
 
 test("설정 사용자 키: 쓰던 키를 지정하면 먼저 묻고, 키가 없어진 동작을 표시한다", async ({
   page,
-}) => {
+}, info) => {
   await page.goto("/cube/settings");
   await page
     .locator("[data-settings-keymap]")
     .getByRole("button", { name: "사용자", exact: true })
     .click();
+  // 동작이 많아 묶음별로 접혀 있다: 처음엔 면 돌리기만 펴 둔다
+  await expect(page.locator('[data-keymap-group="face"]')).toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(
+    page.locator('[data-keymap-group="rotate"]'),
+  ).not.toHaveAttribute("open", "");
   await page.locator('[data-assign="R"]').click();
   await page.keyboard.press("KeyJ");
   const ask = page.locator("[data-keymap-conflict]");
   await expect(ask).toContainText(
     "J 키는 지금 「U」 동작이에요. 「R」 동작으로 바꿀까요?",
   );
+  // J는 U의 하나뿐인 키라, 바꾸면 U에 키가 없다는 것을 저장 전에 알린다
+  await expect(ask).toContainText("바꾸면 「U」 동작에는 키가 없어요.");
+  await shot(page, "settings-conflict", info.project.name);
   // 그만두면 그대로
   await page.locator("[data-conflict-no]").click();
   await expect(ask).toHaveCount(0);
@@ -109,4 +120,9 @@ test("설정 사용자 키: 쓰던 키를 지정하면 먼저 묻고, 키가 없
     "「U」 동작에는 이제 키가 없어요",
   );
   await expect(page.locator("[data-keymap-keyless]")).toContainText("U");
+  // 접힌 묶음 머리에도 키 없는 동작 수가 보인다
+  await expect(
+    page.locator('[data-keymap-group="face"] summary'),
+  ).toContainText("키 없음 1");
+  await shot(page, "settings-keyless", info.project.name);
 });
