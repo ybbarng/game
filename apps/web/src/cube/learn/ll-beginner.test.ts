@@ -1,5 +1,6 @@
 // 초보자 첫 층(흰 면 위)과 마지막 층 네 단계(2026-11-04): 글이 말하는 쥐는 법·되풀이 횟수·고르기 답을 엔진으로 확인한다.
 // 자료: mimmi.co.kr 「3x3 큐브 맞추는 법」, ruwix 「Beginner's method」. 해 보기(상황 → 모범 답 → 목표)는 judge.test.ts가 본다.
+import { TAUGHT_CORNER_SHORTCUT } from "@game/cube-ai";
 import {
   applyMoves,
   cubeTopology,
@@ -23,6 +24,9 @@ import {
   EDGE_OPPOSITE,
   EDGE_SWAP,
   reps,
+  SHORT_DOWN,
+  SHORT_FRONT,
+  SHORT_RIGHT,
   STUCK_CORNER_UP,
   TWIST_THREE,
   TWIST_TWO,
@@ -114,6 +118,34 @@ describe("첫 층 코너(흰 면 위)", () => {
     const quizzes = lesson.steps.filter((s) => s.kind === "quiz");
     expect(quizzes[0]?.quiz?.choices[quizzes[0].quiz.answer]).toBe("세 번");
     expect(quizzes[1]?.quiz?.choices[quizzes[1].quiz.answer]).toBe("두 번");
+  });
+
+  it("지름길: 칸 밑 코너의 흰색이 오른쪽 R' D' R, 앞 F D F', 아래 R' D2 R D 뒤 R' D' R(해법과 같다)", () => {
+    const want: [string, number][] = [
+      [SHORT_RIGHT, F.R],
+      [SHORT_FRONT, F.F],
+      [SHORT_DOWN, F.D],
+    ];
+    expect([SHORT_RIGHT, SHORT_FRONT, SHORT_DOWN]).toEqual([
+      TAUGHT_CORNER_SHORTCUT.right,
+      TAUGHT_CORNER_SHORTCUT.front,
+      TAUGHT_CORNER_SHORTCUT.down,
+    ]);
+    for (const [alg, face] of want) {
+      const s = play(setupFor(alg));
+      expect(colorsAt(s, ["D", "F", "R"]), alg).toEqual([0, 1, 2]);
+      expect(faceOf(s, ["D", "F", "R"], WHITE), alg).toBe(face);
+      expect(goalMet(3, s, "white-cross")).toBe(true);
+      expect(goalMet(3, play(alg, s), "first-layer")).toBe(true);
+      // 맞춘 면(U)은 돌리지 않는다
+      expect(alg).not.toMatch(/U/);
+    }
+    // 지름길 단계는 무작위 해 보기 뒤라 해 보기 번호가 그대로다
+    const random = lesson.steps.findIndex((s) => s.kind === "try" && !s.alg);
+    const short = lesson.steps.findIndex((s) => s.alg === SHORT_RIGHT);
+    expect(short).toBeGreaterThan(random);
+    const quiz = lesson.steps.at(-3)?.quiz;
+    expect(quiz?.choices[quiz.answer]).toBe(SHORT_FRONT);
   });
 
   it("흰-초록-빨강은 아래-앞-왼쪽에 있고 D로 칸 밑에 온다", () => {

@@ -19,6 +19,13 @@ export const EDGE_SWAP = `${SUNE} U`;
 export const CORNER_CYCLE = "U R U' L' U R' U' L";
 /** 초보자 코너 방향 공식. 첫 층(흰 면 위)과 마지막 층 코너 방향(노란 면 위)에 같은 것을 쓴다 */
 export const CORNER_TWIST = "R' D' R D";
+/**
+ * 첫 층 코너 지름길(흰 면 위, 칸 밑 코너의 흰색이 보는 쪽마다). 배우는 방식 해법(`@game/cube-ai`
+ * `TAUGHT_CORNER_SHORTCUT`)과 같다. 되풀이를 먼저 익히고 그 뒤에 배운다
+ */
+export const SHORT_RIGHT = "R' D' R";
+export const SHORT_FRONT = "F D F'";
+export const SHORT_DOWN = "R' D2 R D R' D' R";
 
 /** 같은 공식 k번 */
 export const reps = (alg: string, k: number) =>
@@ -739,6 +746,8 @@ const whiteCross: Lesson = {
 /**
  * 첫 층 코너(2026-11-04 사용자 요청): 흰 십자처럼 흰 면을 위에 둔 채, 흰 코너를 넣을 칸 바로 밑(앞-오른쪽 아래)으로
  * 가져와 R' D' R D를 흰색이 위로 올 때까지 되풀이한다. 마지막 층 「코너 방향」에서 같은 공식을 다시 쓴다.
+ * 되풀이로 첫 층을 끝내 본 뒤 지름길(2026-11-05 사용자)을 배운다. 지름길 단계는 무작위 해 보기 뒤에 두어
+ * 해 보기 번호(진도)가 그대로다. 그 해 보기의 힌트는 되풀이로 보인다(`taught-hint.ts` `LESSON_PLAN`).
  * 첫 층이 끝나면 큐브를 뒤집어 흰 면을 아래로 둔다(둘째 층부터는 흰 면 아래).
  */
 const firstCorners: Lesson = {
@@ -746,7 +755,7 @@ const firstCorners: Lesson = {
   size: 3,
   title: "첫 층 코너",
   summary:
-    "흰 면을 위에 둔 채 흰 코너 넷을 R' D' R D 되풀이로 넣고, 다 되면 큐브를 뒤집어요.",
+    "흰 면을 위에 둔 채 흰 코너 넷을 R' D' R D 되풀이로 넣고, 지름길도 익혀요. 다 되면 큐브를 뒤집어요.",
   steps: [
     {
       kind: "find",
@@ -889,6 +898,41 @@ const firstCorners: Lesson = {
       setup: { rule: "white-cross-up" },
       goal: "first-layer",
       mask: "first-layer",
+    },
+    {
+      kind: "turn",
+      body: "지름길: 흰색이 오른쪽을 보면 R' D' R 세 수면 들어가요. 쳐 보세요.",
+      setup: { alg: setupFor(SHORT_RIGHT) },
+      mask: "first-layer",
+      alg: SHORT_RIGHT,
+    },
+    {
+      kind: "try",
+      body: "흰색이 앞을 보면 거울에 비춘 꼴 F D F'로 넣어요.",
+      setup: { alg: setupFor(SHORT_FRONT) },
+      alg: SHORT_FRONT,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "try",
+      body: "흰색이 아래를 보면 R' D2 R D로 흰색이 오른쪽을 보게 돌린 뒤 R' D' R.",
+      setup: { alg: setupFor(SHORT_DOWN) },
+      alg: SHORT_DOWN,
+      goal: "first-layer",
+      mask: "first-layer",
+    },
+    {
+      kind: "quiz",
+      body: "제 칸에서 돌아가 있으면 흰색이 보는 쪽 지름길에 D를 붙여 빼고, 같은 지름길로 넣어요.",
+      setup: { alg: setupFor(SHORT_FRONT) },
+      mask: "first-layer",
+      quiz: {
+        question: "칸 밑 코너의 흰색이 앞을 봐요. 어느 지름길로 넣을까요?",
+        choices: [SHORT_RIGHT, SHORT_FRONT, "R' D2 R D 뒤 R' D' R"],
+        answer: 1,
+        why: "흰색이 앞이면 R' D' R을 거울에 비춘 F D F'예요.",
+      },
     },
     {
       kind: "look",

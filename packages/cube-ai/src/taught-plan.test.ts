@@ -17,6 +17,14 @@ import { TAUGHT_STAGES, type TaughtCase, taughtStagePlan } from "./taught-plan";
 const apply = (s: PuzzleState, moves: string[]) =>
   applyMoves(3, s, parseMoves(3, moves.join(" ")));
 
+/** 공식의 거꾸로(그 공식이 풀어 내는 상황) */
+const invert = (alg: string) =>
+  alg
+    .split(" ")
+    .reverse()
+    .map((m) => (m.endsWith("2") ? m : m.endsWith("'") ? m[0] : `${m}'`))
+    .join(" ");
+
 describe("taughtStagePlan", () => {
   it("일곱 단계 계획을 차례로 두면 다 맞고, 토막이 수를 빈틈없이 나눈다", () => {
     const kinds = new Map<string, Set<string>>();
@@ -60,16 +68,46 @@ describe("taughtStagePlan", () => {
     // 흰 면이 아래면 먼저 흰 면을 위로
     const held = taughtStagePlan("cross", at("x2 R2"));
     expect(held.segments[0]?.info).toEqual({ kind: "hold", white: "up" });
-    // 흰-초록-빨강이 칸 밑, 흰색이 오른쪽: 한 번(R' D' R D의 거꾸로로 만든 상황)
-    expect(
-      taughtStagePlan("corners", at("D' R' D R")).segments[0]?.info,
-    ).toEqual({
+    // 흰-초록-빨강이 칸 밑, 흰색이 오른쪽(R' D' R D의 거꾸로로 만든 상황): 지름길 R' D' R, 되풀이면 한 번
+    const right = taughtStagePlan("corners", at("D' R' D R"));
+    expect(right.segments[0]?.info).toEqual({
+      kind: "corner",
+      colors: ["U", "F", "R"],
+      from: "bottom",
+      white: "right",
+      reps: 0,
+      shortcut: true,
+    });
+    expect(right.moves).toEqual(["R'", "D'", "R"]);
+    const repeat = taughtStagePlan("corners", at("D' R' D R"), {
+      cornerRepeat: true,
+    });
+    expect(repeat.segments[0]?.info).toEqual({
       kind: "corner",
       colors: ["U", "F", "R"],
       from: "bottom",
       white: "right",
       reps: 1,
+      shortcut: false,
     });
+    // 흰색이 앞이면 F D F', 아래면 R' D2 R D 뒤 R' D' R(거꾸로로 만든 상황)
+    for (const [white, alg] of [
+      ["front", "F D F'"],
+      ["down", "R' D2 R D R' D' R"],
+    ] as const) {
+      const p = taughtStagePlan("corners", at(invert(alg)));
+      expect(p.moves.join(" ")).toBe(alg);
+      expect(p.segments[0]?.info).toMatchObject({ from: "bottom", white });
+    }
+    // 제 칸에서 돌아감: 흰색이 오른쪽이면 R' D' R D 뒤 R' D' R, 앞이면 F D F' D' 뒤 F D F'
+    for (const [white, alg] of [
+      ["right", "R' D' R D R' D' R"],
+      ["front", "F D F' D' F D F'"],
+    ] as const) {
+      const p = taughtStagePlan("corners", at(invert(alg)));
+      expect(p.moves.join(" ")).toBe(alg);
+      expect(p.segments[0]?.info).toMatchObject({ from: "slot", white });
+    }
     // 노란 점: 흰 면 아래로 쥐고(z2) 점 → 세 번
     const dot = taughtStagePlan(
       "eo",
