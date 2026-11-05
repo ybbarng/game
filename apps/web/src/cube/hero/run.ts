@@ -5,7 +5,12 @@ import { loadCubeView } from "../view";
 import type { Quality } from "../view/types";
 import { heroSolveInWorker } from "../worker";
 import { HeroLoop } from "./loop";
-import { type HeroChoice, type HeroSize, heroRotation } from "./methods";
+import {
+  type HeroChoice,
+  type HeroSize,
+  heroRotation,
+  solveForHero,
+} from "./methods";
 
 /**
  * 첫 화면 큐브 연출을 캔버스에 띄운다(3D 장면 + `HeroLoop`). 첫 화면은 이 파일을 늦게 불러와
@@ -61,6 +66,8 @@ export async function startHero(
     clock: realClock,
     rng: Math.random,
     solve: heroSolveInWorker,
+    // 워커가 늦으면(멈춘 워커, 옛 코드를 받은 워커 등) 섞은 뒤 멈춤 동안 화면 스레드에서 푼다(loop.ts `workerWait`)
+    solveHere: solveForHero,
     onMove: (_move, ms, parsed) => {
       const want = Math.min(200, Math.round(ms * 0.75));
       if (want !== moveMs) {
