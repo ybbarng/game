@@ -519,8 +519,8 @@ describe("종합 순위", () => {
       },
     });
     const rounds = [win("a"), win("b"), win("a")];
-    expect(matchOver("firstTo", 2, rounds)).toBe(true);
-    expect(matchOver("firstTo", 3, rounds)).toBe(false);
+    expect(matchOver({ format: "firstTo", target: 2 }, rounds)).toBe(true);
+    expect(matchOver({ format: "firstTo", target: 3 }, rounds)).toBe(false);
     expect(standings("firstTo", ["a", "b"], rounds)[0]).toMatchObject({
       id: "a",
       wins: 2,
@@ -545,8 +545,8 @@ describe("종합 순위", () => {
         },
       },
     };
-    expect(matchOver("single", 1, [voided])).toBe(false);
-    expect(matchOver("firstTo", 1, [voided])).toBe(false);
+    expect(matchOver({ format: "single", target: 1 }, [voided])).toBe(false);
+    expect(matchOver({ format: "firstTo", target: 1 }, [voided])).toBe(false);
     const rows = standings("ao5", ["a", "b"], [voided]);
     expect(rows.every((r) => r.times.length === 0 && r.wins === 0)).toBe(true);
   });

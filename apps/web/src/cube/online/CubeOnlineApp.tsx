@@ -11,13 +11,19 @@ import { useChat } from "@/net/chat";
 import { raceClock } from "@/net/race/race-session";
 import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
-import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botSupports } from "./bot-racer";
+import { nextLabel } from "./MatchBoard";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom, MAX_PLAYERS, NAME_MAX, TIME_LIMIT_SEC } from "./room";
-import { FORMAT_LABELS, type MatchFormat, standings } from "./standings";
+import {
+  FORMAT_LABELS,
+  type MatchFormat,
+  POINTS_ROUNDS,
+  SCORING_LABELS,
+  type Scoring,
+} from "./standings";
 import { useCubeRoom } from "./use-room";
 
 /**
@@ -196,14 +202,11 @@ export function CubeOnlineApp() {
             {state.status === "lobby" ? (
               <Lobby room={room} roomCode={roomCode} />
             ) : (
-              <>
-                <RaceView
-                  room={room}
-                  version={version}
-                  resultActions={<NextActions room={room} />}
-                />
-                <Standings room={room} />
-              </>
+              <RaceView
+                room={room}
+                version={version}
+                resultActions={<NextActions room={room} />}
+              />
             )}
             <section className="flex flex-col gap-1">
               <h2 className="font-semibold text-sm">채팅</h2>
@@ -334,6 +337,44 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             ))}
           </select>
         </Field>
+        {s.format === "points" && (
+          <>
+            <Field label="판 수">
+              <select
+                disabled={!host}
+                data-cube-rounds
+                value={s.rounds ?? 5}
+                onChange={(e) =>
+                  room.setSettings({ rounds: Number(e.target.value) })
+                }
+                className="rounded bg-white/10 px-2 py-1"
+              >
+                {POINTS_ROUNDS.map((k) => (
+                  <option key={k} value={k} className="bg-neutral-800">
+                    {k}판
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="점수">
+              <select
+                disabled={!host}
+                data-cube-scoring
+                value={s.scoring ?? "wins"}
+                onChange={(e) =>
+                  room.setSettings({ scoring: e.target.value as Scoring })
+                }
+                className="rounded bg-white/10 px-2 py-1"
+              >
+                {(Object.keys(SCORING_LABELS) as Scoring[]).map((k) => (
+                  <option key={k} value={k} className="bg-neutral-800">
+                    {SCORING_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
         {s.format === "firstTo" && (
           <Field label="몇 판 먼저">
             <select
@@ -430,7 +471,7 @@ function NextActions({ room }: { room: CubeRoom }) {
   if (!room.isHost)
     return (
       <span className="text-white/60 text-xs">
-        {state.status === "over"
+        {room.matchOver()
           ? "경기가 끝났어요. 방장이 새 경기를 열기를 기다리는 중"
           : "방장이 다음 판을 열기를 기다리는 중"}
       </span>
@@ -442,7 +483,7 @@ function NextActions({ room }: { room: CubeRoom }) {
       onClick={() => room.startRound()}
       className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
     >
-      다음 판
+      {nextLabel(room)}
     </button>
   ) : (
     <button
@@ -453,49 +494,5 @@ function NextActions({ room }: { room: CubeRoom }) {
     >
       새 경기(대기실로)
     </button>
-  );
-}
-
-function Standings({ room }: { room: CubeRoom }) {
-  const state = room.state;
-  if (!state || room.rounds.length === 0) return null;
-  const s = state.settings;
-  const players = state.race?.players ?? state.players.map((p) => p.id);
-  const rows = standings(s.format, players, room.rounds);
-  return (
-    <section
-      className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3"
-      data-cube-standings
-    >
-      <div className="flex items-center gap-2">
-        <h2 className="font-semibold text-sm">
-          종합 순위 · {FORMAT_LABELS[s.format]}
-          {s.format === "firstTo" ? `(${s.target}판)` : ""}
-          {state.status === "over" ? " · 경기 끝" : ""}
-        </h2>
-      </div>
-      <ol className="flex flex-col gap-1 text-sm">
-        {rows.map((r, i) => (
-          <li key={r.id} className="flex items-baseline gap-2">
-            <span className="w-5 text-white/50">{i + 1}</span>
-            <span>{room.playerName(r.id)}</span>
-            <span className="ml-auto font-mono tabular-nums">
-              {s.format === "firstTo"
-                ? `${r.wins}승`
-                : r.value === null
-                  ? "DNF"
-                  : formatMs(r.value)}
-            </span>
-            {s.format !== "single" && (
-              <span className="hidden font-mono text-white/40 text-xs sm:inline">
-                {r.times
-                  .map((t) => (t === null ? "DNF" : formatMs(t)))
-                  .join(" · ")}
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
-    </section>
   );
 }
