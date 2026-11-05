@@ -595,6 +595,35 @@ describe("아이템전(기기마다)", () => {
     }
   });
 
+  it("다른 사람 자리의 맞은 방해: 쓴 쪽 화면에도 그 방해가 이어지는 동안 보이고, 내가 맞은 것은 넣지 않는다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    const table = { g: ["gray" as ItemKind] };
+    const host = room(net, "h", clock, true, table);
+    const guest = room(net, "g", clock, false, table);
+    clock.advance(100);
+    at(clock, guest, [
+      { at: 800, run: play(SOLUTION.slice(0, 2)) },
+      ...wiggles(1_000, 3_000),
+      { at: 1_500, run: (r) => r.spendItem() },
+    ]);
+    at(clock, host, wiggles(900, 3_000));
+    expect(host.startRound()).toBe(true);
+    runUntil(clock, () => (guest.peerNotices().h?.length ?? 0) > 0, 30_000, 10);
+    expect(guest.peerNotices().h?.[0]).toMatchObject({
+      item: "gray",
+      by: "g",
+      blocked: false,
+    });
+    expect(host.peerNotices().h).toBeUndefined();
+    clock.advance(GRAY_MS - 50);
+    expect(guest.peerNotices().h?.length).toBe(1);
+    clock.advance(100);
+    expect(guest.peerNotices().h).toBeUndefined();
+    host.dispose();
+    guest.dispose();
+  });
+
   it("찾아 주기(3×3): 쓰면 다음 이정표의 안 맞은 조각이 빛나고 5초 뒤 꺼진다", () => {
     const clock = new ManualClock();
     const net = new DelayNet(clock);

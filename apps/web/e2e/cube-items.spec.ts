@@ -133,6 +133,23 @@ test.describe("화면 시험(3D 없음)", () => {
     await expect(row).toHaveAttribute("data-cube-screen", /gray/);
     const legend = page.locator("[data-cube-gray-legend] li");
     await expect(legend).toHaveCount(6);
+    // 짝 표는 큐브 칸 바로 위 아이템 줄 안, 칸 하나가 16px 이상(docs/47 9-9). 상대 자리 그림도 흑백
+    const legendBox = await page
+      .locator("[data-cube-gray-legend]")
+      .boundingBox();
+    const stageTop = (await page.locator("[data-cube-stage]").boundingBox())?.y;
+    expect((legendBox?.y ?? 0) + (legendBox?.height ?? 0)).toBeLessThanOrEqual(
+      (stageTop ?? 0) + 1,
+    );
+    expect(
+      (await page.locator("[data-cube-gray-pattern]").first().boundingBox())
+        ?.width ?? 0,
+    ).toBeGreaterThanOrEqual(15.5);
+    await expect(
+      page
+        .locator('[data-cube-seat][data-cube-peer="bot1"] [data-pattern]')
+        .first(),
+    ).toBeAttached();
     await expect(page.locator('[data-cube-gray-pattern="dots9"]')).toHaveCount(
       1,
     );

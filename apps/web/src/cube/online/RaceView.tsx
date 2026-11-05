@@ -62,7 +62,15 @@ import {
   PARTY_REASONS,
   type PartyOutcome,
 } from "./party";
+import { PeerStages, RaceSeat } from "./RaceSeat";
 import { stageLabel, turnCount } from "./race-game";
+import {
+  NARROW_ONE_PX,
+  planSeats,
+  type SeatLook,
+  type SeatMode,
+  seatModeOf,
+} from "./race-seats";
 import {
   liveOrder,
   pickToasts,
@@ -74,7 +82,8 @@ import type { CubeRoom, RoundRecord } from "./room";
 
 /**
  * 대결 한 판의 화면(온라인 방·컴퓨터와 대결이 함께 쓴다, docs/47 9-1).
- * 내 큐브는 크게(`CubePlay`), 다른 사람은 진행 막대·단계 이름·순위, 사람이 셋 이하이면 작은 큐브 그림(비스듬한 SVG 큐브 둘).
+ * 둘러앉은 판(9-9): 내 큐브는 가운데 크게(`CubePlay`), 시간·수·단계·아이템은 그 바로 위. 상대는 테두리 자리마다
+ * 작은 큐브 그림(비스듬한 SVG)·이름·단계 칩·체력·맞은 방해(`RaceSeat`, 자리 나누기는 `race-seats.ts`).
  * 판이 끝나면 결과(시간·수·초당 수·인정 시간과 하한, 확인 약함·의심 표시)와 모두의 풀이 다시 보기.
  */
 
@@ -110,6 +119,24 @@ interface Toast {
   /** 톡마다 다른 열쇠(같은 사람이 이어 지나도 다시 뜬다) */
   key: string;
   text: string;
+}
+
+/** 자리 배치에 쓸 화면 모양(창 크기가 바뀌면 다시) */
+function readSeatMode(): SeatMode {
+  return typeof window === "undefined"
+    ? "wide"
+    : seatModeOf(window.innerWidth, window.innerHeight);
+}
+
+function useSeatMode(): SeatMode {
+  const [mode, setMode] = useState<SeatMode>(readSeatMode);
+  useEffect(() => {
+    const on = () => setMode(readSeatMode());
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return mode;
 }
 
 function useTicker(active: boolean): void {
@@ -157,6 +184,7 @@ export function RaceView({
     if (phase !== "inspect" && !waiting) setNotice(null);
   }, [phase, waiting]);
   const [showSmall, setShowSmall] = useState(true);
+  const seatMode = useSeatMode();
   const reduced = useReducedMotion();
   const alerts = effectiveRaceAlerts(settings.raceAlerts, reduced);
 
@@ -488,7 +516,6 @@ export function RaceView({
   const game = room.game();
   const scramble = snap.seed ? (game?.scrambleFor(snap.seed)?.text ?? "") : "";
   const others = snap.peers.filter((p) => p.id !== room.me);
-  const small = snap.peers.length <= 3 && showSmall;
   /** 단계 칩으로 보이나(대결 알림 「끔」이면 예전처럼 진행 막대·단계 이름·수) */
   const chips = alerts !== "off";
   const finishedFirst = snap.peers
@@ -506,94 +533,73 @@ export function RaceView({
     clock = formatMs(snap.elapsed);
   else clock = "-";
 
+  const meIndex = snap.peers.findIndex((p) => p.id === room.me);
+  // 나 다음 차례부터 시계 방향으로 앉는다
+  const ring =
+    meIndex < 0
+      ? snap.peers
+      : [...snap.peers.slice(meIndex + 1), ...snap.peers.slice(0, meIndex)];
+  const plan = planSeats(ring, seatMode);
+  const peerHits = itemsOn ? room.peerNotices() : {};
+  /** 끝낸 시간·기권·탈락·DNF(맞추는 중이면 빈 글, 칩을 끈 때는 수) */
+  const statusOf = (p: (typeof snap.peers)[number]): string => {
+    const hp = partyHp(p.id);
+    const knocked = hp !== undefined && partyOut(p.id);
+    if (p.status === "done") return formatMs(p.reported);
+    if (p.status === "forfeit") return "기권";
+    if (knocked) return "탈락";
+    if (p.status === "dnf")
+      return hp !== undefined &&
+        PARTY_REASONS.includes(session.checkpointLog(p.id)?.reason ?? "")
+        ? ""
+        : "DNF";
+    return chips ? "" : `${p.moves}수`;
+  };
+  const seat = (p: (typeof snap.peers)[number], shape: SeatLook) => {
+    const st = session.stateOf(p.id);
+    const hp = partyHp(p.id);
+    const knocked = hp !== undefined && partyOut(p.id);
+    return (
+      <RaceSeat
+        key={p.id}
+        id={p.id}
+        name={room.playerName(p.id)}
+        shape={shape}
+        status={statusOf(p)}
+        done={p.status === "done"}
+        out={knocked || p.status === "forfeit" || p.status === "dnf"}
+        connected={p.connected}
+        botPlanned={room.botPlanned(p.id)}
+        peerStatus={p.status}
+        hp={hp}
+        groups={stages.get(p.id)?.groups ?? []}
+        toast={toasts[p.id]}
+        handicap={handicap}
+        n={n}
+        item={items ? (items.slot[p.id] ?? null) : undefined}
+        guard={!!items?.guard[p.id]}
+        hits={peerHits[p.id] ?? []}
+        state={st}
+        settings={settings}
+        look={look}
+        showCube={showSmall}
+        chips={chips}
+        progress={p.progress}
+        stageText={st ? stageLabel(n, st) : "-"}
+      />
+    );
+  };
+  // 가리고 맞추는 동안은 내 단계·진행을 보이지 않는다
+  const myGroups = helpNow.hidden ? [] : (stages.get(room.me)?.groups ?? []);
+  const myStatus = me ? statusOf(me) : "";
+  const myToast = toasts[room.me];
+
   return (
     <div
       className="flex flex-col gap-3"
       data-cube-race-phase={phase}
       data-cube-version={version}
     >
-      <div className="flex flex-wrap items-baseline justify-center gap-x-6 gap-y-1">
-        <span
-          data-cube-clock
-          className={`font-mono font-semibold text-4xl tabular-nums ${phase === "inspect" ? "text-sky-300" : ""}`}
-        >
-          {clock}
-        </span>
-        <span className="text-sm text-white/70">
-          수 <b data-cube-moves>{turnCount(n, mine?.moveLog(room.me) ?? [])}</b>
-        </span>
-        <span className="text-sm text-white/70" data-cube-phase-text>
-          {snap.preparing ? "섞는 중…" : PHASE_TEXT[phase]}
-          {mode ? ` · ${PARTY_MODE_LABELS[mode].replace("파티: ", "")}` : ""}
-          {snap.attempt > 0 && phase !== "finished"
-            ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
-            : ""}
-        </span>
-      </div>
-      <p
-        className="min-h-5 break-keep text-center font-mono text-white/70 text-xs"
-        data-cube-scramble={scramble}
-      >
-        {scramble}
-      </p>
-      {/* 판 시작 전·살펴보기 동안: 무엇을 할 수 있는지 미리 알린다 */}
-      {(phase === "commit" || phase === "reveal" || phase === "inspect") &&
-        mine && (
-          <p
-            data-cube-inspect-hint
-            className="mx-auto break-keep rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-center text-sky-100 text-xs"
-          >
-            살펴보기: 보기만 해요(끌거나 ←·↓ 키로 둘러보기). 시간이 열리면 면을
-            돌려요.
-          </p>
-        )}
-      {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
-      {mine &&
-        (myDelayMs > 0 || myGoal || myHelp) &&
-        phase !== "finished" &&
-        phase !== "waiting" && (
-          <p
-            data-cube-my-handicap
-            data-cube-my-help={myHelp}
-            data-cube-start-wait={waiting ? Math.ceil(waitLeft / 1000) : 0}
-            className={`mx-auto break-keep rounded-full border px-3 py-1 text-center text-xs ${
-              waiting && phase === "race"
-                ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
-                : "border-white/15 bg-white/5 text-white/70"
-            }`}
-          >
-            {[
-              myDelayMs > 0
-                ? waiting && phase === "race"
-                  ? `출발까지 ${Math.ceil(waitLeft / 1000)}초`
-                  : `+${myDelayMs / 1000}초 늦게 출발`
-                : "",
-              myGoal ? `목표: ${goalLabel(n, myGoal)}` : "",
-              myHelp ? helpLabel(n, myHelp) : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        )}
-      {myLow && (
-        <p
-          role="status"
-          data-cube-hp-warning
-          className="mx-auto rounded-full border border-rose-300/40 bg-rose-400/10 px-3 py-1 text-center text-rose-100 text-xs"
-        >
-          체력이 얼마 안 남았어요 · {Math.ceil(myHp as number)}
-        </p>
-      )}
-      {notice && (phase === "inspect" || waiting) && (
-        <p
-          role="status"
-          data-cube-notice
-          className="text-center text-amber-300 text-xs"
-        >
-          {notice}
-        </p>
-      )}
-
       {/* 아무도 못 맞춰도 판이 끝나면 결과(모두 DNF)를 보인다 */}
       {(finishedFirst.length > 0 ||
         snap.result ||
@@ -612,224 +618,294 @@ export function RaceView({
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-[1fr_280px]">
-        <div className="relative flex flex-col items-center">
-          {/* 아이템 줄: 늘 같은 높이로 두어(흑백 화면 표가 떠도) 큐브가 밀리지 않는다 */}
-          {itemsOn && mine && (
-            <div
-              data-cube-item-row
-              data-cube-screen={
-                [
-                  screen?.fog ? "fog" : "",
-                  screen?.blind ? "blind" : "",
-                  screen?.swap ? "swap" : "",
-                  screen?.gray ? "gray" : "",
-                  screen?.find ? "find" : "",
-                  screen?.hint ? "hint" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined
-              }
-              className="mb-2 flex h-7 w-full flex-nowrap items-center justify-center gap-3 overflow-hidden"
-            >
-              <ItemSlot
-                item={myItem}
-                guard={!!items?.guard[room.me]}
-                pending={!!myItem && !usable}
-                onUse={() => room.spendItem()}
-                useKey="Space"
-              />
-              {screen?.gray && <GrayLegend colors={settings.colors} />}
-              {hintMove && (
-                <span
-                  data-cube-item-hint={hintMove}
-                  className="flex h-7 items-center gap-1 rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 font-mono text-amber-100 text-xs"
+      {/* 둘러앉은 판(docs/47 9-9): 위 줄·왼쪽 칸·오른쪽 칸에 상대, 가운데에 내 큐브 */}
+      <div
+        data-cube-peers
+        data-cube-seat-mode={seatMode}
+        data-cube-race-alerts={alerts}
+        data-cube-toasts-shown={toastCount}
+        className="flex flex-col gap-3"
+      >
+        {plan.top.length > 0 && (
+          <div
+            data-cube-seats="top"
+            className={
+              plan.topSeatWidth === null
+                ? "mx-auto grid w-full gap-1.5"
+                : "flex flex-wrap justify-center gap-3"
+            }
+            style={
+              plan.topSeatWidth === null
+                ? {
+                    gridTemplateColumns: `repeat(${plan.topColumns}, minmax(0, 1fr))`,
+                    ...(plan.topColumns === 1
+                      ? { maxWidth: NARROW_ONE_PX }
+                      : {}),
+                  }
+                : undefined
+            }
+          >
+            {plan.top.map((p) =>
+              plan.topSeatWidth === null ? (
+                seat(p, plan.topLook)
+              ) : (
+                <div
+                  key={p.id}
+                  className="max-w-full"
+                  style={{ width: plan.topSeatWidth }}
                 >
-                  <ItemIcon item="hint" />
-                  {hintMove}
+                  {seat(p, plan.topLook)}
+                </div>
+              ),
+            )}
+          </div>
+        )}
+        <div className="flex items-start gap-3">
+          {plan.left.length > 0 && (
+            <div
+              data-cube-seats="left"
+              className="flex shrink-0 flex-col gap-2"
+              style={{ width: plan.sideWidth }}
+            >
+              {plan.left.map((p) => seat(p, plan.sideLook))}
+            </div>
+          )}
+          <div className="relative flex min-w-0 flex-1 flex-col items-center gap-2">
+            {/* 내 자리: 시간·수·단계·체력을 큐브 바로 위에 모은다 */}
+            <div
+              data-cube-peer={room.me}
+              data-cube-peer-status={me?.status}
+              className="relative flex w-full flex-col items-center gap-1"
+            >
+              <div className="flex flex-wrap items-baseline justify-center gap-x-5 gap-y-1">
+                <span
+                  data-cube-clock
+                  className={`font-mono font-semibold text-4xl tabular-nums ${phase === "inspect" ? "text-sky-300" : ""}`}
+                >
+                  {clock}
+                </span>
+                <span className="text-sm text-white/70">
+                  수{" "}
+                  <b data-cube-moves className="text-base text-white">
+                    {turnCount(n, mine?.moveLog(room.me) ?? [])}
+                  </b>
+                </span>
+                <span className="text-sm text-white/70" data-cube-phase-text>
+                  {snap.preparing ? "섞는 중…" : PHASE_TEXT[phase]}
+                  {mode
+                    ? ` · ${PARTY_MODE_LABELS[mode].replace("파티: ", "")}`
+                    : ""}
+                  {snap.attempt > 0 && phase !== "finished"
+                    ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
+                    : ""}
+                </span>
+                {others.length > 0 && (
+                  <button
+                    type="button"
+                    data-cube-small-toggle
+                    onClick={() => setShowSmall((v) => !v)}
+                    className="text-white/50 text-xs hover:underline"
+                  >
+                    {showSmall ? "작은 큐브 끄기" : "작은 큐브 켜기"}
+                  </button>
+                )}
+              </div>
+              {/* 단계·체력·끝남: 늘 같은 높이(칩이 늘어도 큐브가 밀리지 않게) */}
+              {mine && (chips || myHp !== undefined || myStatus) && (
+                <div className="flex h-5 w-full max-w-md items-center justify-center gap-2">
+                  {myHp !== undefined && (
+                    <div className="w-40 shrink-0">
+                      <PartyBar
+                        id={room.me}
+                        hp={myHp}
+                        out={partyOut(room.me)}
+                      />
+                    </div>
+                  )}
+                  {chips && (
+                    <PeerStages
+                      groups={myGroups}
+                      empty={null}
+                      className="shrink"
+                    />
+                  )}
+                  {myStatus && me?.status !== "done" && (
+                    <span className="shrink-0 font-semibold text-rose-200 text-sm">
+                      {myStatus}
+                    </span>
+                  )}
+                </div>
+              )}
+              {myToast && (
+                <span
+                  key={myToast.key}
+                  data-cube-race-toast={room.me}
+                  data-toast-key={myToast.key}
+                  className="cube-race-toast pointer-events-none absolute top-0 right-0 z-10 whitespace-nowrap rounded-full border border-sky-200/40 bg-neutral-900/90 px-2 py-0.5 font-semibold text-sky-100 text-xs shadow-lg"
+                >
+                  {myToast.text}
                 </span>
               )}
             </div>
-          )}
-          {/* 도움 「힌트 허용」: 늘 같은 높이(연 힌트 글이 길어도 큐브가 밀리지 않게) */}
-          {mine && helpNow.hint && (
-            <HelpHintRow
-              level={helpLevel}
-              label={helpHint?.label ?? null}
-              move={helpLevel >= 2 ? (helpHint?.move ?? null) : null}
-              stuck={helpLevel > 0 && !!hintMod && !helpHint}
-              onOpen={(level) =>
-                setOpened({
-                  level,
-                  ...(level === 2 && helpSeg ? { seg: helpSeg } : {}),
-                })
-              }
-            />
-          )}
-          {mine && screen && (
-            <ItemNotices
-              notices={screen.notices}
-              nameOf={(id) => room.playerName(id)}
-              reduced={reduced}
-            />
-          )}
-          {mine ? (
-            <CubePlay
-              flow="small"
-              n={n}
-              state={myState}
-              mask={helpNow.hidden ? hiddenMask : blindMask}
-              syncToken={syncToken}
-              settings={playSettings}
-              onMove={onMove}
-              onCommand={onCommand}
-              locked={phase !== "inspect" && phase !== "race"}
-              fitViewport
-              fog={!!screen?.fog}
-              look={look}
-              glow={glow}
-              want={hintKeys}
-            />
-          ) : (
-            <p className="p-6 text-center text-sm text-white/70">보는 중</p>
-          )}
-        </div>
-        <aside
-          data-cube-peers
-          data-cube-race-alerts={alerts}
-          data-cube-toasts-shown={toastCount}
-          className={
-            chips
-              ? "flex gap-2 max-md:-mx-1 max-md:order-first max-md:overflow-x-auto max-md:px-1 max-md:pb-1 md:flex-col"
-              : "flex flex-col gap-2"
-          }
-        >
-          <div
-            className={`items-center justify-between ${chips ? "hidden md:flex" : "flex"}`}
-          >
-            <h2 className="font-semibold text-sm">진행</h2>
-            {snap.peers.length <= 3 && (
-              <button
-                type="button"
-                onClick={() => setShowSmall((v) => !v)}
-                className="text-white/60 text-xs hover:underline"
+            <p
+              className="min-h-5 break-keep text-center font-mono text-white/70 text-xs"
+              data-cube-scramble={scramble}
+            >
+              {scramble}
+            </p>
+            {/* 판 시작 전·살펴보기 동안: 무엇을 할 수 있는지 미리 알린다 */}
+            {(phase === "commit" ||
+              phase === "reveal" ||
+              phase === "inspect") &&
+              mine && (
+                <p
+                  data-cube-inspect-hint
+                  className="mx-auto break-keep rounded-full border border-sky-300/30 bg-sky-300/10 px-3 py-1 text-center text-sky-100 text-xs"
+                >
+                  살펴보기: 보기만 해요(끌거나 ←·↓ 키로 둘러보기). 시간이 열리면
+                  면을 돌려요.
+                </p>
+              )}
+            {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
+            {mine &&
+              (myDelayMs > 0 || myGoal || myHelp) &&
+              phase !== "finished" &&
+              phase !== "waiting" && (
+                <p
+                  data-cube-my-handicap
+                  data-cube-my-help={myHelp}
+                  data-cube-start-wait={
+                    waiting ? Math.ceil(waitLeft / 1000) : 0
+                  }
+                  className={`mx-auto break-keep rounded-full border px-3 py-1 text-center text-xs ${
+                    waiting && phase === "race"
+                      ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
+                      : "border-white/15 bg-white/5 text-white/70"
+                  }`}
+                >
+                  {[
+                    myDelayMs > 0
+                      ? waiting && phase === "race"
+                        ? `출발까지 ${Math.ceil(waitLeft / 1000)}초`
+                        : `+${myDelayMs / 1000}초 늦게 출발`
+                      : "",
+                    myGoal ? `목표: ${goalLabel(n, myGoal)}` : "",
+                    myHelp ? helpLabel(n, myHelp) : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+            {myLow && (
+              <p
+                role="status"
+                data-cube-hp-warning
+                className="mx-auto rounded-full border border-rose-300/40 bg-rose-400/10 px-3 py-1 text-center text-rose-100 text-xs"
               >
-                {showSmall ? "작은 큐브 끄기" : "작은 큐브 켜기"}
-              </button>
+                체력이 얼마 안 남았어요 · {Math.ceil(myHp as number)}
+              </p>
             )}
-          </div>
-          {[...(me ? [me] : []), ...others].map((p) => {
-            const st = session.stateOf(p.id);
-            // 가리고 맞추는 동안은 내 단계·진행을 보이지 않는다
-            const veiled = p.id === room.me && helpNow.hidden;
-            const groups = veiled ? [] : (stages.get(p.id)?.groups ?? []);
-            const toast = toasts[p.id];
-            const hp = partyHp(p.id);
-            const knocked = hp !== undefined && partyOut(p.id);
-            const status =
-              p.status === "done"
-                ? formatMs(p.reported)
-                : p.status === "forfeit"
-                  ? "기권"
-                  : knocked
-                    ? "탈락"
-                    : p.status === "dnf"
-                      ? hp !== undefined &&
-                        PARTY_REASONS.includes(
-                          session.checkpointLog(p.id)?.reason ?? "",
-                        )
-                        ? ""
-                        : "DNF"
-                      : chips
-                        ? ""
-                        : `${p.moves}수`;
-            return (
-              <div
-                key={p.id}
-                data-cube-peer={p.id}
-                data-cube-peer-status={p.status}
-                data-cube-bot-planned={room.botPlanned(p.id) ? "" : undefined}
-                className={`relative flex flex-col gap-1 rounded-xl bg-white/5 p-2 ${
-                  chips
-                    ? "max-md:w-36 max-md:shrink-0 max-md:gap-0.5 max-md:p-1.5"
-                    : ""
-                }`}
+            {notice && (phase === "inspect" || waiting) && (
+              <p
+                role="status"
+                data-cube-notice
+                className="text-center text-amber-300 text-xs"
               >
-                <div className="flex items-baseline gap-2 text-sm">
-                  <b
-                    className={`truncate ${p.id === room.me ? "text-amber-200" : ""}`}
-                  >
-                    {room.playerName(p.id)}
-                    {p.id === room.me && room.playerName(p.id) !== "나"
-                      ? " (나)"
-                      : ""}
-                  </b>
-                  {!p.connected && (
-                    <span className="text-red-300 text-xs">끊김</span>
-                  )}
-                  {p.id !== room.me && handicap && (
-                    <PeerHandicap handicap={handicap} n={n} id={p.id} />
-                  )}
-                  {items && (
-                    <PeerItems
-                      id={p.id}
-                      item={items.slot[p.id] ?? null}
-                      guard={!!items.guard[p.id]}
-                    />
-                  )}
-                  <span
-                    className={`ml-auto shrink-0 font-mono text-xs tabular-nums ${
-                      p.status === "done" ? "text-emerald-300" : ""
-                    }`}
-                  >
-                    {status}
-                  </span>
-                </div>
-                {hp !== undefined && (
-                  <PartyBar id={p.id} hp={hp} out={knocked} />
-                )}
-                {chips ? (
-                  <PeerStages groups={groups} />
-                ) : (
-                  <>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className={`h-full ${p.status === "done" ? "bg-emerald-400" : "bg-sky-400"}`}
-                        style={{
-                          width: `${veiled ? 0 : Math.round(p.progress * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-white/60 text-xs">
-                      {st && !veiled ? stageLabel(n, st) : "-"}
-                    </span>
-                  </>
-                )}
-                {small && p.id !== room.me && st && (
-                  // 상대가 여럿이라 3D 장면 대신 비스듬한 SVG 큐브 둘(여섯 면)
-                  <CubePosterPair
-                    n={n}
-                    state={st}
-                    settings={settings}
-                    look={look}
-                    captions={false}
-                    className={`w-36 self-center ${chips ? "max-md:hidden" : ""}`}
+                {notice}
+              </p>
+            )}
+            {/* 아이템 줄: 내 아이템·맞은 방해·흑백 화면 짝 표. 늘 같은 높이라 무엇이 떠도 큐브가 밀리지 않는다 */}
+            {itemsOn && mine && (
+              <div
+                data-cube-item-row
+                data-cube-screen={
+                  [
+                    screen?.fog ? "fog" : "",
+                    screen?.blind ? "blind" : "",
+                    screen?.swap ? "swap" : "",
+                    screen?.gray ? "gray" : "",
+                    screen?.find ? "find" : "",
+                    screen?.hint ? "hint" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
+                className="flex h-9 w-full flex-nowrap items-center justify-center gap-2 overflow-hidden md:gap-3"
+              >
+                <ItemSlot
+                  item={myItem}
+                  guard={!!items?.guard[room.me]}
+                  pending={!!myItem && !usable}
+                  onUse={() => room.spendItem()}
+                  useKey="Space"
+                />
+                {screen && (
+                  <ItemNotices
+                    notices={screen.notices}
+                    nameOf={(id) => room.playerName(id)}
+                    reduced={reduced}
+                    // 휴대폰은 폭이 모자라 흑백 화면 동안 짝 표를 먼저 보인다
+                    className={screen.gray ? "max-md:hidden" : ""}
                   />
                 )}
-                {toast && (
+                {screen?.gray && <GrayLegend colors={settings.colors} />}
+                {hintMove && (
                   <span
-                    key={toast.key}
-                    data-cube-race-toast={p.id}
-                    data-toast-key={toast.key}
-                    className="cube-race-toast pointer-events-none absolute top-1 right-1 z-10 whitespace-nowrap rounded-full border border-sky-200/40 bg-neutral-900/90 px-2 py-0.5 font-semibold text-sky-100 text-xs shadow-lg"
+                    data-cube-item-hint={hintMove}
+                    className="flex h-8 items-center gap-1 rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 font-mono text-amber-100 text-sm"
                   >
-                    {toast.text}
+                    <ItemIcon item="hint" />
+                    {hintMove}
                   </span>
                 )}
               </div>
-            );
-          })}
-        </aside>
+            )}
+            {/* 도움 「힌트 허용」: 늘 같은 높이(연 힌트 글이 길어도 큐브가 밀리지 않게) */}
+            {mine && helpNow.hint && (
+              <HelpHintRow
+                level={helpLevel}
+                label={helpHint?.label ?? null}
+                move={helpLevel >= 2 ? (helpHint?.move ?? null) : null}
+                stuck={helpLevel > 0 && !!hintMod && !helpHint}
+                onOpen={(level) =>
+                  setOpened({
+                    level,
+                    ...(level === 2 && helpSeg ? { seg: helpSeg } : {}),
+                  })
+                }
+              />
+            )}
+            {mine ? (
+              <CubePlay
+                flow="small"
+                n={n}
+                state={myState}
+                mask={helpNow.hidden ? hiddenMask : blindMask}
+                syncToken={syncToken}
+                settings={playSettings}
+                onMove={onMove}
+                onCommand={onCommand}
+                locked={phase !== "inspect" && phase !== "race"}
+                fitViewport
+                fog={!!screen?.fog}
+                look={look}
+                glow={glow}
+                want={hintKeys}
+              />
+            ) : (
+              <p className="p-6 text-center text-sm text-white/70">보는 중</p>
+            )}
+          </div>
+          {plan.right.length > 0 && (
+            <div
+              data-cube-seats="right"
+              className="flex shrink-0 flex-col gap-2"
+              style={{ width: plan.sideWidth }}
+            >
+              {plan.right.map((p) => seat(p, plan.sideLook))}
+            </div>
+          )}
+        </div>
       </div>
       {round && <Replay room={room} round={round} n={n} />}
     </div>
@@ -1209,34 +1285,6 @@ function partyHeadline(
   return `${place}위 · 체력 ${left}`;
 }
 
-/** 사람 칸 이름 옆의 가진 아이템·방패(아이콘만, 이름은 마우스를 올리면) */
-function PeerItems({
-  id,
-  item,
-  guard,
-}: {
-  id: string;
-  item: ItemKind | null;
-  guard: boolean;
-}) {
-  if (!item && !guard) return null;
-  return (
-    <span
-      data-cube-peer-item={id}
-      data-item={item ?? undefined}
-      className="flex shrink-0 items-center gap-0.5 text-amber-200/80"
-      title={[item ? ITEM_LABELS[item] : "", guard ? ITEM_LABELS.shield : ""]
-        .filter(Boolean)
-        .join(" · ")}
-    >
-      {item && <ItemIcon item={item} className="h-3.5 w-3.5" />}
-      {guard && (
-        <ItemIcon item="shield" className="h-3.5 w-3.5 text-sky-200/80" />
-      )}
-    </span>
-  );
-}
-
 /** 결과 상자의 아이템 글(「받음 방패·안개 · 씀 안개 · 맞음 한 수 섞기」) */
 function itemNotes(round: RoundRecord | undefined, id: string): string[] {
   const s = round?.items;
@@ -1315,79 +1363,10 @@ function HelpHintRow({
   );
 }
 
-/** 사람 칸 이름 옆의 짧은 핸디캡 표시(「+5초」·「첫 두 층」) */
-function PeerHandicap({
-  handicap,
-  n,
-  id,
-}: {
-  handicap: ActiveHandicap;
-  n: number;
-  id: string;
-}) {
-  const d = handicap.delaySec[id];
-  const g = handicap.goal[id];
-  const help = helpOf(handicap, id);
-  if (!d && !g && !help) return null;
-  return (
-    <span
-      data-cube-peer-handicap={id}
-      title={handicapTags(handicap, n, id).join(" · ")}
-      className="shrink-0 truncate text-[11px] text-white/45"
-    >
-      {[
-        d ? `+${d}초` : "",
-        g ? goalLabel(n, g) : "",
-        help ? helpLabel(n, help) : "",
-      ]
-        .filter(Boolean)
-        .join(" · ")}
-    </span>
-  );
-}
-
 /** 칩에 쓸 대표 단계 이름과 시각: 「십자 3.21초」(1분 넘으면 「1:02.34」) */
 function toastText(g: SplitGroup): string {
   const t = formatMs(g.ms);
   return `${g.label.replace(/ \+\d+$/, "")} ${t.includes(":") ? t : `${t}초`}`;
-}
-
-/**
- * 사람 칸의 단계 칩 한 줄(docs/51 1-3). 수마다 움직이지 않고 이정표를 지날 때만 칩이 하나 는다. 최근 셋, 마지막 칩만
- * 시각을 붙이고 앞 칩은 흐리게. 휴대폰(위 줄의 좁은 칸)은 마지막 칩만
- */
-function PeerStages({ groups }: { groups: readonly SplitGroup[] }) {
-  const shown = groups.slice(-3);
-  return (
-    <ol
-      data-cube-peer-stages={groups.map((g) => g.ids.join("+")).join(" ")}
-      className="flex h-5 min-w-0 items-center gap-1 overflow-hidden"
-    >
-      {shown.length === 0 && <li className="text-white/35 text-[11px]">-</li>}
-      {shown.map((g, i) => {
-        const last = i === shown.length - 1;
-        return (
-          <li
-            key={`${g.ms}-${g.ids.join("+")}`}
-            data-milestone={g.ids.join("+")}
-            title={`${g.full} ${formatMs(g.ms)}`}
-            className={`shrink-0 truncate rounded-full border px-1.5 py-px text-[11px] ${
-              last
-                ? "cube-milestone-in border-sky-300/35 bg-sky-400/10 text-sky-100"
-                : "border-white/10 text-white/45 max-md:hidden"
-            }`}
-          >
-            {g.label}
-            {last && (
-              <span className="ml-1 font-mono text-sky-200/75 tabular-nums">
-                {formatMs(g.ms)}
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 /**
