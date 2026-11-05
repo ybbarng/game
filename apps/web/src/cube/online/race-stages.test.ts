@@ -15,7 +15,7 @@ import { DelayNet, runUntil } from "@/net/race/race-fixture";
 import { RaceSession } from "@/net/race/race-session";
 import { groupSplits } from "../progress/splits";
 import { RaceHub } from "./hub";
-import { createCubeRaceGame, type Scrambler } from "./race-game";
+import { type CubeAct, createCubeRaceGame, type Scrambler } from "./race-game";
 import {
   liveOrder,
   pickToasts,
@@ -38,7 +38,7 @@ const fake: Scrambler = (event: ScrambleEvent) => ({
   official: false,
 });
 
-type Session = RaceSession<CubeMove, PuzzleState>;
+type Session = RaceSession<CubeAct, PuzzleState>;
 
 /** 대결 틀이 쓰는 말 종류(`net/race/messages.ts`). 단계 표시를 넣은 뒤에도 이것만 오간다 */
 const RACE_MESSAGES = new Set([

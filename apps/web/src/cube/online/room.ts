@@ -11,7 +11,12 @@ import type {
   SuspicionRules,
 } from "@/net/race/types";
 import { randomId, type Transport } from "@/net/transport";
-import { attachBot, botSupports, type PlanFn } from "./bot-racer";
+import {
+  attachBot,
+  type BotHandle,
+  botSupports,
+  type PlanFn,
+} from "./bot-racer";
 import {
   type ActiveHandicap,
   activeHandicap,
@@ -24,8 +29,33 @@ import {
   scoreByAverage,
 } from "./handicap";
 import { RaceHub } from "./hub";
-import { judgeParty, PARTY_KO, PARTY_OVER, type PartyOutcome } from "./party";
+import { findMarksOf } from "./item-find";
 import {
+  type drawItem,
+  FIND_MS,
+  GRAY_MS,
+  hitText,
+  type ItemKind,
+  itemUseText,
+  parseItemText,
+  rewindMoves,
+  SCREEN_HIT_MS,
+  SWAP_MS,
+  trackOf,
+} from "./items";
+import {
+  hasHp,
+  hasItems,
+  type ItemsOutcome,
+  judgeParty,
+  PARTY_KO,
+  PARTY_MODES,
+  PARTY_OVER,
+  type PartyMode,
+  type PartyOutcome,
+} from "./party";
+import {
+  type CubeAct,
   type CubeRaceGame,
   createCubeRaceGame,
   type Scrambler,
@@ -70,13 +100,13 @@ export interface RoomSettings {
   /** 실력 차 균형(docs/51 4절). 옛 판 방장은 보내지 않는다. 쓸 때만 판정 설정 지문에 넣는다(`raceOptionsFor`) */
   handicap?: Handicap;
   /**
-   * 파티 모드(docs/51 3-2, docs/47 9-6). `"hp"`면 체력바 대결. 옛 판 방장은 보내지 않는다(일반 대결).
-   * 5판 평균(시간 평균)·핸디캡 「평균 대비」와는 함께 쓰지 않는다
+   * 파티 모드(docs/51 3-2·3-3, docs/47 9-6·9-7). `"hp"` 체력바, `"items"` 아이템전, `"hp-items"` 둘 다.
+   * 옛 판 방장은 보내지 않는다(일반 대결). 5판 평균(시간 평균)·핸디캡 「평균 대비」와는 함께 쓰지 않는다
    */
   party?: PartyMode;
 }
 
-export type PartyMode = "hp";
+export type { PartyMode };
 
 /** 대결 틀의 다툼 폭(기본값과 같다). 체력 판정이 중간 지점 시각을 같은 규칙으로 본다 */
 const DISPUTE_MS = 1_000;
@@ -149,7 +179,42 @@ export interface RoundRecord extends RoundSummary {
   handicap?: ActiveHandicap;
   /** 「평균 대비」의 기준(사람마다) */
   baseline?: Record<string, Baseline>;
+  /** 아이템전 판: 사람마다 받은·쓴·맞은 아이템 */
+  items?: ItemsSummary;
 }
+
+/** 아이템전 판 기록(결과 상자) */
+export interface ItemsSummary {
+  /** 받은 아이템(가진 것만, 방패는 켜진 것, 차례대로) */
+  got: Record<string, ItemKind[]>;
+  used: Record<string, ItemKind[]>;
+  /** 맞은 방해(방패가 막은 것 빼고) */
+  hit: Record<string, ItemKind[]>;
+  /** 방패가 막은 방해 수 */
+  blocked: Record<string, number>;
+  /** 아이템 규칙을 어겨 빠진 까닭 */
+  out: Record<string, string>;
+}
+
+/** 이 기기 화면에 지금 그릴 아이템 효과(`CubeRoom.itemScreen`). 판정이 아니라 보이기만 한다 */
+export interface ItemScreen {
+  fog: boolean;
+  swap: boolean;
+  gray: boolean;
+  /** 한 면 가리기: 맞은 순간 그 면(자리 0 위·1 오른쪽·2 앞)에 있던 스티커 정체 */
+  blind: { face: 0 | 1 | 2; stickers: readonly number[] } | null;
+  /** 찾아 주기: 빛낼 스티커 정체(조각·넣을 곳) */
+  find: { found: readonly number[]; slot: readonly number[] } | null;
+  /** 힌트 한 수를 쓴 뒤 아직 수를 두지 않았다 */
+  hint: boolean;
+  /** 맞은 쪽 표시(최근 것부터, 이어지는 동안) */
+  notices: { key: string; item: ItemKind; by: string; blocked: boolean }[];
+}
+
+/** 컴퓨터가 아이템을 받은 뒤 쓰기까지(ms). 사람처럼 잠깐 뒤에 쓴다(결정적: 이 기기가 그 아이템을 확실히 안 때부터) */
+export const BOT_USE_MS = 800;
+/** 맞은 쪽 표시가 떠 있는 시간(ms) */
+const NOTICE_MS = 1_600;
 
 export type { PartySummary };
 
@@ -173,6 +238,8 @@ export interface CubeRoomInit {
   /** 시험: 정해진 공개값·컴퓨터 계획 */
   random?: () => string;
   botPlan?: PlanFn;
+  /** 시험만: 아이템 뽑기(모든 기기에 같은 것을 넣는다). 제품은 `drawItem` */
+  drawItem?: typeof drawItem;
   onChat?: (m: {
     id: string;
     name: string;
@@ -215,10 +282,11 @@ export function raceOptionsFor(
     suspicion: suspicionFor(s.n),
   };
   const game: Record<string, unknown> = {};
-  // 체력바: 이정표 시각을 대결 틀이 증인 하한으로 확인한다(중간 지점). 쓰지 않으면 예전 지문 그대로
-  if (s.party === "hp") {
+  // 파티 모드: 이정표(아이템전이면 쓰기·맞은 섞기도) 시각을 대결 틀이 증인 하한으로 확인한다(중간 지점).
+  // 쓰지 않으면 예전 지문 그대로
+  if (s.party) {
     options.checkpoints = true;
-    game.party = "hp";
+    game.party = s.party;
   }
   if (s.format === "points") {
     const r = matchRules(s);
@@ -284,14 +352,22 @@ export class CubeRoom {
     /** 이 판의 참가자 → 맡은 기기. 판을 열 때 고정한다(판 도중 방 상태가 바뀌어도 그대로) */
     owners: Map<string, string>;
     game: CubeRaceGame;
-    sessions: Map<string, RaceSession<CubeMove, PuzzleState>>;
+    sessions: Map<string, RaceSession<CubeAct, PuzzleState>>;
     off: (() => void)[];
     /** 이 기기 컴퓨터가 계획을 세운 시도 번호 */
     planned: Map<string, number>;
     /** 이 판의 핸디캡(판을 열 때 고정) */
     handicap: ActiveHandicap;
-    /** 체력바 판 */
-    party: boolean;
+    /** 파티 모드(판을 열 때 고정) */
+    mode: PartyMode | undefined;
+    /** 이 기기 컴퓨터(아이템전에서 맞은 섞기를 되돌리고 잠깐 멈춘다) */
+    bots: Map<string, BotHandle>;
+    /** 아이템전: 이 기기가 처음 본 시각(이 기기 시계, 화면 효과·컴퓨터 쓰기 시각) */
+    seen: Map<string, number>;
+    /** 찾아 주기: 쓴 순간의 빛낼 조각(쓰기 차례 → 조각) */
+    finds: Map<number, { found: number[]; slot: number[] } | null>;
+    /** 한 면 가리기: 맞은 순간의 가린 스티커 */
+    blinds: Map<string, number[]>;
     /** 체력바 판: 참가자마다 시간이 흘러야 풀리는 판정을 다시 볼 예약 */
     recheck: Map<string, () => void>;
   };
@@ -357,12 +433,12 @@ export class CubeRoom {
   // ---- 모두 ----
 
   /** 지금 판의 내 대결(내가 든 판일 때) */
-  session(): RaceSession<CubeMove, PuzzleState> | undefined {
+  session(): RaceSession<CubeAct, PuzzleState> | undefined {
     return this.current?.sessions.get(this.me);
   }
 
   /** 지금 판의 아무 대결(보기만 하는 손님은 없다) */
-  anySession(): RaceSession<CubeMove, PuzzleState> | undefined {
+  anySession(): RaceSession<CubeAct, PuzzleState> | undefined {
     const c = this.current;
     return c
       ? (c.sessions.get(this.me) ?? [...c.sessions.values()][0])
@@ -404,11 +480,11 @@ export class CubeRoom {
   }
 
   /**
-   * 체력바 판의 지금 판정(이 기기가 받은 만큼, 확실한 데까지). 판이 끝났으면 판 기록의 것. 체력바 판이 아니면 없다
+   * 파티 판(체력바·아이템전)의 지금 판정(이 기기가 받은 만큼, 확실한 데까지). 판이 끝났으면 판 끝의 것. 파티 판이 아니면 없다
    */
   party(): PartyOutcome | undefined {
     const c = this.current;
-    if (!c?.party) return undefined;
+    if (!c?.mode) return undefined;
     const session = c.sessions.get(this.me) ?? [...c.sessions.values()][0];
     if (!session) return undefined;
     return this.partyOf(
@@ -418,8 +494,119 @@ export class CubeRoom {
     );
   }
 
+  /** 지금 판의 파티 모드(판을 열 때 고정) */
+  partyMode(): PartyMode | undefined {
+    return this.current?.mode;
+  }
+
   play(move: CubeMove): PlayResult {
     return this.session()?.play(move) ?? { ok: false, reason: "관전" };
+  }
+
+  /**
+   * 내가 가진 아이템을 쓴다(아이템전). 판정이 확실히 내 것으로 본 아이템만, 앞서 쓴 것이 판정되기 전에는 쓰지 않는다.
+   * 쓴 아이템, 못 쓰면 null
+   */
+  spendItem(): ItemKind | null {
+    const c = this.current;
+    const session = this.session();
+    if (!c || !session || !hasItems(c.mode)) return null;
+    const item = this.heldItem(this.me, session);
+    if (!item) return null;
+    const r = session.play(
+      parseItemText(c.game.n, itemUseText(item)) as CubeAct,
+    );
+    if (!r.ok) return null;
+    if (item === "find")
+      c.finds.set(
+        trackOf(session.stateOf(this.me) as PuzzleState).uses.length,
+        findMarksOf(session.stateOf(this.me) as PuzzleState),
+      );
+    this.emit();
+    return item;
+  }
+
+  /** 지금 쓸 수 있는 내(이 기기 참가자) 아이템: 판정이 확실히 본 것이고, 앞서 쓴 것이 아직 판정되지 않았으면 없다 */
+  heldItem(
+    id: string,
+    session:
+      | RaceSession<CubeAct, PuzzleState>
+      | undefined = this.current?.sessions.get(id),
+  ): ItemKind | null {
+    const c = this.current;
+    if (!c || !session || !hasItems(c.mode)) return null;
+    const snap = session.snapshot();
+    if (snap.phase !== "race") return null;
+    const items = this.partyOf(session, [...c.owners.keys()], false).items;
+    const item = items?.slot[id] ?? null;
+    if (!item || !items) return null;
+    const judged = items.uses.filter((u) => u.p === id).length;
+    const mine = trackOf(session.stateOf(id) as PuzzleState).uses.length;
+    return mine === judged ? item : null;
+  }
+
+  /**
+   * 이 기기 화면에 지금 그릴 아이템 효과(아이템전, 나만). 맞은 순간이 아니라 이 기기가 그 일을 확실히 안 순간부터 잰다
+   * (판정이 확실해지는 데 걸리는 만큼 늦게 시작한다). 화면 방해는 받는 쪽이 스스로 그려야 해서 못 막는다(친선용)
+   */
+  itemScreen(): ItemScreen | null {
+    const c = this.current;
+    const session = this.session();
+    if (!c || !session || !hasItems(c.mode)) return null;
+    const outcome = this.party();
+    const items = outcome?.items;
+    if (!items) return null;
+    this.noteSeen(c, items, this.me);
+    const now = this.init.clock.now();
+    const live = (key: string, ms: number) => {
+      const at = c.seen.get(key);
+      return at !== undefined && now - at < ms;
+    };
+    const done = !!session.snapshot().result;
+    const screen: ItemScreen = {
+      fog: false,
+      swap: false,
+      gray: false,
+      blind: null,
+      find: null,
+      hint: false,
+      notices: [],
+    };
+    for (const h of items.hits) {
+      if (h.to !== this.me) continue;
+      const key = `hit|${h.by}|${h.k}`;
+      if (live(key, NOTICE_MS))
+        screen.notices.unshift({
+          key,
+          item: h.item,
+          by: h.by,
+          blocked: h.blocked,
+        });
+      if (h.blocked || done) continue;
+      if (h.item === "fog" && live(key, SCREEN_HIT_MS)) screen.fog = true;
+      if (h.item === "swap" && live(key, SWAP_MS)) screen.swap = true;
+      if (h.item === "gray" && live(key, GRAY_MS)) screen.gray = true;
+      if (h.item === "blind" && live(key, SCREEN_HIT_MS))
+        screen.blind = {
+          face: h.face ?? 0,
+          stickers: c.blinds.get(key) ?? [],
+        };
+    }
+    const track = trackOf(session.stateOf(this.me) as PuzzleState);
+    const log = session.moveLog(this.me);
+    // 힌트·찾아 주기: 내가 쓴 차례(상태의 쓰기 기록)로 본다. 판정을 기다리지 않는다(내 화면에만 보이는 도움)
+    track.uses.forEach((item, i) => {
+      const k = i + 1;
+      const key = `use|${k}`;
+      if (!c.seen.has(key)) c.seen.set(key, now);
+      if (done) return;
+      if (item === "find" && live(key, FIND_MS))
+        screen.find = c.finds.get(k) ?? null;
+    });
+    // 힌트 한 수: 쓴 뒤 아직 수를 두지 않았으면(맞은 섞기를 넣은 것은 내 수가 아니라 넘긴다)
+    const mine = log.filter((x) => !x.m.startsWith("!hit|"));
+    screen.hint = !done && mine.at(-1)?.m === itemUseText("hint");
+    return screen;
   }
 
   isConnected(device: string): boolean {
@@ -681,9 +868,9 @@ export class CubeRoom {
     // 핸디캡은 사람에게만. 평균은 내 칸만 이 기기가 알린 값으로 넣어 지문을 만든다: 방장이 내 평균을 바꿔 적었으면
     // 지문이 달라 드러난다(남의 평균은 확인할 수 없다). 「평균 대비」는 시간 순위라 체력바와 함께 쓰지 않는다
     const humans = race.players.filter((id) => !bots.has(id));
-    const party = s.settings.party === "hp";
+    const mode = s.settings.party;
     const handicap = activeHandicap(s.settings.handicap, humans, {
-      ao5: s.settings.format === "ao5" || party,
+      ao5: s.settings.format === "ao5" || !!mode,
       averageOf: (id) => this.averageOf(id),
     });
     const game = createCubeRaceGame(
@@ -691,10 +878,11 @@ export class CubeRoom {
       this.init.scrambler,
       undefined,
       handicap.goal,
-      party,
+      mode ?? false,
     );
+    const botHandles = new Map<string, BotHandle>();
     const options = raceOptionsFor(s.settings, handicap);
-    const sessions = new Map<string, RaceSession<CubeMove, PuzzleState>>();
+    const sessions = new Map<string, RaceSession<CubeAct, PuzzleState>>();
     const off: (() => void)[] = [];
     const round = s.round;
     const planned = new Map<string, number>();
@@ -710,27 +898,28 @@ export class CubeRoom {
         ...(this.init.random ? { random: this.init.random } : {}),
       });
       sessions.set(p.id, session);
-      if (p.bot)
-        off.push(
-          attachBot({
-            session,
-            id: p.id,
-            level: p.bot,
-            n: s.settings.n,
-            clock: this.init.clock,
-            ...(this.init.botPlan ? { plan: this.init.botPlan } : {}),
-            onPlanned: (attempt) => {
-              planned.set(p.id, attempt);
-              this.emit();
-            },
-          }),
-        );
+      if (p.bot) {
+        const handle = attachBot({
+          session,
+          id: p.id,
+          level: p.bot,
+          n: s.settings.n,
+          clock: this.init.clock,
+          ...(this.init.botPlan ? { plan: this.init.botPlan } : {}),
+          onPlanned: (attempt) => {
+            planned.set(p.id, attempt);
+            this.emit();
+          },
+        });
+        botHandles.set(p.id, handle);
+        off.push(handle.detach);
+      }
       off.push(
         session.onChange((snap) => {
           if (snap.result)
             this.finishRound(race.id, round, race.players, snap.result);
           else {
-            if (party) this.partyStep(p.id, session, race.players);
+            if (mode) this.partyStep(p.id, session, race.players);
             this.emit();
           }
         }),
@@ -745,7 +934,11 @@ export class CubeRoom {
       off,
       planned,
       handicap,
-      party,
+      mode,
+      bots: botHandles,
+      seen: new Map(),
+      finds: new Map(),
+      blinds: new Map(),
       recheck: new Map(),
     };
     for (const session of sessions.values()) session.start();
@@ -782,21 +975,27 @@ export class CubeRoom {
     };
     // 체력바: 순위·승자를 체력 판정으로 다시 매긴다. 판이 정해진 뒤의 일은 판정에 끼지 않으므로(판 도중 판정과 같다)
     // 모든 기기가 같은 값을 낸다
-    if (c.party && source && !final.cancelled) {
+    if (c.mode && source && !final.cancelled) {
       const outcome = this.partyOf(source, players, true);
       const d = outcome.decided;
       const noDecision = d?.end === "noDecision";
-      final = { ...final, ranking: outcome.ranking };
+      if (hasHp(c.mode)) {
+        final = { ...final, ranking: outcome.ranking };
+        record.party = {
+          winner: d?.winner ?? null,
+          end: d?.end ?? "time",
+          places: outcome.places,
+          hp: outcome.hp,
+          knockedOut: outcome.knockedOut,
+          ...(d && Number.isFinite(d.at) ? { at: d.at } : {}),
+        };
+      } else {
+        // 아이템만: 순위는 대결 틀의 시간 순위 그대로, 아이템 규칙을 어긴 사람만 DNF로 뺀다
+        final = disqualify(final, outcome.items?.out ?? {});
+      }
       if (noDecision) final.noDecision = true;
-      else delete final.noDecision;
-      record.party = {
-        winner: d?.winner ?? null,
-        end: d?.end ?? "time",
-        places: outcome.places,
-        hp: outcome.hp,
-        knockedOut: outcome.knockedOut,
-        ...(d && Number.isFinite(d.at) ? { at: d.at } : {}),
-      };
+      else if (hasHp(c.mode)) delete final.noDecision;
+      if (outcome.items) record.items = summarizeItems(outcome.items, players);
     }
     // 「평균 대비」: 이 판의 순위를 평균 대비 점수로 다시 매긴다. 기준(평균, 없으면 이 경기에서 처음 맞춘 판)은 모든 기기가
     // 같은 값을 가진다(평균은 지문으로 맞춰 봤고, 앞선 판 결과는 같다)
@@ -823,53 +1022,159 @@ export class CubeRoom {
   }
 
   private partyOf(
-    session: RaceSession<CubeMove, PuzzleState>,
+    session: RaceSession<CubeAct, PuzzleState>,
     players: readonly string[],
     final: boolean,
   ): PartyOutcome {
     const logs: Record<string, ReturnType<typeof session.checkpointLog>> = {};
     for (const id of players) logs[id] = session.checkpointLog(id);
+    const mode = this.current?.mode;
+    const seed = session.snapshot().seed;
     return judgeParty({
       n: this.state?.settings.n ?? 3,
       players,
       logs,
       disputeMs: DISPUTE_MS,
       final,
+      hp: hasHp(mode ?? "hp"),
+      ...(hasItems(mode) && seed !== undefined
+        ? {
+            items: {
+              seed,
+              ...(this.init.drawItem ? { draw: this.init.drawItem } : {}),
+            },
+          }
+        : {}),
     });
   }
 
   /**
-   * 체력바 판에서 이 기기가 맡은 참가자를 멈춘다(확실한 판정만 보고): 체력이 0이 되면 「체력 0」, 판이 정해지면
-   * 「판이 끝남」으로 그만둔다(`race-retire`). 다른 기기는 그 사람의 수가 더 오지 않는다는 것을 알게 되어 판정을 이어 간다
+   * 파티 판에서 이 기기가 맡은 참가자를 판정대로 움직인다(확실한 판정만 보고).
+   * - 체력바: 체력이 0이 되면 「체력 0」, 판이 정해지면 「판이 끝남」으로 그만둔다(`race-retire`). 다른 기기는 그 사람의 수가
+   *   더 오지 않는다는 것을 알게 되어 판정을 이어 간다.
+   * - 아이템전: 맞은 한 수 섞기를 바로 넣는다(`!hit`). 컴퓨터는 받은 아이템을 정해진 때 쓰고, 맞은 섞기는 되돌리고, 화면 방해에는
+   *   잠깐 멈춘다.
    */
   private partyStep(
     id: string,
-    session: RaceSession<CubeMove, PuzzleState>,
+    session: RaceSession<CubeAct, PuzzleState>,
     players: readonly string[],
   ): void {
     const snap = session.snapshot();
     if (snap.spectator || snap.phase !== "race") return;
+    const c = this.current;
+    if (!c) return;
     const outcome = this.partyOf(session, players, false);
-    if (outcome.knockedOut[id] !== undefined) session.retire(PARTY_KO);
-    else if (outcome.decided) session.retire(PARTY_OVER);
-    else {
-      // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 그때 다시 본다. 메시지가 없어도 시간은 흐른다
-      const elapsed = snap.elapsed ?? 0;
-      const c = this.current;
-      if (!c || !Number.isFinite(outcome.until) || outcome.until < elapsed)
-        return;
-      c.recheck.get(id)?.();
-      c.recheck.set(
-        id,
-        this.init.clock.after(Math.max(1, outcome.until - elapsed + 1), () => {
-          c.recheck.delete(id);
-          if (this.current === c && !this.disposed) {
-            this.partyStep(id, session, players);
-            this.emit();
-          }
-        }),
-      );
+    if (outcome.knockedOut[id] !== undefined) {
+      session.retire(PARTY_KO);
+      return;
     }
+    if (outcome.decided) {
+      session.retire(PARTY_OVER);
+      return;
+    }
+    if (outcome.items) this.itemStep(c, id, session, outcome.items);
+    // 내 시각이 판정을 막고 있으면(내가 그 시각 전에 지났을 수도 있어 기다림) 그때 다시 본다. 메시지가 없어도 시간은 흐른다
+    const elapsed = session.snapshot().elapsed ?? 0;
+    let wake =
+      Number.isFinite(outcome.until) && outcome.until >= elapsed
+        ? outcome.until - elapsed + 1
+        : Number.POSITIVE_INFINITY;
+    // 컴퓨터가 아이템을 쓸 때를 기다린다
+    const held = c.seen.get(`held|${id}`);
+    if (c.bots.has(id) && held !== undefined)
+      wake = Math.min(
+        wake,
+        Math.max(1, held + BOT_USE_MS - this.init.clock.now()),
+      );
+    if (!Number.isFinite(wake)) return;
+    c.recheck.get(id)?.();
+    c.recheck.set(
+      id,
+      this.init.clock.after(Math.max(1, wake), () => {
+        c.recheck.delete(id);
+        if (this.current === c && !this.disposed) {
+          this.partyStep(id, session, players);
+          this.emit();
+        }
+      }),
+    );
+  }
+
+  /** 이 기기가 처음 본 시각을 적는다(나: 맞은 방해, 컴퓨터: 가진 아이템). 한 면 가리기는 그 순간 그 면의 스티커를 남긴다 */
+  private noteSeen(
+    c: NonNullable<CubeRoom["current"]>,
+    items: ItemsOutcome,
+    id: string,
+  ): void {
+    const now = this.init.clock.now();
+    const state = c.sessions.get(id)?.stateOf(id);
+    for (const h of items.hits) {
+      if (h.to !== id) continue;
+      const key = `hit|${h.by}|${h.k}`;
+      if (c.seen.has(key)) continue;
+      c.seen.set(key, now);
+      if (h.item === "blind" && !h.blocked && state) {
+        const nn = c.game.n * c.game.n;
+        const f = h.face ?? 0;
+        c.blinds.set(
+          key,
+          Array.from(
+            { length: nn },
+            (_, k) => state.perm[f * nn + k] as number,
+          ),
+        );
+      }
+    }
+  }
+
+  private itemStep(
+    c: NonNullable<CubeRoom["current"]>,
+    id: string,
+    session: RaceSession<CubeAct, PuzzleState>,
+    items: ItemsOutcome,
+  ): void {
+    const n = c.game.n;
+    const bot = c.bots.get(id);
+    this.noteSeen(c, items, id);
+    // 한 수 섞기: 맞은 사람 기기가 같은 수를 내 상태에 넣는다(모든 기기가 이 수를 다시 적용한다)
+    for (const o of items.owed[id] ?? []) {
+      const track = trackOf(session.stateOf(id) as PuzzleState);
+      if (track.hits.includes(`${o.by}|${o.k}|${o.moves}`)) continue;
+      const act = parseItemText(n, hitText(o.by, o.k, o.moves));
+      if (!act) continue;
+      if (session.play(act).ok) bot?.afterHit(o.moves);
+    }
+    if (!bot) return;
+    // 컴퓨터: 화면 방해는 잠깐 멈추는 것으로 받는다(안개 0.5초, 다른 것 1초)
+    for (const h of items.hits) {
+      if (h.to !== id || h.blocked || h.item === "mix") continue;
+      const key = `pause|${h.by}|${h.k}`;
+      if (c.seen.has(key)) continue;
+      c.seen.set(key, this.init.clock.now());
+      bot.pause(h.item === "fog" ? 500 : 1_000);
+    }
+    // 받은 아이템은 확실히 안 때부터 BOT_USE_MS 뒤에, 되돌릴 수가 남지 않았을 때 쓴다
+    const item = this.heldItem(id, session);
+    const heldKey = `held|${id}`;
+    if (!item) {
+      c.seen.delete(heldKey);
+      return;
+    }
+    const since = c.seen.get(heldKey);
+    if (since === undefined) {
+      c.seen.set(heldKey, this.init.clock.now());
+      return;
+    }
+    if (this.init.clock.now() - since < BOT_USE_MS || !bot.idle()) return;
+    const undone =
+      item === "rewind"
+        ? rewindMoves(n, session.stateOf(id) as PuzzleState)
+        : [];
+    if (!session.play(parseItemText(n, itemUseText(item)) as CubeAct).ok)
+      return;
+    c.seen.delete(heldKey);
+    if (item === "rewind") bot.afterRewind(undone);
   }
 
   private endRace(): void {
@@ -902,7 +1207,53 @@ function pointsSettingsOk(s: RoomSettings): boolean {
 /** 파티 모드는 정한 값만, 5판 평균과는 함께 쓰지 않는다 */
 function partySettingsOk(s: RoomSettings): boolean {
   if (s.party === undefined) return true;
-  return s.party === "hp" && s.format !== "ao5";
+  return PARTY_MODES.includes(s.party) && s.format !== "ao5";
+}
+
+/**
+ * 아이템만인 판: 아이템 규칙을 어긴 사람(갖지 않은 아이템을 씀, 맞은 섞기를 넣지 않고 맞춤 등)을 DNF로 돌리고 순위를 다시 매긴다.
+ * 판정이 같은 순수 함수라 모든 기기가 같은 값을 낸다
+ */
+export function disqualify(
+  result: RaceResult,
+  out: Readonly<Record<string, string>>,
+): RaceResult {
+  const ids = Object.keys(out).filter((id) => result.players[id]);
+  if (ids.length === 0) return result;
+  const players = { ...result.players };
+  for (const id of ids) {
+    const p = players[id];
+    if (!p || p.status === "forfeit") continue;
+    const next = { ...p, status: "dnf" as const, reason: out[id] as string };
+    delete next.accepted;
+    delete next.unranked;
+    players[id] = next;
+  }
+  const done = result.ranking.filter((id) => players[id]?.status === "done");
+  const rest = result.ranking.filter((id) => players[id]?.status !== "done");
+  // 못 맞춘 사람(DNF) 앞, 기권 뒤 차례는 그대로 둔다
+  const dnf = rest.filter((id) => players[id]?.status === "dnf");
+  const forfeit = rest.filter((id) => players[id]?.status === "forfeit");
+  return { ...result, players, ranking: [...done, ...dnf, ...forfeit] };
+}
+
+/** 판정의 아이템 기록을 판 기록으로 줄인다(결과 상자) */
+export function summarizeItems(
+  items: ItemsOutcome,
+  players: readonly string[],
+): ItemsSummary {
+  const by = <T>(make: () => T) =>
+    Object.fromEntries(players.map((p) => [p, make()])) as Record<string, T>;
+  const got = by<ItemKind[]>(() => []);
+  const used = by<ItemKind[]>(() => []);
+  const hit = by<ItemKind[]>(() => []);
+  const blocked = by<number>(() => 0);
+  for (const g of items.grants) if (g.kept) got[g.p]?.push(g.item);
+  for (const u of items.uses) used[u.p]?.push(u.item);
+  for (const h of items.hits)
+    if (h.blocked) blocked[h.to] = (blocked[h.to] ?? 0) + 1;
+    else hit[h.to]?.push(h.item);
+  return { got, used, hit, blocked, out: { ...items.out } };
 }
 
 /**

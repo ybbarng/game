@@ -3,16 +3,12 @@
 // 공정성: 새로 보내는 정보가 없다. 각 기기가 이미 받은 수 기록(`RaceSession.moveLog`: 수 글과 둔 시각)을 시작 상태에
 // 다시 적용하며 혼자 맞추기와 같은 판정(`milestonesOf`)으로 이정표를 처음 지난 시각을 찾는다. 시각은 대결 시계(풀림 기준
 // ms, 그 사람이 수에 단 시각)라 같은 기록을 받은 기기는 모두 같은 칩·시각을 낸다.
-import {
-  applyMove,
-  isRotation,
-  milestonesOf,
-  parseMoves,
-} from "@game/cube-engine";
+import { isRotation, milestonesOf, parseMoves } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { MILESTONE_RANK, type SplitGroup } from "../progress/splits";
 import type { Split } from "../records";
+import { applyLogText, isItemText } from "./items";
 
 export interface LoggedMove {
   readonly m: string;
@@ -47,11 +43,20 @@ export class StageTracker {
     }
     for (; p.count < log.length; p.count++) {
       const entry = log[p.count] as LoggedMove;
-      const move = parseMoves(this.n, entry.m)[0];
-      if (!move) continue;
-      p.state = applyMove(this.n, p.state, move);
-      // 큐브 돌리기는 색 기준 판정을 바꾸지 않는다(혼자 맞추기 `SolveSession.track`과 같다)
-      if (isRotation(this.n, move)) continue;
+      // 아이템전의 특별한 수(맞은 섞기·되감기)도 실제로 큐브에 들어간 대로 적용한다
+      if (isItemText(entry.m)) {
+        try {
+          p.state = applyLogText(this.n, p.state, entry.m);
+        } catch {
+          continue;
+        }
+      } else {
+        const move = parseMoves(this.n, entry.m)[0];
+        if (!move) continue;
+        p.state = applyLogText(this.n, p.state, entry.m);
+        // 큐브 돌리기는 색 기준 판정을 바꾸지 않는다(혼자 맞추기 `SolveSession.track`과 같다)
+        if (isRotation(this.n, move)) continue;
+      }
       for (const mid of milestonesOf(this.n, p.state))
         if (!p.splits.some((s) => s.id === mid))
           p.splits.push({ id: mid, ms: entry.t });

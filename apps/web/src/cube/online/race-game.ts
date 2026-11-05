@@ -18,7 +18,20 @@ import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceGame } from "@/net/race/types";
 import { goalReached } from "./handicap";
-import { PARTY_REASONS, partyCheckpoints } from "./party";
+import {
+  applyItemAct,
+  applyLogText,
+  type ItemAct,
+  isItemText,
+  itemCheckpoints,
+  parseItemText,
+} from "./items";
+import {
+  hasItems,
+  PARTY_REASONS,
+  type PartyMode,
+  partyCheckpoints,
+} from "./party";
 
 /**
  * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭(`bot-racer.ts`가 쓴다). 남이 보낸 그만두기 까닭은
@@ -41,7 +54,12 @@ export type Scrambler = (
   seed: number,
 ) => Scramble | Promise<Scramble>;
 
-export interface CubeRaceGame extends RaceGame<CubeMove, PuzzleState> {
+/** 대결 틀에 흘려보내는 수: 면 돌리기, 아이템전이면 특별한 수(쓰기·맞은 섞기 넣기)도 */
+export type CubeAct = CubeMove | ItemAct;
+
+export const isItemAct = (m: CubeAct): m is ItemAct => "item" in m;
+
+export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   n: number;
   event: ScrambleEvent;
   /** 이 씨앗으로 만든 섞기(`prepare`가 끝난 뒤) */
@@ -75,6 +93,8 @@ export function stageLabel(n: number, state: PuzzleState): string {
 export function turnCount(n: number, log: readonly { m: string }[]): number {
   let count = 0;
   for (const { m } of log) {
+    // 아이템전의 특별한 수(쓰기·맞은 섞기)는 수로 세지 않는다
+    if (isItemText(m)) continue;
     const move = parseMoves(n, m)[0];
     if (move && !isRotation(n, move)) count++;
   }
@@ -98,9 +118,15 @@ export function createCubeRaceGame(
   scrambler: Scrambler,
   event: ScrambleEvent = eventForSize(n),
   goals: Readonly<Record<string, MilestoneId>> = {},
-  /** 체력바 대결(docs/47 9-6): 깎는 이정표를 대결 틀의 중간 지점으로 넘긴다 */
-  party = false,
+  /**
+   * 파티 모드(docs/47 9-6·9-7): 깎는(받는) 이정표를 대결 틀의 중간 지점으로 넘긴다. 아이템전이면 특별한 수(쓰기·맞은 섞기)도
+   * 받아 다시 적용하고, 그 시각도 중간 지점으로 확인한다. `true`는 체력바(옛 부르기)
+   */
+  party: PartyMode | boolean = false,
 ): CubeRaceGame {
+  const mode: PartyMode | undefined =
+    party === true ? "hp" : party === false ? undefined : party;
+  const items = mode !== undefined && hasItems(mode);
   const cache = new Map<number, Scramble>();
   const scrambleOf = (seed: string) => cache.get(scrambleSeed(seed));
   return {
@@ -132,8 +158,15 @@ export function createCubeRaceGame(
       return `${event}|${s.text}|${stateHash(start)}`;
     },
     apply(state, move) {
+      if (isItemAct(move)) {
+        if (!items) throw new RangeError("둘 수 없는 수");
+        return applyItemAct(n, state, move);
+      }
       if (!isValidMove(n, move)) throw new RangeError("둘 수 없는 수");
-      return applyMove(n, state, move);
+      // 아이템전: 되감기가 되돌릴 내 마지막 수를 상태에 함께 적는다(`applyLogText`와 같은 규칙)
+      return items
+        ? applyLogText(n, state, formatMove(n, move))
+        : applyMove(n, state, move);
     },
     isSolved: (state, player) =>
       player !== undefined && Object.hasOwn(goals, player)
@@ -141,16 +174,27 @@ export function createCubeRaceGame(
         : isSolved(n, state),
     progress: (state) => solvedPieceRatio(n, state),
     retireReasons: [BOT_NO_PLAN, ...PARTY_REASONS],
-    ...(party
-      ? { checkpointsOf: (state: PuzzleState) => partyCheckpoints(n, state) }
+    ...(mode
+      ? {
+          checkpointsOf: (state: PuzzleState) =>
+            items
+              ? [...partyCheckpoints(n, state), ...itemCheckpoints(state)]
+              : partyCheckpoints(n, state),
+        }
       : {}),
-    // 큐브 돌리기(x·y·z)는 수로 세지 않는다(의심 표시 「수가 지나치게 적음」 등)
+    // 큐브 돌리기(x·y·z)와 아이템전의 특별한 수는 수로 세지 않는다(의심 표시 「수가 지나치게 적음」 등)
     isTurn(text) {
+      if (isItemText(text)) return false;
       const move = parseMoves(n, text)[0];
       return move !== undefined && !isRotation(n, move);
     },
-    encodeMove: (move) => formatMove(n, move),
+    encodeMove: (move) => (isItemAct(move) ? move.text : formatMove(n, move)),
     decodeMove(text) {
+      if (items && isItemText(text)) {
+        const act = parseItemText(n, text);
+        if (!act) throw new Error("모양이 틀린 아이템 수");
+        return act;
+      }
       const moves = parseMoves(n, text);
       if (moves.length !== 1) throw new Error("수 하나가 아니다");
       return moves[0] as CubeMove;
