@@ -5,9 +5,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import { nextLabel } from "./MatchBoard";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
+import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
 
 /**
@@ -21,6 +23,9 @@ export function CubeVsApp() {
   const [n, setN] = useState(2);
   const [level, setLevel] = useState<BotLevel>("beginner");
   const [inspection, setInspection] = useState(true);
+  /** 판 수: 1이면 한 판, 아니면 점수제(docs/51 3-1) */
+  const [rounds, setRounds] = useState(1);
+  const [scoring, setScoring] = useState<Scoring>("wins");
   const [room, setRoom] = useState<CubeRoom | null>(null);
   const version = useCubeRoom(room);
   const roomRef = useRef<CubeRoom | null>(null);
@@ -38,7 +43,9 @@ export function CubeVsApp() {
       botPlan: planInWorker,
       settings: {
         n,
-        format: "single",
+        ...(rounds > 1
+          ? { format: "points" as const, rounds, scoring }
+          : { format: "single" as const }),
         inspection,
         timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
       },
@@ -50,6 +57,8 @@ export function CubeVsApp() {
   };
 
   const status = room?.state?.status;
+  const multi = room?.state?.settings.format === "points";
+  const between = multi && status === "between";
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
@@ -64,6 +73,11 @@ export function CubeVsApp() {
             ← 큐브
           </a>
           <h1 className="font-bold text-lg">컴퓨터와 대결</h1>
+          {multi && room?.state && (
+            <span className="text-sm text-white/60">
+              {room.state.round}번째 판
+            </span>
+          )}
         </header>
 
         {!room ? (
@@ -99,6 +113,40 @@ export function CubeVsApp() {
                 ))}
               </div>
             </fieldset>
+            <fieldset className="flex flex-col gap-1 text-sm">
+              <legend className="mb-1">판 수</legend>
+              <div className="flex flex-wrap gap-1">
+                {[1, ...POINTS_ROUNDS].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    data-cube-vs-rounds={k}
+                    aria-pressed={rounds === k}
+                    onClick={() => setRounds(k)}
+                    className={`rounded-lg px-3 py-1.5 ${rounds === k ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                  >
+                    {k === 1 ? "한 판" : `${k}판`}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {rounds > 1 && (
+              <label className="flex items-center justify-between text-sm">
+                점수
+                <select
+                  data-cube-vs-scoring
+                  value={scoring}
+                  onChange={(e) => setScoring(e.target.value as Scoring)}
+                  className="rounded bg-white/10 px-2 py-1"
+                >
+                  {(Object.keys(SCORING_LABELS) as Scoring[]).map((k) => (
+                    <option key={k} value={k} className="bg-neutral-800">
+                      {SCORING_LABELS[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -135,17 +183,28 @@ export function CubeVsApp() {
                 >
                   다시 고르기
                 </button>
-                <button
-                  type="button"
-                  data-cube-again
-                  onClick={() => {
-                    room.newMatch();
-                    room.startRound();
-                  }}
-                  className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
-                >
-                  한 판 더
-                </button>
+                {between ? (
+                  <button
+                    type="button"
+                    data-cube-next
+                    onClick={() => room.startRound()}
+                    className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
+                  >
+                    {nextLabel(room)}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-cube-again
+                    onClick={() => {
+                      room.newMatch();
+                      room.startRound();
+                    }}
+                    className="min-h-10 rounded-lg bg-sky-500 px-4 font-semibold text-black text-sm hover:bg-sky-400"
+                  >
+                    {multi ? "새 경기" : "한 판 더"}
+                  </button>
+                )}
               </>
             }
           />

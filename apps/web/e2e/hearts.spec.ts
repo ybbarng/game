@@ -1,5 +1,13 @@
 import { prepareFast } from "./fast";
-import { expect, type Locator, type Page, ready, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  type Locator,
+  type Page,
+  ready,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 /** 하트: 숨은 입구, 혼자 한 판, 친구와 한 판 */
 async function prepare(page: Page) {
@@ -404,4 +412,77 @@ test("화면을 돌리면 카드를 날리지 않고 가렸다가 다시 보인�
   await expect(page.locator(".relayout")).toHaveCount(0);
   // 넘기기 패널이 새 화면에서도 보인다.
   await expect(page.getByText(/넘길 카드 3장/)).toBeVisible();
+});
+
+test("하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서 판 가운데로 날아가 내려앉는다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await prepare(page);
+  // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
+  await speedUpAnimations(page);
+  await page.goto("/hearts");
+  await page.getByRole("button", { name: /나홀로 하트/ }).click();
+
+  // 섞기·나눠 주기가 돌고, 끝나면 사라진다
+  await expect(page.locator("[data-dealing]")).toHaveCount(1);
+  await fastForwardUntil(
+    page,
+    async () => (await page.locator("[data-dealing]").count()) === 0,
+    { step: 100 },
+  );
+  await fastForwardUntil(page, () =>
+    page.getByText(/넘길 카드 3장/).isVisible(),
+  );
+  const pass = page.getByRole("button", { name: "넘기기", exact: true });
+  for (let k = 0; k < 3; k++)
+    await myCards(page)
+      .nth(k)
+      .click({ position: { x: 8, y: 8 } });
+  await pass.click();
+
+  // 내 차례가 올 때까지 컴퓨터 대기를 감는다
+  await fastForwardUntil(
+    page,
+    () => page.getByText(/낼 카드를 고르세요/).isVisible(),
+    { step: 100 },
+  );
+  const card = myCards(page).first();
+  const id = (await card.getAttribute("data-card")) as string;
+  const fromY = (await card.boundingBox())?.y ?? 0;
+  // 낸 카드가 손패 자리에서 움직이기 시작한다. 날아가는 CSS 연출은 page.clock이 아니라 실제 시간으로 돌아,
+  // 제 속도(0.3초)로 두면 바쁜 CI에서 확인 한 번 사이에 내려앉아 「날아가는 중」을 놓친다(2026-11-05 #137 CI).
+  // 1/20 빠르기로 늦춰 그 순간을 몇 초로 늘린다
+  await speedUpAnimations(page, 0.05);
+  await card.click({ position: { x: 8, y: 8 } });
+  /**
+   * 낸 카드의 상태: 판 쪽으로 날아가는 중(마우스를 올려 살짝 뜨는 것보다 훨씬 위, 움직임이 도는 중), 판 위에
+   * 내려앉음, 또는 걷어 감(한 바퀴가 다 돌아 내려앉은 뒤에만 사라진다)
+   */
+  const state = () =>
+    page.evaluate(
+      ([card, y]) => {
+        const el = document.querySelector(`button[data-card="${card}"]`);
+        if (!el) return "collected";
+        if (el.getBoundingClientRect().y >= (y as number) - 40) return "hand";
+        return el.getAnimations().length > 0 ? "flying" : "landed";
+      },
+      [id, fromY] as const,
+    );
+  await fastForwardUntil(page, async () => (await state()) === "flying", {
+    step: 16,
+  });
+  await page.screenshot({ path: info.outputPath("hearts-fx-play.png") });
+  // 다시 빨리 돌리면 판 가운데에 내려앉는다(이어 컴퓨터가 내서 걷어 갔어도 내려앉은 뒤다)
+  await speedUpAnimations(page);
+  await fastForwardUntil(
+    page,
+    async () => ["landed", "collected"].includes(await state()),
+    { step: 16 },
+  );
+  expect(errors).toEqual([]);
 });

@@ -6,7 +6,7 @@ import {
   solvedFacelets,
   splitMoves,
 } from "./facelets";
-import { init3x3, solve3x3 } from "./two-phase";
+import { init3x3, SolveStopped, solve3x3 } from "./two-phase";
 
 const S3 = solvedFacelets(3);
 
@@ -76,6 +76,17 @@ describe("3×3 2단계 해법", () => {
   it("같은 입력이면 같은 해", () => {
     const f = randomCube(42);
     expect(solve3x3(f)).toBe(solve3x3(f));
+  });
+
+  it("멈춤 확인이 true면 SolveStopped를 던지고, false면 해가 그대로다", () => {
+    const f = randomCube(7);
+    let asked = 0;
+    // 11수 안에는 해가 없어 끝까지 훑는다(마디가 많아 멈춤 확인을 여러 번 부른다)
+    expect(() =>
+      solve3x3(f, { maxLength: 11, shouldStop: () => ++asked >= 3 }),
+    ).toThrow(SolveStopped);
+    expect(asked).toBe(3);
+    expect(solve3x3(f, { shouldStop: () => false })).toBe(solve3x3(f));
   });
 
   it("최대 길이를 넓히면 그 안에서 푼다", () => {

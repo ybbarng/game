@@ -4,6 +4,12 @@ import type { CSSProperties, ReactNode, Ref } from "react";
 
 import { ChatBox } from "@/components/ChatBox";
 import {
+  type CardFlights,
+  FlightLayer,
+  FlightScope,
+  HWATU_CARD,
+} from "@/components/card-fx";
+import {
   MissionOverlay,
   type MissionProps,
 } from "@/components/tutorial/MissionOverlay";
@@ -34,6 +40,7 @@ export function HwatuStage({
   mission,
   stageRef,
   handlers,
+  fx,
   children,
 }: {
   /** `data-game` 값 */
@@ -43,6 +50,8 @@ export function HwatuStage({
   stageRef: Ref<HTMLDivElement>;
   /** 손패 조작(`useHandControls`)처럼 무대에 붙일 이벤트 */
   handlers?: Record<string, unknown>;
+  /** 장면 연출 줄(`useHwatuFlights`). 무대 안에 겉그림을 그리고, 날아오는 카드를 가린다 */
+  fx: CardFlights;
   children: ReactNode;
 }) {
   const inset = mission ? MISSION_INSET : 0;
@@ -65,7 +74,11 @@ export function HwatuStage({
         }
         {...handlers}
       >
-        {children}
+        <FlightScope fx={fx}>
+          {children}
+          {/* 옮겨 가는 카드는 판 위 다른 것 위로(물음 창·결과 상자 아래) */}
+          <FlightLayer fx={fx} kind={HWATU_CARD} className="z-[60]" />
+        </FlightScope>
       </div>
     </main>
   );

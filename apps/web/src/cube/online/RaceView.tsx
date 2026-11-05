@@ -5,6 +5,7 @@ import {
   applyMoves,
   type CubeMove,
   invertMove,
+  milestoneLabel,
   parseMoves,
   solvedCube,
 } from "@game/cube-engine";
@@ -13,6 +14,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -22,11 +24,20 @@ import { faceGrid } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
 import { CubePlay, playCubeCue } from "../components/CubePlay";
 import type { Command } from "../input";
-import { formatMs } from "../records";
-import { useCubeSettings } from "../settings";
+import { groupSplits, type SplitGroup } from "../progress/splits";
+import { formatMs, type Split } from "../records";
+import { effectiveRaceAlerts, useCubeSettings } from "../settings";
 import { planInWorker } from "../worker";
 import { checkBotRun, sameAsBotSolve } from "./bot-racer";
+import { MatchBoard } from "./MatchBoard";
 import { stageLabel, turnCount } from "./race-game";
+import {
+  liveOrder,
+  pickToasts,
+  StageTracker,
+  splitCell,
+  splitColumns,
+} from "./race-stages";
 import type { CubeRoom, RoundRecord } from "./room";
 
 /**
@@ -43,6 +54,31 @@ const PHASE_TEXT: Record<RaceSnapshot["phase"], string> = {
   waiting: "다른 사람을 기다리는 중",
   finished: "판 끝",
 };
+
+/** 톡이 떠 있는 시간(ms). 1초 안쪽(docs/51 1-3) */
+const TOAST_MS = 900;
+/** 이보다 오래전에 지난 이정표는 톡을 띄우지 않는다(판 중간에 화면을 연 때 지난 것을 한꺼번에 띄우지 않게) */
+const TOAST_RECENT_MS = 2_000;
+
+/** 움직임 줄이기 */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!q) return;
+    setReduced(q.matches);
+    const on = () => setReduced(q.matches);
+    q.addEventListener?.("change", on);
+    return () => q.removeEventListener?.("change", on);
+  }, []);
+  return reduced;
+}
+
+interface Toast {
+  /** 톡마다 다른 열쇠(같은 사람이 이어 지나도 다시 뜬다) */
+  key: string;
+  text: string;
+}
 
 function useTicker(active: boolean): void {
   const [, tick] = useState(0);
@@ -80,6 +116,7 @@ export function RaceView({
     if (phase !== "inspect") setNotice(null);
   }, [phase]);
   const [showSmall, setShowSmall] = useState(true);
+  const alerts = effectiveRaceAlerts(settings.raceAlerts, useReducedMotion());
 
   const myState: PuzzleState =
     mine?.stateOf(room.me) ?? mine?.startState() ?? solvedCube(n);
@@ -88,6 +125,88 @@ export function RaceView({
   const [syncToken, setSyncToken] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때만 다시 칠한다
   useEffect(() => setSyncToken((v) => v + 1), [syncKey]);
+
+  // 단계 칩(docs/51 1-3): 이미 받은 수 기록에서 이 기기가 계산한다(새로 보내는 정보 없음, race-stages.ts)
+  const start = snap?.seed ? session?.startState() : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때만 새로 센다
+  const tracker = useMemo(
+    () => (start ? new StageTracker(n, start) : null),
+    [syncKey, n, start !== undefined],
+  );
+  const stages = new Map<string, { splits: Split[]; groups: SplitGroup[] }>();
+  if (tracker && session && snap)
+    for (const p of snap.peers) {
+      const splits = [...tracker.update(p.id, session.moveLog(p.id))];
+      stages.set(p.id, { splits, groups: groupSplits(splits) });
+    }
+
+  // 이정표를 지나면 그 칸에 톡(「십자 3.21초」). 4명이 넘으면 1등이 바뀐 때와 나·내 앞뒤만
+  const [toasts, setToasts] = useState<Record<string, Toast>>({});
+  /** 이번 판에 띄운 톡 수(화면 시험이 잠깐 뜨는 톡을 기다리지 않고 센다) */
+  const [toastCount, setToastCount] = useState(0);
+  const seen = useRef<{ key: string; counts: Map<string, number> }>({
+    key: "",
+    counts: new Map(),
+  });
+  const leader = useRef<string | undefined>(undefined);
+  const toastTimers = useRef<number[]>([]);
+  useEffect(
+    () => () => {
+      for (const id of toastTimers.current) window.clearTimeout(id);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!snap) return;
+    if (seen.current.key !== syncKey) {
+      seen.current = { key: syncKey, counts: new Map() };
+      leader.current = undefined;
+      setToasts({});
+      setToastCount(0);
+    }
+    const counts = seen.current.counts;
+    const passed: string[] = [];
+    for (const p of snap.peers) {
+      const groups = stages.get(p.id)?.groups ?? [];
+      if (groups.length > (counts.get(p.id) ?? 0)) passed.push(p.id);
+      counts.set(p.id, groups.length);
+    }
+    if (passed.length === 0) return;
+    const order = liveOrder(
+      snap.peers.map((p) => ({
+        id: p.id,
+        status: p.status,
+        reported: p.reported,
+        groups: stages.get(p.id)?.groups ?? [],
+      })),
+    );
+    const prev = leader.current;
+    leader.current = order[0];
+    if (alerts !== "on") return;
+    const now = snap.elapsed ?? 0;
+    const shown: Record<string, Toast> = {};
+    for (const id of pickToasts(passed, {
+      order,
+      prevLeader: prev,
+      me: room.me,
+    })) {
+      const g = stages.get(id)?.groups.at(-1);
+      if (!g || now - g.ms > TOAST_RECENT_MS) continue;
+      shown[id] = { key: `${syncKey}|${id}|${g.ms}`, text: toastText(g) };
+    }
+    if (Object.keys(shown).length === 0) return;
+    setToasts((t) => ({ ...t, ...shown }));
+    setToastCount((c) => c + Object.keys(shown).length);
+    const timer = window.setTimeout(() => {
+      setToasts((t) => {
+        const next = { ...t };
+        for (const [id, toast] of Object.entries(shown))
+          if (next[id]?.key === toast.key) delete next[id];
+        return next;
+      });
+    }, TOAST_MS);
+    toastTimers.current.push(timer);
+  });
 
   // 살펴보기·풀림·맞춤 소리
   const lastCue = useRef("");
@@ -141,6 +260,8 @@ export function RaceView({
   const scramble = snap.seed ? (game?.scrambleFor(snap.seed)?.text ?? "") : "";
   const others = snap.peers.filter((p) => p.id !== room.me);
   const small = snap.peers.length <= 3 && showSmall;
+  /** 단계 칩으로 보이나(대결 알림 「끔」이면 예전처럼 진행 막대·단계 이름·수) */
+  const chips = alerts !== "off";
   const finishedFirst = snap.peers
     .filter((p) => p.status === "done" && p.reported !== undefined)
     .sort((a, b) => (a.reported as number) - (b.reported as number));
@@ -213,6 +334,7 @@ export function RaceView({
           n={n}
           local={local}
           actions={resultActions}
+          splitsOf={(id) => stages.get(id)?.splits ?? []}
         />
       )}
 
@@ -220,6 +342,7 @@ export function RaceView({
         <div className="flex flex-col items-center">
           {mine ? (
             <CubePlay
+              flow="small"
               n={n}
               state={myState}
               mask={null}
@@ -228,13 +351,25 @@ export function RaceView({
               onMove={onMove}
               onCommand={onCommand}
               locked={phase !== "inspect" && phase !== "race"}
+              fitViewport
             />
           ) : (
             <p className="p-6 text-center text-sm text-white/70">보는 중</p>
           )}
         </div>
-        <aside className="flex flex-col gap-2" data-cube-peers>
-          <div className="flex items-center justify-between">
+        <aside
+          data-cube-peers
+          data-cube-race-alerts={alerts}
+          data-cube-toasts-shown={toastCount}
+          className={
+            chips
+              ? "flex gap-2 max-md:-mx-1 max-md:order-first max-md:overflow-x-auto max-md:px-1 max-md:pb-1 md:flex-col"
+              : "flex flex-col gap-2"
+          }
+        >
+          <div
+            className={`items-center justify-between ${chips ? "hidden md:flex" : "flex"}`}
+          >
             <h2 className="font-semibold text-sm">진행</h2>
             {snap.peers.length <= 3 && (
               <button
@@ -248,16 +383,34 @@ export function RaceView({
           </div>
           {[...(me ? [me] : []), ...others].map((p) => {
             const st = session.stateOf(p.id);
+            const groups = stages.get(p.id)?.groups ?? [];
+            const toast = toasts[p.id];
+            const status =
+              p.status === "done"
+                ? formatMs(p.reported)
+                : p.status === "forfeit"
+                  ? "기권"
+                  : p.status === "dnf"
+                    ? "DNF"
+                    : chips
+                      ? ""
+                      : `${p.moves}수`;
             return (
               <div
                 key={p.id}
                 data-cube-peer={p.id}
                 data-cube-peer-status={p.status}
                 data-cube-bot-planned={room.botPlanned(p.id) ? "" : undefined}
-                className="flex flex-col gap-1 rounded-xl bg-white/5 p-2"
+                className={`relative flex flex-col gap-1 rounded-xl bg-white/5 p-2 ${
+                  chips
+                    ? "max-md:w-36 max-md:shrink-0 max-md:gap-0.5 max-md:p-1.5"
+                    : ""
+                }`}
               >
                 <div className="flex items-baseline gap-2 text-sm">
-                  <b className={p.id === room.me ? "text-amber-200" : ""}>
+                  <b
+                    className={`truncate ${p.id === room.me ? "text-amber-200" : ""}`}
+                  >
                     {room.playerName(p.id)}
                     {p.id === room.me && room.playerName(p.id) !== "나"
                       ? " (나)"
@@ -266,33 +419,47 @@ export function RaceView({
                   {!p.connected && (
                     <span className="text-red-300 text-xs">끊김</span>
                   )}
-                  <span className="ml-auto font-mono text-xs tabular-nums">
-                    {p.status === "done"
-                      ? formatMs(p.reported)
-                      : p.status === "forfeit"
-                        ? "기권"
-                        : p.status === "dnf"
-                          ? "DNF"
-                          : `${p.moves}수`}
+                  <span
+                    className={`ml-auto shrink-0 font-mono text-xs tabular-nums ${
+                      p.status === "done" ? "text-emerald-300" : ""
+                    }`}
+                  >
+                    {status}
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className={`h-full ${p.status === "done" ? "bg-emerald-400" : "bg-sky-400"}`}
-                    style={{ width: `${Math.round(p.progress * 100)}%` }}
-                  />
-                </div>
-                <span className="text-white/60 text-xs">
-                  {st ? stageLabel(n, st) : "-"}
-                </span>
+                {chips ? (
+                  <PeerStages groups={groups} />
+                ) : (
+                  <>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full ${p.status === "done" ? "bg-emerald-400" : "bg-sky-400"}`}
+                        style={{ width: `${Math.round(p.progress * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-white/60 text-xs">
+                      {st ? stageLabel(n, st) : "-"}
+                    </span>
+                  </>
+                )}
                 {small && p.id !== room.me && st && (
                   <CubeNet
                     n={n}
                     faces={faceGrid(n, st)}
                     colors={settings.colors}
                     hidden={settings.hidden}
-                    className="h-auto w-32 self-center"
+                    className={`h-auto w-32 self-center ${chips ? "max-md:hidden" : ""}`}
                   />
+                )}
+                {toast && (
+                  <span
+                    key={toast.key}
+                    data-cube-race-toast={p.id}
+                    data-toast-key={toast.key}
+                    className="cube-race-toast pointer-events-none absolute top-1 right-1 z-10 whitespace-nowrap rounded-full border border-sky-200/40 bg-neutral-900/90 px-2 py-0.5 font-semibold text-sky-100 text-xs shadow-lg"
+                  >
+                    {toast.text}
+                  </span>
                 )}
               </div>
             );
@@ -311,6 +478,7 @@ function ResultBox({
   n,
   local,
   actions,
+  splitsOf,
 }: {
   room: CubeRoom;
   snap: RaceSnapshot;
@@ -318,6 +486,8 @@ function ResultBox({
   n: number;
   local: boolean;
   actions?: ReactNode;
+  /** 사람마다 구간 기록(이 기기가 수 기록에서 계산) */
+  splitsOf: (id: string) => readonly Split[];
 }) {
   const result = snap.result;
   const session = room.anySession();
@@ -393,9 +563,9 @@ function ResultBox({
       >
         <b className="text-emerald-300">
           {first?.id === room.me
-            ? "내가"
-            : `${room.playerName(first?.id ?? "")}이(가)`}{" "}
-          먼저 맞췄어요 · {formatMs(first?.reported)}
+            ? "내가 먼저 맞췄어요"
+            : `먼저 맞췄어요: ${room.playerName(first?.id ?? "")}`}{" "}
+          · {formatMs(first?.reported)}
         </b>
         <p className="text-white/70 text-xs">
           {snap.peers.find((p) => p.id === room.me)?.status === "playing"
@@ -538,6 +708,8 @@ function ResultBox({
           })}
         </tbody>
       </table>
+      <RaceSplits room={room} ids={result.ranking} splitsOf={splitsOf} />
+      <MatchBoard room={room} />
       {!local && <ResultDetails room={room} snap={snap} />}
       {actions && (
         <div
@@ -547,6 +719,120 @@ function ResultBox({
           {actions}
         </div>
       )}
+    </div>
+  );
+}
+
+/** 칩에 쓸 대표 단계 이름과 시각: 「십자 3.21초」(1분 넘으면 「1:02.34」) */
+function toastText(g: SplitGroup): string {
+  const t = formatMs(g.ms);
+  return `${g.label.replace(/ \+\d+$/, "")} ${t.includes(":") ? t : `${t}초`}`;
+}
+
+/**
+ * 사람 칸의 단계 칩 한 줄(docs/51 1-3). 수마다 움직이지 않고 이정표를 지날 때만 칩이 하나 는다. 최근 셋, 마지막 칩만
+ * 시각을 붙이고 앞 칩은 흐리게. 휴대폰(위 줄의 좁은 칸)은 마지막 칩만
+ */
+function PeerStages({ groups }: { groups: readonly SplitGroup[] }) {
+  const shown = groups.slice(-3);
+  return (
+    <ol
+      data-cube-peer-stages={groups.map((g) => g.ids.join("+")).join(" ")}
+      className="flex h-5 min-w-0 items-center gap-1 overflow-hidden"
+    >
+      {shown.length === 0 && <li className="text-white/35 text-[11px]">-</li>}
+      {shown.map((g, i) => {
+        const last = i === shown.length - 1;
+        return (
+          <li
+            key={`${g.ms}-${g.ids.join("+")}`}
+            data-milestone={g.ids.join("+")}
+            title={`${g.full} ${formatMs(g.ms)}`}
+            className={`shrink-0 truncate rounded-full border px-1.5 py-px text-[11px] ${
+              last
+                ? "cube-milestone-in border-sky-300/35 bg-sky-400/10 text-sky-100"
+                : "border-white/10 text-white/45 max-md:hidden"
+            }`}
+          >
+            {g.label}
+            {last && (
+              <span className="ml-1 font-mono text-sky-200/75 tabular-nums">
+                {formatMs(g.ms)}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * 결과 상자의 구간 기록(사람마다 나란히). 열은 사람들 칩의 대표 단계, 칸은 그 단계를 처음 지난 시각.
+ * 열마다 가장 빠른 칸을 밝게. 다 맞춘 순간에 함께 지난 단계는 비운다(「-」)
+ */
+function RaceSplits({
+  room,
+  ids,
+  splitsOf,
+}: {
+  room: CubeRoom;
+  ids: readonly string[];
+  splitsOf: (id: string) => readonly Split[];
+}) {
+  const rows = ids.map((id) => ({ id, splits: splitsOf(id) }));
+  const columns = splitColumns(rows.map((r) => groupSplits(r.splits)));
+  if (columns.length === 0) return null;
+  const fastest = new Map<string, number>();
+  for (const c of columns)
+    for (const r of rows) {
+      const t = splitCell(r.splits, c);
+      if (t !== null && t < (fastest.get(c) ?? Number.POSITIVE_INFINITY))
+        fastest.set(c, t);
+    }
+  return (
+    <div className="overflow-x-auto" data-cube-race-splits={columns.join(" ")}>
+      <table className="text-xs">
+        <thead className="text-white/50">
+          <tr>
+            <th className="text-left font-normal">구간</th>
+            {columns.map((c) => (
+              <th
+                key={c}
+                className="whitespace-nowrap pl-4 text-right font-normal"
+              >
+                {milestoneLabel(c)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} data-cube-race-split-row={r.id}>
+              <td className="max-w-24 truncate text-white/70">
+                {room.playerName(r.id)}
+              </td>
+              {columns.map((c) => {
+                const t = splitCell(r.splits, c);
+                return (
+                  <td
+                    key={c}
+                    className={`pl-4 text-right font-mono tabular-nums ${
+                      t === null
+                        ? "text-white/30"
+                        : t === fastest.get(c)
+                          ? "text-emerald-300"
+                          : "text-white/75"
+                    }`}
+                  >
+                    {t === null ? "-" : formatMs(t)}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

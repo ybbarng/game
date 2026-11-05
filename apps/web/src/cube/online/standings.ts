@@ -1,18 +1,41 @@
 import type { RaceResult } from "@/net/race/types";
 
 /**
- * 여러 판을 묶은 경기 방식과 종합 순위(docs/47 9-1).
- * ① 한 판 대결 ② 5판 평균(가장 좋은·나쁜 판을 빼고 가운데 셋 평균, 못 맞춘 판이 둘 이상이면 DNF) ③ 먼저 N판 이기기.
- * 모든 기기가 같은 판 결과를 가지므로 종합 순위도 같다.
+ * 여러 판을 묶은 경기 방식과 종합 순위(docs/47 9-1·9-3).
+ * ① 한 판 대결 ② 5판 평균(가장 좋은·나쁜 판을 빼고 가운데 셋 평균, 못 맞춘 판이 둘 이상이면 DNF) ③ 먼저 N판 이기기
+ * ④ 점수제 여러 판(판 수 3·5·7, 점수는 이긴 판 수 또는 순위 점수 합, 동점이면 서든데스).
+ * 모든 기기가 같은 판 결과를 가지므로 종합 순위도 같다. 점수는 각 기기가 자기 판 결과에서 계산하고 주고받지 않는다.
  */
 
-export type MatchFormat = "single" | "ao5" | "firstTo";
+export type MatchFormat = "single" | "ao5" | "firstTo" | "points";
 
 export const FORMAT_LABELS: Record<MatchFormat, string> = {
   single: "한 판",
   ao5: "5판 평균",
   firstTo: "먼저 N판",
+  points: "점수제",
 };
+
+/** 점수제의 점수: 이긴 판 수(판마다 1등 1점) 또는 순위 점수 합(판에 든 사람 m명이면 1등 m점 … 꼴찌 1점, 못 맞추면 0점) */
+export type Scoring = "wins" | "rank";
+
+export const SCORING_LABELS: Record<Scoring, string> = {
+  wins: "이긴 판",
+  rank: "순위 점수",
+};
+
+/** 점수제 판 수. 홀수만 둔다(이긴 판 수로 1:1이면 비기지 않게) */
+export const POINTS_ROUNDS = [3, 5, 7] as const;
+
+export interface MatchRules {
+  format: MatchFormat;
+  /** 먼저 N판의 N */
+  target: number;
+  /** 점수제 판 수(없으면 5) */
+  rounds?: number;
+  /** 점수제 점수(없으면 이긴 판) */
+  scoring?: Scoring;
+}
 
 export interface RoundSummary {
   result: RaceResult;
@@ -25,6 +48,12 @@ export interface StandingRow {
   /** 판마다 인정 시간(못 맞췄으면 null) */
   times: (number | null)[];
   wins: number;
+  /** 점수제 점수 합(다른 방식은 0) */
+  points: number;
+  /** 점수제: 정규 판마다 얻은 점수(그 판에 없었으면 null) */
+  roundPoints: (number | null)[];
+  /** 등수(1부터). 점수제는 점수가 같으면 같은 등수(서든데스로 가른 1등은 따로) */
+  place: number;
 }
 
 /** 판의 인정 시간(못 맞췄거나 다툼으로 판정하지 못했으면 null) */
@@ -68,12 +97,184 @@ function winnerOf(result: RaceResult): string | null {
     : null;
 }
 
-/** 종합 순위. 앞선 순서로 */
-export function standings(
-  format: MatchFormat,
+/** 판에서 맞추고 순위에 든 사람(인정 시간이 있는 사람) */
+function ranked(result: RaceResult) {
+  return Object.values(result.players).filter(
+    (p) => p.status === "done" && !p.unranked && p.accepted !== undefined,
+  );
+}
+
+/**
+ * 순위 점수: 판에 든 사람이 m명(기권 포함)이면 k등은 m − k + 1점, 못 맞춤·기권·다툼(순위 없음)은 0점.
+ * 인정 시간이 같으면 같은 등수. 판정 없음 판은 아무도 점수가 없다
+ */
+export function rankPoints(result: RaceResult): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (result.noDecision) return out;
+  const m = Object.keys(result.players).length;
+  const done = ranked(result);
+  for (const p of done) {
+    const place =
+      1 +
+      done.filter((q) => (q.accepted as number) < (p.accepted as number))
+        .length;
+    out[p.id] = m - place + 1;
+  }
+  return out;
+}
+
+function roundScore(scoring: Scoring, result: RaceResult, id: string): number {
+  if (scoring === "wins") return winnerOf(result) === id ? 1 : 0;
+  return rankPoints(result)[id] ?? 0;
+}
+
+/** 서든데스 판의 승자: 동점자 가운데 인정 시간이 홀로 가장 빠른 사람. 없으면(모두 못 맞춤·같은 시간) null */
+function suddenDeathWinner(
+  result: RaceResult,
+  tied: readonly string[],
+): string | null {
+  const done = ranked(result).filter((p) => tied.includes(p.id));
+  if (done.length === 0) return null;
+  const best = Math.min(...done.map((p) => p.accepted as number));
+  const top = done.filter((p) => p.accepted === best);
+  return top.length === 1 ? (top[0] as (typeof top)[number]).id : null;
+}
+
+export interface PointsMatch {
+  /** 셈에 쓴 판(정규 판 + 서든데스, 경기가 정해진 뒤의 판은 버린다) */
+  used: RoundSummary[];
+  /** 정규 판 가운데 치른 수 */
+  played: number;
+  total: number;
+  /** 치른 서든데스 판 수 */
+  suddenDeath: number;
+  /** 정규 판이 끝났는데 1등 점수가 같은 사람들(서든데스 대상) */
+  tied: string[];
+  suddenDeathWinner: string | null;
+  scores: Map<string, number>;
+  over: boolean;
+}
+
+/**
+ * 점수제 경기의 진행. 판정 없음 판은 판 수에 세지 않는다(`decidedRounds`, 한 판 더 간다). 열지 못한 판(`cancelled`,
+ * 남은 사람이 둘 아래·2명 판 섞기 어긋남)도 아무도 풀지 않았으니 세지 않는다.
+ * - 이긴 판: 1등이 남은 판을 모두 내줘도 2등에게 따라잡히지 않으면 일찍 끝난다(5판이면 1:1에서 먼저 3판).
+ * - 순위 점수: 정해진 판을 모두 치른다.
+ * - 정규 판이 끝났는데 1등 점수가 같으면 그 사람들이 서든데스: 다음 판에서 동점자 가운데 가장 빠른 사람이 이긴다
+ *   (모두 못 맞추면 한 판 더). 다른 사람도 함께 풀지만 점수는 늘지 않는다.
+ * - 경기가 정해진 뒤에 치른 판(방장이 더 연 판)은 셈에 넣지 않는다
+ */
+export function pointsMatch(
+  rules: MatchRules,
+  all: readonly RoundSummary[],
+): PointsMatch {
+  const total = rules.rounds ?? 5;
+  const scoring = rules.scoring ?? "wins";
+  const rounds = decidedRounds([...all]).filter((r) => !r.result.cancelled);
+  const scores = new Map<string, number>();
+  const used: RoundSummary[] = [];
+  let over = false;
+  let played = 0;
+  while (played < total && played < rounds.length && !over) {
+    const r = rounds[played] as RoundSummary;
+    used.push(r);
+    played++;
+    for (const id of Object.keys(r.result.players))
+      scores.set(id, (scores.get(id) ?? 0) + roundScore(scoring, r.result, id));
+    if (scoring === "wins") {
+      const [first = 0, second = 0] = [...scores.values()].sort(
+        (a, b) => b - a,
+      );
+      if (first > second + (total - played)) over = true;
+    }
+  }
+  let tied: string[] = [];
+  let winner: string | null = null;
+  let suddenDeath = 0;
+  if (!over && played === total) {
+    const best = Math.max(0, ...scores.values());
+    tied = [...scores].filter(([, v]) => v === best).map(([id]) => id);
+    if (tied.length <= 1) {
+      over = true;
+      tied = [];
+    } else {
+      for (const r of rounds.slice(total)) {
+        used.push(r);
+        suddenDeath++;
+        winner = suddenDeathWinner(r.result, tied);
+        if (winner) {
+          over = true;
+          break;
+        }
+      }
+    }
+  }
+  return {
+    used,
+    played,
+    total,
+    suddenDeath,
+    tied,
+    suddenDeathWinner: winner,
+    scores,
+    over,
+  };
+}
+
+function pointsStandings(
+  rules: MatchRules,
   players: string[],
   all: RoundSummary[],
 ): StandingRow[] {
+  const m = pointsMatch(rules, all);
+  const scoring = rules.scoring ?? "wins";
+  const main = m.used.slice(0, m.played);
+  const last = m.used.at(-1);
+  const lastRank = (id: string) => {
+    const at = last?.result.ranking.indexOf(id) ?? -1;
+    return at < 0 ? Number.POSITIVE_INFINITY : at;
+  };
+  const sd = m.suddenDeathWinner;
+  const rows = players.map((id) => {
+    const points = m.scores.get(id) ?? 0;
+    return {
+      id,
+      value: points,
+      points,
+      times: m.used.map((r) => roundTime(r.result, id)),
+      roundPoints: main.map((r) =>
+        id in r.result.players ? roundScore(scoring, r.result, id) : null,
+      ),
+      wins: main.filter((r) => winnerOf(r.result) === id).length,
+      place: 0,
+    };
+  });
+  const ahead = (a: StandingRow, b: StandingRow) =>
+    a.points > b.points || (a.points === b.points && a.id === sd);
+  rows.sort(
+    (a, b) =>
+      b.points - a.points ||
+      Number(b.id === sd) - Number(a.id === sd) ||
+      lastRank(a.id) - lastRank(b.id),
+  );
+  for (const r of rows)
+    r.place = 1 + rows.filter((o) => o !== r && ahead(o, r)).length;
+  return rows;
+}
+
+function asRules(rules: MatchRules | MatchFormat): MatchRules {
+  return typeof rules === "string" ? { format: rules, target: 3 } : rules;
+}
+
+/** 종합 순위. 앞선 순서로 */
+export function standings(
+  match: MatchRules | MatchFormat,
+  players: string[],
+  all: RoundSummary[],
+): StandingRow[] {
+  const rules = asRules(match);
+  const format = rules.format;
+  if (format === "points") return pointsStandings(rules, players, all);
   const rounds = decidedRounds(all);
   const rows = players.map((id) => {
     const times = rounds.map((r) => roundTime(r.result, id));
@@ -85,27 +286,29 @@ export function standings(
       const last = rounds.at(-1);
       value = last ? roundTime(last.result, id) : null;
     }
-    return { id, value, times, wins };
+    return { id, value, times, wins, points: 0, roundPoints: [], place: 0 };
   });
   const lastRank = (id: string) => {
     const last = rounds.at(-1)?.result.ranking.indexOf(id) ?? -1;
     return last < 0 ? Number.POSITIVE_INFINITY : last;
   };
-  return rows.sort((a, b) => {
+  rows.sort((a, b) => {
     if (format === "firstTo")
       return b.wins - a.wins || lastRank(a.id) - lastRank(b.id);
     const av = a.value ?? Number.POSITIVE_INFINITY;
     const bv = b.value ?? Number.POSITIVE_INFINITY;
     return av - bv || lastRank(a.id) - lastRank(b.id);
   });
+  rows.forEach((r, i) => {
+    r.place = i + 1;
+  });
+  return rows;
 }
 
 /** 경기가 끝났나 */
-export function matchOver(
-  format: MatchFormat,
-  target: number,
-  all: RoundSummary[],
-): boolean {
+export function matchOver(match: MatchRules, all: RoundSummary[]): boolean {
+  const { format, target } = match;
+  if (format === "points") return pointsMatch(match, all).over;
   const rounds = decidedRounds(all);
   if (format === "single") return rounds.length >= 1;
   if (format === "ao5") return rounds.length >= 5;

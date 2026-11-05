@@ -30,6 +30,18 @@ export interface SolveRecord {
   memoMs?: number;
   /** 다시 보기용: 수와 시각(맞추기 시작부터 ms). "R@120 U'@380" 꼴 */
   replay?: string;
+  /**
+   * 구간 기록(2026-11-05, docs/51 1-2): 이정표(`@game/cube-engine`의 `MILESTONES` id)를 처음 지난 시각(맞추기 시작부터
+   * ms), 지난 차례대로. 다시 보기 글과 같은 꼴 "cross@3210 f2l1@8020". 이 칸이 없는 옛 기록도 그대로 읽힌다
+   */
+  splits?: string;
+  /** 가장 긴 흐름 콤보(2026-11-05, docs/51 2-1). 4수 아래면 남기지 않는다 */
+  combo?: number;
+  /**
+   * 오늘의 섞기로 기록한 시도면 그 날짜(한국 시각 "YYYY-MM-DD", 2026-11-05, docs/51 2-4). 연습은 기록에 넣지 않는다.
+   * 날마다의 결과는 따로 `cube.daily.v1`(`daily.ts`)에도 둔다
+   */
+  daily?: string;
   /** 혼자 맞추기 「상황 알림」을 켰을 때 이번 판에서 만난 내 목록 상황 id(만난 차례, 2026-11-04) */
   myCases?: string[];
 }
@@ -157,6 +169,32 @@ export function formatMs(ms: number | null | undefined): string {
   const frac = String(cs % 100).padStart(2, "0");
   if (s < 60) return `${s}.${frac}`;
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}.${frac}`;
+}
+
+export interface Split {
+  /** 이정표 id */
+  id: string;
+  /** 맞추기 시작부터 ms */
+  ms: number;
+}
+
+/** 구간 기록 → 저장 글 */
+export function formatSplits(splits: readonly Split[]): string {
+  return splits.map((s) => `${s.id}@${Math.round(s.ms)}`).join(" ");
+}
+
+/** 저장 글 → 구간 기록. 모르는 꼴·음수 시각은 건너뛰고, 같은 이정표는 처음 것만 */
+export function parseSplits(text: unknown): Split[] {
+  if (typeof text !== "string" || text === "") return [];
+  const seen = new Set<string>();
+  const out: Split[] = [];
+  for (const part of text.split(" ")) {
+    const m = /^([a-z0-9]+)@(\d+)$/.exec(part);
+    if (!m || seen.has(m[1] as string)) continue;
+    seen.add(m[1] as string);
+    out.push({ id: m[1] as string, ms: Number(m[2]) });
+  }
+  return out;
 }
 
 /** 다시 보기 글 → [표기, 시각] 목록 */

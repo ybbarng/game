@@ -6,5 +6,6 @@ export * from "./move";
 export * from "./notation";
 export * from "./progress";
 export * from "./random";
+export * from "./solve-progress";
 export * from "./state";
 export * from "./topology";

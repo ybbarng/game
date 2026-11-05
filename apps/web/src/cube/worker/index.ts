@@ -6,6 +6,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import type { AlgBook, ImportResult } from "../algs/store";
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
+import type { ShortSolution } from "../progress/distance";
 import {
   type CubeJob,
   type CubeJobAnswer,
@@ -49,6 +50,9 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   // 첫 화면 연출 풀이는 5×5 축소법도 1초 안쪽이다(2026-11-05 섞기 20개씩 잼). 연출은 이 상한을 기다리지 않고
   // `heroTiming().workerWait`(2초) 뒤 스스로 화면 스레드에서 푼다. 이 상한은 멈춘 워커를 버리는 데만 쓴다
   hero: 20_000,
+  // 8수 안쪽 거리·짧은 풀이는 표를 만든 뒤 1ms 안쪽이다. 첫 부름의 3×3 표 만들기를 넉넉히 본다
+  distance: 20_000,
+  short: 20_000,
   // 십자 표(색마다 수십 ms)와 3×3 해법기 표를 처음 만들 때
   cross: 30_000,
 };
@@ -272,6 +276,34 @@ export function crossRoundInWorker(
   req: CrossRoundRequest,
 ): Promise<CrossRound> {
   return request({ kind: "cross", request: req }) as Promise<CrossRound>;
+}
+
+/** 맞춘 상태까지 가장 짧은 수(`max`보다 멀면 null). 2×2·3×3만 */
+export function distanceInWorker(
+  size: number,
+  state: PuzzleState,
+  max: number,
+): Promise<number | null> {
+  return request({
+    kind: "distance",
+    size,
+    perm: Array.from(state.perm),
+    twist: Array.from(state.twist),
+    max,
+  }) as Promise<number | null>;
+}
+
+/** 이 섞기의 짧은 풀이(결과 상자). 2×2·3×3만, 그 밖은 null */
+export function shortSolutionInWorker(
+  size: number,
+  state: PuzzleState,
+): Promise<ShortSolution | null> {
+  return request({
+    kind: "short",
+    size,
+    perm: Array.from(state.perm),
+    twist: Array.from(state.twist),
+  }) as Promise<ShortSolution | null>;
 }
 
 /** 표를 미리 만들어 두게 한다(화면을 열 때 불러 두면 첫 섞기가 빠르다) */

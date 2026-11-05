@@ -3,6 +3,8 @@
 import { cardOf, type HwatuCard } from "@game/hwatu";
 import { type CSSProperties, type ReactNode, useId } from "react";
 
+import { useFlightHidden } from "@/components/card-fx/flights";
+import { cardHeight, HWATU_SHAPE } from "@/components/card-fx/kind";
 import { cn } from "@/lib/cn";
 
 import {
@@ -22,8 +24,8 @@ import {
  * 그림 상자 60×96(화투 비율 5:8)
  */
 
-const W = 60;
-const H = 96;
+const W = HWATU_SHAPE.art.w;
+const H = HWATU_SHAPE.art.h;
 const BACK_RED = "#b5161f";
 
 /** 너비가 이보다 작으면 잔무늬를 빼고 달 숫자를 크게 쓴다 */
@@ -150,10 +152,16 @@ export function HwatuCardView({
   className,
   style,
   flip,
+  decorative = false,
 }: {
   id?: string;
-  /** 장면이 바뀔 때 옮겨 가 보일 이름(card-fx `useCardFlip`의 `data-flip`). 보통 카드 id */
+  /**
+   * 장면이 바뀔 때 옮겨 가 보일 이름(card-fx `useCardFlip`의 `data-flip`). 보통 카드 id. 그 카드의 겉그림이 날아오는
+   * 동안은 가린다(`useFlightHidden`)
+   */
   flip?: string;
+  /** 연출용 겉그림: 화면 읽기·화면 시험(`data-card`)에 잡히지 않는다 */
+  decorative?: boolean;
   faceDown?: boolean;
   width?: number;
   /** 고른 카드(위로 살짝 뜬다) */
@@ -169,18 +177,36 @@ export function HwatuCardView({
 }) {
   const card = id && !faceDown ? cardOf(id) : null;
   const lite = width < LITE_BELOW;
+  const arriving = useFlightHidden(flip);
   const svg = (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       width={width}
-      height={(width * H) / W}
+      height={cardHeight(HWATU_SHAPE, width)}
       aria-hidden="true"
       className="block"
     >
       {card ? <Face card={card} lite={lite} /> : <Back lite={lite} />}
     </svg>
   );
+  // 날아오는 동안 가린다. 투명도는 전환(`transition`)으로 서서히 바뀌어 visibility로 바로 숨기고 바로 보인다
+  const shown: CSSProperties | undefined = arriving
+    ? { ...style, visibility: "hidden" }
+    : style;
   const label = card ? card.name : "뒷면 화투";
+  if (decorative)
+    return (
+      <span
+        aria-hidden
+        className={cn(
+          "relative inline-block shrink-0 rounded-md shadow-[1px_2px_4px_rgba(0,0,0,0.45)]",
+          className,
+        )}
+        style={shown}
+      >
+        {svg}
+      </span>
+    );
   const classes = cn(
     "relative shrink-0 rounded-md shadow-[1px_2px_4px_rgba(0,0,0,0.45)] transition",
     selected && "-translate-y-2 ring-2 ring-amber-300",
@@ -206,7 +232,7 @@ export function HwatuCardView({
         }
       }}
       className={classes}
-      style={style}
+      style={shown}
     >
       {svg}
     </button>
@@ -217,7 +243,7 @@ export function HwatuCardView({
       data-card={card ? id : undefined}
       data-flip={flip}
       className={cn(classes, "inline-block")}
-      style={style}
+      style={shown}
     >
       {svg}
     </span>

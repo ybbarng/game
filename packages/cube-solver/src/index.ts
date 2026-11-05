@@ -16,4 +16,9 @@ export {
   solve2x2,
   solvePocketIndex,
 } from "./pocket";
-export { init3x3, type Solve3x3Options, solve3x3 } from "./two-phase";
+export {
+  init3x3,
+  type Solve3x3Options,
+  SolveStopped,
+  solve3x3,
+} from "./two-phase";

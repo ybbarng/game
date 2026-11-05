@@ -238,7 +238,8 @@ export function BaseballGame({
     status =
       decision?.kind === "guess"
         ? view.solved[opp] && !puzzle
-          ? "마지막 기회! 상대가 이미 맞혔어요. 맞히면 비겨요"
+          ? // 상대가 맞힌 것은 위 상대 기록(홈런)에 보인다. 길면 휴대폰 가로에서 두 줄이 되어 기권이 화면 밖으로 밀린다
+            "마지막 기회! 맞히면 비겨요"
           : puzzle
             ? "내 차례 — 컴퓨터 수를 맞혀 보세요"
             : "내 차례 — 상대 수를 맞혀 보세요"

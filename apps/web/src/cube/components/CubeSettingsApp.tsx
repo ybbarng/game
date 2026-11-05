@@ -41,7 +41,9 @@ import {
 import {
   BACK_VIEW_LABEL,
   COLOR_SCHEME_LABEL,
+  FLOW_STRIP_LABEL,
   hexColor,
+  RACE_ALERT_LABEL,
   updateSettings,
   useCubeSettings,
   withFaceColor,
@@ -205,6 +207,37 @@ export function CubeSettingsApp() {
             거울은 안 보이는 뒤·왼쪽·아래 면을 큐브 둘레에 비춰 보여요. 좁은
             자리나 3D를 못 그리는 기기에서는 펼친 그림으로 보여요.
           </p>
+          <div className="flex flex-wrap items-center gap-2" data-flow-setting>
+            수 흐름 띠
+            {(["on", "small", "off"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={settings.flowStrip === v}
+                onClick={() => updateSettings({ ...settings, flowStrip: v })}
+                className={chip(settings.flowStrip === v)}
+              >
+                {FLOW_STRIP_LABEL[v]}
+              </button>
+            ))}
+          </div>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-race-alert-setting
+          >
+            대결 알림
+            {(["on", "quiet", "off"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={settings.raceAlerts === v}
+                onClick={() => updateSettings({ ...settings, raceAlerts: v })}
+                className={chip(settings.raceAlerts === v)}
+              >
+                {RACE_ALERT_LABEL[v]}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             가린 스티커
             {(["black", "gray"] as const).map((h) => (

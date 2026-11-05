@@ -2,6 +2,7 @@
 
 import { groupByMonth, sortCards, splitCaptured } from "@game/hwatu";
 
+import { cardHeight, HWATU_SHAPE } from "@/components/card-fx/kind";
 import { cn } from "@/lib/cn";
 
 import { HwatuCardView } from "./HwatuCard";
@@ -178,7 +179,7 @@ export function HwatuDeck({
       ) : (
         <div
           className="rounded-md border border-white/20 border-dashed"
-          style={{ width, height: (width * 8) / 5 }}
+          style={{ width, height: cardHeight(HWATU_SHAPE, width) }}
         />
       )}
       <span className="text-white/70 text-xs tabular-nums">{count}장</span>
@@ -253,7 +254,7 @@ export function HwatuCaptured({
             {g.cards.length === 0 ? (
               <div
                 className="rounded border border-white/15 border-dashed"
-                style={{ width, height: (width * 8) / 5 }}
+                style={{ width, height: cardHeight(HWATU_SHAPE, width) }}
               />
             ) : (
               g.cards.map((id, i) => (

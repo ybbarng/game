@@ -728,15 +728,16 @@ z: 아랫줄이 위
 
 ### 4.12 카드 연출 목록과 공통 부품(2026-11-05)
 
-마이티·하트에 있던 카드 연출을 빠짐없이 적고, 다른 카드 게임(원카드·화투 셋)이 같은 부품을 쓰게 `components/card-fx/`로 모았다. 부품은 카드 그림과 상관없다(그림은 쓰는 쪽이 넣는다). 연출은 무슨 일인지 알아볼 만큼 천천히, 한 장면 안의 움직임은 차례로(동시에 움직이지 않게) 둔다. 기기의 움직임 줄이기 설정이면 모두 건너뛴다(화면 시험도 이 설정으로 돈다).
+마이티·하트에 있던 카드 연출을 빠짐없이 적고, 다른 카드 게임(원카드·화투 셋)이 같은 부품을 쓰게 `components/card-fx/`로 모았다. 카드 모양과 그림은 카드 종류(`CardKind`) 하나로 받는다(2026-11-05 card-kit). 연출은 무슨 일인지 알아볼 만큼 천천히, 한 장면 안의 움직임은 차례로(동시에 움직이지 않게) 둔다. 기기의 움직임 줄이기 설정이면 모두 건너뛴다(화면 시험도 이 설정으로 돈다).
 
 | 연출 | 마이티 | 하트 | 공통 부품 | 시간 |
 |---|---|---|---|---|
 | 덱 섞기(갈라졌다 합치기 두 번) | ✅ | ✅ | `DealAnimation`(`shuffleMs`) | `SHUFFLE_MS` 1600 |
-| 멘탈 포커 섞는 동안 덱 되풀이 | ✅ | ✅ | `ShuffleLoop`(`FairOverlays`) | 400마다 |
+| 멘탈 포커 섞는 동안 덱 되풀이 | ✅ | ✅ | `ShuffleLoop`(`FairOverlays`), 덱 자리에서는 `DeckShuffle` | 400마다 |
 | 덱에서 묶음으로 나눠 주기(선부터, 앞 묶음이 도착한 뒤 다음 묶음) | ✅ 2·3·3·2 | ✅ 하트 묶음 | `DealAnimation`(`pattern`, 곳마다 장수가 다르면 `counts`), `dealPlanFor` | `FLIGHT_MS` 320, 묶음 안 35, 묶음 사이 40 |
 | 바닥 카드(키티)는 덱 자리에 남기기 | ✅ | — | `DealAnimation`(`kittyCount`) | |
-| 나눠 준 뒤 손패가 내 자리에서 펼쳐지기 | ✅ | ✅ | `PlayingCard`의 `from`(→ `useArrival`·`spriteStyle`) | 300, 카드마다 25씩 늦게 |
+| 나눠 준 뒤 손패가 내 자리에서 펼쳐지기 | ✅ | ✅ | `PlayingCard`의 `from`(`DEALT_SCALE`, → `useArrival`·`spriteStyle`), 따로 그리는 손패는 `useHandSpread` | `SPREAD_MS` 300, 카드마다 `spreadDelay`(25씩) |
+| 나눠 주는 동안 컴퓨터 첫 수 미루기 | store가 화면을 붙잡음 | store가 화면을 붙잡음 | 판 상태를 늦추지 않는 게임(원카드)은 `afterDeal`·`dealHoldLeft` | |
 | 손패 고르기: 훑기·들어 올리기·위로 끌어 내기·←→ Enter·Esc | ✅ | ✅ | `useHandControls`(`components/hand-controls.ts`) | |
 | 고른 카드 들어 올림(끌면 더 높이) | ✅ 0.2·0.6장 | ✅ | 쓰는 쪽(`dragArmed`) | 300 |
 | 내 카드 내기: 손패 자리에서 판 가운데로 | ✅ | ✅ | 같은 key의 `PlayingCard`가 손패에서 바닥 칸으로 옮겨 간다 | 300 |
@@ -747,7 +748,20 @@ z: 아랫줄이 위
 | 판 끝 결과 띠 → 사라진 뒤 결과 상자 | ✅(띠) | ✅(띠) | `ResultBanner`(`onShowChange`) | 2600 |
 | 큰 사건 글(기루다 바뀜 등) | ✅ `effect-pop` | ✅ | 쓰는 쪽 | |
 | 효과음 시각(섞기·나눠 주기·내기·걷기) | ✅ | ✅ | `game/cues.ts`(연출 시각에 맞춘 `delay`) | |
-| 장면이 바뀔 때 카드가 앞 자리에서 새 자리로(손패→바닥, 더미→바닥, 바닥→먹은 패) | — | — | `useCardFlip`(`data-flip`, 걸음 `FLIP_STEP_MS` 420) | 걸음마다 420 |
+| 장면이 바뀔 때 카드가 앞 자리에서 새 자리로(손패→바닥, 더미→바닥, 바닥→먹은 패) | — | — | `useCardFlip`(`data-flip`을 재어 겉그림 걸음을 짠다, 걸음 `FLIP_STEP_MS` 420) | 걸음마다 420 |
+| 사건으로 짠 겉그림(원카드 내기·먹기·다시 섞기) | — | — | `useCardFlights`·`FlightLayer`(걸음 `FlightStep`) | 내기 420, 먹기 320 |
 
-- `useCardFlip`: 화면은 늘 새 장면대로 그리고, `data-flip="<id>"`를 단 요소가 앞 장면 자리에서 새 자리로 옮겨 가 보인다(FLIP). 한 장면 안의 움직임은 걸음(`step`)으로 나눠 차례로 움직이고, 들르는 자리(`via`, 예: 짝 맞는 바닥 카드)를 둘 수 있다. `mode: "overlay"`는 새 자리의 실제 카드를 그 프레임에 바로 그리고 똑같은 겉그림이 그 위를 날아간다(반응 시간을 그려진 프레임부터 재는 원카드 겨루기). `skip`으로 건너뛴다. 다음 장면은 `flipMs(걸음 수)`만큼 늦게 보인다(움직임 줄이기면 0).
-- 화투 셋(고스톱·민화투·나이롱뽕)은 판 시작에 더미 섞기와 손패·바닥 나눠 주기(`DealAnimation`의 `counts`·`renderBack`), 손패 고르기(`useHandControls`), 장면마다 내기·뒤집기·먹은 패 가져가기(`useCardFlip`)를 쓴다(docs/28·29·30).
+- **카드 종류(`CardKind`, `card-fx/kind.ts`·`kinds.tsx`)**: 카드 모양(그림 상자와 높이/폭 비율)과 앞면·뒷면 그림. 트럼프 `PLAYING_CARD`(250×350, 마이티·하트, 원카드는 조커 그림만 바꾼 `ONECARD_CARD`)와 화투 `HWATU_CARD`(60×96) 둘이다. 연출 부품(`DealAnimation`·`ShuffleLoop`·`DeckShuffle`·`CardSprite`·`FlightLayer`)은 너비 하나와 카드 종류만 받고 높이·뒷면을 스스로 정한다. 배치(`computeLayout`의 `card`, `fanCardSize`)도 같은 모양을 쓴다. 비율을 숫자로 적지 않고 `cardHeight`·`cardWidth`로 얻는다.
+- **날아가는 카드 줄(`useCardFlights`·`FlightLayer`)**: 화면은 판 상태를 늘 바로 그리고, 연출은 그 위를 지나가는 겉그림(누름을 받지 않음)이다. 그래서 도착 자리의 실제 카드는 상태가 바뀐 그 프레임에 그려진다(원카드 더미 치기 반응 시간은 버린 더미 맨 위 카드가 그려진 프레임부터 잰다, `useStimulusShown`). 걸음(`FlightStep`)은 출발·도착 자리, 시작 시각·시간, 내려앉을 때까지 가릴 카드(`hide`, `data-flip` 이름), 출발 전에도 앞 자리에 보일지(`wait`)를 갖는다. 앞 연출이 남아 있으면 그 뒤에 잇고, 900ms 넘게 밀렸으면 남은 것을 버린다(`fxStart`). 가리는 카드는 `isHidden`이나 `FlightScope` 아래 `useFlightHidden`으로 안다. 화면 시험은 `data-fx`(남은 걸음 수)를 기다린다.
+- **걸음 짜기 두 가지**: 사건으로 자리를 계산해 바로 짜거나(원카드 `planFx`), 장면이 바뀔 때 앞뒤 화면의 `data-flip` 자리를 재어 짠다(`useCardFlip` → 순수 함수 `sceneFlights`). 후자는 한 장면 안의 움직임을 걸음(`step`)으로 나눠 차례로 움직이고, 들르는 자리(`via`, 예: 짝 맞는 바닥 카드)를 둘 수 있다. 일부러 부르지 않은 카드도 자리가 바뀌었으면 첫 걸음에 옮긴다. `skip`으로 건너뛴다. 다음 장면은 `flipMs(걸음 수)`만큼 늦게 보인다(움직임 줄이기면 0).
+- 화투 셋(고스톱·민화투·나이롱뽕)은 판 시작에 더미 섞기와 손패·바닥 나눠 주기(`HwatuDeal` → `DealAnimation`의 `counts`, `HWATU_CARD`), 손패 고르기(`useHandControls`), 장면마다 내기·뒤집기·먹은 패 가져가기(`useHwatuFlights` → `useCardFlip`, 무대 `HwatuStage`의 `fx`)를 쓴다(docs/28·29·30). 날아오는 화투는 `visibility`로 가린다(카드의 투명도 전환이 깜박이지 않게).
+- 원카드는 같은 둘러앉은 판 부품을 쓴다: 자리 판 `SeatPlate`(`seat`·`extra`·`offlineLabel`·`className`), 판 끝 남의 패 `OpenHand`(`renderCard`), 배치 `computeLayout`(`fanHeight`로 위쪽 부채만큼 가운데를 내림)·`fanCardSize`·`fanSlot`, 무대 크기 `useStageSize`.
+
+#### 새 카드 게임 붙이기
+
+1. 카드 종류를 고른다: 트럼프면 `PLAYING_CARD`, 화투면 `HWATU_CARD`. 다른 카드면 `kind.ts`에 모양(`CardShape`) 하나, `kinds.tsx`에 그림까지 갖춘 `CardKind` 하나를 더한다. 카드 그림 부품은 높이를 `cardHeight(모양, 너비)`로 정하고, 연출용 겉그림(`decorative`: 화면 읽기·`data-card` 없음)을 그릴 수 있게 한다.
+2. 배치는 `computeLayout({ card: 모양, fanHeight, … })`, 무대 크기는 `useStageSize`, 자리 판은 `SeatPlate`(게임마다 다른 줄은 `extra`·`badges`)나 `SeatPlateFrame`, 남의 뒷면 부채는 `fanCardSize`·`fanSlot`, 판 끝 남의 패는 `OpenHand`.
+3. 손패 고르기는 `useHandControls`.
+4. 판 시작은 `DealAnimation`(`kind`·`width`·`pattern`·`counts`), 멘탈 포커로 섞는 동안은 `ShuffleLoop`·`DeckShuffle`, 나눠 준 뒤 펼치기는 `PlayingCard`의 `from` 또는 `useHandSpread`, 판 상태를 늦추지 않으면 컴퓨터는 `afterDeal`로 기다린다.
+5. 카드 내기·먹기는 `useCardFlights` + `FlightLayer`(무대 바로 안). 걸음은 사건으로 짜거나(`FlightStep`) `data-flip`을 달고 `useCardFlip`으로 짠다. 날아오는 카드는 `isHidden`/`useFlightHidden`으로 가린다.
+6. 화면 시험 하나는 `reducedMotion: "no-preference"`로 섞기→나눠 주기→한 장 내기가 끝나는지 조건(`data-dealing` 없어짐, `data-fx` 0)으로 본다(`page.clock.install`·`speedUpAnimations`·`fastForwardUntil`, 하트·고스톱·원카드의 「연출」 시험).

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   COLOR_SCHEMES,
   DEFAULT_SETTINGS,
+  effectiveRaceAlerts,
   loadSettings,
   parseSettings,
   SETTINGS_KEY,
@@ -93,6 +94,32 @@ describe("큐브 설정 저장", () => {
       JSON.stringify({ heroSize: 7, heroMethod: "없는 해법" }),
     );
     expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
+  });
+
+  it("수 흐름 띠: 옛 저장값·모르는 값은 켬, 고른 값은 그대로", () => {
+    expect(parseSettings(JSON.stringify({ version: 1 })).flowStrip).toBe("on");
+    expect(
+      parseSettings(JSON.stringify({ flowStrip: "small" })).flowStrip,
+    ).toBe("small");
+    expect(parseSettings(JSON.stringify({ flowStrip: "off" })).flowStrip).toBe(
+      "off",
+    );
+    expect(parseSettings(JSON.stringify({ flowStrip: 3 })).flowStrip).toBe(
+      "on",
+    );
+  });
+
+  it("대결 알림: 옛 저장값·모르는 값은 켬, 움직임 줄이기면 켬도 조용히", () => {
+    expect(parseSettings(JSON.stringify({ version: 1 })).raceAlerts).toBe("on");
+    expect(
+      parseSettings(JSON.stringify({ raceAlerts: "quiet" })).raceAlerts,
+    ).toBe("quiet");
+    expect(parseSettings(JSON.stringify({ raceAlerts: "x" })).raceAlerts).toBe(
+      "on",
+    );
+    expect(effectiveRaceAlerts("on", true)).toBe("quiet");
+    expect(effectiveRaceAlerts("on", false)).toBe("on");
+    expect(effectiveRaceAlerts("off", true)).toBe("off");
   });
 
   it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
