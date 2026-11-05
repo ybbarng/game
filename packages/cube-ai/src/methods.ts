@@ -30,6 +30,7 @@ import {
   llCornerPlaceTaught,
   llCornerTwistTaught,
   llEdgesTaught,
+  middleTaught,
   whiteUp,
   yellowCrossTaught,
 } from "./taught";
@@ -385,7 +386,7 @@ export const BEGINNER3_STEPS: readonly Step[] = [
 
 /**
  * 배우는 방식 첫 층(첫 화면 연출만, `taught.ts`): 흰 면을 위로 들고 흰 십자와 첫 층 꼭짓점을
- * 가르치는 그대로 맞춘 뒤 뒤집어(z2) 흰 면을 아래로 보낸다. 둘째 층부터는 입문과 같다.
+ * 가르치는 그대로 맞춘 뒤 뒤집어(z2) 흰 면을 아래로 보낸다. 둘째 층은 늘 앞-오른쪽 칸에 넣는다.
  */
 export const BEGINNER3_TAUGHT_STEPS: readonly Step[] = [
   (s) => {
@@ -395,7 +396,7 @@ export const BEGINNER3_TAUGHT_STEPS: readonly Step[] = [
     cornersTaught(s);
     s.apply("z2");
     s.stage("corners");
-    middleEdges(s);
+    middleTaught(s);
     s.stage("middle");
   },
   ...lastLayerTaught(),

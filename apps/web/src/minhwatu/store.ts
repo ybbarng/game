@@ -18,6 +18,7 @@ import { ArchiveRecorder, type ArchiveTarget } from "@/review/recorder";
 import { StatsRecorder, type StatsTarget } from "@/stats/recorder";
 import { track } from "@/stats/track";
 
+import { minhwatuSceneMs } from "./card-fx";
 import { minhwatuCues } from "./cues";
 import { minhwatuKit } from "./kit";
 
@@ -114,10 +115,13 @@ interface MinhwatuStore {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribe: (() => void) | null = null;
+/** 지금 보이는 장면의 카드 연출(과 남의 차례를 보여 주는 쉼)이 끝나는 시각. 다음 장면은 그 뒤에 보인다 */
+let shownUntil = 0;
 
 function stop(): void {
   if (timer !== null) clearTimeout(timer);
   timer = null;
+  shownUntil = 0;
   unsubscribe?.();
   unsubscribe = null;
 }
@@ -142,16 +146,24 @@ export const useMinhwatu = create<MinhwatuStore>((set, get) => {
     if (timer !== null) return;
     const [next, ...rest] = get().queue;
     if (next === undefined) return;
-    const me = get().host?.seat ?? 0;
-    set({ queue: rest, view: next.view, events: next.events });
-    playCues(next.events, me);
-    // 남의 차례를 보인 뒤 다음 화면까지 잠깐 쉰다(바로 이어지면 무엇을 냈는지 못 본다).
-    if (rest.length > 0 && byOther(next.events, me))
+    // 앞 장면의 카드 연출과 쉼이 끝날 때까지 기다린다
+    const wait = shownUntil - Date.now();
+    if (wait > 0) {
       timer = setTimeout(() => {
         timer = null;
         advance();
-      }, paced(OTHER_TURN_MS));
-    else advance();
+      }, wait);
+      return;
+    }
+    const me = get().host?.seat ?? 0;
+    set({ queue: rest, view: next.view, events: next.events });
+    playCues(next.events, me);
+    // 카드 연출이 끝나고, 남의 차례면 조금 더 쉰다(바로 이어지면 무엇을 냈는지 못 본다).
+    shownUntil =
+      Date.now() +
+      minhwatuSceneMs(next.events, next.view.handCounts.length) +
+      (byOther(next.events, me) ? paced(OTHER_TURN_MS) : 0);
+    advance();
   };
 
   const attach = (
@@ -340,6 +352,8 @@ export const useMinhwatu = create<MinhwatuStore>((set, get) => {
     undo() {
       const { local, level } = get();
       if (!local || !get().canUndo()) return false;
+      // 되돌린 장면은 연출을 기다리지 않고 바로 보인다
+      shownUntil = 0;
       const saved = local.save();
       const log = [...saved.log];
       // 내 마지막 패 내기까지 잘라 낸다(내 고르기와 그 뒤 컴퓨터 차례도 함께).

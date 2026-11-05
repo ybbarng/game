@@ -1,7 +1,7 @@
 "use client";
 
 import { cardOf, type HwatuCard } from "@game/hwatu";
-import { type ReactNode, useId } from "react";
+import { type CSSProperties, type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/cn";
 
@@ -148,8 +148,12 @@ export function HwatuCardView({
   highlight = false,
   onClick,
   className,
+  style,
+  flip,
 }: {
   id?: string;
+  /** 장면이 바뀔 때 옮겨 가 보일 이름(card-fx `useCardFlip`의 `data-flip`). 보통 카드 id */
+  flip?: string;
   faceDown?: boolean;
   width?: number;
   /** 고른 카드(위로 살짝 뜬다) */
@@ -160,6 +164,8 @@ export function HwatuCardView({
   highlight?: boolean;
   onClick?: () => void;
   className?: string;
+  /** 겹쳐 놓기 등 놓는 쪽이 정하는 자리 */
+  style?: CSSProperties;
 }) {
   const card = id && !faceDown ? cardOf(id) : null;
   const lite = width < LITE_BELOW;
@@ -190,8 +196,17 @@ export function HwatuCardView({
       aria-label={label}
       aria-pressed={selected}
       data-card={id}
+      data-flip={flip}
       onClick={onClick}
+      // Enter·Space는 여기서 처리하고 막는다(손패 조작의 Enter가 고른 카드를 한 번 더 내지 않게)
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={classes}
+      style={style}
     >
       {svg}
     </button>
@@ -200,7 +215,9 @@ export function HwatuCardView({
       role="img"
       aria-label={label}
       data-card={card ? id : undefined}
+      data-flip={flip}
       className={cn(classes, "inline-block")}
+      style={style}
     >
       {svg}
     </span>
