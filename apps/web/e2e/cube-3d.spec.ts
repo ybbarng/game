@@ -13,7 +13,7 @@ import { expect, type Page, test } from "./test";
  * | DemoCube(시연: 배우기·공식·패턴·핑거 트릭) | /cube/fingers |
  * | StillCube(배우기 글·찾기·문제 단계) | 흰 십자 단원 첫 단계 |
  * | PracticeCube(키 익히기·조작 훈련) | /cube/keys/learn |
- * | StateCube(큐브의 수학) | 방향과 짝 카드 |
+ * | StateCube(큐브의 수학) | 방향과 홀짝 카드 |
  * | CubeHero(첫 화면 연출) | /cube |
  * | 거울 판(뒷면 보기, StillCube) | 조각과 만나기 「센터 블럭 세기」 |
  */
