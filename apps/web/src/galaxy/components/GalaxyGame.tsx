@@ -51,6 +51,7 @@ import {
   SECONDARY,
   Sheet,
   StarFacts,
+  TakeoverSheet,
   TradeAnswer,
   TradeComposer,
 } from "./Decision";
@@ -228,7 +229,7 @@ function cornerHelp(view: GalaxyView, square: number): string {
   const kind = view.board.squares[square]?.kind;
   switch (kind) {
     case "base":
-      return `지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`;
+      return `지나가거나 멈추면 우주국 지원금을 받아요(최대 ${money(NUMBERS.salary)}, 별빛이 넉넉하면 줄어요).`;
     case "asteroid":
       return `공문이나 같은 눈 세 번으로 오면 걸려요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`;
     case "observatory":
@@ -546,6 +547,7 @@ export function GalaxyGame({
           decision?.kind === "end" ||
           decision?.kind === "buy" ||
           decision?.kind === "trade" ||
+          decision?.kind === "takeover" ||
           decision?.kind === "debt")));
   const together =
     view.phase === "commit" ||
@@ -600,6 +602,9 @@ export function GalaxyGame({
         break;
       case "trade":
         status = "거래 제안이 왔어요.";
+        break;
+      case "takeover":
+        status = "이 별을 사들일까요?";
         break;
       case "debt":
         status = "별빛이 모자라요. 정리해 주세요.";
@@ -665,6 +670,15 @@ export function GalaxyGame({
     />
   ) : decision?.kind === "trade" ? (
     <TradeAnswer view={view} offer={decision.offer} name={name} submit={act} />
+  ) : decision?.kind === "takeover" ? (
+    <TakeoverSheet
+      view={view}
+      square={decision.square}
+      owner={decision.owner}
+      price={decision.price}
+      name={name}
+      submit={act}
+    />
   ) : decision?.kind === "debt" ? (
     <DebtSheet view={view} submit={act} />
   ) : trading ? (

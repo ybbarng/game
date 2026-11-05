@@ -208,6 +208,10 @@ export function describeGalaxy(action: unknown): string {
       return "거래 받기";
     case "rejectTrade":
       return "거래 거절";
+    case "takeover":
+      return "별 사들이기(도착 인수)";
+    case "declineTakeover":
+      return "사들이지 않고 넘기기";
     case "build":
       return `${at(a.square)} 정거장 올리기`;
     case "sell":
@@ -263,6 +267,8 @@ const TIMED = new Set<Action["type"]>([
   "offer",
   "acceptTrade",
   "rejectTrade",
+  "takeover",
+  "declineTakeover",
   "build",
   "sell",
   "mortgage",

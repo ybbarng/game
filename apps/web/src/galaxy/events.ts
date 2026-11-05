@@ -103,6 +103,12 @@ export function eventLine(
       return `${name(e.offer.from)} ↔ ${name(e.offer.to)} · 거래 성사`;
     case "tradeRejected":
       return `${name(e.offer.to)} · 거래 거절`;
+    case "takenOver":
+      return `${name(e.seat)} · ${name(e.from)}에게서 ${squareName(board, e.square)} 사들임 ${money(e.price)}`;
+    case "revisited":
+      return e.discount
+        ? `${name(e.seat)} · 내 별 ${squareName(board, e.square)} · 이번 차례 정거장 한 단 반값`
+        : null;
     case "bankrupt":
       return `${name(e.seat)} · 운항 중단`;
     case "seasonChanged":

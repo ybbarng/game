@@ -63,7 +63,7 @@ const turnKey = (state: GalaxyState) =>
 
 /**
  * 시간을 넘긴 자리 대신 정할 행동(docs/48 4-5). 굴리기·차례 마치기는 그대로, 사기는 중수 컴퓨터가 정하고,
- * 입찰은 「내지 않음」, 거래 답은 거절, 빚 정리는 `debtPlan` 첫 걸음. 사람이 자기 소금으로 낸 봉투는
+ * 입찰은 「내지 않음」, 도착 인수는 넘기기, 빚 정리는 `debtPlan` 첫 걸음. 사람이 자기 소금으로 낸 봉투는
  * 방장이 공개할 수 없어 null(끝내기로 받는다). 사슬 약속·공개는 여기서 하지 않는다(끊긴 자리 컴퓨터가 맡는다)
  */
 export function standInAction(state: GalaxyState, seat: number): Action | null {
@@ -86,6 +86,8 @@ export function standInAction(state: GalaxyState, seat: number): Action | null {
             salt: bidSalt(state.keys[seat] as string, decision.index),
           };
     }
+    case "takeover":
+      return { type: "declineTakeover" };
     case "trade":
       return { type: "rejectTrade" };
     case "debt":
@@ -109,7 +111,7 @@ export function standInAction(state: GalaxyState, seat: number): Action | null {
  * 온라인 방 시계(docs/48 4-5, `LocalMatch`가 `Clock`으로 잰다). 엔진이 재지 않는 기다림을 맡는다.
  * - 시간 상한(2-11): 판이 시작한 뒤 정한 시간이 지나면 `timeUp`(긴 판은 없다)
  * - 봉투 입찰: 자리마다 20초, 넘기면 「내지 않음」. 공개는 방장이 아는 소금으로 낸 봉투만 대신 한다
- * - 개인 시간이 없는 판의 차례 결정(굴리기·사기·차례 마치기·거래 답·빚 정리): 결정마다 20초
+ * - 개인 시간이 없는 판의 차례 결정(굴리기·사기·차례 마치기·도착 인수·빚 정리): 결정마다 20초
  * 주사위 사슬 약속·공개는 재지 않는다(기기가 바로 낸다. 끊기면 대신 두는 컴퓨터, 사람 사슬이면 끝내기)
  */
 export function galaxyTimers(
@@ -151,6 +153,7 @@ export function galaxyTimers(
     state.phase === "turn" ||
     state.phase === "buy" ||
     state.phase === "trade" ||
+    state.phase === "takeover" ||
     state.phase === "debt";
   if (!decides || timeControlOf(state.rules) !== null) return timers;
   const seat = pending[0];
@@ -239,7 +242,7 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
   return [
     `${rules.players}명`,
     `${length}(${lengthDetail(rules).split(" · ")[0]})`,
-    rules.trade ? "거래" : "거래 없음",
+    rules.trade ? "사들이기" : "사들이기 없음",
     rules.seasonal ? "제철 하늘" : null,
     rules.meteor && rules.length !== "long" ? "유성우의 밤" : null,
     rules.moon ? "달의 길" : null,

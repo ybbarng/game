@@ -3,10 +3,10 @@
 import { asState } from "@game/galaxy-ai";
 import {
   type Action,
+  buildCostOf,
   debtPlan,
   type GalaxyView,
   legalActions,
-  levelCostAt,
   NUMBERS,
   rentOf,
   round10,
@@ -166,6 +166,56 @@ export function BuySheet({
       {!canAfford && (
         <p className="mt-1 text-rose-200/80 text-xs">별빛이 모자라요.</p>
       )}
+    </Sheet>
+  );
+}
+
+/** 도착 인수(docs/48 2-8, g5): 이용료를 낸 남의 별을 사들이기·넘기기 */
+export function TakeoverSheet({
+  view,
+  square,
+  owner,
+  price,
+  name,
+  submit,
+}: {
+  view: GalaxyView;
+  square: number;
+  owner: number;
+  price: number;
+  name: (seat: number) => string;
+  submit: (a: Action) => void;
+}) {
+  const info = starInfo(view.board, square);
+  return (
+    <Sheet testId="takeover">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="font-black text-lg">
+          ✶ {info?.star.ko}{" "}
+          <span className="font-normal text-sm text-white/60">
+            {name(owner)}의 별
+          </span>
+        </p>
+        <p className="font-bold text-amber-200">{money(price)}</p>
+      </div>
+      <div className="mt-1 flex gap-2">
+        <button
+          type="button"
+          data-takeover
+          onClick={() => submit({ type: "takeover" })}
+          className={cn(PRIMARY, "flex-1")}
+        >
+          사들이기 {money(price)}
+        </button>
+        <button
+          type="button"
+          data-decline-takeover
+          onClick={() => submit({ type: "declineTakeover" })}
+          className={cn(SECONDARY, "flex-1")}
+        >
+          넘기기
+        </button>
+      </div>
     </Sheet>
   );
 }
@@ -545,7 +595,7 @@ export function ManagePanel({
   if (mine.length === 0) return null;
   const cost = (a: Action) =>
     a.type === "build"
-      ? `−${money(levelCostAt(view.board, a.square))}`
+      ? `−${money(buildCostOf(view, me, a.square))}`
       : a.type === "unmortgage"
         ? `−${money(unmortgageCost(view.board, a.square))}`
         : "";

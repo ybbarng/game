@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useGalaxy } from "./store";
 
-/** 내 결정 하나를 한다(굴리기·사기·입찰은 내지 않기·차례 마치기·빚 정리·거래 거절). 할 것이 없으면 false */
+/** 내 결정 하나를 한다(굴리기·사기·입찰은 내지 않기·차례 마치기·빚 정리·사들이지 않기). 할 것이 없으면 false */
 function actOnce(): boolean {
   const { view, playing, queue } = useGalaxy.getState();
   if (!view?.decision || playing || queue.length > 0) return false;
@@ -19,6 +19,8 @@ function actOnce(): boolean {
       return s.submit({ type: d.canAfford ? "buy" : "pass" }).ok;
     case "bid":
       return s.placeBid(d.max >= 10 ? 10 : 0).ok;
+    case "takeover":
+      return s.submit({ type: "declineTakeover" }).ok;
     case "trade":
       return s.submit({ type: "rejectTrade" }).ok;
     case "debt": {

@@ -18,6 +18,7 @@ const passButton = (page: Page) => page.locator("[data-pass]");
 const bidSkip = (page: Page) => page.locator("[data-bid-skip]");
 const endTurn = (page: Page) => page.locator("[data-end-turn]");
 const debtPlan = (page: Page) => page.locator("[data-debt-plan]");
+const declineTakeover = (page: Page) => page.locator("[data-decline-takeover]");
 /** 내가 할 일 아무것이나(또는 판 끝) */
 const anyAction = (page: Page) =>
   rollButton(page)
@@ -25,11 +26,11 @@ const anyAction = (page: Page) =>
     .or(bidSkip(page))
     .or(endTurn(page))
     .or(debtPlan(page))
-    .or(page.getByRole("button", { name: "거절" }))
+    .or(declineTakeover(page))
     .or(over(page))
     .first();
 
-/** 내 할 일 하나를 한다(굴리기·사기·입찰 안 내기·차례 마치기). 판이 끝났으면 false */
+/** 내 할 일 하나를 한다(굴리기·사기·입찰 안 내기·차례 마치기·사들이지 않기). 판이 끝났으면 false */
 async function playStep(page: Page): Promise<boolean> {
   await expect(anyAction(page)).toBeVisible({ timeout: 20_000 });
   if (await over(page).isVisible()) return false;
@@ -39,7 +40,7 @@ async function playStep(page: Page): Promise<boolean> {
   else if (await bidSkip(page).isVisible()) await bidSkip(page).click();
   else if (await endTurn(page).isVisible()) await endTurn(page).click();
   else if (await debtPlan(page).isVisible()) await debtPlan(page).click();
-  else await page.getByRole("button", { name: "거절" }).click();
+  else await declineTakeover(page).click();
   return true;
 }
 
@@ -231,7 +232,7 @@ test("은하 한 바퀴: 끝낸 판은 내 기록에 쌓이고 복기에서 다�
   await page.screenshot({ path: info.outputPath("galaxy-review.png") });
 });
 
-test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이어지고, 계절이 바뀌면 공문이 내려온다", async ({
+test("은하 한 바퀴 연출: 남의 별에 멈춰 사들여 별자리를 완성하면 선이 이어지고, 계절이 바뀌면 공문이 내려온다", async ({
   page,
 }, info) => {
   test.skip(
@@ -240,7 +241,8 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
-  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스. 9차례째라 이번 차례가 끝나면 겨울 하늘이 된다
+  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스(27). 나는 21에서 2·4로 벨라트릭스에 멈춘다.
+  // 9차례째라 이번 차례가 끝나면 겨울 하늘이 된다
   await page.addInitScript(() => {
     (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
       rules: {
@@ -253,6 +255,8 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
       level: 1,
       seed: 5,
       round: 9,
+      positions: [21, 0],
+      dice: [[2, 4]],
       stars: [
         { square: 9, owner: 0 },
         { square: 10, owner: 0 },
@@ -267,17 +271,13 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   await expect(rollButton(page)).toBeVisible();
   await expect(page.locator("[data-pair-line]")).toHaveCount(1);
 
-  // 거래: 컴퓨터에게 벨라트릭스를 ✦400에 청한다(중수는 외톨이 별을 두 배 넘게 받으면 판다)
-  await page.locator("[data-trade]").click();
-  await page
-    .locator('[data-decision="trade-partner"] button', { hasText: "컴퓨터" })
-    .click();
-  await page.locator('[data-square="27"]').click();
-  for (let i = 0; i < 4; i++)
-    await page.locator("[data-cash-plus100]").first().click();
+  // 도착 인수: 벨라트릭스에 멈춰 이용료를 낸 뒤 사들인다(docs/48 2-8, g5)
+  await rollButton(page).click();
+  const takeover = page.locator("[data-takeover]");
+  await fastForwardUntil(page, () => takeover.isVisible(), { step: 100 });
   if (SAVE_SCREENSHOTS)
-    await page.screenshot({ path: info.outputPath("galaxy-trade.png") });
-  await page.getByRole("button", { name: "제안 보내기" }).click();
+    await page.screenshot({ path: info.outputPath("galaxy-takeover.png") });
+  await takeover.click();
   // 오리온의 실제 선 토막이 내 색으로 모두 이어지고 이름이 떠오를 때까지
   const segments = page.locator(
     '[data-sky-group="Ori"] line:not([data-complete-line]):not([data-pair-line])',
@@ -311,6 +311,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
       bidSkip(page),
       endTurn(page),
       debtPlan(page),
+      declineTakeover(page),
     ])
       if (await button.isVisible()) {
         await button.click();
@@ -371,6 +372,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 차
       bidSkip(page),
       endTurn(page),
       debtPlan(page),
+      declineTakeover(page),
     ])
       if (await button.isVisible()) {
         await button.click();
@@ -400,7 +402,7 @@ const stepButtons = (page: Page) => [
   bidSkip(page),
   endTurn(page),
   debtPlan(page),
-  page.getByRole("button", { name: "거절" }),
+  declineTakeover(page),
 ];
 
 /**
