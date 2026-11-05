@@ -121,10 +121,11 @@ export function stickersFromFaces(
 
 /** 맞춘 상태의 스티커 */
 export function solvedStickers(n: number): Sticker[] {
+  // 면 차례·칸 차례가 엔진 스티커 번호와 같다(bridge.test.ts): 맞춘 큐브는 자리 번호가 곧 정체
   return stickersFromFaces(
     n,
     FACES.map((_, f) => new Array<number>(n * n).fill(f)),
-  );
+  ).map((s, id) => ({ ...s, id }));
 }
 
 /**
@@ -137,10 +138,11 @@ export function applyMoveToStickers(
 ): Sticker[] {
   return stickers.map((s) => {
     if (!inMove(n, move, s.center)) return s;
+    // 색·정체·표시는 스티커에 붙어 함께 옮긴다
     return {
+      ...s,
       center: rotateVec(s.center, move.axis, move.turns),
       normal: normalOf(rotateVec(normalVec(s.normal), move.axis, move.turns)),
-      color: s.color,
     };
   });
 }

@@ -215,6 +215,20 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
     "true",
   );
   await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
+  // 조각 강조: 기본은 「잠깐」, 고르면 남는다
+  await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await hero.locator("[data-hero-highlight='keep']").click();
+  await expect(hero.locator("[data-hero-highlight='keep']")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.reload();
+  await expect(
+    page.locator("[data-settings-hero] [data-hero-highlight='keep']"),
+  ).toHaveAttribute("aria-pressed", "true");
   await shot(page, "settings-hero", info.project.name);
 
   if (SAVE_SCREENSHOTS) {

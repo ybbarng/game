@@ -20,7 +20,7 @@ import { CubePoster } from "./CubePoster";
  * - 화면에 안 보이거나 탭이 숨으면 멈춘다(휴대폰 전지·발열).
  * - 창을 최소화했다 돌아오는 등으로 WebGL 문맥을 잃으면 연출을 치우고 대기 그림을 다시 보인 뒤, 화면이 보일 때
  *   새 캔버스로 다시 띄운다(맞춘 큐브부터).
- * - 크기·해법은 설정(「첫 화면 큐브」), 색은 설정의 색을 따른다.
+ * - 크기·해법·강조는 설정(「첫 화면 큐브」), 색은 설정의 색을 따른다.
  */
 
 /** 3D가 대기 그림 위로 나타나는 시간(ms) */
@@ -45,6 +45,8 @@ export function CubeHero() {
   const [label, setLabel] = useState("");
   const colorsRef = useRef(settings.colors);
   colorsRef.current = settings.colors;
+  const highlightRef = useRef(settings.heroHighlight);
+  highlightRef.current = settings.heroHighlight;
 
   const { heroSize: n, heroMethod: choice, quality, stickerless } = settings;
   useEffect(() => {
@@ -110,6 +112,7 @@ export function CubeHero() {
           colors: colorsRef.current,
           quality,
           stickerless,
+          highlight: highlightRef.current,
           onLabel: (l) => {
             if (!disposed) setLabel(l);
           },
@@ -121,6 +124,8 @@ export function CubeHero() {
           return;
         }
         handleRef.current = h;
+        // 불러오는 동안 강조를 바꿨을 수 있다
+        h.setHighlight(highlightRef.current);
         setReady(true);
         fade = setTimeout(() => {
           started = true;
@@ -148,6 +153,11 @@ export function CubeHero() {
   useEffect(() => {
     handleRef.current?.setColors(settings.colors);
   }, [settings.colors]);
+
+  // 강조는 큐브를 새로 띄우지 않고 바꾼다
+  useEffect(() => {
+    handleRef.current?.setHighlight(settings.heroHighlight);
+  }, [settings.heroHighlight]);
 
   const src = heroPosterSrc(settings);
   const posterSrc = src !== null && src !== failedSrc ? src : null;
