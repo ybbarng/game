@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildBoard, STAR_SQUARES, sideOf } from "./board";
-import { observatoryGrant, rentOf } from "./match";
+import { buildCostOf, observatoryGrant, rentOf, salaryOf } from "./match";
 import { STANDARD_RULES } from "./rules";
 import type { GalaxyState } from "./state";
 import { TEST_CONSTELLATIONS, TEST_SKY } from "./test-sky";
@@ -28,9 +28,9 @@ describe("정거장 이용료(2-2)", () => {
       scene({
         stars: [13, 14, 15].map((square) => ({ square, owner: 1, level })),
       });
-    expect(rentOf(leveled(2), 14)).toBe(180);
-    expect(rentOf(leveled(3), 14)).toBe(310);
-    expect(rentOf(leveled(4), 14)).toBe(440);
+    expect(rentOf(leveled(2), 14)).toBe(200);
+    expect(rentOf(leveled(3), 14)).toBe(350);
+    expect(rentOf(leveled(4), 14)).toBe(530);
     expect(
       rentOf(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] }), 14),
     ).toBe(0);
@@ -52,7 +52,7 @@ describe("정거장 이용료(2-2)", () => {
       round: 6,
       stars: [13, 14, 15].map((square) => ({ square, owner: 1, level: 2 })),
     });
-    expect(rentOf(full, 14)).toBe(260);
+    expect(rentOf(full, 14)).toBe(300);
     const autumn = scene({ round: 6, stars: [{ square: 2, owner: 1 }] });
     expect(rentOf(autumn, 2)).toBe(20);
     const off = scene({
@@ -108,8 +108,118 @@ describe("정거장 이용료(2-2)", () => {
     expect(paysOf(events)).toEqual([
       { type: "pay", from: 0, to: 1, amount: 40, reason: "rent", square: 14 },
     ]);
+    // 이용료를 낸 뒤 도착 인수를 고른다(g5, 2-8)
+    expect(state.phase).toBe("takeover");
+    const declined = must(state, 0, { type: "declineTakeover" }).state;
+    expect(declined.phase).toBe("turn");
+    expect(declined.turn.next).toBe("end");
+    expect(declined.owners[14]).toBe(1);
+  });
+});
+
+describe("도착 인수(2-8, g5)", () => {
+  it("이용료를 낸 뒤 별 값의 1.5배를 주인에게 내고 사들인다(주인은 거절 못 함)", () => {
+    const s = { ...sirius(), positions: [8, 0, 0, 0] };
+    const landed = roll(s, [2, 4]).state;
+    expect(landed.phase).toBe("takeover");
+    expect(landed.takeover).toEqual({ square: 14, price: 330 });
+    expect(refused(landed, 1, { type: "takeover" })).toContain("사들일");
+    const { state, events } = must(landed, 0, { type: "takeover" });
+    expect(paysOf(events)).toEqual([
+      {
+        type: "pay",
+        from: 0,
+        to: 1,
+        amount: 330,
+        reason: "takeover",
+        square: 14,
+      },
+    ]);
+    expect(events).toContainEqual({
+      type: "takenOver",
+      seat: 0,
+      from: 1,
+      square: 14,
+      price: 330,
+    });
+    expect(state.owners[14]).toBe(0);
+    expect(state.levels[14]).toBe(1);
+    expect(state.cash[0]).toBe(1000 - 40 - 330);
     expect(state.phase).toBe("turn");
     expect(state.turn.next).toBe("end");
+  });
+
+  it("주인이 완성한 별자리의 별, 맡긴 별, 인수를 끈 판, 별빛이 모자라면 묻지 않는다", () => {
+    const at = (state: GalaxyState) =>
+      roll({ ...state, positions: [8, 0, 0, 0] }, [2, 4]).state.phase;
+    const complete = sirius([
+      { square: 13, owner: 1 },
+      { square: 15, owner: 1 },
+    ]);
+    expect(at(complete)).toBe("turn");
+    expect(
+      at(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] })),
+    ).toBe("turn");
+    expect(
+      at({ ...sirius(), rules: { ...STANDARD_RULES, trade: false } }),
+    ).toBe("turn");
+    expect(at({ ...sirius(), cash: [360, 1000, 1000, 1000] })).toBe("turn");
+    // 다른 사람 별자리 별이 섞여 있으면(주인이 완성하지 않았으면) 사들일 수 있다
+    expect(
+      at(
+        sirius([
+          { square: 13, owner: 1 },
+          { square: 15, owner: 2 },
+        ]),
+      ),
+    ).toBe("takeover");
+  });
+
+  it("거래 제안(g4까지)은 받지 않는다", () => {
+    expect(
+      refused(sirius([{ square: 2, owner: 0 }]), 0, {
+        type: "offer",
+        to: 1,
+        give: { stars: [2], cash: 0 },
+        get: { stars: [14], cash: 0 },
+      }),
+    ).toContain("거래 제안은 없어요");
+  });
+});
+
+describe("내 별 재방문(g5)", () => {
+  it("내 별에 멈춘 차례에는 그 별자리 정거장 한 단이 반값이고, 한 번만이다", () => {
+    const s = scene({
+      positions: [8, 0, 0, 0],
+      stars: [13, 14, 15].map((square) => ({ square, owner: 0 })),
+    });
+    const { state, events } = roll(s, [2, 4]);
+    expect(events).toContainEqual({
+      type: "revisited",
+      seat: 0,
+      square: 14,
+      discount: true,
+    });
+    expect(buildCostOf(state, 0, 13)).toBe(50);
+    const built = must(state, 0, { type: "build", square: 13 });
+    expect(paysOf(built.events)[0]?.amount).toBe(50);
+    expect(buildCostOf(built.state, 0, 14)).toBe(100);
+    // 다른 차례에는 제값
+    expect(buildCostOf(s, 0, 13)).toBe(100);
+  });
+
+  it("완성하지 않은 별자리면 반값으로 올릴 것이 없다고 알린다", () => {
+    const s = scene({
+      positions: [8, 0, 0, 0],
+      stars: [{ square: 14, owner: 0 }],
+    });
+    const { events } = roll(s, [2, 4]);
+    expect(events).toContainEqual({
+      type: "revisited",
+      seat: 0,
+      square: 14,
+      discount: false,
+    });
   });
 });
 
@@ -147,22 +257,39 @@ describe("달의 길(15-5 2번)", () => {
 
 describe("한 바퀴와 지원금", () => {
   it("우주국을 지나면 지원금 120, 멈춘 주인 없는 별은 살 수 있다", () => {
-    const { state, events } = roll(scene({ positions: [30, 0, 0, 0] }), [1, 2]);
+    const { state, events } = roll(
+      scene({ positions: [30, 0, 0, 0], cash: [300, 1000, 1000, 1000] }),
+      [1, 2],
+    );
     expect(state.positions[0]).toBe(1);
     expect(paysOf(events).map((p) => p.reason)).toEqual(["salary"]);
     expect(state.phase).toBe("buy");
     const bought = must(state, 0, { type: "buy" });
     expect(bought.state.owners[1]).toBe(0);
     expect(bought.state.levels[1]).toBe(1);
-    expect(bought.state.cash[0]).toBe(1000 + 120 - 60);
+    expect(bought.state.cash[0]).toBe(300 + 120 - 60);
     expect(bought.state.turn.next).toBe("end");
   });
 
   it("우주국에 멈춰도 지원금은 한 번", () => {
-    const { state, events } = roll(scene({ positions: [29, 0, 0, 0] }), [1, 2]);
+    const { state, events } = roll(
+      scene({ positions: [29, 0, 0, 0], cash: [300, 1000, 1000, 1000] }),
+      [1, 2],
+    );
     expect(state.positions[0]).toBe(0);
     expect(paysOf(events)).toHaveLength(1);
-    expect(state.cash[0]).toBe(1120);
+    expect(state.cash[0]).toBe(420);
+  });
+
+  it("별빛이 넉넉하면 지원금이 준다(g5): 300 넘는 몫의 5분의 1을 빼고 10 단위로 내림, 적어도 20", () => {
+    expect(salaryOf(0)).toBe(120);
+    expect(salaryOf(300)).toBe(120);
+    expect(salaryOf(345)).toBe(110);
+    expect(salaryOf(500)).toBe(80);
+    expect(salaryOf(800)).toBe(20);
+    expect(salaryOf(2000)).toBe(20);
+    const { state } = roll(scene({ positions: [29, 0, 0, 0] }), [1, 2]);
+    expect(state.cash[0]).toBe(1020);
   });
 
   it("별빛이 모자라면 사지 못하고 넘길 수만 있다", () => {

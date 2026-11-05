@@ -147,12 +147,12 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(state.positions[0]).toBe(4);
   });
 
-  it("13 관측지 초청: 관측지로 가고 관측 지원금은 없다. 우주국을 지나면 지원금은 60", () => {
+  it("13 관측지 초청: 관측지로 가고 관측 지원금은 없다. 우주국을 지나면 지원금은 반", () => {
     const { state, events } = draw(13, { cash: [100, 1000, 1000, 1000] });
     expect(state.positions[0]).toBe(16);
     expect(amounts(events)).toEqual([]);
     // 여름 공문(28)에서는 우주국을 지나 관측지로: 지원금 반
-    const wrap = draw(13, {}, 25);
+    const wrap = draw(13, { cash: [300, 1000, 1000, 1000] }, 25);
     expect(wrap.state.positions[0]).toBe(16);
     expect(amounts(wrap.events)).toEqual([[-1, 0, 60]]);
   });
@@ -162,7 +162,7 @@ describe("우주국 공문 16장(2-6)", () => {
     expect(state.positions[0]).toBe(9);
     expect(amounts(events)).toEqual([[0, 1, 20]]);
     // 여름 공문(28)에서는 가을 첫 별(1)로, 우주국을 지나 지원금
-    const wrap = draw(14, {}, 25);
+    const wrap = draw(14, { cash: [300, 1000, 1000, 1000] }, 25);
     expect(wrap.state.positions[0]).toBe(1);
     expect(amounts(wrap.events)).toEqual([[-1, 0, 120]]);
     expect(wrap.state.phase).toBe("buy");
@@ -172,7 +172,7 @@ describe("우주국 공문 16장(2-6)", () => {
     const { state } = draw(15);
     expect(state.positions[0]).toBe(24);
     expect(state.turn.next).toBe("comet");
-    const wrap = draw(15, {}, 25);
+    const wrap = draw(15, { cash: [300, 1000, 1000, 1000] }, 25);
     expect(amounts(wrap.events)).toEqual([[-1, 0, 120]]);
   });
 

@@ -18,6 +18,8 @@ export type Phase =
   | "bidReveal"
   | "trade"
   | "debt"
+  /** 도착 인수(g5): 남의 별에 이용료를 낸 사람이 그 별을 사들일지 고른다 */
+  | "takeover"
   /** 판 끝: 자리마다 관측 의뢰 비밀을 공개한다(의뢰를 켠 판) */
   | "requestReveal"
   | "gameOver";
@@ -51,6 +53,8 @@ export interface TurnInfo {
   next: "roll" | "jailRoll" | "comet" | "end";
   /** 멈춘 칸의 일을 마치면 한 번 더 굴린다(같은 눈) */
   again: boolean;
+  /** 이번 차례에 내 별에 멈췄다(g5 재방문): 그 별의 별자리. 이 별자리 정거장 한 단을 반값에 올리면 null */
+  revisit: number | null;
 }
 
 /** 돈이 옮겨진 까닭 */
@@ -68,7 +72,8 @@ export type PayReason =
   | "observatory"
   | "trade"
   | "bankrupt"
-  | "request";
+  | "request"
+  | "takeover";
 
 /** 우주국(돈이 사라지거나 생기는 곳) */
 export const BANK = -1;
@@ -231,6 +236,8 @@ export interface GalaxyState {
   lastAuction: AuctionResult | null;
   trade: TradeOffer | null;
   debt: Debt | null;
+  /** 도착 인수를 기다리는 별과 값(g5). 기다리지 않으면 null */
+  takeover: { square: number; price: number } | null;
   /** 이 차례가 끝나면 판이 끝난다(기본·짧은 판의 운항 중단) */
   endAfterTurn: boolean;
   /** 시간 상한에 닿았다(이 돌림을 마치면 끝) */
@@ -277,6 +284,10 @@ export type Action =
     }
   | { type: "acceptTrade"; spent?: number }
   | { type: "rejectTrade"; spent?: number }
+  /** 도착 인수(g5): 이용료를 낸 남의 별을 사들인다 */
+  | { type: "takeover"; spent?: number }
+  /** 도착 인수를 하지 않고 넘긴다 */
+  | { type: "declineTakeover"; spent?: number }
   /** 정거장 한 단 올리기 */
   | { type: "build"; square: number; spent?: number }
   /** 정거장 한 단 내리기(한 단 값의 절반을 돌려받는다) */
@@ -347,6 +358,16 @@ export type GameEvent =
   | { type: "tradeOffered"; offer: TradeOffer }
   | { type: "tradeAccepted"; offer: TradeOffer }
   | { type: "tradeRejected"; offer: TradeOffer }
+  /** 도착 인수(g5): `seat`이 `from`의 별을 `price`에 사들였다 */
+  | {
+      type: "takenOver";
+      seat: number;
+      from: number;
+      square: number;
+      price: number;
+    }
+  /** 내 별에 멈췄다(g5 재방문). `discount`면 이번 차례에 그 별자리 정거장 한 단을 반값에 올릴 수 있다 */
+  | { type: "revisited"; seat: number; square: number; discount: boolean }
   | { type: "built"; seat: number; square: number; level: number }
   | { type: "sold"; seat: number; square: number; level: number }
   | { type: "mortgaged"; seat: number; square: number }
@@ -381,6 +402,8 @@ export type Decision =
   | { kind: "bidReveal"; index: number }
   | { kind: "trade"; offer: TradeOffer }
   | { kind: "debt"; debt: Debt }
+  /** 도착 인수(g5): 이용료를 낸 이 별을 이 값에 주인에게서 사들일지 */
+  | { kind: "takeover"; square: number; owner: number; price: number }
   | { kind: "requestReveal" };
 
 /** 화면에 보이는 입찰: 끝나기 전에는 남의 값을 보이지 않는다 */

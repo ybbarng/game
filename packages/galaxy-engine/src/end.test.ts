@@ -61,7 +61,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
         ...[9, 10, 11].map((square) => ({ square, owner: 0, level: 3 })),
       ],
     });
-    expect(state.debt?.amount).toBe(310);
+    expect(state.debt?.amount).toBe(350);
     const plan = debtPlan(state);
     expect(plan.map((a) => a.type)).toEqual([
       "sell",
@@ -75,7 +75,7 @@ describe("빚 정리와 운항 중단(2-9)", () => {
     let s = state;
     for (const action of plan) s = must(s, 0, action).state;
     expect(s.phase).toBe("turn");
-    expect(s.cash[0]).toBe(270 + 90 - 310);
+    expect(s.cash[0]).toBe(270 + 90 - 350);
     expect(debtPlan(s)).toEqual([]);
   });
 
@@ -235,12 +235,13 @@ describe("끝과 순위(2-10)", () => {
     expect(ended.result?.kind).toBe("timeUp");
   });
 
-  it("자산 = 별빛 + 별 값(맡긴 별은 절반) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 100", () => {
+  it("자산 = 별빛 + 별 값의 80%(맡긴 별은 절반) + 지은 정거장(내릴 때 돌려받는 절반) + 완성 별자리마다 그 별자리 값", () => {
     const s = scene({
       cash: [500, 1000, 1000, 1000],
       stars: [...cma(0, 2), { square: 1, owner: 0, mortgaged: true }],
     });
-    expect(assetsOf(s, 0)).toBe(500 + 620 + 150 + 30 + 100);
+    // 큰개자리 200·220·200의 80%, 2단 셋(한 단 100의 절반씩), 맡긴 페가수스 별 60의 절반, 완성 큰개자리 200
+    expect(assetsOf(s, 0)).toBe(500 + 496 + 150 + 30 + 200);
     expect(standingsOf(s)[0]?.seat).toBe(0);
   });
 
