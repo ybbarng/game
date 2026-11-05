@@ -52,6 +52,10 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
       .getAttribute("data-cube-scramble")) ?? "";
   expect(scramble.split(" ").length).toBeGreaterThan(3);
   await shot(page, "vs-inspect", info.project.name);
+  // 상대의 작은 큐브는 펼친 그림이 아니라 비스듬한 큐브 둘(여섯 면). 휴대폰은 위 줄이 좁아 숨긴다
+  const botCube = page.locator('[data-cube-peer="bot1"] [data-cube-posters]');
+  if (info.project.name === "desktop") await expect(botCube).toBeVisible();
+  else await expect(botCube).toBeHidden();
   // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
   await expect(
     page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
@@ -121,6 +125,12 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
     splits.locator('[data-cube-race-split-row="bot1"]'),
   ).toContainText(/\d\.\d\d/);
   await shot(page, "vs-final", info.project.name);
+  // 모두의 풀이 다시 보기도 큐브 모양(사람마다 비스듬한 큐브 둘)
+  await page.locator("[data-cube-replay]").click();
+  await expect(
+    page.locator("[data-cube-replay-view] [data-cube-posters]"),
+  ).toHaveCount(2);
+  await shot(page, "vs-replay", info.project.name);
 
   if (SAVE_SCREENSHOTS && info.project.name === "desktop") {
     // 온라인 대기실(같은 탭 연결, 방장 혼자 + 컴퓨터)
@@ -235,4 +245,13 @@ test("온라인 대결: 방장과 손님 두 탭 + 컴퓨터", async ({ context 
       { timeout: SCRAMBLE_TIMEOUT },
     );
   await expect(guest.locator("[data-cube-peer]")).toHaveCount(3);
+  // 손님이 판 중에 새로 고쳐도 이름 화면에서 멈추지 않고 기억한 이름으로 바로 다시 들어간다
+  await guest.reload();
+  await expect(guest.locator("main[data-cube-online]")).toHaveAttribute(
+    "data-cube-online",
+    /^(?!name$|connecting$|error$)/,
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
+  await expect(guest.locator("[data-cube-enter]")).toHaveCount(0);
+  await shot(guest, "online-guest-reload", info.project.name);
 });

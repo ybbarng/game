@@ -48,6 +48,28 @@ function touchOnly(): boolean {
   }
 }
 
+/**
+ * 손님이 이 탭에서 들어간 방(sessionStorage, 탭을 닫으면 사라진다). 판 중에 새로 고쳐도 이름 화면에서 멈추지 않고
+ * 기억한 이름으로 바로 다시 들어간다(자리 되찾기는 아니고 새 손님으로, docs/map.json 남은 일)
+ */
+const REJOIN_KEY = "cube.online.joined";
+
+function joinedRoom(): string | null {
+  try {
+    return sessionStorage.getItem(REJOIN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberJoined(room: string): void {
+  try {
+    sessionStorage.setItem(REJOIN_KEY, room);
+  } catch {
+    // 저장소가 막혀 있으면 새로 고칠 때 이름 화면부터
+  }
+}
+
 async function connect(room: string, isHost: boolean): Promise<Transport> {
   if (isLocalNet()) return joinBroadcast(room);
   const { joinP2P } = await import("@/net/p2p-transport");
@@ -93,10 +115,11 @@ export function CubeOnlineApp() {
 
   const isHost = roomFromUrl === null;
 
-  const enter = async () => {
-    const trimmed = name.trim() || (isHost ? "방장" : "손님");
+  const enter = async (as: string = name) => {
+    const trimmed = as.trim() || (isHost ? "방장" : "손님");
     setPlayerName(trimmed);
     setPhase("connecting");
+    if (!isHost) rememberJoined(roomCode);
     try {
       const transport = await connect(roomCode, isHost);
       transportRef.current = transport;
@@ -125,6 +148,16 @@ export function CubeOnlineApp() {
       setPhase("error");
     }
   };
+
+  // 이 탭에서 이미 들어갔던 방을 새로 고쳤으면 기억한 이름으로 바로 다시 들어간다
+  const rejoined = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 주소를 읽은 뒤 한 번만 본다
+  useEffect(() => {
+    if (rejoined.current || phase !== "name" || !roomFromUrl || phone) return;
+    if (!savedName || joinedRoom() !== roomFromUrl) return;
+    rejoined.current = true;
+    void enter(savedName);
+  }, [roomFromUrl, savedName, phone]);
 
   const state = room?.state;
   useEffect(() => {
