@@ -52,8 +52,6 @@ import {
   Sheet,
   StarFacts,
   TakeoverSheet,
-  TradeAnswer,
-  TradeComposer,
 } from "./Decision";
 import { GalaxyBoard } from "./GalaxyBoard";
 import { GameRecap } from "./GameRecap";
@@ -420,9 +418,6 @@ export function GalaxyGame({
   const elapsed = useFxElapsed(timeline, fxStart);
   const [selected, setSelected] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const [trading, setTrading] = useState(false);
-  const [partner, setPartner] = useState<number | null>(null);
-  const [marked, setMarked] = useState<Set<number>>(new Set());
   const [portrait, setPortrait] = useState(false);
   // 판 끝 결과 띠가 떠 있는 동안은 결과 상자·판 돌아보기를 띄우지 않는다(띠가 순위 표 머리를 가리지 않게, 원카드·고스톱과 같다)
   const [bannerUp, setBannerUp] = useState(false);
@@ -448,33 +443,24 @@ export function GalaxyGame({
   const decision = view?.decision ?? null;
   const ready = !playing && decision !== null;
   const canRoll = ready && decision?.kind === "roll";
-  const hint = useIdleHint(canRoll && !trading, GALAXY_FX.idleHint);
-
-  // 결정이 바뀌면 거래 고르기를 닫는다.
+  const hint = useIdleHint(canRoll, GALAXY_FX.idleHint);
+  // 결정 시계·기권 단추가 새 결정마다 다시 잰다
   const decisionKey = view
     ? `${view.phase}:${view.turn.seat}:${view.turn.rolls}:${view.revealCount}`
     : "";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 차례·단계가 바뀔 때만 닫는다
-  useEffect(() => {
-    setTrading(false);
-    setPartner(null);
-    setMarked(new Set());
-  }, [decisionKey]);
 
   const act = (a: Action) => {
     setSelected(null);
     submit(a);
   };
 
-  // 키보드: Space 굴리기, B 사기, N 넘기기, T 거래, ←→ 칸 살피기, Esc 닫기
+  // 키보드: Space 굴리기, B 사기, N 넘기기, ←→ 칸 살피기, Esc 닫기
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea")) return;
       if (e.key === "Escape") {
         setSelected(null);
-        setTrading(false);
-        setMarked(new Set());
         return;
       }
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
@@ -494,8 +480,6 @@ export function GalaxyGame({
       } else if (e.key === "b" && decision.kind === "buy" && decision.canAfford)
         act({ type: "buy" });
       else if (e.key === "n" && decision.kind === "buy") act({ type: "pass" });
-      else if (e.key === "t" && decision.kind === "roll" && decision.canOffer)
-        setTrading(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -536,7 +520,6 @@ export function GalaxyGame({
         (decision?.kind === "roll" ||
           decision?.kind === "end" ||
           decision?.kind === "buy" ||
-          decision?.kind === "trade" ||
           decision?.kind === "takeover" ||
           decision?.kind === "debt")));
   const together =
@@ -592,9 +575,6 @@ export function GalaxyGame({
       case "bid":
         status = "봉투 입찰에 낼 값을 골라요.";
         break;
-      case "trade":
-        status = "거래 제안이 왔어요.";
-        break;
       case "takeover":
         status = "이 별을 사들일까요?";
         break;
@@ -618,18 +598,6 @@ export function GalaxyGame({
       : null;
 
   const onPick = (square: number) => {
-    if (trading && partner !== null) {
-      const owner = view.owners[square];
-      if (owner === me || owner === partner) {
-        setMarked((m) => {
-          const next = new Set(m);
-          if (next.has(square)) next.delete(square);
-          else next.add(square);
-          return next;
-        });
-        return;
-      }
-    }
     setSelected((s) => (s === square ? null : square));
   };
 
@@ -661,8 +629,6 @@ export function GalaxyGame({
       onBid={(v) => placeBid(v)}
       name={name}
     />
-  ) : decision?.kind === "trade" ? (
-    <TradeAnswer view={view} offer={decision.offer} name={name} submit={act} />
   ) : decision?.kind === "takeover" ? (
     <TakeoverSheet
       view={view}
@@ -674,20 +640,6 @@ export function GalaxyGame({
     />
   ) : decision?.kind === "debt" ? (
     <DebtSheet view={view} submit={act} />
-  ) : trading ? (
-    <TradeComposer
-      view={view}
-      partner={partner}
-      setPartner={setPartner}
-      marked={marked}
-      clearMarked={() => setMarked(new Set())}
-      name={name}
-      submit={act}
-      onClose={() => {
-        setTrading(false);
-        setPartner(null);
-      }}
-    />
   ) : decision?.kind === "roll" || decision?.kind === "end" ? (
     <Sheet testId={decision.kind}>
       <div className="flex flex-wrap gap-2">
@@ -722,16 +674,6 @@ export function GalaxyGame({
             className={SECONDARY}
           >
             {money(NUMBERS.asteroidFine)} 내고 나가기
-          </button>
-        )}
-        {decision.kind === "roll" && decision.canOffer && (
-          <button
-            type="button"
-            data-trade
-            onClick={() => setTrading(true)}
-            className={SECONDARY}
-          >
-            거래 제안
           </button>
         )}
       </div>
@@ -811,10 +753,9 @@ export function GalaxyGame({
       onHover={setHover}
       name={name}
       follow={follow}
-      marked={marked}
-      focus={trading ? null : info}
+      focus={info}
       card={
-        selected !== null && !trading ? (
+        selected !== null ? (
           <SquareCard
             view={view}
             square={selected}

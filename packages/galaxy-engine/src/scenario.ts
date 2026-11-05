@@ -56,7 +56,6 @@ export function createGalaxyScenario(options: {
       seat: turn,
       doubles: 0,
       rolls: 0,
-      offered: false,
       next: jailed[turn] ? "jailRoll" : "roll",
       again: false,
       revisit: null,

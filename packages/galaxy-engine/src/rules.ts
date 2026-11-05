@@ -10,7 +10,7 @@ import { OPEN_SKIES } from "./sky-ids";
  * 은하 한 바퀴 규칙(docs/48 2절). 판마다 고르는 것은 여기에 둔다.
  * - players 인원(2~4)
  * - length 판 길이: 짧은 판(short)·기본 판(standard)·긴 판(long), 2-11
- * - trade 도착 인수(2-8). g4까지는 굴리기 전 자유 거래였고 g5에서 인수로 바꿨다(이름은 규칙 문자열과 함께 그대로)
+ * - takeover 도착 인수(2-8, 문자열 글자 t). g4까지는 같은 자리가 굴리기 전 자유 거래(trade)였다
  * - seasonal 제철 하늘(2-12 1번)
  * - meteor 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 차례 수가 있는 판(짧은·기본)에만
  * - requests 관측 의뢰(15-5 1번): 판 처음 몰래 받은 의뢰를 판 끝에 펼쳐 이루었으면 지원금
@@ -36,7 +36,7 @@ export interface GalaxyRules {
   edition: typeof GALAXY_EDITION;
   players: 2 | 3 | 4;
   length: GalaxyLength;
-  trade: boolean;
+  takeover: boolean;
   seasonal: boolean;
   meteor: boolean;
   moon: boolean;
@@ -49,7 +49,7 @@ export const STANDARD_RULES: GalaxyRules = {
   edition: GALAXY_EDITION,
   players: 4,
   length: "standard",
-  trade: true,
+  takeover: true,
   seasonal: true,
   meteor: false,
   moon: true,
@@ -57,11 +57,11 @@ export const STANDARD_RULES: GalaxyRules = {
   sky: "seasons",
 };
 
-/** 짧은 판도 거래를 켠다(2-8) */
+/** 짧은 판도 사들이기를 켠다(2-8) */
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
-  trade: true,
+  takeover: true,
 };
 
 export const LONG_RULES: GalaxyRules = { ...STANDARD_RULES, length: "long" };
@@ -196,7 +196,7 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
  * 긴 판은 마지막 돌림이 없어 유성우를 싣지 않는다(r 없음)
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
-  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}${rules.requests ? "q" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
+  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.takeover ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}${rules.requests ? "q" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 /**
@@ -222,7 +222,7 @@ export function decodeGalaxyRules(
     ,
     players,
     length,
-    trade,
+    takeover,
     seasonal,
     meteor,
     moon,
@@ -243,7 +243,7 @@ export function decodeGalaxyRules(
       edition: GALAXY_EDITION,
       players: Number(players) as 2 | 3 | 4,
       length: lengthName,
-      trade: trade === "t",
+      takeover: takeover === "t",
       seasonal: seasonal === "w",
       meteor: meteor === "r",
       moon: moon === "o",

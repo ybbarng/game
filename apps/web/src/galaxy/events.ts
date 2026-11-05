@@ -56,8 +56,6 @@ export function eventLine(
           return `${who(e.to)} · ${about} 맡김 ${money(e.amount)}`;
         case "unmortgage":
           return `${who(e.from)} · ${about} 되찾음 ${money(e.amount)}`;
-        case "trade":
-          return `${who(e.from)} → ${who(e.to)} · 거래 ${money(e.amount)}`;
         case "bankrupt":
           return `${who(e.from)} → ${who(e.to)} · 남은 별빛 ${money(e.amount)}`;
         case "request":
@@ -101,10 +99,6 @@ export function eventLine(
       return `${subject(name(e.seat))} ${e.by === "doubles" ? "같은 눈 세 번으로" : "공문으로"} 소행성대에 걸렸어요`;
     case "freed":
       return e.by === "fine" ? null : `${name(e.seat)} · 소행성대를 나감`;
-    case "tradeAccepted":
-      return `${name(e.offer.from)} ↔ ${name(e.offer.to)} · 거래 성사`;
-    case "tradeRejected":
-      return `${name(e.offer.to)} · 거래 거절`;
     case "takenOver":
       return `${name(e.seat)} · ${name(e.from)}에게서 ${squareName(board, e.square)} 사들임 ${money(e.price)}`;
     case "revisited":

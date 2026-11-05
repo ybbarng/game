@@ -18,7 +18,7 @@ export {
 
 /** 지금 설정으로 만든 규칙(하늘은 G7 전까지 사계절 하늘 하나) */
 export function rulesFromSettings(
-  s: Pick<GalaxySettings, "players" | "length" | "trade" | "seasonal"> & {
+  s: Pick<GalaxySettings, "players" | "length" | "takeover" | "seasonal"> & {
     meteor?: boolean;
     moon?: boolean;
     requests?: boolean;
@@ -29,7 +29,7 @@ export function rulesFromSettings(
     edition: GALAXY_EDITION,
     players: s.players,
     length: s.length,
-    trade: s.trade,
+    takeover: s.takeover,
     seasonal: s.seasonal,
     // 긴 판은 마지막 돌림이 없어 유성우의 밤이 오지 않는다. 같은 판이 문자열 둘이 되지 않게 끈다
     meteor: s.meteor === true && s.length !== "long",

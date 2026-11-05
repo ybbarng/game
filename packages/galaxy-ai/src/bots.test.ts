@@ -49,14 +49,14 @@ function rolled(state: GalaxyState, dice: [number, number]): GalaxyState {
 }
 
 describe("은하 한 바퀴 컴퓨터", () => {
-  it("세 단계가 합법 행동만으로 사기·입찰·짓기까지 둔다(3인 짧은 판, 거래 켬)", () => {
+  it("세 단계가 합법 행동만으로 사기·입찰·짓기까지 둔다(3인 짧은 판, 사들이기 켬)", () => {
     // 둘 수 없는 수를 내면 playGalaxy가 멈춘다. 입찰 약속과 공개가 맞지 않아도 멈춘다.
     // 판 끝까지 두지 않고, 확인할 사건(산 별·입찰 끝·정거장 짓기)이 모두 나오면 멈춘다
     const seen = new Set<string>();
     const watched = ["bought", "auctionEnded", "built"];
     const { state } = playGalaxy({
       bots: [0, 1, 2].map(galaxyBotFor),
-      rules: { ...SHORT_RULES, players: 3, trade: true },
+      rules: { ...SHORT_RULES, players: 3, takeover: true },
       seed: 35, // 2돌림에 사기·입찰·짓기가 모두 나온다(짧은 판 3인은 17돌림)
       board,
       onStep: (_before, _seat, _action, _after, events) => {

@@ -88,8 +88,6 @@ export function standInAction(state: GalaxyState, seat: number): Action | null {
     }
     case "takeover":
       return { type: "declineTakeover" };
-    case "trade":
-      return { type: "rejectTrade" };
     case "debt":
       return debtPlan(state)[0] ?? null;
     case "roll":
@@ -152,7 +150,6 @@ export function galaxyTimers(
   const decides =
     state.phase === "turn" ||
     state.phase === "buy" ||
-    state.phase === "trade" ||
     state.phase === "takeover" ||
     state.phase === "debt";
   if (!decides || timeControlOf(state.rules) !== null) return timers;
@@ -242,7 +239,7 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
   return [
     `${rules.players}명`,
     `${length}(${lengthDetail(rules).split(" · ")[0]})`,
-    rules.trade ? "사들이기" : "사들이기 없음",
+    rules.takeover ? "사들이기" : "사들이기 없음",
     rules.seasonal ? "제철 하늘" : null,
     rules.meteor && rules.length !== "long" ? "유성우의 밤" : null,
     rules.moon ? "달의 길" : null,

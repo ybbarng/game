@@ -213,7 +213,7 @@ function StarBody({
                 <span className="text-white/50 text-xs">· 맡김</span>
               )}
             </p>
-            {owner !== view.mySeat && view.rules.trade && (
+            {owner !== view.mySeat && view.rules.takeover && (
               <p data-card-takeover className="mt-0.5 text-white/70 text-xs">
                 {takeoverText(view, square)}
               </p>

@@ -248,7 +248,7 @@ test("은하 한 바퀴 연출: 남의 별에 멈춰 사들여 별자리를 완�
       rules: {
         players: 2,
         length: "standard",
-        trade: true,
+        takeover: true,
         seasonal: true,
         sky: "seasons",
       },
@@ -339,7 +339,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 차
       rules: {
         players: 2,
         length: "standard",
-        trade: false,
+        takeover: false,
         seasonal: true,
         meteor: true,
         sky: "seasons",

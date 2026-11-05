@@ -21,8 +21,6 @@ function actOnce(): boolean {
       return s.placeBid(d.max >= 10 ? 10 : 0).ok;
     case "takeover":
       return s.submit({ type: "declineTakeover" }).ok;
-    case "trade":
-      return s.submit({ type: "rejectTrade" }).ok;
     case "debt": {
       const plan = debtPlan(asState(view));
       return plan[0] ? s.submit(plan[0]).ok : false;

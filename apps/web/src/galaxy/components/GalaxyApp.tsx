@@ -151,10 +151,10 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
       </Section>
       <Section title="사들이기">
         <div className="flex flex-wrap gap-1.5">
-          <Chip active={s.trade} onClick={() => s.set({ trade: true })}>
+          <Chip active={s.takeover} onClick={() => s.set({ takeover: true })}>
             켬
           </Chip>
-          <Chip active={!s.trade} onClick={() => s.set({ trade: false })}>
+          <Chip active={!s.takeover} onClick={() => s.set({ takeover: false })}>
             끔
           </Chip>
         </div>
@@ -362,7 +362,7 @@ function GalaxyHome({
           `컴퓨터 ${level} ${s.players - 1}명`,
           length,
           lengthDetail(rules).split(" · ")[1],
-          s.trade ? "사들이기" : "사들이기 없음",
+          s.takeover ? "사들이기" : "사들이기 없음",
           s.seasonal ? "제철 하늘" : null,
           s.meteor && s.length !== "long" ? "유성우의 밤" : null,
           rules.moon ? "달의 길" : null,

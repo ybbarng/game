@@ -68,8 +68,6 @@ import {
   type PayReason,
   type RevealPurpose,
   type Standing,
-  type TradeOffer,
-  type TradeSide,
 } from "./state";
 
 export type StepResult =
@@ -130,7 +128,6 @@ export function createMatch(
       seat: starter,
       doubles: 0,
       rolls: 0,
-      offered: false,
       next: "roll",
       again: false,
       revisit: null,
@@ -152,7 +149,6 @@ export function createMatch(
     auction: null,
     auctionCount: 0,
     lastAuction: null,
-    trade: null,
     takeover: null,
     debt: null,
     endAfterTurn: false,
@@ -338,7 +334,8 @@ export function canTakeOver(
 ): boolean {
   const star = starAt(state.board, square);
   const owner = state.owners[square] ?? -1;
-  if (!state.rules.trade || !star || owner < 0 || owner === seat) return false;
+  if (!state.rules.takeover || !star || owner < 0 || owner === seat)
+    return false;
   if (state.mortgaged[square] || (state.levels[square] ?? 0) > 1) return false;
   return !isComplete(state, owner, star.group);
 }
@@ -464,9 +461,6 @@ export function clockTurn(
     case "takeover":
       seat = state.turn.seat;
       break;
-    case "trade":
-      seat = state.trade?.to ?? -1;
-      break;
     case "debt":
       seat = state.debt?.seat ?? -1;
       break;
@@ -494,8 +488,6 @@ export function pendingSeats(state: GalaxyState): number[] {
       return active.filter((s) => state.auction?.commits[s] === null);
     case "bidReveal":
       return active.filter((s) => state.auction?.reveals[s] === null);
-    case "trade":
-      return state.trade ? [state.trade.to] : [];
     case "debt":
       return state.debt ? [state.debt.seat] : [];
     case "requestReveal":
@@ -537,7 +529,6 @@ function clone(state: GalaxyState): GalaxyState {
     lastAuction: state.lastAuction
       ? { ...state.lastAuction, bids: [...state.lastAuction.bids] }
       : null,
-    trade: state.trade ? cloneOffer(state.trade) : null,
     debt: state.debt ? { ...state.debt } : null,
     takeover: state.takeover ? { ...state.takeover } : null,
     result: state.result
@@ -556,14 +547,6 @@ function clone(state: GalaxyState): GalaxyState {
           ending: state.requests.ending ? { ...state.requests.ending } : null,
         }
       : null,
-  };
-}
-
-function cloneOffer(offer: TradeOffer): TradeOffer {
-  return {
-    ...offer,
-    give: { stars: [...offer.give.stars], cash: offer.give.cash },
-    get: { stars: [...offer.get.stars], cash: offer.get.cash },
   };
 }
 
@@ -623,7 +606,7 @@ function finish(
   s.result = result;
   s.phase = "gameOver";
   s.auction = null;
-  s.trade = null;
+  s.takeover = null;
   s.debt = null;
   events.push({ type: "gameEnded", result });
 }
@@ -645,7 +628,7 @@ function conclude(
   s.requests.ending = { kind, seat };
   s.phase = "requestReveal";
   s.auction = null;
-  s.trade = null;
+  s.takeover = null;
   s.debt = null;
   events.push({ type: "requestsOpened" });
 }
@@ -655,7 +638,6 @@ function startTurn(s: GalaxyState, seat: number, events: GameEvent[]): void {
     seat,
     doubles: 0,
     rolls: 0,
-    offered: false,
     next: s.jailed[seat] ? "jailRoll" : "roll",
     again: false,
     revisit: null,
@@ -1289,62 +1271,6 @@ function resolveAuction(s: GalaxyState, events: GameEvent[]): void {
   continueTurn(s, events);
 }
 
-/** 거래할 수 있는 별인가(2-8): 내 별, 맡기지 않음, 그 별자리에 2단 이상 정거장이 없음 */
-function tradable(s: GalaxyState, seat: number, square: number): boolean {
-  const star = starAt(s.board, square);
-  if (!star || s.owners[square] !== seat || s.mortgaged[square]) return false;
-  const squares = s.board.groups[star.group]?.squares ?? [];
-  return squares.every((sq) => (s.levels[sq] ?? 0) <= 1);
-}
-
-function checkSide(
-  s: GalaxyState,
-  seat: number,
-  side: TradeSide,
-  label: string,
-): string | null {
-  if (!side || !Array.isArray(side.stars)) return `${label} 형식이 아니에요`;
-  if (!Number.isInteger(side.cash) || side.cash < 0)
-    return `${label} 별빛은 0 이상의 정수여야 해요`;
-  if (side.cash > (s.cash[seat] ?? 0))
-    return `${label} 별빛이 가진 것보다 많아요`;
-  if (new Set(side.stars).size !== side.stars.length)
-    return `${label} 별이 겹쳐요`;
-  for (const sq of side.stars)
-    if (!Number.isInteger(sq) || !tradable(s, seat, sq))
-      return `${label} 별 가운데 거래할 수 없는 별이 있어요(내 별이 아니거나, 맡겼거나, 2단 이상 정거장이 있는 별자리)`;
-  return null;
-}
-
-/** 거래 제안이 지금 규칙에 맞는지. 맞으면 null, 아니면 까닭 */
-export function tradeProblem(s: GalaxyState, offer: TradeOffer): string | null {
-  const { from, to } = offer;
-  if (!Number.isInteger(to) || to < 0 || to >= s.rules.players || to === from)
-    return "거래할 상대가 아니에요";
-  if (s.out[to]) return "판에서 빠진 우주인과는 거래할 수 없어요";
-  const problem =
-    checkSide(s, from, offer.give, "주는") ??
-    checkSide(s, to, offer.get, "받는");
-  if (problem) return problem;
-  if (offer.give.stars.length + offer.get.stars.length === 0)
-    return "별이 하나는 오가야 해요";
-  return null;
-}
-
-function applyTrade(
-  s: GalaxyState,
-  offer: TradeOffer,
-  events: GameEvent[],
-): void {
-  for (const sq of offer.give.stars) s.owners[sq] = offer.to;
-  for (const sq of offer.get.stars) s.owners[sq] = offer.from;
-  pay(s, events, offer.from, offer.to, offer.give.cash, "trade");
-  pay(s, events, offer.to, offer.from, offer.get.cash, "trade");
-  events.push({ type: "tradeAccepted", offer: cloneOffer(offer) });
-  announceLinks(s, offer.to, offer.give.stars, events);
-  announceLinks(s, offer.from, offer.get.stars, events);
-}
-
 /** 개인 시간: 결정에 쓴 시간을 깎는다. 시간을 넘겼으면 그 행동은 하지 않고 시간패로 끝내고 true */
 function chargeClock(
   s: GalaxyState,
@@ -1740,58 +1666,6 @@ export function step(
       continueTurn(next, events);
       return done();
     }
-    case "offer": {
-      // g5: 굴리기 전 자유 거래는 없어졌다(도착 인수로, 2-8). 옛 행동 모양은 기록 읽기를 위해 남긴다
-      if (state.rules.edition >= 5)
-        return fail("거래 제안은 없어요. 남의 별에 멈추면 사들일 수 있어요");
-      if (!state.rules.trade) return fail("거래를 끈 판이에요");
-      if (state.phase !== "turn" || state.turn.seat !== seat)
-        return fail("거래는 내 차례에만 제안할 수 있어요");
-      if (
-        state.turn.rolls > 0 ||
-        state.turn.next === "comet" ||
-        state.turn.next === "end"
-      )
-        return fail("거래는 굴리기 전에만 제안할 수 있어요");
-      if (state.turn.offered)
-        return fail("이번 차례에는 이미 거래를 제안했어요");
-      const offer: TradeOffer = {
-        from: seat,
-        to: action.to,
-        give: {
-          stars: [...(action.give?.stars ?? [])],
-          cash: action.give?.cash ?? 0,
-        },
-        get: {
-          stars: [...(action.get?.stars ?? [])],
-          cash: action.get?.cash ?? 0,
-        },
-      };
-      const problem = tradeProblem(state, offer);
-      if (problem) return fail(problem);
-      if (charged()) return done();
-      next.trade = offer;
-      next.turn.offered = true;
-      next.phase = "trade";
-      events.push({ type: "tradeOffered", offer: cloneOffer(offer) });
-      return done();
-    }
-    case "acceptTrade":
-    case "rejectTrade": {
-      const offer = state.trade;
-      if (state.phase !== "trade" || !offer) return fail("답할 거래가 없어요");
-      if (offer.to !== seat) return fail("나에게 온 거래가 아니에요");
-      if (action.type === "acceptTrade") {
-        const problem = tradeProblem(state, offer);
-        if (problem) return fail(problem);
-      }
-      if (charged()) return done();
-      if (action.type === "acceptTrade") applyTrade(next, offer, events);
-      else events.push({ type: "tradeRejected", offer: cloneOffer(offer) });
-      next.trade = null;
-      next.phase = "turn";
-      return done();
-    }
     case "build":
     case "sell":
     case "mortgage":
@@ -1857,8 +1731,6 @@ function decisionFor(state: GalaxyState, seat: number): Decision | null {
         canPayFine:
           next === "jailRoll" &&
           (state.cash[seat] ?? 0) >= NUMBERS.asteroidFine,
-        // g5: 자유 거래 없음(도착 인수로)
-        canOffer: false,
       };
     }
     case "buy": {
@@ -1883,10 +1755,6 @@ function decisionFor(state: GalaxyState, seat: number): Decision | null {
     case "bidReveal":
       return state.auction
         ? { kind: "bidReveal", index: state.auction.index }
-        : null;
-    case "trade":
-      return state.trade
-        ? { kind: "trade", offer: cloneOffer(state.trade) }
         : null;
     case "debt":
       return state.debt ? { kind: "debt", debt: { ...state.debt } } : null;
@@ -1929,7 +1797,7 @@ export function viewOf(state: GalaxyState, seat: number): GalaxyView {
 
 /**
  * 지금 이 자리가 할 수 있는 행동(값을 고르지 않는 것만): 굴리기·50 내기·사기·넘기기·차례 마치기·
- * 거래 답·정거장 올리기·내리기·맡기기·되찾기. 약속·공개·입찰·거래 제안은 값이 있어 넣지 않는다
+ * 사들이기·넘기기·정거장 올리기·내리기·맡기기·되찾기. 약속·공개·입찰은 값이 있어 넣지 않는다
  */
 export function legalActions(state: GalaxyState, seat: number): Action[] {
   const candidates: Action[] = [
@@ -1938,8 +1806,6 @@ export function legalActions(state: GalaxyState, seat: number): Action[] {
     { type: "buy" },
     { type: "pass" },
     { type: "end" },
-    { type: "acceptTrade" },
-    { type: "rejectTrade" },
     { type: "takeover" },
     { type: "declineTakeover" },
   ];

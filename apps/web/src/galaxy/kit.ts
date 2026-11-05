@@ -87,7 +87,7 @@ export interface GalaxyGame {
   retired: boolean;
 }
 
-/** 이번 판에서 내가 만난 별 칸: 머문 별, 처음부터 받은 별, 산 별·입찰로 산 별, 거래로 오간 별, 판 끝에 가진 별 */
+/** 이번 판에서 내가 만난 별 칸: 머문 별, 처음부터 받은 별, 산 별·입찰로 산 별, 사들이기로 오간 별, 판 끝에 가진 별 */
 export function metSquares(
   view: Pick<GalaxyView, "board" | "owners" | "mySeat">,
   events: readonly GameEvent[],
@@ -106,13 +106,12 @@ export function metSquares(
       met.add(e.result.square);
     if (e.type === "dealt")
       for (const sq of e.stars[view.mySeat] ?? []) met.add(sq);
-    // 거래로 오간 별(받은 별, 준 별 모두 한때 가졌거나 내 손을 거쳤다)
+    // 사들이기로 오간 별(사들인 별, 빼앗긴 별 모두 한때 내 손을 거쳤다)
     if (
-      e.type === "tradeAccepted" &&
-      (e.offer.from === view.mySeat || e.offer.to === view.mySeat)
+      e.type === "takenOver" &&
+      (e.seat === view.mySeat || e.from === view.mySeat)
     )
-      for (const sq of [...e.offer.give.stars, ...e.offer.get.stars])
-        met.add(sq);
+      met.add(e.square);
   }
   for (const sq of STAR_SQUARES)
     if (view.owners[sq] === view.mySeat) met.add(sq);
@@ -202,12 +201,6 @@ export function describeGalaxy(action: unknown): string {
       return a.value > 0
         ? `입찰 공개 ${money(a.value)}`
         : "입찰 공개(내지 않음)";
-    case "offer":
-      return "거래 제안";
-    case "acceptTrade":
-      return "거래 받기";
-    case "rejectTrade":
-      return "거래 거절";
     case "takeover":
       return "별 사들이기(도착 인수)";
     case "declineTakeover":
@@ -264,9 +257,6 @@ const TIMED = new Set<Action["type"]>([
   "payFine",
   "buy",
   "pass",
-  "offer",
-  "acceptTrade",
-  "rejectTrade",
   "takeover",
   "declineTakeover",
   "build",

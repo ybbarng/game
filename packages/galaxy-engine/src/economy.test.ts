@@ -161,7 +161,7 @@ describe("도착 인수(2-8, g5)", () => {
       at(scene({ stars: [{ square: 14, owner: 1, mortgaged: true }] })),
     ).toBe("turn");
     expect(
-      at({ ...sirius(), rules: { ...STANDARD_RULES, trade: false } }),
+      at({ ...sirius(), rules: { ...STANDARD_RULES, takeover: false } }),
     ).toBe("turn");
     expect(at({ ...sirius(), cash: [360, 1000, 1000, 1000] })).toBe("turn");
     // 다른 사람 별자리 별이 섞여 있으면(주인이 완성하지 않았으면) 사들일 수 있다
@@ -173,17 +173,6 @@ describe("도착 인수(2-8, g5)", () => {
         ]),
       ),
     ).toBe("takeover");
-  });
-
-  it("거래 제안(g4까지)은 받지 않는다", () => {
-    expect(
-      refused(sirius([{ square: 2, owner: 0 }]), 0, {
-        type: "offer",
-        to: 1,
-        give: { stars: [2], cash: 0 },
-        get: { stars: [14], cash: 0 },
-      }),
-    ).toContain("거래 제안은 없어요");
   });
 });
 

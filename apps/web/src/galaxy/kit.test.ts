@@ -185,7 +185,7 @@ describe("설정", () => {
     const r = rulesFromSettings({
       players: 4,
       length: "standard",
-      trade: true,
+      takeover: true,
       seasonal: true,
     });
     expect(soloMinutes(r)).toBeGreaterThan(5);
@@ -305,7 +305,7 @@ describe("만난 별과 사건 줄", () => {
   const board = boardOfSky("seasons");
   const view = { board, owners: board.squares.map(() => -1), mySeat: 0 };
 
-  it("처음 받은 별, 거래로 오간 별도 만난 별에 든다", () => {
+  it("처음 받은 별, 사들이기로 오간 별도 만난 별에 든다", () => {
     const events: GameEvent[] = [
       {
         type: "dealt",
@@ -314,15 +314,9 @@ describe("만난 별과 사건 줄", () => {
           [5, 6],
         ],
       },
-      {
-        type: "tradeAccepted",
-        offer: {
-          from: 1,
-          to: 0,
-          give: { stars: [9], cash: 0 },
-          get: { stars: [2], cash: 100 },
-        },
-      },
+      { type: "takenOver", seat: 0, from: 1, square: 9, price: 270 },
+      { type: "takenOver", seat: 1, from: 0, square: 2, price: 120 },
+      { type: "takenOver", seat: 1, from: 2, square: 13, price: 300 },
     ];
     expect(metSquares(view, events)).toEqual([1, 2, 9]);
   });
@@ -404,7 +398,7 @@ describe("옛 규칙 판", () => {
     const rules = rulesFromSettings({
       players: 4,
       length: "long",
-      trade: true,
+      takeover: true,
       seasonal: true,
       meteor: true,
     });

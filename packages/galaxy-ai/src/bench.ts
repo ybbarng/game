@@ -35,7 +35,7 @@ import { playGalaxy } from "./simulate";
 
 /** 판 수(기본). 워크플로 입력이 이 값을 바꿀 수 있다 */
 export const BENCH_GAMES = {
-  /** 4인 중수 × 4, 기본 판, 인수 켬(g4까지는 거래)(자리 순서·눈덩이·공문·칸 밟힘 등) */
+  /** 4인 중수 × 4, 기본 판, 인수 켬(자리 순서·눈덩이·공문·칸 밟힘 등) */
   main: 2000,
   /** 같은 판, 인수 끔(별자리 완성 비율) */
   noTrade: 1000,
@@ -413,7 +413,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const main = runSet(options.main, rules, () => [mid, mid, mid, mid], 10_000);
   const noTrade = runSet(
     options.noTrade,
-    { ...rules, trade: false },
+    { ...rules, takeover: false },
     () => [mid, mid, mid, mid],
     20_000,
   );

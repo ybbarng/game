@@ -7,7 +7,7 @@ import type { GalaxyRules } from "./rules";
  * 게임의 흐름(docs/48 2-4).
  * commit 자리마다 사슬 약속 → (짧은 판은 reveal로 시작 별 나누기) → turn 차례인 사람이 굴리기·관리
  * → reveal 모든 자리가 고리 공개(눈이 정해져 움직이고 멈춘 칸의 일을 한다)
- * → buy 사기·넘기기 → bid·bidReveal 봉투 입찰 → trade 거래 답 → debt 빚 정리 → turn … → gameOver
+ * → buy 사기·넘기기 → bid·bidReveal 봉투 입찰 → takeover 도착 인수 → debt 빚 정리 → turn … → gameOver
  */
 export type Phase =
   | "commit"
@@ -16,7 +16,6 @@ export type Phase =
   | "buy"
   | "bid"
   | "bidReveal"
-  | "trade"
   | "debt"
   /** 도착 인수(g5): 남의 별에 이용료를 낸 사람이 그 별을 사들일지 고른다 */
   | "takeover"
@@ -44,8 +43,6 @@ export interface TurnInfo {
   doubles: number;
   /** 이번 차례에 굴린 수(혜성 굴림 포함) */
   rolls: number;
-  /** 이번 차례에 거래를 제안했다(한 차례에 한 번) */
-  offered: boolean;
   /**
    * 지금 할 일. roll 굴리기, jailRoll 소행성대에서 굴리기(또는 50 내기), comet 혜성에서 한 번 더 굴리기,
    * end 차례 마치기
@@ -70,7 +67,6 @@ export type PayReason =
   | "fine"
   | "card"
   | "observatory"
-  | "trade"
   | "bankrupt"
   | "request"
   | "takeover";
@@ -106,21 +102,6 @@ export interface AuctionResult {
   bids: (number | null)[];
   winner: number | null;
   price: number;
-}
-
-/** 거래 한쪽이 내놓는 것 */
-export interface TradeSide {
-  /** 별 칸 번호 */
-  stars: number[];
-  cash: number;
-}
-
-/** 거래 제안(2-8): 제안한 사람이 `give`를 주고 상대에게서 `get`을 받는다 */
-export interface TradeOffer {
-  from: number;
-  to: number;
-  give: TradeSide;
-  get: TradeSide;
 }
 
 /** 갚아야 하는 빚 */
@@ -234,7 +215,6 @@ export interface GalaxyState {
   /** 지금까지 연 봉투 입찰 수 */
   auctionCount: number;
   lastAuction: AuctionResult | null;
-  trade: TradeOffer | null;
   debt: Debt | null;
   /** 도착 인수를 기다리는 별과 값(g5). 기다리지 않으면 null */
   takeover: { square: number; price: number } | null;
@@ -274,16 +254,6 @@ export type Action =
   | { type: "bid"; hash: string }
   /** 봉투 입찰 공개(값 0은 내지 않음) */
   | { type: "bidReveal"; value: number; salt: string }
-  /** 거래 제안(굴리기 전 한 번) */
-  | {
-      type: "offer";
-      to: number;
-      give: TradeSide;
-      get: TradeSide;
-      spent?: number;
-    }
-  | { type: "acceptTrade"; spent?: number }
-  | { type: "rejectTrade"; spent?: number }
   /** 도착 인수(g5): 이용료를 낸 남의 별을 사들인다 */
   | { type: "takeover"; spent?: number }
   /** 도착 인수를 하지 않고 넘긴다 */
@@ -355,9 +325,6 @@ export type GameEvent =
   | { type: "bidCommitted"; seat: number }
   | { type: "bidRevealed"; seat: number }
   | { type: "auctionEnded"; result: AuctionResult }
-  | { type: "tradeOffered"; offer: TradeOffer }
-  | { type: "tradeAccepted"; offer: TradeOffer }
-  | { type: "tradeRejected"; offer: TradeOffer }
   /** 도착 인수(g5): `seat`이 `from`의 별을 `price`에 사들였다 */
   | {
       type: "takenOver";
@@ -394,13 +361,11 @@ export type Decision =
       kind: "roll";
       purpose: "roll" | "jailRoll" | "comet";
       canPayFine: boolean;
-      canOffer: boolean;
     }
   | { kind: "end" }
   | { kind: "buy"; square: number; price: number; canAfford: boolean }
   | { kind: "bid"; index: number; square: number; max: number }
   | { kind: "bidReveal"; index: number }
-  | { kind: "trade"; offer: TradeOffer }
   | { kind: "debt"; debt: Debt }
   /** 도착 인수(g5): 이용료를 낸 이 별을 이 값에 주인에게서 사들일지 */
   | { kind: "takeover"; square: number; owner: number; price: number }

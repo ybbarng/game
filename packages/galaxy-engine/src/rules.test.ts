@@ -23,7 +23,7 @@ describe("규칙 문자열", () => {
         {
           ...SHORT_RULES,
           players: 2,
-          trade: false,
+          takeover: false,
           moon: false,
           requests: false,
         },

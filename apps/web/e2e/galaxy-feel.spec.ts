@@ -18,7 +18,7 @@ const SCENARIO = {
   rules: {
     players: 2,
     length: "standard",
-    trade: true,
+    takeover: true,
     seasonal: true,
     sky: "seasons",
   },
