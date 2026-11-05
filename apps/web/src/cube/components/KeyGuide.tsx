@@ -14,10 +14,10 @@ import {
 
 import { handLayersText } from "../keys/hand-layers";
 import { capRepeats, type Orient } from "../keys/key-colors";
-import { FINGER_HOMES, facePairs, pairPath } from "../keys/key-pairs";
+import { FINGER_HOMES } from "../keys/key-pairs";
 import { keyLayers } from "../keys/layout";
 import type { HandLayers } from "../keys/reach";
-import { hexColor, useCubeSettings } from "../settings";
+import { useCubeSettings } from "../settings";
 import { KeyMark, labelTone, paintAttr, useKeyLook } from "./KeyPaint";
 import { PRESS_CLASS, useVirtualKeys } from "./VirtualKeys";
 
@@ -116,7 +116,7 @@ export function KeyGuide({
   const usesAlt = keymap.bindings.some((b) => b.alt);
   const undoChord =
     chordsFor(keymap, "undo").find((c) => !c.ctrl && !c.alt) ?? null;
-  const { keyPairs, keyFingers } = useCubeSettings();
+  const { keyFingers } = useCubeSettings();
   // Shift를 누르고 있는 동안만 Shift 층 글을 보인다
   const held = useHeldShift();
   const hasShift = keymap.bindings.some((b) => b.shift && !b.ctrl);
@@ -210,15 +210,7 @@ export function KeyGuide({
             {row.map(cell)}
           </div>
         ))}
-        {((keyPairs && !hideActions) || keyFingers) && (
-          <KeyOverlay
-            keymap={keymap}
-            n={n}
-            orient={orient}
-            pairs={keyPairs && !hideActions}
-            fingers={keyFingers}
-          />
-        )}
+        {keyFingers && <KeyOverlay />}
       </div>
       {pressable && (
         <div className="flex gap-1" data-key-mods>
@@ -359,25 +351,12 @@ function heldNames(
 }
 
 /**
- * 키 그림 위에 옅게 겹치는 그림(SVG): 같은 면 두 키를 잇는 선(면 색), 가운데 줄 손가락 자리(손 색).
- * 칸 자리를 그려진 칸에서 재어 그린다. 누르기를 가로채지 않는다
+ * 키 그림 위에 옅게 겹치는 그림(SVG): 가운데 줄 손가락 자리(손 색). 칸 자리를 그려진 칸에서 재어 그린다.
+ * 누르기를 가로채지 않는다. 같은 면 두 키를 잇던 선은 2026-11-05에 뺐다(사용자 「같은 색으로 연결되니까, 같은
+ * 색끼리 연결 선은 필요 없을 것 같아」, 두 키가 같은 면 색 아래선을 갖는다)
  */
-export function KeyOverlay({
-  keymap,
-  n,
-  orient,
-  pairs,
-  fingers,
-}: {
-  keymap: Keymap;
-  n: number;
-  orient?: Orient | undefined;
-  pairs: boolean;
-  fingers: boolean;
-}) {
+export function KeyOverlay() {
   const ref = useRef<SVGSVGElement>(null);
-  const look = useKeyLook(n, orient);
-  const { colors } = useCubeSettings();
   const [boxes, setBoxes] = useState<
     Record<string, { x: number; y: number; w: number; h: number }>
   >({});
@@ -409,7 +388,6 @@ export function KeyOverlay({
     ro.observe(host);
     return () => ro.disconnect();
   }, []);
-  const list = pairs ? facePairs(keymap) : [];
   return (
     <svg
       ref={ref}
@@ -419,72 +397,28 @@ export function KeyOverlay({
       width={size.w}
       height={size.h}
     >
-      {list.map((p, i) => {
-        const a = boxes[p.cw];
-        const b = boxes[p.ccw];
-        if (!a || !b) return null;
-        const paint = look(p.face)?.paint;
-        const color =
-          paint?.kind === "face" ? hexColor(colors[paint.color] ?? 0) : "#fff";
-        // 같은 틈을 지나는 선(J·F와 S·L)이 겹치지 않게 번갈아 비킨다
-        const d = pairPath(a, b, 4, i % 2 === 0 ? -1.2 : 1.2);
-        const ends = [a, b].map((k) => ({
-          x: k.x + k.w / 2,
-          y:
-            Math.abs(a.y - b.y) < 1 || k.y < Math.max(a.y, b.y)
-              ? k.y + k.h
-              : k.y,
-        }));
+      {FINGER_HOMES.map((f) => {
+        const b = boxes[f.code];
+        if (!b) return null;
+        const color = f.hand === "left" ? "#38bdf8" : "#fbbf24";
         return (
-          // 2026-11-05 「어지러움」: 가늘고 옅게(칸 글보다 눈에 덜 띄게)
-          <g
-            key={p.face}
-            data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}
-            opacity={0.4}
-          >
-            <path
-              d={d}
-              fill="none"
-              stroke={color}
-              strokeWidth={1.25}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <g key={f.code} data-key-finger={`${f.hand}-${f.finger}`}>
+            <title>
+              {f.hand === "left" ? "왼" : "오른"} {f.finger}
+            </title>
+            {/* 칸 위 틈에 가는 막대(키 글자를 덮지 않게) */}
+            <rect
+              x={b.x + b.w * 0.3}
+              y={b.y - 2.5}
+              width={b.w * 0.4}
+              height={2}
+              rx={1}
+              fill={color}
+              opacity={0.4}
             />
-            {ends.map((e) => (
-              <circle
-                key={`${e.x}-${e.y}`}
-                cx={e.x}
-                cy={e.y}
-                r={1.5}
-                fill={color}
-              />
-            ))}
           </g>
         );
       })}
-      {fingers &&
-        FINGER_HOMES.map((f) => {
-          const b = boxes[f.code];
-          if (!b) return null;
-          const color = f.hand === "left" ? "#38bdf8" : "#fbbf24";
-          return (
-            <g key={f.code} data-key-finger={`${f.hand}-${f.finger}`}>
-              <title>
-                {f.hand === "left" ? "왼" : "오른"} {f.finger}
-              </title>
-              {/* 칸 위 틈에 가는 막대(키 글자를 덮지 않게) */}
-              <rect
-                x={b.x + b.w * 0.3}
-                y={b.y - 2.5}
-                width={b.w * 0.4}
-                height={2}
-                rx={1}
-                fill={color}
-                opacity={0.4}
-              />
-            </g>
-          );
-        })}
     </svg>
   );
 }
