@@ -69,7 +69,12 @@ const STARDRAW = {
 
 const OUTS = [
   { diag: false, shape: STARDRAW, dir: "stardraw", name: "star-glow-hdr.avif" },
-  { diag: true, shape: STARDRAW, dir: "stardraw", name: "star-glow-hdr-diag.avif" },
+  {
+    diag: true,
+    shape: STARDRAW,
+    dir: "stardraw",
+    name: "star-glow-hdr-diag.avif",
+  },
   { diag: false, shape: GALAXY, dir: "galaxy", name: "star-disc-hdr.avif" },
 ].map((o) => ({
   ...o,
@@ -111,10 +116,12 @@ function alphaAt(dx0, dy0, diag, s) {
   const glow =
     s.glowA * Math.exp(-((r / s.glowSigma) ** 2)) +
     s.tailA / (1 + (r / s.tailR) ** 2);
-  const spikes = !s.spikes ? 0 : Math.max(
-    spike(Math.abs(dx), dy, SPIKE_LEN),
-    spike(Math.abs(dy), dx, SPIKE_LEN * (diag ? 1 : 1.15)),
-  );
+  const spikes = !s.spikes
+    ? 0
+    : Math.max(
+        spike(Math.abs(dx), dy, SPIKE_LEN),
+        spike(Math.abs(dy), dx, SPIKE_LEN * (diag ? 1 : 1.15)),
+      );
   // 겹친 빛은 "덮어 칠하기"로 합친다. 가장자리는 그림 끝에서 0이 되게
   const a = 1 - (1 - disc) * (1 - glow) * (1 - spikes);
   return a * (1 - smoothstep(0.85, 1, r));
@@ -128,7 +135,12 @@ function rgba16(diag, shape) {
   for (let y = 0; y < SIZE; y++) {
     raw[y * stride] = 0; // 줄 필터 없음
     for (let x = 0; x < SIZE; x++) {
-      const alpha = alphaAt((x - c) / (SIZE / 2), (y - c) / (SIZE / 2), diag, shape);
+      const alpha = alphaAt(
+        (x - c) / (SIZE / 2),
+        (y - c) / (SIZE / 2),
+        diag,
+        shape,
+      );
       const o = y * stride + 1 + x * 8;
       for (let ch = 0; ch < 3; ch++) raw.writeUInt16BE(signal[ch], o + ch * 2);
       raw.writeUInt16BE(Math.round(alpha * 65535), o + 6);
