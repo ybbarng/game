@@ -5,6 +5,7 @@ import { BackToGames } from "@/components/BackToGames";
 import { MadeWith } from "@/components/brand/MadeWith";
 
 import { cn } from "@/lib/cn";
+import { kstDate, loadDaily } from "../daily";
 import { loadLearn } from "../learn/progress";
 import { CubeHero } from "./CubeHero";
 
@@ -26,6 +27,8 @@ interface Item {
   span?: boolean;
   /** 화면 시험이 찾는 표시 */
   attr?: string;
+  /** 이름 오른쪽 작은 표시(「오늘 완료」) */
+  note?: string;
 }
 
 interface Group {
@@ -47,13 +50,21 @@ const FIRST_TIME: Item = {
  * 묶음 여섯(2026-11-04 점검 뒤): 맞추기 → 대결 → 배우기 → 연습 → 더 알아보기 → 실물 큐브. 강조는 배우기 첫 칸 하나뿐
  * (처음 온 사람이 못 하는 「혼자 맞추기」와 함께 빛나 길이 갈렸다). 칸 수가 홀수인 묶음은 한 칸이 줄을 채운다
  */
-function groups(learnFirst: Item): Group[] {
+function groups(learnFirst: Item, dailyDone: boolean): Group[] {
   return [
     {
       title: "맞추기",
       items: [
         { icon: "🧊", title: "혼자 맞추기", href: "/cube/solo" },
         { icon: "🙈", title: "블라인드", href: "/cube/blind" },
+        {
+          icon: "📅",
+          title: "오늘의 섞기",
+          href: "/cube/daily",
+          span: true,
+          attr: "data-cube-daily-link",
+          ...(dailyDone ? { note: "오늘 완료" } : {}),
+        },
       ],
     },
     {
@@ -126,9 +137,20 @@ function useContinueItem(): Item | null {
   return item;
 }
 
+/** 오늘(한국 시각) 이 기기에서 오늘의 섞기를 한 크기가 있는가 */
+function useDailyDone(): boolean {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    const today = kstDate(Date.now());
+    setDone(loadDaily().some((e) => e.date === today));
+  }, []);
+  return done;
+}
+
 export function CubeHome() {
   const continueItem = useContinueItem();
-  const GROUPS = groups(continueItem ?? FIRST_TIME);
+  const dailyDone = useDailyDone();
+  const GROUPS = groups(continueItem ?? FIRST_TIME, dailyDone);
   return (
     <main
       data-game="cube"
@@ -178,6 +200,14 @@ export function CubeHome() {
                   >
                     {item.title}
                   </span>
+                  {item.note && (
+                    <span
+                      data-cube-note
+                      className="ml-auto shrink-0 rounded-full border border-emerald-300/50 bg-emerald-400/15 px-2 py-0.5 font-semibold text-[11px] text-emerald-200"
+                    >
+                      {item.note}
+                    </span>
+                  )}
                 </a>
               ))}
             </div>
