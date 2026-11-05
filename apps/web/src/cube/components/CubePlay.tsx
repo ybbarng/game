@@ -156,13 +156,14 @@ export function CubePlay({
         : flow;
   /** 큰 큐브의 층 수(csTimer의 3·4·7·8 키). 1·1이면 보이지 않는다 */
   const [layers, setLayers] = useState({ left: 1, right: 1 });
-  const [showKeys, setShowKeys] = useState(true);
-  const [showNet, setShowNet] = useState(true);
   const [prime, setPrime] = useState(false);
   const [moreButtons, setMoreButtons] = useState(false);
   // 휴대폰에서 단추 줄 대신 키보드 그림으로 치기(설정 그대로, 화면에서도 바꾼다). 부모가 바꿔 넘긴 설정이 아니라 저장된 설정을 본다
   const saved = useCubeSettings();
   const keysMode = saved.touchKeyboard;
+  // 키 그림 접기·뒷면 숨기기도 저장해 새로 고쳐도 남는다(2026-11-05 점검)
+  const showKeys = saved.keyGuideOpen;
+  const showNet = saved.backViewShown;
 
   // 바뀌는 값은 ref로 넘겨 키 연결을 한 번만 건다
   const live = useRef({
@@ -507,7 +508,7 @@ export function CubePlay({
             key={m}
             type="button"
             onClick={() => tap(m)}
-            className="h-9 w-9 rounded-lg bg-white/10 font-semibold text-sm hover:bg-white/20 active:bg-white/30"
+            className="h-11 w-11 rounded-lg bg-white/10 font-semibold text-sm hover:bg-white/20 active:bg-white/30 sm:h-9 sm:w-9"
           >
             {m}
             {prime ? "'" : ""}
@@ -517,7 +518,7 @@ export function CubePlay({
           type="button"
           aria-pressed={prime}
           onClick={() => setPrime((p) => !p)}
-          className={`h-9 rounded-lg px-2 text-sm ${prime ? "bg-amber-400 text-black" : "bg-white/10"}`}
+          className={`h-11 rounded-lg px-2 text-sm sm:h-9 ${prime ? "bg-amber-400 text-black" : "bg-white/10"}`}
         >
           ′ 반대
         </button>
@@ -527,7 +528,7 @@ export function CubePlay({
             data-cube-more-buttons
             aria-expanded={moreButtons}
             onClick={() => setMoreButtons((v) => !v)}
-            className="h-9 rounded-lg bg-white/10 px-2 text-sm"
+            className="h-11 rounded-lg bg-white/10 px-2 text-sm sm:h-9"
           >
             {moreButtons ? "접기" : `${moreButtonMoves(n).join("·")} 더 보기`}
           </button>
@@ -542,7 +543,7 @@ export function CubePlay({
                 command: "undo",
               });
           }}
-          className="h-9 rounded-lg bg-white/10 px-2 text-sm"
+          className="h-11 rounded-lg bg-white/10 px-2 text-sm sm:h-9"
         >
           되돌리기
         </button>
@@ -551,7 +552,9 @@ export function CubePlay({
       <div className="flex flex-wrap justify-center gap-x-3 text-white/60 text-xs">
         <button
           type="button"
-          onClick={() => setShowKeys((v) => !v)}
+          onClick={() =>
+            updateSettings({ ...saved, keyGuideOpen: !saved.keyGuideOpen })
+          }
           aria-expanded={showKeys}
           className="hidden min-h-8 items-center px-1 underline-offset-2 hover:underline sm:inline-flex"
         >
@@ -571,7 +574,12 @@ export function CubePlay({
         {back.mode !== "off" && (
           <button
             type="button"
-            onClick={() => setShowNet((v) => !v)}
+            onClick={() =>
+              updateSettings({
+                ...saved,
+                backViewShown: !saved.backViewShown,
+              })
+            }
             aria-pressed={showNet}
             data-back-toggle={back.mode}
             className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline"

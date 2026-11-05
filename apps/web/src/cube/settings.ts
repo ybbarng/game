@@ -122,6 +122,10 @@ export interface CubeSettings {
    * 데스크톱은 늘 둘 다 보이고 키 그림도 누를 수 있다
    */
   touchKeyboard: boolean;
+  /** 큐브 아래 키 그림을 펴 둔다(2026-11-05, 기본 켬). 「키 그림 접기」로 바꾸고 다음에 열어도 남는다 */
+  keyGuideOpen: boolean;
+  /** 거울 판·펼친 그림을 보인다(2026-11-05, 기본 켬). 「거울 숨기기」·「펼친 그림 숨기기」로 바꾸고 다음에 열어도 남는다 */
+  backViewShown: boolean;
   /** 수 흐름 띠(2026-11-05, 기본 켬) */
   flowStrip: FlowStripMode;
   /** 대결 알림(2026-11-05, 기본 켬) */
@@ -149,6 +153,8 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   keyFingersAll: false,
   backView: "mirror",
   touchKeyboard: false,
+  keyGuideOpen: true,
+  backViewShown: true,
   flowStrip: "on",
   raceAlerts: "on",
   heroSize: DEFAULT_HERO_SIZE,
@@ -232,6 +238,8 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
         ? d.backView
         : DEFAULT_SETTINGS.backView,
     touchKeyboard: bool(d.touchKeyboard, DEFAULT_SETTINGS.touchKeyboard),
+    keyGuideOpen: bool(d.keyGuideOpen, DEFAULT_SETTINGS.keyGuideOpen),
+    backViewShown: bool(d.backViewShown, DEFAULT_SETTINGS.backViewShown),
     flowStrip:
       typeof d.flowStrip === "string" && d.flowStrip in FLOW_STRIP_LABEL
         ? (d.flowStrip as FlowStripMode)
