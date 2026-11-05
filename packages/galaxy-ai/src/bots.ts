@@ -9,7 +9,6 @@ import {
   type GalaxyView,
   levelCostAt,
   matchesFact,
-  NUMBERS,
   rentOf,
   requestById,
   requestCommitOf,
@@ -39,7 +38,6 @@ import {
 
 import {
   asState,
-  type Board,
   floor10,
   maxOpponentRent,
   opponentTurns,
@@ -47,8 +45,6 @@ import {
   rentAhead,
   seasonless,
   withOwner,
-  worth,
-  worthGain,
 } from "./evaluate";
 import { landingRate } from "./odds";
 
@@ -334,18 +330,6 @@ function takeoverCompletes(ctx: Ctx, square: number): boolean {
   );
 }
 
-/** 도착 인수 뒤의 판(별 주인과 별빛만 바꾼다) */
-function afterTakeover(ctx: Ctx, square: number, price: number): Board {
-  const b = ctx.view;
-  const owner = b.owners[square] ?? -1;
-  const owners = [...b.owners];
-  const cash = [...b.cash];
-  owners[square] = ctx.seat;
-  cash[ctx.seat] = (cash[ctx.seat] ?? 0) - price;
-  if (owner >= 0) cash[owner] = (cash[owner] ?? 0) + price;
-  return { ...b, owners, cash };
-}
-
 /** 별 하나를 사면 줄어드는 자산(g5: 값 − 자산에 드는 값) */
 function buyLoss(ctx: Ctx, square: number, price: number): number {
   return price - starAssetOf(ctx.view.board, square);
@@ -425,13 +409,6 @@ function requestHelps(ctx: Ctx, square: number): boolean {
   return ownedIn(ctx, ctx.seat, star.group) === 0;
 }
 
-/** 의뢰에 보탬이 되는 별 하나의 몫(남은 수로 지원금을 나눈다). 고수가 값에 더한다 */
-function requestWorth(ctx: Ctx, square: number): number {
-  if (!requestHelps(ctx, square) || ctx.request === null) return 0;
-  const { have, need } = requestProgress(ctx.view, ctx.seat, ctx.request);
-  return NUMBERS.requestBonus / Math.max(1, need - have);
-}
-
 /**
  * 중수가 이 별을 더 쳐주는 몫: 내 별자리를 잇는 별 +0.5, 남의 별자리를 막는 별 +0.3,
  * 내 관측 의뢰에 보탬이 되는 별 +0.4
@@ -451,86 +428,92 @@ function intermediateBonus(ctx: Ctx, square: number): number {
 /** 칸 밟힘을 모르는 중수가 쓰는 고른 밟힘(한 차례에 별 칸 하나를 밟을 어림) */
 const EVEN_RATE = 1 / 28;
 
-const intermediatePolicy: Policy = {
-  bid(ctx, square) {
-    const price = starAt(ctx.view.board, square)?.value ?? 0;
-    const value = price * 0.8 * (1 + intermediateBonus(ctx, square));
-    return Math.min(value, myCash(ctx) - intermediateReserve(ctx));
-  },
-  buy(ctx, square, price) {
-    // g5: 사면 자산이 값의 4분의 1만큼 준다. 남은 판의 이용료(잇는 별·막는 별은 덤만큼 더)로 되찾을 별만 산다
-    const left = myCash(ctx) - price;
-    const reserve = intermediateReserve(ctx);
-    const bonus = intermediateBonus(ctx, square);
-    const pays =
-      loneIncome(ctx, square) * (1 + 2 * bonus) >= buyLoss(ctx, square, price);
-    if (!pays) return false;
-    if (left >= reserve) return true;
-    return bonus > 0 && left >= reserve / 2;
-  },
-  takeover(ctx, square, price) {
-    // 내 별자리를 완성하는 인수는 남은 판이 셋 넘게 남았을 때, 별 둘을 잇는 인수는 판 앞쪽 절반에서
-    // 남은 별이 주인 없거나 내 것일 때만. 모두 남길 돈을 지킨다
-    if (myCash(ctx) - price < intermediateReserve(ctx)) return false;
-    const rounds = remainingRounds(ctx.view);
-    if (takeoverCompletes(ctx, square)) return rounds > 3;
-    const group = groupOf(ctx, square);
-    const squares = ctx.view.board.groups[group]?.squares ?? [];
-    const open = squares.every(
-      (sq) =>
-        sq === square ||
-        ctx.view.owners[sq] === ctx.seat ||
-        (ctx.view.owners[sq] ?? -1) < 0,
-    );
-    return (
-      open &&
-      ownedIn(ctx, ctx.seat, group) >= 1 &&
-      rounds * 2 > (turnLimitOf(ctx.view.rules) ?? 50)
-    );
-  },
-  manage(ctx) {
-    const reserve = intermediateReserve(ctx);
-    const rounds = remainingRounds(ctx.view);
-    const others = activeSeats(ctx.view).length - 1;
-    // 완성한 별자리는 남길 돈 안에서 올린다. 짓는 순간 자산이 한 단 값의 절반만큼 줄어드니(2-10)
-    // 그 몫을 남은 돌림에 이용료로 되찾을 수 있을 때만. 비싼 별자리부터, 별자리 안에서는 엔진이 허락한 칸(고르게)
-    // 내 별 재방문 반값이면 줄어드는 자산이 없다(반값 = 내릴 때 돌려받는 값)
-    const builds = buildable(ctx)
-      .filter((sq) => {
-        const cost = buildCost(ctx, sq);
-        if (myCash(ctx) - cost < reserve) return false;
-        const perRound = rentGain(ctx, sq) * EVEN_RATE * others;
-        const lost = cost - sellValue(ctx.view.board, sq);
-        return perRound > 0 && lost / perRound <= rounds;
-      })
-      .sort(
-        (a, b) =>
-          discountOf(ctx, a) - discountOf(ctx, b) ||
-          levelCostAt(ctx.view.board, b) - levelCostAt(ctx.view.board, a) ||
-          a - b,
+/** 중수 판단. 남길 돈(`reserveOf`)만 바꿔 고수가 바탕으로 쓴다 */
+function intermediateWith(reserveOf: (ctx: Ctx) => number): Policy {
+  return {
+    bid(ctx, square) {
+      const price = starAt(ctx.view.board, square)?.value ?? 0;
+      const value = price * 0.8 * (1 + intermediateBonus(ctx, square));
+      return Math.min(value, myCash(ctx) - reserveOf(ctx));
+    },
+    buy(ctx, square, price) {
+      // g5: 사면 자산이 값의 4분의 1만큼 준다. 남은 판의 이용료(잇는 별·막는 별은 덤만큼 더)로 되찾을 별만 산다
+      const left = myCash(ctx) - price;
+      const reserve = reserveOf(ctx);
+      const bonus = intermediateBonus(ctx, square);
+      const pays =
+        loneIncome(ctx, square) * (1 + 2 * bonus) >=
+        buyLoss(ctx, square, price);
+      if (!pays) return false;
+      if (left >= reserve) return true;
+      return bonus > 0 && left >= reserve / 2;
+    },
+    takeover(ctx, square, price) {
+      // 내 별자리를 완성하는 인수는 남은 판이 셋 넘게 남았을 때, 별 둘을 잇는 인수는 판 앞쪽 절반에서
+      // 남은 별이 주인 없거나 내 것일 때만. 모두 남길 돈을 지킨다
+      if (myCash(ctx) - price < reserveOf(ctx)) return false;
+      const rounds = remainingRounds(ctx.view);
+      if (takeoverCompletes(ctx, square)) return rounds > 3;
+      const group = groupOf(ctx, square);
+      const squares = ctx.view.board.groups[group]?.squares ?? [];
+      const open = squares.every(
+        (sq) =>
+          sq === square ||
+          ctx.view.owners[sq] === ctx.seat ||
+          (ctx.view.owners[sq] ?? -1) < 0,
       );
-    if (builds[0] !== undefined) return { type: "build", square: builds[0] };
-    const back = STAR_SQUARES.filter(
-      (sq) =>
-        ctx.view.owners[sq] === ctx.seat &&
-        ctx.view.mortgaged[sq] &&
-        myCash(ctx) - unmortgageCost(ctx.view.board, sq) >= 2 * reserve + 100,
-    ).sort(
-      (a, b) =>
-        (starAt(ctx.view.board, b)?.value ?? 0) -
-          (starAt(ctx.view.board, a)?.value ?? 0) || a - b,
-    );
-    return back[0] === undefined
-      ? null
-      : { type: "unmortgage", square: back[0] };
-  },
-  payFine(ctx) {
-    const free = STAR_SQUARES.filter(
-      (sq) => (ctx.view.owners[sq] ?? -1) < 0,
-    ).length;
-    return free >= 8 && myCash(ctx) >= intermediateReserve(ctx) + 50;
-  },
-};
+      return (
+        open &&
+        ownedIn(ctx, ctx.seat, group) >= 1 &&
+        rounds * 2 > (turnLimitOf(ctx.view.rules) ?? 50)
+      );
+    },
+    manage(ctx) {
+      const reserve = reserveOf(ctx);
+      const rounds = remainingRounds(ctx.view);
+      const others = activeSeats(ctx.view).length - 1;
+      // 완성한 별자리는 남길 돈 안에서 올린다. 짓는 순간 자산이 한 단 값의 절반만큼 줄어드니(2-10)
+      // 그 몫을 남은 돌림에 이용료로 되찾을 수 있을 때만. 비싼 별자리부터, 별자리 안에서는 엔진이 허락한 칸(고르게)
+      // 내 별 재방문 반값이면 줄어드는 자산이 없다(반값 = 내릴 때 돌려받는 값)
+      const builds = buildable(ctx)
+        .filter((sq) => {
+          const cost = buildCost(ctx, sq);
+          if (myCash(ctx) - cost < reserve) return false;
+          const perRound = rentGain(ctx, sq) * EVEN_RATE * others;
+          const lost = cost - sellValue(ctx.view.board, sq);
+          return perRound > 0 && lost / perRound <= rounds;
+        })
+        .sort(
+          (a, b) =>
+            discountOf(ctx, a) - discountOf(ctx, b) ||
+            levelCostAt(ctx.view.board, b) - levelCostAt(ctx.view.board, a) ||
+            a - b,
+        );
+      if (builds[0] !== undefined) return { type: "build", square: builds[0] };
+      const back = STAR_SQUARES.filter(
+        (sq) =>
+          ctx.view.owners[sq] === ctx.seat &&
+          ctx.view.mortgaged[sq] &&
+          myCash(ctx) - unmortgageCost(ctx.view.board, sq) >= 2 * reserve + 100,
+      ).sort(
+        (a, b) =>
+          (starAt(ctx.view.board, b)?.value ?? 0) -
+            (starAt(ctx.view.board, a)?.value ?? 0) || a - b,
+      );
+      return back[0] === undefined
+        ? null
+        : { type: "unmortgage", square: back[0] };
+    },
+    payFine(ctx) {
+      const free = STAR_SQUARES.filter(
+        (sq) => (ctx.view.owners[sq] ?? -1) < 0,
+      ).length;
+      return free >= 8 && myCash(ctx) >= reserveOf(ctx) + 50;
+    },
+  };
+}
+
+const intermediatePolicy: Policy = intermediateWith(intermediateReserve);
 
 /* ───────────── 고수 ───────────── */
 
@@ -544,71 +527,60 @@ function expertReserve(ctx: Ctx): number {
   return Math.max(60, ahead, 0.5 * maxOpponentRent(ctx.view, ctx.seat));
 }
 
-/** 남이 이 별을 가지면 얻는 덤(별 값을 뺀 기대 이득) 가운데 가장 큰 값. 막는 값으로 쓴다 */
-function denialValue(ctx: Ctx, square: number): number {
-  const price = starAt(ctx.view.board, square)?.value ?? 0;
-  let max = 0;
-  for (const other of activeSeats(ctx.view)) {
-    if (other === ctx.seat) continue;
-    const turns = opponentTurns(ctx.view, other);
-    const gain = worthGain(ctx.view, other, square, ctx.rate, turns) - price;
-    max = Math.max(max, gain);
-  }
-  return max;
+/** 이 별 하나만 더 있으면 완성되는 사람이 나인가, 남인가 */
+function completesFor(
+  ctx: Ctx,
+  square: number,
+): { mine: boolean; theirs: boolean } {
+  const squares = ctx.view.board.groups[groupOf(ctx, square)]?.squares ?? [];
+  const by = (seat: number) =>
+    squares.every((sq) => sq === square || ctx.view.owners[sq] === seat);
+  return {
+    mine: by(ctx.seat),
+    theirs: activeSeats(ctx.view).some((o) => o !== ctx.seat && by(o)),
+  };
 }
 
-/** 남들이 이 별에 낼 만한 값의 어림(그 사람의 본전과 남은 별빛 가운데 작은 것) */
-function opponentBidGuess(ctx: Ctx, square: number): number {
-  const price = starAt(ctx.view.board, square)?.value ?? 0;
-  let max = 0;
-  for (const other of activeSeats(ctx.view)) {
-    if (other === ctx.seat) continue;
-    const turns = opponentTurns(ctx.view, other);
-    const value = Math.min(
-      worthGain(ctx.view, other, square, ctx.rate, turns),
-      price * 1.2,
-    );
-    max = Math.max(max, Math.min(value, (ctx.view.cash[other] ?? 0) - 60));
-  }
-  return max;
-}
-
+/**
+ * 고수(docs/48 16-8): 중수 판단을 바탕으로 사들이기·정거장 올리기에서 앞을 더 본다.
+ * g4 고수의 앞섬은 거래 평가에서 나왔고, 거래가 빠진 g5에서는 기대 자산만 보던 판단이 중수와 같아졌다
+ * (판단을 하나씩 중수 것으로 바꿔도 1 대 3에서 1등 23~25%). 그래서 bench로 앞서는 것만 더했다.
+ * - 막는 사들이기: 주인이 이 별을 포함해 하나 모자란 별자리(남은 하나는 주인 없음)를 남은 판이 넷 넘게 남았으면
+ *   사들인다(남의 완성 덤·이용료 2배·정거장을 막는다)
+ * - 내 완성 사들이기는 남길 돈 없이도(별빛 60은 남긴다) 남은 판이 둘 넘게면, 둘 잇기는 남은 판 다섯 넘게까지
+ * - 정거장 올리기는 실제 칸 밟힘으로 한 단·두 단 올림의 효율을 견주고, 없으면 중수처럼
+ */
 const expertPolicy: Policy = {
-  bid(ctx, square) {
-    // 본전(기대 자산 이득) + 막는 값까지는 내도 되고, 남이 낼 만한 값보다 10 더 내면 충분하다
-    const mine =
-      worthGain(ctx.view, ctx.seat, square, ctx.rate, ctx.turns) +
-      requestWorth(ctx, square);
-    const limit = mine + 0.5 * denialValue(ctx, square);
-    const enough = opponentBidGuess(ctx, square) + 10;
-    const spare = myCash(ctx) - 0.5 * expertReserve(ctx);
-    return Math.min(limit, enough, spare);
-  },
-  buy(ctx, square, price) {
-    // g5: 사면 자산이 값의 4분의 1만큼 준다. 기대 자산 이득(별 자산 몫 + 앞으로 받을 이용료) + 막는 값이
-    // 값을 넘을 때 산다. 덤이 크면 남길 돈의 절반까지 쓴다
-    const left = myCash(ctx) - price;
-    const reserve = expertReserve(ctx);
-    const extra =
-      worthGain(ctx.view, ctx.seat, square, ctx.rate, ctx.turns) -
-      price +
-      0.5 * denialValue(ctx, square) +
-      requestWorth(ctx, square);
-    if (left >= reserve) return extra >= 0;
-    return extra > price * 0.3 && left >= reserve / 2;
-  },
+  ...intermediatePolicy,
   takeover(ctx, square, price) {
-    // 기대 자산 변화(내 별빛 − 값, 별과 그 별자리 이용료 +)와 주인이 잃는 기대 자산의 몫(막는 값)을 견준다.
-    // 기대 자산은 다음 완성을 셈하지 않으므로, 중수가 하는 인수(완성·판 앞쪽의 둘 잇기)도 한다
-    if (myCash(ctx) - price < expertReserve(ctx)) return false;
-    if (intermediatePolicy.takeover(ctx, square, price)) return true;
-    const after = afterTakeover(ctx, square, price);
+    const left = myCash(ctx) - price;
+    const rounds = remainingRounds(ctx.view);
+    const reserve = intermediateReserve(ctx);
+    const { mine, theirs } = completesFor(ctx, square);
+    if (mine) return left >= 60 && rounds > 2;
     const owner = ctx.view.owners[square] ?? -1;
-    const delta = (b: Board, seat: number) =>
-      worth(b, seat, ctx.rate, opponentTurns(ctx.view, seat));
-    const mine = delta(after, ctx.seat) - delta(ctx.view, ctx.seat);
-    const theirs = delta(ctx.view, owner) - delta(after, owner);
-    return mine + 0.3 * theirs > 0;
+    const group = groupOf(ctx, square);
+    const squares = ctx.view.board.groups[group]?.squares ?? [];
+    const ownerNear =
+      squares.filter((sq) => ctx.view.owners[sq] === owner).length ===
+        squares.length - 1 &&
+      squares.every(
+        (sq) =>
+          ctx.view.owners[sq] === owner || (ctx.view.owners[sq] ?? -1) < 0,
+      );
+    if ((ownerNear || theirs) && rounds > 4 && left >= reserve) return true;
+    const open = squares.every(
+      (sq) =>
+        sq === square ||
+        ctx.view.owners[sq] === ctx.seat ||
+        (ctx.view.owners[sq] ?? -1) < 0,
+    );
+    return (
+      open &&
+      ownedIn(ctx, ctx.seat, group) >= 1 &&
+      rounds > 5 &&
+      left >= reserve
+    );
   },
   manage(ctx, rng) {
     const reserve = expertReserve(ctx);
@@ -644,27 +616,7 @@ const expertPolicy: Policy = {
       if (!best || score > best.score) best = { square: sq, score };
     }
     if (best) return { type: "build", square: best.square };
-    const plain = intermediatePolicy.manage(ctx, rng);
-    if (plain?.type === "build") return plain;
-    const back = STAR_SQUARES.filter(
-      (sq) =>
-        ctx.view.owners[sq] === ctx.seat &&
-        ctx.view.mortgaged[sq] &&
-        myCash(ctx) - unmortgageCost(ctx.view.board, sq) >= 2 * reserve + 100,
-    ).sort(
-      (a, b) =>
-        worthGain(ctx.view, ctx.seat, b, ctx.rate, ctx.turns) -
-          worthGain(ctx.view, ctx.seat, a, ctx.rate, ctx.turns) || a - b,
-    );
-    return back[0] === undefined
-      ? null
-      : { type: "unmortgage", square: back[0] };
-  },
-  payFine(ctx) {
-    // 아직 살 별이 많으면 50을 내고 나가고, 판이 찼으면 소행성대에 머물러 이용료를 피한다
-    const free = STAR_SQUARES.filter((sq) => (ctx.view.owners[sq] ?? -1) < 0);
-    if (free.length < 6) return false;
-    return myCash(ctx) >= expertReserve(ctx) + NUMBERS.asteroidFine + 100;
+    return intermediatePolicy.manage(ctx, rng);
   },
 };
 

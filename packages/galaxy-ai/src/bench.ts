@@ -304,7 +304,7 @@ function timed(bot: GalaxyBot, record: (ms: number) => void): GalaxyBot {
 }
 
 /** 한 단계 1 대 다른 단계 3(자리를 돌려 가며). 1 쪽이 1등인 몫 */
-function strengthOf(
+export function strengthOf(
   n: number,
   one: GalaxyBot,
   three: GalaxyBot,
