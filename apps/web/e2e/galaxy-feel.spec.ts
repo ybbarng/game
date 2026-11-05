@@ -116,7 +116,7 @@ test.describe("단계가 섞인 장면", () => {
     await expect(recap).toBeVisible();
     await expect(
       recap.locator('[data-recap-row="completeBonus"]'),
-    ).toContainText("✦100");
+    ).toContainText("✦180"); // 완성 덤은 그 별자리 값(g5, 오리온 180)
     // 놓친 기회: 페가수스 2/3, 1등보다 많이 남긴 별빛
     const missed = recap.locator("[data-recap-missed]");
     await expect(missed).toContainText("2/3에서 멈춘 별자리 1개(페가수스자리)");
@@ -197,7 +197,7 @@ test("은하 한 바퀴 판 돌아보기: 끝까지 둔 판에서 1등과의 차
     page.locator("[data-bid-skip]"),
     page.locator("[data-end-turn]"),
     page.locator("[data-debt-plan]"),
-    page.getByRole("button", { name: "거절" }),
+    page.locator("[data-decline-takeover]"),
   ];
   const any = actions
     .reduce((a, b) => a.or(b))
