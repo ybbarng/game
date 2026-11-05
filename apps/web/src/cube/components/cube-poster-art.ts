@@ -154,6 +154,10 @@ export interface PosterShapes {
     color: number | null;
     /** 칸 안 자리(0~1) → 그림 좌표 SVG 행렬 */
     frame: string;
+    /** 스티커 정체(받은 `Sticker.id`). 누른 칸을 알릴 때 쓴다 */
+    id?: number | undefined;
+    /** 칸 둘레 표시(받은 `Sticker.mark`) */
+    mark?: Sticker["mark"];
   }[];
   /** 바닥 그림자(타원) */
   shadow: { cx: number; cy: number; rx: number; ry: number };
@@ -212,6 +216,8 @@ export function posterShapes(
       normal: s.normal,
       points: pts(cam, roundedSquare(c, nv, look.size, look.radius, 3)),
       color: s.color,
+      id: s.id,
+      mark: s.mark ?? null,
       frame: `matrix(${[ux[0] - o[0], ux[1] - o[1], vy[0] - o[0], vy[1] - o[1], o[0], o[1]].map((x) => x.toFixed(3)).join(" ")})`,
     };
   });

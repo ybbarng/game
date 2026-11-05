@@ -135,12 +135,12 @@ describe("큐브 설정 저장", () => {
     ).toBe(false);
   });
 
-  it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
+  it("뒷면 보기: 옛 저장값·모르는 값·없앤 「펼친 그림」은 거울, 고른 값은 그대로", () => {
     expect(parseSettings(JSON.stringify({ version: 1 })).backView).toBe(
       "mirror",
     );
     expect(parseSettings(JSON.stringify({ backView: "net" })).backView).toBe(
-      "net",
+      "mirror",
     );
     expect(parseSettings(JSON.stringify({ backView: "off" })).backView).toBe(
       "off",

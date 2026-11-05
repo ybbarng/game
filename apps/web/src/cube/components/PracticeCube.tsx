@@ -21,6 +21,7 @@ import { readPracticeKey } from "../keys/practice-input";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { playCubeCue } from "./CubePlay";
+import { CubePosterPair } from "./CubePosterPair";
 
 /**
  * 키 익히기·조작 훈련의 큐브(docs/47 4절). 혼자 맞추기의 `CubePlay`와 달리 키를 직접 받지 않고, 화면이 키를 해석해
@@ -181,9 +182,17 @@ export function LiveCube({
   return (
     <div className={className} data-practice-cube>
       {failed ? (
-        <p className="p-4 text-center text-sm text-white/60">
-          이 기기에서는 3D를 그릴 수 없어요. 펼친 그림으로 보여 드려요.
-        </p>
+        <div data-cube-no3d className="flex flex-col items-center gap-2 p-2">
+          <CubePosterPair
+            n={n}
+            state={state}
+            settings={settings}
+            className="w-full"
+          />
+          <p className="text-center text-white/50 text-xs">
+            이 기기에서는 3D를 그릴 수 없어 그림으로 보여 드려요.
+          </p>
+        </div>
       ) : (
         <canvas
           key={`${n}-${quality}`}

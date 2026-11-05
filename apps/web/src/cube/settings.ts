@@ -40,11 +40,11 @@ export const COLOR_SCHEMES: Record<
   colorblind: [0xffffff, 0xd55e00, 0x009e73, 0xf0e442, 0xe69f00, 0x0072b2],
 };
 
-export type BackView = "mirror" | "net" | "off";
+/** 뒷면 보기. 예전 「펼친 그림」(`"net"`)은 없앴다(2026-11-05 사용자, 저장값은 거울로 읽는다) */
+export type BackView = "mirror" | "off";
 
 export const BACK_VIEW_LABEL: Record<BackView, string> = {
   mirror: "거울",
-  net: "펼친 그림",
   off: "끔",
 };
 
@@ -113,8 +113,8 @@ export interface CubeSettings {
    */
   keyFingersAll: boolean;
   /**
-   * 뒷면 보기(2026-11-04, 기본 거울): 안 보이는 세 면(뒤·왼쪽·아래)을 큐브 둘레에 떠 있는 거울 판으로, 또는 곁의
-   * 펼친 그림으로 보인다. 끄면 큐브만. 3D를 못 그리는 기기는 늘 펼친 그림
+   * 뒷면 보기(2026-11-04, 기본 거울): 안 보이는 세 면(뒤·왼쪽·아래)을 큐브 둘레에 떠 있는 거울 판으로 보인다.
+   * 끄면 큐브만. 3D를 못 그리는 기기는 비스듬한 큐브 그림 둘(앞쪽 셋·뒤쪽 셋)이라 거울이 없다
    */
   backView: BackView;
   /**
@@ -124,7 +124,7 @@ export interface CubeSettings {
   touchKeyboard: boolean;
   /** 큐브 아래 키 그림을 펴 둔다(2026-11-05, 기본 켬). 「키 그림 접기」로 바꾸고 다음에 열어도 남는다 */
   keyGuideOpen: boolean;
-  /** 거울 판·펼친 그림을 보인다(2026-11-05, 기본 켬). 「거울 숨기기」·「펼친 그림 숨기기」로 바꾸고 다음에 열어도 남는다 */
+  /** 거울 판을 보인다(2026-11-05, 기본 켬). 「거울 숨기기」로 바꾸고 다음에 열어도 남는다 */
   backViewShown: boolean;
   /** 수 흐름 띠(2026-11-05, 기본 켬) */
   flowStrip: FlowStripMode;
@@ -234,7 +234,8 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     // 예전 keyFingers(손가락 자리, 기본 켬)는 읽지 않고 버린다. 뜻이 「모든 화면에서도」로 바뀌어 새 칸으로 받는다
     keyFingersAll: bool(d.keyFingersAll, DEFAULT_SETTINGS.keyFingersAll),
     backView:
-      d.backView === "net" || d.backView === "off" || d.backView === "mirror"
+      // 없앤 「펼친 그림」("net")·모르는 값은 기본(거울)
+      d.backView === "off" || d.backView === "mirror"
         ? d.backView
         : DEFAULT_SETTINGS.backView,
     touchKeyboard: bool(d.touchKeyboard, DEFAULT_SETTINGS.touchKeyboard),

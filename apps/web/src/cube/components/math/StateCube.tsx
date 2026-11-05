@@ -4,14 +4,14 @@ import type { StickerMask } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useEffect, useRef, useState } from "react";
 
-import { faceGrid, stickersFromState } from "../../bridge";
+import { stickersFromState } from "../../bridge";
 import type { CubeSettings } from "../../settings";
 import { type CubeView, loadCubeView } from "../../view";
-import { CubeNet } from "../CubeNet";
+import { CubePosterPair } from "../CubePosterPair";
 
 /**
  * 상태 하나를 3D로 보이는 큐브(「큐브의 수학」). 키는 받지 않는다. `syncToken`이 바뀌면 `state`로 다시 칠하고,
- * 부모가 수를 따라 돌리고 싶으면 `onView`로 받은 장면에 `enqueue`한다. 3D를 못 그리면 펼친 그림.
+ * 부모가 수를 따라 돌리고 싶으면 `onView`로 받은 장면에 `enqueue`한다. 3D를 못 그리면 비스듬한 큐브 그림 둘.
  */
 export function StateCube({
   n,
@@ -96,12 +96,12 @@ export function StateCube({
     <div className={className ?? "relative aspect-square w-full max-w-[300px]"}>
       {failed ? (
         <div data-cube-no3d className="flex h-full items-center p-2">
-          <CubeNet
+          <CubePosterPair
             n={n}
-            faces={faceGrid(n, state, mask)}
-            colors={settings.colors}
-            hidden={settings.hidden}
-            className="h-auto w-full"
+            state={state}
+            mask={mask}
+            settings={settings}
+            className="w-full"
           />
         </div>
       ) : (

@@ -78,7 +78,7 @@ export interface PieceLayout {
   body?: boolean;
 }
 
-/** 표시 색(3D 고리와 펼친 그림 테두리가 함께 쓴다) */
+/** 표시 색(3D 고리와 큐브 그림(SVG) 테두리가 함께 쓴다) */
 export const MARK_COLOR: Record<MarkTone, number> = {
   pick: 0x38bdf8,
   right: 0x34d399,

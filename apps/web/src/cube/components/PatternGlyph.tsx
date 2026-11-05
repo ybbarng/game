@@ -11,7 +11,7 @@ import {
 
 /**
  * 아이템전 화면 방해(색 뒤집기·흑백 화면)를 키 그림까지 함께 칠하게 넘기는 값(docs/47 9-7). 없으면 보통 색.
- * 큐브 장면·펼친 그림·작은 큐브 그림은 색과 무늬를 속성으로 받고, 키 그림(`KeyPaint`)만 이것을 읽는다
+ * 큐브 장면·큐브 그림(SVG)은 색과 무늬를 속성으로 받고, 키 그림(`KeyPaint`)만 이것을 읽는다
  */
 export const CubeLookContext = createContext<CubeLook | null>(null);
 

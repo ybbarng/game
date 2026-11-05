@@ -10,11 +10,11 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid, stickersFromState } from "../bridge";
+import { stickersFromState } from "../bridge";
 import { algTokens } from "../learn";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
-import { CubeNet } from "./CubeNet";
+import { CubePosterPair } from "./CubePosterPair";
 import { KeyCaps, useMoveKeys } from "./MoveChip";
 
 /**
@@ -193,13 +193,13 @@ export function DemoCube({
     <div className="flex w-full flex-col items-center gap-2" data-cube-demo>
       <div className="relative aspect-square w-full max-w-[360px]">
         {failed ? (
-          <div data-cube-no3d className="flex h-full items-center p-4">
-            <CubeNet
+          <div data-cube-no3d className="flex h-full items-center p-2">
+            <CubePosterPair
               n={n}
-              faces={faceGrid(n, current, mask)}
-              colors={settings.colors}
-              hidden={settings.hidden}
-              className="h-auto w-full"
+              state={current}
+              mask={mask}
+              settings={settings}
+              className="w-full"
             />
           </div>
         ) : (

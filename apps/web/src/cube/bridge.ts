@@ -14,7 +14,7 @@ import type { MarkTone, Normal, Sticker } from "./view/types";
  */
 export type StickerMarks = readonly (MarkTone | null)[];
 
-/** 정체별 표시 → 지금 자리별 표시(펼친 그림용) */
+/** 정체별 표시 → 지금 자리별 표시 */
 export function marksAtSlots(
   state: PuzzleState,
   marks: StickerMarks | null | undefined,
@@ -50,7 +50,7 @@ export function stickersFromState(
   }));
 }
 
-/** 펼친 그림용: 면 f(U R F D L B)의 칸 색(줄마다 왼쪽→오른쪽, 가림은 null) */
+/** 면 f(U R F D L B)의 칸 색(줄마다 왼쪽→오른쪽, 가림은 null). 공식 그림(위에서 본 윗면)·시험이 쓴다 */
 export function faceGrid(
   n: number,
   state: PuzzleState,

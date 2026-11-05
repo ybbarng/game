@@ -11,13 +11,12 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { faceGrid } from "../bridge";
 import type { Command } from "../input";
 import { algTokens } from "../learn";
 import { patternState, samePattern } from "../patterns/shape";
 import type { CubeSettings } from "../settings";
-import { CubeNet } from "./CubeNet";
 import { CubePlay, playCubeCue } from "./CubePlay";
+import { CubePosterPair } from "./CubePosterPair";
 
 /**
  * 패턴 「직접 만들어 보기」. 맞춘 큐브에서 내 키로 공식을 쳐서 그 모양을 만들면 통과.
@@ -100,12 +99,12 @@ export function PatternTry({
       <div className="flex w-full flex-wrap items-center justify-center gap-4">
         <div className="flex flex-col items-center gap-1">
           <span className="text-white/60 text-xs">만들 모양</span>
-          <CubeNet
+          <CubePosterPair
             n={n}
-            faces={faceGrid(n, target)}
-            colors={settings.colors}
-            hidden={settings.hidden}
-            className="h-auto w-36"
+            state={target}
+            settings={settings}
+            captions={false}
+            className="w-48"
           />
         </div>
         <div className="flex max-w-sm flex-col gap-2 text-sm">
