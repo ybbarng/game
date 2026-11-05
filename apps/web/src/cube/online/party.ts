@@ -101,11 +101,28 @@ export interface PartyInput {
 
 type Event =
   | { kind: "pass"; at: number; p: string; ids: MilestoneId[] }
+  /** 한 수에 여럿을 지나 미뤄 둔 이정표 몫(그 판정 시각에 깎는다) */
+  | { kind: "strike"; at: number; p: string; id: MilestoneId }
   | { kind: "solve"; at: number; p: string; t: number }
   | { kind: "dispute"; at: number; p: string }
   | { kind: "leave"; at: number; p: string };
 
-const KIND_ORDER = { leave: 0, dispute: 1, pass: 2, solve: 3 } as const;
+const KIND_ORDER = {
+  leave: 0,
+  dispute: 1,
+  pass: 2,
+  strike: 3,
+  solve: 4,
+} as const;
+
+/** 한 수에 이정표 여럿을 지났을 때 남은 몫을 깎는 간격(ms, 판정 시각. 기기 시계가 아니다) */
+export const PARTY_LATER_MS = 1_000;
+const LATER_MS = PARTY_LATER_MS;
+
+const order = (x: Event, y: Event) =>
+  x.at - y.at ||
+  KIND_ORDER[x.kind] - KIND_ORDER[y.kind] ||
+  (x.p < y.p ? -1 : x.p > y.p ? 1 : 0);
 
 export function judgeParty(input: PartyInput): PartyOutcome {
   const { n, logs, final } = input;
@@ -159,12 +176,13 @@ export function judgeParty(input: PartyInput): PartyOutcome {
     )
       events.push({ kind: "leave", at: log.last, p });
   }
-  events.sort(
-    (x, y) =>
-      x.at - y.at ||
-      KIND_ORDER[x.kind] - KIND_ORDER[y.kind] ||
-      (x.p < y.p ? -1 : x.p > y.p ? 1 : 0),
-  );
+  events.sort(order);
+  /** 판정 도중에 생긴 일(미뤄 둔 몫)을 차례에 맞춰 끼운다 */
+  const insert = (e: Event, from: number) => {
+    let j = from;
+    while (j < events.length && order(events[j] as Event, e) <= 0) j++;
+    events.splice(j, 0, e);
+  };
 
   const active = new Set(fight);
   const knockedOut: Record<string, number> = {};
@@ -216,15 +234,37 @@ export function judgeParty(input: PartyInput): PartyOutcome {
     );
     for (const e of passes)
       for (const id of e.ids) passed.get(e.p)?.set(id, at);
+    /** 이 이정표를 아직 못 지난 사람(이 시각까지 지났으면 깎지 않는다) */
+    const behind = (p: string, id: MilestoneId) =>
+      [...active].filter(
+        (q) => q !== p && !((passed.get(q)?.get(id) ?? at + 1) <= at),
+      );
+    const strike = (p: string, id: MilestoneId, to: string[]) => {
+      for (const q of to) hp[q] = (hp[q] as number) - damage;
+      hits.push({ at, by: p, id, to, damage });
+    };
+    // 한 수에 이정표 여럿을 지나면(단계 건너뛰기) 그 순간에는 하나 몫만 깎고, 남은 몫은 확인한 시각 + 1000·k에 하나씩 깎는다
+    // (그 사이 따라 지나면 깎지 않는다). 시각은 판정 시각이라 모든 기기가 같다
+    // 같은 사람이 같은 판정 시각에 지난 것은 한 순간으로 묶는다(같은 수, 같은 ms에 몰아 둔 수)
+    const byPlayer = new Map<string, MilestoneId[]>();
     for (const e of passes)
-      for (const id of e.ids) {
-        const to = [...active].filter(
-          (q) => q !== e.p && !((passed.get(q)?.get(id) ?? at + 1) <= at),
-        );
-        if (to.length === 0) continue;
-        for (const q of to) hp[q] = (hp[q] as number) - damage;
-        hits.push({ at, by: e.p, id, to, damage });
-      }
+      byPlayer.set(e.p, [...(byPlayer.get(e.p) ?? []), ...e.ids]);
+    for (const [p, ids] of byPlayer) {
+      const e = { p, ids };
+      const due = [...e.ids]
+        .sort((x, y) => ladder.ids.indexOf(x) - ladder.ids.indexOf(y))
+        .filter((id) => behind(e.p, id).length > 0);
+      const first = due[0];
+      if (first !== undefined) strike(e.p, first, behind(e.p, first));
+      due.slice(1).forEach((id, k) => {
+        insert({ kind: "strike", at: at + LATER_MS * (k + 1), p: e.p, id }, i);
+      });
+    }
+    for (const e of now) {
+      if (e.kind !== "strike" || !active.has(e.p)) continue;
+      const to = behind(e.p, e.id);
+      if (to.length > 0) strike(e.p, e.id, to);
+    }
     for (const q of [...active])
       if ((hp[q] as number) <= 1e-9) {
         active.delete(q);
