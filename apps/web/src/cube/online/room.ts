@@ -18,7 +18,15 @@ import {
   createCubeRaceGame,
   type Scrambler,
 } from "./race-game";
-import { type MatchFormat, matchOver, type RoundSummary } from "./standings";
+import {
+  type MatchFormat,
+  type MatchRules,
+  matchOver,
+  POINTS_ROUNDS,
+  type RoundSummary,
+  SCORING_LABELS,
+  type Scoring,
+} from "./standings";
 
 /**
  * 큐브 대결 방(docs/47 9절). 대기실·판 시작·판 결과 모으기를 맡고, 한 판의 공정한 진행은 대결 틀(`RaceSession`)이 한다.
@@ -35,6 +43,12 @@ export interface RoomSettings {
   format: MatchFormat;
   /** 먼저 N판 이기기의 N */
   target: number;
+  /**
+   * 점수제 판 수(3·5·7)와 점수. 옛 판 방장은 보내지 않는다(점수제를 모른다). 점수제일 때만 판정 설정 지문에 넣는다
+   * (`raceOptionsFor`)
+   */
+  rounds?: number;
+  scoring?: Scoring;
   /** 살펴보기 15초(false면 없음) */
   inspection: boolean;
   /** 제한 시간(초) */
@@ -60,6 +74,8 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   n: 3,
   format: "single",
   target: 3,
+  rounds: 5,
+  scoring: "wins",
   inspection: true,
   timeLimitSec: TIME_LIMIT_SEC[3] as number,
 };
@@ -135,6 +151,38 @@ export interface CubeRoomInit {
  * - 첫 수 빠르기: 풀린 뒤 첫 12수를 0.6초 안에(풀림에 반응하는 시간을 넣고도 초당 20수). 살펴보기 동안 몰래 풀어
  *   두었다가 풀리자마자 흘려보내는 것을 본다. 사람은 첫 수까지 반응 시간이 있고 십자도 초당 10수 안팎
  */
+/** 경기 규칙(종합 순위·경기 끝 판단에 쓴다) */
+export function matchRules(s: RoomSettings): MatchRules {
+  return {
+    format: s.format,
+    target: s.target,
+    rounds: s.rounds ?? 5,
+    scoring: s.scoring ?? "wins",
+  };
+}
+
+/**
+ * 한 판의 대결 틀 설정. 점수제면 판 수·점수를 `gameOptions`에 실어 판정 설정 지문(`race-seed`의 `rules`)으로
+ * 모든 기기가 같은 경기 규칙을 받았는지 판마다 맞춰 본다(다르면 「섞기 어긋남」, docs/47 9-3).
+ * 다른 방식은 예전과 같은 지문이라 옛 판 화면과 함께 할 수 있다
+ */
+export function raceOptionsFor(s: RoomSettings): RaceOptions {
+  const options: RaceOptions = {
+    inspectionMs: s.inspection ? 15_000 : 0,
+    timeLimitMs: s.timeLimitSec * 1000,
+    suspicion: suspicionFor(s.n),
+  };
+  if (s.format === "points") {
+    const r = matchRules(s);
+    options.gameOptions = {
+      match: "points",
+      rounds: r.rounds,
+      scoring: r.scoring,
+    };
+  }
+  return options;
+}
+
 function suspicionFor(n: number): SuspicionRules {
   const common: SuspicionRules = {
     windowMs: 500,
@@ -249,6 +297,12 @@ export class CubeRoom {
     const c = this.current;
     const at = c?.planned.get(id);
     return at !== undefined && at === c?.sessions.get(id)?.snapshot().attempt;
+  }
+
+  /** 이 기기가 자기 판 결과로 본 경기 끝(방장이 알린 상태를 믿지 않는다) */
+  matchOver(): boolean {
+    const s = this.state;
+    return s ? matchOver(matchRules(s.settings), this.rounds) : false;
   }
 
   game(): CubeRaceGame | undefined {
@@ -475,11 +529,7 @@ export class CubeRoom {
     const witness = (observer: string, of: string) =>
       !bots.has(observer) && owners.get(observer) !== owners.get(of);
     const game = createCubeRaceGame(s.settings.n, this.init.scrambler);
-    const options: RaceOptions = {
-      inspectionMs: s.settings.inspection ? 15_000 : 0,
-      timeLimitMs: s.settings.timeLimitSec * 1000,
-      suspicion: suspicionFor(s.settings.n),
-    };
+    const options = raceOptionsFor(s.settings);
     const sessions = new Map<string, RaceSession<CubeMove, PuzzleState>>();
     const off: (() => void)[] = [];
     const round = s.round;
@@ -561,7 +611,7 @@ export class CubeRoom {
     });
     const s = this.state;
     if (this.isHost && s && s.race?.id === race) {
-      s.status = matchOver(s.settings.format, s.settings.target, this.rounds)
+      s.status = matchOver(matchRules(s.settings), this.rounds)
         ? "over"
         : "between";
       this.publish();
@@ -584,6 +634,16 @@ export class CubeRoom {
 }
 
 const BOT_ID = /^bot\d+$/;
+
+/** 점수제면 판 수·점수가 정한 목록 안이어야 한다(끝나지 않는 경기 막기). 다른 방식은 예전처럼 보지 않는다 */
+function pointsSettingsOk(s: RoomSettings): boolean {
+  if (s.format !== "points") return true;
+  return (
+    (POINTS_ROUNDS as readonly unknown[]).includes(s.rounds) &&
+    typeof s.scoring === "string" &&
+    Object.hasOwn(SCORING_LABELS, s.scoring)
+  );
+}
 
 /**
  * 받은 방 상태의 모양과 참가자 표를 확인한다. 방장도 남의 기기를 바꿀 수 없게:
@@ -608,7 +668,8 @@ function isRoomState(v: unknown): v is RoomState {
       typeof s.round === "number" &&
       typeof s.settings?.n === "number" &&
       [2, 3, 4, 5].includes(s.settings.n) &&
-      typeof s.settings.timeLimitSec === "number"
+      typeof s.settings.timeLimitSec === "number" &&
+      pointsSettingsOk(s.settings)
     )
   )
     return false;
