@@ -229,8 +229,8 @@ export function SkyBoard({
     repaintRef.current?.();
   }, [viewKey]);
 
-  // 켜진 별의 움직임(state.motion)이 있으면 그동안 매 프레임 다시 그린다(서서히 켜짐·반짝임·흐려짐)
-  const moving = !!state.motion;
+  // 켜진 별의 움직임(state.motion)이나 다시 빛내기(state.glow)가 있으면 그동안 매 프레임 다시 그린다(서서히 켜짐·반짝임·흐려짐)
+  const moving = !!state.motion || !!state.glow;
   useEffect(() => {
     if (!moving) return;
     if (
@@ -261,6 +261,8 @@ export function SkyBoard({
         role="img"
         aria-label={label}
         data-sky={state.mode}
+        // 다시 빛내는 별(관측 마무리, docs/36 11-72). 아래 공이 빛나는 동안만 붙는다
+        data-sky-glow={state.glow?.n}
         className={cn(
           "block aspect-square w-full max-w-full rounded-xl border border-white/10 bg-[#070d19]",
           (onPick || info) && "cursor-pointer touch-manipulation",
