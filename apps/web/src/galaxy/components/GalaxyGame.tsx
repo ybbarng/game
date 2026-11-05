@@ -423,6 +423,8 @@ export function GalaxyGame({
   const [partner, setPartner] = useState<number | null>(null);
   const [marked, setMarked] = useState<Set<number>>(new Set());
   const [portrait, setPortrait] = useState(false);
+  // 판 끝 결과 띠가 떠 있는 동안은 결과 상자·판 돌아보기를 띄우지 않는다(띠가 순위 표 머리를 가리지 않게, 원카드·고스톱과 같다)
+  const [bannerUp, setBannerUp] = useState(false);
   const mode = useTableMode();
   const secrets = useGalaxy((s) => s.secrets);
 
@@ -820,7 +822,11 @@ export function GalaxyGame({
             mine ? `${mine.rank}등 · 자산 ${money(mine.assets)}` : undefined
           }
         />
-        <ResultBanner banner={banner} seq={view.roundNumber} />
+        <ResultBanner
+          banner={banner}
+          seq={view.roundNumber}
+          onShowChange={setBannerUp}
+        />
       </div>
       {timedDecision && <DecisionTimer resetKey={decisionKey} />}
       {decisionPanel}
@@ -832,7 +838,7 @@ export function GalaxyGame({
           onClose={() => setSelected(null)}
         />
       )}
-      {gameOver && (
+      {gameOver && !bannerUp && (
         <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
           <Standings view={view} name={name} />
           <GameRecap view={view} history={history} name={name} />
