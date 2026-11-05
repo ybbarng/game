@@ -220,6 +220,7 @@ export function RaceView({
         <div className="flex flex-col items-center">
           {mine ? (
             <CubePlay
+              flow="small"
               n={n}
               state={myState}
               mask={null}

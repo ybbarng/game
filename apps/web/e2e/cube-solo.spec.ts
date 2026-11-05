@@ -1,5 +1,5 @@
 import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
-import { expect, test } from "./test";
+import { expect, type Page, test } from "./test";
 
 /**
  * 큐브 혼자 맞추기(/cube/solo)·블라인드(/cube/blind, docs/47). 섞고, 키로 섞기의 거꾸로를 쳐서 맞추면 결과 상자가 뜬다.
@@ -15,6 +15,20 @@ test.beforeEach(async ({ page }) => {
   await no3d(page);
   await useNotationKeys(page);
 });
+
+/**
+ * 큐브 칸 아래 끝이 첫 화면 안에 있다(데스크톱 1280×720, 2026-11-05: 진행 막대·칩·띠가 큐브를 밀어 잘렸다).
+ * 칸은 남은 화면 높이에 맞춰 줄어든다(`CubePlay`의 `fitViewport`)
+ */
+async function expectStageOnScreen(page: Page) {
+  const height = page.viewportSize()?.height ?? 0;
+  await expect
+    .poll(async () => {
+      const box = await page.locator("[data-cube-stage]").boundingBox();
+      return box ? box.y + box.height : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(height);
+}
 
 /** 섞기 글의 거꾸로를 「표기」 배치 키로 */
 function inverseKeys(scramble: string): string[] {
@@ -66,11 +80,34 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   await expect(main).toHaveAttribute("data-cube-phase", "inspect");
 
   const keys = inverseKeys(text);
-  // 첫 면 돌리기로 시간이 시작되고 수가 는다
+  // 첫 면 돌리기로 시간이 시작되고 수가 는다. 수 흐름 띠에 그 수가 뜬다(docs/51 1-1)
   await page.keyboard.press(keys[0] as string);
   await expect(main).toHaveAttribute("data-cube-phase", "solving");
   await expect(moves).toHaveText("1");
-  for (const k of keys.slice(1)) await page.keyboard.press(k);
+  await expect(page.locator("[data-cube-flow-moves]")).not.toHaveAttribute(
+    "data-cube-flow-moves",
+    "",
+  );
+  for (const k of keys.slice(1, -1)) await page.keyboard.press(k);
+  // 한 수 남은 큐브: 이정표 칩이 켜지고(면 하나만 어긋남 = 십자·두 층 등), 완성까지 1수, 막대는 거의 끝
+  await expect(page.locator("[data-cube-milestones]")).toBeVisible();
+  // 한꺼번에 켜진 것은 칩 하나에 「가장 나아간 단계 +n」으로 한 줄
+  const chip = page.locator("[data-milestone]").first();
+  await expect(chip).toHaveAttribute("data-milestone", /(^|\+)cross(\+|$)/);
+  await expect(chip).toContainText(/\+\d+/);
+  const chipBox = await chip.boundingBox();
+  expect(chipBox?.height ?? 99).toBeLessThan(30);
+  await expect(page.locator("[data-cube-near]")).toHaveAttribute(
+    "data-cube-near",
+    "1",
+  );
+  await expect(page.locator("[data-cube-progress]")).toHaveAttribute(
+    "data-cube-progress",
+    "19.5",
+  );
+  await expectStageOnScreen(page);
+  await shot(page, "solo-near", info.project.name);
+  await page.keyboard.press(keys.at(-1) as string);
 
   const result = page.locator("[data-cube-result]");
   await expect(result).toBeVisible();
@@ -78,7 +115,56 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   await expect(main).toHaveAttribute("data-cube-phase", "done");
   await expect(moves).toHaveText(String(keys.length));
   await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
+  // 결과 상자: 구간 기록(다 맞춘 순간 = 윗층)과 이 섞기의 짧은 풀이
+  await expect(page.locator("[data-cube-splits]")).toHaveAttribute(
+    "data-cube-splits",
+    /(^| )ll$/,
+  );
+  await expect(page.locator("[data-cube-short]")).toBeVisible({
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await expect(page.locator("[data-cube-progress]")).toHaveAttribute(
+    "data-cube-progress",
+    "20",
+  );
   await shot(page, "solo-done", info.project.name);
+});
+
+test("수 흐름 띠: 같은 면은 합치고, 되돌리면 지우고, 휴대폰은 큐브 위에 겹친다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "휴대폰 세로와 데스크톱으로 본다",
+  );
+  await page.goto("/cube/solo");
+  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
+    { timeout: SCRAMBLE_TIMEOUT },
+  );
+  const buttons = page.locator("[data-cube-buttons]");
+  const flow = page.locator("[data-cube-flow-moves]");
+  await buttons.getByRole("button", { name: "R", exact: true }).click();
+  await buttons.getByRole("button", { name: "R", exact: true }).click();
+  await buttons.getByRole("button", { name: "U", exact: true }).click();
+  await expect(flow).toHaveAttribute("data-cube-flow-moves", "R2 U");
+  await buttons.getByRole("button", { name: "되돌리기" }).click();
+  await expect(flow).toHaveAttribute("data-cube-flow-moves", "R2");
+  // 띠는 화면 폭을 넘지 않는다. 휴대폰은 큐브 칸 위쪽 가장자리에 겹치고, 데스크톱은 큐브 위 한 줄
+  const strip = await page.locator("[data-cube-flow]").boundingBox();
+  const stage = await page.locator("[data-cube-stage]").boundingBox();
+  const width = page.viewportSize()?.width ?? 0;
+  expect(strip && stage).toBeTruthy();
+  if (!strip || !stage) return;
+  expect(strip.x).toBeGreaterThanOrEqual(0);
+  expect(strip.x + strip.width).toBeLessThanOrEqual(width + 0.5);
+  if (info.project.name === "phone-portrait") {
+    expect(strip.y).toBeLessThanOrEqual(stage.y + 1);
+    expect(strip.y + strip.height).toBeGreaterThan(stage.y);
+  } else {
+    expect(strip.y + strip.height).toBeLessThanOrEqual(stage.y + 1);
+    await expectStageOnScreen(page);
+  }
+  await shot(page, "solo-flow", info.project.name);
 });
 
 test("블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF", async ({

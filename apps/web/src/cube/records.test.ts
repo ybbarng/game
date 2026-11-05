@@ -4,9 +4,11 @@ import {
   addRecord,
   averageOf,
   formatMs,
+  formatSplits,
   loadRecords,
   MAX_RECORDS,
   parseReplay,
+  parseSplits,
   type SolveRecord,
 } from "./records";
 
@@ -102,5 +104,59 @@ describe("기록", () => {
       ["U'", 120],
       ["y", -30],
     ]);
+  });
+});
+
+describe("구간 기록", () => {
+  it("저장하고 다시 읽는다", () => {
+    const store = memoryStorage();
+    const splits = formatSplits([
+      { id: "cross", ms: 3210.4 },
+      { id: "f2l1", ms: 8020 },
+    ]);
+    expect(splits).toBe("cross@3210 f2l1@8020");
+    addRecord({ ...rec(9000), splits }, store);
+    const got = loadRecords("solo", 3, store)[0];
+    expect(parseSplits(got?.splits)).toEqual([
+      { id: "cross", ms: 3210 },
+      { id: "f2l1", ms: 8020 },
+    ]);
+  });
+
+  it("구간 기록이 없던 옛 기록도 그대로 읽히고, 새 기록과 섞여도 번호가 이어진다", () => {
+    const old = memoryStorage();
+    // 2026-11-04 꼴 그대로(splits 칸 없음)
+    old.setItem(
+      "cube.records.v1",
+      JSON.stringify({
+        "solo-3": [
+          {
+            at: 1,
+            n: 3,
+            mode: "solo",
+            ms: 20000,
+            penalty: 0,
+            moves: 60,
+            scramble: "R U",
+            replay: "R@0 U@100",
+          },
+        ],
+      }),
+    );
+    const list = loadRecords("solo", 3, old);
+    expect(list).toHaveLength(1);
+    expect(parseSplits(list[0]?.splits)).toEqual([]);
+    const next = addRecord({ ...rec(9000), splits: "cross@1000" }, old);
+    expect(next.map((r) => r.no)).toEqual([2, 1]);
+    expect(parseSplits(next[0]?.splits)).toEqual([{ id: "cross", ms: 1000 }]);
+  });
+
+  it("깨진 글은 그 조각만 건너뛴다", () => {
+    expect(parseSplits("cross@1 bad f2l1@-3 f2l1@x cross@9 oll@20")).toEqual([
+      { id: "cross", ms: 1 },
+      { id: "oll", ms: 20 },
+    ]);
+    expect(parseSplits(42)).toEqual([]);
+    expect(parseSplits(undefined)).toEqual([]);
   });
 });

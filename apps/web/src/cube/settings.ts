@@ -44,6 +44,18 @@ export const BACK_VIEW_LABEL: Record<BackView, string> = {
   off: "끔",
 };
 
+/**
+ * 수 흐름 띠(docs/51 1-1). 「켬」이면 혼자 맞추기·배우기는 크게, 대결은 작게. 「작게」면 어디서나 작게.
+ * 움직임 줄이기를 켠 기기는 떴다 작아지는 움직임 없이 글자만 더한다
+ */
+export type FlowStripMode = "on" | "small" | "off";
+
+export const FLOW_STRIP_LABEL: Record<FlowStripMode, string> = {
+  on: "켬",
+  small: "작게",
+  off: "끔",
+};
+
 export interface CubeSettings {
   version: 1;
   colorScheme: ColorScheme;
@@ -80,6 +92,8 @@ export interface CubeSettings {
    * 데스크톱은 늘 둘 다 보이고 키 그림도 누를 수 있다
    */
   touchKeyboard: boolean;
+  /** 수 흐름 띠(2026-11-05, 기본 켬) */
+  flowStrip: FlowStripMode;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -102,6 +116,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   keyFingers: true,
   backView: "mirror",
   touchKeyboard: false,
+  flowStrip: "on",
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
 };
@@ -181,6 +196,10 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
         ? d.backView
         : DEFAULT_SETTINGS.backView,
     touchKeyboard: bool(d.touchKeyboard, DEFAULT_SETTINGS.touchKeyboard),
+    flowStrip:
+      typeof d.flowStrip === "string" && d.flowStrip in FLOW_STRIP_LABEL
+        ? (d.flowStrip as FlowStripMode)
+        : DEFAULT_SETTINGS.flowStrip,
     heroSize,
     heroMethod,
   };

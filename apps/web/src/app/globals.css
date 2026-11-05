@@ -73,6 +73,72 @@ html:has([data-game="cube"]) body {
   background: #171717;
 }
 
+/*
+ * 큐브 수 흐름 띠(docs/51 1-1): 새 수가 크게 떴다가 작아지며 자리를 넓혀(max-width) 앞 수들을 왼쪽으로 민다.
+ * 합친 수(U U → U2)는 제자리에서 톡 한 번. 왼쪽 끝은 흐리게 사라진다. 움직임 줄이기면 글자만 더한다
+ */
+@keyframes cube-flow-pop {
+  0% {
+    max-width: 0;
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    max-width: 5rem;
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.cube-flow-pop {
+  display: inline-flex;
+  animation: cube-flow-pop 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cube-flow-bump {
+  0% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.cube-flow-bump {
+  animation: cube-flow-bump 180ms ease-out both;
+}
+.cube-flow-track {
+  mask-image: linear-gradient(to right, transparent, #000 22%);
+}
+/* 이정표 칩: 아래에서 살짝 올라오며 빛났다가 가라앉는다 */
+@keyframes cube-milestone-in {
+  0% {
+    transform: translateY(6px) scale(0.9);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0.6);
+  }
+  40% {
+    transform: none;
+    opacity: 1;
+    box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.25);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0);
+  }
+}
+.cube-milestone-in {
+  animation: cube-milestone-in 700ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-flow-pop,
+  .cube-flow-bump,
+  .cube-milestone-in {
+    animation: none;
+  }
+}
+
 /* 윷놀이: 윷가락이 공중에서 돌다 떨어지고(--spin만큼 돈다), 말·결과가 톡 튀어나온다 */
 @keyframes yut-toss {
   0% {

@@ -5,15 +5,24 @@ import {
   invertMove,
   isRotation,
   isSolved,
+  type MilestoneId,
+  milestonesOf,
   parseMoves,
+  type SolveProgress,
   type StickerMask,
   solvedCube,
+  solveProgress,
   stageMask,
 } from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import type { SolveMode, SolveRecord } from "./records";
+import {
+  formatSplits,
+  type SolveMode,
+  type SolveRecord,
+  type Split,
+} from "./records";
 
 /**
  * 혼자 맞추기·가상 블라인드 한 번의 진행(docs/47 1·7절). 화면을 모르는 순수 상태 기계라 시계(`Clock`)를 넣어 시험한다.
@@ -100,6 +109,15 @@ export class SolveSession {
   private undoStack: CubeMove[] = [];
   /** 면 돌린 수(되돌리기도 한 수, 큐브 돌리기는 빼고) */
   moveCount = 0;
+  /**
+   * 혼자 맞추기의 구간 기록: 이정표를 처음 지난 시각(맞추기 시작부터 ms), 지난 차례대로(docs/51 1-2).
+   * 맞추는 동안만 잰다. 블라인드는 재지 않는다(가린 채 맞추는 동안 진행을 알려 주면 안 된다)
+   */
+  splits: Split[] = [];
+  /** 이번 판 진행 막대의 가장 높았던 값(0~1, 막대의 눈금) */
+  bestProgress = 0;
+  private progressCache: { state: PuzzleState; value: SolveProgress } | null =
+    null;
   result: SolveResult | null = null;
   /** 살펴보기·외우기가 시작된 시각 */
   private phaseStart = 0;
@@ -169,6 +187,8 @@ export class SolveSession {
     this.moveCount = 0;
     this.result = null;
     this.penalty = 0;
+    this.splits = [];
+    this.bestProgress = 0;
     const now = this.clock.now();
     this.phaseStart = now;
     if (this.mode === "blind") {
@@ -202,7 +222,23 @@ export class SolveSession {
     this.undoStack = [];
     this.moveCount = 0;
     this.result = null;
+    this.splits = [];
+    this.bestProgress = 0;
     this.changed();
+  }
+
+  /** 지금 상태의 진행(조각 점수·큰 큐브 숫자). 같은 상태면 다시 계산하지 않는다 */
+  get progress(): SolveProgress {
+    const hit = this.progressCache;
+    if (hit && hit.state === this.state) return hit.value;
+    const value = solveProgress(this.n, this.state);
+    this.progressCache = { state: this.state, value };
+    return value;
+  }
+
+  /** 지나간 이정표 하나의 시각(없으면 undefined) */
+  splitOf(id: MilestoneId): number | undefined {
+    return this.splits.find((x) => x.id === id)?.ms;
   }
 
   /** 수 하나. 받아들였으면 "applied"(화면이 장면에 넣는다) */
@@ -226,6 +262,9 @@ export class SolveSession {
     if (counting || this.phase === "inspect" || this.phase === "ready")
       this.history.push({ notation, move, t: now - this.solveStart });
     if (!rotation) this.moveCount++;
+    // 큐브 돌리기는 색 기준 판정을 바꾸지 않으니 세지 않는다
+    if (this.phase === "solving" && this.mode === "solo" && !rotation)
+      this.track(now - this.solveStart);
     if (this.phase === "solving" && isSolved(this.n, this.state))
       this.finishSolo(now);
     this.changed();
@@ -305,6 +344,15 @@ export class SolveSession {
 
   private penalty = 0;
 
+  /** 이정표·막대 눈금을 고친다(맞추는 동안 수마다) */
+  private track(t: number): void {
+    const value = this.progress.value;
+    if (value > this.bestProgress) this.bestProgress = value;
+    for (const id of milestonesOf(this.n, this.state))
+      if (!this.splits.some((x) => x.id === id))
+        this.splits.push({ id, ms: t });
+  }
+
   private finishSolo(now: number): void {
     this.result = {
       ms: now - this.solveStart,
@@ -345,6 +393,7 @@ export class SolveSession {
       scramble: this.scramble,
       ...(this.seed === undefined ? {} : { seed: this.seed }),
       ...(r.memoMs === undefined ? {} : { memoMs: r.memoMs }),
+      ...(this.splits.length > 0 ? { splits: formatSplits(this.splits) } : {}),
       replay: this.history
         .map((e) => `${e.notation}@${Math.round(e.t)}`)
         .join(" "),

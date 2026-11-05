@@ -95,6 +95,19 @@ describe("큐브 설정 저장", () => {
     expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
   });
 
+  it("수 흐름 띠: 옛 저장값·모르는 값은 켬, 고른 값은 그대로", () => {
+    expect(parseSettings(JSON.stringify({ version: 1 })).flowStrip).toBe("on");
+    expect(
+      parseSettings(JSON.stringify({ flowStrip: "small" })).flowStrip,
+    ).toBe("small");
+    expect(parseSettings(JSON.stringify({ flowStrip: "off" })).flowStrip).toBe(
+      "off",
+    );
+    expect(parseSettings(JSON.stringify({ flowStrip: 3 })).flowStrip).toBe(
+      "on",
+    );
+  });
+
   it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
     expect(parseSettings(JSON.stringify({ version: 1 })).backView).toBe(
       "mirror",

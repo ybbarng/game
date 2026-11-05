@@ -73,6 +73,38 @@ describe("혼자 맞추기", () => {
     });
   });
 
+  it("구간 기록: 이정표를 처음 지난 시각을 지난 차례로 남기고, 기록에 함께 저장한다", () => {
+    const { clock, records, s, type } = setup({ inspection: false });
+    s.start("U R");
+    clock.advance(1_000);
+    type("R'");
+    // 첫 수가 시간을 연다: 위층만 어긋난 상태라 아래 두 층·블록이 한꺼번에 켜진다
+    expect(s.splitOf("cross")).toBe(0);
+    expect(s.splitOf("layer2")).toBe(0);
+    expect(s.splitOf("ll")).toBeUndefined();
+    expect(s.bestProgress).toBeGreaterThan(0.9);
+    clock.advance(1_500);
+    type("U'");
+    expect(s.phase).toBe("done");
+    expect(s.splitOf("ll")).toBe(1_500);
+    expect(records[0]?.splits).toMatch(/^cross@0 .*ll@1500$/);
+  });
+
+  it("구간 기록은 새 판·맞춘 상태로에서 지우고, 블라인드는 재지 않는다", () => {
+    const { s, type } = setup({ inspection: false });
+    s.start("U R");
+    type("R'");
+    expect(s.splits.length).toBeGreaterThan(0);
+    s.start("U R");
+    expect(s.splits).toEqual([]);
+    expect(s.bestProgress).toBe(0);
+    const blind = setup({ mode: "blind" });
+    blind.s.start("U R");
+    blind.s.advance();
+    blind.type("R'");
+    expect(blind.s.splits).toEqual([]);
+  });
+
   it("시간은 첫 면 돌리기부터 맞춘 수까지", () => {
     const { clock, s } = setup();
     s.start(SCRAMBLE);

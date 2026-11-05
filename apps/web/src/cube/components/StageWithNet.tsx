@@ -49,8 +49,8 @@ export function StageWithNet({
   stage: ReactNode;
   /** 펼친 그림. 없으면 큐브만 */
   net: ReactNode | null;
-  /** 큐브 자리의 최대 너비(px) */
-  maxWidth: number;
+  /** 큐브 자리의 최대 너비(px, 또는 CSS 길이: 화면 높이에 맞출 때 `min(600px, calc(100dvh - …))`) */
+  maxWidth: number | string;
   /** 자리 재기(`useBackView`의 `ref`) */
   boxRef?: RefObject<HTMLDivElement | null>;
 }) {

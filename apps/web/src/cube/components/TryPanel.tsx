@@ -394,6 +394,7 @@ export function TryPanel({
       )}
 
       <CubePlay
+        flow="large"
         n={n}
         state={state}
         mask={mask}

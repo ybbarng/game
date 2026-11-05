@@ -4,6 +4,7 @@ import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import type { AlgBook, ImportResult } from "../algs/store";
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
+import type { ShortSolution } from "../progress/distance";
 
 /**
  * 큐브 워커가 받는 일과 돌려주는 답. 섞기(`cube-scramble`)와 3×3 풀이(`cube-solver`)는 처음 부를 때
@@ -32,6 +33,21 @@ export type CubeJob =
       twist: number[];
     }
   | {
+      /** 맞춘 상태까지 가장 짧은 수(`max`보다 멀면 null), 2×2·3×3만(`progress/distance.ts`) */
+      kind: "distance";
+      size: number;
+      perm: number[];
+      twist: number[];
+      max: number;
+    }
+  | {
+      /** 이 섞기의 짧은 풀이(결과 상자) */
+      kind: "short";
+      size: number;
+      perm: number[];
+      twist: number[];
+    }
+  | {
       /** 십자 훈련 한 판(어려움에 맞는 섞기 + 최적 수·해, `cross/scramble.ts`) */
       kind: "cross";
       request: CrossRoundRequest;
@@ -44,7 +60,10 @@ export type CubeJobAnswer =
   | BotPlan
   | ImportResult
   | HeroSolve
-  | CrossRound;
+  | CrossRound
+  | ShortSolution
+  | number
+  | null;
 
 export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
   ? Scramble
@@ -56,7 +75,11 @@ export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
         ? HeroSolve
         : J extends { kind: "cross" }
           ? CrossRound
-          : string;
+          : J extends { kind: "distance" }
+            ? number | null
+            : J extends { kind: "short" }
+              ? ShortSolution | null
+              : string;
 
 export type CubeJobMessage = { id: number; job: CubeJob };
 export type CubeJobReply =
@@ -80,6 +103,18 @@ export async function runCubeJob(job: CubeJob): Promise<CubeJobAnswer> {
       perm: Uint16Array.from(job.perm),
       twist: Uint8Array.from(job.twist),
     });
+  }
+  if (job.kind === "distance" || job.kind === "short") {
+    const { distanceToSolved, shortSolution } = await import(
+      "../progress/distance"
+    );
+    const state = {
+      perm: Uint16Array.from(job.perm),
+      twist: Uint8Array.from(job.twist),
+    };
+    return job.kind === "distance"
+      ? distanceToSolved(job.size, state, job.max)
+      : shortSolution(job.size, state);
   }
   if (job.kind === "cross") {
     const { makeCrossRound } = await import("../cross/scramble");
