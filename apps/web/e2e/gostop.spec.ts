@@ -1,5 +1,12 @@
 import { useTestSpeed } from "./fast";
-import { expect, type Page, ready, test } from "./test";
+import {
+  expect,
+  fastForwardUntil,
+  type Page,
+  ready,
+  speedUpAnimations,
+  test,
+} from "./test";
 
 /*
  * 고스톱 화면 시험. 혼자 하기는 `?seed=`로 패를 정해 늘 같은 판이 나온다.
@@ -350,4 +357,57 @@ test("고스톱: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음�
   await page.getByRole("button", { name: "한 걸음 앞으로" }).click();
   await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
   await page.screenshot({ path: info.outputPath("gostop-review.png") });
+});
+
+test("고스톱 연출: 섞고 나눠 준 뒤, 낸 카드의 겉그림이 손패에서 바닥으로 날아가 내려앉는다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
+  await speedUpAnimations(page);
+  await page.goto("/gostop?seed=7");
+  await page.getByRole("button", { name: /나홀로 고스톱/ }).click();
+
+  // 화투 뒷면으로 섞고 나눠 주는 연출이 돌고, 끝나면 사라진다
+  await expect(page.locator("[data-dealing]")).toHaveCount(1);
+  await fastForwardUntil(
+    page,
+    async () => (await page.locator("[data-dealing]").count()) === 0,
+    { step: 100 },
+  );
+  const flights = async () =>
+    Number((await page.locator("[data-fx]").getAttribute("data-fx")) ?? 0);
+  // 내 차례이고, 앞 장면(컴퓨터가 낸 카드)의 연출도 다 끝났을 때
+  await fastForwardUntil(
+    page,
+    async () => (await actionable(page)) === "play" && (await flights()) === 0,
+    { step: 100 },
+  );
+
+  // 날기를 멈춰 두고 내면 겉그림이 날고, 도착한 카드는 내려앉을 때까지 가려 둔다
+  const card = page.locator('section[aria-label="손패"] button').first();
+  const id = (await card.getAttribute("data-card")) as string;
+  await card.click();
+  await speedUpAnimations(page, 0);
+  await card.click();
+  if (await page.getByRole("dialog", { name: "흔들기·폭탄" }).isVisible())
+    await page.getByRole("button", { name: "한 장만 내기" }).click();
+  await expect.poll(flights).toBeGreaterThan(0);
+  const landed = page.locator(
+    `[data-card="${id}"]:not(section[aria-label="손패"] *)`,
+  );
+  await expect(landed).toHaveCSS("visibility", "hidden");
+  await page.screenshot({ path: info.outputPath("gostop-fx-play.png") });
+
+  // 다시 돌리면 다 날고, 낸 카드가 바닥이나 먹은 패에 보인다
+  await speedUpAnimations(page);
+  await fastForwardUntil(page, async () => (await flights()) === 0, {
+    step: 50,
+  });
+  await expect(landed).toHaveCSS("visibility", "visible");
+  expect(errors).toEqual([]);
 });

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
+import { cardHeight, HWATU_SHAPE } from "@/components/card-fx/kind";
 import { fanSlot, type Rect, rectsOverlap } from "@/layout/compute-layout";
 
 import { endBoxRect, handStepFor, hwatuLayout } from "./table-layout";
@@ -132,7 +133,9 @@ describe.each(cases)(
     it.skipIf(compact)("먹은 패 네 묶음이 자리 판 안에 들어갈 크기다", () => {
       for (const p of [...plates, layout.myPlate]) {
         expect(4 * layout.captured + 3 * 8 + 16).toBeLessThanOrEqual(p.w);
-        expect(layout.captured * 1.6 + 54).toBeLessThanOrEqual(p.h);
+        expect(
+          cardHeight(HWATU_SHAPE, layout.captured) + 54,
+        ).toBeLessThanOrEqual(p.h);
       }
     });
 

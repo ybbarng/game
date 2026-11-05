@@ -12,7 +12,6 @@ import {
 } from "@game/gostop-engine";
 import { cardOf, MONTH_NAMES, monthOf } from "@game/hwatu";
 import { useEffect, useState } from "react";
-import { useCardFlip } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -22,7 +21,12 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
-import { HwatuDeal, hwatuDealMs, useHwatuDealing } from "@/hwatu/card-fx";
+import {
+  HwatuDeal,
+  hwatuDealMs,
+  useHwatuDealing,
+  useHwatuFlights,
+} from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
@@ -321,7 +325,7 @@ export function GostopTable({
     events.some((e) => e.type === "roundStarted"),
     view ? hwatuDealMs(gostopDealCounts(view.rules)) : 0,
   );
-  useCardFlip({
+  const fx = useHwatuFlights({
     stage: stage.ref,
     scene: seq,
     skip: dealing,
@@ -334,6 +338,7 @@ export function GostopTable({
       background="bg-[radial-gradient(ellipse_at_center,#166534_0%,#0a3622_75%)]"
       mission={mission}
       stageRef={stage.ref}
+      fx={fx}
       handlers={controls.handlers}
     >
       {children}

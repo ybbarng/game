@@ -11,6 +11,12 @@ const handCards = (page: Page) => hand(page).locator("[data-card]");
 const floorButtons = (page: Page) =>
   page.getByRole("region", { name: "바닥" }).getByRole("button");
 const status = (page: Page) => page.getByRole("status");
+/**
+ * 상태 줄 글을 기다리지 않고 읽는다. 판이 끝나 결과 띠가 떠 있는 동안은 상태 줄이 없어, `textContent()`는 띠가
+ * 사라질 때까지 붙잡혀 띠를 놓친다(2026-11-05 CI)
+ */
+const statusNow = async (page: Page) =>
+  (await status(page).allTextContents()).join("");
 
 /** 옵션에서 판 수·컴퓨터를 고른다 */
 async function chooseOptions(page: Page, rounds: string, level?: string) {
@@ -33,12 +39,12 @@ async function playTurn(page: Page, touch: boolean): Promise<boolean> {
       async () =>
         (await ended.count()) > 0 ||
         // 띠가 떠 있는 동안 상태 줄이 없다. 기다리지 않고 읽는다
-        /내 차례|먹을/.test((await status(page).allTextContents()).join("")),
+        /내 차례|먹을/.test(await statusNow(page)),
       { timeout: 20_000, intervals: [50] },
     )
     .toBe(true);
   if ((await ended.count()) > 0) return false;
-  const text = (await status(page).textContent()) ?? "";
+  const text = await statusNow(page);
   if (/먹을 바닥 패를 고르세요/.test(text)) {
     await floorButtons(page).first().click();
     await expect(status(page)).not.toHaveText(/먹을 바닥 패를 고르세요/);
@@ -52,7 +58,7 @@ async function playTurn(page: Page, touch: boolean): Promise<boolean> {
     await card.tap();
   } else await card.click();
   // 바닥에 같은 달이 둘이면 하나를 고른다.
-  if (/둘이에요/.test((await status(page).textContent()) ?? ""))
+  if (/둘이에요/.test(await statusNow(page)))
     await floorButtons(page).first().click();
   await expect(handCards(page)).toHaveCount(before - 1);
   return true;
@@ -232,9 +238,7 @@ test("민화투: 방장이 방을 만들고 친구가 들어와 컴퓨터 하나
 
   // 차례인 쪽이 낸다. 둘 다 끝 상자가 뜰 때까지
   const myTurn = async (p: Page) =>
-    /내 차례|먹을 바닥 패를 고르세요/.test(
-      (await status(p).textContent()) ?? "",
-    );
+    /내 차례|먹을 바닥 패를 고르세요/.test(await statusNow(p));
   for (let guard = 0; guard < 60; guard++) {
     const done =
       (await host.locator("[data-outcome]").count()) > 0 &&
