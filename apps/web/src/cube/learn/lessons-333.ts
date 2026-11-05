@@ -93,26 +93,27 @@ export const CROSS_FLIPPED = {
 };
 export const CROSS_FLIPPED_TRY = {
   setup: "B R B' D' R2",
-  alg: "F' y F' y' F D y F2",
+  alg: "y F y F' D' F y' F2",
   where: "위-오른쪽",
 };
 /** 윗층 흰색 위, 엉뚱한 자리(두 엣지가 자리를 바꿈): 반 바퀴로 내려 첫째 경우 */
 export const CROSS_WRONG_TOP = {
   setup: "R2 D' F2 D R2",
-  alg: "F2 D y F2 D' y' F2",
+  alg: "F2 y D F2 y' D' F2",
   where: "위-앞",
 };
 export const CROSS_WRONG_TOP_TRY = {
   setup: "R2 D2 L2 D2 R2",
-  alg: "y F2 D2 y2 F2 D2 y2 F2",
+  alg: "y F2 y2 D2 F2 y2 D2 F2",
   where: "위-오른쪽",
 };
 
 /**
- * 첫 층(흰 면 위): 앞-오른쪽 위 칸에 흰-파랑-빨강이 박힘. R' D' R D로 빼고, D로 제 칸(오른쪽-뒤) 밑에 옮기고,
- * y로 쥐어 넣는다. y'로 돌아오면 처음 칸 밑에 흰-초록-빨강이 흰색 오른쪽으로 와 있어 한 번이면 들어간다
+ * 첫 층(흰 면 위): 앞-오른쪽 위 칸에 흰-파랑-빨강이 박힘. R' D' R D로 빼고, y로 제 칸(오른쪽-뒤)을 앞-오른쪽에
+ * 쥐고, D로 그 밑에 옮겨 넣는다(큐브 돌리기 → 반대 면 → 공식, 2026-11-05). y'로 돌아오면 처음 칸 밑에 흰-초록-빨강이
+ * 흰색 오른쪽으로 와 있어 한 번이면 들어간다
  */
-export const STUCK_CORNER_UP = `${CORNER_TWIST} D y ${CORNER_TWIST} y' ${CORNER_TWIST}`;
+export const STUCK_CORNER_UP = `${CORNER_TWIST} y D ${CORNER_TWIST} y' ${CORNER_TWIST}`;
 /** 둘째 층: 앞-오른쪽 칸에 앞-왼쪽 칸의 엣지가 박힘 */
 const STUCK_EDGE = `${RIGHT} U' y' ${RIGHT} y`;
 
@@ -579,9 +580,9 @@ const whiteCross: Lesson = {
     },
     {
       kind: "try",
-      body: "흰 엣지 하나가 아래에 있어요(흰색이 아래). 아랫면으로 빨강 센터 밑에 옮기고, 큐브를 돌려(y) 빨강 면을 앞으로 가져와 반 바퀴로 올려 보세요.",
+      body: "흰 엣지 하나가 아래에 있어요(흰색이 아래). 먼저 큐브를 돌려(y) 빨강 면을 앞으로 가져오고, 그다음 아랫면을 돌려 엣지를 빨강 센터 밑에 옮긴 뒤 반 바퀴로 올려 보세요.",
       setup: { alg: "R2 D2" },
-      alg: "D2 y F2",
+      alg: "y D2 F2",
       goal: "white-cross",
       mask: "cross",
     },
@@ -672,7 +673,7 @@ const whiteCross: Lesson = {
     },
     {
       kind: "try",
-      body: "흰-빨강 엣지 블럭이 제자리에서 뒤집혔어요. 앞면으로 아래층까지 내린 뒤(흐트러진 흰 엣지는 되돌리고), 빨강 면을 앞으로 가져와 올려 보세요.",
+      body: "흰-빨강 엣지 블럭이 제자리에서 뒤집혔어요. 큐브를 돌려(y) 그 엣지를 앞에 두고 앞면으로 아래층까지 내린 뒤(흐트러진 흰 엣지는 되돌리고), 빨강 면을 앞으로 가져와 올려 보세요.",
       setup: { alg: CROSS_FLIPPED_TRY.setup },
       alg: CROSS_FLIPPED_TRY.alg,
       goal: "white-cross",
@@ -680,14 +681,14 @@ const whiteCross: Lesson = {
     },
     {
       kind: "demo",
-      body: "다섯째 경우: 흰색은 위를 보지만 옆색이 센터와 달라요(엉뚱한 자리). 흰-빨강과 흰-초록이 자리를 바꿔 들어가 있어요. 앞면을 반 바퀴(F2) 돌려 흰-빨강을 내리면 첫째 경우가 돼요. 아랫면으로 빨강 센터 밑에 옮기고(D), 빨강 면을 앞으로 가져와(y) 반 바퀴(F2). 이때 흰-초록이 함께 내려와요. 아랫면으로 옮기고(D') 초록 면을 앞으로 가져와(y') 반 바퀴(F2).",
+      body: "다섯째 경우: 흰색은 위를 보지만 옆색이 센터와 달라요(엉뚱한 자리). 흰-빨강과 흰-초록이 자리를 바꿔 들어가 있어요. 앞면을 반 바퀴(F2) 돌려 흰-빨강을 내리면 첫째 경우가 돼요. 빨강 면을 앞으로 가져오고(y), 아랫면으로 그 밑에 옮겨(D) 반 바퀴(F2). 이때 흰-초록이 함께 내려와요. 초록 면을 앞으로 가져오고(y'), 아랫면으로 옮겨(D') 반 바퀴(F2).",
       setup: { alg: CROSS_WRONG_TOP.setup },
       alg: CROSS_WRONG_TOP.alg,
       mask: "cross",
     },
     {
       kind: "try",
-      body: "흰-빨강과 흰-주황이 서로 자리를 바꿔 들어가 있어요. 반 바퀴로 내리고, 아랫면으로 옮겨, 그 색 면을 앞으로 가져와 올려 보세요.",
+      body: "흰-빨강과 흰-주황이 서로 자리를 바꿔 들어가 있어요. 반 바퀴로 내리고, 그 색 면을 앞으로 가져온 뒤 아랫면으로 그 밑에 옮겨 올려 보세요.",
       setup: { alg: CROSS_WRONG_TOP_TRY.setup },
       alg: CROSS_WRONG_TOP_TRY.alg,
       goal: "white-cross",
@@ -837,9 +838,9 @@ const firstCorners: Lesson = {
     },
     {
       kind: "try",
-      body: "흰-초록-빨강이 아래층에 있고, 넣을 칸은 오른쪽-뒤에 있어요. 아랫면을 돌려 칸 밑으로 옮기고, 큐브를 돌려(y) 칸을 앞-오른쪽으로 쥐고, R' D' R D를 흰색이 위로 올 때까지.",
-      setup: { alg: setupFor(`D y ${reps(CORNER_TWIST, 3)}`) },
-      alg: `D y ${reps(CORNER_TWIST, 3)}`,
+      body: "흰-초록-빨강이 아래층에 있고, 넣을 칸은 오른쪽-뒤에 있어요. 먼저 큐브를 돌려(y) 칸을 앞-오른쪽으로 쥐고, 그다음 아랫면을 돌려 코너를 칸 밑으로 옮기고, R' D' R D를 흰색이 위로 올 때까지.",
+      setup: { alg: setupFor(`y D ${reps(CORNER_TWIST, 3)}`) },
+      alg: `y D ${reps(CORNER_TWIST, 3)}`,
       goal: "first-layer",
       mask: "first-layer",
     },
@@ -866,7 +867,7 @@ const firstCorners: Lesson = {
     },
     {
       kind: "demo",
-      body: "앞-오른쪽 위 칸에 다른 흰 코너(흰-파랑-빨강)가 박혀 있어요. 칸을 앞-오른쪽에 둔 채 R' D' R D 한 번이면 박힌 코너가 아래로 빠져요. 빠진 것은 아랫면을 돌려(D) 제 칸 밑으로 옮기고, 큐브를 돌려(y) 쥐고 넣어요. 다시 돌려 쥐면(y') 처음 칸 밑에 흰-초록-빨강이 와 있어요.",
+      body: "앞-오른쪽 위 칸에 다른 흰 코너(흰-파랑-빨강)가 박혀 있어요. 칸을 앞-오른쪽에 둔 채 R' D' R D 한 번이면 박힌 코너가 아래로 빠져요. 빠진 것은 큐브를 돌려(y) 제 칸을 앞-오른쪽으로 쥐고, 아랫면을 돌려(D) 그 밑으로 옮겨 넣어요. 다시 돌려 쥐면(y') 처음 칸 밑에 흰-초록-빨강이 와 있어요.",
       setup: { alg: setupFor(STUCK_CORNER_UP) },
       alg: STUCK_CORNER_UP,
       mask: "first-layer",

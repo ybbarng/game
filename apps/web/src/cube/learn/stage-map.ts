@@ -54,7 +54,7 @@ function scrambleFor(moves: string[]): string {
 
 // 3×3 초보자: 흰 십자 → 첫 층 코너(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 코너 자리 → 방향
 const BEGINNER_333_MOVES = [
-  "D' F2 y F D' F' y F y F2 D y F2",
+  "D' F2 y F D' F' y F y F2 y D F2",
   `D ${TW} y' ${reps(TW, 3)} y' D2 ${reps(TW, 5)} y' D' ${TW}`,
   `z2 U ${RIGHT} U2 y' ${FROM_RIGHT} y2 ${RIGHT} U' y' ${FROM_RIGHT}`,
   `${EO} U2 ${EO} ${EO}`,

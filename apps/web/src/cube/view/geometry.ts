@@ -55,6 +55,17 @@ export function moveAngle(move: CubeMove): number {
   return Math.PI / 2;
 }
 
+/** 반 바퀴는 한 번보다 이만큼 길게 돈다 */
+export const HALF_TURN_SLOWER = 1.4;
+
+/**
+ * 3D 장면이 수 하나를 돌리는 시간(ms, 줄이 비어 있을 때). `moveMs`는 장면 설정(0~200으로 자른 값)이다.
+ * 첫 화면 연출이 걸음 시간 안에 회전이 끝나게 맞출 때도 쓴다(`hero/loop.ts` `heroMoveMs`)
+ */
+export function moveDuration(moveMs: number, move: CubeMove): number {
+  return moveMs * (move.turns === 2 ? HALF_TURN_SLOWER : 1);
+}
+
 /** 점을 축으로 -90°×turns 돌린다(정수 격자 그대로) */
 export function rotateVec(v: Vec3, axis: Axis, turns: 1 | 2 | 3): Vec3 {
   let [x, y, z] = v;
