@@ -31,7 +31,7 @@ import { useChat } from "@/net/chat";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { myRequestCard } from "../chain";
 import { eventLine } from "../events";
-import { money, seatLabel, squareName } from "../format";
+import { money, seatLabel, squareName, subject } from "../format";
 import { shownCash } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
 import { metSquares, outcomeOf } from "../kit";
@@ -57,6 +57,7 @@ import {
 import { GalaxyBoard } from "./GalaxyBoard";
 import { ShipToken } from "./parts";
 import { SeatCard, type SeatCardProps } from "./SeatCard";
+import { cornerHelp, SquareCard } from "./SquareCard";
 
 /** 은하 한 바퀴 화면 바탕: 깊은 밤하늘 */
 export const GALAXY_BG =
@@ -218,26 +219,12 @@ function SquareInfo({
           )}
         </>
       ) : (
-        <p className="text-white/60 text-xs">{cornerHelp(view, square)}</p>
+        <p className="text-white/60 text-xs">
+          {cornerHelp(view, square).join(" ")}
+        </p>
       )}
     </Sheet>
   );
-}
-
-function cornerHelp(view: GalaxyView, square: number): string {
-  const kind = view.board.squares[square]?.kind;
-  switch (kind) {
-    case "base":
-      return `지나가거나 멈추면 우주국 지원금 ${money(NUMBERS.salary)}을 받아요.`;
-    case "asteroid":
-      return `공문이나 같은 눈 세 번으로 오면 걸려요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`;
-    case "observatory":
-      return "멈추면 관측 지원금을 받아요. 자산 순위가 낮을수록 많아요.";
-    case "comet":
-      return "주사위를 한 번 더 굴려 그만큼 더 가요.";
-    default:
-      return "우주국 공문 한 장을 펴서 따라요.";
-  }
 }
 
 /** 판 끝: 순위·자산 표 */
@@ -573,7 +560,9 @@ export function GalaxyGame({
   else if (!decision) {
     status =
       view.phase === "bid" || view.phase === "bidReveal"
-        ? "모두가 봉투를 내는 중이에요"
+        ? view.auction
+          ? `${subject(name(view.auction.passer))} ${squareName(view.board, view.auction.square)}에 도착했지만 사지 않아 모두 봉투를 내는 중이에요`
+          : "모두가 봉투를 내는 중이에요"
         : view.phase === "commit" || view.phase === "reveal"
           ? "모두의 기기가 주사위를 함께 정하는 중이에요"
           : view.phase === "requestReveal"
@@ -662,6 +651,7 @@ export function GalaxyGame({
       square={decision.square}
       max={decision.max}
       onBid={(v) => placeBid(v)}
+      name={name}
     />
   ) : decision?.kind === "trade" ? (
     <TradeAnswer view={view} offer={decision.offer} name={name} submit={act} />
@@ -805,6 +795,17 @@ export function GalaxyGame({
       name={name}
       follow={follow}
       marked={marked}
+      focus={trading ? null : info}
+      card={
+        selected !== null && !trading ? (
+          <SquareCard
+            view={view}
+            square={selected}
+            name={name}
+            onClose={() => setSelected(null)}
+          />
+        ) : null
+      }
     />
   );
 
@@ -822,10 +823,10 @@ export function GalaxyGame({
       </div>
       {timedDecision && <DecisionTimer resetKey={decisionKey} />}
       {decisionPanel}
-      {!decisionPanel && info !== null && !gameOver && (
+      {!decisionPanel && hover !== null && selected === null && !gameOver && (
         <SquareInfo
           view={view}
-          square={info}
+          square={hover}
           name={name}
           onClose={() => setSelected(null)}
         />
