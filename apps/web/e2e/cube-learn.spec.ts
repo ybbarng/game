@@ -210,8 +210,8 @@ test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면�
 }, info) => {
   await useNotationKeys(page);
   await page.goto("/cube/learn?lesson=333-white-cross");
-  // 7번: 흰색이 앞을 보는 가운데 줄 엣지를 R로 올린다
-  await goStep(page, 7);
+  // 8번: 흰색이 앞을 보는 가운데 줄 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
+  await goStep(page, 8);
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "try");
   await expect(section).toContainText("가운데 줄 엣지");
@@ -219,12 +219,13 @@ test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면�
   await shot(page, "learn-cross-case", info.project.name);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.locator("[data-cube-hint-button]").click();
-  const hint = (await page
-    .locator("[data-cube-hint]")
-    .getAttribute("data-cube-hint")) as string;
-  expect(hint).toBe("R");
-  for (const k of keysFor(hint)) await page.keyboard.press(k);
+  // 힌트는 한 수씩 보여 준다(y F)
+  for (const want of ["y", "F"]) {
+    await page.locator("[data-cube-hint-button]").click();
+    const hint = page.locator("[data-cube-hint]");
+    await expect(hint).toHaveAttribute("data-cube-hint", want);
+    for (const k of keysFor(want)) await page.keyboard.press(k);
+  }
   await expect(page.locator("[data-cube-try]")).toHaveAttribute(
     "data-cube-passed",
     "",

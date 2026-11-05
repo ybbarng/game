@@ -7,7 +7,7 @@ import { useId } from "react";
 import { prefersReducedMotion } from "@/game/timing";
 import type { Point, Size } from "@/layout/compute-layout";
 
-import { ShuffleLoop } from "./DealAnimation";
+import { ShuffleLoop } from "./card-fx";
 
 /** 끊긴 사람을 오래 기다려 연 끝내기 투표. `voters`는 표를 낼 수 있는 자리(연결된 사람) */
 export interface EndVoteState {

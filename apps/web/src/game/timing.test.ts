@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { dealPackets, dealPlan, FLIGHT_MS } from "./timing";
+import { dealPackets, dealPlan, dealPlanFor, FLIGHT_MS } from "./timing";
 
 describe("나눠 주기 순서", () => {
   it("원작처럼 5마는 2·3·3·2, 6마는 2·3·3, 7마는 2·3·2장씩 묶어 준다", () => {
@@ -33,5 +33,24 @@ describe("나눠 주기 순서", () => {
     const firstPacketLast = flights[1]?.delay ?? 0;
     const nextPacket = flights[2]?.delay ?? 0;
     expect(nextPacket).toBeGreaterThanOrEqual(firstPacketLast + FLIGHT_MS);
+  });
+});
+
+describe("받는 곳마다 장수가 다른 나눠 주기(화투 손패·바닥)", () => {
+  it("같은 장수면 dealPlan과 같다", () => {
+    expect(dealPlanFor([10, 10, 10, 10, 10])).toEqual(dealPlan(10, 5));
+  });
+
+  it("맞고: 손패 10장씩과 바닥 8장을 다섯 장 묶음으로 한 바퀴에 하나씩 준다", () => {
+    const { flights } = dealPlanFor([10, 10, 8], [5]);
+    const got = [0, 1, 2].map(
+      (t) => flights.filter((f) => f.player === t).length,
+    );
+    expect(got).toEqual([10, 10, 8]);
+    expect(flights.slice(0, 15).map((f) => f.player)).toEqual([
+      ...Array(5).fill(0),
+      ...Array(5).fill(1),
+      ...Array(5).fill(2),
+    ]);
   });
 });
