@@ -49,6 +49,7 @@ import {
   shortDate,
 } from "../daily";
 import { COMBO_SHOW } from "../flow/strip";
+import { soloSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { AlgCase } from "../learn";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
@@ -82,7 +83,7 @@ import {
   HpBar,
   REFILL_SHOW_MS,
 } from "./ChallengeParts";
-import { CubePlay, playCubeCue } from "./CubePlay";
+import { CubePlay, playCubeSound } from "./CubePlay";
 import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
@@ -197,6 +198,11 @@ export function SolveApp({
    */
   const [prior, setPrior] = useState<SolveRecord[]>([]);
   const bests = useMemo(() => bestSegments(prior), [prior]);
+  // 세션 소리(골드·개인 최고)가 지금 판의 옛 기록을 읽는다
+  const priorRef = useRef(prior);
+  priorRef.current = prior;
+  const bestsRef = useRef(bests);
+  bestsRef.current = bests;
   const [notice, setNotice] = useState<string | null>(null);
   const [replaying, setReplaying] = useState(false);
   const [, tick] = useState(0);
@@ -231,13 +237,27 @@ export function SolveApp({
 
   // 크기·방식마다 세션 하나. 효과 정리에서 치우고, 개발 모드처럼 효과가 다시 돌면 새로 만든다
   const session = useRenewable(() => {
+    // 소리 고르기는 game-sounds.ts(docs/51 5절): 골드 칩이면 띵 대신 반짝임, 개인 최고면 맞춤 대신 팡파르
     const onCue = (cue: SessionCue) => {
-      const s = settingsRef.current;
-      if (cue === "inspect8" || cue === "inspect12")
-        playCubeCue(s, "cubeInspect");
-      else if (cue === "solved") playCubeCue(s, "cubeSolved");
-      else if (cue === "low") playCubeCue(s, "cubeInspect");
-      else playCubeCue(s, "invalid");
+      const r = made.result;
+      const last = made.splits.at(-1);
+      playCubeSound(
+        settingsRef.current,
+        soloSound(cue, {
+          gold:
+            cue === "milestone" &&
+            last !== undefined &&
+            goldSplits(made.splits, bestsRef.current).has(last.ms),
+          best:
+            cue === "solved" &&
+            !challenge &&
+            r !== null &&
+            isPersonalBest(
+              r.ms === null ? null : r.ms + r.penalty,
+              priorRef.current,
+            ),
+        }),
+      );
     };
     const made: SolveSession = new SolveSession({
       n,

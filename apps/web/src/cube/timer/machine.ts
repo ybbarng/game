@@ -22,7 +22,8 @@ export type Penalty = "none" | "+2" | "DNF";
 export const INSPECTION_MS = 15_000;
 export const INSPECTION_DNF_MS = 17_000;
 /** 살펴보기 알림 시각 */
-export const INSPECTION_WARNINGS = [8_000, 12_000] as const;
+/** 살펴보기 알림: 대회처럼 8·12초, 15초(지금부터 +2)는 다른 소리(docs/51 5절) */
+export const INSPECTION_WARNINGS = [8_000, 12_000, 15_000] as const;
 export const DEFAULT_HOLD_MS = 300;
 
 export type Phase = "idle" | "inspecting" | "holding" | "ready" | "running";

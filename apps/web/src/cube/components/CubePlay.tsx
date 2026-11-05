@@ -14,6 +14,7 @@ import {
   type StickerMarks,
   stickersFromState,
 } from "../bridge";
+import { type CubeSound, comboSound, comboStep } from "../game-sounds";
 import {
   attachKeyboard,
   buttonMoves,
@@ -68,6 +69,18 @@ const PEEK: Record<"peekBack" | "peekDown", { yaw: number; pitch: number }> = {
 
 export function playCubeCue(settings: CubeSettings, cue: Cue): void {
   if (settings.sound && useSettings.getState().sound) play(cue);
+}
+
+/** 횟수·단계가 있는 큐브 소리(`game-sounds.ts`가 고른 것). 설정의 소리 끄기를 따른다 */
+export function playCubeSound(
+  settings: CubeSettings,
+  sound: CubeSound | null,
+): void {
+  if (!sound || !settings.sound || !useSettings.getState().sound) return;
+  play(sound.cue, {
+    times: sound.times ?? 1,
+    ...(sound.step === undefined ? {} : { step: sound.step }),
+  });
 }
 
 export interface CubePlayProps {
@@ -176,6 +189,7 @@ export function CubePlay({
     onView,
     marks,
     onSticker,
+    combo,
   });
   live.current = {
     state,
@@ -187,6 +201,7 @@ export function CubePlay({
     onView,
     marks,
     onSticker,
+    combo,
   };
 
   // 뒷면 보기: 거울이면 3D 장면에 판을 띄우고, 펼친 그림이면 곁에 둔다(「숨기기」로 둘 다 접는다)
@@ -336,9 +351,15 @@ export function CubePlay({
       return;
     }
     viewRef.current?.enqueue(move);
-    flowRef.current.push(move, before);
+    const pushed = flowRef.current.push(move, before);
     if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
     playCubeCue(c.settings, "cubeTurn");
+    // 흐름 콤보가 단계를 넘으면 작은 "톡"(콤보를 보이는 화면만, docs/51 5절)
+    if (c.combo)
+      playCubeSound(
+        c.settings,
+        comboSound(comboStep(pushed.before, pushed.after)),
+      );
   });
 
   /** 수·명령 하나를 처리한다(키보드와 화면 단추가 함께 쓴다) */
@@ -363,10 +384,15 @@ export function CubePlay({
     const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
     const m = c.onCommand(r.command);
     if (m) {
-      flowRef.current.push(m, before);
+      const pushed = flowRef.current.push(m, before);
       if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, m));
       viewRef.current?.enqueue(m);
       playCubeCue(c.settings, "cubeTurn");
+      if (c.combo)
+        playCubeSound(
+          c.settings,
+          comboSound(comboStep(pushed.before, pushed.after)),
+        );
     }
   });
 
