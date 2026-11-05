@@ -8,6 +8,7 @@ import {
   isRotation,
   isSolved,
   isValidMove,
+  type MilestoneId,
   parseMoves,
   solvedCube,
   solvedPieceRatio,
@@ -16,6 +17,7 @@ import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceGame } from "@/net/race/types";
+import { goalReached } from "./handicap";
 
 /**
  * 계획을 끝내 만들지 못한 컴퓨터가 그 판을 기권하는 까닭(`bot-racer.ts`가 쓴다). 남이 보낸 그만두기 까닭은
@@ -86,10 +88,15 @@ export function stateHash(state: PuzzleState): string {
   );
 }
 
+/**
+ * `goals`: 사람마다 목표 이정표(핸디캡 「목표 다르게」, docs/47 9-5). 그 사람은 목표에 닿은 수에서 끝난다.
+ * 모든 기기가 같은 표를 써야 하므로 방이 판정 설정 지문에 넣어 맞춰 본다(`raceOptionsFor`)
+ */
 export function createCubeRaceGame(
   n: number,
   scrambler: Scrambler,
   event: ScrambleEvent = eventForSize(n),
+  goals: Readonly<Record<string, MilestoneId>> = {},
 ): CubeRaceGame {
   const cache = new Map<number, Scramble>();
   const scrambleOf = (seed: string) => cache.get(scrambleSeed(seed));
@@ -125,7 +132,10 @@ export function createCubeRaceGame(
       if (!isValidMove(n, move)) throw new RangeError("둘 수 없는 수");
       return applyMove(n, state, move);
     },
-    isSolved: (state) => isSolved(n, state),
+    isSolved: (state, player) =>
+      player !== undefined && Object.hasOwn(goals, player)
+        ? goalReached(n, state, goals[player])
+        : isSolved(n, state),
     progress: (state) => solvedPieceRatio(n, state),
     retireReasons: [BOT_NO_PLAN],
     // 큐브 돌리기(x·y·z)는 수로 세지 않는다(의심 표시 「수가 지나치게 적음」 등)

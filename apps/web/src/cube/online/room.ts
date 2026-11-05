@@ -12,6 +12,17 @@ import type {
 } from "@/net/race/types";
 import { randomId, type Transport } from "@/net/transport";
 import { attachBot, botSupports, type PlanFn } from "./bot-racer";
+import {
+  type ActiveHandicap,
+  activeHandicap,
+  averagesOk,
+  type Baseline,
+  cleanAverages,
+  type Handicap,
+  handicapOk,
+  hasHandicap,
+  scoreByAverage,
+} from "./handicap";
 import { RaceHub } from "./hub";
 import {
   type CubeRaceGame,
@@ -19,6 +30,7 @@ import {
   type Scrambler,
 } from "./race-game";
 import {
+  decidedRounds,
   type MatchFormat,
   type MatchRules,
   matchOver,
@@ -53,6 +65,8 @@ export interface RoomSettings {
   inspection: boolean;
   /** 제한 시간(초) */
   timeLimitSec: number;
+  /** 실력 차 균형(docs/51 4절). 옛 판 방장은 보내지 않는다. 쓸 때만 판정 설정 지문에 넣는다(`raceOptionsFor`) */
+  handicap?: Handicap;
 }
 
 /**
@@ -89,6 +103,11 @@ export interface RoomPlayer {
   /** 이 참가자를 맡은 기기(연결 아이디) */
   device: string;
   bot?: BotLevel;
+  /**
+   * 그 사람 기기가 알린 크기별 내 평균(ms, 키 "2"~"5", 혼자 맞추기 기록, `recentAverage`). 「평균 대비」와 출발 늦추기
+   * 추천에 쓴다. 각 기기의 기록이라 확인할 수 없다(친구끼리 믿는 모드)
+   */
+  avgs?: Record<string, number>;
 }
 
 export type RoomStatus = "lobby" | "racing" | "between" | "over";
@@ -114,10 +133,14 @@ export interface RoundRecord extends RoundSummary {
   logs: Record<string, readonly { m: string; t: number }[]>;
   /** 섞인 시작 상태(다시 보기) */
   start: PuzzleState;
+  /** 이 판의 핸디캡(판을 열 때 고정, 없으면 없음) */
+  handicap?: ActiveHandicap;
+  /** 「평균 대비」의 기준(사람마다) */
+  baseline?: Record<string, Baseline>;
 }
 
 type RoomMessage =
-  | { type: "cube-hello"; name: string }
+  | { type: "cube-hello"; name: string; avgs?: Record<string, number> }
   | { type: "cube-room"; state: RoomState }
   | { type: "cube-chat"; id: string; name: string; text: string };
 
@@ -129,6 +152,8 @@ export interface CubeRoomInit {
   /** 손님: 초대 링크에 실린 방장 연결 아이디. 있으면 이 아이디가 보낸 방 상태만 받는다(옛 링크면 없다) */
   hostId?: string;
   name: string;
+  /** 이 기기의 크기별 내 평균(ms, 키 "2"~"5"). 방에 알리고, 판정 설정 지문에서 내 칸을 이 값으로 맞춰 본다 */
+  avgs?: Record<string, number>;
   scrambler: Scrambler;
   settings?: Partial<RoomSettings>;
   /** 시험: 정해진 공개값·컴퓨터 계획 */
@@ -166,20 +191,40 @@ export function matchRules(s: RoomSettings): MatchRules {
  * 모든 기기가 같은 경기 규칙을 받았는지 판마다 맞춰 본다(다르면 「섞기 어긋남」, docs/47 9-3).
  * 다른 방식은 예전과 같은 지문이라 옛 판 화면과 함께 할 수 있다
  */
-export function raceOptionsFor(s: RoomSettings): RaceOptions {
+export function raceOptionsFor(
+  s: RoomSettings,
+  handicap?: ActiveHandicap,
+): RaceOptions {
   const options: RaceOptions = {
     inspectionMs: s.inspection ? 15_000 : 0,
     timeLimitMs: s.timeLimitSec * 1000,
     suspicion: suspicionFor(s.n),
   };
+  const game: Record<string, unknown> = {};
   if (s.format === "points") {
     const r = matchRules(s);
-    options.gameOptions = {
+    Object.assign(game, {
       match: "points",
       rounds: r.rounds,
       scoring: r.scoring,
-    };
+    });
   }
+  // 핸디캡: 출발 늦추기는 대결 틀이 막고 확인한다(`startDelayMs`, 지문에도 대결 틀이 넣는다). 목표와 평균은 게임 설정 지문에.
+  // 쓰지 않으면 예전 지문 그대로(옛 판 화면과 함께 간다)
+  if (handicap) {
+    const delays = Object.entries(handicap.delaySec);
+    if (delays.length > 0)
+      options.startDelayMs = Object.fromEntries(
+        delays.map(([id, sec]) => [id, sec * 1000]),
+      );
+    const goals = Object.keys(handicap.goal).length > 0;
+    if (goals || handicap.avg)
+      game.handicap = {
+        ...(goals ? { goal: handicap.goal } : {}),
+        ...(handicap.avg ? { avg: handicap.avg } : {}),
+      };
+  }
+  if (Object.keys(game).length > 0) options.gameOptions = game;
   return options;
 }
 
@@ -224,6 +269,8 @@ export class CubeRoom {
     off: (() => void)[];
     /** 이 기기 컴퓨터가 계획을 세운 시도 번호 */
     planned: Map<string, number>;
+    /** 이 판의 핸디캡(판을 열 때 고정) */
+    handicap: ActiveHandicap;
   };
   private readonly listeners = new Set<() => void>();
   private disposed = false;
@@ -249,7 +296,14 @@ export class CubeRoom {
         v: 1,
         host: this.me,
         settings: { ...DEFAULT_SETTINGS, ...init.settings },
-        players: [{ id: this.me, name: cleanName(init.name), device: this.me }],
+        players: [
+          {
+            id: this.me,
+            name: cleanName(init.name),
+            device: this.me,
+            ...(init.avgs ? { avgs: init.avgs } : {}),
+          },
+        ],
         round: 0,
         status: "lobby",
       };
@@ -309,6 +363,23 @@ export class CubeRoom {
     return this.current?.game;
   }
 
+  /** 지금 판의 핸디캡(판을 열 때 고정한 것) */
+  handicap(): ActiveHandicap | undefined {
+    return this.current?.handicap;
+  }
+
+  /** 그 사람의 지금 크기 평균(ms). 내 것은 이 기기가 알린 값, 남의 것은 방 상태에 실린 값 */
+  averageOf(id: string): number | null {
+    const s = this.state;
+    if (!s) return null;
+    const key = String(s.settings.n);
+    if (id === this.me) return this.init.avgs?.[key] ?? null;
+    return (
+      s.players.find((p) => p.id === id && p.bot === undefined)?.avgs?.[key] ??
+      null
+    );
+  }
+
   play(move: CubeMove): PlayResult {
     return this.session()?.play(move) ?? { ok: false, reason: "관전" };
   }
@@ -353,7 +424,15 @@ export class CubeRoom {
   setSettings(patch: Partial<RoomSettings>): void {
     const s = this.state;
     if (!this.isHost || !s || s.status === "racing") return;
+    const sizeChanged = patch.n !== undefined && patch.n !== s.settings.n;
     s.settings = { ...s.settings, ...patch };
+    // 목표는 크기마다 다르다: 크기를 바꾸면 비운다
+    const h = s.settings.handicap;
+    if (sizeChanged && h?.goal) {
+      const rest = { ...h };
+      delete rest.goal;
+      s.settings.handicap = rest;
+    }
     // 컴퓨터가 없는 크기면 컴퓨터를 뺀다
     if (!botSupports(s.settings.n))
       s.players = s.players.filter((p) => p.bot === undefined);
@@ -409,6 +488,13 @@ export class CubeRoom {
     return true;
   }
 
+  /** 핸디캡을 바꾼다(새 경기가 된다). 고를 수 없는 값은 받지 않는다 */
+  setHandicap(handicap: Handicap): void {
+    const s = this.state;
+    if (!s || !handicapOk(handicap, s.settings.n)) return;
+    this.setSettings({ handicap });
+  }
+
   /** 새 경기(판 기록을 비운다) */
   newMatch(): void {
     if (!this.isHost || this.state?.status === "racing") return;
@@ -431,6 +517,7 @@ export class CubeRoom {
     this.init.transport?.send({
       type: "cube-hello",
       name: cleanName(this.init.name),
+      ...(this.init.avgs ? { avgs: this.init.avgs } : {}),
     } satisfies RoomMessage);
   }
 
@@ -464,10 +551,19 @@ export class CubeRoom {
       if (BOT_ID.test(from)) return;
       this.connected.add(from);
       const name = cleanName(msg.name) || "손님";
+      const avgs = cleanAverages(msg.avgs);
       const known = s.players.find((p) => p.id === from);
-      if (known) known.name = name;
-      else if (s.players.length < MAX_PLAYERS)
-        s.players.push({ id: from, name, device: from });
+      if (known) {
+        known.name = name;
+        if (avgs) known.avgs = avgs;
+        else delete known.avgs;
+      } else if (s.players.length < MAX_PLAYERS)
+        s.players.push({
+          id: from,
+          name,
+          device: from,
+          ...(avgs ? { avgs } : {}),
+        });
       this.publish();
       return;
     }
@@ -528,8 +624,20 @@ export class CubeRoom {
     // 하한은 기기 하나에 하나: 컴퓨터는 증인이 아니고, 같은 기기 안 참가자끼리는 서로의 증인이 아니다(game-85 ②)
     const witness = (observer: string, of: string) =>
       !bots.has(observer) && owners.get(observer) !== owners.get(of);
-    const game = createCubeRaceGame(s.settings.n, this.init.scrambler);
-    const options = raceOptionsFor(s.settings);
+    // 핸디캡은 사람에게만. 평균은 내 칸만 이 기기가 알린 값으로 넣어 지문을 만든다: 방장이 내 평균을 바꿔 적었으면
+    // 지문이 달라 드러난다(남의 평균은 확인할 수 없다)
+    const humans = race.players.filter((id) => !bots.has(id));
+    const handicap = activeHandicap(s.settings.handicap, humans, {
+      ao5: s.settings.format === "ao5",
+      averageOf: (id) => this.averageOf(id),
+    });
+    const game = createCubeRaceGame(
+      s.settings.n,
+      this.init.scrambler,
+      undefined,
+      handicap.goal,
+    );
+    const options = raceOptionsFor(s.settings, handicap);
     const sessions = new Map<string, RaceSession<CubeMove, PuzzleState>>();
     const off: (() => void)[] = [];
     const round = s.round;
@@ -577,6 +685,7 @@ export class CubeRoom {
       sessions,
       off,
       planned,
+      handicap,
     };
     for (const session of sessions.values()) session.start();
     this.emit();
@@ -599,16 +708,31 @@ export class CubeRoom {
     const seed = snap?.seed ?? "";
     const logs: RoundRecord["logs"] = {};
     for (const id of players) logs[id] = [...(source?.moveLog(id) ?? [])];
-    this.rounds.push({
+    let final = own ? (snap?.result as RaceResult) : result;
+    const record: Omit<RoundRecord, "result"> = {
       race,
       round,
       players,
-      result: own ? (snap?.result as RaceResult) : result,
       seed,
       scramble: c.game.scrambleFor(seed)?.text ?? "",
       logs,
       start: source?.startState() as PuzzleState,
-    });
+      ...(hasHandicap(c.handicap) ? { handicap: c.handicap } : {}),
+    };
+    // 「평균 대비」: 이 판의 순위를 평균 대비 점수로 다시 매긴다. 기준(평균, 없으면 이 경기에서 처음 맞춘 판)은 모든 기기가
+    // 같은 값을 가진다(평균은 지문으로 맞춰 봤고, 앞선 판 결과는 같다)
+    const avg = c.handicap.avg;
+    let score: Record<string, number> | undefined;
+    if (avg) {
+      const prior = decidedRounds(this.rounds)
+        .filter((r) => !r.result.cancelled)
+        .map((r) => r.result);
+      const scored = scoreByAverage(final, avg, prior);
+      final = { ...final, ranking: scored.ranking };
+      score = scored.score;
+      record.baseline = scored.baseline;
+    }
+    this.rounds.push({ ...record, result: final, ...(score ? { score } : {}) });
     const s = this.state;
     if (this.isHost && s && s.race?.id === race) {
       s.status = matchOver(matchRules(s.settings), this.rounds)
@@ -669,7 +793,9 @@ function isRoomState(v: unknown): v is RoomState {
       typeof s.settings?.n === "number" &&
       [2, 3, 4, 5].includes(s.settings.n) &&
       typeof s.settings.timeLimitSec === "number" &&
-      pointsSettingsOk(s.settings)
+      pointsSettingsOk(s.settings) &&
+      handicapOk(s.settings.handicap, s.settings.n) &&
+      s.players.every((p) => p.avgs === undefined || averagesOk(p.avgs))
     )
   )
     return false;

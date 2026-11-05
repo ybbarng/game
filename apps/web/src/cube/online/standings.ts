@@ -39,6 +39,11 @@ export interface MatchRules {
 
 export interface RoundSummary {
   result: RaceResult;
+  /**
+   * 핸디캡 「평균 대비」 점수(낮을수록 좋다, 인정 시간 ÷ 기준 − 1). 있으면 판 안 순위(순위 점수·서든데스)를 인정 시간 대신
+   * 이것으로 가른다. 판 결과의 `ranking`도 이 차례로 다시 매겨 둔다(`room.ts`)
+   */
+  score?: Record<string, number>;
 }
 
 export interface StandingRow {
@@ -97,46 +102,58 @@ function winnerOf(result: RaceResult): string | null {
     : null;
 }
 
-/** 판에서 맞추고 순위에 든 사람(인정 시간이 있는 사람) */
-function ranked(result: RaceResult) {
-  return Object.values(result.players).filter(
-    (p) => p.status === "done" && !p.unranked && p.accepted !== undefined,
-  );
+/** 판에서 맞추고 순위에 든 사람(인정 시간이 있는 사람, 점수가 있으면 점수도 있는 사람)과 견줄 값 */
+function ranked(
+  result: RaceResult,
+  score?: Record<string, number>,
+): { id: string; value: number }[] {
+  return Object.values(result.players)
+    .filter(
+      (p) =>
+        p.status === "done" &&
+        !p.unranked &&
+        p.accepted !== undefined &&
+        (score === undefined || p.id in score),
+    )
+    .map((p) => ({
+      id: p.id,
+      value: score ? (score[p.id] as number) : (p.accepted as number),
+    }));
 }
 
 /**
  * 순위 점수: 판에 든 사람이 m명(기권 포함)이면 k등은 m − k + 1점, 못 맞춤·기권·다툼(순위 없음)은 0점.
  * 인정 시간이 같으면 같은 등수. 판정 없음 판은 아무도 점수가 없다
  */
-export function rankPoints(result: RaceResult): Record<string, number> {
+export function rankPoints(
+  result: RaceResult,
+  score?: Record<string, number>,
+): Record<string, number> {
   const out: Record<string, number> = {};
   if (result.noDecision) return out;
   const m = Object.keys(result.players).length;
-  const done = ranked(result);
+  const done = ranked(result, score);
   for (const p of done) {
-    const place =
-      1 +
-      done.filter((q) => (q.accepted as number) < (p.accepted as number))
-        .length;
+    const place = 1 + done.filter((q) => q.value < p.value).length;
     out[p.id] = m - place + 1;
   }
   return out;
 }
 
-function roundScore(scoring: Scoring, result: RaceResult, id: string): number {
-  if (scoring === "wins") return winnerOf(result) === id ? 1 : 0;
-  return rankPoints(result)[id] ?? 0;
+function roundScore(scoring: Scoring, r: RoundSummary, id: string): number {
+  if (scoring === "wins") return winnerOf(r.result) === id ? 1 : 0;
+  return rankPoints(r.result, r.score)[id] ?? 0;
 }
 
 /** 서든데스 판의 승자: 동점자 가운데 인정 시간이 홀로 가장 빠른 사람. 없으면(모두 못 맞춤·같은 시간) null */
 function suddenDeathWinner(
-  result: RaceResult,
+  r: RoundSummary,
   tied: readonly string[],
 ): string | null {
-  const done = ranked(result).filter((p) => tied.includes(p.id));
+  const done = ranked(r.result, r.score).filter((p) => tied.includes(p.id));
   if (done.length === 0) return null;
-  const best = Math.min(...done.map((p) => p.accepted as number));
-  const top = done.filter((p) => p.accepted === best);
+  const best = Math.min(...done.map((p) => p.value));
+  const top = done.filter((p) => p.value === best);
   return top.length === 1 ? (top[0] as (typeof top)[number]).id : null;
 }
 
@@ -180,7 +197,7 @@ export function pointsMatch(
     used.push(r);
     played++;
     for (const id of Object.keys(r.result.players))
-      scores.set(id, (scores.get(id) ?? 0) + roundScore(scoring, r.result, id));
+      scores.set(id, (scores.get(id) ?? 0) + roundScore(scoring, r, id));
     if (scoring === "wins") {
       const [first = 0, second = 0] = [...scores.values()].sort(
         (a, b) => b - a,
@@ -201,7 +218,7 @@ export function pointsMatch(
       for (const r of rounds.slice(total)) {
         used.push(r);
         suddenDeath++;
-        winner = suddenDeathWinner(r.result, tied);
+        winner = suddenDeathWinner(r, tied);
         if (winner) {
           over = true;
           break;
@@ -243,7 +260,7 @@ function pointsStandings(
       points,
       times: m.used.map((r) => roundTime(r.result, id)),
       roundPoints: main.map((r) =>
-        id in r.result.players ? roundScore(scoring, r.result, id) : null,
+        id in r.result.players ? roundScore(scoring, r, id) : null,
       ),
       wins: main.filter((r) => winnerOf(r.result) === id).length,
       place: 0,
