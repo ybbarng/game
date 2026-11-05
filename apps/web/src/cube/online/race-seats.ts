@@ -12,6 +12,19 @@
  */
 export type SeatMode = "wide" | "short" | "narrow";
 
+/**
+ * 자리 하나의 꼴: `top`(데스크톱 위 줄, 그림 왼쪽·글 오른쪽), `side`(데스크톱 양옆, 글 위·큐브 그림 둘 아래),
+ * `slim`(휴대폰 가로 양옆·휴대폰 세로 한두 자리, 작은 그림 왼쪽), `tiny`(휴대폰 세로 셋 이상, 글 위·작은 그림 아래)
+ */
+export type SeatLook = "top" | "side" | "slim" | "tiny";
+
+/** 데스크톱 위 줄 자리 하나의 폭(px) */
+export const TOP_SEAT_PX = 288;
+/** 양옆 칸 폭(px): 데스크톱·휴대폰 가로 */
+export const SIDE_PX = { wide: 176, short: 160 } as const;
+/** 휴대폰 세로에서 자리가 하나뿐이면 이 폭까지만(가운데) */
+export const NARROW_ONE_PX = 288;
+
 export interface SeatPlan<T> {
   /** 왼쪽 칸(아래에서 위로가 아니라 위에서 아래로 그린다) */
   left: T[];
@@ -21,6 +34,16 @@ export interface SeatPlan<T> {
   right: T[];
   /** 위 줄 한 줄에 놓을 칸 수 */
   topColumns: number;
+  /** 위 줄 줄 수(휴대폰 세로는 다섯부터 둘) */
+  topRows: number;
+  /** 위 줄 자리 꼴 */
+  topLook: SeatLook;
+  /** 양옆 자리 꼴 */
+  sideLook: SeatLook;
+  /** 양옆 칸 폭(px, 양옆이 없으면 0) */
+  sideWidth: number;
+  /** 위 줄 자리 하나의 폭(px). 휴대폰 세로는 칸을 고르게 나누므로 null(하나뿐이면 `NARROW_ONE_PX`까지) */
+  topSeatWidth: number | null;
 }
 
 /** 데스크톱에서 상대 수(1~7)마다 [왼쪽, 위, 오른쪽] 몇 자리. 위 줄은 큐브를 밀어 내리므로 셋까지만 */
@@ -50,13 +73,20 @@ export function planSeats<T>(
   mode: SeatMode,
 ): SeatPlan<T> {
   const c = others.length;
-  if (mode === "narrow")
+  if (mode === "narrow") {
+    const cols = c <= 4 ? Math.max(1, c) : Math.ceil(c / 2);
     return {
       left: [],
       top: [...others],
       right: [],
-      topColumns: c <= 4 ? Math.max(1, c) : Math.ceil(c / 2),
+      topColumns: cols,
+      topRows: c === 0 ? 0 : Math.ceil(c / cols),
+      topLook: cols <= 2 ? "slim" : "tiny",
+      sideLook: "slim",
+      sideWidth: 0,
+      topSeatWidth: null,
     };
+  }
   let split: [number, number, number];
   if (mode === "short") {
     const left = Math.floor(c / 2);
@@ -72,5 +102,15 @@ export function planSeats<T>(
   const left = others.slice(0, l).reverse();
   const top = others.slice(l, l + t);
   const right = others.slice(l + t);
-  return { left, top, right, topColumns: Math.max(1, t) };
+  return {
+    left,
+    top,
+    right,
+    topColumns: Math.max(1, t),
+    topRows: t > 0 ? 1 : 0,
+    topLook: "top",
+    sideLook: mode === "short" ? "slim" : "side",
+    sideWidth: left.length + right.length > 0 ? SIDE_PX[mode] : 0,
+    topSeatWidth: TOP_SEAT_PX,
+  };
 }

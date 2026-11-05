@@ -64,6 +64,12 @@ async function startParty(
     "data-cube-hp-value",
     "100",
   );
+  // 체력은 내 큐브 위(내 자리)와 상대 자리마다(docs/47 9-9)
+  await expect(
+    page.locator(
+      '[data-cube-seat][data-cube-peer="bot1"] [data-cube-hp="bot1"]',
+    ),
+  ).toBeVisible();
   return (await page
     .locator("[data-cube-scramble]")
     .getAttribute("data-cube-scramble")) as string;
