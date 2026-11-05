@@ -13,7 +13,8 @@ import {
   yaksOf,
 } from "@game/minhwatu-engine";
 import { useEffect, useState } from "react";
-
+import { useCardFlip } from "@/components/card-fx";
+import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
 import { SeatPlateFrame } from "@/components/SeatPlate";
@@ -22,6 +23,7 @@ import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
 import { playUiCue } from "@/game/ui-sound";
+import { HwatuDeal, hwatuDealMs, useHwatuDealing } from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import {
@@ -52,6 +54,7 @@ import type { Rect } from "@/layout/compute-layout";
 import { useStageSize } from "@/layout/stage-size";
 import { cn } from "@/lib/cn";
 
+import { minhwatuDealCounts, minhwatuMoves } from "../card-fx";
 import { MINHWATU_LEVELS } from "../settings";
 import { useMinhwatu } from "../store";
 
@@ -229,10 +232,13 @@ function MyHand({
   step,
   enabled,
   selected,
+  lifted,
   onPreview,
   onAct,
 }: {
   ids: readonly string[];
+  /** 위로 끌어 낼 준비가 된 카드(더 높이 들어 올린다) */
+  lifted: boolean;
   width: number;
   /** 카드 사이 간격(왼쪽 끝에서 다음 카드 왼쪽 끝까지) */
   step: number;
@@ -243,7 +249,11 @@ function MyHand({
 }) {
   const [touch, setTouch] = useState(false);
   return (
-    <section aria-label="내 손패" className="flex justify-center">
+    <section
+      aria-label="내 손패"
+      data-flip-zone="hand"
+      className="flex justify-center"
+    >
       {sortCards(ids).map((id, i) => (
         // biome-ignore lint/a11y/noStaticElementInteractions: 누르기는 안쪽 카드 단추가 받고, 여기서는 마우스 올림(미리 보기)과 누른 도구(터치·마우스)만 본다
         <span
@@ -261,9 +271,13 @@ function MyHand({
         >
           <HwatuCardView
             id={id}
+            flip={id}
             width={width}
             selected={selected === id}
             dim={!enabled}
+            {...(lifted && selected === id
+              ? { style: { translate: `0 -${Math.round(width * 0.6)}px` } }
+              : {})}
             {...(enabled ? { onClick: () => onAct(id, touch) } : {})}
           />
         </span>
@@ -304,6 +318,26 @@ export function MinhwatuTable({
   const sent = useSentLock(view, notice);
   /** 판 끝 결과 띠가 떠 있는 동안은 점수표 상자를 띄우지 않는다(띠가 사라진 뒤 차례로) */
   const [bannerUp, setBannerUp] = useState(false);
+  const controls = useHandControls<string>();
+  // 카드 연출(docs/05 4.12): 판 시작에 섞어 나눠 주고, 장면마다 낸·뒤집은 패와 먹은 패를 차례로 옮긴다
+  const players = view?.handCounts.length ?? 3;
+  const mySeat = view?.seat ?? 0;
+  const dealing = useHwatuDealing(
+    view,
+    events.some((e) => e.type === "roundStarted"),
+    hwatuDealMs(minhwatuDealCounts(players)),
+  );
+  useCardFlip({
+    stage: stage.ref,
+    scene: view,
+    skip: dealing,
+    moves: (prev) =>
+      minhwatuMoves(
+        prev,
+        events,
+        (seat) => (seat - mySeat + players) % players,
+      ),
+  });
 
   useEffect(() => {
     if (!notice) return;
@@ -326,6 +360,7 @@ export function MinhwatuTable({
       background={MINHWATU_BG}
       mission={mission}
       stageRef={stage.ref}
+      handlers={controls.handlers}
     >
       {children}
     </HwatuStage>
@@ -370,7 +405,8 @@ export function MinhwatuTable({
   };
 
   const onAct = (id: string, touch: boolean) => {
-    if (!myPlay) return;
+    // 훑거나 끈 것은 손을 뗄 때 손패 조작이 처리한다
+    if (!myPlay || controls.gestureMoved()) return;
     // 터치: 처음 누르면 겨누기만 한다
     if (touch && selected !== id) {
       playUiCue("pickCard");
@@ -394,6 +430,33 @@ export function MinhwatuTable({
     }
     if (myPlay && selected && targets.includes(target)) play(selected, target);
   };
+
+  // 손패 훑기·위로 끌어 내기·←→ Enter(마이티·하트·고스톱과 같은 손패 조작)
+  const sortedHand = sortCards(view.hand);
+  controls.update({
+    stage: stage.ref.current,
+    hand: sortedHand,
+    playable: myPlay && !needTarget ? new Set(sortedHand) : null,
+    selected,
+    setSelected: (card) => {
+      setSelected(card);
+      setNeedTarget(false);
+    },
+    canPlay: myPlay && !needTarget,
+    handTop: layout.hand.top,
+    cardHeight: layout.hand.card.h,
+    play: (card) => {
+      const matches = floorMatches(view.floor, card);
+      if (matches.length === 2) {
+        setSelected(card);
+        setNeedTarget(true);
+      } else play(card);
+    },
+    cancel: () => {
+      setSelected(null);
+      setNeedTarget(false);
+    },
+  });
 
   const result = view.result;
   const gameOver = view.phase === "gameOver";
@@ -525,14 +588,26 @@ export function MinhwatuTable({
       />
 
       {/* 다른 사람 손패 뒷면(자리 판 뒤에서 판 쪽으로)과 자리 판 */}
-      {others.map((seat, i) => (
-        <HwatuFan
-          key={`fan-${seat}`}
+      {dealing && (
+        <HwatuDeal
           layout={layout}
-          offset={i + 1}
-          count={view.handCounts[seat] ?? 0}
+          seats={n}
+          dealerOffset={(view.dealer - me + n) % n}
+          hand={DEAL_SIZES[n as PlayerCount]?.hand ?? 7}
+          floor={DEAL_SIZES[n as PlayerCount]?.floor ?? 6}
+          deckLeft={view.deckCount}
+          dealKey={String(view.roundNumber)}
         />
-      ))}
+      )}
+      {!dealing &&
+        others.map((seat, i) => (
+          <HwatuFan
+            key={`fan-${seat}`}
+            layout={layout}
+            offset={i + 1}
+            count={view.handCounts[seat] ?? 0}
+          />
+        ))}
       {others.map((seat, i) => {
         const rect = layout.seats[i + 1]?.plate;
         return rect ? (
@@ -571,12 +646,18 @@ export function MinhwatuTable({
           />
         }
       >
-        <div className="flex shrink-0 flex-col items-center gap-2">
+        <div
+          className={cn(
+            "flex shrink-0 flex-col items-center gap-2",
+            dealing && "invisible",
+          )}
+        >
           <HwatuDeck count={view.deckCount} width={layout.deck} />
           {view.pending && (
             <div className="flex flex-col items-center gap-0.5 text-[10px] text-amber-200">
               <HwatuCardView
                 id={view.pending.flipped}
+                flip={view.pending.flipped}
                 width={layout.deck}
                 highlight
               />
@@ -584,7 +665,12 @@ export function MinhwatuTable({
             </div>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col items-center justify-center",
+            dealing && "invisible",
+          )}
+        >
           <HwatuFloor
             ids={view.floor}
             width={layout.floor}
@@ -679,7 +765,10 @@ export function MinhwatuTable({
 
       {/* 내 손패 */}
       <div
-        className="pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 flex items-end justify-center [&>*]:pointer-events-auto",
+          dealing && "invisible",
+        )}
         style={{ top: layout.hand.top, bottom: layout.gutter, zIndex: 30 }}
       >
         <MyHand
@@ -688,6 +777,7 @@ export function MinhwatuTable({
           step={handStepFor(layout, view.hand.length)}
           enabled={myPlay}
           selected={selected}
+          lifted={controls.dragArmed}
           onPreview={setPreview}
           onAct={onAct}
         />
