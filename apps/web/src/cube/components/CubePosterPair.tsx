@@ -34,7 +34,10 @@ export function CubePosterPair({
   marks,
   onSticker,
   hidden,
+  frontOnly = false,
 }: {
+  /** 앞쪽(위·앞·오른쪽) 한 장만(좁은 자리의 작은 그림) */
+  frontOnly?: boolean;
   /** 가림(스티커 정체마다). 가린 칸은 `hidden` 색으로 */
   mask?: StickerMask | null | undefined;
   /** 칸 표시(스티커 정체마다): 고름·맞음·틀림 테두리 */
@@ -79,13 +82,13 @@ export function CubePosterPair({
   return (
     <div
       className={cn(
-        "grid grid-cols-2",
+        frontOnly ? "grid grid-cols-1" : "grid grid-cols-2",
         captions ? "gap-2" : "gap-0.5",
         className,
       )}
       data-cube-posters
     >
-      {sides.map((s) => (
+      {(frontOnly ? sides.slice(0, 1) : sides).map((s) => (
         <figure key={s.key} className="flex flex-col items-center gap-1">
           <CubePoster
             n={n}

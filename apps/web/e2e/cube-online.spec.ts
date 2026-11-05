@@ -52,29 +52,28 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
       .getAttribute("data-cube-scramble")) ?? "";
   expect(scramble.split(" ").length).toBeGreaterThan(3);
   await shot(page, "vs-inspect", info.project.name);
-  // 상대의 작은 큐브는 비스듬한 큐브 둘(여섯 면). 휴대폰 세로(768px 아래)는 사람 목록이
-  // 큐브 위 한 줄이라 좁아 숨기고, 휴대폰 가로·데스크톱은 목록이 큐브 옆 칸이라 보인다
+  // 상대 자리의 작은 큐브(비스듬한 SVG). 둘러앉은 판이라 모든 화면에서 보인다(docs/47 9-9)
   const botCube = page.locator('[data-cube-peer="bot1"] [data-cube-posters]');
-  if (info.project.name === "phone-portrait")
-    await expect(botCube).toBeHidden();
-  else await expect(botCube).toBeVisible();
+  await expect(botCube).toBeVisible();
   // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
   await expect(
     page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
   ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
 
-  // 사람 목록: 휴대폰은 큐브 위 한 줄, 데스크톱은 옆(docs/51 1-3). 1280×720에서 큐브가 잘리지 않는다
+  // 상대 자리: 상대가 하나면 휴대폰 세로·데스크톱은 맞은편(위), 휴대폰 가로는 옆(docs/47 9-9).
+  // 1280×720에서 큐브가 잘리지 않는다
   const peers = page.locator("[data-cube-peers]");
   const stage = await page.locator("[data-cube-stage]").boundingBox();
-  const list = await peers.boundingBox();
-  expect(stage && list).toBeTruthy();
-  if (stage && list) {
-    if (info.project.name === "phone-portrait")
-      expect(list.y + list.height).toBeLessThanOrEqual(stage.y + 1);
-    if (info.project.name === "desktop") {
-      expect(list.x).toBeGreaterThanOrEqual(stage.x + stage.width - 1);
+  const seatBox = await page
+    .locator('[data-cube-seat][data-cube-peer="bot1"]')
+    .boundingBox();
+  expect(stage && seatBox).toBeTruthy();
+  if (stage && seatBox) {
+    if (info.project.name === "phone-landscape")
+      expect(seatBox.x).toBeGreaterThanOrEqual(stage.x + stage.width - 1);
+    else expect(seatBox.y + seatBox.height).toBeLessThanOrEqual(stage.y + 1);
+    if (info.project.name === "desktop")
       expect(stage.y + stage.height).toBeLessThanOrEqual(720);
-    }
   }
   // 움직임 줄이기라 대결 알림은 「조용히」(칩만, 톡 없음)
   await expect(peers).toHaveAttribute("data-cube-race-alerts", "quiet");

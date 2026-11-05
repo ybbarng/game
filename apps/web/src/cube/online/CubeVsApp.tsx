@@ -25,7 +25,7 @@ import { eventForSize } from "./race-game";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
-import { testVsSeed } from "./vs-seed";
+import { testVsBots, testVsSeed } from "./vs-seed";
 
 /**
  * 컴퓨터와 대결(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
@@ -103,7 +103,7 @@ export function CubeVsApp() {
       },
       ...testItemDraw(),
     });
-    r.addBot(level);
+    for (let k = testVsBots(); k > 0; k--) r.addBot(level);
     const handicap: Handicap = {};
     if (delay > 0) handicap.delay = { [r.me]: delay };
     const average = byAverage && !party;

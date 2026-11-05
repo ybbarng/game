@@ -59,11 +59,15 @@ export function ItemIcon({
   );
 }
 
-/** 맞은 쪽 표시(큐브 가장자리). 움직임 줄이기면 깜빡이지 않고 글만 */
+/**
+ * 내가 맞은 방해 표시(큐브 바로 위 아이템 줄 안, 2026-11-05 자리 배치). 구석에 작게 뜨던 것을 줄 가운데에 크게 둔다.
+ * 움직임 줄이기면 깜빡이지 않고 글만
+ */
 export function ItemNotices({
   notices,
   nameOf,
   reduced,
+  className = "",
 }: {
   notices: readonly {
     key: string;
@@ -73,56 +77,55 @@ export function ItemNotices({
   }[];
   nameOf: (id: string) => string;
   reduced: boolean;
+  className?: string;
 }) {
   if (notices.length === 0) return null;
+  const n = notices[0] as (typeof notices)[number];
   return (
-    <div className="pointer-events-none absolute top-2 right-2 z-20 flex flex-col items-end gap-1 max-sm:top-12">
-      {notices.slice(0, 2).map((n) => (
-        <span
-          key={n.key}
-          role="status"
-          data-cube-item-notice={n.item}
-          data-cube-item-blocked={n.blocked ? "" : undefined}
-          className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-semibold text-xs shadow-lg ${
-            n.blocked
-              ? "border-sky-200/40 bg-neutral-900/90 text-sky-100"
-              : "border-rose-200/40 bg-neutral-900/90 text-rose-100"
-          } ${reduced ? "" : "cube-item-hit"}`}
-        >
-          {!reduced && <ItemIcon item={n.blocked ? "shield" : n.item} />}
-          {n.blocked
-            ? `방패로 막음 · ${ITEM_LABELS[n.item]}`
-            : `${ITEM_LABELS[n.item]} · ${nameOf(n.by)}`}
-        </span>
-      ))}
-    </div>
+    <span
+      key={n.key}
+      role="status"
+      data-cube-item-notice={n.item}
+      data-cube-item-blocked={n.blocked ? "" : undefined}
+      className={`flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 font-semibold text-sm shadow-lg ${
+        n.blocked
+          ? "border-sky-200/50 bg-sky-950/80 text-sky-100"
+          : "border-rose-200/50 bg-rose-950/80 text-rose-100"
+      } ${reduced ? "" : "cube-item-hit"} ${className}`}
+    >
+      {!reduced && <ItemIcon item={n.blocked ? "shield" : n.item} />}
+      {n.blocked
+        ? `방패로 막음 · ${ITEM_LABELS[n.item]}`
+        : `${ITEM_LABELS[n.item]} · ${nameOf(n.by)}`}
+    </span>
   );
 }
 
 /**
- * 흑백 화면 동안 색과 무늬의 짝(여섯 칸: 내 색 배치의 색 칸과 그 무늬 칸). 외운 사람에게 거슬리지 않게 작게
+ * 흑백 화면 동안 색과 무늬의 짝(여섯 칸: 내 색 배치의 색 칸과 그 무늬 칸). 한눈에 읽히게 칸을 크게 두고 짝마다
+ * 테두리로 묶는다(2026-11-05 「너무 작고 빽빽하다」)
  */
 export function GrayLegend({ colors }: { colors: readonly number[] }) {
   return (
     <ol
       data-cube-gray-legend
       aria-label="색과 무늬의 짝"
-      className="flex items-center gap-1.5"
+      className="flex shrink-0 items-center gap-1 md:gap-1.5"
     >
       {COLOR_PATTERNS.map((p, c) => (
         <li
           // biome-ignore lint/suspicious/noArrayIndexKey: 색 번호가 곧 자리
           key={c}
-          className="flex items-center gap-px"
+          className="flex items-center gap-0.5 rounded-md border border-white/15 bg-black/30 p-0.5"
           title={PATTERN_LABELS[p]}
         >
           <span
-            className="h-3 w-3 rounded-[2px] border border-black/40"
+            className="h-4 w-4 rounded-[3px] border border-black/40 md:h-5 md:w-5"
             style={{ backgroundColor: hexColor(colors[c] ?? 0) }}
           />
           <span
             data-cube-gray-pattern={p}
-            className="h-3 w-3 rounded-[2px] border border-black/40"
+            className="h-4 w-4 rounded-[3px] border border-black/40 md:h-5 md:w-5"
             style={{ backgroundColor: hexColor(GRAY), ...patternStyle(p) }}
           />
         </li>
@@ -154,7 +157,7 @@ export function ItemSlot({
         data-cube-item-slot={item ?? ""}
         disabled={!item || pending}
         onClick={onUse}
-        className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs ${
+        className={`flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-xs ${
           item && !pending
             ? "border-amber-300/50 bg-amber-300/15 text-amber-100 hover:bg-amber-300/25"
             : "border-white/10 bg-white/5 text-white/40"
@@ -163,7 +166,7 @@ export function ItemSlot({
         {item ? <ItemIcon item={item} /> : null}
         {item ? ITEM_LABELS[item] : "아이템 없음"}
         {item && !pending && useKey && (
-          <kbd className="rounded bg-black/40 px-1 font-mono text-[10px] text-white/70">
+          <kbd className="rounded bg-black/40 px-1 font-mono text-[10px] text-white/70 max-md:hidden">
             {useKey}
           </kbd>
         )}
