@@ -98,9 +98,12 @@ const PIPS: Record<number, [number, number][]> = {
 export function DiceFace({
   value,
   className,
+  decorative = false,
 }: {
   value: number;
   className?: string;
+  /** 정육면체의 한 면(읽는 이름은 정육면체가 갖는다). 모서리를 덜 둥글게 해 면끼리 맞닿게 하고 가장자리를 살짝 어둡게 */
+  decorative?: boolean;
 }) {
   return (
     <svg
@@ -108,15 +111,24 @@ export function DiceFace({
       className={className}
       role="img"
       aria-label={`주사위 ${value}`}
-      data-die={value}
+      data-die={decorative ? undefined : value}
     >
+      {decorative && (
+        <defs>
+          <radialGradient id="galaxy-die-face" cx="40%" cy="35%" r="75%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="75%" stopColor="#eef2f7" />
+            <stop offset="100%" stopColor="#c8d0dc" />
+          </radialGradient>
+        </defs>
+      )}
       <rect
-        x="4"
-        y="4"
-        width="92"
-        height="92"
-        rx="20"
-        fill="#f8fafc"
+        x={decorative ? 0 : 4}
+        y={decorative ? 0 : 4}
+        width={decorative ? 100 : 92}
+        height={decorative ? 100 : 92}
+        rx={decorative ? 14 : 20}
+        fill={decorative ? "url(#galaxy-die-face)" : "#f8fafc"}
         stroke="#cbd5e1"
         strokeWidth="3"
       />

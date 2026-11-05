@@ -259,8 +259,10 @@ export function CubeSettingsApp() {
               ["inspection", "혼자 맞추기 15초 살펴보기"],
               ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
               ["keyColors", "키 그림에 면 색"],
-              ["keyPairs", "키 그림에서 같은 면의 두 키 잇기"],
-              ["keyFingers", "키 그림에 손가락 자리"],
+              [
+                "keyFingersAll",
+                "키 그림의 손가락 자리를 모든 화면에서도 보이기(키 익히기·단축키 표는 늘 보임)",
+              ],
               ["touchKeyboard", "휴대폰에서 단추 대신 키보드 그림을 눌러 치기"],
             ] as const
           ).map(([k, label]) => (
