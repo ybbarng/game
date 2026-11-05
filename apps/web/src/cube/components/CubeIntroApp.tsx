@@ -35,9 +35,10 @@ import type { MarkTone } from "../view/types";
 import { CubePlay } from "./CubePlay";
 import { KeyGuide } from "./KeyGuide";
 import { KeyTryBox } from "./KeyTryBox";
-import { LookPanel, StillCube, TurnPanel } from "./LessonActs";
+import { LookPanel, TurnPanel } from "./LessonActs";
 import { KeyCaps, MoveChip, useMoveKeys } from "./MoveChip";
 import { useNoKeyboard } from "./PracticeCube";
+import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 
 /**

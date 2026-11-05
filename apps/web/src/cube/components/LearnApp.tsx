@@ -43,13 +43,13 @@ import {
   LookPanel,
   PlayPanel,
   QuizPanel,
-  StillCube,
   TurnPanel,
   WelcomePanel,
 } from "./LessonActs";
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
+import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
 

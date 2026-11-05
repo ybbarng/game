@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HERO_BOX, heroPosterSrc } from "../hero/poster";
 import type { HeroHandle } from "../hero/run";
 import { useCubeSettings } from "../settings";
+import { useReducedMotion } from "../use-reduced-motion";
 import { solvedStickers } from "../view/geometry";
 import { CubePoster } from "./CubePoster";
 
@@ -26,19 +27,6 @@ import { CubePoster } from "./CubePoster";
 const FADE_MS = 400;
 /** WebGL 문맥을 잃었을 때 다시 띄우는 횟수 상한(계속 잃는 기기에서는 대기 그림을 그대로 둔다) */
 const MAX_RESTARTS = 3;
-
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return reduced;
-}
 
 export function CubeHero() {
   const settings = useCubeSettings();

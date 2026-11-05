@@ -27,7 +27,6 @@ import {
   solvesOf,
   type TimerBook,
 } from "./book";
-import { CubeNet } from "./CubeNet";
 import { EVENT_INFO, TIMER_EVENTS, type TimerEvent } from "./events";
 import { type Scramble, scrambleProvider } from "./fallback-scramble";
 import {
@@ -38,6 +37,7 @@ import {
   type TimerEventOut,
   TimerMachine,
 } from "./machine";
+import { ScramblePicture } from "./ScramblePicture";
 import { playTimerCue } from "./sound";
 import {
   formatAverage,
@@ -55,6 +55,9 @@ const screenClock: Clock = {
     return () => clearTimeout(id);
   },
 };
+
+/** 섞기가 이보다 오래 안 나오면 「처음 한 번은 …」 안내를 보인다 */
+const SLOW_SCRAMBLE_MS = 1000;
 
 const HOLD_CHOICES = [0, 100, 200, 300, 400, 500, 550, 800] as const;
 
@@ -454,6 +457,14 @@ function ScrambleBox({
       : n <= 5
         ? "text-base sm:text-lg"
         : "text-sm sm:text-base";
+  // 섞기가 1초 넘게 안 나오면 까닭을 보인다(처음 한 번은 해법기 표를 만든다, 느린 기기에서 1~2초)
+  const [slow, setSlow] = useState(false);
+  const waiting = !scramble && !failed;
+  useEffect(() => {
+    setSlow(false);
+    if (!waiting) return;
+    return screenClock.after(SLOW_SCRAMBLE_MS, () => setSlow(true));
+  }, [waiting]);
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -489,19 +500,13 @@ function ScrambleBox({
             ? "섞기를 만들지 못했어요. 「다음 섞기」를 눌러 보세요."
             : "섞는 중…"}
       </p>
-      {/* 섞기가 나오기 전에도 펼친 그림 자리를 잡아 둔다(나온 뒤 아래 누름 자리가 밀리지 않게) */}
-      <div className="flex justify-center">
-        {scramble ? (
-          <CubeNet n={n} scramble={scramble.text} />
-        ) : (
-          <div
-            aria-hidden
-            data-cube-net-placeholder
-            className="w-full max-w-xs animate-pulse rounded-lg bg-white/5 sm:max-w-md"
-            style={{ aspectRatio: `${4 * n + 1.1} / ${3 * n + 0.8}` }}
-          />
-        )}
-      </div>
+      {waiting && slow && (
+        <p className="text-white/50 text-xs" data-cube-scramble-slow>
+          처음 한 번은 무작위 상태를 고르는 표를 만드느라 조금 걸려요.
+        </p>
+      )}
+      {/* 섞기가 나오기 전에도 그림 자리를 잡아 둔다(나온 뒤 아래 누름 자리가 밀리지 않게) */}
+      <ScramblePicture n={n} scramble={scramble?.text ?? null} />
     </div>
   );
 }
