@@ -15,7 +15,12 @@ const POLL = [50];
 /** 지금 이 화면에서 할 일: 판 끝, 고·스톱, 고르기, 흔들기, 내기, 뒤집기만. 없으면 null */
 function actionable(page: Page): Promise<string | null> {
   return page.evaluate(() => {
-    if (document.querySelector("[data-outcome]")) return "done";
+    // 판 끝: 결과 띠가 먼저 뜨고, 띠가 사라진 뒤 결과 상자(data-outcome)가 뜬다
+    if (
+      document.querySelector("[data-outcome]") ||
+      document.querySelector("[data-result-banner]")
+    )
+      return "done";
     const dialogs = [...document.querySelectorAll('[role="dialog"]')].map((d) =>
       d.getAttribute("aria-label"),
     );
@@ -160,7 +165,10 @@ test("고스톱: 게임 목록에서 들어가 입문 컴퓨터와 맞고 한 �
   await page.screenshot({ path: info.outputPath("gostop-play.png") });
 
   await playRound(page);
+  // 결과 띠가 먼저 뜨고, 띠가 사라진 뒤에야 정산 상자가 뜬다(한꺼번에 뜨지 않는다)
   await expect(page.locator("[data-result-banner]")).toBeVisible();
+  await expect(page.getByRole("region", { name: "판 정산" })).toHaveCount(0);
+  await expect(page.locator("[data-result-banner]")).toHaveCount(0);
   await expect(page.getByRole("region", { name: "판 정산" })).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("gostop-end.png") });

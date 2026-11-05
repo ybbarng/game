@@ -23,6 +23,7 @@ export function HwatuHand({
   width = 52,
   overlap = false,
   sorted = true,
+  step,
 }: {
   ids: readonly string[];
   /** 낼 수 있는 카드(없으면 모두) */
@@ -34,25 +35,36 @@ export function HwatuHand({
   overlap?: boolean;
   /** 달 순서로 정리해 보인다 */
   sorted?: boolean;
+  /**
+   * 한 줄로 늘어놓을 때 카드 사이 간격(카드 왼쪽 끝에서 다음 카드 왼쪽 끝까지, px). 둘러앉은 판이 손패 줄 폭에
+   * 맞춰 정한다(`computeLayout`의 손패 칸). 주면 줄을 바꾸지 않는다
+   */
+  step?: number;
 }) {
   const list = sorted ? sortCards(ids) : [...ids];
   return (
     <section
       aria-label="손패"
+      data-flip-zone="hand"
       className={cn(
-        "flex flex-wrap justify-center",
-        overlap ? "-space-x-3" : "gap-1",
+        "flex justify-center",
+        step === undefined && "flex-wrap",
+        step === undefined && (overlap ? "-space-x-3" : "gap-1"),
       )}
     >
-      {list.map((id) => {
+      {list.map((id, i) => {
         const can = playable ? playable(id) : true;
         return (
           <HwatuCardView
             key={id}
             id={id}
+            flip={id}
             width={width}
             selected={selected === id}
             dim={!can}
+            {...(step !== undefined && i > 0
+              ? { style: { marginLeft: step - width } }
+              : {})}
             {...(onSelect && can ? { onClick: () => onSelect(id) } : {})}
           />
         );
@@ -112,6 +124,7 @@ export function HwatuFloor({
   return (
     <section
       aria-label="바닥"
+      data-flip-zone="floor"
       className="flex flex-wrap items-start justify-center gap-2"
     >
       {groups.length === 0 && (
@@ -132,6 +145,7 @@ export function HwatuFloor({
               >
                 <HwatuCardView
                   id={id}
+                  flip={id}
                   width={width}
                   highlight={on}
                   {...(onPick && on ? { onClick: () => onPick(id) } : {})}
@@ -160,7 +174,7 @@ export function HwatuDeck({
       aria-label={`더미 ${count}장`}
     >
       {count > 0 ? (
-        <HwatuCardView faceDown width={width} />
+        <HwatuCardView faceDown width={width} flip="deck" />
       ) : (
         <div
           className="rounded-md border border-white/20 border-dashed"
@@ -181,6 +195,7 @@ export function HwatuCaptured({
   width = 30,
   label,
   piCount = "value",
+  fitWidth,
 }: {
   ids: readonly string[];
   width?: number;
@@ -188,8 +203,24 @@ export function HwatuCaptured({
   label: string;
   /** 피 수: `value`는 쌍피를 2로(고스톱), `cards`는 장수 그대로(피가 0점인 민화투) */
   piCount?: "value" | "cards";
+  /**
+   * 이 폭(px) 안에 한 줄로 넣는다: 묶음 안 카드를 장수에 맞춰 더 겹친다(자리 판 안). 없으면 겹침을 고정하고
+   * 줄을 바꾼다
+   */
+  fitWidth?: number;
 }) {
   const split = splitCaptured(ids);
+  const extra = Math.max(0, ids.length - 4);
+  const step =
+    fitWidth === undefined
+      ? null
+      : Math.max(
+          2,
+          Math.min(
+            width * 0.4,
+            (fitWidth - 4 * width - 3 * 8) / Math.max(1, extra),
+          ),
+        );
   const groups = [
     { key: "광", cards: split.gwang, count: split.gwang.length },
     { key: "열끗", cards: split.animal, count: split.animal.length },
@@ -203,7 +234,11 @@ export function HwatuCaptured({
   return (
     <section
       aria-label={`${label} 먹은 패`}
-      className="flex flex-wrap items-end gap-2"
+      data-flip-zone="captured"
+      className={cn(
+        "flex items-end gap-2",
+        step === null ? "flex-wrap" : "flex-nowrap",
+      )}
     >
       {groups.map((g) => (
         <div
@@ -211,18 +246,26 @@ export function HwatuCaptured({
           data-captured={g.key}
           className="flex flex-col items-start gap-0.5"
         >
-          <span className="text-[10px] text-white/70">
+          <span className="whitespace-nowrap text-[10px] text-white/70">
             {g.key} {g.count}
           </span>
-          <div className="flex -space-x-5">
+          <div className={cn("flex", step === null && "-space-x-5")}>
             {g.cards.length === 0 ? (
               <div
                 className="rounded border border-white/15 border-dashed"
                 style={{ width, height: (width * 8) / 5 }}
               />
             ) : (
-              g.cards.map((id) => (
-                <HwatuCardView key={id} id={id} width={width} />
+              g.cards.map((id, i) => (
+                <HwatuCardView
+                  key={id}
+                  id={id}
+                  flip={id}
+                  width={width}
+                  {...(step !== null && i > 0
+                    ? { style: { marginLeft: step - width } }
+                    : {})}
+                />
               ))
             )}
           </div>

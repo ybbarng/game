@@ -1,25 +1,16 @@
 "use client";
 
 import type { Card } from "@game/mighty-engine";
-import {
-  type CSSProperties,
-  type PointerEvent,
-  useEffect,
-  useState,
-} from "react";
+import type { CSSProperties, PointerEvent } from "react";
 
 import { useCardTheme } from "@/game/settings";
 import { cardLabel } from "@/game/terms";
 import { cn } from "@/lib/cn";
 
 import { CardArt } from "./card-art/CardArt";
+import { type CardPosition, spriteStyle, useArrival } from "./card-fx/sprite";
 
-export interface CardPosition {
-  x: number;
-  y: number;
-  scale?: number;
-  opacity?: number;
-}
+export type { CardPosition } from "./card-fx/sprite";
 
 interface PlayingCardProps {
   /** `null`이면 뒷면 */
@@ -51,16 +42,7 @@ interface PlayingCardProps {
   onHover?: (hovering: boolean) => void;
 }
 
-function transform(
-  p: CardPosition,
-  w: number,
-  h: number,
-  rotate: number,
-): string {
-  return `translate(${p.x - w / 2}px, ${p.y - h / 2}px) rotate(${rotate}deg) scale(${p.scale ?? 1})`;
-}
-
-/** 무대 위 카드 한 장. 위치가 바뀌면 transform 전환으로 날아간다. */
+/** 무대 위 카드 한 장. 위치가 바뀌면 transform 전환으로 날아간다(자리 계산은 card-fx/sprite) */
 export function PlayingCard({
   card,
   width,
@@ -82,26 +64,19 @@ export function PlayingCard({
   duration,
 }: PlayingCardProps) {
   const theme = useCardTheme();
-  const [arrived, setArrived] = useState(from === undefined);
-
-  useEffect(() => {
-    if (arrived) return;
-    // 출발 위치를 한 번 그린 다음 목표로 옮겨야 전환이 일어난다.
-    const id = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setArrived(true)),
-    );
-    return () => cancelAnimationFrame(id);
-  }, [arrived]);
-
-  const position = arrived || from === undefined ? at : from;
+  const arrived = useArrival(from !== undefined);
   const style: CSSProperties = {
-    width,
-    height,
-    zIndex: z,
-    transform: transform(position, width, height, arrived ? rotate : 0),
-    opacity: position.opacity ?? 1,
-    transitionDelay: `${delay}ms`,
-    ...(duration ? { transitionDuration: `${duration}ms` } : {}),
+    ...spriteStyle({
+      at,
+      from,
+      arrived,
+      width,
+      height,
+      rotate,
+      z,
+      delay,
+      duration,
+    }),
     // 손패를 손가락으로 훑고 끌 때 브라우저가 화면을 움직이지 않게 한다.
     ...(interactive ? { touchAction: "none" } : {}),
   };

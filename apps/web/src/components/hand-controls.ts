@@ -4,34 +4,34 @@ import type { Card } from "@game/mighty-engine";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
-/** 렌더할 때마다 새로 넘기는 손패 상태. 이벤트 처리기는 늘 마지막 값을 본다 */
-export interface HandControlsState {
+/** 렌더할 때마다 새로 넘기는 손패 상태. `C`는 카드 id(마이티·하트는 서양 카드, 화투는 화투 id) */
+export interface HandControlsState<C extends string = Card> {
   /** 게임 화면 전체(패널을 찾고 손가락 위치를 무대 좌표로 바꾼다) */
   stage: HTMLDivElement | null;
   /** 화면에 놓인 순서대로의 손패 */
-  hand: readonly Card[];
+  hand: readonly C[];
   /** 낼 수 있는 카드. 카드를 낼 차례가 아니면 null */
-  playable: ReadonlySet<Card> | null;
-  selected: Card | null;
-  setSelected: (card: Card | null) => void;
+  playable: ReadonlySet<C> | null;
+  selected: C | null;
+  setSelected: (card: C | null) => void;
   /** 카드 내기를 받을지(다른 고르기 창이 떠 있으면 false) */
   canPlay: boolean;
   /** 손패 위쪽 끝(무대 좌표)과 카드 높이. 위로 끌어 내는 경계를 정한다 */
   handTop: number;
   cardHeight: number;
-  play: (card: Card) => void;
+  play: (card: C) => void;
   /** Esc: 고르던 것을 내려놓는다 */
   cancel: () => void;
 }
 
 /**
- * 손패 조작(마이티·하트 공통).
+ * 손패 조작(마이티·하트·화투 공통). 이벤트 처리기는 늘 마지막 상태를 본다.
  * - 터치: 손패 위를 훑으면 손가락 아래 카드를 고르고, 위로 끌어 올려 놓으면 낸다.
  * - 키보드: ←→로 고르고 Enter로 내기, Esc로 취소. 판 가운데 패널은 숫자 키로 n번째 선택지,
  *   ↑↓·+−로 숫자, Enter로 주 단추.
  */
-export function useHandControls() {
-  const state = useRef<HandControlsState | null>(null);
+export function useHandControls<C extends string = Card>() {
+  const state = useRef<HandControlsState<C> | null>(null);
   // 손을 떼기 전까지 카드 단추의 누르기를 대신한다.
   const gesture = useRef<{
     x: number;
@@ -41,9 +41,9 @@ export function useHandControls() {
      * 위 줄 카드를 지나가므로, 이때는 훑어 고르기를 하지 않는다 */
     lift: boolean;
     /** 처음 짚은 카드 */
-    card: Card;
+    card: C;
     /** 지금 들고 있는 카드. 화면이 다시 그려지기 전에 손을 떼도 이 카드를 낸다 */
-    held: Card | null;
+    held: C | null;
   } | null>(null);
   const [dragArmed, setDragArmedState] = useState(false);
   const armed = useRef(false);
@@ -60,18 +60,18 @@ export function useHandControls() {
       if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
         return;
       const s = state.current;
-      if (s) handleKey(e, s);
+      if (s) handleKey<C>(e, s);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   /** 손가락 아래 손패 카드 */
-  const cardAt = (s: HandControlsState, x: number, y: number): Card | null => {
+  const cardAt = (s: HandControlsState<C>, x: number, y: number): C | null => {
     const el = document
       .elementFromPoint(x, y)
       ?.closest<HTMLElement>("[data-card]");
-    const card = el?.dataset.card as Card | undefined;
+    const card = el?.dataset.card as C | undefined;
     return card && s.hand.includes(card) ? card : null;
   };
 
@@ -138,13 +138,16 @@ export function useHandControls() {
     gestureMoved: () => gesture.current?.moved ?? false,
     handlers,
     /** 이번 렌더의 손패 상태를 넘긴다 */
-    update: (next: HandControlsState) => {
+    update: (next: HandControlsState<C>) => {
       state.current = next;
     },
   };
 }
 
-function handleKey(e: KeyboardEvent, s: HandControlsState): void {
+function handleKey<C extends string>(
+  e: KeyboardEvent,
+  s: HandControlsState<C>,
+): void {
   if (e.key === "Escape") {
     s.cancel();
     return;
