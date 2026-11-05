@@ -462,6 +462,7 @@ const safeTurns: Lesson = {
       setup: { alg: SAFE_SETUP },
       mask: "cross",
       alg: "U",
+      passedText: "흰 엣지가 옆 센터와 어긋났어요.",
     },
     {
       kind: "try",

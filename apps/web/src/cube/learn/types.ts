@@ -225,6 +225,8 @@ export interface LessonStep {
   body: string;
   /** demo: 천천히 돌려 보일 공식. try: 모범 답(힌트로 보여 줌, 채점은 goal로 한다). turn: 직접 칠 수 */
   alg?: string;
+  /** turn: 다 쳤을 때 보일 말(없으면 「잘했어요! 같은 모양이 됐어요.」). 일부러 흐트러뜨리는 수처럼 칭찬이 맞지 않을 때 */
+  passedText?: string;
   /** 시작 상황(모든 종류). 없으면 맞춘 큐브 */
   setup?: LessonSetup;
   /** try: 통과 조건 */
