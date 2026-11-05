@@ -204,15 +204,34 @@ export function HwatuEndBox({
   side: ReactNode;
 }) {
   const wide = rect.w > rect.h * 2.4;
+  // 안쪽 상자를 m-auto로 가운데 둔다. 넘치면 위가 잘리지 않고 굴려 볼 수 있다(items-center는 위를 잘랐다)
   return (
-    <div
-      className={cn(
-        "pop-in absolute inset-0 flex items-center justify-center gap-2 overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm",
-        wide ? "flex-row" : "flex-col",
-      )}
-    >
-      <div className="flex flex-col items-center gap-2">{main}</div>
-      <div className="flex w-full max-w-md flex-col gap-1">{side}</div>
+    <div className="pop-in absolute inset-0 flex overflow-y-auto rounded-[2rem] bg-black/60 p-2 backdrop-blur-sm">
+      <div
+        className={cn(
+          "m-auto flex w-full items-center justify-center gap-2",
+          wide ? "flex-row" : "flex-col",
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 flex-col items-center gap-2",
+            wide
+              ? "flex-1 [&_[role=status]]:text-xl"
+              : "[&_[role=status]]:text-2xl",
+          )}
+        >
+          {main}
+        </div>
+        <div
+          className={cn(
+            "flex w-full max-w-md flex-col gap-1",
+            wide && "min-w-0 flex-1",
+          )}
+        >
+          {side}
+        </div>
+      </div>
     </div>
   );
 }
