@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import type { KeyChord, Keymap } from "../input/keymaps";
+import { capRepeats } from "../keys/key-colors";
 import {
   type ActionKind,
   ARROWS,
@@ -14,8 +15,14 @@ import {
   type Layer,
 } from "../keys/layout";
 import { useCubeSettings } from "../settings";
-import { KeyOverlay } from "./KeyGuide";
-import { KeyBar, type KeyLook, useKeyLook } from "./KeyPaint";
+import { KeyOverlay, useHeldShift } from "./KeyGuide";
+import {
+  type KeyLook,
+  KeyMark,
+  labelTone,
+  paintAttr,
+  useKeyLook,
+} from "./KeyPaint";
 import { PRESS_CLASS, useVirtualKeys, type VirtualKeys } from "./VirtualKeys";
 
 /**
@@ -23,16 +30,12 @@ import { PRESS_CLASS, useVirtualKeys, type VirtualKeys } from "./VirtualKeys";
  * 테두리 색은 그냥 칠 때 동작의 묶음(면은 큐브 표준 색). 폭은 감싼 칸에 맞춰 줄어 휴대폰에서도 가로로 넘치지 않는다.
  */
 
-export type LayerView = Layer | "all";
+/**
+ * 칸에 보일 층. `live`(키 익히기·조작 훈련, 기본): 그냥 칠 때만, Shift·Alt를 누르는 동안 그 층으로 바뀐다.
+ * `all`(단축키 표의 「모두」): 모든 층을 줄마다 적는다(찾아보는 표라서)
+ */
+export type LayerView = Layer | "all" | "live";
 
-const FACE_BORDER: Record<FaceLetter, string> = {
-  R: "border-red-500/60",
-  L: "border-orange-400/60",
-  U: "border-neutral-100/50 print:border-neutral-400",
-  D: "border-yellow-300/60",
-  F: "border-green-500/60",
-  B: "border-blue-500/60",
-};
 const FACE_DOT: Record<FaceLetter, string> = {
   R: "bg-red-500",
   L: "bg-orange-400",
@@ -41,22 +44,17 @@ const FACE_DOT: Record<FaceLetter, string> = {
   F: "bg-green-500",
   B: "bg-blue-500",
 };
-const KIND_BORDER: Record<Exclude<ActionKind, "face">, string> = {
-  layer: "border-violet-400/50",
-  rotate: "border-fuchsia-400/50",
-  command: "border-neutral-500",
-};
 const KIND_DOT: Record<Exclude<ActionKind, "face">, string> = {
   layer: "bg-violet-400",
   rotate: "bg-fuchsia-400",
   command: "bg-neutral-500",
 };
 
+/** 칸 테두리: 무채색 하나(2026-11-05 「어지러움」, 예전에는 동작 묶음마다 색 테두리) */
 function borderOf(a: KeyAction | undefined): string {
-  if (!a) return "border-white/10 print:border-neutral-300";
-  return a.kind === "face" && a.face
-    ? FACE_BORDER[a.face]
-    : KIND_BORDER[a.kind as Exclude<ActionKind, "face">];
+  return a?.usable
+    ? "border-white/10 print:border-neutral-400"
+    : "border-white/[0.05] print:border-neutral-200";
 }
 
 export function dotOf(a: { kind: ActionKind; face?: FaceLetter }): string {
@@ -97,7 +95,7 @@ export interface KeyboardMapProps {
 export function KeyboardMap({
   keymap,
   n,
-  layer = "all",
+  layer: view = "live",
   lit = [],
   pressed = null,
   wrong = null,
@@ -111,6 +109,19 @@ export function KeyboardMap({
   const { keyPairs, keyFingers } = useCubeSettings();
   const vk = useVirtualKeys();
   const press = pressable ? vk : null;
+  const held = useHeldShift();
+  // `live`: 지금 누른(또는 화면에서 켠) Shift·Alt의 층
+  const shiftOn = held || vk.mods.shift;
+  const layer: Exclude<LayerView, "live"> =
+    view !== "live"
+      ? view
+      : vk.mods.alt
+        ? shiftOn
+          ? "altShift"
+          : "alt"
+        : shiftOn
+          ? "shift"
+          : "plain";
 
   const state = (code: string) =>
     wrong === code
@@ -194,7 +205,7 @@ function Key({
   cell: KeyCell;
   /** 줄의 첫 키(새 줄에서 시작) */
   first: boolean;
-  layer: LayerView;
+  layer: Exclude<LayerView, "live">;
   state: KeyState;
   hideActions: boolean;
   look: (action: string | undefined) => KeyLook | null;
@@ -233,17 +244,13 @@ function Key({
           };
   const l = cell.layers;
   const main = layer === "all" ? l.plain : l[layer];
+  const usable = !!main?.usable;
   const paint =
     cell.modifier || hideActions
       ? null
-      : look(main?.usable ? main.action : undefined);
-  const tinted = paint?.paint.kind === "face" && !state;
-  const tint =
-    cell.hand === "left"
-      ? "bg-sky-400/[0.07]"
-      : cell.hand === "right"
-        ? "bg-amber-400/[0.07]"
-        : "bg-white/[0.04]";
+      : look(usable ? main?.action : undefined);
+  // 동작 없는 키는 아주 흐리게(키보드 모양만 남긴다)
+  const idle = !cell.modifier && !usable;
   const lines: { key: string; a: KeyAction | undefined; strong?: boolean }[] =
     layer === "all"
       ? [
@@ -253,40 +260,43 @@ function Key({
           ...(l.alt && l.altShift ? [{ key: "altShift", a: l.altShift }] : []),
         ]
       : [{ key: layer, a: main, strong: true }];
+  const label = !hideActions && usable ? main?.label : undefined;
+  const showCap = cell.modifier || !capRepeats(cell.cap, label);
   return (
     <div
       data-key={cell.code}
       data-key-state={state ?? undefined}
+      data-key-idle={idle ? "" : undefined}
       {...pressProps}
-      data-key-paint={
-        paint
-          ? paint.paint.kind === "face"
-            ? `${paint.paint.color}${paint.paint.prime ? "'" : ""}`
-            : "sweep"
-          : undefined
-      }
-      style={tinted ? { ...span, ...paint.style, color: paint.ink } : span}
+      data-key-paint={paintAttr(paint)}
+      style={state ? span : { ...span, ...paint?.cell }}
       className={cn(
-        "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border-2 px-[0.3cqw] pt-[0.15cqw] pb-[0.7cqw] leading-[1.15] transition-colors print:bg-white",
+        "relative flex min-w-0 flex-col overflow-hidden rounded-[0.6cqw] border px-[0.4cqw] pt-[0.25cqw] pb-[0.8cqw] leading-[1.15] transition-colors print:bg-white",
         cell.modifier
-          ? "border-white/10 bg-white/[0.02] text-white/40 print:border-neutral-300 print:text-neutral-500"
-          : borderOf(main),
-        !cell.modifier && !tinted && tint,
+          ? "border-white/[0.06] bg-transparent text-white/30 print:border-neutral-300 print:text-neutral-500"
+          : idle
+            ? "border-white/[0.05] bg-transparent print:border-neutral-200"
+            : "border-white/10 bg-white/[0.04] print:border-neutral-400",
         state && STATE_CLASS[state],
         press && (mod || !cell.modifier) && PRESS_CLASS,
       )}
     >
-      <span
-        className={cn(
-          tinted ? "opacity-60" : "text-white/45 print:text-neutral-500",
-        )}
-      >
-        {cell.cap}
-      </span>
+      {showCap && (
+        <span
+          data-key-cap
+          className={cn(
+            "text-[0.8em]",
+            idle ? "text-white/15" : "text-white/35",
+            "print:text-neutral-500",
+          )}
+        >
+          {cell.cap}
+        </span>
+      )}
       {!cell.modifier && !hideActions && (
         <span className="flex min-w-0 flex-1 flex-col justify-end">
           {lines.map(({ key, a, strong }) =>
-            a ? (
+            a && (a.usable || layer === "all") ? (
               <span
                 key={key}
                 data-layer-line={key}
@@ -294,12 +304,12 @@ function Key({
                   "truncate",
                   strong
                     ? cn(
-                        "font-semibold text-[1.25em] print:text-black",
-                        !tinted && "text-white",
+                        "font-semibold print:text-black",
+                        // 수는 크게, 낱말(처음으로·되돌리기)은 칸에 들어가게
+                        a.kind === "command" ? "text-[1.1em]" : "text-[1.35em]",
+                        labelTone(paint),
                       )
-                    : tinted
-                      ? "opacity-75"
-                      : "text-white/65 print:text-neutral-700",
+                    : "text-white/40 print:text-neutral-600",
                   !a.usable && "opacity-30",
                 )}
               >
@@ -309,7 +319,7 @@ function Key({
           )}
         </span>
       )}
-      <KeyBar look={paint} />
+      {!state && <KeyMark look={paint} />}
     </div>
   );
 }
@@ -384,9 +394,6 @@ export function KeyLegend() {
     { label: "D", dot: FACE_DOT.D },
     { label: "F", dot: FACE_DOT.F },
     { label: "B", dot: FACE_DOT.B },
-    { label: "넓게·안쪽·가운데 층", dot: KIND_DOT.layer },
-    { label: "큐브 돌리기", dot: KIND_DOT.rotate },
-    { label: "명령", dot: KIND_DOT.command },
   ];
   return (
     <ul className="flex flex-wrap gap-x-3 gap-y-1 text-white/70 text-xs print:text-neutral-700">
@@ -396,14 +403,8 @@ export function KeyLegend() {
           {i.label}
         </li>
       ))}
-      <li className="flex items-center gap-1">
-        <span className="inline-block h-2.5 w-4 rounded-sm bg-sky-400/30" />
-        왼손
-      </li>
-      <li className="flex items-center gap-1">
-        <span className="inline-block h-2.5 w-4 rounded-sm bg-amber-400/30" />
-        오른손
-      </li>
+      <li>면 색 표시는 그 면을 돌리는 키, 흐린 글과 표시는 반대 방향(′)</li>
+      <li>큐브 돌리기·가운데 층은 색 없음</li>
     </ul>
   );
 }

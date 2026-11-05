@@ -1,38 +1,54 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 
 import {
+  calmTint,
   HOME_ORIENT,
+  KEY_CALM,
+  KEY_LOOK_DEFAULT,
+  KEY_LOOK_STORAGE,
+  type KeyLookStyle,
   type KeyPaint,
   keyPaint,
-  keyTone,
   type Orient,
+  parseKeyLook,
 } from "../keys/key-colors";
 import { hexColor, useCubeSettings } from "../settings";
 
 /**
- * 키 그림의 면 색(2026-11-04, `keys/key-colors.ts`). 2026-11-05부터 칸을 꽉 채우지 않는다(「눈이 아파」): 면 돌리기
- * 키는 어두운 바탕에 그 면 색을 옅게 섞고, 면 색 그대로는 칸 아래 띠에만 쓴다. 반대 방향(')은 더 옅게 + 띠를
- * 끊는다(무늬라 색약이어도 구별). x·y·z·M·E·S는 회색 바탕에 「보내는 면 색 ▸ 받는 면 색」 두 색 띠(반대는 끊긴 띠).
- * 섞는 비율은 `KEY_TONE` 한 곳. 설정 「키 그림에 면 색」을 끄면 칠하지 않는다.
+ * 키 그림의 면 색(2026-11-04, `keys/key-colors.ts`). 2026-11-05 두 번 고쳤다.
+ * 1. 「눈이 아파」: 꽉 채우던 칸을 옅은 바탕 + 색 테두리 + 아래 띠로.
+ * 2. 「아직 너무 어지러움」: 칸 바탕·테두리는 무채색, 면 색은 작은 표시 하나(기본 아래선, `KeyLookStyle`)에만 쓴다.
+ *    반대 방향(')은 같은 색을 흐리게, x·y·z·M·E·S(큐브 돌리기·가운데 층)는 색을 쓰지 않는다.
+ * 설정 「키 그림에 면 색」을 끄면 표시도 없다.
  */
-
-/** 칠한 칸의 글자색(어느 칸이든 밝은 글자) */
-const KEY_INK = "rgba(255,255,255,0.92)";
-
-/** 끊긴 띠(반대 방향): 띠 색을 4px 칠하고 3px 비운다 */
-const dashed = (color: string): CSSProperties => ({
-  backgroundImage: `repeating-linear-gradient(90deg, ${color} 0 4px, transparent 4px 7px)`,
-});
-const solid = (color: string): CSSProperties => ({ backgroundColor: color });
 
 export interface KeyLook {
   paint: KeyPaint;
-  /** 칸 바탕 */
-  style: CSSProperties;
-  /** 글자색 */
-  ink: string;
+  style: KeyLookStyle;
+  /** 면 색(면 돌리기만). x·y·z·M·E·S는 null */
+  color: string | null;
+  /** 칸 바탕(`tint` 안만) */
+  cell: CSSProperties;
+}
+
+/** 이 기기에서 견주어 보는 안(localStorage `cube.keyLook`). 없으면 권하는 안 */
+export function useKeyLookStyle(): KeyLookStyle {
+  const [style, setStyle] = useState<KeyLookStyle>(KEY_LOOK_DEFAULT);
+  useEffect(() => {
+    const read = () => {
+      try {
+        setStyle(parseKeyLook(localStorage.getItem(KEY_LOOK_STORAGE)));
+      } catch {
+        setStyle(KEY_LOOK_DEFAULT);
+      }
+    };
+    read();
+    window.addEventListener("storage", read);
+    return () => window.removeEventListener("storage", read);
+  }, []);
+  return style;
 }
 
 /** 지금 설정의 색으로 동작 하나를 칠하는 함수. 설정에서 껐으면 null을 돌려준다 */
@@ -41,51 +57,56 @@ export function useKeyLook(
   orient: Orient = HOME_ORIENT,
 ): (action: string | undefined) => KeyLook | null {
   const { colors, keyColors } = useCubeSettings();
+  const style = useKeyLookStyle();
   return (action) => {
     if (!keyColors || !action) return null;
     const p = keyPaint(n, orient, action);
     if (!p) return null;
-    if (p.kind === "sweep") return { paint: p, style: {}, ink: KEY_INK };
-    const tone = keyTone(colors[p.color] ?? 0, p.prime);
+    if (p.kind === "sweep") return { paint: p, style, color: null, cell: {} };
+    const rgb = colors[p.color] ?? 0;
     return {
       paint: p,
-      style: {
-        backgroundColor: hexColor(tone.fill),
-        borderColor: hexColor(tone.border),
-      },
-      ink: KEY_INK,
+      style,
+      color: hexColor(rgb),
+      cell:
+        style === "tint"
+          ? { backgroundColor: hexColor(calmTint(rgb, p.prime)) }
+          : {},
     };
   };
 }
 
-/**
- * 칸 아래 띠: 면 돌리기는 그 면 색 하나, x·y·z·M·E·S는 두 색 화살. 반대 방향은 끊긴 띠
- */
-export function KeyBar({ look }: { look: KeyLook | null }) {
-  const { colors } = useCubeSettings();
-  if (!look) return null;
-  const p = look.paint;
-  const fill = (c: number) =>
-    (p.prime ? dashed : solid)(hexColor(colors[c] ?? 0));
-  if (p.kind === "face")
-    return (
-      <span
-        data-key-bar={p.prime ? "dashed" : "solid"}
-        className="absolute inset-x-1 bottom-0.5 h-1 rounded-full"
-        style={fill(p.color)}
-        aria-hidden
-      />
-    );
+/** 칸 글자의 밝기: 반대 방향은 한 단계 흐리게(색이 아니라 밝기로 구별) */
+export function labelTone(look: KeyLook | null): string {
+  return look?.paint.prime ? "text-white/60" : "text-white/90";
+}
+
+/** 면 색 표시 하나: 아래선 또는 점. 반대 방향은 같은 색을 흐리게. 큐브 돌리기·가운데 층과 `tint` 안은 없다 */
+export function KeyMark({ look }: { look: KeyLook | null }) {
+  if (!look?.color || look.style === "tint") return null;
+  const prime = look.paint.prime;
+  const style: CSSProperties = {
+    backgroundColor: look.color,
+    opacity: prime ? KEY_CALM.primeMark : 1,
+  };
   return (
     <span
-      data-key-sweep={`${p.from}-${p.to}`}
-      data-key-bar={p.prime ? "dashed" : "solid"}
-      className="absolute inset-x-0.5 bottom-0.5 flex h-1.5 items-center gap-px"
+      data-key-mark={`${look.style}${prime ? "'" : ""}`}
+      className={
+        look.style === "dot"
+          ? "absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
+          : "absolute inset-x-[22%] bottom-1 h-0.5 rounded-full"
+      }
+      style={style}
       aria-hidden
-    >
-      <span className="h-full flex-1 rounded-l-sm" style={fill(p.from)} />
-      <span className="text-[7px] leading-none text-white/70">▸</span>
-      <span className="h-full flex-1 rounded-r-sm" style={fill(p.to)} />
-    </span>
+    />
   );
+}
+
+/** `data-key-paint` 값(시험이 본다): 면 색 번호(반대면 '), 큐브 돌리기·가운데 층은 sweep */
+export function paintAttr(look: KeyLook | null): string | undefined {
+  if (!look) return undefined;
+  return look.paint.kind === "face"
+    ? `${look.paint.color}${look.paint.prime ? "'" : ""}`
+    : "sweep";
 }

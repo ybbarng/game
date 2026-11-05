@@ -13,12 +13,12 @@ import {
 } from "../input/keymaps";
 
 import { handLayersText } from "../keys/hand-layers";
-import type { Orient } from "../keys/key-colors";
+import { capRepeats, type Orient } from "../keys/key-colors";
 import { FINGER_HOMES, facePairs, pairPath } from "../keys/key-pairs";
 import { keyLayers } from "../keys/layout";
 import type { HandLayers } from "../keys/reach";
 import { hexColor, useCubeSettings } from "../settings";
-import { KeyBar, useKeyLook } from "./KeyPaint";
+import { KeyMark, labelTone, paintAttr, useKeyLook } from "./KeyPaint";
 import { PRESS_CLASS, useVirtualKeys } from "./VirtualKeys";
 
 /**
@@ -117,23 +117,12 @@ export function KeyGuide({
   const undoChord =
     chordsFor(keymap, "undo").find((c) => !c.ctrl && !c.alt) ?? null;
   const { keyPairs, keyFingers } = useCubeSettings();
-  // Shift를 누르고 있는 동안은 Shift 층을 굵게 보인다
-  const [held, setHeld] = useState(false);
-  useEffect(() => {
-    const on = (e: KeyboardEvent) => setHeld(e.shiftKey);
-    const off = () => setHeld(false);
-    window.addEventListener("keydown", on);
-    window.addEventListener("keyup", on);
-    window.addEventListener("blur", off);
-    return () => {
-      window.removeEventListener("keydown", on);
-      window.removeEventListener("keyup", on);
-      window.removeEventListener("blur", off);
-    };
-  }, []);
+  // Shift를 누르고 있는 동안만 Shift 층 글을 보인다
+  const held = useHeldShift();
+  const hasShift = keymap.bindings.some((b) => b.shift && !b.ctrl);
   const cell = (code: string) => {
     const kl = heldNames(keyLayers(keymap, n, code), n, layers);
-    // 진짜 Shift를 누르고 있거나 화면의 Shift·Alt를 켰으면 그 층을 굵게
+    // 진짜 Shift를 누르고 있거나 화면의 Shift·Alt를 켰으면 그 층을
     const shiftOn = held || vk.mods.shift;
     const plain = vk.mods.alt
       ? shiftOn
@@ -142,65 +131,69 @@ export function KeyGuide({
       : shiftOn
         ? kl.shift
         : kl.plain;
-    const shift = shiftOn || vk.mods.alt ? undefined : kl.shift;
     const w = want?.find((c) => c.code === code);
+    const usable = !!plain?.usable;
+    const label = usable && !hideActions ? plain?.label : undefined;
     // 층 수를 잡고 바뀐 칸 글(5 = 2L → 2R')이면 그 수의 면 색으로
     const paint = look(
-      plain?.usable
+      usable && plain
         ? parseAction(plain.label)?.kind === "move"
           ? plain.label
           : plain.action
         : undefined,
     );
-    const tinted = paint?.paint.kind === "face" && lit !== code && !w;
+    const cap = codeLabel(code);
+    const state = lit === code ? "pressed" : w ? "want" : null;
     return (
       <div
         key={code}
         data-key={code}
         data-key-want={w ? "" : undefined}
         data-key-state={lit === code ? "pressed" : undefined}
+        data-key-idle={usable ? undefined : ""}
         {...(pressable
           ? {
               role: "button",
-              "aria-label": codeLabel(code),
+              "aria-label": cap,
               "data-key-press": "",
               ...vk.keyProps(code),
             }
           : {})}
-        data-key-paint={
-          paint
-            ? paint.paint.kind === "face"
-              ? `${paint.paint.color}${paint.paint.prime ? "'" : ""}`
-              : "sweep"
-            : undefined
-        }
-        style={tinted ? { ...paint.style, color: paint.ink } : undefined}
-        className={`relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center rounded border pb-1.5 text-[10px] leading-tight transition-colors ${pressable ? PRESS_CLASS : ""} ${
-          lit === code
+        data-key-paint={paintAttr(paint)}
+        style={state ? undefined : paint?.cell}
+        className={`relative flex h-12 min-w-0 flex-1 items-center justify-center rounded border leading-none transition-colors ${pressable ? PRESS_CLASS : ""} ${
+          state === "pressed"
             ? "border-amber-300 bg-amber-300/30"
-            : w
+            : state === "want"
               ? "border-sky-300 bg-sky-400/30"
-              : tinted
-                ? "border-2"
-                : "border-white/15 bg-white/5"
+              : usable
+                ? "border-white/10 bg-white/[0.04]"
+                : "border-white/[0.05] bg-transparent"
         }`}
       >
         {w && (w.shift || w.alt) && (
-          <span className="absolute top-0 right-0.5 font-bold text-[9px] text-sky-200">
+          <span className="absolute top-0.5 right-0.5 font-bold text-[9px] text-sky-200">
             {w.alt ? "Alt" : ""}
             {w.shift ? "⇧" : ""}
           </span>
         )}
-        <span className={tinted ? "opacity-60" : "text-white/40"}>
-          {codeLabel(code)}
-        </span>
-        <span className="font-semibold text-xs">
-          {plain?.usable && !hideActions ? plain.label : ""}
-        </span>
-        <span className={tinted ? "opacity-70" : "text-white/50"}>
-          {shift?.usable && !hideActions ? shift.label : ""}
-        </span>
-        <KeyBar look={paint} />
+        {!capRepeats(cap, label) && (
+          <span
+            data-key-cap
+            className={`absolute top-1 left-1 text-[9px] ${usable ? "text-white/35" : "text-white/15"}`}
+          >
+            {cap}
+          </span>
+        )}
+        {label && (
+          <span
+            data-key-label
+            className={`font-semibold text-sm ${labelTone(paint)}`}
+          >
+            {label}
+          </span>
+        )}
+        {!state && <KeyMark look={paint} />}
       </div>
     );
   };
@@ -265,6 +258,16 @@ export function KeyGuide({
           </span>
         )}
         배치 「{PRESET_LABEL[keymap.preset]}」
+        {hasShift && !hideActions && (
+          <span data-key-shift-hint>
+            {" · "}
+            {keymap.preset === "notation"
+              ? "Shift를 누르는 동안 반대 방향이 보여요"
+              : keymap.preset === "twoHand"
+                ? "Shift를 누르는 동안 넓게 돌리기가 보여요"
+                : "Shift를 누르는 동안 Shift 층이 보여요"}
+          </span>
+        )}
         {COMMAND_KEYS.map((c) => {
           const chords = chordsFor(keymap, c);
           if (chords.length === 0) return null;
@@ -278,6 +281,24 @@ export function KeyGuide({
       </p>
     </div>
   );
+}
+
+/** 진짜 Shift를 누르고 있는지(키 그림이 그동안만 Shift 층 글을 보인다) */
+export function useHeldShift(): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => setHeld(e.shiftKey);
+    const off = () => setHeld(false);
+    window.addEventListener("keydown", on);
+    window.addEventListener("keyup", on);
+    window.addEventListener("blur", off);
+    return () => {
+      window.removeEventListener("keydown", on);
+      window.removeEventListener("keyup", on);
+      window.removeEventListener("blur", off);
+    };
+  }, []);
+  return held;
 }
 
 /** 화면 Shift·Alt 토글(한 번 켜면 다음 키 하나에 붙고 꺼진다) */
@@ -414,22 +435,17 @@ export function KeyOverlay({
               : k.y,
         }));
         return (
-          <g key={p.face} data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}>
-            {/* 어두운 테두리 위에 면 색: 같은 색 칸 옆에서도 보이게 */}
-            <path
-              d={d}
-              fill="none"
-              stroke="#000"
-              strokeOpacity={0.7}
-              strokeWidth={4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+          // 2026-11-05 「어지러움」: 가늘고 옅게(칸 글보다 눈에 덜 띄게)
+          <g
+            key={p.face}
+            data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}
+            opacity={0.4}
+          >
             <path
               d={d}
               fill="none"
               stroke={color}
-              strokeWidth={2}
+              strokeWidth={1.25}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -438,10 +454,8 @@ export function KeyOverlay({
                 key={`${e.x}-${e.y}`}
                 cx={e.x}
                 cy={e.y}
-                r={2.5}
+                r={1.5}
                 fill={color}
-                stroke="#000"
-                strokeOpacity={0.7}
               />
             ))}
           </g>
@@ -457,14 +471,15 @@ export function KeyOverlay({
               <title>
                 {f.hand === "left" ? "왼" : "오른"} {f.finger}
               </title>
+              {/* 칸 위 틈에 가는 막대(키 글자를 덮지 않게) */}
               <rect
-                x={b.x + b.w * 0.22}
-                y={b.y - 3}
-                width={b.w * 0.56}
-                height={7}
-                rx={3.5}
+                x={b.x + b.w * 0.3}
+                y={b.y - 2.5}
+                width={b.w * 0.4}
+                height={2}
+                rx={1}
                 fill={color}
-                opacity={0.45}
+                opacity={0.4}
               />
             </g>
           );
