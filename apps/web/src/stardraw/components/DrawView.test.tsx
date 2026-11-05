@@ -91,3 +91,36 @@ describe("관측 마무리: 작은 순으로 다시 놓고 하나씩 다시 빛�
     expect(shining()).toBe(0);
   });
 });
+
+describe("다시 빛내기: 공이 빛나는 그 순간 하늘의 같은 별도 빛난다(docs/36 11-72)", () => {
+  const skyGlow = () =>
+    document.querySelector<HTMLElement>("[data-sky]")?.dataset.skyGlow;
+  /** 지금 빛나는 공 번호(보너스 공은 data-sort-ball 밖이라 data-ball로 읽는다) */
+  const ballGlow = () =>
+    document.querySelector<HTMLElement>(".sd-ball-shine")?.dataset.ball;
+
+  it("정렬 전과 끝난 뒤에는 하늘에 빛나는 별이 없고, 빛나는 동안은 늘 공과 같은 별이다", () => {
+    const { wait } = finishedShow();
+    expect(skyGlow()).toBeUndefined();
+    wait(FX.sortWait + FX.sortMove + FX.pause - 1);
+    expect(skyGlow()).toBeUndefined();
+    const seq = [...ascending, drawOrder(record)[6] as number];
+    seq.forEach((n, i) => {
+      wait(i === 0 ? 1 : FX.sortShine);
+      expect(ballGlow()).toBe(String(n));
+      expect(skyGlow()).toBe(String(n));
+    });
+    wait(FX.sortShine + FX.pause);
+    expect(ballGlow()).toBeUndefined();
+    expect(skyGlow()).toBeUndefined();
+  });
+
+  it("움직임 줄이기면 하늘 별도 빛나지 않는다", () => {
+    reduce = true;
+    const { wait } = finishedShow();
+    for (let i = 0; i < 10; i++) {
+      wait(FX.sortShine);
+      expect(skyGlow()).toBeUndefined();
+    }
+  });
+});

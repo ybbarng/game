@@ -2,12 +2,12 @@
 
 import { BOT_LEVEL_LABELS, type BotLevel } from "@game/cube-ai";
 import {
-  applyMoves,
   type CubeMove,
   invertMove,
   milestoneLabel,
-  parseMoves,
+  type StickerMask,
   solvedCube,
+  stageMask,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 import {
@@ -20,12 +20,14 @@ import {
 } from "react";
 
 import type { RaceSnapshot } from "@/net/race/types";
-import { faceGrid } from "../bridge";
+import { faceGrid, type StickerMarks } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
 import { CubePlay, playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
+import { useMoveKeys } from "../components/MoveChip";
 import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
+import { type CubeLook, lookColors, lookPatterns } from "../item-look";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -36,14 +38,28 @@ import {
   type ActiveHandicap,
   goalLabel,
   handicapTags,
+  helpLabel,
+  helpOf,
+  helpScreen,
   ratioText,
 } from "./handicap";
+import { GrayLegend, ItemIcon, ItemNotices, ItemSlot } from "./ItemBar";
+import {
+  applyLogText,
+  ITEM_LABELS,
+  type ItemKind,
+  lastEffectiveMove,
+  trackOf,
+} from "./items";
 import { MatchBoard } from "./MatchBoard";
 import { PartyBar } from "./PartyBar";
 import {
+  hasHp,
+  hasItems,
   PARTY_END_LABELS,
   PARTY_HP,
   PARTY_LOW,
+  PARTY_MODE_LABELS,
   PARTY_REASONS,
   type PartyOutcome,
 } from "./party";
@@ -142,7 +158,8 @@ export function RaceView({
     if (phase !== "inspect" && !waiting) setNotice(null);
   }, [phase, waiting]);
   const [showSmall, setShowSmall] = useState(true);
-  const alerts = effectiveRaceAlerts(settings.raceAlerts, useReducedMotion());
+  const reduced = useReducedMotion();
+  const alerts = effectiveRaceAlerts(settings.raceAlerts, reduced);
 
   // 체력바 대결(docs/51 3-2): 이 기기가 받은 만큼, 확실한 데까지의 판정. 판이 끝났으면 판 기록의 것
   const partyRound = room.rounds.find((r) => r.race === room.state?.race?.id);
@@ -169,11 +186,131 @@ export function RaceView({
 
   const myState: PuzzleState =
     mine?.stateOf(room.me) ?? mine?.startState() ?? solvedCube(n);
+
+  // 도움(docs/47 9-8): 이 화면에서만 펼친 그림·힌트를 열고 닫고, 「가리고 맞추기」면 풀린 뒤 내 큐브를 가린다
+  const myHelp = mine ? helpOf(handicapNow, room.me) : undefined;
+  const myPlaying =
+    snap?.peers.find((p) => p.id === room.me)?.status === "playing";
+  const helpNow = helpScreen(myHelp, n, { phase, playing: myPlaying });
+  const hiddenMask = useMemo(() => stageMask(n, "all-hidden"), [n]);
+  const playSettings = useMemo(
+    () => (helpNow.back ? settings : { ...settings, backView: "off" as const }),
+    [settings, helpNow.back],
+  );
+
+  // 아이템전(docs/51 3-3): 내 아이템·방패, 이 화면에 그릴 효과(안개·한 면 가리기·색 뒤집기·흑백 화면·찾아 주기·힌트)
+  const mode = room.partyMode();
+  const itemsOn = hasItems(mode);
+  const items = itemsOn ? partyLive?.items : undefined;
+  const screen = itemsOn ? room.itemScreen() : null;
+  const myItem = items?.slot[room.me] ?? null;
+  const usable = itemsOn ? room.heldItem(room.me) : null;
+  const look: CubeLook | null =
+    screen && (screen.swap || screen.gray)
+      ? { swap: screen.swap, gray: screen.gray }
+      : null;
+  const blindKey = screen?.blind ? screen.blind.stickers.join(",") : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 가린 스티커가 바뀔 때만 새 마스크
+  const blindMask = useMemo((): StickerMask | null => {
+    if (!screen?.blind) return null;
+    const hide = new Set(screen.blind.stickers);
+    return Array.from({ length: 6 * n * n }, (_, i) =>
+      hide.has(i) ? "hidden" : "visible",
+    );
+  }, [blindKey, n]);
+  const findKey = screen?.find
+    ? `${screen.find.found.join(",")}|${screen.find.slot.join(",")}`
+    : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 빛낼 조각이 바뀔 때만
+  const glow = useMemo((): StickerMarks | null => {
+    if (!screen?.find) return null;
+    const marks: (StickerMarks[number] | null)[] = Array(6 * n * n).fill(null);
+    for (const s of screen.find.slot) marks[s] = "focus";
+    for (const s of screen.find.found) marks[s] = "glow";
+    return marks;
+  }, [findKey, n]);
+  // 힌트 한 수: 배우기 힌트(초보자 해법) 계산을 필요할 때 불러 다음 수를 띄운다
+  const [hintMod, setHintMod] = useState<
+    typeof import("../learn/taught-hint") | null
+  >(null);
+  // 도움 「힌트 허용」: 배우기와 같은 두 단계(1 지금 경우, 2 다음 수). 연 단계는 경우(토막)가 바뀌면 다시 접는다
+  const [opened, setOpened] = useState<{ level: 0 | 1 | 2; seg?: string }>({
+    level: 0,
+  });
+  const helpPlan = useRef<import("../learn/taught-hint").HintPlan | null>(null);
+  const wantHint =
+    (!!screen?.hint || (helpNow.hint && opened.level > 0)) && n === 3;
+  useEffect(() => {
+    if (!wantHint || hintMod) return;
+    let live = true;
+    void import("../learn/taught-hint").then((m) => live && setHintMod(m));
+    return () => {
+      live = false;
+    };
+  }, [wantHint, hintMod]);
+  const hintMove = useMemo(() => {
+    if (!screen?.hint || n !== 3 || !hintMod) return null;
+    try {
+      return hintMod.finaleHint(myState, null)?.move ?? null;
+    } catch {
+      return null;
+    }
+  }, [screen?.hint, n, hintMod, myState]);
+  const helpHint = useMemo(() => {
+    if (!helpNow.hint || opened.level === 0 || !hintMod) return null;
+    try {
+      const h = hintMod.finaleHint(myState, helpPlan.current);
+      helpPlan.current = h?.plan ?? null;
+      return h;
+    } catch {
+      return null;
+    }
+  }, [helpNow.hint, opened.level, hintMod, myState]);
+  const helpSeg = helpHint ? `${helpHint.stage}|${helpHint.segment}` : "";
+  useEffect(() => {
+    if (opened.level > 0 && opened.seg === undefined && helpHint)
+      setOpened({ level: opened.level, seg: helpSeg });
+  }, [opened, helpHint, helpSeg]);
+  const helpLevel =
+    opened.seg === undefined || opened.seg === helpSeg ? opened.level : 0;
+  const { keysOf } = useMoveKeys(n);
+  const shownMove =
+    hintMove ?? (helpLevel >= 2 ? (helpHint?.move ?? null) : null);
+  const hintKeys = shownMove && keysOf ? keysOf(shownMove) : null;
+  // 받기·맞기 소리: 새 아이템 → cubeItemGet, 맞음 → cubeItemHit(막으면 소리 없음)
+  const itemCue = useRef({ key: "", slot: "", notices: new Set<string>() });
+  useEffect(() => {
+    if (!itemsOn) return;
+    const cue = itemCue.current;
+    if (cue.key !== syncKey) {
+      cue.key = syncKey;
+      cue.slot = "";
+      cue.notices = new Set();
+    }
+    const slotNow = myItem ?? "";
+    if (slotNow && slotNow !== cue.slot) playCubeCue(settings, "cubeItemGet");
+    cue.slot = slotNow;
+    for (const nt of screen?.notices ?? [])
+      if (!cue.notices.has(nt.key)) {
+        cue.notices.add(nt.key);
+        if (!nt.blocked) playCubeCue(settings, "cubeItemHit");
+      }
+  });
+  // 되감기·맞은 섞기는 내 수가 아니어서 장면이 따라 돌지 않는다: 그만큼 다시 칠한다
+  const myTrack = itemsOn ? trackOf(myState) : null;
+  const jumps = myTrack
+    ? myTrack.hits.length + myTrack.uses.filter((u) => u === "rewind").length
+    : 0;
   // 섞기가 바뀌면(새 판·다시 정한 섞기) 장면을 다시 칠한다
   const syncKey = `${room.state?.race?.id}|${snap?.attempt}|${snap?.seed ?? ""}`;
   const [syncToken, setSyncToken] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때만 다시 칠한다
-  useEffect(() => setSyncToken((v) => v + 1), [syncKey]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때(아이템전: 내 수 밖으로 상태가 바뀔 때)만 다시 칠한다
+  useEffect(() => setSyncToken((v) => v + 1), [syncKey, jumps]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 새 섞기면 연 힌트를 접는다
+  useEffect(() => {
+    setOpened({ level: 0 });
+    helpPlan.current = null;
+  }, [syncKey]);
 
   // 단계 칩(docs/51 1-3): 이미 받은 수 기록에서 이 기기가 계산한다(새로 보내는 정보 없음, race-stages.ts)
   const start = snap?.seed ? session?.startState() : undefined;
@@ -220,6 +357,9 @@ export function RaceView({
       if (groups.length > (counts.get(p.id) ?? 0)) passed.push(p.id);
       counts.set(p.id, groups.length);
     }
+    // 가리고 맞추는 동안은 내 단계 톡을 띄우지 않는다(맞은 데를 알려 주게 된다)
+    if (helpNow.hidden && passed.includes(room.me))
+      passed.splice(passed.indexOf(room.me), 1);
     if (passed.length === 0) return;
     const order = liveOrder(
       snap.peers.map((p) => ({
@@ -315,11 +455,18 @@ export function RaceView({
 
   const onCommand = useCallback(
     (c: Command): CubeMove | null => {
+      // 아이템 쓰기: 살펴보기 키(기본 Space). 대결 중에는 살펴보기를 접을 일이 없다
+      if (c === "inspectionSkip") {
+        room.spendItem();
+        return null;
+      }
       if (c !== "undo") return null;
       const s = room.session();
-      const last = s?.moveLog(room.me).at(-1);
-      if (!s || !last) return null;
-      const back = invertMove(parseMoves(n, last.m)[0] as CubeMove);
+      if (!s) return null;
+      // 마지막으로 큐브에 들어간 수(아이템전의 맞은 섞기·되감기 포함)를 거꾸로
+      const last = lastEffectiveMove(n, s.moveLog(room.me));
+      if (!last) return null;
+      const back = invertMove(last);
       return s.play(back).ok ? back : null;
     },
     [room, n],
@@ -373,7 +520,7 @@ export function RaceView({
         </span>
         <span className="text-sm text-white/70" data-cube-phase-text>
           {snap.preparing ? "섞는 중…" : PHASE_TEXT[phase]}
-          {partyLive ? " · 체력바" : ""}
+          {mode ? ` · ${PARTY_MODE_LABELS[mode].replace("파티: ", "")}` : ""}
           {snap.attempt > 0 && phase !== "finished"
             ? ` · 섞기 다시 정함(${snap.attempt + 1}번째)`
             : ""}
@@ -398,11 +545,12 @@ export function RaceView({
         )}
       {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
       {mine &&
-        (myDelayMs > 0 || myGoal) &&
+        (myDelayMs > 0 || myGoal || myHelp) &&
         phase !== "finished" &&
         phase !== "waiting" && (
           <p
             data-cube-my-handicap
+            data-cube-my-help={myHelp}
             data-cube-start-wait={waiting ? Math.ceil(waitLeft / 1000) : 0}
             className={`mx-auto break-keep rounded-full border px-3 py-1 text-center text-xs ${
               waiting && phase === "race"
@@ -417,6 +565,7 @@ export function RaceView({
                   : `+${myDelayMs / 1000}초 늦게 출발`
                 : "",
               myGoal ? `목표: ${goalLabel(n, myGoal)}` : "",
+              myHelp ? helpLabel(n, myHelp) : "",
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -455,24 +604,87 @@ export function RaceView({
           actions={resultActions}
           splitsOf={(id) => stages.get(id)?.splits ?? []}
           handicap={handicap}
-          party={partyLive}
+          party={hasHp(mode) ? partyLive : undefined}
         />
       )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_280px]">
-        <div className="flex flex-col items-center">
+        <div className="relative flex flex-col items-center">
+          {/* 아이템 줄: 늘 같은 높이로 두어(흑백 화면 표가 떠도) 큐브가 밀리지 않는다 */}
+          {itemsOn && mine && (
+            <div
+              data-cube-item-row
+              data-cube-screen={
+                [
+                  screen?.fog ? "fog" : "",
+                  screen?.blind ? "blind" : "",
+                  screen?.swap ? "swap" : "",
+                  screen?.gray ? "gray" : "",
+                  screen?.find ? "find" : "",
+                  screen?.hint ? "hint" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
+              className="mb-2 flex h-7 w-full flex-nowrap items-center justify-center gap-3 overflow-hidden"
+            >
+              <ItemSlot
+                item={myItem}
+                guard={!!items?.guard[room.me]}
+                pending={!!myItem && !usable}
+                onUse={() => room.spendItem()}
+                useKey="Space"
+              />
+              {screen?.gray && <GrayLegend colors={settings.colors} />}
+              {hintMove && (
+                <span
+                  data-cube-item-hint={hintMove}
+                  className="flex h-7 items-center gap-1 rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 font-mono text-amber-100 text-xs"
+                >
+                  <ItemIcon item="hint" />
+                  {hintMove}
+                </span>
+              )}
+            </div>
+          )}
+          {/* 도움 「힌트 허용」: 늘 같은 높이(연 힌트 글이 길어도 큐브가 밀리지 않게) */}
+          {mine && helpNow.hint && (
+            <HelpHintRow
+              level={helpLevel}
+              label={helpHint?.label ?? null}
+              move={helpLevel >= 2 ? (helpHint?.move ?? null) : null}
+              stuck={helpLevel > 0 && !!hintMod && !helpHint}
+              onOpen={(level) =>
+                setOpened({
+                  level,
+                  ...(level === 2 && helpSeg ? { seg: helpSeg } : {}),
+                })
+              }
+            />
+          )}
+          {mine && screen && (
+            <ItemNotices
+              notices={screen.notices}
+              nameOf={(id) => room.playerName(id)}
+              reduced={reduced}
+            />
+          )}
           {mine ? (
             <CubePlay
               flow="small"
               n={n}
               state={myState}
-              mask={null}
+              mask={helpNow.hidden ? hiddenMask : blindMask}
               syncToken={syncToken}
-              settings={settings}
+              settings={playSettings}
               onMove={onMove}
               onCommand={onCommand}
               locked={phase !== "inspect" && phase !== "race"}
               fitViewport
+              fog={!!screen?.fog}
+              look={look}
+              glow={glow}
+              want={hintKeys}
             />
           ) : (
             <p className="p-6 text-center text-sm text-white/70">보는 중</p>
@@ -504,7 +716,9 @@ export function RaceView({
           </div>
           {[...(me ? [me] : []), ...others].map((p) => {
             const st = session.stateOf(p.id);
-            const groups = stages.get(p.id)?.groups ?? [];
+            // 가리고 맞추는 동안은 내 단계·진행을 보이지 않는다
+            const veiled = p.id === room.me && helpNow.hidden;
+            const groups = veiled ? [] : (stages.get(p.id)?.groups ?? []);
             const toast = toasts[p.id];
             const hp = partyHp(p.id);
             const knocked = hp !== undefined && partyOut(p.id);
@@ -552,6 +766,13 @@ export function RaceView({
                   {p.id !== room.me && handicap && (
                     <PeerHandicap handicap={handicap} n={n} id={p.id} />
                   )}
+                  {items && (
+                    <PeerItems
+                      id={p.id}
+                      item={items.slot[p.id] ?? null}
+                      guard={!!items.guard[p.id]}
+                    />
+                  )}
                   <span
                     className={`ml-auto shrink-0 font-mono text-xs tabular-nums ${
                       p.status === "done" ? "text-emerald-300" : ""
@@ -570,11 +791,13 @@ export function RaceView({
                     <div className="h-2 overflow-hidden rounded-full bg-white/10">
                       <div
                         className={`h-full ${p.status === "done" ? "bg-emerald-400" : "bg-sky-400"}`}
-                        style={{ width: `${Math.round(p.progress * 100)}%` }}
+                        style={{
+                          width: `${veiled ? 0 : Math.round(p.progress * 100)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-white/60 text-xs">
-                      {st ? stageLabel(n, st) : "-"}
+                      {st && !veiled ? stageLabel(n, st) : "-"}
                     </span>
                   </>
                 )}
@@ -584,12 +807,14 @@ export function RaceView({
                     n={n}
                     state={st}
                     settings={settings}
+                    look={look}
                     captions={false}
                     fallback={
                       <CubeNet
                         n={n}
                         faces={faceGrid(n, st)}
-                        colors={settings.colors}
+                        colors={lookColors(settings.colors, look)}
+                        patterns={lookPatterns(look)}
                         hidden={settings.hidden}
                         className="h-auto w-32"
                       />
@@ -837,7 +1062,10 @@ function ResultBox({
               p?.accepted !== undefined && p.reported !== undefined
                 ? p.accepted - p.reported
                 : 0;
-            const notes: string[] = handicapTags(handicap, n, id);
+            const notes: string[] = [
+              ...handicapTags(handicap, n, id),
+              ...itemNotes(round, id),
+            ];
             if (hp?.winner === id) notes.push(PARTY_END_LABELS[hp.end]);
             const ko = hp?.knockedOut[id];
             if (ko !== undefined) notes.push(`체력 0 · ${formatMs(ko)}`);
@@ -987,6 +1215,112 @@ function partyHeadline(
   return `${place}위 · 체력 ${left}`;
 }
 
+/** 사람 칸 이름 옆의 가진 아이템·방패(아이콘만, 이름은 마우스를 올리면) */
+function PeerItems({
+  id,
+  item,
+  guard,
+}: {
+  id: string;
+  item: ItemKind | null;
+  guard: boolean;
+}) {
+  if (!item && !guard) return null;
+  return (
+    <span
+      data-cube-peer-item={id}
+      data-item={item ?? undefined}
+      className="flex shrink-0 items-center gap-0.5 text-amber-200/80"
+      title={[item ? ITEM_LABELS[item] : "", guard ? ITEM_LABELS.shield : ""]
+        .filter(Boolean)
+        .join(" · ")}
+    >
+      {item && <ItemIcon item={item} className="h-3.5 w-3.5" />}
+      {guard && (
+        <ItemIcon item="shield" className="h-3.5 w-3.5 text-sky-200/80" />
+      )}
+    </span>
+  );
+}
+
+/** 결과 상자의 아이템 글(「받음 방패·안개 · 씀 안개 · 맞음 한 수 섞기」) */
+function itemNotes(round: RoundRecord | undefined, id: string): string[] {
+  const s = round?.items;
+  if (!s) return [];
+  const list = (xs: readonly ItemKind[] | undefined) =>
+    (xs ?? []).map((x) => ITEM_LABELS[x]).join("·");
+  const out: string[] = [];
+  if (s.got[id]?.length) out.push(`받음 ${list(s.got[id])}`);
+  if (s.used[id]?.length) out.push(`씀 ${list(s.used[id])}`);
+  if (s.hit[id]?.length) out.push(`맞음 ${list(s.hit[id])}`);
+  if (s.blocked[id]) out.push(`방패로 막음 ${s.blocked[id]}`);
+  return out;
+}
+
+/**
+ * 도움 「힌트 허용」의 두 단계 힌트 줄(배우기 「힌트 1 · 지금 경우」「힌트 2 · 다음 수」와 같은 계산). 한 줄 높이로 고정한다
+ */
+function HelpHintRow({
+  level,
+  label,
+  move,
+  stuck,
+  onOpen,
+}: {
+  level: 0 | 1 | 2;
+  label: string | null;
+  move: string | null;
+  /** 지금 모양은 초보자 방식으로 바로 이어 갈 수 없다 */
+  stuck: boolean;
+  onOpen: (level: 1 | 2) => void;
+}) {
+  const button = (k: 1 | 2, text: string) => (
+    <button
+      type="button"
+      data-cube-help-hint={k}
+      aria-pressed={level >= k}
+      onClick={(e) => {
+        onOpen(level >= k ? (level as 1 | 2) : k);
+        e.currentTarget.blur();
+      }}
+      className={`h-7 shrink-0 rounded-full px-2.5 font-semibold text-xs transition active:scale-[0.97] ${
+        level >= k
+          ? "bg-amber-400/25 text-amber-100"
+          : level === k - 1
+            ? "bg-amber-400/90 text-black"
+            : "bg-white/10 text-white/80"
+      }`}
+    >
+      {text}
+    </button>
+  );
+  return (
+    <div
+      data-cube-help-hint-row
+      className="mb-2 flex h-7 w-full min-w-0 flex-nowrap items-center justify-center gap-2 overflow-hidden"
+    >
+      {button(1, "힌트 1")}
+      {button(2, "힌트 2")}
+      {level > 0 && (
+        <span
+          data-cube-help-case={label ?? undefined}
+          className="min-w-0 truncate text-amber-100 text-xs"
+        >
+          {stuck ? "지금은 힌트가 없어요" : label}
+        </span>
+      )}
+      {move && (
+        <span
+          data-cube-hint={move}
+          className="shrink-0 rounded bg-amber-400 px-1.5 font-mono text-black text-xs"
+        >
+          {move}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** 사람 칸 이름 옆의 짧은 핸디캡 표시(「+5초」·「첫 두 층」) */
 function PeerHandicap({
   handicap,
@@ -999,14 +1333,19 @@ function PeerHandicap({
 }) {
   const d = handicap.delaySec[id];
   const g = handicap.goal[id];
-  if (!d && !g) return null;
+  const help = helpOf(handicap, id);
+  if (!d && !g && !help) return null;
   return (
     <span
       data-cube-peer-handicap={id}
       title={handicapTags(handicap, n, id).join(" · ")}
       className="shrink-0 truncate text-[11px] text-white/45"
     >
-      {[d ? `+${d}초` : "", g ? goalLabel(n, g) : ""]
+      {[
+        d ? `+${d}초` : "",
+        g ? goalLabel(n, g) : "",
+        help ? helpLabel(n, help) : "",
+      ]
         .filter(Boolean)
         .join(" · ")}
     </span>
@@ -1244,11 +1583,15 @@ function Replay({
         {round.players.map((id) => {
           const log = round.logs[id] ?? [];
           const done = log.filter((x) => x.t <= t);
-          const state = applyMoves(
-            n,
-            round.start,
-            done.flatMap((x) => parseMoves(n, x.m)),
-          );
+          // 아이템전의 특별한 수(맞은 섞기·되감기)도 그때 큐브에 들어간 대로
+          let state: PuzzleState = round.start;
+          for (const x of done) {
+            try {
+              state = applyLogText(n, state, x.m);
+            } catch {
+              // 읽지 못하는 수는 건너뛴다(대결 틀이 이미 걸렀다)
+            }
+          }
           return (
             <figure key={id} className="flex flex-col items-center gap-1">
               <CubePosterPair

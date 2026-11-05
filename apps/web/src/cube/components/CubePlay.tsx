@@ -27,6 +27,12 @@ import {
   moreButtonMoves,
 } from "../input";
 import {
+  type CubeLook,
+  isPlainLook,
+  lookColors,
+  lookPatterns,
+} from "../item-look";
+import {
   resetHandLayers,
   setHandLayers,
   usesHandLayers,
@@ -47,6 +53,7 @@ import { type CubeView, loadCubeView } from "../view";
 import { CubeNet } from "./CubeNet";
 import { type FlowSize, FlowStripView, useFlowStrip } from "./FlowStrip";
 import { KeyGuide } from "./KeyGuide";
+import { CubeLookContext } from "./PatternGlyph";
 import { StageWithNet, useBackView } from "./StageWithNet";
 
 /**
@@ -123,6 +130,16 @@ export interface CubePlayProps {
    * 첫 화면에 다 들어오게). 칸 위 끝의 자리를 재어 `100dvh - 위 끝 - 여백`을 넘지 않게 한다. 휴대폰은 그대로
    */
   fitViewport?: boolean;
+  /**
+   * 아이템전 화면 방해(docs/47 9-7). 상태·수·판정은 그대로이고 이 화면에서만 그린다.
+   * - `fog`(안개): 펼친 그림·거울 판·키 그림을 끈다(3D 큐브는 보인다)
+   * - `look`(색 뒤집기·흑백 화면): 3D 큐브·거울 판·펼친 그림·수 흐름 띠·키 그림을 한꺼번에 같은 색·무늬로
+   * - `glow`(찾아 주기): 스티커 정체마다 빛낼 표시. 바뀌면 바로 장면에 칠한다(`marks`와 달리 `syncToken`을 기다리지 않는다)
+   * - `mask`가 바뀌면(한 면 가리기) 그때 다시 칠한다
+   */
+  fog?: boolean;
+  look?: CubeLook | null;
+  glow?: StickerMarks | null;
 }
 
 export function CubePlay({
@@ -143,7 +160,18 @@ export function CubePlay({
   flow,
   combo = false,
   fitViewport = false,
+  fog = false,
+  look = null,
+  glow = null,
 }: CubePlayProps) {
+  const swap = !!look?.swap;
+  const gray = !!look?.gray;
+  const lookNow = useMemo(() => ({ swap, gray }), [swap, gray]);
+  const shownColors = useMemo(
+    () => lookColors(settings.colors, lookNow),
+    [settings.colors, lookNow],
+  );
+  const patterns = useMemo(() => lookPatterns(lookNow), [lookNow]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
   const [ready, setReady] = useState(false);
@@ -229,7 +257,10 @@ export function CubePlay({
       ro.disconnect();
     };
   }, [fitViewport, back.ref]);
-  const mirror = back.mode === "mirror" && showNet;
+  // 안개(아이템전): 펼친 그림·거울 판·키 그림을 끈다. 3D를 못 그리는 기기는 펼친 그림이 큐브라 그대로 둔다
+  const mirror = back.mode === "mirror" && showNet && !fog;
+  const shownRef = useRef(shownColors);
+  shownRef.current = shownColors;
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirror);
   }, [mirror, ready]);
@@ -279,7 +310,7 @@ export function CubePlay({
         const view = CubeView.create(canvas, {
           n,
           quality,
-          colors: s.colors,
+          colors: shownRef.current,
           stickerless: s.stickerless,
           moveMs: s.moveMs,
           hidden: s.hidden,
@@ -319,12 +350,41 @@ export function CubePlay({
 
   useEffect(() => {
     viewRef.current?.setOptions({
-      colors: settings.colors,
+      colors: shownColors,
       stickerless: settings.stickerless,
       moveMs: settings.moveMs,
       hidden: settings.hidden,
     });
-  }, [settings.colors, settings.stickerless, settings.moveMs, settings.hidden]);
+  }, [shownColors, settings.stickerless, settings.moveMs, settings.hidden]);
+
+  // 흑백 화면의 무늬(장면이 준비된 뒤, 바뀔 때만)
+  const patternsOn = useRef(false);
+  useEffect(() => {
+    if (!ready || (!patterns && !patternsOn.current)) return;
+    patternsOn.current = !!patterns;
+    viewRef.current?.setPatterns(patterns);
+  }, [patterns, ready]);
+
+  // 찾아 주기: 빛낼 조각(한 번이라도 켠 뒤로만 장면에 쓴다. 배우기의 `marks`를 건드리지 않게)
+  const glowOn = useRef(false);
+  useEffect(() => {
+    if (!ready || (!glow && !glowOn.current)) return;
+    glowOn.current = !!glow;
+    viewRef.current?.setMarks(glow);
+  }, [glow, ready]);
+
+  // 한 면 가리기: 마스크가 바뀌면 그때 다시 칠한다(첫 칠하기는 아래 syncToken이 한다)
+  const maskSeen = useRef(mask);
+  useEffect(() => {
+    if (maskSeen.current === mask) return;
+    maskSeen.current = mask;
+    viewRef.current?.setStickers(
+      stickersFromState(n, live.current.state, mask, live.current.marks),
+    );
+    if (glowOn.current) viewRef.current?.setMarks(glowRef.current);
+  }, [mask, n]);
+  const glowRef = useRef(glow);
+  glowRef.current = glow;
 
   // 한꺼번에 바뀐 상태로 다시 칠하기
   // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 다시 칠한다
@@ -339,6 +399,7 @@ export function CubePlay({
         live.current.marks,
       ),
     );
+    if (glowOn.current) viewRef.current?.setMarks(glowRef.current);
   }, [syncToken, n]);
 
   /** 수 하나를 엔진에 넣고, 받아들였으면 장면이 따라 돈다(키·단추·밀기가 함께 쓴다) */
@@ -439,7 +500,9 @@ export function CubePlay({
     if (r) handleRef.current(r);
   };
 
-  const colors = settings.colors;
+  const colors = shownColors;
+  // 칸 너비는 안개 동안에도 그대로(거울 판이 꺼져도 큐브 크기가 흔들리지 않게)
+  const wide = back.mode === "mirror" && showNet;
   return (
     <div className="relative flex w-full flex-col items-center gap-3">
       {flowSize && (
@@ -456,22 +519,28 @@ export function CubePlay({
         boxRef={back.ref}
         maxWidth={
           stageTop === null
-            ? mirror
+            ? wide
               ? 600
               : 460
-            : `min(${mirror ? 600 : 460}px, max(280px, calc(100dvh - ${stageTop}px - 12px)))`
+            : `min(${wide ? 600 : 460}px, max(280px, calc(100dvh - ${stageTop}px - 12px)))`
         }
         net={
           (back.mode === "net" && showNet) || failed ? (
-            <CubeNet
-              n={n}
-              faces={faceGrid(n, state, mask)}
-              colors={colors}
-              hidden={settings.hidden}
-              className="h-auto w-full"
-              marks={marksAtSlots(state, marks)}
-              onCell={onSticker}
-            />
+            <div
+              className={fog && !failed ? "invisible" : undefined}
+              data-cube-fogged={fog && !failed ? "" : undefined}
+            >
+              <CubeNet
+                n={n}
+                faces={faceGrid(n, state, mask)}
+                colors={colors}
+                patterns={patterns}
+                hidden={settings.hidden}
+                className="h-auto w-full"
+                marks={marksAtSlots(state, glow ?? marks)}
+                onCell={onSticker}
+              />
+            </div>
           ) : null
         }
         stage={
@@ -633,20 +702,26 @@ export function CubePlay({
         </a>
       </div>
       {/* 키 그림: 데스크톱은 펴고 접기, 휴대폰은 키보드로 칠 때만. 칸을 누르면 그 키를 친 것과 같다 */}
+      {/* 안개면 거의 투명하게(휴대폰에서 키 그림으로 치는 사람도 계속 칠 수 있게 자리와 누르기는 둔다) */}
       {keymap && (
         <div
           data-cube-keys-wrap
-          className={`w-full max-w-2xl ${keysMode ? "block" : "hidden"} ${showKeys ? "sm:block" : "sm:hidden"}`}
+          data-cube-fogged={fog ? "" : undefined}
+          className={`w-full max-w-2xl transition-opacity ${fog ? "opacity-[0.06]" : ""} ${keysMode ? "block" : "hidden"} ${showKeys ? "sm:block" : "sm:hidden"}`}
         >
-          <KeyGuide
-            n={n}
-            keymap={keymap}
-            lit={lit}
-            want={want}
-            orient={orientFromCenters(n, state) ?? evenOrient}
-            layers={handMarks ? layers : null}
-            pressable
-          />
+          <CubeLookContext.Provider
+            value={isPlainLook(lookNow) ? null : lookNow}
+          >
+            <KeyGuide
+              n={n}
+              keymap={keymap}
+              lit={lit}
+              want={want}
+              orient={orientFromCenters(n, state) ?? evenOrient}
+              layers={handMarks ? layers : null}
+              pressable
+            />
+          </CubeLookContext.Provider>
         </div>
       )}
     </div>

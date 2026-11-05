@@ -88,7 +88,7 @@ export function GameRecap({
             <th className="text-right font-normal">나</th>
             <th className="text-right font-normal">
               <span className="inline-flex items-center gap-1">
-                <ShipToken seat={recap.rival} size={9} />
+                <ShipToken seat={recap.rival} size={11} />
                 {name(recap.rival)}
               </span>
             </th>

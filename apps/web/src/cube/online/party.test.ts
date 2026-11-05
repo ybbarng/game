@@ -104,7 +104,7 @@ describe("체력 판정", () => {
     expect(six.decided).toBeUndefined();
   });
 
-  it("끝까지 맞추면 이긴다(같은 수에서 지난 이정표는 먼저 깎는다)", () => {
+  it("끝까지 맞추면 이긴다(같은 수에서 지난 이정표는 하나 몫만 먼저 깎고, 맞춤이 판을 정한다)", () => {
     const r = judge({
       a: log([[1_000, ["cross"]]]),
       b: log(
@@ -116,8 +116,55 @@ describe("체력 판정", () => {
       ),
     });
     expect(r.decided).toEqual({ at: 9_000, winner: "b", end: "solved" });
-    expect(r.hp).toEqual({ a: 100 - 32, b: 100 - 16 });
+    expect(r.hp).toEqual({ a: 100 - 16, b: 100 - 16 });
     expect(r.ranking).toEqual(["b", "a"]);
+  });
+
+  it("한 수에 이정표 둘을 지나면(2×2 윗면 건너뜀) 처음 50, 1초 뒤 50이 깎인다. 미뤄 둔 몫은 그 시각이 확실해질 때 판정한다", () => {
+    const skip = log([[5_000, ["layer1", "oll"]]]);
+    const r = judge({ a: log([]), b: skip }, { n: 2 });
+    expect(r.hits.map((h) => [h.at, h.id, h.to])).toEqual([
+      [5_000, "layer1", ["a"]],
+      [6_000, "oll", ["a"]],
+    ]);
+    expect(r.knockedOut).toEqual({ a: 6_000 });
+    expect(r.decided).toEqual({ at: 6_000, winner: "b", end: "last" });
+    // a의 수를 5.5초까지만 받았다: 6초 몫은 아직 판정하지 않는다
+    const wait = judge({ a: log([], { horizon: 5_500 }), b: skip }, { n: 2 });
+    expect(wait.hp.a).toBe(50);
+    expect(wait.decided).toBeUndefined();
+    expect(wait.until).toBe(5_500);
+  });
+
+  it("그 1초 안에 맞는 쪽이 그 이정표를 지나면 남은 몫은 깎지 않는다", () => {
+    const r = judge(
+      {
+        a: log([[5_800, ["layer1", "oll"]]]),
+        b: log([[5_000, ["layer1", "oll"]]]),
+      },
+      { n: 2, final: true },
+    );
+    expect(r.hits.map((h) => [h.at, h.id])).toEqual([[5_000, "layer1"]]);
+    expect(r.hp).toEqual({ a: 50, b: 100 });
+    // 판정 시각과 같은 때 지나도 깎지 않는다(같은 시각은 먼저가 아니다)
+    const tie = judge(
+      { a: log([[6_000, ["oll"]]]), b: log([[5_000, ["layer1", "oll"]]]) },
+      { n: 2, final: true },
+    );
+    expect(tie.hp.a).toBe(50);
+  });
+
+  it("3×3에서 셋을 한꺼번에 지나면 16씩 세 번, 1초 간격으로 깎는다", () => {
+    const r = judge({
+      a: log([]),
+      b: log([[3_000, ["cross", "f2l1", "f2l2"]]]),
+    });
+    expect(r.hits.map((h) => [h.at, h.id, h.damage])).toEqual([
+      [3_000, "cross", 16],
+      [4_000, "f2l1", 16],
+      [5_000, "f2l2", 16],
+    ]);
+    expect(r.hp.a).toBe(100 - 48);
   });
 
   it("셋 이상이면 깎는 양을 나눠 꼴찌가 이정표마다 같은 양을 잃고, 0이 된 사람은 더 깎지도 깎이지도 않는다", () => {
@@ -338,6 +385,41 @@ describe("체력바 대결(기기마다)", () => {
     expect(reasonOf(host, "h")).toBe(PARTY_OVER);
   });
 
+  it("한 순간에 이정표 둘을 지나면 50, 1초 뒤 50: 지연이 다른 두 기기가 같은 체력·같은 탈락 시각을 낸다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    net.setDelay("h", "g", 260);
+    net.setDelay("g", "h", 140);
+    const host = room(net, "h", clock, true);
+    const guest = room(net, "g", clock, false);
+    clock.advance(1_000);
+    const wiggle = parseMoves(2, "y y'") as CubeMove[];
+    // 방장은 큐브만 돌렸다 되돌린다(판정이 확실해지게 수가 간다)
+    plan(
+      clock,
+      host,
+      Array.from({ length: 12 }, (_, k) => ({
+        at: 800 + k * 300,
+        from: 0,
+        to: 0,
+      })),
+      () => {
+        for (const m of wiggle) host.play(m);
+      },
+    );
+    // 손님은 한 순간에 첫 층·윗면까지(9수)
+    plan(clock, guest, [{ at: 1_500, from: 0, to: 9 }]);
+    playRound(clock, [host, guest]);
+    const h = host.rounds[0];
+    expect(guest.rounds[0]).toEqual(h);
+    const ko = h?.party?.knockedOut.h as number;
+    const first = host.party()?.hits[0]?.at as number;
+    expect(host.party()?.hits.map((x) => x.id)).toEqual(["layer1", "oll"]);
+    expect(ko - first).toBe(1_000);
+    expect(guest.party()?.hits).toEqual(host.party()?.hits);
+    expect(h?.party).toMatchObject({ winner: "g", end: "last", hp: { h: 0 } });
+  });
+
   it("끝까지 맞추면 이긴다. 지연을 넣어도 두 기기가 같은 체력·같은 승자", () => {
     const clock = new ManualClock();
     const net = new DelayNet(clock);
@@ -426,7 +508,7 @@ describe("체력바 대결(기기마다)", () => {
     clock.advance(100);
     expect(guest.state?.v).toBe(2);
     expect(guest.state?.settings.party).toBeUndefined();
-    old.send(state(3, { party: "items" }));
+    old.send(state(3, { party: "freeze" }));
     old.send(state(4, { party: "hp", format: "ao5" }));
     clock.advance(100);
     expect(guest.state?.v).toBe(2);

@@ -11,14 +11,20 @@ import {
   DELAY_CHOICES,
   goalChoices,
   type Handicap,
+  HELPS,
+  type Help,
+  helpLabel,
   localAverages,
 } from "./handicap";
+import { drawItem, type ItemKind } from "./items";
 import { nextLabel } from "./MatchBoard";
+import { PARTY_MODE_LABELS, PARTY_MODES, type PartyMode } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
+import { testVsSeed } from "./vs-seed";
 
 /**
  * 컴퓨터와 대결(`/cube/vs`, docs/47 10절). 단계를 고르면 같은 섞기로 나란히 맞춘다.
@@ -26,6 +32,25 @@ import { useCubeRoom } from "./use-room";
  */
 
 const SIZES = [2, 3, 4, 5] as const;
+
+/**
+ * 화면 시험만: 아이템 뽑기를 정해 둔다(`window.__cubeItemDraw(받는 사람, 이정표 순번)`, 화면 시험 갈고리 `__cubeTestHooks`가
+ * 켜졌을 때만). 컴퓨터와 대결은 이 기기 안에서만 도는 판이라 공정성과 상관없다. 온라인 방에는 넣지 않는다
+ */
+function testItemDraw(): { drawItem?: typeof drawItem } {
+  if (typeof window === "undefined") return {};
+  const w = window as {
+    __cubeTestHooks?: boolean;
+    __cubeItemDraw?: (player: string, milestone: number) => ItemKind | null;
+  };
+  const hook = w.__cubeItemDraw;
+  if (!w.__cubeTestHooks || !hook) return {};
+  return {
+    drawItem: (seed, player, milestone, standing, rules) =>
+      hook(player, milestone) ??
+      drawItem(seed, player, milestone, standing, rules),
+  };
+}
 
 export function CubeVsApp() {
   const [n, setN] = useState(2);
@@ -38,8 +63,10 @@ export function CubeVsApp() {
   const [delay, setDelay] = useState(0);
   const [goal, setGoal] = useState<MilestoneId | "">("");
   const [byAverage, setByAverage] = useState(false);
-  /** 파티 모드 체력바(docs/51 3-2). 「평균 대비」와는 함께 쓰지 않는다 */
-  const [party, setParty] = useState(false);
+  const [help, setHelp] = useState<Help | "">("");
+  /** 파티 모드(체력바·아이템전, docs/51 3-2·3-3). 「평균 대비」와는 함께 쓰지 않는다 */
+  const [partyMode, setPartyMode] = useState<PartyMode | null>(null);
+  const party = partyMode !== null;
   const [averages, setAverages] = useState<Record<string, number>>();
   useEffect(() => setAverages(localAverages()), []);
   // 크기를 바꾸면 그 크기의 목표가 아니므로 비운다
@@ -62,6 +89,8 @@ export function CubeVsApp() {
       ...(averages ? { avgs: averages } : {}),
       scrambler: scrambleInWorker,
       botPlan: planInWorker,
+      // 화면 시험만: 섞기 씨앗을 정해 둔다(`__cubeTestHooks` + `__cubeVsSeed`, vs-seed.ts)
+      ...testVsSeed(),
       settings: {
         n,
         ...(rounds > 1
@@ -69,8 +98,9 @@ export function CubeVsApp() {
           : { format: "single" as const }),
         inspection,
         timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
-        ...(party ? { party: "hp" as const } : {}),
+        ...(partyMode ? { party: partyMode } : {}),
       },
+      ...testItemDraw(),
     });
     r.addBot(level);
     const handicap: Handicap = {};
@@ -78,6 +108,7 @@ export function CubeVsApp() {
     const average = byAverage && !party;
     if (goal && !average) handicap.goal = { [r.me]: goal };
     if (average) handicap.score = "avg";
+    if (help) handicap.help = { [r.me]: help };
     r.setHandicap(handicap);
     roomRef.current = r;
     setRoom(r);
@@ -144,16 +175,16 @@ export function CubeVsApp() {
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">규칙</legend>
               <div className="flex flex-wrap gap-1">
-                {[false, true].map((on) => (
+                {[null, ...PARTY_MODES].map((m) => (
                   <button
-                    key={String(on)}
+                    key={m ?? "normal"}
                     type="button"
-                    data-cube-vs-party={on ? "hp" : "normal"}
-                    aria-pressed={party === on}
-                    onClick={() => setParty(on)}
-                    className={`rounded-lg px-3 py-1.5 ${party === on ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                    data-cube-vs-party={m ?? "normal"}
+                    aria-pressed={partyMode === m}
+                    onClick={() => setPartyMode(m)}
+                    className={`rounded-lg px-3 py-1.5 ${partyMode === m ? "bg-amber-400 text-black" : "bg-white/10"}`}
                   >
-                    {on ? "파티: 체력바" : "일반"}
+                    {m ? PARTY_MODE_LABELS[m] : "일반"}
                   </button>
                 ))}
               </div>
@@ -263,6 +294,24 @@ export function CubeVsApp() {
                   </select>
                 </label>
               )}
+              <label className="flex items-center justify-between">
+                도움
+                <select
+                  data-cube-vs-help
+                  value={help}
+                  onChange={(e) => setHelp(e.target.value as Help | "")}
+                  className="rounded bg-white/10 px-2 py-1"
+                >
+                  <option value="" className="bg-neutral-800">
+                    그대로
+                  </option>
+                  {HELPS.map((k) => (
+                    <option key={k} value={k} className="bg-neutral-800">
+                      {helpLabel(n, k)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input

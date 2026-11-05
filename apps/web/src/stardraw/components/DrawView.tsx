@@ -164,6 +164,8 @@ export function DrawView({
   const [sorted, setSorted] = useState(false);
   /** 지금 다시 빛나는 공의 차례(작은 순 0~5, 보너스 6) */
   const [shine, setShine] = useState<number | null>(null);
+  /** 그 공이 빛나기 시작한 시각(clock 기준). 하늘의 같은 별이 이 시각부터 같은 박자로 빛난다(docs/36 11-72) */
+  const [shineAt, setShineAt] = useState(0);
   const [settled, setSettled] = useState(false);
   // 연출을 보는 동안 화면이 어두워지지 않게(2026-11-03 사용자). 마무리(정렬·다시 빛내기)까지
   useWakeLock(animated && !settled);
@@ -201,6 +203,7 @@ export function DrawView({
     seq.forEach((n, i) => {
       at(first + i * FX.sortShine, () => {
         setShine(i);
+        setShineAt(clock.now());
         play("starTick", { star: { n } });
       });
     });
@@ -239,7 +242,7 @@ export function DrawView({
   const drawn = frame.fixed.slice(0, 6);
   const main = sorted ? [...drawn].sort((a, b) => a - b) : drawn;
   const bonus = frame.fixed.length >= 7 ? (frame.fixed[6] ?? null) : null;
-  /** 다시 빛나는 별(하늘에서는 룰렛 고리로 짚는다) */
+  /** 다시 빛나는 별(하늘에서도 그 별이 같은 박자로 빛난다) */
   const shining =
     shine === null ? null : shine < 6 ? (main[shine] ?? null) : bonus;
   const mine = ticket?.numbers ?? [];
@@ -324,7 +327,8 @@ export function DrawView({
               focus: null,
               lit: main,
               bonus,
-              cursor: shining ?? frame.cursor,
+              cursor: frame.cursor,
+              glow: shining === null ? null : { n: shining, at: shineAt },
             }}
             clock={clock}
             hdr={drawGlows({

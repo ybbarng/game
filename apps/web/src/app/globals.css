@@ -214,6 +214,29 @@ html:has([data-game="cube"]) body {
 .cube-race-toast {
   animation: cube-race-toast 900ms ease-out both;
 }
+/* 아이템전 맞은 쪽 표시(docs/47 9-7): 한 번 살짝 커졌다 자리 잡는다. 움직임 줄이기면 붙이지 않는다 */
+@keyframes cube-item-hit {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  45% {
+    transform: none;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+.cube-item-hit {
+  animation: cube-item-hit 1600ms ease-out both;
+}
 /*
  * 흐름 콤보(docs/51 2-1): 콤보가 오를수록 띠 바탕이 조금씩 데워진다. 번쩍이지 않게 색만 천천히 옮긴다
  */
@@ -705,7 +728,69 @@ html:has([data-game="galaxy"]) body {
 .galaxy-ring-in {
   animation: galaxy-ring-in 0.65s ease-out both;
 }
+/* 멈춘 우주선: 살짝 떠 있듯 천천히 오르내리고, 칸 위 그림자는 오르면 작고 옅어진다 */
+@keyframes galaxy-ship-hover {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -7%;
+  }
+}
+.galaxy-ship-hover {
+  animation: galaxy-ship-hover 3.6s ease-in-out infinite;
+}
+@keyframes galaxy-ship-shadow {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+  50% {
+    scale: 0.8;
+    opacity: 0.6;
+  }
+}
+.galaxy-ship-shadow {
+  animation: galaxy-ship-shadow 3.6s ease-in-out infinite;
+}
+/* 미끄러지는 우주선 꽁무니의 엔진 빛: 짧게 일렁인다 */
+@keyframes galaxy-flame {
+  from {
+    transform: scaleY(0.8);
+    opacity: 0.8;
+  }
+  to {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
+}
+.galaxy-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: galaxy-flame 0.18s ease-in-out infinite alternate;
+}
+/* 우주선 창: 가끔 반짝 */
+@keyframes galaxy-ship-glint {
+  0%,
+  80%,
+  100% {
+    opacity: 0.75;
+  }
+  88% {
+    opacity: 1;
+    filter: brightness(1.6);
+  }
+}
+.galaxy-ship-glint {
+  animation: galaxy-ship-glint 5s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
+  .galaxy-ship-hover,
+  .galaxy-ship-shadow,
+  .galaxy-flame,
+  .galaxy-ship-glint,
   .galaxy-complete,
   .galaxy-tile-flash,
   .galaxy-orbit,

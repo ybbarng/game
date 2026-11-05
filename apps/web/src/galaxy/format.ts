@@ -118,14 +118,15 @@ export function seatLabel(
 }
 
 /**
- * 우주선 모양과 색(자리마다 둘 다 달라 색만으로 가르지 않는다, docs/48 7-1).
- * 색은 어두운 판 위에서 서로 잘 갈리는 넷
+ * 우주선 모양과 색(자리마다 실루엣과 색이 둘 다 달라 색만으로 가르지 않는다, docs/48 7-1).
+ * 색은 어두운 판 위에서 서로 잘 갈리는 넷. 모양: 날렵한 로켓(위아래로 길다), 둥근 원반선(동그랗다),
+ * 태양 전지판 탐사선(옆으로 넓은 날개), 고리 셔틀(가운데 몸통을 두른 납작한 고리)
  */
 export const SHIPS = [
-  { shape: "circle", color: "#fbbf24", glyph: "●", name: "금빛" },
-  { shape: "triangle", color: "#38bdf8", glyph: "▲", name: "하늘빛" },
-  { shape: "square", color: "#f472b6", glyph: "■", name: "분홍빛" },
-  { shape: "diamond", color: "#a3e635", glyph: "◆", name: "연둣빛" },
+  { shape: "rocket", color: "#fbbf24", name: "금빛", kind: "로켓" },
+  { shape: "saucer", color: "#38bdf8", name: "하늘빛", kind: "원반선" },
+  { shape: "probe", color: "#f472b6", name: "분홍빛", kind: "탐사선" },
+  { shape: "ring", color: "#a3e635", name: "연둣빛", kind: "고리 셔틀" },
 ] as const;
 
 export function shipOf(seat: number): (typeof SHIPS)[number] {

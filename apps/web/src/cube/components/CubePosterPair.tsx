@@ -5,6 +5,7 @@ import { type ReactNode, useMemo } from "react";
 
 import { cn } from "@/lib/cn";
 import { stickersFromState } from "../bridge";
+import { type CubeLook, lookColors, lookPatterns } from "../item-look";
 import type { CubeSettings } from "../settings";
 import { backSideState } from "../timer/net";
 import { CubePoster } from "./CubePoster";
@@ -25,7 +26,10 @@ export function CubePosterPair({
   fallback,
   captions = true,
   className,
+  look,
 }: {
+  /** 아이템전 화면 방해(색 뒤집기·흑백 화면). 큐브 장면과 같은 색·무늬로 칠한다 */
+  look?: CubeLook | null | undefined;
   n: number;
   state: PuzzleState;
   settings: CubeSettings;
@@ -63,7 +67,8 @@ export function CubePosterPair({
           <CubePoster
             n={n}
             stickers={s.stickers}
-            colors={settings.colors}
+            colors={lookColors(settings.colors, look)}
+            patterns={lookPatterns(look)}
             width={POSTER_PX}
             height={POSTER_PX}
             stickerless={settings.stickerless}

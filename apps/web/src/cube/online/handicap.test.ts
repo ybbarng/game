@@ -16,6 +16,7 @@ import {
   goalReached,
   handicapOk,
   handicapTags,
+  helpScreen,
   ratioText,
   recentAverage,
   recommendDelays,
@@ -458,5 +459,155 @@ describe("핸디캡 대결(두 기기)", () => {
       delay: { h: 4 },
       score: "avg",
     });
+  });
+});
+
+describe("도움 다르게(docs/47 9-8)", () => {
+  const base: RoomSettings = {
+    n: 3,
+    format: "single",
+    target: 3,
+    inspection: true,
+    timeLimitSec: 300,
+  };
+
+  it("사람에게만 남기고, 결과 글·모양 확인·판정 설정 지문에 들어간다", () => {
+    const active = activeHandicap(
+      { help: { a: "hint", b: "blind", bot1: "plain" } },
+      ["a", "b"],
+      { ao5: false, averageOf: () => null },
+    );
+    expect(active).toEqual({
+      delaySec: {},
+      goal: {},
+      help: { a: "hint", b: "blind" },
+    });
+    expect(handicapTags(active, 3, "a")).toEqual(["힌트 허용"]);
+    expect(handicapTags(active, 3, "b")).toEqual(["가리고 맞추기"]);
+    // 힌트는 3×3만 있어 다른 크기는 펼친 그림만 허용
+    expect(handicapTags(active, 2, "a")).toEqual(["펼친 그림 허용"]);
+    expect(handicapOk({ help: { a: "plain" } }, 2)).toBe(true);
+    expect(handicapOk({ help: { a: "다 보기" } }, 3)).toBe(false);
+    expect(handicapOk({ help: "hint" }, 3)).toBe(false);
+    expect(raceOptionsFor(base, active)).toMatchObject({
+      gameOptions: { handicap: { help: { a: "hint", b: "blind" } } },
+    });
+    // 아무도 고르지 않으면 칸이 없고 지문도 예전 그대로
+    const none = activeHandicap({ help: {} }, ["a"], {
+      ao5: false,
+      averageOf: () => null,
+    });
+    expect(none).not.toHaveProperty("help");
+    expect(raceOptionsFor(base, none)).toEqual(raceOptionsFor(base));
+  });
+
+  it("화면: 3D만은 펼친 그림을 끄고, 힌트는 3×3에서 맞추는 동안만, 가리기는 풀린 뒤 내가 맞추는 동안만", () => {
+    const race = { phase: "race", playing: true };
+    expect(helpScreen(undefined, 3, race)).toEqual({
+      back: true,
+      hint: false,
+      hidden: false,
+    });
+    expect(helpScreen("plain", 3, race).back).toBe(false);
+    expect(helpScreen("hint", 3, race).hint).toBe(true);
+    expect(
+      helpScreen("hint", 3, { phase: "inspect", playing: true }).hint,
+    ).toBe(true);
+    expect(helpScreen("hint", 2, race).hint).toBe(false);
+    expect(helpScreen("hint", 3, { phase: "race", playing: false }).hint).toBe(
+      false,
+    );
+    expect(helpScreen("blind", 3, race).hidden).toBe(true);
+    expect(
+      helpScreen("blind", 3, { phase: "inspect", playing: true }).hidden,
+    ).toBe(false);
+    expect(
+      helpScreen("blind", 3, { phase: "finished", playing: false }).hidden,
+    ).toBe(false);
+    expect(
+      helpScreen("blind", 3, { phase: "race", playing: false }).hidden,
+    ).toBe(false);
+  });
+
+  it("두 기기: 손님이 같은 도움 설정을 받고, 같은 판 기록·결과를 낸다", () => {
+    const { clock, host, guest } = setup();
+    host.setHandicap({ help: { g: "hint", h: "blind" } });
+    clock.advance(100);
+    expect(guest.state?.settings.handicap).toEqual({
+      help: { g: "hint", h: "blind" },
+    });
+    solveRounds(clock, host, [3_000]);
+    solveRounds(clock, guest, [2_000]);
+    playRound(clock, host, guest);
+    const h = host.rounds[0];
+    const g = guest.rounds[0];
+    expect(h?.handicap).toEqual({
+      delaySec: {},
+      goal: {},
+      help: { g: "hint", h: "blind" },
+    });
+    expect(g?.handicap).toEqual(h?.handicap);
+    expect(g?.result).toEqual(h?.result);
+    // 도움은 판정을 바꾸지 않는다: 먼저 맞춘 손님이 1등
+    expect(h?.result.ranking).toEqual(["g", "h"]);
+    expect(h?.result.players.g?.status).toBe("done");
+  });
+
+  it("방장이 한 손님에게만 다른 도움을 알리면 지문이 달라 판이 열리지 않는다", () => {
+    const { clock, host, guest } = setup({
+      change: (s) => ({
+        ...s,
+        settings: { ...s.settings, handicap: { help: { h: "hint" } } },
+      }),
+    });
+    host.setHandicap({ help: { h: "blind" } });
+    solveRounds(clock, host, [1_000]);
+    solveRounds(clock, guest, [1_000]);
+    playRound(clock, host, guest);
+    const r = guest.rounds[0]?.result;
+    expect(r?.ranking.every((id) => r.players[id]?.status !== "done")).toBe(
+      true,
+    );
+  });
+
+  it("옛 방 상태(도움 칸 없음)는 그대로 받고, 고를 수 없는 도움은 버린다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    const old = net.join("h");
+    const guest = new CubeRoom({
+      transport: net.join("g"),
+      clock,
+      isHost: false,
+      hostId: "h",
+      name: "손님",
+      scrambler: fake,
+    });
+    const state = (v: number, handicap?: unknown) => ({
+      type: "cube-room",
+      state: {
+        v,
+        host: "h",
+        settings: {
+          n: 3,
+          format: "single",
+          target: 3,
+          inspection: true,
+          timeLimitSec: 300,
+          ...(handicap ? { handicap } : {}),
+        },
+        players: [{ id: "h", name: "옛 방장", device: "h" }],
+        round: 0,
+        status: "lobby",
+      },
+    });
+    old.send(state(2, { delay: { h: 3 } }));
+    clock.advance(100);
+    expect(guest.state?.settings.handicap).toEqual({ delay: { h: 3 } });
+    old.send(state(3, { help: { h: "다 보기" } }));
+    clock.advance(100);
+    expect(guest.state?.v).toBe(2);
+    old.send(state(4, { help: { h: "plain" } }));
+    clock.advance(100);
+    expect(guest.state?.settings.handicap).toEqual({ help: { h: "plain" } });
   });
 });

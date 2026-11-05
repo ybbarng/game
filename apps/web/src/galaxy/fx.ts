@@ -213,14 +213,19 @@ export function shipPositions(
     const first = moves[0];
     if (!first) return still(final);
     let square = first.from;
+    let heading: Heading | undefined;
     for (const m of moves) {
-      if (elapsed < m.at) return still(square);
+      if (elapsed < m.at) return still(square, heading);
       if (elapsed < m.at + m.dur) return movingAt(m, elapsed - m.at);
       square = m.path.at(-1) as number;
+      heading = movingAt(m, m.dur).heading;
     }
-    return still(final);
+    return still(final, final === square ? heading : undefined);
   });
 }
+
+/** 기수 방향(도, 0 = 위, 시계 방향). 판 네 변을 따라 움직이니 넷 중 하나 */
+export type Heading = 0 | 90 | 180 | 270;
 
 /** 연출 도중 우주선 하나: 칸(닿은 칸)과 판 위 자리(칸 하나 = 1, 칸 사이를 이어 미끄러진다) */
 export interface ShipAt {
@@ -228,11 +233,41 @@ export interface ShipAt {
   moving: boolean;
   x: number;
   y: number;
+  /** 기수 방향: 움직이는 동안은 가는 쪽, 멈춰 있으면 마지막으로 온 쪽(처음엔 그 칸으로 들어오는 길) */
+  heading: Heading;
+  /** 칸 사이를 미끄러지는 동안(칸마다 쉬는 몫은 아니다): 꽁무니에 엔진 빛 */
+  thrust: boolean;
 }
 
-function still(square: number): ShipAt {
+/** a에서 b로 가는 쪽(더 크게 바뀌는 축) */
+function headingOf(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): Heading {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 90 : 270;
+  return dy >= 0 ? 180 : 0;
+}
+
+/** 멈춘 우주선이 바라보는 쪽: 그 칸으로 들어오는 길(출발 칸은 첫 길, 판 밖을 보지 않게) */
+export function restingHeading(square: number): Heading {
+  const i = ((square % 32) + 32) % 32;
+  return i === 0
+    ? headingOf(squareCenter(0), squareCenter(1))
+    : headingOf(squareCenter(i - 1), squareCenter(i));
+}
+
+function still(square: number, heading?: Heading): ShipAt {
   const c = squareCenter(square);
-  return { square, moving: false, x: c.x, y: c.y };
+  return {
+    square,
+    moving: false,
+    x: c.x,
+    y: c.y,
+    heading: heading ?? restingHeading(square),
+    thrust: false,
+  };
 }
 
 const easeInOut = (t: number) =>
@@ -253,6 +288,8 @@ function movingAt(m: Extract<TimedStep, { kind: "move" }>, t: number): ShipAt {
       moving: true,
       x: a0.x + (b.x - a0.x) * k,
       y: a0.y + (b.y - a0.y) * k,
+      heading: to === m.from ? restingHeading(to) : headingOf(a0, b),
+      thrust: k < 1,
     };
   }
   const n = m.path.length;
@@ -270,6 +307,8 @@ function movingAt(m: Extract<TimedStep, { kind: "move" }>, t: number): ShipAt {
     moving: true,
     x: a.x + (b.x - a.x) * k,
     y: a.y + (b.y - a.y) * k,
+    heading: headingOf(a, b),
+    thrust: k < 1,
   };
 }
 
