@@ -131,6 +131,7 @@ export function BoardSeat({
   clock,
   score,
   extra,
+  below,
 }: {
   /** 내 자리인가 상대 자리인가(`data-seat`) */
   who: "me" | "opponent";
@@ -146,6 +147,8 @@ export function BoardSeat({
   score?: ReactNode;
   /** 시계 앞에 더 놓을 것 */
   extra?: ReactNode;
+  /** 자리판 아래 온 너비로 놓을 줄(장기 초고수의 노림 등). 시계에 밀려 잘리지 않는다 */
+  below?: ReactNode;
 }) {
   return (
     <section
@@ -153,24 +156,27 @@ export function BoardSeat({
       data-turn={turn || undefined}
       aria-label={who === "me" ? "내 자리" : "상대 자리"}
       className={cn(
-        "flex min-h-12 w-full items-center gap-2.5 rounded-xl border px-3 py-1.5 transition-[box-shadow,background-color,border-color] duration-300",
+        "w-full rounded-xl border px-3 py-1.5 transition-[box-shadow,background-color,border-color] duration-300",
         turn
           ? "border-amber-300 bg-amber-300/15 shadow-[0_0_18px_rgba(253,230,138,0.35)]"
           : "border-white/10 bg-white/5",
       )}
     >
-      <span className="shrink-0">{token}</span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="truncate font-semibold text-sm">{name}</span>
-          {score !== undefined && (
-            <span className="shrink-0 text-white/70 text-xs">{score}</span>
-          )}
+      <div className="flex min-h-9 items-center gap-2.5">
+        <span className="shrink-0">{token}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="truncate font-semibold text-sm">{name}</span>
+            {score !== undefined && (
+              <span className="shrink-0 text-white/70 text-xs">{score}</span>
+            )}
+          </div>
+          {detail && <div className="text-white/60 text-xs">{detail}</div>}
         </div>
-        {detail && <div className="text-white/60 text-xs">{detail}</div>}
+        {extra}
+        {clock && <span className="shrink-0">{clock}</span>}
       </div>
-      {extra}
-      {clock && <span className="shrink-0">{clock}</span>}
+      {below}
     </section>
   );
 }
