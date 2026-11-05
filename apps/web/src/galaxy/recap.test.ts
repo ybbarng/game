@@ -1,8 +1,10 @@
 import {
   BANK,
   boardOfSky,
+  completeBonusOf,
   type GameEvent,
   sellValue,
+  starAssetOf,
   starAt,
 } from "@game/galaxy-engine";
 import { describe, expect, it } from "vitest";
@@ -58,7 +60,7 @@ describe("판 돌아보기 항목", () => {
       stations: 0,
     });
     const starSum = [1, 2, 6, 7, 9, 10, 3, 17, 5, 11, 13].reduce(
-      (a, sq) => a + (starAt(board, sq)?.value ?? 0),
+      (a, sq) => a + starAssetOf(board, sq),
       0,
     );
     expect(me.stars).toBe(starSum);
@@ -68,7 +70,7 @@ describe("판 돌아보기 항목", () => {
       rentOut: 30,
       grants: 120,
       request: 150,
-      completeBonus: 100,
+      completeBonus: completeBonusOf(board, starAt(board, sirius)?.group ?? -1),
       cash: 450,
       stations: sellValue(board, sirius),
     });
@@ -81,7 +83,7 @@ describe("견줄 사람과 놓친 기회", () => {
     expect(r.rival).toBe(1);
     expect(r.missed).toEqual([
       "관측 의뢰 「1등성 밝기 측정」 못 이룸 · 이뤘으면 ✦150 더",
-      "2/3에서 멈춘 별자리 4개(페가수스자리·안드로메다자리·오리온자리·사자자리) · 하나만 완성했어도 자산 ✦100 더, 이용료 2배",
+      "2/3에서 멈춘 별자리 4개(페가수스자리·안드로메다자리·오리온자리·사자자리) · 하나만 완성했어도 자산 ✦60 더, 이용료 2배",
       "끝날 때 쓰지 않은 별빛 ✦950",
     ]);
   });
@@ -90,7 +92,7 @@ describe("견줄 사람과 놓친 기회", () => {
     const r = recapOf(events, state, 1, [1, 0]);
     expect(r.rival).toBe(0);
     expect(r.missed).toEqual([
-      "2/3에서 멈춘 별자리 3개(목동자리·거문고자리·독수리자리) · 하나만 완성했어도 자산 ✦100 더, 이용료 2배",
+      "2/3에서 멈춘 별자리 3개(목동자리·거문고자리·독수리자리) · 하나만 완성했어도 자산 ✦120 더, 이용료 2배",
     ]);
   });
 });

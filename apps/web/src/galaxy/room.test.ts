@@ -13,7 +13,7 @@ import {
   requestCommitOf,
   requestSecretOf,
   SHORT_RULES,
-  step,
+  stepWithDice,
 } from "@game/galaxy-engine";
 import { createRng } from "@game/mighty-engine";
 import { chainLink } from "@game/yut-engine";
@@ -332,24 +332,20 @@ describe("은하 한 바퀴 온라인 방", () => {
     expect(await resignAndAudit(room)).toEqual([{ ok: true }]);
   });
 
-  it("거래 제안에 답하지 않으면 거절로 대신 정한다", () => {
+  it("도착 인수에 답하지 않으면 넘기기로 대신 정한다", () => {
     const board = boardOfSky("seasons");
     const scene = createGalaxyScenario({
       board,
       rules: ROOM_RULES,
-      stars: [
-        { square: 1, owner: 0 },
-        { square: 14, owner: 1 },
-      ],
+      positions: [8, 0],
+      stars: [{ square: 14, owner: 1 }],
     });
-    const offered = step(scene, 0, {
-      type: "offer",
-      to: 1,
-      give: { stars: [1], cash: 0 },
-      get: { stars: [14], cash: 0 },
+    const landed = stepWithDice(scene, 0, [2, 4]);
+    if (!landed.ok) throw new Error(landed.error);
+    expect(landed.state.phase).toBe("takeover");
+    expect(standInAction(landed.state, 0)).toEqual({
+      type: "declineTakeover",
     });
-    if (!offered.ok) throw new Error(offered.error);
-    expect(standInAction(offered.state, 1)).toEqual({ type: "rejectTrade" });
   });
 
   it("참가자가 고리를 공개하지 않고 끊기면 컴퓨터가 대신 공개하지 못해 기다리고, 끝내기로 그 사람이 진다", async () => {

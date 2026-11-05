@@ -10,7 +10,7 @@ import { OPEN_SKIES } from "./sky-ids";
  * 은하 한 바퀴 규칙(docs/48 2절). 판마다 고르는 것은 여기에 둔다.
  * - players 인원(2~4)
  * - length 판 길이: 짧은 판(short)·기본 판(standard)·긴 판(long), 2-11
- * - trade 거래(2-8)
+ * - takeover 도착 인수(2-8, 문자열 글자 t). g4까지는 같은 자리가 굴리기 전 자유 거래(trade)였다
  * - seasonal 제철 하늘(2-12 1번)
  * - meteor 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 차례 수가 있는 판(짧은·기본)에만
  * - requests 관측 의뢰(15-5 1번): 판 처음 몰래 받은 의뢰를 판 끝에 펼쳐 이루었으면 지원금
@@ -26,15 +26,17 @@ export type GalaxyLength = "short" | "standard" | "long";
  * 2: 2026-11-04 재미 개선(docs/48 3-6). 문자열 머리 `g2-`
  * 3: 2026-11-04 마무리 손질(3-6 g3): 뒤 자리 시작 자금 보정, 공문 13 지원금 반. 문자열 머리 `g3-`
  * 4: 2026-11-05 다듬기(15절): 반쯤 섞은 판 배치, 제철은 별자리로, 이용료 다시 맞춤. 문자열 머리 `g4-`
+ * 5: 2026-11-05 저울질(16절): 자유 거래 대신 도착 인수, 별은 자산에 값의 일부만, 완성 지원금은 별자리 값,
+ *    내 별 재방문 반값 올리기, 지원금 조정. 문자열 머리 `g5-`
  */
-export const GALAXY_EDITION = 4;
+export const GALAXY_EDITION = 5;
 
 export interface GalaxyRules {
   /** 규칙 판 번호(`GALAXY_EDITION`) */
   edition: typeof GALAXY_EDITION;
   players: 2 | 3 | 4;
   length: GalaxyLength;
-  trade: boolean;
+  takeover: boolean;
   seasonal: boolean;
   meteor: boolean;
   moon: boolean;
@@ -47,7 +49,7 @@ export const STANDARD_RULES: GalaxyRules = {
   edition: GALAXY_EDITION,
   players: 4,
   length: "standard",
-  trade: true,
+  takeover: true,
   seasonal: true,
   meteor: false,
   moon: true,
@@ -55,11 +57,11 @@ export const STANDARD_RULES: GalaxyRules = {
   sky: "seasons",
 };
 
-/** 짧은 판도 거래를 켠다(2-8) */
+/** 짧은 판도 사들이기를 켠다(2-8) */
 export const SHORT_RULES: GalaxyRules = {
   ...STANDARD_RULES,
   length: "short",
-  trade: true,
+  takeover: true,
 };
 
 export const LONG_RULES: GalaxyRules = { ...STANDARD_RULES, length: "long" };
@@ -72,13 +74,18 @@ export const NUMBERS = {
   /** 시작 자금(2-11) */
   startFunds: { short: 1000, standard: 1000, long: 1500 },
   /**
-   * 첫 차례 이점 보정(3-6 g3): 첫 차례에서 n번째 뒤 자리는 시작 자금을 이만큼 × n 더 받는다(4인 0·20·40·60).
+   * 첫 차례 이점 보정(3-6 g3): 첫 차례에서 n번째 뒤 자리는 시작 자금을 이만큼 × n 더 받는다(4인 0·40·80·120).
    * g2 bench에서 첫 차례 자리의 1등이 30.1%(기준 25 ± 5)로 넘었다. 먼저 사는 자리가 별 하나(60~200)를
-   * 앞서 가지는 몫의 일부를 되돌린다
+   * 앞서 가지는 몫의 일부를 되돌린다. g5(16절): 지원금이 별빛에 따라 줄며 보정이 깎여 4번째 자리 1등이
+   * 19.4%로 내려 20 → 40(1,000판 28.3·27.4·23.5·20.8%)
    */
-  lateSeatBonus: 20,
-  /** 우주국 지원금(2-5) */
+  lateSeatBonus: 40,
+  /** 우주국 지원금(2-5). 별빛이 넉넉하면 줄어든다(`salaryOf`, g5 16절) */
   salary: 120,
+  /** 지원금이 줄기 시작하는 별빛, 넘는 몫에서 덜어 내는 비율(천분율), 가장 적은 지원금 */
+  salaryFree: 300,
+  salaryTaper: 200,
+  salaryMin: 20,
   /** 한 사람이 갖는 차례 수(2-11). 긴 판은 제한 없음 */
   turns: {
     short: { 2: 24, 3: 17, 4: 12 },
@@ -94,14 +101,16 @@ export const NUMBERS = {
    * 완성 → 2단 +0.5p, 2단 → 3단 +0.7p, 3단 → 큰 정거장 +0.8p. 큰 정거장은 처음 값 2.4p(#64 전)로 두어 운항 중단을 줄였다.
    * g4(15-3): 반쯤 섞은 판은 별자리가 일찍 완성돼 정거장이 일찍 서므로 운항 중단이 28.5%로 늘었다.
    * 2단 0.9 → 0.8p, 3단 1.6 → 1.4p, 큰 정거장 2.4 → 2.0p로 내려 4인 중수 400판 19.5%(기준 20% 아래)
+   * g5(16절): 자유 거래가 빠져 완성이 늦어지고(중앙값 7 → 11돌림) 운항 중단이 3%대로 내려, 짓는 값을 되찾게
+   * 2단 0.9p·3단 1.6p·큰 정거장 2.4p로 다시 올렸다(400판 운항 중단 7.2%, 300 넘는 이용료 나온 판 38%)
    */
   rent: {
     single: 200,
     pair: 300,
     complete: 400,
-    level2: 800,
-    level3: 1400,
-    grand: 2000,
+    level2: 900,
+    level3: 1600,
+    grand: 2400,
   },
   /** 정거장 한 단 값 = 별자리 기본 값의 이만큼(천분율) */
   levelCost: 500,
@@ -115,8 +124,25 @@ export const NUMBERS = {
   asteroidFine: 50,
   /** 관측 지원금: 인원마다 자산 순위 1위부터(2-5) */
   observatory: { 2: [0, 100], 3: [0, 60, 120], 4: [0, 50, 100, 150] },
-  /** 판이 끝날 때 완성한 별자리마다 더하는 자산 */
-  completeBonus: 100,
+  /**
+   * 판이 끝날 때 완성한 별자리마다 더하는 자산 = 그 별자리 기본 값(별 하나 값)의 이만큼(천분율).
+   * g4까지는 모두 100이었다. g5(16절): 밝은 별자리를 완성하면 더 크게(페가수스 60 ~ 큰개 200)
+   */
+  completeBonusRate: 1000,
+  /**
+   * 자산에 넣는 별 값의 비율(천분율, 2-10). g4까지는 값 그대로(1000)라 별을 사도 자산이 줄지 않아
+   * 「보이는 대로 다 사기」가 언제나 손해 없는 수였다. g5(16절): 사는 순간 자산이 값의 5분의 1만큼 줄어
+   * 이용료로 되찾을 별을 고른다(75%는 완성이 줄고 돈이 더 쌓였다)
+   */
+  starAsset: 800,
+  /**
+   * 도착 인수(2-8, g5): 남의 별에 멈춰 이용료를 낸 뒤 그 별을 별 값의 이만큼(천분율)에 주인에게 내고 사들일 수 있다.
+   * 주인이 완성한 별자리의 별·맡긴 별은 사들일 수 없다. 주인은 거절할 수 없고 흥정은 없다.
+   * bench(16절): 1.5배 완성 나온 판 87%, 2배 84%, 2.5배 79%(기준 80% 넘게)
+   */
+  takeover: 1500,
+  /** 내 별 재방문(g5): 내 별에 멈춘 차례에는 그 별자리 정거장 한 단을 한 단 값의 이만큼(천분율)에 올린다 */
+  revisitBuild: 500,
   /** 제철 하늘 이용료 배수(천분율). 반올림으로 차이가 사라지지 않게 제철이면 적어도 `seasonalMin` 더 낸다 */
   seasonal: 1500,
   seasonalMin: 10,
@@ -161,16 +187,16 @@ const LENGTH_CODES: Record<GalaxyLength, string> = {
 
 /*
  * 규칙 문자열. 온라인 방에서 규칙을 나눌 때 쓴다.
- * 형식: `g4-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 거래(t 켬 / n 끔)
+ * 형식: `g5-` + 인원(2·3·4) + 길이(s 짧은 / m 기본 / l 긴) + 도착 인수(t 켬 / n 끔, g4까지는 거래)
  *       + 제철 하늘(w 켬 / n 끔) + 유성우의 밤(켜면 r, 끄면 생략) + 달의 길(켜면 o) + 관측 의뢰(켜면 q)
  *       + `-` + 하늘 id(영문·숫자·점)
  *       + 시간(없으면 생략, `-t1` 빠른·`-t2` 보통).
- * 예: 기본(유성우 끔, 달·의뢰 켬) `g4-4mtwoq-seasons`, 유성우를 켜면 `g4-4mtwroq-seasons`,
- *     짧은 판 2인 거래·제철·달·의뢰 끔 `g4-2snn-seasons`, 빠른 시간이면 `g4-4mtwoq-seasons-t1`.
+ * 예: 기본(유성우 끔, 달·의뢰 켬) `g5-4mtwoq-seasons`, 유성우를 켜면 `g5-4mtwroq-seasons`,
+ *     짧은 판 2인 인수·제철·달·의뢰 끔 `g5-2snn-seasons`, 빠른 시간이면 `g5-4mtwoq-seasons-t1`.
  * 긴 판은 마지막 돌림이 없어 유성우를 싣지 않는다(r 없음)
  */
 export function encodeGalaxyRules(rules: GalaxyRules): string {
-  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.trade ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}${rules.requests ? "q" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
+  return `g${GALAXY_EDITION}-${rules.players}${LENGTH_CODES[rules.length]}${rules.takeover ? "t" : "n"}${rules.seasonal ? "w" : "n"}${rules.meteor ? "r" : ""}${rules.moon ? "o" : ""}${rules.requests ? "q" : ""}-${rules.sky}${encodeTimePreset(rules.time ?? "none")}`;
 }
 
 /**
@@ -181,10 +207,10 @@ export function decodeGalaxyRules(
   text: string,
 ): { ok: true; rules: GalaxyRules } | { ok: false; reason: string } {
   const match =
-    /^g4-([234])([sml])([tn])([wn])(r?)(o?)(q?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
+    /^g5-([234])([sml])([tn])([wn])(r?)(o?)(q?)-([A-Za-z0-9.]+)(-t\d)?$/.exec(
       text.trim(),
     );
-  if (!match && /^g[123]-/.test(text.trim()))
+  if (!match && /^g[1-4]-/.test(text.trim()))
     return {
       ok: false,
       reason:
@@ -196,7 +222,7 @@ export function decodeGalaxyRules(
     ,
     players,
     length,
-    trade,
+    takeover,
     seasonal,
     meteor,
     moon,
@@ -217,7 +243,7 @@ export function decodeGalaxyRules(
       edition: GALAXY_EDITION,
       players: Number(players) as 2 | 3 | 4,
       length: lengthName,
-      trade: trade === "t",
+      takeover: takeover === "t",
       seasonal: seasonal === "w",
       meteor: meteor === "r",
       moon: moon === "o",

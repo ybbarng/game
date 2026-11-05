@@ -174,6 +174,8 @@ const SALARY: BoardScene = {
   kind: "board",
   positions: [stepsBefore("Bellatrix", 2), 0],
   stars: mine("Bellatrix"),
+  // 별빛이 넉넉하면 지원금이 줄어(16절) 미션은 지원금을 다 받는 별빛으로 시작한다
+  cash: [NUMBERS.salaryFree, NUMBERS.startFunds.standard],
   dice: [
     [1, 1],
     [2, 3],
@@ -547,7 +549,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         body: [
           `돈 대신 **별빛**(✦)을 써요. 처음에 ${money(startFunds)}을 받고, 첫 차례에서 뒤 자리일수록 ${money(NUMBERS.lateSeatBonus)}씩 더 받아요(먼저 사는 쪽이 앞서지 않게).`,
           "별빛은 이 판 안에서만 쓰는 점수예요. 판이 끝나면 사라지고, 실제 돈이나 물건과 바꿀 수 없어요.",
-          `판이 끝나면 **자산**(별빛 + 가진 별 값 + 정거장 + 완성한 별자리마다 ${money(NUMBERS.completeBonus)})이 가장 많은 사람이 1등이에요. 기본 판은 둘이면 한 사람이 ${turns2}차례씩 해요.`,
+          `판이 끝나면 **자산**(별빛 + 가진 별 값의 80% + 정거장 + 완성한 별자리마다 그 별자리 별 하나 값)이 가장 많은 사람이 1등이에요. 기본 판은 둘이면 한 사람이 ${turns2}차례씩 해요.`,
         ],
       },
       {
@@ -596,7 +598,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "우주국 지원금",
         body: [
           "오른쪽 아래 **카노푸스 우주국**에서 출발해요.",
-          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 한 바퀴(32칸)는 네 차례쯤 걸려요.`,
+          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 5분의 1만큼 덜 받아요. 한 바퀴(32칸)는 네 차례쯤 걸려요.`,
         ],
         scene: { kind: "board", marked: [0] },
       },
@@ -660,7 +662,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "별자리 선이 이어져요",
         body: [
           `같은 별자리 별을 **둘** 가지면 둘 사이에 별자리 선이 이어지고, 1단 이용료가 별 값의 ${pct(NUMBERS.rent.single)} → ${pct(NUMBERS.rent.pair)}로 올라요.`,
-          `**셋 모두** 가지면 **별자리 완성**이에요. 이용료가 ${pct(NUMBERS.rent.complete)}가 되고, 판이 끝날 때 자산에 ${money(NUMBERS.completeBonus)}을 더해요.`,
+          `**셋 모두** 가지면 **별자리 완성**이에요. 이용료가 ${pct(NUMBERS.rent.complete)}가 되고, 판이 끝날 때 자산에 그 별자리 별 하나 값(밝은 별자리일수록 커요)을 더해요.`,
         ],
         scene: { kind: "board", stars: mine("Betelgeuse", "Rigel") },
       },
@@ -744,7 +746,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
   },
   {
     id: "auction",
-    title: "봉투 입찰과 거래",
+    title: "봉투 입찰과 사들이기",
     summary: "사지 않은 별은 모두가 몰래 값을 적어 낸다",
     steps: [
       {
@@ -767,11 +769,11 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
       },
       {
         kind: "explain",
-        title: "거래",
+        title: "사들이기",
         body: [
-          "내 차례에 굴리기 **전** 한 번, 한 사람에게 거래를 제안할 수 있어요: 내 별 + 별빛 ↔ 상대 별 + 별빛.",
-          "상대는 받거나 거절만 해요. 별이 하나는 오가야 하고, 맡긴 별과 2단 이상 정거장이 있는 별자리의 별은 거래할 수 없어요.",
-          "별자리를 완성하려면 거래가 지름길이에요.",
+          `남의 별에 멈춰 이용료를 낸 뒤, 그 별을 값의 ${NUMBERS.takeover / 1000}배에 주인에게서 **사들일** 수 있어요. 주인은 거절할 수 없어요.`,
+          "주인이 완성한 별자리의 별과 맡긴 별은 사들일 수 없어요.",
+          "별자리를 완성하려면 사들이기가 지름길이에요.",
         ],
       },
       auctionMission,
