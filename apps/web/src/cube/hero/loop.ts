@@ -41,7 +41,10 @@ export interface HeroTiming {
   stage: number;
   /** 단계 안에서 다음 모양을 살피는 멈춤 */
   look: number;
-  /** 조각을 찾는 큐브 돌리기 한 번(보통 큐브 돌리기보다 빠르게, 2026-11-05) */
+  /**
+   * 조각을 찾는 둘러보기와 그 되돌리기 한 번(2026-11-05). 살짝 기울였다 돌아오는 느낌으로 보통 수보다도 빠르게
+   * (큐브 돌리기는 보통 수의 1.5배)
+   */
   searchMove: number;
   /** 강조(넣을 곳·찾은 조각, 맞춘 조각)를 보이는 멈춤 */
   mark: number;
@@ -79,7 +82,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
       ...base,
       scrambleMove: 120,
       solveMove: 280,
-      searchMove: 280,
+      searchMove: 180,
       scrambleLength: 11,
       solveWait: 8000,
     };
@@ -88,7 +91,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
       ...base,
       scrambleMove: 110,
       solveMove: 240,
-      searchMove: 240,
+      searchMove: 160,
       scrambleLength: 20,
       solveWait: 8000,
     };
@@ -100,7 +103,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     look: 120,
     scrambleMove: 80,
     solveMove: n === 4 ? 120 : 100,
-    searchMove: n === 4 ? 120 : 100,
+    searchMove: 80,
     scrambleLength: n === 4 ? 30 : 36,
   };
 }

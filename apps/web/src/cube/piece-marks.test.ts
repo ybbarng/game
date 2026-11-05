@@ -123,19 +123,20 @@ describe("찾는 차례", () => {
 });
 
 describe("splitByUnits", () => {
-  it("한 번에 짠 십자는 엣지가 맞은 걸음으로 나누고, 나누지 않으면 끝에서 한 묶음이다", () => {
+  it("새로 맞은 묶음이 여럿이면 맞은 걸음으로 나누고, 하나면 끝에서 끊는다", () => {
     const units = unitsForStage(3, "cross") ?? [];
     // 흰 엣지 둘을 차례로 옮겼다 되돌리기: F'(흰-초록 빠짐) R'(흰-빨강 빠짐) 의 역 R F
     const start = play(solvedCube(3), "F' R'");
     const moves = ["R", "F"];
     const states = [start];
     for (const m of moves) states.push(play(states.at(-1) as PuzzleState, m));
-    const split = splitByUnits(states, 0, 2, units, true);
+    const split = splitByUnits(states, 0, 2, units);
     expect(split.map((g) => [g.at, g.units.length])).toEqual([
       [1, 1],
       [2, 1],
     ]);
-    const whole = splitByUnits(states, 0, 2, units);
-    expect(whole.map((g) => [g.at, g.units.length])).toEqual([[2, 2]]);
+    // R 하나만 되돌리면 그 한 엣지를 끝에서
+    const one = splitByUnits(states, 0, 1, units);
+    expect(one.map((g) => [g.at, g.units.length])).toEqual([[1, 1]]);
   });
 });

@@ -379,8 +379,10 @@ export function presentSolve(
   };
 
   /**
-   * 묶음을 넣기 전: 보이는 세 면에 없으면 찾는 차례대로 돌려 처음 보이는 걸음에서 멈추고, 넣을 곳과 찾은 조각
-   * 사건을 낸다. 찾느라 x2를 했으면(아랫면을 봄) 다시 x2로 돌아와 원래 쥔 면에서 넣는다
+   * 묶음을 넣기 전(사용자 2026-11-05 「둘러보기 → 찾음 → 처음 방향으로 되돌리기 → 넣을 칸을 앞-오른쪽으로 →
+   * 넣기」): 보이는 세 면에 없으면 찾는 차례대로 돌려(둘러보기) 처음 보이는 걸음에서 멈추고, 넣을 곳과 찾은 조각
+   * 사건을 낸 뒤 둘러보기 전 방향으로 가장 짧게 되돌린다. 넣을 칸을 앞으로 가져오는 돌리기는 그 뒤에 따로 둔다.
+   * 둘러보기와 되돌리기는 모두 찾는 돌리기(`searches`, 빠르게)다
    */
   const findUnits = (
     units: readonly PieceUnit[],
@@ -401,8 +403,13 @@ export function presentSolve(
       },
       { kind: "found", stickers: units.flatMap(unitStickers) },
     );
-    if (tokens.includes("x2")) turn(["x2"], stage);
+    if (tokens.length) {
+      const looked = tokens.reduce((acc, t) => mul(tokenMat(t), acc), I);
+      turn(tokensFor(transpose(looked)), stage, false, true);
+    }
   };
+  /** 이미 맞춘 것을 지켜야 하는 묶음(앞 찾기 단계 것 포함). 묶음을 나눌 때 되돌리는 수까지 한 묶음에 둔다 */
+  const guard: PieceUnit[] = [];
 
   const upStages = solve.stages.filter((s) => up.includes(s.name));
   const firstUp = upStages[0];
@@ -446,7 +453,12 @@ export function presentSolve(
         si,
       );
     }
+    // 이 단계에 맞출 조각만 본다(해법의 수 꼴에는 기대지 않는다)
     const units = view.search ? unitsForStage(n, st.name) : null;
+    if (units)
+      for (const u of units)
+        if (!guard.some((g) => g.pieces.join() === u.pieces.join()))
+          guard.push(u);
     if (!kind && !units) play(st.start, st.end, si, false);
     else {
       const slot: Slot | null = !kind
@@ -462,7 +474,7 @@ export function presentSolve(
       for (let c = 0; c + 1 < cuts.length; c++) {
         const cutFrom = cuts[c] as number;
         const cutTo = cuts[c + 1] as number;
-        // 묶음(조각 하나·짝 하나)을 맞춘 걸음으로 더 나눈다(최적 십자는 살피는 자리가 없다)
+        // 살피는 자리 사이에 새로 맞은 묶음이 여럿이면 맞은 걸음으로 더 나눈다(최적 십자 등)
         const parts: { from: number; to: number; units: PieceUnit[] }[] = [];
         let prev = cutFrom;
         if (units)
@@ -471,8 +483,7 @@ export function presentSolve(
             cutFrom,
             cutTo,
             units,
-            // 살피는 자리가 없는 위 단계(최적 십자)만 엣지 하나씩 나눈다. 넣는 단계는 살피는 자리 하나가 한 묶음
-            !kind && cuts.length === 2,
+            guard,
           )) {
             parts.push({ from: prev, to: g.at, units: g.units });
             prev = g.at;

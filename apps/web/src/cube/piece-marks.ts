@@ -191,18 +191,19 @@ export function searchTurns(
 
 /**
  * 수 [from, to) 동안(states[i]는 i번째 수 앞 상태) 새로 맞춘 묶음을 돌려준다. 걸음 차례로 [끝 걸음, 그때 맞춘 묶음].
- * 처음부터 맞은 묶음은 넣지 않는다.
+ * 처음부터 맞은 묶음은 넣지 않는다. 해법의 수 꼴(살피는 자리, 공식 모양)에 기대지 않고 상태만 본다.
  *
- * `split`이면 맞은 걸음으로 더 나눈다(최적 십자처럼 살피는 자리 없이 한 번에 짠 수를 엣지 하나씩): 묶음마다
- * 「그 걸음부터 끝까지 내내 맞은」 가장 이른 걸음에서, 처음에 맞아 있던 묶음이 모두 다시 맞은 걸음까지 늦춘다
- * (잠깐 빼냈다 되돌리는 수가 끝나기 전에 끊지 않게). 아니면 모두 `to`에서 한 묶음이다
+ * 새로 맞은 묶음이 둘 이상이면 맞은 걸음으로 나눈다(최적 십자처럼 한 번에 짠 수, 살피는 자리 없이 이어 넣은
+ * 수): 묶음마다 「그 걸음부터 끝까지 내내 맞은」 가장 이른 걸음에서, `guard`(이미 맞춘 것을 지켜야 하는 묶음,
+ * 앞 단계 것 포함) 가운데 처음에 맞아 있던 것이 모두 다시 맞은 걸음까지 늦춘다(잠깐 빼냈다 되돌리는 수가 끝나기
+ * 전에 끊지 않게). 하나면 `to`에서 끊는다
  */
 export function splitByUnits(
   states: readonly PuzzleState[],
   from: number,
   to: number,
   units: readonly PieceUnit[],
-  split = false,
+  guard: readonly PieceUnit[] = units,
 ): { at: number; units: PieceUnit[] }[] {
   const start = states[from];
   const end = states[to];
@@ -210,9 +211,8 @@ export function splitByUnits(
   const fresh = units.filter(
     (u) => !unitSolved(start, u) && unitSolved(end, u),
   );
-  if (!fresh.length) return [];
-  if (!split) return [{ at: to, units: fresh }];
-  const kept = units.filter((u) => unitSolved(start, u));
+  if (fresh.length <= 1) return fresh.length ? [{ at: to, units: fresh }] : [];
+  const kept = guard.filter((u) => unitSolved(start, u));
   const groups = new Map<number, PieceUnit[]>();
   for (const u of fresh) {
     let at = to;

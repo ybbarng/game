@@ -298,7 +298,7 @@ describe("조각 찾기와 강조 사건(3×3 초보자·프리드리히)", () =
         const states = statesAt(3, start, shown.moves);
         const searches = new Set(shown.searches);
         for (const s of shown.searches)
-          expect(shown.moves[s]).toMatch(/^(y|x2)$/);
+          expect(shown.moves[s]).toMatch(/^[xyz]['2]?$/);
         for (const { at, mark } of shown.marks) {
           if (mark.kind !== "found") continue;
           // 바로 앞에 이어진 찾는 돌리기들
@@ -312,7 +312,23 @@ describe("조각 찾기와 강조 사건(3×3 초보자·프리드리히)", () =
           expect(anyVisible(states[at] as PuzzleState, mark.stickers)).toBe(
             true,
           );
-          if (at > from) searched++;
+          if (at > from) {
+            searched++;
+            // 찾은 뒤에는 둘러보기 전 방향으로 되돌린 다음에 넣을 칸을 돌린다
+            let back = at;
+            while (searches.has(back)) back++;
+            expect(back).toBeGreaterThan(at);
+            expect(
+              sameState(
+                states[back] as PuzzleState,
+                states[from] as PuzzleState,
+              ),
+              `${id} ${seed} 되돌리기`,
+            ).toBe(true);
+            // 둘러보기·되돌리기 사이에 넣는 수가 없다
+            for (let j = from; j < back; j++)
+              expect(shown.moves[j]).toMatch(/^[xyz]/);
+          }
         }
       }
       expect(searched).toBeGreaterThan(0);
