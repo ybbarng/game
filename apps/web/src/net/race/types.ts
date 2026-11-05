@@ -10,7 +10,11 @@ export interface RaceGame<Move, State> {
   startState(seed: string, options: unknown): State;
   /** 둘 수 없는 수면 throw */
   apply(state: State, move: Move): State;
-  isSolved(state: State): boolean;
+  /**
+   * 끝났나. `player`는 그 상태의 주인(사람마다 목표가 다른 게임, 큐브 핸디캡 「목표 다르게」). 모든 기기가 같은 답을
+   * 내야 하므로 사람마다 다른 규칙은 판정 설정 지문(`RaceOptions.gameOptions`)에 실어 맞춰 본다
+   */
+  isSolved(state: State, player?: string): boolean;
   /** 0~1 진행 막대 */
   progress(state: State): number;
   encodeMove(move: Move): string;
@@ -75,6 +79,12 @@ export interface RaceOptions {
   /** 제한 시간이 지난 뒤 늦게 닿는 "맞췄다"와 하한을 더 기다리는 시간(ms). 기본 3000 */
   resultGraceMs?: number;
   suspicion?: SuspicionRules;
+  /**
+   * 사람마다 출발 늦추기(ms, 풀림부터). 그 사람은 이 시각 전에 수를 둘 수 없다(살펴보기는 그대로).
+   * 다른 기기는 보고 시각이 이보다 이르거나, 도착 시각이 이보다 이른 때를 증명하는 수를 받으면 그 사람을 DNF로 본다.
+   * 0보다 큰 값이 있으면 판정 설정 지문에 넣는다(없으면 예전 지문 그대로)
+   */
+  startDelayMs?: Record<string, number>;
   /** `startState`에 그대로 넘긴다 */
   gameOptions?: unknown;
 }
@@ -83,7 +93,13 @@ export type PlayResult =
   | { ok: true; solved: boolean }
   | {
       ok: false;
-      reason: "섞기 전" | "살펴보기 중" | "끝남" | "둘 수 없는 수" | "관전";
+      reason:
+        | "섞기 전"
+        | "살펴보기 중"
+        | "출발 전"
+        | "끝남"
+        | "둘 수 없는 수"
+        | "관전";
     };
 
 export interface SuspicionFlags {

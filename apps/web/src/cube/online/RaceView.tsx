@@ -30,6 +30,12 @@ import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
 import { planInWorker } from "../worker";
 import { checkBotRun, sameAsBotSolve } from "./bot-racer";
+import {
+  type ActiveHandicap,
+  goalLabel,
+  handicapTags,
+  ratioText,
+} from "./handicap";
 import { MatchBoard } from "./MatchBoard";
 import { stageLabel, turnCount } from "./race-game";
 import {
@@ -113,9 +119,18 @@ export function RaceView({
   useTicker(phase === "inspect" || phase === "race" || phase === "waiting");
   const [notice, setNotice] = useState<string | null>(null);
   // 「살펴보기 중에는…」 알림은 살펴보기 동안만. 판이 열리거나 끝나면 지운다
+  const handicapNow: ActiveHandicap | undefined = room.handicap();
+  const myDelayMs = (handicapNow?.delaySec[room.me] ?? 0) * 1000;
+  const waitLeft =
+    phase === "race" && myDelayMs > 0
+      ? myDelayMs - (snap?.elapsed ?? 0)
+      : phase === "inspect" && myDelayMs > 0
+        ? myDelayMs
+        : 0;
+  const waiting = waitLeft > 0;
   useEffect(() => {
-    if (phase !== "inspect") setNotice(null);
-  }, [phase]);
+    if (phase !== "inspect" && !waiting) setNotice(null);
+  }, [phase, waiting]);
   const [showSmall, setShowSmall] = useState(true);
   const alerts = effectiveRaceAlerts(settings.raceAlerts, useReducedMotion());
 
@@ -231,6 +246,8 @@ export function RaceView({
         setNotice(
           "살펴보기 중에는 면도 큐브도 돌릴 수 없어요. 끌거나 ←·↓ 키로 둘러보세요.",
         );
+      if (r.reason === "출발 전")
+        setNotice("늦게 출발하는 판이에요. 시간이 되면 돌릴 수 있어요.");
       return false;
     },
     [room],
@@ -267,6 +284,8 @@ export function RaceView({
     .filter((p) => p.status === "done" && p.reported !== undefined)
     .sort((a, b) => (a.reported as number) - (b.reported as number));
   const round = room.rounds.find((r) => r.race === room.state?.race?.id);
+  const handicap = round?.handicap ?? handicapNow;
+  const myGoal = handicap?.goal[room.me];
 
   let clock: string;
   if (phase === "inspect")
@@ -316,7 +335,33 @@ export function RaceView({
             돌려요.
           </p>
         )}
-      {notice && phase === "inspect" && (
+      {/* 내 핸디캡(출발 늦추기·목표)은 판 내내 보인다 */}
+      {mine &&
+        (myDelayMs > 0 || myGoal) &&
+        phase !== "finished" &&
+        phase !== "waiting" && (
+          <p
+            data-cube-my-handicap
+            data-cube-start-wait={waiting ? Math.ceil(waitLeft / 1000) : 0}
+            className={`mx-auto break-keep rounded-full border px-3 py-1 text-center text-xs ${
+              waiting && phase === "race"
+                ? "border-amber-300/40 bg-amber-300/10 text-amber-100"
+                : "border-white/15 bg-white/5 text-white/70"
+            }`}
+          >
+            {[
+              myDelayMs > 0
+                ? waiting && phase === "race"
+                  ? `출발까지 ${Math.ceil(waitLeft / 1000)}초`
+                  : `+${myDelayMs / 1000}초 늦게 출발`
+                : "",
+              myGoal ? `목표: ${goalLabel(n, myGoal)}` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+      {notice && (phase === "inspect" || waiting) && (
         <p
           role="status"
           data-cube-notice
@@ -336,6 +381,7 @@ export function RaceView({
           local={local}
           actions={resultActions}
           splitsOf={(id) => stages.get(id)?.splits ?? []}
+          handicap={handicap}
         />
       )}
 
@@ -420,6 +466,9 @@ export function RaceView({
                   {!p.connected && (
                     <span className="text-red-300 text-xs">끊김</span>
                   )}
+                  {p.id !== room.me && handicap && (
+                    <PeerHandicap handicap={handicap} n={n} id={p.id} />
+                  )}
                   <span
                     className={`ml-auto shrink-0 font-mono text-xs tabular-nums ${
                       p.status === "done" ? "text-emerald-300" : ""
@@ -490,6 +539,7 @@ function ResultBox({
   local,
   actions,
   splitsOf,
+  handicap,
 }: {
   room: CubeRoom;
   snap: RaceSnapshot;
@@ -499,8 +549,11 @@ function ResultBox({
   actions?: ReactNode;
   /** 사람마다 구간 기록(이 기기가 수 기록에서 계산) */
   splitsOf: (id: string) => readonly Split[];
+  handicap: ActiveHandicap | undefined;
 }) {
-  const result = snap.result;
+  // 판 기록이 있으면 그 결과(「평균 대비」면 순위를 다시 매긴 것)
+  const result = round?.result ?? snap.result;
+  const score = round?.score;
   const session = room.anySession();
   // 컴퓨터가 계획대로 두었는지 이 기기에서 다시 계산해 본다(판이 끝난 뒤 한 번)
   // 계획은 웹 워커에서 다시 만든다(해법기 표를 처음 만들 때 화면이 멈추지 않게)
@@ -600,9 +653,11 @@ function ResultBox({
       : mine.unranked
         ? "맞췄지만 두 기기 기록이 달라 순위에 넣지 않았어요"
         : solved
-          ? myRank === 0
-            ? `1위예요 · ${formatMs(mine.accepted)}`
-            : `${myRank + 1}위 · ${formatMs(mine.accepted)}`
+          ? `${myRank === 0 ? "1위예요" : `${myRank + 1}위`} · ${formatMs(mine.accepted)}${
+              score?.[room.me] !== undefined
+                ? ` · ${ratioText(score[room.me] as number)}`
+                : ""
+            }`
           : mine.status === "forfeit"
             ? "이번 판은 기권했어요"
             : "이번 판은 맞추지 못했어요(DNF)";
@@ -629,13 +684,18 @@ function ResultBox({
         </p>
       )}
       <table className="w-full text-sm">
-        <thead className="text-white/60 text-xs">
+        <thead className="whitespace-nowrap text-white/60 text-xs">
           <tr>
             <th className="text-left">순위</th>
             <th className="text-left">이름</th>
             <th className="text-right">시간</th>
-            <th className="text-right">수</th>
-            <th className="text-right">초당</th>
+            {score && (
+              <th className="pl-2 text-right" title="내 평균 대비">
+                대비
+              </th>
+            )}
+            <th className="pl-2 text-right">수</th>
+            <th className="pl-2 text-right">초당</th>
           </tr>
         </thead>
         <tbody>
@@ -648,7 +708,10 @@ function ResultBox({
               p?.accepted !== undefined && p.reported !== undefined
                 ? p.accepted - p.reported
                 : 0;
-            const notes: string[] = [];
+            const notes: string[] = handicapTags(handicap, n, id);
+            const base = round?.baseline?.[id];
+            if (score && base?.from === "first")
+              notes.push(`기준: 첫 판 ${formatMs(base.ms)}`);
             if (extra > 0 && !local)
               notes.push(`연결 지연으로 +${(extra / 1000).toFixed(2)}초(하한)`);
             if (p?.disputed && p.usedBound != null)
@@ -708,8 +771,21 @@ function ResultBox({
                       ? "기권"
                       : "DNF"}
                 </td>
-                <td className="text-right">{turns}</td>
-                <td className="text-right">
+                {score && (
+                  <td
+                    className="pl-2 text-right font-mono tabular-nums"
+                    data-cube-ratio={id}
+                  >
+                    {score[id] === undefined
+                      ? "-"
+                      : ratioText(score[id] as number).replace(
+                          "평균 대비 ",
+                          "",
+                        )}
+                  </td>
+                )}
+                <td className="pl-2 text-right">{turns}</td>
+                <td className="pl-2 text-right">
                   {p?.status === "done" && time
                     ? (turns / (time / 1000)).toFixed(2)
                     : "-"}
@@ -731,6 +807,32 @@ function ResultBox({
         </div>
       )}
     </div>
+  );
+}
+
+/** 사람 칸 이름 옆의 짧은 핸디캡 표시(「+5초」·「첫 두 층」) */
+function PeerHandicap({
+  handicap,
+  n,
+  id,
+}: {
+  handicap: ActiveHandicap;
+  n: number;
+  id: string;
+}) {
+  const d = handicap.delaySec[id];
+  const g = handicap.goal[id];
+  if (!d && !g) return null;
+  return (
+    <span
+      data-cube-peer-handicap={id}
+      title={handicapTags(handicap, n, id).join(" · ")}
+      className="shrink-0 truncate text-[11px] text-white/45"
+    >
+      {[d ? `+${d}초` : "", g ? goalLabel(n, g) : ""]
+        .filter(Boolean)
+        .join(" · ")}
+    </span>
   );
 }
 
