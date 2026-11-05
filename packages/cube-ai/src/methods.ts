@@ -584,7 +584,7 @@ function lastLayer2(s: Solve): void {
 }
 
 /**
- * 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리. `taught`면 첫 층을 흰 면 위에서 `R' D' R D`로 맞추고
+ * 2×2 입문: 첫 층 → 윗면(수네) → 윗층 자리. `taught`면 첫 층을 흰 면 위에서 3×3과 같은 지름길로 맞추고
  * 꼭짓점 자리(`U R U' L' U R' U' L`) → 꼭짓점 방향(`R' D' R D`)으로 마친다
  */
 export function solveBeginner2(

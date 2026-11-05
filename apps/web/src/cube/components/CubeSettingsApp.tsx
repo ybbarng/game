@@ -259,8 +259,10 @@ export function CubeSettingsApp() {
               ["inspection", "혼자 맞추기 15초 살펴보기"],
               ["caseAlert", "혼자 맞추기 상황 알림(내 목록)"],
               ["keyColors", "키 그림에 면 색"],
-              ["keyPairs", "키 그림에서 같은 면의 두 키 잇기"],
-              ["keyFingers", "키 그림에 손가락 자리"],
+              [
+                "keyFingersAll",
+                "키 그림의 손가락 자리를 모든 화면에서도 보이기(키 익히기·단축키 표는 늘 보임)",
+              ],
               ["touchKeyboard", "휴대폰에서 단추 대신 키보드 그림을 눌러 치기"],
             ] as const
           ).map(([k, label]) => (
@@ -363,7 +365,13 @@ function KeymapSection({
     action: string;
     chord: KeyChord;
     current: string;
+    /** 바꾸면 지금 동작에 남는 키가 없다 */
+    orphan: boolean;
   } | null>(null);
+  /** 편 묶음(동작이 90개 남짓이라 묶음별로 접는다. 처음엔 면 돌리기만) */
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(
+    () => new Set(["face"]),
+  );
   const keyless = useMemo(() => keylessActions(keymap, n), [keymap, n]);
   const applyRef = useRef<(action: string, chord: KeyChord) => void>(() => {});
   const [importText, setImportText] = useState("");
@@ -388,7 +396,12 @@ function KeymapSection({
       const check = checkAssign(keymap, capturing, chord);
       // 이미 다른 동작이 놓인 키: 저장 전에 묻는다(설계 4-1)
       if (check.current) {
-        setPending({ action: capturing, chord, current: check.current });
+        setPending({
+          action: capturing,
+          chord,
+          current: check.current,
+          orphan: check.orphan,
+        });
         setMessage(null);
         return;
       }
@@ -524,6 +537,7 @@ function KeymapSection({
                   chordLabel(pending.chord),
                   actionLabel(pending.current),
                   actionLabel(pending.action),
+                  pending.orphan,
                 )}
               </span>
               <button
@@ -570,75 +584,101 @@ function KeymapSection({
                 .join(", ")}
             </p>
           )}
-          {groups.map((g) => (
-            <div key={g}>
-              <h3 className="mb-1 font-semibold text-white/80 text-xs">
-                {GROUP_LABEL[g]}
-              </h3>
-              <ul className="grid gap-1 sm:grid-cols-2">
-                {actions
-                  .filter((a) => a.group === g)
-                  .map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex items-center gap-2 rounded bg-black/20 px-2 py-1 text-sm"
-                    >
-                      <span className="w-28 shrink-0 truncate font-mono text-xs">
-                        {a.label}
-                      </span>
-                      <span className="flex flex-1 flex-wrap gap-1">
-                        {keyless.includes(a.id) && (
-                          <span
-                            data-no-key
-                            className="rounded bg-rose-500/20 px-1.5 text-rose-200 text-xs"
-                          >
-                            키 없음
-                          </span>
-                        )}
-                        {keysOf(keymap, a.id).map((c) => (
-                          <button
-                            key={chordLabel(c)}
-                            type="button"
-                            title="이 키 빼기"
-                            onClick={() => setKeymap(unbind(keymap, c))}
-                            className="rounded bg-white/15 px-1.5 text-xs hover:bg-red-500/40"
-                          >
-                            {chordLabel(c)} ×
-                          </button>
-                        ))}
-                      </span>
-                      <button
-                        type="button"
-                        data-assign={a.id}
-                        onClick={() => {
-                          setCapturing(a.id);
-                          setMessage(null);
-                          setPending(null);
-                        }}
-                        className={cn(
-                          "shrink-0 rounded px-2 py-0.5 text-xs",
-                          capturing === a.id
-                            ? "bg-amber-400 text-black"
-                            : "bg-white/10 hover:bg-white/20",
-                        )}
+          {groups.map((g) => {
+            const inGroup = actions.filter((a) => a.group === g);
+            const missing = inGroup.filter((a) => keyless.includes(a.id));
+            return (
+              <details
+                key={g}
+                data-keymap-group={g}
+                open={openGroups.has(g)}
+                onToggle={(e) => {
+                  const open = e.currentTarget.open;
+                  setOpenGroups((s) => {
+                    if (s.has(g) === open) return s;
+                    const next = new Set(s);
+                    if (open) next.add(g);
+                    else next.delete(g);
+                    return next;
+                  });
+                }}
+              >
+                <summary className="flex min-h-8 cursor-pointer items-center gap-2 font-semibold text-white/80 text-xs">
+                  {GROUP_LABEL[g]}
+                  <span className="font-normal text-white/45">
+                    {inGroup.length}
+                  </span>
+                  {missing.length > 0 && (
+                    <span className="rounded bg-rose-500/20 px-1.5 font-normal text-rose-200">
+                      키 없음 {missing.length}
+                    </span>
+                  )}
+                </summary>
+                <ul className="mt-1 grid gap-1 sm:grid-cols-2">
+                  {actions
+                    .filter((a) => a.group === g)
+                    .map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center gap-2 rounded bg-black/20 px-2 py-1 text-sm"
                       >
-                        {capturing === a.id ? "키 기다리는 중" : "키 지정"}
-                      </button>
-                      {keysOf(keymap, a.id).length > 0 && (
+                        <span className="w-28 shrink-0 truncate font-mono text-xs">
+                          {a.label}
+                        </span>
+                        <span className="flex flex-1 flex-wrap gap-1">
+                          {keyless.includes(a.id) && (
+                            <span
+                              data-no-key
+                              className="rounded bg-rose-500/20 px-1.5 text-rose-200 text-xs"
+                            >
+                              키 없음
+                            </span>
+                          )}
+                          {keysOf(keymap, a.id).map((c) => (
+                            <button
+                              key={chordLabel(c)}
+                              type="button"
+                              title="이 키 빼기"
+                              onClick={() => setKeymap(unbind(keymap, c))}
+                              className="rounded bg-white/15 px-1.5 text-xs hover:bg-red-500/40"
+                            >
+                              {chordLabel(c)} ×
+                            </button>
+                          ))}
+                        </span>
                         <button
                           type="button"
-                          title="이 동작의 키 모두 지우기"
-                          onClick={() => setKeymap(clearAction(keymap, a.id))}
-                          className="shrink-0 text-white/40 text-xs hover:text-white"
+                          data-assign={a.id}
+                          onClick={() => {
+                            setCapturing(a.id);
+                            setMessage(null);
+                            setPending(null);
+                          }}
+                          className={cn(
+                            "shrink-0 rounded px-2 py-0.5 text-xs",
+                            capturing === a.id
+                              ? "bg-amber-400 text-black"
+                              : "bg-white/10 hover:bg-white/20",
+                          )}
                         >
-                          비우기
+                          {capturing === a.id ? "키 기다리는 중" : "키 지정"}
                         </button>
-                      )}
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ))}
+                        {keysOf(keymap, a.id).length > 0 && (
+                          <button
+                            type="button"
+                            title="이 동작의 키 모두 지우기"
+                            onClick={() => setKeymap(clearAction(keymap, a.id))}
+                            className="shrink-0 text-white/40 text-xs hover:text-white"
+                          >
+                            비우기
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </details>
+            );
+          })}
         </div>
       )}
 

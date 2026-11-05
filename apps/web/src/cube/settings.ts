@@ -98,14 +98,20 @@ export interface CubeSettings {
   /** 혼자 맞추기 「상황 알림」: 내 목록의 윗면 상황에 이르면 구석에 이름과 내 공식(2026-11-04, 기본 꺼짐) */
   caseAlert: boolean;
   /**
-   * 키 그림에 면 색(2026-11-04, 기본 켬): 면 돌리기 키를 들고 있는 방향의 그 면 색으로, 반대 방향은 연하게·빗금.
-   * 끄면 단색
+   * 키 그림에 면 색(2026-11-04, 기본 켬, docs/47 4-5): 면 돌리기 키는 칸 바탕에 들고 있는 방향의 그 면 색을 옅게,
+   * x·y·z·M·E·S는 무채색 칸에 같은 톤의 선(점선·가운데 짧은 선). 반대 방향은 같은 색을 흐리게 + ′.
+   * 색약 친화·높은 대비 배색은 가까운 색 한 면의 바탕에 옅은 사선. 끄면 무채색
    */
   keyColors: boolean;
-  /** 키 그림에서 같은 면의 시계·반시계 두 키를 선으로 잇는다(2026-11-04, 기본 켬) */
-  keyPairs: boolean;
-  /** 키 그림에 가운데 줄 손가락 자리(검지·중지·약지·새끼)를 옅게 겹친다(2026-11-04, 기본 켬) */
-  keyFingers: boolean;
+  /**
+   * 모든 화면의 키 그림에 가운데 줄 손가락 자리(검지·중지·약지·새끼)를 옅게 겹친다(2026-11-05, 기본 끔).
+   * 키 익히기·단축키 표·조작 훈련은 이 값과 상관없이 늘 보이고, 맞추는 화면(혼자 맞추기·배우기·대결·화면 키보드)은
+   * 이 값을 켜야 보인다(사용자 「키 사이에 파란선, 노란선은 뭐야?」, 면 색처럼 보여 헷갈렸다).
+   * 예전 `keyFingers`(기본 켬)는 읽지 않는다: 거의 모든 저장값이 기본값 그대로 켬이라, 이어 받으면 새 기본(맞추는
+   * 화면에서 끔)이 아무에게도 닿지 않는다. 일부러 껐던 사람은 키 익히기·단축키 표에서 다시 보게 되지만 그곳은 손
+   * 자리를 익히는 화면이다
+   */
+  keyFingersAll: boolean;
   /**
    * 뒷면 보기(2026-11-04, 기본 거울): 안 보이는 세 면(뒤·왼쪽·아래)을 큐브 둘레에 떠 있는 거울 판으로, 또는 곁의
    * 펼친 그림으로 보인다. 끄면 큐브만. 3D를 못 그리는 기기는 늘 펼친 그림
@@ -116,6 +122,10 @@ export interface CubeSettings {
    * 데스크톱은 늘 둘 다 보이고 키 그림도 누를 수 있다
    */
   touchKeyboard: boolean;
+  /** 큐브 아래 키 그림을 펴 둔다(2026-11-05, 기본 켬). 「키 그림 접기」로 바꾸고 다음에 열어도 남는다 */
+  keyGuideOpen: boolean;
+  /** 거울 판·펼친 그림을 보인다(2026-11-05, 기본 켬). 「거울 숨기기」·「펼친 그림 숨기기」로 바꾸고 다음에 열어도 남는다 */
+  backViewShown: boolean;
   /** 수 흐름 띠(2026-11-05, 기본 켬) */
   flowStrip: FlowStripMode;
   /** 대결 알림(2026-11-05, 기본 켬) */
@@ -140,10 +150,11 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   inspection: true,
   caseAlert: false,
   keyColors: true,
-  keyPairs: true,
-  keyFingers: true,
+  keyFingersAll: false,
   backView: "mirror",
   touchKeyboard: false,
+  keyGuideOpen: true,
+  backViewShown: true,
   flowStrip: "on",
   raceAlerts: "on",
   heroSize: DEFAULT_HERO_SIZE,
@@ -219,13 +230,16 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
     inspection: bool(d.inspection, DEFAULT_SETTINGS.inspection),
     caseAlert: bool(d.caseAlert, DEFAULT_SETTINGS.caseAlert),
     keyColors: bool(d.keyColors, DEFAULT_SETTINGS.keyColors),
-    keyPairs: bool(d.keyPairs, DEFAULT_SETTINGS.keyPairs),
-    keyFingers: bool(d.keyFingers, DEFAULT_SETTINGS.keyFingers),
+    // keyPairs(키 그림 짝 잇기, 2026-11-05 뺐다)는 옛 저장값에 남아 있어도 읽지 않고 버린다
+    // 예전 keyFingers(손가락 자리, 기본 켬)는 읽지 않고 버린다. 뜻이 「모든 화면에서도」로 바뀌어 새 칸으로 받는다
+    keyFingersAll: bool(d.keyFingersAll, DEFAULT_SETTINGS.keyFingersAll),
     backView:
       d.backView === "net" || d.backView === "off" || d.backView === "mirror"
         ? d.backView
         : DEFAULT_SETTINGS.backView,
     touchKeyboard: bool(d.touchKeyboard, DEFAULT_SETTINGS.touchKeyboard),
+    keyGuideOpen: bool(d.keyGuideOpen, DEFAULT_SETTINGS.keyGuideOpen),
+    backViewShown: bool(d.backViewShown, DEFAULT_SETTINGS.backViewShown),
     flowStrip:
       typeof d.flowStrip === "string" && d.flowStrip in FLOW_STRIP_LABEL
         ? (d.flowStrip as FlowStripMode)

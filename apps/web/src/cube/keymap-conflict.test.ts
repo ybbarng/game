@@ -38,6 +38,10 @@ describe("사용자 키: 겹치는 키를 지정하기 전에 묻는다", () => 
     expect(conflictQuestion("J", "U", "R")).toBe(
       "J 키는 지금 「U」 동작이에요. 「R」 동작으로 바꿀까요?",
     );
+    // 바꾸면 키가 하나도 남지 않는 동작은 묻는 글에서 미리 알린다
+    expect(conflictQuestion("J", "U", "R", true)).toBe(
+      "J 키는 지금 「U」 동작이에요. 「R」 동작으로 바꿀까요? 바꾸면 「U」 동작에는 키가 없어요.",
+    );
     expect(assignedText("J", "R", null)).toBe("J 키를 「R」 동작에 놓았어요.");
     expect(assignedText("J", "R", "U")).toContain(
       "「U」 동작에는 이제 키가 없어요",

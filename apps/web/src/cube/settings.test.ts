@@ -122,6 +122,19 @@ describe("큐브 설정 저장", () => {
     expect(effectiveRaceAlerts("off", true)).toBe("off");
   });
 
+  it("손가락 자리: 새 칸 「모든 화면에서도」는 기본 끔, 옛 keyFingers(켬)는 이어 받지 않는다", () => {
+    expect(parseSettings(null).keyFingersAll).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyFingers: true })).keyFingersAll,
+    ).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyFingersAll: true })).keyFingersAll,
+    ).toBe(true);
+    expect(
+      "keyFingers" in parseSettings(JSON.stringify({ keyFingers: true })),
+    ).toBe(false);
+  });
+
   it("뒷면 보기: 옛 저장값·모르는 값은 거울, 고른 값은 그대로", () => {
     expect(parseSettings(JSON.stringify({ version: 1 })).backView).toBe(
       "mirror",
@@ -135,6 +148,20 @@ describe("큐브 설정 저장", () => {
     expect(parseSettings(JSON.stringify({ backView: "유리" })).backView).toBe(
       "mirror",
     );
+  });
+
+  it("키 그림 접기·뒷면 숨기기: 옛 저장값·틀린 값은 펴 둠, 접은 것은 남는다", () => {
+    const old = parseSettings(JSON.stringify({ version: 1 }));
+    expect(old.keyGuideOpen).toBe(true);
+    expect(old.backViewShown).toBe(true);
+    const folded = parseSettings(
+      JSON.stringify({ keyGuideOpen: false, backViewShown: false }),
+    );
+    expect(folded.keyGuideOpen).toBe(false);
+    expect(folded.backViewShown).toBe(false);
+    expect(
+      parseSettings(JSON.stringify({ keyGuideOpen: "no" })).keyGuideOpen,
+    ).toBe(true);
   });
 
   it("저장소가 막혀 있어도 오류 없이 기본값·false", () => {

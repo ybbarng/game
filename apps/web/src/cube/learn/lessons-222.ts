@@ -1,6 +1,12 @@
 // 2×2 초보자(docs/47 8-2): 첫 층(흰 면 위, R' D' R D) → 윗면(수네) → 윗층 자리(A퍼뮤).
 // 그다음 빠른 해법 오르테가를 소개한다. 2×2는 코너 여덟 개뿐이고 기준이 될 센터가 없다.
-import { CORNER_TWIST, reps, STUCK_CORNER_UP } from "./lessons-333";
+import {
+  CORNER_TWIST,
+  reps,
+  SHORT_DOWN,
+  SHORT_FRONT,
+  STUCK_CORNER_UP,
+} from "./lessons-333";
 import { setupFor } from "./notation";
 import type { Course, Lesson, LessonStep } from "./types";
 
@@ -122,7 +128,8 @@ const intro: Lesson = {
 
 /**
  * 2×2 첫 층(2026-11-04): 3×3 첫 층 코너와 같이 흰 면을 위에 둔 채 아래층의 코너를 칸 밑으로 옮겨
- * R' D' R D를 흰색이 위로 올 때까지 되풀이한다. 다 되면 뒤집어 흰 면을 아래로 둔다.
+ * R' D' R D를 흰색이 위로 올 때까지 되풀이한다. 무작위 해 보기 뒤에 3×3과 같은 지름길(2026-11-05)을 익힌다
+ * (해 보기 번호가 그대로). 다 되면 뒤집어 흰 면을 아래로 둔다.
  * 「3×3을 아는 사람의 2×2」도 이 단계를 쓴다(첫 설명만 다르다).
  */
 export function firstLayerUpSteps(first: string): LessonStep[] {
@@ -200,6 +207,21 @@ export function firstLayerUpSteps(first: string): LessonStep[] {
       mask: "first-layer",
     },
     {
+      kind: "turn",
+      body: "지름길도 3×3과 같아요. 흰색이 오른쪽이면 R' D' R, 앞이면 F D F'. 지금은 흰색이 앞을 봐요. 쳐 보세요.",
+      setup: { alg: setupFor(SHORT_FRONT) },
+      mask: "first-layer",
+      alg: SHORT_FRONT,
+    },
+    {
+      kind: "try",
+      body: "흰색이 아래를 보면 R' D2 R D로 흰색이 오른쪽을 보게 돌린 뒤 R' D' R.",
+      setup: { alg: setupFor(SHORT_DOWN) },
+      alg: SHORT_DOWN,
+      goal: "2x2-first-layer",
+      mask: "first-layer",
+    },
+    {
       kind: "quiz",
       body: "흔한 실수: 흰 면만 모으고 옆색을 안 보는 것. 옆에서 봤을 때 위 두 칸이 같은 색이어야 해요.",
       mask: "first-layer",
@@ -227,7 +249,7 @@ const firstLayer: Lesson = {
   size: 2,
   title: "첫 층",
   summary:
-    "흰 면을 위에 둔 채 흰 코너 넷을 R' D' R D로 모아요. 옆면 색까지 서로 맞게.",
+    "흰 면을 위에 둔 채 흰 코너 넷을 R' D' R D와 지름길로 모아요. 옆면 색까지 서로 맞게.",
   steps: firstLayerUpSteps(
     "섞인 2×2에서는 먼저 흰 코너 아무거나 하나를 기준으로 골라요. 이 조각을 흰색이 위를 보게 위층에 두고 나머지를 여기에 맞춰 붙여요. 흰 코너를 하나 눌러 보세요.",
   ),

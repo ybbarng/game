@@ -23,6 +23,7 @@ import type { RaceSnapshot } from "@/net/race/types";
 import { faceGrid } from "../bridge";
 import { CubeNet } from "../components/CubeNet";
 import { CubePlay, playCubeCue } from "../components/CubePlay";
+import { CubePosterPair } from "../components/CubePosterPair";
 import type { Command } from "../input";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
@@ -443,12 +444,22 @@ export function RaceView({
                   </>
                 )}
                 {small && p.id !== room.me && st && (
-                  <CubeNet
+                  // 상대가 여럿이라 3D 장면 대신 비스듬한 SVG 큐브 둘(여섯 면)
+                  <CubePosterPair
                     n={n}
-                    faces={faceGrid(n, st)}
-                    colors={settings.colors}
-                    hidden={settings.hidden}
-                    className={`h-auto w-32 self-center ${chips ? "max-md:hidden" : ""}`}
+                    state={st}
+                    settings={settings}
+                    captions={false}
+                    fallback={
+                      <CubeNet
+                        n={n}
+                        faces={faceGrid(n, st)}
+                        colors={settings.colors}
+                        hidden={settings.hidden}
+                        className="h-auto w-32"
+                      />
+                    }
+                    className={`w-36 self-center ${chips ? "max-md:hidden" : ""}`}
                   />
                 )}
                 {toast && (
@@ -880,7 +891,7 @@ function ResultDetails({ room, snap }: { room: CubeRoom; snap: RaceSnapshot }) {
   );
 }
 
-/** 판 끝 모두의 풀이 나란히 다시 보기(펼친 그림, 그때 시각대로, 4배 빠르게 고를 수 있음) */
+/** 판 끝 모두의 풀이 나란히 다시 보기(비스듬한 SVG 큐브 둘, 그때 시각대로, 4배 빠르게 고를 수 있음) */
 function Replay({
   room,
   round,
@@ -919,7 +930,10 @@ function Replay({
       </button>
     );
   return (
-    <section className="flex flex-col gap-2 rounded-xl bg-white/5 p-3">
+    <section
+      data-cube-replay-view
+      className="flex flex-col gap-2 rounded-xl bg-white/5 p-3"
+    >
       <div className="flex items-center gap-3 text-sm">
         <b>다시 보기</b>
         <span className="font-mono tabular-nums">
@@ -958,12 +972,21 @@ function Replay({
           );
           return (
             <figure key={id} className="flex flex-col items-center gap-1">
-              <CubeNet
+              <CubePosterPair
                 n={n}
-                faces={faceGrid(n, state)}
-                colors={settings.colors}
-                hidden={settings.hidden}
-                className="h-auto w-32"
+                state={state}
+                settings={settings}
+                captions={false}
+                fallback={
+                  <CubeNet
+                    n={n}
+                    faces={faceGrid(n, state)}
+                    colors={settings.colors}
+                    hidden={settings.hidden}
+                    className="h-auto w-32"
+                  />
+                }
+                className="w-44"
               />
               <figcaption className="text-xs">
                 {room.playerName(id)} · {turnCount(n, done)}수

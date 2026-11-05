@@ -5,14 +5,12 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useRef } from "react";
 
 import { cn } from "@/lib/cn";
-import { stickersFromState } from "../bridge";
-import { CubePoster } from "../components/CubePoster";
-import { posterShapes } from "../components/cube-poster-art";
+import { CubePosterPair } from "../components/CubePosterPair";
 import { StillCube } from "../components/StillCube";
-import { type CubeSettings, useCubeSettings } from "../settings";
+import { useCubeSettings } from "../settings";
 import { useReducedMotion } from "../use-reduced-motion";
 import { CubeNet } from "./CubeNet";
-import { backSideState, scrambledState } from "./net";
+import { scrambledState } from "./net";
 
 /**
  * 타이머의 섞인 모습 그림(2026-11-05 사용자 「전개도로 뜨는데 큐브 모양인게 훨씬 나아」).
@@ -60,11 +58,12 @@ export function ScramblePicture({
     );
 
   const posters = (
-    <PosterPair
+    <CubePosterPair
       n={n}
       state={state}
       settings={settings}
       fallback={scramble ? <CubeNet n={n} scramble={scramble} /> : null}
+      className="w-full max-w-sm sm:max-w-md"
     />
   );
   if (reduced)
@@ -107,60 +106,6 @@ function Frame({
       aria-hidden={waiting || undefined}
     >
       {children}
-    </div>
-  );
-}
-
-/** 포스터 한 장의 그림 크기(CSS 픽셀). 3D 캔버스처럼 정사각형으로 두고 칸에 맞춰 줄인다 */
-const POSTER_PX = 200;
-
-/** 비스듬한 큐브 둘: 위·앞·오른쪽과 돌려 쥔 아래·왼쪽·뒤 */
-function PosterPair({
-  n,
-  state,
-  settings,
-  fallback,
-}: {
-  n: number;
-  state: PuzzleState;
-  settings: CubeSettings;
-  fallback: React.ReactNode;
-}) {
-  const sides = useMemo(() => {
-    try {
-      const front = stickersFromState(n, state);
-      const back = stickersFromState(n, backSideState(n, state));
-      // 그릴 수 있는지 먼저 본다(못 그리면 펼친 그림)
-      posterShapes(n, front, POSTER_PX, POSTER_PX);
-      return [
-        { key: "front", label: "위·앞·오른쪽", stickers: front },
-        { key: "back", label: "아래·왼쪽·뒤", stickers: back },
-      ] as const;
-    } catch {
-      return null;
-    }
-  }, [n, state]);
-  if (!sides) return <>{fallback}</>;
-  return (
-    <div
-      className="grid w-full max-w-sm grid-cols-2 gap-2 sm:max-w-md"
-      data-cube-posters
-    >
-      {sides.map((s) => (
-        <figure key={s.key} className="flex flex-col items-center gap-1">
-          <CubePoster
-            n={n}
-            stickers={s.stickers}
-            colors={settings.colors}
-            width={POSTER_PX}
-            height={POSTER_PX}
-            stickerless={settings.stickerless}
-            shadow={settings.quality !== "low"}
-            className="h-auto w-full"
-          />
-          <figcaption className="text-white/50 text-xs">{s.label}</figcaption>
-        </figure>
-      ))}
     </div>
   );
 }

@@ -102,7 +102,94 @@ describe("배우는 방식 흰 십자", () => {
   }
 });
 
-describe("배우는 방식 첫 층 꼭짓점", () => {
+/** 흰 면 위 앞-오른쪽 위(UFR) 코너가 제자리·바른 방향인가 */
+const slotOk = (s: Solve) => {
+  const c = s.cubie();
+  return c.cp[0] === 0 && c.co[0] === 0;
+};
+/** 지금 쥔 방향과 상관없이 흰 면 위에서 맞은 위 코너 조각들(실제 색 묶음) */
+const solvedTopCorners = (s: Solve): string[] => {
+  const out: string[] = [];
+  for (const k of ["", "y", "y2", "y'"]) {
+    const t = s.clone().apply(k);
+    if (slotOk(t)) out.push([8, 9, 20].map((i) => t.f[i]).join(""));
+  }
+  return out.sort();
+};
+
+describe("배우는 방식 첫 층 코너: 지름길(2026-11-05 사용자)", () => {
+  // 쥐기(y)·칸 밑으로(D) 뒤 지름길, 제 칸에서 돌아간 것은 빼고 같은 지름길로, 엉뚱한 칸에 박힌 것은 R' D' R D로 빼기
+  const BOTTOM = /^(y['2]? )?(D['2]? )?(R' D' R|F D F'|R' D2 R D R' D' R)$/;
+  const SLOT = /^(y['2]? )?(R' D' R D R' D' R|F D F' D' F D F')$/;
+  const STUCK = /^(y['2]? )?R' D' R D$/;
+
+  it("섞기 300개: 토막마다 흰색이 보는 쪽의 지름길이고, 흰 십자와 앞서 넣은 코너가 그대로, 넣은 코너가 맞는다", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 300; seed++) {
+      const s = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
+      whiteUp(s);
+      crossTaught(s);
+      const from = s.moves.length;
+      const looksBefore = s.lookList.length;
+      const replay = s.clone();
+      cornersTaught(s);
+      const cuts = [...s.lookList.slice(looksBefore), s.moves.length];
+      expect(cuts[0]).toBe(from);
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        const seg = fmt(s, cuts[i] as number, cuts[i + 1] as number);
+        const before = solvedTopCorners(replay);
+        // 공식 바로 앞(쥐기·칸 밑으로 뒤) 상태로 경우를 스티커로 확인한다
+        const lead = seg.match(/^(y['2]? )?(D['2]? )?/)?.[0] ?? "";
+        replay.apply(lead.trim());
+        const r = replay.rel();
+        const alg = seg.slice(lead.length);
+        if (BOTTOM.test(seg)) {
+          // 칸 밑(DFR) 흰 스티커: 오른쪽 15, 앞 26, 아래 29
+          const want =
+            r[15] === "U"
+              ? "R' D' R"
+              : r[26] === "U"
+                ? "F D F'"
+                : "R' D2 R D R' D' R";
+          expect(alg, `${seed} ${seg}`).toBe(want);
+          seen.add(`bottom ${alg}`);
+        } else if (SLOT.test(seg)) {
+          expect(replay.cubie().cp[0], `${seed} ${seg}`).toBe(0);
+          // 제 칸(UFR) 흰 스티커: 오른쪽 9, 앞 20
+          expect(alg).toBe(
+            r[9] === "U" ? "R' D' R D R' D' R" : "F D F' D' F D F'",
+          );
+          seen.add(`slot ${alg}`);
+        } else {
+          expect(seg, `${seed} ${seg}`).toMatch(STUCK);
+          seen.add("stuck");
+        }
+        replay.apply(alg);
+        expect(crossDone(replay), `${seed} ${seg}`).toBe(true);
+        const after = solvedTopCorners(replay);
+        for (const c of before) expect(after, `${seed} ${seg}`).toContain(c);
+        if (!STUCK.test(seg))
+          expect(slotOk(replay), `${seed} ${seg}`).toBe(true);
+      }
+      const r = s.rel();
+      for (const i of [0, 2, 6, 8]) expect(r[i]).toBe("U");
+      expect(solvedTopCorners(s)).toHaveLength(4);
+    }
+    // 경우가 모두 나왔다
+    expect([...seen].sort()).toEqual(
+      [
+        "bottom F D F'",
+        "bottom R' D' R",
+        "bottom R' D2 R D R' D' R",
+        "slot F D F' D' F D F'",
+        "slot R' D' R D R' D' R",
+        "stuck",
+      ].sort(),
+    );
+  });
+});
+
+describe("배우는 방식 첫 층 꼭짓점: 되풀이(배우기 첫 방법)", () => {
   it("넣을 때마다 y로 칸을 UFR에 두고 D로 밑에 데려와 R' D' R D를 되풀이한다(빼기는 한 번)", () => {
     const insert = /^(y['2]? )?(D['2]? )?R' D' R D( R' D' R D)*$/;
     for (const seed of SEEDS) {
@@ -111,7 +198,7 @@ describe("배우는 방식 첫 층 꼭짓점", () => {
       crossTaught(s);
       const from = s.moves.length;
       const looksBefore = s.lookList.length;
-      cornersTaught(s);
+      cornersTaught(s, { repeat: true });
       const cuts = [...s.lookList.slice(looksBefore), s.moves.length];
       expect(cuts[0]).toBe(from);
       for (let i = 0; i + 1 < cuts.length; i++) {
@@ -219,6 +306,28 @@ describe("taught 선택지", () => {
       const end = applyMoves(2, start, parseMoves(2, solve.moves.join(" ")));
       expect(isSolved(2, end)).toBe(true);
       expect(solve.moves.join(" ")).toContain("R' D' R D");
+    }
+  });
+
+  it("2×2 첫 층도 3×3과 같은 지름길이다(섞기 200개)", () => {
+    const FORM =
+      /^(y['2]? )?(D['2]? )?(R' D' R|F D F'|R' D2 R D R' D' R|R' D' R D R' D' R|F D F' D' F D F'|R' D' R D)$/;
+    for (let seed = 1; seed <= 200; seed++) {
+      const solve = solveBeginner2(randomCubeState(2, seed), { taught: true });
+      const st = solve.stages.find((x) => x.name === "first-layer");
+      if (!st) throw new Error("first-layer");
+      const cuts = [
+        st.start,
+        ...solve.looks.filter((l) => l > st.start && l < st.end),
+        st.end,
+      ];
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        const seg = solve.moves
+          .slice(cuts[i], cuts[i + 1])
+          .join(" ")
+          .replace(/^z2 ?| ?z2$/g, "");
+        if (seg) expect(seg, `${seed}`).toMatch(FORM);
+      }
     }
   });
 });

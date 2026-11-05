@@ -4,8 +4,11 @@
 // 이어 쓴다. 벗어나면 지금 상태에서 다시 계산한다. 화면은 이 파일을 필요할 때 불러온다(cube-ai를 배우기 첫 화면에 싣지 않게).
 import {
   type ColorLetter,
+  TAUGHT_CORNER_SHORTCUT,
+  TAUGHT_CORNER_SLOT,
   TAUGHT_STAGES,
   type TaughtCase,
+  type TaughtPlanOptions,
   type TaughtStage,
   taughtStagePlan,
   toFacelets,
@@ -89,12 +92,19 @@ export function mergeTurns(moves: readonly string[]): string[] {
   return out;
 }
 
+/**
+ * 단원 해 보기의 힌트 계획. 「첫 층 코너」의 무작위 해 보기는 지름길 단계보다 앞이라 `R' D' R D` 되풀이로 보인다.
+ * 마무리(처음부터 끝까지)는 지름길을 배운 뒤라 지름길(기본값)
+ */
+export const LESSON_PLAN: TaughtPlanOptions = { cornerRepeat: true };
+
 function build(
   stage: TaughtStage,
   state: PuzzleState,
   lead: string[],
+  opts: TaughtPlanOptions,
 ): HintPlan {
-  const plan = taughtStagePlan(stage, apply(state, lead));
+  const plan = taughtStagePlan(stage, apply(state, lead), opts);
   const parts: { label: string; moves: string[] }[] = [
     ...(lead.length > 0
       ? [{ label: "하던 코너를 마저 돌려요(R' D' R D 끝까지)", moves: lead }]
@@ -130,11 +140,12 @@ function build(
 export function makeHintPlan(
   stage: TaughtStage,
   state: PuzzleState,
+  opts: TaughtPlanOptions = {},
 ): HintPlan | null {
   const leads = stage === "ll-corner-twist" ? ["", ...TRIGGER_REST] : [""];
   for (const lead of leads) {
     try {
-      const plan = build(stage, state, lead ? lead.split(" ") : []);
+      const plan = build(stage, state, lead ? lead.split(" ") : [], opts);
       const end = apply(state, plan.moves);
       if (stage !== "ll-corner-twist" || isSolved(3, end)) return plan;
     } catch {
@@ -200,18 +211,19 @@ function onPlan(plan: HintPlan, state: PuzzleState): TaughtHint | null {
 
 /**
  * 다음 힌트. 앞 계획(`prev`)대로 오고 있으면 그것을 이어 쓰고, 아니면 지금 상태에서 다시 계산한다.
- * 이미 그 단계가 끝났거나 끝낼 수 없으면 null
+ * 이미 그 단계가 끝났거나 끝낼 수 없으면 null. 기본은 단원 해 보기의 계획(`LESSON_PLAN`)
  */
 export function nextHint(
   stage: TaughtStage,
   state: PuzzleState,
   prev: HintPlan | null,
+  opts: TaughtPlanOptions = LESSON_PLAN,
 ): TaughtHint | null {
   if (prev && prev.stage === stage) {
     const h = onPlan(prev, state);
     if (h) return h;
   }
-  const plan = makeHintPlan(stage, state);
+  const plan = makeHintPlan(stage, state, opts);
   if (!plan) return null;
   const k = planIndex(plan, state);
   return k >= 0 ? hintAt(plan, k) : null;
@@ -243,7 +255,7 @@ export function finaleHint(
   }
   const reached = finaleReached(state);
   const stage = TAUGHT_STAGES[reached];
-  return stage ? nextHint(stage, state, null) : null;
+  return stage ? nextHint(stage, state, null, {}) : null;
 }
 
 // ── 경우 이름 ──────────────────────────────────────────
@@ -287,6 +299,15 @@ export function caseLabel(c: TaughtCase): string {
     case "corner":
       if (c.from === "stuck")
         return `${colors(c.colors)} 코너가 엉뚱한 칸에 박힘: 한 번 빼기`;
+      if (c.shortcut) {
+        const w = c.white;
+        const slot = c.from === "slot" && w !== "down";
+        const alg =
+          c.from === "slot" && w !== "down"
+            ? TAUGHT_CORNER_SLOT[w]
+            : TAUGHT_CORNER_SHORTCUT[w];
+        return `${colors(c.colors)} 코너: ${slot ? "제 칸" : "칸 밑"}에서 흰색이 ${SIDE[w]}, ${alg}`;
+      }
       return c.from === "slot"
         ? `${colors(c.colors)} 코너: 제 칸에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`
         : `${colors(c.colors)} 코너: 칸 밑에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`;

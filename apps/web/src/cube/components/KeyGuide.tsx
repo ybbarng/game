@@ -13,17 +13,18 @@ import {
 } from "../input/keymaps";
 
 import { handLayersText } from "../keys/hand-layers";
-import type { Orient } from "../keys/key-colors";
-import { FINGER_HOMES, facePairs, pairPath } from "../keys/key-pairs";
+import { capRepeats, type Orient } from "../keys/key-colors";
+import { FINGER_HOMES } from "../keys/key-pairs";
 import { keyLayers } from "../keys/layout";
 import type { HandLayers } from "../keys/reach";
-import { hexColor, useCubeSettings } from "../settings";
-import { KeyBar, useKeyLook } from "./KeyPaint";
+import { useCubeSettings } from "../settings";
+import { KeyMark, labelTone, paintAttr, useKeyLook } from "./KeyPaint";
 import { PRESS_CLASS, useVirtualKeys } from "./VirtualKeys";
 
 /**
  * 키 그림(지금 배치). 칸의 굵은 글은 그냥 칠 때, 아래 작은 글은 Shift와 함께 칠 때. Shift를 누르고 있는 동안은
- * 굵은 글이 Shift 층으로 바뀐다. 면 돌리기 키는 들고 있는 방향의 그 면 색(설정 「키 그림에 면 색」, `KeyPaint`)
+ * 굵은 글이 Shift 층으로 바뀐다. 면 돌리기 키는 칸 바탕에 들고 있는 방향의 그 면 색을 옅게, x·y·z·M·E·S는 같은
+ * 톤의 선(설정 「키 그림에 면 색」, `KeyPaint`)
  */
 
 const KEY_ROWS = [
@@ -95,6 +96,7 @@ export function KeyGuide({
   layers,
   pressable = false,
   hideActions = false,
+  fingers = false,
 }: {
   n: number;
   keymap: Keymap;
@@ -110,30 +112,25 @@ export function KeyGuide({
   pressable?: boolean;
   /** 동작 글을 숨긴다(키 보고 맞히기) */
   hideActions?: boolean;
+  /**
+   * 손가락 자리를 늘 보인다(키 익히기). 맞추는 화면(혼자 맞추기·배우기·대결·화면 키보드)은 기본으로 끄고 설정
+   * 「손가락 자리를 모든 화면에서도 보이기」(`keyFingersAll`)를 켜야 보인다(2026-11-05, 사용자 「키 사이에 파란선, 노란선은 뭐야?」)
+   */
+  fingers?: boolean;
 }) {
   const look = useKeyLook(n, orient);
   const vk = useVirtualKeys();
   const usesAlt = keymap.bindings.some((b) => b.alt);
   const undoChord =
     chordsFor(keymap, "undo").find((c) => !c.ctrl && !c.alt) ?? null;
-  const { keyPairs, keyFingers } = useCubeSettings();
-  // Shift를 누르고 있는 동안은 Shift 층을 굵게 보인다
-  const [held, setHeld] = useState(false);
-  useEffect(() => {
-    const on = (e: KeyboardEvent) => setHeld(e.shiftKey);
-    const off = () => setHeld(false);
-    window.addEventListener("keydown", on);
-    window.addEventListener("keyup", on);
-    window.addEventListener("blur", off);
-    return () => {
-      window.removeEventListener("keydown", on);
-      window.removeEventListener("keyup", on);
-      window.removeEventListener("blur", off);
-    };
-  }, []);
+  const { keyFingersAll } = useCubeSettings();
+  const showFingers = fingers || keyFingersAll;
+  // Shift를 누르고 있는 동안만 Shift 층 글을 보인다
+  const held = useHeldShift();
+  const hasShift = keymap.bindings.some((b) => b.shift && !b.ctrl);
   const cell = (code: string) => {
     const kl = heldNames(keyLayers(keymap, n, code), n, layers);
-    // 진짜 Shift를 누르고 있거나 화면의 Shift·Alt를 켰으면 그 층을 굵게
+    // 진짜 Shift를 누르고 있거나 화면의 Shift·Alt를 켰으면 그 층을
     const shiftOn = held || vk.mods.shift;
     const plain = vk.mods.alt
       ? shiftOn
@@ -142,65 +139,71 @@ export function KeyGuide({
       : shiftOn
         ? kl.shift
         : kl.plain;
-    const shift = shiftOn || vk.mods.alt ? undefined : kl.shift;
     const w = want?.find((c) => c.code === code);
+    const usable = !!plain?.usable;
+    const label = usable && !hideActions ? plain?.label : undefined;
     // 층 수를 잡고 바뀐 칸 글(5 = 2L → 2R')이면 그 수의 면 색으로
     const paint = look(
-      plain?.usable
+      usable && plain
         ? parseAction(plain.label)?.kind === "move"
           ? plain.label
           : plain.action
         : undefined,
     );
-    const tinted = paint?.paint.kind === "face" && lit !== code && !w;
+    const cap = codeLabel(code);
+    const state = lit === code ? "pressed" : w ? "want" : null;
     return (
       <div
         key={code}
         data-key={code}
         data-key-want={w ? "" : undefined}
         data-key-state={lit === code ? "pressed" : undefined}
+        data-key-idle={usable ? undefined : ""}
         {...(pressable
           ? {
               role: "button",
-              "aria-label": codeLabel(code),
+              "aria-label": cap,
               "data-key-press": "",
               ...vk.keyProps(code),
             }
           : {})}
-        data-key-paint={
-          paint
-            ? paint.paint.kind === "face"
-              ? `${paint.paint.color}${paint.paint.prime ? "'" : ""}`
-              : "sweep"
-            : undefined
-        }
-        style={tinted ? { ...paint.style, color: paint.ink } : undefined}
-        className={`relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center rounded border pb-1.5 text-[10px] leading-tight transition-colors ${pressable ? PRESS_CLASS : ""} ${
-          lit === code
+        data-key-paint={paintAttr(paint)}
+        data-key-stripe={paint?.striped ? "" : undefined}
+        style={state ? undefined : paint?.cell}
+        className={`relative flex h-12 min-w-0 flex-1 items-center justify-center rounded border leading-none transition-colors ${pressable ? PRESS_CLASS : ""} ${
+          state === "pressed"
             ? "border-amber-300 bg-amber-300/30"
-            : w
+            : state === "want"
               ? "border-sky-300 bg-sky-400/30"
-              : tinted
-                ? "border-2"
-                : "border-white/15 bg-white/5"
+              : usable
+                ? "border-white/10 bg-white/[0.04]"
+                : "border-white/[0.05] bg-transparent"
         }`}
       >
         {w && (w.shift || w.alt) && (
-          <span className="absolute top-0 right-0.5 font-bold text-[9px] text-sky-200">
+          <span className="absolute top-0.5 right-0.5 font-bold text-[9px] text-sky-200">
             {w.alt ? "Alt" : ""}
             {w.shift ? "⇧" : ""}
           </span>
         )}
-        <span className={tinted ? "opacity-60" : "text-white/40"}>
-          {codeLabel(code)}
-        </span>
-        <span className="font-semibold text-xs">
-          {plain?.usable && !hideActions ? plain.label : ""}
-        </span>
-        <span className={tinted ? "opacity-70" : "text-white/50"}>
-          {shift?.usable && !hideActions ? shift.label : ""}
-        </span>
-        <KeyBar look={paint} />
+        {!capRepeats(cap, label) && (
+          <span
+            data-key-cap
+            className={`absolute top-1 left-1 text-[9px] ${usable ? "text-white/35" : "text-white/15"}`}
+          >
+            {cap}
+          </span>
+        )}
+        {label && (
+          <span
+            data-key-label
+            // 수는 크게, 낱말(깊이 2·왼손 층 +)은 칸에 들어가게 작게
+            className={`text-center font-semibold ${/[가-힣\s]/.test(label) ? "px-0.5 text-[10px] leading-tight" : "text-sm"} ${labelTone(paint)}`}
+          >
+            {label}
+          </span>
+        )}
+        {!state && <KeyMark look={paint} />}
       </div>
     );
   };
@@ -216,15 +219,7 @@ export function KeyGuide({
             {row.map(cell)}
           </div>
         ))}
-        {((keyPairs && !hideActions) || keyFingers) && (
-          <KeyOverlay
-            keymap={keymap}
-            n={n}
-            orient={orient}
-            pairs={keyPairs && !hideActions}
-            fingers={keyFingers}
-          />
-        )}
+        {showFingers && <KeyOverlay />}
       </div>
       {pressable && (
         <div className="flex gap-1" data-key-mods>
@@ -265,6 +260,16 @@ export function KeyGuide({
           </span>
         )}
         배치 「{PRESET_LABEL[keymap.preset]}」
+        {hasShift && !hideActions && (
+          <span data-key-shift-hint>
+            {" · "}
+            {keymap.preset === "notation"
+              ? "Shift를 누르는 동안 반대 방향이 보여요"
+              : keymap.preset === "twoHand"
+                ? "Shift를 누르는 동안 넓게 돌리기가 보여요"
+                : "Shift를 누르는 동안 Shift 층이 보여요"}
+          </span>
+        )}
         {COMMAND_KEYS.map((c) => {
           const chords = chordsFor(keymap, c);
           if (chords.length === 0) return null;
@@ -278,6 +283,24 @@ export function KeyGuide({
       </p>
     </div>
   );
+}
+
+/** 진짜 Shift를 누르고 있는지(키 그림이 그동안만 Shift 층 글을 보인다) */
+export function useHeldShift(): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => setHeld(e.shiftKey);
+    const off = () => setHeld(false);
+    window.addEventListener("keydown", on);
+    window.addEventListener("keyup", on);
+    window.addEventListener("blur", off);
+    return () => {
+      window.removeEventListener("keydown", on);
+      window.removeEventListener("keyup", on);
+      window.removeEventListener("blur", off);
+    };
+  }, []);
+  return held;
 }
 
 /** 화면 Shift·Alt 토글(한 번 켜면 다음 키 하나에 붙고 꺼진다) */
@@ -337,25 +360,12 @@ function heldNames(
 }
 
 /**
- * 키 그림 위에 옅게 겹치는 그림(SVG): 같은 면 두 키를 잇는 선(면 색), 가운데 줄 손가락 자리(손 색).
- * 칸 자리를 그려진 칸에서 재어 그린다. 누르기를 가로채지 않는다
+ * 키 그림 위에 옅게 겹치는 그림(SVG): 가운데 줄 손가락 자리(손 색). 칸 자리를 그려진 칸에서 재어 그린다.
+ * 누르기를 가로채지 않는다. 같은 면 두 키를 잇던 선은 2026-11-05에 뺐다(사용자 「같은 색으로 연결되니까, 같은
+ * 색끼리 연결 선은 필요 없을 것 같아」, 두 키가 같은 면 색 아래선을 갖는다)
  */
-export function KeyOverlay({
-  keymap,
-  n,
-  orient,
-  pairs,
-  fingers,
-}: {
-  keymap: Keymap;
-  n: number;
-  orient?: Orient | undefined;
-  pairs: boolean;
-  fingers: boolean;
-}) {
+export function KeyOverlay() {
   const ref = useRef<SVGSVGElement>(null);
-  const look = useKeyLook(n, orient);
-  const { colors } = useCubeSettings();
   const [boxes, setBoxes] = useState<
     Record<string, { x: number; y: number; w: number; h: number }>
   >({});
@@ -387,7 +397,6 @@ export function KeyOverlay({
     ro.observe(host);
     return () => ro.disconnect();
   }, []);
-  const list = pairs ? facePairs(keymap) : [];
   return (
     <svg
       ref={ref}
@@ -397,78 +406,28 @@ export function KeyOverlay({
       width={size.w}
       height={size.h}
     >
-      {list.map((p, i) => {
-        const a = boxes[p.cw];
-        const b = boxes[p.ccw];
-        if (!a || !b) return null;
-        const paint = look(p.face)?.paint;
-        const color =
-          paint?.kind === "face" ? hexColor(colors[paint.color] ?? 0) : "#fff";
-        // 같은 틈을 지나는 선(J·F와 S·L)이 겹치지 않게 번갈아 비킨다
-        const d = pairPath(a, b, 4, i % 2 === 0 ? -1.2 : 1.2);
-        const ends = [a, b].map((k) => ({
-          x: k.x + k.w / 2,
-          y:
-            Math.abs(a.y - b.y) < 1 || k.y < Math.max(a.y, b.y)
-              ? k.y + k.h
-              : k.y,
-        }));
+      {FINGER_HOMES.map((f) => {
+        const b = boxes[f.code];
+        if (!b) return null;
+        const color = f.hand === "left" ? "#38bdf8" : "#fbbf24";
         return (
-          <g key={p.face} data-key-pair={`${p.face}:${p.cw}-${p.ccw}`}>
-            {/* 어두운 테두리 위에 면 색: 같은 색 칸 옆에서도 보이게 */}
-            <path
-              d={d}
-              fill="none"
-              stroke="#000"
-              strokeOpacity={0.7}
-              strokeWidth={4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <g key={f.code} data-key-finger={`${f.hand}-${f.finger}`}>
+            <title>
+              {f.hand === "left" ? "왼" : "오른"} {f.finger}
+            </title>
+            {/* 칸 위 틈에 가는 막대(키 글자를 덮지 않게) */}
+            <rect
+              x={b.x + b.w * 0.3}
+              y={b.y - 2.5}
+              width={b.w * 0.4}
+              height={2}
+              rx={1}
+              fill={color}
+              opacity={0.4}
             />
-            <path
-              d={d}
-              fill="none"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {ends.map((e) => (
-              <circle
-                key={`${e.x}-${e.y}`}
-                cx={e.x}
-                cy={e.y}
-                r={2.5}
-                fill={color}
-                stroke="#000"
-                strokeOpacity={0.7}
-              />
-            ))}
           </g>
         );
       })}
-      {fingers &&
-        FINGER_HOMES.map((f) => {
-          const b = boxes[f.code];
-          if (!b) return null;
-          const color = f.hand === "left" ? "#38bdf8" : "#fbbf24";
-          return (
-            <g key={f.code} data-key-finger={`${f.hand}-${f.finger}`}>
-              <title>
-                {f.hand === "left" ? "왼" : "오른"} {f.finger}
-              </title>
-              <rect
-                x={b.x + b.w * 0.22}
-                y={b.y - 3}
-                width={b.w * 0.56}
-                height={7}
-                rx={3.5}
-                fill={color}
-                opacity={0.45}
-              />
-            </g>
-          );
-        })}
     </svg>
   );
 }

@@ -888,8 +888,9 @@ export function SolveApp({
             />
           ) : (
             <aside className="flex flex-col gap-2 text-sm" data-cube-records>
-              <h2 className="font-semibold">
-                {n}×{n} 기록
+              {/* 블라인드 기록은 혼자 맞추기와 따로 쌓인다(records.ts의 방식·크기마다) */}
+              <h2 className="font-semibold" data-cube-records-title>
+                {n}×{n} {mode === "blind" ? "블라인드 " : ""}기록
               </h2>
               <dl className="grid grid-cols-3 gap-1 text-center">
                 <Stat label="최고" value={formatMs(best ?? undefined)} />
