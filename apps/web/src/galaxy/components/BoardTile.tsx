@@ -3,7 +3,7 @@
 import type { BoardSquare, GalaxyBoard } from "@game/galaxy-engine";
 import type { CSSProperties } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
-import { sizeOf } from "@/components/star/star-look";
+import { glowOf, sizeOf } from "@/components/star/star-look";
 import { cn } from "@/lib/cn";
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
 
@@ -153,11 +153,12 @@ function Station({
   );
 }
 
-/** HDR 별 원반 그림(BT.2020 PQ AVIF, `scripts/build-stardraw-hdr-glow.mjs star-disc-hdr.avif`) */
-export const HDR_DISC_SRC = "/galaxy/star-disc-hdr.avif";
+/** HDR 별 핵 그림(BT.2020 PQ AVIF, `scripts/build-stardraw-hdr-glow.mjs`). 밝은 별은 빛줄기가 함께 있는 그림 */
+export const HDR_CORE_SRC = "/galaxy/star-core-hdr.avif";
+export const HDR_CORE_SPIKED_SRC = "/galaxy/star-core-hdr-spiked.avif";
 
 /**
- * HDR 화면에서만 별 원반 위에 겹치는 흰색보다 밝은 빛(docs/48 15-9). 밝은 별일수록 세다(큰 정거장은 한층 더).
+ * HDR 화면에서만 별 핵 위에 겹치는 흰색보다 밝은 빛(docs/48 15-9). 밝은 별일수록 세다(큰 정거장은 한층 더).
  * Safari가 transform이 걸린 HDR 그림을 SDR로 그린 적이 있어(별 따기) 자리는 left·top으로만 잡는다
  */
 export function hdrStrength(mag: number, grand: boolean): number {
@@ -165,17 +166,19 @@ export function hdrStrength(mag: number, grand: boolean): number {
   return Math.min(1, base + (grand ? 0.25 : 0));
 }
 
-function HdrDisc({ mag, grand }: { mag: number; grand: boolean }) {
-  // 원반(StarGlyph 기본 지름 28% × 크기)의 2.4배
-  const w = 28 * sizeOf(mag) * 2.4 * (grand ? 1.1 : 1);
+function HdrCore({ mag, grand }: { mag: number; grand: boolean }) {
+  // 원반(StarGlyph 기본 지름 28% × 크기)의 2.4배. 빛줄기 그림은 칸의 빛줄기 그림과 같은 크기(세로 빛줄기 끝까지)
+  const spike = glowOf(mag).spike;
+  const w =
+    28 * sizeOf(mag) * (spike > 0 ? spike * 2 * 1.15 : 2.4) * (grand ? 1.1 : 1);
   return (
     // biome-ignore lint/performance/noImgElement: 정적 내보내기라 next/image를 쓰지 않는다(별 따기 HDR 별빛과 같다)
     <img
-      src={HDR_DISC_SRC}
+      src={spike > 0 ? HDR_CORE_SPIKED_SRC : HDR_CORE_SRC}
       alt=""
       aria-hidden="true"
       draggable={false}
-      data-hdr-disc
+      data-hdr-core
       className="sd-hdr pointer-events-none absolute max-w-none"
       style={{
         width: `${w}%`,
@@ -303,7 +306,7 @@ export function BoardTile(p: BoardTileProps) {
             )}
           />
           {p.hdr && !p.moonlit && (
-            <HdrDisc mag={star.star.mag} grand={p.level >= 4} />
+            <HdrCore mag={star.star.mag} grand={p.level >= 4} />
           )}
           {ownerColor && p.level > 0 && (
             <span className="absolute top-[44%] left-1/2 block size-full -translate-x-1/2 -translate-y-1/2">

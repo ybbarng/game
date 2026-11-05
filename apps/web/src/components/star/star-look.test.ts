@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coreHeat, deepColor, rhythm, sizeOf } from "./star-look";
+import { coreHeat, deepColor, glowOf, rhythm, sizeOf } from "./star-look";
 
 describe("별 원반 값", () => {
   it("뜨거운 별은 파랗고 차가운 별은 붉다(진한 색이라 흰 별도 색이 남는다)", () => {
@@ -16,6 +16,26 @@ describe("별 원반 값", () => {
     const ratio = sizeOf(-1.46) / sizeOf(3.71);
     expect(ratio).toBeGreaterThan(2.5);
     expect(ratio).toBeLessThan(3.5);
+  });
+
+  it("밝은 별일수록 빛무리가 넓고 빛줄기가 길며, 어두운 별은 빛줄기가 없다", () => {
+    const sirius = glowOf(-1.46);
+    const rigel = glowOf(0.13);
+    const dim = glowOf(2.9);
+    expect(sirius.halo).toBeGreaterThan(rigel.halo);
+    expect(sirius.spike).toBeGreaterThan(rigel.spike);
+    expect(rigel.spike).toBeGreaterThan(0);
+    expect(dim.spike).toBe(0);
+    expect(dim.haloA).toBeLessThan(sirius.haloA);
+  });
+
+  it("반짝임 박자는 별마다 달라 한꺼번에 반짝이지 않는다", () => {
+    const beats = [1, 2, 3, 5, 9, 10, 11].map((s) => rhythm(s).twinkleMs);
+    expect(new Set(beats).size).toBe(beats.length);
+    for (const b of beats) {
+      expect(b).toBeGreaterThanOrEqual(7000);
+      expect(b).toBeLessThanOrEqual(13000);
+    }
   });
 
   it("가운데가 타는 정도는 온도를 따르고, 박자는 같은 씨앗이면 같다", () => {
