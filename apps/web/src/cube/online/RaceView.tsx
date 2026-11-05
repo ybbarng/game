@@ -1,6 +1,5 @@
 "use client";
 
-import { BOT_LEVEL_LABELS, type BotLevel } from "@game/cube-ai";
 import {
   type CubeMove,
   invertMove,
@@ -942,7 +941,9 @@ function ResultBox({
   const session = room.anySession();
   // 컴퓨터가 계획대로 두었는지 이 기기에서 다시 계산해 본다(판이 끝난 뒤 한 번)
   // 계획은 웹 워커에서 다시 만든다(해법기 표를 처음 만들 때 화면이 멈추지 않게)
-  const [botChecks, setBotChecks] = useState<Record<string, boolean>>({});
+  const [botChecks, setBotChecks] = useState<Record<string, boolean | null>>(
+    {},
+  );
   useEffect(() => {
     setBotChecks({});
     if (!round || !room.state) return;
@@ -978,7 +979,7 @@ function ResultBox({
   }, [round, room, n]);
 
   // 사람의 수 차례가 우리 컴퓨터 풀이와 같은지(의심 표시, 결과는 그대로). 판이 끝난 뒤 한 번 워커에서
-  const [botLike, setBotLike] = useState<Record<string, BotLevel>>({});
+  const [botLike, setBotLike] = useState<Record<string, string>>({});
   useEffect(() => {
     setBotLike({});
     if (!round || !room.state) return;
@@ -1164,10 +1165,7 @@ function ResultBox({
               if (p?.flags?.fastStart)
                 notes.push("의심: 첫 수들이 사람 손 빠르기를 넘음");
               const like = botLike[id];
-              if (like)
-                notes.push(
-                  `의심: 컴퓨터 풀이와 같음(${BOT_LEVEL_LABELS[like]})`,
-                );
+              if (like) notes.push(`의심: 컴퓨터 풀이와 같음(${like})`);
             }
             if (
               p?.reason &&
@@ -1177,7 +1175,11 @@ function ResultBox({
               notes.push(p.reason);
             if (bot && id in botChecks)
               notes.push(
-                botChecks[id] ? "컴퓨터 계획 확인 ✓" : "컴퓨터 계획과 다름 ⚠",
+                botChecks[id] === null
+                  ? "컴퓨터 계획 확인 못 함(다른 버전)"
+                  : botChecks[id]
+                    ? "컴퓨터 계획 확인 ✓"
+                    : "컴퓨터 계획과 다름 ⚠",
               );
             return (
               <tr key={id} data-cube-rank={id} className="align-top">

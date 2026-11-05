@@ -1,4 +1,4 @@
-import type { BotPlan } from "@game/cube-ai";
+import { type BotPlan, levelText } from "@game/cube-ai";
 import {
   type CubeMove,
   invertMoves,
@@ -33,6 +33,9 @@ import {
   stateHash,
   turnCount,
 } from "./race-game";
+
+const NOVICE = levelText("novice");
+const PRO = levelText("pro");
 
 /**
  * 큐브 어댑터로 여러 기기 대결(ManualClock·DelayNet, 결정적). 섞기는 표를 만드는 해법기 대신 짧은 가짜 섞기를 넣는다.
@@ -203,7 +206,7 @@ describe("큐브 대결(어댑터)", () => {
     const bot = sessions.get("bot1") as Session;
     const h = sessions.get("h") as Session;
     const g = sessions.get("g") as Session;
-    attachBot({ session: bot, id: "bot1", level: "beginner", n: 2, clock });
+    attachBot({ session: bot, id: "bot1", level: NOVICE, n: 2, clock });
     // 사람 둘은 아무것도 하지 않는다: 시간 안에 못 맞춘다
     runUntil(
       clock,
@@ -223,7 +226,7 @@ describe("큐브 대결(어댑터)", () => {
     const seed = g.snapshot().seed as string;
     await expect(
       checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         g.startState() as PuzzleState,
         seed,
@@ -234,7 +237,7 @@ describe("큐브 대결(어댑터)", () => {
     // 워커 모듈(node에서는 같은 스레드로 대신)로 만든 계획도 같다
     await expect(
       checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         g.startState() as PuzzleState,
         seed,
@@ -246,14 +249,7 @@ describe("큐브 대결(어댑터)", () => {
     // 시각도 본다: 모든 수를 같은 만큼 늦게 적은 것(계획이 늦게 옴)은 맞고,
     // 계획보다 빨리 둔 것처럼 시각을 줄이거나 계획보다 이르게 적으면 다르다
     const check = (log: readonly { m: string; t: number }[]) =>
-      checkBotRun(
-        "beginner",
-        2,
-        g.startState() as PuzzleState,
-        seed,
-        "bot1",
-        log,
-      );
+      checkBotRun(NOVICE, 2, g.startState() as PuzzleState, seed, "bot1", log);
     const real = g.moveLog("bot1");
     await expect(
       check(real.map((x) => ({ ...x, t: x.t + 1234.5 }))),
@@ -272,7 +268,7 @@ describe("큐브 대결(어댑터)", () => {
     // 다른 단계로 다시 계산하면 맞지 않는다
     await expect(
       checkBotRun(
-        "expert",
+        PRO,
         2,
         g.startState() as PuzzleState,
         seed,
@@ -280,6 +276,29 @@ describe("큐브 대결(어댑터)", () => {
         g.moveLog("bot1"),
       ),
     ).resolves.toBe(false);
+  });
+
+  it("옛 방장의 컴퓨터(버전 없는 단계 값)도 옛 계획으로 확인되고, 모르는 버전은 확인하지 않는다(null)", async () => {
+    const { clock, sessions } = rig(2, { h: ["h", "bot1"], g: ["g"] });
+    const bot = sessions.get("bot1") as Session;
+    const g = sessions.get("g") as Session;
+    attachBot({ session: bot, id: "bot1", level: "intermediate", n: 2, clock });
+    runUntil(
+      clock,
+      () => g.snapshot().peers.find((p) => p.id === "bot1")?.status === "done",
+      600_000,
+      50,
+    );
+    const args = [
+      2,
+      g.startState() as PuzzleState,
+      g.snapshot().seed as string,
+      "bot1",
+      g.moveLog("bot1"),
+    ] as const;
+    await expect(checkBotRun("intermediate", ...args)).resolves.toBe(true);
+    await expect(checkBotRun(levelText("club"), ...args)).resolves.toBe(false);
+    await expect(checkBotRun("9:club", ...args)).resolves.toBeNull();
   });
 
   it("계획이 풀린 뒤에 늦게 오면 늦은 만큼 미뤄 두고(몰아 두지 않음) 끝까지 맞춘다", async () => {
@@ -290,7 +309,7 @@ describe("큐브 대결(어댑터)", () => {
     attachBot({
       session: bot,
       id: "bot1",
-      level: "beginner",
+      level: NOVICE,
       n: 2,
       clock,
       plan: (level, n, start, seed) =>
@@ -308,7 +327,7 @@ describe("큐브 대결(어댑터)", () => {
     runUntil(clock, () => g.snapshot().result !== undefined, 600_000, 100);
     const log = g.moveLog("bot1");
     const plan = planHere(
-      "beginner",
+      NOVICE,
       2,
       g.startState() as PuzzleState,
       botSeed(g.snapshot().seed as string, "bot1"),
@@ -320,7 +339,7 @@ describe("큐브 대결(어댑터)", () => {
     // 모든 수를 같은 만큼 미뤘으므로 다른 기기의 계획 확인(시각 포함)을 통과한다
     await expect(
       checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         g.startState() as PuzzleState,
         g.snapshot().seed as string,
@@ -344,7 +363,7 @@ describe("큐브 대결(어댑터)", () => {
     );
     const bot = sessions.get("bot1") as Session;
     const g = sessions.get("g") as Session;
-    attachBot({ session: bot, id: "bot1", level: "beginner", n: 2, clock });
+    attachBot({ session: bot, id: "bot1", level: NOVICE, n: 2, clock });
     runUntil(
       clock,
       () => g.snapshot().peers.find((p) => p.id === "bot1")?.status === "done",
@@ -352,10 +371,18 @@ describe("큐브 대결(어댑터)", () => {
       50,
     );
     const log = g.moveLog("bot1");
-    expect(log).toHaveLength(50);
+    // 헛수(두었다 되돌린 수)를 빼면 50수
+    const plan = (await planHere(
+      NOVICE,
+      2,
+      g.startState() as PuzzleState,
+      botSeed(g.snapshot().seed as string, "bot1"),
+    )) as BotPlan;
+    expect(plan.moves.filter((m) => !m.slip)).toHaveLength(50);
+    expect(log).toHaveLength(plan.moves.length);
     await expect(
       checkBotRun(
-        "beginner",
+        NOVICE,
         2,
         g.startState() as PuzzleState,
         g.snapshot().seed as string,
@@ -374,7 +401,7 @@ describe("큐브 대결(어댑터)", () => {
     attachBot({
       session: bot,
       id: "bot1",
-      level: "beginner",
+      level: NOVICE,
       n: 2,
       clock,
       plan: () => {
@@ -423,7 +450,7 @@ describe("큐브 대결(어댑터)", () => {
     attachBot({
       session: bot,
       id: "bot1",
-      level: "beginner",
+      level: NOVICE,
       n: 2,
       clock,
       plan: () =>
@@ -466,11 +493,14 @@ describe("큐브 대결(어댑터)", () => {
 
   it("⑤ 사람의 수 차례가 컴퓨터 풀이(어느 단계든)와 같으면 그 단계를 알린다. 큐브 돌리기를 끼워도 같게 본다", async () => {
     const start = applyMovesTo(2, "R U F' R2 U' F R U2 F'");
-    const plan = (await planHere("beginner", 2, start, 7)) as BotPlan;
-    const log = plan.moves.flatMap((m, i) =>
-      i === 3 ? [{ m: "y" }, { m: "y'" }, { m: m.move }] : [{ m: m.move }],
-    );
-    expect(await sameAsBotSolve(2, start, log)).toBe("beginner");
+    const plan = (await planHere(NOVICE, 2, start, 7)) as BotPlan;
+    // 컴퓨터 헛수는 풀이가 아니다(빼고 견준다)
+    const log = plan.moves
+      .filter((m) => !m.slip)
+      .flatMap((m, i) =>
+        i === 3 ? [{ m: "y" }, { m: "y'" }, { m: m.move }] : [{ m: m.move }],
+      );
+    expect(await sameAsBotSolve(2, start, log)).toBe("입문");
     // 다른 풀이(섞기 거꾸로 + 한 바퀴 더)는 같지 않다
     const own = "F U2 R' F' U R2 F U' R' R R' R R'"
       .split(" ")

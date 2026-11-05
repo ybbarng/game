@@ -1,9 +1,12 @@
 import { sha256Hex } from "@game/baseball-engine";
 import {
+  BOT_LEVEL_LABELS,
   BOT_LEVELS,
-  type BotLevel,
   type BotPlan,
   botPlan,
+  levelMethod,
+  levelText,
+  readBotSkill,
 } from "@game/cube-ai";
 import {
   type CubeMove,
@@ -22,7 +25,7 @@ import { BOT_NO_PLAN, type CubeAct } from "./race-game";
  * 대결에 든 컴퓨터(docs/47 9-1·10절). 방장 기기가 돌리지만 대결 틀에는 다른 사람과 똑같이 한 참가자다
  * (약속·공개·수 흘려보내기·맞춤 알림을 그대로 한다).
  *
- * 수와 시각은 `botPlan(단계, 크기, 시작 상태, 씨앗)`으로 정해진다. 씨앗은 대결 씨앗과 컴퓨터 아이디에서 나오므로
+ * 수와 시각은 `botPlan(단계 글, 크기, 시작 상태, 씨앗)`으로 정해진다. 씨앗은 대결 씨앗과 컴퓨터 아이디에서 나오므로
  * 다른 기기도 단계만 알면 같은 계획을 다시 계산해 "컴퓨터가 계획대로 두었나"를 확인할 수 있다(`checkBotRun`).
  */
 
@@ -51,7 +54,8 @@ export { BOT_NO_PLAN };
  * 시험은 같은 스레드에서 바로 만든다. 못 만들면 던지거나 거절한다(그 컴퓨터는 그 판 기권)
  */
 export type PlanFn = (
-  level: BotLevel,
+  /** 단계 글(`RoomPlayer.bot`) */
+  bot: string,
   n: number,
   start: PuzzleState,
   seed: number,
@@ -64,7 +68,8 @@ export const planHere: PlanFn = (level, n, start, seed) =>
 export interface AttachBotInit {
   session: RaceSession<CubeAct, PuzzleState>;
   id: string;
-  level: BotLevel;
+  /** 단계 글(`RoomPlayer.bot`) */
+  level: string;
   n: number;
   clock: Clock;
   plan?: PlanFn;
@@ -245,10 +250,11 @@ export const BOT_TIME_TOLERANCE_MS = 1;
 /**
  * 컴퓨터가 계획대로 두었나(다른 기기에서 다시 계산해 본다). 수 차례와 시각을 함께 본다.
  * 시각: 보고 시각 − 계획 시각이 모든 수에서 0 이상의 같은 값이어야 한다(계획이 늦게 와서 한꺼번에 미룬 만큼).
- * 그래서 방장이 컴퓨터를 계획보다 빨리 두고 보고 시각을 작게 적으면 드러난다
+ * 그래서 방장이 컴퓨터를 계획보다 빨리 두고 보고 시각을 작게 적으면 드러난다.
+ * 단계 글이 이 기기가 모르는 계획 표 버전이면 다시 계산하지 않고 null(「확인 못 함」, 다른 버전 기기끼리 잘못 의심하지 않게)
  */
 export async function checkBotRun(
-  level: BotLevel,
+  level: string,
   n: number,
   start: PuzzleState,
   raceSeed: string,
@@ -257,7 +263,8 @@ export async function checkBotRun(
   plan: PlanFn = planHere,
   /** 판이 정해져 도중에 멈춘 컴퓨터(체력바 대결): 계획의 앞부분만 두었으면 된다 */
   stopped = false,
-): Promise<boolean> {
+): Promise<boolean | null> {
+  if (!readBotSkill(level)) return null;
   const made = await plan(level, n, start, botSeed(raceSeed, botId));
   if (log.some((x) => isItemText(x.m)))
     return checkItemBotRun(n, made, log, stopped);
@@ -341,36 +348,53 @@ function turnsOnly(n: number, moves: readonly string[]): string[] {
 export const SAME_AS_BOT_MIN_TURNS = 10;
 
 /**
+ * 견줄 우리 해법(크기마다 단계가 쓰는 해법 하나씩)과 보이는 이름. 2단계 해법(옛 초고수)도 본다: 콘솔에서
+ * 해법기를 불러 그대로 두는 자동 풀이가 가장 쉽게 쓰는 길이라서
+ */
+function sameCandidates(n: number): { bot: string; label: string }[] {
+  const seen = new Set<string>();
+  const out: { bot: string; label: string }[] = [];
+  for (const level of BOT_LEVELS) {
+    const method = levelMethod(level, n);
+    if (seen.has(method)) continue;
+    seen.add(method);
+    out.push({ bot: levelText(level), label: BOT_LEVEL_LABELS[level] });
+  }
+  out.push({ bot: "expert", label: "2단계 해법" });
+  return out;
+}
+
+/**
  * 사람의 수 차례가 우리 컴퓨터 풀이(`solveHuman`, 어느 단계든)와 같은가(docs/47 9-2 의심 표시).
- * 같으면 그 단계, 아니면 null. 콘솔에서 해법기 계획을 받아 그대로 두는 자동 풀이를 본다. 결과는 바꾸지 않는다.
- * 큐브 돌리기는 빼고 견준다(y y′를 끼워 넣어 수를 채워도 같게 본다). 계획의 수 차례는 씨앗과 상관없다(시각만 씨앗).
- * 판이 끝난 뒤 한 번, 워커에서 계획을 만든다(`planInWorker`)
+ * 같으면 그 이름, 아니면 null. 콘솔에서 해법기 계획을 받아 그대로 두는 자동 풀이를 본다. 결과는 바꾸지 않는다.
+ * 큐브 돌리기와 컴퓨터 헛수는 빼고 견준다(y y′를 끼워 넣어 수를 채워도 같게 본다). 헛수 말고 계획의 수 차례는 씨앗과
+ * 상관없다(시각만 씨앗). 판이 끝난 뒤 한 번, 워커에서 계획을 만든다(`planInWorker`)
  */
 export async function sameAsBotSolve(
   n: number,
   start: PuzzleState,
   log: readonly { m: string }[],
   plan: PlanFn = planHere,
-): Promise<BotLevel | null> {
+): Promise<string | null> {
   if (!botSupports(n)) return null;
   const mine = turnsOnly(
     n,
     log.map((x) => x.m),
   );
   if (mine.length < SAME_AS_BOT_MIN_TURNS) return null;
-  for (const level of BOT_LEVELS) {
+  for (const { bot, label } of sameCandidates(n)) {
     let made: BotPlan;
     try {
-      made = await plan(level, n, start, 0);
+      made = await plan(bot, n, start, 0);
     } catch {
       continue;
     }
     const theirs = turnsOnly(
       n,
-      made.moves.map((m) => m.move),
+      made.moves.filter((m) => !m.slip).map((m) => m.move),
     );
     if (theirs.length === mine.length && theirs.every((m, i) => m === mine[i]))
-      return level;
+      return label;
   }
   return null;
 }

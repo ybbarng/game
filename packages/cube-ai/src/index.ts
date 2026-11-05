@@ -3,10 +3,9 @@ export { ReductionStuckError } from "@game/cube-reduction";
 export * from "./algs";
 export { toFaceletMove, toFacelets } from "./facelets";
 export {
-  BOT_LEVEL_LABELS,
-  BOT_LEVELS,
-  type BotLevel,
   type HumanOptions,
+  SOLVE_METHODS,
+  type SolveMethod,
   solveAdvanced2,
   solveBeginner2,
   solveBeginner3,
@@ -19,6 +18,7 @@ export {
 } from "./methods";
 export { solveRoux, solveZZ } from "./methods-roux-zz";
 export * from "./plan";
+export * from "./skill";
 export {
   type HumanSolve,
   type SolveStage,

@@ -1,4 +1,4 @@
-import type { BotLevel, BotPlan } from "@game/cube-ai";
+import type { BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 
 import type { AlgBook, ImportResult } from "../algs/store";
@@ -17,7 +17,8 @@ export type CubeJob =
   | { kind: "solve"; facelets: string; maxLength?: number }
   | {
       kind: "plan";
-      level: BotLevel;
+      /** 단계 글(`RoomPlayer.bot`) */
+      level: string;
       size: number;
       /** 시작 상태(PuzzleState의 perm·twist를 배열로) */
       perm: number[];

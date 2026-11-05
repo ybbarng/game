@@ -42,21 +42,26 @@ import {
  * 2×2는 가운데가 없어 흰 꼭짓점 하나를 기준으로 방향을 정한다(큐브를 돌리지 않는다).
  */
 
-export type BotLevel = "beginner" | "intermediate" | "advanced" | "expert";
+/**
+ * 해법 고르기. 컴퓨터 단계(`BotLevel`, skill.ts)는 이 가운데 하나를 쓰고 빠르기를 따로 둔다.
+ * - `beginner` 층별(초보자 공식만) · `intermediate` 층별 + 2단계 OLL·PLL
+ * - `fourlook` CFOP 앞(십자·F2L) + 2단계 OLL·PLL(4단계 마지막 층) · `advanced` CFOP(OLL 57·PLL 21)
+ * - `expert` 2단계 해법(사람을 넘는 짧은 해). 옛 초고수(`legacy`)와 대체 길만 쓴다
+ */
+export type SolveMethod =
+  | "beginner"
+  | "intermediate"
+  | "fourlook"
+  | "advanced"
+  | "expert";
 
-export const BOT_LEVELS: readonly BotLevel[] = [
+export const SOLVE_METHODS: readonly SolveMethod[] = [
   "beginner",
   "intermediate",
+  "fourlook",
   "advanced",
   "expert",
 ];
-
-export const BOT_LEVEL_LABELS: Readonly<Record<BotLevel, string>> = {
-  beginner: "입문",
-  intermediate: "중수",
-  advanced: "고수",
-  expert: "초고수",
-};
 
 const ALL_MOVES = Array.from({ length: FACE_MOVE_COUNT }, (_, i) => i);
 /** F2L은 D를 돌리지 않는다(사람이 거의 쓰지 않는다) */
@@ -474,6 +479,44 @@ export const INTERMEDIATE3_STEPS: readonly Step[] = [
 
 const PLL_ALGS = PLL.map(([, alg]) => alg);
 
+/** 2단계 OLL(십자 3·꼭짓점 7) */
+function oll2Look(s: Solve): void {
+  applyMatch(s, EO_2LOOK, (t) => f2lOk(t) && topEdgesOriented(t.rel()));
+  s.stage("eo");
+  applyMatch(s, OCLL, (t) => f2lOk(t) && topOriented(t.rel(), 3));
+  s.stage("co");
+}
+
+/** 2단계 PLL(꼭짓점 2·모서리 4) */
+function pll2Look(s: Solve): void {
+  applyMatch(
+    s,
+    CPLL,
+    (t) =>
+      f2lOk(t) && topOriented(t.rel(), 3) && topCornersPermuted(t.rel(), 3),
+  );
+  s.stage("cp");
+  applyMatch(s, EPLL, (t) => t.isSolved(), true);
+  s.stage("ep");
+}
+
+/**
+ * 4단계 마지막 층 CFOP(CFOP를 배우는 중인 사람): 십자는 하나씩, F2L 네 쌍, 윗층은 2단계 OLL·2단계 PLL.
+ * 공식 78개를 다 외우기 전 많이 거치는 길이다
+ */
+export const FOURLOOK3_STEPS: readonly Step[] = [
+  (s) => {
+    whiteDown(s);
+    crossOneByOne(s);
+    s.stage("cross");
+    f2lPairs(s);
+  },
+  "oll-parity",
+  oll2Look,
+  "pll-parity",
+  pll2Look,
+];
+
 /** 고수: CFOP(십자, F2L 네 쌍, OLL 57, PLL 21) */
 export const CFOP_STEPS: readonly Step[] = [
   (s) => {
@@ -654,7 +697,7 @@ function finish(s: Solve): HumanSolve {
  * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다(4×4·5×5).
  */
 export function solveHuman(
-  level: BotLevel,
+  level: SolveMethod,
   size: number,
   state: PuzzleState,
   limits?: ReductionLimits,
@@ -663,12 +706,15 @@ export function solveHuman(
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state, opts);
     if (level === "intermediate") return solveIntermediate3(state);
+    if (level === "fourlook") return run3(FOURLOOK3_STEPS, state);
     if (level === "advanced") return solveCfop(state);
     return solveExpert3(state);
   }
   if (size === 2) {
     if (level === "beginner") return solveBeginner2(state, opts);
-    if (level === "intermediate") return solveIntermediate2(state);
+    // 2×2는 4단계 마지막 층이 따로 없다(윗면·윗층 공식이 이미 둘씩)
+    if (level === "intermediate" || level === "fourlook")
+      return solveIntermediate2(state);
     if (level === "advanced") return solveAdvanced2(state);
     return solveExpert2(state);
   }
@@ -682,6 +728,8 @@ export function solveHuman(
       );
     if (level === "intermediate")
       return solveBigHuman(INTERMEDIATE3_STEPS, size, state, limits);
+    if (level === "fourlook")
+      return solveBigHuman(FOURLOOK3_STEPS, size, state, limits);
     if (level === "advanced")
       return solveBigHuman(CFOP_STEPS, size, state, limits);
     return solveBigExpert(size, state, limits);

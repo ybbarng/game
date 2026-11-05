@@ -1,4 +1,4 @@
-import type { BotLevel } from "@game/cube-ai";
+import { levelText } from "@game/cube-ai";
 import { applyMove, parseMoves } from "@game/cube-engine";
 import { scramble } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
@@ -11,6 +11,8 @@ import { partyCheckpoints } from "./party";
 import { CubeRoom, TIME_LIMIT_SEC } from "./room";
 import { seededRace } from "./vs-seed";
 
+const NOVICE = levelText("novice");
+
 /**
  * 화면 시험이 정해 두는 섞기 씨앗(`window.__cubeVsSeed`, cube-party.spec.ts). 컴퓨터와 대결 화면과 같은 방(공개값만 정함)으로
  * 섞기와 컴퓨터 계획을 다시 만들어, 화면 시험이 기대는 성질(컴퓨터가 깎는 이정표를 언제 지나는가)이 그대로인지 본다.
@@ -21,7 +23,7 @@ import { seededRace } from "./vs-seed";
 function botLadderPasses(
   seed: string,
   n: number,
-  level: BotLevel = "beginner",
+  level: string = NOVICE,
 ): { at: number; ids: string[]; next: number }[] {
   const clock = new ManualClock();
   const room = new CubeRoom({

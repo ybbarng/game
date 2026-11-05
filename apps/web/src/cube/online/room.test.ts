@@ -1,3 +1,4 @@
+import { levelText } from "@game/cube-ai";
 import { type CubeMove, invertMoves, parseMoves } from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
@@ -7,6 +8,9 @@ import type { Transport } from "@/net/transport";
 import { type Scrambler, scrambleSeed } from "./race-game";
 import { CubeRoom, type RoomState } from "./room";
 import { averageOf5, matchOver, standings } from "./standings";
+
+const NOVICE = levelText("novice");
+const PRO = levelText("pro");
 
 /** 큐브 대결 방: 대기실 → 판 → 결과(ManualClock·DelayNet, 결정적) */
 
@@ -66,7 +70,7 @@ describe("큐브 대결 방", () => {
       "손님 하나",
     ]);
     host.setSettings({ format: "ao5" });
-    host.addBot("expert");
+    host.addBot(PRO);
     clock.advance(100);
     expect(guest.state?.players).toHaveLength(3);
     expect(guest.state?.settings.format).toBe("ao5");
@@ -111,7 +115,7 @@ describe("큐브 대결 방", () => {
     const { clock, net, host, guest } = setup();
     net.join("bot2").send({ type: "cube-hello", name: "끼어든 사람" });
     clock.advance(100);
-    host.addBot("expert");
+    host.addBot(PRO);
     clock.advance(100);
     // 받았다면 손님은 그 뒤 방 상태(사람 bot2가 든 표)를 모두 버려 v가 멈춘다
     expect(guest.state?.v).toBe(host.state?.v);
@@ -120,17 +124,52 @@ describe("큐브 대결 방", () => {
 
   it("4×4·5×5로 바꿔도 컴퓨터가 남고, 빈자리에 더할 수 있다", () => {
     const { clock, host, guest } = setup();
-    host.addBot("beginner");
+    host.addBot(NOVICE);
     host.setSettings({ n: 5 });
-    host.addBot("expert");
+    host.addBot(PRO);
     clock.advance(100);
     expect(guest.state?.settings.n).toBe(5);
     expect(guest.state?.players.map((p) => [p.id, p.bot])).toEqual([
       ["h", undefined],
       ["g", undefined],
-      ["bot1", "beginner"],
-      ["bot2", "expert"],
+      ["bot1", NOVICE],
+      ["bot2", PRO],
     ]);
+  });
+
+  it("「내 실력에 맞춤」은 방장 평균을 목표 시간 숫자로만 보내고, 크기를 바꾸면 그 크기 평균으로 다시 맞춘다. 옛 값은 새로 만들지 않는다", () => {
+    const clock = new ManualClock();
+    const net = new DelayNet(clock);
+    const host = new CubeRoom({
+      transport: net.join("h"),
+      clock,
+      isHost: true,
+      name: "방장",
+      avgs: { "3": 41_234 },
+      scrambler: fake,
+      settings: { n: 3, inspection: false, timeLimitSec: 60 },
+    });
+    const guest = new CubeRoom({
+      transport: net.join("g"),
+      clock,
+      isHost: false,
+      name: "손님",
+      scrambler: fake,
+    });
+    clock.advance(100);
+    host.addBot("fit");
+    host.addBot("beginner");
+    host.addBot("9:pro");
+    clock.advance(100);
+    expect(guest.state?.players.map((p) => p.bot)).toEqual([
+      undefined,
+      undefined,
+      "2:fit:41200",
+    ]);
+    // 2×2 평균은 없다: 초보 목표
+    host.setSettings({ n: 2 });
+    clock.advance(100);
+    expect(guest.state?.players.at(-1)?.bot).toBe("2:fit:20000");
   });
 });
 
@@ -269,7 +308,7 @@ describe("큐브 대결 방: 남의 결과를 꾸미지 못한다", () => {
         state: forged(state, {
           v: state.v + 2,
           players: state.players.map((p) =>
-            p.id === "a" ? { ...p, device: "h", bot: "beginner" } : p,
+            p.id === "a" ? { ...p, device: "h", bot: NOVICE } : p,
           ),
         }),
       },
@@ -432,7 +471,7 @@ describe("큐브 대결 방: 남의 결과를 꾸미지 못한다", () => {
 describe("큐브 대결 방: 한 기기·이름 흉내", () => {
   it("④ 방장 기기의 사람과 컴퓨터가 함께 손님 하한을 크게 지어내도 기기 하나로만 세어(컴퓨터는 증인 아님) 손님 시간은 「확인 안 됨」(순위 없음)이다", () => {
     const { clock, net, host, guest } = setup();
-    host.addBot("expert");
+    host.addBot(PRO);
     clock.advance(100);
     // 방장 기기에서 나가는 손님 하한(방장 사람·컴퓨터 둘 다)을 9,999초 늘린다
     net.filter = (m, from) => {

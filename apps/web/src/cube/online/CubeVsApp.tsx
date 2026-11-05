@@ -1,12 +1,13 @@
 "use client";
 
-import { BOT_LEVEL_LABELS, BOT_LEVELS, type BotLevel } from "@game/cube-ai";
+import { levelText } from "@game/cube-ai";
 import type { MilestoneId } from "@game/cube-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
 import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import { BotLevelPicker } from "./BotLevelPicker";
 import {
   DELAY_CHOICES,
   goalChoices,
@@ -33,6 +34,8 @@ import { testVsBots, testVsSeed } from "./vs-seed";
  */
 
 const SIZES = [2, 3, 4, 5] as const;
+/** 컴퓨터 수(나와 함께 8명까지, 둘러앉은 자리 docs/47 9-9) */
+const BOT_COUNTS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 /**
  * 화면 시험만: 아이템 뽑기를 정해 둔다(`window.__cubeItemDraw(받는 사람, 이정표 순번)`, 화면 시험 갈고리 `__cubeTestHooks`가
@@ -55,7 +58,9 @@ function testItemDraw(): { drawItem?: typeof drawItem } {
 
 export function CubeVsApp() {
   const [n, setN] = useState(2);
-  const [level, setLevel] = useState<BotLevel>("beginner");
+  /** 단계 글(`levelText`) 또는 「내 실력에 맞춤」(`"fit"`) */
+  const [level, setLevel] = useState(levelText("casual"));
+  const [botCount, setBotCount] = useState(1);
   const [inspection, setInspection] = useState(true);
   /** 판 수: 1이면 한 판, 아니면 점수제(docs/51 3-1) */
   const [rounds, setRounds] = useState(1);
@@ -103,7 +108,7 @@ export function CubeVsApp() {
       },
       ...testItemDraw(),
     });
-    for (let k = testVsBots(); k > 0; k--) r.addBot(level);
+    for (let k = testVsBots() ?? botCount; k > 0; k--) r.addBot(level);
     const handicap: Handicap = {};
     if (delay > 0) handicap.delay = { [r.me]: delay };
     const average = byAverage && !party;
@@ -157,22 +162,27 @@ export function CubeVsApp() {
                 ))}
               </select>
             </label>
-            <fieldset className="flex flex-col gap-1 text-sm">
-              <legend className="mb-1">컴퓨터 단계</legend>
-              <div className="flex flex-wrap gap-1">
-                {BOT_LEVELS.map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    aria-pressed={level === l}
-                    onClick={() => setLevel(l)}
-                    className={`rounded-lg px-3 py-1.5 ${level === l ? "bg-amber-400 text-black" : "bg-white/10"}`}
-                  >
-                    {BOT_LEVEL_LABELS[l]}
-                  </button>
+            <BotLevelPicker
+              n={n}
+              average={myAverage}
+              value={level}
+              onChange={setLevel}
+            />
+            <label className="flex items-center justify-between text-sm">
+              컴퓨터 수
+              <select
+                data-cube-vs-bots
+                value={botCount}
+                onChange={(e) => setBotCount(Number(e.target.value))}
+                className="rounded bg-white/10 px-2 py-1"
+              >
+                {BOT_COUNTS.map((k) => (
+                  <option key={k} value={k} className="bg-neutral-800">
+                    {k}명
+                  </option>
                 ))}
-              </div>
-            </fieldset>
+              </select>
+            </label>
             <fieldset className="flex flex-col gap-1 text-sm">
               <legend className="mb-1">규칙</legend>
               <div className="flex flex-wrap gap-1">

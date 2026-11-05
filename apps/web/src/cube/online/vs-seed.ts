@@ -18,14 +18,14 @@ export function seededRace(seed: string): {
 }
 
 /**
- * 화면 시험: `window.__cubeVsBots`가 있으면 컴퓨터를 그만큼(1~7, 갈고리가 켜졌을 때만). 둘러앉은 자리를 사람 수마다
- * 보려고 둔다(docs/47 9-9). 컴퓨터와 대결은 이 기기 안에서만 도는 판이라 공정성과 상관없다
+ * 화면 시험: `window.__cubeVsBots`가 있으면 컴퓨터를 그만큼(1~7, 갈고리가 켜졌을 때만, 고른 수보다 앞선다). 둘러앉은 자리를
+ * 사람 수마다 보려고 둔다(docs/47 9-9). 컴퓨터와 대결은 이 기기 안에서만 도는 판이라 공정성과 상관없다. 없으면 null
  */
-export function testVsBots(): number {
-  if (typeof window === "undefined") return 1;
+export function testVsBots(): number | null {
+  if (typeof window === "undefined") return null;
   const w = window as { __cubeTestHooks?: boolean; __cubeVsBots?: unknown };
   const k = w.__cubeVsBots;
-  if (!w.__cubeTestHooks || typeof k !== "number") return 1;
+  if (!w.__cubeTestHooks || typeof k !== "number") return null;
   return Math.max(1, Math.min(7, Math.floor(k)));
 }
 
