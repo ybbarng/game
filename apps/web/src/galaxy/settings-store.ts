@@ -27,7 +27,7 @@ export interface GalaxySettings {
   level: GalaxyLevel;
   /** 개인 시간(docs/24). 굴리기·사기·차례 마치기·거래 답·빚 정리에만 시계가 간다 */
   time: TimePreset;
-  /** 휴대폰 세로에서 우주선이 움직이는 동안 그 변을 크게 따라가 보기(움직임 줄이기면 쓰지 않는다) */
+  /** 휴대폰 세로에서 우주선이 움직이는 동안 살짝 당겨 따라가 보기(움직임 줄이기면 쓰지 않는다). 기본 끔(판 전체 보기) */
   follow: boolean;
   set(patch: Partial<Omit<GalaxySettings, "set">>): void;
 }
@@ -44,12 +44,16 @@ export const useGalaxySettings = create<GalaxySettings>()(
       requests: true,
       level: 0,
       time: "none",
-      follow: true,
+      follow: false,
       set: (patch) => set(patch),
     }),
     {
       name: "galaxy-settings",
       storage: createJSONStorage(() => localStorage),
+      // 1: 따라가는 시점의 기본을 끔(판 전체 보기)으로 바꿨다(2026-11-05 사용자 「빠르게 움직이면서 끊어지듯이 움직여 정신이 없음」). 전에 저장된 켬도 한 번 끔으로
+      version: 1,
+      migrate: (old) =>
+        ({ ...(old as object), follow: false }) as GalaxySettings,
       skipHydration: true,
     },
   ),

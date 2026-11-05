@@ -6,7 +6,7 @@ import {
   requestById,
 } from "@game/galaxy-engine";
 
-import { money, SEASON_NAMES, squareName } from "./format";
+import { money, SEASON_NAMES, squareName, subject } from "./format";
 
 /**
  * 별 사실 공문(2·3·4·8·10·12)과 별자리 선 측량(16)에서 해당하는 별이 없어 0이 됐을 때 붙이는 말. 그 밖은 null
@@ -35,11 +35,11 @@ export function eventLine(
       const about = e.square !== undefined ? squareName(board, e.square) : "";
       switch (e.reason) {
         case "rent":
-          return `${who(e.from)} → ${who(e.to)} · ${about} 이용료 ${money(e.amount)}`;
+          return `${subject(who(e.from))} ${about}에 도착해 ${who(e.to)}에게 이용료 ${money(e.amount)}을 냈어요`;
         case "salary":
-          return `${who(e.to)} · 우주국 지원금 ${money(e.amount)}`;
+          return `${subject(who(e.to))} 우주국을 지나며 지원금 ${money(e.amount)}을 받았어요`;
         case "observatory":
-          return `${who(e.to)} · 관측 지원금 ${money(e.amount)}`;
+          return `${subject(who(e.to))} 관측지에 도착해 관측 지원금 ${money(e.amount)}을 받았어요`;
         case "fine":
           return `${who(e.from)} · 소행성대를 나가며 ${money(e.amount)}`;
         case "card":
@@ -68,18 +68,20 @@ export function eventLine(
       }
     }
     case "bought":
-      return `${name(e.seat)} · ${squareName(board, e.square)} 샀어요 ${money(e.price)}`;
+      return `${subject(name(e.seat))} ${squareName(board, e.square)}에 도착해 ${money(e.price)}에 샀어요`;
+    case "auctionStarted":
+      return `${subject(name(e.passer))} ${squareName(board, e.square)}에 도착했지만 사지 않아 봉투 입찰을 엽니다`;
     case "auctionEnded":
       return e.result.winner === null
-        ? `봉투 입찰 · ${squareName(board, e.result.square)} · 아무도 내지 않음`
-        : `봉투 입찰 · ${name(e.result.winner)} ${squareName(board, e.result.square)} ${money(e.result.price)}`;
+        ? `봉투 입찰 · ${squareName(board, e.result.square)} · 아무도 내지 않아 주인 없이 남아요`
+        : `봉투 입찰 · ${subject(name(e.result.winner))} ${squareName(board, e.result.square)}을 ${money(e.result.price)}에 샀어요`;
     case "observed":
       return e.amount > 0
         ? null
-        : `${name(e.seat)} · 관측지 · 자산 1위라 관측 지원금 없음`;
+        : `${subject(name(e.seat))} 관측지에 도착했지만 자산 1위라 관측 지원금이 없어요`;
     case "card": {
       const none = cardNoMatch(e.card, e.squares);
-      return `${name(e.seat)} · 공문 「${cardById(e.card).title}」${none ? ` · ${none}` : ""}`;
+      return `${subject(name(e.seat))} 공문 칸에 도착해 「${cardById(e.card).title}」 공문을 폈어요${none ? ` · ${none}` : ""}`;
     }
     case "linked": {
       const group = board.groups[e.group]?.ko ?? "";
@@ -96,7 +98,7 @@ export function eventLine(
     case "unmortgaged":
       return `${name(e.seat)} · ${squareName(board, e.square)} 되찾음`;
     case "jailed":
-      return `${name(e.seat)} · 소행성대에 걸림`;
+      return `${subject(name(e.seat))} ${e.by === "doubles" ? "같은 눈 세 번으로" : "공문으로"} 소행성대에 걸렸어요`;
     case "freed":
       return e.by === "fine" ? null : `${name(e.seat)} · 소행성대를 나감`;
     case "tradeAccepted":

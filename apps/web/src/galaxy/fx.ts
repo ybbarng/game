@@ -7,7 +7,7 @@ import {
 } from "@game/galaxy-engine";
 
 import { GALAXY_FX as FX } from "./fx-timing";
-import { skyArt } from "./sky-art";
+import { skyArt, squareCenter } from "./sky-art";
 
 /**
  * 한 걸음의 사건을 차례로 보일 연출 목록으로 바꾼다(docs/41 6절 「동시에 움직이지 않기」).
@@ -217,29 +217,105 @@ export function shipPositions(
   timeline: Timeline,
   positions: readonly number[],
   elapsed: number,
-): { square: number; moving: boolean }[] {
+): ShipAt[] {
   return positions.map((final, seat) => {
     const moves = timeline.steps.filter(
       (s): s is Extract<TimedStep, { kind: "move" }> =>
         s.kind === "move" && s.seat === seat,
     );
     const first = moves[0];
-    if (!first) return { square: final, moving: false };
+    if (!first) return still(final);
     let square = first.from;
     for (const m of moves) {
-      if (elapsed < m.at) return { square, moving: false };
-      if (elapsed < m.at + m.dur) {
-        if (m.jump) return { square: m.path.at(-1) as number, moving: true };
-        const k = Math.min(
-          m.path.length - 1,
-          Math.floor(((elapsed - m.at) / m.dur) * m.path.length),
-        );
-        return { square: m.path[k] as number, moving: true };
-      }
+      if (elapsed < m.at) return still(square);
+      if (elapsed < m.at + m.dur) return movingAt(m, elapsed - m.at);
       square = m.path.at(-1) as number;
     }
-    return { square: final, moving: false };
+    return still(final);
   });
+}
+
+/** 연출 도중 우주선 하나: 칸(닿은 칸)과 판 위 자리(칸 하나 = 1, 칸 사이를 이어 미끄러진다) */
+export interface ShipAt {
+  square: number;
+  moving: boolean;
+  x: number;
+  y: number;
+}
+
+function still(square: number): ShipAt {
+  const c = squareCenter(square);
+  return { square, moving: false, x: c.x, y: c.y };
+}
+
+const easeInOut = (t: number) =>
+  t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+
+/**
+ * 움직이는 우주선의 자리. 주사위 이동은 칸마다 한 걸음: 걸음의 앞 몫은 다음 칸으로 부드럽게 미끄러지고
+ * 뒤 몫(`hopRest`)은 그 칸에 멈춘다. 곧장 가는 공문은 한 번에 곧게 미끄러진다
+ */
+function movingAt(m: Extract<TimedStep, { kind: "move" }>, t: number): ShipAt {
+  const a0 = squareCenter(m.from);
+  if (m.jump) {
+    const to = m.path.at(-1) as number;
+    const b = squareCenter(to);
+    const k = easeInOut(Math.min(1, t / Math.max(1, m.dur)));
+    return {
+      square: k < 1 ? m.from : to,
+      moving: true,
+      x: a0.x + (b.x - a0.x) * k,
+      y: a0.y + (b.y - a0.y) * k,
+    };
+  }
+  const n = m.path.length;
+  const hop = m.dur / n;
+  const i = Math.min(n - 1, Math.floor(t / hop));
+  const local = (t - i * hop) / hop;
+  const glide = 1 - FX.hopRest;
+  const k = easeInOut(Math.min(1, local / glide));
+  const prev = i === 0 ? m.from : (m.path[i - 1] as number);
+  const next = m.path[i] as number;
+  const a = squareCenter(prev);
+  const b = squareCenter(next);
+  return {
+    square: k >= 1 ? next : prev,
+    moving: true,
+    x: a.x + (b.x - a.x) * k,
+    y: a.y + (b.y - a.y) * k,
+  };
+}
+
+/**
+ * 따라가는 시점(휴대폰 세로, 설정에서 켠 때). 움직임이 시작되면 천천히 당겨 우주선을 가운데 두고,
+ * 우주선과 함께 끊김 없이 흐르다가, 멈춘 뒤 잠깐 쉬고 천천히 판 전체로 돌아온다.
+ * 배율·자리 모두 경과 시간의 연속 함수라 칸마다 튀지 않는다. 판 밖이 보이지 않게 가장자리에서 멈춘다.
+ * 따라갈 것이 없으면 null(판 전체)
+ */
+export function followCamera(
+  timeline: Timeline,
+  ships: readonly ShipAt[],
+  elapsed: number,
+): { scale: number; x: number; y: number } | null {
+  let best: { w: number; seat: number } | null = null;
+  for (const s of timeline.steps) {
+    if (s.kind !== "move") continue;
+    const inT = (elapsed - s.at) / FX.followZoom;
+    const outT = (elapsed - (s.at + s.dur + FX.followRest)) / FX.followZoom;
+    if (inT <= 0 || outT >= 1) continue;
+    const w = easeInOut(Math.min(1, inT)) * (1 - easeInOut(Math.max(0, outT)));
+    if (!best || w > best.w) best = { w, seat: s.seat };
+  }
+  if (!best || best.w <= 0) return null;
+  const ship = ships[best.seat];
+  if (!ship) return null;
+  const scale = 1 + (FX.followScale - 1) * best.w;
+  const clamp = (v: number) => Math.min(0, Math.max(1 - scale, v));
+  return {
+    scale,
+    x: clamp(0.5 - (ship.x / 9) * scale),
+    y: clamp(0.5 - (ship.y / 9) * scale),
+  };
 }
 
 /**

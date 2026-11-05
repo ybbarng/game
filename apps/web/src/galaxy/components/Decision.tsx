@@ -20,7 +20,7 @@ import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/cn";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 
-import { money, squareName, starInfo, starLine } from "../format";
+import { money, squareName, starInfo, starLine, subject } from "../format";
 import { GALAXY_FX } from "../fx-timing";
 import { STAR_FACTS } from "../star-facts";
 import { ShipToken } from "./parts";
@@ -226,12 +226,15 @@ export function BidSheet({
   square,
   max,
   onBid,
+  name,
 }: {
   view: GalaxyView;
   square: number;
   max: number;
   onBid: (value: number) => void;
+  name: (seat: number) => string;
 }) {
+  const passer = view.auction?.passer ?? null;
   const info = starInfo(view.board, square);
   const top = Math.floor(max / 10) * 10;
   const [value, setValue] = useState(() =>
@@ -244,7 +247,16 @@ export function BidSheet({
     setValue((v) => Math.max(10, Math.min(top, v + d)));
   return (
     <Sheet title={`봉투 입찰 · ${info?.star.ko ?? ""}`} testId="bid">
-      <p className="text-white/60 text-xs">별 값 {money(info?.value ?? 0)}</p>
+      {passer !== null && (
+        <p data-bid-why className="text-sm text-white/85">
+          {subject(name(passer))} {info?.star.ko}에 도착했지만 사지 않아 봉투
+          입찰을 엽니다.
+        </p>
+      )}
+      <p className="mt-0.5 text-white/60 text-xs">
+        모두 한 번씩 몰래 값을 적어 내고, 가장 높은 값을 낸 사람이 그 값에 사요.
+        별 값 {money(info?.value ?? 0)}
+      </p>
       <div className="my-3 flex items-center justify-center gap-1.5">
         {[-50, -10].map((d) => (
           <button
@@ -394,6 +406,10 @@ export function TradeComposer({
   if (partner === null)
     return (
       <Sheet title="누구와 거래할까요?" testId="trade-partner">
+        <p className="mb-2 text-white/60 text-xs leading-snug">
+          내 별·별빛과 상대의 별·별빛을 맞바꾸자고 제안해요. 상대가 받거나
+          거절해요.
+        </p>
         <div className="flex flex-wrap gap-2">
           {others.map((s) => (
             <button
@@ -608,6 +624,11 @@ export function ManagePanel({
   return (
     <details className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
       <summary className="cursor-pointer font-semibold">정거장 관리</summary>
+      <p data-manage-help className="mt-1 text-white/60 text-xs leading-snug">
+        별자리를 완성한 별에 정거장을 올리면 이용료가 커져요. 내리면 지은 값의
+        절반을 돌려받고, 맡기면 별 값의 절반을 받지만 그동안 이용료를 받지
+        못해요.
+      </p>
       {actions.length === 0 ? (
         <p className="mt-1 text-white/50 text-xs">
           지금은 올리거나 맡길 별이 없어요.

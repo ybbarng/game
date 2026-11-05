@@ -14,7 +14,9 @@ import { SKY_STARS } from "@/stardraw/sky";
 import type { RoundRecord } from "@/stats/records";
 
 import { eventLine } from "./events";
-import { buildTimeline, shipPositions, shownCash } from "./fx";
+import { subject } from "./format";
+import { buildTimeline, followCamera, shipPositions, shownCash } from "./fx";
+import { GALAXY_FX } from "./fx-timing";
 import {
   describeGalaxy,
   explainGalaxy,
@@ -255,6 +257,48 @@ describe("연출 목록", () => {
     expect(shownCash(t, events, [1030, 970], 0)).toEqual([1000, 1000]);
     expect(shownCash(t, events, [1030, 970], t.total)).toEqual([1030, 970]);
   });
+
+  it("우주선은 칸 사이를 이어 미끄러지고 칸마다 잠깐 멈춘다, 따라가는 시점도 끊기지 않는다", () => {
+    const t = buildTimeline(events, board, 1, { reduced: false });
+    const move = t.steps[1] as (typeof t.steps)[number];
+    const hop = move.dur / 5;
+    const at = (ms: number) => shipPositions(t, [0, 5], move.at + ms)[1];
+    // 첫 걸음 가운데쯤은 0번과 1번 칸 사이
+    const glide = at(hop * 0.3);
+    expect(glide?.x).toBeLessThan(8.5);
+    expect(glide?.x).toBeGreaterThan(7.5);
+    // 걸음 끝 몫은 1번 칸에 멈춰 있다
+    expect(at(hop * 0.9)).toMatchObject({ square: 1, x: 7.5, y: 8.5 });
+    expect(at(hop * 0.95)).toMatchObject({ x: 7.5 });
+    // 1ms마다 자리와 시점이 조금씩만 바뀐다(튀지 않는다)
+    let prev = at(0);
+    let prevCam = followCamera(t, shipPositions(t, [0, 5], move.at), move.at);
+    for (let ms = 1; ms < move.dur + 1500; ms += 4) {
+      const now = at(ms);
+      expect(Math.abs((now?.x ?? 0) - (prev?.x ?? 0))).toBeLessThan(0.05);
+      const cam = followCamera(
+        t,
+        shipPositions(t, [0, 5], move.at + ms),
+        move.at + ms,
+      );
+      expect(Math.abs((cam?.scale ?? 1) - (prevCam?.scale ?? 1))).toBeLessThan(
+        0.01,
+      );
+      expect(Math.abs((cam?.x ?? 0) - (prevCam?.x ?? 0))).toBeLessThan(0.01);
+      prev = now;
+      prevCam = cam;
+    }
+    // 판 밖이 보이지 않는다, 다 끝나면 판 전체
+    const mid = followCamera(
+      t,
+      shipPositions(t, [0, 5], move.at + move.dur),
+      move.at + move.dur,
+    );
+    expect(mid?.scale).toBeCloseTo(GALAXY_FX.followScale);
+    expect(mid?.x).toBeLessThanOrEqual(0);
+    expect(mid?.x).toBeGreaterThanOrEqual(1 - (mid?.scale ?? 1));
+    expect(followCamera(t, shipPositions(t, [0, 5], 1e6), 1e6)).toBeNull();
+  });
 });
 
 describe("만난 별과 사건 줄", () => {
@@ -287,19 +331,63 @@ describe("만난 별과 사건 줄", () => {
     const name = (s: number) => (s === 0 ? "나" : `컴퓨터 ${s}`);
     const card = (id: number, squares: number[]) =>
       eventLine({ type: "card", seat: 0, card: id, squares }, board, name);
-    expect(card(4, [])).toBe("나 · 공문 「먼 별 탐사 지원」 · 해당 별 없음");
+    expect(card(4, [])).toBe(
+      "내가 공문 칸에 도착해 「먼 별 탐사 지원」 공문을 폈어요 · 해당 별 없음",
+    );
     expect(card(16, [])).toContain("해당 별자리 없음");
     expect(card(4, [9])).not.toContain("없음");
     expect(card(1, [])).not.toContain("없음");
     expect(
       eventLine({ type: "observed", seat: 1, amount: 0 }, board, name),
-    ).toContain("관측 지원금 없음");
+    ).toContain("자산 1위라 관측 지원금이 없어요");
     expect(
       eventLine({ type: "observed", seat: 1, amount: 50 }, board, name),
     ).toBeNull();
     expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
       "유성우의 밤",
     );
+  });
+
+  it("누가 어디에 도착해서 무엇을 했는지 보인다", () => {
+    const name = (s: number) => (s === 0 ? "나" : s === 1 ? "민준" : "컴퓨터");
+    const sirius = board.squares.findIndex((s) => s.star?.star.id === "Sirius");
+    expect(
+      eventLine(
+        { type: "auctionStarted", index: 0, square: sirius, passer: 1 },
+        board,
+        name,
+      ),
+    ).toBe("민준이 시리우스에 도착했지만 사지 않아 봉투 입찰을 엽니다");
+    expect(
+      eventLine(
+        {
+          type: "pay",
+          from: 2,
+          to: 0,
+          amount: 40,
+          reason: "rent",
+          square: sirius,
+        },
+        board,
+        name,
+      ),
+    ).toBe("컴퓨터가 시리우스에 도착해 나에게 이용료 ✦40을 냈어요");
+    expect(
+      eventLine(
+        { type: "bought", seat: 0, square: sirius, price: 220 },
+        board,
+        name,
+      ),
+    ).toBe("내가 시리우스에 도착해 ✦220에 샀어요");
+  });
+
+  it("주어 조사는 받침에 맞춘다", () => {
+    expect(subject("민준")).toBe("민준이");
+    expect(subject("지아")).toBe("지아가");
+    expect(subject("나")).toBe("내가");
+    expect(subject("컴퓨터 1")).toBe("컴퓨터 1이");
+    expect(subject("컴퓨터 2")).toBe("컴퓨터 2가");
+    expect(subject("컴퓨터 3")).toBe("컴퓨터 3이");
   });
 });
 

@@ -31,7 +31,7 @@ import { useChat } from "@/net/chat";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { myRequestCard } from "../chain";
 import { eventLine } from "../events";
-import { money, seatLabel, squareName } from "../format";
+import { money, seatLabel, squareName, subject } from "../format";
 import { shownCash } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
 import { metSquares, outcomeOf } from "../kit";
@@ -56,8 +56,10 @@ import {
   TradeComposer,
 } from "./Decision";
 import { GalaxyBoard } from "./GalaxyBoard";
+import { GameRecap } from "./GameRecap";
 import { ShipToken } from "./parts";
 import { SeatCard, type SeatCardProps } from "./SeatCard";
+import { cornerHelp, SquareCard } from "./SquareCard";
 
 /** 은하 한 바퀴 화면 바탕: 깊은 밤하늘 */
 export const GALAXY_BG =
@@ -219,26 +221,12 @@ function SquareInfo({
           )}
         </>
       ) : (
-        <p className="text-white/60 text-xs">{cornerHelp(view, square)}</p>
+        <p className="text-white/60 text-xs">
+          {cornerHelp(view, square).join(" ")}
+        </p>
       )}
     </Sheet>
   );
-}
-
-function cornerHelp(view: GalaxyView, square: number): string {
-  const kind = view.board.squares[square]?.kind;
-  switch (kind) {
-    case "base":
-      return `지나가거나 멈추면 우주국 지원금을 받아요(최대 ${money(NUMBERS.salary)}, 별빛이 넉넉하면 줄어요).`;
-    case "asteroid":
-      return `공문이나 같은 눈 세 번으로 오면 걸려요. ${money(NUMBERS.asteroidFine)}을 내거나 같은 눈이 나와야 나가요(한 차례만 쉬어요).`;
-    case "observatory":
-      return "멈추면 관측 지원금을 받아요. 자산 순위가 낮을수록 많아요.";
-    case "comet":
-      return "주사위를 한 번 더 굴려 그만큼 더 가요.";
-    default:
-      return "우주국 공문 한 장을 펴서 따라요.";
-  }
 }
 
 /** 판 끝: 순위·자산 표 */
@@ -436,6 +424,8 @@ export function GalaxyGame({
   const [partner, setPartner] = useState<number | null>(null);
   const [marked, setMarked] = useState<Set<number>>(new Set());
   const [portrait, setPortrait] = useState(false);
+  // 판 끝 결과 띠가 떠 있는 동안은 결과 상자·판 돌아보기를 띄우지 않는다(띠가 순위 표 머리를 가리지 않게, 원카드·고스톱과 같다)
+  const [bannerUp, setBannerUp] = useState(false);
   const mode = useTableMode();
   const secrets = useGalaxy((s) => s.secrets);
 
@@ -575,7 +565,9 @@ export function GalaxyGame({
   else if (!decision) {
     status =
       view.phase === "bid" || view.phase === "bidReveal"
-        ? "모두가 봉투를 내는 중이에요"
+        ? view.auction
+          ? `${subject(name(view.auction.passer))} ${squareName(view.board, view.auction.square)}에 도착했지만 사지 않아 모두 봉투를 내는 중이에요`
+          : "모두가 봉투를 내는 중이에요"
         : view.phase === "commit" || view.phase === "reveal"
           ? "모두의 기기가 주사위를 함께 정하는 중이에요"
           : view.phase === "requestReveal"
@@ -667,6 +659,7 @@ export function GalaxyGame({
       square={decision.square}
       max={decision.max}
       onBid={(v) => placeBid(v)}
+      name={name}
     />
   ) : decision?.kind === "trade" ? (
     <TradeAnswer view={view} offer={decision.offer} name={name} submit={act} />
@@ -819,6 +812,17 @@ export function GalaxyGame({
       name={name}
       follow={follow}
       marked={marked}
+      focus={trading ? null : info}
+      card={
+        selected !== null && !trading ? (
+          <SquareCard
+            view={view}
+            square={selected}
+            name={name}
+            onClose={() => setSelected(null)}
+          />
+        ) : null
+      }
     />
   );
 
@@ -832,21 +836,26 @@ export function GalaxyGame({
             mine ? `${mine.rank}등 · 자산 ${money(mine.assets)}` : undefined
           }
         />
-        <ResultBanner banner={banner} seq={view.roundNumber} />
+        <ResultBanner
+          banner={banner}
+          seq={view.roundNumber}
+          onShowChange={setBannerUp}
+        />
       </div>
       {timedDecision && <DecisionTimer resetKey={decisionKey} />}
       {decisionPanel}
-      {!decisionPanel && info !== null && !gameOver && (
+      {!decisionPanel && hover !== null && selected === null && !gameOver && (
         <SquareInfo
           view={view}
-          square={info}
+          square={hover}
           name={name}
           onClose={() => setSelected(null)}
         />
       )}
-      {gameOver && (
+      {gameOver && !bannerUp && (
         <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
           <Standings view={view} name={name} />
+          <GameRecap view={view} history={history} name={name} />
           <MetStars view={view} history={history} firstMet={firstMet} />
         </div>
       )}
