@@ -1,10 +1,18 @@
 "use client";
 
 import { BOT_LEVEL_LABELS, BOT_LEVELS, type BotLevel } from "@game/cube-ai";
+import type { MilestoneId } from "@game/cube-engine";
 import { useEffect, useRef, useState } from "react";
 
 import { raceClock } from "@/net/race/race-session";
+import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import {
+  DELAY_CHOICES,
+  goalChoices,
+  type Handicap,
+  localAverages,
+} from "./handicap";
 import { nextLabel } from "./MatchBoard";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
@@ -26,6 +34,16 @@ export function CubeVsApp() {
   /** 판 수: 1이면 한 판, 아니면 점수제(docs/51 3-1) */
   const [rounds, setRounds] = useState(1);
   const [scoring, setScoring] = useState<Scoring>("wins");
+  // 내 핸디캡(컴퓨터는 단계로 이미 맞춘다, docs/51 4절)
+  const [delay, setDelay] = useState(0);
+  const [goal, setGoal] = useState<MilestoneId | "">("");
+  const [byAverage, setByAverage] = useState(false);
+  const [averages, setAverages] = useState<Record<string, number>>();
+  useEffect(() => setAverages(localAverages()), []);
+  // 크기를 바꾸면 그 크기의 목표가 아니므로 비운다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
+  useEffect(() => setGoal(""), [n]);
+  const myAverage = averages?.[String(n)];
   const [room, setRoom] = useState<CubeRoom | null>(null);
   const version = useCubeRoom(room);
   const roomRef = useRef<CubeRoom | null>(null);
@@ -39,6 +57,7 @@ export function CubeVsApp() {
       clock: raceClock,
       isHost: true,
       name: "나",
+      ...(averages ? { avgs: averages } : {}),
       scrambler: scrambleInWorker,
       botPlan: planInWorker,
       settings: {
@@ -51,6 +70,11 @@ export function CubeVsApp() {
       },
     });
     r.addBot(level);
+    const handicap: Handicap = {};
+    if (delay > 0) handicap.delay = { [r.me]: delay };
+    if (goal && !byAverage) handicap.goal = { [r.me]: goal };
+    if (byAverage) handicap.score = "avg";
+    r.setHandicap(handicap);
     roomRef.current = r;
     setRoom(r);
     r.startRound();
@@ -147,6 +171,76 @@ export function CubeVsApp() {
                 </select>
               </label>
             )}
+            <fieldset
+              data-cube-vs-handicap
+              className="flex flex-col gap-2 border-white/10 border-t pt-2 text-sm"
+            >
+              <legend className="sr-only">내 핸디캡</legend>
+              <label className="flex items-center justify-between">
+                출발 늦추기
+                <select
+                  data-cube-vs-delay
+                  value={delay}
+                  onChange={(e) => setDelay(Number(e.target.value))}
+                  className="rounded bg-white/10 px-2 py-1"
+                >
+                  {DELAY_CHOICES.map((k) => (
+                    <option key={k} value={k} className="bg-neutral-800">
+                      {k === 0 ? "바로" : `+${k}초`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center justify-between">
+                순위
+                <select
+                  data-cube-vs-score
+                  value={byAverage ? "avg" : "time"}
+                  onChange={(e) => setByAverage(e.target.value === "avg")}
+                  className="rounded bg-white/10 px-2 py-1"
+                >
+                  <option value="time" className="bg-neutral-800">
+                    시간
+                  </option>
+                  <option value="avg" className="bg-neutral-800">
+                    내 평균 대비
+                  </option>
+                </select>
+              </label>
+              {byAverage ? (
+                <p className="text-white/50 text-xs" data-cube-vs-average>
+                  내 평균{" "}
+                  {myAverage === undefined
+                    ? "없음 · 첫 판이 기준"
+                    : formatMs(myAverage)}
+                </p>
+              ) : (
+                <label className="flex items-center justify-between">
+                  목표
+                  <select
+                    data-cube-vs-goal
+                    value={goal}
+                    onChange={(e) =>
+                      setGoal(e.target.value as MilestoneId | "")
+                    }
+                    className="rounded bg-white/10 px-2 py-1"
+                  >
+                    <option value="" className="bg-neutral-800">
+                      완성
+                    </option>
+                    {goalChoices(n).map((g) => (
+                      <option
+                        key={g.id}
+                        value={g.id}
+                        className="bg-neutral-800"
+                      >
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

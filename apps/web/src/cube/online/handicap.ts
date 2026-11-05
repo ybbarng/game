@@ -2,7 +2,7 @@ import { isSolved, type MilestoneId, milestonesOf } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { RaceResult } from "@/net/race/types";
-import { resultMs, type SolveRecord } from "../records";
+import { loadRecords, resultMs, type SolveRecord } from "../records";
 
 /**
  * 실력 차 균형(핸디캡, docs/51 4절, docs/47 9-5). 방장이 대기실에서 사람마다 고른다. 컴퓨터는 단계로 이미 맞추니
@@ -23,6 +23,12 @@ export interface Handicap {
 }
 
 export const MAX_DELAY_SEC = 30;
+
+/** 고를 수 있는 출발 늦추기(초, 1초 단위) */
+export const DELAY_CHOICES: readonly number[] = Array.from(
+  { length: MAX_DELAY_SEC + 1 },
+  (_, k) => k,
+);
 
 /** 크기마다 고를 수 있는 목표(완성 앞 단계, 차례대로). 이름은 목표로 부를 때의 말 */
 const GOALS: Record<number, readonly { id: MilestoneId; label: string }[]> = {
@@ -126,6 +132,16 @@ export function recentAverage(
     .filter((t): t is number => t !== null);
   if (times.length < AVERAGE_MIN) return null;
   return Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+}
+
+/** 이 기기의 크기별 내 평균(ms, 키 "2"~"5"). 평균이 하나도 없으면 undefined */
+export function localAverages(): Record<string, number> | undefined {
+  const out: Record<string, number> = {};
+  for (const n of [2, 3, 4, 5]) {
+    const avg = recentAverage(loadRecords("solo", n));
+    if (avg !== null) out[String(n)] = avg;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**

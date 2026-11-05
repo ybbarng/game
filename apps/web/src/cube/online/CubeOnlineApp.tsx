@@ -13,6 +13,8 @@ import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botSupports } from "./bot-racer";
+import { HandicapPanel } from "./HandicapPanel";
+import { localAverages } from "./handicap";
 import { nextLabel } from "./MatchBoard";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
@@ -130,6 +132,7 @@ export function CubeOnlineApp() {
         isHost,
         ...(!isHost && hostFromUrl ? { hostId: hostFromUrl } : {}),
         name: trimmed,
+        ...withAverages(),
         scrambler: scrambleInWorker,
         botPlan: planInWorker,
         onChat: (m) =>
@@ -331,8 +334,9 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             </div>
           )}
         </div>
+        <HandicapPanel room={room} />
       </section>
-      <section className="flex flex-col gap-3 rounded-2xl bg-white/5 p-3 text-sm">
+      <section className="flex flex-col gap-3 self-start rounded-2xl bg-white/5 p-3 text-sm">
         <h2 className="font-semibold">판 설정 {host ? "" : "(방장이 정함)"}</h2>
         <Field label="종목">
           <select
@@ -475,6 +479,12 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
       </section>
     </div>
   );
+}
+
+/** 이 기기의 크기별 내 평균(핸디캡 「평균 대비」·출발 늦추기 추천에 방으로 알린다) */
+function withAverages(): { avgs?: Record<string, number> } {
+  const avgs = localAverages();
+  return avgs ? { avgs } : {};
 }
 
 function Field({

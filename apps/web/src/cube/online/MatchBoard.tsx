@@ -1,6 +1,7 @@
 "use client";
 
 import { formatMs } from "../records";
+import { handicapTags } from "./handicap";
 import { type CubeRoom, matchRules } from "./room";
 import {
   FORMAT_LABELS,
@@ -39,6 +40,9 @@ export function MatchBoard({ room }: { room: CubeRoom }) {
       ? `${FORMAT_LABELS.firstTo}(${s.target}판)`
       : FORMAT_LABELS[s.format];
   const columns = pm ? pm.played : 0;
+  // 핸디캡은 경기 안에서 바뀌지 않는다(바꾸면 새 경기): 마지막 판 것을 적는다
+  const handicap = room.rounds.at(-1)?.handicap;
+  const byAverage = handicap?.avg !== undefined;
 
   return (
     <section
@@ -51,7 +55,10 @@ export function MatchBoard({ room }: { room: CubeRoom }) {
         >
           {title}
         </h3>
-        <span className="text-white/50 text-xs">{sub}</span>
+        <span className="text-white/50 text-xs">
+          {sub}
+          {byAverage ? " · 내 평균 대비" : ""}
+        </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
@@ -95,6 +102,14 @@ export function MatchBoard({ room }: { room: CubeRoom }) {
                     className={`w-full max-w-0 truncate ${mine ? "font-semibold" : ""}`}
                   >
                     {room.playerName(r.id)}
+                    {handicapTags(handicap, s.n, r.id).length > 0 && (
+                      <span
+                        data-cube-match-handicap={r.id}
+                        className="ml-1.5 font-normal text-white/45 text-xs"
+                      >
+                        {handicapTags(handicap, s.n, r.id).join(" · ")}
+                      </span>
+                    )}
                   </td>
                   {pm &&
                     r.roundPoints.map((p, i) => (
