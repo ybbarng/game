@@ -62,13 +62,15 @@ function seeded(seed: number): () => number {
 /**
  * 휴대폰 손님과 둔 판: 0번이 방장, 1번이 손님, 번갈아 `moves`수. 화면마다 내려받기 지연이 0.05~0.8초에서 따로 흔들리고
  * 3%는 2초 더 늦는다(가장 나쁘게: 앞뒤 화면의 지연이 서로 상관없다). 수마다 실제로 1~10초를 쓴다.
- * `steal`이면 방장이 수마다 그만큼 가져간다: 자기 수는 줄여 적고 손님 수는 부풀려 적는다(`side`로 한쪽만)
+ * `steal`이면 방장이 수마다 그만큼 가져간다: 자기 수는 줄여 적고 손님 수는 부풀려 적는다(`side`로 한쪽만).
+ * `stalls`의 상태 화면은 끊김 없이 10초 더 늦게 닿는다(지하철·엘리베이터)
  */
 function phoneGame(
   seed: number,
   moves: number,
   steal = 0,
   side: "both" | "guest" | "host" = "both",
+  stalls: readonly number[] = [],
 ): WitnessInput {
   const r = seeded(seed);
   const delay = () => (r() < 0.03 ? 2_000 : 0) + 50 + r() * 750;
@@ -80,7 +82,10 @@ function phoneGame(
     const seat = i % 2;
     const spent = 1_000 + r() * 9_000;
     t += spent;
-    arrivalOf.set(i + 1, at(t + delay()));
+    arrivalOf.set(
+      i + 1,
+      at(t + delay() + (stalls.includes(i + 1) ? 10_000 : 0)),
+    );
     turns.push({ seat, left: 600_000 });
     const cheat =
       seat === 1
@@ -126,6 +131,27 @@ describe("손님 시계 확인(witnessTimes)", () => {
           /0번 자리 시간을 .*적게 적었다/,
         );
       }
+    });
+
+    /** 끊김 없이 10초 멈춘 화면(그 상태 번호): 판 맨 앞, 이어진 두 화면, 판 가운데 두 번 */
+    const STALLS: readonly number[][] = [[1], [1, 2], [3, 120], [50, 51]];
+
+    it("끊김 없는 10초 멈춤이 한두 번 끼어도 정직한 방장은 통과한다(차례 하나 기준도, √ 합 기준도)", () => {
+      for (const stalls of STALLS)
+        for (const seed of SEEDS)
+          expect(
+            witnessTimes(phoneGame(seed, 200, 0, "both", stalls)),
+            `씨앗 ${seed}, 멈춤 ${stalls}`,
+          ).toBeNull();
+    });
+
+    it("멈춤이 끼어도 수마다 0.5초씩 가져가면 잡힌다", () => {
+      for (const stalls of STALLS)
+        for (const seed of SEEDS)
+          expect(
+            witnessTimes(phoneGame(seed, 200, 500, "guest", stalls)),
+            `씨앗 ${seed}, 멈춤 ${stalls}`,
+          ).toMatch(/1번 자리 시간을 .*많이 적었다/);
     });
   });
 
@@ -219,12 +245,12 @@ describe("손님 시계 확인(witnessTimes)", () => {
       windows: [],
       entries: [
         { seat: 0, spent: null, keeps: true, window: null },
-        { seat: 0, spent: 9_000, keeps: false, window: null },
+        { seat: 0, spent: 20_000, keeps: false, window: null },
       ],
       arrivalOf: new Map([
         [0, at(0)],
-        [1, at(6_000)],
-        [2, at(9_000)],
+        [1, at(16_000)],
+        [2, at(20_000)],
       ]),
       botSeats: new Set(),
     };

@@ -16,10 +16,16 @@
 import type { Clock } from "@game/fair-play";
 
 /**
- * 차례 하나의 어긋남 허용 폭(ms). 한 차례의 어긋남은 그 차례 처음·끝 화면의 내려받기 지연 차이라 지연이 흔들리는
- * 폭(휴대폰 망에서 0.05~0.8초, 가끔 2초대로 튐)을 넘지 않는다. 일찍 낸 시간패를 판 길이와 상관없이 잡는다
+ * 차례 하나의 어긋남 허용 폭(ms). 한 차례의 어긋남은 그 차례 처음·끝 화면의 내려받기 지연 차이다. 휴대폰이 끊기지
+ * 않은 채 6~10초 멈추면(지하철·엘리베이터, WebRTC 다시 보내기) 앞 화면이 늦어 앞 차례가 +10초, 뒤 차례가 −10초가
+ * 된다. 그것까지 덮고, 수십 초 단위인 시간패 조작은 판 길이와 상관없이 잡는다
  */
-export const TURN_SLACK_MS = 5_000;
+export const TURN_SLACK_MS = 15_000;
+/**
+ * 자리마다 합에서 빼는 차례 수: 어긋남이 가장 큰(절댓값) 차례 둘. 끊김 없는 멈춤 한두 번은 자리마다 큰 어긋남
+ * 한두 차례로만 남으므로 합을 흔들지 않게 한다. 방장은 이만큼의 차례에서 `TURN_SLACK_MS`까지 더 가져갈 수 있다
+ */
+export const DRIFT_TRIM = 2;
 /**
  * 한 자리에 쌓인 어긋남(부호 있는 합)의 허용 폭: 기본(ms) + 잰 차례 수의 제곱근마다(ms).
  * 정직한 방장이면 차례마다의 어긋남은 앞뒤 지연의 차이라 부호가 들쭉날쭉해 서로 상쇄되고, 합은 차례 수의 제곱근만큼만
@@ -101,13 +107,13 @@ export interface WitnessInput {
  * - 차례마다: 시계를 다시 건 상태(앞 행동을 넣은 뒤, `LocalMatch.armClock`과 같은 규칙)부터 쓴 시간을 적은 행동을
  *   넣은 상태까지의 어긋남(적은 시간 − 잰 사이)이 `TURN_SLACK_MS`를 넘으면 실패다. 시간패도 쓴 시간을 적으므로
  *   일찍 낸 시간패가 여기서 잡힌다
- * - 자리마다: 어긋남을 부호 있는 채로 더해 `DRIFT_BASE_MS + DRIFT_SQRT_MS × √(잰 차례 수)`를 넘으면 실패다
- *   (차례마다 조금씩 가져가기). 컴퓨터 자리는 생각이 길어도 지지 않게 줄여 적으므로 많이 적은 차례만 본다
+ * - 자리마다: 어긋남을 부호 있는 채로 더하되 가장 큰 `DRIFT_TRIM`차례를 빼고, `DRIFT_BASE_MS + DRIFT_SQRT_MS ×
+ *   √(잰 차례 수)`를 넘으면 실패다(차례마다 조금씩 가져가기). 컴퓨터 자리는 생각이 길어도 지지 않게 줄여 적으므로 많이 적은 차례만 본다
  * - 시간 창마다: 창이 열린 상태부터 그 창으로 넣은 행동까지가 창 길이보다 허용 폭 넘게 짧으면 실패다
  */
 export function witnessTimes(input: WitnessInput): string | null {
   const { turns, windows, entries, arrivalOf, botSeats } = input;
-  const drift = new Map<number, { sum: number; turns: number }>();
+  const drift = new Map<number, number[]>();
   const opened = new Map<string, number>();
   let start = 0;
   for (const [i, entry] of entries.entries()) {
@@ -139,15 +145,15 @@ export function witnessTimes(input: WitnessInput): string | null {
         if (bot ? off > TURN_SLACK_MS : Math.abs(off) > TURN_SLACK_MS)
           return differs(i, entry.seat, off);
         if (!bot) {
-          const d = drift.get(entry.seat) ?? { sum: 0, turns: 0 };
-          d.sum += off;
-          d.turns += 1;
-          drift.set(entry.seat, d);
+          const offs = drift.get(entry.seat) ?? [];
+          offs.push(off);
+          drift.set(entry.seat, offs);
+          const sum = trimmedSum(offs);
           if (
-            Math.abs(d.sum) >
-            DRIFT_BASE_MS + DRIFT_SQRT_MS * Math.sqrt(d.turns)
+            Math.abs(sum) >
+            DRIFT_BASE_MS + DRIFT_SQRT_MS * Math.sqrt(offs.length)
           )
-            return differs(i, entry.seat, d.sum);
+            return differs(i, entry.seat, sum);
         }
       }
     }
@@ -160,6 +166,15 @@ export function witnessTimes(input: WitnessInput): string | null {
     if (!keep) start = i + 1;
   }
   return null;
+}
+
+/** 부호 있는 합에서 절댓값이 가장 큰 `DRIFT_TRIM`개를 뺀 것 */
+function trimmedSum(offs: readonly number[]): number {
+  const sum = offs.reduce((a, b) => a + b, 0);
+  const largest = [...offs]
+    .sort((a, b) => Math.abs(b) - Math.abs(a))
+    .slice(0, DRIFT_TRIM);
+  return sum - largest.reduce((a, b) => a + b, 0);
 }
 
 function differs(index: number, seat: number, off: number): string {
