@@ -1,5 +1,6 @@
 import { FACES } from "@game/cube-solver";
 import { EDGE_FACELETS } from "./cubie";
+import { OPPOSITE } from "./facelets";
 import { type Solve, uTurn, yTurn } from "./solve";
 
 /**
@@ -7,13 +8,18 @@ import { type Solve, uTurn, yTurn } from "./solve";
  * 첫 화면 연출(초보자 해법)만 쓴다. 컴퓨터 대결 계획(`botPlan`)은 기존 해법을 그대로 써서
  * 다른 기기가 다시 계산한 계획과 어긋나지 않는다.
  *
+ * 흐름(2026-11-05 사용자): 맞추는 면(흰 면, U)은 돌리지 않는다. 넣을 조각을 안전한 층(맞추는 면의
+ * 반대쪽, D)으로 빼고, 안전한 층만 돌려 들어갈 자리 밑에 둔 뒤 정해진 수로 넣는다. 옆면(R·F·L·B)은
+ * 그 수 안에서만 돌리고, 이미 넣은 엣지가 흐트러지면 같은 수 안에서 되돌린다.
+ *
  * 십자(`learn/lessons-333.ts` 「흰 십자」의 다섯 경우):
- * 1. 아래층, 흰색이 아래: D로 옆색을 같은 가운데 밑에 맞추고 그 면 반 바퀴.
- * 2. 가운데 줄: 흰색이 아닌 쪽 색이 붙은 면을 한 번 돌려 올린다. 옆색이 그 면 가운데와 다르면
- *    U로 제자리를 그 면에 비켜 놓고, 올리고, U를 되돌린다(이미 넣은 모서리를 지킨다).
- * 3. 아래층, 흰색이 옆: 그 면을 한 번 돌려 가운데 줄로 올린 뒤 2.
- * 4. 윗층에서 뒤집힘: 그 면을 한 번 돌려 가운데 줄로 내린 뒤 2.
- * 5. 윗층 흰색 위, 엉뚱한 자리: 그 면 반 바퀴로 내린 뒤 1(아직 넣은 것이 없으면 U만 돌려도 된다).
+ * 1. 아래층, 흰색이 아래: D로 옆색을 같은 센터 밑에 맞추고 그 면 반 바퀴(`D' F2`).
+ * 2. 아래층, 흰색이 옆: D로 옆색 센터 옆면 밑에 두고, 그 옆면으로 가운데 줄에 올려 옆색 면으로 올리고,
+ *    옆면을 되돌린다(`D R F' R'`).
+ * 3. 가운데 줄: 붙은 옆면 하나를 돌려 아래층으로 내린다. 이미 넣은 엣지가 함께 내려가면 D로 비켜 놓고
+ *    그 옆면을 되돌린다(`F D F'`). 그다음 1 또는 2.
+ * 4. 윗층 흰색 위, 엉뚱한 자리: 그 면 반 바퀴로 내린 뒤 1.
+ * 5. 윗층에서 뒤집힘: 그 면 반 바퀴로 내린 뒤 2.
  *
  * 첫 층 꼭짓점: 넣을 칸을 앞-오른쪽 위(UFR)에 오게 y로 돌려 쥐고, 그 흰 꼭짓점을 D로 바로 밑(DFR)에
  * 데려와 `R' D' R D`를 흰색이 위로 올 때까지 되풀이한다. 윗층 엉뚱한 자리에 박힌 꼭짓점은 그 칸을
@@ -76,14 +82,15 @@ function crossSolvedSlots(rel: string): number[] {
 /** 색 `c` 모서리의 십자 자리 */
 const homeOf = (c: FaceLetter) => CROSS_SIDE.findIndex((i) => faceOf(i) === c);
 
-const D_TURNS = ["", "D", "D'", "D2"];
-const U_GUARD = ["", "U", "U'", "U2"];
-const inverseU: Record<string, string> = {
-  "": "",
-  U: "U'",
-  "U'": "U",
-  U2: "U2",
-};
+/** 흰 십자·첫 층 코너를 맞추는 면(흰 면 위). 이 면은 돌리지 않는다 */
+export const TAUGHT_SOLVED_FACE: FaceLetter = "U";
+/** 안전한 층: 맞추는 면의 반대쪽. 맞춘 조각이 없어 마음껏 돌린다 */
+export const TAUGHT_SAFE_FACE: FaceLetter = OPPOSITE[TAUGHT_SOLVED_FACE];
+const SAFE = TAUGHT_SAFE_FACE;
+const SAFE_TURNS = ["", SAFE, `${SAFE}'`, `${SAFE}2`];
+
+const inverse = (t: string) =>
+  t.endsWith("'") ? t.slice(0, -1) : t.endsWith("2") ? t : `${t}'`;
 
 export type CrossCase =
   | "down-white-down"
@@ -94,61 +101,92 @@ export type CrossCase =
 
 const CASE_ORDER: readonly CrossCase[] = [
   "down-white-down",
-  "middle",
   "down-white-side",
-  "top-flipped",
+  "middle",
   "top-wrong",
+  "top-flipped",
 ];
 
+const touches = (slot: number, face: FaceLetter) =>
+  (EDGE_FACELETS[slot] as readonly number[]).some((i) => faceOf(i) === face);
+
 function caseOf(e: WhiteEdge): CrossCase {
-  if (e.slot >= 8) return "middle";
-  if (e.slot >= 4)
-    return faceOf(e.white) === "D" ? "down-white-down" : "down-white-side";
-  return faceOf(e.white) === "U" ? "top-wrong" : "top-flipped";
+  if (touches(e.slot, SAFE))
+    return faceOf(e.white) === SAFE ? "down-white-down" : "down-white-side";
+  if (!touches(e.slot, TAUGHT_SOLVED_FACE)) return "middle";
+  return faceOf(e.white) === TAUGHT_SOLVED_FACE ? "top-wrong" : "top-flipped";
 }
 
 const join = (...parts: string[]) => parts.filter(Boolean).join(" ");
 
-/** 가운데 줄 모서리를 올리는 수 후보(바로 올리기 먼저, 그다음 U로 비켜 놓기) */
-function middleCandidates(e: WhiteEdge): string[] {
-  const o = faceOf(e.other);
+const edgeOf = (s: Solve, color: FaceLetter) =>
+  whiteEdges(s.rel()).find((x) => x.color === color) as WhiteEdge;
+
+/**
+ * 안전한 층(아래층)에 있는 흰 엣지를 넣는 수 후보. 아래층만 돌려 자리를 잡고 정해진 수로 올린다.
+ * - 흰색이 아래: 옆색 센터 밑으로 옮겨 그 면 반 바퀴(`D' F2`).
+ * - 흰색이 옆: 옆색 센터 옆면 밑으로 옮겨, 그 옆면으로 가운데 줄에 올리고, 옆색 면으로 올린 뒤
+ *   옆면을 되돌린다(`D R F' R'`). 옆면 위가 아직 비었으면 되돌리지 않아도 된다.
+ */
+function insertCandidates(s: Solve, color: FaceLetter): string[] {
+  const e = edgeOf(s, color);
+  if (faceOf(e.white) === SAFE)
+    return SAFE_TURNS.map((d) => join(d, `${color}2`));
   const out: string[] = [];
-  for (const u of U_GUARD)
-    for (const t of [o, `${o}'`]) out.push(join(u, t, inverseU[u] as string));
+  for (const d of SAFE_TURNS) {
+    const t1 = s.clone().apply(d);
+    const x = faceOf(edgeOf(t1, color).white);
+    for (const m of [x, `${x}'`]) {
+      const t2 = t1.clone().apply(m);
+      const mid = edgeOf(t2, color);
+      if (caseOf(mid) !== "middle") continue;
+      const y = faceOf(mid.other);
+      for (const up of [y, `${y}'`])
+        for (const back of ["", inverse(m)]) out.push(join(d, m, up, back));
+    }
+  }
   return out;
 }
 
-/** 그 면을 한 번 돌려 가운데 줄로 보내는 수(흰 스티커가 붙은 면) */
-function toMiddleCandidates(e: WhiteEdge): string[] {
-  const w = faceOf(e.white);
-  return [w, `${w}'`];
+/**
+ * 안전한 층 밖(윗층·가운데 줄)의 흰 엣지를 아래층으로 빼는 수. 윗층은 그 옆면 반 바퀴(`R2`),
+ * 가운데 줄은 붙은 옆면 하나를 돌려 내리고, 이미 넣은 엣지가 함께 내려가면 아랫면으로 비켜 놓은 뒤
+ * 그 옆면을 되돌린다(`F D F'`).
+ */
+function extractions(s: Solve, e: WhiteEdge): { alg: string; s: Solve }[] {
+  if (caseOf(e) !== "middle") {
+    const side =
+      faceOf(e.white) === TAUGHT_SOLVED_FACE
+        ? faceOf(e.other)
+        : faceOf(e.white);
+    const alg = `${side}2`;
+    return [{ alg, s: s.clone().apply(alg) }];
+  }
+  const out: { alg: string; s: Solve }[] = [];
+  for (const f of [faceOf(e.white), faceOf(e.other)])
+    for (const t of [f, `${f}'`]) {
+      if (!touches(edgeOf(s.clone().apply(t), e.color).slot, SAFE)) continue;
+      for (const d of SAFE_TURNS) {
+        const alg = join(t, d, d ? inverse(t) : "");
+        out.push({ alg, s: s.clone().apply(alg) });
+      }
+    }
+  return out;
 }
 
-/** 모서리 하나를 경우대로 올리는 수 후보(짧은 것부터 고른다) */
+/**
+ * 엣지 하나를 넣는 수 후보. 안전한 층에 있으면 바로 넣고, 아니면 먼저 아래층으로 뺀 뒤 넣는다.
+ * 맞추는 면(U)은 돌리지 않는다.
+ */
 function edgeCandidates(s: Solve, e: WhiteEdge): string[] {
-  const kind = caseOf(e);
-  if (kind === "down-white-down")
-    return D_TURNS.map((d) => join(d, `${e.color}2`));
-  if (kind === "middle") return middleCandidates(e);
+  if (touches(e.slot, SAFE)) return insertCandidates(s, e.color);
+  const solved = crossSolvedSlots(s.rel());
   const out: string[] = [];
-  if (kind === "top-wrong") {
-    // 아직 넣은 것이 없으면 윗면만 돌려 맞출 수도 있다(레슨: 「U'로 윗면을 돌리면 맞아요」)
-    out.push("U", "U'", "U2");
-    const down = `${faceOf(e.other)}2`;
-    for (const d of D_TURNS) out.push(join(down, d, `${e.color}2`));
-    return out;
-  }
-  const pres = kind === "down-white-side" ? D_TURNS : [""];
-  for (const pre of pres) {
-    const t1 = s.clone().apply(pre);
-    const moved = whiteEdges(t1.rel()).find((x) => x.color === e.color);
-    if (!moved) continue;
-    for (const m of toMiddleCandidates(moved)) {
-      const t2 = t1.clone().apply(m);
-      const mid = whiteEdges(t2.rel()).find((x) => x.color === e.color);
-      if (!mid || mid.slot < 8) continue;
-      for (const up of middleCandidates(mid)) out.push(join(pre, m, up));
-    }
+  for (const ext of extractions(s, e)) {
+    const kept = crossSolvedSlots(ext.s.rel());
+    if (!solved.every((j) => kept.includes(j))) continue;
+    for (const ins of insertCandidates(ext.s, e.color))
+      out.push(join(ext.alg, ins));
   }
   return out;
 }
