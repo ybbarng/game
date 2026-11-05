@@ -11,7 +11,13 @@ import { toFaceletMove } from "./facelets";
  *
  * 너비 우선으로 찾는다. 쫓는 것은 넣을 엣지, 이미 맞춘 십자 엣지, 옆 센터 넷의 스티커 자리뿐이라
  * 상태가 작다. 문제는 (넣을 엣지의 흰 스티커 자리, 그 색, 이미 맞춘 자리) 하나로 정해지므로 답을 모아 둔다.
- * 길이가 같으면 y가 적은 것, 그다음 앞선 수 차례(D → F → y)를 고른다.
+ *
+ * 수 차례(2026-11-05 사용자 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로
+ * 가져와서 넣어줘」): 답은 토막을 이은 꼴이고, 토막 하나는 「큐브 돌리기(y, 없어도 됨) → 칸 밑으로 D(없어도 됨)
+ * → F로 시작하는 공식(F·D)」이다. 큐브 돌리기는 토막 맨 앞에만 오고 D 바로 뒤에는 오지 않는다(D와 y는 같은 축이라
+ * `D y`는 `y D`와 같다). 새 토막은 공식이 F로 끝난 뒤에만 시작한다. F·D만으로는 흰색이 옆(앞면)을 보는 엣지를
+ * 세울 수 없어, 그런 엣지는 「빼기」 토막 뒤 「넣기」 토막으로 나뉜다. 고르는 차례: 토막이 적은 것, 짧은 것, y가 적은 것.
+ * 예전(D를 y 앞에 두던 때)과 견주어 문제 672가지의 수 합은 2796 → 2800, 최대 8 그대로다.
  */
 
 const MOVES = ["D", "D'", "D2", "F", "F'", "F2", "y", "y'", "y2"] as const;
@@ -84,32 +90,80 @@ function search(
     Math.floor((p[5] as number) / 9) === 3;
   const v0 = low(start);
   if (done(start)) return "";
-  const seen = new Set<string>([`${start.join(",")}|${v0}`]);
-  type Node = { p: number[]; path: number[]; ys: number; v: boolean };
-  let layer: Node[] = [{ p: start, path: [], ys: 0, v: v0 }];
+  for (let maxRounds = 1; maxRounds <= MAX_ROUNDS; maxRounds++) {
+    const found = searchRounds(start, v0, low, done, maxRounds);
+    if (found !== null) return found;
+  }
+  throw new Error("F·D·y로 십자 엣지를 넣지 못했다");
+}
+
+/** 한 엣지에 드는 토막 수 상한(문제 672가지 모두 이 안에서 풀린다) */
+const MAX_ROUNDS = 3;
+
+/** 토막 안 자리: 0 시작(아무 수나), 1 큐브 돌리기 뒤(D나 F), 2 칸 밑으로 D 뒤(F만), 3 공식 안 */
+type Phase = 0 | 1 | 2 | 3;
+
+function searchRounds(
+  start: number[],
+  v0: boolean,
+  low: (p: readonly number[]) => boolean,
+  done: (p: readonly number[]) => boolean,
+  maxRounds: number,
+): string | null {
+  type Node = {
+    p: number[];
+    path: number[];
+    ys: number;
+    v: boolean;
+    phase: Phase;
+    rounds: number;
+  };
+  const seen = new Set<string>();
+  let layer: Node[] = [
+    { p: start, path: [], ys: 0, v: v0, phase: 0, rounds: 1 },
+  ];
   for (let depth = 1; depth <= 14; depth++) {
     const next: Node[] = [];
     let best: Node | null = null;
     for (const node of layer) {
       const last = node.path.at(-1);
+      const lastLayer = last === undefined ? -1 : (LAYER[last] as number);
       for (let mi = 0; mi < MOVES.length; mi++) {
-        if (last !== undefined) {
+        const kind = LAYER[mi] as number;
+        let phase: Phase;
+        let rounds = node.rounds;
+        if (kind === 2) {
+          // 큐브 돌리기는 토막 맨 앞에만: 처음, 또는 공식이 F로 끝난 뒤(새 토막). D 뒤의 y는 y 뒤의 D와 같아
+          // (같은 축) 늘 y를 앞에 둔다
+          if (node.phase === 0) phase = 1;
+          else if (node.phase === 3 && lastLayer === 1) {
+            if (rounds >= maxRounds) continue;
+            rounds++;
+            phase = 1;
+          } else continue;
+        } else if (kind === 0) {
+          // D: 토막 앞에서 칸 밑으로 한 번, 또는 공식 안
+          if (node.phase === 2 || lastLayer === 0) continue;
+          phase = node.phase === 3 ? 3 : 2;
+        } else {
           // 가운데 줄 엣지를 내렸다 올리는 F F2(합치면 F')만 같은 층을 잇는다
           const lowerRaise = (last === 3 || last === 4) && mi === 5;
-          if (LAYER[mi] === LAYER[last] && !lowerRaise) continue;
-          if (LAYER[mi] === 0 && LAYER[last] === 2) continue;
+          if (lastLayer === 1 && !lowerRaise) continue;
+          phase = 3;
         }
         const perm = PERMS[mi] as number[];
         const p = node.p.map((i) => perm[i] as number);
         const v = node.v || low(p);
-        const k = `${p.join(",")}|${v}`;
+        const k = `${p.join(",")}|${v}|${phase}|${rounds}|${kind}`;
         if (seen.has(k)) continue;
         seen.add(k);
-        const child = {
+        const child: Node = {
           p,
           path: [...node.path, mi],
-          ys: node.ys + (LAYER[mi] === 2 ? 1 : 0),
+          ys: node.ys + (kind === 2 ? 1 : 0),
           v,
+          phase,
+          rounds,
         };
         if (v && done(p)) {
           if (!best || child.ys < best.ys) best = child;
@@ -121,5 +175,5 @@ function search(
     if (best) return best.path.map((i) => MOVES[i]).join(" ");
     layer = next;
   }
-  throw new Error("F·D·y로 십자 엣지를 넣지 못했다");
+  return null;
 }

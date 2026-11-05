@@ -81,7 +81,7 @@ describe("배우는 방식 흰 십자", () => {
     ["down-white-down", "F2", "F2"],
     ["down-white-down", "D' F2", "F2 D"],
     ["down-white-down", "y F2", "R2"],
-    ["down-white-down", "D2 y F2", "R2 D2"],
+    ["down-white-down", "y D2 F2", "R2 D2"],
     ["middle", "F F2", "F"],
     ["middle", "y F' F2", "R'"],
     ["middle", "F D F' y F2", "R2 F D' F'"],
@@ -89,7 +89,7 @@ describe("배우는 방식 흰 십자", () => {
     ["down-white-side", "F D' F' y F", "B R B' D'"],
     ["down-white-side", "y F' D F y' F'", "R F R' D'"],
     ["top-flipped", "F y F' D' F y' F2", "R F R' D' F2"],
-    ["top-wrong", "F2 D y F2", "R2 D' F2 D R2"],
+    ["top-wrong", "F2 y D F2", "R2 D' F2 D R2"],
   ];
   for (const [kind, alg, setup] of LESSON) {
     it(`레슨 상황 ${setup} → ${kind} ${alg}`, () => {
@@ -570,5 +570,70 @@ describe("배우는 방식 마지막 층(2×2)", () => {
         "ll-corner-twist",
       ]);
     }
+  });
+});
+
+describe("조각마다 큐브 돌리기 → 반대 면 → 공식(2026-11-05 사용자 「먼저 큐브 전체를 돌려서 맞출 공간을 정면에 둔 후에 면을 돌려서 대상 조각을 앞으로 가져와서 넣어줘」)", () => {
+  const isRot = (t: string) => /^[xyz]/.test(t);
+  /** 단계의 토막(살피는 자리로 나눔)마다 수 목록 */
+  const pieces = (
+    solve: ReturnType<typeof solveBeginner3>,
+    name: string,
+  ): string[][] => {
+    const st = solve.stages.find((x) => x.name === name);
+    if (!st) return [];
+    const cuts = [
+      st.start,
+      ...solve.looks.filter((l) => l > st.start && l < st.end),
+      st.end,
+    ];
+    return cuts
+      .slice(0, -1)
+      .map((c, i) => solve.moves.slice(c, cuts[i + 1]))
+      .filter((seg) => seg.length > 0);
+  };
+
+  it("섞기 300개: 큐브 돌리기는 조각 맨 앞에 한꺼번에(십자는 토막 맨 앞), 반대 면 다음에는 오지 않는다", () => {
+    let rounds2 = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const solve = solveBeginner3(randomCubeState(3, seed), { taught: true });
+      for (const name of ["corners", "middle"]) {
+        const segs = pieces(solve, name);
+        for (const seg of segs) {
+          const first = seg.findIndex((t) => !isRot(t));
+          // 단계 끝에 뒤집기(첫 층 코너 끝 z2)는 조각 차례가 아니라 다음 단계로 넘어가는 돌리기다
+          let last = seg.length;
+          if (seg === segs.at(-1))
+            while (last > first && isRot(seg[last - 1] as string)) last--;
+          const rest = seg.slice(first, last);
+          expect(rest.some(isRot), `${seed} ${name} ${seg.join(" ")}`).toBe(
+            false,
+          );
+          // 코너: 반대 면(D)으로 칸 밑에 두고(없어도 됨) R'·F로 시작하는 공식
+          if (name === "corners")
+            expect(rest.join(" "), `${seed}`).toMatch(/^(D['2]? )?(R'|F) /);
+        }
+      }
+      for (const seg of pieces(solve, "cross")) {
+        let rounds = 1;
+        seg.forEach((t, i) => {
+          const prev = seg[i - 1];
+          if (!isRot(t) || prev === undefined || isRot(prev)) return;
+          // 토막 경계: 공식이 F로 끝난 뒤에만. D 뒤의 y는 없다(y를 앞에 둔다)
+          expect(prev, `${seed} cross ${seg.join(" ")}`).toMatch(/^F/);
+          rounds++;
+        });
+        expect(rounds, `${seed} ${seg.join(" ")}`).toBeLessThanOrEqual(3);
+        if (rounds > 1) rounds2++;
+      }
+      const end = applyMoves(
+        3,
+        randomCubeState(3, seed),
+        parseMoves(3, solve.moves.join(" ")),
+      );
+      expect(isSolved(3, end), `${seed}`).toBe(true);
+    }
+    // 흰색이 옆을 보는 엣지 등은 빼기 토막 뒤 넣기 토막으로 나뉜다
+    expect(rounds2).toBeGreaterThan(0);
   });
 });

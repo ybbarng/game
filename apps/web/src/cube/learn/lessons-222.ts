@@ -193,7 +193,7 @@ export function firstLayerUpSteps(first: string): LessonStep[] {
     },
     {
       kind: "try",
-      body: "앞-오른쪽 위 칸에 다른 흰 코너가 박혀 있어요. 칸을 앞-오른쪽에 둔 채 R' D' R D 한 번으로 빼고, 빠진 것은 아랫면을 돌려(D) 제 칸 밑으로 옮긴 뒤 큐브를 돌려(y) 쥐고 넣어요.",
+      body: "앞-오른쪽 위 칸에 다른 흰 코너가 박혀 있어요. 칸을 앞-오른쪽에 둔 채 R' D' R D 한 번으로 빼고, 빠진 것은 큐브를 돌려(y) 제 칸을 앞-오른쪽으로 쥐고, 아랫면을 돌려(D) 그 밑으로 옮겨 넣어요.",
       setup: { alg: setupFor(STUCK_CORNER_UP) },
       alg: STUCK_CORNER_UP,
       goal: "2x2-first-layer",
