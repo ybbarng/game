@@ -135,7 +135,7 @@ export type Cue =
   | "galaxyAsteroid"
   /** 은하 한 바퀴: 우주국 지원금(작은 차임) */
   | "galaxySalary"
-  /** 은하 한 바퀴: 봉인 입찰 봉투가 열리는 "스윽 톡" */
+  /** 은하 한 바퀴: 봉투 입찰 봉투가 열리는 "스윽 톡" */
   | "galaxyBid"
   /** 원카드: 가운데 더미를 손바닥으로 치는 "탁!"(원카드!) */
   | "onecardShout"
