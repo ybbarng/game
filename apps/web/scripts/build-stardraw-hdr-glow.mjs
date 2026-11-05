@@ -3,7 +3,7 @@
 // 보너스를 CSS로 돌리지 않는 것은 Safari가 transform이 걸린 HDR 그림을 SDR로 그린 적이 있어서다(아래).
 //
 //   node apps/web/scripts/build-stardraw-hdr-glow.mjs                      (모두)
-//   node apps/web/scripts/build-stardraw-hdr-glow.mjs star-disc-hdr.avif   (은하 한 바퀴 칸 별 원반만)
+//   node apps/web/scripts/build-stardraw-hdr-glow.mjs star-core-hdr.avif star-core-hdr-spiked.avif   (은하 한 바퀴 칸 별 핵만)
 //
 // 형식: AVIF, BT.2020 색역 + PQ 전송 함수(CICP 9/16/9), 10비트, 알파 포함.
 // - PQ는 밝기를 절대값(nit)으로 적는다. 보통 흰색(HDR 기준 흰색)은 203 nit(ITU-R BT.2408).
@@ -45,16 +45,34 @@ const SPIKE_HALF = 0.016;
 const SPIKE_A = 0.85;
 
 /**
- * 은하 한 바퀴 칸의 별 원반(docs/48 15-9): 빛줄기 없이 원반 가운데가 흰색보다 밝고 둘레로 번진다.
- * 칸의 별 원반(StarGlyph) 지름의 2.4배로 그려 원반 = 그림 반지름 약 0.42. 가운데 흰 핵은 원반보다 조금 작게
+ * 은하 한 바퀴 칸의 별 핵(docs/48 15-9, 15-10): 원반 전체가 아니라 가운데 흰 핵이 흰색보다 밝고, 핵 둘레로 빠르게
+ * 옅어진다(원반을 통째로 밝히면 별보다 둥근 판처럼 보였다, 2026-11-05 사용자 「별 느낌은 좀 약한」).
+ * 칸의 별 원반(StarGlyph) 지름의 2.4배로 그려 원반 = 그림 반지름 약 0.42, 핵 = 약 0.1
  */
 const GALAXY = {
-  disc: 0.24,
-  glowSigma: 0.36,
-  glowA: 0.45,
-  tailR: 0.14,
-  tailA: 0.06,
+  disc: 0.1,
+  glowSigma: 0.2,
+  glowA: 0.5,
+  tailR: 0.07,
+  tailA: 0.1,
   spikes: false,
+  tint: [1, 1, 1],
+};
+/**
+ * 1.6등급보다 밝은 별: 핵에 더해 칸의 빛줄기와 같은 자리에 가는 빛줄기. 칸에서는 빛줄기 그림(StarGlyph)과 같은
+ * 크기(세로 빛줄기 끝 = 그림 끝)로 그린다. 가로는 세로의 1/1.15
+ */
+const GALAXY_SPIKED = {
+  disc: 0.045,
+  glowSigma: 0.1,
+  glowA: 0.5,
+  tailR: 0.035,
+  tailA: 0.1,
+  spikes: true,
+  spikeLen: 0.87,
+  spikeV: 1.15,
+  spikeHalf: 0.012,
+  spikeA: 0.6,
   tint: [1, 1, 1],
 };
 const STARDRAW = {
@@ -64,6 +82,10 @@ const STARDRAW = {
   tailR: TAIL_R,
   tailA: TAIL_A,
   spikes: true,
+  spikeLen: SPIKE_LEN,
+  spikeV: 1.15,
+  spikeHalf: SPIKE_HALF,
+  spikeA: SPIKE_A,
   tint: TINT,
 };
 
@@ -75,7 +97,13 @@ const OUTS = [
     dir: "stardraw",
     name: "star-glow-hdr-diag.avif",
   },
-  { diag: false, shape: GALAXY, dir: "galaxy", name: "star-disc-hdr.avif" },
+  { diag: false, shape: GALAXY, dir: "galaxy", name: "star-core-hdr.avif" },
+  {
+    diag: false,
+    shape: GALAXY_SPIKED,
+    dir: "galaxy",
+    name: "star-core-hdr-spiked.avif",
+  },
 ].map((o) => ({
   ...o,
   path: fileURLToPath(new URL(`../public/${o.dir}/${o.name}`, import.meta.url)),
@@ -99,10 +127,10 @@ const smoothstep = (a, b, x) => {
 };
 
 /** 한 갈래 빛줄기의 알파(along: 줄기 방향 거리, perp: 옆 거리) */
-function spike(along, perp, len) {
+function spike(along, perp, len, s) {
   if (along < 0 || along > len) return 0;
   const fade = (1 - along / len) ** 2;
-  return SPIKE_A * fade * Math.exp(-((perp / SPIKE_HALF) ** 2));
+  return s.spikeA * fade * Math.exp(-((perp / s.spikeHalf) ** 2));
 }
 
 /** 한 점(가운데에서 dx, dy, 그림 반지름 1 기준)의 알파. 색은 늘 NITS다 */
@@ -119,8 +147,8 @@ function alphaAt(dx0, dy0, diag, s) {
   const spikes = !s.spikes
     ? 0
     : Math.max(
-        spike(Math.abs(dx), dy, SPIKE_LEN),
-        spike(Math.abs(dy), dx, SPIKE_LEN * (diag ? 1 : 1.15)),
+        spike(Math.abs(dx), dy, s.spikeLen, s),
+        spike(Math.abs(dy), dx, s.spikeLen * (diag ? 1 : s.spikeV), s),
       );
   // 겹친 빛은 "덮어 칠하기"로 합친다. 가장자리는 그림 끝에서 0이 되게
   const a = 1 - (1 - disc) * (1 - glow) * (1 - spikes);
@@ -172,7 +200,7 @@ function png16(diag, shape) {
   ]);
 }
 
-/** 이름을 주면 그 그림만 만든다(예: star-disc-hdr.avif). 없으면 모두 */
+/** 이름을 주면 그 그림만 만든다(예: star-core-hdr.avif). 없으면 모두 */
 function main() {
   const only = process.argv.slice(2);
   for (const out of OUTS)
