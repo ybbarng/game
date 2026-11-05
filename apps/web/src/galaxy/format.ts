@@ -86,6 +86,21 @@ export function squareName(board: GalaxyBoard, square: number): string {
 /** 계절 변 이름(0 가을 → 1 겨울 → 2 봄 → 3 여름, docs/48 2-1) */
 export const SEASON_NAMES = ["가을", "겨울", "봄", "여름"] as const;
 
+/**
+ * 문장의 주어: 「민준이」·「컴퓨터가」·「내가」(받침이 있으면 이, 없으면 가). 기록·알림 문장을
+ * 「누가 어디에 도착해서 무엇을 했는지」로 쓸 때(2026-11-05 사용자 「누군가 어디 도착해서 어쩌구」)
+ */
+export function subject(name: string): string {
+  if (name === "나") return "내가";
+  const last = name.charCodeAt(name.length - 1);
+  if (last >= 0xac00 && last <= 0xd7a3)
+    return `${name}${(last - 0xac00) % 28 === 0 ? "가" : "이"}`;
+  // 숫자로 끝나면(컴퓨터 1) 읽는 소리로 받침을 정한다: 1·3·6·7·8·0은 받침이 있다
+  if (/[0-9]$/.test(name))
+    return `${name}${"136780".includes(name.at(-1) ?? "") ? "이" : "가"}`;
+  return `${name}이(가)`;
+}
+
 /** 자리 이름: 혼자 하기는 나·컴퓨터 1·2·3 */
 export function seatLabel(
   seat: number,
