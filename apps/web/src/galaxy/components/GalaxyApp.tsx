@@ -20,6 +20,8 @@ import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
+
 import { GalaxyIconArt } from "../icon-art";
 import { galaxyOnline } from "../online";
 import { useGalaxyTutorialProgress } from "../progress";
@@ -240,6 +242,10 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
 function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
+      "카노푸스 우주국",
+      "카노푸스 우주국이 우주인 훈련용으로 만든 판 놀이입니다. 계절마다 뜨는 별자리를 돌며 별을 맡고 정거장을 짓습니다.",
+    ],
+    [
       "목표",
       "주사위를 굴려 계절 하늘 32칸을 돌며 별을 사고 정거장을 지어, 판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛과 가진 별 값, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 100을 더한 것이에요.",
     ],
@@ -326,6 +332,15 @@ function GalaxyHome({
       primaryClass="border-amber-200 bg-amber-200 text-slate-950 hover:bg-amber-100"
       hero={
         <>
+          {/* 이 판 놀이를 낸 곳(별 따기와 같은 우주국, docs/48 15-4) */}
+          <a
+            href="/stardraw/bureau"
+            data-galaxy-bureau
+            className="mx-auto mb-3 flex w-fit items-center gap-1.5 font-semibold text-amber-100/70 text-xs tracking-[0.2em] hover:text-amber-100"
+          >
+            <BureauLogo className="size-5" />
+            카노푸스 우주국
+          </a>
           <div aria-hidden="true" className="mx-auto size-24 drop-shadow-xl">
             <GalaxyIconArt />
           </div>

@@ -10,6 +10,7 @@ import {
 import { type CSSProperties, useMemo } from "react";
 import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
 import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
@@ -58,23 +59,11 @@ function toastStyle(dur: number): CSSProperties {
 function CornerArt({ kind }: { kind: string }) {
   const common = "size-[62%] opacity-90";
   if (kind === "base")
+    // 카노푸스 우주국: 별 따기와 같은 로고를 금빛 한 색으로(docs/48 15-4)
     return (
-      <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-        <circle
-          cx="20"
-          cy="20"
-          r="15"
-          fill="none"
-          stroke="#fcd34d"
-          strokeWidth="2"
-        />
-        {/* 우주국: 둥근 테 안의 네 갈래 별(카노푸스) */}
-        <path
-          d="M20 8 L22.6 17.4 L32 20 L22.6 22.6 L20 32 L17.4 22.6 L8 20 L17.4 17.4 Z"
-          fill="#fff7d6"
-        />
-        <circle cx="20" cy="20" r="2.4" fill="#fcd34d" />
-      </svg>
+      <span aria-hidden="true" className={cn(common, "block text-amber-300")}>
+        <BureauLogo className="size-full drop-shadow-[0_0_6px_rgba(252,211,77,0.45)]" />
+      </span>
     );
   if (kind === "asteroid")
     return (
