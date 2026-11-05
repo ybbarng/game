@@ -1,64 +1,10 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { cn } from "@/lib/cn";
 import { Seal } from "@/stardraw/astronaut/marks";
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
 
-import { shipOf } from "../format";
-
-/** 우주선 말: 자리마다 모양과 색이 둘 다 다르다(색만으로 가르지 않는다) */
-export function ShipToken({
-  seat,
-  size = 14,
-  className,
-  style,
-}: {
-  seat: number;
-  size?: number;
-  className?: string;
-  style?: CSSProperties;
-}) {
-  const ship = shipOf(seat);
-  const s = size;
-  const path =
-    ship.shape === "circle"
-      ? null
-      : ship.shape === "triangle"
-        ? "M50 8 L94 88 L6 88 Z"
-        : ship.shape === "square"
-          ? "M12 12 H88 V88 H12 Z"
-          : "M50 4 L96 50 L50 96 L4 50 Z";
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      width={s}
-      height={s}
-      aria-hidden="true"
-      className={cn("drop-shadow-[0_0_4px_rgba(0,0,0,0.9)]", className)}
-      style={style}
-    >
-      {path ? (
-        <path
-          d={path}
-          fill={ship.color}
-          stroke="#0b1020"
-          strokeWidth="9"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <circle
-          cx="50"
-          cy="50"
-          r="42"
-          fill={ship.color}
-          stroke="#0b1020"
-          strokeWidth="9"
-        />
-      )}
-    </svg>
-  );
-}
+export { ShipToken } from "./Ship";
 
 const PIPS: Record<number, [number, number][]> = {
   1: [[50, 50]],

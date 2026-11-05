@@ -30,7 +30,7 @@ import { cn } from "@/lib/cn";
 import { useChat } from "@/net/chat";
 import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { myRequestCard } from "../chain";
-import { eventLine } from "../events";
+import { eventLine, eventSeat } from "../events";
 import { money, seatLabel, squareName, subject } from "../format";
 import { shownCash } from "../fx";
 import { GALAXY_FX } from "../fx-timing";
@@ -605,7 +605,7 @@ export function GalaxyGame({
   const log = history
     .flatMap((e) => {
       const line = eventLine(e, view.board, name);
-      return line ? [line] : [];
+      return line ? [{ line, seat: eventSeat(e) }] : [];
     })
     .slice(-8)
     .reverse();
@@ -823,10 +823,17 @@ export function GalaxyGame({
             aria-label="기록"
             className="mt-1 flex flex-col gap-0.5 text-white/70 text-xs"
           >
-            {log.map((line, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: 최근 기록 차례
-              <li key={`${i}-${line}`} className="truncate">
-                {line}
+            {log.map(({ line, seat }, i) => (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: 최근 기록 차례
+                key={`${i}-${line}`}
+                data-log-seat={seat ?? undefined}
+                className="flex items-center gap-1.5"
+              >
+                <span className="flex w-3 shrink-0 justify-center">
+                  {seat !== null && <ShipToken seat={seat} size={12} />}
+                </span>
+                <span className="min-w-0 truncate">{line}</span>
               </li>
             ))}
           </ul>

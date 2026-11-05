@@ -1,5 +1,6 @@
 import { galaxyBotFor, playGalaxy } from "@game/galaxy-ai";
 import {
+  BANK,
   boardOfSky,
   GALAXY_EDITION,
   type GameEvent,
@@ -13,9 +14,15 @@ import { describe, expect, it } from "vitest";
 import { SKY_STARS } from "@/stardraw/sky";
 import type { RoundRecord } from "@/stats/records";
 
-import { eventLine } from "./events";
+import { eventLine, eventSeat } from "./events";
 import { subject } from "./format";
-import { buildTimeline, followCamera, shipPositions, shownCash } from "./fx";
+import {
+  buildTimeline,
+  followCamera,
+  restingHeading,
+  shipPositions,
+  shownCash,
+} from "./fx";
 import { GALAXY_FX } from "./fx-timing";
 import {
   describeGalaxy,
@@ -299,6 +306,66 @@ describe("연출 목록", () => {
     expect(mid?.x).toBeGreaterThanOrEqual(1 - (mid?.scale ?? 1));
     expect(followCamera(t, shipPositions(t, [0, 5], 1e6), 1e6)).toBeNull();
   });
+
+  it("우주선은 가는 쪽으로 기수를 돌리고, 미끄러지는 동안만 엔진 빛이 난다", () => {
+    const t = buildTimeline(events, board, 1, { reduced: false });
+    const move = t.steps[1] as (typeof t.steps)[number];
+    const hop = move.dur / 5;
+    const at = (ms: number) => shipPositions(t, [0, 5], move.at + ms)[1];
+    // 출발 칸은 첫 길(아래 변을 왼쪽으로)을 본다
+    expect(shipPositions(t, [0, 5], 0)[1]).toMatchObject({
+      heading: 270,
+      thrust: false,
+    });
+    expect(at(hop * 0.3)).toMatchObject({ heading: 270, thrust: true });
+    // 칸마다 쉬는 몫에는 엔진 빛이 꺼진다
+    expect(at(hop * 0.95)).toMatchObject({ heading: 270, thrust: false });
+    expect(shipPositions(t, [0, 5], 1e6)[1]).toMatchObject({
+      heading: 270,
+      thrust: false,
+    });
+  });
+
+  it("모퉁이를 돌면 기수도 돌고, 멈춘 뒤에는 마지막으로 온 쪽을 본다", () => {
+    // 아래 변 6에서 왼쪽 아래 모퉁이 8을 지나 왼쪽 변 10까지(한 칸 100ms)
+    const corner = {
+      steps: [
+        {
+          kind: "move" as const,
+          seat: 0,
+          from: 6,
+          path: [7, 8, 9, 10],
+          jump: false,
+          at: 0,
+          dur: 400,
+        },
+      ],
+      total: 400,
+    };
+    const at = (ms: number) => shipPositions(corner, [10], ms)[0];
+    expect(at(150)?.heading).toBe(270);
+    expect(at(250)?.heading).toBe(0);
+    expect(at(1000)).toMatchObject({ square: 10, heading: 0, moving: false });
+    // 뒤로 한 칸 가는 공문: 아래를 보고 간 뒤 그대로 아래를 본다
+    const back = {
+      steps: [
+        {
+          kind: "move" as const,
+          seat: 0,
+          from: 10,
+          path: [9],
+          jump: false,
+          at: 0,
+          dur: 100,
+        },
+      ],
+      total: 100,
+    };
+    expect(shipPositions(back, [9], 50)[0]?.heading).toBe(180);
+    expect(shipPositions(back, [9], 500)[0]?.heading).toBe(180);
+    // 연출이 없으면 그 칸으로 들어오는 길: 네 변이 각각 왼쪽·위·오른쪽·아래
+    expect([4, 12, 20, 28].map(restingHeading)).toEqual([270, 0, 90, 180]);
+  });
 });
 
 describe("만난 별과 사건 줄", () => {
@@ -340,6 +407,23 @@ describe("만난 별과 사건 줄", () => {
     expect(eventLine({ type: "meteorShower" }, board, name)).toContain(
       "유성우의 밤",
     );
+  });
+
+  it("줄 머리의 우주선은 줄에서 먼저 나오는 사람(우주국·없으면 비운다)", () => {
+    const pay = (
+      reason: "rent" | "salary" | "card",
+      from: number,
+      to: number,
+    ): GameEvent => ({ type: "pay", reason, from, to, amount: 30 });
+    expect(eventSeat(pay("rent", 1, 0))).toBe(1);
+    expect(eventSeat(pay("salary", BANK, 2))).toBe(2);
+    expect(eventSeat(pay("card", BANK, 3))).toBe(3);
+    expect(eventSeat(pay("card", 1, BANK))).toBe(1);
+    expect(
+      eventSeat({ type: "auctionStarted", index: 0, square: 9, passer: 2 }),
+    ).toBe(2);
+    expect(eventSeat({ type: "observed", seat: 1, amount: 0 })).toBe(1);
+    expect(eventSeat({ type: "meteorShower" })).toBeNull();
   });
 
   it("누가 어디에 도착해서 무엇을 했는지 보인다", () => {

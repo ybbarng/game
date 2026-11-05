@@ -292,7 +292,7 @@ function StarBody({
                     : "border-white/10",
                 )}
               >
-                {o >= 0 ? <ShipToken seat={o} size={9} /> : <span>·</span>}
+                {o >= 0 ? <ShipToken seat={o} size={11} /> : <span>·</span>}
                 {squareName(board, sq)}
               </li>
             );
