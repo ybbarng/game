@@ -25,7 +25,7 @@ import { useGalaxy } from "./store";
 
 /**
  * 결정 시간(docs/48 4-5). 개인 시간이 없는 판에서도 결정마다 이만큼 기다리고, 넘기면 방장이 대신 정한다.
- * 봉인 입찰은 모두가 함께 내므로 개인 시간이 있는 판에서도 자리마다 이 시간을 따로 잰다
+ * 봉투 입찰은 모두가 함께 내므로 개인 시간이 있는 판에서도 자리마다 이 시간을 따로 잰다
  */
 export const DECISION_MS = 20_000;
 
@@ -108,7 +108,7 @@ export function standInAction(state: GalaxyState, seat: number): Action | null {
 /**
  * 온라인 방 시계(docs/48 4-5, `LocalMatch`가 `Clock`으로 잰다). 엔진이 재지 않는 기다림을 맡는다.
  * - 시간 상한(2-11): 판이 시작한 뒤 정한 시간이 지나면 `timeUp`(긴 판은 없다)
- * - 봉인 입찰: 자리마다 20초, 넘기면 「내지 않음」. 공개는 방장이 아는 소금으로 낸 봉투만 대신 한다
+ * - 봉투 입찰: 자리마다 20초, 넘기면 「내지 않음」. 공개는 방장이 아는 소금으로 낸 봉투만 대신 한다
  * - 개인 시간이 없는 판의 차례 결정(굴리기·사기·차례 마치기·거래 답·빚 정리): 결정마다 20초
  * 주사위 사슬 약속·공개는 재지 않는다(기기가 바로 낸다. 끊기면 대신 두는 컴퓨터, 사람 사슬이면 끝내기)
  */
@@ -239,6 +239,8 @@ export function galaxyRulesSummary(rules: GalaxyRules): string {
     rules.trade ? "거래" : "거래 없음",
     rules.seasonal ? "제철 하늘" : null,
     rules.meteor && rules.length !== "long" ? "유성우의 밤" : null,
+    rules.moon ? "달의 길" : null,
+    rules.requests ? "관측 의뢰" : null,
   ]
     .filter(Boolean)
     .join(" · ");

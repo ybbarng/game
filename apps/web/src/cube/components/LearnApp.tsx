@@ -565,6 +565,7 @@ function LessonView({
               alg={step.alg}
               mask={mask}
               settings={settings}
+              passedText={step.passedText}
               onPassed={markActed}
             />
           ) : (
@@ -591,6 +592,7 @@ function LessonView({
             alg={step.alg}
             mask={mask}
             settings={settings}
+            passedText={step.passedText}
             onPassed={markActed}
           />
         )}

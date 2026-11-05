@@ -140,6 +140,25 @@ test("은하 한 바퀴: 게임 목록에서 들어가 굴리고 사다가 기�
   expect(await noOverflow(page)).toBe(false);
   await page.screenshot({ path: info.outputPath("galaxy-play.png") });
 
+  // 둘러앉기(docs/48 15-6): 자리 카드가 판 둘레에, 나는 판 아래(눕힌 휴대폰은 판 오른쪽)
+  await expect(page.locator("[data-player]")).toHaveCount(2);
+  const boardBox = await board(page).boundingBox();
+  const myBox = await page.locator('[data-player="0"]').boundingBox();
+  if (!boardBox || !myBox) throw new Error("판·내 자리가 보이지 않는다");
+  if (info.project.name === "phone-landscape")
+    expect(myBox.x).toBeGreaterThanOrEqual(boardBox.x + boardBox.width - 1);
+  else expect(myBox.y).toBeGreaterThanOrEqual(boardBox.y + boardBox.height - 1);
+  // 달의 길과 내 관측 의뢰서(첫 굴림 뒤에 정해진다)
+  await expect(page.locator("[data-moon]")).toHaveCount(1);
+  await expect(page.locator('[data-request-slip="0"]')).toBeVisible();
+  await expect(page.locator('[data-request-slip="1"]')).toHaveCount(0);
+  // 반응 보내기: 컴퓨터 자리 카드를 눌러 박수를 보내면 그 카드 위에 떠오른다
+  await page.getByRole("button", { name: /에게 반응 보내기/ }).click();
+  await page.locator('[data-react="clap"]').click();
+  await expect(
+    page.locator('[data-player="1"] [data-reaction="clap"]'),
+  ).toBeVisible();
+
   // 내 굴리기 차례에 기권해 판 끝 화면(가운데 띠·결과·순위 표)을 본다
   if (!(await over(page).isVisible())) {
     await untilMyRoll(page);
@@ -221,7 +240,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
-  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스. 9돌림이라 이번 돌림이 끝나면 겨울 하늘이 된다
+  // 정해진 장면: 나는 오리온 별 둘, 컴퓨터(중수)는 벨라트릭스. 9차례째라 이번 차례가 끝나면 겨울 하늘이 된다
   await page.addInitScript(() => {
     (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
       rules: {
@@ -237,7 +256,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
       stars: [
         { square: 9, owner: 0 },
         { square: 10, owner: 0 },
-        { square: 11, owner: 1 },
+        { square: 27, owner: 1 },
       ],
     };
   });
@@ -253,7 +272,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   await page
     .locator('[data-decision="trade-partner"] button', { hasText: "컴퓨터" })
     .click();
-  await page.locator('[data-square="11"]').click();
+  await page.locator('[data-square="27"]').click();
   for (let i = 0; i < 4; i++)
     await page.locator("[data-cash-plus100]").first().click();
   if (SAVE_SCREENSHOTS)
@@ -282,7 +301,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
   );
   await expect(page.locator("[data-my-group=Ori]")).toContainText("완성");
 
-  // 이번 돌림을 마치면 겨울 하늘 공문이 위에서 내려온다(그 전에 공문 칸에 멈춰도 같은 종이)
+  // 모두 이번 차례를 마치면 겨울 하늘 공문이 위에서 내려온다(그 전에 공문 칸에 멈춰도 같은 종이)
   for (let i = 0; i < 40; i++) {
     if (await page.locator("[data-notice-paper]").isVisible()) break;
     for (const button of [
@@ -304,7 +323,7 @@ test("은하 한 바퀴 연출: 거래로 별자리를 완성하면 선이 이�
     await page.screenshot({ path: info.outputPath("galaxy-notice.png") });
 });
 
-test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌림이 시작될 때 공문이 내려오고 판에 유성이 흐른다", async ({
+test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 차례가 시작될 때 공문이 내려오고 판에 유성이 흐른다", async ({
   page,
 }, info) => {
   test.skip(
@@ -313,7 +332,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.clock.install();
-  // 2인 기본 판은 36차례: 34돌림이 끝나면 유성우의 밤(35·36돌림)
+  // 2인 기본 판은 36차례: 34차례가 끝나면 유성우의 밤(35·36차례)
   await page.addInitScript(() => {
     (window as { __galaxyScenario?: unknown }).__galaxyScenario = {
       rules: {
@@ -328,7 +347,7 @@ test("은하 한 바퀴 연출: 유성우의 밤을 켠 판은 마지막 두 돌
       seed: 5,
       round: 34,
       stars: [
-        { square: 13, owner: 0 },
+        { square: 15, owner: 0 },
         { square: 14, owner: 0 },
         { square: 26, owner: 1 },
       ],

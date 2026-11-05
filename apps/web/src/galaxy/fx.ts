@@ -38,7 +38,9 @@ export type FxStep =
   | { kind: "meteor" }
   | { kind: "build"; seat: number; square: number; what: string }
   | { kind: "trade"; accepted: boolean; from: number; to: number }
-  | { kind: "bankrupt"; seat: number };
+  | { kind: "bankrupt"; seat: number }
+  /** 판 끝 관측 의뢰서가 한 장씩 펼쳐진다 */
+  | { kind: "request"; seat: number; card: number; done: boolean };
 
 export type TimedStep = FxStep & { at: number; dur: number };
 
@@ -182,6 +184,12 @@ export function buildTimeline(
         break;
       case "bankrupt":
         push({ kind: "bankrupt", seat: e.seat }, FX.bankrupt);
+        break;
+      case "requestRevealed":
+        push(
+          { kind: "request", seat: e.seat, card: e.card, done: e.done },
+          FX.request,
+        );
         break;
       default:
         break;

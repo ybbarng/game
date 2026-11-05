@@ -2,10 +2,12 @@ import {
   type Action,
   boardOfSky,
   cardById,
+  type GalaxyBoard,
   type GalaxyRules,
   type GalaxyState,
   type GameEvent,
   isComplete,
+  NUMBERS,
   SHORT_RULES,
   STANDARD_RULES,
   standingsOf,
@@ -93,6 +95,10 @@ interface Tally {
   firstComplete: number[];
   /** 2단 이상 정거장이 선 판 */
   level2Games: number;
+  /** 관측 의뢰: 펼친 의뢰 수, 이룬 의뢰 수, 의뢰 지원금이 1등을 바꾼 판 */
+  requestsShown: number;
+  requestsDone: number;
+  requestFlips: number;
 }
 
 function newTally(): Tally {
@@ -119,6 +125,9 @@ function newTally(): Tally {
     bigRents: [],
     firstComplete: [],
     level2Games: 0,
+    requestsShown: 0,
+    requestsDone: 0,
+    requestFlips: 0,
   };
 }
 
@@ -163,9 +172,11 @@ function runSet(
   seatBots: (game: number) => GalaxyBot[],
   seedBase: number,
   onGame?: (state: GalaxyState, game: number) => void,
+  /** 판(배치 시험, layouts.ts). 없으면 하늘의 판 */
+  givenBoard?: GalaxyBoard,
 ): Tally {
   const tally = newTally();
-  const board = boardOfSky(rules.sky);
+  const board = givenBoard ?? boardOfSky(rules.sky);
   const leaderRound = 11;
   const limit = turnLimitOf(rules);
   const lateRound = limit === null ? null : limit - LATE_ROUNDS + 1;
@@ -210,6 +221,10 @@ function runSet(
             // 빚 정리로 미룬 이용료도 갚을 때 같은 pay 사건이 난다
             bigRents += 1;
           else if (e.type === "built" && e.level >= 2) level2 = true;
+          else if (e.type === "requestRevealed") {
+            tally.requestsShown += 1;
+            if (e.done) tally.requestsDone += 1;
+          }
         }
         cardGains(events, tally);
       },
@@ -251,6 +266,21 @@ function runSet(
     const first = firstComplete as number | null;
     if (first !== null) tally.firstComplete.push(first);
     if (level2) tally.level2Games += 1;
+    // 의뢰 지원금을 뺀 자산으로 1등이 달랐나
+    const done = state.requests?.reveals.map((r) => r?.done === true) ?? [];
+    if (done.some(Boolean) && finals.length > 0) {
+      const plain = finals.map((f) => ({
+        seat: f.seat,
+        out: f.out,
+        assets: f.assets - (done[f.seat] ? NUMBERS.requestBonus : 0),
+      }));
+      const best = Math.max(
+        ...plain.filter((p) => !p.out).map((p) => p.assets),
+      );
+      const before = plain.filter((p) => !p.out && p.assets === best);
+      if (!before.some((p) => winners.includes(p.seat)))
+        tally.requestFlips += 1;
+    }
     onGame?.(state, g);
   }
   return tally;
@@ -525,7 +555,7 @@ export function runGalaxyBench(options: BenchOptions): BenchReport {
   const decisionsMean = main.decisions / Math.max(1, main.games);
   const auctionsMean = main.auctions / Math.max(1, main.games);
   const turnsMean = main.turns / Math.max(1, main.games);
-  // 2-11 시간 어림: 차례마다 15초, 봉인 입찰마다 15초
+  // 2-11 시간 어림: 차례마다 15초, 봉투 입찰마다 15초
   const minutes = ((turnsMean + auctionsMean) * 15) / 60;
   rows.push({
     item: "판 길이(돌림 수 × 결정 수)",
@@ -611,4 +641,106 @@ export function benchMarkdown(report: BenchReport): string {
     "",
   ];
   return lines.join("\n");
+}
+
+/** 배치 견주기 한 줄(docs/48 15-3) */
+export interface LayoutRow {
+  name: string;
+  length: "standard" | "short";
+  games: number;
+  /** 평균 돌림 · 차례 · 결정 · 어림 분 */
+  rounds: number;
+  turns: number;
+  decisions: number;
+  minutes: number;
+  /** 첫 별자리 완성 돌림: 아래 사분위·중앙값·위 사분위(완성이 나온 판만) */
+  firstComplete: [number, number, number] | null;
+  completionGames: number;
+  /** 자리 순서(첫 차례부터) 1등 몫 */
+  seats: number[];
+  bankrupt: number;
+  lateFlip: number;
+  bigRentGames: number;
+  /** 별자리 「완성한 사람이 1등」 가장 높은 것 − 낮은 것 */
+  groupSpread: number | null;
+  limit: number;
+  /** 관측 의뢰를 이룬 비율(펼친 의뢰 가운데), 의뢰 지원금이 1등을 바꾼 판 비율 */
+  requestDone: number | null;
+  requestFlip: number;
+}
+
+/**
+ * 판 배치 견주기(docs/48 15-3): 4인 중수 ×4로 같은 시드(기본 판 10_000~, 짧은 판 60_000~)를 배치마다 둔다.
+ * 엔진 규칙은 그대로이고 별 칸만 옮긴 판을 넣는다
+ */
+export function runLayoutBench(
+  layouts: readonly { name: string; board: GalaxyBoard }[],
+  games: { standard: number; short: number },
+  sky = "seasons",
+): LayoutRow[] {
+  const mid = galaxyIntermediateBot;
+  const all = () => [mid, mid, mid, mid];
+  const rows: LayoutRow[] = [];
+  for (const layout of layouts)
+    for (const length of ["standard", "short"] as const) {
+      const rules: GalaxyRules = {
+        ...(length === "standard" ? STANDARD_RULES : SHORT_RULES),
+        sky,
+      };
+      const t = runSet(
+        games[length],
+        rules,
+        all,
+        length === "standard" ? 10_000 : 60_000,
+        undefined,
+        layout.board,
+      );
+      const g = Math.max(1, t.games);
+      const firsts = [...t.firstComplete].sort((a, b) => a - b);
+      const rates = layout.board.groups.flatMap((_, i) => {
+        const c = t.groupComplete[i] ?? 0;
+        return c > 0 ? [(t.groupCompleteWins[i] ?? 0) / c] : [];
+      });
+      rows.push({
+        name: layout.name,
+        length,
+        games: t.games,
+        rounds: t.rounds / g,
+        turns: t.turns / g,
+        decisions: t.decisions / g,
+        minutes: ((t.turns / g + t.auctions / g) * 15) / 60,
+        firstComplete: firsts.length
+          ? [
+              quantile(firsts, 0.25),
+              quantile(firsts, 0.5),
+              quantile(firsts, 0.75),
+            ]
+          : null,
+        completionGames: t.completionGames / g,
+        seats: t.firstBySeatOrder.map((w) => w / g),
+        bankrupt: t.bankruptEnds / g,
+        lateFlip: t.lateFlipped / Math.max(1, t.lateChecked),
+        bigRentGames: t.bigRents.filter((x) => x > 0).length / g,
+        groupSpread: rates.length
+          ? Math.max(...rates) - Math.min(...rates)
+          : null,
+        limit: turnLimitOf(rules) ?? 0,
+        requestDone: t.requestsShown ? t.requestsDone / t.requestsShown : null,
+        requestFlip: t.requestFlips / g,
+      });
+    }
+  return rows;
+}
+
+/** 배치 견주기 표(마크다운) */
+export function layoutMarkdown(rows: readonly LayoutRow[]): string {
+  return [
+    "| 배치 | 판 | 판 수 | 돌림 · 차례 · 결정 · 어림 | 첫 완성 돌림(사분위 아래·중앙·위) | 완성 나온 판 | 자리 순서 1등 | 운항 중단 | 마지막 5돌림 1위 바뀜 | 300 넘는 이용료 나온 판 | 별자리 1등 비율 차이 | 의뢰 이룸 · 1등 바뀜 |",
+    "|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ...rows.map(
+      (r) =>
+        `| ${r.name} | ${r.length === "short" ? "짧은" : "기본"} | ${r.games} | ${r.rounds.toFixed(1)}/${r.limit} · ${r.turns.toFixed(1)} · ${r.decisions.toFixed(0)} · ${r.minutes.toFixed(0)}분 | ${r.firstComplete ? r.firstComplete.map((x) => x.toFixed(1)).join(" · ") : "—"} | ${pct(r.completionGames)} | ${r.seats.map((s) => pct(s)).join(" · ")} | ${pct(r.bankrupt)} | ${pct(r.lateFlip)} | ${pct(r.bigRentGames)} | ${r.groupSpread === null ? "—" : `${(r.groupSpread * 100).toFixed(1)}%p`} | ${r.requestDone === null ? "—" : `${pct(r.requestDone)} · ${pct(r.requestFlip)}`} |`,
+    ),
+    "",
+  ].join("\n");
 }

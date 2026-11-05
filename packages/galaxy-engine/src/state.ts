@@ -7,7 +7,7 @@ import type { GalaxyRules } from "./rules";
  * 게임의 흐름(docs/48 2-4).
  * commit 자리마다 사슬 약속 → (짧은 판은 reveal로 시작 별 나누기) → turn 차례인 사람이 굴리기·관리
  * → reveal 모든 자리가 고리 공개(눈이 정해져 움직이고 멈춘 칸의 일을 한다)
- * → buy 사기·넘기기 → bid·bidReveal 봉인 입찰 → trade 거래 답 → debt 빚 정리 → turn … → gameOver
+ * → buy 사기·넘기기 → bid·bidReveal 봉투 입찰 → trade 거래 답 → debt 빚 정리 → turn … → gameOver
  */
 export type Phase =
   | "commit"
@@ -18,6 +18,8 @@ export type Phase =
   | "bidReveal"
   | "trade"
   | "debt"
+  /** 판 끝: 자리마다 관측 의뢰 비밀을 공개한다(의뢰를 켠 판) */
+  | "requestReveal"
   | "gameOver";
 
 /** 공개 한 번이 정할 것: 시작 별 나누기, 굴리기, 소행성대에서 굴리기, 혜성 굴리기 */
@@ -65,12 +67,13 @@ export type PayReason =
   | "card"
   | "observatory"
   | "trade"
-  | "bankrupt";
+  | "bankrupt"
+  | "request";
 
 /** 우주국(돈이 사라지거나 생기는 곳) */
 export const BANK = -1;
 
-/** 봉인 입찰에서 공개한 값 */
+/** 봉투 입찰에서 공개한 값 */
 export interface BidReveal {
   value: number;
   salt: string;
@@ -78,7 +81,7 @@ export interface BidReveal {
   valid: boolean;
 }
 
-/** 진행 중인 봉인 입찰 */
+/** 진행 중인 봉투 입찰 */
 export interface Auction {
   /** 입찰 번호(약속 해시에 들어간다) */
   index: number;
@@ -90,7 +93,7 @@ export interface Auction {
   reveals: (BidReveal | null)[];
 }
 
-/** 끝난 봉인 입찰 */
+/** 끝난 봉투 입찰 */
 export interface AuctionResult {
   index: number;
   square: number;
@@ -164,6 +167,18 @@ export interface LastRoll {
   purpose: RevealPurpose;
 }
 
+/** 관측 의뢰(docs/48 15-5 1번, `requests.ts`) */
+export interface RequestState {
+  /** 자리마다 의뢰 비밀의 약속(판 처음 사슬 약속과 함께 낸다) */
+  commits: (string | null)[];
+  /** 첫 공개의 해시(의뢰를 정하는 닻). 첫 공개 전에는 null */
+  anchor: string | null;
+  /** 판 끝에 공개한 비밀과 그 의뢰, 이루었나 */
+  reveals: ({ secret: string; card: number; done: boolean } | null)[];
+  /** 공개를 마치면 낼 판 끝(공개 단계에서만) */
+  ending: { kind: GameResult["kind"]; seat: number | null } | null;
+}
+
 export interface GalaxyState {
   rules: GalaxyRules;
   /** 하늘에서 만든 판(바뀌지 않는다) */
@@ -177,6 +192,10 @@ export interface GalaxyState {
   season: number | null;
   /** 유성우의 밤(2-12 7번): 마지막 두 돌림 이용료 2배. 끈 판·긴 판은 늘 false */
   meteor: boolean;
+  /** 관측 의뢰. 끈 판은 null */
+  requests: RequestState | null;
+  /** 달의 길(15-5 2번): 달이 있는 칸. 끈 판은 null */
+  moon: number | null;
   /** 첫 차례 자리(돌림은 이 자리에서 시작한다) */
   starter: number;
   turn: TurnInfo;
@@ -207,7 +226,7 @@ export interface GalaxyState {
   revealFor: RevealPurpose | null;
   lastRoll: LastRoll | null;
   auction: Auction | null;
-  /** 지금까지 연 봉인 입찰 수 */
+  /** 지금까지 연 봉투 입찰 수 */
   auctionCount: number;
   lastAuction: AuctionResult | null;
   trade: TradeOffer | null;
@@ -230,8 +249,10 @@ export interface GalaxyState {
 }
 
 export type Action =
-  /** 사슬 약속(x_0, 16진수 64자) */
-  | { type: "commit"; hash: string }
+  /** 사슬 약속(x_0, 16진수 64자). 관측 의뢰를 켠 판의 첫 약속에는 의뢰 비밀 약속(`request`)도 함께 */
+  | { type: "commit"; hash: string; request?: string }
+  /** 판 끝 관측 의뢰 비밀 공개 */
+  | { type: "requestReveal"; secret: string }
   /** 이번 공개에 내 사슬 다음 고리를 낸다 */
   | { type: "reveal"; link: string }
   /** 차례인 사람이 굴린다(굴리기·소행성대에서 굴리기·혜성). `spent`는 결정에 쓴 시간(ms) */
@@ -240,11 +261,11 @@ export type Action =
   | { type: "payFine"; spent?: number }
   /** 멈춘 별을 산다 */
   | { type: "buy"; spent?: number }
-  /** 사지 않고 넘긴다 → 봉인 입찰 */
+  /** 사지 않고 넘긴다 → 봉투 입찰 */
   | { type: "pass"; spent?: number }
-  /** 봉인 입찰 약속(`bidCommitment`) */
+  /** 봉투 입찰 약속(`bidCommitment`) */
   | { type: "bid"; hash: string }
-  /** 봉인 입찰 공개(값 0은 내지 않음) */
+  /** 봉투 입찰 공개(값 0은 내지 않음) */
   | { type: "bidReveal"; value: number; salt: string }
   /** 거래 제안(굴리기 전 한 번) */
   | {
@@ -338,6 +359,9 @@ export type GameEvent =
   /** 유성우의 밤이 시작됐다(이 돌림부터 판 끝까지 이용료 2배) */
   | { type: "meteorShower" }
   | { type: "turnStarted"; seat: number; round: number }
+  /** 판 끝: 관측 의뢰를 펼칠 차례(모두 비밀을 공개한다) */
+  | { type: "requestsOpened" }
+  | { type: "requestRevealed"; seat: number; card: number; done: boolean }
   | { type: "timeUp" }
   /** `result`가 null이면 순위 없이 중간에 끝냈다 */
   | { type: "gameEnded"; result: GameResult | null; retired?: boolean };
@@ -356,7 +380,8 @@ export type Decision =
   | { kind: "bid"; index: number; square: number; max: number }
   | { kind: "bidReveal"; index: number }
   | { kind: "trade"; offer: TradeOffer }
-  | { kind: "debt"; debt: Debt };
+  | { kind: "debt"; debt: Debt }
+  | { kind: "requestReveal" };
 
 /** 화면에 보이는 입찰: 끝나기 전에는 남의 값을 보이지 않는다 */
 export interface AuctionView {

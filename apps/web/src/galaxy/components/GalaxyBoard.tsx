@@ -4,12 +4,15 @@ import {
   BANK,
   cardById,
   type GalaxyView,
-  sideOf,
+  moonGroup,
+  NUMBERS,
+  requestById,
   starAt,
 } from "@game/galaxy-engine";
 import { type CSSProperties, useMemo } from "react";
+import { StarGlyph } from "@/components/star/StarGlyph";
 import { cn } from "@/lib/cn";
-
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
 import { cardNoMatch } from "../events";
 import { money, SEASON_NAMES, shipOf, squareName } from "../format";
 import {
@@ -24,6 +27,7 @@ import { cellOf, SKY_SIZE, skyArt, squareCenter } from "../sky-art";
 import { groupColor, magScale, starRgb } from "../star-color";
 import { prefersReducedMotion } from "../store";
 import { DiceFace, NoticePaper, ShipToken } from "./parts";
+import { nebulaStyle, TileSky } from "./TileSky";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 
@@ -57,23 +61,11 @@ function toastStyle(dur: number): CSSProperties {
 function CornerArt({ kind }: { kind: string }) {
   const common = "size-[62%] opacity-90";
   if (kind === "base")
+    // 카노푸스 우주국: 별 따기와 같은 로고를 금빛 한 색으로(docs/48 15-4)
     return (
-      <svg viewBox="0 0 40 40" className={common} aria-hidden="true">
-        <circle
-          cx="20"
-          cy="20"
-          r="15"
-          fill="none"
-          stroke="#fcd34d"
-          strokeWidth="2"
-        />
-        {/* 우주국: 둥근 테 안의 네 갈래 별(카노푸스) */}
-        <path
-          d="M20 8 L22.6 17.4 L32 20 L22.6 22.6 L20 32 L17.4 22.6 L8 20 L17.4 17.4 Z"
-          fill="#fff7d6"
-        />
-        <circle cx="20" cy="20" r="2.4" fill="#fcd34d" />
-      </svg>
+      <span aria-hidden="true" className={cn(common, "block text-amber-300")}>
+        <BureauLogo className="size-full drop-shadow-[0_0_6px_rgba(252,211,77,0.45)]" />
+      </span>
     );
   if (kind === "asteroid")
     return (
@@ -164,6 +156,8 @@ export function GalaxyBoard({
   const owner = (sq: number) => (hidden.has(sq) ? -1 : (view.owners[sq] ?? -1));
   // 유성우의 밤에는 제철 1.5배 대신 모든 별이 2배라 제철 빛남을 끄고 판 전체에 유성을 흘린다
   const season = view.meteor ? null : view.season;
+  // 달 아래 별자리(이용료 절반): 그 별자리 칸은 달빛에 별이 흐리다
+  const moonlit = moonGroup(view);
   // 움직임 줄이기면 우주선도 미끄러지지 않고 바로 그 칸에 선다.
   const reduced = prefersReducedMotion();
 
@@ -247,8 +241,7 @@ export function GalaxyBoard({
           {art.map((g) => {
             const group = board.groups[g.group];
             if (!group) return null;
-            const inSeason =
-              season !== null && sideOf(group.squares[0] ?? 0) === season;
+            const inSeason = season !== null && group.home === season;
             const owners = groupOwners[g.group] as Map<number, number[]>;
             const completeBy = [...owners.entries()].find(
               ([, sqs]) => sqs.length >= group.squares.length,
@@ -416,7 +409,10 @@ export function GalaxyBoard({
           const o = owner(sq.index);
           const level = view.levels[sq.index] ?? 0;
           const inSeason =
-            season !== null && sq.side !== null && sq.side === season;
+            season !== null &&
+            star !== null &&
+            board.groups[star.group]?.home === season;
+          const dim = star !== null && moonlit === star.group;
           const ownerColor = o >= 0 ? shipOf(o).color : null;
           const label = star
             ? `${star.star.ko}, ${board.groups[star.group]?.ko ?? ""}, ${money(star.value)}${o >= 0 ? `, ${name(o)}의 별` : ""}`
@@ -428,6 +424,7 @@ export function GalaxyBoard({
               data-square={sq.index}
               data-owner={o >= 0 ? o : undefined}
               data-selected={selected === sq.index || undefined}
+              data-moonlit={dim || undefined}
               aria-label={label}
               onClick={() => onPick?.(sq.index)}
               onPointerEnter={(e) =>
@@ -463,28 +460,46 @@ export function GalaxyBoard({
               {star ? (
                 <>
                   <span
+                    aria-hidden="true"
+                    className="absolute inset-0"
+                    style={nebulaStyle(sq.index, groupColor(board, star.group))}
+                  />
+                  {art[star.group] && (
+                    <TileSky
+                      art={art[star.group] as (typeof art)[number]}
+                      square={sq.index}
+                      owner={owner}
+                    />
+                  )}
+                  <span
                     className="absolute inset-x-0 top-0 h-[13%]"
                     style={{
                       background: groupColor(board, star.group),
                       opacity: 0.85,
                     }}
                   />
-                  <span
-                    aria-hidden="true"
-                    className="block rounded-full"
-                    style={{
-                      width: `${34 * magScale(star.star.mag)}%`,
-                      height: `${34 * magScale(star.star.mag)}%`,
-                      background: `radial-gradient(circle, #fff 0%, ${starRgb(star.star.k)} 32%, ${starRgb(star.star.k, 0.25)} 60%, transparent 72%)`,
-                    }}
+                  <StarGlyph
+                    k={star.star.k}
+                    mag={star.star.mag}
+                    seed={sq.index}
+                    className={cn(
+                      "@min-[30rem]:top-[46%] transition-opacity duration-700",
+                      dim && "opacity-45",
+                    )}
                   />
-                  <span className="@max-[30rem]:hidden mt-[2%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/80 leading-none">
+                  {dim && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(241,245,249,0.32),rgba(241,245,249,0.06)_55%,transparent_75%)]"
+                    />
+                  )}
+                  <span className="@max-[30rem]:hidden absolute bottom-[8%] max-w-full truncate px-0.5 text-[clamp(7px,1.45cqw,11px)] text-white/85 leading-none [text-shadow:0_1px_2px_#000]">
                     {star.star.ko}
                   </span>
                   {level > 0 && o >= 0 && (
                     <span
                       aria-hidden="true"
-                      className="absolute bottom-[7%] flex gap-[6%]"
+                      className="absolute top-[17%] right-[8%] flex gap-[6%]"
                       data-level={level}
                     >
                       {level >= 4 ? (
@@ -525,6 +540,10 @@ export function GalaxyBoard({
             </button>
           );
         })}
+
+        {view.moon !== null && (
+          <MoonToken square={view.moon} reduced={reduced} />
+        )}
 
         {/* 우주선 */}
         {ships.map((s, seat) => {
@@ -575,6 +594,33 @@ export function GalaxyBoard({
   );
 }
 
+/** 달의 길: 칸 위쪽 모서리에 뜬 달. 차례가 넘어가면 다음 칸으로 천천히 미끄러진다 */
+function MoonToken({ square, reduced }: { square: number; reduced: boolean }) {
+  const c = squareCenter(square);
+  return (
+    <span
+      data-moon={square}
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute z-[9] -translate-x-1/2 -translate-y-1/2 rounded-full",
+        !reduced && "transition-[left,top] duration-[1400ms] ease-in-out",
+      )}
+      style={{
+        left: pct(c.x + 0.3),
+        top: pct(c.y - 0.3),
+        width: pct(0.28),
+        height: pct(0.28),
+        background:
+          "radial-gradient(circle at 38% 35%, #ffffff 0%, #e2e8f0 45%, #94a3b8 100%)",
+        boxShadow: "0 0 10px 3px rgba(226,232,240,0.45)",
+      }}
+    >
+      <span className="absolute top-[22%] left-[52%] size-[18%] rounded-full bg-slate-400/50" />
+      <span className="absolute top-[55%] left-[30%] size-[12%] rounded-full bg-slate-400/40" />
+    </span>
+  );
+}
+
 /** 가운데 칸: 지금 계절과 주사위 둘 */
 function CenterHub({
   view,
@@ -617,7 +663,7 @@ function CenterHub({
         )
       )}
       <span className="text-[clamp(7px,1.6cqw,11px)] text-white/45">
-        {view.round}돌림
+        {view.round}차례째
       </span>
       {shown && (
         <span
@@ -732,6 +778,31 @@ function FxOverlay({
           </NoticePaper>
         </div>
       );
+    case "request": {
+      const card = requestById(step.card);
+      return (
+        <div className={cn(box, "items-start pt-[4%]")}>
+          <NoticePaper
+            heading="카노푸스 우주국 관측 의뢰서"
+            title={`${name(step.seat)} · ${card.title}`}
+            dur={step.dur}
+          >
+            <p>{card.text}</p>
+            <p
+              data-request-done={step.done || undefined}
+              className={cn(
+                "mt-1 font-bold",
+                step.done ? "text-emerald-800" : "text-slate-500",
+              )}
+            >
+              {step.done
+                ? `이루었습니다 · ${money(NUMBERS.requestBonus)}`
+                : "이루지 못했습니다"}
+            </p>
+          </NoticePaper>
+        </div>
+      );
+    }
     case "meteor":
       return (
         <div className={cn(box, "items-start pt-[4%]")}>
@@ -791,7 +862,7 @@ function FxOverlay({
             style={toastStyle(step.dur)}
           >
             <p className="text-center font-bold text-sm">
-              봉인 입찰 · {squareName(board, r.square)}
+              봉투 입찰 · {squareName(board, r.square)}
             </p>
             <div className="flex flex-wrap justify-center gap-1.5">
               {r.bids.map((bid, seat) =>

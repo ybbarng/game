@@ -44,6 +44,7 @@ function play(rules: GalaxyRules, seed: number, steps: number) {
     switch (state.phase) {
       case "commit":
       case "reveal":
+      case "requestReveal":
         for (const s of seats) act(s, chainAction(state, s));
         break;
       case "bid":
@@ -130,7 +131,7 @@ describe("돈 합과 다시 두기", () => {
     if (again.ok) expect(again.state).toEqual(state);
     // 판 번호가 다른(옛 규칙) 기록은 지금 숫자로 다시 두지 않는다
     const old = replay(
-      { ...STANDARD_RULES, edition: 2 as unknown as 3 },
+      { ...STANDARD_RULES, edition: 3 as unknown as 4 },
       1,
       BOARD,
       log,

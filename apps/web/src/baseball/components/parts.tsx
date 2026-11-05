@@ -108,7 +108,8 @@ export const DigitBox = memo(function DigitBox({
         "inline-flex shrink-0 items-center justify-center rounded-md border",
         size === "sm" && "h-7 w-[1.375rem]",
         size === "md" && "h-9 w-7",
-        size === "lg" && "h-14 w-11",
+        size === "lg" &&
+          "h-14 w-11 max-sm:h-12 max-sm:w-10 short-landscape:h-12 short-landscape:w-10",
         tone === "lit" && "border-amber-200/25 bg-black text-amber-300",
         tone === "dim" && "border-white/10 bg-black/60 text-amber-200/70",
         tone === "hit" && "border-amber-300 bg-amber-300 text-amber-950",
@@ -121,7 +122,7 @@ export const DigitBox = memo(function DigitBox({
         className={cn(
           size === "sm" && "h-[1.1rem]",
           size === "md" && "h-6",
-          size === "lg" && "h-9",
+          size === "lg" && "h-9 max-sm:h-8 short-landscape:h-8",
         )}
       />
     </span>
@@ -520,7 +521,7 @@ export function NumberPad({
         disabled={off}
         onClick={() => press(d)}
         className={cn(
-          "relative flex h-12 items-center justify-center rounded-xl border font-black font-mono text-2xl shadow-[inset_0_-3px_0_rgba(0,0,0,0.35)] transition active:translate-y-px active:shadow-none disabled:opacity-20 disabled:shadow-none short-landscape:h-9 short-landscape:text-xl",
+          "relative flex h-12 items-center justify-center rounded-xl border font-black max-sm:h-10 font-mono text-2xl shadow-[inset_0_-3px_0_rgba(0,0,0,0.35)] transition active:translate-y-px active:shadow-none disabled:opacity-20 disabled:shadow-none short-landscape:h-9 short-landscape:text-xl",
           inMemo
             ? "border-sky-300/40 bg-sky-950/60 hover:bg-sky-900/60"
             : "border-white/15 bg-white/15 hover:bg-white/25",
@@ -545,7 +546,7 @@ export function NumberPad({
   };
   const digitsRow = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
   const small =
-    "flex h-12 items-center justify-center rounded-xl border border-white/10 bg-black/35 text-sm hover:bg-black/50 disabled:opacity-30 short-landscape:h-9";
+    "flex h-12 items-center justify-center rounded-xl border border-white/10 bg-black/35 text-sm hover:bg-black/50 max-sm:h-10 disabled:opacity-30 short-landscape:h-9";
   return (
     <div className="flex w-full flex-col items-center gap-2 short-landscape:gap-1.5">
       <div className="relative flex flex-col items-center">
@@ -557,7 +558,7 @@ export function NumberPad({
           label={`넣은 수 ${value || "없음"}`}
         />
       </div>
-      <div className="grid w-full max-w-xs grid-cols-3 gap-1.5">
+      <div className="grid w-full max-w-xs grid-cols-3 gap-1.5 short-landscape:gap-1">
         {digitsRow.map(key)}
         <button
           type="button"

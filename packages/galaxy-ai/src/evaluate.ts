@@ -22,7 +22,14 @@ import {
 /** 셈에 쓰는 판 조각(엔진 함수가 받는 모양) */
 export type Board = Pick<
   GalaxyState,
-  "board" | "owners" | "levels" | "mortgaged" | "cash" | "season" | "meteor"
+  | "board"
+  | "owners"
+  | "levels"
+  | "mortgaged"
+  | "cash"
+  | "season"
+  | "meteor"
+  | "moon"
 >;
 
 /** 화면으로 수를 따져 보는 상태. 남의 재료와 입찰은 모르므로 비워 둔다(입찰 단계에서는 쓰지 않는다) */
@@ -52,9 +59,12 @@ export function opponentTurns(
   return remainingRounds(view) * others;
 }
 
-/** 제철·유성우의 밤을 빼고 본 판(계절은 판 내내 돌아 모든 별에 한 번씩 온다) */
+/**
+ * 제철·유성우의 밤·달을 빼고 본 판(계절과 달은 판 내내 돌아 모든 별에 한 번씩 온다).
+ * 앞일 셈(사기·짓기 값)은 이 판으로, 바로 앞 위험(다음 굴림의 이용료)은 달이 있는 지금 판으로 본다
+ */
 export function seasonless(b: Board): Board {
-  return { ...b, season: null, meteor: false };
+  return { ...b, season: null, meteor: false, moon: null };
 }
 
 /** 이 사람이 이 칸을 가진 판(1단, 별빛은 그대로) */

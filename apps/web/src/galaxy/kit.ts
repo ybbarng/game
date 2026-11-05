@@ -78,6 +78,8 @@ export interface GalaxyRound {
   rentReceived: number;
   /** 이번 판에서 머문 별과 가진 별(별 id) */
   met: string[];
+  /** 내 관측 의뢰와 이루었나(의뢰를 켜고 판 끝에 펼친 판만) */
+  request?: { card: number; done: boolean };
 }
 
 export interface GalaxyGame {
@@ -144,6 +146,7 @@ export const galaxyStats: KitStats<GalaxyView, GameEvent> = {
     }
     const starId = (sq: number) => board.squares[sq]?.star?.star.id ?? "";
     const mine = myRank(ended.result, me);
+    const request = end.requests?.reveals[me] ?? null;
     return {
       edition: end.rules.edition,
       players: end.rules.players,
@@ -160,6 +163,9 @@ export const galaxyStats: KitStats<GalaxyView, GameEvent> = {
       rentPaid,
       rentReceived,
       met: metSquares(end, events).map(starId),
+      ...(request
+        ? { request: { card: request.card, done: request.done } }
+        : {}),
     };
   },
   game(view): GalaxyGame {
@@ -177,9 +183,11 @@ export function describeGalaxy(action: unknown): string {
   const at = (square: number) => squareName(board, square);
   switch (a.type) {
     case "commit":
-      return "주사위 사슬 약속";
+      return "주사위 약속";
     case "reveal":
-      return "주사위 고리 공개";
+      return "주사위 공개";
+    case "requestReveal":
+      return "관측 의뢰 펼치기";
     case "roll":
       return "주사위 굴리기";
     case "payFine":
@@ -187,7 +195,7 @@ export function describeGalaxy(action: unknown): string {
     case "buy":
       return "별 사기";
     case "pass":
-      return "넘기기(봉인 입찰)";
+      return "넘기기(봉투 입찰)";
     case "bid":
       return "입찰 봉투 내기";
     case "bidReveal":
@@ -233,7 +241,7 @@ export function explainGalaxy(
   name: (seat: number) => string,
 ): Commentary {
   const situation = [
-    `${state.round}돌림`,
+    `${state.round}차례째`,
     `${name(state.turn.seat)}의 차례`,
     describeGalaxy(next.action),
   ];

@@ -10,6 +10,8 @@ import {
   createGalaxyScenario,
   type GalaxyRules,
   type GalaxyView,
+  requestCommitOf,
+  requestSecretOf,
   SHORT_RULES,
   step,
 } from "@game/galaxy-engine";
@@ -53,7 +55,7 @@ const BID = 50;
 
 /**
  * 한 사람의 기기: 주사위 사슬 씨앗과 봉투 소금은 이 안에만 있다. 약속·공개는 화면 저장소처럼 자동으로,
- * 봉투는 늘 50, 나머지는 중수 컴퓨터처럼. `passBuy`면 별을 사지 않고 넘겨 봉인 입찰을 연다
+ * 봉투는 늘 50, 나머지는 중수 컴퓨터처럼. `passBuy`면 별을 사지 않고 넘겨 봉투 입찰을 연다
  */
 class Device {
   readonly secrets: GalaxySecrets;
@@ -83,10 +85,11 @@ class Device {
     let action: Action | null;
     switch (view.decision.kind) {
       case "commit":
-        action = commitAction(this.seed);
+        action = commitAction(this.seed, view);
         break;
       case "reveal":
       case "bidReveal":
+      case "requestReveal":
         action = revealFor(view, this.secrets);
         break;
       case "bid": {
@@ -205,7 +208,7 @@ describe("은하 한 바퀴 온라인 방", () => {
   it("방장은 참가자 씨앗·아직 공개하지 않은 고리·공개 전 봉투를 모르고, 기권으로 끝낸 판이 검증을 통과한다", async () => {
     const room = await setup();
     const { seat } = room;
-    // 참가자는 별을 사지 않고 넘겨 봉인 입찰을 연다.
+    // 참가자는 별을 사지 않고 넘겨 봉투 입찰을 연다.
     room.guestDevice.passBuy = true;
     let checks = 0;
     let sealedChecks = 0;
@@ -225,6 +228,11 @@ describe("은하 한 바퀴 온라인 방", () => {
         // 방장 엔진 상태와 받은 메시지 어디에도 참가자 씨앗이 없고, 아직 공개하지 않은 다음 고리도 없다.
         expect(seen).not.toContain(GUEST_SEED);
         if (state.reveals[seat] === null) expect(seen).not.toContain(next);
+        // 관측 의뢰: 약속은 갔지만 판 끝에 펼치기 전에는 비밀이 방장에게 없다.
+        expect(state.requests?.commits[seat]).toBe(
+          requestCommitOf(seat, GUEST_SEED),
+        );
+        expect(seen).not.toContain(requestSecretOf(GUEST_SEED));
         // 봉투를 냈지만 공개하기 전에는 참가자 소금(과 값)이 방장에게 없다.
         const auction = state.auction;
         if (
@@ -272,7 +280,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const room = await setup();
     const { seat } = room;
     room.guestDevice.passBuy = true;
-    // 방장이 넘겨 봉인 입찰이 열릴 때까지(참가자는 봉투를 내지 않고 기다린다).
+    // 방장이 넘겨 봉투 입찰이 열릴 때까지(참가자는 봉투를 내지 않고 기다린다).
     room.hostDevice.passBuy = true;
     room.guestDevice.hold = (view) => view.decision?.kind === "bid";
     await play(room, () => {

@@ -31,10 +31,13 @@ export function GameClock({
   clock,
   control,
   running,
+  className,
 }: {
   clock: PlayerClock;
   control: TimeControl;
   running: boolean;
+  /** 크기 등 바꿀 모양(마주 앉은 대국 자리판은 시계를 크게 둔다) */
+  className?: string;
 }) {
   const [since, setSince] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
@@ -62,6 +65,7 @@ export function GameClock({
       data-clock
       className={cn(
         "rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums",
+        className,
         running ? "bg-white/15 text-white" : "bg-black/30 text-white/60",
         low && "animate-pulse bg-rose-600 text-white",
       )}

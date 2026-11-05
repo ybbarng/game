@@ -4,6 +4,7 @@ import { expect } from "vitest";
 import { buildBoard } from "./board";
 import { bidCommitment, bidSalt } from "./dice";
 import { createMatch, type StepResult, step, stepWithDice } from "./match";
+import { requestCommitOf, requestSecretOf } from "./requests";
 import { type GalaxyRules, STANDARD_RULES } from "./rules";
 import { createGalaxyScenario } from "./scenario";
 import type { Action, GalaxyState, GameEvent } from "./state";
@@ -16,7 +17,8 @@ import {
 
 /* 시험에서만 쓰는 도움 함수. 패키지 밖으로 내보내지 않는다 */
 
-export const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS);
+// 진행 논리 시험은 칸 번호를 외우기 쉬운 붙인 배치로 둔다. 실제 판 배치(split)는 board.test·skies.test가 본다
+export const BOARD = buildBoard(TEST_SKY, TEST_CONSTELLATIONS, "grouped");
 export const PAIR_BOARD = buildBoard(TEST_PAIR_SKY, TEST_PAIR_CONSTELLATIONS);
 
 /** 사슬 고리 전체(0이 약속). 같은 씨앗은 한 번만 계산한다 */
@@ -33,11 +35,23 @@ export function chainOf(key: string, generation: number): string[] {
   return links;
 }
 
-/** 이 자리의 약속 또는 다음 고리 공개 */
+/** 이 자리의 약속 또는 다음 고리 공개(의뢰를 켠 판의 첫 약속은 의뢰 약속도, 판 끝에는 의뢰 공개) */
 export function chainAction(state: GalaxyState, seat: number): Action {
-  const links = chainOf(state.keys[seat] as string, state.generation);
+  const key = state.keys[seat] as string;
+  if (state.phase === "requestReveal")
+    return {
+      type: "requestReveal",
+      secret: requestSecretOf(derivedSeed(key, 0)),
+    };
+  const links = chainOf(key, state.generation);
   if (state.phase === "commit")
-    return { type: "commit", hash: links[0] as string };
+    return {
+      type: "commit",
+      hash: links[0] as string,
+      ...(state.requests && state.generation === 0
+        ? { request: requestCommitOf(seat, derivedSeed(key, 0)) }
+        : {}),
+    };
   const used = state.chains[seat]?.used ?? 0;
   return { type: "reveal", link: links[used + 1] as string };
 }
@@ -147,7 +161,7 @@ export function scene(
   return createGalaxyScenario({ board: BOARD, ...options });
 }
 
-/** 봉인 입찰 약속(재료에서 소금) */
+/** 봉투 입찰 약속(재료에서 소금) */
 export function bidOf(state: GalaxyState, seat: number, value: number): Action {
   const index = state.auction?.index ?? 0;
   const salt = bidSalt(state.keys[seat] as string, index);

@@ -180,6 +180,41 @@ html:has([data-game="galaxy"]) body {
   background: #070d1c;
 }
 
+/* 별 원반(components/star/StarGlyph): 쌀알 무늬 두 겹이 서로 반대로 천천히 돌고, 빛무리가 숨 쉰다.
+   transform·opacity만 움직여 그림을 다시 그리지 않는다(별 수십 개도 가볍다). 움직임 줄이기면 멈춘다 */
+@keyframes star-boil {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes star-breathe {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.06);
+    opacity: 1;
+  }
+}
+.star-boil {
+  animation: star-boil 30s linear infinite;
+}
+.star-boil-back {
+  animation: star-boil 40s linear infinite reverse;
+}
+.star-breathe {
+  animation: star-breathe 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .star-boil,
+  .star-boil-back,
+  .star-breathe {
+    animation: none;
+  }
+}
+
 /* 은하 한 바퀴 연출(시간은 galaxy/fx-timing.ts, 움직임 줄이기면 연출 자체가 없다) */
 @keyframes galaxy-twinkle {
   0%,
@@ -370,6 +405,66 @@ html:has([data-game="galaxy"]) body {
 }
 .galaxy-sheet {
   animation: galaxy-sheet 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 둘러앉은 판(docs/48 15-6). 넓은 화면: 판을 화면 높이에 맞춰 가운데, 자리 카드는 판 아래(나)·왼쪽·위·오른쪽, 결정·기록은 오른쪽 칸 */
+.galaxy-table-wide {
+  --galaxy-board: min(calc(100dvh - 15rem), calc(100vw - 40rem));
+  display: grid;
+  width: 100%;
+  justify-content: center;
+  grid-template-columns:
+    minmax(8rem, 12rem) var(--galaxy-board) minmax(8rem, 12rem)
+    minmax(18rem, 23rem);
+  grid-template-rows: auto var(--galaxy-board) auto;
+  grid-template-areas:
+    ". top . side"
+    "left board right side"
+    ". bottom . side";
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
+.galaxy-table-wide .galaxy-side {
+  align-self: start;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+}
+/* 낮고 넓은 화면(눕힌 휴대폰): 판을 높이에 맞춰 가운데, 왼쪽에 맞은편 자리, 오른쪽에 나·옆 자리와 결정 */
+.galaxy-table-short {
+  --galaxy-board: calc(100dvh - 2.75rem);
+  display: grid;
+  width: 100%;
+  justify-content: center;
+  grid-template-columns: minmax(7rem, 11rem) var(--galaxy-board) minmax(
+      12rem,
+      20rem
+    );
+  column-gap: 0.5rem;
+}
+.galaxy-table-short .galaxy-side {
+  max-height: calc(100dvh - 2.75rem);
+  overflow-y: auto;
+}
+/* 자리 카드에 온 반응: 떠올랐다 사라진다(SeatCard REACTION_SHOWN_MS와 같은 길이) */
+@keyframes galaxy-react {
+  0% {
+    transform: translateY(6px) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-4px) scale(1.15);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-18px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1);
+    opacity: 0;
+  }
+}
+.galaxy-react {
+  animation: galaxy-react 1.8s ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
   .galaxy-twinkle,

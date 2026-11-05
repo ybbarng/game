@@ -134,7 +134,8 @@ export function StageProgress({
   const stages = course.stages ?? [];
   const all = reached >= stages.length;
   const now = stages[Math.min(reached, stages.length - 1)];
-  const review = now?.lessons[0];
+  // 맞추다 막혔을 때 다시 볼 곳은 단계의 본 단원(마지막. 흰 십자 앞의 「안전한 회전」이 아니라 흰 십자)
+  const review = now?.lessons.at(-1);
   return (
     <nav
       aria-label="맞춘 단계"
@@ -145,7 +146,7 @@ export function StageProgress({
         {stages.map((st, i) => {
           const done = i < reached;
           const current = i === reached;
-          const first = st.lessons[0];
+          const main = st.lessons.at(-1);
           return (
             <li
               key={st.title}
@@ -154,7 +155,7 @@ export function StageProgress({
               aria-current={current ? "step" : undefined}
             >
               <a
-                href={first ? `/cube/learn?lesson=${first}` : undefined}
+                href={main ? `/cube/learn?lesson=${main}` : undefined}
                 aria-label={`${i + 1}단계 ${st.title}${done ? "(맞음)" : ""} 단원 다시 보기`}
                 title="이 단원 다시 보기"
                 className={cn(

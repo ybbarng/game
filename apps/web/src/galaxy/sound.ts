@@ -28,6 +28,8 @@ function cuesOfStep(step: TimedStep): [Cue, number][] {
     case "season":
     case "meteor":
       return [["galaxyNotice", 0]];
+    case "request":
+      return [[step.done ? "galaxyComplete" : "galaxyNotice", 0]];
     case "link":
       return [[step.owned >= step.size ? "galaxyComplete" : "galaxyLink", 0]];
     case "jail":

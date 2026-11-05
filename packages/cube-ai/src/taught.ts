@@ -1,5 +1,7 @@
 import { FACES } from "@game/cube-solver";
+import { frontCrossInsert, type SideFace } from "./cross-front";
 import { EDGE_FACELETS } from "./cubie";
+import { OPPOSITE } from "./facelets";
 import { type Solve, uTurn, yTurn } from "./solve";
 
 /**
@@ -7,13 +9,17 @@ import { type Solve, uTurn, yTurn } from "./solve";
  * 첫 화면 연출(초보자 해법)만 쓴다. 컴퓨터 대결 계획(`botPlan`)은 기존 해법을 그대로 써서
  * 다른 기기가 다시 계산한 계획과 어긋나지 않는다.
  *
- * 십자(`learn/lessons-333.ts` 「흰 십자」의 다섯 경우):
- * 1. 아래층, 흰색이 아래: D로 옆색을 같은 가운데 밑에 맞추고 그 면 반 바퀴.
- * 2. 가운데 줄: 흰색이 아닌 쪽 색이 붙은 면을 한 번 돌려 올린다. 옆색이 그 면 가운데와 다르면
- *    U로 제자리를 그 면에 비켜 놓고, 올리고, U를 되돌린다(이미 넣은 모서리를 지킨다).
- * 3. 아래층, 흰색이 옆: 그 면을 한 번 돌려 가운데 줄로 올린 뒤 2.
- * 4. 윗층에서 뒤집힘: 그 면을 한 번 돌려 가운데 줄로 내린 뒤 2.
- * 5. 윗층 흰색 위, 엉뚱한 자리: 그 면 반 바퀴로 내린 뒤 1(아직 넣은 것이 없으면 U만 돌려도 된다).
+ * 흐름(2026-11-05 사용자): 맞추는 면(흰 면, U)은 돌리지 않는다. 넣을 조각을 안전한 층(맞추는 면의
+ * 반대쪽, D)으로 빼고, 안전한 층만 돌려 들어갈 자리 밑에 둔 뒤 정해진 수로 넣는다.
+ *
+ * 십자(「항상 D면으로 내려서 옮겨서 올려」): 엣지는 늘 앞면(F)으로 내리고 올린다. 넣을 자리를 y로 앞에
+ * 가져오고, 수는 F·D·y뿐이다(`cross-front.ts`가 경우마다 가장 짧은 꼴을 찾는다). 경우 이름은
+ * `learn/lessons-333.ts` 「흰 십자」의 다섯 경우다.
+ * 1. 아래층, 흰색이 아래: D로 자리 밑에 두고 y로 앞에 가져와 `F2`.
+ * 2. 아래층, 흰색이 옆: 가운데 줄로 올렸다가 y로 돌려 F로 올린다(`D y F y' F'`).
+ * 3. 가운데 줄: F로 아래층에 내렸다가 올린다(`F F2`, 합치면 `F'`).
+ * 4. 윗층 흰색 위, 엉뚱한 자리: y로 앞에 가져와 `F2`로 내린 뒤 1.
+ * 5. 윗층에서 뒤집힘: F로 내린 뒤 2.
  *
  * 첫 층 꼭짓점: 넣을 칸을 앞-오른쪽 위(UFR)에 오게 y로 돌려 쥐고, 그 흰 꼭짓점을 D로 바로 밑(DFR)에
  * 데려와 `R' D' R D`를 흰색이 위로 올 때까지 되풀이한다. 윗층 엉뚱한 자리에 박힌 꼭짓점은 그 칸을
@@ -73,17 +79,11 @@ function crossSolvedSlots(rel: string): number[] {
   });
 }
 
-/** 색 `c` 모서리의 십자 자리 */
-const homeOf = (c: FaceLetter) => CROSS_SIDE.findIndex((i) => faceOf(i) === c);
-
-const D_TURNS = ["", "D", "D'", "D2"];
-const U_GUARD = ["", "U", "U'", "U2"];
-const inverseU: Record<string, string> = {
-  "": "",
-  U: "U'",
-  "U'": "U",
-  U2: "U2",
-};
+/** 흰 십자·첫 층 코너를 맞추는 면(흰 면 위). 이 면은 돌리지 않는다 */
+export const TAUGHT_SOLVED_FACE: FaceLetter = "U";
+/** 안전한 층: 맞추는 면의 반대쪽. 맞춘 조각이 없어 마음껏 돌린다 */
+export const TAUGHT_SAFE_FACE: FaceLetter = OPPOSITE[TAUGHT_SOLVED_FACE];
+const SAFE = TAUGHT_SAFE_FACE;
 
 export type CrossCase =
   | "down-white-down"
@@ -94,70 +94,27 @@ export type CrossCase =
 
 const CASE_ORDER: readonly CrossCase[] = [
   "down-white-down",
-  "middle",
   "down-white-side",
-  "top-flipped",
+  "middle",
   "top-wrong",
+  "top-flipped",
 ];
 
+const touches = (slot: number, face: FaceLetter) =>
+  (EDGE_FACELETS[slot] as readonly number[]).some((i) => faceOf(i) === face);
+
 function caseOf(e: WhiteEdge): CrossCase {
-  if (e.slot >= 8) return "middle";
-  if (e.slot >= 4)
-    return faceOf(e.white) === "D" ? "down-white-down" : "down-white-side";
-  return faceOf(e.white) === "U" ? "top-wrong" : "top-flipped";
-}
-
-const join = (...parts: string[]) => parts.filter(Boolean).join(" ");
-
-/** 가운데 줄 모서리를 올리는 수 후보(바로 올리기 먼저, 그다음 U로 비켜 놓기) */
-function middleCandidates(e: WhiteEdge): string[] {
-  const o = faceOf(e.other);
-  const out: string[] = [];
-  for (const u of U_GUARD)
-    for (const t of [o, `${o}'`]) out.push(join(u, t, inverseU[u] as string));
-  return out;
-}
-
-/** 그 면을 한 번 돌려 가운데 줄로 보내는 수(흰 스티커가 붙은 면) */
-function toMiddleCandidates(e: WhiteEdge): string[] {
-  const w = faceOf(e.white);
-  return [w, `${w}'`];
-}
-
-/** 모서리 하나를 경우대로 올리는 수 후보(짧은 것부터 고른다) */
-function edgeCandidates(s: Solve, e: WhiteEdge): string[] {
-  const kind = caseOf(e);
-  if (kind === "down-white-down")
-    return D_TURNS.map((d) => join(d, `${e.color}2`));
-  if (kind === "middle") return middleCandidates(e);
-  const out: string[] = [];
-  if (kind === "top-wrong") {
-    // 아직 넣은 것이 없으면 윗면만 돌려 맞출 수도 있다(레슨: 「U'로 윗면을 돌리면 맞아요」)
-    out.push("U", "U'", "U2");
-    const down = `${faceOf(e.other)}2`;
-    for (const d of D_TURNS) out.push(join(down, d, `${e.color}2`));
-    return out;
-  }
-  const pres = kind === "down-white-side" ? D_TURNS : [""];
-  for (const pre of pres) {
-    const t1 = s.clone().apply(pre);
-    const moved = whiteEdges(t1.rel()).find((x) => x.color === e.color);
-    if (!moved) continue;
-    for (const m of toMiddleCandidates(moved)) {
-      const t2 = t1.clone().apply(m);
-      const mid = whiteEdges(t2.rel()).find((x) => x.color === e.color);
-      if (!mid || mid.slot < 8) continue;
-      for (const up of middleCandidates(mid)) out.push(join(pre, m, up));
-    }
-  }
-  return out;
+  if (touches(e.slot, SAFE))
+    return faceOf(e.white) === SAFE ? "down-white-down" : "down-white-side";
+  if (!touches(e.slot, TAUGHT_SOLVED_FACE)) return "middle";
+  return faceOf(e.white) === TAUGHT_SOLVED_FACE ? "top-wrong" : "top-flipped";
 }
 
 const length = (alg: string) => (alg ? alg.split(" ").length : 0);
 
 /**
- * 다음에 넣을 흰 모서리 하나와 그 수. 쉬운 경우(1→5 차례)의 모서리부터, 이미 넣은 것을 지키며
- * 그 모서리를 넣는 가장 짧은 후보. 십자가 다 됐으면 null.
+ * 다음에 넣을 흰 엣지 하나와 그 수. 쉬운 경우(1→5 차례)의 엣지부터, 그 경우 안에서는 가장 짧게 넣는 것.
+ * 수는 F·D·y뿐이고(`cross-front.ts`) 이미 넣은 엣지는 그대로 남는다. 십자가 다 됐으면 null.
  */
 export function nextCrossEdge(
   s: Solve,
@@ -169,21 +126,15 @@ export function nextCrossEdge(
     (e) => !(e.slot < 4 && solved.includes(e.slot)),
   );
   for (const kind of CASE_ORDER) {
+    let best: { color: FaceLetter; alg: string } | null = null;
     for (const e of todo.filter((x) => caseOf(x) === kind)) {
-      let best: string | null = null;
-      for (const alg of edgeCandidates(s, e)) {
-        if (best !== null && length(alg) >= length(best)) continue;
-        const after = crossSolvedSlots(s.clone().apply(alg).rel());
-        if (
-          after.includes(homeOf(e.color)) &&
-          solved.every((j) => after.includes(j))
-        )
-          best = alg;
-      }
-      if (best !== null) return { kind, color: e.color, alg: best };
+      const alg = frontCrossInsert(e.white, e.color as SideFace, solved);
+      if (best === null || length(alg) < length(best.alg))
+        best = { color: e.color, alg };
     }
+    if (best) return { kind, ...best };
   }
-  throw new Error("십자 모서리를 넣을 수를 찾지 못했다");
+  throw new Error("십자 엣지를 넣을 수를 찾지 못했다");
 }
 
 /** 배우는 방식 흰 십자(흰 면 위). 모서리마다 살피고 하나씩 넣는다 */
@@ -234,6 +185,55 @@ export function cornersTaught(s: Solve): void {
       return !cornerOk(t.cp, t.co, 0);
     }) as number;
     s.apply(yTurn(j)).apply(TAUGHT_CORNER_TRIGGER);
+  }
+}
+
+// ---------- 둘째 층(흰 면 아래, 늘 앞-오른쪽 칸) ----------
+
+/** 둘째 층: 앞 위 엣지를 앞-오른쪽 칸으로(앞에서 들어옴) */
+export const TAUGHT_MIDDLE_FROM_FRONT = "U R U' R' U' F' U F";
+/** 둘째 층: 오른쪽 위 엣지를 앞-오른쪽 칸으로(오른쪽에서 들어옴) */
+export const TAUGHT_MIDDLE_FROM_RIGHT = "U' F' U F U R U' R'";
+
+/**
+ * 둘째 층 엣지(2026-11-05 사용자 「2층도 마찬가지」). 넣는 곳은 늘 앞-오른쪽 칸(FR)이다: 넣을 칸을 y로
+ * 앞-오른쪽에 가져오고, 윗면(반대 면)을 돌려 엣지를 앞 위(옆색이 앞 센터와 같게) 또는 오른쪽 위(옆색이
+ * 오른쪽 센터와 같게)에 두고 그 쪽 공식을 쓴다. 왼쪽 칸 공식(`U' L' U L U F U' F'`)은 쓰지 않는다.
+ * 윗층에 넣을 엣지가 없으면 잘못 든 칸을 앞-오른쪽으로 가져와 앞 공식으로 빼낸다.
+ */
+export function middleTaught(s: Solve): void {
+  const ok = (ep: number[], eo: number[], i: number) =>
+    ep[i] === i && eo[i] === 0;
+  for (let iter = 0; ; iter++) {
+    if (iter > 20) throw new Error("둘째 층 단계가 끝나지 않는다");
+    const c = s.cubie();
+    if ([8, 9, 10, 11].every((i) => ok(c.ep, c.eo, i))) return;
+    s.look();
+    let best: { pre: string; alg: string } | null = null;
+    for (let k = 0; k < 4; k++)
+      for (let a = 0; a < 4; a++) {
+        const pre = [yTurn(k), uTurn(a)].filter(Boolean).join(" ");
+        const t = s.clone().apply(pre);
+        const r = t.rel();
+        const ep = t.cubie().ep;
+        const alg =
+          (ep[1] as number) >= 8 && r[19] === "F" && r[7] === "R"
+            ? TAUGHT_MIDDLE_FROM_FRONT
+            : (ep[0] as number) >= 8 && r[10] === "R" && r[5] === "F"
+              ? TAUGHT_MIDDLE_FROM_RIGHT
+              : null;
+        if (!alg) continue;
+        if (!best || length(pre) < length(best.pre)) best = { pre, alg };
+      }
+    if (best) {
+      s.apply(best.pre).apply(best.alg);
+      continue;
+    }
+    const k = [0, 1, 2, 3].find((k) => {
+      const t = s.clone().apply(yTurn(k)).cubie();
+      return !ok(t.ep, t.eo, 8);
+    }) as number;
+    s.apply(yTurn(k)).apply(TAUGHT_MIDDLE_FROM_FRONT);
   }
 }
 

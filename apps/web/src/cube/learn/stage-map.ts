@@ -32,7 +32,7 @@ const reps = (alg: string, k: number) =>
   Array.from({ length: k }, () => alg).join(" ");
 const TW = "R' D' R D";
 const RIGHT = "U R U' R' U' F' U F";
-const LEFT = "U' L' U L U F U' F'";
+const FROM_RIGHT = "U' F' U F U R U' R'";
 const EO = "F R U R' U' F'";
 const SUNE = "R U R' U R U2 R'";
 const EDGE_SWAP = `${SUNE} U`;
@@ -54,9 +54,9 @@ function scrambleFor(moves: string[]): string {
 
 // 3×3 초보자: 흰 십자 → 첫 층 코너(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 코너 자리 → 방향
 const BEGINNER_333_MOVES = [
-  "F' D R' D2 L F2",
+  "D' F2 y F D' F' y F y F2 D y F2",
   `D ${TW} y' ${reps(TW, 3)} y' D2 ${reps(TW, 5)} y' D' ${TW}`,
-  `z2 U ${RIGHT} U2 ${LEFT} y ${RIGHT} U' ${LEFT}`,
+  `z2 U ${RIGHT} U2 y' ${FROM_RIGHT} y2 ${RIGHT} U' y' ${FROM_RIGHT}`,
   `${EO} U2 ${EO} ${EO}`,
   `U ${EDGE_SWAP} U' y' ${EDGE_SWAP}`,
   `${CYCLE} y' ${CYCLE}`,
@@ -82,7 +82,11 @@ const CFOP_SCRAMBLE =
 export const STAGE_SPECS: Record<string, StageSpec> = {
   "333-beginner": {
     stages: [
-      { title: "흰 십자", lessons: ["333-white-cross"], goal: "white-cross" },
+      {
+        title: "흰 십자",
+        lessons: ["333-safe-turns", "333-white-cross"],
+        goal: "white-cross",
+      },
       {
         title: "첫 층 코너",
         lessons: ["333-first-corners-up"],
@@ -123,7 +127,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "끝까지 맞추는 데 외울 공식은 모두 몇 개일까요?",
         choices: ["여섯 개", "열두 개", "스무 개 넘게"],
         answer: 0,
-        why: "R' D' R D, 둘째 층 넣기 둘(오른쪽·왼쪽), F R U R' U' F', R U R' U R U2 R' U, U R U' L' U R' U' L. 단계마다 같은 공식을 여러 번 써요.",
+        why: "R' D' R D, 둘째 층 넣기 둘(앞에서·오른쪽에서), F R U R' U' F', R U R' U R U2 R' U, U R U' L' U R' U' L. 단계마다 같은 공식을 여러 번 써요.",
       },
     ],
   },

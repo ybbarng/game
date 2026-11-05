@@ -25,9 +25,11 @@ import {
   CROSS_MIDDLE_R,
   CROSS_WRONG_TOP,
   CROSS_WRONG_TOP_TRY,
+  SAFE_SETUP,
   SEXY,
 } from "./lessons-333";
 import { setupFor } from "./notation";
+import { makeHintPlan } from "./taught-hint";
 import type { FaceLetter, GoalName, Lesson } from "./types";
 
 const F: Record<FaceLetter, number> = { U: 0, R: 1, F: 2, D: 3, L: 4, B: 5 };
@@ -67,6 +69,43 @@ const colorsAt = (n: number, s: PuzzleState, at: FaceLetter[]) =>
 
 const WHITE = F.U;
 
+describe("안전한 회전·위험한 회전", () => {
+  const lesson = lessonOf("333-safe-turns");
+  const cross = (s: PuzzleState) => goalMet(3, s, "white-cross");
+  const start = play(3, SAFE_SETUP);
+
+  it("시작 큐브는 흰 십자만 맞고 나머지는 흐트러졌다", () => {
+    expect(cross(start)).toBe(true);
+    expect(goalMet(3, start, "first-layer")).toBe(false);
+  });
+
+  it("반대 면(아랫면)은 어느 쪽으로 돌려도 십자가 그대로다", () => {
+    for (const m of ["D", "D'", "D2"])
+      expect(cross(play(3, m, start))).toBe(true);
+  });
+
+  it("맞춘 면(윗면)을 돌리면 십자가 어긋나고, 되돌리면 다시 맞는다", () => {
+    for (const m of ["U", "U'", "U2"])
+      expect(cross(play(3, m, start))).toBe(false);
+    expect(cross(play(3, "U U'", start))).toBe(true);
+  });
+
+  it("단계: 아랫면 → 윗면 → 되돌리기 → 고르기", () => {
+    const [safe, danger, undo, quiz] = lesson.steps;
+    expect(safe?.kind).toBe("turn");
+    expect(safe?.alg).toMatch(/^D/);
+    expect(danger?.kind).toBe("turn");
+    expect(danger?.alg).toMatch(/^U/);
+    expect(undo?.kind).toBe("try");
+    expect(undo?.goal).toBe("white-cross");
+    const s = play(3, `${SAFE_SETUP} U`);
+    expect(undo?.setup).toEqual({ alg: `${SAFE_SETUP} U` });
+    expect(cross(s)).toBe(false);
+    expect(cross(play(3, undo?.alg as string, s))).toBe(true);
+    expect(quiz?.quiz?.choices[quiz.quiz.answer]).toMatch(/반대 면/);
+  });
+});
+
 describe("흰 십자: 경우별 시연", () => {
   const lesson = lessonOf("333-white-cross");
 
@@ -84,42 +123,66 @@ describe("흰 십자: 경우별 시연", () => {
   });
 
   it("글이 말하는 엣지 자리와 흰색이 보는 쪽", () => {
-    const at = (sol: string) => play(3, setupFor(sol));
+    const at = (c: { setup: string }) => play(3, c.setup);
     // 가운데 줄 앞-오른쪽: 흰색이 오른쪽 / 앞
-    expect(faceOf(3, at(CROSS_MIDDLE.alg), ["F", "R"], WHITE)).toBe(F.R);
-    expect(faceOf(3, at(CROSS_MIDDLE_R.alg), ["F", "R"], WHITE)).toBe(F.F);
-    expect(faceOf(3, at(CROSS_GUARD.alg), ["F", "R"], WHITE)).toBe(F.R);
+    expect(faceOf(3, at(CROSS_MIDDLE), ["F", "R"], WHITE)).toBe(F.R);
+    expect(faceOf(3, at(CROSS_MIDDLE_R), ["F", "R"], WHITE)).toBe(F.F);
+    expect(faceOf(3, at(CROSS_GUARD), ["F", "R"], WHITE)).toBe(F.R);
     // 흰-빨강인데 빨강이 앞면에 붙음
-    expect(faceOf(3, at(CROSS_GUARD.alg), ["F", "R"], F.R)).toBe(F.F);
+    expect(faceOf(3, at(CROSS_GUARD), ["F", "R"], F.R)).toBe(F.F);
     // 흰-초록인데 초록이 오른쪽 면에 붙음
-    expect(faceOf(3, at(CROSS_GUARD_TRY.alg), ["F", "R"], F.F)).toBe(F.R);
-    // 아래층 흰색 옆
-    expect(faceOf(3, at(CROSS_DOWN_SIDE.alg), ["D", "F"], WHITE)).toBe(F.F);
-    expect(faceOf(3, at(CROSS_DOWN_SIDE_TRY.alg), ["D", "R"], WHITE)).toBe(F.R);
+    expect(faceOf(3, at(CROSS_GUARD_TRY), ["F", "R"], F.F)).toBe(F.R);
+    // 아래층 흰색 옆: 흰-빨강이 아래-오른쪽(흰색 오른쪽), 흰-초록이 아래-앞(흰색 앞)
+    expect(colorsAt(3, at(CROSS_DOWN_SIDE), ["D", "R"])).toEqual([0, 1]);
+    expect(faceOf(3, at(CROSS_DOWN_SIDE), ["D", "R"], WHITE)).toBe(F.R);
+    expect(colorsAt(3, at(CROSS_DOWN_SIDE_TRY), ["D", "F"])).toEqual([0, 2]);
+    expect(faceOf(3, at(CROSS_DOWN_SIDE_TRY), ["D", "F"], WHITE)).toBe(F.F);
     // 윗층 제자리에서 뒤집힘
-    expect(colorsAt(3, at(CROSS_FLIPPED.alg), ["U", "F"])).toEqual([0, 2]);
-    expect(faceOf(3, at(CROSS_FLIPPED.alg), ["U", "F"], WHITE)).toBe(F.F);
-    expect(colorsAt(3, at(CROSS_FLIPPED_TRY.alg), ["U", "R"])).toEqual([0, 1]);
-    expect(faceOf(3, at(CROSS_FLIPPED_TRY.alg), ["U", "R"], WHITE)).toBe(F.R);
-    // 윗층 흰색 위, 엉뚱한 자리
-    expect(colorsAt(3, at(CROSS_WRONG_TOP.alg), ["U", "R"])).toEqual([0, 2]);
-    expect(faceOf(3, at(CROSS_WRONG_TOP.alg), ["U", "R"], WHITE)).toBe(F.U);
-    expect(colorsAt(3, at(CROSS_WRONG_TOP_TRY.alg), ["U", "F"])).toEqual([
-      0, 1,
-    ]);
+    expect(colorsAt(3, at(CROSS_FLIPPED), ["U", "F"])).toEqual([0, 2]);
+    expect(faceOf(3, at(CROSS_FLIPPED), ["U", "F"], WHITE)).toBe(F.F);
+    expect(colorsAt(3, at(CROSS_FLIPPED_TRY), ["U", "R"])).toEqual([0, 1]);
+    expect(faceOf(3, at(CROSS_FLIPPED_TRY), ["U", "R"], WHITE)).toBe(F.R);
+    // 윗층 흰색 위, 엉뚱한 자리: 흰-빨강이 위-앞, 흰-주황이 위-오른쪽
+    expect(colorsAt(3, at(CROSS_WRONG_TOP), ["U", "F"])).toEqual([0, 1]);
+    expect(faceOf(3, at(CROSS_WRONG_TOP), ["U", "F"], WHITE)).toBe(F.U);
+    expect(colorsAt(3, at(CROSS_WRONG_TOP_TRY), ["U", "R"])).toEqual([0, 4]);
   });
 
-  it("고르기: 가운데 줄은 옆색이 붙은 면을 돌려 올린다", () => {
-    const s = play(3, setupFor(CROSS_MIDDLE_R.alg));
+  it("경우별 모범 답은 힌트(배우는 방식 해법)가 내는 수와 같고, F·D·y만 쓴다", () => {
+    for (const c of [
+      CROSS_MIDDLE,
+      CROSS_MIDDLE_R,
+      CROSS_GUARD,
+      CROSS_GUARD_TRY,
+      CROSS_DOWN_SIDE,
+      CROSS_DOWN_SIDE_TRY,
+      CROSS_FLIPPED,
+      CROSS_FLIPPED_TRY,
+      CROSS_WRONG_TOP,
+      CROSS_WRONG_TOP_TRY,
+    ]) {
+      const plan = makeHintPlan("cross", play(3, c.setup));
+      expect(plan?.moves.join(" "), c.alg).toBe(c.alg);
+      expect(c.alg).toMatch(/^([FDy]['2]? ?)+$/);
+    }
+  });
+
+  it("단원의 흰 십자 모범 답은 모두 F·D·y만 쓴다", () => {
+    for (const step of lesson.steps)
+      if (step.alg) expect(step.alg, step.body).toMatch(/^([FDy]['2]? ?)+$/);
+  });
+
+  it("고르기: 가운데 줄은 옆색이 붙은 면을 앞으로 가져와 앞면으로 올린다", () => {
+    const s = play(3, CROSS_MIDDLE_R.setup);
     const ok = (alg: string) => goalMet(3, play(3, alg, s), "white-cross");
-    expect(ok("R")).toBe(true);
+    expect(ok("y F")).toBe(true);
     for (const wrong of ["F", "F'", "U", "U'"]) expect(ok(wrong)).toBe(false);
   });
 
   it("고르기: 아래층 흰색 옆을 반 바퀴로 올리면 뒤집혀 올라간다", () => {
-    const s = play(3, `${setupFor(CROSS_DOWN_SIDE.alg)} F2`);
-    expect(colorsAt(3, s, ["U", "F"])).toEqual([0, 2]);
-    expect(faceOf(3, s, ["U", "F"], WHITE)).toBe(F.F);
+    const s = play(3, `${CROSS_DOWN_SIDE.setup} R2`);
+    expect(colorsAt(3, s, ["U", "R"])).toEqual([0, 1]);
+    expect(faceOf(3, s, ["U", "R"], WHITE)).toBe(F.R);
   });
 });
 

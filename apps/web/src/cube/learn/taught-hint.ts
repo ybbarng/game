@@ -292,8 +292,8 @@ export function caseLabel(c: TaughtCase): string {
         : `${colors(c.colors)} 코너: 칸 밑에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`;
     case "middle":
       return c.side === "stuck"
-        ? `${colors(c.colors)} 엣지가 칸에 잘못 들어감: 오른쪽 넣기로 빼내기`
-        : `${colors(c.colors)} 엣지: ${c.side === "right" ? "오른쪽" : "왼쪽"}으로 넣기`;
+        ? `${colors(c.colors)} 엣지가 칸에 잘못 들어감: 앞에서 넣기로 빼내기`
+        : `${colors(c.colors)} 엣지: ${c.side === "right" ? "오른쪽" : "앞"}에서 넣기`;
     case "eo":
       return c.shape === "dot"
         ? "노란 십자: 점, 아무 방향에서 한 번"

@@ -67,15 +67,19 @@ describe("단계 지도", () => {
     ]);
     const ids = c.lessons.map((l) => l.id);
     expect(ids.indexOf("333-beginner-map")).toBe(
-      ids.indexOf("333-white-cross") - 1,
+      ids.indexOf("333-safe-turns") - 1,
     );
+    expect(lessonPlace(c, "333-safe-turns")).toEqual({
+      kind: "stage",
+      index: 0,
+    });
     expect(lessonPlace(c, "333-notation")).toEqual({ kind: "prep" });
     expect(lessonPlace(c, "333-beginner-map")).toEqual({ kind: "map" });
     expect(lessonPlace(c, "333-ll-edges")).toEqual({ kind: "stage", index: 4 });
     expect(lessonPlace(c, "333-beginner-finale")).toEqual({ kind: "after" });
-    // 단원 제목과 단계 이름이 같다
+    // 단계의 본 단원(마지막) 제목과 단계 이름이 같다(흰 십자 앞에는 「안전한 회전」이 붙는다)
     for (const st of c.stages ?? [])
-      expect(c.lessons.find((l) => l.id === st.lessons[0])?.title).toBe(
+      expect(c.lessons.find((l) => l.id === st.lessons.at(-1))?.title).toBe(
         st.title,
       );
   });

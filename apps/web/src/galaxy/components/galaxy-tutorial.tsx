@@ -9,8 +9,8 @@ import {
   viewOf,
 } from "@game/galaxy-engine";
 import { useMemo } from "react";
-
 import type { TutorialKit } from "@/components/tutorial/kit";
+import { BureauLogo } from "@/stardraw/components/BureauMarks";
 import { seatLabel } from "../format";
 import { EMPTY_TIMELINE } from "../fx";
 import { useGalaxyTutorialProgress } from "../progress";
@@ -54,7 +54,8 @@ function BoardSceneView({ scene }: { scene: BoardScene }) {
           data-scene-card
           className="w-[86%] max-w-80 rounded-md border border-amber-900/20 bg-[#f6efe0] px-4 pt-2 pb-3 text-slate-900 shadow-lg"
         >
-          <p className="border-amber-900/25 border-b pb-1 text-center font-semibold text-[10px] text-amber-950/70 tracking-[0.2em]">
+          <p className="flex items-center justify-center gap-1 border-amber-900/25 border-b pb-1 font-semibold text-[10px] text-amber-950/70 tracking-[0.2em]">
+            <BureauLogo className="size-3.5 shrink-0" />
             카노푸스 우주국 공문
           </p>
           <p className="mt-1.5 font-black text-sm">{card.title}</p>

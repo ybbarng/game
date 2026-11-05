@@ -49,7 +49,7 @@ export type GalaxyHost = MatchHost<GalaxyView, Action, GameEvent> & {
   drain(): Snapshot<GalaxyView, GameEvent>[];
 };
 
-/** 봉인 입찰에 낸 값(약속을 낸 뒤 공개할 때 쓴다. 새로고침해도 공개할 수 있게 저장에도 남긴다) */
+/** 봉투 입찰에 낸 값(약속을 낸 뒤 공개할 때 쓴다. 새로고침해도 공개할 수 있게 저장에도 남긴다) */
 export interface PendingBid {
   index: number;
   value: number;
@@ -150,7 +150,7 @@ interface GalaxyStore {
   ): void;
   setSeatNames(seatNames: string[]): void;
   submit(action: Action): SubmitResult;
-  /** 봉인 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
+  /** 봉투 입찰 값 내기(0은 내지 않기). 값은 약속으로만 나가고 모두 낸 뒤 공개한다 */
   placeBid(value: number): SubmitResult;
   leave(): void;
   clearNotice(): void;
@@ -199,7 +199,13 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
     const { host, view, queue, playing } = get();
     if (!host || !view || queue.length > 0 || playing) return;
     const kind = view.decision?.kind;
-    if (kind !== "commit" && kind !== "reveal" && kind !== "bidReveal") return;
+    if (
+      kind !== "commit" &&
+      kind !== "reveal" &&
+      kind !== "bidReveal" &&
+      kind !== "requestReveal"
+    )
+      return;
     const key = `${view.generation}:${view.revealCount}:${view.auctionCount}:${kind}:${view.chains[view.mySeat]?.used ?? 0}`;
     if (lastAuto === key) return;
     let action: Action | null;
@@ -217,7 +223,7 @@ export const useGalaxy = create<GalaxyStore>((set, get) => {
           set({ secrets });
           saveSecrets(secretKey, secrets);
         }
-        action = commitAction(seed);
+        action = commitAction(seed, view);
       } else action = revealFor(view, secrets);
     } else if (kind === "bidReveal") {
       const bid = get().bid;
