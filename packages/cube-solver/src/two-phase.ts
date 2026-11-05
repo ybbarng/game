@@ -339,6 +339,19 @@ export interface Solve3x3Options {
    * 되지 않게 한다(TNoodle firstAxisRestriction).
    */
   firstAxisNot?: "U" | "R" | "F" | "D" | "L" | "B";
+  /**
+   * 탐색 도중 때때로(탐색 마디 1024개마다) 부른다. true를 돌려주면 탐색을 멈추고 `SolveStopped`를 던진다.
+   * 시간 상한을 둘 때 쓴다(동기 탐색이라 밖에서 끊을 수 없다).
+   */
+  shouldStop?: (() => boolean) | undefined;
+}
+
+/** `shouldStop`이 true를 돌려주어 탐색을 멈췄다 */
+export class SolveStopped extends Error {
+  constructor() {
+    super("탐색을 멈췄다");
+    this.name = "SolveStopped";
+  }
 }
 
 /** 3×3 스티커의 글자를 가운데 색 기준 면 이름으로 바꾼다(가운데 여섯이 서로 달라야 한다). */
@@ -364,6 +377,14 @@ let start: CubieCube = solvedCubie();
 let limit = 21;
 /** 첫 수로 막은 축(0 U·D, 1 R·L, 2 F·B), 없으면 -1 */
 let bannedFirstAxis = -1;
+let shouldStop: (() => boolean) | null = null;
+let nodes = 0;
+
+/** 탐색 마디마다 부른다. 멈춤 확인은 1024마디에 한 번 */
+function checkStop(): void {
+  if (shouldStop !== null && (++nodes & 1023) === 0 && shouldStop())
+    throw new SolveStopped();
+}
 
 /** 직전 수 다음에 두지 않을 수: 같은 면, 그리고 맞은편 면은 U·R·F 쪽이 먼저 오게. */
 function skip(face: number, depth: number): boolean {
@@ -380,6 +401,7 @@ function phase1(
   depth: number,
   togo: number,
 ): boolean {
+  checkStop();
   if (togo === 0) {
     if (twist !== 0 || flip !== 0 || slice !== SLICE_SOLVED) return false;
     // 2단계 수로 끝나면 그 수를 뺀 더 짧은 1단계 해가 이미 있다
@@ -438,6 +460,7 @@ function phase2(
   depth: number,
   togo: number,
 ): boolean {
+  checkStop();
   if (togo === 0) return cp === 0 && ue === 0 && sp === 0;
   for (let k = 0; k < N_P2; k++) {
     const m = P2_MOVES[k] as number;
@@ -458,7 +481,7 @@ function phase2(
 
 /**
  * 3×3 스티커 문자열(54글자, Kociemba 순서)을 맞추는 수를 WCA 표기로 낸다. 맞춘 상태면 빈 문자열.
- * 같은 입력이면 늘 같은 해가 나온다. 맞출 수 없는 상태면 오류.
+ * 같은 입력이면 늘 같은 해가 나온다. 맞출 수 없는 상태면 오류. `shouldStop`으로 멈추면 `SolveStopped`.
  *
  * 큐브가 돌아가 있어도(가운데가 기본 방향이 아님: x·y로 돌렸거나 Rw·Uw로 끝난 섞기) 된다.
  * 가운데 색을 기준으로 면 이름을 다시 붙여 푼다. 바깥 면 수는 공간에 붙은 면(위·오른쪽…)을
@@ -477,6 +500,8 @@ export function solve3x3(
     options.firstAxisNot === undefined
       ? -1
       : FACES.indexOf(options.firstAxisNot) % 3;
+  shouldStop = options.shouldStop ?? null;
+  nodes = 0;
   const twist = twistOf(cube);
   const flip = flipOf(cube);
   const slice = sliceOf(cube);
