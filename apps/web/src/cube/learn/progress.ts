@@ -48,6 +48,11 @@ export interface LessonProgress {
    * 모양이 틀린 값은 읽을 때 버린다
    */
   step?: number;
+  /**
+   * 마친 해 보기 밖 단계 번호들(시연을 끝까지 봄·찾기·문제·따라 하기 등, 2026-11-05 더함). 단계 띠의 초록 표시가
+   * 나갔다 들어와도 남는다. 옛 기록에는 없고(빈 목록), 모양이 틀린 값은 읽을 때 버린다
+   */
+  acted?: number[];
 }
 
 /** 저장된 단계 번호가 쓸 만한가(0 이상의 정수) */
@@ -95,10 +100,12 @@ function migrate(
   for (const [id, p] of Object.entries(lessons)) {
     if (typeof p !== "object" || p === null) continue;
     const passed = Array.isArray(p.passed) ? p.passed.filter(validStep) : [];
+    const acted = Array.isArray(p.acted) ? p.acted.filter(validStep) : [];
     out[id] = {
       passed,
       done: p.done === true,
       ...(validStep(p.step) ? { step: p.step } : {}),
+      ...(acted.length > 0 ? { acted } : {}),
     };
   }
   for (const [from, to] of Object.entries(LESSON_RENAMES)) {
@@ -161,6 +168,24 @@ export function markLessonDone(
   storage = defaultStorage(),
 ): LearnProgress {
   return updateLesson(lessonId, (p) => ({ ...p, done: true }), storage);
+}
+
+/** 해 보기 밖 단계 하나를 마쳤다(단계 띠 초록) */
+export function markStepActed(
+  lessonId: string,
+  step: number,
+  storage = defaultStorage(),
+): LearnProgress {
+  return updateLesson(
+    lessonId,
+    (p) => {
+      const acted = p.acted ?? [];
+      return acted.includes(step)
+        ? p
+        : { ...p, acted: [...acted, step].sort((a, b) => a - b) };
+    },
+    storage,
+  );
 }
 
 /** 단계를 봤다(다시 열 때 여기서 연다) */

@@ -11,6 +11,7 @@ import {
   type Course,
   courseById,
   type Lesson,
+  type LessonStep,
 } from "../learn";
 import {
   demoBodyParts,
@@ -25,11 +26,13 @@ import {
   loadLearn,
   markLessonDone,
   markLessonOpened,
+  markStepActed,
   markStepSeen,
   markTryPassed,
   resumeStep,
 } from "../learn/progress";
 import { type CubeSettings, useCubeSettings } from "../settings";
+import { touchText } from "../touch-text";
 import { DemoCube } from "./DemoCube";
 import {
   CourseNext,
@@ -48,6 +51,7 @@ import {
 } from "./LessonActs";
 import { MoveText } from "./MoveChip";
 import { BuildPanel, PartsPanel } from "./PieceStage";
+import { useNoKeyboard } from "./PracticeCube";
 import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
@@ -143,6 +147,24 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           이어서 하기: {last.course.title} · {last.lesson.title}
         </a>
       )}
+      {/* 배우기 전에 볼 것(처음 온 사람의 길이 여기서도 이어지게, 2026-11-05 점검) */}
+      <p
+        className="flex flex-wrap gap-2 text-white/70 text-xs"
+        data-learn-before
+      >
+        <a
+          href="/cube/intro"
+          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
+        >
+          👋 처음이라면: 화면 쓰는 법
+        </a>
+        <a
+          href="/cube/keys/learn"
+          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
+        >
+          ⌨️ 키 익히기
+        </a>
+      </p>
       {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
       <div
         role="tablist"
@@ -348,6 +370,7 @@ function LessonView({
   setProgress: (p: LearnProgress) => void;
 }) {
   const settings = useCubeSettings();
+  const noKeyboard = useNoKeyboard();
   // 나갔다 들어오면 마지막으로 본 단계로 연다(진도는 단원을 그리기 전에 읽혀 있다)
   const [at, setAt] = useState(() =>
     resumeStep(progress, lesson.id, lesson.steps.length),
@@ -367,8 +390,8 @@ function LessonView({
     setProgress(markStepSeen(lesson.id, at));
   }, [lesson.id, at]);
 
-  // 이 화면에서 해낸 상호작용 단계(해보기는 진도에 남고, 나머지는 단원을 여는 동안만)
-  const [acted, setActed] = useState<number[]>([]);
+  // 해낸 상호작용 단계(해 보기는 `passed`, 나머지는 `acted`. 둘 다 진도에 남아 다시 열어도 초록)
+  const acted = progress.lessons[lesson.id]?.acted ?? [];
   // 시연 단계는 한 번에 하나만: 「보기」(재생·한 수씩) → 「해 보기」(그 공식을 쳐 보기)
   const [demoTurn, setDemoTurn] = useState(false);
   // 재생을 끝까지 봤나(「이제 해 보세요」로 넘긴다)
@@ -405,12 +428,16 @@ function LessonView({
   const isLast = at === lesson.steps.length - 1;
   // 단원 마지막 해 보기(「혼자 해 보기 남음」 꼬리표)
   const lastTry = lesson.steps.findLastIndex((s) => s.kind === "try");
+  // 마지막 해 보기를 아직 안 했으면 「다음 단원」을 강조색으로 두지 않는다(2026-11-05 점검)
+  const tryLeft = lastTry >= 0 && !passed.includes(lastTry);
   const hasMask = picture.mask !== undefined && picture.mask !== "all";
   const done =
     !stepIsActive(step) ||
     acted.includes(at) ||
     (step.kind === "try" && passed.includes(at));
-  const markActed = () => setActed((a) => (a.includes(at) ? a : [...a, at]));
+  const markActed = () => {
+    if (!acted.includes(at)) setProgress(markStepActed(lesson.id, at));
+  };
 
   return (
     <>
@@ -459,30 +486,45 @@ function LessonView({
 
       {/* 단계 표시 */}
       <ol className="flex flex-wrap gap-1" aria-label="단계">
-        {lesson.steps.map((s, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: 단계 차례가 곧 열쇠다
-          <li key={`${i}-${s.kind}`}>
-            <button
-              type="button"
-              onClick={() => setAt(i)}
-              data-step-to={s.kind}
-              aria-current={i === at ? "step" : undefined}
-              title={KIND_LABEL[s.kind]}
-              className={cn(
-                "h-7 min-w-7 rounded-md px-1.5 text-xs",
-                i === at
-                  ? "bg-sky-500 font-bold text-black"
-                  : (s.kind === "try" && passed.includes(i)) ||
-                      acted.includes(i)
-                    ? "bg-emerald-500/70 text-black"
-                    : "bg-white/10 text-white/70",
-              )}
-            >
-              {s.kind === "text" ? i + 1 : KIND_MARK[s.kind]}
-            </button>
-          </li>
-        ))}
+        {lesson.steps.map((s, i) => {
+          const stepDone =
+            (s.kind === "try" && passed.includes(i)) || acted.includes(i);
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 단계 차례가 곧 열쇠다
+            <li key={`${i}-${s.kind}`}>
+              <button
+                type="button"
+                onClick={() => setAt(i)}
+                data-step-to={s.kind}
+                data-step-done={stepDone ? "" : undefined}
+                aria-current={i === at ? "step" : undefined}
+                title={KIND_LABEL[s.kind]}
+                className={cn(
+                  "h-7 min-w-7 rounded-md px-1.5 text-xs",
+                  i === at
+                    ? "bg-sky-500 font-bold text-black"
+                    : stepDone
+                      ? "bg-emerald-500/70 text-black"
+                      : "bg-white/10 text-white/70",
+                )}
+              >
+                {s.kind === "text" ? i + 1 : KIND_MARK[s.kind]}
+              </button>
+            </li>
+          );
+        })}
       </ol>
+      {/* 아이콘 뜻(마우스를 올려야 나오던 것을 보이게, 2026-11-05 점검) */}
+      <p
+        className="-mt-2 flex flex-wrap gap-x-3 text-[11px] text-white/45"
+        data-step-legend
+      >
+        {stepLegend(lesson.steps.map((s) => s.kind)).map(([mark, label]) => (
+          <span key={mark}>
+            {mark} {label}
+          </span>
+        ))}
+      </p>
 
       <section
         className="flex flex-col gap-3"
@@ -503,7 +545,7 @@ function LessonView({
                 className={cn(part.doing && !demoTurn && "text-white/40")}
               >
                 <MoveText
-                  text={part.text}
+                  text={touchText(part.text, noKeyboard)}
                   n={lesson.size}
                   letters={lesson.id.startsWith("bld")}
                   keys={demoTurn}
@@ -512,7 +554,10 @@ function LessonView({
             ))
           ) : (
             <MoveText
-              text={backViewText(step.body, settings.backView)}
+              text={touchText(
+                backViewText(step.body, settings.backView),
+                noKeyboard,
+              )}
               n={lesson.size}
               letters={lesson.id.startsWith("bld")}
             />
@@ -704,28 +749,31 @@ function LessonView({
                 이 공식 훈련하기: {drillTitle(lesson.drill)}
               </a>
             )}
-            {next &&
-              lastTry >= 0 &&
-              at !== lastTry &&
-              !passed.includes(lastTry) && (
-                <button
-                  type="button"
-                  data-lesson-try-left={lastTry}
-                  onClick={(e) => {
-                    setAt(lastTry);
-                    e.currentTarget.blur();
-                  }}
-                  title="단원 마지막 해 보기로 가기"
-                  className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
-                >
-                  혼자 해 보기 남음
-                </button>
-              )}
+            {next && tryLeft && at !== lastTry && (
+              <button
+                type="button"
+                data-lesson-try-left={lastTry}
+                onClick={(e) => {
+                  setAt(lastTry);
+                  e.currentTarget.blur();
+                }}
+                title="단원 마지막 해 보기로 가기"
+                className="cube-rise ml-auto rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-amber-200 text-xs transition hover:bg-amber-400/20 active:scale-[0.97]"
+              >
+                혼자 해 보기 남음
+              </button>
+            )}
             {next && (
               <a
                 href={lessonHref(next.id)}
+                data-lesson-next={tryLeft ? "plain" : "strong"}
                 onClick={() => setProgress(markLessonDone(lesson.id))}
-                className="ml-auto rounded-lg bg-sky-500 px-4 py-2 font-semibold text-black text-sm"
+                className={cn(
+                  "ml-auto rounded-lg px-4 py-2 text-sm",
+                  tryLeft
+                    ? "bg-white/10 text-white/80 hover:bg-white/15"
+                    : "bg-sky-500 font-semibold text-black",
+                )}
               >
                 다음 단원: {next.title} →
               </a>
@@ -750,6 +798,19 @@ function LessonView({
       {isLast && !next && <CourseNext course={course} />}
     </>
   );
+}
+
+/** 단계 띠 아이콘 뜻: 이 단원에 나오는 아이콘만, 같은 아이콘은 이름을 묶는다(✋ 해보기·따라 하기) */
+function stepLegend(kinds: LessonStep["kind"][]): [string, string][] {
+  const byMark = new Map<string, string[]>();
+  for (const k of kinds) {
+    if (k === "text") continue;
+    const mark = KIND_MARK[k];
+    const labels = byMark.get(mark) ?? [];
+    if (!labels.includes(KIND_LABEL[k])) labels.push(KIND_LABEL[k]);
+    byMark.set(mark, labels);
+  }
+  return [...byMark].map(([mark, labels]) => [mark, labels.join("·")]);
 }
 
 /** 곁 그림: 다른 크기 큐브를 정지 그림으로(예: 2×2 단원의 코너만 보이는 3×3) */
@@ -854,7 +915,7 @@ function DemoPhases({
       {!turning && (
         <p className="text-white/60 text-xs" data-demo-say>
           {seen && offersTurn
-            ? "다 봤어요. 이제 「해 보기」로 직접 쳐 보세요."
+            ? "다 봤어요. 이제 「해 보기」로 직접 해 보세요."
             : "먼저 보세요. ▶ 재생이나 한 수씩 넘겨 봐요."}
         </p>
       )}

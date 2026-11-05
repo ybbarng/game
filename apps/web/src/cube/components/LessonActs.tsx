@@ -562,7 +562,7 @@ export function TurnPanel({
           ? (passedText ?? "잘했어요! 같은 모양이 됐어요.")
           : progress.step < 0
             ? "공식과 다른 모양이 됐어요. 되돌리기나 「처음 상황으로」로 다시 해 보세요."
-            : "노란 칸의 수를 직접 쳐 보세요."}
+            : "노란 칸의 수를 직접 돌려 보세요."}
       </Status>
       <button
         type="button"
