@@ -189,7 +189,7 @@ export const KEY_CALM = {
   tint: 0.16,
   primeTint: 0.08,
   /** 반대 방향 표시(선·점)의 불투명도 */
-  primeMark: 0.45,
+  primeMark: 0.6,
 } as const;
 
 /** `tint` 안의 칸 바탕 */

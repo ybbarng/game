@@ -188,7 +188,8 @@ export function KeyGuide({
         {label && (
           <span
             data-key-label
-            className={`font-semibold text-sm ${labelTone(paint)}`}
+            // 수는 크게, 낱말(깊이 2·왼손 층 +)은 칸에 들어가게 작게
+            className={`text-center font-semibold ${/[가-힣\s]/.test(label) ? "px-0.5 text-[10px] leading-tight" : "text-sm"} ${labelTone(paint)}`}
           >
             {label}
           </span>

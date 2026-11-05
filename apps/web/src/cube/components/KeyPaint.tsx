@@ -95,7 +95,7 @@ export function KeyMark({ look }: { look: KeyLook | null }) {
       className={
         look.style === "dot"
           ? "absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
-          : "absolute inset-x-[22%] bottom-1 h-0.5 rounded-full"
+          : "absolute inset-x-[22%] bottom-1 h-[3px] rounded-full"
       }
       style={style}
       aria-hidden
