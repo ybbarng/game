@@ -29,6 +29,7 @@ import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
 import { planInWorker } from "../worker";
 import { checkBotRun, sameAsBotSolve } from "./bot-racer";
+import { MatchBoard } from "./MatchBoard";
 import { stageLabel, turnCount } from "./race-game";
 import {
   liveOrder,
@@ -708,6 +709,7 @@ function ResultBox({
         </tbody>
       </table>
       <RaceSplits room={room} ids={result.ranking} splitsOf={splitsOf} />
+      <MatchBoard room={room} />
       {!local && <ResultDetails room={room} snap={snap} />}
       {actions && (
         <div
