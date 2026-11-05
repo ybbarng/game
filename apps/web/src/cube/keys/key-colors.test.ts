@@ -7,6 +7,7 @@ import {
   capRepeats,
   HOME_ORIENT,
   KEY_LOOK_DEFAULT,
+  keyMarkShape,
   keyPaint,
   keyTone,
   lumaOf,
@@ -76,19 +77,67 @@ describe("키 칠하기", () => {
     ["E", F, R],
     ["S", U, R],
   ])("%s: 앞(위) 줄이 %i → %i 면으로", (move, from, to) => {
-    expect(keyPaint(3, HOME_ORIENT, move)).toEqual({
+    expect(keyPaint(3, HOME_ORIENT, move)).toMatchObject({
       kind: "sweep",
       from,
       to,
       prime: false,
     });
     // 반대 방향은 색 순서를 거꾸로
-    expect(keyPaint(3, HOME_ORIENT, `${move}'`)).toEqual({
+    expect(keyPaint(3, HOME_ORIENT, `${move}'`)).toMatchObject({
       kind: "sweep",
       from: to,
       to: from,
       prime: true,
     });
+  });
+
+  // 2026-11-05 사용자 「x, y, z는 표시할 방법이 마땅치 않았나?」
+  it.each([
+    ["x", R, "dotted"],
+    ["y", U, "dotted"],
+    ["z", F, "dotted"],
+    ["M", L, "short"],
+    ["E", D, "short"],
+    ["S", F, "short"],
+  ] as const)("%s: 면 %i 색의 %s 표시", (move, color, shape) => {
+    const p = keyPaint(3, HOME_ORIENT, move);
+    if (!p) throw new Error(move);
+    expect(p.color).toBe(color);
+    expect(keyMarkShape(p)).toBe(shape);
+    // 반대 방향은 같은 색·같은 모양(밝기와 ′로만 구별)
+    const q = keyPaint(3, HOME_ORIENT, `${move}'`);
+    if (!q) throw new Error(move);
+    expect(q).toMatchObject({ color, prime: true });
+    expect(keyMarkShape(q)).toBe(shape);
+  });
+
+  it("면 돌리기·넓게·안쪽 층은 실선", () => {
+    for (const [n, a] of [
+      [3, "R"],
+      [3, "R'"],
+      [3, "Rw"],
+      [4, "2F"],
+      [5, "3Uw'"],
+    ] as const) {
+      const p = keyPaint(n, HOME_ORIENT, a);
+      if (!p) throw new Error(a);
+      expect(keyMarkShape(p), a).toBe("solid");
+    }
+  });
+
+  it("x·y·z·M·E·S 표시 색도 들고 있는 방향을 따른다", () => {
+    // y 뒤 오른쪽은 파랑, 앞은 빨강, 왼쪽은 초록
+    const o = follow(3, "y");
+    expect(keyPaint(3, o, "x")).toMatchObject({ color: B });
+    expect(keyPaint(3, o, "z")).toMatchObject({ color: R });
+    expect(keyPaint(3, o, "M")).toMatchObject({ color: F });
+    // x·R은 같은 축이라 늘 같은 색
+    for (const alg of ["", "y", "x z'", "y2 x"]) {
+      const p = follow(3, alg);
+      expect(keyPaint(3, p, "x")?.color, alg).toBe(keyPaint(3, p, "R")?.color);
+      expect(keyPaint(3, p, "E")?.color, alg).toBe(keyPaint(3, p, "D")?.color);
+    }
   });
 
   it("두 색 화살도 들고 있는 방향을 따른다", () => {

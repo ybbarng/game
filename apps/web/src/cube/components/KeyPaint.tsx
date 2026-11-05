@@ -9,7 +9,9 @@ import {
   KEY_LOOK_DEFAULT,
   KEY_LOOK_STORAGE,
   type KeyLookStyle,
+  type KeyMarkShape,
   type KeyPaint,
+  keyMarkShape,
   keyPaint,
   type Orient,
   parseKeyLook,
@@ -20,14 +22,15 @@ import { hexColor, useCubeSettings } from "../settings";
  * 키 그림의 면 색(2026-11-04, `keys/key-colors.ts`). 2026-11-05 두 번 고쳤다.
  * 1. 「눈이 아파」: 꽉 채우던 칸을 옅은 바탕 + 색 테두리 + 아래 띠로.
  * 2. 「아직 너무 어지러움」: 칸 바탕·테두리는 무채색, 면 색은 작은 표시 하나(기본 아래선, `KeyLookStyle`)에만 쓴다.
- *    반대 방향(')은 같은 색을 흐리게, x·y·z·M·E·S(큐브 돌리기·가운데 층)는 색을 쓰지 않는다.
+ *    반대 방향(')은 같은 색을 흐리게.
+ * 3. 「x, y, z는 표시할 방법이 마땅치 않았나?」: x·y·z는 그 축 면 색 점선, M·E·S는 따라 도는 면 색 짧은 선.
  * 설정 「키 그림에 면 색」을 끄면 표시도 없다.
  */
 
 export interface KeyLook {
   paint: KeyPaint;
   style: KeyLookStyle;
-  /** 면 색(면 돌리기만). x·y·z·M·E·S는 null */
+  /** 표시 색. x·y·z·M·E·S는 빌린 면 색(`keys/key-colors.ts` `SWEEP_FACE`) */
   color: string | null;
   /** 칸 바탕(`tint` 안만) */
   cell: CSSProperties;
@@ -62,14 +65,13 @@ export function useKeyLook(
     if (!keyColors || !action) return null;
     const p = keyPaint(n, orient, action);
     if (!p) return null;
-    if (p.kind === "sweep") return { paint: p, style, color: null, cell: {} };
     const rgb = colors[p.color] ?? 0;
     return {
       paint: p,
       style,
       color: hexColor(rgb),
       cell:
-        style === "tint"
+        style === "tint" && p.kind === "face"
           ? { backgroundColor: hexColor(calmTint(rgb, p.prime)) }
           : {},
     };
@@ -81,21 +83,52 @@ export function labelTone(look: KeyLook | null): string {
   return look?.paint.prime ? "text-white/60" : "text-white/90";
 }
 
-/** 면 색 표시 하나: 아래선 또는 점. 반대 방향은 같은 색을 흐리게. 큐브 돌리기·가운데 층과 `tint` 안은 없다 */
+/**
+ * 점선의 점(2026-11-05). 지름은 선 굵기(3px)와 같고 한 칸 5px 안에 하나, `space`로 남는 길이를 고르게 나눠
+ * 끝이 잘린 점이 없다. 휴대폰 34px 칸(선 길이 약 19px)에도 점 셋이 떨어져 보여 실선과 헷갈리지 않는다.
+ */
+const DOT_PX = 3;
+const DOT_GAP_PX = 2;
+
+function markBox(shape: KeyMarkShape): string {
+  // 실선은 칸 너비의 56%(양옆 22%), 짧은 선은 그 1/3쯤(양옆 40%)
+  return shape === "short"
+    ? "absolute inset-x-[40%] bottom-1 h-[3px] rounded-full"
+    : "absolute inset-x-[22%] bottom-1 h-[3px] rounded-full";
+}
+
+/**
+ * 면 색 표시 하나. 반대 방향은 같은 색·같은 모양을 흐리게.
+ * 모양으로 무리를 나눈다: 면 돌리기 실선, x·y·z 점선(그 축 면 색), M·E·S 가운데 짧은 선(따라 도는 면 색).
+ * 옅은 바탕 안은 면 돌리기를 바탕으로 칠하니 실선이 없고, 점선·짧은 선은 아래선 안과 똑같이 둔다(바탕은 무채색).
+ * 점 안은 면 돌리기만 점을 둔다.
+ */
 export function KeyMark({ look }: { look: KeyLook | null }) {
-  if (!look?.color || look.style === "tint") return null;
+  if (!look?.color) return null;
+  const shape = keyMarkShape(look.paint);
+  if (look.style === "tint" && shape === "solid") return null;
+  if (look.style === "dot" && shape !== "solid") return null;
   const prime = look.paint.prime;
-  const style: CSSProperties = {
-    backgroundColor: look.color,
-    opacity: prime ? KEY_CALM.primeMark : 1,
-  };
+  const opacity = prime ? KEY_CALM.primeMark : 1;
+  const style: CSSProperties =
+    shape === "dotted"
+      ? {
+          backgroundImage: `radial-gradient(circle, ${look.color} ${DOT_PX / 2}px, transparent ${DOT_PX / 2 + 0.5}px)`,
+          backgroundSize: `${DOT_PX + DOT_GAP_PX}px ${DOT_PX}px`,
+          backgroundRepeat: "space no-repeat",
+          backgroundPosition: "center",
+          borderRadius: 0,
+          opacity,
+        }
+      : { backgroundColor: look.color, opacity };
   return (
     <span
       data-key-mark={`${look.style}${prime ? "'" : ""}`}
+      data-key-mark-shape={shape}
       className={
-        look.style === "dot"
+        look.style === "dot" && shape === "solid"
           ? "absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
-          : "absolute inset-x-[22%] bottom-1 h-[3px] rounded-full"
+          : markBox(shape)
       }
       style={style}
       aria-hidden

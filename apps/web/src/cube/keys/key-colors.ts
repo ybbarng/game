@@ -70,7 +70,39 @@ export type KeyPaint =
       from: number;
       to: number;
       prime: boolean;
+      /** 표시에 빌려 쓰는 면 색(`SWEEP_FACE`): x = R, y = U, z = F, M = L, E = D, S = F 면의 지금 색 */
+      color: number;
+      /** 큐브 전체 돌리기(x·y·z)면 true, 가운데 층(M·E·S)이면 false */
+      whole: boolean;
     };
+
+/**
+ * 큐브 돌리기·가운데 층 키의 표시 색(2026-11-05, 사용자 「x, y, z는 표시할 방법이 마땅치 않았나?」). 한 면의 색은
+ * 아니지만 그 수와 같은 쪽으로 도는 면의 색을 빌린다. x·y·z는 같은 축·같은 방향의 R·U·F, M·E·S는 표기 정의에서
+ * 따라 도는 L·D·F다.
+ */
+const SWEEP_FACE: Record<string, number> = {
+  x: 1,
+  y: 0,
+  z: 2,
+  M: 4,
+  E: 3,
+  S: 2,
+};
+
+/**
+ * 칸 아래 면 색 선의 모양(2026-11-05). 굵기는 모두 같고 칸마다 하나다.
+ * - `solid`: 면 돌리기·넓게·안쪽 층. 칸 아래 실선
+ * - `dotted`: 큐브 전체 돌리기(x·y·z). 같은 자리에 점선
+ * - `short`: 가운데 층(M·E·S). 가운데에만 짧은 선(실선의 1/3쯤)
+ * 반대 방향(')은 모양을 바꾸지 않고 밝기와 ′ 표시로 구별한다.
+ */
+export type KeyMarkShape = "solid" | "dotted" | "short";
+
+export function keyMarkShape(paint: KeyPaint): KeyMarkShape {
+  if (paint.kind === "face") return "solid";
+  return paint.whole ? "dotted" : "short";
+}
 
 /** x·y·M·E는 앞 줄, z·S는 위 줄이 어디로 가는지 */
 const SWEEP_SOURCE: Record<string, number> = {
@@ -88,7 +120,7 @@ function sweepTarget(letter: string, source: number): number {
   return after.indexOf(source);
 }
 
-/** 동작 하나(표기)의 칠하기. 면 돌리기·넓게·안쪽 층은 그 면 색, x·y·z·M·E·S는 두 색 화살. 그 밖은 null */
+/** 동작 하나(표기)의 칠하기. 면 돌리기·넓게·안쪽 층은 그 면 색, x·y·z·M·E·S는 빌린 면 색(`SWEEP_FACE`). 그 밖은 null */
 export function keyPaint(
   n: number,
   orient: Orient,
@@ -113,9 +145,11 @@ export function keyPaint(
   const target = sweepTarget(sweep, source);
   const from = orient[source] as number;
   const to = orient[target] as number;
+  const color = orient[SWEEP_FACE[sweep] as number] as number;
+  const whole = /[xyz]/.test(sweep);
   return prime
-    ? { kind: "sweep", from: to, to: from, prime }
-    : { kind: "sweep", from, to, prime };
+    ? { kind: "sweep", from: to, to: from, prime, color, whole }
+    : { kind: "sweep", from, to, prime, color, whole };
 }
 
 /**
