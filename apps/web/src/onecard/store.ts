@@ -10,6 +10,7 @@ import {
 } from "@game/onecard-engine";
 import { create } from "zustand";
 
+import { afterDeal, dealHoldLeft } from "@/components/card-fx/deal";
 import { dealCues } from "@/game/cues";
 import type { MatchHost, Snapshot, SubmitResult } from "@/game/host";
 import type { KitBot } from "@/game/kit";
@@ -59,18 +60,10 @@ export function botPace(next: () => void): void {
   const fast = (globalThis as { __onecardPace?: number }).__onecardPace;
   // 섞고 나눠 주는 연출 동안은 첫 수를 미룬다(하트가 연출 동안 화면을 붙잡는 것과 같은 효과).
   // 판 상태를 늦추지 않고 컴퓨터만 기다리게 해, 연출이 외침 창·반응 시간을 건드리지 않는다
-  const go = () => {
-    const left = dealHoldLeft();
-    if (left > 0) setTimeout(go, left);
-    else next();
-  };
-  setTimeout(go, typeof fast === "number" ? fast : BOT_PACE_MS);
-}
-
-/** 이 기기에서 도는 나눠 주기 연출이 끝나기까지 남은 시간(ms, 없으면 0) */
-function dealHoldLeft(): number {
-  const dealing = useOnecard.getState().dealing;
-  return dealing ? Math.max(0, dealing.until - Date.now()) : 0;
+  setTimeout(
+    () => afterDeal(() => dealHoldLeft(useOnecard.getState().dealing), next),
+    typeof fast === "number" ? fast : BOT_PACE_MS,
+  );
 }
 
 /** 나눠 주기 연출(`OnecardStore.dealing`) */

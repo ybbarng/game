@@ -12,7 +12,7 @@ import {
   YAK_NAMES,
 } from "@game/nyrongppong-engine";
 import { useEffect, useRef, useState } from "react";
-import { useCardFlip } from "@/components/card-fx";
+import { cardHeight, cardWidth, HWATU_SHAPE } from "@/components/card-fx";
 import { useHandControls } from "@/components/hand-controls";
 import { ResultBanner } from "@/components/ResultBanner";
 import { type Outcome, RoundOutcome } from "@/components/RoundOutcome";
@@ -21,7 +21,7 @@ import type { MissionProps } from "@/components/tutorial/MissionOverlay";
 import { botName } from "@/game/bot-names";
 import type { ResultBanner as Banner } from "@/game/result-banner";
 import { useSettings } from "@/game/settings";
-import { HwatuDeal, useHwatuDealing } from "@/hwatu/card-fx";
+import { HwatuDeal, useHwatuDealing, useHwatuFlights } from "@/hwatu/card-fx";
 import { HwatuCardView } from "@/hwatu/components/HwatuCard";
 import { HwatuFan } from "@/hwatu/components/HwatuFan";
 import { HwatuDeck } from "@/hwatu/components/HwatuLayout";
@@ -177,7 +177,9 @@ function SeatPlate({
     (view.phase === "draw" || view.phase === "discard") && view.turn === seat;
   const revealed = mine ? undefined : view.result?.hands[seat];
   // 뽕 묶음 카드: 이름 줄(약 20px)과 위아래 여백을 뺀 높이에 맞춘다
-  const card = Math.floor(Math.max(14, Math.min(30, (rect.h - 30) / 1.6)));
+  const card = Math.floor(
+    Math.max(14, Math.min(30, cardWidth(HWATU_SHAPE, rect.h - 30))),
+  );
   return (
     <SeatPlateFrame
       rect={rect}
@@ -277,7 +279,7 @@ export function NyrongppongGame({
     events.some((e) => e.type === "roundStarted"),
     nyrongppongDealMs(players),
   );
-  useCardFlip({
+  const fx = useHwatuFlights({
     stage: stage.ref,
     scene: view,
     skip: dealing,
@@ -321,6 +323,7 @@ export function NyrongppongGame({
       background={NYRONGPPONG_BG}
       mission={mission}
       stageRef={stage.ref}
+      fx={fx}
       handlers={controls.handlers}
     >
       {children}
@@ -444,7 +447,10 @@ export function NyrongppongGame({
   const { center, hud } = layout;
   // 가운데 판의 더미·버린 패: 판 높이에 맞추고 손패보다 크게 하지 않는다
   const pileW = Math.floor(
-    Math.max(32, Math.min(layout.hand.card.w, (center.h - 80) / 1.6)),
+    Math.max(
+      32,
+      Math.min(layout.hand.card.w, cardWidth(HWATU_SHAPE, center.h - 80)),
+    ),
   );
   const myHand = roundOver && result ? (result.hands[me] ?? []) : view.hand;
   const outcomeView = (
@@ -562,7 +568,10 @@ export function NyrongppongGame({
               ) : (
                 <div
                   className="rounded-md border border-white/20 border-dashed"
-                  style={{ width: pileW, height: (pileW * 8) / 5 }}
+                  style={{
+                    width: pileW,
+                    height: cardHeight(HWATU_SHAPE, pileW),
+                  }}
                 />
               )}
             </div>
