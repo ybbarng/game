@@ -89,7 +89,15 @@ test.describe("단계가 섞인 장면", () => {
     await expect(card.locator("[data-card-tier]")).toContainText("1.5배");
     await expect(card.locator("[data-card-rent]")).toBeVisible();
     await expect(board(page).locator("[data-kin]")).toHaveCount(2);
+    // 휴대폰 세로에서도 스크롤 없이 한 번에 보인다. 별 이야기는 두 줄까지, 「더 보기」로 편다
+    if (info.project.name !== "phone-landscape")
+      expect(
+        await card.evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+      ).toBe(true);
+    await expect(card.locator('[data-star-story="short"]')).toBeVisible();
     await shot(page, info.outputPath("galaxy-card.png"));
+    await card.locator("[data-star-more]").click();
+    await expect(card.locator('[data-star-story="open"]')).toBeVisible();
 
     // 내 완성 별자리 칸 카드: 완성 · 이용료 2배 · 큰 정거장
     await page.locator('[data-square="27"]').click();
