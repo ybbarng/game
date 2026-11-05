@@ -5,6 +5,8 @@ import {
   cardById,
   type GalaxyView,
   moonGroup,
+  NUMBERS,
+  requestById,
   starAt,
 } from "@game/galaxy-engine";
 import { type CSSProperties, useMemo } from "react";
@@ -776,6 +778,31 @@ function FxOverlay({
           </NoticePaper>
         </div>
       );
+    case "request": {
+      const card = requestById(step.card);
+      return (
+        <div className={cn(box, "items-start pt-[4%]")}>
+          <NoticePaper
+            heading="카노푸스 우주국 관측 의뢰서"
+            title={`${name(step.seat)} · ${card.title}`}
+            dur={step.dur}
+          >
+            <p>{card.text}</p>
+            <p
+              data-request-done={step.done || undefined}
+              className={cn(
+                "mt-1 font-bold",
+                step.done ? "text-emerald-800" : "text-slate-500",
+              )}
+            >
+              {step.done
+                ? `이루었습니다 · ${money(NUMBERS.requestBonus)}`
+                : "이루지 못했습니다"}
+            </p>
+          </NoticePaper>
+        </div>
+      );
+    }
     case "meteor":
       return (
         <div className={cn(box, "items-start pt-[4%]")}>

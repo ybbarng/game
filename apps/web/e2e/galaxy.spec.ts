@@ -140,6 +140,25 @@ test("은하 한 바퀴: 게임 목록에서 들어가 굴리고 사다가 기�
   expect(await noOverflow(page)).toBe(false);
   await page.screenshot({ path: info.outputPath("galaxy-play.png") });
 
+  // 둘러앉기(docs/48 15-6): 자리 카드가 판 둘레에, 나는 판 아래(눕힌 휴대폰은 판 오른쪽)
+  await expect(page.locator("[data-player]")).toHaveCount(2);
+  const boardBox = await board(page).boundingBox();
+  const myBox = await page.locator('[data-player="0"]').boundingBox();
+  if (!boardBox || !myBox) throw new Error("판·내 자리가 보이지 않는다");
+  if (info.project.name === "phone-landscape")
+    expect(myBox.x).toBeGreaterThanOrEqual(boardBox.x + boardBox.width - 1);
+  else expect(myBox.y).toBeGreaterThanOrEqual(boardBox.y + boardBox.height - 1);
+  // 달의 길과 내 관측 의뢰서(첫 굴림 뒤에 정해진다)
+  await expect(page.locator("[data-moon]")).toHaveCount(1);
+  await expect(page.locator('[data-request-slip="0"]')).toBeVisible();
+  await expect(page.locator('[data-request-slip="1"]')).toHaveCount(0);
+  // 반응 보내기: 컴퓨터 자리 카드를 눌러 박수를 보내면 그 카드 위에 떠오른다
+  await page.getByRole("button", { name: /에게 반응 보내기/ }).click();
+  await page.locator('[data-react="clap"]').click();
+  await expect(
+    page.locator('[data-player="1"] [data-reaction="clap"]'),
+  ).toBeVisible();
+
   // 내 굴리기 차례에 기권해 판 끝 화면(가운데 띠·결과·순위 표)을 본다
   if (!(await over(page).isVisible())) {
     await untilMyRoll(page);
