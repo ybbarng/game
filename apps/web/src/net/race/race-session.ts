@@ -203,6 +203,8 @@ export class RaceSession<Move, State> {
   private readonly options: RaceOptions;
   /** 판정에 끼는 설정의 지문. `race-seed`에 실어 서로 맞춰 본다 */
   private readonly rules: string;
+  /** 사람마다 출발 늦추기(ms, 0보다 큰 것만) */
+  private readonly startDelay: Map<string, number>;
 
   private readonly out = new Map<string, string>();
   private readonly connected: Set<string>;
@@ -239,6 +241,14 @@ export class RaceSession<Move, State> {
     this.commitTimeoutMs = o.commitTimeoutMs ?? 5_000;
     this.revealTimeoutMs = o.revealTimeoutMs ?? 5_000;
     this.resultGraceMs = o.resultGraceMs ?? 3_000;
+    this.startDelay = new Map(
+      Object.entries(o.startDelayMs ?? {}).filter(
+        ([id, ms]) => this.roster.includes(id) && ms > 0,
+      ),
+    );
+    const delays = [...this.startDelay].sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
     this.rules = JSON.stringify([
       this.inspectionMs,
       this.timeLimitMs,
@@ -247,6 +257,8 @@ export class RaceSession<Move, State> {
       o.suspicion ?? null,
       o.gameOptions ?? null,
       this.disputeMs,
+      // 출발 늦추기가 없으면 예전 지문 그대로(옛 판 화면과 함께 간다)
+      ...(delays.length > 0 ? [delays] : []),
     ]);
     this.connected = new Set(this.roster.filter((id) => id !== this.self));
     this.a = this.emptyAttempt([]);
@@ -302,6 +314,8 @@ export class RaceSession<Move, State> {
         : Math.min(now, Math.max(at, rec.moveTimes.at(-1) ?? 0));
     if (rec.status !== "playing" || now > this.timeLimitMs || this.result)
       return { ok: false, reason: "끝남" };
+    if (t < (this.startDelay.get(this.self) ?? 0))
+      return { ok: false, reason: "출발 전" };
     let next: State;
     try {
       next = this.game.apply(rec.state as State, move);
@@ -315,7 +329,7 @@ export class RaceSession<Move, State> {
     const m = this.game.encodeMove(move);
     rec.log.push({ m, t });
     a.batch.push({ i, m, t });
-    const solved = this.game.isSolved(next);
+    const solved = this.game.isSolved(next, this.self);
     if (solved) {
       rec.status = "done";
       rec.done = { n: rec.applied, t, arrivedAt: this.clock.now() };
@@ -1143,6 +1157,7 @@ export class RaceSession<Move, State> {
       if (mv.t < (rec.moveTimes.at(-1) ?? 0))
         return `시각이 거꾸로 감(${nth}번째)`;
       if (mv.t > this.timeLimitMs) return "제한 시간 뒤에 둔 수";
+      if (this.beforeStart(rec.id, mv)) return `출발 전에 둔 수(${nth}번째)`;
       try {
         rec.state = this.game.apply(
           rec.state as State,
@@ -1161,11 +1176,30 @@ export class RaceSession<Move, State> {
     const done = rec.done;
     if (!done || rec.applied < done.n) return null;
     if (rec.applied !== done.n) return "수 수가 맞지 않음";
-    if (!this.game.isSolved(rec.state as State)) return "맞추지 못함";
+    if (!this.game.isSolved(rec.state as State, rec.id)) return "맞추지 못함";
     if (done.t < (rec.moveTimes.at(-1) ?? 0) || done.t < 0)
       return "시각이 거꾸로 감";
     if (done.t > this.timeLimitMs) return "시간 안에 맞추지 못함";
     return null;
+  }
+
+  /**
+   * 출발 늦추기(`startDelayMs`)보다 먼저 둔 수인가. 남이 단 시각(t)은 그대로 믿지 않고, 이 기기가 직접 확인한 만큼 본다:
+   * - 단 시각이 출발 전이면 그렇다.
+   * - 도착 시각으로도 본다. 그 사람의 풀림은 씨앗을 안 때 + 살펴보기이고, 씨앗에는 내 공개값이 들어가므로 그 사람의 풀림은
+   *   (절대 시각으로) 내 공개 시각 s + 살펴보기보다 늦다. 그래서 수가 s + 살펴보기 + 출발 늦추기보다 먼저 닿았으면 그 수는
+   *   출발 전에 둔 것이 증명된다(시각을 늦게 적어 보낸 고친 클라이언트). 정직한 수는 지연만큼 늦게 닿아 걸리지 않는다
+   */
+  private beforeStart(
+    id: string,
+    mv: { t: number; arrivedAt: number },
+  ): boolean {
+    const delay = this.startDelay.get(id);
+    if (delay === undefined) return false;
+    if (mv.t < delay) return true;
+    const s = this.a.revealedAt;
+    if (s === undefined || this.a.spectator) return false;
+    return mv.arrivedAt - s - this.inspectionMs < delay;
   }
 
   /** 내가 본 하한. 공개값을 보낸 뒤 그 사람이 끊긴 적이 있으면 확인 약함(null) */
