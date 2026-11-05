@@ -454,10 +454,18 @@ test("하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서
   const card = myCards(page).first();
   const id = (await card.getAttribute("data-card")) as string;
   const fromY = (await card.boundingBox())?.y ?? 0;
-  // 낸 카드가 손패 자리에서 움직이기 시작한다. 날아가는 CSS 연출은 page.clock이 아니라 실제 시간으로 돌아,
-  // 제 속도(0.3초)로 두면 바쁜 CI에서 확인 한 번 사이에 내려앉아 「날아가는 중」을 놓친다(2026-11-05 #137 CI).
-  // 1/20 빠르기로 늦춰 그 순간을 몇 초로 늘린다
-  await speedUpAnimations(page, 0.05);
+  // 낸 카드가 손패 자리에서 움직이기 시작하는지는 그 카드의 움직임 시작 신호(transitionrun·animationstart)로 본다.
+  // 「날아가는 중」을 시각으로 잡으려 하면, 날아가는 CSS 연출은 실제 시간으로 돌고 컴퓨터 차례·걷어 가기는 page.clock으로
+  // 돌아 바쁜 CI에서 그 순간을 놓친다(2026-11-05: 늦춰도 걷어 간 뒤라 영영 오지 않았다). 신호는 지나가도 남는다
+  await card.evaluate((el) => {
+    const w = window as { __heartsFlew?: boolean };
+    w.__heartsFlew = false;
+    const flew = () => {
+      w.__heartsFlew = true;
+    };
+    el.addEventListener("transitionrun", flew);
+    el.addEventListener("animationstart", flew);
+  });
   await card.click({ position: { x: 8, y: 8 } });
   /**
    * 낸 카드의 상태: 판 쪽으로 날아가는 중(마우스를 올려 살짝 뜨는 것보다 훨씬 위, 움직임이 도는 중), 판 위에
@@ -473,12 +481,18 @@ test("하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서
       },
       [id, fromY] as const,
     );
-  await fastForwardUntil(page, async () => (await state()) === "flying", {
-    step: 16,
-  });
+  // 손패 자리를 떠나며 움직임이 시작됐다(그 뒤 내려앉거나 걷어 가도 신호는 남는다)
+  await fastForwardUntil(
+    page,
+    async () =>
+      (await state()) !== "hand" &&
+      (await page.evaluate(
+        () => (window as { __heartsFlew?: boolean }).__heartsFlew === true,
+      )),
+    { step: 16 },
+  );
   await page.screenshot({ path: info.outputPath("hearts-fx-play.png") });
-  // 다시 빨리 돌리면 판 가운데에 내려앉는다(이어 컴퓨터가 내서 걷어 갔어도 내려앉은 뒤다)
-  await speedUpAnimations(page);
+  // 판 가운데에 내려앉는다(이어 컴퓨터가 내서 걷어 갔어도 내려앉은 뒤다)
   await fastForwardUntil(
     page,
     async () => ["landed", "collected"].includes(await state()),
