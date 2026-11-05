@@ -218,6 +218,13 @@ export interface ItemScreen {
 export const BOT_USE_MS = 800;
 /** 맞은 쪽 표시가 떠 있는 시간(ms) */
 const NOTICE_MS = 1_600;
+/** 다른 사람 자리의 「맞은 방해」가 떠 있는 시간: 화면 방해는 그 방해가 이어지는 동안 */
+const PEER_HIT_MS: Partial<Record<ItemKind, number>> = {
+  fog: SCREEN_HIT_MS,
+  blind: SCREEN_HIT_MS,
+  swap: SWAP_MS,
+  gray: GRAY_MS,
+};
 
 export type { PartySummary };
 
@@ -614,6 +621,39 @@ export class CubeRoom {
     const mine = log.filter((x) => !x.m.startsWith("!hit|"));
     screen.hint = !done && mine.at(-1)?.m === itemUseText("hint");
     return screen;
+  }
+
+  /**
+   * 다른 사람 자리에 붙일 「맞은 방해」(최근 것부터). 이 기기가 그 판정을 확실히 안 때부터, 화면 방해면 그 방해가
+   * 이어지는 동안(흑백 화면 4초 등), 아니면 맞은 쪽 표시와 같은 1.6초. 보이기만 하고 판정에는 쓰지 않는다
+   */
+  peerNotices(): Record<
+    string,
+    { key: string; item: ItemKind; by: string; blocked: boolean }[]
+  > {
+    const c = this.current;
+    if (!c || !hasItems(c.mode)) return {};
+    const items = this.party()?.items;
+    if (!items) return {};
+    const now = this.init.clock.now();
+    const out: Record<
+      string,
+      { key: string; item: ItemKind; by: string; blocked: boolean }[]
+    > = {};
+    for (const h of items.hits) {
+      if (h.to === this.me) continue;
+      const key = `peer|${h.by}|${h.k}`;
+      const at = c.seen.get(key) ?? now;
+      if (!c.seen.has(key)) c.seen.set(key, now);
+      const ms = h.blocked
+        ? NOTICE_MS
+        : Math.max(NOTICE_MS, PEER_HIT_MS[h.item] ?? 0);
+      if (now - at >= ms) continue;
+      const list = out[h.to] ?? [];
+      list.unshift({ key, item: h.item, by: h.by, blocked: h.blocked });
+      out[h.to] = list;
+    }
+    return out;
   }
 
   isConnected(device: string): boolean {
