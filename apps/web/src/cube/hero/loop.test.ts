@@ -180,12 +180,17 @@ function harness(
   n: HeroSize = 3,
   choice: string = HERO_ALTERNATE,
   seed = 42,
+  solveHere?: (m: string, s: PuzzleState) => Promise<HeroSolve>,
 ) {
   const clock = new ManualClock();
   const moves: string[] = [];
   const labels: string[] = [];
   const resets: PuzzleState[] = [];
+  /** 화면 스레드 풀이를 부른 시각 */
+  const hereAt: number[] = [];
   let last: Promise<unknown> = Promise.resolve();
+  /** 마지막 화면 스레드 풀이(답하지 않는 가짜 워커를 쓸 때는 이것만 기다린다) */
+  let lastHere: Promise<unknown> = Promise.resolve();
   const loop = new HeroLoop({
     n,
     methods: heroRotation(n, choice),
@@ -196,13 +201,26 @@ function harness(
       last = p.catch(() => undefined);
       return p;
     },
+    ...(solveHere
+      ? {
+          solveHere: (m: string, s: PuzzleState) => {
+            hereAt.push(clock.now());
+            const p = solveHere(m, s);
+            last = lastHere = p.catch(() => undefined);
+            return p;
+          },
+        }
+      : {}),
     onMove: (m) => moves.push(m),
     onLabel: (l) => labels.push(l),
     onReset: (s) => resets.push(s),
   });
-  /** 이 판의 풀이가 오고 연출이 받아 둘 때까지 */
-  const settled = async () => {
-    await last;
+  /**
+   * 이 판의 풀이가 오고 연출이 받아 둘 때까지. `"here"`면 화면 스레드 풀이만 기다린다
+   * (답하지 않는 가짜 워커를 기다리면 끝나지 않는다)
+   */
+  const settled = async (wait: "all" | "here" = "all") => {
+    await (wait === "here" ? lastHere : last);
     await flush();
   };
   /** 조건이 맞을 때까지 시계를 조금씩 감는다(상한은 멈춘 시험을 잡는 안전장치) */
@@ -212,7 +230,7 @@ function harness(
       clock.advance(step);
     }
   };
-  return { clock, loop, moves, labels, resets, settled, advanceUntil };
+  return { clock, loop, moves, labels, resets, hereAt, settled, advanceUntil };
 }
 
 describe("HeroLoop", () => {
@@ -463,6 +481,73 @@ describe("HeroLoop", () => {
     expect(isSolved(3, h.resets[0] as PuzzleState)).toBe(true);
     expect(h.loop.currentMethod).toBe("3-cfop");
     expect(h.loop.currentLabel).toBe(SCRAMBLING_LABEL);
+  });
+
+  // 사용자 「34초가 아니라 잠깐만 쉬었다가(3~5초 정도?) 풀기 시작」(2026-11-05). 워커가 끝내 답하지 않아도
+  // 섞은 뒤 멈춤 동안 화면 스레드에서 풀어 멈춤이 끝나자마자 맞추기 시작한다
+  it.each([2, 3, 4, 5] as const)(
+    "크기 %i: 워커가 답하지 않아도 섞은 뒤 3~5초 안에 풀기 시작하고, 늦게 온 워커 답은 버린다",
+    async (n) => {
+      const s = silentSolve();
+      const h = harness(s.solve, n, HERO_ALTERNATE, 42, solveForHero);
+      const t = heroTiming(n);
+      h.loop.start();
+      h.advanceUntil(() => h.loop.currentLabel !== SCRAMBLING_LABEL, 1);
+      const end = h.clock.now();
+      // 화면 스레드 풀이를 부를 때까지 감고, 그 풀이가 끝나기를 기다린 뒤 맞추기 시작까지 감는다
+      h.advanceUntil(() => h.hereAt.length > 0, 1);
+      await h.settled("here");
+      h.advanceUntil(() => h.loop.currentLabel.includes("·"), 1);
+      const waited = h.clock.now() - end;
+      expect(waited).toBeGreaterThanOrEqual(3000);
+      expect(waited).toBeLessThanOrEqual(5000);
+      // 풀이가 와 있으면 섞은 뒤 멈춤이 끝나자마자
+      expect(waited).toBe(t.afterScramble);
+      // 화면 스레드 풀이는 섞는 동안이 아니라 섞은 뒤 멈춤에 들어선 뒤, 워커를 `workerWait`만큼 기다린 뒤에 한 번
+      expect(h.hereAt).toEqual([Math.max(end, t.workerWait)]);
+      expect(h.resets).toHaveLength(0);
+      // 늦게 온 워커 답(가짜 단계)은 버리고 화면 스레드 풀이로 끝까지 맞춘다
+      s.answers[0]?.({
+        moves: ["R"],
+        stages: [{ label: "가짜", start: 0, end: 1 }],
+        looks: [],
+      });
+      await flush();
+      // 풀이는 이미 받아 두었으니 시계만 감는다
+      h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"), 50);
+      expect(isSolved(n, h.loop.current)).toBe(true);
+      expect(h.labels.some((l) => l.includes("가짜"))).toBe(false);
+    },
+  );
+
+  it("워커가 상한 안에 답하면 화면 스레드에서 풀지 않는다", async () => {
+    const h = harness(solveForHero, 3, HERO_ALTERNATE, 42, solveForHero);
+    h.loop.start();
+    // 실제처럼 워커 답이 섞기가 끝나기 전에 온다
+    await h.settled();
+    h.advanceUntil(() => h.loop.currentLabel.includes("·"));
+    expect(h.hereAt).toEqual([]);
+  });
+
+  it("멈춘 동안(안 보임·탭 숨김)은 화면 스레드 풀이를 미루고, 이을 때 워커 기다림이 지났으면 바로 푼다", async () => {
+    const s = silentSolve();
+    const h = harness(s.solve, 2, HERO_ALTERNATE, 42, solveForHero);
+    const t = heroTiming(2);
+    h.loop.start();
+    h.advanceUntil(() => h.loop.currentLabel !== SCRAMBLING_LABEL, 1);
+    const end = h.clock.now();
+    // 2×2는 섞기가 짧아 섞은 뒤 멈춤에 들어설 때 아직 워커 기다림 안이다
+    expect(end + 100).toBeLessThan(t.workerWait);
+    h.clock.advance(100);
+    h.loop.pause();
+    expect(h.clock.pending()).toBe(0);
+    h.clock.advance(10_000);
+    expect(h.hereAt).toEqual([]);
+    h.loop.resume();
+    expect(h.hereAt).toEqual([h.clock.now()]);
+    await h.settled("here");
+    h.advanceUntil(() => h.loop.currentLabel.includes("·"));
+    expect(h.resets).toHaveLength(0);
   });
 });
 

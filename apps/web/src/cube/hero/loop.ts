@@ -17,7 +17,8 @@ import type { HeroSize, HeroSolve } from "./methods";
  *   → 해법대로 맞추기(단계 사이 멈춤) → 멈춤 → 다시 섞기 …
  *
  * 해법은 받은 차례(`methods`, 설정의 「번갈아」면 그 크기의 해법 모두)를 돌아가며 쓴다. 풀이는 `solve`(워커)가
- * 섞는 동안 미리 만든다. 못 풀면 그 판을 건너뛰고 맞춘 큐브에서 다음 해법으로 다시 섞는다.
+ * 섞는 동안 미리 만든다. 워커가 `workerWait` 안에 답하지 않으면 섞은 뒤 멈춤 동안 화면 스레드(`solveHere`)에서
+ * 풀어, 섞기가 끝나고 몇 초 안에 반드시 맞추기 시작한다. 못 풀면 그 판을 건너뛰고 맞춘 큐브에서 다음 해법으로 다시 섞는다.
  * 시간은 `Clock`으로 재서 시험은 `ManualClock`으로 정확히 옮긴다.
  */
 
@@ -27,7 +28,10 @@ export const SOLVED_LABEL = "맞춤";
 export interface HeroTiming {
   /** 섞기 한 수 */
   scrambleMove: number;
-  /** 섞은 뒤 멈춤 */
+  /**
+   * 섞은 뒤 멈춤. 섞인 큐브를 잠깐 보여 주고 풀기 시작한다(사용자 「잠깐만 쉬었다가(3~5초 정도?)」, 2026-11-05).
+   * 풀이가 이 안에 와 있으면 섞기가 끝나고 정확히 이만큼 뒤에 맞추기 시작한다
+   */
   afterScramble: number;
   /** 맞추기 한 수 */
   solveMove: number;
@@ -40,8 +44,14 @@ export interface HeroTiming {
   /** 섞는 수 */
   scrambleLength: number;
   /**
-   * 섞기를 다 두고 풀이를 기다리는 상한. 넘으면 그 풀이를 버리고 못 푼 판처럼 넘어간다(해법 이름만 띄운 채
-   * 큐브가 멈춰 있지 않게). 멈춘 동안(안 보임·탭 숨김)은 재지 않는다
+   * 워커 답을 기다리는 상한(풀이를 부탁한 때부터). 넘으면 워커 답은 버리고 화면 스레드에서 바로 푼다
+   * (`HeroLoopOptions.solveHere`). 다만 섞는 동안에는 풀지 않고 섞은 뒤 멈춤에 들어선 뒤에 푼다: 큐브가 멈춰 있어
+   * 화면 스레드가 잠깐 바빠도 연출이 끊겨 보이지 않는다
+   */
+  workerWait: number;
+  /**
+   * 섞은 뒤 멈춤이 끝나고도 풀이를 기다리는 상한(마지막 안전장치). 넘으면 그 풀이를 버리고 못 푼 판처럼 넘어간다
+   * (해법 이름만 띄운 채 큐브가 멈춰 있지 않게). 멈춘 동안(안 보임·탭 숨김)은 재지 않는다
    */
   solveWait: number;
 }
@@ -49,12 +59,14 @@ export interface HeroTiming {
 /** 크기마다 시간(ms). 큰 큐브는 풀이가 길어 수를 빠르게 둔다(휴대폰에서 오래 무겁지 않게) */
 export function heroTiming(n: HeroSize): HeroTiming {
   const base = {
-    afterScramble: 900,
+    afterScramble: 3000,
+    workerWait: 2000,
     stage: 450,
     look: 220,
     solved: 1800,
   };
-  // 풀이는 섞는 동안 미리 만들어 보통 섞기가 끝나기 전에 온다. 상한은 멈춘 워커를 잡는 안전장치라 넉넉히
+  // 풀이는 섞는 동안 미리 만들어 보통 섞기가 끝나기 전에 온다. 워커가 늦으면 `workerWait` 뒤 화면 스레드에서
+  // 푼다(3×3 0.1초 안쪽). `solveWait`는 화면 스레드 풀이마저 안 끝날 때(청크를 못 받음 등)를 잡는 안전장치라 넉넉히
   if (n === 2)
     return {
       ...base,
@@ -73,8 +85,7 @@ export function heroTiming(n: HeroSize): HeroTiming {
     };
   return {
     ...base,
-    // 축소법은 느린 휴대폰에서 몇 초 걸릴 수 있다. 워커 상한(`JOB_LIMIT_MS.hero`)을 넘겨 화면 스레드에서
-    // 다시 푼 답도 받게 그보다 길게
+    // 축소법은 데스크톱 화면 스레드에서 1초 안쪽, 느린 휴대폰에서는 몇 초 걸릴 수 있다. 그 답도 받게 길게
     solveWait: 25_000,
     stage: 350,
     look: 120,
@@ -283,6 +294,11 @@ export interface HeroLoopOptions {
   rng: () => number;
   /** 사람 해법(워커). 거부되면 그 판을 건너뛴다 */
   solve: (methodId: string, state: PuzzleState) => Promise<HeroSolve>;
+  /**
+   * 같은 해법을 화면 스레드에서(워커가 `workerWait` 안에 답하지 않을 때). 없으면 워커 답만 기다린다.
+   * 이것을 부른 뒤에 온 워커 답은 버린다
+   */
+  solveHere?: (methodId: string, state: PuzzleState) => Promise<HeroSolve>;
   /** 수 하나(WCA 표기)를 둔다. `ms`는 다음 걸음까지의 시간(회전 빠르기를 맞출 때) */
   onMove: (move: string, ms: number, parsed: readonly CubeMove[]) => void;
   /** 꼬리표가 바뀔 때 */
@@ -311,6 +327,14 @@ export class HeroLoop {
   private method: { id: string; label: string };
   /** 이 판의 풀기 전 방향 맞추기(`orientForSolve`) */
   private orient: string[] = [];
+  /** 이 판에서 풀 상태(섞고 방향을 맞춘 뒤) */
+  private target: PuzzleState;
+  /** 워커에 풀이를 부탁한 시각 */
+  private askedAt = 0;
+  /** 화면 스레드 풀이로 넘어갔는지(그 뒤 워커 답은 버린다) */
+  private here = false;
+  /** 워커 기다림(`workerWait`) 끄기 */
+  private hereTimer: (() => void) | null = null;
   private phase: "scramble" | "solve" = "scramble";
   private cancel: (() => void) | null = null;
   /** 섞기를 다 두고 풀이를 기다리는 상한(`solveWait`) 끄기 */
@@ -327,6 +351,7 @@ export class HeroLoop {
     this.n = options.n;
     this.t = options.timing ?? heroTiming(options.n);
     this.state = solvedCube(this.n);
+    this.target = this.state;
     this.method = options.methods[0] as { id: string; label: string };
   }
 
@@ -361,6 +386,8 @@ export class HeroLoop {
   private clearWait(): void {
     this.waitTimer?.();
     this.waitTimer = null;
+    this.hereTimer?.();
+    this.hereTimer = null;
   }
 
   resume(): void {
@@ -397,19 +424,34 @@ export class HeroLoop {
     this.index = 0;
     this.entered = false;
     this.solved = undefined;
-    let p: Promise<HeroSolve | null>;
+    this.target = after;
+    this.here = false;
+    this.askedAt = this.o.clock.now();
+    this.expect(this.ask(this.o.solve, after), true);
+  }
+
+  /** 풀이를 부탁한다(던지거나 거부되면 null) */
+  private ask(
+    solve: (methodId: string, state: PuzzleState) => Promise<HeroSolve>,
+    state: PuzzleState,
+  ): Promise<HeroSolve | null> {
     try {
-      p = this.o.solve(this.method.id, after).then(
+      return solve(this.method.id, state).then(
         (s) => s,
         () => null,
       );
     } catch {
-      p = Promise.resolve(null);
+      return Promise.resolve(null);
     }
+  }
+
+  /** 이 판의 풀이로 받는다. 다른 판의 답이나, 화면 스레드로 넘어간 뒤 온 워커 답은 버린다 */
+  private expect(p: Promise<HeroSolve | null>, fromWorker: boolean): void {
     this.pendingSolve = p;
     void p.then((s) => {
-      if (this.pendingSolve !== p) return;
+      if (this.pendingSolve !== p || (fromWorker && this.here)) return;
       this.solved = s;
+      this.clearWait();
       // 섞기를 다 두고 풀이를 기다리던 중이면 이어 간다
       if (
         this.running &&
@@ -419,6 +461,25 @@ export class HeroLoop {
       )
         this.run();
     });
+  }
+
+  /**
+   * 섞은 뒤 멈춤에 들어섰거나 그 뒤로 기다리는 중이면, 워커 답을 `workerWait`까지만 기다리고 화면 스레드에서 푼다.
+   * 멈췄다 이으면 남은 시간만 다시 건다(워커는 멈춘 동안에도 일하므로 부탁한 때부터 잰다)
+   */
+  private armHere(): void {
+    const solveHere = this.o.solveHere;
+    if (!solveHere || this.here || this.solved !== undefined || this.hereTimer)
+      return;
+    const go = () => {
+      this.hereTimer = null;
+      if (this.here || this.solved !== undefined) return;
+      this.here = true;
+      this.expect(this.ask(solveHere, this.target), false);
+    };
+    const left = this.askedAt + this.t.workerWait - this.o.clock.now();
+    if (left <= 0) go();
+    else this.hereTimer = this.o.clock.after(left, go);
   }
 
   private setLabel(label: string): void {
@@ -433,6 +494,7 @@ export class HeroLoop {
     if (this.index >= this.steps.length) {
       if (this.phase === "scramble") {
         if (this.solved === undefined) {
+          this.armHere();
           // 풀이를 기다린다(오면 다시 부른다). 상한을 넘으면 그 풀이를 버리고 못 푼 판처럼 넘어간다
           this.waitTimer ??= this.o.clock.after(this.t.solveWait, () => {
             this.waitTimer = null;
@@ -466,6 +528,9 @@ export class HeroLoop {
     }
     const step = this.steps[this.index];
     if (!step) return;
+    // 섞은 뒤 멈춤(섞기 차례의 끝 걸음)에 들어섰다: 워커가 늦으면 여기서부터 화면 스레드에서 푼다
+    if (this.phase === "scramble" && this.index === this.steps.length - 1)
+      this.armHere();
     this.setLabel(step.label);
     if (step.kind === "move" && !this.entered) {
       const parsed = parseMoves(this.n, step.move);
