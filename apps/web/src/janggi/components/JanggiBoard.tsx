@@ -29,6 +29,13 @@ const LAST_COLOR = "#1d4ed8";
 const DANGER_COLOR = "#e11d48";
 /** 힌트(고수가 고른 수) 표시 */
 const HINT_COLOR = "#059669";
+/** 배우기 글이 짚는 자리(갈 곳 점과 같은 주황) */
+const RING_COLOR = "#ea580c";
+
+/** 판 그림에서 한 점의 자리(그림 너비·높이에 대한 %). 판 바깥에 칸 번호를 붙일 때 쓴다 */
+export function pointPercent(x: number, y: number): [number, number] {
+  return [((x + PAD) / VIEW_W) * 100, ((y + PAD) / VIEW_H) * 100];
+}
 
 /** 기물 크기(반지름, 칸 단위): 궁이 가장 크고 사·졸이 가장 작다 */
 const RADIUS: Record<Kind, number> = {
@@ -121,6 +128,7 @@ export function JanggiBoard({
   labels,
   hint = null,
   danger = [],
+  rings = [],
 }: {
   board: readonly Cell[];
   /** 한 편이면 판을 뒤집어 내 편을 아래에 둔다 */
@@ -138,6 +146,8 @@ export function JanggiBoard({
   hint?: Move | null;
   /** 잡힐 위험이 있는 내 기물 자리(빨간 점선 고리) */
   danger?: readonly number[];
+  /** 배우기 글이 짚는 자리(얇은 주황 고리) */
+  rings?: readonly number[];
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const id = `piece${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -439,6 +449,20 @@ export function JanggiBoard({
           strokeWidth={0.06}
           strokeDasharray="0.12 0.08"
           data-danger={pointName(i)}
+          pointerEvents="none"
+        />
+      ))}
+
+      {rings.map((i) => (
+        <circle
+          key={`r${i}`}
+          cx={at(i)[0]}
+          cy={at(i)[1]}
+          r={0.5}
+          fill="none"
+          stroke={RING_COLOR}
+          strokeWidth={0.06}
+          data-ring={pointName(i)}
           pointerEvents="none"
         />
       ))}
