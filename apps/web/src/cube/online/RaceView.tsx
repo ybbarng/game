@@ -55,6 +55,7 @@ import { PartyBar } from "./PartyBar";
 import {
   hasHp,
   hasItems,
+  isPartyEnd,
   PARTY_END_LABELS,
   PARTY_HP,
   PARTY_LOW,
@@ -552,8 +553,7 @@ export function RaceView({
     if (p.status === "forfeit") return "기권";
     if (knocked) return "탈락";
     if (p.status === "dnf")
-      return hp !== undefined &&
-        PARTY_REASONS.includes(session.checkpointLog(p.id)?.reason ?? "")
+      return hp !== undefined && isPartyEnd(session.checkpointLog(p.id)?.reason)
         ? ""
         : "DNF";
     // 모양 만들기는 진행 글(목표 n%)이 따로 있어 수를 붙이지 않는다

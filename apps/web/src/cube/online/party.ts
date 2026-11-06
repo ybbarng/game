@@ -80,6 +80,22 @@ export const PARTY_KO = "체력 0";
 export const PARTY_OVER = "판이 끝남";
 export const PARTY_REASONS: readonly string[] = [PARTY_KO, PARTY_OVER];
 
+/**
+ * 판정이 확정한 끝난 사람인데 그 사람이 스스로 알리지 않았을 때 이 기기가 붙이는 까닭의 꼬리(`quietEnd`, docs/47 9-6).
+ * 받는 까닭 목록(`retireReasons`)에는 넣지 않는다: 남이 보낸 이 글은 「기타」가 되어 이 기기가 직접 정한 것과 섞이지 않는다
+ */
+export const PARTY_QUIET = "(알리지 않음)";
+export const PARTY_KO_QUIET = `탈락${PARTY_QUIET}`;
+export const PARTY_OVER_QUIET = `${PARTY_OVER}${PARTY_QUIET}`;
+
+/** 판정이 끝을 정한 까닭(스스로 알렸든 이 기기가 정했든). 판정은 이것을 「판에서 떠남」으로 보지 않는다 */
+export function isPartyEnd(reason: string | undefined): boolean {
+  return (
+    reason !== undefined &&
+    (PARTY_REASONS.includes(reason) || reason.endsWith(PARTY_QUIET))
+  );
+}
+
 /** 아이템전 규칙을 어겨 빠진 까닭(정직한 기기는 내지 않는다. 고친 클라이언트·끊김) */
 export const ITEM_NOT_HELD = "갖지 않은 아이템을 씀";
 export const ITEM_NO_HIT = "방해를 받지 않음";
@@ -301,11 +317,7 @@ export function judgeParty(input: PartyInput): PartyOutcome {
       }
     }
     // 대결 틀이 뺀 사람(틀린 수·출발 전에 둔 수·컴퓨터 계획 없음 등): 마지막 수 뒤로는 판에 없다
-    if (
-      log.status === "dnf" &&
-      !PARTY_REASONS.includes(log.reason ?? "") &&
-      !log.done
-    )
+    if (log.status === "dnf" && !isPartyEnd(log.reason) && !log.done)
       events.push({ kind: "leave", at: log.last, p });
   }
   events.sort(order);
@@ -676,4 +688,34 @@ function rank(
       key(prev)[1] === key(p)[1];
     out.places[p] = same ? (out.places[prev] as number) : i + 1;
   }
+}
+
+/**
+ * 판 도중 판정(`final: false`)이 확정한 「끝난 사람」과 이 기기가 그 사람을 끝난 것으로 볼 때의 까닭·시각(docs/47 9-6).
+ * 그 사람이 스스로 알리지(`race-retire`) 않아도 대결 틀이 기다리지 않게 `RaceSession.judgeOut`에 넘긴다.
+ *
+ * 확정 조건: 판 도중 판정은 「확실한 데까지」(`until` 앞)만 한다. 어떤 사람의 일을 시각 x에 판정했다면 그때 그 사람은 판에
+ * 남아 있었고, 그 사람의 「이보다 이른 수는 모두 받았다」(`horizon` = 받은 마지막 수의 시각)가 x보다 늦었다. 그래서
+ * - 체력 0(`knockedOut`)·아이템 규칙 위반(`items.out`)은 그 시각까지의 그 사람 수를 모두 받은 뒤에야 나온다. 받지 못한 수가
+ *   있으면 판정이 그 앞에서 멈추므로 여기 나오지 않는다(기다린다).
+ * - 판이 정해졌으면(`decided`) 그때 남아 있던 사람도 그 시각까지의 수를 모두 받았다. 다툼으로 먼저 빠진 사람은 빠진 시각까지다.
+ * 뒤에 어떤 메시지가 와도 이 판정은 바뀌지 않고 판 끝 판정과 같다. 그러니 이 시각 뒤의 수를 잘라도 판정은 그대로다.
+ *
+ * 처음부터 판정에서 뺀 사람(`PartyInput.exclude`, 확인 못 하는 컴퓨터)은 여기서 다루지 않는다(부르는 쪽이 건너뛴다).
+ * 한 사람에게 둘이 겹치지 않는다(0이 됐거나 빠진 사람은 판에서 나가 다른 일이 생기지 않는다). 차례: 체력 0 → 아이템 위반 → 판이 정해짐
+ */
+export function quietEnd(
+  outcome: PartyOutcome,
+  p: string,
+): { reason: string; upTo: number } | undefined {
+  const ko = outcome.knockedOut[p];
+  if (ko !== undefined) return { reason: PARTY_KO_QUIET, upTo: ko };
+  const broke = outcome.items?.out[p];
+  const left = outcome.left[p];
+  if (broke !== undefined && left !== undefined)
+    return { reason: `${broke}${PARTY_QUIET}`, upTo: left };
+  const d = outcome.decided;
+  if (d && Number.isFinite(d.at))
+    return { reason: PARTY_OVER_QUIET, upTo: Math.min(left ?? d.at, d.at) };
+  return undefined;
 }

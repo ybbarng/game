@@ -61,6 +61,7 @@ import {
   PARTY_OVER,
   type PartyMode,
   type PartyOutcome,
+  quietEnd,
 } from "./party";
 import {
   type CubeAct,
@@ -1225,6 +1226,8 @@ export class CubeRoom {
    *   더 오지 않는다는 것을 알게 되어 판정을 이어 간다.
    * - 아이템전: 맞은 한 수 섞기를 바로 넣는다(`!hit`). 컴퓨터는 받은 아이템을 정해진 때 쓰고, 맞은 섞기는 되돌리고, 화면 방해에는
    *   잠깐 멈춘다.
+   * - 판정이 확정한 끝난 남(체력 0, 아이템 규칙 위반, 판이 정해진 뒤 남은 사람)은 그 사람이 알리지 않아도 끝난 것으로 본다
+   *   (`quietEnd` → `RaceSession.judgeOut`). 내가 이미 끝났어도(「waiting」) 본다. 고친 클라이언트가 판을 끌지 못하게.
    */
   private partyStep(
     id: string,
@@ -1232,10 +1235,18 @@ export class CubeRoom {
     players: readonly string[],
   ): void {
     const snap = session.snapshot();
-    if (snap.spectator || snap.phase !== "race") return;
+    if (snap.spectator || (snap.phase !== "race" && snap.phase !== "waiting"))
+      return;
     const c = this.current;
     if (!c) return;
     const outcome = this.partyOf(session, players, false);
+    // 확인 못 하는 컴퓨터는 판정에서 이미 빠졌다(`exclude`). 여기서도 건너뛴다
+    for (const q of players) {
+      if (q === id || c.unverified.includes(q)) continue;
+      const end = quietEnd(outcome, q);
+      if (end) session.judgeOut(q, end.reason, end.upTo);
+    }
+    if (snap.phase !== "race") return;
     if (outcome.knockedOut[id] !== undefined) {
       session.retire(PARTY_KO);
       return;
