@@ -24,6 +24,7 @@
  *   다수가 없으면(2명) 나와 다른 기기를 빼고, 살펴보기 동안이면 판을 연 셈 치지 않는다(둘 다 판이 열리지 않음).
  *
  * 스스로 그만두기(`retire`)는 섞기를 정한 뒤면 그 사람만 DNF(`race-retire`), 정하기 전이면 기권을 알리고 이 기기는 판을 닫는다.
+ * 게임이 수 기록으로 「끝났다」고 확정한 남(`judgeOut`, 체력 0인데 알리지 않음 등)은 잠깐 기다린 뒤 이 기기에서만 DNF로 둔다.
  *
  * ## 끊김
  * 상대가 나갔다 돌아오면 그 판에 보냈던 메시지를 그 사람에게 다시 보낸다(받는 쪽은 겹친 것을 버린다).
@@ -191,6 +192,8 @@ interface Attempt<State> {
   /** 나를 기권 목록에 넣어 보낸 사람 → 그 약속 */
   claims: Map<string, Extract<RaceMessage, { type: "race-commit" }>>;
   claimTimer?: boolean;
+  /** 게임이 끝났다고 확정한 남(`judgeOut`): 아이디 → 까닭·판정에 쓴 마지막 시각 */
+  judged: Map<string, { reason: string; upTo: number }>;
 }
 
 export class RaceSession<Move, State> {
@@ -465,6 +468,7 @@ export class RaceSession<Move, State> {
       abandoned: new Set(),
       pendingOut: new Map(),
       claims: new Map(),
+      judged: new Map(),
     };
   }
 
@@ -1003,6 +1007,64 @@ export class RaceSession<Move, State> {
     a.spectator = true;
     this.finalize(reason);
     this.emit();
+  }
+
+  /**
+   * 게임이 받은 수 기록으로 직접 계산해 「이 사람은 끝났다」고 확정한 남(체력 0 등, docs/47 9-6). 그 사람이 스스로 그만둔다고
+   * 알리지(`race-retire`) 않아도 판을 닫을 수 있게 한다. 메시지는 보내지 않는다(이 기기만의 판단, 9-2 「직접 확인한 만큼만」).
+   * 같은 수 기록을 받은 기기가 같은 판단에 닿게 하는 것은 게임 몫이다.
+   * - `upTo`(풀림 기준 ms): 게임이 그 판단에 쓴 마지막 시각. 이 기기가 그 사람의 수를 이 시각 뒤 것까지 받았어야 한다
+   *   (받은 마지막 수의 시각 > upTo. 수는 차례대로 오고 시각이 거꾸로 가지 않으니, 그러면 upTo까지의 수는 모두 받았다).
+   *   아직 받지 못했으면 받지 않고 false를 낸다(게임이 뒤에 다시 부른다).
+   * - 바로 빼지 않고 `resultGraceMs`를 기다린다. 그 안에 그 사람이 스스로 그만두거나 맞추면 그대로 둔다(정직한 사람의
+   *   기록은 예전과 같다). 지나도 맞추는 중이면 DNF(`reason`)로 두고 수 기록을 `upTo`까지로 자른다. 기기마다 그 뒤 수를
+   *   받은 데까지가 달라도 같은 기록이 남는다.
+   * - 같은 사람에 대한 두 번째 부름은 버린다(처음 확정한 판단이 그대로다).
+   */
+  judgeOut(id: string, reason: string, upTo: number): boolean {
+    const a = this.a;
+    if (this.disposed || this.result || a.seed === undefined || !a.released)
+      return false;
+    if (id === this.self || this.out.has(id) || a.judged.has(id)) return false;
+    const rec = a.records.get(id);
+    if (rec?.status !== "playing") return false;
+    const last = rec.moveTimes.at(-1);
+    if (last === undefined || !(last > upTo)) return false;
+    a.judged.set(id, { reason, upTo });
+    this.after(this.resultGraceMs, () => this.applyJudged(id));
+    return true;
+  }
+
+  /** `judgeOut`의 기다림이 끝났다: 아직 맞추는 중이면 `upTo`까지 자르고 DNF로 둔다 */
+  private applyJudged(id: string): void {
+    const a = this.a;
+    const j = a.judged.get(id);
+    const rec = a.records.get(id);
+    if (this.result || !j || !rec || rec.status !== "playing") return;
+    if (this.out.has(id)) return;
+    const keep = rec.log.findIndex((x) => x.t > j.upTo);
+    if (keep >= 0) {
+      rec.log.length = keep;
+      rec.moveTimes.length = keep;
+      rec.applied = keep;
+      let state = this.game.startState(
+        a.seed as string,
+        this.options.gameOptions,
+      );
+      for (const x of rec.log)
+        state = this.game.apply(state, this.game.decodeMove(x.m));
+      rec.state = state;
+      for (const k of [...rec.marks.keys()]) if (k > keep) rec.marks.delete(k);
+      for (const k of [...rec.markBounds.keys()])
+        if (k > keep) rec.markBounds.delete(k);
+      rec.passed = new Set([...rec.marks.values()].flatMap((m) => m.ids));
+    }
+    rec.status = "dnf";
+    rec.reason = j.reason;
+    rec.raw.clear();
+    delete rec.done;
+    rec.bounds.clear();
+    this.maybeFinalize();
   }
 
   private fixSeed(seed: string, releaseAt: number): void {
