@@ -73,7 +73,7 @@ const KINGS: Record<string, Piece> = { "95": "cK", "24": "hK" };
 /** 처음 놓인 판(두 편 모두 마상마상) */
 const START: JanggiScene = { pieces: openingPieces("NENE", "NENE") };
 
-/** 차 하나와 공짜로 잡을 수 있는 한 졸 */
+/** 차 하나와 공짜로 잡을 수 있는 한 병 */
 const ROOK_SCENE: JanggiScene = {
   pieces: { ...KINGS, "71": "cR", "41": "hP", "17": "hP" },
   show: "71",
@@ -139,11 +139,11 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
     steps: [
       {
         kind: "explain",
-        title: "궁을 잡으면 이겨요",
+        title: "궁이 어디로 가도 잡히게 몰아요",
         body: [
           "장기는 **초(초록)**와 **한(빨강)**이 기물 16개씩을 들고 두는 게임이에요. **초가 먼저** 둬요.",
           "한 번에 기물 하나를 움직여요. 상대 기물이 있는 자리로 가면 그 기물을 **잡아요**.",
-          "상대 **궁**을 잡을 수밖에 없게 몰면(**외통**) 이겨요.",
+          "상대 **궁**이 어디로 가도 잡히게 몰면 이겨요. 이것을 **외통**이라고 해요.",
           "초 기물의 흘려 쓴 한자가 낯설면 첫 화면 **옵션 → 기물 글자**에서 **한글(차·포·마)**로 바꿀 수 있어요.",
         ],
         scene: START,
@@ -154,6 +154,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         body: [
           "**차(車)**는 가로·세로로 막힐 때까지 몇 칸이든 가요. 점이 차가 갈 수 있는 곳이에요.",
           "앞에 상대 기물이 있으면 그 기물을 잡을 수 있어요.",
+          "초의 졸을 한에서는 **병**이라고 불러요. 그림의 41과 17에 있는 한 기물이 병이에요.",
         ],
         scene: ROOK_SCENE,
       },
@@ -171,13 +172,13 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
       },
       {
         kind: "mission",
-        title: "졸 잡기",
-        objective: "**차**로 공짜로 잡을 수 있는 한 **졸**을 잡으세요.",
-        hint: "내 차와 같은 세로줄 위쪽(41)에 한 졸이 있어요.",
+        title: "병 잡기",
+        objective: "**차**로 공짜로 잡을 수 있는 한 **병**을 잡으세요.",
+        hint: "내 차와 같은 세로줄 위쪽(41)에 한 병이 있어요.",
         scenario: ROOK_SCENE,
         check: firstTo("41"),
         success: "잡았어요! 상대 기물 자리로 가면 그 기물을 잡아요.",
-        fail: "아직 졸을 잡지 않았어요. 차와 같은 줄에 있는 졸을 찾아보세요.",
+        fail: "아직 병을 잡지 않았어요. 차와 같은 줄에 있는 병을 찾아보세요.",
         solution: [move("71", "41")],
         mistake: [move("71", "72")],
       },
@@ -204,7 +205,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         question: "포가 할 수 **없는** 것은?",
         options: [
           "내 기물을 넘어 상대 차를 잡는다",
-          "상대 졸을 넘어 빈칸으로 간다",
+          "상대 병을 넘어 빈칸으로 간다",
           "상대 포를 넘어 간다",
         ],
         answer: 2,
@@ -236,7 +237,6 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "마는 날 일(日) 자로",
         body: [
           "**마(馬)**는 앞뒤좌우로 한 칸 가고, 이어서 바깥쪽 대각선으로 한 칸 가요.",
-          "**상(象)**은 한 칸 가고 대각선으로 두 칸 가요. 마보다 멀리 가지만 더 잘 막혀요.",
         ],
         scene: HORSE_SCENE,
       },
@@ -295,7 +295,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "궁성과 졸",
         body: [
           "**궁**과 **사(士)**는 대각선이 그려진 **궁성** 안에서만 선을 따라 한 칸씩 움직여요.",
-          "**졸(卒)·병(兵)**은 앞이나 옆으로 한 칸 가요. 뒤로는 못 가요.",
+          "**졸(卒)**은 앞이나 옆으로 한 칸 가요. 뒤로는 못 가요. 한의 졸은 **병(兵)**이라고 불러요.",
         ],
         scene: ADVISOR_SCENE,
       },
@@ -351,7 +351,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "외통으로 끝내요",
         body: [
           "장군을 받았는데 궁을 비킬 곳도, 막을 기물도, 잡을 방법도 없으면 **외통**이에요. 그 판을 이겨요.",
-          "그림에서 한 궁은 모서리에 몰렸고, 내 차 하나가 궁 옆 줄을 막고 있어요.",
+          "그림에서 한 궁은 모서리에 몰렸고, 내 차 하나가 궁 바로 아래 가로줄을 막고 있어요.",
         ],
         scene: MATE_SCENE,
       },
@@ -425,17 +425,17 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   },
   {
     id: "opening",
-    title: "차 길 열기",
-    summary: "차 길을 열고, 마·상을 꺼내고, 궁 둘레는 지킨다",
+    title: "찻길 열기",
+    summary: "찻길을 열고, 마·상을 꺼내고, 궁 둘레는 지킨다",
     steps: [
       {
         kind: "explain",
-        title: "차 길부터 열어요",
+        title: "찻길부터 열어요",
         body: [
           "처음에는 차 앞을 졸이 막고 있어 차가 두 칸밖에 못 가요. 점이 지금 차가 갈 수 있는 곳이에요.",
-          "**변 졸을 옆으로 한 칸** 비키면 차가 세로줄을 따라 쭉 나갈 수 있어요. 가장 센 기물을 일찍 쓸 수 있게 해요.",
+          "**가장 바깥 졸을 옆으로 한 칸** 비키면 차가 세로줄을 따라 쭉 나갈 수 있어요. 차가 다니는 이 세로줄을 **찻길**이라고 해요. 가장 센 기물을 일찍 쓸 수 있게 해요.",
         ],
-        scene: { ...START, show: "01" },
+        scene: { ...START, show: "09" },
       },
       {
         kind: "explain",
@@ -461,14 +461,14 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
       },
       {
         kind: "mission",
-        title: "차 길 열기",
+        title: "찻길 열기",
         objective: "한 수로 **차가 쭉 나갈 길**을 여세요.",
-        hint: "왼쪽 끝 졸(71)을 옆(72)으로 비켜 보세요. 오른쪽 끝 졸(79)도 돼요.",
+        hint: "오른쪽 끝 졸(79)을 옆(78)으로 비켜 보세요.",
         scenario: START,
         check: rookOpened,
         success: "길이 열렸어요! 이제 차가 세로줄을 따라 멀리 나갈 수 있어요.",
         fail: "아직 차 앞이 막혀 있어요. 차 바로 앞 졸을 옆으로 비켜 보세요.",
-        solution: [move("71", "72")],
+        solution: [move("79", "78")],
         mistake: [move("02", "83")],
       },
     ],

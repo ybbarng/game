@@ -35,6 +35,17 @@ export function firstTo(name: string) {
   };
 }
 
+/** 첫 수가 그 기물을 그 자리로 옮겼으면 성공(도착만 같은 다른 기물의 수는 실패) */
+export function firstMoveIs(fromName: string, toName: string) {
+  const from = pointAt(fromName);
+  const to = pointAt(toName);
+  return (ctx: Context): MissionStatus => {
+    const moved = myFirstMove(ctx);
+    if (!moved) return null;
+    return moved.from === from && moved.to === to ? "success" : "fail";
+  };
+}
+
 /** 내 수 `limit`번 안에 그 자리에 그 기물이 서면 성공, 못 서면 실패 */
 export function standsWithin(piece: Piece, name: string, limit: number) {
   const at = pointAt(name);

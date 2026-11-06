@@ -6,6 +6,7 @@ import {
   createJanggiScenario,
   createMatch,
   type GameEvent,
+  inCheck,
   kingsFacing,
   legalMoves,
   pointAt,
@@ -23,6 +24,7 @@ import {
   type JanggiLesson,
   type JanggiScene,
 } from "./tutorial";
+import { move } from "./tutorial-checks";
 
 type Mission = Extract<JanggiLesson["steps"][number], { kind: "mission" }>;
 
@@ -93,6 +95,13 @@ describe("장기 튜토리얼 미션", () => {
     expect(runFromSetup(mission, mission.mistake ?? [])).toBe("fail");
   });
 
+  it("상 쪽 졸 쓸기: 79 졸을 78로 옮겨야 성공, 77 졸을 78로 옮기면 실패", () => {
+    const mission = missions.find(([t]) => t === "상 쪽 졸 쓸기")?.[1];
+    if (!mission) throw new Error("상 쪽 졸 쓸기 미션이 없다");
+    expect(runMission(mission, [move("79", "78")]).after).toBe("success");
+    expect(runMission(mission, [move("77", "78")]).after).toBe("fail");
+  });
+
   it.each(missions)("%s: 정답이면 성공, 실수면 실패", (_title, mission) => {
     expect(mission.solution && mission.mistake).toBeTruthy();
     const solved = runMission(mission, mission.solution ?? []);
@@ -113,6 +122,8 @@ describe("장기 튜토리얼 장면", () => {
         expect(view.decision).toEqual({ kind: "move" });
         // 시작부터 빅장(점수로 끝)이 아니어야 한다.
         expect(kingsFacing(view.board)).toBe(false);
+        // 둘 차례가 아닌 한 궁이 이미 장군을 받는 판(나올 수 없는 판)이 아니어야 한다.
+        expect(inCheck(view.board, "h"), `${lesson.id}`).toBe(false);
       }
   });
 

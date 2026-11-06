@@ -122,6 +122,7 @@ export function JanggiBoard({
   hint = null,
   danger = [],
   rings = [],
+  coords = false,
 }: {
   board: readonly Cell[];
   /** 한 편이면 판을 뒤집어 내 편을 아래에 둔다 */
@@ -141,6 +142,8 @@ export function JanggiBoard({
   danger?: readonly number[];
   /** 배우기 글이 짚는 자리(얇은 주황 고리) */
   rings?: readonly number[];
+  /** 판 여백에 칸 번호를 보인다(배우기 미션처럼 글이 자리 이름을 쓸 때) */
+  coords?: boolean;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const id = `piece${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -499,6 +502,47 @@ export function JanggiBoard({
           strokeWidth={0.05}
           pointerEvents="none"
         />
+      )}
+
+      {/* 칸 번호(기보 표기): 위 여백에 세로줄 1~9, 왼쪽 여백에 가로줄 1~9·0. 기물 위에 작게 그려 가려지지 않게 한다 */}
+      {coords && (
+        <g
+          fill={LINE}
+          opacity={0.8}
+          fontSize={0.24}
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="central"
+          pointerEvents="none"
+          aria-hidden
+        >
+          {Array.from({ length: WIDTH }, (_, dx) => {
+            const x = flipped ? WIDTH - 1 - dx : dx;
+            return (
+              <text
+                key={`cx${x}`}
+                x={dx + PAD}
+                y={PAD * 0.18}
+                data-axis-col={x + 1}
+              >
+                {x + 1}
+              </text>
+            );
+          })}
+          {Array.from({ length: HEIGHT }, (_, dy) => {
+            const y = flipped ? HEIGHT - 1 - dy : dy;
+            return (
+              <text
+                key={`cy${y}`}
+                x={PAD * 0.18}
+                y={dy + PAD}
+                data-axis-row={(y + 1) % 10}
+              >
+                {(y + 1) % 10}
+              </text>
+            );
+          })}
+        </g>
       )}
     </svg>
   );
