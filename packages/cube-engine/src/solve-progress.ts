@@ -288,6 +288,80 @@ export function solveProgress(n: number, state: PuzzleState): SolveProgress {
   };
 }
 
+// ── 흐름 콤보의 진행 칸 ─────────────────────────────────
+
+interface FlowGroups {
+  /** 면마다 센터 블럭(정가운데·안쪽 센터) 스티커 */
+  readonly centers: readonly (readonly number[])[];
+  /** 엣지 줄마다, 그 줄 조각(날개·가운데 엣지)의 스티커 둘(작은 면 차례) */
+  readonly lines: readonly (readonly (readonly [number, number])[])[];
+}
+
+const flowCache = new Map<number, FlowGroups>();
+
+function flowGroups(n: number): FlowGroups {
+  let hit = flowCache.get(n);
+  if (hit) return hit;
+  const topo = cubeTopology(n);
+  const faceOf = (s: number) => topo.stickers[s]?.face as number;
+  const centers: number[][] = [[], [], [], [], [], []];
+  const lines = new Map<string, [number, number][]>();
+  for (const p of topo.pieces) {
+    if (p.kind === "center" || p.kind === "innerCenter")
+      for (const s of p.stickers) centers[faceOf(s)]?.push(s);
+    else if (p.kind === "edge" || p.kind === "wing") {
+      const [a, b] = [...p.stickers].sort((x, y) => faceOf(x) - faceOf(y)) as [
+        number,
+        number,
+      ];
+      const key = `${faceOf(a)},${faceOf(b)}`;
+      lines.set(key, [...(lines.get(key) ?? []), [a, b]]);
+    }
+  }
+  hit = { centers, lines: [...lines.values()] };
+  flowCache.set(n, hit);
+  return hit;
+}
+
+/** 가장 많이 나온 값의 수 */
+function mostCommon(values: readonly number[]): number {
+  const count = new Map<number, number>();
+  let best = 0;
+  for (const v of values) {
+    const c = (count.get(v) ?? 0) + 1;
+    count.set(v, c);
+    if (c > best) best = c;
+  }
+  return best;
+}
+
+/**
+ * 흐름 콤보(웹 `flow/combo.ts`)가 「나아갔나」를 보는 진행 칸. 조각 점수 반 점이 한 칸이다(3×3 이하는 이것뿐).
+ * 큰 큐브는 축소 단계도 한 칸씩 오르게 더한다: 면마다 가장 많은 센터 색의 스티커 수, 엣지 줄마다 같은 색으로 짝지은
+ * 조각 수(줄 하나에 조각 k개가 같은 색이면 k−1). 막대(`solveProgress`)의 센터·엣지 짝은 한 면·한 줄을 다
+ * 맞춰야 오르지만, 콤보는 그 도중의 진행도 봐야 한다. `pieces`는 이미 센 조각 점수(같은 상태면 다시 세지 않는다)
+ */
+export function flowScore(
+  n: number,
+  state: PuzzleState,
+  pieces: PieceScore = pieceScore(n, state),
+): number {
+  const half = Math.round(pieces.score * 2);
+  if (n <= 3) return half;
+  const colors = faceColors(n, state);
+  const g = flowGroups(n);
+  let centers = 0;
+  for (const face of g.centers)
+    centers += mostCommon(face.map((s) => colors[s] as number));
+  let pairs = 0;
+  for (const line of g.lines)
+    pairs +=
+      mostCommon(
+        line.map(([a, b]) => (colors[a] as number) * 8 + (colors[b] as number)),
+      ) - 1;
+  return half + centers + pairs;
+}
+
 // ── 이정표 ────────────────────────────────────────────
 
 export type MilestoneId =
