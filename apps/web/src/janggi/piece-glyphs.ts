@@ -4,7 +4,6 @@ import { KADAGADEN_GLYPHS } from "./piece-glyphs-kadagaden";
 /**
  * 장기 기물 한자(초 楚·車·包·馬·象·士·卒, 한 漢·車·包·馬·象·士·兵). 한국 장기알처럼 초는 흘려 쓴 초서,
  * 한은 반듯한 해서다. 윤곽은 두 편 모두 Kadagaden 장기알 세트(CC BY 4.0, piece-glyphs-kadagaden.ts)에서 옮겼다(docs/22).
- * 그 그림의 초 馬는 위아래가 뒤집혀 있어 180도 돌려 쓴다(돌리면 실제 알처럼 위 고리, 가운데 己, 아래 가로획).
  */
 
 export type PieceGlyph = {
@@ -12,7 +11,7 @@ export type PieceGlyph = {
   readonly box: readonly [number, number, number, number];
   /** 채워 그릴 윤곽 */
   readonly d: string;
-  /** 경로에 붙이는 변환(원본 그림의 변환, 초 馬의 180도 회전) */
+  /** 경로에 붙이는 변환(원본 그림의 변환) */
   readonly transform?: string;
   /** 원본 그림이 윤곽에 두른 같은 색 테두리 굵기(경로 좌표) */
   readonly stroke?: number;

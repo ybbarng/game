@@ -15,14 +15,8 @@ describe("기물 한자 윤곽", () => {
     }
   });
 
-  it("초 馬는 원본이 뒤집혀 있어 윤곽 가운데를 축으로 180도 돌리고, 한 馬는 돌리지 않는다", () => {
-    const [x, y, w, h] = PIECE_GLYPHS.c.N.box;
-    const m = /^rotate\(180 ([\d.]+) ([\d.]+)\)$/.exec(
-      PIECE_GLYPHS.c.N.transform ?? "",
-    );
-    expect(m).not.toBeNull();
-    expect(Number(m?.[1])).toBeCloseTo(x + w / 2, 1);
-    expect(Number(m?.[2])).toBeCloseTo(y + h / 2, 1);
+  it("초·한 馬 모두 원본 그대로 쓰고 돌리지 않는다(위 가로획, 아래 고리가 바른 모양)", () => {
+    expect(PIECE_GLYPHS.c.N.transform ?? "").not.toContain("rotate");
     expect(PIECE_GLYPHS.h.N.transform ?? "").not.toContain("rotate");
   });
 
