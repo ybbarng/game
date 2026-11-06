@@ -233,6 +233,8 @@ export interface LessonStep {
   goal?: GoalName;
   /** 「가리기」 모드에서 쓸 마스크 */
   mask?: MaskName;
+  /** try: 블라인드 연습. 외우는 동안은 다 보이고, 면을 처음 돌리면 모든 칸을 까맣게 가린다(`mask`·가리기 단추는 쓰지 않는다) */
+  blindfold?: boolean;
   /** find: 찾을 조각 */
   find?: FindTarget;
   /**
