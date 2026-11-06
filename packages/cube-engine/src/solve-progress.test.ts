@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applyMoves } from "./move";
 import { parseMoves } from "./notation";
 import {
+  flowScore,
   milestonesOf,
   pairedEdgeLines,
   pieceScore,
@@ -171,5 +172,29 @@ describe("이정표", () => {
       "edges",
     ]);
     expect(milestonesOf(5, after(5, "R U 2R"))).toEqual([]);
+  });
+});
+
+describe("흐름 콤보의 진행 칸(flowScore)", () => {
+  it("맞춘 큐브: 조각 반 점 + (큰 큐브) 센터 스티커 + 짝지은 엣지 조각", () => {
+    expect(flowScore(2, solvedCube(2))).toBe(16);
+    expect(flowScore(3, solvedCube(3))).toBe(40);
+    // 4×4: 40 + 센터 4×6 + 엣지 줄 12개 × (날개 2 − 1)
+    expect(flowScore(4, solvedCube(4))).toBe(40 + 24 + 12);
+    // 5×5: 40 + 센터 9×6 + 엣지 줄 12개 × (조각 3 − 1)
+    expect(flowScore(5, solvedCube(5))).toBe(40 + 54 + 24);
+  });
+
+  it("3×3 이하는 조각 점수 반 점이 한 칸이다", () => {
+    const s = after(3, "R U F'");
+    expect(flowScore(3, s)).toBe(pieceScore(3, s).score * 2);
+  });
+
+  it("큰 큐브는 센터·엣지 짝의 도중 진행도 칸으로 센다(막대의 센터 면 수는 그대로여도)", () => {
+    // 5×5 안쪽 층을 하나(2R)·둘(2R 2L) 돌리면 둘 다 센터 넷 면이 깨지지만, 하나만 돌린 쪽이 더 맞아 있다
+    const one = after(5, "2R");
+    const two = after(5, "2R 2L");
+    expect(solvedCenterFaces(5, one)).toBe(solvedCenterFaces(5, two));
+    expect(flowScore(5, one)).toBeGreaterThan(flowScore(5, two));
   });
 });

@@ -121,6 +121,11 @@ export interface CubePlayProps {
   /** 수 흐름 띠 끝에 흐름 콤보(docs/51 2-1)를 보인다(혼자 맞추기) */
   combo?: boolean;
   /**
+   * 수를 둔 뒤의 진행 칸(`flowScore`). 주면 흐름 콤보가 진행 없는 막 돌리기에서 끊긴다(`flow/combo.ts`).
+   * `onMove`·`onCommand`가 상태를 바꾼 바로 뒤에 부른다
+   */
+  comboProgress?: (() => number) | undefined;
+  /**
    * 데스크톱(폭 640px 이상)에서 큐브 칸을 남은 화면 높이에 맞춘다(혼자 맞추기: 1280×720 노트북에서도 큐브와 거울 판이
    * 첫 화면에 다 들어오게). 칸 위 끝의 자리를 재어 `100dvh - 위 끝 - 여백`을 넘지 않게 한다. 휴대폰은 그대로
    */
@@ -154,6 +159,7 @@ export function CubePlay({
   extraButtons,
   flow,
   combo = false,
+  comboProgress,
   fitViewport = false,
   fog = false,
   look = null,
@@ -213,6 +219,7 @@ export function CubePlay({
     marks,
     onSticker,
     combo,
+    comboProgress,
   });
   live.current = {
     state,
@@ -225,6 +232,7 @@ export function CubePlay({
     marks,
     onSticker,
     combo,
+    comboProgress,
   };
 
   // 뒷면 보기: 거울이면 3D 장면에 판을 띄운다(「거울 숨기기」로 접는다)
@@ -407,7 +415,7 @@ export function CubePlay({
       return;
     }
     viewRef.current?.enqueue(move);
-    const pushed = flowRef.current.push(move, before);
+    const pushed = flowRef.current.push(move, before, c.comboProgress?.());
     if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
     playCubeCue(c.settings, "cubeTurn");
     // 흐름 콤보가 단계를 넘으면 작은 "톡"(콤보를 보이는 화면만, docs/51 5절)
@@ -440,7 +448,7 @@ export function CubePlay({
     const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
     const m = c.onCommand(r.command);
     if (m) {
-      const pushed = flowRef.current.push(m, before);
+      const pushed = flowRef.current.push(m, before, c.comboProgress?.());
       if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, m));
       viewRef.current?.enqueue(m);
       playCubeCue(c.settings, "cubeTurn");

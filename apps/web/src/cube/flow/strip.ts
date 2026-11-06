@@ -2,8 +2,12 @@
 // - 같은 층을 이어 돌리면 합친다(U U → U2, U U U → U′, U U′ → 지움). 되돌리기도 반대 수라 앞 수를 지운다.
 // - 큐브 전체 돌리기(x·y·z)는 회색으로 작게 두고 수로 세지 않는다(빠르기에도 넣지 않는다).
 // - 지나간 수는 `FLOW_KEEP`개만 남긴다.
-// - 흐름 콤보(docs/51 2-1): 면 돌리기 사이가 `COMBO_GAP_MS` 안쪽이면 이어 친 것으로 센다. 멈추면 끊긴다.
+// - 흐름 콤보(docs/51 2-1)는 `combo.ts`의 규칙을 그대로 쓴다(이어 치기·되돌리는 수·진행 없음).
 import { type CubeMove, formatMove, isRotation } from "@game/cube-engine";
+
+import { type ComboState, EMPTY_COMBO, pushCombo } from "./combo";
+
+export { COMBO_GAP_MS, COMBO_SHOW, comboLevel, comboNow } from "./combo";
 
 export interface FlowItem {
   /** 띠 안에서 늘 같은 번호(합쳐도 그대로). 그리기의 열쇠 */
@@ -19,16 +23,13 @@ export interface FlowItem {
   readonly rotation: boolean;
 }
 
-export interface FlowStrip {
+/** 흐름 콤보 상태(`combo.ts`)를 함께 든다 */
+export interface FlowStrip extends ComboState {
   readonly items: readonly FlowItem[];
   /** 다음 번호 */
   readonly next: number;
   /** 면 돌리기를 둔 시각(ms, 빠르기 계산). 큐브 돌리기는 빼고, 최근 것만 */
   readonly times: readonly number[];
-  /** 지금 이어 친 면 돌리기 수(흐름 콤보). 끊겼는지는 `comboNow`가 지금 시각으로 본다 */
-  readonly combo: number;
-  /** 마지막 면 돌리기 시각(ms). 없으면 null */
-  readonly turnAt: number | null;
 }
 
 /** 남기는 수 */
@@ -36,17 +37,11 @@ export const FLOW_KEEP = 14;
 /** 빠르기를 재는 구간(ms) */
 export const FLOW_SPEED_WINDOW = 3_000;
 
-/** 수 사이가 이보다 길면(ms) 콤보가 끊긴다 */
-export const COMBO_GAP_MS = 1_000;
-/** 이만큼 이어 쳐야 콤보를 보인다(두세 수는 공식 하나 안에서도 늘 이어진다) */
-export const COMBO_SHOW = 4;
-
 export const EMPTY_FLOW: FlowStrip = {
   items: [],
   next: 1,
   times: [],
-  combo: 0,
-  turnAt: null,
+  ...EMPTY_COMBO,
 };
 
 const sameLayers = (a: CubeMove, b: CubeMove) =>
@@ -59,6 +54,7 @@ export function flowText(n: number, m: CubeMove): string {
 
 /**
  * 수 하나를 띠에 더한다. `color`는 그 수를 둔 때의 면 색(키 그림과 같은 기준), `at`은 시각(ms).
+ * `progress`는 이 수를 둔 뒤의 진행 점수(콤보의 「진행 없음」 규칙에 쓴다, 없으면 그 규칙을 쓰지 않는다)
  */
 export function pushFlow(
   strip: FlowStrip,
@@ -66,15 +62,20 @@ export function pushFlow(
   move: CubeMove,
   color: number | null,
   at: number,
+  progress?: number,
 ): FlowStrip {
   const rotation = isRotation(n, move);
   const times = rotation
     ? strip.times
     : [...strip.times.filter((t) => at - t <= FLOW_SPEED_WINDOW), at];
-  // 큐브 돌리기는 콤보를 올리지도 끊지도 않는다(시각도 그대로라, 돌리느라 오래 멈추면 다음 수에서 끊긴다)
-  const flow = rotation
-    ? { combo: strip.combo, turnAt: strip.turnAt }
-    : { combo: comboAfter(strip, at), turnAt: at };
+  const c = pushCombo(strip, n, move, at, progress);
+  const flow: ComboState = {
+    combo: c.combo,
+    turnAt: c.turnAt,
+    run: c.run,
+    start: c.start,
+    recent: c.recent,
+  };
   const last = strip.items.at(-1);
   if (last && sameLayers(last.move, move)) {
     const turns = (last.move.turns + move.turns) % 4;
@@ -105,44 +106,6 @@ export function pushFlow(
     times,
     ...flow,
   };
-}
-
-function comboAfter(strip: FlowStrip, at: number): number {
-  return strip.turnAt !== null && at - strip.turnAt <= COMBO_GAP_MS
-    ? strip.combo + 1
-    : 1;
-}
-
-/** 지금 콤보: 마지막 면 돌리기에서 `COMBO_GAP_MS`가 지나면 0 */
-export function comboNow(strip: FlowStrip, now: number): number {
-  return strip.turnAt !== null && now - strip.turnAt <= COMBO_GAP_MS
-    ? strip.combo
-    : 0;
-}
-
-/**
- * 콤보 강조 단계(0~4). 띠의 바탕·테두리가 단계마다 조금씩 짙어진다(번쩍이지 않게 색만 천천히 바뀐다).
- * 4수부터 보이고, 12·24·40수에서 한 단계씩
- */
-export function comboLevel(combo: number): number {
-  if (combo < COMBO_SHOW) return 0;
-  if (combo < 12) return 1;
-  if (combo < 24) return 2;
-  if (combo < 40) return 3;
-  return 4;
-}
-
-/** 면 돌리기 시각들(차례대로)에서 가장 긴 콤보. 판 끝 결과 상자·기록에 쓴다 */
-export function longestCombo(times: readonly number[]): number {
-  let best = 0;
-  let run = 0;
-  let prev: number | null = null;
-  for (const t of times) {
-    run = prev !== null && t - prev <= COMBO_GAP_MS ? run + 1 : 1;
-    prev = t;
-    if (run > best) best = run;
-  }
-  return best;
 }
 
 /**

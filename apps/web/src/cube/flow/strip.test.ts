@@ -3,13 +3,11 @@ import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
 import {
-  comboLevel,
   comboNow,
   EMPTY_FLOW,
   FLOW_KEEP,
   type FlowStrip,
   flowSpeed,
-  longestCombo,
   pushFlow,
 } from "./strip";
 
@@ -124,38 +122,27 @@ describe("흐름 콤보(docs/51 2-1)", () => {
     expect(strip.combo).toBe(1);
   });
 
-  it("합친 수·지운 수(U U′)도 친 수로 센다. 큐브 돌리기는 올리지도 끊지도 않는다", () => {
+  it("띠는 합치기만 하고, 콤보는 `combo.ts` 규칙을 따른다(합친 수는 세고 되돌리는 수는 끊는다)", () => {
     const clock = new ManualClock();
     const strip = playAt(clock, [
-      ["U", 0],
-      ["U", 100], // U2로 합침
-      ["U'", 100], // U로 줄어듦
-      ["y", 100],
-      ["R", 500], // 앞 면 돌리기(U′)부터 600ms
+      ["R", 0],
+      ["U", 100],
+      ["U", 100], // U2로 합침: 친 수로 센다
     ]);
-    expect(texts(strip)).toEqual(["U", "y", "R"]);
-    expect(comboNow(strip, clock.now())).toBe(4);
-    // 돌리기만 하며 오래 멈추면 다음 면 돌리기에서 끊긴다
-    const after = playAt(
-      clock,
-      [
-        ["y", 800],
-        ["F", 800],
-      ],
-      strip,
-    );
-    expect(after.combo).toBe(1);
+    expect(texts(strip)).toEqual(["R", "U2"]);
+    expect(comboNow(strip, clock.now())).toBe(3);
+    // U2를 되돌리는 U2: 띠에서 지우고 콤보도 끊긴다
+    const undone = playAt(clock, [["U2", 100]], strip);
+    expect(texts(undone)).toEqual(["R"]);
+    expect(undone.combo).toBe(0);
   });
 
-  it("강조 단계는 4·12·24·40수에서 한 단계씩", () => {
-    expect([3, 4, 11, 12, 23, 24, 39, 40, 99].map(comboLevel)).toEqual([
-      0, 1, 1, 2, 2, 3, 3, 4, 4,
-    ]);
-  });
-
-  it("가장 긴 콤보", () => {
-    expect(longestCombo([])).toBe(0);
-    expect(longestCombo([0, 500, 1_400, 3_000, 3_100, 3_200, 3_300])).toBe(4);
-    expect(longestCombo([0, 2_000, 4_000])).toBe(1);
+  it("진행 칸을 넘기면 콤보의 「진행 없음」 규칙도 띠에 함께 남는다", () => {
+    let strip = EMPTY_FLOW;
+    for (let i = 0; i < 10; i++)
+      strip = pushFlow(strip, 3, m(3, i % 2 ? "U" : "R"), 0, i * 100, 5);
+    // 10수 동안 5칸 그대로: 끊긴다
+    expect(strip.combo).toBe(0);
+    expect(strip.start).toBe(5);
   });
 });

@@ -131,6 +131,20 @@ describe("혼자 맞추기", () => {
     expect(records[0]?.combo).toBe(4);
   });
 
+  it("가장 긴 흐름 콤보: 되돌리는 수에서 끊긴다(수 흐름 띠와 같은 규칙)", () => {
+    const { clock, records, s, type } = setup({ inspection: false });
+    s.start("R U R' U' R2");
+    // R2 U [U′ U] R U′ R′: U′가 U를 되돌려 끊기고, 다시 U R U′ R′ 넷
+    type("R2");
+    for (const m of ["U", "U'", "U", "R", "U'", "R'"]) {
+      clock.advance(200);
+      type(m);
+    }
+    expect(s.phase).toBe("done");
+    expect(s.longestCombo).toBe(4);
+    expect(records[0]?.combo).toBe(4);
+  });
+
   it("구간 기록은 새 판·맞춘 상태로에서 지우고, 블라인드는 재지 않는다", () => {
     const { s, type } = setup({ inspection: false });
     s.start("U R");
