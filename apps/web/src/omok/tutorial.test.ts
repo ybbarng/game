@@ -84,6 +84,10 @@ describe("오목 튜토리얼 장면", () => {
     expect(view.forbidden).toContainEqual({ at: pointAt("H8"), reason: "3·3" });
   });
 
+  it("실전(처음부터 한 판)은 모든 단원을 배운 뒤 맨 뒤에 온다", () => {
+    expect(OMOK_LESSONS.at(-1)?.id).toBe("real");
+  });
+
   it("퀴즈 정답 번호가 보기 안에 있다", () => {
     for (const lesson of OMOK_LESSONS)
       for (const step of lesson.steps) {
