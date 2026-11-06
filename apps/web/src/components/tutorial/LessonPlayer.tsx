@@ -60,6 +60,8 @@ export function LessonPlayer<View, Event, Scenario, Action>({
   if (!lesson || !step) return null;
 
   const next = () => {
+    // 미션을 마치고 넘어가면 미션 대국을 닫는다(✕에서만 닫으면 컴퓨터가 뒤에서 계속 둔다).
+    if (playing) tutorial.endMission?.();
     setChosen(null);
     setStatus(null);
     setPlaying(false);

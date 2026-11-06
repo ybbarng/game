@@ -85,6 +85,7 @@ export const omokTutorial: TutorialKit<OmokView, GameEvent, OmokScene, Action> =
           listener(state.view, state.events);
       }),
     Scene: OmokSceneView,
+    endMission: () => useOmok.getState().leave(),
     Table: ({ onExit, mission }) => (
       <OmokGame
         onExit={() => {

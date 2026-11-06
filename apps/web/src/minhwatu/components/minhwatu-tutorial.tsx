@@ -71,6 +71,7 @@ export const minhwatuTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: MinhwatuSceneView,
+  endMission: () => useMinhwatu.getState().leave(),
   Table: ({ onExit, mission, hints }) => (
     <MinhwatuTable
       onExit={() => {

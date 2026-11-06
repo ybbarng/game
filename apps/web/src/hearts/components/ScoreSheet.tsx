@@ -41,7 +41,9 @@ export function ScoreSheet({
           <h2 className="font-[family-name:var(--font-card-serif)] font-bold text-lg">
             점수판
           </h2>
-          <span className="text-xs opacity-70">{endScore}점이 넘으면 끝</span>
+          <span className="text-xs opacity-70">
+            {endScore}점 이상이 되면 끝
+          </span>
         </div>
         <div className="overflow-y-auto">
           <table className="w-full table-fixed text-center font-[family-name:var(--font-card-serif)] tabular-nums">

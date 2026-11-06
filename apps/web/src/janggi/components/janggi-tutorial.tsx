@@ -76,6 +76,7 @@ export const janggiTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: JanggiSceneView,
+  endMission: () => useJanggi.getState().leave(),
   Table: ({ onExit, mission }) => (
     <JanggiGame
       onExit={() => {

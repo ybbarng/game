@@ -211,6 +211,7 @@ export const galaxyTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: GalaxySceneView,
+  endMission: () => useGalaxy.getState().leave(),
   Table: ({ onExit, mission }) => (
     <GalaxyGame
       onExit={() => {
