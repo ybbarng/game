@@ -133,6 +133,13 @@ describe("단원 장면이 엔진 규칙과 맞다", () => {
     expect(played).toEqual([0, 2]);
   });
 
+  it("J: ◆4를 내면 한 장 남은 1번이 ◆5로 끝낸다(실패 문구가 장면과 맞다)", () => {
+    const { events } = runScene(JACK_SCENE, [{ type: "play", card: "D4" }]);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "finished", seat: 1 }),
+    );
+  });
+
   it("공격: 2 위에 아무 2·같은 무늬 A만, 받아치면 쌓이고 먹으면 쌓인 만큼", () => {
     expect(plays(COUNTER_SCENE)).toEqual(["S2", "HA"]);
     for (const card of ["C5", "CK"] as const)
