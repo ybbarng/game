@@ -5,6 +5,8 @@ import {
   type Forbidden,
   fivePoints,
   forbiddenReason,
+  fourMoves,
+  indexOf,
   legalMoves,
   type OmokState,
   pointAt,
@@ -56,7 +58,7 @@ export function judgeMove(
   move: number,
   step: number,
 ): "solved" | "next" | "wrong" {
-  if (puzzle.kind === "defend")
+  if (puzzle.kind !== "attack")
     return puzzle.answers.map(pointAt).includes(move) ? "solved" : "wrong";
   const variant = variantOf(puzzle);
   const left = puzzle.moves - step;
@@ -176,18 +178,108 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
         : `${answer.map(pointName).join(" 또는 ")}: 그 길의 급소를 먼저 막아 끊는다`,
     ];
   }
+  if (puzzle.kind === "pick") return explainPick(puzzle, start, variant);
   const line = mainLine(puzzle);
   // 렌주: 금지가 없다면 이겼을 흑 자리(함정)를 먼저 짚는다.
   const lines: string[] = trapsOf(puzzle).map(
     (t) =>
       `${pointName(t.at)}에 두면 이길 것 같지만 흑에게 ${t.reason} 금지라 둘 수 없다`,
   );
+  if (puzzle.race) {
+    const theirs = winningFirstMoves(start, 2, variant, 2).map(pointName);
+    lines.unshift(
+      `백은 ${theirs.join("·")}에 두면 막을 수 없는 넷이 되지만, 흑이 사로 몰면 백은 막기만 해야 해 흑이 먼저 이긴다`,
+    );
+  }
   let board = start;
   line.forEach((move, i) => {
     if (i % 2 === 0) lines.push(describe(board, move, variant));
     board = placed(board, move, i % 2 === 0 ? 1 : 2);
   });
   return lines;
+}
+
+type Pick = Extract<OmokPuzzle, { kind: "pick" }>;
+
+/** 흑이 `at`에 두면 백의 열린 셋을 막는가(백이 사로 몰아 3수 안에 이기지 못한다) */
+export function blocksThree(
+  board: readonly Cell[],
+  at: number,
+  variant: Variant,
+): boolean {
+  return winningFirstMoves(placed(board, at, 1), 2, variant, 3).length === 0;
+}
+
+/**
+ * 백의 열린 셋을 막는 흑 자리 모두. 백이 막을 수 없는 넷을 만드는 자리(`winningFirstMoves` 2수)를 지나는
+ * 네 줄의 네 칸 안, 그리고 흑이 사를 만드는 자리만 본다: 그 밖에 두면 그 넷이 그대로 통해 막지 못한다
+ */
+export function blockingMoves(
+  board: readonly Cell[],
+  variant: Variant,
+): number[] {
+  const near = new Set<number>(fourMoves(board, 1, variant));
+  for (const w of winningFirstMoves(board, 2, variant, 2)) {
+    const [x, y] = xyOf(w);
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ] as const)
+      for (let k = -4; k <= 4; k++) {
+        const nx = x + k * dx;
+        const ny = y + k * dy;
+        if (nx < 0 || nx >= 15 || ny < 0 || ny >= 15) continue;
+        if (board[indexOf(nx, ny)] === 0) near.add(indexOf(nx, ny));
+      }
+  }
+  return [...near]
+    .sort((a, b) => a - b)
+    .filter(
+      (at) =>
+        forbiddenReason(board, at, 1, variant) === null &&
+        blocksThree(board, at, variant),
+    );
+}
+
+/** 흑이 `at`에 두면 흑 열린 셋이 생기는가(다음 수에 막을 수 없는 넷을 둘 수 있다) */
+export function buildsThree(
+  board: readonly Cell[],
+  at: number,
+  variant: Variant,
+): boolean {
+  return winningFirstMoves(placed(board, at, 1), 1, variant, 2).length > 0;
+}
+
+/** 첫 돌 H8에서 백 둘째 수가 가로·세로로 붙었나(직접) */
+function isDirect(white: string): boolean {
+  const [x, y] = xyOf(pointAt(white));
+  const [cx, cy] = xyOf(pointAt("H8"));
+  return x === cx || y === cy;
+}
+
+function explainPick(
+  puzzle: Pick,
+  start: readonly Cell[],
+  variant: Variant,
+): string[] {
+  const answers = puzzle.answers.join(" 또는 ");
+  if (puzzle.reason === "opening") {
+    const white = puzzle.white[0] as string;
+    const direct = isDirect(white);
+    return [
+      `${answers}: ${direct ? "화월" : "포월"}. 백이 ${direct ? "가로·세로로(직접)" : "대각선으로(간접)"} 붙었을 때(백 ${white}), 셋째 돌을 첫 돌의 대각선 옆이면서 백 돌과 가로나 세로 한 줄인 자리에 둔 모양이다`,
+      "렌주 연구에서 흑이 이긴다고 밝혀진 주형이다",
+    ];
+  }
+  const answer = pointAt(puzzle.answers[0] as string);
+  const others = blockingMoves(start, variant).filter((at) => at !== answer);
+  const next = winningFirstMoves(placed(start, answer, 1), 1, variant, 2);
+  return [
+    `${answers}: 백 열린 셋을 막으면서 흑 열린 셋도 만든다. 다음에 ${next.map(pointName).join("·")}에 두면 막을 수 없는 넷이라, 이번엔 백이 막아야 한다`,
+    `다른 막는 자리(${others.map(pointName).join("·")})는 막기만 하고 흑 셋은 생기지 않는다`,
+  ];
 }
 
 /**
