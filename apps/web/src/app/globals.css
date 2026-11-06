@@ -1209,14 +1209,6 @@ button {
   transition: none !important;
 }
 
-/* 장기 알 글자(docs/22): 한은 해서(霞鶩文楷 TC Bold), 알에 쓰는 일곱 글자만 잘라 넣었다(OFL, public/fonts).
-   초는 글꼴 대신 한국 장기알 모양대로 그린 획(src/janggi/cho-glyphs.ts) */
-@font-face {
-  font-family: "JanggiHan";
-  src: url("/fonts/janggi-han.woff2") format("woff2");
-  font-display: swap;
-}
-
 /*
  * 숫자야구 야구장: 조명이 비치는 밤 잔디와 잔디 깎은 줄무늬.
  * 첫 화면·옵션·배우기·대국이 함께 쓴다

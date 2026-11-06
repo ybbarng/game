@@ -15,8 +15,8 @@ import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useJanggiStudyProgress } from "@/study/progress";
 import { useJanggiTutorialProgress } from "@/tutorial/progress";
-import { CHO_GLYPH_CREDIT } from "../cho-glyphs";
 import { janggiOnline } from "../online";
+import { PIECE_GLYPH_CREDIT } from "../piece-glyphs";
 import { JANGGI_PUZZLE_SETS } from "../puzzles";
 import { endJanggiSession } from "../session";
 import {
@@ -348,11 +348,11 @@ function JanggiHome({
       aboutLabel="장기는?"
       onAbout={onRules}
       credit={
-        // 초 알 글자 윤곽의 출처 표기(CC BY 4.0, cho-glyphs-kadagaden.ts)
+        // 기물 한자 윤곽의 출처 표기(CC BY 4.0, piece-glyphs-kadagaden.ts)
         <>
-          장기 초 기물 글자:{" "}
+          장기 기물 글자:{" "}
           <a
-            href={CHO_GLYPH_CREDIT.source}
+            href={PIECE_GLYPH_CREDIT.source}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:opacity-80"
@@ -361,14 +361,14 @@ function JanggiHome({
           </a>
           (pychess-variants),{" "}
           <a
-            href={CHO_GLYPH_CREDIT.license}
+            href={PIECE_GLYPH_CREDIT.license}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:opacity-80"
           >
             CC BY 4.0
           </a>
-          , 馬는 180도 돌림
+          , 초 馬는 180도 돌림
         </>
       }
     />
