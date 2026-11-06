@@ -51,4 +51,33 @@ describe("모양 만들기 기록", () => {
     expect(loadShapeRecords(memory({ [SHAPE_RECORDS_KEY]: "{" }))).toEqual({});
     expect(loadShapeRecords(null)).toEqual({});
   });
+
+  it("공식을 본 판은 따로 세고, 공식 보기 전의 기록은 안 본 판으로 그대로 읽힌다", () => {
+    const old = memory({
+      [SHAPE_RECORDS_KEY]: JSON.stringify({
+        "3-checkerboard|solved": {
+          best: 9_000,
+          bestMoves: 6,
+          count: 2,
+          last: 9_500,
+        },
+      }),
+    });
+    const records = loadShapeRecords(old);
+    const plain = recordKey("3-checkerboard", "solved");
+    const seen = recordKey("3-checkerboard", "solved", true);
+    expect(plain).toBe("3-checkerboard|solved");
+    expect(records[plain]?.best).toBe(9_000);
+    const r = addShapeResult(records, seen, 4_000, 6);
+    expect(r.best).toBe(true);
+    expect(r.records[plain]?.best).toBe(9_000);
+    expect(r.records[seen]).toEqual({
+      best: 4_000,
+      bestMoves: 6,
+      count: 1,
+      last: 4_000,
+    });
+    saveShapeRecords(r.records, old);
+    expect(loadShapeRecords(old)).toEqual(r.records);
+  });
 });

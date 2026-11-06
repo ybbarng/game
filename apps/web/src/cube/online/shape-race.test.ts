@@ -92,6 +92,21 @@ describe("판정 설정 지문", () => {
     expect(raceOptionsFor({ ...base, n: 3 }).suspicion?.minMoves).toBe(30);
   });
 
+  it("「공식 보기」는 끈 판만 지문에 들어간다(허용이 기본이라 옛 방과 같은 지문)", () => {
+    expect(shapeRuleOk({ ...EASY2, formula: true }, 2)).toBe(true);
+    expect(shapeRuleOk({ ...EASY2, formula: false }, 2)).toBe(true);
+    expect(shapeRuleOk({ ...EASY2, formula: "off" }, 2)).toBe(false);
+    const on = shapeOfRound({ ...base, shape: { ...EASY2, formula: true } }, 1);
+    expect(on).toEqual(shapeOfRound({ ...base, shape: EASY2 }, 1));
+    expect(on).not.toHaveProperty("formula");
+    const offRule = { ...base, shape: { ...EASY2, formula: false } };
+    const off = shapeOfRound(offRule, 1);
+    expect(off).toEqual({ ...on, formula: false });
+    expect(raceOptionsFor(offRule, undefined, off).gameOptions).toEqual({
+      shape: { id: on?.id, start: "solved", formula: false },
+    });
+  });
+
   it("맞춘 큐브에서 시작하면 섞지 않고, 지문에 목표가 들어간다", () => {
     const a = createCubeRaceGame(2, fake, undefined, {}, false, {
       id: "2-halves",
@@ -227,6 +242,45 @@ describe("모양 만들기 판(두 기기)", () => {
     expect(r?.ranking.every((id) => r.players[id]?.status !== "done")).toBe(
       true,
     );
+  });
+
+  it("방장이 한 손님에게만 「공식 보기」를 다르게 알리면 판이 열리지 않는다, 같은 규칙이면 공식 보기를 꺼도 그대로 겨룬다", () => {
+    const bad = setup({ shape: { ...EASY2, formula: false } });
+    expect(bad.guest.state?.settings.shape?.formula).toBe(false);
+    makeShape(bad.clock, bad.guest, 1_000);
+    bad.host.startRound();
+    runUntil(
+      bad.clock,
+      () => bad.host.rounds.length === 1 && bad.guest.rounds.length === 1,
+      60_000,
+      50,
+    );
+    const r = bad.host.rounds[0]?.result;
+    expect(r?.ranking.every((id) => r.players[id]?.status !== "done")).toBe(
+      true,
+    );
+
+    const { clock, host, guest } = setup();
+    host.setShape({ ...EASY2, formula: false });
+    clock.advance(100);
+    expect(guest.state?.settings.shape?.formula).toBe(false);
+    // 다시 허용하면 칸을 지운다(옛 방과 같은 방 상태)
+    host.setShape({ ...EASY2, formula: true });
+    expect(host.state?.settings.shape).not.toHaveProperty("formula");
+    host.setShape({ ...EASY2, formula: false });
+    clock.advance(100);
+    makeShape(clock, host, 3_000);
+    makeShape(clock, guest, 1_000);
+    host.startRound();
+    runUntil(
+      clock,
+      () => host.rounds.length === 1 && guest.rounds.length === 1,
+      60_000,
+      50,
+    );
+    expect(host.rounds[0]?.shape?.formula).toBe(false);
+    expect(guest.rounds[0]?.result).toEqual(host.rounds[0]?.result);
+    expect(host.rounds[0]?.result.ranking).toEqual(["g", "h"]);
   });
 
   it("모양 만들기를 켜면 파티 모드가 꺼지고, 파티 모드를 켜면 모양 만들기가 꺼진다", () => {

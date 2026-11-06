@@ -27,6 +27,7 @@ import { raceInspectSound, raceMilestoneSound } from "../game-sounds";
 import type { Command } from "../input";
 import type { CubeLook } from "../item-look";
 import { SHAPE_START_LABELS, shapeGoal, shapeProgress } from "../patterns/race";
+import { ShapeFormula } from "../patterns/ShapeFormula";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -348,6 +349,8 @@ export function RaceView({
   // 모양 만들기(docs/47 9-10): 목표 모양. 단계 칩(십자·F2L…) 대신 목표까지의 진행을 보인다
   const shape = room.game()?.shape;
   const goal = shape ? shapeGoal(shape.id) : undefined;
+  // 「공식 보기」(방 규칙이 허용할 때만, 모두에게 같은 조건). 연 채로 다음 판에 가면 그 판 공식이 보인다
+  const [formulaOpen, setFormulaOpen] = useState(false);
   // 단계 칩(docs/51 1-3): 이미 받은 수 기록에서 이 기기가 계산한다(새로 보내는 정보 없음, race-stages.ts)
   const start = snap?.seed ? session?.startState() : undefined;
   // biome-ignore lint/correctness/useExhaustiveDependencies: 섞기가 바뀔 때만 새로 센다
@@ -767,6 +770,10 @@ export function RaceView({
                 settings={settings}
                 look={look}
                 id={shape.id}
+                alg={goal.pattern.alg}
+                formula={shape.formula !== false}
+                formulaOpen={formulaOpen}
+                onFormula={setFormulaOpen}
               />
             )}
             <p
@@ -1630,6 +1637,10 @@ function Replay({
  */
 function ShapeTarget({
   id,
+  alg,
+  formula,
+  formulaOpen,
+  onFormula,
   name,
   start,
   n,
@@ -1640,6 +1651,11 @@ function ShapeTarget({
   look,
 }: {
   id: string;
+  alg: string;
+  /** 방 규칙이 「공식 보기」를 허용하나 */
+  formula: boolean;
+  formulaOpen: boolean;
+  onFormula: (open: boolean) => void;
   name: string;
   start: keyof typeof SHAPE_START_LABELS;
   n: number;
@@ -1676,6 +1692,15 @@ function ShapeTarget({
           >
             {done ? "완성" : `목표 ${Math.round(progress * 100)}%`}
           </span>
+        )}
+        {formula && (
+          <ShapeFormula
+            n={n}
+            alg={alg}
+            start={start}
+            open={formulaOpen}
+            onToggle={onFormula}
+          />
         )}
       </div>
     </div>

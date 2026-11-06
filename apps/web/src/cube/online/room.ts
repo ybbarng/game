@@ -14,6 +14,7 @@ import { randomId, type Transport } from "@/net/transport";
 import {
   type ShapeRule,
   shapeFor,
+  shapeFormulaOn,
   shapePicks,
   shapeRuleOk,
   shapeSupports,
@@ -318,8 +319,14 @@ export function raceOptionsFor(
     suspicion: suspicionFor(s.n, !!shape),
   };
   const game: Record<string, unknown> = {};
-  // 모양 만들기: 목표와 시작을 지문에 넣는다(방장이 기기마다 다른 목표를 보내면 「섞기 어긋남」). 쓰지 않으면 예전 지문 그대로
-  if (shape) game.shape = { id: shape.id, start: shape.start };
+  // 모양 만들기: 목표와 시작을 지문에 넣는다(방장이 기기마다 다른 목표를 보내면 「섞기 어긋남」). 쓰지 않으면 예전 지문 그대로.
+  // 「공식 보기」는 끈 판만 넣는다(켬이 기본이라 이 칸이 생기기 전의 방과 지문이 같다)
+  if (shape)
+    game.shape = {
+      id: shape.id,
+      start: shape.start,
+      ...(shape.formula === false ? { formula: false } : {}),
+    };
   // 파티 모드: 이정표(아이템전이면 쓰기·맞은 섞기도) 시각을 대결 틀이 증인 하한으로 확인한다(중간 지점).
   // 쓰지 않으면 예전 지문 그대로
   if (s.party) {
@@ -375,7 +382,11 @@ export function shapeOfRound(
 ): RaceShape | undefined {
   const rule = s.shape;
   if (!rule || !shapeSupports(s.n)) return undefined;
-  return { id: shapeFor(rule, s.n, round).id, start: rule.start };
+  return {
+    id: shapeFor(rule, s.n, round).id,
+    start: rule.start,
+    ...(shapeFormulaOn(rule) ? {} : { formula: false as const }),
+  };
 }
 
 export function cleanName(name: string): string {
@@ -882,7 +893,9 @@ export class CubeRoom {
       this.setSettings({});
       return;
     }
-    const shape = { ...rule, key: rule.key ?? randomId(8) };
+    const shape: ShapeRule = { ...rule, key: rule.key ?? randomId(8) };
+    // 「공식 보기」는 끈 때만 적는다(켬이 기본, 이 칸이 생기기 전의 방과 같은 방 상태)
+    if (shape.formula !== false) delete shape.formula;
     if (!shapeRuleOk(shape, s.settings.n)) return;
     this.setSettings({ shape });
   }
