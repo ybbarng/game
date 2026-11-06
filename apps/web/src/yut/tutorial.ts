@@ -21,6 +21,8 @@ export interface YutScene {
   throwsLeft?: number;
   /** 설명 그림에 보일 윷가락(배가 위면 true) */
   sticks?: Sticks;
+  /** 윷가락 아래 결과 이름을 숨긴다(결과를 묻는 퀴즈) */
+  hideResult?: boolean;
 }
 
 export type YutLesson = Lesson<YutView, GameEvent, YutScene, Action>;
@@ -144,9 +146,13 @@ export const YUT_LESSONS: readonly YutLesson[] = [
       {
         kind: "quiz",
         question: "배가 **둘**, 등이 둘이면?",
-        scene: { pieces: [], sticks: [false, true, true, false] },
-        options: ["개(2칸)", "도(1칸)", "걸(3칸)", "모(5칸)"],
-        answer: 0,
+        scene: {
+          pieces: [],
+          sticks: [false, true, true, false],
+          hideResult: true,
+        },
+        options: ["도(1칸)", "걸(3칸)", "개(2칸)", "모(5칸)"],
+        answer: 2,
         explain: "배가 둘이면 **개**, 두 칸 가요.",
       },
       {
@@ -176,7 +182,7 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         body: [
           "오른쪽 위 **모**, 왼쪽 위 **뒷모**에 **멈춘** 말은 다음에 대각선 **지름길**로 가요.",
           "가운데 **방**에 멈춘 말은 **참먹이 쪽**으로 곧장 가요. 가장 빠른 길이에요.",
-          "멈추지 않고 **지나가기만** 하면 원래 바깥 길로 가요.",
+          "모서리를 멈추지 않고 **지나가기만** 하면 원래 바깥 길로 가요. 방을 지나가기만 하는 말은 타고 온 대각선을 그대로 따라가요.",
         ],
         scene: {
           pieces: [
@@ -188,8 +194,8 @@ export const YUT_LESSONS: readonly YutLesson[] = [
       {
         kind: "quiz",
         question: "**모**를 지나쳐 두 칸 더 간 말은 다음에 어디로 갈까요?",
-        options: ["바깥 길로 계속", "대각선 지름길", "방으로 바로", "처음으로"],
-        answer: 0,
+        options: ["대각선 지름길", "바깥 길로 계속", "방으로 바로", "처음으로"],
+        answer: 1,
         explain:
           "지름길은 모서리에 **멈췄을 때만** 타요. 지나치면 바깥 길이에요.",
       },
@@ -224,7 +230,7 @@ export const YUT_LESSONS: readonly YutLesson[] = [
       },
       {
         kind: "mission",
-        title: "두 마리 잡기",
+        title: "말 둘 잡기",
         objective: "**걸**로 상대 말을 잡으세요. 업힌 둘이 한꺼번에 돌아가요.",
         hint: "2번 칸 말에서 세 칸 가면 상대 말이 있는 **모**예요.",
         scenario: CAPTURE,
@@ -278,24 +284,24 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         kind: "quiz",
         question: "**모**가 나왔어요. 다음은?",
         options: [
-          "한 번 더 던진다",
           "바로 말을 움직이고 차례가 끝난다",
           "상대가 던진다",
+          "한 번 더 던진다",
           "다시 던지면 모가 사라진다",
         ],
-        answer: 0,
+        answer: 2,
         explain: "윷·모는 **한 번 더**예요. 모(5칸)는 그대로 모아 둬요.",
       },
       {
         kind: "quiz",
         question: "상대 말을 잡으면?",
         options: [
-          "한 번 더 던진다",
           "차례가 끝난다",
           "말을 하나 더 받는다",
           "점수를 얻는다",
+          "한 번 더 던진다",
         ],
-        answer: 0,
+        answer: 3,
         explain: "잡아도 **한 번 더** 던져요.",
       },
     ],
@@ -321,7 +327,7 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         kind: "explain",
         title: "참먹이를 지나야 나요",
         body: [
-          "말은 참먹이를 **지나야** 나요. 참먹이에 **정확히 서면** 아직 판에 있고, 다음에 무엇이든 나오면 나요(옵션에서 바꿀 수 있어요).",
+          "말은 참먹이를 **지나야** 나요. 참먹이에 **정확히 서면** 아직 판에 있고, 다음에 빽도가 아닌 결과가 나오면 무엇이든 나요. 빽도가 나오면 한 칸 뒤로 물러나요. 이 규칙은 옵션에서 바꿀 수 있어요.",
         ],
         scene: FINISH,
       },
@@ -329,13 +335,14 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         kind: "quiz",
         question: "도 자리 말이 **빽도**를 쓰면?",
         options: [
-          "참먹이에 선다",
           "처음으로 돌아간다",
+          "참먹이에 선다",
           "판 밖으로 난다",
           "움직이지 않는다",
         ],
-        answer: 0,
-        explain: "한 칸 뒤가 **참먹이**예요. 다음에 무엇이든 나오면 나요.",
+        answer: 1,
+        explain:
+          "한 칸 뒤가 **참먹이**예요. 다음에 빽도가 아닌 결과가 나오면 나요.",
       },
       {
         kind: "mission",
@@ -370,12 +377,12 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         kind: "quiz",
         question: "온라인 윷놀이에서 다음 던지기 결과를 미리 아는 사람은?",
         options: [
-          "아무도 없다",
           "방장",
           "다음에 던질 사람",
+          "아무도 없다",
           "먼저 들어온 사람",
         ],
-        answer: 0,
+        answer: 2,
         explain:
           "결과는 **모두의 다음 고리**가 모여야 정해져요. 각자 자기 고리만 알아서 아무도 미리 알 수 없어요.",
       },
@@ -391,7 +398,7 @@ export const YUT_LESSONS: readonly YutLesson[] = [
         title: "이기는 요령",
         body: [
           "**모·뒷모·방**에 멈추면 지름길로 빨리 나요.",
-          "상대 말 **바로 뒤(1~5칸)**에 서면 잡힐 수 있어요. 잡을 수 있으면 먼저 잡고, 한 번 더 던져요.",
+          "상대 말 **앞 1~5칸**에 서면 잡힐 수 있어요. 잡을 수 있으면 먼저 잡고, 한 번 더 던져요.",
           "업으면 빨라지지만 잡히면 함께 돌아가요. 상대 말과 거리를 보고 업어요.",
         ],
       },

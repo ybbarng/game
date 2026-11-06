@@ -34,14 +34,20 @@ function YutSceneView({ scenario }: { scenario: YutScene }) {
   const view: YutView = viewOf(sceneState(scenario), 0);
   return (
     <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-2">
-      {scenario.sticks ? (
+      {scenario.sticks && (
         <YutSticks
           sticks={scenario.sticks}
-          value={valueOfSticks(scenario.sticks, YUT_TUTORIAL_RULES)}
+          value={
+            scenario.hideResult
+              ? null
+              : valueOfSticks(scenario.sticks, YUT_TUTORIAL_RULES)
+          }
           throwKey={0}
           tossing={false}
         />
-      ) : (
+      )}
+      {/* 윷가락만 보이는 장면이 아니면 판도 그린다(말 자리를 함께 설명할 때) */}
+      {(!scenario.sticks || scenario.pieces.length > 0) && (
         <YutBoard
           view={view}
           events={[]}
