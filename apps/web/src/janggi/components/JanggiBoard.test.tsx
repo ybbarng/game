@@ -82,3 +82,40 @@ describe("장기판 도움 표시", () => {
     expect(container.querySelectorAll("[data-hint]")).toHaveLength(2);
   });
 });
+
+/* 배우기 미션은 힌트가 자리 이름(41, 59 등)을 쓰니 판에 칸 번호를 보인다(2026-11-06) */
+describe("장기판 칸 번호", () => {
+  const numbers = (flipped: boolean, coords: boolean) => {
+    const { container } = render(
+      <JanggiBoard
+        board={board}
+        flipped={flipped}
+        legal={[]}
+        selected={null}
+        onSelect={() => {}}
+        onMove={() => {}}
+        lastMove={null}
+        checkedKing={null}
+        labels="hanja"
+        coords={coords}
+      />,
+    );
+    const texts = (sel: string) =>
+      [...container.querySelectorAll(sel)].map((e) => e.textContent);
+    return { cols: texts("[data-axis-col]"), rows: texts("[data-axis-row]") };
+  };
+
+  it("기본으로는 없고, coords면 세로줄 1~9와 가로줄 1~9·0을 보인다", () => {
+    expect(numbers(false, false).cols).toEqual([]);
+    cleanup();
+    const { cols, rows } = numbers(false, true);
+    expect(cols).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+    expect(rows).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]);
+  });
+
+  it("뒤집은 판에서는 번호도 거꾸로 놓인다", () => {
+    const { cols, rows } = numbers(true, true);
+    expect(cols).toEqual(["9", "8", "7", "6", "5", "4", "3", "2", "1"]);
+    expect(rows).toEqual(["0", "9", "8", "7", "6", "5", "4", "3", "2", "1"]);
+  });
+});

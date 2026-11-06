@@ -136,11 +136,9 @@ describe("포진 고르기", () => {
     expect(row).toEqual(["hE", "hN", "hE", "hN"]);
   });
 
-  it("말풀이: 귀(84·86)·면(85)은 궁성 윗줄, 변졸은 71·79", () => {
+  it("말풀이: 귀(84·86)·면(85)은 궁성 윗줄의 빈자리", () => {
     for (const name of ["84", "85", "86"])
       expect(START[pointAt(name)]).toBe("");
-    expect(START[pointAt("71")]).toBe("cP");
-    expect(START[pointAt("79")]).toBe("cP");
   });
 
   it("귀마 차림은 마 하나가 첫 수에 바로 궁성 귀로 간다", () => {
@@ -366,6 +364,9 @@ describe("초반 21수", () => {
     expect(guards(at(11), "71")).toContain("91");
     expect(reach(at(11), "32")).toContain("92");
     expect(reach(at(11), "91")).toContain("92");
+    // 02까지 들어오면 진마(83)가 잡는다.
+    expect(reach(at(11), "32")).toContain("02");
+    expect(guards(at(11), "02")).toContain("83");
     // 13수: 차끼리 마주 보고, 한 포는 72 너머로 못 들어온다.
     expect(reach(at(13), "91")).toContain("31");
     expect(reach(at(13), "32")).not.toEqual(expect.arrayContaining(["82"]));

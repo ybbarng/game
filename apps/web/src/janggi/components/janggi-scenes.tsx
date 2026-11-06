@@ -571,8 +571,12 @@ export function SetupDrill({ count }: { count: number }) {
                 "rounded-xl border px-2 py-2 font-semibold text-sm",
                 !picked && "border-white/15 bg-white/5 hover:bg-white/10",
                 grade === "best" && "border-emerald-300 bg-emerald-500/25",
+                // 「둘 만해요」는 틀린 것이 아니라 노랑, 「피해요」만 빨강
                 picked === cho &&
-                  grade !== "best" &&
+                  grade === "ok" &&
+                  "border-amber-300 bg-amber-500/25",
+                picked === cho &&
+                  grade === "avoid" &&
                   "border-rose-300 bg-rose-500/25",
                 picked &&
                   grade !== "best" &&
@@ -590,7 +594,9 @@ export function SetupDrill({ count }: { count: number }) {
         <div
           className={cn(
             "w-full rounded-xl p-2 text-sm leading-relaxed",
-            result.grade === "best" ? "bg-emerald-500/15" : "bg-rose-500/15",
+            result.grade === "best" && "bg-emerald-500/15",
+            result.grade === "ok" && "bg-amber-500/15",
+            result.grade === "avoid" && "bg-rose-500/15",
           )}
           data-drill-result={result.grade}
         >

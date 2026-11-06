@@ -356,6 +356,7 @@ export function JanggiGame({
             labels={labels}
             hint={hint}
             danger={danger}
+            coords={!!mission}
           />
           <ResultBanner banner={banner} seq={view.roundNumber} />
         </>

@@ -490,7 +490,7 @@ test("오목 초고수: 옵션에서 고르면 상대 이름에 보이고 한 �
   await expect(page.getByRole("status")).toContainText("내 차례");
 });
 
-/** 규칙 단원 다섯을 끝낸 배우기 기록(첫 세 수 단원부터 열린다) */
+/** 규칙 단원 넷과 실전을 끝낸 배우기 기록(첫 세 수 단원부터 열린다) */
 async function afterRuleLessons(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem(

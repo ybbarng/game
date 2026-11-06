@@ -4,6 +4,8 @@ import {
   type Action,
   createChessScenario,
   type GameEvent,
+  inCheck,
+  other,
   squareAt,
   viewOf,
 } from "@game/chess-engine";
@@ -116,6 +118,20 @@ describe("체스 튜토리얼 장면", () => {
         const view = viewOf(sceneState(scene), 0);
         expect(view.decision).toEqual({ kind: "move" });
         expect(view.phase).toBe("play");
+      }
+  });
+
+  it("모든 장면에서 둘 차례가 아닌 편의 킹이 체크받고 있지 않다(나올 수 없는 판이 아니다)", () => {
+    for (const lesson of CHESS_LESSONS)
+      for (const step of lesson.steps) {
+        const scene =
+          step.kind === "mission" ? step.scenario : (step.scene ?? null);
+        if (!scene) continue;
+        const { position } = sceneState(scene);
+        expect(
+          inCheck(position.board, other(position.turn)),
+          `${lesson.id}: ${scene.fen}`,
+        ).toBe(false);
       }
   });
 
