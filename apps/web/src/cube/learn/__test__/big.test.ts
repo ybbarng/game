@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { courseById } from "..";
 import { EDGES_5X5, PARITY_4X4 } from "../algs-big";
 import { belowTopIntact, centersSolved, unpairedEdges } from "./big";
-import { apply, diffStickers, solved } from "./sim";
+import { apply, colorMap, diffStickers, isSolved, key, solved } from "./sim";
 
 const find = <T extends { id: string }>(list: T[], id: string) => {
   const c = list.find((x) => x.id === id);
@@ -70,6 +71,26 @@ describe("5×5 마지막 엣지", () => {
       const c = apply(solved(n), alg);
       expect(centersSolved(c), `${n}`).toBe(true);
       expect(unpairedEdges(c), `${n}`).toBe(2);
+    }
+  });
+});
+
+describe("4×4 패리티 단계의 그림", () => {
+  it("축소법·야우 끝내기의 상황은 노란 면이 위(흰 면 아래)이고, 시연 공식으로 풀린다", () => {
+    for (const [course, lessonId] of [
+      ["444-reduction", "444-as-333"],
+      ["444-yau", "yau-finish"],
+    ] as const) {
+      const lesson = courseById(course)?.lessons.find((l) => l.id === lessonId);
+      expect(lesson, lessonId).toBeDefined();
+      for (const step of lesson?.steps ?? []) {
+        if (!step.setup || !("alg" in step.setup)) continue;
+        const where = `${lessonId}: ${step.body.slice(0, 24)}`;
+        const s = apply(solved(4), step.setup.alg);
+        // 색 번호 3 = 맞춘 상태의 D(노랑)
+        expect(colorMap(s).get(key([1, 3, 1], [0, 1, 0])), where).toBe(3);
+        if (step.alg) expect(isSolved(apply(s, step.alg)), where).toBe(true);
+      }
     }
   });
 });

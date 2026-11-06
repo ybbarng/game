@@ -47,7 +47,7 @@ const pieces4: Lesson = {
     },
     {
       kind: "play",
-      body: "초록 센터 블럭 넷만 색이 있어요. 바깥 면(F)을 돌리면 넷이 함께 돌고, 안쪽 층(2R·2U)을 돌리면 다른 면으로 흩어져요. 마음대로 돌려 보세요.",
+      body: "초록 센터 블럭 넷만 색이 있어요. 바깥 면인 앞면을 돌리면 넷이 함께 돌고, 바깥에서 둘째 층인 안쪽 층을 돌리면 다른 면으로 흩어져요. 마음대로 돌려 보세요.",
       play: {
         focus: { piece: "center", colors: ["F"] },
         turns: 4,
@@ -72,7 +72,7 @@ const pieces4: Lesson = {
     },
     {
       kind: "find",
-      body: "엣지는 엣지 블럭 둘이 짝이에요. 이 둘을 「날개」라고 해요. 2R로 흰-초록 날개 둘이 떨어졌어요. 둘 다 찾아 눌러 보세요.",
+      body: "엣지는 엣지 블럭 둘이 짝이에요. 이 둘을 「날개」라고 해요. 오른쪽 안쪽 층을 한 번 돌려서 흰-초록 날개 둘이 떨어졌어요. 둘 다 찾아 눌러 보세요.",
       setup: { alg: "2R" },
       mask: "all",
       find: { piece: "edge", colors: ["U", "F"] },
@@ -307,7 +307,7 @@ const solve4: Lesson = {
     {
       kind: "quiz",
       body: "센터와 엣지를 묶었으면 바깥 층(R U F 등)만 돌려 3×3처럼 풀어요. 그런데 4×4에는 3×3에서 나올 수 없는 모양이 두 가지 나와요. 이것을 「패리티」라고 해요.",
-      setup: { alg: setupFor(PLL_PARITY) },
+      setup: { alg: setupFor(PLL_PARITY, "z2") },
       quiz: {
         question: "패리티는 무엇일까요?",
         choices: [
@@ -321,7 +321,7 @@ const solve4: Lesson = {
     },
     {
       kind: "quiz",
-      body: "OLL 패리티: 노란 십자를 만들 때 엣지 하나만 뒤집혀 있어요(노란 엣지가 1개나 3개). 뒤집힌 엣지를 앞에 두고 공식을 해요. 아래 두 층은 지키지만 윗층은 흐트러지니 다시 OLL부터.",
+      body: "첫째는 노란 십자를 만들 때 나와요. 위를 보는 노란 엣지가 1개나 3개로, 엣지 하나만 뒤집혀 있어요. 이것을 OLL 패리티라고 불러요. OLL은 윗면을 노랗게 맞추는 단계를 부르는 영어 줄임말이에요. 뒤집힌 엣지를 앞에 두고 공식을 해요. 아래 두 층은 지키지만 윗층은 흐트러지니 노란 십자부터 다시 해요.",
       setup: { alg: `z2 ${setupFor(OLL_PARITY)}` },
       quiz: {
         question: "위를 보는 노란 엣지가 몇 개일 때 OLL 패리티일까요?",
@@ -333,13 +333,13 @@ const solve4: Lesson = {
     {
       kind: "demo",
       body: "OLL 패리티: 위-앞 엣지 하나를 뒤집어요.",
-      setup: { alg: setupFor(OLL_PARITY) },
+      setup: { alg: setupFor(OLL_PARITY, "z2") },
       alg: OLL_PARITY,
     },
     {
       kind: "quiz",
-      body: "PLL 패리티: 마지막에 3×3에서 나올 수 없는 자리 바꿈이 남아요. 엣지 둘만 맞바뀌었으면 그 둘을 앞·뒤에 두고 공식을 해요.",
-      setup: { alg: setupFor(PLL_PARITY) },
+      body: "둘째는 마지막 층 조각의 자리를 맞출 때 나와요. 3×3에서 나올 수 없는 자리 바꿈이 남아요. 이것을 PLL 패리티라고 불러요. PLL은 마지막 층 조각의 자리를 맞추는 단계를 부르는 영어 줄임말이에요. 엣지 둘만 맞바뀌었으면 그 둘을 앞·뒤에 두고 공식을 해요.",
+      setup: { alg: setupFor(PLL_PARITY, "z2") },
       quiz: {
         question: "PLL 패리티 공식을 할 때 바꿀 엣지 둘은 어디에 둘까요?",
         choices: ["앞과 뒤", "왼쪽과 오른쪽", "앞과 오른쪽"],
@@ -350,13 +350,13 @@ const solve4: Lesson = {
     {
       kind: "demo",
       body: "PLL 패리티: 위-앞과 위-뒤 엣지를 맞바꿔요.",
-      setup: { alg: setupFor(PLL_PARITY) },
+      setup: { alg: setupFor(PLL_PARITY, "z2") },
       alg: PLL_PARITY,
     },
     {
       kind: "try",
-      body: "코너 둘만 맞바뀌고 엣지는 다 맞은 모양도 PLL 패리티예요. 먼저 PLL 패리티 공식으로 위-앞·위-뒤 엣지를 바꾸면 3×3의 T퍼뮤 모양이 돼요. 그다음 y로 쥐고 T퍼뮤, y'로 돌아와요.",
-      setup: { alg: setupFor(CORNER_SWAP_444) },
+      body: "코너 둘만 맞바뀌고 엣지는 다 맞은 모양도 PLL 패리티예요. 먼저 PLL 패리티 공식으로 위-앞·위-뒤 엣지를 바꿔요. 그러면 3×3에서도 나오는 모양이 되니, 3×3에서 배운 마지막 층 차례대로 옆면 맞추기부터 다시 해 끝내요.",
+      setup: { alg: setupFor(CORNER_SWAP_444, "z2") },
       alg: CORNER_SWAP_444,
       goal: "solved",
     },
