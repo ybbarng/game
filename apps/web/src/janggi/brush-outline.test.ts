@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { brushOutline, signedArea, strokePolygons } from "./brush-outline";
-import { CHO_GLYPHS, fitGlyph } from "./cho-glyphs";
+import { CHO_GLYPH_SETS, CHO_GLYPHS, fitGlyph } from "./cho-glyphs";
 
 describe("붓 획 윤곽", () => {
   it("열린 획은 굵기만큼 둘레를 두르고 모두 같은 방향으로 돈다(겹쳐도 구멍이 나지 않게)", () => {
@@ -51,16 +51,28 @@ describe("붓 획 윤곽", () => {
 });
 
 describe("초 글자 윤곽", () => {
-  it("일곱 기물 모두 윤곽과 상자가 있고, 알 가운데에 긴 변 크기로 놓인다", () => {
-    for (const g of Object.values(CHO_GLYPHS)) {
-      expect(g.d.length).toBeGreaterThan(100);
-      expect(g.box[2]).toBeGreaterThan(0);
-      expect(g.box[3]).toBeGreaterThan(0);
+  it("세 안 모두 일곱 기물의 윤곽과 상자가 있고, 판은 안 1을 쓴다", () => {
+    for (const set of Object.values(CHO_GLYPH_SETS)) {
+      expect(Object.keys(set).sort()).toEqual(
+        ["A", "C", "E", "K", "N", "P", "R"].sort(),
+      );
+      for (const g of Object.values(set)) {
+        expect(g.d.length).toBeGreaterThan(100);
+        expect(g.box[2]).toBeGreaterThan(0);
+        expect(g.box[3]).toBeGreaterThan(0);
+      }
     }
+    expect(CHO_GLYPHS).toBe(CHO_GLYPH_SETS.wikimedia);
+  });
+
+  it("윤곽을 알 가운데에 긴 변 크기로 놓고, 원본 변환은 그 안쪽에 붙인다", () => {
     const g = { box: [10, 20, 40, 20] as const, d: "" };
     // 가운데 (30, 30)이 (5, 5)로, 긴 변 40이 2로
     expect(fitGlyph(g, 5, 5, 2)).toBe(
       "translate(5 5) scale(0.05) translate(-30 -30)",
+    );
+    expect(fitGlyph({ ...g, transform: "matrix(2 0 0 2 1 1)" }, 5, 5, 2)).toBe(
+      "translate(5 5) scale(0.05) translate(-30 -30) matrix(2 0 0 2 1 1)",
     );
   });
 });

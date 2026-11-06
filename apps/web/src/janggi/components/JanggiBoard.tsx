@@ -364,6 +364,13 @@ export function JanggiBoard({
                   r * CHO_SCALE,
                 )}
                 fill={SIDE_COLOR[side]}
+                {...(CHO_GLYPHS[kind].stroke
+                  ? {
+                      stroke: SIDE_COLOR[side],
+                      strokeWidth: CHO_GLYPHS[kind].stroke,
+                      strokeLinejoin: "round" as const,
+                    }
+                  : {})}
               />
             ) : (
               <text

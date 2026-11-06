@@ -393,6 +393,9 @@ function janggiIconPiece({
           d={glyph.cho.d}
           transform={fitGlyph(glyph.cho, cx, cy, size)}
           fill={color}
+          stroke={color}
+          strokeWidth={glyph.cho.stroke ?? 0}
+          strokeLinejoin="round"
         />
       )}
     </g>
