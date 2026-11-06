@@ -122,8 +122,8 @@ const EN_PASSANT_SCENE: ChessScene = {
   show: "e5",
 };
 
-/** 퀸과 킹으로 흑 킹 하나를 몬다. 흑 킹은 가운데 가까이에서 시작한다 */
-const QUEEN_MATE_SCENE: ChessScene = { fen: "8/8/3k4/8/8/8/8/3QK3 w - - 0 1" };
+/** 퀸과 킹으로 흑 킹 하나를 몬다. 흑 킹은 가운데 가까이에서 시작한다(퀸 c1은 아직 체크가 아니다) */
+const QUEEN_MATE_SCENE: ChessScene = { fen: "8/8/3k4/8/8/8/8/2Q1K3 w - - 0 1" };
 
 /** 퀸이 흑 킹을 구석에 가뒀다. 흑 차례인데 둘 곳이 없으면 비긴다(그림만) */
 const QUEEN_BOX_SCENE: ChessScene = { fen: "k7/8/1Q6/8/8/8/8/4K3 b - - 0 1" };
@@ -142,9 +142,10 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
     steps: [
       {
         kind: "explain",
-        title: "킹을 잡을 수밖에 없게 몰아요",
+        title: "킹이 어디로 가도 잡히게 몰아요",
         body: [
           "체스는 **백(흰색)**과 **흑(검은색)**이 기물 16개씩을 들고 두는 게임이에요. **백이 먼저** 둬요.",
+          "칸은 세로줄 글자와 가로줄 숫자로 불러요. 세로줄은 왼쪽부터 a~h, 가로줄은 백 쪽부터 1~8이라 백 킹은 e1에 있어요.",
           "한 번에 기물 하나를 움직여요. 상대 기물이 있는 칸으로 가면 그 기물을 **잡아요**.",
           "상대 **킹**이 어디로 가도 잡히게 몰면(**체크메이트**) 이겨요.",
         ],
@@ -454,6 +455,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
         body: [
           "판 가운데 네 칸(d4·e4·d5·e5)을 차지하면 기물이 넓게 움직여요. 첫 수로 **e4·d4** 같은 가운데 폰을 자주 둬요.",
           "**나이트·비숍을 먼저 꺼내요**. 처음 줄에 있으면 하는 일이 없어요.",
+          "수는 도착 칸으로 적어요. 폰은 칸 이름만 쓰고(e4), 다른 기물은 앞에 글자를 붙여요. 나이트가 f3으로 가면 Nf3이에요.",
         ],
         scene: START,
       },
@@ -470,7 +472,11 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
       {
         kind: "quiz",
         question: "첫 수로 좋은 것은?",
-        options: ["e4(가운데 폰)", "a3(가장자리 폰)", "Kf2(킹 앞으로)"],
+        options: [
+          "e4(가운데 폰)",
+          "a3(가장자리 폰)",
+          "Na3(나이트를 가장자리로)",
+        ],
         answer: 0,
         explain: "가운데 폰은 가운데를 차지하고 비숍·퀸이 나올 길도 열어요.",
       },
@@ -478,7 +484,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
         kind: "mission",
         title: "좋은 첫 수",
         objective:
-          "첫 수로 **가운데를 차지하거나 나이트를 꺼내세요**(e4·d4·c4·Nf3·Nc3).",
+          "첫 수로 **가운데를 차지하거나 나이트를 꺼내세요**. e4·d4·c4·Nf3·Nc3 가운데 하나면 돼요.",
         hint: "e2 폰을 두 칸(e4) 올려 보세요.",
         scenario: START,
         check: (ctx) => {
@@ -487,7 +493,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
           return GOOD_OPENINGS.has(moved.san) ? "success" : "fail";
         },
         success: "좋은 출발이에요! 이렇게 가운데를 두고 기물을 하나씩 꺼내요.",
-        fail: "그 수는 가운데와 상관이 없어요. 가운데 폰이나 나이트를 움직여 보세요.",
+        fail: "이번에는 e4·d4·c4·Nf3·Nc3 가운데 하나로 두어 보세요.",
         solution: [move("e2", "e4")],
         mistake: [move("a2", "a3")],
       },
@@ -536,7 +542,7 @@ export const CHESS_LESSONS: readonly ChessLesson[] = [
         scenario: QUEEN_MATE_SCENE,
         check: wonRound,
         success: "체크메이트! 퀸 하나가 남으면 언제든 이길 수 있어요.",
-        fail: "비겼어요. 스테일메이트(갈 곳은 없는데 체크가 아님)나 50수 규칙을 조심하며 다시 해 봐요.",
+        fail: "비겼어요. 체크가 아닌데 흑 킹이 갈 곳을 다 막으면 스테일메이트예요. 폰을 움직이지도 기물을 잡지도 않고 양쪽이 50수씩 두어도 비겨요. 이것을 50수 규칙이라고 해요. 다시 해 봐요.",
       },
       {
         kind: "explain",
