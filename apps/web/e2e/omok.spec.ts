@@ -489,3 +489,131 @@ test("오목 초고수: 옵션에서 고르면 상대 이름에 보이고 한 �
   await expect(stones(page)).toHaveCount(2, { timeout: 15_000 });
   await expect(page.getByRole("status")).toContainText("내 차례");
 });
+
+/** 규칙 단원 다섯을 끝낸 배우기 기록(첫 세 수 단원부터 열린다) */
+async function afterRuleLessons(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "omok-tutorial",
+      JSON.stringify({
+        state: { completed: ["goal", "block", "attack", "forbidden", "real"] },
+        version: 0,
+      }),
+    );
+  });
+}
+
+test("오목 배우기: 첫 세 수(주형)·흑과 백 단원을 끝까지 따라 하고, 중반 원칙의 4·3을 둔다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "휴대폰 세로와 PC로 본다(가로 배치는 공통 배우기 화면이 tutorial.spec에서 본다)",
+  );
+  const touch = info.project.name.startsWith("phone");
+  const play = (name: string) => placeAt(page, ...xyOfName(name), touch);
+  const next = () =>
+    page.getByRole("button", { name: "다음", exact: true }).click();
+  await afterRuleLessons(page);
+  await page.goto("/omok");
+  await page.getByRole("button", { name: /오목 배우기/ }).click();
+  await expect(page.getByText("5/8")).toBeVisible();
+
+  // 첫 세 수: 설명 여섯 → 퀴즈(화월 자리) → 포월 미션
+  await page.getByRole("button", { name: /첫 세 수/ }).click();
+  await expect(page.getByText("백은 흑 돌 옆에 붙여요")).toBeVisible();
+  await next();
+  await next();
+  await expect(page.getByText("흑이 좋은 모양: 화월")).toBeVisible();
+  await expect(stones(page)).toHaveCount(3);
+  await page.screenshot({ path: info.outputPath("omok-opening-lesson.png") });
+  for (let i = 0; i < 3; i++) await next();
+  await expect(page.getByText("처음엔 이렇게 두세요")).toBeVisible();
+  await next();
+  await page.getByRole("button", { name: "I9", exact: true }).click();
+  await expect(page.getByText("정답이에요!")).toBeVisible();
+  await next();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await expect(stones(page)).toHaveCount(2);
+  await play("I7");
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await next();
+  await expect(page.getByText("단원 완료!")).toBeVisible();
+  await page.getByRole("button", { name: "단원 목록으로" }).click();
+  await expect(page.getByText("6/8")).toBeVisible();
+
+  // 흑과 백: 내가 백으로 흑을 3·3 금지 자리로 몬다.
+  await page.getByRole("button", { name: /흑과 백/ }).click();
+  for (let i = 0; i < 3; i++) await next();
+  await page.getByRole("button", { name: "3·3으로 이기기" }).click();
+  await next();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await expect(stones(page)).toHaveCount(9);
+  await play("K8");
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await next();
+  await page.getByRole("button", { name: "단원 목록으로" }).click();
+  await expect(page.getByText("7/8")).toBeVisible();
+
+  // 중반 원칙: 4·3 설명과 미션
+  await page.getByRole("button", { name: /중반 원칙/ }).click();
+  await expect(page.getByText("4·3을 노려요")).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-middle-lesson.png") });
+  await next();
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await expect(stones(page)).toHaveCount(10);
+  await play("J8");
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.screenshot({ path: info.outputPath("omok-middle-mission.png") });
+});
+
+test("오목 수 배우기: 좋은 수 고르기에서 화월 자리를 고르고, 막으며 키우는 자리를 찾는다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "휴대폰 세로와 PC로 본다(공통 문제 화면의 배치는 장기 외통 문제가 세 크기로 본다)",
+  );
+  const touch = info.project.name.startsWith("phone");
+  const play = (name: string) => placeAt(page, ...xyOfName(name), touch);
+  await page.goto("/omok");
+  await page.getByRole("button", { name: /오목 배우기/ }).click();
+  await page.getByRole("button", { name: /수 배우기/ }).click();
+  const good = page.getByRole("region", { name: "좋은 수 고르기" });
+  await expect(good.getByText("0/10")).toBeVisible();
+  await good.getByRole("button", { name: "풀기 시작" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "흑 셋째 수예요. 흑이 좋은 주형을 만드세요",
+  );
+
+  // 백 H9(직접)에 J6(유성)은 틀리고, G9(화월)는 맞다.
+  await play("J6");
+  await expect(page.getByRole("status")).toHaveText(
+    "그 자리는 화월·포월이 아니에요",
+  );
+  await page.getByRole("button", { name: "다시 하기" }).click();
+  await play("G9");
+  await expect(page.getByRole("status")).toHaveText("좋은 수예요!");
+  await expect(page.getByText(/화월\. 백이 가로·세로로/)).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-good-opening.png") });
+  await page.getByRole("button", { name: "← 목록" }).click();
+  await expect(good.getByText("1/10")).toBeVisible();
+
+  // 다섯째 문제(막으며 키우기): F6으로 백 셋을 막으면서 흑 셋을 만든다.
+  await good.getByRole("button", { name: "좋은 수 고르기 5번" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "백의 열린 셋을 막으면서 흑 열린 셋도 만드세요",
+  );
+  await play("F6");
+  await expect(page.getByRole("status")).toHaveText("좋은 수예요!");
+  await expect(
+    page.getByText(/막기만 하고 흑 셋은 생기지 않는다/),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("omok-good-build.png") });
+});
