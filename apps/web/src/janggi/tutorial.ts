@@ -1,54 +1,48 @@
 import {
   type Action,
-  baseBoard,
   type GameEvent,
   type JanggiScenarioOptions,
   type JanggiView,
   type Piece,
-  placeSetup,
-  pointAt,
-  pointName,
   pseudoTargets,
   STANDARD_RULES,
 } from "@game/janggi-engine";
 
-import type { Lesson, MissionContext, MissionStatus } from "@/tutorial/types";
+import type { Lesson, MissionStatus } from "@/tutorial/types";
+
+import {
+  FIRST_MOVES_LESSON,
+  openingPieces,
+  SETUPS_LESSON,
+} from "./opening-lessons";
+import {
+  type Context,
+  firstTo,
+  move,
+  myFirstMove,
+  wonRound,
+} from "./tutorial-checks";
 
 /** 튜토리얼 장면: 놓인 기물에 더해 그림에만 쓰는 표시 */
 export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   /** 이 자리 기물이 갈 수 있는 곳을 점으로 보인다 */
   show?: string;
+  /** 글이 짚는 기물·칸(얇은 주황 고리) */
+  rings?: readonly string[];
+  /** 약한 자리(빨간 점선 고리) */
+  warn?: readonly string[];
+  /**
+   * 「다음 수」로 한 수씩 넘겨 보는 수순(출발-도착 "01-41"). 초부터 번갈아 둔다.
+   * 넘길 때마다 공짜로 잡힐 내 기물에 빨간 점선 고리를 그린다
+   */
+  replay?: readonly string[];
+  /** 판 위에 상차림 단추를 두어 내(초) 상차림을 바꿔 본다. 한은 마상마상 */
+  pickSetup?: boolean;
 };
 export type JanggiLesson = Lesson<JanggiView, GameEvent, JanggiScene, Action>;
-type Context = MissionContext<JanggiView, GameEvent>;
 
 /** 튜토리얼은 기본 규칙 한 판으로 한다 */
 export const JANGGI_TUTORIAL_RULES = STANDARD_RULES;
-
-/** 내가 처음 옮긴 수 */
-function myFirstMove({ view, events }: Context) {
-  const moved = events.find(
-    (e) => e.type === "moved" && e.seat === view.mySeat,
-  );
-  return moved?.type === "moved" ? moved : null;
-}
-
-/** 첫 수가 그 자리로 갔으면 성공 */
-function firstTo(name: string) {
-  const target = pointAt(name);
-  return (ctx: Context): MissionStatus => {
-    const moved = myFirstMove(ctx);
-    if (!moved) return null;
-    return moved.to === target ? "success" : "fail";
-  };
-}
-
-/** 판이 끝났을 때 내가 이겼으면 성공 */
-function wonRound({ view, events }: Context): MissionStatus {
-  const ended = events.find((e) => e.type === "roundEnded");
-  if (ended?.type !== "roundEnded") return null;
-  return ended.result.seat === view.mySeat ? "success" : "fail";
-}
 
 /** 내 첫 수 뒤 초 차 하나가 다섯 곳 넘게 갈 수 있으면 성공(차 길이 열렸다) */
 function rookOpened(ctx: Context): MissionStatus {
@@ -60,28 +54,11 @@ function rookOpened(ctx: Context): MissionStatus {
   return Math.max(...reach) >= 5 ? "success" : "fail";
 }
 
-const move = (from: string, to: string): Action => ({
-  type: "move",
-  from: pointAt(from),
-  to: pointAt(to),
-});
-
 /** 궁 둘. 같은 세로줄에 두면 빅장이 되니 줄을 엇갈린다 */
 const KINGS: Record<string, Piece> = { "95": "cK", "24": "hK" };
 
 /** 처음 놓인 판(두 편 모두 마상마상) */
-const START: JanggiScene = {
-  pieces: (() => {
-    const board = baseBoard();
-    placeSetup(board, "c", "NENE");
-    placeSetup(board, "h", "NENE");
-    const pieces: Record<string, Piece> = {};
-    board.forEach((cell, at) => {
-      if (cell !== "") pieces[pointName(at)] = cell;
-    });
-    return pieces;
-  })(),
-};
+const START: JanggiScene = { pieces: openingPieces("NENE", "NENE") };
 
 /** 차 하나와 공짜로 잡을 수 있는 한 졸 */
 const ROOK_SCENE: JanggiScene = {
@@ -434,7 +411,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   },
   {
     id: "opening",
-    title: "초반 원칙",
+    title: "차 길 열기",
     summary: "차 길을 열고, 마·상을 꺼내고, 궁 둘레는 지킨다",
     steps: [
       {
@@ -482,6 +459,8 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
       },
     ],
   },
+  SETUPS_LESSON,
+  FIRST_MOVES_LESSON,
   {
     id: "real",
     title: "실전",

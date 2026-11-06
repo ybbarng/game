@@ -45,12 +45,22 @@ function OmokSceneView({ scenario }: { scenario: OmokScene }) {
         board={view.board}
         myStone={1}
         canPlay={false}
-        lastMove={null}
+        lastMove={scenario.last ? pointAt(scenario.last) : null}
         winLine={from && to ? linePoints(from, to) : null}
         forbidden={scenario.forbidden ? view.forbidden : []}
         aim={null}
         onAim={() => {}}
         onPlace={() => {}}
+        still
+        coords
+        marks={
+          scenario.marks
+            ? {
+                main: (scenario.marks.main ?? []).map(pointAt),
+                other: (scenario.marks.other ?? []).map(pointAt),
+              }
+            : null
+        }
       />
     </div>
   );

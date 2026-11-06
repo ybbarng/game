@@ -74,7 +74,9 @@ describe("공격 문제(사로 몰아 이기기)", () => {
           board[move] = 2;
         }
       });
-      expect(explainSolved(p)).toHaveLength(p.moves + trapsOf(p).length);
+      expect(explainSolved(p)).toHaveLength(
+        p.moves + trapsOf(p).length + (p.race ? 1 : 0),
+      );
     },
   );
 

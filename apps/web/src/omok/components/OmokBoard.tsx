@@ -33,6 +33,15 @@ const BOARD = "#e0b464";
 const LINE = "#3b2a14";
 /** 힌트(고수가 고른 자리) 표시. 장기 힌트와 같은 색 */
 const HINT_COLOR = "#059669";
+/** 해설이 짚는 자리: 정답은 진한 주황 고리, 다른 자리는 파란 점선 고리 */
+const MARK_MAIN = "#c2410c";
+const MARK_OTHER = "#1d4ed8";
+
+/** 해설이 짚는 자리(배우기·문제) */
+export interface BoardMarks {
+  main: readonly number[];
+  other: readonly number[];
+}
 
 /**
  * 오목 판. 마우스는 올리면 반투명 돌이 보이고 누르면 둔다.
@@ -50,6 +59,9 @@ export function OmokBoard({
   onAim,
   onPlace,
   hint = null,
+  coords = false,
+  marks = null,
+  still = false,
 }: {
   board: readonly Cell[];
   /** 내 돌 색(미리 보기 돌 색) */
@@ -64,6 +76,12 @@ export function OmokBoard({
   onPlace: (at: number) => void;
   /** 힌트: 고수가 고른 자리에 초록 고리 */
   hint?: number | null;
+  /** 판 바깥 여백에 좌표(위 A~O, 왼쪽 15~1)를 작게 붙인다. 글이 자리 이름으로 말하는 화면(배우기·문제)에서 켠다 */
+  coords?: boolean;
+  /** 해설이 짚는 자리 */
+  marks?: BoardMarks | null;
+  /** 누를 수 없는 그림(배우기 장면). 둘 수 없어도 넘긴 금지 자리 ×를 보인다 */
+  still?: boolean;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   // 돌 그러데이션 이름. 한 화면에 판이 여럿이어도 겹치지 않게 한다.
@@ -189,6 +207,31 @@ export function OmokBoard({
         />
       ))}
 
+      {/* 좌표: 판을 줄이지 않게 바깥 여백(PAD) 안에 작게. 가장자리 돌이 조금 덮을 수 있다 */}
+      {coords && (
+        <g
+          fill={LINE}
+          opacity={0.75}
+          fontSize={0.3}
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="central"
+          pointerEvents="none"
+          aria-hidden
+        >
+          {lines.map((p, i) => (
+            <g key={`c${p}`}>
+              <text x={p} y={PAD * 0.4}>
+                {String.fromCharCode(65 + i)}
+              </text>
+              <text x={PAD * 0.4} y={p}>
+                {SIZE - i}
+              </text>
+            </g>
+          ))}
+        </g>
+      )}
+
       {/* 겨눈 자리 십자선(손가락·키보드) */}
       {aim !== null && canPlay && (
         <g stroke="#b91c1c" strokeWidth={0.06} opacity={0.8}>
@@ -197,7 +240,7 @@ export function OmokBoard({
         </g>
       )}
 
-      {canPlay &&
+      {(canPlay || still) &&
         [...forbiddenAt].map(([i, reason]) => {
           const [cx, cy] = at(i);
           return (
@@ -272,6 +315,38 @@ export function OmokBoard({
           pointerEvents="none"
         />
       )}
+
+      {marks?.other
+        .filter((i) => !marks.main.includes(i))
+        .map((i) => (
+          <circle
+            key={`mo${i}`}
+            cx={at(i)[0]}
+            cy={at(i)[1]}
+            r={0.54}
+            fill="none"
+            stroke={MARK_OTHER}
+            strokeWidth={0.07}
+            strokeDasharray="0.18 0.12"
+            data-mark="other"
+            data-mark-at={pointName(i)}
+            pointerEvents="none"
+          />
+        ))}
+      {marks?.main.map((i) => (
+        <circle
+          key={`mm${i}`}
+          cx={at(i)[0]}
+          cy={at(i)[1]}
+          r={0.56}
+          fill="none"
+          stroke={MARK_MAIN}
+          strokeWidth={0.11}
+          data-mark="main"
+          data-mark-at={pointName(i)}
+          pointerEvents="none"
+        />
+      ))}
 
       {lastMove !== null && (
         <circle

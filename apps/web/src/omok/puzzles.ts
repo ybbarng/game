@@ -3,6 +3,9 @@
  * 장면은 컴퓨터끼리 둔 판에서 엔진으로 "정답이 하나뿐인 판"을 찾아 골랐고, study.test.ts가 모든 문제를 다시 확인한다.
  * - attack: 사(넷)로 몰아 `moves`수 안에 다섯을 만든다. 그 수 안에 이기는 첫 수는 정답 하나뿐이고, 더 빨리는 못 이긴다
  * - defend: 백이 사로 몰아 `within`수 안에 이기는 길이 있다. 그 길을 모두 끊는 흑 자리는 `answers`뿐이다
+ * - pick: 「이 판에서 좋은 수는?」. `reason`이 좋은 수의 뜻이고, 그 뜻에 맞는 자리는 `answers`뿐이다(study.test.ts)
+ *   - opening: 흑 셋째 수로 화월(직접)·포월(간접)을 만드는 자리(docs/20 10절 출처)
+ *   - build: 백의 열린 셋을 막으면서(백이 3수 안에 못 이긴다) 흑 열린 셋도 생기는 자리
  * 해설은 장면에서 만든다(study.ts).
  */
 
@@ -12,9 +15,22 @@ export type OmokPuzzle = {
   variant?: "renju";
   black: readonly string[];
   white: readonly string[];
+  /** 첫 수 목표. 없으면 묶음의 `prompt` */
+  goal?: string;
 } & (
-  | { kind: "attack"; moves: number; solution: string }
+  | {
+      kind: "attack";
+      moves: number;
+      solution: string;
+      /** 백에게 열린 셋이 있는데 먼저 이기는 판(해설 첫머리에 짚는다) */
+      race?: true;
+    }
   | { kind: "defend"; within: number; answers: readonly string[] }
+  | {
+      kind: "pick";
+      reason: "opening" | "build";
+      answers: readonly string[];
+    }
 );
 
 export interface OmokPuzzleSet {
@@ -1046,51 +1062,184 @@ const RENJU = [
   },
 ];
 
+/** 「이 판에서 좋은 수는?」: 초반(주형) 넷, 중반은 막으며 키우기와 먼저 이기기를 섞었다 */
+const OPENING_GOAL = "흑 셋째 수예요. 흑이 좋은 주형을 만드세요";
+const BUILD_GOAL = "백의 열린 셋을 막으면서 흑 열린 셋도 만드세요";
+const RACE_GOAL = "백에게 열린 셋이 있어요. 이 판에서 가장 좋은 수는?";
+
+const opening = (white: string, answers: string[]) => ({
+  kind: "pick" as const,
+  reason: "opening" as const,
+  goal: OPENING_GOAL,
+  black: ["H8"],
+  white: [white],
+  answers,
+});
+
+// 중반 장면은 컴퓨터끼리 둔 렌주 판에서 찾았다(막으며 키우기: 그런 자리가 하나뿐이고 막는 자리는 둘 이상)
+const build = (black: string[], white: string[], answer: string) => ({
+  kind: "pick" as const,
+  reason: "build" as const,
+  goal: BUILD_GOAL,
+  black,
+  white,
+  answers: [answer],
+});
+
+const race = (black: string[], white: string[], answer: string) => ({
+  kind: "attack" as const,
+  race: true as const,
+  goal: RACE_GOAL,
+  moves: 3,
+  black,
+  white,
+  solution: answer,
+});
+
+const GOOD = [
+  // 직접(H9): 화월 I9·G9
+  opening("H9", ["I9", "G9"]),
+  // 간접(G7): 포월 G9·I7
+  opening("G7", ["G9", "I7"]),
+  // 직접(I8): 화월 I9·I7
+  opening("I8", ["I9", "I7"]),
+  // 간접(G9): 포월 G7·I9
+  opening("G9", ["G7", "I9"]),
+  build(
+    ["H8", "H7", "H6", "H5", "H11", "G6"],
+    ["G7", "H10", "H9", "H4", "G5", "J2"],
+    "F6",
+  ),
+  race(
+    ["H8", "I9", "J7", "E7", "J8", "J5", "H10", "G9", "H9", "E9", "H12"],
+    ["I7", "G7", "H7", "J10", "I8", "J6", "K7", "F8", "J9", "F9", "H11"],
+    "G11",
+  ),
+  build(
+    ["H8", "H9", "J8", "I7", "I11"],
+    ["I9", "H10", "I8", "I10", "G10"],
+    "F10",
+  ),
+  race(
+    [
+      "H8",
+      "J8",
+      "I10",
+      "I9",
+      "I6",
+      "I11",
+      "J10",
+      "J9",
+      "K7",
+      "H7",
+      "K11",
+      "K10",
+      "H9",
+    ],
+    [
+      "I7",
+      "I8",
+      "I5",
+      "I4",
+      "H10",
+      "I12",
+      "G7",
+      "J7",
+      "J11",
+      "L6",
+      "L12",
+      "K9",
+      "H6",
+    ],
+    "F9",
+  ),
+  build(
+    ["H8", "H9", "H10", "H11", "H5", "I10"],
+    ["I9", "H6", "H7", "H12", "I8", "F5"],
+    "J9",
+  ),
+  race(
+    [
+      "H8",
+      "G9",
+      "J6",
+      "K5",
+      "L4",
+      "D12",
+      "F9",
+      "G7",
+      "E10",
+      "G11",
+      "J5",
+      "K7",
+      "I8",
+      "K8",
+    ],
+    [
+      "G8",
+      "E11",
+      "F10",
+      "I7",
+      "M3",
+      "H7",
+      "E9",
+      "E12",
+      "H12",
+      "I6",
+      "J7",
+      "I9",
+      "L9",
+      "K9",
+    ],
+    "L8",
+  ),
+];
+
 /** 수 배우기 묶음. 쉬운 것부터 */
 export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
   {
     id: "five",
     title: "다섯 만들기",
     summary:
-      "한 수로 다섯을 잇는 자리를 찾아요. 흑은 여섯이 되면 이긴 게 아니에요(렌주)",
+      "한 수로 다섯을 잇는 자리를 찾아요. 렌주에서 흑은 여섯이 되면 이긴 게 아니에요.",
     prompt: "한 수로 다섯을 만드세요",
-    hint: "흑 넷이 모인 줄을 찾아요. 띄어진 넷(●●·●●)도 가운데를 채우면 다섯이에요",
+    hint: "흑 넷이 모인 줄을 찾아요. 띄어진 넷(●●·●●)도 가운데를 채우면 다섯이에요.",
     puzzles: attack("five", 1, FIVE),
   },
   {
     id: "open-four",
     title: "열린 넷",
     summary:
-      "양쪽이 다 열린 넷을 만들면 상대는 한쪽만 막을 수 있어요. 두 수 만에 이겨요",
+      "양쪽이 다 열린 넷을 만들면 상대는 한쪽만 막을 수 있어요. 두 수 만에 이겨요.",
     prompt: "두 수 안에 이기세요(막을 수 없는 넷)",
-    hint: "다섯 자리가 두 곳 생기는 수를 찾아요. 한쪽이 막힌 줄은 열린 넷이 되지 않아요",
+    hint: "다섯 자리가 두 곳 생기는 수를 찾아요. 한쪽이 막힌 줄은 열린 넷이 되지 않아요.",
     puzzles: attack("open-four", 2, OPEN_FOUR),
   },
   {
     id: "fours",
     title: "사로 몰아붙이기",
     summary:
-      "사(넷)를 두면 상대는 막을 수밖에 없어요. 막는 동안 사삼·열린 넷을 만들어 이겨요. 앞 8문제는 세 수, 뒤 2문제는 네 수 안에",
+      "사(넷)를 두면 상대는 막을 수밖에 없어요. 막는 동안 사삼·열린 넷을 만들어 이겨요. 앞 8문제는 세 수, 뒤 2문제는 네 수 안에 이겨요.",
     prompt: "사로 몰아붙여 이기세요",
-    hint: "둘 때마다 사를 만들어 상대가 막기만 하게 해요. 사와 열린 삼을 한 번에 만드는 자리(사삼)가 열쇠예요",
+    hint: "둘 때마다 사를 만들어 상대가 막기만 하게 해요. 사와 열린 삼을 한 번에 만드는 자리(사삼)가 열쇠예요.",
     puzzles: [...attack("fours3", 3, THREE), ...attack("fours4", 4, LONG)],
   },
   {
     id: "defend",
     title: "몰아붙이기 끊기",
     summary:
-      "백이 사로 몰아붙여 이기는 길이 숨어 있어요. 그 길의 급소를 먼저 막아요",
+      "백이 사로 몰아붙여 이기는 길이 숨어 있어요. 그 길의 급소를 먼저 막아요.",
     prompt: "백의 공격을 미리 막으세요",
-    hint: "백이 사를 이어 둘 수 있는 줄을 따라가 봐요. 두 줄이 만나는 자리가 급소예요",
+    hint: "백이 사를 이어 둘 수 있는 줄을 따라가 봐요. 두 줄이 만나는 자리가 급소예요.",
     puzzles: defend("defend", DEFEND),
   },
   {
     id: "renju",
     title: "렌주 금수 피하기",
     summary:
-      "렌주 규칙에서 흑은 4·4·3·3·장목(여섯 이상)이 금지예요. 이길 것 같은 자리가 금지면, 다른 길로 열린 넷을 만들어요",
+      "렌주 규칙에서 흑은 4·4·3·3·장목(여섯 이상)이 금지예요. 이길 것 같은 자리가 금지면, 다른 길로 열린 넷을 만들어요.",
     prompt: "렌주 규칙: 금지 자리를 피해 두 수 안에 이기세요",
-    hint: "× 표시는 흑이 둘 수 없는 자리예요(넷이 둘 생기거나 여섯이 되는 곳). 그 자리 말고, 다른 줄에서 열린 넷을 만드는 자리를 찾아요",
+    hint: "× 표시는 흑이 둘 수 없는 자리예요(넷이 둘 생기거나 여섯이 되는 곳). 그 자리 말고, 다른 줄에서 열린 넷을 만드는 자리를 찾아요.",
     puzzles: RENJU.map((s, i) => ({
       id: `renju-${i + 1}`,
       kind: "attack" as const,
@@ -1100,5 +1249,14 @@ export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
       white: s.white,
       solution: s.answer,
     })),
+  },
+  {
+    id: "good",
+    title: "좋은 수 고르기",
+    summary:
+      "초반에는 흑이 좋은 주형을, 중반에는 막을지 먼저 이길지를 골라요. 백 열린 셋을 막을 때는 내 셋도 함께 만드는 자리가 좋아요.",
+    prompt: "이 판에서 좋은 수를 두세요",
+    hint: "초반은 첫 돌의 대각선 옆, 백 돌과 한 줄인 자리예요. 중반은 먼저 사로 몰아 이길 수 있는지 보고, 아니면 막으면서 내 돌과 이어지는 끝을 골라요.",
+    puzzles: GOOD.map((p, i) => ({ id: `good-${i + 1}`, ...p })),
   },
 ];

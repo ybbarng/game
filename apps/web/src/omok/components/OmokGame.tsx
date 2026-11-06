@@ -235,6 +235,7 @@ export function OmokGame({
             onAim={setAim}
             onPlace={(at) => submit({ type: "place", at })}
             hint={hint}
+            coords={!!mission}
           />
           <ResultBanner banner={banner} seq={view.roundNumber} />
         </>
