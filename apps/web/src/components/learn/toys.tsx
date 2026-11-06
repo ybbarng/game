@@ -113,20 +113,20 @@ export function LockToy() {
       <Picker label="영희 열쇠 b" value={b} options={keys} onChange={setB} />
       <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm">
         <li>
-          <SuitText text={name} />는 수 <Num>{m}</Num>로 나타낸다.
+          <SuitText text={name} />는 수 <Num>{m}</Num>로 나타냅니다.
         </li>
         <li>
-          철수가 잠근다: {m}
+          철수가 잠급니다: {m}
           <sup>{a}</sup> mod 23 = <Num>{ma}</Num>
         </li>
         <li>
-          영희가 그 위에 또 잠근다: {ma}
+          영희가 그 위에 또 잠급니다: {ma}
           <sup>{b}</sup> mod 23 = <Num>{mab}</Num>
         </li>
         <li>
           순서를 바꿔도(영희 먼저 {mb}, 그다음 철수) {mb}
           <sup>{a}</sup> = <Num>{mba}</Num> —{" "}
-          {mab === mba ? "같다!" : "다르다?"}
+          {mab === mba ? "같습니다!" : "다릅니다?"}
         </li>
         <li>
           푸는 열쇠는 a의 역수 mod 11: a′ = <Num>{ai}</Num>(a·a′ = {a * ai} ≡ 1
@@ -136,8 +136,8 @@ export function LockToy() {
         </li>
       </ol>
       <Result ok={mab === mba && back === m}>
-        지수끼리 곱해지므로(m^(a·b) = m^(b·a)) 누가 먼저 잠그고 풀든 같다.
-        자물쇠를 겹쳐 채우고 아무 순서로나 풀 수 있는 셈이다.
+        지수끼리 곱해지므로(m^(a·b) = m^(b·a)) 누가 먼저 잠그고 풀든 같습니다.
+        자물쇠를 겹쳐 채우고 아무 순서로나 풀 수 있는 셈입니다.
       </Result>
     </Box>
   );
@@ -211,9 +211,9 @@ export function QrLeakToy() {
       {locked && (
         <>
           <p className="text-sm text-white/80">
-            상대가 모르는 열쇠로 잠그고 섞었다. 어느 것이 빨강(
+            상대가 모르는 열쇠로 잠그고 섞었습니다. 어느 것이 빨강(
             <SuitText text="♥" />
-            )일까? 눌러서 고르고, "판정 돌려 보기"로 수학의 힘을 빌려 보자.
+            )일까요? 눌러서 고르고, "판정 돌려 보기"로 수학의 힘을 빌려 보세요.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {locked.map((c, i) => (
@@ -268,10 +268,10 @@ export function QrLeakToy() {
           </div>
           {judged && (
             <Result ok={squaresOnly}>
-              {hits}/8 맞혔다.{" "}
+              {hits}/8 맞혔습니다.{" "}
               {squaresOnly
-                ? "모두 제곱수라 판정 값이 늘 1이다. 아무것도 알 수 없다."
-                : "제곱수인지(x¹¹이 1인지)는 잠가도 바뀌지 않는다. 빨강을 제곱수가 아닌 수로 두면 잠근 뒤에도 빨강이 그대로 드러난다."}
+                ? "모두 제곱수라 판정 값이 늘 1입니다. 아무것도 알 수 없습니다."
+                : "x¹¹이 1인지, 곧 제곱수인지는 잠가도 바뀌지 않습니다. 빨강을 제곱수가 아닌 수로 두면 잠근 뒤에도 빨강이 그대로 드러납니다."}
             </Result>
           )}
         </>
@@ -328,15 +328,15 @@ export function ZkToy() {
           정직한 증명
         </Btn>
         <Btn onClick={() => reset(true)} active={cheat}>
-          속이는 증명(같은 지수가 아니다)
+          속이는 증명: 같은 지수가 아님
         </Btn>
       </div>
       <p className="text-sm text-white/80">
         공개된 것: g = <Num>{G}</Num>, V = g<sup>u</sup> = <Num>{V}</Num>, A ={" "}
         <Num>{A}</Num>, B = <Num>{B}</Num>.{" "}
         {cheat
-          ? "B는 A^u가 아니다. 그래도 증명해 보려 한다."
-          : "증명할 것: B = A^u (u는 비밀)"}
+          ? "B는 A^u가 아닙니다. 그래도 증명해 보려 합니다."
+          : "증명할 것은 B = A^u입니다. u는 비밀입니다."}
       </p>
       {cheat && step === 0 && (
         <Picker
@@ -348,13 +348,13 @@ export function ZkToy() {
       )}
       <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm">
         <li>
-          증명하는 사람이 먼저 a, b를 낸다.{" "}
+          증명하는 사람이 먼저 a, b를 냅니다.{" "}
           {step >= 1 ? (
             <>
               a = <Num>{a}</Num>, b = <Num>{b}</Num>
               {cheat
-                ? ` (짐작한 c = ${guessC}에 맞춰 거꾸로 만들었다)`
-                : ` (무작위 r = ${r}로 g^r, A^r)`}
+                ? `. 짐작한 c = ${guessC}에 맞춰 거꾸로 만들었습니다.`
+                : `. 무작위 r = ${r}로 g^r, A^r를 만들었습니다.`}
             </>
           ) : (
             <Btn
@@ -368,7 +368,7 @@ export function ZkToy() {
           )}
         </li>
         <li>
-          확인하는 사람이 도전값 c를 무작위로 고른다.{" "}
+          확인하는 사람이 도전값 c를 무작위로 고릅니다.{" "}
           {step >= 2 ? (
             <>
               c = <Num>{c}</Num>
@@ -386,7 +386,7 @@ export function ZkToy() {
           )}
         </li>
         <li>
-          증명하는 사람이 z를 낸다.{" "}
+          증명하는 사람이 z를 냅니다.{" "}
           {step >= 2 && (
             <>
               z = <Num>{z}</Num>
@@ -396,7 +396,7 @@ export function ZkToy() {
         </li>
         <li>
           확인: g<sup>z</sup> = a·V<sup>c</sup> 이고 A<sup>z</sup> = b·B
-          <sup>c</sup>인가?{" "}
+          <sup>c</sup>일까요?{" "}
           {step >= 2 && (
             <>
               {left1} {left1 === right1 ? "=" : "≠"} {right1}, {left2}{" "}
@@ -409,9 +409,9 @@ export function ZkToy() {
         <Result ok={cheat ? !ok : ok}>
           {cheat
             ? ok
-              ? `통과해 버렸다 — c를 미리 맞혔다(1/11 확률). 실제 게임의 c는 2²⁰⁴⁷ 가지라 미리 맞힐 수 없다.`
-              : "통과하지 못했다. 같은 지수가 아니면 c를 미리 알지 않는 한 두 식을 함께 맞출 수 없다."
-            : "통과. z에는 무작위 r이 섞여 있어 u가 새지 않는다. 그런데 c를 미리 알면 비밀 없이도 이런 기록을 만들 수 있다(속이는 증명 참고) — 그래서 기록만으로는 u에 대해 아무것도 알 수 없다(영지식)."}
+              ? `통과해 버렸습니다. 1/11 확률로 c를 미리 맞혔기 때문입니다. 실제 게임의 c는 2²⁵²가지쯤이라 미리 맞힐 수 없습니다.`
+              : "통과하지 못했습니다. 같은 지수가 아니면 c를 미리 알지 않는 한 두 식을 함께 맞출 수 없습니다."
+            : "통과. z에는 무작위 r이 섞여 있어 u가 새지 않습니다. 게다가 속이는 증명에서 보듯 c를 미리 알면 비밀 없이도 이런 기록을 만들 수 있습니다. 그래서 기록만으로는 u에 대해 아무것도 알 수 없고, 이것을 영지식이라고 합니다."}
         </Result>
       )}
       {step >= 2 && <Btn onClick={() => setStep(0)}>다시 해 보기</Btn>}
@@ -444,10 +444,10 @@ export function CutChooseGame() {
   return (
     <Box title="cut-and-choose: 속인 덱으로 버텨 보기">
       <p className="text-sm text-white/80">
-        나는 섞을 때 카드 한 장을 바꿨다. 매번 중간 덱을 하나 내야 한다.
+        나는 섞을 때 카드 한 장을 바꿨습니다. 매번 중간 덱을 하나 내야 합니다.
         "입력에서 정직하게" 만들면 X→Z는 보일 수 있지만 Z→Y는 못 보이고,
-        "출력에서 거꾸로" 만들면 그 반대다. 상대가 동전을 던져 어느 쪽을 보일지
-        정한다. 16번 모두 맞혀야 빠져나간다.
+        "출력에서 거꾸로" 만들면 그 반대입니다. 상대가 동전을 던져 어느 쪽을
+        보일지 정합니다. 16번 모두 맞혀야 빠져나갑니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => play(0)} disabled={done}>
@@ -476,13 +476,13 @@ export function CutChooseGame() {
       {done && (
         <Result ok={caught}>
           {caught
-            ? `${rounds.length}번째에 들켰다. 한 번 버틸 확률은 ½, 16번이면 (½)¹⁶ = 1/65,536이다.`
-            : "16번을 모두 버텼다! 6만 5천 판에 한 번 있을 일이다. 그래도 판 끝 확인에서 같은 카드가 드러난다."}
+            ? `${rounds.length}번째에 들켰습니다. 한 번 버틸 확률은 ½, 16번이면 (½)¹⁶ = 1/65,536입니다.`
+            : "16번을 모두 버텼습니다! 6만 5천 판에 한 번 있을 일입니다. 그래도 판 끝 확인에서 같은 카드가 드러납니다."}
         </Result>
       )}
       {games.played > 0 && (
         <p className="text-xs text-white/60">
-          지금까지 {games.played}판 중 {games.won}판 빠져나감
+          지금까지 {games.played}판 중 {games.won}판 빠져나갔습니다.
         </p>
       )}
     </Box>
@@ -524,7 +524,7 @@ export function FiatShamirToy() {
     }
     const ms = Math.round(performance.now() - started);
     setResult(
-      `약속을 ${tries.toLocaleString()}번 바꿔 해시를 돌렸더니 원하는 도전값(${k}비트 모두 0)이 나왔다. ${ms.toLocaleString()}ms. 평균 2^${k} = ${(2 ** k).toLocaleString()}번이면 된다.`,
+      `약속을 ${tries.toLocaleString()}번 바꿔 해시를 돌렸더니 원하는 도전값(${k}비트 모두 0)이 나왔습니다. ${ms.toLocaleString()}ms 걸렸습니다. 평균 2^${k} = ${(2 ** k).toLocaleString()}번이면 됩니다.`,
     );
     setRunning(false);
   };
@@ -544,10 +544,10 @@ export function FiatShamirToy() {
       {running && <p className="text-sm text-white/70">해시를 돌리는 중…</p>}
       {result && <Result ok={false}>{result}</Result>}
       <p className="text-sm text-white/80">
-        그래서 해시로만 정하면 k를 40~64로 크게 잡아야 한다. 이 게임은 섞을 때
-        각자 비밀 값(nonce)의 해시를 걸고, 모두의 약속이 모인 뒤에 비밀 값을
-        공개해 함께 도전값을 정한다. 약속을 바꿀 수 없으니 기회는 한 번뿐이고, k
-        = 16이면 충분하다(빠져나갈 확률 1/65,536).
+        그래서 해시로만 정하면 k를 40~64로 크게 잡아야 합니다. 이 게임은 섞을 때
+        각자 비밀 값의 해시를 걸고, 모두의 약속이 모인 뒤에 비밀 값을 공개해
+        함께 도전값을 정합니다. 약속을 바꿀 수 없으니 기회는 한 번뿐이고, k =
+        16이면 빠져나갈 확률이 1/65,536이라 충분합니다.
       </p>
     </Box>
   );
@@ -559,15 +559,15 @@ export function FiatShamirToy() {
 export function RenegeToy() {
   const steps = [
     {
-      text: "1턴: 선이 ♠를 냈다. 철수는 ◆5를 낸다. ♠가 없다고 한 셈이다.",
+      text: "1턴: 선이 ♠를 냈습니다. 철수는 ◆5를 냅니다. ♠가 없다고 한 셈입니다.",
       caught: false,
     },
     {
-      text: "2~5턴: 아무도 철수의 손을 모른다. 그대로 진행된다.",
+      text: "2~5턴: 아무도 철수의 손을 모릅니다. 그대로 진행됩니다.",
       caught: false,
     },
     {
-      text: "6턴: 철수가 ♠9를 낸다. 열쇠를 공개하자 모두가 ♠9를 본다.",
+      text: "6턴: 철수가 ♠9를 냅니다. 열쇠를 공개하자 모두가 ♠9를 봅니다.",
       caught: true,
     },
   ];
@@ -591,9 +591,9 @@ export function RenegeToy() {
       </div>
       {step.caught && (
         <Result ok>
-          <SuitText text="♠9는 1턴에도 철수 손에 있었다(카드는 줄기만 한다). 그때 ♠를 따라야 했으므로 ◆5는 규칙 위반이다." />{" "}
-          모든 기기가 이 순간 철수를 짚고 판을 멈춘다. 거짓 양성이 없다 — 손에
-          카드가 늘어도 풀리지 않는 금지라서다.
+          <SuitText text="손의 카드는 줄기만 하므로 ♠9는 1턴에도 철수 손에 있었습니다. 그때 ♠를 따라야 했으니 ◆5는 규칙 위반입니다." />{" "}
+          모든 기기가 이 순간 철수를 짚고 판을 멈춥니다. 손에 카드가 새로
+          들어오지 않으니 죄 없는 사람을 잘못 짚는 일은 없습니다.
         </Result>
       )}
     </Box>
@@ -653,10 +653,10 @@ export function ElGamalToy() {
       <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm">
         <li>
           공동 공개 열쇠 h = g<sup>x₁+x₂</sup> = <Num>{h}</Num>. 둘 다 몫을 내야
-          연다.
+          열립니다.
         </li>
         <li>
-          카드 <Num>{m}</Num>를 무작위 r = {r}로 감싼다: (g<sup>r</sup>, m·h
+          카드 <Num>{m}</Num>를 무작위 r = {r}로 감쌉니다: (g<sup>r</sup>, m·h
           <sup>r</sup>) = (<Num>{c1}</Num>, <Num>{c2}</Num>)
         </li>
         <li>
@@ -667,7 +667,7 @@ export function ElGamalToy() {
               setOpened(0);
             }}
           >
-            다시 감싸기(무작위 s를 더한다)
+            다시 감싸기: 무작위 s 더하기
           </Btn>{" "}
           <Btn
             onClick={() => {
@@ -692,11 +692,11 @@ export function ElGamalToy() {
         </li>
       </ol>
       <Result ok>
-        같은 카드인데 다시 감쌀 때마다 두 값이 모두 바뀐다. SRA는 같은 열쇠로
-        잠그면 같은 카드는 같은 값이라, 섞기 증명이 따로 짝을 맞춰야 했다.
+        같은 카드인데 다시 감쌀 때마다 두 값이 모두 바뀝니다. SRA는 같은 열쇠로
+        잠그면 같은 카드는 같은 값이라, 섞기 증명이 따로 짝을 맞춰야 했습니다.
         ElGamal은 섞을 때마다 다시 감싸 짝을 끊고, 그 대신 "다시 감싸고 순서만
-        바꿨다"를 Bayer–Groth 같은 증명으로 한 번에 보인다.{" "}
-        {opened === 1 ? "한 사람 몫만으로는 엉뚱한 수가 나온다." : ""}
+        바꿨다"를 Bayer–Groth 같은 증명으로 한 번에 보입니다.{" "}
+        {opened === 1 ? "한 사람 몫만으로는 엉뚱한 수가 나옵니다." : ""}
       </Result>
     </Box>
   );
@@ -729,7 +729,7 @@ export function PolyCheckToy() {
     <Box title="다항식으로 순서만 바뀌었는지 확인">
       <p className="text-sm text-white/80">
         받은 목록 A와 넘긴 목록 B가 같은 수들을 순서만 바꾼 것인지, 수를 하나씩
-        견주지 않고 한 번에 본다.
+        견주지 않고 한 번에 봅니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
         <Btn
@@ -757,24 +757,25 @@ export function PolyCheckToy() {
       </p>
       <p className="text-sm">
         Π(t − aᵢ) mod 23 = <Num>{pa}</Num>, Π(t − bᵢ) mod 23 = <Num>{pb}</Num> →{" "}
-        {pa === pb ? "같다" : "다르다"}
+        {pa === pb ? "같습니다." : "다릅니다."}
       </p>
       {tampered && stats.tries > 0 && (
         <p className="text-xs text-white/70">
-          t를 {stats.tries}번 뽑아 {stats.caught}번 잡았다. 두 다항식이 다르면
-          같아지는 t는 많아야 6개(차수)라, 23개 중에서는 가끔 빠져나가지만 실제
-          게임의 큰 수(2²⁵²개쯤) 중에서는 사실상 빠져나갈 수 없다.
+          t를 {stats.tries}번 뽑아 {stats.caught}번 잡았습니다. 두 다항식이
+          다르면 같아지는 t는 차수인 6개를 넘지 않아서, 23개 중에서는 가끔
+          빠져나가지만 실제 게임의 큰 수 2²⁵²개쯤 중에서는 사실상 빠져나갈 수
+          없습니다.
         </p>
       )}
       <Result ok={!tampered || pa !== pb}>
         {tampered
           ? pa === pb
-            ? "이번 t에서는 우연히 같아졌다(드물다). 다시 뽑아 보자."
-            : "복제 카드가 들어가면 두 곱이 달라 바로 드러난다."
-          : "순서만 바꿨으니 어떤 t에서도 두 곱이 같다."}{" "}
+            ? "이번 t에서는 드물게 우연히 같아졌습니다. 다시 뽑아 보세요."
+            : "복제 카드가 들어가면 두 곱이 달라 바로 드러납니다."
+          : "순서만 바꿨으니 어떤 t에서도 두 곱이 같습니다."}{" "}
         Neff(2001)와 Bayer–Groth(2012)는 이 생각에 "값을 보이지 않고"를 더한
-        영지식 증명이다. cut-and-choose(16번, 2⁻¹⁶)와 달리 한 번에 거의
-        확실하다.
+        영지식 증명입니다. 16번을 해서 2⁻¹⁶까지 줄이는 cut-and-choose와 달리 한
+        번에 거의 확실합니다.
       </Result>
     </Box>
   );
@@ -852,7 +853,7 @@ export function OrProofToy() {
       </div>
       <p className="text-sm text-white/80">
         공개 열쇠 V₁ = <Num>{V[0]}</Num>, V₂ = <Num>{V[1]}</Num>. 증명할 것: "둘
-        중 하나의 비밀을 안다." 확인하는 사람에게는 어느 쪽인지 알리지 않는다.
+        중 하나의 비밀을 안다." 확인하는 사람에게는 어느 쪽인지 알리지 않습니다.
       </p>
       {proof && (
         <>
@@ -866,17 +867,17 @@ export function OrProofToy() {
                 ((proof.a[i] as number) *
                   pow(V[i] as number, proof.c[i] as number, P)) %
                   P
-                  ? "맞다"
-                  : "틀리다"}
+                  ? "맞습니다"
+                  : "틀립니다"}
               </div>
             ))}
           </div>
           <p className="text-sm">
             도전값 c = {proof.total} = {proof.c[0]} + {proof.c[1]} (mod 11) ·{" "}
-            {verifies ? "증명이 맞다" : "증명이 틀리다"}
+            {verifies ? "증명이 맞습니다." : "증명이 틀립니다."}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 text-sm">
-            <span className="text-white/70">어느 쪽이 진짜일까?</span>
+            <span className="text-white/70">어느 쪽이 진짜일까요?</span>
             {([0, 1] as const).map((i) => (
               <Btn
                 key={i}
@@ -896,13 +897,14 @@ export function OrProofToy() {
           </div>
           {guess !== null && (
             <Result ok>
-              {guess === real ? "맞혔다" : "틀렸다"}(진짜는{" "}
-              {real === 0 ? "왼쪽" : "오른쪽"}). 지금까지 {score.played}번 중{" "}
-              {score.right}번 — 두 쪽 기록이 똑같이 생겨 반반 찍기보다 나을 수
-              없다. 모르는 쪽은 도전값을 미리 정해 흉내 내고, 두 도전값의 합만
-              확인하는 사람의 c와 맞으면 된다. "선 무늬가 없다"는 손의 카드마다
-              <SuitText text={'"♥이거나 ◆이거나 ♣이다"'} />를 이런 OR 증명(또는
-              Groth–Kohlweiss의 one-out-of-many)으로 보이는 것이다.
+              {guess === real ? "맞혔습니다" : "틀렸습니다"}. 진짜는{" "}
+              {real === 0 ? "왼쪽" : "오른쪽"}입니다. 지금까지 {score.played}번
+              중 {score.right}번 맞혔습니다. 두 쪽 기록이 똑같이 생겨 반반
+              찍기보다 나을 수 없습니다. 모르는 쪽은 도전값을 미리 정해 흉내
+              내고, 두 도전값의 합만 확인하는 사람의 c와 맞으면 됩니다. "선
+              무늬가 없다"는 손의 카드마다
+              <SuitText text={'"♥이거나 ◆이거나 ♣이다"'} />를 이런 OR 증명이나
+              Groth–Kohlweiss의 one-out-of-many 증명으로 보이는 것입니다.
             </Result>
           )}
         </>

@@ -216,7 +216,7 @@ test("고스톱 배우기: 첫 단원 미션을 틀렸다가 다시 해서 짝�
   await page.getByRole("button", { name: /고스톱 배우기/ }).click();
   await expect(page.getByText("0/6")).toBeVisible();
   await page.getByRole("button", { name: /고스톱은 어떤 게임/ }).click();
-  for (let i = 0; i < 3; i++)
+  for (let i = 0; i < 2; i++)
     await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "바닥에 놓인다" }).click();
   await page.getByRole("button", { name: "다음", exact: true }).click();

@@ -80,6 +80,7 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
         title: "화투 48장",
         body: [
           "화투는 **12달 × 4장 = 48장**이에요. 카드 왼쪽 위 숫자가 달이에요.",
+          "카드는 그림에 따라 **광**·열끗·띠·**피**로 나뉘어요. 광은 몇 장 없는 귀한 카드이고, 피는 가장 흔한 카드예요. 점수는 2단원에서 배워요.",
           "둘이 하면 **맞고**: 10장씩 나눠 갖고 바닥에 8장을 깔아요. 셋이 하면 7장씩, 바닥에 6장이에요.",
           "나머지는 엎어서 **더미**로 쌓아 둬요.",
         ],
@@ -99,22 +100,12 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
         ],
       },
       {
-        kind: "explain",
-        title: "뻑·쪽·따닥·싹쓸이",
-        body: [
-          "**뻑**: 먹으려던 달이 뒤집혀 또 나오면 석 장이 바닥에 남아요. 나중에 넷째 장으로 먹으면 피를 한 장씩 받아요.",
-          "**쪽**: 바닥에 놓은 카드를 뒤집은 카드가 바로 먹으면 상대마다 피 한 장을 받아요.",
-          "**따닥**: 같은 달 둘이 깔린 데에 내고 넷째가 뒤집혀 나오면 넉 장을 다 먹고 피를 받아요.",
-          "**싹쓸이**: 바닥을 다 쓸어도 피 한 장씩 받아요.",
-        ],
-      },
-      {
         kind: "quiz",
         question: "3월 광을 냈는데 바닥에 3월 카드가 없어요. 어떻게 될까요?",
         options: ["바닥에 놓인다", "버려진다", "다시 낸다"],
         answer: 0,
         explain:
-          "짝이 없으면 바닥에 놓여요. 뒤집은 카드가 3월이면 쪽으로 바로 먹을 수도 있어요.",
+          "짝이 없으면 바닥에 놓여요. 뒤집은 카드가 3월이면 그 카드로 바로 먹을 수도 있어요.",
       },
       {
         kind: "mission",
@@ -144,7 +135,7 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
   {
     id: "points",
     title: "점수: 광·열끗·띠·피",
-    summary: "먹은 패를 종류별로 모아 점수를 낸다",
+    summary: "먹은 패를 종류별로 모아 점수를 내고, 상대 피를 빼앗기도 한다",
     steps: [
       {
         kind: "explain",
@@ -166,7 +157,7 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
         body: [
           "**열끗**(동물·물건)과 **띠**는 5장이면 1점, 한 장 더할 때마다 1점씩 올라요.",
           "**피**는 10장이면 1점, 한 장마다 1점씩. **쌍피**(×2)는 두 장으로 세요.",
-          "9월 국진(술잔)은 열끗이지만, 옵션에 따라 쌍피로 셀 수도 있어요.",
+          "9월 국진(술잔)은 열끗이지만 쌍피로도 셀 수 있어요. 기본 규칙에서는 점수가 더 큰 쪽으로 저절로 세요.",
         ],
         scene: {
           hands: [[], []],
@@ -181,6 +172,23 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
         options: ["0점", "1점", "2점"],
         answer: 1,
         explain: "쌍피는 두 장이라 피가 10장, 1점이에요.",
+      },
+      {
+        kind: "explain",
+        title: "뻑과 쪽",
+        body: [
+          "**뻑**: 낸 카드로 바닥 카드를 먹으려는데 뒤집은 카드도 같은 달이면, 석 장을 먹지 못하고 바닥에 남겨요.",
+          "남은 석 장을 넷째 장으로 먹으면 상대마다 피를 한 장씩 받아요. 내가 싼 뻑을 내가 먹으면 두 장씩 받아요.",
+          "**쪽**: 짝이 없어 바닥에 놓은 카드를 뒤집은 카드가 바로 먹으면 상대마다 피를 한 장씩 받아요.",
+        ],
+      },
+      {
+        kind: "explain",
+        title: "따닥과 싹쓸이",
+        body: [
+          "**따닥**: 같은 달 둘이 깔린 데에 셋째를 내고 넷째가 뒤집혀 나오면 넉 장을 다 먹고 상대마다 피를 한 장씩 받아요.",
+          "**싹쓸이**: 바닥을 다 쓸어 가도 상대마다 피를 한 장씩 받아요.",
+        ],
       },
       {
         kind: "mission",
@@ -303,10 +311,11 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
       },
       {
         kind: "quiz",
-        question: "점수 8점에서 2고를 부르고 이겼어요. 몇 점일까요?",
-        options: ["8점", "10점", "16점"],
+        question:
+          "고를 두 번 불러 2고가 된 뒤 9점에서 스톱했어요. 몇 점일까요?",
+        options: ["9점", "11점", "18점"],
         answer: 1,
-        explain: "2고는 +2점이라 10점이에요. 3고부터 두 배가 돼요.",
+        explain: "2고는 +2점이라 9 + 2 = 11점이에요. 3고부터 두 배가 돼요.",
       },
       {
         kind: "mission",
@@ -409,16 +418,11 @@ export const GOSTOP_LESSONS: readonly GostopLesson[] = [
         objective: "입문 컴퓨터와 **한 판을 끝까지** 해 보세요.",
         hint: "점수가 가까운 상대가 있으면 스톱이 안전해요.",
         scenario: null,
-        check: ({ events, view }) => {
-          const ended = events.find((e) => e.type === "roundEnded");
-          if (ended?.type !== "roundEnded") return null;
-          return ended.settlement.winner === null ||
-            ended.settlement.winner === view.mySeat
-            ? "success"
-            : "fail";
-        },
-        success: "한 판을 끝냈어요! 이제 나홀로 고스톱으로 실력을 키워 보세요.",
-        fail: "아쉽게 졌어요. 다시 해 볼까요?",
+        check: ({ events }) =>
+          events.some((e) => e.type === "roundEnded") ? "success" : null,
+        success:
+          "한 판을 끝냈어요! 이기든 지든 이제 고스톱을 칠 수 있어요. 나홀로 고스톱으로 실력을 키워 보세요.",
+        fail: "",
       },
     ],
   },

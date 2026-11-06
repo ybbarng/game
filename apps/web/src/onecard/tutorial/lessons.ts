@@ -1,3 +1,4 @@
+import type { Card } from "@game/mighty-engine";
 import type {
   Action,
   GameEvent,
@@ -95,6 +96,11 @@ function finishedMatch({ events }: Context): MissionStatus {
   return events.some((e) => e.type === "ended") ? "success" : null;
 }
 
+/** 설명 그림 카드. 공통 단원 형식은 마이티 `Card`라 컬러 조커("JC")를 넣으려고 넓혀 둔다 */
+function pictureCards(cards: OnecardCard[]): Card[] {
+  return cards as string[] as Card[];
+}
+
 // ── 장면 ──────────────────────────────────────────────
 
 /** 버린 더미 맨 위 ♥5. 같은 숫자 ♠5, 같은 무늬 ♥9를 낼 수 있다 */
@@ -124,9 +130,9 @@ export const SEVEN_SCENE: OnecardScene = {
   pile: ["S9"],
 };
 
-/** 셋이 한다. 다음 사람(1번)이 한 장 남았다 */
+/** 셋이 한다. 다음 사람(1번)이 ◆5 한 장 남았다. ◆4를 내면 1번이 ◆5로 끝낸다 */
 export const JACK_SCENE: OnecardScene = {
-  hands: [["DJ", "D4", "C9", "S6", "H3"], ["C5"], ["D10", "S4", "H8"]],
+  hands: [["DJ", "D4", "C9", "S6", "H3"], ["D5"], ["D10", "S4", "H8"]],
   pile: ["D8"],
 };
 
@@ -210,9 +216,10 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         kind: "explain",
         title: "가장 먼저 다 내면 이겨요",
         body: [
-          "원카드는 2~5명이 트럼프 52장에 **조커 2장**을 더해 하는 카드 게임이에요.",
+          "원카드는 2~5명이 카드 52장에 **흑백 조커**와 **컬러 조커**, 조커 2장을 더해 하는 카드 게임이에요.",
           "한 사람이 7장씩 받고, 손에 든 카드를 **가장 먼저 다 낸 사람**이 이겨요.",
         ],
+        cards: pictureCards(["JK", "JC"]),
       },
       {
         kind: "explain",
@@ -220,6 +227,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         body: [
           "가운데 **버린 더미** 맨 위 카드와 **무늬가 같거나 숫자가 같은** 카드를 한 장 내요.",
           "맨 위가 ♥5면 ♥ 카드나 5를 낼 수 있어요.",
+          "**조커**는 맨 위 카드와 상관없이 아무 때나 낼 수 있고, 조커 다음에는 아무 카드나 낼 수 있어요. 다만 조커는 공격 카드라서, 다음 사람은 먼저 공격을 막거나 먹어야 해요. 공격은 3단원에서 배워요.",
         ],
         scene: FOLLOW_SCENE,
       },
@@ -338,7 +346,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
           "공격 카드를 내면 다음 사람이 카드를 먹어야 해요.",
           "**2**는 2장, **A**는 3장, **♠A**는 5장, **흑백 조커**는 5장, **컬러 조커**는 7장이에요.",
         ],
-        cards: ["H2", "DA", "SA", "JK"],
+        cards: pictureCards(["H2", "DA", "SA", "JK", "JC"]),
       },
       {
         kind: "explain",
@@ -368,7 +376,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
       },
       {
         kind: "quiz",
-        question: "◆A 위에 낼 수 있는 카드는?",
+        question: "◆A로 공격받았어요. 받아칠 수 있는 카드는?",
         options: ["◆2", "♣A", "◆K"],
         answer: 1,
         explain: "A 위에는 아무 A나 조커만 낼 수 있어요. 2로는 막을 수 없어요.",
@@ -414,7 +422,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         kind: "explain",
         title: "화면은 알려 주지 않아요",
         body: [
-          "누가 몇 장인지, 누가 외쳤는지 화면이 따로 알려 주지 않아요. 카드 수를 보고 **스스로 기억해야** 해요.",
+          "누가 한 장이 됐는지, 누가 외쳤는지 화면이 따로 알려 주지 않아요. 남은 카드 수를 보고 **스스로 알아채야** 해요.",
           "남이 외치면 소리와 말풍선이 잠깐 떠요.",
         ],
       },
@@ -511,7 +519,8 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         title: "순위",
         body: [
           "한 사람이 다 내도 판은 이어지고, **한 사람만 남을 때** 끝나요.",
-          "순위는 **먼저 다 낸 순서**, 그다음은 남은 카드가 **적은** 사람, 파산한 사람은 맨 뒤예요(늦게 파산한 사람이 위).",
+          "순위는 **먼저 다 낸 순서**예요. 파산한 사람은 맨 뒤이고, 늦게 파산한 사람이 더 위예요.",
+          "끊긴 사람을 더 기다리지 않기로 해서 판을 중간에 끝내면, 아직 카드가 남은 사람끼리는 남은 카드가 **적은** 사람이 위예요.",
         ],
       },
       {
@@ -528,7 +537,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
       {
         kind: "quiz",
         question:
-          "A는 다 냈고, B는 3장, C는 1장 남았을 때 판이 끝났어요. 2등은?",
+          "A는 다 냈어요. B는 3장, C는 1장 남았을 때, 끊긴 사람을 기다리지 않기로 해서 판을 중간에 끝냈어요. 2등은?",
         options: ["B", "C"],
         answer: 1,
         explain: "다 낸 A가 1등, 남은 사람 중 카드가 적은 C가 2등이에요.",
