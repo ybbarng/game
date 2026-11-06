@@ -134,13 +134,13 @@ const edges: Lesson = {
   steps: [
     {
       kind: "turn",
-      body: "비워 둔 자리에 마지막 흰 엣지를 넣어 십자를 끝내요. 남은 여덟 엣지는 셋 → 둘 → 셋씩 묶어서 「3-2-3」이라고 해요. 짝지을 날개를 앞-왼쪽과 앞-오른쪽에 두고, 위 두 층을 돌려 한 줄로 만든 뒤 바꿔 넣고 되돌려요. 먼저 Uw'를 쳐서 위 두 층을 돌려 보세요.",
+      body: "이 단원에서는 남은 엣지를 묶어요. 여덟 엣지를 셋 → 둘 → 셋씩 묶어서 「3-2-3」이라고 해요. 묶을 때는 위 두 층을 함께 돌려요. Uw'를 쳐서 위 두 층을 돌려 보세요.",
       setup: flip(YAU_PAIR),
       alg: "Uw'",
     },
     {
       kind: "demo",
-      body: "Uw'로 줄을 맞추고, R U R' F R' F' R로 묶인 엣지를 바꿔 넣고, Uw로 되돌려요. 흰 십자는 그대로예요.",
+      body: "짝지을 날개를 앞-왼쪽과 앞-오른쪽에 둬요. Uw'로 줄을 맞추고, R U R' F R' F' R로 묶인 엣지를 바꿔 넣고, Uw로 되돌려요. 흰 십자는 그대로예요.",
       setup: flip(YAU_PAIR),
       alg: YAU_PAIR,
     },
@@ -153,7 +153,7 @@ const edges: Lesson = {
     },
     {
       kind: "try",
-      body: "센터와 흰 십자 셋이 맞은 4×4에서 마지막 십자 엣지를 넣어 보세요.",
+      body: "엣지를 묶기 전에 흰 십자부터 끝내요. 센터와 흰 십자 셋이 맞은 4×4에서 비워 둔 자리에 마지막 십자 엣지를 넣어 보세요.",
       setup: { rule: "4x4-yau-centers" },
       goal: "yau-cross",
     },
@@ -186,7 +186,7 @@ const finish: Lesson = {
     {
       kind: "demo",
       body: "OLL 패리티: 위-앞 엣지 하나를 뒤집어요.",
-      setup: { alg: setupFor(OLL_PARITY) },
+      setup: flip(OLL_PARITY),
       alg: OLL_PARITY,
     },
     {

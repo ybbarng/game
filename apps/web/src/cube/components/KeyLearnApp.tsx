@@ -134,7 +134,7 @@ export function KeyLearnApp() {
         if (step) markDone(step.id);
         setFeedback({ kind: "ok", text: "이 단계를 마쳤어요." });
       } else if (outcomes.includes("hit"))
-        setFeedback({ kind: "ok", text: "맞아요" });
+        setFeedback({ kind: "ok", text: "맞아요." });
       else if (outcomes.includes("partial"))
         setFeedback({ kind: "ok", text: partialText(before, r) });
     },
@@ -310,9 +310,9 @@ export function KeyLearnApp() {
                     <span className="flex items-center gap-1 text-white/70 text-xs">
                       지금 위
                       <Swatch color={facing.up} colors={settings.colors} />
-                      {COLOR_NAME[facing.up]}, 앞
+                      {colorWord(facing.up)}, 앞
                       <Swatch color={facing.front} colors={settings.colors} />
-                      {COLOR_NAME[facing.front]}
+                      {colorWord(facing.front)}
                     </span>
                   )}
                 </p>
@@ -461,16 +461,21 @@ function hint(
   return rightKeyTag(t.kind === "code" ? codeLabel(t.code) : keyOf(keymap, t));
 }
 
+/** 색 이름을 홀로 쓸 때(「흰」은 「흰 면」처럼 꾸밀 때만 쓰고, 홀로는 「흰색」) */
+function colorWord(c: ColorId): string {
+  return c === 0 ? "흰색" : COLOR_NAME[c];
+}
+
 /** 맞았지만 아직 그 칸을 마치지 않았을 때 */
 function partialText(t: TutorialTarget | undefined, run: StepRunT): string {
   if (t?.kind === "orient") {
     const f = run.facing;
     return f
-      ? `지금 위는 ${COLOR_NAME[f.up]}, 앞은 ${COLOR_NAME[f.front]}이에요.`
+      ? `지금 위는 ${colorWord(f.up)}, 앞은 ${colorWord(f.front)}이에요.`
       : "";
   }
   if (t?.kind === "solve") return "아직이에요. 나중에 친 것부터 거꾸로.";
-  return "한 번 더";
+  return "한 번 더.";
 }
 
 /** 색 칸(사용자 색 설정대로) */

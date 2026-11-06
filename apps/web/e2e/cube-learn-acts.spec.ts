@@ -55,11 +55,14 @@ test("배우기: 루 첫 블록은 조각 찾기, ZZ 엣지 방향은 고르기 
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "find");
   await expect(page.locator("[data-cube-still]")).toHaveCount(1);
-  // 섞인 큐브의 흰-빨강 엣지 블럭: 오른쪽 면 아랫줄 가운데(16)와 아랫면(32). 앞 센터(22)는 틀림
+  // 시연이 z2 y로 만드는 초록 블록의 흰-초록 엣지 블럭: 섞기 21 뒤 앞-오른쪽 자리, 흰 칸은 앞면 가운데 줄 오른쪽(23),
+  // 초록 칸은 오른쪽 면 가운데 줄 왼쪽(12). 앞 센터(22)와 예전 답이던 흰-빨강 엣지(16)는 틀림
   const find = page.locator('[data-act="find"]');
   await page.locator('[data-sticker-cell="22"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
   await page.locator('[data-sticker-cell="16"]').click();
+  await expect(find).not.toHaveAttribute("data-act-passed", "");
+  await page.locator('[data-sticker-cell="23"]').click();
   await expect(find).toHaveAttribute("data-act-passed", "");
   await shot(page, "learn-roux-fb-find", info.project.name);
 

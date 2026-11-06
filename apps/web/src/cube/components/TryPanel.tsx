@@ -69,7 +69,16 @@ export function TryPanel({
   const [passed, setPassed] = useState(false);
   const [hints, setHints] = useState(0);
   const [syncToken, setSyncToken] = useState(0);
-  const mask = masked ? maskFor(n, step.mask) : null;
+  // 블라인드 연습: 외우는 동안은 다 보이고, 면을 처음 돌리면 모든 칸을 가린다(되돌려도 가린 채)
+  const [covered, setCovered] = useState(false);
+  const blindfold = step.blindfold === true;
+  const mask = blindfold
+    ? covered
+      ? maskFor(n, "none")
+      : null
+    : masked
+      ? maskFor(n, step.mask)
+      : null;
   const goal = step.goal ?? "solved";
   const answer = useMemo(() => algTokens(step.alg ?? ""), [step.alg]);
   // 모범 답이 없는 3×3 초보자 해 보기·마무리: 두 단계 힌트(1 = 지금 경우, 2 = 다음 수). 계산은 필요할 때 불러온다
@@ -130,8 +139,8 @@ export function TryPanel({
   }, [step.alg, n, start, goal]);
 
   // 가리기를 바꾸면 장면을 다시 칠한다
-  // biome-ignore lint/correctness/useExhaustiveDependencies: masked가 바뀔 때만
-  useEffect(() => setSyncToken((t) => t + 1), [masked]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 가리기가 바뀔 때만
+  useEffect(() => setSyncToken((t) => t + 1), [masked, covered]);
 
   const live = useRef({ state, history, passed, settings, onPassed });
   live.current = { state, history, passed, settings, onPassed };
@@ -147,6 +156,7 @@ export function TryPanel({
       setHistory([]);
       setPassed(false);
       setHints(0);
+      setCovered(false);
       setOpened({ seg: "", level: 0 });
       planRef.current = null;
       setSyncToken((t) => t + 1);
@@ -162,6 +172,7 @@ export function TryPanel({
       setState(next);
       c.history = [...c.history, move];
       setHistory(c.history);
+      if (blindfold && countsAsMove(n, move)) setCovered(true);
       if (!c.passed && goalMet(n, next, goal)) {
         c.passed = true;
         setPassed(true);
@@ -170,7 +181,7 @@ export function TryPanel({
       }
       return true;
     },
-    [n, goal],
+    [n, goal, blindfold],
   );
 
   const onCommand = useCallback(

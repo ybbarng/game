@@ -91,7 +91,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "코너: 헤드라이트 하나(이웃 바꾸기, T퍼뮤)",
     group: "corners",
     algs: ["R U R' U' R' F R2 U' R' U' R U R' F'"],
-    note: "헤드라이트(옆면 한 줄의 양 끝 코너 칸이 같은 색)를 왼쪽에 둬요. T퍼뮤는 오른쪽 두 코너를 맞바꿔요.",
+    note: "헤드라이트(옆면 한 줄의 양 끝 코너 칸이 같은 색)를 왼쪽에 둬요. T퍼뮤는 코너 중에서는 오른쪽 둘을 맞바꿔요.",
   },
   {
     id: "2look-pll-diagonal",

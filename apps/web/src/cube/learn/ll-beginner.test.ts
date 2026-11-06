@@ -144,8 +144,25 @@ describe("첫 층 코너(흰 면 위)", () => {
     const random = lesson.steps.findIndex((s) => s.kind === "try" && !s.alg);
     const short = lesson.steps.findIndex((s) => s.alg === SHORT_RIGHT);
     expect(short).toBeGreaterThan(random);
-    const quiz = lesson.steps.at(-3)?.quiz;
-    expect(quiz?.choices[quiz.answer]).toBe(SHORT_FRONT);
+    // 제 칸에서 돌아간 코너: 흰색이 보는 쪽 지름길에 D(앞이면 D')를 붙여 빼면 칸 밑에서도 흰색이 같은 쪽, 같은 지름길로 넣는다
+    const stuck = lesson.steps.at(-3);
+    const quiz = stuck?.quiz;
+    const answer = `${SHORT_FRONT} D' 뒤 ${SHORT_FRONT}`;
+    expect(quiz?.choices[quiz.answer]).toBe(answer);
+    const setup = stuck?.setup;
+    const start = play(setup && "alg" in setup ? setup.alg : "");
+    expect(colorsAt(start, ["U", "F", "R"])).toEqual([0, 1, 2]);
+    expect(faceOf(start, ["U", "F", "R"], WHITE)).toBe(F.F);
+    const out = play(`${SHORT_FRONT} D'`, start);
+    expect(faceOf(out, ["D", "F", "R"], WHITE)).toBe(F.F);
+    expect(
+      goalMet(3, play(answer.replace(" 뒤", ""), start), "first-layer"),
+    ).toBe(true);
+    const outRight = play(
+      `${SHORT_RIGHT} D`,
+      play(setupFor(`${SHORT_RIGHT} D ${SHORT_RIGHT}`)),
+    );
+    expect(faceOf(outRight, ["D", "F", "R"], WHITE)).toBe(F.R);
   });
 
   it("흰-초록-빨강은 아래-앞-왼쪽에 있고 D로 칸 밑에 온다", () => {

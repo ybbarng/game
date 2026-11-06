@@ -79,6 +79,8 @@ export const MASKS = {
   pll: "아래 두 층 + 윗층 전부 보임(윗면은 회색으로 둬도 됨)",
   all: "모두 보임(가리지 않음)",
   "roux-fb": "루 첫 블록(흰 면 아래로 쥐었을 때 왼쪽 블록)과 센터만 보임",
+  "roux-fb:F":
+    "루 초록 블록(흰-초록 쪽 1×2×3, 시연 섞기가 z2 y로 왼쪽에 두는 블록)과 센터만 보임",
   "roux-blocks": "루 두 블록과 센터만 보임",
   cmll: "루 두 블록 + 위 코너만 보임(나머지 엣지는 회색)",
   "eo-edges": "엣지와 센터만 보임(코너는 회색)",
@@ -233,6 +235,8 @@ export interface LessonStep {
   goal?: GoalName;
   /** 「가리기」 모드에서 쓸 마스크 */
   mask?: MaskName;
+  /** try: 블라인드 연습. 외우는 동안은 다 보이고, 면을 처음 돌리면 모든 칸을 까맣게 가린다(`mask`·가리기 단추는 쓰지 않는다) */
+  blindfold?: boolean;
   /** find: 찾을 조각 */
   find?: FindTarget;
   /**

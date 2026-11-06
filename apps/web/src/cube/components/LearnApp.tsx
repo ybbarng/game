@@ -446,7 +446,7 @@ function LessonView({
           href="/cube/learn"
           className="text-sm text-white/70 hover:text-white"
         >
-          ← {course.title}
+          ← 배우기
         </a>
         <h1 className="font-bold text-lg">
           {lessonIndex + 1}. {lesson.title}

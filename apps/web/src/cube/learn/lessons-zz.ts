@@ -42,7 +42,7 @@ const zzIntro: Lesson = {
     },
     {
       kind: "demo",
-      body: "섞인 큐브를 ZZ로 끝까지 맞춰 볼게요. EO라인 → 왼쪽 블록 → 오른쪽 블록 → 윗면 → PLL 차례예요.",
+      body: "섞인 큐브를 ZZ로 끝까지 맞춰 볼게요. EO라인 → 왼쪽 블록 → 오른쪽 블록 → 윗면 → PLL 차례예요. 블록은 조각 여러 개가 제자리에 맞아 붙은 덩어리예요.",
       setup: upTo(S21),
       alg: [EOL21, LEFT21, RIGHT21, OLL21, PLL21].join(" "),
     },
@@ -195,7 +195,7 @@ const zzF2l: Lesson = {
     },
     {
       kind: "demo",
-      body: "오른쪽 블록도 같아요. 왼쪽 블록을 깨지 않게 L을 돌렸으면 되돌려요.",
+      body: "오른쪽 블록도 같아요. 이제 L을 돌리면 왼쪽 블록이 깨지니, 오른쪽 블록은 R과 U만으로 만들어요.",
       setup: upTo(S21, EOL21, LEFT21),
       alg: RIGHT21,
       mask: "f2l",
@@ -233,7 +233,7 @@ const zzLl: Lesson = {
         question: "위를 보는 노란 코너는 몇 개일까요?",
         choices: ["0개", "1개", "2개"],
         answer: 1,
-        why: "하나예요. 그 코너를 왼쪽 앞에 두고 수네를 해요. 바로 다음 해 보기 상황이에요.",
+        why: "하나예요. 그 코너를 왼쪽 앞에 두고 수네를 해요. 다음 시연을 본 뒤 나오는 해 보기가 이 상황이에요.",
       },
     },
     {
