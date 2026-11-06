@@ -17,6 +17,7 @@ import {
 } from "../puzzles";
 import {
   defenseFor,
+  explainMarks,
   explainSolved,
   judgeMove,
   puzzleState,
@@ -94,6 +95,11 @@ function OmokPuzzleRun({
   });
   const { state, status, shown } = run;
   const view = useMemo(() => viewOf(state, 0), [state]);
+  // 해설이 짚는 자리. 푼 뒤에만 보인다.
+  const marks = useMemo(
+    () => (status === "solved" ? explainMarks(puzzle) : null),
+    [status, puzzle],
+  );
   const nextId = set.puzzles[index + 1]?.id ?? null;
   const answer = solutionOf(puzzle);
   const result = state.result;
@@ -101,9 +107,11 @@ function OmokPuzzleRun({
   const goal =
     puzzle.kind === "attack" && run.step > 0
       ? "계속 사로 몰아 다섯을 만드세요"
-      : puzzle.kind === "attack" && puzzle.moves >= 3
-        ? `사로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
-        : set.prompt;
+      : puzzle.goal
+        ? puzzle.goal
+        : puzzle.kind === "attack" && puzzle.moves >= 3
+          ? `사로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
+          : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   /** 금지 자리면 까닭을 알리고 true(틀린 것으로 치지 않는다) */
   const warnForbidden = (at: number): boolean => {
@@ -130,6 +138,8 @@ function OmokPuzzleRun({
           lastMove={run.lastMove}
           winLine={result?.kind === "five" ? result.line : null}
           forbidden={status === "play" ? view.forbidden : []}
+          coords
+          marks={status === "solved" ? marks : null}
           aim={aim}
           onAim={(at) => {
             // 금지 자리를 겨누면(손가락 첫 누름·화살표) 바로 까닭을 알린다. 겨눔은 그대로 둬 화살표로 지나갈 수 있다.
@@ -147,11 +157,23 @@ function OmokPuzzleRun({
       status={status}
       prompt={prompt}
       waitingText="백이 막는 중…"
-      solvedText={puzzle.kind === "attack" ? "다섯!" : "막았어요!"}
+      solvedText={
+        puzzle.kind === "attack"
+          ? "다섯!"
+          : puzzle.kind === "pick"
+            ? "좋은 수예요!"
+            : "막았어요!"
+      }
       wrongText={
         puzzle.kind === "attack"
-          ? "그 수로는 몰아붙일 수 없어요"
-          : "그 수로는 백의 공격을 못 막아요"
+          ? puzzle.race
+            ? "그 수로는 흑이 먼저 이기지 못해요"
+            : "그 수로는 몰아붙일 수 없어요"
+          : puzzle.kind === "pick"
+            ? puzzle.reason === "opening"
+              ? "그 자리는 화월·포월이 아니에요"
+              : "그 수는 막기만 하거나 막지 못해요"
+            : "그 수로는 백의 공격을 못 막아요"
       }
       wrongHint={set.hint}
       shown={shown !== null}
