@@ -33,6 +33,23 @@ describe("붓 획 윤곽", () => {
     expect(box[3]).toBeCloseTo(4, 0);
   });
 
+  it("붓끝 모양: 뾰족한 끝은 획 방향으로 더 나가고, 각진 끝은 더 나가지 않는다", () => {
+    const pts = [
+      [0, 0, 4],
+      [10, 0, 4],
+    ] as const;
+    // 둥근 끝은 반지름(2)만큼, 뾰족한 끝은 굵기의 0.9배(3.6)만큼, 각진 끝은 거의 나가지 않는다
+    const right = (end: "round" | "point" | "flat") =>
+      brushOutline([{ pts, end }]).box;
+    expect(right("round")[2]).toBeCloseTo(14, 0);
+    expect(right("point")[2]).toBeCloseTo(15.6, 0);
+    expect(right("flat")[2]).toBeLessThan(14);
+    // 각진 시작은 한쪽 모서리만 뒤로 밀려 비스듬하다
+    const flat = strokePolygons({ pts, start: "flat" })[0] ?? [];
+    const xs = flat.filter(([x]) => x < 1).map(([x]) => x);
+    expect(Math.min(...xs)).toBeCloseTo(-1.4, 1);
+  });
+
   it("닫힌 획(고리)은 바깥과 안쪽을 반대로 돌려 가운데에 구멍을 낸다", () => {
     const ring = strokePolygons({
       closed: true,

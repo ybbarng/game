@@ -1,15 +1,28 @@
 /**
  * 붓 획 윤곽: 가운데 선의 점 [x, y, 굵기] 목록을 채워 그릴 SVG 경로로 바꾼다.
  * 점 사이는 Catmull-Rom 곡선으로 잇고, 굵기도 점마다 달리해 붓처럼 굵어졌다 가늘어지게 한다.
- * 열린 획은 양 끝을 둥글게 닫고, 닫힌 획(고리)은 바깥·안쪽 윤곽을 반대 방향으로 만들어 가운데에 구멍을 낸다.
+ * 열린 획의 양 끝은 붓끝 모양(`BrushTip`)으로 닫고, 닫힌 획(고리)은 바깥·안쪽 윤곽을 반대 방향으로 만들어 가운데에 구멍을 낸다.
  * 모든 열린 획을 같은 방향으로 돌려 두어, 겹쳐도(nonzero 채우기) 구멍이 생기지 않는다.
  */
 
 export type BrushPoint = readonly [x: number, y: number, width: number];
+/**
+ * 붓끝 모양. round: 둥글게 멈춤, point: 가늘게 빠짐(삐침), flat: 붓을 눌러 댄 비스듬한 각
+ */
+export type BrushTip = "round" | "point" | "flat";
 export type BrushStroke = {
   readonly pts: readonly BrushPoint[];
   readonly closed?: boolean;
+  /** 시작 끝 모양(기본 round) */
+  readonly start?: BrushTip;
+  /** 마지막 끝 모양(기본 round) */
+  readonly end?: BrushTip;
 };
+
+/** 뾰족한 끝이 마지막 점에서 획 방향으로 더 나가는 길이(그 점 굵기에 대한 비율) */
+const POINT_REACH = 0.9;
+/** 각진 끝에서 한쪽 모서리를 획 방향으로 미는 길이(굵기에 대한 비율) */
+const FLAT_SLANT = 0.35;
 
 type P = [number, number];
 type P3 = [number, number, number];
@@ -111,13 +124,39 @@ export function strokePolygons(stroke: BrushStroke): P[][] {
   }
   const last = c.length - 1;
   const n0 = nm[0] as P;
+  const nl = nm[last] as P;
+  const p0 = c[0] as P3;
+  const pl = c[last] as P3;
+  // 획 바깥쪽 방향: 끝은 진행 방향, 시작은 그 반대
+  const outEnd: P = [nl[1], -nl[0]];
+  const outStart: P = [-n0[1], n0[0]];
+  const tip = (p: P3, n: P, out: P, kind: BrushTip): P[] => {
+    if (kind === "point")
+      return [
+        [
+          p[0] + out[0] * p[2] * POINT_REACH,
+          p[1] + out[1] * p[2] * POINT_REACH,
+        ],
+      ];
+    if (kind === "flat") return [];
+    return cap(p, n);
+  };
+  const L = left.slice();
+  const R = right.slice();
+  // 각진 끝: 한쪽 모서리를 바깥으로 조금 밀어 눌러 댄 비스듬한 자국을 낸다
+  const slant = (q: P, p: P3, out: P): P => [
+    q[0] + out[0] * p[2] * FLAT_SLANT,
+    q[1] + out[1] * p[2] * FLAT_SLANT,
+  ];
+  if (stroke.start === "flat") L[0] = slant(L[0] as P, p0, outStart);
+  if (stroke.end === "flat") R[last] = slant(R[last] as P, pl, outEnd);
   return [
     orient(
       [
-        ...left,
-        ...cap(c[last] as P3, nm[last] as P),
-        ...right.slice().reverse(),
-        ...cap(c[0] as P3, [-n0[0], -n0[1]]),
+        ...L,
+        ...tip(pl, nl, outEnd, stroke.end ?? "round"),
+        ...R.reverse(),
+        ...tip(p0, [-n0[0], -n0[1]], outStart, stroke.start ?? "round"),
       ],
       1,
     ),

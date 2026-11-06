@@ -6,11 +6,10 @@ import { WIKIMEDIA_CHO_GLYPHS } from "./cho-glyphs-wikimedia";
 /**
  * 초 편 알 글자(楚·車·包·馬·象·士·卒). 한국 장기알처럼 흘려 쓴 붓글씨 모양을 채운 윤곽으로 그린다(docs/22).
  * 세 안을 견주는 중이라 안마다 원본 파일을 따로 두었다. 판이 쓰는 것은 `CHO_GLYPHS`(지금 안 1).
- * - 안 1 `wikimedia`: 위키미디어 공용 Janggi.svg 윤곽 여섯(CC BY-SA 3.0, cho-glyphs-wikimedia.ts) + 직접 그린 馬
- * - 안 2 `kadagaden`: Kadagaden 장기알 윤곽 여섯(CC BY 4.0, cho-glyphs-kadagaden.ts) + 직접 그린 馬
+ * - 안 1 `wikimedia`: 위키미디어 공용 Janggi.svg 윤곽 일곱(CC BY-SA 3.0, cho-glyphs-wikimedia.ts)
+ * - 안 2 `kadagaden`: Kadagaden 장기알 윤곽 일곱(CC BY 4.0, cho-glyphs-kadagaden.ts)
  * - 안 3 `hand`: 일곱 글자 모두 직접 그린 붓 획(cho-glyphs-hand.ts, 저장소 라이선스)
- * 馬는 세 안 모두 사용자가 보여 준 실제 알 사진(위 큰 굽은 획 안의 고리, 가운데 꺾인 획, 아래 받치는 굵은 가로획)을
- * 보고 그린 붓 획이다. 두 그림의 馬(「ろ」꼴)는 그 알과 다르다.
+ * 두 그림의 馬는 위아래가 뒤집혀 올라가 있어 180도 돌려 쓴다(돌리면 실제 알처럼 위 고리, 가운데 己, 아래 가로획).
  */
 
 export type ChoGlyph = {
@@ -27,8 +26,8 @@ export type ChoGlyph = {
 export type ChoGlyphSet = "wikimedia" | "kadagaden" | "hand";
 
 export const CHO_GLYPH_SETS: Record<ChoGlyphSet, Record<Kind, ChoGlyph>> = {
-  wikimedia: { ...WIKIMEDIA_CHO_GLYPHS, N: HAND_CHO_GLYPHS.N },
-  kadagaden: { ...KADAGADEN_CHO_GLYPHS, N: HAND_CHO_GLYPHS.N },
+  wikimedia: WIKIMEDIA_CHO_GLYPHS,
+  kadagaden: KADAGADEN_CHO_GLYPHS,
   hand: HAND_CHO_GLYPHS,
 };
 
