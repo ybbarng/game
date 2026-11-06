@@ -411,6 +411,10 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             disabled={!host}
             onStart={(start) => s.shape && room.setShape({ ...s.shape, start })}
             onPick={(pick) => s.shape && room.setShape({ ...s.shape, pick })}
+            formula={s.shape.formula !== false}
+            onFormula={(on) =>
+              s.shape && room.setShape({ ...s.shape, formula: on })
+            }
           />
         )}
         <Field label="방식">

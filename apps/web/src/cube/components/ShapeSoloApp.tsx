@@ -26,6 +26,7 @@ import {
   shapeSupports,
   shapesFor,
 } from "../patterns/race";
+import { ShapeFormula } from "../patterns/ShapeFormula";
 import {
   addShapeResult,
   introSeen,
@@ -44,7 +45,7 @@ import { CubePosterPair } from "./CubePosterPair";
 /**
  * 혼자 하는 모양 만들기(`/cube/shape`, docs/47 9-10). 목표 모양을 고르고, 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다.
  * 첫 면 돌리기에 시간이 흐르고 목표와 같은 모양이 되면 멈춘다. 기록은 모양·시작마다 이 기기에 둔다.
- * 목표는 펼친 그림이 아니라 비스듬한 큐브 그림 둘로 보인다
+ * 목표는 펼친 그림이 아니라 비스듬한 큐브 그림 둘로 보인다. 「공식 보기」를 연 판은 기록을 따로 센다(`shape-records.ts`)
  */
 
 const SIZES = [3, 2, 4, 5].filter(shapeSupports);
@@ -143,8 +144,8 @@ export function ShapeSoloApp() {
               시간이 흐르고, 모양마다 가장 빠른 기록이 남아요.
             </p>
             <p className="break-keep text-white/60 text-xs">
-              큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요. 공식이
-              궁금하면 「패턴 만들기」에서 볼 수 있어요.
+              큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요. 막히면 「공식
+              보기」를 눌러 보세요. 공식을 본 판은 기록이 따로 남아요.
             </p>
             <button
               type="button"
@@ -181,8 +182,9 @@ export function ShapeSoloApp() {
             scramble={run.scramble}
             settings={settings}
             record={records[recordKey(run.pattern.id, startMode)]}
-            onDone={(ms, moves) => {
-              const key = recordKey(run.pattern.id, startMode);
+            formulaRecord={records[recordKey(run.pattern.id, startMode, true)]}
+            onDone={(ms, moves, formula) => {
+              const key = recordKey(run.pattern.id, startMode, formula);
               const made = addShapeResult(loadShapeRecords(), key, ms, moves);
               saveShapeRecords(made.records);
               setRecords(made.records);
@@ -264,6 +266,7 @@ function ShapePicker({
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {list.map((p) => {
           const rec = records[recordKey(p.id, start)];
+          const seen = records[recordKey(p.id, start, true)];
           return (
             <li key={p.id}>
               <button
@@ -283,6 +286,7 @@ function ShapePicker({
                 <span className="text-white/60 text-xs">
                   {LEVEL_LABEL[shapeLevel(p)]}
                   {rec ? ` · 최고 ${formatMs(rec.best)} · ${rec.count}번` : ""}
+                  {seen ? ` · 공식 보고 ${formatMs(seen.best)}` : ""}
                 </span>
               </button>
             </li>
@@ -300,6 +304,7 @@ function ShapePlay({
   scramble,
   settings,
   record,
+  formulaRecord,
   onDone,
   onAgain,
   onBack,
@@ -310,8 +315,10 @@ function ShapePlay({
   scramble: string;
   settings: CubeSettings;
   record: ShapeRecords[string] | undefined;
-  /** 완성: 새 기록이면 true */
-  onDone: (ms: number, moves: number) => boolean;
+  /** 「공식 보기」를 연 판의 기록 */
+  formulaRecord: ShapeRecords[string] | undefined;
+  /** 완성(`formula`: 이 판에서 공식을 열었나): 새 기록이면 true */
+  onDone: (ms: number, moves: number, formula: boolean) => boolean;
   onAgain: () => void;
   onBack: () => void;
 }) {
@@ -324,11 +331,15 @@ function ShapePlay({
     ms: number;
     moves: number;
     best: boolean;
+    formula: boolean;
   } | null>(null);
   const [syncToken, setSyncToken] = useState(0);
   const [, tick] = useState(0);
-  const live = useRef({ state, history, startedAt, result, settings });
-  live.current = { state, history, startedAt, result, settings };
+  // 「공식 보기」: 판이 끝나기 전에 한 번이라도 열면 공식을 본 판이다(처음부터 하면 연 채일 때만 그대로)
+  const [formulaOpen, setFormulaOpen] = useState(false);
+  const [peeked, setPeeked] = useState(false);
+  const live = useRef({ state, history, startedAt, result, settings, peeked });
+  live.current = { state, history, startedAt, result, settings, peeked };
 
   useEffect(() => {
     if (startedAt === null || result) return;
@@ -355,8 +366,8 @@ function ShapePlay({
       if (at !== null && goal.matcher.matches(next)) {
         const ms = Math.round(performance.now() - at);
         const moves = turnsOf(n, history);
-        const best = onDone(ms, moves);
-        c.result = { ms, moves, best };
+        const best = onDone(ms, moves, c.peeked);
+        c.result = { ms, moves, best, formula: c.peeked };
         setResult(c.result);
         playCubeCue(c.settings, best ? "cubeBest" : "cubeSolved");
       }
@@ -388,15 +399,17 @@ function ShapePlay({
         c.history = [];
         c.startedAt = null;
         c.result = null;
+        c.peeked = formulaOpen;
         setState(start);
         setHistory([]);
         setStartedAt(null);
         setResult(null);
+        setPeeked(formulaOpen);
         setSyncToken((t) => t + 1);
       }
       return null;
     },
-    [n, start, startMode, onAgain],
+    [n, start, startMode, onAgain, formulaOpen],
   );
 
   const elapsed = result
@@ -423,8 +436,14 @@ function ShapePlay({
             {turnsOf(n, history)}
           </b>
         </span>
-        <span className="text-sm text-white/60">
-          {record ? `최고 ${formatMs(record.best)}` : "첫 기록"}
+        <span className="text-sm text-white/60" data-cube-shape-record>
+          {peeked
+            ? formulaRecord
+              ? `공식 보고 최고 ${formatMs(formulaRecord.best)}`
+              : "공식 보고 첫 기록"
+            : record
+              ? `최고 ${formatMs(record.best)}`
+              : "첫 기록"}
         </span>
       </div>
       <div className="flex min-h-10 flex-wrap items-center justify-center gap-2">
@@ -433,9 +452,11 @@ function ShapePlay({
             role="status"
             data-cube-shape-done
             data-cube-shape-best={result.best ? "" : undefined}
+            data-cube-shape-done-formula={result.formula ? "" : undefined}
             className="rounded-full border border-emerald-400/50 bg-emerald-400/15 px-4 py-1 font-bold text-emerald-300"
           >
             완성! {formatMs(result.ms)} · {result.moves}수
+            {result.formula ? " · 공식 보고" : ""}
             {result.best ? " · 새 기록" : ""}
           </span>
         ) : (
@@ -495,6 +516,20 @@ function ShapePlay({
               {LEVEL_LABEL[shapeLevel(pattern)]} ·{" "}
               {SHAPE_START_LABELS[startMode]}
             </span>
+            <ShapeFormula
+              n={n}
+              alg={pattern.alg}
+              start={startMode}
+              open={formulaOpen}
+              onToggle={(open) => {
+                setFormulaOpen(open);
+                if (open && !live.current.result) {
+                  live.current.peeked = true;
+                  setPeeked(true);
+                }
+              }}
+              className="mt-1 md:items-center"
+            />
           </div>
         </div>
         <div className="w-full min-w-0 flex-1">

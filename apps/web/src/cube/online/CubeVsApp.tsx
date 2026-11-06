@@ -84,6 +84,7 @@ export function CubeVsApp() {
   const [shapeOn, setShapeOn] = useState(false);
   const [shapeStart, setShapeStart] = useState<ShapeStart>("solved");
   const [shapePick, setShapePick] = useState<ShapePick>("easy");
+  const [shapeFormula, setShapeFormula] = useState(true);
   const party = partyMode !== null;
   const shapeNow = shapeOn && shapeSupports(n);
   // 크기를 바꿔 고른 어려움이 없으면 그 크기의 첫 어려움으로
@@ -129,6 +130,7 @@ export function CubeVsApp() {
                 start: shapeStart,
                 pick: shapePick,
                 key: testVsShapeKey() ?? randomId(8),
+                ...(shapeFormula ? {} : { formula: false }),
               },
             }
           : {}),
@@ -251,6 +253,8 @@ export function CubeVsApp() {
                 pick={shapePick}
                 onStart={setShapeStart}
                 onPick={setShapePick}
+                formula={shapeFormula}
+                onFormula={setShapeFormula}
               />
             )}
             <fieldset className="flex flex-col gap-1 text-sm">
