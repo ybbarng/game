@@ -115,6 +115,10 @@ export function subject(word: string): string {
 }
 /** 천분율 → 별 값의 몇 % */
 const pct = (permille: number) => `${permille / 10}%`;
+/** 천분율 → 「절반」 또는 몇 %(글에 숫자를 그대로 적지 않고 엔진 표에서 읽는다) */
+const part = (permille: number) => (permille === 500 ? "절반" : pct(permille));
+/** 낱말 뒤 「이에요/예요」(받침에 따라) */
+const isEnding = (word: string) => (subject(word) === "이" ? "이에요" : "예요");
 const lyOf = (id: string) => lyText(boardStar(id).star.ly) ?? "";
 const kOf = (id: string) => `${boardStar(id).star.k.toLocaleString("ko-KR")} K`;
 
@@ -538,7 +542,8 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         kind: "explain",
         title: "계절 하늘을 한 바퀴씩",
         body: [
-          "판은 **32칸**이에요. 네 변이 **가을·겨울·봄·여름** 하늘이고, 변마다 실제 별자리 둘의 별 여섯이 있어요.",
+          `판은 **${BOARD_SIZE}칸**이에요. 네 변이 **가을·겨울·봄·여름** 하늘이고, 변마다 그 계절의 실제 별자리 둘이 있어요.`,
+          "별자리마다 별이 셋이에요. 밝은 둘은 제 계절 변에 있고, 가장 어두운 하나는 맞은편 변의 공문 칸 옆에 있어요.",
           "주사위 둘을 굴려 우주선을 옮기고, 멈춘 별을 **사요**. 남이 내 별에 멈추면 **정거장 이용료**를 받아요.",
         ],
         scene: { kind: "board" },
@@ -549,7 +554,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         body: [
           `돈 대신 **별빛**(✦)을 써요. 처음에 ${money(startFunds)}을 받고, 첫 차례에서 뒤 자리일수록 ${money(NUMBERS.lateSeatBonus)}씩 더 받아요(먼저 사는 쪽이 앞서지 않게).`,
           "별빛은 이 판 안에서만 쓰는 점수예요. 판이 끝나면 사라지고, 실제 돈이나 물건과 바꿀 수 없어요.",
-          `판이 끝나면 **자산**(별빛 + 가진 별 값의 80% + 정거장 + 완성한 별자리마다 그 별자리 별 하나 값)이 가장 많은 사람이 1등이에요. 기본 판은 둘이면 한 사람이 ${turns2}차례씩 해요.`,
+          `판이 끝나면 **자산**(별빛 + 가진 별 값의 ${pct(NUMBERS.starAsset)} + 정거장 + 완성한 별자리마다 그 별자리 별 하나 값)이 가장 많은 사람이 1등이에요. 기본 판은 둘이면 한 사람이 ${turns2}차례씩 해요.`,
         ],
       },
       {
@@ -598,7 +603,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "우주국 지원금",
         body: [
           "오른쪽 아래 **카노푸스 우주국**에서 출발해요.",
-          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 5분의 1만큼 덜 받아요. 한 바퀴(32칸)는 네 차례쯤 걸려요.`,
+          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 ${pct(NUMBERS.salaryTaper)}만큼 덜 받아요. 한 바퀴 ${BOARD_SIZE}칸은 네 차례쯤 걸려요.`,
         ],
         scene: { kind: "board", marked: [0] },
       },
@@ -636,7 +641,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         kind: "explain",
         title: "정거장 이용료",
         body: [
-          "남의 별에 멈추면 그 별 주인에게 **정거장 이용료**를 내요. 내 별에 멈추면 아무 일 없어요.",
+          "남의 별에 멈추면 그 별 주인에게 **정거장 이용료**를 내요. 내 별에 멈추면 이용료를 내지 않아요.",
           `1단 정거장은 별 값의 ${pct(NUMBERS.rent.single)}(10 단위로 반올림)예요.`,
         ],
         scene: SIRIUS_ALONE,
@@ -662,6 +667,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         body: [
           `같은 별자리 별을 **둘** 가지면 둘 사이에 별자리 선이 이어지고, 1단 이용료가 별 값의 ${pct(NUMBERS.rent.single)} → ${pct(NUMBERS.rent.pair)}로 올라요.`,
           `**셋 모두** 가지면 **별자리 완성**이에요. 이용료가 ${pct(NUMBERS.rent.complete)}가 되고, 판이 끝날 때 자산에 그 별자리 별 하나 값(밝은 별자리일수록 커요)을 더해요.`,
+          "별자리의 가장 어두운 별은 맞은편 변에 있어서, 완성하려면 판을 반 바퀴 돌아 그 별까지 사야 해요.",
         ],
         scene: { kind: "board", stars: mine("Betelgeuse", "Rigel") },
       },
@@ -670,8 +676,9 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "정거장 올리기",
         body: [
           "완성한 별자리는 정거장을 **2단 → 3단 → 큰 정거장**으로 올릴 수 있어요. 한 별자리 안에서는 고르게 올려요(단 차이는 1까지).",
-          `한 단 값은 그 별자리 별 값의 절반이에요(${groupKo("Ori")} ${money(boardGroup("Ori").levelCost)}). 이용료는 2단 ${pct(NUMBERS.rent.level2)}, 3단 ${pct(NUMBERS.rent.level3)}, 큰 정거장 ${pct(NUMBERS.rent.grand)}예요.`,
-          "올린 정거장은 자산에 한 단 값의 절반만 잡혀요. 남은 차례에 이용료로 되찾을 수 있을 때 올려요.",
+          `한 단 값은 그 별자리 별 값의 ${part(NUMBERS.levelCost)}이에요(${groupKo("Ori")} ${money(boardGroup("Ori").levelCost)}). 이용료는 2단 ${pct(NUMBERS.rent.level2)}, 3단 ${pct(NUMBERS.rent.level3)}, 큰 정거장 ${pct(NUMBERS.rent.grand)}예요.`,
+          `완성한 별자리의 내 별에 멈춘 차례에는 그 별자리 정거장 한 단을 한 단 값의 ${part(NUMBERS.revisitBuild)}에 올릴 수 있어요.`,
+          `올린 정거장은 자산에 한 단 값의 ${part(NUMBERS.sellBack)}만 잡혀요. 남은 차례에 이용료로 되찾을 수 있을 때 올려요.`,
         ],
         scene: ORION_DONE,
       },
@@ -688,7 +695,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
   {
     id: "notice",
     title: "우주국 공문과 소행성대",
-    summary: "공문은 별의 밝기·온도·거리로 계산한다",
+    summary: "공문 여러 장이 별의 밝기·온도·거리로 계산한다",
     steps: [
       {
         kind: "explain",
@@ -771,6 +778,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "사들이기",
         body: [
           `남의 별에 멈춰 이용료를 낸 뒤, 그 별을 값의 ${NUMBERS.takeover / 1000}배에 주인에게서 **사들일** 수 있어요. 주인은 거절할 수 없어요.`,
+          `별빛이 모자라면 내 별을 **우주국에 맡기고** 별 값의 ${part(NUMBERS.mortgage)}을 받을 수 있어요. 맡긴 별은 이용료를 받지 못하고, **되찾을** 때 별 값의 ${pct(NUMBERS.unmortgage)}를 내요.`,
           "주인이 완성한 별자리의 별과 맡긴 별은 사들일 수 없어요.",
           "별자리를 완성하려면 사들이기가 지름길이에요.",
         ],
@@ -797,7 +805,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         question: "이 선 그림은 어느 별자리일까요?",
         scene: { kind: "sky", group: id },
         ...placed(groupKo(id), others.map(groupKo), at),
-        explain: `**${groupKo(id)}**이에요. ${SHAPE_HINTS[id] ?? ""}`,
+        explain: `**${groupKo(id)}**${isEnding(groupKo(id))}. ${SHAPE_HINTS[id] ?? ""}`,
       })),
     ],
   },
@@ -840,6 +848,10 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
           "같은 별자리 별을 모아요. 둘이면 이용료가 오르고, 셋이면 정거장을 올릴 수 있어요.",
           "올리기 전에 별빛을 조금 남겨 두세요. 남의 큰 정거장에 멈추면 이용료가 커요.",
           `짧은 판은 처음에 별 ${NUMBERS.dealStars.short}개를 받고 시작해요. 받은 별의 별자리부터 노려 보세요.`,
+          `실전 판에는 **제철 하늘**이 켜져 있어요. 판 길이를 네 토막으로 나눠 계절이 바뀌고, 지금 계절 별자리의 별은 이용료가 ${NUMBERS.seasonal / 1000}배예요.`,
+          `**달의 길**도 켜져 있어요. 달이 차례마다 판을 한 칸씩 돌고, 달이 있는 별의 별자리는 이용료를 ${part(NUMBERS.moonRent)}만 내요.`,
+          `판 처음에 우주국 **관측 의뢰서**를 한 장 몰래 받아요. 판이 끝날 때 의뢰를 이루었으면 우주국이 ${money(NUMBERS.requestBonus)}을 줘요.`,
+          "낼 별빛이 모자라 정거장을 내리고 별을 맡겨도 못 내면 **운항 중단**, 곧 파산이에요. 짧은 판은 누가 처음 운항 중단하면 그 차례가 끝날 때 판이 끝나고 자산으로 순위를 매겨요.",
         ],
       },
       realMission,
