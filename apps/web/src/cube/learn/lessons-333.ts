@@ -211,7 +211,7 @@ const pieces: Lesson = {
   steps: [
     {
       kind: "play",
-      body: "센터 블럭만 색을 넣었어요. 아무 면이나 마음대로 돌려 보세요. 면을 돌려도 센터 블럭은 제자리에서 돌기만 해요. 가운데 층(M·E·S)을 돌리면 센터 블럭이 함께 옮겨 가지만, 서로의 차례는 그대로예요.",
+      body: "센터 블럭만 색을 넣었어요. 아무 면이나 마음대로 돌려 보세요. 면을 돌려도 센터 블럭은 제자리에서 돌기만 해요. 가운데 층을 돌리면 센터 블럭이 함께 옮겨 가지만, 서로의 차례는 그대로예요.",
       play: { focus: { piece: "center" }, turns: 5, choose: true },
     },
     {
@@ -244,14 +244,14 @@ const pieces: Lesson = {
     },
     {
       kind: "find",
-      body: `확인해 봐요. ${TRACK_EDGE}을 돌렸고, 센터 블럭만 보여요. 흰-초록 엣지 블럭은 지금 어디 있나요? 눌러 보세요. 막히면 「보통」으로 색을 볼 수 있어요.`,
+      body: `확인해 봐요. 맞춘 큐브에서 앞면과 오른쪽 면을 한 번씩 돌려 두었고, 센터 블럭만 보여요. 흰-초록 엣지 블럭은 지금 어디 있나요? 눌러 보세요. 막히면 「보통」으로 색을 볼 수 있어요.`,
       setup: { alg: TRACK_EDGE },
       mask: "centers",
       find: { piece: "edge", colors: ["U", "F"] },
     },
     {
       kind: "find",
-      body: `이번엔 ${TRACK_CORNER}을 돌렸어요. 흰-초록-빨강 코너 블럭은 지금 어디 있나요?`,
+      body: `이번엔 오른쪽 면을 한 번, 윗면을 반 바퀴 돌려 두었어요. 흰-초록-빨강 코너 블럭은 지금 어디 있나요?`,
       setup: { alg: TRACK_CORNER },
       mask: "centers",
       find: { piece: "corner", colors: ["U", "F", "R"] },
@@ -265,7 +265,7 @@ const pieces: Lesson = {
     },
     {
       kind: "try",
-      body: "맞춘 큐브에서 윗면(U)을 한 번 돌렸어요. 흰 면은 그대로 다 흰색이죠? 그런데 윗층 엣지·코너 블럭이 모두 한 칸씩 옮겨 가서 제자리가 아니에요. 옆면 윗줄 색이 그 아래 센터 블럭 색과 달라요. 윗면을 돌려 블럭들을 제자리로 돌려 놓아 보세요. 표기는 아직 몰라도 괜찮아요: 놀이판처럼 면을 이리저리 돌려 보고, 막히면 힌트의 키를 눌러요.",
+      body: "맞춘 큐브에서 윗면을 한 번 돌렸어요. 흰 면은 그대로 다 흰색이죠? 그런데 윗층 엣지·코너 블럭이 모두 한 칸씩 옮겨 가서 제자리가 아니에요. 옆면 윗줄 색이 그 아래 센터 블럭 색과 달라요. 윗면을 돌려 블럭들을 제자리로 돌려 놓아 보세요. 표기는 아직 몰라도 괜찮아요: 놀이판처럼 면을 이리저리 돌려 보고, 막히면 힌트의 키를 눌러요.",
       setup: { alg: "U" },
       alg: "U'",
       goal: "solved",
@@ -543,7 +543,7 @@ const whiteCross: Lesson = {
     },
     {
       kind: "quiz",
-      body: "흰색만 위를 보면 안 돼요. 엣지의 다른 색이 옆면 센터 색과 같아야 해요. 초록-흰 엣지 블럭은 앞(초록) 위로, 빨강-흰 엣지 블럭은 오른쪽(빨강) 위로 가요.",
+      body: "흰색만 위를 보면 안 돼요. 엣지의 다른 색이 옆면 센터 색과 같아야 해요. 흰-초록 엣지 블럭은 앞(초록) 위로, 흰-빨강 엣지 블럭은 오른쪽(빨강) 위로 가요.",
       setup: { alg: "R2" },
       mask: "cross",
       quiz: {
@@ -925,14 +925,19 @@ const firstCorners: Lesson = {
     },
     {
       kind: "quiz",
-      body: "제 칸에서 돌아가 있으면 흰색이 보는 쪽 지름길에 D를 붙여 빼고, 같은 지름길로 넣어요.",
-      setup: { alg: setupFor(SHORT_FRONT) },
+      body: "코너가 제 칸에 들어가 있지만 돌아가 있으면 먼저 칸 밑으로 빼요. 흰색이 오른쪽을 보면 R' D' R 뒤에 D를 붙여 빼요. 칸 밑에서도 흰색이 오른쪽을 보니 R' D' R로 넣어요. 흰색이 앞을 보면 F D F' 뒤에 D'를 붙여 빼고, F D F'로 넣어요.",
+      setup: { alg: setupFor(`${SHORT_FRONT} D' ${SHORT_FRONT}`) },
       mask: "first-layer",
       quiz: {
-        question: "칸 밑 코너의 흰색이 앞을 봐요. 어느 지름길로 넣을까요?",
-        choices: [SHORT_RIGHT, SHORT_FRONT, "R' D2 R D 뒤 R' D' R"],
+        question:
+          "앞-오른쪽 위 코너가 제 칸에 있지만 흰색이 앞을 봐요. 어떻게 넣을까요?",
+        choices: [
+          `${SHORT_RIGHT} D 뒤 ${SHORT_RIGHT}`,
+          `${SHORT_FRONT} D' 뒤 ${SHORT_FRONT}`,
+          `${SHORT_FRONT} 한 번`,
+        ],
         answer: 1,
-        why: "흰색이 앞이면 R' D' R을 거울에 비춘 F D F'예요.",
+        why: "흰색이 앞이니 앞 지름길 F D F'에 D'를 붙여 빼요. 칸 밑에서도 흰색이 앞을 보니 F D F'로 넣어요.",
       },
     },
     {
@@ -1132,7 +1137,7 @@ const yellowCross: Lesson = {
     },
     {
       kind: "turn",
-      body: "점이에요. 아무 방향에서나 공식을 한 번 쳐 보세요. ㄱ자가 생겨요.",
+      body: "점이에요. 점은 어느 쪽에서 해도 되니, 지금 쥔 그대로 공식을 한 번 쳐 보세요. ㄱ자가 생겨요.",
       setup: flip(DOT_TO_CROSS),
       alg: EO,
       mask: "oll",
@@ -1215,7 +1220,7 @@ const llEdges: Lesson = {
     },
     {
       kind: "quiz",
-      body: "윗면을 어떻게 돌려도 맞은 둘이 마주 볼 때(일자)가 있어요. 이때는 아무 쪽에서나 공식을 한 번 하면 이웃한 둘이 맞게 돼요. 그다음 다시 쥐고 한 번 더.",
+      body: "윗면을 어떻게 돌려도 맞은 둘이 마주 볼 때가 있어요. 이때는 아무 쪽에서나 공식을 한 번 하면 이웃한 둘이 맞게 돼요. 그다음 다시 쥐고 한 번 더.",
       setup: flip(EDGE_OPPOSITE),
       quiz: {
         question: "맞은 두 엣지가 마주 보면 공식을 모두 몇 번 쓸까요?",
@@ -1226,7 +1231,7 @@ const llEdges: Lesson = {
     },
     {
       kind: "turn",
-      body: "U를 쳐서 앞과 뒤 엣지의 옆색을 맞춘 뒤(일자), 공식을 한 번 쳐 보세요.",
+      body: "U를 쳐서 앞과 뒤 엣지의 옆색을 맞춰 맞은 둘이 마주 보게 한 뒤, 공식을 한 번 쳐 보세요.",
       setup: flip(EDGE_OPPOSITE),
       alg: `U ${EDGE_SWAP}`,
     },
@@ -1397,7 +1402,7 @@ const llCornerTwist: Lesson = {
     },
     {
       kind: "quiz",
-      body: "다른 순서도 있어요. 코너 방향을 먼저 맞추고 자리를 나중에 맞추는 방식이에요. 큐브를 뒤집어 「오른손 트위스트(R U R' U')」를 되풀이하는 가이드도 있어요. 여기서는 흰 면을 아래에 둔 채 이어 가니 R' D' R D를 써요.",
+      body: "다른 순서도 있어요. 코너 방향을 먼저 맞추고 자리를 나중에 맞추는 방식이에요. 큐브를 뒤집어 「섹시 무브」라고 부르는 R U R' U'를 되풀이하는 가이드도 있어요. 여기서는 흰 면을 아래에 둔 채 이어 가니 R' D' R D를 써요. 문제에 나오는 A퍼뮤의 「퍼뮤」는 조각의 자리를 바꾸는 공식을 부르는 말이에요. 영어 permutation에서 왔어요.",
       setup: flip(A_PERM),
       quiz: {
         question:
