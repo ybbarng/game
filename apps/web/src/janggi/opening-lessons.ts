@@ -133,7 +133,7 @@ export const SETUPS_LESSON: JanggiLesson = {
         "가장 많이 두는 차림이에요. 원앙마보다 **빨리 갖춰지고**, 뒤에 두는 한으로 둬도 무리 없이 짤 수 있어요.",
         "약점: 두 마가 떨어져 있어 서로 지켜 주지 못해요. 처음 하는 사람은 상대 차가 줄을 따라 들어와 **진마나 면포를 잃는** 일이 많아요.",
       ],
-      scene: scene(POSITIONS.gwima, { mark: ["83", "86"] }),
+      scene: scene(POSITIONS.gwima, { rings: ["83", "86"] }),
     },
     {
       kind: "explain",
@@ -143,7 +143,7 @@ export const SETUPS_LESSON: JanggiLesson = {
         "단단하고, 두 포를 빨리 나눠 쓸 수 있어요. 그림처럼 두 마(83·87)가 모두 **가운데 졸(75)**을 지켜요.",
         "약점: 갖추는 데 수가 많이 들어요. 마가 공격하러 나가면 짝이 깨지니, 처음에는 **지키기를 먼저** 하고 나중에 공격해요.",
       ],
-      scene: scene(POSITIONS.wonang, { mark: ["83", "87"] }),
+      scene: scene(POSITIONS.wonang, { rings: ["83", "87", "75"] }),
     },
     {
       kind: "explain",
@@ -153,7 +153,7 @@ export const SETUPS_LESSON: JanggiLesson = {
         "공격이 가장 세요. 두 상이 귀 위로 나가 상대 찻길을 막고, 차·포·상이 함께 쳐요.",
         "약점: 그림처럼 두 마 모두 **가운데 졸(75)을 지키지 못해** 상대 포에 잡히기 쉬워요. 이것을 막는 법을 알아야 해서 처음 하는 사람에게는 어려워요.",
       ],
-      scene: scene(POSITIONS.yanggwima, { mark: ["84", "86"], warn: ["75"] }),
+      scene: scene(POSITIONS.yanggwima, { rings: ["84", "86"], warn: ["75"] }),
     },
     {
       kind: "explain",
@@ -173,7 +173,7 @@ export const SETUPS_LESSON: JanggiLesson = {
         "한도 **자기 자리에서 왼쪽부터** 읽어요. 한은 판 위쪽에서 나를 보고 앉으니, 한의 왼쪽은 내 쪽에서 보면 오른쪽이에요.",
         "그림의 한은 **마상마상**이에요. 내 쪽에서 왼쪽부터 읽으면 상(12)·마(13)… 하고 **상마상마**로 보여요.",
       ],
-      scene: { ...START, mark: ["12", "13"] },
+      scene: { ...START, rings: ["12", "13"] },
     },
     {
       kind: "quiz",
@@ -219,11 +219,12 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
       kind: "explain",
       title: "첫 수: 차 앞 졸을 옆으로",
       body: [
+        "자리는 판 가장자리 숫자 둘로 불러요. **앞 숫자는 가로줄**(왼쪽 숫자, 위에서부터 1~9, 맨 아래 줄은 0), **뒤 숫자는 세로줄**(위쪽 숫자, 왼쪽부터 1~9)이에요. 79는 7번 가로줄과 9번 세로줄이 만나는 자리예요.",
         "첫 수로 가장 흔한 수는 **차 앞 졸을 옆으로 한 칸 쓸어** 찻길(차가 다닐 길)을 여는 수예요. 프로 해설에서도 이 수를 첫 수의 정석으로 꼽아요.",
         "어느 쪽 졸일까요? 귀마끼리 맞설 때 초는 **차 바로 옆에 상이 있는 쪽** 졸을 써요. 마상마상이면 오른쪽 차(09) 옆에 상(08)이 있으니 **79 졸을 78로** 옮겨요.",
         "옮긴 졸은 옆 졸(77)과 나란히 서서 서로 지켜 줘요. 졸은 옆으로도 잡을 수 있어서예요.",
       ],
-      scene: { ...START, show: "79" },
+      scene: { ...START, show: "79", rings: ["09", "08", "77"] },
     },
     {
       kind: "mission",
@@ -247,7 +248,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
         "포가 궁 바로 앞 가운데(85)에 서면 **면포**예요. 면은 궁성 앞 가운데 자리예요. 면포는 궁 앞을 막아 지키고, 가운데 줄을 따라 상대 진을 노려요.",
         "처음 판에서는 포가 넘을 기물이 없어 포를 움직일 수 없어요. 마를 꺼내야 포가 힘을 써요.",
       ],
-      scene: scene(POSITIONS.beforeCenterCannon, { show: "82" }),
+      scene: scene(POSITIONS.beforeCenterCannon, { show: "82", rings: ["83"] }),
     },
     {
       kind: "mission",
@@ -280,7 +281,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
         "찻길을 열자마자 차로 상대 끝 병(41)을 잡으러 가면 어떻게 될까요? **「다음 수」**를 눌러 한 수씩 보세요.",
         "41 병 뒤 같은 줄에 **한 차(11)**가 있어요. 병(2점)을 얻고 차(13점)를 잃어요. 빨간 점선 고리는 공짜로 잡힐 내 기물이에요.",
       ],
-      scene: { ...START, replay: GREEDY_ROOK_LINE },
+      scene: { ...START, replay: GREEDY_ROOK_LINE, rings: ["41", "11"] },
     },
     {
       kind: "explain",
@@ -289,12 +290,12 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
         "귀마(86)를 바로 앞으로 깊이(65) 보내면, 한 가운데 병이 한 칸 내려와 마를 잡아요. **「다음 수」**로 보세요.",
         "졸(75)로 다시 잡아도 마(5점)와 병(2점)을 바꿔 3점 손해예요. 마는 졸과 다른 기물이 받쳐 줄 때 앞으로 보내요.",
       ],
-      scene: { ...START, replay: HASTY_HORSE_LINE },
+      scene: { ...START, replay: HASTY_HORSE_LINE, rings: ["86", "65"] },
     },
     {
       kind: "quiz",
       question: "이 판에서 차로 41 병을 잡으면?",
-      scene: scene(POSITIONS.greedyRook, { show: "01" }),
+      scene: scene(POSITIONS.greedyRook, { show: "01", rings: ["41", "11"] }),
       options: [
         "한 차(11)가 내 차를 잡아 손해다",
         "병을 공짜로 얻는다",
@@ -316,7 +317,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
     {
       kind: "quiz",
       question: "이 판(두 편 모두 마상마상)에서 좋은 첫 수는?",
-      scene: START,
+      scene: { ...START, rings: ["79", "95"] },
       options: ["오른쪽 끝 졸을 옆으로(79→78)", "궁을 앞으로 띄운다(95→85)"],
       answer: 0,
       explain:

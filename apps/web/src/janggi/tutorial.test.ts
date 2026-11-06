@@ -143,12 +143,12 @@ describe("장기 튜토리얼 장면", () => {
     expect(count).toBe(2);
   });
 
-  it("고리(mark·warn)는 판 위 자리 이름이다", () => {
+  it("고리(rings·warn)는 판 위 자리 이름이다", () => {
     for (const lesson of JANGGI_LESSONS)
       for (const step of lesson.steps) {
         if (step.kind === "mission" || !step.scene) continue;
         for (const name of [
-          ...(step.scene.mark ?? []),
+          ...(step.scene.rings ?? []),
           ...(step.scene.warn ?? []),
         ])
           expect(() => pointAt(name)).not.toThrow();

@@ -236,6 +236,11 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   const touch = info.project.name.startsWith("phone");
   await completeLessons(page, [...BEFORE_SETUPS, "setups"]);
   await openLesson(page, /첫 수와 초반 원칙/);
+  // 판 바깥 칸 번호(가로줄 1~9·0, 세로줄 1~9)와 글이 짚는 기물의 고리
+  await expect(page.locator("[data-axis-row]")).toHaveCount(10);
+  await expect(page.locator("[data-axis-col]")).toHaveCount(9);
+  for (const name of ["09", "08", "77"])
+    await expect(page.locator(`[data-ring="${name}"]`)).toHaveCount(1);
   await page.screenshot({
     path: info.outputPath("janggi-first-move.png"),
     fullPage: true,

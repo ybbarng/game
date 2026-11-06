@@ -27,8 +27,8 @@ import {
 export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   /** 이 자리 기물이 갈 수 있는 곳을 점으로 보인다 */
   show?: string;
-  /** 눈여겨볼 두 자리(초록 고리) */
-  mark?: readonly [string, string];
+  /** 글이 짚는 기물·칸(얇은 주황 고리) */
+  rings?: readonly string[];
   /** 약한 자리(빨간 점선 고리) */
   warn?: readonly string[];
   /**

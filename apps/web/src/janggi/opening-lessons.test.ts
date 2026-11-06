@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 
 import { threatenedPieces } from "./danger";
 import {
+  FIRST_MOVES_LESSON,
   GREEDY_ROOK_LINE,
   HASTY_HORSE_LINE,
   openingPieces,
@@ -131,6 +132,20 @@ describe("포진 고르기", () => {
 });
 
 describe("첫 수와 초반 원칙", () => {
+  it("첫 장면의 고리는 글이 짚는 차(09)·상(08)·졸(77)이고, 79는 7번 가로줄·9번 세로줄의 졸이다", () => {
+    const step = FIRST_MOVES_LESSON.steps[0];
+    if (step?.kind !== "explain" || !step.scene) throw new Error("첫 장면");
+    const board = boardOf(step.scene.pieces);
+    expect((step.scene.rings ?? []).map((n) => board[pointAt(n)])).toEqual([
+      "cR",
+      "cE",
+      "cP",
+    ]);
+    // 글의 읽는 법: 앞 숫자는 위에서 센 가로줄, 뒤 숫자는 왼쪽에서 센 세로줄
+    expect(pointAt("79")).toBe(6 * 9 + 8);
+    expect(board[pointAt("79")]).toBe("cP");
+  });
+
   it("79→78을 두면 오른쪽 차가 세로줄을 따라 나가고, 옮긴 졸은 옆 졸과 서로 지킨다", () => {
     const after = playLine(START, ["79-78"], alternate);
     expect(pseudoTargets(START, pointAt("09")).length).toBeLessThan(5);

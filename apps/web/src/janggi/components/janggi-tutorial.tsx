@@ -7,6 +7,7 @@ import {
   createJanggiScenario,
   createMatch,
   type GameEvent,
+  HEIGHT,
   type JanggiView,
   KIND_NAMES,
   type Kind,
@@ -18,6 +19,7 @@ import {
   type Setup,
   SIDE_NAMES,
   type Side,
+  WIDTH,
 } from "@game/janggi-engine";
 import { useMemo, useState } from "react";
 
@@ -34,7 +36,7 @@ import {
   JANGGI_TUTORIAL_RULES,
   type JanggiScene,
 } from "../tutorial";
-import { JanggiBoard } from "./JanggiBoard";
+import { JanggiBoard, pointPercent } from "./JanggiBoard";
 import { JanggiGame } from "./JanggiGame";
 
 const sceneState = (scene: JanggiScene) =>
@@ -63,7 +65,41 @@ function JanggiSceneView({ scenario }: { scenario: JanggiScene }) {
 }
 
 /**
- * `show` 자리 기물이 갈 수 있는 곳에 점, `mark`는 초록 고리, `warn`은 빨간 점선 고리.
+ * 판 바깥 여백의 칸 번호(기보 표기와 같다): 위쪽에 세로줄 번호(왼쪽부터 1~9),
+ * 왼쪽에 가로줄 번호(위부터 1~9, 맨 아래 줄은 0). 자리 이름은 「가로줄 + 세로줄」이다(79 = 7째 가로줄의 9째 세로줄)
+ */
+const COLUMNS = Array.from({ length: WIDTH }, (_, x) => x);
+const ROWS = Array.from({ length: HEIGHT }, (_, y) => y);
+
+function BoardNumbers() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      {COLUMNS.map((x) => (
+        <span
+          key={`c${x}`}
+          data-axis-col={x + 1}
+          className="-translate-x-1/2 absolute top-0 -mt-3.5 text-[10px] text-white/60 leading-none tabular-nums"
+          style={{ left: `${pointPercent(x, 0)[0]}%` }}
+        >
+          {x + 1}
+        </span>
+      ))}
+      {ROWS.map((y) => (
+        <span
+          key={`r${y}`}
+          data-axis-row={(y + 1) % 10}
+          className="-translate-y-1/2 absolute left-0 -ml-3.5 text-[10px] text-white/60 leading-none tabular-nums"
+          style={{ top: `${pointPercent(0, y)[1]}%` }}
+        >
+          {(y + 1) % 10}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * `show` 자리 기물이 갈 수 있는 곳에 점, `rings`는 얇은 주황 고리, `warn`은 빨간 점선 고리.
  * `pickSetup`이면 판 위 단추로 내 상차림을 바꾸고, `replay`면 「다음 수」로 한 수씩 넘긴다. 판은 누를 수 없다
  */
 function SceneBody({ scenario }: { scenario: JanggiScene }) {
@@ -93,9 +129,7 @@ function SceneBody({ scenario }: { scenario: JanggiScene }) {
   const from = scenario.show && frame === 0 ? pointAt(scenario.show) : null;
   const shown =
     from === null ? [] : pseudoTargets(board, from).map((to) => ({ from, to }));
-  const mark = scenario.mark
-    ? { from: pointAt(scenario.mark[0]), to: pointAt(scenario.mark[1]) }
-    : null;
+  const rings = (scenario.rings ?? []).map(pointAt);
   const danger = scenario.replay
     ? piecesInDanger(board, "c")
     : (scenario.warn ?? []).map(pointAt);
@@ -123,7 +157,8 @@ function SceneBody({ scenario }: { scenario: JanggiScene }) {
           ))}
         </fieldset>
       )}
-      <div className="mx-auto aspect-[924/1024] w-full max-w-[16rem]">
+      <div className="relative mx-auto mt-3 aspect-[924/1024] w-full max-w-[16rem]">
+        <BoardNumbers />
         <JanggiBoard
           board={board}
           flipped={false}
@@ -134,7 +169,7 @@ function SceneBody({ scenario }: { scenario: JanggiScene }) {
           lastMove={last}
           checkedKing={null}
           labels={labels}
-          hint={mark}
+          rings={rings}
           danger={danger}
         />
       </div>
