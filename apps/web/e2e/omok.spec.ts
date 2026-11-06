@@ -419,7 +419,7 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
   await play(blocked === "E9" ? "J9" : "E9");
   await expect(page.getByRole("status")).toHaveText("다섯!");
   await expect(
-    page.getByText(/두 곳이 되어 한 번에 다 막을 수 없다/),
+    page.getByText(/두 곳이 되어 한 번에 다 막을 수 없어요/),
   ).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-study-open-four.png") });
   await page.getByRole("button", { name: "← 목록" }).click();
@@ -435,7 +435,7 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
   await play("F7");
   await expect(page.getByRole("status")).toHaveText("막았어요!");
   await expect(
-    page.getByText(/백이 사로 몰아붙여 다섯을 만든다/),
+    page.getByText(/백이 사로 몰아붙여 다섯을 만들어요/),
   ).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-study-defend.png") });
   await page.getByRole("button", { name: "← 목록" }).click();
@@ -462,7 +462,7 @@ test("오목 수 배우기: 다섯 자리를 틀렸다 다시 찾고, 열린 넷
     .getAttribute("data-last");
   await play(renjuBlock === "A11" ? "F11" : "A11");
   await expect(page.getByRole("status")).toHaveText("다섯!");
-  await expect(page.getByText(/4·4 금지라 둘 수 없다/)).toBeVisible();
+  await expect(page.getByText(/4·4 금지라 둘 수 없어요/)).toBeVisible();
   await page.screenshot({ path: info.outputPath("omok-study-renju.png") });
 });
 
@@ -600,7 +600,10 @@ test("오목 수 배우기: 좋은 수 고르기에서 화월 자리를 고르�
   await page.getByRole("button", { name: "다시 하기" }).click();
   await play("G9");
   await expect(page.getByRole("status")).toHaveText("좋은 수예요!");
-  await expect(page.getByText(/화월\. 백이 가로·세로로/)).toBeVisible();
+  await expect(page.getByText(/화월이에요\. 백이 가로·세로로/)).toBeVisible();
+  // 판 가장자리 좌표(가로 A~O, 세로 1~15)
+  await expect(board(page).locator("text", { hasText: /^O$/ })).toHaveCount(1);
+  await expect(board(page).locator("text", { hasText: /^15$/ })).toHaveCount(1);
   await page.screenshot({ path: info.outputPath("omok-good-opening.png") });
   await page.getByRole("button", { name: "← 목록" }).click();
   await expect(good.getByText("1/10")).toBeVisible();
@@ -613,7 +616,18 @@ test("오목 수 배우기: 좋은 수 고르기에서 화월 자리를 고르�
   await play("F6");
   await expect(page.getByRole("status")).toHaveText("좋은 수예요!");
   await expect(
-    page.getByText(/막기만 하고 흑 셋은 생기지 않는다/),
+    page.getByText(/막기만 하고 흑 셋은 생기지 않아요/),
   ).toBeVisible();
+  // 해설이 짚는 자리: 정답 F6은 진한 고리, 다른 막는 자리 I3·K1은 점선 고리
+  await expect(page.locator('[data-mark="main"]')).toHaveAttribute(
+    "data-mark-at",
+    "F6",
+  );
+  await expect(
+    page.locator('[data-mark="other"][data-mark-at="I3"]'),
+  ).toHaveCount(1);
+  await expect(
+    page.locator('[data-mark="other"][data-mark-at="K1"]'),
+  ).toHaveCount(1);
   await page.screenshot({ path: info.outputPath("omok-good-build.png") });
 });

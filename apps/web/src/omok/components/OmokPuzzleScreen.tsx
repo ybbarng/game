@@ -17,6 +17,7 @@ import {
 } from "../puzzles";
 import {
   defenseFor,
+  explainMarks,
   explainSolved,
   judgeMove,
   puzzleState,
@@ -94,6 +95,11 @@ function OmokPuzzleRun({
   });
   const { state, status, shown } = run;
   const view = useMemo(() => viewOf(state, 0), [state]);
+  // 해설이 짚는 자리. 푼 뒤에만 보인다.
+  const marks = useMemo(
+    () => (status === "solved" ? explainMarks(puzzle) : null),
+    [status, puzzle],
+  );
   const nextId = set.puzzles[index + 1]?.id ?? null;
   const answer = solutionOf(puzzle);
   const result = state.result;
@@ -132,6 +138,8 @@ function OmokPuzzleRun({
           lastMove={run.lastMove}
           winLine={result?.kind === "five" ? result.line : null}
           forbidden={status === "play" ? view.forbidden : []}
+          coords
+          marks={status === "solved" ? marks : null}
           aim={aim}
           onAim={(at) => {
             // 금지 자리를 겨누면(손가락 첫 누름·화살표) 바로 까닭을 알린다. 겨눔은 그대로 둬 화살표로 지나갈 수 있다.

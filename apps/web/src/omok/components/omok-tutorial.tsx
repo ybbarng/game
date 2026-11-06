@@ -51,6 +51,16 @@ function OmokSceneView({ scenario }: { scenario: OmokScene }) {
         aim={null}
         onAim={() => {}}
         onPlace={() => {}}
+        still
+        coords
+        marks={
+          scenario.marks
+            ? {
+                main: (scenario.marks.main ?? []).map(pointAt),
+                other: (scenario.marks.other ?? []).map(pointAt),
+              }
+            : null
+        }
       />
     </div>
   );

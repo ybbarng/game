@@ -17,6 +17,8 @@ export type OmokScene = Omit<OmokScenarioOptions, "rules"> & {
   forbidden?: boolean;
   /** 마지막 수처럼 점으로 짚어 보일 자리 */
   last?: string;
+  /** 글이 짚는 자리: main은 진한 고리(두는 자리), other는 점선 고리(그 밖에 말하는 자리) */
+  marks?: { main?: string[]; other?: string[] };
 };
 export type OmokLesson = Lesson<OmokView, GameEvent, OmokScene, Action>;
 type Context = MissionContext<OmokView, GameEvent>;
@@ -143,7 +145,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "goal",
     title: "오목은 어떤 게임?",
-    summary: "흑부터 번갈아 두고, 다섯을 먼저 잇는 사람이 이긴다",
+    summary: "흑부터 번갈아 두고, 다섯을 먼저 잇는 사람이 이겨요.",
     steps: [
       {
         kind: "explain",
@@ -186,7 +188,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "block",
     title: "막기",
-    summary: "상대의 넷은 바로, 열린 셋은 미리 막는다",
+    summary: "상대의 넷은 바로, 열린 셋은 미리 막아요.",
     steps: [
       {
         kind: "explain",
@@ -235,7 +237,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "attack",
     title: "열린 넷 만들기",
-    summary: "열린 셋을 열린 넷으로 키우면 상대가 막을 수 없다",
+    summary: "열린 셋을 열린 넷으로 키우면 상대가 막을 수 없어요.",
     steps: [
       {
         kind: "explain",
@@ -274,15 +276,15 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
     id: "forbidden",
     title: "금지 수",
     summary:
-      "렌주(기본)는 흑만 3·3·4·4·장목 금지, 일반 규칙은 흑백 모두 3·3 금지",
+      "렌주(기본)는 흑만 3·3·4·4·장목이 금지예요. 일반 규칙은 흑백 모두 3·3이 금지예요.",
     steps: [
       {
         kind: "explain",
         title: "3·3은 둘 수 없어요",
         body: [
           "한 수로 **열린 셋 두 개**가 한꺼번에 생기는 자리를 **3·3**이라고 해요. 막을 수 없는 공격이라 금지예요.",
-          "그림의 × 자리 H8에 흑을 두면 가로 셋과 세로 셋이 동시에 생겨요. 기본 규칙인 **렌주**에서는 흑이 3·3에 둘 수 없어요(일반 규칙은 백도 금지).",
-          "게임에서는 내 차례에 금지 자리를 ×로 보여 줘요(시작 화면에서 끌 수 있어요).",
+          "그림의 × 자리 H8에 흑을 두면 가로 셋과 세로 셋이 동시에 생겨요. 기본 규칙인 **렌주**에서는 흑이 3·3에 둘 수 없어요. 일반 규칙은 백도 금지예요.",
+          "게임에서는 내 차례에 금지 자리를 ×로 보여 줘요. 시작 화면에서 끌 수 있어요.",
         ],
         scene: DOUBLE_THREE_SCENE,
       },
@@ -291,7 +293,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
         title: "규칙 셋",
         body: [
           "**렌주(기본)**: 먼저 두는 흑이 유리해서 **흑만** 3·3, 4·4(넷 두 개), 장목(여섯 이상)이 금지예요. 백은 다섯 이상이면 이겨요.",
-          "**일반**: 정확히 다섯이어야 이겨요(여섯 이상은 아니에요). 흑백 모두 3·3 금지.",
+          "**일반**: 정확히 다섯이어야 이겨요(여섯 이상은 아니에요). 흑백 모두 3·3이 금지예요.",
           "**자유**: 다섯 이상이면 이겨요. 금지가 없어요.",
         ],
       },
@@ -309,7 +311,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "real",
     title: "실전",
-    summary: "입문 컴퓨터와 처음부터 한 판",
+    summary: "입문 컴퓨터와 처음부터 한 판 둬요.",
     steps: [
       {
         kind: "explain",
@@ -335,7 +337,8 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "opening",
     title: "첫 세 수(주형)",
-    summary: "백이 붙이는 두 방법과, 흑 셋째 수로 생기는 이름 있는 모양",
+    summary:
+      "백이 붙이는 두 방법과, 흑 셋째 수로 생기는 이름 있는 모양을 배워요.",
     steps: [
       {
         kind: "explain",
@@ -363,7 +366,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
           "**화월**(직접): 백이 H9에 붙으면 흑이 **I9**(또는 맞은편 G9)에 둬요. 셋째 돌이 첫 돌과 대각선으로, 백 돌과 가로로 맞닿아요.",
           "렌주 연구에서 **흑이 이긴다고 밝혀진** 주형이고, 흑이 이길 길이 특히 많다고 알려져 있어요.",
         ],
-        scene: openingScene("kagetsu"),
+        scene: { ...openingScene("kagetsu"), marks: { other: ["G9"] } },
       },
       {
         kind: "explain",
@@ -372,7 +375,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
           "**포월**(간접): 백이 I9에 붙으면 흑이 **I7**(또는 맞은편 G9)에 둬요. 셋째 돌이 첫 돌과 대각선으로 붙고, 백 돌과 세로 한 줄에 놓여요.",
           "화월과 함께 **흑이 이긴다고 밝혀진** 주형이고, 흑이 이길 길이 특히 많다고 알려져 있어요.",
         ],
-        scene: openingScene("hogetsu"),
+        scene: { ...openingScene("hogetsu"), marks: { other: ["G9"] } },
       },
       {
         kind: "explain",
@@ -418,7 +421,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "colors",
     title: "흑과 백",
-    summary: "먼저 두는 흑은 금지로 묶이고, 백은 그 금지를 노린다",
+    summary: "먼저 두는 흑은 금지로 묶이고, 백은 그 금지를 노려요.",
     steps: [
       {
         kind: "explain",
@@ -432,7 +435,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
         kind: "explain",
         title: "흑과 백은 이기는 길이 달라요",
         body: [
-          "**흑**은 3·3과 4·4가 금지라, 막을 수 없는 공격을 주로 **4·3**으로 만들어요. 한 수로 **사**(한 수 더 두면 다섯이 되는 넷)와 **열린 셋**을 함께 만드는 거예요(다음 단원).",
+          "**흑**은 3·3과 4·4가 금지라, 막을 수 없는 공격을 주로 **4·3**으로 만들어요. 한 수로 **사**(한 수 더 두면 다섯이 되는 넷)와 **열린 셋**을 함께 만드는 거예요. 자세한 것은 다음 단원에서 배워요.",
           "**백**은 금지가 없어 3·3, 4·4로도 이기고, 여섯 이상 이어도 이겨요.",
         ],
       },
@@ -478,7 +481,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
   {
     id: "middle",
     title: "중반 원칙",
-    summary: "4·3 만들기, 이은 셋과 띈 셋, 공격과 수비 고르기",
+    summary: "4·3 만들기, 이은 셋과 띈 셋, 공격과 수비 고르기를 배워요.",
     steps: [
       {
         kind: "explain",
@@ -488,7 +491,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
           "그림에서 흑이 J8에 두면 가로 G8~J8이 사(왼쪽 F8은 백이 막음), 세로 J8~J10이 열린 셋이 돼요.",
           "흑은 3·3·4·4가 금지라 4·3이 가장 중요한 이기는 모양이에요.",
         ],
-        scene: FOUR_THREE_SCENE,
+        scene: { ...FOUR_THREE_SCENE, marks: { main: ["J8"] } },
       },
       {
         kind: "mission",
@@ -510,7 +513,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
           "띈 셋은 빈 가운데를 채우면 열린 넷이 돼요. 그래서 막는 쪽은 양 끝뿐 아니라 가운데 빈칸도 막을 수 있어요.",
           "상대 돌 사이에 빈칸이 있어도 셋인지 꼭 살펴요.",
         ],
-        scene: SPLIT_THREE_SCENE,
+        scene: { ...SPLIT_THREE_SCENE, marks: { other: ["I8"] } },
       },
       {
         kind: "quiz",
@@ -525,7 +528,7 @@ export const OMOK_LESSONS: readonly OmokLesson[] = [
         kind: "explain",
         title: "공격과 수비 고르기",
         body: [
-          "한 수 두기 전에 이 차례로 살펴요. ① 내 **다섯** ② 상대 **넷** 막기 ③ 내가 사를 이어 두어 이기는 길 ④ 상대 **열린 셋** 막기 ⑤ 그 밖에는 막으면서 내 돌도 키우는 자리.",
+          "한 수 두기 전에 이 차례로 살펴요. ① 내 **다섯** ② 상대 **넷** 막기 ③ 내가 사를 이어 두어 이기는 길 ④ 상대 **열린 셋** 막기 ⑤ 그 밖에는 막으면서 내 돌도 키우는 자리를 찾아요.",
           "사는 상대가 반드시 막아야 해요. 그래서 상대에게 열린 셋이 있어도, 내가 사로 끝까지 몰 수 있으면 먼저 이겨요. 사로만 몰아 이기는 수순을 **VCF**, 열린 셋까지 섞어 몰아 이기는 수순을 **VCT**라고 해요.",
           "열린 셋으로 몰 때는 상대가 막으면서 사로 되받아칠 수 있어, 더 조심해서 읽어야 해요.",
         ],
