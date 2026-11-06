@@ -13,7 +13,7 @@ import {
 } from "@game/janggi-engine";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
-
+import { CHO_GLYPHS, fitGlyph } from "../cho-glyphs";
 import type { PieceLabels } from "../settings";
 
 /** 판 가장자리 여백(칸 단위). 바깥 줄 위 기물이 잘리지 않게 */
@@ -68,19 +68,16 @@ const HANGUL: Record<Kind, Record<Side, string>> = {
 };
 
 /**
- * 한자 글꼴: 한국 장기처럼 초는 흘려 쓴 초서, 한은 반듯한 해서로 쓴다.
- * 글꼴이 늦게 오면 잠깐 명조로 보인다(`font-display: swap`)
+ * 한자: 한국 장기처럼 초는 흘려 쓴 초서, 한은 반듯한 해서로 쓴다.
+ * 한은 글꼴(늦게 오면 잠깐 명조, `font-display: swap`), 초는 한국 장기알 모양의 붓글씨 윤곽(cho-glyphs.ts)
  */
-const HANJA_FONT: Record<Side, string> = {
-  c: '"JanggiCho", serif',
-  h: '"JanggiHan", serif',
-};
+const HAN_FONT = '"JanggiHan", serif';
 /** 알 두께(반지름에 대한 비율). 옆면이 이만큼 아래로 보여 입체감이 난다 */
 const PIECE_DEPTH = 0.24;
-/** 초서는 획이 가늘고 흘러 조금 크게 쓴다 */
-const HANJA_SCALE: Record<Side, number> = { c: 1.6, h: 1.15 };
-/** 초서 획을 같은 색 테두리로 조금 굵혀 작은 판에서도 또렷하게 한다(글자 크기에 대한 비율) */
-const HANJA_STROKE: Record<Side, number> = { c: 0.045, h: 0 };
+/** 한 글자 크기(반지름에 대한 비율) */
+const HAN_SCALE = 1.15;
+/** 초 글자 윤곽의 긴 변(반지름에 대한 비율) */
+const CHO_SCALE = 1.4;
 
 /** 편 글자색: 초는 초록, 한은 빨강 */
 export const SIDE_COLOR: Record<Side, string> = { c: "#0f6b3a", h: "#b91c1c" };
@@ -356,28 +353,39 @@ export function JanggiBoard({
               strokeOpacity={0.45}
               strokeWidth={0.02}
             />
-            <text
-              x={cx}
-              y={cy - (chosen ? 0.06 : 0)}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={r * (labels === "hanja" ? HANJA_SCALE[side] : 1.05)}
-              fontWeight={labels === "hanja" ? 400 : 700}
-              fill={SIDE_COLOR[side]}
-              {...(labels === "hanja" && HANJA_STROKE[side] > 0
-                ? {
-                    stroke: SIDE_COLOR[side],
-                    strokeWidth: r * HANJA_SCALE[side] * HANJA_STROKE[side],
-                    strokeLinejoin: "round" as const,
-                    paintOrder: "stroke",
-                  }
-                : {})}
-              style={{
-                fontFamily: labels === "hanja" ? HANJA_FONT[side] : "serif",
-              }}
-            >
-              {pieceLabel(kind, side, labels)}
-            </text>
+            {labels === "hanja" && side === "c" ? (
+              <path
+                d={CHO_GLYPHS[kind].d}
+                data-glyph={pieceLabel(kind, side, labels)}
+                transform={fitGlyph(
+                  CHO_GLYPHS[kind],
+                  cx,
+                  cy - (chosen ? 0.06 : 0),
+                  r * CHO_SCALE,
+                )}
+                fill={SIDE_COLOR[side]}
+                {...(CHO_GLYPHS[kind].stroke
+                  ? {
+                      stroke: SIDE_COLOR[side],
+                      strokeWidth: CHO_GLYPHS[kind].stroke,
+                      strokeLinejoin: "round" as const,
+                    }
+                  : {})}
+              />
+            ) : (
+              <text
+                x={cx}
+                y={cy - (chosen ? 0.06 : 0)}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={r * (labels === "hanja" ? HAN_SCALE : 1.05)}
+                fontWeight={labels === "hanja" ? 400 : 700}
+                fill={SIDE_COLOR[side]}
+                style={{ fontFamily: labels === "hanja" ? HAN_FONT : "serif" }}
+              >
+                {pieceLabel(kind, side, labels)}
+              </text>
+            )}
           </g>
         );
       })}

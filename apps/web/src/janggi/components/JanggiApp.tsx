@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
 import { useJanggiStudyProgress } from "@/study/progress";
 import { useJanggiTutorialProgress } from "@/tutorial/progress";
+import { CHO_GLYPH_CREDIT } from "../cho-glyphs";
 import { janggiOnline } from "../online";
 import { JANGGI_PUZZLE_SETS } from "../puzzles";
 import { endJanggiSession } from "../session";
@@ -346,6 +347,30 @@ function JanggiHome({
       onOptions={onOptions}
       aboutLabel="장기는?"
       onAbout={onRules}
+      credit={
+        // 초 알 글자 윤곽의 출처 표기(CC BY 4.0, cho-glyphs-kadagaden.ts)
+        <>
+          장기 초 기물 글자:{" "}
+          <a
+            href={CHO_GLYPH_CREDIT.source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            Kadagaden
+          </a>
+          (pychess-variants),{" "}
+          <a
+            href={CHO_GLYPH_CREDIT.license}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:opacity-80"
+          >
+            CC BY 4.0
+          </a>
+          , 馬는 180도 돌림
+        </>
+      }
     />
   );
 }

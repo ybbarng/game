@@ -76,6 +76,7 @@ pnpm e2e          # 화면 시험(먼저 build). 패치된 시스템 Chrome으�
 
 - [마이티 네트워크(Mighty Network) 4.0](https://github.com/skyser2003/mighty40) — 마이티 규칙과 진행 방식의 기준. 1999 장문성, 2006–2011 UPnL, 2006 puzzlet, 2011 Yoshi-TS4. 코드와 그림·소리는 새로 만들었다.
 - 전통 그림 카드(J·Q·K) 인물: [Dmitry Fomin, English pattern playing cards](https://commons.wikimedia.org/wiki/File:English_pattern_playing_cards_deck.svg), 위키미디어 공용, CC0
+- 장기 초 기물 글자: [Kadagaden, chess-pieces](https://github.com/Kadagaden/chess-pieces)의 janggi_kakao_janggi_style_white 세트(pychess-variants), CC BY 4.0. 글자 윤곽만 옮겼고 馬는 180도 돌렸다(`apps/web/src/janggi/cho-glyphs-kadagaden.ts`)
 - 별 이름: IAU 별 이름 실무단(WGSN) [IAU Catalog of Star Names](https://www.iau.org/public/themes/naming_stars/), CC BY 4.0
 - 별자리 선·별 자료: [d3-celestial](https://github.com/ofrohn/d3-celestial)(Olaf Frohn), BSD 3조항([전문](apps/web/public/licenses/d3-celestial.txt))
 - 공개 난수: [drand](https://drand.love)(League of Entropy)
