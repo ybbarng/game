@@ -3,7 +3,7 @@ import { ChessPawnArt } from "@/chess/icon-art";
 import { CubeIconArt } from "@/cube/icon-art";
 import { GalaxyIconArt } from "@/galaxy/icon-art";
 import { GostopIconArt } from "@/gostop/components/GostopIcon";
-import { CHO_GLYPH_STROKE, CHO_GLYPHS } from "@/janggi/cho-glyphs";
+import { CHO_GLYPHS, type ChoGlyph, fitGlyph } from "@/janggi/cho-glyphs";
 import { HAN_GLYPH } from "@/janggi/icon-glyphs";
 import { MinhwatuIconArt } from "@/minhwatu/components/MinhwatuIconArt";
 import { NyrongppongIconArt } from "@/nyrongppong/icon-art";
@@ -346,12 +346,12 @@ function janggiIconPiece({
   r: number;
   color: string;
   /**
-   * 글자. `outline`은 가운데가 0인 1em 칸의 글꼴 윤곽(漢), `strokes`는 100×100 칸의 획 가운데 선(楚, cho-glyphs.ts)
+   * 글자. `outline`은 가운데가 0인 1em 칸의 글꼴 윤곽(漢), `cho`는 장기판과 같은 초 글자 윤곽(楚, cho-glyphs.ts)
    */
-  glyph: { outline: string } | { strokes: string };
-  /** 글자 칸 한 변을 반지름의 몇 배로 쓸지. 장기판의 HAN_SCALE·CHO_SCALE과 같은 뜻 */
+  glyph: { outline: string } | { cho: ChoGlyph };
+  /** 글자 크기를 반지름의 몇 배로 쓸지(漢은 1em 칸, 楚는 윤곽의 긴 변). 장기판의 HAN_SCALE·CHO_SCALE과 같은 뜻 */
   em: number;
-  /** 글자 윤곽을 같은 색 테두리로 굵히는 두께(아이콘 좌표). 획(strokes)으로 그린 글자에는 쓰지 않는다 */
+  /** 글자 윤곽을 같은 색 테두리로 굵히는 두께(아이콘 좌표). 초 글자에는 쓰지 않는다 */
   bold: number;
 }) {
   const size = r * em;
@@ -390,13 +390,9 @@ function janggiIconPiece({
         />
       ) : (
         <path
-          d={glyph.strokes}
-          transform={`translate(${cx - size / 2} ${cy - size / 2}) scale(${size / 100})`}
-          fill="none"
-          stroke={color}
-          strokeWidth={CHO_GLYPH_STROKE}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          d={glyph.cho.d}
+          transform={fitGlyph(glyph.cho, cx, cy, size)}
+          fill={color}
         />
       )}
     </g>
@@ -409,7 +405,7 @@ const PIECE_DEPTH = 0.24;
 /**
  * 장기 아이콘. 대각선이 그려진 궁성 위에 초(초록 楚, 초서)·한(빨강 漢, 해서) 궁 둘.
  * 아이콘(next/og)은 글꼴로 글자를 쓰지 못해, 장기판과 같은 모양을 경로로 그린다: 漢은 부분 글꼴에서 뽑아 둔 윤곽(icon-glyphs.ts),
- * 楚는 장기판이 쓰는 획(cho-glyphs.ts)
+ * 楚는 장기판이 쓰는 윤곽(cho-glyphs.ts)
  */
 function JanggiPalace() {
   const lines = [10, 50, 90];
@@ -485,8 +481,8 @@ function JanggiPalace() {
         cy: 60,
         r: 29,
         color: "#0f6b3a",
-        glyph: { strokes: CHO_GLYPHS.K },
-        em: 1.5,
+        glyph: { cho: CHO_GLYPHS.K },
+        em: 1.35,
         bold: 0,
       })}
     </svg>

@@ -1,5 +1,5 @@
 // 자동 생성: apps/web/scripts/build-janggi-glyphs.mjs. 손으로 고치지 말고 스크립트를 다시 돌린다.
-// 장기판과 같은 부분 글꼴의 윤곽이다: 한 漢은 LXGW WenKai TC Bold(해서, OFL). 초 楚는 cho-glyphs.ts의 획을 쓴다.
+// 장기판과 같은 부분 글꼴의 윤곽이다: 한 漢은 LXGW WenKai TC Bold(해서, OFL). 초 楚는 cho-glyphs.ts의 윤곽을 쓴다.
 // 좌표는 가운데가 0, 글자 칸 높이(1em)가 1, y가 아래로 커진다.
 
 /** 한 漢(해서) */
