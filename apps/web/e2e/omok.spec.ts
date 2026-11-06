@@ -289,7 +289,7 @@ test("오목 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다",
   const touch = info.project.name.startsWith("phone");
   await page.goto("/omok");
   await page.getByRole("button", { name: /오목 배우기/ }).click();
-  await expect(page.getByText("0/5")).toBeVisible();
+  await expect(page.getByText("0/8")).toBeVisible();
 
   // 1단원: 설명(판 그림) → 퀴즈 → 다섯 잇기 미션
   await page.getByRole("button", { name: /오목은 어떤 게임/ }).click();
@@ -308,7 +308,7 @@ test("오목 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다",
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await expect(page.getByText("단원 완료!")).toBeVisible();
   await page.getByRole("button", { name: "단원 목록으로" }).click();
-  await expect(page.getByText("1/5")).toBeVisible();
+  await expect(page.getByText("1/8")).toBeVisible();
 
   // 2단원: 넷을 막지 않으면 실패, 다시 해서 막으면 성공
   // 「수 배우기」 단추 설명에도 「막기」가 있어 그 단추는 뺀다.
@@ -334,7 +334,7 @@ test("오목 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다",
 
   // 튜토리얼 대국은 이어하기에 남지 않는다.
   await page.goto("/omok");
-  await expect(page.getByText("1/5 단원 마침")).toBeVisible();
+  await expect(page.getByText("1/8 단원 마침")).toBeVisible();
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
 
