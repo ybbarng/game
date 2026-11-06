@@ -9,12 +9,15 @@ import {
 } from "@game/janggi-engine";
 
 import type { Lesson, MissionStatus } from "@/tutorial/types";
-
 import {
+  COORDS_LESSON,
   FIRST_MOVES_LESSON,
+  MATCHUPS_LESSON,
+  OPENING_LINE_LESSON,
   openingPieces,
   SETUPS_LESSON,
 } from "./opening-lessons";
+import type { ReplayBy } from "./replay";
 import {
   type Context,
   firstTo,
@@ -32,12 +35,22 @@ export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   /** 약한 자리(빨간 점선 고리) */
   warn?: readonly string[];
   /**
-   * 「다음 수」로 한 수씩 넘겨 보는 수순(출발-도착 "01-41"). 초부터 번갈아 둔다.
-   * 넘길 때마다 공짜로 잡힐 내 기물에 빨간 점선 고리를 그린다
+   * 「다음 수」로 한 수씩 넘겨 보는 수순(출발-도착 "01-41"). 초부터 번갈아 둔다(`replayBy`).
+   * 넘길 때마다 공짜로 잡힐 내 기물에 빨간 점선 고리를, 잡은 기물이 있으면 주고받은 점수를 보인다
    */
   replay?: readonly string[];
+  /** `replay` 수마다 그 수를 두는 까닭(같은 길이). 그 수를 넘겼을 때 판 아래에 보인다 */
+  notes?: readonly string[];
+  /** `replay`를 둔 편: 초부터 번갈아(기본) 또는 초 혼자(차림을 갖추는 수 세기) */
+  replayBy?: ReplayBy;
+  /** `replay`를 넘겨 보는 대신 초 수를 내가 판에서 직접 둔다(한 수는 저절로, 따라 두기) */
+  follow?: boolean;
   /** 판 위에 상차림 단추를 두어 내(초) 상차림을 바꿔 본다. 한은 마상마상 */
   pickSetup?: boolean;
+  /** 한 차림 넷 × 초 차림 넷, 16가지 짝 표(matchups.ts). 칸을 누르면 그 짝의 판과 까닭 */
+  matchups?: boolean;
+  /** 한 차림을 보고 초 차림을 고르는 반복 문제(문제 수) */
+  drill?: number;
 };
 export type JanggiLesson = Lesson<JanggiView, GameEvent, JanggiScene, Action>;
 
@@ -170,6 +183,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
       },
     ],
   },
+  COORDS_LESSON,
   {
     id: "cannon",
     title: "포",
@@ -461,6 +475,8 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
   },
   SETUPS_LESSON,
   FIRST_MOVES_LESSON,
+  MATCHUPS_LESSON,
+  OPENING_LINE_LESSON,
   {
     id: "real",
     title: "실전",

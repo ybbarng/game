@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import { LocalMatch } from "@/game/local-match";
 
 import { janggiKit } from "./kit";
+import { sideAt } from "./replay";
 import {
   JANGGI_LESSONS,
   JANGGI_TUTORIAL_RULES,
@@ -124,23 +125,41 @@ describe("장기 튜토리얼 장면", () => {
       }
   });
 
-  it("넘겨 보는 수순(replay)은 초부터 번갈아 모두 둘 수 있는 수다", () => {
+  it("넘겨 보는 수순(replay)은 둔 편(번갈아·초 혼자)이 모두 둘 수 있는 수이고, 까닭은 수마다 하나다", () => {
     let count = 0;
     for (const lesson of JANGGI_LESSONS)
       for (const step of lesson.steps) {
         if (step.kind === "mission" || !step.scene?.replay) continue;
         count++;
+        const { replay, notes, replayBy, follow } = step.scene;
+        if (notes) expect(notes).toHaveLength(replay.length);
+        // 따라 두기는 초 수를 내가 두니 초부터 번갈아야 한다.
+        if (follow) expect(replayBy ?? "turns").toBe("turns");
         let board = sceneState(step.scene).board;
-        step.scene.replay.forEach((text, i) => {
+        replay.forEach((text, i) => {
           const [from = "", to = ""] = text.split("-");
-          const legal = legalMoves(board, i % 2 === 0 ? "c" : "h").some(
+          const legal = legalMoves(board, sideAt(i, replayBy)).some(
             (m) => m.from === pointAt(from) && m.to === pointAt(to),
           );
           expect(legal, `${lesson.id} ${i + 1}째 수 ${text}`).toBe(true);
           board = applyMove(board, { from: pointAt(from), to: pointAt(to) });
         });
       }
-    expect(count).toBe(2);
+    expect(count).toBe(13);
+  });
+
+  it("글은 마침표로 끝난다(설명·까닭·퀴즈 풀이)", () => {
+    for (const lesson of JANGGI_LESSONS.slice(1))
+      for (const step of lesson.steps) {
+        const texts =
+          step.kind === "explain"
+            ? [...step.body, ...(step.scene?.notes ?? [])]
+            : step.kind === "quiz"
+              ? [step.explain]
+              : [step.objective, step.success, step.fail];
+        for (const text of texts)
+          expect(/[.!?)]$/.test(text), `${lesson.id}: ${text}`).toBe(true);
+      }
   });
 
   it("고리(rings·warn)는 판 위 자리 이름이다", () => {
