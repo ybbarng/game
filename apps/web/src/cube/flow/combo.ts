@@ -20,7 +20,11 @@ export const COMBO_SHOW = 4;
 export const COMBO_STEP_MOVES = 10;
 /** 2×2는 조각이 8개뿐이라 칸이 드물게 오른다(초보자 해법의 첫 층) */
 export const COMBO_STEP_MOVES_2 = 20;
-/** 진행을 볼 때 돌아보는 수(공식 도중에 잠깐 흐트러진 것을 빼려고) */
+/**
+ * 진행을 볼 때 돌아보는 수(공식 도중에 잠깐 흐트러진 것을 빼려고). 보는 간격(`comboStepMoves`)과 따로 정한다: 가장 긴
+ * 공식 하나만큼만 돌아보면 되므로, 2×2처럼 간격이 20수여도 그 앞 8수의 최고치는 일부러 보지 않는다(그때 쌓은 진행이
+ * 지금 남아 있어야 한다)
+ */
 export const COMBO_LOOK_BACK = 12;
 
 /** 크기마다 진행을 보는 간격 */
