@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { cn } from "@/lib/cn";
-import type { MissionStatus } from "@/tutorial/lessons";
+import type { MissionStatus } from "@/tutorial/types";
 
 import { ActionButton } from "../panels/common";
 import { RichText } from "./RichText";

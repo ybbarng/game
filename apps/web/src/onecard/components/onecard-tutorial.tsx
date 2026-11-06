@@ -130,6 +130,7 @@ export const onecardTutorial: TutorialKit<
     }),
   Scene: OnecardSceneView,
   CardRow: OnecardCardRow,
+  endMission: () => useOnecard.getState().leave(),
   Table: ({ onExit, mission }) => (
     <OnecardGame
       onExit={() => {

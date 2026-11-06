@@ -92,6 +92,7 @@ export const nyrongppongTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: NyrongppongSceneView,
+  endMission: () => useNyrongppong.getState().leave(),
   Table: ({ onExit, mission }) => (
     <NyrongppongGame
       onExit={() => {

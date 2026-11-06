@@ -78,6 +78,7 @@ export const baseballTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: BaseballSceneView,
+  endMission: () => useBaseball.getState().leave(),
   Table: ({ onExit, mission }) => (
     <BaseballGame
       onExit={() => {

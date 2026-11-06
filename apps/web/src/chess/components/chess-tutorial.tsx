@@ -80,6 +80,7 @@ export const chessTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: ChessSceneView,
+  endMission: () => useChess.getState().leave(),
   Table: ({ onExit, mission }) => (
     <ChessGame
       onExit={() => {

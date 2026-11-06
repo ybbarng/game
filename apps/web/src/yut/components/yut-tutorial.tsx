@@ -81,6 +81,7 @@ export const yutTutorial: TutorialKit<YutView, GameEvent, YutScene, Action> = {
         listener(state.view, state.events);
     }),
   Scene: YutSceneView,
+  endMission: () => useYut.getState().leave(),
   Table: ({ onExit, mission }) => (
     <YutGame
       onExit={() => {

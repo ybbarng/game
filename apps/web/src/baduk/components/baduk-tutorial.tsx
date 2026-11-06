@@ -84,6 +84,7 @@ export const badukTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: BadukSceneView,
+  endMission: () => useBaduk.getState().leave(),
   Table: ({ onExit, mission }) => (
     <BadukGame
       onExit={() => {

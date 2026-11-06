@@ -68,6 +68,7 @@ export const gostopTutorial: TutorialKit<
         listener(state.view, state.events);
     }),
   Scene: GostopSceneView,
+  endMission: () => useGostop.getState().leave(),
   Table: ({ onExit, mission }) => (
     <GostopTable
       onExit={() => {
