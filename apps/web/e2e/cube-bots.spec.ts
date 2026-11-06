@@ -31,6 +31,23 @@ function inverseKeys(scramble: string): string[] {
 
 const phase = (page: Page) => page.locator("main[data-cube-phase]");
 
+/**
+ * 혼자 맞추기·제한 도전의 섞기 씨앗(`SolveApp` randomSeed: crypto 32비트 하나)을 고정한다. 섞기와 컴퓨터 계획
+ * (`rivalSeed(씨앗)`)이 함께 정해져 결과가 운에 따라 갈리지 않는다. 다른 크기의 난수는 그대로 둔다
+ */
+async function fixScrambleSeed(page: Page, seed: number) {
+  await page.addInitScript((s) => {
+    const real = crypto.getRandomValues.bind(crypto);
+    crypto.getRandomValues = (<T extends ArrayBufferView | null>(a: T): T => {
+      if (a instanceof Uint32Array && a.length === 1) {
+        a[0] = s;
+        return a;
+      }
+      return real(a as never) as T;
+    }) as typeof crypto.getRandomValues;
+  }, seed);
+}
+
 /** 섞기를 받아 살펴보기에 들어가고 컴퓨터 계획이 오기를 기다린다. 섞기 글을 돌려준다 */
 async function receiveWithRival(page: Page): Promise<string> {
   await page.locator("[data-cube-scramble-button]").click();
@@ -161,6 +178,9 @@ test("오늘의 섞기: 컴퓨터와 겨루면 같은 섞기를 나란히 맞추
 test("제한 도전: 컴퓨터도 같은 체력 규칙으로 겨루고, 점수로 견준다", async ({
   page,
 }, info) => {
+  // 점수는 지난 단계 × 100 + 남은 시간이라, 입문 컴퓨터도 빨리 맞추는 섞기가 나오면 점수가 앞섰다(무작위 씨앗 300개 중
+  // 2개꼴로 졌다). 씨앗 29의 2×2 섞기는 시뮬레이션으로 입문 컴퓨터가 약 45초에 맞춰 349점, 이 시험 손(수 사이 0.2초)은 578점
+  await fixScrambleSeed(page, 29);
   await installClock(page);
   await page.goto("/cube/challenge");
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
@@ -171,6 +191,8 @@ test("제한 도전: 컴퓨터도 같은 체력 규칙으로 겨루고, 점수�
   // 2×2 입문(평균 약 45초): 빨리 맞추면 내가 이긴다
   await page.locator("[data-cube-rival-pick]").selectOption("2:novice");
   const text = await receiveWithRival(page);
+  // 씨앗이 고정됐는지(안 되면 운에 맡긴 시험으로 돌아간다)
+  expect(text).toBe("U R' U' F U' R2 F U F R U'");
   await expect(page.locator("[data-cube-rival-pick]")).toBeDisabled();
   await press(page, inverseKeys(text), 200);
   await expect(page.locator("[data-cube-challenge-result]")).toHaveAttribute(
