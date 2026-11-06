@@ -208,7 +208,7 @@ describe("2×2 자리 정하기", () => {
     expect(colorsAt(2, s, ["D", "F", "L"])).toEqual([0, 1, 2]);
   });
 
-  it("2×2 살펴보기 첫 단계는 조각 단원과 겹치는 코너 찾기가 아니다", () => {
+  it("2×2 한눈에 첫 단계는 조각 단원과 겹치는 코너 찾기가 아니다", () => {
     const first = lessonOf("222-intro").steps[0];
     expect(first?.kind).toBe("quiz");
   });
