@@ -1003,6 +1003,9 @@ export function SolveApp({
               }}
               flow={mode === "solo" ? "large" : undefined}
               combo={mode === "solo"}
+              comboProgress={
+                mode === "solo" ? () => session.flowScore : undefined
+              }
               fitViewport
             />
           </section>

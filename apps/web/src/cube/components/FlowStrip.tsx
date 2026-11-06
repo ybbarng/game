@@ -49,7 +49,8 @@ export function useFlowStrip(n: number) {
   const latest = useRef<FlowStripState>(EMPTY_FLOW);
   return {
     strip,
-    push: (m: CubeMove, orient: Orient) => {
+    /** `progress`는 수를 둔 뒤의 진행 점수(콤보의 「진행 없음」 규칙, 없으면 쓰지 않는다) */
+    push: (m: CubeMove, orient: Orient, progress?: number) => {
       const before = latest.current;
       const after = pushFlow(
         before,
@@ -57,6 +58,7 @@ export function useFlowStrip(n: number) {
         m,
         orient[moveFace(n, m)] ?? null,
         realClock.now(),
+        progress,
       );
       latest.current = after;
       setStrip(after);

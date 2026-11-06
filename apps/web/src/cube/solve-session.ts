@@ -1,6 +1,7 @@
 import {
   applyMove,
   type CubeMove,
+  flowScore,
   formatMove,
   invertMove,
   isRotation,
@@ -18,7 +19,12 @@ import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { LOW_RATIO, MoveCounter, type SessionLimit } from "./challenge";
-import { COMBO_SHOW, longestCombo } from "./flow/strip";
+import {
+  COMBO_SHOW,
+  type ComboState,
+  EMPTY_COMBO,
+  pushCombo,
+} from "./flow/combo";
 import {
   formatSplits,
   type SolveMode,
@@ -134,6 +140,9 @@ export class SolveSession {
   splits: Split[] = [];
   /** 이번 판 진행 막대의 가장 높았던 값(0~1, 막대의 눈금) */
   bestProgress = 0;
+  /** 흐름 콤보(`flow/combo.ts`, 수 흐름 띠와 같은 규칙)와 이번 판 가장 긴 콤보 */
+  private combo: ComboState = EMPTY_COMBO;
+  private comboBest = 0;
   private progressCache: { state: PuzzleState; value: SolveProgress } | null =
     null;
   result: SolveResult | null = null;
@@ -226,6 +235,8 @@ export class SolveSession {
     this.penalty = 0;
     this.splits = [];
     this.bestProgress = 0;
+    this.combo = EMPTY_COMBO;
+    this.comboBest = 0;
     this.counter.reset();
     this.refills = 0;
     this.lastRefillAt = null;
@@ -265,6 +276,8 @@ export class SolveSession {
     this.result = null;
     this.splits = [];
     this.bestProgress = 0;
+    this.combo = EMPTY_COMBO;
+    this.comboBest = 0;
     this.counter.reset();
     this.refills = 0;
     this.lastRefillAt = null;
@@ -306,17 +319,22 @@ export class SolveSession {
     return value;
   }
 
+  /** 지금 상태의 흐름 콤보 진행 칸(`flowScore`). 같은 상태면 다시 계산하지 않는다 */
+  get flowScore(): number {
+    const hit = this.flowCache;
+    if (hit && hit.state === this.state) return hit.value;
+    const value = flowScore(this.n, this.state, this.progress.pieces);
+    this.flowCache = { state: this.state, value };
+    return value;
+  }
+  private flowCache: { state: PuzzleState; value: number } | null = null;
+
   /**
-   * 이번 판 가장 긴 흐름 콤보(docs/51 2-1): 맞추는 동안 면 돌리기 사이가 1초 안쪽으로 이어진 수.
-   * 수 흐름 띠와 같은 규칙(`flow/strip.ts`)이다. 블라인드는 세지 않는다
+   * 이번 판 가장 긴 흐름 콤보(docs/51 2-1): 맞추는 동안 면 돌리기 사이가 1초 안쪽으로 이어진 수. 되돌리는 수와
+   * 진행 없는 막 돌리기는 끊는다. 수 흐름 띠와 같은 규칙(`flow/combo.ts`)이다. 블라인드는 세지 않는다
    */
   get longestCombo(): number {
-    if (this.mode !== "solo") return 0;
-    return longestCombo(
-      this.history
-        .filter((e) => e.t >= 0 && !isRotation(this.n, e.move))
-        .map((e) => e.t),
-    );
+    return this.mode === "solo" ? this.comboBest : 0;
   }
 
   /** 지나간 이정표 하나의 시각(없으면 undefined) */
@@ -349,6 +367,16 @@ export class SolveSession {
     // 큐브 돌리기는 색 기준 판정을 바꾸지 않으니 세지 않는다
     if (this.phase === "solving" && this.mode === "solo" && !rotation)
       this.track(now - this.solveStart, solved);
+    if (this.phase === "solving" && this.mode === "solo") {
+      this.combo = pushCombo(
+        this.combo,
+        this.n,
+        move,
+        now,
+        rotation ? undefined : this.flowScore,
+      );
+      if (this.combo.combo > this.comboBest) this.comboBest = this.combo.combo;
+    }
     if (this.phase === "solving" && this.limit?.kind === "moves")
       this.countLimit(move, rotation, solved, now);
     if (this.phase === "solving" && solved) this.finishSolo(now);
