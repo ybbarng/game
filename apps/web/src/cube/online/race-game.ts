@@ -79,6 +79,8 @@ export interface RaceShape {
   /** 모양 아이디(`patterns/data.ts`) */
   id: string;
   start: ShapeStart;
+  /** 「공식 보기」를 끈 판만 false(없으면 켬). 화면 도움이라 판정에는 끼지 않고, 같은 규칙인지만 지문으로 맞춰 본다 */
+  formula?: false;
 }
 
 /** 대결 씨앗(글) → 섞기 씨앗(uint32). 판·시도마다 씨앗이 다르므로 섞기도 다르다 */

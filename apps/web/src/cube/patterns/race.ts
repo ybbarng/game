@@ -56,6 +56,15 @@ export interface ShapeRule {
   pick: ShapePick;
   /** 판마다 모양 차례를 정하는 열쇠(경기마다 방장이 새로 만든다, 모든 기기가 같은 차례를 계산한다) */
   key: string;
+  /**
+   * 「공식 보기」 허용. 없으면 켬(이 칸이 생기기 전의 방과 같다). 화면 도움이라 판정에는 끼지 않는다(친구끼리 믿는 모드)
+   */
+  formula?: boolean;
+}
+
+/** 이 규칙에서 「공식 보기」를 열 수 있나(없으면 켬) */
+export function shapeFormulaOn(rule: Pick<ShapeRule, "formula">): boolean {
+  return rule.formula !== false;
 }
 
 export const SHAPE_KEY_MAX = 32;
@@ -95,7 +104,8 @@ export function shapeRuleOk(rule: unknown, n: number): rule is ShapeRule {
     shapePicks(n).includes(r.pick as ShapePick) &&
     typeof r.key === "string" &&
     r.key.length > 0 &&
-    r.key.length <= SHAPE_KEY_MAX
+    r.key.length <= SHAPE_KEY_MAX &&
+    (r.formula === undefined || typeof r.formula === "boolean")
   );
 }
 

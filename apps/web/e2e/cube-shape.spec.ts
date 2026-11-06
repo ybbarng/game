@@ -1,10 +1,12 @@
 import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
-import { expect, type Page, test } from "./test";
+import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
  * 모양 만들기(docs/47 9-10). 목표 고르기·판정·컴퓨터 계획은 단위 시험(`shape-race.test.ts`, `shape-plan.test.ts`,
  * cube-engine `shape.test.ts`)이 보고, 여기서는 2×2 쉬운 모양 한 판씩만 실제로 그려 본다:
  * 컴퓨터와 대결(씨앗 고정)에서 목표 그림이 보이고 공식을 치면 내가 먼저 끝나며, 혼자 하기에서 기록이 남는다.
+ * 「공식 보기」를 열면 목표 공식과 내 키(데스크톱, 휴대폰은 표기만)가 보이고, 혼자 하기는 본 판을 따로 센다.
+ * 스크린샷을 찍을 때는 3D를 켜 실제 장면을 본다.
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
@@ -20,9 +22,38 @@ async function typeAlg(page: Page, alg: string) {
   for (const key of keysFor(alg)) await page.keyboard.press(key);
 }
 
-test.describe("화면 시험(3D 없음)", () => {
+/** 큐브가 그려진 뒤의 스크린샷(3D 장면이 뜰 때까지 기다린다, 3D를 못 그리면 큐브 그림) */
+async function stageShot(page: Page, name: string, project: string) {
+  if (!SAVE_SCREENSHOTS) return;
+  await expect(
+    page.locator(
+      "[data-cube-stage] [data-cube-posters], [data-cube-stage] [data-cube-canvas][data-cube-ready]",
+    ),
+  ).toBeVisible();
+  await shot(page, name, project);
+}
+
+/** 「공식 보기」를 열어 공식과 키를 확인한다 */
+async function openFormula(page: Page, alg: string, project: string) {
+  await page.locator("[data-cube-shape-formula-toggle]").click();
+  const shown = page.locator("[data-cube-shape-alg]");
+  await expect(shown).toHaveAttribute("data-cube-shape-alg", alg);
+  // 지금 배치(표기 그대로)의 키. 키보드가 없을 휴대폰은 표기만
+  const keys = shown.locator("[data-move-keys]");
+  if (project === "desktop")
+    await expect(keys.first()).toHaveAttribute(
+      "data-move-keys",
+      // 「표기」 배치: R2 → R R
+      keysFor(alg.split(" ")[0] as string)
+        .map((k) => k.replace("Shift+", "⇧").replace("Key", ""))
+        .join(" "),
+    );
+  else await expect(keys).toHaveCount(0);
+}
+
+test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () => {
   test.beforeEach(async ({ page }) => {
-    await no3d(page);
+    if (!SAVE_SCREENSHOTS) await no3d(page);
     await useNotationKeys(page);
   });
 
@@ -44,6 +75,10 @@ test.describe("화면 시험(3D 없음)", () => {
       "true",
     );
     await page.getByLabel("15초 살펴보기").uncheck();
+    // 「공식 보기」는 기본 허용
+    await expect(
+      page.locator('[data-cube-shape-formula-rule="on"]'),
+    ).toHaveAttribute("aria-pressed", "true");
     await shot(page, "shape-vs-setup", info.project.name);
     await page.locator("[data-cube-vs-start]").click();
     await expect(page.locator("[data-cube-race-phase]")).toHaveAttribute(
@@ -63,7 +98,8 @@ test.describe("화면 시험(3D 없음)", () => {
     );
     // 상대 자리는 단계 칩 대신 목표까지의 진행
     await expect(page.locator('[data-cube-peer="bot1"]')).toContainText("목표");
-    await shot(page, "shape-vs-race", info.project.name);
+    await openFormula(page, EASY2[id] as string, info.project.name);
+    await stageShot(page, "shape-vs-race", info.project.name);
 
     await typeAlg(page, EASY2[id] as string);
     await expect(page.locator('[data-cube-peer="me"]')).toHaveAttribute(
@@ -78,7 +114,7 @@ test.describe("화면 시험(3D 없음)", () => {
       await page.clock.fastForward(1_000);
     }
     await expect(result).toContainText("1위예요");
-    await shot(page, "shape-vs-result", info.project.name);
+    await stageShot(page, "shape-vs-result", info.project.name);
   });
 
   test("혼자 하기: 처음 안내 뒤 모양을 고르고 만들면 기록이 남는다", async ({
@@ -94,16 +130,34 @@ test.describe("화면 시험(3D 없음)", () => {
     await inputReady(page);
     await expect(page.locator("[data-cube-shape-target]")).toBeVisible();
     await typeAlg(page, "R U2");
-    await shot(page, "shape-solo-play", info.project.name);
+    await stageShot(page, "shape-solo-play", info.project.name);
     await typeAlg(page, "R2");
     await expect(page.locator("[data-cube-shape-done]")).toHaveAttribute(
       "data-cube-shape-best",
       "",
     );
-    await shot(page, "shape-solo-done", info.project.name);
+    await stageShot(page, "shape-solo-done", info.project.name);
     await page.locator("[data-cube-shape-back]").click();
     await expect(
       page.locator('[data-cube-shape-card="2-halves"]'),
     ).toContainText("최고");
+
+    // 공식을 연 판은 따로 센다
+    await page.locator('[data-cube-shape-card="2-halves"]').click();
+    await inputReady(page);
+    await openFormula(page, "R U2 R2", info.project.name);
+    await expect(page.locator("[data-cube-shape-record]")).toHaveText(
+      "공식 보고 첫 기록",
+    );
+    await stageShot(page, "shape-solo-formula", info.project.name);
+    await typeAlg(page, "R U2 R2");
+    await expect(page.locator("[data-cube-shape-done]")).toHaveAttribute(
+      "data-cube-shape-done-formula",
+      "",
+    );
+    await page.locator("[data-cube-shape-back]").click();
+    await expect(
+      page.locator('[data-cube-shape-card="2-halves"]'),
+    ).toContainText("공식 보고");
   });
 });
