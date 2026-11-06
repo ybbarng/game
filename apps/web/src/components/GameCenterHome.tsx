@@ -39,9 +39,7 @@ export function GameCenterHome() {
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
         <header className="flex flex-col gap-1 text-center">
           <h1 className="font-black text-3xl tracking-tight">{SITE.name}</h1>
-          <p className="text-sm text-white/70">
-            누구든 공정하게. 친구와, 혼자라면 컴퓨터와.
-          </p>
+          <p className="text-sm text-white/70">누구든 공정하게</p>
         </header>
 
         <section aria-label="게임" className="grid gap-3 sm:grid-cols-2">
