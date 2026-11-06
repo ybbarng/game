@@ -93,8 +93,8 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
       {
         kind: "quiz",
         question: "비밀 수가 **123**일 때 **132**를 물으면 답은?",
-        options: ["1S 2B", "3B", "2S 1B", "3S"],
-        answer: 0,
+        options: ["3B", "2S 1B", "1S 2B", "3S"],
+        answer: 2,
         explain:
           "1은 자리까지 맞아 **1S**, 3과 2는 숫자만 있고 자리가 달라 **2B**예요.",
       },
@@ -131,8 +131,8 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         kind: "quiz",
         question: "234도 아웃, 678도 아웃이에요. 비밀 수에 꼭 있는 숫자는?",
         scene: { secret: "915", guesses: ["234", "678"] },
-        options: ["1·5·9", "2·4·6", "3·7·8", "알 수 없다"],
-        answer: 0,
+        options: ["2·4·6", "1·5·9", "3·7·8", "알 수 없다"],
+        answer: 1,
         explain:
           "2·3·4·6·7·8이 모두 빠졌으니 남은 **1·5·9**가 세 자리를 채워요.",
       },
@@ -170,8 +170,8 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         kind: "quiz",
         question: "그림의 답으로 남는 후보는 몇 개일까요?",
         scene: TWO_LEFT,
-        options: ["2개(386·863)", "1개", "3개", "6개"],
-        answer: 0,
+        options: ["1개", "3개", "6개", "2개(386·863)"],
+        answer: 3,
         explain:
           "3·6·8만 남았는데 638은 세 숫자 모두 자리가 틀렸어요. 그러면 **386**과 **863** 둘만 남아요.",
       },
@@ -199,7 +199,7 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         title: "서로 맞히기",
         body: [
           "친구나 컴퓨터와 하는 **서로 맞히기**는 둘 다 비밀 수를 정하고 **번갈아** 물어요.",
-          "먼저 묻는 사람(**선**)이 유리하지 않게, 선이 맞히면 **후공에게 한 번 더** 기회를 줘요. 그때 후공도 맞히면 **비겨요**(옵션에서 끌 수 있어요).",
+          "먼저 묻는 사람(**선**)이 유리하지 않게, 선이 맞히면 나중에 묻는 사람(**후공**)에게 **한 번 더** 기회를 줘요. 그때 후공도 맞히면 **비겨요**(옵션에서 끌 수 있어요).",
         ],
       },
       {
@@ -215,12 +215,12 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         kind: "quiz",
         question: "온라인에서 방장은 내 비밀 수를 언제 알 수 있을까요?",
         options: [
-          "판이 끝나 내가 공개할 때",
           "게임을 시작하자마자",
+          "판이 끝나 내가 공개할 때",
           "내가 답할 때마다",
           "끝까지 모른다",
         ],
-        answer: 0,
+        answer: 1,
         explain:
           "판 중에는 잠긴 약속과 내 답만 가요. 비밀 수는 판 끝 **공개** 때 처음 보여요. 그래야 답이 정직했는지 확인할 수 있어요.",
       },
@@ -228,8 +228,8 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         kind: "quiz",
         question:
           "공정 규칙에서 선이 3번째에 맞혔어요. 후공이 3번째 물음에서 맞히면?",
-        options: ["비긴다", "선이 이긴다", "후공이 이긴다", "한 판 더 한다"],
-        answer: 0,
+        options: ["선이 이긴다", "후공이 이긴다", "비긴다", "한 판 더 한다"],
+        answer: 2,
         explain:
           "같은 횟수에 둘 다 맞혔으니 **비겨요**. 후공이 못 맞히면 선이 이겨요.",
       },
@@ -253,7 +253,7 @@ export const BASEBALL_LESSONS: readonly BaseballLesson[] = [
         kind: "mission",
         title: "열 번 안에",
         objective: "컴퓨터가 숨긴 세 자리 수를 **열 번 안에** 맞히세요.",
-        hint: "아래 후보 수를 보며, 앞 답과 맞는 수만 물어요.",
+        hint: "지금까지 받은 답과 모두 맞는 수만 물어요.",
         scenario: null,
         check: solveWithin(10),
         success: "맞혔어요! 이제 서로 맞히기에서 컴퓨터나 친구와 겨뤄 보세요.",
