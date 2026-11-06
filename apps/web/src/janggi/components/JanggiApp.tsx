@@ -368,7 +368,6 @@ function JanggiHome({
           >
             CC BY 4.0
           </a>
-          , 초 馬는 180도 돌림
         </>
       }
     />
