@@ -40,7 +40,7 @@ export function GameCenterHome() {
         <header className="flex flex-col gap-1 text-center">
           <h1 className="font-black text-3xl tracking-tight">{SITE.name}</h1>
           <p className="text-sm text-white/70">
-            서버 없이 친구와 바로. 혼자라면 컴퓨터와.
+            누구든 공정하게. 친구와, 혼자라면 컴퓨터와.
           </p>
         </header>
 

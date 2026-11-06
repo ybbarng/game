@@ -6,7 +6,7 @@ export const SITE = {
   name: "게임",
   englishName: "Games",
   description:
-    "서버 없이 친구와 바로, 혼자라면 컴퓨터와 하는 웹 게임 모음. 방장도 남의 패를 모르게 지킨다.",
+    "누구든 공정하게 하는 웹 게임 모음. 친구와는 링크 하나로, 혼자라면 컴퓨터와.",
   bg: "#020617",
   board: "#e0b464",
   ink: "#3b2a14",
