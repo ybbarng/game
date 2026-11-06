@@ -431,6 +431,8 @@ export function maskFor(
     }
     case "roux-fb":
       return maskFromPieces(n, rouxPieces(n, "fb"));
+    case "roux-fb:F":
+      return maskFromPieces(n, rouxPieces(n, "fb", FACE_F));
     case "roux-blocks":
       return maskFromPieces(n, rouxPieces(n, "blocks"));
     case "cmll":
@@ -456,14 +458,20 @@ function piecesWhere(n: number, pred: (faces: number[]) => boolean): number[] {
 const FACE_R = FACE_INDEX.R as number;
 const FACE_L = FACE_INDEX.L as number;
 const FACE_D = FACE_INDEX.D as number;
+const FACE_F = FACE_INDEX.F as number;
 
 /**
  * 루 조각 묶음(맞춘 상태 기준). 흰 면을 아래로 쥐면(z2) 오른쪽 빨강이 왼쪽으로 가니,
  * 첫 블록은 빨강 면에 닿고 노랑(z2 뒤 위)에 닿지 않는 조각이다. 센터는 모두 넣는다.
+ * `side`를 주면 그 면 색 블록을 첫 블록으로 본다(z2 y로 초록을 왼쪽에 두는 섞기).
  */
-function rouxPieces(n: number, what: "fb" | "blocks" | "cmll"): number[] {
+function rouxPieces(
+  n: number,
+  what: "fb" | "blocks" | "cmll",
+  side: number = FACE_R,
+): number[] {
   const centers = cubeGroups(n, U).centers;
-  const sides = what === "fb" ? [FACE_R] : [FACE_R, FACE_L];
+  const sides = what === "fb" ? [side] : [FACE_R, FACE_L];
   const blocks = piecesWhere(
     n,
     (f) => sides.some((s) => f.includes(s)) && !f.includes(FACE_D),
