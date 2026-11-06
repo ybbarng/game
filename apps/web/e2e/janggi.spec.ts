@@ -135,7 +135,7 @@ test("장기 배우기: 첫 단원 미션에서 차로 졸을 잡는다", async 
   const touch = info.project.name.startsWith("phone");
   await page.goto("/janggi");
   await page.getByRole("button", { name: /장기 배우기/ }).click();
-  await expect(page.getByText("0/8")).toBeVisible();
+  await expect(page.getByText("0/10")).toBeVisible();
   await page.getByRole("button", { name: /장기는 어떤 게임/ }).click();
   await expect(board(page)).toBeVisible();
   for (let i = 0; i < 2; i++)
@@ -151,6 +151,165 @@ test("장기 배우기: 첫 단원 미션에서 차로 졸을 잡는다", async 
     timeout: 10_000,
   });
   await page.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.getByText("단원 완료!")).toBeVisible();
+});
+
+/** 배우기 진행 기록에 앞 단원들을 끝낸 것으로 넣는다(단원은 차례로 열린다) */
+async function completeLessons(page: Page, ids: string[]) {
+  await page.addInitScript((completed) => {
+    localStorage.setItem(
+      "janggi-tutorial",
+      JSON.stringify({ state: { completed }, version: 0 }),
+    );
+  }, ids);
+}
+
+const BEFORE_SETUPS = [
+  "goal",
+  "cannon",
+  "horse",
+  "check",
+  "mate",
+  "score",
+  "opening",
+];
+
+const next = (page: Page) =>
+  page.getByRole("button", { name: "다음", exact: true }).click();
+
+async function openLesson(page: Page, title: RegExp) {
+  await page.goto("/janggi");
+  await page.getByRole("button", { name: /장기 배우기/ }).click();
+  await page.getByRole("button", { name: title }).click();
+  await expect(board(page)).toBeVisible();
+}
+
+async function missionSucceeded(page: Page) {
+  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await next(page);
+}
+
+test("장기 배우기: 포진 고르기 단원에서 상차림을 바꿔 보고 실제 판에서 마상마상을 고른다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "휴대폰 세로·PC만 본다");
+  await completeLessons(page, BEFORE_SETUPS);
+  await openLesson(page, /포진 고르기/);
+  // 판 위 단추로 내 차림을 바꾸면 그림과 이름이 바뀐다.
+  await page.getByRole("button", { name: "상마마상" }).click();
+  await expect(page.locator("[data-setup-caption]")).toContainText(
+    "바깥상차림 · 양귀마",
+  );
+  await expect(page.locator('[data-point="02"][data-piece="cE"]')).toHaveCount(
+    1,
+  );
+  await page.screenshot({
+    path: info.outputPath("janggi-setups.png"),
+    fullPage: true,
+  });
+  await next(page);
+  for (let i = 0; i < 2; i++) await next(page);
+  // 양귀마: 가운데 졸에 빨간 점선 고리
+  await expect(page.getByRole("heading", { name: /양귀마/ })).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-yanggwima.png"),
+    fullPage: true,
+  });
+  for (let i = 0; i < 3; i++) await next(page);
+  await page.getByRole("button", { name: "마상마상(귀마)" }).click();
+  await next(page);
+  await page.getByRole("button", { name: "상마마상" }).click();
+  await next(page);
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  // 한(컴퓨터)이 먼저 고르고 내 차례가 오면 마상마상
+  await page.getByRole("button", { name: "마상마상" }).click();
+  await missionSucceeded(page);
+  await expect(page.getByText("단원 완료!")).toBeVisible();
+});
+
+test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한다(첫 수·면포·피할 수)", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === "phone-landscape", "휴대폰 세로·PC만 본다");
+  const touch = info.project.name.startsWith("phone");
+  await completeLessons(page, [...BEFORE_SETUPS, "setups"]);
+  await openLesson(page, /첫 수와 초반 원칙/);
+  await page.screenshot({
+    path: info.outputPath("janggi-first-move.png"),
+    fullPage: true,
+  });
+  await next(page);
+
+  // 미션: 상 쪽 졸 쓸기(79→78)
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await tapPoint(page, "79", touch);
+  await expect(page.locator('[data-target="78"]')).toHaveCount(1);
+  await tapPoint(page, "78", touch);
+  await missionSucceeded(page);
+
+  // 면포 설명 뒤 미션: 진마(02→83) 다음 포(82→85)
+  await expect(
+    page.getByRole("heading", { name: /진마와 면포/ }),
+  ).toBeVisible();
+  await next(page);
+  await page.getByRole("button", { name: "미션 시작" }).click();
+  await tapPoint(page, "02", touch);
+  await tapPoint(page, "83", touch);
+  // 컴퓨터가 답해 두 수가 쌓이면 내 차례다.
+  await expect(page.locator('[data-move-count="2"]')).toHaveCount(1, {
+    timeout: 15_000,
+  });
+  await tapPoint(page, "82", touch);
+  await expect(page.locator('[data-target="85"]')).toHaveCount(1);
+  await tapPoint(page, "85", touch);
+  await missionSucceeded(page);
+
+  await next(page); // 초반 원칙 넷
+  // 피할 수: 한 수씩 넘기면 셋째 수에서 내 차에 빨간 고리, 넷째 수에서 한 차가 잡는다.
+  await expect(page.getByRole("heading", { name: /변 병 욕심/ })).toBeVisible();
+  const step = page.getByRole("button", { name: "다음 수" });
+  for (let i = 0; i < 3; i++) await step.click();
+  await expect(page.locator("[data-replay-caption]")).toContainText("3/4수");
+  await page.screenshot({
+    path: info.outputPath("janggi-avoid-rook.png"),
+    fullPage: true,
+  });
+  await step.click();
+  await expect(page.locator("[data-replay-caption]")).toContainText(
+    "한 차 11→41 · 초 차 잃음",
+  );
+  await expect(step).toBeDisabled();
+  await page.screenshot({
+    path: info.outputPath("janggi-avoid-rook-end.png"),
+    fullPage: true,
+  });
+  await next(page);
+  await expect(
+    page.getByRole("heading", { name: /마를 서둘러/ }),
+  ).toBeVisible();
+  for (let i = 0; i < 4; i++) await step.click();
+  await expect(page.locator("[data-replay-caption]")).toContainText(
+    "한 병 55→65 · 초 마 잃음",
+  );
+  await page.screenshot({
+    path: info.outputPath("janggi-avoid-horse.png"),
+    fullPage: true,
+  });
+  await next(page);
+
+  // 퀴즈 셋
+  await page
+    .getByRole("button", { name: "한 차(11)가 내 차를 잡아 손해다" })
+    .click();
+  await next(page);
+  await page.getByRole("button", { name: "포", exact: true }).click();
+  await next(page);
+  await page
+    .getByRole("button", { name: "오른쪽 끝 졸을 옆으로(79→78)" })
+    .click();
+  await next(page);
   await expect(page.getByText("단원 완료!")).toBeVisible();
 });
 
