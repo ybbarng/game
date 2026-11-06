@@ -48,7 +48,7 @@ const missions = HEARTS_LESSONS.flatMap((l) =>
 );
 
 describe("하트 튜토리얼 미션", () => {
-  it("단원마다 미션이 있다(마지막 문 쏘기는 퀴즈만)", () => {
+  it("단원마다 미션이 있다(마지막 문 슛은 퀴즈만)", () => {
     expect(missions).toHaveLength(3);
   });
 
