@@ -11,7 +11,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   await page.getByRole("button", { name: "상대가 잠그고 섞기" }).click();
   await page.getByRole("button", { name: /판정 돌려 보기/ }).click();
   await page.getByRole("button", { name: "정답 보기" }).click();
-  await expect(page.getByText(/8\/8 맞혔다/)).toBeVisible();
+  await expect(page.getByText(/8\/8 맞혔습니다/)).toBeVisible();
   // 영지식 증명: 정직한 증명은 통과한다.
   await page.getByRole("button", { name: "a, b 내기" }).click();
   await page.getByRole("button", { name: "c 고르기" }).click();
@@ -23,7 +23,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
     await button.click();
   }
   await expect(
-    page.getByText(/번째에 들켰다|16번을 모두 버텼다/),
+    page.getByText(/번째에 들켰습니다|16번을 모두 버텼습니다/),
   ).toBeVisible();
   // 도전값을 해시로 정하면 다시 시도해 노릴 수 있다.
   await page.getByRole("button", { name: "8", exact: true }).first().click();
@@ -33,7 +33,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   });
   // 퀴즈를 맞히면 단원을 마친다.
   await page
-    .getByRole("button", { name: "자기 자리에서 보이는 정보만 있다" })
+    .getByRole("button", { name: "자기 자리에서 보이는 정보만 있습니다" })
     .click();
   await expect(page.getByText("1/13단원")).toBeVisible();
   // 심화: ElGamal 다시 감싸기 뒤에도 둘 다 풀면 원래 카드(♠A = 4)가 나온다.
@@ -48,7 +48,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   await expect(page.getByText(/t를 5번 뽑아/)).toBeVisible();
   // OR 증명: 두 쪽 모두 맞아 어느 쪽이 진짜인지 모른다.
   await page.getByRole("button", { name: "증명 만들기" }).click();
-  await expect(page.getByText("증명이 맞다")).toBeVisible();
+  await expect(page.getByText("증명이 맞습니다.")).toBeVisible();
   await page
     .locator("#no-suit")
     .getByRole("button", { name: "왼쪽", exact: true })

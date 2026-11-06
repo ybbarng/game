@@ -12,13 +12,26 @@ export interface QuizItem {
   why: string;
 }
 
+/** 맞았을 때와 틀렸을 때 풀이 앞에 붙는 말. 화면 본문의 말투에 맞춘다 */
+export interface QuizFeedback {
+  right: string;
+  wrong: string;
+}
+
+const PLAIN_FEEDBACK: QuizFeedback = {
+  right: "맞았다.",
+  wrong: "다시 생각해 보자.",
+};
+
 /** 확인 퀴즈: 고르면 바로 맞았는지와 풀이를 보인다. 다 맞히면 `onPass` */
 export function Quiz({
   items,
   onPass,
+  feedback = PLAIN_FEEDBACK,
 }: {
   items: QuizItem[];
   onPass: () => void;
+  feedback?: QuizFeedback;
 }) {
   const [picked, setPicked] = useState<(number | null)[]>(() =>
     items.map(() => null),
@@ -66,7 +79,7 @@ export function Quiz({
                   chosen === item.answer ? "text-emerald-200" : "text-rose-200",
                 )}
               >
-                {chosen === item.answer ? "맞았다. " : "다시 생각해 보자. "}
+                {chosen === item.answer ? feedback.right : feedback.wrong}{" "}
                 {chosen === item.answer ? item.why : ""}
               </p>
             )}
