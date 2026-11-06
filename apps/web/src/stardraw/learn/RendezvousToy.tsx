@@ -306,8 +306,8 @@ function ScoreTable({
     if (newRow)
       story =
         newRow.id === top.id
-          ? `새 주소 ${newRow.name}의 점수 ${fmt(newRow.score)}가 원래 1등 ${prevTop.name}(${fmt(prevTop.score)})보다 높아 ${toward(newRow.name)} 이사합니다.`
-          : `새 주소 ${newRow.name}의 점수 ${fmt(newRow.score)}가 1등 ${top.name}(${fmt(top.score)})보다 낮아 그대로 삽니다. 다른 막대는 하나도 바뀌지 않았습니다.`;
+          ? `새 주소 ${newRow.name}의 점수(${fmt(newRow.score)})가 원래 1등 ${prevTop.name}(${fmt(prevTop.score)})보다 높아 ${toward(newRow.name)} 이사합니다.`
+          : `새 주소 ${newRow.name}의 점수(${fmt(newRow.score)})가 1등 ${top.name}(${fmt(top.score)})보다 낮아 그대로 삽니다. 다른 막대는 하나도 바뀌지 않았습니다.`;
     else if (prevTop.id !== top.id)
       story = `살던 ${subj(prevTop.name)} 빠져 2등이던 ${toward(top.name)} 옮겼습니다.`;
     else

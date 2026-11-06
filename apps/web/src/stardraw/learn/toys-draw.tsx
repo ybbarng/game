@@ -28,9 +28,7 @@ import {
   softPasskeySigner,
   type Ticket,
   type TimestampCheck,
-  TSA_DIGICERT,
-  TSA_FREETSA,
-  TSA_SECTIGO,
+  TSA_AUTHORITIES,
   toHex,
   unsignedTicket,
   utf8,
@@ -68,8 +66,10 @@ import { Btn, Mono, Row, Toy, Verdict } from "./ui";
 /* 5. 시각 인증(TSA)                                                   */
 /* ------------------------------------------------------------------ */
 
-/** 장난감은 세 기관의 실제 토큰을 보여 준다(FreeTSA는 검사기 기본 목록에는 없다, tsa.ts) */
-const TOY_AUTHORITIES = [TSA_DIGICERT, TSA_SECTIGO, TSA_FREETSA];
+/**
+ * 장난감은 세 기관의 실제 토큰을 보여 주지만, 확인은 실제 검사기처럼 TSA_AUTHORITIES(DigiCert·Sectigo)만 믿는다.
+ * FreeTSA 토큰은 그래서 사슬이 믿는 열쇠에 닿지 않아 실패한다(tsa.ts)
+ */
 
 type Tokens = Record<"digicert" | "sectigo" | "freetsa", string>;
 const TSA_LABEL = {
@@ -114,8 +114,8 @@ export function TsaToy() {
     void verifyTimestampToken(token, {
       imprint: sha256(utf8(text)),
       authorities: untrust
-        ? TOY_AUTHORITIES.filter((a) => a.name !== name)
-        : TOY_AUTHORITIES,
+        ? TSA_AUTHORITIES.filter((a) => a.name !== name)
+        : TSA_AUTHORITIES,
     }).then((c) => live && setCheck(c));
     return () => {
       live = false;
@@ -137,6 +137,11 @@ export function TsaToy() {
         2026-10-30에 실제 기관 세 곳에서 받아 둔 토큰입니다. 실제 회차에서는
         봉인 값의 SHA-256을 보내지만, 이 토큰은 글귀 「{FIXTURE_TEXT}」의
         SHA-256을 담았습니다.
+      </p>
+      <p className="text-white/60 text-xs">
+        검사기가 믿는 기관은 DigiCert와 Sectigo 두 곳입니다. FreeTSA는 개인이
+        운영하는 곳이라 검사기가 믿지 않으므로, FreeTSA 토큰은 이 상자에서도
+        확인에 실패합니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
         {(Object.keys(TSA_LABEL) as (keyof Tokens)[]).map((k) => (
@@ -180,13 +185,15 @@ export function TsaToy() {
         {check === null
           ? "확인하는 중"
           : check.ok
-            ? "토큰이 맞습니다: 이 값이 이 시각에 있었다고 기관이 서명했습니다"
+            ? "토큰이 맞습니다. 이 값이 이 시각에 있었다고 기관이 서명했습니다."
             : check.problems.join(" · ")}
       </Verdict>
       {baseTime > 0 && (
         <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
           <span className="text-white/70 text-xs">
-            봉인 시각은 마감 뒤, drand 결과 결정 전이어야 그 회차가 유효합니다
+            봉인 시각은 마감 뒤, drand 결과 결정 전이어야 그 회차가 유효합니다.
+            정식 회차는 여기에 더해 봉인 사본이 drand 1분 전까지 공개 GitHub
+            저장소의 main에 올라가야 유효합니다. 아래는 시각만 견줍니다.
           </span>
           <div className="flex flex-wrap gap-1.5">
             <Btn
@@ -216,10 +223,10 @@ export function TsaToy() {
           </Row>
           <Verdict ok={!isVoid} testId="tsa-order">
             {!isVoid
-              ? "유효: 봉인이 결과 결정보다 먼저입니다. 결과를 알기 전에 예측서 목록이 고정됐습니다"
+              ? "유효합니다. 봉인이 결과 결정보다 먼저라, 결과를 알기 전에 예측서 목록이 고정됐습니다."
               : baseTime < closesAt
-                ? "무효: 마감 전 봉인은 말이 되지 않습니다"
-                : "무효: 봉인이 결과 결정 뒤입니다. 결과를 보고 목록을 바꿨을 수 있어 입상자 없이 닫습니다"}
+                ? "무효입니다. 마감 전 봉인은 말이 되지 않습니다."
+                : "무효입니다. 봉인이 결과 결정 뒤라 결과를 보고 목록을 바꿨을 수 있어, 입상자 없이 닫습니다."}
           </Verdict>
         </div>
       )}
@@ -275,7 +282,7 @@ export function DrandToy() {
     <Toy title="drand 공개 난수로 번호 뽑기" id="drand">
       <div className="flex flex-col gap-1.5">
         <span className="text-white/70 text-xs">
-          ① 어느 drand 회차를 쓸지는 마감 시각이 정합니다
+          ① 어느 drand 회차를 쓸지는 마감 시각이 정합니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setCloseRound(Math.max(1, closeRound - 1))}>
@@ -294,7 +301,8 @@ export function DrandToy() {
       <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
           ② drand 값은 League of Entropy 여러 기관이 함께 서명해 3초마다 냅니다.
-          그 시각 전에는 아무도 모릅니다. 실제 값(1,000,000회)으로 확인해 봅니다
+          그 시각 전에는 아무도 모릅니다. 실제 값(1,000,000회)으로 확인해
+          봅니다.
         </span>
         <Row label="BLS 서명(48바이트)">
           <Mono tone={flip ? "warn" : "plain"}>
@@ -310,8 +318,8 @@ export function DrandToy() {
           {beaconOk === null
             ? "BLS 서명 확인 중"
             : beaconOk
-              ? "quicknet 공개 열쇠로 서명이 맞습니다. 진짜 drand 값입니다"
-              : "서명이 맞지 않습니다. 이 값으로는 결과를 정하지 않습니다"}
+              ? "quicknet 공개 열쇠로 서명이 맞습니다. 진짜 drand 값입니다."
+              : "서명이 맞지 않습니다. 이 값으로는 결과를 정하지 않습니다."}
         </Verdict>
         <Row label="난수 = SHA-256(서명)">
           <Mono>{short(randomness, 24)}…</Mono>
@@ -319,9 +327,9 @@ export function DrandToy() {
       </div>
       <div className="flex flex-col gap-2 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
-          ③ seed = taggedHash("stardraw/seed/v1", 회차 ‖ 난수). 회차를 바꿔
-          보세요. 예측서 목록은 들어가지 않아 운영자가 예측서를 넣고 빼도 번호는
-          그대로입니다
+          ③ 씨앗(seed) = taggedHash("stardraw/seed/v1", 회차 ‖ 난수). 번호는 이
+          씨앗 하나에서 나옵니다. 회차를 바꿔 보세요. 예측서 목록은 들어가지
+          않아 운영자가 예측서를 넣고 빼도 번호는 그대로입니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setRound(Math.max(1, round - 1))}>−</Btn>
@@ -354,8 +362,8 @@ export function DrandToy() {
           ))}
         </div>
         <span className="text-[11px] text-white/50">
-          바이트를 차례로 읽어 225 이상은 버리고(치우침 없애기), 나머지는 45로
-          나눈 나머지 + 1. 이미 나온 번호는 건너뜁니다
+          바이트를 차례로 읽어 225 이상은 치우침을 없애려고 버리고, 나머지는
+          45로 나눈 나머지에 1을 더합니다. 이미 나온 번호는 건너뜁니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           {numbers.map((n) => (
@@ -374,7 +382,7 @@ export function DrandToy() {
         </span>
         <Verdict ok={same} testId="drand-draw">
           규칙 코드(drawNumbers)로 다시 계산한 차례와{" "}
-          {same ? "같습니다" : "다릅니다"}: {order.join(", ")}
+          {same ? "같습니다" : "다릅니다"}. 차례: {order.join(", ")}.
         </Verdict>
       </div>
     </Toy>
@@ -529,26 +537,26 @@ export function ChainToy() {
       </div>
       <Verdict ok={allLinked} testId="chain-linked">
         {allLinked
-          ? "사슬이 이어집니다: 모든 기록의 「앞」이 바로 앞 기록의 해시입니다"
-          : "사슬이 끊겼습니다: 고친 기록 다음 회차의 「앞」과 맞지 않습니다"}
+          ? "사슬이 이어집니다. 모든 기록의 「앞」이 바로 앞 기록의 해시입니다."
+          : "사슬이 끊겼습니다. 고친 기록 다음 회차의 「앞」과 맞지 않습니다."}
       </Verdict>
       <Verdict ok={allAnchored} testId="chain-anchor">
         {allAnchored
-          ? "회차마다 GitHub 앵커 저장소에 남긴 기록 해시와 같습니다"
-          : "GitHub 앵커와 다르거나 없는 회차가 있습니다. 모두가 같은 앵커와 비교하므로 드러납니다"}
+          ? "회차마다 GitHub 앵커 저장소에 남긴 기록 해시와 같습니다."
+          : "GitHub 앵커와 다르거나 없는 회차가 있습니다. 모두가 같은 앵커와 비교하므로 드러납니다."}
       </Verdict>
       <Verdict
         ok={check ? check.genesisAnchored === true : null}
         testId="chain-genesis"
       >
         {check?.genesisAnchored
-          ? "처음 일정표가 genesis.txt와 같습니다: 장부를 다시 시작하지 않았습니다"
-          : "처음 일정표가 genesis.txt와 다릅니다: 장부를 다시 시작했습니다"}
+          ? "처음 일정표가 genesis.txt와 같습니다. 장부를 다시 시작하지 않았습니다."
+          : "처음 일정표가 genesis.txt와 다릅니다. 장부를 다시 시작했습니다."}
       </Verdict>
       <Verdict ok={headSeen} testId="chain-head">
         {headSeen
-          ? "기기가 전에 본 끝 해시가 이 장부 안에 있습니다"
-          : "기기가 전에 본 끝 해시가 이 장부에 없습니다: 앵커까지 고쳐 써도 기기가 알아챕니다"}
+          ? "기기가 전에 본 끝 해시가 이 장부 안에 있습니다."
+          : "기기가 전에 본 끝 해시가 이 장부에 없습니다. 앵커까지 고쳐 써도 기기가 알아챕니다."}
       </Verdict>
       <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
@@ -566,8 +574,8 @@ export function ChainToy() {
         </div>
         <Verdict ok={!problem} testId="chain-schedule">
           {problem
-            ? `받지 않습니다: ${problem}`
-            : `받습니다. ${liveFrom - 1}회는 ${changed ? displayRound(changed, liveFrom - 1).label : ""}, ${liveFrom}회는 ${changed ? displayRound(changed, liveFrom).label : ""}로 보입니다`}
+            ? `받지 않습니다. ${problem}`
+            : `받습니다. ${liveFrom - 1}회는 ${changed ? displayRound(changed, liveFrom - 1).label : ""}, ${liveFrom}회는 ${changed ? displayRound(changed, liveFrom).label : ""}로 보입니다.`}
         </Verdict>
       </div>
     </Toy>
@@ -686,7 +694,7 @@ export function SasToy() {
             <Mono>{short(world.checker.publicKey.slice(1), 8)}</Mono>, 입상자
             열쇠 <Mono>{short(world.winner.publicKey.slice(1), 8)}</Mono>, 요청
             id <Mono>{REQUEST_ID}</Mono>. 공유 비밀은 두 기기의 비밀 열쇠가
-            있어야 계산됩니다
+            있어야 계산됩니다.
           </Row>
           {mitm && (
             <Row label="바꿔치기">
@@ -698,7 +706,7 @@ export function SasToy() {
               <Mono tone="warn">
                 {short(world.mitmToChecker.publicKey.slice(1), 8)}
               </Mono>
-              를 대신 건넵니다
+              를 대신 건넵니다.
             </Row>
           )}
         </div>
@@ -742,15 +750,15 @@ export function SasToy() {
         {out === null
           ? "계산하는 중"
           : out.claimProblems.length === 0
-            ? "서명 검사 통과: 예측서 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다"
-            : `서명 검사 실패: ${out.claimProblems.join(", ")}(입상자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다)`}
+            ? "서명 검사를 통과했습니다. 예측서 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다."
+            : `서명 검사에 실패했습니다. 입상자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다. 걸린 곳: ${out.claimProblems.join(", ")}.`}
       </Verdict>
       <Verdict ok={sameStars} testId="sas-stars">
         {sameStars === null
           ? "계산하는 중"
           : sameStars
-            ? "두 화면의 별 세 개가 같습니다. 입상자가 메신저로 보낸 별을 누르면 초록불이 켜집니다"
-            : "별이 다릅니다. 가운데 끼어든 사람은 양쪽에 같은 별을 맞춰 줄 수 없습니다"}
+            ? "두 화면의 별 세 개가 같습니다. 입상자가 메신저로 보낸 별을 누르면 초록불이 켜집니다."
+            : "별이 다릅니다. 가운데 끼어든 사람은 양쪽에 같은 별을 맞춰 줄 수 없습니다."}
       </Verdict>
     </Toy>
   );

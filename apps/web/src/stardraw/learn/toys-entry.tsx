@@ -235,8 +235,8 @@ export function SignToy() {
           </Row>
           <Verdict ok={ok} testId="sign">
             {ok
-              ? "서명이 맞습니다. 이 열쇠의 주인이 이 내용 그대로 냈습니다"
-              : "서명이 맞지 않습니다. 서명한 뒤 내용이 바뀌었습니다"}
+              ? "서명이 맞습니다. 이 열쇠의 주인이 이 내용 그대로 냈습니다."
+              : "서명이 맞지 않습니다. 서명한 뒤 내용이 바뀌었습니다."}
           </Verdict>
         </div>
       )}
@@ -448,8 +448,8 @@ export function PasskeyToy() {
           </Row>
           <Verdict ok={result.ok} testId="passkey">
             {result.ok
-              ? "검사기가 받습니다: game.byb.kr에서 본인 확인을 거친 서명입니다"
-              : "검사기가 거절합니다: 이 사이트에서 본인 확인을 거친 서명이 아닙니다"}
+              ? "검사기가 받습니다. game.byb.kr에서 본인 확인을 거친 서명입니다."
+              : "검사기가 거절합니다. 이 사이트에서 본인 확인을 거친 서명이 아닙니다."}
           </Verdict>
         </div>
       )}
@@ -626,8 +626,8 @@ export function PowToy() {
               </Verdict>
               <Verdict ok={!run.nextOk} testId="pow-next">
                 {run.nextOk
-                  ? "다음 회차 문제 값으로도 이 n이 우연히 맞았습니다(드문 일). 그래도 미리 계산할 수는 없습니다: 문제 값은 앞 회차가 끝나야 나옵니다"
-                  : "다음 회차 문제 값으로는 같은 n이 맞지 않습니다. 미리 만들어 둘 수 없습니다"}
+                  ? "다음 회차 문제 값으로도 이 n이 우연히 맞았습니다. 드문 일입니다. 그래도 문제 값은 앞 회차가 끝나야 나오므로 미리 계산할 수는 없습니다."
+                  : "다음 회차 문제 값으로는 같은 n이 맞지 않습니다. 미리 만들어 둘 수 없습니다."}
               </Verdict>
             </>
           )}
@@ -856,15 +856,15 @@ export function MerkleToy() {
       </div>
       <Verdict ok={same} testId="merkle-root">
         {same
-          ? "지금 예측서 목록이 마감 때 봉인한 뿌리와 같습니다"
-          : `봉인한 뿌리와 다릅니다(뺀 예측서 ${removed.size}장, 바꾼 예측서 ${changedCount}장). 마감 뒤에 목록이 바뀐 것이 드러납니다`}
+          ? "지금 예측서 목록이 마감 때 봉인한 뿌리와 같습니다."
+          : `봉인한 뿌리와 다릅니다. 뺀 예측서 ${removed.size}장, 바꾼 예측서 ${changedCount}장으로 마감 뒤에 목록이 바뀐 것이 드러납니다.`}
       </Verdict>
       <Verdict ok={proofOk} testId="merkle-proof">
         {mine < 0
-          ? "내 예측서가 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 예측 접수증으로 누구에게나 보일 수 있습니다"
+          ? "내 예측서가 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 예측 접수증으로 누구에게나 보일 수 있습니다."
           : proofOk
-            ? `내 예측서 증명 확인: 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다`
-            : "내 예측서 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다"}
+            ? `내 예측서 증명을 확인했습니다. 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다.`
+            : "내 예측서 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다."}
       </Verdict>
     </Toy>
   );
