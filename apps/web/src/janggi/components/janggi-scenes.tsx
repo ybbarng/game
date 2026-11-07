@@ -427,7 +427,7 @@ function Cell({
   );
 }
 
-/** 짝의 판: 맞상이면 같은 세로줄의 두 편 상에 고리 */
+/** 짝의 판: 맞상이면 대각선으로 마주 보는 두 편 상에 고리 */
 function pairBoard(cho: Setup, han: Setup) {
   const pieces = openingPieces(cho, han);
   const rings = isMatsang(cho, han)

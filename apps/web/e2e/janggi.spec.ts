@@ -275,9 +275,32 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   await replayToEnd(page, 6);
   await expect(tally(page)).toContainText("초 2점 손해");
   await next(page);
+  // 같은 이름: 두 상을 올리면 서로 닿는다
+  await expect(
+    page.getByRole("heading", { name: "같은 이름끼리 상을 올려 보면" }),
+  ).toBeVisible();
+  await replayToEnd(page, 2);
+  await expect(note(page)).toContainText("서로 잡을 수 있어요");
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-same-name.png"),
+    fullPage: true,
+  });
+  await next(page);
+  // 다른 이름: 같은 식으로 올려도 닿지 않는다
+  await expect(
+    page.getByRole("heading", { name: "이름이 다르면" }),
+  ).toBeVisible();
+  await replayToEnd(page, 2);
+  await expect(note(page)).toContainText("서로 잡을 수 없어요");
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-other-name.png"),
+    fullPage: true,
+  });
+  await next(page);
   // 맞상
   await expect(page.getByRole("heading", { name: /맞상/ })).toBeVisible();
   await replayToEnd(page, 4);
+  await expect(tally(page)).toContainText("점수가 같아 손해 없음");
   await page.screenshot({
     path: info.outputPath("janggi-setups-matsang.png"),
     fullPage: true,
@@ -386,8 +409,8 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
 
 /** 한 차림에 권하는 초 차림(matchups.ts와 같다) */
 const DRILL_ANSWER: Record<string, string> = {
-  NENE: "마상마상",
-  ENEN: "상마상마",
+  NENE: "상마상마",
+  ENEN: "마상마상",
   NEEN: "마상마상",
   ENNE: "마상마상",
 };
@@ -400,7 +423,7 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
   await openLesson(page, /상대 차림 보고 고르기/);
   await expect(page.locator("[data-grade]")).toHaveCount(16);
   await page
-    .getByRole("button", { name: "한 상마상마, 초 마상마상: 피해요" })
+    .getByRole("button", { name: "한 상마상마, 초 상마상마: 피해요" })
     .click();
   await expect(page.locator("[data-matchup-reason]")).toContainText("맞상");
   await page.screenshot({
@@ -436,7 +459,7 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
     "9",
   );
   await next(page);
-  await page.getByRole("button", { name: "상마상마", exact: true }).click();
+  await page.getByRole("button", { name: "마상마상", exact: true }).click();
   await next(page);
   await expect(page.getByText("단원 완료!")).toBeVisible();
 });

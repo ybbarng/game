@@ -127,12 +127,23 @@ describe("장기 튜토리얼 장면", () => {
       }
   });
 
-  it("점을 찍는 기물(show)은 그 자리에 있는 내 기물이다", () => {
+  it("점을 찍는 기물(show)은 그 자리에 있는 내 기물이다(넘겨 보기는 그 자리로 오는 첫 수부터)", () => {
     for (const lesson of JANGGI_LESSONS)
       for (const step of lesson.steps) {
         if (step.kind === "mission" || !step.scene?.show) continue;
-        const cell = sceneState(step.scene).board[pointAt(step.scene.show)];
-        expect(cell?.startsWith("c")).toBe(true);
+        const { show, replay = [] } = step.scene;
+        let board = sceneState(step.scene).board;
+        const boards = [board];
+        for (const text of replay) {
+          const [from = "", to = ""] = text.split("-");
+          board = applyMove(board, { from: pointAt(from), to: pointAt(to) });
+          boards.push(board);
+        }
+        const first = boards.findIndex((b) => b[pointAt(show)] !== "");
+        expect(first, `${lesson.id} ${show}`).toBeGreaterThanOrEqual(0);
+        // 한 번 오면 끝까지 내 기물이 그 자리에 있다.
+        for (const b of boards.slice(first))
+          expect(b[pointAt(show)]?.startsWith("c")).toBe(true);
       }
   });
 
@@ -156,7 +167,7 @@ describe("장기 튜토리얼 장면", () => {
           board = applyMove(board, { from: pointAt(from), to: pointAt(to) });
         });
       }
-    expect(count).toBe(13);
+    expect(count).toBe(15);
   });
 
   it("글은 마침표로 끝난다(설명·까닭·퀴즈 풀이)", () => {

@@ -3,7 +3,8 @@ import { SETUPS, type Setup } from "@game/janggi-engine";
 /*
  * 상대(한) 차림을 보고 초가 무엇을 고를지(16가지 짝, docs/23 「포진과 첫 수 자료」).
  * 한이 먼저 고르고 초가 그것을 본 뒤 고른다. 처음 배우는 사람 기준으로 매긴다.
- * 판에 관한 말(맞상은 두 편 상이 같은 세로줄, 양귀마는 가운데 졸·병을 지키는 마가 없음)은 matchups.test.ts가 엔진으로 확인한다.
+ * 판에 관한 말(맞상은 두 편 상이 대각선으로 마주 봐 한 번씩 올리면 서로 잡을 수 있음, 양귀마는 가운데 졸·병을 지키는 마가 없음)은
+ * matchups.test.ts가 엔진으로 확인한다.
  */
 
 /** 차림이 짜는 포진 */
@@ -38,11 +39,11 @@ export interface Matchup {
 }
 
 /**
- * 두 편 모두 귀마인데 상이 같은 세로줄에 서는 짝(맞상). 상차림 이름은 저마다 제 자리에서 왼쪽부터 읽으니,
- * 이름이 다를 때 판 위에서는 같은 모양이 된다(초 마상마상·한 상마상마 등)
+ * 맞상: 두 편이 같은 이름의 귀마(마상마상끼리, 상마상마끼리)를 고른 짝. 두 편 상이 판을 가로질러 대각선으로 마주 본다
+ * (나무위키 「장기/용어」, docs/23 「맞상의 짝」). 상차림 이름은 저마다 제 자리에서 왼쪽부터 읽는다
  */
 export function isMatsang(cho: Setup, han: Setup): boolean {
-  return FORMATION[cho] === "귀마" && FORMATION[han] === "귀마" && cho !== han;
+  return FORMATION[cho] === "귀마" && FORMATION[han] === "귀마" && cho === han;
 }
 
 /** 한이 `han`을 골랐을 때 초가 `cho`를 고르면 */
@@ -57,16 +58,16 @@ export function matchup(han: Setup, cho: Setup): Matchup {
     };
   if (theirs === "귀마") {
     if (mine === "귀마")
-      return cho === han
+      return isMatsang(cho, han)
         ? {
-            grade: "best",
-            reason:
-              "같은 이름을 고르면 두 편 상이 엇갈려 서요(엇상). 가장 흔한 짝이고, 먼저 두는 초의 이득이 살아 있어요.",
-          }
-        : {
             grade: "avoid",
             reason:
-              "이름이 다르면 두 편 상이 같은 세로줄에 서요(맞상). 판이 느려지고 먼저 두는 초의 이득이 줄어든다고 해서 흔히 피해요.",
+              "이름이 같으면 맞상이에요. 두 편 상이 대각선으로 마주 봐 상끼리 바꾸고 시작하기 쉬워요. 판이 늘어지고 먼저 두는 초의 이득이 줄어든다고 해서 흔히 피해요.",
+          }
+        : {
+            grade: "best",
+            reason:
+              "한과 다른 이름의 귀마를 고르면 맞상을 피해요. 나중에 고르는 초는 흔히 이렇게 맞상을 피한다고 해요.",
           };
     return {
       grade: "ok",

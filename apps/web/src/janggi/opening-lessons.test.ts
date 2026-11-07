@@ -231,20 +231,38 @@ describe("포진 고르기", () => {
     expect(guards(end, "75")).toEqual([]);
   });
 
-  it("맞상: 이름이 다른 귀마 짝은 두 편 상이 같은 세로줄(3·8)에 서고, 귀윗상(76·46)이 6번 세로줄에서 마주 선다", () => {
-    const board = boardOf(openingPieces("NENE", "ENEN"));
-    for (const col of [3, 8]) {
-      expect(board[pointAt(`0${col}`)]).toBe("cE");
-      expect(board[pointAt(`1${col}`)]).toBe("hE");
-    }
+  it("같은 이름이면 대각선 쪽 두 상(08·12)을 하나씩 올려 서로 닿고, 다른 이름이면 같은 식으로 올려도 닿지 않는다", () => {
+    expect(REPLAY_SETUPS.sameNameMeet).toEqual({ cho: "NENE", han: "NENE" });
+    expect(REPLAY_SETUPS.otherNameApart).toEqual({ cho: "ENEN", han: "NENE" });
+    const same = lineBoard("sameNameMeet", 0);
+    expect(same[pointAt("08")]).toBe("cE");
+    expect(same[pointAt("12")]).toBe("hE");
+    const met = lineBoard("sameNameMeet");
+    expect(reach(met, "76")).toContain("44");
+    expect(reach(met, "44")).toContain("76");
+
+    const other = lineBoard("otherNameApart", 0);
+    for (const name of ["02", "07"]) expect(other[pointAt(name)]).toBe("cE");
+    expect(other[pointAt("12")]).toBe("hE");
+    const apart = lineBoard("otherNameApart");
+    expect(reach(apart, "74")).not.toContain("44");
+    expect(reach(apart, "44")).not.toContain("74");
+  });
+
+  it("맞상: 같은 이름 귀마 짝에서 마주 보던 상(08·12)을 하나씩 올리면 서로 잡을 수 있고, 잡고 되잡아 상끼리 바꾼다", () => {
+    expect(REPLAY_SETUPS.matsang).toEqual({ cho: "NENE", han: "NENE" });
+    const start = lineBoard("matsang", 0);
+    expect(start[pointAt("08")]).toBe("cE");
+    expect(start[pointAt("12")]).toBe("hE");
+    const facing = lineBoard("matsang", 2);
+    expect(reach(facing, "76")).toContain("44");
+    expect(reach(facing, "44")).toContain("76");
     const end = lineBoard("matsang");
-    expect(end[pointAt("76")]).toBe("cE");
-    expect(end[pointAt("46")]).toBe("hE");
-    for (const row of [5, 6]) expect(end[pointAt(`${row}6`)]).toBe("");
-    // 엇상(같은 이름)이면 상이 엇갈린다.
-    const eot = boardOf(openingPieces("NENE", "NENE"));
-    expect(eot[pointAt("13")]).toBe("hN");
-    expect(eot[pointAt("18")]).toBe("hN");
+    expect(end[pointAt("44")]).toBe("hP");
+    const boards = replayBoards(start, LINES.matsang);
+    expect(tallyText(tallyOf(boards, LINES.matsang, 4))).toBe(
+      "잡은 기물: 초 상(3) · 한 상(3) → 점수가 같아 손해 없음",
+    );
   });
 });
 
