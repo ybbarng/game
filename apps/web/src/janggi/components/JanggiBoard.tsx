@@ -123,6 +123,8 @@ export function JanggiBoard({
   danger = [],
   rings = [],
   coords = false,
+  onPoint,
+  picks = [],
 }: {
   board: readonly Cell[];
   /** 한 편이면 판을 뒤집어 내 편을 아래에 둔다 */
@@ -144,6 +146,10 @@ export function JanggiBoard({
   rings?: readonly number[];
   /** 판 여백에 칸 번호를 보인다(배우기 미션처럼 글이 자리 이름을 쓸 때) */
   coords?: boolean;
+  /** 있으면 판의 어느 자리를 누르든 이 함수로 알린다(고르기·옮기기 대신, 배우기의 맞혀 보기) */
+  onPoint?: (at: number) => void;
+  /** 맞혀 보기에서 누른 자리와 정답(맞으면 초록, 틀리면 빨강 굵은 고리) */
+  picks?: readonly { at: number; ok: boolean }[];
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const id = `piece${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -163,6 +169,10 @@ export function JanggiBoard({
 
   /** 한 자리를 눌렀다: 갈 곳이면 옮기고, 내 기물이면 고르고, 아니면 고르기를 푼다 */
   const press = (i: number) => {
+    if (onPoint) {
+      onPoint(i);
+      return;
+    }
     const move = targets.get(i);
     if (move) {
       onSelect(null);
@@ -470,6 +480,21 @@ export function JanggiBoard({
           stroke={RING_COLOR}
           strokeWidth={0.06}
           data-ring={pointName(i)}
+          pointerEvents="none"
+        />
+      ))}
+
+      {picks.map(({ at: i, ok }) => (
+        <circle
+          key={`p${i}`}
+          cx={at(i)[0]}
+          cy={at(i)[1]}
+          r={0.56}
+          fill="none"
+          stroke={ok ? HINT_COLOR : DANGER_COLOR}
+          strokeWidth={0.11}
+          data-pick={pointName(i)}
+          data-pick-ok={ok}
           pointerEvents="none"
         />
       ))}
