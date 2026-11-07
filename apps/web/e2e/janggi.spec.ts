@@ -629,7 +629,7 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
   ]);
   await openLesson(page, /초반 21수/);
   await playExample(page, touch, OPENING_LINE_MOVES.length, {
-    at: "91",
+    at: "99",
     result: "right",
   });
   await expect(tally(page)).toContainText("점수가 같아 손해 없음");
@@ -640,11 +640,11 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
   await next(page);
 
   // 따라 두기: 첫 수를 틀리면 판에 두지 않고 알린다.
-  await tapPoint(page, "71", touch);
-  await tapPoint(page, "72", touch);
+  await tapPoint(page, "79", touch);
+  await tapPoint(page, "78", touch);
   await expect(page.locator("[data-follow-miss]")).toBeVisible();
   await page.getByRole("button", { name: "힌트" }).click();
-  await expect(page.locator('[data-ring="79"]')).toHaveCount(1);
+  await expect(page.locator('[data-ring="71"]')).toHaveCount(1);
   const mine = OPENING_LINE_MOVES.filter((_, i) => i % 2 === 0);
   for (const [k, text] of mine.entries()) {
     const [from = "", to = ""] = text.split("-");
@@ -663,11 +663,13 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
   await expect(page.getByText("끝까지 따라 두었어요!")).toBeVisible();
   await next(page);
   await page
-    .getByRole("button", { name: "76은 졸 둘이 지켜, 잡으면 한이 10점 손해다" })
+    .getByRole("button", {
+      name: "72는 졸과 마가 지켜, 잡으면 한이 1점 손해다",
+    })
     .click();
   await next(page);
   await page
-    .getByRole("button", { name: "손해 없음(차와 상을 하나씩 바꿈)" })
+    .getByRole("button", { name: "손해 없음(차를 하나씩 바꿈)" })
     .click();
   await next(page);
   await expect(page.getByText("단원 완료!")).toBeVisible();

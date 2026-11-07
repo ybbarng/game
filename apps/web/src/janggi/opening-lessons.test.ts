@@ -1,4 +1,6 @@
 // @vitest-environment node
+
+import { negamax } from "@game/janggi-ai";
 import {
   applyMove,
   type Board,
@@ -6,6 +8,7 @@ import {
   type Cell,
   inCheck,
   legalMoves,
+  other,
   placeSetup,
   pointAt,
   pointName,
@@ -16,6 +19,8 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { threatenedPieces } from "./danger";
+import { firstMoves } from "./matchup-examples";
+import { bestAgainst, isMatsang } from "./matchups";
 import {
   FIRST_MOVES_LESSON,
   LINES,
@@ -354,13 +359,42 @@ describe("첫 수와 초반 원칙", () => {
 });
 
 describe("초반 21수", () => {
-  const boards = replayBoards(START, OPENING_LINE_MOVES);
+  // 한 마상마상, 초 상마상마(맞상을 피한 짝)
+  const LINE_START = boardOf(openingPieces("ENEN", "NENE"));
+  const boards = replayBoards(LINE_START, OPENING_LINE_MOVES);
   const at = (ply: number) => boards[ply] as Board;
 
   it("21수 모두 둘 수 있고 수마다 까닭이 있다", () => {
-    expect(OPENING_LINE.length).toBeGreaterThanOrEqual(20);
-    playLine(START, OPENING_LINE_MOVES, alternate);
+    expect(OPENING_LINE).toHaveLength(21);
+    playLine(LINE_START, OPENING_LINE_MOVES, alternate);
     for (const m of OPENING_LINE) expect(m.note.endsWith(".")).toBe(true);
+  });
+
+  it("맞상이 아닌 짝이고, 두 편 귀윗상은 서로 닿지 않는다", () => {
+    expect(isMatsang("ENEN", "NENE")).toBe(false);
+    expect(bestAgainst("NENE")).toContain("ENEN");
+    expect(reach(at(16), "44")).not.toContain("74");
+    expect(reach(at(16), "74")).not.toContain("44");
+  });
+
+  it("엔진 확인: 맞바꿈 말고는 수마다 고수의 두 수 앞 읽기로 가장 좋은 수와 0.3점 안쪽", () => {
+    const value = (board: Board, side: Side, m: { from: number; to: number }) =>
+      -negamax(applyMove(board, m), other(side), 1, -Infinity, Infinity, {
+        bikjangScore: true,
+      });
+    OPENING_LINE_MOVES.forEach((text, i) => {
+      const before = at(i);
+      const side = alternate(i);
+      const mine = parse(text);
+      if (before[mine.to]) return; // 맞바꿈
+      const best = Math.max(
+        ...legalMoves(before, side).map((m) => value(before, side, m)),
+      );
+      expect(
+        best - value(before, side, mine),
+        `${i + 1}수 ${text}`,
+      ).toBeLessThanOrEqual(30);
+    });
   });
 
   it("잡지 않는 수 뒤에는 둔 편에 공짜로 잡힐 기물이 없다", () => {
@@ -374,41 +408,56 @@ describe("초반 21수", () => {
     });
   });
 
-  it("까닭의 말: 노림과 지킴", () => {
-    // 10수: 한 차가 71을 노리고 내 차(01)가 지킨다.
-    expect(reach(at(10), "31")).toContain("71");
-    expect(guards(at(10), "71")).toContain("01");
-    // 11수: 91 차가 71을 지키고, 한 포가 92로 오면 잡는다.
-    expect(guards(at(11), "71")).toContain("91");
-    expect(reach(at(11), "32")).toContain("92");
-    expect(reach(at(11), "91")).toContain("92");
-    // 02까지 들어오면 진마(83)가 잡는다.
-    expect(reach(at(11), "32")).toContain("02");
-    expect(guards(at(11), "02")).toContain("83");
-    // 13수: 차끼리 마주 보고, 한 포는 72 너머로 못 들어온다.
-    expect(reach(at(13), "91")).toContain("31");
-    expect(reach(at(13), "32")).not.toEqual(expect.arrayContaining(["82"]));
-    expect(guards(at(13), "72")).toContain("73");
-    // 16수: 한 차가 76 상을 노리지만 졸 둘이 지킨다.
-    expect(reach(at(16), "26")).toContain("76");
-    expect(guards(at(16), "76")).toEqual(expect.arrayContaining(["75", "77"]));
-    // 17수: 마가 돌아와 75를 지킨다.
-    expect(horseGuards(at(17), "75")).toEqual(["83"]);
-    // 18수: 두 상이 서로 노린다.
-    expect(reach(at(18), "44")).toContain("76");
-    expect(reach(at(18), "76")).toContain("44");
-    // 20수: 한 차가 86까지 보지만 궁이 지킨다. 21수: 76 졸이 막는다.
-    expect(reach(at(20), "26")).toContain("86");
-    expect(guards(at(20), "86")).toContain("95");
-    expect(reach(at(21), "26")).not.toContain("86");
-    expect(guards(at(21), "76")).toContain("75");
+  it("첫 수 원칙: 초는 차 옆에 상이 있는 쪽 졸을 쓸고, 한이 같은 쪽 병을 쓸면 차를 공짜로 잃는다", () => {
+    expect(firstMoves("ENEN")).toEqual([OPENING_LINE_MOVES[0]]);
+    expect(at(0)[pointAt("02")]).toBe("cE");
+    expect(reach(at(0), "01")).not.toContain("61");
+    expect(reach(at(1), "01")).toContain("61");
+    expect(guards(at(1), "72")).toContain("73");
+    // 한이 41 병을 비키면 두 차가 마주 보고, 한 차(11)를 지키는 기물이 없다.
+    const mirror = applyMove(at(1), parse("41-42"));
+    expect(reach(mirror, "01")).toContain("11");
+    expect(guards(mirror, "11", "h")).toEqual([]);
+    // 그래서 한은 반대쪽 병(49)을 비켜 9번 세로줄을 연다.
+    expect(reach(at(2), "19")).toContain("59");
   });
 
-  it("주고받은 점수: 차와 상을 하나씩 바꿔 손해 없음", () => {
+  it("까닭의 말: 노림과 지킴", () => {
+    // 3수: 진마가 가운데 졸을 지킨다. 9수: 상이 비운 02로 차가 옆걸음한다.
+    expect(horseGuards(at(3), "75")).toEqual(["87"]);
+    expect(reach(at(9), "01")).toEqual(expect.arrayContaining(["02", "03"]));
+    // 10수: 한 차가 79를 노리고 내 차(09)가 지킨다. 11수: 99 차가 계속 지킨다.
+    expect(reach(at(10), "59")).toContain("79");
+    expect(guards(at(10), "79")).toContain("09");
+    expect(guards(at(11), "79")).toContain("99");
+    // 12수: 21 차가 41 병을 지킨다.
+    expect(guards(at(12), "41", "h")).toContain("21");
+    // 13수: 차끼리 마주 보고, 내 차는 진마(87)가 지킨다. 78 졸은 77 졸이 지킨다.
+    expect(reach(at(13), "59")).toContain("99");
+    expect(guards(at(13), "99")).toContain("87");
+    expect(guards(at(13), "78")).toContain("77");
+    // 16수: 한 상이 72를 노리지만 73 졸과 귀마(84)가 지킨다. 진마가 떠나 75를 지키는 마가 없다.
+    expect(reach(at(16), "44")).toContain("72");
+    expect(guards(at(16), "72")).toEqual(expect.arrayContaining(["73", "84"]));
+    expect(horseGuards(at(16), "75")).toEqual([]);
+    // 17수: 마가 돌아와 75를 지킨다.
+    expect(horseGuards(at(17), "75")).toEqual(["87"]);
+    // 18수: 49 상이 77을 노리고 78 졸이 지킨다.
+    expect(reach(at(18), "49")).toContain("77");
+    expect(guards(at(18), "77")).toContain("78");
+    // 19수: 79 상이 47을 노리고 48 병이 지킨다. 20수: 58 병이 그 길을 막는다.
+    expect(reach(at(19), "79")).toContain("47");
+    expect(guards(at(19), "47", "h")).toContain("48");
+    expect(reach(at(20), "79")).not.toContain("47");
+    // 21수: 03 차가 73 졸을 뒤에서 지킨다.
+    expect(guards(at(21), "73")).toContain("03");
+  });
+
+  it("주고받은 점수: 차를 하나씩 바꿔 손해 없음", () => {
     expect(tallyText(tallyOf(boards, OPENING_LINE_MOVES, 21))).toBe(
-      "잡은 기물: 초 차(13)·상(3) · 한 차(13)·상(3) → 점수가 같아 손해 없음",
+      "잡은 기물: 초 차(13) · 한 차(13) → 점수가 같아 손해 없음",
     );
-    expect(POSITIONS.rookEyesElephant.moves).toEqual(
+    expect(POSITIONS.elephantEyesPawn.moves).toEqual(
       OPENING_LINE_MOVES.slice(0, 16),
     );
   });
