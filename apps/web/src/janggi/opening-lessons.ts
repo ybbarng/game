@@ -103,9 +103,9 @@ export const POSITIONS = {
   },
   /** 오른쪽 찻길을 연 뒤, 한도 병을 쓸었다. 차로 49 병을 잡으면? */
   greedyRook: { cho: "NENE", han: "NENE", moves: ["79-78", "41-42"] },
-  /** 초반 21수의 16수째 뒤: 한 차(26)가 내 상(76)을 노린다 */
-  rookEyesElephant: {
-    cho: "NENE",
+  /** 초반 21수의 16수째 뒤: 한 상(44)이 내 졸(72)을 노린다 */
+  elephantEyesPawn: {
+    cho: "ENEN",
     han: "NENE",
     moves: OPENING_LINE_MOVES.slice(0, 16),
   },
@@ -253,6 +253,11 @@ export const GUESSES = {
 } satisfies Partial<Record<keyof typeof LINES, Guess>>;
 
 const START: JanggiScene = { pieces: openingPieces("NENE", "NENE") };
+/** 초반 21수의 처음 판: 한 마상마상, 초 상마상마(맞상을 피한 짝) */
+const LINE_SETUPS = { cho: "ENEN", han: "NENE" } as const;
+const LINE_START: JanggiScene = {
+  pieces: openingPieces(LINE_SETUPS.cho, LINE_SETUPS.han),
+};
 
 const scene = (
   position: OpeningPosition,
@@ -768,25 +773,25 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
   id: "opening-line",
   title: "초반 21수 따라 두기",
   summary:
-    "귀마 대 귀마 초반 21수를 수마다 까닭과 점수 셈으로 보고, 초 수를 직접 따라 둔다",
+    "한 마상마상, 초 상마상마로 맞상을 피한 귀마 판의 초반 21수를 수마다 까닭과 점수 셈으로 보고, 초 수를 직접 따라 둔다",
   steps: [
     {
       kind: "explain",
-      title: "귀마 대 귀마, 처음 21수",
+      title: "맞상을 피한 귀마 판, 처음 21수",
       body: [
-        "두 편 모두 마상마상을 골라 맞상이 된 판의 처음 21수예요. 실제 대국을 옮긴 기보가 아니라, 앞에서 배운 원칙대로 짜고 수마다 엔진으로 손해가 없는지 확인한 예시예요.",
+        "한이 마상마상을 고르자 초가 이름이 다른 상마상마를 골라 맞상을 피한 판의 처음 21수예요. 실제 대국을 옮긴 기보가 아니라, 앞에서 배운 원칙대로 짜고 수마다 엔진으로 손해가 없는지 확인한 예시예요.",
         "초 수는 초록 고리를 보고 내가 둬요. 수마다 까닭이 판 아래에 나오고, 잡은 기물은 점수로 셈해 보여요.",
       ],
       scene: {
-        ...START,
-        setups: { cho: "NENE", han: "NENE" },
+        ...LINE_START,
+        setups: LINE_SETUPS,
         replay: OPENING_LINE_MOVES,
         notes: OPENING_LINE_NOTES,
         guess: {
           at: 13,
-          ask: "1번 세로줄이 열렸어요. 한 차(31)가 무엇을 노릴까요? 판에서 눌러 보세요.",
-          answer: "91",
-          why: "두 차가 마주 봐요. 한이 먼저 잡아도 진마(83)가 되잡아 차끼리 바꿔요.",
+          ask: "9번 세로줄이 열렸어요. 한 차(59)가 무엇을 노릴까요? 판에서 눌러 보세요.",
+          answer: "99",
+          why: "두 차가 마주 봐요. 한이 먼저 잡아도 진마(87)가 되잡아 차끼리 바꿔요.",
         },
       },
     },
@@ -797,7 +802,8 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
         "이번에는 초록 고리 없이 초 수를 찾아 둬요. 막히면 「힌트」로 둘 기물을, 「수 보기」로 갈 자리를 볼 수 있어요.",
       ],
       scene: {
-        ...START,
+        ...LINE_START,
+        setups: LINE_SETUPS,
         replay: OPENING_LINE_MOVES,
         notes: OPENING_LINE_NOTES,
         follow: true,
@@ -806,28 +812,28 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
     {
       kind: "quiz",
       question:
-        "16수째, 한 차(26)가 내 상(76)을 노려요. 아직 걱정하지 않아도 되는 까닭은?",
-      scene: scene(POSITIONS.rookEyesElephant, { rings: ["26", "76"] }),
+        "16수째, 한 상(44)이 내 졸(72)을 노려요. 아직 걱정하지 않아도 되는 까닭은?",
+      scene: scene(POSITIONS.elephantEyesPawn, { rings: ["44", "72"] }),
       options: [
-        "76은 졸 둘이 지켜, 잡으면 한이 10점 손해다",
-        "차는 상을 잡을 수 없다",
-        "상이 차보다 점수가 높다",
+        "72는 졸과 마가 지켜, 잡으면 한이 1점 손해다",
+        "상은 졸을 잡을 수 없다",
+        "졸이 상보다 점수가 높다",
       ],
       answer: 0,
       explain:
-        "차(13점)로 상(3점)을 잡으면 75·77 졸이 차를 되잡아요. 3점을 얻고 13점을 잃어 한이 10점 손해예요.",
+        "상(3점)으로 졸(2점)을 잡으면 73 졸이나 귀마(84)가 상을 되잡아요. 2점을 얻고 3점을 잃어 한이 1점 손해예요.",
     },
     {
       kind: "quiz",
       question: "21수 동안 주고받은 기물을 점수로 셈하면?",
       options: [
-        "손해 없음(차와 상을 하나씩 바꿈)",
+        "손해 없음(차를 하나씩 바꿈)",
         "초가 13점 이득",
         "한이 3점 이득",
       ],
       answer: 0,
       explain:
-        "두 편이 차(13점) 하나와 상(3점) 하나씩 잡았어요. 16점 대 16점이라 손해가 없어요.",
+        "두 편이 차(13점)를 하나씩 잡았어요. 13점 대 13점이라 손해가 없어요.",
     },
   ],
 };

@@ -7,7 +7,12 @@ import {
 } from "@game/janggi-engine";
 import { describe, expect, it } from "vitest";
 
-import { canContinue, exampleState, guessRight } from "./example-play";
+import {
+  canContinue,
+  exampleState,
+  guessRight,
+  guessShown,
+} from "./example-play";
 import { parseMove, replayBoards, sideAt } from "./replay";
 import { JANGGI_LESSONS, type JanggiScene } from "./tutorial";
 
@@ -69,5 +74,19 @@ describe("직접 두고 맞혀 보기", () => {
       expect(sideToAct(state), name).toBe(next);
       expect(state.choSeat, name).toBe(0);
     }
+  });
+
+  it("맞혀 본 결과는 묻는 판과 정답이 드러나는 다음 수까지만 보이고, 그 뒤 수를 두면 감춘다", () => {
+    const guess = { at: 13, ask: "묻는 말.", answer: "99", why: "까닭." };
+    expect([12, 13, 14, 15, 21].map((f) => guessShown(guess, f))).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    // 수순 끝에서 물으면 끝 판에 남는다.
+    const atEnd = { ...guess, at: 2 };
+    expect(guessShown(atEnd, 2)).toBe(true);
   });
 });
