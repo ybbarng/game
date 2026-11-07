@@ -10,12 +10,11 @@ import {
   type Move,
   pointAt,
   pseudoTargets,
-  SETUPS,
   type Setup,
   type Side,
   WIDTH,
 } from "@game/janggi-engine";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { paced } from "@/game/settings";
@@ -23,16 +22,7 @@ import { cn } from "@/lib/cn";
 
 import { piecesInDanger } from "../danger";
 import { canContinue, exampleState, guessRight } from "../example-play";
-import {
-  bestAgainst,
-  drillOrder,
-  FORMATION,
-  GRADE_MARKS,
-  GRADE_NAMES,
-  isMatsang,
-  matchup,
-  setupLabel,
-} from "../matchups";
+import { setupLabel } from "../matchups";
 import { openingPieces, SETUP_NAMES } from "../opening-lessons";
 import {
   moveText,
@@ -50,11 +40,11 @@ import { JanggiGame } from "./JanggiGame";
 import { SetupButtons } from "./SetupButtons";
 
 /*
- * 장기 배우기의 판 그림들(설명·퀴즈 칸). 정지 그림·넘겨 보기는 `ReplayScene`, 직접 따라 두기는 `FollowScene`,
- * 16가지 짝 표는 `MatchupTable`, 상대 차림 보고 고르기 반복 문제는 `SetupDrill`.
+ * 장기 배우기의 판 그림들(설명·퀴즈 칸). 정지 그림은 `ReplayScene`, 수순 예시를 직접 두고 맞혀 보기는 `PlayScene`,
+ * 둘 수를 찾아 따라 두기는 `FollowScene`. 상대 차림 보고 고르기 단원의 그림은 janggi-matchup-scenes.tsx.
  */
 
-const startBoard = (scene: JanggiScene) =>
+export const startBoard = (scene: JanggiScene) =>
   createJanggiScenario({ rules: JANGGI_TUTORIAL_RULES, ...scene }).board;
 
 /**
@@ -64,7 +54,7 @@ const startBoard = (scene: JanggiScene) =>
 const COLUMNS = Array.from({ length: WIDTH }, (_, x) => x);
 const ROWS = Array.from({ length: HEIGHT }, (_, y) => y);
 
-function BoardNumbers() {
+function BoardNumbers({ flipped = false }: { flipped?: boolean }) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {COLUMNS.map((x) => (
@@ -72,7 +62,9 @@ function BoardNumbers() {
           key={`c${x}`}
           data-axis-col={x + 1}
           className="-translate-x-1/2 absolute top-0 -mt-3.5 text-[10px] text-white/60 leading-none tabular-nums"
-          style={{ left: `${pointPercent(x, 0)[0]}%` }}
+          style={{
+            left: `${pointPercent(flipped ? WIDTH - 1 - x : x, 0)[0]}%`,
+          }}
         >
           {x + 1}
         </span>
@@ -82,7 +74,9 @@ function BoardNumbers() {
           key={`r${y}`}
           data-axis-row={(y + 1) % 10}
           className="-translate-y-1/2 absolute left-0 -ml-3.5 text-[10px] text-white/60 leading-none tabular-nums"
-          style={{ top: `${pointPercent(0, y)[1]}%` }}
+          style={{
+            top: `${pointPercent(0, flipped ? HEIGHT - 1 - y : y)[1]}%`,
+          }}
         >
           {(y + 1) % 10}
         </span>
@@ -91,8 +85,8 @@ function BoardNumbers() {
   );
 }
 
-/** 칸 번호를 두른 판. `wide`면 따라 두기처럼 직접 누르는 판이라 조금 크게 */
-function NumberedBoard({
+/** 칸 번호를 두른 판. `wide`면 따라 두기처럼 직접 누르는 판이라 조금 크게, `flipped`면 한이 아래(내가 한일 때) */
+export function NumberedBoard({
   board,
   legal = [],
   selected = null,
@@ -106,6 +100,7 @@ function NumberedBoard({
   onPoint,
   picks = [],
   hideCheck = false,
+  flipped = false,
 }: {
   board: Board;
   legal?: readonly Move[];
@@ -121,6 +116,7 @@ function NumberedBoard({
   picks?: readonly { at: number; ok: boolean }[];
   /** 장군 고리를 감춘다(맞혀 보기 답을 미리 알려 주지 않게) */
   hideCheck?: boolean;
+  flipped?: boolean;
 }) {
   const labels = useJanggiSettings((s) => s.labels);
   const checked = hideCheck
@@ -133,10 +129,10 @@ function NumberedBoard({
         wide ? "max-w-[19rem]" : "max-w-[16rem]",
       )}
     >
-      <BoardNumbers />
+      <BoardNumbers flipped={flipped} />
       <JanggiBoard
         board={board}
-        flipped={false}
+        flipped={flipped}
         legal={legal}
         selected={selected}
         onSelect={onSelect}
@@ -186,9 +182,9 @@ function _MoveNotes({
   );
 }
 
-const buttonClass =
+export const buttonClass =
   "rounded-lg bg-white/10 px-3 py-1.5 text-sm disabled:opacity-40";
-const primaryClass =
+export const primaryClass =
   "rounded-lg bg-amber-300/25 px-3 py-1.5 font-semibold text-sm disabled:opacity-40";
 
 /**
@@ -573,228 +569,6 @@ export function FollowScene({ scenario }: { scenario: JanggiScene }) {
           처음부터
         </button>
       </div>
-    </div>
-  );
-}
-
-const SETUP_VALUES = SETUPS.map((s) => s.value);
-
-/** 표의 칸 단추 */
-function Cell({
-  pressed,
-  onClick,
-  label,
-  children,
-}: {
-  pressed: boolean;
-  onClick: () => void;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "rounded-md border py-1.5 text-base leading-none",
-        pressed
-          ? "border-amber-300 bg-amber-300/25"
-          : "border-white/10 bg-white/5 hover:bg-white/10",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** 짝의 판: 맞상이면 대각선으로 마주 보는 두 편 상에 고리 */
-function pairBoard(cho: Setup, han: Setup) {
-  const pieces = openingPieces(cho, han);
-  const rings = isMatsang(cho, han)
-    ? Object.entries(pieces)
-        .filter(([, p]) => p === "cE" || p === "hE")
-        .map(([name]) => pointAt(name))
-    : [];
-  return { board: startBoard({ pieces }), rings };
-}
-
-/** 16가지 짝 표: 줄은 한 차림, 칸은 초 차림. 누른 칸의 판과 까닭을 아래에 */
-export function MatchupTable() {
-  const [han, setHan] = useState<Setup>("NENE");
-  const [cho, setCho] = useState<Setup>("NENE");
-  const result = matchup(han, cho);
-  const { board, rings } = pairBoard(cho, han);
-  return (
-    <div className="flex flex-col gap-2" data-matchups>
-      <div className="grid grid-cols-[4.5rem_repeat(4,minmax(0,1fr))] gap-1 text-center text-[11px]">
-        <span className="self-end text-left opacity-60">한 ↓ / 초 →</span>
-        {SETUP_VALUES.map((c) => (
-          <span key={c} className="self-end font-semibold leading-tight">
-            {setupLabel(c)}
-          </span>
-        ))}
-        {SETUP_VALUES.map((h) => (
-          <div key={h} className="contents">
-            <span className="self-center text-left font-semibold leading-tight">
-              {setupLabel(h)}
-              <span className="block font-normal opacity-60">
-                {FORMATION[h]}
-              </span>
-            </span>
-            {SETUP_VALUES.map((c) => {
-              const grade = matchup(h, c).grade;
-              return (
-                <Cell
-                  key={c}
-                  pressed={h === han && c === cho}
-                  onClick={() => {
-                    setHan(h);
-                    setCho(c);
-                  }}
-                  label={`한 ${setupLabel(h)}, 초 ${setupLabel(c)}: ${GRADE_NAMES[grade]}`}
-                >
-                  <span data-grade={grade}>{GRADE_MARKS[grade]}</span>
-                </Cell>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      <NumberedBoard board={board} rings={rings} />
-      <div
-        className="rounded-xl bg-white/5 p-2 text-sm leading-relaxed"
-        data-matchup-reason
-      >
-        <p className="font-semibold">
-          한 {setupLabel(han)} · 초 {setupLabel(cho)} →{" "}
-          {GRADE_MARKS[result.grade]} {GRADE_NAMES[result.grade]}
-        </p>
-        <p className="opacity-85">{result.reason}</p>
-      </div>
-    </div>
-  );
-}
-
-/** 반복 문제: 한 차림을 보여 주고 초 차림을 고른다. 초의 마·상 자리는 비워 둔다 */
-export function SetupDrill({ count }: { count: number }) {
-  const [round, setRound] = useState(0);
-  const [order, setOrder] = useState(() => drillOrder(count, Math.random));
-  const [index, setIndex] = useState(0);
-  const [picked, setPicked] = useState<Setup | null>(null);
-  const [score, setScore] = useState(0);
-  const finished = index >= count;
-  const han = order[index] ?? "NENE";
-  const board = useMemo(() => {
-    const pieces = openingPieces("NENE", han);
-    for (const name of ["02", "03", "07", "08"]) delete pieces[name];
-    return startBoard({ pieces });
-  }, [han]);
-
-  const pick = (cho: Setup) => {
-    if (picked) return;
-    setPicked(cho);
-    if (matchup(han, cho).grade === "best") setScore((s) => s + 1);
-  };
-  const next = () => {
-    setPicked(null);
-    setIndex((i) => i + 1);
-  };
-  const restart = () => {
-    setOrder(drillOrder(count, Math.random));
-    setIndex(0);
-    setPicked(null);
-    setScore(0);
-    setRound((r) => r + 1);
-  };
-
-  if (finished)
-    return (
-      <div
-        className="flex flex-col items-center gap-2 rounded-xl bg-white/5 p-3 text-sm"
-        data-drill-done={score}
-      >
-        <p className="font-semibold">
-          {count}문제 가운데 {score}문제를 맞혔어요.
-        </p>
-        <button type="button" onClick={restart} className={primaryClass}>
-          다시 하기
-        </button>
-      </div>
-    );
-
-  const result = picked ? matchup(han, picked) : null;
-  const best = bestAgainst(han);
-  return (
-    <div
-      key={round}
-      className="flex flex-col items-center gap-2"
-      data-drill
-      data-han-setup={han}
-    >
-      <p className="font-semibold text-sm" data-drill-progress>
-        {index + 1}/{count} · 맞힘 {score}
-      </p>
-      <p className="text-sm">
-        한이 <b>{setupLabel(han)}</b>({FORMATION[han]})을 골랐어요. 나는?
-      </p>
-      <NumberedBoard board={board} />
-      <div className="grid w-full grid-cols-2 gap-1.5">
-        {SETUP_VALUES.map((cho) => {
-          const grade = picked ? matchup(han, cho).grade : null;
-          return (
-            <button
-              key={cho}
-              type="button"
-              disabled={picked !== null}
-              onClick={() => pick(cho)}
-              className={cn(
-                "rounded-xl border px-2 py-2 font-semibold text-sm",
-                !picked && "border-white/15 bg-white/5 hover:bg-white/10",
-                grade === "best" && "border-emerald-300 bg-emerald-500/25",
-                // 「둘 만해요」는 틀린 것이 아니라 노랑, 「피해요」만 빨강
-                picked === cho &&
-                  grade === "ok" &&
-                  "border-amber-300 bg-amber-500/25",
-                picked === cho &&
-                  grade === "avoid" &&
-                  "border-rose-300 bg-rose-500/25",
-                picked &&
-                  grade !== "best" &&
-                  picked !== cho &&
-                  "border-white/5 opacity-50",
-              )}
-            >
-              {setupLabel(cho)}
-              {grade && ` ${GRADE_MARKS[grade]}`}
-            </button>
-          );
-        })}
-      </div>
-      {result && picked && (
-        <div
-          className={cn(
-            "w-full rounded-xl p-2 text-sm leading-relaxed",
-            result.grade === "best" && "bg-emerald-500/15",
-            result.grade === "ok" && "bg-amber-500/15",
-            result.grade === "avoid" && "bg-rose-500/15",
-          )}
-          data-drill-result={result.grade}
-        >
-          <p className="font-semibold">
-            {result.grade === "best"
-              ? "좋아요!"
-              : `${GRADE_NAMES[result.grade]}. 권하는 것은 ${best.map(setupLabel).join("·")}이에요.`}
-          </p>
-          <p className="opacity-85">{result.reason}</p>
-        </div>
-      )}
-      {picked && (
-        <button type="button" onClick={next} className={primaryClass}>
-          {index + 1 < count ? "다음 문제" : "결과 보기"}
-        </button>
-      )}
     </div>
   );
 }

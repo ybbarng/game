@@ -484,20 +484,41 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   await expect(page.getByText("단원 완료!")).toBeVisible();
 });
 
-/** 한 차림에 권하는 초 차림(matchups.ts와 같다) */
-const DRILL_ANSWER: Record<string, string> = {
-  NENE: "상마상마",
-  ENEN: "마상마상",
-  NEEN: "마상마상",
-  ENNE: "마상마상",
+/** 한 차림에 권하는 초 차림과 그 첫 수(matchups.ts·matchup-examples.ts와 같다) */
+const DRILL_ANSWER: Record<string, { label: string; first: string }> = {
+  NENE: { label: "상마상마", first: "71-72" },
+  ENEN: { label: "마상마상", first: "79-78" },
+  NEEN: { label: "마상마상", first: "79-78" },
+  ENNE: { label: "마상마상", first: "79-78" },
 };
 
-test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르기 10문제를 푼다", async ({
+async function playFirst(page: Page, text: string, touch: boolean) {
+  const [from = "", to = ""] = text.split("-");
+  await tapPoint(page, from, touch);
+  await expect(page.locator(`[data-target="${to}"]`)).toHaveCount(1);
+  await tapPoint(page, to, touch);
+}
+
+test("장기 배우기: 실제 차례대로 한 차림을 보고 내 차림·첫 수를 고르고, 짝 예시를 두고, 한으로도 겪는다", async ({
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "휴대폰 세로·PC만 본다");
+  const touch = info.project.name.startsWith("phone");
   await completeLessons(page, [...BEFORE_SETUPS, "setups", "first-moves"]);
   await openLesson(page, /상대 차림 보고 고르기/);
+  // 차례 그림: 한 차림 → 초 차림 → 초 첫 수가 차례로 놓이고, 글은 그 뒤에
+  await expect(page.locator("[data-order-done]")).toHaveCount(0);
+  await expect(page.locator("[data-order-done]")).toBeVisible();
+  await expect(page.locator("[data-order-caption]")).toContainText(
+    "초가 첫 수를 둬요",
+  );
+  await page.screenshot({
+    path: info.outputPath("janggi-order.png"),
+    fullPage: true,
+  });
+  await next(page);
+
+  // 16가지 짝 표: 칸을 누르면 까닭, 그 짝 예시를 판에서 직접 둔다(상마상마끼리 맞상은 좌우를 뒤집은 수순)
   await expect(page.locator("[data-grade]")).toHaveCount(16);
   await page
     .getByRole("button", { name: "한 상마상마, 초 상마상마: 피해요" })
@@ -507,26 +528,56 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
     path: info.outputPath("janggi-matchups.png"),
     fullPage: true,
   });
+  await page.locator("[data-pair-open]").click();
+  await expect(page.locator('[data-pair-example="matsang"]')).toBeVisible();
+  await playExample(page, touch, 4, { at: "46", result: "right" });
+  await expect(tally(page)).toContainText("점수가 같아 손해 없음");
+  await page.screenshot({
+    path: info.outputPath("janggi-pair-example.png"),
+    fullPage: true,
+  });
   await next(page);
   await next(page);
-  // 반복 문제: 한 차림을 읽고 권하는 차림을 고른다. 첫 문제는 일부러 틀린다.
+
+  // 반복 문제: 한이 먼저 차린 뒤 고르고, 초라 첫 수를 둔다. 첫 문제는 일부러 틀린다.
   const drill = page.locator("[data-drill]");
   for (let i = 0; i < 10; i++) {
     await expect(page.locator("[data-drill-progress]")).toContainText(
       `${i + 1}/10`,
     );
+    await expect(drill).toHaveAttribute("data-drill-stage", "pick");
     const han = (await drill.getAttribute("data-han-setup")) as string;
-    const answer = i === 0 ? "상마마상" : (DRILL_ANSWER[han] as string);
-    await drill.getByRole("button", { name: answer, exact: true }).click();
+    const answer = DRILL_ANSWER[han] as { label: string; first: string };
+    await drill
+      .getByRole("button", {
+        name: i === 0 ? "상마마상" : answer.label,
+        exact: true,
+      })
+      .click();
     await expect(page.locator("[data-drill-result]")).toHaveAttribute(
       "data-drill-result",
       i === 0 ? "avoid" : "best",
     );
-    if (i === 1)
+    await expect(drill).toHaveAttribute("data-drill-stage", "first");
+    // 첫 수: 첫 문제는 권하지 않는 수(가운데 졸)를 둬 본다
+    await playFirst(page, i === 0 ? "75-74" : answer.first, touch);
+    await expect(page.locator("[data-first-move]")).toHaveAttribute(
+      "data-first-move",
+      i === 0 ? "other" : "good",
+    );
+    if (i === 1) {
       await page.screenshot({
         path: info.outputPath("janggi-drill.png"),
         fullPage: true,
       });
+      await page.getByRole("button", { name: "이 짝 예시 두어 보기" }).click();
+      await expect(page.locator("[data-pair-example]")).toBeVisible();
+      await page.screenshot({
+        path: info.outputPath("janggi-drill-example.png"),
+        fullPage: true,
+      });
+      await page.getByRole("button", { name: "예시 닫기" }).click();
+    }
     await page
       .getByRole("button", { name: i < 9 ? "다음 문제" : "결과 보기" })
       .click();
@@ -535,6 +586,29 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
     "data-drill-done",
     "9",
   );
+  await next(page);
+
+  // 한으로 겪어 보기: 내가 먼저 고르면 초가 보고 골라 맞상을 피하고 첫 수를 둔다
+  const hanDrill = page.locator("[data-han-drill]");
+  const picks = ["마상마상", "상마상마", "마상상마", "상마마상"];
+  for (const [i, pick] of picks.entries()) {
+    await expect(hanDrill).toHaveAttribute("data-han-drill", "pick");
+    await hanDrill.getByRole("button", { name: pick, exact: true }).click();
+    await expect(hanDrill).toHaveAttribute("data-han-drill", "done");
+    await expect(page.locator("[data-han-drill-result]")).toHaveAttribute(
+      "data-han-drill-result",
+      "avoided",
+    );
+    if (i === 0)
+      await page.screenshot({
+        path: info.outputPath("janggi-han-drill.png"),
+        fullPage: true,
+      });
+    await page
+      .getByRole("button", { name: i < 3 ? "다음 판" : "결과 보기" })
+      .click();
+  }
+  await expect(page.locator("[data-han-drill-done]")).toBeVisible();
   await next(page);
   await page.getByRole("button", { name: "마상마상", exact: true }).click();
   await next(page);

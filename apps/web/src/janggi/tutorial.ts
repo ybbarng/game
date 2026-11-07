@@ -58,8 +58,12 @@ export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   pickSetup?: boolean;
   /** 한 차림 넷 × 초 차림 넷, 16가지 짝 표(matchups.ts). 칸을 누르면 그 짝의 판과 까닭 */
   matchups?: boolean;
-  /** 한 차림을 보고 초 차림을 고르는 반복 문제(문제 수) */
+  /** 한이 먼저 차리면 그것을 보고 초 차림을 고르고 첫 수를 두는 반복 문제(문제 수) */
   drill?: number;
+  /** 내가 한이라 먼저 차림을 고르고, 초(컴퓨터)가 보고 고르는 것을 겪어 보기(판 수) */
+  hanDrill?: number;
+  /** 실제 판의 차례(한 차림 → 초 차림 → 초 첫 수)를 그림으로 보이고 글을 붙인다 */
+  order?: boolean;
 };
 export type JanggiLesson = Lesson<JanggiView, GameEvent, JanggiScene, Action>;
 

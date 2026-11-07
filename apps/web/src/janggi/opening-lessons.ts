@@ -715,9 +715,14 @@ export const MATCHUPS_LESSON: JanggiLesson = {
   steps: [
     {
       kind: "explain",
+      title: "누가 먼저 고르고 먼저 두나요",
+      body: [],
+      scene: { ...START, order: true },
+    },
+    {
+      kind: "explain",
       title: "초는 보고 고를 수 있어요",
       body: [
-        "한이 먼저 차림을 고르고, 초는 그것을 본 뒤 골라요. 그래서 초는 상대 차림에 맞춰 고를 수 있어요.",
         "아래 표는 처음 배우는 사람 기준으로 16가지 짝을 매긴 거예요. **◎ 권해요 · ○ 둘 만해요 · △ 피해요.** 칸을 누르면 그 짝의 판과 까닭이 보여요.",
         "한 차림 이름은 한이 제 자리에서 읽은 이름이에요.",
       ],
@@ -736,9 +741,17 @@ export const MATCHUPS_LESSON: JanggiLesson = {
       kind: "explain",
       title: "반복 문제: 무엇을 고를까요",
       body: [
-        "한이 고른 차림을 보고 내(초) 차림을 골라 보세요. 판 위쪽이 한이 고른 차림이에요. 모두 10문제예요.",
+        "실제 판처럼 한이 먼저 차리면, 그것을 보고 내(초) 차림을 고르고 첫 수를 둬요. 판 위쪽이 한이에요. 모두 10문제예요.",
       ],
       scene: { ...START, drill: 10 },
+    },
+    {
+      kind: "explain",
+      title: "한으로 겪어 보기",
+      body: [
+        "이번에는 내가 한이에요. 내가 먼저 고르면 초(컴퓨터)가 그것을 보고 골라요. 판 아래쪽이 내 한이에요.",
+      ],
+      scene: { ...START, hanDrill: 4 },
     },
     {
       kind: "quiz",
