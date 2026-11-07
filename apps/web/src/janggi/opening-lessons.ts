@@ -10,6 +10,7 @@ import {
   type Setup,
 } from "@game/janggi-engine";
 
+import type { Guess } from "./example-play";
 import { OPENING_LINE_MOVES, OPENING_LINE_NOTES } from "./opening-line";
 import type { JanggiLesson, JanggiScene } from "./tutorial";
 import { choseSetup, firstMoveIs, move, standsWithin } from "./tutorial-checks";
@@ -110,7 +111,7 @@ export const POSITIONS = {
   },
 } satisfies Record<string, OpeningPosition>;
 
-/** 넘겨 보는 수순. 모두 처음 판에서 시작한다(차림은 `REPLAY_SETUPS`) */
+/** 직접 두는 예시 수순. 모두 처음 판에서 시작한다(차림은 `REPLAY_SETUPS`) */
 export const LINES = {
   /** 귀마 장점: 초 혼자 세 수(진마·귀마·면포) */
   gwimaFast: ["02-83", "07-86", "82-85"],
@@ -151,7 +152,7 @@ export const LINES = {
   hastyHorse: ["02-83", "41-42", "73-74", "18-37", "83-62", "32-62"],
 } as const;
 
-/** 넘겨 보기 수순마다 두 편 차림 */
+/** 예시 수순마다 두 편 차림 */
 export const REPLAY_SETUPS: Record<
   keyof typeof LINES,
   { cho: Setup; han: Setup }
@@ -172,6 +173,85 @@ export const REPLAY_SETUPS: Record<
   hastyHorse: { cho: "NENE", han: "NENE" },
 };
 
+/**
+ * 직접 두는 예시마다 먼저 맞혀 볼 순간과 정답 칸(docs/23 「직접 두고 맞혀 보기」).
+ * 정답은 `at`째 수가 가는 자리다. opening-lessons.test.ts가 엔진으로 그 순간의 판을 본다
+ */
+export const GUESSES = {
+  gwimaFast: {
+    at: 2,
+    ask: "포(82)가 진마를 넘어 설 면 자리는 어디일까요? 판에서 눌러 보세요.",
+    answer: "85",
+    why: "포는 기물 하나를 넘어야 움직여요. 진마(83)를 넘어 면(85)에 서면 면포예요.",
+  },
+  emptyFile: {
+    at: 7,
+    ask: "차가 빈 02로 왔어요. 한 포(32)가 무엇을 노릴까요? 판에서 눌러 보세요.",
+    answer: "02",
+    why: "포와 차 사이에 병(42) 하나만 있어, 포가 그 병을 넘어 차를 잡아요.",
+  },
+  wonangGuard: {
+    at: 5,
+    ask: "한 포(35)가 무엇을 노릴까요? 판에서 눌러 보세요.",
+    answer: "75",
+    why: "한 포가 병(45)을 넘어 75 졸에 닿아요. 그래도 75는 마 둘·상 둘이 지켜, 잡으면 되잡혀요.",
+  },
+  wonangSlow: {
+    at: 4,
+    ask: "가운데 졸을 비켰어요. 상(03)이 올라올 가운데 자리는 어디일까요? 판에서 눌러 보세요.",
+    answer: "75",
+    why: "상은 곧게 한 칸, 비스듬히 두 칸 가요. 03에서 75로 올라 두 마 사이를 받쳐요.",
+  },
+  yangFast: {
+    at: 1,
+    ask: "다른 마(07)가 한 번에 들어갈 궁성 귀는 어디일까요? 판에서 눌러 보세요.",
+    answer: "86",
+    why: "07 마는 곧게 한 칸, 비스듬히 한 칸 가서 오른쪽 귀(86)로 들어가요. 두 마가 궁 양쪽 귀를 지켜요.",
+  },
+  sameNameMeet: {
+    at: 1,
+    ask: "한 상(12)이 어디로 올라오면 내 상(76)과 서로 닿을까요? 판에서 눌러 보세요.",
+    answer: "44",
+    why: "44에 서면 두 상이 서로 잡을 수 있는 자리에 서요.",
+  },
+  matsang: {
+    at: 2,
+    ask: "두 상이 올라왔어요. 내 상(76)이 잡을 수 있는 한 기물은 무엇일까요? 판에서 눌러 보세요.",
+    answer: "44",
+    why: "76의 상은 44에 닿아요. 한 상(44)도 76에 닿아 서로 잡을 수 있어요.",
+  },
+  firstMove: {
+    at: 0,
+    ask: "오른쪽 차(09) 앞 졸(79)을 어디로 옮기면 찻길이 열릴까요? 판에서 눌러 보세요.",
+    answer: "78",
+    why: "옆(78)으로 비키면 차 앞 세로줄이 비어요. 앞(69)으로 가면 졸이 그대로 길을 막아요.",
+  },
+  cheongung: {
+    at: 6,
+    ask: "한 병이 옆으로 비켰어요. 한 포(35)가 노리는 내 기물은 무엇일까요? 판에서 눌러 보세요.",
+    answer: "85",
+    why: "포와 궁 사이에 졸(75) 하나만 남아 포가 그 졸을 넘어 궁에 닿아요. 장군이에요.",
+  },
+  greedyRook: {
+    at: 3,
+    ask: "차가 49 병을 잡았어요. 한은 무엇을 잡을까요? 판에서 눌러 보세요.",
+    answer: "49",
+    why: "49와 한 차(19) 사이가 비어 있어 한 차가 내 차를 잡아요.",
+  },
+  hastyHorse: {
+    at: 5,
+    ask: "진마가 62로 들어갔어요. 한은 무엇을 잡을까요? 판에서 눌러 보세요.",
+    answer: "62",
+    why: "한 포(32)가 병(42)을 넘어 62에 닿아요. 이 마를 받쳐 주는 내 기물이 없어요.",
+  },
+  yangCenter: {
+    at: 5,
+    ask: "한 포(35)가 무엇을 노릴까요? 판에서 눌러 보세요.",
+    answer: "75",
+    why: "한 포가 병(45)을 넘어 가운데 졸(75)에 닿아요. 두 마가 모두 귀로 가서 75를 지키는 기물이 없어요.",
+  },
+} satisfies Partial<Record<keyof typeof LINES, Guess>>;
+
 const START: JanggiScene = { pieces: openingPieces("NENE", "NENE") };
 
 const scene = (
@@ -179,17 +259,22 @@ const scene = (
   extra: Omit<JanggiScene, "pieces"> = {},
 ): JanggiScene => ({ pieces: positionPieces(position), ...extra });
 
-/** 처음 판에서 넘겨 보는 그림 */
+/** 처음 판에서 직접 두는 예시 */
 const replayScene = (
   line: keyof typeof LINES,
   notes: readonly string[],
   extra: Omit<JanggiScene, "pieces" | "replay" | "notes"> = {},
 ): JanggiScene => {
   const { cho, han } = REPLAY_SETUPS[line];
+  const guess: Guess | undefined = (
+    GUESSES as Partial<Record<keyof typeof LINES, Guess>>
+  )[line];
   return {
     pieces: openingPieces(cho, han),
+    setups: { cho, han },
     replay: LINES[line],
     notes,
+    ...(guess ? { guess } : {}),
     ...extra,
   };
 };
@@ -273,7 +358,8 @@ export const SETUPS_LESSON: JanggiLesson = {
       body: [
         "**마상마상(오른상차림)**과 **상마상마(왼상차림)**는 마 하나가 곧장 **궁성 귀**로 가요. 그래서 **귀마** 차림이라고 해요. 포 옆에 서는 다른 마는 **진마**예요.",
         "가장 많이 두는 차림이에요. 뒤에 두는 한으로 둬도 무리 없이 짤 수 있어요.",
-        "장점은 **빨리 갖춰지는 것**이에요. 「다음 수」를 누르면 세 수 만에 마 둘이 나오고, 포가 면(85)에 서는 **면포**까지 갖춰요.",
+        "장점은 **빨리 갖춰지는 것**이에요. 세 수 만에 마 둘이 나오고, 포가 면(85)에 서는 **면포**까지 갖춰요.",
+        "이제부터 예시는 내가 판에서 직접 둬요. 초록 고리가 둘 기물과 갈 자리예요. 한 수는 저절로 둬요.",
       ],
       scene: replayScene(
         "gwimaFast",
@@ -290,7 +376,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       title: "귀마의 약점: 비는 세로줄",
       body: [
         "귀마의 두 마(83·86)는 멀리 떨어져 서로 지켜 주지 못해요. 그리고 진마와 면포가 나가면 **2번 세로줄이 텅 비어요**.",
-        "처음 하는 사람은 그 빈 줄로 들어오는 한 기물에 진마나 면포, 차를 잃기 쉬워요. 「다음 수」로 차를 빈 줄로 옮긴 판을 보세요.",
+        "처음 하는 사람은 그 빈 줄로 들어오는 한 기물에 진마나 면포, 차를 잃기 쉬워요. 차를 빈 줄로 옮기면 어떻게 될까요?",
       ],
       scene: replayScene("emptyFile", [
         "귀마 쪽 찻길을 열어요.",
@@ -308,7 +394,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       title: "원앙마: 마상상마",
       body: [
         "**마상상마(안상차림)**는 상 둘이 안쪽(사 옆)에 있어요. 두 마를 가운데 쪽으로 꺼내 상과 서로 받쳐 주게 짜는 포진이 **원앙마**예요. 원앙은 늘 붙어 다니는 새예요.",
-        "장점은 **단단한 것**이에요. 두 마(83·87)와 두 상(03·07)이 모두 가운데 졸(75)을 지켜요. 「다음 수」로 한 면포가 그 졸을 잡으러 온 판을 보세요.",
+        "장점은 **단단한 것**이에요. 두 마(83·87)와 두 상(03·07)이 모두 가운데 졸(75)을 지켜요. 한 면포가 그 졸을 잡으러 오면 어떻게 될까요?",
       ],
       scene: replayScene("wonangGuard", [
         "진마를 올려요.",
@@ -324,7 +410,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       kind: "explain",
       title: "원앙마의 약점: 갖추는 데 수가 많이 들어요",
       body: [
-        "원앙마는 흔히 두 마와 면포에 더해, 가운데 졸을 비키고 가운데 상까지 올려 갖춰요. 「다음 수」로 세어 보면 다섯 수예요. 귀마는 세 수였어요.",
+        "원앙마는 흔히 두 마와 면포에 더해, 가운데 졸을 비키고 가운데 상까지 올려 갖춰요. 직접 둬서 세어 보면 다섯 수예요. 귀마는 세 수였어요.",
         "그동안 마가 공격하러 나가면 짝이 깨져요. 그래서 처음에는 **지키기를 먼저** 하고 나중에 공격해요.",
       ],
       scene: replayScene(
@@ -344,7 +430,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       title: "양귀마: 상마마상",
       body: [
         "**상마마상(바깥상차림)**은 상 둘이 바깥(차 옆)에 있어요. 두 마가 모두 궁성 귀로 가서 **양귀마**예요.",
-        "장점은 「다음 수」로 보듯 두 수 만에 **두 마가 궁 양쪽 귀를 지키는 것**이에요. 그 사이 바깥의 상과 차가 공격에 나서, 흔히 공격이 가장 세다고 해요.",
+        "장점은 두 수 만에 **두 마가 궁 양쪽 귀를 지키는 것**이에요. 그 사이 바깥의 상과 차가 공격에 나서, 흔히 공격이 가장 세다고 해요.",
       ],
       scene: replayScene(
         "yangFast",
@@ -359,7 +445,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       kind: "explain",
       title: "양귀마의 약점: 가운데 졸",
       body: [
-        "두 마가 모두 귀로 가면 **가운데 졸(75)을 지키는 마가 없어요**. 「다음 수」로 한 면포가 그 졸을 노리는 판을 보세요.",
+        "두 마가 모두 귀로 가면 **가운데 졸(75)을 지키는 마가 없어요**. 한 면포가 그 졸을 노리면 어떻게 될까요?",
         "이것을 막는 법을 알아야 해서 처음 하는 사람에게는 어려워요.",
       ],
       scene: replayScene("yangCenter", [
@@ -376,7 +462,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       title: "같은 이름끼리 상을 올려 보면",
       body: [
         "두 편 모두 **마상마상**을 고른 판이에요. 고리를 친 초 상(08)과 한 상(12)은 판을 가로질러 대각선 쪽에 있어요.",
-        "「다음 수」로 두 상을 하나씩 올려 보세요. 점은 초 상이 갈 수 있는 곳이에요.",
+        "두 상을 하나씩 올려 보세요. 다 두면 초 상이 갈 수 있는 곳에 점이 찍혀요.",
       ],
       scene: replayScene(
         "sameNameMeet",
@@ -408,7 +494,7 @@ export const SETUPS_LESSON: JanggiLesson = {
       title: "맞상은 왜 피할까요",
       body: [
         "첫 판처럼 귀마끼리 **같은 이름**을 골라 두 편 상이 대각선으로 마주 보는 것을 **맞상**이라고 해요.",
-        "「다음 수」로 마주 본 상을 잡고 되잡아 상끼리 바꾸는 판을 보세요.",
+        "마주 본 상을 잡고 되잡아 상끼리 바꾸는 판을 둬 보세요.",
         "맞상이 되면 상끼리 바꾸고 시작하기 쉬워 판이 늘어지고, 두 편 모두 귀마 쪽 찻길을 열고 시작해 먼저 두는 초의 이득이 줄어든다고 해요. 그래서 나중에 고르는 초는 흔히 둘째 판처럼 한과 **다른 이름**을 골라 맞상을 피해요.",
       ],
       scene: replayScene(
@@ -469,10 +555,12 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
         "첫 수로 가장 흔한 수는 **차 앞 졸을 옆으로 한 칸 쓸어** 찻길을 여는 수예요. 프로 해설에서도 이 수를 첫 수의 정석으로 꼽아요.",
         "어느 쪽일까요? 마상마상이면 **오른쪽(귀마 쪽)**이에요. 오른쪽 차(09)는 앞을 졸(79)이, 옆을 상(08)이 막아 갈 곳이 두 칸뿐이에요. 귀마(07)는 궁성 귀로 들어가니 이 차를 꺼낼 다른 길이 생기지 않아요.",
         "왼쪽 차(01)는 진마(02)가 나가면 그 자리로 옆걸음할 수 있어요. 다만 앞에서 본 것처럼, 02로 옮길 때는 한 포가 넘을 다리가 2번 세로줄에 있는지 봐야 해요. 그래서 막힌 오른쪽을 먼저 열어요.",
-        "「다음 수」로 79 졸을 78로 옮겨 보세요. 점이 오른쪽 차가 갈 수 있는 곳이에요.",
+        "79 졸을 옮겨 보세요. 다 두면 오른쪽 차가 갈 수 있는 곳에 점이 찍혀요.",
       ],
       scene: {
         ...START,
+        setups: { cho: "NENE", han: "NENE" },
+        guess: GUESSES.firstMove,
         show: "09",
         rings: ["79", "08"],
         replay: LINES.firstMove,
@@ -543,7 +631,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
       kind: "explain",
       title: "천궁은 왜 위험할까요",
       body: [
-        "궁이 궁성 맨 윗줄(84~86)로 올라가는 것을 **천궁**이라고 해요. 「다음 수」로 첫 수에 궁을 면(85)으로 올린 판을 보세요.",
+        "궁이 궁성 맨 윗줄(84~86)로 올라가는 것을 **천궁**이라고 해요. 첫 수에 궁을 면(85)으로 올린 판을 둬 보세요.",
         "궁이 면을 차지하면 그 자리에 면포를 놓을 수 없어요. 궁 앞 가운데 줄에 내 졸(75) 하나만 남아, 한 포가 그 졸을 넘어 바로 장군을 불러요. 궁을 95에 두고 면포를 놓았다면 졸과 면포 둘이 사이에 있어 장군이 아니에요.",
         "사(04·06)는 아랫줄에 남아 위로 올라간 궁 곁을 지키지 못해요. 그래서 천궁은 수비하기 어려운 모양으로 꼽혀요.",
       ],
@@ -560,7 +648,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
       kind: "explain",
       title: "피할 수: 차로 변병 욕심",
       body: [
-        "한의 가장 바깥 병을 **변병**이라고 해요. 앞에서 연 오른쪽 찻길로 차가 곧장 변병(49)을 잡으러 가면 어떻게 될까요? 「다음 수」를 눌러 한 수씩 보세요.",
+        "한의 가장 바깥 병을 **변병**이라고 해요. 앞에서 연 오른쪽 찻길로 차가 곧장 변병(49)을 잡으러 가면 어떻게 될까요?",
         "49 병 뒤 같은 줄에 **한 차(19)**가 있어요. 병(2점)을 얻고 차(13점)를 잃어 **11점 손해**예요. 판 아래에 주고받은 점수가 보여요.",
       ],
       scene: replayScene("greedyRook", [
@@ -574,7 +662,7 @@ export const FIRST_MOVES_LESSON: JanggiLesson = {
       kind: "explain",
       title: "피할 수: 미끼를 보고 마를 깊이",
       body: [
-        "졸을 비켜 진마 앞길을 연 뒤, 진마가 병(43)을 노리러 깊이(62) 들어가면 어떻게 될까요? 「다음 수」로 보세요.",
+        "졸을 비켜 진마 앞길을 연 뒤, 진마가 병(43)을 노리러 깊이(62) 들어가면 어떻게 될까요?",
         "62는 한 포(32)가 병(42)을 넘어 닿는 자리예요. 마(5점)를 잃고 얻은 것은 없어요. 마는 갈 자리를 누가 노리는지 보고, 다른 기물이 받쳐 줄 때 앞으로 보내요.",
       ],
       scene: replayScene("hastyHorse", [
@@ -674,19 +762,26 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
       title: "귀마 대 귀마, 처음 21수",
       body: [
         "두 편 모두 마상마상을 골라 맞상이 된 판의 처음 21수예요. 실제 대국을 옮긴 기보가 아니라, 앞에서 배운 원칙대로 짜고 수마다 엔진으로 손해가 없는지 확인한 예시예요.",
-        "「다음 수」를 누르면 수마다 까닭이 판 아래에 나와요. 잡은 기물은 점수로 셈해 보여요.",
+        "초 수는 초록 고리를 보고 내가 둬요. 수마다 까닭이 판 아래에 나오고, 잡은 기물은 점수로 셈해 보여요.",
       ],
       scene: {
         ...START,
+        setups: { cho: "NENE", han: "NENE" },
         replay: OPENING_LINE_MOVES,
         notes: OPENING_LINE_NOTES,
+        guess: {
+          at: 13,
+          ask: "1번 세로줄이 열렸어요. 한 차(31)가 무엇을 노릴까요? 판에서 눌러 보세요.",
+          answer: "91",
+          why: "두 차가 마주 봐요. 한이 먼저 잡아도 진마(83)가 되잡아 차끼리 바꿔요.",
+        },
       },
     },
     {
       kind: "explain",
       title: "직접 따라 두기",
       body: [
-        "이번에는 초 수를 직접 둬요. 한 수는 저절로 둬요. 막히면 「힌트」로 둘 기물을, 「수 보기」로 갈 자리를 볼 수 있어요.",
+        "이번에는 초록 고리 없이 초 수를 찾아 둬요. 막히면 「힌트」로 둘 기물을, 「수 보기」로 갈 자리를 볼 수 있어요.",
       ],
       scene: {
         ...START,

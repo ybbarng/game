@@ -21,6 +21,7 @@ import { JanggiGame } from "./JanggiGame";
 import {
   FollowScene,
   MatchupTable,
+  PlayScene,
   ReplayScene,
   SetupDrill,
 } from "./janggi-scenes";
@@ -46,6 +47,7 @@ function JanggiSceneView({ scenario }: { scenario: JanggiScene }) {
   if (scenario.matchups) return <MatchupTable key={key} />;
   if (scenario.drill) return <SetupDrill key={key} count={scenario.drill} />;
   if (scenario.follow) return <FollowScene key={key} scenario={scenario} />;
+  if (scenario.replay) return <PlayScene key={key} scenario={scenario} />;
   return <ReplayScene key={key} scenario={scenario} />;
 }
 

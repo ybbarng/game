@@ -1,7 +1,7 @@
 import { OPENING_LINE_MOVES } from "../src/janggi/opening-line";
 import { useTestSpeed } from "./fast";
 import { slowCpu, stopFrames, watchFrames } from "./frames";
-import { expect, type Page, ready, test } from "./test";
+import { expect, type Locator, type Page, ready, test } from "./test";
 
 /** 판 크기와 가장자리 여백(JanggiBoard의 PAD) */
 const PAD = 0.62;
@@ -16,8 +16,16 @@ function xyOfName(name: string): [number, number] {
   return [Number(name[1]) - 1, row === 0 ? 9 : row - 1];
 }
 
-async function tapPoint(page: Page, name: string, touch: boolean) {
-  const box = await board(page).boundingBox();
+async function tapPoint(
+  page: Page,
+  name: string,
+  touch: boolean,
+  root: Page | Locator = page,
+) {
+  const target = root.getByRole("img", { name: /장기판/ });
+  // 배우기 판은 글 아래에 있어 화면 밖일 수 있다
+  await target.scrollIntoViewIfNeeded();
+  const box = await target.boundingBox();
   if (!box) throw new Error("판이 안 보인다");
   const unit = box.width / VIEW_W;
   const [x, y] = xyOfName(name);
@@ -193,14 +201,46 @@ async function missionSucceeded(page: Page) {
   await next(page);
 }
 
-/** 넘겨 보기를 끝까지 넘기고 마지막 글을 확인한다 */
-async function replayToEnd(page: Page, moves: number) {
-  const step = page.getByRole("button", { name: "다음 수" });
-  for (let i = 0; i < moves; i++) await step.click();
-  await expect(page.locator("[data-replay-caption]")).toContainText(
-    `${moves}/${moves}수`,
-  );
-  await expect(step).toBeDisabled();
+/**
+ * 직접 두는 예시를 끝까지 둔다: 초 수는 초록 고리(둘 기물 → 갈 자리)를 눌러 두고, 한 수는 저절로 둘 때까지 기다린다.
+ * 맞혀 보기가 나오면 `guess` 자리를 누르고 결과(`right`·`wrong`)를 확인한다
+ */
+async function playExample(
+  page: Page,
+  touch: boolean,
+  moves: number,
+  guess?: { at: string; result: "right" | "wrong" },
+) {
+  const turn = page.locator("[data-play-turn]");
+  const caption = page.locator("[data-replay-caption]");
+  for (let n = 0; n < moves * 2 + 2; n++) {
+    await expect(turn).not.toHaveAttribute("data-play-turn", "h", {
+      timeout: 10_000,
+    });
+    const now = await turn.getAttribute("data-play-turn");
+    if (now === "done") break;
+    if (now === "guess") {
+      if (!guess) throw new Error("맞혀 볼 자리를 받지 않았다");
+      await expect(page.locator("[data-guess]")).toBeVisible();
+      await tapPoint(page, guess.at, touch);
+      await expect(page.locator("[data-guess-result]")).toHaveAttribute(
+        "data-guess-result",
+        guess.result,
+      );
+      continue;
+    }
+    const hints = page.locator("[data-hint]");
+    await expect(hints).toHaveCount(2);
+    const from = (await hints.nth(0).getAttribute("data-hint")) as string;
+    const to = (await hints.nth(1).getAttribute("data-hint")) as string;
+    const before = (await caption.textContent()) ?? "";
+    await tapPoint(page, from, touch);
+    await expect(page.locator(`[data-target="${to}"]`)).toHaveCount(1);
+    await tapPoint(page, to, touch);
+    await expect(caption).not.toHaveText(before);
+  }
+  await expect(turn).toHaveAttribute("data-play-turn", "done");
+  await expect(caption).toContainText(`${moves}/${moves}수`);
 }
 
 const tally = (page: Page) => page.locator("[data-replay-tally]");
@@ -232,6 +272,7 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   page,
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "휴대폰 세로·PC만 본다");
+  const touch = info.project.name.startsWith("phone");
   await completeLessons(page, BEFORE_SETUPS);
   await openLesson(page, /포진 고르기/);
   // 판 위 단추로 내 차림을 바꾸면 그림과 이름이 바뀐다.
@@ -251,35 +292,44 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
     await expect(page.locator(`[data-ring="${name}"]`)).toHaveCount(1);
   await next(page);
   await next(page); // 한의 차림은 거꾸로
-  // 귀마 장점: 초 혼자 세 수
-  await replayToEnd(page, 3);
+  // 귀마 장점: 초 혼자 세 수. 면포 자리를 일부러 틀리게 맞혀 본다(틀려도 정답을 보이고 이어 간다)
+  await playExample(page, touch, 3, { at: "84", result: "wrong" });
+  await expect(
+    page.locator('[data-pick="85"][data-pick-ok="true"]'),
+  ).toHaveCount(1);
   await expect(note(page)).toContainText("세 수 만에");
+  // 초 혼자 둔 그림은 실제 대국 판이 아니라 이어 두기가 없다
+  await expect(page.locator("[data-continue]")).toHaveCount(0);
   await next(page);
   // 귀마 약점: 빈 줄로 간 차를 잃는다
-  await replayToEnd(page, 8);
+  await playExample(page, touch, 8, { at: "02", result: "right" });
   await expect(tally(page)).toContainText("초 13점 손해");
   await next(page);
   // 원앙마 장점: 상이 되잡아 5점 이득
-  await replayToEnd(page, 7);
+  await playExample(page, touch, 7, { at: "75", result: "right" });
   await expect(tally(page)).toContainText("초 5점 이득");
   await page.screenshot({
     path: info.outputPath("janggi-setups-wonang.png"),
     fullPage: true,
   });
   await next(page);
-  await replayToEnd(page, 5); // 원앙마 약점: 다섯 수
+  await playExample(page, touch, 5, { at: "75", result: "right" }); // 원앙마 약점: 다섯 수
   await next(page);
-  await replayToEnd(page, 2); // 양귀마 장점
+  await playExample(page, touch, 2, { at: "86", result: "right" }); // 양귀마 장점
   await next(page);
-  // 양귀마 약점: 가운데 졸을 공짜로 잃는다
-  await replayToEnd(page, 6);
+  // 양귀마 약점: 맞혀 보기 전에는 잡힐 위험 고리가 답을 알려 주지 않는다
+  await playExample(page, touch, 6, { at: "75", result: "right" });
   await expect(tally(page)).toContainText("초 2점 손해");
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-yang-center.png"),
+    fullPage: true,
+  });
   await next(page);
   // 같은 이름: 두 상을 올리면 서로 닿는다
   await expect(
     page.getByRole("heading", { name: "같은 이름끼리 상을 올려 보면" }),
   ).toBeVisible();
-  await replayToEnd(page, 2);
+  await playExample(page, touch, 2, { at: "44", result: "right" });
   await expect(note(page)).toContainText("서로 잡을 수 있어요");
   await page.screenshot({
     path: info.outputPath("janggi-setups-same-name.png"),
@@ -290,7 +340,7 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   await expect(
     page.getByRole("heading", { name: "이름이 다르면" }),
   ).toBeVisible();
-  await replayToEnd(page, 2);
+  await playExample(page, touch, 2);
   await expect(note(page)).toContainText("서로 잡을 수 없어요");
   await page.screenshot({
     path: info.outputPath("janggi-setups-other-name.png"),
@@ -299,7 +349,7 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   await next(page);
   // 맞상
   await expect(page.getByRole("heading", { name: /맞상/ })).toBeVisible();
-  await replayToEnd(page, 4);
+  await playExample(page, touch, 4, { at: "44", result: "right" });
   await expect(tally(page)).toContainText("점수가 같아 손해 없음");
   await page.screenshot({
     path: info.outputPath("janggi-setups-matsang.png"),
@@ -328,7 +378,7 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   for (const name of ["79", "08"])
     await expect(page.locator(`[data-ring="${name}"]`)).toHaveCount(1);
   await expect(page.locator('[data-target="49"]')).toHaveCount(0);
-  await page.getByRole("button", { name: "다음 수" }).click();
+  await playExample(page, touch, 1, { at: "78", result: "right" });
   await expect(page.locator('[data-target="49"]')).toHaveCount(1);
   await page.screenshot({
     path: info.outputPath("janggi-first-move.png"),
@@ -367,7 +417,7 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   await next(page); // 초반 원칙 넷
   // 천궁: 여섯째 수에 장군
   await expect(page.getByRole("heading", { name: /천궁/ })).toBeVisible();
-  await replayToEnd(page, 6);
+  await playExample(page, touch, 6, { at: "85", result: "right" });
   await expect(page.locator('[data-check="85"]')).toHaveCount(1);
   await page.screenshot({
     path: info.outputPath("janggi-cheongung.png"),
@@ -376,7 +426,7 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   await next(page);
   // 변병 욕심: 같은 오른쪽 찻길, 11점 손해
   await expect(page.getByRole("heading", { name: /변병 욕심/ })).toBeVisible();
-  await replayToEnd(page, 4);
+  await playExample(page, touch, 4, { at: "49", result: "right" });
   await expect(page.locator("[data-replay-caption]")).toContainText(
     "한 차 19→49 · 초 차 잃음",
   );
@@ -385,9 +435,36 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
     path: info.outputPath("janggi-avoid-rook.png"),
     fullPage: true,
   });
+  // 여기서부터 컴퓨터와 이어 둔다. 연습 대국이라 하던 게임 저장을 건드리지 않는다
+  const saved = JSON.stringify({ version: 1, log: [], marker: "하던 게임" });
+  await page.evaluate((v) => localStorage.setItem("janggi-save", v), saved);
+  await page.locator("[data-continue]").click();
+  const game = page.locator("[data-continue-game]");
+  await expect(game.locator("[data-move-count]")).toHaveAttribute(
+    "data-move-count",
+    "4",
+  );
+  await page.screenshot({
+    path: info.outputPath("janggi-continue.png"),
+    fullPage: true,
+  });
+  await tapPoint(page, "71", touch, game);
+  await expect(game.locator('[data-target="72"]')).toHaveCount(1);
+  await tapPoint(page, "72", touch, game);
+  await expect(game.locator("[data-move-count]")).toHaveAttribute(
+    "data-move-count",
+    "6",
+    { timeout: 15_000 },
+  );
+  await game.getByRole("button", { name: "← 배우기" }).click();
+  await expect(game).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("janggi-save"))).toBe(
+    saved,
+  );
+  await expect(page.getByRole("heading", { name: /변병 욕심/ })).toBeVisible();
   await next(page);
   // 미끼를 보고 마를 깊이: 한 포가 병을 넘어 마를 잡는다
-  await replayToEnd(page, 6);
+  await playExample(page, touch, 6, { at: "62", result: "right" });
   await expect(page.locator("[data-replay-caption]")).toContainText(
     "한 포 32→62 · 초 마 잃음",
   );
@@ -476,19 +553,15 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
     "matchups",
   ]);
   await openLesson(page, /초반 21수/);
-  const step = page.getByRole("button", { name: "다음 수" });
-  for (let i = 0; i < 16; i++) await step.click();
-  await expect(note(page)).toContainText("10점 손해");
+  await playExample(page, touch, OPENING_LINE_MOVES.length, {
+    at: "91",
+    result: "right",
+  });
   await expect(tally(page)).toContainText("점수가 같아 손해 없음");
   await page.screenshot({
     path: info.outputPath("janggi-line-replay.png"),
     fullPage: true,
   });
-  for (let i = 16; i < OPENING_LINE_MOVES.length; i++) await step.click();
-  await expect(page.locator("[data-replay-caption]")).toContainText(
-    `${OPENING_LINE_MOVES.length}/${OPENING_LINE_MOVES.length}수`,
-  );
-  await expect(step).toBeDisabled();
   await next(page);
 
   // 따라 두기: 첫 수를 틀리면 판에 두지 않고 알린다.

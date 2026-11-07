@@ -5,10 +5,12 @@ import {
   type JanggiView,
   type Piece,
   pseudoTargets,
+  type Setup,
   STANDARD_RULES,
 } from "@game/janggi-engine";
 
 import type { Lesson, MissionStatus } from "@/tutorial/types";
+import type { Guess } from "./example-play";
 import {
   COORDS_LESSON,
   FIRST_MOVES_LESSON,
@@ -43,8 +45,15 @@ export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   notes?: readonly string[];
   /** `replay`를 둔 편: 초부터 번갈아(기본) 또는 초 혼자(차림을 갖추는 수 세기) */
   replayBy?: ReplayBy;
-  /** `replay`를 넘겨 보는 대신 초 수를 내가 판에서 직접 둔다(한 수는 저절로, 따라 두기) */
+  /**
+   * `replay`의 초 수를 둘 기물·갈 자리를 판에 보이지 않고 내가 찾아 둔다(따라 두기, 「힌트」·「수 보기」 단추).
+   * 없으면 둘 기물·갈 자리를 초록 고리로 보이고 내가 판에서 둔다(직접 두기). 한 수는 어느 쪽이든 저절로 둔다
+   */
   follow?: boolean;
+  /** 직접 두기 도중 결과가 드러나기 바로 앞에서 판의 한 자리를 누르게 묻는다 */
+  guess?: Guess;
+  /** `replay`를 둔 처음 판의 두 편 상차림(이어 두기 대국에 남긴다) */
+  setups?: { cho: Setup; han: Setup };
   /** 판 위에 상차림 단추를 두어 내(초) 상차림을 바꿔 본다. 한은 마상마상 */
   pickSetup?: boolean;
   /** 한 차림 넷 × 초 차림 넷, 16가지 짝 표(matchups.ts). 칸을 누르면 그 짝의 판과 까닭 */
