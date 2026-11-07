@@ -231,6 +231,24 @@ describe("포진 고르기", () => {
     expect(guards(end, "75")).toEqual([]);
   });
 
+  it("같은 이름이면 대각선 쪽 두 상(08·12)을 하나씩 올려 서로 닿고, 다른 이름이면 같은 식으로 올려도 닿지 않는다", () => {
+    expect(REPLAY_SETUPS.sameNameMeet).toEqual({ cho: "NENE", han: "NENE" });
+    expect(REPLAY_SETUPS.otherNameApart).toEqual({ cho: "ENEN", han: "NENE" });
+    const same = lineBoard("sameNameMeet", 0);
+    expect(same[pointAt("08")]).toBe("cE");
+    expect(same[pointAt("12")]).toBe("hE");
+    const met = lineBoard("sameNameMeet");
+    expect(reach(met, "76")).toContain("44");
+    expect(reach(met, "44")).toContain("76");
+
+    const other = lineBoard("otherNameApart", 0);
+    for (const name of ["02", "07"]) expect(other[pointAt(name)]).toBe("cE");
+    expect(other[pointAt("12")]).toBe("hE");
+    const apart = lineBoard("otherNameApart");
+    expect(reach(apart, "74")).not.toContain("44");
+    expect(reach(apart, "44")).not.toContain("74");
+  });
+
   it("맞상: 같은 이름 귀마 짝에서 마주 보던 상(08·12)을 하나씩 올리면 서로 잡을 수 있고, 잡고 되잡아 상끼리 바꾼다", () => {
     expect(REPLAY_SETUPS.matsang).toEqual({ cho: "NENE", han: "NENE" });
     const start = lineBoard("matsang", 0);

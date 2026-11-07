@@ -275,6 +275,28 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   await replayToEnd(page, 6);
   await expect(tally(page)).toContainText("초 2점 손해");
   await next(page);
+  // 같은 이름: 두 상을 올리면 서로 닿는다
+  await expect(
+    page.getByRole("heading", { name: "같은 이름끼리 상을 올려 보면" }),
+  ).toBeVisible();
+  await replayToEnd(page, 2);
+  await expect(note(page)).toContainText("서로 잡을 수 있어요");
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-same-name.png"),
+    fullPage: true,
+  });
+  await next(page);
+  // 다른 이름: 같은 식으로 올려도 닿지 않는다
+  await expect(
+    page.getByRole("heading", { name: "이름이 다르면" }),
+  ).toBeVisible();
+  await replayToEnd(page, 2);
+  await expect(note(page)).toContainText("서로 잡을 수 없어요");
+  await page.screenshot({
+    path: info.outputPath("janggi-setups-other-name.png"),
+    fullPage: true,
+  });
+  await next(page);
   // 맞상
   await expect(page.getByRole("heading", { name: /맞상/ })).toBeVisible();
   await replayToEnd(page, 4);
