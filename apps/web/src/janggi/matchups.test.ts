@@ -3,6 +3,7 @@ import {
   applyMove,
   type Board,
   type Cell,
+  legalMoves,
   pointAt,
   pointName,
   pseudoTargets,
@@ -29,9 +30,26 @@ function boardOf(cho: Setup, han: Setup): Board {
   return board;
 }
 
-/** 그 편 상이 선 세로줄 */
-const elephantColumns = (board: Board, piece: "cE" | "hE") =>
-  board.flatMap((c, at) => (c === piece ? [pointName(at)[1]] : [])).sort();
+/**
+ * 처음 판에서 초 상 하나, 한 상 하나를 한 번씩 움직여 두 상이 서로 잡을 수 있게 되는 수의 짝("08-76 / 12-44")
+ */
+function elephantsMeet(cho: Setup, han: Setup): string[] {
+  const start = boardOf(cho, han);
+  const moves = (board: Board, side: "c" | "h") =>
+    legalMoves(board, side).filter((m) => board[m.from] === `${side}E`);
+  const text = (m: { from: number; to: number }) =>
+    `${pointName(m.from)}-${pointName(m.to)}`;
+  return moves(start, "c").flatMap((c) => {
+    const after = applyMove(start, c);
+    return moves(after, "h").flatMap((h) => {
+      const end = applyMove(after, h);
+      return pseudoTargets(end, c.to).includes(h.to) &&
+        pseudoTargets(end, h.to).includes(c.to)
+        ? [`${text(c)} / ${text(h)}`]
+        : [];
+    });
+  });
+}
 
 /** 이 자리를 지키는 그 편 마 */
 function horseGuards(board: Board, name: string, horse: "cN" | "hN") {
@@ -56,17 +74,17 @@ describe("16가지 짝", () => {
     }
   });
 
-  it("맞상은 두 편 상이 같은 세로줄에 서는 귀마 짝이고 피한다, 엇상은 권한다", () => {
+  it("맞상은 같은 이름의 귀마 짝이고 두 상이 대각선으로 마주 봐 한 번씩 올리면 서로 잡을 수 있다, 피한다", () => {
     for (const han of ALL)
       for (const cho of ALL) {
         if (FORMATION[cho] !== "귀마" || FORMATION[han] !== "귀마") continue;
-        const board = boardOf(cho, han);
-        const same =
-          elephantColumns(board, "cE").join() ===
-          elephantColumns(board, "hE").join();
-        expect(isMatsang(cho, han), `${cho}/${han}`).toBe(same);
-        expect(matchup(han, cho).grade).toBe(same ? "avoid" : "best");
+        const meet = elephantsMeet(cho, han).length > 0;
+        expect(isMatsang(cho, han), `${cho}/${han}`).toBe(cho === han);
+        expect(meet, `${cho}/${han}`).toBe(cho === han);
+        expect(matchup(han, cho).grade).toBe(meet ? "avoid" : "best");
       }
+    expect(elephantsMeet("NENE", "NENE")).toEqual(["08-76 / 12-44"]);
+    expect(elephantsMeet("ENEN", "ENEN")).toEqual(["02-74 / 18-46"]);
   });
 
   it("한이 원앙마·양귀마면 귀마 둘을 모두 권한다(두 차림은 좌우가 같다)", () => {

@@ -386,8 +386,8 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
 
 /** 한 차림에 권하는 초 차림(matchups.ts와 같다) */
 const DRILL_ANSWER: Record<string, string> = {
-  NENE: "마상마상",
-  ENEN: "상마상마",
+  NENE: "상마상마",
+  ENEN: "마상마상",
   NEEN: "마상마상",
   ENNE: "마상마상",
 };
@@ -400,7 +400,7 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
   await openLesson(page, /상대 차림 보고 고르기/);
   await expect(page.locator("[data-grade]")).toHaveCount(16);
   await page
-    .getByRole("button", { name: "한 상마상마, 초 마상마상: 피해요" })
+    .getByRole("button", { name: "한 상마상마, 초 상마상마: 피해요" })
     .click();
   await expect(page.locator("[data-matchup-reason]")).toContainText("맞상");
   await page.screenshot({
