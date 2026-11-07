@@ -107,8 +107,11 @@ interface JanggiStore {
     seed?: number;
   }): void;
   resume(saved: JanggiSaved): void;
-  /** 튜토리얼 미션: 이 장면에서 입문 컴퓨터와 둔다(나는 0번 자리) */
-  startPractice(initialState: JanggiState): void;
+  /**
+   * 연습 대국: 이 장면에서 컴퓨터(기본 입문)와 둔다(나는 0번 자리). 튜토리얼 미션과 배우기 예시 이어 두기가 쓴다.
+   * 저장(이어하기)·내 기록·복기 기록을 남기지 않아 하던 게임을 덮어쓰지 않는다
+   */
+  startPractice(initialState: JanggiState, level?: number): void;
   /** 온라인 방의 대국을 붙인다(저장·무르기 없음) */
   attachOnline(
     host: JanggiHost,
@@ -307,17 +310,17 @@ export const useJanggi = create<JanggiStore>((set, get) => {
       );
     },
 
-    startPractice(initialState) {
+    startPractice(initialState, level = 0) {
       const local: JanggiLocalMatch = new LocalMatch({
         kit: janggiKit,
         rules: initialState.rules,
         seed: Math.floor(Math.random() * 2 ** 31),
         humanSeat: 0,
-        bot: janggiBotFor(0),
+        bot: janggiBotFor(level),
         pace: browserPace,
         initialState,
       });
-      attach(local, { local, level: 0, seatNames: null, stats: null });
+      attach(local, { local, level, seatNames: null, stats: null });
     },
 
     attachOnline(host, seatNames, stats, archive) {

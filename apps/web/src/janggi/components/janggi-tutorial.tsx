@@ -19,11 +19,12 @@ import {
 } from "../tutorial";
 import { JanggiGame } from "./JanggiGame";
 import {
-  FollowScene,
+  HanDrill,
   MatchupTable,
-  ReplayScene,
+  OrderScene,
   SetupDrill,
-} from "./janggi-scenes";
+} from "./janggi-matchup-scenes";
+import { FollowScene, PlayScene, ReplayScene } from "./janggi-scenes";
 
 const sceneState = (scene: JanggiScene) =>
   createJanggiScenario({ rules: JANGGI_TUTORIAL_RULES, ...scene });
@@ -45,7 +46,11 @@ function JanggiSceneView({ scenario }: { scenario: JanggiScene }) {
   const key = keyOf(scenario);
   if (scenario.matchups) return <MatchupTable key={key} />;
   if (scenario.drill) return <SetupDrill key={key} count={scenario.drill} />;
+  if (scenario.hanDrill)
+    return <HanDrill key={key} count={scenario.hanDrill} />;
+  if (scenario.order) return <OrderScene key={key} />;
   if (scenario.follow) return <FollowScene key={key} scenario={scenario} />;
+  if (scenario.replay) return <PlayScene key={key} scenario={scenario} />;
   return <ReplayScene key={key} scenario={scenario} />;
 }
 

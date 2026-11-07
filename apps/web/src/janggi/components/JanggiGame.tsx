@@ -11,7 +11,6 @@ import {
   materialScore,
   other,
   type ScoreReason,
-  SETUPS,
   SIDE_NAMES,
   seatToMove,
   sideOfSeat,
@@ -39,6 +38,7 @@ import { planText } from "../plan-text";
 import { BIKJANG_INFO, JANGGI_LEVELS, useJanggiSettings } from "../settings";
 import { useJanggi } from "../store";
 import { JanggiBoard, pieceLabel, SIDE_COLOR } from "./JanggiBoard";
+import { SetupButtons } from "./SetupButtons";
 
 const REASON_LABEL: Record<ScoreReason, string> = {
   bikjang: "빅장",
@@ -145,8 +145,11 @@ const CAPTURE_ORDER: readonly Kind[] = ["R", "C", "N", "E", "A", "P", "K"];
 export function JanggiGame({
   onExit,
   mission,
+  exitLabel = "← 장기",
 }: {
   onExit: () => void;
+  /** 머리줄 나가기 단추 글(배우기에서 연 연습 대국은 「← 배우기」) */
+  exitLabel?: string;
   /** 튜토리얼 미션이면 목표 띠를 얹는다 */
   mission?: MissionProps;
 }) {
@@ -298,7 +301,7 @@ export function JanggiGame({
             onClick={onExit}
             className="text-white/70 hover:text-white"
           >
-            ← 장기
+            {exitLabel}
           </button>
           <span className="ml-auto text-right text-white/60">
             나는 {SIDE_NAMES[mySide]} · {bikjangLabel} · {view.roundNumber}판째
@@ -371,19 +374,10 @@ export function JanggiGame({
       actions={
         <div className="flex w-full flex-wrap justify-center gap-2">
           {mySetup && (
-            <fieldset className="grid w-full grid-cols-2 gap-2">
-              <legend className="sr-only">상차림</legend>
-              {SETUPS.map((s) => (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => submit({ type: "setup", setup: s.value })}
-                  className="rounded-xl border border-amber-300/60 bg-amber-300/10 px-3 py-2 font-semibold hover:bg-amber-300/20"
-                >
-                  {s.label}
-                </button>
-              ))}
-            </fieldset>
+            <SetupButtons
+              legend="상차림"
+              onPick={(setup) => submit({ type: "setup", setup })}
+            />
           )}
           {view.phase === "play" && (
             <>
