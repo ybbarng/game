@@ -278,6 +278,7 @@ test("장기 배우기: 포진 고르기 단원에서 차림마다 장점·약�
   // 맞상
   await expect(page.getByRole("heading", { name: /맞상/ })).toBeVisible();
   await replayToEnd(page, 4);
+  await expect(tally(page)).toContainText("점수가 같아 손해 없음");
   await page.screenshot({
     path: info.outputPath("janggi-setups-matsang.png"),
     fullPage: true,
@@ -436,7 +437,7 @@ test("장기 배우기: 16가지 짝 표를 보고, 상대 차림 보고 고르�
     "9",
   );
   await next(page);
-  await page.getByRole("button", { name: "상마상마", exact: true }).click();
+  await page.getByRole("button", { name: "마상마상", exact: true }).click();
   await next(page);
   await expect(page.getByText("단원 완료!")).toBeVisible();
 });
