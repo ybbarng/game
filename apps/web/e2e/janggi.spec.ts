@@ -209,7 +209,7 @@ async function playExample(
   page: Page,
   touch: boolean,
   moves: number,
-  guess?: { at: string; result: "right" | "wrong" },
+  guess?: { at: string; result: "right" | "wrong"; shot?: string },
 ) {
   const turn = page.locator("[data-play-turn]");
   const caption = page.locator("[data-replay-caption]");
@@ -227,6 +227,15 @@ async function playExample(
         "data-guess-result",
         guess.result,
       );
+      if (guess.shot) {
+        // 정답이 드러나는 한의 수를 둔 판까지는 결과와 정답 고리가 남는다.
+        await expect(turn).toHaveAttribute("data-play-turn", "c", {
+          timeout: 10_000,
+        });
+        await expect(page.locator("[data-guess-result]")).toBeVisible();
+        await expect(page.locator(`[data-pick="${guess.at}"]`)).toHaveCount(1);
+        await page.screenshot({ path: guess.shot, fullPage: true });
+      }
       continue;
     }
     const hints = page.locator("[data-hint]");
@@ -631,8 +640,12 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
   await playExample(page, touch, OPENING_LINE_MOVES.length, {
     at: "99",
     result: "right",
+    shot: info.outputPath("janggi-line-guess.png"),
   });
   await expect(tally(page)).toContainText("점수가 같아 손해 없음");
+  // 14수째 앞에서 맞혀 본 결과와 정답 고리는 끝 판에 남지 않는다(그 뒤 99의 기물이 움직였다).
+  await expect(page.locator("[data-guess-result]")).toHaveCount(0);
+  await expect(page.locator("[data-pick]")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("janggi-line-replay.png"),
     fullPage: true,

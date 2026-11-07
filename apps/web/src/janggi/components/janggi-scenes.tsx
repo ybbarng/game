@@ -21,7 +21,12 @@ import { paced } from "@/game/settings";
 import { cn } from "@/lib/cn";
 
 import { piecesInDanger } from "../danger";
-import { canContinue, exampleState, guessRight } from "../example-play";
+import {
+  canContinue,
+  exampleState,
+  guessRight,
+  guessShown,
+} from "../example-play";
 import { setupLabel } from "../matchups";
 import { openingPieces, SETUP_NAMES } from "../opening-lessons";
 import {
@@ -352,9 +357,11 @@ export function PlayScene({ scenario }: { scenario: JanggiScene }) {
 
   // 맞혀 보기 전에는 잡힐 위험 고리가 답을 알려 주지 않게 감춘다.
   const hideDanger = !!guess && (frame < guess.at || asking);
+  // 맞혀 본 결과와 정답 고리는 정답이 드러나는 다음 수까지만 보인다.
+  const result = !!guess && picked !== null && guessShown(guess, frame);
   const right = guess && picked !== null ? guessRight(guess, picked) : null;
   const picks =
-    guess && picked !== null
+    guess && picked !== null && result
       ? [
           { at: picked, ok: right === true },
           ...(right ? [] : [{ at: pointAt(guess.answer), ok: true }]),
@@ -403,7 +410,7 @@ export function PlayScene({ scenario }: { scenario: JanggiScene }) {
           {guess.ask}
         </p>
       )}
-      {guess && picked !== null && (
+      {guess && result && (
         <div
           className={cn(
             "w-full rounded-xl p-2 text-sm leading-relaxed",

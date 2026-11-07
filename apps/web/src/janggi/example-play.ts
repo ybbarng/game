@@ -36,6 +36,14 @@ export function guessRight(guess: Guess, at: number): boolean {
 }
 
 /**
+ * 맞혀 본 결과(맞았는지·까닭 한 줄·정답 고리)를 보일 판인지. 묻는 판(`at`)과 정답이 드러나는 다음 수를 둔 판까지만 보이고,
+ * 그 뒤 수를 두면 감춘다(판이 바뀌어 고리·글이 지금 판과 맞지 않게 된다). 수순 끝에서 물은 것은 끝 판에 남는다
+ */
+export function guessShown(guess: Guess, frame: number): boolean {
+  return frame >= guess.at && frame <= guess.at + 1;
+}
+
+/**
  * 예시 끝 판에서 이어 둘 대국 상태. 나는 0번 자리 초, 한은 컴퓨터. 초부터 번갈아 둔 예시만 이어 둔다
  * (초 혼자 둔 예시는 한이 그동안 가만히 있던 그림이라 실제 대국 판이 아니다, `canContinue`)
  */
