@@ -506,8 +506,9 @@ test("장기 배우기: 실제 차례대로 한 차림을 보고 내 차림·첫
   const touch = info.project.name.startsWith("phone");
   await completeLessons(page, [...BEFORE_SETUPS, "setups", "first-moves"]);
   await openLesson(page, /상대 차림 보고 고르기/);
-  // 차례 그림: 한 차림 → 초 차림 → 초 첫 수가 차례로 놓이고, 글은 그 뒤에
-  await expect(page.locator("[data-order-done]")).toHaveCount(0);
+  // 차례 그림: 한 차림 → 초 차림 → 초 첫 수가 차례로 놓이고, 글은 그 뒤에.
+  // 그림이 넘어가는 속도는 기기마다 달라 중간 모습은 보지 않고, 다 놓인 상태를 조건으로 기다린다
+  await expect(page.locator("[data-order]")).toHaveAttribute("data-order", "3");
   await expect(page.locator("[data-order-done]")).toBeVisible();
   await expect(page.locator("[data-order-caption]")).toContainText(
     "초가 첫 수를 둬요",

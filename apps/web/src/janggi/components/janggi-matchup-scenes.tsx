@@ -341,21 +341,25 @@ export function SetupDrill({ count }: { count: number }) {
   const [round, setRound] = useState(0);
   const [order, setOrder] = useState(() => drillOrder(count, Math.random));
   const [index, setIndex] = useState(0);
-  const [hanShown, setHanShown] = useState(false);
+  /**
+   * 한 차림이 놓인 문제(`round`·`index`). 문제마다 열쇠로 견줘, 다음 문제로 넘어가는 렌더에
+   * 앞 문제의 「놓였음」이 남지 않게 한다(남으면 단추가 잠깐 켜졌다 꺼져 누른 것이 무시된다)
+   */
+  const [shownFor, setShownFor] = useState<string | null>(null);
   const [picked, setPicked] = useState<Setup | null>(null);
   const [first, setFirst] = useState<Move | null>(null);
   const [example, setExample] = useState(false);
   const [score, setScore] = useState(0);
   const finished = index >= count;
   const han = order[index] ?? "NENE";
+  const problem = `${round}-${index}`;
+  const hanShown = shownFor === problem;
 
   // 한이 먼저 차린다: 마·상 자리가 빈 판에 잠깐 뒤 한 차림이 놓인다.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 문제가 바뀔 때마다 다시 건다
   useEffect(() => {
-    setHanShown(false);
-    const id = setTimeout(() => setHanShown(true), paced(SETUP_DELAY_MS));
+    const id = setTimeout(() => setShownFor(problem), paced(SETUP_DELAY_MS));
     return () => clearTimeout(id);
-  }, [index, round]);
+  }, [problem]);
 
   const pick = (cho: Setup) => {
     if (picked || !hanShown) return;
