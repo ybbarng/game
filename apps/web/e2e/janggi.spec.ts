@@ -445,8 +445,8 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
     "4",
   );
   await page.screenshot({
+    // 덮는 판은 화면 크기만큼이라 보이는 화면만 찍는다
     path: info.outputPath("janggi-continue.png"),
-    fullPage: true,
   });
   await tapPoint(page, "71", touch, game);
   await expect(game.locator('[data-target="72"]')).toHaveCount(1);
