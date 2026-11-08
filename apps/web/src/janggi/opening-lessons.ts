@@ -103,11 +103,11 @@ export const POSITIONS = {
   },
   /** 오른쪽 찻길을 연 뒤, 한도 병을 쓸었다. 차로 49 병을 잡으면? */
   greedyRook: { cho: "NENE", han: "NENE", moves: ["79-78", "41-42"] },
-  /** 초반 21수의 16수째 뒤: 한 상(44)이 내 졸(72)을 노린다 */
+  /** 초반 21수의 18수째 뒤: 한 상(44)이 내 졸(72)을 노린다 */
   elephantEyesPawn: {
     cho: "ENEN",
     han: "NENE",
-    moves: OPENING_LINE_MOVES.slice(0, 16),
+    moves: OPENING_LINE_MOVES.slice(0, 18),
   },
 } satisfies Record<string, OpeningPosition>;
 
@@ -788,10 +788,10 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
         replay: OPENING_LINE_MOVES,
         notes: OPENING_LINE_NOTES,
         guess: {
-          at: 13,
-          ask: "9번 세로줄이 열렸어요. 한 차(59)가 무엇을 노릴까요? 판에서 눌러 보세요.",
-          answer: "99",
-          why: "두 차가 마주 봐요. 한이 먼저 잡아도 진마(87)가 되잡아 차끼리 바꿔요.",
+          at: 11,
+          ask: "졸에 쫓긴 한 차(59)가 비키면서 내 차를 노릴 수 있는 자리는 어디일까요? 판에서 눌러 보세요.",
+          answer: "51",
+          why: "5번 가로줄을 따라 51로 가면 비어 있는 1번 세로줄로 내 차(01)를 노려요. 51은 한 병(41)이 지켜요.",
         },
       },
     },
@@ -812,7 +812,7 @@ export const OPENING_LINE_LESSON: JanggiLesson = {
     {
       kind: "quiz",
       question:
-        "16수째, 한 상(44)이 내 졸(72)을 노려요. 아직 걱정하지 않아도 되는 까닭은?",
+        "18수째, 한 상(44)이 내 졸(72)을 노려요. 아직 걱정하지 않아도 되는 까닭은?",
       scene: scene(POSITIONS.elephantEyesPawn, { rings: ["44", "72"] }),
       options: [
         "72는 졸과 마가 지켜, 잡으면 한이 1점 손해다",

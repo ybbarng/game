@@ -638,12 +638,12 @@ test("장기 배우기: 초반 21수를 까닭과 함께 넘겨 보고, 초 수�
   ]);
   await openLesson(page, /초반 21수/);
   await playExample(page, touch, OPENING_LINE_MOVES.length, {
-    at: "99",
+    at: "51",
     result: "right",
     shot: info.outputPath("janggi-line-guess.png"),
   });
   await expect(tally(page)).toContainText("점수가 같아 손해 없음");
-  // 14수째 앞에서 맞혀 본 결과와 정답 고리는 끝 판에 남지 않는다(그 뒤 99의 기물이 움직였다).
+  // 12수째 앞에서 맞혀 본 결과와 정답 고리는 끝 판에 남지 않는다(그 뒤 51에서 차끼리 바꿨다).
   await expect(page.locator("[data-guess-result]")).toHaveCount(0);
   await expect(page.locator("[data-pick]")).toHaveCount(0);
   await page.screenshot({
