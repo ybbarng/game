@@ -373,8 +373,8 @@ describe("초반 21수", () => {
   it("맞상이 아닌 짝이고, 두 편 귀윗상은 서로 닿지 않는다", () => {
     expect(isMatsang("ENEN", "NENE")).toBe(false);
     expect(bestAgainst("NENE")).toContain("ENEN");
-    expect(reach(at(16), "44")).not.toContain("74");
-    expect(reach(at(16), "74")).not.toContain("44");
+    expect(reach(at(18), "44")).not.toContain("74");
+    expect(reach(at(18), "74")).not.toContain("44");
   });
 
   it("엔진 확인: 맞바꿈 말고는 수마다 고수의 두 수 앞 읽기로 가장 좋은 수와 0.3점 안쪽", () => {
@@ -395,6 +395,26 @@ describe("초반 21수", () => {
         `${i + 1}수 ${text}`,
       ).toBeLessThanOrEqual(30);
     });
+  });
+
+  it("21수: 세 수 앞까지 읽어도 59-56이 가장 좋고, 가운데 줄 장군(75-76·85-65)은 차를 살리는 더 좋은 수가 아니다", () => {
+    // 20수 35-39로 한 면포가 빠져 가운데 줄이 열렸다. 장군을 불러도 한이 피하면 차는 그대로 노려진다.
+    // 다른 한 수 뒤를 네 수 앞까지 읽은 결과는 docs/23 「초반 21수」에 적었다(시험으로 두기엔 무겁다).
+    const before = at(20);
+    const value3 = (text: string) =>
+      -negamax(applyMove(before, parse(text)), "h", 2, -Infinity, Infinity, {
+        bikjangScore: true,
+      });
+    const best = Math.max(
+      ...legalMoves(before, "c").map((m) =>
+        value3(`${pointName(m.from)}-${pointName(m.to)}`),
+      ),
+    );
+    expect(value3("59-56")).toBe(best);
+    for (const check of ["75-76", "85-65"]) {
+      expect(inCheck(afterMove(20, check), "h"), check).toBe(true);
+      expect(value3(check), check).toBeLessThan(best);
+    }
   });
 
   it("잡지 않는 수 뒤에는 둔 편에 공짜로 잡힐 기물이 없다", () => {
@@ -422,43 +442,108 @@ describe("초반 21수", () => {
     expect(reach(at(2), "19")).toContain("59");
   });
 
-  it("까닭의 말: 노림과 지킴", () => {
+  /** 그 자리 기물 편의 지키는 기물(자리 이름, 차례대로) */
+  const guardsOf = (board: Board, name: string) => {
+    const side = board[pointAt(name)]?.[0] as Side;
+    return guards(board, name, side).sort();
+  };
+  const afterMove = (ply: number, text: string) =>
+    applyMove(at(ply), parse(text));
+
+  it("글이 「X는 A가 지켜요」라고 하면 X를 지키는 기물을 빠짐없이 말한다", () => {
+    // 「79는 내 차(09)가 지켜」처럼 하나만 말하면 그 기물만 지키는 것으로 읽힌다(2026-11-08 사용자 지적:
+    // 진마(87)도 79를 지켰다). 그래서 글에서 그 말을 찾아 엔진이 센 지키는 기물과 견준다.
+    // 「X는」 뒤부터 「~가 지켜」까지. 사이에 다른 「Y는」이 끼면 그 말은 Y의 것이다.
+    const SAYS_GUARDS =
+      /(\d{2})(?: [가-힣]+)?[은는] ((?:(?!\d{2}(?: [가-힣]+)?[은는] |지키는 기물)[^.])*?)[이가] (?:함께 )?지켜/g;
+    const SAYS_NONE = /(\d{2})[은는] 지키는 기물이 없/g;
+    let checked = 0;
+    OPENING_LINE.forEach(({ note }, i) => {
+      const board = at(i + 1);
+      for (const [, name = "", who = ""] of note.matchAll(SAYS_GUARDS)) {
+        const named = (who.match(/\d{2}/g) ?? []).sort();
+        expect(named, `${i + 1}수 「${name}는 ${who}」`).toEqual(
+          guardsOf(board, name),
+        );
+        checked++;
+      }
+      for (const [, name = ""] of note.matchAll(SAYS_NONE)) {
+        expect(guardsOf(board, name), `${i + 1}수 ${name}`).toEqual([]);
+        checked++;
+      }
+    });
+    // 10·11·12(둘)·16·17·18·19·20수가 이런 말을 한다(글을 고쳐 정규식이 놓치면 여기서 알린다).
+    expect(checked).toBe(9);
+  });
+
+  it("까닭의 말: 노림과 지킴, 다른 수와 견준 말", () => {
+    // 1수: 왼쪽 차는 졸과 상에 막혔다가 1번 세로줄로 나가고, 72·73 졸은 서로만 지킨다. 3수: 진마가 나가면 09가 08로 옆걸음한다.
+    expect(reach(at(0), "01")).toEqual(["91", "81"]);
+    expect(guardsOf(at(1), "72")).toEqual(["73"]);
+    expect(guardsOf(at(1), "73")).toEqual(["72"]);
+    expect(reach(at(2), "09")).not.toContain("08");
+    expect(reach(at(3), "09")).toContain("08");
     // 3수: 진마가 가운데 졸을 지킨다. 9수: 상이 비운 02로 차가 옆걸음한다.
-    expect(horseGuards(at(3), "75")).toEqual(["87"]);
+    expect(guards(at(3), "75")).toContain("87");
     expect(reach(at(9), "01")).toEqual(expect.arrayContaining(["02", "03"]));
-    // 10수: 한 차가 79를 노리고 내 차(09)가 지킨다. 11수: 99 차가 계속 지킨다.
+    // 10수: 한 차가 79를 노린다.
     expect(reach(at(10), "59")).toContain("79");
-    expect(guards(at(10), "79")).toContain("09");
-    expect(guards(at(11), "79")).toContain("99");
-    // 12수: 21 차가 41 병을 지킨다.
-    expect(guards(at(12), "41", "h")).toContain("21");
-    // 13수: 차끼리 마주 보고, 내 차는 진마(87)가 지킨다. 78 졸은 77 졸이 지킨다.
-    expect(reach(at(13), "59")).toContain("99");
-    expect(guards(at(13), "99")).toContain("87");
-    expect(guards(at(13), "78")).toContain("77");
-    // 16수: 한 상이 72를 노리지만 73 졸과 귀마(84)가 지킨다. 진마가 떠나 75를 지키는 마가 없다.
-    expect(reach(at(16), "44")).toContain("72");
-    expect(guards(at(16), "72")).toEqual(expect.arrayContaining(["73", "84"]));
-    expect(horseGuards(at(16), "75")).toEqual([]);
-    // 17수: 마가 돌아와 75를 지킨다.
-    expect(horseGuards(at(17), "75")).toEqual(["87"]);
-    // 18수: 49 상이 77을 노리고 78 졸이 지킨다.
-    expect(reach(at(18), "49")).toContain("77");
-    expect(guards(at(18), "77")).toContain("78");
-    // 19수: 79 상이 47을 노리고 48 병이 지킨다. 20수: 58 병이 그 길을 막는다.
+    // 11수: 졸이 한 차를 노리고, 졸을 옆(78)으로 비켰다면 9번 세로줄이 열려 09가 공짜로 잡혔다.
+    expect(reach(at(11), "69")).toContain("59");
+    expect(threatenedPieces(at(11), "h")).toEqual([
+      { at: pointAt("59"), attackers: [pointAt("69")] },
+    ]);
+    expect(threatenedPieces(afterMove(10, "79-78"), "c")).toEqual([
+      { at: pointAt("09"), attackers: [pointAt("59")] },
+    ]);
+    // 12수: 51의 한 차가 1번 세로줄로 01을 노린다(맞혀 보기 정답). 13수: 01은 02·03으로도 비킬 수 있었다.
+    expect(threatenedPieces(at(12), "c")).toEqual([
+      { at: pointAt("01"), attackers: [pointAt("51")] },
+    ]);
+    for (const away of ["01-02", "01-03"])
+      expect(threatenedPieces(afterMove(12, away), "c"), away).toEqual([]);
+    expect(reach(at(13), "41")).toContain("51");
+    // 15수: 옆으로 비키면 09가 19까지 닿고, 앞(59)으로 올리면 그대로 막힌다.
+    expect(reach(at(14), "09")).not.toContain("19");
+    expect(reach(at(15), "09")).toContain("19");
+    expect(reach(afterMove(14, "69-59"), "09")).not.toContain("59");
+    expect(reach(afterMove(14, "69-59"), "09")).not.toContain("19");
+    // 16수: 그대로 두면 09가 19로 들어가 지키는 기물이 없는 17 상을 노린다. 49 상이 그 길을 막는다.
+    expect(guardsOf(at(15), "17")).toEqual([]);
+    expect(reach(afterMove(15, "09-19"), "19")).toContain("17");
+    expect(reach(at(16), "09")).not.toContain("19");
+    // 17수: 59의 차는 9번 세로줄에서 갈 수 있는 다른 자리보다 멀리 닿고, 51 병을 노린다.
+    const reachFrom = (to: string) =>
+      reach(afterMove(16, `09-${to}`), to).length;
+    for (const to of ["08", "99", "89", "79", "69"])
+      expect(reachFrom("59"), to).toBeGreaterThan(reachFrom(to));
+    expect(reach(at(17), "59")).toContain("51");
+    // 18수: 한 상이 72를 노린다. 19수: 79 상이 47을 노린다.
+    expect(reach(at(18), "44")).toContain("72");
     expect(reach(at(19), "79")).toContain("47");
-    expect(guards(at(19), "47", "h")).toContain("48");
-    expect(reach(at(20), "79")).not.toContain("47");
-    // 21수: 03 차가 73 졸을 뒤에서 지킨다.
-    expect(guards(at(21), "73")).toContain("03");
+    // 20수: 39 포가 한 상(49)을 넘어 59 차를 노린다.
+    expect(threatenedPieces(at(20), "c")).toEqual([
+      { at: pointAt("59"), attackers: [pointAt("39")] },
+    ]);
+    expect(at(20)[pointAt("49")]).toBe("hE");
+    // 21수: 차가 갈 곳 가운데 잡히지 않는 곳은 56·54뿐이고, 56은 79 상이 지킨다.
+    const safe = reach(at(20), "59").filter(
+      (to) => threatenedPieces(afterMove(20, `59-${to}`), "c").length === 0,
+    );
+    expect(safe.sort()).toEqual(["54", "56"]);
+    expect(guardsOf(at(21), "56")).toEqual(["79"]);
+    expect(guardsOf(afterMove(20, "59-54"), "54")).toEqual([]);
   });
 
   it("주고받은 점수: 차를 하나씩 바꿔 손해 없음", () => {
+    expect(tallyText(tallyOf(boards, OPENING_LINE_MOVES, 14))).toBe(
+      "잡은 기물: 초 차(13) · 한 차(13) → 점수가 같아 손해 없음",
+    );
     expect(tallyText(tallyOf(boards, OPENING_LINE_MOVES, 21))).toBe(
       "잡은 기물: 초 차(13) · 한 차(13) → 점수가 같아 손해 없음",
     );
     expect(POSITIONS.elephantEyesPawn.moves).toEqual(
-      OPENING_LINE_MOVES.slice(0, 16),
+      OPENING_LINE_MOVES.slice(0, 18),
     );
   });
 });
