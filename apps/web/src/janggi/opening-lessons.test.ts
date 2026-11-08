@@ -397,6 +397,26 @@ describe("초반 21수", () => {
     });
   });
 
+  it("21수: 세 수 앞까지 읽어도 59-56이 가장 좋고, 가운데 줄 장군(75-76·85-65)은 차를 살리는 더 좋은 수가 아니다", () => {
+    // 20수 35-39로 한 면포가 빠져 가운데 줄이 열렸다. 장군을 불러도 한이 피하면 차는 그대로 노려진다.
+    // 다른 한 수 뒤를 네 수 앞까지 읽은 결과는 docs/23 「초반 21수」에 적었다(시험으로 두기엔 무겁다).
+    const before = at(20);
+    const value3 = (text: string) =>
+      -negamax(applyMove(before, parse(text)), "h", 2, -Infinity, Infinity, {
+        bikjangScore: true,
+      });
+    const best = Math.max(
+      ...legalMoves(before, "c").map((m) =>
+        value3(`${pointName(m.from)}-${pointName(m.to)}`),
+      ),
+    );
+    expect(value3("59-56")).toBe(best);
+    for (const check of ["75-76", "85-65"]) {
+      expect(inCheck(afterMove(20, check), "h"), check).toBe(true);
+      expect(value3(check), check).toBeLessThan(best);
+    }
+  });
+
   it("잡지 않는 수 뒤에는 둔 편에 공짜로 잡힐 기물이 없다", () => {
     OPENING_LINE_MOVES.forEach((text, i) => {
       const before = at(i);
