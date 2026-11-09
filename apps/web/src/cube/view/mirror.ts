@@ -316,6 +316,27 @@ export function mirrorAlpha(yaw: number, pitch: number): number {
   return Math.max(0, 1 - (dev - 3) / 40) ** 1.5;
 }
 
+/** 판을 켜고 끌 때 짙어지거나 옅어지는 시간(ms). 카메라도 같은 동안 판까지 담는 자리와 큐브만 담는 자리를 오간다 */
+export const MIRROR_FADE_MS = 300;
+
+/** 켜고 끄는 페이드: `start`(ms)에 `from`에서 시작해 `to`로 간다 */
+export interface MirrorFade {
+  from: number;
+  to: number;
+  start: number;
+}
+
+/** 페이드의 `now`(ms) 때 값(0~1). `ms`가 0이면(움직임 줄이기) 바로 `to` */
+export function mirrorFadeAt(
+  f: MirrorFade,
+  now: number,
+  ms = MIRROR_FADE_MS,
+): number {
+  if (ms <= 0) return f.to;
+  const p = Math.min(1, Math.max(0, (now - f.start) / ms));
+  return f.from + (f.to - f.from) * p;
+}
+
 export interface Frame {
   /** 카메라가 바라보는 점 */
   target: Vec3;

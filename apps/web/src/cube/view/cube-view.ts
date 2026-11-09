@@ -18,9 +18,11 @@ import {
   type Frame,
   MIRROR_CELL,
   MIRROR_PAD,
+  type MirrorFade,
   type MirrorPanel,
   mirrorAlpha,
   mirrorCells,
+  mirrorFadeAt,
   mirrorFrame,
   mirrorHitAt,
   mirrorPanels,
@@ -402,7 +404,14 @@ export class CubeView {
   /** 거울 판(뒷면 보기). 켤 때 만든다 */
   private mirror: Mirror | null = null;
   private mirrorOn = false;
-  /** 지금 판이 보이는 정도(0~1, 보는 각에 따라) */
+  /** 켜고 끄는 페이드 값(0~1). 판이 보이는 정도는 이것 × 보는 각에 따른 값 */
+  private mirrorFade = 0;
+  /**
+   * 진행 중인 페이드(시각은 `performance.now()`). 장을 그리지 않아도(창이 가려져도) 시각으로 값을 정해, 끝난 뒤
+   * 묻는 `hitRects`가 다 바뀐 자리를 본다
+   */
+  private fading: MirrorFade | null = null;
+  /** 지금 판이 보이는 정도(0~1, 페이드 × 보는 각) */
   private mirrorShown = 0;
   private width = 1;
   private height = 1;
@@ -689,9 +698,19 @@ export class CubeView {
     this.invalidate();
   }
 
-  setMirror(on: boolean): void {
+  /**
+   * 판을 켜고 끈다. `fade`면 짧게 짙어지거나 옅어지고 카메라도 그동안 자리를 옮긴다(움직임 줄이기면 바로).
+   * 아니면 바로 바뀐다
+   */
+  setMirror(on: boolean, fade = false): void {
     this.mirrorOn = on;
     if (on && !this.mirror) this.mirror = this.buildMirror();
+    const to = on ? 1 : 0;
+    const from = this.fadeNow();
+    if (!fade || this.reduced?.matches || from === to) {
+      this.mirrorFade = to;
+      this.fading = null;
+    } else this.fading = { from, to, start: performance.now() };
     this.writeMirror();
     this.invalidate();
   }
@@ -1227,7 +1246,22 @@ export class CubeView {
       else busy = true;
     }
     this.placeCamera();
+    // 판을 켜고 끄는 중(값은 placeCamera가 시각으로 정한다)
+    if (this.fading) busy = true;
     return busy;
+  }
+
+  /** 지금 페이드 값. 진행 중이면 시각으로 정하고, 끝났으면 페이드를 지운다 */
+  private fadeNow(): number {
+    const f = this.fading;
+    if (!f) return this.mirrorFade;
+    this.mirrorFade = mirrorFadeAt(
+      f,
+      performance.now(),
+      this.reduced?.matches ? 0 : undefined,
+    );
+    if (this.mirrorFade === f.to) this.fading = null;
+    return this.mirrorFade;
   }
 
   private placeCamera(): void {
@@ -1246,7 +1280,8 @@ export class CubeView {
     let dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.02;
     const target = new THREE.Vector3();
     // 거울 판: 기준 각에 가까울수록 판이 짙고, 카메라는 판까지 담는 자리로 물러난다
-    const shown = this.mirrorReady() ? mirrorAlpha(yawDeg, pitchDeg) : 0;
+    const fade = this.fadeNow();
+    const shown = this.mirrorReady() ? mirrorAlpha(yawDeg, pitchDeg) * fade : 0;
     if (shown !== this.mirrorShown) {
       this.mirrorShown = shown;
       this.applyMirrorAlpha();
@@ -1272,7 +1307,7 @@ export class CubeView {
 
   /** 판을 보일 수 있는지: 켰고, 조각을 벌리거나 숨긴 놓임(분해·조각 보기)이 아니다 */
   private mirrorReady(): boolean {
-    if (!this.mirrorOn || !this.mirror) return false;
+    if (this.mirrorFade <= 0 || !this.mirror) return false;
     return this.cubies.every(
       (c) =>
         c.body &&

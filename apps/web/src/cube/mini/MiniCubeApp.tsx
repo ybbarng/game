@@ -42,10 +42,12 @@ import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
 import { type CubeView, loadCubeView } from "../view";
+import { MIRROR_FADE_MS } from "../view/mirror";
 import { heroSolveInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { type FromApp, hasApp, onAppMessage, toApp } from "./app-bridge";
 import { FocusClock } from "./focus-clock";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
+import { miniMirrorShown } from "./mirror";
 import {
   hasReplay,
   idleReplaySteps,
@@ -73,6 +75,7 @@ import {
  *
  * - 화면에는 큐브와 거울만 둔다. 시간·단추·글은 보이지 않는다(사용자 「시간도 화면에 떠 있으면 어지러우니까」).
  *   섞기·거울·크기·기록은 앱 메뉴(브라우저에서는 구석의 작은 메뉴)에서 고른다.
+ * - 거울은 직접 맞추는 동안만 보인다(포커스가 있고 섞인 큐브, `mirror.ts`). 떠 있을 때의 움직임과 맞춘 큐브에는 없다.
  * - 키는 사이트의 키 배치(두 손·표기·사용자) 그대로다. 섞기는 배치의 「다시 섞기」 키(두 배치 모두 Enter), 되돌리기는
  *   ⌫. 배치의 Esc(맞춘 상태로)는 쓰지 않는다: 앱에서 Esc는 이전 앱으로 돌아가는 키이고, 실수로 진행을 버리지 않게.
  * - 시간은 포커스가 있는 동안만 잰다(`FocusClock`). 섞은 뒤 첫 면 돌리기부터 맞출 때까지, 살펴보기는 없다.
@@ -462,42 +465,6 @@ function MiniCube() {
     });
   }, [settings.colors, settings.stickerless, settings.moveMs, settings.hidden]);
 
-  useEffect(() => {
-    if (ready) viewRef.current?.setMirror(mirror);
-  }, [mirror, ready]);
-
-  // 앱의 투명 창: 큐브·거울이 차지하는 곳을 알린다(그 밖의 누르기는 아래 앱으로 지나간다)
-  const hitKey = size ? `${mirror}-${size.w}x${size.h}` : "";
-  useEffect(() => {
-    // 거울·창 크기가 바뀌면(hitKey) 다시 알린다
-    if (!app || !ready || !hitKey) return;
-    const send = () => {
-      const v = viewRef.current;
-      if (!v) return;
-      toApp({
-        type: "hit",
-        rects: v
-          .hitRects()
-          .map((r) => [r.x, r.y, r.w, r.h].map((x) => Math.round(x))),
-      });
-    };
-    // 거울이 나타나는 동안 카메라가 물러나므로 다 그린 뒤에도 한 번 더
-    const timers = [0, 450].map((ms) => window.setTimeout(send, ms));
-    // 끌어 둘러본 보기는 손을 떼면 0.7초에 걸쳐 돌아온다
-    const canvas = canvasRef.current;
-    let later = 0;
-    const onUp = () => {
-      window.clearTimeout(later);
-      later = window.setTimeout(send, 800);
-    };
-    canvas?.addEventListener("pointerup", onUp);
-    return () => {
-      for (const t of timers) window.clearTimeout(t);
-      window.clearTimeout(later);
-      canvas?.removeEventListener("pointerup", onUp);
-    };
-  }, [app, ready, hitKey]);
-
   /**
    * 떠 있을 때 다시 보는 판의 그림 상태(3D가 없을 때 SVG 그림이 엔진 상태 대신 보인다). 3D 장면은 수를 직접 넣는다
    */
@@ -640,6 +607,55 @@ function MiniCube() {
   // 크기가 바뀌면 움직이던 것을 멈추고 간격을 처음부터
   // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
   useEffect(() => idle.reset(), [n, idle]);
+
+  // 거울은 직접 맞추는 동안만(`mirror.ts`). 나타나고 사라질 때 짧게 페이드하고(움직임 줄이기면 바로), 숨으면
+  // 카메라가 큐브만 담는 자리로 옮겨 큐브가 창 가운데에 크게 보인다(창 크기는 그대로)
+  const solved = isSolved(session.n, session.state);
+  const mirrorShown = miniMirrorShown({
+    wanted: mirrorWanted,
+    fits: mirrorFits,
+    focused,
+    solved,
+    idle: idle.showing !== null,
+  });
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirrorShown, true);
+  }, [mirrorShown, ready]);
+
+  // 앱의 투명 창: 큐브·(보이는) 거울이 차지하는 곳을 알린다(그 밖의 누르기는 아래 앱으로 지나간다).
+  // 거울이 숨으면 거울 사각형이 빠져 그 자리의 누르기도 아래 앱으로 간다
+  const hitKey = size ? `${mirrorShown}-${size.w}x${size.h}` : "";
+  useEffect(() => {
+    // 거울이 보이고 숨거나 창 크기가 바뀌면(hitKey) 다시 알린다
+    if (!app || !ready || !hitKey) return;
+    const send = () => {
+      const v = viewRef.current;
+      if (!v) return;
+      toApp({
+        type: "hit",
+        rects: v
+          .hitRects()
+          .map((r) => [r.x, r.y, r.w, r.h].map((x) => Math.round(x))),
+      });
+    };
+    // 거울이 페이드하는 동안(MIRROR_FADE_MS) 카메라가 옮겨 가므로, 다 옮긴 뒤에도 한 번 더
+    const timers = [0, MIRROR_FADE_MS + 150].map((ms) =>
+      window.setTimeout(send, ms),
+    );
+    // 끌어 둘러본 보기는 손을 떼면 0.7초에 걸쳐 돌아온다
+    const canvas = canvasRef.current;
+    let later = 0;
+    const onUp = () => {
+      window.clearTimeout(later);
+      later = window.setTimeout(send, 800);
+    };
+    canvas?.addEventListener("pointerup", onUp);
+    return () => {
+      for (const t of timers) window.clearTimeout(t);
+      window.clearTimeout(later);
+      canvas?.removeEventListener("pointerup", onUp);
+    };
+  }, [app, ready, hitKey]);
 
   // 섞기
   const preparing = useRef(false);
@@ -854,7 +870,6 @@ function MiniCube() {
     if (!focused && app) setRecordsOpen(false);
   }, [focused, app]);
 
-  const solved = isSolved(session.n, session.state);
   return (
     <main
       data-mini
@@ -865,6 +880,7 @@ function MiniCube() {
       data-mini-moves={session.moveCount}
       data-mini-focused={focused ? "" : undefined}
       data-mini-mirror={mirror ? "on" : mirrorWanted ? "folded" : "off"}
+      data-mini-mirror-shown={mirrorShown ? "" : undefined}
       data-mini-idle={idle.showing ?? ""}
       data-mini-idle-armed={idle.armed ? "" : undefined}
       data-mini-idle-no={
@@ -888,7 +904,7 @@ function MiniCube() {
               state={idleState ?? session.state}
               settings={settings}
               captions={false}
-              frontOnly={!mirror}
+              frontOnly={!mirrorShown}
               className="h-full w-full"
             />
           </div>

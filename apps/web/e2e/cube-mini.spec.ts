@@ -9,10 +9,29 @@ import { expect, fastForwardUntil, type Page, test } from "./test";
 
 const SCRAMBLE_TIMEOUT = 60_000;
 
-test.beforeEach(async ({ page }) => {
-  await no3d(page);
+test.beforeEach(async ({ page }, info) => {
+  // 태그 @3d인 시험만 3D 장면을 띄운다(거울 페이드·누르는 자리는 장면에서만 보인다)
+  if (!info.tags.includes("@3d")) await no3d(page);
   await useNotationKeys(page);
 });
+
+/** GPU 없는 CI는 첫 장면에 5초 넘게 걸린다(멈춘 시험을 잡는 상한, cube-3d.spec과 같다) */
+const SCENE = { timeout: 30_000 };
+
+/** 앱 다리 흉내: 웹이 앱에 보내는 것을 `__toApp`에 모은다 */
+async function fakeApp(page: Page) {
+  await page.addInitScript(() => {
+    const sent: unknown[] = [];
+    (window as unknown as { __toApp: unknown[] }).__toApp = sent;
+    (
+      window as unknown as {
+        webkit: { messageHandlers: Record<string, unknown> };
+      }
+    ).webkit = {
+      messageHandlers: { cubie: { postMessage: (m: unknown) => sent.push(m) } },
+    };
+  });
+}
 
 /** 앱이 보내는 것 흉내 */
 async function fromApp(page: Page, detail: Record<string, unknown>) {
@@ -132,6 +151,80 @@ test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거�
   await page.setViewportSize({ width: 70, height: 80 });
   await expect(main).toHaveAttribute("data-mini-mirror", "on");
 });
+
+/**
+ * 거울은 직접 맞출 때만(docs/47 15-14): 맞춘 큐브에는 없고, 섞으면 나타나고, 포커스를 잃거나 다 맞추면 숨는다.
+ * 숨으면 앱에 알리는 누르는 자리(`hit`)도 큐브 하나로 줄어 그 밖의 누르기가 아래 앱으로 간다. 시계는 진짜 시간
+ * (페이드는 그림 프레임이 돌아야 끝난다)이고 기다림은 모두 조건으로 한다. 떠 있을 때 움직임은 1분 뒤라 끼지 않는다
+ */
+test(
+  "거울은 직접 맞출 때만 보이고, 숨으면 누르는 자리도 줄어든다",
+  {
+    tag: "@3d",
+  },
+  async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 320, height: 380 });
+    await fakeApp(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    const canvas = page.locator("[data-cube-canvas]");
+    await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    /** 마지막으로 알린 누르는 자리 수(큐브 하나 + 보이는 거울 판 셋) */
+    const hitCount = () =>
+      page.evaluate(() => {
+        const sent = (
+          window as unknown as {
+            __toApp: { type: string; rects?: unknown[] }[];
+          }
+        ).__toApp;
+        return sent.filter((m) => m.type === "hit").at(-1)?.rects?.length ?? 0;
+      });
+    const hidden = async () => {
+      await expect(main).not.toHaveAttribute("data-mini-mirror-shown");
+      await expect(canvas).not.toHaveAttribute("data-cube-mirror", "on");
+      await expect.poll(hitCount).toBe(1);
+    };
+    const shown = async () => {
+      await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
+      await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+      await expect.poll(hitCount).toBe(4);
+    };
+
+    // 맞춘 큐브: 포커스가 있어도 없다(메뉴 설정은 켜짐 그대로)
+    await fromApp(page, { type: "focus", focused: true });
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
+    await hidden();
+    await shot(page, "mini-mirror-solved", info.project.name);
+
+    // 섞으면 나타난다
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await shown();
+    await shot(page, "mini-mirror-solving", info.project.name);
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+
+    // 다른 앱으로 가면(떠 있음) 숨고, 돌아오면 다시
+    await fromApp(page, { type: "focus", focused: false });
+    await hidden();
+    await shot(page, "mini-mirror-floating", info.project.name);
+    await fromApp(page, { type: "focus", focused: true });
+    await shown();
+
+    // 다 맞추면 사라진다
+    for (const k of keys) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    await hidden();
+  },
+);
 
 test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스를 받으면 바로 멈춘다", async ({
   page,
@@ -354,17 +447,7 @@ test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표�
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.addInitScript(() => {
-    const sent: unknown[] = [];
-    (window as unknown as { __toApp: unknown[] }).__toApp = sent;
-    (
-      window as unknown as {
-        webkit: { messageHandlers: Record<string, unknown> };
-      }
-    ).webkit = {
-      messageHandlers: { cubie: { postMessage: (m: unknown) => sent.push(m) } },
-    };
-  });
+  await fakeApp(page);
   await installClock(page);
   await page.goto("/cube/mini");
   const main = page.locator("main[data-mini]");
