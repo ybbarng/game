@@ -2,7 +2,7 @@
 # Cubie.app을 이 폴더 안에 만든다(apps/cubie/Cubie.app). 시스템 자리(/Applications 등)에는 설치하지 않는다.
 #   ./build.sh               이 맥 칩용만 빌드(빠르다, 확인용)
 #   ./build.sh --universal   arm64 + x86_64 둘 다(배포본. release.sh가 쓴다)
-# 판은 VERSION 파일 한 곳에 두고 여기서 Info.plist 두 칸(CFBundleShortVersionString·CFBundleVersion)에 넣는다.
+# 판은 VERSION 파일 한 곳에 두고(새 판은 release.sh가 올린다) 여기서 Info.plist 두 칸(CFBundleShortVersionString·CFBundleVersion)에 넣는다.
 # 서명: 환경 변수 CUBIE_SIGN_IDENTITY에 키체인의 코드 서명 신원 이름이 있으면 그것으로, 없으면 ad-hoc.
 #   Sparkle 2는 업데이트 파일의 EdDSA 서명이 맞으면 ad-hoc 앱 사이 업데이트도 받아들인다(docs/47 15-12).
 set -eu
@@ -16,7 +16,8 @@ for a in "$@"; do
   esac
 done
 
-VERSION="$(tr -d ' \n' < VERSION)"
+# CUBIE_VERSION은 release.sh --dry-run이 VERSION 파일을 고치지 않고 판을 줄 때 쓴다
+VERSION="${CUBIE_VERSION:-$(tr -d ' \n' < VERSION)}"
 if [ "$UNIVERSAL" = 1 ]; then ARCHS="arm64 x86_64"; else ARCHS="$(uname -m)"; fi
 
 # 칩마다 따로 빌드해 lipo로 합친다(`--arch` 두 개를 한 번에 주면 xcbuild로 빌드해 결과 자리가 달라진다)

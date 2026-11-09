@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 맥 앱 Cubie의 업데이트 목록(Sparkle 2, docs/47 15-12). apps/cubie/scripts/release.sh가 새 판을 맨 위에 더한다. 손으로 고치지 않는다. -->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Cubie</title>
+    <link>https://game.byb.kr/cubie/appcast.xml</link>
+    <language>ko</language>
+    <!-- release.sh: 새 판 -->
+    <item>
+      <title>Cubie 0.1.0</title>
+      <pubDate>Mon, 09 Nov 2026 06:07:15 +0000</pubDate>
+      <sparkle:version>0.1.0</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;첫 배포본. 메뉴에서 업데이트를 확인할 수 있다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.0/Cubie.zip" length="1186388" type="application/octet-stream" sparkle:edSignature="x8VO9+aSmBGiu+6Q1aAuFfnIHMSJzpPGOP5YPP1cd4wMyKgGXHx3OWSOJQHn81uLhUN3gv6a+GvR1Sq0jBmnBA=="/>
+    </item>
+  </channel>
+</rss>
