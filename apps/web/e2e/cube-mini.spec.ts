@@ -156,6 +156,7 @@ test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스�
 
   await fromApp(page, { type: "focus", focused: false });
   await expect(main).toHaveAttribute("data-mini-idle", "");
+  await expect(main).toHaveAttribute("data-mini-idle-armed", "");
   await page.clock.fastForward(60_000);
   await expect(main).toHaveAttribute("data-mini-idle", "jiggle");
   // 조금 섞기가 끝나면(4수 + 되돌리기 4수, 한 수 0.5초) 쉬고, 진행은 그대로
@@ -220,6 +221,8 @@ test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판�
 
   // 떠 있을 때: 1분 뒤 홈 시연 대신 내 판(1번)
   await fromApp(page, { type: "focus", focused: false });
+  // 쉬기 타이머가 걸린 뒤에 시계를 감는다(포커스 알림 뒤 effect가 돌기 전에 감으면 타이머가 감은 뒤에 걸린다)
+  await expect(main).toHaveAttribute("data-mini-idle-armed", "");
   await page.clock.fastForward(60_000);
   await expect(main).toHaveAttribute("data-mini-idle", "replay");
   await expect(main).toHaveAttribute("data-mini-idle-no", "1");

@@ -634,7 +634,9 @@ function MiniCube() {
   useEffect(() => {
     clock.setFocused(focused);
     idle.setActive(!focused && visible && !reduced && prefs !== null);
-  }, [clock, idle, focused, visible, reduced, prefs]);
+    // 다음 움직임이 걸렸는지 화면에 알린다(`data-mini-idle-armed`, 화면 시험이 시계를 감기 전에 기다린다)
+    bump();
+  }, [clock, idle, focused, visible, reduced, prefs, bump]);
   // 크기가 바뀌면 움직이던 것을 멈추고 간격을 처음부터
   // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
   useEffect(() => idle.reset(), [n, idle]);
@@ -806,6 +808,8 @@ function MiniCube() {
         const c = live.current;
         switch (msg.type) {
           case "focus":
+            // 시계는 알림을 받은 그 순간에 멈추고 이어 간다(effect를 기다리면 그 사이 시간이 섞인다)
+            clock.setFocused(msg.focused);
             setFocused(msg.focused);
             break;
           case "visible":
@@ -831,7 +835,7 @@ function MiniCube() {
             break;
         }
       }),
-    [setPrefs],
+    [setPrefs, clock],
   );
   useEffect(() => {
     if (app) toApp({ type: "ready" });
@@ -862,6 +866,7 @@ function MiniCube() {
       data-mini-focused={focused ? "" : undefined}
       data-mini-mirror={mirror ? "on" : mirrorWanted ? "folded" : "off"}
       data-mini-idle={idle.showing ?? ""}
+      data-mini-idle-armed={idle.armed ? "" : undefined}
       data-mini-idle-no={
         idle.showing === "replay" ? (idleReplayNo.current ?? "") : undefined
       }
