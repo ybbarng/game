@@ -39,7 +39,7 @@ export type ToApp =
    */
   | { type: "hit"; rects: number[][] }
   /** 떠 있을 때 움직임이 시작·끝남(확인용 기록) */
-  | { type: "idle"; showing: "hero" | "jiggle" | null };
+  | { type: "idle"; showing: "replay" | "hero" | "jiggle" | null };
 
 interface WebkitWindow {
   webkit?: {

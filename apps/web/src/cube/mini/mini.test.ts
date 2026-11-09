@@ -7,7 +7,7 @@ import {
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
-import type { SolveRecord } from "../records";
+import { KEEP_REPLAYS, type SolveRecord } from "../records";
 import { SolveSession } from "../solve-session";
 import { parseFromApp } from "./app-bridge";
 import { FocusClock } from "./focus-clock";
@@ -112,6 +112,30 @@ describe("FocusClock", () => {
     expect(s.phase).toBe("done");
     expect(records[0]?.ms).toBe(1500);
     expect(records[0]?.moves).toBe(2);
+    // 다시 보기 재료: 섞기 글·씨앗, 수와 수마다 시각(포커스 시계 기준), 혼자 맞추기와 같은 꼴
+    expect(records[0]?.scramble).toBe("R U");
+    expect(records[0]?.replay).toBe("U'@0 R'@1500");
+  });
+
+  it("다시 보기 재료: 씨앗과 단계별 시각(splits)도 혼자 맞추기와 같은 꼴로 남는다", () => {
+    const base = new ManualClock();
+    const clock = new FocusClock(base, true);
+    const records: SolveRecord[] = [];
+    const s = new SolveSession({
+      n: 3,
+      mode: "solo",
+      inspection: false,
+      clock,
+      onRecord: (r) => records.push(r),
+    });
+    s.start("R", 42);
+    base.advance(800);
+    s.input(parseMoves(3, "R'")[0] as never, "R'");
+    const r = records[0];
+    expect(r?.seed).toBe(42);
+    expect(r?.replay).toBe("R'@0");
+    // 한 수로 다 맞춰 이정표를 한꺼번에 지난다: 모두 0ms
+    expect(r?.splits).toMatch(/^([a-z0-9]+@0)( [a-z0-9]+@0)*$/);
   });
 });
 
@@ -350,6 +374,48 @@ describe("미니 모드 저장", () => {
     expect(miniTier(3, st)?.ao5).toBe(20_000);
     // 혼자 맞추기 기록(cube.records.v1)은 건드리지 않는다
     expect([...st.map.keys()]).toEqual([MINI_KEY]);
+  });
+
+  it("다시 보기 글은 최근 30판과 최고 Ao5 5판에만 남긴다(혼자 맞추기와 같은 규칙)", () => {
+    const st = memoryStorage();
+    const withReplay = (ms: number): SolveRecord => ({
+      ...rec(3, ms),
+      replay: "R'@0",
+      splits: "cross@0",
+    });
+    // 빠른 5판(최고 Ao5) 뒤에 느린 40판
+    for (let i = 0; i < 5; i++) addMiniRecord(withReplay(10_000), st);
+    for (let i = 0; i < 40; i++) addMiniRecord(withReplay(30_000), st);
+    const list = loadMiniRecords(3, st);
+    expect(list).toHaveLength(45);
+    expect(list.slice(0, KEEP_REPLAYS).every((r) => r.replay)).toBe(true);
+    expect(list.slice(KEEP_REPLAYS).some((r) => r.replay)).toBe(false);
+    // 단계별 시각은 짧아 그대로 둔다
+    expect(list.every((r) => r.splits === "cross@0")).toBe(true);
+    const best = loadMiniBestFive(3, st);
+    expect(best.map((r) => r.ms)).toEqual([
+      10_000, 10_000, 10_000, 10_000, 10_000,
+    ]);
+    expect(best.every((r) => r.replay === "R'@0")).toBe(true);
+  });
+
+  it("자리가 모자라면 다시 보기 글을 최근 5판만 남기고 다시 저장한다", () => {
+    const st = memoryStorage();
+    for (let i = 0; i < 10; i++)
+      addMiniRecord({ ...rec(3, 20_000), replay: "R'@0" }, st);
+    // 다시 보기 글이 6판 이상 든 글은 넣지 못하는 저장소
+    const tight = {
+      ...st,
+      setItem: (k: string, v: string) => {
+        if ((v.match(/R'@0/g) ?? []).length > 5 + 5) throw new Error("가득");
+        st.setItem(k, v);
+      },
+    };
+    addMiniRecord({ ...rec(3, 20_000), replay: "R'@0" }, tight);
+    const list = loadMiniRecords(3, st);
+    expect(list).toHaveLength(11);
+    expect(list.filter((r) => r.replay)).toHaveLength(5);
+    expect(list.slice(0, 5).every((r) => r.replay)).toBe(true);
   });
 
   it("최고·평균·5번 평균", () => {

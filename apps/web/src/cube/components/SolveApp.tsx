@@ -65,13 +65,13 @@ import {
   formatMs,
   loadBestFive,
   loadRecords,
-  parseReplay,
   parseSplits,
   resultMs,
   type SolveInput,
   type SolveMode,
   type SolveRecord,
 } from "../records";
+import { solveSteps } from "../replay-player";
 import { type RivalOutcome, rivalOutcome, rivalSeed } from "../rival";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
@@ -575,20 +575,15 @@ export function SolveApp({
       stickersOf(n, scrambled),
     );
     setReplaying(true);
-    const steps = parseReplay(r.replay);
-    let at = 0;
-    let prev = steps[0]?.[1] ?? 0;
-    for (const [notation, t] of steps) {
-      // 오래 멈춘 곳은 1초로 줄인다
-      at += Math.min(1_000, Math.max(0, t - prev));
-      prev = t;
-      const moves = parseMoves(n, notation);
+    // 오래 멈춘 곳은 1초로 줄인다(`solveSteps`, Cubie 다시 보기와 같다)
+    const steps = solveSteps(n, r.replay);
+    for (const { at, moves } of steps)
       replayTimers.current.push(
         window.setTimeout(() => {
           for (const m of moves) viewRef.current?.enqueue(m);
         }, at),
       );
-    }
+    const at = steps.at(-1)?.at ?? 0;
     replayTimers.current.push(
       window.setTimeout(() => {
         setReplaying(false);

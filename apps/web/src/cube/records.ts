@@ -170,15 +170,15 @@ export function addRecord(
   return list;
 }
 
-/** 앞 `keep`판 뒤로는 다시 보기 글을 지운 목록 */
-function withoutOldReplays(
-  list: readonly SolveRecord[],
+/** 앞 `keep`판 뒤로는 다시 보기 글을 지운 목록(미니 모드 기록도 같은 규칙, `mini/store.ts`) */
+export function withoutOldReplays<R extends SolveRecord>(
+  list: readonly R[],
   keep: number,
-): SolveRecord[] {
+): R[] {
   return list.map((r, i) => {
     if (i < keep || r.replay === undefined) return r;
     const { replay: _, ...rest } = r;
-    return rest;
+    return rest as R;
   });
 }
 
