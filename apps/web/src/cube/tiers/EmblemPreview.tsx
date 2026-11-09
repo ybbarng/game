@@ -3,11 +3,20 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { type MyTier, tierOf } from "./rank";
 import { TierEmblem } from "./TierEmblem";
-import { TIER_TONE } from "./TierTable";
-import { DIVISIONS, TIER_IDS, TIER_LABEL } from "./table";
+import { TIER_TONE, TierLink } from "./TierTable";
+import { DIVISIONS, TIER_IDS, TIER_LABEL, TIER_TABLE } from "./table";
 
 const SIZES = [64, 32, 24, 16] as const;
+
+/** 3×3 표의 티어마다 구간 II 상한(구간이 없으면 그 티어 상한)을 Ao5로 본 내 티어 */
+const LINK_SAMPLES: MyTier[] = (TIER_TABLE[3] ?? []).flatMap((row) => {
+  const cut = row.cuts[row.cuts.length === 4 ? 2 : 0] as number;
+  const ao5 = Math.round(cut * 1000);
+  const place = tierOf(3, ao5);
+  return place ? [{ n: 3, ao5, place }] : [];
+});
 
 /** 티어 엠블럼 미리보기(`/cube/tiers/emblems`, 개발용) */
 export function EmblemPreview() {
@@ -80,19 +89,12 @@ export function EmblemPreview() {
           ))}
         </section>
 
-        <section className="flex flex-col gap-1 text-sm">
-          {TIER_IDS.map((t) => (
-            <p key={t}>
+        {/* 기록 칸과 같은 TierLink(구간 없는 그랜드마스터·챌린저는 이름만) */}
+        <section data-cube-emblem-links className="flex flex-col gap-1 text-sm">
+          {LINK_SAMPLES.map((mine) => (
+            <p key={mine.place.tier}>
               <span className="text-white/50">티어 </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 font-semibold",
-                  TIER_TONE[t],
-                )}
-              >
-                <TierEmblem tier={t} size={18} />
-                {TIER_LABEL[t]} II
-              </span>
+              <TierLink mine={mine} />
             </p>
           ))}
         </section>
