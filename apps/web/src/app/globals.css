@@ -3440,15 +3440,16 @@ button {
 /*
  * HDR 반짝임(다이아몬드부터): HDR 화면이고 브라우저가 HDR 그림의 밝기 한도(`dynamic-range-limit`)를 알 때만 보인다
  * (Chrome 136+·Safari 26+). 그 밖에는 그림 칸이 보이지 않아(lazy img) 받지도 않는다.
- * 깎인 면 모서리 빛(`emb-hdr-facet`, 가는 선과 작은 점, 600 nit 그림)은 늘 낮게 켜 두고, 빛 띠가 지나갈 때 띠·반짝임
- * 점·면 모서리가 더 밝아진다. 늘 켜 두는 쪽은 면적이 작고 밝기가 낮아 화면 밝기가 출렁이지 않는다(docs/36 HDR 별빛의
- * 걱정은 넓은 면이 오래 밝을 때다). 움직임 줄이기·`still`이면 반짝임 점도 멈춘 채 켜 둔다.
+ * 늘 켜 두는 빛(`emb-hdr-facet`, 반짝임 자리·블럭 반사 점의 작은 빛 덩어리와 모서리 빛, 1000 nit 그림)은 거의 다 켜
+ * 두고, 빛 띠가 지나갈 때 띠·큰 반짝임이 켜진다. 늘 켜 두는 쪽은 엠블럼 칸의 약 2%라 화면 밝기가 출렁이지 않는다
+ * (docs/36 HDR 별빛의 걱정은 넓은 면이 오래 밝을 때다). 예전에 가는 선을 0.6으로 두었더니 작게 줄여 보일 때 흰색보다 밝은
+ * 곳이 남지 않았다(2026-11-09). 움직임 줄이기·`still`이면 반짝임 점도 멈춘 채 켜 둔다.
  * --emb-hdr-strength: 강도(불투명도에 곱한다, 기본 1, 0이면 HDR 끔) · --emb-hdr-rest: 늘 켜 두는 면 모서리 빛의 비율
  * · --emb-hdr-limit: dynamic-range-limit 값(standard면 HDR 끔)
  */
 :root {
   --emb-hdr-strength: 1;
-  --emb-hdr-rest: 0.6;
+  --emb-hdr-rest: 0.9;
   --emb-hdr-limit: no-limit;
 }
 .emb-hdr-layer {

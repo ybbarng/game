@@ -183,7 +183,10 @@ test("HDR 층: HDR 화면을 흉내 내면(?hdr=1) 면 모서리 빛은 늘 켜�
         Math.max(0, ...els.map((e) => Number(getComputedStyle(e).opacity))),
       );
   // 2026-11-09 HDR 맥에서 HDR 그림의 불투명도가 8초 동안 한 번도 0보다 커지지 않았다
-  await expect.poll(() => opacity("img.emb-hdr-facet")).toBeGreaterThan(0.3);
+  // 같은 날 다시: 켜져 있어도 0.6으로 낮게 두어 HDR이 느껴지지 않았다. 평소에도 거의 다 켜 둔다
+  await expect.poll(() => opacity("img.emb-hdr-facet")).toBeGreaterThan(0.8);
+  // SDR에서는 HDR 그림이 흰색으로 잘려 그려진다: 줄여 보여도 빛 면적이 남는지 사람이 본다
+  await shot(page, "tier-emblems-hdr", info.project.name);
   // 차례는 높은 티어부터: 챌린저에 빛이 지나가고 그 HDR 띠 그림이 켜진다.
   // 빛 띠 하나는 1.6초라 짧은 간격으로 본다
   await expect
