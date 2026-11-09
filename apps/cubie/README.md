@@ -53,7 +53,7 @@ OLL·PLL 공식이 기억 안 날 때 **F1**(맥북은 fn+F1)을 누르면 지�
 <table>
   <tr>
     <td><img src="docs/desktop-records.webp" alt="기록 창: 크기별 티어와 3×3 기록 다섯 판"></td>
-    <td><img src="docs/desktop-replay.webp" alt="기록 창에서 한 판을 다시 보는 모습"></td>
+    <td><img src="docs/desktop-replay.webp" alt="기록 창에서 한 판을 큐브와 거울 셋으로 다시 보는 모습"></td>
   </tr>
   <tr>
     <td align="center">기록과 티어</td>

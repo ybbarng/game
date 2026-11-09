@@ -280,6 +280,13 @@ async function main() {
     const records = await r.screenshot({ type: "png" });
     await r.locator("[data-mini-replay-open]").first().click();
     await r.locator("[data-mini-replay]").waitFor();
+    // 다시 보기는 본 화면과 같은 3D 큐브와 거울 셋이다. 장면이 뜬 뒤 감는다
+    await waitAttr(
+      r,
+      "[data-mini-replay] [data-cube-canvas]",
+      "data-cube-ready",
+      null,
+    );
     await r.clock.runFor(9_000);
     const replay = await r.screenshot({ type: "png" });
     await recCtx.close();
