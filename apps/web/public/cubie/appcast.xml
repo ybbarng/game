@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.2</title>
+      <pubDate>Mon, 09 Nov 2026 07:28:34 +0000</pubDate>
+      <sparkle:version>0.1.2</sparkle:version>
+      <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;새 앱 아이콘: 귀여운 2×2 큐브&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.2/Cubie.zip" length="1630521" type="application/octet-stream" sparkle:edSignature="OIjXbS5JPaGt9lHPhACztgEE2DrOo7/2ymdJiqGon9+Jdv/b8B5soKQYfdrlzgRwUwDQfXXSPDPfz3QwC6d1BQ=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.1</title>
       <pubDate>Mon, 09 Nov 2026 06:29:35 +0000</pubDate>
       <sparkle:version>0.1.1</sparkle:version>
