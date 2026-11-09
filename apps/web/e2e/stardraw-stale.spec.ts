@@ -1,5 +1,9 @@
 import { expect, type Page, test } from "./test";
 
+// version.json을 page.route로 바꿔 준다. 서비스 워커(sw.js)가 도중에 페이지를 맡으면(clients.claim)
+// 그 뒤의 요청은 page.route가 받지 못할 수 있어(stardraw-admin.spec.ts에서 요청이 멈춘 일) 막는다
+test.use({ serviceWorkers: "block" });
+
 /** 창에 표시를 심어 두면, 페이지를 새로 불러온 뒤에는 사라진다(같은 문서 안 이동이면 남는다) */
 async function mark(page: Page) {
   await page.evaluate(() => {
