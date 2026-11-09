@@ -3354,7 +3354,7 @@ button {
   }
   20%,
   80% {
-    opacity: 0.72;
+    opacity: 0.6;
   }
   100% {
     opacity: 0;
@@ -3389,7 +3389,7 @@ button {
     opacity: 0;
   }
   35% {
-    opacity: 0.5;
+    opacity: 0.4;
   }
 }
 .cube-emblem .emb-glint,
@@ -3429,7 +3429,7 @@ button {
   }
   66% {
     opacity: 1;
-    transform: scale(1.8) rotate(45deg);
+    transform: scale(1.4) rotate(45deg);
   }
   100% {
     opacity: 0.9;

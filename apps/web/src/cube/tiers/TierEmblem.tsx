@@ -543,25 +543,6 @@ export function TierEmblem({
               <stop offset="1" stopColor="#fff" stopOpacity="0" />
             </radialGradient>
           )}
-          {/* 보석 안에서 갈라지는 빛(분산): 옅은 무지개 띠 */}
-          {lv >= 6 && (
-            <linearGradient
-              id={`${id}-fire`}
-              gradientUnits="userSpaceOnUse"
-              x1={f2(C[0] - Rc)}
-              y1={f2(C[1] + Rc * 0.2)}
-              x2={f2(C[0] + Rc)}
-              y2={f2(C[1] + Rc * 0.75)}
-            >
-              <stop offset="0" stopColor="#ff4d8d" stopOpacity="0" />
-              <stop offset="0.18" stopColor="#ff4d8d" stopOpacity="0.5" />
-              <stop offset="0.36" stopColor="#ffd84d" stopOpacity="0.55" />
-              <stop offset="0.52" stopColor="#5dffa8" stopOpacity="0.5" />
-              <stop offset="0.68" stopColor="#4dc8ff" stopOpacity="0.55" />
-              <stop offset="0.84" stopColor="#a66bff" stopOpacity="0.5" />
-              <stop offset="1" stopColor="#a66bff" stopOpacity="0" />
-            </linearGradient>
-          )}
           {lv >= 9 && (
             <linearGradient id={`${id}-ray`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" style={{ stopColor: col("ray", p.accent) }} />
@@ -578,7 +559,12 @@ export function TierEmblem({
           {fine && (
             <>
               <BlockGradients id={id} glow={col("gem2", p.gem[1])} />
-              <BlockCell id={id} metal={lv < 4} full={size >= 44} />
+              <BlockCell
+                id={id}
+                metal={lv < 4}
+                full={size >= 44}
+                fire={lv >= 6}
+              />
               {FACE_KEYS.map((k) => {
                 const [o, a, , b] = faces[k].quad;
                 const m = [
@@ -608,9 +594,9 @@ export function TierEmblem({
           )}
           <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
-            <stop offset="0.3" stopColor="#fff" stopOpacity="0.35" />
-            <stop offset="0.5" stopColor="#fff" stopOpacity="1" />
-            <stop offset="0.7" stopColor="#fff" stopOpacity="0.35" />
+            <stop offset="0.3" stopColor="#fff" stopOpacity="0.15" />
+            <stop offset="0.5" stopColor="#fff" stopOpacity="0.85" />
+            <stop offset="0.7" stopColor="#fff" stopOpacity="0.15" />
             <stop offset="1" stopColor="#fff" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -808,20 +794,8 @@ export function TierEmblem({
           )}
           {lv >= 6 && (
             <>
-              {/* 안에서 올라오는 빛과 갈라지는 무지개 띠 */}
+              {/* 안에서 올라오는 빛 */}
               <polygon points={pts(K)} fill={url("inner")} />
-              <g clipPath={url("cube")}>
-                <polygon
-                  points={pts([
-                    [C[0] - Rc, C[1] + Rc * 0.05],
-                    [C[0] + Rc, C[1] + Rc * 0.6],
-                    [C[0] + Rc, C[1] + Rc * 0.95],
-                    [C[0] - Rc, C[1] + Rc * 0.4],
-                  ])}
-                  fill={url("fire")}
-                  opacity="0.55"
-                />
-              </g>
             </>
           )}
 
@@ -985,15 +959,19 @@ export function TierEmblem({
  * - 보석(플래티넘부터): 테이블 면과 둘레 경사 면 넷의 밝기 차, 가운데 밝고 가장자리 어두운 굴절감, 위 모서리 빛과 반사 점.
  * - 금속(아이언~골드): 닦은 금속 결(가는 밝은 줄무늬)과 얕은 경사 면, 위 모서리 빛.
  * - `full`이 아니면(엠블럼 44px 아래) 경사 면·결을 빼고 굴절감·모서리 빛만.
+ * - `fire`(다이아몬드부터)면 테이블 면 안에만 아주 옅은 무지개 빛(분산). 큐브 전체에 걸친 띠는 블럭 위에서 얼룩처럼 보였다.
  */
 function BlockCell({
   id,
   metal,
   full,
+  fire,
 }: {
   id: string;
   metal: boolean;
   full: boolean;
+  /** 테이블 면 안에 아주 옅은 분산 빛(다이아몬드부터) */
+  fire: boolean;
 }) {
   const a = STICKER_INSET;
   const b = 1 - a;
@@ -1065,6 +1043,15 @@ function BlockCell({
           fill={`url(#${id}-brush)`}
         />
       )}
+      {fire && (
+        <rect
+          x={ta}
+          y={ta}
+          width={tb - ta}
+          height={tb - ta}
+          fill={`url(#${id}-cellfire)`}
+        />
+      )}
       {full &&
         bevels.map(([q, c, o]) => (
           <polygon key={quad(q)} points={quad(q)} fill={c} opacity={o} />
@@ -1113,6 +1100,19 @@ function BlockGradients({ id, glow }: { id: string; glow: string }) {
         <stop offset="0.7" stopColor="#000" stopOpacity="0" />
         <stop offset="1" stopColor="#000" stopOpacity="0.5" />
       </radialGradient>
+      <linearGradient
+        id={`${id}-cellfire`}
+        gradientUnits="userSpaceOnUse"
+        x1="0.3"
+        y1="0.7"
+        x2="0.7"
+        y2="0.3"
+      >
+        <stop offset="0" stopColor="#ff5c9a" stopOpacity="0.22" />
+        <stop offset="0.35" stopColor="#ffe066" stopOpacity="0.2" />
+        <stop offset="0.65" stopColor="#66ffc2" stopOpacity="0.18" />
+        <stop offset="1" stopColor="#7a8cff" stopOpacity="0.22" />
+      </linearGradient>
       <linearGradient
         id={`${id}-brush`}
         gradientUnits="userSpaceOnUse"

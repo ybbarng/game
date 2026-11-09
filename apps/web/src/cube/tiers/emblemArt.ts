@@ -155,8 +155,8 @@ export function glintsFor(tier: string): Glint[] {
   if (lv < 6) return [];
   const [t, ur, , , ll] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
   const out: Glint[] = [
-    { x: t[0], y: t[1] + 2.2, r: 6.5 },
-    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 3.4 },
+    { x: t[0], y: t[1] + 0.9, r: 3.6 },
+    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 2.6 },
   ];
   if (lv >= 7) out.push({ x: ll[0] + 2, y: ll[1] - 1, r: 3 });
   const crest = crestAt(tier);
