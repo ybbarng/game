@@ -1,5 +1,5 @@
 #!/bin/sh
-# Cubie 새 판을 만든다(docs/47 15-12, README 「새 판 내기」).
+# Cubie 새 판을 만든다(docs/47 15-12, DEVELOPMENT.md 「새 판 내기」).
 #   scripts/release.sh <판> --notes "바뀐 것" [--dry-run]
 #   예) scripts/release.sh 0.2.0 --notes "크기 바꾸기 손잡이를 키웠다."
 #

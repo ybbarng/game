@@ -144,7 +144,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     config.mediaTypesRequiringUserActionForPlayback = []
     webView = CubieWebView(frame: .zero, configuration: config)
     // 웹 화면 바탕을 그리지 않는다. 맥용 WKWebView에는 공개 속성이 없어 널리 쓰는 키(drawsBackground)를 쓴다
-    // (macOS 판이 바뀌어 키가 없어지면 바탕이 흰색·검은색으로 보일 수 있다. README 「확신 낮은 것」)
+    // (macOS 판이 바뀌어 키가 없어지면 바탕이 흰색·검은색으로 보일 수 있다. DEVELOPMENT.md 「공개할 때 남은 것」)
     webView.setValue(false, forKey: "drawsBackground")
     webView.underPageBackgroundColor = .clear
     bridge.webView = webView

@@ -159,6 +159,12 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     ).toBe("none");
   });
 
+  it("Cubie 내려받기 페이지: 그 spec과 기본 묶음", () => {
+    const r = pick("apps/web/src/app/cubie/download/page.tsx");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(["cubie-download", ...BASE_SPECS].sort());
+  });
+
   it("lockfile·루트 설정·CI·이 스크립트: 전부", () => {
     for (const f of [
       "pnpm-lock.yaml",

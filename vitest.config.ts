@@ -30,6 +30,8 @@ export default defineConfig({
       "**/apps/web/public/stats/**",
       // src/sw.test.ts가 읽어 돌리는 서비스 워커
       "**/apps/web/public/sw.js",
+      // src/cubie/appcast.test.ts가 읽는 Cubie 업데이트 목록(새 판마다 바뀐다)
+      "**/apps/web/public/cubie/appcast.xml",
       "**/apps/web/scripts/build-hashes.mjs",
     ],
     coverage: {
