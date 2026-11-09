@@ -4,7 +4,8 @@ import type { Clock } from "@game/fair-play";
 /**
  * 미니 모드가 가만히 떠 있을 때(포커스 없음)의 움직임(docs/47 15절, 사용자 2026-11-09).
  *
- * - 큐브가 맞춰져 있으면 이따금 첫 화면 연출(섞고 해법대로 맞추기 한 판)을 보인다.
+ * - 큐브가 맞춰져 있으면 이따금 내 판 하나를 다시 본다(섞기를 빠르게, 맞춘 과정은 그때 시각대로, `replay.ts`).
+ *   다시 볼 판이 없으면 첫 화면 연출(섞고 해법대로 맞추기 한 판).
  * - 섞여 있으면(맞추다 만 상태) 이따금 몇 수를 저절로 돌렸다가 같은 수를 거꾸로 되돌린다. 움직임은 3D 장면에만 넣고
  *   엔진 상태(사용자의 진행)는 건드리지 않는다. 끝나거나 멈추면 장면을 엔진 상태로 다시 칠한다(`restore`).
  * - 움직이는 동안만 그리고 나머지는 쉰다(3D 장면은 움직일 때만 그린다). 포커스를 받으면 바로 멈추고 되돌린다.
@@ -107,6 +108,11 @@ export interface IdleHooks {
    * 연출을 못 하면(3D 없음, 연출이 없는 크기) null: 그때는 조금 섞기를 한다
    */
   hero(done: () => void): (() => void) | null;
+  /**
+   * 맞춘 큐브에서 홈 시연보다 먼저: 내 판 하나를 다시 본다(`mini/replay.ts`). 끝나면 `done`. 끄는 함수를 돌려준다.
+   * 돌릴 판이 없으면 null: 그때는 홈 시연
+   */
+  replay?(done: () => void): (() => void) | null;
   /** 조금 섞기 한 번(`jigglePlan` + `playMoves`). 끝나면 `done`. 끄는 함수를 돌려준다 */
   jiggle(done: () => void): () => void;
   /** 장면을 엔진 상태로 다시 칠한다(움직임이 끝났거나 멈췄을 때) */
@@ -115,7 +121,7 @@ export interface IdleHooks {
   started?(kind: Exclude<IdleShowing, null>): void;
 }
 
-export type IdleShowing = "hero" | "jiggle" | null;
+export type IdleShowing = "replay" | "hero" | "jiggle" | null;
 
 export class IdleShow {
   private active = false;
@@ -204,24 +210,35 @@ export class IdleShow {
         );
     };
     if (this.hooks.solved()) {
-      // 끝내기를 시작하기 전에 정해 둔다(연출이 바로 끝나도 `finished`가 알아보게)
-      this.kind = "hero";
-      this.stopShow = () => undefined;
-      const stop = this.hooks.hero(finished);
-      if (stop) {
-        if (this.stopShow) {
-          this.stopShow = stop;
-          this.hooks.started?.("hero");
-        }
+      if (
+        this.hooks.replay &&
+        this.begin("replay", (d) => this.hooks.replay?.(d) ?? null, finished)
+      )
         return;
-      }
+      if (this.begin("hero", (d) => this.hooks.hero(d), finished)) return;
     }
-    this.kind = "jiggle";
+    this.begin("jiggle", (d) => this.hooks.jiggle(d), finished);
+  }
+
+  /** 움직임 하나를 시작한다. 못 하면(null) false */
+  private begin(
+    kind: Exclude<IdleShowing, null>,
+    start: (done: () => void) => (() => void) | null,
+    finished: () => void,
+  ): boolean {
+    // 끝내기를 시작하기 전에 정해 둔다(움직임이 바로 끝나도 `finished`가 알아보게)
+    this.kind = kind;
     this.stopShow = () => undefined;
-    const stop = this.hooks.jiggle(finished);
+    const stop = start(finished);
+    if (!stop) {
+      this.kind = null;
+      this.stopShow = null;
+      return false;
+    }
     if (this.stopShow) {
       this.stopShow = stop;
-      this.hooks.started?.("jiggle");
+      this.hooks.started?.(kind);
     }
+    return true;
   }
 }
