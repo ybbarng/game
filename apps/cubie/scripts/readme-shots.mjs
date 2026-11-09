@@ -326,9 +326,12 @@ async function main() {
  * 앱의 기본(해법 번갈아 고르기) 대신 프리드리히(CFOP)로 둔다. 수가 적어 빠르게 돌려도 알아볼 만하다.
  * 시연 한 판을 `PLAY_SECONDS`초 안팎으로 빠르게 돌린다
  */
-const PLAY_SECONDS = 7;
+// 2026-11-09 사용자 「너무 빨라서 정신없어」: 7초(4배 넘게 빠름)에서 늘려 한 수씩 눈으로 따라갈 만하게
+const PLAY_SECONDS = 20;
+/** 다 맞춘 모습에서 멈춰 두는 시간(초). 맞췄다는 것을 알아볼 틈을 준다 */
+const HOLD_SECONDS = 1.5;
 const PLAY_FPS = 25; // GIF 지연은 1/100초 단위라 4/100초(25장)로 맞춘다
-const STEP = 100; // 가짜 시계로 감는 한 장 사이(ms)
+const STEP = 60; // 가짜 시계로 감는 한 장 사이(ms)
 
 async function heroFrames(browser) {
   const SIZE = 150;
@@ -362,6 +365,8 @@ async function heroFrames(browser) {
     Math.round(simSeconds / PLAY_SECONDS / PLAY_FPS / (STEP / 1000)),
   );
   const picked = shots.filter((_, i) => i % every === 0);
+  for (let i = 0; i < HOLD_SECONDS * PLAY_FPS; i++)
+    picked.push(picked[picked.length - 1]);
   console.log(
     `hero: ${shots.length}장(${simSeconds.toFixed(1)}초) → ${every}장마다 ${picked.length}장, ${(picked.length / PLAY_FPS).toFixed(1)}초`,
   );
