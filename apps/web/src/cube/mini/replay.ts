@@ -4,7 +4,7 @@ import { type ReplayStep, replayLength, solveSteps } from "../replay-player";
 import type { MiniRecord } from "./store";
 
 /**
- * 떠 있을 때 내 판 다시 보기(docs/47 15-12, 사용자 2026-11-09 「큐브가 맞춰진 채로 일정 시간 있으면 replay로
+ * 떠 있을 때 내 판 다시 보기(docs/47 15-13, 사용자 2026-11-09 「큐브가 맞춰진 채로 일정 시간 있으면 replay로
  * 동작하면 어떨까? 섞고 맞추는 과정」). 맞춘 큐브에서 홈 시연 대신 내 판 하나를: 섞기를 빠르게 보인 뒤 맞춘 과정을
  * 그때 수 시각대로(멈춤은 1초까지, 혼자 맞추기 다시 보기와 같다).
  */

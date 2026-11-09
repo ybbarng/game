@@ -4,7 +4,7 @@ import type { Clock } from "@game/fair-play";
 import { parseReplay } from "./records";
 
 /**
- * 기록 다시 보기(혼자 맞추기 `SolveApp`, Cubie 기록 창·떠 있을 때 움직임, docs/47 15-12).
+ * 기록 다시 보기(혼자 맞추기 `SolveApp`, Cubie 기록 창·떠 있을 때 움직임, docs/47 15-13).
  *
  * 다시 보기 글(`SolveRecord.replay`, "R@120 U'@380")을 때 맞춘 걸음 목록으로 바꾸고(`solveSteps`), `ReplayPlayer`가
  * `Clock`에 맞춰 하나씩 내보낸다. 화면(3D 장면에 넣기, SVG 그림 상태 바꾸기)은 `onStep`이 맡는다.

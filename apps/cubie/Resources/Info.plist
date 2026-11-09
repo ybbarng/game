@@ -12,10 +12,7 @@
   <string>Cubie</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
-  <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
-  <key>CFBundleVersion</key>
-  <string>1</string>
+  <!-- CFBundleShortVersionString·CFBundleVersion은 build.sh가 VERSION 파일에서 넣는다(판은 그 파일 한 곳에) -->
   <key>CFBundleDevelopmentRegion</key>
   <string>ko</string>
   <key>LSMinimumSystemVersion</key>
@@ -30,5 +27,16 @@
     <key>NSAllowsLocalNetworking</key>
     <true/>
   </dict>
+  <!-- 자동 업데이트(Sparkle 2, docs/47 15-12). 목록은 사이트, 내려받기는 GitHub Release -->
+  <key>SUFeedURL</key>
+  <string>https://game.byb.kr/cubie/appcast.xml</string>
+  <!-- 업데이트 파일 서명을 확인하는 공개 열쇠. 비밀 열쇠는 만든 맥의 키체인에만 있다(generate_keys --account kr.byb.cubie) -->
+  <key>SUPublicEDKey</key>
+  <string>WWgOSGnvEb7rEO0mPYuqmDk13Q+BnIC46+UiVaoXaeo=</string>
+  <!-- 처음 띄울 때 「자동으로 확인할까요」를 묻지 않고 켠다. 확인은 하루 한 번(가장 짧게 둘 수 있는 값보다 길게) -->
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUScheduledCheckInterval</key>
+  <integer>86400</integer>
 </dict>
 </plist>

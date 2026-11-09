@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { ReplayPlayer, replayLength, solveSteps } from "./replay-player";
 
-/** 기록 다시 보기(docs/47 15-12): 다시 보기 글 → 걸음, 시계에 맞춘 재생 */
+/** 기록 다시 보기(docs/47 15-13): 다시 보기 글 → 걸음, 시계에 맞춘 재생 */
 
 describe("solveSteps", () => {
   it("첫 수가 0ms, 수 사이 멈춤은 1초까지 줄이고, 읽지 못하는 수는 건너뛴다", () => {

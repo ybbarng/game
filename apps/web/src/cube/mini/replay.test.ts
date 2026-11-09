@@ -13,7 +13,7 @@ import { IdleShow, type IdleTiming } from "./idle";
 import { IDLE_REPLAY_TIMING, idleReplaySteps, pickIdleReplay } from "./replay";
 import type { MiniRecord } from "./store";
 
-/** 떠 있을 때 내 판 다시 보기(docs/47 15-12): 고르기·걸음·쉬기 움직임과 이어 붙이기 */
+/** 떠 있을 때 내 판 다시 보기(docs/47 15-13): 고르기·걸음·쉬기 움직임과 이어 붙이기 */
 
 /** Cubie가 남기는 꼴의 판: 섞기 "R U F"를 거꾸로 맞춘 기록 */
 function solve(at: number, ms: number, replay?: string): MiniRecord {
