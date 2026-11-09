@@ -2,8 +2,10 @@
  * 티어 엠블럼의 모양·색(TierEmblem.tsx)과 HDR 반짝임 그림(scripts/build-cube-tier-hdr.mjs)이 함께 쓰는 값.
  * 그림 스크립트가 Node로 이 파일을 바로 불러오므로(형 지우기) 다른 파일을 import하지 않고 지울 수 있는 TS 문법만 쓴다.
  *
- * 좌표는 viewBox 0~64(엠블럼) 기준이고, 구간 표시는 그 아래 64~74에 그린다. 큐브는 가운데 C를 중심으로 한 등각 육면체,
- * 둘레는 같은 방향의 육각 테두리다.
+ * 좌표는 viewBox 0~64(엠블럼) 기준이고, 구간 표시는 그 아래 64~74에 그린다. 가운데 C에 베벨 금속 육각 틀과 그 안의
+ * 등각 큐브가 있고(이 둘을 「몸」이라 한다), 몸은 티어마다 `coreScale`만큼 키운다. 낮은 티어는 몸이 크고 장식이 없으며,
+ * 위 티어는 몸이 조금 작아지는 대신 큐브 조각 날개·볏·궤도·왕관·빛살로 바깥 실루엣이 커진다(여러 게임 티어 엠블럼의 공통 결,
+ * docs/47 14-6).
  */
 
 export type Pt = readonly [number, number];
@@ -27,13 +29,41 @@ export function hexAround(c: Pt, r: number): Pt[] {
   ];
 }
 
-/** 큐브 가운데(앞 꼭짓점)와 반지름 */
-export const CUBE_C: Pt = [32, 34];
-export const CUBE_R = 20;
-/** 큐브 바깥 육각형(위·오른위·오른아래·아래·왼아래·왼위) */
-export const CUBE_HEX = hexAround(CUBE_C, CUBE_R);
-/** 둘레 테두리 반지름 */
-export const RING_R = 27;
+/** 엠블럼 가운데 */
+export const CENTER: Pt = [32, 32];
+/** 몸 크기 1일 때: 틀 바깥·안 반지름, 큐브 반지름 */
+export const FRAME_OUT = 22;
+export const FRAME_IN = 16.8;
+export const CUBE_R = 14.6;
+
+/** 티어 차례(아이언부터). table.ts의 TIER_IDS와 같다(이 파일은 import를 하지 않는다) */
+const ORDER = [
+  "iron",
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "emerald",
+  "diamond",
+  "master",
+  "grandmaster",
+  "challenger",
+] as const;
+type Tier = (typeof ORDER)[number];
+
+/** 몸 크기: 장식이 없는 낮은 티어는 크게, 실루엣이 커지는 위 티어는 조금 작게 */
+const SCALE = [1.24, 1.22, 1.2, 1.08, 1.04, 1.0, 0.98, 0.96, 0.94, 0.92];
+
+export function levelOf(tier: string): number {
+  return ORDER.indexOf(tier as Tier);
+}
+export function coreScale(tier: string): number {
+  return SCALE[levelOf(tier)] ?? 1;
+}
+/** 그 티어 큐브의 바깥 육각형(위·오른위·오른아래·아래·왼아래·왼위) */
+export function cubeHex(tier: string): Pt[] {
+  return hexAround(CENTER, CUBE_R * coreScale(tier));
+}
 
 /** HDR 반짝임이 있는 티어(위 넷) */
 export const HDR_TIERS = [
@@ -51,32 +81,29 @@ export interface Glint {
   r: number;
 }
 
+/** 위 티어의 볏 보석 가운데(틀 위 꼭짓점 바로 위) */
+export function crestAt(tier: string): Pt {
+  return [CENTER[0], CENTER[1] - FRAME_OUT * coreScale(tier) - 1.2];
+}
+
 /**
- * 티어마다 반짝임 자리. SVG(보통 화면)와 HDR 그림이 같은 자리에 그린다. 위 티어일수록 하나씩 는다.
- * 첫째는 늘 윗면 뒤 꼭짓점 가까이(빛이 위에서 온다).
+ * 반짝임 자리. SVG(보통 화면)와 HDR 그림이 같은 자리에 그린다. 큐브 윗면 뒤 꼭짓점(빛이 위에서 온다)과 오른쪽 모서리,
+ * 그리고 위 티어일수록 볏·아래 보석·왕관에 하나씩 는다.
  */
-export const GLINTS: Readonly<Record<HdrTier, readonly Glint[]>> = {
-  diamond: [
-    { x: 32, y: 16.5, r: 6.5 },
-    { x: 47.5, y: 25.5, r: 3.6 },
-  ],
-  master: [
-    { x: 32, y: 16.5, r: 6.5 },
-    { x: 47.5, y: 25.5, r: 3.6 },
-    { x: 17, y: 42.5, r: 3 },
-  ],
-  grandmaster: [
-    { x: 32, y: 16.5, r: 7 },
-    { x: 47.5, y: 25.5, r: 3.8 },
-    { x: 17, y: 42.5, r: 3.2 },
-  ],
-  challenger: [
-    { x: 32, y: 16.5, r: 7.5 },
-    { x: 47.5, y: 25.5, r: 4 },
-    { x: 17, y: 42.5, r: 3.4 },
-    { x: 32, y: 4.6, r: 3.6 },
-  ],
-};
+export function glintsFor(tier: string): Glint[] {
+  const lv = levelOf(tier);
+  if (lv < 6) return [];
+  const [t, ur, , , ll] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
+  const out: Glint[] = [
+    { x: t[0], y: t[1] + 2.2, r: 6.5 },
+    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 3.4 },
+  ];
+  if (lv >= 7) out.push({ x: ll[0] + 2, y: ll[1] - 1, r: 3 });
+  const crest = crestAt(tier);
+  if (lv >= 8) out.push({ x: crest[0], y: crest[1] - 6.5, r: 3.6 });
+  else out.push({ x: crest[0], y: crest[1], r: 3 });
+  return out;
+}
 
 /**
  * HDR 반짝임의 빛 색(선형 sRGB 비율, 가장 큰 값 1). 보석·금속마다 살짝 물든 흰빛.
@@ -94,12 +121,12 @@ export const HDR_TINT: Readonly<
 /**
  * 빛이 면을 따라 지나가는 띠: 그림 세 장(왼쪽·가운데·오른쪽)을 차례로 켰다 끄며 지나가는 것처럼 보인다.
  * img에 transform을 걸지 않으려고(Safari가 transform 걸린 HDR 그림을 SDR로 그린 적이 있다, docs/36 HDR 별빛) 자리를 그림에 굽는다.
- * 값은 띠 가운데의 x(viewBox), 띠는 왼아래에서 오른위로 기운다.
+ * 값은 가운데에서 띠 가운데까지의 x(큐브 반지름 비율), 띠는 왼아래에서 오른위로 기운다.
  */
-export const BAND_FRAMES = [22, 32, 42] as const;
-/** 띠 기울기(x가 y 1만큼 바뀔 때 옮겨 가는 양)와 반폭 */
+export const BAND_FRAMES = [-0.68, 0, 0.68] as const;
+/** 띠 기울기(x가 y 1만큼 바뀔 때 옮겨 가는 양)와 반폭(큐브 반지름 비율) */
 export const BAND_SLANT = 0.55;
-export const BAND_HALF = 3.2;
+export const BAND_HALF = 0.22;
 
 /** HDR 그림 경로(public 아래) */
 export function hdrGlintSrc(tier: HdrTier): string {

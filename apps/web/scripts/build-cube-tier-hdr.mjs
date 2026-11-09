@@ -1,5 +1,5 @@
 // 큐브 티어 엠블럼의 HDR 반짝임 그림(cube/tiers/TierEmblem.tsx). 다이아몬드·마스터·그랜드마스터·챌린저마다
-//   hdr-<티어>-glint.avif   반짝임 점(엠블럼 SVG와 같은 자리, emblemArt.ts GLINTS) + 윗면 바깥 두 변의 금속 빛
+//   hdr-<티어>-glint.avif   반짝임 점(엠블럼 SVG와 같은 자리, emblemArt.ts glintsFor) + 윗면 바깥 두 변의 금속 빛
 //   hdr-<티어>-band0~2.avif 빛 띠 세 자리(왼쪽·가운데·오른쪽). CSS가 차례로 켰다 꺼 지나가는 것처럼 보인다
 // 를 만든다. 그림은 엠블럼 viewBox(64×64)를 그대로 덮는다.
 //
@@ -30,10 +30,12 @@ import {
   BAND_FRAMES,
   BAND_HALF,
   BAND_SLANT,
-  CUBE_C,
-  CUBE_HEX,
+  CENTER,
+  CUBE_R,
+  coreScale,
+  cubeHex,
   EMBLEM_BOX,
-  GLINTS,
+  glintsFor,
   HDR_TIERS,
   HDR_TINT,
 } from "../src/cube/tiers/emblemArt.ts";
@@ -119,12 +121,12 @@ function glintAlpha(g, x, y) {
   return 1 - (1 - core) * (1 - glow) * (1 - rays);
 }
 
-const [T, UR, , , , UL] = CUBE_HEX;
-
 function glintLayer(tier) {
+  const [T, UR, , , , UL] = cubeHex(tier);
+  const glints = glintsFor(tier);
   return (x, y) => {
     let keep = 1;
-    for (const g of GLINTS[tier]) keep *= 1 - glintAlpha(g, x, y);
+    for (const g of glints) keep *= 1 - glintAlpha(g, x, y);
     // 윗면 바깥 두 변: 금속 모서리가 빛을 받는다(가는 선, 위 꼭짓점 쪽이 밝다)
     const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
     const nearTop = 1 - Math.min(1, Math.hypot(x - T[0], y - T[1]) / 20);
@@ -133,14 +135,18 @@ function glintLayer(tier) {
   };
 }
 
-function bandLayer(cx) {
+function bandLayer(tier, frame) {
+  const hex = cubeHex(tier);
+  const rc = CUBE_R * coreScale(tier);
+  const cx = CENTER[0] + frame * rc;
+  const half = BAND_HALF * rc;
   const k = Math.hypot(1, BAND_SLANT);
   return (x, y) => {
-    const inside = smoothstep(-0.2, 0.6, insideDist(CUBE_HEX, x, y));
+    const inside = smoothstep(-0.2, 0.6, insideDist(hex, x, y));
     if (inside <= 0) return 0;
-    const lineX = cx - (y - CUBE_C[1]) * BAND_SLANT;
+    const lineX = cx - (y - CENTER[1]) * BAND_SLANT;
     const perp = (x - lineX) / k;
-    return BAND_A * inside * Math.exp(-((perp / BAND_HALF) ** 2));
+    return BAND_A * inside * Math.exp(-((perp / half) ** 2));
   };
 }
 
@@ -233,8 +239,13 @@ function main() {
   try {
     for (const tier of HDR_TIERS) {
       build(glintLayer(tier), HDR_TINT[tier], `hdr-${tier}-glint.avif`, dir);
-      for (const [i, cx] of BAND_FRAMES.entries())
-        build(bandLayer(cx), HDR_TINT[tier], `hdr-${tier}-band${i}.avif`, dir);
+      for (const [i, frame] of BAND_FRAMES.entries())
+        build(
+          bandLayer(tier, frame),
+          HDR_TINT[tier],
+          `hdr-${tier}-band${i}.avif`,
+          dir,
+        );
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -1,41 +1,39 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 
 import { cn } from "@/lib/cn";
 import {
   BAND_FRAMES,
-  BAND_HALF,
-  BAND_SLANT,
-  CUBE_C,
-  CUBE_HEX,
+  CENTER,
+  CUBE_R,
+  coreScale,
+  crestAt,
   EMBLEM_BOX,
   EMBLEM_BOX_PIPS,
-  GLINTS,
+  FRAME_IN,
+  FRAME_OUT,
   type Glint,
+  glintsFor,
   HDR_TIERS,
   type HdrTier,
   hdrBandSrc,
   hdrGlintSrc,
   hexAround,
+  levelOf,
   type Pt,
-  RING_R,
 } from "./emblemArt";
 import { watchShine } from "./emblemShine";
-import {
-  DIVISIONS,
-  type Division,
-  TIER_IDS,
-  TIER_LABEL,
-  type TierId,
-} from "./table";
+import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
 
 /**
- * 큐브 티어 엠블럼(docs/47 14절). 등각 큐브(면마다 3×3 스티커 격자)에 티어의 재질 색을 입히고, 위 티어로 갈수록 장식이
- * 하나씩 는다: 테두리 → 테두리 징 → 두 줄 테두리·윗면 별 → 보석 징·면 깎임 → 에메랄드 보석·옆 가시 → 보석처럼 깎인 면·
- * 반짝임 → 궤도 고리 → 두 궤도·작은 왕관 → 빛살·큰 왕관. 구간(IV~I)은 아래 마름모 넷 가운데 켜진 개수(IV 하나 … I 넷).
+ * 큐브 티어 엠블럼(docs/47 14-6). 베벨 금속 육각 틀에 박힌 등각 큐브(면마다 3×3 스티커)에 티어의 재질 색을 입히고,
+ * 위 티어로 갈수록 바깥 실루엣이 커진다: 아이언 틀 하나 → 브론즈 징 → 실버 겹 틀 → 골드 큐브 조각 날개 → 플래티넘 날개
+ * 둘·볏 → 에메랄드 날개 셋·에메랄드 볏 → 다이아몬드 날개 넷·깎인 보석 면·후광 → 마스터 궤도·아래 보석 → 그랜드마스터
+ * 두 궤도·큐브 조각 왕관·뿔 → 챌린저 파편 빛살·큰 왕관. 구간(IV~I)은 아래 마름모 넷 가운데 켜진 개수(IV 하나 … I 넷).
  *
- * - 인라인 SVG 하나라 바깥 그림·글꼴이 없고 크기는 `size`(px)로 정한다. 28px 아래는 격자·징 같은 잔 선을 뺀다.
+ * - 인라인 SVG 하나라 바깥 그림·글꼴이 없고 크기는 `size`(px)로 정한다. 필터 없이 미리 정한 그라데이션과 면 밝기로만
+ *   입체를 낸다. 28px 아래는 스티커·징 같은 잔 선을 뺀다.
  * - 플래티넘부터 위는 가끔 빛 띠가 한 번 지나간다(화면에 여러 개 있어도 한 번에 하나, 보이는 것만, emblemShine.ts).
  *   움직임 줄이기나 `still`이면 움직이지 않는다.
  * - 다이아몬드부터 위는 HDR 화면이면 흰색보다 밝은 반짝임 그림(BT.2020 PQ AVIF)을 겹친다. 빛이 지나갈 때만 켜지고,
@@ -50,122 +48,119 @@ interface Palette {
   right: readonly [string, string];
   /** 모서리 빛 */
   hi: string;
-  /** 바깥 선·격자 */
+  /** 바깥 선·스티커 틈 */
   dark: string;
-  /** 테두리(밝은 쪽 → 어두운 쪽) */
+  /** 틀 금속(밝은 쪽 → 어두운 쪽) */
   ring: readonly [string, string];
   /** 징·보석·구간 표시 */
   accent: string;
+  /** 볏 보석(짙은 쪽, 밝은 쪽) */
+  gem: readonly [string, string];
 }
 
 /** 지금 표의 이름 색(TIER_TONE)과 같은 계열의 재질 색 */
 const PALETTE: Readonly<Record<TierId, Palette>> = {
-  // 무쇠: 푸른 기 도는 짙은 회색, 모서리는 갓 깎은 쇠처럼 밝게
   iron: {
-    top: ["#b4bac2", "#7d838c"],
-    left: ["#6c727b", "#4a4f57"],
-    right: ["#4c5159", "#33373d"],
-    hi: "#dfe4ea",
-    dark: "#1f2226",
-    ring: ["#9aa0a8", "#5a5f67"],
+    top: ["#c3c9d1", "#858b94"],
+    left: ["#737a83", "#4d525a"],
+    right: ["#50555d", "#33373d"],
+    hi: "#e6eaef",
+    dark: "#16181b",
+    ring: ["#a3a9b1", "#4f545b"],
     accent: "#c3c8cf",
+    gem: ["#6b7078", "#c3c8cf"],
   },
-  // 청동: 붉은 갈색
   bronze: {
-    top: ["#f6c391", "#d08a4f"],
-    left: ["#c27a42", "#95552a"],
-    right: ["#8f5129", "#62361a"],
-    hi: "#ffe1c2",
-    dark: "#3a1f0e",
-    ring: ["#e3a36c", "#9a5b30"],
+    top: ["#f8c99a", "#d08a4f"],
+    left: ["#c27a42", "#8f5128"],
+    right: ["#8f5129", "#5c3217"],
+    hi: "#ffe4c7",
+    dark: "#2a1608",
+    ring: ["#eab07a", "#8a4f28"],
     accent: "#f3bc8a",
+    gem: ["#a85d2c", "#f3bc8a"],
   },
-  // 은: 푸른빛이 살짝 도는 밝은 은
   silver: {
     top: ["#ffffff", "#d3dae4"],
     left: ["#c4ccd8", "#8e98a8"],
-    right: ["#94a0b2", "#636d7d"],
+    right: ["#94a0b2", "#5f6979"],
     hi: "#ffffff",
-    dark: "#2b3038",
-    ring: ["#eef2f7", "#8d97a6"],
+    dark: "#1f232a",
+    ring: ["#f4f7fb", "#7f8a9a"],
     accent: "#ffffff",
+    gem: ["#8d97a6", "#ffffff"],
   },
-  // 금
   gold: {
-    top: ["#fff3b0", "#ffd24a"],
-    left: ["#f5b82e", "#c98a0e"],
-    right: ["#c4860f", "#8a5a06"],
+    top: ["#fff4b8", "#ffd24a"],
+    left: ["#f5b82e", "#c48409"],
+    right: ["#c4860f", "#845404"],
     hi: "#fffbe0",
-    dark: "#4a3000",
-    ring: ["#ffe58a", "#c58a12"],
+    dark: "#3a2500",
+    ring: ["#fff0a8", "#b97b0a"],
     accent: "#fff1a8",
+    gem: ["#d99a12", "#fff3b0"],
   },
-  // 백금: 청록빛 흰 금속
   platinum: {
-    top: ["#e9fffa", "#a6eee0"],
-    left: ["#7fdccb", "#3fa99c"],
-    right: ["#3a9e93", "#226b66"],
+    top: ["#effffb", "#a6eee0"],
+    left: ["#7fdccb", "#3aa396"],
+    right: ["#3a9e93", "#1f6560"],
     hi: "#f2fffc",
-    dark: "#0d3533",
-    ring: ["#c9f7ee", "#4fb3a6"],
+    dark: "#0a2c2a",
+    ring: ["#e3fff8", "#4aa89c"],
     accent: "#d6fff6",
+    gem: ["#2fa596", "#c9fff3"],
   },
-  // 에메랄드
   emerald: {
-    top: ["#a8ffd0", "#3fe08f"],
-    left: ["#1fc27a", "#0b8a52"],
-    right: ["#0a8450", "#055532"],
+    top: ["#b0ffd5", "#3fe08f"],
+    left: ["#1fc27a", "#0a8450"],
+    right: ["#0a8450", "#044f2f"],
     hi: "#dcffec",
-    dark: "#03301c",
-    ring: ["#7bf0b4", "#109a5e"],
+    dark: "#022818",
+    ring: ["#b8f5d6", "#2f8a64"],
     accent: "#b9ffd9",
+    gem: ["#08955a", "#7dffbd"],
   },
-  // 다이아몬드: 청백 보석
   diamond: {
     top: ["#ffffff", "#bfe7ff"],
     left: ["#9ad8ff", "#4aa6ef"],
-    right: ["#4b9fe6", "#2a63b8"],
+    right: ["#4b9fe6", "#275db0"],
     hi: "#ffffff",
-    dark: "#0d2a52",
-    ring: ["#e3f5ff", "#5bb2f0"],
+    dark: "#0a2246",
+    ring: ["#eef8ff", "#5d8fc4"],
     accent: "#e8f7ff",
+    gem: ["#7cc6ff", "#ffffff"],
   },
-  // 마스터: 보라 보석
   master: {
     top: ["#fbe3ff", "#e09cff"],
-    left: ["#c46cf2", "#8d36c9"],
-    right: ["#8a33c4", "#5a1a8c"],
+    left: ["#c46cf2", "#8a33c4"],
+    right: ["#8a33c4", "#55188a"],
     hi: "#fff0ff",
-    dark: "#2c0a47",
-    ring: ["#f1c4ff", "#a24fd9"],
+    dark: "#22073a",
+    ring: ["#f6dcff", "#8b4cb8"],
     accent: "#f6d8ff",
+    gem: ["#a63fe6", "#f3c8ff"],
   },
-  // 그랜드마스터: 붉은 보석(루비)
   grandmaster: {
-    top: ["#ffd9d9", "#ff8c8c"],
-    left: ["#f0474c", "#b81d24"],
-    right: ["#b5161f", "#760b12"],
+    top: ["#ffe0e0", "#ff8c8c"],
+    left: ["#f0474c", "#b51a22"],
+    right: ["#b5161f", "#6e0a10"],
     hi: "#ffecec",
-    dark: "#3d0508",
-    ring: ["#ffb3b3", "#c92a31"],
+    dark: "#330407",
+    ring: ["#ffd0d0", "#b0303a"],
     accent: "#ffd0d0",
+    gem: ["#e0252e", "#ffc2c2"],
   },
-  // 챌린저: 금빛 테두리에 맑은 푸른 큐브
   challenger: {
     top: ["#f2fbff", "#a9dcff"],
     left: ["#5fb2ff", "#2a73d9"],
-    right: ["#2a6fd1", "#173f8f"],
+    right: ["#2a6fd1", "#153a86"],
     hi: "#ffffff",
-    dark: "#0b1d45",
-    ring: ["#fff0a6", "#d79a12"],
+    dark: "#0a1a40",
+    ring: ["#fff3b8", "#c98a0c"],
     accent: "#ffe27a",
+    gem: ["#2f8cff", "#bfe4ff"],
   },
 };
-
-/** 티어 자리(0 = 아이언) */
-function levelOf(tier: TierId): number {
-  return TIER_IDS.indexOf(tier);
-}
 
 /** 빛 띠가 지나가는 티어(플래티넘부터) */
 export function canShine(tier: TierId): boolean {
@@ -176,8 +171,14 @@ export function isHdrTier(tier: TierId): tier is HdrTier {
   return (HDR_TIERS as readonly string[]).includes(tier);
 }
 
+/** 구간 → 켜진 표시 개수(IV 하나 … I 넷) */
+export function divisionPips(d: Division): number {
+  return DIVISIONS.indexOf(d) + 1;
+}
+
+const f2 = (v: number) => v.toFixed(2);
 const pts = (list: readonly Pt[]) =>
-  list.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
+  list.map(([x, y]) => `${f2(x)},${f2(y)}`).join(" ");
 const lerp = (a: Pt, b: Pt, t: number): Pt => [
   a[0] + (b[0] - a[0]) * t,
   a[1] + (b[1] - a[1]) * t,
@@ -185,60 +186,82 @@ const lerp = (a: Pt, b: Pt, t: number): Pt => [
 const add = (a: Pt, b: Pt, k = 1): Pt => [a[0] + b[0] * k, a[1] + b[1] * k];
 const sub = (a: Pt, b: Pt): Pt => [a[0] - b[0], a[1] - b[1]];
 
-const [T, UR, LR, B, LL, UL] = CUBE_HEX as [Pt, Pt, Pt, Pt, Pt, Pt];
-const C = CUBE_C;
+/** 두 #rrggbb 색 사이(t=0이면 a) */
+function mix(a: string, b: string, t: number): string {
+  const p = (h: string, i: number) => Number.parseInt(h.slice(i, i + 2), 16);
+  const c = [1, 3, 5].map((i) => Math.round(p(a, i) + (p(b, i) - p(a, i)) * t));
+  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
 
-/** 세 면(꼭짓점 넷, 격자 축 둘) */
-const FACES = {
-  top: { quad: [T, UR, C, UL] as const, o: T, a: sub(UR, T), b: sub(UL, T) },
-  left: { quad: [UL, C, B, LL] as const, o: UL, a: sub(C, UL), b: sub(LL, UL) },
-  right: { quad: [C, UR, LR, B] as const, o: C, a: sub(UR, C), b: sub(B, C) },
-};
-type FaceKey = keyof typeof FACES;
+const SIN60 = Math.sqrt(3) / 2;
+/** 빛은 왼위에서 온다(각도, 라디안) */
+const LIGHT = (-118 * Math.PI) / 180;
 
-/** 한 면의 3×3 격자 선(안쪽 넷) */
-function gridLines(f: (typeof FACES)[FaceKey]): [Pt, Pt][] {
-  const out: [Pt, Pt][] = [];
-  for (const t of [1 / 3, 2 / 3]) {
-    out.push([add(f.o, f.a, t), add(add(f.o, f.a, t), f.b)]);
-    out.push([add(f.o, f.b, t), add(add(f.o, f.b, t), f.a)]);
+/** 육각 틀 변 i(꼭짓점 i → i+1)의 바깥 방향이 빛을 받는 정도(-1~1) */
+function edgeLit(i: number): number {
+  const a = ((-60 + 60 * i) * Math.PI) / 180;
+  return Math.cos(a - LIGHT);
+}
+
+/** 작은 등각 큐브 조각(날개·왕관). 가운데(앞 꼭짓점이 아니라 실루엣 가운데)와 반지름 */
+function cubelet(
+  key: string,
+  c: Pt,
+  r: number,
+  p: Palette,
+  fine: boolean,
+): ReactNode {
+  const [t, ur, lr, b, ll, ul] = hexAround(c, r) as [Pt, Pt, Pt, Pt, Pt, Pt];
+  return (
+    <g key={key} strokeLinejoin="round">
+      <polygon points={pts([t, ur, c, ul])} fill={p.top[0]} />
+      <polygon points={pts([ul, c, b, ll])} fill={p.left[0]} />
+      <polygon points={pts([c, ur, lr, b])} fill={p.right[1]} />
+      {fine && (
+        <polyline
+          points={pts([ul, c, ur])}
+          fill="none"
+          stroke={p.hi}
+          strokeWidth="0.45"
+          opacity="0.8"
+        />
+      )}
+      <polygon
+        points={pts([t, ur, lr, b, ll, ul])}
+        fill="none"
+        stroke={p.dark}
+        strokeWidth={fine ? 0.55 : 0.8}
+      />
+    </g>
+  );
+}
+
+/**
+ * 날개(골드부터): 큐브 면 조각(등각 30° 평행사변형 판)이 틀 옆에서 깃털처럼 겹쳐 위로 펼쳐진다. 티어마다 판 수와 길이.
+ * 판 k는 아래(0)부터 위로, 위 판일수록 길다.
+ */
+const WING_PLATES = [0, 0, 0, 1, 2, 3, 3, 4, 4, 4];
+const WING_LEN = [0, 0, 0, 7, 7, 7.2, 7.8, 8.2, 8.6, 9];
+const TAN30 = Math.tan(Math.PI / 6);
+
+/** 오른쪽 날개 판 넷(왼쪽은 x를 뒤집는다). x0: 틀 옆 변, y0: 가장 아랫판 윗변 */
+function wingPlates(lv: number, x0: number, y0: number): Pt[][] {
+  const out: Pt[][] = [];
+  const n = WING_PLATES[lv] ?? 0;
+  const base = WING_LEN[lv] ?? 0;
+  for (let k = n - 1; k >= 0; k--) {
+    const len = base + k * 1.9;
+    const y = y0 - k * 4.6;
+    const h = 3.6;
+    const rise = len * TAN30;
+    out.push([
+      [x0, y],
+      [x0 + len, y - rise],
+      [x0 + len, y - rise + h],
+      [x0, y + h],
+    ]);
   }
   return out;
-}
-
-/** 면 가운데에서 네 변으로 나눈 깎인 면 넷 */
-function facets(f: (typeof FACES)[FaceKey]): Pt[][] {
-  const q = f.quad;
-  const mid = lerp(q[0], q[2], 0.5);
-  return [0, 1, 2, 3].map((i) => [q[i] as Pt, q[(i + 1) % 4] as Pt, mid]);
-}
-
-/** 윗면을 가운데 쪽으로 k배 줄인 마름모 */
-function topInset(k: number): Pt[] {
-  const mid = lerp(T, C, 0.5);
-  return FACES.top.quad.map((q) => lerp(mid, q, k));
-}
-
-/** 네 갈래 반짝임(가로세로 줄기, 가운데가 굵다) */
-function glintPath(g: Glint): string {
-  const { x, y, r } = g;
-  const w = r * 0.2;
-  return `M${x} ${y - r}Q${x + w} ${y - w} ${x + r} ${y}Q${x + w} ${y + w} ${x} ${y + r}Q${x - w} ${y + w} ${x - r} ${y}Q${x - w} ${y - w} ${x} ${y - r}Z`;
-}
-
-const RING = hexAround(C, RING_R);
-const RING_IN = hexAround(C, RING_R - 3);
-
-/** 왕관(작은 것: 봉우리 셋, 큰 것: 다섯) */
-function crownPath(big: boolean): string {
-  if (!big)
-    return "M25 12.2L24.4 5.6L28.4 8.6L32 3.4L35.6 8.6L39.6 5.6L39 12.2Z";
-  return "M23.4 12.4L22.2 4.6L26.2 8L28.4 3.4L32 7.4L35.6 3.4L37.8 8L41.8 4.6L40.6 12.4Z";
-}
-
-/** 구간 → 켜진 표시 개수(IV 하나 … I 넷) */
-export function divisionPips(d: Division): number {
-  return DIVISIONS.indexOf(d) + 1;
 }
 
 export interface TierEmblemProps {
@@ -280,35 +303,118 @@ export function TierEmblem({
     return watchShine(ref.current);
   }, [shine]);
 
+  const C = CENTER;
+  const s = coreScale(tier);
+  const Ro = FRAME_OUT * s;
+  const Ri = FRAME_IN * s;
+  const Rm = Ri + (Ro - Ri) * 0.48;
+  const Rc = CUBE_R * s;
+  const O = hexAround(C, Ro);
+  const M = hexAround(C, Rm);
+  const I = hexAround(C, Ri);
+  const K = hexAround(C, Rc);
+  const [T, UR, LR, B, LL, UL] = K as [Pt, Pt, Pt, Pt, Pt, Pt];
+  const faces = {
+    top: { quad: [T, UR, C, UL] as const, o: T, a: sub(UR, T), b: sub(UL, T) },
+    left: {
+      quad: [UL, C, B, LL] as const,
+      o: UL,
+      a: sub(C, UL),
+      b: sub(LL, UL),
+    },
+    right: { quad: [C, UR, LR, B] as const, o: C, a: sub(UR, C), b: sub(B, C) },
+  };
+  type FaceKey = keyof typeof faces;
+  const FACE_KEYS: FaceKey[] = ["top", "left", "right"];
+
   /** 색 하나: 넓은 색역 화면이면 globals.css의 `--emb-<티어>-<이름>`이 덮는다 */
   const col = (name: string, hex: string) =>
     `var(--emb-${tier}-${name}, ${hex})`;
-  const grad = (key: string, from: string, to: string, x2 = 0, y2 = 1) => (
-    <linearGradient id={`${id}-${key}`} x1="0" y1="0" x2={x2} y2={y2}>
-      <stop offset="0" style={{ stopColor: col(`${key}0`, from) }} />
-      <stop offset="1" style={{ stopColor: col(`${key}1`, to) }} />
-    </linearGradient>
-  );
   const url = (key: string) => `url(#${id}-${key})`;
 
-  const ringW = lv >= 3 ? 2.6 : lv >= 2 ? 2.2 : lv >= 1 ? 1.8 : 1.3;
-  const glints = isHdrTier(tier) ? GLINTS[tier] : [];
-  const sideSpikes = lv >= 5;
-  const orbits = lv >= 8 ? 2 : lv >= 7 ? 1 : 0;
+  // 틀 금속: 변마다 빛을 받는 정도로 밝게·어둡게(바깥 띠는 바깥으로, 안 띠는 안으로 기운 면)
+  const fMid = mix(p.ring[0], p.ring[1], 0.42);
+  const fHi = mix(p.ring[0], "#ffffff", 0.5);
+  const fLo = mix(p.ring[1], p.dark, 0.5);
+  const shade = (b: number) =>
+    b >= 0 ? mix(fMid, fHi, Math.min(1, b)) : mix(fMid, fLo, Math.min(1, -b));
 
-  const orbit = (rot: number, half: "back" | "front", k: number) => (
-    <path
-      key={`${rot}-${half}`}
-      d={`M${C[0] - 23} ${C[1]}A23 6.6 0 0 ${half === "back" ? 1 : 0} ${C[0] + 23} ${C[1]}`}
-      transform={`rotate(${rot} ${C[0]} ${C[1]})`}
-      fill="none"
-      stroke={url("ring")}
-      strokeWidth={fine ? 1.3 : 2}
-      strokeLinecap="round"
-      opacity={half === "back" ? 0.45 * k : k}
-    />
-  );
-  const orbitRots = orbits === 2 ? [-20, 20] : orbits === 1 ? [-20] : [];
+  /** 한 면의 스티커 아홉(칸 안쪽으로 조금 들인 평행사변형) */
+  const stickers = (k: FaceKey) => {
+    const f = faces[k];
+    const t = 0.1;
+    const out: Pt[][] = [];
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++) {
+        const at = (u: number, v: number) =>
+          add(add(f.o, f.a, (i + u) / 3), f.b, (j + v) / 3);
+        out.push([at(t, t), at(1 - t, t), at(1 - t, 1 - t), at(t, 1 - t)]);
+      }
+    return out;
+  };
+  /** 면 가운데에서 네 변으로 나눈 깎인 면 넷 */
+  const facets = (k: FaceKey) => {
+    const q = faces[k].quad;
+    const mid = lerp(q[0], q[2], 0.5);
+    return [0, 1, 2, 3].map((i) => [q[i] as Pt, q[(i + 1) % 4] as Pt, mid]);
+  };
+
+  const crest = crestAt(tier);
+  const glints = isHdrTier(tier) ? glintsFor(tier) : [];
+  const plates = wingPlates(lv, C[0] + Ro * SIN60 - 1.2, C[1] + 3.2);
+  const mirror = (q: Pt[]): Pt[] => q.map(([x, y]) => [2 * C[0] - x, y]);
+  /** 날개 판 하나: 금속 판 위에 그 티어 색 스티커 */
+  const plate = (key: string, q: Pt[], k: number) => {
+    const inset = [
+      lerp(
+        lerp(q[0] as Pt, q[1] as Pt, 0.16),
+        lerp(q[3] as Pt, q[2] as Pt, 0.16),
+        0.24,
+      ),
+      lerp(
+        lerp(q[0] as Pt, q[1] as Pt, 0.9),
+        lerp(q[3] as Pt, q[2] as Pt, 0.9),
+        0.24,
+      ),
+      lerp(
+        lerp(q[0] as Pt, q[1] as Pt, 0.9),
+        lerp(q[3] as Pt, q[2] as Pt, 0.9),
+        0.76,
+      ),
+      lerp(
+        lerp(q[0] as Pt, q[1] as Pt, 0.16),
+        lerp(q[3] as Pt, q[2] as Pt, 0.16),
+        0.76,
+      ),
+    ];
+    return (
+      <g key={key} strokeLinejoin="round">
+        <polygon
+          points={pts(q)}
+          fill={shade(0.5 - k * 0.22)}
+          stroke={p.dark}
+          strokeWidth={fine ? 0.6 : 0.9}
+        />
+        {fine && (
+          <>
+            <polygon
+              points={pts(inset)}
+              fill={mix(p.left[0], p.top[0], 0.35 - k * 0.1)}
+            />
+            <line
+              x1={f2((q[0] as Pt)[0])}
+              y1={f2((q[0] as Pt)[1] + 0.3)}
+              x2={f2((q[1] as Pt)[0])}
+              y2={f2((q[1] as Pt)[1] + 0.3)}
+              stroke={fHi}
+              strokeWidth="0.45"
+              opacity="0.9"
+            />
+          </>
+        )}
+      </g>
+    );
+  };
 
   return (
     <span
@@ -332,12 +438,82 @@ export function TierEmblem({
         aria-hidden="true"
       >
         <defs>
-          {grad("top", p.top[0], p.top[1], 1, 1)}
-          {grad("left", p.left[0], p.left[1])}
-          {grad("right", p.right[0], p.right[1])}
-          {grad("ring", p.ring[0], p.ring[1], 0.4, 1)}
+          {/* 큐브 면: 면 전체에 걸친 한 그라데이션(스티커가 이어져 보인다) */}
+          {(
+            [
+              ["top", T, C],
+              ["left", UL, LL],
+              ["right", UR, B],
+            ] as const
+          ).map(([k, a, b]) => (
+            <linearGradient
+              key={k}
+              id={`${id}-${k}`}
+              gradientUnits="userSpaceOnUse"
+              x1={f2(a[0])}
+              y1={f2(a[1])}
+              x2={f2(b[0])}
+              y2={f2(b[1])}
+            >
+              <stop offset="0" style={{ stopColor: col(`${k}0`, p[k][0]) }} />
+              <stop offset="1" style={{ stopColor: col(`${k}1`, p[k][1]) }} />
+            </linearGradient>
+          ))}
+          {/* 틀 안 우물: 가운데가 조금 밝고 가장자리가 어둡다(큐브가 박혀 보인다) */}
+          <radialGradient id={`${id}-well`} cx="0.5" cy="0.42" r="0.6">
+            <stop offset="0" stopColor={mix(p.right[1], "#000000", 0.25)} />
+            <stop offset="1" stopColor={mix(p.dark, "#000000", 0.55)} />
+          </radialGradient>
+          {/* 윗면 반사: 뒤 꼭짓점에서 앞으로 옅어진다 */}
+          <linearGradient
+            id={`${id}-sheen`}
+            gradientUnits="userSpaceOnUse"
+            x1={f2(T[0])}
+            y1={f2(T[1])}
+            x2={f2(C[0])}
+            y2={f2(C[1])}
+          >
+            <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
+            <stop offset="0.55" stopColor="#fff" stopOpacity="0.08" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${id}-metal`} x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0" stopColor={fHi} />
+            <stop offset="0.5" stopColor={fMid} />
+            <stop offset="1" stopColor={fLo} />
+          </linearGradient>
+          <linearGradient id={`${id}-gem`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style={{ stopColor: col("gem2", p.gem[1]) }} />
+            <stop offset="1" style={{ stopColor: col("gem", p.gem[0]) }} />
+          </linearGradient>
+          {lv >= 6 && (
+            <radialGradient id={`${id}-halo`} cx="0.5" cy="0.5" r="0.5">
+              <stop
+                offset="0.3"
+                style={{ stopColor: col("halo", p.accent) }}
+                stopOpacity={lv >= 9 ? 0.48 : lv >= 7 ? 0.3 : 0.24}
+              />
+              <stop
+                offset="1"
+                style={{ stopColor: col("halo", p.accent) }}
+                stopOpacity="0"
+              />
+            </radialGradient>
+          )}
+          {lv >= 6 && (
+            <radialGradient id={`${id}-inner`} cx="0.5" cy="0.4" r="0.5">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.32" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </radialGradient>
+          )}
+          {lv >= 9 && (
+            <linearGradient id={`${id}-ray`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style={{ stopColor: col("ray", p.accent) }} />
+              <stop offset="1" stopColor={fLo} />
+            </linearGradient>
+          )}
           <clipPath id={`${id}-cube`}>
-            <polygon points={pts(CUBE_HEX)} />
+            <polygon points={pts(K)} />
           </clipPath>
           <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
@@ -346,247 +522,249 @@ export function TierEmblem({
           </linearGradient>
         </defs>
 
-        {/* 바닥: 어두운 바탕에서도 모양이 뜨게 옅은 그림자 판 */}
-        <polygon
-          points={pts(hexAround(C, RING_R + 1))}
-          fill="#000"
-          opacity="0.22"
-        />
+        {/* 후광(다이아몬드부터): 어두운 바탕에서 엠블럼 둘레가 은은하게 빛난다 */}
+        {lv >= 6 && <circle cx={C[0]} cy={C[1]} r="31.5" fill={url("halo")} />}
 
-        {/* 챌린저: 테두리 변 가운데마다 바깥으로 뻗는 빛살(꼭짓점의 가시와 엇갈려 별 모양이 된다) */}
+        {/* 챌린저: 큐브 면 조각이 뒤로 퍼지는 빛살 */}
         {lv >= 9 && (
-          <g
-            style={{ fill: col("ray", p.accent) }}
-            stroke={p.dark}
-            strokeWidth="0.6"
-            strokeLinejoin="round"
-          >
-            {[0, 1, 2, 3, 4, 5].map((i) => {
-              const a = ((i - 1) * Math.PI) / 3;
+          <g fill={url("ray")} stroke={p.dark} strokeWidth="0.5">
+            {[-90, -38, -142, 34, 146, 90].map((deg) => {
+              const a = (deg * Math.PI) / 180;
               const dir: Pt = [Math.cos(a), Math.sin(a)];
-              const side: Pt = [-dir[1], dir[0]];
-              const base = add(C, dir, 21);
-              const tip = add(C, dir, 31.5);
+              const n: Pt = [-dir[1], dir[0]];
+              const len = deg === -90 ? 31.5 : deg === 90 ? 29.5 : 31;
+              const base = add(C, dir, 12);
+              const mid = add(C, dir, len * 0.62);
               return (
                 <polygon
-                  key={a}
-                  points={pts([add(base, side, 3), tip, add(base, side, -3)])}
+                  key={deg}
+                  points={pts([
+                    base,
+                    add(mid, n, 2.4),
+                    add(C, dir, len),
+                    add(mid, n, -2.4),
+                  ])}
                 />
               );
             })}
           </g>
         )}
 
-        {/* 테두리. 실버부터 안쪽에 한 줄 더 */}
-        {
-          <g fill="none" strokeLinejoin="round">
-            <polygon
-              points={pts(RING)}
-              stroke={p.dark}
-              strokeWidth={ringW + 1.4}
-              opacity="0.8"
-            />
-            <polygon
-              points={pts(RING)}
-              stroke={url("ring")}
-              strokeWidth={ringW}
-            />
-            {lv >= 2 && fine && (
-              <polygon
-                points={pts(RING_IN)}
-                stroke={url("ring")}
-                strokeWidth="0.8"
-                opacity="0.7"
-              />
-            )}
-          </g>
-        }
+        {/* 그림자: 몸이 바탕에서 조금 떠 보이게 */}
+        <polygon
+          points={pts(O.map((v) => add(v, [0, 1.6])))}
+          fill="#000"
+          opacity="0.45"
+        />
 
-        {/* 옆 가시(에메랄드부터): 테두리 옆 네 꼭짓점에서 바깥으로 */}
-        {sideSpikes && (
-          <g
-            fill={url("ring")}
-            stroke={p.dark}
-            strokeWidth="0.6"
+        {/* 날개(골드부터): 큐브 면 조각 판이 틀 옆에서 위로 펼쳐진다 */}
+        {plates.flatMap((q, i) => {
+          const k = plates.length - 1 - i;
+          return [plate(`wr${k}`, q, k), plate(`wl${k}`, mirror(q), k)];
+        })}
+
+        {/* 실버부터: 틀 바깥에 한 겹 더 */}
+        {lv >= 2 && (
+          <polygon
+            points={pts(hexAround(C, Ro + 1.7))}
+            fill="none"
+            stroke={url("metal")}
+            strokeWidth={fine ? 0.9 : 1.2}
             strokeLinejoin="round"
-          >
-            {[1, 2, 4, 5].map((i) => {
-              const v = RING[i] as Pt;
-              const out = v[0] > C[0] ? 1 : -1;
-              const len = lv >= 6 ? 5.2 : 3.6;
-              const tip: Pt = [
-                v[0] + out * len,
-                v[1] + (v[1] < C[1] ? -len * 0.35 : len * 0.35),
-              ];
-              const s1: Pt = [v[0], v[1] - 2.2];
-              const s2: Pt = [v[0], v[1] + 2.2];
-              return <polygon key={i} points={pts([s1, tip, s2])} />;
-            })}
-          </g>
+          />
         )}
 
-        {/* 테두리 꼭짓점의 징(브론즈부터). 플래티넘부터 마름모 보석 */}
+        {/* 베벨 금속 틀: 변마다 바깥 띠와 안 띠(빛 받는 쪽 밝게, 반대쪽 어둡게) */}
+        <g strokeLinejoin="round">
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const j = (i + 1) % 6;
+            const lit = edgeLit(i);
+            return (
+              <g key={i}>
+                <polygon
+                  points={pts([O[i] as Pt, O[j] as Pt, M[j] as Pt, M[i] as Pt])}
+                  fill={shade(lit)}
+                />
+                <polygon
+                  points={pts([M[i] as Pt, M[j] as Pt, I[j] as Pt, I[i] as Pt])}
+                  fill={shade(-lit * 0.75)}
+                />
+              </g>
+            );
+          })}
+          <polygon
+            points={pts(O)}
+            fill="none"
+            stroke={p.dark}
+            strokeWidth={fine ? 0.8 : 1.2}
+          />
+          {fine && (
+            <polygon
+              points={pts(M)}
+              fill="none"
+              stroke={fHi}
+              strokeWidth="0.3"
+              opacity="0.5"
+            />
+          )}
+          {/* 우물 */}
+          <polygon
+            points={pts(I)}
+            fill={url("well")}
+            stroke={p.dark}
+            strokeWidth="0.6"
+          />
+        </g>
+
+        {/* 브론즈부터: 틀 꼭짓점의 징. 플래티넘부터 마름모 보석 */}
         {lv >= 1 && fine && (
           <g>
-            {RING.map((v) =>
+            {M.map((v) =>
               lv >= 4 ? (
                 <polygon
-                  key={`${v[0]}-${v[1]}`}
+                  key={pts([v])}
                   points={pts([
-                    [v[0], v[1] - 2.4],
-                    [v[0] + 1.9, v[1]],
-                    [v[0], v[1] + 2.4],
-                    [v[0] - 1.9, v[1]],
+                    [v[0], v[1] - 1.7 * s],
+                    [v[0] + 1.3 * s, v[1]],
+                    [v[0], v[1] + 1.7 * s],
+                    [v[0] - 1.3 * s, v[1]],
                   ])}
-                  style={{ fill: col("accent", p.accent) }}
+                  fill={url("gem")}
                   stroke={p.dark}
-                  strokeWidth="0.6"
+                  strokeWidth="0.4"
                 />
               ) : (
-                <circle
-                  key={`${v[0]}-${v[1]}`}
-                  cx={v[0]}
-                  cy={v[1]}
-                  r="1.7"
-                  fill={p.accent}
-                  stroke={p.dark}
-                  strokeWidth="0.6"
-                />
+                <g key={pts([v])}>
+                  <circle cx={v[0]} cy={v[1]} r={1.25 * s} fill={fLo} />
+                  <circle
+                    cx={v[0] - 0.3 * s}
+                    cy={v[1] - 0.3 * s}
+                    r={0.85 * s}
+                    fill={fHi}
+                  />
+                </g>
               ),
             )}
           </g>
         )}
 
-        {/* 궤도 고리 뒤쪽(마스터부터) */}
-        {orbitRots.map((r) => orbit(r, "back", 1))}
-
         {/* 큐브 */}
         <g strokeLinejoin="round">
-          <polygon points={pts(FACES.top.quad)} fill={url("top")} />
-          <polygon points={pts(FACES.left.quad)} fill={url("left")} />
-          <polygon points={pts(FACES.right.quad)} fill={url("right")} />
+          {fine ? (
+            <>
+              {/* 몸(스티커 사이 틈 색) 위에 스티커 */}
+              <polygon points={pts(K)} fill={p.dark} />
+              {FACE_KEYS.flatMap((k) =>
+                stickers(k).map((q) => (
+                  <polygon key={pts(q)} points={pts(q)} fill={url(k)} />
+                )),
+              )}
+            </>
+          ) : (
+            FACE_KEYS.map((k) => (
+              <polygon key={k} points={pts(faces[k].quad)} fill={url(k)} />
+            ))
+          )}
 
-          {/* 보석처럼 깎인 면(다이아몬드부터): 면마다 네 조각의 밝기를 다르게 */}
+          {/* 보석처럼 깎인 면(다이아몬드부터): 면마다 네 조각의 밝기를 다르게, 안쪽에서 빛 */}
           {lv >= 6 && (
-            <g fill="#fff">
-              {(["top", "left", "right"] as const).flatMap((k, fi) =>
-                facets(FACES[k]).map((tri, i) => (
-                  <polygon
-                    key={pts(tri)}
-                    points={pts(tri)}
-                    opacity={
-                      [
-                        [0.28, 0.08, 0, 0.16],
-                        [0.14, 0, 0.1, 0.04],
-                        [0.1, 0.18, 0.02, 0],
-                      ][fi]?.[i]
-                    }
-                  />
-                )),
-              )}
-            </g>
-          )}
-          {/* 면 깎임(플래티넘·에메랄드): 윗면 앞쪽 반이 살짝 밝다 */}
-          {lv >= 4 && lv < 6 && (
-            <polygon points={pts([T, UR, UL])} fill="#fff" opacity="0.14" />
+            <>
+              <g fill="#fff">
+                {FACE_KEYS.flatMap((k, fi) =>
+                  facets(k).map((tri, i) => (
+                    <polygon
+                      key={pts(tri)}
+                      points={pts(tri)}
+                      opacity={
+                        [
+                          [0.26, 0.06, 0, 0.14],
+                          [0.12, 0, 0.09, 0.03],
+                          [0.08, 0.16, 0.02, 0],
+                        ][fi]?.[i]
+                      }
+                    />
+                  )),
+                )}
+              </g>
+              <polygon points={pts(K)} fill={url("inner")} />
+            </>
           )}
 
-          {/* 스티커 격자 */}
-          {fine && (
-            <g
-              stroke={p.dark}
-              strokeWidth={lv >= 6 ? 0.7 : 0.9}
-              opacity={lv >= 6 ? 0.4 : 0.55}
-            >
-              {(["top", "left", "right"] as const).flatMap((k) =>
-                gridLines(FACES[k]).map(([a, b]) => (
-                  <line
-                    key={pts([a, b])}
-                    x1={a[0]}
-                    y1={a[1]}
-                    x2={b[0]}
-                    y2={b[1]}
-                  />
-                )),
-              )}
-            </g>
-          )}
+          {/* 윗면 반사 */}
+          <polygon points={pts(faces.top.quad)} fill={url("sheen")} />
 
           {/* 모서리 빛: 윗면 바깥 두 변과 앞의 세 모서리 */}
           <g fill="none" stroke={p.hi} strokeLinecap="round">
             <polyline
               points={pts([UL, T, UR])}
-              strokeWidth={fine ? 1 : 1.6}
-              opacity="0.85"
+              strokeWidth={fine ? 0.9 : 1.4}
+              opacity="0.9"
             />
             <polyline
               points={pts([UL, C, UR])}
-              strokeWidth={fine ? 0.9 : 1.4}
-              opacity="0.7"
+              strokeWidth={fine ? 0.7 : 1.2}
+              opacity="0.65"
             />
             <line
               x1={C[0]}
               y1={C[1]}
               x2={B[0]}
               y2={B[1]}
-              strokeWidth={fine ? 0.8 : 1.2}
-              opacity="0.45"
+              strokeWidth={fine ? 0.6 : 1}
+              opacity="0.4"
             />
           </g>
-          {/* 바깥 선 */}
           <polygon
-            points={pts(CUBE_HEX)}
+            points={pts(K)}
             fill="none"
             stroke={p.dark}
-            strokeWidth={fine ? 1.2 : 1.8}
+            strokeWidth={fine ? 0.9 : 1.4}
           />
         </g>
 
-        {/* 윗면 가운데 장식: 골드·플래티넘은 별 스티커, 에메랄드는 계단식으로 깎은 보석 */}
-        {lv === 3 || lv === 4 ? (
-          <path
-            d="M32 19.2L33.5 23.1L38.4 24L33.5 24.9L32 28.8L30.5 24.9L25.6 24L30.5 23.1Z"
-            fill={p.hi}
-            stroke={p.dark}
-            strokeWidth="0.5"
-            opacity="0.95"
+        {/* 볏(플래티넘~마스터): 틀 위 꼭짓점의 보석. 에메랄드는 계단식, 다이아몬드부터 깎인 보석 */}
+        {lv >= 4 && lv <= 7 && (
+          <Gem
+            c={crest}
+            r={lv >= 6 ? 3.6 : lv === 5 ? 3.3 : 2.6}
+            cut={lv >= 6}
+            id={id}
+            dark={p.dark}
           />
-        ) : lv === 5 ? (
-          <g stroke={p.dark} strokeWidth="0.5" strokeLinejoin="round">
-            {/* 윗면에 박힌 계단식 보석: 윗면을 가운데로 줄인 마름모 셋 */}
-            <polygon
-              points={pts(topInset(0.46))}
-              style={{ fill: col("gem", "#0f9d5c") }}
-            />
-            <polygon
-              points={pts(topInset(0.3))}
-              style={{ fill: col("gem2", "#5cf2a6") }}
-            />
-            <polygon points={pts(topInset(0.14))} fill="#eafff3" />
-          </g>
-        ) : null}
+        )}
+        {/* 아래 보석(마스터부터) */}
+        {lv >= 7 && (
+          <Gem c={[C[0], C[1] + Ro + 1.6]} r={2.5} cut id={id} dark={p.dark} />
+        )}
 
-        {/* 궤도 고리 앞쪽 */}
-        {orbitRots.map((r) => orbit(r, "front", 1))}
-
-        {/* 왕관: 그랜드마스터는 작은 것, 챌린저는 큰 것(가운데 보석) */}
+        {/* 왕관(그랜드마스터부터): 큐브 조각을 쌓은 왕관 */}
         {lv >= 8 && (
-          <g strokeLinejoin="round">
-            <path
-              d={crownPath(lv >= 9)}
-              fill={url("ring")}
-              stroke={p.dark}
-              strokeWidth="0.8"
-            />
-            {lv >= 9 && (
-              <circle
-                cx="32"
-                cy="9.6"
-                r="1.5"
-                style={{ fill: col("gem", "#3fa3ff") }}
-                stroke={p.dark}
-                strokeWidth="0.4"
-              />
+          <g>
+            {lv >= 9 &&
+              [1, -1].map((k) =>
+                cubelet(
+                  `cr2${k}`,
+                  [crest[0] + k * 11, crest[1] + 2.2],
+                  2.4,
+                  p,
+                  fine,
+                ),
+              )}
+            {[1, -1].map((k) =>
+              cubelet(
+                `cr1${k}`,
+                [crest[0] + k * 6.2, crest[1] - 0.8],
+                3.0,
+                p,
+                fine,
+              ),
+            )}
+            {cubelet(
+              "cr0",
+              [crest[0], crest[1] - 4.4],
+              lv >= 9 ? 4.2 : 3.8,
+              p,
+              fine,
             )}
           </g>
         )}
@@ -597,10 +775,10 @@ export function TierEmblem({
             <g className="emb-band">
               <polygon
                 points={pts([
-                  [C[0] - BAND_HALF * 2 - 20 * BAND_SLANT, 54],
-                  [C[0] + BAND_HALF * 2 - 20 * BAND_SLANT, 54],
-                  [C[0] + BAND_HALF * 2 + 20 * BAND_SLANT, 14],
-                  [C[0] - BAND_HALF * 2 + 20 * BAND_SLANT, 14],
+                  [C[0] - Rc * 0.45 - Rc * 0.55, C[1] + Rc],
+                  [C[0] + Rc * 0.45 - Rc * 0.55, C[1] + Rc],
+                  [C[0] + Rc * 0.45 + Rc * 0.55, C[1] - Rc],
+                  [C[0] - Rc * 0.45 + Rc * 0.55, C[1] - Rc],
                 ])}
                 fill={`url(#${id}-band)`}
               />
@@ -648,6 +826,52 @@ export function TierEmblem({
       {hdr && <HdrLayer tier={hdr} still={still} pips={pips} />}
     </span>
   );
+}
+
+/** 볏·아래 보석: 마름모 보석. `cut`이면 깎인 면 넷의 밝기를 다르게 */
+function Gem({
+  c,
+  r,
+  cut,
+  id,
+  dark,
+}: {
+  c: Pt;
+  r: number;
+  cut: boolean;
+  id: string;
+  dark: string;
+}) {
+  const t: Pt = [c[0], c[1] - r];
+  const rt: Pt = [c[0] + r * 0.78, c[1]];
+  const b: Pt = [c[0], c[1] + r];
+  const lt: Pt = [c[0] - r * 0.78, c[1]];
+  return (
+    <g strokeLinejoin="round">
+      <polygon points={pts([t, rt, b, lt])} fill={`url(#${id}-gem)`} />
+      {cut && (
+        <g fill="#fff">
+          <polygon points={pts([t, rt, c])} opacity="0.45" />
+          <polygon points={pts([lt, t, c])} opacity="0.2" />
+          <polygon points={pts([b, lt, c])} opacity="0.05" />
+        </g>
+      )}
+      <polygon
+        points={pts([t, rt, b, lt])}
+        fill="none"
+        stroke={dark}
+        strokeWidth="0.55"
+      />
+    </g>
+  );
+}
+
+/** 네 갈래 반짝임(가로세로 줄기, 가운데가 굵다) */
+function glintPath(g: Glint): string {
+  const { x, y, r } = g;
+  const w = r * 0.2;
+  const n = (v: number) => f2(v);
+  return `M${n(x)} ${n(y - r)}Q${n(x + w)} ${n(y - w)} ${n(x + r)} ${n(y)}Q${n(x + w)} ${n(y + w)} ${n(x)} ${n(y + r)}Q${n(x - w)} ${n(y + w)} ${n(x - r)} ${n(y)}Q${n(x - w)} ${n(y - w)} ${n(x)} ${n(y - r)}Z`;
 }
 
 /**

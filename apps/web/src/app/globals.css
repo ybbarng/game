@@ -3482,24 +3482,25 @@ button {
     --emb-diamond-left1: color(display-p3 0.22 0.62 0.98);
     --emb-diamond-right0: color(display-p3 0.25 0.6 0.95);
     --emb-diamond-right1: color(display-p3 0.12 0.36 0.78);
+    --emb-diamond-gem: color(display-p3 0.42 0.76 1);
     --emb-master-top1: color(display-p3 0.88 0.58 1);
     --emb-master-left0: color(display-p3 0.78 0.4 0.98);
     --emb-master-left1: color(display-p3 0.55 0.18 0.85);
     --emb-master-right0: color(display-p3 0.53 0.17 0.82);
     --emb-master-right1: color(display-p3 0.34 0.07 0.58);
+    --emb-master-gem: color(display-p3 0.62 0.18 0.95);
     --emb-grandmaster-top1: color(display-p3 1 0.52 0.5);
     --emb-grandmaster-left0: color(display-p3 0.96 0.24 0.26);
     --emb-grandmaster-left1: color(display-p3 0.76 0.08 0.12);
     --emb-grandmaster-right0: color(display-p3 0.74 0.06 0.1);
     --emb-grandmaster-right1: color(display-p3 0.48 0.02 0.05);
-    --emb-challenger-ring0: color(display-p3 1 0.94 0.6);
-    --emb-challenger-ring1: color(display-p3 0.88 0.6 0.05);
+    --emb-grandmaster-gem: color(display-p3 0.9 0.08 0.14);
     --emb-challenger-left0: color(display-p3 0.36 0.68 1);
     --emb-challenger-left1: color(display-p3 0.14 0.43 0.9);
     --emb-challenger-right0: color(display-p3 0.14 0.42 0.86);
     --emb-challenger-right1: color(display-p3 0.07 0.24 0.6);
     --emb-challenger-gem: color(display-p3 0.2 0.62 1);
     --emb-challenger-ray: color(display-p3 1 0.88 0.42);
-    --emb-challenger-accent: color(display-p3 1 0.88 0.42);
+    --emb-challenger-halo: color(display-p3 1 0.88 0.42);
   }
 }

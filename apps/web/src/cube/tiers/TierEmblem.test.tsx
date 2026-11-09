@@ -1,7 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { HDR_TIERS, hdrBandSrc, hdrGlintSrc } from "./emblemArt";
+import {
+  coreScale,
+  FRAME_OUT,
+  glintsFor,
+  HDR_TIERS,
+  hdrBandSrc,
+  hdrGlintSrc,
+} from "./emblemArt";
 import { canShine, divisionPips, TierEmblem } from "./TierEmblem";
 import { DIVISIONS, TIER_IDS } from "./table";
 
@@ -69,5 +76,29 @@ describe("TierEmblem", () => {
     expect(off).not.toContain("emb-hdr-layer");
     // HDR을 꺼도 SVG 반짝임 점은 남는다
     expect(off).toContain("emb-glint");
+  });
+});
+
+/** 모양 값(emblemArt.ts): SVG와 HDR 그림 스크립트가 함께 쓴다 */
+describe("emblemArt", () => {
+  it("위 티어일수록 몸이 작아지고(바깥 장식이 커질 자리), 틀은 엠블럼 안에 든다", () => {
+    const scales = TIER_IDS.map(coreScale);
+    for (let i = 1; i < scales.length; i++)
+      expect(scales[i]).toBeLessThan(scales[i - 1] as number);
+    for (const s of scales) expect(FRAME_OUT * s + 1.7).toBeLessThan(32);
+  });
+
+  it("반짝임은 HDR 티어에만 있고 모두 엠블럼(0~64) 안", () => {
+    for (const tier of TIER_IDS) {
+      const g = glintsFor(tier);
+      const hdr = (HDR_TIERS as readonly string[]).includes(tier);
+      expect(g.length > 0).toBe(hdr);
+      for (const { x, y, r } of g) {
+        expect(x - r).toBeGreaterThanOrEqual(0);
+        expect(x + r).toBeLessThanOrEqual(64);
+        expect(y - r).toBeGreaterThanOrEqual(0);
+        expect(y + r).toBeLessThanOrEqual(64);
+      }
+    }
   });
 });
