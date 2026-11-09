@@ -18,6 +18,7 @@ import {
   HDR_TIERS,
   type HdrTier,
   hdrBandSrc,
+  hdrFacetSrc,
   hdrGlintSrc,
   hexAround,
   levelOf,
@@ -34,10 +35,11 @@ import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
  *
  * - 인라인 SVG 하나라 바깥 그림·글꼴이 없고 크기는 `size`(px)로 정한다. 필터 없이 미리 정한 그라데이션과 면 밝기로만
  *   입체를 낸다. 28px 아래는 스티커·징 같은 잔 선을 뺀다.
- * - 플래티넘부터 위는 가끔 빛 띠가 한 번 지나간다(화면에 여러 개 있어도 한 번에 하나, 보이는 것만, emblemShine.ts).
- *   움직임 줄이기나 `still`이면 움직이지 않는다.
- * - 다이아몬드부터 위는 HDR 화면이면 흰색보다 밝은 반짝임 그림(BT.2020 PQ AVIF)을 겹친다. 빛이 지나갈 때만 켜지고,
- *   움직임 줄이기·`still`이면 반짝임 점만 멈춘 채 켜 둔다. SDR 화면·HDR을 모르는 브라우저는 그림을 받지도 않는다.
+ * - 플래티넘부터 위는 가끔 빛 띠가 한 번 지나간다(화면에 여러 개 있어도 한 번에 하나, 높은 티어부터, 보이는 것만,
+ *   emblemShine.ts). 움직임 줄이기나 `still`, 28px 아래면 움직이지 않는다.
+ * - 다이아몬드부터 위는 HDR 화면이면 흰색보다 밝은 반짝임 그림(BT.2020 PQ AVIF)을 겹친다. 깎인 면 모서리 빛은 늘
+ *   은은하게 켜 두고, 빛 띠가 지나갈 때 띠·반짝임 점이 더 밝게 켜진다. 움직임 줄이기·`still`·28px 아래면 반짝임 점도
+ *   멈춘 채 켜 둔다. SDR 화면·HDR을 모르는 브라우저는 그림을 받지도 않는다.
  * - 넓은 색역(P3) 화면이면 위 티어의 보석 색이 더 짙어진다(globals.css의 `--emb-*`).
  */
 
@@ -295,13 +297,14 @@ export function TierEmblem({
   const H = pips ? EMBLEM_BOX_PIPS : EMBLEM_BOX;
   const id = `emb${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const ref = useRef<HTMLSpanElement>(null);
-  const shine = canShine(tier) && !still;
+  // 28px 아래(기록 칸의 작은 표시)는 빛 띠가 거의 보이지 않아 차례에 넣지 않는다(위 티어 차례가 늦어진다)
+  const shine = canShine(tier) && !still && fine;
   const hdr = isHdrTier(tier) && !noHdr ? tier : null;
 
   useEffect(() => {
     if (!shine || !ref.current) return;
-    return watchShine(ref.current);
-  }, [shine]);
+    return watchShine(ref.current, lv);
+  }, [shine, lv]);
 
   const C = CENTER;
   const s = coreScale(tier);
@@ -823,7 +826,7 @@ export function TierEmblem({
           })}
       </svg>
 
-      {hdr && <HdrLayer tier={hdr} still={still} pips={pips} />}
+      {hdr && <HdrLayer tier={hdr} still={!shine} pips={pips} />}
     </span>
   );
 }
@@ -910,6 +913,7 @@ function HdrLayer({
       className="emb-hdr-layer pointer-events-none"
       data-still={still ? "" : undefined}
     >
+      {img(hdrFacetSrc(tier), "emb-hdr-facet")}
       {!still &&
         BAND_FRAMES.map((_, i) =>
           img(hdrBandSrc(tier, i), `emb-hdr-band emb-hdr-band${i}`),

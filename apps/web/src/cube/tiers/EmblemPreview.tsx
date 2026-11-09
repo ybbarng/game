@@ -53,7 +53,6 @@ export function EmblemPreview() {
                 division={
                   t === "grandmaster" || t === "challenger" ? null : "I"
                 }
-                still={hdr}
               />
               <figcaption className={cn("font-semibold text-sm", TIER_TONE[t])}>
                 {TIER_LABEL[t]}
@@ -69,7 +68,7 @@ export function EmblemPreview() {
                 {s}px
               </span>
               {TIER_IDS.map((t) => (
-                <TierEmblem key={t} tier={t} size={s} still={hdr} />
+                <TierEmblem key={t} tier={t} size={s} />
               ))}
             </div>
           ))}

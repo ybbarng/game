@@ -1,5 +1,6 @@
 // 큐브 티어 엠블럼의 HDR 반짝임 그림(cube/tiers/TierEmblem.tsx). 다이아몬드·마스터·그랜드마스터·챌린저마다
 //   hdr-<티어>-glint.avif   반짝임 점(엠블럼 SVG와 같은 자리, emblemArt.ts glintsFor) + 윗면 바깥 두 변의 금속 빛
+//   hdr-<티어>-facet.avif  늘 은은하게 켜 두는 깎인 면 모서리·윗면 모서리 빛과 작은 반짝임 점(낮은 밝기)
 //   hdr-<티어>-band0~2.avif 빛 띠 세 자리(왼쪽·가운데·오른쪽). CSS가 차례로 켰다 꺼 지나가는 것처럼 보인다
 // 를 만든다. 그림은 엠블럼 viewBox(64×64)를 그대로 덮는다.
 //
@@ -35,6 +36,7 @@ import {
   coreScale,
   cubeHex,
   EMBLEM_BOX,
+  facetEdges,
   glintsFor,
   HDR_TIERS,
   HDR_TINT,
@@ -44,8 +46,10 @@ import {
 const SIZE = 192;
 /** 화소 밝기(nit). 203이 보통 흰색 */
 const NITS = 1000;
+/** 늘 켜 두는 면 모서리 그림의 밝기(nit). 보통 흰색의 약 3배로 낮게 두고 CSS가 불투명도를 더 낮춘다 */
+const FACET_NITS = 600;
 /** 띠는 반짝임보다 옅게(알파 상한) */
-const BAND_A = 0.55;
+const BAND_A = 0.8;
 
 const OUT_DIR = fileURLToPath(
   new URL("../public/cube/tiers/", import.meta.url),
@@ -135,6 +139,36 @@ function glintLayer(tier) {
   };
 }
 
+/**
+ * 늘 켜 두는 그림: 깎인 면 사이 모서리(빛 받는 정도만큼), 윗면 바깥 두 변, 반짝임 자리의 작은 별.
+ * 선은 가늘게(약 1px) 두어 화면 밝기가 출렁이지 않게 한다.
+ */
+function facetLayer(tier) {
+  const [T, UR, , , , UL] = cubeHex(tier);
+  const edges = facetEdges(tier);
+  const sparks = glintsFor(tier).map((g) => ({ ...g, r: g.r * 0.45 }));
+  return (x, y) => {
+    let keep = 1;
+    for (const { a, b, lit } of edges) {
+      // 면 가운데 쪽이 밝고 꼭짓점 쪽으로 옅어진다
+      const t = Math.min(
+        1,
+        Math.hypot(x - a[0], y - a[1]) / Math.hypot(b[0] - a[0], b[1] - a[1]),
+      );
+      keep *=
+        1 -
+        0.75 *
+          lit *
+          (1 - 0.6 * t) *
+          Math.exp(-((segDist(x, y, a, b) / 0.32) ** 2));
+    }
+    const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
+    keep *= 1 - 0.85 * Math.exp(-((edge / 0.4) ** 2));
+    for (const g of sparks) keep *= 1 - glintAlpha(g, x, y);
+    return 1 - keep;
+  };
+}
+
 function bandLayer(tier, frame) {
   const hex = cubeHex(tier);
   const rc = CUBE_R * coreScale(tier);
@@ -150,12 +184,12 @@ function bandLayer(tier, frame) {
   };
 }
 
-function rgba16(alphaAt, tint) {
+function rgba16(alphaAt, tint, nits) {
   const stride = 1 + SIZE * 8;
   const raw = Buffer.alloc(stride * SIZE);
   const lin = toBt2020(tint);
   const top = Math.max(...lin);
-  const signal = lin.map((v) => Math.round(pq((NITS * v) / top) * 65535));
+  const signal = lin.map((v) => Math.round(pq((nits * v) / top) * 65535));
   const s = EMBLEM_BOX / SIZE;
   for (let py = 0; py < SIZE; py++) {
     raw[py * stride] = 0; // 줄 필터 없음
@@ -201,10 +235,10 @@ function png16(raw) {
   ]);
 }
 
-function build(alphaAt, tint, name, dir) {
+function build(alphaAt, tint, name, dir, nits = NITS) {
   const png = join(dir, `${name}.png`);
   const out = join(OUT_DIR, name);
-  writeFileSync(png, png16(rgba16(alphaAt, tint)));
+  writeFileSync(png, png16(rgba16(alphaAt, tint, nits)));
   execFileSync(
     "avifenc",
     [
@@ -239,6 +273,13 @@ function main() {
   try {
     for (const tier of HDR_TIERS) {
       build(glintLayer(tier), HDR_TINT[tier], `hdr-${tier}-glint.avif`, dir);
+      build(
+        facetLayer(tier),
+        HDR_TINT[tier],
+        `hdr-${tier}-facet.avif`,
+        dir,
+        FACET_NITS,
+      );
       for (const [i, frame] of BAND_FRAMES.entries())
         build(
           bandLayer(tier, frame),
