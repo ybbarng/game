@@ -65,5 +65,14 @@ export const heartsTutorial: TutorialKit<
       if (state.seq !== prev.seq && state.view)
         listener(state.view, state.events);
     }),
-  Table: HeartsTable,
+  endMission: () => useHearts.getState().leave(),
+  Table: ({ onExit, ...props }) => (
+    <HeartsTable
+      {...props}
+      onExit={() => {
+        useHearts.getState().leave();
+        onExit();
+      }}
+    />
+  ),
 };

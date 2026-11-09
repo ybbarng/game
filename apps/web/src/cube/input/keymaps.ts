@@ -214,7 +214,7 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *
  * csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다(2026-11-04).
  * 숫자: 1 = S', 2 = E, 9 = E', 0 = S, 3·4 = 왼손 층 수 −1·+1, 7·8 = 오른손 층 수 +1·−1(R 키가 바깥 k층, Rw 키가 k+1층).
- * csTimer에 없는 덧붙임: Shift+면 키 = 넓게(Rw …, 큰 큐브는 층 수 + 1층). Alt는 쓰지 않는다(브라우저 단축키와 부딪친다).
+ * csTimer에 없는 덧붙임: Shift+면 키 = 넓게(Rw …, 큰 큐브는 층 수 + 1층). Alt는 쓰지 않는다(Shift가 알아보기 쉽다. 브라우저 단축키는 막을 수 있다, docs/47 4-2).
  * csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라 살펴보기·블라인드 시작이다(층 수는 섞기·맞춘 상태로 때 1로).
  */
 const TWO_HAND_FACE: [code: string, action: string][] = [
@@ -278,6 +278,8 @@ export function twoHandKeymap(): Keymap {
 /**
  * 「표기」(처음, 직관). R L U D F B 키 = 그 면 시계, Shift = 반대, Alt = 넓게(w), M E S = 가운데 층,
  * X Y Z = 큐브 돌리기, 숫자 2~7 = 다음 수 깊이. 공식을 글자 그대로 친다(R2는 R 두 번).
+ * Alt+D·Alt+F는 윈도·리눅스 브라우저 단축키와 같은 조합이지만, 처리한 키는 keydown에서 막고 크롬·엣지·파이어폭스는
+ * 막힌 Alt+글자 단축키를 하지 않는다(docs/47 4-2, 2026-11-09 확인).
  */
 export function notationKeymap(): Keymap {
   const bindings: KeyBinding[] = [];

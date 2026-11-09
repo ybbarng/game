@@ -283,7 +283,7 @@ describe("첫 수와 초반 원칙", () => {
     expect(reach(START, "09").sort()).toEqual(["89", "99"]);
   });
 
-  it("진마가 나가면 왼쪽 차는 02로 옆걸음하지만, 귀마가 나가도 오른쪽 차 길은 그대로다", () => {
+  it("진마가 나가면 왼쪽 차는 02로 옆걸음하지만, 귀마가 나가도 오른쪽 찻길은 그대로다", () => {
     const left = playLine(START, ["02-83"], choOnly);
     expect(reach(left, "01")).toContain("02");
     const right = playLine(START, ["07-86"], choOnly);
