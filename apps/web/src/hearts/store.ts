@@ -149,6 +149,11 @@ interface HeartsStore {
   attachReplay(host: HeartsHost, seatNames: string[] | null): void;
   submit(action: Action): SubmitResult;
   clearNotice(): void;
+  /**
+   * 화면에 붙인 대국을 닫는다(배우기 미션을 마치거나 나갈 때). 연출 타이머·구독을 끊고
+   * 혼자 하는 대국이면 컴퓨터도 멈춘다. 이어하기 저장은 지우지도 덮어쓰지도 않는다
+   */
+  leave(): void;
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -466,6 +471,35 @@ export const useHearts = create<HeartsStore>((set, get) => {
 
     clearNotice() {
       set({ notice: null });
+    },
+
+    leave() {
+      clearTimer();
+      unsubscribe?.();
+      unsubscribe = null;
+      const { host } = get();
+      if (host instanceof LocalMatch) {
+        host.dispose();
+        if (solo === (host as unknown)) solo = null;
+      }
+      set({
+        host: null,
+        seatNames: null,
+        view: null,
+        events: [],
+        queue: [],
+        shownTrick: null,
+        collecting: false,
+        beforeTrick: null,
+        roundResult: null,
+        dealing: null,
+        busy: false,
+        network: false,
+        invalid: null,
+        incident: null,
+        shuffling: null,
+        shuffleStartedAt: null,
+      });
     },
   };
 });

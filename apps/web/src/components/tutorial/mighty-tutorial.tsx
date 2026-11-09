@@ -47,5 +47,14 @@ export const mightyTutorial: TutorialKit<
       if (state.seq !== prev.seq && state.view)
         listener(state.view, state.events);
     }),
-  Table: GameTable,
+  endMission: () => useGame.getState().leave(),
+  Table: ({ onExit, ...props }) => (
+    <GameTable
+      {...props}
+      onExit={() => {
+        useGame.getState().leave();
+        onExit();
+      }}
+    />
+  ),
 };
