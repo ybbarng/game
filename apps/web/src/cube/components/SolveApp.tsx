@@ -67,6 +67,7 @@ import {
   parseReplay,
   parseSplits,
   resultMs,
+  type SolveInput,
   type SolveMode,
   type SolveRecord,
 } from "../records";
@@ -114,6 +115,13 @@ function randomSeed(): number {
     return Math.floor(Math.random() * 2 ** 32);
   }
 }
+
+/** 이 단계에 이른 수는 맞추기에 든다(입력 방식을 센다) */
+const SOLVING_PHASES: ReadonlySet<string> = new Set([
+  "solving",
+  "blindSolve",
+  "done",
+]);
 
 const PHASE_HINT: Record<string, string> = {
   free: "",
@@ -248,7 +256,11 @@ export function SolveApp({
     setAlgBook(loadAlgBook());
     return watchAlgBook(setAlgBook);
   }, []);
+  /** 이번 판 맞추기 동안 수를 둔 입력(처음 쓴 차례, 기록의 `inputs`) */
+  const inputsRef = useRef<SolveInput[]>([]);
+  // 새 판 준비: 만난 상황과 입력 방식을 비운다
   const clearMet = useCallback(() => {
+    inputsRef.current = [];
     metRef.current = [];
     setMet([]);
     setSpotted(null);
@@ -288,7 +300,15 @@ export function SolveApp({
       clock: realClock,
       onChange: bump,
       onCue,
-      onRecord: (r) => {
+      onRecord: (raw) => {
+        // 입력 방식·살펴보기는 화면이 안다(세션은 수만 받는다)
+        const r: SolveRecord = {
+          ...raw,
+          ...(inputsRef.current.length > 0
+            ? { inputs: [...inputsRef.current] }
+            : {}),
+          inspection: made.inspection,
+        };
         if (challenge) {
           // 제한 도전은 혼자 맞추기 기록(평균)에 넣지 않고 따로 둔다
           const c = runRef.current;
@@ -347,6 +367,7 @@ export function SolveApp({
               : r,
           ),
         );
+        inputsRef.current = [];
       },
     });
     return made;
@@ -476,12 +497,25 @@ export function SolveApp({
   ]);
 
   const onMove = useCallback(
-    (move: Parameters<SolveSession["input"]>[0], notation: string) => {
+    (
+      move: Parameters<SolveSession["input"]>[0],
+      notation: string,
+      input?: SolveInput,
+    ) => {
+      const before = session.phase;
       const r = session.input(move, notation);
       if (r === "blocked") {
         setNotice(MEMO_BLOCKED);
         return false;
       }
+      if (
+        input &&
+        before !== "free" &&
+        before !== "done" &&
+        SOLVING_PHASES.has(session.phase) &&
+        !inputsRef.current.includes(input)
+      )
+        inputsRef.current = [...inputsRef.current, input];
       if (alertOn && myCases.current.length > 0) {
         const c =
           session.phase === "solving"
