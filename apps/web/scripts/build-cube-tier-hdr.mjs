@@ -55,6 +55,8 @@ const NITS = 1000;
 const FACET_NITS = 600;
 /** 띠는 반짝임보다 옅게(알파 상한) */
 const BAND_A = 0.8;
+/** 「HDR 확인」 흰 네모 한 변(px) */
+const CHECK_SIZE = 32;
 
 const OUT_DIR = fileURLToPath(
   new URL("../public/cube/tiers/", import.meta.url),
@@ -209,16 +211,16 @@ function bandLayer(tier, frame) {
   };
 }
 
-function rgba16(alphaAt, tint, nits) {
-  const stride = 1 + SIZE * 8;
-  const raw = Buffer.alloc(stride * SIZE);
+function rgba16(alphaAt, tint, nits, size = SIZE) {
+  const stride = 1 + size * 8;
+  const raw = Buffer.alloc(stride * size);
   const lin = toBt2020(tint);
   const top = Math.max(...lin);
   const signal = lin.map((v) => Math.round(pq((nits * v) / top) * 65535));
-  const s = EMBLEM_BOX / SIZE;
-  for (let py = 0; py < SIZE; py++) {
+  const s = EMBLEM_BOX / size;
+  for (let py = 0; py < size; py++) {
     raw[py * stride] = 0; // 줄 필터 없음
-    for (let px = 0; px < SIZE; px++) {
+    for (let px = 0; px < size; px++) {
       // 화소 가운데를 viewBox 좌표로, 4점 평균으로 가장자리를 매끄럽게
       let a = 0;
       for (const [ox, oy] of [
@@ -246,10 +248,10 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-function png16(raw) {
+function png16(raw, size) {
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(SIZE, 0);
-  ihdr.writeUInt32BE(SIZE, 4);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
   ihdr[8] = 16; // 비트 깊이
   ihdr[9] = 6; // RGBA
   return Buffer.concat([
@@ -260,10 +262,10 @@ function png16(raw) {
   ]);
 }
 
-function build(alphaAt, tint, name, dir, nits = NITS) {
+function build(alphaAt, tint, name, dir, nits = NITS, size = SIZE) {
   const png = join(dir, `${name}.png`);
   const out = join(OUT_DIR, name);
-  writeFileSync(png, png16(rgba16(alphaAt, tint, nits)));
+  writeFileSync(png, png16(rgba16(alphaAt, tint, nits, size), size));
   execFileSync(
     "avifenc",
     [
@@ -296,6 +298,8 @@ function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "cube-tier-hdr-"));
   try {
+    // 미리보기 「HDR 확인」 줄의 1000 nit 흰 네모(브라우저가 HDR 그림을 HDR로 그리는지 가른다)
+    build(() => 1, [1, 1, 1], "hdr-check-white.avif", dir, 1000, CHECK_SIZE);
     for (const tier of HDR_TIERS) {
       build(glintLayer(tier), HDR_TINT[tier], `hdr-${tier}-glint.avif`, dir);
       build(

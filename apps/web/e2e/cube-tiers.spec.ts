@@ -151,6 +151,19 @@ test("엠블럼 미리보기: 열 티어를 크기별로 견주고 화면 밖으
   ).toHaveCount(4);
   // HDR 층은 SDR 화면(헤드리스)에서 보이지 않는다(lazy img라 받지도 않는다)
   await expect(page.locator(".emb-hdr-layer img").first()).toBeHidden();
+  // 「HDR 확인」 견본은 화면과 상관없이 늘 보이고 그림 셋(흰 네모·별빛·엠블럼 빛)이 다 받아진다
+  const check = page.locator("[data-cube-hdr-check] img");
+  await expect(check).toHaveCount(3);
+  await expect
+    .poll(() =>
+      check.evaluateAll((els) =>
+        els.every((e) => (e as HTMLImageElement).naturalWidth > 0),
+      ),
+    )
+    .toBe(true);
+  await expect(page.locator("[data-cube-hdr-check-screen]")).toContainText(
+    "화면 SDR",
+  );
   await noSideScroll(page);
   await shot(page, "tier-emblems", info.project.name);
 });

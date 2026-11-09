@@ -199,3 +199,5 @@ export function hdrFacetSrc(tier: HdrTier): string {
 export function hdrBandSrc(tier: HdrTier, frame: number): string {
   return `/cube/tiers/hdr-${tier}-band${frame}.avif`;
 }
+/** 미리보기 「HDR 확인」의 1000 nit 흰 네모 */
+export const HDR_CHECK_WHITE_SRC = "/cube/tiers/hdr-check-white.avif";

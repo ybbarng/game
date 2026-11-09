@@ -3461,6 +3461,11 @@ button {
     }
   }
 }
+/* 미리보기 「HDR 확인」 견본: 화면·브라우저와 상관없이 늘 보이고, 밝기 한도를 풀어 둔다 */
+.emb-hdr-check {
+  dynamic-range-limit: no-limit;
+  user-select: none;
+}
 /* 개발용 미리보기(/cube/tiers/emblems?hdr=1): SDR 화면에서도 HDR 층 자리를 본다 */
 .emb-hdr-force .emb-hdr-layer {
   display: contents;
