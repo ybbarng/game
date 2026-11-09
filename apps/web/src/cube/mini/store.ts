@@ -66,7 +66,7 @@ export interface MiniRecord extends SolveRecord {
 
 export interface MiniPrefs {
   n: number;
-  /** 거울 판(뒤·왼쪽·아래 면 비추기). 끄면 끌어 돌려 본다 */
+  /** 거울 판(뒤·왼쪽·아래 면 비추기). 끄면 브라우저는 끌어 돌려 보고, Cubie는 키보드 x·y·z로 돌려 본다 */
   mirror: boolean;
 }
 
