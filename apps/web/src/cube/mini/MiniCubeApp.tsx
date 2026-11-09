@@ -981,8 +981,16 @@ function MiniCube() {
         n: prefs.n,
         mirror: prefs.mirror,
         records: recordsOpen,
+        scrambleKeys: keymap
+          ? chordsFor(keymap, "scramble").map(({ code, shift, alt, ctrl }) => ({
+              code,
+              ...(shift ? { shift } : {}),
+              ...(alt ? { alt } : {}),
+              ...(ctrl ? { ctrl } : {}),
+            }))
+          : [],
       });
-  }, [app, prefs, recordsOpen]);
+  }, [app, prefs, recordsOpen, keymap]);
   // 기록을 보다가 포커스를 잃으면 닫는다(떠 있는 창은 큐브만)
   useEffect(() => {
     if (!focused && app) setRecordsOpen(false);

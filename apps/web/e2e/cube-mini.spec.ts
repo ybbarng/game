@@ -463,6 +463,10 @@ test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표�
       () => (window as unknown as { __toApp: { type: string }[] }).__toApp,
     );
   expect((await sent()).some((m) => m.type === "ready")).toBe(true);
+  // 메뉴 「섞기」 옆에 보일 키: 기본 배치는 Enter
+  expect((await sent()).filter((m) => m.type === "state").at(-1)).toMatchObject(
+    { scrambleKeys: [{ code: "Enter" }] },
+  );
   await fromApp(page, { type: "focus", focused: true });
 
   /** 섞고 거꾸로 쳐서 맞춘다. `fake`번째 수만 다른 프로그램이 넣은 키로 알린다 */

@@ -225,10 +225,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
   }
 
-  private func item(_ title: String, _ action: Selector, key: String = "", tag: Int = 0, on: Bool = false)
-    -> NSMenuItem
-  {
-    let i = NSMenuItem(title: title, action: action, keyEquivalent: key)
+  /// `key`: 오른쪽에 보일 단축키(맥 표준 표시). 메뉴가 열려 있을 때 그 키를 누르면 이 항목이 실행되고 키는 메뉴가 받는다
+  /// (큐브 창에 다시 닿지 않는다). 닫혀 있을 때는 메뉴가 키를 받지 않는다(주 메뉴가 아니다). 실제로 그 키로 되는 항목에만 단다
+  private func item(
+    _ title: String, _ action: Selector, key: MenuKey? = nil, tag: Int = 0, on: Bool = false
+  ) -> NSMenuItem {
+    let i = NSMenuItem(title: title, action: action, keyEquivalent: key?.key ?? "")
+    if let key {
+      var mods: NSEvent.ModifierFlags = []
+      if key.shift { mods.insert(.shift) }
+      if key.option { mods.insert(.option) }
+      if key.control { mods.insert(.control) }
+      if key.command { mods.insert(.command) }
+      i.keyEquivalentModifierMask = mods
+    }
     i.target = self
     i.tag = tag
     i.state = on ? .on : .off
@@ -249,11 +259,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       m.addItem(.separator())
     }
     if !forWindow {
-      m.addItem(item("큐브로 가기 (\(Config.hotKeyLabel))", #selector(menuFocus)))
+      // 전역 단축키는 잡았을 때만 보인다(못 잡았으면 그 키는 다른 앱이 받는다)
+      m.addItem(item("큐브로 가기", #selector(menuFocus), key: hotKeyOK ? Config.hotKeyMenuKey : nil))
       m.addItem(item(cube.panel.isVisible ? "숨기기" : "보이기", #selector(menuToggleVisible)))
       m.addItem(.separator())
     }
-    m.addItem(item("섞기", #selector(menuScramble)))
+    m.addItem(item("섞기", #selector(menuScramble), key: s.scrambleKey))
     m.addItem(item("거울", #selector(menuMirror), on: s.mirror))
     let sizes = NSMenu()
     for n in 2...7 {
@@ -262,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let sizeItem = NSMenuItem(title: "크기", action: nil, keyEquivalent: "")
     sizeItem.submenu = sizes
     m.addItem(sizeItem)
-    m.addItem(item("공식 보기 (\(Config.hintKeyLabel))", #selector(menuHint)))
+    m.addItem(item("공식 보기", #selector(menuHint), key: MenuKey(key: MenuKey.f1)))
     m.addItem(item("배우기", #selector(menuLearn)))
     m.addItem(item("기록 보기", #selector(menuRecords)))
     m.addItem(item("티어표", #selector(menuTiers)))
@@ -297,7 +308,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     return m
   }
 
-  @objc private func menuFocus() { focusCube() }
+  @objc private func menuFocus() {
+    // 메뉴가 열린 채 ⌃⌥⌘C를 눌러 이 항목이 불렸다면 전역 단축키도 같은 키를 받는다. 두 번 하지 않게 단축키 쪽에 맡긴다
+    if hotKeyOK, NSApp.currentEvent?.type == .keyDown { return }
+    focusCube()
+  }
 
   @objc private func menuToggleVisible() {
     if cube.panel.isVisible {

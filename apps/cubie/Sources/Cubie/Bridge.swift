@@ -1,4 +1,5 @@
 import AppKit
+import CubieCore
 import WebKit
 
 /// 웹 미니 모드(`apps/web/src/cube/mini/app-bridge.ts`)와 주고받는 작은 메시지 다리.
@@ -14,6 +15,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     var n = 3
     var mirror = true
     var records = false
+    /// 지금 키 배치의 섞기 키(메뉴 「섞기」 옆에 보인다). 이 값을 보내기 전 웹 화면이면 비어 있다
+    var scrambleKey: MenuKey?
   }
 
   private(set) var state = WebState()
@@ -43,6 +46,14 @@ final class Bridge: NSObject, WKScriptMessageHandler {
       if let n = d["n"] as? Int { state.n = n }
       if let m = d["mirror"] as? Bool { state.mirror = m }
       if let r = d["records"] as? Bool { state.records = r }
+      if let keys = d["scrambleKeys"] as? [[String: Any]] {
+        state.scrambleKey = keys.lazy.compactMap { k -> MenuKey? in
+          guard let code = k["code"] as? String else { return nil }
+          return MenuKey.fromWeb(
+            code: code, shift: k["shift"] as? Bool ?? false, alt: k["alt"] as? Bool ?? false,
+            ctrl: k["ctrl"] as? Bool ?? false)
+        }.first
+      }
       onState?()
     case "retry":
       onRetry?()

@@ -8,6 +8,8 @@
  * 앱 쪽 이름(`ToApp`·`FromApp`의 `type`)은 `apps/cubie/Sources/Cubie/Bridge.swift`와 같아야 한다.
  */
 
+import type { KeyChord } from "../input";
+
 export const BRIDGE_EVENT = "cubie";
 
 /** 앱이 화면에 보내는 것 */
@@ -41,8 +43,16 @@ export interface BubbleLine {
 export type ToApp =
   /** 화면이 떴다: 앱이 지금 포커스·보임을 다시 알려 준다 */
   | { type: "ready" }
-  /** 메뉴 표시(체크 표시)를 맞출 값 */
-  | { type: "state"; n: number; mirror: boolean; records: boolean }
+  /**
+   * 메뉴 표시(체크 표시)를 맞출 값. `scrambleKeys`: 지금 키 배치의 섞기 키(0.1.3부터 앱이 메뉴 「섞기」 옆에 보인다)
+   */
+  | {
+      type: "state";
+      n: number;
+      mirror: boolean;
+      records: boolean;
+      scrambleKeys: KeyChord[];
+    }
   /**
    * 큐브·거울 판이 차지하는 사각형들([x, y, 너비, 높이], 화면 왼쪽 위 기준 CSS px). 앱의 투명 창은 이 밖의
    * 누르기를 아래 앱으로 넘긴다
