@@ -75,6 +75,34 @@ export function cubeFaces(tier: string): Pt[][] {
   ];
 }
 
+/** 스티커(블럭)를 칸 안쪽으로 들인 비율(칸 한 변 1 기준) */
+export const STICKER_INSET = 0.1;
+
+/**
+ * 면 q의 칸 (i, j) 안 (u, v) 자리(칸 단위 0~1). 칸 원점(u=v=0)은 면의 위쪽 꼭짓점 쪽이라 세 면 모두 빛을 받는 쪽이다.
+ * 면 꼭짓점 q[0]에서 q[1] 쪽이 i·u, q[3] 쪽이 j·v.
+ */
+export function cellAt(
+  q: readonly Pt[],
+  i: number,
+  j: number,
+  u: number,
+  v: number,
+): Pt {
+  const [o, a, , b] = q as [Pt, Pt, Pt, Pt];
+  const s = (i + u) / 3;
+  const t = (j + v) / 3;
+  return [
+    o[0] + (a[0] - o[0]) * s + (b[0] - o[0]) * t,
+    o[1] + (a[1] - o[1]) * s + (b[1] - o[1]) * t,
+  ];
+}
+
+/** 블럭 하나의 반사 자리(칸 단위): 빛 받는 쪽 테이블 모서리 근처. SVG와 HDR 그림이 같은 자리에 둔다 */
+export const BLOCK_SPARK: Pt = [0.34, 0.31];
+/** 면마다 블럭이 빛을 받는 정도(윗면·왼면·오른면) */
+export const FACE_LIT = [1, 0.62, 0.4] as const;
+
 /** 면 가운데(깎인 면 넷이 모이는 점) */
 export function faceMid(q: readonly Pt[]): Pt {
   const a = q[0] as Pt;
@@ -127,8 +155,8 @@ export function glintsFor(tier: string): Glint[] {
   if (lv < 6) return [];
   const [t, ur, , , ll] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
   const out: Glint[] = [
-    { x: t[0], y: t[1] + 2.2, r: 6.5 },
-    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 3.4 },
+    { x: t[0], y: t[1] + 0.9, r: 3.6 },
+    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 2.6 },
   ];
   if (lv >= 7) out.push({ x: ll[0] + 2, y: ll[1] - 1, r: 3 });
   const crest = crestAt(tier);

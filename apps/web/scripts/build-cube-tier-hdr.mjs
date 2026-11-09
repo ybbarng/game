@@ -1,6 +1,6 @@
 // 큐브 티어 엠블럼의 HDR 반짝임 그림(cube/tiers/TierEmblem.tsx). 다이아몬드·마스터·그랜드마스터·챌린저마다
 //   hdr-<티어>-glint.avif   반짝임 점(엠블럼 SVG와 같은 자리, emblemArt.ts glintsFor) + 윗면 바깥 두 변의 금속 빛
-//   hdr-<티어>-facet.avif  늘 은은하게 켜 두는 깎인 면 모서리·윗면 모서리 빛과 작은 반짝임 점(낮은 밝기)
+//   hdr-<티어>-facet.avif  늘 은은하게 켜 두는 깎인 면 모서리·윗면 모서리 빛, 작은 반짝임 점, 블럭마다 위 모서리 빛과 반사 점(낮은 밝기)
 //   hdr-<티어>-band0~2.avif 빛 띠 세 자리(왼쪽·가운데·오른쪽). CSS가 차례로 켰다 꺼 지나가는 것처럼 보인다
 // 를 만든다. 그림은 엠블럼 viewBox(64×64)를 그대로 덮는다.
 //
@@ -31,15 +31,20 @@ import {
   BAND_FRAMES,
   BAND_HALF,
   BAND_SLANT,
+  BLOCK_SPARK,
   CENTER,
   CUBE_R,
+  cellAt,
   coreScale,
+  cubeFaces,
   cubeHex,
   EMBLEM_BOX,
+  FACE_LIT,
   facetEdges,
   glintsFor,
   HDR_TIERS,
   HDR_TINT,
+  STICKER_INSET,
 } from "../src/cube/tiers/emblemArt.ts";
 
 /** 그림 한 변(px). 엠블럼 64px을 3배 화면에서, 128px을 1.5배 화면에서 그대로 */
@@ -147,6 +152,17 @@ function facetLayer(tier) {
   const [T, UR, , , , UL] = cubeHex(tier);
   const edges = facetEdges(tier);
   const sparks = glintsFor(tier).map((g) => ({ ...g, r: g.r * 0.45 }));
+  const a = STICKER_INSET;
+  const blocks = cubeFaces(tier).flatMap((q, f) =>
+    [0, 1, 2].flatMap((i) =>
+      [0, 1, 2].map((j) => ({
+        lit: FACE_LIT[f],
+        dot: cellAt(q, i, j, BLOCK_SPARK[0], BLOCK_SPARK[1]),
+        e0: cellAt(q, i, j, a + 0.06, a + 0.04),
+        e1: cellAt(q, i, j, 0.62, a + 0.04),
+      })),
+    ),
+  );
   return (x, y) => {
     let keep = 1;
     for (const { a, b, lit } of edges) {
@@ -157,7 +173,7 @@ function facetLayer(tier) {
       );
       keep *=
         1 -
-        0.75 *
+        0.5 *
           lit *
           (1 - 0.6 * t) *
           Math.exp(-((segDist(x, y, a, b) / 0.32) ** 2));
@@ -165,6 +181,15 @@ function facetLayer(tier) {
     const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
     keep *= 1 - 0.85 * Math.exp(-((edge / 0.4) ** 2));
     for (const g of sparks) keep *= 1 - glintAlpha(g, x, y);
+    // 블럭마다: 빛 받는 위 모서리 짧은 줄과 테이블 모서리의 작은 반사 점
+    for (const b of blocks) {
+      if (Math.abs(x - b.dot[0]) > 2.6 || Math.abs(y - b.dot[1]) > 2.6)
+        continue;
+      keep *=
+        1 - 0.55 * b.lit * Math.exp(-((segDist(x, y, b.e0, b.e1) / 0.2) ** 2));
+      const r = Math.hypot(x - b.dot[0], y - b.dot[1]);
+      keep *= 1 - 0.95 * b.lit * Math.exp(-((r / 0.32) ** 2));
+    }
     return 1 - keep;
   };
 }
