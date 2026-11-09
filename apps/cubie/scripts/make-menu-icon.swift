@@ -80,6 +80,16 @@ let radius: CGFloat = 9.3
 let gap: CGFloat = 1
 /// 면 진하기: 위, 왼쪽, 오른쪽
 let faceAlpha: [CGFloat] = [1, 0.7, 0.45]
+/// 아래로 좁히는 정도(2026-11-09 사용자 「착시인지 아래로 갈수록 퍼지는 느낌」). 평행 투영 정육면체는 원근이 없어
+/// 아래가 넓어 보이므로, 맨 아래에서 가로 폭이 이만큼 줄게 위에서 내려다본 원근을 살짝 넣는다
+let taper: CGFloat = 0.1
+
+/// 실루엣 중심 c 기준으로 높이에 따라 가로를 좁힌다(맨 위 1, 맨 아래 1 - taper)
+func narrow(_ q: P, _ c: P) -> P {
+  let t = (q.y - (c.y - radius)) / (2 * radius)
+  let s = 1 - taper * t
+  return p(c.x + (q.x - c.x) * s, q.y)
+}
 
 /// 18pt 그림판 좌표로 큐브 실루엣. 면마다 진하기를 달리해 입체로 보이고 칸 틈은 투명하게 판다.
 /// 칸은 면 마름모를 넷으로 나눈 평행사변형을 변마다 틈의 반만큼 안으로 줄여 그린다.
@@ -103,7 +113,7 @@ func drawMenuIcon(_ ctx: CGContext, scale: CGFloat, warn: Bool) {
           cellPt(f, fi, fj, inset, inset), cellPt(f, fi, fj, 1 - inset, inset),
           cellPt(f, fi, fj, 1 - inset, 1 - inset), cellPt(f, fi, fj, inset, 1 - inset),
         ]
-        ctx.addPath(roundedPoly(q, corner))
+        ctx.addPath(roundedPoly(q.map { narrow($0, c) }, corner))
         ctx.setFillColor(black.cg(a))
         ctx.fillPath()
       }
