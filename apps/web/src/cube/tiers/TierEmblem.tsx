@@ -5,15 +5,16 @@ import { type ReactNode, useEffect, useId, useRef } from "react";
 import { cn } from "@/lib/cn";
 import {
   BAND_FRAMES,
+  BLOCK_SPARK,
   CENTER,
   CUBE_R,
+  cellAt,
   coreScale,
   crestAt,
   EMBLEM_BOX,
   EMBLEM_BOX_PIPS,
   FRAME_IN,
   FRAME_OUT,
-  facetEdges,
   type Glint,
   glintsFor,
   HDR_TIERS,
@@ -24,6 +25,7 @@ import {
   hexAround,
   levelOf,
   type Pt,
+  STICKER_INSET,
 } from "./emblemArt";
 import { watchShine } from "./emblemShine";
 import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
@@ -182,6 +184,9 @@ export function divisionPips(d: Division): number {
 const f2 = (v: number) => v.toFixed(2);
 const pts = (list: readonly Pt[]) =>
   list.map(([x, y]) => `${f2(x)},${f2(y)}`).join(" ");
+/** 사각형 여럿을 경로 하나로(요소 수를 줄인다) */
+const quadsPath = (list: readonly Pt[][]) =>
+  list.map((q) => `M${pts(q).replaceAll(" ", "L")}Z`).join("");
 const lerp = (a: Pt, b: Pt, t: number): Pt => [
   a[0] + (b[0] - a[0]) * t,
   a[1] + (b[1] - a[1]) * t,
@@ -354,19 +359,30 @@ export function TierEmblem({
   const shade = (b: number) =>
     b >= 0 ? mix(fMid, fHi, Math.min(1, b)) : mix(fMid, fLo, Math.min(1, -b));
 
-  /** 한 면의 스티커 아홉(칸 안쪽으로 조금 들인 평행사변형) */
-  const stickers = (k: FaceKey) => {
-    const f = faces[k];
-    const t = 0.1;
+  /** 한 면의 칸 아홉에서 칸 단위 [a, b] 정사각형(스티커는 STICKER_INSET만큼 들인다) */
+  const cells = (k: FaceKey, a: number, b = 1 - a) => {
+    const q = faces[k].quad;
     const out: Pt[][] = [];
     for (let i = 0; i < 3; i++)
-      for (let j = 0; j < 3; j++) {
-        const at = (u: number, v: number) =>
-          add(add(f.o, f.a, (i + u) / 3), f.b, (j + v) / 3);
-        out.push([at(t, t), at(1 - t, t), at(1 - t, 1 - t), at(t, 1 - t)]);
-      }
+      for (let j = 0; j < 3; j++)
+        out.push([
+          cellAt(q, i, j, a, a),
+          cellAt(q, i, j, b, a),
+          cellAt(q, i, j, b, b),
+          cellAt(q, i, j, a, b),
+        ]);
     return out;
   };
+  const stickers = (k: FaceKey) => cells(k, STICKER_INSET);
+  /** 블럭 테이블 면을 화면 x로 다섯 무리(빛 띠가 왼쪽에서 오른쪽으로 지나간다) */
+  const flashBins: Pt[][][] = [[], [], [], [], []];
+  if (canShine(tier) && fine)
+    for (const k of FACE_KEYS)
+      for (const q of cells(k, 0.24)) {
+        const cx = q.reduce((sum, v) => sum + v[0], 0) / q.length;
+        const bin = Math.floor(((cx - (C[0] - Rc)) / (2 * Rc)) * 5);
+        flashBins[Math.max(0, Math.min(4, bin))]?.push(q);
+      }
   /** 면 가운데에서 네 변으로 나눈 깎인 면 넷 */
   const facets = (k: FaceKey) => {
     const q = faces[k].quad;
@@ -558,6 +574,38 @@ export function TierEmblem({
           <clipPath id={`${id}-frame`}>
             <polygon points={pts(O)} />
           </clipPath>
+          {/* 블럭 빛과 그늘: 칸 하나를 그려 면마다 칸 아홉에 깐다 */}
+          {fine && (
+            <>
+              <BlockGradients id={id} glow={col("gem2", p.gem[1])} />
+              <BlockCell id={id} metal={lv < 4} full={size >= 44} />
+              {FACE_KEYS.map((k) => {
+                const [o, a, , b] = faces[k].quad;
+                const m = [
+                  (a[0] - o[0]) / 3,
+                  (a[1] - o[1]) / 3,
+                  (b[0] - o[0]) / 3,
+                  (b[1] - o[1]) / 3,
+                  o[0],
+                  o[1],
+                ]
+                  .map((v) => v.toFixed(3))
+                  .join(" ");
+                return (
+                  <pattern
+                    key={k}
+                    id={`${id}-cells-${k}`}
+                    patternUnits="userSpaceOnUse"
+                    width="1"
+                    height="1"
+                    patternTransform={`matrix(${m})`}
+                  >
+                    <use href={`#${id}-cell`} />
+                  </pattern>
+                );
+              })}
+            </>
+          )}
           <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
             <stop offset="0.3" stopColor="#fff" stopOpacity="0.35" />
@@ -720,13 +768,14 @@ export function TierEmblem({
         <g strokeLinejoin="round">
           {fine ? (
             <>
-              {/* 몸(스티커 사이 틈 색) 위에 스티커 */}
+              {/* 몸(스티커 사이 틈 색) 위에 스티커, 그 위에 블럭마다 빛과 그늘(면마다 경로 둘) */}
               <polygon points={pts(K)} fill={p.dark} />
-              {FACE_KEYS.flatMap((k) =>
-                stickers(k).map((q) => (
-                  <polygon key={pts(q)} points={pts(q)} fill={url(k)} />
-                )),
-              )}
+              {FACE_KEYS.map((k) => (
+                <g key={k}>
+                  <path d={quadsPath(stickers(k))} fill={url(k)} />
+                  <path d={quadsPath(stickers(k))} fill={url(`cells-${k}`)} />
+                </g>
+              ))}
             </>
           ) : (
             FACE_KEYS.map((k) => (
@@ -740,7 +789,11 @@ export function TierEmblem({
             <g>
               {FACE_KEYS.flatMap((k, fi) =>
                 facets(k).map((tri, i) => {
-                  const v = (FACET_LIGHT[fi]?.[i] ?? 0) * (lv >= 6 ? 1 : 0.6);
+                  // 블럭마다 깎인 면이 있으면(28px 이상) 큰 면은 옅게
+                  const v =
+                    (FACET_LIGHT[fi]?.[i] ?? 0) *
+                    (lv >= 6 ? 1 : 0.6) *
+                    (fine ? 0.45 : 1);
                   return (
                     <polygon
                       key={pts(tri)}
@@ -769,51 +822,11 @@ export function TierEmblem({
                   opacity="0.55"
                 />
               </g>
-              {/* 깎인 면 사이 모서리가 빛을 받는다(HDR 그림과 같은 선) */}
-              {fine && (
-                <g stroke="#fff" strokeLinecap="round" strokeWidth="0.4">
-                  {facetEdges(tier).map(({ a, b, lit }) => (
-                    <line
-                      key={pts([a, b])}
-                      x1={f2(a[0])}
-                      y1={f2(a[1])}
-                      x2={f2(b[0])}
-                      y2={f2(b[1])}
-                      opacity={f2(0.15 + lit * 0.6)}
-                    />
-                  ))}
-                </g>
-              )}
             </>
           )}
 
           {/* 윗면 반사 */}
           <polygon points={pts(faces.top.quad)} fill={url("sheen")} />
-          {/* 보석(에메랄드부터): 윗면에 비친 창 같은 날카로운 반사 둘 */}
-          {lv >= 5 &&
-            (
-              [
-                [0.1, 0.17, 0.62],
-                [0.25, 0.29, 0.4],
-              ] as const
-            ).map(([u0, u1, o]) => {
-              const f = faces.top;
-              const at = (u: number, v: number) =>
-                add(add(f.o, f.b, u), f.a, v);
-              return (
-                <polygon
-                  key={u0}
-                  points={pts([
-                    at(u0, 0.12),
-                    at(u1, 0.12),
-                    at(u1, 0.62),
-                    at(u0, 0.62),
-                  ])}
-                  fill="#fff"
-                  opacity={o}
-                />
-              );
-            })}
 
           {/* 모서리 빛: 윗면 바깥 두 변과 앞의 세 모서리 */}
           <g fill="none" stroke={p.hi} strokeLinecap="round">
@@ -908,6 +921,20 @@ export function TierEmblem({
           </g>
         )}
 
+        {/* 블럭이 차례로 번쩍: 빛 띠가 지나가는 자리를 따라 왼쪽부터 다섯 무리(무리마다 경로 하나) */}
+        {canShine(tier) && fine && (
+          <g fill="#fff" className="emb-blocks">
+            {flashBins.map((qs, i) => (
+              <path
+                // biome-ignore lint/suspicious/noArrayIndexKey: 무리 차례가 곧 이름이다
+                key={i}
+                d={quadsPath(qs)}
+                className={`emb-block-flash emb-bf${i}`}
+              />
+            ))}
+          </g>
+        )}
+
         {/* 반짝임 점(다이아몬드부터): 움직일 수 있으면 늘 천천히 반짝인다(점마다 때를 어긋나게) */}
         {glints.length > 0 && (
           <g fill="#fff" className="emb-glints">
@@ -949,6 +976,159 @@ export function TierEmblem({
 
       {hdr && <HdrLayer tier={hdr} still={!shine} pips={pips} />}
     </span>
+  );
+}
+
+/**
+ * 블럭(스티커) 하나의 빛과 그늘. 칸 한 변이 1인 좌표에 그리고, 면마다 `<pattern>`이 칸 아홉에 깔아 스티커 위에 겹친다
+ * (요소·그라데이션을 27번 만들지 않는다). 칸 원점(0,0)이 빛 받는 위쪽 꼭짓점이다.
+ * - 보석(플래티넘부터): 테이블 면과 둘레 경사 면 넷의 밝기 차, 가운데 밝고 가장자리 어두운 굴절감, 위 모서리 빛과 반사 점.
+ * - 금속(아이언~골드): 닦은 금속 결(가는 밝은 줄무늬)과 얕은 경사 면, 위 모서리 빛.
+ * - `full`이 아니면(엠블럼 44px 아래) 경사 면·결을 빼고 굴절감·모서리 빛만.
+ */
+function BlockCell({
+  id,
+  metal,
+  full,
+}: {
+  id: string;
+  metal: boolean;
+  full: boolean;
+}) {
+  const a = STICKER_INSET;
+  const b = 1 - a;
+  const ta = metal ? 0.24 : 0.3;
+  const tb = 1 - ta;
+  const quad = (q: Pt[]) => pts(q);
+  // 경사 면 넷: 위(v=a)·왼(u=a)은 빛, 오른(u=b)·아래(v=b)는 그늘
+  const bevels: [Pt[], string, number][] = [
+    [
+      [
+        [a, a],
+        [b, a],
+        [tb, ta],
+        [ta, ta],
+      ],
+      "#fff",
+      metal ? 0.3 : 0.46,
+    ],
+    [
+      [
+        [a, a],
+        [ta, ta],
+        [ta, tb],
+        [a, b],
+      ],
+      "#fff",
+      metal ? 0.14 : 0.22,
+    ],
+    [
+      [
+        [b, a],
+        [b, b],
+        [tb, tb],
+        [tb, ta],
+      ],
+      "#000",
+      metal ? 0.16 : 0.24,
+    ],
+    [
+      [
+        [a, b],
+        [ta, tb],
+        [tb, tb],
+        [b, b],
+      ],
+      "#000",
+      metal ? 0.26 : 0.4,
+    ],
+  ];
+  const [sx, sy] = BLOCK_SPARK;
+  const r = full ? 0.075 : 0.1;
+  return (
+    <g id={`${id}-cell`}>
+      {!metal && (
+        <rect
+          x={a}
+          y={a}
+          width={b - a}
+          height={b - a}
+          fill={`url(#${id}-cellglow)`}
+        />
+      )}
+      {metal && full && (
+        <rect
+          x={a}
+          y={a}
+          width={b - a}
+          height={b - a}
+          fill={`url(#${id}-brush)`}
+        />
+      )}
+      {full &&
+        bevels.map(([q, c, o]) => (
+          <polygon key={quad(q)} points={quad(q)} fill={c} opacity={o} />
+        ))}
+      {/* 위 모서리 빛 */}
+      <polygon
+        points={quad([
+          [a, a],
+          [b - 0.08, a],
+          [b - 0.2, a + (full ? 0.06 : 0.1)],
+          [a + 0.05, a + (full ? 0.06 : 0.1)],
+        ])}
+        fill="#fff"
+        opacity={metal ? 0.6 : 0.85}
+      />
+      {/* 반사 점(보석) */}
+      {!metal && (
+        <polygon
+          points={quad([
+            [sx, sy - r],
+            [sx + r * 0.7, sy],
+            [sx, sy + r],
+            [sx - r * 0.7, sy],
+          ])}
+          fill="#fff"
+          opacity="0.9"
+        />
+      )}
+    </g>
+  );
+}
+
+/** 블럭 한 칸 좌표의 그라데이션: 보석 굴절감(가운데 밝고 가장자리 어둡다)과 금속 결 */
+function BlockGradients({ id, glow }: { id: string; glow: string }) {
+  return (
+    <>
+      <radialGradient
+        id={`${id}-cellglow`}
+        gradientUnits="userSpaceOnUse"
+        cx="0.46"
+        cy="0.44"
+        r="0.5"
+      >
+        <stop offset="0" stopColor="#fff" stopOpacity="0.4" />
+        <stop offset="0.35" style={{ stopColor: glow }} stopOpacity="0.28" />
+        <stop offset="0.7" stopColor="#000" stopOpacity="0" />
+        <stop offset="1" stopColor="#000" stopOpacity="0.5" />
+      </radialGradient>
+      <linearGradient
+        id={`${id}-brush`}
+        gradientUnits="userSpaceOnUse"
+        x1="0.1"
+        y1="0.1"
+        x2="0.36"
+        y2="0.18"
+        spreadMethod="repeat"
+      >
+        <stop offset="0" stopColor="#fff" stopOpacity="0" />
+        <stop offset="0.3" stopColor="#fff" stopOpacity="0.22" />
+        <stop offset="0.45" stopColor="#fff" stopOpacity="0" />
+        <stop offset="0.7" stopColor="#fff" stopOpacity="0.12" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
+    </>
   );
 }
 

@@ -63,6 +63,27 @@ describe("TierEmblem", () => {
     }
   });
 
+  it("블럭 빛과 그늘은 칸 하나를 면마다 무늬로 깔아(요소가 크게 늘지 않게), 28px 아래는 블럭 세부가 없다", () => {
+    const big = renderToStaticMarkup(<TierEmblem tier="diamond" size={64} />);
+    // 칸 그림 하나, 면마다 무늬 하나
+    expect(big.match(/id="[^"]+-cell"/g)).toHaveLength(1);
+    expect(big.match(/<pattern /g)).toHaveLength(3);
+    // 빛 띠를 따라 번쩍이는 블럭 무리 다섯
+    expect(big.match(/emb-block-flash/g)).toHaveLength(5);
+    // 금속(골드)도 같은 짜임, 블럭 결 그라데이션을 쓴다
+    const gold = renderToStaticMarkup(<TierEmblem tier="gold" size={64} />);
+    expect(gold).toContain("-brush)");
+    expect(gold).not.toContain("emb-block-flash");
+    // 요소 수(태그) 상한(2026-11-09 챌린저 253): 블럭 27개에 조각을 따로 그리면 이 선을 크게 넘는다
+    for (const tier of TIER_IDS) {
+      const html = renderToStaticMarkup(<TierEmblem tier={tier} size={64} />);
+      expect(html.match(/<[a-zA-Z]/g)?.length ?? 0).toBeLessThan(270);
+    }
+    const small = renderToStaticMarkup(<TierEmblem tier="diamond" size={24} />);
+    expect(small).not.toContain("<pattern");
+    expect(small).not.toContain("emb-block-flash");
+  });
+
   it("반짝임 점은 다이아몬드부터 28px 이상에서 늘 천천히 반짝이고, `still`·작은 표시는 멈춘다", () => {
     const on = (props: Parameters<typeof TierEmblem>[0]) =>
       renderToStaticMarkup(<TierEmblem {...props} />).includes("data-twinkle");
