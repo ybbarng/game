@@ -19,7 +19,7 @@ import {
  */
 
 /**
- * `hints`: Cubie 「공식 보기」를 본 횟수(미니 모드 기록만, docs/47 15-14). 힌트를 본 판이 든 5판은 Ao5로 치지 않는다
+ * `hints`: Cubie 「공식 보기」를 본 횟수(미니 모드 기록만, docs/47 15-15). 힌트를 본 판이 든 5판은 Ao5로 치지 않는다
  * (힌트 판만 빼고 이어 세면 망친 판에 힌트를 눌러 지우는 길이 생긴다). 사이트 기록에는 이 칸이 없다
  */
 type Timeable = Pick<SolveRecord, "ms" | "penalty"> & { hints?: number };

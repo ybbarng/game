@@ -13,7 +13,7 @@ import { goalMet } from "../learn/judge";
 import { HINT_RULES, HintGate } from "./hint";
 import { pickHint } from "./hint-pick";
 
-/** Cubie 「공식 보기」(docs/47 15-14): 공식 고르기와 횟수·시간 제한 */
+/** Cubie 「공식 보기」(docs/47 15-15): 공식 고르기와 횟수·시간 제한 */
 
 const at = (n: number, moves: string, from: PuzzleState = solvedCube(n)) =>
   applyMoves(n, from, parseMoves(n, moves));

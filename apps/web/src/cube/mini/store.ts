@@ -58,7 +58,7 @@ export function keyOriginOf(seen: Iterable<KeyOrigin>): KeyOrigin | undefined {
 export interface MiniRecord extends SolveRecord {
   keyOrigin?: KeyOrigin;
   /**
-   * 「공식 보기」를 본 횟수(2026-11-09, docs/47 15-14). 한 번도 안 봤으면 칸이 없다. 이 판이 든 5판은 티어에 넣지 않는다
+   * 「공식 보기」를 본 횟수(2026-11-09, docs/47 15-15). 한 번도 안 봤으면 칸이 없다. 이 판이 든 5판은 티어에 넣지 않는다
    * (`tiers/rank.ts` `bestAo5`)
    */
   hints?: number;

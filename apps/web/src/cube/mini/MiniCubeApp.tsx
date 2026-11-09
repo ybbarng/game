@@ -377,7 +377,7 @@ function MiniCube() {
   const appRef = useRef(false);
   appRef.current = app;
 
-  // 공식 보기(docs/47 15-14): 한 판의 횟수·시간 제한(`HintGate`), 보이는 공식, 짧은 알림(남은 초 등)
+  // 공식 보기(docs/47 15-15): 한 판의 횟수·시간 제한(`HintGate`), 보이는 공식, 짧은 알림(남은 초 등)
   const hintGate = useMemo(() => new HintGate(realClock, bump), [bump]);
   useEffect(() => () => hintGate.dispose(), [hintGate]);
   const hintGateRef = useRef(hintGate);

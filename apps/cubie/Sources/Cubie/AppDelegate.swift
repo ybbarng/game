@@ -18,6 +18,8 @@ final class RunningApp: FocusApp {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
   private let cube = CubeWindow()
+  /// 「공식 보기」 말풍선(큐브 창 옆)
+  private let bubble = HintBubble()
   private var statusItem: NSStatusItem!
   private var hotKey: HotKey!
   private var hotKeyOK = false
@@ -62,6 +64,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
       guard let self else { return event }
       let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+      // F1(맥북은 fn+F1): 「공식 보기」. 앱이 받아 다리로 넘긴다(웹 화면에 키로 닿는지에 기대지 않는다).
+      // 맥북에서 fn 없이 누르면 밝기 키라 앱에 오지 않는다. 웹의 다른 힌트 키(\)는 그대로 웹에 간다
+      if event.keyCode == UInt16(Config.hintKeyCode), event.window === self.cube.panel,
+        mods.subtracting([.function, .numericPad]).isEmpty
+      {
+        if !event.isARepeat { self.cube.bridge.send(["type": "hint"]) }
+        return nil
+      }
       let isEsc = event.keyCode == 53 && mods.subtracting([.function, .numericPad]).isEmpty
       // 큐브 창으로 가는 키: 웹 화면에 닿기 직전에 출처를 알린다(같은 연결이라 키보다 먼저 닿는다)
       if !isEsc, event.window === self.cube.panel {
@@ -89,7 +99,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     if Config.debug { listenDebug() }
     cube.webView.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
-    cube.bridge.onReady = { [weak self] in self?.cube.sendFocus() }
+    cube.bridge.onReady = { [weak self] in
+      guard let self else { return }
+      self.cube.sendFocus()
+      // 이 앱이 말풍선을 그린다고 알린다(0.1.2 이하 앱은 보내지 않아 웹이 창 안에 작게 보인다)
+      self.cube.bridge.send(["type": "caps", "hintBubble": true])
+      self.bubble.hide()
+    }
+    cube.bridge.onHint = { [weak self] lines in
+      guard let self else { return }
+      if let lines, !lines.isEmpty, self.cube.panel.isVisible {
+        self.bubble.show(lines: lines, cube: self.cube.panel.frame, visible: self.cubeScreen)
+      } else {
+        self.bubble.hide()
+      }
+    }
+    // 창을 옮기면 말풍선도 따라간다
+    NotificationCenter.default.addObserver(
+      forName: NSWindow.didMoveNotification, object: cube.panel, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
+      }
+    }
     cube.load()
     cube.panel.orderFrontRegardless()
   }
@@ -139,6 +172,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
       }
     }
+  }
+
+  /// 큐브 창이 있는 화면의 보이는 영역
+  private var cubeScreen: NSRect {
+    (cube.panel.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? cube.panel.frame
   }
 
   // MARK: 포커스
@@ -224,6 +262,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let sizeItem = NSMenuItem(title: "크기", action: nil, keyEquivalent: "")
     sizeItem.submenu = sizes
     m.addItem(sizeItem)
+    m.addItem(item("공식 보기 (\(Config.hintKeyLabel))", #selector(menuHint)))
+    m.addItem(item("배우기", #selector(menuLearn)))
     m.addItem(item("기록 보기", #selector(menuRecords)))
     m.addItem(item("티어표", #selector(menuTiers)))
     let vs = NSMenu()
@@ -236,6 +276,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     m.addItem(item("단축키 보기", #selector(menuKeys)))
     m.addItem(item("키·색 설정…", #selector(menuSettings)))
     m.addItem(item("창 자리 처음으로", #selector(menuResetFrame)))
+    // 모니터가 둘 이상일 때만: 고른 화면의 오른쪽 아래로(⌘ + 끌기로도 옮길 수 있다)
+    let screens = NSScreen.screens
+    if screens.count > 1 {
+      let now = WindowPlacement.screenIndex(of: cube.panel.frame, screens: screens.map(\.visibleFrame))
+      let list = NSMenu()
+      for (i, screen) in screens.enumerated() {
+        list.addItem(item(screen.localizedName, #selector(menuMoveScreen(_:)), tag: i, on: i == now))
+      }
+      let moveItem = NSMenuItem(title: "화면 옮기기", action: nil, keyEquivalent: "")
+      moveItem.submenu = list
+      m.addItem(moveItem)
+    }
     m.addItem(item("다시 불러오기", #selector(menuReload)))
     if !forWindow {
       m.addItem(.separator())
@@ -250,6 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuToggleVisible() {
     if cube.panel.isVisible {
       if cube.focused { returnFocus() }
+      bubble.hide()
       cube.panel.orderOut(nil)
     } else {
       cube.panel.orderFrontRegardless()
@@ -259,6 +312,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   @objc private func menuScramble() { cube.bridge.send(["type": "scramble"]) }
   @objc private func menuMirror() { cube.bridge.send(["type": "mirror"]) }
+  @objc private func menuHint() { cube.bridge.send(["type": "hint"]) }
+  /// 사이트 큐브 배우기의 CFOP 2단계 OLL 단원(다음 단원이 2단계 PLL)을 기본 브라우저로
+  @objc private func menuLearn() { NSWorkspace.shared.open(Config.site(Config.learnPath)) }
+  @objc private func menuMoveScreen(_ sender: NSMenuItem) {
+    let screens = NSScreen.screens
+    guard sender.tag >= 0, sender.tag < screens.count else { return }
+    let f = WindowPlacement.moved(cube.panel.frame, to: screens[sender.tag].visibleFrame, margin: Config.margin)
+    cube.panel.setFrame(f, display: true)
+    cube.panel.saveFrame(usingName: CubeWindow.frameName)
+  }
   @objc private func menuSize(_ sender: NSMenuItem) { cube.bridge.send(["type": "size", "n": sender.tag]) }
 
   @objc private func menuRecords() { openWebWindow(.records) }
@@ -276,7 +339,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuVsFriends() { NSWorkspace.shared.open(Config.site("/cube/online")) }
   @objc private func menuVsBot() { NSWorkspace.shared.open(Config.site("/cube/vs")) }
   @objc private func menuResetFrame() { cube.resetFrame() }
-  @objc private func menuReload() { cube.load() }
+  @objc private func menuReload() {
+    bubble.hide()
+    cube.load()
+  }
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
 
