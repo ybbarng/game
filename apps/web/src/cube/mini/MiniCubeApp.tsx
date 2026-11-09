@@ -25,9 +25,11 @@ import {
   loadKeymap,
   PRESET_LABEL,
 } from "../input";
-import { formatMs } from "../records";
+import { formatMs, type SolveInput } from "../records";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
+import { type MyTier, tierName } from "../tiers/rank";
+import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
 import { type CubeView, loadCubeView } from "../view";
@@ -37,14 +39,14 @@ import { FocusClock } from "./focus-clock";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import {
   addMiniRecord,
-  INPUT_SOURCE_LABEL,
-  type InputSource,
-  inputSourceOf,
+  type KeyOrigin,
+  keyOriginOf,
   loadMiniPrefs,
   loadMiniRecords,
   MINI_SIZES,
   type MiniPrefs,
   type MiniRecord,
+  miniTier,
   saveMiniPrefs,
   summarize,
 } from "./store";
@@ -118,9 +120,86 @@ function RecordsPage() {
     };
   }, [n]);
   return (
-    <main className="fixed inset-0 bg-neutral-950 text-white">
-      <RecordsPanel n={n} records={records} onSize={setN} />
+    <main className="fixed inset-0 flex flex-col bg-neutral-950 text-white">
+      <MiniTiers version={records} n={n} onSize={setN} />
+      <div className="relative flex-1">
+        <RecordsPanel n={n} records={records} onSize={setN} />
+      </div>
     </main>
+  );
+}
+
+/**
+ * 크기별 최고 Ao5와 티어(Cubie 기록 기준, docs/47 15-6). 티어는 사이트와 같은 규칙(최고 Ao5, `tiers/rank.ts`)이지만
+ * 기록은 미니 모드 것이라(살펴보기 없이·포커스 있는 동안만 잼) 그렇게 밝힌다
+ */
+function MiniTiers({
+  version,
+  n,
+  onSize,
+}: {
+  version: unknown;
+  n: number;
+  onSize: (n: number) => void;
+}) {
+  const [tiers, setTiers] = useState<(MyTier | null)[]>([]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version은 기록이 바뀐 때를 알리는 값
+  useEffect(() => {
+    setTiers(MINI_SIZES.map((s) => miniTier(s)));
+  }, [version]);
+  return (
+    <section
+      data-mini-tiers
+      className="flex flex-col gap-1 border-white/10 border-b p-2 text-xs"
+    >
+      <div className="flex items-baseline gap-2">
+        <h2 className="font-bold text-sm">티어</h2>
+        <span className="text-white/60">Cubie 기록 기준 · 최고 Ao5</span>
+        <a
+          href={`/cube/tiers?n=${n}`}
+          className="ml-auto text-white/70 underline-offset-2 hover:underline"
+        >
+          티어표
+        </a>
+      </div>
+      <ul className="grid grid-cols-3 gap-1 tabular-nums">
+        {MINI_SIZES.map((s, i) => {
+          const t = tiers[i] ?? null;
+          return (
+            <li key={s}>
+              <button
+                type="button"
+                data-mini-tier-size={s}
+                aria-pressed={s === n}
+                onClick={() => onSize(s)}
+                className={cn(
+                  "flex w-full flex-col items-start rounded px-1.5 py-1 text-left",
+                  s === n ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
+                )}
+              >
+                <span className="text-white/60">
+                  {s}×{s} {t ? formatMs(t.ao5) : ""}
+                </span>
+                {t ? (
+                  <span
+                    data-cube-tier={t.place.tier}
+                    className={cn("font-semibold", TIER_TONE[t.place.tier])}
+                  >
+                    {tierName(t.place)}
+                  </span>
+                ) : (
+                  <span className="text-white/40">5판 뒤에</span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="break-keep text-white/50">
+        Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자
+        맞추기 기록과는 따로 매겨요.
+      </p>
+    </section>
   );
 }
 
@@ -242,11 +321,12 @@ function MiniCube() {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   /**
-   * 입력 출처(공정함 확인): 앱이 키마다 바로 앞에 알려 준 출처(`key` 메시지)와 이번 판에 들어온 출처들.
-   * 섞을 때 비우고, 기록에 그 판의 출처(`inputSourceOf`)를 남긴다
+   * 이번 판의 입력(혼자 맞추기와 같은 `inputs`, 처음 쓴 차례)과 키 출처(공정함 확인): 앱이 키마다 바로 앞에 알려 준
+   * 출처(`key` 메시지)를 모은다. 섞을 때 비우고, 기록에 `inputs`·`keyOrigin`(`keyOriginOf`)으로 남긴다
    */
-  const keySourceRef = useRef<InputSource | null>(null);
-  const solveSourcesRef = useRef(new Set<InputSource>());
+  const keyOriginRef = useRef<KeyOrigin | null>(null);
+  const inputsRef = useRef<SolveInput[]>([]);
+  const originsRef = useRef(new Set<KeyOrigin>());
   const appRef = useRef(false);
   appRef.current = app;
 
@@ -263,9 +343,14 @@ function MiniCube() {
             playCubeSound(settingsRef.current, soloSound("solved"));
         },
         onRecord: (r) => {
+          const origin = keyOriginOf(originsRef.current);
           const list = addMiniRecord({
             ...r,
-            inputSource: inputSourceOf(solveSourcesRef.current),
+            inspection: false,
+            ...(inputsRef.current.length > 0
+              ? { inputs: [...inputsRef.current] }
+              : {}),
+            ...(origin ? { keyOrigin: origin } : {}),
           });
           setRecords(list);
         },
@@ -334,7 +419,7 @@ function MiniCube() {
           hidden: s.hidden,
           // 앱의 투명 창에서는 바닥 그림자를 끈다(바탕화면 위 얼룩처럼 보인다)
           ...(hasApp() ? { shadow: false } : {}),
-          onSwipe: (m) => moveRef.current(m, formatMove(n, m), "pointer"),
+          onSwipe: (m) => moveRef.current(m, formatMove(n, m), "swipe", null),
         });
         view.setStickers(stickersFromState(n, sessionRef.current.state, null));
         viewRef.current = view;
@@ -490,7 +575,8 @@ function MiniCube() {
       if (id !== scrambleId.current || s.disposed) return;
       idle.reset();
       s.start(made.text, seed);
-      solveSourcesRef.current = new Set();
+      inputsRef.current = [];
+      originsRef.current = new Set();
       repaintRef.current();
     } catch {
       // 섞기를 못 만들었다: 다음에 다시 누르면 된다
@@ -506,13 +592,22 @@ function MiniCube() {
     };
   }, [n, prefs]);
 
-  /** 수 하나: 엔진에 넣고 장면이 따라 돈다(키·밀기). 출처는 이번 판 기록에 남긴다 */
+  /**
+   * 수 하나: 엔진에 넣고 장면이 따라 돈다(키·밀기). 입력 방식과 키 출처(키일 때)는 이번 판 기록에 남긴다
+   */
   const moveRef = useRef(
-    (move: CubeMove, notation: string, source: InputSource) => {
+    (
+      move: CubeMove,
+      notation: string,
+      input: SolveInput,
+      origin: KeyOrigin | null,
+    ) => {
       idleRef.current.setActive(false);
       const s = sessionRef.current;
-      // 맞춰서 기록이 생기는 수도 그 판의 출처에 든다(input 전에 더한다)
-      solveSourcesRef.current.add(source);
+      // 맞춰서 기록이 생기는 수도 그 판에 든다(input 전에 더한다)
+      if (!inputsRef.current.includes(input))
+        inputsRef.current = [...inputsRef.current, input];
+      if (origin) originsRef.current.add(origin);
       if (s.input(move, notation) !== "applied") return;
       viewRef.current?.enqueue(move);
       playCubeCue(settingsRef.current, "cubeTurn");
@@ -541,24 +636,25 @@ function MiniCube() {
      * 지금 키의 출처: 앱이 키 바로 앞에 보낸 `key` 메시지를 키마다(동작이 아닌 키도) 한 번 꺼내 쓴다.
      * 브라우저(앱 없음)거나 메시지가 없으면 unknown
      */
-    let eventSource: InputSource = "unknown";
+    let eventOrigin: KeyOrigin = "unknown";
     const take = (e: KeyboardEvent) => {
       // 수식 키만 누른 keydown(Shift 등)은 앱의 키 알림이 없다(맥에서는 키가 아니라 수식 변화). 다음 키 몫을 남겨 둔다
       if (MODIFIER_KEYS.has(e.key)) return;
-      eventSource = appRef.current
-        ? (keySourceRef.current ?? "unknown")
+      eventOrigin = appRef.current
+        ? (keyOriginRef.current ?? "unknown")
         : "unknown";
-      keySourceRef.current = null;
+      keyOriginRef.current = null;
     };
     window.addEventListener("keydown", take, true);
     const handle = (r: KeyResult, e: KeyboardEvent) => {
       if (r.kind === "move") {
-        moveRef.current(r.move, r.notation, eventSource);
+        moveRef.current(r.move, r.notation, "keyboard", eventOrigin);
         return;
       }
       if (r.kind !== "command") return;
       if (r.command === "undo") {
-        solveSourcesRef.current.add(eventSource);
+        // 되돌리기는 입력 방식에 세지 않지만(혼자 맞추기와 같다) 키 출처에는 넣는다(판을 바꾸는 키다)
+        originsRef.current.add(eventOrigin);
         const m = sessionRef.current.undo();
         if (m) {
           viewRef.current?.enqueue(m);
@@ -652,7 +748,8 @@ function MiniCube() {
             c.openRecords(msg.open ?? !c.recordsOpen);
             break;
           case "key":
-            keySourceRef.current = msg.source;
+            keyOriginRef.current =
+              msg.source === "keyboard" ? "hardware" : "synthetic";
             break;
         }
       }),
@@ -934,18 +1031,20 @@ function RecordsPanel({
               <span className="w-20 text-white/60">{shortTime(r.at)}</span>
               <span className="flex-1 font-semibold">{formatMs(r.ms)}</span>
               {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
-              {(r.inputSource === "synthetic" ||
-                r.inputSource === "pointer") && (
+              {r.keyOrigin === "synthetic" && (
                 <span
-                  data-mini-source={r.inputSource}
-                  className={cn(
-                    "rounded px-1",
-                    r.inputSource === "synthetic"
-                      ? "bg-amber-500/25 text-amber-200"
-                      : "bg-white/10 text-white/70",
-                  )}
+                  data-mini-source="synthetic"
+                  className="rounded bg-amber-500/25 px-1 text-amber-200"
                 >
-                  {INPUT_SOURCE_LABEL[r.inputSource]}
+                  다른 프로그램 입력
+                </span>
+              )}
+              {r.inputs?.includes("swipe") && (
+                <span
+                  data-mini-source="swipe"
+                  className="rounded bg-white/10 px-1 text-white/70"
+                >
+                  마우스·화면
                 </span>
               )}
               <span className="text-white/60">{r.moves}수</span>

@@ -14,10 +14,12 @@ import { FocusClock } from "./focus-clock";
 import { IdleShow, type IdleTiming, jigglePlan, playMoves } from "./idle";
 import {
   addMiniRecord,
-  inputSourceOf,
+  keyOriginOf,
+  loadMiniBestFive,
   loadMiniPrefs,
   loadMiniRecords,
   MINI_KEY,
+  miniTier,
   saveMiniPrefs,
   summarize,
 } from "./store";
@@ -315,18 +317,39 @@ describe("미니 모드 저장", () => {
     expect([...st.map.keys()]).toEqual([MINI_KEY]);
   });
 
-  it("한 판의 입력 출처: 다른 프로그램 입력 > 마우스 > 모름 > 키보드", () => {
-    expect(inputSourceOf(["keyboard", "keyboard"])).toBe("keyboard");
-    expect(inputSourceOf(["keyboard", "pointer"])).toBe("pointer");
-    expect(inputSourceOf(["pointer", "synthetic", "keyboard"])).toBe(
-      "synthetic",
-    );
-    expect(inputSourceOf(["keyboard", "unknown"])).toBe("unknown");
-    expect(inputSourceOf([])).toBe("unknown");
-    // 기록 칸으로 남고 다시 읽힌다
+  it("한 판의 키 출처: 다른 프로그램 > 모름 > 하드웨어, 키가 없으면 칸 없음", () => {
+    expect(keyOriginOf(["hardware", "hardware"])).toBe("hardware");
+    expect(keyOriginOf(["hardware", "unknown"])).toBe("unknown");
+    expect(keyOriginOf(["unknown", "synthetic", "hardware"])).toBe("synthetic");
+    expect(keyOriginOf([])).toBeUndefined();
+    // 입력 방식(혼자 맞추기와 같은 inputs)과 함께 기록 칸으로 남고 다시 읽힌다
     const st = memoryStorage();
-    addMiniRecord({ ...rec(3, 9000), inputSource: "synthetic" }, st);
-    expect(loadMiniRecords(3, st)[0]?.inputSource).toBe("synthetic");
+    addMiniRecord(
+      {
+        ...rec(3, 9000),
+        inputs: ["keyboard", "swipe"],
+        keyOrigin: "synthetic",
+      },
+      st,
+    );
+    const back = loadMiniRecords(3, st)[0];
+    expect(back?.keyOrigin).toBe("synthetic");
+    expect(back?.inputs).toEqual(["keyboard", "swipe"]);
+  });
+
+  it("티어는 Cubie 기록의 최고 Ao5로, 목록에서 밀려나도 최고 5판으로 남는다", () => {
+    const st = memoryStorage();
+    expect(miniTier(3, st)).toBeNull();
+    // 3×3 Ao5 20초: 5판
+    for (const s of [19, 20, 21, 20, 20]) addMiniRecord(rec(3, s * 1000), st);
+    expect(miniTier(3, st)?.ao5).toBe(20_000);
+    expect(loadMiniBestFive(3, st)).toHaveLength(5);
+    // 느린 판 100개가 목록을 밀어내도 티어는 그대로
+    for (let i = 0; i < 100; i++) addMiniRecord(rec(3, 90_000), st);
+    expect(loadMiniRecords(3, st).some((r) => r.ms === 20_000)).toBe(false);
+    expect(miniTier(3, st)?.ao5).toBe(20_000);
+    // 혼자 맞추기 기록(cube.records.v1)은 건드리지 않는다
+    expect([...st.map.keys()]).toEqual([MINI_KEY]);
   });
 
   it("최고·평균·5번 평균", () => {

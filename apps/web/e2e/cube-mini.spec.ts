@@ -187,15 +187,26 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
         version: 1,
         n: 4,
         mirror: true,
+        // 4×4 다섯 판(Ao5 = 가운데 셋 평균 1:02.00), 2×2 한 판(Ao5 없음)
         records: {
-          "4": [
+          "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
+            at: Date.UTC(2026, 10, 9, 3, i),
+            n: 4,
+            mode: "solo",
+            ms,
+            penalty: 0,
+            moves: 88,
+            scramble: "R",
+            no: 5 - i,
+          })),
+          "2": [
             {
               at: Date.UTC(2026, 10, 9, 3),
-              n: 4,
+              n: 2,
               mode: "solo",
-              ms: 61_230,
+              ms: 5000,
               penalty: 0,
-              moves: 88,
+              moves: 9,
               scramble: "R",
               no: 1,
             },
@@ -206,9 +217,19 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   });
   await page.goto("/cube/mini?view=records");
   const records = page.locator("[data-mini-records='4']");
-  await expect(records.locator("[data-mini-record]")).toHaveCount(1);
-  await expect(records.locator("[data-mini-best]")).toHaveText("1:01.23");
+  await expect(records.locator("[data-mini-record]")).toHaveCount(5);
+  await expect(records.locator("[data-mini-best]")).toHaveText("1:00.50");
   await expect(records.locator("[data-mini-records-close]")).toHaveCount(0);
+  // 크기별 티어(Cubie 기록 기준): 4×4는 Ao5 1:02.00의 티어, 2×2는 5판이 안 돼 없음
+  const tiers = page.locator("[data-mini-tiers]");
+  await expect(tiers).toContainText("Cubie 기록 기준");
+  const four = tiers.locator("[data-mini-tier-size='4']");
+  await expect(four).toContainText("1:02.00");
+  await expect(four.locator("[data-cube-tier]")).toHaveCount(1);
+  await expect(tiers.locator("[data-mini-tier-size='2']")).toContainText(
+    "5판 뒤에",
+  );
+  await shot(page, "mini-records-tiers", info.project.name);
 
   await page.goto("/cube/mini?view=keys");
   const keys = page.locator("[data-mini-keys='4']");
@@ -288,7 +309,14 @@ test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표�
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}"),
   );
+  // 혼자 맞추기와 같은 입력 방식 칸(inputs)과, 앱이 알린 키 출처 칸(keyOrigin)
   expect(
-    saved.records["3"].map((r: { inputSource: string }) => r.inputSource),
-  ).toEqual(["synthetic", "keyboard"]);
+    saved.records["3"].map((r: { keyOrigin: string; inputs: string[] }) => [
+      r.keyOrigin,
+      r.inputs,
+    ]),
+  ).toEqual([
+    ["synthetic", ["keyboard"]],
+    ["hardware", ["keyboard"]],
+  ]);
 });

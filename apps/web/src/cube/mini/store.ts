@@ -1,11 +1,13 @@
 import { averageOf, resultMs, type SolveRecord } from "../records";
+import { ao5, bestAo5, type MyTier, myTier } from "../tiers/rank";
 
 /**
  * 미니 모드(`/cube/mini`, 맥 앱 Cubie가 여는 작은 창, docs/47 15절)의 이 기기 저장.
  *
  * 기록은 혼자 맞추기 기록(`cube.records.v1`)과 따로 둔다. 미니 모드는 살펴보기 없이 첫 수부터 재고, 창이 포커스를
  * 잃은 동안은 시계를 멈춘다. 같은 목록에 섞으면 혼자 맞추기의 평균·구간 골드·개인 최고가 다른 규칙의 시간과 견주어진다.
- * 기록 칸의 꼴은 혼자 맞추기와 같아(`SolveRecord`) 평균·시간 글 함수를 그대로 쓴다.
+ * 기록 칸의 꼴은 혼자 맞추기와 같아(`SolveRecord`, 입력 방식 `inputs`·살펴보기 `inspection` 포함) 평균·시간 글·티어
+ * 함수를 그대로 쓴다.
  */
 
 export const MINI_KEY = "cube.mini.v1";
@@ -16,42 +18,34 @@ export const MINI_SIZES = [2, 3, 4, 5, 6, 7] as const;
 export const DEFAULT_MINI_SIZE = 3;
 
 /**
- * 한 판의 입력 출처(공정함 확인, 2026-11-09). 맥 앱이 키마다 출처를 판별해 넘긴다(`apps/cubie` `KeySource.swift`).
- * 막지는 않고 기록에 표시만 한다.
- * - `keyboard`: 실제 키보드만(하드웨어 입력 계층에서 온 키, 넣은 프로세스 없음)
- * - `synthetic`: 다른 프로그램이 넣은 키가 섞임(osascript·CGEventPost 등)
- * - `pointer`: 화면을 끌어 돌린 수가 섞임(마우스·트랙패드·화면 밀기)
- * - `unknown`: 출처를 모름(브라우저에서 열었거나 앱이 출처를 못 넘김)
- * 여럿이 섞이면 synthetic > pointer > unknown > keyboard 차례로 하나를 남긴다.
- * 칸 이름 `inputSource`는 미니 모드 기록에만 덧붙인다(혼자 맞추기 기록에 입력 방식 칸을 더하는 작업과 머지 뒤 합친다)
+ * 키를 넣은 곳(공정함 확인, 2026-11-09). 입력 방식(`SolveRecord.inputs`: 키보드·화면 키보드·밀기·단추)과 다른 결이다:
+ * `inputs`의 `keyboard`는 「키 사건으로 수를 뒀다」까지이고, 그 키가 실제 키보드에서 왔는지 다른 프로그램이 넣었는지는
+ * 브라우저가 알 수 없다(osascript로 넣은 키도 `isTrusted`가 참). 맥 앱이 키마다 운영체제의 출처 칸을 읽어 넘긴 것을
+ * 한 판으로 모은다(`apps/cubie` `KeySource.swift`). 막지는 않고 기록에 표시만 한다.
+ * - `hardware`: 이 판의 키가 모두 하드웨어 입력 계층에서 왔고 넣은 프로세스가 없음
+ * - `synthetic`: 다른 프로그램이 넣은 키가 하나라도 섞임(CGEventPost 등)
+ * - `unknown`: 출처를 모르는 키가 섞임(브라우저에서 열었거나 앱이 알리지 못함)
+ * 키로 둔 수가 없으면 칸을 남기지 않는다. 여럿이면 synthetic > unknown > hardware.
  */
-export type InputSource = "keyboard" | "synthetic" | "pointer" | "unknown";
+export type KeyOrigin = "hardware" | "synthetic" | "unknown";
 
-const SOURCE_RANK: Record<InputSource, number> = {
-  keyboard: 0,
+const ORIGIN_RANK: Record<KeyOrigin, number> = {
+  hardware: 0,
   unknown: 1,
-  pointer: 2,
-  synthetic: 3,
+  synthetic: 2,
 };
 
-/** 한 판에 들어온 수들의 출처 → 그 판의 출처. 수가 없으면 unknown */
-export function inputSourceOf(seen: Iterable<InputSource>): InputSource {
-  let out: InputSource | null = null;
+/** 한 판에 들어온 키들의 출처 → 그 판의 출처. 키가 없으면 undefined */
+export function keyOriginOf(seen: Iterable<KeyOrigin>): KeyOrigin | undefined {
+  let out: KeyOrigin | undefined;
   for (const s of seen)
-    if (out === null || SOURCE_RANK[s] > SOURCE_RANK[out]) out = s;
-  return out ?? "unknown";
+    if (out === undefined || ORIGIN_RANK[s] > ORIGIN_RANK[out]) out = s;
+  return out;
 }
 
-export const INPUT_SOURCE_LABEL: Record<InputSource, string> = {
-  keyboard: "키보드",
-  synthetic: "다른 프로그램 입력",
-  pointer: "마우스·화면",
-  unknown: "출처 모름",
-};
-
-/** 미니 모드 기록 한 판: 혼자 맞추기 기록 꼴에 입력 출처를 덧붙인다 */
+/** 미니 모드 기록 한 판: 혼자 맞추기 기록 꼴에 키 출처를 덧붙인다 */
 export interface MiniRecord extends SolveRecord {
-  inputSource?: InputSource;
+  keyOrigin?: KeyOrigin;
 }
 
 export interface MiniPrefs {
@@ -64,6 +58,10 @@ interface MiniBook extends MiniPrefs {
   version: 1;
   /** 크기("3" 등)마다 최근 기록(새것이 앞) */
   records: Record<string, MiniRecord[]>;
+  /**
+   * 크기마다 최고 Ao5를 낸 5판(혼자 맞추기의 `cube.best5.v1`과 같은 뜻). 목록 상한(100판)에 밀려도 티어가 떨어지지 않게
+   */
+  best5: Record<string, MiniRecord[]>;
 }
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -90,12 +88,21 @@ function isRecord(r: unknown): r is MiniRecord {
   );
 }
 
+function lists(v: unknown): Record<string, MiniRecord[]> {
+  const out: Record<string, MiniRecord[]> = {};
+  if (v && typeof v === "object")
+    for (const [k, list] of Object.entries(v))
+      if (Array.isArray(list)) out[k] = list.filter(isRecord);
+  return out;
+}
+
 function read(storage: StorageLike | null): MiniBook {
   const empty: MiniBook = {
     version: 1,
     n: DEFAULT_MINI_SIZE,
     mirror: true,
     records: {},
+    best5: {},
   };
   try {
     const text = storage?.getItem(MINI_KEY);
@@ -103,15 +110,12 @@ function read(storage: StorageLike | null): MiniBook {
     const data = JSON.parse(text) as Partial<MiniBook> | null;
     if (typeof data !== "object" || data === null || Array.isArray(data))
       return empty;
-    const records: Record<string, MiniRecord[]> = {};
-    if (data.records && typeof data.records === "object")
-      for (const [k, list] of Object.entries(data.records))
-        if (Array.isArray(list)) records[k] = list.filter(isRecord);
     return {
       version: 1,
       n: isSize(data.n) ? data.n : DEFAULT_MINI_SIZE,
       mirror: typeof data.mirror === "boolean" ? data.mirror : true,
-      records,
+      records: lists(data.records),
+      best5: lists(data.best5),
     };
   } catch {
     return empty;
@@ -153,7 +157,18 @@ export function loadMiniRecords(
   return read(storage).records[String(n)] ?? [];
 }
 
-/** 기록을 더하고 그 크기의 새 목록을 돌려준다. 번호(`no`)는 크기마다 1부터 이어진다 */
+/** 그 크기의 최고 Ao5 5판(없으면 빈 목록) */
+export function loadMiniBestFive(
+  n: number,
+  storage: StorageLike | null = defaultStorage(),
+): MiniRecord[] {
+  return read(storage).best5[String(n)] ?? [];
+}
+
+/**
+ * 기록을 더하고 그 크기의 새 목록을 돌려준다. 번호(`no`)는 크기마다 1부터 이어진다.
+ * 새 목록에서 더 좋은 Ao5가 나오면 그 5판을 `best5`에 남긴다
+ */
 export function addMiniRecord(
   record: MiniRecord,
   storage: StorageLike | null = defaultStorage(),
@@ -165,8 +180,22 @@ export function addMiniRecord(
     0,
     MINI_MAX_RECORDS,
   );
-  write(storage, { ...b, records: { ...b.records, [key]: list } });
+  const best5 = { ...b.best5 };
+  const found = bestAo5(list);
+  const kept = best5[key];
+  const keptMs = kept?.length === 5 ? ao5(kept) : null;
+  if (found && (keptMs === null || found.ms < keptMs))
+    best5[key] = list.slice(found.at, found.at + 5);
+  write(storage, { ...b, records: { ...b.records, [key]: list }, best5 });
   return list;
+}
+
+/** Cubie 기록으로 매긴 그 크기의 최고 티어(혼자 맞추기와 같은 Ao5 규칙, 기록은 미니 모드 것). 없으면 null */
+export function miniTier(
+  n: number,
+  storage: StorageLike | null = defaultStorage(),
+): MyTier | null {
+  return myTier(n, loadMiniRecords(n, storage), loadMiniBestFive(n, storage));
 }
 
 export interface MiniSummary {

@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   private var escMonitor: Any?
 
   /// 따로 여는 보통 창(투명 아님): 기록, 단축키, 키·색 설정
-  enum WebWindow { case records, keys, settings }
+  enum WebWindow { case records, keys, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -207,6 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     sizeItem.submenu = sizes
     m.addItem(sizeItem)
     m.addItem(item("기록 보기", #selector(menuRecords)))
+    m.addItem(item("티어표", #selector(menuTiers)))
     let vs = NSMenu()
     vs.addItem(item("친구와 대결", #selector(menuVsFriends)))
     vs.addItem(item("컴퓨터와 대결", #selector(menuVsBot)))
@@ -243,6 +244,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   @objc private func menuRecords() { openWebWindow(.records) }
   @objc private func menuKeys() { openWebWindow(.keys) }
+  /// 사이트 티어표를 지금 크기로(이미 열려 있으면 그 크기로 다시 연다)
+  @objc private func menuTiers() {
+    if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
+      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(cube.bridge.state.n)")))
+    }
+    openWebWindow(.tiers)
+  }
   /// 사이트의 키·색 설정. 웹 저장소가 앱 것(브라우저와 따로)이라 앱 안에서 정해야 미니 창에 닿는다
   @objc private func menuSettings() { openWebWindow(.settings) }
 
@@ -261,8 +269,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     let (path, title, size): (String, String, NSSize) =
       switch kind {
-      case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 360, height: 480))
+      case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
       case .keys: ("/cube/mini?view=keys", "Cubie 단축키", NSSize(width: 780, height: 560))
+      case .tiers: ("/cube/tiers?n=\(cube.bridge.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
       case .settings: ("/cube/settings", "Cubie 키·색 설정", NSSize(width: 760, height: 720))
       }
     let config = WKWebViewConfiguration()
