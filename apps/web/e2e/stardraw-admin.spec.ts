@@ -1,5 +1,10 @@
 import { expect, fixStardrawClock, type Page, test } from "./test";
 
+// 서버 API를 page.route로 흉내 낸다. 서비스 워커(sw.js)는 설치되면 열린 페이지를 곧바로 맡는데(clients.claim)
+// 그 순간이 기기 속도에 달려 있고, 맡은 뒤의 요청은 page.route가 받지 못해 응답이 끝나지 않을 때가 있었다
+// (CI에서 장부 요청이 멈춰 메시지가 빈 채 시간 상한에 걸림). 이 파일은 서비스 워커를 쓰지 않는다
+test.use({ serviceWorkers: "block" });
+
 test.beforeEach(({ page }) => fixStardrawClock(page));
 
 /**

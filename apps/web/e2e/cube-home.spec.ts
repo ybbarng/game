@@ -3,6 +3,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
+// 큐브 첫 화면 그림 요청을 page.route로 실패시킨다. 서비스 워커(sw.js)가 도중에 페이지를 맡으면(clients.claim)
+// 그 뒤의 요청은 page.route가 받지 못할 수 있어(stardraw-admin.spec.ts에서 요청이 멈춘 일) 막는다
+test.use({ serviceWorkers: "block" });
+
 /**
  * 큐브 맞추기를 게임 목록에 올린 것(docs/47 12절 C8): 첫 화면 목록에서 /cube로 가고, 처음 오셨나요 안내로
  * 이어진다. 휴대폰은 큐브를 밀어서 돌린다(밀기 계산은 view/swipe.test.ts가 보고, 여기서는 화면에서 수가
