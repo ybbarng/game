@@ -13,6 +13,7 @@ import {
   EMBLEM_BOX_PIPS,
   FRAME_IN,
   FRAME_OUT,
+  facetEdges,
   type Glint,
   glintsFor,
   HDR_TIERS,
@@ -199,6 +200,16 @@ const SIN60 = Math.sqrt(3) / 2;
 /** 빛은 왼위에서 온다(각도, 라디안) */
 const LIGHT = (-118 * Math.PI) / 180;
 
+/**
+ * 깎인 면 조각의 밝기(면: 윗면·왼면·오른면, 조각 i: 꼭짓점 i → i+1과 면 가운데). 양수는 흰빛, 음수는 그늘(검게).
+ * 빛은 왼위에서 와서 윗면 뒤쪽 조각이 가장 밝고 오른면 아래가 가장 어둡다.
+ */
+const FACET_LIGHT = [
+  [0.34, 0.06, -0.16, 0.2],
+  [0.26, -0.14, 0.12, -0.24],
+  [0.06, 0.3, -0.18, -0.34],
+];
+
 /** 육각 틀 변 i(꼭짓점 i → i+1)의 바깥 방향이 빛을 받는 정도(-1~1) */
 function edgeLit(i: number): number {
   const a = ((-60 + 60 * i) * Math.PI) / 180;
@@ -337,8 +348,9 @@ export function TierEmblem({
 
   // 틀 금속: 변마다 빛을 받는 정도로 밝게·어둡게(바깥 띠는 바깥으로, 안 띠는 안으로 기운 면)
   const fMid = mix(p.ring[0], p.ring[1], 0.42);
-  const fHi = mix(p.ring[0], "#ffffff", 0.5);
-  const fLo = mix(p.ring[1], p.dark, 0.5);
+  // 금속은 넓은 밝기 범위로 반사한다(빛 받는 변은 거의 흰색, 반대쪽은 짙게)
+  const fHi = mix(p.ring[0], "#ffffff", 0.72);
+  const fLo = mix(p.ring[1], p.dark, 0.62);
   const shade = (b: number) =>
     b >= 0 ? mix(fMid, fHi, Math.min(1, b)) : mix(fMid, fLo, Math.min(1, -b));
 
@@ -423,6 +435,7 @@ export function TierEmblem({
     <span
       ref={ref}
       data-cube-emblem={tier}
+      data-twinkle={shine && glints.length > 0 ? "" : undefined}
       {...(pips && division ? { "data-cube-emblem-division": division } : {})}
       className={cn(
         "cube-emblem relative inline-block shrink-0 align-middle",
@@ -504,10 +517,34 @@ export function TierEmblem({
             </radialGradient>
           )}
           {lv >= 6 && (
-            <radialGradient id={`${id}-inner`} cx="0.5" cy="0.4" r="0.5">
-              <stop offset="0" stopColor="#fff" stopOpacity="0.32" />
+            <radialGradient id={`${id}-inner`} cx="0.5" cy="0.62" r="0.55">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.42" />
+              <stop
+                offset="0.45"
+                style={{ stopColor: col("gem2", p.gem[1]) }}
+                stopOpacity="0.18"
+              />
               <stop offset="1" stopColor="#fff" stopOpacity="0" />
             </radialGradient>
+          )}
+          {/* 보석 안에서 갈라지는 빛(분산): 옅은 무지개 띠 */}
+          {lv >= 6 && (
+            <linearGradient
+              id={`${id}-fire`}
+              gradientUnits="userSpaceOnUse"
+              x1={f2(C[0] - Rc)}
+              y1={f2(C[1] + Rc * 0.2)}
+              x2={f2(C[0] + Rc)}
+              y2={f2(C[1] + Rc * 0.75)}
+            >
+              <stop offset="0" stopColor="#ff4d8d" stopOpacity="0" />
+              <stop offset="0.18" stopColor="#ff4d8d" stopOpacity="0.5" />
+              <stop offset="0.36" stopColor="#ffd84d" stopOpacity="0.55" />
+              <stop offset="0.52" stopColor="#5dffa8" stopOpacity="0.5" />
+              <stop offset="0.68" stopColor="#4dc8ff" stopOpacity="0.55" />
+              <stop offset="0.84" stopColor="#a66bff" stopOpacity="0.5" />
+              <stop offset="1" stopColor="#a66bff" stopOpacity="0" />
+            </linearGradient>
           )}
           {lv >= 9 && (
             <linearGradient id={`${id}-ray`} x1="0" y1="0" x2="0" y2="1">
@@ -518,9 +555,14 @@ export function TierEmblem({
           <clipPath id={`${id}-cube`}>
             <polygon points={pts(K)} />
           </clipPath>
+          <clipPath id={`${id}-frame`}>
+            <polygon points={pts(O)} />
+          </clipPath>
           <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#fff" stopOpacity="0.85" />
+            <stop offset="0.3" stopColor="#fff" stopOpacity="0.35" />
+            <stop offset="0.5" stopColor="#fff" stopOpacity="1" />
+            <stop offset="0.7" stopColor="#fff" stopOpacity="0.35" />
             <stop offset="1" stopColor="#fff" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -610,6 +652,29 @@ export function TierEmblem({
               opacity="0.5"
             />
           )}
+          {/* 금속 반사: 빛을 정면으로 받는 바깥 띠에 가는 흰 줄(가운데가 가장 밝다) */}
+          {fine && (
+            <g stroke="#fff" strokeLinecap="round">
+              {[0, 1, 2, 3, 4, 5]
+                .filter((i) => edgeLit(i) > 0.5)
+                .map((i) => {
+                  const j = (i + 1) % 6;
+                  const a = lerp(O[i] as Pt, M[i] as Pt, 0.38);
+                  const b = lerp(O[j] as Pt, M[j] as Pt, 0.38);
+                  return (
+                    <line
+                      key={i}
+                      x1={f2(lerp(a, b, 0.12)[0])}
+                      y1={f2(lerp(a, b, 0.12)[1])}
+                      x2={f2(lerp(a, b, 0.88)[0])}
+                      y2={f2(lerp(a, b, 0.88)[1])}
+                      strokeWidth="0.55"
+                      opacity={f2(0.35 + edgeLit(i) * 0.5)}
+                    />
+                  );
+                })}
+            </g>
+          )}
           {/* 우물 */}
           <polygon
             points={pts(I)}
@@ -670,31 +735,85 @@ export function TierEmblem({
           )}
 
           {/* 보석처럼 깎인 면(다이아몬드부터): 면마다 네 조각의 밝기를 다르게, 안쪽에서 빛 */}
-          {lv >= 6 && (
-            <>
-              <g fill="#fff">
-                {FACE_KEYS.flatMap((k, fi) =>
-                  facets(k).map((tri, i) => (
+          {/* 에메랄드는 같은 깎인 면을 옅게. 밝은 조각은 흰빛, 그늘진 조각은 검게 덮어 조각 사이 대비를 크게 */}
+          {lv >= 5 && (
+            <g>
+              {FACE_KEYS.flatMap((k, fi) =>
+                facets(k).map((tri, i) => {
+                  const v = (FACET_LIGHT[fi]?.[i] ?? 0) * (lv >= 6 ? 1 : 0.6);
+                  return (
                     <polygon
                       key={pts(tri)}
                       points={pts(tri)}
-                      opacity={
-                        [
-                          [0.26, 0.06, 0, 0.14],
-                          [0.12, 0, 0.09, 0.03],
-                          [0.08, 0.16, 0.02, 0],
-                        ][fi]?.[i]
-                      }
+                      fill={v >= 0 ? "#fff" : "#000"}
+                      opacity={f2(Math.abs(v))}
                     />
-                  )),
-                )}
-              </g>
+                  );
+                }),
+              )}
+            </g>
+          )}
+          {lv >= 6 && (
+            <>
+              {/* 안에서 올라오는 빛과 갈라지는 무지개 띠 */}
               <polygon points={pts(K)} fill={url("inner")} />
+              <g clipPath={url("cube")}>
+                <polygon
+                  points={pts([
+                    [C[0] - Rc, C[1] + Rc * 0.05],
+                    [C[0] + Rc, C[1] + Rc * 0.6],
+                    [C[0] + Rc, C[1] + Rc * 0.95],
+                    [C[0] - Rc, C[1] + Rc * 0.4],
+                  ])}
+                  fill={url("fire")}
+                  opacity="0.55"
+                />
+              </g>
+              {/* 깎인 면 사이 모서리가 빛을 받는다(HDR 그림과 같은 선) */}
+              {fine && (
+                <g stroke="#fff" strokeLinecap="round" strokeWidth="0.4">
+                  {facetEdges(tier).map(({ a, b, lit }) => (
+                    <line
+                      key={pts([a, b])}
+                      x1={f2(a[0])}
+                      y1={f2(a[1])}
+                      x2={f2(b[0])}
+                      y2={f2(b[1])}
+                      opacity={f2(0.15 + lit * 0.6)}
+                    />
+                  ))}
+                </g>
+              )}
             </>
           )}
 
           {/* 윗면 반사 */}
           <polygon points={pts(faces.top.quad)} fill={url("sheen")} />
+          {/* 보석(에메랄드부터): 윗면에 비친 창 같은 날카로운 반사 둘 */}
+          {lv >= 5 &&
+            (
+              [
+                [0.1, 0.17, 0.62],
+                [0.25, 0.29, 0.4],
+              ] as const
+            ).map(([u0, u1, o]) => {
+              const f = faces.top;
+              const at = (u: number, v: number) =>
+                add(add(f.o, f.b, u), f.a, v);
+              return (
+                <polygon
+                  key={u0}
+                  points={pts([
+                    at(u0, 0.12),
+                    at(u1, 0.12),
+                    at(u1, 0.62),
+                    at(u0, 0.62),
+                  ])}
+                  fill="#fff"
+                  opacity={o}
+                />
+              );
+            })}
 
           {/* 모서리 빛: 윗면 바깥 두 변과 앞의 세 모서리 */}
           <g fill="none" stroke={p.hi} strokeLinecap="round">
@@ -772,32 +891,34 @@ export function TierEmblem({
           </g>
         )}
 
-        {/* 빛 띠: 가끔 한 번 큐브 위를 지나간다(평소에는 보이지 않는다) */}
+        {/* 빛 띠: 가끔 한 번 틀과 큐브 위를 지나간다(평소에는 보이지 않는다). 금속 틀도 함께 번쩍인다 */}
         {canShine(tier) && (
-          <g clipPath={`url(#${id}-cube)`}>
+          <g clipPath={url("frame")}>
             <g className="emb-band">
               <polygon
                 points={pts([
-                  [C[0] - Rc * 0.45 - Rc * 0.55, C[1] + Rc],
-                  [C[0] + Rc * 0.45 - Rc * 0.55, C[1] + Rc],
-                  [C[0] + Rc * 0.45 + Rc * 0.55, C[1] - Rc],
-                  [C[0] - Rc * 0.45 + Rc * 0.55, C[1] - Rc],
+                  [C[0] - Rc * 0.5 - Ro * 0.55, C[1] + Ro],
+                  [C[0] + Rc * 0.5 - Ro * 0.55, C[1] + Ro],
+                  [C[0] + Rc * 0.5 + Ro * 0.55, C[1] - Ro],
+                  [C[0] - Rc * 0.5 + Ro * 0.55, C[1] - Ro],
                 ])}
-                fill={`url(#${id}-band)`}
+                fill={url("band")}
               />
             </g>
           </g>
         )}
 
-        {/* 반짝임 점(다이아몬드부터) */}
+        {/* 반짝임 점(다이아몬드부터): 움직일 수 있으면 늘 천천히 반짝인다(점마다 때를 어긋나게) */}
         {glints.length > 0 && (
           <g fill="#fff" className="emb-glints">
-            {glints.map((g) => (
-              <path
+            {glints.map((g, i) => (
+              <g
                 key={`${g.x}-${g.y}`}
-                d={glintPath(g)}
-                className="emb-glint"
-              />
+                className="emb-glint-tw"
+                style={{ animationDelay: `${-i * 1.3}s` }}
+              >
+                <path d={glintPath(g)} className="emb-glint" />
+              </g>
             ))}
           </g>
         )}
