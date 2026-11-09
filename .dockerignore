@@ -5,3 +5,4 @@ apps/web/test-results
 apps/web/playwright-report
 assets/original-sounds
 .git
+apps/cubie
