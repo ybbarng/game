@@ -42,9 +42,9 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 
 `CUBIE_DEBUG=1`을 붙이면 포커스·다리 메시지·키 출처 칸을 표준 출력에 찍는다.
 
-앱 아이콘(`Resources/AppIcon.icns`)과 메뉴 막대 아이콘(`Resources/MenuIcon*.png`, 템플릿 그림 1x·2x)은 `swift apps/cubie/scripts/make-icon.swift`가 그린다(CoreGraphics와 `iconutil`만 쓴다). 그림을 고치면 이 명령으로 다시 만들어 함께 커밋한다. `--preview <폴더>`를 붙이면 크기별·밝은/어두운 바탕·메뉴 막대 미리보기 PNG도 남긴다.
+앱 아이콘(`Resources/AppIcon.icns`)은 사이트의 3D 큐브(`apps/web/src/cube/view/cube-view.ts`)로 그린다: `node apps/cubie/scripts/icon/make-art.mjs --icns d-pocket`. 하늘색 판에 살짝 기운 2×2 큐브이고, 32px 아래도 같은 2×2를 판에 더 크게 그린다. 시안은 `scripts/icon/render.ts`의 `OPTIONS`에 있다(0.1.2에서 다섯 가운데 `d-pocket`을 골랐다). `--out <폴더>`를 붙이면 시안마다 크기별 PNG와 지금 아이콘을 맨 위에 둔 비교판 `options.png`를 남긴다. 화면 시험과 같은 시스템 Chrome을 화면 없이 띄운다(`pnpm install` 뒤).
 
-사이트의 3D 큐브(`apps/web/src/cube/view/cube-view.ts`)로 그린 앱 아이콘 시안은 `node apps/cubie/scripts/icon/make-art.mjs --out <폴더>`가 만든다(시안마다 크기별 PNG와 지금 아이콘을 맨 위에 둔 비교판 `options.png`). 시안은 `scripts/icon/render.ts`의 `OPTIONS`에 있고, 하나를 고르면 `--icns <시안>`으로 `Resources/AppIcon.icns`를 바꾼다. 화면 시험과 같은 시스템 Chrome을 화면 없이 띄운다(`pnpm install` 뒤). 이 길로 바꾼 뒤 `make-icon.swift`를 다시 돌리면 앱 아이콘이 옛 그림으로 돌아가니 메뉴 막대 아이콘만 고칠 때도 조심한다.
+메뉴 막대 아이콘(`Resources/MenuIcon*.png`, 템플릿 그림 1x·2x)은 `swift apps/cubie/scripts/make-menu-icon.swift`가 그린다(앱 아이콘에 맞춘 2×2 큐브 실루엣, CoreGraphics만 쓴다). `--preview <폴더>`를 붙이면 밝은·어두운 메뉴 막대 흉내 PNG도 남긴다. 어느 쪽이든 그림을 고치면 다시 만들어 함께 커밋한다.
 
 ## 쓰는 법
 

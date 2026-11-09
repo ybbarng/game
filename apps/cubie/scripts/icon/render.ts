@@ -111,6 +111,8 @@ export const OPTIONS: IconOption[] = [
     tilt: 6,
     shadowGap: 22,
     shadowAlpha: 0.18,
+    // 2×2는 칸이 커서 16px에서도 섞인 색이 읽힌다. 맞춘 큐브는 흰 윗면이 하늘색 판에 묻혀 큰 그림과 같은 상태로 둔다
+    small: { moves: [M("x", 1, 1, 1), M("y", 1, 1, 3)], width: 760, cy: 512 },
   },
   {
     id: "e-candy",
