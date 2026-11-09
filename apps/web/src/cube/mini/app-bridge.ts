@@ -25,7 +25,17 @@ export type FromApp =
   /**
    * 바로 다음에 화면에 닿을 키 하나의 출처. 앱이 키를 웹 화면에 넘기기 직전에 보낸다(같은 연결이라 차례가 지켜진다)
    */
-  | { type: "key"; source: "keyboard" | "synthetic" };
+  | { type: "key"; source: "keyboard" | "synthetic" }
+  /** 「공식 보기」(앱 메뉴, 또는 앱이 가로챈 F1) */
+  | { type: "hint" }
+  /** 앱이 할 수 있는 것(0.1.3부터, 화면이 떴을 때). `hintBubble`: 창 옆 말풍선을 그린다 */
+  | { type: "caps"; hintBubble: boolean };
+
+/** 말풍선 한 줄. 앱이 줄마다 글꼴을 고른다(`HintBubble.swift`) */
+export interface BubbleLine {
+  text: string;
+  style: "title" | "note" | "alg" | "keys" | "plain";
+}
 
 /** 화면이 앱에 보내는 것 */
 export type ToApp =
@@ -39,7 +49,9 @@ export type ToApp =
    */
   | { type: "hit"; rects: number[][] }
   /** 떠 있을 때 움직임이 시작·끝남(확인용 기록) */
-  | { type: "idle"; showing: "replay" | "hero" | "jiggle" | null };
+  | { type: "idle"; showing: "replay" | "hero" | "jiggle" | null }
+  /** 「공식 보기」 말풍선을 큐브 창 옆에 띄운다(`lines`) / 숨긴다(null). 0.1.2 이하 앱은 모르는 꼴이라 버린다 */
+  | { type: "hint"; lines: BubbleLine[] | null };
 
 interface WebkitWindow {
   webkit?: {
@@ -99,6 +111,10 @@ export function parseFromApp(d: unknown): FromApp | null {
       return x.source === "keyboard" || x.source === "synthetic"
         ? { type: "key", source: x.source }
         : null;
+    case "hint":
+      return { type: "hint" };
+    case "caps":
+      return { type: "caps", hintBubble: x.hintBubble === true };
     default:
       return null;
   }

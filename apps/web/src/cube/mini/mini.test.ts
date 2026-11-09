@@ -43,6 +43,16 @@ describe("앱 다리", () => {
       source: "synthetic",
     });
     expect(parseFromApp({ type: "key", source: "robot" })).toBeNull();
+    expect(parseFromApp({ type: "hint" })).toEqual({ type: "hint" });
+    expect(parseFromApp({ type: "caps", hintBubble: true })).toEqual({
+      type: "caps",
+      hintBubble: true,
+    });
+    // 모르는 칸 값은 「말풍선 없음」으로
+    expect(parseFromApp({ type: "caps" })).toEqual({
+      type: "caps",
+      hintBubble: false,
+    });
     expect(parseFromApp({ type: "focus" })).toBeNull();
     expect(parseFromApp({ type: "erase" })).toBeNull();
     expect(parseFromApp("scramble")).toBeNull();
@@ -452,6 +462,21 @@ describe("미니 모드 저장", () => {
     expect(miniTier(3, st)?.ao5).toBe(20_000);
     // 혼자 맞추기 기록(cube.records.v1)은 건드리지 않는다
     expect([...st.map.keys()]).toEqual([MINI_KEY]);
+  });
+
+  it("공식 보기를 본 판이 든 5판은 티어에 넣지 않는다(힌트 판만 빼고 이어 세지도 않는다)", () => {
+    const st = memoryStorage();
+    // 오래된 차례부터: 30초 다섯 판 → 힌트 본 10초 판 → 20초 네 판
+    for (let i = 0; i < 5; i++) addMiniRecord(rec(3, 30_000), st);
+    addMiniRecord({ ...rec(3, 10_000), hints: 2 }, st);
+    for (let i = 0; i < 4; i++) addMiniRecord(rec(3, 20_000), st);
+    expect(loadMiniRecords(3, st)[4]?.hints).toBe(2);
+    // 힌트 판을 건너뛰고 이어 셌다면 20초 넷 + 30초 하나로 20초가 된다. 힌트 판이 든 5판은 모두 빠져 30초가 남는다
+    expect(miniTier(3, st)?.ao5).toBe(30_000);
+    expect(loadMiniBestFive(3, st).some((r) => r.hints)).toBe(false);
+    // 힌트 없는 20초 판이 다섯 쌓이면 그 5판이 티어가 된다
+    addMiniRecord(rec(3, 20_000), st);
+    expect(miniTier(3, st)?.ao5).toBe(20_000);
   });
 
   it("다시 보기 글은 최근 30판과 최고 Ao5 5판에만 남긴다(혼자 맞추기와 같은 규칙)", () => {

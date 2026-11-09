@@ -510,3 +510,227 @@ test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표�
     ["hardware", ["keyboard"]],
   ]);
 });
+
+// ── 공식 보기(docs/47 15-14) ───────────────────────────────
+
+/** 섞기 씨앗을 고정한다(섞기 글이 판마다 같다) */
+async function fixSeed(page: Page, seed: number) {
+  await page.addInitScript((s) => {
+    const real = crypto.getRandomValues.bind(crypto);
+    crypto.getRandomValues = <T extends ArrayBufferView | null>(a: T): T => {
+      if (a instanceof Uint32Array && a.length === 1) {
+        a[0] = s;
+        return a;
+      }
+      return real(a as never) as T;
+    };
+  }, seed);
+}
+
+const AMOUNT: Record<string, number> = { "": 1, "2": 2, "'": 3 };
+
+/** 수 목록을 「표기」 배치 키로. 같은 면이 이어지면 합친다(합쳐 0이면 둘 다 없앤다) */
+function notationKeys(tokens: string[]): string[] {
+  const merged: { face: string; q: number }[] = [];
+  for (const t of tokens) {
+    const face = t[0] as string;
+    const q = AMOUNT[t.slice(1)] as number;
+    const last = merged.at(-1);
+    if (last && last.face === face) {
+      last.q = (last.q + q) % 4;
+      if (last.q === 0) merged.pop();
+    } else merged.push({ face, q });
+  }
+  return merged.flatMap(({ face, q }) => {
+    const code = `Key${face}`;
+    return q === 2 ? [code, code] : q === 3 ? [`Shift+${code}`] : [code];
+  });
+}
+
+const invert = (t: string) =>
+  t.endsWith("2") ? t : t.endsWith("'") ? t.slice(0, -1) : `${t}'`;
+
+/**
+ * OLL 1단계 「가로줄」 상황을 만드는 수(흰 면 위로 쥔 채). 흰 면을 아래로 쥐고(z2) `F R U R' U' F'`를 거꾸로 한 것과
+ * 같은 상황을, 첫 수가 그 면인 꼴로(큐브를 y로 돌려 본 넷, 앞에 윗면 돌리기 D를 더한 하나). 섞기를 되돌리는 마지막 수와
+ * 합쳐, 도중에 맞춘 큐브를 지나가지 않게 한다
+ */
+const LINE_SETUP: Record<string, string> = {
+  F: "F D L D' L' F'",
+  R: "R D F D' F' R'",
+  B: "B D R D' R' B'",
+  L: "L D B D' B' L'",
+  D: "D F D L D' L' F'",
+};
+
+test("공식 보기: 맞추는 동안 지금 상황의 공식 하나, 잠깐 보이고 횟수·시간 제한, 기록에 힌트 횟수", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await fixSeed(page, 20261109);
+  await page.setViewportSize({ width: 320, height: 380 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  const card = page.locator("[data-mini-hint-card]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  await fromApp(page, { type: "focus", focused: true });
+
+  // 섞기 전에는 볼 것이 없다
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute("data-mini-hint-msg", /섞은 뒤/);
+  await page.clock.fastForward(2000);
+  await expect(main).not.toHaveAttribute("data-mini-hint-msg");
+
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  const scramble = ((await main.getAttribute("data-mini-scramble")) ?? "")
+    .trim()
+    .split(/\s+/);
+  const undo = [...scramble].reverse().map(invert);
+  // 섞기를 되돌리는 마지막 수와 가로줄 상황의 첫 수를 같은 면으로 맞춰 합친다. 마지막 수가 윗면(흰 면)이면 D 꼴을 쓰고,
+  // U와 D는 서로 바꿔 둬도 같아 D를 그 앞에 둔다(어느 쪽이든 맞춘 큐브를 지나가지 않는다)
+  const last = undo.at(-1) as string;
+  const lastFace = last[0] === "U" ? "D" : (last[0] as string);
+  const setup = (LINE_SETUP[lastFace] as string).split(" ");
+  const toCase =
+    last[0] === "U"
+      ? [...undo.slice(0, -1), "D", last, ...setup.slice(1)]
+      : [...undo, ...setup];
+
+  // 1번째: 섞인 큐브에는 십자 수(창이 넉넉해 창 안에 단계·공식·키캡)
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute("data-mini-hint", /\S/);
+  await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
+  await expect(card).toHaveAttribute("data-mini-hint-card", "full");
+  await expect(card).toContainText("십자");
+  await expect(main).toHaveAttribute("data-mini-hints-used", "1");
+  await shot(page, "mini-hint-cross", info.project.name);
+  // 5초 뒤 사라진다
+  await page.clock.fastForward(5000);
+  await expect(main).toHaveAttribute("data-mini-hint", "");
+  // 20초 안에는 다시 못 본다(남은 초). `\`도 힌트 키
+  await page.keyboard.press("Backslash");
+  await expect(main).toHaveAttribute(
+    "data-mini-hint-msg",
+    "15초 뒤에 다시 볼 수 있어요",
+  );
+  await page.clock.fastForward(15_000);
+
+  // 2번째: 공식을 보다가 수를 두면 바로 사라진다
+  const keys = notationKeys(toCase);
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute("data-mini-hint", /\S/);
+  await page.keyboard.press(keys[0] as string);
+  await expect(main).toHaveAttribute("data-mini-hint", "");
+  // 섞기를 되돌리다 가로줄 상황으로(맞춘 큐브를 지나가지 않는다)
+  for (const k of keys.slice(1)) await page.keyboard.press(k);
+  await expect(main).toHaveAttribute("data-mini-phase", "solving");
+
+  // 3번째: 가로줄 상황의 공식과 쥐는 법(흰 면이 위라 돌리기부터)
+  await page.clock.fastForward(20_000);
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute("data-mini-hint", "F R U R' U' F'");
+  await expect(main).toHaveAttribute("data-mini-hint-before", /^[xz]/);
+  await expect(card).toContainText("OLL 1단계(노란 십자)");
+  await expect(card).toContainText("엣지: 가로줄");
+  await expect(main).toHaveAttribute("data-mini-hints-used", "3");
+  await shot(page, "mini-hint-oll", info.project.name);
+  // 한 판에 세 번까지
+  await page.clock.fastForward(20_000);
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute(
+    "data-mini-hint-msg",
+    "이번 판 3번 다 봤어요",
+  );
+
+  // 상황을 되돌려 맞추면 기록에 힌트 3번
+  for (const k of notationKeys([...setup].reverse().map(invert)))
+    await page.keyboard.press(k);
+  await expect(main).toHaveAttribute("data-mini-phase", "done");
+  await fromApp(page, { type: "records", open: true });
+  await expect(
+    page
+      .locator("[data-mini-record]")
+      .first()
+      .locator("[data-mini-record-hints]"),
+  ).toHaveText("힌트 3번");
+  // 새로 섞으면 횟수는 처음으로
+  await fromApp(page, { type: "records", open: false });
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await expect(main).toHaveAttribute("data-mini-hints-used", "0");
+});
+
+test("공식 보기: 작은 앱 창은 앱 말풍선으로 보내고, 말풍선이 없는 옛 앱은 창 안에 작게", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await fakeApp(page);
+  await page.setViewportSize({ width: 96, height: 96 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  await fromApp(page, { type: "focus", focused: true });
+  await fromApp(page, { type: "scramble" });
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  type Sent = {
+    type: string;
+    lines?: { text: string; style: string }[] | null;
+  };
+  const lastHint = () =>
+    page.evaluate(() =>
+      (window as unknown as { __toApp: Sent[] }).__toApp
+        .filter((m) => m.type === "hint")
+        .at(-1),
+    );
+
+  // 옛 앱(말풍선 없음): 96px 창 안에 공식만 작게. 앱 메뉴 「공식 보기」
+  await fromApp(page, { type: "hint" });
+  await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
+  await expect(page.locator("[data-mini-hint-card]")).toHaveAttribute(
+    "data-mini-hint-card",
+    "small",
+  );
+  await shot(page, "mini-hint-small", info.project.name);
+  await page.clock.fastForward(20_000);
+
+  // 0.1.3 앱: 말풍선으로 줄을 보내고, 수를 두면 숨기기(null)
+  await fromApp(page, { type: "caps", hintBubble: true });
+  await page.keyboard.press("F1");
+  await expect(main).toHaveAttribute("data-mini-hint-where", "bubble");
+  await expect(page.locator("[data-mini-hint-card]")).toHaveCount(0);
+  await expect
+    .poll(async () => (await lastHint())?.lines?.[0]?.style)
+    .toBe("title");
+  const styles = ((await lastHint())?.lines ?? []).map((l) => l.style);
+  expect(styles).toContain("alg");
+  expect(styles).toContain("keys");
+  await page.keyboard.press("KeyR");
+  await expect.poll(async () => (await lastHint())?.lines).toBeNull();
+
+  // 큰 크기는 판정이 없다(말풍선에 그 알림)
+  await fromApp(page, { type: "size", n: 5 });
+  await expect(main).toHaveAttribute("data-mini-n", "5");
+  await fromApp(page, { type: "scramble" });
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await page.keyboard.press("F1");
+  await expect
+    .poll(async () => (await lastHint())?.lines?.[0]?.text)
+    .toBe("이 크기는 공식 보기 없음");
+});
