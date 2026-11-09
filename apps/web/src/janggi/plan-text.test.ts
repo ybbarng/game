@@ -11,6 +11,6 @@ describe("초고수의 노림 문구", () => {
 
   it("방향이 없는 노림은 계획 이름 그대로", () => {
     expect(planText("mate")).toBe("외통 몰기");
-    expect(planText("develop")).toBe("차 길 열기·기물 전개");
+    expect(planText("develop")).toBe("찻길 열기·기물 전개");
   });
 });
