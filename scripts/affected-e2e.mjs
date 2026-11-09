@@ -39,6 +39,8 @@ export const EXTRA_AREAS = {
   sounds: { dirs: [], app: ["sounds"], specs: [] },
   // 카드 그림 모음. 따로 spec이 없어 기본 묶음만 돈다(빌드는 된다)
   cards: { dirs: [], app: ["cards"], public: ["cards"], specs: [] },
+  // 맥 앱 Cubie 내려받기 주소(/cubie/download). 판을 읽는 appcast는 아래 IGNORE라 단위 시험(cubie/appcast.test.ts)이 본다
+  cubie: { dirs: ["cubie"], app: ["cubie"], specs: ["cubie-download"] },
 };
 
 /** spec 이름이 게임 id로 시작하지 않는 것(마이티는 처음부터 있던 게임이라 이름이 제각각이다) */
@@ -69,7 +71,8 @@ const IGNORE = [
   /^apps\/stardraw-server\//,
   // 맥 앱 Cubie(Swift, 이 맥에서만 빌드). 웹 화면은 사이트 주소로 열 뿐이다
   /^apps\/cubie\//,
-  // Cubie 업데이트 목록(Sparkle appcast). 앱만 읽고 웹 화면은 쓰지 않는다
+  // Cubie 업데이트 목록(Sparkle appcast). 웹은 내려받기 페이지가 빌드 때 맨 위 판만 읽는다. 그 읽기는 단위 시험
+  // (src/cubie/appcast.test.ts, 저장소 파일을 그대로 읽는다)이 보므로 새 판마다 화면 시험을 돌리지 않는다
   /^apps\/web\/public\/cubie\//,
 ];
 
