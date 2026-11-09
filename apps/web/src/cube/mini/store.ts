@@ -15,6 +15,45 @@ export const MINI_MAX_RECORDS = 100;
 export const MINI_SIZES = [2, 3, 4, 5, 6, 7] as const;
 export const DEFAULT_MINI_SIZE = 3;
 
+/**
+ * 한 판의 입력 출처(공정함 확인, 2026-11-09). 맥 앱이 키마다 출처를 판별해 넘긴다(`apps/cubie` `KeySource.swift`).
+ * 막지는 않고 기록에 표시만 한다.
+ * - `keyboard`: 실제 키보드만(하드웨어 입력 계층에서 온 키, 넣은 프로세스 없음)
+ * - `synthetic`: 다른 프로그램이 넣은 키가 섞임(osascript·CGEventPost 등)
+ * - `pointer`: 화면을 끌어 돌린 수가 섞임(마우스·트랙패드·화면 밀기)
+ * - `unknown`: 출처를 모름(브라우저에서 열었거나 앱이 출처를 못 넘김)
+ * 여럿이 섞이면 synthetic > pointer > unknown > keyboard 차례로 하나를 남긴다.
+ * 칸 이름 `inputSource`는 미니 모드 기록에만 덧붙인다(혼자 맞추기 기록에 입력 방식 칸을 더하는 작업과 머지 뒤 합친다)
+ */
+export type InputSource = "keyboard" | "synthetic" | "pointer" | "unknown";
+
+const SOURCE_RANK: Record<InputSource, number> = {
+  keyboard: 0,
+  unknown: 1,
+  pointer: 2,
+  synthetic: 3,
+};
+
+/** 한 판에 들어온 수들의 출처 → 그 판의 출처. 수가 없으면 unknown */
+export function inputSourceOf(seen: Iterable<InputSource>): InputSource {
+  let out: InputSource | null = null;
+  for (const s of seen)
+    if (out === null || SOURCE_RANK[s] > SOURCE_RANK[out]) out = s;
+  return out ?? "unknown";
+}
+
+export const INPUT_SOURCE_LABEL: Record<InputSource, string> = {
+  keyboard: "키보드",
+  synthetic: "다른 프로그램 입력",
+  pointer: "마우스·화면",
+  unknown: "출처 모름",
+};
+
+/** 미니 모드 기록 한 판: 혼자 맞추기 기록 꼴에 입력 출처를 덧붙인다 */
+export interface MiniRecord extends SolveRecord {
+  inputSource?: InputSource;
+}
+
 export interface MiniPrefs {
   n: number;
   /** 거울 판(뒤·왼쪽·아래 면 비추기). 끄면 끌어 돌려 본다 */
@@ -24,7 +63,7 @@ export interface MiniPrefs {
 interface MiniBook extends MiniPrefs {
   version: 1;
   /** 크기("3" 등)마다 최근 기록(새것이 앞) */
-  records: Record<string, SolveRecord[]>;
+  records: Record<string, MiniRecord[]>;
 }
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -40,7 +79,7 @@ function defaultStorage(): StorageLike | null {
 const isSize = (v: unknown): v is number =>
   typeof v === "number" && (MINI_SIZES as readonly number[]).includes(v);
 
-function isRecord(r: unknown): r is SolveRecord {
+function isRecord(r: unknown): r is MiniRecord {
   if (typeof r !== "object" || r === null) return false;
   const x = r as Partial<SolveRecord>;
   return (
@@ -64,7 +103,7 @@ function read(storage: StorageLike | null): MiniBook {
     const data = JSON.parse(text) as Partial<MiniBook> | null;
     if (typeof data !== "object" || data === null || Array.isArray(data))
       return empty;
-    const records: Record<string, SolveRecord[]> = {};
+    const records: Record<string, MiniRecord[]> = {};
     if (data.records && typeof data.records === "object")
       for (const [k, list] of Object.entries(data.records))
         if (Array.isArray(list)) records[k] = list.filter(isRecord);
@@ -110,15 +149,15 @@ export function saveMiniPrefs(
 export function loadMiniRecords(
   n: number,
   storage: StorageLike | null = defaultStorage(),
-): SolveRecord[] {
+): MiniRecord[] {
   return read(storage).records[String(n)] ?? [];
 }
 
 /** 기록을 더하고 그 크기의 새 목록을 돌려준다. 번호(`no`)는 크기마다 1부터 이어진다 */
 export function addMiniRecord(
-  record: SolveRecord,
+  record: MiniRecord,
   storage: StorageLike | null = defaultStorage(),
-): SolveRecord[] {
+): MiniRecord[] {
   const b = read(storage);
   const key = String(record.n);
   const before = b.records[key] ?? [];
@@ -141,7 +180,7 @@ export interface MiniSummary {
   ao12: number | null | undefined;
 }
 
-export function summarize(records: readonly SolveRecord[]): MiniSummary {
+export function summarize(records: readonly MiniRecord[]): MiniSummary {
   const times = records.map(resultMs).filter((t): t is number => t !== null);
   return {
     count: records.length,

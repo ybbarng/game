@@ -123,11 +123,13 @@ test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거�
   await expect(main).toHaveAttribute("data-mini-n", "2");
   await expect(main).toHaveAttribute("data-mini-mirror", "on");
 
-  // 아주 작은 창: 거울을 접고 큐브만
-  await page.setViewportSize({ width: 140, height: 160 });
-  await expect(main).toHaveAttribute("data-mini-mirror", "folded");
+  // 가장 작은 창(48px): 2×2·3×3은 거울이 남는다. 7×7은 거울 칸이 너무 작아 접고 큐브만(문턱 10 × n px)
+  await page.setViewportSize({ width: 48, height: 48 });
+  await expect(main).toHaveAttribute("data-mini-mirror", "on");
   await shot(page, "mini-tiny", info.project.name);
-  await page.setViewportSize({ width: 320, height: 380 });
+  await fromApp(page, { type: "size", n: 7 });
+  await expect(main).toHaveAttribute("data-mini-mirror", "folded");
+  await page.setViewportSize({ width: 70, height: 80 });
   await expect(main).toHaveAttribute("data-mini-mirror", "on");
 });
 
@@ -172,4 +174,121 @@ test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스�
   await fromApp(page, { type: "focus", focused: true });
   await expect(main).toHaveAttribute("data-mini-idle", "");
   await expect(main).toHaveAttribute("data-mini-moves", "1");
+});
+
+test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "앱 창은 데스크톱에서");
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "cube.mini.v1",
+      JSON.stringify({
+        version: 1,
+        n: 4,
+        mirror: true,
+        records: {
+          "4": [
+            {
+              at: Date.UTC(2026, 10, 9, 3),
+              n: 4,
+              mode: "solo",
+              ms: 61_230,
+              penalty: 0,
+              moves: 88,
+              scramble: "R",
+              no: 1,
+            },
+          ],
+        },
+      }),
+    );
+  });
+  await page.goto("/cube/mini?view=records");
+  const records = page.locator("[data-mini-records='4']");
+  await expect(records.locator("[data-mini-record]")).toHaveCount(1);
+  await expect(records.locator("[data-mini-best]")).toHaveText("1:01.23");
+  await expect(records.locator("[data-mini-records-close]")).toHaveCount(0);
+
+  await page.goto("/cube/mini?view=keys");
+  const keys = page.locator("[data-mini-keys='4']");
+  await expect(keys).toContainText("⌃⌥⌘C");
+  await expect(keys).toContainText("Enter");
+  await expect(keys).toContainText("배치 「표기」");
+  await shot(page, "mini-keys", info.project.name);
+});
+
+/**
+ * 앱 안(다리 흉내): 앱은 키마다 바로 앞에 출처(`key`)를 보낸다. 한 수라도 다른 프로그램이 넣은 키면 그 판 기록에
+ * 「다른 프로그램 입력」이 붙고, 모두 실제 키보드면 붙지 않는다. 앱 안에서는 바탕이 투명하고, 큐브 자리(`hit`)를 앱에 알린다
+ */
+test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표시한다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await page.addInitScript(() => {
+    const sent: unknown[] = [];
+    (window as unknown as { __toApp: unknown[] }).__toApp = sent;
+    (
+      window as unknown as {
+        webkit: { messageHandlers: Record<string, unknown> };
+      }
+    ).webkit = {
+      messageHandlers: { cubie: { postMessage: (m: unknown) => sent.push(m) } },
+    };
+  });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  // 앱 안에서는 바탕을 그리지 않고, 브라우저 구석 메뉴도 없다
+  await expect(main).not.toHaveClass(/bg-neutral-950/);
+  await expect(page.locator("[data-mini-menu]")).toHaveCount(0);
+  const sent = () =>
+    page.evaluate(
+      () => (window as unknown as { __toApp: { type: string }[] }).__toApp,
+    );
+  expect((await sent()).some((m) => m.type === "ready")).toBe(true);
+  await fromApp(page, { type: "focus", focused: true });
+
+  /** 섞고 거꾸로 쳐서 맞춘다. `fake`번째 수만 다른 프로그램이 넣은 키로 알린다 */
+  async function solveOnce(fake: number | null) {
+    await fromApp(page, { type: "key", source: "keyboard" });
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+    for (const [i, k] of keys.entries()) {
+      await fromApp(page, {
+        type: "key",
+        source: i === fake ? "synthetic" : "keyboard",
+      });
+      await page.keyboard.press(k);
+    }
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+  }
+  await solveOnce(null);
+  await solveOnce(3);
+
+  await fromApp(page, { type: "records", open: true });
+  const rows = page.locator("[data-mini-records='3'] [data-mini-record]");
+  await expect(rows).toHaveCount(2);
+  // 새것이 앞: 둘째 판만 표시
+  await expect(rows.nth(0).locator("[data-mini-source]")).toHaveAttribute(
+    "data-mini-source",
+    "synthetic",
+  );
+  await expect(rows.nth(1).locator("[data-mini-source]")).toHaveCount(0);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}"),
+  );
+  expect(
+    saved.records["3"].map((r: { inputSource: string }) => r.inputSource),
+  ).toEqual(["synthetic", "keyboard"]);
 });

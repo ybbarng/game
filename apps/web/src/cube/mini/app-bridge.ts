@@ -21,14 +21,25 @@ export type FromApp =
   | { type: "mirror"; on?: boolean }
   | { type: "size"; n: number }
   /** 기록 열고 닫기. `open`이 없으면 뒤집는다 */
-  | { type: "records"; open?: boolean };
+  | { type: "records"; open?: boolean }
+  /**
+   * 바로 다음에 화면에 닿을 키 하나의 출처. 앱이 키를 웹 화면에 넘기기 직전에 보낸다(같은 연결이라 차례가 지켜진다)
+   */
+  | { type: "key"; source: "keyboard" | "synthetic" };
 
 /** 화면이 앱에 보내는 것 */
 export type ToApp =
   /** 화면이 떴다: 앱이 지금 포커스·보임을 다시 알려 준다 */
   | { type: "ready" }
   /** 메뉴 표시(체크 표시)를 맞출 값 */
-  | { type: "state"; n: number; mirror: boolean; records: boolean };
+  | { type: "state"; n: number; mirror: boolean; records: boolean }
+  /**
+   * 큐브·거울 판이 차지하는 사각형들([x, y, 너비, 높이], 화면 왼쪽 위 기준 CSS px). 앱의 투명 창은 이 밖의
+   * 누르기를 아래 앱으로 넘긴다
+   */
+  | { type: "hit"; rects: number[][] }
+  /** 떠 있을 때 움직임이 시작·끝남(확인용 기록) */
+  | { type: "idle"; showing: "hero" | "jiggle" | null };
 
 interface WebkitWindow {
   webkit?: {
@@ -84,6 +95,10 @@ export function parseFromApp(d: unknown): FromApp | null {
       return typeof x.open === "boolean"
         ? { type: "records", open: x.open }
         : { type: "records" };
+    case "key":
+      return x.source === "keyboard" || x.source === "synthetic"
+        ? { type: "key", source: x.source }
+        : null;
     default:
       return null;
   }

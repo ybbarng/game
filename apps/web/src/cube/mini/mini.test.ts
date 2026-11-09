@@ -14,6 +14,7 @@ import { FocusClock } from "./focus-clock";
 import { IdleShow, type IdleTiming, jigglePlan, playMoves } from "./idle";
 import {
   addMiniRecord,
+  inputSourceOf,
   loadMiniPrefs,
   loadMiniRecords,
   MINI_KEY,
@@ -34,6 +35,11 @@ describe("앱 다리", () => {
       type: "size",
       n: 4,
     });
+    expect(parseFromApp({ type: "key", source: "synthetic" })).toEqual({
+      type: "key",
+      source: "synthetic",
+    });
+    expect(parseFromApp({ type: "key", source: "robot" })).toBeNull();
     expect(parseFromApp({ type: "focus" })).toBeNull();
     expect(parseFromApp({ type: "erase" })).toBeNull();
     expect(parseFromApp("scramble")).toBeNull();
@@ -307,6 +313,20 @@ describe("미니 모드 저장", () => {
     ]);
     expect(loadMiniRecords(2, st)).toHaveLength(1);
     expect([...st.map.keys()]).toEqual([MINI_KEY]);
+  });
+
+  it("한 판의 입력 출처: 다른 프로그램 입력 > 마우스 > 모름 > 키보드", () => {
+    expect(inputSourceOf(["keyboard", "keyboard"])).toBe("keyboard");
+    expect(inputSourceOf(["keyboard", "pointer"])).toBe("pointer");
+    expect(inputSourceOf(["pointer", "synthetic", "keyboard"])).toBe(
+      "synthetic",
+    );
+    expect(inputSourceOf(["keyboard", "unknown"])).toBe("unknown");
+    expect(inputSourceOf([])).toBe("unknown");
+    // 기록 칸으로 남고 다시 읽힌다
+    const st = memoryStorage();
+    addMiniRecord({ ...rec(3, 9000), inputSource: "synthetic" }, st);
+    expect(loadMiniRecords(3, st)[0]?.inputSource).toBe("synthetic");
   });
 
   it("최고·평균·5번 평균", () => {

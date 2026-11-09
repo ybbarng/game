@@ -1,6 +1,6 @@
 "use client";
 
-import { type CubeMove, isSolved } from "@game/cube-engine";
+import { type CubeMove, formatMove, isSolved } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,17 +10,22 @@ import { cn } from "@/lib/cn";
 import { stickersFromState } from "../bridge";
 import { playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
+import { KeyboardMap, KeyLegend } from "../components/KeyboardMap";
 import { soloSound } from "../game-sounds";
 import { HeroLoop, heroMoveMs, SOLVED_LABEL } from "../hero/loop";
 import { heroRotation, isHeroSize, solveForHero } from "../hero/methods";
 import {
   attachKeyboard,
+  chordLabel,
+  chordsFor,
   KeyInterpreter as Interpreter,
   type KeyInterpreter,
+  type Keymap,
   type KeyResult,
   loadKeymap,
+  PRESET_LABEL,
 } from "../input";
-import { formatMs, type SolveRecord } from "../records";
+import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { useReducedMotion } from "../use-reduced-motion";
@@ -32,16 +37,21 @@ import { FocusClock } from "./focus-clock";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import {
   addMiniRecord,
+  INPUT_SOURCE_LABEL,
+  type InputSource,
+  inputSourceOf,
   loadMiniPrefs,
   loadMiniRecords,
   MINI_SIZES,
   type MiniPrefs,
+  type MiniRecord,
   saveMiniPrefs,
   summarize,
 } from "./store";
 
 /**
- * 미니 모드(`/cube/mini`, docs/47 14절): 맥 앱 Cubie의 작은 창(기본 약 320×380, 120×120까지 줄임)에 맞춘 혼자 맞추기.
+ * 미니 모드(`/cube/mini`, docs/47 14절): 맥 앱 Cubie의 작은 투명 창(기본 200×200, 48×48까지 줄임)에 맞춘 혼자 맞추기.
+ * 앱 안에서는 바탕이 없어 큐브와 거울만 바탕화면 위에 뜬다(바탕 비우기는 앱이 넣는 CSS, 바닥 그림자는 끈다).
  *
  * - 화면에는 큐브와 거울만 둔다. 시간·단추·글은 보이지 않는다(사용자 「시간도 화면에 떠 있으면 어지러우니까」).
  *   섞기·거울·크기·기록은 앱 메뉴(브라우저에서는 구석의 작은 메뉴)에서 고른다.
@@ -52,8 +62,12 @@ import {
  *   움직임은 장면에만 넣고 엔진 상태(진행)는 그대로다.
  */
 
-/** 이보다 좁으면(창의 짧은 변, CSS px) 거울을 저절로 접고 큐브만 크게 보인다 */
-export const MINI_MIRROR_MIN = 200;
+/**
+ * 거울을 저절로 접는 문턱: 창의 짧은 변(CSS px)이 큐브 크기 n × 이 값보다 작으면 큐브만 크게 보인다.
+ * 거울 칸 한 변은 대략 창의 0.27배 ÷ n이라, 10이면 칸이 약 2.7px보다 작아질 때 접힌다(2026-11-09 이 맥에서 줄여 보며
+ * 정함: 48px 창의 3×3 거울도 색을 알아본다). 3×3·4×4는 가장 작은 창(48)에서도 거울이 남고, 7×7은 70px 아래에서 접힌다
+ */
+export const MINI_MIRROR_PER_N = 10;
 
 const DEFAULT_VIEW = { yaw: 32, pitch: 26 };
 const PEEK = {
@@ -71,7 +85,136 @@ function randomSeed(): number {
 
 const eventFor = (n: number) => `${n}${n}${n}` as ScrambleEvent;
 
+/**
+ * `?view=records`면 기록만 보인다(앱이 따로 여는 기록 창, 떠 있는 창은 아주 작을 수 있어서). 아니면 큐브.
+ * 주소는 붙은 뒤에 읽는다(정적 HTML은 둘 다 아니다)
+ */
 export function MiniCubeApp() {
+  const [view, setView] = useState<"cube" | "records" | "keys" | null>(null);
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    setView(v === "records" || v === "keys" ? v : "cube");
+  }, []);
+  if (view === "records") return <RecordsPage />;
+  if (view === "keys") return <KeysPage />;
+  if (view === "cube") return <MiniCube />;
+  return null;
+}
+
+/** 기록 창: 이 기기의 미니 모드 기록. 창이 다시 앞에 오거나 다른 창이 기록을 더하면 다시 읽는다 */
+function RecordsPage() {
+  const [n, setN] = useState(() => loadMiniPrefs().n);
+  const [records, setRecords] = useState<MiniRecord[]>(() =>
+    loadMiniRecords(n),
+  );
+  useEffect(() => {
+    const reload = () => setRecords(loadMiniRecords(n));
+    reload();
+    window.addEventListener("focus", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("focus", reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, [n]);
+  return (
+    <main className="fixed inset-0 bg-neutral-950 text-white">
+      <RecordsPanel n={n} records={records} onSize={setN} />
+    </main>
+  );
+}
+
+/** 앱 단축키(맥 앱 Cubie가 쓰는 키). 앱 쪽 값은 `apps/cubie/Sources/Cubie/Config.swift` */
+const APP_KEYS: { keys: string; what: string }[] = [
+  { keys: "⌃⌥⌘C", what: "큐브로 가기(다시 누르면 돌아가기)" },
+  { keys: "Esc", what: "이전 앱으로 돌아가기(큐브는 그대로 떠 있다)" },
+  { keys: "⌘ + 끌기", what: "창 옮기기(창 위 손잡이를 끌어도 된다)" },
+];
+
+/**
+ * 단축키 창(앱 메뉴 「단축키 보기」): 앱 단축키 짧은 목록과, 지금 키 배치·크기의 큐브 키를 사이트 단축키 표와 같은
+ * 키보드 그림으로. 섞기·되돌리기는 배치에서 읽는다
+ */
+function KeysPage() {
+  const [n, setN] = useState(() => loadMiniPrefs().n);
+  const [keymap, setKeymap] = useState<Keymap | null>(null);
+  useEffect(() => {
+    const reload = () => {
+      setKeymap(loadKeymap());
+      setN(loadMiniPrefs().n);
+    };
+    reload();
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, []);
+  const chord = (action: "scramble" | "undo") =>
+    keymap
+      ? chordsFor(keymap, action)
+          .map((c) => chordLabel(c))
+          .join(", ") || "없음"
+      : "…";
+  return (
+    <main
+      data-mini-keys={n}
+      className="min-h-dvh bg-neutral-950 p-4 text-sm text-white"
+    >
+      <h1 className="mb-2 font-bold text-base">단축키</h1>
+      <table className="mb-4 text-left">
+        <tbody>
+          {[
+            ...APP_KEYS,
+            { keys: chord("scramble"), what: "섞기" },
+            { keys: chord("undo"), what: "되돌리기" },
+          ].map((k) => (
+            <tr key={k.what}>
+              <th className="pr-4 font-semibold tabular-nums">{k.keys}</th>
+              <td className="text-white/70">{k.what}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="font-bold">큐브 돌리기</h2>
+        {keymap && (
+          <span className="text-white/60 text-xs">
+            배치 「{PRESET_LABEL[keymap.preset]}」
+          </span>
+        )}
+        <div className="ml-auto flex gap-0.5">
+          {MINI_SIZES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={s === n}
+              onClick={() => setN(s)}
+              className={cn(
+                "rounded px-1.5 text-xs",
+                s === n ? "bg-white/20" : "text-white/60 hover:bg-white/10",
+              )}
+            >
+              {s}×{s}
+            </button>
+          ))}
+        </div>
+      </div>
+      {keymap && (
+        <div className="flex flex-col gap-2">
+          <KeyboardMap keymap={keymap} n={n} layer="all" />
+          <KeyLegend />
+          <p className="break-keep text-white/60 text-xs">
+            칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
+            Alt와 함께 칠 때예요. 흐린 글은 이 크기에서 쓰지 않아요. Cubie에서
+            Esc는 「처음으로」가 아니라 이전 앱으로 돌아가는 키이고,
+            Space(살펴보기)는 쓰지 않아요. 배치는 메뉴 「키·색 설정」에서
+            바꿔요.
+          </p>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function MiniCube() {
   const settings = useCubeSettings();
   const reduced = useReducedMotion();
   const [prefs, setPrefsState] = useState<MiniPrefs | null>(null);
@@ -82,13 +225,15 @@ export function MiniCubeApp() {
     saveMiniPrefs(next);
   }, []);
 
-  const app = useMemo(() => hasApp(), []);
+  // 앱 안인지는 붙은 뒤에 본다(정적 HTML과 첫 그림이 같아야 한다)
+  const [app, setApp] = useState(false);
+  useEffect(() => setApp(hasApp()), []);
   // 앱 안이면 앱이 알려 줄 때까지 포커스 없음·보임으로 둔다. 브라우저는 창의 포커스를 본다
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(true);
   const [recordsOpen, setRecordsOpen] = useState(false);
   const [recordsN, setRecordsN] = useState(n);
-  const [records, setRecords] = useState<SolveRecord[]>([]);
+  const [records, setRecords] = useState<MiniRecord[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [, bumpState] = useState(0);
   const bump = useCallback(() => bumpState((v) => v + 1), []);
@@ -96,6 +241,14 @@ export function MiniCubeApp() {
   const clock = useMemo(() => new FocusClock(realClock, false), []);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  /**
+   * 입력 출처(공정함 확인): 앱이 키마다 바로 앞에 알려 준 출처(`key` 메시지)와 이번 판에 들어온 출처들.
+   * 섞을 때 비우고, 기록에 그 판의 출처(`inputSourceOf`)를 남긴다
+   */
+  const keySourceRef = useRef<InputSource | null>(null);
+  const solveSourcesRef = useRef(new Set<InputSource>());
+  const appRef = useRef(false);
+  appRef.current = app;
 
   const session = useRenewable(
     () =>
@@ -110,7 +263,10 @@ export function MiniCubeApp() {
             playCubeSound(settingsRef.current, soloSound("solved"));
         },
         onRecord: (r) => {
-          const list = addMiniRecord(r);
+          const list = addMiniRecord({
+            ...r,
+            inputSource: inputSourceOf(solveSourcesRef.current),
+          });
           setRecords(list);
         },
       }),
@@ -129,7 +285,7 @@ export function MiniCubeApp() {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const mirrorWanted = prefs?.mirror ?? true;
   const mirrorFits =
-    size === null || Math.min(size.w, size.h) >= MINI_MIRROR_MIN;
+    size === null || Math.min(size.w, size.h) >= MINI_MIRROR_PER_N * n;
   const mirror = mirrorWanted && mirrorFits;
 
   const repaint = useCallback(() => {
@@ -176,7 +332,9 @@ export function MiniCubeApp() {
           stickerless: s.stickerless,
           moveMs: s.moveMs,
           hidden: s.hidden,
-          onSwipe: (m) => moveRef.current(m, ""),
+          // 앱의 투명 창에서는 바닥 그림자를 끈다(바탕화면 위 얼룩처럼 보인다)
+          ...(hasApp() ? { shadow: false } : {}),
+          onSwipe: (m) => moveRef.current(m, formatMove(n, m), "pointer"),
         });
         view.setStickers(stickersFromState(n, sessionRef.current.state, null));
         viewRef.current = view;
@@ -205,6 +363,38 @@ export function MiniCubeApp() {
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirror);
   }, [mirror, ready]);
+
+  // 앱의 투명 창: 큐브·거울이 차지하는 곳을 알린다(그 밖의 누르기는 아래 앱으로 지나간다)
+  const hitKey = size ? `${mirror}-${size.w}x${size.h}` : "";
+  useEffect(() => {
+    // 거울·창 크기가 바뀌면(hitKey) 다시 알린다
+    if (!app || !ready || !hitKey) return;
+    const send = () => {
+      const v = viewRef.current;
+      if (!v) return;
+      toApp({
+        type: "hit",
+        rects: v
+          .hitRects()
+          .map((r) => [r.x, r.y, r.w, r.h].map((x) => Math.round(x))),
+      });
+    };
+    // 거울이 나타나는 동안 카메라가 물러나므로 다 그린 뒤에도 한 번 더
+    const timers = [0, 450].map((ms) => window.setTimeout(send, ms));
+    // 끌어 둘러본 보기는 손을 떼면 0.7초에 걸쳐 돌아온다
+    const canvas = canvasRef.current;
+    let later = 0;
+    const onUp = () => {
+      window.clearTimeout(later);
+      later = window.setTimeout(send, 800);
+    };
+    canvas?.addEventListener("pointerup", onUp);
+    return () => {
+      for (const t of timers) window.clearTimeout(t);
+      window.clearTimeout(later);
+      canvas?.removeEventListener("pointerup", onUp);
+    };
+  }, [app, ready, hitKey]);
 
   // 떠 있을 때 움직임
   const idle = useMemo(
@@ -266,8 +456,12 @@ export function MiniCubeApp() {
         restore: () => {
           repaintRef.current();
           bump();
+          if (hasApp()) toApp({ type: "idle", showing: null });
         },
-        started: () => bump(),
+        started: (kind) => {
+          bump();
+          if (hasApp()) toApp({ type: "idle", showing: kind });
+        },
       }),
     [bump],
   );
@@ -296,6 +490,7 @@ export function MiniCubeApp() {
       if (id !== scrambleId.current || s.disposed) return;
       idle.reset();
       s.start(made.text, seed);
+      solveSourcesRef.current = new Set();
       repaintRef.current();
     } catch {
       // 섞기를 못 만들었다: 다음에 다시 누르면 된다
@@ -311,14 +506,18 @@ export function MiniCubeApp() {
     };
   }, [n, prefs]);
 
-  /** 수 하나: 엔진에 넣고 장면이 따라 돈다(키·밀기) */
-  const moveRef = useRef((move: CubeMove, notation: string) => {
-    idleRef.current.setActive(false);
-    const s = sessionRef.current;
-    if (s.input(move, notation) !== "applied") return;
-    viewRef.current?.enqueue(move);
-    playCubeCue(settingsRef.current, "cubeTurn");
-  });
+  /** 수 하나: 엔진에 넣고 장면이 따라 돈다(키·밀기). 출처는 이번 판 기록에 남긴다 */
+  const moveRef = useRef(
+    (move: CubeMove, notation: string, source: InputSource) => {
+      idleRef.current.setActive(false);
+      const s = sessionRef.current;
+      // 맞춰서 기록이 생기는 수도 그 판의 출처에 든다(input 전에 더한다)
+      solveSourcesRef.current.add(source);
+      if (s.input(move, notation) !== "applied") return;
+      viewRef.current?.enqueue(move);
+      playCubeCue(settingsRef.current, "cubeTurn");
+    },
+  );
   const idleRef = useRef(idle);
   idleRef.current = idle;
   const scrambleRef = useRef(doScramble);
@@ -338,13 +537,28 @@ export function MiniCubeApp() {
   recordsOpenRef.current = recordsOpen;
   useEffect(() => {
     let peekKey: string | null = null;
+    /**
+     * 지금 키의 출처: 앱이 키 바로 앞에 보낸 `key` 메시지를 키마다(동작이 아닌 키도) 한 번 꺼내 쓴다.
+     * 브라우저(앱 없음)거나 메시지가 없으면 unknown
+     */
+    let eventSource: InputSource = "unknown";
+    const take = (e: KeyboardEvent) => {
+      // 수식 키만 누른 keydown(Shift 등)은 앱의 키 알림이 없다(맥에서는 키가 아니라 수식 변화). 다음 키 몫을 남겨 둔다
+      if (MODIFIER_KEYS.has(e.key)) return;
+      eventSource = appRef.current
+        ? (keySourceRef.current ?? "unknown")
+        : "unknown";
+      keySourceRef.current = null;
+    };
+    window.addEventListener("keydown", take, true);
     const handle = (r: KeyResult, e: KeyboardEvent) => {
       if (r.kind === "move") {
-        moveRef.current(r.move, r.notation);
+        moveRef.current(r.move, r.notation, eventSource);
         return;
       }
       if (r.kind !== "command") return;
       if (r.command === "undo") {
+        solveSourcesRef.current.add(eventSource);
         const m = sessionRef.current.undo();
         if (m) {
           viewRef.current?.enqueue(m);
@@ -375,12 +589,14 @@ export function MiniCubeApp() {
     return () => {
       detach();
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("keydown", take, true);
     };
   }, []);
 
   // 포커스: 앱이면 앱이 알린다. 브라우저면 창의 포커스·보임
   useEffect(() => {
-    if (app) return;
+    // 앱 상태(app)는 붙은 뒤에 바뀌므로 여기서 바로 본다(첫 그림에서 브라우저 포커스로 켜지지 않게)
+    if (app || hasApp()) return;
     const sync = () => {
       setFocused(document.hasFocus() && !document.hidden);
       setVisible(!document.hidden);
@@ -435,6 +651,9 @@ export function MiniCubeApp() {
           case "records":
             c.openRecords(msg.open ?? !c.recordsOpen);
             break;
+          case "key":
+            keySourceRef.current = msg.source;
+            break;
         }
       }),
     [setPrefs],
@@ -469,7 +688,11 @@ export function MiniCubeApp() {
       data-mini-mirror={mirror ? "on" : mirrorWanted ? "folded" : "off"}
       data-mini-idle={idle.showing ?? ""}
       data-input-ready={interpreter && prefs ? "" : undefined}
-      className="fixed inset-0 select-none overflow-hidden bg-neutral-950 text-white"
+      className={cn(
+        "fixed inset-0 select-none overflow-hidden text-white",
+        // 앱 안에서는 바탕을 비워 큐브와 거울만 바탕화면 위에 뜬다
+        !app && "bg-neutral-950",
+      )}
     >
       <div ref={wrapRef} className="absolute inset-0">
         {failed ? (
@@ -529,6 +752,15 @@ export function MiniCubeApp() {
     </main>
   );
 }
+
+const MODIFIER_KEYS = new Set([
+  "Shift",
+  "Control",
+  "Alt",
+  "Meta",
+  "CapsLock",
+  "Fn",
+]);
 
 /** 잠겨 있을 때(기록을 보는 동안) 쓰는 해석기: 어떤 키도 먹지 않는다 */
 const LOCKED = { handle: () => null } as unknown as KeyInterpreter;
@@ -634,9 +866,10 @@ function RecordsPanel({
   onClose,
 }: {
   n: number;
-  records: readonly SolveRecord[];
+  records: readonly MiniRecord[];
   onSize: (n: number) => void;
-  onClose: () => void;
+  /** 없으면 닫기 단추가 없다(앱의 기록 창은 창을 닫는다) */
+  onClose?: () => void;
 }) {
   const sum = summarize(records);
   return (
@@ -663,14 +896,16 @@ function RecordsPanel({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          data-mini-records-close
-          className="rounded px-1.5 py-0.5 hover:bg-white/10"
-        >
-          닫기
-        </button>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            data-mini-records-close
+            className="rounded px-1.5 py-0.5 hover:bg-white/10"
+          >
+            닫기
+          </button>
+        )}
       </div>
       <dl
         data-mini-summary
@@ -698,6 +933,21 @@ function RecordsPanel({
               <span className="w-6 text-white/40">{r.no}</span>
               <span className="w-20 text-white/60">{shortTime(r.at)}</span>
               <span className="flex-1 font-semibold">{formatMs(r.ms)}</span>
+              {/* 실제 키보드가 아닌 입력이 섞인 판만 표시(막지는 않는다) */}
+              {(r.inputSource === "synthetic" ||
+                r.inputSource === "pointer") && (
+                <span
+                  data-mini-source={r.inputSource}
+                  className={cn(
+                    "rounded px-1",
+                    r.inputSource === "synthetic"
+                      ? "bg-amber-500/25 text-amber-200"
+                      : "bg-white/10 text-white/70",
+                  )}
+                >
+                  {INPUT_SOURCE_LABEL[r.inputSource]}
+                </span>
+              )}
               <span className="text-white/60">{r.moves}수</span>
             </li>
           ))}
