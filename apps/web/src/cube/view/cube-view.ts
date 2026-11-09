@@ -555,7 +555,7 @@ export class CubeView {
       this.scene.add(m);
     }
 
-    if (this.spec.shadow) {
+    if (o.shadow ?? this.spec.shadow) {
       const tex = shadowTexture();
       const mat = new THREE.MeshBasicMaterial({
         map: tex,
@@ -986,6 +986,50 @@ export class CubeView {
       x: rect.left + ((w.x + 1) / 2) * rect.width,
       y: rect.top + ((1 - w.y) / 2) * rect.height,
     };
+  }
+
+  /**
+   * 화면에서 큐브와 (보이는) 거울 판이 차지하는 사각형(캔버스 안 CSS px, 왼쪽 위 기준). 맥 앱 Cubie의 투명 창이
+   * 이 밖의 누르기를 아래 앱으로 넘길 때 쓴다. 층을 돌리는 중에 모서리가 조금 나와도 들어가게 여유를 둔다
+   */
+  hitRects(): { x: number; y: number; w: number; h: number }[] {
+    this.placeCamera();
+    this.camera.updateMatrixWorld();
+    const rectOf = (points: readonly (readonly [number, number, number])[]) => {
+      let x0 = Number.POSITIVE_INFINITY;
+      let y0 = Number.POSITIVE_INFINITY;
+      let x1 = Number.NEGATIVE_INFINITY;
+      let y1 = Number.NEGATIVE_INFINITY;
+      for (const p of points) {
+        const w = tmpV.set(p[0], p[1], p[2]).project(this.camera);
+        const x = ((w.x + 1) / 2) * this.width;
+        const y = ((1 - w.y) / 2) * this.height;
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+      }
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    };
+    const h = (this.n / 2) * 1.15;
+    const corners: [number, number, number][] = [];
+    for (const sx of [-1, 1])
+      for (const sy of [-1, 1])
+        for (const sz of [-1, 1]) corners.push([sx * h, sy * h, sz * h]);
+    const out = [rectOf(corners)];
+    if (this.mirror && this.mirrorVisible) {
+      const e = this.n / 2 + MIRROR_PAD;
+      for (const p of this.mirror.panels)
+        out.push(
+          rectOf([
+            cellPoint(p, -e, -e),
+            cellPoint(p, -e, e),
+            cellPoint(p, e, -e),
+            cellPoint(p, e, e),
+          ]),
+        );
+    }
+    return out;
   }
 
   resize(width: number, height: number): void {

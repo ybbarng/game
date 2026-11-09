@@ -140,4 +140,8 @@ export interface CubeViewOptions {
   keepView?: boolean;
   /** 픽셀 비율 상한. 빠지면 품질에 따른 값 */
   maxDpr?: number;
+  /**
+   * 바닥의 부드러운 그림자. 빠지면 품질대로. 맥 앱 Cubie의 투명 창은 끈다(바탕화면 위에 얼룩처럼 보인다)
+   */
+  shadow?: boolean;
 }
