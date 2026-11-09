@@ -1027,6 +1027,11 @@
           "title": "Cubie 입력 출처 판별은 기록 표시뿐이고 못 가리는 것이 있다: osascript System Events keystroke(실측, 실제 키보드와 같은 칸 값), 가상 HID 장치, 키보드 흉내 USB 장치, 칸 값 바꿔 넣기(docs/47 15-8)"
         },
         {
+          "id": "cubie-update-key",
+          "type": "risk",
+          "title": "Cubie 자동 업데이트 서명 비밀 열쇠는 사용자 맥 로그인 키체인에만 있다(Sparkle 계정 kr.byb.cubie). 잃으면 깔린 앱이 새 판을 받지 못한다. 키체인 백업이 곧 열쇠 백업(docs/47 15-12, README 「새 판 내기」)"
+        },
+        {
           "id": "cube-forks",
           "type": "fork",
           "title": "큐브 맞추기 갈림길 8개(docs/46 11절: 대결 방식·진행 표시·시간 여유·기기 차이·크기 순서·이름·3D·착수 시점)",
