@@ -174,6 +174,10 @@ test(
     await expect(main).toHaveAttribute("data-input-ready", "", {
       timeout: SCRAMBLE_TIMEOUT,
     });
+    // 앱 안에서는 마우스 둘러보기를 끈다(큐브 끌기는 앱이 창 옮기기로 받는다). 끌기를 받는 장면은 touch-action을 none으로 둔다
+    expect(
+      await canvas.evaluate((c) => (c as HTMLCanvasElement).style.touchAction),
+    ).toBe("");
     /** 마지막으로 알린 누르는 자리 수(큐브 하나 + 보이는 거울 판 셋) */
     const hitCount = () =>
       page.evaluate(() => {
@@ -428,6 +432,10 @@ test(
     await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
     await expect(box).toHaveAttribute("data-mini-replay-mirror", "on");
     await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+    // Cubie 기록 창의 다시 보기도 마우스 둘러보기가 없다
+    expect(
+      await canvas.evaluate((c) => (c as HTMLCanvasElement).style.touchAction),
+    ).toBe("");
     // 거울 판 칸이 장면 안에 그려진다(잘리지 않는다)
     const inside = await canvas.evaluate((c) => {
       const v = (
@@ -546,6 +554,8 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   await page.goto("/cube/mini?view=keys");
   const keys = page.locator("[data-mini-keys='4']");
   await expect(keys).toContainText("⌃⌥⌘C");
+  await expect(keys).toContainText("큐브 끌기");
+  await expect(keys).toContainText("핀치, ⌘ + 스크롤");
   await expect(keys).toContainText("Enter");
   await expect(keys).toContainText("배치 「표기」");
   await shot(page, "mini-keys", info.project.name);

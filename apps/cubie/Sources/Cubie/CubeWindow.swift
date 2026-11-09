@@ -22,7 +22,7 @@ final class CubieWebView: WKWebView {
     }
   }
 
-  // 창이 키가 아니어도 첫 누름을 받는다(누르면 바로 끌어 둘러보기)
+  // 창이 키가 아니어도 첫 누름을 받는다(누르면 바로 끌어 창 옮기기)
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
@@ -33,6 +33,7 @@ final class ChromeView: NSView {
     didSet { if shown != oldValue { needsDisplay = true } }
   }
   var minSize = NSSize(width: 56, height: 56)
+  var maxSize = NSSize(width: 480, height: 480)
   private var resizeStart: (mouse: NSPoint, frame: NSRect)?
 
   /// 창 크기에 맞춘 손잡이 크기(아주 작은 창에서 큐브를 가리지 않게)
@@ -44,8 +45,20 @@ final class ChromeView: NSView {
     return NSRect(x: bounds.midX - w / 2, y: bounds.maxY - h - 2, width: w, height: h)
   }
 
+  /// 크기 손잡이의 보이는 자리(빗금)
   var resizeRect: NSRect {
     NSRect(x: bounds.maxX - grip - 1, y: 1, width: grip, height: grip)
+  }
+
+  /// 크기 손잡이를 잡는 자리: 빗금보다 넓게(오른쪽 아래 구석에서 16~24pt, 아주 작은 창은 한 변의 35%까지)
+  var resizeHitRect: NSRect {
+    let side = min(max(grip + 8, 16), 24, min(bounds.width, bounds.height) * 0.35)
+    return NSRect(x: bounds.maxX - side, y: 0, width: side, height: side)
+  }
+
+  /// 창 안 점(창 좌표)이 손잡이 위인가. 큐브 끌기(창 옮기기)는 손잡이가 아닐 때만
+  func isOnHandle(_ windowPoint: NSPoint) -> Bool {
+    hitTest(windowPoint) != nil
   }
 
   override var isFlipped: Bool { false }
@@ -74,7 +87,7 @@ final class ChromeView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? {
     guard shown else { return nil }
     let p = convert(point, from: superview)
-    return moveRect.contains(p) || resizeRect.contains(p) ? self : nil
+    return moveRect.contains(p) || resizeHitRect.contains(p) ? self : nil
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -82,12 +95,12 @@ final class ChromeView: NSView {
   override func resetCursorRects() {
     guard shown else { return }
     addCursorRect(moveRect, cursor: .openHand)
-    addCursorRect(resizeRect, cursor: .crosshair)
+    addCursorRect(resizeHitRect, cursor: .crosshair)
   }
 
   override func mouseDown(with event: NSEvent) {
     let p = convert(event.locationInWindow, from: nil)
-    if resizeRect.contains(p), let w = window {
+    if resizeHitRect.contains(p), let w = window {
       resizeStart = (NSEvent.mouseLocation, w.frame)
     } else {
       window?.performDrag(with: event)
@@ -98,8 +111,8 @@ final class ChromeView: NSView {
   override func mouseDragged(with event: NSEvent) {
     guard let s = resizeStart, let w = window else { return }
     let m = NSEvent.mouseLocation
-    let width = max(minSize.width, s.frame.width + (m.x - s.mouse.x))
-    let height = max(minSize.height, s.frame.height - (m.y - s.mouse.y))
+    let width = min(maxSize.width, max(minSize.width, s.frame.width + (m.x - s.mouse.x)))
+    let height = min(maxSize.height, max(minSize.height, s.frame.height - (m.y - s.mouse.y)))
     w.setFrame(NSRect(x: s.frame.minX, y: s.frame.maxY - height, width: width, height: height), display: true)
   }
 
@@ -121,6 +134,12 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   private var hitRects: [NSRect] = []
   private var hovering = false
   private var monitors: [Any] = []
+  /// 큐브·거울을 누른 채(누른 마우스 자리·그때 창 자리, 문턱을 넘어 옮기는 중인가)
+  private var press: (mouse: NSPoint, origin: NSPoint, moving: Bool)?
+  /// 핀치·⌘ + 스크롤로 모은 배율(`CubieCore` `WindowZoom`)
+  private var zoom = WindowZoom()
+  /// 큐브·거울을 끌지 않고 눌렀다 뗐다(앱이 큐브에 키 입력을 준다)
+  var onClick: (() -> Void)?
 
   private var triedCache = false
   private var offline = false
@@ -166,6 +185,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     panel.isReleasedWhenClosed = false
     panel.acceptsMouseMovedEvents = true
     panel.minSize = Config.minSize
+    panel.maxSize = Config.maxSize
     panel.delegate = self
 
     let content = NSView(frame: NSRect(origin: .zero, size: Config.defaultSize))
@@ -177,6 +197,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     chrome.frame = content.bounds
     chrome.autoresizingMask = [.width, .height]
     chrome.minSize = Config.minSize
+    chrome.maxSize = Config.maxSize
     content.addSubview(chrome)
     panel.contentView = content
 
@@ -197,14 +218,18 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
       self?.updateMouse()
       return e
     }
-    // ⌘ + 끌기: 창 어디서나 옮기기(큐브 위 그냥 끌기는 둘러보기)
-    let cmdDrag = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] e in
-      guard let self, e.window === self.panel, e.modifierFlags.contains(.command) else { return e }
-      self.panel.performDrag(with: e)
-      self.panel.saveFrame(usingName: Self.frameName)
-      return nil
+    // 끌어 옮기기: ⌘ + 끌기는 창 어디서나 바로, 큐브·거울 그냥 끌기는 문턱을 넘으면(그 전에 떼면 클릭)
+    let drag = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]) {
+      [weak self] e in
+      guard let self else { return e }
+      return self.handleDrag(e)
     }
-    monitors = [global, local, cmdDrag].compactMap { $0 }
+    // 핀치·⌘ + 스크롤: 창 크기(오른쪽 아래 구석 기준). 그냥 스크롤은 웹 화면에 그대로
+    let zoom = NSEvent.addLocalMonitorForEvents(matching: [.magnify, .scrollWheel]) { [weak self] e in
+      guard let self else { return e }
+      return self.handleZoom(e)
+    }
+    monitors = [global, local, drag, zoom].compactMap { $0 }
 
     path.pathUpdateHandler = { [weak self] p in
       guard p.status == .satisfied else { return }
@@ -247,7 +272,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
       return true
     }
     if chrome.shown {
-      if chrome.moveRect.insetBy(dx: -4, dy: -4).contains(p) || chrome.resizeRect.insetBy(dx: -4, dy: -4).contains(p) {
+      if chrome.moveRect.insetBy(dx: -4, dy: -4).contains(p) || chrome.resizeHitRect.contains(p) {
         return true
       }
     }
@@ -255,7 +280,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   }
 
   func updateMouse() {
-    // 누른 채 끄는 중(큐브 돌리기·크기 바꾸기)에는 바꾸지 않는다
+    // 누른 채 끄는 중(창 옮기기·크기 바꾸기)에는 바꾸지 않는다
     if NSEvent.pressedMouseButtons & 1 != 0 && !panel.ignoresMouseEvents { return }
     let m = NSEvent.mouseLocation
     let inside = panel.frame.contains(m)
@@ -264,6 +289,84 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     let p = NSPoint(x: m.x - panel.frame.minX, y: m.y - panel.frame.minY)
     let take = inside && isHot(p)
     if panel.ignoresMouseEvents == take { panel.ignoresMouseEvents = !take }
+  }
+
+  // MARK: 마우스: 끌어 옮기기·클릭·크기
+  // 큐브 위 마우스 둘러보기는 웹이 앱 안에서 끈다(`MiniCubeApp` `interactive`). 보는 각도는 키보드 x·y·z로 바꾼다
+
+  /// 누른 채 끌기를 본다. 누름·뗌은 웹 화면에도 그대로 넘기고, 문턱을 넘은 끌기만 앱이 받아 창을 옮긴다
+  private func handleDrag(_ e: NSEvent) -> NSEvent? {
+    switch e.type {
+    case .leftMouseDown:
+      guard e.window === panel else { return e }
+      press = nil
+      // ⌘ + 끌기: 창 어디서나 바로 옮기기(맥 기본 창 끌기)
+      if e.modifierFlags.contains(.command) {
+        panel.performDrag(with: e)
+        panel.saveFrame(usingName: Self.frameName)
+        return nil
+      }
+      // 손잡이(옮기기·크기)는 ChromeView가 받는다
+      if chrome.shown && chrome.isOnHandle(e.locationInWindow) { return e }
+      press = (NSEvent.mouseLocation, panel.frame.origin, false)
+      return e
+    case .leftMouseDragged:
+      guard var p = press else { return e }
+      let m = NSEvent.mouseLocation
+      if !p.moving {
+        guard WindowGesture.isDrag(from: p.mouse, to: m) else { return e }
+        p.moving = true
+        press = p
+      }
+      panel.setFrameOrigin(WindowGesture.dragged(origin: p.origin, from: p.mouse, to: m))
+      return nil
+    case .leftMouseUp:
+      guard let p = press else { return e }
+      press = nil
+      if p.moving {
+        panel.saveFrame(usingName: Self.frameName)
+        updateMouse()
+      } else {
+        onClick?()
+      }
+      // 뗌은 웹 화면에도 넘긴다(누름만 받고 뗌을 못 받으면 웹이 아직 누른 채로 안다)
+      return e
+    default:
+      return e
+    }
+  }
+
+  /// 핀치·⌘ + 스크롤로 창 크기를 바꾼다. 손가락을 위로(휠을 위로) 굴리면 커진다
+  private func handleZoom(_ e: NSEvent) -> NSEvent? {
+    guard e.window === panel else { return e }
+    let step: CGFloat
+    switch e.type {
+    case .magnify:
+      step = WindowGesture.pinchFactor(magnification: e.magnification)
+    case .scrollWheel:
+      guard e.modifierFlags.contains(.command) else { return e }
+      // 「자연스러운 스크롤」이 켜져 있으면 값이 거꾸로 온다. 손가락·휠이 움직인 방향으로 맞춘다
+      let dy = e.isDirectionInvertedFromDevice ? -e.scrollingDeltaY : e.scrollingDeltaY
+      step = WindowGesture.scrollFactor(deltaY: dy, precise: e.hasPreciseScrollingDeltas)
+    default:
+      return e
+    }
+    if step != 1 {
+      let f = zoom.apply(step: step, current: panel.frame, min: Config.minSize, max: Config.maxSize)
+      panel.setFrame(f, display: true)
+    }
+    if e.phase == .ended || e.phase == .cancelled {
+      zoom.end()
+      panel.saveFrame(usingName: Self.frameName)
+    }
+    return nil
+  }
+
+  /// 메뉴 「창 크기」: 정사각형으로, 오른쪽 아래 구석 그대로
+  func setSide(_ side: CGFloat) {
+    let f = WindowGesture.resized(panel.frame, side: side, min: Config.minSize, max: Config.maxSize)
+    panel.setFrame(f, display: true)
+    panel.saveFrame(usingName: Self.frameName)
   }
 
   // MARK: 포커스·보임

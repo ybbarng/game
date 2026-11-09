@@ -164,7 +164,8 @@ function RecordsPage() {
     <main className="fixed inset-0 flex flex-col bg-neutral-950 text-white">
       <MiniTiers version={records} n={n} onSize={setN} />
       <div className="relative flex-1">
-        <RecordsPanel n={n} records={records} onSize={setN} />
+        {/* 앱(Cubie)이 여는 기록 창이라 다시 보기도 마우스 둘러보기 없이 */}
+        <RecordsPanel n={n} records={records} onSize={setN} orbit={false} />
       </div>
     </main>
   );
@@ -249,9 +250,14 @@ function MiniTiers({
 const APP_KEYS: { keys: string; what: string }[] = [
   { keys: "⌃⌥⌘C", what: "큐브로 가기(다시 누르면 돌아가기)" },
   { keys: "Esc", what: "이전 앱으로 돌아가기(큐브는 그대로 떠 있다)" },
+  { keys: "큐브 클릭", what: "큐브로 가기" },
   {
-    keys: "⌘ + 끌기",
-    what: "창 옮기기(창 위 손잡이를 끌어도 된다. 다른 모니터로도 옮길 수 있다)",
+    keys: "큐브 끌기",
+    what: "창 옮기기(⌘ + 끌기나 창 위 손잡이도 된다. 다른 모니터로도 옮길 수 있다)",
+  },
+  {
+    keys: "핀치, ⌘ + 스크롤",
+    what: "창 크기 바꾸기(오른쪽 아래 손잡이나 메뉴 「창 크기」도 된다)",
   },
   {
     keys: HINT_KEY_LABEL,
@@ -333,8 +339,9 @@ function KeysPage() {
             칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
             Alt와 함께 칠 때예요. 흐린 글은 이 크기에서 쓰지 않아요. Cubie에서
             Esc는 「처음으로」가 아니라 이전 앱으로 돌아가는 키이고,
-            Space(살펴보기)는 쓰지 않아요. 배치는 메뉴 「키·색 설정」에서
-            바꿔요.
+            Space(살펴보기)는 쓰지 않아요. 마우스로는 큐브를 돌려 보지 않으니
+            보는 각도는 큐브 통째 돌리기(x·y·z) 키로 바꿔요. 배치는 메뉴 「키·색
+            설정」에서 바꿔요.
           </p>
         </div>
       )}
@@ -480,8 +487,9 @@ function MiniCube() {
           stickerless: s.stickerless,
           moveMs: s.moveMs,
           hidden: s.hidden,
-          // 앱의 투명 창에서는 바닥 그림자를 끈다(바탕화면 위 얼룩처럼 보인다)
-          ...(hasApp() ? { shadow: false } : {}),
+          // 앱의 투명 창에서는 바닥 그림자를 끈다(바탕화면 위 얼룩처럼 보인다).
+          // 마우스 둘러보기도 끈다: 앱에서는 큐브를 끌면 창이 옮겨지고, 보는 각도는 키보드 x·y·z로 바꾼다
+          ...(hasApp() ? { shadow: false, interactive: false } : {}),
           onSwipe: (m) => moveRef.current(m, formatMove(n, m), "swipe", null),
         });
         view.setStickers(stickersFromState(n, sessionRef.current.state, null));
@@ -682,21 +690,12 @@ function MiniCube() {
       });
     };
     // 거울이 페이드하는 동안(MIRROR_FADE_MS) 카메라가 옮겨 가므로, 다 옮긴 뒤에도 한 번 더
+    // (앱 안에서는 마우스 둘러보기가 꺼져 있어 보는 각도가 끌기로 바뀌지 않는다)
     const timers = [0, MIRROR_FADE_MS + 150].map((ms) =>
       window.setTimeout(send, ms),
     );
-    // 끌어 둘러본 보기는 손을 떼면 0.7초에 걸쳐 돌아온다
-    const canvas = canvasRef.current;
-    let later = 0;
-    const onUp = () => {
-      window.clearTimeout(later);
-      later = window.setTimeout(send, 800);
-    };
-    canvas?.addEventListener("pointerup", onUp);
     return () => {
       for (const t of timers) window.clearTimeout(t);
-      window.clearTimeout(later);
-      canvas?.removeEventListener("pointerup", onUp);
     };
   }, [app, ready, hitKey]);
 
@@ -1112,6 +1111,7 @@ function MiniCube() {
           records={recordsN === n ? records : loadMiniRecords(recordsN)}
           onSize={setRecordsN}
           onClose={() => setRecordsOpen(false)}
+          orbit={!app}
         />
       )}
     </main>
@@ -1243,12 +1243,15 @@ function RecordsPanel({
   records,
   onSize,
   onClose,
+  orbit = true,
 }: {
   n: number;
   records: readonly MiniRecord[];
   onSize: (n: number) => void;
   /** 없으면 닫기 단추가 없다(앱의 기록 창은 창을 닫는다) */
   onClose?: () => void;
+  /** 다시 보기에서 마우스로 끌어 둘러보기(Cubie에서는 끈다) */
+  orbit?: boolean;
 }) {
   const sum = summarize(records);
   const [watching, setWatching] = useState<MiniRecord | null>(null);
@@ -1309,6 +1312,7 @@ function RecordsPanel({
           key={`${watching.no}-${watching.at}`}
           record={watching}
           onClose={() => setWatching(null)}
+          orbit={orbit}
         />
       )}
       {records.length === 0 ? (
@@ -1383,9 +1387,12 @@ function RecordsPanel({
 function ReplayBox({
   record,
   onClose,
+  orbit,
 }: {
   record: MiniRecord;
   onClose: () => void;
+  /** 마우스로 끌어 둘러보기 */
+  orbit: boolean;
 }) {
   const settings = useCubeSettings();
   const settingsRef = useRef(settings);
@@ -1454,6 +1461,7 @@ function ReplayBox({
           hidden: s.hidden,
           // 떠 있는 창처럼 바닥 그림자 없이 큐브와 거울만
           shadow: false,
+          interactive: orbit,
         });
         // 장면이 늦게 떴으면 그동안 둔 수까지 반영한 상태에서
         view.setStickers(stickersFromState(n, stateRef.current, null));
@@ -1468,7 +1476,7 @@ function ReplayBox({
       viewRef.current?.dispose();
       viewRef.current = null;
     };
-  }, [n, quality]);
+  }, [n, quality, orbit]);
 
   useEffect(() => {
     viewRef.current?.setOptions({
