@@ -38,16 +38,16 @@ describe("컴퓨터 단계 글", () => {
   it("다른 버전·모르는 모양은 읽지 않는다(계획을 맞춰 보지 않는다)", () => {
     for (const text of [
       `${BOT_PLAN_VERSION + 1}:pro`,
-      "2:fast2",
-      "2:fit:12",
-      "2:fit:99999999",
+      "3:fast2",
+      "3:fit:12",
+      "3:fit:99999999",
       "novice",
       "",
       7,
       null,
     ])
       expect(readBotSkill(text)).toBeNull();
-    expect(botSkillLabel("3:pro")).toBe("다른 버전");
+    expect(botSkillLabel("2:pro")).toBe("다른 버전");
   });
 });
 
@@ -69,7 +69,7 @@ describe("내 실력에 맞춤", () => {
   });
 
   it("이름에 목표 시간이 붙는다", () => {
-    expect(botSkillLabel("2:fit:45300", 3)).toBe("내 실력에 맞춤 약 45초");
+    expect(botSkillLabel("3:fit:45300", 3)).toBe("내 실력에 맞춤 약 45초");
     expect(aboutTime(60_000)).toBe("약 1분");
     expect(aboutTime(95_000)).toBe("약 1분 40초");
     expect(aboutTime(3_000)).toBe("약 3초");

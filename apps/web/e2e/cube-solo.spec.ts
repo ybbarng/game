@@ -116,6 +116,17 @@ test("섞고 키로 맞추면 결과가 뜬다", async ({ page }, info) => {
   await expect(main).toHaveAttribute("data-cube-phase", "done");
   await expect(moves).toHaveText(String(keys.length));
   await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
+  // 기록에 입력 방식(실물 키보드)과 살펴보기, 다시 확인할 재료(섞기·수와 시각)가 남는다(docs/47 14-4)
+  const saved = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("cube.records.v1") ?? "{}")["solo-3"][0],
+  );
+  expect(saved).toMatchObject({
+    inputs: ["keyboard"],
+    inspection: true,
+    scramble: text,
+  });
+  expect(saved.replay.split(" ").length).toBeGreaterThanOrEqual(keys.length);
   // 결과 상자: 구간 기록(다 맞춘 순간 = 윗층)과 이 섞기의 짧은 풀이
   await expect(page.locator("[data-cube-splits]")).toHaveAttribute(
     "data-cube-splits",

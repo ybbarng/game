@@ -63,7 +63,7 @@ export type BotSkill =
   | { kind: "legacy"; level: LegacyBotLevel };
 
 /** 계획 표 버전. 단계의 해법·빠르기·목표 표를 바꾸면 올린다(다른 표를 쓰는 기기가 계획을 맞춰 보지 않게) */
-export const BOT_PLAN_VERSION = 2;
+export const BOT_PLAN_VERSION = 3;
 
 /** 크기별 단계 목표(한 판 평균, ms). 근거는 docs/47 10-1 */
 export const BOT_TARGET_MS: Readonly<Record<number, Record<BotLevel, number>>> =
@@ -82,19 +82,21 @@ export const BOT_TARGET_MS: Readonly<Record<number, Record<BotLevel, number>>> =
       fast: 18_000,
       pro: 10_000,
     },
+    // 4×4·5×5는 3×3 단계와 같은 티어 자리(2026-11-09, docs/47 10-3): 입문 실버 IV·초보 골드 IV·중수 플래티넘 IV·
+    // 고수 에메랄드 II·초고수 마스터 IV 진입 시간
     4: {
-      novice: 300_000,
-      casual: 160_000,
-      club: 95_000,
-      fast: 55_000,
-      pro: 30_000,
+      novice: 540_000,
+      casual: 270_000,
+      club: 160_000,
+      fast: 80_000,
+      pro: 45_000,
     },
     5: {
-      novice: 540_000,
-      casual: 280_000,
-      club: 170_000,
-      fast: 100_000,
-      pro: 55_000,
+      novice: 1_020_000,
+      casual: 510_000,
+      club: 300_000,
+      fast: 150_000,
+      pro: 85_000,
     },
   };
 

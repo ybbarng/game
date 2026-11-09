@@ -4,7 +4,22 @@
  * 기권(DNF)은 가장 나쁜 것으로 치고 둘 이상이면 평균도 DNF.
  */
 
+import { ao5, bestAo5 } from "./tiers/rank";
+
 export type SolveMode = "solo" | "blind";
+
+/**
+ * 맞추는 동안 쓴 입력(2026-11-09, docs/47 14-4). 이 화면이 실제로 가를 수 있는 것만: 실물 키보드(`keyboard`), 화면
+ * 키보드(`screenKeys`, 키 그림 누르기), 큐브를 밀어 돌리기(`swipe`, 손가락이나 마우스 끌기), 화면의 면 단추(`buttons`). 티어 보정에는 쓰지 않고 나중에 견줄 재료로 둔다
+ */
+export type SolveInput = "keyboard" | "screenKeys" | "swipe" | "buttons";
+
+export const SOLVE_INPUTS: readonly SolveInput[] = [
+  "keyboard",
+  "screenKeys",
+  "swipe",
+  "buttons",
+];
 
 export interface SolveRecord {
   /** 끝난 시각(Date.now) */
@@ -44,11 +59,25 @@ export interface SolveRecord {
   daily?: string;
   /** 혼자 맞추기 「상황 알림」을 켰을 때 이번 판에서 만난 내 목록 상황 id(만난 차례, 2026-11-04) */
   myCases?: string[];
+  /**
+   * 입력 방식(2026-11-09): 섞은 뒤 맞추기 동안 수를 둔 입력, 처음 쓴 차례로. 칸이 없으면 알 수 없음(옛 기록·다른 화면)
+   */
+  inputs?: SolveInput[];
+  /** 15초 살펴보기를 켠 판인지(2026-11-09). 칸이 없으면 알 수 없음 */
+  inspection?: boolean;
 }
 
 export const RECORDS_KEY = "cube.records.v1";
 /** 크기·모드마다 남기는 기록 수 */
 export const MAX_RECORDS = 100;
+/**
+ * 다시 보기 글(`replay`)을 남기는 최근 기록 수(2026-11-09). 7×7 한 판은 수가 수백~천 개라 다시 보기 글이 10KB쯤 되어,
+ * 100판 모두 남기면 크기마다 1MB 가까이 된다. localStorage는 이 사이트(모든 게임)가 함께 쓰는 5MB 안팎이라, 화면이
+ * 다시 보기를 보이는 최근 30판만 남기고 그 뒤는 글을 지운다. 티어를 정한 5판은 `BEST_FIVE_KEY`에 수 목록까지 따로 둔다
+ */
+export const KEEP_REPLAYS = 30;
+/** 크기마다 최고 Ao5를 낸 5판(수 목록 포함). 목록 상한에 밀려 빠져도 티어와 나중 확인 재료가 남게 */
+export const BEST_FIVE_KEY = "cube.best5.v1";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -124,13 +153,76 @@ export function addRecord(
     0,
     MAX_RECORDS,
   );
-  book[key] = list;
+  if (record.mode === "solo") keepBestFive(record.n, list, storage);
+  book[key] = withoutOldReplays(list, KEEP_REPLAYS);
   try {
     storage?.setItem(RECORDS_KEY, JSON.stringify(book));
   } catch {
-    // 저장소가 막혀도 이번 화면에서는 보인다
+    // 자리가 모자라면 다시 보기 글을 최근 5판만 남기고 한 번 더. 그래도 막혀도 이번 화면에서는 보인다
+    try {
+      for (const k of Object.keys(book))
+        book[k] = withoutOldReplays(book[k] as SolveRecord[], 5);
+      storage?.setItem(RECORDS_KEY, JSON.stringify(book));
+    } catch {
+      // 저장소가 막혔다
+    }
   }
   return list;
+}
+
+/** 앞 `keep`판 뒤로는 다시 보기 글을 지운 목록 */
+function withoutOldReplays(
+  list: readonly SolveRecord[],
+  keep: number,
+): SolveRecord[] {
+  return list.map((r, i) => {
+    if (i < keep || r.replay === undefined) return r;
+    const { replay: _, ...rest } = r;
+    return rest;
+  });
+}
+
+function readBestFive(storage: StorageLike | null): Record<string, unknown> {
+  try {
+    const text = storage?.getItem(BEST_FIVE_KEY);
+    const data: unknown = text ? JSON.parse(text) : {};
+    return typeof data === "object" && data !== null && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** 크기 `n` 혼자 맞추기에서 최고 Ao5를 낸 5판(새것이 앞). 없으면 빈 목록 */
+export function loadBestFive(
+  n: number,
+  storage: StorageLike | null = defaultStorage(),
+): SolveRecord[] {
+  const list = readBestFive(storage)[String(n)];
+  return Array.isArray(list) && list.length === 5 && list.every(isRecord)
+    ? list
+    : [];
+}
+
+/** 목록에 남겨 둔 것보다 좋은 Ao5가 있으면 그 5판을 남긴다(다시 보기 글 포함) */
+function keepBestFive(
+  n: number,
+  list: readonly SolveRecord[],
+  storage: StorageLike | null,
+): void {
+  const found = bestAo5(list);
+  if (!found) return;
+  const kept = loadBestFive(n, storage);
+  const keptMs = kept.length === 5 ? ao5(kept) : null;
+  if (keptMs !== null && keptMs <= found.ms) return;
+  const all = readBestFive(storage);
+  all[String(n)] = list.slice(found.at, found.at + 5);
+  try {
+    storage?.setItem(BEST_FIVE_KEY, JSON.stringify(all));
+  } catch {
+    // 저장소가 막혀도 티어는 목록에서 센다
+  }
 }
 
 /** 기록 하나의 결과 시간(벌점 포함, DNF는 null) */

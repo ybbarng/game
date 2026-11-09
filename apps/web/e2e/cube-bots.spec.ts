@@ -96,11 +96,11 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
   await page.locator("[data-cube-vs-size]").selectOption("3");
   // 기록이 없으니 「내 실력에 맞춤」은 초보 목표(약 1분)
   for (const [value, label, time] of [
-    ["2:novice", "입문", "약 2분"],
-    ["2:casual", "초보", "약 1분"],
-    ["2:club", "중수", "약 35초"],
-    ["2:fast", "고수", "약 18초"],
-    ["2:pro", "초고수", "약 10초"],
+    ["3:novice", "입문", "약 2분"],
+    ["3:casual", "초보", "약 1분"],
+    ["3:club", "중수", "약 35초"],
+    ["3:fast", "고수", "약 18초"],
+    ["3:pro", "초고수", "약 10초"],
     ["fit", "내 실력에 맞춤", "약 1분"],
   ] as const) {
     const b = page.locator(`[data-cube-bot-level="${value}"]`);
@@ -108,11 +108,11 @@ test("컴퓨터와 대결: 단계마다 예상 시간이 보이고, 컴퓨터를
     await expect(b).toContainText(time);
   }
   await page.locator("[data-cube-vs-size]").selectOption("2");
-  await expect(page.locator('[data-cube-bot-level="2:pro"]')).toContainText(
+  await expect(page.locator('[data-cube-bot-level="3:pro"]')).toContainText(
     "약 3초",
   );
   await page.getByRole("button", { name: "초고수", exact: true }).click();
-  await expect(page.locator('[data-cube-bot-level="2:pro"]')).toHaveAttribute(
+  await expect(page.locator('[data-cube-bot-level="3:pro"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -143,7 +143,7 @@ test("오늘의 섞기: 컴퓨터와 겨루면 같은 섞기를 나란히 맞추
   await pauseClock(page);
   await page.locator("[data-cube-size]").selectOption("2");
   // 2×2 초고수(평균 약 3초): 수 사이 1초씩 느리게 맞추면 컴퓨터가 이긴다
-  await page.locator("[data-cube-rival-pick]").selectOption("2:pro");
+  await page.locator("[data-cube-rival-pick]").selectOption("3:pro");
   const text = await receiveWithRival(page);
   await expect(page.locator("[data-cube-daily-attempt]")).toHaveAttribute(
     "data-cube-daily-attempt",
@@ -189,7 +189,7 @@ test("제한 도전: 컴퓨터도 같은 체력 규칙으로 겨루고, 점수�
   await pauseClock(page);
   await page.locator("[data-cube-size]").selectOption("2");
   // 2×2 입문(평균 약 45초): 빨리 맞추면 내가 이긴다
-  await page.locator("[data-cube-rival-pick]").selectOption("2:novice");
+  await page.locator("[data-cube-rival-pick]").selectOption("3:novice");
   const text = await receiveWithRival(page);
   // 씨앗이 고정됐는지(안 되면 운에 맡긴 시험으로 돌아간다)
   expect(text).toBe("U R' U' F U' R2 F U F R U'");

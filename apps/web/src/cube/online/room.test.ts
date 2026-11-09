@@ -164,12 +164,12 @@ describe("큐브 대결 방", () => {
     expect(guest.state?.players.map((p) => p.bot)).toEqual([
       undefined,
       undefined,
-      "2:fit:41200",
+      "3:fit:41200",
     ]);
     // 2×2 평균은 없다: 초보 목표
     host.setSettings({ n: 2 });
     clock.advance(100);
-    expect(guest.state?.players.at(-1)?.bot).toBe("2:fit:20000");
+    expect(guest.state?.players.at(-1)?.bot).toBe("3:fit:20000");
   });
 });
 
