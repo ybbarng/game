@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import CubieCore
 
-/// 키 입력 하나의 출처(공정함 확인, docs/47 14절). 막지는 않고 웹에 알려 그 판 기록에 표시만 한다.
+/// 키 입력 하나의 출처(공정함 확인, docs/47 15절). 막지는 않고 웹에 알려 그 판 기록에 표시만 한다.
 ///
 /// 맥은 키 이벤트마다 그 이벤트를 만든 곳을 적어 둔다(`CGEvent` 칸):
 /// - `eventSourceStateID`: 1(`CGEventSourceStateID.hidSystemState`)은 하드웨어 입력 계층, 0은 앱 묶음 상태(`combinedSessionState`),

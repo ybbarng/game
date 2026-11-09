@@ -132,14 +132,14 @@ const DISPUTE_MS = 1_000;
 
 /**
  * 크기별 기본 제한 시간(초). 가장 느린 컴퓨터(입문)도 시간 안에 맞추게 넉넉히 둔다(가장 긴 판의 1.5배 넘게).
- * 입문 계획 길이(2026-11-05 bench `balance.strength.ts`, docs/47 10-1 표): 2×2 평균 45초, 3×3 2분, 4×4 5분, 5×5 9분.
- * 그래서 2×2 3분, 3×3 5분, 4×4 10분, 5×5 15분
+ * 입문 계획 길이(2026-11-05 bench `balance.strength.ts`, docs/47 10-1 표, 4×4·5×5는 2026-11-09 10-3 표): 2×2 평균 45초,
+ * 3×3 2분, 4×4 9분(가장 김 약 11분), 5×5 17분(가장 김 약 21분30초). 그래서 2×2 3분, 3×3 5분, 4×4 20분, 5×5 40분
  */
 export const TIME_LIMIT_SEC: Record<number, number> = {
   2: 180,
   3: 300,
-  4: 600,
-  5: 900,
+  4: 1200,
+  5: 2400,
 };
 
 export const DEFAULT_SETTINGS: RoomSettings = {
@@ -161,7 +161,7 @@ export interface RoomPlayer {
   /** 이 참가자를 맡은 기기(연결 아이디) */
   device: string;
   /**
-   * 컴퓨터 단계 글(`@game/cube-ai` `botSkillText`: 「2:club」, 「내 실력에 맞춤」은 「2:fit:45000」). 앞 숫자는 계획 표
+   * 컴퓨터 단계 글(`@game/cube-ai` `botSkillText`: 「3:club」, 「내 실력에 맞춤」은 「3:fit:45000」). 앞 숫자는 계획 표
    * 버전이라 다른 버전 기기는 계획을 맞춰 보지 않는다. 버전 없는 옛 값(「beginner」 등)은 옛 계획으로 맞춰 본다
    */
   bot?: string;

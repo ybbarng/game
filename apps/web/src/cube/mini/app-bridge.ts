@@ -1,5 +1,5 @@
 /**
- * 맥 앱 Cubie(`apps/cubie`)와 미니 모드 화면 사이의 작은 메시지 다리(docs/47 14절).
+ * 맥 앱 Cubie(`apps/cubie`)와 미니 모드 화면 사이의 작은 메시지 다리(docs/47 15절).
  *
  * - 앱 → 화면: 앱이 `evaluateJavaScript`로 `window.dispatchEvent(new CustomEvent("cubie", { detail }))`를 부른다.
  * - 화면 → 앱: `window.webkit.messageHandlers.cubie.postMessage(msg)`.

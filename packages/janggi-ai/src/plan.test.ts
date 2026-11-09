@@ -58,7 +58,7 @@ describe("초고수의 계획", () => {
       state = r.state;
     }
     const plan = masterPlanOf(viewOf(state, state.choSeat));
-    expect(plan).toEqual({ id: "develop", label: "차 길 열기·기물 전개" });
+    expect(plan).toEqual({ id: "develop", label: "찻길 열기·기물 전개" });
   });
 
   it("가운데 판: 사가 빈 쪽 궁성을 공격한다(그 편에서 본 왼·오른)", () => {

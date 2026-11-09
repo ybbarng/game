@@ -10,7 +10,7 @@ const { A, C, E, K, N, P, R, sideIndex, toFast } = fast;
  * 초고수의 계획(docs/22 3절). 수마다 지금 판을 보고 할 일을 하나 정한다.
  * 계획은 탐색의 형세 판단에 가산점으로 들어간다(deep.ts). 같은 판이면 늘 같은 계획이다.
  *
- * - 전개(초반): 차 길을 열고 마·상을 끌어내며 궁은 궁성 가운데에 둔다
+ * - 전개(초반): 찻길을 열고 마·상을 끌어내며 궁은 궁성 가운데에 둔다
  * - 궁성 공격(중반): 상대 궁성의 약한 쪽(사가 비었거나 내 기물이 많이 겨누는 쪽)에 차·포·마·졸을 모은다
  * - 단순하게(중반, 기물이 앞섬): 맞바꿀수록 값이 오르게 해 이득을 굳힌다
  * - 외통 몰기(종반, 앞섬): 상대 궁이 갈 칸을 줄이고 공격 기물을 궁 가까이 붙인다
@@ -33,7 +33,7 @@ export interface MasterPlan {
 }
 
 export const MASTER_PLAN_LABELS: Record<MasterPlanId, string> = {
-  develop: "차 길 열기·기물 전개",
+  develop: "찻길 열기·기물 전개",
   "attack-left": "왼쪽 궁성 공격",
   "attack-center": "가운데 궁성 공격",
   "attack-right": "오른쪽 궁성 공격",

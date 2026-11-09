@@ -40,7 +40,7 @@ public final class FocusKeeper<App: FocusApp> {
   }
 }
 
-/// 키 하나의 출처 판정(docs/47 14절). 값은 `CGEvent` 칸에서 읽는다(`KeySource.swift`).
+/// 키 하나의 출처 판정(docs/47 15절). 값은 `CGEvent` 칸에서 읽는다(`KeySource.swift`).
 /// 하드웨어 입력 계층(stateID 1)이고 넣은 프로세스가 없으면(pid 0) 실제 키보드로 본다.
 /// 2026-11-09 이 맥 실측: CGEventPost(HID 계층·앱 묶음)·CGEvent.postToPid는 pid가 남아 가려지지만,
 /// osascript System Events keystroke는 stateID 1·pid 0으로 와서 실제 키보드와 구별되지 않았다.

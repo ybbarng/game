@@ -1,6 +1,6 @@
 # Cubie
 
-화면 구석에 작게 늘 떠 있는 큐브 맥 앱. 단축키로 큐브에 키 입력을 주고, 맞추다가 Esc를 누르면 하던 앱으로 돌아간다. 화면은 사이트의 미니 모드(`https://game.byb.kr/cube/mini`)를 맥 기본 웹 부품(WKWebView)으로 연다. 설계는 [docs/47 14절](../../docs/47-cube-design.md).
+화면 구석에 작게 늘 떠 있는 큐브 맥 앱. 단축키로 큐브에 키 입력을 주고, 맞추다가 Esc를 누르면 하던 앱으로 돌아간다. 화면은 사이트의 미니 모드(`https://game.byb.kr/cube/mini`)를 맥 기본 웹 부품(WKWebView)으로 연다. 설계는 [docs/47 15절](../../docs/47-cube-design.md).
 
 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
 

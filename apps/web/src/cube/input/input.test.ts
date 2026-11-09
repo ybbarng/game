@@ -10,6 +10,7 @@ import {
   withDepth,
 } from "./actions";
 import { KeyInterpreter } from "./interpreter";
+import { attachKeyboard } from "./keyboard";
 import {
   bind,
   findConflicts,
@@ -413,5 +414,59 @@ describe("저장·내보내기·가져오기", () => {
     expect(bad).toEqual({ ok: false, error: "1번째 키의 동작(Q)을 몰라요." });
     expect(isKnownAction("depth:9")).toBe(false);
     expect(isKnownAction("7Rw")).toBe(true);
+  });
+});
+
+describe("키보드 연결", () => {
+  // 「표기」의 Alt+면 키는 윈도·리눅스 브라우저 단축키(Alt+D 주소창, Alt+F 메뉴)와 같은 조합이다.
+  // 크롬·엣지·파이어폭스는 페이지가 keydown에서 막으면 그 단축키를 하지 않으므로(docs/47 4-2), 처리한 키는 꼭 막는다.
+  const fire = (code: string, mods: Partial<Omit<KeyInput, "code">> = {}) => {
+    const listeners: ((e: unknown) => void)[] = [];
+    const target = {
+      addEventListener: (_: string, l: (e: unknown) => void) => {
+        listeners.push(l);
+      },
+      removeEventListener: () => {},
+    } as unknown as Pick<Window, "addEventListener" | "removeEventListener">;
+    const it3 = new KeyInterpreter(3, notationKeymap());
+    const results: string[] = [];
+    const detach = attachKeyboard(
+      target,
+      () => it3,
+      (r) => results.push(r.kind === "move" ? r.notation : r.kind),
+    );
+    let prevented = false;
+    for (const l of listeners)
+      l({
+        ...press(code, mods),
+        target: null,
+        preventDefault: () => {
+          prevented = true;
+        },
+      });
+    detach();
+    return { prevented, results };
+  };
+
+  it("표기: Alt+D·Alt+F는 넓게 돌리고 브라우저 단축키를 막는다", () => {
+    expect(fire("KeyD", { altKey: true })).toEqual({
+      prevented: true,
+      results: ["Dw"],
+    });
+    expect(fire("KeyF", { altKey: true })).toEqual({
+      prevented: true,
+      results: ["Fw"],
+    });
+    expect(fire("KeyR", { altKey: true, shiftKey: true })).toEqual({
+      prevented: true,
+      results: ["Rw'"],
+    });
+  });
+
+  it("표기: 쓰지 않는 Alt+E는 막지 않는다(브라우저 메뉴는 그대로)", () => {
+    expect(fire("KeyE", { altKey: true })).toEqual({
+      prevented: false,
+      results: [],
+    });
   });
 });

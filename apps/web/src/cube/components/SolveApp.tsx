@@ -63,16 +63,20 @@ import {
   addRecord,
   averageOf,
   formatMs,
+  loadBestFive,
   loadRecords,
   parseReplay,
   parseSplits,
   resultMs,
+  type SolveInput,
   type SolveMode,
   type SolveRecord,
 } from "../records";
 import { type RivalOutcome, rivalOutcome, rivalSeed } from "../rival";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
+import { type MyTier, myTier } from "../tiers/rank";
+import { TierLink } from "../tiers/TierTable";
 import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
 import {
@@ -114,6 +118,13 @@ function randomSeed(): number {
     return Math.floor(Math.random() * 2 ** 32);
   }
 }
+
+/** 이 단계에 이른 수는 맞추기에 든다(입력 방식을 센다) */
+const SOLVING_PHASES: ReadonlySet<string> = new Set([
+  "solving",
+  "blindSolve",
+  "done",
+]);
 
 const PHASE_HINT: Record<string, string> = {
   free: "",
@@ -220,6 +231,8 @@ export function SolveApp({
    */
   const [prior, setPrior] = useState<SolveRecord[]>([]);
   const bests = useMemo(() => bestSegments(prior), [prior]);
+  /** 이번 판을 섞은 때의 티어(혼자 맞추기, 결과 상자가 티어가 올랐는지 견준다) */
+  const [priorTier, setPriorTier] = useState<MyTier | null>(null);
   // 세션 소리(골드·개인 최고)가 지금 판의 옛 기록을 읽는다
   const priorRef = useRef(prior);
   priorRef.current = prior;
@@ -248,7 +261,11 @@ export function SolveApp({
     setAlgBook(loadAlgBook());
     return watchAlgBook(setAlgBook);
   }, []);
+  /** 이번 판 맞추기 동안 수를 둔 입력(처음 쓴 차례, 기록의 `inputs`) */
+  const inputsRef = useRef<SolveInput[]>([]);
+  // 새 판 준비: 만난 상황과 입력 방식을 비운다
   const clearMet = useCallback(() => {
+    inputsRef.current = [];
     metRef.current = [];
     setMet([]);
     setSpotted(null);
@@ -288,7 +305,15 @@ export function SolveApp({
       clock: realClock,
       onChange: bump,
       onCue,
-      onRecord: (r) => {
+      onRecord: (raw) => {
+        // 입력 방식·살펴보기는 화면이 안다(세션은 수만 받는다)
+        const r: SolveRecord = {
+          ...raw,
+          ...(inputsRef.current.length > 0
+            ? { inputs: [...inputsRef.current] }
+            : {}),
+          inspection: made.inspection,
+        };
         if (challenge) {
           // 제한 도전은 혼자 맞추기 기록(평균)에 넣지 않고 따로 둔다
           const c = runRef.current;
@@ -347,6 +372,7 @@ export function SolveApp({
               : r,
           ),
         );
+        inputsRef.current = [];
       },
     });
     return made;
@@ -417,7 +443,9 @@ export function SolveApp({
         setLastEntry(null);
       }
       clearMet();
-      setPrior(loadRecords(mode, n));
+      const before = loadRecords(mode, n);
+      setPrior(before);
+      setPriorTier(mode === "solo" ? myTier(n, before, loadBestFive(n)) : null);
       if (daily) {
         const now = Date.now();
         const begun = beginDaily({ date, n, seed, scramble: s.text, now });
@@ -476,12 +504,25 @@ export function SolveApp({
   ]);
 
   const onMove = useCallback(
-    (move: Parameters<SolveSession["input"]>[0], notation: string) => {
+    (
+      move: Parameters<SolveSession["input"]>[0],
+      notation: string,
+      input?: SolveInput,
+    ) => {
+      const before = session.phase;
       const r = session.input(move, notation);
       if (r === "blocked") {
         setNotice(MEMO_BLOCKED);
         return false;
       }
+      if (
+        input &&
+        before !== "free" &&
+        before !== "done" &&
+        SOLVING_PHASES.has(session.phase) &&
+        !inputsRef.current.includes(input)
+      )
+        inputsRef.current = [...inputsRef.current, input];
       if (alertOn && myCases.current.length > 0) {
         const c =
           session.phase === "solving"
@@ -676,6 +717,15 @@ export function SolveApp({
       phase === "solving" ||
       phase === "done");
   const last = records[0];
+  // 지금 최고 티어(혼자 맞추기 기록 칸, docs/47 14절). 섞은 때보다 오르면 결과 상자에도
+  const tierNow = useMemo(
+    () => (mode === "solo" ? myTier(n, records, loadBestFive(n)) : null),
+    [mode, n, records],
+  );
+  const tierUp =
+    tierNow && (!priorTier || tierNow.place.step > priorTier.place.step)
+      ? tierNow
+      : null;
   const best = records.reduce<number | null>((b, r) => {
     const t = resultMs(r);
     return t !== null && (b === null || t < b) ? t : b;
@@ -957,6 +1007,7 @@ export function SolveApp({
                   prior,
                 )}
                 combo={session.longestCombo}
+                tierUp={tierUp}
                 practice={daily && attempt?.kind === "practice"}
                 short={
                   short && short.scramble === session.scramble
@@ -1037,6 +1088,16 @@ export function SolveApp({
                   value={formatMs(averageOf(records, 12))}
                 />
               </dl>
+              {tierNow && (
+                <p className="text-xs" data-cube-records-tier>
+                  <span className="text-white/50">티어 </span>
+                  <TierLink mine={tierNow} />
+                  <span className="text-white/40">
+                    {" "}
+                    · 최고 Ao5 {formatMs(tierNow.ao5)}
+                  </span>
+                </p>
+              )}
               {records.length === 0 ? (
                 <p className="text-white/50 text-xs">
                   아직 기록이 없어요. 섞고 맞추면 여기에 쌓여요.
@@ -1151,6 +1212,7 @@ function ResultBox({
   gold,
   best,
   combo,
+  tierUp = null,
   practice,
   short,
 }: {
@@ -1163,6 +1225,8 @@ function ResultBox({
   best: boolean;
   /** 가장 긴 흐름 콤보 */
   combo: number;
+  /** 이번 판으로 오른 티어(없으면 null) */
+  tierUp?: MyTier | null;
   /** 오늘의 섞기 연습(기록에 넣지 않았다) */
   practice: boolean;
   short: ShortSolution | null;
@@ -1206,6 +1270,11 @@ function ResultBox({
           className="cube-gold rounded-full border px-2 py-0.5 font-semibold text-xs"
         >
           개인 최고
+        </span>
+      )}
+      {tierUp && !practice && (
+        <span className="text-sm" data-cube-tier-up>
+          티어 <TierLink mine={tierUp} />
         </span>
       )}
       {mode === "blind" && result.memoMs !== undefined && (

@@ -11,7 +11,7 @@ final class RunningApp: FocusApp {
   static func front() -> RunningApp? { NSWorkspace.shared.frontmostApplication.map(RunningApp.init) }
 }
 
-/// Cubie: 화면 구석에 늘 떠 있는 큐브 창(docs/47 14절).
+/// Cubie: 화면 구석에 늘 떠 있는 큐브 창(docs/47 15절).
 /// - ⌃⌥⌘C(`Config.hotKey*`)를 누르면 그때 앞에 있던 앱을 기억하고 큐브 창에 키 입력을 준다. 다시 누르면 돌려준다.
 /// - 큐브 창이 키를 받는 동안 Esc를 누르면 기억한 앱으로 돌아가고 창은 그대로 떠 있다.
 /// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·거울·크기·기록·대결·설정을 고른다.

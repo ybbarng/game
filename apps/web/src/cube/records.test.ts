@@ -3,14 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
   addRecord,
   averageOf,
+  BEST_FIVE_KEY,
   formatMs,
   formatSplits,
+  KEEP_REPLAYS,
+  loadBestFive,
   loadRecords,
   MAX_RECORDS,
   parseReplay,
   parseSplits,
   type SolveRecord,
 } from "./records";
+import { ao5 } from "./tiers/rank";
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -158,5 +162,97 @@ describe("구간 기록", () => {
     ]);
     expect(parseSplits(42)).toEqual([]);
     expect(parseSplits(undefined)).toEqual([]);
+  });
+});
+
+describe("티어 재료(2026-11-09)", () => {
+  const solved = (ms: number, i: number): SolveRecord => ({
+    ...rec(ms),
+    at: i,
+    replay: `R@0 U@${ms}`,
+    inputs: ["keyboard"],
+    inspection: true,
+  });
+
+  it("입력 방식·살펴보기 칸이 그대로 남고, 없는 옛 기록도 읽힌다", () => {
+    const store = memoryStorage();
+    addRecord(rec(9000), store);
+    addRecord(
+      { ...rec(8000), inputs: ["swipe", "buttons"], inspection: false },
+      store,
+    );
+    const [now, old] = loadRecords("solo", 3, store);
+    expect(now?.inputs).toEqual(["swipe", "buttons"]);
+    expect(now?.inspection).toBe(false);
+    expect(old?.inputs).toBeUndefined();
+    expect(old?.inspection).toBeUndefined();
+  });
+
+  it("다시 보기 글은 최근 몇 판만 남긴다", () => {
+    const store = memoryStorage();
+    for (let i = 0; i < KEEP_REPLAYS + 5; i++)
+      addRecord(solved(20_000, i), store);
+    const list = loadRecords("solo", 3, store);
+    expect(list.slice(0, KEEP_REPLAYS).every((r) => r.replay)).toBe(true);
+    expect(list.slice(KEEP_REPLAYS).some((r) => r.replay)).toBe(false);
+    // 섞기·시간·입력 방식은 그대로
+    expect(list.at(-1)).toMatchObject({
+      scramble: "R U",
+      ms: 20_000,
+      inputs: ["keyboard"],
+    });
+  });
+
+  it("최고 Ao5를 낸 5판은 목록에서 밀려나도 다시 보기 글째 남는다", () => {
+    const store = memoryStorage();
+    for (let i = 0; i < 5; i++) addRecord(solved(10_000, i), store);
+    for (let i = 0; i < MAX_RECORDS + 1; i++)
+      addRecord(solved(30_000, 100 + i), store);
+    expect(loadRecords("solo", 3, store).every((r) => r.ms === 30_000)).toBe(
+      true,
+    );
+    const best = loadBestFive(3, store);
+    expect(best.map((r) => r.ms)).toEqual([
+      10_000, 10_000, 10_000, 10_000, 10_000,
+    ]);
+    expect(best.every((r) => r.replay === "R@0 U@10000")).toBe(true);
+    // 더 좋은 Ao5가 나오면 바뀐다(9초 넷 + 30초 하나에서 이미 9초)
+    for (let i = 0; i < 5; i++) addRecord(solved(9_000, 300 + i), store);
+    expect(ao5(loadBestFive(3, store))).toBe(9_000);
+    // 블라인드·다른 크기는 따로
+    expect(loadBestFive(2, store)).toEqual([]);
+    for (let i = 0; i < 5; i++)
+      addRecord({ ...solved(1_000, i), mode: "blind" }, store);
+    expect(ao5(loadBestFive(3, store))).toBe(9_000);
+  });
+
+  it("깨진 최고 5판 칸은 없는 것으로 본다", () => {
+    const store = memoryStorage();
+    store.setItem(BEST_FIVE_KEY, JSON.stringify({ 3: [{ at: 1 }] }));
+    expect(loadBestFive(3, store)).toEqual([]);
+    store.setItem(BEST_FIVE_KEY, "{bad");
+    expect(loadBestFive(3, store)).toEqual([]);
+  });
+
+  it("자리가 모자라면 다시 보기 글을 줄여 한 번 더 저장한다", () => {
+    const map = new Map<string, string>();
+    const store = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        if (k === "cube.records.v1" && v.length > 6_000)
+          throw new Error("QuotaExceededError");
+        map.set(k, v);
+      },
+    };
+    const long = "R@0 ".repeat(50).trim();
+    for (let i = 0; i < 25; i++)
+      addRecord({ ...solved(20_000, i), replay: long }, store);
+    const list = loadRecords("solo", 3, store);
+    expect(list).toHaveLength(25);
+    // 넘칠 때마다 최근 5판만 남기고 다시 쌓으므로, 기록은 모두 남고 다시 보기 글은 일부만
+    const kept = list.filter((r) => r.replay).length;
+    expect(kept).toBeGreaterThanOrEqual(5);
+    expect(kept).toBeLessThan(25);
+    expect(list[0]?.replay).toBe(long);
   });
 });

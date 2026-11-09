@@ -2,7 +2,7 @@ import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
- * 큐브 미니 모드(/cube/mini, 맥 앱 Cubie의 화면, docs/47 14절). 3D 그림은 보지 않으므로 끈다(`no3d`).
+ * 큐브 미니 모드(/cube/mini, 맥 앱 Cubie의 화면, docs/47 15절). 3D 그림은 보지 않으므로 끈다(`no3d`).
  * 앱은 `window.dispatchEvent(new CustomEvent("cubie", …))`로 포커스·섞기·거울·크기·기록을 알린다. 시험은 같은 이벤트로
  * 앱을 흉내 낸다. 브라우저에서 연 화면은 구석 메뉴(⋯)로 같은 것을 고른다.
  */

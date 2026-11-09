@@ -1040,7 +1040,7 @@ test("장기 초고수: 옵션에서 고르면 상대 자리 표에 노림이 �
   await startSolo(page, "초고수");
   await page.getByRole("button", { name: "상마상마" }).click();
   await expect(page.locator("[data-plan]")).toContainText("노림: ");
-  // 「차 길 열기·기물 전개」는 노림 문구 가운데 가장 긴 축이다. 좁은 휴대폰에서도 잘리지 않아야 한다.
+  // 「찻길 열기·기물 전개」는 노림 문구 가운데 가장 긴 축이다. 좁은 휴대폰에서도 잘리지 않아야 한다.
   expect(
     await page
       .locator("[data-plan]")

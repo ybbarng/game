@@ -39,6 +39,7 @@ import {
   orientFromCenters,
 } from "../keys/key-colors";
 import { stickerAtHit } from "../learn/interact";
+import type { SolveInput } from "../records";
 import {
   type CubeSettings,
   updateSettings,
@@ -92,8 +93,8 @@ export interface CubePlayProps {
   /** 바뀌면 장면을 `state`·`mask`로 다시 칠한다 */
   syncToken: number;
   settings: CubeSettings;
-  /** 수 하나. 받아들였으면 true(장면이 따라 돈다) */
-  onMove: (move: CubeMove, notation: string) => boolean;
+  /** 수 하나. 받아들였으면 true(장면이 따라 돈다). `input`은 그 수를 둔 입력(기록의 입력 방식) */
+  onMove: (move: CubeMove, notation: string, input: SolveInput) => boolean;
   /** 명령. 되돌리기는 장면에 넣을 수를 돌려준다 */
   onCommand: (command: Command) => CubeMove | null | undefined;
   /** 키를 받지 않는다(섞기 준비 중, 다시 보기 중) */
@@ -319,7 +320,7 @@ export function CubePlay({
           hidden: s.hidden,
           onSwipe: (m) => {
             if (live.current.locked) return;
-            moveRef.current(m, formatMove(n, m));
+            moveRef.current(m, formatMove(n, m), "swipe");
           },
           onTap: (hit) => {
             const pick = live.current.onSticker;
@@ -406,28 +407,31 @@ export function CubePlay({
   }, [syncToken, n]);
 
   /** 수 하나를 엔진에 넣고, 받아들였으면 장면이 따라 돈다(키·단추·밀기가 함께 쓴다) */
-  const moveRef = useRef((move: CubeMove, notation: string) => {
-    const c = live.current;
-    // 띠의 색은 수를 두기 전 들고 있는 방향으로 고른다(키 그림과 같은 기준)
-    const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
-    if (!c.onMove(move, notation)) {
-      playCubeCue(c.settings, "invalid");
-      return;
-    }
-    viewRef.current?.enqueue(move);
-    const pushed = flowRef.current.push(move, before, c.comboProgress?.());
-    if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
-    playCubeCue(c.settings, "cubeTurn");
-    // 흐름 콤보가 단계를 넘으면 작은 "톡"(콤보를 보이는 화면만, docs/51 5절)
-    if (c.combo)
-      playCubeSound(
-        c.settings,
-        comboSound(comboStep(pushed.before, pushed.after)),
-      );
-  });
+  const moveRef = useRef(
+    (move: CubeMove, notation: string, input: SolveInput) => {
+      const c = live.current;
+      // 띠의 색은 수를 두기 전 들고 있는 방향으로 고른다(키 그림과 같은 기준)
+      const before =
+        orientFromCenters(nRef.current, c.state) ?? evenRef.current;
+      if (!c.onMove(move, notation, input)) {
+        playCubeCue(c.settings, "invalid");
+        return;
+      }
+      viewRef.current?.enqueue(move);
+      const pushed = flowRef.current.push(move, before, c.comboProgress?.());
+      if (n % 2 === 0) setEvenOrient((o) => orientAfter(n, o, move));
+      playCubeCue(c.settings, "cubeTurn");
+      // 흐름 콤보가 단계를 넘으면 작은 "톡"(콤보를 보이는 화면만, docs/51 5절)
+      if (c.combo)
+        playCubeSound(
+          c.settings,
+          comboSound(comboStep(pushed.before, pushed.after)),
+        );
+    },
+  );
 
   /** 수·명령 하나를 처리한다(키보드와 화면 단추가 함께 쓴다) */
-  const handleRef = useRef((r: KeyResult) => {
+  const handleRef = useRef((r: KeyResult, input: SolveInput) => {
     const c = live.current;
     setDepth(interpreterRef.current?.pendingDepth ?? null);
     const it = interpreterRef.current;
@@ -436,7 +440,7 @@ export function CubePlay({
       setHandLayers(it.n, it.layers);
     }
     if (r.kind === "move") {
-      moveRef.current(r.move, r.notation);
+      moveRef.current(r.move, r.notation, input);
       return;
     }
     if (r.kind !== "command") return;
@@ -482,7 +486,8 @@ export function CubePlay({
           (r.command === "peekBack" || r.command === "peekDown")
         )
           peekKey = e.code;
-        handleRef.current(r);
+        // 화면 키보드(키 그림 누르기, `VirtualKeys`)는 만든 키 사건이라 isTrusted가 거짓이다
+        handleRef.current(r, e.isTrusted ? "keyboard" : "screenKeys");
       },
     );
     const onKeyUp = (e: KeyboardEvent) => {
@@ -500,7 +505,7 @@ export function CubePlay({
   const tap = (base: string) => {
     if (locked || !interpreter) return;
     const r = interpreter.run(prime ? `${base}'` : base);
-    if (r) handleRef.current(r);
+    if (r) handleRef.current(r, "buttons");
   };
 
   const colors = shownColors;
@@ -629,11 +634,14 @@ export function CubePlay({
           type="button"
           onClick={() => {
             if (!locked)
-              handleRef.current({
-                kind: "command",
-                action: "undo",
-                command: "undo",
-              });
+              handleRef.current(
+                {
+                  kind: "command",
+                  action: "undo",
+                  command: "undo",
+                },
+                "buttons",
+              );
           }}
           className="h-11 rounded-lg bg-white/10 px-2 text-sm sm:h-9"
         >

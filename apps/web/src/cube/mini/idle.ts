@@ -2,7 +2,7 @@ import { type CubeMove, invertMoves, parseMoves } from "@game/cube-engine";
 import type { Clock } from "@game/fair-play";
 
 /**
- * 미니 모드가 가만히 떠 있을 때(포커스 없음)의 움직임(docs/47 14절, 사용자 2026-11-09).
+ * 미니 모드가 가만히 떠 있을 때(포커스 없음)의 움직임(docs/47 15절, 사용자 2026-11-09).
  *
  * - 큐브가 맞춰져 있으면 이따금 첫 화면 연출(섞고 해법대로 맞추기 한 판)을 보인다.
  * - 섞여 있으면(맞추다 만 상태) 이따금 몇 수를 저절로 돌렸다가 같은 수를 거꾸로 되돌린다. 움직임은 3D 장면에만 넣고

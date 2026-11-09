@@ -70,7 +70,7 @@ export type JanggiLesson = Lesson<JanggiView, GameEvent, JanggiScene, Action>;
 /** 튜토리얼은 기본 규칙 한 판으로 한다 */
 export const JANGGI_TUTORIAL_RULES = STANDARD_RULES;
 
-/** 내 첫 수 뒤 초 차 하나가 다섯 곳 넘게 갈 수 있으면 성공(차 길이 열렸다) */
+/** 내 첫 수 뒤 초 차 하나가 다섯 곳 넘게 갈 수 있으면 성공(찻길이 열렸다) */
 function rookOpened(ctx: Context): MissionStatus {
   if (!myFirstMove(ctx)) return null;
   const { board } = ctx.view;

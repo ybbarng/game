@@ -1,7 +1,7 @@
 import { averageOf, resultMs, type SolveRecord } from "../records";
 
 /**
- * 미니 모드(`/cube/mini`, 맥 앱 Cubie가 여는 작은 창, docs/47 14절)의 이 기기 저장.
+ * 미니 모드(`/cube/mini`, 맥 앱 Cubie가 여는 작은 창, docs/47 15절)의 이 기기 저장.
  *
  * 기록은 혼자 맞추기 기록(`cube.records.v1`)과 따로 둔다. 미니 모드는 살펴보기 없이 첫 수부터 재고, 창이 포커스를
  * 잃은 동안은 시계를 멈춘다. 같은 목록에 섞으면 혼자 맞추기의 평균·구간 골드·개인 최고가 다른 규칙의 시간과 견주어진다.

@@ -16,7 +16,7 @@ import { parseMove, type ReplayBy, replayBoards, sideAt } from "./replay";
 import { JANGGI_LESSONS } from "./tutorial";
 
 /*
- * 찻길을 연다는 글(2026-11-08 사용자 지적): 졸이 같은 세로줄 앞으로 나가면 차 길을 그대로 막는다.
+ * 찻길을 연다는 글(2026-11-08 사용자 지적): 졸이 같은 세로줄 앞으로 나가면 찻길을 그대로 막는다.
  * 세로줄을 열려면 졸·병이 옆으로 비켜야 한다. 배우기 글 어디서든 이 말이 판과 맞는지 본다.
  */
 

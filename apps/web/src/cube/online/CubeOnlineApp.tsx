@@ -40,7 +40,7 @@ import { useCubeRoom } from "./use-room";
 
 type Phase = "name" | "connecting" | "room" | "error";
 
-const TIME_CHOICES = [60, 120, 180, 300, 600];
+const TIME_CHOICES = [60, 120, 180, 300, 600, 1200, 2400];
 
 /** 키보드가 없을 것 같은 기기(손가락만 쓰는 휴대폰·태블릿) */
 function touchOnly(): boolean {
