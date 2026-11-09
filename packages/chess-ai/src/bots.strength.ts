@@ -90,7 +90,7 @@ it("고수 한 수에 걸리는 시간", () => {
 it("고수·초고수는 킹+퀸·킹+룩으로 킹을 몰고, 초고수는 킹+폰 대 킹을 이긴다", () => {
   for (const bot of [chessExpertBot, chessMasterBot])
     for (const fen of [
-      "8/8/3k4/8/8/8/8/3QK3 w - - 0 1",
+      "8/8/3k4/8/8/8/8/2Q1K3 w - - 0 1",
       "3k4/8/8/8/4K3/8/8/7R w - - 0 1",
       ...(bot === chessMasterBot
         ? // 승패표로 이기는 판(맞서기를 가진 판, 킹이 폰 앞 6번째 줄에 선 판)
