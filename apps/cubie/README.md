@@ -70,11 +70,16 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 ## 새 판 내기
 
 ```sh
-apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장." --dry-run   # 미리 보기: dist/0.2.0/ 에만 만든다
-apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장."             # VERSION과 appcast를 고친다
+apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장." --dry-run   # 미리 보기: dist/0.2.0-dry-run/ 에만, 서명 안 함
+apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장."             # VERSION·appcast·노트를 고친다
+/Users/ybbarng/.local/bin/cubie-release 0.2.0                                # GitHub Release만 만든다
 ```
 
-스크립트는 시험 → 판 올리기 → universal 빌드·서명 → `dist/<판>/Cubie.zip` → EdDSA 서명 → `apps/web/public/cubie/appcast.xml` 맨 위에 새 판까지 하고, 「GitHub Release 만들기」와 「PR」 명령을 찍는다. Release·push·PR은 찍힌 명령을 보고 사람이 직접 돌린다. Release를 먼저 만들고(`--latest=false`), 그다음 appcast PR을 머지한다. appcast가 사이트에 올라가야 깔린 앱들이 새 판을 본다. zip을 다시 만들면 서명이 바뀌니 appcast와 함께 만든 그 zip을 올린다.
+스크립트는 시험 → 판 올리기 → universal 빌드·서명 → `dist/<판>/Cubie.zip` → EdDSA 서명 → `apps/web/public/cubie/appcast.xml` 맨 위에 새 판 → `release-notes/<판>.md`(appcast 설명과 같은 글, 커밋한다)까지 하고, 「GitHub Release 만들기」와 「PR」 명령을 찍는다. 작업 트리(`.claude/worktrees/*`)에서 돌렸으면 zip과 노트를 기본 저장소 폴더의 같은 자리에도 복사한다.
+
+Release는 `~/.local/bin/cubie-release <판>`이 만든다. 판 번호 하나만 받고, 기본 저장소 폴더의 `apps/cubie/dist/<판>/Cubie.zip`과 `apps/cubie/release-notes/<판>.md`를 `cubie-v<판>` 태그로 올린다(`--latest=false`, zip 안 앱 판이 인자와 다르거나 같은 릴리스가 있으면 멈춘다). 허락은 game `.claude/settings.local.json`에 이 스크립트 경로만 둔다(사용자가 직접 넣는다). push·PR은 찍힌 명령을 보고 사람이 직접 돌린다. Release를 먼저 만들고, 그다음 appcast PR을 머지한다. appcast가 사이트에 올라가야 깔린 앱들이 새 판을 본다. zip을 다시 만들면 서명이 바뀌니 appcast와 함께 만든 그 zip을 올린다.
+
+서명 열쇠를 읽을 때마다 로그인 암호 창이 뜬다. 그래서 실제 판은 `sign_update`를 한 번만 부르고, 확인은 `scripts/verify-ed.swift`가 `Info.plist`의 공개 열쇠로만 한다. `--dry-run`은 열쇠를 읽지 않는다(서명 자리에 가짜 값).
 
 서명 열쇠는 이 맥 로그인 키체인에만 있다(계정 `kr.byb.cubie`, Sparkle `generate_keys`로 만듦). 이 열쇠를 잃으면 이미 깔린 앱이 새 판을 받지 못한다. 다른 맥에서 내려면 `apps/cubie/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account kr.byb.cubie -x <파일>`로 꺼내 그 맥에서 `-f <파일>`로 넣고, 파일은 지운다.
 
