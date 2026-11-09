@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import CubieCore
 
 /// 바꿀 일이 있는 값을 한곳에 둔다.
 enum Config {
@@ -7,6 +8,8 @@ enum Config {
   static let hotKeyCode = UInt32(kVK_ANSI_C)
   static let hotKeyModifiers = UInt32(controlKey | optionKey | cmdKey)
   static let hotKeyLabel = "⌃⌥⌘C"
+  /// 메뉴 「큐브로 가기」 옆에 보일 같은 키(위 셋과 함께 고친다)
+  static let hotKeyMenuKey = MenuKey(key: "c", option: true, control: true, command: true)
 
   /// 기본 창 크기(이름처럼 작게. 웹 미니 화면은 짧은 변이 큐브 크기 n × 10px보다 작으면 거울을 접는데,
   /// 96이면 7×7(70)까지 거울이 남는다)와 가장 작은 크기(큐브 색을 알아보고 끌어 돌릴 수 있는 만큼)
@@ -14,7 +17,6 @@ enum Config {
   static let minSize = NSSize(width: 48, height: 48)
   /// 「공식 보기」 키 F1(맥북은 fn+F1). 웹의 다른 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`)
   static let hintKeyCode = UInt32(kVK_F1)
-  static let hintKeyLabel = "F1"
   /// 메뉴 「배우기」가 여는 곳(웹 `LEARN_PATH`와 같다)
   static let learnPath = "/cube/learn?lesson=cfop-2look-oll"
 
