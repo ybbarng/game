@@ -123,6 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
       }
     }
+    // 큐브·거울을 클릭하면(끌지 않고) ⌃⌥⌘C처럼 큐브에 키 입력을 준다. 누를 때 맥이 이미 창을 앞으로 가져오지만,
+    // 그것에만 기대지 않고 키 받는 창까지 확실히 정한다
+    cube.onClick = { [weak self] in
+      guard let self, !self.cube.focused else { return }
+      self.focusCube()
+    }
     cube.load()
     cube.panel.orderFrontRegardless()
   }
@@ -286,8 +292,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     m.addItem(.separator())
     m.addItem(item("단축키 보기", #selector(menuKeys)))
     m.addItem(item("키·색 설정…", #selector(menuSettings)))
+    // 창 크기(큐브 크기 「크기」 2×2~7×7과 헷갈리지 않게 「창 크기」). 핀치·⌘ + 스크롤·손잡이로도 바꾼다
+    let sides = NSMenu()
+    let nowSide = WindowGesture.preset(of: cube.panel.frame.size, in: Config.sizePresets.map(\.side))
+    for p in Config.sizePresets {
+      sides.addItem(item("\(p.label) \(Int(p.side))", #selector(menuWindowSize(_:)), tag: Int(p.side), on: nowSide == p.side))
+    }
+    let sideItem = NSMenuItem(title: "창 크기", action: nil, keyEquivalent: "")
+    sideItem.submenu = sides
+    m.addItem(sideItem)
     m.addItem(item("창 자리 처음으로", #selector(menuResetFrame)))
-    // 모니터가 둘 이상일 때만: 고른 화면의 오른쪽 아래로(⌘ + 끌기로도 옮길 수 있다)
+    // 모니터가 둘 이상일 때만: 고른 화면의 오른쪽 아래로(큐브를 끌어서도 옮길 수 있다)
     let screens = NSScreen.screens
     if screens.count > 1 {
       let now = WindowPlacement.screenIndex(of: cube.panel.frame, screens: screens.map(\.visibleFrame))
@@ -338,6 +353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     cube.panel.saveFrame(usingName: CubeWindow.frameName)
   }
   @objc private func menuSize(_ sender: NSMenuItem) { cube.bridge.send(["type": "size", "n": sender.tag]) }
+  @objc private func menuWindowSize(_ sender: NSMenuItem) { cube.setSide(CGFloat(sender.tag)) }
 
   @objc private func menuRecords() { openWebWindow(.records) }
   @objc private func menuKeys() { openWebWindow(.keys) }

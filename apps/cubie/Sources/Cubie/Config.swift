@@ -15,6 +15,12 @@ enum Config {
   /// 96이면 7×7(70)까지 거울이 남는다)와 가장 작은 크기(큐브 색을 알아보고 끌어 돌릴 수 있는 만큼)
   static let defaultSize = NSSize(width: 96, height: 96)
   static let minSize = NSSize(width: 48, height: 48)
+  /// 가장 큰 크기(핀치·⌘ + 스크롤·손잡이 모두). 화면 구석에 작게 띄우는 앱이라 넉넉히만 둔다
+  static let maxSize = NSSize(width: 480, height: 480)
+  /// 메뉴 「창 크기」(작게·보통·크게·아주 크게, pt). 보통은 `defaultSize`와 같다
+  static let sizePresets: [(label: String, side: CGFloat)] = [
+    ("작게", 72), ("보통", 96), ("크게", 144), ("아주 크게", 200),
+  ]
   /// 「공식 보기」 키 F1(맥북은 fn+F1). 웹의 다른 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`)
   static let hintKeyCode = UInt32(kVK_F1)
   /// 메뉴 「배우기」가 여는 곳(웹 `LEARN_PATH`와 같다)
