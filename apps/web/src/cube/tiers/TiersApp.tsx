@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatMs } from "../records";
 import { tierName } from "./rank";
+import { TierEmblem } from "./TierEmblem";
 import { TIER_TONE, TierTable, useMyTier } from "./TierTable";
 import {
   TIER_DATA_DATE,
@@ -98,19 +99,28 @@ export function TiersApp() {
           className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm"
         >
           {mine ? (
-            <p>
-              내 최고 Ao5{" "}
-              <span className="font-mono font-semibold tabular-nums">
-                {formatMs(mine.ao5)}
-              </span>{" "}
-              ·{" "}
-              <span
-                data-cube-my-tier={mine.place.tier}
-                className={cn("font-bold", TIER_TONE[mine.place.tier])}
-              >
-                {tierName(mine.place)}
-              </span>
-            </p>
+            <div className="flex items-center gap-3">
+              <TierEmblem
+                tier={mine.place.tier}
+                division={mine.place.division}
+                size={64}
+              />
+              <p>
+                <span
+                  data-cube-my-tier={mine.place.tier}
+                  className={cn(
+                    "block font-bold text-base",
+                    TIER_TONE[mine.place.tier],
+                  )}
+                >
+                  {tierName(mine.place)}
+                </span>
+                내 최고 Ao5{" "}
+                <span className="font-mono font-semibold tabular-nums">
+                  {formatMs(mine.ao5)}
+                </span>
+              </p>
+            </div>
           ) : (
             <p className="text-white/70">
               이 크기는 아직 Ao5가 없습니다.{" "}

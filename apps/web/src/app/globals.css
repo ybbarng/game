@@ -3333,3 +3333,174 @@ button {
     animation: none;
   }
 }
+
+/*
+ * 큐브 티어 엠블럼(cube/tiers/TierEmblem.tsx). 평소에는 멈춘 그림이다. 플래티넘부터 위는 가끔 `[data-shine]`이 붙어
+ * 빛 띠가 큐브 위를 한 번 지나가고(한 번에 하나, emblemShine.ts), 다이아몬드부터 위는 반짝임 점이 한 번 커진다.
+ * 움직이는 것은 transform·opacity뿐이다. 움직임 줄이기면 아무것도 움직이지 않는다.
+ */
+.cube-emblem .emb-band {
+  opacity: 0;
+  transform: translateX(-26px);
+}
+.cube-emblem[data-shine] .emb-band {
+  animation: emb-band 1.6s ease-in-out both;
+}
+@keyframes emb-band {
+  0% {
+    opacity: 0;
+    transform: translateX(-26px);
+  }
+  25%,
+  75% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+}
+.cube-emblem .emb-glint {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0.85;
+}
+.cube-emblem[data-shine] .emb-glint {
+  animation: emb-glint 1.6s ease-out both;
+}
+@keyframes emb-glint {
+  0%,
+  45% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+/*
+ * HDR 반짝임(다이아몬드부터): HDR 화면이고 브라우저가 HDR 그림의 밝기 한도(`dynamic-range-limit`)를 알 때만 보인다
+ * (Chrome 136+·Safari 26+). 그 밖에는 그림 칸이 보이지 않아(lazy img) 받지도 않는다.
+ * 빛 띠가 지나갈 때만 켜진다(늘 켜진 HDR은 배터리를 쓰고 화면 밝기가 출렁일 수 있다, docs/36 HDR 별빛).
+ * 움직임 줄이기·`still`이면 반짝임 점만 멈춘 채 켜 둔다.
+ * --emb-hdr-strength: 강도(불투명도에 곱한다, 기본 1) · --emb-hdr-limit: dynamic-range-limit 값(standard면 HDR 끔)
+ */
+:root {
+  --emb-hdr-strength: 1;
+  --emb-hdr-limit: no-limit;
+}
+.emb-hdr-layer {
+  display: none;
+}
+@supports (dynamic-range-limit: no-limit) {
+  @media (dynamic-range: high) {
+    .emb-hdr-layer {
+      display: contents;
+    }
+  }
+}
+/* 개발용 미리보기(/cube/tiers/emblems?hdr=1): SDR 화면에서도 HDR 층 자리를 본다 */
+.emb-hdr-force .emb-hdr-layer {
+  display: contents;
+}
+.emb-hdr {
+  dynamic-range-limit: var(--emb-hdr-limit);
+  opacity: 0;
+  user-select: none;
+}
+.cube-emblem[data-shine] .emb-hdr-band {
+  animation: emb-hdr-pulse 0.6s ease-in-out both;
+}
+.cube-emblem[data-shine] .emb-hdr-band0 {
+  animation-delay: 0.2s;
+}
+.cube-emblem[data-shine] .emb-hdr-band1 {
+  animation-delay: 0.5s;
+}
+.cube-emblem[data-shine] .emb-hdr-band2 {
+  animation-delay: 0.8s;
+}
+@keyframes emb-hdr-pulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: calc(var(--emb-hdr-strength) * 0.9);
+  }
+}
+.cube-emblem[data-shine] .emb-hdr-glint {
+  animation: emb-hdr-glint 1.6s ease-out both;
+}
+@keyframes emb-hdr-glint {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  68% {
+    opacity: calc(var(--emb-hdr-strength) * 1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.emb-hdr-layer[data-still] .emb-hdr-glint {
+  opacity: calc(var(--emb-hdr-strength) * 0.7);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-emblem[data-shine] .emb-band,
+  .cube-emblem[data-shine] .emb-glint,
+  .cube-emblem[data-shine] .emb-hdr {
+    animation: none;
+  }
+  .cube-emblem .emb-hdr-band {
+    display: none;
+  }
+  .cube-emblem .emb-hdr-glint {
+    opacity: calc(var(--emb-hdr-strength) * 0.7);
+  }
+}
+
+/* 넓은 색역(P3) 화면: 위 티어의 보석 색을 sRGB 밖까지 짙게 */
+@media (color-gamut: p3) {
+  :root {
+    --emb-emerald-top1: color(display-p3 0.25 0.9 0.55);
+    --emb-emerald-left0: color(display-p3 0.1 0.78 0.45);
+    --emb-emerald-left1: color(display-p3 0.02 0.55 0.3);
+    --emb-emerald-right0: color(display-p3 0.02 0.52 0.29);
+    --emb-emerald-right1: color(display-p3 0 0.34 0.18);
+    --emb-emerald-gem: color(display-p3 0 0.62 0.33);
+    --emb-emerald-gem2: color(display-p3 0.35 0.97 0.62);
+    --emb-diamond-top1: color(display-p3 0.72 0.9 1);
+    --emb-diamond-left0: color(display-p3 0.55 0.84 1);
+    --emb-diamond-left1: color(display-p3 0.22 0.62 0.98);
+    --emb-diamond-right0: color(display-p3 0.25 0.6 0.95);
+    --emb-diamond-right1: color(display-p3 0.12 0.36 0.78);
+    --emb-diamond-gem: color(display-p3 0.42 0.76 1);
+    --emb-master-top1: color(display-p3 0.88 0.58 1);
+    --emb-master-left0: color(display-p3 0.78 0.4 0.98);
+    --emb-master-left1: color(display-p3 0.55 0.18 0.85);
+    --emb-master-right0: color(display-p3 0.53 0.17 0.82);
+    --emb-master-right1: color(display-p3 0.34 0.07 0.58);
+    --emb-master-gem: color(display-p3 0.62 0.18 0.95);
+    --emb-grandmaster-top1: color(display-p3 1 0.52 0.5);
+    --emb-grandmaster-left0: color(display-p3 0.96 0.24 0.26);
+    --emb-grandmaster-left1: color(display-p3 0.76 0.08 0.12);
+    --emb-grandmaster-right0: color(display-p3 0.74 0.06 0.1);
+    --emb-grandmaster-right1: color(display-p3 0.48 0.02 0.05);
+    --emb-grandmaster-gem: color(display-p3 0.9 0.08 0.14);
+    --emb-challenger-left0: color(display-p3 0.36 0.68 1);
+    --emb-challenger-left1: color(display-p3 0.14 0.43 0.9);
+    --emb-challenger-right0: color(display-p3 0.14 0.42 0.86);
+    --emb-challenger-right1: color(display-p3 0.07 0.24 0.6);
+    --emb-challenger-gem: color(display-p3 0.2 0.62 1);
+    --emb-challenger-ray: color(display-p3 1 0.88 0.42);
+    --emb-challenger-halo: color(display-p3 1 0.88 0.42);
+  }
+}

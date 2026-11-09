@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { loadBestFive, loadRecords } from "../records";
 import { type MyTier, myTier, tierName } from "./rank";
+import { TierEmblem } from "./TierEmblem";
 import { DIVISIONS, TIER_LABEL, TIER_TABLE, type TierId } from "./table";
 
 /**
@@ -47,13 +48,15 @@ export function useMyTier(n: number, version: unknown = 0): MyTier | null {
   return mine;
 }
 
-/** 작은 티어 표시(기록 칸·결과 상자). 누르면 그 크기 티어표 */
+/** 작은 티어 표시(엠블럼 + 이름, 기록 칸·결과 상자). 누르면 그 크기 티어표 */
 export function TierLink({
   mine,
   className,
+  emblemSize = 18,
 }: {
   mine: MyTier;
   className?: string;
+  emblemSize?: number;
 }) {
   return (
     <a
@@ -66,6 +69,7 @@ export function TierLink({
         className,
       )}
     >
+      <TierEmblem tier={mine.place.tier} size={emblemSize} />
       {tierName(mine.place)}
     </a>
   );
@@ -86,7 +90,7 @@ export function TierTable({ n, mine }: { n: number; mine?: MyTier | null }) {
       </caption>
       <thead className="text-white/50 text-xs">
         <tr>
-          <th scope="col" className="w-[30%] text-left font-normal sm:w-[22%]">
+          <th scope="col" className="w-[36%] text-left font-normal sm:w-[24%]">
             티어
           </th>
           {DIVISIONS.map((d) => (
@@ -122,11 +126,18 @@ export function TierTable({ n, mine }: { n: number; mine?: MyTier | null }) {
                   bg,
                 )}
               >
-                <span className={TIER_TONE[row.tier]}>
-                  {TIER_LABEL[row.tier]}
-                </span>
-                <span className="block font-normal text-[11px] text-white/45 sm:hidden">
-                  {row.wca ? `상위 ${row.wca.percent}%` : "대회 밖"}
+                <span className="flex items-center gap-1.5">
+                  <TierEmblem tier={row.tier} size={28} />
+                  <span className="min-w-0">
+                    <span
+                      className={cn("block break-keep", TIER_TONE[row.tier])}
+                    >
+                      {TIER_LABEL[row.tier]}
+                    </span>
+                    <span className="block font-normal text-[11px] text-white/45 sm:hidden">
+                      {row.wca ? `상위 ${row.wca.percent}%` : "대회 밖"}
+                    </span>
+                  </span>
                 </span>
               </th>
               {row.cuts.length === 4 ? (
