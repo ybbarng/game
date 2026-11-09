@@ -38,7 +38,7 @@ lipo "$APP/Contents/MacOS/Cubie" -verify_arch $ARCHS
 strip -rSTx "$APP/Contents/MacOS/Cubie"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-# 앱 아이콘과 메뉴 막대 아이콘(scripts/make-icon.swift가 그린 것)
+# 앱 아이콘(scripts/icon/make-art.mjs)과 메뉴 막대 아이콘(scripts/make-menu-icon.swift)
 cp Resources/AppIcon.icns Resources/MenuIcon*.png "$APP/Contents/Resources/"
 plutil -insert CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -insert CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
