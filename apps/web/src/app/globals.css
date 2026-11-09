@@ -3335,13 +3335,14 @@ button {
 }
 
 /*
- * 큐브 티어 엠블럼(cube/tiers/TierEmblem.tsx). 평소에는 멈춘 그림이다. 플래티넘부터 위는 가끔 `[data-shine]`이 붙어
- * 빛 띠가 큐브 위를 한 번 지나가고(한 번에 하나, emblemShine.ts), 다이아몬드부터 위는 반짝임 점이 한 번 커진다.
+ * 큐브 티어 엠블럼(cube/tiers/TierEmblem.tsx). 플래티넘부터 위는 가끔 `[data-shine]`이 붙어 빛 띠가 틀과 큐브 위를
+ * 한 번 지나가고(한 번에 하나, 높은 티어부터, emblemShine.ts), 다이아몬드부터 위는 그때 반짝임 점이 크게 번쩍인다.
+ * 반짝임 점은 평소에도 천천히 반짝인다(`[data-twinkle]`, 28px 이상이고 움직일 수 있을 때).
  * 움직이는 것은 transform·opacity뿐이다. 움직임 줄이기면 아무것도 움직이지 않는다.
  */
 .cube-emblem .emb-band {
   opacity: 0;
-  transform: translateX(-26px);
+  transform: translateX(-38px);
 }
 .cube-emblem[data-shine] .emb-band {
   animation: emb-band 1.6s ease-in-out both;
@@ -3349,21 +3350,42 @@ button {
 @keyframes emb-band {
   0% {
     opacity: 0;
-    transform: translateX(-26px);
+    transform: translateX(-38px);
   }
-  25%,
-  75% {
-    opacity: 0.55;
+  20%,
+  80% {
+    opacity: 0.9;
   }
   100% {
     opacity: 0;
-    transform: translateX(26px);
+    transform: translateX(38px);
   }
 }
-.cube-emblem .emb-glint {
+.cube-emblem .emb-glint,
+.cube-emblem .emb-glint-tw {
   transform-box: fill-box;
   transform-origin: center;
-  opacity: 0.85;
+}
+.cube-emblem .emb-glint {
+  opacity: 0.9;
+}
+.cube-emblem[data-twinkle] .emb-glint-tw {
+  animation: emb-twinkle 3.9s ease-in-out infinite;
+}
+@keyframes emb-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.45;
+    transform: scale(0.6) rotate(20deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
 }
 .cube-emblem[data-shine] .emb-glint {
   animation: emb-glint 1.6s ease-out both;
@@ -3371,28 +3393,31 @@ button {
 @keyframes emb-glint {
   0%,
   45% {
-    opacity: 0.85;
+    opacity: 0.9;
     transform: scale(1);
   }
-  68% {
+  66% {
     opacity: 1;
-    transform: scale(1.35);
+    transform: scale(1.8) rotate(45deg);
   }
   100% {
-    opacity: 0.85;
-    transform: scale(1);
+    opacity: 0.9;
+    transform: scale(1) rotate(90deg);
   }
 }
 
 /*
  * HDR 반짝임(다이아몬드부터): HDR 화면이고 브라우저가 HDR 그림의 밝기 한도(`dynamic-range-limit`)를 알 때만 보인다
  * (Chrome 136+·Safari 26+). 그 밖에는 그림 칸이 보이지 않아(lazy img) 받지도 않는다.
- * 빛 띠가 지나갈 때만 켜진다(늘 켜진 HDR은 배터리를 쓰고 화면 밝기가 출렁일 수 있다, docs/36 HDR 별빛).
- * 움직임 줄이기·`still`이면 반짝임 점만 멈춘 채 켜 둔다.
- * --emb-hdr-strength: 강도(불투명도에 곱한다, 기본 1) · --emb-hdr-limit: dynamic-range-limit 값(standard면 HDR 끔)
+ * 깎인 면 모서리 빛(`emb-hdr-facet`, 가는 선과 작은 점, 600 nit 그림)은 늘 낮게 켜 두고, 빛 띠가 지나갈 때 띠·반짝임
+ * 점·면 모서리가 더 밝아진다. 늘 켜 두는 쪽은 면적이 작고 밝기가 낮아 화면 밝기가 출렁이지 않는다(docs/36 HDR 별빛의
+ * 걱정은 넓은 면이 오래 밝을 때다). 움직임 줄이기·`still`이면 반짝임 점도 멈춘 채 켜 둔다.
+ * --emb-hdr-strength: 강도(불투명도에 곱한다, 기본 1, 0이면 HDR 끔) · --emb-hdr-rest: 늘 켜 두는 면 모서리 빛의 비율
+ * · --emb-hdr-limit: dynamic-range-limit 값(standard면 HDR 끔)
  */
 :root {
   --emb-hdr-strength: 1;
+  --emb-hdr-rest: 0.6;
   --emb-hdr-limit: no-limit;
 }
 .emb-hdr-layer {
@@ -3414,6 +3439,21 @@ button {
   opacity: 0;
   user-select: none;
 }
+.cube-emblem .emb-hdr-facet {
+  opacity: calc(var(--emb-hdr-strength) * var(--emb-hdr-rest));
+}
+.cube-emblem[data-shine] .emb-hdr-facet {
+  animation: emb-hdr-facet 1.6s ease-in-out both;
+}
+@keyframes emb-hdr-facet {
+  0%,
+  100% {
+    opacity: calc(var(--emb-hdr-strength) * var(--emb-hdr-rest));
+  }
+  55% {
+    opacity: calc(var(--emb-hdr-strength) * 1);
+  }
+}
 .cube-emblem[data-shine] .emb-hdr-band {
   animation: emb-hdr-pulse 0.6s ease-in-out both;
 }
@@ -3432,7 +3472,7 @@ button {
     opacity: 0;
   }
   50% {
-    opacity: calc(var(--emb-hdr-strength) * 0.9);
+    opacity: calc(var(--emb-hdr-strength) * 1);
   }
 }
 .cube-emblem[data-shine] .emb-hdr-glint {
@@ -3456,6 +3496,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .cube-emblem[data-shine] .emb-band,
   .cube-emblem[data-shine] .emb-glint,
+  .cube-emblem[data-twinkle] .emb-glint-tw,
   .cube-emblem[data-shine] .emb-hdr {
     animation: none;
   }

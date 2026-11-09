@@ -65,6 +65,38 @@ export function cubeHex(tier: string): Pt[] {
   return hexAround(CENTER, CUBE_R * coreScale(tier));
 }
 
+/** 큐브 세 면(윗면·왼면·오른면)의 꼭짓점 넷. 윗면은 뒤 꼭짓점부터, 옆면은 위 왼쪽부터 돈다 */
+export function cubeFaces(tier: string): Pt[][] {
+  const [t, ur, lr, b, ll, ul] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
+  return [
+    [t, ur, CENTER, ul],
+    [ul, CENTER, b, ll],
+    [CENTER, ur, lr, b],
+  ];
+}
+
+/** 면 가운데(깎인 면 넷이 모이는 점) */
+export function faceMid(q: readonly Pt[]): Pt {
+  const a = q[0] as Pt;
+  const c = q[2] as Pt;
+  return [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+}
+
+/**
+ * 깎인 면 사이 모서리(면 가운데 → 네 꼭짓점)와 그 모서리가 빛을 받는 정도(0~1). 빛은 왼위에서 와서 윗면이 가장 밝다.
+ * SVG(보통 화면)의 가는 빛줄과 HDR 그림(늘 은은하게 켜 두는 면 모서리 빛)이 같은 선을 쓴다.
+ */
+export function facetEdges(tier: string): { a: Pt; b: Pt; lit: number }[] {
+  const lit = [
+    [1, 0.75, 0.45, 0.9],
+    [0.7, 0.3, 0.2, 0.5],
+    [0.35, 0.6, 0.15, 0.2],
+  ];
+  return cubeFaces(tier).flatMap((q, f) =>
+    q.map((v, i) => ({ a: faceMid(q), b: v, lit: lit[f]?.[i] ?? 0 })),
+  );
+}
+
 /** HDR 반짝임이 있는 티어(위 넷) */
 export const HDR_TIERS = [
   "diamond",
@@ -131,6 +163,10 @@ export const BAND_HALF = 0.22;
 /** HDR 그림 경로(public 아래) */
 export function hdrGlintSrc(tier: HdrTier): string {
   return `/cube/tiers/hdr-${tier}-glint.avif`;
+}
+/** 늘 은은하게 켜 두는 HDR 그림: 깎인 면 모서리·윗면 바깥 모서리 빛과 작은 반짝임 점 */
+export function hdrFacetSrc(tier: HdrTier): string {
+  return `/cube/tiers/hdr-${tier}-facet.avif`;
 }
 export function hdrBandSrc(tier: HdrTier, frame: number): string {
   return `/cube/tiers/hdr-${tier}-band${frame}.avif`;

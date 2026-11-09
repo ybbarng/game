@@ -7,6 +7,7 @@ import {
   glintsFor,
   HDR_TIERS,
   hdrBandSrc,
+  hdrFacetSrc,
   hdrGlintSrc,
 } from "./emblemArt";
 import { canShine, divisionPips, TierEmblem } from "./TierEmblem";
@@ -62,14 +63,25 @@ describe("TierEmblem", () => {
     }
   });
 
-  it("HDR 층은 띠 그림 셋과 반짝임 그림 하나, `still`이면 반짝임만, `noHdr`면 없음", () => {
+  it("반짝임 점은 다이아몬드부터 28px 이상에서 늘 천천히 반짝이고, `still`·작은 표시는 멈춘다", () => {
+    const on = (props: Parameters<typeof TierEmblem>[0]) =>
+      renderToStaticMarkup(<TierEmblem {...props} />).includes("data-twinkle");
+    expect(on({ tier: "diamond", size: 64 })).toBe(true);
+    expect(on({ tier: "emerald", size: 64 })).toBe(false);
+    expect(on({ tier: "diamond", size: 64, still: true })).toBe(false);
+    expect(on({ tier: "challenger", size: 18 })).toBe(false);
+  });
+
+  it("HDR 층은 늘 켜 두는 면 모서리 그림과 띠 그림 셋·반짝임 그림 하나, `still`이면 띠가 없고, `noHdr`면 없음", () => {
     const html = renderToStaticMarkup(<TierEmblem tier="master" />);
     expect(html).toContain(hdrGlintSrc("master"));
+    expect(html).toContain(hdrFacetSrc("master"));
     for (const i of [0, 1, 2]) expect(html).toContain(hdrBandSrc("master", i));
     expect(html).toContain('loading="lazy"');
 
     const still = renderToStaticMarkup(<TierEmblem tier="master" still />);
     expect(still).toContain(hdrGlintSrc("master"));
+    expect(still).toContain(hdrFacetSrc("master"));
     expect(still).not.toContain(hdrBandSrc("master", 0));
 
     const off = renderToStaticMarkup(<TierEmblem tier="master" noHdr />);

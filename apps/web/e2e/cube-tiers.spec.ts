@@ -154,3 +154,34 @@ test("엠블럼 미리보기: 열 티어를 크기별로 견주고 화면 밖으
   await noSideScroll(page);
   await shot(page, "tier-emblems", info.project.name);
 });
+
+test("HDR 층: HDR 화면을 흉내 내면(?hdr=1) 면 모서리 빛은 늘 켜져 있고, 곧 가장 높은 티어에 빛 띠가 지나가며 HDR 띠가 켜진다", async ({
+  page,
+}, info) => {
+  // 헤드리스는 SDR이라 `(dynamic-range: high)`가 거짓이다. `?hdr=1`은 같은 HDR 층을 SDR에서도 켠다(밝기는 사람이 HDR 맥에서 본다)
+  test.skip(info.project.name !== "desktop", "CSS 조건은 화면 크기와 상관없다");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/cube/tiers/emblems?hdr=1");
+  const big = page.locator("[data-cube-emblem-big]");
+  const opacity = (sel: string) =>
+    big
+      .locator(sel)
+      .evaluateAll((els) =>
+        Math.max(0, ...els.map((e) => Number(getComputedStyle(e).opacity))),
+      );
+  // 2026-11-09 HDR 맥에서 HDR 그림의 불투명도가 8초 동안 한 번도 0보다 커지지 않았다
+  await expect.poll(() => opacity("img.emb-hdr-facet")).toBeGreaterThan(0.3);
+  // 차례는 높은 티어부터: 챌린저에 빛이 지나가고 그 HDR 띠 그림이 켜진다.
+  // 빛 띠 하나는 1.6초라 짧은 간격으로 본다
+  await expect
+    .poll(
+      () =>
+        opacity("[data-cube-emblem='challenger'][data-shine] img.emb-hdr-band"),
+      { intervals: [100] },
+    )
+    .toBeGreaterThan(0.3);
+  // 반짝임 점은 평소에도 천천히 반짝인다
+  await expect(
+    big.locator("[data-cube-emblem='diamond'][data-twinkle]"),
+  ).toHaveCount(1);
+});
