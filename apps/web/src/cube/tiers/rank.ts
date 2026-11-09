@@ -18,7 +18,11 @@ import {
  * - 티어 값은 그 크기의 최고 Ao5(지금까지 나온 Ao5 가운데 가장 좋은 것). 떨어지지 않는다.
  */
 
-type Timeable = Pick<SolveRecord, "ms" | "penalty">;
+/**
+ * `hints`: Cubie 「공식 보기」를 본 횟수(미니 모드 기록만, docs/47 15-15). 힌트를 본 판이 든 5판은 Ao5로 치지 않는다
+ * (힌트 판만 빼고 이어 세면 망친 판에 힌트를 눌러 지우는 길이 생긴다). 사이트 기록에는 이 칸이 없다
+ */
+type Timeable = Pick<SolveRecord, "ms" | "penalty"> & { hints?: number };
 
 function timed(r: Timeable): Timed {
   if (r.ms === null) return { ms: 0, penalty: "DNF" };
@@ -39,11 +43,16 @@ export interface BestAo5 {
   at: number;
 }
 
-/** 기록 목록(새것이 앞)에서 연달아 5판씩 본 Ao5 가운데 가장 좋은 것. 없으면(5판 아래, 모두 DNF) null */
+/**
+ * 기록 목록(새것이 앞)에서 연달아 5판씩 본 Ao5 가운데 가장 좋은 것. 힌트를 본 판이 든 5판은 건너뛴다.
+ * 없으면(5판 아래, 모두 DNF) null
+ */
 export function bestAo5(records: readonly Timeable[]): BestAo5 | null {
   let best: BestAo5 | null = null;
   for (let i = 0; i + 5 <= records.length; i++) {
-    const v = ao5(records.slice(i, i + 5));
+    const five = records.slice(i, i + 5);
+    if (five.some((r) => (r.hints ?? 0) > 0)) continue;
+    const v = ao5(five);
     if (v !== null && (best === null || v < best.ms)) best = { ms: v, at: i };
   }
   return best;
@@ -106,7 +115,10 @@ export function myTier(
   bestFive: readonly Timeable[] = [],
 ): MyTier | null {
   const fromList = bestAo5(records)?.ms ?? null;
-  const kept = bestFive.length === 5 ? ao5(bestFive) : null;
+  const kept =
+    bestFive.length === 5 && !bestFive.some((r) => (r.hints ?? 0) > 0)
+      ? ao5(bestFive)
+      : null;
   const best =
     fromList === null
       ? kept

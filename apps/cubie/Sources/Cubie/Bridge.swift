@@ -25,6 +25,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
   var onRetry: (() -> Void)?
   /// 큐브·거울이 차지하는 사각형(웹 화면 왼쪽 위 기준 pt)
   var onHit: (([NSRect]) -> Void)?
+  /// 「공식 보기」 말풍선 줄들(웹 `BubbleLine`). nil이면 숨기기
+  var onHint: (([[String: Any]]?) -> Void)?
 
   nonisolated func userContentController(
     _ controller: WKUserContentController, didReceive message: WKScriptMessage
@@ -50,6 +52,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
       }
       if Config.debug { print("[cubie] hit \(rects.map { NSStringFromRect($0) })"); fflush(stdout) }
       onHit?(rects)
+    case "hint":
+      onHint?(d["lines"] as? [[String: Any]])
     case "idle":
       if Config.debug { print("[cubie] idle \(d["showing"] as? String ?? "none")"); fflush(stdout) }
     default:

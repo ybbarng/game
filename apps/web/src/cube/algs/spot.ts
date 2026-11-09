@@ -14,7 +14,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 
 import type { AlgCase, AlgSet } from "../learn";
 import { goalMet } from "../learn/judge";
-import { solvesFrom } from "./check";
+import { aufBefore, solvesFrom } from "./check";
 
 /** 알림에서 보는 묶음(F2L 뒤 윗면 상황) */
 export const SPOT_SETS: ReadonlySet<AlgSet> = new Set([
@@ -39,13 +39,13 @@ const cached = (map: Map<string, CubeMove[]>, text: string) => {
   return m;
 };
 
-/** 흰 센터가 아래(D)에 오게 쥔 방향들(3×3, 넷) */
-function whiteDownHolds(s: PuzzleState): PuzzleState[] {
+/** 흰 센터가 아래(D)에 오게 쥔 방향들(3×3, 넷). `rot`은 지금 쥔 큐브에서 그 방향으로 가는 큐브 돌리기 */
+function whiteDownHolds(s: PuzzleState): { rot: string; state: PuzzleState }[] {
   const down = OPPOSITE_FACE[U as 0] as number;
-  const out: PuzzleState[] = [];
+  const out: { rot: string; state: PuzzleState }[] = [];
   for (const r of ORIENTS) {
     const t = r ? applyMoves(3, s, cached(rotCache, r)) : s;
-    if (faceColors(3, t)[down * 9 + 4] === U) out.push(t);
+    if (faceColors(3, t)[down * 9 + 4] === U) out.push({ rot: r, state: t });
   }
   return out;
 }
@@ -66,7 +66,34 @@ export function spotCase(
   const holds = whiteDownHolds(state);
   for (const c of list) {
     const moves = cached(movesCache, c.algs[0] as string);
-    if (holds.some((t) => solvesFrom(c, moves, t))) return c;
+    if (holds.some((t) => solvesFrom(c, moves, t.state))) return c;
+  }
+  return null;
+}
+
+/** 알아본 상황과 쥐는 법: 큐브 돌리기(`rot`, 예 "y2"), 공식 앞 윗면 돌리기(`pre`, 예 "U'") */
+export interface SpottedHold {
+  c: AlgCase;
+  rot: string;
+  pre: string;
+}
+
+/**
+ * `spotCase`처럼 상황을 찾되 쥐는 법까지 돌려준다(Cubie 「공식 보기」). 상황마다 돌리기가 적은 쥐기부터 본다
+ */
+export function spotHold(
+  state: PuzzleState,
+  cases: readonly AlgCase[],
+): SpottedHold | null {
+  const list = cases.filter((c) => SPOT_SETS.has(c.set));
+  if (list.length === 0 || !goalMet(3, state, "f2l")) return null;
+  const holds = whiteDownHolds(state);
+  for (const c of list) {
+    const moves = cached(movesCache, c.algs[0] as string);
+    for (const h of holds) {
+      const pre = aufBefore(c, moves, h.state);
+      if (pre !== null) return { c, rot: h.rot, pre };
+    }
   }
   return null;
 }

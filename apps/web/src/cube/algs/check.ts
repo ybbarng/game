@@ -405,6 +405,18 @@ export function solvesFrom(
 }
 
 /**
+ * `solvesFrom`과 같은 판정에, 공식 앞에 둘 윗면 돌리기("", "U", "U2", "U'")를 돌려준다. 못 풀면 null.
+ * Cubie 「공식 보기」가 「U 뒤 공식」처럼 쥐는 법을 알릴 때(mini/hint-pick.ts)
+ */
+export function aufBefore(
+  c: AlgCase,
+  moves: readonly CubeMove[],
+  start: PuzzleState,
+): string | null {
+  return solvesWith(c, moves, start);
+}
+
+/**
  * F2L 상황을 다른 칸으로 옮긴 시작 큐브(큐브를 y·y2·y'로 돌려 쥠). 자료는 모두 FR 칸이라
  * 거울(좌우 대칭)로 만든 공식은 FL 칸을 푼다
  */

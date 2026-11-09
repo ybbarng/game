@@ -12,6 +12,12 @@ enum Config {
   /// 96이면 7×7(70)까지 거울이 남는다)와 가장 작은 크기(큐브 색을 알아보고 끌어 돌릴 수 있는 만큼)
   static let defaultSize = NSSize(width: 96, height: 96)
   static let minSize = NSSize(width: 48, height: 48)
+  /// 「공식 보기」 키 F1(맥북은 fn+F1). 웹의 다른 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`)
+  static let hintKeyCode = UInt32(kVK_F1)
+  static let hintKeyLabel = "F1"
+  /// 메뉴 「배우기」가 여는 곳(웹 `LEARN_PATH`와 같다)
+  static let learnPath = "/cube/learn?lesson=cfop-2look-oll"
+
   /// 화면 가장자리에서 띄우는 거리
   static let margin: CGFloat = 16
 

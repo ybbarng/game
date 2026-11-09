@@ -19,6 +19,7 @@ import { stickersFromState } from "../bridge";
 import { playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { KeyboardMap, KeyLegend } from "../components/KeyboardMap";
+import { KeyCaps } from "../components/MoveChip";
 import { soloSound } from "../game-sounds";
 import { HeroLoop, heroMoveMs, SOLVED_LABEL } from "../hero/loop";
 import { heroRotation, isHeroSize, solveForHero } from "../hero/methods";
@@ -32,7 +33,9 @@ import {
   type KeyResult,
   loadKeymap,
   PRESET_LABEL,
+  resolveAction,
 } from "../input";
+import { keycapLabel, keysForMove } from "../keys/move-keys";
 import { formatMs, type SolveInput } from "../records";
 import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
 import { useCubeSettings } from "../settings";
@@ -44,8 +47,24 @@ import { useRenewable } from "../use-renewable";
 import { type CubeView, loadCubeView } from "../view";
 import { MIRROR_FADE_MS } from "../view/mirror";
 import { heroSolveInWorker, scrambleInWorker, warmUpScramble } from "../worker";
-import { type FromApp, hasApp, onAppMessage, toApp } from "./app-bridge";
+import {
+  type BubbleLine,
+  type FromApp,
+  hasApp,
+  onAppMessage,
+  toApp,
+} from "./app-bridge";
 import { FocusClock } from "./focus-clock";
+import {
+  algTokens,
+  type FormulaHint,
+  HINT_INLINE_MIN,
+  HINT_KEY_LABEL,
+  HINT_KEYS,
+  HINT_RULES,
+  HintGate,
+  LEARN_PATH,
+} from "./hint";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import { miniMirrorShown } from "./mirror";
 import {
@@ -217,7 +236,8 @@ function MiniTiers({
       </ul>
       <p className="break-keep text-white/50">
         Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자
-        맞추기 기록과는 따로 매겨요.
+        맞추기 기록과는 따로 매겨요. 공식 보기를 쓴 판이 든 5판은 티어에 넣지
+        않아요.
       </p>
     </section>
   );
@@ -227,7 +247,14 @@ function MiniTiers({
 const APP_KEYS: { keys: string; what: string }[] = [
   { keys: "⌃⌥⌘C", what: "큐브로 가기(다시 누르면 돌아가기)" },
   { keys: "Esc", what: "이전 앱으로 돌아가기(큐브는 그대로 떠 있다)" },
-  { keys: "⌘ + 끌기", what: "창 옮기기(창 위 손잡이를 끌어도 된다)" },
+  {
+    keys: "⌘ + 끌기",
+    what: "창 옮기기(창 위 손잡이를 끌어도 된다. 다른 모니터로도 옮길 수 있다)",
+  },
+  {
+    keys: HINT_KEY_LABEL,
+    what: `공식 보기(맞추는 동안, ${HINT_RULES.showMs / 1000}초 보임 · ${HINT_RULES.cooldownMs / 1000}초에 한 번 · 한 판 ${HINT_RULES.perSolve}번)`,
+  },
 ];
 
 /**
@@ -350,6 +377,16 @@ function MiniCube() {
   const appRef = useRef(false);
   appRef.current = app;
 
+  // 공식 보기(docs/47 15-15): 한 판의 횟수·시간 제한(`HintGate`), 보이는 공식, 짧은 알림(남은 초 등)
+  const hintGate = useMemo(() => new HintGate(realClock, bump), [bump]);
+  useEffect(() => () => hintGate.dispose(), [hintGate]);
+  const hintGateRef = useRef(hintGate);
+  hintGateRef.current = hintGate;
+  const [hint, setHint] = useState<FormulaHint | null>(null);
+  const [hintMsg, setHintMsg] = useState<string | null>(null);
+  /** 앱이 창 옆 말풍선을 그리는가(0.1.3부터 앱이 `caps`로 알린다) */
+  const [appBubble, setAppBubble] = useState(false);
+
   const session = useRenewable(
     () =>
       new SolveSession({
@@ -371,7 +408,11 @@ function MiniCube() {
               ? { inputs: [...inputsRef.current] }
               : {}),
             ...(origin ? { keyOrigin: origin } : {}),
+            ...(hintGateRef.current.used > 0
+              ? { hints: hintGateRef.current.used }
+              : {}),
           });
+          hintGateRef.current.hide();
           setRecords(list);
         },
       }),
@@ -671,6 +712,7 @@ function MiniCube() {
       if (id !== scrambleId.current || s.disposed) return;
       idle.reset();
       s.start(made.text, seed);
+      hintGateRef.current.reset();
       inputsRef.current = [];
       originsRef.current = new Set();
       repaintRef.current();
@@ -699,6 +741,7 @@ function MiniCube() {
       origin: KeyOrigin | null,
     ) => {
       idleRef.current.setActive(false);
+      hintGateRef.current.hide();
       const s = sessionRef.current;
       // 맞춰서 기록이 생기는 수도 그 판에 든다(input 전에 더한다)
       if (!inputsRef.current.includes(input))
@@ -726,6 +769,60 @@ function MiniCube() {
   interpreterRef.current = interpreter;
   const recordsOpenRef = useRef(recordsOpen);
   recordsOpenRef.current = recordsOpen;
+
+  // 공식 보기
+  const hintMsgTimer = useRef<(() => void) | null>(null);
+  useEffect(() => () => hintMsgTimer.current?.(), []);
+  const flashHint = useCallback((text: string | null) => {
+    hintMsgTimer.current?.();
+    hintMsgTimer.current = null;
+    setHintMsg(text);
+    if (text === null) return;
+    hintGateRef.current.hide();
+    hintMsgTimer.current = realClock.after(HINT_MSG_MS, () => {
+      hintMsgTimer.current = null;
+      setHintMsg(null);
+    });
+  }, []);
+  const requestHint = useCallback(async () => {
+    const s = sessionRef.current;
+    const solving = () => s.phase === "ready" || s.phase === "solving";
+    if (!solving()) return flashHint("섞은 뒤 맞추는 동안 볼 수 있어요");
+    if (s.n !== 2 && s.n !== 3) return flashHint("이 크기는 공식 보기 없음");
+    let pick: typeof import("./hint-pick").pickHint;
+    try {
+      pick = (await import("./hint-pick")).pickHint;
+    } catch {
+      return flashHint("공식을 불러오지 못했어요");
+    }
+    if (sessionRef.current !== s || !solving()) return;
+    const a = pick(s.n, s.state);
+    if (a.kind !== "hint")
+      return flashHint(
+        a.kind === "unsupported"
+          ? "이 크기는 공식 보기 없음"
+          : "지금은 보일 공식이 없어요",
+      );
+    const r = hintGateRef.current.request();
+    if (!r.ok)
+      return flashHint(
+        r.reason === "limit"
+          ? `이번 판 ${HINT_RULES.perSolve}번 다 봤어요`
+          : `${r.seconds}초 뒤에 다시 볼 수 있어요`,
+      );
+    flashHint(null);
+    setHint(a.hint);
+  }, [flashHint]);
+  const requestHintRef = useRef(requestHint);
+  requestHintRef.current = requestHint;
+  // 섞기가 시작되면 공식 고르기 모듈을 미리 불러 둔다(처음 누를 때 기다리지 않게)
+  const scrambled = session.phase === "ready" || session.phase === "solving";
+  useEffect(() => {
+    if (scrambled && (n === 2 || n === 3)) void import("./hint-pick");
+  }, [scrambled, n]);
+  // 크기가 바뀌면 처음으로
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
+  useEffect(() => hintGate.reset(), [n, hintGate]);
   useEffect(() => {
     let peekKey: string | null = null;
     /**
@@ -751,6 +848,7 @@ function MiniCube() {
       if (r.command === "undo") {
         // 되돌리기는 입력 방식에 세지 않지만(혼자 맞추기와 같다) 키 출처에는 넣는다(판을 바꾸는 키다)
         originsRef.current.add(eventOrigin);
+        hintGateRef.current.hide();
         const m = sessionRef.current.undo();
         if (m) {
           viewRef.current?.enqueue(m);
@@ -784,6 +882,20 @@ function MiniCube() {
       window.removeEventListener("keydown", take, true);
     };
   }, []);
+
+  // 힌트 키(F1, `\`). 사용자 배치가 `\`에 동작을 놓았으면 그 배치를 따른다. F1은 브라우저 도움말을 막는다
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(HINT_KEYS as readonly string[]).includes(e.code)) return;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.code !== "F1" && keymap && resolveAction(keymap, e)) return;
+      e.preventDefault();
+      if (recordsOpenRef.current) return;
+      void requestHintRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [keymap]);
 
   // 포커스: 앱이면 앱이 알린다. 브라우저면 창의 포커스·보임
   useEffect(() => {
@@ -849,6 +961,12 @@ function MiniCube() {
             keyOriginRef.current =
               msg.source === "keyboard" ? "hardware" : "synthetic";
             break;
+          case "hint":
+            void requestHintRef.current();
+            break;
+          case "caps":
+            setAppBubble(msg.hintBubble);
+            break;
         }
       }),
     [setPrefs, clock],
@@ -870,10 +988,34 @@ function MiniCube() {
     if (!focused && app) setRecordsOpen(false);
   }, [focused, app]);
 
+  // 보이는 자리: 창이 넉넉하면 창 안, 작으면 앱의 말풍선(0.1.3부터), 말풍선이 없으면 창 안에 작게
+  const shownHint = hintGate.showing ? hint : null;
+  const shortSide = size ? Math.min(size.w, size.h) : 0;
+  const bubble = app && appBubble && shortSide < HINT_INLINE_MIN;
+  const bubbleLines =
+    bubble && (shownHint || hintMsg)
+      ? hintBubbleLines(shownHint, hintMsg, keymap, n)
+      : null;
+  const bubbleKey = JSON.stringify(bubbleLines);
+  const sentBubble = useRef("null");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bubbleKey가 bubbleLines의 내용이다
+  useEffect(() => {
+    if (!app || bubbleKey === sentBubble.current) return;
+    sentBubble.current = bubbleKey;
+    toApp({ type: "hint", lines: bubbleLines });
+  }, [app, bubbleKey]);
+
   return (
     <main
       data-mini
       data-mini-n={n}
+      data-mini-hint={shownHint?.alg ?? ""}
+      data-mini-hint-before={shownHint?.before ?? undefined}
+      data-mini-hint-msg={hintMsg ?? undefined}
+      data-mini-hints-used={hintGate.used}
+      data-mini-hint-where={
+        shownHint || hintMsg ? (bubble ? "bubble" : "inline") : undefined
+      }
       data-mini-phase={session.phase}
       data-mini-solved={solved ? "" : undefined}
       data-mini-scramble={session.scramble}
@@ -919,6 +1061,16 @@ function MiniCube() {
         )}
       </div>
 
+      {!bubble && (shownHint || hintMsg) && (
+        <HintCard
+          hint={shownHint}
+          msg={hintMsg}
+          n={n}
+          keymap={keymap}
+          shortSide={shortSide}
+        />
+      )}
+
       {!app && (
         <BrowserMenu
           open={menuOpen}
@@ -936,6 +1088,10 @@ function MiniCube() {
           onRecords={() => {
             setMenuOpen(false);
             openRecords(true);
+          }}
+          onHint={() => {
+            setMenuOpen(false);
+            void requestHint();
           }}
         />
       )}
@@ -974,6 +1130,7 @@ function BrowserMenu({
   onMirror,
   onSize,
   onRecords,
+  onHint,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -983,6 +1140,7 @@ function BrowserMenu({
   onMirror: () => void;
   onSize: (n: number) => void;
   onRecords: () => void;
+  onHint: () => void;
 }) {
   return (
     <div className="absolute top-1 right-1 z-10 flex flex-col items-end gap-1">
@@ -1007,6 +1165,18 @@ function BrowserMenu({
           <MenuItem onClick={onRecords} data="records">
             기록
           </MenuItem>
+          <MenuItem onClick={onHint} data="hint">
+            공식 보기
+          </MenuItem>
+          <a
+            href={LEARN_PATH}
+            target="_blank"
+            rel="noopener"
+            data-mini-item="learn"
+            className="rounded px-2 py-1 text-left hover:bg-white/10"
+          >
+            배우기
+          </a>
           <div className="grid grid-cols-3 gap-0.5 pt-1">
             {MINI_SIZES.map((s) => (
               <button
@@ -1160,6 +1330,15 @@ function RecordsPanel({
                   마우스·화면
                 </span>
               )}
+              {(r.hints ?? 0) > 0 && (
+                <span
+                  data-mini-record-hints={r.hints}
+                  title="힌트를 본 판이 든 5판은 티어에 넣지 않아요"
+                  className="rounded bg-sky-500/25 px-1 text-sky-200"
+                >
+                  힌트 {r.hints}번
+                </span>
+              )}
               <span className="text-white/60">{r.moves}수</span>
               {hasReplay(r) && (
                 <button
@@ -1239,6 +1418,11 @@ function ReplayBox({
       <div className="flex items-center gap-1">
         <span className="font-semibold tabular-nums">
           {record.no}번 · {formatMs(record.ms)}
+          {(record.hints ?? 0) > 0 && (
+            <span data-mini-replay-hints className="ml-1 text-sky-200">
+              · 힌트 {record.hints}번
+            </span>
+          )}
         </span>
         <div className="ml-auto flex gap-0.5">
           <button
@@ -1275,6 +1459,113 @@ function ReplayBox({
         captions={false}
         className="mx-auto w-full max-w-60"
       />
+    </div>
+  );
+}
+
+/** 짧은 알림(남은 초, 횟수 다 씀 등)이 보이는 시간(ms) */
+const HINT_MSG_MS = 1500;
+
+/** 공식 한 줄의 수마다 키캡 글(「I J K」). 키가 없는 수는 「?」 */
+function keysText(keymap: Keymap | null, n: number, alg: string): string {
+  if (!keymap) return "";
+  return algTokens(alg)
+    .map((m) => keysForMove(keymap, n, m)?.map(keycapLabel).join(" ") ?? "?")
+    .join(" · ");
+}
+
+/** 앱 말풍선에 보낼 줄들(앱은 줄마다 글꼴만 고른다) */
+function hintBubbleLines(
+  hint: FormulaHint | null,
+  msg: string | null,
+  keymap: Keymap | null,
+  n: number,
+): BubbleLine[] {
+  if (!hint) return [{ text: msg ?? "", style: "plain" }];
+  const lines: BubbleLine[] = [
+    {
+      text: hint.name ? `${hint.stage} · ${hint.name}` : hint.stage,
+      style: "title",
+    },
+  ];
+  if (hint.before) {
+    const k = keysText(keymap, n, hint.before);
+    lines.push({
+      text: `${hint.before} 뒤${k ? `  (${k})` : ""}`,
+      style: "note",
+    });
+  }
+  lines.push({ text: hint.alg, style: "alg" });
+  const k = keysText(keymap, n, hint.alg);
+  if (k) lines.push({ text: k, style: "keys" });
+  return lines;
+}
+
+/**
+ * 창 안의 공식 보기. 창이 넉넉하면(`HINT_INLINE_MIN` 이상) 단계·공식·키캡을, 작으면 공식만 작게, 아주 작으면
+ * 「창을 키우면 보여요」. 누르기는 아래 큐브로 지나간다
+ */
+function HintCard({
+  hint,
+  msg,
+  n,
+  keymap,
+  shortSide,
+}: {
+  hint: FormulaHint | null;
+  msg: string | null;
+  n: number;
+  keymap: Keymap | null;
+  shortSide: number;
+}) {
+  const roomy = shortSide >= HINT_INLINE_MIN;
+  const tiny = shortSide < 80;
+  return (
+    <div
+      data-mini-hint-card={roomy ? "full" : tiny ? "tiny" : "small"}
+      className={cn(
+        "pointer-events-none absolute inset-x-1 bottom-1 z-10 rounded-md bg-black/80 text-white shadow-lg",
+        roomy ? "p-2 text-xs" : "px-1 py-0.5 text-[9px] leading-tight",
+      )}
+    >
+      {!hint ? (
+        <p className="break-keep">{msg}</p>
+      ) : tiny ? (
+        <p className="break-keep">창을 키우면 보여요</p>
+      ) : !roomy ? (
+        <p className="break-words font-mono font-semibold">
+          {hint.before && (
+            <span className="text-sky-200">{hint.before} · </span>
+          )}
+          {hint.alg}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <p className="font-semibold">
+            {hint.stage}
+            {hint.name && (
+              <span className="font-normal text-white/70"> · {hint.name}</span>
+            )}
+          </p>
+          {hint.before && (
+            <p className="text-sky-200">
+              <span className="font-mono">{hint.before}</span> 뒤
+            </p>
+          )}
+          <p className="flex flex-wrap gap-x-1.5 gap-y-1">
+            {algTokens(hint.alg).map((m, i) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
+                key={i}
+                className="inline-flex flex-col items-center"
+              >
+                <span className="font-mono font-semibold">{m}</span>
+                {keymap && <KeyCaps keys={keysForMove(keymap, n, m)} />}
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

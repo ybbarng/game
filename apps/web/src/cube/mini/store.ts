@@ -57,6 +57,11 @@ export function keyOriginOf(seen: Iterable<KeyOrigin>): KeyOrigin | undefined {
 /** 미니 모드 기록 한 판: 혼자 맞추기 기록 꼴에 키 출처를 덧붙인다 */
 export interface MiniRecord extends SolveRecord {
   keyOrigin?: KeyOrigin;
+  /**
+   * 「공식 보기」를 본 횟수(2026-11-09, docs/47 15-15). 한 번도 안 봤으면 칸이 없다. 이 판이 든 5판은 티어에 넣지 않는다
+   * (`tiers/rank.ts` `bestAo5`)
+   */
+  hints?: number;
 }
 
 export interface MiniPrefs {
@@ -196,7 +201,10 @@ export function addMiniRecord(
   const best5 = { ...b.best5 };
   const found = bestAo5(list);
   const kept = best5[key];
-  const keptMs = kept?.length === 5 ? ao5(kept) : null;
+  const keptMs =
+    kept?.length === 5 && !kept.some((r) => (r.hints ?? 0) > 0)
+      ? ao5(kept)
+      : null;
   // 최고 5판은 다시 보기 글까지 그대로 남긴다(목록에서는 30판 뒤로 지워져도)
   if (found && (keptMs === null || found.ms < keptMs))
     best5[key] = list.slice(found.at, found.at + 5);

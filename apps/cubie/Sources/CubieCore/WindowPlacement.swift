@@ -23,4 +23,40 @@ public enum WindowPlacement {
       return !i.isNull && i.width >= needW && i.height >= needH
     }
   }
+
+  /// 창이 가장 많이 걸친 화면의 번호(메뉴 「화면 옮기기」의 체크 표시). 어느 화면과도 겹치지 않으면 nil
+  public static func screenIndex(of frame: CGRect, screens: [CGRect]) -> Int? {
+    var best: (index: Int, area: CGFloat)?
+    for (i, s) in screens.enumerated() {
+      let r = s.intersection(frame)
+      guard !r.isNull, r.width > 0, r.height > 0 else { continue }
+      let area = r.width * r.height
+      if best == nil || area > best!.area { best = (i, area) }
+    }
+    return best?.index
+  }
+
+  /// 「화면 옮기기」: 그 화면 보이는 영역의 기본 자리(오른쪽 아래)로, 지금 크기 그대로
+  public static func moved(_ frame: CGRect, to visible: CGRect, margin: CGFloat) -> CGRect {
+    defaultFrame(visible: visible, size: frame.size, margin: margin)
+  }
+
+  /// 「공식 보기」 말풍선 자리: 큐브 창 옆, 화면 안쪽 방향(창이 화면 오른쪽 반에 있으면 왼쪽에). 위 끝을 창 위 끝에 맞추고
+  /// 보이는 영역 밖으로 나가지 않게 당긴다. 양옆 모두 자리가 모자라면 더 넓은 쪽에 두고 화면 안으로 당긴다(창과 겹칠 수 있다)
+  public static func bubbleFrame(cube: CGRect, bubble: CGSize, visible: CGRect, gap: CGFloat = 8) -> CGRect {
+    let leftRoom = cube.minX - visible.minX
+    let rightRoom = visible.maxX - cube.maxX
+    let need = bubble.width + gap
+    let toLeft: Bool
+    if cube.midX > visible.midX {
+      toLeft = leftRoom >= need || leftRoom >= rightRoom
+    } else {
+      toLeft = !(rightRoom >= need || rightRoom >= leftRoom)
+    }
+    var x = toLeft ? cube.minX - gap - bubble.width : cube.maxX + gap
+    var y = cube.maxY - bubble.height
+    x = min(max(x, visible.minX), visible.maxX - bubble.width)
+    y = min(max(y, visible.minY), visible.maxY - bubble.height)
+    return CGRect(x: x, y: y, width: bubble.width, height: bubble.height)
+  }
 }
