@@ -59,6 +59,14 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "challenger",
   );
   await expect(rows.last()).toHaveAttribute("data-cube-tier-row", "iron");
+  // 줄마다 그 티어 엠블럼
+  await expect(
+    page.locator("[data-cube-tier-row] [data-cube-emblem]"),
+  ).toHaveCount(10);
+  await expect(rows.first().locator("[data-cube-emblem]")).toHaveAttribute(
+    "data-cube-emblem",
+    "challenger",
+  );
   await expect(page.locator("[data-cube-tier-row='diamond']")).toContainText(
     "14초",
   );
@@ -98,6 +106,10 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
     "diamond",
   );
   await expect(page.locator("[data-cube-tier-cell]")).toHaveText("14초");
+  // 내 티어 상자: 엠블럼과 구간 표시(IV = 하나)
+  await expect(
+    page.locator("[data-cube-tier-mine-box] [data-cube-emblem]"),
+  ).toHaveAttribute("data-cube-emblem-division", "IV");
   await noSideScroll(page);
   await shot(page, "tiers-mine", info.project.name);
 
@@ -112,9 +124,33 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   const tier = page.locator("[data-cube-records-tier] a");
   await expect(tier).toHaveText("다이아몬드 IV");
   await expect(tier).toHaveAttribute("href", "/cube/tiers?n=3");
+  await expect(tier.locator("[data-cube-emblem]")).toHaveAttribute(
+    "data-cube-emblem",
+    "diamond",
+  );
   await page.locator("[data-cube-records]").scrollIntoViewIfNeeded();
   await shot(page, "solo-tier", info.project.name);
   await tier.click();
   await expect(page).toHaveURL(/\/cube\/tiers\?n=3$/);
   await expect(page.locator("[data-cube-my-tier]")).toHaveText("다이아몬드 IV");
+});
+
+test("엠블럼 미리보기: 열 티어를 크기별로 견주고 화면 밖으로 넘치지 않는다", async ({
+  page,
+}, info) => {
+  await page.goto("/cube/tiers/emblems");
+  await expect(
+    page.locator("[data-cube-emblem-big] [data-cube-emblem]"),
+  ).toHaveCount(10);
+  // 64·32·24·16px 줄마다 열 개
+  await expect(
+    page.locator("[data-cube-emblem-sizes] [data-cube-emblem]"),
+  ).toHaveCount(40);
+  await expect(
+    page.locator("[data-cube-emblem-divisions] [data-cube-emblem-division]"),
+  ).toHaveCount(4);
+  // HDR 층은 SDR 화면(헤드리스)에서 보이지 않는다(lazy img라 받지도 않는다)
+  await expect(page.locator(".emb-hdr-layer img").first()).toBeHidden();
+  await noSideScroll(page);
+  await shot(page, "tier-emblems", info.project.name);
 });
