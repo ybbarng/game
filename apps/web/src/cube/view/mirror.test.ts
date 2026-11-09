@@ -11,9 +11,11 @@ import { applyMoveToStickers, solvedStickers } from "./geometry";
 import {
   BACK_NORMALS,
   cellPoint,
+  MIRROR_FADE_MS,
   type MirrorPanel,
   mirrorAlpha,
   mirrorCells,
+  mirrorFadeAt,
   mirrorFrame,
   mirrorHitAt,
   mirrorPanels,
@@ -106,6 +108,19 @@ describe("거울 판 배치", () => {
     expect(a).toBeLessThan(1);
     expect(mirrorAlpha(212, 26)).toBe(0);
     expect(mirrorAlpha(32, -55)).toBe(0);
+  });
+
+  it("켜고 끄는 페이드: 시작 시각부터 MIRROR_FADE_MS 동안 고르게, 움직임 줄이기(0ms)는 바로", () => {
+    const f = { from: 0, to: 1, start: 1000 };
+    expect(mirrorFadeAt(f, 1000)).toBe(0);
+    expect(mirrorFadeAt(f, 1000 + MIRROR_FADE_MS / 2)).toBeCloseTo(0.5);
+    expect(mirrorFadeAt(f, 1000 + MIRROR_FADE_MS)).toBe(1);
+    expect(mirrorFadeAt(f, 99_999)).toBe(1);
+    // 나타나던 중에 숨기면 그 자리(0.4)에서 거꾸로 간다
+    const back = { from: 0.4, to: 0, start: 0 };
+    expect(mirrorFadeAt(back, MIRROR_FADE_MS / 2)).toBeCloseTo(0.2);
+    expect(mirrorFadeAt(back, MIRROR_FADE_MS)).toBe(0);
+    expect(mirrorFadeAt(f, 1000, 0)).toBe(1);
   });
 });
 

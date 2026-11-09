@@ -12,6 +12,7 @@ import { SolveSession } from "../solve-session";
 import { parseFromApp } from "./app-bridge";
 import { FocusClock } from "./focus-clock";
 import { IdleShow, type IdleTiming, jigglePlan, playMoves } from "./idle";
+import { miniMirrorShown } from "./mirror";
 import {
   addMiniRecord,
   keyOriginOf,
@@ -301,6 +302,83 @@ describe("IdleShow", () => {
     show.setActive(false);
     clock.advance(60_000);
     expect(log).toEqual([]);
+  });
+});
+
+describe("거울은 직접 맞추는 동안만", () => {
+  const on = { wanted: true, fits: true, focused: true, idle: false };
+
+  it("규칙: 포커스가 있고 섞인 큐브일 때만, 메뉴에서 끄거나 창이 작으면 맞출 때도 없다", () => {
+    expect(miniMirrorShown({ ...on, solved: false })).toBe(true);
+    // 맞춘 큐브는 포커스가 있어도 숨는다(섞으면 나타난다)
+    expect(miniMirrorShown({ ...on, solved: true })).toBe(false);
+    expect(miniMirrorShown({ ...on, solved: false, focused: false })).toBe(
+      false,
+    );
+    expect(miniMirrorShown({ ...on, solved: false, idle: true })).toBe(false);
+    expect(miniMirrorShown({ ...on, solved: false, wanted: false })).toBe(
+      false,
+    );
+    expect(miniMirrorShown({ ...on, solved: false, fits: false })).toBe(false);
+  });
+
+  it("한 판의 흐름: 섞으면 나타나고, 떠 있을 때 조금 섞기 동안 숨고, 맞추면 사라진다", () => {
+    const base = new ManualClock();
+    const clock = new FocusClock(base, true);
+    const s = new SolveSession({
+      n: 3,
+      mode: "solo",
+      inspection: false,
+      clock,
+    });
+    const idle = new IdleShow(
+      base,
+      {
+        solved: () => isSolved(3, s.state),
+        hero: () => null,
+        jiggle: (done) => base.after(800, done),
+        restore: () => {},
+      },
+      {
+        firstMs: 1000,
+        heroEveryMs: 10_000,
+        jiggleEveryMs: 5000,
+        jiggleStepMs: 100,
+        jiggleMoves: 4,
+      },
+    );
+    let focused = true;
+    const shown = () =>
+      miniMirrorShown({
+        wanted: true,
+        fits: true,
+        focused,
+        solved: isSolved(3, s.state),
+        idle: idle.showing !== null,
+      });
+    // 맞춘 큐브에 포커스만: 없다
+    expect(shown()).toBe(false);
+    s.start("R U");
+    expect(shown()).toBe(true);
+    // 다른 앱으로 가면 숨고, 떠 있을 때 조금 섞기가 도는 동안·쉬는 동안 모두 숨는다
+    focused = false;
+    idle.setActive(true);
+    expect(shown()).toBe(false);
+    base.advance(1000);
+    expect(idle.showing).toBe("jiggle");
+    expect(shown()).toBe(false);
+    base.advance(800);
+    expect(idle.showing).toBeNull();
+    expect(shown()).toBe(false);
+    // 돌아오면 다시 보이고, 다 맞추면 사라진다
+    focused = true;
+    idle.setActive(false);
+    expect(shown()).toBe(true);
+    for (const [i, m] of parseMoves(3, "U' R'").entries())
+      s.input(m as never, i === 0 ? "U'" : "R'");
+    expect(s.phase).toBe("done");
+    expect(shown()).toBe(false);
+    idle.dispose();
   });
 });
 
