@@ -69,6 +69,8 @@ const IGNORE = [
   /^apps\/stardraw-server\//,
   // 맥 앱 Cubie(Swift, 이 맥에서만 빌드). 웹 화면은 사이트 주소로 열 뿐이다
   /^apps\/cubie\//,
+  // Cubie 업데이트 목록(Sparkle appcast). 앱만 읽고 웹 화면은 쓰지 않는다
+  /^apps\/web\/public\/cubie\//,
 ];
 
 /** 무엇이든 전부. 그 밖에 짝을 모르는 파일도 전부가 된다 */

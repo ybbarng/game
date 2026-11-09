@@ -149,6 +149,16 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     ).toBe("none");
   });
 
+  it("맥 앱 Cubie와 그 업데이트 목록만: 화면 시험 없음", () => {
+    expect(
+      pick(
+        "apps/cubie/scripts/release.sh",
+        "apps/cubie/VERSION",
+        "apps/web/public/cubie/appcast.xml",
+      ).mode,
+    ).toBe("none");
+  });
+
   it("lockfile·루트 설정·CI·이 스크립트: 전부", () => {
     for (const f of [
       "pnpm-lock.yaml",

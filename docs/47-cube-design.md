@@ -978,7 +978,7 @@ Web Audio 합성(docs/16): 면 돌기 딸깍(짧고 작게, 빠르게 칠 때 �
 
 ### 15-2. 짜임
 
-- **앱**(`apps/cubie`): Swift + AppKit + WKWebView. Tauri·Electron이 아닌 까닭: Rust가 없고, 맥 기본 웹 부품만 써서 가장 가볍다. Xcode 프로젝트 파일 없이 Swift Package(실행 파일 `Cubie` + 화면 없이 시험하는 `CubieCore`)와 묶는 스크립트(`build.sh`: `swift build -c release` → `Cubie.app`, ad-hoc 서명). 최소 macOS 15(이 맥에서만 확인했다). CI·Dockerfile·pnpm 빌드에 넣지 않는다(`.dockerignore`, `scripts/affected-e2e.mjs` 제외 목록).
+- **앱**(`apps/cubie`): Swift + AppKit + WKWebView. Tauri·Electron이 아닌 까닭: Rust가 없고, 맥 기본 웹 부품만 써서 가장 가볍다. Xcode 프로젝트 파일 없이 Swift Package(실행 파일 `Cubie` + 화면 없이 시험하는 `CubieCore`)와 묶는 스크립트(`build.sh`: `swift build -c release` → `Cubie.app`, ad-hoc 서명. 배포본과 자동 업데이트는 15-12). 최소 macOS 15(이 맥에서만 확인했다). CI·Dockerfile·pnpm 빌드에 넣지 않는다(`.dockerignore`, `scripts/affected-e2e.mjs` 제외 목록).
 - **화면**: 앱은 사이트의 미니 모드 `https://game.byb.kr/cube/mini`를 연다(앱이 작고 늘 최신, 웹 코드를 다시 묶지 않음). 주소는 `CUBIE_URL` 환경 변수나 `defaults write kr.byb.cubie url`로 바꾼다(로컬 빌드 확인). 오프라인이면 저장된 응답으로 다시 열고, 그것도 없으면 「연결 없음」과 다시 시도, 연결이 돌아오면 다시 불러온다.
 - **다리**(`apps/web/src/cube/mini/app-bridge.ts` ↔ `Sources/Cubie/Bridge.swift`): 앱 → 화면은 `CustomEvent("cubie")`(포커스·보임·섞기·거울·크기·기록·키 출처), 화면 → 앱은 `webkit.messageHandlers.cubie`(준비·상태·큐브 자리·떠 있을 때 움직임). 다리가 없으면(브라우저) 창의 포커스와 구석 메뉴(⋯)로 같은 일을 한다.
 - 웹 저장소는 앱 것(브라우저와 따로)이다. 키 배치·색은 앱 메뉴 「키·색 설정」(사이트 설정 화면을 앱 안 보통 창으로)에서 정한다.
@@ -1013,7 +1013,7 @@ Web Audio 합성(docs/16): 면 돌기 딸깍(짧고 작게, 빠르게 칠 때 �
 
 ### 15-7. 메뉴
 
-메뉴 막대 큐브 아이콘과 큐브 위 오른쪽 누르기: 큐브로 가기(⌃⌥⌘C), 보이기/숨기기, 섞기, 거울(체크), 크기 2×2~7×7(체크, 기록도 크기별), 기록 보기, 티어표, 대결하기(친구와 `/cube/online`·컴퓨터와 `/cube/vs`를 기본 브라우저로 연다, 앱 안에서 대결하지 않음), 단축키 보기, 키·색 설정, 창 자리 처음으로, 다시 불러오기, 끝내기. 단축키 등록이 실패하면(다른 앱이 이미 잡음) 아이콘이 느낌표가 되고 메뉴 첫 줄에 알린다. 단축키 조합은 `Config.swift` 한곳.
+메뉴 막대 큐브 아이콘과 큐브 위 오른쪽 누르기: 큐브로 가기(⌃⌥⌘C), 보이기/숨기기, 섞기, 거울(체크), 크기 2×2~7×7(체크, 기록도 크기별), 기록 보기, 티어표, 대결하기(친구와 `/cube/online`·컴퓨터와 `/cube/vs`를 기본 브라우저로 연다, 앱 안에서 대결하지 않음), 단축키 보기, 키·색 설정, 창 자리 처음으로, 다시 불러오기, 업데이트 확인…(메뉴 막대 메뉴만, 15-12), 끝내기. 단축키 등록이 실패하면(다른 앱이 이미 잡음) 아이콘이 느낌표가 되고 메뉴 첫 줄에 알린다. 단축키 조합은 `Config.swift` 한곳.
 
 ### 15-8. 입력 출처(공정함 확인)
 
@@ -1059,6 +1059,7 @@ apps/cubie/build.sh && CUBIE_DEBUG=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  
 3. 큐브를 끌어 둘러보기·빈 곳 누르기가 아래 앱에 가는지, 손잡이로 옮기기·크기 바꾸기, ⌘+끌기.
 4. 포커스 받음·맞추는 중의 CPU: 다른 터미널에서 `top -pid $(pgrep -x Cubie) -stats pid,command,cpu,mem`(WebKit 프로세스는 `pgrep -f WebKit.WebContent`).
 5. 메뉴 막대 메뉴 항목(크기·거울·기록·단축키·대결하기·설정).
+6. 배포본 설치(15-12, README 「설치」): `/Applications`에 넣고 띄운 뒤 메뉴 「업데이트 확인…」이 「최신 판」이라고 하는지. 다음 판을 낸 뒤에는 그 판을 받아 바꾸는지.
 
 ### 15-11. 다음 아이디어(이번에 만들지 않음)
 
@@ -1067,3 +1068,19 @@ apps/cubie/build.sh && CUBIE_DEBUG=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  
   - 로그인을 만든다면 맥 로그인 창(`ASWebAuthenticationSession`)으로 사이트(game.byb.kr) 패스키 로그인을 하고 `cubie://`로 결과를 받는 방식을 사용자가 좋다고 했다(2026-11-09). 앱이 패스키를 직접 부르려면 유료 개발자 팀 서명과 연결된 도메인 권한이 필요해서다. 서명 없는 앱에서 되는지는 만들기 전에 작은 시험 앱으로 확인한다.
 - **서로 대결**(사용자 「단기적으로는 우리 사이트로 연결」): 이번에는 메뉴 「대결하기」가 사이트 대결 화면을 연다.
 - **큐브 등록증**(사용자 「급하거나 중요한 건 아니고」): 별 따기의 우주인 신분증(`apps/web/src/stardraw/astronaut/AstronautCard.tsx`)처럼 큐브에도 등록증 같은 카드. 맞추는 속도(크기별 평균 등)로 등록증에 등급을 매기는 것도 생각해 볼 수 있다(사용자, 2026-11-09). 등급 기준으로 컴퓨터 단계 기준 시간(입문~초고수, 10-1절)을 쓸 수 있는지 볼 곳: `packages/cube-ai/src/skill.ts`(`fitLevel`·`fitTargetMs`), `apps/web/src/cube/online/handicap.ts`(`recentAverage`). (2026-11-09 뒤) 맞추기 속도 티어(14절)가 생겨 등록증 등급은 그 티어를 그대로 쓰면 된다(Cubie 기록 티어는 `cube/mini/store.ts` `miniTier`). 등록증의 티어 그림은 `TierEmblem`(`still`·`noHdr`, 14-6)을 쓴다.
+
+### 15-12. 배포본과 자동 업데이트(2026-11-09)
+
+사용자 요청: 「배포본도 만들고 자동 업데이트도 가능하게 하고 설치하자」. 애플 개발자 계정이 없어 공증은 없다. 참고한 사례는 회사 동료의 PokeTokenBar(`scripts/release.sh`·`build-app.sh`·`create-signing-cert.sh`).
+
+- **자동 업데이트는 Sparkle 2**(2.10.1로 고정, Swift Package). 맥 앱 업데이트에서 가장 널리 쓰이고, 서명 없는 앱도 EdDSA 서명으로 업데이트 파일을 확인할 수 있다. `Sparkle.framework`는 `.app`의 `Contents/Frameworks`에 담고 실행 파일에 `@executable_path/../Frameworks`를 rpath로 준다. 프레임워크는 Sparkle이 서명한 그대로 둔다(앱이 hardened runtime이 아니라 라이브러리 서명을 견주지 않는다).
+- **업데이트 파일 서명**: Sparkle EdDSA 열쇠. 공개 열쇠는 `Resources/Info.plist`의 `SUPublicEDKey`, 비밀 열쇠는 만든 맥(사용자 맥)의 로그인 키체인에만 있다(`generate_keys --account kr.byb.cubie`). 열쇠를 잃으면 이미 깔린 앱이 새 판을 받지 못하니, 키체인 백업이 곧 열쇠 백업이다. 다른 맥으로 옮길 때는 `generate_keys --account kr.byb.cubie -x <파일>` → 그 맥에서 `-f <파일>`.
+- **ad-hoc 서명으로 된다(자체 서명 인증서를 두지 않은 까닭)**: ad-hoc 서명은 빌드마다 바뀐다. Sparkle 2.10.1 `Sparkle/SUUpdateValidator.m` `validateUpdateForHost:`는 앱 묶음 업데이트를 「옛 앱의 공개 열쇠로 EdDSA가 맞는다」 **또는** 「코드 서명이 옛 앱과 맞는다」 가운데 하나만 맞으면 받는다(`passedDSACheck || passedCodeSigning`). 그 밖의 조건은 옛 앱이 서명돼 있으면 새 앱도 서명돼 있을 것(그 오류 문구에 「Apple 서명이 없으면 적어도 ad-hoc 서명」이라고 적혀 있다)과, 새 앱의 서명이 깨지지 않았을 것뿐이다. 그래서 공개 열쇠를 바꾸지 않는 한 ad-hoc 앱 사이 업데이트가 된다. PokeTokenBar가 자체 서명 인증서를 둔 까닭은 키체인 「항상 허용」을 지키려는 것이라 Cubie에는 해당하지 않는다. `build.sh`는 `CUBIE_SIGN_IDENTITY`에 키체인 신원 이름이 있으면 그것으로 서명해, 나중에 개발자 ID가 생기면 그 자리에 넣는다.
+- **업데이트 목록(appcast)은 사이트에**: `apps/web/public/cubie/appcast.xml` → `https://game.byb.kr/cubie/appcast.xml`(`SUFeedURL`). GitHub의 「최신 릴리스」에 기대지 않는다: game 저장소에 다른 릴리스가 생기면 어긋난다. 내려받기는 GitHub Release 자산 `https://github.com/ybbarng/game/releases/download/cubie-v<판>/Cubie.zip`, 릴리스는 `--latest=false`로 만든다. appcast만 바뀐 커밋은 화면 시험을 돌리지 않는다(`scripts/affected-e2e.mjs` 제외 목록).
+- **확인 주기**: 하루 한 번(`SUScheduledCheckInterval` 86400, Sparkle 기본값). 성능을 적게 쓰자는 요청이라 짧게 두지 않는다. 처음 띄울 때 「자동으로 확인할까요」를 묻지 않게 `SUEnableAutomaticChecks`를 켰다. 메뉴 막대 메뉴에 「업데이트 확인…」.
+- **포커스를 빼앗지 않는다**: Cubie는 하던 앱의 포커스를 지키는 앱이라, 정해진 확인에서 새 판을 찾아도 Sparkle 창을 띄우지 않는다(`supportsGentleScheduledUpdateReminders`, `standardUserDriverShouldHandleShowingScheduledUpdate`가 늘 false). 대신 메뉴 첫 줄에 「새 판 <판> 설치…」가 생기고, 누르면 그때 창을 연다. Sparkle 창에서 「앞으로 자동으로 받아 설치」를 고르면 그 뒤로는 창 없이 받아 두었다가 끝낼 때 바꾼다.
+- **.app이 아닐 때 끈다**: 실행 파일을 바로 띄우면(`CUBIE_URL` 확인) 앱 묶음이 아니라 Sparkle이 시작하지 못하고 경고 창을 띄우므로, `Bundle.main`이 `.app`일 때만 켠다.
+- **판은 `apps/cubie/VERSION` 한 곳**. `build.sh`가 `CFBundleShortVersionString`·`CFBundleVersion` 둘 다에 같은 값을 넣는다(Sparkle은 `CFBundleVersion`을 견준다). 첫 판 0.1.0.
+- **universal 빌드**: `build.sh --universal`이 arm64·x86_64를 따로 빌드해 `lipo`로 합친다. 맨 `./build.sh`는 이 맥 칩만(확인용, 맥 자원 아끼기).
+- **새 판 내기** `apps/cubie/scripts/release.sh <판> [--notes …] [--dry-run]`: 시험 → VERSION 올리기 → universal 빌드·서명 → `ditto`로 zip(프레임워크 심볼 링크를 지킨다) → `sign_update`로 EdDSA 서명과 확인 → appcast 맨 위에 새 판(`xmllint`로 형식 확인). GitHub Release 만들기·커밋·push·PR은 하지 않고 명령만 찍는다(헤드쿼터가 확인 뒤 직접, Release 먼저). 결과는 `apps/cubie/dist/<판>/`(git 밖). zip을 다시 만들면 서명이 바뀌므로 appcast와 함께 만든 그 zip을 올린다. `generate_appcast`를 쓰지 않은 까닭: 지난 판 zip을 모두 한 폴더에 모아 둬야 하고 목록 전체를 다시 쓴다. 한 판씩 더하는 지금 방식이 단순하다.
+- **공증이 없어서**: 브라우저로 받은 zip은 격리 표시(quarantine)가 붙어 첫 실행이 막힌다. macOS 15부터 오른쪽 누르기 → 열기로는 넘길 수 없고, 「시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기」 또는 `xattr -dr com.apple.quarantine /Applications/Cubie.app`(README 「설치」). Sparkle이 받은 업데이트는 Sparkle이 격리 표시를 지우고 바꾸므로 다시 막히지 않는다.
