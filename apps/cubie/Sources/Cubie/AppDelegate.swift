@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 큐브 창으로 오기 전 앞에 있던 앱(Esc로 돌려줄 곳)을 기억하는 판단(`CubieCore`, 단위 시험)
   private let focusKeeper = FocusKeeper<RunningApp>(front: RunningApp.front())
   private var escMonitor: Any?
+  /// 자동 업데이트(Sparkle). .app으로 띄웠을 때만 켜진다
+  private let updater = Updater()
 
   /// 따로 여는 보통 창(투명 아님): 기록, 단축키, 키·색 설정
   enum WebWindow { case records, keys, tiers, settings }
@@ -192,6 +194,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       m.addItem(warn)
       m.addItem(.separator())
     }
+    if !forWindow, let v = updater.pendingVersion {
+      m.addItem(item("새 판 \(v) 설치…", #selector(menuCheckForUpdates)))
+      m.addItem(.separator())
+    }
     if !forWindow {
       m.addItem(item("큐브로 가기 (\(Config.hotKeyLabel))", #selector(menuFocus)))
       m.addItem(item(cube.panel.isVisible ? "숨기기" : "보이기", #selector(menuToggleVisible)))
@@ -221,6 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     m.addItem(item("다시 불러오기", #selector(menuReload)))
     if !forWindow {
       m.addItem(.separator())
+      if updater.isAvailable { m.addItem(item("업데이트 확인…", #selector(menuCheckForUpdates))) }
       m.addItem(item("Cubie 끝내기", #selector(menuQuit)))
     }
     return m
@@ -259,6 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuResetFrame() { cube.resetFrame() }
   @objc private func menuReload() { cube.load() }
   @objc private func menuQuit() { NSApp.terminate(nil) }
+  @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
 
   /// 기록·단축키·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
   private func openWebWindow(_ kind: WebWindow) {
