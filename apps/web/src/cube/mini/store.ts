@@ -1,4 +1,10 @@
-import { averageOf, resultMs, type SolveRecord } from "../records";
+import {
+  averageOf,
+  KEEP_REPLAYS,
+  resultMs,
+  type SolveRecord,
+  withoutOldReplays,
+} from "../records";
 import { ao5, bestAo5, type MyTier, myTier } from "../tiers/rank";
 
 /**
@@ -8,6 +14,11 @@ import { ao5, bestAo5, type MyTier, myTier } from "../tiers/rank";
  * 잃은 동안은 시계를 멈춘다. 같은 목록에 섞으면 혼자 맞추기의 평균·구간 골드·개인 최고가 다른 규칙의 시간과 견주어진다.
  * 기록 칸의 꼴은 혼자 맞추기와 같아(`SolveRecord`, 입력 방식 `inputs`·살펴보기 `inspection` 포함) 평균·시간 글·티어
  * 함수를 그대로 쓴다.
+ *
+ * 다시 보기 재료(2026-11-09): 섞기 글·씨앗(`scramble`·`seed`), 둔 수와 수마다 시각(`replay`, 포커스 시계 기준
+ * 맞추기 시작부터 ms), 단계별 시각(`splits`)은 `SolveSession`이 혼자 맞추기와 같은 꼴로 채운다. 저장 규칙도 같다:
+ * `replay` 글은 크기마다 최근 30판(`KEEP_REPLAYS`)과 최고 Ao5 5판(`best5`)에만 남기고, 자리가 모자라면 최근 5판까지
+ * 줄여 한 번 더 저장한다. 이 칸이 없는 옛 기록은 다시 보기 없이 그대로 읽힌다.
  */
 
 export const MINI_KEY = "cube.mini.v1";
@@ -122,11 +133,13 @@ function read(storage: StorageLike | null): MiniBook {
   }
 }
 
-function write(storage: StorageLike | null, book: MiniBook): void {
+/** 저장했으면 true. 저장소가 막혀도 이번 화면에서는 그대로 돈다 */
+function write(storage: StorageLike | null, book: MiniBook): boolean {
   try {
     storage?.setItem(MINI_KEY, JSON.stringify(book));
+    return true;
   } catch {
-    // 저장소가 막혀도 이번 화면에서는 그대로 돈다
+    return false;
   }
 }
 
@@ -184,9 +197,19 @@ export function addMiniRecord(
   const found = bestAo5(list);
   const kept = best5[key];
   const keptMs = kept?.length === 5 ? ao5(kept) : null;
+  // 최고 5판은 다시 보기 글까지 그대로 남긴다(목록에서는 30판 뒤로 지워져도)
   if (found && (keptMs === null || found.ms < keptMs))
     best5[key] = list.slice(found.at, found.at + 5);
-  write(storage, { ...b, records: { ...b.records, [key]: list }, best5 });
+  const records = {
+    ...b.records,
+    [key]: withoutOldReplays(list, KEEP_REPLAYS),
+  };
+  if (!write(storage, { ...b, records, best5 })) {
+    // 자리가 모자라면 모든 크기의 다시 보기 글을 최근 5판만 남기고 한 번 더(혼자 맞추기와 같다)
+    for (const k of Object.keys(records))
+      records[k] = withoutOldReplays(records[k] as MiniRecord[], 5);
+    write(storage, { ...b, records, best5 });
+  }
   return list;
 }
 
