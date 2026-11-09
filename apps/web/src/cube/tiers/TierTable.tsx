@@ -126,7 +126,7 @@ export function TierTable({ n, mine }: { n: number; mine?: MyTier | null }) {
                   {TIER_LABEL[row.tier]}
                 </span>
                 <span className="block font-normal text-[11px] text-white/45 sm:hidden">
-                  {wca}
+                  {row.wca ? `상위 ${row.wca.percent}%` : "대회 밖"}
                 </span>
               </th>
               {row.cuts.length === 4 ? (
