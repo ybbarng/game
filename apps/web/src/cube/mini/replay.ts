@@ -32,6 +32,21 @@ export const IDLE_REPLAY_TIMING: IdleReplayTiming = {
 /** 섞기 걸음을 그리는 한 수의 회전 시간(ms). 간격보다 짧아야 차례가 밀리지 않는다 */
 export const SCRAMBLE_MOVE_MS = 110;
 
+/**
+ * 다시 보기에서 `i`번째 걸음을 돌리는 회전 시간(ms): 설정의 회전 시간으로 돌리되, 다음 걸음이 더 빨리 오면 그 간격의
+ * 0.9배로 줄인다(차례가 밀리지 않게, 40ms 아래로는 줄이지 않는다). 떠 있을 때와 기록 창 다시 보기가 함께 쓴다
+ */
+export function replayMoveMs(
+  steps: readonly ReplayStep[],
+  i: number,
+  baseMs: number,
+): number {
+  const step = steps[i];
+  if (!step) return baseMs;
+  const gap = (steps[i + 1]?.at ?? step.at + 1e9) - step.at;
+  return Math.max(40, Math.min(baseMs, Math.round(gap * 0.9)));
+}
+
 /** 다시 볼 수 있는 판: 다시 보기 글·섞기 글이 있고 맞춘 판 */
 export function hasReplay(r: MiniRecord): boolean {
   return (

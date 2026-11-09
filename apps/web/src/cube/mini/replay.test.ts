@@ -10,7 +10,12 @@ import { describe, expect, it } from "vitest";
 
 import { ReplayPlayer } from "../replay-player";
 import { IdleShow, type IdleTiming } from "./idle";
-import { IDLE_REPLAY_TIMING, idleReplaySteps, pickIdleReplay } from "./replay";
+import {
+  IDLE_REPLAY_TIMING,
+  idleReplaySteps,
+  pickIdleReplay,
+  replayMoveMs,
+} from "./replay";
 import type { MiniRecord } from "./store";
 
 /** 떠 있을 때 내 판 다시 보기(docs/47 15-13): 고르기·걸음·쉬기 움직임과 이어 붙이기 */
@@ -190,5 +195,19 @@ describe("떠 있을 때 다시 보기", () => {
     clock.advance(1000);
     expect(show.showing).toBe("hero");
     expect(log).toEqual(["hero"]);
+  });
+});
+
+describe("replayMoveMs", () => {
+  const steps = [0, 500, 560, 590].map((at) => ({
+    at,
+    moves: [],
+    part: "solve" as const,
+  }));
+  it("설정의 회전 시간으로, 다음 수가 더 빨리 오면 그 간격의 0.9배로(40ms 아래로는 줄이지 않는다)", () => {
+    expect(replayMoveMs(steps, 0, 90)).toBe(90);
+    expect(replayMoveMs(steps, 1, 90)).toBe(54);
+    expect(replayMoveMs(steps, 2, 90)).toBe(40);
+    expect(replayMoveMs(steps, 3, 90)).toBe(90);
   });
 });

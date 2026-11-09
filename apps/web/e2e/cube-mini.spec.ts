@@ -352,6 +352,8 @@ test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판�
     "data-mini-replay-total",
     String(keys.length),
   );
+  // 3D를 끈 이 시험에서는 본 화면과 같은 그림 대신(큐브 그림, 3D 모양은 아래 @3d 시험)
+  await expect(box.locator("[data-cube-no3d]")).toHaveCount(1);
   await page.clock.fastForward(450);
   await shot(page, "mini-records-replay", info.project.name);
   // 멈추면 서 있고, 이어 보면 끝까지
@@ -375,6 +377,116 @@ test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판�
   await box.locator("[data-mini-replay-close]").click();
   await expect(panel.locator("[data-mini-replay]")).toHaveCount(0);
 });
+
+/**
+ * 기록 창 다시 보기의 모양(docs/47 15-13): 본 화면과 같은 3D 큐브 하나와 거울 셋. 거울은 「맞출 때만」 규칙과 달리
+ * 다시 보는 동안 늘 보이고, 메뉴에서 거울을 껐으면 큐브만. 큐브·거울은 칸 안에 들어간다. 시계는 진짜 시간이고
+ * (페이드는 그림 프레임이 돌아야 끝난다) 기다림은 모두 조건으로 한다
+ */
+test(
+  "기록 창 다시 보기: 큐브 하나와 거울 셋, 메뉴에서 끈 거울은 끈 채로",
+  { tag: "@3d" },
+  async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "앱 창은 데스크톱에서");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.addInitScript(() => {
+      (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
+      if (localStorage.getItem("cube.mini.v1")) return;
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 3,
+          mirror: true,
+          records: {
+            "3": [
+              {
+                at: Date.UTC(2026, 10, 9, 3),
+                n: 3,
+                mode: "solo",
+                ms: 1600,
+                penalty: 0,
+                moves: 5,
+                scramble: "R U F' D2 L",
+                replay: "L'@0 D2@400 F@800 U'@1200 R'@1600",
+                no: 1,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    await page.setViewportSize({ width: 380, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    const panel = page.locator("[data-mini-records='3']");
+    await panel.locator("[data-mini-replay-open='1']").click();
+    const box = panel.locator("[data-mini-replay]");
+    const canvas = box.locator("[data-cube-canvas]");
+    // SVG 큐브 그림 둘이 아니라 3D 장면 하나
+    await expect(canvas).toHaveCount(1);
+    await expect(box.locator("svg")).toHaveCount(0);
+    await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
+    await expect(box).toHaveAttribute("data-mini-replay-mirror", "on");
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+    // 거울 판 칸이 장면 안에 그려진다(잘리지 않는다)
+    const inside = await canvas.evaluate((c) => {
+      const v = (
+        c as unknown as {
+          __cubeView?: {
+            mirrorCellClient(
+              p: string,
+              u: number,
+              v: number,
+            ): { x: number; y: number } | null;
+          };
+        }
+      ).__cubeView;
+      const r = c.getBoundingClientRect();
+      if (!v) return null;
+      return ["-z", "-x", "-y"].flatMap((p) =>
+        // 판 가운데에서 칸 단위: 3×3 판의 양 끝 모서리 칸
+        [
+          [-1, -1],
+          [1, 1],
+          [-1, 1],
+          [1, -1],
+        ].map(([u, w]) => {
+          const at = v.mirrorCellClient(p, u as number, w as number);
+          return (
+            !!at &&
+            at.x > r.left &&
+            at.x < r.right &&
+            at.y > r.top &&
+            at.y < r.bottom
+          );
+        }),
+      );
+    });
+    expect(inside).toHaveLength(12);
+    expect(inside?.every(Boolean)).toBe(true);
+    await shot(page, "mini-records-replay-3d", info.project.name);
+    // 끝까지 돌면 맞춘 큐브, 거울은 그대로
+    await expect(box).toHaveAttribute("data-mini-replay", "done", {
+      timeout: 15_000,
+    });
+    await expect(box).toHaveAttribute("data-mini-replay-played", "5");
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+
+    // 메뉴에서 거울을 끄면(떠 있는 창이 저장한다) 창이 다시 앞에 올 때 큐브만
+    await page.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}");
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({ ...d, mirror: false }),
+      );
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expect(box).toHaveAttribute("data-mini-replay-mirror", "off");
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "off");
+    await box.locator("[data-mini-replay-close]").click();
+    await expect(canvas).toHaveCount(0);
+  },
+);
 
 test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", async ({
   page,
