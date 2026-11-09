@@ -42,6 +42,8 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 
 `CUBIE_DEBUG=1`을 붙이면 포커스·다리 메시지·키 출처 칸을 표준 출력에 찍는다.
 
+앱 아이콘(`Resources/AppIcon.icns`)과 메뉴 막대 아이콘(`Resources/MenuIcon*.png`, 템플릿 그림 1x·2x)은 `swift apps/cubie/scripts/make-icon.swift`가 그린다(CoreGraphics와 `iconutil`만 쓴다). 그림을 고치면 이 명령으로 다시 만들어 함께 커밋한다. `--preview <폴더>`를 붙이면 크기별·밝은/어두운 바탕·메뉴 막대 미리보기 PNG도 남긴다.
+
 ## 쓰는 법
 
 | 키·동작 | 하는 일 |
