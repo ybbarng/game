@@ -8,8 +8,9 @@ enum Config {
   static let hotKeyModifiers = UInt32(controlKey | optionKey | cmdKey)
   static let hotKeyLabel = "⌃⌥⌘C"
 
-  /// 기본 창 크기(큐브와 거울이 겨우 들어가는 만큼)와 가장 작은 크기(큐브 색을 알아보고 끌어 돌릴 수 있는 만큼)
-  static let defaultSize = NSSize(width: 200, height: 200)
+  /// 기본 창 크기(이름처럼 작게. 웹 미니 화면은 짧은 변이 큐브 크기 n × 10px보다 작으면 거울을 접는데,
+  /// 96이면 7×7(70)까지 거울이 남는다)와 가장 작은 크기(큐브 색을 알아보고 끌어 돌릴 수 있는 만큼)
+  static let defaultSize = NSSize(width: 96, height: 96)
   static let minSize = NSSize(width: 48, height: 48)
   /// 화면 가장자리에서 띄우는 거리
   static let margin: CGFloat = 16

@@ -10,6 +10,9 @@
   <string>kr.byb.cubie</string>
   <key>CFBundleExecutable</key>
   <string>Cubie</string>
+  <!-- 앱 아이콘(Resources/AppIcon.icns, scripts/make-icon.swift가 그린다) -->
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <!-- CFBundleShortVersionString·CFBundleVersion은 build.sh가 VERSION 파일에서 넣는다(판은 그 파일 한 곳에) -->
