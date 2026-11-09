@@ -71,6 +71,7 @@ import {
   hasReplay,
   idleReplaySteps,
   pickIdleReplay,
+  replayMoveMs,
   SCRAMBLE_MOVE_MS,
 } from "./replay";
 import {
@@ -95,6 +96,7 @@ import {
  * - 화면에는 큐브와 거울만 둔다. 시간·단추·글은 보이지 않는다(사용자 「시간도 화면에 떠 있으면 어지러우니까」).
  *   섞기·거울·크기·기록은 앱 메뉴(브라우저에서는 구석의 작은 메뉴)에서 고른다.
  * - 거울은 직접 맞추는 동안만 보인다(포커스가 있고 섞인 큐브, `mirror.ts`). 떠 있을 때의 움직임과 맞춘 큐브에는 없다.
+ *   기록 창의 다시 보기는 같은 큐브·거울을 그리고, 거울이 늘 보인다(메뉴에서 끄지 않았으면).
  * - 키는 사이트의 키 배치(두 손·표기·사용자) 그대로다. 섞기는 배치의 「다시 섞기」 키(두 배치 모두 Enter), 되돌리기는
  *   ⌫. 배치의 Esc(맞춘 상태로)는 쓰지 않는다: 앱에서 Esc는 이전 앱으로 돌아가는 키이고, 실수로 진행을 버리지 않게.
  * - 시간은 포커스가 있는 동안만 잰다(`FocusClock`). 섞은 뒤 첫 면 돌리기부터 맞출 때까지, 살펴보기는 없다.
@@ -550,10 +552,10 @@ function MiniCube() {
                 }
                 // 맞춘 과정은 설정의 회전 시간으로, 다음 수가 더 빨리 오면 그 간격에 맞춰 줄인다(차례가 밀리지 않게)
                 if (step.part === "solve") {
-                  const gap = (steps[i + 1]?.at ?? step.at + 1e9) - step.at;
-                  const want = Math.max(
-                    40,
-                    Math.min(settingsRef.current.moveMs, Math.round(gap * 0.9)),
+                  const want = replayMoveMs(
+                    steps,
+                    i,
+                    settingsRef.current.moveMs,
                   );
                   if (want !== moveMs) {
                     moveMs = want;
@@ -1301,6 +1303,7 @@ function RecordsPanel({
         <dt className="text-white/60">12번 평균</dt>
         <dd>{formatMs(sum.ao12)}</dd>
       </dl>
+      {/* 다시 보는 동안은 큐브·거울이 남은 높이의 3/4, 기록 목록이 1/4(목록은 그 안에서 굴린다) */}
       {watching && (
         <ReplayBox
           key={`${watching.no}-${watching.at}`}
@@ -1369,7 +1372,13 @@ function RecordsPanel({
 
 /**
  * 기록 창의 다시 보기(docs/47 15-13): 섞인 상태에서 맞춘 수를 그때 시각대로(멈춤은 1초까지, 혼자 맞추기와 같은
- * `solveSteps`). 그림은 SVG 큐브(`CubePosterPair`)라 작은 기록 창에 3D 장면을 하나 더 만들지 않는다
+ * `solveSteps`). 그림은 큐브 본 화면과 같은 3D 큐브 하나와 거울 셋(`CubeView`의 거울 판, 2026-11-09 사용자 「큐브
+ * 2개가 아니라 우리 기존 UI처럼 거울이 보이는 디자인」).
+ *
+ * - 거울은 다시 보는 동안 늘 보인다. 메뉴 「거울」을 꺼 두었거나 칸이 거울을 담기에 작으면 큐브만. 「맞출 때만 거울」
+ *   (`miniMirrorShown`)은 직접 맞출 때의 규칙이라 여기에는 쓰지 않는다.
+ * - 장면은 수가 돌 때만 그린다(`CubeView`). 다시 보기를 닫거나 기록 창을 닫으면 장면을 버리고 재생도 멈춘다.
+ * - 3D를 못 그리면 본 화면과 같이 SVG 큐브 그림(`CubePosterPair`, 거울을 끄면 앞만)으로 보인다.
  */
 function ReplayBox({
   record,
@@ -1379,6 +1388,8 @@ function ReplayBox({
   onClose: () => void;
 }) {
   const settings = useCubeSettings();
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const n = record.n;
   const start = useMemo(() => {
     try {
@@ -1389,23 +1400,114 @@ function ReplayBox({
   }, [n, record.scramble]);
   const steps = useMemo(() => solveSteps(n, record.replay), [n, record.replay]);
   const [state, setState] = useState<PuzzleState>(start);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [status, setStatus] = useState<ReplayStatus>("playing");
   const [played, setPlayed] = useState(0);
   const playerRef = useRef<ReplayPlayer | null>(null);
+
+  // 메뉴 「거울」(떠 있는 창이 저장한다). 기록 창이 열린 동안 바꾸면 다시 앞에 올 때·저장될 때 다시 읽는다
+  const [mirrorWanted, setMirrorWanted] = useState(
+    () => loadMiniPrefs().mirror,
+  );
+  useEffect(() => {
+    const reload = () => setMirrorWanted(loadMiniPrefs().mirror);
+    window.addEventListener("focus", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("focus", reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, []);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewRef = useRef<CubeView | null>(null);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [short, setShort] = useState<number | null>(null);
+  const mirrorFits = short === null || short >= MINI_MIRROR_PER_N * n;
+  const mirror = mirrorWanted && mirrorFits;
+
+  const quality = settings.quality;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let disposed = false;
+    setReady(false);
+    const measure = () => {
+      setShort(Math.round(Math.min(canvas.clientWidth, canvas.clientHeight)));
+      viewRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(canvas);
+    void loadCubeView()
+      .then(({ CubeView }) => {
+        if (disposed) return;
+        const s = settingsRef.current;
+        const view = CubeView.create(canvas, {
+          n,
+          quality,
+          colors: s.colors,
+          stickerless: s.stickerless,
+          moveMs: s.moveMs,
+          hidden: s.hidden,
+          // 떠 있는 창처럼 바닥 그림자 없이 큐브와 거울만
+          shadow: false,
+        });
+        // 장면이 늦게 떴으면 그동안 둔 수까지 반영한 상태에서
+        view.setStickers(stickersFromState(n, stateRef.current, null));
+        viewRef.current = view;
+        view.resize(canvas.clientWidth, canvas.clientHeight);
+        setReady(true);
+      })
+      .catch(() => setFailed(true));
+    return () => {
+      disposed = true;
+      ro.disconnect();
+      viewRef.current?.dispose();
+      viewRef.current = null;
+    };
+  }, [n, quality]);
+
+  useEffect(() => {
+    viewRef.current?.setOptions({
+      colors: settings.colors,
+      stickerless: settings.stickerless,
+      hidden: settings.hidden,
+    });
+  }, [settings.colors, settings.stickerless, settings.hidden]);
+
+  useEffect(() => {
+    if (ready) viewRef.current?.setMirror(mirror, true);
+  }, [mirror, ready]);
+
   useEffect(() => {
     let cur = start;
     setState(start);
     setPlayed(0);
+    viewRef.current?.setStickers(stickersFromState(n, start, null));
+    let moveMs = -1;
     const p = new ReplayPlayer(realClock, steps, {
       onStep: (s, i) => {
         cur = applyMoves(n, cur, s.moves);
         setState(cur);
         setPlayed(i + 1);
+        const v = viewRef.current;
+        if (!v) return;
+        // 떠 있을 때 다시 보기와 같이: 설정의 회전 시간, 다음 수가 더 빨리 오면 그 간격에 맞춰 줄인다
+        const want = replayMoveMs(steps, i, settingsRef.current.moveMs);
+        if (want !== moveMs) {
+          moveMs = want;
+          v.setOptions({ moveMs });
+        }
+        for (const m of s.moves) v.enqueue(m);
       },
       onReset: () => {
         cur = start;
         setState(start);
         setPlayed(0);
+        viewRef.current?.setStickers(stickersFromState(n, start, null));
       },
       onStatus: setStatus,
     });
@@ -1416,14 +1518,16 @@ function ReplayBox({
       playerRef.current = null;
     };
   }, [n, start, steps]);
+
   return (
     <div
       data-mini-replay={status}
       data-mini-replay-played={played}
       data-mini-replay-total={steps.length}
-      className="flex shrink-0 flex-col gap-1 rounded bg-white/5 p-1.5"
+      data-mini-replay-mirror={mirror ? "on" : mirrorWanted ? "folded" : "off"}
+      className="flex min-h-0 flex-[3] flex-col gap-1 rounded bg-white/5 p-1.5"
     >
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <span className="font-semibold tabular-nums">
           {record.no}번 · {formatMs(record.ms)}
           {(record.hints ?? 0) > 0 && (
@@ -1460,13 +1564,31 @@ function ReplayBox({
           </button>
         </div>
       </div>
-      <CubePosterPair
-        n={n}
-        state={state}
-        settings={settings}
-        captions={false}
-        className="mx-auto w-full max-w-60"
-      />
+      <div className="relative min-h-28 flex-1">
+        {failed ? (
+          <div
+            data-cube-no3d
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <CubePosterPair
+              n={n}
+              state={state}
+              settings={settings}
+              captions={false}
+              frontOnly={!mirror}
+              className="h-full w-full"
+            />
+          </div>
+        ) : (
+          <canvas
+            key={`${n}-${quality}`}
+            ref={canvasRef}
+            data-cube-canvas
+            data-cube-ready={ready ? "" : undefined}
+            className="absolute inset-0 h-full w-full cursor-grab touch-none active:cursor-grabbing"
+          />
+        )}
+      </div>
     </div>
   );
 }
