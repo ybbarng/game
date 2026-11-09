@@ -145,7 +145,10 @@ function searchRounds(
 ): string | null {
   type Node = {
     p: number[];
-    path: number[];
+    /** 마지막 수와 앞 노드(경로는 끝에서 거슬러 올라가 모은다) */
+    mi: number;
+    prev: Node | null;
+    last: number | undefined;
     ys: number;
     v: boolean;
     phase: Phase;
@@ -153,13 +156,22 @@ function searchRounds(
   };
   const seen = new Set<string>();
   let layer: Node[] = [
-    { p: start, path: [], ys: 0, v: v0, phase: 0, rounds: 1 },
+    {
+      p: start,
+      mi: -1,
+      prev: null,
+      last: undefined,
+      ys: 0,
+      v: v0,
+      phase: 0,
+      rounds: 1,
+    },
   ];
   for (let depth = 1; depth <= 14; depth++) {
     const next: Node[] = [];
     let best: Node | null = null;
     for (const node of layer) {
-      const last = node.path.at(-1);
+      const last = node.last;
       const lastLayer = last === undefined ? -1 : (LAYER[last] as number);
       for (let mi = 0; mi < MOVES.length; mi++) {
         const kind = LAYER[mi] as number;
@@ -187,14 +199,24 @@ function searchRounds(
           phase = 3;
         }
         const perm = PERMS[mi] as number[];
-        const p = node.p.map((i) => perm[i] as number);
+        const np = node.p;
+        const p: number[] = new Array(np.length);
+        // 스티커 자리(0..53)를 글자 하나씩으로 묶은 열쇠(join보다 빠르다)
+        let k = "";
+        for (let q = 0; q < np.length; q++) {
+          const x = perm[np[q] as number] as number;
+          p[q] = x;
+          k += String.fromCharCode(48 + x);
+        }
         const v = node.v || low(p);
-        const k = `${p.join(",")}|${v}|${phase}|${rounds}|${kind}`;
+        k += `${v ? 1 : 0}${phase}${rounds}${kind}`;
         if (seen.has(k)) continue;
         seen.add(k);
         const child: Node = {
           p,
-          path: [...node.path, mi],
+          mi,
+          prev: node,
+          last: mi,
           ys: node.ys + (kind === 2 ? 1 : 0),
           v,
           phase,
@@ -208,7 +230,12 @@ function searchRounds(
         next.push(child);
       }
     }
-    if (best) return best.path.map((i) => MOVES[i]).join(" ");
+    if (best) {
+      const path: string[] = [];
+      for (let n: Node | null = best; n?.prev; n = n.prev)
+        path.push(MOVES[n.mi] as string);
+      return path.reverse().join(" ");
+    }
     layer = next;
   }
   return null;
