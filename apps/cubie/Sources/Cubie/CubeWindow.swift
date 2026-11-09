@@ -1,4 +1,5 @@
 import AppKit
+import CubieCore
 import Network
 import WebKit
 
@@ -214,18 +215,19 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     path.start(queue: .main)
   }
 
-  /// 저장된 자리, 없으면 화면 오른쪽 아래 구석
+  /// 저장된 크기·자리. 없거나 그 자리가 지금 어느 화면에도 없으면(모니터를 뗀 뒤) 기본 자리
   private func placeWindow() {
-    if !panel.setFrameUsingName(Self.frameName) { resetFrame() }
+    let restored = panel.setFrameUsingName(Self.frameName)
+    let screens = NSScreen.screens.map(\.visibleFrame)
+    if !restored || !WindowPlacement.isOnScreen(panel.frame, screens: screens) { resetFrame() }
     panel.setFrameAutosaveName(Self.frameName)
   }
 
+  /// 기본 크기로, 주 화면(메뉴 막대가 있는 화면) 보이는 영역의 오른쪽 아래 구석에
   func resetFrame() {
-    guard let screen = NSScreen.main?.visibleFrame else { return }
-    let s = Config.defaultSize
-    panel.setFrame(
-      NSRect(x: screen.maxX - s.width - Config.margin, y: screen.minY + Config.margin, width: s.width, height: s.height),
-      display: true)
+    guard let screen = (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame else { return }
+    let f = WindowPlacement.defaultFrame(visible: screen, size: Config.defaultSize, margin: Config.margin)
+    panel.setFrame(f, display: true)
   }
 
   func load() {

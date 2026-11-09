@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.1</title>
+      <pubDate>Mon, 09 Nov 2026 06:29:35 +0000</pubDate>
+      <sparkle:version>0.1.1</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;새 앱 아이콘. 처음 띄우면 작은 창(96×96)이 화면 오른쪽 아래에 뜬다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.1/Cubie.zip" length="2614954" type="application/octet-stream" sparkle:edSignature="DmX29/ZtJdYmirMedA+/a3KCEcPrg/FTHImXgWHo3pV69s7C+JRmybc6tH9BM5uVZB2SfQUsBT7dchLAS4HpCA=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.0</title>
       <pubDate>Mon, 09 Nov 2026 06:07:15 +0000</pubDate>
       <sparkle:version>0.1.0</sparkle:version>

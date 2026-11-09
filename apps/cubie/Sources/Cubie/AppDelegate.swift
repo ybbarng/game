@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    statusItem.button?.image = NSImage(systemSymbolName: "cube", accessibilityDescription: "Cubie")
+    statusItem.button?.image = Self.menuIcon("MenuIcon", fallback: "cube", label: "Cubie")
     let menu = NSMenu()
     menu.delegate = self
     statusItem.menu = menu
@@ -43,8 +43,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     if Config.debug { print("[cubie] hotkey \(Config.hotKeyLabel) registered=\(hotKeyOK)"); fflush(stdout) }
     if !hotKeyOK {
       // 다른 앱이 이미 잡았다: 메뉴 막대 아이콘에 표시하고 메뉴 첫 줄에 알린다
-      statusItem.button?.image = NSImage(
-        systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Cubie 단축키 실패")
+      statusItem.button?.image = Self.menuIcon(
+        "MenuIconWarn", fallback: "exclamationmark.triangle", label: "Cubie 단축키 실패")
     }
 
     // 다른 앱이 앞으로 올 때마다 기억한다(창을 직접 눌러 왔을 때도 Esc로 돌아갈 곳)
@@ -92,6 +92,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     cube.bridge.onReady = { [weak self] in self?.cube.sendFocus() }
     cube.load()
     cube.panel.orderFrontRegardless()
+  }
+
+  /// 메뉴 막대 아이콘: .app 안 Resources의 템플릿 그림(1x·2x, 맥이 막대 색에 맞춰 칠한다).
+  /// .app 밖에서 실행 파일만 띄웠으면 그림이 없어 SF Symbol로 대신한다
+  private static func menuIcon(_ name: String, fallback: String, label: String) -> NSImage? {
+    if let image = Bundle.main.image(forResource: name) {
+      image.size = NSSize(width: 18, height: 18)
+      image.isTemplate = true
+      image.accessibilityDescription = label
+      return image
+    }
+    return NSImage(systemSymbolName: fallback, accessibilityDescription: label)
   }
 
   func applicationWillTerminate(_ notification: Notification) {
