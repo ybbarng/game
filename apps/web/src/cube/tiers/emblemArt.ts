@@ -192,10 +192,12 @@ export const BAND_HALF = 0.22;
 export function hdrGlintSrc(tier: HdrTier): string {
   return `/cube/tiers/hdr-${tier}-glint.avif`;
 }
-/** 늘 은은하게 켜 두는 HDR 그림: 깎인 면 모서리·윗면 바깥 모서리 빛과 작은 반짝임 점 */
+/** 늘 켜 두는 HDR 그림: 반짝임 자리·블럭 반사 점의 작은 빛 덩어리와 윗면 바깥·깎인 면 모서리의 부드러운 빛 */
 export function hdrFacetSrc(tier: HdrTier): string {
   return `/cube/tiers/hdr-${tier}-facet.avif`;
 }
 export function hdrBandSrc(tier: HdrTier, frame: number): string {
   return `/cube/tiers/hdr-${tier}-band${frame}.avif`;
 }
+/** 미리보기 「HDR 확인」의 1000 nit 흰 네모 */
+export const HDR_CHECK_WHITE_SRC = "/cube/tiers/hdr-check-white.avif";

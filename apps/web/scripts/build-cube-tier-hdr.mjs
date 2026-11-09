@@ -1,6 +1,6 @@
 // 큐브 티어 엠블럼의 HDR 반짝임 그림(cube/tiers/TierEmblem.tsx). 다이아몬드·마스터·그랜드마스터·챌린저마다
-//   hdr-<티어>-glint.avif   반짝임 점(엠블럼 SVG와 같은 자리, emblemArt.ts glintsFor) + 윗면 바깥 두 변의 금속 빛
-//   hdr-<티어>-facet.avif  늘 은은하게 켜 두는 깎인 면 모서리·윗면 모서리 빛, 작은 반짝임 점, 블럭마다 위 모서리 빛과 반사 점(낮은 밝기)
+//   hdr-<티어>-glint.avif   반짝임 자리의 큰 빛 덩어리(엠블럼 SVG와 같은 자리, emblemArt.ts glintsFor) + 윗면 바깥 두 변의 금속 빛
+//   hdr-<티어>-facet.avif  늘 켜 두는 작은 빛 덩어리(반짝임 자리·블럭마다 반사 점)와 윗면 모서리·깎인 면 모서리의 부드러운 빛
 //   hdr-<티어>-band0~2.avif 빛 띠 세 자리(왼쪽·가운데·오른쪽). CSS가 차례로 켰다 꺼 지나가는 것처럼 보인다
 // 를 만든다. 그림은 엠블럼 viewBox(64×64)를 그대로 덮는다.
 //
@@ -10,6 +10,10 @@
 // - AVIF, BT.2020 색역 + PQ 전송 함수(CICP 9/16/9), 10비트, 알파. Chrome(macOS)과 Safari 26이 HDR로 보여 준다.
 // - 모든 화소의 색을 NITS(보통 흰색 203 nit의 약 5배)의 물든 흰빛으로 두고 모양은 알파로만 만든다. 가장자리를 낮은 nit로
 //   두면 아래 SVG를 가려 회색 테두리가 된다.
+// - 빛은 가는 선이 아니라 반지름이 있는 부드러운 빛 덩어리(가운데 꽉 찬 점 + 가우스 번짐)로 그린다. 엠블럼은 28~112px로
+//   줄여 보여서, 1px 안팎의 선은 화소 평균으로 흐려져 흰색보다 밝은 곳이 남지 않았다(2026-11-09 사용자 HDR 맥에서
+//   「HDR 안 되는 것 같다」, 층은 켜져 있었다). 빛 덩어리의 반지름은 28px(1 viewBox 단위가 2배 화면에서 약 0.9 화소)에서도
+//   2~3 화소가 남게 잡는다.
 // - img에 transform을 걸지 않으려고 띠의 자리를 그림 세 장에 굽는다(Safari가 transform 걸린 HDR 그림을 SDR로 그린 적이 있다).
 // 모양 값은 emblemArt.ts에서 바로 불러온다(Node 형 지우기, Node 22.18+).
 //
@@ -44,17 +48,16 @@ import {
   glintsFor,
   HDR_TIERS,
   HDR_TINT,
-  STICKER_INSET,
 } from "../src/cube/tiers/emblemArt.ts";
 
 /** 그림 한 변(px). 엠블럼 64px을 3배 화면에서, 128px을 1.5배 화면에서 그대로 */
 const SIZE = 192;
-/** 화소 밝기(nit). 203이 보통 흰색 */
+/** 화소 밝기(nit). 203이 보통 흰색. 늘 켜 두는 그림도 같은 밝기다(밝기는 알파·CSS 불투명도로만 낮춘다) */
 const NITS = 1000;
-/** 늘 켜 두는 면 모서리 그림의 밝기(nit). 보통 흰색의 약 3배로 낮게 두고 CSS가 불투명도를 더 낮춘다 */
-const FACET_NITS = 600;
-/** 띠는 반짝임보다 옅게(알파 상한) */
-const BAND_A = 0.8;
+/** 띠는 반짝임보다 조금 옅게(알파 상한) */
+const BAND_A = 0.9;
+/** 「HDR 확인」 흰 네모 한 변(px) */
+const CHECK_SIZE = 32;
 
 const OUT_DIR = fileURLToPath(
   new URL("../public/cube/tiers/", import.meta.url),
@@ -115,51 +118,65 @@ function segDist(x, y, [ax, ay], [bx, by]) {
   return Math.hypot(x - (ax + ex * t), y - (ay + ey * t));
 }
 
-/** 네 갈래 반짝임 하나의 알파 */
-function glintAlpha(g, x, y) {
-  const dx = x - g.x;
-  const dy = y - g.y;
-  const r = Math.hypot(dx, dy);
-  const core = 1 - smoothstep(g.r * 0.08, g.r * 0.2, r);
-  const glow = 0.45 * Math.exp(-((r / (g.r * 0.35)) ** 2));
-  const ray = (along, perp) =>
-    along > g.r
-      ? 0
-      : (1 - along / g.r) ** 1.6 * Math.exp(-((perp / (g.r * 0.07)) ** 2));
-  const rays = Math.max(ray(Math.abs(dx), dy), ray(Math.abs(dy), dx));
-  return 1 - (1 - core) * (1 - glow) * (1 - rays);
+/**
+ * 빛 덩어리 하나의 알파(viewBox 단위). 가운데 core 반지름까지는 꽉 차고(알파 1), 그 밖은 sigma로 부드럽게 번진다(peak).
+ * 줄여 보여도 가운데가 몇 화소 남아 흰색보다 밝게 보인다.
+ */
+function bloomAlpha(cx, cy, core, sigma, peak, x, y) {
+  const r = Math.hypot(x - cx, y - cy);
+  const disc = 1 - smoothstep(core * 0.6, core, r);
+  const glow = peak * Math.exp(-((r / sigma) ** 2));
+  return Math.max(disc, glow);
 }
 
+/** 네 갈래 반짝임 하나의 알파: 빛 덩어리 + 굵기 있는 빛줄기 넷 */
+function glintAlpha(g, x, y, k = 1) {
+  const dx = x - g.x;
+  const dy = y - g.y;
+  const blob = bloomAlpha(g.x, g.y, g.r * 0.28 * k, g.r * 0.6 * k, 0.75, x, y);
+  const len = g.r * 1.3 * k;
+  const ray = (along, perp) =>
+    along > len
+      ? 0
+      : 0.9 *
+        (1 - along / len) ** 1.4 *
+        Math.exp(-((perp / (g.r * 0.12 * k)) ** 2));
+  const rays = Math.max(ray(Math.abs(dx), dy), ray(Math.abs(dy), dx));
+  return 1 - (1 - blob) * (1 - rays);
+}
+
+/** 윗면 바깥 두 변의 금속 빛(위 꼭짓점 쪽이 밝다). 굵기 sigma, 세기 peak */
+function topEdgeAlpha(T, UR, UL, sigma, peak, x, y) {
+  const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
+  const nearTop = 1 - Math.min(1, Math.hypot(x - T[0], y - T[1]) / 18);
+  return peak * nearTop * Math.exp(-((edge / sigma) ** 2));
+}
+
+/** 빛 띠가 지나갈 때 켜지는 그림: 반짝임 자리마다 큰 빛 덩어리와 빛줄기, 윗면 바깥 두 변의 굵은 금속 빛 */
 function glintLayer(tier) {
   const [T, UR, , , , UL] = cubeHex(tier);
   const glints = glintsFor(tier);
   return (x, y) => {
     let keep = 1;
     for (const g of glints) keep *= 1 - glintAlpha(g, x, y);
-    // 윗면 바깥 두 변: 금속 모서리가 빛을 받는다(가는 선, 위 꼭짓점 쪽이 밝다)
-    const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
-    const nearTop = 1 - Math.min(1, Math.hypot(x - T[0], y - T[1]) / 20);
-    keep *= 1 - 0.7 * nearTop * Math.exp(-((edge / 0.55) ** 2));
+    keep *= 1 - topEdgeAlpha(T, UR, UL, 1.1, 0.85, x, y);
     return 1 - keep;
   };
 }
 
 /**
- * 늘 켜 두는 그림: 깎인 면 사이 모서리(빛 받는 정도만큼), 윗면 바깥 두 변, 반짝임 자리의 작은 별.
- * 선은 가늘게(약 1px) 두어 화면 밝기가 출렁이지 않게 한다.
+ * 늘 켜 두는 그림: 반짝임 자리마다 작은 빛 덩어리, 윗면 바깥 두 변의 금속 빛, 블럭마다 반사 점 빛 덩어리(빛 받는 면일수록
+ * 밝다), 깎인 면 사이 모서리의 부드러운 빛줄. 밝은 면적은 엠블럼의 몇 %로 작게 두어 화면 밝기가 출렁이지 않게 한다.
  */
 function facetLayer(tier) {
   const [T, UR, , , , UL] = cubeHex(tier);
   const edges = facetEdges(tier);
-  const sparks = glintsFor(tier).map((g) => ({ ...g, r: g.r * 0.45 }));
-  const a = STICKER_INSET;
+  const glints = glintsFor(tier);
   const blocks = cubeFaces(tier).flatMap((q, f) =>
     [0, 1, 2].flatMap((i) =>
       [0, 1, 2].map((j) => ({
-        lit: FACE_LIT[f],
+        lit: FACE_LIT[f] ** 1.5,
         dot: cellAt(q, i, j, BLOCK_SPARK[0], BLOCK_SPARK[1]),
-        e0: cellAt(q, i, j, a + 0.06, a + 0.04),
-        e1: cellAt(q, i, j, 0.62, a + 0.04),
       })),
     ),
   );
@@ -173,22 +190,18 @@ function facetLayer(tier) {
       );
       keep *=
         1 -
-        0.5 *
+        0.45 *
           lit *
           (1 - 0.6 * t) *
-          Math.exp(-((segDist(x, y, a, b) / 0.32) ** 2));
+          Math.exp(-((segDist(x, y, a, b) / 0.55) ** 2));
     }
-    const edge = Math.min(segDist(x, y, UL, T), segDist(x, y, T, UR));
-    keep *= 1 - 0.85 * Math.exp(-((edge / 0.4) ** 2));
-    for (const g of sparks) keep *= 1 - glintAlpha(g, x, y);
-    // 블럭마다: 빛 받는 위 모서리 짧은 줄과 테이블 모서리의 작은 반사 점
+    keep *= 1 - topEdgeAlpha(T, UR, UL, 0.75, 0.8, x, y);
+    for (const g of glints) keep *= 1 - glintAlpha(g, x, y, 0.75);
+    // 블럭마다 테이블 모서리의 반사 점: 칸 안에 들어가는 작은 빛 덩어리
     for (const b of blocks) {
-      if (Math.abs(x - b.dot[0]) > 2.6 || Math.abs(y - b.dot[1]) > 2.6)
+      if (Math.abs(x - b.dot[0]) > 3.5 || Math.abs(y - b.dot[1]) > 3.5)
         continue;
-      keep *=
-        1 - 0.55 * b.lit * Math.exp(-((segDist(x, y, b.e0, b.e1) / 0.2) ** 2));
-      const r = Math.hypot(x - b.dot[0], y - b.dot[1]);
-      keep *= 1 - 0.95 * b.lit * Math.exp(-((r / 0.32) ** 2));
+      keep *= 1 - b.lit * bloomAlpha(b.dot[0], b.dot[1], 0.7, 1.1, 0.7, x, y);
     }
     return 1 - keep;
   };
@@ -209,16 +222,16 @@ function bandLayer(tier, frame) {
   };
 }
 
-function rgba16(alphaAt, tint, nits) {
-  const stride = 1 + SIZE * 8;
-  const raw = Buffer.alloc(stride * SIZE);
+function rgba16(alphaAt, tint, nits, size = SIZE) {
+  const stride = 1 + size * 8;
+  const raw = Buffer.alloc(stride * size);
   const lin = toBt2020(tint);
   const top = Math.max(...lin);
   const signal = lin.map((v) => Math.round(pq((nits * v) / top) * 65535));
-  const s = EMBLEM_BOX / SIZE;
-  for (let py = 0; py < SIZE; py++) {
+  const s = EMBLEM_BOX / size;
+  for (let py = 0; py < size; py++) {
     raw[py * stride] = 0; // 줄 필터 없음
-    for (let px = 0; px < SIZE; px++) {
+    for (let px = 0; px < size; px++) {
       // 화소 가운데를 viewBox 좌표로, 4점 평균으로 가장자리를 매끄럽게
       let a = 0;
       for (const [ox, oy] of [
@@ -246,10 +259,10 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-function png16(raw) {
+function png16(raw, size) {
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(SIZE, 0);
-  ihdr.writeUInt32BE(SIZE, 4);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
   ihdr[8] = 16; // 비트 깊이
   ihdr[9] = 6; // RGBA
   return Buffer.concat([
@@ -260,10 +273,10 @@ function png16(raw) {
   ]);
 }
 
-function build(alphaAt, tint, name, dir, nits = NITS) {
+function build(alphaAt, tint, name, dir, nits = NITS, size = SIZE) {
   const png = join(dir, `${name}.png`);
   const out = join(OUT_DIR, name);
-  writeFileSync(png, png16(rgba16(alphaAt, tint, nits)));
+  writeFileSync(png, png16(rgba16(alphaAt, tint, nits, size), size));
   execFileSync(
     "avifenc",
     [
@@ -296,15 +309,11 @@ function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "cube-tier-hdr-"));
   try {
+    // 미리보기 「HDR 확인」 줄의 1000 nit 흰 네모(브라우저가 HDR 그림을 HDR로 그리는지 가른다)
+    build(() => 1, [1, 1, 1], "hdr-check-white.avif", dir, 1000, CHECK_SIZE);
     for (const tier of HDR_TIERS) {
       build(glintLayer(tier), HDR_TINT[tier], `hdr-${tier}-glint.avif`, dir);
-      build(
-        facetLayer(tier),
-        HDR_TINT[tier],
-        `hdr-${tier}-facet.avif`,
-        dir,
-        FACET_NITS,
-      );
+      build(facetLayer(tier), HDR_TINT[tier], `hdr-${tier}-facet.avif`, dir);
       for (const [i, frame] of BAND_FRAMES.entries())
         build(
           bandLayer(tier, frame),

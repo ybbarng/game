@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { HDR_GLOW_SRC } from "@/stardraw/hdr-glow";
+import { HDR_CHECK_WHITE_SRC, hdrFacetSrc } from "./emblemArt";
 import { type MyTier, tierOf } from "./rank";
 import { TierEmblem } from "./TierEmblem";
 import { TIER_TONE, TierLink } from "./TierTable";
@@ -40,6 +42,8 @@ export function EmblemPreview() {
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-4">
         <h1 className="font-bold text-lg">티어 엠블럼</h1>
+
+        <HdrCheck />
 
         <section
           data-cube-emblem-big
@@ -99,5 +103,68 @@ export function EmblemPreview() {
         </section>
       </div>
     </main>
+  );
+}
+
+/** 「HDR 확인」 견본: HDR 맥에서 브라우저가 HDR 그림을 HDR로 그리는지, 엠블럼 그림이 충분히 밝은지 가른다 */
+function HdrCheck() {
+  const [screen, setScreen] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const high = matchMedia("(dynamic-range: high)").matches;
+      const limit = CSS.supports("dynamic-range-limit", "no-limit");
+      setScreen(
+        `이 브라우저: 화면 ${high ? "HDR" : "SDR"} · dynamic-range-limit ${limit ? "지원" : "모름"}`,
+      );
+    } catch {
+      setScreen(null);
+    }
+  }, []);
+  // img에는 위치·변형을 걸지 않는다(Safari가 위치·변형 걸린 HDR 그림을 SDR로 그린 적이 있다, docs/36)
+  const img = (src: string, px: number) => (
+    <span className="block" style={{ width: px, height: px }}>
+      {/* biome-ignore lint/performance/noImgElement: HDR 견본 그림은 원본 그대로 보여야 한다 */}
+      <img
+        src={src}
+        alt=""
+        width={px}
+        height={px}
+        draggable={false}
+        className="emb-hdr-check block h-full w-full"
+      />
+    </span>
+  );
+  const item = (label: string, body: ReactNode) => (
+    <figure className="flex flex-col items-center gap-1">
+      {body}
+      <figcaption className="text-white/60 text-xs">{label}</figcaption>
+    </figure>
+  );
+  return (
+    <section data-cube-hdr-check className="flex flex-col gap-2">
+      <h2 className="font-semibold text-sm">HDR 확인</h2>
+      <p className="text-white/70 text-xs">
+        HDR 화면이면 첫 네모가 둘째 네모·흰 글자보다 확실히 밝다. 첫 네모부터
+        같아 보이면 브라우저나 화면이 HDR 그림을 HDR로 그리지 않는 것이고, 첫
+        네모는 밝은데 엠블럼 빛만 흐리면 엠블럼 그림이 모자란 것이다.
+      </p>
+      {screen && (
+        <p data-cube-hdr-check-screen className="text-white/50 text-xs">
+          {screen}
+        </p>
+      )}
+      <div className="flex flex-wrap items-end gap-4">
+        {item("HDR 흰색(1000 nit)", img(HDR_CHECK_WHITE_SRC, 64))}
+        {item("보통 흰색", <span className="block size-16 bg-white" />)}
+        {item(
+          "흰 글자",
+          <span className="flex h-16 items-center font-black text-3xl text-white">
+            흰색
+          </span>,
+        )}
+        {item("별 따기 별빛", img(HDR_GLOW_SRC, 96))}
+        {item("다이아몬드 엠블럼 빛", img(hdrFacetSrc("diamond"), 192))}
+      </div>
+    </section>
   );
 }
