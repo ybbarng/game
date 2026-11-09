@@ -1,90 +1,145 @@
-# Cubie
+<p align="center">
+  <img src="docs/icon.png" width="128" height="128" alt="Cubie 아이콘">
+</p>
 
-화면 구석에 작게 늘 떠 있는 큐브 맥 앱. 단축키로 큐브에 키 입력을 주고, 맞추다가 Esc를 누르면 하던 앱으로 돌아간다. 화면은 사이트의 미니 모드(`https://game.byb.kr/cube/mini`)를 맥 기본 웹 부품(WKWebView)으로 연다. 설계는 [docs/47 15절](../../docs/47-cube-design.md).
+<h1 align="center">Cubie</h1>
 
-이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
+<p align="center">
+  화면 구석에 작게 떠 있는 큐브. 단축키를 누르면 큐브를 맞추고, Esc를 누르면 하던 일로 돌아간다.<br>
+  <sub>A tiny Rubik's cube that floats in the corner of your Mac screen.</sub>
+</p>
+
+<p align="center">
+  <a href="https://game.byb.kr/cubie/download"><b>macOS용 내려받기</b></a>
+  · macOS 15 이상 · Apple Silicon과 Intel · 무료
+</p>
+
+<p align="center">
+  <img src="docs/hero.webp" width="300" alt="맞춘 큐브가 저절로 섞였다가 다시 맞춰지는 모습">
+</p>
+
+Cubie는 바탕 없이 큐브만 떠 있는 작은 창이다. 처음에는 가로세로 96포인트로 화면 오른쪽 아래에 뜨고, 48포인트까지 줄일 수 있다. 다른 창 위에 늘 떠 있고 모든 데스크톱에서 보인다.
+
+일하다 잠깐 쉬고 싶을 때 ⌃⌥⌘C(Control+Option+Command+C)를 누르면 Cubie가 키보드 입력을 받는다. 다 맞췄거나 그만두고 싶으면 Esc를 누른다. 그때 쓰던 앱으로 돌아가고, 맞추던 큐브는 그대로 남아 다음에 이어서 맞추면 된다.
+
+![화면 오른쪽 아래에 섞인 큐브와 거울이 떠 있는 모습](docs/desktop-solving.webp)
+
+<sub>이 README의 화면 그림은 합성했다. 큐브와 기록 창은 실제 Cubie 화면이고, 바탕화면·메뉴 막대·문서 창은 그려 넣은 것이다.</sub>
+
+## 할 수 있는 것
+
+- **키보드로 맞추기**: 2×2부터 7×7까지. 키 배치는 두 가지에서 고른다.
+- **거울**: 맞추는 동안 큐브 둘레에 작은 판 셋이 떠서, 지금 각도에서 보이지 않는 왼쪽·뒤·아래 면을 비춘다. 메뉴에서 끌 수 있다.
+- **시간 재기와 티어**: 섞은 뒤 첫 수부터 다 맞출 때까지 시간을 잰다. 다른 앱으로 갔다 오면 그 사이는 빼고 이어 잰다. 맞추는 동안 숫자가 어른거리지 않게 화면에는 시간을 띄우지 않고, 메뉴 「기록 보기」에서 크기별 기록과 티어를 본다. 티어는 아이언부터 챌린저까지의 실력 등급으로, 이어서 맞춘 5번의 평균 가운데 가장 좋은 값으로 매긴다. 티어마다 몇 초인지는 메뉴 「티어표」에서 본다.
+- **다시 보기**: 기록 창에서 맞춘 기록을 그때 속도 그대로 다시 본다.
+- **가만히 둘 때**: 다 맞춘 큐브를 두면 6분에 한 번 내가 맞춘 기록 하나를 다시 돌린다. 기록이 없으면 위 그림처럼 Cubie가 스스로 섞었다가 맞춘다. 맞추다 만 큐브는 2분에 한 번 몇 수 돌렸다가 되돌리고, 맞추던 상태는 바뀌지 않는다. 움직임은 다른 앱으로 간 지 1분 뒤부터 시작하고, macOS의 「동작 줄이기」를 켜면 움직이지 않는다.
+- **가볍게**: 가만히 떠 있을 때 CPU를 거의 쓰지 않는다. 만든 사람의 맥에서 맞춘 큐브로 떠 있을 때 0.0%, 섞인 큐브로 떠 있을 때 1% 안팎이었다.
+- **대결은 사이트에서**: 메뉴 「대결하기」가 기본 브라우저로 [game.byb.kr 큐브](https://game.byb.kr/cube)의 친구 대결이나 컴퓨터 대결을 연다.
+
+<table>
+  <tr>
+    <td><img src="docs/desktop-records.webp" alt="기록 창: 크기별 티어와 3×3 기록 다섯 판"></td>
+    <td><img src="docs/desktop-replay.webp" alt="기록 창에서 한 판을 다시 보는 모습"></td>
+  </tr>
+  <tr>
+    <td align="center">기록 보기: 티어와 크기별 기록</td>
+    <td align="center">맞춘 판 다시 보기</td>
+  </tr>
+</table>
 
 ## 설치
 
-1. [GitHub Release](https://github.com/ybbarng/game/releases)에서 `cubie-v<판>`의 `Cubie.zip`을 받아 푼다(Apple Silicon·Intel 맥 모두, macOS 15 이상).
-2. `Cubie.app`을 `/Applications`로 옮긴다.
-3. 처음 띄우기: 애플 공증을 받지 않은 앱이라 받은 그대로는 맥이 막는다. macOS 15부터는 오른쪽 누르기 → 열기로도 넘길 수 없다. 둘 가운데 하나를 한다.
-   - 한 번 띄워 막히게 한 뒤 「시스템 설정 → 개인정보 보호 및 보안」 아래쪽의 Cubie 줄에서 「그래도 열기」.
-   - 터미널에서 받은 표시를 지운다: `xattr -dr com.apple.quarantine /Applications/Cubie.app`
-4. 메뉴 막대에 큐브 아이콘이 생긴다(Dock 아이콘은 없다). 로그인할 때 띄우려면 「시스템 설정 → 일반 → 로그인 항목」에 더한다.
+1. **[내려받기](https://game.byb.kr/cubie/download)** 를 눌러 `Cubie.zip`을 받고 푼다.
+2. `Cubie.app`을 「응용 프로그램」 폴더로 옮긴다.
+3. 처음 열 때 macOS가 한 번 막는다. 애플은 유료 개발자 계정으로 앱을 등록해 악성 코드 검사를 받게 하는데(공증), Cubie는 이 과정을 거치지 않은 개인 프로젝트라서다. 코드는 이 저장소에 모두 공개되어 있다. 아래 둘 가운데 하나로 연다.
+   - Cubie를 한 번 열면 「열 수 없다」는 창이 뜬다. 그 창을 닫고 「시스템 설정 → 개인정보 보호 및 보안」 아래쪽 Cubie 줄의 「그래도 열기」를 누른다.
+   - 또는 터미널에서 아래를 실행한다. 인터넷에서 받은 파일에 macOS가 붙이는 격리 표시를 지우는 명령이다.
+     ```sh
+     xattr -dr com.apple.quarantine /Applications/Cubie.app
+     ```
 
-직접 빌드한 것을 설치하려면 `apps/cubie/build.sh --universal` 뒤 `apps/cubie/Cubie.app`을 `/Applications`로 복사한다(이 맥에서 만든 앱은 막히지 않는다).
-
-## 업데이트
-
-- 하루 한 번 새 판이 있는지 본다(`https://game.byb.kr/cubie/appcast.xml`). 하던 앱의 포커스를 빼앗지 않으려고 창을 띄우지 않고, 메뉴 첫 줄에 「새 판 … 설치…」가 생긴다. 누르면 바뀐 것을 보고 설치한다.
-- 바로 보려면 메뉴 「업데이트 확인…」. 그 창에서 「자동으로 받아 설치」를 고르면 다음부터는 묻지 않고 받아 두었다가 끝낼 때 바꾼다.
-- 받은 파일은 서명(Sparkle EdDSA)이 맞을 때만 설치한다. 업데이트로 받은 앱은 다시 막히지 않는다.
-- 실행 파일을 바로 띄울 때(아래 `CUBIE_URL`)는 업데이트를 끈다.
-
-## 빌드·실행
-
-```sh
-apps/cubie/build.sh                       # apps/cubie/Cubie.app 을 만든다(이 맥 칩만, ad-hoc 서명)
-apps/cubie/build.sh --universal           # Apple Silicon·Intel 둘 다(배포본)
-open apps/cubie/Cubie.app                 # 띄우기(Dock 아이콘 없이 메뉴 막대에 큐브 아이콘)
-apps/cubie/test.sh                        # 화면 없는 단위 시험(포커스 돌려주기 판단, 키 출처 판정)
-```
-
-판은 `apps/cubie/VERSION` 한 곳에 있다. 키체인에 코드 서명 신원이 있으면 `CUBIE_SIGN_IDENTITY="<이름>" apps/cubie/build.sh`로 그것으로 서명한다(없으면 ad-hoc).
-
-로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
-
-```sh
-CUBIE_URL=http://localhost:4392/cube/mini apps/cubie/Cubie.app/Contents/MacOS/Cubie
-defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주소로(지우기: defaults delete kr.byb.cubie url)
-```
-
-`CUBIE_DEBUG=1`을 붙이면 포커스·다리 메시지·키 출처 칸을 표준 출력에 찍는다.
-
-앱 아이콘(`Resources/AppIcon.icns`)과 메뉴 막대 아이콘(`Resources/MenuIcon*.png`, 템플릿 그림 1x·2x)은 `swift apps/cubie/scripts/make-icon.swift`가 그린다(CoreGraphics와 `iconutil`만 쓴다). 그림을 고치면 이 명령으로 다시 만들어 함께 커밋한다. `--preview <폴더>`를 붙이면 크기별·밝은/어두운 바탕·메뉴 막대 미리보기 PNG도 남긴다.
+   macOS 15부터는 예전처럼 오른쪽 클릭 → 열기로는 열리지 않는다.
+4. 메뉴 막대에 큐브 아이콘이 생기고 화면 오른쪽 아래에 큐브가 뜬다. Dock에는 아이콘이 없다.
 
 ## 쓰는 법
 
 | 키·동작 | 하는 일 |
 |---|---|
-| ⌃⌥⌘C | 큐브로 가기(그때 앞에 있던 앱을 기억). 큐브에 있을 때 다시 누르면 돌아가기 |
-| Esc | 기억한 앱으로 돌아가기. 큐브 창은 그대로 떠 있다 |
-| Enter | 섞기(사이트 키 배치의 「다시 섞기」) |
-| ⌫ | 되돌리기 |
-| ⌘ + 끌기, 위 가운데 손잡이 끌기 | 창 옮기기(그냥 끌기는 큐브 둘러보기) |
-| 오른쪽 아래 손잡이 끌기 | 크기 바꾸기(48×48까지) |
+| ⌃⌥⌘C | 큐브로 가기. 그때 쓰던 앱을 기억한다. 다시 누르면 그 앱으로 돌아간다 |
+| Esc | 기억한 앱으로 돌아가기. 큐브는 그대로 떠 있다 |
+| Enter | 섞기 |
+| ⌫ | 한 수 되돌리기 |
+| 큐브를 끌기 | 보는 각도 돌리기 |
+| ⌘ + 끌기, 또는 위 가운데 손잡이 | 창 옮기기 |
+| 오른쪽 아래 손잡이 | 크기 바꾸기 |
 
-- 처음 띄우면 96×96 작은 창이 주 화면 오른쪽 아래 구석(Dock·메뉴 막대를 뺀 곳에서 16pt 안쪽)에 뜬다. 옮기거나 키운 자리·크기는 기억하고, 그 자리가 어느 화면에도 없으면(모니터를 뗀 뒤) 다시 기본 자리로 온다. 메뉴 「창 자리 처음으로」도 이 기본값으로 돌린다.
-- 창은 테두리·바탕이 없다. 큐브와 거울 둘레의 빈 곳을 누르면 아래 앱이 받는다. 마우스를 올리거나 큐브에 키 입력이 있을 때만 옅은 테두리와 손잡이가 보인다.
-- 메뉴 막대 큐브 아이콘(또는 큐브 위 오른쪽 누르기): 섞기, 거울, 크기(2×2~7×7), 기록 보기(크기별 최고 Ao5·티어, Cubie 기록 기준), 티어표, 대결하기(친구와·컴퓨터와, 기본 브라우저로 사이트를 연다), 단축키 보기, 키·색 설정, 창 자리 처음으로, 다시 불러오기, 업데이트 확인, 끝내기.
-- 시간은 큐브에 키 입력이 있는 동안만, 섞은 뒤 첫 수부터 잰다. 화면에는 보이지 않고 「기록 보기」에서 본다.
-- 가만히 떠 있으면 이따금 움직인다: 맞춘 큐브는 6분마다 첫 화면 연출 한 판, 섞인 큐브는 2분마다 몇 수 돌렸다 되돌리기(진행은 그대로).
-- 키 배치·색은 앱 안 저장(브라우저와 따로)이라 메뉴 「키·색 설정」에서 정한다.
-- 단축키를 다른 앱이 이미 쓰면 메뉴 막대 아이콘이 느낌표로 바뀌고 메뉴 첫 줄에 알린다. 바꾸려면 `Sources/Cubie/Config.swift`의 `hotKey*`.
+손잡이와 흐린 테두리는 마우스를 올리거나 Cubie가 키보드 입력을 받을 때만 보인다. 큐브와 거울 둘레의 빈 곳을 누르면 아래에 있는 앱이 받는다.
 
-## 끄기
+**키 배치**는 메뉴 「키·색 설정…」에서 고르고, 지금 배치는 메뉴 「단축키 보기」에서 키보드 그림으로 본다.
 
-메뉴 막대 큐브 아이콘 → 「Cubie 끝내기」. 또는 `pkill -x Cubie`. 창 자리 기억 지우기: `defaults delete kr.byb.cubie "NSWindow Frame CubieMain"`.
+아래에서 R·L·U·D·F·B는 오른쪽·왼쪽·위·아래·앞·뒤 면을 시계 방향으로 한 번 돌리는 것이고, 뒤에 붙은 '는 반대 방향이다.
 
-## 새 판 내기
+- **두 손**(기본값): 실제 큐브를 돌리는 손가락 자리를 키보드에 옮긴 배치다. 많이 쓰는 큐브 타이머 사이트 csTimer의 가상 큐브와 같은 자리라 그쪽에 익숙하면 바로 쓸 수 있다. Shift를 함께 누르면 그 면과 바로 안쪽 층을 함께 돌린다.
 
-```sh
-apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장." --dry-run   # 미리 보기: dist/0.2.0-dry-run/ 에만, 서명 안 함
-apps/cubie/scripts/release.sh 0.2.0 --notes "바뀐 것 한두 문장."             # VERSION·appcast·노트를 고친다
-/Users/ybbarng/.local/bin/cubie-release 0.2.0                                # GitHub Release만 만든다
+  | 오른손 키 | 돌리는 면 | 왼손 키 | 돌리는 면 |
+  |---|---|---|---|
+  | I | R | D | L |
+  | K | R' | E | L' |
+  | J | U | F | U' |
+  | L | D' | S | D |
+  | H | F | G | F' |
+  | O | B' | W | B |
+
+- **표기**: 면 글자와 같은 키다. R 키가 R, Shift+R이 R'이고, Alt를 함께 누르면 안쪽 층까지 함께 돌린다.
+
+크기(2×2~7×7), 거울 켜고 끄기, 기록 보기, 티어표, 대결하기, 창 자리 처음으로, 다시 불러오기, 업데이트 확인, 끝내기는 메뉴 막대의 큐브 아이콘에서 고른다. 큐브 위에서 오른쪽 클릭해도 같은 메뉴가 나온다. 업데이트 확인과 끝내기는 메뉴 막대에만 있다.
+
+로그인할 때 저절로 실행하려면 「시스템 설정 → 일반 → 로그인 항목」에 Cubie를 추가한다.
+
+## 업데이트
+
+Cubie는 하루에 한 번 새 버전이 있는지 확인한다. 새 버전이 있어도 쓰던 앱 앞에 창을 띄우지 않고, 메뉴 맨 위에 「새 판 0.2.0 설치…」처럼 한 줄이 생긴다. 누르면 바뀐 내용을 보고 설치한다. 바로 확인하려면 메뉴 「업데이트 확인…」을 누른다.
+
+내려받은 업데이트는 만든 사람이 서명한 파일인지 확인한 뒤에만 설치한다. 업데이트로 바뀐 앱은 처음 설치할 때처럼 다시 막히지 않는다. 버전마다 바뀐 내용은 이 저장소의 [release-notes](release-notes/) 폴더에 있다.
+
+큐브 화면 자체는 사이트에서 불러오므로, 화면 쪽이 좋아지면 앱을 새로 받지 않아도 다음에 열 때 바로 바뀐다.
+
+## 개인정보와 인터넷
+
+Cubie의 큐브 화면은 게임 사이트 [game.byb.kr](https://game.byb.kr)에 있는 Cubie 전용 작은 화면을 앱 안에서 연 것이다.
+
+- **인터넷이 필요하다**: 처음 띄울 때 사이트에서 화면을 받는다. 그 뒤로는 연결이 끊겨도 저장해 둔 화면으로 열리고, 연결이 돌아오면 다시 불러온다.
+- **기록은 이 맥에만 있다**: 맞춘 시간, 다시 보기, 키 배치와 색은 앱 안 저장소에 둔다. 서버로 보내지 않고, 계정이나 가입도 없다. 사이트를 브라우저로 열었을 때의 기록과도 따로다.
+- **사이트가 세는 것**: game.byb.kr은 어떤 페이지가 몇 번 열렸는지를 쿠키 없이 센다. Cubie 화면을 열 때도 그 페이지 주소 한 건이 세어진다. 맞춘 기록이나 키 입력은 들어가지 않는다. 자세한 내용은 사이트의 [보안 설명](https://game.byb.kr/security)에 있다.
+- **업데이트 확인**: 사이트의 버전 목록 파일 `game.byb.kr/cubie/appcast.xml`을 받아 보고, 새 버전 파일은 GitHub에서 받는다.
+
+## 요구 사항
+
+- macOS 15 Sequoia 이상
+- Apple Silicon 맥과 Intel 맥 모두
+- 인터넷 연결(처음 띄울 때)
+
+## 문제 해결
+
+**메뉴 막대에 큐브 아이콘이 안 보인다.** 메뉴 막대 아이콘을 숨겨 주는 앱(Ice, Bartender 등)이 숨겼거나, 노치가 있는 맥북에서 아이콘이 많아 가려졌을 수 있다. 숨겨 주는 앱에서 Cubie를 늘 보이게 두거나, 큐브 위에서 오른쪽 클릭해 메뉴를 연다. 끝내기는 메뉴 막대에만 있다. 아이콘이 안 보일 때 끄려면 「활성 상태 보기」 앱에서 Cubie를 종료하거나, 터미널에서 `pkill -x Cubie`를 실행한다.
+
+**⌃⌥⌘C를 눌러도 큐브로 가지 않는다.** 다른 앱이 같은 단축키를 쓰고 있으면 메뉴 막대 아이콘에 느낌표가 붙고 메뉴 맨 위에 알린다. 지금은 단축키를 바꿀 수 없으니 그 앱의 단축키를 바꾸거나, 메뉴 「큐브로 가기」를 쓴다.
+
+**큐브가 사라졌다.** 메뉴 「보이기」를 누른다. 모니터를 뗀 뒤라면 메뉴 「창 자리 처음으로」를 누른다. 메뉴 막대가 있는 화면의 오른쪽 아래로 돌아온다.
+
+**화면이 비어 있거나 「연결 없음」이 보인다.** 인터넷 연결을 확인한 뒤 메뉴 「다시 불러오기」를 누른다.
+
+## 지우기
+
+Cubie를 끝낸 뒤 「응용 프로그램」에서 `Cubie.app`을 휴지통으로 옮긴다. 기록과 설정까지 지우려면 아래 폴더와 파일도 지운다.
+
+```
+~/Library/WebKit/kr.byb.cubie
+~/Library/Caches/kr.byb.cubie
+~/Library/HTTPStorages/kr.byb.cubie
+~/Library/Preferences/kr.byb.cubie.plist
 ```
 
-스크립트는 시험 → 판 올리기 → universal 빌드·서명 → `dist/<판>/Cubie.zip` → EdDSA 서명 → `apps/web/public/cubie/appcast.xml` 맨 위에 새 판 → `release-notes/<판>.md`(appcast 설명과 같은 글, 커밋한다)까지 하고, 「GitHub Release 만들기」와 「PR」 명령을 찍는다. 작업 트리(`.claude/worktrees/*`)에서 돌렸으면 zip과 노트를 기본 저장소 폴더의 같은 자리에도 복사한다.
+## 라이선스
 
-Release는 `~/.local/bin/cubie-release <판>`이 만든다. 판 번호 하나만 받고, 기본 저장소 폴더의 `apps/cubie/dist/<판>/Cubie.zip`과 `apps/cubie/release-notes/<판>.md`를 `cubie-v<판>` 태그로 올린다(`--latest=false`, zip 안 앱 판이 인자와 다르거나 같은 릴리스가 있으면 멈춘다). 허락은 game `.claude/settings.local.json`에 이 스크립트 경로만 둔다(사용자가 직접 넣는다). push·PR은 찍힌 명령을 보고 사람이 직접 돌린다. Release를 먼저 만들고, 그다음 appcast PR을 머지한다. appcast가 사이트에 올라가야 깔린 앱들이 새 판을 본다. zip을 다시 만들면 서명이 바뀌니 appcast와 함께 만든 그 zip을 올린다.
-
-서명 열쇠를 읽을 때마다 로그인 암호 창이 뜬다. 그래서 실제 판은 `sign_update`를 한 번만 부르고, 확인은 `scripts/verify-ed.swift`가 `Info.plist`의 공개 열쇠로만 한다. `--dry-run`은 열쇠를 읽지 않는다(서명 자리에 가짜 값).
-
-서명 열쇠는 이 맥 로그인 키체인에만 있다(계정 `kr.byb.cubie`, Sparkle `generate_keys`로 만듦). 이 열쇠를 잃으면 이미 깔린 앱이 새 판을 받지 못한다. 다른 맥에서 내려면 `apps/cubie/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account kr.byb.cubie -x <파일>`로 꺼내 그 맥에서 `-f <파일>`로 넣고, 파일은 지운다.
-
-## 공개할 때 필요한 것
-
-- ad-hoc 서명이고 공증이 없어서, 받은 사람은 위 「설치」 3번을 한 번 해야 한다. 이 과정을 없애려면 Apple Developer ID로 서명하고 공증(notarytool)을 받아야 한다.
-- 같은 이름의 앱(iOS 큐브 앱 Cubie Solver, 옛 큐브 프로그램 Jaap's Cubie)이 있어 공개할 때 이름을 다시 본다.
-- 웹 화면 바탕을 비우는 데 공개 속성이 없어 널리 쓰는 키(`drawsBackground`)를 쓴다. macOS 판이 바뀌어 동작이 달라지면 바탕이 보일 수 있다.
+[MIT](../../LICENSE). Cubie는 [게임 센터 game.byb.kr](https://game.byb.kr) 저장소의 일부다. 직접 빌드하거나 고치려면 [DEVELOPMENT.md](DEVELOPMENT.md)를 본다.

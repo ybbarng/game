@@ -18,6 +18,14 @@
 | 놀이 | [숫자야구](https://game.byb.kr/baseball) · [윷놀이](https://game.byb.kr/yut) · [은하 한 바퀴](https://game.byb.kr/galaxy) · [큐브 맞추기](https://game.byb.kr/cube) |
 | 정시 관측 | [하늘의 별 따기](https://game.byb.kr/stardraw) — 매 회차 공개 난수(drand)로 별을 관측하는 예측 놀이. 상품 없음 |
 
+## 맥 앱 Cubie
+
+<img src="apps/cubie/docs/icon.png" width="64" height="64" align="left" alt="Cubie 아이콘">
+
+**[Cubie](apps/cubie#readme)** 는 화면 구석에 작게 떠 있는 큐브 맥 앱이다. ⌃⌥⌘C를 누르면 큐브를 맞추고, Esc를 누르면 하던 앱으로 돌아간다. 시간은 큐브에 키 입력이 가는 동안만 재고, 기록과 티어는 메뉴에서 본다. [내려받기](https://game.byb.kr/cubie/download) · macOS 15 이상.
+
+<br clear="left">
+
 ## 공정성
 
 공정성 장치는 판정마다 두 결로 나눈다([docs/50](docs/50-fairness-two-tracks.md)).
@@ -34,6 +42,7 @@ pnpm 모노레포. 게임 규칙은 화면과 떨어진 순수 함수 패키지�
 ```
 apps/web                Next.js 정적 웹앱(out/). 화면, 온라인 방(src/net), 내 기록, 복기, 보안 설명
 apps/stardraw-server    하늘의 별 따기 회차 서버(예측 받기, 마감·봉인, drand 관측, 공개 장부)
+apps/cubie              맥 앱 Cubie(Swift, 사이트의 큐브 미니 화면을 띄운다)
 packages/<게임>-engine  게임마다 규칙 엔진(순수 함수)
 packages/<게임>-ai      게임마다 컴퓨터 플레이어(여러 단계)
 packages/fair-play      멘탈 포커: SRA 섞기, 열쇠 증명, 섞기 증명, 판 끝 다시 계산
