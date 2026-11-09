@@ -176,6 +176,110 @@ test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스�
   await expect(main).toHaveAttribute("data-mini-moves", "1");
 });
 
+/**
+ * 다시 보기(docs/47 15-12): 맞춘 판은 혼자 맞추기와 같은 다시 보기 재료를 남긴다. 맞춘 큐브로 떠 있으면 홈 시연 대신
+ * 그 판을 다시 보고(섞기를 빠르게, 맞춘 과정은 그때 시각대로), 포커스를 받으면 바로 멈춘다. 기록 창에서 판을 고르면
+ * 맞추던 속도로 다시 돌린다(멈추기·처음부터)
+ */
+test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판을 고르면 다시 본다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.setViewportSize({ width: 320, height: 380 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  await fromApp(page, { type: "focus", focused: true });
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  const keys = inverseKeys(
+    (await main.getAttribute("data-mini-scramble")) ?? "",
+  );
+  // 한 수에 0.4초씩
+  for (const k of keys) {
+    await page.keyboard.press(k);
+    await page.clock.fastForward(400);
+  }
+  await expect(main).toHaveAttribute("data-mini-phase", "done");
+  const saved = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}").records["3"][0],
+  );
+  // 혼자 맞추기와 같은 꼴: 섞기 글·씨앗, 수@시각(첫 수 0ms), 단계별 시각
+  expect(typeof saved.seed).toBe("number");
+  expect(saved.replay.split(" ")).toHaveLength(keys.length);
+  expect(saved.replay).toMatch(/^\S+@0 /);
+  expect(saved.splits).toMatch(/@\d+/);
+
+  // 떠 있을 때: 1분 뒤 홈 시연 대신 내 판(1번)
+  await fromApp(page, { type: "focus", focused: false });
+  await page.clock.fastForward(60_000);
+  await expect(main).toHaveAttribute("data-mini-idle", "replay");
+  await expect(main).toHaveAttribute("data-mini-idle-no", "1");
+  await page.clock.fastForward(300);
+  await shot(page, "mini-idle-replay", info.project.name);
+  // 끝까지 돌면 맞춘 상태로 쉰다
+  await fastForwardUntil(
+    page,
+    async () => (await main.getAttribute("data-mini-idle")) === "",
+    { step: 500 },
+  );
+  await expect(main).toHaveAttribute("data-mini-solved", "");
+  // 다음 차례(6분 뒤) 도중에 포커스를 받으면 바로 멈추고 맞춘 상태로, 입력을 받는다
+  await page.clock.fastForward(6 * 60_000);
+  await expect(main).toHaveAttribute("data-mini-idle", "replay");
+  await page.clock.fastForward(500);
+  await fromApp(page, { type: "focus", focused: true });
+  await expect(main).toHaveAttribute("data-mini-idle", "");
+  await expect(main).toHaveAttribute("data-mini-solved", "");
+  await page.keyboard.press("KeyR");
+  await expect(main).toHaveAttribute(
+    "data-mini-moves",
+    String(keys.length + 1),
+  );
+
+  // 기록 창(앱이 따로 여는 창, 380×600)에서 판을 고른다
+  await page.setViewportSize({ width: 380, height: 600 });
+  await page.goto("/cube/mini?view=records");
+  const panel = page.locator("[data-mini-records='3']");
+  await panel.locator("[data-mini-replay-open='1']").click();
+  const box = panel.locator("[data-mini-replay]");
+  await expect(box).toHaveAttribute("data-mini-replay", "playing");
+  await expect(box).toHaveAttribute(
+    "data-mini-replay-total",
+    String(keys.length),
+  );
+  await page.clock.fastForward(450);
+  await shot(page, "mini-records-replay", info.project.name);
+  // 멈추면 서 있고, 이어 보면 끝까지
+  await box.locator("[data-mini-replay-toggle]").click();
+  await expect(box).toHaveAttribute("data-mini-replay", "paused");
+  const stopped = await box.getAttribute("data-mini-replay-played");
+  await page.clock.fastForward(5000);
+  await expect(box).toHaveAttribute("data-mini-replay-played", stopped ?? "");
+  await box.locator("[data-mini-replay-toggle]").click();
+  await fastForwardUntil(
+    page,
+    async () => (await box.getAttribute("data-mini-replay")) === "done",
+  );
+  await expect(box).toHaveAttribute(
+    "data-mini-replay-played",
+    String(keys.length),
+  );
+  // 처음부터
+  await box.locator("[data-mini-replay-restart]").click();
+  await expect(box).toHaveAttribute("data-mini-replay", "playing");
+  await box.locator("[data-mini-replay-close]").click();
+  await expect(panel.locator("[data-mini-replay]")).toHaveCount(0);
+});
+
 test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", async ({
   page,
 }, info) => {

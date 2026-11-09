@@ -1,8 +1,16 @@
 "use client";
 
-import { type CubeMove, formatMove, isSolved } from "@game/cube-engine";
+import {
+  applyMoves,
+  type CubeMove,
+  formatMove,
+  isSolved,
+  parseMoves,
+  solvedCube,
+} from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
 import { realClock } from "@game/fair-play";
+import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
@@ -26,6 +34,7 @@ import {
   PRESET_LABEL,
 } from "../input";
 import { formatMs, type SolveInput } from "../records";
+import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { type MyTier, tierName } from "../tiers/rank";
@@ -38,9 +47,16 @@ import { type FromApp, hasApp, onAppMessage, toApp } from "./app-bridge";
 import { FocusClock } from "./focus-clock";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import {
+  hasReplay,
+  idleReplaySteps,
+  pickIdleReplay,
+  SCRAMBLE_MOVE_MS,
+} from "./replay";
+import {
   addMiniRecord,
   type KeyOrigin,
   keyOriginOf,
+  loadMiniBestFive,
   loadMiniPrefs,
   loadMiniRecords,
   MINI_SIZES,
@@ -60,7 +76,8 @@ import {
  * - 키는 사이트의 키 배치(두 손·표기·사용자) 그대로다. 섞기는 배치의 「다시 섞기」 키(두 배치 모두 Enter), 되돌리기는
  *   ⌫. 배치의 Esc(맞춘 상태로)는 쓰지 않는다: 앱에서 Esc는 이전 앱으로 돌아가는 키이고, 실수로 진행을 버리지 않게.
  * - 시간은 포커스가 있는 동안만 잰다(`FocusClock`). 섞은 뒤 첫 면 돌리기부터 맞출 때까지, 살펴보기는 없다.
- * - 포커스가 없으면 이따금 움직인다(`idle.ts`): 맞춘 큐브는 첫 화면 연출 한 판, 섞인 큐브는 조금 섞고 되돌리기.
+ * - 포커스가 없으면 이따금 움직인다(`idle.ts`): 맞춘 큐브는 내 판 다시 보기(`replay.ts`, 재료가 없으면 첫 화면
+ *   연출 한 판), 섞인 큐브는 조금 섞고 되돌리기. 기록에서 판을 고르면 그 판을 다시 본다(`ReplayBox`).
  *   움직임은 장면에만 넣고 엔진 상태(진행)는 그대로다.
  */
 
@@ -481,11 +498,70 @@ function MiniCube() {
     };
   }, [app, ready, hitKey]);
 
+  /**
+   * 떠 있을 때 다시 보는 판의 그림 상태(3D가 없을 때 SVG 그림이 엔진 상태 대신 보인다). 3D 장면은 수를 직접 넣는다
+   */
+  const [idleState, setIdleState] = useState<PuzzleState | null>(null);
+  /** 떠 있을 때 다시 보는 판 번호(화면 시험용)와 고르기 차례(최고·최근 번갈아) */
+  const idleReplayNo = useRef<number | null>(null);
+  const idleReplayTurn = useRef(0);
+
   // 떠 있을 때 움직임
   const idle = useMemo(
     () =>
       new IdleShow(realClock, {
         solved: () => isSolved(sessionRef.current.n, sessionRef.current.state),
+        replay: (done) => {
+          const size = sessionRef.current.n;
+          const r = pickIdleReplay(
+            loadMiniRecords(size),
+            loadMiniBestFive(size),
+            idleReplayTurn.current,
+          );
+          const steps = r ? idleReplaySteps(size, r) : [];
+          if (!r || steps.length === 0) return null;
+          idleReplayTurn.current++;
+          idleReplayNo.current = r.no ?? null;
+          const v = viewRef.current;
+          // 맞춘 큐브(흰 위·초록 앞)에서 섞기를 빠르게 보인다
+          let shown = solvedCube(size);
+          let moveMs = Math.min(SCRAMBLE_MOVE_MS, settingsRef.current.moveMs);
+          if (v) {
+            v.setStickers(stickersFromState(size, shown, null));
+            v.setOptions({ moveMs });
+          } else setIdleState(shown);
+          const player = new ReplayPlayer(
+            realClock,
+            steps,
+            {
+              onStep: (step, i) => {
+                if (!v) {
+                  shown = applyMoves(size, shown, step.moves);
+                  setIdleState(shown);
+                  return;
+                }
+                // 맞춘 과정은 설정의 회전 시간으로, 다음 수가 더 빨리 오면 그 간격에 맞춰 줄인다(차례가 밀리지 않게)
+                if (step.part === "solve") {
+                  const gap = (steps[i + 1]?.at ?? step.at + 1e9) - step.at;
+                  const want = Math.max(
+                    40,
+                    Math.min(settingsRef.current.moveMs, Math.round(gap * 0.9)),
+                  );
+                  if (want !== moveMs) {
+                    moveMs = want;
+                    v.setOptions({ moveMs });
+                  }
+                }
+                for (const m of step.moves) v.enqueue(m);
+              },
+              onEnd: done,
+            },
+            // 다 맞춘 모습을 잠깐 보인다
+            1500,
+          );
+          player.play();
+          return () => player.stop();
+        },
         hero: (done) => {
           const v = viewRef.current;
           const size = sessionRef.current.n;
@@ -539,6 +615,8 @@ function MiniCube() {
           );
         },
         restore: () => {
+          idleReplayNo.current = null;
+          setIdleState(null);
           repaintRef.current();
           bump();
           if (hasApp()) toApp({ type: "idle", showing: null });
@@ -784,6 +862,9 @@ function MiniCube() {
       data-mini-focused={focused ? "" : undefined}
       data-mini-mirror={mirror ? "on" : mirrorWanted ? "folded" : "off"}
       data-mini-idle={idle.showing ?? ""}
+      data-mini-idle-no={
+        idle.showing === "replay" ? (idleReplayNo.current ?? "") : undefined
+      }
       data-input-ready={interpreter && prefs ? "" : undefined}
       className={cn(
         "fixed inset-0 select-none overflow-hidden text-white",
@@ -799,7 +880,7 @@ function MiniCube() {
           >
             <CubePosterPair
               n={n}
-              state={session.state}
+              state={idleState ?? session.state}
               settings={settings}
               captions={false}
               frontOnly={!mirror}
@@ -969,6 +1050,10 @@ function RecordsPanel({
   onClose?: () => void;
 }) {
   const sum = summarize(records);
+  const [watching, setWatching] = useState<MiniRecord | null>(null);
+  // 크기를 바꾸면 보던 판을 닫는다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
+  useEffect(() => setWatching(null), [n]);
   return (
     <section
       data-mini-records={n}
@@ -1017,10 +1102,17 @@ function RecordsPanel({
         <dt className="text-white/60">12번 평균</dt>
         <dd>{formatMs(sum.ao12)}</dd>
       </dl>
+      {watching && (
+        <ReplayBox
+          key={`${watching.no}-${watching.at}`}
+          record={watching}
+          onClose={() => setWatching(null)}
+        />
+      )}
       {records.length === 0 ? (
         <p className="text-white/60">아직 기록이 없어요.</p>
       ) : (
-        <ol className="flex-1 overflow-y-auto tabular-nums">
+        <ol className="min-h-12 flex-1 overflow-y-auto tabular-nums">
           {records.map((r) => (
             <li
               key={`${r.no}-${r.at}`}
@@ -1048,10 +1140,120 @@ function RecordsPanel({
                 </span>
               )}
               <span className="text-white/60">{r.moves}수</span>
+              {hasReplay(r) && (
+                <button
+                  type="button"
+                  data-mini-replay-open={r.no}
+                  aria-pressed={watching?.at === r.at && watching.no === r.no}
+                  onClick={() => setWatching(r)}
+                  className="rounded bg-white/10 px-1 hover:bg-white/20"
+                >
+                  다시 보기
+                </button>
+              )}
             </li>
           ))}
         </ol>
       )}
     </section>
+  );
+}
+
+/**
+ * 기록 창의 다시 보기(docs/47 15-12): 섞인 상태에서 맞춘 수를 그때 시각대로(멈춤은 1초까지, 혼자 맞추기와 같은
+ * `solveSteps`). 그림은 SVG 큐브(`CubePosterPair`)라 작은 기록 창에 3D 장면을 하나 더 만들지 않는다
+ */
+function ReplayBox({
+  record,
+  onClose,
+}: {
+  record: MiniRecord;
+  onClose: () => void;
+}) {
+  const settings = useCubeSettings();
+  const n = record.n;
+  const start = useMemo(() => {
+    try {
+      return applyMoves(n, solvedCube(n), parseMoves(n, record.scramble));
+    } catch {
+      return solvedCube(n);
+    }
+  }, [n, record.scramble]);
+  const steps = useMemo(() => solveSteps(n, record.replay), [n, record.replay]);
+  const [state, setState] = useState<PuzzleState>(start);
+  const [status, setStatus] = useState<ReplayStatus>("playing");
+  const [played, setPlayed] = useState(0);
+  const playerRef = useRef<ReplayPlayer | null>(null);
+  useEffect(() => {
+    let cur = start;
+    setState(start);
+    setPlayed(0);
+    const p = new ReplayPlayer(realClock, steps, {
+      onStep: (s, i) => {
+        cur = applyMoves(n, cur, s.moves);
+        setState(cur);
+        setPlayed(i + 1);
+      },
+      onReset: () => {
+        cur = start;
+        setState(start);
+        setPlayed(0);
+      },
+      onStatus: setStatus,
+    });
+    playerRef.current = p;
+    p.play();
+    return () => {
+      p.stop();
+      playerRef.current = null;
+    };
+  }, [n, start, steps]);
+  return (
+    <div
+      data-mini-replay={status}
+      data-mini-replay-played={played}
+      data-mini-replay-total={steps.length}
+      className="flex shrink-0 flex-col gap-1 rounded bg-white/5 p-1.5"
+    >
+      <div className="flex items-center gap-1">
+        <span className="font-semibold tabular-nums">
+          {record.no}번 · {formatMs(record.ms)}
+        </span>
+        <div className="ml-auto flex gap-0.5">
+          <button
+            type="button"
+            data-mini-replay-toggle
+            disabled={status === "done"}
+            onClick={() => playerRef.current?.toggle()}
+            className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40"
+          >
+            {status === "paused" ? "이어 보기" : "멈추기"}
+          </button>
+          <button
+            type="button"
+            data-mini-replay-restart
+            onClick={() => playerRef.current?.restart()}
+            className="rounded px-1.5 py-0.5 hover:bg-white/10"
+          >
+            처음부터
+          </button>
+          <button
+            type="button"
+            data-mini-replay-close
+            onClick={onClose}
+            className="rounded px-1.5 py-0.5 hover:bg-white/10"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+      <CubePosterPair
+        n={n}
+        state={state}
+        settings={settings}
+        captions={false}
+        className="mx-auto w-full max-w-60"
+      />
+    </div>
   );
 }
