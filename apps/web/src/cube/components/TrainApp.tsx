@@ -318,10 +318,10 @@ export function TrainApp() {
       >
         <header className="flex flex-wrap items-center gap-3">
           <a
-            href="/cube"
+            href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 큐브
+            ← 해법 익히기
           </a>
           <h1 className="font-bold text-lg">공식 훈련</h1>
           <a
@@ -329,12 +329,6 @@ export function TrainApp() {
             className="ml-auto text-sm text-white/70 hover:text-white"
           >
             내 공식
-          </a>
-          <a
-            href="/cube/learn"
-            className="text-sm text-white/70 hover:text-white"
-          >
-            배우기
           </a>
         </header>
 

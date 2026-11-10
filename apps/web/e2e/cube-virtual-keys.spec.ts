@@ -130,7 +130,10 @@ test("키 익히기: 키보드 없는 기기도 키 그림을 눌러 단계를 �
   const note = page.locator("[data-learn-no-keyboard]");
   if (phone) {
     await expect(note).toBeVisible();
-    await expect(note.getByRole("link")).toHaveAttribute("href", "/cube/learn");
+    await expect(note.getByRole("link")).toHaveAttribute(
+      "href",
+      "/cube/learn?lesson=333-start",
+    );
   } else await expect(note).toHaveCount(0);
   // 휴대폰은 누르기 쉬운 작은 키 그림, 데스크톱은 큰 키보드 그림(둘 다 누를 수 있다)
   const map = page.locator(phone ? "[data-cube-keys]" : "[data-keyboard-map]");
