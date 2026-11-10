@@ -1,7 +1,8 @@
 // 3×3 ZZ와 페트루스(docs/47 8-2). ZZ: EO라인 → 왼쪽·오른쪽 블록(R·U·L만) → 윗면(코너 7가지) → PLL.
 // 페트루스는 짧은 소개(2×2×2 → 2×2×3 → 엣지 방향 → 나머지).
 // 엣지 방향·EO라인·블록 단원의 시연·해 보기 수는 zz-path.ts 규칙이, 페트루스 엣지 방향은 petrus-path.ts 규칙이 낸 수다.
-// 「ZZ 한눈에」 전체 시연과 마지막 층 단원의 수는 `@game/cube-ai`의 solveZZ가 대회 섞기(3×3 씨앗 21·7)를 푼 단계별 수다.
+// 「ZZ 한눈에」 전체 시연과 마지막 층 단원의 수도 단원 규칙(zz-path.ts: EO라인 → 블록 → 마지막 층 nextZzLl)이 대회 섞기
+// (3×3 씨앗 21·7)를 푼 수다(2026-11-10, 예전에는 `@game/cube-ai`의 solveZZ 수였다, docs/47 16-17).
 import { solvedCube } from "@game/cube-engine";
 
 import { setupFor } from "./notation";
@@ -16,9 +17,12 @@ import {
   play3,
   runBlocks,
   runZz,
+  runZzLl,
   stepMovesBlock,
+  stepMovesLl,
   stepMovesZz,
   ZZ_PAIR_CASES,
+  type ZzLlStep,
 } from "./zz-path";
 
 /** zz-path.ts 규칙이 그 상태에서 내는 수(엣지 방향만, 또는 방향 + 줄) */
@@ -85,21 +89,11 @@ export const EO_SCATTERED = ruleMoves(setupFor(EO_CHECK, "z2"), false);
 
 // 시연용(3×3 섞기 씨앗 21)
 const S21 = "L2 D2 U' L2 F2 D F2 U2 B2 D' L' F' R2 B U' F2 U R B L R2";
-const EOL21 = "z2 F U D L B U2 F'";
-const LEFT21 = "L U R U' L' U2 L' U' L U L'";
-/** EO라인 단원의 시연·해 보기: 규칙(엣지 방향 → 줄)이 낸 수. 블록 단원은 위 EOL21·EOL7 상태에서 이어 간다 */
+/** EO라인 단원의 시연·해 보기: 규칙(엣지 방향 → 줄)이 낸 수 */
 const EOLINE_RULE_21 = `z2 ${ruleMoves(`${S21} z2`, true)}`;
-const RIGHT21 = "R' U2 R2 U2 R' U2 R' U' R U' R' U2 R'";
-const OLL21 = "U' Rw U R' U' Rw' F R F'";
-const PLL21 = "U M' U M2 U M2 U M' U2 M2";
 
 // 해 보기용(3×3 섞기 씨앗 7)
 const S7 = "U' B2 D' R2 D L2 U L2 F' R2 D' L R B' U' F U2 B2 D2 U'";
-const EOL7 = "z2 B U F L' D B";
-const LEFT7 = "L' U2 L U' L' U' R U L' U' L";
-const RIGHT7 = "R' U R U2 R' U2 R2 U' R2 U' R'";
-const OLL7 = "U' R U R' U R U2 R'";
-const PLL7 = "U' R U R' F' R U R' U' R' F R2 U' R' U";
 const EOLINE_RULE_7 = `z2 ${ruleMoves(`${S7} z2`, true)}`;
 
 /** 블록 단원의 시연·해 보기: EO라인 단원 규칙이 만든 상태에서 블록 규칙(zz-path.ts)이 낸 수 */
@@ -116,6 +110,27 @@ export const ZZ_RIGHT_RULE_7 = blockRuleMoves(
   "all",
 );
 
+/** 마지막 층: 두 블록 뒤 상태에서 마지막 층 규칙(zz-path.ts nextZzLl)이 낸 걸음 */
+export const ZZ_LL_START_21 = `${ZZ_BLOCK_START_21} ${ZZ_LEFT_RULE_21} ${ZZ_RIGHT_RULE_21}`;
+export const ZZ_LL_START_7 = `${ZZ_BLOCK_START_7} ${ZZ_LEFT_RULE_7} ${ZZ_RIGHT_RULE_7}`;
+const llSteps = (start: string) => runZzLl(play3(solvedCube(3), start)).steps;
+const LL21 = llSteps(ZZ_LL_START_21);
+const LL7 = llSteps(ZZ_LL_START_7);
+/** 씨앗 21 마지막 층: 윗면(안티수네) / PLL(Y퍼뮤 → Ua퍼뮤) */
+export const ZZ_OLL_21 = stepMovesLl(LL21[0] as ZzLlStep);
+export const ZZ_PLL_21 = LL21.slice(1).map(stepMovesLl).join(" ");
+/** 씨앗 7 마지막 층: 윗면(U' 뒤 안티수네) / PLL(코너 맞음 → U → y 뒤 Ua퍼뮤) */
+export const ZZ_OLL_7 = stepMovesLl(LL7[0] as ZzLlStep);
+export const ZZ_PLL_7 = LL7.slice(1).map(stepMovesLl).join(" ");
+/** 「ZZ 한눈에」 전체 시연: 단원 규칙으로 푼 수(EO라인 → 왼쪽 블록 → 오른쪽 블록 → 윗면 → PLL) */
+export const ZZ_DEMO_21 = [
+  EOLINE_RULE_21,
+  ZZ_LEFT_RULE_21,
+  ZZ_RIGHT_RULE_21,
+  ZZ_OLL_21,
+  ZZ_PLL_21,
+].join(" ");
+
 const zzIntro: Lesson = {
   id: "zz-intro",
   size: 3,
@@ -131,7 +146,7 @@ const zzIntro: Lesson = {
       kind: "demo",
       body: "섞인 큐브를 ZZ로 끝까지 맞춰 볼게요. EO라인(엣지 방향 맞추기 + 아래-앞·아래-뒤 엣지 블럭 놓기, 시연은 흰 면이 위인 섞인 큐브를 z2로 뒤집어 시작해요) → 왼쪽 블록 → 오른쪽 블록 → 윗면 → PLL 차례예요. 여러 조각이 제자리에 맞아 붙은 덩어리를 「블록」이라고 해요. 조각 하나는 지금까지처럼 「엣지 블럭」, 「코너 블럭」이라고 부르고, 덩어리는 늘 「블록」이라고 적어요.",
       setup: upTo(S21),
-      alg: [EOL21, LEFT21, RIGHT21, OLL21, PLL21].join(" "),
+      alg: ZZ_DEMO_21,
     },
     {
       kind: "quiz",
@@ -461,47 +476,54 @@ const zzLl: Lesson = {
   id: "zz-ll",
   size: 3,
   title: "마지막 층",
-  summary: "노란 십자는 저절로 있어요. 위 층 코너 공식 7개 → PLL.",
+  summary: "노란 십자는 저절로 있어요. 윗면 코너 공식 7개 → PLL(코너 → 엣지).",
   steps: [
     {
       kind: "quiz",
-      body: "앞 단원에서 두 블록으로 아래 두 층을 채웠어요. 엣지 방향이 이미 맞아 노란 십자가 늘 있어요. 그래서 윗면은 CFOP 2단계 OLL의 코너 단계 공식 7개(수네 등)로 끝나요. 그다음은 PLL이에요. 더 나아가면 COLL(위 층 코너의 방향과 자리를 한 번에)이나 ZBLL(마지막 층을 공식 하나로)도 있어요. 공식은 노란색이 위를 보는 코너 블럭의 수로 골라요.",
-      setup: upTo(S7, EOL7, LEFT7, RIGHT7),
+      body: "앞 단원에서 두 블록으로 아래 두 층을 채웠어요. 엣지 방향이 이미 맞아 노란 십자가 늘 있어요. 그래서 마지막 층은 CFOP 2단계에서 배운 차례 그대로예요. ① 윗면: OLL 코너 단계의 공식 7개 가운데 모양에 맞는 하나. ② PLL 코너: 헤드라이트가 한 옆면에 있으면 U로 그 면을 왼쪽에 두고 T퍼뮤, 어느 옆면에도 없으면 Y퍼뮤, 네 옆면에 다 있으면 건너뛰어요. ③ U로 위 층 코너 블럭을 제자리에. ④ PLL 엣지: 위 층이 다 맞았으면 끝. 맞은 옆면이 하나 있으면 y로 그 면을 뒤에 두고 Ua퍼뮤나 Ub퍼뮤, 맞은 옆면이 없으면 H퍼뮤나 Z퍼뮤예요. 더 나아가면 COLL(위 층 코너의 방향과 자리를 한 번에)이나 ZBLL(마지막 층을 공식 하나로)도 있어요. 윗면 공식은 노란색이 위를 보는 코너 블럭의 수로 골라요.",
+      setup: upTo(ZZ_LL_START_7),
       mask: "oll",
       quiz: {
         question: "노란색이 위를 보는 코너 블럭은 몇 개일까요?",
         choices: ["0개", "1개", "2개"],
         answer: 1,
-        why: "하나예요. 그 코너 블럭을 앞-왼쪽 위에 두면 앞-오른쪽 위 코너 블럭의 노랑이 앞을 봐서 수네를 해요. 다음 시연을 본 뒤 나오는 해 보기가 이 상황이에요.",
+        why: "하나예요. 하나면 수네 모양이나 안티수네 모양이에요. 위를 보는 노란 코너 블럭을 뒤-오른쪽 위에 두었을 때 앞-왼쪽 위 코너 블럭의 노랑이 앞을 보면 안티수네, 앞-왼쪽 위에 두었을 때 앞-오른쪽 위 코너 블럭의 노랑이 앞을 보면 수네예요. 이 큐브는 안티수네 모양이에요.",
       },
     },
     {
-      kind: "demo",
-      body: "다른 섞기의 시연이에요. 노란 코너 둘이 위를 보는 T 모양이라 그 모양의 공식 한 번으로 위 층 코너의 노랑을 모두 위로 해요. 공식 속 Rw는 소문자 r(오른쪽 두 층)과 같아요.",
-      setup: upTo(S21, EOL21, LEFT21, RIGHT21),
-      alg: OLL21,
-      mask: "oll",
-    },
-    {
       kind: "try",
-      body: "수네로 윗면을 노랗게 만들어 보세요.",
-      setup: upTo(S7, EOL7, LEFT7, RIGHT7),
-      alg: OLL7,
+      body: "앞 문제의 큐브예요. U'로 위를 보는 노란 코너 블럭을 뒤-오른쪽 위에 두면 앞-왼쪽 위 코너 블럭의 노랑이 앞을 봐요. U'를 친 뒤 안티수네(R U2 R' U' R U' R')로 윗면을 노랗게 만들어 보세요.",
+      setup: upTo(ZZ_LL_START_7),
+      alg: ZZ_OLL_7,
       goal: "oll",
       mask: "oll",
     },
     {
       kind: "try",
-      body: "노란 십자가 있는 큐브에서 윗면을 맞춰 보세요.",
+      body: "노란 십자가 있는 큐브에서 윗면을 맞춰 보세요. 모양을 보고 U로 쥐는 법은 CFOP 2단계 OLL 코너 단계와 같아요. 위를 보는 노란 코너 블럭이 없으면 H 모양이나 파이 모양, 둘이면 U 모양·T 모양·나비넥타이 모양, 하나면 수네 모양이나 안티수네 모양이에요.",
       setup: { rule: "yellow-cross-solved" },
       goal: "oll",
       mask: "oll",
     },
     {
+      kind: "demo",
+      body: "다른 섞기에서 윗면까지 맞춘 큐브예요. 헤드라이트가 어느 옆면에도 없어 Y퍼뮤로 위 층 코너 블럭의 자리를 맞추면 네 옆면 모두 헤드라이트가 돼요. 위 층 코너 블럭이 이미 제자리라 U는 필요 없어요. 위 층 코너 블럭과 엣지 블럭이 모두 맞은 옆면을 y'로 뒤에 두면, 앞에 있는 엣지 블럭의 제자리가 오른쪽이라 Ua퍼뮤로 끝나요.",
+      setup: upTo(ZZ_LL_START_21, ZZ_OLL_21),
+      alg: ZZ_PLL_21,
+      mask: "pll",
+    },
+    {
       kind: "try",
-      body: "PLL로 끝내 보세요. 힌트의 공식은 한 번에 끝내는 전체 PLL 가운데 J퍼뮤예요. 아직 모르면 CFOP 2단계 PLL(코너 → 엣지)로 풀어도 돼요.",
-      setup: upTo(S7, EOL7, LEFT7, RIGHT7, OLL7),
-      alg: PLL7,
+      body: "윗면 해 보기의 큐브를 이어서 끝내 보세요. 헤드라이트가 이미 네 옆면에 다 있으니 PLL 코너 단계는 건너뛰어요. U로 위 층 코너 블럭을 제자리에 둔 뒤, 다 맞은 옆면을 y로 뒤에 두면 앞에 있는 엣지 블럭의 제자리가 오른쪽이라 Ua퍼뮤(M2 U M U2 M' U M2)예요.",
+      setup: upTo(ZZ_LL_START_7, ZZ_OLL_7),
+      alg: ZZ_PLL_7,
+      goal: "ll",
+      mask: "pll",
+    },
+    {
+      kind: "try",
+      body: "윗면이 노란 큐브에서 PLL 코너 단계 → U로 위 층 코너 블럭을 제자리에 → PLL 엣지 단계 차례로 끝내 보세요.",
+      setup: { rule: "oll-solved" },
       goal: "ll",
       mask: "pll",
     },
