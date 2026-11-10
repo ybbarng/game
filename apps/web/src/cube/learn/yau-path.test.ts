@@ -912,6 +912,12 @@ describe("목록의 경우는 모두 앞에서 보이고, 긴 단계는 한 목�
       ORANGE,
       ORANGE,
     ]);
+    // 위 두 칸으로 올라온 것은 원래 아래 두 칸의 블럭(되돌리기에서 함께 나감)
+    const was = faceColors(n, play(ts, "2U"));
+    expect([after[cell(R, 1, 1)], after[cell(R, 1, 2)]]).toEqual([
+      was[cell(R, 2, 2)],
+      was[cell(R, 2, 1)],
+    ]);
     expect(next("yau-side-centers", two).alg).toBe(YAU_SIDE_TWO_TRY);
 
     const order = quizBy("yau-side-centers", "첫 넣기는");
@@ -959,6 +965,14 @@ describe("목록의 경우는 모두 앞에서 보이고, 긴 단계는 한 목�
       const st = nextYauLastCrossStep(s);
       return st && `${st.caseId}:${st.hold}:${st.alg}`;
     };
+    const flipped = at("F2로 위-앞에 올리면");
+    expect(first(flipped.s)).toBe("ins-flipped::F2");
+    expect(
+      whiteWings(play(flipped.s, "F2"), 4).every(
+        (w) => w.line === "UF" && w.whiteFace === F,
+      ),
+    ).toBe(true);
+    expect(answer(flipped.q)).toBe("앞을 봐요");
     const mid = at("어느 수로 넣을까요");
     expect(first(mid.s)).toBe("ins-mid::F");
     expect(answer(mid.q)).toBe("F");
@@ -1009,6 +1023,7 @@ describe("목록의 경우는 모두 앞에서 보이고, 긴 단계는 한 목�
       "ins-up-side",
       "ins-mid",
       "ins-lift",
+      "ins-flipped",
       "out-front",
       "bring",
       "drop-up",
