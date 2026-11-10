@@ -21,6 +21,7 @@ const tokens = (p: Problem) => algTokens(p.alg);
 const problem = (caseId: string, alg: string): Problem => ({
   caseId,
   alg,
+  turn: "",
   preAuf: "",
 });
 
@@ -139,22 +140,21 @@ describe("한 판: 콤보와 결과", () => {
 
 describe("출제", () => {
   const ids = ["a", "b", "c", "d", "e"];
-  const algOf = (id: string) => `R U ${id === "a" ? "R'" : "U'"}`;
 
   it("씨앗이 같으면 같은 10문제를 같은 차례로", () => {
-    const one = drawRound(ids, { seed: 42, algOf });
+    const one = drawRound(ids, { seed: 42 });
     expect(one).toHaveLength(10);
-    expect(drawRound(ids, { seed: 42, algOf })).toEqual(one);
-    expect(drawRound(ids, { seed: 43, algOf })).not.toEqual(one);
+    expect(drawRound(ids, { seed: 42 })).toEqual(one);
+    expect(drawRound(ids, { seed: 43 })).not.toEqual(one);
   });
 
   it("바로 앞과 같은 상황은 잇달아 내지 않는다", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const r = drawRound(ids, { seed, algOf });
+      const r = drawRound(ids, { seed });
       for (let i = 1; i < r.length; i++)
         expect(r[i]?.caseId).not.toBe(r[i - 1]?.caseId);
     }
-    expect(drawRound(["a"], { seed: 1, algOf, count: 3 })).toHaveLength(3);
+    expect(drawRound(["a"], { seed: 1, count: 3 })).toHaveLength(3);
   });
 
   it("늘 틀리는 상황이 더 자주 나온다", () => {
@@ -165,7 +165,7 @@ describe("출제", () => {
     let c = 0;
     let other = 0;
     for (let seed = 1; seed <= 50; seed++)
-      for (const p of drawRound(ids, { seed, algOf, book }))
+      for (const p of drawRound(ids, { seed, book }))
         if (p.caseId === "c") c++;
         else other++;
     expect(c).toBeGreaterThan(other / 4);
@@ -176,17 +176,26 @@ describe("출제", () => {
     for (let k = 0; k < 5; k++) book = withSolve(book, "a", 800, 3);
     expect(familiar((book as Record<string, never>).a)).toBe(true);
     const all = Array.from({ length: 30 }, (_, seed) =>
-      drawRound(ids, { seed, algOf, book, auf: true }),
+      drawRound(ids, { seed, book, auf: true }),
     ).flat();
     expect(
-      all.filter((p) => p.caseId !== "a").every((p) => p.preAuf === ""),
+      all.filter((p) => p.caseId !== "a").every((p) => p.turn === ""),
     ).toBe(true);
-    const turned = all.filter((p) => p.caseId === "a" && p.preAuf !== "");
+    const turned = all.filter((p) => p.caseId === "a" && p.turn !== "");
     expect(turned.length).toBeGreaterThan(0);
-    expect(turned[0]?.alg.startsWith(`${turned[0]?.preAuf} R U`)).toBe(true);
     // 단계가 윗면 돌리기를 쓰지 않으면 붙이지 않는다
+    expect(drawRound(ids, { seed: 1, book }).every((p) => p.turn === "")).toBe(
+      true,
+    );
+  });
+
+  it("대결(everyTurn)은 기록 없이도 모든 문제에 씨앗대로 윗면 돌리기를 붙이고, 상황 차례는 그대로다", () => {
+    const plain = drawRound(ids, { seed: 9 });
+    const versus = drawRound(ids, { seed: 9, auf: true, everyTurn: true });
+    expect(versus.map((p) => p.caseId)).toEqual(plain.map((p) => p.caseId));
+    expect(new Set(versus.map((p) => p.turn)).size).toBeGreaterThan(1);
     expect(
-      drawRound(ids, { seed: 1, algOf, book }).every((p) => p.preAuf === ""),
+      drawRound(ids, { seed: 9, everyTurn: true }).every((p) => p.turn === ""),
     ).toBe(true);
   });
 });

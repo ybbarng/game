@@ -8,7 +8,14 @@ import { describe, expect, it } from "vitest";
 
 import { type PathStageId, runStage, stepMoves } from "../learn/beginner-path";
 import { goalMet } from "../learn/judge";
-import { PRACTICE_N, problemStart } from "./problem";
+import { choicesOf } from "./pick-alg";
+import {
+  alignPrefix,
+  caseStart,
+  PRACTICE_N,
+  problemStart,
+  SHAPE_TURNS,
+} from "./problem";
 import { MORE_SETS, PRACTICE_STAGES, stageById, stagesOf } from "./stages";
 
 const n = PRACTICE_N;
@@ -81,7 +88,7 @@ describe("공식 연습 단계", () => {
     for (const c of stage.cases)
       it(`${stage.title} · ${c.name}: 정해진 길과 같은 공식`, () => {
         const alg = c.algs[0] as string;
-        const start = problemStart(stage, alg);
+        const start = caseStart(stage, c);
         // 어느 조각부터 해도 되는 단계(흰 십자 등)는 먼저 고른 것부터든 나중 것부터든 같은 경우의 수다
         const paths = [() => 0, (k: number) => k - 1].map((pick) =>
           runStage(PATH[stage.id] as PathStageId, start, pick)
@@ -99,5 +106,38 @@ describe("공식 연습 단계", () => {
         const end = applyMoves(n, start, parseMoves(n, alg));
         expect(isSolved(n, end), `${stage.id} ${c.id}`).toBe(true);
       }
+  });
+
+  // 시작 모양은 상황 자체로 정하고 공식은 사람마다 다르게 고르므로(docs/47 16-14), 고를 수 있는 모든 공식이 같은 모양을 풀어야 한다
+  it("모든 단계·상황·후보·윗면 돌리기에서, 앞에 맞춤을 붙인 공식이 상황의 시작 모양을 목표까지 푼다", () => {
+    const fails: string[] = [];
+    let checked = 0;
+    for (const stage of PRACTICE_STAGES)
+      for (const c of stage.cases)
+        for (const alg of choicesOf(c))
+          for (const turn of stage.auf ? SHAPE_TURNS : [""]) {
+            checked++;
+            const start = caseStart(stage, c, turn);
+            const pre = alignPrefix(stage, c, start, alg);
+            if (pre === null) {
+              fails.push(`${stage.id} ${c.id} [${turn}] ${alg}`);
+              continue;
+            }
+            const end = applyMoves(n, start, parseMoves(n, `${pre} ${alg}`));
+            if (!goalMet(n, end, stage.goal(c)))
+              fails.push(`${stage.id} ${c.id} [${turn}] ${pre} ${alg}`);
+          }
+    expect(fails).toEqual([]);
+    expect(checked).toBeGreaterThan(1000);
+  });
+
+  it("시작 모양에 아직 목표가 이뤄져 있지 않다(윗면 돌리기와 상관없이 칠 것이 있다)", () => {
+    for (const stage of PRACTICE_STAGES)
+      for (const c of stage.cases)
+        for (const turn of stage.auf ? SHAPE_TURNS : [""])
+          expect(
+            goalMet(n, caseStart(stage, c, turn), stage.goal(c)),
+            `${stage.id} ${c.id} [${turn}]`,
+          ).toBe(false);
   });
 });

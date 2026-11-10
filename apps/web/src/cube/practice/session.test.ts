@@ -1,12 +1,17 @@
-import { type CubeMove, isSolved, parseMoves } from "@game/cube-engine";
+import {
+  applyMoves,
+  type CubeMove,
+  isSolved,
+  parseMoves,
+} from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
-import { twoHandKeymap } from "../input/keymaps";
+import { notationKeymap, twoHandKeymap } from "../input/keymaps";
 import { goalMet } from "../learn/judge";
 import { drawRound } from "./deck";
 import { pickAlg } from "./pick-alg";
-import { PRACTICE_N } from "./problem";
+import { caseStart, PRACTICE_N, type Problem, problemOf } from "./problem";
 import { ROUND_SIZE } from "./round";
 import {
   PracticeSession,
@@ -16,7 +21,7 @@ import {
 } from "./session";
 import { stageById } from "./stages";
 import { loadPractice } from "./store";
-import type { PracticeStage } from "./types";
+import type { DrillCase, PracticeStage } from "./types";
 
 const keymap = twoHandKeymap();
 const mv = (t: string): CubeMove => parseMoves(PRACTICE_N, t)[0] as CubeMove;
@@ -73,16 +78,37 @@ describe("공식 연습 진행기(사이트 공식 연습·Cubie 미니 모드�
     const { s, stage } = setup("2look-oll");
     const want = drawRound(
       stage.cases.map((c) => c.id),
-      {
-        seed: 7,
-        algOf: (id) =>
-          pickAlg(stage.cases.find((c) => c.id === id) as never, keymap).alg,
-        book: {},
-        auf: stage.auf,
-      },
-    );
+      { seed: 7, book: {}, auf: stage.auf },
+    ).map((d) => {
+      const c = stage.cases.find((x) => x.id === d.caseId) as DrillCase;
+      return problemOf(stage, c, d.turn, pickAlg(c, keymap).alg);
+    });
     expect(s.round.problems).toEqual(want);
     expect(s.round.problems).toHaveLength(ROUND_SIZE);
+  });
+
+  it("시작 모양은 상황 자체(키 배치와 상관없음), 공식은 키 배치마다 가장 싼 것을 그 모양에 맞춘다", () => {
+    const two = setup("pll").s;
+    const notation = setup("pll", { keymap: notationKeymap() }).s;
+    let differ = 0;
+    for (let i = 0; i < ROUND_SIZE; i++) {
+      const a = two.round.problems[i] as Problem;
+      const b = notation.round.problems[i] as Problem;
+      expect([b.caseId, b.turn]).toEqual([a.caseId, a.turn]);
+      const c = two.caseOf(a.caseId) as DrillCase;
+      const start = caseStart(two.stage, c, a.turn);
+      for (const p of [a, b]) {
+        const end = applyMoves(
+          PRACTICE_N,
+          start,
+          parseMoves(PRACTICE_N, p.alg),
+        );
+        expect(goalMet(PRACTICE_N, end, two.stage.goal(c)), p.alg).toBe(true);
+      }
+      if (a.alg !== b.alg) differ++;
+    }
+    expect(two.board?.start).toEqual(notation.board?.start);
+    expect(differ).toBeGreaterThan(0);
   });
 
   it("따라 치기: 틀린 수는 큐브에 넣지 않고 그 낱말을 1.5초 알리며, 콤보가 깨진다", () => {

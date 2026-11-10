@@ -17,7 +17,7 @@ import { countsAsMove, goalMet } from "../learn/judge";
 import { loadTrain, recordSolve } from "../learn/progress";
 import { drawRound } from "./deck";
 import { pickAlg } from "./pick-alg";
-import { boardFor, PRACTICE_N, type ProblemBoard } from "./problem";
+import { boardFor, PRACTICE_N, type ProblemBoard, problemOf } from "./problem";
 import {
   type PracticeMode,
   PracticeRound,
@@ -142,14 +142,17 @@ export class PracticeSession {
       this.mode === "follow"
         ? loadPractice(this.storage).follow
         : loadTrain(this.storage);
+    // 시작 모양은 상황 + 윗면 돌리기, 보일 공식은 고른 공식을 그 모양에 맞춘 것(대결과 같은 방식, docs/47 16-14)
     const problems = drawRound(
       this.stage.cases.map((c) => c.id),
-      {
-        seed: this.opts.seed(),
-        algOf: (id) => this.picked.get(id) as string,
-        book,
-        auf: this.stage.auf,
-      },
+      { seed: this.opts.seed(), book, auf: this.stage.auf },
+    ).map((d) =>
+      problemOf(
+        this.stage,
+        this.caseOf(d.caseId) as DrillCase,
+        d.turn,
+        this.picked.get(d.caseId) as string,
+      ),
     );
     this.round = new PracticeRound(
       problems,
