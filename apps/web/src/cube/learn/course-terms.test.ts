@@ -10,6 +10,7 @@ import {
   type TextPlace,
 } from "@/tutorial/term-order";
 
+import { loosePieceWords } from "./glossary-333";
 import { COURSES, courseById } from "./index";
 import { coursePlaces, courseSummaries } from "./term-places";
 import type { Course } from "./types";
@@ -67,6 +68,60 @@ const CFOP_TERMS: OrderedTerm[] = [
     define: /헤드라이트라고 해요|「헤드라이트」라고/,
   },
   { term: "퍼뮤", use: /퍼뮤/, define: /「퍼뮤」는/ },
+  // 중급 과정은 전문 이름을 쓰되 처음 나올 때 뜻을 먼저 알린다(2026-11-10, docs/standing-rules.md 1절)
+  { term: "F2L", use: /F2L/, define: /F2L\(First Two Layers/ },
+  {
+    term: "OLL",
+    use: /OLL/,
+    define: /OLL\(Orientation of the Last Layer|OLL은 윗면을 노랗게/,
+  },
+  {
+    term: "PLL",
+    use: /PLL/,
+    define: /PLL\(Permutation of the Last Layer|PLL은 마지막 층 조각의 자리/,
+  },
+  { term: "수네·안티수네", use: /수네/, define: /「수네」/ },
+];
+
+/** 루·ZZ·페트루스의 덩어리 「블록」(조각 하나 「블럭」과 다른 말)과 단계 이름 */
+const BLOCK_TERMS: OrderedTerm[] = [
+  { term: "블록", use: /블록/, define: /덩어리를 「블록」이라고 해요/ },
+  {
+    term: "CMLL",
+    use: /CMLL/,
+    define: /맞추는 단계\(CMLL\)|이 단계를 CMLL이라고/,
+  },
+  {
+    term: "LSE",
+    use: /LSE/,
+    define: /맞추는 단계\(LSE\)|LSE\(Last Six Edges/,
+  },
+  { term: "엣지 방향(EO)", use: /EO(?!라인)/, define: /방향\(EO\)/ },
+  {
+    term: "좋은 엣지",
+    use: /좋은 엣지|나쁜 엣지/,
+    define: /「좋은 엣지」|보면 좋은 엣지/,
+  },
+  {
+    term: "EO라인",
+    use: /EO라인/,
+    define: /EO라인\(엣지 방향 맞추기/,
+  },
+];
+
+/** 큰 큐브 */
+const BIG_TERMS: OrderedTerm[] = [
+  { term: "날개", use: /날개/, define: /「날개」/ },
+  { term: "축소법", use: /축소법/, define: /「축소법」/ },
+  { term: "패리티", use: /패리티/, define: /「패리티」/ },
+];
+
+/** 블라인드 */
+const BLD_TERMS: OrderedTerm[] = [
+  { term: "버퍼", use: /버퍼/, define: /「버퍼」/ },
+  { term: "고리 깨기", use: /고리 깨기/, define: /「고리 깨기」/ },
+  { term: "준비 수", use: /준비 수/, define: /「준비 수」/ },
+  { term: "패리티", use: /패리티/, define: /「패리티」/ },
 ];
 
 /** 2×2 처음 맞추기: 3×3을 몰라도 읽는 과정이라 층·구석 이름·거꾸로부터 스스로 알린다(2026-11-10) */
@@ -110,14 +165,32 @@ const SCOPE: Record<string, OrderedTerm[]> = {
     { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
   ],
   cfop: [...NOTATION, ...CFOP_TERMS],
-  roux: [...NOTATION, ...CFOP_TERMS],
-  zz: [...NOTATION, ...CFOP_TERMS],
-  petrus: [...NOTATION, ...CFOP_TERMS],
-  "444-reduction": NOTATION,
-  "444-yau": [...NOTATION, ...CFOP_TERMS],
-  "555-reduction": NOTATION,
-  "bld-op": [...NOTATION, ...CFOP_TERMS],
+  roux: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
+  zz: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
+  petrus: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
+  "444-reduction": [...NOTATION, ...BIG_TERMS],
+  "444-yau": [...NOTATION, ...CFOP_TERMS, ...BIG_TERMS],
+  "555-reduction": [...NOTATION, ...BIG_TERMS],
+  "bld-op": [...NOTATION, ...CFOP_TERMS, ...BLD_TERMS],
 };
+
+// 조각 이름: 홀로 부르거나 색을 모두 대어 부르면 블럭을 붙인다(docs/standing-rules.md 2절). 2×2 둘은 glossary-333 쪽
+describe("큐브 중급 과정 조각 이름(블럭)", () => {
+  for (const course of COURSES) {
+    if (!SCOPE[course.id] || course.size === 2) continue;
+    it(`${course.title}: 홀로 쓴 엣지·코너·센터가 없다`, () => {
+      const loose = [
+        ...courseSummaries(course),
+        ...coursePlaces(course),
+      ].flatMap(({ where, text }) =>
+        loosePieceWords(text, { bigCube: course.size > 3 }).map(
+          (w) => `${where}: …${w}…`,
+        ),
+      );
+      expect(loose).toEqual([]);
+    });
+  }
+});
 
 describe("큐브 중급 과정 용어", () => {
   for (const course of COURSES) {

@@ -208,7 +208,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "처음 배울 때 OLL은 두 번에 나눠요. 먼저 맞추는 것은?",
         choices: ["엣지 방향(노란 십자)", "코너 방향"],
         answer: 0,
-        why: "2단계 OLL은 노란 십자를 먼저, 그다음 코너를 노랗게 해요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",
+        why: "2단계 OLL은 노란 십자를 먼저, 그다음 위 층 코너의 노랑을 위로 해요. PLL도 코너 자리 → 엣지 자리 두 번으로 나눠요.",
       },
     ],
   },
@@ -234,7 +234,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "마지막 LSE에서 돌리는 것은?",
         choices: ["가운데 줄(M)과 윗면(U)만", "오른쪽(R)과 앞(F)"],
         answer: 0,
-        why: "두 블록과 코너를 지키려면 M과 U만 돌려요.",
+        why: "두 블록과 위 층 코너를 지키려면 M과 U만 돌려요.",
       },
     ],
   },
@@ -264,7 +264,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
   },
   "444-reduction": {
     stages: [
-      { title: "센터", lessons: ["444-centers"], goal: "centers" },
+      { title: "4×4 센터", lessons: ["444-centers"], goal: "centers" },
       { title: "엣지 짝", lessons: ["444-edges"], goal: "edges-paired" },
       {
         title: "3×3처럼(패리티)",
@@ -287,16 +287,16 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "3×3처럼 풀 때 4×4에서만 생길 수 있는 것은?",
         choices: [
           "패리티(엣지 하나가 뒤집히거나 둘이 바뀜)",
-          "센터가 다시 흐트러짐",
+          "센터 블럭이 다시 흐트러짐",
         ],
         answer: 0,
-        why: "4×4는 센터·엣지를 묶어 3×3처럼 풀지만, 3×3에는 없는 패리티가 나올 수 있어요.",
+        why: "4×4는 센터 블럭을 모으고 엣지를 묶어 3×3처럼 풀지만, 3×3에는 없는 패리티가 나올 수 있어요.",
       },
     ],
   },
   "555-reduction": {
     stages: [
-      { title: "센터", lessons: ["555-centers"], goal: "centers" },
+      { title: "5×5 센터", lessons: ["555-centers"], goal: "centers" },
       {
         title: "엣지 셋 묶기",
         lessons: ["555-edges", "555-last-two-edges"],
@@ -317,9 +317,9 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     quizzes: [
       {
         question: "5×5에서 움직이지 않는 칸은?",
-        choices: ["면마다 한가운데 칸", "센터 둘레 칸"],
+        choices: ["면마다 한가운데 칸", "한가운데 칸 둘레의 센터 블럭"],
         answer: 0,
-        why: "한가운데 칸은 3×3 센터처럼 고정이라 면 색을 정해 줘요. 둘레 칸은 움직여요.",
+        why: "한가운데 칸은 3×3의 센터 블럭처럼 고정이라 면 색을 정해 줘요. 둘레 칸은 움직여요.",
       },
     ],
   },
@@ -335,15 +335,15 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
   "bld-op": {
     stages: [
       { title: "외우기", lessons: ["bld-letters"] },
-      { title: "엣지", lessons: ["bld-edges"] },
-      { title: "코너", lessons: ["bld-corners", "bld-parity"] },
+      { title: "엣지 보내기", lessons: ["bld-edges"] },
+      { title: "코너 보내기", lessons: ["bld-corners", "bld-parity"] },
     ],
     quizzes: [
       {
         question: "블라인드에서 큐브를 보는 때는?",
         choices: ["외우기 단계에서만", "맞추는 내내"],
         answer: 0,
-        why: "외운 뒤에는 눈을 가리고 외운 글자 차례대로 엣지, 코너를 맞춰요.",
+        why: "외운 뒤에는 눈을 가리고 외운 글자 차례대로 엣지 블럭, 코너 블럭을 보내 맞춰요.",
       },
     ],
   },

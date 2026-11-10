@@ -108,8 +108,12 @@ const PIECE = /센터|엣지|코너/g;
 const COLOR = "흰|빨강|초록|파랑|주황|노랑";
 /** 색을 모두 대어 부르는 이름(「흰-초록」, 「흰-초록-빨강」, 「노랑-초록-주황」) */
 const FULL_NAME = new RegExp(`(${COLOR})(-(${COLOR}))+ $`);
-/** 뒤에 이어 붙는 이름 */
-const JOINED_AFTER = /^( 블럭| ?방향| ?자리| ?돌리기| ?짝| 색)/;
+/**
+ * 뒤에 이어 붙는 이름. 중급 과정의 단계·공식 이름(「엣지 공식」, 「코너 단계」, 「엣지 보내기」, 「엣지: 가로줄」),
+ * 그 조각의 칸·스티커(「코너 칸」, 「엣지 스티커」), 블라인드의 「엣지 버퍼」·「엣지 글자」, 큰 큐브의 「센터 막대」, 단계 차례(「센터 → 엣지」)
+ */
+const JOINED_AFTER =
+  /^( 블럭| ?방향| ?자리| ?돌리기| ?짝| 색| 공식| 단계| 보내기| 묶기| 칸| 스티커| 버퍼| 글자| 막대|:| →)/;
 /**
  * 앞에 붙어도 되는 말(묶음·자리를 말하는 꼴). 색(「흰 엣지」), 자리(「옆 센터」, 「첫 층 코너」, 「앞-오른쪽 위 코너」,
  * 「위-앞 엣지」), 무엇을 하는 조각인지(「넣을 엣지」, 「돌아간 코너」, 「기준 코너」)
@@ -145,6 +149,10 @@ const JOINED_BEFORE = new Set([
   "색",
   "면",
   "쪽",
+  // 단계 차례(「엣지 → 코너」)와 큰 큐브 단계 이름(「4×4 센터」)
+  "→",
+  "4×4",
+  "5×5",
 ]);
 
 /** 받침이 ㄴ·ㄹ인 말(「넣을」, 「돌아간」, 「붙은」, 「보는」): 꾸미는 말이 붙은 묶음 */
@@ -155,10 +163,17 @@ function adnominal(word: string): boolean {
   return tail === 4 || tail === 8;
 }
 
-/** 글에서 블럭을 붙여야 하는데 뺀 곳(앞뒤 몇 글자) */
-export function loosePieceWords(text: string): string[] {
+/**
+ * 글에서 블럭을 붙여야 하는데 뺀 곳(앞뒤 몇 글자). 큰 큐브(`bigCube`)는 엣지 한 줄을 「엣지」, 면마다 모은 센터 블럭
+ * 묶음을 「센터」라 부르므로(docs/47 1절 「큰 큐브」, 하나하나는 「날개」·「센터 블럭」) 엣지·센터는 보지 않는다
+ */
+export function loosePieceWords(
+  text: string,
+  opts: { bigCube?: boolean } = {},
+): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(PIECE)) {
+    if (opts.bigCube && m[0] !== "코너") continue;
     const at = m.index ?? 0;
     const before = text.slice(0, at);
     const after = text.slice(at + m[0].length);
