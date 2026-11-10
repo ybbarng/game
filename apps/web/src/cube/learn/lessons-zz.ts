@@ -1,10 +1,11 @@
 // 3×3 ZZ와 페트루스(docs/47 8-2). ZZ: EO라인 → 왼쪽·오른쪽 블록(R·U·L만) → 윗면(코너 7가지) → PLL.
 // 페트루스는 짧은 소개(2×2×2 → 2×2×3 → 엣지 방향 → 나머지).
-// 엣지 방향·EO라인·블록 단원의 시연·해 보기 수는 zz-path.ts 규칙이 낸 수다.
+// 엣지 방향·EO라인·블록 단원의 시연·해 보기 수는 zz-path.ts 규칙이, 페트루스 엣지 방향은 petrus-path.ts 규칙이 낸 수다.
 // 「ZZ 한눈에」 전체 시연과 마지막 층 단원의 수는 `@game/cube-ai`의 solveZZ가 대회 섞기(3×3 씨앗 21·7)를 푼 단계별 수다.
 import { solvedCube } from "@game/cube-engine";
 
 import { setupFor } from "./notation";
+import { runPetrusEo, stepMovesPetrusEo } from "./petrus-path";
 import type { Course, Lesson } from "./types";
 import {
   mirrorPairAlg,
@@ -39,6 +40,13 @@ export const pairAlg = (white: PairWhite, edge: PairEdge) =>
   ZZ_PAIR_CASES.find((c) => c.white === white && c.edge === edge)
     ?.alg as string;
 
+/** petrus-path.ts 엣지 방향 규칙이 그 상태에서 내는 수 */
+export function petrusEoMoves(start: string): string {
+  return runPetrusEo(play3(solvedCube(3), start))
+    .steps.map(stepMovesPetrusEo)
+    .join(" ");
+}
+
 const upTo = (...parts: string[]) => ({ alg: parts.join(" ") });
 /** 흰 면을 아래로 쥔(z2) 맞춘 큐브에서 이 풀이로 풀리는 상황 */
 const flip = (solution: string) => ({ alg: setupFor(solution, "z2") });
@@ -65,6 +73,12 @@ export const ZZ_PAIR_LEFT = mirrorPairAlg(ZZ_PAIR_RIGHT, "FL");
 export const ZZ_STUCK_SETUP = setupFor("R U R' U' R U R'", "z2");
 /** 그 상황에서 규칙이 내는 수(꺼내기 → 표의 공식) */
 export const ZZ_STUCK = blockRuleMoves(ZZ_STUCK_SETUP, "all");
+/** 페트루스 엣지 방향 해 보기 둘의 상황(2×2×3 블록은 맞고 블록 밖에 나쁜 엣지 둘·넷) */
+export const PETRUS_EO_TWO = "R U F' U2 F R' U F' U F";
+export const PETRUS_EO_FOUR = "R' F' U F U2 R F' U2 F U'";
+/** 그 둘에서 규칙(petrus-path.ts)이 내는 수 */
+export const PETRUS_EO_TWO_ANSWER = petrusEoMoves(PETRUS_EO_TWO);
+export const PETRUS_EO_FOUR_ANSWER = petrusEoMoves(PETRUS_EO_FOUR);
 /** 엣지 방향 해 보기 둘(규칙이 낸 수) */
 export const EO_GATHER = ruleMoves(setupFor("U F", "z2"), false);
 export const EO_SCATTERED = ruleMoves(setupFor(EO_CHECK, "z2"), false);
@@ -533,10 +547,30 @@ const petrus: Lesson = {
       goal: "petrus-223",
     },
     {
+      kind: "quiz",
+      body: "2×2×3 블록을 다 만든 뒤에는 나쁜 엣지를 고쳐요. 그러면 남은 F2L은 R과 U만으로 끝나요. 좋은 엣지·나쁜 엣지는 ZZ 엣지 방향 단원과 같은 뜻이고, 흰 면이 위여도 알아보는 법은 같아요. 블록 밖 엣지 블럭 일곱(위 층 넷, 앞-오른쪽, 뒤-오른쪽, 아래-오른쪽) 가운데 나쁜 엣지는 0·2·4·6개예요. F를 그냥 돌리면 블록이 깨지니, 공식 한 번에 꼭 둘씩 고쳐요. ① 나쁜 엣지 하나를 앞-오른쪽에 둬요. 이미 있으면 그대로, 아니면 아래-오른쪽 R, 뒤-오른쪽 R2, 위-오른쪽 R'(이 차례로 처음 나오는 것). 셋 다 좋은 엣지면 위 층의 나쁜 엣지를 U로 위-오른쪽에 옮기고(위-앞 U', 위-뒤 U, 위-왼쪽 U2, 이 차례로 처음 나오는 것) R'. ② 다른 나쁜 엣지가 위-오른쪽이면 F' U F, 위-뒤면 F' U2 F, 위-왼쪽이면 F' U' F(이 차례로 처음 나오는 것). 위-앞에만 있으면 U'로 위-오른쪽에 옮기고 F' U F. 위 층에 없으면 뒤-오른쪽은 R' U' R, 아래-오른쪽은 R2 U' R2로 위-뒤에 올리고(앞-오른쪽은 제자리로 돌아와요) F' U2 F. F'가 블록의 앞쪽 조각을 U가 닿지 않는 자리로 비켜 두고 F가 되돌려서 블록은 그대로예요. 나쁜 엣지 수의 절반만큼(넷이면 두 번) 하면 끝나요.",
+      setup: { alg: "F' U F R U2 F' U' F R'" },
+      mask: "eo-edges",
+      quiz: {
+        question: "나쁜 엣지가 앞-오른쪽과 위-뒤, 둘이에요. 어떻게 할까요?",
+        choices: ["F' U2 F", "F' U F", "F 한 번"],
+        answer: 0,
+        why: "앞-오른쪽에 하나가 있고, 다른 하나가 위-뒤면 F' U2 F예요. F 한 번은 블록을 깨요.",
+      },
+    },
+    {
       kind: "try",
-      body: "블록을 다 만든 뒤에는 나쁜 엣지를 고쳐요. 그러면 남은 F2L은 R과 U만으로 끝나요. 고치는 법은 ZZ 엣지 방향 단원과 같고, 이 소개에서는 대표 경우 하나만 해요. 화면은 아래 두 층이 맞고 위 층에 나쁜 엣지 넷이 생긴 큐브예요. U F R U' R' F'로 고쳐 보세요. 맨 앞 F와 맨 끝 F'가 짝을 지어 아래 두 층은 그대로예요.",
-      setup: { alg: setupFor("U F R U' R' F'") },
-      alg: "U F R U' R' F'",
+      body: "화면은 2×2×3 블록이 맞고 나쁜 엣지가 둘(아래-오른쪽, 위-왼쪽)인 큐브예요. 앞 단계 차례로 R로 앞-오른쪽에 둔 뒤 F' U' F로 고쳐 보세요.",
+      setup: { alg: PETRUS_EO_TWO },
+      alg: PETRUS_EO_TWO_ANSWER,
+      goal: "eo",
+      mask: "eo-edges",
+    },
+    {
+      kind: "try",
+      body: "이번엔 나쁜 엣지가 넷이에요. 앞 단계 차례로 두 번 고쳐 보세요.",
+      setup: { alg: PETRUS_EO_FOUR },
+      alg: PETRUS_EO_FOUR_ANSWER,
       goal: "eo",
       mask: "eo-edges",
     },
