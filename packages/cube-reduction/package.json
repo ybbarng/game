@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "4×4·5×5 큐브 축소법 해법 — 가운데, 모서리 짝, 패리티, 3×3. 순수 함수",
+  "description": "4×4~7×7 큐브 축소법 해법 — 가운데, 모서리 짝, 패리티, 3×3. 순수 함수",
   "exports": {
     ".": "./src/index.ts"
   },

@@ -11,6 +11,13 @@ export interface EdgeSlot {
   readonly stickers: readonly number[];
   /** 홀수 크기에서 가운데 모서리 조각이 `pieces`의 몇 번째인지(짝수 크기는 -1) */
   readonly midge: number;
+  /** 조각마다 모서리 끝에서 떨어진 칸 수(1부터, 맞은편 끝에서 센 것과 작은 쪽). 같은 값이 한 날개 묶음 */
+  readonly depth: readonly number[];
+  /**
+   * 짝을 견줄 기준 조각(`pieces` 번호). 홀수 크기는 가운데 모서리 조각 하나, 짝수 크기는 가장 안쪽 날개 둘
+   * (4×4는 날개 둘 다). 나머지 날개는 기준과 같은 색이면 짝이 맞은 것이다
+   */
+  readonly anchor: readonly number[];
 }
 
 export interface ReductionGeometry {
@@ -30,6 +37,22 @@ const cache = new Map<number, ReductionGeometry>();
 
 export function faceOfSticker(n: number, p: number): number {
   return Math.floor(p / (n * n));
+}
+
+/** 모서리 스티커 자리가 모서리 끝에서 떨어진 칸 수(1부터, 가까운 끝 기준) */
+export function stickerDepth(n: number, p: number): number {
+  const i = p % (n * n);
+  const r = Math.floor(i / n);
+  const c = i % n;
+  const t = r === 0 || r === n - 1 ? c : r;
+  return Math.min(t, n - 1 - t);
+}
+
+/** 날개 묶음(모서리 끝에서 떨어진 칸 수) 목록. 4×4·5×5는 [1], 6×6·7×7은 [1, 2] */
+export function wingDepths(n: number): number[] {
+  const out: number[] = [];
+  for (let d = 1; d <= Math.floor((n - 2) / 2); d++) out.push(d);
+  return out;
 }
 
 export function reductionGeometry(n: number): ReductionGeometry {
@@ -75,7 +98,11 @@ export function reductionGeometry(n: number): ReductionGeometry {
     const stickers = pieces.flat();
     for (const st of stickers) slotOf[st] = i;
     const midge = s.list.findIndex((pi) => topo.pieces[pi]?.kind === "edge");
-    return { faces: s.faces, pieces, stickers, midge };
+    const depth = pieces.map(([p]) => stickerDepth(n, p));
+    const inner = Math.max(...depth);
+    const anchor =
+      midge >= 0 ? [midge] : depth.flatMap((d, k) => (d === inner ? [k] : []));
+    return { faces: s.faces, pieces, stickers, midge, depth, anchor };
   });
   const g: ReductionGeometry = {
     n,
@@ -123,17 +150,24 @@ function stickerClasses(n: number): Int32Array {
 }
 
 /**
- * 날개 조각 순열의 홀짝(맞춘 상태 기준). 홀수 크기에서 짝 지은 모양은 늘 짝이라, 홀이면
- * 모서리 패리티 공식이 한 번 있어야 한다.
+ * 날개 조각 순열의 홀짝(맞춘 상태 기준). `depth`를 주면 그 날개 묶음만 본다(6×6·7×7은 묶음이 둘이고
+ * 묶음마다 따로 홀짝이 있다). 홀수 크기에서 짝 지은 모양은 묶음마다 늘 짝이라, 홀이면 그 묶음에
+ * 모서리 패리티 공식이 한 번 있어야 한다. 짝수 크기는 묶음끼리 홀짝이 같아야 짝 지을 수 있다.
  */
-export function wingParity(n: number, colors: Uint8Array): number {
+export function wingParity(
+  n: number,
+  colors: Uint8Array,
+  depth?: number,
+): number {
   const g = reductionGeometry(n);
   const cls = stickerClasses(n);
   // 날개 자리 목록(맞춘 상태에서 그 자리에 있는 날개 = 같은 번호)
   const wings: (readonly [number, number])[] = [];
   for (const s of g.slots) {
     s.pieces.forEach((p, i) => {
-      if (i !== s.midge) wings.push(p);
+      if (i === s.midge) return;
+      if (depth !== undefined && s.depth[i] !== depth) return;
+      wings.push(p);
     });
   }
   const perm = wings.map(([q1, q2]) => {
@@ -166,23 +200,30 @@ export function wingParity(n: number, colors: Uint8Array): number {
 }
 
 /**
- * 모서리 짝 점수. 짝수 크기는 짝이 다 맞으면 1, 홀수 크기는 가운데 모서리 조각과 맞은 날개 수
- * (날개를 하나씩 붙여 가는 것도 나아진 것으로 센다).
+ * 모서리 짝 점수(날개를 하나씩 붙여 가는 것도 나아진 것으로 센다). 홀수 크기는 가운데 모서리 조각과 맞은
+ * 날개 수. 짝수 크기는 가장 안쪽 날개 둘이 맞으면 1에 그 둘과 맞은 날개 수를 더한다(4×4는 짝이 맞으면 1).
  */
 export function slotScore(
   slot: EdgeSlot,
   color: (p: number) => number,
 ): number {
-  if (slot.midge < 0) return slotPaired(slot, color) ? 1 : 0;
-  const mid = slot.pieces[slot.midge] as readonly [number, number];
-  const a = color(mid[0]);
-  const b = color(mid[1]);
-  let score = 0;
-  for (let i = 0; i < slot.pieces.length; i++) {
-    if (i === slot.midge) continue;
+  const first = slot.pieces[slot.anchor[0] as number] as readonly [
+    number,
+    number,
+  ];
+  const a = color(first[0]);
+  const b = color(first[1]);
+  const same = (i: number) => {
     const p = slot.pieces[i] as readonly [number, number];
-    if (color(p[0]) === a && color(p[1]) === b) score++;
+    return color(p[0]) === a && color(p[1]) === b;
+  };
+  let score = 0;
+  if (slot.anchor.length === 2) {
+    if (!same(slot.anchor[1] as number)) return 0;
+    score = 1;
   }
+  for (let i = 0; i < slot.pieces.length; i++)
+    if (!slot.anchor.includes(i) && same(i)) score++;
   return score;
 }
 

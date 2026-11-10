@@ -1,5 +1,7 @@
 /**
- * 4×4·5×5 축소법(reduction). 사람이 쓰는 차례를 그대로 따른다.
+ * 4×4~7×7 축소법(reduction). 사람이 쓰는 차례를 그대로 따른다.
+ * 6×6·7×7은 가운데 조각 묶음·날개 묶음이 둘씩이라, 날개는 묶음마다 홀짝을 따로 보고(짝수 크기는 가장 안쪽
+ * 날개 둘을 먼저 짝 지은 뒤 바깥 날개를 붙인다), 패리티 공식은 안쪽 층 묶음 전부로 넓힌다(`macros.ts`).
  *
  * 1. 가운데: 흰 면(U) → 노란 면(D) → 나머지 넷. 처음엔 `s X s'`(안쪽 층 넣기)로 여러 조각을
  *    한꺼번에 옮기고, 마지막 몇 조각은 세 조각 돌리기(교환자)로 맞춘다.
@@ -22,15 +24,16 @@ import {
   faceOfSticker,
   reductionGeometry,
   slotPaired,
+  wingDepths,
   wingParity,
 } from "./geometry";
 import {
   centerMacros,
-  EDGE_PARITY_TEXT,
   edgeMacros,
   edgeParityMacros,
   type Macro,
-  PLL_PARITY_TEXT,
+  ollParityText,
+  pllParityText,
 } from "./macros";
 import {
   applyMovesColors,
@@ -79,7 +82,7 @@ export const STAGE_NAMES: Readonly<Record<ReductionStageId, string>> = {
   three: "3×3",
 };
 
-export const REDUCTION_SIZES: readonly number[] = [4, 5];
+export const REDUCTION_SIZES: readonly number[] = [4, 5, 6, 7];
 
 /**
  * 축소법이 막혔다. 고른 공식으로 더 나아질 수 없거나(`no-progress`), 되풀이 상한을 넘었다
@@ -185,12 +188,27 @@ function solveCenterPhase(
     want[p] = target[faceOfSticker(n, p)] as number;
     w[p] = weight(faceOfSticker(n, p));
   }
+  const faceOfColor = new Int8Array(6);
+  target.forEach((c, f) => {
+    faceOfColor[c] = f;
+  });
+  /** 자리 p(무게 있음)에 색 c가 놓이면 맞은편 면의 색인가 */
+  const opposite = (p: number, c: number) =>
+    (w[p] as number) > 0 && faceOfColor[c] === (faceOfSticker(n, p) + 3) % 6;
   let cur = colors;
   for (let guard = 0; guard < maxSteps; guard++) {
     if (g.centers.every((p) => w[p] === 0 || cur[p] === want[p])) return cur;
     // 준비 수(면마다 0~3번 돌리기)를 돌린 색 배열. 번호 = Σ 돌린 횟수 × 4^면
     const setupColors: (Colors | undefined)[] = [];
-    const consider = (macros: readonly Macro[], prev: Pick | undefined) => {
+    /**
+     * `sideways`: 맞은 수는 그대로(이득 0)인데 맞은편 면 색에 놓인 조각이 줄어드는 공식을 고른다. 6×6·7×7에서
+     * 맞은편 면끼리 바뀐 조각은 세 조각 돌리기 하나로 닿지 않아, 먼저 옆면으로 옮겨 두는 걸음이다
+     */
+    const consider = (
+      macros: readonly Macro[],
+      prev: Pick | undefined,
+      sideways = false,
+    ) => {
       let best = prev;
       for (const macro of macros) {
         if (!macro.centers.some((p) => (w[p] as number) > 0)) continue;
@@ -207,8 +225,17 @@ function solveCenterPhase(
             if (ca[macro.src[p] as number] === t) gain += wp;
             if (ca[p] === t) gain -= wp;
           }
-          if (gain <= 0) continue;
-          const ratio = (s.moves.length + macro.moves.length) / gain;
+          let score = gain;
+          if (sideways) {
+            if (gain !== 0) continue;
+            score = 0;
+            for (const p of macro.centers) {
+              if (opposite(p, ca[p] as number)) score++;
+              if (opposite(p, ca[macro.src[p] as number] as number)) score--;
+            }
+          }
+          if (score <= 0) continue;
+          const ratio = (s.moves.length + macro.moves.length) / score;
           if (!best || ratio < best.ratio)
             best = { setup: s.moves, macro, ratio };
         }
@@ -218,6 +245,8 @@ function solveCenterPhase(
     // 넣기 공식으로 수 셋에 하나 넘게 맞추면 그것으로, 아니면 세 조각 돌리기까지 본다
     let best = consider(inserts, undefined);
     if (!best || best.ratio > 3) best = consider(cycles, best);
+    // 6×6·7×7은 맞은편 면끼리 바뀐 조각이 세 조각 돌리기 하나로 닿지 않아 남는다: 먼저 옆면으로 옮겨 둔다
+    if (!best && n >= 6) best = consider(cycles, best, true);
     if (!best) {
       const wrong = g.centers.filter((p) => w[p] !== 0 && cur[p] !== want[p]);
       throw new ReductionStuckError(
@@ -258,15 +287,16 @@ function setupsOf(n: number, depth: number): CubeMove[][] {
 }
 
 /**
- * 칸 점수를 빨리 세는 표: 칸마다 [기준 조각 스티커 둘, 나머지 조각 스티커 둘씩…].
- * 기준은 홀수 크기면 가운데 모서리 조각, 짝수면 첫 날개.
+ * 칸 점수를 빨리 세는 표: 칸마다 [기준 조각 스티커 둘씩, 나머지 조각 스티커 둘씩…].
+ * 기준은 홀수 크기면 가운데 모서리 조각 하나, 짝수면 가장 안쪽 날개 둘(`EdgeSlot.anchor`).
  */
 interface SlotTable {
   /** 칸 i의 스티커는 `stickers[start[i]]`부터 `count[i]`조각(조각마다 둘) */
   start: Int32Array;
   count: Int32Array;
   stickers: Int32Array;
-  odd: boolean;
+  /** 기준 조각 수(1이나 2, 모든 칸이 같다) */
+  anchors: number;
 }
 
 const slotTables = new Map<number, SlotTable>();
@@ -281,17 +311,17 @@ function slotTable(n: number): SlotTable {
   g.slots.forEach((s, i) => {
     start[i] = list.length;
     count[i] = s.pieces.length;
-    const anchor = s.midge < 0 ? 0 : s.midge;
-    list.push(...(s.pieces[anchor] as readonly [number, number]));
+    for (const k of s.anchor)
+      list.push(...(s.pieces[k] as readonly [number, number]));
     s.pieces.forEach((p, k) => {
-      if (k !== anchor) list.push(...p);
+      if (!s.anchor.includes(k)) list.push(...p);
     });
   });
   const t = {
     start,
     count,
     stickers: Int32Array.from(list),
-    odd: n % 2 === 1,
+    anchors: g.slots[0]?.anchor.length ?? 1,
   };
   slotTables.set(n, t);
   return t;
@@ -313,11 +343,26 @@ function fastSlotScore(
   const b = at(st[k + 1] as number);
   k += 2;
   let score = 0;
-  for (; k < end; k += 2) {
-    if (at(st[k] as number) === a && at(st[k + 1] as number) === b) score++;
-    else if (!t.odd) return 0;
+  if (t.anchors === 2) {
+    if (at(st[k] as number) !== a || at(st[k + 1] as number) !== b) return 0;
+    score = 1;
+    k += 2;
   }
-  return t.odd ? score : 1;
+  for (; k < end; k += 2)
+    if (at(st[k] as number) === a && at(st[k + 1] as number) === b) score++;
+  return score;
+}
+
+/**
+ * 짝을 다 지으려면 패리티 공식이 있어야 하는 날개 묶음. 홀수 크기는 홀짝이 홀인 묶음, 짝수 크기는 가장
+ * 안쪽 묶음과 홀짝이 다른 묶음(4×4는 묶음이 하나라 없다. 그 홀짝은 3×3 단계의 OLL 패리티로 고친다)
+ */
+function parityDepths(n: number, colors: Colors): number[] {
+  const depths = wingDepths(n);
+  if (n % 2 === 1) return depths.filter((d) => wingParity(n, colors, d) === 1);
+  const inner = depths.at(-1) as number;
+  const want = wingParity(n, colors, inner);
+  return depths.filter((d) => d !== inner && wingParity(n, colors, d) !== want);
 }
 
 const bySlotCache = new WeakMap<readonly Macro[], Macro[][]>();
@@ -348,7 +393,7 @@ function solveEdgePhase(
   let cur = colors;
   const before = new Int32Array(g.slots.length);
   /** 짝이 다 맞은 칸의 점수 */
-  const full = t.odd ? (t.count[0] as number) - 1 : 1;
+  const full = (t.anchors === 2 ? 1 : 0) + (t.count[0] as number) - t.anchors;
   const search = (
     depth: number,
     macros: readonly Macro[],
@@ -391,12 +436,13 @@ function solveEdgePhase(
     // 짝 짓기 공식이 수 다섯에 하나 넘게 맞추면 그것으로, 아니면 날개 세 개 돌리기까지 본다.
     let best = search(2, pairs, undefined);
     if (!best || best.ratio > 5) best = search(2, cycles, best);
-    if (!best && t.odd && wingParity(n, cur) === 1) {
-      // 날개 순열이 홀이면 짝 지은 모양에 닿을 수 없다(짝 지은 모양은 늘 짝). 아직 안 맞은
-      // 칸 하나의 두 날개를 맞바꿔 홀짝을 바꾼다(모서리 패리티).
+    const fix = best ? [] : parityDepths(n, cur);
+    if (fix.length) {
+      // 날개 순열의 홀짝이 맞지 않으면 짝 지은 모양에 닿을 수 없다(짝 지은 모양은 묶음마다 늘 짝,
+      // 짝수 크기는 묶음끼리 같다). 아직 안 맞은 칸 하나에서 그 묶음의 두 날개를 맞바꿔 홀짝을 바꾼다(모서리 패리티).
       outer: for (const setup of setupsOf(n, 2)) {
         const ca = applyMovesColors(n, cur, setup);
-        for (const macro of edgeParityMacros(n)) {
+        for (const macro of edgeParityMacros(n, fix[0])) {
           const unpaired = macro.slots.some(
             (si) => fastSlotScore(t, si, ca, null) < full,
           );
@@ -439,7 +485,7 @@ export function colorsFromFacelets(facelets: string): Colors {
   return out;
 }
 
-/** n×n 스티커 문자열(Kociemba 순서)을 축소법으로 푼다. 4×4·5×5만 */
+/** n×n 스티커 문자열(Kociemba 순서)을 축소법으로 푼다. 4×4~7×7 */
 export function solveReduction(facelets: string): ReductionSolution {
   const n = Math.round(Math.sqrt(facelets.length / 6));
   if (6 * n * n !== facelets.length) {
@@ -448,7 +494,7 @@ export function solveReduction(facelets: string): ReductionSolution {
   return solveReductionColors(n, colorsFromFacelets(facelets));
 }
 
-/** cube-engine 상태를 축소법으로 푼다. 4×4·5×5만 */
+/** cube-engine 상태를 축소법으로 푼다. 4×4~7×7 */
 export function solveReductionState(
   n: number,
   state: PuzzleState,
@@ -463,7 +509,7 @@ export function solveReductionColors(
   limits: ReductionLimits = {},
 ): ReductionSolution {
   if (!REDUCTION_SIZES.includes(n)) {
-    throw new RangeError(`축소법은 4×4·5×5만 푼다: ${n}×${n}`);
+    throw new RangeError(`축소법은 4×4~7×7만 푼다: ${n}×${n}`);
   }
   const centerSteps = limits.centerSteps ?? CENTER_STEPS;
   const edgeSteps = limits.edgeSteps ?? EDGE_STEPS;
@@ -527,13 +573,13 @@ export function solveReductionColors(
   if (n % 2 === 0) {
     run("oll-parity", (out) => {
       if (!threeParity(toThreeFacelets(n, cur, faceOfColor)).oll) return cur;
-      const list = moves(n, EDGE_PARITY_TEXT);
+      const list = moves(n, ollParityText(n));
       out.push(...list);
       return applyMovesColors(n, cur, list);
     });
     run("pll-parity", (out) => {
       if (!threeParity(toThreeFacelets(n, cur, faceOfColor)).pll) return cur;
-      const list = moves(n, PLL_PARITY_TEXT);
+      const list = moves(n, pllParityText(n));
       out.push(...list);
       return applyMovesColors(n, cur, list);
     });
