@@ -8,10 +8,9 @@ import { ManualClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
-import { ReplayPlayer, type ReplayStep } from "../replay-player";
+import { ReplayPlayer } from "../replay-player";
 import { IdleShow, type IdleTiming } from "./idle";
 import {
-  fitSolveSteps,
   IDLE_REPLAY_TIMING,
   idleReplaySteps,
   pickIdleReplay,
@@ -41,10 +40,10 @@ function solve(at: number, ms: number, replay?: string): MiniRecord {
   };
 }
 
-/** 맞춘 시간 `ms`에 맞춘 다시 보기 글(수를 고르게 나눈다. `moveCount`가 없으면 멈춤이 1초 아래가 되게) */
-function replayOf(ms: number, moveCount?: number): string {
+/** 맞춘 시간 `ms`에 맞춘 다시 보기 글(멈춤이 1초 아래가 되게 수를 고르게 나눈다) */
+function replayOf(ms: number): string {
   const moves = ["F'", "U'", "R'"];
-  const count = moveCount ?? Math.max(3, Math.ceil(ms / 900));
+  const count = Math.max(3, Math.ceil(ms / 900));
   return Array.from({ length: count }, (_, i) => {
     // 앞의 수는 F F' 짝으로 채우고 끝 세 수가 실제로 맞춘다
     const left = count - i;
@@ -78,58 +77,8 @@ describe("pickIdleReplay", () => {
     const long = solve(4, 8 * 60_000, replayOf(8 * 60_000));
     expect(pickIdleReplay([long, old], [], 0)).toBe(long);
     expect(pickIdleReplay([long, old], [], 1)).toBe(long);
+    // 최근 차례면 길어도 최근 판
     expect(pickIdleReplay([long, fast], [], 1)).toBe(long);
-  });
-});
-
-describe("fitSolveSteps", () => {
-  const steps = (ats: number[]): ReplayStep[] =>
-    ats.map((at) => ({ at, moves: [], part: "solve" as const }));
-  const { targetSolveMs, minStepMs } = IDLE_REPLAY_TIMING;
-
-  it("1분 안쪽이면 그때 시각 그대로", () => {
-    const s = steps([0, 500, 1_200, 59_000]);
-    expect(fitSolveSteps(s)).toEqual(s);
-  });
-
-  it("8분짜리 판도 1분 안팎으로, 수 차례와 간격 비율은 그대로", () => {
-    // 초보의 8분짜리 판: 수 사이 1초(긴 멈춤은 이미 1초로 줄였다) 480수
-    const ats = Array.from({ length: 481 }, (_, i) => i * 1000);
-    const fitted = fitSolveSteps(steps(ats));
-    const len = (fitted.at(-1) as ReplayStep).at;
-    expect(len).toBeLessThanOrEqual(targetSolveMs + 1);
-    expect(len).toBeGreaterThan(targetSolveMs * 0.95);
-    expect(fitted).toHaveLength(ats.length);
-  });
-
-  it("빠르게 돌려도 수 사이는 0.12초보다 좁히지 않고, 넘치면 판 전체를 그 빠르기로", () => {
-    // 7×7처럼 수가 아주 많은 판: 0.3초씩 1,000수(5분) → 1분에 넣으려면 0.06초씩이라 0.12초에서 멈춘다
-    const ats = Array.from({ length: 1001 }, (_, i) => i * 300);
-    const fitted = fitSolveSteps(steps(ats));
-    const gaps = fitted
-      .slice(1)
-      .map((s, i) => s.at - (fitted[i] as ReplayStep).at);
-    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(minStepMs - 1);
-    expect(fitted).toHaveLength(ats.length);
-    expect((fitted.at(-1) as ReplayStep).at).toBe(1000 * minStepMs);
-  });
-
-  it("원래 0.12초보다 빨랐던 수는 그때 간격 그대로", () => {
-    const fitted = fitSolveSteps(steps([0, 50, 120_000]));
-    expect((fitted[1] as ReplayStep).at).toBe(50);
-  });
-
-  it("떠 있을 때 걸음 전체: 8분 판이 섞기·쉬기 뒤 약 1분 안에 끝나고, 끝나면 맞춘 큐브", () => {
-    // 8분 동안 241수(수마다 2초 생각, 멈춤을 1초로 줄여도 4분)
-    const r = solve(9, 8 * 60_000, replayOf(8 * 60_000, 241));
-    const all = idleReplaySteps(3, r);
-    const solveStart = (all.find((x) => x.part === "solve") as ReplayStep).at;
-    expect((all.at(-1) as ReplayStep).at - solveStart).toBeLessThanOrEqual(
-      targetSolveMs + 1,
-    );
-    let state = solvedCube(3);
-    for (const x of all) state = applyMoves(3, state, x.moves);
-    expect(isSolved(3, state)).toBe(true);
   });
 });
 
@@ -227,20 +176,20 @@ describe("떠 있을 때 다시 보기", () => {
     expect(log.at(-1)).toBe("replay2");
   });
 
-  it("8분 걸린 초보의 판도 홈 시연 대신 돌리고, 1분 남짓에 끝나 맞춘 상태로 돌아온다", () => {
-    const long = solve(1, 8 * 60_000, replayOf(8 * 60_000, 241));
+  it("8분 걸린 초보의 판도 홈 시연 대신 그때 속도 그대로 8분 동안 돌리고, 끝나면 맞춘 상태로", () => {
+    // 수 사이가 0.9초라 1초 멈춤 상한에 걸리지 않는다: 맞춘 과정이 그대로 8분
+    const long = solve(1, 8 * 60_000, replayOf(8 * 60_000));
     const { clock, log, show, scene, engine } = setup([long]);
     show.setActive(true);
     clock.advance(1000);
     expect(show.showing).toBe("replay");
-    // 섞기 세 수 + 쉼 + 맞춘 과정(1분) + 끝 멈춤까지
-    clock.advance(
-      3 * IDLE_REPLAY_TIMING.scrambleStepMs +
-        IDLE_REPLAY_TIMING.gapMs +
-        IDLE_REPLAY_TIMING.targetSolveMs,
-    );
+    const solveStart =
+      3 * IDLE_REPLAY_TIMING.scrambleStepMs + IDLE_REPLAY_TIMING.gapMs;
+    clock.advance(solveStart + 8 * 60_000 - 1000);
     expect(show.showing).toBe("replay");
-    clock.advance(2000);
+    expect(log).toEqual(["replay1"]);
+    // 마지막 수 + 끝 멈춤
+    clock.advance(3000);
     expect(show.showing).toBeNull();
     expect(log).toEqual(["replay1", "restore"]);
     expect(scene()).toBe(engine);
