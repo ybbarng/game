@@ -68,7 +68,7 @@ describe("다음에 할 것", () => {
       nextStep(input({ learn: { lessons: doneAll("333-beginner") } }), COURSES),
     ).toMatchObject({
       kind: "beginner-practice",
-      href: "/cube/methods?m=333-beginner",
+      href: "/cube/train?set=beginner-cross",
     });
   });
 

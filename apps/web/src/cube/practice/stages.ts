@@ -128,6 +128,20 @@ export function stagesOf(method: PracticeMethod): PracticeStage[] {
   return PRACTICE_STAGES.filter((s) => s.method === method);
 }
 
+/**
+ * `/cube/train`의 주소가 옛 자유 훈련(상황 고르기·약한 것·내 목록)을 여나. 「더 보기」의 옛 묶음, 내 공식의
+ * 「내 목록 훈련」(`?pick=mine`), `?mode=free`. 나머지는 공식 연습
+ */
+export function isFreeTrain(search: string): boolean {
+  const q = new URLSearchParams(search);
+  const set = q.get("set");
+  return (
+    q.get("mode") === "free" ||
+    q.get("pick") === "mine" ||
+    (set !== null && (MORE_SETS as string[]).includes(set))
+  );
+}
+
 /** 배우기 과정 → 연습 단계 해법(없으면 null) */
 export function methodOfCourse(courseId: string): PracticeMethod | null {
   if (courseId === "333-beginner") return "beginner";

@@ -33,6 +33,8 @@ export interface NextInput {
 export const BEGINNER = "333-beginner";
 /** 처음 맞추기 뒤에 권하는 해법(차례대로, 다 끝낸 것은 건너뛴다) */
 export const NEXT_METHODS = ["cfop", "roux", "zz", "petrus"] as const;
+/** 처음 맞추기를 끝낸 사람에게 권하는 연습(공식 연습의 초보자 십자 단계) */
+export const BEGINNER_PRACTICE = "/cube/train?set=beginner-cross";
 /** 기록 재기를 권하는 동안(5번 평균이 나올 때까지) */
 export const SOLO_GOAL = 5;
 
@@ -74,7 +76,8 @@ export function nextStep(input: NextInput, courses: Course[]): NextStep {
       kind: "beginner-practice",
       icon: "🎯",
       title: "초보자 해법 연습",
-      href: `/cube/methods?m=${BEGINNER}`,
+      // 공식 연습의 초보자 첫 단계(docs/47 16-9)
+      href: BEGINNER_PRACTICE,
     };
   }
 

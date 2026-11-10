@@ -74,7 +74,7 @@ export function CourseNext({ course }: { course: Course }) {
       )}
       {drills.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-white/60 text-xs">공식 훈련</h3>
+          <h3 className="text-white/60 text-xs">공식 연습</h3>
           <div className="flex flex-wrap gap-2">
             {drills.map((d) => (
               <a
