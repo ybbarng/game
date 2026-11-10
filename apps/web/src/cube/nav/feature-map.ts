@@ -116,7 +116,7 @@ export const FEATURE_MAP: FeatureSection[] = [
         icon: "🏁",
         title: "친구와 대결",
         href: "/cube/online",
-        what: "2~8명이 같은 섞기로 동시에 겨뤄요.",
+        what: "2~8명이 같은 섞기로 동시에 겨뤄요. 서버 없이 서로의 기기를 바로 이어서 겨뤄요.",
       },
       {
         icon: "🤖",

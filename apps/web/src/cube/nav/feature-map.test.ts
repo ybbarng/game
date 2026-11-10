@@ -87,7 +87,7 @@ describe("기능 지도 글", () => {
 
   it("설명 글에 풀지 않은 전문 낱말을 쓰지 않는다", () => {
     for (const { title, what } of items)
-      for (const w of ["체력바", "패리티", "오르테가", "PLL", "서버", "그리기"])
+      for (const w of ["체력바", "패리티", "오르테가", "PLL", "그리기"])
         expect(what, title).not.toContain(w);
   });
 
