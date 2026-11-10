@@ -81,11 +81,11 @@ test("오늘의 섞기: 받아 풀면 결과와 공유 글, 다시 들어가면 
   );
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installClock(page);
-  // 첫 화면 「맞추기」 묶음에서 들어간다. 아직 안 했으니 「오늘 완료」는 없다
-  await page.goto("/cube");
+  // 혼자 맞추기의 갈래에서 들어간다(docs/47 16-2). 아직 안 했으니 「오늘 완료」 표시는 없다
+  await page.goto("/cube/solo");
   const link = page.locator("[data-cube-daily-link]");
   await expect(link).toHaveAttribute("href", "/cube/daily");
-  await expect(link.locator("[data-cube-note]")).toHaveCount(0);
+  await expect(link).not.toHaveAttribute("data-cube-daily-done");
   await link.click();
   await expect(page).toHaveURL(/\/cube\/daily$/);
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
@@ -138,9 +138,7 @@ test("오늘의 섞기: 받아 풀면 결과와 공유 글, 다시 들어가면 
   ).toBeLessThanOrEqual(0);
   await shot(page, "daily-done", info.project.name);
 
-  // 다시 들어가면: 첫 화면 칸과 혼자 맞추기 머리에 「오늘 완료」
-  await page.goto("/cube");
-  await expect(link.locator("[data-cube-note]")).toHaveText("오늘 완료");
+  // 다시 들어가면: 혼자 맞추기 갈래에 「오늘 완료」
   await page.goto("/cube/solo");
   await expect(page.locator("[data-cube-daily-link]")).toHaveAttribute(
     "data-cube-daily-done",
