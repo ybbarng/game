@@ -8,6 +8,7 @@ const TOUCH_WORDS: [RegExp, string][] = [
   [/쳐 봐요/g, "돌려 봐요"],
   [/쳐서/g, "돌려서"],
   [/더 쳐 /g, "더 돌려 "],
+  [/쳐요/g, "돌려요"],
 ];
 
 export function touchText(text: string, noKeyboard: boolean): string {

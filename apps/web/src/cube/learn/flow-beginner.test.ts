@@ -148,7 +148,7 @@ describe("흰 십자: 경우별 시연", () => {
     expect(colorsAt(3, at(CROSS_WRONG_TOP_TRY), ["U", "R"])).toEqual([0, 4]);
   });
 
-  it("경우별 모범 답은 힌트(배우는 방식 해법)가 내는 수와 같고, F·D·y만 쓴다", () => {
+  it("경우별 모범 답은 힌트(경우별 정해진 길)가 내는 수와 같고, F·D·y만 쓴다", () => {
     for (const c of [
       CROSS_MIDDLE,
       CROSS_MIDDLE_R,
@@ -189,7 +189,7 @@ describe("흰 십자: 경우별 시연", () => {
 describe("둘째 층", () => {
   it("박힌 엣지: 앞-오른쪽 칸에 앞-왼쪽 칸의 엣지", () => {
     const step = lessonOf("333-second-layer").steps.find((x) =>
-      x.body.includes("다른 칸(앞-왼쪽)"),
+      x.body.includes("앞-왼쪽 자리의 엣지"),
     );
     if (!step?.setup || !("alg" in step.setup)) throw new Error("단계 없음");
     const s = play(3, step.setup.alg);

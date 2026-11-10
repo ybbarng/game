@@ -425,7 +425,7 @@ function lastLayerTaught(): Step[] {
       s.stage("ll-edges");
       llCornerPlaceTaught(s);
       s.stage("ll-corner-place");
-      llCornerTwistTaught(s);
+      llCornerTwistTaught(s, { back: true });
       s.stage("ll-corner-twist");
     },
   ];

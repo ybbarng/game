@@ -2,6 +2,10 @@
 // 과정 시작(준비 단원 뒤)에 지도 단원을 붙이고, 단원 머리에는 「n단계 중 k단계」 띠를 보인다.
 // 시연 수는 단계마다 나눠 둔다: 풀이 함수(`@game/cube-ai`)가 단계 꼬리표대로 푼 것을 옮겨 적었고,
 // 풀이 함수와 순서가 다른 초보자 과정은 단원의 공식으로 짰다. stage-map.test.ts가 단계 끝마다 그 단계 목표가 되는지 본다.
+// 3×3 처음 맞추기는 대회 섞기 하나를 단원의 경우별 정해진 길(beginner-path.ts)로 푼 수다(2026-11-10).
+import { solvedCube } from "@game/cube-engine";
+
+import { type PathStageId, play, runStage, stepMoves } from "./beginner-path";
 import { invertAlg } from "./notation";
 import type {
   Course,
@@ -31,11 +35,7 @@ export interface StageSpec {
 const reps = (alg: string, k: number) =>
   Array.from({ length: k }, () => alg).join(" ");
 const TW = "R' D' R D";
-const RIGHT = "U R U' R' U' F' U F";
-const FROM_RIGHT = "U' F' U F U R U' R'";
-const EO = "F R U R' U' F'";
 const SUNE = "R U R' U R U2 R'";
-const EDGE_SWAP = `${SUNE} U`;
 const CYCLE = "U R U' L' U R' U' L";
 const A_PERM = "R' F R' B2 R F' R' B2 R2";
 
@@ -52,16 +52,33 @@ function scrambleFor(moves: string[]): string {
   return `${turns} ${invertAlg(all)}`.trim();
 }
 
-// 3×3 초보자: 흰 십자 → 첫 층 코너(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 코너 자리 → 방향
-const BEGINNER_333_MOVES = [
-  "D' F2 y F D' F' y F y F2 y D F2",
-  `D ${TW} y' ${reps(TW, 3)} y' D2 ${reps(TW, 5)} y' D' ${TW}`,
-  `z2 U ${RIGHT} U2 y' ${FROM_RIGHT} y2 ${RIGHT} U' y' ${FROM_RIGHT}`,
-  `${EO} U2 ${EO} ${EO}`,
-  `U ${EDGE_SWAP} U' y' ${EDGE_SWAP}`,
-  `${CYCLE} y' ${CYCLE}`,
-  `${reps(TW, 2)} U ${reps(TW, 2)} U ${reps(TW, 2)} U2`,
+// 풀이 함수가 낸 수(대회 섞기 3×3 씨앗 21, 4×4·5×5 씨앗 3)
+const CFOP_SCRAMBLE =
+  "L2 D2 U' L2 F2 D F2 U2 B2 D' L' F' R2 B U' F2 U R B L R2";
+
+// 3×3 초보자: 흰 십자 → 첫 층 코너(흰 면 위) → 뒤집고 둘째 층 → 노란 십자 → 옆면 → 코너 자리 → 방향.
+// 단원 규칙으로 푼 단계별 수(둘째 층 앞에 뒤집기 z2)
+const BEGINNER_333_SCRAMBLE =
+  "U F R2 U2 R U' F U' F2 R U F R F2 R2 F' R U' R U";
+const BEGINNER_333_STAGES: PathStageId[] = [
+  "cross",
+  "corners",
+  "second",
+  "yellow-cross",
+  "edges",
+  "corner-place",
+  "corner-twist",
 ];
+const BEGINNER_333_MOVES = (() => {
+  let s = play(solvedCube(3), BEGINNER_333_SCRAMBLE);
+  return BEGINNER_333_STAGES.map((id) => {
+    const flip = id === "second" ? "z2" : "";
+    s = play(s, flip);
+    const r = runStage(id, s);
+    s = r.state;
+    return [flip, ...r.steps.map(stepMoves)].filter(Boolean).join(" ");
+  });
+})();
 
 const FROM333_222_MOVES = [
   `${TW} D ${reps(TW, 3)} y ${reps(TW, 5)} y D' ${TW}`,
@@ -74,10 +91,6 @@ const BEGINNER_222_MOVES = [
   `z2 U ${SUNE} ${SUNE}`,
   `U ${A_PERM} U2`,
 ];
-
-// 풀이 함수가 낸 수(대회 섞기 3×3 씨앗 21, 4×4·5×5 씨앗 3)
-const CFOP_SCRAMBLE =
-  "L2 D2 U' L2 F2 D F2 U2 B2 D' L' F' R2 B U' F2 U R B L R2";
 
 export const STAGE_SPECS: Record<string, StageSpec> = {
   "333-beginner": {
@@ -111,7 +124,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       },
     ],
     demo: {
-      scramble: scrambleFor(BEGINNER_333_MOVES),
+      scramble: BEGINNER_333_SCRAMBLE,
       moves: BEGINNER_333_MOVES,
       source: "단원 공식",
     },
@@ -127,7 +140,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         question: "끝까지 맞추는 데 외울 공식은 모두 몇 개일까요?",
         choices: ["여섯 개", "열두 개", "스무 개 넘게"],
         answer: 0,
-        why: "R' D' R D, 둘째 층 넣기 둘(앞에서·오른쪽에서), F R U R' U' F', R U R' U R U2 R' U, U R U' L' U R' U' L. 단계마다 같은 공식을 여러 번 써요.",
+        why: "R' D' R D, 둘째 층 넣기 둘(앞에서·오른쪽에서), F R U R' U' F', R U R' U R U2 R' U, U R U' L' U R' U' L. 몇 개는 끝에서부터 거꾸로도 쳐요.",
       },
     ],
   },

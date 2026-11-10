@@ -17,7 +17,9 @@ import {
   nextCrossEdge,
   placedTop,
   TAUGHT_CORNER_CYCLE,
+  TAUGHT_CORNER_CYCLE_BACK,
   TAUGHT_CORNER_TRIGGER,
+  TAUGHT_CORNER_TRIGGER_BACK,
   TAUGHT_EDGE_SWAP,
   TAUGHT_MIDDLE_FROM_FRONT,
   TAUGHT_MIDDLE_FROM_RIGHT,
@@ -143,12 +145,22 @@ const RUNS: Record<TaughtStage, (s: Solve, o: TaughtPlanOptions) => void> = {
   },
   "ll-corner-twist": (s) => {
     whiteDown(s);
-    llCornerTwistTaught(s);
+    llCornerTwistTaught(s, { back: true });
   },
 };
 
 const tokens = (alg: string) => alg.split(" ");
 const TRIGGER = tokens(TAUGHT_CORNER_TRIGGER);
+const TRIGGER_BACK = tokens(TAUGHT_CORNER_TRIGGER_BACK);
+const CYCLE_BACK = tokens(TAUGHT_CORNER_CYCLE_BACK);
+
+/** 코너 돌리기(또는 그 거꾸로)가 처음 나오는 자리와 그 공식(없으면 -1) */
+function twistAt(seg: readonly string[]): { i: number; part: string[] } {
+  const a = indexOf(seg, TRIGGER);
+  const b = indexOf(seg, TRIGGER_BACK);
+  if (b >= 0 && (a < 0 || b < a)) return { i: b, part: TRIGGER_BACK };
+  return { i: a, part: TRIGGER };
+}
 const EDGE_SWAP = tokens(TAUGHT_EDGE_SWAP);
 const CYCLE = tokens(TAUGHT_CORNER_CYCLE);
 const FROM_FRONT = tokens(TAUGHT_MIDDLE_FROM_FRONT);
@@ -226,14 +238,17 @@ function classify(
       };
     }
     case "corners": {
-      // 공식은 처음 옆면(R·F) 수부터. 그 앞은 쥐기(y)와 칸 밑으로(D)
-      const i = seg.findIndex((m) => m[0] === "R" || m[0] === "F");
+      // 공식은 처음 옆면(R·F) 수부터(되풀이면 코너 돌리기나 그 거꾸로부터). 그 앞은 쥐기(y)와 칸 밑으로(D)
+      const shortcut = opts.cornerRepeat !== true;
+      const tw = twistAt(seg);
+      const i = shortcut
+        ? seg.findIndex((m) => m[0] === "R" || m[0] === "F")
+        : tw.i;
       if (i < 0) throw new Error("첫 층 토막에 공식이 없다");
       const t2 = t.clone().apply(seg.slice(0, i).join(" "));
       const c = t2.cubie();
       const rel = t2.rel();
-      const shortcut = opts.cornerRepeat !== true;
-      const reps = shortcut ? 0 : repeats(seg, i, TRIGGER);
+      const reps = shortcut ? 0 : repeats(seg, i, tw.part);
       if (c.cp[4] === 0) {
         // 칸 밑(앞-오른쪽 아래)의 흰 스티커: 아래 29, 앞 26, 오른쪽 15
         const white =
@@ -316,19 +331,20 @@ function classify(
       };
     }
     case "ll-corner-place":
-      if (indexOf(seg, CYCLE) < 0) return { kind: "auf" };
+      if (indexOf(seg, CYCLE) < 0 && indexOf(seg, CYCLE_BACK) < 0)
+        return { kind: "auf" };
       return {
         kind: "corner-place",
         placed: placedTop(t).length === 1 ? 1 : 0,
       };
     case "ll-corner-twist": {
-      const i = indexOf(seg, TRIGGER);
+      const { i, part } = twistAt(seg);
       if (i < 0) return { kind: "auf" };
       const t2 = t.clone().apply(seg.slice(0, i).join(" "));
       return {
         kind: "twist",
         yellow: t2.rel()[9] === "U" ? "right" : "front",
-        reps: repeats(seg, i, TRIGGER),
+        reps: repeats(seg, i, part),
       };
     }
   }
@@ -346,16 +362,14 @@ export function taughtStagePlan(
   const moves = s.moves.map((m) => formatMove(3, m));
   const cuts = new Set<number>([0, ...s.lookList]);
   // 끝의 윗면 돌리기(옆색 맞추기)는 따로 한 토막
-  const formula =
+  const formulas =
     stage === "ll-edges"
-      ? EDGE_SWAP
+      ? [EDGE_SWAP]
       : stage === "ll-corner-twist"
-        ? TRIGGER
-        : null;
-  if (formula) {
-    const end = lastEnd(moves, formula);
-    if (end > 0) cuts.add(end);
-  }
+        ? [TRIGGER, TRIGGER_BACK]
+        : [];
+  const end = Math.max(-1, ...formulas.map((f) => lastEnd(moves, f)));
+  if (end > 0) cuts.add(end);
   const bounds = [...cuts]
     .filter((i) => i < moves.length)
     .sort((a, b) => a - b);

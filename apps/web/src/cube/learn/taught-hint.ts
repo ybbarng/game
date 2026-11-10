@@ -1,21 +1,18 @@
 // 무작위 해 보기·마무리의 두 단계 힌트(docs/47 8-1 「힌트」). 정해진 모범 답이 없는 해 보기에서
-// 힌트 1은 지금 어느 경우인지 짧은 이름, 힌트 2는 다음 수 하나를 보인다. 수는 그 단원의 배우는 방식 해법
-// (`@game/cube-ai` `taughtStagePlan`)이 지금 상태에서 낸 계획이고, 사용자가 계획대로 치는 동안은 같은 계획을
-// 이어 쓴다. 벗어나면 지금 상태에서 다시 계산한다. 화면은 이 파일을 필요할 때 불러온다(cube-ai를 배우기 첫 화면에 싣지 않게).
-import {
-  type ColorLetter,
-  TAUGHT_CORNER_SHORTCUT,
-  TAUGHT_CORNER_SLOT,
-  TAUGHT_STAGES,
-  type TaughtCase,
-  type TaughtPlanOptions,
-  type TaughtStage,
-  taughtStagePlan,
-  toFacelets,
-} from "@game/cube-ai";
+// 힌트 1은 지금 어느 경우인지 짧은 이름, 힌트 2는 다음 수 하나를 보인다. 수는 단원 글과 같은 경우별 정해진 길
+// (`beginner-path.ts`, 2026-11-10)이 지금 상태에서 낸 계획이고, 사용자가 계획대로 치는 동안은 같은 계획을
+// 이어 쓴다. 벗어나면 지금 상태에서 다시 계산한다. 화면은 이 파일을 필요할 때 불러온다(배우기 첫 화면에 싣지 않게).
+import { TAUGHT_STAGES, type TaughtStage, toFacelets } from "@game/cube-ai";
 import { applyMoves, isSolved, parseMoves } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
+import {
+  type PathStageId,
+  runStage,
+  stepLabel,
+  TWIST,
+  TWIST_BACK,
+} from "./beginner-path";
 import { courseById } from "./index";
 import { goalMet } from "./judge";
 import { BEGINNER_COURSE_ID } from "./taught-kind";
@@ -56,18 +53,18 @@ export interface HintPlan {
 }
 
 /**
- * 코너 방향 도중 `R' D' R D`를 하다 만 자리에서 이어 칠 나머지(짧은 것부터). 한 코너에 공식을 홀수 번 친
- * 자리면 앞-오른쪽 위에 다른 코너가 와 있어, 한 번 더 쳐 짝수 번(2·4번)으로 맞춘다
+ * 코너 방향 도중 코너 돌리기(또는 그 거꾸로)를 하다 만 자리에서 이어 칠 나머지(짧은 것부터). 한 코너에 공식을
+ * 홀수 번 친 자리면 앞-오른쪽 위에 다른 코너가 와 있어, 한 번 더 쳐 짝수 번(두 번)으로 맞춘다
  */
-const TRIGGER_REST = [
-  "D",
-  "R D",
-  "D' R D",
-  "R' D' R D",
-  "D R' D' R D",
-  "R D R' D' R D",
-  "D' R D R' D' R D",
-];
+const TRIGGER_REST: string[] = (() => {
+  const out: string[] = [];
+  for (const formula of [TWIST, TWIST_BACK]) {
+    const m = formula.split(" ");
+    const rests = [3, 2, 1].map((k) => m.slice(k).join(" "));
+    out.push(...rests, formula, ...rests.map((r) => `${r} ${formula}`));
+  }
+  return out.sort((a, b) => a.split(" ").length - b.split(" ").length);
+})();
 
 const TURN = /^([URFDLBxyz])(2|')?$/;
 const amountOf = (suffix: string | undefined) =>
@@ -75,7 +72,7 @@ const amountOf = (suffix: string | undefined) =>
 const AMOUNT_TEXT = ["", "", "2", "'"];
 
 /**
- * 토막 안에서 이어진 같은 면 수를 합친다(해법이 둔 「U U'」·「U2 U2」·「U2 U'」 같은 자리 맞추기 수).
+ * 토막 안에서 이어진 같은 면 수를 합친다(쥐기의 「D」 뒤 거꾸로 공식의 「D'」 같은 자리 맞추기 수).
  * 토막 경계는 넘지 않는다(경계 너머로 지워지는 수는 `planIndex`가 건너뛴다)
  */
 export function mergeTurns(moves: readonly string[]): string[] {
@@ -92,26 +89,63 @@ export function mergeTurns(moves: readonly string[]): string[] {
   return out;
 }
 
-/**
- * 단원 해 보기의 힌트 계획. 「첫 층 코너」의 무작위 해 보기는 지름길 단계보다 앞이라 `R' D' R D` 되풀이로 보인다.
- * 마무리(처음부터 끝까지)는 지름길을 배운 뒤라 지름길(기본값)
- */
-export const LESSON_PLAN: TaughtPlanOptions = { cornerRepeat: true };
+const PATH_OF: Record<TaughtStage, PathStageId> = {
+  cross: "cross",
+  corners: "corners",
+  middle: "second",
+  eo: "yellow-cross",
+  "ll-edges": "edges",
+  "ll-corner-place": "corner-place",
+  "ll-corner-twist": "corner-twist",
+};
+
+const WHITE_UP: readonly TaughtStage[] = ["cross", "corners"];
+const HOLDS = ["", "x2", "x", "x'", "z", "z'"];
+
+/** 흰 면을 위(흰 십자·첫 층) 또는 아래(나머지)로 쥐는 큐브 돌리기 */
+function holdFor(stage: TaughtStage, state: PuzzleState): string {
+  // 윗면·아랫면 센터 스티커 자리
+  const at = WHITE_UP.includes(stage) ? 4 : 31;
+  const h = HOLDS.find((r) => keyOf(apply(state, r ? [r] : []))[at] === "U");
+  if (h === undefined) throw new Error("흰 센터를 찾지 못했다");
+  return h;
+}
 
 function build(
   stage: TaughtStage,
   state: PuzzleState,
   lead: string[],
-  opts: TaughtPlanOptions,
 ): HintPlan {
-  const plan = taughtStagePlan(stage, apply(state, lead), opts);
+  const afterLead = apply(state, lead);
+  const hold = holdFor(stage, afterLead);
+  const held = apply(afterLead, hold ? [hold] : []);
+  // 코너 자리는 위 엣지 옆 색이 맞은 데서 한다(옆면 맞추기 목표는 윗면 돌리기 하나를 봐준다)
+  const align =
+    stage === "ll-corner-place" ? runStage("edges", held).steps : [];
+  const aligned = apply(
+    held,
+    align.flatMap((st) => (st.hold ? st.hold.split(" ") : [])),
+  );
+  const run = {
+    steps: [...align, ...runStage(PATH_OF[stage], aligned).steps],
+  };
   const parts: { label: string; moves: string[] }[] = [
     ...(lead.length > 0
-      ? [{ label: "하던 코너를 마저 돌려요(R' D' R D 끝까지)", moves: lead }]
+      ? [{ label: "하던 코너를 마저 돌려요(공식 끝까지)", moves: lead }]
       : []),
-    ...plan.segments.map((g) => ({
-      label: caseLabel(g.info),
-      moves: mergeTurns(plan.moves.slice(g.start, g.end)),
+    ...(hold
+      ? [
+          {
+            label: WHITE_UP.includes(stage)
+              ? "흰 면을 위로 들어요(흰 십자·첫 층은 흰 면 위에서)"
+              : "첫 층 끝: 큐브를 뒤집어 흰 면을 아래로",
+            moves: [hold],
+          },
+        ]
+      : []),
+    ...run.steps.map((st) => ({
+      label: stepLabel(st),
+      moves: mergeTurns([st.hold, st.alg].filter(Boolean).join(" ").split(" ")),
     })),
   ].filter((p) => p.moves.length > 0);
   const moves: string[] = [];
@@ -140,19 +174,23 @@ function build(
 export function makeHintPlan(
   stage: TaughtStage,
   state: PuzzleState,
-  opts: TaughtPlanOptions = {},
 ): HintPlan | null {
   const leads = stage === "ll-corner-twist" ? ["", ...TRIGGER_REST] : [""];
+  // 이어 칠 나머지가 여럿 맞으면 전체가 가장 짧은 계획(하던 공식을 되돌리는 나머지보다 마저 치는 나머지)
+  let best: HintPlan | null = null;
   for (const lead of leads) {
     try {
-      const plan = build(stage, state, lead ? lead.split(" ") : [], opts);
+      const plan = build(stage, state, lead ? lead.split(" ") : []);
       const end = apply(state, plan.moves);
-      if (stage !== "ll-corner-twist" || isSolved(3, end)) return plan;
+      if (stage !== "ll-corner-twist" || isSolved(3, end)) {
+        if (!lead) return plan;
+        if (!best || plan.moves.length < best.moves.length) best = plan;
+      }
     } catch {
       // 이 자리에서는 이 단계로 끝낼 수 없다
     }
   }
-  return null;
+  return best;
 }
 
 /**
@@ -210,20 +248,19 @@ function onPlan(plan: HintPlan, state: PuzzleState): TaughtHint | null {
 }
 
 /**
- * 다음 힌트. 앞 계획(`prev`)대로 오고 있으면 그것을 이어 쓰고, 아니면 지금 상태에서 다시 계산한다.
- * 이미 그 단계가 끝났거나 끝낼 수 없으면 null. 기본은 단원 해 보기의 계획(`LESSON_PLAN`)
+ * 지금 단계의 힌트. 앞 계획(prev)대로 오고 있으면 그 계획을 이어 쓰고, 아니면 지금 상태에서 다시 계산한다.
+ * 이미 그 단계가 끝났거나 끝낼 수 없으면 null
  */
 export function nextHint(
   stage: TaughtStage,
   state: PuzzleState,
   prev: HintPlan | null,
-  opts: TaughtPlanOptions = LESSON_PLAN,
 ): TaughtHint | null {
   if (prev && prev.stage === stage) {
     const h = onPlan(prev, state);
     if (h) return h;
   }
-  const plan = makeHintPlan(stage, state, opts);
+  const plan = makeHintPlan(stage, state);
   if (!plan) return null;
   const k = planIndex(plan, state);
   return k >= 0 ? hintAt(plan, k) : null;
@@ -255,83 +292,5 @@ export function finaleHint(
   }
   const reached = finaleReached(state);
   const stage = TAUGHT_STAGES[reached];
-  return stage ? nextHint(stage, state, null, {}) : null;
-}
-
-// ── 경우 이름 ──────────────────────────────────────────
-
-const COLOR: Record<ColorLetter, string> = {
-  U: "흰",
-  R: "빨강",
-  F: "초록",
-  D: "노랑",
-  L: "주황",
-  B: "파랑",
-};
-const colors = (list: ColorLetter[]) => list.map((c) => COLOR[c]).join("-");
-
-const CROSS_CASE: Record<
-  Extract<TaughtCase, { kind: "cross" }>["case"],
-  string
-> = {
-  "down-white-down": "아래층·흰색 아래",
-  middle: "가운데 줄",
-  "down-white-side": "아래층·흰색 옆",
-  "top-flipped": "윗층 제자리·뒤집힘",
-  "top-wrong": "윗층·엉뚱한 자리",
-};
-
-const SIDE: Record<"right" | "down" | "front", string> = {
-  right: "오른쪽",
-  down: "아래",
-  front: "앞",
-};
-
-/** 경우 자료 → 「흰-빨강 엣지: 가운데 줄 경우」 같은 짧은 이름 */
-export function caseLabel(c: TaughtCase): string {
-  switch (c.kind) {
-    case "hold":
-      return c.white === "up"
-        ? "흰 면을 위로 들어요(흰 십자·첫 층은 흰 면 위에서)"
-        : "첫 층 끝: 큐브를 뒤집어(z2) 흰 면을 아래로";
-    case "cross":
-      return `${colors(c.colors)} 엣지: ${CROSS_CASE[c.case]} 경우`;
-    case "corner":
-      if (c.from === "stuck")
-        return `${colors(c.colors)} 코너가 엉뚱한 칸에 박힘: 한 번 빼기`;
-      if (c.shortcut) {
-        const w = c.white;
-        const slot = c.from === "slot" && w !== "down";
-        const alg =
-          c.from === "slot" && w !== "down"
-            ? TAUGHT_CORNER_SLOT[w]
-            : TAUGHT_CORNER_SHORTCUT[w];
-        return `${colors(c.colors)} 코너: ${slot ? "제 칸" : "칸 밑"}에서 흰색이 ${SIDE[w]}, ${alg}`;
-      }
-      return c.from === "slot"
-        ? `${colors(c.colors)} 코너: 제 칸에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`
-        : `${colors(c.colors)} 코너: 칸 밑에서 흰색이 ${SIDE[c.white]}, ${c.reps}번`;
-    case "middle":
-      return c.side === "stuck"
-        ? `${colors(c.colors)} 엣지가 칸에 잘못 들어감: 앞에서 넣기로 빼내기`
-        : `${colors(c.colors)} 엣지: ${c.side === "right" ? "오른쪽" : "앞"}에서 넣기`;
-    case "eo":
-      return c.shape === "dot"
-        ? "노란 십자: 점, 아무 방향에서 한 번"
-        : c.shape === "ell"
-          ? "노란 십자: ㄱ자, 노란 두 칸을 뒤·왼쪽으로"
-          : "노란 십자: 가로줄, 가로로 쥐고 한 번";
-    case "ll-edges":
-      return c.pattern === "adjacent"
-        ? "옆면: 이웃한 둘이 맞음, 그 둘을 뒤·오른쪽에 쥐기"
-        : "옆면: 마주 본 둘이 맞음, 아무 쪽에서 한 번";
-    case "corner-place":
-      return c.placed === 1
-        ? "코너 자리: 제자리 하나, 앞-오른쪽 위에 쥐기"
-        : "코너 자리: 제자리 없음, 아무 쪽에서 한 번";
-    case "twist":
-      return `코너 방향: 노랑이 ${c.yellow === "right" ? "오른쪽" : "앞"}, ${c.reps}번`;
-    case "auf":
-      return "윗면을 돌려 옆색 맞추기";
-  }
+  return stage ? nextHint(stage, state, null) : null;
 }

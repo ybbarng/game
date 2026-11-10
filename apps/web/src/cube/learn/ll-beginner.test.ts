@@ -15,7 +15,6 @@ import { describe, expect, it } from "vitest";
 import { COURSES } from "./index";
 import { goalMet, placedTopCorners, stateForRule } from "./judge";
 import {
-  A_PERM,
   CORNER_CYCLE,
   CORNER_PLACED_TWISTED,
   CORNER_TWIST,
@@ -28,10 +27,12 @@ import {
   SHORT_FRONT,
   SHORT_RIGHT,
   STUCK_CORNER_UP,
+  TWIST_BACK,
   TWIST_THREE,
   TWIST_TWO,
+  YELLOW_CROSS_BACK,
 } from "./lessons-333";
-import { setupFor } from "./notation";
+import { invertAlg, setupFor } from "./notation";
 import type { FaceLetter, Lesson } from "./types";
 
 const F: Record<FaceLetter, number> = { U: 0, R: 1, F: 2, D: 3, L: 4, B: 5 };
@@ -114,13 +115,26 @@ describe("첫 층 코너(흰 면 위)", () => {
     }
   });
 
-  it("고르기 답이 엔진과 같다(아래 3번, 제 칸 오른쪽 2번)", () => {
+  it("고르기 답이 엔진과 같다(아래 3번, 제자리 오른쪽 2번)", () => {
     const quizzes = lesson.steps.filter((s) => s.kind === "quiz");
-    expect(quizzes[0]?.quiz?.choices[quizzes[0].quiz.answer]).toBe("세 번");
-    expect(quizzes[1]?.quiz?.choices[quizzes[1].quiz.answer]).toBe("두 번");
+    expect(quizzes[0]?.quiz?.choices[quizzes[0].quiz.answer]).toBe(
+      "R' D' R D 세 번",
+    );
+    expect(quizzes[1]?.quiz?.choices[quizzes[1].quiz.answer]).toBe(
+      "R' D' R D 두 번",
+    );
   });
 
-  it("지름길: 칸 밑 코너의 흰색이 오른쪽 R' D' R, 앞 F D F', 아래 R' D2 R D 뒤 R' D' R(해법과 같다)", () => {
+  it("거꾸로 D' R' D R 한 번 = R' D' R D 다섯 번, 두 번 = 네 번(큐브 전체가 같다)", () => {
+    expect(faceColors(3, play(TWIST_BACK))).toEqual(
+      faceColors(3, play(reps(CORNER_TWIST, 5))),
+    );
+    expect(faceColors(3, play(reps(TWIST_BACK, 2)))).toEqual(
+      faceColors(3, play(reps(CORNER_TWIST, 4))),
+    );
+  });
+
+  it("지름길(2×2 첫 층 단원): 칸 밑 코너의 흰색이 오른쪽 R' D' R, 앞 F D F', 아래 R' D2 R D 뒤 R' D' R(해법과 같다)", () => {
     const want: [string, number][] = [
       [SHORT_RIGHT, F.R],
       [SHORT_FRONT, F.F],
@@ -137,32 +151,10 @@ describe("첫 층 코너(흰 면 위)", () => {
       expect(faceOf(s, ["D", "F", "R"], WHITE), alg).toBe(face);
       expect(goalMet(3, s, "white-cross")).toBe(true);
       expect(goalMet(3, play(alg, s), "first-layer")).toBe(true);
-      // 맞춘 면(U)은 돌리지 않는다
       expect(alg).not.toMatch(/U/);
     }
-    // 지름길 단계는 무작위 해 보기 뒤라 해 보기 번호가 그대로다
-    const random = lesson.steps.findIndex((s) => s.kind === "try" && !s.alg);
-    const short = lesson.steps.findIndex((s) => s.alg === SHORT_RIGHT);
-    expect(short).toBeGreaterThan(random);
-    // 제 칸에서 돌아간 코너: 흰색이 보는 쪽 지름길에 D(앞이면 D')를 붙여 빼면 칸 밑에서도 흰색이 같은 쪽, 같은 지름길로 넣는다
-    const stuck = lesson.steps.at(-3);
-    const quiz = stuck?.quiz;
-    const answer = `${SHORT_FRONT} D' 뒤 ${SHORT_FRONT}`;
-    expect(quiz?.choices[quiz.answer]).toBe(answer);
-    const setup = stuck?.setup;
-    const start = play(setup && "alg" in setup ? setup.alg : "");
-    expect(colorsAt(start, ["U", "F", "R"])).toEqual([0, 1, 2]);
-    expect(faceOf(start, ["U", "F", "R"], WHITE)).toBe(F.F);
-    const out = play(`${SHORT_FRONT} D'`, start);
-    expect(faceOf(out, ["D", "F", "R"], WHITE)).toBe(F.F);
-    expect(
-      goalMet(3, play(answer.replace(" 뒤", ""), start), "first-layer"),
-    ).toBe(true);
-    const outRight = play(
-      `${SHORT_RIGHT} D`,
-      play(setupFor(`${SHORT_RIGHT} D ${SHORT_RIGHT}`)),
-    );
-    expect(faceOf(outRight, ["D", "F", "R"], WHITE)).toBe(F.R);
+    // 3×3 처음 맞추기는 지름길을 가르치지 않는다(코너 돌리기와 그 거꾸로만)
+    expect(lesson.steps.some((x) => x.alg === SHORT_RIGHT)).toBe(false);
   });
 
   it("흰-초록-빨강은 아래-앞-왼쪽에 있고 D로 칸 밑에 온다", () => {
@@ -222,15 +214,25 @@ describe("노란 십자: 같은 공식을 모양마다", () => {
     expect(yellowUp(play("U", s))).toBe("BL");
   });
 
-  it("점 → ㄱ자 → (U2) 뒤·왼쪽 → 가로줄 → 십자, 세 번", () => {
+  it("점 → (한 번) ㄱ자가 앞·오른쪽 → U2로 뒤·왼쪽 → 거꾸로 한 번 → 십자, 두 번", () => {
     const dot = held(DOT_TO_CROSS);
     expect(yellowUp(dot)).toBe("");
     const one = play(EO, dot);
-    expect(ADJACENT.has(yellowUp(one))).toBe(true);
-    expect(faceColors(3, one)).toEqual(faceColors(3, held(`U2 ${EO} ${EO}`)));
+    expect(yellowUp(one)).toBe("FR");
+    expect(faceColors(3, one)).toEqual(
+      faceColors(3, held(`U2 ${YELLOW_CROSS_BACK}`)),
+    );
     expect(yellowUp(play("U2", one))).toBe("BL");
-    expect(yellowUp(play(`U2 ${EO}`, one))).toBe("LR");
-    expect(goalMet(3, play(`U2 ${EO} ${EO}`, one), "yellow-cross")).toBe(true);
+    expect(
+      goalMet(3, play(`U2 ${YELLOW_CROSS_BACK}`, one), "yellow-cross"),
+    ).toBe(true);
+  });
+
+  it("ㄱ자는 뒤·왼쪽에서 거꾸로 F U R U' R' F' 한 번이면 십자(공식을 끝에서부터 뒤집은 꼴)", () => {
+    expect(YELLOW_CROSS_BACK).toBe(invertAlg(EO));
+    const s = held(YELLOW_CROSS_BACK);
+    expect(yellowUp(s)).toBe("BL");
+    expect(goalMet(3, play(YELLOW_CROSS_BACK, s), "yellow-cross")).toBe(true);
   });
 
   it("점은 아무 방향에서 한 번 하면 ㄱ자", () => {
@@ -417,23 +419,5 @@ describe("코너 방향: R' D' R D 2번 또는 4번", () => {
     const s = held(TWIST_THREE);
     expect(goalMet(3, s, "ll-corners-placed")).toBe(true);
     expect(goalMet(3, play(TWIST_THREE, s), "solved")).toBe(true);
-  });
-
-  it("방향을 먼저 맞추는 방식: A퍼뮤는 방향·엣지를 지키며 코너 셋만 바꾸고, 자리 공식은 방향을 바꾼다", () => {
-    const z = play("z2");
-    const a = play(A_PERM, z);
-    expect(goalMet(3, a, "oll")).toBe(true);
-    expect(goalMet(3, a, "yellow-edges")).toBe(true);
-    const corners: FaceLetter[][] = [
-      ["U", "F", "L"],
-      ["U", "F", "R"],
-      ["U", "B", "L"],
-      ["U", "B", "R"],
-    ];
-    const moved = corners.map(
-      (at) => colorsAt(a, at).join() !== colorsAt(z, at).join(),
-    );
-    expect(moved).toEqual([false, true, true, true]);
-    expect(goalMet(3, play(CORNER_CYCLE, z), "oll")).toBe(false);
   });
 });
