@@ -6,8 +6,11 @@ import {
   cubeTopology,
   faceColors,
   parseMoves,
+  solvedCube,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
+
+import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
 
 const U = 0;
 const R = 1;
@@ -553,4 +556,141 @@ export function runBlocks(
     if (steps.length > 40) throw new Error("ZZ 블록이 끝나지 않는다");
     state = play3(state, stepMovesBlock(st));
   }
+}
+
+// ── ZZ 마지막 층(2026-11-10, docs/47 16-17) ───────────
+// 블록 뒤 노란 십자가 늘 있으니 CFOP 2단계의 코너 단계(공식 일곱)와 2단계 PLL(코너 → 엣지)로 닫는다(algs-2look.ts의
+// 공식과 쥐는 법 그대로). 단계마다 지금 모양에 맞는 공식은 하나이고, 쥐는 U·y는 그 공식이 끝내는 것 가운데 처음 것이다.
+// ① 윗면: 위 층 코너의 노랑이 모두 위가 아니면 모양(H·파이·U·T·나비넥타이·안티수네·수네)의 공식, U로 쥐기
+// ② PLL 코너: 헤드라이트가 네 옆면에 다 있지 않으면, 한 면에 있을 때 U로 그 면을 왼쪽에 두고 T퍼뮤, 없으면 Y퍼뮤
+// ③ 위 층 코너를 U로 제자리에
+// ④ PLL 엣지: 다 맞지 않았으면 맞은 옆면을 y로 뒤에 두고 Ua·Ub퍼뮤, 맞은 옆면이 없으면 H퍼뮤 또는 Z퍼뮤(y로 쥐고 공식 뒤 U')
+
+const algOf2 = (id: string) =>
+  [...TWO_LOOK_OLL, ...TWO_LOOK_PLL].find((c) => c.id === id)
+    ?.algs[0] as string;
+const LL_CORNER_ORDER = [21, 22, 23, 24, 25, 26, 27].map(
+  (k) => `2look-oll-${k}`,
+);
+const YELLOW = 3;
+const AUF = ["", "U", "U'", "U2"];
+const YROT = ["", "y", "y'", "y2"];
+
+export type ZzLlStage = "oll" | "pll-corners" | "align" | "pll-edges";
+export interface ZzLlStep {
+  stage: ZzLlStage;
+  /** algs-2look.ts 공식 id(③은 "align") */
+  caseId: string;
+  hold: string;
+  alg: string;
+}
+export const stepMovesLl = (st: ZzLlStep) => join(st.hold, st.alg);
+
+const topYellow = (s: PuzzleState) => {
+  const col = faceColors(3, s);
+  return Array.from({ length: 9 }, (_, i) => col[i]).every((c) => c === YELLOW);
+};
+/** 옆면 넷 모두 윗줄 양 끝 코너 스티커가 같은 색(헤드라이트 넷) */
+const cornersMatched = (s: PuzzleState) => {
+  const col = faceColors(3, s);
+  return [R, F, L, B].every((f) => col[f * 9] === col[f * 9 + 2]);
+};
+/** 위 층 코너가 제자리(옆면 윗줄 왼쪽 끝이 그 면 센터 색) */
+const cornersHome = (s: PuzzleState) => {
+  const col = faceColors(3, s);
+  return [R, F, L, B].every((f) => col[f * 9] === col[f * 9 + 4]);
+};
+const allSolved = (s: PuzzleState) => {
+  const col = faceColors(3, s);
+  return [0, 1, 2, 3, 4, 5].every((f) =>
+    Array.from({ length: 9 }, (_, i) => col[f * 9 + i]).every(
+      (c) => c === col[f * 9 + 4],
+    ),
+  );
+};
+
+/** ZZ 마지막 층 다음 한 걸음(다 맞았으면 null). 노란 면이 위, 아래 두 층이 맞은 3×3 */
+export function nextZzLl(s: PuzzleState): ZzLlStep | null {
+  if (!topYellow(s)) {
+    for (const id of LL_CORNER_ORDER)
+      for (const u of AUF)
+        if (topYellow(play3(s, join(u, algOf2(id)))))
+          return { stage: "oll", caseId: id, hold: u, alg: algOf2(id) };
+    throw new Error("윗면 공식이 없다(노란 십자가 없다)");
+  }
+  if (!cornersMatched(s)) {
+    const t = algOf2("2look-pll-headlights");
+    for (const u of AUF)
+      if (cornersMatched(play3(s, join(u, t))))
+        return {
+          stage: "pll-corners",
+          caseId: "2look-pll-headlights",
+          hold: u,
+          alg: t,
+        };
+    const yp = algOf2("2look-pll-diagonal");
+    if (cornersMatched(play3(s, yp)))
+      return {
+        stage: "pll-corners",
+        caseId: "2look-pll-diagonal",
+        hold: "",
+        alg: yp,
+      };
+    throw new Error("PLL 코너 공식이 없다");
+  }
+  if (!cornersHome(s)) {
+    const u = AUF.find((x) => cornersHome(play3(s, x))) as string;
+    return { stage: "align", caseId: "align", hold: "", alg: u };
+  }
+  if (allSolved(s)) return null;
+  for (const id of [
+    "2look-pll-ua",
+    "2look-pll-ub",
+    "2look-pll-h",
+    "2look-pll-z",
+  ]) {
+    const alg = id === "2look-pll-z" ? `${algOf2(id)} U'` : algOf2(id);
+    for (const y of YROT)
+      if (allSolved(play3(s, join(y, alg))))
+        return { stage: "pll-edges", caseId: id, hold: y, alg };
+  }
+  throw new Error("PLL 엣지 공식이 없다");
+}
+
+export function runZzLl(s: PuzzleState): {
+  state: PuzzleState;
+  steps: ZzLlStep[];
+} {
+  const steps: ZzLlStep[] = [];
+  let state = s;
+  for (;;) {
+    const st = nextZzLl(state);
+    if (!st) return { state, steps };
+    steps.push(st);
+    if (steps.length > 6) throw new Error("ZZ 마지막 층이 끝나지 않는다");
+    state = play3(state, stepMovesLl(st));
+  }
+}
+
+/** 섞인 3×3을 ZZ 단원 규칙으로 끝까지: z2 → EO라인(엣지 방향 → 줄) → 왼쪽 블록 → 오른쪽 블록 → 마지막 층. 단계마다 수 */
+export function solveZzByRules(scramble: string): {
+  eoline: string;
+  left: string;
+  right: string;
+  ll: string;
+} {
+  let s = play3(solvedCube(3), `${scramble} z2`);
+  const eo = runZz(s, nextEo);
+  const line = runZz(eo.state, nextLine);
+  s = line.state;
+  const left = runBlocks(s, "left");
+  const right = runBlocks(left.state, "all");
+  const ll = runZzLl(right.state);
+  const text = (xs: string[]) => xs.join(" ");
+  return {
+    eoline: text(["z2", ...[...eo.steps, ...line.steps].map(stepMovesZz)]),
+    left: text(left.steps.map(stepMovesBlock)),
+    right: text(right.steps.map(stepMovesBlock)),
+    ll: text(ll.steps.map(stepMovesLl)),
+  };
 }

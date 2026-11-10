@@ -1,5 +1,5 @@
 // 해법 익히기(`/cube/methods`, docs/47 16-2)의 「연습」: 해법(과정)마다 이어 둘 연습 화면.
-// 초보자·CFOP는 공식 연습 단계(16-9)로 바로 들어간다. 그 밖의 과정은 단원이 짝지어 둔 묶음(`Lesson.drill`)을
+// 초보자·CFOP·ZZ는 공식 연습 단계(16-9)로 바로 들어간다(ZZ는 블록 짝 넣기와 마지막 층의 2단계 OLL·PLL, 16-17). 그 밖의 과정은 단원이 짝지어 둔 묶음(`Lesson.drill`)을
 // 자유 훈련으로 연다.
 
 import { methodOfCourse, stageById, stagesOf } from "../practice/stages";
@@ -33,6 +33,8 @@ const BEGINNER_LINKS: { id: string; title: string }[] = [
 ];
 
 const practiceHref = (id: string) => `/cube/train?set=${id}`;
+/** ZZ 해법 카드가 함께 잇는 CFOP 연습 단계(마지막 층) */
+const ZZ_LL_STAGES = ["2look-oll", "2look-pll"];
 
 export function practiceLinks(
   course: Course,
@@ -44,7 +46,15 @@ export function practiceLinks(
     method === "beginner"
       ? BEGINNER_LINKS
       : method
-        ? stagesOf(method).map((s) => ({ id: s.id, title: s.title }))
+        ? [
+            ...stagesOf(method),
+            // ZZ 마지막 층은 CFOP 2단계 공식 그대로라 그 연습 단계를 함께 잇는다
+            ...(method === "zz"
+              ? ZZ_LL_STAGES.map((id) => stageById(id)).filter(
+                  (s) => s !== undefined,
+                )
+              : []),
+          ].map((s) => ({ id: s.id, title: s.title }))
         : [];
   for (const s of stageLinks)
     out.push({ href: practiceHref(s.id), title: s.title, kind: "practice" });

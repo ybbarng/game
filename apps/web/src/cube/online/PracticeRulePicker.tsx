@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { METHOD_TITLE, stagesOf } from "../practice/stages";
+import { METHOD_TITLE, PRACTICE_METHODS, stagesOf } from "../practice/stages";
 import type { VersusRule } from "../practice/versus";
 
 /**
@@ -33,7 +33,7 @@ export function PracticeRulePicker({
       data-cube-practice-rule
     >
       <legend className="mb-1">공식 연습 단계</legend>
-      {(["beginner", "cfop"] as const).map((m) => (
+      {PRACTICE_METHODS.map((m) => (
         <div key={m} className="flex flex-wrap items-center gap-1">
           <span className="w-14 shrink-0 text-white/60 text-xs">
             {METHOD_TITLE[m]}

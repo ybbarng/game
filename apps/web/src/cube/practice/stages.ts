@@ -1,5 +1,5 @@
-// 공식 연습 단계(docs/47 16-9). 짧고 쉬운 것부터: 십자 → 초보자 2층 → 초보자 3층 넷 → F2L → 2단계 OLL·PLL → 전체 OLL·PLL.
-// 초보자 해법 카드는 앞의 여섯, CFOP 카드는 F2L부터 보인다. 오르테가·패리티·블라인드 공식은 「더 보기」(옛 자유 훈련).
+// 공식 연습 단계(docs/47 16-9). 짧고 쉬운 것부터: 십자 → 초보자 2층 → 초보자 3층 넷 → F2L → 2단계 OLL·PLL → 전체 OLL·PLL,
+// 그리고 ZZ 블록 짝 넣기(16-17). 초보자 해법 카드는 앞의 여섯, CFOP 카드는 F2L부터, ZZ 카드는 짝 넣기와 2단계 OLL·PLL을 보인다. 오르테가·패리티·블라인드 공식은 「더 보기」(옛 자유 훈련).
 import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { goalForCase } from "../learn/judge";
 import type { AlgCase, AlgSet } from "../learn/types";
@@ -12,6 +12,7 @@ import {
   BEGINNER_YELLOW_CROSS,
 } from "./beginner";
 import type { DrillCase, PracticeMethod, PracticeStage } from "./types";
+import { ZZ_PAIRS } from "./zz";
 
 const fromSet = (id: AlgSet): AlgSetInfo =>
   ALG_SETS.find((s) => s.set === id) as AlgSetInfo;
@@ -106,11 +107,26 @@ export const PRACTICE_STAGES: PracticeStage[] = [
   cfopStage("2look-pll", "2단계 PLL"),
   cfopStage("oll", "OLL"),
   cfopStage("pll", "PLL"),
+  {
+    // ZZ 블록 짝 넣기(learn/zz-path.ts 표). 윗면을 돌려 둔 채 내면 U로 코너 블럭을 칸 바로 위에 두는 데서 시작한다
+    id: "zz-pair",
+    title: "블록 짝 넣기",
+    method: "zz",
+    hold: "z2",
+    mask: "f2l",
+    auf: true,
+    goal: () => "f2l",
+    cases: ZZ_PAIRS,
+  },
 ];
+
+/** 해법 차례(연습 화면·같이 하기의 해법 칸) */
+export const PRACTICE_METHODS: PracticeMethod[] = ["beginner", "cfop", "zz"];
 
 export const METHOD_TITLE: Record<PracticeMethod, string> = {
   beginner: "초보자",
   cfop: "CFOP",
+  zz: "ZZ",
 };
 
 /** 「더 보기」에 둘 옛 묶음(자유 훈련으로 연다) */
@@ -146,5 +162,6 @@ export function isFreeTrain(search: string): boolean {
 export function methodOfCourse(courseId: string): PracticeMethod | null {
   if (courseId === "333-beginner") return "beginner";
   if (courseId === "cfop") return "cfop";
+  if (courseId === "zz") return "zz";
   return null;
 }

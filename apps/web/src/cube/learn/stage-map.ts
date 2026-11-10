@@ -28,6 +28,13 @@ import type {
   LessonStep,
   QuizSpec,
 } from "./types";
+import { solveZzByRules } from "./zz-path";
+
+/** ZZ 지도 시연: 단원 규칙으로 푼 수를 EO라인 / 블록 / 마지막 층으로 나눈다(docs/47 16-17) */
+function zzDemoMoves(scramble: string): string[] {
+  const z = solveZzByRules(scramble);
+  return [z.eoline, `${z.left} ${z.right}`, z.ll];
+}
 
 export interface StageDemo {
   /** 맞춘 큐브에서 섞는 수 */
@@ -280,12 +287,8 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
     ],
     demo: {
       scramble: CFOP_SCRAMBLE,
-      moves: [
-        "z2 F U D L B U2 F'",
-        "L U R U' L' U2 L' U' L U L' R' U2 R2 U2 R' U2 R' U' R U' R' U2 R'",
-        "U' Rw U R' U' Rw' F R F' U M' U M2 U M2 U M' U2 M2",
-      ],
-      source: "solveZZ(eoline · zz-left·zz-right · oll·pll)",
+      moves: zzDemoMoves(CFOP_SCRAMBLE),
+      source: "단원 규칙(zz-path.ts: nextEo·nextLine · nextBlock · nextZzLl)",
     },
     quizzes: [
       {
