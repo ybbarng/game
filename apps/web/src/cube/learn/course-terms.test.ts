@@ -169,7 +169,22 @@ const SCOPE: Record<string, OrderedTerm[]> = {
   zz: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
   petrus: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
   "444-reduction": [...NOTATION, ...BIG_TERMS],
-  "444-yau": [...NOTATION, ...CFOP_TERMS, ...BIG_TERMS],
+  "444-yau": [
+    ...NOTATION,
+    ...CFOP_TERMS,
+    ...BIG_TERMS,
+    // 줄 안의 날개 자리와 한 면의 센터 블럭 둘씩(docs/47 1-1, 16-20)
+    {
+      term: "위 자리·아래 자리",
+      use: /(위|아래) 자리/,
+      define: /「위 자리」/,
+    },
+    {
+      term: "위 두 칸·아래 두 칸",
+      use: /(위|아래) 두 칸/,
+      define: /「위 두 칸」/,
+    },
+  ],
   "555-reduction": [...NOTATION, ...BIG_TERMS],
   "bld-op": [...NOTATION, ...CFOP_TERMS, ...BLD_TERMS],
 };
@@ -189,6 +204,29 @@ describe("큐브 중급 과정 조각 이름(블럭)", () => {
         ].map((w) => `${where}: …${w}…`),
       );
       expect(loose).toEqual([]);
+    });
+  }
+});
+
+// 큰 큐브 낱말 하나에 뜻 하나(docs/47 1-1, 16-20): 「줄」은 두 옆면 사이 세로 엣지 자리, 「칸」은 한 면의 센터 블럭 자리.
+// 날개가 붙은 덩이는 「엣지」(「한 줄로 붙어요」 아님), 줄 안의 날개 자리는 「위 자리·아래 자리」(「위 칸」 아님),
+// 한 면의 센터 블럭 둘씩은 「위 두 칸·아래 두 칸」(「윗줄·아랫줄」 아님)
+describe("큰 큐브 줄·칸 낱말", () => {
+  const OLD =
+    /윗줄|아랫줄|(?<!오른쪽|왼쪽) (위|아래) 칸|한 줄로|한 줄이|한 줄에|한 줄의|묶은 줄|안쪽 줄|면의 줄/;
+  for (const course of COURSES) {
+    if (course.size < 4) continue;
+    it(`${course.title}: 옛 꼴(윗줄·위 칸·한 줄로 등)을 쓰지 않는다`, () => {
+      const found = [
+        ...courseSummaries(course),
+        ...coursePlaces(course),
+      ].flatMap(({ where, text }) => {
+        const m = text.match(OLD);
+        return m
+          ? [`${where}: …${text.slice(m.index ?? 0, (m.index ?? 0) + 12)}…`]
+          : [];
+      });
+      expect(found).toEqual([]);
     });
   }
 });
