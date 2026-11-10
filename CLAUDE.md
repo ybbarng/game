@@ -4,7 +4,9 @@
 
 **새 세션은 먼저 [docs/00-handoff.md](docs/00-handoff.md)와 [docs/map.json](docs/map.json)을 읽는다.** 지금 상태, 남은 일, 사용자가 정해야 할 것이 있다.
 
-**일을 시작하기 전에 [docs/standing-rules.md](docs/standing-rules.md)(사용자가 정한 고정 규칙)를 읽는다.** 서브에이전트도 같다. 학습 글·화면 글·큐브 낱말·시험·지도 형식 규칙과 지적 기록이 있다. 사용자가 새 규칙을 정하거나 지적하면 같은 커밋에서 그 파일을 고친다.
+**사용자가 정한 고정 규칙(학습 글·화면 글·큐브 낱말·시험·지도 형식, 지적 기록)은 아래 가져오기로 늘 함께 읽힌다.** 사용자가 새 규칙을 정하거나 지적하면 같은 커밋에서 그 파일을 고친다.
+
+@docs/standing-rules.md
 
 ## 구조
 - `apps/web` — Next.js 정적 빌드(`out/`). 화면, 온라인 방(`src/net/`), 내 기록(`src/stats/`), 복기(`src/review/`), 보안 설명(`/security`), 보안 배우기(`/learn`)
