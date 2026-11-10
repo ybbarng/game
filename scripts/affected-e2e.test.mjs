@@ -116,8 +116,18 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     expect(r.specs).toEqual([...galaxySpecs, "yut", ...BASE_SPECS].sort());
   });
 
-  it("net/ 공통: 전부", () => {
-    expect(pick("apps/web/src/net/guest-room.ts").mode).toBe("all");
+  it("net/ 공통: 그것에 닿는 화면의 게임만(온라인 방이 없는 별 따기는 안 돈다)", () => {
+    const r = pick("apps/web/src/net/guest-room.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(
+      expect.arrayContaining(["online", "hearts", "gostop", ...BASE_SPECS]),
+    );
+    expect(r.specs.some((s) => s.startsWith("stardraw"))).toBe(false);
+  });
+
+  it("공통 폴더 파일이라도 첫 화면·복기 같은 공용 주소가 닿으면 전부", () => {
+    expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
+    expect(pick("apps/web/src/components/ChatBox.tsx").mode).toBe("all");
   });
 
   it("화면 시험 공용 도구: 전부", () => {
@@ -179,8 +189,28 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
 
   it("짝 없는 apps/web 파일: 전부(안전하게)", () => {
     expect(pick("apps/web/next.config.ts").mode).toBe("all");
-    expect(pick("apps/web/src/new-folder/thing.ts").mode).toBe("all");
     expect(pick("apps/web/public/sw.js").mode).toBe("all");
+  });
+
+  it("어느 화면에서도 import로 닿지 않는 src 파일: 없음(지워졌거나 아무도 안 쓰는 파일)", () => {
+    expect(pick("apps/web/src/new-folder/thing.ts").mode).toBe("none");
+  });
+
+  it("spec이 직접 불러 쓰는 src 파일: 그 게임과 그 spec", () => {
+    const r = pick("apps/web/src/janggi/opening-line.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toContain("janggi");
+    expect(r.specs.some((s) => s.startsWith("cube-"))).toBe(false);
+  });
+
+  it("빌드가 돌리는 apps/web 스크립트: 전부", () => {
+    for (const f of [
+      "apps/web/scripts/build-hashes.mjs",
+      "apps/web/scripts/drop-demo-pages.mjs",
+      "apps/web/scripts/write-version.mjs",
+    ]) {
+      expect(pick(f).mode, f).toBe("all");
+    }
   });
 
   it("짝 없는 루트 파일: 전부", () => {
@@ -197,6 +227,47 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     expect(pick("apps/web/e2e/gone.spec.ts").specs).toEqual(
       [...BASE_SPECS].sort(),
     );
+  });
+});
+
+// 2026-11-10 「전부」가 된 실행들(learn-terms-sweep, cubie-profile, cube-hero-color, main push 넷)의 바뀐 파일.
+// 새 규칙이 무엇을 고르는지 남겨 둔다
+describe("오늘 「전부」가 된 PR의 바뀐 파일", () => {
+  it("시험 전용 도우미(용어 순서 틀): 없음", () => {
+    expect(
+      pick(
+        "apps/web/src/tutorial/term-order.ts",
+        "apps/web/src/tutorial/term-order-suite.ts",
+      ).mode,
+    ).toBe("none");
+  });
+
+  it("개발 때 손으로 돌리는 생성 스크립트(큐브 포스터): 없음", () => {
+    expect(pick("apps/web/scripts/render-cube-posters.mjs").mode).toBe("none");
+  });
+
+  it("cube-hero-color: 포스터 스크립트 + 큐브 화면 → 큐브만", () => {
+    const r = pick(
+      "apps/web/scripts/render-cube-posters.mjs",
+      "apps/web/src/cube/hero/poster.ts",
+    );
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual([...cubeSpecs, ...BASE_SPECS].sort());
+  });
+
+  it("배우기 목록 화면(LearnPage)은 /learn 묶음만, 마이티 배우기 단원(lessons)은 마이티만", () => {
+    expect(pick("apps/web/src/components/learn/LearnPage.tsx").specs).toEqual(
+      ["learn", ...BASE_SPECS].sort(),
+    );
+    const r = pick("apps/web/src/tutorial/lessons.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(expect.arrayContaining(["tutorial", "play-round"]));
+    expect(r.specs.some((s) => s.startsWith("cube-"))).toBe(false);
+  });
+
+  it("용어집(glossary)은 복기 같은 공용 주소가 불러 써서 그대로 전부, globals.css도 전부", () => {
+    expect(pick("apps/web/src/tutorial/glossary.ts").mode).toBe("all");
+    expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
   });
 });
 

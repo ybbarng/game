@@ -260,7 +260,115 @@ export function loadContext(root) {
   }
   ctx.gameDeps = gameDeps;
   ctx.pkgUsers = pkgUsers;
+
+  // 화면에 닿는 파일(2026-11-10). src/app의 Next 특수 파일(page·layout·icon 등)에서 import를 따라가 닿는 파일마다,
+  // 그 파일에 닿는 주소 묶음(게임 id 또는 COMMON)을 모은다. 어느 화면에서도 닿지 않는 파일(시험 전용 도우미 등)은
+  // 바뀌어도 화면 시험을 돌리지 않고, 공통 폴더의 파일도 닿는 게임만 돌린다
+  const graph = importGraph(web);
+  const reach = {};
+  const entriesByArea = {};
+  for (const file of listFiles(path.join(web, "src/app"), (n) =>
+    PAGE_ENTRY.test(n),
+  )) {
+    const rel = toPosix(path.relative(path.join(web, "src"), file));
+    const area = webAreaOf(ctx, rel);
+    if (!entriesByArea[area]) entriesByArea[area] = [];
+    entriesByArea[area].push(`src/${rel}`);
+  }
+  for (const [area, entries] of Object.entries(entriesByArea)) {
+    for (const f of graph.walk(entries)) addTo(reach, f, area);
+  }
+  // spec이 src 파일을 직접 불러 쓰기도 한다(데이터·순수 함수). spec이면 그 spec, 공용 도구면 COMMON
+  const specReach = {};
+  for (const file of listFiles(path.join(web, "e2e"), isCode)) {
+    const rel = toPosix(path.relative(web, file));
+    const n = path.basename(file);
+    const user = n.endsWith(".spec.ts") ? n.replace(/\.spec\.ts$/, "") : COMMON;
+    for (const f of graph.walk([rel])) {
+      if (!f.startsWith("e2e/")) addTo(specReach, f, user);
+    }
+  }
+  ctx.reach = reach;
+  ctx.specReach = specReach;
+  // 빌드(apps/web package.json의 build)가 돌리는 스크립트. 그 밖의 apps/web/scripts는 개발 때 손으로 돌리는 도구다
+  const webPkg = JSON.parse(
+    readFileSync(path.join(web, "package.json"), "utf8"),
+  );
+  ctx.buildScripts = Object.values(webPkg.scripts ?? {}).join(" ");
   return ctx;
+}
+
+/** Next가 주소로 삼는 특수 파일(이 파일들이 화면의 시작점이다) */
+const PAGE_ENTRY =
+  /^(page|layout|template|not-found|error|global-error|loading|default|route|icon|apple-icon|opengraph-image|twitter-image|manifest|sitemap|robots)(\.specimen)?\.(tsx|ts|jsx|js)$/;
+
+const RESOLVE_TAILS = [
+  "",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".mjs",
+  ".json",
+  "/index.ts",
+  "/index.tsx",
+  "/index.js",
+];
+
+/**
+ * apps/web 안의 import 그래프. `@/`와 상대 경로만 따라간다(작업 공간 패키지는 package.json으로 따로 본다).
+ * 경로는 apps/web 기준. `?raw` 같은 꼬리는 뗀다
+ */
+function importGraph(web) {
+  const isFile = new Map();
+  const fileExists = (p) => {
+    if (!isFile.has(p)) {
+      let ok = false;
+      try {
+        ok = statSync(p).isFile();
+      } catch {}
+      isFile.set(p, ok);
+    }
+    return isFile.get(p);
+  };
+  const edges = new Map();
+  const targetsOf = (rel) => {
+    if (edges.has(rel)) return edges.get(rel);
+    const out = [];
+    if (/\.(tsx?|jsx?|mjs|css)$/.test(rel)) {
+      const abs = path.join(web, rel);
+      for (const spec of importsOf(readFileSync(abs, "utf8"))) {
+        const clean = spec.split("?")[0];
+        let base;
+        if (clean.startsWith("@/"))
+          base = path.join(web, "src", clean.slice(2));
+        else if (clean.startsWith("."))
+          base = path.resolve(path.dirname(abs), clean);
+        else continue;
+        const hit = RESOLVE_TAILS.map((t) => base + t).find(fileExists);
+        if (!hit) continue;
+        const to = toPosix(path.relative(web, hit));
+        if (!to.startsWith("..")) out.push(to);
+      }
+    }
+    edges.set(rel, out);
+    return out;
+  };
+  return {
+    /** 시작 파일들에서 닿는 모든 파일(시작 파일 포함) */
+    walk(starts) {
+      const seen = new Set(starts);
+      const queue = [...starts];
+      while (queue.length) {
+        for (const to of targetsOf(queue.pop())) {
+          if (!seen.has(to)) {
+            seen.add(to);
+            queue.push(to);
+          }
+        }
+      }
+      return seen;
+    },
+  };
 }
 
 /** apps/web/src 아래 경로 → 묶음 id 또는 COMMON */
@@ -325,11 +433,17 @@ export function classify(ctx, file) {
     if (spec) return { areas: [], specs: [spec[1]] };
     if (rest.startsWith("e2e/")) return { all: "화면 시험 공용 도구" };
     const src = rest.match(/^src\/(.*)$/);
-    if (src) {
-      const id = webAreaOf(ctx, src[1]);
-      return id === COMMON
-        ? { all: "여러 게임이 쓰는 웹 코드" }
-        : { areas: [id], specs: [] };
+    if (src) return classifyWebSource(ctx, rest, src[1]);
+    const script = rest.match(/^scripts\/(.+)$/);
+    if (script && ctx.buildScripts != null) {
+      if (
+        ctx.buildScripts.includes(`scripts/${script[1]}`) ||
+        ctx.reach?.[rest] ||
+        ctx.specReach?.[rest]
+      ) {
+        return { all: "빌드가 돌리는 스크립트" };
+      }
+      return { none: true };
     }
     const pub = rest.match(/^public\/([^/]+)\//);
     if (pub && ctx.publicDir[pub[1]]) {
@@ -357,6 +471,28 @@ export function classify(ctx, file) {
     return { areas, specs };
   }
   return { all: "짝을 모르는 파일" };
+}
+
+/**
+ * apps/web/src 아래 파일의 몫. rel은 apps/web 기준(src/…), srcRel은 src 기준.
+ * - 어느 화면(src/app의 page·layout 등)에서도, 어느 spec에서도 import로 닿지 않으면 없음
+ * - 게임 폴더면 그 게임(예전과 같다)
+ * - 공통 폴더면 그 파일에 닿는 주소 묶음만. 첫 화면·공용 주소(COMMON)가 닿으면 전부
+ * - spec이 직접 불러 쓰면 그 spec도. 화면 시험 공용 도구가 불러 쓰면 전부
+ */
+function classifyWebSource(ctx, rel, srcRel) {
+  const pages = ctx.reach?.[rel];
+  const fromSpecs = ctx.specReach?.[rel] ?? new Set();
+  if (ctx.reach && !pages && fromSpecs.size === 0) return { none: true };
+  if (fromSpecs.has(COMMON)) return { all: "화면 시험 공용 도구가 불러 쓴다" };
+  const specs = [...fromSpecs].sort();
+  const id = webAreaOf(ctx, srcRel);
+  if (id !== COMMON) return { areas: [id], specs };
+  if (!ctx.reach) return { all: "여러 게임이 쓰는 웹 코드" };
+  if (pages?.has(COMMON)) {
+    return { all: "여러 게임이 쓰는 웹 코드(첫 화면·공용 주소가 불러 쓴다)" };
+  }
+  return { areas: [...(pages ?? [])].sort(), specs };
 }
 
 /**
