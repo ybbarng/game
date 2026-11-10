@@ -130,8 +130,8 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          손패 {deal.hand}장, 바닥 {deal.floor}장으로 시작해요. 나 말고는
-          컴퓨터가 앉아요
+          손에 {deal.hand}장씩 들고 바닥에 {deal.floor}장을 펼쳐 시작한다.
+          나홀로 민화투는 나 말고 모두 컴퓨터가 앉는다.
         </p>
       </Section>
       <Section title="판 수">
@@ -146,7 +146,9 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
-        <p className="text-xs opacity-60">판 점수를 더한 합계로 1등을 가려요</p>
+        <p className="text-xs opacity-60">
+          판 점수를 더한 합계로 1등을 가린다.
+        </p>
       </Section>
       <Section title="약 점수(초약·풍약·비약)">
         <div className="flex flex-wrap gap-1.5">
@@ -177,8 +179,8 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
         <p className="text-xs opacity-60">
-          초단(4·5·7월 띠)은 동네에 따라 안 치기도 하고, 사오동(11월 4장)은 치는
-          곳이 적어요
+          초단(4·5·7월 띠 3장)은 동네에 따라 안 치기도 하고, 사오동(11월 오동
+          4장)은 치는 곳이 적다.
         </p>
       </Section>
       <Section title="컴퓨터 실력">
@@ -196,7 +198,7 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
         <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
       <p className="text-xs opacity-60">
-        다함께 민화투도 여기서 고른 인원·판 수·약으로 방을 엽니다.
+        다함께 민화투도 여기서 고른 인원·판 수·약으로 방을 연다.
       </p>
     </SubScreen>
   );
@@ -206,40 +208,45 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
 function MinhwatuRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
+      "화투",
+      "화투는 1월부터 12월까지 달마다 넉 장씩, 모두 48장이다. 카드 왼쪽 위 숫자가 그 카드의 달이고, 같은 달 카드끼리 짝이다.",
+    ],
+    [
       "목표",
-      "같은 달 카드끼리 짝을 맞춰 먹고, 먹은 카드 점수와 약으로 남보다 많은 점수를 낸다. 고·스톱도 뻑도 없다.",
+      "바닥에 펼친 카드와 같은 달 카드를 맞춰 두 장을 함께 가져온다. 이것을 「먹는다」고 한다. 판이 끝나면 먹은 카드의 점수와 약으로 겨루고, 남보다 많은 점수를 내면 이긴다.",
     ],
     [
       "나누기",
-      "48장(12달 × 4장). 3명이면 손패 7장·바닥 6장, 2명이면 10장·8장, 4명이면 5장·8장. 남은 카드는 더미로 엎어 둔다. 바닥에 같은 달 4장이 깔리면 다시 섞는다.",
+      "2명이면 손에 10장씩 들고 바닥에 8장, 3명이면 7장씩과 바닥 6장, 4명이면 5장씩과 바닥 8장을 펼친다. 남은 카드는 엎어 쌓아 더미로 둔다. 바닥에 같은 달 넉 장이 깔리면 다시 섞는다.",
     ],
     [
       "한 차례",
-      "손패 한 장을 낸다. 바닥에 같은 달이 있으면 둘을 먹고, 없으면 바닥에 놓인다. 그다음 더미에서 한 장 뒤집어 똑같이 맞춘다.",
+      "손에 든 카드 가운데 한 장을 낸다. 바닥에 같은 달 카드가 있으면 둘을 먹고, 없으면 낸 카드는 바닥에 놓인다. 그다음 더미에서 맨 위 카드를 뒤집어 똑같이 맞춘다.",
     ],
     [
       "같은 달이 여럿",
-      "바닥에 같은 달이 둘이면 하나를 골라 먹고, 셋이면 넷을 다 먹는다. 뒤집은 카드가 방금 낸 카드와 같은 달이면 바닥에 남는다.",
+      "바닥에 같은 달이 두 장이면 하나를 골라 먹고, 석 장이면 낸 카드까지 넉 장을 다 먹는다. 더미에서 뒤집은 카드도 똑같다.",
     ],
     [
       "카드 점수",
-      "광 20점, 열끗 10점, 띠 5점, 피(쌍피 포함) 0점. 모두 더하면 240점이다.",
+      "48장은 광·열끗·띠·피 네 종류다. 광은 붉은 원 안에 「光」이 찍힌 카드로 20점, 열끗은 새·짐승·물건이 그려진 카드로 10점, 띠는 긴 띠가 그려진 카드로 5점, 피는 나머지 카드로 0점이다. 48장을 모두 더하면 240점이다.",
     ],
     [
       "약",
       [
-        `${YAK_NAMES.choyak}(${YAK_DESCRIPTIONS.choyak})·${YAK_NAMES.pungyak}(${YAK_DESCRIPTIONS.pungyak})·${YAK_NAMES.biyak}(${YAK_DESCRIPTIONS.biyak}) 20점(옵션 10점)`,
-        `${YAK_NAMES.hongdan}(${YAK_DESCRIPTIONS.hongdan})·${YAK_NAMES.cheongdan}(${YAK_DESCRIPTIONS.cheongdan})·${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점`,
-        `옵션: ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점. 약을 이루면 나머지 사람 모두에게서 그 점수를 받는다.`,
+        "정해진 카드 묶음을 모두 먹으면 약을 이룬다. 약을 이루면 나머지 사람 모두에게서 그 약의 점수를 받는다",
+        `${YAK_NAMES.choyak}은 ${YAK_DESCRIPTIONS.choyak}, ${YAK_NAMES.pungyak}은 ${YAK_DESCRIPTIONS.pungyak}, ${YAK_NAMES.biyak}은 ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이다`,
+        `${YAK_NAMES.hongdan}은 ${YAK_DESCRIPTIONS.hongdan}, ${YAK_NAMES.cheongdan}은 ${YAK_DESCRIPTIONS.cheongdan}으로 30점이다`,
+        `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 친다.`,
       ].join(". "),
     ],
     [
       "판 점수",
-      "먹은 카드 점수 + 약으로 받은 점수 − 약으로 준 점수 − 본(240 ÷ 인원: 3명이면 80). 그래서 판 점수를 모두 더하면 0이다.",
+      "판 점수는 먹은 카드 점수에 약으로 받은 점수를 더하고, 약으로 준 점수와 본을 뺀 것이다. 본은 240점을 인원수로 나눈 몫으로, 3명이면 80점이다. 그래서 모두의 판 점수를 더하면 0이 된다.",
     ],
     [
-      "선과 판 수",
-      "첫 판 선은 무작위, 그 뒤로는 앞 판 1등이 선이다. 정한 판 수만큼 치고 합계가 가장 높은 사람이 이긴다.",
+      "먼저 내는 사람과 판 수",
+      "판마다 가장 먼저 카드를 내는 사람을 선이라 한다. 첫 판 선은 무작위로 정하고, 그 뒤로는 앞 판 1등이 선이다. 정한 판 수만큼 치고 판 점수 합계가 가장 높은 사람이 이긴다.",
     ],
   ];
   return (
@@ -298,7 +305,7 @@ function MinhwatuHome({
           <h1 className="mt-3 font-black text-4xl tracking-wide">민화투</h1>
         </>
       }
-      tagline="같은 달끼리 짝을 맞춰 먹고, 약으로 점수를 뺏어라"
+      tagline="같은 달끼리 짝 맞춰 가져와 카드 점수를 모아라"
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🎴",
@@ -309,7 +316,7 @@ function MinhwatuHome({
       together={{
         icon: "👥",
         title: "다함께 민화투",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 채워요",
+        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다",
         onClick: onOnline,
       }}
       learn={{

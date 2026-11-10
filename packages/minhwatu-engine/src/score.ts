@@ -52,9 +52,9 @@ export const YAK_DESCRIPTIONS: Record<YakId, string> = {
   choyak: "5월 난초 4장",
   pungyak: "10월 단풍 4장",
   biyak: "12월 비 4장",
-  hongdan: "1·2·3월 붉은 띠(홍단) 3장",
-  cheongdan: "6·9·10월 파란 띠(청단) 3장",
-  chodan: "4·5·7월 풀 띠(초단) 3장",
+  hongdan: "「홍단」 글씨가 쓰인 1·2·3월 띠 3장",
+  cheongdan: "「청단」 글씨가 쓰인 6·9·10월 띠 3장",
+  chodan: "4·5·7월 띠 3장",
   saodong: "11월 오동 4장",
 };
 

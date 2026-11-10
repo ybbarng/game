@@ -140,7 +140,7 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          나홀로 나이롱뽕은 나머지 자리에 컴퓨터가 앉습니다
+          나홀로 나이롱뽕은 나머지 자리에 컴퓨터가 앉는다.
         </p>
       </Section>
       <Section title="판 수">
@@ -169,8 +169,9 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          뽕을 한 번 한 뒤 손패 합이 이 값 이하면 가져오기 전에 스톱할 수 있다.
-          가장 낮지 않으면 바가지 +30
+          뽕을 한 번 이상 한 뒤 손에 남은 숫자 합이 이 값 이하이면, 더미에서
+          가져오기 전에 스톱할 수 있다. 내 합이 가장 낮지 않으면 스톱 벌점
+          30점을 더 받는다.
         </p>
       </Section>
       <Section title="뽕 바가지">
@@ -186,7 +187,8 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
           ))}
         </div>
         <p className="text-xs opacity-60">
-          내가 버린 패로 남이 뽕해 손패를 다 털면(박) 받는 벌점
+          내가 버린 카드로 남이 뽕해 손에 든 카드를 모두 털면, 내 벌점에 더 받는
+          점수다.
         </p>
       </Section>
       <Section title="뽕 응답 시간">
@@ -201,6 +203,9 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
             </Chip>
           ))}
         </div>
+        <p className="text-xs opacity-60">
+          누가 카드를 버린 뒤 뽕을 외칠지 정하는 시간이다.
+        </p>
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -224,32 +229,37 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
 function NyrongppongRulesScreen({ onBack }: { onBack: () => void }) {
   const items: [string, string][] = [
     [
+      "화투",
+      "화투는 1월부터 12월까지 달마다 넉 장씩, 모두 48장이다. 카드 왼쪽 위 숫자가 그 카드의 달이다.",
+    ],
+    [
       "목표",
-      "판이 끝날 때 손에 남은 카드의 달 숫자 합이 벌점이다. 정한 판 수를 마치고 합계가 가장 낮은 사람이 이긴다.",
+      "판이 끝날 때 손에 남은 카드의 달 숫자를 더한 것이 그 판의 벌점이다. 정한 판 수를 마치고 벌점 합계가 가장 낮은 사람이 이긴다.",
     ],
     [
       "나누기",
-      "모두 다섯 장. 선은 여섯 장을 받아 첫 차례에 가져오지 않고 한 장 버린다. 선은 판마다 다음 사람으로 넘어간다.",
+      "모두 다섯 장씩 받고, 남은 카드는 엎어 쌓아 더미로 둔다. 판마다 가장 먼저 하는 사람을 선이라 한다. 선은 여섯 장을 받아, 첫 차례에는 더미에서 가져오지 않고 한 장만 버린다. 첫 판 선은 무작위로 정하고, 그 뒤로는 판마다 다음 자리로 넘어간다.",
     ],
-    ["차례", "더미에서 한 장 가져와 한 장 버린다. 차례는 자리 순서로 돈다."],
+    [
+      "차례",
+      "자기 차례에는 더미에서 한 장 가져와 손에 든 카드 가운데 한 장을 버린다. 차례는 자리 순서로 돈다.",
+    ],
     [
       "뽕",
-      '남이 버린 카드와 같은 달 두 장이 있으면 "뽕!". 그 세 장을 내려놓고 한 장 더 버린다. 사이 사람들은 차례를 건너뛰고 뽕한 사람 다음부터 이어진다.',
+      "남이 버린 카드와 같은 달 카드 두 장을 들고 있으면 「뽕!」을 외칠 수 있다. 버린 카드와 내 두 장, 석 장을 앞에 내려놓고 한 장을 더 버린다. 내려놓은 카드는 벌점에 세지 않는다. 그 사이 자리 사람들은 차례를 건너뛰고, 뽕한 사람 다음 자리부터 이어진다.",
     ],
     [
-      "박(털기)",
-      "뽕한 뒤 남은 두 장이 짝이고 누가 그 달을 버려 뽕하면 손패를 다 털어 0점. 그 카드를 버린 사람은 바가지를 쓴다.",
+      "자연뽕",
+      "손에 같은 달 석 장을 들고 있으면 자연뽕이라 하고, 그 석 장은 벌점에 세지 않는다.",
+    ],
+    [
+      "박",
+      "뽕을 한 뒤 손에 같은 달 두 장만 남았을 때, 누가 그 달 카드를 버려 다시 뽕하면 손에 든 카드를 모두 털어 벌점 0점이 된다. 이것을 박이라 한다. 그 카드를 버린 사람은 자기 벌점에 뽕 바가지(옵션에서 고른 20점이나 30점)를 더 받는다.",
     ],
     [
       "스톱",
-      "뽕을 한 번 한 뒤 손패 합이 스톱 한도 이하면 가져오기 전에 스톱. 가장 낮으면 0점, 아니면 바가지 +30.",
+      "뽕을 한 번 이상 했고 손에 남은 숫자 합이 옵션에서 정한 값 이하이면, 더미에서 가져오기 전에 스톱을 외쳐 판을 끝낼 수 있다. 내 합이 다른 모든 사람보다 낮으면 나는 0점이고, 아니면 내 합에 스톱 벌점 30점을 더 받는다. 다른 사람은 손에 남은 합을 받는다.",
     ],
-    [
-      "약",
-      "가져온 뒤 여섯 장이 약이면 내고 판을 끝낸다. 약을 낸 사람은 약 점수, 나머지는 손패 합.",
-    ],
-    ["자연뽕", "같은 달 석 장을 들고 있으면 그 석 장은 손패 합에 세지 않는다."],
-    ["더미 끝", "더미가 떨어지면 모두 손패 합을 받는다."],
   ];
   return (
     <SubScreen title="나이롱뽕은?" onBack={onBack}>
@@ -261,15 +271,24 @@ function NyrongppongRulesScreen({ onBack }: { onBack: () => void }) {
           </div>
         ))}
         <div>
-          <dt className="font-bold text-amber-200">약(여섯 장)</dt>
-          <dd>
-            <ul className="list-inside list-disc leading-relaxed opacity-85">
+          <dt className="font-bold text-amber-200">약</dt>
+          <dd className="leading-relaxed opacity-85">
+            더미에서 가져온 뒤 손의 여섯 장이 아래 모양 가운데 하나이면 약을
+            내고 판을 끝낸다. 약을 낸 사람은 아래 약 점수를 받고, 나머지는 손에
+            남은 합을 받는다.
+            <ul className="list-inside list-disc">
               {YAK_INFO.map((y) => (
                 <li key={y.kind}>
                   {YAK_NAMES[y.kind]}: {y.text}
                 </li>
               ))}
             </ul>
+          </dd>
+        </div>
+        <div>
+          <dt className="font-bold text-amber-200">더미 끝</dt>
+          <dd className="leading-relaxed opacity-85">
+            더미가 다 떨어지면 판이 끝나고, 모두 손에 남은 합을 벌점으로 받는다.
           </dd>
         </div>
       </dl>
@@ -316,7 +335,7 @@ function NyrongppongHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">나이롱뽕</h1>
         </>
       }
-      tagline="같은 달 두 장이면 뽕! 손패를 가장 작게 줄여라"
+      tagline="같은 달 석 장을 모으면 뽕! 손에 남은 숫자를 가장 작게"
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🎴",
