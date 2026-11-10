@@ -24,6 +24,13 @@ export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "코너", use: /코너/, define: /「코너」/ },
   { term: "층", use: /층/, define: /「층」/ },
   {
+    term: "위 층·가운데 층·아래 층",
+    use: /위 층|가운데 층|아래 층/,
+    define: /「위 층」, 「가운데 층」, 「아래 층」/,
+  },
+  { term: "둘째 층", use: /둘째 층/, define: /세어 둘째 층/ },
+  { term: "옆면", use: /옆면/, define: /「옆면」/ },
+  {
     term: "색으로 부르는 조각 이름(흰-초록 엣지)",
     use: /(흰|빨강|초록|파랑|주황|노랑)-(흰|빨강|초록|파랑|주황|노랑)/,
     define: /「흰-초록 엣지」/,
@@ -57,9 +64,9 @@ export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "반대 면", use: /반대 면/, define: /「반대 면」/ },
   { term: "안전한 회전", use: /안전한 회전/, define: /「안전한 회전」/ },
   {
-    term: "다른 색(흰 엣지의 흰색 아닌 쪽)",
-    use: /다른 색/,
-    define: /「다른 색」/,
+    term: "짝 색(흰 엣지의 흰색 아닌 쪽)",
+    use: /짝 색/,
+    define: /「짝 색」/,
   },
   {
     term: "두 면 사이 자리 이름(아래-앞)",

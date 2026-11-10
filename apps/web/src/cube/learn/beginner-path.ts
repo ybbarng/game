@@ -82,7 +82,7 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "down",
         shape: "아래층, 흰색이 아래",
-        hold: "엣지의 다른 색과 같은 색 센터를 앞으로 쥐고(y), 아랫면을 돌려 엣지를 앞 아래로",
+        hold: "엣지의 짝 색과 같은 색 센터를 앞으로 쥐고(y), 아랫면을 돌려 엣지를 앞 아래로",
         alg: "F2",
         times: 1,
       },
@@ -95,15 +95,15 @@ export const PATH_STAGES: PathStage[] = [
       },
       {
         id: "middle",
-        shape: "가운데 층, 다른 색이 같은 색 센터 옆",
-        hold: "다른 색이 붙은 면을 앞으로 쥐고(y)",
+        shape: "가운데 층, 짝 색이 같은 색 센터 옆",
+        hold: "짝 색이 붙은 면을 앞으로 쥐고(y)",
         alg: "엣지가 오른쪽이면 F', 왼쪽이면 F",
         times: 1,
       },
       {
         id: "middle-other",
-        shape: "가운데 층, 다른 색이 다른 색 센터 옆",
-        hold: "다른 색이 붙은 면을 앞으로 쥐고(y)",
+        shape: "가운데 층, 짝 색이 다른 색 센터 옆",
+        hold: "짝 색이 붙은 면을 앞으로 쥐고(y)",
         alg: "엣지가 오른쪽이면 F D F', 왼쪽이면 F' D' F",
         times: 1,
         next: "down",
@@ -195,7 +195,7 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "left",
         shape: "위 색이 왼쪽 센터 색",
-        hold: "윗면을 돌려 엣지를 옆 색과 같은 색 센터 위로, 그 면을 앞으로 쥔 뒤 y'로 한 번 더 돌려 쥐고",
+        hold: "윗면을 돌려 엣지를 옆 색과 같은 색 센터 위로, 그 면을 앞으로 쥔 뒤 y'로 한 번 더 돌려 쥐고(그 면이 오른쪽에 옴)",
         alg: FROM_RIGHT,
         times: 1,
       },
@@ -256,7 +256,7 @@ export const PATH_STAGES: PathStage[] = [
       {
         id: "opposite",
         shape: "맞은 엣지 둘이 마주 봄",
-        hold: "윗면을 돌려 맞은 둘을 찾고, 그 둘을 오른쪽·왼쪽으로 쥐고(y)",
+        hold: "윗면을 돌려 맞은 둘을 찾고, 그 둘을 앞·뒤로 쥐고(y)",
         alg: EDGE_SWAP,
         times: 1,
         next: "next",
