@@ -327,7 +327,7 @@ describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 �
     }
   });
 
-  it("야우 엣지 짝(Uw' 엣지 뒤집기 Uw)과 묶은 줄 올리기(R U R')는 아래 층 엣지(흰 십자)와 센터를 그대로 둔다", () => {
+  it("야우 엣지 짝(Dw 경우·Uw 경우)과 묶은 줄 올리기(R U R')·내리기(L' U' L)는 아래 층 엣지(흰 십자)와 센터를 그대로 둔다", () => {
     const n = 4;
     const base = playN(n, solvedCube(n), "z2");
     const bottom = (s: PuzzleState) => {
@@ -344,7 +344,7 @@ describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 �
           out.push(col[f * n * n + (n - 1) * n + c] as number);
       return out.join();
     };
-    for (const alg of [YAU_PAIR, "R U R'", `Dw ${EDGE_FLIP} Dw'`]) {
+    for (const alg of [YAU_PAIR, "R U R'", "L' U' L", `Uw ${EDGE_FLIP} Uw'`]) {
       const s = playN(n, base, alg);
       expect(bottom(s), alg).toBe(bottom(base));
       expect(centersSolved(n, s), alg).toBe(true);
