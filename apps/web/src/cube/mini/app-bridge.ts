@@ -31,12 +31,26 @@ export type FromApp =
   /** 「공식 보기」(앱 메뉴, 또는 앱이 가로챈 F1) */
   | { type: "hint" }
   /** 앱이 할 수 있는 것(0.1.3부터, 화면이 떴을 때). `hintBubble`: 창 옆 말풍선을 그린다 */
-  | { type: "caps"; hintBubble: boolean };
+  | { type: "caps"; hintBubble: boolean }
+  /**
+   * 공식 연습(docs/47 16-11, 앱 메뉴 「공식 연습 ▸」). `stage`: 시작할 단계 id, null이면 연습 끝내기(앱이 연습 중 Esc를
+   * 가로채 보낸다). 지금 하는 단계를 다시 고르면 새 판. `mode`: 따라 치기·보고 치기(없으면 지금 방식). 0.1.6 이하 앱은 보내지 않는다
+   */
+  | { type: "practice"; stage: string | null; mode?: "follow" | "see" };
 
-/** 말풍선 한 줄. 앱이 줄마다 글꼴을 고른다(`HintBubble.swift`) */
+/**
+ * 말풍선 한 줄. 앱이 줄마다 글꼴을 고른다(`HintBubble.swift`). `spans`가 있으면 그 줄을 낱말마다 다른 색으로 그린다
+ * (공식 연습의 친 것·지금 칠 것·틀린 것, 0.1.7부터). 모르는 앱은 `text`만 그린다
+ */
 export interface BubbleLine {
   text: string;
-  style: "title" | "note" | "alg" | "keys" | "plain";
+  style: "title" | "note" | "alg" | "keys" | "plain" | "ok";
+  spans?: BubbleSpan[];
+}
+
+export interface BubbleSpan {
+  text: string;
+  style: "done" | "now" | "next" | "wrong";
 }
 
 /** 화면이 앱에 보내는 것 */
@@ -52,6 +66,13 @@ export type ToApp =
       mirror: boolean;
       records: boolean;
       scrambleKeys: KeyChord[];
+      /**
+       * 공식 연습(0.1.7부터 앱이 메뉴 「공식 연습 ▸」를 만든다). `practice`: 지금 하는 단계 id(안 하면 null),
+       * `practiceMode`: 따라 치기·보고 치기, `practiceStages`: 메뉴에 보일 단계(묶음 이름 차례대로)
+       */
+      practice: string | null;
+      practiceMode: "follow" | "see";
+      practiceStages: { id: string; title: string; group: string }[];
     }
   /**
    * 큐브·거울 판이 차지하는 사각형들([x, y, 너비, 높이], 화면 왼쪽 위 기준 CSS px). 앱의 투명 창은 이 밖의
@@ -139,6 +160,13 @@ export function parseFromApp(d: unknown): FromApp | null {
       return { type: "hint" };
     case "caps":
       return { type: "caps", hintBubble: x.hintBubble === true };
+    case "practice": {
+      if (x.stage !== null && typeof x.stage !== "string") return null;
+      const stage = x.stage;
+      return x.mode === "follow" || x.mode === "see"
+        ? { type: "practice", stage, mode: x.mode }
+        : { type: "practice", stage };
+    }
     default:
       return null;
   }

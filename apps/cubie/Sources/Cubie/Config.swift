@@ -23,8 +23,8 @@ enum Config {
   ]
   /// 「공식 보기」 키 F1(맥북은 fn+F1). 웹의 다른 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`)
   static let hintKeyCode = UInt32(kVK_F1)
-  /// 메뉴 「배우기」가 여는 곳(웹 `LEARN_PATH`와 같다)
-  static let learnPath = "/cube/learn?lesson=cfop-2look-oll"
+  /// 메뉴 「배우기」가 여는 곳: 사이트 해법 익히기(웹 `LEARN_PATH`와 같다)
+  static let learnPath = "/cube/methods"
 
   /// 화면 가장자리에서 띄우는 거리
   static let margin: CGFloat = 16

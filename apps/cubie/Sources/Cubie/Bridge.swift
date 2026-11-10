@@ -17,6 +17,11 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     var records = false
     /// 지금 키 배치의 섞기 키(메뉴 「섞기」 옆에 보인다). 이 값을 보내기 전 웹 화면이면 비어 있다
     var scrambleKey: MenuKey?
+    /// 공식 연습(docs/47 16-11): 지금 하는 단계 id(안 하면 nil), 보고 치기인가, 메뉴에 보일 단계.
+    /// 단계 목록이 비었으면(0.1.6 이하 화면) 메뉴에 「공식 연습」을 두지 않는다
+    var practice: String?
+    var practiceSee = false
+    var practiceStages: [PracticeStageItem] = []
   }
 
   private(set) var state = WebState()
@@ -48,6 +53,10 @@ final class Bridge: NSObject, WKScriptMessageHandler {
       if let n = d["n"] as? Int { state.n = n }
       if let m = d["mirror"] as? Bool { state.mirror = m }
       if let r = d["records"] as? Bool { state.records = r }
+      // 연습 칸을 모르는 옛 화면이면 연습 없음으로(지난 값을 남기지 않는다)
+      state.practice = d["practice"] as? String
+      state.practiceSee = (d["practiceMode"] as? String) == "see"
+      state.practiceStages = PracticeStageItem.list(from: d["practiceStages"])
       if let keys = d["scrambleKeys"] as? [[String: Any]] {
         state.scrambleKey = keys.lazy.compactMap { k -> MenuKey? in
           guard let code = k["code"] as? String else { return nil }
@@ -76,6 +85,9 @@ final class Bridge: NSObject, WKScriptMessageHandler {
       break
     }
   }
+
+  /// 연습 전에 메뉴에서 고른 방식(웹이 다음 `state`로 덮기 전까지)
+  func setPracticeSee(_ on: Bool) { state.practiceSee = on }
 
   func send(_ detail: [String: Any]) {
     guard let webView,
