@@ -42,6 +42,7 @@ import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { type MyTier, tierName } from "../tiers/rank";
+import { TierEmblem } from "../tiers/TierEmblem";
 import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -68,6 +69,7 @@ import {
 } from "./hint";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import { miniMirrorShown } from "./mirror";
+import { ProfileToApp } from "./ProfileToApp";
 import {
   hasReplay,
   idleReplaySteps,
@@ -75,6 +77,7 @@ import {
   replayMoveMs,
   SCRAMBLE_MOVE_MS,
 } from "./replay";
+import { CHEER_MS, type CheerRect, SolveCheer } from "./SolveCheer";
 import {
   addMiniRecord,
   type KeyOrigin,
@@ -216,23 +219,34 @@ function MiniTiers({
                 aria-pressed={s === n}
                 onClick={() => onSize(s)}
                 className={cn(
-                  "flex w-full flex-col items-start rounded px-1.5 py-1 text-left",
+                  "flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left",
                   s === n ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
                 )}
               >
-                <span className="text-white/60">
-                  {s}×{s} {t ? formatMs(t.ao5) : ""}
-                </span>
+                {/* 사이트 티어 화면과 같은 엠블럼. 작은 창이라 빛 띠는 돌리지 않는다 */}
                 {t ? (
-                  <span
-                    data-cube-tier={t.place.tier}
-                    className={cn("font-semibold", TIER_TONE[t.place.tier])}
-                  >
-                    {tierName(t.place)}
-                  </span>
+                  <TierEmblem tier={t.place.tier} size={28} still />
                 ) : (
-                  <span className="text-white/40">5판 뒤에</span>
+                  <span
+                    aria-hidden="true"
+                    className="h-7 w-7 shrink-0 rounded-full border border-white/15 border-dashed"
+                  />
                 )}
+                <span className="flex min-w-0 flex-col items-start">
+                  <span className="text-white/60">
+                    {s}×{s} {t ? formatMs(t.ao5) : ""}
+                  </span>
+                  {t ? (
+                    <span
+                      data-cube-tier={t.place.tier}
+                      className={cn("font-semibold", TIER_TONE[t.place.tier])}
+                    >
+                      {tierName(t.place)}
+                    </span>
+                  ) : (
+                    <span className="text-white/40">5판 뒤에</span>
+                  )}
+                </span>
               </button>
             </li>
           );
@@ -370,6 +384,17 @@ function MiniCube() {
   const [recordsN, setRecordsN] = useState(n);
   const [records, setRecords] = useState<MiniRecord[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  /** 다 맞춘 순간의 짧은 축하(`SolveCheer`, `CHEER_MS` 뒤 지운다) */
+  const [cheer, setCheer] = useState<{
+    id: number;
+    ms: number;
+    best: boolean;
+    cube: CheerRect | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!cheer) return;
+    return realClock.after(CHEER_MS, () => setCheer(null));
+  }, [cheer]);
   const [, bumpState] = useState(0);
   const bump = useCallback(() => bumpState((v) => v + 1), []);
 
@@ -410,6 +435,17 @@ function MiniCube() {
         },
         onRecord: (r) => {
           const origin = keyOriginOf(originsRef.current);
+          // 다 맞춘 판이면 짧은 축하(이 판 전의 최고보다 빠르면 금색 숫자)
+          if (r.ms !== null) {
+            const before = summarize(loadMiniRecords(r.n)).best;
+            const ms = r.ms + r.penalty;
+            setCheer({
+              id: r.at,
+              ms,
+              best: before !== null && ms < before,
+              cube: viewRef.current?.hitRects()[0] ?? null,
+            });
+          }
           const list = addMiniRecord({
             ...r,
             inspection: false,
@@ -1044,7 +1080,20 @@ function MiniCube() {
         !app && "bg-neutral-950",
       )}
     >
-      <div ref={wrapRef} className="absolute inset-0">
+      <div
+        ref={wrapRef}
+        className={cn(
+          "absolute inset-0",
+          cheer && !reduced && "mini-cheer-pop",
+        )}
+        style={
+          cheer?.cube
+            ? {
+                transformOrigin: `${cheer.cube.x + cheer.cube.w / 2}px ${cheer.cube.y + cheer.cube.h / 2}px`,
+              }
+            : undefined
+        }
+      >
         {failed ? (
           <div
             data-cube-no3d
@@ -1077,6 +1126,16 @@ function MiniCube() {
           />
         )}
       </div>
+      {app && <ProfileToApp n={n} version={records} />}
+      {cheer && (
+        <SolveCheer
+          key={cheer.id}
+          ms={cheer.ms}
+          best={cheer.best}
+          reduced={reduced}
+          cube={cheer.cube}
+        />
+      )}
 
       {!bubble && (shownHint || hintMsg) && (
         <HintCard

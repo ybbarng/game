@@ -1,11 +1,13 @@
 /// Cubie 메뉴의 짜임(무엇을 어떤 차례로, 어디에 구분선을 둘지, docs/47 15-19). 메뉴 막대 메뉴와 큐브 위 오른쪽 클릭
 /// 메뉴가 같이 쓴다. AppKit 항목은 앱(`AppDelegate.buildMenu`)이 이 차례대로 만들고, 차례는 화면 없이 시험한다.
-/// - 맞추기(섞기·공식 보기·큐브 크기) / 기록(기록 보기·티어표) / 사이트로 나가기(대결하기·배우기) /
+/// - (메뉴 막대 메뉴만) 프로필 칸 / 맞추기(섞기·공식 보기·큐브 크기) / 기록(기록 보기·티어표) / 사이트로 나가기(대결하기·배우기) /
 ///   창과 키(창 ▸·키 배치·색…·단축키 보기) / 문제 해결과 앱(다시 불러오기·업데이트 확인…·끝내기)
 /// - 「창」 하위 메뉴: 창 크기 넷 / 화면 옮기기(모니터 둘 이상) · 거울 / 자리 처음으로.
 ///   거울은 창에 무엇을 그릴지 정하는 보기 설정이고 창이 작으면 접히므로 창 크기 옆에 둔다.
 public enum MenuEntry: Equatable, Sendable {
   case separator
+  /// 맨 위 프로필 칸(이름·사진·지금 크기의 티어, 누르면 기록 보기). 메뉴 막대 메뉴에만
+  case profile
   /// 단축키를 다른 앱이 쓴다는 알림(누를 수 없는 줄, 글은 앱이 단축키 이름을 넣어 만든다)
   case hotKeyWarning
   /// 「새 판 … 설치…」(판 번호는 앱이 넣는다)
@@ -56,18 +58,19 @@ public enum MenuEntry: Equatable, Sendable {
     case .reload: "다시 불러오기"
     case .checkForUpdates: "업데이트 확인…"
     case .quit: "Cubie 끝내기"
-    case .separator, .hotKeyWarning, .installUpdate, .toggleVisible, .windowSizes: nil
+    case .separator, .profile, .hotKeyWarning, .installUpdate, .toggleVisible, .windowSizes: nil
     }
   }
 }
 
 public enum MenuLayout {
-  /// 맨 위 메뉴. `forWindow`: 큐브 위 오른쪽 클릭 메뉴(이미 큐브 위라 「큐브로 가기·숨기기」가 없고,
+  /// 맨 위 메뉴. `forWindow`: 큐브 위 오른쪽 클릭 메뉴(이미 큐브 위라 「큐브로 가기·숨기기」가 없고, 앱 전체의 프로필 칸과
   /// 앱 전체를 다루는 「업데이트 확인…·끝내기」와 새 판 알림은 메뉴 막대 메뉴에만 둔다)
   public static func main(
     forWindow: Bool, hotKeyOK: Bool, pendingUpdate: Bool, updaterAvailable: Bool
   ) -> [MenuEntry] {
     var m: [MenuEntry] = []
+    if !forWindow { m += [.profile, .separator] }
     if !hotKeyOK { m += [.hotKeyWarning, .separator] }
     if !forWindow, pendingUpdate { m += [.installUpdate, .separator] }
     if !forWindow { m += [.focus, .toggleVisible, .separator] }

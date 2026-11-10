@@ -69,13 +69,16 @@ describe("pickIdleReplay", () => {
     expect(pickIdleReplay(records, [kept], 0)).toBe(kept);
   });
 
-  it("다시 보기 글이 없거나 맞춘 과정이 상한보다 길면 고르지 않는다", () => {
+  it("다시 보기 글이 없는 판만 건너뛴다", () => {
     expect(pickIdleReplay([old], [], 0)).toBeNull();
-    const long = solve(4, 70_000, replayOf(70_000));
-    expect(pickIdleReplay([long, old], [], 1)).toBeNull();
-    // 최근 판이 길면 최근 차례에도 다른 판
-    expect(pickIdleReplay([long, fast], [], 1)).toBe(fast);
-    expect(IDLE_REPLAY_TIMING.maxSolveMs).toBe(60_000);
+  });
+
+  it("1분 넘는 판도 고른다(초보의 8분짜리 판도 내 판 다시 보기로)", () => {
+    const long = solve(4, 8 * 60_000, replayOf(8 * 60_000));
+    expect(pickIdleReplay([long, old], [], 0)).toBe(long);
+    expect(pickIdleReplay([long, old], [], 1)).toBe(long);
+    // 최근 차례면 길어도 최근 판
+    expect(pickIdleReplay([long, fast], [], 1)).toBe(long);
   });
 });
 
@@ -171,6 +174,25 @@ describe("떠 있을 때 다시 보기", () => {
     expect(scene()).toBe(engine);
     clock.advance(T.heroEveryMs);
     expect(log.at(-1)).toBe("replay2");
+  });
+
+  it("8분 걸린 초보의 판도 홈 시연 대신 그때 속도 그대로 8분 동안 돌리고, 끝나면 맞춘 상태로", () => {
+    // 수 사이가 0.9초라 1초 멈춤 상한에 걸리지 않는다: 맞춘 과정이 그대로 8분
+    const long = solve(1, 8 * 60_000, replayOf(8 * 60_000));
+    const { clock, log, show, scene, engine } = setup([long]);
+    show.setActive(true);
+    clock.advance(1000);
+    expect(show.showing).toBe("replay");
+    const solveStart =
+      3 * IDLE_REPLAY_TIMING.scrambleStepMs + IDLE_REPLAY_TIMING.gapMs;
+    clock.advance(solveStart + 8 * 60_000 - 1000);
+    expect(show.showing).toBe("replay");
+    expect(log).toEqual(["replay1"]);
+    // 마지막 수 + 끝 멈춤
+    clock.advance(3000);
+    expect(show.showing).toBeNull();
+    expect(log).toEqual(["replay1", "restore"]);
+    expect(scene()).toBe(engine);
   });
 
   it("다시 보는 중에 포커스를 받으면 바로 멈추고 장면을 엔진 상태로 돌려 놓는다", () => {
