@@ -25,7 +25,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "엣지: 점",
     group: "edges",
     algs: ["F R U R' U' F' f R U R' U' f'"],
-    note: "위를 보는 노란 엣지가 없고 노란 센터만 위를 봐요. 가로줄 공식 F R U R' U' F'를 한 뒤, 이어서 f R U R' U' f'를 해요.",
+    note: "위를 보는 노란 엣지가 없고 노란 센터 블럭만 위를 봐요. 가로줄 공식 F R U R' U' F'를 한 뒤, 이어서 f R U R' U' f'를 해요.",
   },
   ...(
     [

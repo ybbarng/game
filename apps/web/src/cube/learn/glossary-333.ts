@@ -164,6 +164,30 @@ function adnominal(word: string): boolean {
 }
 
 /**
+ * 꾸밈말(받침 ㄴ·ㄹ)로 조각 하나를 부르고 바로 뒤에 그 조각을 옮길 자리나 수가 오는 꼴(「올린 엣지를 U로 비켜」,
+ * 「위를 보는 코너를 뒤-오른쪽 위로」). 그 조각 하나를 옮기는 말이라 블럭을 붙인다(2026-11-10, docs/47 16-15).
+ * 꾸밈말 + 조각 + 조사 전체를 잡으면 「다른 코너의 제자리」, 「바꾸는 코너가 달라서」, 「이미 넣은 엣지가 흐트러지지」처럼
+ * 묶음을 말하는 꼴이 절반쯤이라(중급·처음 맞추기 글 30곳 가운데 약 15곳) 넓히지 않았다. 색(흰·노란)과 정한 용어
+ * (좋은·나쁜 엣지)는 묶음이다
+ */
+export function movedPieceWords(
+  text: string,
+  opts: { bigCube?: boolean } = {},
+): string[] {
+  const out: string[] = [];
+  const re =
+    /(\S+) (엣지|코너|센터)(를|가) (?=(앞|뒤|위|아래|오른쪽|왼쪽)(-| 위| 아래| 층)|[UDRLFBxyz][w'2]*(로|\s))/g;
+  for (const m of text.matchAll(re)) {
+    if (opts.bigCube && m[2] !== "코너") continue;
+    const prev = (m[1] ?? "").replace(/.*[(「·]/, "");
+    if (!adnominal(prev) || ["흰", "노란", "좋은", "나쁜"].includes(prev))
+      continue;
+    const at = m.index ?? 0;
+    out.push(text.slice(Math.max(0, at), at + m[0].length + 8));
+  }
+  return out;
+}
+
 /**
  * 글에서 블럭을 붙여야 하는데 뺀 곳(앞뒤 몇 글자). 큰 큐브(`bigCube`)는 엣지 한 줄을 「엣지」, 면마다 모은 센터 블럭
  * 묶음을 「센터」라 부르므로(docs/47 1절 「큰 큐브」, 하나하나는 「날개」·「센터 블럭」) 엣지·센터는 보지 않는다.

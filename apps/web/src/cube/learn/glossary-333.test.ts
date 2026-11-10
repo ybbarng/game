@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { earlySummaryUses, earlyUses } from "@/tutorial/term-order";
 
 import { stagesOf } from "../practice/stages";
-import { GLOSSARY_333, loosePieceWords } from "./glossary-333";
+import { GLOSSARY_333, loosePieceWords, movedPieceWords } from "./glossary-333";
 import { BEGINNER_222 } from "./lessons-222";
 import { FROM_333_222 } from "./lessons-222-from333";
 import { BEGINNER_333 } from "./lessons-333";
@@ -53,12 +53,22 @@ describe("조각 이름(블럭)", () => {
     expect(loosePieceWords("노란색이 붙은 엣지를 넣어요.")).toEqual([]);
     // 면 이름은 받침 ㄴ이어도 꾸미는 말이 아니다(자리를 말하는 꼴)
     expect(loosePieceWords("앞면 센터, 윗면 코너", { name: true })).toEqual([]);
+    // 꾸밈말로 부른 조각 하나를 바로 어디로 옮기는 꼴(docs/47 16-15)
+    expect(movedPieceWords("올린 엣지를 U로 비켜요.")).toHaveLength(1);
+    expect(movedPieceWords("위를 보는 코너를 뒤-오른쪽 위로")).toHaveLength(1);
+    expect(movedPieceWords("올린 엣지 블럭을 U로 비켜요.")).toEqual([]);
+    expect(movedPieceWords("흰 엣지를 아래-오른쪽으로")).toEqual([]);
+    expect(movedPieceWords("다른 코너의 제자리, 바꾸는 코너가 달라서")).toEqual(
+      [],
+    );
   });
 
   for (const c of [BEGINNER_333, BEGINNER_222, FROM_333_222])
     it(`${c.title}: 홀로 쓴 엣지·코너·센터가 없다`, () => {
       const loose = courseTexts(c).flatMap(({ where, text }) =>
-        loosePieceWords(text).map((w) => `${where}: …${w}…`),
+        [...loosePieceWords(text), ...movedPieceWords(text)].map(
+          (w) => `${where}: …${w}…`,
+        ),
       );
       expect(loose).toEqual([]);
     });
