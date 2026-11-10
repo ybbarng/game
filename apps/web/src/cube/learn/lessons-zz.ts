@@ -1,8 +1,18 @@
 // 3×3 ZZ와 페트루스(docs/47 8-2). ZZ: EO라인 → 왼쪽·오른쪽 블록(R·U·L만) → 윗면(코너 7가지) → PLL.
 // 페트루스는 짧은 소개(2×2×2 → 2×2×3 → 엣지 방향 → 나머지).
 // ZZ 시연·해 보기의 수는 `@game/cube-ai`의 solveZZ가 대회 섞기(3×3 씨앗 21·7)를 실제로 푼 단계별 수다.
+import { solvedCube } from "@game/cube-engine";
+
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
+import { nextEo, nextLine, play3, runZz, stepMovesZz } from "./zz-path";
+
+/** zz-path.ts 규칙이 그 상태에서 내는 수(엣지 방향만, 또는 방향 + 줄) */
+function ruleMoves(start: string, withLine: boolean): string {
+  const eo = runZz(play3(solvedCube(3), start), nextEo);
+  const line = withLine ? runZz(eo.state, nextLine).steps : [];
+  return [...eo.steps, ...line].map(stepMovesZz).join(" ");
+}
 
 const upTo = (...parts: string[]) => ({ alg: parts.join(" ") });
 /** 흰 면을 아래로 쥔(z2) 맞춘 큐브에서 이 풀이로 풀리는 상황 */
@@ -14,11 +24,18 @@ export const EO_CHECK = "F R B";
 const PETRUS_222 = "D' L B'";
 /** ZZ 블록 요령: 위에 붙은 짝(엣지 블럭이 위-오른쪽)을 오른쪽 칸에 넣는 수. F를 쓰지 않는다(CFOP 오른쪽에서 넣기) */
 export const ZZ_PAIR_RIGHT = "U R U' R'";
+/** 오른쪽 블록 뒤 칸(뒤-오른쪽): 엣지 블럭 위-오른쪽, 코너 블럭 뒤-오른쪽 위. 앞 칸 공식의 앞뒤를 바꾼 꼴 */
+export const ZZ_PAIR_BACK = "U' R' U R";
+/** 엣지 방향 해 보기 둘(규칙이 낸 수) */
+export const EO_GATHER = ruleMoves(setupFor("U F", "z2"), false);
+export const EO_SCATTERED = ruleMoves(setupFor(EO_CHECK, "z2"), false);
 
 // 시연용(3×3 섞기 씨앗 21)
 const S21 = "L2 D2 U' L2 F2 D F2 U2 B2 D' L' F' R2 B U' F2 U R B L R2";
 const EOL21 = "z2 F U D L B U2 F'";
 const LEFT21 = "L U R U' L' U2 L' U' L U L'";
+/** EO라인 단원의 시연·해 보기: 규칙(엣지 방향 → 줄)이 낸 수. 블록 단원은 위 EOL21·EOL7 상태에서 이어 간다 */
+const EOLINE_RULE_21 = `z2 ${ruleMoves(`${S21} z2`, true)}`;
 const RIGHT21 = "R' U2 R2 U2 R' U2 R' U' R U' R' U2 R'";
 const OLL21 = "U' Rw U R' U' Rw' F R F'";
 const PLL21 = "U M' U M2 U M2 U M' U2 M2";
@@ -30,6 +47,7 @@ const LEFT7 = "L' U2 L U' L' U' R U L' U' L";
 const RIGHT7 = "R' U R U2 R' U2 R2 U' R2 U' R'";
 const OLL7 = "U' R U R' U R U2 R'";
 const PLL7 = "U' R U R' F' R U R' U' R' F R2 U' R' U";
+const EOLINE_RULE_7 = `z2 ${ruleMoves(`${S7} z2`, true)}`;
 
 const zzIntro: Lesson = {
   id: "zz-intro",
@@ -112,17 +130,32 @@ const zzEo: Lesson = {
     },
     {
       kind: "try",
-      body: "고치는 법: F나 B를 4분의 1 돌리면 그 면 엣지 블럭 넷의 좋고 나쁨이 모두 뒤바뀌어요. 그래서 나쁜 엣지 넷을 앞면(또는 뒷면)에 모아 F(B)를 한 번 돌리면 넷이 함께 좋아져요. 모을 때는 엣지 방향을 바꾸지 않는 U·R·L·D를 써요. 지금은 나쁜 엣지 넷이 위 층과 앞면에 있어요. U로 앞면에 모으고 F 한 번으로 고쳐 보세요.",
+      body: "고치는 법: F를 4분의 1 돌리면 앞면 엣지 블럭 넷의 좋고 나쁨이 모두 뒤바뀌어요. 그래서 나쁜 엣지 넷을 앞면 네 자리(앞-오른쪽·앞-왼쪽·위-앞·아래-앞)에 모아 F를 한 번 돌리면 넷이 함께 좋아져요. 모을 때는 엣지 방향을 바꾸지 않는 U·D·R·L을 써요. 앞면 자리마다 그 자리를 지나는 층이 하나씩 있어요: 앞-오른쪽은 R, 앞-왼쪽은 L, 위-앞은 U, 아래-앞은 D. 지금은 나쁜 엣지 셋이 앞면에, 하나가 위 층에 있어요. U로 위-앞에 데려오고 F 한 번으로 고쳐 보세요.",
       setup: flip("U F"),
-      alg: "U F",
+      alg: EO_GATHER,
       goal: "eo",
       mask: "eo-edges",
     },
     {
-      kind: "try",
-      body: "나쁜 엣지가 여럿 흩어져 있어요. 흰 면을 아래, 초록 면을 앞으로 들고 해요. 앞면에 나쁜 엣지 넷이 모여 있으면 F로 고치고, R로 다른 나쁜 엣지 넷을 뒷면에 모아 B로 고쳐요.",
+      kind: "quiz",
+      body: "나쁜 엣지는 늘 짝수(0·2·4…)예요. 경우는 둘이에요. ① 넷 이상이면 앞면 자리를 앞-오른쪽 → 앞-왼쪽 → 위-앞 → 아래-앞 차례로 봐요. 좋은 엣지가 있는 자리는 그 자리의 층을 돌려 나쁜 엣지를 데려와요. 그 층에 나쁜 엣지가 없으면, 나쁜 엣지를 다른 층으로 그 자리의 층에 옮기고 → 그 자리의 층을 돌려 넣고 → 다른 층을 되돌려요(예: 뒤-왼쪽의 나쁜 엣지를 위-앞으로 L U' L'). 앞면에 넷이 모이면(나쁜 엣지가 여섯 이상이면 셋 이상이어도) F. 그러면 나쁜 엣지가 둘 이상 줄어요. ② 둘이면 앞면에 꼭 하나만 있게 하고 F. 그러면 넷이 되고, ①로 한 번 더 고쳐요.",
       setup: flip(EO_CHECK),
-      alg: EO_CHECK,
+      mask: "eo-edges",
+      quiz: {
+        question: "나쁜 엣지가 둘이고 둘 다 앞면에 있어요. 어떻게 할까요?",
+        choices: [
+          "앞면 자리 차례로 처음 나오는 나쁜 엣지를 그 자리의 층 한 번(R·L·U·D)으로 앞면 밖으로 빼고 F",
+          "그대로 F",
+        ],
+        answer: 0,
+        why: "F는 앞면 넷의 좋고 나쁨을 모두 뒤바꿔서, 나쁜 둘·좋은 둘이면 다시 나쁜 둘이 남아요. 하나만 두면 F 뒤 나쁜 엣지가 넷이 돼 ①로 고칠 수 있어요.",
+      },
+    },
+    {
+      kind: "try",
+      body: "나쁜 엣지가 여럿 흩어져 있어요. 흰 면을 아래, 초록 면을 앞으로 들고 위 차례로 고쳐 보세요.",
+      setup: flip(EO_CHECK),
+      alg: EO_SCATTERED,
       goal: "eo",
       mask: "eo-edges",
     },
@@ -137,23 +170,36 @@ const zzEoLine: Lesson = {
   steps: [
     {
       kind: "find",
-      body: "앞 단원에서 좋은 엣지와 나쁜 엣지를 알아봤어요. EO라인은 엣지 방향을 모두 좋게 맞추면서 아래-앞(DF)과 아래-뒤(DB) 엣지 블럭도 제자리에 놓는 단계예요. 아래-앞과 아래-뒤에 흰 엣지 블럭 둘이 한 줄로 놓여요. 처음엔 방향을 먼저, 줄을 나중에 해도 돼요. 아래 앞에 갈 흰-초록 엣지 블럭을 찾아 눌러 보세요.",
+      body: "앞 단원에서 좋은 엣지와 나쁜 엣지를 알아봤어요. EO라인은 엣지 방향을 모두 좋게 맞추면서 아래-앞(DF)과 아래-뒤(DB) 엣지 블럭도 제자리에 놓는 단계예요. 아래-앞과 아래-뒤에 흰 엣지 블럭 둘이 한 줄로 놓여요. 앞 단원 차례로 방향을 모두 고친 뒤 줄을 놓아요. 아래-앞에 갈 흰-초록 엣지 블럭을 찾아 눌러 보세요.",
       setup: upTo(S21),
       mask: "eo-edges",
       find: { piece: "edge", colors: ["U", "F"] },
     },
     {
-      kind: "demo",
-      body: "큐브를 흰 면 아래로 쥐고, 나쁜 엣지를 F·B로 고치며 줄 엣지를 아래로 데려와요.",
+      kind: "quiz",
+      body: "줄 놓기는 엣지 방향을 바꾸지 않는 수(U·D·R·L과 F2·B2)만 써요. 흰-초록 엣지 블럭부터 아래-앞에: 위 층에 있으면 U로 위-앞에 두고 F2. 가운데 층이면 R·L로 위 층에 올린 뒤(앞-오른쪽 R, 뒤-오른쪽 R', 앞-왼쪽 L', 뒤-왼쪽 L) 위 층과 같이. 아래 층이면 D로 아래-앞에. 그다음 흰-파랑 엣지 블럭을 아래-뒤에: 위 층이면 U로 위-뒤에 두고 B2, 가운데 층이면 같은 R·L로 올리고, 아래-오른쪽·아래-왼쪽이면 R2·L2로 위 층에 올려요. 이때 D는 흰-초록 엣지 블럭을 옮기니 쓰지 않아요.",
       setup: upTo(S21),
-      alg: EOL21,
+      mask: "eo-edges",
+      quiz: {
+        question:
+          "흰-초록은 아래-앞에 놓았어요. 흰-파랑 엣지 블럭이 아래-오른쪽에 있으면?",
+        choices: ["R2로 위 층에 올려 U로 위-뒤에 두고 B2", "D로 아래-뒤에"],
+        answer: 0,
+        why: "D를 돌리면 아래-앞의 흰-초록 엣지 블럭도 옮겨 가요. R2·U·B2는 아래-앞을 건드리지 않고 엣지 방향도 그대로예요.",
+      },
+    },
+    {
+      kind: "demo",
+      body: "큐브를 흰 면 아래로 쥐고(z2), 나쁜 엣지를 앞 단원 차례로 고친 뒤 줄 엣지 둘을 놓아요.",
+      setup: upTo(S21),
+      alg: EOLINE_RULE_21,
       mask: "eo-edges",
     },
     {
       kind: "try",
-      body: "다른 섞기에서 EO라인을 만들어 보세요.",
+      body: "다른 섞기에서 EO라인을 만들어 보세요. 흰 면을 아래로 쥐고(z2) 시작해요.",
       setup: upTo(S7),
-      alg: EOL7,
+      alg: EOLINE_RULE_7,
       goal: "eoline",
       mask: "eo-edges",
     },
@@ -182,7 +228,7 @@ const zzF2l: Lesson = {
     },
     {
       kind: "quiz",
-      body: "블록은 차례대로 쌓아요. ① 블록 바닥(아래-왼쪽 또는 아래-오른쪽) 엣지 블럭 → ② 코너 블럭과 가운데 층 엣지 블럭의 짝 하나 → ③ 남은 짝. 바닥과 짝 하나가 맞으면 1×2×2 블록(사각형)이 돼요. 짝을 붙이고 넣는 법은 CFOP의 F2L 짝과 같지만, F·B를 돌리면 엣지 방향이 깨지니 「앞에서 넣기」(U' F' U F) 대신 U를 돌려 엣지 블럭을 위-오른쪽에 두고 「오른쪽에서 넣기」(U R U' R')만 써요. 왼쪽 블록은 엣지 블럭을 위-왼쪽에 두고 그 거울 U' L' U L이에요. 큐브를 돌려 쥐지 않고(y 없이) 블록 쪽 면을 그대로 돌려요.",
+      body: "블록은 차례대로 쌓아요. ① 블록 바닥(아래-왼쪽 또는 아래-오른쪽) 엣지 블럭 → ② 코너 블럭과 가운데 층 엣지 블럭의 짝 하나 → ③ 남은 짝. 바닥과 짝 하나가 맞으면 1×2×2 블록(사각형)이 돼요. 짝을 붙이고 넣는 법은 CFOP의 F2L 짝과 같지만, F·B를 돌리면 엣지 방향이 깨지니 「앞에서 넣기」(U' F' U F) 대신 U를 돌려 엣지 블럭을 위-오른쪽에 두고 「오른쪽에서 넣기」(U R U' R')만 써요. 왼쪽 블록은 엣지 블럭을 위-왼쪽에 두고 그 거울 U' L' U L이에요. 뒤 칸(뒤-오른쪽·뒤-왼쪽)은 앞뒤를 바꾼 꼴이에요. 엣지 블럭을 위-오른쪽(왼쪽 블록은 위-왼쪽)에, 코너 블럭을 넣을 칸 바로 위에 붙여 두고 오른쪽 뒤 칸은 U' R' U R, 왼쪽 뒤 칸은 U L U' L'. 큐브를 돌려 쥐지 않고(y 없이) 블록 쪽 면을 그대로 돌려요.",
       setup: upTo(S21, EOL21),
       mask: "f2l",
       quiz: {
@@ -201,6 +247,14 @@ const zzF2l: Lesson = {
       body: "대표 경우: 오른쪽 블록의 앞 칸(앞-오른쪽)에 넣을 짝이 위 층에 붙어 있고 엣지 블럭이 위-오른쪽에 있어요. U R U' R'로 넣어 보세요.",
       setup: flip(ZZ_PAIR_RIGHT),
       alg: ZZ_PAIR_RIGHT,
+      goal: "f2l",
+      mask: "f2l",
+    },
+    {
+      kind: "try",
+      body: "뒤 칸: 오른쪽 블록의 뒤 칸(뒤-오른쪽)에 넣을 짝이 위 층에 붙어 있어요. 엣지 블럭은 위-오른쪽, 코너 블럭은 뒤-오른쪽 위예요. 큐브를 돌리지 않고 U' R' U R로 넣어 보세요.",
+      setup: flip(ZZ_PAIR_BACK),
+      alg: ZZ_PAIR_BACK,
       goal: "f2l",
       mask: "f2l",
     },
