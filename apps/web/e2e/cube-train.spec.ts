@@ -27,9 +27,22 @@ test("공식 연습: 따라 치기 한 판(틀린 수 하나 포함)", async ({
   await expect(main).toHaveAttribute("data-practice-mode", "follow");
   await atProblem(page, 0);
   await inputReady(page);
+  // 키는 숨긴다: 키 그림(배치 안내 줄 포함)은 접힌 채 시작하고, 수 단추에는 표기만
+  const keysWrap = page.locator("[data-cube-keys-wrap]");
+  await expect(keysWrap).toBeHidden();
+  await expect(page.locator("[data-cube-buttons]")).toBeVisible();
   await shot(page, "practice-follow", info.project.name);
 
   test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  // 펴 볼 수는 있지만 기억하지 않는다(다시 열면 접혀 있다)
+  const toggle = page.locator("[data-cube-keys-toggle]");
+  await expect(toggle).toHaveText("키 그림 보기");
+  await toggle.click();
+  await expect(keysWrap).toBeVisible();
+  await page.reload();
+  await atProblem(page, 0);
+  await inputReady(page);
+  await expect(keysWrap).toBeHidden();
   const first = await atProblem(page, 0);
   // 앞에서 넣기·오른쪽에서 넣기·뒤집힌 엣지 모두 첫 수가 U·U'라 B는 늘 틀린 수
   expect(first).toMatch(/^U/);

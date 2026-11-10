@@ -525,6 +525,7 @@ export function PracticeApp() {
                 onMove={onMove}
                 onCommand={onCommand}
                 locked={phase !== "play"}
+                hideKeys
               />
             </section>
           )
