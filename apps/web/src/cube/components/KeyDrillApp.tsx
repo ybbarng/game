@@ -41,7 +41,7 @@ import { algTokens, FINGER_DRILLS, type FingerDrill } from "../learn";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { LapChart } from "./FingersApp";
 import { KeyboardMap } from "./KeyboardMap";
-import { chip, KeysHeader, useKeymap } from "./KeysApp";
+import { chip, useKeymap } from "./KeysApp";
 import {
   LiveCube,
   type PracticeCube,
@@ -51,7 +51,7 @@ import {
 } from "./PracticeCube";
 
 /**
- * 조작 훈련(`/cube/keys/drill`, docs/47 4절). 수 보고 치기·키 보고 맞히기·공식 따라 치기. 키(동작)별 맞힘률과
+ * 조작 훈련(사이트 쓰는 법의 「연습」 `/cube/intro?part=practice`, 옛 `/cube/keys/drill`, docs/47 4절·16-8). 수 보고 치기·키 보고 맞히기·공식 따라 치기. 키(동작)별 맞힘률과
  * 반응 시간을 이 기기에 남기고, 약한 키를 다음 판에 더 자주 낸다. 시간은 `Clock`으로 잰다.
  */
 
@@ -65,10 +65,24 @@ const MODES: { id: Mode; title: string }[] = [
 /** 키 보고 맞히기: 정답을 고른 뒤 다음 문제까지(맞은 보기·키를 알아볼 만큼) */
 export const QUIZ_NEXT_MS = 900;
 
-export function KeyDrillApp({ clock = realClock }: { clock?: Clock }) {
+/** 주소의 `?mode=`(옛 조작 훈련 주소에서 넘어온 것 포함) */
+export function readDrillMode(search: string): Mode {
+  const m = new URLSearchParams(search).get("mode");
+  return m === "quiz" || m === "formula" ? m : "see";
+}
+
+export function KeyDrillApp({
+  clock = realClock,
+  initialMode = "see",
+  onFinish,
+}: {
+  clock?: Clock;
+  initialMode?: Mode;
+  onFinish: () => void;
+}) {
   const keymap = useKeymap();
   const settings = useCubeSettings();
-  const [mode, setMode] = useState<Mode>("see");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [record, setRecord] = useState<DrillRecord | null>(null);
   useEffect(() => setRecord(loadDrill()), []);
   const save = useCallback((r: DrillRecord) => {
@@ -78,58 +92,58 @@ export function KeyDrillApp({ clock = realClock }: { clock?: Clock }) {
 
   const ready = keymap && record;
   return (
-    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
-      <main
-        className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
-        data-keys-page="drill"
-        data-keys-ready={ready ? "" : undefined}
-        data-drill-mode={mode}
-      >
-        <KeysHeader current="/cube/keys/drill" keymap={keymap} />
-        <div className="flex flex-wrap gap-1">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              data-drill-tab={m.id}
-              aria-pressed={m.id === mode}
-              onClick={(e) => {
-                setMode(m.id);
-                e.currentTarget.blur();
-              }}
-              className={chip(m.id === mode)}
-            >
-              {m.title}
-            </button>
-          ))}
-        </div>
-        {ready && mode === "see" && (
-          <SeeDrill
-            keymap={keymap}
-            settings={settings}
-            record={record}
-            save={save}
-            clock={clock}
-          />
-        )}
-        {ready && mode === "quiz" && (
-          <QuizDrill
-            keymap={keymap}
-            record={record}
-            save={save}
-            clock={clock}
-          />
-        )}
-        {ready && mode === "formula" && (
-          <FormulaDrill
-            keymap={keymap}
-            settings={settings}
-            record={record}
-            save={save}
-            clock={clock}
-          />
-        )}
-      </main>
+    <div
+      className="flex flex-col gap-4"
+      data-keys-page="drill"
+      data-keys-ready={ready ? "" : undefined}
+      data-drill-mode={mode}
+    >
+      <div className="flex flex-wrap items-center gap-1">
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            data-drill-tab={m.id}
+            aria-pressed={m.id === mode}
+            onClick={(e) => {
+              setMode(m.id);
+              e.currentTarget.blur();
+            }}
+            className={chip(m.id === mode)}
+          >
+            {m.title}
+          </button>
+        ))}
+        <button
+          type="button"
+          data-drill-finish
+          onClick={onFinish}
+          className="ml-auto rounded-lg bg-sky-500 px-3 py-1.5 font-semibold text-black text-sm"
+        >
+          다음
+        </button>
+      </div>
+      {ready && mode === "see" && (
+        <SeeDrill
+          keymap={keymap}
+          settings={settings}
+          record={record}
+          save={save}
+          clock={clock}
+        />
+      )}
+      {ready && mode === "quiz" && (
+        <QuizDrill keymap={keymap} record={record} save={save} clock={clock} />
+      )}
+      {ready && mode === "formula" && (
+        <FormulaDrill
+          keymap={keymap}
+          settings={settings}
+          record={record}
+          save={save}
+          clock={clock}
+        />
+      )}
     </div>
   );
 }

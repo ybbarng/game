@@ -31,7 +31,7 @@ async function shot(page: Page, name: string, project: string) {
 }
 
 const ready = (page: Page) =>
-  expect(page.locator("main[data-keys-ready]")).toBeVisible();
+  expect(page.locator("[data-keys-ready]")).toBeVisible();
 
 // 3D 그림은 보지 않으므로 끈다(e2e/cube.ts `no3d`)
 test.beforeEach(({ page }) => no3d(page));
@@ -87,9 +87,11 @@ test("키 익히기: 안내된 키를 치면 다음 단계로 넘어간다", asy
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "키보드 기기만");
+  // 옛 주소는 사이트 쓰는 법의 「키」 부분으로 넘어간다(docs/47 16-6)
   await page.goto("/cube/keys/learn");
+  await expect(page).toHaveURL(/\/cube\/intro\?part=keys$/);
   await ready(page);
-  const main = page.locator("main[data-learn-step]");
+  const main = page.locator("[data-learn-step]");
   await expect(main).toHaveAttribute("data-learn-step", "home");
   // 칠 키가 빛난다
   await expect(page.locator('[data-key="KeyF"]')).toHaveAttribute(
@@ -129,9 +131,9 @@ test("키 익히기: 둘러보기는 말한 색 면을 오게 돌리고, 한 면
       JSON.stringify({ done: ["home", "right"] }),
     ),
   );
-  await page.goto("/cube/keys/learn");
+  await page.goto("/cube/intro?part=keys");
   await ready(page);
-  const main = page.locator("main[data-learn-step]");
+  const main = page.locator("[data-learn-step]");
   await expect(main).toHaveAttribute("data-learn-step", "rotate");
   await expect(page.locator('[data-learn-tab="face-R"]')).toContainText("✓");
   const done = page.locator(
@@ -177,7 +179,9 @@ test("키 익히기: 둘러보기는 말한 색 면을 오게 돌리고, 한 면
 
 test("조작 훈련: 문제를 맞히면 키별 기록이 남는다", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "키보드 기기만");
-  await page.goto("/cube/keys/drill");
+  // 옛 주소는 「연습」 부분으로, 쿼리도 함께 넘어간다(docs/47 16-6)
+  await page.goto("/cube/keys/drill?mode=see");
+  await expect(page).toHaveURL(/\/cube\/intro\?mode=see&part=practice$/);
   await ready(page);
   await page.getByRole("button", { name: "30수" }).click();
   await page.locator("[data-drill-start]").click();
@@ -211,7 +215,7 @@ test("조작 훈련: 판 도중에 떠나도 맞힌 문제의 기록이 남는�
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "키보드 기기만");
-  await page.goto("/cube/keys/drill");
+  await page.goto("/cube/intro?part=practice");
   await ready(page);
   await page.getByRole("button", { name: "30수" }).click();
   await page.locator("[data-drill-start]").click();

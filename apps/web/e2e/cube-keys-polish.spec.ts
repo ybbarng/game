@@ -26,10 +26,10 @@ test("핑거 트릭: 수마다 「두 손」 키캡", async ({ page }, info) => 
 test("키 익히기: 배치 규칙은 키 글을 가리고 손가락으로 맞힌다", async ({
   page,
 }) => {
-  await page.goto("/cube/keys/learn");
+  await page.goto("/cube/intro?part=keys");
   await expect(page.locator("[data-keys-ready]")).toBeAttached();
   await page.locator('[data-learn-tab="rule"]').click();
-  const main = page.locator("main[data-learn-step]");
+  const main = page.locator("[data-learn-step]");
   await expect(main).toHaveAttribute("data-learn-step", "rule");
   await expect(main).toContainText("핑거 트릭");
   // 키 그림에 손가락 자리. 같은 면 두 키를 잇던 선은 뺐다(2026-11-05, 두 키가 같은 면 색 아래선)

@@ -27,7 +27,7 @@ import {
 import { hexColor, useCubeSettings } from "../settings";
 import { KeyboardMap } from "./KeyboardMap";
 import { KeyGuide } from "./KeyGuide";
-import { KeysHeader, useKeymap } from "./KeysApp";
+import { useKeymap } from "./KeysApp";
 import { MoveChip, type MoveKeysOf } from "./MoveChip";
 import {
   LiveCube,
@@ -39,7 +39,7 @@ import {
 } from "./PracticeCube";
 
 /**
- * 키 익히기 튜토리얼(`/cube/keys/learn`, docs/47 4절). 단계마다 설명 → 키보드 그림에서 칠 키가 빛남 → 직접 쳐서
+ * 키 익히기 튜토리얼(사이트 쓰는 법 `/cube/intro?part=keys`의 「키」 부분, 옛 `/cube/keys/learn`, docs/47 4절·16-8). 단계마다 설명 → 키보드 그림에서 칠 키가 빛남 → 직접 쳐서
  * 맞으면 다음. 틀리면 친 키가 무슨 동작이었는지 알린다. 문구의 키는 지금 배치에서 읽는다. 진도는 이 기기에 남는다.
  */
 
@@ -48,7 +48,7 @@ type Feedback =
   | { kind: "miss"; text: string }
   | null;
 
-export function KeyLearnApp() {
+export function KeyLearnApp({ onFinish }: { onFinish: () => void }) {
   const keymap = useKeymap();
   const settings = useCubeSettings();
   const steps = useMemo(() => (keymap ? tutorialSteps(keymap) : []), [keymap]);
@@ -169,264 +169,257 @@ export function KeyLearnApp() {
   const facing = run?.facing;
 
   return (
-    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
-      <main
-        className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
-        data-keys-page="learn"
-        data-keys-ready={keymap ? "" : undefined}
-        data-learn-step={step?.id}
-        data-learn-finished={finished ? "" : undefined}
-        data-learn-facing={facing ? `${facing.up}-${facing.front}` : undefined}
-      >
-        <KeysHeader current="/cube/keys/learn" keymap={keymap} />
-        {/* 키보드 없는 휴대폰도 막다른 길이 되지 않게 맨 위에서 알린다(2026-11-05 점검) */}
-        {noKeyboard && (
-          <p
-            className="break-keep rounded-xl bg-amber-400/10 px-3 py-2 text-amber-100 text-sm"
-            data-learn-no-keyboard
-          >
-            키보드가 없으면 아래 키 그림을 눌러 쳐요. 데스크톱 키보드와 같은
-            자리라 그대로 손에 익어요. 휴대폰으로만 할 거라면 키 대신{" "}
-            <a href="/cube/learn" className="underline">
-              맞추는 법 배우기
-            </a>
-            로 바로 가도 돼요.
-          </p>
-        )}
-        <ol className="flex flex-wrap gap-1" aria-label="단계">
-          {steps.map((s, i) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                data-learn-tab={s.id}
-                aria-current={i === index ? "step" : undefined}
-                onClick={(e) => {
-                  setIndex(i);
-                  e.currentTarget.blur();
-                }}
-                className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs",
-                  i === index
-                    ? "bg-sky-500/30 font-semibold"
-                    : "bg-white/5 hover:bg-white/10",
-                )}
-              >
-                {done.includes(s.id) ? "✓ " : `${i + 1}. `}
-                {s.title}
-              </button>
-            </li>
-          ))}
-        </ol>
+    <div
+      className="flex flex-col gap-4"
+      data-keys-page="learn"
+      data-keys-ready={keymap ? "" : undefined}
+      data-learn-step={step?.id}
+      data-learn-finished={finished ? "" : undefined}
+      data-learn-facing={facing ? `${facing.up}-${facing.front}` : undefined}
+    >
+      {/* 키보드 없는 휴대폰도 막다른 길이 되지 않게 맨 위에서 알린다(2026-11-05 점검) */}
+      {noKeyboard && (
+        <p
+          className="break-keep rounded-xl bg-amber-400/10 px-3 py-2 text-amber-100 text-sm"
+          data-learn-no-keyboard
+        >
+          키보드가 없으면 아래 키 그림을 눌러 쳐요. 데스크톱 키보드와 같은
+          자리라 그대로 손에 익어요. 휴대폰으로만 할 거라면 키 대신{" "}
+          <a href="/cube/learn?lesson=333-start" className="underline">
+            처음 맞추기
+          </a>
+          로 바로 가도 돼요.
+        </p>
+      )}
+      <ol className="flex flex-wrap gap-1" aria-label="단계">
+        {steps.map((s, i) => (
+          <li key={s.id}>
+            <button
+              type="button"
+              data-learn-tab={s.id}
+              aria-current={i === index ? "step" : undefined}
+              onClick={(e) => {
+                setIndex(i);
+                e.currentTarget.blur();
+              }}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-xs",
+                i === index
+                  ? "bg-sky-500/30 font-semibold"
+                  : "bg-white/5 hover:bg-white/10",
+              )}
+            >
+              {done.includes(s.id) ? "✓ " : `${i + 1}. `}
+              {s.title}
+            </button>
+          </li>
+        ))}
+      </ol>
 
-        {step && run && keymap && (
-          <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-            <section className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h2 className="font-bold text-lg">
-                  {index + 1}. {step.title}
-                </h2>
-                {step.hand && (
-                  <p
-                    data-learn-hand={step.hand.label}
-                    className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-0.5 text-sm"
-                  >
-                    <span className="font-semibold">{step.hand.label}</span>
-                    {step.hand.moves.map((m) => (
-                      <MoveChip key={m} notation={m} keysOf={keysOf} />
-                    ))}
-                  </p>
-                )}
-              </div>
-              {step.lines.map((l) => (
-                <p key={l} className="break-keep text-sm text-white/85">
-                  {l}
-                </p>
-              ))}
-              {step.missing.length > 0 && (
-                <p className="break-keep text-amber-200 text-xs">
-                  이 배치에는 {step.missing.join(", ")} 키가 없어 건너뛰어요.{" "}
-                  <a href="/cube/settings" className="underline">
-                    설정에서 놓기
-                  </a>
+      {step && run && keymap && (
+        <div className="grid gap-4 md:grid-cols-[1fr_260px]">
+          <section className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="font-bold text-lg">
+                {index + 1}. {step.title}
+              </h2>
+              {step.hand && (
+                <p
+                  data-learn-hand={step.hand.label}
+                  className="flex items-center gap-2 rounded-full bg-white/10 px-2.5 py-0.5 text-sm"
+                >
+                  <span className="font-semibold">{step.hand.label}</span>
+                  {step.hand.moves.map((m) => (
+                    <MoveChip key={m} notation={m} keysOf={keysOf} />
+                  ))}
                 </p>
               )}
-              <ol className="flex flex-wrap gap-1.5" data-learn-targets>
-                {step.targets.map((t, i) => {
-                  const state =
-                    i < run.index ? "done" : i === run.index ? "now" : "next";
-                  return (
-                    <li
-                      // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
-                      key={i}
-                      data-target-state={state}
+            </div>
+            {step.lines.map((l) => (
+              <p key={l} className="break-keep text-sm text-white/85">
+                {l}
+              </p>
+            ))}
+            {step.missing.length > 0 && (
+              <p className="break-keep text-amber-200 text-xs">
+                이 배치에는 {step.missing.join(", ")} 키가 없어 건너뛰어요.{" "}
+                <a href="/cube/settings" className="underline">
+                  설정에서 놓기
+                </a>
+              </p>
+            )}
+            <ol className="flex flex-wrap gap-1.5" data-learn-targets>
+              {step.targets.map((t, i) => {
+                const state =
+                  i < run.index ? "done" : i === run.index ? "now" : "next";
+                return (
+                  <li
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
+                    key={i}
+                    data-target-state={state}
+                    className={cn(
+                      "flex min-w-12 flex-col items-center rounded-lg px-2 py-1",
+                      state === "done" && "bg-emerald-500/25 text-emerald-100",
+                      state === "now" &&
+                        "bg-amber-400/25 ring-2 ring-amber-300",
+                      state === "next" && "bg-white/5 text-white/60",
+                    )}
+                  >
+                    <span
                       className={cn(
-                        "flex min-w-12 flex-col items-center rounded-lg px-2 py-1",
-                        state === "done" &&
-                          "bg-emerald-500/25 text-emerald-100",
-                        state === "now" &&
-                          "bg-amber-400/25 ring-2 ring-amber-300",
-                        state === "next" && "bg-white/5 text-white/60",
+                        "font-semibold",
+                        t.kind === "move" && "font-mono",
                       )}
                     >
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          t.kind === "move" && "font-mono",
-                        )}
-                      >
-                        {targetLabel(t)}
-                      </span>
-                      <span className="flex min-h-[15px] items-center gap-0.5 text-[10px] text-white/60">
-                        {t.kind === "orient"
-                          ? [t.up, t.front].map((c, j) =>
-                              c === undefined ? null : (
-                                <Swatch
-                                  // biome-ignore lint/suspicious/noArrayIndexKey: 위·앞 두 칸
-                                  key={j}
-                                  color={c}
-                                  colors={settings.colors}
-                                />
-                              ),
-                            )
-                          : t.kind === "code" || t.kind === "solve"
-                            ? ""
-                            : t.kind === "move" && t.ask && state !== "done"
-                              ? "?"
-                              : keyOf(keymap, t)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-              {current?.kind === "orient" && (
-                <p
-                  data-learn-goal
-                  className="flex flex-wrap items-center gap-2 break-keep text-sm"
-                >
-                  <span className="font-semibold">
-                    {orientGoalText(current)}
-                  </span>
-                  {facing && (
-                    <span className="flex items-center gap-1 text-white/70 text-xs">
-                      지금 위
-                      <Swatch color={facing.up} colors={settings.colors} />
-                      {colorWord(facing.up)}, 앞
-                      <Swatch color={facing.front} colors={settings.colors} />
-                      {colorWord(facing.front)}
+                      {targetLabel(t)}
                     </span>
-                  )}
-                </p>
-              )}
-              {current?.kind === "move" && current.ask && (
-                <p
-                  data-learn-ask={current.notation}
-                  className="flex flex-wrap items-center gap-2 break-keep text-sm"
-                >
-                  <span className="rounded bg-amber-400/20 px-1.5 font-mono font-semibold text-amber-200">
-                    {current.notation}
-                  </span>
-                  <span>실마리: {current.ask}. 어느 키일까요? 쳐 보세요.</span>
-                </p>
-              )}
-              {current?.kind === "solve" && (
-                <p data-learn-goal className="break-keep text-sm">
-                  혼자 풀어 보세요. 나중에 친 것부터 거꾸로 쳐요. 틀려도
-                  되돌리기로 돌아올 수 있어요.
-                </p>
-              )}
+                    <span className="flex min-h-[15px] items-center gap-0.5 text-[10px] text-white/60">
+                      {t.kind === "orient"
+                        ? [t.up, t.front].map((c, j) =>
+                            c === undefined ? null : (
+                              <Swatch
+                                // biome-ignore lint/suspicious/noArrayIndexKey: 위·앞 두 칸
+                                key={j}
+                                color={c}
+                                colors={settings.colors}
+                              />
+                            ),
+                          )
+                        : t.kind === "code" || t.kind === "solve"
+                          ? ""
+                          : t.kind === "move" && t.ask && state !== "done"
+                            ? "?"
+                            : keyOf(keymap, t)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            {current?.kind === "orient" && (
               <p
-                role="status"
-                data-learn-feedback={feedback?.kind}
-                className={cn(
-                  "min-h-5 break-keep text-sm",
-                  feedback?.kind === "miss"
-                    ? "text-red-300"
-                    : "text-emerald-300",
-                )}
+                data-learn-goal
+                className="flex flex-wrap items-center gap-2 break-keep text-sm"
               >
-                {feedback?.text ?? ""}
+                <span className="font-semibold">{orientGoalText(current)}</span>
+                {facing && (
+                  <span className="flex items-center gap-1 text-white/70 text-xs">
+                    지금 위
+                    <Swatch color={facing.up} colors={settings.colors} />
+                    {colorWord(facing.up)}, 앞
+                    <Swatch color={facing.front} colors={settings.colors} />
+                    {colorWord(facing.front)}
+                  </span>
+                )}
               </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    runRef.current = new StepRun(TUTORIAL_N, step);
-                    cube.reset();
-                    setFeedback(null);
-                    bump((x) => x + 1);
-                    e.currentTarget.blur();
-                  }}
-                  className="rounded-lg bg-white/10 px-3 py-1.5 text-sm"
-                >
-                  처음부터
-                </button>
-                {(finished || step.targets.length === 0) &&
-                  index < steps.length - 1 && (
-                    <button
-                      type="button"
-                      data-learn-next
-                      onClick={(e) => {
-                        if (step.targets.length === 0) markDone(step.id);
-                        setIndex(index + 1);
-                        e.currentTarget.blur();
-                      }}
-                      className="rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black text-sm"
-                    >
-                      다음 단계
-                    </button>
-                  )}
-                {finished && index === steps.length - 1 && (
-                  <a
-                    href="/cube/keys/drill"
-                    data-learn-drill
+            )}
+            {current?.kind === "move" && current.ask && (
+              <p
+                data-learn-ask={current.notation}
+                className="flex flex-wrap items-center gap-2 break-keep text-sm"
+              >
+                <span className="rounded bg-amber-400/20 px-1.5 font-mono font-semibold text-amber-200">
+                  {current.notation}
+                </span>
+                <span>실마리: {current.ask}. 어느 키일까요? 쳐 보세요.</span>
+              </p>
+            )}
+            {current?.kind === "solve" && (
+              <p data-learn-goal className="break-keep text-sm">
+                혼자 풀어 보세요. 나중에 친 것부터 거꾸로 쳐요. 틀려도
+                되돌리기로 돌아올 수 있어요.
+              </p>
+            )}
+            <p
+              role="status"
+              data-learn-feedback={feedback?.kind}
+              className={cn(
+                "min-h-5 break-keep text-sm",
+                feedback?.kind === "miss" ? "text-red-300" : "text-emerald-300",
+              )}
+            >
+              {feedback?.text ?? ""}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  runRef.current = new StepRun(TUTORIAL_N, step);
+                  cube.reset();
+                  setFeedback(null);
+                  bump((x) => x + 1);
+                  e.currentTarget.blur();
+                }}
+                className="rounded-lg bg-white/10 px-3 py-1.5 text-sm"
+              >
+                처음부터
+              </button>
+              {(finished || step.targets.length === 0) &&
+                index < steps.length - 1 && (
+                  <button
+                    type="button"
+                    data-learn-next
+                    onClick={(e) => {
+                      if (step.targets.length === 0) markDone(step.id);
+                      setIndex(index + 1);
+                      e.currentTarget.blur();
+                    }}
                     className="rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black text-sm"
                   >
-                    조작 훈련으로
-                  </a>
+                    다음 단계
+                  </button>
                 )}
-                {finished && index === steps.length - 1 && (
-                  <a
-                    href="/cube/learn"
-                    data-learn-to-lessons
-                    className="rounded-lg bg-white/10 px-4 py-1.5 text-sm hover:bg-white/15"
-                  >
-                    맞추는 법 배우기
-                  </a>
-                )}
-              </div>
-            </section>
-            <LiveCube
-              cube={cube}
-              settings={settings}
-              className="mx-auto w-full max-w-[260px]"
-            />
-          </div>
-        )}
+              {finished && index === steps.length - 1 && (
+                <button
+                  type="button"
+                  data-learn-drill
+                  onClick={onFinish}
+                  className="rounded-lg bg-sky-500 px-4 py-1.5 font-semibold text-black text-sm"
+                >
+                  연습으로
+                </button>
+              )}
+              {finished && index === steps.length - 1 && (
+                <a
+                  href="/cube/learn?lesson=333-start"
+                  data-learn-to-lessons
+                  className="rounded-lg bg-white/10 px-4 py-1.5 text-sm hover:bg-white/15"
+                >
+                  처음 맞추기
+                </a>
+              )}
+            </div>
+          </section>
+          <LiveCube
+            cube={cube}
+            settings={settings}
+            className="mx-auto w-full max-w-[260px]"
+          />
+        </div>
+      )}
 
-        {/* 키를 눌러 칠 수 있다(화면 키보드). 키보드 없는 기기는 큰 그림 대신 누르기 쉬운 작은 키 그림 */}
-        {keymap &&
-          (noKeyboard ? (
-            <KeyGuide
-              n={TUTORIAL_N}
-              keymap={keymap}
-              lit={pressed}
-              want={finished ? [] : lit}
-              hideActions={current?.kind === "move" && !!current.ask}
-              pressable
-              fingers
-            />
-          ) : (
-            <KeyboardMap
-              keymap={keymap}
-              n={TUTORIAL_N}
-              lit={finished ? [] : lit}
-              pressed={pressed}
-              wrong={wrong}
-              hideActions={current?.kind === "move" && !!current.ask}
-              pressable
-            />
-          ))}
-      </main>
+      {/* 키를 눌러 칠 수 있다(화면 키보드). 키보드 없는 기기는 큰 그림 대신 누르기 쉬운 작은 키 그림 */}
+      {keymap &&
+        (noKeyboard ? (
+          <KeyGuide
+            n={TUTORIAL_N}
+            keymap={keymap}
+            lit={pressed}
+            want={finished ? [] : lit}
+            hideActions={current?.kind === "move" && !!current.ask}
+            pressable
+            fingers
+          />
+        ) : (
+          <KeyboardMap
+            keymap={keymap}
+            n={TUTORIAL_N}
+            lit={finished ? [] : lit}
+            pressed={pressed}
+            wrong={wrong}
+            hideActions={current?.kind === "move" && !!current.ask}
+            pressable
+          />
+        ))}
     </div>
   );
 }

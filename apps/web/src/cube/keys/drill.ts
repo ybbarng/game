@@ -5,7 +5,7 @@ import type { CubeMove } from "../view/types";
 import { type MatchResult, MoveMatcher, pressesFor } from "./reach";
 
 /**
- * 조작 훈련(`/cube/keys/drill`, docs/47 4절). 화면을 모르는 순수 로직: 단계별 문제 묶음, 약한 키를 더 자주 내는
+ * 조작 훈련(사이트 쓰는 법의 「연습」 `/cube/intro?part=practice`, 옛 `/cube/keys/drill`, docs/47 4절·16-8). 화면을 모르는 순수 로직: 단계별 문제 묶음, 약한 키를 더 자주 내는
  * 가중치 고르기, 한 판(30초 또는 30수) 진행·채점, 키 보고 맞히기 퀴즈. 무작위는 `rand`(0 이상 1 미만)를, 시간은
  * `Clock`을 넣는다(시험은 고정 값·`ManualClock`).
  */

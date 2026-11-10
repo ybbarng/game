@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
-import { KeyDrillApp } from "@/cube/components/KeyDrillApp";
+import { CubeRedirect } from "@/cube/nav/CubeRedirect";
 
 export const metadata: Metadata = {
-  title: { absolute: "큐브 조작 훈련" },
-  description:
-    "표기를 보고 키를 치고, 빛나는 키의 동작을 맞히고, 공식을 키로 반복한다. 키별 맞힘률·반응 시간, 약한 키를 더 자주.",
+  title: { absolute: "큐브 사이트 쓰는 법" },
+  robots: { index: false },
 };
 
+/** 옛 주소: 조작 훈련은 사이트 쓰는 법의 「연습」 부분으로 옮겼다(docs/47 16-6). `?mode=`는 그대로 넘어간다 */
 export default function CubeKeysDrillPage() {
-  return <KeyDrillApp />;
+  return <CubeRedirect to="/cube/intro?part=practice" label="조작 연습으로" />;
 }

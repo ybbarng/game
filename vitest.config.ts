@@ -32,6 +32,8 @@ export default defineConfig({
       "**/apps/web/public/sw.js",
       // src/cubie/appcast.test.ts가 읽는 Cubie 업데이트 목록(새 판마다 바뀐다)
       "**/apps/web/public/cubie/appcast.xml",
+      // src/cube/nav/feature-map.test.ts가 있는지 보는 큐브 page 파일들
+      "**/apps/web/src/app/cube/**/page.tsx",
       "**/apps/web/scripts/build-hashes.mjs",
     ],
     coverage: {

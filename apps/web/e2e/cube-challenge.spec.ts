@@ -75,14 +75,12 @@ test("제한 도전: 시간 체력으로 성공 한 번·시간 다함 한 번, 
   );
   const desktop = info.project.name === "desktop";
   await installClock(page);
-  // 혼자 맞추기 머리에도 길이 있다
+  // 혼자 맞추기의 갈래에서 들어간다(docs/47 16-2)
   await page.goto("/cube/solo");
   await expect(page.locator("[data-cube-challenge-link]")).toHaveAttribute(
     "href",
     "/cube/challenge",
   );
-  // 첫 화면 「맞추기」 묶음에서 들어간다
-  await page.goto("/cube");
   await page.locator("[data-cube-challenge-link]").click();
   await expect(page).toHaveURL(/\/cube\/challenge$/);
   await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(

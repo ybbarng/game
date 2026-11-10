@@ -7,6 +7,8 @@ import { realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { cn } from "@/lib/cn";
+
 import { caseById, shortName } from "../algs/check";
 import { spotCase } from "../algs/spot";
 import {
@@ -762,18 +764,6 @@ export function SolveApp({
               오늘 완료
             </span>
           )}
-          {!daily && !challenge && mode === "solo" && (
-            <>
-              <DailyLink />
-              <a
-                href="/cube/challenge"
-                data-cube-challenge-link
-                className="inline-flex min-h-8 items-center rounded-full border border-white/15 px-2.5 text-white/80 text-xs hover:bg-white/10"
-              >
-                제한 도전
-              </a>
-            </>
-          )}
           {challenge && (
             <div className="ml-auto flex items-center gap-3">
               <PickSelect
@@ -868,6 +858,17 @@ export function SolveApp({
             </button>
           )}
         </header>
+        <SoloBranches
+          current={
+            daily
+              ? "daily"
+              : challenge
+                ? "challenge"
+                : mode === "blind"
+                  ? "blind"
+                  : "solo"
+          }
+        />
 
         <div
           className="grid gap-4 md:grid-cols-[1fr_260px]"
@@ -1305,22 +1306,59 @@ function entryMarks(e: DailyEntry) {
   );
 }
 
-/** 혼자 맞추기 머리의 「오늘의 섞기」 길. 오늘 이 기기에서 한 크기가 있으면 「완료」 */
-function DailyLink() {
-  const [done, setDone] = useState(false);
+type SoloBranch = "solo" | "daily" | "challenge" | "blind";
+
+const BRANCHES: { id: SoloBranch; title: string; href: string }[] = [
+  { id: "solo", title: "혼자 맞추기", href: "/cube/solo" },
+  { id: "daily", title: "오늘의 섞기", href: "/cube/daily" },
+  { id: "challenge", title: "제한 도전", href: "/cube/challenge" },
+  { id: "blind", title: "블라인드", href: "/cube/blind" },
+];
+
+/**
+ * 혼자 맞추기의 갈래(docs/47 16-2): 혼자 맞추기·오늘의 섞기·제한 도전·블라인드. 넷은 같은 `SolveApp`의 옵션이고
+ * 주소는 그대로 산다. 첫 화면 칸에서는 빠지고 여기서 고른다. 오늘 이 기기에서 오늘의 섞기를 한 크기가 있으면 ✓
+ */
+function SoloBranches({ current }: { current: SoloBranch }) {
+  const [dailyDone, setDailyDone] = useState(false);
   useEffect(() => {
     const today = kstDate(Date.now());
-    setDone(loadDaily().some((e) => e.date === today));
+    setDailyDone(loadDaily().some((e) => e.date === today));
   }, []);
   return (
-    <a
-      href="/cube/daily"
-      data-cube-daily-link
-      data-cube-daily-done={done ? "" : undefined}
-      className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/15 px-2.5 text-white/80 text-xs hover:bg-white/10"
+    <nav
+      aria-label="혼자 맞추기 갈래"
+      className="-mt-1 flex flex-wrap gap-1.5"
+      data-solo-branches={current}
     >
-      오늘의 섞기
-      {done && <span className="text-emerald-300">✓</span>}
-    </a>
+      {BRANCHES.map((b) => (
+        <a
+          key={b.id}
+          href={b.href}
+          aria-current={b.id === current ? "page" : undefined}
+          data-solo-branch={b.id}
+          {...(b.id === "daily" && current !== "daily"
+            ? {
+                "data-cube-daily-link": "",
+                "data-cube-daily-done": dailyDone ? "" : undefined,
+              }
+            : {})}
+          {...(b.id === "challenge" && current !== "challenge"
+            ? { "data-cube-challenge-link": "" }
+            : {})}
+          className={cn(
+            "inline-flex min-h-8 items-center gap-1 rounded-full border px-3 text-xs",
+            b.id === current
+              ? "border-sky-300/70 bg-sky-500/20 font-semibold text-white"
+              : "border-white/15 text-white/80 hover:bg-white/10",
+          )}
+        >
+          {b.title}
+          {b.id === "daily" && dailyDone && (
+            <span className="text-emerald-300">✓</span>
+          )}
+        </a>
+      ))}
+    </nav>
   );
 }

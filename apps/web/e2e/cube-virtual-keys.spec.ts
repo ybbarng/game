@@ -122,15 +122,18 @@ test("키 익히기: 키보드 없는 기기도 키 그림을 눌러 단계를 �
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "세로·PC만");
   const phone = info.project.name === "phone-portrait";
-  await page.goto("/cube/keys/learn");
-  await expect(page.locator("main[data-keys-ready]")).toBeVisible();
-  const main = page.locator("main[data-learn-step]");
+  await page.goto("/cube/intro?part=keys");
+  await expect(page.locator("[data-keys-ready]")).toBeVisible();
+  const main = page.locator("[data-learn-step]");
   await expect(main).toHaveAttribute("data-learn-step", "home");
   // 키보드 없는 휴대폰은 맨 위에서 키 그림으로 치는 법과 배우기로 가는 길을 알린다(막다른 길이 되지 않게)
   const note = page.locator("[data-learn-no-keyboard]");
   if (phone) {
     await expect(note).toBeVisible();
-    await expect(note.getByRole("link")).toHaveAttribute("href", "/cube/learn");
+    await expect(note.getByRole("link")).toHaveAttribute(
+      "href",
+      "/cube/learn?lesson=333-start",
+    );
   } else await expect(note).toHaveCount(0);
   // 휴대폰은 누르기 쉬운 작은 키 그림, 데스크톱은 큰 키보드 그림(둘 다 누를 수 있다)
   const map = page.locator(phone ? "[data-cube-keys]" : "[data-keyboard-map]");

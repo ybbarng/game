@@ -22,8 +22,19 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   page,
 }, info) => {
   await useNotationKeys(page);
+  // 옛 과정 목록 주소는 해법 익히기로 넘어간다(docs/47 16-6)
   await page.goto("/cube/learn");
+  await expect(page).toHaveURL(/\/cube\/methods$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "해법 익히기",
+  );
   await expect(page.locator("[data-course]").first()).toBeVisible();
+  // 해법마다 배우기와 연습이 한 카드에
+  await expect(
+    page.locator(
+      '[data-course-practice="cfop"] [data-practice="train"][href="/cube/train?set=f2l"]',
+    ),
+  ).toHaveCount(1);
   await shot(page, "learn-list", info.project.name);
 
   await page.locator('[data-lesson="333-notation"]').click();
@@ -52,7 +63,7 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   await shot(page, "learn-try-passed", info.project.name);
 
   // 진도가 이 기기에 남는다
-  await page.goto("/cube/learn");
+  await page.goto("/cube/methods");
   await expect(page.locator('[data-lesson="333-notation"]')).toContainText(
     "해보기 1/",
   );
@@ -153,7 +164,7 @@ test("배우기: 크기별 해법 목록과 ZZ 엣지 방향 해 보기", async 
   page,
 }, info) => {
   await useNotationKeys(page);
-  await page.goto("/cube/learn");
+  await page.goto("/cube/methods");
   const size3 = page.locator('[data-course-size="3"]');
   await expect(size3.locator('[data-course="roux"]')).toBeVisible();
   await expect(size3.locator('[data-course="zz"]')).toBeVisible();

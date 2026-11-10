@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoves, invertMoves, parseMoves } from "@game/cube-engine";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import {
@@ -30,7 +30,7 @@ import { DemoCube } from "./DemoCube";
 import { PatternTry } from "./PatternTry";
 
 /**
- * 패턴 만들기(`/cube/patterns`). 크기별 패턴 카드 → 카드를 열면 시연과 「직접 만들어 보기」.
+ * 패턴 보기(`/cube/patterns`의 「보기」 탭, docs/47 16-2). 크기별 패턴 카드 → 카드를 열면 시연과 「직접 만들어 보기」.
  * 패턴은 `?p=<id>`로 연다(내 패턴은 `mine-<id>`). 내 패턴은 이 기기에 둔다.
  */
 
@@ -57,7 +57,12 @@ function newId(): string {
   }
 }
 
-export function PatternsApp() {
+export function PatternsApp({
+  header,
+}: {
+  /** 목록 머리(패턴 화면의 이름과 탭). 카드를 연 동안은 보이지 않는다 */
+  header: ReactNode;
+}) {
   const settings = useCubeSettings();
   // undefined: 주소를 아직 안 읽음(미리 그린 HTML과 첫 그리기를 맞춘다)
   const [openId, setOpenId] = useState<string | null | undefined>();
@@ -112,6 +117,7 @@ export function PatternsApp() {
           />
         ) : (
           <PatternList
+            header={header}
             settings={settings}
             mine={mine}
             onOpen={open}
@@ -126,11 +132,13 @@ export function PatternsApp() {
 // ---------- 목록 ----------
 
 function PatternList({
+  header,
   settings,
   mine,
   onOpen,
   onMine,
 }: {
+  header: ReactNode;
   settings: CubeSettings;
   mine: MyPattern[];
   onOpen: (id: string) => void;
@@ -138,18 +146,9 @@ function PatternList({
 }) {
   return (
     <>
-      <header className="flex flex-wrap items-center gap-3">
-        <a
-          href="/cube"
-          className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
-        >
-          ← 큐브
-        </a>
-        <h1 className="font-bold text-lg">패턴 만들기</h1>
-        <nav
-          aria-label="크기"
-          className="ml-auto flex flex-wrap gap-1.5 text-sm"
-        >
+      {header}
+      <div className="flex flex-wrap items-center gap-3">
+        <nav aria-label="크기" className="flex flex-wrap gap-1.5 text-sm">
           {PATTERN_SIZES.map((n) => (
             <a
               key={n}
@@ -166,7 +165,7 @@ function PatternList({
             내 패턴
           </a>
         </nav>
-      </header>
+      </div>
       <p className="text-sm text-white/70">
         맞춘 큐브에 공식 하나만 하면 예쁜 무늬가 생겨요. 카드를 열어 한 수씩
         보고, 내 키로 직접 만들어 보세요.

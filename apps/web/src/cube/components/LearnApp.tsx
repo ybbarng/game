@@ -20,6 +20,7 @@ import {
   stepPicture,
 } from "../learn/interact";
 import { maskFor, stepStart } from "../learn/judge";
+import { practiceLinks } from "../learn/practice";
 import {
   LESSON_RENAMES,
   type LearnProgress,
@@ -31,6 +32,7 @@ import {
   markTryPassed,
   resumeStep,
 } from "../learn/progress";
+import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
 import { DemoCube } from "./DemoCube";
@@ -58,7 +60,7 @@ import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
 
 /**
- * 배우기(`/cube/learn`, docs/47 8-1). 과정 목록 → 단원(설명 → 시연 → 직접 해보기).
+ * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 익히기(`MethodsApp`, `/cube/methods`)로 옮겼다.
  * 단원은 `?lesson=<id>`로 연다. 진도는 이 기기에 남고, 다음 단원을 잠그지는 않지만 차례를 보여 준다.
  */
 
@@ -87,13 +89,20 @@ export function LearnApp() {
   }, []);
 
   const found = lessonId ? findLesson(lessonId) : null;
+  // 과정 목록은 해법 익히기로 옮겼다(docs/47 16-6): 단원이 없는 주소는 그리로 넘긴다
+  useEffect(() => {
+    if (lessonId !== undefined && !found)
+      window.location.replace(
+        redirectTarget("/cube/methods", window.location.search),
+      );
+  }, [lessonId, found]);
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
       <main
         className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4"
         data-cube-learn={found ? found.lesson.id : "list"}
       >
-        {lessonId === undefined ? null : found ? (
+        {found ? (
           <LessonView
             key={found.lesson.id}
             course={found.course}
@@ -101,25 +110,62 @@ export function LearnApp() {
             progress={progress}
             setProgress={setProgress}
           />
-        ) : (
-          <CourseList progress={progress} />
-        )}
+        ) : null}
       </main>
     </div>
   );
 }
 
-function CourseList({ progress }: { progress: LearnProgress }) {
+/**
+ * 해법 익히기(`/cube/methods`, docs/47 16-2): 해법(과정)을 고르면 그 해법의 배우기(단원)와 연습(공식 훈련 묶음·십자 훈련·
+ * 내 공식)이 한 카드에 보인다. `?m=<과정 id>`로 열면 그 해법 카드를 보인다. 예전 배우기 과정 목록(`/cube/learn`)을 옮겼다.
+ */
+export function MethodsApp() {
+  const [progress, setProgress] = useState<LearnProgress | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => {
+    setProgress(loadLearn());
+    setPicked(new URLSearchParams(window.location.search).get("m"));
+  }, []);
+  return (
+    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
+      <main
+        className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4"
+        data-cube-learn="list"
+        data-cube-methods={progress ? "" : undefined}
+      >
+        {progress && <CourseList progress={progress} picked={picked} />}
+      </main>
+    </div>
+  );
+}
+
+function CourseList({
+  progress,
+  picked,
+}: {
+  progress: LearnProgress;
+  picked: string | null;
+}) {
   const last = progress.last ? findLesson(progress.last) : null;
-  // 처음 보이는 크기: 마지막으로 연 단원의 크기, 없으면 3×3
-  const [size, setSize] = useState<number>(() => last?.course.size ?? 3);
+  const pickedCourse = picked ? courseById(picked) : undefined;
+  // 처음 보이는 크기: 고른 해법, 마지막으로 연 단원의 크기, 없으면 3×3
+  const [size, setSize] = useState<number>(
+    () => pickedCourse?.size ?? last?.course.size ?? 3,
+  );
+  useEffect(() => {
+    if (pickedCourse)
+      document
+        .getElementById(`course-${pickedCourse.id}`)
+        ?.scrollIntoView({ block: "start" });
+  }, [pickedCourse]);
   return (
     <>
       <header className="flex flex-wrap items-center gap-3">
         <a href="/cube" className="text-sm text-white/70 hover:text-white">
           ← 큐브
         </a>
-        <h1 className="font-bold text-lg">배우기</h1>
+        <h1 className="font-bold text-lg">해법 익히기</h1>
         <a
           href="/cube/train"
           className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
@@ -130,13 +176,7 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           href="/cube/algs"
           className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
         >
-          공식 모음
-        </a>
-        <a
-          href="/cube/fingers"
-          className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
-        >
-          핑거 트릭
+          내 공식
         </a>
       </header>
       {last && (
@@ -156,13 +196,7 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           href="/cube/intro"
           className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
         >
-          👋 처음이라면: 화면 쓰는 법
-        </a>
-        <a
-          href="/cube/keys/learn"
-          className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10"
-        >
-          ⌨️ 키 익히기
+          👋 사이트 쓰는 법
         </a>
       </p>
       {/* 크기 탭: 고급 해법까지 모두 펼치면 2×2까지 한참 내려가야 했다(2026-11-04 점검) */}
@@ -203,7 +237,11 @@ function CourseList({ progress }: { progress: LearnProgress }) {
           role="tabpanel"
           className="cube-rise flex flex-col gap-2"
         >
-          <CourseGrid courses={courses} progress={progress} />
+          <CourseGrid
+            courses={courses}
+            progress={progress}
+            picked={pickedCourse?.id ?? null}
+          />
         </section>
       ))}
     </>
@@ -221,9 +259,11 @@ const COURSES_BY_SIZE: [number, Course[]][] = [3, 2, 4, 5]
 function CourseGrid({
   courses,
   progress,
+  picked,
 }: {
   courses: Course[];
   progress: LearnProgress;
+  picked: string | null;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -231,9 +271,12 @@ function CourseGrid({
         const done = course.lessons.filter(
           (l) => progress.lessons[l.id]?.done,
         ).length;
-        // 단원 목록은 그 크기의 첫 과정과 손댄 과정만 펼친다(나머지는 눌러서)
+        // 단원 목록은 그 크기의 첫 과정·고른 과정·손댄 과정만 펼친다(나머지는 눌러서)
         const open =
-          index === 0 || course.lessons.some((l) => progress.lessons[l.id]);
+          index === 0 ||
+          course.id === picked ||
+          course.lessons.some((l) => progress.lessons[l.id]);
+        const practice = practiceLinks(course, drillTitle);
         // 앞 과정(예: 3×3 초보자)을 다 끝냈고 이 과정은 아직이면 눈에 띄게
         const before = COURSES.find((c) => c.id === course.recommendAfter);
         const recommended =
@@ -243,13 +286,17 @@ function CourseGrid({
         return (
           <section
             key={course.id}
+            id={`course-${course.id}`}
             data-course={course.id}
             data-course-recommended={recommended ? "" : undefined}
+            data-course-picked={course.id === picked ? "" : undefined}
             className={cn(
-              "flex flex-col gap-2 rounded-2xl border p-4",
-              recommended
-                ? "border-sky-300/70 bg-sky-500/15"
-                : "border-white/15 bg-white/5",
+              "flex scroll-mt-4 flex-col gap-2 rounded-2xl border p-4",
+              course.id === picked
+                ? "border-amber-300/70 bg-amber-400/10"
+                : recommended
+                  ? "border-sky-300/70 bg-sky-500/15"
+                  : "border-white/15 bg-white/5",
             )}
           >
             <div className="flex items-baseline gap-2">
@@ -311,7 +358,8 @@ function CourseGrid({
                 >
                   ▸
                 </span>
-                단원 {course.lessons.length}개{done > 0 && ` · ${done}개 끝냄`}
+                배우기 · 단원 {course.lessons.length}개
+                {done > 0 && ` · ${done}개 끝냄`}
               </summary>
               <ol className="flex flex-col gap-1">
                 {course.lessons.map((l, i) => {
@@ -351,6 +399,24 @@ function CourseGrid({
                 })}
               </ol>
             </details>
+            {practice.length > 0 && (
+              <div
+                className="flex flex-wrap items-center gap-1.5 px-2"
+                data-course-practice={course.id}
+              >
+                <span className="text-white/60 text-xs">연습</span>
+                {practice.map((p) => (
+                  <a
+                    key={p.href}
+                    href={p.href}
+                    data-practice={p.kind}
+                    className="rounded-full border border-white/15 px-2.5 py-1 text-xs hover:bg-white/10"
+                  >
+                    {p.title}
+                  </a>
+                ))}
+              </div>
+            )}
           </section>
         );
       })}
@@ -443,10 +509,10 @@ function LessonView({
     <>
       <header className="flex flex-wrap items-center gap-3">
         <a
-          href="/cube/learn"
+          href={`/cube/methods?m=${course.id}`}
           className="text-sm text-white/70 hover:text-white"
         >
-          ← 배우기
+          ← 해법 익히기
         </a>
         <h1 className="font-bold text-lg">
           {lessonIndex + 1}. {lesson.title}

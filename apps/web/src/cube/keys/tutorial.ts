@@ -22,7 +22,7 @@ import { keyTextFor, MoveMatcher } from "./reach";
 import { TWO_HAND_RULE, TWO_HAND_RULES } from "./two-hand";
 
 /**
- * 키 익히기 튜토리얼(`/cube/keys/learn`, docs/47 4-4절). 지금 배치를 읽어 단계마다 설명과 칠 것을 만든다.
+ * 키 익히기 튜토리얼(`/cube/intro?part=keys`, 옛 `/cube/keys/learn`, docs/47 4-4절). 지금 배치를 읽어 단계마다 설명과 칠 것을 만든다.
  * 키 이름은 문장에 그대로 적지 않고 배치에서 읽으므로 「두 손」·「표기」·「사용자」 모두 같은 단계가 나온다.
  * 배치에 없는 수는 그 단계에서 빼고 `missing`에 남긴다(설정에서 놓으라고 알린다).
  *
@@ -319,7 +319,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
       title: "짧은 공식",
       lines: [
         "섹시 무브 R U R' U'와 수네 R U R' U R U2 R'을 이어서 쳐 보세요.",
-        "다 치면 조작 훈련에서 빠르기를 길러요.",
+        "다 치면 다음 연습에서 빠르기를 길러요.",
       ],
       ...moves(...SEXY, ...SUNE),
     },

@@ -77,7 +77,7 @@ const HABIT_LABEL: Record<HabitState, string> = {
 const filterOf = (h: HabitState | undefined): Filter => h ?? "none";
 
 /**
- * 내 공식 일람표(`/cube/algs`, 2026-11-04). 배우기와 따로, 상황마다 내가 쓰는 공식과 버릇 상태를 한눈에 본다.
+ * 내 공식(`/cube/algs`, 2026-11-04, 예전 이름 「내 공식 일람표」). 배우기와 따로, 상황마다 내가 쓰는 공식과 버릇 상태를 한눈에 본다.
  * 상황을 열면 대표·대안·내 공식·추천 후보를 견주어 시연하고 고르고, 「버릇 들이기」로 내 훈련 목록에 넣는다. 묶음·상황마다 대표·대안·내 공식을 보고, 쓰는 공식을 고르고, 새 공식을 검사해 넣는다.
  * 거울·거꾸로·돌려 쥐기로 만든 공식도 바로 검사한다. 주소 `?case=&alg=`로 받은 공식은 시연하고 넣을 수 있다.
  */
@@ -165,12 +165,12 @@ export function AlgsApp() {
       >
         <header className="flex flex-wrap items-center gap-3">
           <a
-            href="/cube"
+            href="/cube/methods"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 큐브
+            ← 해법 익히기
           </a>
-          <h1 className="font-bold text-lg">내 공식 일람표</h1>
+          <h1 className="font-bold text-lg">내 공식</h1>
           <a
             href="/cube/train?pick=mine"
             data-algs-train-mine
@@ -182,13 +182,7 @@ export function AlgsApp() {
             href="/cube/train"
             className="text-sm text-white/70 hover:text-white"
           >
-            훈련
-          </a>
-          <a
-            href="/cube/learn"
-            className="text-sm text-white/70 hover:text-white"
-          >
-            배우기
+            공식 훈련
           </a>
         </header>
 

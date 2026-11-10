@@ -179,8 +179,8 @@ test("키 익히기는 같은 규칙에 손가락 자리, 단축키 표 「모�
 }, info) => {
   test.skip(info.project.name === "phone-landscape", "세로·PC만");
   const phone = info.project.name === "phone-portrait";
-  await page.goto("/cube/keys/learn");
-  await expect(page.locator("main[data-keys-ready]")).toBeVisible();
+  await page.goto("/cube/intro?part=keys");
+  await expect(page.locator("[data-keys-ready]")).toBeVisible();
   const sel = phone ? "[data-cube-keys]" : "[data-keyboard-map]";
   const map = page.locator(sel);
   await expect(map).toBeVisible();

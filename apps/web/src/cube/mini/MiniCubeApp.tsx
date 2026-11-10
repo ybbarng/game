@@ -239,8 +239,7 @@ function MiniTiers({
       </ul>
       <p className="break-keep text-white/50">
         Cubie는 살펴보기 없이, 큐브에 키 입력이 있는 동안만 재요. 사이트 혼자
-        맞추기 기록과는 따로 매겨요. 공식 보기를 쓴 판이 든 5판은 티어에 넣지
-        않아요.
+        맞추기 기록과는 따로 매겨요. 힌트를 쓴 판이 든 5판은 티어에 넣지 않아요.
       </p>
     </section>
   );
@@ -261,7 +260,7 @@ const APP_KEYS: { keys: string; what: string }[] = [
   },
   {
     keys: HINT_KEY_LABEL,
-    what: `공식 보기(맞추는 동안, ${HINT_RULES.showMs / 1000}초 보임 · ${HINT_RULES.cooldownMs / 1000}초에 한 번 · 한 판 ${HINT_RULES.perSolve}번)`,
+    what: `힌트(맞추는 동안, ${HINT_RULES.showMs / 1000}초 보임 · ${HINT_RULES.cooldownMs / 1000}초에 한 번 · 한 판 ${HINT_RULES.perSolve}번)`,
   },
 ];
 
@@ -789,7 +788,7 @@ function MiniCube() {
     const s = sessionRef.current;
     const solving = () => s.phase === "ready" || s.phase === "solving";
     if (!solving()) return flashHint("섞은 뒤 맞추는 동안 볼 수 있어요");
-    if (s.n !== 2 && s.n !== 3) return flashHint("이 크기는 공식 보기 없음");
+    if (s.n !== 2 && s.n !== 3) return flashHint("이 크기는 힌트 없음");
     let pick: typeof import("./hint-pick").pickHint;
     try {
       pick = (await import("./hint-pick")).pickHint;
@@ -801,7 +800,7 @@ function MiniCube() {
     if (a.kind !== "hint")
       return flashHint(
         a.kind === "unsupported"
-          ? "이 크기는 공식 보기 없음"
+          ? "이 크기는 힌트 없음"
           : "지금은 보일 공식이 없어요",
       );
     const r = hintGateRef.current.request();
@@ -1176,7 +1175,7 @@ function BrowserMenu({
             기록
           </MenuItem>
           <MenuItem onClick={onHint} data="hint">
-            공식 보기
+            힌트
           </MenuItem>
           <a
             href={LEARN_PATH}

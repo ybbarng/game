@@ -87,7 +87,7 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
   page,
 }, info) => {
   // 목록: 먼저 배울 과정이 보인다(잠그지 않음)
-  await page.goto("/cube/learn");
+  await page.goto("/cube/methods");
   await expect(
     page.locator('[data-course="cfop"] [data-course-requires]'),
   ).toHaveAttribute("data-course-requires", "333-beginner");
@@ -127,7 +127,7 @@ test("배우기: F2L 짝 문제, 과정 끝 「다음에 할 것」, 블라인�
 test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 센터 여섯 세기 → 표준 색 배치 → 분해·조립", async ({
   page,
 }, info) => {
-  await page.goto("/cube/learn");
+  await page.goto("/cube/methods");
   // 3×3 처음 맞추기의 첫 단원
   await expect(
     page.locator('[data-course="333-beginner"] [data-lesson]').first(),

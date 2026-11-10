@@ -2,7 +2,7 @@ import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
- * 큐브 공식 모음(/cube/algs, docs/47 8절 「내 공식」). 새 공식은 입력이 멈추면 검사되고, 맞는 것만 넣을 수 있다.
+ * 내 공식(/cube/algs, docs/47 8절 「내 공식」). 새 공식은 입력이 멈추면 검사되고, 맞는 것만 넣을 수 있다.
  * 검사는 짧은 지연 뒤 화면 안 순수 계산이라 입력 뒤 검사 결과(`[data-alg-check]`)를 조건으로 기다린다.
  */
 

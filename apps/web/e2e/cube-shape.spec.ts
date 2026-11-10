@@ -120,7 +120,13 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
   test("혼자 하기: 처음 안내 뒤 모양을 고르고 만들면 기록이 남는다", async ({
     page,
   }, info) => {
+    // 옛 주소 /cube/shape는 패턴의 「만들기」 탭으로 넘어간다(docs/47 16-6)
     await page.goto("/cube/shape");
+    await expect(page).toHaveURL(/\/cube\/patterns\?tab=make$/);
+    await expect(page.locator('[data-patterns-tab="make"]')).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     await expect(page.locator("[data-cube-shape-intro]")).toBeVisible();
     await page.locator("[data-cube-shape-size='2']").click();
     await shot(page, "shape-solo-pick", info.project.name);
@@ -147,7 +153,7 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
     await inputReady(page);
     await openFormula(page, "R U2 R2", info.project.name);
     await expect(page.locator("[data-cube-shape-record]")).toHaveText(
-      "공식 보고 첫 기록",
+      "만드는 법 보고 첫 기록",
     );
     await stageShot(page, "shape-solo-formula", info.project.name);
     await typeAlg(page, "R U2 R2");
@@ -158,6 +164,14 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
     await page.locator("[data-cube-shape-back]").click();
     await expect(
       page.locator('[data-cube-shape-card="2-halves"]'),
-    ).toContainText("공식 보고");
+    ).toContainText("만드는 법 보고");
+
+    // 「기록」 탭: 모양마다 한 줄(만드는 법을 본 판은 따로)
+    await page.locator('[data-patterns-tab="records"]').click();
+    await expect(page).toHaveURL(/\?tab=records$/);
+    await expect(page.locator("[data-pattern-records] tbody tr")).toHaveCount(
+      2,
+    );
+    await shot(page, "pattern-records", info.project.name);
   });
 });

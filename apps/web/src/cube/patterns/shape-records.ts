@@ -3,7 +3,7 @@ import type { ShapeStart } from "./race";
 /**
  * 혼자 하는 모양 만들기의 기록(이 기기 localStorage, docs/47 9-10). 모양과 시작(맞춘 큐브/섞인 큐브)마다
  * 가장 빠른 시간·그때 수·한 번 수를 둔다. 저장소가 막혀 있으면 빈 기록으로 돌고 저장은 조용히 건너뛴다.
- * 「공식 보기」를 연 판은 따로 센다(열쇠 끝 `|formula`): 공식을 보면 훨씬 빨라 외워서 한 기록과 견줄 수 없다.
+ * 「만드는 법」를 연 판은 따로 센다(열쇠 끝 `|formula`): 공식을 보면 훨씬 빨라 외워서 한 기록과 견줄 수 없다.
  * 공식 보기가 생기기 전의 기록(`모양|시작`)은 모두 공식을 보지 않은 판이라 그대로 읽힌다.
  */
 
@@ -37,7 +37,7 @@ function defaultStorage(): StorageLike | null {
 export function recordKey(
   id: string,
   start: ShapeStart,
-  /** 「공식 보기」를 연 판 */
+  /** 「만드는 법」를 연 판 */
   formula = false,
 ): string {
   return formula ? `${id}|${start}|formula` : `${id}|${start}`;

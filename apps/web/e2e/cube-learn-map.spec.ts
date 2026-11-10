@@ -18,7 +18,7 @@ test.beforeEach(({ page }) => no3d(page));
 test("배우기: 3×3 초보자 지도는 일곱 단계 띠와 단계별 시연, 고르기", async ({
   page,
 }, info) => {
-  await page.goto("/cube/learn");
+  await page.goto("/cube/methods");
   await expect(
     page.locator('[data-course="333-beginner"] [data-course-stages]'),
   ).toHaveText("7단계");

@@ -442,7 +442,7 @@ function KeymapSection({
           키보드 그림으로 보기
         </a>
         <a
-          href="/cube/keys/learn"
+          href="/cube/intro?part=keys"
           className="text-sky-300 text-sm underline-offset-2 hover:underline"
         >
           키 익히기
