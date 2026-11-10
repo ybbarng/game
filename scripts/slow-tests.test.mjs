@@ -321,9 +321,7 @@ describe("이슈 본문", () => {
     expect(r.body).toContain(
       "| 화면 시험 | [desktop] 묶음 › 한 판 | `apps/web/e2e/online.spec.ts:56` | 22.8초 · 22.8초 | 15.0초 | 2026-11-02 |",
     );
-    expect(r.body).toContain(
-      "pnpm vitest run apps/web/src/net/room.test.ts\n",
-    );
+    expect(r.body).toContain("pnpm vitest run apps/web/src/net/room.test.ts\n");
     expect(r.body).toContain(
       "pnpm --filter @game/web exec playwright test e2e/online.spec.ts:56 --project=desktop --workers=1",
     );
