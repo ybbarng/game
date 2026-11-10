@@ -8,6 +8,7 @@ import { earlySummaryUses, earlyUses } from "@/tutorial/term-order";
 import { stagesOf } from "../practice/stages";
 import { GLOSSARY_333, loosePieceWords } from "./glossary-333";
 import { BEGINNER_222 } from "./lessons-222";
+import { FROM_333_222 } from "./lessons-222-from333";
 import { BEGINNER_333 } from "./lessons-333";
 import { coursePlaces, courseSummaries } from "./term-places";
 import type { Course } from "./types";
@@ -41,7 +42,7 @@ describe("조각 이름(블럭)", () => {
     ).toEqual([]);
   });
 
-  for (const c of [BEGINNER_333, BEGINNER_222])
+  for (const c of [BEGINNER_333, BEGINNER_222, FROM_333_222])
     it(`${c.title}: 홀로 쓴 엣지·코너·센터가 없다`, () => {
       const loose = courseTexts(c).flatMap(({ where, text }) =>
         loosePieceWords(text).map((w) => `${where}: …${w}…`),
