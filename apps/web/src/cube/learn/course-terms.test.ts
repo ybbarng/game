@@ -69,8 +69,46 @@ const CFOP_TERMS: OrderedTerm[] = [
   { term: "퍼뮤", use: /퍼뮤/, define: /「퍼뮤」는/ },
 ];
 
+/** 2×2 처음 맞추기: 3×3을 몰라도 읽는 과정이라 층·구석 이름·거꾸로부터 스스로 알린다(2026-11-10) */
+const TERMS_222: OrderedTerm[] = [
+  { term: "층", use: /층/, define: /「층」/ },
+  {
+    term: "위 층·아래 층",
+    use: /위 층|아래 층/,
+    define: /「위 층」, 아래 것을 「아래 층」/,
+  },
+  {
+    term: "구석 이름(앞-오른쪽 위)",
+    use: /(앞|뒤|오른쪽)-(오른쪽|왼쪽|뒤) (위|아래)/,
+    define: /「앞-오른쪽 위」/,
+  },
+  { term: "거꾸로 치기", use: /거꾸로/, define: /「거꾸로 친다」/ },
+  {
+    term: "기준 코너",
+    use: /기준 코너/,
+    define: /「기준 코너」|기준 코너 하나를 정하면/,
+  },
+  { term: "첫 층", use: /첫 층/, define: /「첫 층」/ },
+  { term: "코너 돌리기", use: /코너 돌리기/, define: /「코너 돌리기」/ },
+  { term: "윗면 공식", use: /윗면 공식/, define: /「윗면 공식」/ },
+  { term: "바른 짝", use: /바른 짝/, define: /「바른 짝」/ },
+  {
+    term: "위 층 코너 바꾸기",
+    use: /위 층 코너 바꾸기/,
+    define: /「위 층 코너 바꾸기」/,
+  },
+  { term: "OLL", use: /OLL/, define: /줄여 OLL이라고/ },
+  { term: "PBL", use: /PBL/, define: /줄여 PBL이라고/ },
+  { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
+];
+
 const SCOPE: Record<string, OrderedTerm[]> = {
-  "222-from333": NOTATION,
+  "222-beginner": [...NOTATION, ...TERMS_222],
+  "222-from333": [
+    ...NOTATION,
+    { term: "기준 코너", use: /기준 코너/, define: /「기준 코너」/ },
+    { term: "퍼뮤(쓰지 않음)", use: /퍼뮤|수네|헤드라이트/, define: /$^/ },
+  ],
   cfop: [...NOTATION, ...CFOP_TERMS],
   roux: [...NOTATION, ...CFOP_TERMS],
   zz: [...NOTATION, ...CFOP_TERMS],

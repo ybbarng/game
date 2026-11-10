@@ -25,6 +25,7 @@ import {
   reps,
   STUCK_CORNER_UP,
   TWIST_TWO,
+  TWIST_TWO_BACK,
 } from "./lessons-333";
 import { setupFor } from "./notation";
 
@@ -131,12 +132,12 @@ describe("3×3을 아는 사람의 2×2", () => {
     }
   });
 
-  it("코너 방향: 2×2에서도 두 번 → U → 네 번 → U'로 끝난다", () => {
-    const s = p2(setupFor(TWIST_TWO, "z2"));
+  it("코너 방향: 2×2에서도 두 번 → U → 거꾸로 두 번 → U'로 끝난다", () => {
+    const s = p2(setupFor(TWIST_TWO_BACK, "z2"));
     expect(goalMet(2, p2(reps(CORNER_TWIST, 2), s), "2x2-first-layer")).toBe(
       false,
     );
-    expect(goalMet(2, p2(TWIST_TWO, s), "solved")).toBe(true);
+    expect(goalMet(2, p2(TWIST_TWO_BACK, s), "solved")).toBe(true);
   });
 
   it("코너 가리기: 3×3에서 코너 8 × 3칸만 보인다", () => {

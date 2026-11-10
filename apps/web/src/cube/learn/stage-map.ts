@@ -6,7 +6,12 @@
 import { solvedCube } from "@game/cube-engine";
 
 import { type PathStageId, play, runStage, stepMoves } from "./beginner-path";
-import { invertAlg } from "./notation";
+import {
+  BEGINNER_222_STAGES,
+  FROM333_222_STAGES,
+  play as play222,
+  solve222,
+} from "./beginner-path-222";
 import type {
   Course,
   CourseStage,
@@ -29,27 +34,6 @@ export interface StageSpec {
   demo?: StageDemo;
   /** 지도 단원에 더할 고르기 문제(자동 「다음 단계」 문제 뒤) */
   quizzes?: QuizSpec[];
-}
-
-/** 같은 공식 k번 */
-const reps = (alg: string, k: number) =>
-  Array.from({ length: k }, () => alg).join(" ");
-const TW = "R' D' R D";
-const SUNE = "R U R' U R U2 R'";
-const CYCLE = "U R U' L' U R' U' L";
-const A_PERM = "R' F R' B2 R F' R' B2 R2";
-
-/**
- * 풀이 수들의 거꾸로를 섞기로 쓴다(맞춘 큐브에서 섞기 → 풀이 = 맞춤). 풀이 속 큐브 돌리기(x·y·z)를 앞에 먼저 두어
- * 섞기 전체의 돌리기가 없어지게 한다. 그래야 섞인 큐브가 기본 방향(흰 위·초록 앞)으로 시작하고, 끝은 돌려 쥔 채 맞은 모양이다
- */
-function scrambleFor(moves: string[]): string {
-  const all = moves.join(" ");
-  const turns = all
-    .split(/\s+/)
-    .filter((t) => /^[xyz]/.test(t))
-    .join(" ");
-  return `${turns} ${invertAlg(all)}`.trim();
 }
 
 // 풀이 함수가 낸 수(대회 섞기 3×3 씨앗 21, 4×4·5×5 씨앗 3)
@@ -80,17 +64,16 @@ const BEGINNER_333_MOVES = (() => {
   });
 })();
 
-const FROM333_222_MOVES = [
-  `${TW} D ${reps(TW, 3)} y ${reps(TW, 5)} y D' ${TW}`,
-  `z2 U ${CYCLE} y' ${CYCLE}`,
-  `${reps(TW, 2)} U ${reps(TW, 4)} U'`,
-];
-
-const BEGINNER_222_MOVES = [
-  `${TW} D ${reps(TW, 3)} y ${reps(TW, 5)} y D' ${TW}`,
-  `z2 U ${SUNE} ${SUNE}`,
-  `U ${A_PERM} U2`,
-];
+// 2×2 둘: 같은 섞기 하나를 단원의 경우별 정해진 길(beginner-path-222.ts)로 푼 수(2026-11-10)
+const SCRAMBLE_222 = "R U' F2 R' U R2 F' U2 R F' U";
+const BEGINNER_222_MOVES = solve222(
+  play222(solvedCube(2), SCRAMBLE_222),
+  BEGINNER_222_STAGES,
+).moves;
+const FROM333_222_MOVES = solve222(
+  play222(solvedCube(2), SCRAMBLE_222),
+  FROM333_222_STAGES,
+).moves;
 
 export const STAGE_SPECS: Record<string, StageSpec> = {
   "333-beginner": {
@@ -152,19 +135,19 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
         goal: "2x2-first-layer",
       },
       { title: "윗면", lessons: ["222-top-face"], goal: "2x2-top-face" },
-      { title: "윗층 자리", lessons: ["222-top-layer"], goal: "solved" },
+      { title: "위 층 자리", lessons: ["222-top-layer"], goal: "solved" },
     ],
     demo: {
-      scramble: scrambleFor(BEGINNER_222_MOVES),
+      scramble: SCRAMBLE_222,
       moves: BEGINNER_222_MOVES,
       source: "단원 공식",
     },
     quizzes: [
       {
-        question: "2×2 첫 층에서 되풀이하는 공식은?",
-        choices: ["R' D' R D", "F R U R' U' F'"],
+        question: "2×2 첫 층에서 쓰는 공식은?",
+        choices: ["R' D' R D와 그 거꾸로", "F R U R' U' F'"],
         answer: 0,
-        why: "3×3 첫 층 코너와 같은 R' D' R D예요. 2×2에는 엣지가 없어 노란 십자 공식은 안 써요.",
+        why: "첫 층은 코너 돌리기 R' D' R D와 그 거꾸로만 써요. F R U R' U' F'은 3×3에서 엣지를 맞출 때 쓰는 공식이라 엣지가 없는 2×2에는 안 써요.",
       },
     ],
   },
@@ -187,7 +170,7 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       },
     ],
     demo: {
-      scramble: scrambleFor(FROM333_222_MOVES),
+      scramble: SCRAMBLE_222,
       moves: FROM333_222_MOVES,
       source: "단원 공식",
     },
