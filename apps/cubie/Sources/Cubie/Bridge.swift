@@ -20,6 +20,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
   }
 
   private(set) var state = WebState()
+  /// 메뉴 맨 위 프로필 칸(웹이 `profile`로 알려 준다, docs/47 15-22). 알려 주기 전에는 번호 없는 익명 이름
+  private(set) var profile = Profile.placeholder
   weak var webView: WKWebView?
   /// 화면이 떴다(앱이 지금 포커스·보임을 다시 알려 줄 때)
   var onReady: (() -> Void)?
@@ -55,6 +57,9 @@ final class Bridge: NSObject, WKScriptMessageHandler {
         }.first
       }
       onState?()
+    case "profile":
+      // 0.1.6부터. 이름이 없는 꼴은 버린다(앞서 받은 것을 그대로 둔다)
+      if let p = Profile.from(message: d) { profile = p }
     case "retry":
       onRetry?()
     case "hit":

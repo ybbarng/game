@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+
 import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
@@ -546,9 +548,14 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   const four = tiers.locator("[data-mini-tier-size='4']");
   await expect(four).toContainText("1:02.00");
   await expect(four.locator("[data-cube-tier]")).toHaveCount(1);
+  // 티어 이름 옆에 사이트와 같은 엠블럼(티어가 없는 크기는 없다)
+  await expect(four.locator("[data-cube-emblem]")).toHaveCount(1);
   await expect(tiers.locator("[data-mini-tier-size='2']")).toContainText(
     "5판 뒤에",
   );
+  await expect(
+    tiers.locator("[data-mini-tier-size='2'] [data-cube-emblem]"),
+  ).toHaveCount(0);
   await shot(page, "mini-records-tiers", info.project.name);
 
   await page.goto("/cube/mini?view=keys");
@@ -559,6 +566,103 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   await expect(keys).toContainText("Enter");
   await expect(keys).toContainText("배치 「표기」");
   await shot(page, "mini-keys", info.project.name);
+});
+
+/** 앱이 받은 마지막 `profile` 메시지 */
+async function lastProfile(page: Page) {
+  return page.evaluate(() => {
+    const sent = (window as unknown as { __toApp: { type: string }[] }).__toApp;
+    return [...sent].reverse().find((m) => m.type === "profile") as
+      | {
+          name: string;
+          photo: string | null;
+          signedIn: boolean;
+          n: number;
+          tier: string | null;
+          tierText: string;
+          emblem: string | null;
+        }
+      | undefined;
+  });
+}
+
+test("앱 메뉴 프로필 칸: 익명 이름은 한 번 정해 남고, 지금 크기의 티어와 엠블럼 그림을 보낸다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "앱 화면은 데스크톱에서");
+  await fakeApp(page);
+  await page.addInitScript(() => {
+    if (localStorage.getItem("cube.mini.v1")) return;
+    localStorage.setItem(
+      "cube.mini.v1",
+      JSON.stringify({
+        version: 1,
+        n: 4,
+        mirror: true,
+        records: {
+          "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
+            at: Date.UTC(2026, 10, 9, 3, i),
+            n: 4,
+            mode: "solo",
+            ms,
+            penalty: 0,
+            moves: 88,
+            scramble: "R",
+            no: 5 - i,
+          })),
+        },
+      }),
+    );
+  });
+  await page.goto("/cube/mini");
+  await expect
+    .poll(async () => (await lastProfile(page))?.emblem ?? null, SCENE)
+    .toMatch(/^data:image\/png;base64,/);
+  const first = await lastProfile(page);
+  expect(first?.name).toMatch(/^익명 큐버 #\d{4}$/);
+  expect(first).toMatchObject({
+    photo: null,
+    signedIn: false,
+    n: 4,
+    tier: expect.any(String),
+  });
+  expect(first?.tierText).toMatch(/^4×4 \S/);
+  // 그림이 비지 않았다(엠블럼 너비 32pt의 2배 화소)
+  const size = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d") as CanvasRenderingContext2D;
+    ctx.drawImage(img, 0, 0);
+    const px = ctx.getImageData(0, 0, c.width, c.height).data;
+    let opaque = 0;
+    for (let i = 3; i < px.length; i += 4) if ((px[i] as number) > 0) opaque++;
+    return { w: img.width, opaque };
+  }, first?.emblem as string);
+  expect(size.w).toBe(64);
+  expect(size.opaque).toBeGreaterThan(500);
+  // 사람이 보는 용도: 앱에 넘긴 그림 그대로
+  if (process.env.E2E_SCREENSHOTS) {
+    mkdirSync("test-results/screens", { recursive: true });
+    writeFileSync(
+      `test-results/screens/cube-mini-profile-emblem-${info.project.name}.png`,
+      Buffer.from(String(first?.emblem).split(",")[1] as string, "base64"),
+    );
+  }
+
+  // 다시 열어도 같은 이름, 티어가 없는 크기는 엠블럼 없이 「5판 뒤에」
+  await page.goto("/cube/mini");
+  await expect
+    .poll(async () => (await lastProfile(page))?.name)
+    .toBe(first?.name);
+  await fromApp(page, { type: "size", n: 2 });
+  await expect
+    .poll(async () => (await lastProfile(page))?.tierText)
+    .toBe("2×2 5판 뒤에");
+  expect((await lastProfile(page))?.emblem).toBeNull();
 });
 
 /**

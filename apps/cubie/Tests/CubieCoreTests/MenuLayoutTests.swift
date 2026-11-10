@@ -7,6 +7,7 @@ struct MenuLayoutTests {
     entries.map { e in
       switch e {
       case .separator: "—"
+      case .profile: "(프로필)"
       case .hotKeyWarning: "(경고)"
       case .installUpdate: "(새 판)"
       case .toggleVisible: "(숨기기·보이기)"
@@ -20,6 +21,7 @@ struct MenuLayoutTests {
     let m = MenuLayout.main(forWindow: false, hotKeyOK: true, pendingUpdate: false, updaterAvailable: true)
     #expect(
       titles(m) == [
+        "(프로필)", "—",
         "큐브로 가기", "(숨기기·보이기)", "—",
         "섞기", "공식 보기", "큐브 크기", "—",
         "기록 보기", "티어표", "—",
@@ -43,11 +45,14 @@ struct MenuLayoutTests {
 
   @Test func 경고와_새_판은_맨_위에() {
     let bar = MenuLayout.main(forWindow: false, hotKeyOK: false, pendingUpdate: true, updaterAvailable: true)
-    #expect(Array(bar.prefix(5)) == [.hotKeyWarning, .separator, .installUpdate, .separator, .focus])
+    #expect(
+      Array(bar.prefix(7)) == [.profile, .separator, .hotKeyWarning, .separator, .installUpdate, .separator, .focus])
     // 오른쪽 클릭 메뉴에도 단축키 경고는 보이고, 새 판 알림은 없다
     let win = MenuLayout.main(forWindow: true, hotKeyOK: false, pendingUpdate: true, updaterAvailable: true)
     #expect(Array(win.prefix(3)) == [.hotKeyWarning, .separator, .scramble])
     #expect(!win.contains(.installUpdate))
+    // 프로필 칸은 앱 전체의 것이라 메뉴 막대 메뉴에만
+    #expect(!win.contains(.profile))
   }
 
   @Test func 업데이트를_못_쓰면_업데이트_확인이_없다() {

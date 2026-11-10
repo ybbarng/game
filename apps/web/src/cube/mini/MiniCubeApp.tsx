@@ -41,6 +41,7 @@ import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { type MyTier, tierName } from "../tiers/rank";
+import { TierEmblem } from "../tiers/TierEmblem";
 import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -67,6 +68,7 @@ import {
 } from "./hint";
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import { miniMirrorShown } from "./mirror";
+import { ProfileToApp } from "./ProfileToApp";
 import {
   hasReplay,
   idleReplaySteps,
@@ -215,23 +217,34 @@ function MiniTiers({
                 aria-pressed={s === n}
                 onClick={() => onSize(s)}
                 className={cn(
-                  "flex w-full flex-col items-start rounded px-1.5 py-1 text-left",
+                  "flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left",
                   s === n ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
                 )}
               >
-                <span className="text-white/60">
-                  {s}×{s} {t ? formatMs(t.ao5) : ""}
-                </span>
+                {/* 사이트 티어 화면과 같은 엠블럼. 작은 창이라 빛 띠는 돌리지 않는다 */}
                 {t ? (
-                  <span
-                    data-cube-tier={t.place.tier}
-                    className={cn("font-semibold", TIER_TONE[t.place.tier])}
-                  >
-                    {tierName(t.place)}
-                  </span>
+                  <TierEmblem tier={t.place.tier} size={28} still />
                 ) : (
-                  <span className="text-white/40">5판 뒤에</span>
+                  <span
+                    aria-hidden="true"
+                    className="h-7 w-7 shrink-0 rounded-full border border-white/15 border-dashed"
+                  />
                 )}
+                <span className="flex min-w-0 flex-col items-start">
+                  <span className="text-white/60">
+                    {s}×{s} {t ? formatMs(t.ao5) : ""}
+                  </span>
+                  {t ? (
+                    <span
+                      data-cube-tier={t.place.tier}
+                      className={cn("font-semibold", TIER_TONE[t.place.tier])}
+                    >
+                      {tierName(t.place)}
+                    </span>
+                  ) : (
+                    <span className="text-white/40">5판 뒤에</span>
+                  )}
+                </span>
               </button>
             </li>
           );
@@ -1068,6 +1081,7 @@ function MiniCube() {
           />
         )}
       </div>
+      {app && <ProfileToApp n={n} version={records} />}
 
       {!bubble && (shownHint || hintMsg) && (
         <HintCard
