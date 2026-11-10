@@ -51,6 +51,7 @@ import { type FlowSize, FlowStripView, useFlowStrip } from "./FlowStrip";
 import { KeyGuide } from "./KeyGuide";
 import { CubeLookContext } from "./PatternGlyph";
 import { StageBox, useBackView } from "./StageBox";
+import { ViewHome } from "./ViewHome";
 
 /**
  * 큐브 한 판의 화면 조각(혼자 맞추기·블라인드·나중에 배우기·대결이 함께 쓴다).
@@ -457,6 +458,8 @@ export function CubePlay({
       viewRef.current?.setView(p.yaw, p.pitch);
       return;
     }
+    // 처음 각도로는 `ViewHome`이 키를 직접 받는다(잠겨 있어도 보기는 돌아간다)
+    if (r.command === "viewHome") return;
     const before = orientFromCenters(nRef.current, c.state) ?? evenRef.current;
     const m = c.onCommand(r.command);
     if (m) {
@@ -588,6 +591,7 @@ export function CubePlay({
                 <span className="text-amber-300">오른손 {layers.right}</span>
               </span>
             )}
+            {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
             {depth !== null && (
               <span className="absolute top-2 right-2 rounded bg-amber-400/90 px-2 py-0.5 font-semibold text-black text-xs">
                 다음 수 깊이 {depth}

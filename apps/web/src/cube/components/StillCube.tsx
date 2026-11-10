@@ -11,6 +11,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubePosterPair } from "./CubePosterPair";
 import { StageBox, useBackView } from "./StageBox";
+import { ViewHome } from "./ViewHome";
 
 /** 정지한 큐브(돌리지 않음). 끌면 보는 각만 바뀌고, `onSticker`가 있으면 누른 칸을 알린다 */
 export function StillCube({
@@ -140,6 +141,7 @@ export function StillCube({
                     : "cursor-grab active:cursor-grabbing",
                 )}
               />
+              <ViewHome viewRef={viewRef} ready={ready} />
             </div>
           }
         />

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { KeyGuide } from "@/cube/components/KeyGuide";
+import { ViewHome } from "@/cube/components/ViewHome";
 import {
   attachKeyboard,
   KeyInterpreter,
@@ -291,6 +292,12 @@ export function CubeLab() {
             data-cube-drawn={drawn}
             className="h-full w-full cursor-grab active:cursor-grabbing"
           />
+          {!failed && (
+            <ViewHome
+              viewRef={viewRef}
+              ready={readyFor === `${n}-${quality}`}
+            />
+          )}
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm">

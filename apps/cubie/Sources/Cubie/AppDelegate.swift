@@ -403,8 +403,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 기록·단축키·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
   private func openWebWindow(_ kind: WebWindow) {
     if let w = webWindows[kind] {
-      NSApp.activate()
-      w.makeKeyAndOrderFront(nil)
+      Self.bringToFront(w)
       return
     }
     let (path, title, size): (String, String, NSSize) =
@@ -427,8 +426,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     w.delegate = self
     w.center()
     webWindows[kind] = w
-    NSApp.activate()
+    Self.bringToFront(w)
+  }
+
+  /// 메뉴로 연 창을 앞으로. macOS 14부터 `NSApp.activate()`는 요청이라 다른 앱을 쓰던 중이면 거절되어, 첫 번에는
+  /// 창이 다른 앱 뒤에 만들어져 안 보이고 두 번째부터 보였다(2026-11-10 사용자 「티어표 같은 걸 눌러도 처음에는 아무것도
+  /// 안 뜨고 두 번째부터 뜨는데」). 사용자가 메뉴에서 고른 것이니 단축키(`showCube`)와 같이 바로 앞으로 온다
+  static func bringToFront(_ w: NSWindow) {
+    NSApp.activate(ignoringOtherApps: true)
     w.makeKeyAndOrderFront(nil)
+    w.orderFrontRegardless()
   }
 
   /// 창을 닫으면 놓아준다. 설정 창이면 미니 창을 다시 불러와 바뀐 키·색을 쓴다
