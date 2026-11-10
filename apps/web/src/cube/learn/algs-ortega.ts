@@ -34,7 +34,7 @@ export const ORTEGA_OLL: AlgCase[] = [
   {
     id: "ortega-oll-u",
     set: "ortega-oll",
-    name: "헤드라이트(U)",
+    name: "U",
     algs: ["F R U R' U' F'"],
     note: "윗면 노랑 둘이 오른쪽에, 왼쪽 옆면에 노랑 둘",
   },
