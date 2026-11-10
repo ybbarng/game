@@ -435,17 +435,50 @@ test(
       await shot(page, `mini-backdrop-${name}`, info.project.name);
     }
 
-    // 떠 있으면 거울이 숨고 받침도 큐브만
+    // 떠 있으면 거울이 숨고 받침도 큐브만. 큐브가 창을 거의 채워 받침이 가려지므로 큐브 윤곽 그림자가 갈라 준다
     await fromApp(page, { type: "focus", focused: false });
     await expect(main).not.toHaveAttribute("data-mini-mirror-shown");
     await wraps(1);
-    await shot(page, "mini-backdrop-photo-floating", info.project.name);
+    // 윤곽 그림자 두 겹(밝은 빛 + 어두운 그림자)
+    const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
+    expect((await filter()).match(/drop-shadow/g)).toHaveLength(2);
+    for (const [name, desk] of Object.entries(DESKS)) {
+      await page.evaluate(
+        (d) => document.documentElement.style.setProperty("--desk", d),
+        desk,
+      );
+      await shot(page, `mini-backdrop-${name}-floating`, info.project.name);
+    }
 
-    // 가장 큰 창에서도 같은 비율(창에 대한 받침 크기가 같다)
+    // 가장 큰 창에서도 같은 비율(창에 대한 받침 크기와 윤곽 그림자 폭이 같다)
+    const blur = async () =>
+      Number(/([\d.]+)px\)\s*$/.exec(await filter())?.[1] ?? Number.NaN);
+    const smallBlur = await blur();
     await page.setViewportSize({ width: 480, height: 480 });
     await expect
       .poll(async () => Math.round((await box()).width / 480 / 0.02))
       .toBe(Math.round(cubeOnly.width / 96 / 0.02));
+    await expect.poll(async () => (await blur()) / smallBlur).toBeCloseTo(5, 0);
+  },
+);
+
+test(
+  "브라우저 미니 모드는 바탕이 있어 받침·윤곽 그림자를 두지 않는다",
+  { tag: "@3d" },
+  async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "창 크기는 데스크톱에서");
+    await page.setViewportSize({ width: 320, height: 380 });
+    await page.goto("/cube/mini");
+    const canvas = page.locator("[data-cube-canvas]");
+    await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
+    await expect(page.locator("main[data-mini]")).toHaveAttribute(
+      "data-input-ready",
+      "",
+    );
+    await expect(page.locator("[data-mini-backdrop]")).toHaveCount(0);
+    expect(await canvas.evaluate((c) => getComputedStyle(c).filter)).toBe(
+      "none",
+    );
   },
 );
 

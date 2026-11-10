@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { BACKDROP, backdropBackground, backdropBox } from "./backdrop";
+import {
+  BACKDROP,
+  backdropBackground,
+  backdropBox,
+  outlineFilter,
+} from "./backdrop";
 
 describe("큐브 뒤 받침", () => {
   it("큐브 사각형을 넉넉히 감싸고 가운데를 맞춘다", () => {
@@ -59,5 +64,19 @@ describe("큐브 뒤 받침", () => {
     expect(bg).toContain(`rgba(0,0,0,${BACKDROP.shade})`);
     expect(bg).toContain(`rgba(255,255,255,${BACKDROP.rim})`);
     expect(bg).toContain("rgba(0,0,0,0) 100%");
+  });
+
+  it("윤곽 그림자는 밝은 빛 뒤 어두운 그림자 두 겹이고, 폭은 창 크기에 비례한다", () => {
+    const small = outlineFilter(96);
+    expect(small.match(/drop-shadow/g)).toHaveLength(2);
+    expect(small.indexOf("255,255,255")).toBeLessThan(small.indexOf("0,0,0"));
+    const widths = (f: string) =>
+      [...f.matchAll(/0 0 ([\d.]+)px/g)].map((m) => Number(m[1]));
+    const [rim96, shade96] = widths(small);
+    const [rim480, shade480] = widths(outlineFilter(480));
+    expect((shade480 ?? 0) / (shade96 ?? 1)).toBeCloseTo(5, 0);
+    expect((rim480 ?? 0) / (rim96 ?? 1)).toBeCloseTo(5, 0);
+    // 가장 작은 창에서도 사라지지 않는다
+    expect(Math.min(...widths(outlineFilter(48)))).toBeGreaterThanOrEqual(0.5);
   });
 });

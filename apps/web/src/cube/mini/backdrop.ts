@@ -12,7 +12,32 @@ export const BACKDROP = {
   rim: 0.08,
   /** 큐브·거울 사각형보다 얼마나 넓게 퍼지는가(반지름 배수) */
   spread: 1.3,
+  /**
+   * 큐브 윤곽 그림자. 떠 있을 때는 거울이 숨고 큐브가 창을 거의 채워 둥근 받침이 큐브 뒤에 가려지므로, 큐브 윤곽 바로
+   * 둘레에 어두운 그림자와 아주 옅은 밝은 빛을 두 겹 둔다. 폭은 창 짧은 변에 대한 비율이라 창 크기와 상관없이 같아 보인다
+   */
+  outlineShade: 0.5,
+  outlineRim: 0.22,
+  /** 어두운 그림자 흐림 폭(창 짧은 변에 대한 비율) */
+  outlineShadeBlur: 0.022,
+  /** 밝은 빛 흐림 폭(창 짧은 변에 대한 비율) */
+  outlineRimBlur: 0.012,
 } as const;
+
+/**
+ * 큐브 윤곽 그림자(CSS filter, 3D 캔버스에 건다). 캔버스의 투명한 곳 둘레로만 생기므로 큐브·거울 판의 생김새를 따른다.
+ * 장면을 다시 그릴 때만 합성기가 다시 칠하므로 가만히 있을 때 비용이 없다
+ */
+export function outlineFilter(shortSide: number): string {
+  const s = Math.max(shortSide, 1);
+  const px = (k: number) => `${Math.max(0.5, s * k).toFixed(1)}px`;
+  const { outlineShade, outlineRim, outlineShadeBlur, outlineRimBlur } =
+    BACKDROP;
+  return [
+    `drop-shadow(0 0 ${px(outlineRimBlur)} rgba(255,255,255,${outlineRim}))`,
+    `drop-shadow(0 0 ${px(outlineShadeBlur)} rgba(0,0,0,${outlineShade}))`,
+  ].join(" ");
+}
 
 type Rect = { x: number; y: number; w: number; h: number };
 

@@ -61,7 +61,7 @@ import {
   onAppMessage,
   toApp,
 } from "./app-bridge";
-import { backdropBackground, backdropBox } from "./backdrop";
+import { backdropBackground, backdropBox, outlineFilter } from "./backdrop";
 import { FocusClock } from "./focus-clock";
 import {
   algTokens,
@@ -1334,6 +1334,12 @@ function MiniCube() {
             data-cube-canvas
             data-cube-ready={ready ? "" : undefined}
             className="relative h-full w-full cursor-grab touch-none active:cursor-grabbing"
+            // 앱 창: 큐브가 창을 채워 받침이 가려져도 윤곽 둘레로 바탕과 갈린다(`backdrop.ts`)
+            style={
+              app && windowShort > 0
+                ? { filter: outlineFilter(windowShort) }
+                : undefined
+            }
           />
         )}
         {/* 브라우저 미니 모드만(앱은 마우스 둘러보기를 끈다). 오른쪽 위는 메뉴, 아래는 힌트 자리라 왼쪽 위 */}
