@@ -33,6 +33,19 @@ describe("해법 익히기의 연습 칸", () => {
     expect(links[0]?.href).toBe("/cube/train?set=beginner-cross");
   });
 
+  it("ZZ는 블록 짝 넣기(경우 열둘)와 마지막 층의 2단계 OLL·PLL 공식 연습, 십자 훈련을 잇는다", () => {
+    const c = courseById("zz");
+    const links = c ? practiceLinks(c, title) : [];
+    expect(links.map((l) => l.href)).toEqual([
+      "/cube/train?set=zz-pair",
+      "/cube/train?set=2look-oll",
+      "/cube/train?set=2look-pll",
+      "/cube/train/cross",
+    ]);
+    expect(links.slice(0, 3).every((l) => l.kind === "practice")).toBe(true);
+    expect(stageById("zz-pair")?.cases).toHaveLength(12);
+  });
+
   it("CFOP는 F2L부터 PLL까지 공식 연습, 십자 훈련, 내 공식을 잇는다", () => {
     const c = courseById("cfop");
     const hrefs = c ? practiceLinks(c, title).map((l) => l.href) : [];

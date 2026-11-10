@@ -16,7 +16,7 @@ export interface DrillCase {
   source?: AlgCase;
 }
 
-export type PracticeMethod = "beginner" | "cfop";
+export type PracticeMethod = "beginner" | "cfop" | "zz";
 
 /** 연습 단계 하나(`/cube/train?set=<id>`) */
 export interface PracticeStage {

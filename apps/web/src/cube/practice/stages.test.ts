@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { type PathStageId, runStage, stepMoves } from "../learn/beginner-path";
 import { goalMet } from "../learn/judge";
+import { nextBlock, runBlocks, stepMovesBlock } from "../learn/zz-path";
 import { choicesOf } from "./pick-alg";
 import {
   alignPrefix,
@@ -22,7 +23,7 @@ const n = PRACTICE_N;
 const beginner = stagesOf("beginner");
 
 describe("공식 연습 단계", () => {
-  it("차례: 십자 → 2층 → 3층 넷 → F2L → 2단계 OLL·PLL → OLL·PLL", () => {
+  it("차례: 십자 → 2층 → 3층 넷 → F2L → 2단계 OLL·PLL → OLL·PLL → ZZ 짝 넣기", () => {
     expect(PRACTICE_STAGES.map((s) => s.id)).toEqual([
       "beginner-cross",
       "beginner-second",
@@ -35,9 +36,10 @@ describe("공식 연습 단계", () => {
       "2look-pll",
       "oll",
       "pll",
+      "zz-pair",
     ]);
     expect(PRACTICE_STAGES.map((s) => s.cases.length)).toEqual([
-      10, 3, 3, 2, 3, 4, 41, 10, 6, 57, 21,
+      10, 3, 3, 2, 3, 4, 41, 10, 6, 57, 21, 12,
     ]);
   });
 
@@ -97,6 +99,20 @@ describe("공식 연습 단계", () => {
         );
         expect(paths).toContain(alg);
       });
+
+  it("ZZ 짝 넣기: 상황마다 시작 큐브에서 ZZ 블록 규칙(nextBlock)이 내는 수 = 보이는 공식, 열두 경우가 모두 다르다", () => {
+    const zz = stageById("zz-pair") as NonNullable<
+      ReturnType<typeof stageById>
+    >;
+    const seen = new Set<string>();
+    for (const c of zz.cases) {
+      const start = caseStart(zz, c);
+      const moves = runBlocks(start).steps.map(stepMovesBlock).join(" ");
+      expect(moves, c.id).toBe(c.algs[0]);
+      seen.add(nextBlock(start)?.caseId ?? "");
+    }
+    expect(seen.size).toBe(12);
+  });
 
   it("시작 큐브에서 보인 공식을 끝까지 치면 다 맞춰진다", () => {
     for (const stage of PRACTICE_STAGES)

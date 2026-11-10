@@ -55,13 +55,14 @@ describe("Cubie 공식 연습 기록 자리", () => {
 });
 
 describe("앱 메뉴에 넘길 단계", () => {
-  it("사이트 연습 단계 그대로, 초보자 묶음 다음 CFOP 묶음", () => {
+  it("사이트 연습 단계 그대로, 초보자 묶음 → CFOP 묶음 → ZZ 묶음", () => {
     expect(MENU_STAGES.map((s) => s.id)).toEqual(
       PRACTICE_STAGES.map((s) => s.id),
     );
     expect([...new Set(MENU_STAGES.map((s) => s.group))]).toEqual([
       "초보자",
       "CFOP",
+      "ZZ",
     ]);
     expect(MENU_STAGES[0]).toEqual({
       id: "beginner-cross",

@@ -16,6 +16,7 @@ import { PracticeSession } from "../practice/session";
 import {
   METHOD_TITLE,
   MORE_SETS,
+  PRACTICE_METHODS,
   PRACTICE_STAGES,
   stageById,
   stagesOf,
@@ -163,7 +164,7 @@ export function PracticeApp() {
 
         <nav className="flex flex-col gap-2" aria-label="단계">
           <div className="flex flex-wrap items-center gap-2">
-            {(["beginner", "cfop"] as const).map((m) => (
+            {PRACTICE_METHODS.map((m) => (
               <button
                 key={m}
                 type="button"
