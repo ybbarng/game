@@ -302,6 +302,11 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
     "true",
   );
   await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
+  // 6×6·7×7도 고를 수 있다(Cubie 홈 시연과 같은 해법 표)
+  await hero.locator("[data-hero-size='7']").click();
+  await expect(hero.locator("[data-hero-method='7-beginner']")).toBeVisible();
+  await expect(hero.locator("[data-hero-method='7-cfop']")).toBeVisible();
+  await hero.locator("[data-hero-size='4']").click();
   // 조각 강조: 기본은 「잠깐」, 고르면 남는다
   await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
     "aria-pressed",
@@ -332,6 +337,43 @@ test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 �
       { timeout: 60_000 },
     );
     await shot(page, "cube-home-4x4", info.project.name);
+  }
+});
+
+// 사람이 보는 스크린샷만(연출을 실제 시간으로 돌린다): 크기마다 해법 하나를 골라 연출 중 한 장씩.
+// 초보자는 흰 십자를 위에서, 프리드리히는 십자가 가장 싼 색으로 맞춘다(docs/47 0절 2026-11-10)
+test("첫 화면 큐브: 크기마다 연출 중 모습(스크린샷)", async ({
+  page,
+}, info) => {
+  test.skip(
+    !SAVE_SCREENSHOTS || info.project.name !== "desktop",
+    "데스크톱 스크린샷에서만",
+  );
+  test.setTimeout(600_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const cases = [
+    { size: 3, method: "3-beginner", label: /초보자 해법 · 흰 십자/ },
+    { size: 4, method: "4-cfop", label: /축소법\(프리드리히\) · \S+ 십자/ },
+    { size: 5, method: "5-beginner", label: /축소법\(초보자\) · 흰 십자/ },
+    { size: 7, method: "7-beginner", label: /축소법\(초보자\) · 나머지 센터/ },
+  ];
+  for (const c of cases) {
+    await page.goto("/cube/settings");
+    const hero = page.locator("[data-settings-hero]");
+    await hero.locator(`[data-hero-size='${c.size}']`).click();
+    await hero.locator(`[data-hero-method='${c.method}']`).click();
+    await page.goto("/cube");
+    await heroShown(page);
+    await expect(page.locator("[data-hero-label]")).toHaveAttribute(
+      "data-hero-label",
+      c.label,
+      { timeout: 240_000 },
+    );
+    // 그 단계가 조금 진행된 모습
+    await page.waitForTimeout(2500);
+    await page.locator("[data-cube-hero]").screenshot({
+      path: `test-results/screens/cube-hero-${c.method}-${info.project.name}.png`,
+    });
   }
 });
 

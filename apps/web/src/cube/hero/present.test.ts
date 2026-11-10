@@ -8,7 +8,7 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
 import { orientForSolve, randomScramble } from "./loop";
-import { findHeroMethod } from "./methods";
+import { findHeroMethod, solveWithFirst } from "./methods";
 import {
   insertKind,
   type PresentOutput,
@@ -57,6 +57,8 @@ const CASES: Case[] = [
   { id: "3-zz", seeds: [1, 2] },
   { id: "4-beginner", seeds: [7] },
   { id: "4-cfop", seeds: [7] },
+  { id: "5-beginner", seeds: [7] },
+  { id: "5-cfop", seeds: [7] },
 ];
 
 async function run(id: string, seed: number) {
@@ -64,9 +66,10 @@ async function run(id: string, seed: number) {
   if (!def) throw new Error(id);
   const n = def.size;
   const start = scrambled(n, seed);
-  const raw = await def.solve(start);
-  const shown = presentSolve(n, start, raw, def.view);
-  return { n, start, raw, shown, view: def.view };
+  // 연출과 같이 첫 면 색을 고른다(초보자는 흰색, 그 밖은 십자가 가장 싼 색)
+  const { raw, first } = await solveWithFirst(def, start);
+  const shown = presentSolve(n, start, raw, def.view, first);
+  return { n, start, raw, shown, view: def.view, first };
 }
 
 /** 단계마다 [수 번호 → 그 수 앞 상태]를 차례로 */
@@ -84,10 +87,10 @@ const centerColor = (n: number, s: PuzzleState, face: number) => {
   const c = Math.floor(n / 2);
   return faceColors(n, s)[face * n * n + c * n + c];
 };
-/** 면 위 흰 스티커 수 */
-const whites = (n: number, s: PuzzleState, face: number) =>
+/** 면 위 첫 면 색(`color`, 기본 흰) 스티커 수 */
+const whites = (n: number, s: PuzzleState, face: number, color = 0) =>
   Array.from(faceColors(n, s).slice(face * n * n, (face + 1) * n * n)).filter(
-    (c) => c === 0,
+    (c) => c === color,
   ).length;
 
 /** 넣는 차례 경계: 단계 시작과 단계 안 살피기 자리 */
@@ -129,11 +132,12 @@ describe("보여 주기 변환", () => {
     "2-beginner",
     "4-beginner",
     "4-cfop",
+    "5-cfop",
   ]) {
     it(`${id}: 위 단계 동안 첫 층 면이 위에 있고, 끝나면 z2로 아래로 간다`, async () => {
       const seeds = CASES.find((c) => c.id === id)?.seeds ?? [];
       for (const seed of seeds) {
-        const { n, start, shown, view } = await run(id, seed);
+        const { n, start, shown, view, first: color } = await run(id, seed);
         const up = shown.stages.filter((s) => view.up?.includes(s.name));
         const first = up[0];
         const last = up.at(-1);
@@ -145,14 +149,16 @@ describe("보여 주기 변환", () => {
         expect(shown.moves[last.end - 1]).toBe("z2");
         for (let k = i; k < last.end; k++) {
           const s = states[k] as PuzzleState;
-          if (n >= 3) expect(centerColor(n, s, 0)).toBe(0);
+          if (n >= 3) expect(centerColor(n, s, 0)).toBe(color);
         }
         const beforeFlip = states[last.end - 1] as PuzzleState;
         const afterFlip = states[last.end] as PuzzleState;
-        expect(whites(n, beforeFlip, 0)).toBeGreaterThanOrEqual(
+        expect(whites(n, beforeFlip, 0, color)).toBeGreaterThanOrEqual(
           n === 2 ? 4 : n * n - 4,
         );
-        expect(whites(n, afterFlip, 3)).toBe(whites(n, beforeFlip, 0));
+        expect(whites(n, afterFlip, 3, color)).toBe(
+          whites(n, beforeFlip, 0, color),
+        );
       }
     });
   }

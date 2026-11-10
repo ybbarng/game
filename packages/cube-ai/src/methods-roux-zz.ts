@@ -2,7 +2,7 @@ import { FACES, type Face } from "@game/cube-solver";
 import type { PuzzleState } from "@game/puzzle-core";
 import { CPLL, OCLL, PLL } from "./algs";
 import { cornerCoord, edgeCoord } from "./cubie";
-import { toFacelets } from "./facelets";
+import { firstFaceMap, toFacelets } from "./facelets";
 import { applyMatch, lowerSolved, topOriented } from "./ll";
 import {
   CENTER_OFFSET,
@@ -160,8 +160,8 @@ function whiteDown(s: Solve): void {
 // ---------- 루 ----------
 
 /** 루는 가운데 층을 돌리므로 처음 가운데 색을 기준 방향으로 고정한다 */
-function startFramed(state: PuzzleState): Solve {
-  const f = toFacelets(3, state);
+function startFramed(state: PuzzleState, first = 0): Solve {
+  const f = toFacelets(3, state, first ? firstFaceMap(first) : undefined);
   const frame = FACES.map((_, k) => f[k * 9 + 4] as Face);
   return new Solve(3, f, frame);
 }
@@ -236,8 +236,11 @@ function lse(s: Solve): void {
 }
 
 /** 3×3 루: 첫 블록 → 둘째 블록 → CMLL → LSE */
-export function solveRoux(state: PuzzleState): HumanSolve {
-  const s = startFramed(state);
+export function solveRoux(
+  state: PuzzleState,
+  opts: { first?: number } = {},
+): HumanSolve {
+  const s = startFramed(state, opts.first);
   whiteDown(s);
   squareThenPair(s, [], LEFT_SQUARES, LEFT_PAIRS, FB_MOVES, Y_TURNS);
   s.stage("fb");
@@ -314,8 +317,14 @@ const f2lOk = (t: Solve) => lowerSolved(t.rel(), 3);
 const PLL_ALGS = PLL.map(([, alg]) => alg);
 
 /** 3×3 ZZ: EO라인 → 왼쪽 블록 → 오른쪽 블록(R·U·L만) → 윗면(꼭짓점 7가지) → PLL */
-export function solveZZ(state: PuzzleState): HumanSolve {
-  const s = new Solve(3, toFacelets(3, state));
+export function solveZZ(
+  state: PuzzleState,
+  opts: { first?: number } = {},
+): HumanSolve {
+  const s = new Solve(
+    3,
+    toFacelets(3, state, opts.first ? firstFaceMap(opts.first) : undefined),
+  );
   whiteDown(s);
   bestOf(
     s,

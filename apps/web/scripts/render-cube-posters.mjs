@@ -5,8 +5,8 @@
  * CI에서는 돌리지 않는다(GPU 없는 브라우저는 그림이 다르게 나온다).
  *
  * 쓰는 법(apps/web에서):
- *   nice -n 15 pnpm build                       # out/ 이 있어야 한다
- *   E2E_PORT=5891 nice -n 15 node scripts/render-cube-posters.mjs
+ *   pnpm build                                   # out/ 이 있어야 한다
+ *   E2E_PORT=5891 node scripts/render-cube-posters.mjs   # SIZES=6,7 이면 그 크기만
  *
  * - 브라우저는 화면 시험과 같이 시스템 Chrome(`e2e/browser.ts`)을 쓴다. `playwright install`은 하지 않는다.
  * - 정적 빌드를 `serve`로 띄우고 끝나면 끈다. `E2E_PORT`(기본 5891)가 비어 있어야 한다.
@@ -24,7 +24,8 @@ import { BROWSER } from "../e2e/browser.ts";
 const web = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(web, "public/cube/hero");
 const PORT = Number(process.env.E2E_PORT ?? 5891);
-const SIZES = [2, 3, 4, 5];
+// 찍을 크기(기본 2×2~7×7). `SIZES=6,7`처럼 새로 생긴 크기만 찍을 수 있다
+const SIZES = (process.env.SIZES ?? "2,3,4,5,6,7").split(",").map(Number);
 const SCHEMES = ["standard", "highContrast", "colorblind"];
 const QUALITY = 0.9;
 

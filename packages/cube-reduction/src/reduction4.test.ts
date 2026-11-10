@@ -102,8 +102,8 @@ test("맞춘 큐브는 수 없이 끝난다", () => {
   expect(solved.stages.every((s) => s.from === 0 && s.to === 0)).toBe(true);
 });
 
-test("4×4·5×5 밖의 크기는 받지 않는다", () => {
-  for (const size of [2, 3, 6, 7]) {
+test("4×4~7×7 밖의 크기는 받지 않는다", () => {
+  for (const size of [2, 3, 8]) {
     expect(() => solveReductionState(size, randomCubeState(size, 1))).toThrow(
       RangeError,
     );

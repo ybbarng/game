@@ -36,6 +36,9 @@ import {
 } from "./methods";
 
 const T3 = heroTiming(3);
+/** 색 중립 해법의 십자 꼬리표 */
+const CROSS_LABEL = (method: string) =>
+  new RegExp(`^${method} · (흰|빨간|초록|노란|주황|파란) 십자$`);
 
 /** 정해진 차례로 수를 내는 rng(시험을 결정적으로) */
 function seq(seed: number): () => number {
@@ -256,9 +259,10 @@ describe("HeroLoop", () => {
     h.clock.advance(T3.afterScramble - 10);
     expect(h.moves).toHaveLength(before);
     h.advanceUntil(() => h.loop.currentLabel !== "초보자 해법", 1);
-    expect(["초보자 해법 · 십자", `초보자 해법 · ${ORIENT_LABEL}`]).toContain(
-      h.loop.currentLabel,
-    );
+    expect([
+      "초보자 해법 · 흰 십자",
+      `초보자 해법 · ${ORIENT_LABEL}`,
+    ]).toContain(h.loop.currentLabel);
 
     h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(3, h.loop.current)).toBe(true);
@@ -271,7 +275,8 @@ describe("HeroLoop", () => {
     await h.settled();
     h.advanceUntil(() => h.loop.currentLabel.includes("·"));
     h.advanceUntil(() => !h.loop.currentLabel.endsWith(ORIENT_LABEL));
-    expect(h.loop.currentLabel).toBe("프리드리히 · 십자");
+    // 프리드리히는 십자가 가장 싼 색부터(색 중립)
+    expect(h.loop.currentLabel).toMatch(CROSS_LABEL("프리드리히"));
     h.advanceUntil(() => h.loop.currentLabel.endsWith("맞춤"));
     expect(isSolved(3, h.loop.current)).toBe(true);
     expect(h.labels.some((l) => l.startsWith("프리드리히 · F2L"))).toBe(true);
@@ -296,8 +301,8 @@ describe("HeroLoop", () => {
   // 섞기에 큐브 돌리기·가운데 층이 섞여도 해법마다 섞기 → (방향 맞추기) → 단계 차례 → 맞춤까지 간다.
   // 섞는 rng를 판마다 달리해 방향 맞추기가 있는 판과 없는 판을 함께 본다
   it.each([
-    ["3-beginner", "십자", [1, 2, 3]],
-    ["3-cfop", "십자", [1, 2, 3]],
+    ["3-beginner", "흰 십자", [1, 2, 3]],
+    ["3-cfop", /^(흰|빨간|초록|노란|주황|파란) 십자$/, [1, 2, 3]],
     ["3-roux", "첫 블록", [1, 2]],
     ["3-zz", "EO라인", [1, 2]],
     ["2-beginner", "첫 층", [1, 2]],
@@ -332,7 +337,12 @@ describe("HeroLoop", () => {
             h.moves.slice(scramble.length, scramble.length + want.length),
           ).toEqual(want);
         }
-        expect(h.loop.currentLabel).toBe(`${label} · ${first}`);
+        if (typeof first === "string")
+          expect(h.loop.currentLabel).toBe(`${label} · ${first}`);
+        else
+          expect(h.loop.currentLabel.slice(`${label} · `.length)).toMatch(
+            first,
+          );
         const stages = new Set<string>();
         h.advanceUntil(() => {
           stages.add(h.loop.currentLabel);
@@ -370,9 +380,10 @@ describe("HeroLoop", () => {
     });
     await h.settled();
     expect(h.moves).toHaveLength(21);
-    expect(["초보자 해법 · 십자", `초보자 해법 · ${ORIENT_LABEL}`]).toContain(
-      h.loop.currentLabel,
-    );
+    expect([
+      "초보자 해법 · 흰 십자",
+      `초보자 해법 · ${ORIENT_LABEL}`,
+    ]).toContain(h.loop.currentLabel);
   });
 
   /** 답하지 않는 풀이(멈춘 워커처럼). 나중에 답하게 할 수 있다 */

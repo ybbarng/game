@@ -13,7 +13,7 @@ import {
 } from "./algs";
 import { solveBigExpert, solveBigHuman } from "./big";
 import { cornerFacelets, FACE_MOVE_COUNT, faceMoveName } from "./cubie";
-import { OPPOSITE, toFacelets } from "./facelets";
+import { firstFaceMap, OPPOSITE, toFacelets } from "./facelets";
 import {
   applyMatch,
   lowerSolved,
@@ -359,14 +359,18 @@ function insertBySearch(
 
 const f2lOk = (s: Solve) => lowerSolved(s.rel(), s.n);
 
-function start3(state: PuzzleState): Solve {
-  return new Solve(3, toFacelets(3, state));
+/** `first`: 흰색처럼 보고 첫 면으로 맞출 색(`HumanOptions.first`) */
+function start3(state: PuzzleState, first = 0): Solve {
+  return new Solve(
+    3,
+    toFacelets(3, state, first ? firstFaceMap(first) : undefined),
+  );
 }
 
 /**
  * 3×3 사람 해법을 차례(`Step`)로 둔다. 함수는 3×3 수를 두고, 글자 칸("oll-parity"·"pll-parity")은
  * 4×4에서 사람이 패리티를 알아차리는 자리다(OLL 앞·PLL 앞). 3×3에서는 그냥 지나간다.
- * 4×4·5×5 해법(`big.ts`)이 같은 차례를 축소가 끝난 큐브에 그대로 쓴다.
+ * 4×4~7×7 해법(`big.ts`)이 같은 차례를 축소가 끝난 큐브에 그대로 쓴다.
  */
 export type ParityCheck = "oll-parity" | "pll-parity";
 export type Step = ((s: Solve) => void) | ParityCheck;
@@ -538,8 +542,12 @@ export const CFOP_STEPS: readonly Step[] = [
 ];
 
 /** 3×3에서는 패리티 칸을 건너뛰고 차례대로 둔다 */
-function run3(steps: readonly Step[], state: PuzzleState): HumanSolve {
-  const s = start3(state);
+function run3(
+  steps: readonly Step[],
+  state: PuzzleState,
+  first = 0,
+): HumanSolve {
+  const s = start3(state, first);
   for (const step of steps) if (typeof step === "function") step(s);
   return finish(s);
 }
@@ -551,6 +559,11 @@ function run3(steps: readonly Step[], state: PuzzleState): HumanSolve {
  */
 export interface HumanOptions {
   taught?: boolean;
+  /**
+   * 첫 면 색(0 흰 · 1 빨강 · 2 초록 · 3 노랑 · 4 주황 · 5 파랑, 기본 흰). 이 색을 흰색처럼 보고 같은 차례로 푼다
+   * (색 중립, 첫 화면 연출). 2×2는 첫 층 색, 4×4 이상은 축소가 끝난 뒤 3×3 단계의 첫 면 색이다
+   */
+  first?: number;
 }
 
 /** 3×3 입문: 층별 맞추기(초보자 공식만) */
@@ -558,17 +571,27 @@ export function solveBeginner3(
   state: PuzzleState,
   opts: HumanOptions = {},
 ): HumanSolve {
-  return run3(opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS, state);
+  return run3(
+    opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS,
+    state,
+    opts.first,
+  );
 }
 
 /** 3×3 중수: 층별 + 2단계 OLL·PLL */
-export function solveIntermediate3(state: PuzzleState): HumanSolve {
-  return run3(INTERMEDIATE3_STEPS, state);
+export function solveIntermediate3(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
+  return run3(INTERMEDIATE3_STEPS, state, opts.first);
 }
 
 /** 3×3 고수: CFOP(십자, F2L 네 쌍, OLL 57, PLL 21) */
-export function solveCfop(state: PuzzleState): HumanSolve {
-  return run3(CFOP_STEPS, state);
+export function solveCfop(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
+  return run3(CFOP_STEPS, state, opts.first);
 }
 
 /** 3×3 초고수: 2단계 해법(사람을 넘는 짧은 해) */
@@ -586,8 +609,8 @@ export function solveExpert3(state: PuzzleState): HumanSolve {
  * 그 조각의 스티커를 흰색부터 시계 방향으로 읽으면 (아래, 앞, 오른쪽) 색이다.
  * 시험도 같은 기준으로 수를 다시 둔다(`taught-one.test.ts`).
  */
-export function start2(state: PuzzleState): Solve {
-  const f = toFacelets(2, state);
+export function start2(state: PuzzleState, first = 0): Solve {
+  const f = toFacelets(2, state, first ? firstFaceMap(first) : undefined);
   const slots = cornerFacelets(2);
   const order = [4, 5, 6, 7, 0, 1, 2, 3];
   for (const slot of order) {
@@ -636,7 +659,7 @@ export function solveBeginner2(
   state: PuzzleState,
   opts: HumanOptions = {},
 ): HumanSolve {
-  const s = start2(state);
+  const s = start2(state, opts.first);
   if (opts.taught) {
     s.lookBarrier = true;
     s.apply("z2");
@@ -662,8 +685,11 @@ export function solveBeginner2(
 }
 
 /** 2×2 중수: 첫 층(초보자) → 윗면 공식 7개 → 윗층 공식 2개 */
-export function solveIntermediate2(state: PuzzleState): HumanSolve {
-  const s = start2(state);
+export function solveIntermediate2(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
+  const s = start2(state, opts.first);
   firstLayerCorners(s);
   s.stage("first-layer");
   lastLayer2(s);
@@ -671,8 +697,11 @@ export function solveIntermediate2(state: PuzzleState): HumanSolve {
 }
 
 /** 2×2 고수: 가장 짧은 첫 층 → 윗면 공식 7개 → 윗층 공식 2개 */
-export function solveAdvanced2(state: PuzzleState): HumanSolve {
-  const s = start2(state);
+export function solveAdvanced2(
+  state: PuzzleState,
+  opts: HumanOptions = {},
+): HumanSolve {
+  const s = start2(state, opts.first);
   firstLayerOptimal(s);
   s.stage("first-layer");
   lastLayer2(s);
@@ -693,8 +722,8 @@ function finish(s: Solve): HumanSolve {
 }
 
 /**
- * 단계·크기로 해법 고르기(2×2~5×5). 4×4·5×5는 축소법 뒤 같은 단계의 3×3 해법.
- * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다(4×4·5×5).
+ * 단계·크기로 해법 고르기(2×2~7×7). 4×4 이상은 축소법 뒤 같은 단계의 3×3 해법.
+ * `limits`는 시험이 축소법을 일부러 막히게 할 때만 넣는다(4×4 이상).
  */
 export function solveHuman(
   level: SolveMethod,
@@ -703,35 +732,30 @@ export function solveHuman(
   limits?: ReductionLimits,
   opts: HumanOptions = {},
 ): HumanSolve {
+  const first = opts.first ?? 0;
   if (size === 3) {
     if (level === "beginner") return solveBeginner3(state, opts);
-    if (level === "intermediate") return solveIntermediate3(state);
-    if (level === "fourlook") return run3(FOURLOOK3_STEPS, state);
-    if (level === "advanced") return solveCfop(state);
+    if (level === "intermediate") return solveIntermediate3(state, opts);
+    if (level === "fourlook") return run3(FOURLOOK3_STEPS, state, first);
+    if (level === "advanced") return solveCfop(state, opts);
     return solveExpert3(state);
   }
   if (size === 2) {
     if (level === "beginner") return solveBeginner2(state, opts);
     // 2×2는 4단계 마지막 층이 따로 없다(윗면·윗층 공식이 이미 둘씩)
     if (level === "intermediate" || level === "fourlook")
-      return solveIntermediate2(state);
-    if (level === "advanced") return solveAdvanced2(state);
+      return solveIntermediate2(state, opts);
+    if (level === "advanced") return solveAdvanced2(state, opts);
     return solveExpert2(state);
   }
-  if (size === 4 || size === 5) {
+  if (size >= 4 && size <= 7) {
+    const big = (steps: readonly Step[]) =>
+      solveBigHuman(steps, size, state, limits, first);
     if (level === "beginner")
-      return solveBigHuman(
-        opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS,
-        size,
-        state,
-        limits,
-      );
-    if (level === "intermediate")
-      return solveBigHuman(INTERMEDIATE3_STEPS, size, state, limits);
-    if (level === "fourlook")
-      return solveBigHuman(FOURLOOK3_STEPS, size, state, limits);
-    if (level === "advanced")
-      return solveBigHuman(CFOP_STEPS, size, state, limits);
+      return big(opts.taught ? BEGINNER3_TAUGHT_STEPS : BEGINNER3_STEPS);
+    if (level === "intermediate") return big(INTERMEDIATE3_STEPS);
+    if (level === "fourlook") return big(FOURLOOK3_STEPS);
+    if (level === "advanced") return big(CFOP_STEPS);
     return solveBigExpert(size, state, limits);
   }
   throw new RangeError(`${size}×${size} 컴퓨터는 아직 없다`);

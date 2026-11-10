@@ -9,7 +9,7 @@ import {
   unitsForStage,
 } from "../piece-marks";
 import { orientForSolve, randomScramble } from "./loop";
-import { findHeroMethod } from "./methods";
+import { findHeroMethod, solveWithFirst } from "./methods";
 import { presentSolve } from "./present";
 
 /**
@@ -50,8 +50,9 @@ async function check(id: string, seed: number, strict: boolean) {
   const def = findHeroMethod(id);
   if (!def) throw new Error(id);
   const start = scrambled(seed);
-  const raw = await def.solve(start);
-  const shown = presentSolve(3, start, raw, def.view);
+  // 연출과 같이 첫 면 색을 고른다(프리드리히는 십자가 가장 싼 색, 강조할 조각도 그 색 기준)
+  const { raw, first } = await solveWithFirst(def, start);
+  const shown = presentSolve(3, start, raw, def.view, first);
   const states = [start];
   for (const m of shown.moves)
     states.push(play(states.at(-1) as PuzzleState, [m]));
@@ -61,7 +62,7 @@ async function check(id: string, seed: number, strict: boolean) {
   // 단계마다 조각과 단계 시작 상태
   const stageOf = new Map<string, { units: PieceUnit[]; start: number }>();
   for (const st of shown.stages) {
-    const units = unitsForStage(3, st.name);
+    const units = unitsForStage(3, st.name, first);
     if (!units) continue;
     for (const u of units)
       stageOf.set(keyOfIds(unitStickers(u)), { units, start: st.start });

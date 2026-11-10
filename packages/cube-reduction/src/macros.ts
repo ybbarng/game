@@ -257,22 +257,30 @@ export function edgeMacros(n: number): EdgeMacros {
   return result;
 }
 
-const parityCache = new Map<number, Macro[]>();
+const parityCache = new Map<string, Macro[]>();
+
+/** 날개 묶음 하나(모서리 끝에서 `depth`칸)만 도는 안쪽 한 층 표기로 바꾼다(`2R` → `3R` 등) */
+function atDepth(text: string, depth: number): string {
+  return text.replace(/\b2([RL])/g, `${depth + 1}$1`);
+}
 
 /**
  * 한 모서리의 두 날개 맞바꾸기(모서리 패리티). 날개 순열의 홀짝을 바꾸는 유일한 공식이라
  * 짝 수가 늘지 않아도 쓴다(마지막 두 모서리에서 다른 공식으로 더 나아가지 못할 때).
+ * `depth`는 날개 묶음(모서리 끝에서 떨어진 칸 수, 6×6·7×7은 1·2): 그 묶음의 안쪽 층만 돌린다.
  */
-export function edgeParityMacros(n: number): Macro[] {
-  const hit = parityCache.get(n);
+export function edgeParityMacros(n: number, depth = 1): Macro[] {
+  const key = `${n}:${depth}`;
+  const hit = parityCache.get(key);
   if (hit) return hit;
   const out: Macro[] = [];
+  const base = atDepth(EDGE_PARITY_TEXT, depth);
   for (let k = 0; k < 4; k++) {
-    for (const t of [EDGE_PARITY_TEXT, flipUD(EDGE_PARITY_TEXT)]) {
+    for (const t of [base, flipUD(base)]) {
       out.push(compileMacro(n, moves(n, relabelY(t, k))));
     }
   }
-  parityCache.set(n, out);
+  parityCache.set(key, out);
   return out;
 }
 
@@ -285,3 +293,27 @@ export const EDGE_PARITY_TEXT =
 
 /** 4×4 PLL 패리티: 위층의 두 모서리 짝(UF·UB)을 맞바꾼다 */
 export const PLL_PARITY_TEXT = "2R2 U2 2R2 Uw2 2R2 2U2";
+
+/** 짝수 크기의 안쪽 층 묶음(2층 ~ 가운데까지) 표기. 4×4는 `2R` 한 층 */
+function innerBlock(n: number, face: string): string {
+  const h = n / 2;
+  return h === 2 ? `2${face}` : `2-${h}${face}w`;
+}
+
+/**
+ * 짝수 크기 OLL 패리티(3×3으로 볼 때 짝 지은 모서리 하나 뒤집기): 4×4 공식의 안쪽 한 층을 안쪽 층 묶음
+ * 전부로 넓힌다(6×6은 `2-3Rw`). 4×4는 `EDGE_PARITY_TEXT` 그대로
+ */
+export function ollParityText(n: number): string {
+  return EDGE_PARITY_TEXT.replace(/\b2([RL])/g, (_, f: string) =>
+    innerBlock(n, f),
+  );
+}
+
+/** 짝수 크기 PLL 패리티(짝 지은 모서리 둘 맞바꾸기): 4×4 공식을 안쪽 층 묶음으로 넓힌다 */
+export function pllParityText(n: number): string {
+  const h = n / 2;
+  const r = innerBlock(n, "R");
+  const wideU = h === 2 ? "Uw" : `${h}Uw`;
+  return `${r}2 U2 ${r}2 ${wideU}2 ${r}2 ${innerBlock(n, "U")}2`;
+}

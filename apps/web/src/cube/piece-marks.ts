@@ -52,8 +52,6 @@ export const SEARCH_ORDER: readonly string[] = [
 
 /** 보이는 세 면: U(0)·R(1)·F(2) */
 const VISIBLE_FACES = new Set([0, 1, 2]);
-const WHITE = 0;
-const YELLOW = 3;
 
 function topo3() {
   return cubeTopology(3);
@@ -72,9 +70,18 @@ function piecesOfKind(kind: "edge" | "corner"): number[] {
   return t.pieces.flatMap((q, i) => (q.kind === kind ? [i] : []));
 }
 
-/** 단계 이름 → 그 단계에서 하나씩 넣는 묶음들. 찾기를 하지 않는 단계면 null */
-export function unitsForStage(n: number, stage: string): PieceUnit[] | null {
+/**
+ * 단계 이름 → 그 단계에서 하나씩 넣는 묶음들. 찾기를 하지 않는 단계면 null.
+ * `first`는 첫 면 색(기본 흰 0, 색 중립이면 그 판의 십자 색). 맞은편 색은 `(first + 3) % 6`
+ */
+export function unitsForStage(
+  n: number,
+  stage: string,
+  first = 0,
+): PieceUnit[] | null {
   if (n !== 3) return null;
+  const WHITE = first;
+  const YELLOW = (first + 3) % 6;
   const edges = piecesOfKind("edge");
   const corners = piecesOfKind("corner");
   const has = (p: number, f: number) => pieceFaces(p).includes(f);
@@ -337,7 +344,7 @@ export function llCorrectIds(state: PuzzleState, stage: string): number[] {
  * - 노란 십자: 윗면 센터와 노란 엣지 칸(점·ㄱ자·일자). 노란 면(OLL·코너 방향 공식): 위층의 노란 칸 전부.
  *   초보자 코너 방향은 이 토막이 돌릴 코너(`after`에서 새로 노랑이 위를 본 코너).
  * - 옆면 맞추기·위 엣지 자리: 윗면만 돌려 옆색이 가장 많이 맞는 자리에서 맞는 엣지의 옆 칸.
- * - 코너 자리: 이미 제자리인 코너. PLL: 옆 칸 가운데 같은 줄 이웃과 색이 같은 칸(전조등·막대).
+ * - 코너 자리: 이미 제자리인 코너. PLL: 옆 칸 가운데 같은 줄 이웃과 색이 같은 칸(전조등·막대), 그런 칸이 없으면 옆 칸 전체.
  */
 export function llShapeIds(
   state: PuzzleState,
@@ -381,14 +388,12 @@ export function llShapeIds(
     }
     case "corners":
       return idsAt(state, llCorrectPositions(state, "corners"));
-    case "side-rows":
-      return idsAt(
-        state,
-        SIDE_ROWS.flatMap((row) =>
-          row.filter((p) =>
-            row.some((q) => q !== p && colors[q] === colors[p]),
-          ),
-        ),
+    case "side-rows": {
+      const marked = SIDE_ROWS.flatMap((row) =>
+        row.filter((p) => row.some((q) => q !== p && colors[q] === colors[p])),
       );
+      // 전조등·막대가 하나도 없는 모양(E 퍼뮤처럼)은 옆 칸 전체를 보고 고른다
+      return idsAt(state, marked.length ? marked : SIDE_ROWS.flat());
+    }
   }
 }

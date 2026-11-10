@@ -3,9 +3,15 @@ export {
   reductionGeometry,
   slotPaired,
   slotScore,
+  wingDepths,
   wingParity,
 } from "./geometry";
-export { EDGE_PARITY_TEXT, PLL_PARITY_TEXT } from "./macros";
+export {
+  EDGE_PARITY_TEXT,
+  ollParityText,
+  PLL_PARITY_TEXT,
+  pllParityText,
+} from "./macros";
 export {
   colorsFromFacelets,
   REDUCTION_SIZES,

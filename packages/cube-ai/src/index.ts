@@ -1,7 +1,7 @@
-/** 4×4·5×5 축소법이 돌려 쥐어도 막히면 `solveHuman`·`botPlan`이 던진다(화면이 잡는다) */
+/** 4×4~7×7 축소법이 돌려 쥐어도 막히면 `solveHuman`·`botPlan`이 던진다(화면이 잡는다) */
 export { ReductionStuckError } from "@game/cube-reduction";
 export * from "./algs";
-export { toFaceletMove, toFacelets } from "./facelets";
+export { firstFaceMap, toFaceletMove, toFacelets } from "./facelets";
 export {
   type HumanOptions,
   SOLVE_METHODS,

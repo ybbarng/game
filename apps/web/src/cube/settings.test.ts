@@ -91,7 +91,7 @@ describe("큐브 설정 저장", () => {
     );
     expect([mismatch.heroSize, mismatch.heroMethod]).toEqual([4, "alternate"]);
     const bad = parseSettings(
-      JSON.stringify({ heroSize: 7, heroMethod: "없는 해법" }),
+      JSON.stringify({ heroSize: 8, heroMethod: "없는 해법" }),
     );
     expect([bad.heroSize, bad.heroMethod]).toEqual([3, "alternate"]);
   });
