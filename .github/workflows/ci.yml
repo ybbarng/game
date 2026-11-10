@@ -36,7 +36,8 @@ jobs:
       base: ${{ steps.base.outputs.base }}
       e2e: ${{ steps.pick.outputs.e2e }}
       specs: ${{ steps.pick.outputs.specs }}
-      shards: ${{ steps.pick.outputs.shards }}
+      # {"include":[{"shard":1,"specs":"e2e/a.spec.ts …"}, …]}. 조각마다 돌릴 spec 목록
+      matrix: ${{ steps.pick.outputs.matrix }}
       shard_total: ${{ steps.pick.outputs.shard_total }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -137,16 +138,18 @@ jobs:
       - name: nginx 설정 검사
         run: docker run --rm -v "$PWD/deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.31.8-alpine nginx -t
 
-  # 화면 시험. 전부면 둘로 나눠 동시에 돌린다(2026-10-30 시험을 줄여 셋에서 둘로, docs/38). 조각마다 설치·빌드를 따로 하므로
-  # 고른 spec이 적으면 한 조각만 쓴다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
+  # 화면 시험. 전부면 여섯 조각으로 나눠 동시에 돌린다(2026-11-10 둘에서 여섯으로, docs/38 17절). plan이 지난 시험 시간
+  # (scripts/e2e-times.json)으로 spec을 조각에 고르게 담아 조각마다 spec 목록을 넘긴다. 조각마다 설치·빌드를 따로 하므로
+  # 고른 spec이 적으면 조각을 줄인다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
+  # 동시 작업은 한 실행에 많아야 8개(plan·check·화면 6·ci-ok)라 무료 공개 저장소 한도 20개 안이다
   e2e:
+    name: e2e (${{ matrix.shard }})
     needs: plan
     if: needs.plan.outputs.e2e != 'none'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -159,15 +162,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @game/web exec playwright install --with-deps chrome
-      # SPECS가 비면(전부) 모든 spec. 조각에 시험이 하나도 안 떨어져도 성공으로 끝난다
+      # 이 조각이 맡은 spec만. 목록이 비면 playwright가 모든 spec을 돌리므로 그때는 멈춘다(plan은 빈 조각을 만들지 않는다)
       - name: 화면 시험
         env:
-          SPECS: ${{ needs.plan.outputs.specs }}
-          SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.shard_total }}
+          SPECS: ${{ matrix.specs }}
         run: |
           set -euo pipefail
           read -r -a specs <<< "$SPECS"
-          pnpm e2e --shard="$SHARD" --pass-with-no-tests "${specs[@]}"
+          if [ "${#specs[@]}" -eq 0 ]; then
+            echo "::error::조각 ${{ matrix.shard }}에 spec이 없다"
+            exit 1
+          fi
+          echo "조각 ${{ matrix.shard }}: spec ${#specs[@]}개"
+          pnpm e2e --pass-with-no-tests "${specs[@]}"
       # 시험마다 걸린 시간(playwright.config.ts의 json reporter). 느린 시험 워크플로가 받아 본다
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         continue-on-error: true

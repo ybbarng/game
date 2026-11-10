@@ -52,9 +52,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.workflow_run.head_sha }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
-        run: >-
-          node scripts/slow-tests.mjs
-          --unit test-times/test-times-unit/unit.json
-          --e2e test-times/test-times-e2e-1/e2e.json
-          --e2e test-times/test-times-e2e-2/e2e.json
-          --selection test-times/test-times-selection/selection.json
+        # 화면 시험 조각 수는 실행마다 다르다(0~6, scripts/affected-e2e.mjs). 받은 조각 결과를 모두 넘긴다
+        run: |
+          shopt -s nullglob
+          e2e=()
+          for f in test-times/test-times-e2e-*/e2e.json; do e2e+=(--e2e "$f"); done
+          node scripts/slow-tests.mjs \
+            --unit test-times/test-times-unit/unit.json \
+            "${e2e[@]}" \
+            --selection test-times/test-times-selection/selection.json
