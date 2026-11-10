@@ -481,7 +481,7 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
 
   // 퀴즈 셋
   await page
-    .getByRole("button", { name: "한 차(19)가 내 차를 잡아 11점 손해다" })
+    .getByRole("button", { name: "한의 차(19)가 내 차를 잡아 11점 손해다" })
     .click();
   await next(page);
   await page.getByRole("button", { name: "포", exact: true }).click();

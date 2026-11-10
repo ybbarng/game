@@ -56,13 +56,13 @@ export type JanggiScene = Omit<JanggiScenarioOptions, "rules"> & {
   setups?: { cho: Setup; han: Setup };
   /** 판 위에 상차림 단추를 두어 내(초) 상차림을 바꿔 본다. 한은 마상마상 */
   pickSetup?: boolean;
-  /** 한 차림 넷 × 초 차림 넷, 16가지 짝 표(matchups.ts). 칸을 누르면 그 짝의 판과 까닭 */
+  /** 한의 차림 넷 × 초 차림 넷, 16가지 짝 표(matchups.ts). 칸을 누르면 그 짝의 판과 까닭 */
   matchups?: boolean;
   /** 한이 먼저 차리면 그것을 보고 초 차림을 고르고 첫 수를 두는 반복 문제(문제 수) */
   drill?: number;
   /** 내가 한이라 먼저 차림을 고르고, 초(컴퓨터)가 보고 고르는 것을 겪어 보기(판 수) */
   hanDrill?: number;
-  /** 실제 판의 차례(한 차림 → 초 차림 → 초 첫 수)를 그림으로 보이고 글을 붙인다 */
+  /** 실제 판의 차례(한의 차림 → 초 차림 → 초 첫 수)를 그림으로 보이고 글을 붙인다 */
   order?: boolean;
 };
 export type JanggiLesson = Lesson<JanggiView, GameEvent, JanggiScene, Action>;
@@ -86,19 +86,19 @@ const KINGS: Record<string, Piece> = { "95": "cK", "24": "hK" };
 /** 처음 놓인 판(두 편 모두 마상마상) */
 const START: JanggiScene = { pieces: openingPieces("NENE", "NENE") };
 
-/** 차 하나와 공짜로 잡을 수 있는 한 병 */
+/** 차 하나와 공짜로 잡을 수 있는 한의 병 */
 const ROOK_SCENE: JanggiScene = {
   pieces: { ...KINGS, "71": "cR", "41": "hP", "17": "hP" },
   show: "71",
 };
 
-/** 포가 내 졸을 넘어 한 차를 잡는다 */
+/** 포가 내 졸을 넘어 한의 차를 잡는다 */
 const CANNON_SCENE: JanggiScene = {
   pieces: { ...KINGS, "71": "cC", "51": "cP", "31": "hR", "18": "hP" },
   show: "71",
 };
 
-/** 마가 한 차를 잡는다. 앞 칸(63)이 비어 있어야 간다 */
+/** 마가 한의 차를 잡는다. 앞 칸(63)이 비어 있어야 간다 */
 const HORSE_SCENE: JanggiScene = {
   pieces: { ...KINGS, "73": "cN", "54": "hR", "19": "hP" },
   show: "73",
@@ -110,7 +110,7 @@ const BLOCKED_HORSE: JanggiScene = {
   show: "73",
 };
 
-/** 상이 한 포를 잡는다. 지나는 두 칸(63·54)이 비어 있어야 간다 */
+/** 상이 한의 포를 잡는다. 지나는 두 칸(63·54)이 비어 있어야 간다 */
 const ELEPHANT_SCENE: JanggiScene = {
   pieces: { ...KINGS, "73": "cE", "45": "hC", "19": "hP" },
   show: "73",
@@ -133,12 +133,12 @@ const BIKJANG_SCENE: JanggiScene = {
   pieces: { "95": "cK", "24": "hK", "71": "cR", "79": "cR", "19": "hP" },
 };
 
-/** 한 차가 장군을 불렀다. 같은 줄의 내 차로 잡는다 */
+/** 한의 차가 장군을 불렀다. 같은 줄의 내 차로 잡는다 */
 const CHECK_SCENE: JanggiScene = {
   pieces: { "95": "cK", "24": "hK", "75": "hR", "71": "cR", "18": "hP" },
 };
 
-/** 한 궁이 모서리에 몰렸다. 차를 맨 윗줄로 올리면 외통 */
+/** 한의 궁이 모서리에 몰렸다. 차를 맨 윗줄로 올리면 외통 */
 const MATE_SCENE: JanggiScene = {
   // 가운데 졸(75)이 두 궁 사이를 막아 빅장으로 끝나지 않게 한다.
   pieces: { "95": "cK", "14": "hK", "59": "cR", "28": "cR", "75": "cP" },
@@ -167,7 +167,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         body: [
           "**차(車)**는 가로·세로로 막힐 때까지 몇 칸이든 가요. 점이 차가 갈 수 있는 곳이에요.",
           "앞에 상대 기물이 있으면 그 기물을 잡을 수 있어요.",
-          "그림에 있는 한 기물 둘은 **병**이에요. 병은 앞이나 옆으로 한 칸씩 가는 작은 기물이고, 초에서는 같은 기물을 **졸**이라고 불러요.",
+          "그림에 있는 한의 기물 둘은 **병**이에요. 병은 앞이나 옆으로 한 칸씩 가는 작은 기물이고, 초에서는 같은 기물을 **졸**이라고 불러요.",
         ],
         scene: ROOK_SCENE,
       },
@@ -188,7 +188,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "병 잡기",
         objective:
           "**차**로 한 **병**을 잡으세요. 잡아도 내 차가 되잡히지 않는 병이에요(이런 것을 「공짜로 잡는다」고 해요).",
-        hint: "내 차와 같은 세로줄 위쪽에 한 병이 있어요.",
+        hint: "내 차와 같은 세로줄 위쪽에 한의 병이 있어요.",
         scenario: ROOK_SCENE,
         check: firstTo("41"),
         success: "잡았어요! 상대 기물 자리로 가면 그 기물을 잡아요.",
@@ -230,7 +230,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         kind: "mission",
         title: "포로 차 잡기",
         objective: "**포**로 내 졸을 넘어 한 **차**를 잡으세요.",
-        hint: "포 위쪽의 졸(51)을 넘으면 그 너머 한 차(31)가 있어요.",
+        hint: "포 위쪽의 졸(51)을 넘으면 그 너머 한의 차(31)가 있어요.",
         scenario: CANNON_SCENE,
         check: firstTo("31"),
         success: "멋져요! 포는 넘을 기물이 있어야 힘을 써요.",
@@ -343,8 +343,8 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         kind: "mission",
         title: "장군 풀기",
         objective:
-          "한 차가 **장군**을 불렀어요. 내 **차**로 그 차를 잡아 장군을 푸세요.",
-        hint: "내 차(71)와 한 차(75)는 같은 가로줄에 있어요.",
+          "한의 차가 **장군**을 불렀어요. 내 **차**로 그 차를 잡아 장군을 푸세요.",
+        hint: "내 차(71)와 한의 차(75)는 같은 가로줄에 있어요.",
         scenario: CHECK_SCENE,
         check: firstTo("75"),
         success:
@@ -365,7 +365,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "외통으로 끝내요",
         body: [
           "장군을 받았는데 궁을 비킬 곳도, 막을 기물도, 잡을 방법도 없으면 **외통**이에요. 그 판을 이겨요.",
-          "그림에서 한 궁은 모서리에 몰렸고, 내 차 하나가 궁 바로 아래 가로줄을 막고 있어요.",
+          "그림에서 한의 궁은 모서리에 몰렸고, 내 차 하나가 궁 바로 아래 가로줄을 막고 있어요.",
         ],
         scene: MATE_SCENE,
       },
@@ -373,11 +373,11 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         kind: "mission",
         title: "외통 두기",
         objective: "한 수로 **외통**을 만드세요.",
-        hint: "오른쪽 차(59)를 맨 윗줄로 올리면 한 궁이 갈 곳이 없어요.",
+        hint: "오른쪽 차(59)를 맨 윗줄로 올리면 한의 궁이 갈 곳이 없어요.",
         scenario: MATE_SCENE,
         check: (ctx) => (myFirstMove(ctx) ? (wonRound(ctx) ?? "fail") : null),
         success: "외통! 장군을 풀 수 없게 몰면 이겨요.",
-        fail: "아직 외통이 아니에요. 한 궁이 피할 곳이 없게 장군을 불러 보세요.",
+        fail: "아직 외통이 아니에요. 한의 궁이 피할 곳이 없게 장군을 불러 보세요.",
         solution: [move("59", "19")],
         mistake: [move("59", "58")],
       },
@@ -427,7 +427,7 @@ export const JANGGI_LESSONS: readonly JanggiLesson[] = [
         title: "빅장으로 끝내기",
         objective:
           "초가 점수로 크게 앞서요. **궁을 옮겨 빅장**을 만들어 점수로 이기세요.",
-        hint: "한 궁(24)과 같은 세로줄이 되게 내 궁(95)을 왼쪽(94)으로 옮겨 보세요.",
+        hint: "한의 궁(24)과 같은 세로줄이 되게 내 궁(95)을 왼쪽(94)으로 옮겨 보세요.",
         scenario: BIKJANG_SCENE,
         check: (ctx) => (myFirstMove(ctx) ? (wonRound(ctx) ?? "fail") : null),
         success: "빅장! 점수가 앞서 있어 이겼어요. 뒤질 때는 빅장을 조심해요.",

@@ -34,7 +34,7 @@ const TERMS: OrderedTerm[] = [
   { term: "원앙마", use: /원앙마/, define: /포진이 \*\*원앙마\*\*/ },
   { term: "양귀마", use: /양귀마/, define: /\*\*양귀마\*\*예요/ },
   { term: "맞상", use: /맞상/, define: /\*\*맞상\*\*이라고/ },
-  { term: "쓸다", use: /쓸어|쓸기|옆으로 쓸/, define: /「쓴다」고/ },
+  { term: "쓸다", use: /쓸어|쓸기|옆으로 쓸/, define: /「쓸다」라고/ },
   { term: "정석", use: /정석/, define: /\*\*정석\*\*이라고/ },
   { term: "진", use: /(상대|한) 진/, define: /\(\*\*진\*\*\)/ },
   { term: "천궁", use: /천궁/, define: /\(\*\*천궁\*\*/ },
