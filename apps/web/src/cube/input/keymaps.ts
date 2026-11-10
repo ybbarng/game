@@ -195,6 +195,8 @@ const COMMON_COMMANDS: KeyBinding[] = [
   key("ArrowLeft", "peekBack"),
   key("ArrowRight", "peekBack"),
   key("ArrowDown", "peekDown"),
+  // 끌어 돌린 보기를 처음 각도로(2026-11-10). 화살표 넷이 모두 보기 키다
+  key("ArrowUp", "viewHome"),
 ];
 
 /**

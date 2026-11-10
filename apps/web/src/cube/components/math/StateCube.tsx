@@ -8,6 +8,7 @@ import { stickersFromState } from "../../bridge";
 import type { CubeSettings } from "../../settings";
 import { type CubeView, loadCubeView } from "../../view";
 import { CubePosterPair } from "../CubePosterPair";
+import { ViewHome } from "../ViewHome";
 
 /**
  * 상태 하나를 3D로 보이는 큐브(「큐브의 수학」). 키는 받지 않는다. `syncToken`이 바뀌면 `state`로 다시 칠하고,
@@ -112,6 +113,7 @@ export function StateCube({
           className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
         />
       )}
+      {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
     </div>
   );
 }
