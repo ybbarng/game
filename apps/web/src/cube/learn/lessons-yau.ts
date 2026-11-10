@@ -4,6 +4,8 @@
 // 표기: Rw = 바깥 두 층, 2R·2U = 바깥에서 둘째 층 하나만, Uw = 위 두 층.
 // 공식이 그 일을 하는지(흰 십자·센터를 지키는지 등)는 judge.test.ts·judge-methods.test.ts가 엔진으로 확인한다.
 import { PARITY_4X4 } from "./algs-big";
+import { CENTER_IN } from "./big-path";
+import { CENTER_HOLD } from "./lessons-big";
 import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
@@ -33,20 +35,20 @@ const udCenters: Lesson = {
     },
     {
       kind: "demo",
-      body: "4×4 축소법에서 본 막대 옮기기를 써요. 흰 센터 블럭 두 칸이 한 줄로 붙은 막대가 앞면 오른쪽 줄에 있어요. Rw(오른쪽 두 층)로 올려 흰 센터 자리에 옮기고, U2로 윗면을 비킨 뒤 Rw'로 되돌려요. 노란 센터도 흰 센터를 지키며 같은 법으로 맞은편에 모아요.",
-      setup: { alg: setupFor("Rw U2 Rw'") },
-      alg: "Rw U2 Rw'",
+      body: "4×4 축소법에서 배운 센터 블럭 넣기를 그대로 써요. 넣을 흰 센터 블럭이 옆면에 있으면 그 면을 y로 앞으로, F로 앞면 오른쪽 아래 칸에, U로 윗면 왼쪽 뒤 칸에 흰색이 아닌 센터 블럭을 두고 2R U 2R'. 아랫면에 있으면 D로 아랫면 오른쪽 뒤 칸에 두고 2R2 U 2R2. 흰 센터를 다 넣으면 x2로 노란 면을 위로 쥐고 옆면 넷에서 같은 법으로 넣어요. 화면은 2R U 2R' 한 번이에요.",
+      setup: { alg: setupFor(CENTER_IN) },
+      alg: CENTER_IN,
     },
     {
       kind: "try",
-      body: "흰 센터 막대를 제자리로 올려 보세요.",
-      setup: { alg: setupFor("Rw U2 Rw'") },
-      alg: "Rw U2 Rw'",
+      body: "흰 센터 블럭 하나가 앞면에 남았어요. F로 앞면 오른쪽 아래 칸에, U로 윗면 왼쪽 뒤 칸에 흰색이 아닌 센터 블럭을 두고 2R U 2R'을 쳐 보세요.",
+      setup: { alg: setupFor(CENTER_HOLD) },
+      alg: CENTER_HOLD,
       goal: "yau-ud-centers",
     },
     {
       kind: "try",
-      body: "섞인 4×4에서 흰 센터와 맞은편 노란 센터를 맞춰 보세요.",
+      body: "섞인 4×4에서 흰 센터와 맞은편 노란 센터를 만들어 보세요. 지금 윗면을 흰 면으로 정하고 흰 → 노랑(x2로 위로) 차례로 하나씩 넣어요.",
       setup: { rule: "4x4-random" },
       goal: "yau-ud-centers",
     },
