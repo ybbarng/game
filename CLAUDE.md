@@ -4,6 +4,8 @@
 
 **새 세션은 먼저 [docs/00-handoff.md](docs/00-handoff.md)와 [docs/map.json](docs/map.json)을 읽는다.** 지금 상태, 남은 일, 사용자가 정해야 할 것이 있다.
 
+**일을 시작하기 전에 [docs/standing-rules.md](docs/standing-rules.md)(사용자가 정한 고정 규칙)를 읽는다.** 서브에이전트도 같다. 학습 글·화면 글·큐브 낱말·시험·지도 형식 규칙과 지적 기록이 있다. 사용자가 새 규칙을 정하거나 지적하면 같은 커밋에서 그 파일을 고친다.
+
 ## 구조
 - `apps/web` — Next.js 정적 빌드(`out/`). 화면, 온라인 방(`src/net/`), 내 기록(`src/stats/`), 복기(`src/review/`), 보안 설명(`/security`), 보안 배우기(`/learn`)
 - `packages/engine` 마이티 엔진(순수 함수) · `packages/ai` 마이티 컴퓨터 · `packages/hearts-engine` · `packages/hearts-ai`
@@ -19,9 +21,9 @@
 - 멘탈 포커 계산 시간: `pnpm --filter @game/fair-play bench`
 
 ## 작업 규칙(사용자가 정한 것)
-- `main`에서 바로 작은 단위로 커밋하고 push한다. 커밋 메시지는 한국어, 끝에 Co-Authored-By 줄.
+- 작은 단위로 커밋해 개별 브랜치 PR로 올리고, game 세션(헤드쿼터)이 검토해 머지한다(2026-11-03 사용자 공지, 예전 「main에서 바로 push」는 버림). 커밋 메시지는 한국어, 끝에 Co-Authored-By 줄.
 - push하면 CI가 돈다. **바뀐 것과 그것에 기대는 것만 시험한다(2026-11-04)**: 기준은 마지막으로 CI가 성공한 main 커밋(PR은 base와의 merge-base), 단위 시험은 `vitest --changed`, 화면 시험은 `scripts/affected-e2e.mjs`가 고른 spec만(여러 게임이 쓰는 코드·설정·lockfile이 바뀌면 전부, 문서만이면 없음). 매일 한 번과 손으로 돌리기는 전부(docs/38 16절). **CI가 성공해야** Image 워크플로가 그 커밋으로 이미지를 만들어 서버에 배포한다(2026-10-30, 깨진 커밋이 사이트에 올라가지 않게).
-- **개발 맥의 자원을 아낀다(2026-10-30).** 사용자가 같은 맥으로 다른 일을 한다. 백그라운드 작업은 한 번에 하나씩, 시험·빌드는 `nice -n 15`로, 단위 시험은 바꾼 패키지만, 화면 시험은 바꾼 화면의 spec 하나를 `--workers=1~2`로. 전체 화면 시험은 CI가 맡는다(올리기 전 이 맥에서 돌리지 않는다).
+- **개발 맥의 자원을 아낀다(2026-10-30).** 사용자가 같은 맥으로 다른 일을 한다. 백그라운드 작업은 한 번에 하나씩, 단위 시험은 바꾼 패키지만, 화면 시험은 바꾼 화면의 spec 하나를 **nice 없이** `--workers=1`로(2026-11-09 사용자 결정: nice로 감싸면 자동 권한 판정에 막힌다. 예전 「시험·빌드는 `nice -n 15`」는 버림). 전체 화면 시험은 CI가 맡는다(올리기 전 이 맥에서 돌리지 않는다).
 - push 전 검사(lefthook: lint·typecheck·`test:changed`)는 바뀐 것만 시험해 보통 30초보다 짧다(2026-11-04, 설정 파일을 바꾸면 전부). 시험이 import 대신 파일로 읽는 입력을 새로 두면 `vitest.config.ts`의 `forceRerunTriggers`에 더한다. 예전처럼 오래 걸려 GitHub 연결이 끊기면 시험을 직접 돌려 통과를 확인한 뒤 `--no-verify`로 올린다. 오래 걸리는 시험 파일은 나눠서 동시에 돌게 한다(한 파일 안의 시험은 차례로 돈다).
 - 기능은 따로 말하지 않아도 **마이티와 하트 모두**에 넣는다. 공통 모듈(GameKit, HostRoom, GuestRoom, LocalMatch, 공통 화면 조각)에 두고, 게임마다 다른 부분은 `GameKit`의 필수 항목으로 둔다(`retireAction`, `stats`, `review` 등).
 - 화면을 바꾸면 화면 시험 스크린샷으로 직접 확인한다.
