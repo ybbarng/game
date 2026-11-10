@@ -23,77 +23,84 @@ async function demoUnlock(page: Page, purpose: "create" | "sign") {
 
 const message = (page: Page) => page.locator("[data-director-message]");
 
-test("데모 국장 모드: 국장이 되어 시험 소속을 추가하고, 국장 아닌 패스키는 거절된다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "진행 논리는 데스크톱 하나로 본다",
-  );
-  await page.goto("/stardraw/demo#director");
-  const console = page.locator("[data-director-console]");
-  await expect(console).toBeVisible({ timeout: 30_000 });
+test(
+  "데모 국장 모드: 국장이 되어 시험 소속을 추가하고, 국장 아닌 패스키는 거절된다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 진행 논리는 데스크톱 하나로 본다
+    await page.goto("/stardraw/demo#director");
+    const console = page.locator("[data-director-console]");
+    await expect(console).toBeVisible({ timeout: 30_000 });
 
-  await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
-  await demoUnlock(page, "create");
-  await expect(message(page)).toHaveAttribute("data-director-message", "ok");
-  const fingerprint = await console.locator("[data-fingerprint]").innerText();
-  expect(fingerprint).toMatch(/^국장-/);
-  await expect(console.locator("[data-director-config]")).toContainText(
-    "STARDRAW_DIRECTOR_KEYS=",
-  );
+    await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
+    await demoUnlock(page, "create");
+    await expect(message(page)).toHaveAttribute("data-director-message", "ok");
+    const fingerprint = await console.locator("[data-fingerprint]").innerText();
+    expect(fingerprint).toMatch(/^국장-/);
+    await expect(console.locator("[data-director-config]")).toContainText(
+      "STARDRAW_DIRECTOR_KEYS=",
+    );
 
-  // 아직 국장이 아니다: 서명하면 거절
-  await console
-    .getByRole("button", { name: "국장 패스키로 서명해 예고" })
-    .click();
-  await demoUnlock(page, "sign");
-  await expect(message(page)).toHaveAttribute("data-director-message", "fail");
-  await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
+    // 아직 국장이 아니다: 서명하면 거절
+    await console
+      .getByRole("button", { name: "국장 패스키로 서명해 예고" })
+      .click();
+    await demoUnlock(page, "sign");
+    await expect(message(page)).toHaveAttribute(
+      "data-director-message",
+      "fail",
+    );
+    await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
 
-  await console.getByRole("button", { name: "서버 설정에 넣기(데모)" }).click();
-  await expect(message(page)).toHaveAttribute("data-director-message", "ok");
-  await console.getByRole("button", { name: "예고 건너뛰기" }).click();
-  await expect(message(page)).toContainText("5회차를 건너뛰었습니다", {
-    timeout: 60_000,
-  });
-  await expect(console.locator("[data-director-keys]")).toContainText(
-    `${fingerprint}쓰는 중`,
-  );
+    await console
+      .getByRole("button", { name: "서버 설정에 넣기(데모)" })
+      .click();
+    await expect(message(page)).toHaveAttribute("data-director-message", "ok");
+    await console.getByRole("button", { name: "예고 건너뛰기" }).click();
+    await expect(message(page)).toContainText("5회차를 건너뛰었습니다", {
+      timeout: 60_000,
+    });
+    await expect(console.locator("[data-director-keys]")).toContainText(
+      `${fingerprint}쓰는 중`,
+    );
 
-  // 소속 이름은 빈칸에서 시작한다(서버 설정의 이름과 같게 직접 넣는다)
-  await console.getByLabel("소속 이름", { exact: true }).fill("시험 성단");
-  await console
-    .getByRole("button", { name: "국장 아닌 패스키로 해 보기" })
-    .click();
-  await demoUnlock(page, "sign");
-  await expect(message(page)).toHaveAttribute("data-director-message", "fail");
-  await expect(message(page)).toContainText("국장 열쇠가 아닙니다");
+    // 소속 이름은 빈칸에서 시작한다(서버 설정의 이름과 같게 직접 넣는다)
+    await console.getByLabel("소속 이름", { exact: true }).fill("시험 성단");
+    await console
+      .getByRole("button", { name: "국장 아닌 패스키로 해 보기" })
+      .click();
+    await demoUnlock(page, "sign");
+    await expect(message(page)).toHaveAttribute(
+      "data-director-message",
+      "fail",
+    );
+    await expect(message(page)).toContainText("국장 열쇠가 아닙니다");
 
-  await console
-    .getByRole("button", { name: "국장 패스키로 서명해 예고" })
-    .click();
-  await demoUnlock(page, "sign");
-  await expect(message(page)).toContainText("받았습니다");
-  await expect(console.locator("[data-director-submitted]")).toContainText(
-    "소속 추가",
-  );
-  await console.getByRole("button", { name: "예고 건너뛰기" }).click();
-  await expect(message(page)).toContainText("5회차를 건너뛰었습니다", {
-    timeout: 60_000,
-  });
-  await expect(console.locator("[data-director-affiliations]")).toContainText(
-    "시험 성단",
-  );
-  await expect(
-    console.locator("[data-director-ops] [data-op-status='applied']"),
-  ).toHaveCount(2);
-  await console.scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: info.outputPath("demo-director-mode.png"),
-    fullPage: true,
-  });
-});
+    await console
+      .getByRole("button", { name: "국장 패스키로 서명해 예고" })
+      .click();
+    await demoUnlock(page, "sign");
+    await expect(message(page)).toContainText("받았습니다");
+    await expect(console.locator("[data-director-submitted]")).toContainText(
+      "소속 추가",
+    );
+    await console.getByRole("button", { name: "예고 건너뛰기" }).click();
+    await expect(message(page)).toContainText("5회차를 건너뛰었습니다", {
+      timeout: 60_000,
+    });
+    await expect(console.locator("[data-director-affiliations]")).toContainText(
+      "시험 성단",
+    );
+    await expect(
+      console.locator("[data-director-ops] [data-op-status='applied']"),
+    ).toHaveCount(2);
+    await console.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: info.outputPath("demo-director-mode.png"),
+      fullPage: true,
+    });
+  },
+);
 
 /** 서버의 GET /api/director/state 흉내(1시간 회차 시험 단계 장부, 다음 기록 40회차) */
 function serverState() {
@@ -178,221 +185,222 @@ function serverState() {
   };
 }
 
-test("관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장부의 국장 열쇠로만 서명해 보낸다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "세로 휴대폰과 데스크톱으로 본다",
-  );
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
-  const state = serverState();
-  const sent: string[] = [];
-  await page.route("**/stardraw-api/api/director/state", (route) =>
-    route.fulfill({ json: state }),
-  );
-  // 자격 기간 열기 전에 서버가 만드는 새 도장 열쇠(공개 열쇠 96바이트)
-  await page.route("**/stardraw-api/api/director/qual-key", (route) =>
-    route.fulfill({ json: { issuerKey: "q".repeat(128) } }),
-  );
-  await page.route("**/stardraw-api/api/director/ops", async (route) => {
-    const body = route.request().postDataJSON() as { op: string };
-    sent.push(body.op);
-    await route.fulfill({
-      json: { id: "33".repeat(32), round: 40, effectiveRound: 65 },
+test(
+  "관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장부의 국장 열쇠로만 서명해 보낸다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로 휴대폰과 데스크톱으로 본다
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
     });
-  });
+    const state = serverState();
+    const sent: string[] = [];
+    await page.route("**/stardraw-api/api/director/state", (route) =>
+      route.fulfill({ json: state }),
+    );
+    // 자격 기간 열기 전에 서버가 만드는 새 도장 열쇠(공개 열쇠 96바이트)
+    await page.route("**/stardraw-api/api/director/qual-key", (route) =>
+      route.fulfill({ json: { issuerKey: "q".repeat(128) } }),
+    );
+    await page.route("**/stardraw-api/api/director/ops", async (route) => {
+      const body = route.request().postDataJSON() as { op: string };
+      sent.push(body.op);
+      await route.fulfill({
+        json: { id: "33".repeat(32), round: 40, effectiveRound: 65 },
+      });
+    });
 
-  await page.goto("/stardraw/admin");
-  const console = page.locator("[data-director-console]");
-  await expect(console).toBeVisible();
-  await expect(console).toContainText(
-    "이 화면에서 만든 패스키는 우주국이 지정해야 국장 열쇠가 됩니다",
-  );
-  await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
-  await expect(message(page)).toHaveAttribute("data-director-message", "ok");
-  const fingerprint = await console.locator("[data-fingerprint]").innerText();
-  await expect(console.locator("[data-director-config]")).toContainText(
-    "STARDRAW_DIRECTOR_KEYS=",
-  );
+    await page.goto("/stardraw/admin");
+    const console = page.locator("[data-director-console]");
+    await expect(console).toBeVisible();
+    await expect(console).toContainText(
+      "이 화면에서 만든 패스키는 우주국이 지정해야 국장 열쇠가 됩니다",
+    );
+    await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
+    await expect(message(page)).toHaveAttribute("data-director-message", "ok");
+    const fingerprint = await console.locator("[data-fingerprint]").innerText();
+    await expect(console.locator("[data-director-config]")).toContainText(
+      "STARDRAW_DIRECTOR_KEYS=",
+    );
 
-  // 장부에 아직 없는 열쇠: 고른 뒤 거절하고 서버에 보내지 않는다
-  await console
-    .getByRole("button", { name: "국장 패스키로 서명해 예고" })
-    .click();
-  await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
-  expect(sent).toHaveLength(0);
-  await page.screenshot({
-    path: info.outputPath("admin-new-key.png"),
-    fullPage: true,
-  });
+    // 장부에 아직 없는 열쇠: 고른 뒤 거절하고 서버에 보내지 않는다
+    await console
+      .getByRole("button", { name: "국장 패스키로 서명해 예고" })
+      .click();
+    await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
+    expect(sent).toHaveLength(0);
+    await page.screenshot({
+      path: info.outputPath("admin-new-key.png"),
+      fullPage: true,
+    });
 
-  // 장부에 지정돼 쓰는 중이 되면 서명해 보낸다
-  const saved = await page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem("stardraw-director-keys") ?? "[]") as {
-        c: string;
-        p: string;
-      }[],
-  );
-  state.view.directors = [
-    {
-      pub: saved[0]?.p,
-      credentialId: saved[0]?.c,
-      fingerprint,
-      from: 30,
-      until: null,
-    },
-  ];
-  await page.reload();
-  await expect(console.locator("[data-director-keys]")).toContainText(
-    `${fingerprint}쓰는 중`,
-  );
-  await console.getByLabel("소속 이름", { exact: true }).fill("시험 성단");
-  await console
-    .getByRole("button", { name: "국장 패스키로 서명해 예고" })
-    .click();
-  await expect(message(page)).toContainText("받았습니다");
-  expect(sent).toHaveLength(1);
-  // 상품 자격(docs/36 11-13): 효력이 생긴 소속에 1년 자격 기간을 연다(서버가 만든 도장 열쇠를 넣어 서명)
-  await console
-    .locator("[data-director-affiliations] li")
-    .filter({ hasText: "시험 성단" })
-    .getByRole("button", { name: "자격 기간 열기(1년)" })
-    .click();
-  await expect(message(page)).toContainText("받았습니다");
-  expect(sent).toHaveLength(2);
-  await expect(
-    console.locator("[data-live-start] option").first(),
-  ).toContainText("시작 · 사슬");
-  // 관인 교체(docs/36 11-25): 서버에 다음 관인 열쇠가 있을 때만 버튼이 생긴다
-  await expect(console.locator("[data-seal-rotate]")).toHaveCount(0);
-  state.nextSeal = {
-    pub: Buffer.alloc(65, 4).toString("base64url"),
-    fingerprint: "관인-TEST-TEST-TEST",
-    proof: Buffer.alloc(64, 1).toString("base64url"),
-  };
-  await page.reload();
-  await expect(console.locator("[data-seal-current]")).toContainText("관인-");
-  await console.getByRole("button", { name: "관인 교체" }).click();
-  await expect(message(page)).toContainText("받았습니다");
-  expect(sent).toHaveLength(3);
-  const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: info.outputPath("admin.png"), fullPage: true });
-});
+    // 장부에 지정돼 쓰는 중이 되면 서명해 보낸다
+    const saved = await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("stardraw-director-keys") ?? "[]") as {
+          c: string;
+          p: string;
+        }[],
+    );
+    state.view.directors = [
+      {
+        pub: saved[0]?.p,
+        credentialId: saved[0]?.c,
+        fingerprint,
+        from: 30,
+        until: null,
+      },
+    ];
+    await page.reload();
+    await expect(console.locator("[data-director-keys]")).toContainText(
+      `${fingerprint}쓰는 중`,
+    );
+    await console.getByLabel("소속 이름", { exact: true }).fill("시험 성단");
+    await console
+      .getByRole("button", { name: "국장 패스키로 서명해 예고" })
+      .click();
+    await expect(message(page)).toContainText("받았습니다");
+    expect(sent).toHaveLength(1);
+    // 상품 자격(docs/36 11-13): 효력이 생긴 소속에 1년 자격 기간을 연다(서버가 만든 도장 열쇠를 넣어 서명)
+    await console
+      .locator("[data-director-affiliations] li")
+      .filter({ hasText: "시험 성단" })
+      .getByRole("button", { name: "자격 기간 열기(1년)" })
+      .click();
+    await expect(message(page)).toContainText("받았습니다");
+    expect(sent).toHaveLength(2);
+    await expect(
+      console.locator("[data-live-start] option").first(),
+    ).toContainText("시작 · 사슬");
+    // 관인 교체(docs/36 11-25): 서버에 다음 관인 열쇠가 있을 때만 버튼이 생긴다
+    await expect(console.locator("[data-seal-rotate]")).toHaveCount(0);
+    state.nextSeal = {
+      pub: Buffer.alloc(65, 4).toString("base64url"),
+      fingerprint: "관인-TEST-TEST-TEST",
+      proof: Buffer.alloc(64, 1).toString("base64url"),
+    };
+    await page.reload();
+    await expect(console.locator("[data-seal-current]")).toContainText("관인-");
+    await console.getByRole("button", { name: "관인 교체" }).click();
+    await expect(message(page)).toContainText("받았습니다");
+    expect(sent).toHaveLength(3);
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+    await page.screenshot({
+      path: info.outputPath("admin.png"),
+      fullPage: true,
+    });
+  },
+);
 
-test("관리 화면: 소속 다시 발급 허락(docs/36 11-27) — 회사 이메일을 넣어 국장 패스키로 서명해 보낸다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "세로 휴대폰과 데스크톱으로 본다",
-  );
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
-  const state = serverState();
-  const affiliation = state.view.affiliations[0];
-  if (affiliation) affiliation.method = "기관 계정";
-  const periodId = "44".repeat(32);
-  state.view.periods = [
-    {
-      id: periodId,
-      affiliation: "11".repeat(32),
-      affiliationName: "시험 성단",
-      number: 1,
-      startsAt: state.now - 86400,
-      endsAt: state.now + 300 * 86400,
-      issuerKey: "q".repeat(128),
-      from: 30,
-      issued: 12,
-      reissued: 1,
-    },
-  ];
-  const requests: Record<string, string>[] = [];
-  await page.route("**/stardraw-api/api/director/state", (route) =>
-    route.fulfill({ json: state }),
-  );
-  await page.route(
-    "**/stardraw-api/api/director/qual-reissue",
-    async (route) => {
-      requests.push(route.request().postDataJSON() as Record<string, string>);
-      await route.fulfill({ json: { allowed: true } });
-    },
-  );
+test(
+  "관리 화면: 소속 다시 발급 허락(docs/36 11-27) — 회사 이메일을 넣어 국장 패스키로 서명해 보낸다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로 휴대폰과 데스크톱으로 본다
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    });
+    const state = serverState();
+    const affiliation = state.view.affiliations[0];
+    if (affiliation) affiliation.method = "기관 계정";
+    const periodId = "44".repeat(32);
+    state.view.periods = [
+      {
+        id: periodId,
+        affiliation: "11".repeat(32),
+        affiliationName: "시험 성단",
+        number: 1,
+        startsAt: state.now - 86400,
+        endsAt: state.now + 300 * 86400,
+        issuerKey: "q".repeat(128),
+        from: 30,
+        issued: 12,
+        reissued: 1,
+      },
+    ];
+    const requests: Record<string, string>[] = [];
+    await page.route("**/stardraw-api/api/director/state", (route) =>
+      route.fulfill({ json: state }),
+    );
+    await page.route(
+      "**/stardraw-api/api/director/qual-reissue",
+      async (route) => {
+        requests.push(route.request().postDataJSON() as Record<string, string>);
+        await route.fulfill({ json: { allowed: true } });
+      },
+    );
 
-  await page.goto("/stardraw/admin");
-  const console = page.locator("[data-director-console]");
-  await expect(console).toBeVisible();
-  await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
-  await expect(message(page)).toHaveAttribute("data-director-message", "ok");
-  const fingerprint = await console.locator("[data-fingerprint]").innerText();
-  const saved = await page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem("stardraw-director-keys") ?? "[]") as {
-        c: string;
-        p: string;
-      }[],
-  );
-  state.view.directors = [
-    {
-      pub: saved[0]?.p,
-      credentialId: saved[0]?.c,
-      fingerprint,
-      from: 30,
-      until: null,
-    },
-  ];
-  await page.reload();
-  await expect(console.locator("[data-director-period]")).toContainText(
-    "발급 12 · 다시 발급 1",
-  );
-  const form = console.locator("[data-director-reissue]");
-  await expect(
-    form.getByRole("button", { name: "서명하고 허락" }),
-  ).toBeDisabled();
-  await form.getByLabel("다시 발급할 회사 이메일").fill("ivy@example.com");
-  await form.getByRole("button", { name: "서명하고 허락" }).click();
-  await expect(message(page)).toContainText(
-    "ivy@example.com에 1기 다시 발급을 허락했습니다",
-  );
-  expect(requests).toHaveLength(1);
-  expect(requests[0]).toMatchObject({ periodId, email: "ivy@example.com" });
-  expect(requests[0]?.signature).toBeTruthy();
-  await expect(form.getByLabel("다시 발급할 회사 이메일")).toHaveValue("");
-  const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(1);
-  await page.screenshot({
-    path: info.outputPath("admin-reissue.png"),
-    fullPage: true,
-  });
-});
+    await page.goto("/stardraw/admin");
+    const console = page.locator("[data-director-console]");
+    await expect(console).toBeVisible();
+    await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
+    await expect(message(page)).toHaveAttribute("data-director-message", "ok");
+    const fingerprint = await console.locator("[data-fingerprint]").innerText();
+    const saved = await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("stardraw-director-keys") ?? "[]") as {
+          c: string;
+          p: string;
+        }[],
+    );
+    state.view.directors = [
+      {
+        pub: saved[0]?.p,
+        credentialId: saved[0]?.c,
+        fingerprint,
+        from: 30,
+        until: null,
+      },
+    ];
+    await page.reload();
+    await expect(console.locator("[data-director-period]")).toContainText(
+      "발급 12 · 다시 발급 1",
+    );
+    const form = console.locator("[data-director-reissue]");
+    await expect(
+      form.getByRole("button", { name: "서명하고 허락" }),
+    ).toBeDisabled();
+    await form.getByLabel("다시 발급할 회사 이메일").fill("ivy@example.com");
+    await form.getByRole("button", { name: "서명하고 허락" }).click();
+    await expect(message(page)).toContainText(
+      "ivy@example.com에 1기 다시 발급을 허락했습니다",
+    );
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ periodId, email: "ivy@example.com" });
+    expect(requests[0]?.signature).toBeTruthy();
+    await expect(form.getByLabel("다시 발급할 회사 이메일")).toHaveValue("");
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+    await page.screenshot({
+      path: info.outputPath("admin-reissue.png"),
+      fullPage: true,
+    });
+  },
+);

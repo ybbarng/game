@@ -7,8 +7,8 @@ import { expect, test } from "./test";
  * 판정은 순수 함수 시험(keys/*.test.ts, keymap-conflict.test.ts)이 맡고, 여기서는 화면에 이어졌는지만 본다.
  */
 
-test.beforeEach(async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 기기만");
+// 키보드 기기만(e2e/projects.ts FILE_ONLY)
+test.beforeEach(async ({ page }) => {
   await no3d(page);
 });
 

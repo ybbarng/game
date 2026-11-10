@@ -73,128 +73,140 @@ async function soloKeys(page: Page, phone: boolean) {
   return keys;
 }
 
-test("혼자 맞추기 「두 손」: 면은 바탕, x·y·z·M·E·S는 선, Shift 층은 누르는 동안만", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "세로·PC만");
-  const phone = info.project.name === "phone-portrait";
-  const keys = await soloKeys(page, phone);
-  const key = (code: string) => keys.locator(`[data-key="${code}"]`);
+test(
+  "혼자 맞추기 「두 손」: 면은 바탕, x·y·z·M·E·S는 선, Shift 층은 누르는 동안만",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로·PC만
+    const phone = info.project.name === "phone-portrait";
+    const keys = await soloKeys(page, phone);
+    const key = (code: string) => keys.locator(`[data-key="${code}"]`);
 
-  // R(I)은 빨강(면 1), R'(K)은 같은 색을 흐리게. 면 돌리기는 바탕에 색이 있고 선은 없다
-  await expect(key("KeyI")).toHaveAttribute("data-key-paint", "1");
-  await expect(key("KeyK")).toHaveAttribute("data-key-paint", "1'");
-  await expect(key("KeyI").locator("[data-key-mark]")).toHaveCount(0);
-  const bg = (code: string) =>
-    key(code).evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(await bg("KeyI")).not.toBe(await bg("KeyK"));
-  // 표준 배색은 사선 무늬가 없다
-  await expect(keys.locator("[data-key-stripe]")).toHaveCount(0);
-  await expect(key("KeyI").locator("[data-key-label]")).toHaveText("R");
-  await expect(key("KeyI")).not.toContainText("Rw");
-  // 키 글자와 수가 다르면(L 키 = D') 키 글자는 작게 따로
-  await expect(key("KeyL").locator("[data-key-cap]")).toHaveText("L");
-  await expect(key("KeyL").locator("[data-key-label]")).toHaveText("D'");
-  // 큐브 돌리기(T = x)는 R 색 점선, 가운데 층(M·E·S)은 가운데 짧은 선. 그 칸 바탕은 무채색
-  await expect(key("KeyT")).toHaveAttribute("data-key-paint", "sweep");
-  await expect(
-    key("KeyT").locator('[data-key-mark-shape="dotted"]'),
-  ).toHaveCount(1);
-  await expect(keys.locator('[data-key-mark-shape="short"]')).not.toHaveCount(
-    0,
-  );
-  await expect(keys.locator('[data-key-mark-shape="solid"]')).toHaveCount(0);
-  // 맞추는 화면은 손가락 자리를 기본으로 끈다(면 색처럼 보여 헷갈렸다)
-  await expect(keys.locator("[data-key-finger]")).toHaveCount(0);
-  // 동작 없는 키(3×3의 3)는 흐리게
-  await expect(key("Digit3")).toHaveAttribute("data-key-idle", "");
-  await snap(page, "[data-cube-keys]", "solo-two-hand", info.project.name);
-
-  if (!phone) {
-    // Shift를 누르는 동안 넓게(Rw)가 보인다
-    await page.keyboard.down("Shift");
-    await expect(key("KeyI").locator("[data-key-label]")).toHaveText("Rw");
-    await snap(page, "[data-cube-keys]", "solo-shift", info.project.name);
-    await page.keyboard.up("Shift");
+    // R(I)은 빨강(면 1), R'(K)은 같은 색을 흐리게. 면 돌리기는 바탕에 색이 있고 선은 없다
+    await expect(key("KeyI")).toHaveAttribute("data-key-paint", "1");
+    await expect(key("KeyK")).toHaveAttribute("data-key-paint", "1'");
+    await expect(key("KeyI").locator("[data-key-mark]")).toHaveCount(0);
+    const bg = (code: string) =>
+      key(code).evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(await bg("KeyI")).not.toBe(await bg("KeyK"));
+    // 표준 배색은 사선 무늬가 없다
+    await expect(keys.locator("[data-key-stripe]")).toHaveCount(0);
     await expect(key("KeyI").locator("[data-key-label]")).toHaveText("R");
-  }
-});
+    await expect(key("KeyI")).not.toContainText("Rw");
+    // 키 글자와 수가 다르면(L 키 = D') 키 글자는 작게 따로
+    await expect(key("KeyL").locator("[data-key-cap]")).toHaveText("L");
+    await expect(key("KeyL").locator("[data-key-label]")).toHaveText("D'");
+    // 큐브 돌리기(T = x)는 R 색 점선, 가운데 층(M·E·S)은 가운데 짧은 선. 그 칸 바탕은 무채색
+    await expect(key("KeyT")).toHaveAttribute("data-key-paint", "sweep");
+    await expect(
+      key("KeyT").locator('[data-key-mark-shape="dotted"]'),
+    ).toHaveCount(1);
+    await expect(keys.locator('[data-key-mark-shape="short"]')).not.toHaveCount(
+      0,
+    );
+    await expect(keys.locator('[data-key-mark-shape="solid"]')).toHaveCount(0);
+    // 맞추는 화면은 손가락 자리를 기본으로 끈다(면 색처럼 보여 헷갈렸다)
+    await expect(keys.locator("[data-key-finger]")).toHaveCount(0);
+    // 동작 없는 키(3×3의 3)는 흐리게
+    await expect(key("Digit3")).toHaveAttribute("data-key-idle", "");
+    await snap(page, "[data-cube-keys]", "solo-two-hand", info.project.name);
 
-test("혼자 맞추기 「표기」: 키 글자와 수가 같으면 한 번만", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "세로·PC만");
-  await setup(page, { preset: "notation" });
-  const keys = await soloKeys(page, info.project.name === "phone-portrait");
-  const key = (code: string) => keys.locator(`[data-key="${code}"]`);
-  await expect(key("KeyR").locator("[data-key-label]")).toHaveText("R");
-  await expect(key("KeyR").locator("[data-key-cap]")).toHaveCount(0);
-  await expect(key("KeyR")).not.toContainText("R'");
-  await snap(page, "[data-cube-keys]", "solo-notation", info.project.name);
-});
+    if (!phone) {
+      // Shift를 누르는 동안 넓게(Rw)가 보인다
+      await page.keyboard.down("Shift");
+      await expect(key("KeyI").locator("[data-key-label]")).toHaveText("Rw");
+      await snap(page, "[data-cube-keys]", "solo-shift", info.project.name);
+      await page.keyboard.up("Shift");
+      await expect(key("KeyI").locator("[data-key-label]")).toHaveText("R");
+    }
+  },
+);
+
+test(
+  "혼자 맞추기 「표기」: 키 글자와 수가 같으면 한 번만",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로·PC만
+    await setup(page, { preset: "notation" });
+    const keys = await soloKeys(page, info.project.name === "phone-portrait");
+    const key = (code: string) => keys.locator(`[data-key="${code}"]`);
+    await expect(key("KeyR").locator("[data-key-label]")).toHaveText("R");
+    await expect(key("KeyR").locator("[data-key-cap]")).toHaveCount(0);
+    await expect(key("KeyR")).not.toContainText("R'");
+    await snap(page, "[data-cube-keys]", "solo-notation", info.project.name);
+  },
+);
 
 for (const scheme of ["highContrast", "colorblind"] as const) {
-  test(`혼자 맞추기 키 그림(${scheme}): 주황 칸에만 사선 무늬`, async ({
-    page,
-  }, info) => {
-    test.skip(info.project.name === "phone-landscape", "세로·PC만");
-    await setup(page, { scheme });
-    const keys = await soloKeys(page, info.project.name === "phone-portrait");
-    await expect(keys.locator('[data-key="KeyI"]')).toHaveAttribute(
-      "data-key-paint",
-      "1",
-    );
-    // 무늬는 주황(L 면 색) 칸에만, 반대 방향(')에도 같은 무늬
-    const striped = keys.locator("[data-key-stripe]");
-    await expect(striped).not.toHaveCount(0);
-    await expect(
-      keys.locator('[data-key-stripe][data-key-paint="4\'"]'),
-    ).not.toHaveCount(0);
-    for (const el of await striped.all()) {
-      await expect(el).toHaveAttribute("data-key-paint", /^4'?$/);
-      expect(
-        await el.evaluate((e) => getComputedStyle(e).backgroundImage),
-      ).toContain("repeating-linear-gradient");
-    }
-    await snap(page, "[data-cube-keys]", `solo-${scheme}`, info.project.name);
-  });
+  test(
+    `혼자 맞추기 키 그림(${scheme}): 주황 칸에만 사선 무늬`,
+    { tag: "@no-phone-landscape" },
+    async ({ page }, info) => {
+      // 세로·PC만
+      await setup(page, { scheme });
+      const keys = await soloKeys(page, info.project.name === "phone-portrait");
+      await expect(keys.locator('[data-key="KeyI"]')).toHaveAttribute(
+        "data-key-paint",
+        "1",
+      );
+      // 무늬는 주황(L 면 색) 칸에만, 반대 방향(')에도 같은 무늬
+      const striped = keys.locator("[data-key-stripe]");
+      await expect(striped).not.toHaveCount(0);
+      await expect(
+        keys.locator('[data-key-stripe][data-key-paint="4\'"]'),
+      ).not.toHaveCount(0);
+      for (const el of await striped.all()) {
+        await expect(el).toHaveAttribute("data-key-paint", /^4'?$/);
+        expect(
+          await el.evaluate((e) => getComputedStyle(e).backgroundImage),
+        ).toContain("repeating-linear-gradient");
+      }
+      await snap(page, "[data-cube-keys]", `solo-${scheme}`, info.project.name);
+    },
+  );
 }
 
-test("배우기 해 보기: 같은 키 그림", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "PC만");
-  await page.goto("/cube/learn?lesson=333-white-cross");
-  const count = await page.locator('[aria-label="단계"] li').count();
-  await goStep(page, count - 1);
-  const keys = page.locator("[data-cube-keys]");
-  await expect(keys).toBeVisible();
-  await expect(keys.locator('[data-key="KeyI"] [data-key-label]')).toHaveText(
-    "R",
-  );
-  await expect(keys.locator("[data-key-finger]")).toHaveCount(0);
-  await snap(page, "[data-cube-keys]", "learn", info.project.name);
-});
+test(
+  "배우기 해 보기: 같은 키 그림",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // PC만
+    await page.goto("/cube/learn?lesson=333-white-cross");
+    const count = await page.locator('[aria-label="단계"] li').count();
+    await goStep(page, count - 1);
+    const keys = page.locator("[data-cube-keys]");
+    await expect(keys).toBeVisible();
+    await expect(keys.locator('[data-key="KeyI"] [data-key-label]')).toHaveText(
+      "R",
+    );
+    await expect(keys.locator("[data-key-finger]")).toHaveCount(0);
+    await snap(page, "[data-cube-keys]", "learn", info.project.name);
+  },
+);
 
-test("키 익히기는 같은 규칙에 손가락 자리, 단축키 표 「모두」는 층마다 적는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "세로·PC만");
-  const phone = info.project.name === "phone-portrait";
-  await page.goto("/cube/intro?part=keys");
-  await expect(page.locator("[data-keys-ready]")).toBeVisible();
-  const sel = phone ? "[data-cube-keys]" : "[data-keyboard-map]";
-  const map = page.locator(sel);
-  await expect(map).toBeVisible();
-  // Shift 층(Rw)은 누르기 전에는 없다
-  await expect(map.locator('[data-key="KeyI"]')).not.toContainText("Rw");
-  // 키를 익히는 화면은 손가락 자리가 늘 보인다
-  await expect(map.locator("[data-key-finger]")).not.toHaveCount(0);
-  await snap(page, sel, "keys-learn", info.project.name);
-  await page.goto("/cube/keys");
-  const table = page.locator("[data-keyboard-map]");
-  await expect(table).toBeVisible();
-  await expect(
-    table.locator('[data-key="KeyI"] [data-layer-line="shift"]'),
-  ).toHaveText("Rw");
-  await expect(table.locator("[data-key-finger]")).not.toHaveCount(0);
-  await snap(page, "[data-keyboard-map]", "keys-table", info.project.name);
-});
+test(
+  "키 익히기는 같은 규칙에 손가락 자리, 단축키 표 「모두」는 층마다 적는다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로·PC만
+    const phone = info.project.name === "phone-portrait";
+    await page.goto("/cube/intro?part=keys");
+    await expect(page.locator("[data-keys-ready]")).toBeVisible();
+    const sel = phone ? "[data-cube-keys]" : "[data-keyboard-map]";
+    const map = page.locator(sel);
+    await expect(map).toBeVisible();
+    // Shift 층(Rw)은 누르기 전에는 없다
+    await expect(map.locator('[data-key="KeyI"]')).not.toContainText("Rw");
+    // 키를 익히는 화면은 손가락 자리가 늘 보인다
+    await expect(map.locator("[data-key-finger]")).not.toHaveCount(0);
+    await snap(page, sel, "keys-learn", info.project.name);
+    await page.goto("/cube/keys");
+    const table = page.locator("[data-keyboard-map]");
+    await expect(table).toBeVisible();
+    await expect(
+      table.locator('[data-key="KeyI"] [data-layer-line="shift"]'),
+    ).toHaveText("Rw");
+    await expect(table.locator("[data-key-finger]")).not.toHaveCount(0);
+    await snap(page, "[data-keyboard-map]", "keys-table", info.project.name);
+  },
+);

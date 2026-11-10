@@ -34,90 +34,94 @@ async function noWebGl(page: Page) {
   });
 }
 
-test("3D를 못 그리는 기기도 안내를 보이고 키는 그대로 센다(큰 큐브도)", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await noWebGl(page);
-  await page.goto("/cube/lab");
-  const stage = stageOf(page);
-  await expect(stage).toHaveAttribute("data-cube-moves", "0");
-  await expect(page.locator("[data-cube-no3d]")).toBeVisible();
-  await expect(page.locator("[data-cube-canvas]")).toBeHidden();
+test(
+  "3D를 못 그리는 기기도 안내를 보이고 키는 그대로 센다(큰 큐브도)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await noWebGl(page);
+    await page.goto("/cube/lab");
+    const stage = stageOf(page);
+    await expect(stage).toHaveAttribute("data-cube-moves", "0");
+    await expect(page.locator("[data-cube-no3d]")).toBeVisible();
+    await expect(page.locator("[data-cube-canvas]")).toBeHidden();
 
-  // 「두 손」 배치: I = R, J = U, ; = y, ⌫ = 되돌리기
-  await page.keyboard.press("KeyI");
-  await expect(stage).toHaveAttribute("data-cube-moves", "1");
-  await page.keyboard.press("KeyJ");
-  await page.keyboard.press("Semicolon");
-  await expect(stage).toHaveAttribute("data-cube-moves", "3");
-  await page.keyboard.press("Backspace");
-  await expect(stage).toHaveAttribute("data-cube-moves", "4");
-  // 되풀이 누름(키를 누르고 있기)은 세지 않는다
-  await page.keyboard.down("KeyH");
-  await page.keyboard.down("KeyH");
-  await page.keyboard.up("KeyH");
-  await expect(stage).toHaveAttribute("data-cube-moves", "5");
-  if (SAVE_SCREENSHOTS)
-    await page.screenshot({
-      path: `test-results/screens/cube-lab-no3d-${info.project.name}.png`,
-      fullPage: true,
+    // 「두 손」 배치: I = R, J = U, ; = y, ⌫ = 되돌리기
+    await page.keyboard.press("KeyI");
+    await expect(stage).toHaveAttribute("data-cube-moves", "1");
+    await page.keyboard.press("KeyJ");
+    await page.keyboard.press("Semicolon");
+    await expect(stage).toHaveAttribute("data-cube-moves", "3");
+    await page.keyboard.press("Backspace");
+    await expect(stage).toHaveAttribute("data-cube-moves", "4");
+    // 되풀이 누름(키를 누르고 있기)은 세지 않는다
+    await page.keyboard.down("KeyH");
+    await page.keyboard.down("KeyH");
+    await page.keyboard.up("KeyH");
+    await expect(stage).toHaveAttribute("data-cube-moves", "5");
+    if (SAVE_SCREENSHOTS)
+      await page.screenshot({
+        path: `test-results/screens/cube-lab-no3d-${info.project.name}.png`,
+        fullPage: true,
+      });
+
+    // 큰 큐브: 크기를 바꾸면 새로 센다, Shift+I = 2R
+    await page.locator("[data-cube-size]").selectOption("5");
+    await expect(stage).toHaveAttribute("data-cube-moves", "0");
+    await page.keyboard.press("Shift+KeyI");
+    await page.keyboard.press("KeyJ");
+    await page.keyboard.press("KeyH");
+    await expect(stage).toHaveAttribute("data-cube-moves", "3");
+    await expect(page.locator("[data-cube-no3d]")).toBeVisible();
+  },
+);
+
+test(
+  "3D가 되면 장면이 친 수를 따라 그리고, 문맥을 잃으면 안내로 바뀐다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await page.goto("/cube/lab");
+    const stage = stageOf(page);
+    await expect(stage).toHaveAttribute("data-cube-moves", "0");
+    // 그림이 뜨기 전에 칠 수도 있다(뜬 뒤 따라잡는다)
+    await page.keyboard.press("KeyI");
+    await page.keyboard.press("KeyJ");
+    await expect(stage).toHaveAttribute("data-cube-moves", "2");
+
+    // 그림: 3D가 뜨거나, 못 그린다는 안내가 뜨거나
+    const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
+    const noGl = page.locator("[data-cube-no3d]");
+    await expect(canvas.or(noGl)).toBeVisible({ timeout: FIRST_DRAW_LIMIT });
+    if (!(await canvas.isVisible())) {
+      info.annotations.push({ type: "3D", description: "이 환경은 3D 없음" });
+      return;
+    }
+    await expect(canvas).toHaveAttribute("data-cube-drawn", "2");
+    await page.keyboard.press("KeyI");
+    await expect(stage).toHaveAttribute("data-cube-moves", "3");
+    await expect(canvas).toHaveAttribute("data-cube-drawn", "3");
+    if (SAVE_SCREENSHOTS) {
+      await page.screenshot({
+        path: `test-results/screens/cube-lab-3-${info.project.name}.png`,
+        fullPage: true,
+      });
+      await page.getByLabel("스티커 없는 모양").check();
+      await page.screenshot({
+        path: `test-results/screens/cube-lab-3-stickerless-${info.project.name}.png`,
+        fullPage: true,
+      });
+    }
+
+    // 그리던 중 WebGL 문맥을 잃으면 안내로 바뀌고, 키는 그대로 센다
+    await page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>("[data-cube-canvas]");
+      const gl = c?.getContext("webgl2") ?? c?.getContext("webgl");
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
     });
-
-  // 큰 큐브: 크기를 바꾸면 새로 센다, Shift+I = 2R
-  await page.locator("[data-cube-size]").selectOption("5");
-  await expect(stage).toHaveAttribute("data-cube-moves", "0");
-  await page.keyboard.press("Shift+KeyI");
-  await page.keyboard.press("KeyJ");
-  await page.keyboard.press("KeyH");
-  await expect(stage).toHaveAttribute("data-cube-moves", "3");
-  await expect(page.locator("[data-cube-no3d]")).toBeVisible();
-});
-
-test("3D가 되면 장면이 친 수를 따라 그리고, 문맥을 잃으면 안내로 바뀐다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.goto("/cube/lab");
-  const stage = stageOf(page);
-  await expect(stage).toHaveAttribute("data-cube-moves", "0");
-  // 그림이 뜨기 전에 칠 수도 있다(뜬 뒤 따라잡는다)
-  await page.keyboard.press("KeyI");
-  await page.keyboard.press("KeyJ");
-  await expect(stage).toHaveAttribute("data-cube-moves", "2");
-
-  // 그림: 3D가 뜨거나, 못 그린다는 안내가 뜨거나
-  const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
-  const noGl = page.locator("[data-cube-no3d]");
-  await expect(canvas.or(noGl)).toBeVisible({ timeout: FIRST_DRAW_LIMIT });
-  if (!(await canvas.isVisible())) {
-    info.annotations.push({ type: "3D", description: "이 환경은 3D 없음" });
-    return;
-  }
-  await expect(canvas).toHaveAttribute("data-cube-drawn", "2");
-  await page.keyboard.press("KeyI");
-  await expect(stage).toHaveAttribute("data-cube-moves", "3");
-  await expect(canvas).toHaveAttribute("data-cube-drawn", "3");
-  if (SAVE_SCREENSHOTS) {
-    await page.screenshot({
-      path: `test-results/screens/cube-lab-3-${info.project.name}.png`,
-      fullPage: true,
-    });
-    await page.getByLabel("스티커 없는 모양").check();
-    await page.screenshot({
-      path: `test-results/screens/cube-lab-3-stickerless-${info.project.name}.png`,
-      fullPage: true,
-    });
-  }
-
-  // 그리던 중 WebGL 문맥을 잃으면 안내로 바뀌고, 키는 그대로 센다
-  await page.evaluate(() => {
-    const c = document.querySelector<HTMLCanvasElement>("[data-cube-canvas]");
-    const gl = c?.getContext("webgl2") ?? c?.getContext("webgl");
-    gl?.getExtension("WEBGL_lose_context")?.loseContext();
-  });
-  await expect(noGl).toBeVisible();
-  await expect(canvas).toHaveCount(0);
-  await page.keyboard.press("KeyI");
-  await expect(stage).toHaveAttribute("data-cube-moves", "4");
-});
+    await expect(noGl).toBeVisible();
+    await expect(canvas).toHaveCount(0);
+    await page.keyboard.press("KeyI");
+    await expect(stage).toHaveAttribute("data-cube-moves", "4");
+  },
+);

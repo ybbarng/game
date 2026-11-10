@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -9,10 +8,23 @@ import { beforeEach, describe, expect, it } from "vitest";
  * 해시 붙은 빌드 결과물만 저장본 먼저, 이름이 고정인 파일은 네트워크 먼저, 워커 스크립트는 새 응답으로 감싸기.
  */
 
-const SOURCE = readFileSync(
-  new URL("../public/sw.js", import.meta.url),
-  "utf8",
-);
+declare global {
+  interface ImportMeta {
+    glob<T>(
+      pattern: string | string[],
+      options: { query: "?raw"; import: "default"; eager: true },
+    ): Record<string, T>;
+  }
+}
+
+// import.meta.glob(?raw)으로 읽어 모듈 그래프에 잡히게 한다. sw.js가 바뀌면 `vitest --changed`가 이 시험만 돌린다(2026-11-10)
+const SOURCE = Object.values(
+  import.meta.glob<string>("../public/sw.js", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+)[0] as string;
 const ORIGIN = "https://game.example";
 
 type Handler = (event: unknown) => void;

@@ -181,26 +181,28 @@ test("움직임 줄이기를 켜면 섞고 나눠 주는 연출 없이 바로 �
   });
 });
 
-test("연출을 켜면 섞고 나눠 주는 장면을 지나 공약을 정한다", async ({
-  page,
-}, testInfo) => {
-  // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 연출이 있는 길은 여기서 한 번 본다.
-  test.skip(testInfo.project.name !== "desktop", "데스크톱에서만 돌린다");
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.addInitScript(() => {
-    sessionStorage.setItem("mighty-splash-seen", "1");
-    localStorage.setItem(
-      "mighty-settings",
-      JSON.stringify({ state: { speed: 1.6, sound: false }, version: 0 }),
-    );
-  });
-  await page.goto("/mighty");
-  await startSolo(page);
-  // 나눠 주는 연출이 돌고, 끝나면 사라지고 공약을 정한다.
-  await expect(page.locator("[data-dealing]")).toHaveCount(1);
-  await page.screenshot({ path: testInfo.outputPath("dealing.png") });
-  await expect(page.getByText("공약을 정하세요")).toBeVisible({
-    timeout: 20_000,
-  });
-  await expect(page.locator("[data-dealing]")).toHaveCount(0);
-});
+test(
+  "연출을 켜면 섞고 나눠 주는 장면을 지나 공약을 정한다",
+  { tag: "@only-desktop" },
+  async ({ page }, testInfo) => {
+    // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 연출이 있는 길은 여기서 한 번 본다.
+    // 데스크톱에서만 돌린다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.addInitScript(() => {
+      sessionStorage.setItem("mighty-splash-seen", "1");
+      localStorage.setItem(
+        "mighty-settings",
+        JSON.stringify({ state: { speed: 1.6, sound: false }, version: 0 }),
+      );
+    });
+    await page.goto("/mighty");
+    await startSolo(page);
+    // 나눠 주는 연출이 돌고, 끝나면 사라지고 공약을 정한다.
+    await expect(page.locator("[data-dealing]")).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath("dealing.png") });
+    await expect(page.getByText("공약을 정하세요")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-dealing]")).toHaveCount(0);
+  },
+);

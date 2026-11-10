@@ -228,134 +228,143 @@ test("하트: 키보드로 넘기고 내며, 터치로 끌어 낸다", async ({ 
   await expectPlayed(page, dragged, box.y);
 });
 
-test("하트: 방장이 방을 만들고 친구가 들어와 한 판을 둔다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest]) {
-    p.on("pageerror", (e) => errors.push(e.message));
-    await prepare(p);
-  }
-  await host.goto("/hearts?net=local");
-  await host.getByRole("button", { name: /다함께 하트/ }).click();
-  await host.getByPlaceholder("친구들에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/hearts");
-  expect(link).toContain("room=");
-  // 링크 복사가 기본 단추다.
-  await host.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await host.getByRole("button", { name: "복사", exact: true }).click();
-  await expect(host.getByRole("button", { name: "복사됨" })).toBeVisible();
-  expect(await host.evaluate(() => navigator.clipboard.readText())).toBe(link);
-
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구들에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(guest.getByText("방장이 시작하기를 기다리는 중")).toBeVisible();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
-  await expect(guest.getByRole("button", { name: "점수판" })).toBeVisible();
-
-  // 방장이 먼저 넘기면, 넘긴 세 장은 손패에서 빠져 "넘김" 표를 달고 모여 있다.
-  // 암호화 방은 함께 섞고 나누는 데 시간이 걸린다.
-  await expect(
-    host.getByRole("button", { name: "넘기기", exact: true }),
-  ).toBeVisible({ timeout: 60_000 });
-  await stepOnce(host);
-  await expect(host.getByText("다른 사람이 카드를 고르는 중")).toBeVisible();
-  await expect(host.getByText("넘김", { exact: true })).toHaveCount(3);
-  await host.screenshot({ path: info.outputPath("hearts-passed.png") });
-
-  for (let i = 0; i < 600; i++) {
-    const [h, g] = [await stepOnce(host), await stepOnce(guest)];
-    if (h && g) break;
-    await host.waitForTimeout(80);
-  }
-  await expect(host.getByRole("button", { name: "다음 판" })).toBeVisible();
-  await expect(guest.getByRole("button", { name: "다음 판" })).toBeVisible();
-  await guest.screenshot({ path: info.outputPath("hearts-online-guest.png") });
-
-  // 방장이 나가면 기록이 공개되고 참가자가 공정성을 확인한다.
-  await host.getByRole("button", { name: "나가기" }).click();
-  await expect(
-    guest.getByText("공정성 확인: 섞기와 진행에 문제가 없습니다"),
-  ).toBeVisible({ timeout: 10_000 });
-  expect(errors).toEqual([]);
-});
-
-test("하트 배우기: 설명·퀴즈·미션으로 단원을 끝낸다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await prepare(page);
-  await page.goto("/hearts");
-  await page.getByRole("button", { name: /하트 배우기/ }).click();
-  await expect(page.getByText("0/4")).toBeVisible();
-  await page.screenshot({ path: info.outputPath("hearts-learn-1-home.png") });
-
-  // 1단원: 설명 네 쪽, 퀴즈 두 개, 하트 떠넘기기 미션
-  await page.getByRole("button", { name: /하트는 어떤 게임/ }).click();
-  for (let i = 0; i < 4; i++)
-    await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "16점" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "클로버 2" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  await expect(page.getByText(/하트를 남에게 떠넘기세요/)).toBeVisible();
-  await expect(page.getByText(/낼 카드를 고르세요/)).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.screenshot({
-    path: info.outputPath("hearts-learn-2-mission.png"),
-  });
-  await page
-    .getByRole("button", { name: "♥A", exact: true })
-    .click({ position: { x: 8, y: 8 } });
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.screenshot({
-    path: info.outputPath("hearts-learn-3-success.png"),
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
-  await page.getByRole("button", { name: "단원 목록으로" }).click();
-  await expect(page.getByText("1/4")).toBeVisible();
-
-  // 2단원: 넘기기 미션
-  await page.getByRole("button", { name: /카드 넘기기/ }).click();
-  for (let i = 0; i < 2; i++)
-    await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "넘기지 않는다" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  const pass = page.getByRole("button", { name: "넘기기", exact: true });
-  await expect(pass).toBeVisible({ timeout: 20_000 });
-  // 고르는 도중 새 화면이 늦게 와 고른 카드가 비워질 수 있다(느린 CI). 카드마다 골라졌는지 보고, 안 골라졌으면 다시 누른다.
-  await expect(async () => {
-    for (const card of ["♠Q", "♠K", "♠A"]) {
-      const button = page.getByRole("button", { name: card, exact: true });
-      if ((await button.getAttribute("aria-pressed")) !== "true")
-        await button.click({ position: { x: 8, y: 8 } });
+test(
+  "하트: 방장이 방을 만들고 친구가 들어와 한 판을 둔다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [host, guest]) {
+      p.on("pageerror", (e) => errors.push(e.message));
+      await prepare(p);
     }
-    await expect(pass).toBeEnabled({ timeout: 2_000 });
-  }).toPass({ intervals: [50], timeout: 20_000 });
-  await pass.click();
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 20_000,
-  });
-  expect(errors).toEqual([]);
-});
+    await host.goto("/hearts?net=local");
+    await host.getByRole("button", { name: /다함께 하트/ }).click();
+    await host.getByPlaceholder("친구들에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/hearts");
+    expect(link).toContain("room=");
+    // 링크 복사가 기본 단추다.
+    await host
+      .context()
+      .grantPermissions(["clipboard-read", "clipboard-write"]);
+    await host.getByRole("button", { name: "복사", exact: true }).click();
+    await expect(host.getByRole("button", { name: "복사됨" })).toBeVisible();
+    expect(await host.evaluate(() => navigator.clipboard.readText())).toBe(
+      link,
+    );
+
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구들에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(
+      guest.getByText("방장이 시작하기를 기다리는 중"),
+    ).toBeVisible();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
+    await expect(guest.getByRole("button", { name: "점수판" })).toBeVisible();
+
+    // 방장이 먼저 넘기면, 넘긴 세 장은 손패에서 빠져 "넘김" 표를 달고 모여 있다.
+    // 암호화 방은 함께 섞고 나누는 데 시간이 걸린다.
+    await expect(
+      host.getByRole("button", { name: "넘기기", exact: true }),
+    ).toBeVisible({ timeout: 60_000 });
+    await stepOnce(host);
+    await expect(host.getByText("다른 사람이 카드를 고르는 중")).toBeVisible();
+    await expect(host.getByText("넘김", { exact: true })).toHaveCount(3);
+    await host.screenshot({ path: info.outputPath("hearts-passed.png") });
+
+    for (let i = 0; i < 600; i++) {
+      const [h, g] = [await stepOnce(host), await stepOnce(guest)];
+      if (h && g) break;
+      await host.waitForTimeout(80);
+    }
+    await expect(host.getByRole("button", { name: "다음 판" })).toBeVisible();
+    await expect(guest.getByRole("button", { name: "다음 판" })).toBeVisible();
+    await guest.screenshot({
+      path: info.outputPath("hearts-online-guest.png"),
+    });
+
+    // 방장이 나가면 기록이 공개되고 참가자가 공정성을 확인한다.
+    await host.getByRole("button", { name: "나가기" }).click();
+    await expect(
+      guest.getByText("공정성 확인: 섞기와 진행에 문제가 없습니다"),
+    ).toBeVisible({ timeout: 10_000 });
+    expect(errors).toEqual([]);
+  },
+);
+
+test(
+  "하트 배우기: 설명·퀴즈·미션으로 단원을 끝낸다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await prepare(page);
+    await page.goto("/hearts");
+    await page.getByRole("button", { name: /하트 배우기/ }).click();
+    await expect(page.getByText("0/4")).toBeVisible();
+    await page.screenshot({ path: info.outputPath("hearts-learn-1-home.png") });
+
+    // 1단원: 설명 네 쪽, 퀴즈 두 개, 하트 떠넘기기 미션
+    await page.getByRole("button", { name: /하트는 어떤 게임/ }).click();
+    for (let i = 0; i < 4; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "16점" }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "클로버 2" }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await expect(page.getByText(/하트를 남에게 떠넘기세요/)).toBeVisible();
+    await expect(page.getByText(/낼 카드를 고르세요/)).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.screenshot({
+      path: info.outputPath("hearts-learn-2-mission.png"),
+    });
+    await page
+      .getByRole("button", { name: "♥A", exact: true })
+      .click({ position: { x: 8, y: 8 } });
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.screenshot({
+      path: info.outputPath("hearts-learn-3-success.png"),
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+    await page.getByRole("button", { name: "단원 목록으로" }).click();
+    await expect(page.getByText("1/4")).toBeVisible();
+
+    // 2단원: 넘기기 미션
+    await page.getByRole("button", { name: /카드 넘기기/ }).click();
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "넘기지 않는다" }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    const pass = page.getByRole("button", { name: "넘기기", exact: true });
+    await expect(pass).toBeVisible({ timeout: 20_000 });
+    // 고르는 도중 새 화면이 늦게 와 고른 카드가 비워질 수 있다(느린 CI). 카드마다 골라졌는지 보고, 안 골라졌으면 다시 누른다.
+    await expect(async () => {
+      for (const card of ["♠Q", "♠K", "♠A"]) {
+        const button = page.getByRole("button", { name: card, exact: true });
+        if ((await button.getAttribute("aria-pressed")) !== "true")
+          await button.click({ position: { x: 8, y: 8 } });
+      }
+      await expect(pass).toBeEnabled({ timeout: 2_000 });
+    }).toPass({ intervals: [50], timeout: 20_000 });
+    await pass.click();
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 20_000,
+    });
+    expect(errors).toEqual([]);
+  },
+);
 
 test("무늬 표기: 기본은 그림, 옵션에서 이름·첫 글자로 바꾼다", async ({
   page,
@@ -378,10 +387,10 @@ test("무늬 표기: 기본은 그림, 옵션에서 이름·첫 글자로 바꾼
   await expect(sample).toHaveText("♠13 · ♧A · ♥Q · ♢K");
 });
 
-test("화면을 돌리면 카드를 날리지 않고 가렸다가 다시 보인다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+test("화면을 돌리면 카드를 날리지 않고 가렸다가 다시 보인다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 데스크톱에서만 돌린다
   await prepare(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/hearts");
@@ -414,89 +423,91 @@ test("화면을 돌리면 카드를 날리지 않고 가렸다가 다시 보인�
   await expect(page.getByText(/넘길 카드 3장/)).toBeVisible();
 });
 
-test("하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서 판 가운데로 날아가 내려앉는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await prepare(page);
-  // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.clock.install();
-  await speedUpAnimations(page);
-  await page.goto("/hearts");
-  await page.getByRole("button", { name: /나홀로 하트/ }).click();
+test(
+  "하트 연출: 섞고 나눠 준 뒤 넘기고, 낸 카드가 손패에서 판 가운데로 날아가 내려앉는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱에서만 돌린다
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await prepare(page);
+    // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.install();
+    await speedUpAnimations(page);
+    await page.goto("/hearts");
+    await page.getByRole("button", { name: /나홀로 하트/ }).click();
 
-  // 섞기·나눠 주기가 돌고, 끝나면 사라진다
-  await expect(page.locator("[data-dealing]")).toHaveCount(1);
-  await fastForwardUntil(
-    page,
-    async () => (await page.locator("[data-dealing]").count()) === 0,
-    { step: 100 },
-  );
-  await fastForwardUntil(page, () =>
-    page.getByText(/넘길 카드 3장/).isVisible(),
-  );
-  const pass = page.getByRole("button", { name: "넘기기", exact: true });
-  for (let k = 0; k < 3; k++)
-    await myCards(page)
-      .nth(k)
-      .click({ position: { x: 8, y: 8 } });
-  await pass.click();
-
-  // 내 차례가 올 때까지 컴퓨터 대기를 감는다
-  await fastForwardUntil(
-    page,
-    () => page.getByText(/낼 카드를 고르세요/).isVisible(),
-    { step: 100 },
-  );
-  const card = myCards(page).first();
-  const id = (await card.getAttribute("data-card")) as string;
-  const fromY = (await card.boundingBox())?.y ?? 0;
-  // 낸 카드가 손패 자리에서 움직이기 시작하는지는 그 카드의 움직임 시작 신호(transitionrun·animationstart)로 본다.
-  // 「날아가는 중」을 시각으로 잡으려 하면, 날아가는 CSS 연출은 실제 시간으로 돌고 컴퓨터 차례·걷어 가기는 page.clock으로
-  // 돌아 바쁜 CI에서 그 순간을 놓친다(2026-11-05: 늦춰도 걷어 간 뒤라 영영 오지 않았다). 신호는 지나가도 남는다
-  await card.evaluate((el) => {
-    const w = window as { __heartsFlew?: boolean };
-    w.__heartsFlew = false;
-    const flew = () => {
-      w.__heartsFlew = true;
-    };
-    el.addEventListener("transitionrun", flew);
-    el.addEventListener("animationstart", flew);
-  });
-  await card.click({ position: { x: 8, y: 8 } });
-  /**
-   * 낸 카드의 상태: 판 쪽으로 날아가는 중(마우스를 올려 살짝 뜨는 것보다 훨씬 위, 움직임이 도는 중), 판 위에
-   * 내려앉음, 또는 걷어 감(한 바퀴가 다 돌아 내려앉은 뒤에만 사라진다)
-   */
-  const state = () =>
-    page.evaluate(
-      ([card, y]) => {
-        const el = document.querySelector(`button[data-card="${card}"]`);
-        if (!el) return "collected";
-        if (el.getBoundingClientRect().y >= (y as number) - 40) return "hand";
-        return el.getAnimations().length > 0 ? "flying" : "landed";
-      },
-      [id, fromY] as const,
+    // 섞기·나눠 주기가 돌고, 끝나면 사라진다
+    await expect(page.locator("[data-dealing]")).toHaveCount(1);
+    await fastForwardUntil(
+      page,
+      async () => (await page.locator("[data-dealing]").count()) === 0,
+      { step: 100 },
     );
-  // 손패 자리를 떠나며 움직임이 시작됐다(그 뒤 내려앉거나 걷어 가도 신호는 남는다)
-  await fastForwardUntil(
-    page,
-    async () =>
-      (await state()) !== "hand" &&
-      (await page.evaluate(
-        () => (window as { __heartsFlew?: boolean }).__heartsFlew === true,
-      )),
-    { step: 16 },
-  );
-  await page.screenshot({ path: info.outputPath("hearts-fx-play.png") });
-  // 판 가운데에 내려앉는다(이어 컴퓨터가 내서 걷어 갔어도 내려앉은 뒤다)
-  await fastForwardUntil(
-    page,
-    async () => ["landed", "collected"].includes(await state()),
-    { step: 16 },
-  );
-  expect(errors).toEqual([]);
-});
+    await fastForwardUntil(page, () =>
+      page.getByText(/넘길 카드 3장/).isVisible(),
+    );
+    const pass = page.getByRole("button", { name: "넘기기", exact: true });
+    for (let k = 0; k < 3; k++)
+      await myCards(page)
+        .nth(k)
+        .click({ position: { x: 8, y: 8 } });
+    await pass.click();
+
+    // 내 차례가 올 때까지 컴퓨터 대기를 감는다
+    await fastForwardUntil(
+      page,
+      () => page.getByText(/낼 카드를 고르세요/).isVisible(),
+      { step: 100 },
+    );
+    const card = myCards(page).first();
+    const id = (await card.getAttribute("data-card")) as string;
+    const fromY = (await card.boundingBox())?.y ?? 0;
+    // 낸 카드가 손패 자리에서 움직이기 시작하는지는 그 카드의 움직임 시작 신호(transitionrun·animationstart)로 본다.
+    // 「날아가는 중」을 시각으로 잡으려 하면, 날아가는 CSS 연출은 실제 시간으로 돌고 컴퓨터 차례·걷어 가기는 page.clock으로
+    // 돌아 바쁜 CI에서 그 순간을 놓친다(2026-11-05: 늦춰도 걷어 간 뒤라 영영 오지 않았다). 신호는 지나가도 남는다
+    await card.evaluate((el) => {
+      const w = window as { __heartsFlew?: boolean };
+      w.__heartsFlew = false;
+      const flew = () => {
+        w.__heartsFlew = true;
+      };
+      el.addEventListener("transitionrun", flew);
+      el.addEventListener("animationstart", flew);
+    });
+    await card.click({ position: { x: 8, y: 8 } });
+    /**
+     * 낸 카드의 상태: 판 쪽으로 날아가는 중(마우스를 올려 살짝 뜨는 것보다 훨씬 위, 움직임이 도는 중), 판 위에
+     * 내려앉음, 또는 걷어 감(한 바퀴가 다 돌아 내려앉은 뒤에만 사라진다)
+     */
+    const state = () =>
+      page.evaluate(
+        ([card, y]) => {
+          const el = document.querySelector(`button[data-card="${card}"]`);
+          if (!el) return "collected";
+          if (el.getBoundingClientRect().y >= (y as number) - 40) return "hand";
+          return el.getAnimations().length > 0 ? "flying" : "landed";
+        },
+        [id, fromY] as const,
+      );
+    // 손패 자리를 떠나며 움직임이 시작됐다(그 뒤 내려앉거나 걷어 가도 신호는 남는다)
+    await fastForwardUntil(
+      page,
+      async () =>
+        (await state()) !== "hand" &&
+        (await page.evaluate(
+          () => (window as { __heartsFlew?: boolean }).__heartsFlew === true,
+        )),
+      { step: 16 },
+    );
+    await page.screenshot({ path: info.outputPath("hearts-fx-play.png") });
+    // 판 가운데에 내려앉는다(이어 컴퓨터가 내서 걷어 갔어도 내려앉은 뒤다)
+    await fastForwardUntil(
+      page,
+      async () => ["landed", "collected"].includes(await state()),
+      { step: 16 },
+    );
+    expect(errors).toEqual([]);
+  },
+);

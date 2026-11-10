@@ -3,7 +3,9 @@ name: CI
 # 바뀐 것과 그것에 기대는 것만 시험한다(2026-11-04 사용자). 단위 시험은 vitest --changed(바뀐 파일을 불러오는 시험만),
 # 화면 시험은 scripts/affected-e2e.mjs가 고른 spec만. 기준 커밋은 PR이면 base와의 merge-base, main push면 직전 커밋이
 # 아니라 "마지막으로 CI가 성공한 main 커밋"이다(앞 실행이 취소·실패했으면 그 변경도 함께 시험한다). 기준을 못 찾거나,
-# 매일 실행(schedule)·손으로 돌리기(workflow_dispatch)는 전부. 고른 시험만 돌아도 성공이면 Image가 배포한다.
+# 매일 실행(schedule)·손으로 돌리기(workflow_dispatch)는 전부.
+# 화면 시험은 PR에서만 돈다(2026-11-10 사용자). main은 보호 규칙으로 PR·CI 통과(ci-ok)·최신 main 반영을 요구하므로,
+# main push는 빠른 검사(lint·typecheck·바뀐 단위 시험·nginx)만 하고 성공하면 Image가 배포한다.
 on:
   push:
     branches: [main]
@@ -36,7 +38,8 @@ jobs:
       base: ${{ steps.base.outputs.base }}
       e2e: ${{ steps.pick.outputs.e2e }}
       specs: ${{ steps.pick.outputs.specs }}
-      shards: ${{ steps.pick.outputs.shards }}
+      # {"include":[{"shard":1,"specs":"e2e/a.spec.ts …"}, …]}. 조각마다 돌릴 spec 목록
+      matrix: ${{ steps.pick.outputs.matrix }}
       shard_total: ${{ steps.pick.outputs.shard_total }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -83,9 +86,14 @@ jobs:
         name: 화면 시험 고르기
         env:
           BASE: ${{ steps.base.outputs.base }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          if [ -n "$BASE" ]; then
+          if [ "$EVENT" = "push" ]; then
+            # main에 들어오는 변경은 PR에서 최신 main을 반영한 채 화면 시험을 통과했다(보호 규칙 strict)
+            node scripts/affected-e2e.mjs --github --selection-out selection.json ${BASE:+--base "$BASE"} \
+              --no-e2e "main push는 빠른 검사만(화면 시험은 PR에서 통과했다)"
+          elif [ -n "$BASE" ]; then
             node scripts/affected-e2e.mjs --github --selection-out selection.json --base "$BASE"
           else
             node scripts/affected-e2e.mjs --github --selection-out selection.json --all
@@ -137,16 +145,18 @@ jobs:
       - name: nginx 설정 검사
         run: docker run --rm -v "$PWD/deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.31.8-alpine nginx -t
 
-  # 화면 시험. 전부면 둘로 나눠 동시에 돌린다(2026-10-30 시험을 줄여 셋에서 둘로, docs/38). 조각마다 설치·빌드를 따로 하므로
-  # 고른 spec이 적으면 한 조각만 쓴다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
+  # 화면 시험. 전부면 여섯 조각으로 나눠 동시에 돌린다(2026-11-10 둘에서 여섯으로, docs/38 17절). plan이 지난 시험 시간
+  # (scripts/e2e-times.json)으로 spec을 조각에 고르게 담아 조각마다 spec 목록을 넘긴다. 조각마다 설치·빌드를 따로 하므로
+  # 고른 spec이 적으면 조각을 줄인다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
+  # 동시 작업은 한 실행에 많아야 8개(plan·check·화면 6·ci-ok)라 무료 공개 저장소 한도 20개 안이다
   e2e:
+    name: e2e (${{ matrix.shard }})
     needs: plan
     if: needs.plan.outputs.e2e != 'none'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -157,17 +167,81 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Next(Turbopack) 빌드 캐시. 이 맥에서 빌드 14초 → 7초(컴파일 5.7초 → 1.4초, 2026-11-10). 화면 시험이 도는 main
+      # 실행(매일·손으로)의 첫 조각만 저장하고, PR은 그것을 받아 쓴다(PR마다 저장하면 저장소 캐시 한도를 빨리 채운다).
+      # 이어 쓰는 캐시가 한없이 커지지 않게 주마다(ISO 주) 새로 시작한다
+      - id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          restore-keys: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm build
-      - run: pnpm --filter @game/web exec playwright install --with-deps chrome
-      # SPECS가 비면(전부) 모든 spec. 조각에 시험이 하나도 안 떨어져도 성공으로 끝난다
+      - if: github.ref == 'refs/heads/main' && matrix.shard == 1
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+      # 러너에 이미 있는 Chrome이 보안 공지의 최소 판(e2e/browser.ts MIN_CHROME) 이상이면 내려받지 않는다(2026-11-10).
+      # 낮거나 없으면 예전처럼 설치한다. 실제로 뜨는 판은 시험 전에 global-setup이 다시 확인한다
+      - name: Chrome 판 확인
+        id: chrome
+        run: |
+          set -euo pipefail
+          min=$(sed -n 's/^export const MIN_CHROME = "\(.*\)";$/\1/p' apps/web/e2e/browser.ts)
+          have=$(google-chrome --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+){3}' || true)
+          echo "최소 판 ${min:-?}, 러너의 Chrome ${have:-없음}"
+          if [ -n "$min" ] && [ -n "$have" ] && [ "$(printf '%s\n%s\n' "$min" "$have" | sort -V | head -n1)" = "$min" ]; then
+            echo "install=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "install=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.chrome.outputs.install == 'true'
+        run: pnpm --filter @game/web exec playwright install --with-deps chrome
+      # Chrome을 설치하지 않아도 글꼴은 `--with-deps`가 넣던 것과 똑같이 둔다. 글꼴이 바뀌면 글자 폭·줄바꿈이 달라져
+      # 화면 시험 판정이 흔들릴 수 있다. 받은 .deb을 캐시해 두고 dpkg로 바로 푼다(apt 목록 받기·내려받기 약 20초를 아낀다)
+      - if: steps.chrome.outputs.install == 'false'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/e2e-font-debs
+          key: e2e-font-debs-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: 글꼴
+        if: steps.chrome.outputs.install == 'false'
+        env:
+          # playwright install --with-deps chrome이 넣는 글꼴(Ubuntu)
+          FONT_PKGS: fonts-liberation fonts-noto-color-emoji fonts-wqy-zenhei fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-freefont-ttf xfonts-cyrillic xfonts-scalable
+        run: |
+          set -euo pipefail
+          missing=()
+          for p in $FONT_PKGS; do dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p"); done
+          if [ "${#missing[@]}" -eq 0 ]; then echo "글꼴이 모두 있다"; exit 0; fi
+          echo "넣을 글꼴: ${missing[*]}"
+          debs="$HOME/e2e-font-debs"
+          if compgen -G "$debs/*.deb" >/dev/null && sudo dpkg -i "$debs"/*.deb; then
+            echo "캐시한 .deb으로 넣었다"
+          else
+            rm -rf "$debs" && mkdir -p "$debs/partial"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends --download-only -o Dir::Cache::Archives="$debs" "${missing[@]}"
+            sudo dpkg -i "$debs"/*.deb
+            sudo rm -rf "$debs/partial" "$debs/lock"
+            sudo chown -R "$USER" "$debs"
+          fi
+          for p in "${missing[@]}"; do dpkg -s "$p" >/dev/null; done
+      # 이 조각이 맡은 spec만. 목록이 비면 playwright가 모든 spec을 돌리므로 그때는 멈춘다(plan은 빈 조각을 만들지 않는다)
       - name: 화면 시험
         env:
-          SPECS: ${{ needs.plan.outputs.specs }}
-          SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.shard_total }}
+          SPECS: ${{ matrix.specs }}
         run: |
           set -euo pipefail
           read -r -a specs <<< "$SPECS"
-          pnpm e2e --shard="$SHARD" --pass-with-no-tests "${specs[@]}"
+          if [ "${#specs[@]}" -eq 0 ]; then
+            echo "::error::조각 ${{ matrix.shard }}에 spec이 없다"
+            exit 1
+          fi
+          echo "조각 ${{ matrix.shard }}: spec ${#specs[@]}개"
+          pnpm e2e --pass-with-no-tests "${specs[@]}"
       # 시험마다 걸린 시간(playwright.config.ts의 json reporter). 느린 시험 워크플로가 받아 본다
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         continue-on-error: true
@@ -183,3 +257,28 @@ jobs:
           name: e2e-screenshots-${{ matrix.shard }}
           path: apps/web/test-results
           retention-days: 3
+
+  # 보호 규칙이 필수로 거는 하나뿐인 검사(2026-11-10, 이름 고정). 조각 수가 바뀌거나 화면 시험을 건너뛰어도 늘 돌아,
+  # 앞 작업 가운데 실패·취소가 하나라도 있으면 실패, 모두 성공이거나 건너뜀이면 성공한다
+  ci-ok:
+    if: always()
+    needs: [plan, check, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: 앞 작업 결과
+        env:
+          PLAN: ${{ needs.plan.result }}
+          CHECK: ${{ needs.check.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "plan=$PLAN check=$CHECK e2e=$E2E"
+          for r in "$PLAN" "$CHECK" "$E2E"; do
+            case "$r" in
+              success | skipped) ;;
+              *)
+                echo "::error::실패하거나 취소된 작업이 있다(plan=$PLAN check=$CHECK e2e=$E2E)"
+                exit 1
+                ;;
+            esac
+          done

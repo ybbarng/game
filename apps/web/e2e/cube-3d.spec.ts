@@ -21,24 +21,23 @@ import { expect, type Page, test } from "./test";
 /** GPU 없는 CI는 첫 장면에 5초 넘게 걸린다(멈춘 시험을 잡는 상한) */
 const SCENE = { timeout: 30_000 };
 
-async function only(page: Page, project: string) {
-  // 부품의 3D 길은 화면 크기와 상관없어 데스크톱 하나로 본다
-  test.skip(project !== "desktop", "3D 길은 데스크톱 하나로");
+// 부품의 3D 길은 화면 크기와 상관없어 데스크톱 하나로 본다(e2e/projects.ts FILE_ONLY)
+async function skipSplash(page: Page) {
   await page.addInitScript(() =>
     sessionStorage.setItem("mighty-splash-seen", "1"),
   );
 }
 
-test("3D: 혼자 맞추기 큐브(CubePlay)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 혼자 맞추기 큐브(CubePlay)", async ({ page }) => {
+  await skipSplash(page);
   await page.goto("/cube/solo");
   await expect(
     page.locator("[data-cube-stage] [data-cube-canvas][data-cube-ready]"),
   ).toBeVisible(SCENE);
 });
 
-test("3D: 시연 큐브(DemoCube)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 시연 큐브(DemoCube)", async ({ page }) => {
+  await skipSplash(page);
   // 핑거 트릭은 첫 화면에 시연 큐브 하나만 띄운다. 배우기 단원으로 가면 정지 큐브 장면을 먼저 만들고 시연 단계로
   // 넘어가 장면을 둘 만들었다(CI 14초, 2026-11-04 game-85). 시연이 도는 것은 기다리지 않고 장면이 생겼는지만 본다
   await page.goto("/cube/fingers");
@@ -47,8 +46,8 @@ test("3D: 시연 큐브(DemoCube)", async ({ page }, info) => {
   ).toBeVisible(SCENE);
 });
 
-test("3D: 정지 큐브(StillCube)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 정지 큐브(StillCube)", async ({ page }) => {
+  await skipSplash(page);
   await page.goto("/cube/learn?lesson=333-white-cross");
   await expect(page.locator("[data-cube-still] [data-cube-ready]")).toHaveCount(
     1,
@@ -56,16 +55,16 @@ test("3D: 정지 큐브(StillCube)", async ({ page }, info) => {
   );
 });
 
-test("3D: 연습 큐브(PracticeCube)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 연습 큐브(PracticeCube)", async ({ page }) => {
+  await skipSplash(page);
   await page.goto("/cube/intro?part=keys");
   await expect(
     page.locator("[data-practice-cube] [data-cube-ready]"),
   ).toHaveCount(1, SCENE);
 });
 
-test("3D: 수학 큐브(StateCube)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 수학 큐브(StateCube)", async ({ page }) => {
+  await skipSplash(page);
   await page.goto("/cube/math#orient");
   await expect(page.locator("[data-cube-math='orient']")).toBeVisible();
   await expect(
@@ -73,8 +72,8 @@ test("3D: 수학 큐브(StateCube)", async ({ page }, info) => {
   ).toHaveCount(1, SCENE);
 });
 
-test("3D: 첫 화면 연출(CubeHero)", async ({ page }, info) => {
-  await only(page, info.project.name);
+test("3D: 첫 화면 연출(CubeHero)", async ({ page }) => {
+  await skipSplash(page);
   // 시험 기본은 움직임 줄이기라 연출을 끈다. 여기서만 켠다
   await page.emulateMedia({ reducedMotion: "no-preference" });
   // 3D가 준비된 순간에 대기 그림이 아직 있었는지(겹쳐 바꾸기) 적어 둔다
@@ -110,8 +109,8 @@ test("3D: 첫 화면 연출(CubeHero)", async ({ page }, info) => {
 
 test("3D: 첫 화면 연출이 숨었다 돌아와 WebGL 문맥을 잃었으면 대기 그림을 보이고 새로 띄운다", async ({
   page,
-}, info) => {
-  await only(page, info.project.name);
+}) => {
+  await skipSplash(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/cube");
   const hero = page.locator("[data-cube-hero]");
@@ -161,8 +160,8 @@ test("3D: 첫 화면 연출이 숨었다 돌아와 WebGL 문맥을 잃었으면 
 
 test("3D: 뒷면 거울 판이 생기고, 판 칸을 눌러 뒤쪽 조각을 찾는다", async ({
   page,
-}, info) => {
-  await only(page, info.project.name);
+}) => {
+  await skipSplash(page);
   // 화면 시험만: 캔버스에서 장면을 찾아 판 칸의 화면 자리를 묻는다(cube-view `__cubeTestHooks`)
   await page.addInitScript(() => {
     (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;

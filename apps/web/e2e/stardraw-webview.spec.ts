@@ -6,8 +6,8 @@ import { expect, fixStardrawClock, type Page, test } from "./test";
  * 상관없어 휴대폰 세로로만 본다
  */
 test.use({ timezoneId: "Asia/Seoul" });
-test.beforeEach(({ page }, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로로");
+// 휴대폰 세로로만(e2e/projects.ts FILE_ONLY)
+test.beforeEach(({ page }) => {
   return fixStardrawClock(page);
 });
 

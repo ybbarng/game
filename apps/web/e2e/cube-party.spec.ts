@@ -143,77 +143,81 @@ test("2×2 체력바: 컴퓨터가 첫 층을 먼저 지나면 내 체력이 깎
   await shot(page, "party-result", info.project.name);
 });
 
-test("2×2 체력바: 컴퓨터가 윗면을 건너뛰어 한 수에 이정표 둘을 지나면 50, 1초 뒤 다시 50이 깎인다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱·휴대폰 세로로 본다",
-  );
-  test.setTimeout(150_000);
-  await startParty(page, "2", "입문", SEEDS.skip2);
-  await fastForwardUntil(page, async () => (await hpOf(page, "me")) < 100, {
-    step: 200,
-    timeout: 90_000,
-  });
-  // 한 순간에는 이정표 하나 몫만
-  expect(await hpOf(page, "me")).toBe(50);
-  await shot(page, "party-skip", info.project.name);
-  // 남은 몫은 판정 시각 + 1초. 처음 본 때는 컴퓨터의 다음 수(0.34초 뒤)가 온 뒤라 많아야 0.55초쯤 늦다
-  await page.clock.fastForward(300);
-  expect(await hpOf(page, "me")).toBe(50);
-  await fastForwardUntil(page, async () => (await hpOf(page, "me")) === 0, {
-    step: 100,
-    timeout: 20_000,
-  });
-  const result = await finalResult(page);
-  await expect(result).toHaveAttribute("data-cube-party-end", "last");
-  await expect(result).toContainText("체력이 0이 되어 탈락했어요");
-});
+test(
+  "2×2 체력바: 컴퓨터가 윗면을 건너뛰어 한 수에 이정표 둘을 지나면 50, 1초 뒤 다시 50이 깎인다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로 본다
+    test.setTimeout(150_000);
+    await startParty(page, "2", "입문", SEEDS.skip2);
+    await fastForwardUntil(page, async () => (await hpOf(page, "me")) < 100, {
+      step: 200,
+      timeout: 90_000,
+    });
+    // 한 순간에는 이정표 하나 몫만
+    expect(await hpOf(page, "me")).toBe(50);
+    await shot(page, "party-skip", info.project.name);
+    // 남은 몫은 판정 시각 + 1초. 처음 본 때는 컴퓨터의 다음 수(0.34초 뒤)가 온 뒤라 많아야 0.55초쯤 늦다
+    await page.clock.fastForward(300);
+    expect(await hpOf(page, "me")).toBe(50);
+    await fastForwardUntil(page, async () => (await hpOf(page, "me")) === 0, {
+      step: 100,
+      timeout: 20_000,
+    });
+    const result = await finalResult(page);
+    await expect(result).toHaveAttribute("data-cube-party-end", "last");
+    await expect(result).toContainText("체력이 0이 되어 탈락했어요");
+  },
+);
 
-test("3×3 체력바: 가만히 있으면 이정표마다 깎여 경고가 뜨고, 0이 되면 탈락해 컴퓨터가 끝까지 남는다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱·휴대폰 세로로 본다",
-  );
-  test.setTimeout(240_000);
-  await startParty(page, "3", "입문", SEEDS.apart3);
-  const warning = page.locator("[data-cube-hp-warning]");
-  await fastForwardUntil(page, async () => (await warning.count()) > 0, {
-    step: 600,
-    timeout: 180_000,
-  });
-  await expect(warning).toContainText("체력이 얼마 안 남았어요 · 4");
-  await expect(page.locator('[data-cube-hp="me"]')).toHaveAttribute(
-    "data-cube-hp-low",
-    "",
-  );
-  await shot(page, "party-low", info.project.name);
+test(
+  "3×3 체력바: 가만히 있으면 이정표마다 깎여 경고가 뜨고, 0이 되면 탈락해 컴퓨터가 끝까지 남는다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로 본다
+    test.setTimeout(240_000);
+    await startParty(page, "3", "입문", SEEDS.apart3);
+    const warning = page.locator("[data-cube-hp-warning]");
+    await fastForwardUntil(page, async () => (await warning.count()) > 0, {
+      step: 600,
+      timeout: 180_000,
+    });
+    await expect(warning).toContainText("체력이 얼마 안 남았어요 · 4");
+    await expect(page.locator('[data-cube-hp="me"]')).toHaveAttribute(
+      "data-cube-hp-low",
+      "",
+    );
+    await shot(page, "party-low", info.project.name);
 
-  const result = await finalResult(page);
-  await expect(result).toHaveAttribute("data-cube-party-end", "last");
-  await expect(result).toContainText("체력이 0이 되어 탈락했어요 · 2위");
-  await expect(result.locator('[data-cube-rank="bot1"]')).toContainText(
-    "끝까지 남음",
-  );
-  await expect(result.locator('[data-cube-rank="me"]')).toContainText("체력 0");
-  await expect(result.locator('[data-cube-result-hp="me"]')).toHaveText("0");
-  await expect(page.locator('[data-cube-peer="me"]')).toContainText("탈락");
-  await shot(page, "party-ko", info.project.name);
-});
+    const result = await finalResult(page);
+    await expect(result).toHaveAttribute("data-cube-party-end", "last");
+    await expect(result).toContainText("체력이 0이 되어 탈락했어요 · 2위");
+    await expect(result.locator('[data-cube-rank="bot1"]')).toContainText(
+      "끝까지 남음",
+    );
+    await expect(result.locator('[data-cube-rank="me"]')).toContainText(
+      "체력 0",
+    );
+    await expect(result.locator('[data-cube-result-hp="me"]')).toHaveText("0");
+    await expect(page.locator('[data-cube-peer="me"]')).toContainText("탈락");
+    await shot(page, "party-ko", info.project.name);
+  },
+);
 
-test("온라인 대기실: 「파티: 체력바」를 고르면 5판 평균과 「평균 대비」가 빠진다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "온라인 대결은 키보드 기기만");
-  await page.goto("/cube/online?net=local");
-  await page.locator("[data-cube-enter]").click();
-  const party = page.locator("[data-cube-party]");
-  await party.selectOption("hp");
-  await expect(party).toHaveValue("hp");
-  await expect(page.locator("option", { hasText: "5판 평균" })).toHaveCount(0);
-  await expect(page.locator("[data-cube-handicap-score]")).toHaveCount(0);
-  await shot(page, "party-lobby", info.project.name);
-});
+test(
+  "온라인 대기실: 「파티: 체력바」를 고르면 5판 평균과 「평균 대비」가 빠진다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 온라인 대결은 키보드 기기만
+    await page.goto("/cube/online?net=local");
+    await page.locator("[data-cube-enter]").click();
+    const party = page.locator("[data-cube-party]");
+    await party.selectOption("hp");
+    await expect(party).toHaveValue("hp");
+    await expect(page.locator("option", { hasText: "5판 평균" })).toHaveCount(
+      0,
+    );
+    await expect(page.locator("[data-cube-handicap-score]")).toHaveCount(0);
+    await shot(page, "party-lobby", info.project.name);
+  },
+);

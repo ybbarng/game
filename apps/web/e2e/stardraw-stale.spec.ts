@@ -13,10 +13,10 @@ async function mark(page: Page) {
 const marked = (page: Page) =>
   page.evaluate(() => (window as unknown as { __mark?: number }).__mark === 1);
 
-test("조용히 새 화면으로: 배포된 판이 바뀌면 다음 화면 이동 때 그 주소를 새로 불러온다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
+test("조용히 새 화면으로: 배포된 판이 바뀌면 다음 화면 이동 때 그 주소를 새로 불러온다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 데스크톱 한 크기로
   // 배포된 판 번호를 다른 값으로(새 배포가 나온 것처럼)
   let asked = 0;
   await page.route("**/version.json", (route) => {
@@ -36,10 +36,10 @@ test("조용히 새 화면으로: 배포된 판이 바뀌면 다음 화면 이�
   expect(await marked(page)).toBe(false);
 });
 
-test("조용히 새 화면으로: 판이 같으면 화면 이동은 그대로 문서 안에서", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
+test("조용히 새 화면으로: 판이 같으면 화면 이동은 그대로 문서 안에서", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 데스크톱 한 크기로
   let asked = 0;
   await page.route("**/version.json", async (route) => {
     asked += 1;

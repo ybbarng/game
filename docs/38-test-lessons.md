@@ -133,12 +133,29 @@
 
 사용자 방향: 무엇이 바뀌든 모든 게임의 단위·화면 시험을 다 돌려서, 큐브 시험 실패가 하트 고침 배포를 막았고 CI가 7분에서 16분으로 늘었다. 모노레포답게 바뀐 것과 그것에 기대는 것만 시험한다(저장소는 나누지 않는다).
 
+> 2026-11-10 17절에서 바뀐 것: main push는 화면 시험을 돌리지 않는다, 조각 수(최대 6, 시간 기준), src 파일은 화면에서 닿는지로 고른다, 단위 시험 계기(패키지 package.json·appcast 등 뺌). 아래는 처음 정한 모습이다.
+
 - **기준 커밋**: PR은 base와의 merge-base. main push는 직전 커밋이 아니라 **마지막으로 CI가 성공한 main 커밋**(`ci.yml` plan 작업이 `gh api`로 찾고, 지금 커밋의 조상인지 본다). 앞 실행이 취소·실패했으면 그 변경도 다음 실행이 함께 시험한다. 못 찾으면 전부.
 - **단위 시험**: `vitest run --changed <기준>`. vite 모듈 그래프로 바뀐 파일을 (패키지를 건너서도) 불러오는 시험만 돈다. `${기준}...HEAD`와 커밋 안 한 파일을 본다. projects 설정과 함께 동작한다(큐브 풀이기 한 파일 → cube-ai·cube-reduction·cube-scramble·cube-solver·web 30파일). 그래프에 안 잡히는 입력은 루트 `vitest.config.ts`의 `forceRerunTriggers`로 전부: package.json·vitest 설정(기본값), tsconfig·lockfile·작업 공간·biome·`.node-version`·`ci.yml`, 그리고 시험이 파일로 읽는 `apps/web/public/stats/`·`apps/web/scripts/build-hashes.mjs`. **시험이 import 대신 `readFileSync`나 다른 프로그램 실행으로 읽는 파일을 새로 두면 여기에 더한다.** 영향받는 시험이 없으면 0으로 끝난다.
 - **화면 시험**: `scripts/affected-e2e.mjs`가 고른다. 게임은 `games/registry.ts`의 id, 그 게임의 `src/<id>/`·`src/app/<id>/`·`public/<id>/`·`e2e/<id>*.spec.ts`. 게임 사이 기댐(은하가 별 따기를 불러 쓴다 등)과 패키지를 쓰는 게임은 실행 때마다 웹 import·package.json에서 계산한다. 여러 게임이 쓰는 웹 코드(net·components·game·review·stats 등)·시험 도구·playwright 설정·lockfile·CI·짝 모르는 파일은 **전부**. 문서·단위 시험 파일·별 따기 서버·CLI만이면 **없음**(작업을 건너뛰고 CI 성공). 일부일 때는 홈·없는 주소·뒤로 가기와 어느 게임에도 안 든 spec을 늘 함께, spec이 12개 이상이면 2조각.
 - 마이티 엔진(`packages/engine`)은 거의 모든 패키지가 기대고, fair-play는 net이 쓰므로 그 둘(과 그것을 거치는 hwatu·hearts-engine)은 늘 전부다. 큐브·바둑·윷 같은 게임 패키지는 그 게임만(`game/bot-registry.ts`는 게임마다 갈래로 컴퓨터를 부르는 곳이라 공통으로 세지 않는다).
 - **안전망**: 매일 한 번(schedule, 한국 시각 03:17)과 손으로 돌리기는 전부. 배포로 이어지지 않는다(Image는 push CI만 본다). 느린 시험 기록은 시험마다 "그 시험을 잰" 실행만 센다(`slow-tests.mjs`의 `ran`).
 - playwright `--only-changed`는 spec이 불러오는 파일만 따라가고 빌드된 앱 코드는 못 따라가서 쓰지 않았다. Turborepo도 견줘 봤다: 화면 시험은 apps/web 한 패키지 안에서 갈라야 해서 스크립트가 어차피 필요하고, 패키지가 소스를 그대로 내보내 build가 없고 typecheck 전체가 4초라 캐시로 줄일 것이 거의 없으며, 원격 캐시는 바깥 서비스나 서버가 든다.
+
+## 17. CI를 10분 안쪽으로(2026-11-10)
+
+사용자: 「우리 CI가 상당히 오래 걸리는 것 같지 않아?」, 「30분은 너무 길어」. 목표는 PR 하나가 사이트에 올라가기까지 10분 안쪽이다. 조사해 보니 화면 시험 실행이 85~90%였고, 조각은 둘뿐인 데다 Playwright `--shard`가 시험 개수로 잘라 기울어 있었다(조각 1이 1,293초, 조각 2가 993초). 시험 안에서 `test.skip`으로 건너뛰는 시험 484개도 개수에 들어갔다.
+
+- **main 보호와 화면 시험 자리**(사용자 결정): main 보호 규칙으로 PR 필수·CI 통과 필수(검사 이름 `ci-ok`)·최신 main 반영 필수(strict)를 켠다. 그래서 화면 시험은 PR에서만 돈다(「화면 시험은 main에서 할 필요가 있을까? 작업된 PR에서만 체크하면 되지 않아?」). main push는 빠른 검사(lint·typecheck·바뀐 단위 시험·nginx 설정)만 하고, 성공하면 Image가 예전처럼 배포한다. 매일 한 번(schedule)과 손으로 돌리기는 그대로 전부다.
+- **`ci-ok`**: plan·check·화면 조각들을 `needs`로 받아 늘 도는 요약 작업. 하나라도 실패·취소면 실패, 모두 성공이거나 건너뜀이면 성공. 조각 수가 바뀌거나 화면 시험을 건너뛰어도 보호 규칙은 이 이름 하나만 본다.
+- **조각 2 → 6, 시간 기준**: `scripts/affected-e2e.mjs`가 고른 spec을 지난 시험 시간(`scripts/e2e-times.json`, spec마다 모든 화면 크기의 합)으로 긴 것부터 가장 가벼운 조각에 담고, 조각마다 spec 목록을 matrix로 넘긴다. 전부면 6조각(조각마다 약 375초, 작업자 둘이라 약 3분), 일부면 시간 합을 240초마다 한 조각으로 올림해 1~6조각. 시간 자료가 없으면 spec 12개마다 한 조각. 한 실행의 동시 작업은 많아야 8개(plan·check·화면 6·ci-ok)라 무료 공개 저장소 한도 20개 안이다. 시간 기준 파일은 매일 전부 실행의 `test-times-e2e-*` artifact로 `node scripts/affected-e2e.mjs --write-times scripts/e2e-times.json <e2e.json…>`를 돌려 새로 쓴다(없는 spec은 평균으로 친다).
+- **한 크기만 보는 시험은 태그로**: `test.skip(info.project.name …)`을 태그 `@only-desktop`·`@only-phone-portrait`·`@no-phone-landscape`와 프로젝트 `grepInvert`로 옮겼다(`e2e/projects.ts`). 파일 전체가 한 크기만 보면 `FILE_ONLY`(testIgnore)에 적는다. 건너뛸 시험이 목록에서 빠져 브라우저 문맥을 띄웠다 닫는 일과 조각 개수에서 사라진다(1,068개 → 608개). 옮긴 뒤 `--list`를 그날 main CI 결과와 견줘 CI에서 돈 시험이 모두 남고 새로 생긴 것이 없음을 확인했다. 환경 변수(`E2E_SCREENSHOTS`·`FAIR_MULTI` 등)로 켜는 시험만 `test.skip`으로 남는다. **새 시험이 한 크기만 볼 때는 `test.skip` 대신 태그를 단다.**
+- **Chrome**: 러너 이미지의 Chrome(156.0.8078.79)이 보안 공지의 최소 판(`e2e/browser.ts` `MIN_CHROME`) 이상이면 `playwright install --with-deps chrome`을 건너뛴다. 낮거나 없을 때만 설치하고, 실제로 뜨는 판은 global-setup이 그대로 확인한다. 글꼴은 `--with-deps`가 넣던 묶음(fonts-wqy-zenhei 등)과 똑같이 둔다. 러너에서 글꼴 없이 판정·글자 폭이 같은지 미리 견줄 수 없어서, 받은 .deb을 캐시해 dpkg로 바로 푼다(그 설치에서 가장 오래 걸리던 apt 목록 받기·내려받기를 아낀다).
+- **Next 빌드 캐시**: `.next/cache`를 main 실행(매일·손으로)의 첫 조각이 저장하고 PR이 받아 쓴다. 이 맥에서 빌드 14초 → 7초. 주마다 새로 시작해 한없이 커지지 않게 한다.
+- **화면 시험 고르기 정밀화**: src 파일은 화면(`src/app`의 page·layout·icon 등)에서 import로 닿는지 본다. 어디서도, 어느 spec에서도 닿지 않으면 없음(시험 전용 도우미 `tutorial/term-order*.ts` 등). 공통 폴더 파일은 닿는 주소의 게임만 돌리고(net은 온라인 방이 있는 게임만), 첫 화면·복기·프로필 같은 공용 주소가 닿으면 예전처럼 전부(globals.css, components 대부분, 용어집). `apps/web/scripts`는 빌드가 돌리는 것(build-hashes 등)만 전부, 개발 때 손으로 돌리는 생성 도구(render-cube-posters 등)는 없음. 그날 「전부」가 된 실행 여덟 가운데 셋이 큐브만으로 줄었다.
+- **단위 시험 계기**: `forceRerunTriggers`에서 패키지마다의 package.json을 뺐다(루트만). 의존을 바꾸면 lockfile이 함께 바뀌어 전부 돌고, 나머지는 typecheck 전체와 매일 실행이 본다. 시험이 파일로 읽던 appcast·sw.js·큐브 page 목록은 `import.meta.glob(?raw, eager)`으로 읽어 모듈 그래프로 따라간다. `Object.keys(import.meta.glob(…))`처럼 키만 바로 쓰거나 eager 없이 쓰면 vite가 import를 빼서 그래프에 안 잡힌다. **시험이 파일로 읽는 입력을 새로 두면 되도록 이렇게 읽고, 안 되면 계기에 더한다.**
+- 어림(그날 원자료 기준): 화면 시험 조각 하나가 준비 약 1분 + 시험 약 3분, plan 약 10초가 앞에 붙어 PR CI가 5분 안팎. main push는 1~4분(단위 시험이 전부로 넓어지지 않으면 1분 남짓) 뒤 Image가 배포한다.
+- 다음 일: 공용 주소(복기·프로필)도 주소 → spec으로 좁히면 components·stats 변경이 전부에서 빠진다. 「같은 트리면 main CI 재사용」과 「이미지 미리 빌드」는 사용자 결정 뒤.
 
 ## 남은 것
 
