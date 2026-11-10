@@ -362,7 +362,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     return nil
   }
 
-  /// 메뉴 「창 크기」: 정사각형으로, 오른쪽 아래 구석 그대로
+  /// 메뉴 「창」의 크기 항목: 정사각형으로, 오른쪽 아래 구석 그대로
   func setSide(_ side: CGFloat) {
     let f = WindowGesture.resized(panel.frame, side: side, min: Config.minSize, max: Config.maxSize)
     panel.setFrame(f, display: true)
