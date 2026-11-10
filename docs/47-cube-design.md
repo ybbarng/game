@@ -1704,7 +1704,8 @@ apps/cubie/build.sh && CUBIE_DEBUG=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  
 - `petrus-path.test.ts`: 세 공식이 블록을 지키며 두 조각만 뒤집음, 블록만 맞은 무작위 300개(걸음마다 나쁜 엣지 −2, 0·2·4·6과 모든 경우), 해 보기 모범 답.
 - `course-terms.test.ts` 「CFOP 모양 이름과 공식 이름」.
 - `stage-map.test.ts`: 큰 큐브 시연이 단계 끝마다 목표.
-- 화면 시험 `security`·`cube-learn`·`cube-learn-acts`·`cube-learn-map`(빌드 뒤 `--workers=1`, 44개 통과).
+- 화면 시험 `security`·`cube-learn`·`cube-learn-acts`·`cube-learn-map`·`cube-learn-beginner`(빌드 뒤 `--workers=1`, 53개 통과).
+- 처음 보는 독자 검토: 큰 큐브(4×4·5×5 엣지·패리티)와 CFOP 2단계 글을 두 번(차례를 코드와 한 줄씩 대조, 1차에서 위·아래 층이 다 찬 뒤 x2를 되풀이할 수 있던 차례를 고침), 야우·ZZ·페트루스는 각 서브에이전트가 두 번, 보안 설명 한 번.
 
 **남은 것(다음 일).**
 - 야우 흰 십자 셋의 경우별 닫기: 날개가 위·아래 바깥 층에 있을 때, 두 날개가 같은 층일 때, 짝 방향이 어긋날 때, 내리면 흰색이 옆을 볼 때. 지금 단원은 위·아래로 나뉜 경우 하나만 수로 닫혀 있고 무작위 해 보기는 판단을 넘긴다(규칙 파일과 시험이 따로 필요).
