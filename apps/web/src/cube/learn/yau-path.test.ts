@@ -1004,23 +1004,30 @@ describe("목록의 경우는 모두 앞에서 보이고, 긴 단계는 한 목�
     expect(next("yau-edges", down.q)).toBe(up.q);
     expect(faceColors(n, play(down.s, "F2"))).toEqual(faceColors(n, up.s));
     expect(first(up.s)).toBe("drop-up:U2:L' U' L");
+    // 내린 날개는 앞-왼쪽 줄 아래 자리(본문이 알림), 둘 다 아래 자리라 규칙의 다음 걸음은 Dw 경우
     expect(wingsAt(play(up.s, "U2 L' U' L"), 4)).toEqual(["FL1", "FR1"]);
-    expect(answer(up.q)).toBe("앞-왼쪽 줄 아래 자리");
+    expect(up.q.body).toContain("앞-왼쪽 줄 아래 자리로 내려가요");
+    expect(first(play(up.s, "U2 L' U' L"))).toMatch(/^low:/);
+    expect(answer(up.q)).toBe("Dw로 데려와 붙이기");
 
+    // 위-앞 비키기 따라 치기(U F2)를 친 화면에서 이어 본다
     const top = at("위-뒤의 날개는");
-    expect(first(top.s)).toBe("bring::R U R'");
-    expect(wingsAt(top.s, 4)).toEqual(["UB1", "UF1"]);
-    expect(wingsAt(play(top.s, "R U R'"), 4)[0]).toMatch(/^FR/);
+    expect(first(top.s)).toBe("bring:U:R U R'");
+    expect(wingsAt(top.s, 4).map((w) => w.slice(0, 2))).toEqual(["UF", "UL"]);
+    expect(wingsAt(play(top.s, "U R U R'"), 4).some((w) => /^FR/.test(w))).toBe(
+      true,
+    );
     expect(answer(top.q)).toBe("앞-오른쪽 줄");
 
-    const flipQ = at("엣지 뒤집기 R U R' F R' F' R을 치면");
+    const flipQ = at("엣지 뒤집기를 친 뒤");
     expect(first(flipQ.s)).toBe("flip::R U R' F R' F' R");
     expect(wingsAt(flipQ.s, 4)).toEqual(["FL1", "FR0"]);
     expect(wingsAt(play(flipQ.s, "R U R' F R' F' R"), 4)).toEqual([
       "FL1",
       "FR1",
     ]);
-    expect(answer(flipQ.q)).toBe("앞-오른쪽 줄 아래 자리");
+    expect(first(play(flipQ.s, "R U R' F R' F' R"))).toMatch(/^low:/);
+    expect(answer(flipQ.q)).toBe("Dw로 데려와 붙이기");
     // 문제 화면도 센터와 흰 십자 셋이 맞은 상태
     for (const s of [mid.s, down.s, up.s, top.s, flipQ.s])
       expect(goalMet(n, s, "yau-centers")).toBe(true);
@@ -1143,6 +1150,8 @@ describe("따로 해 보는 단계가 없던 경우와 이어 치던 단계, PLL
     expect(sideStep(s)).toBe(`top-two:F::${YAU_SIDE_FRONT_TURN}`);
     const after = faceColors(n, play(s, YAU_SIDE_FRONT_TURN));
     expect([after[cell(R, 2, 1)], after[cell(R, 2, 2)]]).toEqual([RED, RED]);
+    // 먼저 넣은 둘도 되돌리기로 위 두 칸에 돌아와 오른쪽 면이 빨강 넷
+    expect(sideCount(play(s, YAU_SIDE_FRONT_TURN), R, RED)).toBe(4);
   });
 
   it("마지막 십자 엣지 ①: 위-앞에 다른 날개가 있으면 U로 비키고 F2(문제 → 같은 화면 해 보기)", () => {
@@ -1166,6 +1175,10 @@ describe("따로 해 보는 단계가 없던 경우와 이어 치던 단계, PLL
     expect(t.kind).toBe("turn");
     expect(t.setup).toEqual(q.setup);
     expect(t.alg).toBe(YAU_APART_FRONT_UP_TURN);
+    // 바로 뒤 「두 날개가 모두 위 층」 문제는 따라 치기를 친 화면
+    expect(faceColors(n, startOf("yau-edges", next("yau-edges", t)))).toEqual(
+      faceColors(n, play(s, YAU_APART_FRONT_UP_TURN)),
+    );
     // 마지막 목록보다 앞에 있다
     const steps = lesson("yau-edges").steps;
     const listTry = steps.find(
@@ -1180,7 +1193,7 @@ describe("따로 해 보는 단계가 없던 경우와 이어 치던 단계, PLL
     const q = fin.steps.find(
       (x) => x.kind === "quiz" && x.quiz?.question.includes("자리가 바뀐"),
     ) as LessonStep;
-    expect(answer(q)).toBe("엣지 블럭 둘");
+    expect(answer(q)).toBe("엣지 둘");
     const s = stepStart(fin, q, 1);
     const goal = faceColors(n, play(solvedCube(n), "z2"));
     const col = faceColors(n, s);
