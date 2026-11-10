@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.6</title>
+      <pubDate>Tue, 10 Nov 2026 06:09:55 +0000</pubDate>
+      <sparkle:version>0.1.6</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;메뉴 맨 위에 프로필 칸이 생겨 지금 티어 엠블럼이 보이고, 기록 창 티어에도 엠블럼이 붙습니다. 메뉴로 연 창(기록·티어표 등)이 첫 번에도 바로 앞에 뜹니다. 다 맞추면 짧게 축하하고 이번 시간을 보여 주며, 가만히 둘 때 1분 넘게 걸린 판도 다시 봅니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.6/Cubie.zip" length="1696595" type="application/octet-stream" sparkle:edSignature="m49gUeM0IlZnxQhqmyGlp7YNtlKUCRyallS96xOsTwAqqBN+YSN9dwM0q2KsD7sKyY0ZDJMFuCZNQXLxDnEKDA=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.5</title>
       <pubDate>Tue, 10 Nov 2026 01:29:33 +0000</pubDate>
       <sparkle:version>0.1.5</sparkle:version>
