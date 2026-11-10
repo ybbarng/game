@@ -190,8 +190,9 @@ describe("배우는 방식 첫 층 코너: 지름길(2026-11-05 사용자)", () 
 });
 
 describe("배우는 방식 첫 층 꼭짓점: 되풀이(배우기 첫 방법)", () => {
-  it("넣을 때마다 y로 칸을 UFR에 두고 D로 밑에 데려와 R' D' R D를 되풀이한다(빼기는 한 번)", () => {
-    const insert = /^(y['2]? )?(D['2]? )?R' D' R D( R' D' R D)*$/;
+  it("넣을 때마다 y로 칸을 UFR에 두고 D로 밑에 데려와 흰색이 보는 쪽대로 R' D' R D 1·2·3번이나 거꾸로 1·2번(2026-11-10 단원, 빼기는 한 번)", () => {
+    const insert =
+      /^(y['2]? )?(D['2]? )?(R' D' R D( R' D' R D){0,2}|D' R' D R( D' R' D R)?)$/;
     for (const seed of SEEDS) {
       const s = new Solve(3, toFacelets(3, randomCubeState(3, seed)));
       whiteUp(s);
@@ -338,6 +339,9 @@ const EO = "F R U R' U' F'";
 const EDGE_SWAP = "R U R' U R U2 R' U";
 const CYCLE = "U R U' L' U R' U' L";
 const TWIST = "R' D' R D";
+const TWIST_BACK = "D' R' D R";
+const EO_BACK = "F U R U' R' F'";
+const CYCLE_BACK = "L' U R U' L U R' U'";
 
 /** 단계 하나를 살피는 멈춤 자리로 자른 조각들(둔 수 그대로, 합치기 전) */
 function segments(s: Solve, name: string): string[] {
@@ -357,9 +361,13 @@ function segments(s: Solve, name: string): string[] {
 const count = (segs: string[], alg: string) =>
   segs.filter((x) => x.includes(alg)).length;
 
-/** 2×2·3×3 공통: 꼭짓점 방향 조각은 U만 돌려 가져와 R' D' R D 2번 또는 4번, 큐브는 돌려 쥐지 않는다 */
+/** 2×2: 꼭짓점 방향 조각은 U만 돌려 가져와 R' D' R D 2번 또는 4번, 큐브는 돌려 쥐지 않는다 */
 const TWIST_SEG = new RegExp(
   `^((U['2]? )?${TWIST} ${TWIST}( ${TWIST} ${TWIST})?( U['2]?)?|U['2]?|)$`,
+);
+/** 3×3(2026-11-10 단원): 노랑 오른쪽 R' D' R D 두 번, 앞 거꾸로 D' R' D R 두 번 */
+const TWIST_SEG3 = new RegExp(
+  `^((U['2]? )?(${TWIST} ${TWIST}|${TWIST_BACK} ${TWIST_BACK})( U['2]?)?|U['2]?|)$`,
 );
 
 const runTaught3 = (seed: number) => {
@@ -371,22 +379,23 @@ const runTaught3 = (seed: number) => {
 
 describe("배우는 방식 마지막 층(3×3)", () => {
   const FORM: Record<string, RegExp> = {
-    eo: new RegExp(`^((U['2]? )?${EO}|)$`),
+    eo: new RegExp(`^((U['2]? )?(${EO}|${EO_BACK})|)$`),
     "ll-edges": new RegExp(
       `^((U['2]? )?(y['2]? )?${EDGE_SWAP}( U['2]?)?|U['2]?|)$`,
     ),
-    "ll-corner-place": new RegExp(`^((y['2]? )?${CYCLE}|)$`),
-    "ll-corner-twist": TWIST_SEG,
+    "ll-corner-place": new RegExp(`^((y['2]? )?(${CYCLE}|${CYCLE_BACK})|)$`),
+    "ll-corner-twist": TWIST_SEG3,
   };
   const LIMIT: Record<string, [string, number]> = {
-    eo: [EO, 3],
+    eo: [EO, 2],
     "ll-edges": [EDGE_SWAP, 2],
     "ll-corner-place": [CYCLE, 2],
     "ll-corner-twist": [TWIST, 4],
+    // 거꾸로 공식은 아래에서 따로 센다
   };
 
   it("노란 십자 → 옆면 맞추기 → 꼭짓점 자리 → 꼭짓점 방향, 단계마다 그 공식만 레슨 규칙 횟수 안에서", () => {
-    const seen = { eo3: false, edges2: false, place2: false, twist4: false };
+    const seen = { eo2: false, edges2: false, place2: false, twistBack: false };
     for (let seed = 1; seed <= 60; seed++) {
       const s = runTaught3(seed);
       expect(s.isSolved(), `${seed}`).toBe(true);
@@ -406,19 +415,25 @@ describe("배우는 방식 마지막 층(3×3)", () => {
         const [alg, limit] = LIMIT[name] as [string, number];
         expect(count(segs, alg), `${seed} ${name}`).toBeLessThanOrEqual(limit);
       }
-      if (count(segments(s, "eo"), EO) === 3) seen.eo3 = true;
+      const eoUses =
+        count(segments(s, "eo"), EO) + count(segments(s, "eo"), EO_BACK);
+      expect(eoUses, `${seed}`).toBeLessThanOrEqual(2);
+      if (eoUses === 2) seen.eo2 = true;
       if (count(segments(s, "ll-edges"), EDGE_SWAP) === 2) seen.edges2 = true;
-      if (count(segments(s, "ll-corner-place"), CYCLE) === 2)
-        seen.place2 = true;
-      if (segments(s, "ll-corner-twist").some((x) => x.split(TWIST).length > 4))
-        seen.twist4 = true;
+      const placeUses =
+        count(segments(s, "ll-corner-place"), CYCLE) +
+        count(segments(s, "ll-corner-place"), CYCLE_BACK);
+      expect(placeUses, `${seed}`).toBeLessThanOrEqual(2);
+      if (placeUses === 2) seen.place2 = true;
+      if (segments(s, "ll-corner-twist").some((x) => x.includes(TWIST_BACK)))
+        seen.twistBack = true;
     }
-    // 여러 경우(점, 마주 본 모서리, 두 번 도는 꼭짓점, 네 번 돌리기)를 지나왔다
+    // 여러 경우(점, 마주 본 모서리, 제자리 없는 꼭짓점, 거꾸로 두 번)를 지나왔다
     expect(seen).toEqual({
-      eo3: true,
+      eo2: true,
       edges2: true,
       place2: true,
-      twist4: true,
+      twistBack: true,
     });
   });
 

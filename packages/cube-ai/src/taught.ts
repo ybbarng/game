@@ -38,6 +38,8 @@ import { type Solve, uTurn, yTurn } from "./solve";
  */
 
 export const TAUGHT_CORNER_TRIGGER = "R' D' R D";
+/** 코너 돌리기를 거꾸로(2026-11-10 단원): 다섯 번·네 번 칠 자리를 한 번·두 번으로 */
+export const TAUGHT_CORNER_TRIGGER_BACK = "D' R' D R";
 
 type FaceLetter = (typeof FACES)[number];
 const faceOf = (i: number) => FACES[Math.floor(i / 9)] as FaceLetter;
@@ -256,12 +258,29 @@ export function cornersTaught(s: Solve, opts: CornerOptions = {}): void {
         (a) => s.clone().apply(dTurn(a)).cubie().cp[4] === 0,
       ) as number;
       s.apply(dTurn(a));
-      for (let r = 0; ; r++) {
-        if (r > 6) throw new Error("꼭짓점 넣기가 끝나지 않는다");
-        const t = s.cubie();
-        if (cornerOk(t.cp, t.co, 0)) break;
-        s.apply(TAUGHT_CORNER_TRIGGER);
-      }
+      // 칸 밑(DFR) 흰색: 오른쪽 한 번, 아래 세 번, 앞 거꾸로 한 번(배우기 단원과 같은 횟수)
+      const co = s.cubie().co[4] as 0 | 1 | 2;
+      s.apply(
+        co === 2
+          ? TAUGHT_CORNER_TRIGGER
+          : co === 1
+            ? TAUGHT_CORNER_TRIGGER_BACK
+            : `${TAUGHT_CORNER_TRIGGER} ${TAUGHT_CORNER_TRIGGER} ${TAUGHT_CORNER_TRIGGER}`,
+      );
+      continue;
+    }
+    // 제 칸에서 돌아갔으면 흰색 오른쪽 두 번, 앞 거꾸로 두 번
+    const own = [0, 1, 2, 3].find((j) => {
+      const t = s.clone().apply(yTurn(j)).cubie();
+      return t.cp[0] === 0 && t.co[0] !== 0;
+    });
+    if (own !== undefined) {
+      s.apply(yTurn(own));
+      const f =
+        s.cubie().co[0] === 1
+          ? TAUGHT_CORNER_TRIGGER
+          : TAUGHT_CORNER_TRIGGER_BACK;
+      s.apply(`${f} ${f}`);
       continue;
     }
     // 아래층에 없으면 윗층에 잘못 박힌 꼭짓점을 UFR로 돌려 한 번 뺀다
@@ -335,25 +354,28 @@ function llGuard(count: number, limit: number, what: string): void {
   if (count > limit) throw new Error(`${what} 단계가 끝나지 않는다`);
 }
 
-/** 노란 십자(3×3). 점 → ㄱ자 → 가로줄 → 십자, 같은 공식 많아야 세 번 */
+/** 노란 십자 거꾸로: ㄱ자(뒤·왼쪽)를 한 번에 십자로 */
+export const TAUGHT_EO_BACK = "F U R U' R' F'";
+
+/**
+ * 노란 십자(3×3, 2026-11-10 단원과 같은 길). 일자는 가로로 쥐고 공식 한 번, ㄱ자는 노란 두 칸을 뒤·왼쪽에 두고
+ * 거꾸로 한 번, 점은 그대로 공식 한 번(앞·오른쪽 ㄱ자가 생김) 뒤 ㄱ자대로. 많아야 두 번
+ */
 export function yellowCrossTaught(s: Solve): void {
   for (let iter = 0; ; iter++) {
-    llGuard(iter, 3, "노란 십자");
+    llGuard(iter, 2, "노란 십자");
     const r0 = s.rel();
     if ([1, 3, 5, 7].every((i) => r0[i] === "U")) return;
     s.look();
-    let hold = "";
-    for (let a = 0; a < 4; a++) {
+    let next: string | null = null;
+    for (let a = 0; a < 4 && next === null; a++) {
       const r = s.clone().apply(uTurn(a)).rel();
       const up = (i: number) => r[i] === "U";
-      const line = up(3) && up(5) && !up(1) && !up(7);
-      const ell = up(1) && up(3) && !up(5) && !up(7);
-      if (line || ell) {
-        hold = uTurn(a);
-        break;
-      }
+      if (up(3) && up(5) && !up(1) && !up(7)) next = `${uTurn(a)} ${TAUGHT_EO}`;
+      else if (up(1) && up(3) && !up(5) && !up(7))
+        next = `${uTurn(a)} ${TAUGHT_EO_BACK}`;
     }
-    s.apply(hold).apply(TAUGHT_EO);
+    s.apply(next ?? TAUGHT_EO);
   }
 }
 
@@ -376,28 +398,20 @@ export function llEdgesTaught(s: Solve): void {
       return;
     }
     s.look();
-    let done = false;
-    for (let a = 0; a < 4 && !done; a++) {
-      for (let k = 0; k < 4 && !done; k++) {
-        const m = edgeSidesMatched(
-          s.clone().apply(uTurn(a)).apply(yTurn(k)).rel(),
-        );
-        // 오른쪽(UR)·뒤(UB)가 맞음
-        if (m[0] && m[3]) {
-          s.apply(uTurn(a)).apply(yTurn(k)).apply(TAUGHT_EDGE_SWAP);
-          done = true;
-        }
-      }
-    }
-    if (done) continue;
-    // 이웃한 둘이 없으면 마주 본 둘(일자): 그 자리로 U를 돌리고 쥔 그대로 한 번
+    // U를 한 칸씩 돌려 보며 처음으로 둘 이상 맞는 자리(2026-11-10 단원과 같은 차례)
     const a = [0, 1, 2, 3].find(
       (a) =>
         edgeSidesMatched(s.clone().apply(uTurn(a)).rel()).filter(Boolean)
           .length >= 2,
     );
     if (a === undefined) throw new Error("옆색이 맞은 모서리 둘을 찾지 못했다");
-    s.apply(uTurn(a)).apply(TAUGHT_EDGE_SWAP);
+    s.apply(uTurn(a));
+    // 이웃한 둘이면 뒤·오른쪽(UB·UR)에, 마주 본 둘이면 앞·뒤(UF·UB)에 쥐고 한 번
+    const k = [0, 1, 2, 3].find((k) => {
+      const m = edgeSidesMatched(s.clone().apply(yTurn(k)).rel());
+      return (m[0] && m[3]) || (m[1] && m[3] && !m[0] && !m[2]);
+    }) as number;
+    s.apply(yTurn(k)).apply(TAUGHT_EDGE_SWAP);
   }
 }
 
@@ -407,18 +421,27 @@ export const placedTop = (s: Solve) => {
   return [0, 1, 2, 3].filter((j) => cp[j] === j);
 };
 
-/** 제자리 꼭짓점 하나를 앞-오른쪽 위로 y 쥐고(이미 거기면 그대로) 공식 */
-function cycleAround(s: Solve): void {
+/** 꼭짓점 자리 거꾸로: 남은 셋을 반대로 돌린다 */
+export const TAUGHT_CORNER_CYCLE_BACK = "L' U R U' L U R' U'";
+
+/**
+ * 제자리 꼭짓점 하나를 앞-오른쪽 위로 y 쥐고(이미 거기면 그대로), 앞-왼쪽 위 꼭짓점의 제자리가 대각선 건너편
+ * (뒤-오른쪽 위)이면 공식, 바로 뒤(뒤-왼쪽 위)면 거꾸로. `back`이 거짓이면 공식만(2×2, 1~2번)
+ */
+function cycleAround(s: Solve, back = false): void {
   const k = [0, 1, 2, 3].find(
     (k) => s.clone().apply(yTurn(k)).cubie().cp[0] === 0,
   );
   if (k === undefined) throw new Error("제자리 꼭짓점을 찾지 못했다");
-  s.apply(yTurn(k)).apply(TAUGHT_CORNER_CYCLE);
+  s.apply(yTurn(k));
+  // 앞-왼쪽 위(UFL, 1번 자리) 조각이 뒤-왼쪽 위(ULB, 2번) 것이면 거꾸로
+  const behind = s.cubie().cp[1] === 2;
+  s.apply(back && behind ? TAUGHT_CORNER_CYCLE_BACK : TAUGHT_CORNER_CYCLE);
 }
 
 /**
  * 꼭짓점 자리(3×3, 위 모서리가 다 맞은 뒤). 제자리는 0·1·4개뿐이다. 하나면 그것을 앞-오른쪽 위에 쥐고
- * 1~2번. 없으면 한 번 해서 하나를 만든다(아무 쪽에서 해도 되므로, 다음이 한 번에 끝나는 쪽에서 쥔다).
+ * 앞-왼쪽 위 꼭짓점을 보고 공식이나 거꾸로 한 번. 없으면 쥔 그대로 한 번 해서 하나를 만든다.
  */
 export function llCornerPlaceTaught(s: Solve): void {
   for (let iter = 0; ; iter++) {
@@ -427,18 +450,12 @@ export function llCornerPlaceTaught(s: Solve): void {
     if (placed === 4) return;
     s.look();
     if (placed === 1) {
-      cycleAround(s);
+      cycleAround(s, true);
       continue;
     }
     if (placed !== 0) throw new Error(`제자리 꼭짓점이 ${placed}개다`);
-    const k =
-      [0, 1, 2, 3].find((k) => {
-        const t = s.clone().apply(yTurn(k)).apply(TAUGHT_CORNER_CYCLE);
-        if (placedTop(t).length !== 1) return false;
-        cycleAround(t);
-        return placedTop(t).length === 4;
-      }) ?? 0;
-    s.apply(yTurn(k)).apply(TAUGHT_CORNER_CYCLE);
+    // 제자리가 없으면 쥔 그대로 한 번(꼭 하나가 생긴다, 2026-11-10 단원)
+    s.apply(TAUGHT_CORNER_CYCLE);
   }
 }
 
@@ -476,7 +493,10 @@ export function cornerPlace2Taught(s: Solve): void {
  * 위를 볼 때까지(2번 또는 4번) 되풀이한다. 그 사이 아래 두 층이 흐트러졌다가 다 끝나면 돌아온다.
  * 큐브는 돌려 쥐지 않는다. 끝에 U로 옆색을 맞춘다.
  */
-export function llCornerTwistTaught(s: Solve): void {
+export function llCornerTwistTaught(
+  s: Solve,
+  opts: { back?: boolean } = {},
+): void {
   for (let iter = 0; ; iter++) {
     llGuard(iter, 4, "꼭짓점 방향");
     const c = s.cubie();
@@ -486,6 +506,15 @@ export function llCornerTwistTaught(s: Solve): void {
       (a) => s.clone().apply(uTurn(a)).cubie().co[0] !== 0,
     ) as number;
     s.apply(uTurn(a));
+    // 3×3(2026-11-10 단원): 노랑이 오른쪽(co 1)이면 두 번, 앞(co 2)이면 거꾸로 두 번
+    if (opts.back) {
+      const f =
+        s.cubie().co[0] === 1
+          ? TAUGHT_CORNER_TRIGGER
+          : TAUGHT_CORNER_TRIGGER_BACK;
+      s.apply(`${f} ${f}`);
+      continue;
+    }
     const piece = s.cubie().cp[0];
     for (let r = 0; ; r++) {
       llGuard(r, 4, "꼭짓점 돌리기");
