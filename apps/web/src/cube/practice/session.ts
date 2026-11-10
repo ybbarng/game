@@ -1,7 +1,7 @@
 // 공식 연습 한 판을 화면 없이 돌리는 진행기(docs/47 16-9·16-11). 출제(`drawRound`)·판정(`PracticeRound`·`FollowJudge`)·
 // 기본 공식(`pickAlg`)·기록(`store.ts`)은 사이트 공식 연습과 같은 모듈이고, 이 파일은 그것들을 시계와 함께 잇기만 한다.
 // 문제를 맞춘 뒤 잠깐 멈춤, 틀린 수의 키를 잠깐 보이기 같은 시간은 넣어 받은 `Clock`으로 잰다(제품은 진짜 시계,
-// 시험은 ManualClock). Cubie 미니 모드가 쓴다.
+// 시험은 ManualClock). 사이트 공식 연습(`PracticeApp`)과 Cubie 미니 모드가 함께 쓴다.
 import {
   applyMove,
   applyMoves,
@@ -17,7 +17,7 @@ import { countsAsMove, goalMet } from "../learn/judge";
 import { loadTrain, recordSolve } from "../learn/progress";
 import { drawRound } from "./deck";
 import { pickAlg } from "./pick-alg";
-import { boardFor, PRACTICE_N, type ProblemBoard } from "./problem";
+import { boardFor, PRACTICE_N, type ProblemBoard, problemOf } from "./problem";
 import {
   type PracticeMode,
   PracticeRound,
@@ -30,6 +30,7 @@ import {
   recordFollow,
   recordRound,
   rememberStage,
+  suggestSee,
 } from "./store";
 import type { DrillCase, PracticeStage } from "./types";
 
@@ -127,6 +128,17 @@ export class PracticeSession {
     return this.round.follow?.index ?? 0;
   }
 
+  /** 따라 치기 판 끝에 「외워서 쳐 보기」를 권하나(그 단계 공식마다 틀림 없이 두 번 넘게 쳤다). 사이트와 Cubie가 같은 규칙 */
+  get suggestSee(): boolean {
+    return (
+      this.mode === "follow" &&
+      suggestSee(
+        this.record,
+        this.stage.cases.map((c) => c.id),
+      )
+    );
+  }
+
   /** 고른 공식이 실물에서 흔한 공식과 다르면 흔한 공식 */
   get commonAlg(): string | null {
     const p = this.round.current;
@@ -142,14 +154,17 @@ export class PracticeSession {
       this.mode === "follow"
         ? loadPractice(this.storage).follow
         : loadTrain(this.storage);
+    // 시작 모양은 상황 + 윗면 돌리기, 보일 공식은 고른 공식을 그 모양에 맞춘 것(대결과 같은 방식, docs/47 16-14)
     const problems = drawRound(
       this.stage.cases.map((c) => c.id),
-      {
-        seed: this.opts.seed(),
-        algOf: (id) => this.picked.get(id) as string,
-        book,
-        auf: this.stage.auf,
-      },
+      { seed: this.opts.seed(), book, auf: this.stage.auf },
+    ).map((d) =>
+      problemOf(
+        this.stage,
+        this.caseOf(d.caseId) as DrillCase,
+        d.turn,
+        this.picked.get(d.caseId) as string,
+      ),
     );
     this.round = new PracticeRound(
       problems,
@@ -234,6 +249,17 @@ export class PracticeSession {
     this.state = applyMove(PRACTICE_N, this.state, back);
     this.changed();
     return back;
+  }
+
+  /** 보고 치기: 처음 모양으로 되돌린다(장면은 다시 칠한다). 따라 치기는 틀린 수가 큐브에 남지 않아 없다 */
+  reset(): boolean {
+    if (this.mode !== "see" || this.phase !== "play" || !this.board)
+      return false;
+    this.state = this.board.start;
+    this.history = [];
+    this.opts.onRepaint?.(this.state);
+    this.changed();
+    return true;
   }
 
   /** 보고 치기: 공식을 펼친다(그 문제는 콤보에서 빠진다) */
