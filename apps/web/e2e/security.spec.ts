@@ -37,7 +37,9 @@ test(
       page.getByText(/지문이 링크\(k=\)의 지문과 다릅니다/),
     ).toBeVisible();
     await page.getByRole("button", { name: /진짜 방장이 답함/ }).click();
-    await expect(page.getByText(/방장으로 믿습니다/)).toBeVisible();
+    await expect(
+      page.getByText(/내 연결의 것입니다\. 방장으로 믿습니다/),
+    ).toBeVisible();
     // 신호 서버가 가운데 끼면 진짜 방장 서명이라도 인증서 지문이 달라 믿지 않는다.
     await page.getByRole("button", { name: /신호 서버가 연결 정보를/ }).click();
     await expect(page.getByText(/신호 서버가 가운데 끼어/)).toBeVisible();
