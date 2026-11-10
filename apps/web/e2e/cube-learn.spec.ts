@@ -231,6 +231,24 @@ test("배우기: 야우 엣지 묶기 시연", async ({ page }, info) => {
 });
 
 test(
+  "배우기: 야우 3×3처럼 끝내기의 PLL 패리티 문제 → 시연",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.goto("/cube/learn?lesson=yau-finish");
+    await goStep(page, 2);
+    await expect(page.locator("[data-step-body]")).toContainText("PLL 패리티");
+    await page.locator("[data-learn-quiz] [data-choice='0']").click();
+    await expect(page.locator('[data-act="quiz"]')).toHaveAttribute(
+      "data-act-passed",
+      "",
+    );
+    await goStep(page, 3);
+    await expect(page.locator("[data-cube-demo]")).toBeVisible();
+    await shot(page, "learn-yau-pll-parity", info.project.name);
+  },
+);
+
+test(
   "배우기: 루 해 보기(가운데 층 M)",
   { tag: "@only-desktop" },
   async ({ page }, info) => {
