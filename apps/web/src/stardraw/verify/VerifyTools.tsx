@@ -207,7 +207,7 @@ export function LedgerCheck() {
             {result.latestDrand !== null && (
               <span data-latest-drand>
                 {" "}
-                · 마지막 drand 회차 {result.latestDrand.toLocaleString("ko-KR")}
+                · 마지막 drand 순번 {result.latestDrand.toLocaleString("ko-KR")}
               </span>
             )}
             {result.chi2 !== null && (
@@ -249,11 +249,11 @@ export function LedgerCheck() {
           </ul>
           <div className="flex flex-col gap-1" data-director-history>
             <p className="font-semibold text-sm text-white/80">
-              국장 열쇠 내력
+              국장 패스키 내력
             </p>
             {result.directors.length === 0 ? (
               <p className="text-white/55 text-xs">
-                국장 열쇠 지정 기록이 없습니다(운영 기록을 낼 수 있는 국장이
+                국장 패스키 지정 기록이 없습니다(운영 기록을 낼 수 있는 국장이
                 없음)
               </p>
             ) : (

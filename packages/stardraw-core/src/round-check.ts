@@ -95,18 +95,18 @@ export async function checkRound(
   for (let i = 0; i < round; i++) {
     const r = input.records[i];
     if (!r) {
-      fail(`${i + 1}회차 기록이 없다`);
+      fail(`${i + 1}회차 기록이 없습니다.`);
       return { problems, skipped, powChecked: 0 };
     }
     if (r.round !== i + 1)
-      fail(`회차 번호가 ${i + 1}여야 하는데 ${r.round}다`, i + 1);
+      fail(`회차 번호가 ${i + 1}여야 하는데 ${r.round}입니다.`, i + 1);
     if (!equalBytes(r.prev, head))
-      fail("앞 기록 해시와 이어지지 않는다(장부가 바뀌었다)", i + 1);
+      fail("앞 기록 해시와 이어지지 않습니다(장부가 바뀌었습니다).", i + 1);
     if (i + 1 < round) head = recordHash(r);
   }
   const record = input.records[round - 1] as RoundRecord;
   if (!equalBytes(recordHash(record), recordHash(input.fileRecord)))
-    fail("회차 파일의 기록이 기록 사슬의 기록과 다르다");
+    fail("회차 파일의 기록이 기록 사슬의 기록과 다릅니다.");
 
   // 일정표: 이 회차 앞까지의 기록으로(일정 바꾸기는 다음 회차부터 효력)
   const schedule = scheduleFromRecords(
@@ -122,7 +122,7 @@ export async function checkRound(
     const reg = registrations[k] as KeyRegistration;
     const id = regIds[k] as Uint8Array;
     if (k > 0 && compareBytes(regIds[k - 1] as Uint8Array, id) >= 0)
-      fail("등록 목록이 id 순서가 아니거나 같은 등록이 두 번 있다");
+      fail("등록 목록이 id 순서가 아니거나 같은 등록이 두 번 있습니다.");
     const problem = checkRegistration(reg);
     if (problem) {
       fail(`등록 ${short(id)}: ${problem}`);
@@ -137,14 +137,14 @@ export async function checkRound(
         params,
       ))
     )
-      fail(`등록 ${short(id)}: 작업 증명이 맞지 않는다`);
+      fail(`등록 ${short(id)}: 작업 증명이 맞지 않습니다.`);
   }
   if (record.registrationCount !== registrations.length)
     fail(
-      `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}`,
+      `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}입니다.`,
     );
   if (!equalBytes(record.registrationRoot, merkleRoot(regIds)))
-    fail("등록 목록으로 만든 머클 루트가 기록과 다르다");
+    fail("등록 목록으로 만든 머클 루트가 기록과 다릅니다.");
 
   // 3. 응모권: 판, 회차, 정렬, 서명, 한 열쇠 한 장
   const ids = tickets.map(ticketId);
@@ -153,32 +153,32 @@ export async function checkRound(
     const t = tickets[k] as Ticket;
     const id = ids[k] as Uint8Array;
     if (t.v !== TICKET_VERSION && t.v !== TICKET_VERSION_QUAL)
-      fail(`예측서 ${short(id)}: 모르는 판`);
+      fail(`예측서 ${short(id)}: 모르는 형식입니다.`);
     if (t.round !== round)
-      fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서`);
+      fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서입니다.`);
     if (k > 0 && compareBytes(ids[k - 1] as Uint8Array, id) >= 0)
-      fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있다");
+      fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있습니다.");
     const who = toHex(entrantId(t.pub));
     if (entrants.has(who))
-      fail(`예측서 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
+      fail(`예측서 ${short(id)}: 같은 열쇠로 이 회차에 두 장을 냈습니다.`);
     entrants.add(who);
     if (!(await verifyTicketSignature(t, options.webauthnPolicy)))
-      fail(`예측서 ${short(id)}: 서명이 맞지 않는다`);
+      fail(`예측서 ${short(id)}: 서명이 맞지 않습니다.`);
   }
   if (record.count !== tickets.length)
-    fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}`);
+    fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}입니다.`);
   if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
-    fail("예측서 목록으로 만든 머클 루트가 기록과 다르다");
+    fail("예측서 목록으로 만든 머클 루트가 기록과 다릅니다.");
 
   // 4. drand·무효 규칙·당첨
   if (record.drandRound !== drandRoundForClose(closesAt))
-    fail("정해진 drand 회차가 아니다");
+    fail("정해진 drand 순번이 아닙니다.");
   const shouldBeVoid = isVoidRound(closesAt, record.rootLoggedAt);
   if (record.void !== shouldBeVoid)
     fail(
       shouldBeVoid
-        ? "루트 기록 시각으로는 무효 회차인데 결과를 정했다"
-        : "무효가 아닌데 무효로 처리했다",
+        ? "루트 기록 시각으로는 무효 회차인데 결과를 정했습니다."
+        : "무효가 아닌데 무효로 처리했습니다.",
     );
   let sampleSeed = taggedHash(
     "stardraw/sample/v1",
@@ -191,7 +191,7 @@ export async function checkRound(
       signature: record.drandSignature,
     };
     if (!(options.beaconVerifier ?? verifyQuicknetBeacon)(beacon))
-      fail("drand 서명이 맞지 않는다");
+      fail("drand 서명이 맞지 않습니다.");
     const randomness = drandRandomness(beacon);
     sampleSeed = taggedHash("stardraw/sample/v1", randomness);
     const draw = drawNumbers(drawSeed(round, randomness));
@@ -200,7 +200,7 @@ export async function checkRound(
       draw.bonus !== record.bonus
     )
       fail(
-        `빛난 별이 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
+        `빛난 별이 규칙대로가 아닙니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus}).`,
       );
     for (const rank of RANKS) {
       const expected = tickets.flatMap((t, k) =>
@@ -211,10 +211,10 @@ export async function checkRound(
         expected.length !== listed.length ||
         expected.some((id, i) => !equalBytes(id, listed[i] as Uint8Array))
       )
-        fail(`${rank}등 입상자 목록이 규칙대로가 아니다`);
+        fail(`${rank}등 입상자 목록이 규칙대로가 아닙니다.`);
     }
   } else if (RANKS.some((rank) => record.winners[rank].length > 0)) {
-    fail("무효 회차에 입상자가 있다");
+    fail("무효 회차에 입상자가 있습니다.");
   }
 
   // 5. 작업 증명: 내 것과 1~3등은 전부, 나머지는 표본(검사기와 같은 표본)
@@ -237,24 +237,24 @@ export async function checkRound(
         params,
       ))
     )
-      fail(`예측서 ${short(id)}: 작업 증명이 맞지 않는다`);
+      fail(`예측서 ${short(id)}: 작업 증명이 맞지 않습니다.`);
   }
 
   // 6. 봉인 파일과 시각 인증 토큰
   const seal = input.seal;
-  if (!seal) skipped.push("봉인 파일을 받지 못했습니다");
+  if (!seal) skipped.push("봉인 파일을 받지 못했습니다.");
   else {
     if (seal.digest !== toHex(sealDigest(record)))
-      fail("봉인 값이 기록과 다르다");
+      fail("봉인 값이 기록과 다릅니다.");
     if (seal.loggedAt !== record.rootLoggedAt)
-      fail("봉인 시각이 기록과 다르다");
+      fail("봉인 시각이 기록과 다릅니다.");
     const log = seal.log as TsaProof | null | undefined;
     if (record.rootLoggedAt === 0) {
       // 무효 회차: 볼 토큰이 없다
     } else if (log?.kind !== "tsa") {
       if (phaseOf(schedule, round) === "trial")
-        skipped.push("시험 회차라 시각 인증 없이 서버 시계로 봉인했습니다");
-      else fail("봉인 시각 인증 토큰이 없다");
+        skipped.push("시험 회차라 시각 인증 없이 서버 시계로 봉인했습니다.");
+      else fail("봉인 시각 인증 토큰이 없습니다.");
     } else {
       const check = await verifyTsaProof(log, {
         digest: sealDigest(record),
@@ -263,15 +263,15 @@ export async function checkRound(
           ? { authorities: options.tsaAuthorities }
           : {}),
       });
-      if (!check.ok) fail(`봉인 시각 인증: ${check.problems.join(", ")}`);
+      if (!check.ok) fail(`봉인 시각 인증: ${check.problems.join(" ")}`);
       else if (check.loggedAt !== record.rootLoggedAt)
-        fail("봉인 시각이 가장 이른 토큰 시각과 다르다");
+        fail("봉인 시각이 가장 이른 토큰 시각과 다릅니다.");
     }
   }
 
   // 7. 요약
   if (input.summary && !sameSummary(input.summary, roundSummary(tickets)))
-    fail("요약이 회차 파일로 다시 계산한 값과 다르다");
+    fail("요약이 회차 파일로 다시 계산한 값과 다릅니다.");
 
   return { problems, skipped, powChecked };
 }

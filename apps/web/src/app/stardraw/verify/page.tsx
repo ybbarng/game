@@ -293,11 +293,11 @@ h 앞 4바이트(u32) < 목표값 이면 통과
             </ul>
           </Rule>
 
-          <Rule title="회차 시각과 drand 회차" file="schedule.ts">
+          <Rule title="회차 시각과 drand 순번" file="schedule.ts">
             <Code>{`일정표 = epoch + 줄들 { fromRound, length, closeMargin, powTarget, registerPowTarget, phase }
 회차 k: 앞 줄들의 길이를 더해 opensAt, closesAt = opensAt + length
-drand 회차 = closesAt + 300초 이후(같거나 뒤) 처음 나오는 quicknet 회차
-quicknet 회차 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
+drand 순번 = closesAt + 300초 이후(같거나 뒤) 처음 나오는 quicknet 순번
+quicknet 순번 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
             <ul className={li}>
               <li>
                 일정 변경은 회차 기록의 <code>scheduleChanges</code>에 들어가고,
@@ -333,9 +333,9 @@ quicknet 회차 r의 시각 = 1692803367 + (r − 1) × 3`}</Code>
             <Code>{`sealDigest = taggedHash("stardraw/seal/v1",
                round(u32) ‖ count(u32) ‖ merkleRoot(32) ‖ registrationCount(u32) ‖ registrationRoot(32))
 무효 회차: rootLoggedAt = 0, 또는 rootLoggedAt < closesAt,
-          또는 rootLoggedAt ≥ drand 회차 시각
+          또는 rootLoggedAt ≥ drand 순번 시각
 정식 회차는 더해: 관측 전 사본(main의 early-seals/N.json)이
-          drand 회차 시각 − 60초까지 올라야 유효`}</Code>
+          drand 순번 시각 − 60초까지 올라야 유효`}</Code>
             <p className="text-white/80">
               무효 회차는 빛난 별과 입상자 없이 기록만 남습니다.
             </p>
@@ -415,8 +415,8 @@ rootLoggedAt = 맞는 토큰 가운데 가장 이른 genTime(초, 소수점 아�
                 (개인 운영이라 서버 기본에는 없음)
               </li>
               <li>
-                <code>genTime</code> &lt; drand 회차 시각은 위 「봉인 값과 무효
-                회차」 규칙(rootLoggedAt ≥ drand 회차 시각이면 무효)으로
+                <code>genTime</code> &lt; drand 순번 시각은 위 「봉인 값과 무효
+                회차」 규칙(rootLoggedAt ≥ drand 순번 시각이면 무효)으로
                 확인합니다
               </li>
               <li>
@@ -493,7 +493,7 @@ genesis 해시 = taggedHash("stardraw/genesis/v1", epoch(u64) ‖ 줄 수(u16) �
               효력이 생기며, 그사이 국장은 취소할 수 있습니다.
             </p>
             <Code>{`본문    = v(u8=1) ‖ kind(u8) ‖ after(32) ‖ effectiveRound(u32) ‖ 내용
-          kind 1 국장 열쇠 지정, 2 빼기, 3 소속 추가, 4 소속 바꾸기, 5 소속 끝내기, 6 예고 취소, 7 일정 바꾸기
+          kind 1 국장 패스키 지정, 2 빼기, 3 소속 추가, 4 소속 바꾸기, 5 소속 끝내기, 6 예고 취소, 7 일정 바꾸기
 운영 기록 = 본문 ‖ 서명자(u8: 1 관인, 2 국장) ‖ pub(65) ‖ 서명(관인 r‖s 64, 국장 패스키 서명)
 서명 대상 = "stardraw/op-sig/v1" ‖ 0x00 ‖ 본문      id = taggedHash("stardraw/op/v1", 본문)
 지문    = "국장-" + Crockford base32(taggedHash("stardraw/director-fp/v1", pub) 앞 60비트)`}</Code>
@@ -503,14 +503,14 @@ genesis 해시 = taggedHash("stardraw/genesis/v1", epoch(u64) ‖ 줄 수(u16) �
                 실릴 수 있어, 예전 서명을 다른 회차에 다시 쓸 수 없습니다.
               </li>
               <li>
-                국장 열쇠는 관인(서버 서명 열쇠, 접수증과 같은 열쇠)이나 이미
+                국장 패스키는 관인(서버 서명 열쇠, 접수증과 같은 열쇠)이나 이미
                 쓰는 국장이 지정하고, 그것도 3회차 예고입니다. 관인은 장부에
                 처음 실린 열쇠로 고정되고 head.json의 서버 공개 열쇠와 같아야
-                합니다. 장부 전체 검사가 "국장 열쇠 내력"을 함께 보여 줍니다.
+                합니다. 장부 전체 검사가 "국장 패스키 내력"을 함께 보여 줍니다.
               </li>
               <li>
-                국장 열쇠와 우주인 열쇠는 섞지 않습니다. 등록된 우주인을
-                국장으로 지정할 수 없고, 국장 열쇠로는 우주인 등록을 할 수
+                국장 패스키와 우주인 패스키는 섞지 않습니다. 등록된 우주인을
+                국장으로 지정할 수 없고, 국장 패스키로는 우주인 등록을 할 수
                 없습니다.
               </li>
               <li>
@@ -638,11 +638,11 @@ pnpm stardraw-verify site https://game.byb.kr --build apps/web/out`}</Code>
           <ul className={li}>
             <li>지난 회차 기록 고치기, 사람마다 다른 장부 보이기(기록 사슬)</li>
             <li>예측서 끼워 넣기·빼기, 번호 바꾸기(머클 루트, 봉인 파일)</li>
-            <li>빛난 별·등수 속이기, 다른 drand 회차 쓰기(다시 계산)</li>
+            <li>빛난 별·등수 속이기, 다른 drand 순번 쓰기(다시 계산)</li>
             <li>접수증을 받은 예측서 빼기(서버 서명 접수증이 증거가 됨)</li>
             <li>
-              국장 열쇠를 몰래 바꾸거나 운영 일을 몰래 하기(운영 기록은 장부에
-              3회차 예고로만 효력, 국장 열쇠 내력)
+              국장 패스키를 몰래 바꾸거나 운영 일을 몰래 하기(운영 기록은 장부에
+              3회차 예고로만 효력, 국장 패스키 내력)
             </li>
           </ul>
           <h3 className="font-semibold text-white/90">막지 못하는 일</h3>

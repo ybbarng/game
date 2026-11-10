@@ -111,25 +111,25 @@ describe("국장 열쇠 지정(서버 설정 → 관인 기록)", () => {
       signer: { role: "seal" },
     });
     expect(r.logs.join("\n")).toContain(
-      `국장 열쇠 지정 ${fp}(서명 관인, 5회차부터)`,
+      `국장 패스키 지정 ${fp}(서명 관인, 5회차부터)`,
     );
     // 아직 효력 전: 국장 요청은 403
     await expect(
       submit(r, await affiliation(r, director)),
     ).rejects.toMatchObject({
       status: 403,
-      message: expect.stringMatching(/국장 열쇠가 아닙니다/),
+      message: expect.stringMatching(/국장 패스키가 아닙니다/),
     });
     // 지정된(예고 중) 국장 열쇠로는 우주인 등록을 할 수 없다
     await expect(
       enter(r, { signer: director, registered: false }, [1, 2, 3, 4, 5, 6]),
-    ).rejects.toThrow("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
+    ).rejects.toThrow("국장 패스키로는 예측할 수 없습니다");
     // 등록만 올리기도, 다른 기기에서 패스키 찾기도 같은 말로 거절한다
     await expect(
       registerOnly(r, { signer: director, registered: false }),
     ).rejects.toMatchObject({
       status: 403,
-      message: "이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다",
+      message: "국장 패스키로는 예측할 수 없습니다",
     });
     await expect(
       r.engine.passkeyPub(director.credentialId),
@@ -238,10 +238,10 @@ describe("국장 요청", () => {
       ...good,
       fields: { ...FIELDS, name: "가짜 성단" },
     } as Operation;
-    await expect(submit(r, tampered)).rejects.toThrow(/서명이 맞지 않는다/);
+    await expect(submit(r, tampered)).rejects.toThrow(/서명이 맞지 않습니다/);
     await expect(
       submit(r, await affiliation(r, director, next(r) + 1)),
-    ).rejects.toThrow(/예고가 모자란다\(3회차 예고/);
+    ).rejects.toThrow(/예고가 모자랍니다\(3회차 예고/);
     // 관인 열쇠인 척 원시 서명으로 보내도 국장 요청 길로는 받지 않는다
     const asSeal = await signAsSeal(good, await generateSigner());
     await expect(submit(r, asSeal)).rejects.toMatchObject({ status: 403 });
@@ -313,7 +313,7 @@ describe("HTTP 국장 경로", () => {
         body: JSON.stringify({ op: toBase64Url(encodeOperation(op)) }),
       });
       expect(res.status).toBe(403);
-      expect((await res.json()).error).toMatch(/국장 열쇠가 아닙니다/);
+      expect((await res.json()).error).toMatch(/국장 패스키가 아닙니다/);
       const broken = await fetch(`${base}/api/director/ops`, {
         method: "POST",
         headers: { "content-type": "application/json" },

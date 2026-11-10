@@ -40,10 +40,12 @@ export function normalizeNickname(text: string): string {
 /** 정규화된 1~20자(코드 포인트), 제어·서식 문자(보이지 않는 글자) 없음 */
 export function checkNickname(text: string): string | null {
   if (normalizeNickname(text) !== text)
-    return "별명은 NFC로 맞추고 앞뒤 공백 없이";
+    return "별명은 NFC로 맞추고 앞뒤 공백이 없어야 합니다.";
   const length = [...text].length;
-  if (length < 1 || length > MAX_NICKNAME) return `별명은 1~${MAX_NICKNAME}자`;
-  if (/[\p{Cc}\p{Cf}]/u.test(text)) return "별명에 보이지 않는 글자가 있다";
+  if (length < 1 || length > MAX_NICKNAME)
+    return `별명은 1~${MAX_NICKNAME}자여야 합니다.`;
+  if (/[\p{Cc}\p{Cf}]/u.test(text))
+    return "별명에 보이지 않는 글자가 있습니다.";
   return null;
 }
 

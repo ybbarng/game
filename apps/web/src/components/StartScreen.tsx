@@ -59,7 +59,7 @@ export function StartScreen({
       together={{
         icon: "👥",
         title: "다함께 마이티",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다",
+        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다.",
         onClick: onTogether,
       }}
       learn={{

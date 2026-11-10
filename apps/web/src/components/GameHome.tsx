@@ -113,7 +113,7 @@ export function GameHome({
   const learnDetail = !learn
     ? ""
     : learn.learned >= learn.total
-      ? "모든 단원을 마쳤어요. 언제든 다시 볼 수 있어요"
+      ? "모든 단원을 마쳤어요. 언제든 다시 볼 수 있어요."
       : learn.learned > 0
         ? `${learn.learned}/${learn.total} 단원 마침`
         : learn.firstHint;
@@ -140,7 +140,7 @@ export function GameHome({
             action={{
               icon: "▶",
               title: "하던 게임 이어하기",
-              detail: "멈춘 곳부터 다시 둡니다",
+              detail: "멈춘 곳부터 다시 둡니다.",
               onClick: resume,
             }}
           />

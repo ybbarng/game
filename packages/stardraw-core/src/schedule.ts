@@ -61,26 +61,26 @@ export function checkScheduleEntry(entry: ScheduleEntry): string | null {
   const { fromRound, length, closeMargin, powTarget, registerPowTarget } =
     entry;
   if (!Number.isInteger(fromRound) || fromRound < 1)
-    return "fromRound는 1 이상 정수";
+    return "fromRound는 1 이상 정수여야 합니다.";
   if (!Number.isInteger(length) || length < MIN_ROUND_LENGTH) {
-    return `회차 길이는 ${MIN_ROUND_LENGTH}초 이상 정수`;
+    return `회차 길이는 ${MIN_ROUND_LENGTH}초 이상 정수여야 합니다.`;
   }
   if (
     !Number.isInteger(closeMargin) ||
     closeMargin < 0 ||
     closeMargin >= length
   ) {
-    return "마감 여유는 0 이상, 회차 길이보다 작은 정수";
+    return "마감 여유는 0 이상, 회차 길이보다 작은 정수여야 합니다.";
   }
   if (!Number.isInteger(powTarget) || powTarget < 1 || powTarget > 0xffffffff) {
-    return "작업 증명 목표값은 1~2^32-1 정수";
+    return "작업 증명 목표값은 1~2^32-1 정수여야 합니다.";
   }
   if (
     !Number.isInteger(registerPowTarget) ||
     registerPowTarget < 1 ||
     registerPowTarget > 0xffffffff
   ) {
-    return "등록 작업 증명 목표값은 1~2^32-1 정수";
+    return "등록 작업 증명 목표값은 1~2^32-1 정수여야 합니다.";
   }
   if (
     entry.phase !== undefined &&
@@ -98,23 +98,23 @@ function checkPhaseAfter(
 ): string | null {
   if (!prev) return null;
   if ((prev.phase === undefined) !== (next.phase === undefined))
-    return "단계는 모든 줄에 있거나 모두 없어야 한다";
+    return "단계는 모든 줄에 있거나 모두 없어야 합니다.";
   if (prev.phase === "live" && next.phase === "trial")
-    return "정식 단계 뒤로 시험 단계를 둘 수 없다(장부는 다시 시작하지 않는다)";
+    return "정식 단계 뒤로 시험 단계를 둘 수 없습니다(장부는 다시 시작하지 않습니다).";
   return null;
 }
 
 export function checkSchedule(schedule: Schedule): string | null {
   if (!Number.isInteger(schedule.epoch) || schedule.epoch < 0)
-    return "epoch는 0 이상 정수";
+    return "epoch는 0 이상 정수여야 합니다.";
   const first = schedule.entries[0];
-  if (first?.fromRound !== 1) return "첫 줄은 1회차부터";
+  if (first?.fromRound !== 1) return "첫 줄은 1회차부터여야 합니다.";
   let prev: ScheduleEntry | undefined;
   for (const entry of schedule.entries) {
     const problem = checkScheduleEntry(entry) ?? checkPhaseAfter(prev, entry);
     if (problem) return problem;
     if (prev && entry.fromRound <= prev.fromRound)
-      return "fromRound는 늘어나야 한다";
+      return "fromRound는 늘어나야 합니다.";
     prev = entry;
   }
   return null;
@@ -200,10 +200,10 @@ export function checkScheduleChange(
   const problem = checkScheduleEntry(change) ?? checkPhaseAfter(last, change);
   if (problem) return problem;
   if (last && change.fromRound <= last.fromRound)
-    return "새 줄은 마지막 줄보다 뒤 회차부터";
+    return "새 줄은 마지막 줄보다 뒤 회차부터여야 합니다.";
   const earliest = earliestNoticeRound(decidedInRound);
   if (change.fromRound < earliest)
-    return `일정 변경은 ${NOTICE_ROUNDS}회차 예고 뒤(${earliest}회차)부터`;
+    return `일정 변경은 ${NOTICE_ROUNDS}회차 예고 뒤(${earliest}회차)부터여야 합니다.`;
   return null;
 }
 

@@ -147,7 +147,7 @@ describe("이 회차 확인(checkRound)", () => {
       OPTIONS,
     );
     expect(report.problems.map((p) => p.message)).toContain(
-      "앞 기록 해시와 이어지지 않는다(장부가 바뀌었다)",
+      "앞 기록 해시와 이어지지 않습니다(장부가 바뀌었습니다).",
     );
   });
 
@@ -159,8 +159,8 @@ describe("이 회차 확인(checkRound)", () => {
     );
     expect(fewer.problems.map((p) => p.message)).toEqual(
       expect.arrayContaining([
-        "예측 수가 2인데 기록은 3",
-        "예측서 목록으로 만든 머클 루트가 기록과 다르다",
+        "예측 수가 2인데 기록은 3입니다.",
+        "예측서 목록으로 만든 머클 루트가 기록과 다릅니다.",
       ]),
     );
     const other = await input(2);
@@ -169,7 +169,7 @@ describe("이 회차 확인(checkRound)", () => {
       OPTIONS,
     );
     expect(swapped.problems.map((p) => p.message)).toContain(
-      "회차 파일의 기록이 기록 사슬의 기록과 다르다",
+      "회차 파일의 기록이 기록 사슬의 기록과 다릅니다.",
     );
   });
 
@@ -180,7 +180,7 @@ describe("이 회차 확인(checkRound)", () => {
       OPTIONS,
     );
     expect(wrong.problems.map((p) => p.message)).toEqual([
-      "요약이 회차 파일로 다시 계산한 값과 다르다",
+      "요약이 회차 파일로 다시 계산한 값과 다릅니다.",
     ]);
     const seal = await checkRound(
       {
@@ -190,11 +190,11 @@ describe("이 회차 확인(checkRound)", () => {
       OPTIONS,
     );
     expect(seal.problems.map((p) => p.message)).toContain(
-      "봉인 값이 기록과 다르다",
+      "봉인 값이 기록과 다릅니다.",
     );
     const none = await checkRound({ ...base, seal: null }, OPTIONS);
     expect(none.problems).toEqual([]);
-    expect(none.skipped).toEqual(["봉인 파일을 받지 못했습니다"]);
+    expect(none.skipped).toEqual(["봉인 파일을 받지 못했습니다."]);
   });
 
   it("drand 서명이 틀리면 드러난다", async () => {
@@ -203,7 +203,7 @@ describe("이 회차 확인(checkRound)", () => {
       beaconVerifier: () => false,
     });
     expect(report.problems.map((p) => p.message)).toEqual([
-      "drand 서명이 맞지 않는다",
+      "drand 서명이 맞지 않습니다.",
     ]);
   });
 });

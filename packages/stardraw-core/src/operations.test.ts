@@ -188,7 +188,7 @@ describe("운영 기록 바이트", () => {
     expect(equalBytes(parsed?.pub as Uint8Array, director.publicKey)).toBe(
       true,
     );
-    expect(() => parseDirectorKeys("abc")).toThrow(/모양이 아니다/);
+    expect(() => parseDirectorKeys("abc")).toThrow(/모양이 아닙니다/);
   });
 });
 
@@ -286,7 +286,7 @@ describe("국장이 일하는 길", () => {
     );
     await c.close([second], [], [{ ...entry, fromRound: from + 6 }]);
     const problems = (await c.problems()).join("\n");
-    expect(problems).toMatch(/이미 예고 중인 일정 바꾸기가 있다/);
+    expect(problems).toMatch(/이미 예고 중인 일정 바꾸기가 있습니다./);
     expect(problems).toMatch(/일정 변경: 일정 바꾸기 예고 중에는/);
     c.records.pop();
     c.regs.pop();
@@ -326,7 +326,7 @@ describe("국장이 일하는 길", () => {
     );
     await c.close([op]);
     expect((await c.problems()).join("\n")).toMatch(
-      /이미 예고 중인 일정 바꾸기가 있다/,
+      /이미 예고 중인 일정 바꾸기가 있습니다./,
     );
     // 효력이 생긴 뒤에는 받는다
     c.records.pop();
@@ -356,7 +356,7 @@ describe("공격: 모두 거절된다", () => {
     await c.until(25);
     await c.close([await addAffiliation(c, director)]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/^25: 운영 기록 .*국장 열쇠가 아니다/),
+      expect.stringMatching(/^25: 운영 기록 .*국장 패스키가 아닙니다/),
     ]);
   });
 
@@ -364,7 +364,7 @@ describe("공격: 모두 거절된다", () => {
     const c = await withDirector();
     await c.close([await addAffiliation(c, stranger)]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/국장 열쇠가 아니다/),
+      expect.stringMatching(/국장 패스키가 아닙니다/),
     ]);
   });
 
@@ -396,7 +396,7 @@ describe("공격: 모두 거절된다", () => {
     } as Operation;
     await c.close([tampered]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/서명이 맞지 않는다/),
+      expect.stringMatching(/서명이 맞지 않습니다/),
     ]);
   });
 
@@ -409,8 +409,8 @@ describe("공격: 모두 거절된다", () => {
     // 효력이 생긴 소속과 같은 이름
     await c.close([await addAffiliation(c, director)]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
-      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
+      expect.stringMatching(/같은 이름의 소속이 이미 있습니다./),
+      expect.stringMatching(/같은 이름의 소속이 이미 있습니다./),
     ]);
   });
 
@@ -451,7 +451,7 @@ describe("공격: 모두 거절된다", () => {
       ),
     ]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/같은 이름의 소속이 이미 있다/),
+      expect.stringMatching(/같은 이름의 소속이 이미 있습니다./),
     ]);
   });
 
@@ -461,7 +461,7 @@ describe("공격: 모두 거절된다", () => {
     await c.close([await addAffiliation(c, director, round + 3)]);
     expect(await c.problems()).toEqual([
       expect.stringContaining(
-        `예고가 모자란다(3회차 예고, 효력은 ${round + 4}회차부터 가능)`,
+        `예고가 모자랍니다(3회차 예고, 효력은 ${round + 4}회차부터 가능)`,
       ),
     ]);
   });
@@ -507,8 +507,8 @@ describe("공격: 모두 거절된다", () => {
       ),
     ]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/관인은 이 운영 기록에 서명할 수 없다/),
-      expect.stringMatching(/관인 열쇠가 이 회차에 쓰는 관인과 다르다/),
+      expect.stringMatching(/관인은 이 운영 기록에 서명할 수 없습니다./),
+      expect.stringMatching(/관인 열쇠가 이 회차에 쓰는 관인과 다릅니다./),
     ]);
   });
 
@@ -546,8 +546,8 @@ describe("서버·연습 장부가 쓰는 고르기", () => {
     expect(accepted).toEqual([good]);
     expect(rejected.map((r) => r.problem)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/국장 열쇠가 아니다/),
-        "이미 받은 운영 기록이다",
+        expect.stringMatching(/국장 패스키가 아닙니다/),
+        "이미 받은 운영 기록입니다.",
       ]),
     );
   });
@@ -643,7 +643,9 @@ describe("관인 교체(docs/36 11-25)", () => {
     await c.until(29);
     await c.close([await sealDesignate(c, stranger, next)]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/^29: .*관인 열쇠가 이 회차에 쓰는 관인과 다르다/),
+      expect.stringMatching(
+        /^29: .*관인 열쇠가 이 회차에 쓰는 관인과 다릅니다./,
+      ),
     ]);
     c.records.pop();
     c.regs.pop();
@@ -651,7 +653,9 @@ describe("관인 교체(docs/36 11-25)", () => {
     // 효력 뒤(30회차)에는 옛 관인이 거절되고 새 관인이 통과한다
     await c.close([await sealDesignate(c, stranger, seal)]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/^30: .*관인 열쇠가 이 회차에 쓰는 관인과 다르다/),
+      expect.stringMatching(
+        /^30: .*관인 열쇠가 이 회차에 쓰는 관인과 다릅니다./,
+      ),
     ]);
     c.records.pop();
     c.regs.pop();
@@ -689,7 +693,7 @@ describe("관인 교체(docs/36 11-25)", () => {
       ),
     ]);
     expect(await c.problems()).toEqual([
-      expect.stringMatching(/관인은 자기가 서명한 국장 열쇠 지정만 취소/),
+      expect.stringMatching(/관인은 자기가 서명한 국장 패스키 지정만 취소/),
     ]);
     c.records.pop();
     c.regs.pop();
@@ -716,7 +720,7 @@ describe("관인 교체(docs/36 11-25)", () => {
     const cases: [string, Operation][] = [
       // 옛 관인만으로 교체(훔친 관인)
       [
-        "관인은 이 운영 기록에 서명할 수 없다",
+        "관인은 이 운영 기록에 서명할 수 없습니다.",
         await signAsSeal(
           c.body({
             kind: "seal-rotate",
@@ -728,17 +732,17 @@ describe("관인 교체(docs/36 11-25)", () => {
         ),
       ],
       // 국장 아닌 패스키
-      ["국장 열쇠가 아니다", await rotate(c, next, { by: stranger })],
+      ["국장 패스키가 아닙니다", await rotate(c, next, { by: stranger })],
       // 새 열쇠를 쥐지 않은 채(다른 열쇠의 증명)
       [
-        "보유 증명이 맞지 않는다",
+        "보유 증명이 맞지 않습니다",
         await rotate(c, next, { proofSigner: other }),
       ],
       // 지금 관인으로 다시
-      ["관인으로 쓴 적 있는 열쇠다", await rotate(c, seal)],
+      ["관인으로 쓴 적 있는 열쇠입니다.", await rotate(c, seal)],
       // 예고 모자람
       [
-        "예고가 모자란다",
+        "예고가 모자랍니다",
         await rotate(c, next, { effectiveRound: c.next + 3 }),
       ],
     ];
@@ -754,7 +758,7 @@ describe("관인 교체(docs/36 11-25)", () => {
     await c.close([await rotate(c, next)]);
     await c.close([await rotate(c, other)]);
     expect(await c.problems()).toEqual([
-      expect.stringContaining("이미 예고 중인 관인 교체가 있다"),
+      expect.stringContaining("이미 예고 중인 관인 교체가 있습니다."),
     ]);
   });
 

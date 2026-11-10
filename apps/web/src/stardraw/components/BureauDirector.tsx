@@ -89,7 +89,7 @@ export function BureauDirector() {
             office="카노푸스 우주국장"
           />
           <p className="text-center text-white/70 text-xs">
-            지금 국장 열쇠{" "}
+            지금 국장 패스키{" "}
             <span className="font-mono text-white" data-director-fingerprint>
               {state.current.fingerprint}
             </span>
@@ -108,7 +108,7 @@ export function BureauDirector() {
           href="/stardraw/verify#check"
           className="underline underline-offset-2 hover:text-white"
         >
-          검증 페이지의 국장 열쇠 내력과 맞춰 보기
+          검증 페이지의 국장 패스키 내력과 맞춰 보기
         </a>
       </p>
     </div>

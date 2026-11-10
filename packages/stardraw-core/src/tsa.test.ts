@@ -33,7 +33,7 @@ function signatureOffset(t: Uint8Array): number {
   return expectTag(si[attrs + 2], 0x04).value.byteOffset;
 }
 
-/** FreeTSA까지 믿는 목록(실제 토큰 모양 시험용. 검사기 기본 목록에는 FreeTSA가 없다) */
+/** FreeTSA까지 믿는 목록(실제 토큰 모양 시험용. 검사기 기본 목록에는 FreeTSA가 없습니다) */
 const WITH_FREETSA = [TSA_DIGICERT, TSA_SECTIGO, TSA_FREETSA];
 
 describe("시각 인증 토큰(실제 기관 토큰)", () => {
@@ -53,7 +53,7 @@ describe("시각 인증 토큰(실제 기관 토큰)", () => {
     const check = await verifyTimestampToken(token("freetsa"), { imprint });
     expect(check.ok).toBe(false);
     expect(check.problems).toContain(
-      "인증서가 믿는 기관 열쇠로 이어지지 않는다",
+      "인증서가 믿는 기관 열쇠로 이어지지 않습니다.",
     );
   });
 
@@ -63,7 +63,7 @@ describe("시각 인증 토큰(실제 기관 토큰)", () => {
     const check = await verifyTimestampToken(token("digicert"), {
       imprint: other,
     });
-    expect(check.problems).toEqual(["토큰이 이 봉인 값을 담고 있지 않다"]);
+    expect(check.problems).toEqual(["토큰이 이 봉인 값을 담고 있지 않습니다."]);
   });
 
   it("서명을 바꾸거나 내용(시각)을 바꾸면 거절한다", async () => {
@@ -78,7 +78,7 @@ describe("시각 인증 토큰(실제 기관 토큰)", () => {
             authorities: WITH_FREETSA,
           })
         ).problems,
-      ).toEqual(["토큰 서명이 맞지 않는다"]);
+      ).toEqual(["토큰 서명이 맞지 않습니다."]);
     }
     // 시각 "…015112Z"의 초를 바꾼다
     const moved = token("digicert");
@@ -87,7 +87,9 @@ describe("시각 인증 토큰(실제 기관 토큰)", () => {
     moved[k] = "3".charCodeAt(0);
     const check = await verifyTimestampToken(moved, { imprint });
     expect(check.genTime).toBe(at(13));
-    expect(check.problems).toContain("서명된 속성의 해시가 토큰 내용과 다르다");
+    expect(check.problems).toContain(
+      "서명된 속성의 해시가 토큰 내용과 다릅니다.",
+    );
   });
 
   it("고정해 둔 기관 열쇠로 이어지지 않으면 거절한다", async () => {
@@ -97,7 +99,7 @@ describe("시각 인증 토큰(실제 기관 토큰)", () => {
     });
     expect(check.ok).toBe(false);
     expect(check.problems).toEqual([
-      "인증서가 믿는 기관 열쇠로 이어지지 않는다",
+      "인증서가 믿는 기관 열쇠로 이어지지 않습니다.",
     ]);
   });
 
@@ -149,8 +151,8 @@ describe("봉인 증거(TsaProof)", () => {
     const p = proof("digicert");
     p.tokens[0] = { ...(p.tokens[0] as TsaProof["tokens"][0]), genTime: at(1) };
     expect((await verifyTsaProof(p, { digest })).problems).toEqual([
-      "digicert: 적어 둔 시각이 토큰 시각과 다르다",
-      "시각 인증 기관이 1곳보다 적다(0곳)",
+      "digicert: 적어 둔 시각이 토큰 시각과 다릅니다.",
+      "시각 인증 기관이 1곳보다 적습니다(0곳).",
     ]);
   });
 
@@ -165,7 +167,7 @@ describe("봉인 증거(TsaProof)", () => {
           minValid: 2,
         })
       ).problems,
-    ).toEqual(["시각 인증 기관이 2곳보다 적다(1곳)"]);
+    ).toEqual(["시각 인증 기관이 2곳보다 적습니다(1곳)."]);
     expect((await verifyTsaProof(proof("digicert"), { digest })).ok).toBe(true);
   });
 
@@ -190,8 +192,8 @@ describe("봉인 증거(TsaProof)", () => {
         })
       ).problems,
     ).toEqual([
-      "freetsa: 믿는 기관 목록에 없다",
-      "시각 인증 기관이 1곳보다 적다(0곳)",
+      "freetsa: 믿는 기관 목록에 없습니다.",
+      "시각 인증 기관이 1곳보다 적습니다(0곳).",
     ]);
   });
 });
@@ -235,7 +237,9 @@ describe("인증서 사슬: 고정한 루트 아래 아무 인증서로 가짜 �
       intermediates: [{ ca: false, keyCertSign: false }],
     });
     expect(r.ok).toBe(false);
-    expect(r.problems).toContain("인증서 사슬에 CA가 아닌 발급 인증서가 있다");
+    expect(r.problems).toContain(
+      "인증서 사슬에 CA가 아닌 발급 인증서가 있습니다.",
+    );
   });
 
   it("CA라도 keyUsage에 keyCertSign이 없으면 거절한다", async () => {

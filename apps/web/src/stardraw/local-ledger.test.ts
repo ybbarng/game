@@ -339,7 +339,7 @@ describe("데모 국장 모드(운영 기록, docs/36 11-12)", () => {
           director,
         ),
       ),
-    ).rejects.toThrow(/국장 열쇠가 아닙니다/);
+    ).rejects.toThrow(/국장 패스키가 아닙니다/);
     await ledger.skipRounds(5);
     state = await ledger.directorState();
     expect(state.view.directors).toHaveLength(1);
@@ -351,7 +351,7 @@ describe("데모 국장 모드(운영 기록, docs/36 11-12)", () => {
           stranger,
         ),
       ),
-    ).rejects.toThrow(/국장 열쇠가 아닙니다/);
+    ).rejects.toThrow(/국장 패스키가 아닙니다/);
     await ledger.submitOperation(
       await signAsDirector(
         body(state, state.view.next.earliestEffectiveRound),

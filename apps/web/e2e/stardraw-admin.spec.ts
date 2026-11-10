@@ -50,7 +50,7 @@ test(
       "data-director-message",
       "fail",
     );
-    await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
+    await expect(message(page)).toContainText("아직 국장 패스키가 아닙니다");
 
     await console
       .getByRole("button", { name: "서버 설정에 넣기(데모)" })
@@ -74,7 +74,7 @@ test(
       "data-director-message",
       "fail",
     );
-    await expect(message(page)).toContainText("국장 열쇠가 아닙니다");
+    await expect(message(page)).toContainText("국장 패스키가 아닙니다");
 
     await console
       .getByRole("button", { name: "국장 패스키로 서명해 예고" })
@@ -186,7 +186,7 @@ function serverState() {
 }
 
 test(
-  "관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장부의 국장 열쇠로만 서명해 보낸다",
+  "관리 화면: 국장 패스키를 만들어 설정 값을 보이고, 장부의 국장 패스키로만 서명해 보낸다",
   { tag: "@no-phone-landscape" },
   async ({ page }, info) => {
     // 세로 휴대폰과 데스크톱으로 본다
@@ -223,7 +223,7 @@ test(
     const console = page.locator("[data-director-console]");
     await expect(console).toBeVisible();
     await expect(console).toContainText(
-      "이 화면에서 만든 패스키는 우주국이 지정해야 국장 열쇠가 됩니다",
+      "이 화면에서 만든 패스키는 우주국이 지정해야 국장 패스키가 됩니다",
     );
     await console.getByRole("button", { name: "국장 패스키 만들기" }).click();
     await expect(message(page)).toHaveAttribute("data-director-message", "ok");
@@ -236,7 +236,7 @@ test(
     await console
       .getByRole("button", { name: "국장 패스키로 서명해 예고" })
       .click();
-    await expect(message(page)).toContainText("아직 국장 열쇠가 아닙니다");
+    await expect(message(page)).toContainText("아직 국장 패스키가 아닙니다");
     expect(sent).toHaveLength(0);
     await page.screenshot({
       path: info.outputPath("admin-new-key.png"),

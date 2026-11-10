@@ -155,7 +155,7 @@ describe("장부 전체 검사(서버 공개 파일)", () => {
     });
     expect(lied).toMatchObject({
       status: "fail",
-      detail: "1회차: 요약이 회차 파일로 다시 계산한 값과 다르다",
+      detail: "1회차: 요약이 회차 파일로 다시 계산한 값과 다릅니다.",
     });
     const other = await check((f) => {
       const light = f["/ledger/light/000001.json"] as LightFile;
@@ -165,7 +165,7 @@ describe("장부 전체 검사(서버 공개 파일)", () => {
     });
     expect(other).toMatchObject({
       status: "fail",
-      detail: "1회차: 가벼운 기록의 기록이 회차 파일과 다르다",
+      detail: "1회차: 가벼운 기록의 기록이 회차 파일과 다릅니다.",
     });
   });
 
@@ -189,7 +189,7 @@ describe("장부 전체 검사(서버 공개 파일)", () => {
     );
     expect(item).toMatchObject({
       status: "fail",
-      detail: "2회차 가벼운 기록 파일이 없다",
+      detail: "2회차 가벼운 기록 파일이 없습니다.",
     });
   });
 
@@ -302,7 +302,7 @@ describe("봉인 시각 증명(공개 시각 인증 토큰)", () => {
       await timestamp(withLog(proof(earlier, RECORD.rootLoggedAt - 5))),
     ).toMatchObject({
       status: "fail",
-      detail: "1회차: 봉인 시각이 가장 이른 토큰 시각과 다르다",
+      detail: "1회차: 봉인 시각이 가장 이른 토큰 시각과 다릅니다.",
     });
   });
 
@@ -342,7 +342,8 @@ describe("앵커 저장소(GitHub raw)", () => {
     const result = await run(withAnchor(other, good));
     expect(result.items.find((i) => i.id === "anchor")).toMatchObject({
       status: "fail",
-      detail: "처음 일정표: 앵커 저장소의 장부와 다르다(장부를 다시 시작했다)",
+      detail:
+        "처음 일정표: 앵커 저장소의 장부와 다릅니다(장부를 다시 시작했습니다).",
     });
   });
 
@@ -728,7 +729,7 @@ describe("무효 회차를 결과보다 먼저 정하기(docs/36 11-20, 보안 �
     expect(await check([earlyFile(closesAt + 10)])).toMatchObject({
       status: "fail",
       detail:
-        "1회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다",
+        "1회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔습니다.",
     });
   });
 

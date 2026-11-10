@@ -609,7 +609,7 @@ export class LocalLedger implements Ledger {
     for (const list of [...this.registrations, this.pending.registrations])
       for (const r of list) if (toHex(r.credentialId) === id) return r.pub;
     if (everDirector(await this.opsState(), new Uint8Array(0), credentialId))
-      throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
+      throw new Error("국장 패스키로는 예측할 수 없습니다");
     return null;
   }
 
@@ -652,7 +652,7 @@ export class LocalLedger implements Ledger {
         registration.credentialId,
       )
     )
-      throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
+      throw new Error("국장 패스키로는 예측할 수 없습니다");
     if (await this.passkeyPub(registration.credentialId))
       throw new Error("이미 다른 열쇠로 등록된 패스키입니다");
     if (!(await verifyRegistrationProof(registration, proof, this.policy)))
@@ -710,7 +710,7 @@ export class LocalLedger implements Ledger {
           registration.credentialId,
         )
       )
-        throw new Error("이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다");
+        throw new Error("국장 패스키로는 예측할 수 없습니다");
       if (
         !this.keys.has(who) &&
         !(await checkPow(
@@ -1167,8 +1167,8 @@ export class LocalLedger implements Ledger {
     const mine = rejected.find((r) => toHex(opId(r.op)) === id);
     if (mine)
       throw new Error(
-        /국장 열쇠가 아니다/.test(mine.problem)
-          ? "국장 열쇠가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요"
+        /국장 패스키가 아닙니다/.test(mine.problem)
+          ? "국장 패스키가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요"
           : mine.problem,
       );
     this.directorOps.push(op);

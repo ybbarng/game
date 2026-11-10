@@ -316,7 +316,7 @@ function MinhwatuHome({
       together={{
         icon: "👥",
         title: "다함께 민화투",
-        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다",
+        detail: "링크로 친구를 부릅니다. 빈자리는 컴퓨터가 앉습니다.",
         onClick: onOnline,
       }}
       learn={{

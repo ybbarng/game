@@ -181,7 +181,7 @@ export async function verifyLedger(
       problems.push({
         round: 0,
         message:
-          "처음 일정표: 앵커 저장소의 장부와 다르다(장부를 다시 시작했다)",
+          "처음 일정표: 앵커 저장소의 장부와 다릅니다(장부를 다시 시작했습니다).",
       });
     else if (same === null) skipped.push("앵커의 처음 일정표(기록 없음)");
   }
@@ -200,11 +200,13 @@ export async function verifyLedger(
       );
 
     if (record.v !== recordVersionFor(record.operations))
-      fail(`모르는 기록 판 ${record.v}(운영 기록이 있으면 2, 없으면 1)`);
+      fail(
+        `모르는 기록 형식 ${record.v}입니다(운영 기록이 있으면 2, 없으면 1).`,
+      );
     if (record.round !== round)
-      fail(`회차 번호가 ${round}여야 하는데 ${record.round}다`);
+      fail(`회차 번호가 ${round}여야 하는데 ${record.round}입니다.`);
     if (!equalBytes(record.prev, head))
-      fail("앞 기록 해시와 이어지지 않는다(장부가 바뀌었다)");
+      fail("앞 기록 해시와 이어지지 않습니다(장부가 바뀌었습니다).");
 
     // 0. 열쇠 등록: 정렬, 형식, 처음 보는 열쇠·패스키 번호, 작업 증명(모두 검사, 드물다)
     const regIds = registrations.map(registrationId);
@@ -212,7 +214,7 @@ export async function verifyLedger(
       const reg = registrations[k] as KeyRegistration;
       const id = regIds[k] as Uint8Array;
       if (k > 0 && compareBytes(regIds[k - 1] as Uint8Array, id) >= 0)
-        fail("등록 목록이 id 순서가 아니거나 같은 등록이 두 번 있다");
+        fail("등록 목록이 id 순서가 아니거나 같은 등록이 두 번 있습니다.");
       const problem = checkRegistration(reg);
       if (problem) {
         fail(`등록 ${short(id)}: ${problem}`);
@@ -221,17 +223,17 @@ export async function verifyLedger(
       const who = toHex(entrantId(reg.pub));
       const credential = toHex(reg.credentialId);
       if (keyByEntrant.has(who)) {
-        fail(`등록 ${short(id)}: 이미 등록된 열쇠`);
+        fail(`등록 ${short(id)}: 이미 등록된 열쇠입니다.`);
         continue;
       }
       if (keyByCredential.has(credential)) {
-        fail(`등록 ${short(id)}: 이미 등록된 패스키 번호`);
+        fail(`등록 ${short(id)}: 이미 등록된 패스키 번호입니다.`);
         continue;
       }
       // 국장 열쇠와 우주인 열쇠는 섞지 않는다(docs/36 11-12)
       if (everDirector(ops, reg.pub, reg.credentialId)) {
         fail(
-          `등록 ${short(id)}: 국장으로 지정된 열쇠·패스키는 우주인으로 등록할 수 없다`,
+          `등록 ${short(id)}: 국장으로 지정된 열쇠·패스키는 우주인으로 등록할 수 없습니다.`,
         );
         continue;
       }
@@ -243,7 +245,7 @@ export async function verifyLedger(
         options.powParams ?? POW_PARAMS,
       );
       if (!ok) {
-        fail(`등록 ${short(id)}: 작업 증명이 맞지 않는다`);
+        fail(`등록 ${short(id)}: 작업 증명이 맞지 않습니다.`);
         continue;
       }
       keyByEntrant.add(who);
@@ -259,14 +261,16 @@ export async function verifyLedger(
       );
       for (const id of regIds)
         if (!proven.has(toHex(id)))
-          fail(`등록 ${short(id)}: 기록의 등록 루트에 들어 있다는 증명이 없다`);
+          fail(
+            `등록 ${short(id)}: 기록의 등록 루트에 들어 있다는 증명이 없습니다.`,
+          );
     } else {
       if (record.registrationCount !== registrations.length)
         fail(
-          `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}`,
+          `등록 수가 ${registrations.length}인데 기록은 ${record.registrationCount}입니다.`,
         );
       if (!equalBytes(record.registrationRoot, merkleRoot(regIds)))
-        fail("등록 목록으로 만든 머클 루트가 기록과 다르다");
+        fail("등록 목록으로 만든 머클 루트가 기록과 다릅니다.");
     }
 
     // 1. 응모권: 판, 회차, 정렬, 등록된 열쇠, 서명, 1인 1장
@@ -276,20 +280,20 @@ export async function verifyLedger(
       const t = tickets[k] as Ticket;
       const id = ids[k] as Uint8Array;
       if (t.v !== TICKET_VERSION && t.v !== TICKET_VERSION_QUAL)
-        fail(`예측서 ${short(id)}: 모르는 판`);
+        fail(`예측서 ${short(id)}: 모르는 형식입니다.`);
       if (t.round !== round)
-        fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서`);
+        fail(`예측서 ${short(id)}: 다른 회차(${t.round})의 예측서입니다.`);
       if (k > 0 && compareBytes(ids[k - 1] as Uint8Array, id) >= 0) {
-        fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있다");
+        fail("예측서 목록이 id 순서가 아니거나 같은 예측서가 두 번 있습니다.");
       }
       const who = toHex(entrantId(t.pub));
       if (entrants.has(who))
-        fail(`예측서 ${short(id)}: 같은 열쇠가 이 회차에 두 장 냈다`);
+        fail(`예측서 ${short(id)}: 같은 열쇠로 이 회차에 두 장을 냈습니다.`);
       entrants.add(who);
       if (!keyByEntrant.has(who))
-        fail(`예측서 ${short(id)}: 등록되지 않은 열쇠`);
+        fail(`예측서 ${short(id)}: 등록되지 않은 열쇠입니다.`);
       if (!(await verifyTicketSignature(t, options.webauthnPolicy)))
-        fail(`예측서 ${short(id)}: 서명이 맞지 않는다`);
+        fail(`예측서 ${short(id)}: 서명이 맞지 않습니다.`);
     }
 
     // 2. 응모 수와 머클 루트(지운 회차는 남긴 응모권마다 포함 증명)
@@ -303,29 +307,29 @@ export async function verifyLedger(
       for (const id of ids)
         if (!proven.has(toHex(id)))
           fail(
-            `예측서 ${short(id)}: 기록의 머클 루트에 들어 있다는 증명이 없다`,
+            `예측서 ${short(id)}: 기록의 머클 루트에 들어 있다는 증명이 없습니다.`,
           );
     } else {
       if (record.count !== tickets.length)
-        fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}`);
+        fail(`예측 수가 ${tickets.length}인데 기록은 ${record.count}입니다.`);
       if (!equalBytes(record.merkleRoot, merkleRoot(ids)))
-        fail("예측서 목록으로 만든 머클 루트가 기록과 다르다");
+        fail("예측서 목록으로 만든 머클 루트가 기록과 다릅니다.");
     }
 
     // 3. drand 회차, 무효 규칙, 서명, 당첨 번호, 등수
     if (record.drandRound !== drandRoundForClose(closesAt))
-      fail("정해진 drand 회차가 아니다");
+      fail("정해진 drand 순번이 아닙니다.");
     const shouldBeVoid = isVoidRound(closesAt, record.rootLoggedAt);
     if (record.void !== shouldBeVoid) {
       fail(
         shouldBeVoid
-          ? "루트 기록 시각으로는 무효 회차인데 결과를 정했다"
-          : "무효가 아닌데 무효로 처리했다",
+          ? "루트 기록 시각으로는 무효 회차인데 결과를 정했습니다."
+          : "무효가 아닌데 무효로 처리했습니다.",
       );
     }
     if (options.rootLogVerifier) {
       if (!(await options.rootLogVerifier(record)))
-        fail("봉인 시각 증거(기관 토큰)가 이 봉인 값을 담고 있지 않다");
+        fail("봉인 시각 증거(기관 토큰)가 이 봉인 값을 담고 있지 않습니다.");
     } else {
       skipped.push(`${round}회차: 머클 루트 로그 시각(확인 수단 없음)`);
     }
@@ -336,7 +340,7 @@ export async function verifyLedger(
         round: record.drandRound,
         signature: record.drandSignature,
       };
-      if (!beaconVerifier(beacon)) fail("drand 서명이 맞지 않는다");
+      if (!beaconVerifier(beacon)) fail("drand 서명이 맞지 않습니다.");
       const randomness = drandRandomness(beacon);
       sampleSeed = taggedHash("stardraw/sample/v1", randomness);
       const draw = drawNumbers(drawSeed(round, randomness));
@@ -345,7 +349,7 @@ export async function verifyLedger(
         draw.bonus !== record.bonus
       ) {
         fail(
-          `빛난 별이 규칙대로가 아니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus})`,
+          `빛난 별이 규칙대로가 아닙니다(규칙: ${draw.numbers.join(",")} + ${draw.bonus}).`,
         );
       }
       if (partial) {
@@ -358,7 +362,7 @@ export async function verifyLedger(
               record.winners[r].some((w) => equalBytes(w, id)),
             ) ?? null;
           if (rank !== listed)
-            fail(`${rank ?? listed}등 입상자 목록이 규칙대로가 아니다`);
+            fail(`${rank ?? listed}등 입상자 목록이 규칙대로가 아닙니다.`);
         }
       } else
         for (const rank of RANKS) {
@@ -366,10 +370,10 @@ export async function verifyLedger(
             rankOf(draw, t.numbers) === rank ? [ids[k] as Uint8Array] : [],
           );
           if (!sameIds(expected, record.winners[rank]))
-            fail(`${rank}등 입상자 목록이 규칙대로가 아니다`);
+            fail(`${rank}등 입상자 목록이 규칙대로가 아닙니다.`);
         }
     } else if (RANKS.some((rank) => record.winners[rank].length > 0)) {
-      fail("무효 회차에 입상자가 있다");
+      fail("무효 회차에 입상자가 있습니다.");
     }
 
     // 4. 작업 증명: 내 것·당첨은 전부, 나머지는 표본
@@ -393,7 +397,7 @@ export async function verifyLedger(
         entry.powTarget,
         options.powParams ?? POW_PARAMS,
       );
-      if (!ok) fail(`예측서 ${short(id)}: 작업 증명이 맞지 않는다`);
+      if (!ok) fail(`예측서 ${short(id)}: 작업 증명이 맞지 않습니다.`);
     }
     const unchecked =
       tickets.length -
@@ -413,15 +417,17 @@ export async function verifyLedger(
           n.ticketId,
         ) >= 0
       ) {
-        fail("별명 목록이 예측서 id 순서가 아니거나 한 예측서에 두 번 있다");
+        fail(
+          "별명 목록이 예측서 id 순서가 아니거나 한 예측서에 두 번 있습니다.",
+        );
       }
       const winner = winnerKeys.get(key);
       if (!winner || winner.round !== n.round || n.round >= round) {
-        fail(`${label}: 지난 회차 입상 예측서가 아니다`);
+        fail(`${label}: 지난 회차 입상 예측서가 아닙니다.`);
         continue;
       }
       if (accepted.some((a) => equalBytes(a.ticketId, n.ticketId))) {
-        fail(`${label}: 이미 별명을 남긴 예측서`);
+        fail(`${label}: 이미 별명을 남긴 예측서입니다.`);
         continue;
       }
       const problem = checkNickname(n.nickname);
@@ -432,7 +438,7 @@ export async function verifyLedger(
       if (
         !(await verifyNicknameSignature(n, winner.pub, options.webauthnPolicy))
       ) {
-        fail(`${label}: 서명이 맞지 않는다`);
+        fail(`${label}: 서명이 맞지 않습니다.`);
         continue;
       }
       accepted.push(n);
@@ -475,7 +481,7 @@ export async function verifyLedger(
       if (n > supply && !overIssued.has(key)) {
         overIssued.add(key);
         fail(
-          `소속 증서: 기간 ${key.slice(0, 12)}: 예측서에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개와 다시 발급 수 ${period.reissued}개를 더한 것보다 많다`,
+          `소속 증서: 기간 ${key.slice(0, 12)}: 예측서에 쓰인 증서 ${n}개가 발급 수 ${period.issued}개와 다시 발급 수 ${period.reissued}개를 더한 것보다 많습니다.`,
         );
       }
     }
@@ -485,7 +491,8 @@ export async function verifyLedger(
     // 7. 바깥 앵커(선택)
     if (options.anchorVerifier) {
       const anchored = await options.anchorVerifier(record, roundSchedule);
-      if (anchored === false) fail("기록 해시가 앵커 저장소의 기록과 다르다");
+      if (anchored === false)
+        fail("기록 해시가 앵커 저장소의 기록과 다릅니다.");
       else if (anchored === null) skipped.push(`${round}회차: 앵커(기록 없음)`);
     }
   }

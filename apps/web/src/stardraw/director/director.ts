@@ -155,7 +155,7 @@ export interface DirectorKey {
 
 /** 고른 패스키가 장부의 국장 열쇠가 아닐 때 */
 export class NotDirectorError extends Error {
-  constructor(message = "고른 패스키는 국장 열쇠가 아닙니다") {
+  constructor(message = "고른 패스키는 국장 패스키가 아닙니다") {
     super(message);
     this.name = "NotDirectorError";
   }
@@ -318,8 +318,8 @@ export function passkeyKeyring(
         );
         throw new NotDirectorError(
           mine
-            ? "이 패스키는 아직 국장 열쇠가 아닙니다. 우주국이 장부에 지정하고 3회차가 지나야 서명할 수 있습니다"
-            : "고른 패스키는 국장 열쇠가 아닙니다(우주인 패스키이거나 지정되지 않은 패스키)",
+            ? "이 패스키는 아직 국장 패스키가 아닙니다. 우주국이 장부에 지정하고 3회차가 지나야 서명할 수 있습니다"
+            : "고른 패스키는 국장 패스키가 아닙니다(우주인 패스키이거나 지정되지 않은 패스키)",
         );
       }
       const response = credential.response as AuthenticatorAssertionResponse;
@@ -424,7 +424,7 @@ export function demoKeyring(
       const id = toBase64Url(softCredentialId(signer.publicKey));
       if (!directors.some((d) => d.until === null && d.credentialId === id))
         throw new NotDirectorError(
-          "이 패스키는 아직 국장 열쇠가 아닙니다. 지정 기록이 실리고 3회차가 지나야 합니다",
+          "이 패스키는 아직 국장 패스키가 아닙니다. 지정 기록이 실리고 3회차가 지나야 합니다",
         );
       return signAsDirector(
         body,

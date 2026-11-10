@@ -30,19 +30,19 @@ export const TAG = {
 export function parseDer(bytes: Uint8Array, at = 0): Der {
   const tag = bytes[at];
   if (tag === undefined || (tag & 0x1f) === 0x1f)
-    throw new Error("DER 태그를 읽을 수 없다");
+    throw new Error("DER 태그를 읽을 수 없습니다");
   let len = bytes[at + 1];
   let start = at + 2;
-  if (len === undefined) throw new Error("DER 길이가 없다");
+  if (len === undefined) throw new Error("DER 길이가 없습니다");
   if (len & 0x80) {
     const n = len & 0x7f;
-    if (n === 0 || n > 4) throw new Error("DER 길이 형식이 틀리다");
+    if (n === 0 || n > 4) throw new Error("DER 길이 형식이 틀립니다");
     len = 0;
     for (let i = 0; i < n; i++) len = len * 256 + (bytes[start + i] ?? 0);
     start += n;
   }
   const end = start + len;
-  if (end > bytes.length) throw new Error("DER 값이 잘렸다");
+  if (end > bytes.length) throw new Error("DER 값이 잘렸습니다");
   return {
     tag,
     bytes: bytes.subarray(at, end),
@@ -65,7 +65,7 @@ export function derChildren(node: Der): Der[] {
 /** 태그를 확인하며 읽는다 */
 export function expectTag(node: Der | undefined, tag: number): Der {
   if (!node || node.tag !== tag)
-    throw new Error(`DER 태그 0x${tag.toString(16)}를 기대했다`);
+    throw new Error(`DER 태그 0x${tag.toString(16)}가 와야 합니다`);
   return node;
 }
 
@@ -87,7 +87,7 @@ export function readOid(node: Der | undefined): string {
 
 /** UTCTime·GeneralizedTime → 밀리초 */
 export function readTime(node: Der | undefined): number {
-  if (!node) throw new Error("시각이 없다");
+  if (!node) throw new Error("시각이 없습니다");
   const text = new TextDecoder().decode(node.value);
   const m =
     node.tag === TAG.generalizedTime

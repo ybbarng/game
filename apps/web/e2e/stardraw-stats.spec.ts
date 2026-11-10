@@ -52,7 +52,7 @@ test(
     await page.goto("/stardraw/verify");
     await page.getByRole("button", { name: "장부 전체 검사" }).click();
     await expect(page.locator("[data-latest-drand]")).toContainText(
-      "마지막 drand 회차",
+      "마지막 drand 순번",
     );
     await expect(page.locator("[data-ledger-chi2]")).toContainText("카이제곱");
   },

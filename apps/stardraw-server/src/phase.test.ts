@@ -52,7 +52,7 @@ describe("시험 → 정식: 이어지는 장부", () => {
     await rig.finish(1);
     // 2회차 기록에 실린다: 3·4·5회차 동안 예고, 6회차부터
     expect(() => scheduleLive(rig?.store as never, opensAt(5))).toThrow(
-      /3회차 예고 뒤\(6회차\)부터\(2회차 기록에 실린다\)/,
+      /3회차 예고 뒤\(6회차\)부터여야 합니다\(2회차 기록에 실린다\)/,
     );
     expect(scheduleLive(rig.store, opensAt(6))).toMatchObject({
       change: { fromRound: 6, length: 3600, phase: "live" },
