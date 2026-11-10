@@ -40,7 +40,17 @@ const CLOCK_START = Date.UTC(2026, 10, 9, 7, 0);
 
 /** 앱이 넣는 것과 같은 투명 바탕(CubeWindow.swift)과 앱 다리 흉내, 「표기」 키 배치(시험이 키로 맞추기 쉽게) */
 function appLike() {
-  window.webkit = { messageHandlers: { cubie: { postMessage() {} } } };
+  // 앱에 보낸 메시지를 모은다(프로필 칸 그림이 웹이 보낸 엠블럼을 쓴다)
+  const sent = [];
+  window.__toApp = sent;
+  window.webkit = {
+    messageHandlers: { cubie: { postMessage: (m) => sent.push(m) } },
+  };
+  // README 그림마다 같은 익명 이름(실제 앱은 처음 열 때 번호를 고른다)
+  localStorage.setItem(
+    "cube.mini.profile.v1",
+    JSON.stringify({ version: 1, name: "익명 큐버 #4821" }),
+  );
   localStorage.setItem(
     "cube.keymap.v1",
     JSON.stringify({
@@ -175,6 +185,55 @@ function desktopHtml({ cube, cubeSize, window: win }) {
 
 let menuIcon = "";
 
+/**
+ * 메뉴 프로필 칸 그림(PNG 버퍼). 앱의 `ProfileMenuView`를 `scripts/profile-menu-shot.swift`와 함께 임시 폴더에서
+ * 컴파일해 그린다(앱을 띄우지 않는다). 한 파일 묶음으로 컴파일하므로 `import CubieCore` 줄은 뺀다
+ */
+function profileMenu(profile, scheme) {
+  const dir = mkdtempSync(path.join(tmpdir(), "cubie-menu-"));
+  try {
+    const src = (p) => readFileSync(path.join(here, "..", p), "utf8");
+    writeFileSync(
+      path.join(dir, "Profile.swift"),
+      src("Sources/CubieCore/Profile.swift"),
+    );
+    writeFileSync(
+      path.join(dir, "ProfileMenuView.swift"),
+      src("Sources/Cubie/ProfileMenuView.swift").replace(
+        /^import CubieCore\n/m,
+        "",
+      ),
+    );
+    writeFileSync(
+      path.join(dir, "main.swift"),
+      src("scripts/profile-menu-shot.swift"),
+    );
+    const emblem = path.join(dir, "emblem.png");
+    writeFileSync(
+      emblem,
+      Buffer.from(String(profile.emblem).split(",")[1], "base64"),
+    );
+    execFileSync("swiftc", [
+      "-o",
+      path.join(dir, "shot"),
+      path.join(dir, "Profile.swift"),
+      path.join(dir, "ProfileMenuView.swift"),
+      path.join(dir, "main.swift"),
+    ]);
+    const out = path.join(dir, "menu.png");
+    execFileSync(path.join(dir, "shot"), [
+      emblem,
+      profile.name,
+      profile.tierText,
+      out,
+      scheme,
+    ]);
+    return readFileSync(out);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 async function compose(browser, file, html, { width, height }) {
   const ctx = await browser.newContext({
     viewport: { width, height },
@@ -238,7 +297,17 @@ async function main() {
     await fromApp(p, { type: "focus", focused: true });
     // 기록 다섯 판(티어는 최고 Ao5로 매긴다). 시간은 가짜 시계로 정한다
     for (const s of [24.3, 21.8, 26.1, 19.7, 22.4]) await solveOnce(p, s);
+    // 다 맞춘 축하(시간 숫자)가 사라진 뒤에 찍는다
+    await p.clock.runFor(3000);
+    await p.waitForFunction(() => !document.querySelector("[data-mini-cheer]"));
     const solved = await shot(p);
+    // 메뉴 프로필 칸: 웹이 앱에 보낸 마지막 프로필(지금 크기 티어 글과 엠블럼 PNG)
+    await p.waitForFunction(() =>
+      window.__toApp.some((m) => m.type === "profile" && m.emblem),
+    );
+    const profile = await p.evaluate(() =>
+      window.__toApp.filter((m) => m.type === "profile").at(-1),
+    );
     await p.keyboard.press("Enter");
     await waitAttr(p, "main[data-mini]", "data-mini-phase", "ready");
     await p.keyboard.press("KeyR");
@@ -259,6 +328,18 @@ async function main() {
       browser,
       "desktop-solved.png",
       desktopHtml({ cube: dataUrl(solved), cubeSize: CUBE }),
+      DESK,
+    );
+
+    // 메뉴 막대 아이콘을 눌러 연 메뉴(맨 위 프로필 칸). 칸은 앱 코드로 그린 그림이고 메뉴 바탕·아래 줄은 흉내다
+    const menu = profileMenu(profile, "dark");
+    await compose(
+      browser,
+      "desktop-menu.png",
+      desktopHtml({ cube: dataUrl(solved), cubeSize: CUBE }).replace(
+        "</body>",
+        `<img src="${dataUrl(menu)}" style="position:absolute;top:30px;right:8px;width:${menu.readUInt32BE(16) / 2}px;border-radius:8px;box-shadow:0 12px 40px #000a"></body>`,
+      ),
       DESK,
     );
 

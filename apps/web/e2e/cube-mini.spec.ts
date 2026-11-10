@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+
 import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
 import { expect, fastForwardUntil, type Page, test } from "./test";
 
@@ -94,6 +96,15 @@ test("섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 �
   await expect(main).toHaveAttribute("data-mini-phase", "done");
   await expect(main).toHaveAttribute("data-mini-solved", "");
 
+  // 다 맞추면 짧은 축하: 이번 시간 숫자만 잠깐(첫 판이라 최고 기록 표시는 없다), 시간이 지나면 사라진다
+  const cheer = page.locator("[data-mini-cheer]");
+  await expect(cheer).toHaveAttribute("data-mini-cheer", "");
+  await expect(cheer.locator("[data-mini-cheer-time]")).toHaveText("3.00");
+  // 시험은 「동작 줄이기」라 큐브가 튀지 않는다(빛과 숫자만)
+  await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(0);
+  await page.clock.fastForward(2500);
+  await expect(cheer).toHaveCount(0);
+
   // 기록(앱 메뉴 「기록」): 시간은 포커스가 있던 3초만
   await fromApp(page, { type: "records", open: true });
   const panel = page.locator("[data-mini-records='3']");
@@ -115,6 +126,75 @@ test("섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 �
   await fromApp(page, { type: "records", open: false });
   await expect(page.locator("[data-mini-records]")).toHaveCount(0);
 });
+
+/** 사람이 보는 스크린샷용: 모든 CSS 연출을 `ms` 순간에 세운다 */
+async function freezeAnimations(page: Page, ms: number) {
+  if (!process.env.E2E_SCREENSHOTS) return;
+  await page.evaluate((t) => {
+    for (const a of document.getAnimations()) {
+      a.currentTime = t;
+      a.pause();
+    }
+  }, ms);
+}
+
+test(
+  "다 맞추면 큐브가 통 튀고 빛 고리가 퍼졌다 사라진다(작은 창에서도)",
+  { tag: "@3d" },
+  async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 96, height: 96 });
+    await installClock(page);
+    await fakeApp(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      SCENE,
+    );
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+    for (const k of keys) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    const cheer = page.locator("[data-mini-cheer]");
+    await expect(cheer).toBeVisible();
+    await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(
+      1,
+    );
+    // 빛 고리는 큐브 둘레(큐브 사각형을 받아 그 가운데에 둔다)
+    const glow = await cheer
+      .locator(".mini-cheer-glow")
+      .evaluate((el) => (el as HTMLElement).style.width);
+    expect(glow).toMatch(/px$/);
+    // 숫자가 창 안에 다 들어온다
+    const box = await cheer.locator("[data-mini-cheer-time]").boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(96);
+      expect(box.y + box.height).toBeLessThanOrEqual(96);
+    }
+    await freezeAnimations(page, 800);
+    await shot(page, "mini-cheer-small", info.project.name);
+    await page.clock.fastForward(2500);
+    await expect(cheer).toHaveCount(0);
+    await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(
+      0,
+    );
+  },
+);
 
 test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거울을 접는다", async ({
   page,
@@ -546,9 +626,14 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   const four = tiers.locator("[data-mini-tier-size='4']");
   await expect(four).toContainText("1:02.00");
   await expect(four.locator("[data-cube-tier]")).toHaveCount(1);
+  // 티어 이름 옆에 사이트와 같은 엠블럼(티어가 없는 크기는 없다)
+  await expect(four.locator("[data-cube-emblem]")).toHaveCount(1);
   await expect(tiers.locator("[data-mini-tier-size='2']")).toContainText(
     "5판 뒤에",
   );
+  await expect(
+    tiers.locator("[data-mini-tier-size='2'] [data-cube-emblem]"),
+  ).toHaveCount(0);
   await shot(page, "mini-records-tiers", info.project.name);
 
   await page.goto("/cube/mini?view=keys");
@@ -559,6 +644,103 @@ test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", asy
   await expect(keys).toContainText("Enter");
   await expect(keys).toContainText("배치 「표기」");
   await shot(page, "mini-keys", info.project.name);
+});
+
+/** 앱이 받은 마지막 `profile` 메시지 */
+async function lastProfile(page: Page) {
+  return page.evaluate(() => {
+    const sent = (window as unknown as { __toApp: { type: string }[] }).__toApp;
+    return [...sent].reverse().find((m) => m.type === "profile") as
+      | {
+          name: string;
+          photo: string | null;
+          signedIn: boolean;
+          n: number;
+          tier: string | null;
+          tierText: string;
+          emblem: string | null;
+        }
+      | undefined;
+  });
+}
+
+test("앱 메뉴 프로필 칸: 익명 이름은 한 번 정해 남고, 지금 크기의 티어와 엠블럼 그림을 보낸다", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "앱 화면은 데스크톱에서");
+  await fakeApp(page);
+  await page.addInitScript(() => {
+    if (localStorage.getItem("cube.mini.v1")) return;
+    localStorage.setItem(
+      "cube.mini.v1",
+      JSON.stringify({
+        version: 1,
+        n: 4,
+        mirror: true,
+        records: {
+          "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
+            at: Date.UTC(2026, 10, 9, 3, i),
+            n: 4,
+            mode: "solo",
+            ms,
+            penalty: 0,
+            moves: 88,
+            scramble: "R",
+            no: 5 - i,
+          })),
+        },
+      }),
+    );
+  });
+  await page.goto("/cube/mini");
+  await expect
+    .poll(async () => (await lastProfile(page))?.emblem ?? null, SCENE)
+    .toMatch(/^data:image\/png;base64,/);
+  const first = await lastProfile(page);
+  expect(first?.name).toMatch(/^익명 큐버 #\d{4}$/);
+  expect(first).toMatchObject({
+    photo: null,
+    signedIn: false,
+    n: 4,
+    tier: expect.any(String),
+  });
+  expect(first?.tierText).toMatch(/^4×4 \S/);
+  // 그림이 비지 않았다(엠블럼 너비 32pt의 2배 화소)
+  const size = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext("2d") as CanvasRenderingContext2D;
+    ctx.drawImage(img, 0, 0);
+    const px = ctx.getImageData(0, 0, c.width, c.height).data;
+    let opaque = 0;
+    for (let i = 3; i < px.length; i += 4) if ((px[i] as number) > 0) opaque++;
+    return { w: img.width, opaque };
+  }, first?.emblem as string);
+  expect(size.w).toBe(64);
+  expect(size.opaque).toBeGreaterThan(500);
+  // 사람이 보는 용도: 앱에 넘긴 그림 그대로
+  if (process.env.E2E_SCREENSHOTS) {
+    mkdirSync("test-results/screens", { recursive: true });
+    writeFileSync(
+      `test-results/screens/cube-mini-profile-emblem-${info.project.name}.png`,
+      Buffer.from(String(first?.emblem).split(",")[1] as string, "base64"),
+    );
+  }
+
+  // 다시 열어도 같은 이름, 티어가 없는 크기는 엠블럼 없이 「5판 뒤에」
+  await page.goto("/cube/mini");
+  await expect
+    .poll(async () => (await lastProfile(page))?.name)
+    .toBe(first?.name);
+  await fromApp(page, { type: "size", n: 2 });
+  await expect
+    .poll(async () => (await lastProfile(page))?.tierText)
+    .toBe("2×2 5판 뒤에");
+  expect((await lastProfile(page))?.emblem).toBeNull();
 });
 
 /**
