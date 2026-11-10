@@ -55,7 +55,7 @@ import {
 import { COMBO_SHOW } from "../flow/strip";
 import { soloSound } from "../game-sounds";
 import type { Command } from "../input";
-import type { AlgCase } from "../learn";
+import type { AlgCase } from "../learn/types";
 import { FIT_CHOICE } from "../online/bot-choices";
 import { recentAverage } from "../online/handicap";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";
@@ -100,6 +100,7 @@ import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
 import { RivalPanel, RivalSelect } from "./RivalPanel";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 혼자 맞추기(`/cube/solo`)와 가상 블라인드(`/cube/blind`) 화면(docs/47 1·7절).

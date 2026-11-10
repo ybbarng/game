@@ -27,9 +27,12 @@ export const YAK_INFO: readonly { kind: YakKind; text: string }[] = [
   { kind: "fourPair", text: "같은 달 넉 장 + 다른 달 두 장: −50점" },
   {
     kind: "straight",
-    text: "여섯 달이 이어짐(예: 3·4·5·6·7·8월): 합만큼 빼기(−21~−57점)",
+    text: "여섯 장의 달이 이어짐(예: 3·4·5·6·7·8월): 여섯 장 합만큼 빼기(−21~−57점)",
   },
-  { kind: "ttoi", text: "두 장씩 세 쌍, 또는 석 장씩 두 쌍: 0점" },
+  {
+    kind: "ttoi",
+    text: "같은 달 두 장씩 세 묶음, 또는 같은 달 석 장씩 두 묶음: 0점",
+  },
 ];
 
 export function cardValue(id: string): number {

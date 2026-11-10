@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { stickersFromState } from "../bridge";
-import { algTokens } from "../learn";
+import { algTokens } from "../learn/notation";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubePosterPair } from "./CubePosterPair";

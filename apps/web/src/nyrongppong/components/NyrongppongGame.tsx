@@ -85,7 +85,7 @@ export function endText(
     case "stop":
       return end.success
         ? `${name(end.seat)} 스톱 성공`
-        : `${name(end.seat)} 스톱 실패(바가지 +30)`;
+        : `${name(end.seat)} 스톱 실패(벌점 +30)`;
     case "deckOut":
       return "더미가 떨어졌어요";
   }

@@ -1,12 +1,17 @@
-import { type CubeMove, isSolved, parseMoves } from "@game/cube-engine";
+import {
+  applyMoves,
+  type CubeMove,
+  isSolved,
+  parseMoves,
+} from "@game/cube-engine";
 import { ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
-import { twoHandKeymap } from "../input/keymaps";
+import { notationKeymap, twoHandKeymap } from "../input/keymaps";
 import { goalMet } from "../learn/judge";
 import { drawRound } from "./deck";
 import { pickAlg } from "./pick-alg";
-import { PRACTICE_N } from "./problem";
+import { caseStart, PRACTICE_N, type Problem, problemOf } from "./problem";
 import { ROUND_SIZE } from "./round";
 import {
   PracticeSession,
@@ -15,8 +20,8 @@ import {
   WRONG_SHOW_MS,
 } from "./session";
 import { stageById } from "./stages";
-import { loadPractice } from "./store";
-import type { PracticeStage } from "./types";
+import { loadPractice, SEE_SUGGEST_CLEAN } from "./store";
+import type { DrillCase, PracticeStage } from "./types";
 
 const keymap = twoHandKeymap();
 const mv = (t: string): CubeMove => parseMoves(PRACTICE_N, t)[0] as CubeMove;
@@ -68,21 +73,42 @@ function typeAll(s: PracticeSession, clock: ManualClock): void {
   }
 }
 
-describe("공식 연습 진행기(Cubie 미니 모드가 쓴다)", () => {
+describe("공식 연습 진행기(사이트 공식 연습·Cubie 미니 모드가 쓴다)", () => {
   it("출제는 사이트와 같은 drawRound·pickAlg: 같은 씨앗이면 같은 10문제", () => {
     const { s, stage } = setup("2look-oll");
     const want = drawRound(
       stage.cases.map((c) => c.id),
-      {
-        seed: 7,
-        algOf: (id) =>
-          pickAlg(stage.cases.find((c) => c.id === id) as never, keymap).alg,
-        book: {},
-        auf: stage.auf,
-      },
-    );
+      { seed: 7, book: {}, auf: stage.auf },
+    ).map((d) => {
+      const c = stage.cases.find((x) => x.id === d.caseId) as DrillCase;
+      return problemOf(stage, c, d.turn, pickAlg(c, keymap).alg);
+    });
     expect(s.round.problems).toEqual(want);
     expect(s.round.problems).toHaveLength(ROUND_SIZE);
+  });
+
+  it("시작 모양은 상황 자체(키 배치와 상관없음), 공식은 키 배치마다 가장 싼 것을 그 모양에 맞춘다", () => {
+    const two = setup("pll").s;
+    const notation = setup("pll", { keymap: notationKeymap() }).s;
+    let differ = 0;
+    for (let i = 0; i < ROUND_SIZE; i++) {
+      const a = two.round.problems[i] as Problem;
+      const b = notation.round.problems[i] as Problem;
+      expect([b.caseId, b.turn]).toEqual([a.caseId, a.turn]);
+      const c = two.caseOf(a.caseId) as DrillCase;
+      const start = caseStart(two.stage, c, a.turn);
+      for (const p of [a, b]) {
+        const end = applyMoves(
+          PRACTICE_N,
+          start,
+          parseMoves(PRACTICE_N, p.alg),
+        );
+        expect(goalMet(PRACTICE_N, end, two.stage.goal(c)), p.alg).toBe(true);
+      }
+      if (a.alg !== b.alg) differ++;
+    }
+    expect(two.board?.start).toEqual(notation.board?.start);
+    expect(differ).toBeGreaterThan(0);
   });
 
   it("따라 치기: 틀린 수는 큐브에 넣지 않고 그 낱말을 1.5초 알리며, 콤보가 깨진다", () => {
@@ -143,6 +169,35 @@ describe("공식 연습 진행기(Cubie 미니 모드가 쓴다)", () => {
     expect(s.summary).toBeNull();
   });
 
+  it("외워서 쳐 보기 권하기: 판 수와 상관없이 그 단계 공식마다 틀림 없이 두 번 넘게 친 뒤에야", () => {
+    const { s, clock, stage } = setup("beginner-yellow-cross");
+    const clean = new Map(stage.cases.map((c) => [c.id, 0]));
+    const ready = () =>
+      [...clean.values()].every((v) => v >= SEE_SUGGEST_CLEAN);
+    let missed = false;
+    for (let round = 0; !ready(); round++) {
+      expect(round).toBeLessThan(10);
+      for (let k = 0; k < ROUND_SIZE; k++) {
+        const id = s.round.current?.caseId as string;
+        // 첫 문제는 한 번 틀린다(그 문제는 세지 않는다)
+        if (!missed) {
+          missed = true;
+          const want = s.tokens[0] as string;
+          s.input(mv(want.startsWith("B") ? "D" : "B"));
+        } else clean.set(id, (clean.get(id) ?? 0) + 1);
+        typeAll(s, clock);
+        expect(s.suggestSee).toBe(ready());
+        clock.advance(SOLVED_PAUSE_MS);
+      }
+      expect(s.phase).toBe("over");
+      if (!ready()) s.newRound();
+    }
+    expect(s.suggestSee).toBe(true);
+    // 보고 치기에서는 권하지 않는다
+    const see = setup("beginner-yellow-cross", { mode: "see" });
+    expect(see.s.suggestSee).toBe(false);
+  });
+
   it("보고 치기: 공식은 펼쳐야 보이고, 되돌리기를 받고, 목표 모양이면 맞춤(펼친 문제는 콤보에서 빠진다)", () => {
     const { s, clock } = setup("beginner-second", { mode: "see" });
     const before = s.state;
@@ -160,6 +215,20 @@ describe("공식 연습 진행기(Cubie 미니 모드가 쓴다)", () => {
     );
     expect(s.phase).toBe("pause");
     expect(s.round.combo.current).toBe(0);
+  });
+
+  it("보고 치기: 처음 모양으로 되돌리기(Esc)는 시작 모양을 다시 칠한다. 따라 치기는 받지 않는다", () => {
+    const { s, repaints } = setup("beginner-second", { mode: "see" });
+    const start = s.board?.start;
+    s.input(mv("R"));
+    s.input(mv("U"));
+    const before = repaints.length;
+    expect(s.reset()).toBe(true);
+    expect(s.state).toEqual(start);
+    expect(repaints.length).toBe(before + 1);
+    expect(s.undo()).toBeNull();
+    const follow = setup("beginner-second").s;
+    expect(follow.reset()).toBe(false);
   });
 
   it("끝낸 진행기는 걸어 둔 시계를 풀고 수를 받지 않는다", () => {

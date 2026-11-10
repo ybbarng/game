@@ -4,7 +4,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/learn");
-  await expect(page.getByText("0/13단원")).toBeVisible();
+  await expect(page.getByText("0/14단원")).toBeVisible();
   // 교환 가능한 자물쇠: 잠근 순서와 상관없이 같다.
   await expect(page.getByText(/✓ 지수끼리 곱해지므로/)).toBeVisible();
   // 이차잉여 누출: 잘못된 방식은 판정으로 빨강을 다 맞힌다.
@@ -18,7 +18,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   await expect(page.getByText(/✓ 통과\. z에는/)).toBeVisible();
   // cut-and-choose: 버티다 보면 들킨다(아주 드물게 16번 버틴다).
   for (let i = 0; i < 16; i++) {
-    const button = page.getByRole("button", { name: /입력에서 정직하게/ });
+    const button = page.getByRole("button", { name: /받은 덱에 맞춘 Z 내기/ });
     if (await button.isDisabled()) break;
     await button.click();
   }
@@ -35,7 +35,7 @@ test("보안 배우기: 장난감 체험과 퀴즈가 돌아간다", async ({ pa
   await page
     .getByRole("button", { name: "자기 자리에서 보이는 정보만 있습니다" })
     .click();
-  await expect(page.getByText("1/13단원")).toBeVisible();
+  await expect(page.getByText("1/14단원")).toBeVisible();
   // 심화: ElGamal 다시 감싸기 뒤에도 둘 다 풀면 원래 카드(♠A = 4)가 나온다.
   await page.getByRole("button", { name: /다시 감싸기/ }).click();
   await page.getByRole("button", { name: /다시 감싸기/ }).click();

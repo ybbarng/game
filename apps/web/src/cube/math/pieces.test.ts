@@ -1,5 +1,6 @@
 import {
   centerTwists,
+  cornerTwists,
   cubeTopology,
   edgeFlips,
   faceColors,
@@ -20,9 +21,11 @@ import {
 import {
   changedPieces,
   commutator,
+  cycleParity,
   invariants,
   invertText,
   orderOf,
+  pieceAtSlot,
   pieceCycles,
   rotatePieceInPlace,
   stateAfter,
@@ -86,6 +89,20 @@ describe("뽑아서 다시 끼우기", () => {
 });
 
 describe("방향과 홀짝 계기", () => {
+  // 「방향과 홀짝」 카드: 바깥에서 볼 때 기준 칸이 시계 반대 방향으로 한 칸 옮겨 가 있으면 1, 시계 방향이면 2.
+  // R 뒤 UFR에는 노란 칸이 앞(F)에 온다. UFR을 바깥에서 보면 위 → 오른쪽 → 앞이 시계 방향이라 위 → 앞은 시계 반대.
+  it("코너 비틀림 1은 기준 칸이 시계 반대 방향으로 한 칸", () => {
+    const tw = new Map(
+      cornerTwists(3, stateAfter(3, "R")).map((c) => [
+        pieceName(3, c.piece),
+        c.twist,
+      ]),
+    );
+    expect(tw.get("UFR")).toBe(1);
+    // UBR을 바깥에서 보면 위 → 뒤 → 오른쪽이 시계 방향: 흰 칸이 뒤(B)로 가서 2
+    expect(tw.get("UBR")).toBe(2);
+  });
+
   it("면 돌리기를 아무리 해도 규칙이 지켜진다", () => {
     const algs = ["R", "F", "R U F' D2 L B'", "U R2 F' D L' B2 U' R F2"];
     for (const alg of algs) {
@@ -153,6 +170,15 @@ describe("되풀이하면 돌아온다", () => {
     expect(orderOf(3, parseMoves(3, "R U R U R U R U R U"))).toBe(21);
   });
 
+  it("R U: 코너 블럭 6개가 바뀌고, 5개 고리 밖의 1개는 제자리에서 비틀린다", () => {
+    const s = stateAfter(3, "R U");
+    expect(changedPieces(3, s).corner).toBe(6);
+    const inPlace = cornerTwists(3, s).filter(
+      (c) => pieceAtSlot(3, s, c.piece) === c.piece && c.twist !== 0,
+    );
+    expect(inPlace).toHaveLength(1);
+  });
+
   it("미리 고른 묶음의 차수가 표와 같다", () => {
     for (const p of ORDER_PRESETS) {
       expect(orderOf(3, parseMoves(3, p.alg))).toBe(p.order);
@@ -184,6 +210,24 @@ describe("교환자", () => {
         center: undefined,
       });
     }
+  });
+
+  it("R과 U가 함께 움직이는 조각은 3개, 둘이 움직이는 조각은 13개", () => {
+    const moved = (alg: string) => {
+      const s = stateAfter(3, alg);
+      const topo = cubeTopology(3);
+      return new Set(
+        topo.pieces.flatMap((p, q) =>
+          p.kind !== "center" && p.stickers.some((x) => s.perm[x] !== x)
+            ? [q]
+            : [],
+        ),
+      );
+    };
+    const r = moved("R");
+    const u = moved("U");
+    expect([...r].filter((q) => u.has(q))).toHaveLength(3);
+    expect(new Set([...r, ...u]).size).toBe(13);
   });
 
   it("서로 안 닿는 두 면은 교환자가 아무것도 안 바꾼다", () => {
@@ -235,6 +279,41 @@ describe("크기와 패리티", () => {
     const c = pieceCycles(4, parseMoves(4, "R"));
     expect(c.find((x) => x.kind === "corner")?.cycles).toEqual([4]);
     expect(c.find((x) => x.kind === "wing")?.cycles).toEqual([4, 4]);
+  });
+
+  // 「섞는 경우의 수」 4×4 끝말: 코너 블럭의 홀짝은 센터 블럭 자리의 홀짝과 늘 함께 바뀌고, 안쪽 층은 날개 홀짝만 바꾼다
+  it("4×4: 층 하나를 돌리면 코너와 센터 블럭의 홀짝이 함께 바뀌고, 안쪽 층은 날개 홀짝만 바꾼다", () => {
+    for (const face of ["R", "U", "F", "L", "D", "B"]) {
+      for (const alg of [face, `2${face}`]) {
+        const by = (k: string) =>
+          cycleParity(
+            pieceCycles(4, parseMoves(4, alg)).find((c) => c.kind === k)
+              ?.cycles ?? [],
+          );
+        expect(by("corner"), alg).toBe(by("innerCenter"));
+        if (alg.startsWith("2")) {
+          expect(by("corner"), alg).toBe(0);
+          expect(by("wing"), alg).toBe(1);
+        }
+      }
+    }
+  });
+
+  // 「섞는 경우의 수」 5×5 자리 홀짝 규칙: 정가운데 센터 블럭을 제자리에 두면 코너와 가운데 엣지 블럭의 홀짝이 같다
+  it("5×5: 어느 층을 돌려도(가운데 층은 큐브 방향을 되돌려) 코너와 가운데 엣지 블럭의 홀짝이 같다", () => {
+    for (const alg of [
+      "R",
+      "2R",
+      "U 2F' L2 2D",
+      "3R x'",
+      "R 3R x' U 2B",
+      "3U y' F",
+    ]) {
+      const s = stateAfter(5, alg);
+      const v = invariants(5, s);
+      expect(changedPieces(5, s).center, alg).toBeUndefined();
+      expect(v.cornerParity, alg).toBe(v.edgeParity);
+    }
   });
 
   it("4×4 패리티 공식이 만드는 모양", () => {

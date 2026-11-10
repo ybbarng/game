@@ -1,0 +1,446 @@
+/*
+ * 은하 한 바퀴 연출과 둘러앉은 판. 이 클래스를 쓰는 컴포넌트가 저마다 import한다(복기 화면도 같은 판을 그린다)
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/* 은하 한 바퀴 연출(시간은 galaxy/fx-timing.ts, 움직임 줄이기면 연출 자체가 없다) */
+@keyframes galaxy-twinkle {
+  0%,
+  100% {
+    opacity: var(--tw-o, 0.2);
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+.galaxy-twinkle {
+  animation: galaxy-twinkle 4.2s ease-in-out infinite;
+}
+/* 우주국 공문: 위에서 내려와 머물다 걷힌다 */
+@keyframes galaxy-paper {
+  0% {
+    transform: translateY(-60%) rotate(-2deg);
+    opacity: 0;
+  }
+  14% {
+    transform: translateY(0) rotate(-0.6deg);
+    opacity: 1;
+  }
+  88% {
+    transform: translateY(0) rotate(-0.6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-8%);
+    opacity: 0;
+  }
+}
+.galaxy-paper {
+  animation: galaxy-paper var(--galaxy-paper-ms, 2600ms)
+    cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 직인: 종이가 자리 잡은 뒤 찍힌다 */
+@keyframes galaxy-stamp {
+  0%,
+  22% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(0.94);
+    opacity: 0.95;
+  }
+  36%,
+  100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+}
+.galaxy-stamp {
+  animation: galaxy-stamp var(--galaxy-paper-ms, 2600ms) ease-out both;
+}
+@keyframes galaxy-toast {
+  0% {
+    transform: translateY(8px) scale(0.96);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* 단계 길이에 맞춘다(--galaxy-toast-ms, galaxy/fx-timing.ts). 문구는 15~85% 사이에 다 보인다 */
+.galaxy-toast {
+  animation: galaxy-toast var(--galaxy-toast-ms, 1300ms) ease-out both;
+}
+/* 별자리 완성: 이름이 아래에서 떠오른다 */
+@keyframes galaxy-name-rise {
+  0% {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  35%,
+  85% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.galaxy-name-rise {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: galaxy-name-rise 1.5s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes galaxy-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.7);
+  }
+}
+.galaxy-pulse {
+  animation: galaxy-pulse 0.65s ease-in-out 1;
+}
+@keyframes galaxy-sparkle {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(253, 230, 138, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(253, 230, 138, 0.95);
+  }
+}
+.galaxy-sparkle {
+  animation: galaxy-sparkle 0.8s ease-in-out 3;
+}
+/* 제철 변: 은은하게 빛난다 */
+.galaxy-season {
+  background-image: linear-gradient(
+    180deg,
+    rgba(253, 230, 138, 0.16),
+    rgba(253, 230, 138, 0.03)
+  );
+  outline: 1px solid rgba(253, 230, 138, 0.28);
+  outline-offset: -1px;
+}
+/*
+ * 이용료 단계(BoardTile, 2026-11-05): 완성한 별자리 칸은 주인 색 빛 테가 천천히 숨 쉰다(--owner).
+ * 움직임 줄이기면 숨 쉬지 않고 빛 테만 남는다
+ */
+@keyframes galaxy-complete {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px color-mix(in srgb, var(--owner) 55%, transparent),
+      inset 0 0 6px color-mix(in srgb, var(--owner) 30%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--owner) 90%, transparent),
+      inset 0 0 10px color-mix(in srgb, var(--owner) 50%, transparent);
+  }
+}
+.galaxy-complete {
+  border-width: 2px;
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--owner) 75%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--owner) 40%, transparent);
+  animation: galaxy-complete 3.2s ease-in-out infinite;
+}
+/* 별자리 완성 순간: 하늘의 선이 닿는 박자에 별 칸이 한 칸씩 반짝인다(GALAXY_FX.completeFlash) */
+@keyframes galaxy-tile-flash {
+  0% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  35% {
+    filter: brightness(1.9);
+    transform: scale(1.08);
+  }
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+.galaxy-tile-flash {
+  z-index: 5;
+  animation: galaxy-tile-flash 0.7s ease-out 1;
+}
+/* 정거장 점: 별 둘레 궤도를 천천히 돈다 */
+@keyframes galaxy-orbit {
+  to {
+    rotate: 360deg;
+  }
+}
+.galaxy-orbit {
+  animation: galaxy-orbit 24s linear infinite;
+}
+/* 정거장을 올린 순간: 새 점이 크게 빛나며 궤도에 붙는다 */
+@keyframes galaxy-dot-in {
+  0% {
+    scale: 3;
+    opacity: 0;
+    filter: brightness(2);
+  }
+  60% {
+    scale: 1.4;
+    opacity: 1;
+  }
+  100% {
+    scale: 1;
+    filter: brightness(1);
+  }
+}
+.galaxy-dot-in {
+  animation: galaxy-dot-in 0.65s ease-out both;
+}
+/* 정거장을 내린 순간: 점 하나가 궤도에서 떨어져 나가며 사라진다 */
+@keyframes galaxy-dot-out {
+  0% {
+    opacity: 1;
+    translate: -50% -50%;
+  }
+  100% {
+    opacity: 0;
+    translate: 60% 120%;
+  }
+}
+.galaxy-dot-out {
+  animation: galaxy-dot-out 0.65s ease-in both;
+}
+/* 큰 정거장이 선 순간: 고리가 넓게 퍼졌다가 별을 감싼다 */
+@keyframes galaxy-ring-in {
+  0% {
+    scale: 1.8;
+    opacity: 0;
+  }
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+}
+.galaxy-ring-in {
+  animation: galaxy-ring-in 0.65s ease-out both;
+}
+/* 멈춘 우주선: 살짝 떠 있듯 천천히 오르내리고, 칸 위 그림자는 오르면 작고 옅어진다 */
+@keyframes galaxy-ship-hover {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -7%;
+  }
+}
+.galaxy-ship-hover {
+  animation: galaxy-ship-hover 3.6s ease-in-out infinite;
+}
+@keyframes galaxy-ship-shadow {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+  50% {
+    scale: 0.8;
+    opacity: 0.6;
+  }
+}
+.galaxy-ship-shadow {
+  animation: galaxy-ship-shadow 3.6s ease-in-out infinite;
+}
+/* 미끄러지는 우주선 꽁무니의 엔진 빛: 짧게 일렁인다 */
+@keyframes galaxy-flame {
+  from {
+    transform: scaleY(0.8);
+    opacity: 0.8;
+  }
+  to {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
+}
+.galaxy-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: galaxy-flame 0.18s ease-in-out infinite alternate;
+}
+/* 우주선 창: 가끔 반짝 */
+@keyframes galaxy-ship-glint {
+  0%,
+  80%,
+  100% {
+    opacity: 0.75;
+  }
+  88% {
+    opacity: 1;
+    filter: brightness(1.6);
+  }
+}
+.galaxy-ship-glint {
+  animation: galaxy-ship-glint 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-ship-hover,
+  .galaxy-ship-shadow,
+  .galaxy-flame,
+  .galaxy-ship-glint,
+  .galaxy-complete,
+  .galaxy-tile-flash,
+  .galaxy-orbit,
+  .galaxy-dot-in,
+  .galaxy-dot-out,
+  .galaxy-ring-in {
+    animation: none;
+  }
+  .galaxy-dot-out {
+    display: none;
+  }
+}
+/* 유성우의 밤: 판 전체가 조금 푸르고, 유성이 비스듬히 천천히 흐른다(제철 빛남처럼 은은하게) */
+.galaxy-meteor-sky {
+  background-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(125, 211, 252, 0.12),
+    rgba(125, 211, 252, 0) 70%
+  );
+}
+@keyframes galaxy-meteor {
+  0% {
+    transform: translate(0, 0) rotate(35deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.85;
+  }
+  30%,
+  100% {
+    transform: translate(-28cqw, 40cqw) rotate(35deg);
+    opacity: 0;
+  }
+}
+.galaxy-meteor {
+  position: absolute;
+  width: 1.5px;
+  height: 9%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(224, 242, 254, 0),
+    rgba(224, 242, 254, 0.9)
+  );
+  opacity: 0;
+  animation: galaxy-meteor 9s linear infinite;
+}
+/* 결정 창: 아래에서 올라온다(나는 아래, docs/41 6절) */
+@keyframes galaxy-sheet {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.galaxy-sheet {
+  animation: galaxy-sheet 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 칸 카드: 누른 칸이 판 가운데에 크게 떠오른다 */
+@keyframes galaxy-card {
+  from {
+    scale: 0.92;
+    opacity: 0;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+.galaxy-card {
+  animation: galaxy-card 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-card {
+    animation: none;
+  }
+}
+/* 둘러앉은 판(docs/48 15-6). 넓은 화면: 판을 화면 높이에 맞춰 가운데, 자리 카드는 판 아래(나)·왼쪽·위·오른쪽, 결정·기록은 오른쪽 칸 */
+.galaxy-table-wide {
+  --galaxy-board: min(calc(100dvh - 15rem), calc(100vw - 40rem));
+  display: grid;
+  width: 100%;
+  justify-content: center;
+  grid-template-columns:
+    minmax(8rem, 12rem) var(--galaxy-board) minmax(8rem, 12rem)
+    minmax(18rem, 23rem);
+  grid-template-rows: auto var(--galaxy-board) auto;
+  grid-template-areas:
+    ". top . side"
+    "left board right side"
+    ". bottom . side";
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
+.galaxy-table-wide .galaxy-side {
+  align-self: start;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+}
+/* 낮고 넓은 화면(눕힌 휴대폰): 판을 높이에 맞춰 가운데, 왼쪽에 맞은편 자리, 오른쪽에 나·옆 자리와 결정 */
+.galaxy-table-short {
+  --galaxy-board: calc(100dvh - 2.75rem);
+  display: grid;
+  width: 100%;
+  justify-content: center;
+  grid-template-columns: minmax(7rem, 11rem) var(--galaxy-board) minmax(
+      12rem,
+      20rem
+    );
+  column-gap: 0.5rem;
+}
+.galaxy-table-short .galaxy-side {
+  max-height: calc(100dvh - 2.75rem);
+  overflow-y: auto;
+}
+/* 자리 카드에 온 반응: 떠올랐다 사라진다(SeatCard REACTION_SHOWN_MS와 같은 길이) */
+@keyframes galaxy-react {
+  0% {
+    transform: translateY(6px) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-4px) scale(1.15);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-18px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1);
+    opacity: 0;
+  }
+}
+.galaxy-react {
+  animation: galaxy-react 1.8s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-twinkle,
+  .galaxy-sheet,
+  .galaxy-sparkle,
+  .galaxy-pulse {
+    animation: none;
+  }
+  .galaxy-meteor {
+    display: none;
+  }
+}

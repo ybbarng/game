@@ -21,6 +21,7 @@ import { IdleHint, useIdleHint } from "@/stardraw/components/IdleHint";
 import { money, squareName, starInfo, starLine, subject } from "../format";
 import { GALAXY_FX } from "../fx-timing";
 import { STAR_FACTS } from "../star-facts";
+import "@/galaxy/components/galaxy.css";
 
 export const PRIMARY =
   "rounded-xl bg-amber-200 px-4 py-2.5 font-bold text-slate-950 shadow-[0_0_18px_rgba(253,230,138,0.35)] active:scale-[0.98] disabled:opacity-40";

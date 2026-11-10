@@ -16,6 +16,7 @@ import {
 } from "../flow/strip";
 import { keyTone, type Orient } from "../keys/key-colors";
 import { hexColor } from "../settings";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 수 흐름 띠(docs/51 1-1). 내가 둔 수가 하나씩 크게 떴다가 작아지며 오른쪽 끝에서 왼쪽으로 흘러간다.

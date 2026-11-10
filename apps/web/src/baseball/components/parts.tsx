@@ -7,6 +7,7 @@ import { playUiCue } from "@/game/ui-sound";
 import { cn } from "@/lib/cn";
 
 import { scoreText } from "../kit";
+import "@/baseball/components/baseball.css";
 
 /** 야구장 볼카운트처럼: 스트라이크 노랑, 볼 초록, 아웃 빨강 */
 export const LIGHT = {

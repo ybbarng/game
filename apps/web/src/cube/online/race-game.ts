@@ -68,11 +68,22 @@ export interface PeekAct {
 
 export const PEEK_TEXT = "?peek";
 
-/** 대결 틀에 흘려보내는 수: 면 돌리기, 아이템전이면 특별한 수(쓰기·맞은 섞기 넣기), 공식 연습 보고 치기면 공식 보기도 */
-export type CubeAct = CubeMove | ItemAct | PeekAct;
+/**
+ * 공식 연습 대결 따라 치기에서 이번 문제에 칠 공식 알리기(docs/47 16-14). 사람마다 키 배치에 맞는 공식이 달라, 모든 기기가 이
+ * 공식으로 한 수씩 다시 판정한다
+ */
+export interface AlgAct {
+  readonly alg: string;
+}
+
+export const ALG_PREFIX = "?alg ";
+
+/** 대결 틀에 흘려보내는 수: 면 돌리기, 아이템전이면 특별한 수(쓰기·맞은 섞기 넣기), 공식 연습이면 공식 보기·공식 알리기도 */
+export type CubeAct = CubeMove | ItemAct | PeekAct | AlgAct;
 
 export const isItemAct = (m: CubeAct): m is ItemAct => "item" in m;
 export const isPeekAct = (m: CubeAct): m is PeekAct => "peek" in m;
+export const isAlgAct = (m: CubeAct): m is AlgAct => "alg" in m;
 
 export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   n: number;
@@ -208,7 +219,8 @@ export function createCubeRaceGame(
       return `${event}|${s.text}|${stateHash(start)}${shapeTag}`;
     },
     apply(state, move) {
-      if (isPeekAct(move)) throw new RangeError("둘 수 없는 수");
+      if (isPeekAct(move) || isAlgAct(move))
+        throw new RangeError("둘 수 없는 수");
       if (isItemAct(move)) {
         if (!items) throw new RangeError("둘 수 없는 수");
         return applyItemAct(n, state, move);
@@ -247,9 +259,11 @@ export function createCubeRaceGame(
     encodeMove: (move) =>
       isPeekAct(move)
         ? PEEK_TEXT
-        : isItemAct(move)
-          ? move.text
-          : formatMove(n, move),
+        : isAlgAct(move)
+          ? `${ALG_PREFIX}${move.alg}`
+          : isItemAct(move)
+            ? move.text
+            : formatMove(n, move),
     decodeMove(text) {
       if (items && isItemText(text)) {
         const act = parseItemText(n, text);

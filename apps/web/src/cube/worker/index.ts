@@ -3,17 +3,10 @@ import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 import { type Clock, realClock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import type { AlgBook, ImportResult } from "../algs/store";
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
 import type { ShortSolution } from "../progress/distance";
-import {
-  type CubeJob,
-  type CubeJobAnswer,
-  type CubeJobMessage,
-  type CubeJobReply,
-  runCubeJob,
-} from "./jobs";
+import { type CubeJob, type CubeJobAnswer, runCubeJob } from "./jobs";
 
 /**
  * 큐브 섞기·풀이를 웹 워커에서 한다(혼자 맞추기·블라인드·타이머가 함께 쓴다).
@@ -28,11 +21,24 @@ import {
  * - 같은 씨앗이면 같은 섞기가 나온다. 다만 해법기가 바뀌면 달라질 수 있으니 기록에는 섞기 글도 함께 남긴다.
  */
 
-/** 워커에서 쓰는 것만(시험에서 가짜 워커를 넣는다) */
-export interface WorkerLike {
-  onmessage: ((event: MessageEvent<CubeJobReply>) => void) | null;
+/** 일 하나(종류 이름으로 시간 상한을 고른다) */
+export interface JobLike {
+  kind: string;
+}
+
+/** 워커가 돌려주는 답 하나 */
+export type JobReply<A> =
+  | { id: number; result: A }
+  | { id: number; error: string };
+
+/**
+ * 워커에서 쓰는 것만(시험에서 가짜 워커를 넣는다). 큐브 워커 말고 공식 가져오기 워커(algs/import-in-worker.ts)도
+ * 같은 장치를 쓴다
+ */
+export interface WorkerLike<J extends JobLike = CubeJob, A = CubeJobAnswer> {
+  onmessage: ((event: MessageEvent<JobReply<A>>) => void) | null;
   onerror: ((event: ErrorEvent) => void) | null;
-  postMessage(message: CubeJobMessage): void;
+  postMessage(message: { id: number; job: J }): void;
   terminate(): void;
 }
 
@@ -46,7 +52,6 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   scramble: 10_000,
   solve: 20_000,
   plan: 30_000,
-  "algs-import": 30_000,
   // 첫 화면 연출 풀이는 5×5 축소법도 1초 안쪽, 7×7은 첫 면 색을 고르느라 이 맥에서 몇 초다(2026-11-10). 연출은
   // 이 상한을 기다리지 않고 `heroTiming().workerWait` 뒤 스스로 화면 스레드에서 푼다. 이 상한은 멈춘 워커를 버리는
   // 데만 쓰고, 느린 휴대폰의 7×7도 받게 넉넉히 둔다
@@ -58,41 +63,49 @@ export const JOB_LIMIT_MS: Record<CubeJob["kind"], number> = {
   cross: 30_000,
 };
 
-export interface JobRunnerOptions {
+export interface JobRunnerOptions<
+  J extends JobLike = CubeJob,
+  A = CubeJobAnswer,
+> {
   /** 워커를 만든다. 못 만들면 null이나 예외(그 뒤로는 화면 스레드에서) */
-  spawn: () => WorkerLike | null;
+  spawn: () => WorkerLike<J, A> | null;
   clock: Clock;
-  /** 화면 스레드에서 일 하나 */
-  runInline?: (job: CubeJob) => Promise<CubeJobAnswer>;
-  limits?: Record<CubeJob["kind"], number>;
+  /** 화면 스레드에서 일 하나(없으면 큐브 일 `runCubeJob`) */
+  runInline?: (job: J) => Promise<A>;
+  /** 일 종류마다 시간 상한(없으면 큐브 일 `JOB_LIMIT_MS`) */
+  limits?: Record<J["kind"], number>;
 }
 
-interface Pending {
-  job: CubeJob;
-  resolve: (r: CubeJobAnswer) => void;
+interface Pending<J, A> {
+  job: J;
+  resolve: (r: A) => void;
   reject: (e: unknown) => void;
   /** 시간 상한 끄기 */
   stopLimit: () => void;
 }
 
 /** 워커 하나로 일을 차례로 한다. 모듈의 함수들이 쓰고, 시험은 가짜 워커·시계를 넣어 만든다 */
-export function createJobRunner(opts: JobRunnerOptions): {
-  request: (job: CubeJob) => Promise<CubeJobAnswer>;
+export function createJobRunner<J extends JobLike = CubeJob, A = CubeJobAnswer>(
+  opts: JobRunnerOptions<J, A>,
+): {
+  request: (job: J) => Promise<A>;
 } {
-  const runInlineJob = opts.runInline ?? runCubeJob;
-  const limits = opts.limits ?? JOB_LIMIT_MS;
-  let worker: WorkerLike | null = null;
+  // 기본값은 큐브 일(J가 CubeJob일 때만 맞다. 다른 일은 runInline·limits를 준다)
+  const runInlineJob =
+    opts.runInline ?? (runCubeJob as unknown as (job: J) => Promise<A>);
+  const limits: Record<string, number> = opts.limits ?? JOB_LIMIT_MS;
+  let worker: WorkerLike<J, A> | null = null;
   let broken = false;
   let nextId = 1;
-  const pending = new Map<number, Pending>();
+  const pending = new Map<number, Pending<J, A>>();
 
-  const runInline = (p: Pending): void => {
+  const runInline = (p: Pending<J, A>): void => {
     p.stopLimit();
     runInlineJob(p.job).then(p.resolve, p.reject);
   };
 
   /** 이 워커를 버리고 남은 일을 화면 스레드에서 한다 */
-  const abandon = (target: WorkerLike): void => {
+  const abandon = (target: WorkerLike<J, A>): void => {
     target.terminate();
     if (worker === target) worker = null;
     for (const [id, p] of [...pending]) {
@@ -101,7 +114,7 @@ export function createJobRunner(opts: JobRunnerOptions): {
     }
   };
 
-  const ensureWorker = (): WorkerLike | null => {
+  const ensureWorker = (): WorkerLike<J, A> | null => {
     if (worker || broken) return worker;
     try {
       const created = opts.spawn();
@@ -131,9 +144,9 @@ export function createJobRunner(opts: JobRunnerOptions): {
     return worker;
   };
 
-  const request = (job: CubeJob): Promise<CubeJobAnswer> =>
+  const request = (job: J): Promise<A> =>
     new Promise((resolve, reject) => {
-      const p: Pending = { job, resolve, reject, stopLimit: () => {} };
+      const p: Pending<J, A> = { job, resolve, reject, stopLimit: () => {} };
       const target = ensureWorker();
       if (!target) {
         runInline(p);
@@ -143,7 +156,8 @@ export function createJobRunner(opts: JobRunnerOptions): {
       pending.set(id, p);
       // 답 없이 멈춘 워커: 끝내고 남은 일은 화면 스레드에서(다음 일은 새 워커가 받는다).
       // 상한이 무한이면 걸지 않는다(화면 시험, 아래 `noJobLimit`)
-      const limit = limits[job.kind];
+      // limits는 일 종류마다 값이 있다(타입이 보장). 없으면 상한 없음
+      const limit = limits[job.kind] ?? Number.POSITIVE_INFINITY;
       if (Number.isFinite(limit))
         p.stopLimit = opts.clock.after(limit, () => {
           if (pending.has(id)) abandon(target);
@@ -175,7 +189,10 @@ export function laneOf(kind: CubeJob["kind"]): JobLane {
 export function createLanedRunner(opts: JobRunnerOptions): {
   request: (job: CubeJob) => Promise<CubeJobAnswer>;
 } {
-  const lanes: Record<JobLane, ReturnType<typeof createJobRunner>> = {
+  const lanes: Record<
+    JobLane,
+    { request: (job: CubeJob) => Promise<CubeJobAnswer> }
+  > = {
     scramble: createJobRunner(opts),
     main: createJobRunner(opts),
   };
@@ -193,7 +210,7 @@ function spawn(): WorkerLike | null {
  * 시간 상한이 터지면 멀쩡한 워커를 버리게 되므로, 시험은 `window.__cubeNoJobLimit`으로 상한을 끈다.
  * 상한은 멈춘 워커를 잡는 안전장치라 시험에서는 시험 시간 상한이 그 일을 한다
  */
-function noJobLimit(): boolean {
+export function noJobLimit(): boolean {
   return (
     typeof window !== "undefined" &&
     (window as { __cubeNoJobLimit?: boolean }).__cubeNoJobLimit === true
@@ -262,17 +279,6 @@ export function heroSolveInWorker(
     perm: Array.from(state.perm),
     twist: Array.from(state.twist),
   }) as Promise<HeroSolve>;
-}
-
-/**
- * 내 공식 가져오기(파일 글을 검사해 더한다). 공식마다 검사기를 돌려 화면이 멈추지 않게 워커에서 한다.
- * 글을 못 읽으면 Error(화면에 보일 까닭)
- */
-export function importAlgsInWorker(
-  book: AlgBook,
-  text: string,
-): Promise<ImportResult> {
-  return request({ kind: "algs-import", book, text }) as Promise<ImportResult>;
 }
 
 /** 십자 훈련 한 판(어려움에 맞는 섞기와 최적 수·해) */

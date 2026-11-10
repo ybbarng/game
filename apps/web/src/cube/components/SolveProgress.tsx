@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { groupSplits } from "../progress/splits";
 import { formatMs, type Split } from "../records";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 진행 막대와 이정표 칩(docs/51 1-2). 혼자 맞추기가 쓰고, 대결 화면(1-3)도 같은 판정(`@game/cube-engine`의

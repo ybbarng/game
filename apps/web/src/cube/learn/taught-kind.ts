@@ -2,7 +2,7 @@
 // cube-ai를 싣지 않는 이 작은 파일에 둔다(힌트 계산은 필요할 때 따로 불러온다).
 import type { TaughtStage } from "@game/cube-ai";
 
-import { courseById } from "./index";
+import { courseById } from "./courses";
 import { stepIsRandom } from "./judge";
 import type { Lesson, LessonStep } from "./types";
 

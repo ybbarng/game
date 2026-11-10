@@ -131,24 +131,32 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
 
       <Lead>
         왜 12일까요? 큐브를 돌리기만 해서는 절대 깨지지 않는 규칙이 셋
-        있어서예요. 아무렇게나 끼우면 엣지 규칙은 2번에 1번, 코너 규칙은 3번에
-        1번, 자리 규칙은 2번에 1번만 지켜져요.
+        있어서예요. 앞 카드에서 나눈 ÷ 3, ÷ 2, ÷ 2가 바로 이 셋이에요.
       </Lead>
       <ul className="flex list-disc flex-col gap-1 break-keep pl-5 text-sm text-white/85">
         <li>
-          엣지 방향: 엣지 블럭이 뒤집혀 끼워져 있으면 1, 아니면 0이라 할 때 모두
-          더한 값(뒤집힘 합)이 늘 짝수예요.
+          엣지 방향: 엣지 블럭마다 바른 방향으로 끼워져 있으면 0, 뒤집혀 있으면
+          1이라고 해요. 이 값을 모두 더한 「뒤집힘 합」이 늘 짝수예요.
         </li>
         <li>
-          코너 방향: 코너 블럭이 바른 방향에서 몇 번 비틀렸는지(0·1·2)를 모두
-          더한 값(비틀림 합)이 늘 3의 배수예요.
+          코너 방향: 코너 블럭마다 바른 방향에서 몇 번 비틀렸는지를 0, 1, 2로
+          세요. 이 값을 모두 더한 「비틀림 합」이 늘 3의 배수예요.
         </li>
         <li>
           자리 홀짝: 조각 자리를 둘씩 맞바꾸기로 만든다고 할 때 맞바꾼 횟수가
-          짝수인지 홀수인지를 「홀짝」이라고 해요. 코너 홀짝과 엣지 홀짝은 늘
-          같아요.
+          짝수인지 홀수인지를 「홀짝」이라고 해요. 코너 블럭의 홀짝과 엣지
+          블럭의 홀짝은 늘 같아요.
         </li>
       </ul>
+      <Lead>
+        엣지 블럭과 코너 블럭에서 어느 쪽이 바른 방향인지는 다음 카드에서 정확히
+        정해요. 맞춘 큐브에서 놓인 방향이 바른 방향이라고 보면 돼요.
+      </Lead>
+      <Lead>
+        아무렇게나 끼우면 엣지 방향 규칙은 2번에 1번, 코너 방향 규칙은 3번에
+        1번, 자리 홀짝 규칙은 2번에 1번만 지켜져요. 그래서 셋을 모두 지키는 것은
+        2 × 3 × 2 = 12번에 1번이에요.
+      </Lead>
       <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
         <Factor
           n="× 2"
@@ -171,9 +179,9 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
       </div>
 
       <Lead>
-        직접 뽑아 보세요. 옆의 큐브 그림 둘(앞쪽 세 면과 뒤집어 본 뒤쪽 세
-        면)에서 조각을 누르고 뒤집거나 비틀거나 다른 조각과 바꿔 끼워요. 고른
-        조각과 한 일은 아래 표기로 적혀요.
+        이제 직접 뽑아서 다시 끼워 봐요. 아래 큐브 그림 둘은 앞쪽 세 면과,
+        큐브를 뒤집어 본 뒤쪽 세 면이에요. 그림의 조각을 골라 뒤집거나 비틀거나
+        다른 조각과 바꿔 끼울 수 있어요. 고른 조각과 한 일은 아래 표기로 적혀요.
       </Lead>
       <Notation open />
       <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-start">
@@ -195,10 +203,10 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           />
           <p className="text-white/70 text-xs" data-reassemble-picked>
             {swapFrom !== null
-              ? `${pieceName(N, swapFrom)}: 맞바꿀 다른 ${topo.pieces[swapFrom]?.kind === "corner" ? "코너" : "엣지"}를 누르세요`
+              ? `${pieceName(N, swapFrom)}: 맞바꿀 다른 ${topo.pieces[swapFrom]?.kind === "corner" ? "코너 블럭" : "엣지 블럭"}을 고르는 중.`
               : picked !== null
-                ? `고른 조각: ${pieceName(N, picked)} ${kind === "corner" ? "코너" : "엣지"} 블럭`
-                : "코너나 엣지 칸을 누르세요"}
+                ? `고른 조각: ${pieceName(N, picked)} ${kind === "corner" ? "코너" : "엣지"} 블럭.`
+                : "고른 조각 없음."}
           </p>
           <div className="flex flex-wrap gap-1.5 text-sm">
             <button
@@ -237,7 +245,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          엣지 하나 뒤집기
+          엣지 블럭 하나 뒤집기
         </button>
         <button
           type="button"
@@ -249,7 +257,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          코너 하나 비틀기
+          코너 블럭 하나 비틀기
         </button>
         <button
           type="button"
@@ -261,7 +269,7 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
           }
           className="rounded-lg bg-white/10 px-2.5 py-1"
         >
-          엣지 둘 맞바꾸기
+          엣지 블럭 둘 맞바꾸기
         </button>
         <button
           type="button"
@@ -351,14 +359,16 @@ export function ReassembleCard({ settings }: { settings: CubeSettings }) {
         )}
       </div>
       <Lead>
-        한 번 어긴 규칙은 같은 규칙을 한 번 더 어기면 풀려요. 엣지 둘을
-        뒤집거나, 한 코너는 한 번·다른 코너는 두 번 비틀거나, 엣지 둘과 코너
-        둘을 함께 바꿔 보세요.
+        못 맞추는 큐브도 다시 뽑아서 어긋난 값을 메우면 맞출 수 있게 돼요. 엣지
+        블럭 하나를 뒤집었으면 엣지 블럭을 하나 더 뒤집어 뒤집힘 합을 짝수로
+        만들어요. 코너 블럭 하나를 한 번 비틀었으면 다른 코너 블럭을 두 번
+        비틀어 비틀림 합을 3의 배수로 만들어요. 엣지 블럭 둘을 맞바꿨으면 코너
+        블럭 둘도 맞바꿔 두 홀짝을 같게 만들어요.
       </Lead>
       <Source>
-        세 규칙(방향 합, 자리 홀짝)과 그것으로 12가 나오는 셈은 군론(되돌릴 수
-        있는 움직임들의 모임을 다루는 수학)으로 증명돼요. 판정은 이 페이지의
-        큐브 엔진이 해요.
+        세 규칙과 그것으로 12가 나오는 셈은 군론으로 증명돼요. 군론은 되돌릴 수
+        있는 움직임들의 모임을 다루는 수학이에요. 맞출 수 있는지는 이 페이지가
+        조각 배치를 보고 직접 계산해요.
       </Source>
     </div>
   );

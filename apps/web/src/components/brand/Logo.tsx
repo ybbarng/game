@@ -1,4 +1,5 @@
 import { BRAND, SPADE_PATH } from "./brand";
+import "@/components/brand/splash.css";
 
 /**
  * 로고: 부채꼴로 펼친 카드 세 장(가운데가 마이티 ♠A) 위에 글자.

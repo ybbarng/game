@@ -4,9 +4,12 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import {
+  bigNumberNote,
+  COUNT_LEAD,
   COUNT_PLANS,
   groupDigits,
   koreanApprox,
+  readableApprox,
   runningTotals,
   SECONDS_PER_YEAR,
   UNIVERSE_YEARS,
@@ -19,7 +22,7 @@ type Size = (typeof SIZES)[number];
 
 const RATES: { label: string; perSecond: bigint }[] = [
   { label: "1초에 하나", perSecond: 1n },
-  { label: "1초에 10억 개(컴퓨터)", perSecond: 1_000_000_000n },
+  { label: "1초에 10억 개, 컴퓨터 빠르기", perSecond: 1_000_000_000n },
 ];
 
 /** 걸리는 시간을 알맞은 단위로 */
@@ -32,9 +35,9 @@ function duration(total: bigint, perSecond: bigint): string {
     return `약 ${groupDigits(seconds / 60n)}분`;
   }
   const universe = years / UNIVERSE_YEARS;
-  const base = `${koreanApprox(years)} 년`;
+  const base = `${readableApprox(years)} 년`;
   if (universe >= 2n)
-    return `${base} (우주 나이의 ${koreanApprox(universe)}배)`;
+    return `${base}, 우주 나이의 ${readableApprox(universe)}배`;
   return base;
 }
 
@@ -54,14 +57,11 @@ export function CountCard() {
   const finished = k >= plan.steps.length;
   const current = plan.steps[k];
   const value = k === 0 ? 1n : (totals[k - 1] as bigint);
+  const time = duration(plan.total, RATES[rate]?.perSecond ?? 1n);
 
   return (
     <div className="flex flex-col gap-3" data-count-size={size}>
-      <Lead>
-        큐브를 섞으면 나올 수 있는 모양은 몇 가지일까요? 큐브는 작은 조각 여러
-        개가 맞물려 있어요. 조각을 종류마다 빈자리에 하나씩 넣어 본다고
-        생각하고, 넣는 방법의 수를 곱해 가요.
-      </Lead>
+      <Lead>{COUNT_LEAD}</Lead>
       <div className="flex flex-wrap gap-1.5">
         {SIZES.map((s) => (
           <Pill
@@ -99,6 +99,27 @@ export function CountCard() {
         </p>
       </div>
 
+      {k > 0 && (
+        <ol className="flex flex-col gap-1.5" data-count-steps>
+          {plan.steps.slice(0, k).map((s) => (
+            <li
+              key={s.id}
+              className="flex gap-2 break-keep text-white/80 text-xs"
+            >
+              <b
+                className={cn(
+                  "shrink-0 font-mono",
+                  s.op === "div" ? "text-amber-300" : "text-sky-200",
+                )}
+              >
+                {s.expr}
+              </b>
+              <span>{s.meaning}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
       {current && (
         <Quiz
           key={`${size}-${current.id}`}
@@ -124,10 +145,18 @@ export function CountCard() {
           <p className="text-center font-mono text-sky-200 text-sm">
             {plan.formula}
           </p>
+          <p className="break-keep text-center text-white/60 text-xs">
+            {plan.formulaNote}
+          </p>
           <Big className="text-lg sm:text-xl">{groupDigits(plan.total)}</Big>
           <p className="text-center text-sm text-white/80">
             {koreanApprox(plan.total)} 가지
           </p>
+          {bigNumberNote(koreanApprox(plan.total)) && (
+            <p className="text-center text-white/60 text-xs">
+              {bigNumberNote(koreanApprox(plan.total))}
+            </p>
+          )}
           {plan.note && <Lead>{plan.note}</Lead>}
           <div className="flex flex-wrap items-center gap-1.5 text-sm">
             <span className="text-white/70">모두 보려면</span>
@@ -142,11 +171,16 @@ export function CountCard() {
             ))}
           </div>
           <p className="text-center font-bold text-amber-200" data-count-time>
-            {duration(plan.total, RATES[rate]?.perSecond ?? 1n)}
+            {time}
           </p>
+          {bigNumberNote(time) && (
+            <p className="text-center text-white/60 text-xs">
+              {bigNumberNote(time)}
+            </p>
+          )}
           <p className="text-center text-[11px] text-white/45">
-            한 해 = {groupDigits(SECONDS_PER_YEAR)}초, 우주 나이 약 138억 년으로
-            계산
+            한 해를 {groupDigits(SECONDS_PER_YEAR)}초, 우주 나이를 약 138억
+            년으로 셌어요.
           </p>
         </div>
       )}
@@ -173,9 +207,9 @@ export function CountCard() {
         )}
       </div>
       <Source>
-        2×2 3,674,160 · 3×3 43,252,003,274,489,856,000 · 4×4 약 7.4 ×
-        10^45(10^45는 1 뒤에 0이 45개인 수) · 5×5 약 2.8 × 10^74. 숫자는 이
-        페이지가 직접 곱해 맞춘 값이에요.
+        2×2 3,674,160 · 3×3 43,252,003,274,489,856,000 · 4×4 약 7.4 × 10^45 ·
+        5×5 약 2.8 × 10^74. 10^45는 1 뒤에 0이 45개, 10^74는 0이 74개 붙은
+        수예요. 숫자는 이 페이지가 직접 곱해 맞춘 값이에요.
       </Source>
     </div>
   );

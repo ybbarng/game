@@ -1,12 +1,19 @@
 // 공식 연습 출제(docs/47 16-9). 씨앗이 같고 기록이 같으면 같은 10문제를 같은 차례로 낸다
 // (겨루기 3단계는 기록 없이 씨앗만 넘겨 모두에게 같은 문제를 준다). 느렸거나 틀린 상황이 더 자주 나오고,
-// 익숙해진 상황은 윗면을 돌려 둔 채(앞 윗면 돌리기를 붙여) 낸다.
+// 익숙해진 상황은 윗면을 돌려 둔 채 낸다. 출제는 상황과 윗면 돌리기(시작 모양)만 정하고, 보일 공식은 사람마다
+// 고른 공식을 그 모양에 맞춘다(`problem.ts`의 `problemOf`).
 import { createRngFromSeed } from "@game/cube-engine";
 import { nextInt } from "@game/mighty-engine";
 
 import { averageMs, type CaseStats, type TrainBook } from "../learn/progress";
-import { joinAlg, type Problem } from "./problem";
 import { ROUND_SIZE } from "./round";
+
+/** 출제 하나: 상황과 시작 모양에 더할 윗면 돌리기 */
+export interface Draw {
+  caseId: string;
+  /** "", "U", "U2", "U'" */
+  turn: string;
+}
 
 /** 이만큼 맞추고 틀림이 적으면 익숙한 상황으로 본다(윗면을 돌려 둔 채 낸다) */
 export const FAMILIAR_SOLVES = 5;
@@ -52,12 +59,12 @@ function median(xs: number[]): number | null {
 
 export interface DrawOptions {
   seed: number;
-  /** 상황 id → 보일 공식 */
-  algOf: (caseId: string) => string;
-  /** 이 기기의 연습 기록(없으면 고르게, 윗면 돌리기 없이) */
+  /** 이 기기의 연습 기록(없으면 고르게) */
   book?: TrainBook;
-  /** 익숙한 상황에 앞 윗면 돌리기를 붙이는 단계인가 */
+  /** 윗면을 돌려 둔 채 내는 단계인가(초보자 단계는 아니다) */
   auf?: boolean;
+  /** 윗면 돌리기를 익숙한 상황만이 아니라 모든 문제에 씨앗대로 붙인다(대결) */
+  everyTurn?: boolean;
   count?: number;
 }
 
@@ -65,7 +72,7 @@ export interface DrawOptions {
 export function drawRound(
   caseIds: readonly string[],
   opts: DrawOptions,
-): Problem[] {
+): Draw[] {
   const rng = createRngFromSeed(opts.seed);
   const book = opts.book ?? {};
   const typical = median(
@@ -78,7 +85,7 @@ export function drawRound(
   const weights = caseIds.map((id) =>
     Math.max(1, Math.round(caseWeight(book[id], typical) * 100)),
   );
-  const out: Problem[] = [];
+  const out: Draw[] = [];
   let prev: string | null = null;
   const count = opts.count ?? ROUND_SIZE;
   for (let k = 0; k < count && caseIds.length > 0; k++) {
@@ -96,8 +103,8 @@ export function drawRound(
     }
     const id = caseIds[pick] as string;
     const turn = AUFS[nextInt(rng, 4)] as string;
-    const preAuf = opts.auf && familiar(book[id]) ? turn : "";
-    out.push({ caseId: id, preAuf, alg: joinAlg(preAuf, opts.algOf(id)) });
+    const use = opts.auf && (opts.everyTurn || familiar(book[id]));
+    out.push({ caseId: id, turn: use ? turn : "" });
     prev = id;
   }
   return out;

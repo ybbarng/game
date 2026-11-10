@@ -8,6 +8,7 @@ import {
 } from "../item-look";
 import { hexColor } from "../settings";
 import { ITEM_LABELS, type ItemKind } from "./items";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 아이템전 화면 조각(docs/51 3-3, docs/47 9-7): 아이콘, 내 아이템 칸, 맞은 쪽 표시, 흑백 화면의 색·무늬 표.

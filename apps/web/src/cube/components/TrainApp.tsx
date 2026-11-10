@@ -30,15 +30,7 @@ import {
   watchAlgBook,
 } from "../algs/store";
 import type { Command } from "../input";
-import {
-  ALG_SETS,
-  type AlgCase,
-  type AlgSetInfo,
-  algTokens,
-  FINGER_NOTATION,
-  type FingerToken,
-  GOALS,
-} from "../learn";
+import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import {
   countsAsMove,
   goalMet,
@@ -46,6 +38,7 @@ import {
   type TrainCase,
   type TrainMode,
 } from "../learn/judge";
+import { algTokens } from "../learn/notation";
 import {
   averageMs,
   loadTrain,
@@ -54,6 +47,12 @@ import {
   type TrainBook,
   weakCases,
 } from "../learn/progress";
+import {
+  type AlgCase,
+  FINGER_NOTATION,
+  type FingerToken,
+  GOALS,
+} from "../learn/types";
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";

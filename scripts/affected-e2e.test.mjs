@@ -1,14 +1,20 @@
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   BASE_SPECS,
+  graphGap,
+  importGaps,
+  linksInSource,
   loadContext,
   MAX_SHARDS,
   packageOwner,
+  pathsInSpec,
   planShards,
   readGameIds,
   readTimes,
+  routeOfPath,
   SHARD_SECONDS,
   selectE2e,
   shardCount,
@@ -111,9 +117,14 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     expect(r.specs.some((s) => s.startsWith("stardraw"))).toBe(false);
   });
 
-  it("별 따기 화면: 별 따기를 불러 쓰는 은하도 돈다", () => {
-    const r = pick("apps/web/src/stardraw/wallet.ts");
-    expect(r.specs).toEqual(expect.arrayContaining(["stardraw", "galaxy"]));
+  it("별 따기 화면: 은하가 불러 쓰는 파일이면 은하도, 아니면 별 따기만(파일 단위, 11-11)", () => {
+    const shared = pick("apps/web/src/stardraw/components/BureauMarks.tsx");
+    expect(shared.specs).toEqual(
+      expect.arrayContaining(["stardraw", ...galaxySpecs]),
+    );
+    const own = pick("apps/web/src/stardraw/wallet.ts");
+    expect(own.specs).toContain("stardraw");
+    expect(own.specs.some((s) => galaxySpecs.includes(s))).toBe(false);
   });
 
   it("윷 엔진: 윷과, 윷 엔진에 기대는 은하", () => {
@@ -131,9 +142,16 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     expect(r.specs.some((s) => s.startsWith("stardraw"))).toBe(false);
   });
 
-  it("공통 폴더 파일이라도 첫 화면·복기 같은 공용 주소가 닿으면 전부", () => {
+  it("모든 화면이 쓰는 파일(루트 layout과 그것이 불러 쓰는 것)은 전부", () => {
     expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
-    expect(pick("apps/web/src/components/ChatBox.tsx").mode).toBe("all");
+    expect(pick("apps/web/src/app/layout.tsx").mode).toBe("all");
+  });
+
+  it("공통 폴더 파일이 공용 주소에 닿아도 그 주소를 여는 spec만(11-11, 예전에는 전부)", () => {
+    const r = pick("apps/web/src/components/ChatBox.tsx");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(expect.arrayContaining(["online", "hearts"]));
+    expect(r.specs).not.toContain("cube-timer");
   });
 
   it("화면 시험 공용 도구: 전부", () => {
@@ -252,13 +270,19 @@ describe("오늘 「전부」가 된 PR의 바뀐 파일", () => {
     expect(pick("apps/web/scripts/render-cube-posters.mjs").mode).toBe("none");
   });
 
-  it("cube-hero-color: 포스터 스크립트 + 큐브 화면 → 큐브만", () => {
+  it("cube-hero-color: 포스터 스크립트 + 큐브 화면 → 포스터를 그리는 큐브 주소의 spec만", () => {
     const r = pick(
       "apps/web/scripts/render-cube-posters.mjs",
       "apps/web/src/cube/hero/poster.ts",
     );
     expect(r.mode).toBe("some");
-    expect(r.specs).toEqual([...cubeSpecs, ...BASE_SPECS].sort());
+    expect(r.specs).toEqual(
+      expect.arrayContaining(["cube-home", ...BASE_SPECS]),
+    );
+    expect(
+      r.specs.every((s) => cubeSpecs.includes(s) || BASE_SPECS.includes(s)),
+    ).toBe(true);
+    expect(r.specs.length).toBeLessThan(cubeSpecs.length);
   });
 
   it("배우기 목록 화면(LearnPage)은 /learn 묶음만, 마이티 배우기 단원(lessons)은 마이티만", () => {
@@ -271,9 +295,306 @@ describe("오늘 「전부」가 된 PR의 바뀐 파일", () => {
     expect(r.specs.some((s) => s.startsWith("cube-"))).toBe(false);
   });
 
-  it("용어집(glossary)은 복기 같은 공용 주소가 불러 써서 그대로 전부, globals.css도 전부", () => {
-    expect(pick("apps/web/src/tutorial/glossary.ts").mode).toBe("all");
+  it("용어집(glossary)은 그것을 쓰는 주소(게임 화면·복기)를 여는 spec만(11-11), globals.css는 그대로 전부", () => {
+    const r = pick("apps/web/src/tutorial/glossary.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(expect.arrayContaining(["hearts", "omok"]));
+    expect(r.specs).not.toContain("cube-timer");
     expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
+  });
+});
+
+// 2026-11-11 주소 → 그 주소를 여는 spec. 파일이 닿는 주소를 import 그래프로 계산하고, spec이 여는 주소는 spec에
+// 적힌 주소 문자열·정규식으로 모은다
+/** 시험 글 속 템플릿 자리는 %{…}로 적고 ${…}로 바꾼다(일반 문자열 속 ${를 lint가 막는다) */
+const t = (s) => s.replaceAll("%{", "$" + "{");
+
+describe("주소 → spec", () => {
+  const routeKeys = ctx.routes.map((r) => r.key);
+
+  it("주소 문자열 → 가장 길게 맞는 주소", () => {
+    expect(routeOfPath(routeKeys, "/")).toBe("");
+    expect(routeOfPath(routeKeys, "/?seed=1")).toBe("");
+    expect(routeOfPath(routeKeys, "/profile?game=yut")).toBe("profile");
+    expect(routeOfPath(routeKeys, "/cube/keys/drill")).toBe("cube/keys/drill");
+    expect(routeOfPath(routeKeys, "/cube/icon/192.png")).toBe("cube/icon");
+    expect(routeOfPath(routeKeys, t("/stardraw/mine#t-%{id}"))).toBe(
+      "stardraw/mine",
+    );
+    // 첫 마디부터 끼운 값이면 모른다(첫 화면으로 잘못 세지 않는다)
+    expect(routeOfPath(routeKeys, t("/%{id}"))).toBe(null);
+    expect(routeOfPath(routeKeys, "/no-such-page")).toBe(null);
+    expect(routeOfPath(routeKeys, "#learn")).toBe(null);
+  });
+
+  it("spec 글에서 주소를 읽는다: 따옴표 문자열과 \\/로 시작하는 정규식", () => {
+    const text = [
+      'await page.goto("/review");',
+      t("await page.goto(`/stardraw/mine#t-%{id}`);"),
+      "await expect(page).toHaveURL(/\\/cube\\/daily$/);",
+      "await expect(page).toHaveURL(/\\/$/);",
+      "await expect(page).toHaveURL(/#learn$/);",
+      "const half = width / 2 / 3;",
+    ].join("\n");
+    expect(pathsInSpec(text)).toEqual(
+      expect.arrayContaining([
+        "/review",
+        t("/stardraw/mine#t-%{id}"),
+        "/cube/daily",
+        "/",
+      ]),
+    );
+    expect(pathsInSpec(text).some((p) => p.includes("learn"))).toBe(false);
+  });
+
+  it("화면 코드의 링크·이동만 넘겨 주는 주소로 읽는다", () => {
+    const text = [
+      '<a href="/review">복기</a>',
+      t("<a href={`/profile?game=%{game}`}>내 기록</a>"),
+      '{ href: "/profile" }',
+      t("router.push(`/review?id=%{id}`)"),
+      'const parts = path.split("/");',
+    ].join("\n");
+    expect(linksInSource(text)).toEqual([
+      "/review",
+      t("/profile?game=%{game}"),
+      "/profile",
+      t("/review?id=%{id}"),
+    ]);
+  });
+
+  it("주소마다 시작 파일: page와 위 폴더의 layout, 아이콘은 따로 선 주소", () => {
+    const timer = ctx.routeByKey["cube/timer"];
+    expect(timer.page).toBe(true);
+    expect(timer.entries).toEqual(
+      expect.arrayContaining([
+        "src/app/cube/timer/page.tsx",
+        "src/app/layout.tsx",
+      ]),
+    );
+    expect(timer.own).not.toContain("src/app/layout.tsx");
+    expect(ctx.routeByKey["stardraw/now"].entries).toContain(
+      "src/app/stardraw/layout.tsx",
+    );
+    expect(ctx.routeByKey["cube/icon"].page).toBe(false);
+    expect(ctx.routeByKey["cube/icon"].entries).toEqual([
+      "src/app/cube/icon.tsx",
+    ]);
+  });
+
+  it("spec이 여는 주소: goto·toHaveURL에 적힌 주소와, 내 기록에서 링크로 가는 복기", () => {
+    expect(ctx.visits.omok).toEqual(new Set(["", "omok", "profile", "review"]));
+    expect(ctx.visits["cube-timer"]).toEqual(new Set(["cube/timer"]));
+    // hearts·play-round는 /profile을 열고 「지난 게임 복기」 링크를 눌러 복기로 간다(주소를 적지 않는다)
+    expect(ctx.visits.hearts.has("review")).toBe(true);
+    expect(ctx.visits["play-round"].has("review")).toBe(true);
+    // 첫 화면은 모든 주소로 이어지는 목록이라 따라가지 않는다: 큐브 첫 화면 spec이 첫 화면을 열어도 복기는 아니다
+    expect(ctx.visits["cube-timer"].has("review")).toBe(false);
+  });
+
+  it("옛 주소의 page가 넘겨 주는 주소도 그 spec이 여는 주소다(<CubeRedirect to=…>)", () => {
+    expect(ctx.visits["cube-keys"].has("cube/keys/learn")).toBe(true);
+    expect(ctx.visits["cube-keys"].has("cube/intro")).toBe(true);
+  });
+
+  it("공용 주소의 화면(복기·내 기록·첫 화면)은 그 주소를 여는 spec만", () => {
+    const review = pick("apps/web/src/review/ReviewPage.tsx");
+    expect(review.mode).toBe("some");
+    expect(review.specs).toEqual(
+      expect.arrayContaining(["omok", "hearts", "play-round", ...BASE_SPECS]),
+    );
+    expect(review.specs.some((s) => s.startsWith("cube-"))).toBe(false);
+    expect(review.specs.some((s) => s.startsWith("stardraw"))).toBe(false);
+    const profile = pick("apps/web/src/stats/ProfilePage.tsx");
+    expect(profile.specs).toEqual(
+      expect.arrayContaining(["omok", "hearts", "play-round"]),
+    );
+    const home = pick("apps/web/src/components/GameCenterHome.tsx");
+    expect(home.specs).toEqual(
+      expect.arrayContaining(["home", "omok", "cube-home"]),
+    );
+    expect(home.specs).not.toContain("cube-timer");
+  });
+
+  it("없는 주소 화면·사이트 아이콘은 기본 묶음만(빌드는 된다)", () => {
+    for (const f of [
+      "apps/web/src/app/not-found.tsx",
+      "apps/web/src/app/icon.tsx",
+    ]) {
+      const r = pick(f);
+      expect(r.mode, f).toBe("some");
+      expect(r.specs, f).toEqual([...BASE_SPECS].sort());
+    }
+  });
+
+  it("게임 폴더 파일도 닿는 주소로: 큐브 타이머만 쓰는 것은 cube-timer만, 모든 큐브 화면이 쓰는 CubeView는 큐브 전부", () => {
+    expect(pick("apps/web/src/cube/timer/CubeTimerApp.tsx").specs).toEqual(
+      ["cube-timer", ...BASE_SPECS].sort(),
+    );
+    expect(pick("apps/web/src/app/cube/timer/page.tsx").specs).toEqual(
+      ["cube-timer", ...BASE_SPECS].sort(),
+    );
+    expect(pick("apps/web/src/cube/view/cube-view.ts").specs).toEqual(
+      [...cubeSpecs, ...BASE_SPECS].sort(),
+    );
+  });
+
+  it("게임 폴더 파일이 복기에 닿아도 다른 게임 spec은 고르지 않는다(복기는 게임마다 갈래)", () => {
+    const r = pick("apps/web/src/hearts/components/HeartsTable.tsx");
+    expect(r.specs).toContain("hearts");
+    expect(r.specs).not.toContain("omok");
+  });
+
+  it("게임 폴더 파일이 루트 layout(저장소 불러오기)으로만 닿으면 예전처럼 그 게임 묶음, 전부로 넓히지 않는다", () => {
+    const only = Object.keys(ctx.reach).filter(
+      (f) =>
+        f.startsWith("src/") &&
+        !ctx.ownReach[f] &&
+        webAreaOf(ctx, f.slice(4)) !== "*common*",
+    );
+    for (const f of only) {
+      const id = webAreaOf(ctx, f.slice(4));
+      const r = pick(`apps/web/${f}`);
+      expect(r.mode, f).toBe("some");
+      expect(r.specs, f).toEqual(expect.arrayContaining(ctx.areas[id].specs));
+    }
+  });
+
+  it("「모든 화면이 쓰는가」는 그래프로: 루트 layout에서 닿는 공통 폴더 파일은 모두 전부", () => {
+    const fromLayout = [...ctx.graph.walk(["src/app/layout.tsx"])].filter(
+      (f) => f.startsWith("src/") && webAreaOf(ctx, f.slice(4)) === "*common*",
+    );
+    expect(fromLayout).toEqual(expect.arrayContaining(["src/app/globals.css"]));
+    for (const f of fromLayout)
+      expect(pick(`apps/web/${f}`).mode, f).toBe("all");
+  });
+
+  it("주소로 좁힐 수 없는 게임 spec(어느 그 게임 주소도 적지 않음)은 그 게임 화면이 바뀌면 늘 함께", () => {
+    for (const [id, list] of Object.entries(ctx.unmapped)) {
+      for (const s of list) {
+        const file = ctx.routes.find((r) => r.area === id && r.page)
+          ?.entries[0];
+        if (!file) continue;
+        expect(pick(`apps/web/${file}`).specs, `${id} ${s}`).toContain(s);
+      }
+    }
+  });
+});
+
+// 놓친 의존이 있으면 「닿지 않는다」고 잘못 보아 시험을 건너뛴다. 그래프가 따라가는 꼴을 시험으로 지킨다
+describe("놓친 의존 막기", () => {
+  it("지금 저장소의 import 그래프에는 구멍이 없다(따라가지 못하는 꼴, 찾지 못한 import)", () => {
+    expect([...ctx.graph.gaps]).toEqual([]);
+    expect([...ctx.graph.unresolved]).toEqual([]);
+    expect(graphGap(ctx)).toBe(null);
+  });
+
+  it("따라가지 못하는 불러오기 꼴을 찾는다(주석 속 설명은 빼고)", () => {
+    expect(importGaps('const m = require("./x");')).toEqual(["require()"]);
+    expect(importGaps('import.meta.glob("./*.ts")')).toEqual([
+      "import.meta.glob",
+    ]);
+    expect(importGaps("await import(name)")).toEqual(["import(값)"]);
+    expect(importGaps(t("await import(`./%{name}`)"))).toEqual(["import(값)"]);
+    expect(importGaps('@import url("x.css");')).toEqual(["CSS @import url()"]);
+    expect(importGaps("new Worker(url)")).toEqual(["new Worker(문자열 아님)"]);
+    // 따라가는 꼴: 줄을 바꾼 동적 import, 타입 import, new Worker(new URL("…", import.meta.url))
+    expect(importGaps('await import(\n  "../x"\n)')).toEqual([]);
+    expect(importGaps('let p: typeof import("./hint").pick;')).toEqual([]);
+    expect(importGaps('new Worker(new URL("./w", import.meta.url))')).toEqual(
+      [],
+    );
+    expect(
+      importGaps(
+        "/** `new Worker(new URL(…, import.meta.url))` */\nconst a = 1;",
+      ),
+    ).toEqual([]);
+    expect(
+      importGaps('// await import(name)\nconst u = "https://a.b";'),
+    ).toEqual([]);
+  });
+
+  it("그래프에 구멍이 생기면 웹 src 변경은 전부로 돌린다", () => {
+    const holed = {
+      ...ctx,
+      graph: { ...ctx.graph, gaps: new Map([["src/x.ts", ["import(값)"]]]) },
+    };
+    const r = selectE2e(holed, ["apps/web/src/cube/timer/CubeTimerApp.tsx"]);
+    expect(r.mode).toBe("all");
+    expect(r.why).toContain("src/x.ts");
+  });
+
+  it("동적 import·JSON import·CSS import·Worker도 따라간다", () => {
+    // net/session.ts → import("./p2p-transport")
+    expect(ctx.reach["src/net/p2p-transport.ts"]).toBeTruthy();
+    // 큐브 미니 → import("./hint-pick")
+    expect(ctx.reach["src/cube/mini/hint-pick.ts"]?.has("cube/mini")).toBe(
+      true,
+    );
+    // 별 따기 하늘 → import data from "./sky-data.json"
+    expect(ctx.reach["src/stardraw/sky-data.json"]).toBeTruthy();
+    // 루트 layout → globals.css
+    expect(ctx.reach["src/app/globals.css"]?.size).toBeGreaterThan(50);
+    // new Worker(new URL("./cube-worker", import.meta.url))
+    expect(ctx.reach["src/cube/worker/cube-worker.ts"]).toBeTruthy();
+  });
+});
+
+describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 17절)", () => {
+  const web = path.join(ROOT, "apps/web");
+  const all = readdirSync(path.join(web, "src"), { recursive: true }).map(
+    (p) => `src/${p.split(path.sep).join("/")}`,
+  );
+  const cssFiles = all.filter(
+    (f) => f.endsWith(".css") && f !== "src/app/globals.css",
+  );
+  const codeFiles = all.filter(
+    (f) => /\.(tsx?|mjs)$/.test(f) && !/\.test\./.test(f),
+  );
+  const noComments = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
+  const code = Object.fromEntries(
+    codeFiles.map((f) => [
+      f,
+      noComments(readFileSync(path.join(web, f), "utf8")),
+    ]),
+  );
+  // 클래스가 아닌데 이름이 같은 것(SVG 그라디언트 id)
+  const NOT_CLASS = { "src/stardraw/icon-art.tsx": ["sd-ball"] };
+
+  it("따로 둔 CSS의 클래스를 쓰는 파일이 닿는 주소에는 그 CSS도 닿는다(빠지면 그 화면에서 연출이 조용히 사라진다)", () => {
+    expect(cssFiles.length).toBeGreaterThan(5);
+    const missing = [];
+    for (const css of cssFiles) {
+      const text = noComments(readFileSync(path.join(web, css), "utf8"))
+        .replace(/url\([^)]*\)/g, "")
+        .replace(/"[^"]*"/g, '""');
+      const classes = new Set(
+        [...text.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]),
+      );
+      const cssReach = ctx.reach[css] ?? new Set();
+      for (const cl of classes) {
+        const re = new RegExp(`(?<![\\w-])${cl}(?![\\w-])`);
+        for (const f of codeFiles) {
+          if (NOT_CLASS[f]?.includes(cl) || !re.test(code[f])) continue;
+          const lost = [...(ctx.reach[f] ?? [])].filter(
+            (k) => !cssReach.has(k),
+          );
+          if (lost.length)
+            missing.push(`${f} .${cl} → ${css}: ${lost.join(",")}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("게임별 CSS 하나만 바뀌면 전부가 아니라 그 CSS가 닿는 주소의 spec만", () => {
+    const emblem = pick("apps/web/src/cube/tiers/emblem.css");
+    expect(emblem.mode).not.toBe("all");
+    expect(emblem.specs.length).toBeLessThan(cubeSpecs.length);
+    const sd = pick("apps/web/src/app/stardraw/stardraw.css");
+    expect(sd.mode).not.toBe("all");
+    expect(sd.specs.some((s) => s.startsWith("cube-"))).toBe(false);
   });
 });
 
