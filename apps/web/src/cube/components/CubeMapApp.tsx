@@ -1,4 +1,4 @@
-import { FEATURE_MAP } from "../nav/feature-map";
+import { FEATURE_MAP, MAP_INTRO } from "../nav/feature-map";
 
 /** 큐브 기능 지도(`/cube/map`, docs/47 16-2). 모든 화면을 첫 화면 뼈대 차례로, 짧은 설명과 주소를 함께 */
 export function CubeMapApp() {
@@ -15,8 +15,11 @@ export function CubeMapApp() {
           >
             ← 큐브
           </a>
-          <h1 className="font-bold text-xl">기능 지도</h1>
+          <h1 className="font-bold text-xl">큐브 기능 지도</h1>
         </header>
+        <p className="break-keep text-sm text-white/80" data-map-intro>
+          {MAP_INTRO}
+        </p>
         {FEATURE_MAP.map((section) => (
           <section
             key={section.title}
