@@ -248,6 +248,37 @@ describe("ZZ 블록: 무작위 EO라인에서 규칙만으로 두 블록", () =>
   });
 });
 
+describe("ZZ 블록 바닥 엣지 블럭", () => {
+  it("위 층이면 단원 글의 U(왼쪽: 위-앞 U·위-뒤 U'·위-오른쪽 U2, 오른쪽: 위-앞 U'·위-뒤 U·위-왼쪽 U2) 뒤 L2·R2", () => {
+    const want: Record<string, string> = {
+      "DL:FU": "U",
+      "DL:BU": "U'",
+      "DL:RU": "U2",
+      "DL:LU": "",
+      "DR:FU": "U'",
+      "DR:BU": "U",
+      "DR:LU": "U2",
+      "DR:RU": "",
+    };
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 100; seed++) {
+      const eo = runZz(held(seed), nextEo).state;
+      let s = runZz(eo, nextLine, 4).state;
+      for (const st of runBlocks(s).steps) {
+        if (st.caseId === "base-top") {
+          const at = pieceAt(s, st.part === "DL" ? [0, 1] : [0, 4]).slot;
+          const key = `${st.part}:${at}`;
+          seen.add(key);
+          expect(st.hold).toBe(want[key]);
+          expect(st.alg).toBe(st.part === "DL" ? "L2" : "R2");
+        }
+        s = play3(s, stepMovesBlock(st));
+      }
+    }
+    expect([...seen].sort()).toEqual(Object.keys(want).sort());
+  });
+});
+
 describe("ZZ 블록 단원의 모범 답 = 규칙이 낸 수", () => {
   it("짝 넣기 해 보기·문제는 표(와 바꿔 읽기)의 공식이고, 그 상황에서 규칙이 내는 수와 같다", () => {
     expect(ZZ_PAIR_RIGHT).toBe("U R U' R'");
