@@ -1,17 +1,19 @@
 // 4×4·5×5 축소법(docs/47 8-2): 센터를 맞추고 엣지를 묶어 「큰 3×3」으로 만든 뒤 3×3처럼 푼다.
 // 표기: Rw = 바깥 두 층, 2R = 바깥에서 둘째 층 하나만, Uw·Dw = 위·아래 두 층.
-import { solvedCube } from "@game/cube-engine";
+import { applyMoves, parseMoves, solvedCube } from "@game/cube-engine";
 
 import { EDGES_5X5, PARITY_4X4 } from "./algs-big";
-import { play, runStage, stepMoves } from "./beginner-path";
+
 import {
   CENTER_IN,
   CENTER_IN_DOWN,
   CROSS_IN,
+  DROP_FROM_UP,
   EDGE_FLIP,
   holdFor,
 } from "./big-path";
-import { invertAlg, setupFor } from "./notation";
+import { solveReduced } from "./big-solve";
+import { setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
 const algOf = (list: { id: string; algs: string[] }[], id: string): string => {
@@ -47,31 +49,32 @@ export const EDGE_PAIR_UP = `Uw ${EDGE_FLIP} Uw'`;
 export const EDGE_PAIR_UP_LEFT = "Uw' L' U' L F' L F L' Uw";
 /** 마지막 엣지 넷: 위 날개 경우(앞-왼쪽 위의 짝을 Uw'로) → 묶이지 않은 앞-왼쪽 줄을 y'로 쥐고 아래 날개 경우 */
 export const EDGE_HIGH_CASE = `Uw' ${EDGE_FLIP} Uw y' Dw ${EDGE_FLIP} Dw'`;
+/** 처음 엣지 여덟: 두 짝이 모두 위 층 → 아래 날개의 짝(위-뒤)을 L' U' L로 앞-왼쪽에 내리고 Dw 경우 */
+export const EDGE_DROP_CASE = `${DROP_FROM_UP} Dw ${EDGE_FLIP} Dw'`;
 /** 마지막 엣지 넷: 짝을 데려올 수 없는 경우는 엣지 뒤집기 한 번 → 아래 날개 경우 */
 export const EDGE_FLIP_CASE = `${EDGE_FLIP} Dw ${EDGE_FLIP} Dw'`;
 /**
- * 4×4 위 층 코너 둘만 바뀐 모양(흰 면 아래). 이 과정은 3×3 처음 맞추기만 먼저 배우므로(T퍼뮤는 CFOP) 푸는 수는
- * PLL 패리티 뒤 3×3 처음 맞추기의 마지막 층 규칙(beginner-path.ts: 옆면 맞추기 → 코너 자리 → 코너 방향)이 낸 수다.
- * 패리티 뒤의 4×4는 바깥 층만 보면 3×3의 같은 상황과 같아, 3×3에서 규칙을 돌려 수를 얻는다(flow-advanced.test.ts가 4×4로 확인)
+ * 4×4 마지막 층 상황(흰 면 아래)의 모범 답: 3×3 처음 맞추기의 마지막 층 규칙에 패리티 둘을 더한 것(big-solve.ts).
+ * PLL 패리티는 옆면을 맞춘 뒤 코너 자리 단계에서 드러난다(제자리 코너가 꼭 둘 등)
  */
 const T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
+const lastLayer444 = (setup: string) =>
+  solveReduced(4, applyMoves(4, solvedCube(4), parseMoves(4, setup)), true)
+    .stages.map((s) => s.moves)
+    .filter(Boolean)
+    .join(" ");
+/** 위 층 코너 블럭 둘만 바뀐 모양 */
 export const CORNER_SWAP_444_SETUP = setupFor(
   `${PLL_PARITY} y ${T_PERM} y'`,
   "z2",
 );
-/** 패리티 뒤 3×3에서 같은 상황(흰 면 아래) */
-const AFTER_PARITY_333 = `z2 ${invertAlg(`y ${T_PERM} y'`)}`;
-export const CORNER_SWAP_444_LL = (() => {
-  let s = play(solvedCube(3), AFTER_PARITY_333);
-  const parts: string[] = [];
-  for (const id of ["edges", "corner-place", "corner-twist"] as const) {
-    const r = runStage(id, s);
-    s = r.state;
-    parts.push(...r.steps.map(stepMoves));
-  }
-  return parts.join(" ");
-})();
-export const CORNER_SWAP_444 = `${PLL_PARITY} ${CORNER_SWAP_444_LL}`;
+export const CORNER_SWAP_444 = lastLayer444(CORNER_SWAP_444_SETUP);
+/** 이웃한 위 층 엣지 블럭 둘만 바뀐 모양 */
+export const ADJ_EDGES_444_SETUP = setupFor(
+  `${PLL_PARITY} y' ${T_PERM} y U' ${T_PERM}`,
+  "z2",
+);
+export const ADJ_EDGES_444 = lastLayer444(ADJ_EDGES_444_SETUP);
 
 // 조각(2026-11-04): 3×3 「큐브의 조각」처럼 무엇이 움직이고 무엇이 고정인지 먼저 본다
 const pieces4: Lesson = {
@@ -362,7 +365,7 @@ const edges4: Lesson = {
     },
     {
       kind: "quiz",
-      body: "처음 8쌍은 같은 세 걸음으로 앞-오른쪽 줄에서 묶고, 묶은 줄은 위 층에 올려 모아요. U로 위 층의 묶이지 않은 엣지를 위-뒤에 두고 R U R'을 치면, 앞-오른쪽의 묶은 줄이 위-앞으로 올라가고 위-뒤 엣지가 앞-오른쪽으로 내려와요. 위 층 넷이 차면 x2로 뒤집어 새 위 층을 같은 법으로 채워요. 마지막 4쌍이 어려워요. 묶인 엣지 여덟을 위 층과 아래 층에 모아 두고, 남은 넷을 가운데 줄 네 자리(앞-오른쪽·앞-왼쪽·뒤-오른쪽·뒤-왼쪽)에서 묶어요. 엣지 뒤집기와 Dw·Uw는 위·아래 층의 묶인 엣지를 짝째로 옮기기만 해서 풀지 않아요.",
+      body: "엣지는 늘 앞-오른쪽 줄에서 하나씩 묶고, 묶은 줄은 위 층에 올려 모아요. 한 걸음마다 이 차례로 봐요. ① 앞-오른쪽 줄이 묶였으면 올려요. U로 위 층의 묶이지 않은 엣지를 위-뒤에 두고 R U R'을 치면, 묶은 줄이 위-앞으로 올라가고 위-뒤 엣지가 앞-오른쪽으로 내려와요. 위 층 넷이 모두 묶인 엣지면 x2로 뒤집어 새 위 층에 같은 법으로 올려요. ② 앞-오른쪽 줄이 묶이지 않았으면 두 날개의 짝을 찾아요. 하나라도 가운데 줄(앞-왼쪽·뒤-오른쪽·뒤-왼쪽)에 있으면 Dw 경우나 Uw 경우로 묶어요(둘 다 안 되는 엇갈린 경우는 아래에서 봐요). ③ 두 짝이 모두 위·아래 층에 있으면 아래 날개의 짝을 가운데 줄로 내려요. 위 층이면 U로 그 엣지를 위-뒤에 두고 L' U' L, 아래 층이면 D로 아래-뒤에 두고 L D L'. 그 엣지가 앞-왼쪽 줄로 내려오니 ②로 가요. ④ 위·아래 층에 묶이지 않은 엣지가 하나도 없으면 묶인 엣지 여덟이 위·아래 층에 모인 거예요. 남은 4쌍은 가운데 줄 네 자리(앞-오른쪽·앞-왼쪽·뒤-오른쪽·뒤-왼쪽)에서 묶어요. R U R'·L' U' L·L D L'은 바깥 층만 돌려 묶인 엣지를 풀지 않고, 엣지 뒤집기와 Dw·Uw도 위·아래 층의 묶인 엣지를 짝째로 옮기기만 해요.",
       quiz: {
         question: "마지막 4쌍은 어디에서 묶을까요?",
         choices: [
@@ -372,6 +375,13 @@ const edges4: Lesson = {
         answer: 0,
         why: "가운데 줄에서 묶어야 Dw·Uw로 다른 묶음을 흐트러뜨리지 않아요.",
       },
+    },
+    {
+      kind: "try",
+      body: "이 큐브는 앞-오른쪽 두 날개의 짝이 모두 위 층에 있어요(③). 아래 날개의 짝이 든 엣지가 이미 위-뒤에 있으니 L' U' L로 앞-왼쪽 줄에 내리고, 짝이 앞-왼쪽 아래에 왔으니 Dw 경우로 묶어 보세요.",
+      setup: { alg: setupFor(EDGE_DROP_CASE) },
+      alg: EDGE_DROP_CASE,
+      goal: "edges-paired",
     },
     {
       kind: "try",
@@ -457,26 +467,37 @@ const solve4: Lesson = {
     },
     {
       kind: "quiz",
-      body: "둘째는 마지막 층 조각의 자리를 맞출 때 나와요. 3×3에서 나올 수 없는 자리 바꿈이 남아요. 이것을 PLL 패리티라고 불러요. PLL은 마지막 층 조각의 자리를 맞추는 단계를 부르는 영어 줄임말이에요. 엣지 둘만 맞바뀌었으면 그 둘을 앞·뒤에 두고 공식을 해요.",
+      body: "둘째는 마지막 층 조각의 자리를 맞출 때 나와요. 3×3에서 나올 수 없는 자리 바꿈이 남아요. 이것을 PLL 패리티라고 불러요. PLL은 마지막 층 조각의 자리를 맞추는 단계를 부르는 영어 줄임말이에요. 3×3 처음 맞추기 차례대로 하면 코너 자리 단계에서 알아봐요. 옆면 맞추기는 엣지 자리만 보니 어떤 모양이든 맞춰져요. 그 뒤 제자리 코너가 꼭 둘이면(나머지 둘은 서로 자리가 바뀜) PLL 패리티예요. 제자리 코너가 없어서 코너 자리 공식을 한 번 쳤는데 제자리 코너가 꼭 하나가 되지 않을 때(없거나 둘)도 PLL 패리티예요. 그러면 PLL 패리티 공식을 한 번 치고 옆면 맞추기부터 다시 해요. 엣지 블럭 둘만 바뀐 모양(맞은편이든 이웃이든), 코너 블럭 둘만 바뀐 모양이 모두 이 한 곳에서 드러나요.",
       setup: { alg: setupFor(PLL_PARITY, "z2") },
       quiz: {
-        question: "PLL 패리티 공식을 할 때 바꿀 엣지 둘은 어디에 둘까요?",
-        choices: ["앞과 뒤", "왼쪽과 오른쪽", "앞과 오른쪽"],
+        question: "옆면을 맞췄더니 제자리 코너가 꼭 둘이에요. 무엇을 할까요?",
+        choices: [
+          "PLL 패리티 공식을 치고 옆면 맞추기부터 다시",
+          "코너 자리 공식을 한 번 더",
+          "코너 방향으로 넘어가요",
+        ],
         answer: 0,
-        why: "이 공식은 위-앞과 위-뒤 엣지를 맞바꿔요.",
+        why: "3×3에서는 제자리 코너가 꼭 둘인 모양이 나오지 않아요. PLL 패리티 공식이 위-앞·위-뒤 엣지를 바꾸면 3×3에서 나오는 모양이 되니, 옆면 맞추기부터 다시 해요.",
       },
     },
     {
       kind: "demo",
-      body: "PLL 패리티: 위-앞과 위-뒤 엣지를 맞바꿔요.",
+      body: "PLL 패리티: 위-앞과 위-뒤 엣지를 맞바꿔요. 코너 블럭은 그대로예요.",
       setup: { alg: setupFor(PLL_PARITY, "z2") },
       alg: PLL_PARITY,
     },
     {
       kind: "try",
-      body: "위 층 코너 블럭 둘만 맞바뀌고 엣지는 다 맞은 모양도 PLL 패리티예요. 먼저 PLL 패리티 공식으로 위-앞·위-뒤 엣지를 바꿔요. 그러면 3×3에서도 나오는 모양이 되니, 3×3 처음 맞추기의 마지막 층 차례대로 옆면 맞추기 → 코너 자리 → 코너 방향으로 끝내요. 힌트의 모범 답이 그 차례예요.",
+      body: "위 층 코너 블럭 둘만 맞바뀌고 엣지는 다 맞은 모양이에요. 옆면은 이미 맞아 있고 제자리 코너가 꼭 둘이니 PLL 패리티예요. PLL 패리티 공식을 친 뒤 3×3 처음 맞추기의 마지막 층 차례대로 옆면 맞추기 → 코너 자리 → 코너 방향으로 끝내요. 힌트의 모범 답이 그 차례예요.",
       setup: { alg: CORNER_SWAP_444_SETUP },
       alg: CORNER_SWAP_444,
+      goal: "solved",
+    },
+    {
+      kind: "try",
+      body: "이웃한 위 층 엣지 블럭 둘만 바뀐 모양이에요. 따로 외울 공식은 없어요. 3×3 처음 맞추기 차례대로 옆면 맞추기부터 하면 코너 자리 단계에서 PLL 패리티가 드러나요. 그때 PLL 패리티 공식을 치고 옆면 맞추기부터 다시 해요.",
+      setup: { alg: ADJ_EDGES_444_SETUP },
+      alg: ADJ_EDGES_444,
       goal: "solved",
     },
     {

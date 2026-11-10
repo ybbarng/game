@@ -699,7 +699,8 @@ function edgesNext(s: PuzzleState): PathStep | null {
 }
 
 /** 윗층 코너 가운데 제자리(방향은 상관없이 세 색이 그 구석 세 센터 색과 같음)인 것의 자리 */
-function placedCorners(s: PuzzleState): number[] {
+/** 위 층 코너 가운데 제자리(방향은 안 봄)인 자리 번호. 노란 면 위·흰 면 아래로 쥔 3×3 */
+export function placedCorners(s: PuzzleState): number[] {
   const v = view(s);
   return [0, 1, 2, 3].filter((k) => {
     const slot = CORNER_SLOTS[k] as readonly number[];

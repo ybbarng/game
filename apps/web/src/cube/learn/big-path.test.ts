@@ -13,15 +13,20 @@ import {
   CENTER_IN_DOWN,
   CROSS_IN,
   CROSS_IN_DOWN,
+  DROP_FROM_DOWN,
+  DROP_FROM_UP,
   EDGE_FLIP,
   LAST_EDGE_WINGS,
   nextCenterStep,
+  nextFirstEdge,
   nextLastEdge,
   type Pick,
   pairedSlots,
   playN,
   runCenters,
+  runEdges444,
   runLastEdges,
+  STORE_UP,
   stepMovesBig,
 } from "./big-path";
 import { centersSolved, stateForRule, unpairedEdgeLines } from "./judge";
@@ -33,6 +38,7 @@ import {
   CENTER_YELLOW,
   CENTER_YELLOW_SETUP,
   CROSS_ONE,
+  EDGE_DROP_CASE,
   EDGE_FLIP_CASE,
   EDGE_HIGH_CASE,
   EDGE_PAIR_DOWN,
@@ -203,6 +209,68 @@ describe("4×4 마지막 엣지 짝 넷", () => {
   });
 });
 
+describe("4×4 엣지 열둘(처음 여덟 → 마지막 넷)", () => {
+  const centersOnly = (seed: number) =>
+    randomCubeState(4, seed, {
+      keep: cubeTopology(4)
+        .pieces.map((p, i) => ({ p, i }))
+        .filter(({ p }) => p.kind === "center" || p.kind === "innerCenter")
+        .map(({ i }) => i),
+    });
+
+  it("센터만 맞은 무작위 40개를 규칙만으로 다 묶고, 처음 여덟의 경우를 모두 만난다", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const r = runEdges444(centersOnly(seed));
+      expect(unpairedEdgeLines(4, r.state)).toBe(0);
+      expect(centersSolved(4, r.state)).toBe(true);
+      for (const st of r.steps)
+        if (st.stage === "444-first-edges") seen.add(st.caseId);
+    }
+    expect([...seen].sort()).toEqual([
+      "drop-down",
+      "drop-up",
+      "flip",
+      "high",
+      "low",
+      "store",
+      "turn-over",
+    ]);
+  });
+
+  it("걸음마다 묶인 줄 수가 줄지 않고, 짝 맞추기 공식 뒤에는 앞-오른쪽이 묶이거나(Dw·Uw) Dw·Uw 경우로 넘어간다(뒤집기)", () => {
+    for (let seed = 41; seed <= 70; seed++) {
+      let s = centersOnly(seed);
+      for (let guard = 0; guard < 80; guard++) {
+        const st = nextFirstEdge(s);
+        if (!st) break;
+        const before = 12 - unpairedEdgeLines(4, s);
+        s = playN(4, s, stepMovesBig(st));
+        expect(centersSolved(4, s)).toBe(true);
+        expect(12 - unpairedEdgeLines(4, s)).toBeGreaterThanOrEqual(before);
+        if (st.caseId === "low" || st.caseId === "high")
+          expect(pairedSlots(s)).toContain("FR");
+        if (st.caseId === "flip")
+          expect(["low", "high"]).toContain(nextFirstEdge(s)?.caseId);
+        if (st.caseId === "drop-up" || st.caseId === "drop-down")
+          expect(["low", "high", "flip"]).toContain(nextFirstEdge(s)?.caseId);
+      }
+    }
+  });
+
+  it("공식은 단원이 알린 것뿐이다: 올리기 R U R', 내리기 L' U' L·L D L', x2, 엣지 뒤집기를 쓴 Dw·Uw 경우", () => {
+    const r = runEdges444(centersOnly(99));
+    for (const st of r.steps)
+      expect([
+        STORE_UP,
+        DROP_FROM_UP,
+        DROP_FROM_DOWN,
+        "x2",
+        EDGE_FLIP,
+      ]).toContain(st.alg.replace(/^[UD]w['2]? | [UD]w['2]?$/g, ""));
+  });
+});
+
 describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 수", () => {
   const solve = (n: 4 | 5, setup: string) =>
     runCenters(n, playN(n, solvedCube(n), setup))
@@ -213,6 +281,14 @@ describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 �
     expect(solve(4, setupFor(CENTER_IN))).toBe(CENTER_IN);
     expect(solve(4, setupFor(CENTER_HOLD))).toBe(CENTER_HOLD);
     expect(solve(4, setupFor(CENTER_DOWN))).toBe(CENTER_DOWN);
+  });
+
+  it("4×4 처음 엣지: 두 짝이 모두 위 층이면 L' U' L로 내리고 Dw 경우(규칙이 낸 수 그대로, 다 묶인다)", () => {
+    const s = playN(4, solvedCube(4), setupFor(EDGE_DROP_CASE));
+    const r = runEdges444(s);
+    expect(r.steps.map((x) => x.caseId)).toEqual(["drop-up", "low"]);
+    expect(r.steps.map(stepMovesBig).join(" ")).toBe(EDGE_DROP_CASE);
+    expect(unpairedEdgeLines(4, r.state)).toBe(0);
   });
 
   it("4×4 노란 센터: 노란 면을 위로 쥐고(x2) 오른쪽 옆면에서 y로 가져온다", () => {
