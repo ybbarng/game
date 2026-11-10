@@ -9,6 +9,8 @@ import { type Pick, playN, runEdges444, stepMovesBig } from "./big-path";
 import { goalMet, stateForRule, stepStart } from "./judge";
 import {
   YAU_444,
+  YAU_CROSS_DOWN_DEMO,
+  YAU_CROSS_FRONT_TRY,
   YAU_CROSS_PAIR_DEMO,
   YAU_CROSS_PAIR_TRY,
   YAU_CROSS_SAME_TRY,
@@ -324,6 +326,8 @@ describe("야우 단원이 규칙과 같다", () => {
       YAU_CROSS_PAIR_DEMO,
       YAU_CROSS_PAIR_TRY,
       YAU_CROSS_UP_DEMO,
+      YAU_CROSS_DOWN_DEMO,
+      YAU_CROSS_FRONT_TRY,
       YAU_CROSS_SAME_TRY,
     ]);
     const ids = withAlg("yau-cross3").map((st) => {
@@ -336,11 +340,18 @@ describe("야우 단원이 규칙과 같다", () => {
       );
       return r.steps.map((x) => x.caseId).join();
     });
-    expect(ids).toEqual(["pair", "pair", "up,pair", "same-layer,pair"]);
+    expect(ids).toEqual([
+      "pair",
+      "pair",
+      "up,pair",
+      "down-side,up,pair",
+      "down-front,pair",
+      "same-layer,pair",
+    ]);
     // 같은 층 문제는 해 보기와 같은 화면이고, F2는 앞-오른쪽 위 칸을 앞-왼쪽 아래 칸으로 보낸다
     const q = steps("yau-cross3", "quiz")[0] as LessonStep;
-    expect(q.setup).toEqual(withAlg("yau-cross3")[3]?.setup);
-    expect(q.quiz?.choices[q.quiz.answer]).toBe("앞-왼쪽 자리 아래 칸");
+    expect(q.setup).toEqual(withAlg("yau-cross3")[5]?.setup);
+    expect(q.quiz?.choices[q.quiz.answer]).toBe("앞-왼쪽 줄 아래 칸");
   });
 
   it("옆 센터 단원의 시연·해 보기 모범 답 = 규칙이 그 상황에서 내는 수", () => {
