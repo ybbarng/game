@@ -266,7 +266,8 @@ function CourseGrid({
   picked: string | null;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    // items-start: 펼친 카드 옆의 접힌 카드가 같은 높이로 늘어나 비어 보이지 않게(2026-11-10 사용자 「프리드리히는 왜 내용이 거의 없어 보여?」)
+    <div className="grid items-start gap-4 md:grid-cols-2">
       {courses.map((course, index) => {
         const done = course.lessons.filter(
           (l) => progress.lessons[l.id]?.done,
@@ -291,7 +292,10 @@ function CourseGrid({
             data-course-recommended={recommended ? "" : undefined}
             data-course-picked={course.id === picked ? "" : undefined}
             className={cn(
-              "flex scroll-mt-4 flex-col gap-2 rounded-2xl border p-4",
+              // min-w-0: 접힌 카드의 단원 이름 한 줄(truncate)이 칸 폭을 밀어 넓히지 않게
+              "flex min-w-0 scroll-mt-4 flex-col gap-2 rounded-2xl border p-4",
+              // 단원을 펼쳐 둔 과정은 가로를 다 쓴다(옆 칸이 크게 비지 않게)
+              open && "md:col-span-2",
               course.id === picked
                 ? "border-amber-300/70 bg-amber-400/10"
                 : recommended
@@ -351,7 +355,7 @@ function CourseGrid({
               open={open}
               className="group"
             >
-              <summary className="flex cursor-pointer list-none items-center gap-1 rounded-lg px-2 py-1 text-white/60 text-xs hover:bg-white/5 hover:text-white">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-1 rounded-lg px-2 py-1 text-white/60 text-xs hover:bg-white/5 hover:text-white">
                 <span
                   aria-hidden
                   className="inline-block transition-transform group-open:rotate-90"
@@ -360,6 +364,13 @@ function CourseGrid({
                 </span>
                 배우기 · 단원 {course.lessons.length}개
                 {done > 0 && ` · ${done}개 끝냄`}
+                {/* 접혀 있어도 무엇을 배우는지 보이게 단원 이름을 한 줄로 */}
+                <span
+                  data-course-lesson-names
+                  className="basis-full truncate pl-3 text-white/40 group-open:hidden"
+                >
+                  {course.lessons.map((l) => l.title).join(" · ")}
+                </span>
               </summary>
               <ol className="flex flex-col gap-1">
                 {course.lessons.map((l, i) => {
