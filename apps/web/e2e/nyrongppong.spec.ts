@@ -171,186 +171,190 @@ test("나이롱뽕: 목록에서 들어가 정해진 패로 컴퓨터와 끝까�
   expect(errors).toEqual([]);
 });
 
-test("나이롱뽕 배우기: 첫 단원 미션에서 12월을 버린다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  const touch = info.project.name.startsWith("phone");
-  await page.goto("/nyrongppong");
-  await page.getByRole("button", { name: /나이롱뽕 배우기/ }).click();
-  await expect(page.getByText("0/5")).toBeVisible();
-  await page.getByRole("button", { name: /나이롱뽕은 어떤 게임/ }).click();
-  for (let i = 0; i < 2; i++)
+test(
+  "나이롱뽕 배우기: 첫 단원 미션에서 12월을 버린다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/nyrongppong");
+    await page.getByRole("button", { name: /나이롱뽕 배우기/ }).click();
+    await expect(page.getByText("0/5")).toBeVisible();
+    await page.getByRole("button", { name: /나이롱뽕은 어떤 게임/ }).click();
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "19점" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "19점" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  const twelve = hand(page).locator('[data-card="12g"]');
-  await expect(twelve).toBeVisible();
-  await noOverflow(page);
-  await page.screenshot({ path: info.outputPath("nyrongppong-mission.png") });
-  if (touch) {
-    await twelve.tap();
-    await expect(
-      page.getByRole("button", { name: /비 광 버리기/ }),
-    ).toBeVisible();
-    await twelve.tap();
-  } else await twelve.click();
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
-});
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    const twelve = hand(page).locator('[data-card="12g"]');
+    await expect(twelve).toBeVisible();
+    await noOverflow(page);
+    await page.screenshot({ path: info.outputPath("nyrongppong-mission.png") });
+    if (touch) {
+      await twelve.tap();
+      await expect(
+        page.getByRole("button", { name: /비 광 버리기/ }),
+      ).toBeVisible();
+      await twelve.tap();
+    } else await twelve.click();
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+  },
+);
 
-test("나이롱뽕 뽕 응답 창: 시간이 지나면 넘어가고, 다시 해서 시간 안에 뽕한다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "시계는 화면 크기와 상관없다");
-  await page.clock.install();
-  await page.goto("/nyrongppong");
-  // 앞 단원을 마친 것으로 두고 뽕 단원으로 간다.
-  await page.evaluate(() =>
-    localStorage.setItem(
-      "nyrongppong-tutorial",
-      JSON.stringify({ state: { completed: ["goal", "yak"] }, version: 0 }),
-    ),
-  );
-  await page.reload();
-  await page.getByRole("button", { name: /나이롱뽕 배우기/ }).click();
-  await page.getByRole("button", { name: /뽕 부르기/ }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page
-    .getByRole("button", { name: "뽕! 세 장을 내려놓고 한 장 더 버린다" })
-    .click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
+test(
+  "나이롱뽕 뽕 응답 창: 시간이 지나면 넘어가고, 다시 해서 시간 안에 뽕한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 시계는 화면 크기와 상관없다
+    await page.clock.install();
+    await page.goto("/nyrongppong");
+    // 앞 단원을 마친 것으로 두고 뽕 단원으로 간다.
+    await page.evaluate(() =>
+      localStorage.setItem(
+        "nyrongppong-tutorial",
+        JSON.stringify({ state: { completed: ["goal", "yak"] }, version: 0 }),
+      ),
+    );
+    await page.reload();
+    await page.getByRole("button", { name: /나이롱뽕 배우기/ }).click();
+    await page.getByRole("button", { name: /뽕 부르기/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page
+      .getByRole("button", { name: "뽕! 세 장을 내려놓고 한 장 더 버린다" })
+      .click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
 
-  // 응답 시간 8초: 7초가 지나도 아직 뽕할 수 있고, 남은 시간이 보인다.
-  await expect(ppong(page)).toBeVisible();
-  await page.clock.runFor(7_000);
-  await expect(status(page)).toHaveText("뽕할 수 있어요! 1초");
-  await page.screenshot({ path: info.outputPath("nyrongppong-call.png") });
-  // 시간이 다 되면 넘긴 것이 되어 미션 실패.
-  await page.clock.runFor(1_100);
-  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible();
-  await page.getByRole("button", { name: "다시 하기" }).click();
-  await expect(ppong(page)).toBeVisible();
-  await page.clock.runFor(3_000);
-  await ppong(page).click();
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible();
-});
+    // 응답 시간 8초: 7초가 지나도 아직 뽕할 수 있고, 남은 시간이 보인다.
+    await expect(ppong(page)).toBeVisible();
+    await page.clock.runFor(7_000);
+    await expect(status(page)).toHaveText("뽕할 수 있어요! 1초");
+    await page.screenshot({ path: info.outputPath("nyrongppong-call.png") });
+    // 시간이 다 되면 넘긴 것이 되어 미션 실패.
+    await page.clock.runFor(1_100);
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible();
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(ppong(page)).toBeVisible();
+    await page.clock.runFor(3_000);
+    await ppong(page).click();
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible();
+  },
+);
 
-test("나이롱뽕: 방장이 방을 만들고 친구가 링크로 들어와 끝까지 하고, 판 끝 검증을 통과한다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest])
-    p.on("pageerror", (e) => errors.push(e.message));
-
-  // 온라인은 버릴 때마다 모두 3초씩 뽕 창을 기다린다. 대국을 돌리는 방장 화면 시계를 가짜로 두고,
-  // 아무도 할 일이 없을 때만 앞으로 당겨 창 기다림을 건너뛴다(정해진 시간 기다리기 없음).
-  await host.clock.install();
-  await host.goto("/nyrongppong?net=local");
-  await choose(host, { players: 2, rounds: 1, level: "입문" });
-  await host.getByRole("button", { name: /다함께 나이롱뽕/ }).click();
-  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/nyrongppong");
-
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
-  await expect(hand(guest)).toBeVisible();
-  await expect(hand(host)).toBeVisible();
-
-  // 두 화면이 번갈아 제 할 일을 한다. 게임이 끝날 때까지.
-  for (let i = 0; i < 400; i++) {
-    if ((await gameOver(host)()) && (await gameOver(guest)())) break;
-    await expect
-      .poll(
-        async () => {
-          if (
-            (await actionable(host)) ||
-            (await actionable(guest)) ||
-            ((await gameOver(host)()) && (await gameOver(guest)()))
-          )
-            return true;
-          await host.clock.runFor(1_000);
-          return false;
-        },
-        { timeout: 30_000, intervals: [50] },
-      )
-      .toBe(true);
+test(
+  "나이롱뽕: 방장이 방을 만들고 친구가 링크로 들어와 끝까지 하고, 판 끝 검증을 통과한다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
     for (const p of [host, guest])
-      if (await actionable(p)) await actOnce(p, false);
-  }
-  await expect(status(guest)).toContainText("게임 끝");
-  await guest.screenshot({ path: info.outputPath("nyrongppong-online.png") });
+      p.on("pageerror", (e) => errors.push(e.message));
 
-  // 방장이 나가면 기록과 섞은 값이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
-  await host.getByRole("button", { name: "← 나이롱뽕" }).click();
-  await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
-    timeout: 10_000,
-  });
-  expect(errors).toEqual([]);
-});
+    // 온라인은 버릴 때마다 모두 3초씩 뽕 창을 기다린다. 대국을 돌리는 방장 화면 시계를 가짜로 두고,
+    // 아무도 할 일이 없을 때만 앞으로 당겨 창 기다림을 건너뛴다(정해진 시간 기다리기 없음).
+    await host.clock.install();
+    await host.goto("/nyrongppong?net=local");
+    await choose(host, { players: 2, rounds: 1, level: "입문" });
+    await host.getByRole("button", { name: /다함께 나이롱뽕/ }).click();
+    await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/nyrongppong");
 
-test("나이롱뽕: 끝낸 게임은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "기록은 화면 크기와 상관없다");
-  await page.goto("/nyrongppong");
-  await choose(page, { players: 2, rounds: 1, level: "중수" });
-  await page.goto("/nyrongppong?seed=3");
-  await page.getByRole("button", { name: /나홀로 나이롱뽕/ }).click();
-  await playUntil(page, false, gameOver(page));
-  // 복기 기록이 실제로 쓰인 뒤에 떠난다.
-  await page.waitForFunction(
-    () =>
-      new Promise<boolean>((resolve) => {
-        const open = indexedDB.open("mighty-review", 1);
-        open.onupgradeneeded = () =>
-          open.result.createObjectStore("games", { keyPath: "id" });
-        open.onsuccess = () => {
-          const all = open.result
-            .transaction("games")
-            .objectStore("games")
-            .getAll();
-          all.onsuccess = () => {
-            open.result.close();
-            resolve(
-              (all.result as { game: string; over: boolean }[]).some(
-                (g) => g.game === "nyrongppong" && g.over,
-              ),
-            );
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
+    await expect(hand(guest)).toBeVisible();
+    await expect(hand(host)).toBeVisible();
+
+    // 두 화면이 번갈아 제 할 일을 한다. 게임이 끝날 때까지.
+    for (let i = 0; i < 400; i++) {
+      if ((await gameOver(host)()) && (await gameOver(guest)())) break;
+      await expect
+        .poll(
+          async () => {
+            if (
+              (await actionable(host)) ||
+              (await actionable(guest)) ||
+              ((await gameOver(host)()) && (await gameOver(guest)()))
+            )
+              return true;
+            await host.clock.runFor(1_000);
+            return false;
+          },
+          { timeout: 30_000, intervals: [50] },
+        )
+        .toBe(true);
+      for (const p of [host, guest])
+        if (await actionable(p)) await actOnce(p, false);
+    }
+    await expect(status(guest)).toContainText("게임 끝");
+    await guest.screenshot({ path: info.outputPath("nyrongppong-online.png") });
+
+    // 방장이 나가면 기록과 섞은 값이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
+    await host.getByRole("button", { name: "← 나이롱뽕" }).click();
+    await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(errors).toEqual([]);
+  },
+);
+
+test(
+  "나이롱뽕: 끝낸 게임은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 기록은 화면 크기와 상관없다
+    await page.goto("/nyrongppong");
+    await choose(page, { players: 2, rounds: 1, level: "중수" });
+    await page.goto("/nyrongppong?seed=3");
+    await page.getByRole("button", { name: /나홀로 나이롱뽕/ }).click();
+    await playUntil(page, false, gameOver(page));
+    // 복기 기록이 실제로 쓰인 뒤에 떠난다.
+    await page.waitForFunction(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const open = indexedDB.open("mighty-review", 1);
+          open.onupgradeneeded = () =>
+            open.result.createObjectStore("games", { keyPath: "id" });
+          open.onsuccess = () => {
+            const all = open.result
+              .transaction("games")
+              .objectStore("games")
+              .getAll();
+            all.onsuccess = () => {
+              open.result.close();
+              resolve(
+                (all.result as { game: string; over: boolean }[]).some(
+                  (g) => g.game === "nyrongppong" && g.over,
+                ),
+              );
+            };
           };
-        };
-      }),
-  );
+        }),
+    );
 
-  await page.goto("/profile?game=nyrongppong");
-  await expect(page.getByRole("tab", { name: "🎴 나이롱뽕" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(page.getByText("판 1등")).toBeVisible();
+    await page.goto("/profile?game=nyrongppong");
+    await expect(
+      page.getByRole("tab", { name: "🎴 나이롱뽕" }),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("판 1등")).toBeVisible();
 
-  await page.goto("/review");
-  await page.getByRole("button", { name: /🎴 나이롱뽕 · 혼자/ }).click();
-  await page.getByRole("button", { name: "처음" }).click();
-  await expect(page.getByRole("status")).toContainText("1판 · 0/");
-  await page.getByRole("button", { name: "한 걸음 앞으로" }).click();
-  await expect(page.getByRole("status")).toContainText("1판 · 1/");
-  await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
-  await page.screenshot({ path: info.outputPath("nyrongppong-review.png") });
-});
+    await page.goto("/review");
+    await page.getByRole("button", { name: /🎴 나이롱뽕 · 혼자/ }).click();
+    await page.getByRole("button", { name: "처음" }).click();
+    await expect(page.getByRole("status")).toContainText("1판 · 0/");
+    await page.getByRole("button", { name: "한 걸음 앞으로" }).click();
+    await expect(page.getByRole("status")).toContainText("1판 · 1/");
+    await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
+    await page.screenshot({ path: info.outputPath("nyrongppong-review.png") });
+  },
+);

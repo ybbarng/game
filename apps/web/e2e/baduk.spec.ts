@@ -132,267 +132,273 @@ test("바둑: 게임 목록에서 들어가 두고, 새로고침 뒤 이어 두�
   expect(errors).toEqual([]);
 });
 
-test("바둑: 둘이 이어 쉬면 판 위 그대로 세어 끝난다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "세기는 화면 크기와 상관없다");
-  await page.goto("/baduk");
-  await startSolo(page);
-  await playOne(page, false);
-  await expect(page.getByRole("status")).toContainText("내 차례", {
-    timeout: 15_000,
-  });
-  // 컴퓨터가 쉬면 따라 쉬고, 아니면 내가 먼저 쉰다. 어느 쪽이든 결국 둘이 이어 쉰다.
-  const over = page.getByRole("button", { name: "다시 하기" });
-  const pass = page.getByRole("button", { name: "쉬기" });
-  for (let i = 0; i < 80; i++) {
-    // 판이 끝났거나 내 차례가 올 때까지 기다린다.
-    await expect(over.or(pass)).toBeVisible({ timeout: 15_000 });
-    if (await over.isVisible()) break;
-    await pass.click();
-    await expect(pass).toBeHidden();
-  }
-  await expect(page.getByRole("status")).toContainText("세어 보니");
-  await expect(page.getByText(/흑 \d+ : 백 [\d.]+/).first()).toBeVisible();
-  await page.screenshot({ path: info.outputPath("baduk-count.png") });
-});
+test(
+  "바둑: 둘이 이어 쉬면 판 위 그대로 세어 끝난다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 세기는 화면 크기와 상관없다
+    await page.goto("/baduk");
+    await startSolo(page);
+    await playOne(page, false);
+    await expect(page.getByRole("status")).toContainText("내 차례", {
+      timeout: 15_000,
+    });
+    // 컴퓨터가 쉬면 따라 쉬고, 아니면 내가 먼저 쉰다. 어느 쪽이든 결국 둘이 이어 쉰다.
+    const over = page.getByRole("button", { name: "다시 하기" });
+    const pass = page.getByRole("button", { name: "쉬기" });
+    for (let i = 0; i < 80; i++) {
+      // 판이 끝났거나 내 차례가 올 때까지 기다린다.
+      await expect(over.or(pass)).toBeVisible({ timeout: 15_000 });
+      if (await over.isVisible()) break;
+      await pass.click();
+      await expect(pass).toBeHidden();
+    }
+    await expect(page.getByRole("status")).toContainText("세어 보니");
+    await expect(page.getByText(/흑 \d+ : 백 [\d.]+/).first()).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-count.png") });
+  },
+);
 
-test("바둑 배우기: 첫 단원 미션을 틀렸다가 다시 해서 백 한 점을 따낸다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  const touch = info.project.name.startsWith("phone");
-  await page.goto("/baduk");
-  await page.getByRole("button", { name: /바둑 배우기/ }).click();
-  await expect(page.getByText("0/8")).toBeVisible();
-  await page.getByRole("button", { name: /바둑은 어떤 게임/ }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  // 둘째 설명(활로와 따내기)에는 판 그림이 있다.
-  await expect(board(page)).toBeVisible();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page
-    .getByRole("button", { name: "그 돌의 활로를 모두 막았을 때" })
-    .click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  await expect(stones(page)).toHaveCount(4);
-  // 활로가 하나 남은 백 E5에 단수 표시(빨간 테두리)가 있다.
-  await expect(page.locator("[data-atari]")).toHaveCount(1);
-  await expect(page.locator('[data-atari="E5"]')).toHaveCount(1);
-  await placeAt(page, "A1", touch);
-  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다시 하기" }).click();
-  await expect(stones(page)).toHaveCount(4);
-  await page.screenshot({ path: info.outputPath("baduk-mission.png") });
-  await placeAt(page, "E4", touch);
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
-});
+test(
+  "바둑 배우기: 첫 단원 미션을 틀렸다가 다시 해서 백 한 점을 따낸다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await expect(page.getByText("0/8")).toBeVisible();
+    await page.getByRole("button", { name: /바둑은 어떤 게임/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    // 둘째 설명(활로와 따내기)에는 판 그림이 있다.
+    await expect(board(page)).toBeVisible();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page
+      .getByRole("button", { name: "그 돌의 활로를 모두 막았을 때" })
+      .click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await expect(stones(page)).toHaveCount(4);
+    // 활로가 하나 남은 백 E5에 단수 표시(빨간 테두리)가 있다.
+    await expect(page.locator("[data-atari]")).toHaveCount(1);
+    await expect(page.locator('[data-atari="E5"]')).toHaveCount(1);
+    await placeAt(page, "A1", touch);
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(stones(page)).toHaveCount(4);
+    await page.screenshot({ path: info.outputPath("baduk-mission.png") });
+    await placeAt(page, "E4", touch);
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+  },
+);
 
-test("바둑: 방장이 방을 만들고 친구가 링크로 들어와 두고, 둘이 쉬어 세고, 판 끝 검증을 통과한다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest])
-    p.on("pageerror", (e) => errors.push(e.message));
+test(
+  "바둑: 방장이 방을 만들고 친구가 링크로 들어와 두고, 둘이 쉬어 세고, 판 끝 검증을 통과한다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [host, guest])
+      p.on("pageerror", (e) => errors.push(e.message));
 
-  await host.goto("/baduk?net=local");
-  await ready(host);
-  await host.getByRole("button", { name: "옵션" }).click();
-  await host.getByRole("button", { name: "9줄", exact: true }).click();
-  await host.getByRole("button", { name: "처음으로" }).click();
-  await host.getByRole("button", { name: /다함께 바둑/ }).click();
-  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/baduk");
+    await host.goto("/baduk?net=local");
+    await ready(host);
+    await host.getByRole("button", { name: "옵션" }).click();
+    await host.getByRole("button", { name: "9줄", exact: true }).click();
+    await host.getByRole("button", { name: "처음으로" }).click();
+    await host.getByRole("button", { name: /다함께 바둑/ }).click();
+    await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/baduk");
 
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
-  await expect(board(guest)).toBeVisible();
-  await expect(board(host)).toBeVisible();
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
+    await expect(board(guest)).toBeVisible();
+    await expect(board(host)).toBeVisible();
 
-  const black = (await host.getByText("나는 흑").count()) > 0 ? host : guest;
-  const white = black === host ? guest : host;
-  await expect(black.getByRole("status")).toContainText("내 차례", {
-    timeout: 15_000,
-  });
-  await playOne(black, false);
-  await expect(white.getByRole("status")).toContainText("내 차례", {
-    timeout: 15_000,
-  });
-  await expect(white.locator('[data-point="E5"]')).toHaveCount(1);
-  // 백이 쉬고 흑도 쉬면 판 위 그대로 센다: 흑 81 : 백 7.5
-  await white.getByRole("button", { name: "쉬기" }).click();
-  await expect(black.getByRole("status")).toContainText("상대가 쉬었어요", {
-    timeout: 15_000,
-  });
-  await black.getByRole("button", { name: "쉬기" }).click();
-  await expect(black.getByRole("status")).toHaveText("세어 보니 이겼어요!");
-  await expect(white.getByRole("status")).toHaveText("세어 보니 졌어요", {
-    timeout: 15_000,
-  });
-  await expect(white.getByText("흑 81 : 백 7.5").first()).toBeVisible();
-  await white.screenshot({ path: info.outputPath("baduk-online.png") });
+    const black = (await host.getByText("나는 흑").count()) > 0 ? host : guest;
+    const white = black === host ? guest : host;
+    await expect(black.getByRole("status")).toContainText("내 차례", {
+      timeout: 15_000,
+    });
+    await playOne(black, false);
+    await expect(white.getByRole("status")).toContainText("내 차례", {
+      timeout: 15_000,
+    });
+    await expect(white.locator('[data-point="E5"]')).toHaveCount(1);
+    // 백이 쉬고 흑도 쉬면 판 위 그대로 센다: 흑 81 : 백 7.5
+    await white.getByRole("button", { name: "쉬기" }).click();
+    await expect(black.getByRole("status")).toContainText("상대가 쉬었어요", {
+      timeout: 15_000,
+    });
+    await black.getByRole("button", { name: "쉬기" }).click();
+    await expect(black.getByRole("status")).toHaveText("세어 보니 이겼어요!");
+    await expect(white.getByRole("status")).toHaveText("세어 보니 졌어요", {
+      timeout: 15_000,
+    });
+    await expect(white.getByText("흑 81 : 백 7.5").first()).toBeVisible();
+    await white.screenshot({ path: info.outputPath("baduk-online.png") });
 
-  // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
-  await host.getByRole("button", { name: "← 바둑" }).click();
-  await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
-    timeout: 10_000,
-  });
-  expect(errors).toEqual([]);
-});
+    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 둬 보며 확인한다.
+    await host.getByRole("button", { name: "← 바둑" }).click();
+    await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(errors).toEqual([]);
+  },
+);
 
-test("바둑: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "기록은 화면 크기와 상관없다");
-  await page.goto("/baduk");
-  await startSolo(page);
-  await playOne(page, false);
-  await expect(page.getByRole("status")).toContainText("내 차례", {
-    timeout: 15_000,
-  });
-  await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(page.getByRole("status")).toHaveText("기권했어요");
-  // 복기 기록이 실제로 쓰인 뒤에 떠난다.
-  await page.waitForFunction(
-    () =>
-      new Promise<boolean>((resolve) => {
-        const open = indexedDB.open("mighty-review", 1);
-        open.onsuccess = () => {
-          const db = open.result;
-          if (!db.objectStoreNames.contains("games")) {
-            db.close();
-            resolve(false);
-            return;
-          }
-          const all = db.transaction("games").objectStore("games").getAll();
-          all.onsuccess = () => {
-            db.close();
-            resolve(
-              (all.result as { game: string; over: boolean }[]).some(
-                (g) => g.game === "baduk" && g.over,
-              ),
-            );
+test(
+  "바둑: 끝낸 판은 내 기록에 쌓이고 복기에서 한 수씩 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 기록은 화면 크기와 상관없다
+    await page.goto("/baduk");
+    await startSolo(page);
+    await playOne(page, false);
+    await expect(page.getByRole("status")).toContainText("내 차례", {
+      timeout: 15_000,
+    });
+    await page.getByRole("button", { name: "기권" }).click();
+    await page.getByRole("button", { name: "기권하기" }).click();
+    await expect(page.getByRole("status")).toHaveText("기권했어요");
+    // 복기 기록이 실제로 쓰인 뒤에 떠난다.
+    await page.waitForFunction(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const open = indexedDB.open("mighty-review", 1);
+          open.onsuccess = () => {
+            const db = open.result;
+            if (!db.objectStoreNames.contains("games")) {
+              db.close();
+              resolve(false);
+              return;
+            }
+            const all = db.transaction("games").objectStore("games").getAll();
+            all.onsuccess = () => {
+              db.close();
+              resolve(
+                (all.result as { game: string; over: boolean }[]).some(
+                  (g) => g.game === "baduk" && g.over,
+                ),
+              );
+            };
           };
-        };
-        open.onerror = () => resolve(false);
-      }),
-  );
+          open.onerror = () => resolve(false);
+        }),
+    );
 
-  await page.goto("/profile?game=baduk");
-  await expect(page.getByRole("tab", { name: "⚫ 바둑" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(page.getByText("0승 1패")).toBeVisible();
+    await page.goto("/profile?game=baduk");
+    await expect(page.getByRole("tab", { name: "⚫ 바둑" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByText("0승 1패")).toBeVisible();
 
-  await page.goto("/review");
-  await page.getByRole("button", { name: /⚫ 바둑 · 혼자/ }).click();
-  await page.getByRole("button", { name: "처음" }).click();
-  await expect(stones(page)).toHaveCount(0);
-  await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button", { name: "한 수 앞으로" }).click();
-  await expect(stones(page)).toHaveCount(1);
-  await page.screenshot({ path: info.outputPath("baduk-review.png") });
-});
+    await page.goto("/review");
+    await page.getByRole("button", { name: /⚫ 바둑 · 혼자/ }).click();
+    await page.getByRole("button", { name: "처음" }).click();
+    await expect(stones(page)).toHaveCount(0);
+    await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "한 수 앞으로" }).click();
+    await expect(stones(page)).toHaveCount(1);
+    await page.screenshot({ path: info.outputPath("baduk-review.png") });
+  },
+);
 
-test("바둑 개인 시간: 시계가 가고, 다 쓰면 시간패다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "시계는 화면 크기와 상관없다");
-  await page.clock.install();
-  await page.goto("/baduk");
-  await ready(page);
-  await page.getByRole("button", { name: "옵션" }).click();
-  await page.getByRole("button", { name: "빠른 3분" }).click();
-  await page.getByRole("button", { name: "흑(먼저)" }).click();
-  await page.getByRole("button", { name: "처음으로" }).click();
-  await page.getByRole("button", { name: /나홀로 바둑/ }).click();
-  await expect(page.locator('[data-seat="me"] [data-clock]')).toHaveText(
-    "3:00",
-  );
-  await page.clock.runFor(270_001);
-  await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
-  await page.screenshot({ path: info.outputPath("baduk-time.png") });
-});
+test(
+  "바둑 개인 시간: 시계가 가고, 다 쓰면 시간패다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 시계는 화면 크기와 상관없다
+    await page.clock.install();
+    await page.goto("/baduk");
+    await ready(page);
+    await page.getByRole("button", { name: "옵션" }).click();
+    await page.getByRole("button", { name: "빠른 3분" }).click();
+    await page.getByRole("button", { name: "흑(먼저)" }).click();
+    await page.getByRole("button", { name: "처음으로" }).click();
+    await page.getByRole("button", { name: /나홀로 바둑/ }).click();
+    await expect(page.locator('[data-seat="me"] [data-clock]')).toHaveText(
+      "3:00",
+    );
+    await page.clock.runFor(270_001);
+    await expect(page.getByRole("status")).toHaveText("시간이 다 돼 졌어요");
+    await page.screenshot({ path: info.outputPath("baduk-time.png") });
+  },
+);
 
-test("바둑 수 배우기: 단수 방향을 틀렸다 다시 풀고, 축으로 몰아 따내고, 급소로 잡는다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "문제 풀이 진행은 크기와 상관없다(공통 문제 화면의 배치는 장기 외통 문제가 세 크기로 본다)",
-  );
-  const touch = info.project.name.startsWith("phone");
-  await page.goto("/baduk");
-  await page.getByRole("button", { name: /바둑 배우기/ }).click();
-  await page.getByRole("button", { name: /수 배우기/ }).click();
-  const atari = page.getByRole("region", { name: "단수 방향" });
-  await expect(atari.getByText("0/8")).toBeVisible();
-  await atari.getByRole("button", { name: "풀기 시작" }).click();
-  await expect(page.getByRole("status")).toHaveText("△ 백 돌을 따내세요");
+test(
+  "바둑 수 배우기: 단수 방향을 틀렸다 다시 풀고, 축으로 몰아 따내고, 급소로 잡는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 문제 풀이 진행은 크기와 상관없다(공통 문제 화면의 배치는 장기 외통 문제가 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baduk");
+    await page.getByRole("button", { name: /바둑 배우기/ }).click();
+    await page.getByRole("button", { name: /수 배우기/ }).click();
+    const atari = page.getByRole("region", { name: "단수 방향" });
+    await expect(atari.getByText("0/8")).toBeVisible();
+    await atari.getByRole("button", { name: "풀기 시작" }).click();
+    await expect(page.getByRole("status")).toHaveText("△ 백 돌을 따내세요");
 
-  // G1에서 단수 치면 백이 F2로 뻗어 달아난다.
-  await placeAt(page, "G1", touch);
-  await expect(page.getByRole("status")).toHaveText("그 수로는 못 따내요");
-  await page.getByRole("button", { name: "다시 하기" }).click();
+    // G1에서 단수 치면 백이 F2로 뻗어 달아난다.
+    await placeAt(page, "G1", touch);
+    await expect(page.getByRole("status")).toHaveText("그 수로는 못 따내요");
+    await page.getByRole("button", { name: "다시 하기" }).click();
 
-  // 정답: F2에서 단수 → 백이 받고(달아날 곳이 없어 쉰다) → 따낸다.
-  await placeAt(page, "F2", touch);
-  await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요", {
-    timeout: 10_000,
-  });
-  await placeAt(page, "G1", touch);
-  await expect(page.getByRole("status")).toHaveText("따냈어요!");
-  await expect(page.getByText(/수 만에 백 돌/)).toBeVisible();
-  await page.screenshot({ path: info.outputPath("baduk-atari.png") });
-  await page.getByRole("button", { name: "← 목록" }).click();
-  await expect(atari.getByText("1/8")).toBeVisible();
-
-  // 축: 계속 단수로 몰아 따낸다(백은 늘 같은 수로 버틴다).
-  await page
-    .getByRole("region", { name: "축" })
-    .getByRole("button", { name: "풀기 시작" })
-    .click();
-  for (const name of ["C3", "C6", "B6", "A6"]) {
-    await placeAt(page, name, touch);
+    // 정답: F2에서 단수 → 백이 받고(달아날 곳이 없어 쉰다) → 따낸다.
+    await placeAt(page, "F2", touch);
     await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요", {
       timeout: 10_000,
     });
-  }
-  await placeAt(page, "A3", touch);
-  await expect(page.getByRole("status")).toHaveText("따냈어요!");
-  await page.screenshot({ path: info.outputPath("baduk-ladder.png") });
-  await page.getByRole("button", { name: "← 목록" }).click();
+    await placeAt(page, "G1", touch);
+    await expect(page.getByRole("status")).toHaveText("따냈어요!");
+    await expect(page.getByText(/수 만에 백 돌/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-atari.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+    await expect(atari.getByText("1/8")).toBeVisible();
 
-  // 눈 빼앗기: 귀의 곧은 세 집은 가운데가 급소다.
-  await page
-    .getByRole("region", { name: "눈 빼앗기" })
-    .getByRole("button", { name: "풀기 시작" })
-    .click();
-  await expect(page.getByRole("status")).toHaveText("△ 백 무리를 잡으세요");
-  await placeAt(page, "A8", touch);
-  await expect(page.getByRole("status")).toHaveText("잡았어요!");
-  await expect(page.getByText(/급소/)).toBeVisible();
-  await page.screenshot({ path: info.outputPath("baduk-kill.png") });
-});
+    // 축: 계속 단수로 몰아 따낸다(백은 늘 같은 수로 버틴다).
+    await page
+      .getByRole("region", { name: "축" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    for (const name of ["C3", "C6", "B6", "A6"]) {
+      await placeAt(page, name, touch);
+      await expect(page.getByRole("status")).toHaveText("계속 몰아 따내세요", {
+        timeout: 10_000,
+      });
+    }
+    await placeAt(page, "A3", touch);
+    await expect(page.getByRole("status")).toHaveText("따냈어요!");
+    await page.screenshot({ path: info.outputPath("baduk-ladder.png") });
+    await page.getByRole("button", { name: "← 목록" }).click();
+
+    // 눈 빼앗기: 귀의 곧은 세 집은 가운데가 급소다.
+    await page
+      .getByRole("region", { name: "눈 빼앗기" })
+      .getByRole("button", { name: "풀기 시작" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText("△ 백 무리를 잡으세요");
+    await placeAt(page, "A8", touch);
+    await expect(page.getByRole("status")).toHaveText("잡았어요!");
+    await expect(page.getByText(/급소/)).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baduk-kill.png") });
+  },
+);
 
 /** 19줄 판의 자리("E17")를 누른다. 손가락은 한 번 겨누고 다시 눌러 둔다 */
 async function placeAt19(page: Page, name: string, touch: boolean) {
@@ -442,13 +448,10 @@ test("바둑 정석 따라 두기: 수순에 없는 수는 두지 않고, 마늘
   await page.screenshot({ path: info.outputPath("baduk-joseki.png") });
 });
 
-test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하는 중」을 보이다가 한 수 받는다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "컴퓨터 단계는 화면 크기와 상관없다",
-  );
+test("바둑 초고수: 옵션에서 고르고, 생각하는 동안 「생각하는 중」을 보이다가 한 수 받는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 컴퓨터 단계는 화면 크기와 상관없다
   await page.goto("/baduk");
   await startSolo(page, "초고수");
   await expect(page.getByRole("status")).toContainText("내 차례");

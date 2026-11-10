@@ -4,10 +4,10 @@ import { expect, test } from "./test";
  * 안드로이드 크롬은 탭이 뒤로 가면 캔버스 그림 메모리를 버리고(contextlost) 돌아오면 비운 채 되살린다(contextrestored).
  * 버려진 동안 흰 바탕·깨진 그림 표시가 보이던 일(2026-11-03 사용자): 그동안 캔버스를 숨기고, 되살아나면 다시 그린다
  */
-test("밤하늘 캔버스가 버려졌다 되살아나면 숨겼다가 다시 그려 보인다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "캔버스 동작은 화면 크기와 무관");
+test("밤하늘 캔버스가 버려졌다 되살아나면 숨겼다가 다시 그려 보인다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 캔버스 동작은 화면 크기와 무관
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/stardraw");
   const sky = page.locator("canvas[data-sky]").first();

@@ -8,12 +8,11 @@ import { expect, type Page, test } from "./test";
  */
 
 const noPull = (page: Page) => page.locator("html[data-no-pull]");
-const ONE_SIZE = "화면 크기와 상관없는 기록 논리라 데스크톱에서만";
+// 아래 @only-desktop 시험은 화면 크기와 상관없는 기록 논리라 데스크톱에서만 본다
 
-test("하위 화면에서 뒤로가기는 시작 화면으로, 옵션·배우기 목록은 새로고침해도 남는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", ONE_SIZE);
+test("하위 화면에서 뒤로가기는 시작 화면으로, 옵션·배우기 목록은 새로고침해도 남는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
   await page.goto("/omok");
   const solo = page.getByRole("button", { name: /나홀로 오목/ });
   await expect(solo).toBeVisible();
@@ -36,10 +35,9 @@ test("하위 화면에서 뒤로가기는 시작 화면으로, 옵션·배우기
   await expect(page).not.toHaveURL(/#/);
 });
 
-test("혼자 하는 대국은 판에서만 당겨서 새로고침을 막고, 뒤로가기는 묻지 않고 시작 화면(이어하기)으로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", ONE_SIZE);
+test("혼자 하는 대국은 판에서만 당겨서 새로고침을 막고, 뒤로가기는 묻지 않고 시작 화면(이어하기)으로", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
   await page.goto("/omok");
   await page.getByRole("button", { name: /나홀로 오목/ }).click();
   await expect(page.getByRole("img", { name: /오목 판/ })).toBeVisible();
@@ -54,10 +52,9 @@ test("혼자 하는 대국은 판에서만 당겨서 새로고침을 막고, 뒤
   await expect(noPull(page)).toHaveCount(0);
 });
 
-test("온라인 방에서 뒤로가기는 먼저 묻고, 계속 하기면 방에 남고 나가기면 시작 화면으로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", ONE_SIZE);
+test("온라인 방에서 뒤로가기는 먼저 묻고, 계속 하기면 방에 남고 나가기면 시작 화면으로", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
   await page.goto("/hearts?net=local");
   await page.getByRole("button", { name: /다함께 하트/ }).click();
   await page.getByPlaceholder("친구들에게 보일 이름").fill("방장");

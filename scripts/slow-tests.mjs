@@ -252,13 +252,13 @@ const regexEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** 혼자 돌려 보는 명령 한 줄(저장소 맨 위에서) */
 export function soloCommand(item) {
   if (item.kind === "unit-file") {
-    return `nice -n 15 pnpm vitest run ${item.file}`;
+    return `pnpm vitest run ${item.file}`;
   }
   if (item.kind === "unit-test") {
-    return `nice -n 15 pnpm vitest run ${item.file} -t ${shellQuote(`${regexEscape(item.title ?? item.name)}$`)}`;
+    return `pnpm vitest run ${item.file} -t ${shellQuote(`${regexEscape(item.title ?? item.name)}$`)}`;
   }
   const spec = item.file.replace(/^apps\/web\//, "");
-  return `nice -n 15 pnpm --filter @game/web exec playwright test ${spec}:${item.line} --project=${item.project} --workers=1`;
+  return `pnpm --filter @game/web exec playwright test ${spec}:${item.line} --project=${item.project} --workers=1`;
 }
 
 /** 이슈 본문(한국어). 끝에 다음 실행이 읽을 기록을 숨겨 둔다 */

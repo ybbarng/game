@@ -100,13 +100,10 @@ test.describe("관측을 본 회차는 알림 띠를 띄우지 않는다", () =>
     await page.clock.setSystemTime(new Date("2026-11-02T03:58:00Z"));
   }
 
-  test("같은 탭: 지금 회차 관측지에서 보고 「홈」으로", async ({
-    page,
-  }, info) => {
-    test.skip(
-      info.project.name === "phone-landscape",
-      "데스크톱·휴대폰 세로로",
-    );
+  test("같은 탭: 지금 회차 관측지에서 보고 「홈」으로", {
+    tag: "@no-phone-landscape",
+  }, async ({ page }) => {
+    // 데스크톱·휴대폰 세로로
     await enterAndClose(page);
     await page.goto("/stardraw/now");
     await expect(page.locator("[data-draw-wait='1']")).toBeVisible({
@@ -125,11 +122,10 @@ test.describe("관측을 본 회차는 알림 띠를 띄우지 않는다", () =>
     await expect(page.locator("[data-drawn-notice]")).toHaveCount(0);
   });
 
-  test("다른 탭: 관측지 탭에서 보면 열어 둔 탭의 띠도 거둔다", async ({
-    page,
-    context,
-  }, info) => {
-    test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
+  test("다른 탭: 관측지 탭에서 보면 열어 둔 탭의 띠도 거둔다", {
+    tag: "@only-desktop",
+  }, async ({ page, context }) => {
+    // 데스크톱 한 크기로
     await enterAndClose(page);
     await page.goto("/stardraw/mine");
     const room = await context.newPage();

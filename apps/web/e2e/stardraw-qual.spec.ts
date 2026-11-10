@@ -31,76 +31,83 @@ async function noSideScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("데모 소속: 데모 기관 계정으로 받아 복구 코드를 보고, 다음 회차 응모권에 소속이 표시된다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱과 휴대폰 세로로 본다",
-  );
-  await page.goto("/stardraw/demo#qualify");
-  const panel = page.locator("[data-qualify]");
-  await expect(panel).toBeVisible({ timeout: 30_000 });
-  await panel.getByRole("button", { name: "데모 소속 차리기" }).click();
-  const period = panel.locator("[data-qual-period]");
-  await expect(period).toContainText("벌집 성단", {
-    timeout: 60_000,
-  });
-  await period.getByRole("button", { name: "데모 기관 계정으로 받기" }).click();
-  await expect(panel.locator("[data-qual-holding]")).toContainText(
-    /소속 번호 Q-[0-9A-Z]{4}-[0-9A-Z]{4}/,
-  );
-  await expect(panel.locator("[data-qual-code]")).toHaveText(
-    /^SDQ1-[0-9A-Z]+$/,
-  );
-  await panel.getByRole("button", { name: "QR 보기" }).click();
-  await expect(panel.getByRole("img", { name: "복구 코드 QR" })).toBeVisible();
-  // 복구 코드는 받은 직후에만 보이고, 다시 열면 등록증 확인을 거쳐야 보인다(2026-10-31 보안 검토 B5)
-  await page.reload();
-  await expect(panel.locator("[data-qual-holding]")).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(panel.locator("[data-qual-code]")).toHaveCount(0);
-  await expect(panel.locator("[data-qual-reveal]")).toBeVisible();
-  await noSideScroll(page);
-  await page.screenshot({
-    path: info.outputPath("demo-qualify.png"),
-    fullPage: true,
-  });
+test(
+  "데모 소속: 데모 기관 계정으로 받아 복구 코드를 보고, 다음 회차 응모권에 소속이 표시된다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱과 휴대폰 세로로 본다
+    await page.goto("/stardraw/demo#qualify");
+    const panel = page.locator("[data-qualify]");
+    await expect(panel).toBeVisible({ timeout: 30_000 });
+    await panel.getByRole("button", { name: "데모 소속 차리기" }).click();
+    const period = panel.locator("[data-qual-period]");
+    await expect(period).toContainText("벌집 성단", {
+      timeout: 60_000,
+    });
+    await period
+      .getByRole("button", { name: "데모 기관 계정으로 받기" })
+      .click();
+    await expect(panel.locator("[data-qual-holding]")).toContainText(
+      /소속 번호 Q-[0-9A-Z]{4}-[0-9A-Z]{4}/,
+    );
+    await expect(panel.locator("[data-qual-code]")).toHaveText(
+      /^SDQ1-[0-9A-Z]+$/,
+    );
+    await panel.getByRole("button", { name: "QR 보기" }).click();
+    await expect(
+      panel.getByRole("img", { name: "복구 코드 QR" }),
+    ).toBeVisible();
+    // 복구 코드는 받은 직후에만 보이고, 다시 열면 등록증 확인을 거쳐야 보인다(2026-10-31 보안 검토 B5)
+    await page.reload();
+    await expect(panel.locator("[data-qual-holding]")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(panel.locator("[data-qual-code]")).toHaveCount(0);
+    await expect(panel.locator("[data-qual-reveal]")).toBeVisible();
+    await noSideScroll(page);
+    await page.screenshot({
+      path: info.outputPath("demo-qualify.png"),
+      fullPage: true,
+    });
 
-  // 우주인 등록(흉내 시트) 뒤, 받은 회차에는 증서를 붙이지 않는다
-  const setup = page.locator("[data-key-setup]");
-  await setup.getByRole("button", { name: "우주인 등록", exact: true }).click();
-  await demoUnlock(page, "create");
-  await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
-  await expect(page.locator("[data-qual-toggle]")).toHaveCount(0);
+    // 우주인 등록(흉내 시트) 뒤, 받은 회차에는 증서를 붙이지 않는다
+    const setup = page.locator("[data-key-setup]");
+    await setup
+      .getByRole("button", { name: "우주인 등록", exact: true })
+      .click();
+    await demoUnlock(page, "create");
+    await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
+    await expect(page.locator("[data-qual-toggle]")).toHaveCount(0);
 
-  // 다음 회차: 「벌집 성단 소속으로 응모」가 켜진 채로 응모하면 영수증에 소속
-  await page.getByRole("button", { name: "지금 관측" }).click();
-  await expect(page.locator("[data-qual-toggle='on']")).toContainText(
-    "벌집 성단 소속으로 예측",
-    { timeout: 60_000 },
-  );
-  await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
-  await demoUnlock(page, "sign");
-  await expect(page.locator("[data-receipt-qual]")).toContainText(/^Q-/, {
-    timeout: 30_000,
-  });
-  await page.screenshot({
-    path: info.outputPath("demo-qual-receipt.png"),
-    fullPage: true,
-  });
-});
+    // 다음 회차: 「벌집 성단 소속으로 응모」가 켜진 채로 응모하면 영수증에 소속
+    await page.getByRole("button", { name: "지금 관측" }).click();
+    await expect(page.locator("[data-qual-toggle='on']")).toContainText(
+      "벌집 성단 소속으로 예측",
+      { timeout: 60_000 },
+    );
+    await page.getByRole("button", { name: "자동", exact: true }).click();
+    await page
+      .getByRole("button", { name: "예측서 내기", exact: true })
+      .click();
+    await demoUnlock(page, "sign");
+    await expect(page.locator("[data-receipt-qual]")).toContainText(/^Q-/, {
+      timeout: 30_000,
+    });
+    await page.screenshot({
+      path: info.outputPath("demo-qual-receipt.png"),
+      fullPage: true,
+    });
+  },
+);
 
 /**
  * 소속으로 낸 응모가 마감 뒤에 도착해 반송되면, 옮겨 쓰기로 다음 회차에 다시 낼 때도 소속이 붙는다
  * (소속 서명은 회차에 묶여 새 회차로 새로 한다)
  */
-test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소속이 붙는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("소속 응모가 반송되면 옮겨 쓴 다음 회차 응모권에도 소속이 붙는다", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await page.goto("/stardraw/demo#qualify");
   // CSS 연출은 처음부터 20배로(빠른 기기처럼). 타이머는 마감을 넘긴 뒤부터 빨리 감는다(아래)
   await speedUpAnimations(page);

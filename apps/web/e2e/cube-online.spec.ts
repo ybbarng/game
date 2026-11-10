@@ -148,111 +148,119 @@ test("컴퓨터와 대결: 2×2 입문 컴퓨터가 먼저 맞추면 결과 상�
  * 대결 알림 「켬」(움직임을 줄이지 않은 기기): 상대가 이정표를 지나면 그 칸 안에 「첫 층 3.21초」 같은 톡이 1초 안쪽으로
  * 떴다 사라진다. 톡은 잠깐이라 화면 시험은 띄운 수(`data-cube-toasts-shown`)를 조건으로 본다
  */
-test("컴퓨터와 대결: 상대가 이정표를 지나면 그 칸에 톡이 뜬다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "알림 규칙은 화면 크기와 상관없다",
-  );
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.clock.install();
-  await page.goto("/cube/vs");
-  await speedUpAnimations(page);
-  await page.getByRole("button", { name: "입문", exact: true }).click();
-  await page.locator("[data-cube-vs-start]").click();
-  await expect(
-    page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
-  ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
-  const peers = page.locator("[data-cube-peers]");
-  await expect(peers).toHaveAttribute("data-cube-race-alerts", "on");
-  await fastForwardUntil(
-    page,
-    async () => Number(await peers.getAttribute("data-cube-toasts-shown")) > 0,
-    { step: 250, timeout: 60_000 },
-  );
-  // 톡은 그 사람 칸 안에만 뜬다(내 큐브 칸을 덮지 않는다)
-  const toast = page.locator('[data-cube-peer="bot1"] [data-cube-race-toast]');
-  await expect(toast).toBeVisible();
-  await expect(toast).toContainText(/초$/);
-  const key = await toast.getAttribute("data-toast-key");
-  await shot(page, "vs-toast", info.project.name);
-  // 1초 안쪽으로 사라진다(그사이 다음 이정표를 지나 새 톡이 떠도 앞 톡은 없다)
-  await page.clock.fastForward(1_000);
-  await expect(page.locator(`[data-toast-key="${key}"]`)).toHaveCount(0);
-});
+test(
+  "컴퓨터와 대결: 상대가 이정표를 지나면 그 칸에 톡이 뜬다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 알림 규칙은 화면 크기와 상관없다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.install();
+    await page.goto("/cube/vs");
+    await speedUpAnimations(page);
+    await page.getByRole("button", { name: "입문", exact: true }).click();
+    await page.locator("[data-cube-vs-start]").click();
+    await expect(
+      page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
+    ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
+    const peers = page.locator("[data-cube-peers]");
+    await expect(peers).toHaveAttribute("data-cube-race-alerts", "on");
+    await fastForwardUntil(
+      page,
+      async () =>
+        Number(await peers.getAttribute("data-cube-toasts-shown")) > 0,
+      { step: 250, timeout: 60_000 },
+    );
+    // 톡은 그 사람 칸 안에만 뜬다(내 큐브 칸을 덮지 않는다)
+    const toast = page.locator(
+      '[data-cube-peer="bot1"] [data-cube-race-toast]',
+    );
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText(/초$/);
+    const key = await toast.getAttribute("data-toast-key");
+    await shot(page, "vs-toast", info.project.name);
+    // 1초 안쪽으로 사라진다(그사이 다음 이정표를 지나 새 톡이 떠도 앞 톡은 없다)
+    await page.clock.fastForward(1_000);
+    await expect(page.locator(`[data-toast-key="${key}"]`)).toHaveCount(0);
+  },
+);
 
 /**
  * 4×4 컴퓨터(축소법 + 3×3 사람 해법)도 같은 길로 돈다. 계획은 워커에서 만들고, 입문은 3~4분 걸려
  * 시계를 크게 감는다. 화면 크기와 상관없는 길이라 desktop 하나로 본다
  */
-test("컴퓨터와 대결: 4×4 입문 컴퓨터가 맞추면 결과 상자가 뜬다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "크기만 다른 같은 길");
-  test.setTimeout(150_000);
-  await page.clock.install();
-  await page.goto("/cube/vs");
-  await page.locator("[data-cube-vs-size]").selectOption("4");
-  await page.getByRole("button", { name: "입문", exact: true }).click();
-  await page.locator("[data-cube-vs-start]").click();
+test(
+  "컴퓨터와 대결: 4×4 입문 컴퓨터가 맞추면 결과 상자가 뜬다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 크기만 다른 같은 길
+    test.setTimeout(150_000);
+    await page.clock.install();
+    await page.goto("/cube/vs");
+    await page.locator("[data-cube-vs-size]").selectOption("4");
+    await page.getByRole("button", { name: "입문", exact: true }).click();
+    await page.locator("[data-cube-vs-start]").click();
 
-  const view = page.locator("[data-cube-race-phase]");
-  await expect(view).toHaveAttribute("data-cube-race-phase", "inspect", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
-  await expect(
-    page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
-  ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
-  const result = page.locator("[data-cube-result]");
-  await fastForwardUntil(page, () => result.isVisible(), {
-    step: 2_000,
-    timeout: 120_000,
-  });
-  await expect(result).toContainText("컴퓨터 1");
-  await expect(page.locator('[data-cube-peer="bot1"]')).toHaveAttribute(
-    "data-cube-peer-status",
-    "done",
-  );
-  await shot(page, "vs-4x4-bot-done", info.project.name);
-});
+    const view = page.locator("[data-cube-race-phase]");
+    await expect(view).toHaveAttribute("data-cube-race-phase", "inspect", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    // 계획(워커)이 온 뒤에 감는다. 먼저 감으면 계획이 늦게 온 만큼 컴퓨터가 늦게 시작한다
+    await expect(
+      page.locator('[data-cube-peer="bot1"][data-cube-bot-planned]'),
+    ).toBeAttached({ timeout: SCRAMBLE_TIMEOUT });
+    const result = page.locator("[data-cube-result]");
+    await fastForwardUntil(page, () => result.isVisible(), {
+      step: 2_000,
+      timeout: 120_000,
+    });
+    await expect(result).toContainText("컴퓨터 1");
+    await expect(page.locator('[data-cube-peer="bot1"]')).toHaveAttribute(
+      "data-cube-peer-status",
+      "done",
+    );
+    await shot(page, "vs-4x4-bot-done", info.project.name);
+  },
+);
 
 /**
  * 여러 탭 온라인 대결(같은 브라우저 탭끼리 `?net=local`). 이 맥에서는 돌리지 않는다: `CUBE_MULTI=1`일 때만.
  * 방장이 방을 만들고 손님이 초대 링크로 들어와, 컴퓨터 하나를 더해 판을 열면 세 참가자가 모두 보인다.
  */
-test("온라인 대결: 방장과 손님 두 탭 + 컴퓨터", async ({ context }, info) => {
-  test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
-  test.skip(info.project.name !== "desktop", "키보드 기기만 참가");
-  await no3d(context);
-  const host = await context.newPage();
-  await host.goto("/cube/online?net=local");
-  await host.locator("[data-cube-enter]").click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("room=");
+test(
+  "온라인 대결: 방장과 손님 두 탭 + 컴퓨터",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
+    // 키보드 기기만 참가
+    await no3d(context);
+    const host = await context.newPage();
+    await host.goto("/cube/online?net=local");
+    await host.locator("[data-cube-enter]").click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("room=");
 
-  const guest = await context.newPage();
-  await guest.goto(link);
-  await guest.locator("[data-cube-enter]").click();
-  await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
-  await host.getByRole("button", { name: "컴퓨터 더하기" }).click();
-  await expect(guest.locator("[data-cube-players] li")).toHaveCount(3);
-  await host.locator("[data-cube-start]").click();
-  for (const p of [host, guest])
-    await expect(p.locator("[data-cube-race-phase]")).toHaveAttribute(
-      "data-cube-race-phase",
-      "inspect",
+    const guest = await context.newPage();
+    await guest.goto(link);
+    await guest.locator("[data-cube-enter]").click();
+    await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
+    await host.getByRole("button", { name: "컴퓨터 더하기" }).click();
+    await expect(guest.locator("[data-cube-players] li")).toHaveCount(3);
+    await host.locator("[data-cube-start]").click();
+    for (const p of [host, guest])
+      await expect(p.locator("[data-cube-race-phase]")).toHaveAttribute(
+        "data-cube-race-phase",
+        "inspect",
+        { timeout: SCRAMBLE_TIMEOUT },
+      );
+    await expect(guest.locator("[data-cube-peer]")).toHaveCount(3);
+    // 손님이 판 중에 새로 고쳐도 이름 화면에서 멈추지 않고 기억한 이름으로 바로 다시 들어간다
+    await guest.reload();
+    await expect(guest.locator("main[data-cube-online]")).toHaveAttribute(
+      "data-cube-online",
+      /^(?!name$|connecting$|error$)/,
       { timeout: SCRAMBLE_TIMEOUT },
     );
-  await expect(guest.locator("[data-cube-peer]")).toHaveCount(3);
-  // 손님이 판 중에 새로 고쳐도 이름 화면에서 멈추지 않고 기억한 이름으로 바로 다시 들어간다
-  await guest.reload();
-  await expect(guest.locator("main[data-cube-online]")).toHaveAttribute(
-    "data-cube-online",
-    /^(?!name$|connecting$|error$)/,
-    { timeout: SCRAMBLE_TIMEOUT },
-  );
-  await expect(guest.locator("[data-cube-enter]")).toHaveCount(0);
-  await shot(guest, "online-guest-reload", info.project.name);
-});
+    await expect(guest.locator("[data-cube-enter]")).toHaveCount(0);
+    await shot(guest, "online-guest-reload", info.project.name);
+  },
+);

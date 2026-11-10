@@ -183,8 +183,10 @@ test("고스톱: 게임 목록에서 들어가 입문 컴퓨터와 맞고 한 �
   expect(errors).toEqual([]);
 });
 
-test("고스톱: 새로고침해도 하던 판을 이어서 친다", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "저장은 화면 크기와 상관없다");
+test("고스톱: 새로고침해도 하던 판을 이어서 친다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 저장은 화면 크기와 상관없다
   await page.goto("/gostop");
   await setOptions(page);
   await page.goto("/gostop?seed=11");
@@ -205,209 +207,215 @@ test("고스톱: 새로고침해도 하던 판을 이어서 친다", async ({ pa
   ).toHaveCount(0);
 });
 
-test("고스톱 배우기: 첫 단원 미션을 틀렸다가 다시 해서 짝을 맞춘다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  await page.goto("/gostop");
-  await page.getByRole("button", { name: /고스톱 배우기/ }).click();
-  await expect(page.getByText("0/6")).toBeVisible();
-  await page.getByRole("button", { name: /고스톱은 어떤 게임/ }).click();
-  for (let i = 0; i < 2; i++)
+test(
+  "고스톱 배우기: 첫 단원 미션을 틀렸다가 다시 해서 짝을 맞춘다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    await page.goto("/gostop");
+    await page.getByRole("button", { name: /고스톱 배우기/ }).click();
+    await expect(page.getByText("0/6")).toBeVisible();
+    await page.getByRole("button", { name: /고스톱은 어떤 게임/ }).click();
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "바닥에 놓인다" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "바닥에 놓인다" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
 
-  // 짝이 없는 7월 피를 내면 실패
-  await playCard(page, "07p");
-  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다시 하기" }).click();
+    // 짝이 없는 7월 피를 내면 실패
+    await playCard(page, "07p");
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
 
-  // 3월 광을 고르면 바닥 3월 피가 빛난다
-  const gwang = page.locator('section[aria-label="손패"] [data-card="03g"]');
-  await gwang.click();
-  await expect(
-    page.locator('section[aria-label="바닥"] [data-card="03p"]'),
-  ).toHaveClass(/ring-sky-300/);
-  await noOverflow(page);
-  await page.screenshot({ path: info.outputPath("gostop-mission.png") });
-  await gwang.click();
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
-});
+    // 3월 광을 고르면 바닥 3월 피가 빛난다
+    const gwang = page.locator('section[aria-label="손패"] [data-card="03g"]');
+    await gwang.click();
+    await expect(
+      page.locator('section[aria-label="바닥"] [data-card="03p"]'),
+    ).toHaveClass(/ring-sky-300/);
+    await noOverflow(page);
+    await page.screenshot({ path: info.outputPath("gostop-mission.png") });
+    await gwang.click();
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+  },
+);
 
-test("고스톱: 방장이 방을 만들고 친구가 링크로 들어와 맞고 한 판을 치고, 판 끝 검증을 통과한다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest])
-    p.on("pageerror", (e) => errors.push(e.message));
+test(
+  "고스톱: 방장이 방을 만들고 친구가 링크로 들어와 맞고 한 판을 치고, 판 끝 검증을 통과한다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [host, guest])
+      p.on("pageerror", (e) => errors.push(e.message));
 
-  await host.goto("/gostop?net=local");
-  await setOptions(host);
-  await host.getByRole("button", { name: /다함께 고스톱/ }).click();
-  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/gostop");
+    await host.goto("/gostop?net=local");
+    await setOptions(host);
+    await host.getByRole("button", { name: /다함께 고스톱/ }).click();
+    await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/gostop");
 
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
-  await expect(hand(guest).first()).toBeVisible();
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
+    await expect(hand(guest).first()).toBeVisible();
 
-  // 참가자 화면에는 상대 손패가 뒷면으로만 보인다.
-  await expect(guest.getByRole("img", { name: /뒷면 10장/ })).toBeVisible();
+    // 참가자 화면에는 상대 손패가 뒷면으로만 보인다.
+    await expect(guest.getByRole("img", { name: /뒷면 10장/ })).toBeVisible();
 
-  // 차례인 쪽이 친다. 두 화면 모두 판 끝이 될 때까지.
-  for (let i = 0; i < 200; i++) {
-    let who: Page | null = null;
-    await expect
-      .poll(
-        async () => {
-          for (const p of [host, guest]) {
-            const what = await actionable(p);
-            if (what && what !== "done") {
-              who = p;
-              return true;
+    // 차례인 쪽이 친다. 두 화면 모두 판 끝이 될 때까지.
+    for (let i = 0; i < 200; i++) {
+      let who: Page | null = null;
+      await expect
+        .poll(
+          async () => {
+            for (const p of [host, guest]) {
+              const what = await actionable(p);
+              if (what && what !== "done") {
+                who = p;
+                return true;
+              }
             }
-          }
-          return (
-            (await actionable(host)) === "done" &&
-            (await actionable(guest)) === "done"
-          );
-        },
-        { timeout: 30_000, intervals: POLL },
-      )
-      .toBe(true);
-    if (!who) break;
-    await actOnce(who);
-  }
-  await expect(guest.locator("[data-outcome]")).toBeVisible();
-  await guest.screenshot({ path: info.outputPath("gostop-online.png") });
-
-  // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
-  await host.getByRole("button", { name: "← 고스톱" }).click();
-  await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
-    timeout: 10_000,
-  });
-  expect(errors).toEqual([]);
-});
-
-test("고스톱: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "기록은 화면 크기와 상관없다");
-  await page.goto("/gostop");
-  await setOptions(page);
-  await page.goto("/gostop?seed=7");
-  await page.getByRole("button", { name: /나홀로 고스톱/ }).click();
-  await playRound(page);
-  // 복기 기록이 실제로 쓰인 뒤에 떠난다.
-  await page.waitForFunction(
-    () =>
-      new Promise<boolean>((resolve) => {
-        const open = indexedDB.open("mighty-review", 1);
-        open.onerror = () => resolve(false);
-        open.onsuccess = () => {
-          const db = open.result;
-          if (!db.objectStoreNames.contains("games")) {
-            db.close();
-            resolve(false);
-            return;
-          }
-          const all = db.transaction("games").objectStore("games").getAll();
-          all.onsuccess = () => {
-            db.close();
-            resolve(
-              (all.result as { game: string; over: boolean }[]).some(
-                (g) => g.game === "gostop" && g.over,
-              ),
+            return (
+              (await actionable(host)) === "done" &&
+              (await actionable(guest)) === "done"
             );
+          },
+          { timeout: 30_000, intervals: POLL },
+        )
+        .toBe(true);
+      if (!who) break;
+      await actOnce(who);
+    }
+    await expect(guest.locator("[data-outcome]")).toBeVisible();
+    await guest.screenshot({ path: info.outputPath("gostop-online.png") });
+
+    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
+    await host.getByRole("button", { name: "← 고스톱" }).click();
+    await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
+      timeout: 10_000,
+    });
+    expect(errors).toEqual([]);
+  },
+);
+
+test(
+  "고스톱: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 기록은 화면 크기와 상관없다
+    await page.goto("/gostop");
+    await setOptions(page);
+    await page.goto("/gostop?seed=7");
+    await page.getByRole("button", { name: /나홀로 고스톱/ }).click();
+    await playRound(page);
+    // 복기 기록이 실제로 쓰인 뒤에 떠난다.
+    await page.waitForFunction(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const open = indexedDB.open("mighty-review", 1);
+          open.onerror = () => resolve(false);
+          open.onsuccess = () => {
+            const db = open.result;
+            if (!db.objectStoreNames.contains("games")) {
+              db.close();
+              resolve(false);
+              return;
+            }
+            const all = db.transaction("games").objectStore("games").getAll();
+            all.onsuccess = () => {
+              db.close();
+              resolve(
+                (all.result as { game: string; over: boolean }[]).some(
+                  (g) => g.game === "gostop" && g.over,
+                ),
+              );
+            };
           };
-        };
-      }),
-  );
+        }),
+    );
 
-  await page.goto("/profile?game=gostop");
-  await expect(page.getByRole("tab", { name: "🎴 고스톱" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(page.getByText("판 승률")).toBeVisible();
+    await page.goto("/profile?game=gostop");
+    await expect(page.getByRole("tab", { name: "🎴 고스톱" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByText("판 승률")).toBeVisible();
 
-  await page.goto("/review");
-  await page.getByRole("button", { name: /고스톱 · 혼자/ }).click();
-  await page.getByRole("button", { name: "처음" }).click();
-  await expect(page.getByRole("status")).toContainText("1판 · 0/");
-  await page.getByRole("button", { name: "한 걸음 앞으로" }).click();
-  await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
-  await page.screenshot({ path: info.outputPath("gostop-review.png") });
-});
+    await page.goto("/review");
+    await page.getByRole("button", { name: /고스톱 · 혼자/ }).click();
+    await page.getByRole("button", { name: "처음" }).click();
+    await expect(page.getByRole("status")).toContainText("1판 · 0/");
+    await page.getByRole("button", { name: "한 걸음 앞으로" }).click();
+    await expect(page.getByText(/다음 수: /)).toBeVisible({ timeout: 10_000 });
+    await page.screenshot({ path: info.outputPath("gostop-review.png") });
+  },
+);
 
-test("고스톱 연출: 섞고 나눠 준 뒤, 낸 카드의 겉그림이 손패에서 바닥으로 날아가 내려앉는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.clock.install();
-  await speedUpAnimations(page);
-  await page.goto("/gostop?seed=7");
-  await page.getByRole("button", { name: /나홀로 고스톱/ }).click();
+test(
+  "고스톱 연출: 섞고 나눠 준 뒤, 낸 카드의 겉그림이 손패에서 바닥으로 날아가 내려앉는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱에서만 돌린다
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    // 다른 시험은 움직임 줄이기로 연출을 건너뛴다. 이 시험만 켠다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.install();
+    await speedUpAnimations(page);
+    await page.goto("/gostop?seed=7");
+    await page.getByRole("button", { name: /나홀로 고스톱/ }).click();
 
-  // 화투 뒷면으로 섞고 나눠 주는 연출이 돌고, 끝나면 사라진다
-  await expect(page.locator("[data-dealing]")).toHaveCount(1);
-  await fastForwardUntil(
-    page,
-    async () => (await page.locator("[data-dealing]").count()) === 0,
-    { step: 100 },
-  );
-  const flights = async () =>
-    Number((await page.locator("[data-fx]").getAttribute("data-fx")) ?? 0);
-  // 내 차례이고, 앞 장면(컴퓨터가 낸 카드)의 연출도 다 끝났을 때
-  await fastForwardUntil(
-    page,
-    async () => (await actionable(page)) === "play" && (await flights()) === 0,
-    { step: 100 },
-  );
+    // 화투 뒷면으로 섞고 나눠 주는 연출이 돌고, 끝나면 사라진다
+    await expect(page.locator("[data-dealing]")).toHaveCount(1);
+    await fastForwardUntil(
+      page,
+      async () => (await page.locator("[data-dealing]").count()) === 0,
+      { step: 100 },
+    );
+    const flights = async () =>
+      Number((await page.locator("[data-fx]").getAttribute("data-fx")) ?? 0);
+    // 내 차례이고, 앞 장면(컴퓨터가 낸 카드)의 연출도 다 끝났을 때
+    await fastForwardUntil(
+      page,
+      async () =>
+        (await actionable(page)) === "play" && (await flights()) === 0,
+      { step: 100 },
+    );
 
-  // 날기를 멈춰 두고 내면 겉그림이 날고, 도착한 카드는 내려앉을 때까지 가려 둔다
-  const card = page.locator('section[aria-label="손패"] button').first();
-  const id = (await card.getAttribute("data-card")) as string;
-  await card.click();
-  await speedUpAnimations(page, 0);
-  await card.click();
-  if (await page.getByRole("dialog", { name: "흔들기·폭탄" }).isVisible())
-    await page.getByRole("button", { name: "한 장만 내기" }).click();
-  await expect.poll(flights).toBeGreaterThan(0);
-  const landed = page.locator(
-    `[data-card="${id}"]:not(section[aria-label="손패"] *)`,
-  );
-  await expect(landed).toHaveCSS("visibility", "hidden");
-  await page.screenshot({ path: info.outputPath("gostop-fx-play.png") });
+    // 날기를 멈춰 두고 내면 겉그림이 날고, 도착한 카드는 내려앉을 때까지 가려 둔다
+    const card = page.locator('section[aria-label="손패"] button').first();
+    const id = (await card.getAttribute("data-card")) as string;
+    await card.click();
+    await speedUpAnimations(page, 0);
+    await card.click();
+    if (await page.getByRole("dialog", { name: "흔들기·폭탄" }).isVisible())
+      await page.getByRole("button", { name: "한 장만 내기" }).click();
+    await expect.poll(flights).toBeGreaterThan(0);
+    const landed = page.locator(
+      `[data-card="${id}"]:not(section[aria-label="손패"] *)`,
+    );
+    await expect(landed).toHaveCSS("visibility", "hidden");
+    await page.screenshot({ path: info.outputPath("gostop-fx-play.png") });
 
-  // 다시 돌리면 다 날고, 낸 카드가 바닥이나 먹은 패에 보인다
-  await speedUpAnimations(page);
-  await fastForwardUntil(page, async () => (await flights()) === 0, {
-    step: 50,
-  });
-  await expect(landed).toHaveCSS("visibility", "visible");
-  expect(errors).toEqual([]);
-});
+    // 다시 돌리면 다 날고, 낸 카드가 바닥이나 먹은 패에 보인다
+    await speedUpAnimations(page);
+    await fastForwardUntil(page, async () => (await flights()) === 0, {
+      step: 50,
+    });
+    await expect(landed).toHaveCSS("visibility", "visible");
+    expect(errors).toEqual([]);
+  },
+);

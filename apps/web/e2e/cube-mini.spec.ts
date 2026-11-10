@@ -55,77 +55,81 @@ function inverseKeys(scramble: string): string[] {
   return keys;
 }
 
-test("섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 않는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.setViewportSize({ width: 320, height: 380 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await fromApp(page, { type: "focus", focused: true });
-  // 화면에는 큐브만: 시간·글이 없다
-  await expect(main).not.toContainText(/초|수/);
-  await shot(page, "mini-solved", info.project.name);
+test(
+  "섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 않는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await page.setViewportSize({ width: 320, height: 380 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    // 화면에는 큐브만: 시간·글이 없다
+    await expect(main).not.toContainText(/초|수/);
+    await shot(page, "mini-solved", info.project.name);
 
-  // 섞기 키(배치의 「다시 섞기」, Enter)
-  await page.keyboard.press("Enter");
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  const text = (await main.getAttribute("data-mini-scramble")) ?? "";
-  const keys = inverseKeys(text);
-  await page.clock.fastForward(5000); // 첫 수 전에 살펴본 시간은 재지 않는다
-  await page.keyboard.press(keys[0] as string);
-  await expect(main).toHaveAttribute("data-mini-phase", "solving");
-  await page.clock.fastForward(2000);
-  // 다른 앱으로 갔다가(포커스 잃음) 돌아온다
-  await fromApp(page, { type: "focus", focused: false });
-  await page.clock.fastForward(60_000);
-  await fromApp(page, { type: "focus", focused: true });
-  await page.clock.fastForward(1000);
-  // Esc(배치의 「맞춘 상태로」)는 미니 모드에서 쓰지 않는다: 진행이 남는다
-  await page.keyboard.press("Escape");
-  await expect(main).toHaveAttribute("data-mini-phase", "solving");
-  await shot(page, "mini-scrambled", info.project.name);
-  for (const k of keys.slice(1)) await page.keyboard.press(k);
-  await expect(main).toHaveAttribute("data-mini-phase", "done");
-  await expect(main).toHaveAttribute("data-mini-solved", "");
+    // 섞기 키(배치의 「다시 섞기」, Enter)
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const text = (await main.getAttribute("data-mini-scramble")) ?? "";
+    const keys = inverseKeys(text);
+    await page.clock.fastForward(5000); // 첫 수 전에 살펴본 시간은 재지 않는다
+    await page.keyboard.press(keys[0] as string);
+    await expect(main).toHaveAttribute("data-mini-phase", "solving");
+    await page.clock.fastForward(2000);
+    // 다른 앱으로 갔다가(포커스 잃음) 돌아온다
+    await fromApp(page, { type: "focus", focused: false });
+    await page.clock.fastForward(60_000);
+    await fromApp(page, { type: "focus", focused: true });
+    await page.clock.fastForward(1000);
+    // Esc(배치의 「맞춘 상태로」)는 미니 모드에서 쓰지 않는다: 진행이 남는다
+    await page.keyboard.press("Escape");
+    await expect(main).toHaveAttribute("data-mini-phase", "solving");
+    await shot(page, "mini-scrambled", info.project.name);
+    for (const k of keys.slice(1)) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    await expect(main).toHaveAttribute("data-mini-solved", "");
 
-  // 다 맞추면 짧은 축하: 이번 시간 숫자만 잠깐(첫 판이라 최고 기록 표시는 없다), 시간이 지나면 사라진다
-  const cheer = page.locator("[data-mini-cheer]");
-  await expect(cheer).toHaveAttribute("data-mini-cheer", "");
-  await expect(cheer.locator("[data-mini-cheer-time]")).toHaveText("3.00");
-  // 시험은 「동작 줄이기」라 큐브가 튀지 않는다(빛과 숫자만)
-  await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(0);
-  await page.clock.fastForward(2500);
-  await expect(cheer).toHaveCount(0);
+    // 다 맞추면 짧은 축하: 이번 시간 숫자만 잠깐(첫 판이라 최고 기록 표시는 없다), 시간이 지나면 사라진다
+    const cheer = page.locator("[data-mini-cheer]");
+    await expect(cheer).toHaveAttribute("data-mini-cheer", "");
+    await expect(cheer.locator("[data-mini-cheer-time]")).toHaveText("3.00");
+    // 시험은 「동작 줄이기」라 큐브가 튀지 않는다(빛과 숫자만)
+    await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(
+      0,
+    );
+    await page.clock.fastForward(2500);
+    await expect(cheer).toHaveCount(0);
 
-  // 기록(앱 메뉴 「기록」): 시간은 포커스가 있던 3초만
-  await fromApp(page, { type: "records", open: true });
-  const panel = page.locator("[data-mini-records='3']");
-  await expect(panel).toBeVisible();
-  await expect(panel.locator("[data-mini-record]")).toHaveCount(1);
-  await expect(panel.locator("[data-mini-record]").first()).toContainText(
-    "3.00",
-  );
-  await expect(panel.locator("[data-mini-record]").first()).toContainText(
-    `${keys.length}수`,
-  );
-  await expect(panel.locator("[data-mini-best]")).toHaveText("3.00");
-  await shot(page, "mini-records", info.project.name);
-  // 다른 크기 기록은 따로
-  await panel.locator("[data-mini-records-size='2']").click();
-  await expect(page.locator("[data-mini-records='2']")).toContainText(
-    "아직 기록이 없어요",
-  );
-  await fromApp(page, { type: "records", open: false });
-  await expect(page.locator("[data-mini-records]")).toHaveCount(0);
-});
+    // 기록(앱 메뉴 「기록」): 시간은 포커스가 있던 3초만
+    await fromApp(page, { type: "records", open: true });
+    const panel = page.locator("[data-mini-records='3']");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator("[data-mini-record]")).toHaveCount(1);
+    await expect(panel.locator("[data-mini-record]").first()).toContainText(
+      "3.00",
+    );
+    await expect(panel.locator("[data-mini-record]").first()).toContainText(
+      `${keys.length}수`,
+    );
+    await expect(panel.locator("[data-mini-best]")).toHaveText("3.00");
+    await shot(page, "mini-records", info.project.name);
+    // 다른 크기 기록은 따로
+    await panel.locator("[data-mini-records-size='2']").click();
+    await expect(page.locator("[data-mini-records='2']")).toContainText(
+      "아직 기록이 없어요",
+    );
+    await fromApp(page, { type: "records", open: false });
+    await expect(page.locator("[data-mini-records]")).toHaveCount(0);
+  },
+);
 
 /** 사람이 보는 스크린샷용: 모든 CSS 연출을 `ms` 순간에 세운다 */
 async function freezeAnimations(page: Page, ms: number) {
@@ -140,9 +144,9 @@ async function freezeAnimations(page: Page, ms: number) {
 
 test(
   "다 맞추면 큐브가 통 튀고 빛 고리가 퍼졌다 사라진다(작은 창에서도)",
-  { tag: "@3d" },
+  { tag: ["@3d", "@only-desktop"] },
   async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+    // 키보드 조작은 데스크톱만
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.setViewportSize({ width: 96, height: 96 });
     await installClock(page);
@@ -196,41 +200,43 @@ test(
   },
 );
 
-test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거울을 접는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "창 크기는 데스크톱에서");
-  await page.setViewportSize({ width: 320, height: 380 });
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "");
-  await expect(main).toHaveAttribute("data-mini-mirror", "on");
+test(
+  "거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거울을 접는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 창 크기는 데스크톱에서
+    await page.setViewportSize({ width: 320, height: 380 });
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "");
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
 
-  // 앱 메뉴 흉내
-  await fromApp(page, { type: "mirror" });
-  await expect(main).toHaveAttribute("data-mini-mirror", "off");
-  await fromApp(page, { type: "size", n: 4 });
-  await expect(main).toHaveAttribute("data-mini-n", "4");
-  // 브라우저 구석 메뉴
-  await page.locator("[data-mini-menu]").click();
-  await page.locator("[data-mini-item='mirror']").click();
-  await expect(main).toHaveAttribute("data-mini-mirror", "on");
-  await page.locator("[data-mini-size='2']").click();
-  await expect(main).toHaveAttribute("data-mini-n", "2");
+    // 앱 메뉴 흉내
+    await fromApp(page, { type: "mirror" });
+    await expect(main).toHaveAttribute("data-mini-mirror", "off");
+    await fromApp(page, { type: "size", n: 4 });
+    await expect(main).toHaveAttribute("data-mini-n", "4");
+    // 브라우저 구석 메뉴
+    await page.locator("[data-mini-menu]").click();
+    await page.locator("[data-mini-item='mirror']").click();
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
+    await page.locator("[data-mini-size='2']").click();
+    await expect(main).toHaveAttribute("data-mini-n", "2");
 
-  await page.reload();
-  await expect(main).toHaveAttribute("data-mini-n", "2");
-  await expect(main).toHaveAttribute("data-mini-mirror", "on");
+    await page.reload();
+    await expect(main).toHaveAttribute("data-mini-n", "2");
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
 
-  // 가장 작은 창(48px): 2×2·3×3은 거울이 남는다. 7×7은 거울 칸이 너무 작아 접고 큐브만(문턱 10 × n px)
-  await page.setViewportSize({ width: 48, height: 48 });
-  await expect(main).toHaveAttribute("data-mini-mirror", "on");
-  await shot(page, "mini-tiny", info.project.name);
-  await fromApp(page, { type: "size", n: 7 });
-  await expect(main).toHaveAttribute("data-mini-mirror", "folded");
-  await page.setViewportSize({ width: 70, height: 80 });
-  await expect(main).toHaveAttribute("data-mini-mirror", "on");
-});
+    // 가장 작은 창(48px): 2×2·3×3은 거울이 남는다. 7×7은 거울 칸이 너무 작아 접고 큐브만(문턱 10 × n px)
+    await page.setViewportSize({ width: 48, height: 48 });
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
+    await shot(page, "mini-tiny", info.project.name);
+    await fromApp(page, { type: "size", n: 7 });
+    await expect(main).toHaveAttribute("data-mini-mirror", "folded");
+    await page.setViewportSize({ width: 70, height: 80 });
+    await expect(main).toHaveAttribute("data-mini-mirror", "on");
+  },
+);
 
 /**
  * 거울은 직접 맞출 때만(docs/47 15-14): 맞춘 큐브에는 없고, 섞으면 나타나고, 포커스를 잃거나 다 맞추면 숨는다.
@@ -240,10 +246,10 @@ test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거�
 test(
   "거울은 직접 맞출 때만 보이고, 숨으면 누르는 자리도 줄어든다",
   {
-    tag: "@3d",
+    tag: ["@3d", "@only-desktop"],
   },
   async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+    // 키보드 조작은 데스크톱만
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.setViewportSize({ width: 320, height: 380 });
     await fakeApp(page);
@@ -326,166 +332,160 @@ const DESKS = {
  * 누르기를 먹지 않고, 앱에 알리는 누르는 자리(`hit`)도 그대로다. 거울이 숨으면 큐브만 감싼다. 브라우저 미니 모드는
  * 이미 어두운 바탕이 있어 받침을 두지 않는다
  */
-test(
-  "앱 창에서 큐브 뒤에 은은한 받침을 깔고, 누르는 자리는 그대로다",
-  { tag: "@3d" },
-  async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-    // 거울 페이드·받침 미끄러짐 없이 바로 자리 잡게
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.setViewportSize({ width: 96, height: 96 });
-    await fakeApp(page);
-    // 앱이 넣는 투명 바탕(CubeWindow.swift)을 흉내 내고, 그 아래 바탕화면은 `--desk`로 바꿔 끼운다
-    await page.addInitScript(() => {
-      const put = () => {
-        const s = document.createElement("style");
-        s.textContent =
-          "body,main[data-mini]{background:transparent!important}html{background:var(--desk,transparent)!important}";
-        document.head.append(s);
-      };
-      if (document.head) put();
-      else document.addEventListener("DOMContentLoaded", put);
-    });
-    await page.goto("/cube/mini");
-    const main = page.locator("main[data-mini]");
-    const canvas = page.locator("[data-cube-canvas]");
-    const backdrop = page.locator("[data-mini-backdrop]");
-    await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
-    await expect(main).toHaveAttribute("data-input-ready", "", {
-      timeout: SCRAMBLE_TIMEOUT,
-    });
-    const lastHit = () =>
-      page.evaluate(() => {
-        const sent = (
-          window as unknown as {
-            __toApp: { type: string; rects?: number[][] }[];
-          }
-        ).__toApp;
-        return sent.filter((m) => m.type === "hit").at(-1)?.rects ?? [];
-      });
-    const box = async () => {
-      const b = await backdrop.boundingBox();
-      if (!b) throw new Error("받침이 없다");
-      return b;
+test("앱 창에서 큐브 뒤에 은은한 받침을 깔고, 누르는 자리는 그대로다", {
+  tag: ["@3d", "@only-desktop"],
+}, async ({ page }) => {
+  // 키보드 조작은 데스크톱만
+  // 거울 페이드·받침 미끄러짐 없이 바로 자리 잡게
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 96, height: 96 });
+  await fakeApp(page);
+  // 앱이 넣는 투명 바탕(CubeWindow.swift)을 흉내 내고, 그 아래 바탕화면은 `--desk`로 바꿔 끼운다
+  await page.addInitScript(() => {
+    const put = () => {
+      const s = document.createElement("style");
+      s.textContent =
+        "body,main[data-mini]{background:transparent!important}html{background:var(--desk,transparent)!important}";
+      document.head.append(s);
     };
-    /** 받침이 창 안에 다 들어오고 누르는 자리를 모두 감싼다 */
-    const wraps = async (count: number) => {
-      await expect.poll(async () => (await lastHit()).length).toBe(count);
-      const rects = await lastHit();
-      await expect
-        .poll(async () => {
-          const b = await box();
-          const cx = b.x + b.width / 2;
-          const cy = b.y + b.height / 2;
-          const inWindow =
-            b.x >= -0.5 &&
-            b.y >= -0.5 &&
-            b.x + b.width <= 96.5 &&
-            b.y + b.height <= 96.5;
-          // 누르는 자리 사각형들의 가운데에 받침이 놓인다(창 안으로 줄였어도 가운데는 같다)
-          const x0 = Math.min(...rects.map((r) => r[0] ?? 0));
-          const x1 = Math.max(...rects.map((r) => (r[0] ?? 0) + (r[2] ?? 0)));
-          const y0 = Math.min(...rects.map((r) => r[1] ?? 0));
-          const y1 = Math.max(...rects.map((r) => (r[1] ?? 0) + (r[3] ?? 0)));
-          const centered =
-            Math.abs(cx - Math.min(Math.max((x0 + x1) / 2, 0), 96)) < 2 &&
-            Math.abs(cy - Math.min(Math.max((y0 + y1) / 2, 0), 96)) < 2;
-          return inWindow && centered;
-        })
-        .toBe(true);
-    };
-
-    // 맞춘 큐브(거울 없음): 큐브만 감싼다
-    await fromApp(page, { type: "focus", focused: true });
-    await expect(backdrop).toHaveCount(1);
-    await wraps(1);
-    const cubeOnly = await box();
-    // 받침은 누르기를 먹지 않는다: 받침 가운데를 누르면 장면(캔버스)이 받는다
-    expect(
-      await backdrop.evaluate((el) => getComputedStyle(el).pointerEvents),
-    ).toBe("none");
-    expect(
-      await page.evaluate(
-        ({ x, y }) =>
-          document.elementFromPoint(x, y)?.hasAttribute("data-cube-canvas") ??
-          false,
-        {
-          x: cubeOnly.x + cubeOnly.width / 2,
-          y: cubeOnly.y + cubeOnly.height / 2,
-        },
-      ),
-    ).toBe(true);
-
-    // 섞으면 거울이 나타나고 받침도 거울까지 넓어진다
-    await page.keyboard.press("Enter");
-    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-      timeout: SCRAMBLE_TIMEOUT,
+    if (document.head) put();
+    else document.addEventListener("DOMContentLoaded", put);
+  });
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  const canvas = page.locator("[data-cube-canvas]");
+  const backdrop = page.locator("[data-mini-backdrop]");
+  await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  const lastHit = () =>
+    page.evaluate(() => {
+      const sent = (
+        window as unknown as {
+          __toApp: { type: string; rects?: number[][] }[];
+        }
+      ).__toApp;
+      return sent.filter((m) => m.type === "hit").at(-1)?.rects ?? [];
     });
-    await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
-    await wraps(4);
-    const withMirror = await box();
-    expect(withMirror.width * withMirror.height).toBeGreaterThan(
-      cubeOnly.width * cubeOnly.height,
-    );
-    for (const [name, desk] of Object.entries(DESKS)) {
-      await page.evaluate(
-        (d) => document.documentElement.style.setProperty("--desk", d),
-        desk,
-      );
-      await shot(page, `mini-backdrop-${name}`, info.project.name);
-    }
-
-    // 떠 있으면 거울이 숨고 받침도 큐브만. 큐브가 창을 거의 채워 받침이 가려지므로 큐브 윤곽 그림자가 갈라 준다
-    await fromApp(page, { type: "focus", focused: false });
-    await expect(main).not.toHaveAttribute("data-mini-mirror-shown");
-    await wraps(1);
-    // 윤곽 그림자 두 겹(밝은 빛 + 어두운 그림자)
-    const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
-    expect((await filter()).match(/drop-shadow/g)).toHaveLength(2);
-    for (const [name, desk] of Object.entries(DESKS)) {
-      await page.evaluate(
-        (d) => document.documentElement.style.setProperty("--desk", d),
-        desk,
-      );
-      await shot(page, `mini-backdrop-${name}-floating`, info.project.name);
-    }
-
-    // 가장 큰 창에서도 같은 비율(창에 대한 받침 크기와 윤곽 그림자 폭이 같다)
-    const blur = async () =>
-      Number(/([\d.]+)px\)\s*$/.exec(await filter())?.[1] ?? Number.NaN);
-    const smallBlur = await blur();
-    await page.setViewportSize({ width: 480, height: 480 });
+  const box = async () => {
+    const b = await backdrop.boundingBox();
+    if (!b) throw new Error("받침이 없다");
+    return b;
+  };
+  /** 받침이 창 안에 다 들어오고 누르는 자리를 모두 감싼다 */
+  const wraps = async (count: number) => {
+    await expect.poll(async () => (await lastHit()).length).toBe(count);
+    const rects = await lastHit();
     await expect
-      .poll(async () => Math.round((await box()).width / 480 / 0.02))
-      .toBe(Math.round(cubeOnly.width / 96 / 0.02));
-    await expect.poll(async () => (await blur()) / smallBlur).toBeCloseTo(5, 0);
-  },
-);
+      .poll(async () => {
+        const b = await box();
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        const inWindow =
+          b.x >= -0.5 &&
+          b.y >= -0.5 &&
+          b.x + b.width <= 96.5 &&
+          b.y + b.height <= 96.5;
+        // 누르는 자리 사각형들의 가운데에 받침이 놓인다(창 안으로 줄였어도 가운데는 같다)
+        const x0 = Math.min(...rects.map((r) => r[0] ?? 0));
+        const x1 = Math.max(...rects.map((r) => (r[0] ?? 0) + (r[2] ?? 0)));
+        const y0 = Math.min(...rects.map((r) => r[1] ?? 0));
+        const y1 = Math.max(...rects.map((r) => (r[1] ?? 0) + (r[3] ?? 0)));
+        const centered =
+          Math.abs(cx - Math.min(Math.max((x0 + x1) / 2, 0), 96)) < 2 &&
+          Math.abs(cy - Math.min(Math.max((y0 + y1) / 2, 0), 96)) < 2;
+        return inWindow && centered;
+      })
+      .toBe(true);
+  };
 
-test(
-  "브라우저 미니 모드는 바탕이 있어 받침·윤곽 그림자를 두지 않는다",
-  { tag: "@3d" },
-  async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "창 크기는 데스크톱에서");
-    await page.setViewportSize({ width: 320, height: 380 });
-    await page.goto("/cube/mini");
-    const canvas = page.locator("[data-cube-canvas]");
-    await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
-    await expect(page.locator("main[data-mini]")).toHaveAttribute(
-      "data-input-ready",
-      "",
-    );
-    await expect(page.locator("[data-mini-backdrop]")).toHaveCount(0);
-    expect(await canvas.evaluate((c) => getComputedStyle(c).filter)).toBe(
-      "none",
-    );
-  },
-);
+  // 맞춘 큐브(거울 없음): 큐브만 감싼다
+  await fromApp(page, { type: "focus", focused: true });
+  await expect(backdrop).toHaveCount(1);
+  await wraps(1);
+  const cubeOnly = await box();
+  // 받침은 누르기를 먹지 않는다: 받침 가운데를 누르면 장면(캔버스)이 받는다
+  expect(
+    await backdrop.evaluate((el) => getComputedStyle(el).pointerEvents),
+  ).toBe("none");
+  expect(
+    await page.evaluate(
+      ({ x, y }) =>
+        document.elementFromPoint(x, y)?.hasAttribute("data-cube-canvas") ??
+        false,
+      {
+        x: cubeOnly.x + cubeOnly.width / 2,
+        y: cubeOnly.y + cubeOnly.height / 2,
+      },
+    ),
+  ).toBe(true);
 
-test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스를 받으면 바로 멈춘다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  // 섞으면 거울이 나타나고 받침도 거울까지 넓어진다
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
+  await wraps(4);
+  const withMirror = await box();
+  expect(withMirror.width * withMirror.height).toBeGreaterThan(
+    cubeOnly.width * cubeOnly.height,
+  );
+  for (const [name, desk] of Object.entries(DESKS)) {
+    await page.evaluate(
+      (d) => document.documentElement.style.setProperty("--desk", d),
+      desk,
+    );
+    await shot(page, `mini-backdrop-${name}`, info.project.name);
+  }
+
+  // 떠 있으면 거울이 숨고 받침도 큐브만. 큐브가 창을 거의 채워 받침이 가려지므로 큐브 윤곽 그림자가 갈라 준다
+  await fromApp(page, { type: "focus", focused: false });
+  await expect(main).not.toHaveAttribute("data-mini-mirror-shown");
+  await wraps(1);
+  // 윤곽 그림자 두 겹(밝은 빛 + 어두운 그림자)
+  const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
+  expect((await filter()).match(/drop-shadow/g)).toHaveLength(2);
+  for (const [name, desk] of Object.entries(DESKS)) {
+    await page.evaluate(
+      (d) => document.documentElement.style.setProperty("--desk", d),
+      desk,
+    );
+    await shot(page, `mini-backdrop-${name}-floating`, info.project.name);
+  }
+
+  // 가장 큰 창에서도 같은 비율(창에 대한 받침 크기와 윤곽 그림자 폭이 같다)
+  const blur = async () =>
+    Number(/([\d.]+)px\)\s*$/.exec(await filter())?.[1] ?? Number.NaN);
+  const smallBlur = await blur();
+  await page.setViewportSize({ width: 480, height: 480 });
+  await expect
+    .poll(async () => Math.round((await box()).width / 480 / 0.02))
+    .toBe(Math.round(cubeOnly.width / 96 / 0.02));
+  await expect.poll(async () => (await blur()) / smallBlur).toBeCloseTo(5, 0);
+});
+
+test("브라우저 미니 모드는 바탕이 있어 받침·윤곽 그림자를 두지 않는다", {
+  tag: ["@3d", "@only-desktop"],
+}, async ({ page }) => {
+  // 창 크기는 데스크톱에서
+  await page.setViewportSize({ width: 320, height: 380 });
+  await page.goto("/cube/mini");
+  const canvas = page.locator("[data-cube-canvas]");
+  await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
+  await expect(page.locator("main[data-mini]")).toHaveAttribute(
+    "data-input-ready",
+    "",
+  );
+  await expect(page.locator("[data-mini-backdrop]")).toHaveCount(0);
+  expect(await canvas.evaluate((c) => getComputedStyle(c).filter)).toBe("none");
+});
+
+test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스를 받으면 바로 멈춘다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 키보드 조작은 데스크톱만
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await installClock(page);
   await page.goto("/cube/mini");
@@ -531,108 +531,112 @@ test("떠 있을 때: 섞인 큐브를 조금 돌렸다 되돌리고, 포커스�
  * 그 판을 다시 보고(섞기를 빠르게, 맞춘 과정은 그때 시각대로), 포커스를 받으면 바로 멈춘다. 기록 창에서 판을 고르면
  * 맞추던 속도로 다시 돌린다(멈추기·처음부터)
  */
-test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판을 고르면 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.setViewportSize({ width: 320, height: 380 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await fromApp(page, { type: "focus", focused: true });
-  await page.keyboard.press("Enter");
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  const keys = inverseKeys(
-    (await main.getAttribute("data-mini-scramble")) ?? "",
-  );
-  // 한 수에 0.4초씩
-  for (const k of keys) {
-    await page.keyboard.press(k);
-    await page.clock.fastForward(400);
-  }
-  await expect(main).toHaveAttribute("data-mini-phase", "done");
-  const saved = await page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}").records["3"][0],
-  );
-  // 혼자 맞추기와 같은 꼴: 섞기 글·씨앗, 수@시각(첫 수 0ms), 단계별 시각
-  expect(typeof saved.seed).toBe("number");
-  expect(saved.replay.split(" ")).toHaveLength(keys.length);
-  expect(saved.replay).toMatch(/^\S+@0 /);
-  expect(saved.splits).toMatch(/@\d+/);
+test(
+  "다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판을 고르면 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 320, height: 380 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+    // 한 수에 0.4초씩
+    for (const k of keys) {
+      await page.keyboard.press(k);
+      await page.clock.fastForward(400);
+    }
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    const saved = await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("cube.mini.v1") ?? "{}").records[
+          "3"
+        ][0],
+    );
+    // 혼자 맞추기와 같은 꼴: 섞기 글·씨앗, 수@시각(첫 수 0ms), 단계별 시각
+    expect(typeof saved.seed).toBe("number");
+    expect(saved.replay.split(" ")).toHaveLength(keys.length);
+    expect(saved.replay).toMatch(/^\S+@0 /);
+    expect(saved.splits).toMatch(/@\d+/);
 
-  // 떠 있을 때: 1분 뒤 홈 시연 대신 내 판(1번)
-  await fromApp(page, { type: "focus", focused: false });
-  // 쉬기 타이머가 걸린 뒤에 시계를 감는다(포커스 알림 뒤 effect가 돌기 전에 감으면 타이머가 감은 뒤에 걸린다)
-  await expect(main).toHaveAttribute("data-mini-idle-armed", "");
-  await page.clock.fastForward(60_000);
-  await expect(main).toHaveAttribute("data-mini-idle", "replay");
-  await expect(main).toHaveAttribute("data-mini-idle-no", "1");
-  await page.clock.fastForward(300);
-  await shot(page, "mini-idle-replay", info.project.name);
-  // 끝까지 돌면 맞춘 상태로 쉰다
-  await fastForwardUntil(
-    page,
-    async () => (await main.getAttribute("data-mini-idle")) === "",
-    { step: 500 },
-  );
-  await expect(main).toHaveAttribute("data-mini-solved", "");
-  // 다음 차례(6분 뒤) 도중에 포커스를 받으면 바로 멈추고 맞춘 상태로, 입력을 받는다
-  await page.clock.fastForward(6 * 60_000);
-  await expect(main).toHaveAttribute("data-mini-idle", "replay");
-  await page.clock.fastForward(500);
-  await fromApp(page, { type: "focus", focused: true });
-  await expect(main).toHaveAttribute("data-mini-idle", "");
-  await expect(main).toHaveAttribute("data-mini-solved", "");
-  await page.keyboard.press("KeyR");
-  await expect(main).toHaveAttribute(
-    "data-mini-moves",
-    String(keys.length + 1),
-  );
+    // 떠 있을 때: 1분 뒤 홈 시연 대신 내 판(1번)
+    await fromApp(page, { type: "focus", focused: false });
+    // 쉬기 타이머가 걸린 뒤에 시계를 감는다(포커스 알림 뒤 effect가 돌기 전에 감으면 타이머가 감은 뒤에 걸린다)
+    await expect(main).toHaveAttribute("data-mini-idle-armed", "");
+    await page.clock.fastForward(60_000);
+    await expect(main).toHaveAttribute("data-mini-idle", "replay");
+    await expect(main).toHaveAttribute("data-mini-idle-no", "1");
+    await page.clock.fastForward(300);
+    await shot(page, "mini-idle-replay", info.project.name);
+    // 끝까지 돌면 맞춘 상태로 쉰다
+    await fastForwardUntil(
+      page,
+      async () => (await main.getAttribute("data-mini-idle")) === "",
+      { step: 500 },
+    );
+    await expect(main).toHaveAttribute("data-mini-solved", "");
+    // 다음 차례(6분 뒤) 도중에 포커스를 받으면 바로 멈추고 맞춘 상태로, 입력을 받는다
+    await page.clock.fastForward(6 * 60_000);
+    await expect(main).toHaveAttribute("data-mini-idle", "replay");
+    await page.clock.fastForward(500);
+    await fromApp(page, { type: "focus", focused: true });
+    await expect(main).toHaveAttribute("data-mini-idle", "");
+    await expect(main).toHaveAttribute("data-mini-solved", "");
+    await page.keyboard.press("KeyR");
+    await expect(main).toHaveAttribute(
+      "data-mini-moves",
+      String(keys.length + 1),
+    );
 
-  // 기록 창(앱이 따로 여는 창, 380×600)에서 판을 고른다
-  await page.setViewportSize({ width: 380, height: 600 });
-  await page.goto("/cube/mini?view=records");
-  const panel = page.locator("[data-mini-records='3']");
-  await panel.locator("[data-mini-replay-open='1']").click();
-  const box = panel.locator("[data-mini-replay]");
-  await expect(box).toHaveAttribute("data-mini-replay", "playing");
-  await expect(box).toHaveAttribute(
-    "data-mini-replay-total",
-    String(keys.length),
-  );
-  // 3D를 끈 이 시험에서는 본 화면과 같은 그림 대신(큐브 그림, 3D 모양은 아래 @3d 시험)
-  await expect(box.locator("[data-cube-no3d]")).toHaveCount(1);
-  await page.clock.fastForward(450);
-  await shot(page, "mini-records-replay", info.project.name);
-  // 멈추면 서 있고, 이어 보면 끝까지
-  await box.locator("[data-mini-replay-toggle]").click();
-  await expect(box).toHaveAttribute("data-mini-replay", "paused");
-  const stopped = await box.getAttribute("data-mini-replay-played");
-  await page.clock.fastForward(5000);
-  await expect(box).toHaveAttribute("data-mini-replay-played", stopped ?? "");
-  await box.locator("[data-mini-replay-toggle]").click();
-  await fastForwardUntil(
-    page,
-    async () => (await box.getAttribute("data-mini-replay")) === "done",
-  );
-  await expect(box).toHaveAttribute(
-    "data-mini-replay-played",
-    String(keys.length),
-  );
-  // 처음부터
-  await box.locator("[data-mini-replay-restart]").click();
-  await expect(box).toHaveAttribute("data-mini-replay", "playing");
-  await box.locator("[data-mini-replay-close]").click();
-  await expect(panel.locator("[data-mini-replay]")).toHaveCount(0);
-});
+    // 기록 창(앱이 따로 여는 창, 380×600)에서 판을 고른다
+    await page.setViewportSize({ width: 380, height: 600 });
+    await page.goto("/cube/mini?view=records");
+    const panel = page.locator("[data-mini-records='3']");
+    await panel.locator("[data-mini-replay-open='1']").click();
+    const box = panel.locator("[data-mini-replay]");
+    await expect(box).toHaveAttribute("data-mini-replay", "playing");
+    await expect(box).toHaveAttribute(
+      "data-mini-replay-total",
+      String(keys.length),
+    );
+    // 3D를 끈 이 시험에서는 본 화면과 같은 그림 대신(큐브 그림, 3D 모양은 아래 @3d 시험)
+    await expect(box.locator("[data-cube-no3d]")).toHaveCount(1);
+    await page.clock.fastForward(450);
+    await shot(page, "mini-records-replay", info.project.name);
+    // 멈추면 서 있고, 이어 보면 끝까지
+    await box.locator("[data-mini-replay-toggle]").click();
+    await expect(box).toHaveAttribute("data-mini-replay", "paused");
+    const stopped = await box.getAttribute("data-mini-replay-played");
+    await page.clock.fastForward(5000);
+    await expect(box).toHaveAttribute("data-mini-replay-played", stopped ?? "");
+    await box.locator("[data-mini-replay-toggle]").click();
+    await fastForwardUntil(
+      page,
+      async () => (await box.getAttribute("data-mini-replay")) === "done",
+    );
+    await expect(box).toHaveAttribute(
+      "data-mini-replay-played",
+      String(keys.length),
+    );
+    // 처음부터
+    await box.locator("[data-mini-replay-restart]").click();
+    await expect(box).toHaveAttribute("data-mini-replay", "playing");
+    await box.locator("[data-mini-replay-close]").click();
+    await expect(panel.locator("[data-mini-replay]")).toHaveCount(0);
+  },
+);
 
 /**
  * 기록 창 다시 보기의 모양(docs/47 15-13): 본 화면과 같은 3D 큐브 하나와 거울 셋. 거울은 「맞출 때만」 규칙과 달리
@@ -641,9 +645,9 @@ test("다시 보기: 떠 있을 때 내 판을 돌리고, 기록 창에서 판�
  */
 test(
   "기록 창 다시 보기: 큐브 하나와 거울 셋, 메뉴에서 끈 거울은 끈 채로",
-  { tag: "@3d" },
+  { tag: ["@3d", "@only-desktop"] },
   async ({ page }, info) => {
-    test.skip(info.project.name !== "desktop", "앱 창은 데스크톱에서");
+    // 앱 창은 데스크톱에서
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.addInitScript(() => {
       (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
@@ -748,75 +752,77 @@ test(
   },
 );
 
-test("앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "앱 창은 데스크톱에서");
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      "cube.mini.v1",
-      JSON.stringify({
-        version: 1,
-        n: 4,
-        mirror: true,
-        // 4×4 다섯 판(Ao5 = 가운데 셋 평균 1:02.00), 2×2 한 판(Ao5 없음)
-        records: {
-          "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
-            at: Date.UTC(2026, 10, 9, 3, i),
-            n: 4,
-            mode: "solo",
-            ms,
-            penalty: 0,
-            moves: 88,
-            scramble: "R",
-            no: 5 - i,
-          })),
-          "2": [
-            {
-              at: Date.UTC(2026, 10, 9, 3),
-              n: 2,
+test(
+  "앱이 따로 여는 창: 기록과 단축키(지금 크기·배치)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 앱 창은 데스크톱에서
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 4,
+          mirror: true,
+          // 4×4 다섯 판(Ao5 = 가운데 셋 평균 1:02.00), 2×2 한 판(Ao5 없음)
+          records: {
+            "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
+              at: Date.UTC(2026, 10, 9, 3, i),
+              n: 4,
               mode: "solo",
-              ms: 5000,
+              ms,
               penalty: 0,
-              moves: 9,
+              moves: 88,
               scramble: "R",
-              no: 1,
-            },
-          ],
-        },
-      }),
+              no: 5 - i,
+            })),
+            "2": [
+              {
+                at: Date.UTC(2026, 10, 9, 3),
+                n: 2,
+                mode: "solo",
+                ms: 5000,
+                penalty: 0,
+                moves: 9,
+                scramble: "R",
+                no: 1,
+              },
+            ],
+          },
+        }),
+      );
+    });
+    await page.goto("/cube/mini?view=records");
+    const records = page.locator("[data-mini-records='4']");
+    await expect(records.locator("[data-mini-record]")).toHaveCount(5);
+    await expect(records.locator("[data-mini-best]")).toHaveText("1:00.50");
+    await expect(records.locator("[data-mini-records-close]")).toHaveCount(0);
+    // 크기별 티어(Cubie 기록 기준): 4×4는 Ao5 1:02.00의 티어, 2×2는 5판이 안 돼 없음
+    const tiers = page.locator("[data-mini-tiers]");
+    await expect(tiers).toContainText("Cubie 기록 기준");
+    const four = tiers.locator("[data-mini-tier-size='4']");
+    await expect(four).toContainText("1:02.00");
+    await expect(four.locator("[data-cube-tier]")).toHaveCount(1);
+    // 티어 이름 옆에 사이트와 같은 엠블럼(티어가 없는 크기는 없다)
+    await expect(four.locator("[data-cube-emblem]")).toHaveCount(1);
+    await expect(tiers.locator("[data-mini-tier-size='2']")).toContainText(
+      "5판 뒤에",
     );
-  });
-  await page.goto("/cube/mini?view=records");
-  const records = page.locator("[data-mini-records='4']");
-  await expect(records.locator("[data-mini-record]")).toHaveCount(5);
-  await expect(records.locator("[data-mini-best]")).toHaveText("1:00.50");
-  await expect(records.locator("[data-mini-records-close]")).toHaveCount(0);
-  // 크기별 티어(Cubie 기록 기준): 4×4는 Ao5 1:02.00의 티어, 2×2는 5판이 안 돼 없음
-  const tiers = page.locator("[data-mini-tiers]");
-  await expect(tiers).toContainText("Cubie 기록 기준");
-  const four = tiers.locator("[data-mini-tier-size='4']");
-  await expect(four).toContainText("1:02.00");
-  await expect(four.locator("[data-cube-tier]")).toHaveCount(1);
-  // 티어 이름 옆에 사이트와 같은 엠블럼(티어가 없는 크기는 없다)
-  await expect(four.locator("[data-cube-emblem]")).toHaveCount(1);
-  await expect(tiers.locator("[data-mini-tier-size='2']")).toContainText(
-    "5판 뒤에",
-  );
-  await expect(
-    tiers.locator("[data-mini-tier-size='2'] [data-cube-emblem]"),
-  ).toHaveCount(0);
-  await shot(page, "mini-records-tiers", info.project.name);
+    await expect(
+      tiers.locator("[data-mini-tier-size='2'] [data-cube-emblem]"),
+    ).toHaveCount(0);
+    await shot(page, "mini-records-tiers", info.project.name);
 
-  await page.goto("/cube/mini?view=keys");
-  const keys = page.locator("[data-mini-keys='4']");
-  await expect(keys).toContainText("⌃⌥⌘C");
-  await expect(keys).toContainText("큐브 끌기");
-  await expect(keys).toContainText("핀치, ⌘ + 스크롤");
-  await expect(keys).toContainText("Enter");
-  await expect(keys).toContainText("배치 「표기」");
-  await shot(page, "mini-keys", info.project.name);
-});
+    await page.goto("/cube/mini?view=keys");
+    const keys = page.locator("[data-mini-keys='4']");
+    await expect(keys).toContainText("⌃⌥⌘C");
+    await expect(keys).toContainText("큐브 끌기");
+    await expect(keys).toContainText("핀치, ⌘ + 스크롤");
+    await expect(keys).toContainText("Enter");
+    await expect(keys).toContainText("배치 「표기」");
+    await shot(page, "mini-keys", info.project.name);
+  },
+);
 
 /** 앱이 받은 마지막 `profile` 메시지 */
 async function lastProfile(page: Page) {
@@ -836,93 +842,96 @@ async function lastProfile(page: Page) {
   });
 }
 
-test("앱 메뉴 프로필 칸: 익명 이름은 한 번 정해 남고, 지금 크기의 티어와 엠블럼 그림을 보낸다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "앱 화면은 데스크톱에서");
-  await fakeApp(page);
-  await page.addInitScript(() => {
-    if (localStorage.getItem("cube.mini.v1")) return;
-    localStorage.setItem(
-      "cube.mini.v1",
-      JSON.stringify({
-        version: 1,
-        n: 4,
-        mirror: true,
-        records: {
-          "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
-            at: Date.UTC(2026, 10, 9, 3, i),
-            n: 4,
-            mode: "solo",
-            ms,
-            penalty: 0,
-            moves: 88,
-            scramble: "R",
-            no: 5 - i,
-          })),
-        },
-      }),
-    );
-  });
-  await page.goto("/cube/mini");
-  await expect
-    .poll(async () => (await lastProfile(page))?.emblem ?? null, SCENE)
-    .toMatch(/^data:image\/png;base64,/);
-  const first = await lastProfile(page);
-  expect(first?.name).toMatch(/^익명 큐버 #\d{4}$/);
-  expect(first).toMatchObject({
-    photo: null,
-    signedIn: false,
-    n: 4,
-    tier: expect.any(String),
-  });
-  expect(first?.tierText).toMatch(/^4×4 \S/);
-  // 그림이 비지 않았다(엠블럼 너비 32pt의 2배 화소)
-  const size = await page.evaluate(async (src) => {
-    const img = new Image();
-    img.src = src;
-    await img.decode();
-    const c = document.createElement("canvas");
-    c.width = img.width;
-    c.height = img.height;
-    const ctx = c.getContext("2d") as CanvasRenderingContext2D;
-    ctx.drawImage(img, 0, 0);
-    const px = ctx.getImageData(0, 0, c.width, c.height).data;
-    let opaque = 0;
-    for (let i = 3; i < px.length; i += 4) if ((px[i] as number) > 0) opaque++;
-    return { w: img.width, opaque };
-  }, first?.emblem as string);
-  expect(size.w).toBe(64);
-  expect(size.opaque).toBeGreaterThan(500);
-  // 사람이 보는 용도: 앱에 넘긴 그림 그대로
-  if (process.env.E2E_SCREENSHOTS) {
-    mkdirSync("test-results/screens", { recursive: true });
-    writeFileSync(
-      `test-results/screens/cube-mini-profile-emblem-${info.project.name}.png`,
-      Buffer.from(String(first?.emblem).split(",")[1] as string, "base64"),
-    );
-  }
+test(
+  "앱 메뉴 프로필 칸: 익명 이름은 한 번 정해 남고, 지금 크기의 티어와 엠블럼 그림을 보낸다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 앱 화면은 데스크톱에서
+    await fakeApp(page);
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.mini.v1")) return;
+      localStorage.setItem(
+        "cube.mini.v1",
+        JSON.stringify({
+          version: 1,
+          n: 4,
+          mirror: true,
+          records: {
+            "4": [61_230, 62_000, 60_500, 63_000, 62_770].map((ms, i) => ({
+              at: Date.UTC(2026, 10, 9, 3, i),
+              n: 4,
+              mode: "solo",
+              ms,
+              penalty: 0,
+              moves: 88,
+              scramble: "R",
+              no: 5 - i,
+            })),
+          },
+        }),
+      );
+    });
+    await page.goto("/cube/mini");
+    await expect
+      .poll(async () => (await lastProfile(page))?.emblem ?? null, SCENE)
+      .toMatch(/^data:image\/png;base64,/);
+    const first = await lastProfile(page);
+    expect(first?.name).toMatch(/^익명 큐버 #\d{4}$/);
+    expect(first).toMatchObject({
+      photo: null,
+      signedIn: false,
+      n: 4,
+      tier: expect.any(String),
+    });
+    expect(first?.tierText).toMatch(/^4×4 \S/);
+    // 그림이 비지 않았다(엠블럼 너비 32pt의 2배 화소)
+    const size = await page.evaluate(async (src) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext("2d") as CanvasRenderingContext2D;
+      ctx.drawImage(img, 0, 0);
+      const px = ctx.getImageData(0, 0, c.width, c.height).data;
+      let opaque = 0;
+      for (let i = 3; i < px.length; i += 4)
+        if ((px[i] as number) > 0) opaque++;
+      return { w: img.width, opaque };
+    }, first?.emblem as string);
+    expect(size.w).toBe(64);
+    expect(size.opaque).toBeGreaterThan(500);
+    // 사람이 보는 용도: 앱에 넘긴 그림 그대로
+    if (process.env.E2E_SCREENSHOTS) {
+      mkdirSync("test-results/screens", { recursive: true });
+      writeFileSync(
+        `test-results/screens/cube-mini-profile-emblem-${info.project.name}.png`,
+        Buffer.from(String(first?.emblem).split(",")[1] as string, "base64"),
+      );
+    }
 
-  // 다시 열어도 같은 이름, 티어가 없는 크기는 엠블럼 없이 「5판 뒤에」
-  await page.goto("/cube/mini");
-  await expect
-    .poll(async () => (await lastProfile(page))?.name)
-    .toBe(first?.name);
-  await fromApp(page, { type: "size", n: 2 });
-  await expect
-    .poll(async () => (await lastProfile(page))?.tierText)
-    .toBe("2×2 5판 뒤에");
-  expect((await lastProfile(page))?.emblem).toBeNull();
-});
+    // 다시 열어도 같은 이름, 티어가 없는 크기는 엠블럼 없이 「5판 뒤에」
+    await page.goto("/cube/mini");
+    await expect
+      .poll(async () => (await lastProfile(page))?.name)
+      .toBe(first?.name);
+    await fromApp(page, { type: "size", n: 2 });
+    await expect
+      .poll(async () => (await lastProfile(page))?.tierText)
+      .toBe("2×2 5판 뒤에");
+    expect((await lastProfile(page))?.emblem).toBeNull();
+  },
+);
 
 /**
  * 앱 안(다리 흉내): 앱은 키마다 바로 앞에 출처(`key`)를 보낸다. 한 수라도 다른 프로그램이 넣은 키면 그 판 기록에
  * 「다른 프로그램 입력」이 붙고, 모두 실제 키보드면 붙지 않는다. 앱 안에서는 바탕이 투명하고, 큐브 자리(`hit`)를 앱에 알린다
  */
-test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표시한다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+test("앱 안: 다른 프로그램이 넣은 키가 섞인 판은 기록에 표시한다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 키보드 조작은 데스크톱만
   await fakeApp(page);
   await installClock(page);
   await page.goto("/cube/mini");
@@ -1043,177 +1052,181 @@ const LINE_SETUP: Record<string, string> = {
   D: "D F D L D' L' F'",
 };
 
-test("공식 보기: 맞추는 동안 지금 상황의 공식 하나, 잠깐 보이고 횟수·시간 제한, 기록에 힌트 횟수", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await fixSeed(page, 20261109);
-  await page.setViewportSize({ width: 320, height: 380 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  const card = page.locator("[data-mini-hint-card]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await fromApp(page, { type: "focus", focused: true });
+test(
+  "공식 보기: 맞추는 동안 지금 상황의 공식 하나, 잠깐 보이고 횟수·시간 제한, 기록에 힌트 횟수",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await fixSeed(page, 20261109);
+    await page.setViewportSize({ width: 320, height: 380 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    const card = page.locator("[data-mini-hint-card]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
 
-  // 섞기 전에는 볼 것이 없다
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute("data-mini-hint-msg", /섞은 뒤/);
-  await page.clock.fastForward(2000);
-  await expect(main).not.toHaveAttribute("data-mini-hint-msg");
+    // 섞기 전에는 볼 것이 없다
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute("data-mini-hint-msg", /섞은 뒤/);
+    await page.clock.fastForward(2000);
+    await expect(main).not.toHaveAttribute("data-mini-hint-msg");
 
-  await page.keyboard.press("Enter");
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  const scramble = ((await main.getAttribute("data-mini-scramble")) ?? "")
-    .trim()
-    .split(/\s+/);
-  const undo = [...scramble].reverse().map(invert);
-  // 섞기를 되돌리는 마지막 수와 가로줄 상황의 첫 수를 같은 면으로 맞춰 합친다. 마지막 수가 윗면(흰 면)이면 D 꼴을 쓰고,
-  // U와 D는 서로 바꿔 둬도 같아 D를 그 앞에 둔다(어느 쪽이든 맞춘 큐브를 지나가지 않는다)
-  const last = undo.at(-1) as string;
-  const lastFace = last[0] === "U" ? "D" : (last[0] as string);
-  const setup = (LINE_SETUP[lastFace] as string).split(" ");
-  const toCase =
-    last[0] === "U"
-      ? [...undo.slice(0, -1), "D", last, ...setup.slice(1)]
-      : [...undo, ...setup];
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const scramble = ((await main.getAttribute("data-mini-scramble")) ?? "")
+      .trim()
+      .split(/\s+/);
+    const undo = [...scramble].reverse().map(invert);
+    // 섞기를 되돌리는 마지막 수와 가로줄 상황의 첫 수를 같은 면으로 맞춰 합친다. 마지막 수가 윗면(흰 면)이면 D 꼴을 쓰고,
+    // U와 D는 서로 바꿔 둬도 같아 D를 그 앞에 둔다(어느 쪽이든 맞춘 큐브를 지나가지 않는다)
+    const last = undo.at(-1) as string;
+    const lastFace = last[0] === "U" ? "D" : (last[0] as string);
+    const setup = (LINE_SETUP[lastFace] as string).split(" ");
+    const toCase =
+      last[0] === "U"
+        ? [...undo.slice(0, -1), "D", last, ...setup.slice(1)]
+        : [...undo, ...setup];
 
-  // 1번째: 섞인 큐브에는 십자 수(창이 넉넉해 창 안에 단계·공식·키캡)
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute("data-mini-hint", /\S/);
-  await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
-  await expect(card).toHaveAttribute("data-mini-hint-card", "full");
-  await expect(card).toContainText("십자");
-  await expect(main).toHaveAttribute("data-mini-hints-used", "1");
-  await shot(page, "mini-hint-cross", info.project.name);
-  // 5초 뒤 사라진다
-  await page.clock.fastForward(5000);
-  await expect(main).toHaveAttribute("data-mini-hint", "");
-  // 20초 안에는 다시 못 본다(남은 초). `\`도 힌트 키
-  await page.keyboard.press("Backslash");
-  await expect(main).toHaveAttribute(
-    "data-mini-hint-msg",
-    "15초 뒤에 다시 볼 수 있어요",
-  );
-  await page.clock.fastForward(15_000);
+    // 1번째: 섞인 큐브에는 십자 수(창이 넉넉해 창 안에 단계·공식·키캡)
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute("data-mini-hint", /\S/);
+    await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
+    await expect(card).toHaveAttribute("data-mini-hint-card", "full");
+    await expect(card).toContainText("십자");
+    await expect(main).toHaveAttribute("data-mini-hints-used", "1");
+    await shot(page, "mini-hint-cross", info.project.name);
+    // 5초 뒤 사라진다
+    await page.clock.fastForward(5000);
+    await expect(main).toHaveAttribute("data-mini-hint", "");
+    // 20초 안에는 다시 못 본다(남은 초). `\`도 힌트 키
+    await page.keyboard.press("Backslash");
+    await expect(main).toHaveAttribute(
+      "data-mini-hint-msg",
+      "15초 뒤에 다시 볼 수 있어요",
+    );
+    await page.clock.fastForward(15_000);
 
-  // 2번째: 공식을 보다가 수를 두면 바로 사라진다
-  const keys = notationKeys(toCase);
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute("data-mini-hint", /\S/);
-  await page.keyboard.press(keys[0] as string);
-  await expect(main).toHaveAttribute("data-mini-hint", "");
-  // 섞기를 되돌리다 가로줄 상황으로(맞춘 큐브를 지나가지 않는다)
-  for (const k of keys.slice(1)) await page.keyboard.press(k);
-  await expect(main).toHaveAttribute("data-mini-phase", "solving");
+    // 2번째: 공식을 보다가 수를 두면 바로 사라진다
+    const keys = notationKeys(toCase);
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute("data-mini-hint", /\S/);
+    await page.keyboard.press(keys[0] as string);
+    await expect(main).toHaveAttribute("data-mini-hint", "");
+    // 섞기를 되돌리다 가로줄 상황으로(맞춘 큐브를 지나가지 않는다)
+    for (const k of keys.slice(1)) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "solving");
 
-  // 3번째: 가로줄 상황의 공식과 쥐는 법(흰 면이 위라 돌리기부터)
-  await page.clock.fastForward(20_000);
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute("data-mini-hint", "F R U R' U' F'");
-  await expect(main).toHaveAttribute("data-mini-hint-before", /^[xz]/);
-  await expect(card).toContainText("OLL 1단계(노란 십자)");
-  await expect(card).toContainText("엣지: 가로줄");
-  await expect(main).toHaveAttribute("data-mini-hints-used", "3");
-  await shot(page, "mini-hint-oll", info.project.name);
-  // 한 판에 세 번까지
-  await page.clock.fastForward(20_000);
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute(
-    "data-mini-hint-msg",
-    "이번 판 3번 다 봤어요",
-  );
-
-  // 상황을 되돌려 맞추면 기록에 힌트 3번
-  for (const k of notationKeys([...setup].reverse().map(invert)))
-    await page.keyboard.press(k);
-  await expect(main).toHaveAttribute("data-mini-phase", "done");
-  await fromApp(page, { type: "records", open: true });
-  await expect(
-    page
-      .locator("[data-mini-record]")
-      .first()
-      .locator("[data-mini-record-hints]"),
-  ).toHaveText("힌트 3번");
-  // 새로 섞으면 횟수는 처음으로
-  await fromApp(page, { type: "records", open: false });
-  await page.keyboard.press("Enter");
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await expect(main).toHaveAttribute("data-mini-hints-used", "0");
-});
-
-test("공식 보기: 작은 앱 창은 앱 말풍선으로 보내고, 말풍선이 없는 옛 앱은 창 안에 작게", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await fakeApp(page);
-  await page.setViewportSize({ width: 96, height: 96 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await fromApp(page, { type: "focus", focused: true });
-  await fromApp(page, { type: "scramble" });
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  type Sent = {
-    type: string;
-    lines?: { text: string; style: string }[] | null;
-  };
-  const lastHint = () =>
-    page.evaluate(() =>
-      (window as unknown as { __toApp: Sent[] }).__toApp
-        .filter((m) => m.type === "hint")
-        .at(-1),
+    // 3번째: 가로줄 상황의 공식과 쥐는 법(흰 면이 위라 돌리기부터)
+    await page.clock.fastForward(20_000);
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute("data-mini-hint", "F R U R' U' F'");
+    await expect(main).toHaveAttribute("data-mini-hint-before", /^[xz]/);
+    await expect(card).toContainText("OLL 1단계(노란 십자)");
+    await expect(card).toContainText("엣지: 가로줄");
+    await expect(main).toHaveAttribute("data-mini-hints-used", "3");
+    await shot(page, "mini-hint-oll", info.project.name);
+    // 한 판에 세 번까지
+    await page.clock.fastForward(20_000);
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute(
+      "data-mini-hint-msg",
+      "이번 판 3번 다 봤어요",
     );
 
-  // 옛 앱(말풍선 없음): 96px 창 안에 공식만 작게. 앱 메뉴 「공식 보기」
-  await fromApp(page, { type: "hint" });
-  await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
-  await expect(page.locator("[data-mini-hint-card]")).toHaveAttribute(
-    "data-mini-hint-card",
-    "small",
-  );
-  await shot(page, "mini-hint-small", info.project.name);
-  await page.clock.fastForward(20_000);
+    // 상황을 되돌려 맞추면 기록에 힌트 3번
+    for (const k of notationKeys([...setup].reverse().map(invert)))
+      await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    await fromApp(page, { type: "records", open: true });
+    await expect(
+      page
+        .locator("[data-mini-record]")
+        .first()
+        .locator("[data-mini-record-hints]"),
+    ).toHaveText("힌트 3번");
+    // 새로 섞으면 횟수는 처음으로
+    await fromApp(page, { type: "records", open: false });
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await expect(main).toHaveAttribute("data-mini-hints-used", "0");
+  },
+);
 
-  // 0.1.3 앱: 말풍선으로 줄을 보내고, 수를 두면 숨기기(null)
-  await fromApp(page, { type: "caps", hintBubble: true });
-  await page.keyboard.press("F1");
-  await expect(main).toHaveAttribute("data-mini-hint-where", "bubble");
-  await expect(page.locator("[data-mini-hint-card]")).toHaveCount(0);
-  await expect
-    .poll(async () => (await lastHint())?.lines?.[0]?.style)
-    .toBe("title");
-  const styles = ((await lastHint())?.lines ?? []).map((l) => l.style);
-  expect(styles).toContain("alg");
-  expect(styles).toContain("keys");
-  await page.keyboard.press("KeyR");
-  await expect.poll(async () => (await lastHint())?.lines).toBeNull();
+test(
+  "공식 보기: 작은 앱 창은 앱 말풍선으로 보내고, 말풍선이 없는 옛 앱은 창 안에 작게",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await fakeApp(page);
+    await page.setViewportSize({ width: 96, height: 96 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    await fromApp(page, { type: "scramble" });
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    type Sent = {
+      type: string;
+      lines?: { text: string; style: string }[] | null;
+    };
+    const lastHint = () =>
+      page.evaluate(() =>
+        (window as unknown as { __toApp: Sent[] }).__toApp
+          .filter((m) => m.type === "hint")
+          .at(-1),
+      );
 
-  // 큰 크기는 판정이 없다(말풍선에 그 알림)
-  await fromApp(page, { type: "size", n: 5 });
-  await expect(main).toHaveAttribute("data-mini-n", "5");
-  await fromApp(page, { type: "scramble" });
-  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await page.keyboard.press("F1");
-  await expect
-    .poll(async () => (await lastHint())?.lines?.[0]?.text)
-    .toBe("이 크기는 힌트 없음");
-});
+    // 옛 앱(말풍선 없음): 96px 창 안에 공식만 작게. 앱 메뉴 「공식 보기」
+    await fromApp(page, { type: "hint" });
+    await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
+    await expect(page.locator("[data-mini-hint-card]")).toHaveAttribute(
+      "data-mini-hint-card",
+      "small",
+    );
+    await shot(page, "mini-hint-small", info.project.name);
+    await page.clock.fastForward(20_000);
+
+    // 0.1.3 앱: 말풍선으로 줄을 보내고, 수를 두면 숨기기(null)
+    await fromApp(page, { type: "caps", hintBubble: true });
+    await page.keyboard.press("F1");
+    await expect(main).toHaveAttribute("data-mini-hint-where", "bubble");
+    await expect(page.locator("[data-mini-hint-card]")).toHaveCount(0);
+    await expect
+      .poll(async () => (await lastHint())?.lines?.[0]?.style)
+      .toBe("title");
+    const styles = ((await lastHint())?.lines ?? []).map((l) => l.style);
+    expect(styles).toContain("alg");
+    expect(styles).toContain("keys");
+    await page.keyboard.press("KeyR");
+    await expect.poll(async () => (await lastHint())?.lines).toBeNull();
+
+    // 큰 크기는 판정이 없다(말풍선에 그 알림)
+    await fromApp(page, { type: "size", n: 5 });
+    await expect(main).toHaveAttribute("data-mini-n", "5");
+    await fromApp(page, { type: "scramble" });
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await page.keyboard.press("F1");
+    await expect
+      .poll(async () => (await lastHint())?.lines?.[0]?.text)
+      .toBe("이 크기는 힌트 없음");
+  },
+);
 
 // ── 공식 연습(docs/47 16-11) ───────────────────────────────
 
@@ -1269,163 +1282,171 @@ async function finishRound(page: Page) {
 /** 첫 낱말과 다른 면의 키(틀린 수) */
 const wrongKey = (first: string) => (first.startsWith("D") ? "KeyB" : "KeyD");
 
-test("공식 연습: 작은 앱 창은 말풍선에 공식만(키는 틀린 한 수만), 10문제 뒤 판 끝 결과, Esc로 끝내기", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await fakeApp(page);
-  await fixSeed(page, 20261110);
-  await page.setViewportSize({ width: 96, height: 96 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await fromApp(page, { type: "focus", focused: true });
-  await fromApp(page, { type: "caps", hintBubble: true });
+test(
+  "공식 연습: 작은 앱 창은 말풍선에 공식만(키는 틀린 한 수만), 10문제 뒤 판 끝 결과, Esc로 끝내기",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await fakeApp(page);
+    await fixSeed(page, 20261110);
+    await page.setViewportSize({ width: 96, height: 96 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    await fromApp(page, { type: "caps", hintBubble: true });
 
-  // 메뉴에 보일 단계를 앱에 알린다(사이트 연습 단계 그대로)
-  await expect
-    .poll(async () => (await sentLast(page, "state"))?.practiceStages?.length)
-    .toBe(11);
-  expect((await sentLast(page, "state"))?.practice).toBeNull();
+    // 메뉴에 보일 단계를 앱에 알린다(사이트 연습 단계 그대로)
+    await expect
+      .poll(async () => (await sentLast(page, "state"))?.practiceStages?.length)
+      .toBe(11);
+    expect((await sentLast(page, "state"))?.practice).toBeNull();
 
-  // 앱 메뉴 「공식 연습 ▸ 2층」
-  await fromApp(page, { type: "practice", stage: "beginner-second" });
-  await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
-  await expect(main).toHaveAttribute("data-mini-practice-where", "bubble");
-  await expect
-    .poll(async () => (await sentLast(page, "state"))?.practice)
-    .toBe("beginner-second");
-  await expect
-    .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
-    .toBe("2층 1/10 · 콤보 0");
-  let lines = (await sentLast(page, "hint"))?.lines ?? [];
-  const answer = (await main.getAttribute(
-    "data-mini-practice-answer",
-  )) as string;
-  expect(lines.find((l) => l.style === "alg")?.text).toBe(answer);
-  // 따라 치기는 키를 보이지 않는다
-  expect(lines.some((l) => l.style === "keys")).toBe(false);
-  await expect(page.locator("[data-mini-practice-card]")).toHaveCount(0);
+    // 앱 메뉴 「공식 연습 ▸ 2층」
+    await fromApp(page, { type: "practice", stage: "beginner-second" });
+    await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
+    await expect(main).toHaveAttribute("data-mini-practice-where", "bubble");
+    await expect
+      .poll(async () => (await sentLast(page, "state"))?.practice)
+      .toBe("beginner-second");
+    await expect
+      .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
+      .toBe("2층 1/10 · 콤보 0");
+    let lines = (await sentLast(page, "hint"))?.lines ?? [];
+    const answer = (await main.getAttribute(
+      "data-mini-practice-answer",
+    )) as string;
+    expect(lines.find((l) => l.style === "alg")?.text).toBe(answer);
+    // 따라 치기는 키를 보이지 않는다
+    expect(lines.some((l) => l.style === "keys")).toBe(false);
+    await expect(page.locator("[data-mini-practice-card]")).toHaveCount(0);
 
-  // 틀린 수: 큐브에 넣지 않고 그 한 수의 키만 잠깐
-  const first = answer.split(" ")[0] as string;
-  await page.keyboard.press(wrongKey(first));
-  await expect(main).toHaveAttribute("data-mini-practice-wrong", first);
-  await expect(main).toHaveAttribute("data-mini-practice-index", "0");
-  await expect
-    .poll(
-      async () =>
-        (await sentLast(page, "hint"))?.lines?.find((l) => l.style === "keys")
-          ?.text,
-    )
-    .toMatch(/^\S+ {2}\S/);
-  lines = (await sentLast(page, "hint"))?.lines ?? [];
-  expect(lines.find((l) => l.style === "keys")?.text.split("  ")[0]).toBe(
-    first,
-  );
-  await page.clock.fastForward(1500);
-  await expect(main).not.toHaveAttribute("data-mini-practice-wrong", /.+/);
+    // 틀린 수: 큐브에 넣지 않고 그 한 수의 키만 잠깐
+    const first = answer.split(" ")[0] as string;
+    await page.keyboard.press(wrongKey(first));
+    await expect(main).toHaveAttribute("data-mini-practice-wrong", first);
+    await expect(main).toHaveAttribute("data-mini-practice-index", "0");
+    await expect
+      .poll(
+        async () =>
+          (await sentLast(page, "hint"))?.lines?.find((l) => l.style === "keys")
+            ?.text,
+      )
+      .toMatch(/^\S+ {2}\S/);
+    lines = (await sentLast(page, "hint"))?.lines ?? [];
+    expect(lines.find((l) => l.style === "keys")?.text.split("  ")[0]).toBe(
+      first,
+    );
+    await page.clock.fastForward(1500);
+    await expect(main).not.toHaveAttribute("data-mini-practice-wrong", /.+/);
 
-  // 10문제를 끊김 없이 치면 판 끝 결과(말풍선)
-  await finishRound(page);
-  await expect
-    .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
-    .toBe("2층 한 판 끝");
-  const texts = ((await sentLast(page, "hint"))?.lines ?? []).map(
-    (l) => l.text,
-  );
-  expect(texts.some((t) => /^정확도 \d+% · 평균 /.test(t))).toBe(true);
-  expect(texts).toContain("느렸던 공식");
-  expect(texts.at(-1)).toBe("Enter 한 판 더 · Esc 연습 끝내기");
+    // 10문제를 끊김 없이 치면 판 끝 결과(말풍선)
+    await finishRound(page);
+    await expect
+      .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
+      .toBe("2층 한 판 끝");
+    const texts = ((await sentLast(page, "hint"))?.lines ?? []).map(
+      (l) => l.text,
+    );
+    expect(texts.some((t) => /^정확도 \d+% · 평균 /.test(t))).toBe(true);
+    expect(texts).toContain("느렸던 공식");
+    expect(texts.at(-1)).toBe("Enter 한 판 더 · Esc 연습 끝내기");
 
-  // 연습은 맞추기 기록에 남지 않고, 연습 기록은 앱 저장소의 cube.mini. 아래에
-  expect(
-    (await page.evaluate(() => localStorage.getItem("cube.mini.v1"))) ?? "",
-  ).not.toContain('"ms"');
-  expect(
-    await page.evaluate(() => localStorage.getItem("cube.mini.practice.v1")),
-  ).toContain('"beginner-second"');
-  expect(
-    await page.evaluate(() => localStorage.getItem("cube.practice.v1")),
-  ).toBeNull();
+    // 연습은 맞추기 기록에 남지 않고, 연습 기록은 앱 저장소의 cube.mini. 아래에
+    expect(
+      (await page.evaluate(() => localStorage.getItem("cube.mini.v1"))) ?? "",
+    ).not.toContain('"ms"');
+    expect(
+      await page.evaluate(() => localStorage.getItem("cube.mini.practice.v1")),
+    ).toContain('"beginner-second"');
+    expect(
+      await page.evaluate(() => localStorage.getItem("cube.practice.v1")),
+    ).toBeNull();
 
-  // 섞기 키(Enter)는 판 끝에서 「한 판 더」
-  await page.keyboard.press("Enter");
-  await expect(main).toHaveAttribute("data-mini-practice-phase", "play");
-  await expect(main).toHaveAttribute("data-mini-practice-index", "0");
+    // 섞기 키(Enter)는 판 끝에서 「한 판 더」
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-practice-phase", "play");
+    await expect(main).toHaveAttribute("data-mini-practice-index", "0");
 
-  // 포커스를 잃으면 말풍선을 숨긴다(다른 앱을 쓰는 동안 화면에 남지 않게)
-  await fromApp(page, { type: "focus", focused: false });
-  await expect
-    .poll(async () => (await sentLast(page, "hint"))?.lines)
-    .toBeNull();
-  await fromApp(page, { type: "focus", focused: true });
+    // 포커스를 잃으면 말풍선을 숨긴다(다른 앱을 쓰는 동안 화면에 남지 않게)
+    await fromApp(page, { type: "focus", focused: false });
+    await expect
+      .poll(async () => (await sentLast(page, "hint"))?.lines)
+      .toBeNull();
+    await fromApp(page, { type: "focus", focused: true });
 
-  // Esc(앱이 가로채 practice null로 보낸다): 연습 끝내기, 맞추기로
-  await fromApp(page, { type: "practice", stage: null });
-  await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
-  await expect
-    .poll(async () => (await sentLast(page, "hint"))?.lines)
-    .toBeNull();
-  await expect
-    .poll(async () => (await sentLast(page, "state"))?.practice)
-    .toBeNull();
-});
+    // Esc(앱이 가로채 practice null로 보낸다): 연습 끝내기, 맞추기로
+    await fromApp(page, { type: "practice", stage: null });
+    await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
+    await expect
+      .poll(async () => (await sentLast(page, "hint"))?.lines)
+      .toBeNull();
+    await expect
+      .poll(async () => (await sentLast(page, "state"))?.practice)
+      .toBeNull();
+  },
+);
 
-test("공식 연습: 큰 창은 창 안에, 구석 메뉴로 시작, 틀린 한 수만 키캡, 판 끝 결과, Esc로 끝내기", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await fixSeed(page, 20261110);
-  await page.setViewportSize({ width: 360, height: 360 });
-  await installClock(page);
-  await page.goto("/cube/mini");
-  const main = page.locator("main[data-mini]");
-  await expect(main).toHaveAttribute("data-input-ready", "", {
-    timeout: SCRAMBLE_TIMEOUT,
-  });
-  await pauseClock(page);
-  await page.locator("[data-mini-menu]").click();
-  await page.locator('[data-mini-item="practice"]').click();
-  await page.locator('[data-mini-practice-stage="beginner-second"]').click();
-  await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
-  await expect(main).toHaveAttribute("data-mini-practice-where", "inline");
-  const card = page.locator("[data-mini-practice-card]");
-  await expect(card).toHaveAttribute("data-mini-practice-card", "full");
-  await expect(card.locator("[data-mini-practice-name]")).not.toBeEmpty();
-  await expect(card.locator('[data-token-state="now"]')).toHaveCount(1);
-  // 키는 숨긴다
-  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(0);
-  await shot(page, "mini-practice-inline", info.project.name);
+test(
+  "공식 연습: 큰 창은 창 안에, 구석 메뉴로 시작, 틀린 한 수만 키캡, 판 끝 결과, Esc로 끝내기",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await fixSeed(page, 20261110);
+    await page.setViewportSize({ width: 360, height: 360 });
+    await installClock(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await page.locator("[data-mini-menu]").click();
+    await page.locator('[data-mini-item="practice"]').click();
+    await page.locator('[data-mini-practice-stage="beginner-second"]').click();
+    await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
+    await expect(main).toHaveAttribute("data-mini-practice-where", "inline");
+    const card = page.locator("[data-mini-practice-card]");
+    await expect(card).toHaveAttribute("data-mini-practice-card", "full");
+    await expect(card.locator("[data-mini-practice-name]")).not.toBeEmpty();
+    await expect(card.locator('[data-token-state="now"]')).toHaveCount(1);
+    // 키는 숨긴다
+    await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(
+      0,
+    );
+    await shot(page, "mini-practice-inline", info.project.name);
 
-  const answer = (await main.getAttribute(
-    "data-mini-practice-answer",
-  )) as string;
-  await page.keyboard.press(wrongKey(answer.split(" ")[0] as string));
-  await expect(card.locator('[data-token-state="wrong"]')).toHaveCount(1);
-  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(1);
-  await shot(page, "mini-practice-wrong", info.project.name);
-  await page.clock.fastForward(1500);
-  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(0);
+    const answer = (await main.getAttribute(
+      "data-mini-practice-answer",
+    )) as string;
+    await page.keyboard.press(wrongKey(answer.split(" ")[0] as string));
+    await expect(card.locator('[data-token-state="wrong"]')).toHaveCount(1);
+    await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(
+      1,
+    );
+    await shot(page, "mini-practice-wrong", info.project.name);
+    await page.clock.fastForward(1500);
+    await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(
+      0,
+    );
 
-  await finishRound(page);
-  const summary = page.locator("[data-mini-practice-summary]");
-  await expect(summary).toBeVisible();
-  await expect(summary.locator('[data-stat="accuracy"] dd')).toHaveText(
-    /^\d+%$/,
-  );
-  // 첫 문제에서 한 번 틀려 그 뒤 아홉 문제가 이어진 콤보
-  await expect(summary.locator('[data-stat="combo"] dd')).toHaveText("9");
-  await expect(summary.locator("[data-mini-practice-slow] li")).not.toHaveCount(
-    0,
-  );
-  await shot(page, "mini-practice-summary", info.project.name);
+    await finishRound(page);
+    const summary = page.locator("[data-mini-practice-summary]");
+    await expect(summary).toBeVisible();
+    await expect(summary.locator('[data-stat="accuracy"] dd')).toHaveText(
+      /^\d+%$/,
+    );
+    // 첫 문제에서 한 번 틀려 그 뒤 아홉 문제가 이어진 콤보
+    await expect(summary.locator('[data-stat="combo"] dd')).toHaveText("9");
+    await expect(
+      summary.locator("[data-mini-practice-slow] li"),
+    ).not.toHaveCount(0);
+    await shot(page, "mini-practice-summary", info.project.name);
 
-  await page.keyboard.press("Escape");
-  await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
-  await expect(summary).toHaveCount(0);
-});
+    await page.keyboard.press("Escape");
+    await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
+    await expect(summary).toHaveCount(0);
+  },
+);

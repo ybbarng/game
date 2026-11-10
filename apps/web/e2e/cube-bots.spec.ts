@@ -8,11 +8,8 @@ import { expect, type Page, test } from "./test";
 
 const SCRAMBLE_TIMEOUT = 60_000;
 
-test.beforeEach(async ({ page }, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "휴대폰 세로와 데스크톱으로 본다",
-  );
+// 휴대폰 세로와 데스크톱으로 본다(e2e/projects.ts FILE_ONLY)
+test.beforeEach(async ({ page }) => {
   await no3d(page);
   await useNotationKeys(page);
 });

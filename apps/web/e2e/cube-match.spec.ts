@@ -53,55 +53,54 @@ async function playRound(page: Page, project: string) {
   );
 }
 
-test("컴퓨터와 대결: 점수제 3판은 판 사이 점수판을 보이고, 끝나면 최종 순위", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱·휴대폰 세로로 본다",
-  );
-  test.setTimeout(150_000);
-  await page.clock.install();
-  await page.goto("/cube/vs");
-  await page.getByRole("button", { name: "초고수", exact: true }).click();
-  await page.locator('[data-cube-vs-rounds="3"]').click();
-  await expect(page.locator("[data-cube-vs-scoring]")).toHaveValue("wins");
-  await shot(page, "match-setup", info.project.name);
-  await page.locator("[data-cube-vs-start]").click();
+test(
+  "컴퓨터와 대결: 점수제 3판은 판 사이 점수판을 보이고, 끝나면 최종 순위",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로 본다
+    test.setTimeout(150_000);
+    await page.clock.install();
+    await page.goto("/cube/vs");
+    await page.getByRole("button", { name: "초고수", exact: true }).click();
+    await page.locator('[data-cube-vs-rounds="3"]').click();
+    await expect(page.locator("[data-cube-vs-scoring]")).toHaveValue("wins");
+    await shot(page, "match-setup", info.project.name);
+    await page.locator("[data-cube-vs-start]").click();
 
-  // 1판: 컴퓨터가 이기면 점수판 「점수 · 1/3판」, 다음 판 단추
-  await playRound(page, info.project.name);
-  const board = page.locator("[data-cube-match-board]");
-  await expect(board).toHaveAttribute("data-cube-match-board", "between");
-  await expect(board).toContainText("점수 · 1/3판");
-  await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
-    "data-cube-match-points",
-    "1",
-  );
-  await expect(board.locator('[data-cube-match-row="me"]')).toHaveAttribute(
-    "data-cube-match-points",
-    "0",
-  );
-  // 구간 표와 함께 결과 상자 안에 있다
-  await expect(
-    page.locator("[data-cube-result] [data-cube-race-splits]"),
-  ).toBeVisible();
-  await shot(page, "match-between", info.project.name);
+    // 1판: 컴퓨터가 이기면 점수판 「점수 · 1/3판」, 다음 판 단추
+    await playRound(page, info.project.name);
+    const board = page.locator("[data-cube-match-board]");
+    await expect(board).toHaveAttribute("data-cube-match-board", "between");
+    await expect(board).toContainText("점수 · 1/3판");
+    await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
+      "data-cube-match-points",
+      "1",
+    );
+    await expect(board.locator('[data-cube-match-row="me"]')).toHaveAttribute(
+      "data-cube-match-points",
+      "0",
+    );
+    // 구간 표와 함께 결과 상자 안에 있다
+    await expect(
+      page.locator("[data-cube-result] [data-cube-race-splits]"),
+    ).toBeVisible();
+    await shot(page, "match-between", info.project.name);
 
-  // 2판: 컴퓨터 2승이면 남은 1판으로 따라잡을 수 없어 끝난다
-  await page.locator("[data-cube-next]").click();
-  await playRound(page, info.project.name);
-  await expect(board).toHaveAttribute("data-cube-match-board", "over");
-  await expect(board).toContainText("최종 순위");
-  await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
-    "data-cube-match-place",
-    "1",
-  );
-  await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
-    "data-cube-match-points",
-    "2",
-  );
-  await expect(page.locator("[data-cube-next]")).toHaveCount(0);
-  await expect(page.locator("[data-cube-again]")).toHaveText("새 경기");
-  await shot(page, "match-final", info.project.name);
-});
+    // 2판: 컴퓨터 2승이면 남은 1판으로 따라잡을 수 없어 끝난다
+    await page.locator("[data-cube-next]").click();
+    await playRound(page, info.project.name);
+    await expect(board).toHaveAttribute("data-cube-match-board", "over");
+    await expect(board).toContainText("최종 순위");
+    await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
+      "data-cube-match-place",
+      "1",
+    );
+    await expect(board.locator('[data-cube-match-row="bot1"]')).toHaveAttribute(
+      "data-cube-match-points",
+      "2",
+    );
+    await expect(page.locator("[data-cube-next]")).toHaveCount(0);
+    await expect(page.locator("[data-cube-again]")).toHaveText("새 경기");
+    await shot(page, "match-final", info.project.name);
+  },
+);

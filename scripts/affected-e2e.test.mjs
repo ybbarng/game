@@ -4,10 +4,16 @@ import { describe, expect, it } from "vitest";
 import {
   BASE_SPECS,
   loadContext,
+  MAX_SHARDS,
   packageOwner,
+  planShards,
   readGameIds,
+  readTimes,
+  SHARD_SECONDS,
   selectE2e,
   shardCount,
+  specSeconds,
+  timesFromReports,
   webAreaOf,
 } from "./affected-e2e.mjs";
 
@@ -116,8 +122,18 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     expect(r.specs).toEqual([...galaxySpecs, "yut", ...BASE_SPECS].sort());
   });
 
-  it("net/ 공통: 전부", () => {
-    expect(pick("apps/web/src/net/guest-room.ts").mode).toBe("all");
+  it("net/ 공통: 그것에 닿는 화면의 게임만(온라인 방이 없는 별 따기는 안 돈다)", () => {
+    const r = pick("apps/web/src/net/guest-room.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(
+      expect.arrayContaining(["online", "hearts", "gostop", ...BASE_SPECS]),
+    );
+    expect(r.specs.some((s) => s.startsWith("stardraw"))).toBe(false);
+  });
+
+  it("공통 폴더 파일이라도 첫 화면·복기 같은 공용 주소가 닿으면 전부", () => {
+    expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
+    expect(pick("apps/web/src/components/ChatBox.tsx").mode).toBe("all");
   });
 
   it("화면 시험 공용 도구: 전부", () => {
@@ -179,8 +195,28 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
 
   it("짝 없는 apps/web 파일: 전부(안전하게)", () => {
     expect(pick("apps/web/next.config.ts").mode).toBe("all");
-    expect(pick("apps/web/src/new-folder/thing.ts").mode).toBe("all");
     expect(pick("apps/web/public/sw.js").mode).toBe("all");
+  });
+
+  it("어느 화면에서도 import로 닿지 않는 src 파일: 없음(지워졌거나 아무도 안 쓰는 파일)", () => {
+    expect(pick("apps/web/src/new-folder/thing.ts").mode).toBe("none");
+  });
+
+  it("spec이 직접 불러 쓰는 src 파일: 그 게임과 그 spec", () => {
+    const r = pick("apps/web/src/janggi/opening-line.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toContain("janggi");
+    expect(r.specs.some((s) => s.startsWith("cube-"))).toBe(false);
+  });
+
+  it("빌드가 돌리는 apps/web 스크립트: 전부", () => {
+    for (const f of [
+      "apps/web/scripts/build-hashes.mjs",
+      "apps/web/scripts/drop-demo-pages.mjs",
+      "apps/web/scripts/write-version.mjs",
+    ]) {
+      expect(pick(f).mode, f).toBe("all");
+    }
   });
 
   it("짝 없는 루트 파일: 전부", () => {
@@ -200,13 +236,144 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
   });
 });
 
-describe("조각 수", () => {
-  it("전부는 2, 일부는 spec이 많을 때만 2, 없음은 0", () => {
-    expect(shardCount({ mode: "all", specs: [] })).toBe(2);
-    expect(shardCount({ mode: "some", specs: ["a", "b", "c"] })).toBe(1);
+// 2026-11-10 「전부」가 된 실행들(learn-terms-sweep, cubie-profile, cube-hero-color, main push 넷)의 바뀐 파일.
+// 새 규칙이 무엇을 고르는지 남겨 둔다
+describe("오늘 「전부」가 된 PR의 바뀐 파일", () => {
+  it("시험 전용 도우미(용어 순서 틀): 없음", () => {
     expect(
-      shardCount({ mode: "some", specs: Array.from({ length: 12 }, String) }),
-    ).toBe(2);
-    expect(shardCount({ mode: "none", specs: [] })).toBe(0);
+      pick(
+        "apps/web/src/tutorial/term-order.ts",
+        "apps/web/src/tutorial/term-order-suite.ts",
+      ).mode,
+    ).toBe("none");
+  });
+
+  it("개발 때 손으로 돌리는 생성 스크립트(큐브 포스터): 없음", () => {
+    expect(pick("apps/web/scripts/render-cube-posters.mjs").mode).toBe("none");
+  });
+
+  it("cube-hero-color: 포스터 스크립트 + 큐브 화면 → 큐브만", () => {
+    const r = pick(
+      "apps/web/scripts/render-cube-posters.mjs",
+      "apps/web/src/cube/hero/poster.ts",
+    );
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual([...cubeSpecs, ...BASE_SPECS].sort());
+  });
+
+  it("배우기 목록 화면(LearnPage)은 /learn 묶음만, 마이티 배우기 단원(lessons)은 마이티만", () => {
+    expect(pick("apps/web/src/components/learn/LearnPage.tsx").specs).toEqual(
+      ["learn", ...BASE_SPECS].sort(),
+    );
+    const r = pick("apps/web/src/tutorial/lessons.ts");
+    expect(r.mode).toBe("some");
+    expect(r.specs).toEqual(expect.arrayContaining(["tutorial", "play-round"]));
+    expect(r.specs.some((s) => s.startsWith("cube-"))).toBe(false);
+  });
+
+  it("용어집(glossary)은 복기 같은 공용 주소가 불러 써서 그대로 전부, globals.css도 전부", () => {
+    expect(pick("apps/web/src/tutorial/glossary.ts").mode).toBe("all");
+    expect(pick("apps/web/src/app/globals.css").mode).toBe("all");
+  });
+});
+
+describe("조각 수", () => {
+  const times = { seconds: { a: 300, b: 200, c: 100, d: 40, e: 20 } };
+
+  it("전부는 MAX_SHARDS(6), 없음은 0", () => {
+    expect(MAX_SHARDS).toBe(6);
+    expect(shardCount({ mode: "all", specs: [] })).toBe(6);
+    expect(shardCount({ mode: "all", specs: [] }, times)).toBe(6);
+    expect(shardCount({ mode: "none", specs: [] }, times)).toBe(0);
+  });
+
+  it("일부는 지난 시험 시간 합을 조각 하나 몫(SHARD_SECONDS)으로 나눠 올림", () => {
+    expect(SHARD_SECONDS).toBe(240);
+    expect(shardCount({ mode: "some", specs: ["d", "e"] }, times)).toBe(1);
+    // 300 + 200 + 100 = 600초 → 3조각
+    expect(shardCount({ mode: "some", specs: ["a", "b", "c"] }, times)).toBe(3);
+    // spec보다 조각이 많지는 않다
+    expect(shardCount({ mode: "some", specs: ["a"] }, times)).toBe(1);
+  });
+
+  it("시간 자료가 없으면 spec 개수로: 12개 미만은 1, 12개마다 하나씩 더(최대 6)", () => {
+    const n = (k) => Array.from({ length: k }, (_, i) => `s${i}`);
+    expect(shardCount({ mode: "some", specs: n(3) })).toBe(1);
+    expect(shardCount({ mode: "some", specs: n(12) })).toBe(2);
+    expect(shardCount({ mode: "some", specs: n(30) })).toBe(3);
+    expect(shardCount({ mode: "some", specs: n(500) })).toBe(6);
+  });
+
+  it("저장소의 시간 기준 파일은 지금 spec을 거의 모두 담는다(새 spec은 평균으로 친다)", () => {
+    const t = readTimes(path.join(ROOT, "scripts/e2e-times.json"));
+    expect(t).not.toBeNull();
+    const missing = ctx.specs.filter((s) => !(s in t.seconds));
+    // 자료를 새로 쓰지 않은 채 spec이 많이 늘면 나누기가 기운다. 그때는 notes대로 새로 쓴다
+    expect(missing.length).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("조각 나누기", () => {
+  const times = { seconds: { a: 300, b: 200, c: 150, d: 100, e: 50, f: 50 } };
+
+  it("긴 spec부터 가장 가벼운 조각에 담아 시간이 고르게 된다", () => {
+    const plan = planShards(["a", "b", "c", "d", "e", "f"], 3, times);
+    const load = plan.map((l) => l.reduce((s, x) => s + times.seconds[x], 0));
+    expect(plan.flat().sort()).toEqual(["a", "b", "c", "d", "e", "f"]);
+    expect(Math.max(...load) - Math.min(...load)).toBeLessThanOrEqual(50);
+    // 같은 입력이면 늘 같은 결과(조각 사이에 spec이 겹치거나 빠지면 안 된다)
+    expect(planShards(["f", "e", "d", "c", "b", "a"], 3, times)).toEqual(plan);
+  });
+
+  it("자료에 없는 spec은 평균 시간으로 친다", () => {
+    expect(specSeconds(times, "new")).toBeCloseTo(850 / 6);
+    expect(specSeconds({ seconds: {} }, "new")).toBe(1);
+  });
+
+  it("시간 자료가 없으면 이름 차례로 돌려 담는다", () => {
+    expect(planShards(["c", "a", "b", "d"], 2)).toEqual([
+      ["a", "c"],
+      ["b", "d"],
+    ]);
+  });
+
+  it("지금 spec 전부를 6조각으로: 모두 한 번씩, 조각 사이 시간 차가 가장 긴 spec보다 작다", () => {
+    const t = readTimes(path.join(ROOT, "scripts/e2e-times.json"));
+    const plan = planShards(ctx.specs, 6, t);
+    expect(plan.flat().sort()).toEqual([...ctx.specs].sort());
+    const load = plan.map((l) => l.reduce((s, x) => s + specSeconds(t, x), 0));
+    const longest = Math.max(...ctx.specs.map((s) => specSeconds(t, s)));
+    expect(Math.max(...load) - Math.min(...load)).toBeLessThan(longest);
+  });
+
+  it("playwright json에서 spec마다 시간 합(초)을 읽고 건너뛴 시험은 뺀다", () => {
+    const report = {
+      suites: [
+        {
+          file: "omok.spec.ts",
+          specs: [
+            {
+              file: "omok.spec.ts",
+              tests: [
+                { results: [{ status: "passed", duration: 1500 }] },
+                { results: [{ status: "skipped", duration: 900 }] },
+              ],
+            },
+          ],
+          suites: [
+            {
+              title: "묶음",
+              specs: [
+                {
+                  file: "omok.spec.ts",
+                  tests: [{ results: [{ status: "passed", duration: 520 }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(timesFromReports([report])).toEqual({ omok: 2 });
   });
 });

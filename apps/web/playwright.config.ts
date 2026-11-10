@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { BROWSER } from "./e2e/browser";
+import { projectFilter } from "./e2e/projects";
 
 /** 다른 작업 트리가 같은 포트로 띄운 서버를 재사용하지 않게 `E2E_PORT`로 바꿀 수 있다 */
 const PORT = Number(process.env.E2E_PORT ?? 4173);
@@ -27,13 +28,17 @@ export default defineConfig({
     // 연출이 있는 길을 보는 시험만 `emulateMedia({ reducedMotion: "no-preference" })`로 켠다.
     contextOptions: { reducedMotion: "reduce" },
   },
-  // 차례가 CI 조각 나누기에 영향을 준다. Playwright는 프로젝트 차례로 시험을 늘어놓고 앞에서부터 같은 개수로
-  // 자르는데, 휴대폰 화면은 시험 안에서 건너뛰는 것이 많아 실제 일은 데스크톱에 몰린다(시간 합의 약 60%).
-  // 데스크톱을 맨 앞에 두면 조각 1이 데스크톱 전부를 맡아(약 585초 대 294초, 2026-11-01) 가운데에 둔다(약 480 대 400)
+  // 한 크기에서만 보는 시험은 태그(e2e/projects.ts)로 목록에서 뺀다. CI는 조각마다 spec 목록을 따로 넘겨
+  // (scripts/affected-e2e.mjs가 지난 시험 시간으로 고르게 나눈다) 프로젝트 차례가 조각 나누기에 영향을 주지 않는다
   projects: [
-    { name: "phone-portrait", use: { ...devices["Pixel 7"], ...BROWSER } },
+    {
+      name: "phone-portrait",
+      ...projectFilter("phone-portrait"),
+      use: { ...devices["Pixel 7"], ...BROWSER },
+    },
     {
       name: "desktop",
+      ...projectFilter("desktop"),
       use: {
         ...devices["Desktop Chrome"],
         ...BROWSER,
@@ -42,6 +47,7 @@ export default defineConfig({
     },
     {
       name: "phone-landscape",
+      ...projectFilter("phone-landscape"),
       use: { ...devices["Pixel 7 landscape"], ...BROWSER },
     },
   ],
