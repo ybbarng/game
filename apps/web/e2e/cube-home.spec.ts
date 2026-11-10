@@ -59,19 +59,25 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   await expect(
     page.getByRole("heading", { name: "큐브 맞추기" }),
   ).toBeVisible();
-  // 메뉴는 묶음 여섯(배우기·맞추기·대결·연습·더 알아보기·실물 큐브)과 설정. 처음 온 사람의 길(배우기)이 맨 위
+  // 메뉴는 맨 위 「다음에 할 것」 하나, 문 셋(처음이라면·해법 익히기·맞추기·겨루기)과 더 보기(docs/47 16-2)
   const groups = page.locator("[data-cube-group]");
-  await expect(groups).toHaveCount(6);
+  await expect(groups).toHaveCount(4);
   expect(
     await groups.evaluateAll((els) =>
       els.map((e) => e.getAttribute("data-cube-group")),
     ),
-  ).toEqual(["배우기", "맞추기", "대결", "연습", "더 알아보기", "실물 큐브"]);
-  // 처음 온 사람: 강조는 배우기 첫 칸 「처음이라면」 하나
+  ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+  // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법
+  const nextCard = page.locator("[data-cube-next]");
+  await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
+  await expect(nextCard).toHaveAttribute("href", "/cube/intro");
   await expect(
-    page.locator("[data-cube-group='배우기'] a").first(),
+    page.locator("[data-cube-group='처음이라면'] a").first(),
   ).toHaveAttribute("data-cube-intro-link", "");
-  await expect(page.locator("[data-cube-continue]")).toHaveCount(0);
+  await expect(page.locator("[data-cube-map-link]")).toHaveAttribute(
+    "href",
+    "/cube/map",
+  );
   // 묶음마다 2열이 빈칸 없이 찬다(칸 너비 합이 줄 수 × 2)
   for (const cols of await groups.evaluateAll((els) =>
     els.map((g) =>
@@ -83,7 +89,7 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
   ))
     expect(cols % 2).toBe(0);
   await expect(
-    page.locator("[data-cube-group='대결'] a").first(),
+    page.locator("[data-cube-group='맞추기·겨루기'] a").nth(1),
   ).toHaveAttribute("href", "/cube/online");
   await expect(page.getByRole("link", { name: "설정" })).toHaveAttribute(
     "href",
@@ -180,6 +186,82 @@ test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간
       writeFileSync(`test-results/screens/${file}`, await res.body());
     }
   }
+});
+
+test("다음에 할 것: 이 기기의 진도와 기록으로 권하는 칸이 바뀐다", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "배치가 세로 휴대폰과 같다",
+  );
+  await no3d(page);
+  const next = page.locator("[data-cube-next]");
+  // 키 익히기를 조금 했으면 처음 맞추기 첫 단원
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("next-step-case") === "solo") return;
+    localStorage.setItem(
+      "cube.keylearn.v1",
+      JSON.stringify({ done: ["home"] }),
+    );
+  });
+  await page.goto("/cube");
+  await expect(next).toHaveAttribute("data-cube-next", "first-solve");
+  await expect(next).toHaveText(/처음 맞추기$/);
+  await expect(next).toHaveAttribute("href", "/cube/learn?lesson=333-start");
+  await shot(page, "home-next-first-solve", info.project.name);
+
+  // 혼자 맞추기 완성 기록이 있으면(맞출 줄 아는 사람) 기록 재기
+  await page.evaluate(() => {
+    sessionStorage.setItem("next-step-case", "solo");
+    localStorage.clear();
+    const at = Date.UTC(2026, 10, 10);
+    localStorage.setItem(
+      "cube.records.v1",
+      JSON.stringify({
+        "solo-3": [
+          {
+            at,
+            n: 3,
+            mode: "solo",
+            ms: 61_230,
+            penalty: 0,
+            moves: 92,
+            scramble: "R U R' U' F2 D L2",
+          },
+        ],
+      }),
+    );
+  });
+  await page.reload();
+  await expect(next).toHaveAttribute("data-cube-next", "solo");
+  await expect(next).toHaveAttribute("href", "/cube/solo");
+  await shot(page, "home-next-solo", info.project.name);
+});
+
+test("기능 지도: 큐브의 모든 화면을 묶음마다 설명과 주소로", async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name === "phone-landscape",
+    "배치가 세로 휴대폰과 같다",
+  );
+  await page.goto("/cube/map");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("기능 지도");
+  expect(
+    await page
+      .locator("[data-map-section]")
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-map-section"))),
+  ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+  await expect(page.locator('[data-map-item="/cube/daily"]')).toContainText(
+    "오늘의 섞기",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth,
+    ),
+  ).toBe(false);
+  await shot(page, "map", info.project.name);
 });
 
 test("첫 화면 큐브: 대기 이미지를 못 받으면 깨진 이미지 대신 같은 각도의 SVG를 보인다", async ({

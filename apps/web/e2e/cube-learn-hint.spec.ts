@@ -132,10 +132,12 @@ test("진도: 마지막으로 본 단계로 다시 열고, 해 보기가 남으�
   );
   await page.goto("/cube/learn?lesson=333-ll-edges");
   await page.goto("/cube");
-  const cont = page.locator("[data-cube-continue]");
-  await expect(cont).toContainText("이어서 배우기: 옆면 맞추기");
-  await expect(page.locator("[data-cube-intro-link]")).toHaveCount(0);
+  // 첫 화면 「다음에 할 것」이 보던 단원으로 잇는다(docs/47 16-5)
+  const cont = page.locator("[data-cube-next]");
+  await expect(cont).toHaveAttribute("data-cube-next", "first-solve");
+  await expect(cont).toContainText("처음 맞추기 이어서: 옆면 맞추기");
   await expect(cont).toHaveAttribute("href", "/cube/learn?lesson=333-ll-edges");
+  await shot(page, "home-next-continue", info.project.name);
 });
 
 test("진도: 해 보기 밖의 마친 단계(고르기)도 다시 열면 초록으로 남는다", async ({
