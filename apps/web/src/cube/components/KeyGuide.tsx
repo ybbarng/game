@@ -85,6 +85,7 @@ const COMMAND_KEYS = [
   "inspectionSkip",
   "peekBack",
   "peekDown",
+  "viewHome",
 ] as const;
 
 export function KeyGuide({

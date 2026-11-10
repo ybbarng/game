@@ -45,6 +45,7 @@ import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StillCube } from "./StillCube";
+import { ViewHome } from "./ViewHome";
 
 /**
  * 배우기 단계의 상호작용(docs/47 8-1·8-4): 정지 그림(글), 조각 찾기·세기, 고르기 문제, 둘러보기, 한 수 해 보기,
@@ -790,6 +791,7 @@ function MiniCube({
   settings: CubeSettings;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewRef = useRef<CubeView | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const live = useRef({ state, mask });
@@ -798,14 +800,14 @@ function MiniCube({
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
-    let view: CubeView | null = null;
+    setReady(false);
     const ro = new ResizeObserver(() =>
-      view?.resize(canvas.clientWidth, canvas.clientHeight),
+      viewRef.current?.resize(canvas.clientWidth, canvas.clientHeight),
     );
     void loadCubeView()
       .then(({ CubeView }) => {
         if (disposed) return;
-        view = CubeView.create(canvas, {
+        const view = CubeView.create(canvas, {
           n,
           quality: settings.quality,
           colors: settings.colors,
@@ -815,6 +817,7 @@ function MiniCube({
         view.setStickers(
           stickersFromState(n, live.current.state, live.current.mask),
         );
+        viewRef.current = view;
         ro.observe(canvas);
         setReady(true);
       })
@@ -822,7 +825,8 @@ function MiniCube({
     return () => {
       disposed = true;
       ro.disconnect();
-      view?.dispose();
+      viewRef.current?.dispose();
+      viewRef.current = null;
     };
   }, [
     n,
@@ -843,13 +847,14 @@ function MiniCube({
       />
     </div>
   ) : (
-    <div className="aspect-square w-full max-w-[240px]">
+    <div className="relative aspect-square w-full max-w-[240px]">
       <canvas
         ref={canvasRef}
         data-cube-canvas
         data-cube-ready={ready ? "" : undefined}
         className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
       />
+      <ViewHome viewRef={viewRef} ready={ready} />
     </div>
   );
 }

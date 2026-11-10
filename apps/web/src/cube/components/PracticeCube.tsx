@@ -9,6 +9,8 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { cn } from "@/lib/cn";
+
 import { stickersFromState } from "../bridge";
 import {
   type KeyInput,
@@ -22,6 +24,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
+import { ViewHome } from "./ViewHome";
 
 /**
  * 키 익히기·조작 훈련의 큐브(docs/47 4절). 혼자 맞추기의 `CubePlay`와 달리 키를 직접 받지 않고, 화면이 키를 해석해
@@ -180,7 +183,7 @@ export function LiveCube({
   }, [syncToken, n]);
 
   return (
-    <div className={className} data-practice-cube>
+    <div className={cn("relative", className)} data-practice-cube>
       {failed ? (
         <div data-cube-no3d className="flex flex-col items-center gap-2 p-2">
           <CubePosterPair
@@ -202,6 +205,7 @@ export function LiveCube({
           className="aspect-square h-auto w-full touch-none"
         />
       )}
+      {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
     </div>
   );
 }

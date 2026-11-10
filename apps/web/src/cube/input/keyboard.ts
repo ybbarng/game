@@ -21,7 +21,8 @@ export function attachKeyboard(
     target.removeEventListener("keydown", onKeyDown as EventListener);
 }
 
-function isTyping(t: EventTarget | null): boolean {
+/** 글 입력 칸에 치는 중인지(큐브 키를 먹지 않는다) */
+export function isTyping(t: EventTarget | null): boolean {
   if (!t || typeof (t as HTMLElement).tagName !== "string") return false;
   const el = t as HTMLElement;
   if (el.tagName === "INPUT")

@@ -95,7 +95,7 @@ test("색 배치 문제: 3D에서도 위·앞 센터 블럭만 색이 보인다(
   await page.goto("/cube/learn?lesson=333-start");
   await goToStep(page, "quiz");
   await expect(page.locator("[data-learn-quiz]")).toContainText(
-    "오른쪽 센터 블럭은",
+    "오른쪽 센터는",
   );
   await expect(
     page.locator("[data-cube-still] [data-cube-ready]").first(),
@@ -157,7 +157,7 @@ test("분해·조립: 휴대폰에서 끌어 돌린 채로 아래·뒤·왼쪽 �
   await expect(build).toHaveAttribute("data-build-phase", "edges");
 
   // 「처음 각도로」로 돌아와 위쪽 엣지 둘, 코너 하나
-  await build.locator("[data-build-home-view]").click();
+  await build.locator("[data-cube-view-home]").click();
   await settled(canvas);
   expect(
     await canvas.evaluate(

@@ -9,7 +9,7 @@ import type { Axis, CubeMove } from "../view/types";
  * - 층 수(2026-11-04, csTimer와 같음): `layers:L-` `layers:L+` `layers:R+` `layers:R-`. 왼손(L·Lw)·오른손(R·Rw) 키가
  *   돌리는 바깥 층 수를 하나 줄이거나 늘린다. 큰 큐브(4×4부터)
  * - 명령: `undo`(되돌리기) `reset`(맞춘 상태로) `scramble`(다시 섞기) `inspectionSkip`(살펴보기 접기·블라인드 시작/끝)
- *   `peekBack`·`peekDown`(누르는 동안 뒤·아래 살짝 보기)
+ *   `peekBack`·`peekDown`(누르는 동안 뒤·아래 살짝 보기) `viewHome`(끌어 돌린 보기를 처음 각도로, 2026-11-10)
  */
 
 export type ActionId = string;
@@ -21,6 +21,7 @@ export const COMMANDS = [
   "inspectionSkip",
   "peekBack",
   "peekDown",
+  "viewHome",
 ] as const;
 export type Command = (typeof COMMANDS)[number];
 
@@ -31,6 +32,7 @@ export const COMMAND_LABEL: Record<Command, string> = {
   inspectionSkip: "살펴보기 접기·블라인드 시작/끝",
   peekBack: "뒤 살짝 보기(누르는 동안)",
   peekDown: "아래 살짝 보기(누르는 동안)",
+  viewHome: "처음 각도로",
 };
 
 export type ParsedAction =
