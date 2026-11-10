@@ -397,7 +397,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-insert",
     role: "operator",
-    title: "결과를 보고 내 예측서 끼워 넣기",
+    title: "결과를 보고 운영자 예측서 끼워 넣기",
     how: "drand 값이 나온 뒤 빛난 별로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = cloneLedger(w);
@@ -517,8 +517,8 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "op-director-forge",
     role: "operator",
-    title: "국장 열쇠 없이 소속 추가",
-    how: "장부에 지정되지 않은 내 패스키로 '소속 추가' 운영 기록에 서명해 2회차 기록에 넣고, 앵커까지 고쳐 씁니다.",
+    title: "국장 패스키 없이 소속 추가",
+    how: "국장으로 지정되지 않은 운영자의 다른 패스키로 '소속 추가' 운영 기록에 서명해 2회차 기록에 넣고, 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = await withOperation(w, (after) =>
         signAsDirector(
@@ -534,15 +534,15 @@ export const ATTACKS: readonly Attack[] = [
       );
       return ledgerAttack(
         l,
-        "운영 기록은 장부에 지정되고 3회차 예고가 지난 국장 열쇠의 서명만 받습니다. 국장 열쇠 지정도 장부에 남아 누구나 내력을 봅니다.",
+        "운영 기록은 장부에 지정되고 3회차 예고가 지난 국장 패스키의 서명만 받습니다. 국장 패스키 지정도 장부에 남아 누구나 내력을 봅니다.",
       );
     },
   },
   {
     id: "op-director-now",
     role: "operator",
-    title: "서버 열쇠로 내 열쇠를 바로 국장에",
-    how: "서버 서명 열쇠(관인)로 내 패스키를 국장 열쇠로 지정하면서 예고 없이 다음 회차부터 적용합니다.",
+    title: "서버 열쇠로 운영자 패스키를 바로 국장에",
+    how: "서버 서명 열쇠(관인)로 운영자의 다른 패스키를 국장 패스키로 지정하면서 예고 없이 다음 회차부터 적용합니다.",
     run: async (w) => {
       const l = await withOperation(w, async (after) =>
         signAsSeal(
@@ -559,7 +559,7 @@ export const ATTACKS: readonly Attack[] = [
       );
       return ledgerAttack(
         l,
-        "관인으로 국장 열쇠를 지정하는 일 자체는 규칙에 있지만, 운영 기록은 실린 회차 뒤 3회차 동안 예고되고 그다음 회차부터 적용됩니다. 예고 없이 바로 적용하려 한 것이 걸렸습니다. 예고 동안 장부에 보이므로 진짜 국장이 예고 취소로 거둘 수 있습니다.",
+        "관인으로 국장 패스키를 지정하는 일 자체는 규칙에 있지만, 운영 기록은 실린 회차 뒤 3회차 동안 예고되고 그다음 회차부터 적용됩니다. 예고 없이 바로 적용하려 한 것이 걸렸습니다. 예고 동안 장부에 보이므로 진짜 국장이 예고 취소로 거둘 수 있습니다.",
       );
     },
   },
@@ -643,7 +643,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "en-replay",
     role: "entrant",
-    title: "지난 입상 증명 다시 쓰기",
+    title: "지난 입상 확인 응답 다시 쓰기",
     how: "남이 예전에 받은 입상 확인 응답을 새 확인 요청에 그대로 냅니다.",
     run: async (w) => {
       const t = myTicket(w);

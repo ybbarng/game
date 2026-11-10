@@ -17,7 +17,7 @@ const ROLES: { id: Role; label: string; who: string }[] = [
   {
     id: "operator",
     label: "서버 운영자",
-    who: "장부를 쓰고 앵커 저장소도 가진 사람입니다. 고친 뒤 사슬을 다시 잇고 앵커도 강제 push로 고쳐 쓴다고 칩니다.",
+    who: "장부를 쓰고 앵커 저장소도 가진 사람입니다. 공격마다 할 수 있는 만큼 감춥니다. 대개는 고친 뒤 사슬을 다시 잇고 앵커도 강제 push로 고쳐 씁니다.",
   },
   {
     id: "entrant",

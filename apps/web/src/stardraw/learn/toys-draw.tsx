@@ -301,8 +301,8 @@ export function DrandToy() {
       <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
           ② drand 값은 League of Entropy라는 여러 기관의 모임이 함께 서명해
-          3초마다 냅니다. 그 시각 전에는 아무도 모릅니다. 실제 값(순번
-          1,000,000)으로 확인해 봅니다.
+          3초마다 냅니다. 그 시각 전에는 아무도 모릅니다. ②와 ③은 ①과 상관없이
+          받아 둔 실제 값 하나(순번 1,000,000)로 보여 줍니다.
         </span>
         <Row label="BLS 서명(48바이트)">
           <Mono tone={flip ? "warn" : "plain"}>
@@ -330,7 +330,8 @@ export function DrandToy() {
           ③ 씨앗은 게임의 회차 번호와 난수를 이어 붙여 해시한 값입니다. 앞에
           용도 이름 「stardraw/seed/v1」을 붙여 다른 용도의 해시와 섞이지 않게
           합니다. 번호는 이 씨앗 하나에서 나옵니다. 예측서 목록은 들어가지 않아
-          운영자가 예측서를 넣고 빼도 번호는 그대로입니다.
+          운영자가 예측서를 넣고 빼도 번호는 그대로입니다. 여기의 회차 번호는
+          ①의 회차와 따로 바꿉니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setRound(Math.max(1, round - 1))}>−</Btn>
@@ -695,8 +696,8 @@ export function SasToy() {
             확인하는 분 열쇠{" "}
             <Mono>{short(world.checker.publicKey.slice(1), 8)}</Mono>, 입상자
             열쇠 <Mono>{short(world.winner.publicKey.slice(1), 8)}</Mono>, 요청
-            id <Mono>{REQUEST_ID}</Mono>. 공유 비밀은 두 기기의 비밀 열쇠가
-            있어야 계산됩니다.
+            id <Mono>{REQUEST_ID}</Mono>. 공유 비밀은 두 기기 가운데 한쪽의 비밀
+            열쇠가 있어야 계산됩니다.
           </Row>
           {mitm && (
             <Row label="바꿔치기">

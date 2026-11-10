@@ -138,9 +138,14 @@ const TERMS: OrderedTerm[] = [
   { term: "공유 비밀", use: /공유 비밀|ECDH/, define: /공유 비밀이라 합니다/ },
   { term: "중간자", use: /중간자/, define: /중간자는 내 기기와/ },
   {
-    term: "국장 열쇠",
-    use: /국장 열쇠/,
-    define: /국장 열쇠로 지정된 패스키\(/,
+    term: "국장 패스키",
+    use: /국장 패스키|국장 열쇠/,
+    define: /우주국장이 국장 패스키로|국장 패스키\(장부에/,
+  },
+  {
+    term: "입상 확인 응답",
+    use: /입상 확인 응답/,
+    define: /입상 확인 응답이라 부릅니다/,
   },
   { term: "소속", use: /소속/, define: /소속은 우주국장이/ },
   { term: "천체 주소", use: /천체/, define: /천체 주소는 등록증에/ },
@@ -171,6 +176,7 @@ describe("보안 배우기 용어 순서", () => {
     expect(all).not.toMatch(/예측서 열쇠/);
     expect(all).not.toMatch(/drand [0-9,]*회(?!차의|차와)|drand 회차/);
     expect(all).not.toMatch(/기대값/);
+    expect(all).not.toMatch(/국장 열쇠|봉인 토큰|머클 증명/);
   });
 });
 

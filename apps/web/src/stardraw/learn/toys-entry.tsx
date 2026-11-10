@@ -231,7 +231,7 @@ export function SignToy() {
           <Verdict ok={ok} testId="sign">
             {ok
               ? "서명이 맞습니다. 이 열쇠의 주인이 이 내용 그대로 냈습니다."
-              : "서명이 맞지 않습니다. 서명한 뒤 내용이 바뀌었습니다."}
+              : "서명이 맞지 않습니다. 서명한 뒤 내용이나 서명이 바뀌었습니다."}
           </Verdict>
         </div>
       )}
@@ -342,8 +342,8 @@ export function PasskeyToy() {
         </Btn>
         {exported && (
           <span data-export-result className="text-rose-200 text-xs">
-            브라우저 답: {exported} — 꺼낼 수 없게 만든 열쇠라 화면 코드도 못
-            봅니다.
+            브라우저가 거절했습니다({exported}). 꺼낼 수 없게 만든 열쇠라 화면
+            코드도 못 봅니다.
           </span>
         )}
       </div>
@@ -615,7 +615,7 @@ export function PowToy() {
                 <Mono>{run.head}</Mono>
               </Row>
               <Verdict ok testId="pow">
-                확인하는 쪽은 Argon2를 한 번만 계산하면 됩니다(
+                확인하는 쪽은 Argon2id를 한 번만 계산하면 됩니다(
                 {run.checkMs?.toFixed(0)}ms). 만드는 쪽은 {run.tries}번
                 했습니다.
               </Verdict>
@@ -856,7 +856,7 @@ export function MerkleToy() {
       </Verdict>
       <Verdict ok={proofOk} testId="merkle-proof">
         {mine < 0
-          ? "내 예측서가 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 예측 접수증으로 누구에게나 보일 수 있습니다."
+          ? "내 예측서가 목록에 없어 포함 증명을 만들 수 없습니다. 내가 냈는데 빠졌다는 것은 서버가 서명해 준 접수증으로 누구에게나 보일 수 있습니다."
           : proofOk
             ? `내 예측서의 포함 증명을 확인했습니다. 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다.`
             : "내 예측서의 포함 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다."}
