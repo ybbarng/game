@@ -9,7 +9,7 @@ import { type AlgBook, loadAlgBook, watchAlgBook } from "../algs/store";
 import type { Command } from "../input";
 import type { Keymap } from "../input/keymaps";
 import { loadKeymap } from "../input/storage";
-import { ALG_SETS } from "../learn";
+import { ALG_SETS } from "../learn/alg-sets";
 import { countsAsMove, goalMet } from "../learn/judge";
 import { loadTrain, recordSolve } from "../learn/progress";
 import { drawRound } from "../practice/deck";

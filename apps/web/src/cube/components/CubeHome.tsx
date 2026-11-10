@@ -115,7 +115,7 @@ function useNextStep(): NextStep | null {
       solo3,
       anySolo: SIZES.some((n) => loadRecords("solo", n).length > 0),
     };
-    Promise.all([import("../learn"), import("../nav/next-step")]).then(
+    Promise.all([import("../learn/courses"), import("../nav/next-step")]).then(
       ([{ COURSES }, { nextStep }]) => {
         if (live) setStep(nextStep(input, COURSES));
       },

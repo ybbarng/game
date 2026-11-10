@@ -5,14 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
-import {
-  type BesideCube,
-  COURSES,
-  type Course,
-  courseById,
-  type Lesson,
-  type LessonStep,
-} from "../learn";
+import { COURSES, courseById } from "../learn/courses";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -32,6 +25,7 @@ import {
   markTryPassed,
   resumeStep,
 } from "../learn/progress";
+import type { BesideCube, Course, Lesson, LessonStep } from "../learn/types";
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";

@@ -33,11 +33,11 @@ import {
 } from "@game/cube-engine";
 import { nextInt, type RngState } from "@game/mighty-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-
+import type { AlgSetInfo } from "./alg-sets";
 import { EDGES_5X5 } from "./algs-big";
-import type { AlgSetInfo } from "./index";
+// 단원 글(lessons-333)의 CORNER_TWIST와 같은 값. 채점기가 단원 글에 기대지 않게 원본에서 바로 가져온다
+import { TWIST as CORNER_TWIST } from "./beginner-path";
 import { isMethodGoal, methodGoalMet } from "./judge-methods";
-import { CORNER_TWIST } from "./lessons-333";
 import type {
   AlgCase,
   CubeSize,

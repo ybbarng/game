@@ -6,7 +6,6 @@ import {
   createJobRunner,
   createLanedRunner,
   distanceInWorker,
-  importAlgsInWorker,
   scrambleInWorker,
   type WorkerLike,
 } from "./index";
@@ -23,20 +22,6 @@ describe("큐브 워커 모듈", () => {
   it("완성까지 거리도 워커를 못 쓰면 같은 스레드에서 셈한다(2×2)", async () => {
     const s = applyMoves(2, solvedCube(2), parseMoves(2, "R U R'"));
     expect(await distanceInWorker(2, s, 8)).toBe(3);
-  });
-
-  it("내 공식 가져오기도 워커를 못 쓰면 같은 스레드에서 한다", async () => {
-    const text = JSON.stringify({
-      format: "cube-algs",
-      version: 1,
-      cases: { "oll-27": { mine: ["L U L' U L U2 L'", "R U R'"] } },
-    });
-    const r = await importAlgsInWorker({}, text);
-    expect(r.added).toBe(1);
-    expect(r.rejected.map((x) => x.message)).toEqual(["F2L이 깨짐"]);
-    await expect(importAlgsInWorker({}, "{")).rejects.toThrow(
-      "JSON을 읽지 못함",
-    );
   });
 });
 
@@ -115,7 +100,6 @@ describe("워커 시간 상한", () => {
       scramble: inf,
       solve: inf,
       plan: inf,
-      "algs-import": inf,
       hero: inf,
       cross: inf,
       distance: inf,

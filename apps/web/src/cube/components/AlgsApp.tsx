@@ -20,6 +20,7 @@ import {
   loadHabit,
   readyForKnown,
 } from "../algs/habit";
+import { importAlgsInWorker } from "../algs/import-in-worker";
 import { algLink, parseAlgLink } from "../algs/link";
 import { useSettled } from "../algs/settle";
 import {
@@ -52,11 +53,11 @@ import {
   regripAlg,
   removeRotations,
 } from "../algs/transform";
-import { ALG_SETS, type AlgCase, type AlgSet, type AlgSetInfo } from "../learn";
+import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { movesOf } from "../learn/judge";
+import type { AlgCase, AlgSet } from "../learn/types";
 import { formatMs } from "../records";
 import { type CubeSettings, useCubeSettings } from "../settings";
-import { importAlgsInWorker } from "../worker";
 import { AlgChips } from "./AlgChips";
 import { AlgPicture } from "./AlgPicture";
 import { DemoCube } from "./DemoCube";

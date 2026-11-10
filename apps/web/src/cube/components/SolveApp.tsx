@@ -55,7 +55,7 @@ import {
 import { COMBO_SHOW } from "../flow/strip";
 import { soloSound } from "../game-sounds";
 import type { Command } from "../input";
-import type { AlgCase } from "../learn";
+import type { AlgCase } from "../learn/types";
 import { FIT_CHOICE } from "../online/bot-choices";
 import { recentAverage } from "../online/handicap";
 import { NEAR_LIMIT, type ShortSolution } from "../progress/distance";

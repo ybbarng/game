@@ -1,7 +1,7 @@
 // 버릇 들이기 기록(이 기기 localStorage `cube.habit.v1`, docs/47 8-1).
 // 상황마다 「내 공식으로 푼 연속 횟수」·최근 시간·마지막 연습 시각을 둔다. 버릇 상태(안 정함·들이는 중·익숙함)는
 // 내 공식(`cube.algs.v1`의 habit)에 있어 내보내기·가져오기로 함께 옮겨진다. 이 기록은 연습 자취라 이 기기에만 둔다.
-import type { AlgSet } from "../learn";
+import type { AlgSet } from "../learn/types";
 
 export const HABIT_KEY = "cube.habit.v1";
 /** 상황마다 남기는 최근 시간 수(내 공식으로 푼 것만) */
