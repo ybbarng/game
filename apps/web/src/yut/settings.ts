@@ -91,7 +91,7 @@ export const YUT_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "쓸 수 있는 수 가운데 아무거나 둔다.",
+    description: "움직일 수 있는 말 가운데 아무거나 고른다.",
   },
   {
     value: 1,

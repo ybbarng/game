@@ -23,7 +23,7 @@ const TERMS: OrderedTerm[] = [
   { term: "기루다", use: /(^|[^노])기루다/, define: entry("기루다") },
   { term: "노기루다", use: /노기루다/, define: entry("노기루다") },
   { term: "선거", use: /선거/, define: entry("선거") },
-  { term: "공약", use: /공약/, define: /\(출마\)|^공약\n/ },
+  { term: "공약", use: /공약/, define: /약속이 공약|^공약\n/ },
   { term: "바닥 카드", use: /바닥 카드/, define: entry("바닥 카드") },
   { term: "주공", use: /주공/, define: /대표인 주공|^주공\n/ },
   { term: "프렌드", use: /프렌드/, define: /\(프렌드\)|^프렌드\n/ },

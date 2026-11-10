@@ -74,8 +74,7 @@ export const GAMES: readonly GameEntry[] = [
     id: "hearts",
     name: "하트",
     englishName: "Hearts",
-    tagline:
-      "하트 카드와 스페이드 Q를 가져오지 않게 피하는 카드게임. 윈도우 하트 규칙",
+    tagline: "하트 카드와 ♠Q를 가져오지 않게 피하는 카드게임. 윈도우 하트 규칙",
     players: "4명",
     path: "/hearts",
   },

@@ -41,9 +41,10 @@ export function KillPanel({
   return (
     <Panel title="이번 판에서 뺄 사람을 카드로 지목하세요">
       <p className="panel-aside text-center text-xs opacity-70">
-        고른 카드를 가진 사람이 이번 판에서 빠집니다. 그 카드가 바닥 카드에 있어
-        아무도 빠지지 않으면 다시 고릅니다. 내 손에 있거나 이미 고른 카드는 고를
-        수 없습니다.
+        6·7명 규칙은 한 판에 다섯 명만 하므로, 주공이 카드 한 장을 말해 남는
+        사람을 뺍니다. 고른 카드를 가진 사람이 이번 판에서 빠집니다. 그 카드가
+        바닥 카드에 있어 아무도 빠지지 않으면 다시 고릅니다. 내 손에 있거나 이미
+        고른 카드는 고를 수 없습니다.
       </p>
       {decision.failed.length > 0 && (
         <p className="text-center text-xs">
@@ -83,6 +84,7 @@ export function PickPanel({
   return (
     <Panel title="한 장을 고르세요">
       <p className="text-center text-xs opacity-70">
+        2명 규칙은 덱에서 두 장을 보고 한 장씩 골라 손에 든 카드를 만듭니다.
         고르지 않은 카드는 이번 판에서 빠집니다.
       </p>
       <div className="flex justify-center gap-4">

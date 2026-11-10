@@ -172,7 +172,7 @@ function OmokPuzzleRun({
           : puzzle.kind === "pick"
             ? puzzle.reason === "opening"
               ? "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요"
-              : "그 수는 막기만 하거나 막지 못해요"
+              : "그 수는 백 열린 셋을 못 막거나, 막아도 흑 열린 셋이 생기지 않아요"
             : "그 수로는 백의 공격을 못 막아요"
       }
       wrongHint={set.hint}

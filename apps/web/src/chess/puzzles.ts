@@ -107,7 +107,7 @@ const TACTIC_SETS: readonly {
 }[] = [
   {
     tactic: "fork",
-    summary: "한 기물로 두 곳을 함께 노린다. 흑은 하나만 지킬 수 있다",
+    summary: "한 기물로 두 곳을 함께 노린다. 흑은 하나만 지킬 수 있다.",
     puzzles: [
       { fen: "7k/8/8/Pp1Q4/8/1K1n4/3p4/5b2 w - - 0 30", solution: "Qh1+" },
       { fen: "8/7k/7r/1N6/5b2/2K2B2/Q7/8 w - - 0 30", solution: "Qf7+" },
@@ -122,7 +122,7 @@ const TACTIC_SETS: readonly {
   {
     tactic: "pin",
     summary:
-      "앞 기물 뒤에 킹이나 값이 더 높은 기물이 있으면 앞 기물은 비킬 수 없다",
+      "앞 기물 뒤에 값이 더 높은 기물이 있으면 앞 기물이 비킬 때 뒤 기물이 잡힌다. 뒤가 킹이면 앞 기물은 아예 비킬 수 없다.",
     puzzles: [
       { fen: "8/2b4k/8/3b4/8/R4p2/5R2/2K5 w - - 0 30", solution: "Ra7" },
       { fen: "3bk3/5b2/8/8/8/6K1/8/2RR4 w - - 0 30", solution: "Rc8" },
@@ -136,7 +136,7 @@ const TACTIC_SETS: readonly {
   },
   {
     tactic: "skewer",
-    summary: "앞의 킹이나 퀸을 노려 비키게 하고, 뒤에 있던 기물을 잡는다",
+    summary: "앞의 킹이나 퀸을 노려 비키게 하고, 뒤에 있던 기물을 잡는다.",
     puzzles: [
       { fen: "3kq3/8/3p2PQ/3P4/8/8/1R6/3K4 w - - 0 30", solution: "Rb8+" },
       { fen: "3r4/1p6/3k4/7Q/8/4P3/2R5/6K1 w - - 0 30", solution: "Rd2+" },
@@ -150,7 +150,7 @@ const TACTIC_SETS: readonly {
   {
     tactic: "discovered",
     summary:
-      "앞을 막던 기물이 비키며 뒤 기물의 길을 연다. 두 노림을 한 번에 막지 못한다",
+      "앞을 막던 기물이 비키며 뒤 기물의 길을 연다. 흑은 두 노림을 한 번에 막지 못한다.",
     puzzles: [
       { fen: "8/k7/8/8/7p/r1B1RR2/8/3K4 w - - 0 30", solution: "Bd4+" },
       { fen: "8/1k6/1P2R3/2q2B1R/2p4n/8/8/7K w - - 0 30", solution: "Be4+" },
@@ -167,7 +167,7 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
   {
     id: "mate1",
     title: "한 수 메이트",
-    summary: "한 수로 체크를 불러 킹이 피할 곳을 없앤다",
+    summary: "한 수로 체크를 걸어 킹이 피할 곳을 없앤다.",
     puzzles: MATE_IN_ONE.map((p, i) => ({
       id: `mate1-${i + 1}`,
       kind: "mate",
@@ -178,7 +178,7 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
   {
     id: "mate2",
     title: "두 수 메이트",
-    summary: "상대가 어떻게 받아도 다음 수에 메이트가 되는 첫 수를 찾는다",
+    summary: "상대가 어떻게 받아도 다음 수에 메이트가 되는 첫 수를 찾는다.",
     puzzles: MATE_IN_TWO.map((p, i) => ({
       id: `mate2-${i + 1}`,
       kind: "mate",
@@ -190,7 +190,7 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
     id: "king-pawn",
     title: "킹과 폰",
     summary:
-      "킹과 폰 하나가 킹 하나를 이기는 판. 폰부터 밀면 비긴다. 킹을 먼저 앞세우는 한 수를 찾는다",
+      "킹과 폰 하나가 킹 하나를 이기는 판. 폰부터 밀면 비긴다. 킹을 먼저 앞세우는 한 수를 찾는다.",
     puzzles: KING_AND_PAWN.map((p, i) => ({
       id: `king-pawn-${i + 1}`,
       kind: "endgame" as const,

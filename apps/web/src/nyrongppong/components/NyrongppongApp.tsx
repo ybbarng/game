@@ -170,8 +170,8 @@ function NyrongppongOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">
           뽕을 한 번 이상 한 뒤 손에 남은 숫자 합이 이 값 이하이면, 더미에서
-          가져오기 전에 스톱할 수 있다. 내 합이 가장 낮지 않으면 스톱 벌점
-          30점을 더 받는다.
+          가져오기 전에 스톱할 수 있다. 내 합이 다른 모든 사람보다 낮지 않으면
+          스톱 벌점 30점을 더 받는다.
         </p>
       </Section>
       <Section title="뽕 바가지">
@@ -274,8 +274,8 @@ function NyrongppongRulesScreen({ onBack }: { onBack: () => void }) {
           <dt className="font-bold text-amber-200">약</dt>
           <dd className="leading-relaxed opacity-85">
             더미에서 가져온 뒤 손의 여섯 장이 아래 모양 가운데 하나이면 약을
-            내고 판을 끝낸다. 약을 낸 사람은 아래 약 점수를 받고, 나머지는 손에
-            남은 합을 받는다.
+            내고 판을 끝낸다. 약을 낸 사람은 아래 약 점수가 그 판 벌점이
+            되고(0점이나 마이너스), 나머지는 손에 남은 합을 받는다.
             <ul className="list-inside list-disc">
               {YAK_INFO.map((y) => (
                 <li key={y.kind}>
@@ -335,7 +335,7 @@ function NyrongppongHome({
           <h1 className="mt-2 font-black text-4xl tracking-wide">나이롱뽕</h1>
         </>
       }
-      tagline="같은 달 석 장을 모으면 뽕! 손에 남은 숫자를 가장 작게"
+      tagline="남이 버린 카드와 같은 달 두 장이면 뽕! 손에 남은 숫자를 가장 작게"
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🎴",

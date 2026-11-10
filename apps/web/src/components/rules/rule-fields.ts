@@ -54,8 +54,8 @@ export const BOOL_GROUPS: RuleGroup[] = [
       },
       {
         key: "discardedPointsToOpposition",
-        label: "버린 점수 카드는 야당 몫",
-        hint: "끄면 주공이 바닥에 버린 점수 카드를 여당이 딴 것으로 친다.",
+        label: "묻은 점수 카드는 야당 몫",
+        hint: "끄면 주공이 바닥에 묻은 점수 카드를 여당이 딴 것으로 친다.",
       },
       {
         key: "friendLeadsNextRound",
@@ -87,12 +87,12 @@ export const BOOL_GROUPS: RuleGroup[] = [
       {
         key: "noKirudaAdvantage",
         label: "노기루다는 1 적게 부를 수 있다",
-        hint: "최소 공약을 부를 때와 당선 뒤 기루다를 바꿀 때 1 적게 불러도 된다.",
+        hint: "최소 공약을 부를 때와 당선 뒤 기루다를 바꿀 때만 1 적게 불러도 된다.",
       },
       {
         key: "noKirudaAlways",
         label: "노기루다는 늘 1 적게 친다",
-        hint: "♠15 다음에 노기루다 15를 부를 수 있다.",
+        hint: "선거 내내 노기루다 공약을 같은 숫자의 기루다 공약보다 1 높게 친다. 그래서 ♠15 다음에 노기루다 15를 부를 수 있다.",
       },
     ],
   },

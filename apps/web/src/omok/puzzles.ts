@@ -1212,7 +1212,7 @@ export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
     title: "열린 넷",
     summary:
       "양쪽이 다 열린 넷을 만들면 상대는 한쪽만 막을 수 있어요. 두 수 만에 이겨요.",
-    prompt: "두 수 안에 이기세요(막을 수 없는 넷)",
+    prompt: "두 수 안에 이기세요(열린 넷)",
     hint: "다섯 자리가 두 곳 생기는 수를 찾아요. 한쪽이 막힌 줄은 열린 넷이 되지 않아요.",
     puzzles: attack("open-four", 2, OPEN_FOUR),
   },
@@ -1240,7 +1240,7 @@ export const OMOK_PUZZLE_SETS: readonly OmokPuzzleSet[] = [
     summary:
       "렌주 규칙에서 흑은 3·3, 4·4, 장목(여섯 이상) 자리에 둘 수 없어요. 이길 것 같은 자리가 금지 자리면, 다른 줄에서 열린 넷을 만들어요.",
     prompt: "렌주 규칙: 금지 자리를 피해 두 수 안에 이기세요",
-    hint: "× 표시는 흑이 둘 수 없는 자리예요(넷이 둘 생기거나 여섯이 되는 곳). 그 자리 말고, 다른 줄에서 열린 넷을 만드는 자리를 찾아요.",
+    hint: "× 표시는 흑이 둘 수 없는 자리예요(3·3, 4·4, 장목이 되는 곳). 그 자리 말고, 다른 줄에서 열린 넷을 만드는 자리를 찾아요.",
     puzzles: RENJU.map((s, i) => ({
       id: `renju-${i + 1}`,
       kind: "attack" as const,

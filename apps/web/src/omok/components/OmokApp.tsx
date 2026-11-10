@@ -331,7 +331,7 @@ function OmokHome({
         title: "오목 배우기",
         learned,
         total: OMOK_LESSONS.length,
-        firstHint: `처음이라면 여기부터. ${OMOK_LESSONS.length}단원, 미션 4개`,
+        firstHint: `처음이라면 여기부터. ${OMOK_LESSONS.length}단원, 직접 둬 보는 과제 4개`,
         onClick: onLearn,
       }}
       onOptions={onOptions}
@@ -427,7 +427,7 @@ export function OmokApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `사로 몰아 이기기·막기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키워요`,
+          detail: `넷으로 몰아 이기기·막기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

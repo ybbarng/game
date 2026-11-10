@@ -258,7 +258,7 @@ function BadukRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "죽은 돌",
-      "끝까지 살릴 수 없는 돌을 죽은 돌이라 한다. 여기서는 판 위에 놓인 돌을 그대로 세므로, 내 집 안에 들어온 상대의 죽은 돌은 끝내기 전에 따내야 한다. 따내지 않고 쉬면 그 둘레는 내 집으로 세지 않는다.",
+      "상대가 결국 따낼 수 있어 살릴 길이 없는 돌을 죽은 돌이라 한다. 여기서는 판 위에 놓인 돌을 그대로 세므로, 내 집 안에 들어온 상대의 죽은 돌은 끝내기 전에 따내야 한다. 따내지 않고 쉬면 그 둘레는 내 집으로 세지 않는다.",
     ],
   ];
   return (
@@ -459,7 +459,7 @@ export function BadukApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `잡기·사활 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 정석 수순 ${JOSEKI_SET.puzzleIds.length}개. 규칙을 익혔다면 여기서 실력을 키워요`,
+          detail: `돌 잡기·살리기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개, 구석에서 흔히 두는 정해진 수 ${JOSEKI_SET.puzzleIds.length}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

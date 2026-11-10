@@ -225,8 +225,9 @@ export function RuleEditor({
 
         <Section title="여당이 이겼을 때 점수">
           <p className="pb-1 text-xs opacity-60">
-            식에서 공약은 주공이 건 장수, 최소는 최소 공약, 득점은 여당이 딴
-            점수 카드 장수다.
+            식으로 나온 값에 따라 돈이 오간다. 식에서 공약은 주공이 건 장수,
+            최소는 선거에서 부를 수 있는 가장 낮은 장수(최소 공약), 득점은
+            여당이 딴 점수 카드 장수다.
           </p>
           <Choice
             value={rules.winScoring}

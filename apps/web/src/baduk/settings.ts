@@ -96,7 +96,7 @@ export const SIZE_INFO: readonly {
     value: 13,
     label: "13줄",
     description:
-      "9줄과 19줄 사이 크기다. 초반에 넓게 자리를 나눠 잡는 수가 조금 생긴다.",
+      "9줄과 19줄 사이 크기다. 9줄보다 넓어 초반에 판 여기저기 자리를 먼저 잡는 수가 조금 중요해진다.",
   },
   {
     value: 19,

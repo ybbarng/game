@@ -31,7 +31,7 @@ export const YAK_INFO: readonly { kind: YakKind; text: string }[] = [
   },
   {
     kind: "ttoi",
-    text: "같은 달 두 장씩 세 쌍, 또는 같은 달 석 장씩 두 쌍: 0점",
+    text: "같은 달 두 장씩 세 묶음, 또는 같은 달 석 장씩 두 묶음: 0점",
   },
 ];
 

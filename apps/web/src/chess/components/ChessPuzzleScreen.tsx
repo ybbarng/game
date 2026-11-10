@@ -204,8 +204,8 @@ function ChessPuzzleRun({
         tactic
           ? TACTIC_HINT[tactic]
           : endgame
-            ? "폰보다 킹이 먼저예요. 흑 킹과 마주 서거나 폰 앞 칸을 차지해요"
-            : "체크를 부르고, 킹이 피할 칸을 모두 막아야 해요"
+            ? "폰보다 킹이 먼저예요. 흑 킹과 한 칸 띄우고 마주 서거나, 폰 바로 앞 칸을 내 킹으로 차지해요"
+            : "체크를 걸고, 킹이 피할 칸을 모두 막아야 해요"
       }
       shown={shown !== null}
       explain={run.explain}

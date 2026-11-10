@@ -266,7 +266,7 @@ function JanggiRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "포",
-      "가로·세로로 가되, 반드시 기물 하나를 뛰어넘어서 간다. 포는 다른 포를 뛰어넘지도 잡지도 못한다.",
+      "가로·세로로 가되, 반드시 기물 하나를 뛰어넘어서 간다. 잡을 때도 기물 하나를 뛰어넘어 잡는다. 포는 다른 포를 뛰어넘지도 잡지도 못한다.",
     ],
     [
       "마",
@@ -274,11 +274,11 @@ function JanggiRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "상",
-      "한 칸 곧게 간 뒤 같은 쪽 대각선으로 두 칸 간다. 지나는 칸이 하나라도 막혀 있으면 못 간다.",
+      "한 칸 곧게 간 뒤 바깥쪽 대각선으로 두 칸 간다. 지나는 칸이 하나라도 막혀 있으면 못 간다.",
     ],
     [
       "졸·병",
-      "앞이나 옆으로 한 칸 간다. 뒤로는 못 간다. 상대 궁성 안에서는 앞쪽 대각선으로도 간다.",
+      "상대 쪽으로 한 칸, 또는 옆으로 한 칸 간다. 뒤로는 못 간다. 상대 궁성 안에서는 상대 쪽 대각선으로도 간다.",
     ],
     [
       "장군과 쉬기",
@@ -482,7 +482,7 @@ export function JanggiApp() {
         onOpen={(lessonId) => setScreen({ kind: "lesson", lessonId })}
         extra={{
           title: "수 배우기",
-          detail: `외통·전술 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키워요`,
+          detail: `외통·상대 기물 얻기 문제 ${STUDY_SETS.reduce((n, s) => n + s.puzzleIds.length, 0)}개. 규칙을 익혔다면 여기서 실력을 키웁니다.`,
           onClick: () => setScreen({ kind: "study" }),
         }}
       />

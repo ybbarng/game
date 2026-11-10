@@ -61,7 +61,7 @@ export const ONECARD_LEVELS: readonly OnecardLevelInfo[] = [
     level: 1,
     name: "중수",
     description:
-      "공격 카드와 7·J·Q·K를 받아칠 때 쓰려고 아끼고, 다음 사람 손에 카드가 적으면 막는다.",
+      "공격 카드는 받아칠 때 쓰려고 아끼고, 7·J·Q·K도 쓸 때를 골라 낸다. 다음 사람 손에 카드가 적으면 막는다.",
     shout: {
       shout: 0.9,
       selfMs: [200, 800],

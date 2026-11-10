@@ -71,7 +71,7 @@ export const JANGGI_LEVELS: readonly {
     value: 3,
     label: "초고수",
     description:
-      "수마다 목표(기물 펼치기·궁성 공격·외통 몰기)를 세우고 더 깊이 읽는다.",
+      "수마다 목표(기물을 앞으로 내보내기·궁성 공격·외통 몰기)를 세우고 더 깊이 읽는다.",
   },
 ];
 
