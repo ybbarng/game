@@ -168,7 +168,52 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm --filter @game/web exec playwright install --with-deps chrome
+      # 러너에 이미 있는 Chrome이 보안 공지의 최소 판(e2e/browser.ts MIN_CHROME) 이상이면 내려받지 않는다(2026-11-10).
+      # 낮거나 없으면 예전처럼 설치한다. 실제로 뜨는 판은 시험 전에 global-setup이 다시 확인한다
+      - name: Chrome 판 확인
+        id: chrome
+        run: |
+          set -euo pipefail
+          min=$(sed -n 's/^export const MIN_CHROME = "\(.*\)";$/\1/p' apps/web/e2e/browser.ts)
+          have=$(google-chrome --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+){3}' || true)
+          echo "최소 판 ${min:-?}, 러너의 Chrome ${have:-없음}"
+          if [ -n "$min" ] && [ -n "$have" ] && [ "$(printf '%s\n%s\n' "$min" "$have" | sort -V | head -n1)" = "$min" ]; then
+            echo "install=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "install=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.chrome.outputs.install == 'true'
+        run: pnpm --filter @game/web exec playwright install --with-deps chrome
+      # Chrome을 설치하지 않아도 글꼴은 `--with-deps`가 넣던 것과 똑같이 둔다. 글꼴이 바뀌면 글자 폭·줄바꿈이 달라져
+      # 화면 시험 판정이 흔들릴 수 있다. 받은 .deb을 캐시해 두고 dpkg로 바로 푼다(apt 목록 받기·내려받기 약 20초를 아낀다)
+      - if: steps.chrome.outputs.install == 'false'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/e2e-font-debs
+          key: e2e-font-debs-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: 글꼴
+        if: steps.chrome.outputs.install == 'false'
+        env:
+          # playwright install --with-deps chrome이 넣는 글꼴(Ubuntu)
+          FONT_PKGS: fonts-liberation fonts-noto-color-emoji fonts-wqy-zenhei fonts-ipafont-gothic fonts-tlwg-loma-otf fonts-unifont fonts-freefont-ttf xfonts-cyrillic xfonts-scalable
+        run: |
+          set -euo pipefail
+          missing=()
+          for p in $FONT_PKGS; do dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p"); done
+          if [ "${#missing[@]}" -eq 0 ]; then echo "글꼴이 모두 있다"; exit 0; fi
+          echo "넣을 글꼴: ${missing[*]}"
+          debs="$HOME/e2e-font-debs"
+          if compgen -G "$debs/*.deb" >/dev/null && sudo dpkg -i "$debs"/*.deb; then
+            echo "캐시한 .deb으로 넣었다"
+          else
+            rm -rf "$debs" && mkdir -p "$debs/partial"
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends --download-only -o Dir::Cache::Archives="$debs" "${missing[@]}"
+            sudo dpkg -i "$debs"/*.deb
+            sudo rm -rf "$debs/partial" "$debs/lock"
+            sudo chown -R "$USER" "$debs"
+          fi
+          for p in "${missing[@]}"; do dpkg -s "$p" >/dev/null; done
       # 이 조각이 맡은 spec만. 목록이 비면 playwright가 모든 spec을 돌리므로 그때는 멈춘다(plan은 빈 조각을 만들지 않는다)
       - name: 화면 시험
         env:

@@ -16,7 +16,10 @@ export const BROWSER = {
   },
 } as const;
 
-/** 위 CVE가 고쳐진 가장 낮은 Chrome 버전. 이보다 낮으면 시험을 시작하지 않는다 */
+/**
+ * 위 CVE가 고쳐진 가장 낮은 Chrome 버전. 이보다 낮으면 시험을 시작하지 않는다.
+ * CI(ci.yml 「Chrome 판 확인」)가 이 줄을 그대로 읽어 러너의 Chrome이 이 판 이상이면 설치를 건너뛴다. 줄 모양을 바꾸지 않는다
+ */
 export const MIN_CHROME = "156.0.8078.73";
 
 /** 점으로 나눈 버전 비교: a가 b보다 낮으면 음수 */
