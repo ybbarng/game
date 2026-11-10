@@ -306,9 +306,9 @@ export async function earlySealItems(
     else if (copy === null) {
       if (now < deadline + EARLY_SEAL_MARGIN + RAW_GRACE)
         copyUnknown.push(round);
-      else fails.push(`${round}회: 관측 전 사본이 없다`);
+      else fails.push(`${round}회: 관측 전 사본이 없습니다.`);
     } else if (!seal || !sameSealText(copy, seal))
-      fails.push(`${round}회: 관측 전 사본이 봉인 파일과 다르다`);
+      fails.push(`${round}회: 관측 전 사본이 봉인 파일과 다릅니다.`);
     else copies++;
     if (scope === "focus" && !focus.has(round)) continue;
     const commit = await witness.commit(round);
@@ -318,7 +318,7 @@ export async function earlySealItems(
     }
     if (commit.date > deadline) {
       fails.push(
-        `${round}회: 관측 전 사본 커밋 시각(${iso(commit.date)}Z)이 기한(${iso(deadline)}Z)보다 늦다`,
+        `${round}회: 관측 전 사본 커밋 시각(${iso(commit.date)}Z)이 기한(${iso(deadline)}Z)보다 늦습니다.`,
       );
       continue;
     }
@@ -326,10 +326,10 @@ export async function earlySealItems(
     const at = await witness.pushedAt(commit);
     if (at === UNKNOWN) pushUnknown.push(round);
     else if (at === null)
-      warns.push(`${round}회: 활동 기록에서 사본 커밋을 찾지 못했다`);
+      warns.push(`${round}회: 활동 기록에서 사본 커밋을 찾지 못했습니다.`);
     else if (at > deadline)
       warns.push(
-        `${round}회: 활동 기록의 push 시각(${iso(at)}Z)이 기한(${iso(deadline)}Z)보다 늦다`,
+        `${round}회: 활동 기록의 push 시각(${iso(at)}Z)이 기한(${iso(deadline)}Z)보다 늦습니다.`,
       );
     else pushed++;
   }
@@ -386,7 +386,7 @@ export async function earlySealItems(
       "warn",
       [
         ...warns,
-        "활동 기록에는 서명이 없고 늦게 기록된 사례가 있어 실패로 보지 않습니다",
+        "활동 기록에는 서명이 없고 늦게 기록된 사례가 있어 실패로 보지 않습니다.",
       ].join(" / "),
     );
   else if (rewrites === UNKNOWN && pushed === 0)

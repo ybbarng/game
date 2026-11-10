@@ -148,9 +148,10 @@ export function ViewFilterDemo() {
   return (
     <Box title="방장이 가진 것과 참가자가 받는 것">
       <p className="text-xs opacity-80">
-        아래는 실제 엔진(<code>createMatch</code>)으로 나눈 한 판입니다. 「방장
-        기기」 칸은 엔진을 돌리는 방장 기기의 메모리이고, 「…에게 가는 데이터」
-        칸은 <code>viewOf(state, seat)</code>로 만들어 그 자리에 보내는
+        아래는 실제 엔진의 게임 시작 함수(코드 이름 <code>createMatch</code>)로
+        첫 판을 나눈 모습입니다. 「방장 기기」 칸은 엔진을 돌리는 방장 기기의
+        메모리이고, 「…에게 보내는 화면 데이터」 칸은 그 자리에서 보이는 것만
+        골라 내는 함수(코드 이름 <code>viewOf</code>)로 만들어 그 자리에 보내는
         데이터입니다.
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -192,7 +193,7 @@ export function ViewFilterDemo() {
         </div>
         <div className="flex flex-col gap-1.5 rounded-lg bg-black/40 p-3">
           <div className="text-xs opacity-70">
-            {names[seat]}에게 가는 데이터(일부)
+            {names[seat]}에게 보내는 화면 데이터(일부)
           </div>
           <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug">
             {json}
@@ -263,10 +264,12 @@ export function CommitRevealDemo() {
   };
 
   return (
-    <Box title="약속하고 공개하기로 시드 만들기">
+    <Box title="약속하고 공개해 시드 만들기">
       <p className="text-xs opacity-80">
-        세 사람이 각자 비밀 값을 정합니다. 실제 코드(<code>fairness.ts</code>의{" "}
-        <code>commit</code>, <code>deriveSeed</code>)를 그대로 씁니다.
+        세 사람이 각자 비밀 값을 정합니다. 약속을 만드는 함수와 공개된 값들로
+        시드를 계산하는 함수를 실제 코드 그대로 씁니다(코드 이름{" "}
+        <code>fairness.ts</code>의 <code>commit</code>, <code>deriveSeed</code>
+        ).
       </p>
       <div className="flex flex-col gap-1.5">
         {players.map((name, i) => (
@@ -329,7 +332,7 @@ export function CommitRevealDemo() {
 }
 
 /* ------------------------------------------------------------------ */
-/* 3. 판 끝 다시 돌리기                                                 */
+/* 3. 끝난 뒤 다시 돌리기                                                */
 /* ------------------------------------------------------------------ */
 
 /** 봇 다섯이 첫 몇 턴을 둔 기록 */
@@ -436,12 +439,12 @@ export function ReplayAuditDemo() {
   };
 
   return (
-    <Box title="판 끝에 다시 돌려 맞춰 보기">
+    <Box title="끝난 뒤 다시 돌려 맞춰 보기">
       <p className="text-xs opacity-80">
-        컴퓨터 다섯이 둔 실제 기록입니다. 방장이 공개한 기록을 참가자(철수)가{" "}
-        <code>step</code>으로 처음부터 다시 돌려, 게임 중 받은 화면과 맞춰
-        봅니다. 카드 내기 줄의 <b>조작</b>을 눌러 방장이 기록을 바꿨다고 해
-        보세요.
+        컴퓨터 다섯이 둔 실제 기록입니다. 방장이 공개한 기록을 참가자(철수)가
+        엔진의 한 걸음 계산(<code>step</code>)으로 처음부터 다시 돌려, 게임 중
+        받은 화면과 맞춰 봅니다. 「조작」은 방장이 그 줄의 기록을 바꾼
+        경우입니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => setTamperView((t) => !t)} active={tamperView}>
@@ -565,7 +568,7 @@ export function HostSignatureDemo() {
     <Box title="초대 링크의 열쇠 지문으로 방장 확인">
       <p className="text-xs opacity-80">
         이 브라우저에서 방금 실제로 서명 열쇠와 공개 열쇠 쌍 두 개(진짜 방장,
-        가짜 방장)를 만들었습니다(서명 방식 ECDSA P-256,{" "}
+        가짜 방장)를 만들었습니다(서명 방식 ECDSA P-256, 코드{" "}
         <code>identity.ts</code>). 방장은 서명 문장에 이 연결의 번호와 인증서
         지문을 넣어 서명합니다.
       </p>
@@ -611,9 +614,8 @@ export function ChatRoutingDemo() {
     <Box title="채팅에서 다른 사람인 척하기">
       <p className="text-xs opacity-80">
         참가자의 말은 방장에게만 가고, 방장이 <b>보낸 연결</b>로 자리를 찾아
-        이름을 붙여 모두에게 다시 보냅니다(<code>host-room.ts</code>의{" "}
-        <code>seatOf(from)</code>). 메시지 안에 이름을 적어 보내도 쓰이지
-        않습니다.
+        이름을 붙여 모두에게 다시 보냅니다(코드 <code>host-room.ts</code>의{" "}
+        <code>seatOf</code>). 메시지 안에 이름을 적어 보내도 쓰이지 않습니다.
       </p>
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="opacity-70">보내는 사람(고친 프로그램)</span>
@@ -915,9 +917,7 @@ export function MentalPokerDemo() {
       </div>
       {state.stage === "dealt" && (
         <div className="flex flex-col gap-1.5 text-xs">
-          <div className="opacity-70">
-            철수 차례: 카드를 내 보세요(정직하게, 또는 고친 프로그램으로).
-          </div>
+          <div className="opacity-70">철수 차례</div>
           <div className="flex flex-wrap gap-1.5">
             {state.owners
               .map((o, slot) => ({ o, slot }))
@@ -955,7 +955,7 @@ export function MentalPokerDemo() {
       )}
       <pre className="whitespace-pre-wrap rounded-lg bg-black/40 p-2 text-[11px] leading-relaxed">
         {state.log.length === 0 ? (
-          "1번부터 눌러 보세요. 방장 화면으로 봐도 남의 카드는 '열 수 없음'입니다."
+          "방장 화면으로 봐도 남의 카드는 '열 수 없음'입니다."
         ) : (
           <SuitText text={state.log.join("\n")} />
         )}
@@ -1171,7 +1171,7 @@ export function ShuffleProofDemo() {
       </div>
       <pre className="whitespace-pre-wrap rounded-lg bg-black/40 p-2 text-[11px] leading-relaxed">
         {log.length === 0 ? (
-          "눌러 보세요. 9장을 섞고 16회짜리 증명을 만들어 확인합니다."
+          "9장을 섞고 16회짜리 증명을 만들어 확인합니다."
         ) : (
           <SuitText text={log.join("\n")} />
         )}

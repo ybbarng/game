@@ -11,52 +11,58 @@ import {
   type Pt,
 } from "../emblemArt";
 import { wingPlates } from "../TierEmblem";
+import { TIER_IDS, type TierId } from "../table";
 
 /**
- * 3D 티어 엠블럼 시안의 장면(docs/47 14-7). 지금 SVG 엠블럼(14-6)의 구도를 그대로 3D로 옮긴다: 베벨 금속 육각 틀,
- * 그 안 우물에 박힌 등각 큐브(조각 27개), 큐브 면 조각 날개, 위 티어의 볏 보석.
+ * 3D 티어 엠블럼 시안의 장면(docs/47 14-7). 지금 SVG 엠블럼(14-6)의 구도를 3D로 옮긴다: 베벨 금속 육각 고리 틀,
+ * 그 두께 한가운데에 박힌 등각 큐브(조각 27개), 큐브 면 조각 날개, 위 티어의 볏·왕관·빛살.
  *
- * - 보석(다이아몬드): 조각마다 모서리를 깎은 맑은 보석. 굴절(transmission·ior)·분산·무지개 막(iridescence)·
- *   겉 코팅(clearcoat). 우물 바닥이 안에서 빛을 내 조각마다 굴절된 빛이 다르게 비친다(보석 사진의 뒤 조명).
- * - 금속(골드): 불투명한 금속(metalness 1). 조각 사이 틈은 어둡게.
- * - 빛: 보석 사진 스튜디오처럼 위 큰 소프트박스, 양옆 띠 조명(림), 작은 점 조명 여럿을 코드로 만든 방에 두고
- *   반사 지도로 쓴다(바깥 파일 없음). 돌리면 조각마다 비치는 조명이 바뀌어 반짝임이 옮겨 다닌다.
+ * - 틀은 앞뒤가 뚫린 고리다(뒤 판·우물 바닥 없음). 뒤 배경과 빛이 보석 조각을 지나 굴절돼 비친다. 앞뒤가 같은 꼴이라
+ *   뒤로 돌려도 자연스럽다.
+ * - 모든 티어가 같은 틀·큐브·비례를 쓰고 재질만 다르다. 조각은 네모 상자에 아주 얕은 두 단 베벨(사각 보석의 계단 면).
+ * - 금속 티어(아이언~플래티넘): 불투명 금속(metalness 1), 티어마다 다른 금속.
+ * - 보석 티어(에메랄드~챌린저): 맑은 보석(굴절·분산). 색은 몸에 맑게 넣고, 다이아몬드·챌린저는 거의 무색.
+ * - 빛: 보석 사진 스튜디오처럼 코드로 만든 방(소프트박스·띠 조명·작은 점 조명)을 반사 지도로 쓴다(바깥 파일 없음).
  *
  * WebGL(`three`)과 WebGPU(`three/webgpu`) 묶음이 서로 다른 클래스 사본을 가지므로, 쓰는 쪽 이름공간을 `T`로 받는다.
- * 그래서 `three/examples`의 도우미(RoundedBoxGeometry, RoomEnvironment 등)를 쓰지 않고 기본 클래스로만 만든다.
+ * 그래서 `three/examples`의 도우미를 쓰지 않고 기본 클래스로만 만든다.
  */
 
 export type Three = typeof THREE_NS;
 
-/** 시안 티어 둘: 보석 하나, 금속 하나 */
-export const DRAFT_TIERS = ["diamond", "gold"] as const;
-export type DraftTier = (typeof DRAFT_TIERS)[number];
+/** 시안 티어: 열 티어 모두 */
+export const DRAFT_TIERS = TIER_IDS;
+export type DraftTier = TierId;
 
+/** 보석 티어(에메랄드부터) */
 export function isGem(tier: DraftTier): boolean {
-  return tier === "diamond";
+  return levelOf(tier) >= 5;
 }
 
 const SIN60 = Math.sqrt(3) / 2;
 /** 큐브 조각 간격과 크기(조각 사이 틈 = 1 - CUBIE) */
 const CUBIE = 0.92;
+/** 조각 베벨 폭(두 단). 큐브 조각처럼 아주 작게 */
+const CUBIE_BEVEL = 0.05;
 /** 큐브 한 변 3을 몸통 대각선으로 볼 때 실루엣 육각형 반지름 */
 const CUBE_SIL = 3 * Math.sqrt(2 / 3);
-/**
- * 틀 앞면 z, 우물 바닥 z, 큐브 가운데 z. 메달은 얇게(두께가 너비의 약 1/5) 두고 큐브가 그 앞으로 솟는다.
- * 처음에는 큐브 전체를 깊은 우물에 넣었더니 돌릴 때 육각 통처럼 보였다. 큐브 뒤 꼭짓점은 뒤 판 두께 안에 묻힌다.
- */
-const Z_FRONT = 0.4;
-const Z_BACK = -0.55;
-const Z_CUBE = 1.0;
+/** 틀 바깥 띠·안 띠(능선) 반두께. 큐브 가운데가 틀 두께의 한가운데(z 0)에 온다 */
+const BAND_OUT = 0.42;
+const BAND_IN = 0.6;
+/** 카메라 거리(다이아몬드 기준). 티어마다 SVG 한 단위 길이에 맞춰 늘이고 줄인다 */
+const CAMERA_Z = 43;
+const U_REF = CUBE_SIL / (CUBE_R * 0.98);
 
 /** 장면을 짓는 데 고르는 것 */
 export interface BuildOptions {
-  /** 뒤 배경판과 드리운 그림자(살아 있는 큰 시안). 찍은 그림(투명 바탕)에는 넣지 않는다 */
+  /** 뒤 배경판(보석이 굴절해 비출 것)과 드리운 그림자 */
   backdrop: boolean;
   /** 배경판 가장자리 색(페이지 바탕과 같게) */
   pageColor: string;
   /** 빛 세기 배수(HDR 길은 흰색보다 밝은 값을 그대로 보낸다) */
   hdr: boolean;
+  /** 뒤 조명 세기 배수(찍은 그림은 작게 보여 대비가 커야 해서 줄인다). 기본 1 */
+  backGlow?: number;
 }
 
 export interface EmblemScene {
@@ -64,31 +70,163 @@ export interface EmblemScene {
   camera: THREE_NS.PerspectiveCamera;
   /** 끌어 돌리는 몸(틀·큐브·날개·볏) */
   spin: THREE_NS.Group;
+  /** 몸이 아닌 뒤(배경판·그림자·후광). 찍은 그림의 테두리 본을 뜰 때 숨긴다 */
+  behind: THREE_NS.Object3D[];
   /** 반사 지도로 구울 스튜디오 방(PMREM에 넘긴 뒤 버린다) */
   studio: THREE_NS.Scene;
   dispose(): void;
 }
 
-/** 재질 값(시안에서 고른 값, 보고·문서에 그대로 적는다) */
-export const LOOK = {
-  gem: {
-    color: "#d4f1ff",
-    attenuationColor: "#4fc6ff",
-    attenuationDistance: 2.6,
-    transmission: 1,
-    ior: 2.33,
-    thickness: 1.25,
-    roughness: 0.015,
-    dispersion: 6,
-    iridescence: 0.08,
-    iridescenceIOR: 1.5,
-    clearcoat: 1,
-    clearcoatRoughness: 0.02,
-    envMapIntensity: 2.4,
-  },
-  diamondMetal: { color: [0.62, 0.72, 0.86], roughness: 0.32 },
-  gold: { color: [1.0, 0.72, 0.29], roughness: 0.32, frameRoughness: 0.2 },
+type Rgb = readonly [number, number, number];
+
+/** 금속 하나(선형 색) */
+interface MetalLook {
+  color: Rgb;
+  roughness: number;
+}
+
+/** 보석 하나 */
+interface GemLook {
+  /** 몸 색(투과에 곱한다). 맑게 두려고 밝은 색만 쓴다 */
+  color: string;
+  /** 두께를 지나며 물드는 색과 거리(길수록 옅다) */
+  attenuationColor: string;
+  attenuationDistance: number;
+  ior: number;
+  dispersion: number;
+}
+
+interface TierLook {
+  frame: MetalLook;
+  /** 금속 티어의 큐브 조각 */
+  block?: MetalLook;
+  /** 보석 티어의 큐브 조각 */
+  gem?: GemLook;
+  /** 틀 꼭짓점 작은 보석·볏 보석 색(플래티넘부터). 보석 티어는 몸 보석을 그대로 쓴다 */
+  accent?: GemLook;
+  /** 티어 색: 후광·림 라이트에 살짝 */
+  tint: string;
+  /** 배경판 가운데 색 */
+  backdrop: string;
+  /** 보석 티어: 큐브 바로 뒤의 뒤 조명 색 */
+  glow?: string;
+}
+
+/** 모든 보석이 함께 쓰는 값 */
+export const GEM_BASE = {
+  transmission: 1,
+  /** 굴절이 보일 만큼만(조각 한 변 0.92). 두꺼우면 뿌옇게 흐렸다 */
+  thickness: 0.7,
+  roughness: 0,
+  specularIntensity: 1,
+  envMapIntensity: 1.7,
 } as const;
+
+/** 티어마다 재질(시안에서 고른 값, 보고·문서에 그대로 적는다) */
+export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
+  iron: {
+    frame: { color: [0.3, 0.31, 0.33], roughness: 0.55 },
+    block: { color: [0.36, 0.37, 0.39], roughness: 0.5 },
+    tint: "#9aa3ad",
+    backdrop: "#2c2f33",
+  },
+  bronze: {
+    frame: { color: [0.8, 0.4, 0.22], roughness: 0.36 },
+    block: { color: [0.86, 0.46, 0.26], roughness: 0.34 },
+    tint: "#e9a070",
+    backdrop: "#3a2a22",
+  },
+  silver: {
+    frame: { color: [0.86, 0.88, 0.9], roughness: 0.24 },
+    block: { color: [0.9, 0.91, 0.93], roughness: 0.26 },
+    tint: "#dfe7f0",
+    backdrop: "#2e333a",
+  },
+  gold: {
+    frame: { color: [1.0, 0.72, 0.29], roughness: 0.2 },
+    block: { color: [1.0, 0.72, 0.29], roughness: 0.32 },
+    tint: "#ffd27a",
+    backdrop: "#3a3426",
+  },
+  platinum: {
+    frame: { color: [0.84, 0.93, 0.92], roughness: 0.18 },
+    block: { color: [0.8, 0.93, 0.91], roughness: 0.24 },
+    accent: {
+      color: "#d8fff6",
+      attenuationColor: "#3fd6bf",
+      attenuationDistance: 1.4,
+      ior: 1.9,
+      dispersion: 2,
+    },
+    tint: "#9ff0e2",
+    backdrop: "#22363a",
+  },
+  emerald: {
+    frame: { color: [0.92, 0.93, 0.94], roughness: 0.26 },
+    gem: {
+      color: "#e2fff0",
+      attenuationColor: "#21d47e",
+      attenuationDistance: 1.1,
+      ior: 1.9,
+      dispersion: 2,
+    },
+    tint: "#7dffbd",
+    backdrop: "#1d3a2e",
+    glow: "#9ef0c4",
+  },
+  diamond: {
+    frame: { color: [0.9, 0.92, 0.96], roughness: 0.26 },
+    gem: {
+      color: "#ffffff",
+      attenuationColor: "#f2f9ff",
+      attenuationDistance: 30,
+      ior: 2.33,
+      dispersion: 8,
+    },
+    tint: "#9fd4ff",
+    backdrop: "#24344c",
+    glow: "#d2e6ff",
+  },
+  master: {
+    frame: { color: [0.82, 0.8, 0.88], roughness: 0.26 },
+    gem: {
+      color: "#f6e6ff",
+      attenuationColor: "#b05cf0",
+      attenuationDistance: 1.2,
+      ior: 1.9,
+      dispersion: 2.5,
+    },
+    tint: "#e2a8ff",
+    backdrop: "#2e2242",
+    glow: "#e2c4ff",
+  },
+  grandmaster: {
+    frame: { color: [0.3, 0.3, 0.33], roughness: 0.24 },
+    gem: {
+      color: "#ffe8e8",
+      attenuationColor: "#f02a3a",
+      attenuationDistance: 1.0,
+      ior: 2.0,
+      dispersion: 2.5,
+    },
+    tint: "#ff8c8c",
+    backdrop: "#3a1e22",
+    glow: "#ffc0c0",
+  },
+  challenger: {
+    frame: { color: [1.0, 0.74, 0.32], roughness: 0.22 },
+    gem: {
+      color: "#ffffff",
+      attenuationColor: "#f6fbff",
+      attenuationDistance: 30,
+      ior: 2.33,
+      dispersion: 14,
+    },
+    tint: "#ffe27a",
+    backdrop: "#2a2e44",
+    glow: "#fff0cc",
+  },
+};
 
 /** SVG 좌표(0~64, y 아래로)를 3D(가운데 0, y 위로)로 */
 function toWorld(p: Pt, u: number): [number, number] {
@@ -126,18 +264,17 @@ function pathOf(T: Three, pts: readonly (readonly [number, number])[]) {
   return p;
 }
 
-/** 육각 띠(바깥 rOut, 안 rIn)를 z0에서 z1까지, 모서리 베벨 */
+/** 육각 띠(바깥 rOut, 안 rIn)를 z -half에서 half까지, 모서리 베벨(앞뒤 같은 꼴) */
 function hexRing(
   T: Three,
   rOut: number,
   rIn: number,
-  z0: number,
-  z1: number,
+  half: number,
   bevel: number,
 ) {
   const shape = shapeOf(T, hexPoints(rOut - bevel));
   shape.holes.push(pathOf(T, hexPoints(rIn + bevel)));
-  const depth = Math.max(0.001, z1 - z0 - 2 * bevel);
+  const depth = Math.max(0.001, 2 * half - 2 * bevel);
   const g = new T.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: bevel > 0,
@@ -146,37 +283,47 @@ function hexRing(
     bevelSegments: 2,
     curveSegments: 1,
   });
-  g.translate(0, 0, z0 + bevel);
+  g.translate(0, 0, -depth / 2);
   return g;
 }
 
-/** 모든 모서리를 깎은 상자(한 변 s, 깎은 폭 c). 깎은 면이 보석의 면처럼 빛을 따로 받는다 */
-function chamferBox(T: Three, s: number, c: number) {
-  const h = s / 2 - c;
-  const k = c * 0.9;
-  const shape = shapeOf(T, [
-    [-h + k, -h],
-    [h - k, -h],
-    [h, -h + k],
-    [h, h - k],
-    [h - k, h],
-    [-h + k, h],
-    [-h, h - k],
-    [-h, -h + k],
-  ]);
-  const g = new T.ExtrudeGeometry(shape, {
-    depth: s - 2 * c,
+/**
+ * 큐브 조각: 한 변 s인 네모 상자의 열두 모서리를 폭 b로 두 단 깎는다(사각 보석의 얕은 계단 면). 네 옆 모서리는 바닥
+ * 모양에서, 앞뒤 여덟 모서리는 돌출 베벨(두 단)에서 같은 꼴로 깎는다.
+ */
+function stepBox(T: Three, s: number, b: number) {
+  const h = s / 2 - b;
+  const k = 0.293 * b;
+  const pts: [number, number][] = [];
+  for (const [sx, sy] of [
+    [1, 1],
+    [-1, 1],
+    [-1, -1],
+    [1, -1],
+  ] as const) {
+    // 꼭짓점 (sx·h, sy·h) 둘레를 두 단으로: 한 벽 → 45° 가운데 → 다른 벽(반시계 방향)
+    const corner: [number, number][] = [
+      [h, h - b],
+      [h - k, h - k],
+      [h - b, h],
+    ];
+    const list =
+      sx * sy > 0 ? corner : corner.map(([x, y]) => [y, x] as [number, number]);
+    for (const [x, y] of list) pts.push([x * sx, y * sy]);
+  }
+  const g = new T.ExtrudeGeometry(shapeOf(T, pts), {
+    depth: s - 2 * b,
     bevelEnabled: true,
-    bevelThickness: c,
-    bevelSize: c,
-    bevelSegments: 1,
+    bevelThickness: b,
+    bevelSize: b,
+    bevelSegments: 2,
     curveSegments: 1,
   });
-  g.translate(0, 0, -(s - 2 * c) / 2);
+  g.translate(0, 0, -(s - 2 * b) / 2);
   return g;
 }
 
-/** 평평한 다각형 판(두께 d, 베벨 b) */
+/** 평평한 다각형 판(두께 d, 베벨 b). z는 -d/2-b ~ d/2+b */
 function plateGeo(
   T: Three,
   pts: readonly (readonly [number, number])[],
@@ -191,6 +338,7 @@ function plateGeo(
     bevelSegments: 1,
     curveSegments: 1,
   });
+  g.translate(0, 0, -d / 2);
   return g;
 }
 
@@ -223,64 +371,68 @@ function radialTexture(
 }
 
 /**
- * 보석 우물 바닥: 가운데에서 뻗는 빛살과 흩어진 빛점(보석 안에서 올라오는 불꽃). 고른 번짐은 굴절해도 무늬가 없어
- * 플라스틱처럼 보였다. 밝고 어두운 조각이 섞여 있어야 조각마다 다른 조각이 비치고 돌릴 때 반짝임이 옮겨 다닌다.
- * 씨앗을 고정해 늘 같은 그림을 만든다.
+ * 배경판: 가운데가 조금 밝은 은은한 그라데이션과 빛점 몇 개. 보석 조각을 지나 굴절돼 보일 것이다. 어수선하지 않게
+ * 빛점은 엠블럼 뒤쪽에만 아홉 개, 씨앗을 고정해 늘 같은 그림.
  */
-function fireTexture(T: Three, size = 512) {
+function backdropTexture(
+  T: Three,
+  center: string,
+  page: string,
+  glow: string | null,
+  glowAlpha = 0.6,
+) {
+  const gem = glow !== null;
+  const size = 1024;
   const c = document.createElement("canvas");
   c.width = size;
   c.height = size;
   const ctx = c.getContext("2d");
   if (ctx) {
     const h = size / 2;
-    let seed = 7;
-    const rnd = () => {
-      seed = (seed * 16807) % 2147483647;
-      return seed / 2147483647;
-    };
-    const base = ctx.createRadialGradient(h, h, 0, h, h, h);
-    base.addColorStop(0, "#5cc4ff");
-    base.addColorStop(0.18, "#1468b8");
-    base.addColorStop(0.55, "#06244e");
-    base.addColorStop(1, "#020a18");
-    ctx.fillStyle = base;
+    const g = ctx.createRadialGradient(h, h * 0.94, 0, h, h, h);
+    g.addColorStop(0, center);
+    g.addColorStop(0.3, center);
+    g.addColorStop(1, page);
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, size);
-    ctx.globalCompositeOperation = "lighter";
-    const rays = 22;
-    for (let i = 0; i < rays; i++) {
-      const a = (i / rays) * Math.PI * 2 + rnd() * 0.12;
-      const w = 0.03 + rnd() * 0.07;
-      const len = h * (0.75 + rnd() * 0.3);
-      const g = ctx.createRadialGradient(h, h, 0, h, h, len);
-      const tone =
-        i % 3 === 0
-          ? "255,255,255"
-          : i % 3 === 1
-            ? "190,235,255"
-            : "120,200,255";
-      g.addColorStop(0, `rgba(${tone},0.95)`);
-      g.addColorStop(0.6, `rgba(${tone},0.35)`);
-      g.addColorStop(1, `rgba(${tone},0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(h, h);
-      ctx.lineTo(h + Math.cos(a - w) * len, h + Math.sin(a - w) * len);
-      ctx.lineTo(h + Math.cos(a + w) * len, h + Math.sin(a + w) * len);
-      ctx.closePath();
-      ctx.fill();
+    if (glow) {
+      // 큐브 바로 뒤의 뒤 조명(보석 사진의 라이트 박스): 조각을 지나 굴절돼 보석이 안에서 맑게 빛난다
+      const back = ctx.createRadialGradient(
+        h,
+        h,
+        0,
+        h,
+        h,
+        h * (glowAlpha > 0.7 ? 0.24 : 0.2),
+      );
+      back.addColorStop(0, glow);
+      back.addColorStop(0.45, glow);
+      back.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = glowAlpha;
+      ctx.fillStyle = back;
+      ctx.fillRect(0, 0, size, size);
+      ctx.globalAlpha = 1;
     }
-    for (let i = 0; i < 70; i++) {
-      const r = Math.sqrt(rnd()) * h * 0.9;
-      const a = rnd() * Math.PI * 2;
-      const x = h + Math.cos(a) * r;
-      const y = h + Math.sin(a) * r;
-      const rad = 2 + rnd() * 7;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-      g.addColorStop(0, "rgba(255,255,255,1)");
-      g.addColorStop(1, "rgba(200,235,255,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    if (gem) {
+      let seed = 11;
+      const rnd = () => {
+        seed = (seed * 16807) % 2147483647;
+        return seed / 2147483647;
+      };
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2 + rnd() * 0.5;
+        const r = size * (0.035 + rnd() * 0.1);
+        const x = h + Math.cos(a) * r;
+        const y = h + Math.sin(a) * r;
+        const rad = size * (0.006 + rnd() * 0.01);
+        const dot = ctx.createRadialGradient(x, y, 0, x, y, rad);
+        dot.addColorStop(0, "rgba(255,255,255,0.95)");
+        dot.addColorStop(0.35, "rgba(235,245,255,0.35)");
+        dot.addColorStop(1, "rgba(220,235,255,0)");
+        ctx.fillStyle = dot;
+        ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      }
     }
   }
   const t = new T.CanvasTexture(c);
@@ -289,15 +441,24 @@ function fireTexture(T: Three, size = 512) {
 }
 
 /**
- * 보석 사진 스튜디오 방(반사 지도용). 어두운 방에 위 큰 소프트박스, 왼쪽·오른쪽 띠 조명(림 라이트), 앞 약한 채움 빛,
+ * 보석 사진 스튜디오 방(반사 지도용). 어두운 방에 큰 소프트박스, 양옆 띠 조명(림 라이트), 앞 약한 채움 빛,
  * 작은 점 조명 여럿(조각 모서리마다 또렷한 반짝임). 색 값이 1을 넘는 것은 조명 세기다.
  */
-function studioScene(T: Three, hdr: boolean): THREE_NS.Scene {
+function studioScene(
+  T: Three,
+  hdr: boolean,
+  tint: string,
+  gem: boolean,
+): THREE_NS.Scene {
   const s = new T.Scene();
   const k = hdr ? 1.4 : 1;
+  const tc = new T.Color(tint);
   const room = new T.Mesh(
     new T.BoxGeometry(24, 24, 24),
-    new T.MeshBasicMaterial({ color: 0x12151b, side: T.BackSide }),
+    new T.MeshBasicMaterial({
+      color: gem ? 0x050608 : 0x0e1014,
+      side: T.BackSide,
+    }),
   );
   s.add(room);
   const panel = (
@@ -305,15 +466,15 @@ function studioScene(T: Three, hdr: boolean): THREE_NS.Scene {
     h: number,
     power: number,
     pos: [number, number, number],
-    tint: [number, number, number] = [1, 1, 1],
+    tintRgb: readonly [number, number, number] = [1, 1, 1],
   ) => {
     const m = new T.Mesh(
       new T.PlaneGeometry(w, h),
       new T.MeshBasicMaterial({
         color: new T.Color(
-          tint[0] * power * k,
-          tint[1] * power * k,
-          tint[2] * power * k,
+          tintRgb[0] * power * k,
+          tintRgb[1] * power * k,
+          tintRgb[2] * power * k,
         ),
         side: T.DoubleSide,
       }),
@@ -324,13 +485,27 @@ function studioScene(T: Three, hdr: boolean): THREE_NS.Scene {
   };
   // 등각 큐브의 세 면은 정면에서 볼 때 뒤쪽을 비춘다(윗면 → 위-뒤, 왼면 → 왼-아래-뒤, 오른면 → 오른-아래-뒤).
   // 그래서 큰 소프트박스는 뒤쪽에 두고 밝기를 윗면 > 왼면 > 오른면으로 갈라 SVG 엠블럼의 면 밝기(1·0.62·0.4)를 잇는다
-  panel(12, 6, 3.4, [0, 9, -6]);
-  panel(6, 8, 2.1, [-9, -4, -6], [0.94, 0.98, 1]);
-  panel(6, 8, 1.2, [9, -4, -6], [1, 0.97, 0.93]);
+  // 보석은 큰 소프트박스를 줄인다: 면 전체가 밝게 비치면 뿌옇게(얼음처럼) 보였다. 대신 가는 띠 조명으로 또렷한 대비를 낸다
+  const big = gem ? 0.25 : 1;
+  panel(12, 6, 3.4 * big, [0, 9, -6]);
+  panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
+  panel(6, 8, 1.2 * big, [9, -4, -6], [1, 0.97, 0.93]);
+  if (gem) {
+    panel(10, 0.35, 7, [0, 8, -8]);
+    panel(0.35, 9, 6, [-7, -3, -8]);
+    panel(0.35, 9, 4, [7, -3, -8]);
+    panel(6, 0.3, 5, [-2, -8, -7]);
+  }
   // 위 앞 소프트박스(약하게): 틀의 위로 기운 베벨
-  panel(12, 3, 1.4, [0, 10, 4]);
-  // 양옆 띠 조명: 돌릴 때 옆면·모서리를 따라 흐르는 긴 반사(림)
-  panel(1.2, 12, 8, [-10, 1, 2], [0.92, 0.97, 1]);
+  panel(12, 3, 1.4 * big, [0, 10, 4]);
+  // 양옆 띠 조명: 돌릴 때 옆면·모서리를 따라 흐르는 긴 반사(림). 왼쪽은 티어 색을 살짝
+  panel(
+    1.2,
+    12,
+    gem ? 4 : 8,
+    [-10, 1, 2],
+    [0.75 + 0.25 * tc.r, 0.75 + 0.25 * tc.g, 0.75 + 0.25 * tc.b],
+  );
   panel(1.2, 12, 6, [10, 0, -1], [1, 0.97, 0.92]);
   // 뒤 위 림: 테두리에 가는 빛
   panel(10, 1, 6, [0, 6, -10]);
@@ -338,7 +513,7 @@ function studioScene(T: Three, hdr: boolean): THREE_NS.Scene {
   panel(8, 4, 0.8, [0, -1, 11]);
   // 아래 바닥에서 올라오는 아주 약한 반사
   panel(16, 16, 0.12, [0, -11, 0]);
-  // 작은 점 조명: 조각마다 다른 자리에서 또렷하게 반짝인다
+  // 작은 점 조명: 조각마다 다른 자리에서 또렷하게 반짝인다(뒤로 돌려도 보이게 뒤쪽에도)
   const spots: [number, number, number][] = [
     [-6, 7, 7],
     [5, 8, 6],
@@ -349,16 +524,47 @@ function studioScene(T: Three, hdr: boolean): THREE_NS.Scene {
     [7, -4, 4],
     [-5, 9, -4],
     [9, 7, -5],
+    [-7, -5, -7],
+    [4, -8, -8],
   ];
-  for (const p of spots) panel(0.9, 0.9, 45, p);
+  if (gem)
+    // 보석은 작은 점 조명을 더: 돌릴 때 조각 모서리마다 또렷한 반짝 점이 옮겨 다닌다
+    spots.push(
+      [-9, 5, 3],
+      [9, -1, 6],
+      [-2, 9, 5],
+      [4, 2, 11],
+      [-6, -7, 5],
+      [6, 9, 2],
+      [0, -9, 4],
+      [-10, 0, -3],
+    );
+  for (const p of spots)
+    panel(gem ? 0.6 : 0.9, gem ? 0.6 : 0.9, gem ? 70 : 45, p);
   return s;
 }
 
-function linear(
-  T: Three,
-  rgb: readonly [number, number, number],
-): THREE_NS.Color {
+function linear(T: Three, rgb: Rgb): THREE_NS.Color {
   return new T.Color().setRGB(rgb[0], rgb[1], rgb[2], T.LinearSRGBColorSpace);
+}
+
+function gemMaterial(T: Three, g: GemLook): THREE_NS.MeshPhysicalMaterial {
+  return new T.MeshPhysicalMaterial({
+    color: g.color,
+    metalness: 0,
+    roughness: GEM_BASE.roughness,
+    transmission: GEM_BASE.transmission,
+    ior: g.ior,
+    thickness: GEM_BASE.thickness,
+    attenuationColor: g.attenuationColor,
+    attenuationDistance: g.attenuationDistance,
+    dispersion: g.dispersion,
+    specularIntensity: GEM_BASE.specularIntensity,
+    specularColor: 0xffffff,
+    envMapIntensity: GEM_BASE.envMapIntensity,
+    // 뒤쪽 면까지 굴절에 넣어 안쪽 깊이가 보인다
+    side: T.DoubleSide,
+  });
 }
 
 /** 엠블럼 장면을 짓는다 */
@@ -367,6 +573,7 @@ export function buildEmblemScene(
   tier: DraftTier,
   opt: BuildOptions,
 ): EmblemScene {
+  const look = LOOK[tier];
   const gem = isGem(tier);
   const lv = levelOf(tier);
   const s = coreScale(tier);
@@ -392,117 +599,57 @@ export function buildEmblemScene(
   const spin = new T.Group();
   const body = new T.Group();
   spin.add(body);
+  const behind: THREE_NS.Object3D[] = [];
 
   // ---- 재질
-  const metal = gem
-    ? mat(
-        new T.MeshStandardMaterial({
-          color: linear(T, LOOK.diamondMetal.color),
-          metalness: 1,
-          roughness: LOOK.diamondMetal.roughness,
-        }),
-      )
+  const metal = mat(
+    new T.MeshStandardMaterial({
+      color: linear(T, look.frame.color),
+      metalness: 1,
+      roughness: look.frame.roughness,
+      // 보석 티어는 틀이 보석보다 튀지 않게(밝은 반사가 번짐으로 퍼졌다)
+      envMapIntensity: gem ? 0.7 : 1,
+    }),
+  );
+  const blockMat = look.gem
+    ? mat(gemMaterial(T, look.gem))
     : mat(
         new T.MeshStandardMaterial({
-          color: linear(T, LOOK.gold.color),
+          color: linear(T, (look.block ?? look.frame).color),
           metalness: 1,
-          roughness: LOOK.gold.frameRoughness,
+          roughness: (look.block ?? look.frame).roughness,
+          envMapIntensity: 1.3,
         }),
       );
-  const darkMetal = mat(
-    new T.MeshStandardMaterial({
-      color: gem ? 0x2a3646 : 0x3a2808,
-      metalness: 1,
-      roughness: 0.45,
-    }),
-  );
-  const g = LOOK.gem;
-  const gemMat = mat(
-    new T.MeshPhysicalMaterial({
-      color: g.color,
-      metalness: 0,
-      roughness: g.roughness,
-      transmission: g.transmission,
-      ior: g.ior,
-      thickness: g.thickness,
-      attenuationColor: g.attenuationColor,
-      attenuationDistance: g.attenuationDistance,
-      dispersion: g.dispersion,
-      iridescence: g.iridescence,
-      iridescenceIOR: g.iridescenceIOR,
-      iridescenceThicknessRange: [180, 480],
-      clearcoat: g.clearcoat,
-      clearcoatRoughness: g.clearcoatRoughness,
-      specularIntensity: 1,
-      envMapIntensity: g.envMapIntensity,
-      // 뒤쪽 면까지 굴절에 넣어 안쪽 깊이가 보인다
-      side: T.DoubleSide,
-    }),
-  );
-  // 볏 보석: 뒤가 어두운 배경이라 굴절만으로는 검게 보였다. 안에서 은은히 빛나게 한다
-  const crestMat = gemMat.clone();
-  crestMat.emissive = new T.Color("#5fb6ff");
-  crestMat.emissiveIntensity = 0.55;
-  crestMat.transmission = 0.75;
-  mat(crestMat);
-  const goldBlock = mat(
-    new T.MeshStandardMaterial({
-      color: linear(T, LOOK.gold.color),
-      metalness: 1,
-      roughness: LOOK.gold.roughness,
-      envMapIntensity: 1.3,
-    }),
-  );
+  /** 작은 보석(틀 꼭짓점·볏·아래 보석·왕관): 보석 티어는 몸 보석, 플래티넘은 그 색 보석 */
+  const accentMat = look.gem
+    ? blockMat
+    : look.accent
+      ? mat(gemMaterial(T, look.accent))
+      : blockMat;
 
-  // ---- 틀: 바깥 띠와 안 띠가 다른 높이(능선), 옆 벽, 뒤 판, 우물 벽
+  // ---- 틀: 앞뒤가 뚫린 고리. 바깥 띠와 안 띠가 다른 두께(능선), 앞뒤 같은 꼴
   const add = (geo: THREE_NS.BufferGeometry, m: THREE_NS.Material) => {
     const mesh = new T.Mesh(keep(geo), m);
     body.add(mesh);
     return mesh;
   };
-  add(hexRing(T, Ro, Rm, Z_FRONT - 0.55, Z_FRONT, 0.12), metal);
-  add(hexRing(T, Rm + 0.02, Ri, Z_FRONT - 0.55, Z_FRONT + 0.22, 0.1), metal);
-  add(hexRing(T, Ro - 0.02, Ro - 0.2, Z_BACK, Z_FRONT - 0.5, 0.04), metal);
-  add(hexRing(T, Ri + 0.06, Ri - 0.06, Z_BACK, Z_FRONT - 0.4, 0), darkMetal);
-  const back = add(plateGeo(T, hexPoints(Ro - 0.1), 0.12, 0.04), metal);
-  back.position.z = Z_BACK - 0.2;
-  // 뒤 육각뿔(보석 받침의 뒤): 뒤로 빠지는 큐브 꼭짓점을 덮는다
-  const pyrH = 1.5;
-  const pyrGeo = new T.ConeGeometry(Ri * 0.8, pyrH, 6, 1, true);
-  pyrGeo.rotateY(Math.PI / 6);
-  pyrGeo.rotateX(-Math.PI / 2);
-  const pyr = add(pyrGeo, metal);
-  pyr.position.z = Z_BACK - 0.22 - pyrH / 2;
+  add(hexRing(T, Ro, Rm, BAND_OUT, 0.12), metal);
+  add(hexRing(T, Rm + 0.02, Ri, BAND_IN, 0.1), metal);
+  // 실버부터: 틀 바깥에 한 겹 더(가는 고리)
+  if (lv >= 2) {
+    const r = Ro + 1.7 * u;
+    add(hexRing(T, r + 0.45 * u, r - 0.45 * u, 0.2, 0.04), metal);
+  }
 
-  // 우물 바닥: 보석은 안에서 빛을 내는 판(굴절된 빛이 조각마다 다르게 비친다), 금속은 어둡게
-  const wellTex = gem
-    ? fireTexture(T)
-    : radialTexture(T, [
-        [0, "#3b2a0a"],
-        [1, "#0d0800"],
-      ]);
-  texs.push(wellTex);
-  const wellPower = gem ? (opt.hdr ? 1.9 : 1.5) : 1;
-  const well = add(
-    new T.CircleGeometry(Ri * 1.02, 6, Math.PI / 2),
-    mat(
-      new T.MeshBasicMaterial({
-        map: wellTex,
-        color: new T.Color(wellPower, wellPower, wellPower),
-      }),
-    ),
-  );
-  well.position.z = Z_BACK + 0.02;
-
-  // ---- 큐브: 조각 27개를 몸통 대각선이 앞을 보게(윗면·왼면·오른면이 보이는 등각)
+  // ---- 큐브: 조각 27개를 몸통 대각선이 앞을 보게(윗면·왼면·오른면이 보이는 등각), 틀 두께 한가운데에
   const cube = new T.Group();
   cube.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
-  cube.position.z = Z_CUBE;
-  const cubieGeo = keep(chamferBox(T, CUBIE, gem ? 0.15 : 0.1));
+  const cubieGeo = keep(stepBox(T, CUBIE, CUBIE_BEVEL));
   for (let x = -1; x <= 1; x++)
     for (let y = -1; y <= 1; y++)
       for (let z = -1; z <= 1; z++) {
-        const m = new T.Mesh(cubieGeo, gem ? gemMat : goldBlock);
+        const m = new T.Mesh(cubieGeo, blockMat);
         m.position.set(x, y, z);
         cube.add(m);
       }
@@ -512,7 +659,7 @@ export function buildEmblemScene(
       keep(new T.BoxGeometry(2.9, 2.9, 2.9)),
       mat(
         new T.MeshStandardMaterial({
-          color: 0x140c00,
+          color: 0x0c0a08,
           roughness: 0.7,
           metalness: 0.2,
         }),
@@ -522,7 +669,7 @@ export function buildEmblemScene(
   }
   body.add(cube);
 
-  // ---- 날개: 큐브 면 조각 판(골드 하나, 다이아몬드 셋씩)
+  // ---- 날개: 큐브 면 조각 판(골드부터, 티어가 오를수록 늘어난다). 금속 판 앞뒤에 조각 재질 판
   const C = CENTER;
   const plates = wingPlates(lv, C[0] + FRAME_OUT * s * SIN60 - 1.2, C[1] + 3.2);
   const inset = (q: readonly Pt[]): Pt[] => {
@@ -540,34 +687,111 @@ export function buildEmblemScene(
         const [x, y] = toWorld(p, u);
         return [x * side, y] as [number, number];
       });
-      const zp = Z_FRONT - 0.75 - k * 0.05;
-      const plate = add(plateGeo(T, w, 0.18, 0.06), metal);
+      const zp = -k * 0.03;
+      const plate = add(plateGeo(T, w, 0.18, 0.05), metal);
       plate.position.z = zp;
       const ins = inset(q).map((p) => {
         const [x, y] = toWorld(p, u);
         return [x * side, y] as [number, number];
       });
-      const st = add(
-        plateGeo(T, ins, gem ? 0.16 : 0.06, gem ? 0.05 : 0.03),
-        gem ? gemMat : goldBlock,
-      );
-      st.position.z = zp + 0.2;
+      const inGeo = keep(plateGeo(T, ins, 0.04, 0.03));
+      for (const face of [1, -1]) {
+        const st = new T.Mesh(inGeo, blockMat);
+        st.position.z = zp + face * (0.09 + 0.05 + 0.035);
+        body.add(st);
+      }
     }
   });
 
-  // ---- 볏 보석(플래티넘부터, 시안에서는 다이아몬드)
-  if (lv >= 4) {
-    const [cx, cy] = toWorld(crestAt(tier), u);
-    const crest = new T.Mesh(
-      keep(new T.OctahedronGeometry(0.62, 0)),
-      gem ? crestMat : goldBlock,
+  // ---- 틀 꼭짓점 장식: 브론즈~골드는 금속 징, 플래티넘부터 작은 보석(앞뒤 모두)
+  if (lv >= 1) {
+    const rv = (Ro + Rm) / 2;
+    const studGeo =
+      lv >= 4
+        ? keep(new T.OctahedronGeometry(1.3 * s * u, 0))
+        : keep(new T.SphereGeometry(1.1 * s * u, 16, 8));
+    for (const [x, y] of hexPoints(rv))
+      for (const face of [1, -1]) {
+        const st = new T.Mesh(studGeo, lv >= 4 ? accentMat : metal);
+        st.scale.set(lv >= 4 ? 0.8 : 1, 1, 0.45);
+        st.position.set(x, y, face * BAND_OUT);
+        body.add(st);
+      }
+  }
+
+  // ---- 볏 보석(플래티넘~마스터), 아래 보석(마스터부터)
+  const crest = toWorld(crestAt(tier), u);
+  if (lv >= 4 && lv <= 7) {
+    const r = (lv >= 6 ? 3.6 : lv === 5 ? 3.3 : 2.6) * u;
+    const g = new T.Mesh(keep(new T.OctahedronGeometry(r, 0)), accentMat);
+    g.scale.set(0.8, 1.15, 0.8);
+    g.position.set(crest[0], crest[1] + r * 0.2, 0);
+    body.add(g);
+    const seat = add(
+      new T.CylinderGeometry(r * 0.6, r * 0.7, BAND_OUT * 1.2, 6),
+      metal,
     );
-    crest.scale.set(0.8, 1.15, 0.8);
-    crest.position.set(cx, cy + 0.15, Z_FRONT - 0.1);
-    body.add(crest);
-    const seat = add(new T.CylinderGeometry(0.42, 0.5, 0.28, 6), metal);
     seat.rotation.x = Math.PI / 2;
-    seat.position.set(cx, cy - 0.55, Z_FRONT - 0.25);
+    seat.position.set(crest[0], crest[1] - r * 0.85, 0);
+  }
+  if (lv >= 7) {
+    const r = 2.5 * u;
+    const [bx, by] = toWorld([C[0], C[1] + FRAME_OUT * s + 1.6], u);
+    const g = new T.Mesh(keep(new T.OctahedronGeometry(r, 0)), accentMat);
+    g.scale.set(0.8, 1.1, 0.8);
+    g.position.set(bx, by, 0);
+    body.add(g);
+  }
+
+  // ---- 왕관(그랜드마스터부터): 작은 등각 큐브를 쌓는다(SVG cubelet 자리 그대로)
+  if (lv >= 8) {
+    const cp = crestAt(tier);
+    const cubes: [Pt, number][] = [
+      [[cp[0], cp[1] - 4.4], lv >= 9 ? 4.2 : 3.8],
+      [[cp[0] + 6.2, cp[1] - 0.8], 3.0],
+      [[cp[0] - 6.2, cp[1] - 0.8], 3.0],
+    ];
+    if (lv >= 9)
+      cubes.push(
+        [[cp[0] + 11, cp[1] + 2.2], 2.4],
+        [[cp[0] - 11, cp[1] + 2.2], 2.4],
+      );
+    for (const [p, r] of cubes) {
+      // r은 실루엣 육각형 반지름 → 한 변 = r / √(2/3)
+      const edge = (r * u) / Math.sqrt(2 / 3);
+      const box = new T.Mesh(cubieGeo, accentMat);
+      box.scale.setScalar(edge / CUBIE);
+      box.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
+      const [x, y] = toWorld(p, u);
+      box.position.set(x, y, 0);
+      body.add(box);
+    }
+  }
+
+  // ---- 빛살(챌린저): 큐브 면 조각이 틀 뒤로 퍼진다(틀 밖에서 시작해 뚫린 가운데로 비치지 않게)
+  if (lv >= 9) {
+    for (const deg of [-90, -38, -142, 34, 146, 90]) {
+      const a = (deg * Math.PI) / 180;
+      const dir: Pt = [Math.cos(a), Math.sin(a)];
+      const n: Pt = [-dir[1], dir[0]];
+      const len = deg === -90 ? 31.5 : deg === 90 ? 29.5 : 31;
+      const at = (d: number, w: number): [number, number] =>
+        toWorld(
+          [C[0] + dir[0] * d + n[0] * w, C[1] + dir[1] * d + n[1] * w],
+          u,
+        );
+      const base = FRAME_OUT * s - 1;
+      const mid = base + (len - base) * 0.45;
+      add(
+        plateGeo(
+          T,
+          [at(base, 0), at(mid, 2.4), at(len, 0), at(mid, -2.4)],
+          0.1,
+          0.03,
+        ),
+        metal,
+      );
+    }
   }
 
   // 몸을 가운데로(볏·날개 때문에 위로 치우친 만큼 내린다)
@@ -576,12 +800,14 @@ export function buildEmblemScene(
   body.position.set(-mid.x, -mid.y, 0);
   scene.add(spin);
 
-  // ---- 뒤: 보석 후광, 배경판, 드리운 그림자(돌지 않는다)
-  if (gem) {
+  // ---- 뒤: 후광(다이아몬드부터), 배경판, 드리운 그림자(돌지 않는다)
+  if (lv >= 6) {
+    const hex = Number.parseInt(look.tint.slice(1), 16);
+    const rgb = `${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255}`;
     const haloTex = radialTexture(T, [
-      [0, "rgba(160,215,255,0.55)"],
-      [0.35, "rgba(90,165,255,0.22)"],
-      [1, "rgba(40,90,200,0)"],
+      [0, `rgba(${rgb},${lv >= 9 ? 0.4 : 0.28})`],
+      [0.4, `rgba(${rgb},0.1)`],
+      [1, `rgba(${rgb},0)`],
     ]);
     texs.push(haloTex);
     const halo = new T.Sprite(
@@ -597,13 +823,18 @@ export function buildEmblemScene(
     halo.scale.set(13, 13, 1);
     halo.position.z = -6;
     scene.add(halo);
+    behind.push(halo);
   }
   if (opt.backdrop) {
-    const bgTex = radialTexture(T, [
-      [0, gem ? "#3a5272" : "#3a3426"],
-      [0.55, gem ? "#1b2334" : "#211e17"],
-      [1, opt.pageColor],
-    ]);
+    const bgTex = backdropTexture(
+      T,
+      look.backdrop,
+      opt.pageColor,
+      look.glow ?? null,
+      // 무색 보석은 비칠 색이 없어 회색으로 보였다: 뒤 조명을 조금 더 세게
+      ((look.gem?.attenuationDistance ?? 0) > 10 ? 0.85 : 0.6) *
+        (opt.backGlow ?? 1),
+    );
     texs.push(bgTex);
     const bg = new T.Mesh(
       keep(new T.PlaneGeometry(40, 40)),
@@ -611,9 +842,10 @@ export function buildEmblemScene(
     );
     bg.position.z = -14;
     scene.add(bg);
+    behind.push(bg);
     const shadowTex = radialTexture(T, [
-      [0, "rgba(0,0,0,0.55)"],
-      [0.5, "rgba(0,0,0,0.25)"],
+      [0, "rgba(0,0,0,0.5)"],
+      [0.5, "rgba(0,0,0,0.22)"],
       [1, "rgba(0,0,0,0)"],
     ]);
     texs.push(shadowTex);
@@ -629,42 +861,48 @@ export function buildEmblemScene(
       ),
     );
     shadow.scale.set(12, 4.2, 1);
-    shadow.position.set(0.4, -4.9, -9);
+    shadow.position.set(0.4, -5.2, -9);
     scene.add(shadow);
+    behind.push(shadow);
   }
 
-  // ---- 직접 빛: 키(왼위 앞), 뒤 양옆 림(돌릴 때 테두리를 따라 빛난다)
-  const key = new T.DirectionalLight(0xffffff, gem ? 1.6 : 2.4);
+  // ---- 직접 빛: 키(왼위 앞), 뒤 양옆 림(돌릴 때 테두리를 따라 빛난다, 왼쪽은 티어 색을 살짝)
+  const key = new T.DirectionalLight(0xffffff, gem ? 1.4 : 2.4);
   key.position.set(-5, 7, 9);
-  const rimL = new T.DirectionalLight(0xdfeeff, 2.2);
+  const rimL = new T.DirectionalLight(
+    new T.Color(0xffffff).lerp(new T.Color(look.tint), 0.35),
+    2.2,
+  );
   rimL.position.set(-8, 2, -6);
-  const rimR = new T.DirectionalLight(0xfff1dc, 2.6);
+  const rimR = new T.DirectionalLight(0xfff4e6, 2.4);
   rimR.position.set(8, 3, -5);
   const fill = new T.HemisphereLight(0xffffff, 0x202020, 0.35);
   scene.add(key, rimL, rimR, fill);
   if (gem) {
-    // 보는 사람 쪽 점 조명 셋: 매끈한 보석의 깎인 면마다 아주 작고 또렷한 반짝 점(번짐이 별처럼 퍼뜨린다)
+    // 보는 사람 쪽 점 조명 셋: 매끈한 보석의 모서리마다 아주 작고 또렷한 반짝 점
     for (const [x, y, z, p] of [
       [-7, 9, 16, 150],
       [8, 6, 14, 140],
       [1, -7, 15, 70],
     ] as const) {
-      const l = new T.PointLight(0xffffff, p * (opt.hdr ? 1.6 : 1), 0, 2);
+      const l = new T.PointLight(0xffffff, p * 0.6 * (opt.hdr ? 1.6 : 1), 0, 2);
       l.position.set(x, y, z);
       scene.add(l);
     }
   }
 
+  // 티어마다 몸 크기가 달라(SVG coreScale) 카메라 거리를 SVG 한 단위 길이에 맞춘다
   const camera = new T.PerspectiveCamera(16, 1, 1, 100);
-  camera.position.set(0, 0, 43);
+  camera.position.set(0, 0, (CAMERA_Z * u) / U_REF);
   camera.lookAt(0, 0, 0);
 
-  const studio = studioScene(T, opt.hdr);
+  const studio = studioScene(T, opt.hdr, look.tint, gem);
 
   return {
     scene,
     camera,
     spin,
+    behind,
     studio,
     dispose() {
       for (const x of geos) x.dispose();

@@ -59,7 +59,7 @@ describe("바로 보내는 당첨 증명", () => {
     const { winner, ticket } = await winnerAndTicket();
     const claim = await makeDirectClaim(winner, ticket, "영희", "철수", 1);
     expect(await verifyClaim(claim, { ticket, to: "ybbarng" })).toEqual([
-      '받는 사람이 다르다(증명에는 "영희")',
+      '받는 사람이 다릅니다(증명에는 "영희").',
     ]);
   });
 
@@ -69,7 +69,7 @@ describe("바로 보내는 당첨 증명", () => {
     expect(claim.kind).toBe("direct");
     const forged = { ...claim, from: "가로챈 사람" } as typeof claim;
     expect(await verifyClaim(forged, { ticket, to: "ybbarng" })).toEqual([
-      "서명이 맞지 않는다",
+      "서명이 맞지 않습니다.",
     ]);
   });
 
@@ -77,7 +77,7 @@ describe("바로 보내는 당첨 증명", () => {
     const { other, ticket } = await winnerAndTicket();
     const claim = await makeDirectClaim(other, ticket, "ybbarng", "철수", 1);
     expect(await verifyClaim(claim, { ticket, to: "ybbarng" })).toContain(
-      "예측서 주인의 열쇠가 아니다",
+      "예측서 주인의 열쇠가 아닙니다.",
     );
   });
 
@@ -91,7 +91,7 @@ describe("바로 보내는 당첨 증명", () => {
     );
     const claim = await makeDirectClaim(winner, another, "ybbarng", "철수", 1);
     expect(await verifyClaim(claim, { ticket, to: "ybbarng" })).toContain(
-      "다른 예측서의 증명이다",
+      "다른 예측서의 증명입니다.",
     );
   });
 
@@ -120,13 +120,13 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
         ticket,
         request: { ...request, challenge: "ANOTHERONE" },
       }),
-    ).toEqual(["확인 문구가 다르다"]);
+    ).toEqual(["확인 문구가 다릅니다."]);
     expect(
       await verifyClaim(claim, {
         ticket,
         request: { ...request, requester: "영희" },
       }),
-    ).toEqual(['확인 요청자가 다르다(증명에는 "Brice")']);
+    ).toEqual(['확인 요청자가 다릅니다(증명에는 "Brice").']);
   });
 
   it("확인 요청 링크: 주소 뒤 #에 실려 오가고, 링크 전체나 # 뒤만으로 읽는다", async () => {
@@ -154,7 +154,7 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
     );
     const request = newConfirmRequest("Brice", 2, ticketId(another));
     await expect(answerConfirmRequest(winner, ticket, request)).rejects.toThrow(
-      "이 예측서에 대한 확인 요청이 아니다",
+      "이 예측서에 대한 확인 요청이 아닙니다.",
     );
   });
 
@@ -166,7 +166,7 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
         ticket,
         request: newConfirmRequest("Brice", 1, ticketId(ticket)),
       }),
-    ).toContain("확인 문구 증명을 요청했는데 바로 보내는 증명이다");
+    ).toContain("확인 문구 증명을 요청했는데 바로 보내는 증명입니다.");
   });
 
   it("패스키로 낸 응모권도 패스키로 확인 요청에 답한다", async () => {
@@ -191,7 +191,7 @@ describe("확인 요청과 확인 문구 증명(초록불)", () => {
       await makeChallengeClaim(winner, ticket, "ABCDEFGHJK", "Brice"),
     );
     expect(() => decodeClaim("hello")).toThrow(
-      "하늘의 별 따기 입상 증명이 아니다",
+      "하늘의 별 따기 입상 증명이 아닙니다.",
     );
     const body = fromBase64Url(text.slice(CLAIM_PREFIX.length));
     expect(() =>

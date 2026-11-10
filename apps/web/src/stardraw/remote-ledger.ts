@@ -849,7 +849,7 @@ class NoKeyApi extends Error {
 /** 받은 회차 파일의 응모권 목록이 기록의 머클 루트와 다르다 */
 class RootMismatch extends Error {
   constructor(round: number) {
-    super(`${round}회차 파일의 예측서 목록이 기록의 머클 루트와 다르다`);
+    super(`${round}회차 파일의 예측서 목록이 기록의 머클 루트와 다릅니다.`);
     this.name = "RootMismatch";
   }
 }

@@ -87,8 +87,8 @@ export type OpKind = (typeof OP_KINDS)[number];
 
 /** 운영 기록 종류의 이름(관리 화면·서버 기록·검증 페이지) */
 export const OP_NAMES: Record<OpKind, string> = {
-  "director-add": "국장 열쇠 지정",
-  "director-remove": "국장 열쇠 빼기",
+  "director-add": "국장 패스키 지정",
+  "director-remove": "국장 패스키 빼기",
   "affiliation-add": "소속 추가",
   "affiliation-update": "소속 바꾸기",
   "affiliation-end": "소속 끝내기",
@@ -226,7 +226,7 @@ function writeBody(w: ByteWriter, b: OpBody): void {
 
 function readBody(r: ByteReader): OpBody {
   const v = r.u8();
-  if (v !== OP_VERSION) throw new Error(`모르는 운영 기록 판: ${v}`);
+  if (v !== OP_VERSION) throw new Error(`모르는 운영 기록 형식입니다.: ${v}`);
   const code = r.u8();
   const kind = OP_KINDS[code - 1];
   if (!kind) throw new Error(`모르는 운영 기록 종류: ${code}`);
@@ -654,9 +654,10 @@ export function checkAffiliationFields(f: AffiliationFields): string | null {
   if (name) return name;
   const method = checkLabel(f.method, "확인 방법은");
   if (method) return method;
-  if (!(f.badge in BADGES)) return "모르는 배지";
+  if (!(f.badge in BADGES)) return "모르는 배지입니다.";
   // 자격 열쇠·발급 수는 기간마다 kind 8·9에 둔다(docs/36 11-13). 소속 칸은 비워 둔다
-  if (f.issuerKey.length !== 0) return "소속의 자격 열쇠 칸은 비워 둔다";
+  if (f.issuerKey.length !== 0)
+    return "소속의 자격 열쇠 칸은 비워 두어야 합니다.";
   if (f.issued !== 0) return "소속의 발급 수 칸은 0";
   return null;
 }
@@ -664,10 +665,12 @@ export function checkAffiliationFields(f: AffiliationFields): string | null {
 /** 별명과 같은 규칙: NFC로 맞춘 1~20자, 보이지 않는 글자 없음 */
 function checkLabel(text: string, label: string): string | null {
   if (text.normalize("NFC").trim() !== text)
-    return `${label} NFC로 맞추고 앞뒤 공백 없이`;
+    return `${label} NFC로 맞추고 앞뒤 공백이 없어야 합니다.`;
   const length = [...text].length;
-  if (length < 1 || length > MAX_LABEL) return `${label} 1~${MAX_LABEL}자`;
-  if (/[\p{Cc}\p{Cf}]/u.test(text)) return `${label} 보이지 않는 글자가 있다`;
+  if (length < 1 || length > MAX_LABEL)
+    return `${label} 1~${MAX_LABEL}자여야 합니다.`;
+  if (/[\p{Cc}\p{Cf}]/u.test(text))
+    return `${label} 보이지 않는 글자를 쓸 수 없습니다.`;
   return null;
 }
 
@@ -736,9 +739,9 @@ export async function checkOperation(
   prev: Uint8Array,
   ctx: OpsContext,
 ): Promise<string | null> {
-  if (op.v !== OP_VERSION) return "모르는 운영 기록 판";
+  if (op.v !== OP_VERSION) return "모르는 운영 기록 형식입니다.";
   if (!equalBytes(op.after, prev))
-    return "다른 자리(장부 끝 해시)에서 서명한 운영 기록이다(예전 서명 재사용)";
+    return "다른 자리(장부 끝 해시)에서 서명한 운영 기록입니다(예전 서명 재사용).";
 
   // 서명자: 국장 열쇠 지정·빼기는 관인이나 국장, 취소는 국장(관인은 자기가 한 지정만), 발급 수는 관인만, 나머지는 국장
   const role = op.signer.role;
@@ -746,7 +749,7 @@ export async function checkOperation(
     (op.kind === "qual-issued" || op.kind === "qual-reissued") &&
     role !== "seal"
   )
-    return "발급 수·다시 발급 수는 관인만 싣는다";
+    return "발급 수·다시 발급 수는 관인만 실을 수 있습니다.";
   if (role === "seal") {
     const sealAllowed =
       op.kind === "director-add" ||
@@ -754,14 +757,14 @@ export async function checkOperation(
       op.kind === "cancel" ||
       op.kind === "qual-issued" ||
       op.kind === "qual-reissued";
-    if (!sealAllowed) return "관인은 이 운영 기록에 서명할 수 없다";
+    if (!sealAllowed) return "관인은 이 운영 기록에 서명할 수 없습니다.";
     if (state.sealKey && !equalBytes(state.sealKey, op.signer.pub))
-      return "관인 열쇠가 이 회차에 쓰는 관인과 다르다";
+      return "관인 열쇠가 이 회차에 쓰는 관인과 다릅니다.";
   } else if (!activeDirector(state, op.signer.pub, round)) {
-    return "국장 열쇠가 아니다(장부에 지정돼 쓰는 중인 열쇠만 서명할 수 있다)";
+    return "국장 패스키가 아닙니다(장부에 지정돼 쓰는 중인 패스키만 서명할 수 있습니다).";
   }
   if (!(await verifyOperationSignature(op, ctx.policy)))
-    return "서명이 맞지 않는다";
+    return "서명이 맞지 않습니다.";
 
   // 효력 회차: 3회차 예고와 회차 경계. 취소·발급 수는 0
   if (
@@ -770,11 +773,11 @@ export async function checkOperation(
     op.kind === "qual-reissued"
   ) {
     if (op.effectiveRound !== 0)
-      return "예고 취소·발급 수·다시 발급 수의 효력 회차는 0(실리는 즉시)";
+      return "예고 취소·발급 수·다시 발급 수의 효력 회차는 0(실리는 즉시)이어야 합니다.";
   } else {
     const earliest = earliestEffectiveRound(state, round);
     if (op.effectiveRound < earliest)
-      return `예고가 모자란다(${NOTICE_ROUNDS}회차 예고, 효력은 ${earliest}회차부터 가능)`;
+      return `예고가 모자랍니다(${NOTICE_ROUNDS}회차 예고, 효력은 ${earliest}회차부터 가능).`;
   }
 
   switch (op.kind) {
@@ -783,19 +786,19 @@ export async function checkOperation(
         op.credentialId.length < 1 ||
         op.credentialId.length > MAX_CREDENTIAL_ID
       )
-        return "패스키 번호는 1~1023바이트";
+        return "패스키 번호는 1~1023바이트여야 합니다.";
       if (ctx.isEntrant(op.pub, op.credentialId))
-        return "우주인으로 등록된 열쇠·패스키는 국장으로 지정할 수 없다";
+        return "우주인으로 등록된 열쇠·패스키는 국장으로 지정할 수 없습니다.";
       if (directorTaken(state, op.pub))
-        return "이미 국장 열쇠이거나 지정 예고 중이다";
+        return "이미 국장 패스키이거나 지정 예고 중입니다.";
       if (everSeal(state, op.pub))
-        return "관인으로 쓰였거나 교체 예고 중인 열쇠는 국장으로 지정할 수 없다";
+        return "관인으로 쓰였거나 교체 예고 중인 열쇠는 국장으로 지정할 수 없습니다.";
       return null;
     case "director-remove": {
       const using = state.directors.some(
         (d) => equalBytes(d.pub, op.pub) && d.until === null,
       );
-      if (!using) return "쓰는 중인 국장 열쇠가 아니다";
+      if (!using) return "쓰는 중인 국장 패스키가 아닙니다.";
       if (
         pendingOn(
           state,
@@ -803,7 +806,7 @@ export async function checkOperation(
           (o) => o.kind === "director-remove" && equalBytes(o.pub, op.pub),
         )
       )
-        return "이미 빼기 예고 중이다";
+        return "이미 빼기 예고 중입니다.";
       return null;
     }
     case "affiliation-add": {
@@ -811,14 +814,14 @@ export async function checkOperation(
       if (problem) return problem;
       if (op.fields.issued !== 0) return "소속 추가의 발급 수는 0";
       if (affiliationNameTaken(state, op.fields.name, round, null))
-        return "같은 이름의 소속이 이미 있다";
+        return "같은 이름의 소속이 이미 있습니다.";
       return null;
     }
     case "affiliation-update":
     case "affiliation-end": {
       const a = state.affiliations.find((x) => equalBytes(x.id, op.target));
       if (!a || a.until !== null)
-        return "효력이 생긴, 끝나지 않은 소속이 아니다";
+        return "효력이 생긴, 끝나지 않은 소속이 아닙니다.";
       if (
         pendingOn(
           state,
@@ -827,33 +830,33 @@ export async function checkOperation(
             o.kind === "affiliation-end" && equalBytes(o.target, op.target),
         )
       )
-        return "끝내기 예고 중인 소속이다";
+        return "끝내기 예고 중인 소속입니다.";
       if (op.kind === "affiliation-end") return null;
       const problem = checkAffiliationFields(op.fields);
       if (problem) return problem;
       if (affiliationNameTaken(state, op.fields.name, round, op.target))
-        return "같은 이름의 소속이 이미 있다";
+        return "같은 이름의 소속이 이미 있습니다.";
       return null;
     }
     case "cancel": {
       const target = find(state, op.target);
-      if (!target) return "장부에 실린 운영 기록이 아니다";
-      if (target.op.kind === "cancel") return "예고 취소는 취소할 수 없다";
-      if (target.status === "cancelled") return "이미 취소된 운영 기록이다";
+      if (!target) return "장부에 실린 운영 기록이 아닙니다.";
+      if (target.op.kind === "cancel") return "예고 취소는 취소할 수 없습니다.";
+      if (target.status === "cancelled") return "이미 취소된 운영 기록입니다.";
       if (target.status !== "pending")
-        return "이미 효력이 생긴 운영 기록은 취소할 수 없다";
+        return "이미 효력이 생긴 운영 기록은 취소할 수 없습니다.";
       if (
         role === "seal" &&
         !(target.op.signer.role === "seal" && target.op.kind === "director-add")
       )
-        return "관인은 자기가 서명한 국장 열쇠 지정만 취소할 수 있다";
+        return "관인은 자기가 서명한 국장 패스키 지정만 취소할 수 있습니다.";
       return null;
     }
     case "schedule": {
       if (op.effectiveRound !== op.entry.fromRound)
         return "일정 바꾸기의 효력 회차는 새 줄의 fromRound";
       if (state.pendingSchedule || schedulePending(state.schedule, round))
-        return "이미 예고 중인 일정 바꾸기가 있다";
+        return "이미 예고 중인 일정 바꾸기가 있습니다.";
       const problem = checkScheduleChange(state.schedule, op.entry, round);
       return problem ? `일정 바꾸기: ${problem}` : null;
     }
@@ -863,16 +866,16 @@ export async function checkOperation(
       return checkSealRotate(state, op, ctx);
     case "qual-issued": {
       const p = state.periods.find((x) => equalBytes(x.id, op.period));
-      if (!p) return "효력이 생긴 자격 기간이 아니다";
+      if (!p) return "효력이 생긴 자격 기간이 아닙니다.";
       if (!Number.isInteger(op.issued) || op.issued <= p.issued)
-        return "발급 수는 늘기만 한다";
+        return "발급 수는 늘기만 해야 합니다.";
       return null;
     }
     case "qual-reissued": {
       const p = state.periods.find((x) => equalBytes(x.id, op.period));
-      if (!p) return "효력이 생긴 자격 기간이 아니다";
+      if (!p) return "효력이 생긴 자격 기간이 아닙니다.";
       if (!Number.isInteger(op.reissued) || op.reissued <= p.reissued)
-        return "다시 발급 수는 늘기만 한다";
+        return "다시 발급 수는 늘기만 해야 합니다.";
       return null;
     }
   }
@@ -895,17 +898,19 @@ async function checkSealRotate(
   op: Extract<Operation, { kind: "seal-rotate" }>,
   ctx: OpsContext,
 ): Promise<string | null> {
-  if (op.signer.role !== "director") return "관인 교체는 국장만 서명한다";
-  if (!state.sealKey) return "장부에 아직 관인이 없다(바꿀 관인이 없다)";
+  if (op.signer.role !== "director")
+    return "관인 교체는 국장만 서명할 수 있습니다.";
+  if (!state.sealKey)
+    return "장부에 아직 관인이 없습니다(바꿀 관인이 없습니다).";
   if (op.pub.length !== PUBLIC_KEY_LENGTH || op.pub[0] !== 4)
-    return "새 관인은 압축하지 않은 65바이트 공개 열쇠(04로 시작)";
+    return "새 관인은 압축하지 않은 65바이트 공개 열쇠(04로 시작)여야 합니다.";
   if (pendingOn(state, "seal-rotate", () => true))
-    return "이미 예고 중인 관인 교체가 있다";
-  if (everSeal(state, op.pub)) return "관인으로 쓴 적 있는 열쇠다";
+    return "이미 예고 중인 관인 교체가 있습니다.";
+  if (everSeal(state, op.pub)) return "관인으로 쓴 적 있는 열쇠입니다.";
   if (everDirector(state, op.pub, null))
-    return "국장 열쇠로 지정된 적 있는 열쇠는 관인으로 쓸 수 없다";
+    return "국장 패스키로 지정된 적 있는 열쇠는 관인으로 쓸 수 없습니다.";
   if (ctx.isEntrant(op.pub, null))
-    return "우주인으로 등록된 열쇠는 관인으로 쓸 수 없다";
+    return "우주인으로 등록된 열쇠는 관인으로 쓸 수 없습니다.";
   if (
     !(await verifySignature(
       op.pub,
@@ -913,7 +918,7 @@ async function checkSealRotate(
       op.proof,
     ))
   )
-    return "새 관인의 보유 증명이 맞지 않는다";
+    return "새 관인의 보유 증명이 맞지 않습니다.";
   return null;
 }
 
@@ -938,7 +943,8 @@ function checkQualPeriod(
   op: Extract<Operation, { kind: "qual-period" }>,
 ): string | null {
   const a = state.affiliations.find((x) => equalBytes(x.id, op.affiliation));
-  if (!a || a.until !== null) return "효력이 생긴, 끝나지 않은 소속이 아니다";
+  if (!a || a.until !== null)
+    return "효력이 생긴, 끝나지 않은 소속이 아닙니다.";
   if (
     pendingOn(
       state,
@@ -947,17 +953,18 @@ function checkQualPeriod(
         o.kind === "affiliation-end" && equalBytes(o.target, op.affiliation),
     )
   )
-    return "끝내기 예고 중인 소속이다";
-  if (op.scheme !== STAMP_SCHEME_BLS) return "모르는 도장 방식";
-  if (op.issuerKey.length !== ISSUER_KEY_LENGTH) return "도장 열쇠는 96바이트";
+    return "끝내기 예고 중인 소속입니다.";
+  if (op.scheme !== STAMP_SCHEME_BLS) return "모르는 도장 방식입니다.";
+  if (op.issuerKey.length !== ISSUER_KEY_LENGTH)
+    return "도장 열쇠는 96바이트여야 합니다.";
   const keyProblem = checkIssuerKey(op.issuerKey);
   if (keyProblem) return keyProblem;
-  if (op.number < 1) return "기간 번호는 1부터";
-  if (op.endsAt <= op.startsAt) return "기간은 시작보다 끝이 뒤";
+  if (op.number < 1) return "기간 번호는 1부터여야 합니다.";
+  if (op.endsAt <= op.startsAt) return "기간은 시작보다 끝이 뒤여야 합니다.";
   if (op.endsAt - op.startsAt > MAX_PERIOD_SECONDS)
-    return "기간은 2년을 넘지 않는다";
+    return "기간은 2년을 넘을 수 없습니다.";
   if (op.endsAt <= roundTimes(state.schedule, op.effectiveRound).opensAt)
-    return "효력이 생기기 전에 끝나는 기간이다";
+    return "효력이 생기기 전에 끝나는 기간입니다.";
   // 같은 소속의 기간(예고 중 포함, 취소 빼고)과 번호·열쇠·시각이 겹치지 않는다
   const others = [
     ...state.periods.map((p) => ({
@@ -973,11 +980,11 @@ function checkQualPeriod(
   ];
   for (const o of others) {
     if (equalBytes(o.issuerKey, op.issuerKey))
-      return "다른 기간에 쓴 도장 열쇠다";
+      return "다른 기간에 쓴 도장 열쇠입니다.";
     if (!equalBytes(o.affiliation, op.affiliation)) continue;
-    if (o.number === op.number) return "이미 있는 기간 번호다";
+    if (o.number === op.number) return "이미 있는 기간 번호입니다.";
     if (op.startsAt < o.endsAt && o.startsAt < op.endsAt)
-      return "같은 소속의 다른 기간과 겹친다";
+      return "같은 소속의 다른 기간과 겹칩니다.";
   }
   return null;
 }
@@ -1050,7 +1057,7 @@ export async function applyRecordOps(
   for (const change of record.scheduleChanges) {
     if (state.pendingSchedule || schedulePending(state.schedule, round)) {
       problems.push(
-        "일정 변경: 일정 바꾸기 예고 중에는 다른 일정 변경을 받지 않는다",
+        "일정 변경: 일정 바꾸기 예고 중에는 다른 일정 변경을 받지 않습니다.",
       );
       continue;
     }
@@ -1066,10 +1073,10 @@ export async function applyRecordOps(
     const label = `운영 기록 ${hex(id).slice(0, 12)}`;
     if (i > 0 && compareBytes(ids[i - 1] as Uint8Array, id) >= 0)
       problems.push(
-        `${label}: 목록이 id 순서가 아니거나 같은 기록이 두 번 있다`,
+        `${label}: 목록이 id 순서가 아니거나 같은 기록이 두 번 있습니다.`,
       );
     if (find(state, id)) {
-      problems.push(`${label}: 이미 실린 운영 기록이다`);
+      problems.push(`${label}: 이미 실린 운영 기록입니다.`);
       continue;
     }
     const problem = await checkOperation(state, op, round, record.prev, ctx);
@@ -1112,7 +1119,7 @@ export async function selectOperations(
   for (const op of sortOperations(candidates)) {
     const id = hex(opId(op));
     if (seen.has(id) || find(s, opId(op))) {
-      rejected.push({ op, problem: "이미 받은 운영 기록이다" });
+      rejected.push({ op, problem: "이미 받은 운영 기록입니다." });
       continue;
     }
     const problem = await checkOperation(s, op, round, prev, ctx);
@@ -1269,9 +1276,9 @@ export interface OperationsView {
 function describe(state: OpsState, op: Operation): string {
   switch (op.kind) {
     case "director-add":
-      return `국장 열쇠 지정 ${directorFingerprint(op.pub)}`;
+      return `국장 패스키 지정 ${directorFingerprint(op.pub)}`;
     case "director-remove":
-      return `국장 열쇠 빼기 ${directorFingerprint(op.pub)}`;
+      return `국장 패스키 빼기 ${directorFingerprint(op.pub)}`;
     case "affiliation-add":
       return `소속 추가: ${op.fields.name}(${BADGES[op.fields.badge]})`;
     case "affiliation-update":
@@ -1554,13 +1561,17 @@ export function parseDirectorKeys(
     .map((item) => {
       const [cred, pub, extra] = item.split(".");
       if (!cred || !pub || extra !== undefined)
-        throw new Error(`국장 열쇠 설정 모양이 아니다: ${item.slice(0, 16)}…`);
+        throw new Error(
+          `국장 패스키 설정 모양이 아닙니다: ${item.slice(0, 16)}…`,
+        );
       const credentialId = fromBase64Url(cred);
       const key = fromBase64Url(pub);
       if (key.length !== PUBLIC_KEY_LENGTH || key[0] !== 4)
-        throw new Error("국장 공개 열쇠는 압축하지 않은 65바이트(04로 시작)");
+        throw new Error(
+          "국장 공개 열쇠는 압축하지 않은 65바이트(04로 시작)여야 합니다.",
+        );
       if (credentialId.length < 1 || credentialId.length > MAX_CREDENTIAL_ID)
-        throw new Error("국장 패스키 번호는 1~1023바이트");
+        throw new Error("국장 패스키 번호는 1~1023바이트여야 합니다.");
       return { credentialId, pub: key };
     });
 }

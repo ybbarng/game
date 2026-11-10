@@ -230,7 +230,7 @@ describe("연습 장부: 오래된 회차 지우기", () => {
     store.text = JSON.stringify(saved);
     const report = await open(clock, store).verify();
     expect(report.problems.map((p) => [p.round, p.message])).toEqual([
-      [1, expect.stringContaining("머클 루트에 들어 있다는 증명이 없다")],
+      [1, expect.stringContaining("머클 루트에 들어 있다는 증명이 없습니다")],
     ]);
   });
 

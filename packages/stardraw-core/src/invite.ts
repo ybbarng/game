@@ -47,7 +47,9 @@ const MAX_RECIPIENT = 40;
 export function directorRequester(to: string): string {
   const trimmed = to.trim();
   if (!trimmed || trimmed !== to || to.length > MAX_RECIPIENT)
-    throw new Error(`받는 분은 앞뒤 공백 없이 1~${MAX_RECIPIENT}자`);
+    throw new Error(
+      `받는 분은 앞뒤 공백 없이 1~${MAX_RECIPIENT}자여야 합니다.`,
+    );
   return `${DIRECTOR_REQUESTER_PREFIX}${to}`;
 }
 
@@ -148,7 +150,7 @@ export async function signInvite(
   ticket: Ticket,
   token: string,
 ): Promise<ConfirmInvite> {
-  if (!isInviteToken(token)) throw new Error("확인 링크 토큰 형식이 아니다");
+  if (!isInviteToken(token)) throw new Error("확인 링크 토큰 형식이 아닙니다.");
   const fields = {
     round: ticket.round,
     ticketId: ticketId(ticket),
@@ -195,7 +197,7 @@ export async function verifyInvite(
     invite.round !== ticket.round ||
     !equalBytes(invite.ticketId, ticketId(ticket))
   )
-    problems.push("다른 예측서의 초대다");
+    problems.push("다른 예측서의 초대입니다.");
   if (
     !(await verifyEntrantSignature(
       ticket.pub,
@@ -204,6 +206,6 @@ export async function verifyInvite(
       policy,
     ))
   )
-    problems.push("예측서 주인의 서명이 아니다");
+    problems.push("예측서 주인의 서명이 아닙니다.");
   return problems;
 }

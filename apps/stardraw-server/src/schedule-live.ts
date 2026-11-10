@@ -86,7 +86,10 @@ export function scheduleChange(
     phase: nextPhase,
   };
   const problem = checkScheduleChange(schedule, change, decidedIn);
-  if (problem) throw new Error(`${problem}(${decidedIn}회차 기록에 실린다)`);
+  if (problem)
+    throw new Error(
+      `${problem.replace(/\.$/, "")}(${decidedIn}회차 기록에 실린다)`,
+    );
   store.setPendingChange(change);
   return { change, decidedIn };
 }

@@ -153,10 +153,10 @@ export function ticketLines(
  * 서버 설정으로 국장 열쇠를 몰래 바꿔도 장부의 지정 기록으로 여기 드러난다
  */
 export function directorLines(result: CheckResult): string[] {
-  const out = ["[국장 열쇠 내력]"];
+  const out = ["[국장 패스키 내력]"];
   if (result.directors.length === 0) {
     out.push(
-      "  국장 열쇠 지정 기록이 없습니다(운영 기록을 낼 수 있는 국장이 없음)",
+      "  국장 패스키 지정 기록이 없습니다(운영 기록을 낼 수 있는 국장이 없음)",
     );
     return out;
   }

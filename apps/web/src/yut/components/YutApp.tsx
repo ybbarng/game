@@ -313,7 +313,7 @@ function YutHome({
       together={{
         icon: "👥",
         title: "다함께 윷놀이",
-        detail: "링크로 친구를 부릅니다. 던지기는 모두의 기기가 함께 정합니다",
+        detail: "링크로 친구를 부릅니다. 던지기는 모두의 기기가 함께 정합니다.",
         onClick: onOnline,
       }}
       learn={{

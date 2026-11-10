@@ -167,7 +167,7 @@ async function ticket(
     { params: TEST_POW },
     qual,
   );
-  if (!t) throw new Error("예측서를 만들지 못했다");
+  if (!t) throw new Error("예측서를 만들지 못했습니다");
   return t;
 }
 
@@ -274,7 +274,9 @@ describe("다시 발급 수(운영 기록 kind 11, docs/36 11-27)", () => {
     await c.close([byDirector]);
     await c.close([await reissued(c, periodId, 2)]);
     const problems = await c.problems();
-    expect(problems.some((p) => p.includes("관인만 싣는다"))).toBe(true);
+    expect(problems.some((p) => p.includes("관인만 실을 수 있습니다"))).toBe(
+      true,
+    );
     expect(problems.some((p) => p.includes("다시 발급 수는 늘기만"))).toBe(
       true,
     );
@@ -347,7 +349,7 @@ describe("자격 기간 열기와 발급 수(운영 기록 kind 8·9)", () => {
     );
     await c.close([reused]);
     const problems = await c.problems();
-    expect(problems.some((p) => p.includes("다른 기간과 겹친다"))).toBe(true);
+    expect(problems.some((p) => p.includes("다른 기간과 겹칩니다"))).toBe(true);
     expect(problems.some((p) => p.includes("다른 기간에 쓴 도장 열쇠"))).toBe(
       true,
     );
@@ -441,7 +443,7 @@ describe("상품 대상 판정", () => {
     );
     expect(
       (await c.problems()).some((p) =>
-        p.includes("발급 수 1개와 다시 발급 수 0개를 더한 것보다 많다"),
+        p.includes("발급 수 1개와 다시 발급 수 0개를 더한 것보다 많습니다"),
       ),
     ).toBe(true);
   });
@@ -479,7 +481,7 @@ describe("상품 대상 판정", () => {
     );
     expect(
       (await c.problems()).some((p) =>
-        p.includes("도장이 기간 열쇠로 확인되지 않는다"),
+        p.includes("도장이 기간 열쇠로 확인되지 않습니다"),
       ),
     ).toBe(true);
   });
@@ -505,7 +507,7 @@ describe("상품 대상 판정", () => {
     );
     expect(
       (await early.problems()).some((p) =>
-        p.includes("쓸 수 있는 자격 기간이 아니다"),
+        p.includes("쓸 수 있는 자격 기간이 아닙니다"),
       ),
     ).toBe(true);
   });

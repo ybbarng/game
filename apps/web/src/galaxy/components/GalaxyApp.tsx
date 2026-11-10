@@ -226,7 +226,11 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
         </p>
       </Section>
       <Section title="개인 시간">
-        <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
+        <TimePresetPicker
+          value={s.time}
+          onChange={(time) => s.set({ time })}
+          tone="polite"
+        />
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -523,7 +527,7 @@ export function GalaxyApp() {
         extra={{
           icon: "✦",
           title: "별자리 퀴즈",
-          detail: "사계절 하늘 8 별자리·24별로 끝없이 풀어요",
+          detail: "사계절 하늘 8 별자리·24별로 끝없이 풀어요.",
           onClick: () => setScreen({ kind: "starQuiz" }),
         }}
       />

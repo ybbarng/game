@@ -322,7 +322,7 @@ describe("응모권 v2(자격 증서를 붙인 응모권)", () => {
     expect(toHex(ticketContent(again))).toBe(toHex(ticketContent(ticket)));
   });
 
-  it("장부에서 증서를 베껴 다른 응모권에 붙이면 자격 서명이 맞지 않는다", async () => {
+  it("장부에서 증서를 베껴 다른 응모권에 붙이면 자격 서명이 맞지 않습니다.", async () => {
     const [owner, thief] = await signers(2);
     if (!owner || !thief) throw new Error("흉내 패스키가 없다");
     const holding = issue(newIssuerKey().secretKey, PERIOD);
