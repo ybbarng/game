@@ -24,7 +24,8 @@ final class Updater: NSObject, SPUStandardUserDriverDelegate {
 
   /// 메뉴 「업데이트 확인…」·「새 판 … 설치…」
   func checkForUpdates() {
-    NSApp.activate()
+    // 사용자가 메뉴에서 고른 것이니 바로 앞으로(`AppDelegate.bringToFront`와 같은 까닭, 2026-11-10)
+    NSApp.activate(ignoringOtherApps: true)
     controller?.checkForUpdates(nil)
   }
 
