@@ -12,6 +12,15 @@ import {
   play as play222,
   solve222,
 } from "./beginner-path-222";
+import { type Edge5Step, runEdges555, stepMoves5 } from "./big-edges-555";
+import {
+  type BigPathStep,
+  playN,
+  runCenters,
+  runEdges444,
+  stepMovesBig,
+} from "./big-path";
+import { solveReduced } from "./big-solve";
 import type {
   Course,
   CourseStage,
@@ -36,7 +45,7 @@ export interface StageSpec {
   quizzes?: QuizSpec[];
 }
 
-// 풀이 함수가 낸 수(대회 섞기 3×3 씨앗 21, 4×4·5×5 씨앗 3)
+// 풀이 함수가 낸 수(대회 섞기 3×3 씨앗 21). 4×4·5×5는 대회 섞기 씨앗 3을 단원 규칙으로 푼 수(아래 bigDemoMoves)
 const CFOP_SCRAMBLE =
   "L2 D2 U' L2 F2 D F2 U2 B2 D' L' F' R2 B U' F2 U R B L R2";
 
@@ -74,6 +83,31 @@ const FROM333_222_MOVES = solve222(
   play222(solvedCube(2), SCRAMBLE_222),
   FROM333_222_STAGES,
 ).moves;
+
+// 4×4·5×5 축소법: 같은 섞기를 단원 규칙으로 푼 수(2026-11-10, docs/47 16-16). 센터 big-path.ts runCenters,
+// 엣지 4×4 runEdges444·5×5 runEdges555, 3×3처럼 big-solve.ts solveReduced(패리티 포함)
+const SCRAMBLE_444 =
+  "Uw2 U2 F U' Uw' F D2 R2 F' D' U' Uw2 F Rw R' Uw R2 Uw F' Rw2 F' U Rw' R' Fw2 Uw' L' Uw2 D2 L Uw2 U F Rw' B2 Uw Rw B U2 L2";
+const SCRAMBLE_555 =
+  "Rw2 U2 B2 U' Lw B' D' L Uw2 R2 D Rw2 B' Lw2 Fw2 L' Rw Uw Lw' Uw2 U Fw2 L' Bw Lw B Rw2 D' F2 Rw' U B' Fw2 Dw Rw Lw2 Dw Uw' U' F2 Uw2 Fw F' B2 Uw' Lw Fw Dw' F2 Rw B2 Bw' Fw2 Rw2 Bw2 Lw U' Uw2 Fw2 F";
+function bigDemoMoves(n: 4 | 5, scramble: string): string[] {
+  let s = playN(n, solvedCube(n), scramble);
+  const centers = runCenters(n, s);
+  s = centers.state;
+  const edges = n === 4 ? runEdges444(s) : runEdges555(s);
+  s = edges.state;
+  const rest = solveReduced(n, s);
+  const joinAll = (xs: string[]) => xs.filter(Boolean).join(" ");
+  return [
+    joinAll(centers.steps.map(stepMovesBig)),
+    joinAll(
+      n === 4
+        ? (edges.steps as BigPathStep[]).map(stepMovesBig)
+        : (edges.steps as Edge5Step[]).map(stepMoves5),
+    ),
+    joinAll(rest.stages.map((x) => x.moves)),
+  ];
+}
 
 export const STAGE_SPECS: Record<string, StageSpec> = {
   "333-beginner": {
@@ -273,14 +307,9 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       },
     ],
     demo: {
-      scramble:
-        "Uw2 U2 F U' Uw' F D2 R2 F' D' U' Uw2 F Rw R' Uw R2 Uw F' Rw2 F' U Rw' R' Fw2 Uw' L' Uw2 D2 L Uw2 U F Rw' B2 Uw Rw B U2 L2",
-      moves: [
-        "2R B2 2R' F' 2R U 2R' R 2F R' 2F' 2R' D2 2R 2F L2 2F' D 2F D' 2F' 2U' R 2U B 2R2 F' 2R2 L' 2U2 L2 2U2 B' 2U' L2 2U",
-        "F' 2D' F D' F' 2D2 L' U' L 2D' F 2U F' D' F 2U' R 2D' R U R' 2D U2 F 2U' R D2 R' 2U",
-        "z2 F' R F D F' D L' D2 B D R U R' U' R U R' U' R U R' U' y U R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' y2 U' R U R' U' R U R' U' R U R' U' y' R U R' U' R U R' U' R U R' U' R U R' U' y U R U' R' U' F' U F y' U2 L' U L U F U' F' y' U2 L' U L U F U' F' 2R2 B2 U2 2L U2 2R' U2 2R U2 F2 2R F2 2L' B2 2R2 F U R U' R' F' U R U R' U R U2 R' U' R U R' U R U2 R' 2R2 U2 2R2 Uw2 2R2 2U2 R' F R' B2 R F' R' B2 R2 U2 y R U' R U R U R U' R' U' R' U' R U R U R U' R' U' R2",
-      ],
-      source: "solveHuman(beginner, 4)(centers-* · edges · 나머지)",
+      scramble: SCRAMBLE_444,
+      moves: bigDemoMoves(4, SCRAMBLE_444),
+      source: "단원 규칙(runCenters · runEdges444 · solveReduced)",
     },
     quizzes: [
       {
@@ -305,14 +334,9 @@ export const STAGE_SPECS: Record<string, StageSpec> = {
       { title: "3×3처럼", lessons: [], goal: "solved" },
     ],
     demo: {
-      scramble:
-        "Rw2 U2 B2 U' Lw B' D' L Uw2 R2 D Rw2 B' Lw2 Fw2 L' Rw Uw Lw' Uw2 U Fw2 L' Bw Lw B Rw2 D' F2 Rw' U B' Fw2 Dw Rw Lw2 Dw Uw' U' F2 Uw2 Fw F' B2 Uw' Lw Fw Dw' F2 Rw B2 Bw' Fw2 Rw2 Bw2 Lw U' Uw2 Fw2 F",
-      moves: [
-        "2R U2 2R2 F 2R 2L' U 2L 2B' U' 2B 2R2 U' 2R2 E' L 2B' L' E L 2B L' B M B 2L' B' M' B 2L B' 2L D 2L' D 2F L' 2F' 2L B 2L' D2 2F' R 2F E' R 2F R' E R 2F' R' 2U B2 2U F2 2U2 R 2U R 2U' L' 2U B 2U' L' 2U2 R2 2U R2 2U 2L' U' 2L 2D 2L' U 2L 2D' R' E' F' 2U' F E F' 2U F2 E' F 2D' F' E F 2D F'",
-        "2D F' U F 2D' 2U' R D' R' 2U R 2U' R' D R 2U R 2U F D F' 2U' U L 2D R U R' 2D' R' 2D' F U' F' 2D B 2U F' U F 2U' F' 2U F D2 F' 2U' B 2U' L U2 L' 2U R 2U B U' B' 2U' 2F2 R2 U2 2B U2 2F' U2 2F U2 L2 2F L2 2B' R2 2F2 U' F 2D' R F' U R' F 2D",
-        "z2 L' F' D B' D' B D F' D' y R U R' U' R U R' U' R U R' U' y' U R U R' U' R U R' U' R U R' U' y' U R U R' U' R U R' U' R U R' U' y' R U R' U' R U R' U' R U R' U' R U R' U' L' U L U F U' F' y2 U L' U L U F U' F' y U2 L' U L U F U' F' y2 U' L' U L U F U' F' F R U R' U' F' U' R U R' U R U2 R' U2 R U R' U R U2 R' U2 R' F R' B2 R F' R' B2 R2 U y R U' R U R U R U' R' U' R2",
-      ],
-      source: "solveHuman(beginner, 5)(centers-* · edges·last-edges · 나머지)",
+      scramble: SCRAMBLE_555,
+      moves: bigDemoMoves(5, SCRAMBLE_555),
+      source: "단원 규칙(runCenters · runEdges555 · solveReduced)",
     },
     quizzes: [
       {
