@@ -6,10 +6,10 @@ import { invertAlg, setupFor } from "./notation";
 import type { Course, Lesson } from "./types";
 
 export const SEXY = "R U R' U'";
-const RIGHT = "U R U' R' U' F' U F";
+export const RIGHT = "U R U' R' U' F' U F";
 /** 둘째 층 오른쪽에서 넣기: 오른쪽 위 엣지를 앞-오른쪽 칸으로(앞에서 넣기를 거울에 비춘 꼴) */
-const FROM_RIGHT = "U' F' U F U R U' R'";
-const EO = "F R U R' U' F'";
+export const FROM_RIGHT = "U' F' U F U R U' R'";
+export const EO = "F R U R' U' F'";
 export const SUNE = "R U R' U R U2 R'";
 /** 코너 방향을 먼저 맞추는 방식에서 쓰는 공식(소개만, 방향을 지키며 코너 셋의 자리를 바꾼다) */
 export const A_PERM = "R' F R' B2 R F' R' B2 R2";
