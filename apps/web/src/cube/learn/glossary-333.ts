@@ -164,12 +164,18 @@ function adnominal(word: string): boolean {
 }
 
 /**
+/**
  * 글에서 블럭을 붙여야 하는데 뺀 곳(앞뒤 몇 글자). 큰 큐브(`bigCube`)는 엣지 한 줄을 「엣지」, 면마다 모은 센터 블럭
- * 묶음을 「센터」라 부르므로(docs/47 1절 「큰 큐브」, 하나하나는 「날개」·「센터 블럭」) 엣지·센터는 보지 않는다
+ * 묶음을 「센터」라 부르므로(docs/47 1절 「큰 큐브」, 하나하나는 「날개」·「센터 블럭」) 엣지·센터는 보지 않는다.
+ *
+ * `name`: 상황 이름·단계 이름처럼 조각 하나를 홀로 부르는 이름이면 true. 이름에서는 꾸미는 말이 붙어도
+ * (「자리에서 뒤집힌 엣지」, 「자리가 바뀐 엣지 둘」) 그 조각을 가리키므로 블럭을 붙인다. 글 속에서는
+ * 「노란색이 붙은 엣지」처럼 꾸미는 말이 묶음을 말하는 일이 많아 예전대로 넘긴다(2026-11-10: 이름도 넘겨
+ * 「자리에서 뒤집힌 엣지」를 못 잡았다)
  */
 export function loosePieceWords(
   text: string,
-  opts: { bigCube?: boolean } = {},
+  opts: { bigCube?: boolean; name?: boolean } = {},
 ): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(PIECE)) {
@@ -187,7 +193,9 @@ export function loosePieceWords(
     const prev = (before.match(/(\S+) $/)?.[1] ?? "").replace(/(.)의$/, "$1");
     if (
       JOINED_BEFORE.has(prev) ||
-      adnominal(prev) ||
+      // 「앞면 센터」, 「윗면 엣지」: 면 이름(받침 ㄴ이라 꾸미는 말과 헷갈리지 않게 따로 본다)
+      /[앞뒤윗아랫옆]면$/.test(prev) ||
+      (!opts.name && adnominal(prev)) ||
       // 「앞-오른쪽」, 「위-앞」처럼 자리를 이어 부른 말, 「흰·초록·빨강 센터」처럼 여럿을 함께 부른 말
       /^[가-힣]+[-·][가-힣·-]+$/.test(prev)
     )

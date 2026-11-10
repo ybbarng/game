@@ -23,6 +23,7 @@ import {
   shapeProgress,
   shapeStageText,
 } from "../patterns/race";
+import type { VersusRule } from "../practice/versus";
 import { goalReached } from "./handicap";
 import {
   applyItemAct,
@@ -60,10 +61,18 @@ export type Scrambler = (
   seed: number,
 ) => Scramble | Promise<Scramble>;
 
-/** 대결 틀에 흘려보내는 수: 면 돌리기, 아이템전이면 특별한 수(쓰기·맞은 섞기 넣기)도 */
-export type CubeAct = CubeMove | ItemAct;
+/** 공식 연습 대결 보고 치기의 「공식 보기」(docs/47 16-14). 수 기록에 남아 모든 기기가 콤보·정확도를 다시 계산한다 */
+export interface PeekAct {
+  readonly peek: true;
+}
+
+export const PEEK_TEXT = "?peek";
+
+/** 대결 틀에 흘려보내는 수: 면 돌리기, 아이템전이면 특별한 수(쓰기·맞은 섞기 넣기), 공식 연습 보고 치기면 공식 보기도 */
+export type CubeAct = CubeMove | ItemAct | PeekAct;
 
 export const isItemAct = (m: CubeAct): m is ItemAct => "item" in m;
+export const isPeekAct = (m: CubeAct): m is PeekAct => "peek" in m;
 
 export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   n: number;
@@ -72,6 +81,8 @@ export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   scrambleFor(seed: string): Scramble | undefined;
   /** 모양 만들기 판의 목표(docs/47 9-10). 일반 판은 없다 */
   shape?: RaceShape;
+  /** 공식 연습 대결의 규칙(docs/47 16-14). 일반 판은 없다 */
+  practice?: VersusRule;
 }
 
 /** 모양 만들기 판의 목표와 시작(판을 열 때 고정, 판정 설정 지문에도 넣는다) */
@@ -197,6 +208,7 @@ export function createCubeRaceGame(
       return `${event}|${s.text}|${stateHash(start)}${shapeTag}`;
     },
     apply(state, move) {
+      if (isPeekAct(move)) throw new RangeError("둘 수 없는 수");
       if (isItemAct(move)) {
         if (!items) throw new RangeError("둘 수 없는 수");
         return applyItemAct(n, state, move);
@@ -232,7 +244,12 @@ export function createCubeRaceGame(
       const move = parseMoves(n, text)[0];
       return move !== undefined && !isRotation(n, move);
     },
-    encodeMove: (move) => (isItemAct(move) ? move.text : formatMove(n, move)),
+    encodeMove: (move) =>
+      isPeekAct(move)
+        ? PEEK_TEXT
+        : isItemAct(move)
+          ? move.text
+          : formatMove(n, move),
     decodeMove(text) {
       if (items && isItemText(text)) {
         const act = parseItemText(n, text);

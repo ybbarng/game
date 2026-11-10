@@ -13,6 +13,7 @@ import {
   shapeSupports,
 } from "../patterns/race";
 import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
+import type { VersusRule } from "../practice/versus";
 import { formatMs } from "../records";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { BotLevelPicker } from "./BotLevelPicker";
@@ -28,10 +29,11 @@ import {
 } from "./handicap";
 import { drawItem, type ItemKind } from "./items";
 import { nextLabel } from "./MatchBoard";
+import { PracticeRulePicker } from "./PracticeRulePicker";
 import { PARTY_MODE_LABELS, PARTY_MODES, type PartyMode } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom, TIME_LIMIT_SEC } from "./room";
+import { CubeRoom, PRACTICE_TIME_LIMIT_SEC, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
 import { testVsBots, testVsSeed, testVsShapeKey } from "./vs-seed";
@@ -85,8 +87,13 @@ export function CubeVsApp() {
   const [shapeStart, setShapeStart] = useState<ShapeStart>("solved");
   const [shapePick, setShapePick] = useState<ShapePick>("easy");
   const [shapeFormula, setShapeFormula] = useState(true);
-  const party = partyMode !== null;
-  const shapeNow = shapeOn && shapeSupports(n);
+  /** 공식 연습 대결(docs/47 16-14). 3×3만, 파티 모드·모양 만들기와 함께 쓰지 않는다 */
+  const [practiceOn, setPracticeOn] = useState(false);
+  const [practiceRule, setPracticeRule] = useState<VersusRule>({
+    stage: "beginner-second",
+  });
+  const party = partyMode !== null && !practiceOn;
+  const shapeNow = shapeOn && shapeSupports(n) && !practiceOn;
   // 크기를 바꿔 고른 어려움이 없으면 그 크기의 첫 어려움으로
   useEffect(() => {
     const picks = shapePicks(n);
@@ -117,13 +124,16 @@ export function CubeVsApp() {
       // 화면 시험만: 섞기 씨앗을 정해 둔다(`__cubeTestHooks` + `__cubeVsSeed`, vs-seed.ts)
       ...testVsSeed(),
       settings: {
-        n,
+        n: practiceOn ? 3 : n,
+        ...(practiceOn ? { practice: practiceRule } : {}),
         ...(rounds > 1
           ? { format: "points" as const, rounds, scoring }
           : { format: "single" as const }),
         inspection,
-        timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
-        ...(partyMode && !shapeNow ? { party: partyMode } : {}),
+        timeLimitSec: practiceOn
+          ? PRACTICE_TIME_LIMIT_SEC
+          : (TIME_LIMIT_SEC[n] ?? 300),
+        ...(party && !shapeNow ? { party: partyMode } : {}),
         ...(shapeNow
           ? {
               shape: {
@@ -140,10 +150,11 @@ export function CubeVsApp() {
     for (let k = testVsBots() ?? botCount; k > 0; k--) r.addBot(level);
     const handicap: Handicap = {};
     if (delay > 0) handicap.delay = { [r.me]: delay };
-    const average = byAverage && !party && !shapeNow;
-    if (goal && !average && !shapeNow) handicap.goal = { [r.me]: goal };
+    const average = byAverage && !party && !shapeNow && !practiceOn;
+    if (goal && !average && !shapeNow && !practiceOn)
+      handicap.goal = { [r.me]: goal };
     if (average) handicap.score = "avg";
-    if (help) handicap.help = { [r.me]: help };
+    if (help && !practiceOn) handicap.help = { [r.me]: help };
     r.setHandicap(handicap);
     roomRef.current = r;
     setRoom(r);
@@ -176,7 +187,9 @@ export function CubeVsApp() {
 
         {!room ? (
           <section className="mx-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white/5 p-4">
-            <label className="flex items-center justify-between text-sm">
+            <label
+              className={`flex items-center justify-between text-sm ${practiceOn ? "hidden" : ""}`}
+            >
               크기
               <select
                 data-cube-vs-size
@@ -192,10 +205,11 @@ export function CubeVsApp() {
               </select>
             </label>
             <BotLevelPicker
-              n={n}
-              average={myAverage}
+              n={practiceOn ? 3 : n}
+              average={practiceOn ? averages?.["3"] : myAverage}
               value={level}
               onChange={setLevel}
+              times={!practiceOn}
             />
             <label className="flex items-center justify-between text-sm">
               컴퓨터 수
@@ -220,12 +234,13 @@ export function CubeVsApp() {
                     key={m ?? "normal"}
                     type="button"
                     data-cube-vs-party={m ?? "normal"}
-                    aria-pressed={!shapeOn && partyMode === m}
+                    aria-pressed={!shapeOn && !practiceOn && partyMode === m}
                     onClick={() => {
                       setPartyMode(m);
                       setShapeOn(false);
+                      setPracticeOn(false);
                     }}
-                    className={`rounded-lg px-3 py-1.5 ${!shapeOn && partyMode === m ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                    className={`rounded-lg px-3 py-1.5 ${!shapeOn && !practiceOn && partyMode === m ? "bg-amber-400 text-black" : "bg-white/10"}`}
                   >
                     {m ? PARTY_MODE_LABELS[m] : "일반"}
                   </button>
@@ -234,18 +249,38 @@ export function CubeVsApp() {
                   <button
                     type="button"
                     data-cube-vs-party="shape"
-                    aria-pressed={shapeOn}
+                    aria-pressed={shapeOn && !practiceOn}
                     onClick={() => {
                       setShapeOn(true);
                       setPartyMode(null);
+                      setPracticeOn(false);
                     }}
-                    className={`rounded-lg px-3 py-1.5 ${shapeOn ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                    className={`rounded-lg px-3 py-1.5 ${shapeOn && !practiceOn ? "bg-amber-400 text-black" : "bg-white/10"}`}
                   >
                     모양 만들기
                   </button>
                 )}
+                <button
+                  type="button"
+                  data-cube-vs-party="practice"
+                  aria-pressed={practiceOn}
+                  onClick={() => {
+                    setPracticeOn(true);
+                    setShapeOn(false);
+                    setPartyMode(null);
+                  }}
+                  className={`rounded-lg px-3 py-1.5 ${practiceOn ? "bg-amber-400 text-black" : "bg-white/10"}`}
+                >
+                  공식 연습
+                </button>
               </div>
             </fieldset>
+            {practiceOn && (
+              <PracticeRulePicker
+                value={practiceRule}
+                onChange={setPracticeRule}
+              />
+            )}
             {shapeNow && (
               <ShapeRulePicker
                 n={n}
@@ -312,7 +347,7 @@ export function CubeVsApp() {
                 </select>
               </label>
               <label
-                className={`flex items-center justify-between ${party || shapeNow ? "hidden" : ""}`}
+                className={`flex items-center justify-between ${party || shapeNow || practiceOn ? "hidden" : ""}`}
               >
                 순위
                 <select
@@ -329,7 +364,7 @@ export function CubeVsApp() {
                   </option>
                 </select>
               </label>
-              {shapeNow ? null : byAverage && !party ? (
+              {shapeNow || practiceOn ? null : byAverage && !party ? (
                 <p className="text-white/50 text-xs" data-cube-vs-average>
                   내 평균{" "}
                   {myAverage === undefined
@@ -362,7 +397,9 @@ export function CubeVsApp() {
                   </select>
                 </label>
               )}
-              <label className="flex items-center justify-between">
+              <label
+                className={`flex items-center justify-between ${practiceOn ? "hidden" : ""}`}
+              >
                 도움
                 <select
                   data-cube-vs-help
@@ -383,7 +420,9 @@ export function CubeVsApp() {
                 </select>
               </label>
             </fieldset>
-            <label className="flex items-center gap-2 text-sm">
+            <label
+              className={`flex items-center gap-2 text-sm ${practiceOn ? "hidden" : ""}`}
+            >
               <input
                 type="checkbox"
                 className="size-4 shrink-0 accent-sky-400"

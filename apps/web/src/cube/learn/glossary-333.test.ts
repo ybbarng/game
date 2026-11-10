@@ -40,6 +40,19 @@ describe("조각 이름(블럭)", () => {
         "흰-초록 엣지 블럭과 흰 엣지, 첫 층 코너, 옆 센터, 앞-오른쪽 위 코너, 코너 방향, 엣지 짝.",
       ),
     ).toEqual([]);
+    // 이름은 꾸미는 말이 붙어도 조각 하나를 가리킨다. 글 속 「노란색이 붙은 엣지」는 묶음이라 넘긴다
+    expect(
+      loosePieceWords("자리에서 뒤집힌 엣지", { name: true }),
+    ).toHaveLength(1);
+    expect(
+      loosePieceWords("위 층, 자리가 바뀐 엣지 둘", { name: true }),
+    ).toHaveLength(1);
+    expect(
+      loosePieceWords("자리에서 뒤집힌 엣지 블럭", { name: true }),
+    ).toEqual([]);
+    expect(loosePieceWords("노란색이 붙은 엣지를 넣어요.")).toEqual([]);
+    // 면 이름은 받침 ㄴ이어도 꾸미는 말이 아니다(자리를 말하는 꼴)
+    expect(loosePieceWords("앞면 센터, 윗면 코너", { name: true })).toEqual([]);
   });
 
   for (const c of [BEGINNER_333, BEGINNER_222, FROM_333_222])
@@ -50,12 +63,20 @@ describe("조각 이름(블럭)", () => {
       expect(loose).toEqual([]);
     });
 
-  it("공식 연습 초보자 상황 이름", () => {
-    const loose = stagesOf("beginner").flatMap((s) =>
-      s.cases.flatMap((c) =>
-        loosePieceWords(c.name).map((w) => `${s.title} · ${c.name}: ${w}`),
+  // 이름은 조각 하나를 홀로 부르는 자리라 꾸미는 말이 붙어도 블럭을 붙인다(`name`). 2026-11-10 「자리에서 뒤집힌 엣지」를
+  // 이 시험이 못 잡은 까닭: 받침이 ㄴ·ㄹ인 앞말(「뒤집힌」)을 모두 묶음을 말하는 꾸밈으로 보고 넘겼다
+  // CFOP F2L 이름(「코너 칸에·엣지 위」)은 docs/47 1절이 허용한 짧은 꼬리표 꼴이라 보지 않는다
+  it("공식 연습 초보자 단계·상황 이름", () => {
+    const loose = stagesOf("beginner").flatMap((s) => [
+      ...loosePieceWords(s.title, { name: true }).map(
+        (w) => `${s.title}: ${w}`,
       ),
-    );
+      ...s.cases.flatMap((c) =>
+        loosePieceWords(c.name, { name: true }).map(
+          (w) => `${s.title} · ${c.name}: ${w}`,
+        ),
+      ),
+    ]);
     expect(loose).toEqual([]);
   });
 });
