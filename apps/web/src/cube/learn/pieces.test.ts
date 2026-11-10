@@ -100,12 +100,9 @@ describe("조각의 움직임: 센터 → 엣지 → 코너, 자리와 방향", 
     expect(tracks.map((s) => s.find?.piece)).toEqual(["edge", "corner"]);
     const tries = l.steps.filter((s) => s.kind === "try").map((s) => s.goal);
     expect(tries).toEqual(["solved", "piece:UF", "piece:UFR"]);
-    // 표기 안내는 첫 해 보기에만
+    // 첫 해 보기는 표기를 배우기 전이라 면을 이리저리 돌려 보게 하고 힌트를 알려 준다
     const firstTry = l.steps.find((s) => s.kind === "try");
-    expect(firstTry?.body).toContain("표기는 아직 몰라도 괜찮아요");
-    expect(
-      l.steps.filter((s) => s.body.includes("표기는 아직 몰라도")),
-    ).toHaveLength(1);
+    expect(firstTry?.body).toContain("면을 이리저리 돌려 보고");
   });
 
   it("U 한 번: 흰 면은 그대로인데 윗층 엣지 넷이 제자리가 아니고, U'로 돌아온다", () => {
@@ -139,7 +136,7 @@ describe("조각의 움직임: 센터 → 엣지 → 코너, 자리와 방향", 
     // 평가 「한 면을 맞춘 상태」 앞에 손으로 해 보는 단계(U 한 번·엣지 세기)가 온다
     const at = (f: (x: (typeof l.steps)[number]) => boolean) =>
       l.steps.findIndex(f);
-    const face = at((x) => !!x.quiz?.question.includes("한 면을 맞춘"));
+    const face = at((x) => !!x.quiz?.question.includes("흰 면을 다 맞춘"));
     expect(at((x) => x.goal === "solved")).toBeLessThan(face);
     expect(at((x) => !!x.find?.misplaced)).toBeLessThan(face);
   });
@@ -245,7 +242,7 @@ describe("고르기 문제의 답", () => {
   });
 
   it("한 면을 맞춘 상태: (가)는 흰 면만 흰색(자리 틀림), (나)는 흰 조각이 제자리", () => {
-    const { step, answer } = quiz("한 면을 맞춘 상태");
+    const { step, answer } = quiz("흰 면을 다 맞춘");
     expect(answer).toBe("(나)");
     expect(step.quiz?.pictures?.map((p) => p.alg)).toEqual([
       FACE_ONLY,
@@ -288,9 +285,7 @@ describe("고르기 문제의 답", () => {
     const e = play(3, FLIPPED_EDGE);
     expect(hitSlots(3, e, UF)).toEqual([pieceByName(3, "UF")]);
     expect(goalMet(3, e, "piece:UF")).toBe(false);
-    expect(quiz("흰-초록 엣지 블럭은 지금").answer).toBe(
-      "제자리지만 뒤집혔어요",
-    );
+    expect(quiz("흰-초록 엣지는 지금").answer).toBe("제자리지만 뒤집혔어요");
 
     const c = play(3, TWISTED_CORNER);
     expect(hitSlots(3, c, UFR)).toEqual([pieceByName(3, "UFR")]);

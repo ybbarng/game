@@ -12,7 +12,6 @@ import {
   finaleHint,
   finaleReached,
   type HintPlan,
-  LESSON_PLAN,
   makeHintPlan,
   nextHint,
   taughtHintKind,
@@ -101,57 +100,51 @@ describe("3×3 초보자 무작위 해 보기 힌트", () => {
     });
   }
 
-  it("힌트 1의 이름: 흰 십자는 엣지 색과 경우, 코너 방향은 노랑이 보는 쪽과 횟수", () => {
+  it("힌트 1의 이름: 흰 십자는 엣지 색과 경우, 코너 방향은 노란색이 보는 쪽(단원과 같은 말)", () => {
     const cross = lessonOf("333-white-cross");
     const h = nextHint("cross", stepStart(cross, randomTry(cross), 3), null);
-    expect(h?.label).toMatch(/^흰-(빨강|초록|주황|파랑) 엣지: .+ 경우$/);
+    expect(h?.label).toMatch(/^흰-(빨강|초록|주황|파랑) 엣지: .+$/);
     const twist = lessonOf("333-ll-corner-twist");
     const t = nextHint(
       "ll-corner-twist",
       stepStart(twist, randomTry(twist), 2),
       null,
     );
-    expect(t?.label).toMatch(/^코너 방향: 노랑이 (앞|오른쪽), [24]번$/);
+    expect(t?.label).toMatch(/^코너 방향: 노란색이 (앞|오른쪽)$/);
   });
 
-  it("첫 층 코너: 단원 해 보기(지름길 단계 앞)는 되풀이, 마무리는 지름길 힌트", () => {
+  it("첫 층 코너: 단원 해 보기와 마무리 힌트가 같은 길(코너 돌리기·거꾸로만, 지름길 없음)", () => {
     const corners = lessonOf("333-first-corners-up");
-    const repeat =
-      /: (칸 밑|제 칸)에서 흰색이 (오른쪽|아래|앞), \d번$|한 번 빼기$|^흰 면을 위로/;
-    const short =
-      /: (칸 밑에서 흰색이 (오른쪽, R' D' R|앞, F D F'|아래, R' D2 R D R' D' R)|제 칸에서 흰색이 (오른쪽, R' D' R D R' D' R|앞, F D F' D' F D F'))$|한 번 빼기$|^흰 면을 위로/;
-    const seenShort = new Set<string>();
+    const label =
+      /^흰-[^ ]+ 코너: (칸 밑, 흰색이 (오른쪽|앞|아래)|제 칸에서 흰색이 (오른쪽|앞)|다른 칸에 들어가 있음)$|^흰 면을 위로/;
     for (let seed = 1; seed <= 12; seed++) {
       const start = stepStart(corners, randomTry(corners), seed);
-      const lesson = makeHintPlan("corners", start, LESSON_PLAN);
-      for (const g of lesson?.segments ?? [])
-        expect(g.label, `${seed}`).toMatch(repeat);
-      const finale = makeHintPlan("corners", start);
-      for (const g of finale?.segments ?? []) {
-        expect(g.label, `${seed}`).toMatch(short);
-        seenShort.add(g.label.replace(/^.+ 코너: /, ""));
-      }
-      // 단원 해 보기의 기본 힌트는 되풀이, 마무리 힌트는 지름길과 같은 계획
-      expect(nextHint("corners", start, null)?.plan.moves).toEqual(
-        lesson?.moves,
-      );
-      expect(finaleHint(start, null)?.plan.moves).toEqual(finale?.moves);
+      const plan = makeHintPlan("corners", start);
+      for (const g of plan?.segments ?? [])
+        expect(g.label, `${seed}`).toMatch(label);
+      expect(plan?.moves.join(" ")).not.toMatch(/F D F'|R' D2 R/);
+      expect(finaleHint(start, null)?.plan.moves).toEqual(plan?.moves);
     }
-    expect(seenShort.size).toBeGreaterThan(2);
   });
 
-  it("코너 방향 도중 R' D' R D를 하다 말아도 나머지부터 이어 간다", () => {
+  it("코너 방향 도중 공식을 하다 말아도 나머지부터 이어 간다", () => {
     const twist = lessonOf("333-ll-corner-twist");
-    const start = stepStart(twist, randomTry(twist), 4);
-    const plan = makeHintPlan("ll-corner-twist", start);
-    expect(plan).not.toBeNull();
-    // 계획의 첫 R' D'까지만 치고 다시 계산
-    const at = plan?.moves.indexOf("R'") ?? -1;
-    const mid = move(start, plan?.moves.slice(0, at + 2).join(" ") ?? "");
-    const again = makeHintPlan("ll-corner-twist", mid);
-    expect(again?.moves.slice(0, 2)).toEqual(["R", "D"]);
-    expect(again?.segments[0]?.label).toContain("마저");
-    expect(finaleReached(mid)).toBe(TAUGHT_STAGES.length - 1);
+    for (let seed = 1; seed <= 8; seed++) {
+      const start = stepStart(twist, randomTry(twist), seed);
+      const plan = makeHintPlan("ll-corner-twist", start);
+      expect(plan).not.toBeNull();
+      // 첫 코너 토막에서 두 수만 치고 다시 계산
+      const seg = plan?.segments.find((g) => g.label.startsWith("코너 방향"));
+      if (!plan || !seg) continue;
+      const cut = seg.start + 2;
+      const mid = move(start, plan.moves.slice(0, cut).join(" "));
+      const again = makeHintPlan("ll-corner-twist", mid);
+      expect(again?.segments[0]?.label, `${seed}`).toContain("마저");
+      expect(again?.moves.slice(0, 2), `${seed}`).toEqual(
+        plan.moves.slice(cut, cut + 2),
+      );
+      expect(finaleReached(mid)).toBe(TAUGHT_STAGES.length - 1);
+    }
   });
 });
 
