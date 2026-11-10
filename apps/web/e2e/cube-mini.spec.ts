@@ -1306,7 +1306,7 @@ test(
     // 메뉴에 보일 단계를 앱에 알린다(사이트 연습 단계 그대로)
     await expect
       .poll(async () => (await sentLast(page, "state"))?.practiceStages?.length)
-      .toBe(11);
+      .toBe(12);
     expect((await sentLast(page, "state"))?.practice).toBeNull();
 
     // 앱 메뉴 「공식 연습 ▸ 2층」
