@@ -239,6 +239,17 @@ describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 �
     expect(centersSolved(4, playN(4, s, CENTER_LAST_TWO))).toBe(true);
   });
 
+  it("단원 글의 옆면 쥐기(흰 면 위·초록 앞에서 초록 x y, 빨강 z' y2, 파랑 x' y')는 그 면이 위·흰 면이 오른쪽", () => {
+    for (const [turns, color] of [
+      ["x y", 2],
+      ["z' y2", 1],
+      ["x' y'", 5],
+    ] as const) {
+      const fc = frame(4, turns);
+      expect([fc[0], fc[1]]).toEqual([color, 0]);
+    }
+  });
+
   it("5×5 대각선 쪽 하나와 십자 쪽 하나", () => {
     expect(solve(5, setupFor(CENTER_IN))).toBe(CENTER_IN);
     expect(solve(5, setupFor(CROSS_ONE))).toBe(CROSS_ONE);
