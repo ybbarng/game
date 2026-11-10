@@ -7,7 +7,7 @@ import { KeyGuide } from "./KeyGuide";
 import { KeyCaps, useMoveKeys } from "./MoveChip";
 
 /**
- * 처음 안내의 키 단계(docs/47 4-4): 지금 고른 키 배치(설정, 키 익히기 `/cube/keys/learn`과 같은 `loadKeymap`)로
+ * 처음 안내의 키 단계(docs/47 4-4): 지금 고른 키 배치(설정, 키 익히기 `/cube/intro?part=keys`과 같은 `loadKeymap`)로
  * 「R은 이 키」를 직접 쳐 본다. 칠 키가 키 그림에서 빛난다. 키보드가 없을 기기에는 보이지 않는다.
  */
 

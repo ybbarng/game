@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
-import { KeyLearnApp } from "@/cube/components/KeyLearnApp";
+import { CubeRedirect } from "@/cube/nav/CubeRedirect";
 
 export const metadata: Metadata = {
-  title: { absolute: "큐브 키 익히기" },
-  description:
-    "손 자리부터 R·U·L, 큐브 돌리기, 넓게·가운데 층, 되돌리기·섞기, 짧은 공식까지 지금 키 배치로 단계별로 익힌다.",
+  title: { absolute: "큐브 사이트 쓰는 법" },
+  robots: { index: false },
 };
 
+/** 옛 주소: 키 익히기는 사이트 쓰는 법의 「키」 부분으로 옮겼다(docs/47 16-6) */
 export default function CubeKeysLearnPage() {
-  return <KeyLearnApp />;
+  return <CubeRedirect to="/cube/intro?part=keys" label="키 익히기로" />;
 }

@@ -19,14 +19,15 @@ import { dotOf, KeyboardMap, KeyLegend, type LayerView } from "./KeyboardMap";
  * 인쇄하면 흰 바탕으로 키보드와 목록만 나온다.
  */
 
+/** 단축키 표에서 이어지는 곳(키 익히기·조작 훈련은 사이트 쓰는 법으로 합쳤다, docs/47 16-8) */
 const TABS = [
   { href: "/cube/keys", title: "단축키 표" },
-  { href: "/cube/keys/learn", title: "키 익히기" },
-  { href: "/cube/keys/drill", title: "조작 훈련" },
+  { href: "/cube/intro?part=keys", title: "키 익히기" },
+  { href: "/cube/intro?part=practice", title: "조작 연습" },
 ];
 
-/** 키 익히기 세 화면의 머리말 */
-export function KeysHeader({
+/** 단축키 표의 머리말 */
+function KeysHeader({
   current,
   keymap,
 }: {
@@ -42,7 +43,7 @@ export function KeysHeader({
         >
           ← 큐브
         </a>
-        <h1 className="font-bold text-lg">키 익히기</h1>
+        <h1 className="font-bold text-lg">단축키 표</h1>
         {keymap && (
           <span className="ml-auto text-white/60 text-xs">
             배치 「{PRESET_LABEL[keymap.preset]}」 ·{" "}

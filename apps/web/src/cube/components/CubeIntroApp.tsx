@@ -16,7 +16,6 @@ import {
   type Keymap,
   type KeymapPreset,
   loadKeymap,
-  PRESET_LABEL,
   presetKeymap,
   resolveAction,
   saveKeymap,
@@ -42,9 +41,9 @@ import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 
 /**
- * 처음이라면(`/cube/intro`, 2026-11-04 사용자가 정함): 큐브 맞추는 법이 아니라 **우리 화면 쓰는 법**.
- * 세 가지 말(표기·공식·단축키) → 면 여섯과 이름의 뜻 → 방향 → 큐브 전체 돌리기 x·y·z → 가운데 층 M·E·S →
- * 넓게 돌리기와 큰 큐브 → 우리 화면에서 읽기 → 키 배치 고르기 → 단축키 쳐 보기 → 보는 법 → 어디로 갈까.
+ * 사이트 쓰는 법(`/cube/intro`, `CubeGuideApp`)의 단계들(2026-11-04 사용자가 정함, 2026-11-10 키 익히기와 합침, docs/47 16-8):
+ * 큐브 맞추는 법이 아니라 **우리 화면 쓰는 법**. 「읽기」는 세 가지 말(표기·공식·단축키) → 면 여섯과 이름의 뜻 → 방향 →
+ * 우리 화면에서 읽기 → 키 배치 고르기 → 보는 법. 키 익히기와 겹치는 x·y·z, M·E·S, 넓게·큰 큐브, 단축키 모음은 「더 알아보기」.
  * 모든 단계는 직접 해 본다. 조각(스티커가 아니라 조각) 이야기는 배우기 3×3 초보자 과정 첫 단원이 맡는다.
  * 정의는 `learn/intro.ts`(엔진과 시험), 「두 손」 소개는 `keys/two-hand.ts`(실제 배치와 시험).
  */
@@ -54,7 +53,7 @@ interface Step {
   title: string;
 }
 
-const STEPS: Step[] = [
+const ALL_STEPS: Step[] = [
   { id: "words", title: "세 가지 말" },
   { id: "faces", title: "면 여섯" },
   { id: "turns", title: "방향" },
@@ -63,13 +62,28 @@ const STEPS: Step[] = [
   { id: "wide", title: "넓게·큰 큐브" },
   { id: "screen", title: "화면 읽기" },
   { id: "layout", title: "키 배치" },
-  { id: "keys", title: "단축키" },
+  { id: "keys", title: "단축키 모음" },
   { id: "view", title: "보는 법" },
-  { id: "next", title: "어디로" },
 ];
 
+/**
+ * 사이트 쓰는 법 「읽기」 부분(docs/47 16-8). 키 익히기와 겹치는 것은 빼고 「더 알아보기」로.
+ * 보는 법은 큐브 전체 돌리기를 쓰므로 키 배치 뒤에 둔다
+ */
+export const READ_STEPS = [
+  "words",
+  "faces",
+  "turns",
+  "screen",
+  "layout",
+  "view",
+] as const;
+/** 「다음」 부분의 더 알아보기(키 익히기와 겹쳐 본 흐름에서 뺀 것) */
+export const MORE_STEPS = ["rotate", "slices", "wide", "keys"] as const;
+
 /** 배우기 첫 단원: 3×3 초보자 과정의 맨 앞. 과정이 바뀌어도 따라간다 */
-const FIRST_LESSON = COURSES.find((c) => c.id === "333-beginner")?.lessons[0];
+export const FIRST_LESSON = COURSES.find((c) => c.id === "333-beginner")
+  ?.lessons[0];
 
 const FACE_NAME = ["위", "오른쪽", "앞", "아래", "왼쪽", "뒤"];
 
@@ -123,7 +137,23 @@ function Quiz({
   );
 }
 
-export function CubeIntroApp() {
+/**
+ * 안내 단계 묶음 하나(사이트 쓰는 법의 「읽기」, 또는 「더 알아보기」의 한 단계). 머리와 바깥 틀은 `CubeGuideApp`이 그린다.
+ * 마지막 단계의 「다음」은 `onFinish`(다음 부분으로).
+ */
+export function CubeIntroSteps({
+  only,
+  onFinish,
+  finishLabel = "다음",
+}: {
+  only: readonly string[];
+  onFinish?: () => void;
+  finishLabel?: string;
+}) {
+  const STEPS = useMemo(
+    () => ALL_STEPS.filter((s) => only.includes(s.id)),
+    [only],
+  );
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const step = STEPS[index] ?? (STEPS[0] as Step);
@@ -131,25 +161,11 @@ export function CubeIntroApp() {
     (id: string) => () => setDone((d) => (d[id] ? d : { ...d, [id]: true })),
     [],
   );
+  const last = index >= STEPS.length - 1;
 
   return (
-    <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
-      <main
-        className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-4"
-        data-cube-intro={step.id}
-      >
-        <header className="flex flex-wrap items-center gap-3">
-          <a
-            href="/cube"
-            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
-          >
-            ← 큐브
-          </a>
-          <h1 className="font-bold text-xl">처음이라면: 화면 쓰는 법</h1>
-          <span className="ml-auto text-white/60 text-xs" data-intro-progress>
-            {index + 1}/{STEPS.length}
-          </span>
-        </header>
+    <div className="flex flex-col gap-4" data-cube-intro={step.id}>
+      {STEPS.length > 1 && (
         <nav className="flex flex-wrap gap-1" aria-label="안내 차례">
           {STEPS.map((s, i) => (
             <button
@@ -170,30 +186,42 @@ export function CubeIntroApp() {
             </button>
           ))}
         </nav>
+      )}
 
-        <section
-          className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4"
-          data-intro-step={step.id}
-          data-intro-done={done[step.id] ? "" : undefined}
-        >
+      <section
+        className="flex flex-col gap-3 rounded-2xl bg-white/5 p-4"
+        data-intro-step={step.id}
+        data-intro-done={done[step.id] ? "" : undefined}
+      >
+        <div className="flex items-baseline gap-2">
           <h2 className="font-bold text-lg">{step.title}</h2>
-          <StepBody id={step.id} onDone={pass(step.id)} />
-        </section>
+          {STEPS.length > 1 && (
+            <span className="ml-auto text-white/60 text-xs" data-intro-progress>
+              {index + 1}/{STEPS.length}
+            </span>
+          )}
+        </div>
+        <StepBody id={step.id} onDone={pass(step.id)} />
+      </section>
 
+      {(STEPS.length > 1 || onFinish) && (
         <div className="flex justify-between">
           <button
             type="button"
             disabled={index === 0}
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm disabled:opacity-30"
+            className={cn(
+              "rounded-xl bg-white/10 px-4 py-2 text-sm disabled:opacity-30",
+              STEPS.length === 1 && "invisible",
+            )}
           >
             이전
           </button>
-          {index < STEPS.length - 1 && (
+          {(!last || onFinish) && (
             <button
               type="button"
               data-intro-next
-              onClick={() => setIndex((i) => i + 1)}
+              onClick={() => (last ? onFinish?.() : setIndex((i) => i + 1))}
               className={cn(
                 "rounded-xl px-4 py-2 font-semibold text-sm",
                 done[step.id]
@@ -201,11 +229,11 @@ export function CubeIntroApp() {
                   : "bg-white/10 text-white/70",
               )}
             >
-              {done[step.id] ? "다음" : "건너뛰기"}
+              {last ? finishLabel : done[step.id] ? "다음" : "건너뛰기"}
             </button>
           )}
         </div>
-      </main>
+      )}
     </div>
   );
 }
@@ -317,10 +345,8 @@ function StepBody({ id, onDone }: { id: string; onDone: () => void }) {
       return <LayoutStep onDone={onDone} />;
     case "keys":
       return <KeysStep onDone={onDone} />;
-    case "view":
-      return <ViewStep onDone={onDone} />;
     default:
-      return <NextStep onDone={onDone} />;
+      return <ViewStep onDone={onDone} />;
   }
 }
 
@@ -729,7 +755,7 @@ function KeysStep({ onDone }: { onDone: () => void }) {
           ? "휴대폰은 큐브를 밀어서 돌려요. 칸 위를 밀면 그 줄이, 빈 곳을 밀면 큐브 전체가 돌아요. 아래 단추 줄도 있어요."
           : "키보드 그림은 지금 배치의 키예요. 굵은 글은 그냥 칠 때의 수예요. 배치는 설정에서 바꿔요."}{" "}
         더 익히려면{" "}
-        <a href="/cube/keys/learn" className="underline" data-intro-keys>
+        <a href="/cube/intro?part=keys" className="underline" data-intro-keys>
           키 익히기
         </a>
         .
@@ -833,54 +859,5 @@ function ViewStep({ onDone }: { onDone: () => void }) {
         </>
       )}
     </>
-  );
-}
-
-// ── 어디로 갈까 ───────────────────────────────────────
-
-function NextStep({ onDone }: { onDone: () => void }) {
-  useEffect(() => onDone(), [onDone]);
-  return (
-    <div className="flex flex-col gap-2">
-      <a
-        href={`/cube/learn?lesson=${FIRST_LESSON?.id ?? ""}`}
-        data-intro-learn
-        className="rounded-xl border border-sky-300/60 bg-sky-500/25 px-4 py-3 hover:bg-sky-500/35"
-      >
-        <b>맞추는 법 배우기</b>
-        <span className="block text-white/70 text-xs">
-          처음 맞춰 본다면. 첫 단원 「{FIRST_LESSON?.title}」부터
-        </span>
-      </a>
-      <a
-        href="/cube/keys/learn"
-        className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
-      >
-        <b>키 익히기</b>
-        <span className="block text-white/70 text-xs">
-          {PRESET_LABEL.twoHand}·{PRESET_LABEL.notation} 배치를 손에 익히기
-        </span>
-      </a>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <a
-          href="/cube/solo"
-          className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
-        >
-          <b>혼자 맞추기</b>
-          <span className="block text-white/70 text-xs">
-            이미 맞출 줄 안다면
-          </span>
-        </a>
-        <a
-          href="/cube/timer"
-          className="rounded-xl bg-white/10 px-4 py-3 hover:bg-white/15"
-        >
-          <b>실물 큐브 타이머</b>
-          <span className="block text-white/70 text-xs">
-            실물로 맞출 줄 안다면
-          </span>
-        </a>
-      </div>
-    </div>
   );
 }

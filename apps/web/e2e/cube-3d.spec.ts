@@ -58,7 +58,7 @@ test("3D: 정지 큐브(StillCube)", async ({ page }, info) => {
 
 test("3D: 연습 큐브(PracticeCube)", async ({ page }, info) => {
   await only(page, info.project.name);
-  await page.goto("/cube/keys/learn");
+  await page.goto("/cube/intro?part=keys");
   await expect(
     page.locator("[data-practice-cube] [data-cube-ready]"),
   ).toHaveCount(1, SCENE);
