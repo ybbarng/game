@@ -16,6 +16,7 @@ import {
   YAU_CROSS_PAIR_TRY,
   YAU_CROSS_SAME_TRY,
   YAU_CROSS_UP_DEMO,
+  YAU_CROSS_UP_WHITE_TRY,
   YAU_CROSS3_STATE,
   YAU_LAST_DEMO,
   YAU_LAST_TRY,
@@ -322,13 +323,14 @@ describe("야우 단원이 규칙과 같다", () => {
       (s) => (s.kind === "demo" || s.kind === "try") && s.alg,
     );
 
-  it("십자 셋 단원의 시연·해 보기 모범 답 = 규칙이 그 상황에서 내는 수, 경우는 짝 방향 어긋남·위 층·같은 층", () => {
+  it("십자 셋 단원의 시연·해 보기 모범 답 = 규칙이 그 상황에서 내는 수, 경우는 짝 방향 어긋남·위 층·위 층에 붙어 흰색이 위·같은 층", () => {
     const l = lesson("yau-cross3");
     expect(withAlg("yau-cross3").map((s) => s.alg)).toEqual([
       YAU_CROSS_PAIR_DEMO,
       YAU_CROSS_PAIR_TRY,
       YAU_CROSS_UP_DEMO,
       YAU_CROSS_DOWN_DEMO,
+      YAU_CROSS_UP_WHITE_TRY,
       YAU_CROSS_FRONT_TRY,
       YAU_CROSS_SAME_TRY,
     ]);
@@ -347,6 +349,7 @@ describe("야우 단원이 규칙과 같다", () => {
       "pair",
       "up,pair",
       "down-side,up,pair",
+      "up-white-up",
       "down-front,pair",
       "same-layer,pair",
     ]);
@@ -354,7 +357,7 @@ describe("야우 단원이 규칙과 같다", () => {
     const q = steps("yau-cross3", "quiz").find((x) =>
       x.quiz?.question.includes("F2"),
     ) as LessonStep;
-    expect(q.setup).toEqual(withAlg("yau-cross3")[5]?.setup);
+    expect(q.setup).toEqual(withAlg("yau-cross3")[6]?.setup);
     expect(q.quiz?.choices[q.quiz.answer]).toBe("앞-왼쪽 줄 아래 칸");
   });
 
@@ -562,5 +565,121 @@ describe("긴 단계를 한 가지 목표씩 나눈 단계(docs/47 16-18)", () =
     expect(ids.has("turn-over")).toBe(false);
     expect(ids.has("store")).toBe(true);
     expect(ids.has("low")).toBe(true);
+  });
+});
+
+describe("답은 문제를 풀어야 알고, 앞에 보인 경우만 목록에 둔다(docs/47 16-19)", () => {
+  const lesson = (id: string) =>
+    YAU_444.lessons.find((l) => l.id === id) as Lesson;
+  const quizBy = (id: string, word: string) =>
+    lesson(id).steps.find(
+      (s) => s.kind === "quiz" && s.quiz?.question.includes(word),
+    ) as LessonStep;
+  const answer = (st: LessonStep) => st.quiz?.choices[st.quiz.answer] as string;
+  const startOf = (id: string, st: LessonStep) => stepStart(lesson(id), st, 1);
+  const cell = (f: number, r: number, c: number) => f * 16 + r * 4 + c;
+  const next = (id: string, st: LessonStep) => {
+    const steps = lesson(id).steps;
+    return steps[steps.indexOf(st) + 1] as LessonStep;
+  };
+
+  it("본문은 답을 말하지 않는다(흰 십자 셋 F2·위 층 흰색 위, 옆 센터 보내기·대각선 칸, 마지막 십자 엣지 쥐기·F2)", () => {
+    for (const [id, word] of [
+      ["yau-cross3", "그 날개는 어디로"],
+      ["yau-cross3", "흰색이 아래를 보며"],
+      ["yau-side-centers", "빨강 센터 블럭 넷은"],
+      ["yau-side-centers", "새로 올라와"],
+      ["yau-edges", "비운 자리를 앞으로"],
+      ["yau-edges", "F2를 치면 흰-주황"],
+    ] as const) {
+      const q = quizBy(id, word);
+      expect(q, word).toBeDefined();
+      expect(q.body, word).not.toContain(answer(q));
+    }
+    // 보내기 문제 본문은 앞면 것이 어디로 가는지 말하지 않는다(오른쪽 면 → 앞면만)
+    expect(quizBy("yau-side-centers", "빨강 센터 블럭 넷은").body).not.toMatch(
+      /앞면에 있던|왼쪽 면으로/,
+    );
+    expect(quizBy("yau-cross3", "그 날개는 어디로").body).not.toMatch(
+      /다른 칸으로|아래 칸으로/,
+    );
+  });
+
+  it("흰 십자 셋: 위 층에 붙어 흰색이 위 → U2 뒤 F2만 흰색이 아래로 넣고, 바로 뒤 해 보기가 같은 화면이다", () => {
+    const q = quizBy("yau-cross3", "흰색이 아래를 보며");
+    expect(answer(q)).toBe("F2");
+    const s = startOf("yau-cross3", q);
+    const blue = whiteWings(s, 5);
+    expect(blue.map((w) => w.line)).toEqual(["UB", "UB"]);
+    expect(blue.every((w) => w.whiteFace === U)).toBe(true);
+    const put = (alg: string) =>
+      whiteWings(play(s, alg), 5).every(
+        (w) => w.line === "DF" && w.whiteFace === D,
+      );
+    expect(put("U2 F2")).toBe(true);
+    expect(put("U2 F")).toBe(false);
+    expect(put("U2 F'")).toBe(false);
+    const t = next("yau-cross3", q);
+    expect(t.kind).toBe("try");
+    expect(t.setup).toEqual(q.setup);
+    expect(t.alg).toBe(YAU_CROSS_UP_WHITE_TRY);
+    // 이 경우를 보인 단계가 마지막 목록(②)보다 앞에 있다
+    const steps = lesson("yau-cross3").steps;
+    const last = steps[steps.length - 1] as LessonStep;
+    expect(last.body).toContain("흰색이 위면 U로 위-앞에 두고 F2");
+    expect(steps.indexOf(q)).toBeLessThan(steps.length - 1);
+  });
+
+  it("옆 센터: 옮기기 R은 데려온 칸의 대각선(아래-앞) 블럭을 윗줄로 올리고, 비우기는 R2만 대각선(아래-뒤)에 다른 블럭을 둔다", () => {
+    const diag = quizBy("yau-side-centers", "새로 올라와");
+    expect(answer(diag)).toBe("아래-앞 칸");
+    const s = startOf("yau-side-centers", diag);
+    const before = faceColors(n, s);
+    const after = faceColors(n, play(s, `${YAU_BRING.top.B} R`));
+    expect(after[cell(R, 1, 1)]).toBe(before[cell(R, 2, 1)]);
+
+    const empty = quizBy("yau-side-centers", "비우기로");
+    expect(answer(empty)).toBe("R2");
+    const e = startOf("yau-side-centers", empty);
+    const ORANGE = 4;
+    // 2U로 데려오면 주황이 위-앞 칸에, 그 대각선은 아래-뒤 칸
+    expect(faceColors(n, play(e, YAU_BRING.top.B))[cell(R, 1, 1)]).toBe(ORANGE);
+    for (const [hold, ok] of [
+      ["R", false],
+      ["R'", false],
+      ["R2", true],
+    ] as const)
+      expect(faceColors(n, play(e, hold))[cell(R, 2, 2)] !== ORANGE, hold).toBe(
+        ok,
+      );
+    // 비우기 문제 바로 뒤 해 보기가 같은 화면이고 R2로 시작한다
+    const t = next("yau-side-centers", empty);
+    expect(t.setup).toEqual(empty.setup);
+    expect(t.alg).toBe(YAU_SIDE_TRY);
+    expect(t.alg?.startsWith("R2 ")).toBe(true);
+  });
+
+  it("마지막 십자 엣지: 비운 자리가 오른쪽이면 y, 흰색이 옆인 흰-주황을 U' F2로 넣으면 흰색이 앞을 본다", () => {
+    const hold = quizBy("yau-edges", "비운 자리를 앞으로");
+    expect(answer(hold)).toBe("y");
+    const s = startOf("yau-edges", hold);
+    // 비운 자리(아래-오른쪽)에 흰-주황이 없고, y를 치면 다음 문제 화면
+    expect(
+      whiteWings(s, 4).some((w) => w.line === "DR" && w.whiteFace === D),
+    ).toBe(false);
+    const flipQ = quizBy("yau-edges", "F2를 치면 흰-주황");
+    expect(next("yau-edges", hold)).toBe(flipQ);
+    expect(faceColors(n, play(s, "y"))).toEqual(
+      faceColors(n, startOf("yau-edges", flipQ)),
+    );
+    expect(answer(flipQ)).toContain("뒤집혀");
+    const f = startOf("yau-edges", flipQ);
+    const wings = whiteWings(play(f, "U' F2"), 4);
+    expect(wings.every((w) => w.line === "DF" && w.whiteFace === F)).toBe(true);
+    // 바로 뒤 시연은 같은 화면에서 흰색이 옆일 때의 넣기
+    const demo = next("yau-edges", flipQ);
+    expect(demo.kind).toBe("demo");
+    expect(demo.setup).toEqual(flipQ.setup);
+    expect(demo.alg).toBe(YAU_LAST_DEMO);
   });
 });
