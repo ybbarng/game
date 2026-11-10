@@ -25,7 +25,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "엣지: 점",
     group: "edges",
     algs: ["F R U R' U' F' f R U R' U' f'"],
-    note: "위를 보는 노란 엣지가 없고 노란 센터 블럭만 위를 봐요. 가로줄 공식 F R U R' U' F'를 한 뒤, 이어서 f R U R' U' f'를 해요.",
+    note: "위를 보는 노란 엣지 블럭이 없고 노란 센터 블럭만 위를 봐요. 가로줄 공식 F R U R' U' F'를 한 뒤, 이어서 f R U R' U' f'를 해요.",
   },
   ...(
     [
@@ -91,7 +91,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "코너: 헤드라이트 하나(이웃 바꾸기, T퍼뮤)",
     group: "corners",
     algs: ["R U R' U' R' F R2 U' R' U' R U R' F'"],
-    note: "헤드라이트(옆면 윗줄 양 끝의 코너 블럭 둘이 서로 바르게 이웃해 두 스티커가 같은 색인 면)를 왼쪽에 둬요. T퍼뮤는 위 층 코너 가운데 오른쪽 둘을 맞바꿔요.",
+    note: "헤드라이트(옆면 윗줄 양 끝의 코너 블럭 둘이 서로 바르게 이웃해 두 스티커가 같은 색인 면)를 왼쪽에 둬요. T퍼뮤는 위 층 코너 블럭 가운데 오른쪽 둘을 맞바꿔요.",
   },
   {
     id: "2look-pll-diagonal",
@@ -99,7 +99,7 @@ export const TWO_LOOK_PLL: AlgCase[] = [
     name: "코너: 헤드라이트 없음(대각 바꾸기, Y퍼뮤)",
     group: "corners",
     algs: ["F R U' R' U' R U R' F' R U R' U' R' F R F'"],
-    note: "어느 면에도 헤드라이트가 없으면 대각선으로 놓인 위 층 코너 둘을 바꿔요.",
+    note: "어느 면에도 헤드라이트가 없으면 대각선으로 놓인 위 층 코너 블럭 둘을 바꿔요.",
   },
   {
     id: "2look-pll-ua",
