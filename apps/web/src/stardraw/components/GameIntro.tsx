@@ -155,7 +155,8 @@ export function GameIntro({
       <div className="flex flex-col items-center gap-1">
         {cadence && (
           <p className="text-balance break-keep text-center text-sm text-white/65">
-            {cadence} 45개의 별 가운데 6개가 빛납니다.
+            {cadence} 45개의 별 가운데 6개가 빛납니다. 2등을 가르는 보너스 별
+            하나도 함께 빛납니다.
           </p>
         )}
         <h2 className="text-balance text-center font-bold text-lg">
@@ -256,7 +257,7 @@ export function GameIntro({
           data-shown={bonusShown(shown) || undefined}
         >
           <span className="flex items-center gap-1.5">
-            <span className="text-white/40">+</span>
+            <span className="text-white/50 text-xs">+ 보너스</span>
             <span
               className="sd-intro-pop"
               data-twinkle={twinkle === 6 || undefined}

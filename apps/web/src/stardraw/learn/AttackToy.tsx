@@ -17,13 +17,17 @@ const ROLES: { id: Role; label: string; who: string }[] = [
   {
     id: "operator",
     label: "서버 운영자",
-    who: "장부를 쓰고 앵커 저장소도 가진 사람. 고친 뒤 사슬을 다시 잇고 앵커도 강제 push로 고쳐 쓴다고 칩니다",
+    who: "장부를 쓰고 앵커 저장소도 가진 사람입니다. 고친 뒤 사슬을 다시 잇고 앵커도 강제 push로 고쳐 쓴다고 칩니다.",
   },
-  { id: "entrant", label: "다른 참가자", who: "예측서를 내는 누구나" },
+  {
+    id: "entrant",
+    label: "다른 참가자",
+    who: "예측서를 내는 사람이면 누구나 될 수 있습니다.",
+  },
   {
     id: "middle",
     label: "중간자",
-    who: "내 기기와 서버 사이에서 오가는 것을 바꿀 수 있는 사람",
+    who: "내 기기와 서버 사이에서 오가는 것을 바꿀 수 있는 사람입니다.",
   },
 ];
 
@@ -69,10 +73,10 @@ export function AttackToy() {
     <Toy title="공격해 보기" id="attack">
       <p className="text-white/60 text-xs">
         이 브라우저에서 작은 장부를 실제로 만들었습니다: 1회차에 세 명이
-        예측했고(나는 1등), 결과는 실제 drand 1,000,000회 값, 봉인 토큰은 연습용
-        시각 인증 기관이 냈습니다. 2회차는 봉인을 받지 못한 무효 회차입니다.
-        공격을 고르면 장부를 고친 뒤 검증하기 페이지와 같은 장부 전체 검사를
-        돌립니다.
+        예측했고(나는 1등), 결과는 실제 drand 순번 1,000,000의 값, 봉인 토큰은
+        연습용 시각 인증 기관이 냈습니다. 2회차는 봉인을 받지 못한 무효
+        회차입니다. 공격을 고르면 장부를 고친 뒤 검증하기 페이지와 같은 장부
+        전체 검사를 돌립니다.
       </p>
       <Verdict
         ok={honest ? honest.problems.length === 0 : null}
@@ -81,7 +85,7 @@ export function AttackToy() {
         {honest === null
           ? "장부를 만들고 검사하는 중"
           : honest.problems.length === 0
-            ? "고치기 전 장부는 모든 검사를 통과합니다"
+            ? "고치기 전 장부는 모든 검사를 통과합니다."
             : honest.problems.join(" · ")}
       </Verdict>
       <div className="flex flex-wrap gap-1.5" role="tablist">
@@ -129,7 +133,7 @@ export function AttackToy() {
               ? "장부를 고치고 다시 검사하는 중"
               : result.caught.length > 0
                 ? `「${attack.title}」 걸렸습니다. ${result.why}`
-                : "걸리지 않았습니다"}
+                : "걸리지 않았습니다."}
           </Verdict>
           {result && result.caught.length > 0 && (
             <ul className="flex flex-col gap-1 rounded-lg bg-black/30 p-2 text-[11px] text-rose-100/90">

@@ -159,11 +159,11 @@ export function readAssertion(a: WebAuthnAssertion): {
 
 /** 응모권 앞부분(80바이트)의 칸: 이름과 바이트 범위 */
 export const BODY_FIELDS = [
-  { key: "v", label: "판", from: 0, to: 1 },
+  { key: "v", label: "형식", from: 0, to: 1 },
   { key: "round", label: "회차", from: 1, to: 5 },
   { key: "numbers", label: "번호", from: 5, to: 11 },
   { key: "pub", label: "공개 열쇠", from: 11, to: 76 },
-  { key: "nonce", label: "작업 증명 n", from: 76, to: 80 },
+  { key: "nonce", label: "n", from: 76, to: 80 },
 ] as const;
 
 /** 번호 하나를 아직 없는 다음 번호로 바꾼다(오름차순 유지) */

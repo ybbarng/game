@@ -335,7 +335,9 @@ async function ledgerAttack(l: MiniLedger, why: string): Promise<AttackResult> {
   const outcome = await checkLedger(l);
   const caught = [...outcome.problems];
   if (!outcome.headKept)
-    caught.push("기기: 마지막으로 본 장부 끝 해시를 새 장부가 이어받지 않는다");
+    caught.push(
+      "기기: 마지막으로 본 장부 끝 해시를 새 장부가 이어받지 않습니다.",
+    );
   return { caught, why };
 }
 
@@ -380,7 +382,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-numbers",
     role: "operator",
     title: "빛난 별 바꾸기",
-    how: "1회차에 빛난 별을 바꾸고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    how: "1회차에 빛난 별을 바꾸고, 뒤 기록과 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
@@ -388,7 +390,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "번호는 drand 값에서 정해진다. 누구든 다시 계산하면 다르다",
+        "번호는 drand 값에서 정해집니다. 누구든 다시 계산하면 다른 번호가 나옵니다.",
       );
     },
   },
@@ -396,7 +398,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-insert",
     role: "operator",
     title: "결과를 보고 내 예측서 끼워 넣기",
-    how: "drand 값이 나온 뒤 빛난 별로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    how: "drand 값이 나온 뒤 빛난 별로 예측서를 만들어 넣고, 뒤 기록과 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const challenge = genesisHash(l.genesis);
@@ -410,7 +412,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "예측서 목록이 바뀌면 봉인 값이 바뀐다. 마감 직후 기관이 서명한 토큰은 옛 봉인 값을 담고 있다",
+        "예측서 목록이 바뀌면 봉인 값이 바뀝니다. 마감 직후 기관이 서명한 토큰은 옛 봉인 값을 담고 있습니다.",
       );
     },
   },
@@ -418,7 +420,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-remove",
     role: "operator",
     title: "남의 입상 예측서 빼기",
-    how: "1회차 1등 예측서(나)를 목록에서 빼고, 뒤 기록과 앵커까지 고쳐 쓴다",
+    how: "1회차 1등 예측서(나)를 목록에서 빼고, 뒤 기록과 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const mine = ticketId(myTicket(w));
@@ -429,10 +431,10 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       const result = await ledgerAttack(
         l,
-        "봉인 값이 기관 토큰과 어긋난다. 나는 예측 접수증(서버 서명)으로 빠진 것을 누구에게나 보일 수 있다",
+        "봉인 값이 기관 토큰과 어긋납니다. 나는 접수증(서버 서명)으로 빠진 것을 누구에게나 보일 수 있습니다.",
       );
       result.caught.push(
-        "나: 내 예측서가 들어 있다는 증명(머클 증명)이 나오지 않는다",
+        "나: 내 예측서가 들어 있다는 증명(머클 증명)이 나오지 않습니다.",
       );
       return result;
     },
@@ -441,22 +443,22 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-history",
     role: "operator",
     title: "지난 회차 기록 고치기",
-    how: "1회차 기록의 예측 수를 고치고, 사슬은 다시 잇지 않는다",
+    how: "1회차 기록의 예측 수를 고치고, 사슬은 다시 잇지 않습니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
       l.records[0] = { ...r, count: r.count + 1 };
       return ledgerAttack(
         l,
-        "기록 해시가 바뀌어 다음 회차의 앞 기록 해시와 이어지지 않는다",
+        "기록 해시가 바뀌어 다음 회차의 앞 기록 해시와 이어지지 않습니다.",
       );
     },
   },
   {
     id: "op-drand",
     role: "operator",
-    title: "다른 drand 회차 쓰기",
-    how: "1회차가 쓸 drand 회차를 하나 뒤로 바꾼다(번호를 고르려고)",
+    title: "다른 drand 순번 쓰기",
+    how: "1회차가 쓸 drand 순번을 하나 뒤로 바꿉니다(번호를 고르려고).",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
@@ -464,7 +466,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "drand 회차는 마감 시각에서 계산식으로 정해진다. 서명도 그 회차 것이 아니다",
+        "drand 순번은 마감 시각에서 계산식으로 정해집니다. 서명도 그 순번의 것이 아닙니다.",
       );
     },
   },
@@ -472,7 +474,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-restart",
     role: "operator",
     title: "장부를 처음부터 다시 만들기",
-    how: "마음에 들지 않는 장부를 버리고 처음 일정표를 바꿔 새로 시작한다",
+    how: "마음에 들지 않는 장부를 버리고 처음 일정표를 바꿔 새로 시작합니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const genesis = { ...l.genesis, epoch: l.genesis.epoch + 86400 };
@@ -485,7 +487,7 @@ export const ATTACKS: readonly Attack[] = [
       writeRoundAnchors(genesis, l.records, l.anchors);
       return ledgerAttack(
         l,
-        "앵커 저장소의 genesis.txt는 장부를 처음 만들 때 한 번 남겼다. 새 처음 일정표와 다르다",
+        "앵커 저장소의 genesis.txt는 장부를 처음 만들 때 한 번 남겼습니다. 새 처음 일정표와 다릅니다.",
       );
     },
   },
@@ -493,7 +495,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-steal",
     role: "operator",
     title: "1등 입상 가로채기",
-    how: "확인하는 분에게 운영자 열쇠로 서명한 입상 확인 응답을 보낸다",
+    how: "확인하는 분에게 운영자 열쇠로 서명한 입상 확인 응답을 보냅니다.",
     run: async (w) => {
       const t = myTicket(w);
       const claim = await makeChallengeClaim(
@@ -508,7 +510,7 @@ export const ATTACKS: readonly Attack[] = [
       });
       return {
         caught: problems.map((p) => `확인하는 분 기기: ${p}`),
-        why: "확인하는 분 기기는 장부에 있는 그 예측서의 공개 열쇠로만 서명을 받는다",
+        why: "확인하는 분 기기는 장부에 있는 그 예측서의 공개 열쇠로만 서명을 받습니다.",
       };
     },
   },
@@ -516,7 +518,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-director-forge",
     role: "operator",
     title: "국장 열쇠 없이 소속 추가",
-    how: "장부에 지정되지 않은 내 패스키로 '소속 추가' 운영 기록에 서명해 2회차 기록에 넣고, 앵커까지 고쳐 쓴다",
+    how: "장부에 지정되지 않은 내 패스키로 '소속 추가' 운영 기록에 서명해 2회차 기록에 넣고, 앵커까지 고쳐 씁니다.",
     run: async (w) => {
       const l = await withOperation(w, (after) =>
         signAsDirector(
@@ -532,7 +534,7 @@ export const ATTACKS: readonly Attack[] = [
       );
       return ledgerAttack(
         l,
-        "운영 기록은 장부에 지정되고 3회차 예고가 지난 국장 열쇠의 서명만 받는다. 국장 열쇠 지정도 장부에 남아 누구나 내력을 본다",
+        "운영 기록은 장부에 지정되고 3회차 예고가 지난 국장 열쇠의 서명만 받습니다. 국장 열쇠 지정도 장부에 남아 누구나 내력을 봅니다.",
       );
     },
   },
@@ -540,7 +542,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "op-director-now",
     role: "operator",
     title: "서버 열쇠로 내 열쇠를 바로 국장에",
-    how: "서버 서명 열쇠(관인)로 내 패스키를 국장 열쇠로 지정하면서 예고 없이 다음 회차부터 효력을 준다",
+    how: "서버 서명 열쇠(관인)로 내 패스키를 국장 열쇠로 지정하면서 예고 없이 다음 회차부터 적용합니다.",
     run: async (w) => {
       const l = await withOperation(w, async (after) =>
         signAsSeal(
@@ -557,7 +559,7 @@ export const ATTACKS: readonly Attack[] = [
       );
       return ledgerAttack(
         l,
-        "운영 기록은 실린 회차 뒤 3회차 동안 예고되고 그다음 회차부터 효력이 생긴다. 그사이 장부에 보이고 진짜 국장이 취소할 수 있다",
+        "운영 기록은 실린 회차 뒤 3회차 동안 예고되고 그다음 회차부터 적용됩니다. 그사이 장부에 보이고 진짜 국장이 취소할 수 있습니다.",
       );
     },
   },
@@ -565,7 +567,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-impersonate",
     role: "entrant",
     title: "남의 이름으로 예측",
-    how: "민지의 공개 열쇠를 넣은 예측서를 내 열쇠로 서명해 낸다",
+    how: "민지의 공개 열쇠를 넣은 예측서를 내 열쇠로 서명해 냅니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const minji = w.people[1] as Person;
@@ -587,7 +589,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "예측서 서명은 그 공개 열쇠의 비밀 열쇠로만 만들 수 있다",
+        "예측서 서명은 그 공개 열쇠의 비밀 열쇠로만 만들 수 있습니다.",
       );
     },
   },
@@ -595,7 +597,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-double",
     role: "entrant",
     title: "한 열쇠로 두 장 내기",
-    how: "준호가 같은 열쇠로 번호만 다른 예측서를 한 장 더 낸다",
+    how: "준호가 같은 열쇠로 번호만 다른 예측서를 한 장 더 냅니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const junho = w.people[2] as Person;
@@ -609,7 +611,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "예측자 id(공개 열쇠의 해시)는 회차마다 한 장만 된다. 서버가 받아 줘도 검사에서 드러난다",
+        "예측자 id(공개 열쇠의 해시)마다 회차에 한 장만 낼 수 있습니다. 서버가 받아 줘도 검사에서 드러납니다.",
       );
     },
   },
@@ -617,7 +619,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-nopow",
     role: "entrant",
     title: "작업 증명 건너뛰기",
-    how: "Argon2 계산 없이 아무 n이나 넣고 서명한다",
+    how: "Argon2id 계산 없이 아무 n이나 넣고 서명합니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const minji = w.people[1] as Person;
@@ -634,7 +636,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "검사기가 Argon2를 한 번 계산하면 n이 목표값을 넘지 못한 것이 드러난다",
+        "검사기가 Argon2id를 한 번 계산하면, 그 n으로는 결과가 목표값보다 작게 나오지 않는 것이 드러납니다.",
       );
     },
   },
@@ -642,7 +644,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-replay",
     role: "entrant",
     title: "지난 입상 증명 다시 쓰기",
-    how: "남이 예전에 받은 입상 확인 응답을 새 확인 요청에 그대로 낸다",
+    how: "남이 예전에 받은 입상 확인 응답을 새 확인 요청에 그대로 냅니다.",
     run: async (w) => {
       const t = myTicket(w);
       const me = w.people[0] as Person;
@@ -655,7 +657,7 @@ export const ATTACKS: readonly Attack[] = [
       const problems = await verifyClaim(old, { ticket: t, request: REQUEST });
       return {
         caught: problems.map((p) => `확인하는 분 기기: ${p}`),
-        why: "확인 문구가 요청마다 달라 지난 서명은 새 요청에 맞지 않는다",
+        why: "확인 문구가 요청마다 달라 지난 서명은 새 요청에 맞지 않습니다.",
       };
     },
   },
@@ -663,7 +665,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "en-fake-link",
     role: "entrant",
     title: "남의 입상으로 확인 링크 만들기",
-    how: "민지가 내 1등 예측서의 확인 링크를 자기 열쇠로 서명해 서버에 올린다",
+    how: "민지가 내 1등 예측서의 확인 링크를 자기 열쇠로 서명해 서버에 올립니다.",
     run: async (w) => {
       const t = myTicket(w);
       const minji = w.people[1] as Person;
@@ -671,7 +673,7 @@ export const ATTACKS: readonly Attack[] = [
       const problems = await verifyInvite(forged, t);
       return {
         caught: problems.map((p) => `서버: ${p}`),
-        why: "서버는 장부에 있는 그 예측서의 공개 열쇠로 서명이 맞아야 링크를 받는다. 그래서 예측서 주인만 링크를 만든다",
+        why: "서버는 장부에 있는 그 예측서의 공개 열쇠로 서명이 맞아야 링크를 받습니다. 그래서 예측서 주인만 링크를 만듭니다.",
       };
     },
   },
@@ -679,7 +681,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "mid-numbers",
     role: "middle",
     title: "전달 중에 번호 바꾸기",
-    how: "내 예측서가 서버로 가는 길에 번호 하나를 바꿔 전달한다",
+    how: "내 예측서가 서버로 가는 길에 번호 하나를 바꿔 전달합니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const t = myTicket(w);
@@ -691,7 +693,7 @@ export const ATTACKS: readonly Attack[] = [
       coverUp(l);
       return ledgerAttack(
         l,
-        "서명이 번호까지 덮는다. 한 바이트만 바뀌어도 서명이 맞지 않는다",
+        "서명이 번호까지 덮습니다. 한 바이트만 바뀌어도 서명이 맞지 않습니다.",
       );
     },
   },
@@ -699,7 +701,7 @@ export const ATTACKS: readonly Attack[] = [
     id: "mid-ledger",
     role: "middle",
     title: "나에게만 다른 장부 보여 주기",
-    how: "내 기기로 오는 장부 파일을 가로채 1회차를 고친 장부로 바꿔 보낸다",
+    how: "내 기기로 오는 장부 파일을 가로채 1회차를 고친 장부로 바꿔 보냅니다.",
     run: async (w) => {
       const l = cloneLedger(w);
       const r = l.records[0] as RoundRecord;
@@ -713,7 +715,7 @@ export const ATTACKS: readonly Attack[] = [
       });
       return ledgerAttack(
         l,
-        "모두가 같은 GitHub 앵커와 비교하고, 내 기기는 전에 본 끝 해시를 기억한다",
+        "모두가 같은 GitHub 앵커와 비교하고, 내 기기는 전에 본 끝 해시를 기억합니다.",
       );
     },
   },

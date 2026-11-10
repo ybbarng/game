@@ -174,9 +174,7 @@ export function SignToy() {
         )}
       </Row>
       <div className="flex flex-col gap-2">
-        <span className="text-white/70 text-xs">
-          7회 예측서 번호(공을 누르면 바뀝니다)
-        </span>
+        <span className="text-white/70 text-xs">7회 예측서 번호</span>
         <Balls
           numbers={numbers}
           onBump={(i) => {
@@ -193,10 +191,7 @@ export function SignToy() {
       </div>
       {signed && arrived && (
         <div className="flex flex-col gap-2 border-white/10 border-t pt-3">
-          <span className="text-white/70 text-xs">
-            서버에 도착한 예측서. 공을 누르거나 아래 단추로 한 글자씩 바꿔
-            보세요.
-          </span>
+          <span className="text-white/70 text-xs">서버에 도착한 예측서</span>
           <Balls
             numbers={arrived.numbers}
             changed={arrived.numbers.filter((n) => !signed.numbers.includes(n))}
@@ -219,7 +214,7 @@ export function SignToy() {
             <Btn onClick={() => setArrived(signed)}>처음대로</Btn>
           </div>
           <BodyHex body={ticketBody(arrived)} base={ticketBody(signed)} />
-          <Row label="서명(패스키 서명, DER)">
+          <Row label="서명">
             <Mono>{toHex(arrived.sig.signature).slice(0, 48)}…</Mono>
           </Row>
           <Row label="예측서 id">

@@ -135,8 +135,8 @@ export function TsaToy() {
     <Toy title="받아 둔 시각 인증 토큰 확인" id="tsa">
       <p className="text-white/60 text-xs">
         2026-10-30에 실제 기관 세 곳에서 받아 둔 토큰입니다. 실제 회차에서는
-        봉인 값의 SHA-256을 보내지만, 이 토큰은 글귀 「{FIXTURE_TEXT}」의
-        SHA-256을 담았습니다.
+        봉인 값의 해시(SHA-256)를 보내지만, 이 토큰은 글귀 「{FIXTURE_TEXT}」의
+        해시를 담았습니다.
       </p>
       <p className="text-white/60 text-xs">
         검사기가 믿는 기관은 DigiCert와 Sectigo 두 곳입니다. FreeTSA는 개인이
@@ -152,7 +152,7 @@ export function TsaToy() {
       </div>
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-white/70">
-          봉인 값(이 글귀의 SHA-256을 토큰과 맞춰 봅니다)
+          봉인 값(이 글귀의 해시를 토큰과 맞춰 봅니다)
         </span>
         <input
           value={text}
@@ -191,9 +191,9 @@ export function TsaToy() {
       {baseTime > 0 && (
         <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
           <span className="text-white/70 text-xs">
-            봉인 시각은 마감 뒤, drand 결과 결정 전이어야 그 회차가 유효합니다.
-            정식 회차는 여기에 더해 봉인 사본이 drand 1분 전까지 공개 GitHub
-            저장소의 main에 올라가야 유효합니다. 아래는 시각만 견줍니다.
+            봉인 시각은 마감 뒤, 결과 결정 전이어야 그 회차가 유효합니다. 정식
+            회차는 여기에 더해 봉인 사본이 결과 결정 1분 전까지 공개 GitHub
+            저장소에 올라가야 유효합니다(8단계). 아래는 시각만 견줍니다.
           </span>
           <div className="flex flex-wrap gap-1.5">
             <Btn
@@ -282,7 +282,7 @@ export function DrandToy() {
     <Toy title="drand 공개 난수로 번호 뽑기" id="drand">
       <div className="flex flex-col gap-1.5">
         <span className="text-white/70 text-xs">
-          ① 어느 drand 회차를 쓸지는 마감 시각이 정합니다.
+          ① 어느 drand 순번의 값을 쓸지는 마감 시각이 정합니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setCloseRound(Math.max(1, closeRound - 1))}>
@@ -293,16 +293,16 @@ export function DrandToy() {
         <Row label={`${closeRound}회 마감`}>
           <Mono>{kst(times.closesAt)}</Mono>
         </Row>
-        <Row label="마감 + 5분 뒤 첫 drand">
-          <Mono>{drandRound.toLocaleString()}회</Mono> ·{" "}
+        <Row label="마감 5분 뒤 첫 drand 순번">
+          <Mono>{drandRound.toLocaleString()}</Mono> ·{" "}
           <Mono>{kst(drandTime(drandRound))}</Mono>
         </Row>
       </div>
       <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
-          ② drand 값은 League of Entropy 여러 기관이 함께 서명해 3초마다 냅니다.
-          그 시각 전에는 아무도 모릅니다. 실제 값(1,000,000회)으로 확인해
-          봅니다.
+          ② drand 값은 League of Entropy라는 여러 기관의 모임이 함께 서명해
+          3초마다 냅니다. 그 시각 전에는 아무도 모릅니다. 실제 값(순번
+          1,000,000)으로 확인해 봅니다.
         </span>
         <Row label="BLS 서명(48바이트)">
           <Mono tone={flip ? "warn" : "plain"}>
@@ -318,7 +318,7 @@ export function DrandToy() {
           {beaconOk === null
             ? "BLS 서명 확인 중"
             : beaconOk
-              ? "quicknet 공개 열쇠로 서명이 맞습니다. 진짜 drand 값입니다."
+              ? "drand quicknet(3초마다 값을 내는 drand 줄기)의 공개 열쇠로 서명이 맞습니다. 진짜 drand 값입니다."
               : "서명이 맞지 않습니다. 이 값으로는 결과를 정하지 않습니다."}
         </Verdict>
         <Row label="난수 = SHA-256(서명)">
@@ -327,9 +327,10 @@ export function DrandToy() {
       </div>
       <div className="flex flex-col gap-2 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
-          ③ 씨앗(seed) = taggedHash("stardraw/seed/v1", 회차 ‖ 난수). 번호는 이
-          씨앗 하나에서 나옵니다. 회차를 바꿔 보세요. 예측서 목록은 들어가지
-          않아 운영자가 예측서를 넣고 빼도 번호는 그대로입니다.
+          ③ 씨앗은 게임의 회차 번호와 난수를 이어 붙여 해시한 값입니다. 앞에
+          용도 이름 「stardraw/seed/v1」을 붙여 다른 용도의 해시와 섞이지 않게
+          합니다. 번호는 이 씨앗 하나에서 나옵니다. 예측서 목록은 들어가지 않아
+          운영자가 예측서를 넣고 빼도 번호는 그대로입니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <Btn onClick={() => setRound(Math.max(1, round - 1))}>−</Btn>
@@ -362,8 +363,9 @@ export function DrandToy() {
           ))}
         </div>
         <span className="text-[11px] text-white/50">
-          바이트를 차례로 읽어 225 이상은 치우침을 없애려고 버리고, 나머지는
-          45로 나눈 나머지에 1을 더합니다. 이미 나온 번호는 건너뜁니다.
+          씨앗의 바이트(0~255)를 차례로 읽어 225 이상은 버리고, 나머지는 45로
+          나눈 나머지에 1을 더합니다. 0~224만 써야 1~45번이 똑같이 5번씩 나올 수
+          있기 때문입니다. 이미 나온 번호는 건너뜁니다.
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           {numbers.map((n) => (
@@ -750,7 +752,7 @@ export function SasToy() {
         {out === null
           ? "계산하는 중"
           : out.claimProblems.length === 0
-            ? "서명 검사를 통과했습니다. 예측서 열쇠로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다."
+            ? "서명 검사를 통과했습니다. 예측서를 낸 패스키로, 양쪽 임시 열쇠를 묶은 문구에 서명했습니다."
             : `서명 검사에 실패했습니다. 입상자가 서명한 문구 속 열쇠가 확인하는 분의 열쇠가 아닙니다. 걸린 곳: ${out.claimProblems.join(", ")}.`}
       </Verdict>
       <Verdict ok={sameStars} testId="sas-stars">

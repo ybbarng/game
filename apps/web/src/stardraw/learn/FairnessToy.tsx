@@ -208,14 +208,14 @@ function Results({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-fair-draws={fair.draws}>
       <span className="text-white/60 text-xs">
-        번호별 빛난 횟수 · 가운데 선은 기대값, 띠는 우연으로 흔히 나오는 범위
+        번호별 빛난 횟수 · 가운데 선은 기댓값, 띠는 우연으로 흔히 나오는 범위
         {compare && " · 붉은 점은 치우친 뽑기"}
       </span>
       <CountChart fair={fair} biased={compare ? biased : null} />
 
       <span className="text-white/60 text-xs">
-        {windowSize.toLocaleString("ko-KR")}회차 묶음마다의 치우침 점수 · 선
-        위는 우연 범위 밖(꼬리 확률 5% 밑)
+        {windowSize.toLocaleString("ko-KR")}회차 묶음마다의 치우침 점수(꼬리
+        확률이 작을수록 높음) · 선 위는 우연 범위 밖(꼬리 확률 5% 밑)
       </span>
       <WindowChart fair={fair} biased={compare ? biased : null} />
 
@@ -256,7 +256,7 @@ function Results({
 
 function CountChart({ fair, biased }: { fair: Tally; biased: Tally | null }) {
   const band = countBand(fair.draws);
-  // 0부터 그리면 작은 차이가 안 보여, 기대값 둘레만 확대해 그린다
+  // 0부터 그리면 작은 차이가 안 보여, 기댓값 둘레만 확대해 그린다
   const all = [...fair.counts, ...(biased ? biased.counts : [])];
   const pad = (band.high - band.low) * 0.6;
   const top = Math.max(band.high, ...all) + pad;
@@ -268,7 +268,7 @@ function CountChart({ fair, biased }: { fair: Tally; biased: Tally | null }) {
       viewBox={`0 0 450 ${H}`}
       className="w-full"
       role="img"
-      aria-label={`번호 1~45가 빛난 횟수, 기대값 ${Math.round(band.expected)}회`}
+      aria-label={`번호 1~45가 빛난 횟수, 기댓값 ${Math.round(band.expected)}회`}
       data-fair-chart="counts"
     >
       <rect

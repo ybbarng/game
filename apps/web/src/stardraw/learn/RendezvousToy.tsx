@@ -243,8 +243,7 @@ function CompareAndScore({
         <p className="text-[11px] text-white/55">
           점 하나가 우주인 한 명, 색이 사는 주소입니다. 견본 우주인은 가짜
           열쇠로 만든 점이라 이름과 사진이 없습니다
-          {me ? ". ★는 이 기기의 내 등록증입니다" : ""}. 점을 누르면 아래
-          점수표에서 그 우주인을 봅니다.
+          {me ? ". ★는 이 기기의 내 등록증입니다" : ""}.
         </p>
         {prev && (
           <Verdict ok={hrwMoved.size < modMoved.size} testId="rendezvous-moves">
@@ -381,7 +380,11 @@ function ScoreTable({
       <Row label="점수">
         <span className="flex flex-col items-start gap-0.5">
           <Mono>-가중치 / ln(u)</Mono>
-          <Mono>u = sha256(씨앗‖"place"‖0‖id)를 0~1로</Mono>
+          <Mono>u = sha256(등록증 해시‖"place"‖0‖id)를 0~1로</Mono>
+          <span className="text-white/55">
+            u는 해시에서 만든 0과 1 사이 값이고 ln은 자연로그입니다. u가 1에
+            가까울수록 점수가 커집니다.
+          </span>
         </span>
       </Row>
       {story && (
@@ -534,15 +537,10 @@ function EditToy({ people, me }: { people: Uint8Array[]; me: boolean }) {
         testId="edit"
         wide
       />
-      {result ? (
+      {result && (
         <Verdict ok={result.ok} testId="rendezvous-edit">
           {result.text}
         </Verdict>
-      ) : (
-        <p className="text-[11px] text-white/55">
-          단추를 눌러 {obj(TARGET.name)} 바꿔 보세요. 이사한 우주인이
-          반짝입니다.
-        </p>
       )}
     </Toy>
   );
