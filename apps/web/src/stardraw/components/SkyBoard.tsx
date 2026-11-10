@@ -29,6 +29,7 @@ import {
 } from "../sky-draw";
 import { type SkyEffects, startSkyEffects } from "../sky-effects";
 import { StarInfo } from "./parts";
+import "@/stardraw/hdr-glow.css";
 
 /**
  * 네모 하늘 하나(응모·영수증·추첨이 같이 쓴다). 크기·누르기·강조만 다르다.

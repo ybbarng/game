@@ -100,6 +100,7 @@ import { averagesFor, DailyPanel, DailyShare } from "./DailyParts";
 import { useMoveKeys } from "./MoveChip";
 import { RivalPanel, RivalSelect } from "./RivalPanel";
 import { MilestoneChips, ProgressMeter, SplitList } from "./SolveProgress";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 혼자 맞추기(`/cube/solo`)와 가상 블라인드(`/cube/blind`) 화면(docs/47 1·7절).

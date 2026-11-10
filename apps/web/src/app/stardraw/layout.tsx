@@ -5,6 +5,8 @@ import {
   PasskeyStallNotice,
   WebviewBand,
 } from "@/stardraw/components/InAppNotice";
+import "@/app/stardraw/stardraw.css";
+import "@/stardraw/night.css";
 
 /**
  * 하늘의 별 따기 링크 미리보기(카카오톡·메신저가 읽는 og:title·og:description). 이것이 없으면 별 따기의 모든 주소가

@@ -1,0 +1,290 @@
+/*
+ * 큐브 혼자 맞추기·대결·파티·배우기 화면의 연출(수 흐름 띠, 콤보, 이정표, 구간 골드, 대결 토스트, 아이템, 체력, 떠오르기).
+ * 이 클래스를 쓰는 컴포넌트가 저마다 import한다
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/*
+ * 큐브 수 흐름 띠(docs/51 1-1): 새 수가 크게 떴다가 작아지며 자리를 넓혀(max-width) 앞 수들을 왼쪽으로 민다.
+ * 합친 수(U U → U2)는 제자리에서 톡 한 번. 왼쪽 끝은 흐리게 사라진다. 움직임 줄이기면 글자만 더한다
+ */
+@keyframes cube-flow-pop {
+  0% {
+    max-width: 0;
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    max-width: 5rem;
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.cube-flow-pop {
+  display: inline-flex;
+  animation: cube-flow-pop 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cube-flow-bump {
+  0% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.cube-flow-bump {
+  animation: cube-flow-bump 180ms ease-out both;
+}
+/* 흐름 콤보(docs/51 2-1): 수가 늘 때마다 숫자가 위로 톡 튄다. 단계(4·12·24·40수)가 오르면 글자 둘레에 빛이 한 번 번진다 */
+@keyframes cube-combo-tick {
+  0% {
+    transform: translateY(-3px) scale(1.45);
+  }
+  100% {
+    transform: none;
+  }
+}
+.cube-combo-tick {
+  animation: cube-combo-tick 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes cube-combo-level {
+  0% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 0 rgba(253, 230, 138, 0.55);
+  }
+  45% {
+    box-shadow: 0 0 0 5px rgba(253, 230, 138, 0.18);
+  }
+  100% {
+    transform: none;
+    box-shadow: 0 0 0 0 rgba(253, 230, 138, 0);
+  }
+}
+.cube-combo-level {
+  animation: cube-combo-level 520ms ease-out both;
+}
+.cube-flow-track {
+  mask-image: linear-gradient(to right, transparent, #000 22%);
+}
+/* 이정표 칩: 아래에서 살짝 올라오며 빛났다가 가라앉는다 */
+@keyframes cube-milestone-in {
+  0% {
+    transform: translateY(6px) scale(0.9);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0.6);
+  }
+  40% {
+    transform: none;
+    opacity: 1;
+    box-shadow: 0 0 0 4px rgba(125, 211, 252, 0.25);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0);
+  }
+}
+.cube-milestone-in {
+  animation: cube-milestone-in 700ms ease-out both;
+}
+/*
+ * 구간 골드(docs/51 2-2): 내 최고 구간보다 빠른 칩은 금색. 켜질 때 금빛이 칩 위를 한 번 스치고 가라앉는다
+ * (되풀이하지 않는다)
+ */
+@keyframes cube-gold-shine {
+  0% {
+    background-position: 120% 0;
+    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.55);
+  }
+  45% {
+    box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.2);
+  }
+  100% {
+    background-position: -40% 0;
+    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0);
+  }
+}
+.cube-gold {
+  border-color: rgba(252, 211, 77, 0.55);
+  color: #fef3c7;
+  background-color: rgba(245, 158, 11, 0.14);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(253, 230, 138, 0.35) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: cube-gold-shine 900ms ease-out both;
+}
+/*
+ * 대결 단계 톡(docs/51 1-3): 사람 칸 안에서만 살짝 떠올랐다 0.9초 안에 사라진다. 칸 밖으로 나가지 않는다
+ */
+@keyframes cube-race-toast {
+  0% {
+    transform: translateY(4px) scale(0.96);
+    opacity: 0;
+  }
+  18% {
+    transform: none;
+    opacity: 1;
+  }
+  72% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0;
+  }
+}
+.cube-race-toast {
+  animation: cube-race-toast 900ms ease-out both;
+}
+/* 아이템전 맞은 쪽 표시(docs/47 9-7): 한 번 살짝 커졌다 자리 잡는다. 움직임 줄이기면 붙이지 않는다 */
+@keyframes cube-item-hit {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  45% {
+    transform: none;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+.cube-item-hit {
+  animation: cube-item-hit 1600ms ease-out both;
+}
+/*
+ * 흐름 콤보(docs/51 2-1): 콤보가 오를수록 띠 바탕이 조금씩 데워진다. 번쩍이지 않게 색만 천천히 옮긴다
+ */
+.cube-combo-track {
+  border-radius: 0.5rem;
+  transition:
+    background-color 600ms ease,
+    box-shadow 600ms ease;
+}
+.cube-combo-track[data-combo-level="1"] {
+  background-color: rgba(56, 189, 248, 0.05);
+}
+.cube-combo-track[data-combo-level="2"] {
+  background-color: rgba(56, 189, 248, 0.09);
+  box-shadow: inset 0 -1px 0 rgba(125, 211, 252, 0.25);
+}
+.cube-combo-track[data-combo-level="3"] {
+  background-color: rgba(251, 191, 36, 0.08);
+  box-shadow: inset 0 -1px 0 rgba(252, 211, 77, 0.35);
+}
+.cube-combo-track[data-combo-level="4"] {
+  background-color: rgba(251, 191, 36, 0.13);
+  box-shadow: inset 0 -2px 0 rgba(252, 211, 77, 0.45);
+}
+/* 제한 도전: 시간 체력을 채운 「+10초」가 살짝 떠오르며 사라진다(docs/51 2-3). 보이는 동안은 화면이 정한다 */
+@keyframes cube-hp-refill {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.cube-hp-refill {
+  animation: cube-hp-refill 1200ms ease-out both;
+}
+/*
+ * 체력바 대결(docs/51 3-2): 깎이면 막대가 0.4초에 걸쳐 줄고, 깎인 몫이 잠깐 밝게 남았다 사라진다. 「−16」이 칸 안에서 살짝 떨어진다
+ */
+.cube-party-fill {
+  transition:
+    width 400ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 300ms ease;
+}
+.cube-party-lag {
+  transition: width 700ms ease-in 250ms;
+}
+@keyframes cube-party-hit {
+  0% {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  15% {
+    opacity: 1;
+    transform: none;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.cube-party-hit {
+  animation: cube-party-hit 900ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-party-fill,
+  .cube-party-lag {
+    transition: none;
+  }
+  .cube-party-hit {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-flow-pop,
+  .cube-flow-bump,
+  .cube-combo-tick,
+  .cube-combo-level,
+  .cube-milestone-in,
+  .cube-gold,
+  .cube-hp-refill,
+  .cube-race-toast {
+    animation: none;
+  }
+  .cube-combo-track {
+    transition: none;
+  }
+}
+
+/* 큐브 배우기: 힌트·꼬리표가 살짝 떠오르며 나타난다(움직임 줄이기면 그냥 보인다) */
+@keyframes cube-rise {
+  from {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.cube-rise {
+  animation: cube-rise 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cube-rise {
+    animation: none;
+  }
+}

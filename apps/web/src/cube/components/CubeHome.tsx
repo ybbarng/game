@@ -10,6 +10,7 @@ import { loadLearn } from "../learn/progress";
 import type { NextStep } from "../nav/next-step";
 import { loadRecords } from "../records";
 import { CubeHero } from "./CubeHero";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 큐브 첫 화면(`/cube`, docs/47 16-2). 위에는 섞이고 맞춰지기를 되풀이하는 큐브(`CubeHero`), 그 아래 「다음에 할 것」 칸 하나,

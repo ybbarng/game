@@ -9,6 +9,7 @@ import { type MyTier, tierOf } from "./rank";
 import { TierEmblem } from "./TierEmblem";
 import { TIER_TONE, TierLink } from "./TierTable";
 import { DIVISIONS, TIER_IDS, TIER_LABEL, TIER_TABLE } from "./table";
+import "@/cube/tiers/emblem.css";
 
 const SIZES = [64, 32, 24, 16] as const;
 

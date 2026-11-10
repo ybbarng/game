@@ -28,6 +28,7 @@ import type { CubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StageProgress } from "./StageStrip";
+import "@/cube/components/cube-fx.css";
 
 type HintModule = typeof import("../learn/taught-hint");
 

@@ -58,6 +58,7 @@ import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 익히기(`MethodsApp`, `/cube/methods`)로 옮겼다.

@@ -18,6 +18,7 @@ import {
 import { money, shipOf } from "../format";
 import { groupColor } from "../star-color";
 import { ShipToken } from "./parts";
+import "@/galaxy/components/galaxy.css";
 
 /** 반응이 떠올라 있는 시간(globals.css `galaxy-react`와 같다) */
 const REACTION_SHOWN_MS = 1800;

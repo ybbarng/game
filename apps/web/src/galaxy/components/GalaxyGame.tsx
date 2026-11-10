@@ -58,6 +58,7 @@ import { GameRecap } from "./GameRecap";
 import { ShipToken } from "./parts";
 import { SeatCard, type SeatCardProps } from "./SeatCard";
 import { cornerHelp, SquareCard } from "./SquareCard";
+import "@/galaxy/components/galaxy.css";
 
 /** 은하 한 바퀴 화면 바탕: 깊은 밤하늘 */
 export const GALAXY_BG =

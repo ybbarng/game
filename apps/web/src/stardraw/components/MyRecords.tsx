@@ -16,6 +16,7 @@ import { Medal3D } from "./Medal3D";
 import { LottoBall, RANK_LABEL, shortId } from "./parts";
 import { StageOverlay, useReducedMotion } from "./StageOverlay";
 import { ticketUrl } from "./TicketView";
+import "@/stardraw/hdr-glow.css";
 
 /**
  * 「내 기록」(docs/36 11-23): 훈장, 당첨증, 관측 수첩(4등 별 도장), 당첨 내역, 기념 서류.
