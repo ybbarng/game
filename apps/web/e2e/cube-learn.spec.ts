@@ -199,14 +199,14 @@ test(
   async ({ page }, info) => {
     await page.goto("/cube/learn?lesson=yau-cross3");
     const quiz = page.locator('[data-act="quiz"]');
-    await goStep(page, 1);
+    await goStep(page, 3);
     await expect(page.locator("[data-step-body]")).toContainText(
       "넣을 자리를 앞으로",
     );
     await page.locator("[data-learn-quiz] [data-choice='2']").click();
     await expect(quiz).toHaveAttribute("data-act-passed", "");
-    await goStep(page, 2);
-    await expect(page.locator("[data-step-body]")).toContainText("위 칸");
+    await goStep(page, 4);
+    await expect(page.locator("[data-step-body]")).toContainText("위 자리");
     await page.locator("[data-learn-quiz] [data-choice='1']").click();
     await expect(quiz).toHaveAttribute("data-act-passed", "");
     await goToStep(page, "turn");

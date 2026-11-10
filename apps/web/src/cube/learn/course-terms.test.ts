@@ -169,7 +169,22 @@ const SCOPE: Record<string, OrderedTerm[]> = {
   zz: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
   petrus: [...NOTATION, ...CFOP_TERMS, ...BLOCK_TERMS],
   "444-reduction": [...NOTATION, ...BIG_TERMS],
-  "444-yau": [...NOTATION, ...CFOP_TERMS, ...BIG_TERMS],
+  "444-yau": [
+    ...NOTATION,
+    ...CFOP_TERMS,
+    ...BIG_TERMS,
+    // 줄 안의 날개 자리와 한 면의 센터 블럭 둘씩(docs/47 1-1, 16-20)
+    {
+      term: "위 자리·아래 자리",
+      use: /(위|아래) 자리/,
+      define: /「위 자리」/,
+    },
+    {
+      term: "위 두 칸·아래 두 칸",
+      use: /(위|아래) 두 칸/,
+      define: /「위 두 칸」/,
+    },
+  ],
   "555-reduction": [...NOTATION, ...BIG_TERMS],
   "bld-op": [...NOTATION, ...CFOP_TERMS, ...BLD_TERMS],
 };
