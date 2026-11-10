@@ -52,7 +52,7 @@ README의 내려받기 주소 `https://game.byb.kr/cubie/download`는 사이트�
 
 ## README 그림
 
-`apps/cubie/docs/`의 그림(아이콘, 바탕화면 흉내 넉 장, 홈 시연 움직이는 그림)은 `scripts/readme-shots.mjs`가 만든다. 앱을 띄우지 않고 웹 미니 모드를 헤드리스 Chrome에서 앱처럼(투명 바탕) 찍어, 스크립트가 그린 바탕화면에 얹는다. 메뉴 막대·문서 창·바탕화면은 그림이다. ffmpeg, ImageMagick(`magick`), libwebp(`cwebp`·`img2webp`)가 필요하다.
+`apps/cubie/docs/`의 그림(아이콘, 바탕화면 흉내 다섯 장, 홈 시연 움직이는 그림)은 `scripts/readme-shots.mjs`가 만든다. 앱을 띄우지 않고 웹 미니 모드를 헤드리스 Chrome에서 앱처럼(투명 바탕) 찍어, 스크립트가 그린 바탕화면에 얹는다. 메뉴 막대·문서 창·바탕화면은 그림이다. 메뉴 그림(`desktop-menu`)의 맨 위 프로필 칸은 앱의 `ProfileMenuView`를 `scripts/profile-menu-shot.swift`와 함께 임시 폴더에서 컴파일해 그린 것이고(엠블럼은 웹이 앱에 보낸 PNG 그대로), 메뉴 바탕과 아래 줄은 흉내다. `swiftc`가 있어야 한다. ffmpeg, ImageMagick(`magick`), libwebp(`cwebp`·`img2webp`)가 필요하다.
 
 ```sh
 pnpm --filter @game/web build

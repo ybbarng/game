@@ -28,6 +28,7 @@ import {
   type StickerMask,
   solvedCube,
   stageMask,
+  stickerFace,
   U,
 } from "@game/cube-engine";
 import { nextInt, type RngState } from "@game/mighty-engine";
@@ -443,6 +444,21 @@ export function maskFor(
         [...piecesOfKind(n, "edge", "wing"), ...cubeGroups(n, U).centers],
         "gray",
       );
+    case "ll-cross": {
+      // 노란 십자 단계는 윗층 엣지의 노란 칸으로 모양(점·ㄱ자·일자·십자)을 본다. 코너의 노란 칸과 엣지의 옆 칸은
+      // 회색이라 모양이 묻히지 않는다(2026-11-10 사용자 「모양에는 그게 없잖아. 코너 블럭 색깔도 없애야」)
+      const g = cubeGroups(n, U);
+      const out = maskFromPieces(n, g.f2l, "gray");
+      const topo = cubeTopology(n);
+      for (const p of g.lastLayerEdges)
+        for (const s of topo.pieces[p]?.stickers ?? [])
+          if (stickerFace(n, s) === YELLOW) out[s] = "visible";
+      return out;
+    }
+    case "ll-edges": {
+      const g = cubeGroups(n, U);
+      return maskFromPieces(n, [...g.f2l, ...g.lastLayerEdges], "gray");
+    }
     default:
       return stageMask(n, name);
   }

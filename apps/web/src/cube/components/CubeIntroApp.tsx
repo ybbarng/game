@@ -324,8 +324,8 @@ function StepBody({ id, onDone }: { id: string; onDone: () => void }) {
             ))}
           </ul>
           <p className="break-keep text-white/60 text-xs">
-            「두 손」 배치에서 E는 2, E'은 9, S는 0, S'은 1 키예요(csTimer와
-            같아요). 넓게는 Shift + 면 키로도 쳐요.
+            뒤의 「키 배치」 단계에서 고를 「두 손」 배치에서는 E가 2, E'이 9,
+            S가 0, S'이 1 키예요. 넓게는 Shift + 면 키로도 쳐요.
           </p>
           <TurnPanel
             n={3}
@@ -490,7 +490,8 @@ function ScreenStep({ onDone }: { onDone: () => void }) {
     <>
       <ul className="flex flex-col gap-2 break-keep text-sm text-white/85">
         <li>
-          수 옆의 작은 키캡이 <b>내 키</b>예요:{" "}
+          수(돌리기 한 번) 옆에 키보드 키 모양으로 붙은 작은 표시(키캡)가{" "}
+          <b>내 키</b>예요:{" "}
           <MoveChip
             notation="R"
             keysOf={keysOf}
@@ -532,7 +533,7 @@ const TWO_HAND = presetKeymap("twoHand");
 
 const LAYOUT_TAGS: Record<"notation" | "twoHand", string[]> = {
   notation: ["외울 것 적음", "반대 방향은 Shift + 키"],
-  twoHand: ["한 수에 키 하나", "실물 핑거 트릭과 같은 손가락"],
+  twoHand: ["한 수에 키 하나", "실물 큐브를 돌리는 손가락과 같게"],
 };
 
 function LayoutStep({ onDone }: { onDone: () => void }) {
@@ -611,8 +612,8 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
       ) : (
         <div className="flex flex-col gap-2" data-layout-rule="twoHand">
           <p className="break-keep text-sm text-white/85">
-            「두 손」은 실물 핑거 트릭을 키보드로 옮긴 배치예요.{" "}
-            <b>{TWO_HAND_RULE}</b>
+            「두 손」은 실물 큐브를 손가락으로 빠르게 돌리는 요령(핑거 트릭)을
+            키보드로 옮긴 배치예요. <b>{TWO_HAND_RULE}</b>
           </p>
           <ul className="grid gap-1 text-xs sm:grid-cols-2">
             {TWO_HAND_RULES.filter((r) => !r.exception).map((r) => (
@@ -635,11 +636,12 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
             ))}
           </ul>
           <p className="break-keep text-white/60 text-xs">
-            {TWO_HAND_RULES.find((r) => r.exception)?.exception} csTimer 같은
-            가상 큐브 사이트와 같은 배치라 다른 곳에서도 그대로 써요. 덧붙인 것:
-            Shift + 면 키 = 넓게. csTimer와 다른 곳: Space는 살펴보기·블라인드
-            시작이에요. 큰 큐브는 3·4(왼손)·7·8(오른손)로 함께 돌릴 층 수를
-            골라요.
+            {TWO_HAND_RULES.find((r) => r.exception)?.exception} csTimer(큐브
+            연습에 널리 쓰는 웹 사이트) 같은 가상 큐브 사이트와 같은 배치라 다른
+            곳에서도 그대로 써요. 덧붙인 것: Shift + 면 키 = 넓게. csTimer와
+            다른 곳: Space는 살펴보기(맞추기 전에 큐브를 둘러보는 시간)와
+            블라인드(외운 뒤 가린 채 맞추기) 시작이에요. 큰 큐브는
+            3·4(왼손)·7·8(오른손)로 함께 돌릴 층 수를 골라요.
           </p>
         </div>
       )}

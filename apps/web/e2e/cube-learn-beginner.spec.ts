@@ -47,3 +47,35 @@ test("공식 연습: 초보자 코너 방향 상황은 노란색이 보는 쪽�
   );
   await shot(page, "train-beginner-twist", info.project.name);
 });
+
+test("배우기·공식 연습: 노란 십자는 윗층 엣지의 노란 칸만 보이고 코너 블럭은 가린다", async ({
+  page,
+}, info) => {
+  // 큐브 그림 윗면(흰 면 아래로 쥔 상태): 칸 0은 코너, 칸 4는 노란 센터
+  const corner = page.locator('[data-sticker="0"]').first();
+  const center = page.locator('[data-sticker="4"]').first();
+  await page.goto("/cube/learn?lesson=333-ll-cross");
+  for (const [step, name] of [
+    [0, "line"],
+    [2, "ell"],
+    [5, "dot"],
+  ] as const) {
+    await goStep(page, step);
+    await expect(corner).toHaveAttribute("data-sticker-hidden", "");
+    await expect(center).not.toHaveAttribute("data-sticker-hidden", "");
+    await shot(page, `learn-ll-cross-${name}`, info.project.name);
+  }
+
+  await page.goto("/cube/train?set=beginner-yellow-cross");
+  await expect(page.locator("[data-practice-stage]")).toHaveAttribute(
+    "data-practice-stage",
+    "beginner-yellow-cross",
+  );
+  // 문제가 놓인 뒤(가리기는 문제 판에만 붙는다)
+  await expect(page.locator("main[data-practice-stage]")).toHaveAttribute(
+    "data-practice-phase",
+    "play",
+  );
+  await expect(corner).toHaveAttribute("data-sticker-hidden", "");
+  await shot(page, "train-beginner-yellow-cross", info.project.name);
+});

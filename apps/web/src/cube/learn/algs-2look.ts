@@ -17,7 +17,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "엣지: ㄱ자(작은 L)",
     group: "edges",
     algs: ["F U R U' R' F'", "f R U R' U' f'"],
-    note: "노란 엣지 둘이 ㄱ자. 대표 공식은 노란 엣지가 왼쪽·뒤에 오게, 둘째 공식은 앞·오른쪽에 오게 들어요.",
+    note: "노란 엣지 둘이 ㄱ자. 노란 엣지가 왼쪽·뒤에 오게 들고 F U R U' R' F'를 해요(f R U R' U' f'로 할 때는 앞·오른쪽에 오게 들어요).",
   },
   {
     id: "2look-oll-dot",
@@ -25,7 +25,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
     name: "엣지: 점",
     group: "edges",
     algs: ["F R U R' U' F' f R U R' U' f'"],
-    note: "센터만 노랑. 가로줄 공식과 ㄱ자 공식을 이어서 해요.",
+    note: "센터만 노랑. 가로줄 공식 F R U R' U' F'를 한 뒤, 이어서 f R U R' U' f'를 해요.",
   },
   ...(
     [
@@ -33,7 +33,7 @@ export const TWO_LOOK_OLL: AlgCase[] = [
         21,
         "코너: H(헤드라이트 둘)",
         "R U2 R' U' R U R' U' R U' R'",
-        "위를 보는 노란 코너가 없고, 앞과 뒤 옆면에 노란 칸이 둘씩 마주 봐요.",
+        "위를 보는 노란 코너가 없고, 앞과 뒤 옆면에 노란 칸이 둘씩 마주 봐요(옆면 한 줄의 양 끝 두 칸이 같은 색인 모양을 헤드라이트라고 해요).",
       ],
       [
         22,

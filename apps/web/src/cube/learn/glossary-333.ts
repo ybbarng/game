@@ -2,26 +2,23 @@
 // 쓰기. 갑자기 새로운 단어를 설명 없이 쓰지 않기」). 용어마다 글에서 찾는 꼴(use)과 뜻을 알리는 문장의 꼴(define)을
 // 둔다. 시험(glossary-333.test.ts)이 단원 차례대로 읽어, 뜻을 알리기 전에 쓴 곳이 없는지 본다.
 
-export interface GlossaryTerm {
-  term: string;
-  /** 글에서 이 용어를 쓴 곳 */
-  use: RegExp;
-  /** 뜻을 알리는 문장(이 꼴이 처음 나온 단계가 뜻을 알린 곳) */
-  define: RegExp;
-}
+import type { OrderedTerm } from "@/tutorial/term-order";
+
+/** 용어 하나: 글에서 쓴 꼴(use)과 뜻을 알리는 문장의 꼴(define). 모든 학습 자료가 같은 틀(`@/tutorial/term-order`)을 쓴다 */
+export type GlossaryTerm = OrderedTerm;
 
 export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "스티커", use: /스티커/, define: /「스티커」/ },
   { term: "조각", use: /조각/, define: /「조각」/ },
-  { term: "센터", use: /센터/, define: /「센터」/ },
+  { term: "센터 블럭", use: /센터/, define: /「센터 블럭」/ },
   { term: "윗면", use: /윗면/, define: /「윗면」/ },
   { term: "앞면", use: /앞면/, define: /「앞면」/ },
   { term: "아랫면", use: /아랫면/, define: /「아랫면」/ },
   { term: "오른쪽 면", use: /오른쪽 면/, define: /「오른쪽 면」/ },
   { term: "왼쪽 면", use: /왼쪽 면/, define: /「왼쪽 면」/ },
   { term: "뒷면", use: /뒷면/, define: /「뒷면」/ },
-  { term: "엣지", use: /엣지/, define: /「엣지」/ },
-  { term: "코너", use: /코너/, define: /「코너」/ },
+  { term: "엣지 블럭", use: /엣지/, define: /「엣지 블럭」/ },
+  { term: "코너 블럭", use: /코너/, define: /「코너 블럭」/ },
   { term: "층", use: /층/, define: /「층」/ },
   {
     term: "위 층·가운데 층·아래 층",
@@ -31,9 +28,9 @@ export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "둘째 층", use: /둘째 층/, define: /세어 둘째 층/ },
   { term: "옆면", use: /옆면/, define: /「옆면」/ },
   {
-    term: "색으로 부르는 조각 이름(흰-초록 엣지)",
+    term: "색으로 부르는 조각 이름(흰-초록 엣지 블럭)",
     use: /(흰|빨강|초록|파랑|주황|노랑)-(흰|빨강|초록|파랑|주황|노랑)/,
-    define: /「흰-초록 엣지」/,
+    define: /「흰-초록 엣지 블럭」/,
   },
   { term: "제자리", use: /제자리/, define: /「제자리」/ },
   { term: "방향", use: /방향/, define: /「방향」/ },
@@ -101,3 +98,86 @@ export const GLOSSARY_333: GlossaryTerm[] = [
     define: /「코너 자리」 공식/,
   },
 ];
+
+// ── 조각 이름(docs/47 1절 「(2026-11-05) 조각 이름」, docs/standing-rules.md 2절) ──────────────
+// 조각은 「센터 블럭」·「엣지 블럭」·「코너 블럭」이다. 조각 하나를 홀로 부르거나 색을 모두 대어 부르면 블럭을
+// 붙이고(「그 엣지 블럭」, 「흰-초록 엣지 블럭」), 앞에 다른 말이 붙어 묶음·자리를 말하는 꼴은 뺀다(「흰 엣지」,
+// 「첫 층 코너」, 「옆 센터」, 「앞-오른쪽 위 코너」). 뒤에 이름이 이어지는 꼴(「코너 방향」, 「엣지 짝」)도 뺀다.
+
+const PIECE = /센터|엣지|코너/g;
+const COLOR = "흰|빨강|초록|파랑|주황|노랑";
+/** 색을 모두 대어 부르는 이름(「흰-초록」, 「흰-초록-빨강」, 「노랑-초록-주황」) */
+const FULL_NAME = new RegExp(`(${COLOR})(-(${COLOR}))+ $`);
+/** 뒤에 이어 붙는 이름 */
+const JOINED_AFTER = /^( 블럭| ?방향| ?자리| ?돌리기| ?짝| 색)/;
+/**
+ * 앞에 붙어도 되는 말(묶음·자리를 말하는 꼴). 색(「흰 엣지」), 자리(「옆 센터」, 「첫 층 코너」, 「앞-오른쪽 위 코너」,
+ * 「위-앞 엣지」), 무엇을 하는 조각인지(「넣을 엣지」, 「돌아간 코너」, 「기준 코너」)
+ */
+const JOINED_BEFORE = new Set([
+  "흰",
+  "노란",
+  "빨강",
+  "초록",
+  "파랑",
+  "주황",
+  "노랑",
+  "옆",
+  "층",
+  "위층",
+  "아래층",
+  "위",
+  "아래",
+  "앞",
+  "뒤",
+  "오른쪽",
+  "왼쪽",
+  "제자리",
+  "넣을",
+  "돌아간",
+  "남은",
+  "다음",
+  "빠진",
+  "든",
+  "기준",
+  "이웃",
+  "십자",
+  "색",
+  "면",
+  "쪽",
+]);
+
+/** 받침이 ㄴ·ㄹ인 말(「넣을」, 「돌아간」, 「붙은」, 「보는」): 꾸미는 말이 붙은 묶음 */
+function adnominal(word: string): boolean {
+  const code = (word.at(-1) ?? "").charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return false;
+  const tail = code % 28;
+  return tail === 4 || tail === 8;
+}
+
+/** 글에서 블럭을 붙여야 하는데 뺀 곳(앞뒤 몇 글자) */
+export function loosePieceWords(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(PIECE)) {
+    const at = m.index ?? 0;
+    const before = text.slice(0, at);
+    const after = text.slice(at + m[0].length);
+    const near = text.slice(Math.max(0, at - 12), at + m[0].length + 6);
+    if (FULL_NAME.test(before)) {
+      if (!/^ 블럭/.test(after)) out.push(near);
+      continue;
+    }
+    if (JOINED_AFTER.test(after)) continue;
+    // 「가운데 층의 엣지」는 「가운데 층 엣지」와 같다
+    const prev = (before.match(/(\S+) $/)?.[1] ?? "").replace(/(.)의$/, "$1");
+    if (
+      JOINED_BEFORE.has(prev) ||
+      adnominal(prev) ||
+      // 「앞-오른쪽」, 「위-앞」처럼 자리를 이어 부른 말, 「흰·초록·빨강 센터」처럼 여럿을 함께 부른 말
+      /^[가-힣]+[-·][가-힣·-]+$/.test(prev)
+    )
+      continue;
+    out.push(near);
+  }
+  return out;
+}

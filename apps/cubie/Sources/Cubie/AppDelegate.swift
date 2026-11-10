@@ -277,6 +277,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let s = cube.bridge.state
     let title = e.title ?? ""
     switch e {
+    case .profile:
+      // 맨 위 프로필 칸(뷰가 직접 그리고 누르기를 받는다). 누르면 기록 보기
+      let i = NSMenuItem(title: cube.bridge.profile.name, action: nil, keyEquivalent: "")
+      i.view = ProfileMenuView(profile: cube.bridge.profile) { [weak self] in self?.menuRecords() }
+      return [i]
     case .separator:
       return [.separator()]
     case .hotKeyWarning:

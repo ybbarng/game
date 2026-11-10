@@ -52,11 +52,11 @@ export const BEGINNER_CROSS: DrillCase[] = [
   cross("guard", "가운데 층, 내렸다 올리기", CROSS_GUARD),
   cross("guard-right", "가운데 층, 돌려 쥐고 내렸다 올리기", CROSS_GUARD_TRY),
   cross("flipped", "위 층, 흰색이 옆", CROSS_FLIPPED),
-  cross("flipped-right", "위 층, 흰색이 옆(오른쪽 엣지)", CROSS_FLIPPED_TRY),
-  cross("wrong-top", "위 층, 자리가 바뀐 두 엣지", CROSS_WRONG_TOP),
+  cross("flipped-right", "위 층, 흰색이 옆(위-오른쪽에서)", CROSS_FLIPPED_TRY),
+  cross("wrong-top", "위 층, 자리가 바뀐 엣지 둘", CROSS_WRONG_TOP),
   cross(
     "wrong-top-right",
-    "위 층, 자리가 바뀐 두 엣지(오른쪽·왼쪽)",
+    "위 층, 자리가 바뀐 엣지 둘(오른쪽·왼쪽)",
     CROSS_WRONG_TOP_TRY,
   ),
 ];
@@ -146,12 +146,12 @@ export const BEGINNER_TWIST: DrillCase[] = [
   },
   {
     id: "beginner-twist-three",
-    name: "세 코너 모두 노란색 오른쪽",
+    name: "돌아간 코너 셋 모두 노란색 오른쪽",
     algs: [TWIST_THREE],
   },
   {
     id: "beginner-twist-three-front",
-    name: "세 코너 모두 노란색 앞",
+    name: "돌아간 코너 셋 모두 노란색 앞",
     algs: [
       `${reps(TWIST_BACK, 2)} U ${reps(TWIST_BACK, 2)} U ${reps(TWIST_BACK, 2)} U2`,
     ],
