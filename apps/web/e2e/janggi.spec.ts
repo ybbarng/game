@@ -395,7 +395,7 @@ test("장기 배우기: 첫 수와 초반 원칙 단원을 끝까지 따라 한�
   });
   await next(page);
 
-  // 미션: 상 쪽 졸 쓸기(79→78)
+  // 미션: 오른쪽 졸 쓸기(79→78)
   await page.getByRole("button", { name: "미션 시작" }).click();
   await tapPoint(page, "79", touch);
   await expect(page.locator('[data-target="78"]')).toHaveCount(1);
