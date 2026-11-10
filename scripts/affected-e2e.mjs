@@ -737,9 +737,12 @@ function main() {
     times
       ? Math.round(list.reduce((s, x) => s + specSeconds(times, x), 0))
       : null;
+  const how = shards
+    ? `(${times ? "지난 시험 시간으로" : "spec 개수로"} 나눔)`
+    : "";
 
   console.log(
-    `화면 시험: ${result.mode} (${result.why}), 조각 ${shards}개(${times ? "지난 시험 시간으로" : "spec 개수로"} 나눔)`,
+    `화면 시험: ${result.mode} (${result.why}), 조각 ${shards}개${how}`,
   );
   if (result.mode === "some") console.log(`  ${result.specs.join(" ")}`);
   plan.forEach((list, i) => {
@@ -773,7 +776,7 @@ function main() {
       "### 고른 시험",
       "",
       `- 기준 커밋: ${args.base ? `\`${args.base.slice(0, 12)}\`` : "없음(전부)"}`,
-      `- 화면 시험: **${result.mode}** (${result.why}), 조각 ${shards}개(${times ? "지난 시험 시간으로" : "spec 개수로"} 나눔)`,
+      `- 화면 시험: **${result.mode}** (${result.why}), 조각 ${shards}개${how}`,
     ];
     if (result.mode === "some") {
       lines.push(`- spec ${result.specs.length}개: ${result.specs.join(", ")}`);

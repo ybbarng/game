@@ -3,7 +3,9 @@ name: CI
 # 바뀐 것과 그것에 기대는 것만 시험한다(2026-11-04 사용자). 단위 시험은 vitest --changed(바뀐 파일을 불러오는 시험만),
 # 화면 시험은 scripts/affected-e2e.mjs가 고른 spec만. 기준 커밋은 PR이면 base와의 merge-base, main push면 직전 커밋이
 # 아니라 "마지막으로 CI가 성공한 main 커밋"이다(앞 실행이 취소·실패했으면 그 변경도 함께 시험한다). 기준을 못 찾거나,
-# 매일 실행(schedule)·손으로 돌리기(workflow_dispatch)는 전부. 고른 시험만 돌아도 성공이면 Image가 배포한다.
+# 매일 실행(schedule)·손으로 돌리기(workflow_dispatch)는 전부.
+# 화면 시험은 PR에서만 돈다(2026-11-10 사용자). main은 보호 규칙으로 PR·CI 통과(ci-ok)·최신 main 반영을 요구하므로,
+# main push는 빠른 검사(lint·typecheck·바뀐 단위 시험·nginx)만 하고 성공하면 Image가 배포한다.
 on:
   push:
     branches: [main]
@@ -84,9 +86,14 @@ jobs:
         name: 화면 시험 고르기
         env:
           BASE: ${{ steps.base.outputs.base }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          if [ -n "$BASE" ]; then
+          if [ "$EVENT" = "push" ]; then
+            # main에 들어오는 변경은 PR에서 최신 main을 반영한 채 화면 시험을 통과했다(보호 규칙 strict)
+            node scripts/affected-e2e.mjs --github --selection-out selection.json ${BASE:+--base "$BASE"} \
+              --no-e2e "main push는 빠른 검사만(화면 시험은 PR에서 통과했다)"
+          elif [ -n "$BASE" ]; then
             node scripts/affected-e2e.mjs --github --selection-out selection.json --base "$BASE"
           else
             node scripts/affected-e2e.mjs --github --selection-out selection.json --all
@@ -190,3 +197,28 @@ jobs:
           name: e2e-screenshots-${{ matrix.shard }}
           path: apps/web/test-results
           retention-days: 3
+
+  # 보호 규칙이 필수로 거는 하나뿐인 검사(2026-11-10, 이름 고정). 조각 수가 바뀌거나 화면 시험을 건너뛰어도 늘 돌아,
+  # 앞 작업 가운데 실패·취소가 하나라도 있으면 실패, 모두 성공이거나 건너뜀이면 성공한다
+  ci-ok:
+    if: always()
+    needs: [plan, check, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: 앞 작업 결과
+        env:
+          PLAN: ${{ needs.plan.result }}
+          CHECK: ${{ needs.check.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "plan=$PLAN check=$CHECK e2e=$E2E"
+          for r in "$PLAN" "$CHECK" "$E2E"; do
+            case "$r" in
+              success | skipped) ;;
+              *)
+                echo "::error::실패하거나 취소된 작업이 있다(plan=$PLAN check=$CHECK e2e=$E2E)"
+                exit 1
+                ;;
+            esac
+          done
