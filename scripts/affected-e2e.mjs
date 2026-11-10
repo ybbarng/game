@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 바뀐 파일로 돌릴 화면 시험(playwright spec)을 고른다(2026-11-04). 결과는 셋 가운데 하나다.
 //   all  — 전부 돈다. 여러 게임이 쓰는 곳·시험 도구·설정·lockfile·짝을 모르는 파일이 바뀌었을 때
-//   some — 바뀐 게임의 spec과, 그 게임에 기대는 게임의 spec, 늘 도는 기본 묶음(BASE_SPECS)
+//   some — 바뀐 파일이 닿는 주소를 여는 spec(패키지·public은 그 게임과 기대는 게임의 spec), 늘 도는 기본 묶음(BASE_SPECS)
 //   none — 화면에 닿지 않는 것만 바뀌었다(문서, 단위 시험 파일, 배포·저장소 도구 등)
 //
 //   node scripts/affected-e2e.mjs --base <커밋>      바뀐 파일 = git diff <커밋>...HEAD(merge-base 기준)
@@ -16,8 +16,13 @@
 // 게임 사이 기댐(은하 → 별 따기 등)과 패키지를 쓰는 게임은 실행할 때마다 import와 package.json에서 계산한다.
 // 여러 게임이 함께 쓰는 폴더(components·review·stats 등)가 어느 게임 코드를 불러도 그 게임의 변경을
 // 전부로 넓히지 않는다(게임 목록·복기처럼 게임마다 갈래가 있는 곳이라, 그 게임의 spec이 그 화면도 본다).
-// 웹 src 파일은 화면(src/app의 page·layout 등)에서 import로 닿는지 본다(2026-11-10). 어디서도 닿지 않으면(시험 전용
-// 도우미 등) 없음, 공통 폴더 파일은 닿는 주소의 게임만, 첫 화면·복기 같은 공용 주소가 닿으면 전부.
+// 웹 src 파일은 주소 단위로 고른다(2026-11-10 화면에서 닿는지, 11-11 주소 → 그 주소를 여는 spec).
+//   ① 주소(src/app의 page·icon 등)마다 그 page와 위 폴더의 layout에서 import를 따라가 파일 → 닿는 주소를 계산한다
+//   ② spec마다 여는 주소를 spec에 적힌 주소 문자열·주소 정규식(goto·toHaveURL 등)으로 모은다
+//   ③ 바뀐 파일이 닿는 주소를 여는 spec만 돌린다. 모든 화면 주소가 닿으면(루트 layout·globals.css 등) 전부,
+//      어디서도 닿지 않으면(시험 전용 도우미 등) 없음
+// import 그래프가 따라가지 못하는 꼴(변수 동적 import·require·import.meta.glob 등)이 화면에서 닿는 파일에
+// 있으면 그 너머를 모르므로 웹 src 변경은 전부로 돌린다(graphGap).
 // apps/web/scripts는 빌드가 돌리는 것만 전부이고 나머지(개발 때 손으로 돌리는 생성 도구)는 없음.
 //
 // 고른 spec은 지난 시험 시간(scripts/e2e-times.json)으로 조각마다 고르게 나눠, 조각마다 spec 목록을 넘긴다.
@@ -132,6 +137,35 @@ function importsOf(text) {
     /(?:from|import)\s*\(?\s*["']([^"']+)["']|new\s+URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url/g;
   for (const m of text.matchAll(re)) out.push(m[1] ?? m[2]);
   return out;
+}
+
+/**
+ * importsOf가 따라가지 못하는 불러오기 꼴(2026-11-11). 화면에서 닿는 파일에 이런 꼴이 있으면 그 너머를 모르므로
+ * 고르기를 전부로 돌린다(`ctx.graphGaps`). 주석은 빼고 본다. 돌려주는 것은 찾은 꼴의 이름 목록
+ */
+export function importGaps(text) {
+  const code = text
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
+  const found = [];
+  const check = (name, re) => {
+    if (re.test(code)) found.push(name);
+  };
+  check("require()", /\brequire\s*\(/);
+  check("import.meta.glob", /import\.meta\.glob/);
+  // 문자열이 아닌 값으로 부르는 동적 import(변수·템플릿 문자열)
+  // (뒤 보기 안에 \s*를 넣어 「빈칸만큼 물러나 따옴표가 아니라고 보는」 되짚기를 막는다)
+  check("import(값)", /(?<![\w.])import\s*\((?!\s*["'])/);
+  check("CSS @import url()", /@import\s+url\(/);
+  check(
+    "new URL(값, import.meta.url)",
+    /new\s+URL\((?!\s*["'])[^,()]*,\s*import\.meta\.url/,
+  );
+  check(
+    "new Worker(문자열 아님)",
+    /new\s+(?:Shared)?Worker\((?!\s*new\s+URL\(\s*["'])/,
+  );
+  return found;
 }
 
 /** registry.ts의 GAMES 목록에서 id를 읽는다 */
@@ -269,22 +303,42 @@ export function loadContext(root) {
   ctx.gameDeps = gameDeps;
   ctx.pkgUsers = pkgUsers;
 
-  // 화면에 닿는 파일(2026-11-10). src/app의 Next 특수 파일(page·layout·icon 등)에서 import를 따라가 닿는 파일마다,
-  // 그 파일에 닿는 주소 묶음(게임 id 또는 COMMON)을 모은다. 어느 화면에서도 닿지 않는 파일(시험 전용 도우미 등)은
-  // 바뀌어도 화면 시험을 돌리지 않고, 공통 폴더의 파일도 닿는 게임만 돌린다
+  // 화면에 닿는 파일(2026-11-10, 주소 단위는 11-11). src/app의 주소(page·route·icon 등)마다 그 주소를 그릴 때 쓰는
+  // 시작 파일(그 파일과 위 폴더들의 layout·template 등)에서 import를 따라가, 닿는 파일마다 그 파일에 닿는 주소를 모은다.
+  // 어느 화면에서도 닿지 않는 파일(시험 전용 도우미 등)은 바뀌어도 화면 시험을 돌리지 않는다
   const graph = importGraph(web);
+  ctx.graph = graph;
+  const routes = appRoutes(path.join(web, "src/app"));
   const reach = {};
-  const entriesByArea = {};
-  for (const file of listFiles(path.join(web, "src/app"), (n) =>
-    PAGE_ENTRY.test(n),
-  )) {
-    const rel = toPosix(path.relative(path.join(web, "src"), file));
-    const area = webAreaOf(ctx, rel);
-    if (!entriesByArea[area]) entriesByArea[area] = [];
-    entriesByArea[area].push(`src/${rel}`);
+  // 루트 layout을 빼고 닿는 주소. 루트 layout의 StoreHydration이 모든 게임의 저장소를 불러 게임 폴더의 많은 파일이
+  // 「모든 화면이 닿는」 파일이 되는데, 그 게임 화면 말고는 저장값을 읽기만 한다. 게임 폴더 파일은 이것으로 좁힌다
+  const ownReach = {};
+  for (const r of routes) {
+    r.area = webAreaOf(ctx, `app/${r.key ? `${r.key}/` : ""}page.tsx`);
+    for (const f of graph.walk(r.entries)) addTo(reach, f, r.key);
+    for (const f of graph.walk(r.own)) addTo(ownReach, f, r.key);
   }
-  for (const [area, entries] of Object.entries(entriesByArea)) {
-    for (const f of graph.walk(entries)) addTo(reach, f, area);
+  ctx.routes = routes;
+  ctx.routeByKey = Object.fromEntries(routes.map((r) => [r.key, r]));
+  ctx.pageRouteCount = routes.filter((r) => r.page).length;
+  ctx.reach = reach;
+  ctx.ownReach = ownReach;
+  // 주소 → 그 주소를 여는 spec. spec(과 그것이 불러 쓰는 시험 도구)에 적힌 주소 문자열·주소 정규식으로 모으고,
+  // 연 화면이 링크·이동으로 넘겨 주는 공용 주소(내 기록 → 복기 등)도 따라간다
+  ctx.visits = specVisits(ctx, web, graph);
+  ctx.routeSpecs = {};
+  for (const [spec, keys] of Object.entries(ctx.visits)) {
+    for (const k of keys) addTo(ctx.routeSpecs, k, spec);
+  }
+  // 묶음의 spec인데 그 묶음의 어느 주소도 적혀 있지 않은 것(초대 링크로만 여는 등). 주소로 좁힐 수 없어
+  // 그 묶음의 화면 코드가 바뀌면 늘 함께 돈다
+  ctx.unmapped = {};
+  for (const [id, a] of Object.entries(areas)) {
+    ctx.unmapped[id] = a.specs.filter(
+      (s) =>
+        ctx.specs.includes(s) &&
+        ![...(ctx.visits[s] ?? [])].some((k) => ctx.routeByKey[k].area === id),
+    );
   }
   // spec이 src 파일을 직접 불러 쓰기도 한다(데이터·순수 함수). spec이면 그 spec, 공용 도구면 COMMON
   const specReach = {};
@@ -296,7 +350,6 @@ export function loadContext(root) {
       if (!f.startsWith("e2e/")) addTo(specReach, f, user);
     }
   }
-  ctx.reach = reach;
   ctx.specReach = specReach;
   // 빌드(apps/web package.json의 build)가 돌리는 스크립트. 그 밖의 apps/web/scripts는 개발 때 손으로 돌리는 도구다
   const webPkg = JSON.parse(
@@ -306,9 +359,204 @@ export function loadContext(root) {
   return ctx;
 }
 
-/** Next가 주소로 삼는 특수 파일(이 파일들이 화면의 시작점이다) */
-const PAGE_ENTRY =
+/** Next 특수 파일 이름(확장자 뺌) → 하는 일 */
+const NEXT_FILE =
   /^(page|layout|template|not-found|error|global-error|loading|default|route|icon|apple-icon|opengraph-image|twitter-image|manifest|sitemap|robots)(\.specimen)?\.(tsx|ts|jsx|js)$/;
+/** 그 폴더 아래 모든 화면을 감싸는 파일. 아래 주소의 시작 파일에 함께 든다 */
+const WRAPS = new Set(["layout", "template", "loading", "error", "default"]);
+/** 화면을 그리지 않는 따로 선 주소(아이콘·공유 그림·manifest 등). 감싸는 파일을 거치지 않는다 */
+const STANDALONE = new Set([
+  "route",
+  "icon",
+  "apple-icon",
+  "opengraph-image",
+  "twitter-image",
+  "manifest",
+  "sitemap",
+  "robots",
+]);
+
+/**
+ * src/app의 주소 목록. key는 src/app 기준 주소(첫 화면은 "", 아이콘은 "cube/icon"처럼 파일 이름까지),
+ * entries는 그 주소를 그릴 때 쓰는 파일(apps/web 기준), page는 화면 주소인지.
+ * 화면(page·not-found·global-error)은 위 폴더들의 layout·template 등을 함께 시작 파일로 둔다
+ */
+export function appRoutes(appDir) {
+  const byDir = {};
+  for (const file of listFiles(appDir, (n) => NEXT_FILE.test(n))) {
+    const dir = toPosix(path.relative(appDir, path.dirname(file)));
+    const kind = path.basename(file).match(NEXT_FILE)[1];
+    if (!byDir[dir]) byDir[dir] = [];
+    byDir[dir].push({
+      kind,
+      rel: toPosix(path.relative(path.dirname(appDir), file)),
+    });
+  }
+  const src = (rel) => `src/${rel}`;
+  // from 1이면 루트 폴더의 layout 등을 뺀다
+  const wrapsAbove = (dir, from = 0) => {
+    const parts = dir ? dir.split("/") : [];
+    const out = [];
+    for (let i = from; i <= parts.length; i++) {
+      const d = parts.slice(0, i).join("/");
+      for (const f of byDir[d] ?? [])
+        if (WRAPS.has(f.kind)) out.push(src(f.rel));
+    }
+    return out;
+  };
+  const routes = [];
+  for (const [dir, files] of Object.entries(byDir)) {
+    for (const f of files) {
+      if (WRAPS.has(f.kind)) continue;
+      const join = (name) => (dir ? `${dir}/${name}` : name);
+      if (STANDALONE.has(f.kind)) {
+        // route.ts는 그 폴더 주소 자체, 아이콘 등은 폴더 아래 파일 이름 주소(/cube/icon/192.png)
+        const key = f.kind === "route" ? dir : join(f.kind);
+        routes.push({
+          key,
+          entries: [src(f.rel)],
+          own: [src(f.rel)],
+          page: false,
+        });
+      } else if (f.kind === "page") {
+        routes.push({
+          key: dir,
+          entries: [src(f.rel), ...wrapsAbove(dir)],
+          own: [src(f.rel), ...wrapsAbove(dir, 1)],
+          page: true,
+        });
+      } else {
+        // not-found·global-error: 없는 주소에서 그리는 화면. 주소 이름은 괄호로 둬 진짜 주소와 겹치지 않게 한다
+        routes.push({
+          key: join(`(${f.kind})`),
+          entries: [src(f.rel), ...wrapsAbove(dir)],
+          own: [src(f.rel), ...wrapsAbove(dir, 1)],
+          page: false,
+        });
+      }
+    }
+  }
+  return routes.sort((a, b) => (a.key < b.key ? -1 : 1));
+}
+
+/**
+ * 주소 문자열(예: "/profile?game=yut", "/cube/icon/192.png") → 가장 길게 맞는 주소 key. 모르면 null.
+ * 첫 화면("")은 "/" 그대로(또는 "/?…", "/#…")일 때만 맞춘다(모든 주소가 "/"로 시작하므로)
+ */
+export function routeOfPath(keys, p) {
+  if (!p.startsWith("/")) return null;
+  let clean = p.split(/[?#]/)[0];
+  const dyn = clean.indexOf("${");
+  if (dyn >= 0) {
+    // 템플릿 문자열의 끼운 값 앞까지만 안다. 첫 마디부터 모르면(`/${id}`) 고르지 않는다
+    clean = clean.slice(0, dyn);
+    if (clean === "/") return null;
+  }
+  clean = clean.replace(/\/+$/, "");
+  if (clean === "") return keys.includes("") ? "" : null;
+  let best = null;
+  for (const k of keys) {
+    if (!k) continue;
+    if (clean === `/${k}` || clean.startsWith(`/${k}/`)) {
+      if (best == null || k.length > best.length) best = k;
+    }
+  }
+  return best;
+}
+
+/** spec 글에 적힌 주소: 따옴표 문자열과 `\/`로 시작하는 정규식(toHaveURL(/\/stardraw$/) 등) */
+export function pathsInSpec(text) {
+  const out = [];
+  for (const m of text.matchAll(/(["'`])(\/[^"'`\s]*)\1/g)) out.push(m[2]);
+  for (const m of text.matchAll(
+    /(?<![\w)\]\\])\/(\\\/(?:\\.|[^/\\\n])*)\/[a-z]*/g,
+  )) {
+    out.push(
+      m[1].replace(/\\(.)/g, "$1").replace(/^\^/, "").replace(/\$$/, ""),
+    );
+  }
+  return out;
+}
+
+/** 화면 코드가 넘겨 주는 주소: href·push·replace·assign·location 대입에 적힌 문자열 */
+export function linksInSource(text) {
+  const out = [];
+  const re =
+    /(?:href\s*[=:]\s*\{?\s*|\.(?:push|replace|assign)\(\s*|location(?:\.href)?\s*=\s*)(["'`])(\/[^"'`\s]*)\1/g;
+  for (const m of text.matchAll(re)) out.push(m[2]);
+  return out;
+}
+
+/**
+ * spec마다 여는 주소 key 집합. ① spec과 그것이 불러 쓰는 시험 도구(e2e/ 안)에 적힌 주소
+ * ② 연 주소에서 넘어가는 주소를 닿을 때까지 따라간다: 공용 주소(첫 화면·내 기록·복기 등)의 화면이 링크·이동
+ * (href·push 등)으로 넘겨 주는 공용 주소(내 기록 → 복기), 게임 주소의 page 파일 자체에 적힌 같은 게임 주소
+ * (옛 주소 넘기기 등). 화면 깊숙한 메뉴·목록의 링크는 따라가지 않는다. 큐브는 모든 화면이 큐브의 모든 주소로
+ * 이어져 따라가면 큐브 spec 전부가 되므로, 눌러서 넘어가는 spec은 toHaveURL 등으로 그 주소를 적어 둔다.
+ * 적지 않고 넘어가 놓친 것은 매일 전부 실행이 잡는다
+ */
+function specVisits(ctx, web, graph) {
+  const keys = ctx.routes.map((r) => r.key);
+  const textCache = new Map();
+  const textOf = (rel) => {
+    if (!textCache.has(rel)) {
+      let text = "";
+      if (/\.(tsx?|jsx?|mjs)$/.test(rel)) {
+        try {
+          text = readFileSync(path.join(web, rel), "utf8");
+        } catch {}
+      }
+      textCache.set(rel, {
+        links: linksInSource(text)
+          .map((p) => routeOfPath(keys, p))
+          .filter((k) => k != null && ctx.routeByKey[k].area === COMMON),
+        paths: pathsInSpec(text)
+          .map((p) => routeOfPath(keys, p))
+          .filter((k) => k != null),
+      });
+    }
+    return textCache.get(rel);
+  };
+  const routeLinks = {};
+  for (const r of ctx.routes) {
+    const out = new Set();
+    if (r.key === "") {
+      // 첫 화면은 모든 게임·공용 주소로 이어지는 목록이다. 따라가면 첫 화면을 여는 모든 spec이 내 기록·복기도
+      // 여는 것이 되어, 그리로 가는 spec(home은 링크 주소만 본다)은 주소를 적어 둔다
+    } else if (r.area === COMMON) {
+      for (const f of graph.walk(r.entries))
+        for (const k of textOf(f).links) out.add(k);
+    } else {
+      // page 파일 자체에 적힌 같은 묶음 주소(옛 주소의 넘기기 `<CubeRedirect to=…>`, 안내 링크)
+      for (const k of textOf(r.entries[0]).paths) {
+        if (ctx.routeByKey[k].area === r.area) out.add(k);
+      }
+    }
+    routeLinks[r.key] = out;
+  }
+  const visits = {};
+  for (const s of ctx.specs) {
+    const seen = new Set();
+    for (const f of graph.walk([`e2e/${s}.spec.ts`])) {
+      if (!f.startsWith("e2e/")) continue;
+      for (const p of pathsInSpec(readFileSync(path.join(web, f), "utf8"))) {
+        const k = routeOfPath(keys, p);
+        if (k != null) seen.add(k);
+      }
+    }
+    const queue = [...seen];
+    while (queue.length) {
+      for (const k of routeLinks[queue.pop()] ?? []) {
+        if (!seen.has(k)) {
+          seen.add(k);
+          queue.push(k);
+        }
+      }
+    }
+    visits[s] = seen;
+  }
+  return visits;
+}
 
 const RESOLVE_TAILS = [
   "",
@@ -326,7 +574,7 @@ const RESOLVE_TAILS = [
  * apps/web 안의 import 그래프. `@/`와 상대 경로만 따라간다(작업 공간 패키지는 package.json으로 따로 본다).
  * 경로는 apps/web 기준. `?raw` 같은 꼬리는 뗀다
  */
-function importGraph(web) {
+export function importGraph(web) {
   const isFile = new Map();
   const fileExists = (p) => {
     if (!isFile.has(p)) {
@@ -339,12 +587,19 @@ function importGraph(web) {
     return isFile.get(p);
   };
   const edges = new Map();
+  // 파일을 찾지 못한 `@/`·상대 import(파일 → 적힌 대상). 놓친 의존이 없는지 시험이 본다
+  const unresolved = new Map();
+  // 따라가지 못하는 불러오기 꼴이 있는 파일(파일 → 꼴 이름)
+  const gaps = new Map();
   const targetsOf = (rel) => {
     if (edges.has(rel)) return edges.get(rel);
     const out = [];
     if (/\.(tsx?|jsx?|mjs|css)$/.test(rel)) {
       const abs = path.join(web, rel);
-      for (const spec of importsOf(readFileSync(abs, "utf8"))) {
+      const text = readFileSync(abs, "utf8");
+      const g = importGaps(text);
+      if (g.length) gaps.set(rel, g);
+      for (const spec of importsOf(text)) {
         const clean = spec.split("?")[0];
         let base;
         if (clean.startsWith("@/"))
@@ -353,7 +608,11 @@ function importGraph(web) {
           base = path.resolve(path.dirname(abs), clean);
         else continue;
         const hit = RESOLVE_TAILS.map((t) => base + t).find(fileExists);
-        if (!hit) continue;
+        if (!hit) {
+          if (!unresolved.has(rel)) unresolved.set(rel, []);
+          unresolved.get(rel).push(spec);
+          continue;
+        }
         const to = toPosix(path.relative(web, hit));
         if (!to.startsWith("..")) out.push(to);
       }
@@ -362,6 +621,9 @@ function importGraph(web) {
     return out;
   };
   return {
+    targets: targetsOf,
+    unresolved,
+    gaps,
     /** 시작 파일들에서 닿는 모든 파일(시작 파일 포함) */
     walk(starts) {
       const seen = new Set(starts);
@@ -482,6 +744,20 @@ export function classify(ctx, file) {
 }
 
 /**
+ * import 그래프에 구멍이 있으면 그 까닭(없으면 null). 화면에서 닿는 파일에 따라가지 못하는 불러오기 꼴이 있거나
+ * 찾지 못한 import가 있으면, 닿지 않는다고 본 파일이 실제로는 닿을 수 있어 웹 src 변경은 전부로 돌린다
+ */
+export function graphGap(ctx) {
+  if (!ctx.graph) return null;
+  const [gapFile, kinds] = ctx.graph.gaps.entries().next().value ?? [];
+  if (gapFile)
+    return `import 그래프가 따라가지 못하는 꼴(${gapFile}: ${kinds.join(", ")})`;
+  const [missFile, specs] = ctx.graph.unresolved.entries().next().value ?? [];
+  if (missFile) return `찾지 못한 import(${missFile}: ${specs.join(", ")})`;
+  return null;
+}
+
+/**
  * apps/web/src 아래 파일의 몫. rel은 apps/web 기준(src/…), srcRel은 src 기준.
  * - 어느 화면(src/app의 page·layout 등)에서도, 어느 spec에서도 import로 닿지 않으면 없음
  * - 게임 폴더면 그 게임(예전과 같다)
@@ -489,18 +765,46 @@ export function classify(ctx, file) {
  * - spec이 직접 불러 쓰면 그 spec도. 화면 시험 공용 도구가 불러 쓰면 전부
  */
 function classifyWebSource(ctx, rel, srcRel) {
-  const pages = ctx.reach?.[rel];
+  const gap = graphGap(ctx);
+  if (gap) return { all: gap };
+  let keys = ctx.reach?.[rel];
   const fromSpecs = ctx.specReach?.[rel] ?? new Set();
-  if (ctx.reach && !pages && fromSpecs.size === 0) return { none: true };
+  if (ctx.reach && !keys && fromSpecs.size === 0) return { none: true };
   if (fromSpecs.has(COMMON)) return { all: "화면 시험 공용 도구가 불러 쓴다" };
-  const specs = [...fromSpecs].sort();
+  const specs = new Set(fromSpecs);
   const id = webAreaOf(ctx, srcRel);
-  if (id !== COMMON) return { areas: [id], specs };
-  if (!ctx.reach) return { all: "여러 게임이 쓰는 웹 코드" };
-  if (pages?.has(COMMON)) {
-    return { all: "여러 게임이 쓰는 웹 코드(첫 화면·공용 주소가 불러 쓴다)" };
+  if (!ctx.reach) {
+    return id !== COMMON
+      ? { areas: [id], specs: [...specs].sort() }
+      : { all: "여러 게임이 쓰는 웹 코드" };
   }
-  return { areas: [...(pages ?? [])].sort(), specs };
+  if (id !== COMMON) {
+    // 게임 폴더: 루트 layout을 빼고 닿는 주소로 본다. 루트 layout으로만 닿으면(저장소 불러오기) 예전처럼 그 게임 묶음
+    const own = ctx.ownReach[rel];
+    if (!own) return { areas: keys ? [id] : [], specs: [...specs].sort() };
+    keys = own;
+  } else {
+    const pages = [...(keys ?? [])].filter((k) => ctx.routeByKey[k].page);
+    if (ctx.pageRouteCount > 0 && pages.length === ctx.pageRouteCount) {
+      return { all: "모든 화면이 쓰는 웹 코드(루트 layout 등)" };
+    }
+  }
+  // 닿는 주소마다 그 주소를 여는 spec. 게임 주소면 주소로 좁힐 수 없는 그 게임 spec(unmapped)도 함께.
+  // 게임 폴더의 파일이 공용 주소(복기·내 기록 등)에 닿으면 그 주소를 여는 spec 가운데 그 게임 것만 고른다.
+  // 공용 주소는 게임마다 갈래가 있어 그 게임의 판만 그 게임 코드를 그린다(다른 게임 spec이 여는 복기는 안 그린다)
+  const own = id !== COMMON ? new Set(ctx.areas[id]?.specs ?? []) : null;
+  for (const k of keys ?? []) {
+    const area = ctx.routeByKey[k].area;
+    for (const s of ctx.routeSpecs[k] ?? []) {
+      if (!own || area !== COMMON || own.has(s)) specs.add(s);
+    }
+    if (area !== COMMON) for (const s of ctx.unmapped[area] ?? []) specs.add(s);
+  }
+  return {
+    areas: [],
+    specs: [...specs].sort(),
+    routes: [...(keys ?? [])].sort(),
+  };
 }
 
 /**
@@ -512,6 +816,7 @@ export function selectE2e(ctx, files) {
   let all = null;
   const areas = new Set();
   const specs = new Set();
+  const routes = new Set();
   for (const file of files) {
     const c = classify(ctx, file);
     if (c.all) {
@@ -522,29 +827,49 @@ export function selectE2e(ctx, files) {
     } else {
       for (const a of c.areas) areas.add(a);
       for (const s of c.specs) specs.add(s);
+      for (const r of c.routes ?? []) routes.add(r);
+      const effect = [...c.areas, ...c.specs.map((s) => `${s}.spec`)].join(
+        ", ",
+      );
       reasons.push({
         file,
-        effect: [...c.areas, ...c.specs.map((s) => `${s}.spec`)].join(", "),
+        // 화면에 닿지만 그 주소를 여는 spec이 없으면 기본 묶음만 돈다(빌드는 된다)
+        effect: effect || "기본 묶음만(그 주소를 여는 spec 없음)",
       });
     }
   }
   if (all) return { mode: "all", specs: [], reasons, why: all };
-  if (areas.size === 0 && specs.size === 0) {
+  if (areas.size === 0 && specs.size === 0 && routes.size === 0) {
     return { mode: "none", specs: [], reasons, why: "화면에 닿는 변경이 없다" };
   }
-  for (const id of withDependents(ctx, [...areas])) {
+  const chosen = withDependents(ctx, [...areas]);
+  for (const id of chosen) {
     for (const s of ctx.areas[id]?.specs ?? []) specs.add(s);
+  }
+  // 이름은 다른 묶음이지만 그 게임 주소를 여는 spec(없는 주소 → 별 따기로 가는 not-found 등)도 함께
+  for (const r of ctx.routes ?? []) {
+    if (chosen.has(r.area)) {
+      for (const s of ctx.routeSpecs[r.key] ?? []) specs.add(s);
+    }
   }
   for (const s of [...BASE_SPECS, ...(ctx.orphanSpecs ?? [])]) specs.add(s);
   // 지워진 spec(바뀐 파일 목록에는 있지만 지금은 없다)은 돌릴 수 없다
   const exist = new Set(ctx.specs);
   const picked = [...specs].filter((s) => exist.has(s)).sort();
-  const games = [...withDependents(ctx, [...areas])].sort();
+  const games = [...chosen].sort();
+  const why = [];
+  if (games.length) why.push(`게임: ${games.join(", ")}`);
+  if (routes.size) {
+    const shown = [...routes].sort().map((k) => `/${k}`);
+    why.push(
+      `주소: ${shown.slice(0, 8).join(", ")}${shown.length > 8 ? ` 외 ${shown.length - 8}곳` : ""}`,
+    );
+  }
   return {
     mode: "some",
     specs: picked,
     reasons,
-    why: games.length ? `게임: ${games.join(", ")}` : "바뀐 spec만",
+    why: why.length ? why.join(" · ") : "바뀐 spec만",
   };
 }
 
