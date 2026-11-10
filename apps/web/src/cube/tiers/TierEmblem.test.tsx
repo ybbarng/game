@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   coreScale,
+  cubeFaces,
   FRAME_OUT,
   glintsFor,
   HDR_TIERS,
   hdrBandSrc,
   hdrFacetSrc,
   hdrGlintSrc,
+  type Pt,
 } from "./emblemArt";
 import { canShine, divisionPips, TierEmblem } from "./TierEmblem";
 import { DIVISIONS, TIER_IDS } from "./table";
@@ -131,6 +133,37 @@ describe("emblemArt", () => {
         expect(x + r).toBeLessThanOrEqual(64);
         expect(y - r).toBeGreaterThanOrEqual(0);
         expect(y + r).toBeLessThanOrEqual(64);
+      }
+    }
+  });
+
+  it("반짝임은 그늘진 왼면·오른면 안에 두지 않는다(블럭 하나만 튀지 않게)", () => {
+    // 볼록 사각형 안쪽까지의 거리(안이면 양수)
+    const inside = (
+      q: readonly (readonly [number, number])[],
+      x: number,
+      y: number,
+    ) => {
+      let d = Number.POSITIVE_INFINITY;
+      const cx = q.reduce((s, p) => s + p[0], 0) / q.length;
+      const cy = q.reduce((s, p) => s + p[1], 0) / q.length;
+      const side = (px: number, py: number, i: number) => {
+        const [ax, ay] = q[i] as readonly [number, number];
+        const [bx, by] = q[(i + 1) % q.length] as readonly [number, number];
+        return (
+          ((bx - ax) * (py - ay) - (by - ay) * (px - ax)) /
+          Math.hypot(bx - ax, by - ay)
+        );
+      };
+      const sign = Math.sign(side(cx, cy, 0));
+      for (let i = 0; i < q.length; i++) d = Math.min(d, sign * side(x, y, i));
+      return d;
+    };
+    for (const tier of HDR_TIERS) {
+      const [, left, right] = cubeFaces(tier) as [Pt[], Pt[], Pt[]];
+      for (const { x, y } of glintsFor(tier)) {
+        expect(inside(left, x, y)).toBeLessThan(0);
+        expect(inside(right, x, y)).toBeLessThan(0);
       }
     }
   });
