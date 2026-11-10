@@ -1,8 +1,8 @@
 "use client";
 
-import { applyMove, applyMoves, type CubeMove } from "@game/cube-engine";
-import type { PuzzleState } from "@game/puzzle-core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CubeMove } from "@game/cube-engine";
+import { realClock } from "@game/fair-play";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { type AlgBook, loadAlgBook, watchAlgBook } from "../algs/store";
@@ -10,16 +10,9 @@ import type { Command } from "../input";
 import type { Keymap } from "../input/keymaps";
 import { loadKeymap } from "../input/storage";
 import { ALG_SETS } from "../learn";
-import { countsAsMove, goalMet } from "../learn/judge";
-import { loadTrain, recordSolve } from "../learn/progress";
-import { drawRound } from "../practice/deck";
-import { pickAlg } from "../practice/pick-alg";
-import { boardFor, PRACTICE_N, type ProblemBoard } from "../practice/problem";
-import {
-  type PracticeMode,
-  PracticeRound,
-  type RoundSummary,
-} from "../practice/round";
+import { PRACTICE_N } from "../practice/problem";
+import type { PracticeMode, RoundSummary } from "../practice/round";
+import { PracticeSession } from "../practice/session";
 import {
   METHOD_TITLE,
   MORE_SETS,
@@ -27,15 +20,8 @@ import {
   stageById,
   stagesOf,
 } from "../practice/stages";
-import {
-  loadPractice,
-  type PracticeRecord,
-  recordFollow,
-  recordRound,
-  rememberStage,
-  suggestSee,
-} from "../practice/store";
-import type { DrillCase, PracticeMethod } from "../practice/types";
+import { loadPractice, suggestSee } from "../practice/store";
+import type { PracticeMethod } from "../practice/types";
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";
@@ -45,12 +31,8 @@ import { KeyCaps, useMoveKeys } from "./MoveChip";
  * 공식 연습(`/cube/train`, docs/47 16-9). 타자 연습의 짧은 글 연습처럼 한 판 10문제가 끊김 없이 이어진다.
  * - 따라 치기: 공식 글자는 보이고 키는 숨긴다. 틀린 수는 큐브에 넣지 않고 그 한 수의 키만 잠깐 보인다
  * - 보고 치기: 모양만 보고 친다. 「공식 보기」를 누르면 공식이 보인다. 결과 모양으로 채점한다
+ * 출제·판정·시간·기록은 Cubie와 같은 진행기(`practice/session.ts`)가 맡고, 이 화면은 그 상태를 그리기만 한다.
  */
-
-/** 다 맞춘 모습을 보이는 시간 */
-const SOLVED_PAUSE_MS = 700;
-/** 틀린 수의 키를 보이는 시간 */
-const WRONG_SHOW_MS = 1500;
 
 function randomSeed(): number {
   try {
@@ -62,15 +44,6 @@ function randomSeed(): number {
 
 const MORE_TITLE = new Map(ALG_SETS.map((s) => [s.set, s.title]));
 
-interface Play {
-  round: PracticeRound;
-  board: ProblemBoard | null;
-  /** 상황 id → 고른 공식(앞 윗면 돌리기 빼고) */
-  picked: Map<string, string>;
-  /** 상황 id → 실물에서 흔한 공식 */
-  common: Map<string, string>;
-}
-
 export function PracticeApp() {
   const settings = useCubeSettings();
   const [stageId, setStageId] = useState<string>(
@@ -80,218 +53,84 @@ export function PracticeApp() {
   const [mode, setMode] = useState<PracticeMode>("follow");
   const [ready, setReady] = useState(false);
   const [keymap, setKeymap] = useState<Keymap | null>(null);
-  const [algBook, setAlgBook] = useState<AlgBook>({});
-  const [record, setRecord] = useState<PracticeRecord>({
-    follow: {},
-    rounds: {},
-  });
-  const [play, setPlay] = useState<Play | null>(null);
-  const [state, setState] = useState<PuzzleState | null>(null);
+  const [session, setSession] = useState<PracticeSession | null>(null);
   const [syncToken, setSyncToken] = useState(0);
-  const [phase, setPhase] = useState<"play" | "pause" | "over">("play");
-  const [wrong, setWrong] = useState<{ index: number; token: string } | null>(
-    null,
-  );
-  const [peek, setPeek] = useState(false);
-  const [summary, setSummary] = useState<RoundSummary | null>(null);
   const [, bump] = useState(0);
   const { keysOf } = useMoveKeys(PRACTICE_N);
 
+  const algBook = useRef<AlgBook>({});
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const live = useRef<PracticeSession | null>(null);
+
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    const rec = loadPractice();
-    setRecord(rec);
-    const want = stageById(q.get("set")) ?? stageById(rec.last);
+    const want = stageById(q.get("set")) ?? stageById(loadPractice().last);
     if (want) setStageId(want.id);
     if (q.get("mode") === "see") setMode("see");
     setKeymap(loadKeymap());
-    setAlgBook(loadAlgBook());
+    algBook.current = loadAlgBook();
     setReady(true);
-    return watchAlgBook(setAlgBook);
+    return watchAlgBook((b) => {
+      algBook.current = b;
+    });
   }, []);
 
-  const cases = useMemo(
-    () => new Map(stage.cases.map((c) => [c.id, c])),
-    [stage],
-  );
-
-  const live = useRef({
-    play: null as Play | null,
-    state: null as PuzzleState | null,
-    phase: "play" as "play" | "pause" | "over",
-    settings,
-    stageId,
-  });
-  live.current.settings = settings;
-  live.current.stageId = stage.id;
-
-  /** 새 판(단계·방식·키 배치가 바뀌면 새 판) */
+  /** 새 판. 「한 판 더」도 새 진행기를 만들어 그사이 바뀐 내 공식을 반영한다 */
   const newRound = useCallback(() => {
     if (!keymap) return;
-    const algs = new Map<string, string>();
-    const common = new Map<string, string>();
-    for (const c of stage.cases) {
-      const p = pickAlg(c, keymap, algBook);
-      algs.set(c.id, p.alg);
-      common.set(c.id, p.common);
-    }
-    const book = mode === "follow" ? loadPractice().follow : loadTrain();
-    const problems = drawRound(
-      stage.cases.map((c) => c.id),
-      {
-        seed: randomSeed(),
-        algOf: (id) => algs.get(id) as string,
-        book,
-        auf: stage.auf,
-      },
-    );
-    const round = new PracticeRound(
-      problems,
+    live.current?.dispose();
+    const s = new PracticeSession({
+      stage,
       mode,
-      (p) => boardFor(stage, cases.get(p.caseId) as DrillCase, p).tokens,
-    );
-    const first = problems[0];
-    const board = first
-      ? boardFor(stage, cases.get(first.caseId) as DrillCase, first)
-      : null;
-    const next: Play = { round, board, picked: algs, common };
-    live.current.play = next;
-    live.current.state = board?.start ?? null;
-    live.current.phase = "play";
-    setPlay(next);
-    setState(board?.start ?? null);
-    setPhase("play");
-    setWrong(null);
-    setPeek(false);
-    setSummary(null);
+      keymap,
+      algBook: algBook.current,
+      clock: realClock,
+      seed: randomSeed,
+      onChange: () => bump((x) => x + 1),
+      onRepaint: () => setSyncToken((v) => v + 1),
+      // 틀린 수의 소리는 CubePlay가 낸다(onMove가 false)
+      onCue: (cue) => {
+        if (cue === "solved") playCubeCue(settingsRef.current, "cubeSolved");
+      },
+    });
+    live.current = s;
+    setSession(s);
     setSyncToken((v) => v + 1);
-  }, [keymap, algBook, stage, mode, cases]);
+  }, [keymap, stage, mode]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 단계·방식·키 배치가 바뀔 때만 새 판
   useEffect(() => {
     if (!ready) return;
     newRound();
-    rememberStage(stage.id);
   }, [ready, stage.id, mode, keymap]);
 
-  const wrongTimer = useRef<number | null>(null);
-  const flashWrong = useCallback((index: number, token: string) => {
-    setWrong({ index, token });
-    if (wrongTimer.current !== null) window.clearTimeout(wrongTimer.current);
-    wrongTimer.current = window.setTimeout(() => {
-      setWrong(null);
-      wrongTimer.current = null;
-    }, WRONG_SHOW_MS);
-  }, []);
-
-  /** 문제 하나를 끝냈다: 잠깐 다 맞춘 모습을 보인 뒤 다음 문제(또는 판 끝) */
-  const advance = useCallback(() => {
-    const c = live.current;
-    c.phase = "pause";
-    setPhase("pause");
-    playCubeCue(c.settings, "cubeSolved");
-    window.setTimeout(() => {
-      const p = c.play;
-      if (!p) return;
-      if (!p.round.next()) {
-        c.phase = "over";
-        setPhase("over");
-        setSummary(p.round.summary());
-        setRecord(recordRound(c.stageId, p.round.mode));
-        return;
-      }
-      const prob = p.round.current;
-      const st = stageById(c.stageId);
-      if (!prob || !st) return;
-      const dc = st.cases.find((x) => x.id === prob.caseId) as DrillCase;
-      const board = boardFor(st, dc, prob);
-      c.play = { ...p, board };
-      c.state = board.start;
-      c.phase = "play";
-      setPlay(c.play);
-      setState(board.start);
-      setPhase("play");
-      setWrong(null);
-      setPeek(false);
-      setSyncToken((v) => v + 1);
-    }, SOLVED_PAUSE_MS);
-  }, []);
+  useEffect(() => () => live.current?.dispose(), []);
 
   const onMove = useCallback(
-    (move: CubeMove) => {
-      const c = live.current;
-      const p = c.play;
-      if (!p?.board || !c.state || c.phase !== "play") return false;
-      const now = performance.now();
-      const n = PRACTICE_N;
-      if (p.round.mode === "follow") {
-        const r = p.round.feedFollow(move, now);
-        if (!r) return false;
-        if (r.step.kind === "miss") {
-          const token = p.round.follow?.expected ?? "";
-          flashWrong(r.step.index, token);
-          if (r.step.undo.length > 0) {
-            // 반 바퀴의 반쪽까지 되돌린다(장면은 다시 칠한다)
-            c.state = applyMoves(n, c.state, r.step.undo);
-            setState(c.state);
-            setSyncToken((v) => v + 1);
-          }
-          bump((x) => x + 1);
-          return false;
-        }
-        c.state = applyMove(n, c.state, move);
-        setState(c.state);
-        if (r.result) {
-          setRecord(
-            recordFollow(
-              r.result.caseId,
-              Math.round(r.result.ms),
-              r.result.moves,
-              r.result.misses,
-            ),
-          );
-          advance();
-        }
-        bump((x) => x + 1);
-        return true;
-      }
-      c.state = applyMove(n, c.state, move);
-      setState(c.state);
-      if (countsAsMove(n, move)) p.round.typedSee(now);
-      if (goalMet(n, c.state, p.board.goal)) {
-        const res = p.round.solvedSee(now);
-        if (res && !res.peeked)
-          recordSolve(res.caseId, Math.round(res.ms), res.moves);
-        advance();
-      }
-      bump((x) => x + 1);
-      return true;
-    },
-    [advance, flashWrong],
+    (move: CubeMove) => live.current?.input(move) === "applied",
+    [],
   );
 
   const onCommand = useCallback((cmd: Command): CubeMove | null => {
-    const c = live.current;
-    const p = c.play;
     // 보고 치기만 처음 모양으로 되돌리기를 받는다(따라 치기는 틀린 수가 큐브에 남지 않는다)
-    if (!p?.board || p.round.mode !== "see" || c.phase !== "play") return null;
-    if (cmd === "reset") {
-      c.state = p.board.start;
-      setState(c.state);
-      setSyncToken((v) => v + 1);
-    }
+    if (cmd === "reset") live.current?.reset();
     return null;
   }, []);
 
-  const round = play?.round;
+  const round = session?.round;
   const prob = round?.current;
-  const dc = prob ? cases.get(prob.caseId) : undefined;
+  const dc = session?.current;
   const judge = round?.follow;
-  const tokens = play?.board?.tokens ?? [];
-  const common = prob ? play?.common.get(prob.caseId) : undefined;
-  const showCommon =
-    !!common && !!prob && common !== play?.picked.get(prob.caseId);
+  const tokens = session?.tokens ?? [];
+  const common = session?.commonAlg ?? null;
+  const phase = session?.phase ?? "play";
+  const wrong = session?.wrong ?? null;
+  const peek = session?.peeked ?? false;
+  const summary: RoundSummary | null = session?.summary ?? null;
+  const state = session?.state ?? null;
   const method: PracticeMethod = stage.method;
+  const nameOf = (id: string) => session?.caseOf(id)?.name ?? id;
 
   return (
     <div data-game="cube" className="min-h-dvh bg-neutral-900 text-white">
@@ -299,7 +138,7 @@ export function PracticeApp() {
         className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4"
         data-practice-stage={stage.id}
         data-practice-mode={mode}
-        data-practice-phase={play ? phase : undefined}
+        data-practice-phase={session ? phase : undefined}
         data-practice-index={round && !round.over ? round.index : undefined}
         data-practice-case={prob?.caseId}
         data-practice-answer={prob?.alg}
@@ -396,9 +235,13 @@ export function PracticeApp() {
         {phase === "over" && summary ? (
           <Summary
             summary={summary}
-            nameOf={(id) => cases.get(id)?.name ?? id}
+            nameOf={nameOf}
             mode={mode}
-            suggest={mode === "follow" && suggestSee(record, stage.id)}
+            suggest={
+              mode === "follow" &&
+              !!session &&
+              suggestSee(session.record, stage.id)
+            }
             onAgain={newRound}
             onSee={() => setMode("see")}
             onFollow={() => setMode("follow")}
@@ -475,7 +318,7 @@ export function PracticeApp() {
                       );
                     })}
                   </ol>
-                  {showCommon && (
+                  {common && (
                     <p className="text-white/45 text-xs" data-practice-common>
                       실물에서 흔한 공식{" "}
                       <span className="font-mono">{common}</span>
@@ -504,8 +347,7 @@ export function PracticeApp() {
                       type="button"
                       data-practice-peek-button
                       onClick={(e) => {
-                        round.peek();
-                        setPeek(true);
+                        session?.peek();
                         e.currentTarget.blur();
                       }}
                       className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
@@ -519,7 +361,7 @@ export function PracticeApp() {
               <CubePlay
                 n={PRACTICE_N}
                 state={state}
-                mask={play?.board?.mask ?? null}
+                mask={session?.board?.mask ?? null}
                 syncToken={syncToken}
                 settings={settings}
                 onMove={onMove}

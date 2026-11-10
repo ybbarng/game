@@ -68,7 +68,7 @@ function typeAll(s: PracticeSession, clock: ManualClock): void {
   }
 }
 
-describe("공식 연습 진행기(Cubie 미니 모드가 쓴다)", () => {
+describe("공식 연습 진행기(사이트 공식 연습·Cubie 미니 모드가 쓴다)", () => {
   it("출제는 사이트와 같은 drawRound·pickAlg: 같은 씨앗이면 같은 10문제", () => {
     const { s, stage } = setup("2look-oll");
     const want = drawRound(
@@ -160,6 +160,20 @@ describe("공식 연습 진행기(Cubie 미니 모드가 쓴다)", () => {
     );
     expect(s.phase).toBe("pause");
     expect(s.round.combo.current).toBe(0);
+  });
+
+  it("보고 치기: 처음 모양으로 되돌리기(Esc)는 시작 모양을 다시 칠한다. 따라 치기는 받지 않는다", () => {
+    const { s, repaints } = setup("beginner-second", { mode: "see" });
+    const start = s.board?.start;
+    s.input(mv("R"));
+    s.input(mv("U"));
+    const before = repaints.length;
+    expect(s.reset()).toBe(true);
+    expect(s.state).toEqual(start);
+    expect(repaints.length).toBe(before + 1);
+    expect(s.undo()).toBeNull();
+    const follow = setup("beginner-second").s;
+    expect(follow.reset()).toBe(false);
   });
 
   it("끝낸 진행기는 걸어 둔 시계를 풀고 수를 받지 않는다", () => {

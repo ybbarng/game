@@ -1,7 +1,7 @@
 // 공식 연습 한 판을 화면 없이 돌리는 진행기(docs/47 16-9·16-11). 출제(`drawRound`)·판정(`PracticeRound`·`FollowJudge`)·
 // 기본 공식(`pickAlg`)·기록(`store.ts`)은 사이트 공식 연습과 같은 모듈이고, 이 파일은 그것들을 시계와 함께 잇기만 한다.
 // 문제를 맞춘 뒤 잠깐 멈춤, 틀린 수의 키를 잠깐 보이기 같은 시간은 넣어 받은 `Clock`으로 잰다(제품은 진짜 시계,
-// 시험은 ManualClock). Cubie 미니 모드가 쓴다.
+// 시험은 ManualClock). 사이트 공식 연습(`PracticeApp`)과 Cubie 미니 모드가 함께 쓴다.
 import {
   applyMove,
   applyMoves,
@@ -234,6 +234,17 @@ export class PracticeSession {
     this.state = applyMove(PRACTICE_N, this.state, back);
     this.changed();
     return back;
+  }
+
+  /** 보고 치기: 처음 모양으로 되돌린다(장면은 다시 칠한다). 따라 치기는 틀린 수가 큐브에 남지 않아 없다 */
+  reset(): boolean {
+    if (this.mode !== "see" || this.phase !== "play" || !this.board)
+      return false;
+    this.state = this.board.start;
+    this.history = [];
+    this.opts.onRepaint?.(this.state);
+    this.changed();
+    return true;
   }
 
   /** 보고 치기: 공식을 펼친다(그 문제는 콤보에서 빠진다) */

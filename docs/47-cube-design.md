@@ -1496,7 +1496,7 @@ apps/cubie/build.sh && CUBIE_DEBUG=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  
 
 사용자(아침): 공식 연습을 「앱에도 도입해도 좋을 것 같아. 단축키 연습이 같이 될 것 같아서. 공식에서 단축키는 보이지 않게 하고, 길이는 짧은 것부터」. 운영 방향은 「앱은 간단한 혼자 하기 전용, 같이 하기는 웹」. 같은 날 사용자 「앱은 아직 공식 학습인가? 아까 우리가 아침에 논의했던 거 반영이 안 되어 있어」로 이 단계를 만들었다(지적 기록, 고정 규칙 맨 위 「남은 단계를 지도에」).
 
-**같은 모듈.** 단계·출제(`drawRound`)·따라 치기 판정(`FollowJudge`)·콤보(`PracticeCombo`)·한 판과 결과(`PracticeRound`)·기본 공식(`pickAlg`)·기록 꼴(`practice/store.ts`)은 사이트 공식 연습 것 그대로다. 그것들을 시계와 함께 잇는 진행기 `practice/session.ts`(`PracticeSession`)를 새로 두었다: 문제를 맞춘 뒤 0.7초 멈춤, 틀린 수의 키 1.5초를 넣어 받은 `Clock`으로 잰다(제품 포커스 시계, 시험 `ManualClock`). 사이트 화면(`PracticeApp`)은 같은 일을 컴포넌트 안에서 하고 있어 이번에 바꾸지 않았다. 나중에 이 진행기로 옮길 수 있다.
+**같은 모듈.** 단계·출제(`drawRound`)·따라 치기 판정(`FollowJudge`)·콤보(`PracticeCombo`)·한 판과 결과(`PracticeRound`)·기본 공식(`pickAlg`)·기록 꼴(`practice/store.ts`)은 사이트 공식 연습 것 그대로다. 그것들을 시계와 함께 잇는 진행기 `practice/session.ts`(`PracticeSession`)를 새로 두었다: 문제를 맞춘 뒤 0.7초 멈춤, 틀린 수의 키 1.5초를 넣어 받은 `Clock`으로 잰다(제품 포커스 시계, 시험 `ManualClock`). 사이트 화면(`PracticeApp`)도 2026-11-10 이 진행기로 옮겨(브랜치 practice-unify), 이음 코드는 한곳이다. 사이트는 진짜 시계(`realClock`)를 넣고, 보고 치기의 처음 모양으로 되돌리기(Esc)는 진행기의 `reset`이 맡는다. 「한 판 더」는 그사이 바뀐 내 공식을 반영하려고 새 진행기를 만든다.
 
 **단계.** 사이트와 같은 열한 단계, 3×3만. 연습하는 동안은 큐브 장면을 3×3으로 바꾸고(맞추던 크기는 그대로 기억), 끝내면 맞추던 판으로 돌아간다.
 
@@ -1529,7 +1529,7 @@ apps/cubie/build.sh && CUBIE_DEBUG=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  
 
 **시험.** 단위 `practice/session.test.ts`(출제가 사이트 `drawRound`·`pickAlg`와 같음, 틀린 수·1.5초·0.7초, 기록, 10문제 판 끝·한 판 더, 보고 치기 펼치기·되돌리기, 끝낸 뒤 시계 풀림), `mini/practice.test.ts`(기록 자리, 메뉴 단계, 말풍선 줄: 키 숨김·틀린 한 수만·맞춤·판 끝, 다리 `practice` 읽기). 화면 `cube-mini.spec.ts` 「공식 연습」 둘(96px 앱 창: 말풍선 줄·틀린 수·10문제·판 끝·기록 자리·Enter 한 판 더·포커스 잃으면 숨김·끝내기 / 360px 브라우저: 구석 메뉴로 시작·창 안 칸·키캡·판 끝 결과·Esc). 앱 `MenuLayoutTests`(공식 연습 자리·하위 메뉴 차례·옛 화면이면 없음·단계 목록 읽기). README 그림 `desktop-practice.webp`(`readme-shots.mjs --practice`, 말풍선은 앱 말풍선 꼴을 HTML로 그린 흉내).
 
-**남은 것.** 3단계(같이 하기에 공식 연습 대결)는 웹(16-14에서 만듦). 사이트 `PracticeApp`을 이 진행기로 옮기는 정리는 하지 않았다.
+**남은 것.** 3단계(같이 하기에 공식 연습 대결)는 웹(16-14에서 만듦). 사이트 `PracticeApp`도 이 진행기로 옮겼다(practice-unify).
 
 
 ### 16-12. 2×2 경우별 정해진 길(2026-11-10)
