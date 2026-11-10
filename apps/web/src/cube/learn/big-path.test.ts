@@ -38,6 +38,7 @@ import {
   EDGE_PAIR_DOWN,
   LAST_TWO_HOLD,
 } from "./lessons-big";
+import { YAU_PAIR } from "./lessons-yau";
 import { setupFor } from "./notation";
 
 /** 씨앗마다 다른 고르는 차례(결정적) */
@@ -247,6 +248,30 @@ describe("단원 해 보기의 모범 답 = 규칙이 그 상황에서 내는 �
     ] as const) {
       const fc = frame(4, turns);
       expect([fc[0], fc[1]]).toEqual([color, 0]);
+    }
+  });
+
+  it("야우 엣지 짝(Uw' 엣지 뒤집기 Uw)과 묶은 줄 올리기(R U R')는 아래 층 엣지(흰 십자)와 센터를 그대로 둔다", () => {
+    const n = 4;
+    const base = playN(n, solvedCube(n), "z2");
+    const bottom = (s: PuzzleState) => {
+      const col = faceColors(n, s);
+      const out: number[] = [];
+      // 아래 층 엣지 칸(아랫면과 옆면 맨 아래 줄에서 코너 칸을 뺀 것)
+      const corner = (r: number, c: number) =>
+        (r === 0 || r === n - 1) && (c === 0 || c === n - 1);
+      for (let i = 0; i < n * n; i++)
+        if (!corner(Math.floor(i / n), i % n))
+          out.push(col[3 * n * n + i] as number);
+      for (const f of [1, 2, 4, 5])
+        for (let c = 1; c < n - 1; c++)
+          out.push(col[f * n * n + (n - 1) * n + c] as number);
+      return out.join();
+    };
+    for (const alg of [YAU_PAIR, "R U R'", `Dw ${EDGE_FLIP} Dw'`]) {
+      const s = playN(n, base, alg);
+      expect(bottom(s), alg).toBe(bottom(base));
+      expect(centersSolved(n, s), alg).toBe(true);
     }
   });
 
