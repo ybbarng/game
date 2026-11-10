@@ -208,7 +208,8 @@ function Results({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-fair-draws={fair.draws}>
       <span className="text-white/60 text-xs">
-        번호별 빛난 횟수 · 가운데 선은 기댓값, 띠는 우연으로 흔히 나오는 범위
+        번호별 빛난 횟수 · 가운데 선은 고르게 뽑을 때의 평균 횟수, 띠는 우연으로
+        흔히 나오는 범위
         {compare && " · 붉은 점은 치우친 뽑기"}
       </span>
       <CountChart fair={fair} biased={compare ? biased : null} />

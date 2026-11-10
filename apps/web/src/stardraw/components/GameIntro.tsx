@@ -162,6 +162,7 @@ export function GameIntro({
         <h2 className="text-balance text-center font-bold text-lg">
           이번에 빛날 별 6개를 맞혀 보세요
         </h2>
+        <p className="text-white/50 text-xs">정답 예시</p>
       </div>
       <SkyBoard
         state={{

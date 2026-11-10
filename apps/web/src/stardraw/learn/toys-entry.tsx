@@ -343,7 +343,7 @@ export function PasskeyToy() {
         {exported && (
           <span data-export-result className="text-rose-200 text-xs">
             브라우저 답: {exported} — 꺼낼 수 없게 만든 열쇠라 화면 코드도 못
-            봅니다
+            봅니다.
           </span>
         )}
       </div>
@@ -421,12 +421,12 @@ export function PasskeyToy() {
               브라우저는 서명 안에 지금 주소를 넣습니다.
             </span>
           )}
-          <Row label="서명 안의 주소(origin)">
+          <Row label="서명 안의 주소">
             <Mono tone={result.origin === SITE_ORIGIN ? "good" : "bad"}>
               {result.origin}
             </Mono>
           </Row>
-          <Row label="사이트 해시(rpIdHash)">
+          <Row label="사이트 해시">
             <Mono tone={result.rpIdMatches ? "good" : "bad"}>
               {result.rpIdMatches ? `SHA-256("${SITE}")와 같음` : "다름"}
             </Mono>
@@ -767,7 +767,7 @@ export function MerkleToy() {
   ).length;
 
   return (
-    <Toy title="머클 나무와 내 예측서 증명" id="merkle">
+    <Toy title="머클 나무와 내 예측서 포함 증명" id="merkle">
       <MerkleSvg ids={ids} labels={labels} mine={mine} />
       <div className="flex flex-wrap gap-3 text-[11px] text-white/60">
         <span>
@@ -858,8 +858,8 @@ export function MerkleToy() {
         {mine < 0
           ? "내 예측서가 목록에 없어 증명을 만들 수 없습니다. 서버가 서명해 준 예측 접수증으로 누구에게나 보일 수 있습니다."
           : proofOk
-            ? `내 예측서 증명을 확인했습니다. 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다.`
-            : "내 예측서 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다."}
+            ? `내 예측서의 포함 증명을 확인했습니다. 값 ${inclusionProof(ids, mine).length}개만으로 봉인한 뿌리까지 다시 계산됩니다.`
+            : "내 예측서의 포함 증명이 봉인한 뿌리에 닿지 않습니다. 목록이 바뀌었습니다."}
       </Verdict>
     </Toy>
   );

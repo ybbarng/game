@@ -232,7 +232,7 @@ function CompareAndScore({
                 {pct(moved.size / people.length)})
                 {key === "hrw" && prev && (
                   <span className="block text-white/55">
-                    기댓값 1/{Math.max(prev.length, list.length)} ≈{" "}
+                    고르게 나뉘면 1/{Math.max(prev.length, list.length)} ≈{" "}
                     {pct(expected)}
                   </span>
                 )}
@@ -382,7 +382,8 @@ function ScoreTable({
           <Mono>-가중치 / ln(u)</Mono>
           <Mono>u = sha256(등록증 해시‖"place"‖0‖id)를 0~1로</Mono>
           <span className="text-white/55">
-            u는 해시에서 만든 0과 1 사이 값이고 ln은 자연로그입니다. u가 1에
+            ‖는 이어 붙이기, "place"는 용도 이름, 0은 구분 표시입니다. u는 이
+            해시에서 만든 0과 1 사이 값이고 ln은 자연로그입니다. u가 1에
             가까울수록 점수가 커집니다.
           </span>
         </span>
@@ -477,7 +478,7 @@ function EditToy({ people, me }: { people: Uint8Array[]; me: boolean }) {
     const newCount = residents(after, list).get(TARGET.id) ?? 0;
     result = {
       ok: true,
-      text: `${TARGET.name}의 가중치를 2배로 하자 주민이 ${oldCount}명 → ${newCount}명이 됐습니다${manyCounts ? `(견본 600명으로 세면 ${manyCounts[0]}명 → ${manyCounts[1]}명)` : ""}. 기댓값은 1/5 → 2/6입니다. 이사한 사람은 모두 ${toward(TARGET.name)} 옮겨 왔습니다.`,
+      text: `${TARGET.name}의 가중치를 2배로 하자 주민이 ${oldCount}명 → ${newCount}명이 됐습니다${manyCounts ? `(견본 600명으로 세면 ${manyCounts[0]}명 → ${manyCounts[1]}명)` : ""}. 가중치대로 나뉘면 비율은 1/5 → 2/6입니다. 이사한 사람은 모두 ${toward(TARGET.name)} 옮겨 왔습니다.`,
     };
   }
 

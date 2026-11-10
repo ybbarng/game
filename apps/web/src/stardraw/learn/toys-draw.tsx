@@ -176,7 +176,7 @@ export function TsaToy() {
               {check.genTime ? `${kst(check.genTime)} (한국 시각)` : "-"}
             </Mono>
           </Row>
-          <Row label="사슬이 닿은 기관 열쇠">
+          <Row label="서명이 이어진 루트 열쇠">
             <Mono tone={check.tsa ? "good" : "bad"}>{check.tsa ?? "없음"}</Mono>
           </Row>
         </>
@@ -562,8 +562,8 @@ export function ChainToy() {
       </Verdict>
       <div className="flex flex-col gap-1.5 border-white/10 border-t pt-3">
         <span className="text-white/70 text-xs">
-          일정 바꾸기(예: 정식 시작)는 회차 기록에 한 줄을 넣고, 그 뒤 3회차
-          동안 장부에 보인 다음 회차부터만 됩니다. 지금 {decided}회 기록에
+          일정 바꾸기(예: 정식 시작)는 회차 기록에 운영 기록 한 줄을 넣고, 그 뒤
+          3회차 동안 장부에 보인 다음 회차부터만 됩니다. 지금 {decided}회 기록에
           넣는다면:
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
