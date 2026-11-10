@@ -490,7 +490,8 @@ function ScreenStep({ onDone }: { onDone: () => void }) {
     <>
       <ul className="flex flex-col gap-2 break-keep text-sm text-white/85">
         <li>
-          수 옆에 키보드 키 모양으로 붙은 작은 표시(키캡)가 <b>내 키</b>예요:{" "}
+          수(돌리기 한 번) 옆에 키보드 키 모양으로 붙은 작은 표시(키캡)가{" "}
+          <b>내 키</b>예요:{" "}
           <MoveChip
             notation="R"
             keysOf={keysOf}
@@ -638,7 +639,8 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
             {TWO_HAND_RULES.find((r) => r.exception)?.exception} csTimer(큐브
             연습에 널리 쓰는 웹 사이트) 같은 가상 큐브 사이트와 같은 배치라 다른
             곳에서도 그대로 써요. 덧붙인 것: Shift + 면 키 = 넓게. csTimer와
-            다른 곳: Space는 살펴보기·블라인드 시작이에요. 큰 큐브는
+            다른 곳: Space는 살펴보기(맞추기 전에 큐브를 둘러보는 시간)와
+            블라인드(외운 뒤 가린 채 맞추기) 시작이에요. 큰 큐브는
             3·4(왼손)·7·8(오른손)로 함께 돌릴 층 수를 골라요.
           </p>
         </div>
