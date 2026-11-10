@@ -116,6 +116,8 @@ export const SCRAMBLE_RULES = {
   "2x2-corners-placed": "2×2 코너 방향만 남음",
   "4x4-random": "4×4 모두 섞음",
   "4x4-centers-solved": "4×4 센터만 맞음",
+  "4x4-last-four-edges":
+    "4×4 센터와 위·아래 층 엣지 여덟이 묶임, 가운데 줄 넷만 남음",
   "4x4-reduced": "4×4 센터와 엣지 묶기까지 맞음(3×3처럼 풀기)",
   "5x5-random": "5×5 모두 섞음",
   "5x5-centers-solved": "5×5 센터만 맞음",
