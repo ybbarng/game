@@ -53,6 +53,7 @@ import {
 } from "./items";
 import { MatchBoard } from "./MatchBoard";
 import { PartyBar } from "./PartyBar";
+import { PracticeRaceView } from "./PracticeRaceView";
 import {
   hasHp,
   hasItems,
@@ -150,7 +151,27 @@ function useTicker(active: boolean): void {
   }, [active]);
 }
 
-export function RaceView({
+type RaceViewProps = {
+  room: CubeRoom;
+  version: number;
+  local?: boolean;
+  resultActions?: ReactNode;
+};
+
+/** 대결 한 판의 화면. 공식 연습 대결(docs/47 16-14)이면 그 화면, 아니면 큐브 맞추기 대결 화면 */
+export function RaceView(props: RaceViewProps) {
+  const { room } = props;
+  const practice = room.game()
+    ? room.game()?.practice
+    : room.state?.settings.practice;
+  return practice ? (
+    <PracticeRaceView {...props} />
+  ) : (
+    <CubeRaceView {...props} />
+  );
+}
+
+function CubeRaceView({
   room,
   version,
   local = false,

@@ -12,12 +12,15 @@ export function BotLevelPicker({
   value,
   onChange,
   disabled = false,
+  times = true,
 }: {
   n: number;
   average: number | null | undefined;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** 예상 맞추기 시간을 붙인다(공식 연습 대결은 맞추기 시간이 아니라 빼고 단계 이름만) */
+  times?: boolean;
 }) {
   return (
     <fieldset className="flex flex-col gap-1 text-sm" disabled={disabled}>
@@ -29,17 +32,19 @@ export function BotLevelPicker({
             type="button"
             data-cube-bot-level={c.value}
             aria-pressed={value === c.value}
-            title={`${c.people} · 평균 ${c.time}`}
+            title={times ? `${c.people} · 평균 ${c.time}` : c.people}
             onClick={() => onChange(c.value)}
             className={`flex flex-col items-center rounded-lg px-3 py-1 leading-tight disabled:opacity-50 ${value === c.value ? "bg-amber-400 text-black" : "bg-white/10"}`}
           >
             <span>{c.label}</span>
-            <span
-              aria-hidden
-              className={`text-[11px] ${value === c.value ? "text-black/70" : "text-white/55"}`}
-            >
-              {c.time}
-            </span>
+            {times && (
+              <span
+                aria-hidden
+                className={`text-[11px] ${value === c.value ? "text-black/70" : "text-white/55"}`}
+              >
+                {c.time}
+              </span>
+            )}
           </button>
         ))}
       </div>

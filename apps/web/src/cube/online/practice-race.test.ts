@@ -24,7 +24,7 @@ import {
   raceOptionsFor,
 } from "./room";
 
-/** 공식 연습 대결(docs/47 16-12): 같은 문제·기록으로 다시 계산·위조 기록 무효·컴퓨터 */
+/** 공식 연습 대결(docs/47 16-14): 같은 문제·기록으로 다시 계산·위조 기록 무효·컴퓨터 */
 
 const fake: Scrambler = (event, seed) => ({
   event,

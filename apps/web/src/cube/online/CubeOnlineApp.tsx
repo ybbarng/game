@@ -13,12 +13,14 @@ import { inviteUrl, isLocalNet } from "@/net/session";
 import { joinBroadcast, randomId, type Transport } from "@/net/transport";
 import { shapeSupports } from "../patterns/race";
 import { ShapeRulePicker } from "../patterns/ShapeRulePicker";
+import { stageById } from "../practice/stages";
 import { planInWorker, scrambleInWorker, warmUpScramble } from "../worker";
 import { botChoices } from "./bot-choices";
 import { botSupports } from "./bot-racer";
 import { HandicapPanel } from "./HandicapPanel";
 import { localAverages } from "./handicap";
 import { nextLabel } from "./MatchBoard";
+import { PracticeRulePicker } from "./PracticeRulePicker";
 import { PARTY_MODE_LABELS, PARTY_MODES } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
@@ -192,6 +194,9 @@ export function CubeOnlineApp() {
                 ? ` · ${PARTY_MODE_LABELS[state.settings.party].replace("파티: ", "")}`
                 : ""}
               {state.settings.shape ? " · 모양 만들기" : ""}
+              {state.settings.practice
+                ? ` · 공식 연습 ${stageById(state.settings.practice.stage)?.title ?? ""}`
+                : ""}
             </span>
           )}
         </header>
@@ -326,7 +331,8 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                     value={c.value}
                     className="bg-neutral-800"
                   >
-                    {c.label} · {c.time}
+                    {/* 공식 연습 대결은 맞추기 시간이 아니라 단계 이름만 */}
+                    {s.practice ? c.label : `${c.label} · ${c.time}`}
                   </option>
                 ))}
               </select>
@@ -375,8 +381,19 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
           <select
             disabled={!host}
             data-cube-party
-            value={s.shape ? "shape" : (s.party ?? "normal")}
+            value={
+              s.practice
+                ? "practice"
+                : s.shape
+                  ? "shape"
+                  : (s.party ?? "normal")
+            }
             onChange={(e) => {
+              if (e.target.value === "practice") {
+                room.setPractice({ stage: "beginner-second" });
+                return;
+              }
+              if (s.practice) room.setPractice(null);
               if (e.target.value === "shape") {
                 room.setShape({ start: "solved", pick: "easy" });
                 return;
@@ -401,8 +418,18 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
                 모양 만들기
               </option>
             )}
+            <option value="practice" className="bg-neutral-800">
+              공식 연습
+            </option>
           </select>
         </Field>
+        {s.practice && (
+          <PracticeRulePicker
+            value={s.practice}
+            disabled={!host}
+            onChange={(rule) => room.setPractice(rule)}
+          />
+        )}
         {s.shape && (
           <ShapeRulePicker
             n={s.n}
@@ -492,7 +519,7 @@ function Lobby({ room, roomCode }: { room: CubeRoom; roomCode: string }) {
             </select>
           </Field>
         )}
-        <Field label="살펴보기">
+        <Field label="살펴보기" hidden={!!s.practice}>
           <select
             disabled={!host}
             value={s.inspection ? "15" : "0"}
@@ -552,13 +579,17 @@ function withAverages(): { avgs?: Record<string, number> } {
 function Field({
   label,
   children,
+  hidden = false,
 }: {
   label: string;
   children: React.ReactNode;
+  hidden?: boolean;
 }) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: 고르기 칸(select)을 children으로 받아 label 안에 둔다
-    <label className="flex items-center justify-between gap-2">
+    <label
+      className={`flex items-center justify-between gap-2 ${hidden ? "hidden" : ""}`}
+    >
       {label}
       {children}
     </label>

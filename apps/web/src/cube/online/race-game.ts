@@ -61,7 +61,7 @@ export type Scrambler = (
   seed: number,
 ) => Scramble | Promise<Scramble>;
 
-/** 공식 연습 대결 보고 치기의 「공식 보기」(docs/47 16-12). 수 기록에 남아 모든 기기가 콤보·정확도를 다시 계산한다 */
+/** 공식 연습 대결 보고 치기의 「공식 보기」(docs/47 16-14). 수 기록에 남아 모든 기기가 콤보·정확도를 다시 계산한다 */
 export interface PeekAct {
   readonly peek: true;
 }
@@ -81,7 +81,7 @@ export interface CubeRaceGame extends RaceGame<CubeAct, PuzzleState> {
   scrambleFor(seed: string): Scramble | undefined;
   /** 모양 만들기 판의 목표(docs/47 9-10). 일반 판은 없다 */
   shape?: RaceShape;
-  /** 공식 연습 대결의 규칙(docs/47 16-12). 일반 판은 없다 */
+  /** 공식 연습 대결의 규칙(docs/47 16-14). 일반 판은 없다 */
   practice?: VersusRule;
 }
 

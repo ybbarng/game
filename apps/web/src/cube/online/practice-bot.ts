@@ -17,7 +17,7 @@ import { type BotHandle, botSeed } from "./bot-racer";
 import { BOT_NO_PLAN, type CubeAct } from "./race-game";
 
 /**
- * 공식 연습 대결에 든 컴퓨터(docs/47 16-12). 방장 기기가 돌리지만 대결 틀에는 한 참가자다.
+ * 공식 연습 대결에 든 컴퓨터(docs/47 16-14). 방장 기기가 돌리지만 대결 틀에는 한 참가자다.
  * 계획(수와 시각)은 `versusBotPlan(시작 상태, 단계 빠르기, 씨앗)`으로 정해지고, 씨앗은 대결 씨앗과 컴퓨터 아이디에서 나온다.
  * 그래서 다른 기기도 같은 계획을 다시 계산해 계획대로 쳤는지 맞춰 본다(`practiceBotRunOk`). 시각은 넣은 `Clock`으로 잰다.
  */
