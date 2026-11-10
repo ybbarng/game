@@ -53,10 +53,10 @@ export const BEGINNER_CROSS: DrillCase[] = [
   cross("guard-right", "가운데 층, 돌려 쥐고 내렸다 올리기", CROSS_GUARD_TRY),
   cross("flipped", "위 층, 흰색이 옆", CROSS_FLIPPED),
   cross("flipped-right", "위 층, 흰색이 옆(위-오른쪽에서)", CROSS_FLIPPED_TRY),
-  cross("wrong-top", "위 층, 자리가 바뀐 엣지 둘", CROSS_WRONG_TOP),
+  cross("wrong-top", "위 층, 자리가 바뀐 엣지 블럭 둘", CROSS_WRONG_TOP),
   cross(
     "wrong-top-right",
-    "위 층, 자리가 바뀐 엣지 둘(오른쪽·왼쪽)",
+    "위 층, 자리가 바뀐 엣지 블럭 둘(오른쪽·왼쪽)",
     CROSS_WRONG_TOP_TRY,
   ),
 ];
@@ -75,7 +75,7 @@ export const BEGINNER_SECOND: DrillCase[] = [
   },
   {
     id: "beginner-second-flipped",
-    name: "자리에서 뒤집힌 엣지",
+    name: "자리에서 뒤집힌 엣지 블럭",
     algs: [`${RIGHT} U2 ${RIGHT}`],
   },
 ];
