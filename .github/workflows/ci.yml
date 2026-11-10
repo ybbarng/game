@@ -167,7 +167,22 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Next(Turbopack) 빌드 캐시. 이 맥에서 빌드 14초 → 7초(컴파일 5.7초 → 1.4초, 2026-11-10). 화면 시험이 도는 main
+      # 실행(매일·손으로)의 첫 조각만 저장하고, PR은 그것을 받아 쓴다(PR마다 저장하면 저장소 캐시 한도를 빨리 채운다).
+      # 이어 쓰는 캐시가 한없이 커지지 않게 주마다(ISO 주) 새로 시작한다
+      - id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          restore-keys: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm build
+      - if: github.ref == 'refs/heads/main' && matrix.shard == 1
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
       # 러너에 이미 있는 Chrome이 보안 공지의 최소 판(e2e/browser.ts MIN_CHROME) 이상이면 내려받지 않는다(2026-11-10).
       # 낮거나 없으면 예전처럼 설치한다. 실제로 뜨는 판은 시험 전에 global-setup이 다시 확인한다
       - name: Chrome 판 확인
