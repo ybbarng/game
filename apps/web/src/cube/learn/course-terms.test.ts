@@ -208,6 +208,29 @@ describe("큐브 중급 과정 조각 이름(블럭)", () => {
   }
 });
 
+// 큰 큐브 낱말 하나에 뜻 하나(docs/47 1-1, 16-20): 「줄」은 두 옆면 사이 세로 엣지 자리, 「칸」은 한 면의 센터 블럭 자리.
+// 날개가 붙은 덩이는 「엣지」(「한 줄로 붙어요」 아님), 줄 안의 날개 자리는 「위 자리·아래 자리」(「위 칸」 아님),
+// 한 면의 센터 블럭 둘씩은 「위 두 칸·아래 두 칸」(「윗줄·아랫줄」 아님)
+describe("큰 큐브 줄·칸 낱말", () => {
+  const OLD =
+    /윗줄|아랫줄|(?<!오른쪽|왼쪽) (위|아래) 칸|한 줄로|한 줄이|한 줄에|한 줄의|묶은 줄|안쪽 줄|면의 줄/;
+  for (const course of COURSES) {
+    if (course.size < 4) continue;
+    it(`${course.title}: 옛 꼴(윗줄·위 칸·한 줄로 등)을 쓰지 않는다`, () => {
+      const found = [
+        ...courseSummaries(course),
+        ...coursePlaces(course),
+      ].flatMap(({ where, text }) => {
+        const m = text.match(OLD);
+        return m
+          ? [`${where}: …${text.slice(m.index ?? 0, (m.index ?? 0) + 12)}…`]
+          : [];
+      });
+      expect(found).toEqual([]);
+    });
+  }
+});
+
 // OLL 모양 이름(「T 모양」)과 PLL 공식 이름(「T퍼뮤」)은 같은 글자를 쓰니 늘 「모양」·「퍼뮤」를 붙여 구별한다
 // (2026-11-10, docs/47 16-16). 수네·안티수네도 모양은 「수네 모양」, 공식은 「수네」.
 describe("CFOP 모양 이름과 공식 이름", () => {
