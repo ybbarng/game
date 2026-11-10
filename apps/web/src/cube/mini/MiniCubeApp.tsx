@@ -76,6 +76,7 @@ import {
   replayMoveMs,
   SCRAMBLE_MOVE_MS,
 } from "./replay";
+import { CHEER_MS, type CheerRect, SolveCheer } from "./SolveCheer";
 import {
   addMiniRecord,
   type KeyOrigin,
@@ -382,6 +383,17 @@ function MiniCube() {
   const [recordsN, setRecordsN] = useState(n);
   const [records, setRecords] = useState<MiniRecord[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  /** 다 맞춘 순간의 짧은 축하(`SolveCheer`, `CHEER_MS` 뒤 지운다) */
+  const [cheer, setCheer] = useState<{
+    id: number;
+    ms: number;
+    best: boolean;
+    cube: CheerRect | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!cheer) return;
+    return realClock.after(CHEER_MS, () => setCheer(null));
+  }, [cheer]);
   const [, bumpState] = useState(0);
   const bump = useCallback(() => bumpState((v) => v + 1), []);
 
@@ -422,6 +434,17 @@ function MiniCube() {
         },
         onRecord: (r) => {
           const origin = keyOriginOf(originsRef.current);
+          // 다 맞춘 판이면 짧은 축하(이 판 전의 최고보다 빠르면 금색 숫자)
+          if (r.ms !== null) {
+            const before = summarize(loadMiniRecords(r.n)).best;
+            const ms = r.ms + r.penalty;
+            setCheer({
+              id: r.at,
+              ms,
+              best: before !== null && ms < before,
+              cube: viewRef.current?.hitRects()[0] ?? null,
+            });
+          }
           const list = addMiniRecord({
             ...r,
             inspection: false,
@@ -1056,7 +1079,20 @@ function MiniCube() {
         !app && "bg-neutral-950",
       )}
     >
-      <div ref={wrapRef} className="absolute inset-0">
+      <div
+        ref={wrapRef}
+        className={cn(
+          "absolute inset-0",
+          cheer && !reduced && "mini-cheer-pop",
+        )}
+        style={
+          cheer?.cube
+            ? {
+                transformOrigin: `${cheer.cube.x + cheer.cube.w / 2}px ${cheer.cube.y + cheer.cube.h / 2}px`,
+              }
+            : undefined
+        }
+      >
         {failed ? (
           <div
             data-cube-no3d
@@ -1082,6 +1118,15 @@ function MiniCube() {
         )}
       </div>
       {app && <ProfileToApp n={n} version={records} />}
+      {cheer && (
+        <SolveCheer
+          key={cheer.id}
+          ms={cheer.ms}
+          best={cheer.best}
+          reduced={reduced}
+          cube={cheer.cube}
+        />
+      )}
 
       {!bubble && (shownHint || hintMsg) && (
         <HintCard

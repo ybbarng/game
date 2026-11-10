@@ -96,6 +96,15 @@ test("섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 �
   await expect(main).toHaveAttribute("data-mini-phase", "done");
   await expect(main).toHaveAttribute("data-mini-solved", "");
 
+  // 다 맞추면 짧은 축하: 이번 시간 숫자만 잠깐(첫 판이라 최고 기록 표시는 없다), 시간이 지나면 사라진다
+  const cheer = page.locator("[data-mini-cheer]");
+  await expect(cheer).toHaveAttribute("data-mini-cheer", "");
+  await expect(cheer.locator("[data-mini-cheer-time]")).toHaveText("3.00");
+  // 시험은 「동작 줄이기」라 큐브가 튀지 않는다(빛과 숫자만)
+  await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(0);
+  await page.clock.fastForward(2500);
+  await expect(cheer).toHaveCount(0);
+
   // 기록(앱 메뉴 「기록」): 시간은 포커스가 있던 3초만
   await fromApp(page, { type: "records", open: true });
   const panel = page.locator("[data-mini-records='3']");
@@ -117,6 +126,75 @@ test("섞고 맞추면 기록에 남고, 포커스가 없던 시간은 재지 �
   await fromApp(page, { type: "records", open: false });
   await expect(page.locator("[data-mini-records]")).toHaveCount(0);
 });
+
+/** 사람이 보는 스크린샷용: 모든 CSS 연출을 `ms` 순간에 세운다 */
+async function freezeAnimations(page: Page, ms: number) {
+  if (!process.env.E2E_SCREENSHOTS) return;
+  await page.evaluate((t) => {
+    for (const a of document.getAnimations()) {
+      a.currentTime = t;
+      a.pause();
+    }
+  }, ms);
+}
+
+test(
+  "다 맞추면 큐브가 통 튀고 빛 고리가 퍼졌다 사라진다(작은 창에서도)",
+  { tag: "@3d" },
+  async ({ page }, info) => {
+    test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 96, height: 96 });
+    await installClock(page);
+    await fakeApp(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      SCENE,
+    );
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+    for (const k of keys) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+    const cheer = page.locator("[data-mini-cheer]");
+    await expect(cheer).toBeVisible();
+    await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(
+      1,
+    );
+    // 빛 고리는 큐브 둘레(큐브 사각형을 받아 그 가운데에 둔다)
+    const glow = await cheer
+      .locator(".mini-cheer-glow")
+      .evaluate((el) => (el as HTMLElement).style.width);
+    expect(glow).toMatch(/px$/);
+    // 숫자가 창 안에 다 들어온다
+    const box = await cheer.locator("[data-mini-cheer-time]").boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(96);
+      expect(box.y + box.height).toBeLessThanOrEqual(96);
+    }
+    await freezeAnimations(page, 800);
+    await shot(page, "mini-cheer-small", info.project.name);
+    await page.clock.fastForward(2500);
+    await expect(cheer).toHaveCount(0);
+    await expect(page.locator("main[data-mini] .mini-cheer-pop")).toHaveCount(
+      0,
+    );
+  },
+);
 
 test("거울 끄기·크기 고르기를 기억하고, 작은 창에서는 거울을 접는다", async ({
   page,
