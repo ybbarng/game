@@ -3661,3 +3661,19 @@ button {
     animation: none;
   }
 }
+/* Cubie 공식 연습: 문제 하나를 맞추면 큐브 위에 작은 ✓가 떴다 사라진다(다음 문제까지 0.7초, docs/47 16-11) */
+.mini-practice-ok {
+  animation: mini-practice-ok 700ms ease-out both;
+}
+@keyframes mini-practice-ok {
+  0% {
+    opacity: 0;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

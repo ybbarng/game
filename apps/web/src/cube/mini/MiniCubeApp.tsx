@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { loadAlgBook } from "../algs/store";
 import { stickersFromState } from "../bridge";
 import { playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
@@ -37,6 +38,10 @@ import {
   resolveAction,
 } from "../input";
 import { keycapLabel, keysForMove } from "../keys/move-keys";
+import { PRACTICE_N } from "../practice/problem";
+import type { PracticeMode } from "../practice/round";
+import { PracticeSession } from "../practice/session";
+import { stageById } from "../practice/stages";
 import { formatMs, type SolveInput } from "../records";
 import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
 import { useCubeSettings } from "../settings";
@@ -70,6 +75,13 @@ import {
 import { IDLE_TIMING, IdleShow, jigglePlan, playMoves } from "./idle";
 import { miniMirrorShown } from "./mirror";
 import { ProfileToApp } from "./ProfileToApp";
+import {
+  keysLabel,
+  MENU_STAGES,
+  MODE_TITLE,
+  miniPracticeStorage,
+  practiceBubbleLines,
+} from "./practice";
 import {
   hasReplay,
   idleReplaySteps,
@@ -263,7 +275,10 @@ function MiniTiers({
 /** 앱 단축키(맥 앱 Cubie가 쓰는 키). 앱 쪽 값은 `apps/cubie/Sources/Cubie/Config.swift` */
 const APP_KEYS: { keys: string; what: string }[] = [
   { keys: "⌃⌥⌘C", what: "큐브로 가기(다시 누르면 돌아가기)" },
-  { keys: "Esc", what: "이전 앱으로 돌아가기(큐브는 그대로 떠 있다)" },
+  {
+    keys: "Esc",
+    what: "이전 앱으로 돌아가기(큐브는 그대로 떠 있다). 공식 연습 중이면 연습 끝내기",
+  },
   { keys: "큐브 클릭", what: "큐브로 가기" },
   {
     keys: "큐브 끌기",
@@ -399,6 +414,16 @@ function MiniCube() {
   const bump = useCallback(() => bumpState((v) => v + 1), []);
 
   const clock = useMemo(() => new FocusClock(realClock, false), []);
+  /**
+   * 공식 연습(docs/47 16-11). 연습하는 동안은 큐브가 3×3 연습 문제를 보이고, 맞추던 판(`SolveSession`)은 그대로 두되
+   * 그 시계는 멈춘다(연습 시간이 맞추기 기록에 섞이지 않게). 연습 시간은 따로 포커스 시계로 잰다
+   */
+  const [practice, setPracticeState] = useState<PracticeSession | null>(null);
+  const practiceRef = useRef<PracticeSession | null>(null);
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>("follow");
+  const practiceClock = useMemo(() => new FocusClock(realClock, false), []);
+  /** 큐브 장면의 크기: 연습은 3×3만 */
+  const cubeN = practice ? PRACTICE_N : n;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   /**
@@ -474,15 +499,39 @@ function MiniCube() {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  /**
+   * 창의 짧은 변(힌트·공식 연습을 창 안에 둘지 말풍선으로 보낼지). 큐브 자리(`size`)는 연습 칸 때문에 줄어들 수 있어
+   * 창 크기를 따로 잰다(큐브 자리로 재면 칸을 두는 순간 작아져 말풍선과 오락가락한다)
+   */
+  const [windowShort, setWindowShort] = useState(0);
+  useEffect(() => {
+    const measure = () =>
+      setWindowShort(
+        Math.round(Math.min(window.innerWidth, window.innerHeight)),
+      );
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   const mirrorWanted = prefs?.mirror ?? true;
   const mirrorFits =
-    size === null || Math.min(size.w, size.h) >= MINI_MIRROR_PER_N * n;
+    size === null || Math.min(size.w, size.h) >= MINI_MIRROR_PER_N * cubeN;
   const mirror = mirrorWanted && mirrorFits;
 
   const repaint = useCallback(() => {
     const v = viewRef.current;
     if (!v) return;
-    v.setStickers(stickersFromState(n, sessionRef.current.state, null));
+    const p = practiceRef.current;
+    if (p?.state) {
+      // 장면이 아직 3×3으로 다시 만들어지기 전이면 만든 뒤에 칠한다
+      if (v.n !== PRACTICE_N) return;
+      v.setStickers(
+        stickersFromState(PRACTICE_N, p.state, p.board?.mask ?? null),
+      );
+    } else {
+      if (v.n !== n) return;
+      v.setStickers(stickersFromState(n, sessionRef.current.state, null));
+    }
     v.setMarks(null);
     v.setOptions({ moveMs: settingsRef.current.moveMs });
   }, [n]);
@@ -517,7 +566,7 @@ function MiniCube() {
         if (disposed) return;
         const s = settingsRef.current;
         const view = CubeView.create(canvas, {
-          n,
+          n: cubeN,
           quality,
           colors: s.colors,
           stickerless: s.stickerless,
@@ -526,10 +575,12 @@ function MiniCube() {
           // 앱의 투명 창에서는 바닥 그림자를 끈다(바탕화면 위 얼룩처럼 보인다).
           // 마우스 둘러보기도 끈다: 앱에서는 큐브를 끌면 창이 옮겨지고, 보는 각도는 키보드 x·y·z로 바꾼다
           ...(hasApp() ? { shadow: false, interactive: false } : {}),
-          onSwipe: (m) => moveRef.current(m, formatMove(n, m), "swipe", null),
+          onSwipe: (m) =>
+            moveRef.current(m, formatMove(cubeN, m), "swipe", null),
         });
-        view.setStickers(stickersFromState(n, sessionRef.current.state, null));
         viewRef.current = view;
+        // 맞추던 판, 연습 중이면 연습 문제
+        repaintRef.current();
         view.resize(canvas.clientWidth, canvas.clientHeight);
         ro.observe(canvas);
         setReady(true);
@@ -541,7 +592,7 @@ function MiniCube() {
       viewRef.current?.dispose();
       viewRef.current = null;
     };
-  }, [n, quality, loaded]);
+  }, [cubeN, quality, loaded]);
 
   useEffect(() => {
     viewRef.current?.setOptions({
@@ -685,12 +736,27 @@ function MiniCube() {
   const repaintRef = useRef(repaint);
   repaintRef.current = repaint;
   useEffect(() => () => idle.dispose(), [idle]);
+  const practicing = practice !== null;
   useEffect(() => {
-    clock.setFocused(focused);
-    idle.setActive(!focused && visible && !reduced && prefs !== null);
+    // 연습하는 동안은 맞추던 판의 시계를 멈추고 연습 시계가 흐른다. 떠 있을 때 움직임도 쉰다
+    clock.setFocused(focused && !practicing);
+    practiceClock.setFocused(focused && practicing);
+    idle.setActive(
+      !focused && visible && !reduced && prefs !== null && !practicing,
+    );
     // 다음 움직임이 걸렸는지 화면에 알린다(`data-mini-idle-armed`, 화면 시험이 시계를 감기 전에 기다린다)
     bump();
-  }, [clock, idle, focused, visible, reduced, prefs, bump]);
+  }, [
+    clock,
+    practiceClock,
+    idle,
+    focused,
+    visible,
+    reduced,
+    prefs,
+    practicing,
+    bump,
+  ]);
   // 크기가 바뀌면 움직이던 것을 멈추고 간격을 처음부터
   // biome-ignore lint/correctness/useExhaustiveDependencies: 크기가 바뀔 때만
   useEffect(() => idle.reset(), [n, idle]);
@@ -698,11 +764,12 @@ function MiniCube() {
   // 거울은 직접 맞추는 동안만(`mirror.ts`). 나타나고 사라질 때 짧게 페이드하고(움직임 줄이기면 바로), 숨으면
   // 카메라가 큐브만 담는 자리로 옮겨 큐브가 창 가운데에 크게 보인다(창 크기는 그대로)
   const solved = isSolved(session.n, session.state);
+  // 연습 문제도 직접 맞추는 것이라 포커스가 있으면 거울을 보인다
   const mirrorShown = miniMirrorShown({
     wanted: mirrorWanted,
     fits: mirrorFits,
     focused,
-    solved,
+    solved: practicing ? false : solved,
     idle: idle.showing !== null,
   });
   useEffect(() => {
@@ -779,6 +846,14 @@ function MiniCube() {
     ) => {
       idleRef.current.setActive(false);
       hintGateRef.current.hide();
+      // 공식 연습: 판정이 받은 수만 큐브에 넣는다(틀린 수는 넣지 않고 그 수의 키를 잠깐 보인다)
+      const p = practiceRef.current;
+      if (p) {
+        if (p.input(move) !== "applied") return;
+        viewRef.current?.enqueue(move);
+        playCubeCue(settingsRef.current, "cubeTurn");
+        return;
+      }
       const s = sessionRef.current;
       // 맞춰서 기록이 생기는 수도 그 판에 든다(input 전에 더한다)
       if (!inputsRef.current.includes(input))
@@ -799,11 +874,55 @@ function MiniCube() {
     typeof window === "undefined" ? null : loadKeymap(),
   );
   const interpreter = useMemo(
-    () => (keymap ? new Interpreter(n, keymap) : null),
-    [n, keymap],
+    () => (keymap ? new Interpreter(cubeN, keymap) : null),
+    [cubeN, keymap],
   );
   const interpreterRef = useRef<KeyInterpreter | null>(interpreter);
   interpreterRef.current = interpreter;
+
+  /** 공식 연습 시작(앱 메뉴 「공식 연습 ▸」·브라우저 구석 메뉴). 하던 연습이 있으면 버리고 새 판 */
+  const startPractice = useCallback(
+    (stageId: string, mode: PracticeMode) => {
+      const stage = stageById(stageId);
+      if (!stage || !keymap) return;
+      practiceRef.current?.dispose();
+      idleRef.current.reset();
+      hintGateRef.current.hide();
+      const p = new PracticeSession({
+        stage,
+        mode,
+        keymap,
+        algBook: loadAlgBook(),
+        clock: practiceClock,
+        seed: randomSeed,
+        storage: miniPracticeStorage(),
+        onChange: bump,
+        onRepaint: () => repaintRef.current(),
+        onCue: (cue) =>
+          playCubeCue(
+            settingsRef.current,
+            cue === "invalid" ? "invalid" : "cubeSolved",
+          ),
+      });
+      practiceRef.current = p;
+      setPracticeState(p);
+      setPracticeMode(mode);
+      repaintRef.current();
+    },
+    [keymap, practiceClock, bump],
+  );
+  /** 연습 끝내기: 맞추던 판으로 돌아간다(Esc, 메뉴 「연습 끝내기」, 섞기·큐브 크기 고르기) */
+  const stopPractice = useCallback(() => {
+    if (!practiceRef.current) return;
+    practiceRef.current.dispose();
+    practiceRef.current = null;
+    setPracticeState(null);
+    repaintRef.current();
+  }, []);
+  const stopPracticeRef = useRef(stopPractice);
+  stopPracticeRef.current = stopPractice;
+  const startPracticeRef = useRef(startPractice);
+  startPracticeRef.current = startPractice;
   const recordsOpenRef = useRef(recordsOpen);
   recordsOpenRef.current = recordsOpen;
 
@@ -822,6 +941,12 @@ function MiniCube() {
     });
   }, []);
   const requestHint = useCallback(async () => {
+    // 공식 연습: 따라 치기는 공식이 이미 보여 힌트가 없다. 보고 치기는 힌트 키가 「공식 보기」(펼치면 그 문제는 콤보에서 빠진다)
+    const p = practiceRef.current;
+    if (p) {
+      p.peek();
+      return;
+    }
     const s = sessionRef.current;
     const solving = () => s.phase === "ready" || s.phase === "solving";
     if (!solving()) return flashHint("섞은 뒤 맞추는 동안 볼 수 있어요");
@@ -882,6 +1007,25 @@ function MiniCube() {
         return;
       }
       if (r.kind !== "command") return;
+      const p = practiceRef.current;
+      if (p) {
+        // 공식 연습: 섞기 키는 판 끝 결과에서만 「한 판 더」(문제를 치다가 잘못 눌러 판을 버리지 않게),
+        // 되돌리기는 보고 치기만(따라 치기는 틀린 수가 큐브에 남지 않는다). 살펴보기 키는 그대로
+        if (r.command === "scramble") {
+          if (p.phase === "over") p.newRound();
+        } else if (r.command === "undo") {
+          const m = p.undo();
+          if (m) {
+            viewRef.current?.enqueue(m);
+            playCubeCue(settingsRef.current, "cubeTurn");
+          }
+        } else if (r.command === "peekBack" || r.command === "peekDown") {
+          const pk = PEEK[r.command];
+          viewRef.current?.setView(pk.yaw, pk.pitch);
+          peekKey = e.code;
+        }
+        return;
+      }
       if (r.command === "undo") {
         // 되돌리기는 입력 방식에 세지 않지만(혼자 맞추기와 같다) 키 출처에는 넣는다(판을 바꾸는 키다)
         originsRef.current.add(eventOrigin);
@@ -913,8 +1057,18 @@ function MiniCube() {
       viewRef.current?.setView(DEFAULT_VIEW.yaw, DEFAULT_VIEW.pitch);
     };
     window.addEventListener("keyup", onKeyUp);
+    // Esc: 연습 중이면 연습 끝내기(맞추기로 돌아가기). 앱 안에서는 앱이 Esc를 가로채 `practice` 메시지로 보낸다
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !practiceRef.current) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      stopPracticeRef.current();
+    };
+    window.addEventListener("keydown", onEsc, true);
     return () => {
       detach();
+      window.removeEventListener("keydown", onEsc, true);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("keydown", take, true);
     };
@@ -965,8 +1119,8 @@ function MiniCube() {
   );
 
   // 앱이 보낸 것(앱이 없어도 같은 이벤트를 받는다: 화면 시험이 앱 흉내를 낸다)
-  const live = useRef({ prefs, n, recordsOpen, openRecords });
-  live.current = { prefs, n, recordsOpen, openRecords };
+  const live = useRef({ prefs, n, recordsOpen, openRecords, practiceMode });
+  live.current = { prefs, n, recordsOpen, openRecords, practiceMode };
   useEffect(
     () =>
       onAppMessage((msg: FromApp) => {
@@ -974,13 +1128,16 @@ function MiniCube() {
         switch (msg.type) {
           case "focus":
             // 시계는 알림을 받은 그 순간에 멈추고 이어 간다(effect를 기다리면 그 사이 시간이 섞인다)
-            clock.setFocused(msg.focused);
+            clock.setFocused(msg.focused && !practiceRef.current);
+            practiceClock.setFocused(msg.focused && !!practiceRef.current);
             setFocused(msg.focused);
             break;
           case "visible":
             setVisible(msg.visible);
             break;
           case "scramble":
+            // 메뉴 「섞기」는 연습을 끝내고 맞추기로 돌아가 섞는다
+            stopPracticeRef.current();
             void scrambleRef.current();
             break;
           case "mirror":
@@ -988,8 +1145,11 @@ function MiniCube() {
               setPrefs({ ...c.prefs, mirror: msg.on ?? !c.prefs.mirror });
             break;
           case "size":
-            if (c.prefs && (MINI_SIZES as readonly number[]).includes(msg.n))
+            if (c.prefs && (MINI_SIZES as readonly number[]).includes(msg.n)) {
+              // 큐브 크기는 맞추기의 것이라 연습을 끝낸다(연습은 3×3만)
+              stopPracticeRef.current();
               setPrefs({ ...c.prefs, n: msg.n });
+            }
             break;
           case "records":
             c.openRecords(msg.open ?? !c.recordsOpen);
@@ -1004,9 +1164,17 @@ function MiniCube() {
           case "caps":
             setAppBubble(msg.hintBubble);
             break;
+          case "practice":
+            if (msg.stage === null) stopPracticeRef.current();
+            else
+              startPracticeRef.current(
+                msg.stage,
+                msg.mode ?? practiceRef.current?.mode ?? c.practiceMode,
+              );
+            break;
         }
       }),
-    [setPrefs, clock],
+    [setPrefs, clock, practiceClock],
   );
   useEffect(() => {
     if (app) toApp({ type: "ready" });
@@ -1026,8 +1194,11 @@ function MiniCube() {
               ...(ctrl ? { ctrl } : {}),
             }))
           : [],
+        practice: practice?.stage.id ?? null,
+        practiceMode: practice?.mode ?? practiceMode,
+        practiceStages: MENU_STAGES,
       });
-  }, [app, prefs, recordsOpen, keymap]);
+  }, [app, prefs, recordsOpen, keymap, practice, practiceMode]);
   // 기록을 보다가 포커스를 잃으면 닫는다(떠 있는 창은 큐브만)
   useEffect(() => {
     if (!focused && app) setRecordsOpen(false);
@@ -1035,10 +1206,20 @@ function MiniCube() {
 
   // 보이는 자리: 창이 넉넉하면 창 안, 작으면 앱의 말풍선(0.1.3부터), 말풍선이 없으면 창 안에 작게
   const shownHint = hintGate.showing ? hint : null;
-  const shortSide = size ? Math.min(size.w, size.h) : 0;
+  const shortSide = windowShort;
   const bubble = app && appBubble && shortSide < HINT_INLINE_MIN;
-  const bubbleLines =
-    bubble && (shownHint || hintMsg)
+  // 공식 연습도 같은 자리: 작은 앱 창이면 말풍선(포커스가 있는 동안만, 다른 앱을 쓰는 동안 화면에 남지 않게), 넉넉하면 창 안
+  const againKey = keymap
+    ? chordsFor(keymap, "scramble")
+        .map((ch) => chordLabel(ch))
+        .join(", ") || "섞기 키"
+    : "섞기 키";
+  const practiceRoomy = !!practice && !bubble && shortSide >= HINT_INLINE_MIN;
+  const bubbleLines = practice
+    ? bubble && focused
+      ? practiceBubbleLines(practice, keymap, { again: againKey })
+      : null
+    : bubble && (shownHint || hintMsg)
       ? hintBubbleLines(shownHint, hintMsg, keymap, n)
       : null;
   const bubbleKey = JSON.stringify(bubbleLines);
@@ -1054,6 +1235,23 @@ function MiniCube() {
     <main
       data-mini
       data-mini-n={n}
+      data-mini-practice={practice?.stage.id}
+      data-mini-practice-mode={practice?.mode}
+      data-mini-practice-phase={practice?.phase}
+      data-mini-practice-where={
+        practice ? (bubble ? "bubble" : "inline") : undefined
+      }
+      data-mini-practice-index={
+        practice && !practice.round.over ? practice.round.index : undefined
+      }
+      data-mini-practice-answer={practice?.round.current?.alg}
+      data-mini-practice-next={
+        practice?.phase === "play"
+          ? (practice.round.follow?.expected ?? undefined)
+          : undefined
+      }
+      data-mini-practice-combo={practice?.round.combo.current}
+      data-mini-practice-wrong={practice?.wrong?.token}
       data-mini-hint={shownHint?.alg ?? ""}
       data-mini-hint-before={shownHint?.before ?? undefined}
       data-mini-hint-msg={hintMsg ?? undefined}
@@ -1083,7 +1281,9 @@ function MiniCube() {
       <div
         ref={wrapRef}
         className={cn(
-          "absolute inset-0",
+          "absolute inset-x-0 bottom-0",
+          // 넉넉한 창의 공식 연습은 위에 공식 칸을 두고 큐브를 그 아래로(큐브 윗면을 가리지 않게)
+          practiceRoomy ? "top-24" : "top-0",
           cheer && !reduced && "mini-cheer-pop",
         )}
         style={
@@ -1100,8 +1300,8 @@ function MiniCube() {
             className="flex h-full w-full items-center justify-center p-1"
           >
             <CubePosterPair
-              n={n}
-              state={idleState ?? session.state}
+              n={cubeN}
+              state={practice?.state ?? idleState ?? session.state}
               settings={settings}
               captions={false}
               frontOnly={!mirrorShown}
@@ -1137,7 +1337,29 @@ function MiniCube() {
         />
       )}
 
-      {!bubble && (shownHint || hintMsg) && (
+      {practice && !bubble && (
+        <PracticeCard
+          practice={practice}
+          keymap={keymap}
+          shortSide={shortSide}
+          againKey={againKey}
+          browser={!app}
+          onAgain={() => practice.newRound()}
+          onPeek={() => practice.peek()}
+          onStop={stopPractice}
+        />
+      )}
+      {practice?.phase === "pause" && (
+        <span
+          data-mini-practice-ok
+          aria-hidden="true"
+          className="mini-practice-ok pointer-events-none absolute top-1 left-1/2 z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-emerald-500 font-bold text-[11px] text-black"
+        >
+          ✓
+        </span>
+      )}
+
+      {!practice && !bubble && (shownHint || hintMsg) && (
         <HintCard
           hint={shownHint}
           msg={hintMsg}
@@ -1155,12 +1377,17 @@ function MiniCube() {
           mirror={mirrorWanted}
           onScramble={() => {
             setMenuOpen(false);
+            stopPractice();
             void doScramble();
           }}
           onMirror={() =>
             prefs && setPrefs({ ...prefs, mirror: !prefs.mirror })
           }
-          onSize={(size) => prefs && setPrefs({ ...prefs, n: size })}
+          onSize={(size) => {
+            if (!prefs) return;
+            stopPractice();
+            setPrefs({ ...prefs, n: size });
+          }}
           onRecords={() => {
             setMenuOpen(false);
             openRecords(true);
@@ -1168,6 +1395,16 @@ function MiniCube() {
           onHint={() => {
             setMenuOpen(false);
             void requestHint();
+          }}
+          practice={practice?.stage.id ?? null}
+          practiceMode={practice?.mode ?? practiceMode}
+          onPractice={(id, mode) => {
+            setMenuOpen(false);
+            startPractice(id, mode);
+          }}
+          onPracticeStop={() => {
+            setMenuOpen(false);
+            stopPractice();
           }}
         />
       )}
@@ -1208,6 +1445,10 @@ function BrowserMenu({
   onSize,
   onRecords,
   onHint,
+  practice,
+  practiceMode,
+  onPractice,
+  onPracticeStop,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -1218,7 +1459,13 @@ function BrowserMenu({
   onSize: (n: number) => void;
   onRecords: () => void;
   onHint: () => void;
+  /** 지금 하는 연습 단계(안 하면 null) */
+  practice: string | null;
+  practiceMode: PracticeMode;
+  onPractice: (stageId: string, mode: PracticeMode) => void;
+  onPracticeStop: () => void;
 }) {
+  const [practiceOpen, setPracticeOpen] = useState(false);
   return (
     <div className="absolute top-1 right-1 z-10 flex flex-col items-end gap-1">
       <button
@@ -1232,7 +1479,7 @@ function BrowserMenu({
         ⋯
       </button>
       {open && (
-        <div className="flex w-36 flex-col gap-0.5 rounded-lg border border-white/15 bg-neutral-900/95 p-1 text-sm shadow-xl">
+        <div className="flex max-h-[calc(100dvh-2.5rem)] w-36 flex-col gap-0.5 overflow-y-auto rounded-lg border border-white/15 bg-neutral-900/95 p-1 text-sm shadow-xl">
           <MenuItem onClick={onScramble} data="scramble">
             섞기
           </MenuItem>
@@ -1245,6 +1492,20 @@ function BrowserMenu({
           <MenuItem onClick={onHint} data="hint">
             힌트
           </MenuItem>
+          <MenuItem
+            onClick={() => setPracticeOpen(!practiceOpen)}
+            data="practice"
+          >
+            공식 연습 {practiceOpen ? "▾" : "▸"}
+          </MenuItem>
+          {practiceOpen && (
+            <PracticeMenu
+              practice={practice}
+              mode={practiceMode}
+              onPick={onPractice}
+              onStop={onPracticeStop}
+            />
+          )}
           <a
             href={LEARN_PATH}
             target="_blank"
@@ -1772,6 +2033,295 @@ function HintCard({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 구석 메뉴의 「공식 연습」 펼침(앱 메뉴 「공식 연습 ▸」과 같은 항목, docs/47 16-11) */
+function PracticeMenu({
+  practice,
+  mode,
+  onPick,
+  onStop,
+}: {
+  practice: string | null;
+  mode: PracticeMode;
+  onPick: (stageId: string, mode: PracticeMode) => void;
+  onStop: () => void;
+}) {
+  const [want, setWant] = useState<PracticeMode>(mode);
+  const groups = [...new Set(MENU_STAGES.map((s) => s.group))];
+  return (
+    <div data-mini-practice-menu className="flex flex-col pl-2 text-xs">
+      {groups.map((g) => (
+        <div key={g} className="flex flex-col">
+          <span className="px-2 pt-1 text-white/45">{g}</span>
+          {MENU_STAGES.filter((s) => s.group === g).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              data-mini-practice-stage={s.id}
+              aria-pressed={s.id === practice}
+              onClick={() => onPick(s.id, want)}
+              className="flex rounded px-2 py-0.5 text-left hover:bg-white/10"
+            >
+              <span className="w-3">{s.id === practice ? "✓" : ""}</span>
+              {s.title}
+            </button>
+          ))}
+        </div>
+      ))}
+      <button
+        type="button"
+        data-mini-practice-see
+        aria-pressed={want === "see"}
+        onClick={() => {
+          const next = want === "see" ? "follow" : "see";
+          setWant(next);
+          if (practice) onPick(practice, next);
+        }}
+        className="mt-1 flex rounded border-white/10 border-t px-2 py-0.5 pt-1 text-left hover:bg-white/10"
+      >
+        <span className="w-3">{want === "see" ? "✓" : ""}</span>
+        {MODE_TITLE.see}
+      </button>
+      <button
+        type="button"
+        data-mini-practice-stop
+        disabled={!practice}
+        onClick={onStop}
+        className="rounded px-2 py-0.5 text-left hover:bg-white/10 disabled:opacity-40"
+      >
+        연습 끝내기
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 창 안의 공식 연습(창이 넉넉하거나 앱 말풍선이 없을 때). 넉넉하면 단계·차례·콤보·상황 이름과 공식 낱말 칸을 위에,
+ * 판 끝에는 결과를 가운데에. 작으면 공식만 작게. 따라 치기는 키를 숨기고, 틀린 그 한 수의 키만 잠깐 보인다
+ */
+function PracticeCard({
+  practice: p,
+  keymap,
+  shortSide,
+  againKey,
+  browser,
+  onAgain,
+  onPeek,
+  onStop,
+}: {
+  practice: PracticeSession;
+  browser: boolean;
+  keymap: Keymap | null;
+  shortSide: number;
+  againKey: string;
+  onAgain: () => void;
+  onPeek: () => void;
+  onStop: () => void;
+}) {
+  const roomy = shortSide >= HINT_INLINE_MIN;
+  const round = p.round;
+  const tokens = p.tokens;
+  const showTokens = p.mode === "follow" || p.peeked || p.phase !== "play";
+
+  if (p.phase === "over" && p.summary) {
+    const sum = p.summary;
+    return (
+      <section
+        data-mini-practice-summary
+        className={cn(
+          "absolute inset-1 z-10 flex flex-col overflow-y-auto rounded-lg bg-neutral-950/90 text-white",
+          roomy ? "gap-2 p-3 text-xs" : "gap-0.5 p-1 text-[9px] leading-tight",
+        )}
+      >
+        <h2 className={cn("font-bold", roomy && "text-sm")}>
+          {p.stage.title} 한 판 끝
+        </h2>
+        <dl
+          className={cn(
+            "grid grid-cols-2 tabular-nums",
+            roomy ? "gap-1.5" : "gap-x-1",
+          )}
+        >
+          <PracticeStat
+            label="정확도"
+            value={`${Math.round(sum.accuracy * 100)}%`}
+            data="accuracy"
+          />
+          <PracticeStat
+            label="평균 시간"
+            value={formatMs(sum.avgMs)}
+            data="avg"
+          />
+          <PracticeStat
+            label="1분에 친 수"
+            value={String(Math.round(sum.perMinute))}
+            data="per-minute"
+          />
+          <PracticeStat
+            label="가장 긴 콤보"
+            value={String(sum.bestCombo)}
+            data="combo"
+          />
+        </dl>
+        {sum.slow.length > 0 && (
+          <div className="flex flex-col">
+            <h3 className="text-white/60">느렸던 공식</h3>
+            <ol data-mini-practice-slow className="flex flex-col">
+              {sum.slow.map((x) => (
+                <li key={x.caseId} className="flex justify-between gap-2">
+                  <span className="truncate">
+                    {p.caseOf(x.caseId)?.name ?? x.caseId}
+                  </span>
+                  <span className="font-mono tabular-nums">
+                    {formatMs(x.ms)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <div className="mt-auto flex flex-wrap gap-1">
+          <button
+            type="button"
+            data-mini-practice-again
+            onClick={(e) => {
+              onAgain();
+              e.currentTarget.blur();
+            }}
+            className="rounded bg-sky-500 px-2 py-0.5 font-semibold text-black"
+          >
+            한 판 더 ({againKey})
+          </button>
+          <button
+            type="button"
+            onClick={onStop}
+            className="rounded bg-white/10 px-2 py-0.5"
+          >
+            연습 끝내기 (Esc)
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const c = p.current;
+  return (
+    <div
+      data-mini-practice-card={roomy ? "full" : "small"}
+      className={cn(
+        "pointer-events-none absolute top-1 left-1 z-10 flex flex-col items-center rounded-md bg-black/70 text-white",
+        // 브라우저는 오른쪽 위에 구석 메뉴(⋯)가 있다
+        browser ? "right-9" : "right-1",
+        roomy ? "gap-1 p-2 text-xs" : "px-1 py-0.5 text-[9px] leading-tight",
+      )}
+    >
+      {roomy && (
+        <div className="flex w-full items-baseline justify-between gap-2">
+          <span className="font-mono text-white/70 tabular-nums">
+            {p.stage.title} {round.index + 1}/{round.problems.length}
+          </span>
+          <span className="truncate font-semibold" data-mini-practice-name>
+            {c?.name}
+          </span>
+          <span
+            className={cn(
+              "font-mono tabular-nums",
+              round.combo.current > 0 ? "text-amber-300" : "text-white/40",
+            )}
+          >
+            콤보 {round.combo.current}
+          </span>
+        </div>
+      )}
+      {showTokens ? (
+        <ol
+          data-mini-practice-tokens
+          className={cn(
+            "flex flex-wrap justify-center",
+            roomy ? "gap-1" : "gap-x-1",
+          )}
+        >
+          {tokens.map((t, i) => {
+            const done = i < p.at;
+            const now = !done && i === p.at && p.mode === "follow";
+            const miss = !done && i === p.at && p.wrong?.index === i;
+            return (
+              <li
+                // biome-ignore lint/suspicious/noArrayIndexKey: 같은 수가 되풀이된다
+                key={i}
+                data-token-state={
+                  miss ? "wrong" : done ? "done" : now ? "now" : "next"
+                }
+                className={cn(
+                  "flex flex-col items-center rounded font-mono font-semibold transition-colors duration-300",
+                  roomy && "min-w-7 px-1 py-0.5 text-sm",
+                  done && "text-emerald-300",
+                  roomy && done && "bg-emerald-500/25",
+                  now &&
+                    !miss &&
+                    (roomy
+                      ? "bg-white/15 ring-1 ring-sky-300"
+                      : "text-sky-200 underline"),
+                  miss &&
+                    (roomy
+                      ? "bg-red-500/40 ring-1 ring-red-400"
+                      : "text-red-300"),
+                  !done && !now && !miss && "text-white/60",
+                )}
+              >
+                {t}
+                {miss && roomy && keymap && (
+                  <span data-mini-practice-wrong-keys>
+                    <KeyCaps keys={keysForMove(keymap, PRACTICE_N, t)} />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      ) : (
+        <button
+          type="button"
+          data-mini-practice-peek
+          onClick={onPeek}
+          className="pointer-events-auto rounded bg-white/10 px-2 py-0.5 hover:bg-white/15"
+        >
+          공식 보기 ({HINT_KEY_LABEL})
+        </button>
+      )}
+      {!roomy && p.wrong && (
+        <span data-mini-practice-wrong-keys className="text-red-200">
+          {keysLabel(keymap, p.wrong.token)}
+        </span>
+      )}
+      {roomy && p.commonAlg && showTokens && (
+        <p className="text-[10px] text-white/45">
+          실물에서 흔한 공식 <span className="font-mono">{p.commonAlg}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PracticeStat({
+  label,
+  value,
+  data,
+}: {
+  label: string;
+  value: string;
+  data: string;
+}) {
+  return (
+    <div
+      className="flex flex-col rounded bg-white/5 px-1 py-0.5"
+      data-stat={data}
+    >
+      <dt className="text-white/50">{label}</dt>
+      <dd className="font-mono font-semibold">{value}</dd>
     </div>
   );
 }
