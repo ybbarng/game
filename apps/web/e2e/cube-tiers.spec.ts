@@ -175,8 +175,11 @@ test(
     // 헤드리스는 SDR이라 `(dynamic-range: high)`가 거짓이다. `?hdr=1`은 같은 HDR 층을 SDR에서도 켠다(밝기는 사람이 HDR 맥에서 본다)
     // CSS 조건은 화면 크기와 상관없다
     await page.emulateMedia({ reducedMotion: "no-preference" });
+    // 3D 시안(맨 위)은 이 시험과 상관없어 끈다. 빛 띠는 보이는 엠블럼만 돌아서, 시안 칸에 밀려 내려간 큰 줄로 간다
+    await no3d(page);
     await page.goto("/cube/tiers/emblems?hdr=1");
     const big = page.locator("[data-cube-emblem-big]");
+    await big.scrollIntoViewIfNeeded();
     const opacity = (sel: string) =>
       big
         .locator(sel)

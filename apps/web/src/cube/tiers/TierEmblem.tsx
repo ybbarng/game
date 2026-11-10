@@ -46,7 +46,7 @@ import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
  * - 넓은 색역(P3) 화면이면 위 티어의 보석 색이 더 짙어진다(globals.css의 `--emb-*`).
  */
 
-interface Palette {
+export interface Palette {
   /** 윗면(밝은 쪽 → 어두운 쪽) */
   top: readonly [string, string];
   left: readonly [string, string];
@@ -64,7 +64,7 @@ interface Palette {
 }
 
 /** 지금 표의 이름 색(TIER_TONE)과 같은 계열의 재질 색 */
-const PALETTE: Readonly<Record<TierId, Palette>> = {
+export const PALETTE: Readonly<Record<TierId, Palette>> = {
   iron: {
     top: ["#c3c9d1", "#858b94"],
     left: ["#737a83", "#4d525a"],
@@ -263,7 +263,7 @@ const WING_LEN = [0, 0, 0, 7, 7, 7.2, 7.8, 8.2, 8.6, 9];
 const TAN30 = Math.tan(Math.PI / 6);
 
 /** 오른쪽 날개 판 넷(왼쪽은 x를 뒤집는다). x0: 틀 옆 변, y0: 가장 아랫판 윗변 */
-function wingPlates(lv: number, x0: number, y0: number): Pt[][] {
+export function wingPlates(lv: number, x0: number, y0: number): Pt[][] {
   const out: Pt[][] = [];
   const n = WING_PLATES[lv] ?? 0;
   const base = WING_LEN[lv] ?? 0;

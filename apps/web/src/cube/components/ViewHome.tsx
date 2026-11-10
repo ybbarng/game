@@ -7,6 +7,9 @@ import { cn } from "@/lib/cn";
 import { isTyping, loadKeymap, resolveAction } from "../input";
 import type { CubeView } from "../view";
 
+/** 「처음 각도로」가 붙는 보기: 큐브 장면(`CubeView`)과 3D 티어 엠블럼 시안(`tiers/emblem3d`)이 같은 꼴을 쓴다 */
+export type ViewTurnTarget = Pick<CubeView, "onViewTurn" | "resetView">;
+
 /**
  * 「처음 각도로」(2026-11-10): 끌어 돌린 보기는 손을 떼도 남는다(`CubeView`의 `keepView` 기본). 보기가 처음 각에서
  * 벗어나 있을 때만 큐브 칸 오른쪽 아래에 작은 단추가 뜨고, 누르거나 키(기본 ↑, 키 배치의 `viewHome`)를 치면 천천히
@@ -20,7 +23,7 @@ export function ViewHome({
   ready,
   className,
 }: {
-  viewRef: RefObject<CubeView | null>;
+  viewRef: RefObject<ViewTurnTarget | null>;
   /** 장면이 준비됐는지(바뀌면 새 장면에 다시 붙는다) */
   ready: boolean;
   className?: string;

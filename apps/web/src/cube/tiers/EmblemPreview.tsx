@@ -4,6 +4,8 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { HDR_GLOW_SRC } from "@/stardraw/hdr-glow";
+import { Emblem3D, EmblemShots } from "./Emblem3D";
+import { DRAFT_TIERS } from "./emblem3d/scene";
 import { HDR_CHECK_WHITE_SRC, hdrFacetSrc } from "./emblemArt";
 import { type MyTier, tierOf } from "./rank";
 import { TierEmblem } from "./TierEmblem";
@@ -42,6 +44,8 @@ export function EmblemPreview() {
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-4">
         <h1 className="font-bold text-lg">티어 엠블럼</h1>
+
+        <Draft3d />
 
         <HdrCheck />
 
@@ -103,6 +107,31 @@ export function EmblemPreview() {
         </section>
       </div>
     </main>
+  );
+}
+
+/** 3D 엠블럼 시안(docs/47 14-7): 다이아몬드(보석)·골드(금속) 큰 칸 둘과 찍은 그림 */
+function Draft3d() {
+  return (
+    <section data-emblem3d-draft className="flex flex-col gap-3">
+      <h2 className="font-semibold text-sm">3D 시안</h2>
+      <div className="flex flex-wrap justify-center gap-4">
+        {DRAFT_TIERS.map((t) => (
+          <figure key={t} className="flex flex-col items-center gap-1">
+            <Emblem3D tier={t} size={300} />
+            <figcaption className={cn("font-semibold text-sm", TIER_TONE[t])}>
+              {TIER_LABEL[t]}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+      <h3 className="font-semibold text-white/80 text-xs">찍은 그림</h3>
+      <div className="flex flex-col gap-3">
+        {DRAFT_TIERS.map((t) => (
+          <EmblemShots key={t} tier={t} />
+        ))}
+      </div>
+    </section>
   );
 }
 
