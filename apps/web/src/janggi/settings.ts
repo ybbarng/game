@@ -54,23 +54,24 @@ export const JANGGI_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "한 수만 본다. 공짜 기물은 잡지만 자기 기물을 자주 내준다",
+    description: "한 수만 본다. 공짜 기물은 잡지만 자기 기물을 자주 내준다.",
   },
   {
     value: 1,
     label: "중수",
-    description: "두 수 앞을 보고 주고받기를 따진다. 기물을 공짜로 주지 않는다",
+    description:
+      "두 수 앞을 보고, 기물을 주고받을 때 손해인지 따진다. 기물을 공짜로 주지 않는다.",
   },
   {
     value: 2,
     label: "고수",
-    description: "세 수 앞까지 읽는다. 외통을 놓치지 않는다",
+    description: "세 수 앞까지 읽는다. 외통으로 몰 수 있으면 놓치지 않는다.",
   },
   {
     value: 3,
     label: "초고수",
     description:
-      "수마다 노림을 세우고(전개·궁성 공격·외통 몰기) 더 깊이 읽는다",
+      "수마다 목표(기물 펼치기·궁성 공격·외통 몰기)를 세우고 더 깊이 읽는다.",
   },
 ];
 
@@ -82,11 +83,13 @@ export const BIKJANG_INFO: readonly {
   {
     value: "score",
     label: "빅장은 점수로",
-    description: "두 궁이 마주 보면(빅장) 그 판을 남은 기물 점수로 가린다",
+    description:
+      "두 궁이 사이에 아무 기물 없이 마주 보면(빅장) 그 판을 남은 기물 점수로 가린다.",
   },
   {
     value: "forbidden",
     label: "빅장 금지",
-    description: "두 궁이 마주 보게 되는 수는 둘 수 없다",
+    description:
+      "두 궁이 사이에 아무 기물 없이 마주 보게 되는 수는 둘 수 없다.",
   },
 ];

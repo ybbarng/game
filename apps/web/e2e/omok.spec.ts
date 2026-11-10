@@ -421,7 +421,7 @@ test(
       .click();
     await play("G9");
     await expect(page.getByRole("status")).toHaveText(
-      "계속 사로 몰아 다섯을 만드세요",
+      "계속 넷으로 몰아 다섯을 만드세요",
       { timeout: 10_000 },
     );
     const blocked = await page.locator("[data-last]").getAttribute("data-last");
@@ -446,14 +446,14 @@ test(
     await play("F7");
     await expect(page.getByRole("status")).toHaveText("막았어요!");
     await expect(
-      page.getByText(/백이 사로 몰아붙여 다섯을 만들어요/),
+      page.getByText(/백이 넷으로 몰아붙여 다섯을 만들어요/),
     ).toBeVisible();
     await page.screenshot({ path: info.outputPath("omok-study-defend.png") });
     await page.getByRole("button", { name: "← 목록" }).click();
 
     // 렌주 금수: F11은 흑 4·4 금지라 안내만 하고, B11로 열린 넷을 만들어 이긴다.
     await page
-      .getByRole("region", { name: "렌주 금수 피하기" })
+      .getByRole("region", { name: "렌주 금지 자리 피하기" })
       .getByRole("button", { name: "풀기 시작" })
       .click();
     await play("F11");
@@ -465,7 +465,7 @@ test(
     );
     await play("B11");
     await expect(page.getByRole("status")).toHaveText(
-      "계속 사로 몰아 다섯을 만드세요",
+      "계속 넷으로 몰아 다섯을 만드세요",
       { timeout: 10_000 },
     );
     const renjuBlock = await page
@@ -598,13 +598,13 @@ test(
     await expect(good.getByText("0/10")).toBeVisible();
     await good.getByRole("button", { name: "풀기 시작" }).click();
     await expect(page.getByRole("status")).toHaveText(
-      "흑 셋째 수예요. 흑이 좋은 주형을 만드세요",
+      "흑 셋째 수예요. 흑이 이긴다고 알려진 모양(화월·포월)을 만드세요",
     );
 
     // 백 H9(직접)에 J6(유성)은 틀리고, G9(화월)는 맞다.
     await play("J6");
     await expect(page.getByRole("status")).toHaveText(
-      "그 자리는 화월·포월이 아니에요",
+      "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요",
     );
     await page.getByRole("button", { name: "다시 하기" }).click();
     await play("G9");

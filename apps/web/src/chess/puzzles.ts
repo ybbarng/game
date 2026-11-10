@@ -121,7 +121,8 @@ const TACTIC_SETS: readonly {
   },
   {
     tactic: "pin",
-    summary: "앞 기물 뒤에 킹이나 더 비싼 기물이 있으면 앞 기물은 비킬 수 없다",
+    summary:
+      "앞 기물 뒤에 킹이나 값이 더 높은 기물이 있으면 앞 기물은 비킬 수 없다",
     puzzles: [
       { fen: "8/2b4k/8/3b4/8/R4p2/5R2/2K5 w - - 0 30", solution: "Ra7" },
       { fen: "3bk3/5b2/8/8/8/6K1/8/2RR4 w - - 0 30", solution: "Rc8" },
@@ -135,7 +136,7 @@ const TACTIC_SETS: readonly {
   },
   {
     tactic: "skewer",
-    summary: "앞의 킹·퀸을 노려 비키게 하고, 뒤에 있던 기물을 잡는다",
+    summary: "앞의 킹이나 퀸을 노려 비키게 하고, 뒤에 있던 기물을 잡는다",
     puzzles: [
       { fen: "3kq3/8/3p2PQ/3P4/8/8/1R6/3K4 w - - 0 30", solution: "Rb8+" },
       { fen: "3r4/1p6/3k4/7Q/8/4P3/2R5/6K1 w - - 0 30", solution: "Rd2+" },
@@ -189,7 +190,7 @@ export const CHESS_PUZZLE_SETS: readonly ChessPuzzleSet[] = [
     id: "king-pawn",
     title: "킹과 폰",
     summary:
-      "폰 하나로 이기는 끝내기. 폰부터 밀면 비긴다. 킹을 먼저 앞세우는 한 수를 찾는다",
+      "킹과 폰 하나가 킹 하나를 이기는 판. 폰부터 밀면 비긴다. 킹을 먼저 앞세우는 한 수를 찾는다",
     puzzles: KING_AND_PAWN.map((p, i) => ({
       id: `king-pawn-${i + 1}`,
       kind: "endgame" as const,

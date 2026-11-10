@@ -499,7 +499,9 @@ test(
     const fork = page.getByRole("region", { name: "포크" });
     await expect(fork.getByText("0/8")).toBeVisible();
     await fork.getByRole("button", { name: "풀기 시작" }).click();
-    await expect(page.getByRole("status")).toHaveText("포크로 기물을 얻으세요");
+    await expect(page.getByRole("status")).toHaveText(
+      "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크)",
+    );
 
     // 킹을 옮기는 수로는 기물을 얻지 못한다.
     await tapSquare(page, "b3", touch);

@@ -106,11 +106,11 @@ function OmokPuzzleRun({
 
   const goal =
     puzzle.kind === "attack" && run.step > 0
-      ? "계속 사로 몰아 다섯을 만드세요"
+      ? "계속 넷으로 몰아 다섯을 만드세요"
       : puzzle.goal
         ? puzzle.goal
         : puzzle.kind === "attack" && puzzle.moves >= 3
-          ? `사로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
+          ? `넷으로 몰아붙여 ${COUNT[puzzle.moves] ?? puzzle.moves} 수 안에 이기세요`
           : set.prompt;
   // 손가락은 한 번 겨누고 다시 눌러 둔다(대국 화면과 같다).
   /** 금지 자리면 까닭을 알리고 true(틀린 것으로 치지 않는다) */
@@ -171,7 +171,7 @@ function OmokPuzzleRun({
             : "그 수로는 몰아붙일 수 없어요"
           : puzzle.kind === "pick"
             ? puzzle.reason === "opening"
-              ? "그 자리는 화월·포월이 아니에요"
+              ? "그 자리는 흑이 이긴다고 알려진 모양(화월·포월)이 아니에요"
               : "그 수는 막기만 하거나 막지 못해요"
             : "그 수로는 백의 공격을 못 막아요"
       }

@@ -57,22 +57,23 @@ export const OMOK_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "다섯은 막지만 열린 삼을 자주 놓친다",
+    description: "상대 넷은 막지만 열린 셋을 자주 놓친다.",
   },
   {
     value: 1,
     label: "중수",
-    description: "공격과 막기를 고루 보고 가장 좋은 자리에 둔다",
+    description: "공격과 막기를 고루 보고 가장 좋은 자리에 둔다.",
   },
   {
     value: 2,
     label: "고수",
-    description: "네 수 앞까지 읽는다. 쉽게 지지 않는다",
+    description: "네 수 앞까지 읽는다. 쉽게 지지 않는다.",
   },
   {
     value: 3,
     label: "초고수",
-    description: "사·열린 삼으로 몰아붙이는 길을 읽고 여섯 수 앞까지 본다",
+    description:
+      "넷과 열린 셋을 이어 만들며 몰아붙이는 길을 읽고, 여섯 수 앞까지 본다.",
   },
 ];
 
@@ -84,16 +85,17 @@ export const VARIANT_INFO: readonly {
   {
     value: "standard",
     label: "일반",
-    description: "정확히 다섯이 이긴다. 흑·백 모두 3·3 금지",
+    description: "정확히 다섯이어야 이긴다. 흑백 모두 3·3 자리에 둘 수 없다.",
   },
   {
     value: "free",
     label: "자유",
-    description: "다섯 이상이면 이긴다. 금지 없음",
+    description: "다섯 이상이면 이긴다. 금지 자리가 없다.",
   },
   {
     value: "renju",
     label: "렌주",
-    description: "흑만 3·3·4·4·여섯 이상 금지. 백은 다섯 이상이면 이긴다",
+    description:
+      "흑만 3·3, 4·4, 장목 자리에 둘 수 없다. 백은 다섯 이상이면 이긴다.",
   },
 ];
