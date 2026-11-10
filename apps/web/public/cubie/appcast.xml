@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.7</title>
+      <pubDate>Tue, 10 Nov 2026 08:03:09 +0000</pubDate>
+      <sparkle:version>0.1.7</sparkle:version>
+      <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;메뉴에 「공식 연습」이 생겼습니다. 단계를 고르면 공식이 하나씩 뜨고, 따라 치면 다음 공식으로 이어지며 콤보가 쌓입니다(누를 키는 숨기고 틀린 한 수만 보여요). 「공식 보기」는 「힌트」로 이름을 바꿨고, 「배우기」는 사이트의 해법 익히기를 엽니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.7/Cubie.zip" length="1710585" type="application/octet-stream" sparkle:edSignature="4xKGD+z8vOcQQz3DYvHv0+gCgEpRf+jJpTJooVryL/LFSd7h8hHX6KMnwsbprJoAmjGmgfrIQZuCO3TzTHfOCA=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.6</title>
       <pubDate>Tue, 10 Nov 2026 06:09:55 +0000</pubDate>
       <sparkle:version>0.1.6</sparkle:version>

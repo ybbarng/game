@@ -84,7 +84,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       }
       guard isEsc else { return event }
       if self.cube.panel.isKeyWindow {
-        self.returnFocus()
+        // 공식 연습 중이면 Esc는 연습 끝내기(맞추기로 돌아가기). 한 번 더 누르면 이전 앱으로
+        if self.cube.bridge.state.practice != nil {
+          self.cube.bridge.send(["type": "practice", "stage": NSNull()])
+        } else {
+          self.returnFocus()
+        }
         return nil
       }
       // 기록·단축키 창은 Esc로 닫는다(설정 창은 웹 화면의 Esc를 그대로 둔다)
@@ -255,7 +260,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   private func buildMenu(forWindow: Bool) -> NSMenu {
     let entries = MenuLayout.main(
       forWindow: forWindow, hotKeyOK: hotKeyOK,
-      pendingUpdate: updater.pendingVersion != nil, updaterAvailable: updater.isAvailable)
+      pendingUpdate: updater.pendingVersion != nil, updaterAvailable: updater.isAvailable,
+      practiceAvailable: !cube.bridge.state.practiceStages.isEmpty)
     return menu(of: entries)
   }
 
@@ -299,6 +305,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       return [item(title, #selector(menuScramble), key: s.scrambleKey)]
     case .hint:
       return [item(title, #selector(menuHint), key: MenuKey(key: MenuKey.f1))]
+    case .practice:
+      return [submenu(title, menu(of: MenuLayout.practice(stages: s.practiceStages)))]
+    case .practiceGroup:
+      return [NSMenuItem.sectionHeader(title: title)]
+    case .practiceStage(let id, _):
+      let i = item(title, #selector(menuPracticeStage(_:)), on: s.practice == id)
+      i.representedObject = id
+      return [i]
+    case .practiceSee:
+      return [item(title, #selector(menuPracticeSee), on: s.practiceSee)]
+    case .practiceStop:
+      let i = item(title, #selector(menuPracticeStop))
+      i.isEnabled = s.practice != nil
+      return [i]
     case .cubeSize:
       // 「창」 안의 창 크기와 헷갈리지 않게 「큐브 크기」
       let sizes = NSMenu()
@@ -371,7 +391,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuScramble() { cube.bridge.send(["type": "scramble"]) }
   @objc private func menuMirror() { cube.bridge.send(["type": "mirror"]) }
   @objc private func menuHint() { cube.bridge.send(["type": "hint"]) }
-  /// 사이트 큐브 배우기의 CFOP 2단계 OLL 단원(다음 단원이 2단계 PLL)을 기본 브라우저로
+  /// 공식 연습 단계 고르기(지금 하는 단계를 다시 고르면 새 판). 키를 바로 칠 수 있게 큐브에 키 입력을 준다
+  @objc private func menuPracticeStage(_ sender: NSMenuItem) {
+    guard let id = sender.representedObject as? String else { return }
+    let s = cube.bridge.state
+    cube.bridge.send(["type": "practice", "stage": id, "mode": s.practiceSee ? "see" : "follow"])
+    if !cube.focused { focusCube() }
+  }
+  /// 보고 치기 켜고 끄기. 연습 중이면 같은 단계를 새 방식으로 새 판
+  @objc private func menuPracticeSee() {
+    let s = cube.bridge.state
+    let mode = s.practiceSee ? "follow" : "see"
+    if let stage = s.practice {
+      cube.bridge.send(["type": "practice", "stage": stage, "mode": mode])
+    } else {
+      // 연습 전이면 방식만 기억해 둔다(다음에 고르는 단계가 그 방식으로 열린다)
+      cube.bridge.setPracticeSee(!s.practiceSee)
+    }
+  }
+  @objc private func menuPracticeStop() { cube.bridge.send(["type": "practice", "stage": NSNull()]) }
+  /// 사이트 해법 익히기(해법을 고르면 배우기 단원과 공식 연습)를 기본 브라우저로
   @objc private func menuLearn() { NSWorkspace.shared.open(Config.site(Config.learnPath)) }
   @objc private func menuMoveScreen(_ sender: NSMenuItem) {
     let screens = NSScreen.screens

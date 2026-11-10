@@ -27,8 +27,8 @@ export const HINT_KEY_LABEL = "F1(맥북은 fn+F1) 또는 \\";
 /** 창 안에 바로 보일 만한 창의 짧은 변(CSS px). 이보다 작으면 앱의 말풍선, 말풍선이 없으면 작게 */
 export const HINT_INLINE_MIN = 240;
 
-/** 「배우기」 메뉴가 여는 곳: CFOP 2단계 OLL 단원(다음 단원이 2단계 PLL) */
-export const LEARN_PATH = "/cube/learn?lesson=cfop-2look-oll";
+/** 「배우기」 메뉴가 여는 곳: 사이트 해법 익히기(해법을 고르면 배우기 단원과 공식 연습, docs/47 16-2) */
+export const LEARN_PATH = "/cube/methods";
 
 /** 보일 공식 하나 */
 export interface FormulaHint {
