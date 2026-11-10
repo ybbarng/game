@@ -38,416 +38,428 @@ async function heroShown(page: Page) {
     .toBe("1");
 }
 
-test("게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "배치가 세로 휴대폰과 같다",
-  );
-  await no3dUnlessShots(page);
-  await page.addInitScript(() =>
-    sessionStorage.setItem("mighty-splash-seen", "1"),
-  );
-  await page.goto("/");
-  const link = page.getByRole("link", { name: /큐브 맞추기/ });
-  await expect(link).toHaveAttribute("href", "/cube");
-  await shot(page, "center-home", info.project.name);
+test(
+  "게임 목록의 큐브 맞추기에서 큐브 첫 화면과 안내로 간다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 배치가 세로 휴대폰과 같다
+    await no3dUnlessShots(page);
+    await page.addInitScript(() =>
+      sessionStorage.setItem("mighty-splash-seen", "1"),
+    );
+    await page.goto("/");
+    const link = page.getByRole("link", { name: /큐브 맞추기/ });
+    await expect(link).toHaveAttribute("href", "/cube");
+    await shot(page, "center-home", info.project.name);
 
-  await link.click();
-  await expect(page).toHaveURL(/\/cube$/);
-  await expect(
-    page.getByRole("heading", { name: "큐브 맞추기" }),
-  ).toBeVisible();
-  // 메뉴는 맨 위 「다음에 할 것」 하나, 문 셋(처음이라면·해법 익히기·맞추기·겨루기)과 더 보기(docs/47 16-2)
-  const groups = page.locator("[data-cube-group]");
-  await expect(groups).toHaveCount(4);
-  expect(
-    await groups.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-cube-group")),
-    ),
-  ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
-  // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법
-  const nextCard = page.locator("[data-cube-next]");
-  await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
-  await expect(nextCard).toHaveAttribute("href", "/cube/intro");
-  await expect(
-    page.locator("[data-cube-group='처음이라면'] a").first(),
-  ).toHaveAttribute("data-cube-intro-link", "");
-  await expect(page.locator("[data-cube-map-link]")).toHaveAttribute(
-    "href",
-    "/cube/map",
-  );
-  // 묶음마다 2열이 빈칸 없이 찬다(칸 너비 합이 줄 수 × 2)
-  for (const cols of await groups.evaluateAll((els) =>
-    els.map((g) =>
-      [...g.querySelectorAll("a")].reduce(
-        (n, a) => n + (a.classList.contains("col-span-2") ? 2 : 1),
-        0,
+    await link.click();
+    await expect(page).toHaveURL(/\/cube$/);
+    await expect(
+      page.getByRole("heading", { name: "큐브 맞추기" }),
+    ).toBeVisible();
+    // 메뉴는 맨 위 「다음에 할 것」 하나, 문 셋(처음이라면·해법 익히기·맞추기·겨루기)과 더 보기(docs/47 16-2)
+    const groups = page.locator("[data-cube-group]");
+    await expect(groups).toHaveCount(4);
+    expect(
+      await groups.evaluateAll((els) =>
+        els.map((e) => e.getAttribute("data-cube-group")),
       ),
-    ),
-  ))
-    expect(cols % 2).toBe(0);
-  await expect(
-    page.locator("[data-cube-group='맞추기·겨루기'] a").nth(1),
-  ).toHaveAttribute("href", "/cube/online");
-  await expect(page.getByRole("link", { name: "설정" })).toHaveAttribute(
-    "href",
-    "/cube/settings",
-  );
-  // 위 그림: 시험은 움직임 줄이기라 연출 없이 대기 그림(3D 첫 장면을 찍은 이미지)만(3D를 띄우지도 기다리지도 않는다)
-  const poster = page.locator(
-    "[data-cube-hero] img[data-hero-poster='image'][data-hero-poster-ready]",
-  );
-  await expect(poster).toBeVisible();
-  expect(
-    await poster.evaluate((el) => (el as HTMLImageElement).naturalWidth),
-  ).toBeGreaterThan(0);
-  // 이미지가 뜨면 받는 동안 대신 보이던 SVG는 치운다
-  await expect(
-    page.locator("[data-cube-hero] [data-hero-poster='svg']"),
-  ).toHaveCount(0);
-  await expect(page.locator("[data-cube-hero] canvas")).toHaveCount(0);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth,
-    ),
-  ).toBe(false);
-  if (SAVE_SCREENSHOTS) {
-    // 사람이 보는 스크린샷은 연출을 켜고 3D가 돌기 시작한 뒤에(GPU 없는 브라우저는 첫 그림이 느려 상한을 넉넉히)
-    await page.emulateMedia({ reducedMotion: "no-preference" });
-    await heroShown(page);
-    await expect(page.locator("[data-cube-hero][data-hero-ready]")).toBeVisible(
-      { timeout: 30_000 },
+    ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+    // 처음 온 사람: 다음에 할 것은 사이트 쓰는 법
+    const nextCard = page.locator("[data-cube-next]");
+    await expect(nextCard).toHaveAttribute("data-cube-next", "intro");
+    await expect(nextCard).toHaveAttribute("href", "/cube/intro");
+    await expect(
+      page.locator("[data-cube-group='처음이라면'] a").first(),
+    ).toHaveAttribute("data-cube-intro-link", "");
+    await expect(page.locator("[data-cube-map-link]")).toHaveAttribute(
+      "href",
+      "/cube/map",
     );
-    await expect(page.locator("[data-hero-label]")).not.toHaveAttribute(
-      "data-hero-label",
-      "",
+    // 묶음마다 2열이 빈칸 없이 찬다(칸 너비 합이 줄 수 × 2)
+    for (const cols of await groups.evaluateAll((els) =>
+      els.map((g) =>
+        [...g.querySelectorAll("a")].reduce(
+          (n, a) => n + (a.classList.contains("col-span-2") ? 2 : 1),
+          0,
+        ),
+      ),
+    ))
+      expect(cols % 2).toBe(0);
+    await expect(
+      page.locator("[data-cube-group='맞추기·겨루기'] a").nth(1),
+    ).toHaveAttribute("href", "/cube/online");
+    await expect(page.getByRole("link", { name: "설정" })).toHaveAttribute(
+      "href",
+      "/cube/settings",
     );
-  }
-  await shot(page, "cube-home", info.project.name);
-
-  // 안내의 칸 누르기는 3D를 켠 로컬 스크린샷에서도 큐브 그림(3D 대신 그림) 칸을 누른다
-  await no3d(page);
-  await page.evaluate(() => {
-    (window as { __cubeNo3d?: boolean }).__cubeNo3d = true;
-  });
-  await page.locator("[data-cube-intro-link]").click();
-  const intro = page.locator("[data-cube-intro]");
-  await expect(intro).toHaveAttribute("data-cube-intro", "words");
-  // 세 가지 말: 공식을 고르면 통과
-  const next = page.locator("[data-intro-next]");
-  await expect(next).toHaveText("건너뛰기");
-  await page.locator("[data-intro-quiz] [data-choice='1']").click();
-  await expect(next).toHaveText("다음");
-  await next.click();
-  // 면 여섯: R U F L D B 차례로 그 면의 칸을 누른다(큐브 그림의 면 가운데)
-  await expect(intro).toHaveAttribute("data-cube-intro", "faces");
-  const ask = page.locator("[data-intro-face]");
-  await page.locator('[data-sticker-cell="4"]').click();
-  await expect(ask).toContainText("그건 위 면이에요");
-  for (const [letter, cell] of [
-    ["R", 13],
-    ["U", 4],
-    ["F", 22],
-    ["L", 40],
-    ["D", 31],
-    ["B", 49],
-  ] as const) {
-    await expect(ask).toHaveAttribute("data-intro-face", letter);
-    await page.locator(`[data-sticker-cell="${cell}"]`).click();
-  }
-  await expect(ask).toHaveAttribute("data-intro-face", "done");
-  await shot(page, "intro-faces", info.project.name);
-
-  // 키 배치: 「외우기 쉬운 표기」를 고르면 설정에 남고 그 규칙을 보인다
-  await page
-    .getByRole("navigation", { name: "안내 차례" })
-    .getByText("키 배치")
-    .click();
-  await expect(intro).toHaveAttribute("data-cube-intro", "layout");
-  await expect(page.locator('[data-layout-rule="twoHand"]')).toBeVisible();
-  await page.locator('[data-layout-pick="notation"]').click();
-  await expect(page.locator('[data-layout-rule="notation"]')).toBeVisible();
-  expect(
-    await page.evaluate(() => localStorage.getItem("cube.keymap.v1")),
-  ).toContain('"notation"');
-  await shot(page, "intro-layout", info.project.name);
-  if (info.project.name === "desktop" && SAVE_SCREENSHOTS) {
-    // 아이콘과 공유 그림(사람이 보는 용도). 그림 주소는 화면이 아니라(준비 표시가 없다) 파일로 받아 둔다
-    for (const [url, file] of [
-      ["/cube/icon/192.png", "cube-icon.png"],
-      ["/cube/apple-icon/180.png", "cube-apple-icon.png"],
-      ["/cube/opengraph-image/share.png", "cube-share.png"],
-    ] as const) {
-      const res = await page.request.get(url);
-      expect(res.ok(), url).toBe(true);
-      mkdirSync("test-results/screens", { recursive: true });
-      writeFileSync(`test-results/screens/${file}`, await res.body());
+    // 위 그림: 시험은 움직임 줄이기라 연출 없이 대기 그림(3D 첫 장면을 찍은 이미지)만(3D를 띄우지도 기다리지도 않는다)
+    const poster = page.locator(
+      "[data-cube-hero] img[data-hero-poster='image'][data-hero-poster-ready]",
+    );
+    await expect(poster).toBeVisible();
+    expect(
+      await poster.evaluate((el) => (el as HTMLImageElement).naturalWidth),
+    ).toBeGreaterThan(0);
+    // 이미지가 뜨면 받는 동안 대신 보이던 SVG는 치운다
+    await expect(
+      page.locator("[data-cube-hero] [data-hero-poster='svg']"),
+    ).toHaveCount(0);
+    await expect(page.locator("[data-cube-hero] canvas")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
+    if (SAVE_SCREENSHOTS) {
+      // 사람이 보는 스크린샷은 연출을 켜고 3D가 돌기 시작한 뒤에(GPU 없는 브라우저는 첫 그림이 느려 상한을 넉넉히)
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await heroShown(page);
+      await expect(
+        page.locator("[data-cube-hero][data-hero-ready]"),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(page.locator("[data-hero-label]")).not.toHaveAttribute(
+        "data-hero-label",
+        "",
+      );
     }
-  }
-});
+    await shot(page, "cube-home", info.project.name);
 
-test("다음에 할 것: 이 기기의 진도와 기록으로 권하는 칸이 바뀐다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "배치가 세로 휴대폰과 같다",
-  );
-  await no3d(page);
-  const next = page.locator("[data-cube-next]");
-  // 키 익히기를 조금 했으면 처음 맞추기 첫 단원
-  await page.addInitScript(() => {
-    if (sessionStorage.getItem("next-step-case") === "solo") return;
-    localStorage.setItem(
-      "cube.keylearn.v1",
-      JSON.stringify({ done: ["home"] }),
-    );
-  });
-  await page.goto("/cube");
-  await expect(next).toHaveAttribute("data-cube-next", "first-solve");
-  await expect(next).toHaveText(/처음 맞추기$/);
-  await expect(next).toHaveAttribute("href", "/cube/learn?lesson=333-start");
-  await shot(page, "home-next-first-solve", info.project.name);
+    // 안내의 칸 누르기는 3D를 켠 로컬 스크린샷에서도 큐브 그림(3D 대신 그림) 칸을 누른다
+    await no3d(page);
+    await page.evaluate(() => {
+      (window as { __cubeNo3d?: boolean }).__cubeNo3d = true;
+    });
+    await page.locator("[data-cube-intro-link]").click();
+    const intro = page.locator("[data-cube-intro]");
+    await expect(intro).toHaveAttribute("data-cube-intro", "words");
+    // 세 가지 말: 공식을 고르면 통과
+    const next = page.locator("[data-intro-next]");
+    await expect(next).toHaveText("건너뛰기");
+    await page.locator("[data-intro-quiz] [data-choice='1']").click();
+    await expect(next).toHaveText("다음");
+    await next.click();
+    // 면 여섯: R U F L D B 차례로 그 면의 칸을 누른다(큐브 그림의 면 가운데)
+    await expect(intro).toHaveAttribute("data-cube-intro", "faces");
+    const ask = page.locator("[data-intro-face]");
+    await page.locator('[data-sticker-cell="4"]').click();
+    await expect(ask).toContainText("그건 위 면이에요");
+    for (const [letter, cell] of [
+      ["R", 13],
+      ["U", 4],
+      ["F", 22],
+      ["L", 40],
+      ["D", 31],
+      ["B", 49],
+    ] as const) {
+      await expect(ask).toHaveAttribute("data-intro-face", letter);
+      await page.locator(`[data-sticker-cell="${cell}"]`).click();
+    }
+    await expect(ask).toHaveAttribute("data-intro-face", "done");
+    await shot(page, "intro-faces", info.project.name);
 
-  // 혼자 맞추기 완성 기록이 있으면(맞출 줄 아는 사람) 기록 재기
-  await page.evaluate(() => {
-    sessionStorage.setItem("next-step-case", "solo");
-    localStorage.clear();
-    const at = Date.UTC(2026, 10, 10);
-    localStorage.setItem(
-      "cube.records.v1",
-      JSON.stringify({
-        "solo-3": [
-          {
-            at,
-            n: 3,
-            mode: "solo",
-            ms: 61_230,
-            penalty: 0,
-            moves: 92,
-            scramble: "R U R' U' F2 D L2",
-          },
-        ],
-      }),
-    );
-  });
-  await page.reload();
-  await expect(next).toHaveAttribute("data-cube-next", "solo");
-  await expect(next).toHaveAttribute("href", "/cube/solo");
-  await shot(page, "home-next-solo", info.project.name);
-});
-
-test("기능 지도: 큐브의 모든 화면을 묶음마다 설명과 주소로", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "배치가 세로 휴대폰과 같다",
-  );
-  await page.goto("/cube/map");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("기능 지도");
-  expect(
+    // 키 배치: 「외우기 쉬운 표기」를 고르면 설정에 남고 그 규칙을 보인다
     await page
-      .locator("[data-map-section]")
-      .evaluateAll((els) => els.map((e) => e.getAttribute("data-map-section"))),
-  ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
-  await expect(page.locator('[data-map-item="/cube/daily"]')).toContainText(
-    "오늘의 섞기",
-  );
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth,
-    ),
-  ).toBe(false);
-  await shot(page, "map", info.project.name);
-});
+      .getByRole("navigation", { name: "안내 차례" })
+      .getByText("키 배치")
+      .click();
+    await expect(intro).toHaveAttribute("data-cube-intro", "layout");
+    await expect(page.locator('[data-layout-rule="twoHand"]')).toBeVisible();
+    await page.locator('[data-layout-pick="notation"]').click();
+    await expect(page.locator('[data-layout-rule="notation"]')).toBeVisible();
+    expect(
+      await page.evaluate(() => localStorage.getItem("cube.keymap.v1")),
+    ).toContain('"notation"');
+    await shot(page, "intro-layout", info.project.name);
+    if (info.project.name === "desktop" && SAVE_SCREENSHOTS) {
+      // 아이콘과 공유 그림(사람이 보는 용도). 그림 주소는 화면이 아니라(준비 표시가 없다) 파일로 받아 둔다
+      for (const [url, file] of [
+        ["/cube/icon/192.png", "cube-icon.png"],
+        ["/cube/apple-icon/180.png", "cube-apple-icon.png"],
+        ["/cube/opengraph-image/share.png", "cube-share.png"],
+      ] as const) {
+        const res = await page.request.get(url);
+        expect(res.ok(), url).toBe(true);
+        mkdirSync("test-results/screens", { recursive: true });
+        writeFileSync(`test-results/screens/${file}`, await res.body());
+      }
+    }
+  },
+);
 
-test("첫 화면 큐브: 대기 이미지를 못 받으면 깨진 이미지 대신 같은 각도의 SVG를 보인다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만");
-  await no3d(page);
-  // 창을 최소화했다 돌아와 다시 불러올 때 연결이 끊겨 있던 것처럼 이미지 받기를 실패시킨다
-  // (화면 코드가 붙기 전에 실패해 onError를 놓치는 길도 함께 탄다)
-  await page.route("**/cube/hero/*.webp", (route) => route.abort("failed"));
-  await page.goto("/cube");
-  await expect(
-    page.locator("[data-cube-hero] [data-hero-poster='svg'] svg"),
-  ).toBeVisible();
-  await expect(
-    page.locator("[data-cube-hero] img[data-hero-poster]"),
-  ).toHaveCount(0);
-  await shot(page, "hero-poster-failed", info.project.name);
-});
-
-test("설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 고를 수 있다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만");
-  await no3dUnlessShots(page);
-  await page.goto("/cube/settings");
-  const hero = page.locator("[data-settings-hero]");
-  await hero.locator("[data-hero-method='3-cfop']").click();
-  await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  // 4×4로 바꾸면 3×3 해법은 없어지고 「번갈아」로
-  await hero.locator("[data-hero-size='4']").click();
-  await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveCount(0);
-  await expect(hero.locator("[data-hero-method='alternate']")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
-  // 6×6·7×7도 고를 수 있다(Cubie 홈 시연과 같은 해법 표)
-  await hero.locator("[data-hero-size='7']").click();
-  await expect(hero.locator("[data-hero-method='7-beginner']")).toBeVisible();
-  await expect(hero.locator("[data-hero-method='7-cfop']")).toBeVisible();
-  await hero.locator("[data-hero-size='4']").click();
-  // 조각 강조: 기본은 「잠깐」, 고르면 남는다
-  await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await hero.locator("[data-hero-highlight='keep']").click();
-  await expect(hero.locator("[data-hero-highlight='keep']")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await page.reload();
-  await expect(
-    page.locator("[data-settings-hero] [data-hero-highlight='keep']"),
-  ).toHaveAttribute("aria-pressed", "true");
-  await shot(page, "settings-hero", info.project.name);
-
-  if (SAVE_SCREENSHOTS) {
-    await page.emulateMedia({ reducedMotion: "no-preference" });
+test(
+  "다음에 할 것: 이 기기의 진도와 기록으로 권하는 칸이 바뀐다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 배치가 세로 휴대폰과 같다
+    await no3d(page);
+    const next = page.locator("[data-cube-next]");
+    // 키 익히기를 조금 했으면 처음 맞추기 첫 단원
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem("next-step-case") === "solo") return;
+      localStorage.setItem(
+        "cube.keylearn.v1",
+        JSON.stringify({ done: ["home"] }),
+      );
+    });
     await page.goto("/cube");
-    await heroShown(page);
-    await expect(page.locator("[data-cube-hero][data-hero-ready]")).toBeVisible(
-      { timeout: 30_000 },
+    await expect(next).toHaveAttribute("data-cube-next", "first-solve");
+    await expect(next).toHaveText(/처음 맞추기$/);
+    await expect(next).toHaveAttribute("href", "/cube/learn?lesson=333-start");
+    await shot(page, "home-next-first-solve", info.project.name);
+
+    // 혼자 맞추기 완성 기록이 있으면(맞출 줄 아는 사람) 기록 재기
+    await page.evaluate(() => {
+      sessionStorage.setItem("next-step-case", "solo");
+      localStorage.clear();
+      const at = Date.UTC(2026, 10, 10);
+      localStorage.setItem(
+        "cube.records.v1",
+        JSON.stringify({
+          "solo-3": [
+            {
+              at,
+              n: 3,
+              mode: "solo",
+              ms: 61_230,
+              penalty: 0,
+              moves: 92,
+              scramble: "R U R' U' F2 D L2",
+            },
+          ],
+        }),
+      );
+    });
+    await page.reload();
+    await expect(next).toHaveAttribute("data-cube-next", "solo");
+    await expect(next).toHaveAttribute("href", "/cube/solo");
+    await shot(page, "home-next-solo", info.project.name);
+  },
+);
+
+test(
+  "기능 지도: 큐브의 모든 화면을 묶음마다 설명과 주소로",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 배치가 세로 휴대폰과 같다
+    await page.goto("/cube/map");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "기능 지도",
     );
-    // 축소법 단계까지 보이게(풀이 계산을 기다린다)
-    await expect(page.locator("[data-hero-label]")).toHaveAttribute(
-      "data-hero-label",
-      / · /,
-      { timeout: 60_000 },
+    expect(
+      await page
+        .locator("[data-map-section]")
+        .evaluateAll((els) =>
+          els.map((e) => e.getAttribute("data-map-section")),
+        ),
+    ).toEqual(["처음이라면", "해법 익히기", "맞추기·겨루기", "더 보기"]);
+    await expect(page.locator('[data-map-item="/cube/daily"]')).toContainText(
+      "오늘의 섞기",
     );
-    await shot(page, "cube-home-4x4", info.project.name);
-  }
-});
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
+    await shot(page, "map", info.project.name);
+  },
+);
+
+test(
+  "첫 화면 큐브: 대기 이미지를 못 받으면 깨진 이미지 대신 같은 각도의 SVG를 보인다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱에서만
+    await no3d(page);
+    // 창을 최소화했다 돌아와 다시 불러올 때 연결이 끊겨 있던 것처럼 이미지 받기를 실패시킨다
+    // (화면 코드가 붙기 전에 실패해 onError를 놓치는 길도 함께 탄다)
+    await page.route("**/cube/hero/*.webp", (route) => route.abort("failed"));
+    await page.goto("/cube");
+    await expect(
+      page.locator("[data-cube-hero] [data-hero-poster='svg'] svg"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-cube-hero] img[data-hero-poster]"),
+    ).toHaveCount(0);
+    await shot(page, "hero-poster-failed", info.project.name);
+  },
+);
+
+test(
+  "설정의 첫 화면 큐브: 크기를 바꾸면 그 크기의 해법만 고를 수 있다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱에서만
+    await no3dUnlessShots(page);
+    await page.goto("/cube/settings");
+    const hero = page.locator("[data-settings-hero]");
+    await hero.locator("[data-hero-method='3-cfop']").click();
+    await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // 4×4로 바꾸면 3×3 해법은 없어지고 「번갈아」로
+    await hero.locator("[data-hero-size='4']").click();
+    await expect(hero.locator("[data-hero-method='3-cfop']")).toHaveCount(0);
+    await expect(
+      hero.locator("[data-hero-method='alternate']"),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(hero.locator("[data-hero-method='4-cfop']")).toBeVisible();
+    // 6×6·7×7도 고를 수 있다(Cubie 홈 시연과 같은 해법 표)
+    await hero.locator("[data-hero-size='7']").click();
+    await expect(hero.locator("[data-hero-method='7-beginner']")).toBeVisible();
+    await expect(hero.locator("[data-hero-method='7-cfop']")).toBeVisible();
+    await hero.locator("[data-hero-size='4']").click();
+    // 조각 강조: 기본은 「잠깐」, 고르면 남는다
+    await expect(hero.locator("[data-hero-highlight='brief']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await hero.locator("[data-hero-highlight='keep']").click();
+    await expect(hero.locator("[data-hero-highlight='keep']")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await page.reload();
+    await expect(
+      page.locator("[data-settings-hero] [data-hero-highlight='keep']"),
+    ).toHaveAttribute("aria-pressed", "true");
+    await shot(page, "settings-hero", info.project.name);
+
+    if (SAVE_SCREENSHOTS) {
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page.goto("/cube");
+      await heroShown(page);
+      await expect(
+        page.locator("[data-cube-hero][data-hero-ready]"),
+      ).toBeVisible({ timeout: 30_000 });
+      // 축소법 단계까지 보이게(풀이 계산을 기다린다)
+      await expect(page.locator("[data-hero-label]")).toHaveAttribute(
+        "data-hero-label",
+        / · /,
+        { timeout: 60_000 },
+      );
+      await shot(page, "cube-home-4x4", info.project.name);
+    }
+  },
+);
 
 // 사람이 보는 스크린샷만(연출을 실제 시간으로 돌린다): 크기마다 해법 하나를 골라 연출 중 한 장씩.
 // 초보자는 흰 십자를 위에서, 프리드리히는 십자가 가장 싼 색으로 맞춘다(docs/47 0절 2026-11-10)
-test("첫 화면 큐브: 크기마다 연출 중 모습(스크린샷)", async ({
-  page,
-}, info) => {
-  test.skip(
-    !SAVE_SCREENSHOTS || info.project.name !== "desktop",
-    "데스크톱 스크린샷에서만",
-  );
-  test.setTimeout(600_000);
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  const cases = [
-    { size: 3, method: "3-beginner", label: /초보자 해법 · 흰 십자/ },
-    { size: 4, method: "4-cfop", label: /축소법\(프리드리히\) · \S+ 십자/ },
-    { size: 5, method: "5-beginner", label: /축소법\(초보자\) · 흰 십자/ },
-    { size: 7, method: "7-beginner", label: /축소법\(초보자\) · 나머지 센터/ },
-  ];
-  for (const c of cases) {
-    await page.goto("/cube/settings");
-    const hero = page.locator("[data-settings-hero]");
-    await hero.locator(`[data-hero-size='${c.size}']`).click();
-    await hero.locator(`[data-hero-method='${c.method}']`).click();
-    await page.goto("/cube");
-    await heroShown(page);
-    await expect(page.locator("[data-hero-label]")).toHaveAttribute(
-      "data-hero-label",
-      c.label,
-      { timeout: 240_000 },
-    );
-    // 그 단계가 조금 진행된 모습
-    await page.waitForTimeout(2500);
-    await page.locator("[data-cube-hero]").screenshot({
-      path: `test-results/screens/cube-hero-${c.method}-${info.project.name}.png`,
+test(
+  "첫 화면 큐브: 크기마다 연출 중 모습(스크린샷)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱 스크린샷에서만
+    test.skip(!SAVE_SCREENSHOTS, "스크린샷을 찍을 때만");
+    test.setTimeout(600_000);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const cases = [
+      { size: 3, method: "3-beginner", label: /초보자 해법 · 흰 십자/ },
+      { size: 4, method: "4-cfop", label: /축소법\(프리드리히\) · \S+ 십자/ },
+      { size: 5, method: "5-beginner", label: /축소법\(초보자\) · 흰 십자/ },
+      {
+        size: 7,
+        method: "7-beginner",
+        label: /축소법\(초보자\) · 나머지 센터/,
+      },
+    ];
+    for (const c of cases) {
+      await page.goto("/cube/settings");
+      const hero = page.locator("[data-settings-hero]");
+      await hero.locator(`[data-hero-size='${c.size}']`).click();
+      await hero.locator(`[data-hero-method='${c.method}']`).click();
+      await page.goto("/cube");
+      await heroShown(page);
+      await expect(page.locator("[data-hero-label]")).toHaveAttribute(
+        "data-hero-label",
+        c.label,
+        { timeout: 240_000 },
+      );
+      // 그 단계가 조금 진행된 모습
+      await page.waitForTimeout(2500);
+      await page.locator("[data-cube-hero]").screenshot({
+        path: `test-results/screens/cube-hero-${c.method}-${info.project.name}.png`,
+      });
+    }
+  },
+);
+
+test(
+  "휴대폰: 칸 위를 밀면 그 층이 돈다",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 휴대폰 세로에서만
+    // 큐브 전체 돌리기는 장면이 끝낸 회전 수(`__cubeView.done`)로 본다(화면 시험만 여는 고리)
+    await page.addInitScript(() => {
+      (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
     });
-  }
-});
+    await page.goto("/cube/solo");
+    const main = page.locator("main[data-cube-phase]");
+    await expect(main).toHaveAttribute("data-cube-phase", "free");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible();
+    // 밀기는 3D 그림이 있어야 한다. CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸려 기본 상한을 넘었다
+    // (멈춘 시험을 잡는 안전장치로 30초)
+    const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    const moves = page.locator("[data-cube-moves]");
+    await expect(moves).toHaveText("0");
 
-test("휴대폰: 칸 위를 밀면 그 층이 돈다", async ({ page }, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로에서만");
-  // 큐브 전체 돌리기는 장면이 끝낸 회전 수(`__cubeView.done`)로 본다(화면 시험만 여는 고리)
-  await page.addInitScript(() => {
-    (window as { __cubeTestHooks?: boolean }).__cubeTestHooks = true;
-  });
-  await page.goto("/cube/solo");
-  const main = page.locator("main[data-cube-phase]");
-  await expect(main).toHaveAttribute("data-cube-phase", "free");
-  await expect(
-    page.locator("[data-cube-stage][data-input-ready]"),
-  ).toBeVisible();
-  // 밀기는 3D 그림이 있어야 한다. CI의 GPU 없는 브라우저는 첫 그림에 5초 넘게 걸려 기본 상한을 넘었다
-  // (멈춘 시험을 잡는 안전장치로 30초)
-  const canvas = page.locator("[data-cube-canvas][data-cube-ready]");
-  await expect(canvas).toBeVisible({ timeout: 30_000 });
-  const moves = page.locator("[data-cube-moves]");
-  await expect(moves).toHaveText("0");
+    // 손가락 밀기 한 번: 앞면 가운데쯤에서 위로
+    await canvas.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width * 0.4;
+      const y = r.top + r.height * 0.62;
+      const fire = (type: string, dy: number) =>
+        el.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId: 7,
+            pointerType: "touch",
+            isPrimary: true,
+            button: type === "pointermove" ? -1 : 0,
+            clientX: x,
+            clientY: y + dy,
+            bubbles: true,
+          }),
+        );
+      fire("pointerdown", 0);
+      fire("pointermove", -30);
+      fire("pointermove", -60);
+      fire("pointerup", -60);
+    });
+    await expect(moves).toHaveText("1");
 
-  // 손가락 밀기 한 번: 앞면 가운데쯤에서 위로
-  await canvas.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const x = r.left + r.width * 0.4;
-    const y = r.top + r.height * 0.62;
-    const fire = (type: string, dy: number) =>
-      el.dispatchEvent(
-        new PointerEvent(type, {
-          pointerId: 7,
-          pointerType: "touch",
-          isPrimary: true,
-          button: type === "pointermove" ? -1 : 0,
-          clientX: x,
-          clientY: y + dy,
-          bubbles: true,
-        }),
+    // 빈 곳(모서리)을 밀면 큐브 전체를 돌린다: 장면은 한 번 더 돌지만 수로 세지 않는다
+    const turned = () =>
+      canvas.evaluate(
+        (el) =>
+          (el as unknown as { __cubeView: { done: number } }).__cubeView.done,
       );
-    fire("pointerdown", 0);
-    fire("pointermove", -30);
-    fire("pointermove", -60);
-    fire("pointerup", -60);
-  });
-  await expect(moves).toHaveText("1");
-
-  // 빈 곳(모서리)을 밀면 큐브 전체를 돌린다: 장면은 한 번 더 돌지만 수로 세지 않는다
-  const turned = () =>
-    canvas.evaluate(
-      (el) =>
-        (el as unknown as { __cubeView: { done: number } }).__cubeView.done,
-    );
-  await expect.poll(turned, { intervals: [50] }).toBe(1);
-  await canvas.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const x = r.left + r.width * 0.03;
-    const y = r.top + r.height * 0.03;
-    const fire = (type: string, dx: number) =>
-      el.dispatchEvent(
-        new PointerEvent(type, {
-          pointerId: 8,
-          pointerType: "touch",
-          isPrimary: true,
-          button: type === "pointermove" ? -1 : 0,
-          clientX: x + dx,
-          clientY: y,
-          bubbles: true,
-        }),
-      );
-    fire("pointerdown", 0);
-    fire("pointermove", 60);
-    fire("pointerup", 60);
-  });
-  await expect.poll(turned, { intervals: [50] }).toBe(2);
-  await expect(moves).toHaveText("1");
-  await shot(page, "solo-swiped", info.project.name);
-});
+    await expect.poll(turned, { intervals: [50] }).toBe(1);
+    await canvas.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width * 0.03;
+      const y = r.top + r.height * 0.03;
+      const fire = (type: string, dx: number) =>
+        el.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId: 8,
+            pointerType: "touch",
+            isPrimary: true,
+            button: type === "pointermove" ? -1 : 0,
+            clientX: x + dx,
+            clientY: y,
+            bubbles: true,
+          }),
+        );
+      fire("pointerdown", 0);
+      fire("pointermove", 60);
+      fire("pointerup", 60);
+    });
+    await expect.poll(turned, { intervals: [50] }).toBe(2);
+    await expect(moves).toHaveText("1");
+    await shot(page, "solo-swiped", info.project.name);
+  },
+);

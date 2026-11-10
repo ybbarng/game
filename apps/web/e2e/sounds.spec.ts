@@ -5,9 +5,11 @@ import { expect, test } from "./test";
  * 소리의 역할(sound.ts `CUE_ROLE`)에 따라 기준이 다르다: 사건 소리는 서로 비슷하게, 반복 소리(룰렛 불빛처럼
  * 빠르게 여러 번 겹쳐 나는 배경)는 사건 소리보다 일정하게 작게. 너무 작아 안 들리는 것도 막는다
  */
-test("효과음 크기 차이가 크지 않다", async ({ page }, info) => {
+test("효과음 크기 차이가 크지 않다", { tag: "@only-desktop" }, async ({
+  page,
+}) => {
   // 소리는 화면 크기와 상관없다.
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  // 데스크톱에서만 돌린다
   await page.goto("/sounds");
   // 모든 소리를 다 잴 때까지 기다린다.
   await page.waitForFunction(

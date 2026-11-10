@@ -71,117 +71,123 @@ async function expectStageOnScreen(page: Page) {
     .toBeLessThanOrEqual(height);
 }
 
-test("오늘의 섞기: 받아 풀면 결과와 공유 글, 다시 들어가면 「오늘 완료」와 연습", async ({
-  page,
-  context,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "휴대폰 세로와 데스크톱으로 본다",
-  );
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await installClock(page);
-  // 혼자 맞추기의 갈래에서 들어간다(docs/47 16-2). 아직 안 했으니 「오늘 완료」 표시는 없다
-  await page.goto("/cube/solo");
-  const link = page.locator("[data-cube-daily-link]");
-  await expect(link).toHaveAttribute("href", "/cube/daily");
-  await expect(link).not.toHaveAttribute("data-cube-daily-done");
-  await link.click();
-  await expect(page).toHaveURL(/\/cube\/daily$/);
-  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
-    { timeout: SCRAMBLE_TIMEOUT },
-  );
-  await pauseClock(page);
-  const button = page.locator("[data-cube-scramble-button]");
-  await expect(button).toHaveText("오늘의 섞기 받기");
-  await expect(page.locator("[data-cube-daily-done]")).toHaveCount(0);
+test(
+  "오늘의 섞기: 받아 풀면 결과와 공유 글, 다시 들어가면 「오늘 완료」와 연습",
+  { tag: "@no-phone-landscape" },
+  async ({ page, context }, info) => {
+    // 휴대폰 세로와 데스크톱으로 본다
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await installClock(page);
+    // 혼자 맞추기의 갈래에서 들어간다(docs/47 16-2). 아직 안 했으니 「오늘 완료」 표시는 없다
+    await page.goto("/cube/solo");
+    const link = page.locator("[data-cube-daily-link]");
+    await expect(link).toHaveAttribute("href", "/cube/daily");
+    await expect(link).not.toHaveAttribute("data-cube-daily-done");
+    await link.click();
+    await expect(page).toHaveURL(/\/cube\/daily$/);
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await pauseClock(page);
+    const button = page.locator("[data-cube-scramble-button]");
+    await expect(button).toHaveText("오늘의 섞기 받기");
+    await expect(page.locator("[data-cube-daily-done]")).toHaveCount(0);
 
-  const text = await receive(page);
-  expect(text.split(" ").length).toBeGreaterThan(10);
-  const attempt = page.locator("[data-cube-daily-attempt]");
-  await expect(attempt).toHaveAttribute("data-cube-daily-attempt", "official");
-  // 기록 시도 중에는 다시 섞기·크기 바꾸기를 막는다
-  await expect(button).toBeDisabled();
-  await expect(page.locator("[data-cube-size]")).toBeDisabled();
-  await shot(page, "daily-inspect", info.project.name);
+    const text = await receive(page);
+    expect(text.split(" ").length).toBeGreaterThan(10);
+    const attempt = page.locator("[data-cube-daily-attempt]");
+    await expect(attempt).toHaveAttribute(
+      "data-cube-daily-attempt",
+      "official",
+    );
+    // 기록 시도 중에는 다시 섞기·크기 바꾸기를 막는다
+    await expect(button).toBeDisabled();
+    await expect(page.locator("[data-cube-size]")).toBeDisabled();
+    await shot(page, "daily-inspect", info.project.name);
 
-  await solve(page, text);
-  await expect(page.locator("[data-cube-result]")).toHaveAttribute(
-    "data-cube-result",
-    "solved",
-  );
-  await expect(page.locator("[data-cube-practice]")).toHaveCount(0);
-  await expect(page.locator("[data-cube-splits]")).toBeVisible();
-  await expect(page.locator("[data-cube-daily-done]")).toBeVisible();
-  await expect(page.locator("[data-cube-streak]")).toHaveAttribute(
-    "data-cube-streak",
-    "1",
-  );
-  // 공유 글: 날짜·크기·시간·구간 칩 모양, 섞기는 없다. 견줄 옛 기록이 없어 칩은 모두 ⬜
-  const share = page.locator("[data-cube-share]:visible").first();
-  const shareText = (await share.getAttribute("data-cube-share")) ?? "";
-  const lines = shareText.split("\n");
-  expect(lines[0]).toBe("큐브 맞추기 오늘의 섞기 01/01 3×3");
-  expect(lines[1]).toMatch(/^\d+\.\d\d초 ⬜+$/);
-  expect(lines.at(-1)).toBe("https://game.byb.kr/cube/daily");
-  expect(shareText).not.toContain(text);
-  await share.click();
-  await expect(share).toHaveAttribute("data-cube-copied", "yes");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    shareText,
-  );
-  if (info.project.name === "desktop") await expectStageOnScreen(page);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth - window.innerWidth,
-    ),
-  ).toBeLessThanOrEqual(0);
-  await shot(page, "daily-done", info.project.name);
+    await solve(page, text);
+    await expect(page.locator("[data-cube-result]")).toHaveAttribute(
+      "data-cube-result",
+      "solved",
+    );
+    await expect(page.locator("[data-cube-practice]")).toHaveCount(0);
+    await expect(page.locator("[data-cube-splits]")).toBeVisible();
+    await expect(page.locator("[data-cube-daily-done]")).toBeVisible();
+    await expect(page.locator("[data-cube-streak]")).toHaveAttribute(
+      "data-cube-streak",
+      "1",
+    );
+    // 공유 글: 날짜·크기·시간·구간 칩 모양, 섞기는 없다. 견줄 옛 기록이 없어 칩은 모두 ⬜
+    const share = page.locator("[data-cube-share]:visible").first();
+    const shareText = (await share.getAttribute("data-cube-share")) ?? "";
+    const lines = shareText.split("\n");
+    expect(lines[0]).toBe("큐브 맞추기 오늘의 섞기 01/01 3×3");
+    expect(lines[1]).toMatch(/^\d+\.\d\d초 ⬜+$/);
+    expect(lines.at(-1)).toBe("https://game.byb.kr/cube/daily");
+    expect(shareText).not.toContain(text);
+    await share.click();
+    await expect(share).toHaveAttribute("data-cube-copied", "yes");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      shareText,
+    );
+    if (info.project.name === "desktop") await expectStageOnScreen(page);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(0);
+    await shot(page, "daily-done", info.project.name);
 
-  // 다시 들어가면: 혼자 맞추기 갈래에 「오늘 완료」
-  await page.goto("/cube/solo");
-  await expect(page.locator("[data-cube-daily-link]")).toHaveAttribute(
-    "data-cube-daily-done",
-    "",
-  );
-  // 기록 시도는 혼자 맞추기 기록에도 하나 들어갔다
-  await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
-  await page.locator("[data-cube-daily-link]").click();
-  await expect(page.locator("[data-cube-stage][data-input-ready]")).toBeVisible(
-    { timeout: SCRAMBLE_TIMEOUT },
-  );
-  // 앞에서 시계를 10분 뒤에 멈췄으니 그보다 뒤로 다시 멈춘다(같은 날, 한국 시각 오전 9시 20분)
-  await page.clock.pauseAt(CLOCK_START + 20 * 60_000);
-  await expect(page.locator("[data-cube-daily-done]")).toBeVisible();
-  await expect(button).toHaveText("연습으로 다시");
-  await expect(
-    page.locator("[data-cube-daily-panel] [data-cube-share]"),
-  ).toHaveAttribute("data-cube-share", shareText);
-  await shot(page, "daily-again", info.project.name);
+    // 다시 들어가면: 혼자 맞추기 갈래에 「오늘 완료」
+    await page.goto("/cube/solo");
+    await expect(page.locator("[data-cube-daily-link]")).toHaveAttribute(
+      "data-cube-daily-done",
+      "",
+    );
+    // 기록 시도는 혼자 맞추기 기록에도 하나 들어갔다
+    await expect(page.locator("[data-cube-records] li")).toHaveCount(1);
+    await page.locator("[data-cube-daily-link]").click();
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    // 앞에서 시계를 10분 뒤에 멈췄으니 그보다 뒤로 다시 멈춘다(같은 날, 한국 시각 오전 9시 20분)
+    await page.clock.pauseAt(CLOCK_START + 20 * 60_000);
+    await expect(page.locator("[data-cube-daily-done]")).toBeVisible();
+    await expect(button).toHaveText("연습으로 다시");
+    await expect(
+      page.locator("[data-cube-daily-panel] [data-cube-share]"),
+    ).toHaveAttribute("data-cube-share", shareText);
+    await shot(page, "daily-again", info.project.name);
 
-  // 연습: 같은 섞기, 결과에 「연습」, 오늘 기록·공유 글은 그대로
-  const again = await receive(page);
-  expect(again).toBe(text);
-  await expect(attempt).toHaveAttribute("data-cube-daily-attempt", "practice");
-  await expect(button).toBeEnabled();
-  await solve(page, again, 200);
-  await expect(page.locator("[data-cube-practice]")).toBeVisible();
-  await expect(
-    page.locator("[data-cube-daily-panel] [data-cube-share]"),
-  ).toHaveAttribute("data-cube-share", shareText);
-  await expect(page.locator("[data-cube-streak]")).toHaveAttribute(
-    "data-cube-streak",
-    "1",
-  );
-  const stored = await page.evaluate(() => {
-    const daily = JSON.parse(localStorage.getItem("cube.daily.v1") ?? "{}");
-    const records = JSON.parse(localStorage.getItem("cube.records.v1") ?? "{}");
-    return {
-      days: (daily.entries ?? []).length,
-      solo: (records["solo-3"] ?? []).length,
-    };
-  });
-  expect(stored).toEqual({ days: 1, solo: 1 });
-  if (info.project.name === "desktop") await expectStageOnScreen(page);
-  await shot(page, "daily-practice", info.project.name);
-});
+    // 연습: 같은 섞기, 결과에 「연습」, 오늘 기록·공유 글은 그대로
+    const again = await receive(page);
+    expect(again).toBe(text);
+    await expect(attempt).toHaveAttribute(
+      "data-cube-daily-attempt",
+      "practice",
+    );
+    await expect(button).toBeEnabled();
+    await solve(page, again, 200);
+    await expect(page.locator("[data-cube-practice]")).toBeVisible();
+    await expect(
+      page.locator("[data-cube-daily-panel] [data-cube-share]"),
+    ).toHaveAttribute("data-cube-share", shareText);
+    await expect(page.locator("[data-cube-streak]")).toHaveAttribute(
+      "data-cube-streak",
+      "1",
+    );
+    const stored = await page.evaluate(() => {
+      const daily = JSON.parse(localStorage.getItem("cube.daily.v1") ?? "{}");
+      const records = JSON.parse(
+        localStorage.getItem("cube.records.v1") ?? "{}",
+      );
+      return {
+        days: (daily.entries ?? []).length,
+        solo: (records["solo-3"] ?? []).length,
+      };
+    });
+    expect(stored).toEqual({ days: 1, solo: 1 });
+    if (info.project.name === "desktop") await expectStageOnScreen(page);
+    await shot(page, "daily-practice", info.project.name);
+  },
+);

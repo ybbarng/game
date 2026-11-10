@@ -241,123 +241,123 @@ test("숫자야구: 게임 목록에서 들어가 입문 컴퓨터와 서로 맞
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
 
-test("숫자야구: 휴대폰 세로·가로에서 숫자 패드·물어보기·기권이 내리지 않아도 첫 화면 안에 있다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "phone-portrait",
-    "두 화면 크기를 이 시험 안에서 바꿔 본다",
-  );
-  // 판을 늘 같게 둔다(첫 시험과 같은 씨앗)
-  await page.addInitScript(() => {
-    let s = 1;
-    Math.random = () => {
-      s = (s + 0x6d2b79f5) | 0;
-      let t = Math.imul(s ^ (s >>> 15), 1 | s);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
-    };
-  });
-  await page.goto("/baseball");
-  await startSolo(page);
-  await chooseRandomSecret(page);
-  // 두 사람 기록에 줄이 쌓인 뒤에 본다(기록이 늘어도 패드가 밀려나지 않아야 한다).
-  for (let i = 0; i < 3; i++) {
+test(
+  "숫자야구: 휴대폰 세로·가로에서 숫자 패드·물어보기·기권이 내리지 않아도 첫 화면 안에 있다",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 두 화면 크기를 이 시험 안에서 바꿔 본다
+    // 판을 늘 같게 둔다(첫 시험과 같은 씨앗)
+    await page.addInitScript(() => {
+      let s = 1;
+      Math.random = () => {
+        s = (s + 0x6d2b79f5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+      };
+    });
+    await page.goto("/baseball");
+    await startSolo(page);
+    await chooseRandomSecret(page);
+    // 두 사람 기록에 줄이 쌓인 뒤에 본다(기록이 늘어도 패드가 밀려나지 않아야 한다).
+    for (let i = 0; i < 3; i++) {
+      await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
+        timeout: 15_000,
+      });
+      await askNext(page, true);
+    }
     await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
       timeout: 15_000,
     });
-    await askNext(page, true);
-  }
-  await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-    timeout: 15_000,
-  });
-  const targets = [
-    page.getByRole("img", { name: /^넣은 수 / }),
-    page.getByRole("button", { name: "1", exact: true }),
-    page.getByRole("button", { name: "지우기", exact: true }),
-    page.getByRole("button", { name: "물어보기" }),
-    page.getByRole("button", { name: "기권" }),
-  ];
-  for (const size of [
-    { width: 390, height: 844 },
-    { width: 844, height: 390 },
-  ]) {
-    await page.setViewportSize(size);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    for (const target of targets)
-      await expect(async () => {
-        const box = await target.first().boundingBox();
-        expect(box).not.toBeNull();
-        if (!box) return;
-        expect(box.x).toBeGreaterThanOrEqual(0);
-        expect(box.y).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width).toBeLessThanOrEqual(size.width);
-        expect(box.y + box.height).toBeLessThanOrEqual(size.height);
-      }).toPass({ intervals: [50], timeout: 5_000 });
-    await page.screenshot({
-      path: info.outputPath(
-        `baseball-fit-${size.width > size.height ? "landscape" : "portrait"}.png`,
-      ),
-    });
-  }
-});
-
-test("숫자야구 퍼즐: 컴퓨터 수만 맞히기", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "흐름은 화면 크기와 상관없다");
-  await page.goto("/baseball");
-  await startSolo(page, "입문", "컴퓨터 수만 맞히기");
-  await expect(page.getByRole("button", { name: "무작위" })).toHaveCount(0);
-  await expect(status(page)).toContainText("컴퓨터 수를 맞혀 보세요");
-  // 후보 수 도움말을 보며 남은 후보 가운데 첫 수를 묻는다(앞 답을 화면에서 읽는다).
-  for (let i = 0; i < 12; i++) {
-    if (await over(page).isVisible()) break;
-    const rows = await myRows(page).evaluateAll((els) =>
-      els.map((el) => ({
-        guess: el.getAttribute("data-guess") ?? "",
-        text: el.textContent ?? "",
-      })),
-    );
-    const clues = rows.map((r) => {
-      const s = /(\d)S/.exec(r.text);
-      const b = /(\d)B/.exec(r.text);
-      return {
-        guess: r.guess,
-        s: s ? Number(s[1]) : 0,
-        b: b ? Number(b[1]) : 0,
-      };
-    });
-    const fits = (n: string) =>
-      clues.every((c) => {
-        let s = 0;
-        let b = 0;
-        for (let k = 0; k < 3; k++) {
-          if (n[k] === c.guess[k]) s++;
-          else if (n.includes(c.guess[k] as string)) b++;
-        }
-        return s === c.s && b === c.b;
+    const targets = [
+      page.getByRole("img", { name: /^넣은 수 / }),
+      page.getByRole("button", { name: "1", exact: true }),
+      page.getByRole("button", { name: "지우기", exact: true }),
+      page.getByRole("button", { name: "물어보기" }),
+      page.getByRole("button", { name: "기권" }),
+    ];
+    for (const size of [
+      { width: 390, height: 844 },
+      { width: 844, height: 390 },
+    ]) {
+      await page.setViewportSize(size);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      for (const target of targets)
+        await expect(async () => {
+          const box = await target.first().boundingBox();
+          expect(box).not.toBeNull();
+          if (!box) return;
+          expect(box.x).toBeGreaterThanOrEqual(0);
+          expect(box.y).toBeGreaterThanOrEqual(0);
+          expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+          expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+        }).toPass({ intervals: [50], timeout: 5_000 });
+      await page.screenshot({
+        path: info.outputPath(
+          `baseball-fit-${size.width > size.height ? "landscape" : "portrait"}.png`,
+        ),
       });
-    const left = NUMBERS.filter(fits);
-    await expect(page.locator("[data-candidates]")).toHaveAttribute(
-      "data-candidates",
-      String(left.length),
-    );
-    await enter(page, left[0] as string, "물어보기", false);
-    await expect(
-      status(page).filter({ hasText: /내 차례|맞혔어요/ }),
-    ).toBeVisible({ timeout: 10_000 });
-  }
-  await expect(status(page)).toContainText("번 만에 맞혔어요!");
-  await expect(page.locator('[data-result-banner="win"]')).toBeVisible();
-  await page.screenshot({ path: info.outputPath("baseball-puzzle.png") });
-});
+    }
+  },
+);
 
-test("숫자야구 숫자 패드: 키보드로 넣고 지우고, 메모는 수를 넣지 않는다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "입력 흐름은 화면 크기와 상관없다",
-  );
+test(
+  "숫자야구 퍼즐: 컴퓨터 수만 맞히기",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 흐름은 화면 크기와 상관없다
+    await page.goto("/baseball");
+    await startSolo(page, "입문", "컴퓨터 수만 맞히기");
+    await expect(page.getByRole("button", { name: "무작위" })).toHaveCount(0);
+    await expect(status(page)).toContainText("컴퓨터 수를 맞혀 보세요");
+    // 후보 수 도움말을 보며 남은 후보 가운데 첫 수를 묻는다(앞 답을 화면에서 읽는다).
+    for (let i = 0; i < 12; i++) {
+      if (await over(page).isVisible()) break;
+      const rows = await myRows(page).evaluateAll((els) =>
+        els.map((el) => ({
+          guess: el.getAttribute("data-guess") ?? "",
+          text: el.textContent ?? "",
+        })),
+      );
+      const clues = rows.map((r) => {
+        const s = /(\d)S/.exec(r.text);
+        const b = /(\d)B/.exec(r.text);
+        return {
+          guess: r.guess,
+          s: s ? Number(s[1]) : 0,
+          b: b ? Number(b[1]) : 0,
+        };
+      });
+      const fits = (n: string) =>
+        clues.every((c) => {
+          let s = 0;
+          let b = 0;
+          for (let k = 0; k < 3; k++) {
+            if (n[k] === c.guess[k]) s++;
+            else if (n.includes(c.guess[k] as string)) b++;
+          }
+          return s === c.s && b === c.b;
+        });
+      const left = NUMBERS.filter(fits);
+      await expect(page.locator("[data-candidates]")).toHaveAttribute(
+        "data-candidates",
+        String(left.length),
+      );
+      await enter(page, left[0] as string, "물어보기", false);
+      await expect(
+        status(page).filter({ hasText: /내 차례|맞혔어요/ }),
+      ).toBeVisible({ timeout: 10_000 });
+    }
+    await expect(status(page)).toContainText("번 만에 맞혔어요!");
+    await expect(page.locator('[data-result-banner="win"]')).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baseball-puzzle.png") });
+  },
+);
+
+test("숫자야구 숫자 패드: 키보드로 넣고 지우고, 메모는 수를 넣지 않는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 입력 흐름은 화면 크기와 상관없다
   await page.goto("/baseball");
   await startSolo(page, "입문", "컴퓨터 수만 맞히기");
   await expect(status(page)).toContainText("컴퓨터 수를 맞혀 보세요");
@@ -403,10 +403,10 @@ test("숫자야구 숫자 패드: 키보드로 넣고 지우고, 메모는 수�
   expect(saved ?? "").not.toContain("memo");
 });
 
-test("숫자야구: 하던 게임은 새로고침해도 이어 하고, 내 비밀 수도 그대로다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "저장은 화면 크기와 상관없다");
+test("숫자야구: 하던 게임은 새로고침해도 이어 하고, 내 비밀 수도 그대로다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 저장은 화면 크기와 상관없다
   await page.goto("/baseball");
   await startSolo(page);
   const secret = await chooseRandomSecret(page);
@@ -429,182 +429,188 @@ test("숫자야구: 하던 게임은 새로고침해도 이어 하고, 내 비�
   });
 });
 
-test("숫자야구: 방장이 방을 만들고 친구가 링크로 들어와 한 판을 하고 판 끝 검증을 통과한다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest])
-    p.on("pageerror", (e) => errors.push(e.message));
+test(
+  "숫자야구: 방장이 방을 만들고 친구가 링크로 들어와 한 판을 하고 판 끝 검증을 통과한다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [host, guest])
+      p.on("pageerror", (e) => errors.push(e.message));
 
-  await host.goto("/baseball?net=local");
-  await host.getByRole("button", { name: /다함께 숫자야구/ }).click();
-  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/baseball");
+    await host.goto("/baseball?net=local");
+    await host.getByRole("button", { name: /다함께 숫자야구/ }).click();
+    await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/baseball");
 
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(guest.getByText("방장이 시작하기를 기다리는 중")).toBeVisible();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(
+      guest.getByText("방장이 시작하기를 기다리는 중"),
+    ).toBeVisible();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
 
-  await chooseRandomSecret(host);
-  let guestSecret = await chooseRandomSecret(guest);
-  await guest.screenshot({
-    path: info.outputPath("baseball-online-guest-start.png"),
-  });
+    await chooseRandomSecret(host);
+    let guestSecret = await chooseRandomSecret(guest);
+    await guest.screenshot({
+      path: info.outputPath("baseball-online-guest-start.png"),
+    });
 
-  for (let i = 0; i < 400; i++) {
-    if ((await over(host).isVisible()) && (await over(guest).isVisible()))
-      break;
-    // 판 끝 전에는 방장 화면에 공개 결과가 없다(참가자 비밀이 보이지 않는다).
-    // 판 끝(결과 상자)과 공개 줄을 한 번에 읽어, 그 사이에 판이 끝나도 틀리지 않게 한다.
-    const leaked = await host.evaluate(
-      () =>
-        document.querySelector("[data-reveal]") !== null &&
-        document.querySelector("[data-outcome]") === null,
-    );
-    expect(leaked).toBe(false);
-    for (const p of [host, guest]) {
-      // 같은 회에 둘 다 맞혀 비기면 판 수에 들지 않아 다음 판을 한다(비밀도 새로 정한다).
-      const next = p.getByRole("button", { name: "다음 판" });
-      if (await next.isVisible()) await next.click();
-      const text = (await status(p).textContent()) ?? "";
-      if (/내 비밀 수를 정하세요/.test(text)) {
-        const secret = await chooseRandomSecret(p);
-        if (p === guest) guestSecret = secret;
-      } else if (
-        /내 차례|마지막 기회/.test(text) &&
-        !(await over(p).isVisible())
-      )
-        await askFitting(p);
+    for (let i = 0; i < 400; i++) {
+      if ((await over(host).isVisible()) && (await over(guest).isVisible()))
+        break;
+      // 판 끝 전에는 방장 화면에 공개 결과가 없다(참가자 비밀이 보이지 않는다).
+      // 판 끝(결과 상자)과 공개 줄을 한 번에 읽어, 그 사이에 판이 끝나도 틀리지 않게 한다.
+      const leaked = await host.evaluate(
+        () =>
+          document.querySelector("[data-reveal]") !== null &&
+          document.querySelector("[data-outcome]") === null,
+      );
+      expect(leaked).toBe(false);
+      for (const p of [host, guest]) {
+        // 같은 회에 둘 다 맞혀 비기면 판 수에 들지 않아 다음 판을 한다(비밀도 새로 정한다).
+        const next = p.getByRole("button", { name: "다음 판" });
+        if (await next.isVisible()) await next.click();
+        const text = (await status(p).textContent()) ?? "";
+        if (/내 비밀 수를 정하세요/.test(text)) {
+          const secret = await chooseRandomSecret(p);
+          if (p === guest) guestSecret = secret;
+        } else if (
+          /내 차례|마지막 기회/.test(text) &&
+          !(await over(p).isVisible())
+        )
+          await askFitting(p);
+      }
+      await host.waitForTimeout(50);
     }
-    await host.waitForTimeout(50);
-  }
-  await expect(over(host)).toBeVisible();
-  await expect(over(guest)).toBeVisible();
-  // 판 끝: 방장 화면에 참가자 비밀이 처음 보이고, 참가자가 정한 그 수다.
-  const guestSeatReveal = host.locator("[data-reveal]").nth(1);
-  await expect(guestSeatReveal).toContainText("약속·답 모두 맞음");
-  await expect(
-    guestSeatReveal.getByRole("img", { name: guestSecret.split("").join(" ") }),
-  ).toBeVisible();
-  await host.screenshot({
-    path: info.outputPath("baseball-online-host-end.png"),
-  });
+    await expect(over(host)).toBeVisible();
+    await expect(over(guest)).toBeVisible();
+    // 판 끝: 방장 화면에 참가자 비밀이 처음 보이고, 참가자가 정한 그 수다.
+    const guestSeatReveal = host.locator("[data-reveal]").nth(1);
+    await expect(guestSeatReveal).toContainText("약속·답 모두 맞음");
+    await expect(
+      guestSeatReveal.getByRole("img", {
+        name: guestSecret.split("").join(" "),
+      }),
+    ).toBeVisible();
+    await host.screenshot({
+      path: info.outputPath("baseball-online-host-end.png"),
+    });
 
-  // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
-  await host.getByRole("button", { name: "← 숫자야구" }).click();
-  await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
-    timeout: 15_000,
-  });
-  await guest.screenshot({
-    path: info.outputPath("baseball-online-guest-end.png"),
-  });
-  expect(errors).toEqual([]);
-});
+    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 계산해 확인한다.
+    await host.getByRole("button", { name: "← 숫자야구" }).click();
+    await expect(guest.getByText(/검증.*문제없음/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await guest.screenshot({
+      path: info.outputPath("baseball-online-guest-end.png"),
+    });
+    expect(errors).toEqual([]);
+  },
+);
 
-test("숫자야구: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "기록은 화면 크기와 상관없다");
-  await page.goto("/baseball");
-  await startSolo(page);
-  await chooseRandomSecret(page);
-  await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
-  await askNext(page, false);
-  await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
-    timeout: 15_000,
-  });
-  // 기권은 한 번 더 묻는다. 「계속 하기」면 판이 그대로다.
-  await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "계속 하기" }).click();
-  await expect(status(page)).toContainText(/내 차례|마지막 기회/);
-  await page.getByRole("button", { name: "기권" }).click();
-  await page.getByRole("button", { name: "기권하기" }).click();
-  await expect(status(page)).toHaveText("기권했어요");
-  await expect
-    .poll(() => page.evaluate(finishedBaseballGames), { intervals: [50] })
-    .toBe(1);
+test(
+  "숫자야구: 끝낸 판은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 기록은 화면 크기와 상관없다
+    await page.goto("/baseball");
+    await startSolo(page);
+    await chooseRandomSecret(page);
+    await expect(status(page)).toContainText("내 차례", { timeout: 15_000 });
+    await askNext(page, false);
+    await expect(status(page)).toContainText(/내 차례|마지막 기회/, {
+      timeout: 15_000,
+    });
+    // 기권은 한 번 더 묻는다. 「계속 하기」면 판이 그대로다.
+    await page.getByRole("button", { name: "기권" }).click();
+    await page.getByRole("button", { name: "계속 하기" }).click();
+    await expect(status(page)).toContainText(/내 차례|마지막 기회/);
+    await page.getByRole("button", { name: "기권" }).click();
+    await page.getByRole("button", { name: "기권하기" }).click();
+    await expect(status(page)).toHaveText("기권했어요");
+    await expect
+      .poll(() => page.evaluate(finishedBaseballGames), { intervals: [50] })
+      .toBe(1);
 
-  await page.goto("/profile?game=baseball");
-  await expect(page.getByRole("tab", { name: "⚾ 숫자야구" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(page.getByText("0승 1패 0무")).toBeVisible();
+    await page.goto("/profile?game=baseball");
+    await expect(
+      page.getByRole("tab", { name: "⚾ 숫자야구" }),
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("0승 1패 0무")).toBeVisible();
 
-  await page.goto("/review");
-  await page.getByRole("button", { name: /⚾ 숫자야구 · 혼자/ }).click();
-  const rows = page.locator("li[data-guess]");
-  // 끝난 장면부터 보인다. 처음으로 가면 물은 수가 없다.
-  await expect(rows.first()).toBeVisible();
-  await page.getByRole("button", { name: "처음" }).click();
-  await expect(rows).toHaveCount(0);
-  for (let i = 0; i < 6 && (await rows.count()) === 0; i++)
-    await page.getByRole("button", { name: "한 수 앞으로" }).click();
-  await expect(rows.first()).toBeVisible();
-  await expect(
-    page.getByText(/번째 물음/).or(page.getByText(/답: /)),
-  ).toBeVisible();
-  await page.screenshot({ path: info.outputPath("baseball-review.png") });
-});
+    await page.goto("/review");
+    await page.getByRole("button", { name: /⚾ 숫자야구 · 혼자/ }).click();
+    const rows = page.locator("li[data-guess]");
+    // 끝난 장면부터 보인다. 처음으로 가면 물은 수가 없다.
+    await expect(rows.first()).toBeVisible();
+    await page.getByRole("button", { name: "처음" }).click();
+    await expect(rows).toHaveCount(0);
+    for (let i = 0; i < 6 && (await rows.count()) === 0; i++)
+      await page.getByRole("button", { name: "한 수 앞으로" }).click();
+    await expect(rows.first()).toBeVisible();
+    await expect(
+      page.getByText(/번째 물음/).or(page.getByText(/답: /)),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath("baseball-review.png") });
+  },
+);
 
-test("숫자야구 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  const touch = info.project.name.startsWith("phone");
-  await page.goto("/baseball");
-  await page.getByRole("button", { name: /숫자야구 배우기/ }).click();
-  await expect(page.getByText("0/5")).toBeVisible();
+test(
+  "숫자야구 배우기: 단원을 끝내고, 미션은 틀리면 다시 한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/baseball");
+    await page.getByRole("button", { name: /숫자야구 배우기/ }).click();
+    await expect(page.getByText("0/5")).toBeVisible();
 
-  // 1단원: 설명 둘 → 퀴즈 → 하나 남은 수 미션
-  await page.getByRole("button", { name: /숫자야구는 어떤 게임/ }).click();
-  for (let i = 0; i < 2; i++)
+    // 1단원: 설명 둘 → 퀴즈 → 하나 남은 수 미션
+    await page.getByRole("button", { name: /숫자야구는 어떤 게임/ }).click();
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "1S 2B" }).click();
+    await expect(page.getByText("정답이에요!")).toBeVisible();
     await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "1S 2B" }).click();
-  await expect(page.getByText("정답이에요!")).toBeVisible();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  await expect(myRows(page)).toHaveCount(4);
-  await page.screenshot({ path: info.outputPath("baseball-mission.png") });
-  await enter(page, "573", "물어보기", touch);
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
-  await page.getByRole("button", { name: "단원 목록으로" }).click();
-  await expect(page.getByText("1/5")).toBeVisible();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await expect(myRows(page)).toHaveCount(4);
+    await page.screenshot({ path: info.outputPath("baseball-mission.png") });
+    await enter(page, "573", "물어보기", touch);
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
+    await page.getByRole("button", { name: "단원 목록으로" }).click();
+    await expect(page.getByText("1/5")).toBeVisible();
 
-  // 2단원: 자리를 틀리면 실패, 다시 해서 맞히면 성공
-  await page.getByRole("button", { name: /아웃으로 숫자 지우기/ }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "1·5·9" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
-  await enter(page, "195", "물어보기", touch);
-  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다시 하기" }).click();
-  await expect(myRows(page)).toHaveCount(4);
-  await enter(page, "915", "물어보기", touch);
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
+    // 2단원: 자리를 틀리면 실패, 다시 해서 맞히면 성공
+    await page.getByRole("button", { name: /아웃으로 숫자 지우기/ }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "1·5·9" }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
+    await enter(page, "195", "물어보기", touch);
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(myRows(page)).toHaveCount(4);
+    await enter(page, "915", "물어보기", touch);
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
 
-  // 튜토리얼 대국은 이어하기에 남지 않는다.
-  await page.goto("/baseball");
-  await expect(page.getByText("1/5 단원 마침")).toBeVisible();
-  await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
-});
+    // 튜토리얼 대국은 이어하기에 남지 않는다.
+    await page.goto("/baseball");
+    await expect(page.getByText("1/5 단원 마침")).toBeVisible();
+    await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
+  },
+);

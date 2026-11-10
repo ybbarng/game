@@ -162,142 +162,145 @@ test("민화투: 목록에서 들어가 컴퓨터와 한 판을 끝까지 치고
   expect(errors).toEqual([]);
 });
 
-test("민화투 배우기: 첫 단원 미션은 틀리면 실패하고 다시 해서 성공한다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name !== "desktop",
-    "배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)",
-  );
-  const touch = info.project.name.startsWith("phone");
-  await page.goto("/minhwatu");
-  await page.getByRole("button", { name: /민화투 배우기/ }).click();
-  await expect(page.getByText("0/6")).toBeVisible();
-  await page.getByRole("button", { name: /민화투는 어떤 게임/ }).click();
-  for (let i = 0; i < 2; i++)
+test(
+  "민화투 배우기: 첫 단원 미션은 틀리면 실패하고 다시 해서 성공한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 배우기 진행은 크기와 상관없다(공통 배우기 화면의 배치는 tutorial.spec이 세 크기로 본다)
+    const touch = info.project.name.startsWith("phone");
+    await page.goto("/minhwatu");
+    await page.getByRole("button", { name: /민화투 배우기/ }).click();
+    await expect(page.getByText("0/6")).toBeVisible();
+    await page.getByRole("button", { name: /민화투는 어떤 게임/ }).click();
+    for (let i = 0; i < 2; i++)
+      await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "3월 피" }).click();
     await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "3월 피" }).click();
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByRole("button", { name: "미션 시작" }).click();
+    await page.getByRole("button", { name: "미션 시작" }).click();
 
-  const play = async (name: string) => {
-    const card = hand(page).getByRole("button", { name });
-    if (touch) {
-      await card.tap();
-      await card.tap();
-    } else await card.click();
-  };
-  // 틀린 카드(5월 피)를 내면 실패
-  await play("난초 피");
-  await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다시 하기" }).click();
-  await expect(handCards(page)).toHaveCount(3);
-  await page.screenshot({ path: info.outputPath("minhwatu-mission.png") });
-  await play("벚꽃 광");
-  await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByText("단원 완료!")).toBeVisible();
+    const play = async (name: string) => {
+      const card = hand(page).getByRole("button", { name });
+      if (touch) {
+        await card.tap();
+        await card.tap();
+      } else await card.click();
+    };
+    // 틀린 카드(5월 피)를 내면 실패
+    await play("난초 피");
+    await expect(page.getByRole("dialog", { name: "미션 실패" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다시 하기" }).click();
+    await expect(handCards(page)).toHaveCount(3);
+    await page.screenshot({ path: info.outputPath("minhwatu-mission.png") });
+    await play("벚꽃 광");
+    await expect(page.getByRole("dialog", { name: "미션 성공" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await expect(page.getByText("단원 완료!")).toBeVisible();
 
-  // 튜토리얼 대국은 이어하기에 남지 않는다.
-  await page.goto("/minhwatu");
-  await expect(page.getByText("1/6 단원 마침")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /하던 게임 이어하기/ }),
-  ).toHaveCount(0);
-});
+    // 튜토리얼 대국은 이어하기에 남지 않는다.
+    await page.goto("/minhwatu");
+    await expect(page.getByText("1/6 단원 마침")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /하던 게임 이어하기/ }),
+    ).toHaveCount(0);
+  },
+);
 
-test("민화투: 방장이 방을 만들고 친구가 들어와 컴퓨터 하나와 셋이 끝까지 치고, 판 끝 검증을 통과한다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
-  const host = await context.newPage();
-  const guest = await context.newPage();
-  const errors: string[] = [];
-  for (const p of [host, guest])
-    p.on("pageerror", (e) => errors.push(e.message));
+test(
+  "민화투: 방장이 방을 만들고 친구가 들어와 컴퓨터 하나와 셋이 끝까지 치고, 판 끝 검증을 통과한다",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    // 데스크톱에서만 돌린다
+    const host = await context.newPage();
+    const guest = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [host, guest])
+      p.on("pageerror", (e) => errors.push(e.message));
 
-  await host.goto("/minhwatu?net=local");
-  await chooseOptions(host, "한 판");
-  await host.getByRole("button", { name: /다함께 민화투/ }).click();
-  await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
-  await host.getByRole("button", { name: "방 만들기", exact: true }).click();
-  const link = await host.locator("input[readonly]").inputValue();
-  expect(link).toContain("/minhwatu");
+    await host.goto("/minhwatu?net=local");
+    await chooseOptions(host, "한 판");
+    await host.getByRole("button", { name: /다함께 민화투/ }).click();
+    await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
+    await host.getByRole("button", { name: "방 만들기", exact: true }).click();
+    const link = await host.locator("input[readonly]").inputValue();
+    expect(link).toContain("/minhwatu");
 
-  await guest.goto(link);
-  await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
-  await guest.getByRole("button", { name: "들어가기" }).click();
-  await expect(host.getByText("철수")).toBeVisible();
-  await host.getByRole("button", { name: "시작하기" }).click();
-  await expect(handCards(guest)).toHaveCount(7);
-  await expect(handCards(host)).toHaveCount(7);
+    await guest.goto(link);
+    await guest.getByPlaceholder("친구에게 보일 이름").fill("철수");
+    await guest.getByRole("button", { name: "들어가기" }).click();
+    await expect(host.getByText("철수")).toBeVisible();
+    await host.getByRole("button", { name: "시작하기" }).click();
+    await expect(handCards(guest)).toHaveCount(7);
+    await expect(handCards(host)).toHaveCount(7);
 
-  // 차례인 쪽이 낸다. 둘 다 끝 상자가 뜰 때까지
-  const myTurn = async (p: Page) =>
-    /내 차례|먹을 바닥 패를 고르세요/.test(await statusNow(p));
-  for (let guard = 0; guard < 60; guard++) {
-    const done =
-      (await host.locator("[data-outcome]").count()) > 0 &&
-      (await guest.locator("[data-outcome]").count()) > 0;
-    if (done) break;
-    await expect
-      .poll(
-        async () =>
-          (await myTurn(host)) ||
-          (await myTurn(guest)) ||
-          (await host.locator("[data-outcome]").count()) > 0,
-        { timeout: 20_000 },
-      )
-      .toBe(true);
-    if (await myTurn(host)) await playTurn(host, false);
-    else if (await myTurn(guest)) await playTurn(guest, false);
-  }
-  await expect(guest.locator("[data-outcome]")).toBeVisible({
-    timeout: 20_000,
-  });
-  await expect(guest.locator("[data-seat-score]")).toHaveCount(3);
-  await guest.screenshot({ path: info.outputPath("minhwatu-online.png") });
+    // 차례인 쪽이 낸다. 둘 다 끝 상자가 뜰 때까지
+    const myTurn = async (p: Page) =>
+      /내 차례|먹을 바닥 패를 고르세요/.test(await statusNow(p));
+    for (let guard = 0; guard < 60; guard++) {
+      const done =
+        (await host.locator("[data-outcome]").count()) > 0 &&
+        (await guest.locator("[data-outcome]").count()) > 0;
+      if (done) break;
+      await expect
+        .poll(
+          async () =>
+            (await myTurn(host)) ||
+            (await myTurn(guest)) ||
+            (await host.locator("[data-outcome]").count()) > 0,
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+      if (await myTurn(host)) await playTurn(host, false);
+      else if (await myTurn(guest)) await playTurn(guest, false);
+    }
+    await expect(guest.locator("[data-outcome]")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(guest.locator("[data-seat-score]")).toHaveCount(3);
+    await guest.screenshot({ path: info.outputPath("minhwatu-online.png") });
 
-  // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
-  await host.getByRole("button", { name: "← 민화투" }).click();
-  await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
-    timeout: 20_000,
-  });
-  expect(errors).toEqual([]);
-});
+    // 방장이 나가면 기록이 공개되고, 참가자가 처음부터 다시 돌려 확인한다.
+    await host.getByRole("button", { name: "← 민화투" }).click();
+    await expect(guest.getByText(/\[검증\] 나 — 문제없음/)).toBeVisible({
+      timeout: 20_000,
+    });
+    expect(errors).toEqual([]);
+  },
+);
 
-test("민화투: 끝낸 게임은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "기록은 화면 크기와 상관없다");
-  await page.goto("/minhwatu");
-  await chooseOptions(page, "한 판", "입문");
-  await page.goto("/minhwatu?seed=11");
-  await page.getByRole("button", { name: /나홀로 민화투/ }).click();
-  for (let guard = 0; guard < 12; guard++)
-    if (!(await playTurn(page, false))) break;
-  await expect(page.locator("[data-outcome]")).toBeVisible();
-  await archived(page);
+test(
+  "민화투: 끝낸 게임은 내 기록에 쌓이고 복기에서 한 걸음씩 다시 본다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 기록은 화면 크기와 상관없다
+    await page.goto("/minhwatu");
+    await chooseOptions(page, "한 판", "입문");
+    await page.goto("/minhwatu?seed=11");
+    await page.getByRole("button", { name: /나홀로 민화투/ }).click();
+    for (let guard = 0; guard < 12; guard++)
+      if (!(await playTurn(page, false))) break;
+    await expect(page.locator("[data-outcome]")).toBeVisible();
+    await archived(page);
 
-  await page.goto("/profile?game=minhwatu");
-  await expect(page.getByRole("tab", { name: "🎴 민화투" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await expect(page.getByText("판 평균 점수")).toBeVisible();
+    await page.goto("/profile?game=minhwatu");
+    await expect(page.getByRole("tab", { name: "🎴 민화투" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByText("판 평균 점수")).toBeVisible();
 
-  await page.goto("/review");
-  await page.getByRole("button", { name: /🎴 민화투 · 혼자/ }).click();
-  await page.getByRole("button", { name: "처음" }).click();
-  await expect(page.getByRole("status")).toContainText("1판 · 0/");
-  await page.getByRole("button", { name: "한 수 앞으로" }).click();
-  await expect(page.getByRole("status")).toContainText("1판 · 1/");
-  await expect(page.getByText(/다음 수: |고수도 같은 수/)).toBeVisible({
-    timeout: 10_000,
-  });
-  await page.screenshot({ path: info.outputPath("minhwatu-review.png") });
-});
+    await page.goto("/review");
+    await page.getByRole("button", { name: /🎴 민화투 · 혼자/ }).click();
+    await page.getByRole("button", { name: "처음" }).click();
+    await expect(page.getByRole("status")).toContainText("1판 · 0/");
+    await page.getByRole("button", { name: "한 수 앞으로" }).click();
+    await expect(page.getByRole("status")).toContainText("1판 · 1/");
+    await expect(page.getByText(/다음 수: |고수도 같은 수/)).toBeVisible({
+      timeout: 10_000,
+    });
+    await page.screenshot({ path: info.outputPath("minhwatu-review.png") });
+  },
+);

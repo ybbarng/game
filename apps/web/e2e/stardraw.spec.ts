@@ -661,10 +661,10 @@ test("패스키가 없는 브라우저는 미리 안내하고, 앱 안 브라우
   await kakaoLetter.close();
 });
 
-test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고침은 그 화면에 머문다", async ({
-  page,
-}, info) => {
-  test.skip(isPhone(info.project.name), "주소·기록은 한 크기로");
+test("화면마다 주소가 있어 뒤로가기는 바로 전 화면, 새로고침은 그 화면에 머문다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 주소·기록은 한 크기로
   await page.goto("/stardraw");
   // 지난 회차는 탭바에서(처음 온 사람의 입구에서도)
   await page.locator("[data-tab='rounds']").click();
@@ -928,10 +928,10 @@ test("데모: 1등으로 응모해 당첨자 확인 초록불까지(틀린 별, 
   ).toBe(0);
 });
 
-test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차가 넘어가도 1등이 된다", async ({
-  page,
-}, info) => {
-  test.skip(isPhone(info.project.name), "저장된 상태와 회차 흐름은 한 크기로");
+test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차가 넘어가도 1등이 된다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 저장된 상태와 회차 흐름은 한 크기로
   await page.goto("/stardraw/demo");
   // 이미 해 본 기기: 한 회차 응모·추첨을 거쳐 열쇠와 장부가 저장된 상태(「데모 처음부터」를 누르지 않는다)
   await page.getByRole("button", REGISTER).click();
@@ -973,134 +973,140 @@ test("데모: 이미 해 본 기기에서 「1등 되게」를 누른 뒤 회차
   });
 });
 
-test("데모 화면 둘러보기: 목록의 화면이 모두 가로 넘침 없이 열리고, 뒤로가기는 목록으로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
-  await page.goto("/stardraw/demo");
-  const list = page.getByRole("navigation", { name: "화면 둘러보기" });
-  // 목록에서 들어가면 # 조각이 기록에 남아, 뒤로가기와 「화면 목록」이 목록으로 돌아온다
-  await list.getByRole("link", { name: "결과 봉투" }).click();
-  await expect(page).toHaveURL(/#tour-envelope$/);
-  const screen = page.locator("[data-tour-screen][data-tour-ready]");
-  await expect(screen.locator("[data-envelope='1']")).toBeVisible({
-    timeout: 30_000,
-  });
-  await page.goBack();
-  await expect(list).toBeVisible();
-  await list.getByRole("link", { name: "내 예측" }).click();
-  await expect(screen.getByText("제 1회").first()).toBeVisible();
-  await page.getByRole("button", { name: "← 화면 목록" }).click();
-  await expect(list).toBeVisible();
-  await expect(page).not.toHaveURL(/#tour/);
-
-  const expectations: [
-    string,
-    (s: typeof screen) => ReturnType<Page["locator"]>,
-  ][] = [
-    ["enter", (s) => s.locator("[data-entry-slip]")],
-    ["receipt", (s) => s.locator("[data-receipt]")],
-    ["draw", (s) => s.locator("[data-draw-result]")],
-    ["envelope", (s) => s.locator("[data-envelope='1']")],
-    ["rank-1", (s) => s.locator("[data-draw-result='1']")],
-    ["rank-2", (s) => s.locator("[data-draw-result='2']")],
-    ["rank-3", (s) => s.locator("[data-draw-result='3']")],
-    ["rank-4", (s) => s.locator("[data-draw-result='4']")],
-    ["rank-5", (s) => s.locator("[data-draw-result='5']")],
-    ["lose", (s) => s.getByText("이번에는 등수에 들지 못했습니다")],
-    ["mine", (s) => s.getByText("제 1회").first()],
-    ["rounds", (s) => s.getByRole("heading", { name: "지난 회차" })],
-    ["win-notice", (s) => s.locator("[data-check-url]")],
-    ["link-open", (s) => s.getByRole("button", { name: "확인 시작" })],
-    ["link-used", (s) => s.locator("[data-link-notice='used']")],
-    ["winner", (s) => s.getByText(/입상 확인 요청이 왔습니다/).first()],
-    ["checker", (s) => s.getByText("입상자의 승인을 기다리고 있습니다")],
-    ["check-ok", (s) => s.locator("[data-verdict='ok']")],
-    ["check-fail", (s) => s.locator("[data-verdict='fail']")],
-    ["register", (s) => s.getByRole("button", REGISTER)],
-    ["id-card", (s) => s.locator("[data-idcard]")],
-    [
-      "id-earth",
-      (s) => s.getByText("우리 은하 › 오리온 팔 › 태양계 › 지구 › 남극"),
-    ],
-    ["id-laika", (s) => s.locator("[data-egg='laika']")],
-    ["id-prince", (s) => s.locator("[data-egg='prince']")],
-    ["id-rabbit", (s) => s.locator("[data-egg='rabbit']")],
-    ["sheet-create", () => page.locator("[data-demo-unlock='create']")],
-    ["sheet-sign", () => page.locator("[data-demo-unlock='sign']")],
-    ["sheet-check", () => page.locator("[data-demo-unlock='check']")],
-    [
-      "in-app",
-      (s) => s.getByText(/카카오톡 안에서는 패스키 확인을 마치지 못했습니다/),
-    ],
-    ["no-passkey", (s) => s.getByText(/패스키를 지원하지 않습니다/)],
-    // 연출 항목: 시험은 움직임 줄이기라 결과 모습만 보인다
-    ["fx-gate", (s) => s.locator("[data-gate]")],
-    ["fx-issue", (s) => s.locator("[data-issued='new']")],
-    [
-      "fx-issue-earth",
-      (s) => s.locator("[data-issued-origin]").filter({ hasText: "지구" }),
-    ],
-    [
-      "fx-issue-andromeda",
-      (s) =>
-        s.locator("[data-issued-origin]").filter({ hasText: "안드로메다" }),
-    ],
-    ["fx-welcome", (s) => s.locator("[data-idcard]")],
-    ["fx-submit", (s) => s.locator("[data-receipt]")],
-    ["fx-print", (s) => s.locator("[data-receipt]")],
-    ["fx-bounce", () => page.locator("[data-bounce]")],
-    [
-      "fx-error-busy",
-      () => page.locator("[data-entry-error]").filter({ hasText: "너무 바빠" }),
-    ],
-    [
-      "fx-error-offline",
-      () =>
-        page.locator("[data-entry-error]").filter({ hasText: "연락이 닿지" }),
-    ],
-    ["fx-card-open", (s) => s.locator("[data-card='open']")],
-    ["fx-card-entered", (s) => s.locator("[data-card='entered']")],
-    ["fx-card-drawing", (s) => s.locator("[data-round-note='closed-entered']")],
-    [
-      "fx-card-closed-none",
-      (s) => s.locator("[data-round-note='closed-none']"),
-    ],
-  ];
-  for (const [id, find] of expectations) {
-    await page.evaluate((h) => {
-      window.location.hash = h;
-    }, `#tour-${id}`);
-    await expect(page.locator(`[data-tour-screen='${id}']`)).toBeVisible();
-    await expect(find(screen)).toBeVisible();
-    await noSideScroll(page);
-    await page.screenshot({
-      path: info.outputPath(`stardraw-tour-${id}.png`),
-      fullPage: true,
+test(
+  "데모 화면 둘러보기: 목록의 화면이 모두 가로 넘침 없이 열리고, 뒤로가기는 목록으로",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 휴대폰 세로 한 크기로
+    await page.goto("/stardraw/demo");
+    const list = page.getByRole("navigation", { name: "화면 둘러보기" });
+    // 목록에서 들어가면 # 조각이 기록에 남아, 뒤로가기와 「화면 목록」이 목록으로 돌아온다
+    await list.getByRole("link", { name: "결과 봉투" }).click();
+    await expect(page).toHaveURL(/#tour-envelope$/);
+    const screen = page.locator("[data-tour-screen][data-tour-ready]");
+    await expect(screen.locator("[data-envelope='1']")).toBeVisible({
+      timeout: 30_000,
     });
-  }
-  // 남의 등록증(드문 사진 견본)은 이 기기의 열쇠로 서명해도 맞지 않아 조용히 실패한다
-  await page.evaluate(() => {
-    window.location.hash = "#tour-id-laika";
-  });
-  const egg = screen.locator("[data-idcard]");
-  await expect(egg).toBeVisible();
-  await egg.click({ position: CARD_TAP });
-  await expect(screen.getByText("확인하지 못했습니다")).toBeVisible();
-  await expect(egg.locator("[data-owner-ok]")).toHaveCount(0);
-  // 내 것(데모 열쇠)은 통과
-  await page.evaluate(() => {
-    window.location.hash = "#tour-id-card";
-  });
-  const own = screen.locator("[data-idcard]");
-  await own.click({ position: CARD_TAP });
-  await expect(own.locator("[data-owner-ok]")).toBeVisible();
-});
+    await page.goBack();
+    await expect(list).toBeVisible();
+    await list.getByRole("link", { name: "내 예측" }).click();
+    await expect(screen.getByText("제 1회").first()).toBeVisible();
+    await page.getByRole("button", { name: "← 화면 목록" }).click();
+    await expect(list).toBeVisible();
+    await expect(page).not.toHaveURL(/#tour/);
 
-test("데모 둘러보기 연출: 영수증 출력이 오버레이로 나왔다 걷히고, 「다시 보기」로 다시 나온다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "한 크기로");
+    const expectations: [
+      string,
+      (s: typeof screen) => ReturnType<Page["locator"]>,
+    ][] = [
+      ["enter", (s) => s.locator("[data-entry-slip]")],
+      ["receipt", (s) => s.locator("[data-receipt]")],
+      ["draw", (s) => s.locator("[data-draw-result]")],
+      ["envelope", (s) => s.locator("[data-envelope='1']")],
+      ["rank-1", (s) => s.locator("[data-draw-result='1']")],
+      ["rank-2", (s) => s.locator("[data-draw-result='2']")],
+      ["rank-3", (s) => s.locator("[data-draw-result='3']")],
+      ["rank-4", (s) => s.locator("[data-draw-result='4']")],
+      ["rank-5", (s) => s.locator("[data-draw-result='5']")],
+      ["lose", (s) => s.getByText("이번에는 등수에 들지 못했습니다")],
+      ["mine", (s) => s.getByText("제 1회").first()],
+      ["rounds", (s) => s.getByRole("heading", { name: "지난 회차" })],
+      ["win-notice", (s) => s.locator("[data-check-url]")],
+      ["link-open", (s) => s.getByRole("button", { name: "확인 시작" })],
+      ["link-used", (s) => s.locator("[data-link-notice='used']")],
+      ["winner", (s) => s.getByText(/입상 확인 요청이 왔습니다/).first()],
+      ["checker", (s) => s.getByText("입상자의 승인을 기다리고 있습니다")],
+      ["check-ok", (s) => s.locator("[data-verdict='ok']")],
+      ["check-fail", (s) => s.locator("[data-verdict='fail']")],
+      ["register", (s) => s.getByRole("button", REGISTER)],
+      ["id-card", (s) => s.locator("[data-idcard]")],
+      [
+        "id-earth",
+        (s) => s.getByText("우리 은하 › 오리온 팔 › 태양계 › 지구 › 남극"),
+      ],
+      ["id-laika", (s) => s.locator("[data-egg='laika']")],
+      ["id-prince", (s) => s.locator("[data-egg='prince']")],
+      ["id-rabbit", (s) => s.locator("[data-egg='rabbit']")],
+      ["sheet-create", () => page.locator("[data-demo-unlock='create']")],
+      ["sheet-sign", () => page.locator("[data-demo-unlock='sign']")],
+      ["sheet-check", () => page.locator("[data-demo-unlock='check']")],
+      [
+        "in-app",
+        (s) => s.getByText(/카카오톡 안에서는 패스키 확인을 마치지 못했습니다/),
+      ],
+      ["no-passkey", (s) => s.getByText(/패스키를 지원하지 않습니다/)],
+      // 연출 항목: 시험은 움직임 줄이기라 결과 모습만 보인다
+      ["fx-gate", (s) => s.locator("[data-gate]")],
+      ["fx-issue", (s) => s.locator("[data-issued='new']")],
+      [
+        "fx-issue-earth",
+        (s) => s.locator("[data-issued-origin]").filter({ hasText: "지구" }),
+      ],
+      [
+        "fx-issue-andromeda",
+        (s) =>
+          s.locator("[data-issued-origin]").filter({ hasText: "안드로메다" }),
+      ],
+      ["fx-welcome", (s) => s.locator("[data-idcard]")],
+      ["fx-submit", (s) => s.locator("[data-receipt]")],
+      ["fx-print", (s) => s.locator("[data-receipt]")],
+      ["fx-bounce", () => page.locator("[data-bounce]")],
+      [
+        "fx-error-busy",
+        () =>
+          page.locator("[data-entry-error]").filter({ hasText: "너무 바빠" }),
+      ],
+      [
+        "fx-error-offline",
+        () =>
+          page.locator("[data-entry-error]").filter({ hasText: "연락이 닿지" }),
+      ],
+      ["fx-card-open", (s) => s.locator("[data-card='open']")],
+      ["fx-card-entered", (s) => s.locator("[data-card='entered']")],
+      [
+        "fx-card-drawing",
+        (s) => s.locator("[data-round-note='closed-entered']"),
+      ],
+      [
+        "fx-card-closed-none",
+        (s) => s.locator("[data-round-note='closed-none']"),
+      ],
+    ];
+    for (const [id, find] of expectations) {
+      await page.evaluate((h) => {
+        window.location.hash = h;
+      }, `#tour-${id}`);
+      await expect(page.locator(`[data-tour-screen='${id}']`)).toBeVisible();
+      await expect(find(screen)).toBeVisible();
+      await noSideScroll(page);
+      await page.screenshot({
+        path: info.outputPath(`stardraw-tour-${id}.png`),
+        fullPage: true,
+      });
+    }
+    // 남의 등록증(드문 사진 견본)은 이 기기의 열쇠로 서명해도 맞지 않아 조용히 실패한다
+    await page.evaluate(() => {
+      window.location.hash = "#tour-id-laika";
+    });
+    const egg = screen.locator("[data-idcard]");
+    await expect(egg).toBeVisible();
+    await egg.click({ position: CARD_TAP });
+    await expect(screen.getByText("확인하지 못했습니다")).toBeVisible();
+    await expect(egg.locator("[data-owner-ok]")).toHaveCount(0);
+    // 내 것(데모 열쇠)은 통과
+    await page.evaluate(() => {
+      window.location.hash = "#tour-id-card";
+    });
+    const own = screen.locator("[data-idcard]");
+    await own.click({ position: CARD_TAP });
+    await expect(own.locator("[data-owner-ok]")).toBeVisible();
+  },
+);
+
+test("데모 둘러보기 연출: 영수증 출력이 오버레이로 나왔다 걷히고, 「다시 보기」로 다시 나온다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 한 크기로
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/stardraw/demo#tour-fx-print");
   const overlay = page.locator("[data-stage-overlay]");
@@ -1116,10 +1122,10 @@ test("데모 둘러보기 연출: 영수증 출력이 오버레이로 나왔다 
  * 「관측지로 가기」로 결과 전에 들어가면 남은 시간을 보이며 기다리고, 결과가 들어오는 순간 추첨으로 바뀐다.
  * 결과 전에 나가면 "열어 봄"이 남지 않아 정답 가리기가 그대로다(연습 장부의 건너뛰기로 결과를 결정적으로 들인다)
  */
-test("관측지로 가기: 결과 전에는 기다리고, 결과가 오면 바로 추첨", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("관측지로 가기: 결과 전에는 기다리고, 결과가 오면 바로 추첨", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await virtualAuthenticator(page);
   await page.goto("/stardraw");
   await page.getByRole("button", REGISTER).click();
@@ -1149,10 +1155,10 @@ test("관측지로 가기: 결과 전에는 기다리고, 결과가 오면 바�
  * 건너뛰면 바로 결과이고 열어 봄으로 친다. 실시간(기다리던 화면에서 결과가 들어와 시작한 추첨)에는 없다.
  * 응모는 움직임 줄이기로 빨리 지나고, 추첨만 연출을 켜서 본다
  */
-test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차만", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("추첨 건너뛰기: 첫 추첨은 끝까지, 그 뒤 나중에 연 회차만", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   test.setTimeout(150_000);
   await virtualAuthenticator(page);
   const skipDraw = page.getByRole("button", { name: "관측 건너뛰기" });
@@ -1234,10 +1240,10 @@ async function toEntryEdge(page: Page) {
  * 마감 안내는 장부(서버) 시각으로 화면 마감 1분 전부터, 하늘판 위쪽 가장자리에 겹쳐 뜬다.
  * 자리를 차지하지 않아 들어올 때 화면이 1px도 밀리지 않고, 머리 줄 「홈」과 겹치지 않는다
  */
-test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await virtualAuthenticator(page);
   await page.goto("/stardraw");
   await page.getByRole("button", REGISTER).click();
@@ -1267,133 +1273,139 @@ test("마감 안내: 1분 전부터, 화면을 밀지 않고 하늘판 위에", 
  * 예측이 마감되면 접수처는 하늘 아래를 닫고 몇 초 뒤 관측지로 옮긴다(2026-11-02 사용자). 접수처 밖의 화면에는
  * 우주국 방송 토스트가 뜨고, 누르면 관측지로 간다
  */
-test("예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방송 토스트", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
-  // 진동을 부른 기록(방송이 내려오는 순간 [30, 80, 30] 한 번, docs/36 11-70)
-  await page.addInitScript(() => {
-    const w = window as unknown as { __vibrated: unknown[] };
-    w.__vibrated = [];
-    Object.defineProperty(navigator, "vibrate", {
-      configurable: true,
-      value: (p: unknown) => {
-        w.__vibrated.push(p);
-        return true;
-      },
+test(
+  "예측 마감: 접수처는 몇 초 뒤 관측지로, 다른 화면엔 방송 토스트",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 휴대폰 세로 한 크기로
+    // 진동을 부른 기록(방송이 내려오는 순간 [30, 80, 30] 한 번, docs/36 11-70)
+    await page.addInitScript(() => {
+      const w = window as unknown as { __vibrated: unknown[] };
+      w.__vibrated = [];
+      Object.defineProperty(navigator, "vibrate", {
+        configurable: true,
+        value: (p: unknown) => {
+          w.__vibrated.push(p);
+          return true;
+        },
+      });
     });
-  });
-  const broadcastBuzzes = () =>
-    page.evaluate(() =>
-      (window as unknown as { __vibrated: unknown[] }).__vibrated.filter(
-        (p) => JSON.stringify(p) === "[30,80,30]",
-      ),
+    const broadcastBuzzes = () =>
+      page.evaluate(() =>
+        (window as unknown as { __vibrated: unknown[] }).__vibrated.filter(
+          (p) => JSON.stringify(p) === "[30,80,30]",
+        ),
+      );
+    await virtualAuthenticator(page);
+    await page.goto("/stardraw");
+    await page.getByRole("button", REGISTER).click();
+    await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+    await expect(page).toHaveURL(/\/stardraw\/now$/);
+    await expect(page.getByRole("button", ENTER)).toBeVisible();
+    const toast = page.locator("[data-broadcast]");
+    // 화면 마감(:54:55) 뒤: 하늘 아래를 닫고 안내(접수처에는 토스트를 겹쳐 띄우지 않는다)
+    // 시계를 멈춰 몇 초 뒤 옮겨 가기 전에 안내를 본다
+    await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
+    const closed = page.locator("[data-enter-closed]");
+    await expect(closed).toContainText("1회 예측이 마감되었습니다.");
+    await expect(closed).toContainText("초 뒤 관측지로 이동합니다.");
+    await expect(page.getByRole("button", ENTER)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "자동", exact: true }),
+    ).toHaveCount(0);
+    await expect(toast).toHaveCount(0);
+    await page.screenshot({
+      path: info.outputPath("stardraw-enter-closed.png"),
+      fullPage: true,
+    });
+    // 「홈」으로 나가면 첫 화면이 다 뜨고 잠깐 쉰 뒤 방송이 내려온다(뜨자마자 덮지 않는다), 누르면 관측지
+    await page.getByRole("button", { name: "홈", exact: true }).click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(page.locator("nav [data-tab='home']:visible")).toBeVisible();
+    await expect(toast).toHaveCount(0);
+    await fastForwardUntil(page, async () => (await toast.count()) > 0);
+    await expect(toast).toContainText("카노푸스 우주국");
+    // 관측까지 5분 남은 마감 직후에는 「곧 시작」 대신 마감과 관측 시각(관측 15초 전 관측 안내부터 관측지로 부른다)
+    await expect(toast).toContainText(
+      /1회 예측을 마감했습니다\. 관측은 \d\d:00입니다\./,
     );
-  await virtualAuthenticator(page);
-  await page.goto("/stardraw");
-  await page.getByRole("button", REGISTER).click();
-  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await expect(page.getByRole("button", ENTER)).toBeVisible();
-  const toast = page.locator("[data-broadcast]");
-  // 화면 마감(:54:55) 뒤: 하늘 아래를 닫고 안내(접수처에는 토스트를 겹쳐 띄우지 않는다)
-  // 시계를 멈춰 몇 초 뒤 옮겨 가기 전에 안내를 본다
-  await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
-  const closed = page.locator("[data-enter-closed]");
-  await expect(closed).toContainText("1회 예측이 마감되었습니다.");
-  await expect(closed).toContainText("초 뒤 관측지로 이동합니다.");
-  await expect(page.getByRole("button", ENTER)).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "자동", exact: true }),
-  ).toHaveCount(0);
-  await expect(toast).toHaveCount(0);
-  await page.screenshot({
-    path: info.outputPath("stardraw-enter-closed.png"),
-    fullPage: true,
-  });
-  // 「홈」으로 나가면 첫 화면이 다 뜨고 잠깐 쉰 뒤 방송이 내려온다(뜨자마자 덮지 않는다), 누르면 관측지
-  await page.getByRole("button", { name: "홈", exact: true }).click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-  await expect(page.locator("nav [data-tab='home']:visible")).toBeVisible();
-  await expect(toast).toHaveCount(0);
-  await fastForwardUntil(page, async () => (await toast.count()) > 0);
-  await expect(toast).toContainText("카노푸스 우주국");
-  // 관측까지 5분 남은 마감 직후에는 「곧 시작」 대신 마감과 관측 시각(관측 15초 전 관측 안내부터 관측지로 부른다)
-  await expect(toast).toContainText(
-    /1회 예측을 마감했습니다\. 관측은 \d\d:00입니다\./,
-  );
-  expect(await broadcastBuzzes()).toHaveLength(1);
-  await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
-  await toast.click();
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
-  await expect(toast).toHaveCount(0);
-});
+    expect(await broadcastBuzzes()).toHaveLength(1);
+    await page.screenshot({ path: info.outputPath("stardraw-broadcast.png") });
+    await toast.click();
+    await expect(page).toHaveURL(/\/stardraw\/now$/);
+    await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+    await expect(toast).toHaveCount(0);
+  },
+);
 
 /**
  * 지금 회차(/stardraw/now): 고르던 별은 자동 저장되고, 마감 몇 초 뒤 관측지로 옮겨 간다. 방송은 밀면 사라진다.
  * 다음 회차에 접수처로 오면 「바구니에 담아 둔 별」을 불러와 한 칸씩 옮겨 적는다
  */
-test("지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측서를 불러온다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
-  await virtualAuthenticator(page);
-  await page.goto("/stardraw");
-  await page.getByRole("button", REGISTER).click();
-  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
-  await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
-  const closed = page.locator("[data-enter-closed]");
-  await expect(closed).toContainText("바구니에 담은 별은 저장해 둡니다.");
-  // 몇 초 뒤 같은 주소에서 관측지로
-  await page.clock.fastForward(6000);
-  await page.clock.resume();
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  // 첫 화면의 방송은 아래로 조금 끌면 뒤를 보이고 제자리로, 더 밀면 그 회차 동안 사라진다(옆으로 미는 판정은 단위 시험)
-  await page.getByRole("button", { name: "홈", exact: true }).click();
-  const toast = page.locator("[data-broadcast]");
-  await fastForwardUntil(page, () => toast.isVisible());
-  const box = await toast.boundingBox();
-  if (!box) throw new Error("토스트 자리 없음");
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx, cy + 40, { steps: 4 });
-  await page.mouse.up();
-  await expect(toast).toBeVisible();
-  // 제자리로 돌아온 뒤 다시 잡는다(돌아오는 0.3초 사이에는 처음 잰 자리에 토스트가 없을 수 있다)
-  await expect
-    .poll(async () => Math.round((await toast.boundingBox())?.y ?? -1))
-    .toBe(Math.round(box.y));
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx, cy + 120, { steps: 5 });
-  await page.mouse.up();
-  await expect(toast).toHaveCount(0);
-  // 1회 관측(정각부터 1분)이 끝나 2회가 열리면 접수처에 쓰던 예측서
-  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
-  await page
-    .getByRole("button", { name: "별 6개 고르기" })
-    .click({ timeout: 30_000 });
-  const draft = page.getByRole("region", { name: "바구니에 담아 둔 별" });
-  await expect(draft).toContainText("바구니에 담아 둔 별이 있어요 · 6개");
-  await page.screenshot({
-    path: info.outputPath("stardraw-draft.png"),
-    fullPage: true,
-  });
-  await draft.getByRole("button", { name: "불러오기" }).click();
-  await expect(draft).toHaveCount(0);
-  await page.clock.fastForward(4000);
-  await expect(page.getByText("6/6", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", ENTER)).toBeEnabled();
-});
+test(
+  "지금 회차: 마감 뒤 관측지로, 방송은 밀어 닫고, 쓰던 예측서를 불러온다",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 휴대폰 세로 한 크기로
+    await virtualAuthenticator(page);
+    await page.goto("/stardraw");
+    await page.getByRole("button", REGISTER).click();
+    await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+    await page.getByRole("button", { name: "자동", exact: true }).click();
+    await page.clock.pauseAt(new Date("2026-11-02T03:54:57Z"));
+    const closed = page.locator("[data-enter-closed]");
+    await expect(closed).toContainText("바구니에 담은 별은 저장해 둡니다.");
+    // 몇 초 뒤 같은 주소에서 관측지로
+    await page.clock.fastForward(6000);
+    await page.clock.resume();
+    await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+    await expect(page).toHaveURL(/\/stardraw\/now$/);
+    // 첫 화면의 방송은 아래로 조금 끌면 뒤를 보이고 제자리로, 더 밀면 그 회차 동안 사라진다(옆으로 미는 판정은 단위 시험)
+    await page.getByRole("button", { name: "홈", exact: true }).click();
+    const toast = page.locator("[data-broadcast]");
+    await fastForwardUntil(page, () => toast.isVisible());
+    const box = await toast.boundingBox();
+    if (!box) throw new Error("토스트 자리 없음");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy + 40, { steps: 4 });
+    await page.mouse.up();
+    await expect(toast).toBeVisible();
+    // 제자리로 돌아온 뒤 다시 잡는다(돌아오는 0.3초 사이에는 처음 잰 자리에 토스트가 없을 수 있다)
+    await expect
+      .poll(async () => Math.round((await toast.boundingBox())?.y ?? -1))
+      .toBe(Math.round(box.y));
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy + 120, { steps: 5 });
+    await page.mouse.up();
+    await expect(toast).toHaveCount(0);
+    // 1회 관측(정각부터 1분)이 끝나 2회가 열리면 접수처에 쓰던 예측서
+    await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
+    await page
+      .getByRole("button", { name: "별 6개 고르기" })
+      .click({ timeout: 30_000 });
+    const draft = page.getByRole("region", { name: "바구니에 담아 둔 별" });
+    await expect(draft).toContainText("바구니에 담아 둔 별이 있어요 · 6개");
+    await page.screenshot({
+      path: info.outputPath("stardraw-draft.png"),
+      fullPage: true,
+    });
+    await draft.getByRole("button", { name: "불러오기" }).click();
+    await expect(draft).toHaveCount(0);
+    await page.clock.fastForward(4000);
+    await expect(page.getByText("6/6", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", ENTER)).toBeEnabled();
+  },
+);
 
 /** 마감 직전: 위에 "마감까지 …" 안내가 뜨고, 연출을 줄여 마감 전에 접수된다 */
-test("마감 직전 응모: 줄인 연출로 마감 전에 접수", async ({ page }, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("마감 직전 응모: 줄인 연출로 마감 전에 접수", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   const card = await toEntryEdge(page);
   await card.press("Enter", { timeout: 10_000 });
   await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
@@ -1430,239 +1442,247 @@ async function holdHint(
  * 예측판·예측서·신분증을 기다리며 가만히 있으면 손짓이 나오고(별·지문 단추는 누르기, 예측서는 밀어 올리기), 손을 대면
  * 사라진다. 신분증은 등록증이 가운데에 다 보이고 아래 지문 단추를 누른다(docs/36 11-63)
  */
-test("가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 단추는 누르기", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
-  await virtualAuthenticator(page);
-  await page.goto("/stardraw");
-  await page.getByRole("button", REGISTER).click();
-  await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  // 편지 → 등록 신청 → 등록증 덮개가 겹쳐 열렸다 닫혀도 뒤 페이지 스크롤이 풀려 있다(2026-11-03 PC 제보)
-  await expect(page.locator("[data-stage-overlay]")).toHaveCount(0);
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.style.overflow))
-    .toBe("");
-  // 별을 아직 안 골랐으면 아무 별 하나 위에서 누르는 손짓
-  await speedUpAnimations(page);
-  const star = page.locator("[data-star-hint]");
-  await fastForwardUntil(page, () => star.isVisible());
-  await expect(star).toHaveCSS("pointer-events", "none");
-  await holdHint(star.locator("[data-idle-hint='tap']"), 0.4, () =>
-    page.screenshot({ path: info.outputPath("stardraw-hint-star.png") }),
-  );
-  await page.getByRole("button", { name: "자동", exact: true }).click();
-  await expect(star).toHaveCount(0);
-  await page.getByRole("button", ENTER).click();
-  const sheet = page.locator(
-    "[aria-label='예측서 제출'][aria-disabled='false']",
-  );
-  const swipe = sheet.locator("[data-idle-hint='swipe-up']");
-  await fastForwardUntil(page, () => swipe.isVisible());
-  // 손짓은 예측서 안에 겹치고, 누름을 가로채지 않는다
-  await expect(swipe).toHaveCSS("pointer-events", "none");
-  await expect(swipe).toHaveText("");
-  await holdHint(swipe, 0.45, () =>
-    page.screenshot({ path: info.outputPath("stardraw-hint-swipe.png") }),
-  );
-  // 손을 대면(키) 곧바로 사라진다
-  await page.keyboard.press("Shift");
-  await expect(swipe).toHaveCount(0);
-  await sheet.press("Enter");
-
-  const card = page.locator(
-    "[aria-label='신분증 제출'][aria-disabled='false']",
-  );
-  const finger = page.getByRole("button", {
-    name: "본인 확인으로 신분증 제출",
-  });
-  const cancel = page.getByRole("button", { name: "취소", exact: true });
-  // 지문 단추·「취소」는 아래에서 살짝 올라오며 나타난다(끝나도 남는 연출). 숨 쉬듯 되풀이하는 것은 끝나지 않아 뺀다
-  const appeared = (target: Locator) =>
-    target.evaluate((el) =>
-      el
-        .getAnimations()
-        .every(
-          (a) =>
-            a.playState === "finished" ||
-            a.effect?.getComputedTiming().iterations === Infinity,
-        ),
+test(
+  "가만히 있으면 손짓 안내: 예측서는 밀어 올리기, 지문 단추는 누르기",
+  { tag: "@only-phone-portrait" },
+  async ({ page }, info) => {
+    // 휴대폰 세로 한 크기로
+    await virtualAuthenticator(page);
+    await page.goto("/stardraw");
+    await page.getByRole("button", REGISTER).click();
+    await page.getByRole("button", { name: TO_PICK_ISSUED }).click();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    // 편지 → 등록 신청 → 등록증 덮개가 겹쳐 열렸다 닫혀도 뒤 페이지 스크롤이 풀려 있다(2026-11-03 PC 제보)
+    await expect(page.locator("[data-stage-overlay]")).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.overflow))
+      .toBe("");
+    // 별을 아직 안 골랐으면 아무 별 하나 위에서 누르는 손짓
+    await speedUpAnimations(page);
+    const star = page.locator("[data-star-hint]");
+    await fastForwardUntil(page, () => star.isVisible());
+    await expect(star).toHaveCSS("pointer-events", "none");
+    await holdHint(star.locator("[data-idle-hint='tap']"), 0.4, () =>
+      page.screenshot({ path: info.outputPath("stardraw-hint-star.png") }),
     );
-  // 등록증이 가운데로 다 올라오고 지문 단추·「취소」도 다 나타난 뒤(움직임이 끝난 뒤) 자리를 잰다.
-  // 등록증만 기다리면 부하 아래 단추가 아직 올라오는 중에 재어 위아래 순서가 어긋날 수 있다
-  await fastForwardUntil(
-    page,
-    async () =>
-      (await finger.isVisible()) &&
-      (await card.evaluate((el) => el.getAnimations().length === 0)) &&
-      (await appeared(finger)) &&
-      (await appeared(cancel)),
-  );
-  // 휴대폰(터치)은 지문을 가리키는 문구. 등록증은 화면 안에 다 보이고, 지문 단추·「취소」와 겹치지 않는다
-  await expect(
-    page.getByText("지문을 눌러 신분증을 제출해 주세요.", { exact: true }),
-  ).toBeVisible();
-  await expect(finger).toContainText("본인 확인");
-  const view = page.viewportSize() as { width: number; height: number };
-  const cardBox = await card.boundingBox();
-  const fingerBox = await finger.boundingBox();
-  const cancelBox = await cancel.boundingBox();
-  if (!cardBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
-  expect(cardBox.y).toBeGreaterThanOrEqual(0);
-  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(fingerBox.y);
-  expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
-  expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
-  const tap = finger.locator("[data-idle-hint='tap']");
-  await fastForwardUntil(page, () => tap.isVisible());
-  await expect(tap).toHaveCSS("pointer-events", "none");
-  await expect(card.locator("[data-idle-hint]")).toHaveCount(0);
-  await holdHint(tap, 0.4, () =>
-    page.screenshot({ path: info.outputPath("stardraw-hint-tap.png") }),
-  );
-  await finger.click();
-  await expect(finger).toHaveCount(0);
-  await untilStageGone(page);
-  await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
-});
+    await page.getByRole("button", { name: "자동", exact: true }).click();
+    await expect(star).toHaveCount(0);
+    await page.getByRole("button", ENTER).click();
+    const sheet = page.locator(
+      "[aria-label='예측서 제출'][aria-disabled='false']",
+    );
+    const swipe = sheet.locator("[data-idle-hint='swipe-up']");
+    await fastForwardUntil(page, () => swipe.isVisible());
+    // 손짓은 예측서 안에 겹치고, 누름을 가로채지 않는다
+    await expect(swipe).toHaveCSS("pointer-events", "none");
+    await expect(swipe).toHaveText("");
+    await holdHint(swipe, 0.45, () =>
+      page.screenshot({ path: info.outputPath("stardraw-hint-swipe.png") }),
+    );
+    // 손을 대면(키) 곧바로 사라진다
+    await page.keyboard.press("Shift");
+    await expect(swipe).toHaveCount(0);
+    await sheet.press("Enter");
+
+    const card = page.locator(
+      "[aria-label='신분증 제출'][aria-disabled='false']",
+    );
+    const finger = page.getByRole("button", {
+      name: "본인 확인으로 신분증 제출",
+    });
+    const cancel = page.getByRole("button", { name: "취소", exact: true });
+    // 지문 단추·「취소」는 아래에서 살짝 올라오며 나타난다(끝나도 남는 연출). 숨 쉬듯 되풀이하는 것은 끝나지 않아 뺀다
+    const appeared = (target: Locator) =>
+      target.evaluate((el) =>
+        el
+          .getAnimations()
+          .every(
+            (a) =>
+              a.playState === "finished" ||
+              a.effect?.getComputedTiming().iterations === Infinity,
+          ),
+      );
+    // 등록증이 가운데로 다 올라오고 지문 단추·「취소」도 다 나타난 뒤(움직임이 끝난 뒤) 자리를 잰다.
+    // 등록증만 기다리면 부하 아래 단추가 아직 올라오는 중에 재어 위아래 순서가 어긋날 수 있다
+    await fastForwardUntil(
+      page,
+      async () =>
+        (await finger.isVisible()) &&
+        (await card.evaluate((el) => el.getAnimations().length === 0)) &&
+        (await appeared(finger)) &&
+        (await appeared(cancel)),
+    );
+    // 휴대폰(터치)은 지문을 가리키는 문구. 등록증은 화면 안에 다 보이고, 지문 단추·「취소」와 겹치지 않는다
+    await expect(
+      page.getByText("지문을 눌러 신분증을 제출해 주세요.", { exact: true }),
+    ).toBeVisible();
+    await expect(finger).toContainText("본인 확인");
+    const view = page.viewportSize() as { width: number; height: number };
+    const cardBox = await card.boundingBox();
+    const fingerBox = await finger.boundingBox();
+    const cancelBox = await cancel.boundingBox();
+    if (!cardBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
+    expect(cardBox.y).toBeGreaterThanOrEqual(0);
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(fingerBox.y);
+    expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
+    expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
+    const tap = finger.locator("[data-idle-hint='tap']");
+    await fastForwardUntil(page, () => tap.isVisible());
+    await expect(tap).toHaveCSS("pointer-events", "none");
+    await expect(card.locator("[data-idle-hint]")).toHaveCount(0);
+    await holdHint(tap, 0.4, () =>
+      page.screenshot({ path: info.outputPath("stardraw-hint-tap.png") }),
+    );
+    await finger.click();
+    await expect(finger).toHaveCount(0);
+    await untilStageGone(page);
+    await expect(page.locator("[data-receipt]")).toBeVisible({
+      timeout: 30_000,
+    });
+  },
+);
 
 /**
  * 우주인 등록 신청서(docs/36 11-65): 서명 전에는 지문 단추와 안심 한 줄, 밀어 올려도 내지 않는다. 지문 단추를 누르면
  * 패스키를 만들고 서명 칸에 지문 도장, 성명·주소가 채워진 뒤 밀어 올려 낸다. 낼 때 패스키 창은 다시 뜨지 않는다.
  * 휴대폰은 지문, PC는 「본인 확인」을 가리키는 문구
  */
-test("우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려 낸다", async ({
-  page,
-}, info) => {
-  const touch = info.project.name === "phone-portrait";
-  test.skip(
-    !touch && info.project.name !== "desktop",
-    "휴대폰 세로와 PC 한 크기씩",
-  );
-  await virtualAuthenticator(page);
-  await countPasskeyCalls(page);
-  await toEntry(page);
-  // 편지 연출 없이 입구에서 바로 등록을 누르고, 신청서부터 연출을 켠다
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.locator("[data-key-setup]").getByRole("button", REGISTER).click();
-  await speedUpAnimations(page);
-  const form = page.locator("[data-register-form]");
-  const sheet = page.locator("[aria-label='신청서 제출']");
-  const finger = page.getByRole("button", {
-    name: "본인 확인으로 신청서 서명",
-  });
-  // 신청서가 다 올라오고 지문 단추가 나타난 뒤 자리를 잰다(되풀이하는 떠오름은 끝나지 않으니 뺀다)
-  await fastForwardUntil(
-    page,
-    async () =>
-      (await finger.isVisible()) &&
-      (await sheet.evaluate((el) =>
-        el
-          .getAnimations()
-          .every((x) => x.effect?.getComputedTiming().iterations === Infinity),
-      )),
-  );
-  await expect(
-    page.getByText(
-      touch
-        ? "지문을 눌러 신청서에 서명해 주세요."
-        : "「본인 확인」을 눌러 신청서에 서명해 주세요.",
-      { exact: true },
-    ),
-  ).toBeVisible();
-  await expect(page.locator("[data-register-note]")).toHaveText(
-    "지문·얼굴 정보는 이 기기 밖으로 나가지 않습니다. 이름·이메일·비밀번호는 받지 않습니다.",
-  );
-  await expect(form.locator("th")).toHaveText([
-    "신청 구분",
-    "작성일",
-    "성명",
-    "주소",
-    "신분 확인",
-    "서명",
-  ]);
-  await expect(form).not.toContainText("등록번호");
-  await expect(form.locator("[data-register-field='name']")).toHaveText("");
-  // 서명 칸(「(인)」 자리)에 빛나는 지문 자리(11-70). 서명 칸 안에 들어 있다
-  const seal = form.getByRole("button", { name: "서명 칸에 지문으로 서명" });
-  await expect(seal).toBeVisible();
-  const sealBox = await seal.boundingBox();
-  const cellBox = await form
-    .locator("td:has([data-register-seal])")
-    .boundingBox();
-  if (!sealBox || !cellBox) throw new Error("서명 칸 자리 없음");
-  expect(sealBox.y).toBeGreaterThanOrEqual(cellBox.y);
-  expect(sealBox.y + sealBox.height).toBeLessThanOrEqual(
-    cellBox.y + cellBox.height,
-  );
-  // 신청서·지문 단추·「취소」가 화면 안에서 겹치지 않는다(휴대폰은 작은 화면 360×640에서도)
-  const fits = async () => {
-    const view = page.viewportSize() as { width: number; height: number };
-    const formBox = await form.boundingBox();
-    const fingerBox = await finger.boundingBox();
-    const cancelBox = await page
-      .getByRole("button", { name: "취소", exact: true })
+test(
+  "우주인 등록 신청서: 지문으로 서명해 채우고 밀어 올려 낸다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 휴대폰 세로와 PC 한 크기씩
+    const touch = info.project.name === "phone-portrait";
+    await virtualAuthenticator(page);
+    await countPasskeyCalls(page);
+    await toEntry(page);
+    // 편지 연출 없이 입구에서 바로 등록을 누르고, 신청서부터 연출을 켠다
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page
+      .locator("[data-key-setup]")
+      .getByRole("button", REGISTER)
+      .click();
+    await speedUpAnimations(page);
+    const form = page.locator("[data-register-form]");
+    const sheet = page.locator("[aria-label='신청서 제출']");
+    const finger = page.getByRole("button", {
+      name: "본인 확인으로 신청서 서명",
+    });
+    // 신청서가 다 올라오고 지문 단추가 나타난 뒤 자리를 잰다(되풀이하는 떠오름은 끝나지 않으니 뺀다)
+    await fastForwardUntil(
+      page,
+      async () =>
+        (await finger.isVisible()) &&
+        (await sheet.evaluate((el) =>
+          el
+            .getAnimations()
+            .every(
+              (x) => x.effect?.getComputedTiming().iterations === Infinity,
+            ),
+        )),
+    );
+    await expect(
+      page.getByText(
+        touch
+          ? "지문을 눌러 신청서에 서명해 주세요."
+          : "「본인 확인」을 눌러 신청서에 서명해 주세요.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.locator("[data-register-note]")).toHaveText(
+      "지문·얼굴 정보는 이 기기 밖으로 나가지 않습니다. 이름·이메일·비밀번호는 받지 않습니다.",
+    );
+    await expect(form.locator("th")).toHaveText([
+      "신청 구분",
+      "작성일",
+      "성명",
+      "주소",
+      "신분 확인",
+      "서명",
+    ]);
+    await expect(form).not.toContainText("등록번호");
+    await expect(form.locator("[data-register-field='name']")).toHaveText("");
+    // 서명 칸(「(인)」 자리)에 빛나는 지문 자리(11-70). 서명 칸 안에 들어 있다
+    const seal = form.getByRole("button", { name: "서명 칸에 지문으로 서명" });
+    await expect(seal).toBeVisible();
+    const sealBox = await seal.boundingBox();
+    const cellBox = await form
+      .locator("td:has([data-register-seal])")
       .boundingBox();
-    if (!formBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
-    expect(formBox.y).toBeGreaterThanOrEqual(0);
-    expect(formBox.y + formBox.height).toBeLessThanOrEqual(fingerBox.y);
-    expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
-    expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
-  };
-  await fits();
-  if (touch) {
-    const size = page.viewportSize() as { width: number; height: number };
-    await page.setViewportSize({ width: 360, height: 640 });
+    if (!sealBox || !cellBox) throw new Error("서명 칸 자리 없음");
+    expect(sealBox.y).toBeGreaterThanOrEqual(cellBox.y);
+    expect(sealBox.y + sealBox.height).toBeLessThanOrEqual(
+      cellBox.y + cellBox.height,
+    );
+    // 신청서·지문 단추·「취소」가 화면 안에서 겹치지 않는다(휴대폰은 작은 화면 360×640에서도)
+    const fits = async () => {
+      const view = page.viewportSize() as { width: number; height: number };
+      const formBox = await form.boundingBox();
+      const fingerBox = await finger.boundingBox();
+      const cancelBox = await page
+        .getByRole("button", { name: "취소", exact: true })
+        .boundingBox();
+      if (!formBox || !fingerBox || !cancelBox) throw new Error("자리 없음");
+      expect(formBox.y).toBeGreaterThanOrEqual(0);
+      expect(formBox.y + formBox.height).toBeLessThanOrEqual(fingerBox.y);
+      expect(fingerBox.y + fingerBox.height).toBeLessThanOrEqual(cancelBox.y);
+      expect(cancelBox.y + cancelBox.height).toBeLessThanOrEqual(view.height);
+    };
     await fits();
-    if (SAVE_SCREENSHOTS)
-      await page.screenshot({ path: info.outputPath("register-small.png") });
-    await page.setViewportSize(size);
-  }
-  // 서명 전에는 밀어 올려도 내지 않는다(패스키도 열지 않는다)
-  await expect(sheet).toHaveAttribute("aria-disabled", "true");
-  await sheet.press("Enter");
-  expect(await passkeyCalls(page)).toEqual({ create: 0, get: 0 });
-  // 가만히 있으면 지문 단추 위에 누르는 손짓
-  const tap = finger.locator("[data-idle-hint='tap']");
-  await fastForwardUntil(page, () => tap.isVisible());
-  await holdHint(tap, 0.4, () =>
-    page.screenshot({
-      path: info.outputPath(touch ? "register-sign.png" : "register-pc.png"),
-    }),
-  );
+    if (touch) {
+      const size = page.viewportSize() as { width: number; height: number };
+      await page.setViewportSize({ width: 360, height: 640 });
+      await fits();
+      if (SAVE_SCREENSHOTS)
+        await page.screenshot({ path: info.outputPath("register-small.png") });
+      await page.setViewportSize(size);
+    }
+    // 서명 전에는 밀어 올려도 내지 않는다(패스키도 열지 않는다)
+    await expect(sheet).toHaveAttribute("aria-disabled", "true");
+    await sheet.press("Enter");
+    expect(await passkeyCalls(page)).toEqual({ create: 0, get: 0 });
+    // 가만히 있으면 지문 단추 위에 누르는 손짓
+    const tap = finger.locator("[data-idle-hint='tap']");
+    await fastForwardUntil(page, () => tap.isVisible());
+    await holdHint(tap, 0.4, () =>
+      page.screenshot({
+        path: info.outputPath(touch ? "register-sign.png" : "register-pc.png"),
+      }),
+    );
 
-  await finger.click();
-  const ready = page.locator(
-    "[aria-label='신청서 제출'][aria-disabled='false']",
-  );
-  await fastForwardUntil(page, () => ready.isVisible());
-  expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
-  await expect(
-    page.getByText("신청서를 밀어 올려서 제출해 주세요.", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    form.locator("[data-register-signed] [data-fingermark]"),
-  ).toBeVisible();
-  // 지문 자리는 걷히고 그 자리에 도장이 남았다
-  await expect(form.locator("[data-register-seal]")).toHaveCount(0);
-  const name = form.locator("[data-register-field='name']");
-  await expect(name).not.toHaveText("");
-  await expect(form.locator("[data-register-field='address']")).toContainText(
-    "›",
-  );
-  await expect(page.locator("[data-register-note]")).toHaveCount(0);
-  if (SAVE_SCREENSHOTS) {
-    await animationsDone(form);
-    await page.screenshot({ path: info.outputPath("register-signed.png") });
-  }
-  const who = (await name.textContent()) as string;
-  await ready.press("Enter");
-  const issued = page.locator("[data-issued='new']");
-  await fastForwardUntil(page, () => issued.isVisible());
-  await expect(issued).toContainText(`${who} 님,`);
-  // 낼 때 패스키 창은 다시 뜨지 않았다
-  expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
-});
+    await finger.click();
+    const ready = page.locator(
+      "[aria-label='신청서 제출'][aria-disabled='false']",
+    );
+    await fastForwardUntil(page, () => ready.isVisible());
+    expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
+    await expect(
+      page.getByText("신청서를 밀어 올려서 제출해 주세요.", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      form.locator("[data-register-signed] [data-fingermark]"),
+    ).toBeVisible();
+    // 지문 자리는 걷히고 그 자리에 도장이 남았다
+    await expect(form.locator("[data-register-seal]")).toHaveCount(0);
+    const name = form.locator("[data-register-field='name']");
+    await expect(name).not.toHaveText("");
+    await expect(form.locator("[data-register-field='address']")).toContainText(
+      "›",
+    );
+    await expect(page.locator("[data-register-note]")).toHaveCount(0);
+    if (SAVE_SCREENSHOTS) {
+      await animationsDone(form);
+      await page.screenshot({ path: info.outputPath("register-signed.png") });
+    }
+    const who = (await name.textContent()) as string;
+    await ready.press("Enter");
+    const issued = page.locator("[data-issued='new']");
+    await fastForwardUntil(page, () => issued.isVisible());
+    await expect(issued).toContainText(`${who} 님,`);
+    // 낼 때 패스키 창은 다시 뜨지 않았다
+    expect(await passkeyCalls(page)).toEqual({ create: 1, get: 0 });
+  },
+);
 
 /** 내밀기를 미루다 마감을 넘겨 반송받고, 「이 답안지 보관하기」로 챙긴다 */
 async function bounceAndKeep(page: Page) {
@@ -1699,10 +1719,10 @@ async function bounceAndKeep(page: Page) {
  * 응모」, 회차 카드의 「별 6개 고르기」)로 들어와도 응모 페이지 하늘 위에 보관한 답안지 칸이 있고, 「이 답안지로 응모」면
  * 새 회차로 다시 서명해 접수된다. 반송은 내 응모에 남지 않고, 낸 뒤에는 보관한 답안지가 사라진다
  */
-test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들어와 이 답안지로 응모", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들어와 이 답안지로 응모", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await bounceAndKeep(page);
   await page
     .getByRole("dialog", { name: "접수 반송" })
@@ -1738,10 +1758,10 @@ test("반송된 용지 보관: 추첨 화면에서 다음 회차 응모로 들�
  * 회차 카드는 「별 6개 고르기」 하나에 "보관한 답안지가 있어요."만 알린다. 응모 페이지에서 보관한 답안지를 두고 하늘에서
  * 새로 골라 내면, 응모가 접수된 뒤 보관한 답안지는 저절로 버려진다
  */
-test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보관한 답안지가 사라진다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보관한 답안지가 사라진다", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await bounceAndKeep(page);
   await page.getByRole("button", { name: "첫 화면으로" }).click();
   await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
@@ -1765,10 +1785,10 @@ test("반송된 용지 보관: 회차 카드로 들어와 새로 고르면 보�
   await expect(page.locator("[data-kept-note]")).toHaveCount(0);
 });
 
-test("등록증 끌기: 가로는 민 방향으로 뒤집고 못 넘기면 제자리, 세로는 기울기만, 단추는 그대로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+test("등록증 끌기: 가로는 민 방향으로 뒤집고 못 넘기면 제자리, 세로는 기울기만, 단추는 그대로", {
+  tag: "@no-phone-landscape",
+}, async ({ page }) => {
+  // PC와 휴대폰 세로로
   // 끄는 동안 따라 도는 모습까지 보려고 움직임을 켠다. 판정은 각도 변수와 뒤집힘 표시로만(시간을 기다리지 않는다)
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/stardraw/demo#tour-id-card");
@@ -1858,88 +1878,100 @@ test("등록증 끌기: 가로는 민 방향으로 뒤집고 못 넘기면 제�
   await expect(stage.locator("[data-owner-ok]")).toBeVisible();
 });
 
-test("당첨 축하: 맞은 내 별로 나만의 별자리, 1~3등은 당첨 직인, 5등은 가볍게", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "데스크톱·휴대폰 세로로");
-  // 움직임 줄이기(화면 시험 기본): 별자리와 직인이 처음부터 다 보이고 별똥별은 없다
-  const cases = [
-    { rank: 1, stars: 6, seal: true },
-    { rank: 3, stars: 5, seal: true },
-    { rank: 5, stars: 3, seal: false },
-  ] as const;
-  for (const c of cases) {
-    await page.goto(`/stardraw/demo#tour-rank-${c.rank}`);
-    const screen = page.locator("[data-tour-screen][data-tour-ready]");
-    await expect(screen.locator(`[data-draw-result='${c.rank}']`)).toBeVisible({
-      timeout: 30_000,
-    });
-    const party = screen.locator(`[data-celebration='${c.rank}']`);
-    await expect(party).toBeAttached();
-    await expect(party.locator(".sd-cel-star")).toHaveCount(c.stars);
-    await expect(party.locator(".sd-cel-line")).toHaveCount(c.stars - 1);
-    await expect(party.locator(".sd-cel-meteor").first()).toBeHidden();
-    await expect(screen.locator("[data-win-seal]")).toHaveCount(c.seal ? 1 : 0);
-    if (c.seal)
+test(
+  "당첨 축하: 맞은 내 별로 나만의 별자리, 1~3등은 당첨 직인, 5등은 가볍게",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로
+    // 움직임 줄이기(화면 시험 기본): 별자리와 직인이 처음부터 다 보이고 별똥별은 없다
+    const cases = [
+      { rank: 1, stars: 6, seal: true },
+      { rank: 3, stars: 5, seal: true },
+      { rank: 5, stars: 3, seal: false },
+    ] as const;
+    for (const c of cases) {
+      await page.goto(`/stardraw/demo#tour-rank-${c.rank}`);
+      const screen = page.locator("[data-tour-screen][data-tour-ready]");
       await expect(
-        screen.getByRole("img", { name: "카노푸스 우주국 입상 직인" }),
-      ).toBeVisible();
-    await noSideScroll(page);
-    await page.screenshot({
-      path: info.outputPath(`stardraw-win-${c.rank}.png`),
-      fullPage: true,
+        screen.locator(`[data-draw-result='${c.rank}']`),
+      ).toBeVisible({
+        timeout: 30_000,
+      });
+      const party = screen.locator(`[data-celebration='${c.rank}']`);
+      await expect(party).toBeAttached();
+      await expect(party.locator(".sd-cel-star")).toHaveCount(c.stars);
+      await expect(party.locator(".sd-cel-line")).toHaveCount(c.stars - 1);
+      await expect(party.locator(".sd-cel-meteor").first()).toBeHidden();
+      await expect(screen.locator("[data-win-seal]")).toHaveCount(
+        c.seal ? 1 : 0,
+      );
+      if (c.seal)
+        await expect(
+          screen.getByRole("img", { name: "카노푸스 우주국 입상 직인" }),
+        ).toBeVisible();
+      await noSideScroll(page);
+      await page.screenshot({
+        path: info.outputPath(`stardraw-win-${c.rank}.png`),
+        fullPage: true,
+      });
+    }
+    // 낙첨은 축하가 없다
+    await page.evaluate(() => {
+      window.location.hash = "#tour-lose";
     });
-  }
-  // 낙첨은 축하가 없다
-  await page.evaluate(() => {
-    window.location.hash = "#tour-lose";
-  });
-  await expect(page.getByText("이번에는 등수에 들지 못했습니다")).toBeVisible();
-  await expect(page.locator("[data-celebration]")).toHaveCount(0);
-});
+    await expect(
+      page.getByText("이번에는 등수에 들지 못했습니다"),
+    ).toBeVisible();
+    await expect(page.locator("[data-celebration]")).toHaveCount(0);
+  },
+);
 
-test("당첨 축하 연출: 1등은 별똥별 비, 직인이 찍히는 순간 짧게 떨린다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.addInitScript(() => {
-    const w = window as unknown as { __vibrated: unknown[] };
-    w.__vibrated = [];
-    Object.defineProperty(navigator, "vibrate", {
-      configurable: true,
-      value: (p: unknown) => {
-        w.__vibrated.push(p);
-        return true;
-      },
+test(
+  "당첨 축하 연출: 1등은 별똥별 비, 직인이 찍히는 순간 짧게 떨린다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱 한 크기로
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.addInitScript(() => {
+      const w = window as unknown as { __vibrated: unknown[] };
+      w.__vibrated = [];
+      Object.defineProperty(navigator, "vibrate", {
+        configurable: true,
+        value: (p: unknown) => {
+          w.__vibrated.push(p);
+          return true;
+        },
+      });
     });
-  });
-  await page.goto("/stardraw/demo#tour-rank-1");
-  const party = page.locator("[data-celebration='1']");
-  await expect(party).toBeAttached({ timeout: 30_000 });
-  await expect(party.locator(".sd-cel-meteor")).toHaveCount(18);
-  // 직인이 찍힌 뒤에 한 번 떨린다(시각은 연출 계산에서 정해진다)
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          () => (window as unknown as { __vibrated: unknown[] }).__vibrated,
-        ),
-      { timeout: 20_000 },
-    )
-    .toEqual([[40, 60, 80]]);
-  await expect(page.locator("[data-win-seal]")).toBeVisible();
-  await page.screenshot({ path: info.outputPath("stardraw-win-1-motion.png") });
-});
+    await page.goto("/stardraw/demo#tour-rank-1");
+    const party = page.locator("[data-celebration='1']");
+    await expect(party).toBeAttached({ timeout: 30_000 });
+    await expect(party.locator(".sd-cel-meteor")).toHaveCount(18);
+    // 직인이 찍힌 뒤에 한 번 떨린다(시각은 연출 계산에서 정해진다)
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => (window as unknown as { __vibrated: unknown[] }).__vibrated,
+          ),
+        { timeout: 20_000 },
+      )
+      .toEqual([[40, 60, 80]]);
+    await expect(page.locator("[data-win-seal]")).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath("stardraw-win-1-motion.png"),
+    });
+  },
+);
 
 /**
  * 관측 박자 진동(docs/36 11-73): 공이 하나 나올 때마다 아주 짧은 톡(12ms), 내가 예측한 별이면 톡톡([25, 50, 25]).
  * 움직임 줄이기라 공이 한꺼번에 보이면 울리지 않는다. 카운트다운 3·2·1은 관측지(서버) 화면이라 단위 시험이 맡는다
  */
-test("관측 진동: 공마다 톡, 내 별은 톡톡, 한꺼번에 보이면 없음", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "휴대폰 세로 한 크기로");
+test("관측 진동: 공마다 톡, 내 별은 톡톡, 한꺼번에 보이면 없음", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 휴대폰 세로 한 크기로
   await page.addInitScript(() => {
     const w = window as unknown as { __vibrated: unknown[] };
     w.__vibrated = [];
@@ -1986,59 +2018,63 @@ test("관측 진동: 공마다 톡, 내 별은 톡톡, 한꺼번에 보이면 �
   ).toEqual([]);
 });
 
-test("HDR 별빛: HDR 화면에서만 맞은 내 별 위에 HDR 그림을 겹치고, 응모 하늘에는 늘 켜진 HDR이 없다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱 한 크기로");
-  const glows = page.locator("[data-tour-screen] img[data-hdr-glow]");
-  // SDR 화면(헤드리스 기본): 그림을 겹치지도 받지도 않는다
-  await page.goto("/stardraw/demo#tour-rank-1");
-  await expect(page.locator("[data-draw-result='1']")).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(glows).toHaveCount(0);
-  await page.screenshot({ path: info.outputPath("stardraw-hdr-sdr.png") });
+test(
+  "HDR 별빛: HDR 화면에서만 맞은 내 별 위에 HDR 그림을 겹치고, 응모 하늘에는 늘 켜진 HDR이 없다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 데스크톱 한 크기로
+    const glows = page.locator("[data-tour-screen] img[data-hdr-glow]");
+    // SDR 화면(헤드리스 기본): 그림을 겹치지도 받지도 않는다
+    await page.goto("/stardraw/demo#tour-rank-1");
+    await expect(page.locator("[data-draw-result='1']")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(glows).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath("stardraw-hdr-sdr.png") });
 
-  // HDR 화면 흉내: dynamic-range: high 질의만 참으로 답한다
-  await page.addInitScript(() => {
-    const original = window.matchMedia.bind(window);
-    window.matchMedia = (q: string) =>
-      q.includes("dynamic-range: high")
-        ? ({
-            matches: true,
-            media: q,
-            onchange: null,
-            addEventListener() {},
-            removeEventListener() {},
-            addListener() {},
-            removeListener() {},
-            dispatchEvent: () => false,
-          } as MediaQueryList)
-        : original(q);
-  });
-  await page.reload();
-  await expect(page.locator("[data-draw-result='1']")).toBeVisible({
-    timeout: 30_000,
-  });
-  // 1등: 맞은 별 6개만 은은하게(움직임 줄이기라 번쩍임은 없다)
-  await expect(page.locator("img[data-hdr-glow='hit']")).toHaveCount(6);
-  await expect(page.locator("img[data-hdr-glow='flash']")).toHaveCount(0);
-  // 그림이 실제로 풀린다(AVIF 256px)
-  await expect
-    .poll(() =>
-      page
-        .locator("img[data-hdr-glow]")
-        .first()
-        .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth),
-    )
-    .toBe(256);
-  await page.screenshot({ path: info.outputPath("stardraw-hdr-hit.png") });
+    // HDR 화면 흉내: dynamic-range: high 질의만 참으로 답한다
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = (q: string) =>
+        q.includes("dynamic-range: high")
+          ? ({
+              matches: true,
+              media: q,
+              onchange: null,
+              addEventListener() {},
+              removeEventListener() {},
+              addListener() {},
+              removeListener() {},
+              dispatchEvent: () => false,
+            } as MediaQueryList)
+          : original(q);
+    });
+    await page.reload();
+    await expect(page.locator("[data-draw-result='1']")).toBeVisible({
+      timeout: 30_000,
+    });
+    // 1등: 맞은 별 6개만 은은하게(움직임 줄이기라 번쩍임은 없다)
+    await expect(page.locator("img[data-hdr-glow='hit']")).toHaveCount(6);
+    await expect(page.locator("img[data-hdr-glow='flash']")).toHaveCount(0);
+    // 그림이 실제로 풀린다(AVIF 256px)
+    await expect
+      .poll(() =>
+        page
+          .locator("img[data-hdr-glow]")
+          .first()
+          .evaluate(
+            (img: HTMLImageElement) => img.complete && img.naturalWidth,
+          ),
+      )
+      .toBe(256);
+    await page.screenshot({ path: info.outputPath("stardraw-hdr-hit.png") });
 
-  // 응모 하늘: 늘 켜진 HDR은 없다(배터리·화면 밝기 출렁임)
-  await page.evaluate(() => {
-    window.location.hash = "#tour-enter";
-  });
-  await expect(page.locator("[data-tour-screen='enter']")).toBeVisible();
-  await expect(page.locator("canvas[data-sky='pick']")).toBeVisible();
-  await expect(page.locator("img[data-hdr-glow]")).toHaveCount(0);
-});
+    // 응모 하늘: 늘 켜진 HDR은 없다(배터리·화면 밝기 출렁임)
+    await page.evaluate(() => {
+      window.location.hash = "#tour-enter";
+    });
+    await expect(page.locator("[data-tour-screen='enter']")).toBeVisible();
+    await expect(page.locator("canvas[data-sky='pick']")).toBeVisible();
+    await expect(page.locator("img[data-hdr-glow]")).toHaveCount(0);
+  },
+);
