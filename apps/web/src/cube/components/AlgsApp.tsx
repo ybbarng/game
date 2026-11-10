@@ -182,7 +182,7 @@ export function AlgsApp() {
             href="/cube/train"
             className="text-sm text-white/70 hover:text-white"
           >
-            공식 훈련
+            공식 연습
           </a>
         </header>
 

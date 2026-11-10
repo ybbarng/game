@@ -55,9 +55,15 @@ export const FEATURE_MAP: FeatureSection[] = [
       },
       {
         icon: "🎯",
-        title: "공식 훈련",
+        title: "공식 연습",
         href: "/cube/train",
-        what: "OLL·PLL·F2L·오르테가 상황을 내고 시간 재기",
+        what: "뜨는 공식을 따라 치며 이어 맞추기(십자부터 PLL까지)",
+      },
+      {
+        icon: "🎲",
+        title: "자유 훈련",
+        href: "/cube/train?mode=free",
+        what: "상황을 골라 시간 재기, 오르테가·패리티·블라인드 공식",
       },
       {
         icon: "✚",

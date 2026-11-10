@@ -238,15 +238,15 @@ export function loadTrain(storage = defaultStorage()): TrainBook {
   return readJson<TrainBook>(storage, TRAIN_KEY) as TrainBook;
 }
 
-export function recordSolve(
+/** 맞춘 기록 하나를 더한 새 기록(저장하지 않는다. 공식 연습 기록도 같은 모양을 쓴다) */
+export function withSolve(
+  book: TrainBook,
   caseId: string,
   ms: number,
   moves: number,
-  storage = defaultStorage(),
 ): TrainBook {
-  const book = loadTrain(storage);
   const s = book[caseId] ?? emptyStats();
-  const next: TrainBook = {
+  return {
     ...book,
     [caseId]: {
       ...s,
@@ -256,6 +256,21 @@ export function recordSolve(
       moves: [moves, ...s.moves].slice(0, RECENT_TIMES),
     },
   };
+}
+
+/** 포기·틀림 하나를 더한 새 기록(저장하지 않는다) */
+export function withFail(book: TrainBook, caseId: string): TrainBook {
+  const s = book[caseId] ?? emptyStats();
+  return { ...book, [caseId]: { ...s, fails: s.fails + 1 } };
+}
+
+export function recordSolve(
+  caseId: string,
+  ms: number,
+  moves: number,
+  storage = defaultStorage(),
+): TrainBook {
+  const next = withSolve(loadTrain(storage), caseId, ms, moves);
   writeJson(storage, TRAIN_KEY, next);
   return next;
 }
@@ -264,9 +279,7 @@ export function recordFail(
   caseId: string,
   storage = defaultStorage(),
 ): TrainBook {
-  const book = loadTrain(storage);
-  const s = book[caseId] ?? emptyStats();
-  const next: TrainBook = { ...book, [caseId]: { ...s, fails: s.fails + 1 } };
+  const next = withFail(loadTrain(storage), caseId);
   writeJson(storage, TRAIN_KEY, next);
   return next;
 }

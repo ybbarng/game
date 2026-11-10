@@ -170,7 +170,7 @@ function CourseList({
           href="/cube/train"
           className="ml-auto rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
         >
-          공식 훈련
+          공식 연습
         </a>
         <a
           href="/cube/algs"
@@ -823,7 +823,7 @@ function LessonView({
                 onClick={() => setProgress(markLessonDone(lesson.id))}
                 className="rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm hover:bg-sky-500/30"
               >
-                이 공식 훈련하기: {drillTitle(lesson.drill)}
+                이 공식 연습하기: {drillTitle(lesson.drill)}
               </a>
             )}
             {next && tryLeft && at !== lastTry && (

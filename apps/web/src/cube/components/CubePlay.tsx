@@ -141,6 +141,11 @@ export interface CubePlayProps {
   fog?: boolean;
   look?: CubeLook | null;
   glow?: StickerMarks | null;
+  /**
+   * 키를 숨기는 화면(공식 연습, docs/47 16-9). 키 그림(그 아래 배치 안내 줄 포함)을 처음에 접고, 펴고 접은 것을
+   * 저장하지 않는다(다른 화면의 접기 설정과 따로). 휴대폰은 키보드 그림 대신 늘 단추 줄로 친다
+   */
+  hideKeys?: boolean;
 }
 
 export function CubePlay({
@@ -165,6 +170,7 @@ export function CubePlay({
   fog = false,
   look = null,
   glow = null,
+  hideKeys = false,
 }: CubePlayProps) {
   const swap = !!look?.swap;
   const gray = !!look?.gray;
@@ -203,9 +209,11 @@ export function CubePlay({
   const [moreButtons, setMoreButtons] = useState(false);
   // 휴대폰에서 단추 줄 대신 키보드 그림으로 치기(설정 그대로, 화면에서도 바꾼다). 부모가 바꿔 넘긴 설정이 아니라 저장된 설정을 본다
   const saved = useCubeSettings();
-  const keysMode = saved.touchKeyboard;
-  // 키 그림 접기·뒷면 숨기기도 저장해 새로 고쳐도 남는다(2026-11-05 점검)
-  const showKeys = saved.keyGuideOpen;
+  // 키를 숨기는 화면은 휴대폰에서도 단추 줄로 친다(키보드 그림을 펴 두지 않는다)
+  const keysMode = saved.touchKeyboard && !hideKeys;
+  // 키 그림 접기·뒷면 숨기기도 저장해 새로 고쳐도 남는다(2026-11-05 점검). 키를 숨기는 화면은 저장하지 않고 늘 접고 시작
+  const [keysPeek, setKeysPeek] = useState(false);
+  const showKeys = hideKeys ? keysPeek : saved.keyGuideOpen;
   const showMirror = saved.backViewShown;
 
   // 바뀌는 값은 ref로 넘겨 키 연결을 한 번만 건다
@@ -653,12 +661,19 @@ export function CubePlay({
         <button
           type="button"
           onClick={() =>
-            updateSettings({ ...saved, keyGuideOpen: !saved.keyGuideOpen })
+            hideKeys
+              ? setKeysPeek((v) => !v)
+              : updateSettings({ ...saved, keyGuideOpen: !saved.keyGuideOpen })
           }
           aria-expanded={showKeys}
+          data-cube-keys-toggle
           className="hidden min-h-8 items-center px-1 underline-offset-2 hover:underline sm:inline-flex"
         >
-          {showKeys ? "키 그림 접기" : "키 그림 펴기"}
+          {showKeys
+            ? "키 그림 접기"
+            : hideKeys
+              ? "키 그림 보기"
+              : "키 그림 펴기"}
         </button>
         <button
           type="button"
@@ -667,7 +682,7 @@ export function CubePlay({
           }
           aria-pressed={keysMode}
           data-cube-input-toggle={keysMode ? "keys" : "buttons"}
-          className="inline-flex min-h-8 items-center px-1 underline-offset-2 hover:underline sm:hidden"
+          className={`${hideKeys ? "hidden" : "inline-flex sm:hidden"} min-h-8 items-center px-1 underline-offset-2 hover:underline`}
         >
           {keysMode ? "단추로 치기" : "키보드로 치기"}
         </button>

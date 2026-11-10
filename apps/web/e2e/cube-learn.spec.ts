@@ -32,7 +32,12 @@ test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다
   // 해법마다 배우기와 연습이 한 카드에
   await expect(
     page.locator(
-      '[data-course-practice="cfop"] [data-practice="train"][href="/cube/train?set=f2l"]',
+      '[data-course-practice="cfop"] [data-practice="practice"][href="/cube/train?set=f2l"]',
+    ),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(
+      '[data-course-practice="333-beginner"] [data-practice="practice"][href="/cube/train?set=beginner-cross"]',
     ),
   ).toHaveCount(1);
   await shot(page, "learn-list", info.project.name);
