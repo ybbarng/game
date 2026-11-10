@@ -60,7 +60,7 @@ import { CubePlay, playCubeCue } from "./CubePlay";
 import { KeyCaps, useMoveKeys } from "./MoveChip";
 
 /**
- * 공식 훈련(`/cube/train`, docs/47 8-1). 묶음 → 상황 고르기 → 무작위로 내고, 결과 모양으로 채점해 시간·수를 남긴다.
+ * 자유 훈련(`/cube/train?mode=free`, 옛 공식 훈련, docs/47 8-1·16-9). 공식 연습의 「더 보기」에서 연다. 묶음 → 상황 고르기 → 무작위로 내고, 결과 모양으로 채점해 시간·수를 남긴다.
  * 시간은 첫 면 돌리기에서 시작해 목표 모양이 되는 순간 멈춘다(큐브 전체 돌리기는 수로 세지 않는다).
  */
 
@@ -318,12 +318,12 @@ export function TrainApp() {
       >
         <header className="flex flex-wrap items-center gap-3">
           <a
-            href="/cube/methods"
+            href="/cube/train"
             className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
           >
-            ← 해법 익히기
+            ← 공식 연습
           </a>
-          <h1 className="font-bold text-lg">공식 훈련</h1>
+          <h1 className="font-bold text-lg">자유 훈련</h1>
           <a
             href="/cube/algs"
             className="ml-auto text-sm text-white/70 hover:text-white"
