@@ -552,11 +552,12 @@ describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 1
     (f) => /\.(tsx?|mjs)$/.test(f) && !/\.test\./.test(f),
   );
   const noComments = (t) =>
-    t
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
   const code = Object.fromEntries(
-    codeFiles.map((f) => [f, noComments(readFileSync(path.join(web, f), "utf8"))]),
+    codeFiles.map((f) => [
+      f,
+      noComments(readFileSync(path.join(web, f), "utf8")),
+    ]),
   );
   // 클래스가 아닌데 이름이 같은 것(SVG 그라디언트 id)
   const NOT_CLASS = { "src/stardraw/icon-art.tsx": ["sd-ball"] };
@@ -576,8 +577,11 @@ describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 1
         const re = new RegExp(`(?<![\\w-])${cl}(?![\\w-])`);
         for (const f of codeFiles) {
           if (NOT_CLASS[f]?.includes(cl) || !re.test(code[f])) continue;
-          const lost = [...(ctx.reach[f] ?? [])].filter((k) => !cssReach.has(k));
-          if (lost.length) missing.push(`${f} .${cl} → ${css}: ${lost.join(",")}`);
+          const lost = [...(ctx.reach[f] ?? [])].filter(
+            (k) => !cssReach.has(k),
+          );
+          if (lost.length)
+            missing.push(`${f} .${cl} → ${css}: ${lost.join(",")}`);
         }
       }
     }
