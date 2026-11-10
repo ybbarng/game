@@ -148,9 +148,10 @@ export function ViewFilterDemo() {
   return (
     <Box title="방장이 가진 것과 참가자가 받는 것">
       <p className="text-xs opacity-80">
-        아래는 실제 엔진(<code>createMatch</code>)으로 나눈 한 판입니다. 왼쪽은
-        엔진을 돌리는 방장 기기의 메모리, 오른쪽은{" "}
-        <code>viewOf(state, seat)</code>로 만들어 그 자리에 보내는 데이터입니다.
+        아래는 실제 엔진(<code>createMatch</code>)으로 나눈 한 판입니다. 「방장
+        기기」 칸은 엔진을 돌리는 방장 기기의 메모리이고, 「…에게 가는 데이터」
+        칸은 <code>viewOf(state, seat)</code>로 만들어 그 자리에 보내는
+        데이터입니다.
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs opacity-70">받는 자리</span>
@@ -191,15 +192,15 @@ export function ViewFilterDemo() {
         </div>
         <div className="flex flex-col gap-1.5 rounded-lg bg-black/40 p-3">
           <div className="text-xs opacity-70">
-            {names[seat]}에게 가는 snapshot.view (일부)
+            {names[seat]}에게 가는 데이터(일부)
           </div>
           <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] leading-snug">
             {json}
           </pre>
           <p className="text-[11px] opacity-70">
             남의 손패는 장수(<code>handCounts</code>)만, 바닥 카드는 장수 (
-            <code>kittyCount</code>)만 갑니다. 난수 상태(<code>rng</code>)도
-            빠집니다.
+            <code>kittyCount</code>)만 갑니다. 무작위 수를 만드는 상태(
+            <code>rng</code>)도 빠집니다.
           </p>
         </div>
       </div>
@@ -262,7 +263,7 @@ export function CommitRevealDemo() {
   };
 
   return (
-    <Box title="commit-reveal로 시드 만들기">
+    <Box title="약속하고 공개하기로 시드 만들기">
       <p className="text-xs opacity-80">
         세 사람이 각자 비밀 값을 정합니다. 실제 코드(<code>fairness.ts</code>의{" "}
         <code>commit</code>, <code>deriveSeed</code>)를 그대로 씁니다.
@@ -314,8 +315,8 @@ export function CommitRevealDemo() {
       {result &&
         (result.ok ? (
           <Result ok>
-            seed = SHA-256(r0|r1|r2) 앞 32비트 = {result.seed} → 철수의 패:{" "}
-            <SuitText text={result.hand.map(cardLabel).join(" ")} />
+            시드 = SHA-256(r0‖r1‖r2)의 앞부분을 수로 읽은 값 = {result.seed},
+            철수의 패: <SuitText text={result.hand.map(cardLabel).join(" ")} />
           </Result>
         ) : (
           <Result ok={false}>
@@ -400,7 +401,7 @@ export function ReplayAuditDemo() {
     if (error)
       return {
         ok: false,
-        text: `기록 ${error.index + 1}번째 행동이 규칙에 맞지 않습니다(${error.reason}).`,
+        text: `기록 ${error.index + 1}번째 행동이 규칙에 맞지 않습니다. 엔진이 낸 까닭: 「${error.reason}」`,
       };
     if (views.at(-1) !== received.at(-1))
       return {
@@ -551,12 +552,12 @@ export function HostSignatureDemo() {
     setResult({
       ok,
       text: ok
-        ? "지문과 서명이 맞고, 서명에 든 연결 번호와 인증서가 내 연결의 것입니다. 방장으로 믿습니다."
+        ? "지문과 서명이 맞고, 서명에 든 연결 아이디와 인증서가 내 연결의 것입니다. 방장으로 믿습니다."
         : kind === "fake"
           ? "공개 열쇠의 지문이 링크(k=)의 지문과 다릅니다. 믿지 않습니다."
           : kind === "relay"
             ? "내가 본 방장 인증서가 방장이 서명한 인증서와 다릅니다. 신호 서버가 가운데 끼어 양쪽과 따로 연결했습니다. 믿지 않습니다."
-            : "서명에 든 연결 번호가 내 연결의 번호가 아닙니다. 중간자가 다른 연결에 준 서명을 가져왔습니다. 믿지 않습니다.",
+            : "서명에 든 연결 아이디가 내 연결의 아이디가 아닙니다. 중간자가 다른 연결에 준 서명을 가져왔습니다. 믿지 않습니다.",
     });
   };
 
@@ -747,7 +748,7 @@ export function MentalPokerDemo() {
     setState({
       ...state,
       ...next,
-      log: [...(next.log ?? state.log), `  (${ms}ms)`],
+      log: [...(next.log ?? state.log), `  (${(ms / 1000).toFixed(2)}초)`],
     });
     setBusy(false);
   };
@@ -827,7 +828,7 @@ export function MentalPokerDemo() {
           ...s.log,
           opened === said
             ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${cardLabel(said)}를 냈습니다. 모두가 열어 보니 ${cardLabel(opened as Card)}, 맞습니다.`
-            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? cardLabel(opened) : "카드가 아님"}입니다. 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힙니다.`,
+            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? `${cardLabel(opened)}입니다` : "카드가 아닙니다"}. 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힙니다.`,
         ],
       };
     });
@@ -1152,14 +1153,14 @@ export function ShuffleProofDemo() {
       `도전값(셋이 함께 정함): ${bits.join("")}. 0이면 「받은 덱 → Z」를 보이고, 1이면 「Z → 넘긴 덱」을 보입니다.`,
       note,
       ok
-        ? `✓ 섞기 증명이 맞습니다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것입니다(${ms}ms).`
-        : `⚠ 섞기 증명이 맞지 않습니다. 철수를 짚습니다. 도전값이 모두 0이어야 빠져나가는데 그 확률은 (½)¹⁶, 곧 6만 5천분의 1입니다(${ms}ms).`,
+        ? `✓ 섞기 증명이 맞습니다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것입니다(${(ms / 1000).toFixed(2)}초).`
+        : `⚠ 섞기 증명이 맞지 않습니다. 철수를 짚습니다. 도전값이 모두 0이어야 빠져나가는데 그 확률은 (½)¹⁶, 곧 6만 5천분의 1입니다(${(ms / 1000).toFixed(2)}초).`,
     ]);
     setBusy(false);
   };
 
   return (
-    <Box title="섞기 증명(cut-and-choose)">
+    <Box title="섞기 증명(골라 열어 보기)">
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => void run(false)} disabled={busy}>
           철수가 정직하게 섞기
