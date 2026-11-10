@@ -11,17 +11,8 @@ import {
 } from "@/tutorial/term-order";
 
 import { COURSES, courseById } from "./index";
-import type { Course, LessonStep } from "./types";
-
-const stepText = (s: LessonStep) =>
-  [
-    s.body,
-    s.beside?.caption ?? "",
-    s.quiz?.question ?? "",
-    ...(s.quiz?.choices ?? []),
-    s.quiz?.why ?? "",
-    s.passedText ?? "",
-  ].join("\n");
+import { coursePlaces, courseSummaries } from "./term-places";
+import type { Course } from "./types";
 
 /** 먼저 배우는 과정부터 차례로(겹치면 한 번만) */
 function chain(course: Course, seen = new Set<string>()): Course[] {
@@ -36,15 +27,8 @@ function chain(course: Course, seen = new Set<string>()): Course[] {
 
 /** 대상 과정의 단원 번호가 0부터, 앞 과정은 음수 단원으로 둔다(요약 검사가 앞 과정을 이미 배운 것으로 보게) */
 function placesOf(course: Course): TextPlace[] {
-  const courses = chain(course);
-  return courses.flatMap((c) =>
-    c.lessons.flatMap((l, li) =>
-      l.steps.map((s, si) => ({
-        where: `${c.title} · ${l.title} ${si + 1}번`,
-        group: c.id === course.id ? li : -1,
-        text: stepText(s),
-      })),
-    ),
+  return chain(course).flatMap((c) =>
+    coursePlaces(c, c.id === course.id ? undefined : -1),
   );
 }
 
@@ -110,12 +94,9 @@ describe("큐브 중급 과정 용어", () => {
       expect(earlyUses(places, used)).toEqual([]);
     });
     it(`${course.title}: 단원 목록은 그 단원까지 뜻을 알린 용어만 쓴다`, () => {
-      const summaries = course.lessons.map((l, li) => ({
-        where: `${l.title} 요약`,
-        group: li,
-        text: `${l.title}\n${l.summary}`,
-      }));
-      expect(earlySummaryUses(summaries, places, terms)).toEqual([]);
+      expect(earlySummaryUses(courseSummaries(course), places, terms)).toEqual(
+        [],
+      );
     });
   }
 });
