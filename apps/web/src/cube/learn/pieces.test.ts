@@ -285,7 +285,9 @@ describe("고르기 문제의 답", () => {
     const e = play(3, FLIPPED_EDGE);
     expect(hitSlots(3, e, UF)).toEqual([pieceByName(3, "UF")]);
     expect(goalMet(3, e, "piece:UF")).toBe(false);
-    expect(quiz("흰-초록 엣지는 지금").answer).toBe("제자리지만 뒤집혔어요");
+    expect(quiz("흰-초록 엣지 블럭은 지금").answer).toBe(
+      "제자리지만 뒤집혔어요",
+    );
 
     const c = play(3, TWISTED_CORNER);
     expect(hitSlots(3, c, UFR)).toEqual([pieceByName(3, "UFR")]);
