@@ -2,7 +2,9 @@ import AppKit
 import CubieCore
 
 /// 「공식 보기」 말풍선(docs/47 15-15): 큐브 창 옆에 잠깐 뜨는 작은 패널. 기본 창(96pt)에는 글이 들어가지 않아 앱이 옆에 그린다.
-/// - 내용은 웹이 줄로 보낸다(`app-bridge.ts` `BubbleLine`: 글과 꼴 title·note·alg·keys·plain). 앱은 줄마다 글꼴만 고른다.
+/// - 내용은 웹이 줄로 보낸다(`app-bridge.ts` `BubbleLine`: 글과 꼴 title·note·alg·keys·plain·ok). 앱은 줄마다 글꼴만 고른다.
+///   줄에 `spans`가 있으면 그 줄을 낱말마다 색을 달리해 그린다(공식 연습의 친 것·지금 칠 것·틀린 것, docs/47 16-11).
+///   공식 연습도 같은 말풍선을 쓴다(작은 창일 때 공식과 판 끝 결과).
 /// - 포커스를 빼앗지 않고(키를 받지 않음) 마우스는 지나간다. 숨기기는 웹이 정한다(5초 뒤·수를 둠).
 /// - 자리는 `WindowPlacement.bubbleFrame`(창 옆 화면 안쪽, 보이는 영역 안).
 @MainActor
@@ -76,12 +78,25 @@ final class HintBubble {
         case "note": (.systemFont(ofSize: 11), NSColor(calibratedRed: 0.73, green: 0.87, blue: 1, alpha: 1))
         case "alg": (.monospacedSystemFont(ofSize: 14, weight: .semibold), .white)
         case "keys": (.monospacedSystemFont(ofSize: 11, weight: .regular), NSColor(white: 1, alpha: 0.7))
+        case "ok": (.systemFont(ofSize: 12, weight: .semibold), NSColor.systemGreen)
         default: (.systemFont(ofSize: 12), .white)
         }
-      out.append(
-        NSAttributedString(
-          string: (i > 0 ? "\n" : "") + text,
-          attributes: [.font: font, .foregroundColor: color, .paragraphStyle: para]))
+      let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: para]
+      if i > 0 { out.append(NSAttributedString(string: "\n", attributes: attrs)) }
+      if let spans = line["spans"] as? [[String: Any]], !spans.isEmpty {
+        for span in spans {
+          var a = attrs
+          switch span["style"] as? String {
+          case "done": a[.foregroundColor] = NSColor.systemGreen
+          case "now": a[.underlineStyle] = NSUnderlineStyle.single.rawValue
+          case "wrong": a[.foregroundColor] = NSColor.systemRed
+          default: a[.foregroundColor] = NSColor(white: 1, alpha: 0.6)
+          }
+          out.append(NSAttributedString(string: span["text"] as? String ?? "", attributes: a))
+        }
+      } else {
+        out.append(NSAttributedString(string: text, attributes: attrs))
+      }
     }
     return out
   }

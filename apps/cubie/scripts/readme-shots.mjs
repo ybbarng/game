@@ -32,8 +32,12 @@ const require = createRequire(path.join(here, "../../web/package.json"));
 const { chromium } = require("@playwright/test");
 
 const args = process.argv.slice(2);
-/** `--hero`: 움직이는 그림만 다시 만든다. `--keep <폴더>`: 찍은 프레임을 그 폴더에 남긴다(고를 때 보기) */
+/**
+ * `--hero`: 움직이는 그림만 다시 만든다. `--practice`: 공식 연습 그림만 다시 만든다.
+ * `--keep <폴더>`: 찍은 프레임을 그 폴더에 남긴다(고를 때 보기)
+ */
 const HERO_ONLY = args.includes("--hero");
+const PRACTICE_ONLY = args.includes("--practice");
 const KEEP = args.includes("--keep") ? args[args.indexOf("--keep") + 1] : null;
 const BASE = args.find((a) => a.startsWith("http")) ?? "http://localhost:4391";
 const CLOCK_START = Date.UTC(2026, 10, 9, 7, 0);
@@ -262,6 +266,17 @@ async function main() {
   menuIcon = dataUrl(
     readFileSync(path.join(here, "../Resources/MenuIcon@2x.png")),
   );
+  if (PRACTICE_ONLY) {
+    const b = await chromium.launch({
+      channel: "chrome",
+      chromiumSandbox: true,
+    });
+    try {
+      return await practiceShot(b);
+    } finally {
+      await b.close();
+    }
+  }
   // README 맨 위 아이콘: 앱 아이콘(Resources/AppIcon.icns, make-icon.swift)의 가장 큰 판을 256px로
   const iconTmp = mkdtempSync(path.join(tmpdir(), "cubie-icon-"));
   execFileSync(
@@ -395,11 +410,103 @@ async function main() {
       );
     }
 
+    await practiceShot(browser);
+
     // 2) 홈 시연(맞춘 큐브가 가만히 떠 있을 때 섞고 맞추는 연출). 기록이 없어야 내 판 다시 보기 대신 이것이 돈다
     await heroFrames(browser);
   } finally {
     await browser.close();
   }
+}
+
+/**
+ * 앱 말풍선(`HintBubble.swift`)과 같은 꼴의 HTML. 줄 꼴마다 글꼴·색, 낱말 꼴(`spans`)마다 색을 앱과 같게 둔다.
+ * 웹이 앱에 보낸 마지막 `hint` 줄을 그대로 그린다(그림 속 말풍선은 흉내다)
+ */
+function bubbleHtml(lines) {
+  const esc = (t) =>
+    String(t)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  const LINE = {
+    title:
+      "font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;color:#fff",
+    note: "font:11px -apple-system,BlinkMacSystemFont,sans-serif;color:#badeff",
+    alg: "font:600 14px ui-monospace,Menlo,monospace;color:#fff",
+    keys: "font:11px ui-monospace,Menlo,monospace;color:#ffffffb3",
+    ok: "font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;color:#32d74b",
+    plain: "font:12px -apple-system,BlinkMacSystemFont,sans-serif;color:#fff",
+  };
+  const SPAN = {
+    done: "color:#32d74b",
+    now: "text-decoration:underline",
+    wrong: "color:#ff453a",
+    next: "color:#ffffff99",
+  };
+  const body = lines
+    .map((l) => {
+      const inner = l.spans
+        ? l.spans
+            .map(
+              (sp) =>
+                `<span style="${SPAN[sp.style] ?? SPAN.next};white-space:pre">${esc(sp.text)}</span>`,
+            )
+            .join("")
+        : esc(l.text);
+      return `<div style="${LINE[l.style] ?? LINE.plain};margin-bottom:3px">${inner}</div>`;
+    })
+    .join("");
+  return `<div style="position:absolute;max-width:280px;padding:10px;border-radius:10px;background:#141414eb;border:1px solid #ffffff26;box-shadow:0 10px 30px #0009">${body}</div>`;
+}
+
+/**
+ * 공식 연습(docs/47 16-11): 작은 큐브 창(짧은 변 240px 아래) 옆 말풍선에 공식이 뜨고, 틀린 한 수의 키만 잠깐
+ * 보이는 장면. 다른 그림과 같은 150pt 창으로 찍는다. 「2단계 OLL」 첫 문제에서 앞 두 수를 맞게 치고 한 수 틀린다
+ */
+async function practiceShot(browser) {
+  const CUBE = 150;
+  const p = await cubePage(browser, CUBE);
+  await fromApp(p, { type: "focus", focused: true });
+  await fromApp(p, { type: "caps", hintBubble: true });
+  await fromApp(p, { type: "practice", stage: "2look-oll" });
+  await waitAttr(p, "main[data-mini]", "data-mini-practice-phase", "play");
+  const answer = await p
+    .locator("main[data-mini]")
+    .getAttribute("data-mini-practice-answer");
+  const tokens = answer.split(" ");
+  let typed = 0;
+  for (const t of tokens) {
+    if (typed === 2 || !/^[UDLRFB]['2]?$/.test(t)) break;
+    const code = `Key${t[0]}`;
+    if (t.endsWith("2")) {
+      await p.keyboard.press(code);
+      await p.keyboard.press(code);
+    } else await p.keyboard.press(t.endsWith("'") ? `Shift+${code}` : code);
+    typed++;
+    await p.clock.runFor(400);
+  }
+  const next = tokens[typed] ?? "";
+  await p.keyboard.press(next.startsWith("D") ? "KeyB" : "KeyD");
+  await waitAttr(p, "main[data-mini]", "data-mini-practice-wrong", null);
+  await p.clock.runFor(300);
+  const cube = await shot(p);
+  const lines = await p.evaluate(
+    () => window.__toApp.filter((m) => m.type === "hint").at(-1)?.lines ?? [],
+  );
+  await p.context().close();
+  const DESK = { width: 900, height: 560 };
+  // 큐브 창(오른쪽 아래)의 왼쪽에, 위 끝을 큐브 창 위 끝에 맞춰(앱의 `WindowPlacement.bubbleFrame`과 같은 자리)
+  const top = DESK.height - 16 - CUBE;
+  await compose(
+    browser,
+    "desktop-practice.png",
+    desktopHtml({ cube: dataUrl(cube), cubeSize: CUBE }).replace(
+      "</body>",
+      `<div style="position:absolute;right:${16 + CUBE + 8}px;top:${top}px">${bubbleHtml(lines).replace("position:absolute;", "position:relative;")}</div></body>`,
+    ),
+    DESK,
+  );
 }
 
 /**

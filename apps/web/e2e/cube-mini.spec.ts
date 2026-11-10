@@ -1042,3 +1042,218 @@ test("공식 보기: 작은 앱 창은 앱 말풍선으로 보내고, 말풍선�
     .poll(async () => (await lastHint())?.lines?.[0]?.text)
     .toBe("이 크기는 힌트 없음");
 });
+
+// ── 공식 연습(docs/47 16-11) ───────────────────────────────
+
+/** 공식 낱말(면 돌리기만)을 「표기」 배치 키로. R2는 같은 키 두 번(반 바퀴를 나눠 쳐도 맞다) */
+function formulaKeys(alg: string): string[] {
+  return alg
+    .trim()
+    .split(/\s+/)
+    .flatMap((t) => {
+      const code = `Key${t[0] as string}`;
+      if (t.endsWith("2")) return [code, code];
+      return [t.endsWith("'") ? `Shift+${code}` : code];
+    });
+}
+
+type PracticeSent = {
+  type: string;
+  lines?: { text: string; style: string }[] | null;
+  practice?: string | null;
+  practiceStages?: { id: string; title: string; group: string }[];
+};
+
+const sentLast = (page: Page, type: string) =>
+  page.evaluate(
+    (t) =>
+      (window as unknown as { __toApp: PracticeSent[] }).__toApp
+        .filter((m) => m.type === t)
+        .at(-1),
+    type,
+  );
+
+/** 연습 한 판의 남은 문제를 끝까지 친다(문제마다 맞춤 표시 0.7초를 시계로 감는다) */
+async function finishRound(page: Page) {
+  const main = page.locator("main[data-mini]");
+  for (;;) {
+    const phase = await main.getAttribute("data-mini-practice-phase");
+    if (phase === "over") return;
+    expect(phase).toBe("play");
+    const index = (await main.getAttribute(
+      "data-mini-practice-index",
+    )) as string;
+    const answer = (await main.getAttribute(
+      "data-mini-practice-answer",
+    )) as string;
+    for (const k of formulaKeys(answer)) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-practice-phase", "pause");
+    await expect(page.locator("[data-mini-practice-ok]")).toHaveCount(1);
+    await page.clock.fastForward(700);
+    await expect(main).not.toHaveAttribute("data-mini-practice-index", index);
+  }
+}
+
+/** 첫 낱말과 다른 면의 키(틀린 수) */
+const wrongKey = (first: string) => (first.startsWith("D") ? "KeyB" : "KeyD");
+
+test("공식 연습: 작은 앱 창은 말풍선에 공식만(키는 틀린 한 수만), 10문제 뒤 판 끝 결과, Esc로 끝내기", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await fakeApp(page);
+  await fixSeed(page, 20261110);
+  await page.setViewportSize({ width: 96, height: 96 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  await fromApp(page, { type: "focus", focused: true });
+  await fromApp(page, { type: "caps", hintBubble: true });
+
+  // 메뉴에 보일 단계를 앱에 알린다(사이트 연습 단계 그대로)
+  await expect
+    .poll(async () => (await sentLast(page, "state"))?.practiceStages?.length)
+    .toBe(11);
+  expect((await sentLast(page, "state"))?.practice).toBeNull();
+
+  // 앱 메뉴 「공식 연습 ▸ 2층」
+  await fromApp(page, { type: "practice", stage: "beginner-second" });
+  await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
+  await expect(main).toHaveAttribute("data-mini-practice-where", "bubble");
+  await expect
+    .poll(async () => (await sentLast(page, "state"))?.practice)
+    .toBe("beginner-second");
+  await expect
+    .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
+    .toBe("2층 1/10 · 콤보 0");
+  let lines = (await sentLast(page, "hint"))?.lines ?? [];
+  const answer = (await main.getAttribute(
+    "data-mini-practice-answer",
+  )) as string;
+  expect(lines.find((l) => l.style === "alg")?.text).toBe(answer);
+  // 따라 치기는 키를 보이지 않는다
+  expect(lines.some((l) => l.style === "keys")).toBe(false);
+  await expect(page.locator("[data-mini-practice-card]")).toHaveCount(0);
+
+  // 틀린 수: 큐브에 넣지 않고 그 한 수의 키만 잠깐
+  const first = answer.split(" ")[0] as string;
+  await page.keyboard.press(wrongKey(first));
+  await expect(main).toHaveAttribute("data-mini-practice-wrong", first);
+  await expect(main).toHaveAttribute("data-mini-practice-index", "0");
+  await expect
+    .poll(
+      async () =>
+        (await sentLast(page, "hint"))?.lines?.find((l) => l.style === "keys")
+          ?.text,
+    )
+    .toMatch(/^\S+ {2}\S/);
+  lines = (await sentLast(page, "hint"))?.lines ?? [];
+  expect(lines.find((l) => l.style === "keys")?.text.split("  ")[0]).toBe(
+    first,
+  );
+  await page.clock.fastForward(1500);
+  await expect(main).not.toHaveAttribute("data-mini-practice-wrong", /.+/);
+
+  // 10문제를 끊김 없이 치면 판 끝 결과(말풍선)
+  await finishRound(page);
+  await expect
+    .poll(async () => (await sentLast(page, "hint"))?.lines?.[0]?.text)
+    .toBe("2층 한 판 끝");
+  const texts = ((await sentLast(page, "hint"))?.lines ?? []).map(
+    (l) => l.text,
+  );
+  expect(texts.some((t) => /^정확도 \d+% · 평균 /.test(t))).toBe(true);
+  expect(texts).toContain("느렸던 공식");
+  expect(texts.at(-1)).toBe("Enter 한 판 더 · Esc 연습 끝내기");
+
+  // 연습은 맞추기 기록에 남지 않고, 연습 기록은 앱 저장소의 cube.mini. 아래에
+  expect(
+    (await page.evaluate(() => localStorage.getItem("cube.mini.v1"))) ?? "",
+  ).not.toContain('"ms"');
+  expect(
+    await page.evaluate(() => localStorage.getItem("cube.mini.practice.v1")),
+  ).toContain('"beginner-second"');
+  expect(
+    await page.evaluate(() => localStorage.getItem("cube.practice.v1")),
+  ).toBeNull();
+
+  // 섞기 키(Enter)는 판 끝에서 「한 판 더」
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-practice-phase", "play");
+  await expect(main).toHaveAttribute("data-mini-practice-index", "0");
+
+  // 포커스를 잃으면 말풍선을 숨긴다(다른 앱을 쓰는 동안 화면에 남지 않게)
+  await fromApp(page, { type: "focus", focused: false });
+  await expect
+    .poll(async () => (await sentLast(page, "hint"))?.lines)
+    .toBeNull();
+  await fromApp(page, { type: "focus", focused: true });
+
+  // Esc(앱이 가로채 practice null로 보낸다): 연습 끝내기, 맞추기로
+  await fromApp(page, { type: "practice", stage: null });
+  await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
+  await expect
+    .poll(async () => (await sentLast(page, "hint"))?.lines)
+    .toBeNull();
+  await expect
+    .poll(async () => (await sentLast(page, "state"))?.practice)
+    .toBeNull();
+});
+
+test("공식 연습: 큰 창은 창 안에, 구석 메뉴로 시작, 틀린 한 수만 키캡, 판 끝 결과, Esc로 끝내기", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
+  await fixSeed(page, 20261110);
+  await page.setViewportSize({ width: 360, height: 360 });
+  await installClock(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await pauseClock(page);
+  await page.locator("[data-mini-menu]").click();
+  await page.locator('[data-mini-item="practice"]').click();
+  await page.locator('[data-mini-practice-stage="beginner-second"]').click();
+  await expect(main).toHaveAttribute("data-mini-practice", "beginner-second");
+  await expect(main).toHaveAttribute("data-mini-practice-where", "inline");
+  const card = page.locator("[data-mini-practice-card]");
+  await expect(card).toHaveAttribute("data-mini-practice-card", "full");
+  await expect(card.locator("[data-mini-practice-name]")).not.toBeEmpty();
+  await expect(card.locator('[data-token-state="now"]')).toHaveCount(1);
+  // 키는 숨긴다
+  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(0);
+  await shot(page, "mini-practice-inline", info.project.name);
+
+  const answer = (await main.getAttribute(
+    "data-mini-practice-answer",
+  )) as string;
+  await page.keyboard.press(wrongKey(answer.split(" ")[0] as string));
+  await expect(card.locator('[data-token-state="wrong"]')).toHaveCount(1);
+  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(1);
+  await shot(page, "mini-practice-wrong", info.project.name);
+  await page.clock.fastForward(1500);
+  await expect(page.locator("[data-mini-practice-wrong-keys]")).toHaveCount(0);
+
+  await finishRound(page);
+  const summary = page.locator("[data-mini-practice-summary]");
+  await expect(summary).toBeVisible();
+  await expect(summary.locator('[data-stat="accuracy"] dd')).toHaveText(
+    /^\d+%$/,
+  );
+  // 첫 문제에서 한 번 틀려 그 뒤 아홉 문제가 이어진 콤보
+  await expect(summary.locator('[data-stat="combo"] dd')).toHaveText("9");
+  await expect(summary.locator("[data-mini-practice-slow] li")).not.toHaveCount(
+    0,
+  );
+  await shot(page, "mini-practice-summary", info.project.name);
+
+  await page.keyboard.press("Escape");
+  await expect(main).not.toHaveAttribute("data-mini-practice", /.+/);
+  await expect(summary).toHaveCount(0);
+});
