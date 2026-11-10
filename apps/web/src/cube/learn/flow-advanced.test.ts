@@ -10,10 +10,16 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { describe, expect, it } from "vitest";
 
 import { TWO_LOOK_OLL, TWO_LOOK_PLL } from "./algs-2look";
+import { PARITY_4X4 } from "./algs-big";
 import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
-import { CENTER_LAST_TWO, CENTER_YELLOW, CORNER_SWAP_444 } from "./lessons-big";
+import {
+  CENTER_LAST_TWO,
+  CENTER_YELLOW,
+  CORNER_SWAP_444,
+  CORNER_SWAP_444_SETUP,
+} from "./lessons-big";
 import {
   FLIPPED_EDGE,
   MEMO_CORNERS_2,
@@ -21,6 +27,7 @@ import {
   MEMO_EDGES_4,
   sendCorners,
   sendEdges,
+  TWISTED_CORNER,
 } from "./lessons-bld";
 import {
   CFOP_INTRO,
@@ -397,8 +404,22 @@ describe("4×4·5×5", () => {
     expect(mixed).toEqual([0, 2]);
   });
 
+  it("코너 둘만 바뀐 4×4: PLL 패리티 뒤 3×3 처음 맞추기의 마지막 층 차례(옆면 → 코너 자리 → 코너 방향)로 맞는다", () => {
+    const s = play(4, CORNER_SWAP_444_SETUP);
+    expect(goalMet(4, play(4, CORNER_SWAP_444, s), "solved")).toBe(true);
+    // 모범 답은 PLL 패리티 + 3×3 처음 맞추기 규칙이 낸 수이고, 옆면 맞추기 공식이 들어 있다(T퍼뮤가 아니다)
+    expect(CORNER_SWAP_444.startsWith(PARITY_4X4[1]?.algs[0] ?? "-")).toBe(
+      true,
+    );
+    expect(CORNER_SWAP_444).toContain("R U R' U R U2 R' U");
+    expect(CORNER_SWAP_444).not.toContain(
+      "R U R' U' R' F R2 U' R' U' R U R' F'",
+    );
+  });
+
   it("코너 둘만 바뀐 4×4: 처음엔 엣지·센터가 다 맞고 코너 칸만 다르다", () => {
-    const s = play(4, setupFor(CORNER_SWAP_444));
+    // 상황은 흰 면 아래로 쥔(z2) 것이라, 다시 z2로 되돌려 맞춘 큐브와 칸을 견준다
+    const s = play(4, `${CORNER_SWAP_444_SETUP} z2`);
     const topo = cubeTopology(4);
     const diff = diffColors(4, s);
     expect(diff.length).toBeGreaterThan(0);
@@ -541,6 +562,20 @@ describe("블라인드 외우기", () => {
     expect(goalMet(3, play(3, sendEdges(FLIPPED_EDGE), s), "solved")).toBe(
       true,
     );
+  });
+
+  it("제자리에서 돌아간 코너: 버퍼와 위-앞-오른쪽 코너 칸만 다르고, C 칸의 스티커 제자리가 J, C J로 맞는다", () => {
+    const s = play(3, setupFor(sendCorners(TWISTED_CORNER)));
+    expect(diffColors(3, s).sort()).toEqual(
+      ["UFR", "FUR", "RUF", "UBL", "LUB", "BUL"].map(sticker).sort(),
+    );
+    // 윗면 칸 C에 초록(맞춘 큐브의 앞면 색) 스티커가 와 있어, 그 스티커가 제자리에서 놓일 칸은 앞면 칸 J다
+    expect(col(s, "UFR")).toBe("F");
+    expect(goalMet(3, play(3, sendCorners(TWISTED_CORNER), s), "solved")).toBe(
+      true,
+    );
+    const q = step(lessonOf("bld-corners"), "quiz", 2);
+    expect(answer(q)).toBe(TWISTED_CORNER);
   });
 });
 
