@@ -12,7 +12,7 @@ import { miniTier } from "./store";
 export const PROFILE_EMBLEM_PT = 32;
 
 /**
- * 앱 메뉴 맨 위 프로필 칸에 보일 것을 앱에 알린다(docs/47 15-22). 지금 크기의 티어 엠블럼을 화면 밖에 그려 PNG로
+ * 앱 메뉴 맨 위 프로필 칸에 보일 것을 앱에 알린다(docs/47 15-20). 지금 크기의 티어 엠블럼을 화면 밖에 그려 PNG로
  * 떼어 함께 보낸다. 크기가 바뀌거나 기록이 더해지면(`version`) 다시 보낸다. 화면에는 아무것도 보이지 않는다
  */
 export function ProfileToApp({ n, version }: { n: number; version: unknown }) {

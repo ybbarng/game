@@ -63,7 +63,7 @@ export type ToApp =
   /** 「공식 보기」 말풍선을 큐브 창 옆에 띄운다(`lines`) / 숨긴다(null). 0.1.2 이하 앱은 모르는 꼴이라 버린다 */
   | { type: "hint"; lines: BubbleLine[] | null }
   /**
-   * 메뉴 맨 위 프로필 칸(docs/47 15-22, 자료 꼴은 `profile.ts`). `tierText`: 「3×3 골드 II」·「3×3 5판 뒤에」,
+   * 메뉴 맨 위 프로필 칸(docs/47 15-20, 자료 꼴은 `profile.ts`). `tierText`: 「3×3 골드 II」·「3×3 5판 뒤에」,
    * `emblem`: 지금 크기 티어 엠블럼 PNG data URL(티어가 없거나 그리지 못하면 null). 0.1.5 이하 앱은 모르는 꼴이라 버린다
    */
   | {

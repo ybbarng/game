@@ -1,6 +1,6 @@
 import Foundation
 
-/// 메뉴 맨 위 프로필 칸에 보일 것(docs/47 15-22). 자료 꼴을 정하는 곳은 웹(`apps/web/src/cube/mini/profile.ts`)이고,
+/// 메뉴 맨 위 프로필 칸에 보일 것(docs/47 15-20). 자료 꼴을 정하는 곳은 웹(`apps/web/src/cube/mini/profile.ts`)이고,
 /// 앱은 다리 메시지 `profile`을 받아 그리기만 한다. 나중에 사이트 패스키 로그인이 생겨 이름·사진이 바뀌어도
 /// 웹만 바뀌면 되게, 앱은 이름·사진·티어 글·엠블럼 그림을 받은 그대로 쓴다.
 public struct Profile: Equatable, Sendable {
