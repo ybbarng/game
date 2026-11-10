@@ -67,7 +67,7 @@ const FIRST_LAYER_CASES: Path222Case[] = [
   {
     id: "start",
     shape: "흰색이 위를 보는 위 층 코너가 없음, 아래 층에 흰 코너가 있음",
-    hold: "아랫면을 돌려 그 코너를 앞-오른쪽 아래로",
+    hold: "아랫면을 돌려 그 코너 블럭을 앞-오른쪽 아래로",
     alg: "흰색이 보는 쪽대로(아래 경우 셋과 같다)",
     times: 1,
   },
@@ -81,14 +81,14 @@ const FIRST_LAYER_CASES: Path222Case[] = [
   {
     id: "bottom-right",
     shape: "제자리 밑, 흰색이 오른쪽",
-    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너를 그 밑으로",
+    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 그 밑으로",
     alg: TWIST,
     times: 1,
   },
   {
     id: "bottom-front",
     shape: "제자리 밑, 흰색이 앞",
-    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너를 그 밑으로",
+    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 그 밑으로",
     alg: TWIST_BACK,
     times: 1,
     back: true,
@@ -96,7 +96,7 @@ const FIRST_LAYER_CASES: Path222Case[] = [
   {
     id: "bottom-down",
     shape: "제자리 밑, 흰색이 아래",
-    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너를 그 밑으로",
+    hold: "제자리를 앞-오른쪽 위로 쥐고(y), 아랫면을 돌려 코너 블럭을 그 밑으로",
     alg: TWIST,
     times: 3,
   },
@@ -142,16 +142,16 @@ export const PATH_222_STAGES: Path222Stage[] = [
       {
         id: "one-front",
         shape:
-          "노란색이 위를 보는 코너 하나, 그 코너를 앞-왼쪽 위에 두면 앞-오른쪽 위 코너의 노란색이 앞",
-        hold: "윗면을 돌려 위를 보는 코너를 앞-왼쪽 위로",
+          "노란색이 위를 보는 코너 블럭 하나, 그 코너 블럭을 앞-왼쪽 위에 두면 앞-오른쪽 위 코너 블럭의 노란색이 앞",
+        hold: "윗면을 돌려 위를 보는 코너 블럭을 앞-왼쪽 위로",
         alg: TOP_FACE,
         times: 1,
       },
       {
         id: "one-right",
         shape:
-          "노란색이 위를 보는 코너 하나, 그 코너를 앞-왼쪽 위에 두면 앞-오른쪽 위 코너의 노란색이 오른쪽",
-        hold: "윗면을 돌려 위를 보는 코너를 뒤-오른쪽 위로",
+          "노란색이 위를 보는 코너 블럭 하나, 그 코너 블럭을 앞-왼쪽 위에 두면 앞-오른쪽 위 코너 블럭의 노란색이 오른쪽",
+        hold: "윗면을 돌려 위를 보는 코너 블럭을 뒤-오른쪽 위로",
         alg: TOP_FACE_BACK,
         times: 1,
         back: true,
@@ -174,7 +174,7 @@ export const PATH_222_STAGES: Path222Stage[] = [
       {
         id: "two",
         shape: "노란색이 위를 보는 코너 둘",
-        hold: "윗면을 돌려 앞-왼쪽 위 코너의 노란색이 앞을 보게",
+        hold: "윗면을 돌려 앞-왼쪽 위 코너 블럭의 노란색이 앞을 보게",
         alg: TOP_FACE,
         times: 1,
         next: "one-front",
@@ -221,16 +221,16 @@ export const PATH_222_STAGES: Path222Stage[] = [
       {
         id: "diagonal",
         shape:
-          "윗면을 돌려 제자리 코너가 꼭 하나, 앞-왼쪽 위 코너의 제자리가 뒤-오른쪽",
-        hold: "윗면을 돌려 제자리가 하나인 곳에서, 그 코너를 앞-오른쪽 위로 쥐고(y)",
+          "윗면을 돌려 제자리 코너가 꼭 하나, 앞-왼쪽 위 코너 블럭의 제자리가 뒤-오른쪽",
+        hold: "윗면을 돌려 제자리가 하나인 곳에서, 그 코너 블럭을 앞-오른쪽 위로 쥐고(y)",
         alg: CORNER_CYCLE,
         times: 1,
       },
       {
         id: "behind",
         shape:
-          "윗면을 돌려 제자리 코너가 꼭 하나, 앞-왼쪽 위 코너의 제자리가 뒤-왼쪽",
-        hold: "윗면을 돌려 제자리가 하나인 곳에서, 그 코너를 앞-오른쪽 위로 쥐고(y)",
+          "윗면을 돌려 제자리 코너가 꼭 하나, 앞-왼쪽 위 코너 블럭의 제자리가 뒤-왼쪽",
+        hold: "윗면을 돌려 제자리가 하나인 곳에서, 그 코너 블럭을 앞-오른쪽 위로 쥐고(y)",
         alg: CORNER_CYCLE_BACK,
         times: 1,
         back: true,
@@ -254,14 +254,14 @@ export const PATH_222_STAGES: Path222Stage[] = [
       {
         id: "right",
         shape: "노란색이 오른쪽",
-        hold: "윗면을 돌려 그 코너를 앞-오른쪽 위로",
+        hold: "윗면을 돌려 그 코너 블럭을 앞-오른쪽 위로",
         alg: TWIST,
         times: 2,
       },
       {
         id: "front",
         shape: "노란색이 앞",
-        hold: "윗면을 돌려 그 코너를 앞-오른쪽 위로",
+        hold: "윗면을 돌려 그 코너 블럭을 앞-오른쪽 위로",
         alg: TWIST_BACK,
         times: 2,
         back: true,

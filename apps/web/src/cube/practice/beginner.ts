@@ -117,12 +117,12 @@ export const BEGINNER_EDGES: DrillCase[] = [
 export const BEGINNER_CORNERS: DrillCase[] = [
   {
     id: "beginner-corners-once",
-    name: "앞-왼쪽 위 코너가 대각선 건너편으로: 공식 한 번",
+    name: "앞-왼쪽 위 코너 블럭이 대각선 건너편으로: 공식 한 번",
     algs: [CORNER_CYCLE],
   },
   {
     id: "beginner-corners-twice",
-    name: "앞-왼쪽 위 코너가 바로 뒤로: 거꾸로 한 번",
+    name: "앞-왼쪽 위 코너 블럭이 바로 뒤로: 거꾸로 한 번",
     algs: [CORNER_CYCLE_BACK],
   },
   {
@@ -136,12 +136,12 @@ export const BEGINNER_CORNERS: DrillCase[] = [
 export const BEGINNER_TWIST: DrillCase[] = [
   {
     id: "beginner-twist-two",
-    name: "노란색 오른쪽 → 다음 코너 노란색 앞",
+    name: "노란색 오른쪽 → 다음 코너 블럭 노란색 앞",
     algs: [TWIST_TWO_BACK],
   },
   {
     id: "beginner-twist-front-right",
-    name: "노란색 앞 → 다음 코너 노란색 오른쪽",
+    name: "노란색 앞 → 다음 코너 블럭 노란색 오른쪽",
     algs: [`${reps(TWIST_BACK, 2)} U ${reps(TWIST, 2)} U'`],
   },
   {
