@@ -4,7 +4,7 @@ import Foundation
 /// 큐브 창을 마우스로 옮기고 크기를 바꾸는 계산(화면 없이 시험한다, docs/47 15-18).
 /// 좌표는 AppKit 화면 좌표(왼쪽 아래 원점, pt).
 /// - 큐브·거울을 끌면 창이 옮겨진다. 누른 자리에서 `dragThreshold`보다 덜 움직이고 떼면 클릭(큐브가 키를 받는다).
-/// - 핀치·⌘ + 스크롤·메뉴 「창 크기」는 오른쪽 아래 구석을 그대로 두고 줄고 는다(화면 구석 자리가 유지된다).
+/// - 핀치·⌘ + 스크롤·메뉴 「창」의 크기 항목은 오른쪽 아래 구석을 그대로 두고 줄고 는다(화면 구석 자리가 유지된다).
 public enum WindowGesture {
   /// 이만큼(pt) 넘게 움직여야 끌기로 본다. 그보다 덜 움직이고 떼면 클릭
   public static let dragThreshold: CGFloat = 4
@@ -40,12 +40,12 @@ public enum WindowGesture {
     return anchored(frame, size: size)
   }
 
-  /// 메뉴 「창 크기」: 정사각형 `side`로(오른쪽 아래 구석 그대로)
+  /// 메뉴 「창」의 크기 항목: 정사각형 `side`로(오른쪽 아래 구석 그대로)
   public static func resized(_ frame: CGRect, side: CGFloat, min lo: CGSize, max hi: CGSize) -> CGRect {
     anchored(frame, size: clamped(CGSize(width: side, height: side), min: lo, max: hi))
   }
 
-  /// 메뉴 「창 크기」의 체크 표시: 지금 크기가 그 정사각형이면(0.5pt 안쪽) 그 값
+  /// 메뉴 「창」 크기 항목의 체크 표시: 지금 크기가 그 정사각형이면(0.5pt 안쪽) 그 값
   public static func preset(of size: CGSize, in presets: [CGFloat]) -> CGFloat? {
     presets.first { abs(size.width - $0) < 0.5 && abs(size.height - $0) < 0.5 }
   }

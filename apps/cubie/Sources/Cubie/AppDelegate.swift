@@ -14,7 +14,7 @@ final class RunningApp: FocusApp {
 /// Cubie: 화면 구석에 늘 떠 있는 큐브 창(docs/47 15절).
 /// - ⌃⌥⌘C(`Config.hotKey*`)를 누르면 그때 앞에 있던 앱을 기억하고 큐브 창에 키 입력을 준다. 다시 누르면 돌려준다.
 /// - 큐브 창이 키를 받는 동안 Esc를 누르면 기억한 앱으로 돌아가고 창은 그대로 떠 있다.
-/// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·거울·크기·기록·대결·설정을 고른다.
+/// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·큐브 크기·기록·대결·창·키 배치를 고른다(짜임은 `MenuLayout`).
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
   private let cube = CubeWindow()
@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 자동 업데이트(Sparkle). .app으로 띄웠을 때만 켜진다
   private let updater = Updater()
 
-  /// 따로 여는 보통 창(투명 아님): 기록, 단축키, 키·색 설정
+  /// 따로 여는 보통 창(투명 아님): 기록, 단축키, 티어표, 키 배치·색
   enum WebWindow { case records, keys, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
 
@@ -251,76 +251,99 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     return i
   }
 
+  /// 차례와 구분선은 `MenuLayout`(CubieCore, 단위 시험)이 정하고, 여기서는 항목마다 AppKit 항목을 만든다
   private func buildMenu(forWindow: Bool) -> NSMenu {
+    let entries = MenuLayout.main(
+      forWindow: forWindow, hotKeyOK: hotKeyOK,
+      pendingUpdate: updater.pendingVersion != nil, updaterAvailable: updater.isAvailable)
+    return menu(of: entries)
+  }
+
+  private func menu(of entries: [MenuEntry]) -> NSMenu {
     let m = NSMenu()
+    for e in entries {
+      for i in items(for: e) { m.addItem(i) }
+    }
+    return m
+  }
+
+  private func submenu(_ title: String, _ sub: NSMenu) -> NSMenuItem {
+    let i = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    i.submenu = sub
+    return i
+  }
+
+  private func items(for e: MenuEntry) -> [NSMenuItem] {
     let s = cube.bridge.state
-    if !hotKeyOK {
+    let title = e.title ?? ""
+    switch e {
+    case .separator:
+      return [.separator()]
+    case .hotKeyWarning:
       let warn = NSMenuItem(title: "단축키 \(Config.hotKeyLabel)를 다른 앱이 쓰고 있어요", action: nil, keyEquivalent: "")
       warn.isEnabled = false
-      m.addItem(warn)
-      m.addItem(.separator())
-    }
-    if !forWindow, let v = updater.pendingVersion {
-      m.addItem(item("새 판 \(v) 설치…", #selector(menuCheckForUpdates)))
-      m.addItem(.separator())
-    }
-    if !forWindow {
+      return [warn]
+    case .installUpdate:
+      return [item("새 판 \(updater.pendingVersion ?? "") 설치…", #selector(menuCheckForUpdates))]
+    case .focus:
       // 전역 단축키는 잡았을 때만 보인다(못 잡았으면 그 키는 다른 앱이 받는다)
-      m.addItem(item("큐브로 가기", #selector(menuFocus), key: hotKeyOK ? Config.hotKeyMenuKey : nil))
-      m.addItem(item(cube.panel.isVisible ? "숨기기" : "보이기", #selector(menuToggleVisible)))
-      m.addItem(.separator())
-    }
-    m.addItem(item("섞기", #selector(menuScramble), key: s.scrambleKey))
-    m.addItem(item("거울", #selector(menuMirror), on: s.mirror))
-    let sizes = NSMenu()
-    for n in 2...7 {
-      sizes.addItem(item("\(n)×\(n)", #selector(menuSize(_:)), tag: n, on: s.n == n))
-    }
-    let sizeItem = NSMenuItem(title: "크기", action: nil, keyEquivalent: "")
-    sizeItem.submenu = sizes
-    m.addItem(sizeItem)
-    m.addItem(item("공식 보기", #selector(menuHint), key: MenuKey(key: MenuKey.f1)))
-    m.addItem(item("배우기", #selector(menuLearn)))
-    m.addItem(item("기록 보기", #selector(menuRecords)))
-    m.addItem(item("티어표", #selector(menuTiers)))
-    let vs = NSMenu()
-    vs.addItem(item("친구와 대결", #selector(menuVsFriends)))
-    vs.addItem(item("컴퓨터와 대결", #selector(menuVsBot)))
-    let vsItem = NSMenuItem(title: "대결하기", action: nil, keyEquivalent: "")
-    vsItem.submenu = vs
-    m.addItem(vsItem)
-    m.addItem(.separator())
-    m.addItem(item("단축키 보기", #selector(menuKeys)))
-    m.addItem(item("키·색 설정…", #selector(menuSettings)))
-    // 창 크기(큐브 크기 「크기」 2×2~7×7과 헷갈리지 않게 「창 크기」). 핀치·⌘ + 스크롤·손잡이로도 바꾼다
-    let sides = NSMenu()
-    let nowSide = WindowGesture.preset(of: cube.panel.frame.size, in: Config.sizePresets.map(\.side))
-    for p in Config.sizePresets {
-      sides.addItem(item("\(p.label) \(Int(p.side))", #selector(menuWindowSize(_:)), tag: Int(p.side), on: nowSide == p.side))
-    }
-    let sideItem = NSMenuItem(title: "창 크기", action: nil, keyEquivalent: "")
-    sideItem.submenu = sides
-    m.addItem(sideItem)
-    m.addItem(item("창 자리 처음으로", #selector(menuResetFrame)))
-    // 모니터가 둘 이상일 때만: 고른 화면의 오른쪽 아래로(큐브를 끌어서도 옮길 수 있다)
-    let screens = NSScreen.screens
-    if screens.count > 1 {
+      return [item(title, #selector(menuFocus), key: hotKeyOK ? Config.hotKeyMenuKey : nil)]
+    case .toggleVisible:
+      return [item(cube.panel.isVisible ? "숨기기" : "보이기", #selector(menuToggleVisible))]
+    case .scramble:
+      return [item(title, #selector(menuScramble), key: s.scrambleKey)]
+    case .hint:
+      return [item(title, #selector(menuHint), key: MenuKey(key: MenuKey.f1))]
+    case .cubeSize:
+      // 「창」 안의 창 크기와 헷갈리지 않게 「큐브 크기」
+      let sizes = NSMenu()
+      for n in 2...7 {
+        sizes.addItem(item("\(n)×\(n)", #selector(menuSize(_:)), tag: n, on: s.n == n))
+      }
+      return [submenu(title, sizes)]
+    case .records:
+      return [item(title, #selector(menuRecords))]
+    case .tiers:
+      return [item(title, #selector(menuTiers))]
+    case .versus:
+      let vs = NSMenu()
+      vs.addItem(item("친구와 대결", #selector(menuVsFriends)))
+      vs.addItem(item("컴퓨터와 대결", #selector(menuVsBot)))
+      return [submenu(title, vs)]
+    case .learn:
+      return [item(title, #selector(menuLearn))]
+    case .window:
+      return [submenu(title, menu(of: MenuLayout.window(multipleScreens: NSScreen.screens.count > 1)))]
+    case .windowSizes:
+      // 핀치·⌘ + 스크롤·손잡이로도 바꾼다
+      let nowSide = WindowGesture.preset(of: cube.panel.frame.size, in: Config.sizePresets.map(\.side))
+      return Config.sizePresets.map { p in
+        item("\(p.label) \(Int(p.side))", #selector(menuWindowSize(_:)), tag: Int(p.side), on: nowSide == p.side)
+      }
+    case .moveScreen:
+      // 모니터가 둘 이상일 때만(MenuLayout): 고른 화면의 오른쪽 아래로(큐브를 끌어서도 옮길 수 있다)
+      let screens = NSScreen.screens
       let now = WindowPlacement.screenIndex(of: cube.panel.frame, screens: screens.map(\.visibleFrame))
       let list = NSMenu()
       for (i, screen) in screens.enumerated() {
         list.addItem(item(screen.localizedName, #selector(menuMoveScreen(_:)), tag: i, on: i == now))
       }
-      let moveItem = NSMenuItem(title: "화면 옮기기", action: nil, keyEquivalent: "")
-      moveItem.submenu = list
-      m.addItem(moveItem)
+      return [submenu(title, list)]
+    case .mirror:
+      return [item(title, #selector(menuMirror), on: s.mirror)]
+    case .resetFrame:
+      return [item(title, #selector(menuResetFrame))]
+    case .keySettings:
+      return [item(title, #selector(menuSettings))]
+    case .shortcuts:
+      return [item(title, #selector(menuKeys))]
+    case .reload:
+      return [item(title, #selector(menuReload))]
+    case .checkForUpdates:
+      return [item(title, #selector(menuCheckForUpdates))]
+    case .quit:
+      return [item(title, #selector(menuQuit))]
     }
-    m.addItem(item("다시 불러오기", #selector(menuReload)))
-    if !forWindow {
-      m.addItem(.separator())
-      if updater.isAvailable { m.addItem(item("업데이트 확인…", #selector(menuCheckForUpdates))) }
-      m.addItem(item("Cubie 끝내기", #selector(menuQuit)))
-    }
-    return m
   }
 
   @objc private func menuFocus() {
@@ -364,7 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     openWebWindow(.tiers)
   }
-  /// 사이트의 키·색 설정. 웹 저장소가 앱 것(브라우저와 따로)이라 앱 안에서 정해야 미니 창에 닿는다
+  /// 메뉴 「키 배치·색…」: 사이트의 키·색 설정 화면. 웹 저장소가 앱 것(브라우저와 따로)이라 앱 안에서 정해야 미니 창에 닿는다
   @objc private func menuSettings() { openWebWindow(.settings) }
 
   @objc private func menuVsFriends() { NSWorkspace.shared.open(Config.site("/cube/online")) }
@@ -389,7 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
       case .keys: ("/cube/mini?view=keys", "Cubie 단축키", NSSize(width: 780, height: 560))
       case .tiers: ("/cube/tiers?n=\(cube.bridge.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
-      case .settings: ("/cube/settings", "Cubie 키·색 설정", NSSize(width: 760, height: 720))
+      case .settings: ("/cube/settings", "Cubie 키 배치·색", NSSize(width: 760, height: 720))
       }
     let config = WKWebViewConfiguration()
     config.websiteDataStore = .default()

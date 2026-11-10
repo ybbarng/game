@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.5</title>
+      <pubDate>Tue, 10 Nov 2026 01:29:33 +0000</pubDate>
+      <sparkle:version>0.1.5</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;메뉴를 하는 일별로 다시 묶었습니다. 창 크기·화면 옮기기·거울·자리 처음으로는 「창」 아래로 모았고, 「크기」는 「큐브 크기」, 「키·색 설정…」은 「키 배치·색…」으로 이름을 바꿨습니다.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.5/Cubie.zip" length="1671822" type="application/octet-stream" sparkle:edSignature="yzdTFrpy+y3EqYpfVmjp8a/MHOXQYAEtyCcJgeaQIwNsxoqWqveSfvoxZ6AXHcsCF9nZVVhr/WWCceTjsmfFDg=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.4</title>
       <pubDate>Mon, 09 Nov 2026 11:30:39 +0000</pubDate>
       <sparkle:version>0.1.4</sparkle:version>

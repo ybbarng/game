@@ -17,7 +17,7 @@ enum Config {
   static let minSize = NSSize(width: 48, height: 48)
   /// 가장 큰 크기(핀치·⌘ + 스크롤·손잡이 모두). 화면 구석에 작게 띄우는 앱이라 넉넉히만 둔다
   static let maxSize = NSSize(width: 480, height: 480)
-  /// 메뉴 「창 크기」(작게·보통·크게·아주 크게, pt). 보통은 `defaultSize`와 같다
+  /// 메뉴 「창」의 크기 항목(작게·보통·크게·아주 크게, pt). 보통은 `defaultSize`와 같다
   static let sizePresets: [(label: String, side: CGFloat)] = [
     ("작게", 72), ("보통", 96), ("크게", 144), ("아주 크게", 200),
   ]
