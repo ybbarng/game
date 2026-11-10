@@ -97,31 +97,33 @@ test("패턴: 내 패턴을 넣으면 모양을 미리 보고 저장한다", asy
   await expect(mine.locator("[data-pattern-card]")).toContainText("센터 체커");
 });
 
-test("패턴: 직접 만들어 보기 — 공식을 치면 통과하고, 되돌리면 맞춘 큐브로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await useNotationKeys(page);
-  await page.goto("/cube/patterns?p=3-checkerboard");
-  const tryPanel = page.locator("[data-pattern-try]");
-  await expect(
-    page.locator("[data-cube-stage][data-input-ready]"),
-  ).toBeVisible();
-  const alg = (await tryPanel
-    .locator("[data-pattern-alg]")
-    .getAttribute("data-pattern-alg")) as string;
+test(
+  "패턴: 직접 만들어 보기 — 공식을 치면 통과하고, 되돌리면 맞춘 큐브로",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await useNotationKeys(page);
+    await page.goto("/cube/patterns?p=3-checkerboard");
+    const tryPanel = page.locator("[data-pattern-try]");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible();
+    const alg = (await tryPanel
+      .locator("[data-pattern-alg]")
+      .getAttribute("data-pattern-alg")) as string;
 
-  // 큐브를 통째로 한 번 돌려 두고 쳐도 같은 모양이면 통과
-  await page.keyboard.press("KeyY");
-  const keys = keysFor(alg);
-  for (const k of keys.slice(0, -1)) await page.keyboard.press(k);
-  await expect(page.locator("[data-pattern-pass]")).toHaveCount(0);
-  await page.keyboard.press(keys.at(-1) as string);
-  await expect(page.locator("[data-pattern-pass]")).toBeVisible();
-  await expect(tryPanel).toHaveAttribute("data-pattern-passed", "");
-  await shot(page, "patterns-passed", info.project.name);
+    // 큐브를 통째로 한 번 돌려 두고 쳐도 같은 모양이면 통과
+    await page.keyboard.press("KeyY");
+    const keys = keysFor(alg);
+    for (const k of keys.slice(0, -1)) await page.keyboard.press(k);
+    await expect(page.locator("[data-pattern-pass]")).toHaveCount(0);
+    await page.keyboard.press(keys.at(-1) as string);
+    await expect(page.locator("[data-pattern-pass]")).toBeVisible();
+    await expect(tryPanel).toHaveAttribute("data-pattern-passed", "");
+    await shot(page, "patterns-passed", info.project.name);
 
-  await tryPanel.locator("[data-pattern-reset]").click();
-  await expect(tryPanel).not.toHaveAttribute("data-pattern-passed", "");
-  await expect(page.locator("[data-pattern-pass]")).toHaveCount(0);
-});
+    await tryPanel.locator("[data-pattern-reset]").click();
+    await expect(tryPanel).not.toHaveAttribute("data-pattern-passed", "");
+    await expect(page.locator("[data-pattern-pass]")).toHaveCount(0);
+  },
+);

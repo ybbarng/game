@@ -50,27 +50,28 @@ async function runRounds(host: Page): Promise<void> {
   });
 }
 
-test("E1: 열면 타이머 단위와 주사율을 잰다", async ({ page }, info) => {
-  test.skip(info.project.name === "phone-landscape", "세로·데스크톱만 본다");
-  await page.goto("/lab/reaction");
-  await expect(page.locator("[data-lab-e1-done]")).toBeVisible();
-  await expect(page.locator("[data-lab-hz]")).toContainText("Hz");
-  await page.locator("[data-lab-tap]").click();
-  await expect(page.locator("[data-lab-taps]")).toContainText("누름 시각 단위");
-  if (SAVE_SCREENSHOTS)
-    await page.screenshot({
-      path: `test-results/screens/lab-e1-${info.project.name}.png`,
-      fullPage: true,
-    });
-});
-
-test.describe("E5 속임 시험", () => {
-  test.beforeEach(({ browserName }, info) => {
-    test.skip(
-      browserName !== "chromium" || info.project.name !== "desktop",
-      "탭 여럿을 띄우는 시험은 데스크톱 하나로",
+test(
+  "E1: 열면 타이머 단위와 주사율을 잰다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 세로·데스크톱만 본다
+    await page.goto("/lab/reaction");
+    await expect(page.locator("[data-lab-e1-done]")).toBeVisible();
+    await expect(page.locator("[data-lab-hz]")).toContainText("Hz");
+    await page.locator("[data-lab-tap]").click();
+    await expect(page.locator("[data-lab-taps]")).toContainText(
+      "누름 시각 단위",
     );
-  });
+    if (SAVE_SCREENSHOTS)
+      await page.screenshot({
+        path: `test-results/screens/lab-e1-${info.project.name}.png`,
+        fullPage: true,
+      });
+  },
+);
+
+test.describe("E5 속임 시험", { tag: "@only-desktop" }, () => {
+  // 탭 여럿을 띄우는 시험은 데스크톱 하나로(모든 프로젝트가 Chrome이다)
 
   test("핑 답만 늦춘 손님: 앱 핑 기준은 못 잡고 getStats 기준은 잡는다", async ({
     context,

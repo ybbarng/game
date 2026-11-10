@@ -57,22 +57,24 @@ test("배우기: 3×3 초보자 지도는 일곱 단계 띠와 단계별 시연,
   ).toHaveAttribute("data-stage", "4");
 });
 
-test("배우기: 노란 십자 ㄱ자는 U로 쥐고 거꾸로 공식 한 번에 통과한다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=333-ll-cross");
-  await goToStep(page, "try");
-  await inputReady(page);
-  const back = "F U R U' R' F'";
-  const tryBox = page.locator("[data-cube-try]");
-  // U'로 노란 두 칸을 뒤·왼쪽에 두기만 해서는 아직 통과가 아니다
-  for (const k of keysFor("U'")) await page.keyboard.press(k);
-  await expect(tryBox).toContainText("수 1");
-  await expect(tryBox).not.toHaveAttribute("data-cube-passed", "");
-  // 거꾸로 공식 한 번이면 십자
-  for (const k of keysFor(back)) await page.keyboard.press(k);
-  await expect(tryBox).toHaveAttribute("data-cube-passed", "");
-  await shot(page, "learn-ll-cross-twice", info.project.name);
-});
+test(
+  "배우기: 노란 십자 ㄱ자는 U로 쥐고 거꾸로 공식 한 번에 통과한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await useNotationKeys(page);
+    await page.goto("/cube/learn?lesson=333-ll-cross");
+    await goToStep(page, "try");
+    await inputReady(page);
+    const back = "F U R U' R' F'";
+    const tryBox = page.locator("[data-cube-try]");
+    // U'로 노란 두 칸을 뒤·왼쪽에 두기만 해서는 아직 통과가 아니다
+    for (const k of keysFor("U'")) await page.keyboard.press(k);
+    await expect(tryBox).toContainText("수 1");
+    await expect(tryBox).not.toHaveAttribute("data-cube-passed", "");
+    // 거꾸로 공식 한 번이면 십자
+    for (const k of keysFor(back)) await page.keyboard.press(k);
+    await expect(tryBox).toHaveAttribute("data-cube-passed", "");
+    await shot(page, "learn-ll-cross-twice", info.project.name);
+  },
+);

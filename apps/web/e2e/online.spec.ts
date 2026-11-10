@@ -53,10 +53,10 @@ async function stepOnce(page: Page): Promise<boolean> {
   return false;
 }
 
-test("방장이 방을 만들고 친구가 링크로 들어와 한 판을 끝까지 둔다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+test("방장이 방을 만들고 친구가 링크로 들어와 한 판을 끝까지 둔다", {
+  tag: "@only-desktop",
+}, async ({ context }) => {
+  // 데스크톱에서만 돌린다
   const host = await context.newPage();
   const guest = await context.newPage();
   const errors: string[] = [];
@@ -122,10 +122,10 @@ test("방장이 방을 만들고 친구가 링크로 들어와 한 판을 끝까
   expect(errors).toEqual([]);
 });
 
-test("게임 중에 참가자가 새로고침해도 같은 자리로 돌아온다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+test("게임 중에 참가자가 새로고침해도 같은 자리로 돌아온다", {
+  tag: "@only-desktop",
+}, async ({ context }) => {
+  // 데스크톱에서만 돌린다
   const host = await context.newPage();
   const guest = await context.newPage();
   for (const p of [host, guest]) await prepare(p);

@@ -118,108 +118,110 @@ async function stageFits(page: Page, project: string) {
   if (stage) expect(stage.y + stage.height).toBeLessThanOrEqual(720);
 }
 
-test("컴퓨터와 대결: 힌트 허용이면 두 단계 힌트(지금 경우 → 다음 수)가 보이고, 결과 상자에 적힌다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱·휴대폰 세로로 본다",
-  );
-  test.setTimeout(150_000);
-  await setup(page, {
-    size: "3",
-    help: "hint",
-    seed: "hp-1",
-    inspection: false,
-  });
-  await page.locator("[data-cube-vs-start]").click();
-  await phase(page, "race");
-  const scramble = await scrambleText(page);
-  await expect(page.locator("[data-cube-my-handicap]")).toContainText(
-    "힌트 허용",
-  );
-  await page.locator('[data-cube-help-hint="1"]').click();
-  await expect(page.locator("[data-cube-help-case]")).toHaveAttribute(
-    "data-cube-help-case",
-    /.+/,
-  );
-  // 다음 수는 힌트 2를 눌러야 보인다
-  await expect(
-    page.locator("[data-cube-help-hint-row] [data-cube-hint]"),
-  ).toHaveCount(0);
-  await page.locator('[data-cube-help-hint="2"]').click();
-  await expect(
-    page.locator("[data-cube-help-hint-row] [data-cube-hint]"),
-  ).toHaveAttribute("data-cube-hint", /^[URFDLBxyz]/);
-  await stageFits(page, info.project.name);
-  await shot(page, "help-hint", info.project.name);
+test(
+  "컴퓨터와 대결: 힌트 허용이면 두 단계 힌트(지금 경우 → 다음 수)가 보이고, 결과 상자에 적힌다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로 본다
+    test.setTimeout(150_000);
+    await setup(page, {
+      size: "3",
+      help: "hint",
+      seed: "hp-1",
+      inspection: false,
+    });
+    await page.locator("[data-cube-vs-start]").click();
+    await phase(page, "race");
+    const scramble = await scrambleText(page);
+    await expect(page.locator("[data-cube-my-handicap]")).toContainText(
+      "힌트 허용",
+    );
+    await page.locator('[data-cube-help-hint="1"]').click();
+    await expect(page.locator("[data-cube-help-case]")).toHaveAttribute(
+      "data-cube-help-case",
+      /.+/,
+    );
+    // 다음 수는 힌트 2를 눌러야 보인다
+    await expect(
+      page.locator("[data-cube-help-hint-row] [data-cube-hint]"),
+    ).toHaveCount(0);
+    await page.locator('[data-cube-help-hint="2"]').click();
+    await expect(
+      page.locator("[data-cube-help-hint-row] [data-cube-hint]"),
+    ).toHaveAttribute("data-cube-hint", /^[URFDLBxyz]/);
+    await stageFits(page, info.project.name);
+    await shot(page, "help-hint", info.project.name);
 
-  await solve(page, scramble);
-  // 다 맞추면 힌트 줄이 없어진다
-  await expect(page.locator("[data-cube-help-hint-row]")).toHaveCount(0);
-  const result = await finalResult(page);
-  await expect(result.locator('[data-cube-rank="me"]')).toContainText(
-    "힌트 허용",
-  );
-  await shot(page, "help-hint-result", info.project.name);
-});
+    await solve(page, scramble);
+    // 다 맞추면 힌트 줄이 없어진다
+    await expect(page.locator("[data-cube-help-hint-row]")).toHaveCount(0);
+    const result = await finalResult(page);
+    await expect(result.locator('[data-cube-rank="me"]')).toContainText(
+      "힌트 허용",
+    );
+    await shot(page, "help-hint-result", info.project.name);
+  },
+);
 
-test("컴퓨터와 대결: 가리고 맞추기면 살펴보기 동안 보고, 풀리면 내 큐브를 가렸다가 맞추면 다시 보인다", async ({
-  page,
-}, info) => {
-  test.skip(
-    info.project.name === "phone-landscape",
-    "데스크톱·휴대폰 세로로 본다",
-  );
-  test.setTimeout(150_000);
-  await setup(page, {
-    size: "2",
-    help: "blind",
-    seed: "hp-2",
-    inspection: true,
-  });
-  await page.locator("[data-cube-vs-start]").click();
-  await phase(page, "inspect");
-  // 살펴보기 동안은 색이 있는 큐브(같은 큐브 자리에서 판이 시작되면 색만 빠진다)
-  await stageShown(page);
-  await expect.poll(() => hiddenCount(page)).toBe(0);
-  await expect(page.locator("[data-cube-my-handicap]")).toContainText(
-    "가리고 맞추기",
-  );
-  await shot(page, "help-blind-inspect", info.project.name);
-  const scramble = await scrambleText(page);
-  const race = page.locator("[data-cube-race-phase]");
-  await fastForwardUntil(
-    page,
-    async () => (await race.getAttribute("data-cube-race-phase")) === "race",
-    { step: 1_000, timeout: 30_000 },
-  );
-  // 2×2: 여섯 면 × 네 칸이 모두 까맣게 가려진다
-  await expect.poll(() => hiddenCount(page)).toBe(24);
-  await stageFits(page, info.project.name);
-  await shot(page, "help-blind-solving", info.project.name);
+test(
+  "컴퓨터와 대결: 가리고 맞추기면 살펴보기 동안 보고, 풀리면 내 큐브를 가렸다가 맞추면 다시 보인다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱·휴대폰 세로로 본다
+    test.setTimeout(150_000);
+    await setup(page, {
+      size: "2",
+      help: "blind",
+      seed: "hp-2",
+      inspection: true,
+    });
+    await page.locator("[data-cube-vs-start]").click();
+    await phase(page, "inspect");
+    // 살펴보기 동안은 색이 있는 큐브(같은 큐브 자리에서 판이 시작되면 색만 빠진다)
+    await stageShown(page);
+    await expect.poll(() => hiddenCount(page)).toBe(0);
+    await expect(page.locator("[data-cube-my-handicap]")).toContainText(
+      "가리고 맞추기",
+    );
+    await shot(page, "help-blind-inspect", info.project.name);
+    const scramble = await scrambleText(page);
+    const race = page.locator("[data-cube-race-phase]");
+    await fastForwardUntil(
+      page,
+      async () => (await race.getAttribute("data-cube-race-phase")) === "race",
+      { step: 1_000, timeout: 30_000 },
+    );
+    // 2×2: 여섯 면 × 네 칸이 모두 까맣게 가려진다
+    await expect.poll(() => hiddenCount(page)).toBe(24);
+    await stageFits(page, info.project.name);
+    await shot(page, "help-blind-solving", info.project.name);
 
-  await solve(page, scramble);
-  await expect.poll(() => hiddenCount(page)).toBe(0);
-  await shot(page, "help-blind-solved", info.project.name);
-  const result = await finalResult(page);
-  await expect(result.locator('[data-cube-rank="me"]')).toContainText(
-    "가리고 맞추기",
-  );
-  await shot(page, "help-blind-result", info.project.name);
-});
+    await solve(page, scramble);
+    await expect.poll(() => hiddenCount(page)).toBe(0);
+    await shot(page, "help-blind-solved", info.project.name);
+    const result = await finalResult(page);
+    await expect(result.locator('[data-cube-rank="me"]')).toContainText(
+      "가리고 맞추기",
+    );
+    await shot(page, "help-blind-result", info.project.name);
+  },
+);
 
-test("온라인 대기실: 방장이 사람마다 도움을 고른다", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "온라인 대결은 키보드 기기만");
-  await page.goto("/cube/online?net=local");
-  await page.locator("[data-cube-enter]").click();
-  const panel = page.locator("[data-cube-handicap]");
-  const me = (await panel
-    .locator("[data-cube-handicap-row]")
-    .first()
-    .getAttribute("data-cube-handicap-row")) as string;
-  const help = panel.locator(`[data-cube-handicap-help="${me}"]`);
-  await help.selectOption("blind");
-  await expect(help).toHaveValue("blind");
-  await shot(page, "help-lobby", info.project.name);
-});
+test(
+  "온라인 대기실: 방장이 사람마다 도움을 고른다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 온라인 대결은 키보드 기기만
+    await page.goto("/cube/online?net=local");
+    await page.locator("[data-cube-enter]").click();
+    const panel = page.locator("[data-cube-handicap]");
+    const me = (await panel
+      .locator("[data-cube-handicap-row]")
+      .first()
+      .getAttribute("data-cube-handicap-row")) as string;
+    const help = panel.locator(`[data-cube-handicap-help="${me}"]`);
+    await help.selectOption("blind");
+    await expect(help).toHaveValue("blind");
+    await shot(page, "help-lobby", info.project.name);
+  },
+);

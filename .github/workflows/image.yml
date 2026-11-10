@@ -7,8 +7,9 @@ name: Image
 # 태그: 커밋 sha 는 항상, main 이면 latest 도.
 # 서버 쪽 compose.yaml·deploy.sh 는 servers 저장소의 byb.kr/apps/game/(웹)·byb.kr/apps/stardraw/(별 따기 서버)에 있다.
 
-# CI(단위·화면 시험)가 main 에서 성공한 뒤에만 빌드하고 배포한다(2026-10-30). 무거운 전체 화면 시험을
-# 개발 맥 대신 CI 가 맡고, 깨진 커밋은 사이트에 올라가지 않는다. 빌드할 커밋은 CI 가 확인한 커밋(head_sha)이다.
+# CI 가 main 에서 성공한 뒤에만 빌드하고 배포한다(2026-10-30). 깨진 커밋은 사이트에 올라가지 않는다. 빌드할 커밋은
+# CI 가 확인한 커밋(head_sha)이다. 2026-11-10부터 main push CI 는 빠른 검사(lint·typecheck·바뀐 단위 시험)만 한다.
+# 화면 시험은 PR 에서 돌고, main 보호 규칙이 PR·CI 통과(ci-ok)·최신 main 반영을 요구한다(docs/38 17절).
 # 손으로 돌리기(workflow_dispatch)는 main 에서만 빌드·배포한다. 다른 브랜치를 골라 돌리면 모든 작업을 건너뛴다.
 on:
   workflow_run:

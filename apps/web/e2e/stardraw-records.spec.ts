@@ -24,10 +24,10 @@ async function virtualAuthenticator(page: Page) {
  * 건네받는 연출 → 「받기」 → 내 기록에 남는다. 받은 뒤에는 띠가 다시 뜨지 않는다.
  * 당첨증 QR이 가리키는 공유 응모권 화면이 공개 장부(여기서는 연습 장부)에서 그 응모권을 찾는지도 본다
  */
-test("내 기록: 처음 받은 서류는 띠로 알리고 건네받은 뒤 내 기록에 남는다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "phone-portrait", "흐름 시험은 한 번만");
+test("내 기록: 처음 받은 서류는 띠로 알리고 건네받은 뒤 내 기록에 남는다", {
+  tag: "@only-phone-portrait",
+}, async ({ page }) => {
+  // 흐름 시험은 한 번만
   await virtualAuthenticator(page);
   await page.goto("/stardraw");
   await page.getByRole("button", { name: "우주인 등록", exact: true }).click();

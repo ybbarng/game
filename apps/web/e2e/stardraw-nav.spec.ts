@@ -94,46 +94,48 @@ async function openDrawResult(page: Page) {
  * 추첨으로). 메뉴가 없는 예측 화면의 「홈」(2026-11-02 「처음으로」에서 바꿈)은 어디서 들어왔든 첫 화면이다.
  * 탭바가 있는 영수증에는 「처음으로」를 두지 않는다(켜진 탭은 내 응모인데 단추는 홈으로 가 어긋났다, B안)
  */
-test("예측 화면 「홈」은 늘 첫 화면으로, 영수증은 탭으로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  await virtualAuthenticator(page);
-  const id = await registerAndEnter(page);
-  // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
-  const home = page.locator("section[aria-label='이번 회차']");
+test(
+  "예측 화면 「홈」은 늘 첫 화면으로, 영수증은 탭으로",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    await virtualAuthenticator(page);
+    const id = await registerAndEnter(page);
+    // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
+    const home = page.locator("section[aria-label='이번 회차']");
 
-  // 내 응모 → 영수증: 머리 줄 단추 없이 내 응모 탭이 켜져 있다
-  await page.goto("/stardraw/mine");
-  await page
-    .getByRole("region", { name: "내 예측" })
-    .getByRole("listitem")
-    .first()
-    .getByRole("button")
-    .first()
-    .click();
-  await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
-  await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
-  await expect(page.locator("nav [data-tab='mine']")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await page.screenshot({ path: info.outputPath("nav-home-receipt.png") });
-  await page.locator("nav [data-tab='home']").click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-  await expect(home).toBeVisible();
+    // 내 응모 → 영수증: 머리 줄 단추 없이 내 응모 탭이 켜져 있다
+    await page.goto("/stardraw/mine");
+    await page
+      .getByRole("region", { name: "내 예측" })
+      .getByRole("listitem")
+      .first()
+      .getByRole("button")
+      .first()
+      .click();
+    await expect(page.locator(`[data-receipt='${id}']`)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
+    await expect(page.locator("nav [data-tab='mine']")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await page.screenshot({ path: info.outputPath("nav-home-receipt.png") });
+    await page.locator("nav [data-tab='home']").click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(home).toBeVisible();
 
-  // 추첨 결과 → 「다음 회차 예측」 → 「홈」
-  await openDrawResult(page);
-  await page.getByRole("button", { name: "다음 회차 예측" }).click();
-  // 다음 회차 예측은 접수처(지금 회차)에서
-  await expect(page).toHaveURL(/\/stardraw\/now$/);
-  await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
-  await page.getByRole("button", { name: "홈", exact: true }).click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-  await expect(home).toBeVisible();
-  await page.screenshot({ path: info.outputPath("nav-home-first.png") });
-});
+    // 추첨 결과 → 「다음 회차 예측」 → 「홈」
+    await openDrawResult(page);
+    await page.getByRole("button", { name: "다음 회차 예측" }).click();
+    // 다음 회차 예측은 접수처(지금 회차)에서
+    await expect(page).toHaveURL(/\/stardraw\/now$/);
+    await expect(page.getByRole("button", { name: /^← / })).toHaveCount(0);
+    await page.getByRole("button", { name: "홈", exact: true }).click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(home).toBeVisible();
+    await page.screenshot({ path: info.outputPath("nav-home-first.png") });
+  },
+);
 
 /** 「홈」이 하늘판 위에 겹치지 않고 위쪽에 따로 있는지(연출을 가리지 않는다) */
 async function homeAboveSky(page: Page) {
@@ -150,39 +152,41 @@ async function homeAboveSky(page: Page) {
  * 휴대폰은 추첨 화면 머리 줄 왼쪽에 「홈」 하나, PC는 다른 화면처럼 위쪽 메뉴 줄. 둘 다 하늘판 위에 겹치지 않는다.
  * 「← 돌아가기」는 없다(바로 전 화면은 브라우저·기기의 뒤로 가기, B안)
  */
-test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과 화면", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  await virtualAuthenticator(page);
-  await registerAndEnter(page);
-  // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
-  const home = page.locator("section[aria-label='이번 회차']");
-  const goHome = page.locator("[data-tab='home']");
-  const backButtons = page.getByRole("button", { name: /^← / });
+test(
+  "추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과 화면",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    await virtualAuthenticator(page);
+    await registerAndEnter(page);
+    // 첫 화면(등록한 사람): 이번 회차 카드(인사 줄은 우주국 인사로 옮겼다, 2026-11-02)
+    const home = page.locator("section[aria-label='이번 회차']");
+    const goHome = page.locator("[data-tab='home']");
+    const backButtons = page.getByRole("button", { name: /^← / });
 
-  // 결과 전: 추첨을 기다리는 화면
-  await goHome.click();
-  await page.locator("[data-card='entered'] [data-go-draw]").click();
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
-  await expect(goHome).toHaveCount(1);
-  await expect(backButtons).toHaveCount(0);
-  await homeAboveSky(page);
-  await page.screenshot({ path: info.outputPath("nav-home-draw-wait.png") });
-  await goHome.click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-  await expect(home).toBeVisible();
+    // 결과 전: 추첨을 기다리는 화면
+    await goHome.click();
+    await page.locator("[data-card='entered'] [data-go-draw]").click();
+    await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+    await expect(goHome).toHaveCount(1);
+    await expect(backButtons).toHaveCount(0);
+    await homeAboveSky(page);
+    await page.screenshot({ path: info.outputPath("nav-home-draw-wait.png") });
+    await goHome.click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(home).toBeVisible();
 
-  // 결과 화면
-  await openDrawResult(page);
-  await expect(goHome).toHaveCount(1);
-  await expect(backButtons).toHaveCount(0);
-  await homeAboveSky(page);
-  await page.screenshot({ path: info.outputPath("nav-home-draw.png") });
-  await goHome.click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-  await expect(home).toBeVisible();
-});
+    // 결과 화면
+    await openDrawResult(page);
+    await expect(goHome).toHaveCount(1);
+    await expect(backButtons).toHaveCount(0);
+    await homeAboveSky(page);
+    await page.screenshot({ path: info.outputPath("nav-home-draw.png") });
+    await goHome.click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+    await expect(home).toBeVisible();
+  },
+);
 
 /**
  * 2026-11-01 사용자 B안: 화면마다 속한 탭을 하나로 정했다. 영수증·내 기록은 내 응모 탭, 회차 결과·관측 기록은 지난 회차
@@ -190,224 +194,232 @@ test("추첨 화면에서 바로 첫 화면으로: 기다리는 화면과 결과
  * 들어간다. 탭바·메뉴 줄이 있는 화면에는 「← 처음으로」「← 돌아가기」 같은 단추가 없다. 회차 결과의 「← 지난 회차」만
  * 남고, 어디서 들어왔든 지난 회차 목록으로 간다. 첫 화면의 지난 회차 한 줄은 그 회차 결과로 바로 간다
  */
-test("화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아가기가 없다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  await virtualAuthenticator(page);
-  await registerAndEnter(page);
-  const backButtons = page.getByRole("button", { name: /^← / });
-  const tabOn = (t: string) =>
-    expect(page.locator(`nav [data-tab='${t}']`)).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  // 추첨을 넘겨 지난 회차를 만들고 결과를 열어 본다(첫 화면에 지난 회차 한 줄이 보이게)
-  await page.locator("nav [data-tab='home']").click();
-  await openDrawResult(page);
-  await page.locator("[data-tab='home']").click();
+test(
+  "화면마다 속한 탭이 켜지고, 메뉴가 있는 화면에는 돌아가기가 없다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    await virtualAuthenticator(page);
+    await registerAndEnter(page);
+    const backButtons = page.getByRole("button", { name: /^← / });
+    const tabOn = (t: string) =>
+      expect(page.locator(`nav [data-tab='${t}']`)).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    // 추첨을 넘겨 지난 회차를 만들고 결과를 열어 본다(첫 화면에 지난 회차 한 줄이 보이게)
+    await page.locator("nav [data-tab='home']").click();
+    await openDrawResult(page);
+    await page.locator("[data-tab='home']").click();
 
-  // 더 보기에는 내 기록·관측 기록이 없다(내 등록증과 앱 밖 페이지만)
-  await page.locator("[data-tab='more']").click();
-  await expect(page.locator("[data-my-name]")).toBeVisible();
-  for (const name of ["내 기록", "관측 기록"])
-    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(
-      0,
-    );
-  await page.screenshot({ path: info.outputPath("nav-more.png") });
-  await page.locator("[data-tab='more']").click();
+    // 더 보기에는 내 기록·관측 기록이 없다(내 등록증과 앱 밖 페이지만)
+    await page.locator("[data-tab='more']").click();
+    await expect(page.locator("[data-my-name]")).toBeVisible();
+    for (const name of ["내 기록", "관측 기록"])
+      await expect(page.getByRole("button", { name, exact: true })).toHaveCount(
+        0,
+      );
+    await page.screenshot({ path: info.outputPath("nav-more.png") });
+    await page.locator("[data-tab='more']").click();
 
-  // 첫 화면 지난 회차 한 줄 → 그 회차 결과(지난 회차 탭) → 「← 지난 회차」는 뒤로 가기가 아니라 목록으로
-  await page.locator("[data-last-round='1']").click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds#1$/);
-  await tabOn("rounds");
-  await page.getByRole("button", { name: "← 지난 회차" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds$/);
-  await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
-  await tabOn("rounds");
-  await expect(backButtons).toHaveCount(0);
+    // 첫 화면 지난 회차 한 줄 → 그 회차 결과(지난 회차 탭) → 「← 지난 회차」는 뒤로 가기가 아니라 목록으로
+    await page.locator("[data-last-round='1']").click();
+    await expect(page).toHaveURL(/\/stardraw\/rounds#1$/);
+    await tabOn("rounds");
+    await page.getByRole("button", { name: "← 지난 회차" }).click();
+    await expect(page).toHaveURL(/\/stardraw\/rounds$/);
+    await expect(page.getByRole("region", { name: "지난 회차" })).toBeVisible();
+    await tabOn("rounds");
+    await expect(backButtons).toHaveCount(0);
 
-  // 주소로 바로 연 회차 결과도 「← 지난 회차」는 목록으로
-  await page.goto("/stardraw");
-  await page.goto("/stardraw/rounds#1");
-  await page.getByRole("button", { name: "← 지난 회차" }).click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds$/);
+    // 주소로 바로 연 회차 결과도 「← 지난 회차」는 목록으로
+    await page.goto("/stardraw");
+    await page.goto("/stardraw/rounds#1");
+    await page.getByRole("button", { name: "← 지난 회차" }).click();
+    await expect(page).toHaveURL(/\/stardraw\/rounds$/);
 
-  // 관측 기록: 지난 회차 머리 줄에서 들어가고, 지난 회차 탭이 켜진다
-  await page.getByRole("button", { name: "관측 기록", exact: true }).click();
-  await expect(page).toHaveURL(/\/stardraw\/stats$/);
-  await tabOn("rounds");
-  await expect(backButtons).toHaveCount(0);
+    // 관측 기록: 지난 회차 머리 줄에서 들어가고, 지난 회차 탭이 켜진다
+    await page.getByRole("button", { name: "관측 기록", exact: true }).click();
+    await expect(page).toHaveURL(/\/stardraw\/stats$/);
+    await tabOn("rounds");
+    await expect(backButtons).toHaveCount(0);
 
-  // 내 응모 → 「내 기록」 칸: 내 응모 탭이 켜진다
-  await page.locator("nav [data-tab='mine']").click();
-  await tabOn("mine");
-  await expect(backButtons).toHaveCount(0);
-  await page.locator("[data-open-records]").click();
-  await expect(page).toHaveURL(/\/stardraw\/mine#records$/);
-  await tabOn("mine");
-  await expect(backButtons).toHaveCount(0);
-});
+    // 내 응모 → 「내 기록」 칸: 내 응모 탭이 켜진다
+    await page.locator("nav [data-tab='mine']").click();
+    await tabOn("mine");
+    await expect(backButtons).toHaveCount(0);
+    await page.locator("[data-open-records]").click();
+    await expect(page).toHaveURL(/\/stardraw\/mine#records$/);
+    await tabOn("mine");
+    await expect(backButtons).toHaveCount(0);
+  },
+);
 
 /**
  * 2026-11-01 사용자: 영수증을 열어 둔 채 추첨을 기다리면 추첨(회차 방)으로 가는 길이 없었다. 결과 전에는 첫 화면 회차
  * 카드와 같은 「관측지로 가기」가 있고, 영수증을 연 채로 결과가 나오면 새로고침 없이 「추첨 보기」로 바뀐다
  */
-test("영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면 「추첨 보기」", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  await virtualAuthenticator(page);
-  const id = await registerAndEnter(page);
-  const goDraw = page.getByRole("button", { name: "관측지로 가기" });
-  await expect(goDraw).toBeVisible();
-  // 결과 전 영수증 아래쪽은 상태 문구가 아니라 맺음말(상태는 영수증 밖 단추가 맡는다)
-  const receipt = page.locator(`[data-receipt='${id}']`);
-  await expect(receipt.locator("[data-receipt-thanks]")).toHaveText(
-    "예측에 참여해 주셔서 감사합니다.별이 빛나는 순간을 관측지에서 함께 지켜봐 주시기 바랍니다.",
-  );
-  await expect(page.getByText("관측을 기다리고 있습니다")).toHaveCount(0);
-  await page.screenshot({
-    path: info.outputPath("receipt-draw-wait.png"),
-    fullPage: true,
-  });
-  await goDraw.click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
-  await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
+test(
+  "영수증: 결과 전에는 「관측지로 가기」, 결과가 나오면 「추첨 보기」",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    await virtualAuthenticator(page);
+    const id = await registerAndEnter(page);
+    const goDraw = page.getByRole("button", { name: "관측지로 가기" });
+    await expect(goDraw).toBeVisible();
+    // 결과 전 영수증 아래쪽은 상태 문구가 아니라 맺음말(상태는 영수증 밖 단추가 맡는다)
+    const receipt = page.locator(`[data-receipt='${id}']`);
+    await expect(receipt.locator("[data-receipt-thanks]")).toHaveText(
+      "예측에 참여해 주셔서 감사합니다.별이 빛나는 순간을 관측지에서 함께 지켜봐 주시기 바랍니다.",
+    );
+    await expect(page.getByText("관측을 기다리고 있습니다")).toHaveCount(0);
+    await page.screenshot({
+      path: info.outputPath("receipt-draw-wait.png"),
+      fullPage: true,
+    });
+    await goDraw.click();
+    await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
+    await expect(page.locator("[data-draw-wait='1']")).toBeVisible();
 
-  // 영수증으로 돌아와 연 채로 1회 관측(13:00부터 1분)이 끝나면 결과를 가린 「추첨 보기」로 바뀐다(관측 중에는 관측지로 간다)
-  await page.goBack();
-  await expect(receipt).toBeVisible();
-  await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
-  const drawFirst = page.locator("[data-receipt] [data-draw-first='1']");
-  await expect(drawFirst).toBeVisible({ timeout: 30_000 });
-  await expect(goDraw).toHaveCount(0);
-  await expect(receipt.locator("[data-receipt-thanks]")).toHaveCount(0);
-  await page.screenshot({
-    path: info.outputPath("receipt-draw-ready.png"),
-    fullPage: true,
-  });
-  await drawFirst.click();
-  await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
-  await expect(page.locator("[data-draw-result]")).toBeVisible({
-    timeout: 30_000,
-  });
-});
+    // 영수증으로 돌아와 연 채로 1회 관측(13:00부터 1분)이 끝나면 결과를 가린 「추첨 보기」로 바뀐다(관측 중에는 관측지로 간다)
+    await page.goBack();
+    await expect(receipt).toBeVisible();
+    await page.clock.setSystemTime(new Date("2026-11-02T04:01:30Z"));
+    const drawFirst = page.locator("[data-receipt] [data-draw-first='1']");
+    await expect(drawFirst).toBeVisible({ timeout: 30_000 });
+    await expect(goDraw).toHaveCount(0);
+    await expect(receipt.locator("[data-receipt-thanks]")).toHaveCount(0);
+    await page.screenshot({
+      path: info.outputPath("receipt-draw-ready.png"),
+      fullPage: true,
+    });
+    await drawFirst.click();
+    await expect(page).toHaveURL(/\/stardraw\/rounds#draw-1$/);
+    await expect(page.locator("[data-draw-result]")).toBeVisible({
+      timeout: 30_000,
+    });
+  },
+);
 
 /**
  * 2026-11-01 사용자: 첫 화면의 「← 게임 목록」이 한 줄을 따로 차지해 아쉬웠고, 제목 줄에 겹친 「<」는 링크로 바로 들어온
  * 사람에게 "아까 있던 곳으로"로 읽혔다. 게임 목록 길은 PC 메뉴 줄 맨 왼쪽 「게임 목록」, 휴대폰 더 보기 맨 아래 「게임 목록」
  * 하나씩이고 화살표가 없다. 휴대폰 더 보기에서는 나가는 길이라 맨 아래에 그림과 함께 둔다. 입구(등록 전)는 우주국 안내가 제목·소개 문구 아래, 정답 예시 하늘 위에 온다
  */
-test("게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 하나", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  const phone = info.project.name === "phone-portrait";
-  const games = page.locator("[data-games-link]:visible");
-  await page.goto("/stardraw");
-  const notice = page.locator("[data-gate]");
-  await expect(notice).toBeVisible();
+test(
+  "게임 목록으로 가는 길: PC는 메뉴 줄, 휴대폰은 더 보기 하나",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    const phone = info.project.name === "phone-portrait";
+    const games = page.locator("[data-games-link]:visible");
+    await page.goto("/stardraw");
+    const notice = page.locator("[data-gate]");
+    await expect(notice).toBeVisible();
 
-  // 입구: 제목·소개 문구 → 우주국 안내 → 정답 예시 하늘 순서
-  const top = async (sel: string) =>
-    ((await page.locator(sel).first().boundingBox())?.y ??
-      Number.NaN) as number;
-  const titleY = await top(".sd-title");
-  const noticeY = await top("[data-gate]");
-  const introY = await top("[data-intro]");
-  expect(titleY).toBeLessThan(noticeY);
-  expect(noticeY).toBeLessThan(introY);
+    // 입구: 제목·소개 문구 → 우주국 안내 → 정답 예시 하늘 순서
+    const top = async (sel: string) =>
+      ((await page.locator(sel).first().boundingBox())?.y ??
+        Number.NaN) as number;
+    const titleY = await top(".sd-title");
+    const noticeY = await top("[data-gate]");
+    const introY = await top("[data-intro]");
+    expect(titleY).toBeLessThan(noticeY);
+    expect(noticeY).toBeLessThan(introY);
 
-  // 본문에는 게임 목록 길(화살표 포함)이 없다
-  await expect(page.locator("main > div [data-games-link]")).toHaveCount(0);
-  if (phone) {
-    await expect(games).toHaveCount(0);
-    await page.locator("[data-tab='more']").click();
-    const item = page
-      .getByRole("dialog", { name: "더 보기" })
-      .getByRole("link", { name: "게임 목록", exact: true });
-    await expect(item).toBeVisible();
-    // 나가는 길이라 맨 아래 항목
-    const sheet = page.getByRole("dialog", { name: "더 보기" });
-    await expect(sheet.getByRole("link").last()).toHaveAttribute(
-      "data-games-link",
-    );
-    // 더 보기 판과 탭바 사이에 뒤 화면이 비치는 틈이 없다
-    const sheetBox = await sheet.boundingBox();
-    const barBox = await page
-      .getByRole("navigation", { name: "별 따기 메뉴" })
-      .boundingBox();
-    expect((sheetBox?.y ?? 0) + (sheetBox?.height ?? 0)).toBeGreaterThanOrEqual(
-      barBox?.y ?? Number.POSITIVE_INFINITY,
-    );
-    await page.screenshot({ path: info.outputPath("more-sheet.png") });
-    // 열린 동안 뒤 페이지는 스크롤되지 않고, 목록 안 스크롤은 목록에서 멈춘다(2026-11-03 사용자)
-    const rootOverflow = () =>
-      page.evaluate(() => document.documentElement.style.overflow);
-    expect(await rootOverflow()).toBe("hidden");
-    await expect(sheet).toHaveCSS("overscroll-behavior-y", "contain");
-    // 어두운 뒷배경의 위쪽을 누른다(가운데는 목록이 길어지면 목록에 덮인다: 「진동」 줄이 생긴 뒤, docs/36 11-70)
-    await page
-      .getByRole("button", { name: "더 보기 닫기" })
-      .click({ position: { x: 20, y: 20 } });
-    expect(await rootOverflow()).toBe("");
-    await page.locator("[data-tab='more']").click();
-    await item.click();
-  } else {
-    await expect(games).toHaveCount(1);
-    const item = page
-      .locator("nav")
-      .getByRole("link", { name: "게임 목록", exact: true });
-    await expect(item).toBeVisible();
-    await item.click();
-  }
-  await expect(page).toHaveURL(/\/$/);
-});
+    // 본문에는 게임 목록 길(화살표 포함)이 없다
+    await expect(page.locator("main > div [data-games-link]")).toHaveCount(0);
+    if (phone) {
+      await expect(games).toHaveCount(0);
+      await page.locator("[data-tab='more']").click();
+      const item = page
+        .getByRole("dialog", { name: "더 보기" })
+        .getByRole("link", { name: "게임 목록", exact: true });
+      await expect(item).toBeVisible();
+      // 나가는 길이라 맨 아래 항목
+      const sheet = page.getByRole("dialog", { name: "더 보기" });
+      await expect(sheet.getByRole("link").last()).toHaveAttribute(
+        "data-games-link",
+      );
+      // 더 보기 판과 탭바 사이에 뒤 화면이 비치는 틈이 없다
+      const sheetBox = await sheet.boundingBox();
+      const barBox = await page
+        .getByRole("navigation", { name: "별 따기 메뉴" })
+        .boundingBox();
+      expect(
+        (sheetBox?.y ?? 0) + (sheetBox?.height ?? 0),
+      ).toBeGreaterThanOrEqual(barBox?.y ?? Number.POSITIVE_INFINITY);
+      await page.screenshot({ path: info.outputPath("more-sheet.png") });
+      // 열린 동안 뒤 페이지는 스크롤되지 않고, 목록 안 스크롤은 목록에서 멈춘다(2026-11-03 사용자)
+      const rootOverflow = () =>
+        page.evaluate(() => document.documentElement.style.overflow);
+      expect(await rootOverflow()).toBe("hidden");
+      await expect(sheet).toHaveCSS("overscroll-behavior-y", "contain");
+      // 어두운 뒷배경의 위쪽을 누른다(가운데는 목록이 길어지면 목록에 덮인다: 「진동」 줄이 생긴 뒤, docs/36 11-70)
+      await page
+        .getByRole("button", { name: "더 보기 닫기" })
+        .click({ position: { x: 20, y: 20 } });
+      expect(await rootOverflow()).toBe("");
+      await page.locator("[data-tab='more']").click();
+      await item.click();
+    } else {
+      await expect(games).toHaveCount(1);
+      const item = page
+        .locator("nav")
+        .getByRole("link", { name: "게임 목록", exact: true });
+      await expect(item).toBeVisible();
+      await item.click();
+    }
+    await expect(page).toHaveURL(/\/$/);
+  },
+);
 
 /**
  * 별 따기 앱 밖의 페이지(설명·별 이야기·검증·배우기·소속·등록증·우주국·개인정보·공유 예측서·데모·관리)는 모두 첫 화면에
  * 앱 안과 같은 「홈」(집 그림)이 보이고 별 따기 홈으로 간다. 검증 페이지는 설명으로만 이어져 첫 화면까지 두 번 가야 했다
  * (2026-11-01). 「← 하늘의 별 따기」와 앱 안 「홈」이 섞여 있던 것을 「홈」 하나로 맞췄다(2026-11-02 사용자)
  */
-test("앱 밖 페이지마다 첫 화면에 별 따기 홈으로 가는 「홈」", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
-  for (const path of [
-    "/stardraw/about",
-    "/stardraw/stars",
-    "/stardraw/verify",
-    "/stardraw/learn",
-    "/stardraw/qualify",
-    "/stardraw/id",
-    "/stardraw/bureau",
-    "/stardraw/privacy",
-    `/stardraw/ticket#1-${"0".repeat(64)}`,
-    "/stardraw/demo",
-    "/stardraw/admin",
-  ]) {
-    await page.goto(path);
-    const link = page.getByRole("link", { name: "홈", exact: true });
-    await expect(link, path).toBeInViewport();
-    await expect(link, path).toHaveAttribute("href", "/stardraw");
-    await expect(link.locator("svg"), path).toHaveCount(1);
-    await expect(page.getByText("← 하늘의 별 따기"), path).toHaveCount(0);
-    if (path === "/stardraw/verify")
-      await page.screenshot({ path: info.outputPath("nav-home-verify.png") });
-  }
-  await page.getByRole("link", { name: "홈", exact: true }).click();
-  await expect(page).toHaveURL(/\/stardraw$/);
-});
+test(
+  "앱 밖 페이지마다 첫 화면에 별 따기 홈으로 가는 「홈」",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // PC와 휴대폰 세로로
+    for (const path of [
+      "/stardraw/about",
+      "/stardraw/stars",
+      "/stardraw/verify",
+      "/stardraw/learn",
+      "/stardraw/qualify",
+      "/stardraw/id",
+      "/stardraw/bureau",
+      "/stardraw/privacy",
+      `/stardraw/ticket#1-${"0".repeat(64)}`,
+      "/stardraw/demo",
+      "/stardraw/admin",
+    ]) {
+      await page.goto(path);
+      const link = page.getByRole("link", { name: "홈", exact: true });
+      await expect(link, path).toBeInViewport();
+      await expect(link, path).toHaveAttribute("href", "/stardraw");
+      await expect(link.locator("svg"), path).toHaveCount(1);
+      await expect(page.getByText("← 하늘의 별 따기"), path).toHaveCount(0);
+      if (path === "/stardraw/verify")
+        await page.screenshot({ path: info.outputPath("nav-home-verify.png") });
+    }
+    await page.getByRole("link", { name: "홈", exact: true }).click();
+    await expect(page).toHaveURL(/\/stardraw$/);
+  },
+);
 
 /**
  * 데모 /stardraw/demo는 로컬 디버깅·화면 시험 전용이다(2026-11-02 사용자). 운영 빌드에서는 파일을 지우고 nginx도 404로 막는다
  * (scripts/drop-demo-pages.mjs, deploy/nginx.conf). 화면 어디에도 데모로 가는 링크가 없어야 한다: 메뉴 더 보기·설명·국장 화면
  */
-test("데모로 가는 링크가 화면에 없다(메뉴 더 보기·설명·국장 화면)", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "PC와 휴대폰 세로로");
+test("데모로 가는 링크가 화면에 없다(메뉴 더 보기·설명·국장 화면)", {
+  tag: "@no-phone-landscape",
+}, async ({ page }) => {
+  // PC와 휴대폰 세로로
   const demoLinks = page.locator('a[href^="/stardraw/demo"]');
   await page.goto("/stardraw");
   await page.locator("[data-tab='more']:visible").click();

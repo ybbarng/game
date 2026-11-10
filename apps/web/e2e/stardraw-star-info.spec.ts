@@ -81,93 +81,97 @@ async function checkStarInfo(
   await expect(info).toHaveCount(0);
 }
 
-test("별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지난 회차에서도 별을 누르면 그 별 설명이 뜬다", async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name === "phone-landscape",
-    "휴대폰 세로와 PC 두 크기로",
-  );
-  await virtualAuthenticator(page);
-  await page.goto("/stardraw");
-  await page.getByRole("button", { name: "우주인 등록", exact: true }).click();
-  await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
-  await page.getByRole("button", { name: "자동", exact: true }).click();
-  await page.getByRole("button", { name: "예측서 내기", exact: true }).click();
+test(
+  "별 설명: 영수증·추첨을 기다리는 하늘·추첨 결과·지난 회차에서도 별을 누르면 그 별 설명이 뜬다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, testInfo) => {
+    // 휴대폰 세로와 PC 두 크기로
+    await virtualAuthenticator(page);
+    await page.goto("/stardraw");
+    await page
+      .getByRole("button", { name: "우주인 등록", exact: true })
+      .click();
+    await page.getByRole("button", { name: "별을 고르러 가 볼까요?" }).click();
+    await page.getByRole("button", { name: "자동", exact: true }).click();
+    await page
+      .getByRole("button", { name: "예측서 내기", exact: true })
+      .click();
 
-  // 영수증 안 작은 하늘
-  await expect(page.locator("[data-receipt]")).toBeVisible({ timeout: 30_000 });
-  const receiptSky = "[data-receipt] canvas[data-sky='receipt']";
-  await checkStarInfo(page, receiptSky, page.locator("[data-ticket-id]"));
-  await tapStar(page, receiptSky, 7);
-  await page.locator(receiptSky).scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: testInfo.outputPath("star-info-receipt.png"),
-    fullPage: true,
-  });
+    // 영수증 안 작은 하늘
+    await expect(page.locator("[data-receipt]")).toBeVisible({
+      timeout: 30_000,
+    });
+    const receiptSky = "[data-receipt] canvas[data-sky='receipt']";
+    await checkStarInfo(page, receiptSky, page.locator("[data-ticket-id]"));
+    await tapStar(page, receiptSky, 7);
+    await page.locator(receiptSky).scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath("star-info-receipt.png"),
+      fullPage: true,
+    });
 
-  // 추첨을 기다리는 하늘
-  await page.goto("/stardraw");
-  await page.locator("[data-card='entered'] [data-go-draw]").click();
-  const wait = page.locator("[data-draw-wait='1']");
-  await expect(wait).toContainText("관측까지");
-  await checkStarInfo(
-    page,
-    "[data-draw-wait] canvas[data-sky='draw']",
-    wait.getByRole("heading"),
-  );
+    // 추첨을 기다리는 하늘
+    await page.goto("/stardraw");
+    await page.locator("[data-card='entered'] [data-go-draw]").click();
+    const wait = page.locator("[data-draw-wait='1']");
+    await expect(wait).toContainText("관측까지");
+    await checkStarInfo(
+      page,
+      "[data-draw-wait] canvas[data-sky='draw']",
+      wait.getByRole("heading"),
+    );
 
-  // 결과가 들어오면 그 자리에서 추첨(화면 시험은 움직임 줄이기라 결과가 바로 나온다)
-  await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
-  const result = page.locator("[data-draw-result]");
-  await expect(result).toBeVisible({ timeout: 30_000 });
-  await checkStarInfo(page, "canvas[data-sky='draw']", result);
-  await tapStar(page, "canvas[data-sky='draw']", 7);
-  await page.screenshot({
-    path: testInfo.outputPath("star-info-draw.png"),
-    fullPage: true,
-  });
-  // 위쪽 별을 누르면 설명 칸이 아래쪽(켜진 당첨 별 위)에 뜬다: 밝은 별 위에서도 글이 읽히는지 스크린샷으로 본다
-  const upper = sky.stars.find((s) => s.y < 0.3);
-  if (!upper) throw new Error("위쪽 별이 없다");
-  await tapStar(page, "canvas[data-sky='draw']", upper.n);
-  await expect(page.locator(`[data-star-info='${upper.n}']`)).toBeVisible();
-  await page.screenshot({
-    path: testInfo.outputPath("star-info-draw-low.png"),
-    fullPage: true,
-  });
-  await tapStar(page, "canvas[data-sky='draw']", upper.n);
+    // 결과가 들어오면 그 자리에서 추첨(화면 시험은 움직임 줄이기라 결과가 바로 나온다)
+    await page.getByRole("button", { name: /다음 관측까지 건너뛰기/ }).click();
+    const result = page.locator("[data-draw-result]");
+    await expect(result).toBeVisible({ timeout: 30_000 });
+    await checkStarInfo(page, "canvas[data-sky='draw']", result);
+    await tapStar(page, "canvas[data-sky='draw']", 7);
+    await page.screenshot({
+      path: testInfo.outputPath("star-info-draw.png"),
+      fullPage: true,
+    });
+    // 위쪽 별을 누르면 설명 칸이 아래쪽(켜진 당첨 별 위)에 뜬다: 밝은 별 위에서도 글이 읽히는지 스크린샷으로 본다
+    const upper = sky.stars.find((s) => s.y < 0.3);
+    if (!upper) throw new Error("위쪽 별이 없다");
+    await tapStar(page, "canvas[data-sky='draw']", upper.n);
+    await expect(page.locator(`[data-star-info='${upper.n}']`)).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath("star-info-draw-low.png"),
+      fullPage: true,
+    });
+    await tapStar(page, "canvas[data-sky='draw']", upper.n);
 
-  // 지난 회차 결과(지난 회차 목록에서 연 추첨 화면, 새로 열어 결과부터 보인다)
-  await page.goto("/stardraw/rounds#draw-1");
-  await page.reload();
-  await expect(result).toBeVisible({ timeout: 30_000 });
-  await checkStarInfo(page, "canvas[data-sky='draw']", result);
-});
+    // 지난 회차 결과(지난 회차 목록에서 연 추첨 화면, 새로 열어 결과부터 보인다)
+    await page.goto("/stardraw/rounds#draw-1");
+    await page.reload();
+    await expect(result).toBeVisible({ timeout: 30_000 });
+    await checkStarInfo(page, "canvas[data-sky='draw']", result);
+  },
+);
 
-test("별 설명: 첫 화면 정답 예시 하늘에서도 별을 누르면 그 별 설명이 뜬다", async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name === "phone-landscape",
-    "휴대폰 세로와 PC 두 크기로",
-  );
-  await page.goto("/stardraw");
-  const intro = page.locator("section[aria-label='정답 예시']");
-  await expect(intro).toBeVisible();
-  await checkStarInfo(
-    page,
-    "section[aria-label='정답 예시'] canvas",
-    intro.getByRole("heading"),
-  );
-  await tapStar(page, "section[aria-label='정답 예시'] canvas", 7);
-  await page.screenshot({
-    path: testInfo.outputPath("star-info-intro.png"),
-    fullPage: true,
-  });
-  // 별 이야기의 그 별 자리로
-  await page.locator("[data-star-more='7']").click();
-  await expect(page).toHaveURL(/\/stardraw\/stars#star-7$/);
-  await expect(page.locator("#star-7")).toContainText("베텔게우스");
-  await expect(page.locator("#star-7")).toBeInViewport();
-});
+test(
+  "별 설명: 첫 화면 정답 예시 하늘에서도 별을 누르면 그 별 설명이 뜬다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, testInfo) => {
+    // 휴대폰 세로와 PC 두 크기로
+    await page.goto("/stardraw");
+    const intro = page.locator("section[aria-label='정답 예시']");
+    await expect(intro).toBeVisible();
+    await checkStarInfo(
+      page,
+      "section[aria-label='정답 예시'] canvas",
+      intro.getByRole("heading"),
+    );
+    await tapStar(page, "section[aria-label='정답 예시'] canvas", 7);
+    await page.screenshot({
+      path: testInfo.outputPath("star-info-intro.png"),
+      fullPage: true,
+    });
+    // 별 이야기의 그 별 자리로
+    await page.locator("[data-star-more='7']").click();
+    await expect(page).toHaveURL(/\/stardraw\/stars#star-7$/);
+    await expect(page.locator("#star-7")).toContainText("베텔게우스");
+    await expect(page.locator("#star-7")).toBeInViewport();
+  },
+);

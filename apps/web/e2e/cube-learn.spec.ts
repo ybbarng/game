@@ -18,61 +18,63 @@ import { expect, test } from "./test";
 
 test.beforeEach(({ page }) => no3d(page));
 
-test("배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다", async ({
-  page,
-}, info) => {
-  await useNotationKeys(page);
-  // 옛 과정 목록 주소는 해법 익히기로 넘어간다(docs/47 16-6)
-  await page.goto("/cube/learn");
-  await expect(page).toHaveURL(/\/cube\/methods$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "해법 익히기",
-  );
-  await expect(page.locator("[data-course]").first()).toBeVisible();
-  // 해법마다 배우기와 연습이 한 카드에
-  await expect(
-    page.locator(
-      '[data-course-practice="cfop"] [data-practice="practice"][href="/cube/train?set=f2l"]',
-    ),
-  ).toHaveCount(1);
-  await expect(
-    page.locator(
-      '[data-course-practice="333-beginner"] [data-practice="practice"][href="/cube/train?set=beginner-cross"]',
-    ),
-  ).toHaveCount(1);
-  await shot(page, "learn-list", info.project.name);
+test(
+  "배우기: 첫 해보기 단원에서 힌트를 따라 치면 통과한다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await useNotationKeys(page);
+    // 옛 과정 목록 주소는 해법 익히기로 넘어간다(docs/47 16-6)
+    await page.goto("/cube/learn");
+    await expect(page).toHaveURL(/\/cube\/methods$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "해법 익히기",
+    );
+    await expect(page.locator("[data-course]").first()).toBeVisible();
+    // 해법마다 배우기와 연습이 한 카드에
+    await expect(
+      page.locator(
+        '[data-course-practice="cfop"] [data-practice="practice"][href="/cube/train?set=f2l"]',
+      ),
+    ).toHaveCount(1);
+    await expect(
+      page.locator(
+        '[data-course-practice="333-beginner"] [data-practice="practice"][href="/cube/train?set=beginner-cross"]',
+      ),
+    ).toHaveCount(1);
+    await shot(page, "learn-list", info.project.name);
 
-  await page.locator('[data-lesson="333-notation"]').click();
-  await expect(page.locator("main")).toHaveAttribute(
-    "data-cube-learn",
-    "333-notation",
-  );
-  // 시연 단계 하나 보기
-  await goToStep(page, "demo");
-  await expect(page.locator("[data-cube-demo]")).toBeVisible();
-  await shot(page, "learn-demo", info.project.name);
-  await goToStep(page, "try");
-  await inputReady(page);
+    await page.locator('[data-lesson="333-notation"]').click();
+    await expect(page.locator("main")).toHaveAttribute(
+      "data-cube-learn",
+      "333-notation",
+    );
+    // 시연 단계 하나 보기
+    await goToStep(page, "demo");
+    await expect(page.locator("[data-cube-demo]")).toBeVisible();
+    await shot(page, "learn-demo", info.project.name);
+    await goToStep(page, "try");
+    await inputReady(page);
 
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  await page.locator("[data-cube-hint-button]").click();
-  const hint = (await page
-    .locator("[data-cube-hint]")
-    .getAttribute("data-cube-hint")) as string;
-  for (const k of keysFor(hint)) await page.keyboard.press(k);
-  await expect(page.locator("[data-cube-pass]")).toBeVisible();
-  await expect(page.locator("[data-cube-try]")).toHaveAttribute(
-    "data-cube-passed",
-    "",
-  );
-  await shot(page, "learn-try-passed", info.project.name);
+    // 키보드 조작은 데스크톱만
+    await page.locator("[data-cube-hint-button]").click();
+    const hint = (await page
+      .locator("[data-cube-hint]")
+      .getAttribute("data-cube-hint")) as string;
+    for (const k of keysFor(hint)) await page.keyboard.press(k);
+    await expect(page.locator("[data-cube-pass]")).toBeVisible();
+    await expect(page.locator("[data-cube-try]")).toHaveAttribute(
+      "data-cube-passed",
+      "",
+    );
+    await shot(page, "learn-try-passed", info.project.name);
 
-  // 진도가 이 기기에 남는다
-  await page.goto("/cube/methods");
-  await expect(page.locator('[data-lesson="333-notation"]')).toContainText(
-    "해보기 1/",
-  );
-});
+    // 진도가 이 기기에 남는다
+    await page.goto("/cube/methods");
+    await expect(page.locator('[data-lesson="333-notation"]')).toContainText(
+      "해보기 1/",
+    );
+  },
+);
 
 /** 「두 손」 배치(기본)의 면 수 → 키캡 글(keys/move-keys.ts `keycapLabel`) */
 const TWO_HAND: Record<string, string> = {
@@ -198,55 +200,63 @@ test("배우기: 야우 엣지 묶기 시연", async ({ page }, info) => {
   await shot(page, "learn-yau-demo", info.project.name);
 });
 
-test("배우기: 루 해 보기(가운데 층 M)", async ({ page }, info) => {
-  await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=roux-intro");
-  await expect(page.locator("main")).toHaveAttribute(
-    "data-cube-learn",
-    "roux-intro",
-  );
-  await goToStep(page, "try");
-  await inputReady(page);
+test(
+  "배우기: 루 해 보기(가운데 층 M)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await useNotationKeys(page);
+    await page.goto("/cube/learn?lesson=roux-intro");
+    await expect(page.locator("main")).toHaveAttribute(
+      "data-cube-learn",
+      "roux-intro",
+    );
+    await goToStep(page, "try");
+    await inputReady(page);
 
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  // 힌트는 한 수씩 보여 준다(M' U2 M, 세 수)
-  for (let i = 0; i < 3; i++) {
-    await page.locator("[data-cube-hint-button]").click();
-    const hint = page.locator("[data-cube-hint]");
-    await expect(hint).toHaveCount(1);
-    for (const k of keysFor((await hint.getAttribute("data-cube-hint")) ?? ""))
-      await page.keyboard.press(k);
-  }
-  await expect(page.locator("[data-cube-pass]")).toBeVisible();
-  await shot(page, "learn-roux-passed", info.project.name);
-});
+    // 키보드 조작은 데스크톱만
+    // 힌트는 한 수씩 보여 준다(M' U2 M, 세 수)
+    for (let i = 0; i < 3; i++) {
+      await page.locator("[data-cube-hint-button]").click();
+      const hint = page.locator("[data-cube-hint]");
+      await expect(hint).toHaveCount(1);
+      for (const k of keysFor(
+        (await hint.getAttribute("data-cube-hint")) ?? "",
+      ))
+        await page.keyboard.press(k);
+    }
+    await expect(page.locator("[data-cube-pass]")).toBeVisible();
+    await shot(page, "learn-roux-passed", info.project.name);
+  },
+);
 
-test("배우기: 흰 십자 경우별 해 보기(가운데 층, 짝 색 쪽 면으로 올리기)", async ({
-  page,
-}, info) => {
-  await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=333-white-cross");
-  // 8번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
-  await goStep(page, 8);
-  const section = page.locator("[data-step-kind]");
-  await expect(section).toHaveAttribute("data-step-kind", "try");
-  await expect(section).toContainText("빨강 면을 앞으로");
-  await inputReady(page);
-  await shot(page, "learn-cross-case", info.project.name);
+test(
+  "배우기: 흰 십자 경우별 해 보기(가운데 층, 짝 색 쪽 면으로 올리기)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await useNotationKeys(page);
+    await page.goto("/cube/learn?lesson=333-white-cross");
+    // 8번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
+    await goStep(page, 8);
+    const section = page.locator("[data-step-kind]");
+    await expect(section).toHaveAttribute("data-step-kind", "try");
+    await expect(section).toContainText("빨강 면을 앞으로");
+    await inputReady(page);
+    await shot(page, "learn-cross-case", info.project.name);
 
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  // 힌트는 한 수씩 보여 준다(y F)
-  for (const want of ["y", "F"]) {
-    await page.locator("[data-cube-hint-button]").click();
-    const hint = page.locator("[data-cube-hint]");
-    await expect(hint).toHaveAttribute("data-cube-hint", want);
-    for (const k of keysFor(want)) await page.keyboard.press(k);
-  }
-  await expect(page.locator("[data-cube-try]")).toHaveAttribute(
-    "data-cube-passed",
-    "",
-  );
-});
+    // 키보드 조작은 데스크톱만
+    // 힌트는 한 수씩 보여 준다(y F)
+    for (const want of ["y", "F"]) {
+      await page.locator("[data-cube-hint-button]").click();
+      const hint = page.locator("[data-cube-hint]");
+      await expect(hint).toHaveAttribute("data-cube-hint", want);
+      for (const k of keysFor(want)) await page.keyboard.press(k);
+    }
+    await expect(page.locator("[data-cube-try]")).toHaveAttribute(
+      "data-cube-passed",
+      "",
+    );
+  },
+);
 
 test("배우기: 안전한 회전(반대 면은 십자 그대로, 맞춘 면은 어긋남)", async ({
   page,

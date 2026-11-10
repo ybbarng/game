@@ -80,74 +80,78 @@ async function expectHome(page: Page, canvas: Locator, home: Locator) {
   await expect(home).toBeHidden();
 }
 
-test("혼자 맞추기: 마우스로 끌어 돌린 각이 남고, x를 쳐도 그대로, 단추와 ↑ 키로 처음 각도로", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "마우스는 데스크톱 하나로");
-  await page.addInitScript(() =>
-    sessionStorage.setItem("mighty-splash-seen", "1"),
-  );
-  await installClock(page);
-  await page.goto("/cube/solo");
-  const stage = page.locator("[data-cube-stage]");
-  const canvas = stage.locator("[data-cube-canvas][data-cube-ready]");
-  await expect(canvas).toBeVisible(SCENE);
-  await pauseClock(page);
-  const home = stage.locator("[data-cube-view-home]");
-  await frameUntil(page, async () => (await turnOf(canvas)) === HOME);
-  await expect(home).toBeHidden();
+test(
+  "혼자 맞추기: 마우스로 끌어 돌린 각이 남고, x를 쳐도 그대로, 단추와 ↑ 키로 처음 각도로",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 마우스는 데스크톱 하나로
+    await page.addInitScript(() =>
+      sessionStorage.setItem("mighty-splash-seen", "1"),
+    );
+    await installClock(page);
+    await page.goto("/cube/solo");
+    const stage = page.locator("[data-cube-stage]");
+    const canvas = stage.locator("[data-cube-canvas][data-cube-ready]");
+    await expect(canvas).toBeVisible(SCENE);
+    await pauseClock(page);
+    const home = stage.locator("[data-cube-view-home]");
+    await frameUntil(page, async () => (await turnOf(canvas)) === HOME);
+    await expect(home).toBeHidden();
 
-  await mouseDrag(page, canvas, 140, 60);
-  const kept = await expectKept(page, canvas, home);
-  await shot(page, "keep-view-solo-dragged", info.project.name);
+    await mouseDrag(page, canvas, 140, 60);
+    const kept = await expectKept(page, canvas, home);
+    await shot(page, "keep-view-solo-dragged", info.project.name);
 
-  // 큐브 돌리기(x, 「두 손」의 T)는 큐브가 돌고 보는 각은 그대로다
-  await page.keyboard.press("KeyT");
-  for (let i = 0; i < 6; i++) await page.clock.fastForward(200);
-  expect(await turnOf(canvas), "x를 쳐도 보는 각은 그대로").toBe(kept);
+    // 큐브 돌리기(x, 「두 손」의 T)는 큐브가 돌고 보는 각은 그대로다
+    await page.keyboard.press("KeyT");
+    for (let i = 0; i < 6; i++) await page.clock.fastForward(200);
+    expect(await turnOf(canvas), "x를 쳐도 보는 각은 그대로").toBe(kept);
 
-  await home.click();
-  await expectHome(page, canvas, home);
+    await home.click();
+    await expectHome(page, canvas, home);
 
-  // ↑ 키로도 돌아온다
-  await mouseDrag(page, canvas, -120, -40);
-  await expectKept(page, canvas, home);
-  await page.keyboard.press("ArrowUp");
-  await expectHome(page, canvas, home);
-});
+    // ↑ 키로도 돌아온다
+    await mouseDrag(page, canvas, -120, -40);
+    await expectKept(page, canvas, home);
+    await page.keyboard.press("ArrowUp");
+    await expectHome(page, canvas, home);
+  },
+);
 
-test("배우기: 끌어 돌린 각이 남고 「처음 각도로」로 돌아온다(마우스·휴대폰 손가락)", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name === "phone-landscape", "데스크톱과 휴대폰 세로");
-  const touch = info.project.name === "phone-portrait";
-  await page.addInitScript(() =>
-    sessionStorage.setItem("mighty-splash-seen", "1"),
-  );
-  await installClock(page);
-  await page.goto("/cube/learn?lesson=333-start");
-  await goToStep(page, "quiz");
-  const still = page.locator("[data-cube-still]").first();
-  const canvas = still.locator("[data-cube-canvas][data-cube-ready]");
-  await expect(canvas).toBeVisible(SCENE);
-  await canvas.scrollIntoViewIfNeeded();
-  await pauseClock(page);
-  const home = still.locator("[data-cube-view-home]");
-  await frameUntil(page, async () => (await turnOf(canvas)) === HOME);
+test(
+  "배우기: 끌어 돌린 각이 남고 「처음 각도로」로 돌아온다(마우스·휴대폰 손가락)",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    // 데스크톱과 휴대폰 세로
+    const touch = info.project.name === "phone-portrait";
+    await page.addInitScript(() =>
+      sessionStorage.setItem("mighty-splash-seen", "1"),
+    );
+    await installClock(page);
+    await page.goto("/cube/learn?lesson=333-start");
+    await goToStep(page, "quiz");
+    const still = page.locator("[data-cube-still]").first();
+    const canvas = still.locator("[data-cube-canvas][data-cube-ready]");
+    await expect(canvas).toBeVisible(SCENE);
+    await canvas.scrollIntoViewIfNeeded();
+    await pauseClock(page);
+    const home = still.locator("[data-cube-view-home]");
+    await frameUntil(page, async () => (await turnOf(canvas)) === HOME);
 
-  if (touch) await touchDrag(page, canvas, 160, -80);
-  else await mouseDrag(page, canvas, 160, -80);
-  await expectKept(page, canvas, home);
-  await shot(page, "keep-view-learn-dragged", info.project.name);
+    if (touch) await touchDrag(page, canvas, 160, -80);
+    else await mouseDrag(page, canvas, 160, -80);
+    await expectKept(page, canvas, home);
+    await shot(page, "keep-view-learn-dragged", info.project.name);
 
-  // 거의 움직이지 않고 누르면(누르기) 보는 각을 바꾸지 않는다
-  const before = await turnOf(canvas);
-  if (touch) await touchDrag(page, canvas, 4, 0);
-  else await mouseDrag(page, canvas, 4, 0);
-  for (let i = 0; i < 4; i++) await page.clock.fastForward(200);
-  expect(await turnOf(canvas), "누르기는 각을 바꾸지 않는다").toBe(before);
+    // 거의 움직이지 않고 누르면(누르기) 보는 각을 바꾸지 않는다
+    const before = await turnOf(canvas);
+    if (touch) await touchDrag(page, canvas, 4, 0);
+    else await mouseDrag(page, canvas, 4, 0);
+    for (let i = 0; i < 4; i++) await page.clock.fastForward(200);
+    expect(await turnOf(canvas), "누르기는 각을 바꾸지 않는다").toBe(before);
 
-  if (touch) await home.tap();
-  else await home.click();
-  await expectHome(page, canvas, home);
-});
+    if (touch) await home.tap();
+    else await home.click();
+    await expectHome(page, canvas, home);
+  },
+);

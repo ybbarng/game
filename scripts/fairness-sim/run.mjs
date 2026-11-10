@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // 공정한 동시 판정 모의 실험(docs/44). 결과를 마크다운 표로 찍는다. 제품 코드가 아니다.
 //
-//   nice -n 15 node scripts/fairness-sim/run.mjs           # 전체(이 맥 약 1분)
-//   nice -n 15 node scripts/fairness-sim/run.mjs --quick   # 표본 1/5
-//   nice -n 15 node scripts/fairness-sim/run.mjs --check   # 작은 경우 점검만
+//   node scripts/fairness-sim/run.mjs           # 전체(이 맥 약 1분)
+//   node scripts/fairness-sim/run.mjs --quick   # 표본 1/5
+//   node scripts/fairness-sim/run.mjs --check   # 작은 경우 점검만
 //
 // 씨앗이 고정되어 있어 같은 명령은 늘 같은 숫자를 낸다.
 import assert from "node:assert/strict";

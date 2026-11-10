@@ -39,67 +39,71 @@ async function playHint(page: Page): Promise<void> {
     .toBe(true);
 }
 
-test("무작위 해 보기: 힌트 1은 지금 경우, 힌트 2는 다음 수, 따라 치면 통과", async ({
-  page,
-}, info) => {
-  await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=333-white-cross");
-  await goLast(page);
-  await inputReady(page);
-  await expect(page.getByText("정해진 모범 답 없음")).toHaveCount(0);
-  await page.locator("[data-cube-hint-case]").click();
-  await expect(page.locator("[data-cube-taught-case]")).toHaveAttribute(
-    "data-cube-taught-case",
-    /^흰-(빨강|초록|주황|파랑) 엣지: (아래|가운데|위) 층.*$/,
-  );
-  await expect(page.locator("[data-cube-hint]")).toHaveCount(0);
-  await shot(page, "learn-hint-case", info.project.name);
-  await page.locator("[data-cube-hint-move]").click();
-  await expect(page.locator("[data-cube-hint]")).toHaveCount(1);
-  await shot(page, "learn-hint-move", info.project.name);
+test(
+  "무작위 해 보기: 힌트 1은 지금 경우, 힌트 2는 다음 수, 따라 치면 통과",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await useNotationKeys(page);
+    await page.goto("/cube/learn?lesson=333-white-cross");
+    await goLast(page);
+    await inputReady(page);
+    await expect(page.getByText("정해진 모범 답 없음")).toHaveCount(0);
+    await page.locator("[data-cube-hint-case]").click();
+    await expect(page.locator("[data-cube-taught-case]")).toHaveAttribute(
+      "data-cube-taught-case",
+      /^흰-(빨강|초록|주황|파랑) 엣지: (아래|가운데|위) 층.*$/,
+    );
+    await expect(page.locator("[data-cube-hint]")).toHaveCount(0);
+    await shot(page, "learn-hint-case", info.project.name);
+    await page.locator("[data-cube-hint-move]").click();
+    await expect(page.locator("[data-cube-hint]")).toHaveCount(1);
+    await shot(page, "learn-hint-move", info.project.name);
 
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  const tryBox = page.locator("[data-cube-try]");
-  for (let i = 0; i < 40; i++) {
-    if ((await tryBox.getAttribute("data-cube-passed")) !== null) break;
-    await playHint(page);
-  }
-  await expect(tryBox).toHaveAttribute("data-cube-passed", "");
-});
+    // 키보드 조작은 데스크톱만
+    const tryBox = page.locator("[data-cube-try]");
+    for (let i = 0; i < 40; i++) {
+      if ((await tryBox.getAttribute("data-cube-passed")) !== null) break;
+      await playHint(page);
+    }
+    await expect(tryBox).toHaveAttribute("data-cube-passed", "");
+  },
+);
 
-test("마무리: 일곱 단계 진행 띠가 맞은 단계를 따라가고 칸마다 단원으로 잇는다", async ({
-  page,
-}, info) => {
-  await useNotationKeys(page);
-  await page.goto("/cube/learn?lesson=333-beginner-finale");
-  await goToStep(page, "try");
-  await inputReady(page);
-  const progress = page.locator("[data-finale-progress]");
-  await expect(progress).toHaveAttribute("data-finale-progress", "0");
-  await expect(progress.locator("[data-finale-cell]")).toHaveCount(7);
-  await expect(progress.locator("[data-finale-review]")).toHaveAttribute(
-    "data-finale-review",
-    "333-white-cross",
-  );
-  await expect(progress.locator("[data-finale-cell='4'] a")).toHaveAttribute(
-    "href",
-    "/cube/learn?lesson=333-ll-edges",
-  );
-  await page.locator("[data-cube-hint-case]").click();
-  await shot(page, "learn-finale-strip", info.project.name);
+test(
+  "마무리: 일곱 단계 진행 띠가 맞은 단계를 따라가고 칸마다 단원으로 잇는다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await useNotationKeys(page);
+    await page.goto("/cube/learn?lesson=333-beginner-finale");
+    await goToStep(page, "try");
+    await inputReady(page);
+    const progress = page.locator("[data-finale-progress]");
+    await expect(progress).toHaveAttribute("data-finale-progress", "0");
+    await expect(progress.locator("[data-finale-cell]")).toHaveCount(7);
+    await expect(progress.locator("[data-finale-review]")).toHaveAttribute(
+      "data-finale-review",
+      "333-white-cross",
+    );
+    await expect(progress.locator("[data-finale-cell='4'] a")).toHaveAttribute(
+      "href",
+      "/cube/learn?lesson=333-ll-edges",
+    );
+    await page.locator("[data-cube-hint-case]").click();
+    await shot(page, "learn-finale-strip", info.project.name);
 
-  test.skip(info.project.name !== "desktop", "키보드 조작은 데스크톱만");
-  // 힌트대로 흰 십자까지: 띠가 1단계 맞음으로 바뀐다
-  for (let i = 0; i < 40; i++) {
-    if ((await progress.getAttribute("data-finale-progress")) !== "0") break;
-    await playHint(page);
-  }
-  await expect(progress).toHaveAttribute("data-finale-progress", "1");
-  await expect(progress.locator("[data-finale-cell='0']")).toHaveAttribute(
-    "data-done",
-    "",
-  );
-});
+    // 키보드 조작은 데스크톱만
+    // 힌트대로 흰 십자까지: 띠가 1단계 맞음으로 바뀐다
+    for (let i = 0; i < 40; i++) {
+      if ((await progress.getAttribute("data-finale-progress")) !== "0") break;
+      await playHint(page);
+    }
+    await expect(progress).toHaveAttribute("data-finale-progress", "1");
+    await expect(progress.locator("[data-finale-cell='0']")).toHaveAttribute(
+      "data-done",
+      "",
+    );
+  },
+);
 
 test("진도: 마지막으로 본 단계로 다시 열고, 해 보기가 남으면 꼬리표, 첫 화면은 「이어서 배우기」", async ({
   page,

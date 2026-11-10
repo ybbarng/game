@@ -97,10 +97,10 @@ async function slap(page: Page) {
   await page.keyboard.press("Space");
 }
 
-test("원카드 일반방: 참가자가 더미를 치면 청구가 방장 화면에도 외침 사건으로 들어가고, 둘이 카드를 낸다", async ({
-  context,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+test("원카드 일반방: 참가자가 더미를 치면 청구가 방장 화면에도 외침 사건으로 들어가고, 둘이 카드를 낸다", {
+  tag: "@only-desktop",
+}, async ({ context }) => {
+  // 데스크톱에서만 돌린다
   const host = await context.newPage();
   const guest = await context.newPage();
   const errors: string[] = [];
@@ -143,11 +143,11 @@ test("원카드 일반방: 참가자가 더미를 치면 청구가 방장 화면
   expect(errors).toEqual([]);
 });
 
-test("원카드 암호화방: 섞고 나눈 뒤 둘이 카드를 낸다", async ({
-  context,
-}, info) => {
+test("원카드 암호화방: 섞고 나눈 뒤 둘이 카드를 낸다", {
+  tag: "@only-desktop",
+}, async ({ context }) => {
   test.skip(!process.env.FAIR_MULTI, "FAIR_MULTI=1 일 때만 돌린다");
-  test.skip(info.project.name !== "desktop", "데스크톱에서만 돌린다");
+  // 데스크톱에서만 돌린다
   test.setTimeout(180_000);
   const host = await context.newPage();
   const guest = await context.newPage();

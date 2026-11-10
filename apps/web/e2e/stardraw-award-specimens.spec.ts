@@ -20,8 +20,10 @@ function files(dir: string): string[] {
   });
 }
 
-test("운영 빌드에는 기념 서류 견본 화면이 없다", async ({ page }, info) => {
-  test.skip(info.project.name !== "desktop", "빌드 검사는 한 번만");
+test("운영 빌드에는 기념 서류 견본 화면이 없다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 빌드 검사는 한 번만
   const res = await page.goto("/stardraw/awards");
   expect(res?.status()).toBe(404);
   const out = join(process.cwd(), "out");
@@ -37,10 +39,10 @@ test("운영 빌드에는 기념 서류 견본 화면이 없다", async ({ page 
  * 공개 데모의 화면 둘러보기에도 내 기록 견본(1~5등을 모두 받은 훈장·당첨증·기념 서류)이 없다(2026-10-31 사용자:
  * 데모에 보이면 스포일러). 실제로 받은 사람의 「내 기록」 화면 코드는 실려도 된다(코드를 읽어야 아는 수준)
  */
-test("운영 빌드의 공개 데모 둘러보기에는 내 기록 견본이 없다", async ({
-  page,
-}, info) => {
-  test.skip(info.project.name !== "desktop", "한 번만");
+test("운영 빌드의 공개 데모 둘러보기에는 내 기록 견본이 없다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 한 번만
   await page.goto("/stardraw/demo");
   const tour = page.getByRole("navigation", { name: "화면 둘러보기" });
   await expect(

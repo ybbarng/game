@@ -7,12 +7,20 @@
 //   node scripts/affected-e2e.mjs --base <커밋>      바뀐 파일 = git diff <커밋>...HEAD(merge-base 기준)
 //   node scripts/affected-e2e.mjs --files a b c     바뀐 파일을 직접 준다
 //   node scripts/affected-e2e.mjs --all             전부(기준 커밋을 못 찾았을 때, 매일 실행·손으로 돌리기)
+//   node scripts/affected-e2e.mjs --no-e2e <까닭>   화면 시험 없음(main push, 2026-11-10: 화면 시험은 PR에서 본다)
 //   덧붙임: --github(GITHUB_OUTPUT·GITHUB_STEP_SUMMARY에 쓴다) · --selection-out <파일>(느린 시험 워크플로가 읽는 기록)
+//           --times <파일>(spec마다 지난 시험 시간, 기본 scripts/e2e-times.json)
+//   node scripts/affected-e2e.mjs --write-times scripts/e2e-times.json <e2e.json…>   시간 기준 파일 새로 쓰기
 //
 // 게임과 그 폴더는 apps/web/src/games/registry.ts의 id에서 읽는다(registry 밖 화면은 EXTRA_AREAS).
 // 게임 사이 기댐(은하 → 별 따기 등)과 패키지를 쓰는 게임은 실행할 때마다 import와 package.json에서 계산한다.
 // 여러 게임이 함께 쓰는 폴더(components·review·stats 등)가 어느 게임 코드를 불러도 그 게임의 변경을
 // 전부로 넓히지 않는다(게임 목록·복기처럼 게임마다 갈래가 있는 곳이라, 그 게임의 spec이 그 화면도 본다).
+// 웹 src 파일은 화면(src/app의 page·layout 등)에서 import로 닿는지 본다(2026-11-10). 어디서도 닿지 않으면(시험 전용
+// 도우미 등) 없음, 공통 폴더 파일은 닿는 주소의 게임만, 첫 화면·복기 같은 공용 주소가 닿으면 전부.
+// apps/web/scripts는 빌드가 돌리는 것만 전부이고 나머지(개발 때 손으로 돌리는 생성 도구)는 없음.
+//
+// 고른 spec은 지난 시험 시간(scripts/e2e-times.json)으로 조각마다 고르게 나눠, 조각마다 spec 목록을 넘긴다.
 import { execFileSync } from "node:child_process";
 import {
   appendFileSync,
@@ -260,7 +268,115 @@ export function loadContext(root) {
   }
   ctx.gameDeps = gameDeps;
   ctx.pkgUsers = pkgUsers;
+
+  // 화면에 닿는 파일(2026-11-10). src/app의 Next 특수 파일(page·layout·icon 등)에서 import를 따라가 닿는 파일마다,
+  // 그 파일에 닿는 주소 묶음(게임 id 또는 COMMON)을 모은다. 어느 화면에서도 닿지 않는 파일(시험 전용 도우미 등)은
+  // 바뀌어도 화면 시험을 돌리지 않고, 공통 폴더의 파일도 닿는 게임만 돌린다
+  const graph = importGraph(web);
+  const reach = {};
+  const entriesByArea = {};
+  for (const file of listFiles(path.join(web, "src/app"), (n) =>
+    PAGE_ENTRY.test(n),
+  )) {
+    const rel = toPosix(path.relative(path.join(web, "src"), file));
+    const area = webAreaOf(ctx, rel);
+    if (!entriesByArea[area]) entriesByArea[area] = [];
+    entriesByArea[area].push(`src/${rel}`);
+  }
+  for (const [area, entries] of Object.entries(entriesByArea)) {
+    for (const f of graph.walk(entries)) addTo(reach, f, area);
+  }
+  // spec이 src 파일을 직접 불러 쓰기도 한다(데이터·순수 함수). spec이면 그 spec, 공용 도구면 COMMON
+  const specReach = {};
+  for (const file of listFiles(path.join(web, "e2e"), isCode)) {
+    const rel = toPosix(path.relative(web, file));
+    const n = path.basename(file);
+    const user = n.endsWith(".spec.ts") ? n.replace(/\.spec\.ts$/, "") : COMMON;
+    for (const f of graph.walk([rel])) {
+      if (!f.startsWith("e2e/")) addTo(specReach, f, user);
+    }
+  }
+  ctx.reach = reach;
+  ctx.specReach = specReach;
+  // 빌드(apps/web package.json의 build)가 돌리는 스크립트. 그 밖의 apps/web/scripts는 개발 때 손으로 돌리는 도구다
+  const webPkg = JSON.parse(
+    readFileSync(path.join(web, "package.json"), "utf8"),
+  );
+  ctx.buildScripts = Object.values(webPkg.scripts ?? {}).join(" ");
   return ctx;
+}
+
+/** Next가 주소로 삼는 특수 파일(이 파일들이 화면의 시작점이다) */
+const PAGE_ENTRY =
+  /^(page|layout|template|not-found|error|global-error|loading|default|route|icon|apple-icon|opengraph-image|twitter-image|manifest|sitemap|robots)(\.specimen)?\.(tsx|ts|jsx|js)$/;
+
+const RESOLVE_TAILS = [
+  "",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".mjs",
+  ".json",
+  "/index.ts",
+  "/index.tsx",
+  "/index.js",
+];
+
+/**
+ * apps/web 안의 import 그래프. `@/`와 상대 경로만 따라간다(작업 공간 패키지는 package.json으로 따로 본다).
+ * 경로는 apps/web 기준. `?raw` 같은 꼬리는 뗀다
+ */
+function importGraph(web) {
+  const isFile = new Map();
+  const fileExists = (p) => {
+    if (!isFile.has(p)) {
+      let ok = false;
+      try {
+        ok = statSync(p).isFile();
+      } catch {}
+      isFile.set(p, ok);
+    }
+    return isFile.get(p);
+  };
+  const edges = new Map();
+  const targetsOf = (rel) => {
+    if (edges.has(rel)) return edges.get(rel);
+    const out = [];
+    if (/\.(tsx?|jsx?|mjs|css)$/.test(rel)) {
+      const abs = path.join(web, rel);
+      for (const spec of importsOf(readFileSync(abs, "utf8"))) {
+        const clean = spec.split("?")[0];
+        let base;
+        if (clean.startsWith("@/"))
+          base = path.join(web, "src", clean.slice(2));
+        else if (clean.startsWith("."))
+          base = path.resolve(path.dirname(abs), clean);
+        else continue;
+        const hit = RESOLVE_TAILS.map((t) => base + t).find(fileExists);
+        if (!hit) continue;
+        const to = toPosix(path.relative(web, hit));
+        if (!to.startsWith("..")) out.push(to);
+      }
+    }
+    edges.set(rel, out);
+    return out;
+  };
+  return {
+    /** 시작 파일들에서 닿는 모든 파일(시작 파일 포함) */
+    walk(starts) {
+      const seen = new Set(starts);
+      const queue = [...starts];
+      while (queue.length) {
+        for (const to of targetsOf(queue.pop())) {
+          if (!seen.has(to)) {
+            seen.add(to);
+            queue.push(to);
+          }
+        }
+      }
+      return seen;
+    },
+  };
 }
 
 /** apps/web/src 아래 경로 → 묶음 id 또는 COMMON */
@@ -325,11 +441,17 @@ export function classify(ctx, file) {
     if (spec) return { areas: [], specs: [spec[1]] };
     if (rest.startsWith("e2e/")) return { all: "화면 시험 공용 도구" };
     const src = rest.match(/^src\/(.*)$/);
-    if (src) {
-      const id = webAreaOf(ctx, src[1]);
-      return id === COMMON
-        ? { all: "여러 게임이 쓰는 웹 코드" }
-        : { areas: [id], specs: [] };
+    if (src) return classifyWebSource(ctx, rest, src[1]);
+    const script = rest.match(/^scripts\/(.+)$/);
+    if (script && ctx.buildScripts != null) {
+      if (
+        ctx.buildScripts.includes(`scripts/${script[1]}`) ||
+        ctx.reach?.[rest] ||
+        ctx.specReach?.[rest]
+      ) {
+        return { all: "빌드가 돌리는 스크립트" };
+      }
+      return { none: true };
     }
     const pub = rest.match(/^public\/([^/]+)\//);
     if (pub && ctx.publicDir[pub[1]]) {
@@ -357,6 +479,28 @@ export function classify(ctx, file) {
     return { areas, specs };
   }
   return { all: "짝을 모르는 파일" };
+}
+
+/**
+ * apps/web/src 아래 파일의 몫. rel은 apps/web 기준(src/…), srcRel은 src 기준.
+ * - 어느 화면(src/app의 page·layout 등)에서도, 어느 spec에서도 import로 닿지 않으면 없음
+ * - 게임 폴더면 그 게임(예전과 같다)
+ * - 공통 폴더면 그 파일에 닿는 주소 묶음만. 첫 화면·공용 주소(COMMON)가 닿으면 전부
+ * - spec이 직접 불러 쓰면 그 spec도. 화면 시험 공용 도구가 불러 쓰면 전부
+ */
+function classifyWebSource(ctx, rel, srcRel) {
+  const pages = ctx.reach?.[rel];
+  const fromSpecs = ctx.specReach?.[rel] ?? new Set();
+  if (ctx.reach && !pages && fromSpecs.size === 0) return { none: true };
+  if (fromSpecs.has(COMMON)) return { all: "화면 시험 공용 도구가 불러 쓴다" };
+  const specs = [...fromSpecs].sort();
+  const id = webAreaOf(ctx, srcRel);
+  if (id !== COMMON) return { areas: [id], specs };
+  if (!ctx.reach) return { all: "여러 게임이 쓰는 웹 코드" };
+  if (pages?.has(COMMON)) {
+    return { all: "여러 게임이 쓰는 웹 코드(첫 화면·공용 주소가 불러 쓴다)" };
+  }
+  return { areas: [...(pages ?? [])].sort(), specs };
 }
 
 /**
@@ -404,11 +548,110 @@ export function selectE2e(ctx, files) {
   };
 }
 
-/** 조각 수. 전부는 2조각, 일부는 spec이 많을 때만 2조각(조각마다 설치·빌드를 따로 해서) */
-export function shardCount(result) {
+/**
+ * 조각 수의 상한(2026-11-10, 2 → 6). 조각마다 설치·빌드·브라우저 준비로 약 1분 반이 따로 들어, 더 늘리면 줄어드는
+ * 시험 시간보다 준비가 커진다. 한 실행의 동시 작업은 plan·check·화면 6조각·ci-ok로 많아야 8개라, 무료 공개
+ * 저장소의 동시 작업 한도(20개) 안에서 PR 둘이 겹쳐 돌 수 있다
+ */
+export const MAX_SHARDS = 6;
+/** 조각 하나가 맡을 시험 시간(작업자 시간 합, 초). 작업자 둘이면 약 2분. 이보다 적게 고르면 조각을 줄인다 */
+export const SHARD_SECONDS = 240;
+/** 시간 자료가 없을 때: spec 몇 개마다 조각 하나(예전 「12개 이상이면 2조각」과 같다) */
+export const SPECS_PER_SHARD = 12;
+
+/**
+ * 조각 수. 전부는 늘 MAX_SHARDS. 일부는 고른 spec의 지난 시험 시간 합을 SHARD_SECONDS로 나눠 올림(시간 자료가
+ * 없으면 spec 개수로), 1~MAX_SHARDS. 조각은 spec 개수보다 많지 않다
+ */
+export function shardCount(result, times = null) {
   if (result.mode === "none") return 0;
-  if (result.mode === "all") return 2;
-  return result.specs.length >= 12 ? 2 : 1;
+  const n =
+    result.mode === "all"
+      ? MAX_SHARDS
+      : (() => {
+          if (times) {
+            const total = result.specs.reduce(
+              (s, x) => s + specSeconds(times, x),
+              0,
+            );
+            return Math.ceil(total / SHARD_SECONDS);
+          }
+          return Math.floor(result.specs.length / SPECS_PER_SHARD) + 1;
+        })();
+  const most = result.mode === "all" ? MAX_SHARDS : result.specs.length;
+  return Math.max(1, Math.min(n, MAX_SHARDS, most));
+}
+
+/** spec 하나의 지난 시험 시간(초). 자료에 없는 spec(새로 생긴 것)은 자료의 평균으로 친다 */
+export function specSeconds(times, spec) {
+  const v = times.seconds[spec];
+  if (typeof v === "number") return v;
+  const all = Object.values(times.seconds);
+  return all.length ? all.reduce((a, b) => a + b, 0) / all.length : 1;
+}
+
+/**
+ * spec을 조각에 나눈다. 시간 자료가 있으면 긴 spec부터 지금 가장 가벼운 조각에 담고(같으면 앞 조각),
+ * 없으면 이름 차례로 돌려 담는다. 결과는 조각마다 spec 이름 배열(이름 차례)
+ */
+export function planShards(specs, shards, times = null) {
+  if (shards <= 0) return [];
+  const bins = Array.from({ length: shards }, () => ({ load: 0, specs: [] }));
+  if (!times) {
+    [...specs].sort().forEach((s, i) => {
+      bins[i % shards].specs.push(s);
+    });
+  } else {
+    const order = [...specs].sort(
+      (a, b) =>
+        specSeconds(times, b) - specSeconds(times, a) || (a < b ? -1 : 1),
+    );
+    for (const s of order) {
+      let best = bins[0];
+      for (const b of bins) if (b.load < best.load) best = b;
+      best.load += specSeconds(times, s);
+      best.specs.push(s);
+    }
+  }
+  return bins.map((b) => b.specs.sort());
+}
+
+/**
+ * playwright json 결과들 → spec마다 시험 시간 합(초, 모든 화면 크기). 건너뛴 시험은 뺀다.
+ * `node scripts/affected-e2e.mjs --write-times scripts/e2e-times.json <e2e.json…>`로 기준 파일을 새로 쓴다
+ */
+export function timesFromReports(reports) {
+  const ms = {};
+  const walk = (suite, file) => {
+    for (const s of suite.suites ?? []) walk(s, s.file ?? file);
+    for (const sp of suite.specs ?? []) {
+      const name = path.basename(sp.file ?? file).replace(/\.spec\.ts$/, "");
+      for (const t of sp.tests ?? []) {
+        for (const r of t.results ?? []) {
+          if (r.status === "skipped") continue;
+          ms[name] = (ms[name] ?? 0) + (r.duration ?? 0);
+        }
+      }
+    }
+  };
+  for (const r of reports) for (const s of r.suites ?? []) walk(s, s.file);
+  return Object.fromEntries(
+    Object.entries(ms)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([k, v]) => [k, Math.round(v / 100) / 10]),
+  );
+}
+
+/** 저장소의 시간 기준 파일을 읽는다. 없거나 깨졌으면 null(개수 기준으로 나눈다) */
+export function readTimes(file) {
+  try {
+    const t = JSON.parse(readFileSync(file, "utf8"));
+    return t && typeof t.seconds === "object" && Object.keys(t.seconds).length
+      ? t
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function changedFiles(root, base) {
@@ -428,22 +671,47 @@ function parseArgs(argv) {
     else if (a === "--all") args.all = true;
     else if (a === "--github") args.github = true;
     else if (a === "--selection-out") args.selectionOut = argv[++i];
-    else if (a === "--files") {
-      args.files = [];
+    else if (a === "--times") args.times = argv[++i];
+    else if (a === "--no-e2e") args.noE2e = argv[++i];
+    else if (a === "--files" || a === "--write-times") {
+      const list = [];
       while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-        args.files.push(argv[++i]);
+        list.push(argv[++i]);
       }
+      if (a === "--files") args.files = list;
+      else args.writeTimes = list;
     }
   }
   return args;
 }
 
+/** 시간 기준 파일을 CI 결과(playwright json)로 새로 쓴다. 첫 인자가 쓸 파일 */
+function writeTimes([out, ...reports]) {
+  const seconds = timesFromReports(
+    reports.map((f) => JSON.parse(readFileSync(f, "utf8"))),
+  );
+  const doc = {
+    notes: [
+      "화면 시험 spec마다 지난 시험 시간(초, 모든 화면 크기의 합, 건너뛴 시험 빼고). scripts/affected-e2e.mjs가 CI 조각을 고르게 나눌 때 읽는다.",
+      "새로 쓰기: 매일 전부 실행(schedule)의 test-times-e2e-* artifact를 받아 node scripts/affected-e2e.mjs --write-times scripts/e2e-times.json <e2e.json…>. 없는 spec은 평균으로 친다.",
+    ],
+    measuredAt: new Date().toISOString().slice(0, 10),
+    seconds,
+  };
+  writeFileSync(out, `${JSON.stringify(doc, null, 2)}\n`);
+  console.log(`${out}: spec ${Object.keys(seconds).length}개`);
+}
+
 function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const args = parseArgs(process.argv.slice(2));
+  if (args.writeTimes) return writeTimes(args.writeTimes);
+  const ctx = loadContext(root);
   let result;
   let files = [];
-  if (args.all || (!args.base && !args.files)) {
+  if (args.noE2e) {
+    result = { mode: "none", specs: [], reasons: [], why: args.noE2e };
+  } else if (args.all || (!args.base && !args.files)) {
     result = {
       mode: "all",
       specs: [],
@@ -452,22 +720,52 @@ function main() {
     };
   } else {
     files = args.files ?? changedFiles(root, args.base);
-    result = selectE2e(loadContext(root), files);
+    result = selectE2e(ctx, files);
   }
-  const shards = shardCount(result);
+  const times = readTimes(
+    args.times ?? path.join(root, "scripts/e2e-times.json"),
+  );
+  const shards = shardCount(result, times);
   const specPaths = result.specs.map((s) => `e2e/${s}.spec.ts`);
+  // 조각마다 spec 목록을 넘긴다(전부여도). Playwright --shard는 시험 개수로 잘라 조각이 기울었다(2026-11-10 1,293초 대 993초)
+  const plan = planShards(
+    result.mode === "all" ? ctx.specs : result.specs,
+    shards,
+    times,
+  );
+  const estimate = (list) =>
+    times
+      ? Math.round(list.reduce((s, x) => s + specSeconds(times, x), 0))
+      : null;
+  const how = shards
+    ? `(${times ? "지난 시험 시간으로" : "spec 개수로"} 나눔)`
+    : "";
 
-  console.log(`화면 시험: ${result.mode} (${result.why}), 조각 ${shards}개`);
+  console.log(
+    `화면 시험: ${result.mode} (${result.why}), 조각 ${shards}개${how}`,
+  );
   if (result.mode === "some") console.log(`  ${result.specs.join(" ")}`);
+  plan.forEach((list, i) => {
+    const sec = estimate(list);
+    console.log(
+      `  조각 ${i + 1}: spec ${list.length}개${sec == null ? "" : `, 약 ${sec}초(작업자 시간 합)`}`,
+    );
+  });
   for (const r of result.reasons) console.log(`  ${r.file} → ${r.effect}`);
 
   if (args.github && process.env.GITHUB_OUTPUT) {
+    const matrix = {
+      include: plan.map((list, i) => ({
+        shard: i + 1,
+        specs: list.map((s) => `e2e/${s}.spec.ts`).join(" "),
+      })),
+    };
     appendFileSync(
       process.env.GITHUB_OUTPUT,
       [
         `e2e=${result.mode}`,
         `specs=${specPaths.join(" ")}`,
-        `shards=${JSON.stringify(Array.from({ length: shards }, (_, i) => i + 1))}`,
+        `matrix=${JSON.stringify(matrix)}`,
         `shard_total=${shards}`,
         "",
       ].join("\n"),
@@ -478,11 +776,17 @@ function main() {
       "### 고른 시험",
       "",
       `- 기준 커밋: ${args.base ? `\`${args.base.slice(0, 12)}\`` : "없음(전부)"}`,
-      `- 화면 시험: **${result.mode}** (${result.why}), 조각 ${shards}개`,
+      `- 화면 시험: **${result.mode}** (${result.why}), 조각 ${shards}개${how}`,
     ];
     if (result.mode === "some") {
       lines.push(`- spec ${result.specs.length}개: ${result.specs.join(", ")}`);
     }
+    plan.forEach((list, i) => {
+      const sec = estimate(list);
+      lines.push(
+        `- 조각 ${i + 1}: spec ${list.length}개${sec == null ? "" : `, 약 ${sec}초`}`,
+      );
+    });
     if (result.reasons.length) {
       lines.push("", "<details><summary>바뀐 파일과 몫</summary>", "");
       for (const r of result.reasons.slice(0, 200)) {
