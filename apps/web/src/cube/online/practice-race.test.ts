@@ -6,11 +6,15 @@ import { describe, expect, it } from "vitest";
 
 import { DelayNet, runUntil } from "@/net/race/race-fixture";
 import type { Transport } from "@/net/transport";
+import { type Keymap, notationKeymap, twoHandKeymap } from "../input/keymaps";
+import { pickAlg } from "../practice/pick-alg";
 import { PRACTICE_N } from "../practice/problem";
+import type { DrillCase } from "../practice/types";
 import {
   trackOf,
   type VersusRule,
   versusBoard,
+  versusCase,
   versusOver,
   versusSummary,
 } from "../practice/versus";
@@ -72,6 +76,21 @@ describe("대결 게임(어댑터)", () => {
     expect(see.isTurn?.("?peek")).toBe(false);
   });
 
+  it("공식 알리기는 따라 치기만 받고 수로 세지 않는다. 지문은 상황·윗면 돌리기·시작 모양뿐이다", () => {
+    const follow = createPracticeRaceGame({ stage: "pll" });
+    const act = follow.decodeMove("?alg R U R'");
+    expect(act).toEqual({ alg: "R U R'" });
+    expect(follow.encodeMove(act)).toBe("?alg R U R'");
+    expect(follow.isTurn?.("?alg R U R'")).toBe(false);
+    expect(() => follow.decodeMove(`?alg ${"R ".repeat(150)}`)).toThrow();
+    const see = createPracticeRaceGame({ stage: "pll", mode: "see" });
+    expect(() => see.decodeMove("?alg R U R'")).toThrow();
+    const fp = follow.startFingerprint?.("seed-1", undefined) ?? "";
+    const t = trackOf(follow.startState("seed-1", undefined));
+    expect(fp).toContain(`${t.problems[0]?.caseId}@${t.problems[0]?.turn}`);
+    expect(fp).not.toMatch(/[RUFLDB]'? [RUFLDB]/);
+  });
+
   it("판정 설정 지문: 공식 연습이면 단계를 넣고 준비 3초, 아니면 예전 그대로", () => {
     const base: RoomSettings = {
       n: 3,
@@ -120,7 +139,7 @@ function tampered(base: Transport, patch: Partial<RoomSettings>): Transport {
   };
 }
 
-function setup(guestPatch?: Partial<RoomSettings>) {
+function setup(guestPatch?: Partial<RoomSettings>, rule: VersusRule = SECOND) {
   const clock = new ManualClock();
   const net = new DelayNet(clock);
   const host = new CubeRoom({
@@ -129,7 +148,7 @@ function setup(guestPatch?: Partial<RoomSettings>) {
     isHost: true,
     name: "방장",
     scrambler: fake,
-    settings: { n: 3, timeLimitSec: 120, practice: SECOND },
+    settings: { n: 3, timeLimitSec: 120, practice: rule },
   });
   const joined = net.join("g");
   const guest = new CubeRoom({
@@ -153,6 +172,8 @@ function typer(
   room: CubeRoom,
   gap: number,
   misses: readonly number[] = [],
+  /** 있으면 화면처럼 문제마다 첫 수 앞에 이 키 배치의 공식을 알리고 그 공식을 친다 */
+  keymap?: Keymap,
 ) {
   let started = "";
   room.onChange(() => {
@@ -162,10 +183,16 @@ function typer(
     started = race;
     const missed = new Set<number>();
     const tick = () => {
-      const state = s.stateOf(room.me) as PuzzleState | undefined;
+      let state = s.stateOf(room.me) as PuzzleState | undefined;
       if (!state) return;
-      const t = trackOf(state);
+      let t = trackOf(state);
       if (versusOver(t)) return;
+      if (keymap && t.alg === null && t.fed.length === 0) {
+        const c = versusCase(t) as DrillCase;
+        expect(s.play({ alg: pickAlg(c, keymap).alg }).ok).toBe(true);
+        state = s.stateOf(room.me) as PuzzleState;
+        t = trackOf(state);
+      }
       const board = versusBoard(t);
       if (!board) return;
       if (misses.includes(t.index) && !missed.has(t.index)) {
@@ -255,6 +282,83 @@ describe("공식 연습 대결(두 기기)", () => {
     const gt = trackOf(host.anySession()?.stateOf("g") as PuzzleState);
     expect(gt.index).toBe(0);
     expect(gt.hits).toBe(0);
+  });
+
+  it("키 배치가 달라 공식이 달라도 시작 모양은 같고, 각자 알린 공식으로 두 기기가 같은 진행·결과를 낸다", () => {
+    const PLL: VersusRule = { stage: "pll" };
+    const { clock, host, guest } = setup(undefined, PLL);
+    typer(clock, host, 300, [1], twoHandKeymap());
+    typer(clock, guest, 200, [], notationKeymap());
+    host.startRound();
+    runUntil(
+      clock,
+      () => host.rounds.length === 1 && guest.rounds.length === 1,
+      400_000,
+      50,
+    );
+    const h = host.rounds[0];
+    expect(guest.rounds[0]?.result).toEqual(h?.result);
+    expect(h?.result.players.h?.status).toBe("done");
+    expect(h?.result.players.g?.status).toBe("done");
+    expect(h?.result.ranking).toEqual(["g", "h"]);
+    // 시작 모양·문제 목록은 같고, 수 기록에 실린 공식은 사람마다 다르다
+    const hs = host.anySession()?.startState() as PuzzleState;
+    const gs = guest.anySession()?.startState() as PuzzleState;
+    expect([...gs.perm]).toEqual([...hs.perm]);
+    const algsOf = (id: string) =>
+      (h?.logs[id] ?? [])
+        .filter((x) => x.m.startsWith("?alg "))
+        .map((x) => x.m);
+    expect(algsOf("h")).toHaveLength(10);
+    expect(algsOf("g")).not.toEqual(algsOf("h"));
+    for (const id of ["h", "g"]) {
+      const a = trackOf(host.anySession()?.stateOf(id) as PuzzleState);
+      const b = trackOf(guest.anySession()?.stateOf(id) as PuzzleState);
+      expect(b).toEqual(a);
+    }
+    expect(trackOf(host.anySession()?.stateOf("h") as PuzzleState).misses).toBe(
+      1,
+    );
+  });
+
+  it("그 모양을 풀지 못하는 공식을 알린 기록은 다시 계산에서 걸려 무효(DNF)", () => {
+    const PLL: VersusRule = { stage: "pll" };
+    const { clock, net, host, guest } = setup(undefined, PLL);
+    net.filter = (m, from) => {
+      const env = m as {
+        type?: string;
+        m?: { type?: string; moves?: { i: number; m: string; t: number }[] };
+      };
+      const inner = env.m;
+      if (
+        from === "g" &&
+        env.type === "cube-race" &&
+        inner?.type === "race-moves" &&
+        inner.moves
+      )
+        return {
+          ...env,
+          m: {
+            ...inner,
+            moves: inner.moves.map((x) =>
+              x.m.startsWith("?alg ") ? { ...x, m: "?alg R U R' U'" } : x,
+            ),
+          },
+        };
+      return m;
+    };
+    typer(clock, host, 400, [], twoHandKeymap());
+    typer(clock, guest, 100, [], notationKeymap());
+    host.startRound();
+    runUntil(
+      clock,
+      () => host.rounds.length === 1 && guest.rounds.length === 1,
+      400_000,
+      50,
+    );
+    const r = host.rounds[0]?.result;
+    expect(r?.players.g?.status).toBe("dnf");
+    expect(r?.ranking[0]).toBe("h");
   });
 
   it("방장이 한 손님에게만 다른 단계를 알리면 판이 열리지 않는다", () => {
