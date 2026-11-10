@@ -39,12 +39,21 @@ export async function emblemPng(
   const svg = host.querySelector("svg");
   if (!svg) return null;
   const vb = svg.viewBox.baseVal;
+  // 빛 띠·블럭 번쩍임은 그림에서 숨기니 범위에서도 뺀다(빛 띠는 큐브보다 훨씬 길어 그대로 재면 여백이 커진다)
+  const hidden = [
+    ...svg.querySelectorAll<SVGElement>(".emb-band, .emb-blocks"),
+  ];
+  const before = hidden.map((el) => el.style.display);
+  for (const el of hidden) el.style.display = "none";
   let drawn: DOMRect | null = null;
   try {
     drawn = svg.getBBox();
   } catch {
     drawn = null;
   }
+  hidden.forEach((el, i) => {
+    el.style.display = before[i] ?? "";
+  });
   const [x, y, w, h] = unionBox(
     { x: vb.x, y: vb.y, width: vb.width, height: vb.height },
     drawn,

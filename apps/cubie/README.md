@@ -59,6 +59,14 @@
     <td align="center">기록과 티어</td>
     <td align="center">지난 판 다시 보기</td>
   </tr>
+  <tr>
+    <td><img src="docs/desktop-menu.webp" alt="메뉴 막대 메뉴 맨 위 프로필 칸: 익명 큐버 이름, 3×3 티어 글과 엠블럼"></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td align="center">메뉴 맨 위 프로필</td>
+    <td></td>
+  </tr>
 </table>
 
 ## 설치
