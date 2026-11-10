@@ -16,6 +16,7 @@ import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView } from "../view";
 import { CubePosterPair } from "./CubePosterPair";
 import { KeyCaps, useMoveKeys } from "./MoveChip";
+import { ViewHome } from "./ViewHome";
 
 /**
  * 시연 큐브(배우기·핑거 트릭). 시작 상황에서 공식을 한 수씩 앞뒤로 돌려 보이고, 지금 수를 강조한다.
@@ -210,6 +211,7 @@ export function DemoCube({
             className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
           />
         )}
+        {!failed && <ViewHome viewRef={viewRef} ready={ready} />}
       </div>
       <ol
         className="flex flex-wrap justify-center gap-1 font-mono text-sm"

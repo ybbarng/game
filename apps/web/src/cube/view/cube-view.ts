@@ -398,9 +398,18 @@ export class CubeView {
     y: number;
     x0: number;
     y0: number;
+    /** 누르기 전 끌어 돌린 각(거의 움직이지 않고 떼면 누르기라 이 각으로 되돌린다) */
+    yaw0: number;
+    pitch0: number;
+    back: { start: number; yaw: number; pitch: number } | null;
   } | null = null;
   private returning: { start: number; yaw: number; pitch: number } | null =
     null;
+  /** 보기가 처음 각에서 벗어났는지 바뀔 때 알릴 곳(「처음 각도로」 단추) */
+  private readonly viewListeners = new Set<(turned: boolean) => void>();
+  private turnedSeen = false;
+  /** 캔버스에 마지막으로 적은 보는 각(같으면 다시 쓰지 않는다) */
+  private viewAttr = "";
   /** 거울 판(뒷면 보기). 켤 때 만든다 */
   private mirror: Mirror | null = null;
   private mirrorOn = false;
@@ -435,7 +444,7 @@ export class CubeView {
     this.onSwipe = o.onSwipe;
     this.onTap = o.onTap;
     this.swipeMouse = o.swipeMouse ?? false;
-    this.keepView = o.keepView ?? false;
+    this.keepView = o.keepView ?? true;
     this.interactive = o.interactive ?? true;
     this.maxDpr = Math.min(o.maxDpr ?? this.spec.maxDpr, this.spec.maxDpr);
 
@@ -964,21 +973,42 @@ export class CubeView {
     this.invalidate();
   }
 
-  /** 끌어 돌린 보기를 처음 각으로 천천히 되돌린다(`keepView`일 때 쓴다) */
-  resetView(): void {
-    if (this.drag) return;
-    if (this.dragYaw === 0 && this.dragPitch === 0) return;
+  /** 끌어 돌린 보기를 처음 각으로 천천히 되돌린다(「처음 각도로」 단추·키). 돌아가기 시작했으면 true */
+  resetView(): boolean {
+    if (this.drag || this.returning) return false;
+    if (this.dragYaw === 0 && this.dragPitch === 0) return false;
     this.returning = {
       start: performance.now(),
       yaw: this.dragYaw,
       pitch: this.dragPitch,
     };
+    this.noteView();
     this.invalidate();
+    return true;
   }
 
   /** 끌어 돌린 보기가 처음 각에서 벗어나 있는지 */
   get viewTurned(): boolean {
     return this.dragYaw !== 0 || this.dragPitch !== 0;
+  }
+
+  /**
+   * 보기가 처음 각에서 벗어나 머물러 있는지(「처음 각도로」 단추를 보일지)가 바뀔 때마다 부른다. 처음 각으로
+   * 돌아가는 중에는 벗어나지 않은 것으로 본다. 붙이자마자 지금 값으로 한 번 부른다. 떼는 함수를 돌려준다
+   */
+  onViewTurn(fn: (turned: boolean) => void): () => void {
+    this.viewListeners.add(fn);
+    fn(this.turnedSeen);
+    return () => {
+      this.viewListeners.delete(fn);
+    };
+  }
+
+  private noteView(): void {
+    const turned = this.viewTurned && this.returning === null;
+    if (turned === this.turnedSeen) return;
+    this.turnedSeen = turned;
+    for (const fn of this.viewListeners) fn(turned);
   }
 
   /** 보기가 움직이는 중인지(끄는 중이거나 처음 각으로 돌아가는 중). 화면 시험이 멈출 때를 기다린다 */
@@ -1066,6 +1096,7 @@ export class CubeView {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.viewListeners.clear();
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.reduced?.removeEventListener("change", this.invalidate);
@@ -1242,10 +1273,14 @@ export class CubeView {
       const e = easeOut(p);
       this.dragYaw = this.returning.yaw * (1 - e);
       this.dragPitch = this.returning.pitch * (1 - e);
-      if (p >= 1) this.returning = null;
-      else busy = true;
+      if (p >= 1) {
+        this.returning = null;
+        this.dragYaw = 0;
+        this.dragPitch = 0;
+      } else busy = true;
     }
     this.placeCamera();
+    this.noteView();
     // 판을 켜고 끄는 중(값은 placeCamera가 시각으로 정한다)
     if (this.fading) busy = true;
     return busy;
@@ -1271,6 +1306,12 @@ export class CubeView {
       -PITCH_LIMIT,
       PITCH_LIMIT,
     );
+    // 화면 시험이 보는 각을 조건으로 본다: 끌어 돌린 각(처음 각에서 벗어난 만큼, 도 단위 소수 한 자리)
+    const attr = `${Math.round(this.dragYaw * 10) / 10},${Math.round(this.dragPitch * 10) / 10}`;
+    if (attr !== this.viewAttr) {
+      this.viewAttr = attr;
+      this.canvas.dataset.cubeViewTurn = attr;
+    }
     const yaw = THREE.MathUtils.degToRad(yawDeg);
     const pitch = THREE.MathUtils.degToRad(pitchDeg);
     // 큐브를 감싸는 공이 화면 짧은 쪽에 들어가도록 거리를 잡는다
@@ -1603,6 +1644,9 @@ export class CubeView {
       y: e.clientY,
       x0: e.clientX,
       y0: e.clientY,
+      yaw0: this.dragYaw,
+      pitch0: this.dragPitch,
+      back: this.returning,
     };
     this.returning = null;
     this.capture(e.pointerId, true);
@@ -1670,10 +1714,15 @@ export class CubeView {
     if (!this.drag || this.drag.id !== e.pointerId) return;
     const d = this.drag;
     this.drag = null;
-    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < SWIPE_PX)
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < SWIPE_PX) {
+      // 누르기: 손이 떨려 조금 돈 보기는 누르기 전으로(처음 각으로 돌아가던 중이면 그대로 이어 간다)
+      this.dragYaw = d.yaw0;
+      this.dragPitch = d.pitch0;
+      this.returning = d.back;
       this.tap(e.clientX, e.clientY);
+    }
     this.capture(e.pointerId, false);
-    if (!this.keepView)
+    if (!this.keepView && !this.returning)
       this.returning = {
         start: performance.now(),
         yaw: this.dragYaw,

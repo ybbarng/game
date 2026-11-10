@@ -197,6 +197,7 @@ const SHORT_COMMAND: Record<string, string> = {
   inspectionSkip: "살펴보기",
   peekBack: "뒤 보기",
   peekDown: "아래 보기",
+  viewHome: "처음 각도",
 };
 
 export function shortLabel(action: ActionId): string {
