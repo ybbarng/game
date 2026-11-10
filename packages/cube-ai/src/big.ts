@@ -6,8 +6,8 @@ import {
   parseMoves,
 } from "@game/cube-engine";
 import {
-  EDGE_PARITY_TEXT,
-  PLL_PARITY_TEXT,
+  ollParityText,
+  pllParityText,
   type ReductionLimits,
   type ReductionSolution,
   type ReductionStageId,
@@ -17,11 +17,12 @@ import {
   toThreeFacelets,
 } from "@game/cube-reduction";
 import type { PuzzleState } from "@game/puzzle-core";
+import { firstFaceMap } from "./facelets";
 import type { Step } from "./methods";
 import { type HumanSolve, Solve, type StageName } from "./solve";
 
 /**
- * 4×4·5×5 사람 흉내(축소법). 가운데 → 모서리 짝 → 마지막 두 모서리까지는 축소법(cube-reduction)
+ * 4×4~7×7 사람 흉내(축소법). 가운데 → 모서리 짝 → 마지막 두 모서리까지는 축소법(cube-reduction)
  * 그대로 두고, 그 뒤는 축소가 끝난 큐브를 3×3처럼 보고(바깥 꼭짓점·짝 지은 모서리·가운데)
  * 같은 단계의 3×3 사람 해법 차례(`Step`)를 돌린다. 3×3 수는 n×n 수로 옮긴다
  * (바깥층은 바깥층, 3×3 가운데 층은 n×n 안쪽 층 전부).
@@ -39,12 +40,12 @@ const REDUCTION_STAGE: Partial<Record<ReductionStageId, StageName>> = {
   "last-edges": "last-edges",
 };
 
-/** 색 번호를 그대로 글자로(흰=U, 빨강=R …): 3×3 해법이 흰 가운데를 찾아 아래로 돌린다 */
-const IDENTITY = [0, 1, 2, 3, 4, 5];
-
-/** 축소가 끝난 n×n 상태 → 3×3 스티커 문자열(글자는 색) */
-function threeView(n: number, state: PuzzleState): string {
-  return toThreeFacelets(n, faceColors(n, state), IDENTITY);
+/**
+ * 축소가 끝난 n×n 상태 → 3×3 스티커 문자열. 글자는 색(흰=U, 빨강=R …, 3×3 해법이 흰 가운데를 찾아 아래로
+ * 돌린다). `first`가 흰색이 아니면 그 색을 흰 글자로 읽는다(`firstFaceMap`, 색 중립)
+ */
+function threeView(n: number, state: PuzzleState, first: number): string {
+  return toThreeFacelets(n, faceColors(n, state), firstFaceMap(first));
 }
 
 /** 3×3 수 → n×n 수. 층 1은 1, 층 3은 n, 층 2(가운데)는 안쪽 층 2~n−1 */
@@ -138,6 +139,7 @@ export function solveBigHuman(
   n: number,
   state: PuzzleState,
   limits?: ReductionLimits,
+  first = 0,
 ): HumanSolve {
   const red = reduction(n, state, limits);
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
@@ -152,7 +154,7 @@ export function solveBigHuman(
     stages.push({ name, start, end: moves.length });
   }
   let cur = applyMoves(n, state, parseMoves(n, moves.join(" ")));
-  let s = new Solve(3, threeView(n, cur));
+  let s = new Solve(3, threeView(n, cur, first));
 
   /** 지금 3×3 판에 둔 수를 n×n 수로 옮겨 붙이고 n×n 상태를 앞으로 보낸다 */
   const flush = () => {
@@ -184,20 +186,20 @@ export function solveBigHuman(
     flush();
     const alg = parseMoves(
       n,
-      step === "oll-parity" ? EDGE_PARITY_TEXT : PLL_PARITY_TEXT,
+      step === "oll-parity" ? ollParityText(n) : pllParityText(n),
     );
     const start = moves.length;
     moves.push(...alg.map((m) => formatMove(n, m)));
     stages.push({ name: step, start, end: moves.length });
     cur = applyMoves(n, cur, alg);
-    s = new Solve(3, threeView(n, cur));
+    s = new Solve(3, threeView(n, cur, first));
   }
   if (!s.isSolved()) throw new Error("다 맞추지 못했다");
   flush();
   return { moves, stages, looks };
 }
 
-/** 4×4·5×5 초고수: 축소법 + 2단계 3×3 해법(cube-reduction 그대로, 패리티는 3×3 앞에서) */
+/** 4×4~7×7 초고수: 축소법 + 2단계 3×3 해법(cube-reduction 그대로, 패리티는 3×3 앞에서) */
 export function solveBigExpert(
   n: number,
   state: PuzzleState,

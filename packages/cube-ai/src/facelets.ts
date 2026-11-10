@@ -1,4 +1,10 @@
-import { type CubeMove, faceColors } from "@game/cube-engine";
+import {
+  applyMoves,
+  type CubeMove,
+  faceColors,
+  parseMoves,
+  solvedCube,
+} from "@game/cube-engine";
 import {
   FACES,
   type Face,
@@ -15,11 +21,39 @@ import type { PuzzleState } from "@game/puzzle-core";
  * 글자로 바꾸면 된다. 같은지는 시험(`facelets.test.ts`)이 수를 두 쪽에 똑같이 두어 확인한다.
  */
 
-/** 엔진 상태 → Kociemba 순서 스티커 문자열. 글자는 그 스티커 색이 맞춘 상태에서 있던 면 이름 */
-export function toFacelets(n: number, state: PuzzleState): string {
+/**
+ * 엔진 상태 → Kociemba 순서 스티커 문자열. 글자는 그 스티커 색이 맞춘 상태에서 있던 면 이름.
+ * `colorMap`을 주면 색 c를 `FACES[colorMap[c]]` 글자로 읽는다(`firstFaceMap`: 다른 색을 흰색처럼 보고 풀기)
+ */
+export function toFacelets(
+  n: number,
+  state: PuzzleState,
+  colorMap?: readonly number[],
+): string {
   let s = "";
-  for (const c of faceColors(n, state)) s += FACES[c];
+  for (const c of faceColors(n, state))
+    s += FACES[colorMap ? (colorMap[c] as number) : c];
   return s;
+}
+
+/** 큐브 돌리기 한 번 안쪽으로 각 면을 위로 드는 표기(흰 면 위 맞춘 큐브 기준) */
+const LIFT = ["", "z'", "x", "x2", "z", "x'"];
+
+/**
+ * 첫 면 색 고르기(사람 해법은 늘 「흰」 글자 면부터 맞춘다). 색 `first`(0 흰 · 1 빨강 · 2 초록 · 3 노랑 · 4 주황 ·
+ * 5 파랑)를 흰 글자로 읽게 하는 색 → 글자 번호 표. 맞춘 큐브를 돌려 `first`가 위로 오는 방향에서 면마다 보이는 색을
+ * 그 면 글자로 읽는다(큐브 돌리기 하나와 같은 바꿈이라 조각의 색 차례가 그대로다). 흰색이면 그대로(0~5)
+ */
+export function firstFaceMap(first: number): number[] {
+  const solved = solvedCube(3);
+  const rot = LIFT[first] as string;
+  const s = rot ? applyMoves(3, solved, parseMoves(3, rot)) : solved;
+  const colors = faceColors(3, s);
+  const map = new Array<number>(6).fill(0);
+  for (let k = 0; k < 6; k++) map[colors[k * 9 + 4] as number] = k;
+  if (map[first] !== 0)
+    throw new Error(`첫 면 색을 위로 들지 못했다: ${first}`);
+  return map;
 }
 
 const AXIS_FACE: Readonly<Record<CubeMove["axis"], Face>> = {
