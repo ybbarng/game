@@ -69,12 +69,16 @@ export function earlySummaryUses(
   return early;
 }
 
-type AnyLesson = Lesson<unknown, unknown, unknown, unknown>;
+/** 글만 읽으므로 단원의 판·행동 형식은 묻지 않는다 */
+// biome-ignore lint/suspicious/noExplicitAny: 게임마다 다른 판·행동 형식을 모두 받는다
+type AnyLesson = Lesson<any, any, any, any>;
 
 /**
  * 게임 튜토리얼 단원을 읽는 차례대로 자리로 펼친다. 설명 단계 아래 용어 칸(terms)의 글은 termText로 받아 그 단계 글 뒤에 둔다.
  * 단원 제목·요약은 단원 목록에 먼저 보이므로 lessonSummaries로 따로 본다.
  */
+export type { AnyLesson };
+
 export function lessonPlaces(
   lessons: readonly AnyLesson[],
   termText: (id: string) => string = () => "",

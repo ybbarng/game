@@ -2,17 +2,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type AnyLesson,
   earlySummaryUses,
   earlyUses,
   lessonPlaces,
   lessonSummaries,
   type OrderedTerm,
 } from "./term-order";
-import type { Lesson } from "./types";
 
 export function termOrderSuite(
   name: string,
-  lessons: readonly Lesson<unknown, unknown, unknown, unknown>[],
+  lessons: readonly AnyLesson[],
   terms: readonly OrderedTerm[],
   termText?: (id: string) => string,
 ) {
