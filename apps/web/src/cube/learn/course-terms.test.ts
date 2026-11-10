@@ -10,7 +10,7 @@ import {
   type TextPlace,
 } from "@/tutorial/term-order";
 
-import { loosePieceWords } from "./glossary-333";
+import { loosePieceWords, movedPieceWords } from "./glossary-333";
 import { COURSES, courseById } from "./index";
 import { coursePlaces, courseSummaries } from "./term-places";
 import type { Course } from "./types";
@@ -183,9 +183,10 @@ describe("큐브 중급 과정 조각 이름(블럭)", () => {
         ...courseSummaries(course),
         ...coursePlaces(course),
       ].flatMap(({ where, text }) =>
-        loosePieceWords(text, { bigCube: course.size > 3 }).map(
-          (w) => `${where}: …${w}…`,
-        ),
+        [
+          ...loosePieceWords(text, { bigCube: course.size > 3 }),
+          ...movedPieceWords(text, { bigCube: course.size > 3 }),
+        ].map((w) => `${where}: …${w}…`),
       );
       expect(loose).toEqual([]);
     });

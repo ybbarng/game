@@ -152,6 +152,7 @@ describe("스스로 섞기 규칙", () => {
     "2x2-top-face-solved": { yes: ["2x2-top-face"], no: ["solved"] },
     "4x4-random": { yes: [], no: ["centers"] },
     "4x4-centers-solved": { yes: ["centers"], no: ["edges-paired"] },
+    "4x4-last-four-edges": { yes: ["centers"], no: ["edges-paired"] },
     "4x4-reduced": { yes: ["edges-paired"], no: ["solved"] },
     "5x5-random": { yes: [], no: ["centers"] },
     "5x5-centers-solved": { yes: ["centers"], no: ["edges-paired"] },

@@ -1,0 +1,64 @@
+/*
+ * 마이티 첫 화면 로고·문구 연출. Logo·Splash가 import한다
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/* 로고 카드가 부채꼴로 펼쳐진다 */
+.logo-card {
+  animation: logo-fan 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes logo-fan {
+  from {
+    transform: translateX(0) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(var(--logo-x)) rotate(var(--logo-rotate)) scale(1);
+    opacity: 1;
+  }
+}
+
+.splash-glow {
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(242, 193, 78, 0.18),
+    transparent 55%
+  );
+  animation: splash-glow 1.6s ease-out both;
+}
+
+@keyframes splash-glow {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.splash-tagline {
+  animation: rise 0.6s 0.6s ease-out both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-card,
+  .splash-glow,
+  .splash-tagline {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+}

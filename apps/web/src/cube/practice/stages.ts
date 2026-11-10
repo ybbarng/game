@@ -1,8 +1,8 @@
 // 공식 연습 단계(docs/47 16-9). 짧고 쉬운 것부터: 십자 → 초보자 2층 → 초보자 3층 넷 → F2L → 2단계 OLL·PLL → 전체 OLL·PLL.
 // 초보자 해법 카드는 앞의 여섯, CFOP 카드는 F2L부터 보인다. 오르테가·패리티·블라인드 공식은 「더 보기」(옛 자유 훈련).
-import { ALG_SETS, type AlgCase, type AlgSetInfo } from "../learn";
+import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { goalForCase } from "../learn/judge";
-import type { AlgSet } from "../learn/types";
+import type { AlgCase, AlgSet } from "../learn/types";
 import {
   BEGINNER_CORNERS,
   BEGINNER_CROSS,

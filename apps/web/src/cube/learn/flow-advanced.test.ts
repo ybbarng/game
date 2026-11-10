@@ -15,8 +15,9 @@ import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "./bld";
 import { COURSES, courseById, nextCourses } from "./index";
 import { goalMet } from "./judge";
 import {
-  CENTER_LAST_TWO,
+  CENTER_LAST_TWO_SETUP,
   CENTER_YELLOW,
+  CENTER_YELLOW_SETUP,
   CORNER_SWAP_444,
   CORNER_SWAP_444_SETUP,
 } from "./lessons-big";
@@ -390,14 +391,16 @@ describe("4×4·5×5", () => {
     return out;
   };
 
-  it("노랑 모으기 상황은 흰 센터가 다 맞은 채 시작한다", () => {
-    const s = play(4, setupFor(CENTER_YELLOW));
-    expect(centerColors(4, s, 0).every((c) => c === 0)).toBe(true);
-    expect(centerColors(4, s, 3).every((c) => c === 3)).toBe(false);
+  it("노랑 모으기 상황은 노란 면을 위로 쥐었고 흰 센터(아래)가 다 맞은 채 시작한다", () => {
+    const s = play(4, CENTER_YELLOW_SETUP);
+    expect(centerColors(4, s, 3).every((c) => c === 0)).toBe(true);
+    expect(centerColors(4, s, 0).every((c) => c === 3)).toBe(false);
+    expect(goalMet(4, play(4, CENTER_YELLOW, s), "centers")).toBe(true);
   });
 
-  it("마지막 두 면 상황은 위·앞 두 면만 섞여 있다", () => {
-    const s = play(4, `z ${setupFor(CENTER_LAST_TWO)}`);
+  it("마지막 두 면 상황은 파란 면을 위로 쥐었고 위·앞 두 면만 섞여 있다", () => {
+    const s = play(4, CENTER_LAST_TWO_SETUP);
+    expect(centerColors(4, s, 0)).toContain(5);
     const mixed = [0, 1, 2, 3, 4, 5].filter(
       (f) => new Set(centerColors(4, s, f)).size > 1,
     );

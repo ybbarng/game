@@ -8,13 +8,7 @@ import { cn } from "@/lib/cn";
 import { fitsStart } from "../algs/check";
 import { caseOfAlg, loadAlgBook, usedAlg } from "../algs/store";
 import type { Command } from "../input";
-import {
-  algTokens,
-  courseById,
-  GOALS,
-  type Lesson,
-  type LessonStep,
-} from "../learn";
+import { courseById } from "../learn/courses";
 import {
   countsAsMove,
   goalMet,
@@ -22,12 +16,15 @@ import {
   stepIsRandom,
   stepStart,
 } from "../learn/judge";
+import { algTokens } from "../learn/notation";
 import type { HintPlan, TaughtHint } from "../learn/taught-hint";
 import { BEGINNER_COURSE_ID, taughtHintKind } from "../learn/taught-kind";
+import { GOALS, type Lesson, type LessonStep } from "../learn/types";
 import type { CubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";
 import { MoveChip, useMoveKeys } from "./MoveChip";
 import { StageProgress } from "./StageStrip";
+import "@/cube/components/cube-fx.css";
 
 type HintModule = typeof import("../learn/taught-hint");
 

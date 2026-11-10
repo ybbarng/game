@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 
 import { GameClock } from "@/components/GameClock";
 import { cn } from "@/lib/cn";
+import "@/yut/components/yut.css";
 
 /** 편 색(말 색): 홍·청·녹·황 */
 export const SIDE_COLORS = [

@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  ALG_SETS,
-  type AlgSet,
-  BLD_CORNER_TARGETS,
-  BLD_EDGE_TARGETS,
-  type Course,
-  nextCourses,
-  type SheetName,
-} from "../learn";
+import { ALG_SETS } from "../learn/alg-sets";
+import { BLD_CORNER_TARGETS, BLD_EDGE_TARGETS } from "../learn/bld";
+import { nextCourses } from "../learn/courses";
+import type { AlgSet, Course, SheetName } from "../learn/types";
 import { MoveText } from "./MoveChip";
 
 /** 배우기 화면의 연결 조각: 공식 훈련 단추, 과정 끝 「다음에 할 것」, 블라인드 글자 표(docs/47 8-1) */

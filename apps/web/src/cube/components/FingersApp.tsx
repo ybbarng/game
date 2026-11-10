@@ -8,15 +8,14 @@ import { cn } from "@/lib/cn";
 import { presetKeymap } from "../input";
 import { keysForMove } from "../keys/move-keys";
 import { TWO_HAND_RULE, TWO_HAND_RULES } from "../keys/two-hand";
+import { FINGER_DRILLS, FINGER_INTRO } from "../learn/fingers";
+import { fingerQuiz } from "../learn/interact";
+import { algTokens } from "../learn/notation";
 import {
-  algTokens,
-  FINGER_DRILLS,
-  FINGER_INTRO,
   FINGER_NOTATION,
   type FingerDrill,
   type FingerToken,
-} from "../learn";
-import { fingerQuiz } from "../learn/interact";
+} from "../learn/types";
 import { useCubeSettings } from "../settings";
 import { DemoCube } from "./DemoCube";
 import { KeyCaps } from "./MoveChip";

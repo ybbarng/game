@@ -8,8 +8,9 @@ import { applyMoves, isSolved, parseMoves } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { spotHold } from "../algs/spot";
-import { ALG_SETS, type AlgCase } from "../learn";
+import { ALG_SETS } from "../learn/alg-sets";
 import { goalMet } from "../learn/judge";
+import type { AlgCase } from "../learn/types";
 import type { HintAnswer } from "./hint";
 
 /**

@@ -18,14 +18,9 @@ import {
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
 
-import {
-  ALG_SETS,
-  type AlgCase,
-  type AlgSet,
-  type AlgSetInfo,
-  type GoalName,
-} from "../learn";
+import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
 import { centersSolved, goalMet, unpairedEdgeLines } from "../learn/judge";
+import type { AlgCase, AlgSet, GoalName } from "../learn/types";
 import { moveCounts, tidyAlg } from "./transform";
 
 const WHITE = U;

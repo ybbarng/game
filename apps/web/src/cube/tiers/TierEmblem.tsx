@@ -29,6 +29,7 @@ import {
 } from "./emblemArt";
 import { watchShine } from "./emblemShine";
 import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
+import "@/cube/tiers/emblem.css";
 
 /**
  * 큐브 티어 엠블럼(docs/47 14-6). 베벨 금속 육각 틀에 박힌 등각 큐브(면마다 3×3 스티커)에 티어의 재질 색을 입히고,

@@ -20,6 +20,7 @@ import {
 } from "../tutorial";
 import { BaseballGame } from "./BaseballGame";
 import { GuessLog, NumberBoxes } from "./parts";
+import "@/baseball/components/baseball.css";
 
 /** 설명·퀴즈에 보이는 그림: 물어본 수와 답(비밀은 보일 때만) */
 function BaseballSceneView({ scenario }: { scenario: BaseballScene }) {

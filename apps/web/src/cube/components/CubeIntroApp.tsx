@@ -21,7 +21,7 @@ import {
   saveKeymap,
 } from "../input";
 import { TWO_HAND_RULE, TWO_HAND_RULES } from "../keys/two-hand";
-import { COURSES, type Lesson, type LessonStep } from "../learn";
+import { COURSES } from "../learn/courses";
 import {
   FACE_WORDS,
   INTRO_TRIES,
@@ -29,6 +29,7 @@ import {
   SLICE_WORDS,
   WIDE_WORDS,
 } from "../learn/intro";
+import type { Lesson, LessonStep } from "../learn/types";
 import { useCubeSettings } from "../settings";
 import type { MarkTone } from "../view/types";
 import { CubePlay } from "./CubePlay";

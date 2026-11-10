@@ -1,8 +1,9 @@
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { faceGrid, stickersFromState } from "../bridge";
-import { ALG_SETS, type AlgSet } from "../learn";
+import { ALG_SETS } from "../learn/alg-sets";
 import { maskFor } from "../learn/judge";
+import type { AlgSet } from "../learn/types";
 import { hexColor } from "../settings";
 import { CubePoster } from "./CubePoster";
 

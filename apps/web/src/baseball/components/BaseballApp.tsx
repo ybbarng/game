@@ -34,6 +34,7 @@ import { BaseballGame } from "./BaseballGame";
 import { baseballTutorial } from "./baseball-tutorial";
 import { CountLamps, NumberBoxes } from "./parts";
 import { BaseDiamond } from "./scoreboard";
+import "@/baseball/components/baseball.css";
 
 /** 숫자야구 화면들의 배경(밤 야구장 잔디) */
 const BG = "ballpark";
