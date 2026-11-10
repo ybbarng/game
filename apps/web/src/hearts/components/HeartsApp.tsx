@@ -298,7 +298,7 @@ function HeartsOptions({ onBack }: { onBack: () => void }) {
               onChange={(moon) => update({ moon })}
             />
             <span className="text-xs opacity-70">
-              하트 깨기(하트가 나오기 전에는 하트로 선을 못 잡는다)
+              하트 깨기(하트가 나오기 전에는 선일 때 하트를 못 낸다)
             </span>
             <Choice
               value={rules.heartsBreak}
@@ -370,7 +370,7 @@ function HeartsRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "하트 깨기",
-      "누군가 하트를 버리기 전에는 하트로 선을 잡을 수 없다(하트뿐이면 예외).",
+      "누군가 하트를 버리기 전에는 선일 때 하트를 낼 수 없다(하트뿐이면 예외).",
     ],
     [
       "문 슛",
