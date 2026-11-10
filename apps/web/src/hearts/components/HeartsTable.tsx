@@ -266,7 +266,7 @@ export function HeartsTable({
         notice: leading
           ? view.trickIndex === 0
             ? "첫 턴은 ♣2로 시작합니다"
-            : "하트가 깨지기 전에는 하트로 선을 잡을 수 없습니다"
+            : "하트가 깨지기 전에는 선일 때 하트를 낼 수 없습니다"
           : view.trickIndex === 0
             ? "첫 턴에는 하트와 ♠Q를 낼 수 없습니다"
             : "선 무늬를 따라 내야 합니다",
