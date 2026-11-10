@@ -81,14 +81,14 @@ export const PATH_STAGES: PathStage[] = [
     cases: [
       {
         id: "down",
-        shape: "아래층, 흰색이 아래",
+        shape: "아래 층, 흰색이 아래",
         hold: "엣지의 짝 색과 같은 색 센터를 앞으로 쥐고(y), 아랫면을 돌려 엣지를 앞 아래로",
         alg: "F2",
         times: 1,
       },
       {
         id: "down-side",
-        shape: "아래층, 흰색이 옆",
+        shape: "아래 층, 흰색이 옆",
         hold: "같은 색 센터를 오른쪽으로 쥐고(y), 아랫면을 돌려 엣지를 오른쪽 아래로",
         alg: CROSS_SIDE_UP,
         times: 1,
@@ -110,7 +110,7 @@ export const PATH_STAGES: PathStage[] = [
       },
       {
         id: "top-wrong",
-        shape: "위층, 흰색이 위인데 옆 센터 색이 다름",
+        shape: "위 층, 흰색이 위인데 옆 센터 색이 다름",
         hold: "그 엣지를 앞으로 쥐고(y)",
         alg: "F2",
         times: 1,
@@ -118,7 +118,7 @@ export const PATH_STAGES: PathStage[] = [
       },
       {
         id: "top-side",
-        shape: "위층, 흰색이 옆",
+        shape: "위 층, 흰색이 옆",
         hold: "그 엣지를 앞으로 쥐고(y)",
         alg: "F",
         times: 1,
