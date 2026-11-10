@@ -201,11 +201,18 @@ describe("새 해법 고르기 문제의 답(엔진으로 센다)", () => {
     expect(q.answer).toBe(`${yellowUpCorners(3, q.state)}개`);
   });
 
-  it("야우: 흰 면 아래·초록 앞이면 오른쪽 센터가 주황", () => {
+  it("야우: 흰 면 아래, 흰 십자 엣지 블럭이 앞 초록·왼쪽 빨강·뒤 파랑이면 비운 오른쪽은 주황의 제자리", () => {
     const q = quiz("yau-side-centers");
     const c = faceColors(4, q.state);
-    expect(c[F * 16 + 5]).toBe(F);
-    expect(c[R * 16 + 5]).toBe(L);
+    // 아래 층 엣지 줄의 옆면 스티커(맨 아랫줄 가운데 둘): 앞 초록(F)·왼쪽 빨강(R)·뒤 파랑(B), 아랫면 흰색(U)
+    for (const [face, color] of [
+      [F, F],
+      [L, R],
+      [B, B],
+    ] as const)
+      for (const cell of [13, 14]) expect(c[face * 16 + cell]).toBe(color);
+    // 오른쪽 자리는 비었다(흰-주황 엣지 블럭이 없다)
+    expect([c[R * 16 + 13], c[R * 16 + 14]]).not.toEqual([L, L]);
     expect(q.answer).toBe("주황");
   });
 
