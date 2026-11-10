@@ -324,7 +324,7 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너, 자리와 
   // 해 보기는 엣지 → 코너
   await goStep(page, 13);
   await expect(page.locator("[data-step-body]")).toContainText(
-    "흰-초록 엣지만",
+    "흰-초록 엣지 블럭만",
   );
 });
 

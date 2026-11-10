@@ -5,9 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import { earlySummaryUses, earlyUses } from "@/tutorial/term-order";
 
-import { GLOSSARY_333 } from "./glossary-333";
+import { stagesOf } from "../practice/stages";
+import { GLOSSARY_333, loosePieceWords } from "./glossary-333";
+import { BEGINNER_222 } from "./lessons-222";
 import { BEGINNER_333 } from "./lessons-333";
 import { coursePlaces, courseSummaries } from "./term-places";
+import type { Course } from "./types";
 
 const PLACES = coursePlaces(BEGINNER_333);
 
@@ -20,5 +23,38 @@ describe("3×3 처음 맞추기 용어", () => {
     expect(
       earlySummaryUses(courseSummaries(BEGINNER_333), PLACES, GLOSSARY_333),
     ).toEqual([]);
+  });
+});
+
+// 조각 이름: 홀로 부르거나 색을 모두 대어 부르면 블럭을 붙인다(docs/standing-rules.md 2절)
+const courseTexts = (c: Course) => [...courseSummaries(c), ...coursePlaces(c)];
+
+describe("조각 이름(블럭)", () => {
+  it("찾는 법: 홀로 쓴 것과 색을 모두 댄 것만 잡는다", () => {
+    expect(loosePieceWords("이 엣지는 뒤집혔어요.")).toHaveLength(1);
+    expect(loosePieceWords("흰-초록 엣지를 눌러요.")).toHaveLength(1);
+    expect(loosePieceWords("코너가 앞에 있어요.")).toHaveLength(1);
+    expect(
+      loosePieceWords(
+        "흰-초록 엣지 블럭과 흰 엣지, 첫 층 코너, 옆 센터, 앞-오른쪽 위 코너, 코너 방향, 엣지 짝.",
+      ),
+    ).toEqual([]);
+  });
+
+  for (const c of [BEGINNER_333, BEGINNER_222])
+    it(`${c.title}: 홀로 쓴 엣지·코너·센터가 없다`, () => {
+      const loose = courseTexts(c).flatMap(({ where, text }) =>
+        loosePieceWords(text).map((w) => `${where}: …${w}…`),
+      );
+      expect(loose).toEqual([]);
+    });
+
+  it("공식 연습 초보자 상황 이름", () => {
+    const loose = stagesOf("beginner").flatMap((s) =>
+      s.cases.flatMap((c) =>
+        loosePieceWords(c.name).map((w) => `${s.title} · ${c.name}: ${w}`),
+      ),
+    );
+    expect(loose).toEqual([]);
   });
 });
