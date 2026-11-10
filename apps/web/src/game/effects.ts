@@ -76,7 +76,7 @@ export function effectFor(
         };
       case "killAttempt":
         return event.killed === null
-          ? { text: `${cardLabel(event.card)} 지목 — 헛다리`, tone: "info" }
+          ? { text: `${cardLabel(event.card)} 지목 — 빗나감`, tone: "info" }
           : {
               text: `${cardLabel(event.card)} — ${seatName(event.killed)} 탈락`,
               tone: "red",

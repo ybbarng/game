@@ -188,7 +188,9 @@ test("체스 옵션: 컴퓨터 실력에서 초고수를 고르면 설명이 바
   const master = page.getByRole("button", { name: "초고수", exact: true });
   await master.click();
   await expect(master).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText(/이름난 오프닝으로 시작하고/)).toBeVisible();
+  await expect(
+    page.getByText(/처음 몇 수는 널리 알려진 수로 두고/),
+  ).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-options-master.png") });
   await page.getByRole("button", { name: "처음으로" }).click();
   await expect(page.getByRole("button", { name: /나홀로 체스/ })).toContainText(
@@ -499,7 +501,9 @@ test(
     const fork = page.getByRole("region", { name: "포크" });
     await expect(fork.getByText("0/8")).toBeVisible();
     await fork.getByRole("button", { name: "풀기 시작" }).click();
-    await expect(page.getByRole("status")).toHaveText("포크로 기물을 얻으세요");
+    await expect(page.getByRole("status")).toHaveText(
+      "한 기물로 두 곳을 함께 노려 기물을 얻으세요(포크)",
+    );
 
     // 킹을 옮기는 수로는 기물을 얻지 못한다.
     await tapSquare(page, "b3", touch);

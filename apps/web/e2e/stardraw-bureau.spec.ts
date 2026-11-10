@@ -89,7 +89,7 @@ test("우주국 「하는 일」에서 한 회차의 흐름과 장소와 낱말�
     ).toBeVisible();
   await expect(flow.getByText("1등", { exact: true })).toBeVisible();
   const words = page.locator("#words");
-  await expect(words.locator("[data-words] dt")).toHaveCount(11);
+  await expect(words.locator("[data-words] dt")).toHaveCount(20);
   await expect(words.getByText("언덕 아래", { exact: true })).toBeVisible();
   await noSideScroll(page);
   // 사람이 보는 스크린샷이라 CI에서는 찍지 않는다(page.screenshot과 같은 조건, e2e/test.ts)

@@ -244,7 +244,7 @@ test(
     // 배치가 세로 휴대폰과 같다
     await page.goto("/cube/map");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "기능 지도",
+      "큐브 기능 지도",
     );
     expect(
       await page

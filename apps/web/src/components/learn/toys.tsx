@@ -129,10 +129,12 @@ export function LockToy() {
           {mab === mba ? "같습니다!" : "다릅니다?"}
         </li>
         <li>
-          푸는 열쇠는 a의 역수 mod 11: a′ = <Num>{ai}</Num>(a·a′ = {a * ai} ≡ 1
-          mod 11). 철수가 먼저 풀어도 {mab}
-          <sup>{ai}</sup> = <Num>{afterA}</Num>, 영희가 마저 풀면{" "}
-          <Num>{back}</Num> = <SuitText text={name} />
+          철수가 푸는 지수는 a′ = <Num>{ai}</Num>입니다. a × a′ = {a * ai}이고,
+          이것을 11로 나눈 나머지가 1입니다. 영희가 푸는 지수도 같은 방법으로 b′
+          = <Num>{bi}</Num>입니다. 철수가 먼저 풀어도 {mab}
+          <sup>{ai}</sup> = <Num>{afterA}</Num>, 영희가 마저 풀면 {afterA}
+          <sup>{bi}</sup> = <Num>{back}</Num> = <SuitText text={name} />
+          입니다.
         </li>
       </ol>
       <Result ok={mab === mba && back === m}>
@@ -204,7 +206,7 @@ export function QrLeakToy() {
           }}
           active={squaresOnly}
         >
-          게임의 방식: 모두 제곱수로
+          예전 게임의 방식: 모두 제곱수로
         </Btn>
         <Btn onClick={lockAndShuffle}>상대가 잠그고 섞기</Btn>
       </div>
@@ -213,7 +215,8 @@ export function QrLeakToy() {
           <p className="text-sm text-white/80">
             상대가 모르는 열쇠로 잠그고 섞었습니다. 어느 것이 빨강(
             <SuitText text="♥" />
-            )일까요? 눌러서 고르고, "판정 돌려 보기"로 수학의 힘을 빌려 보세요.
+            )일까요? 눌러서 직접 고르거나, "판정 돌려 보기"를 누르면 x¹¹을
+            23으로 나눈 나머지가 22인 카드(제곱수가 아닌 카드)를 골라 줍니다.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {locked.map((c, i) => (
@@ -328,19 +331,19 @@ export function ZkToy() {
           정직한 증명
         </Btn>
         <Btn onClick={() => reset(true)} active={cheat}>
-          속이는 증명: 같은 지수가 아님
+          속이는 증명: B가 A^u가 아님
         </Btn>
       </div>
       <p className="text-sm text-white/80">
         공개된 것: g = <Num>{G}</Num>, V = g<sup>u</sup> = <Num>{V}</Num>, A ={" "}
         <Num>{A}</Num>, B = <Num>{B}</Num>.{" "}
         {cheat
-          ? "B는 A^u가 아닙니다. 그래도 증명해 보려 합니다."
+          ? "B는 A^u가 아닙니다. 그래도 통과하려면 확인하는 사람이 고를 c를 미리 짐작해야 합니다. 아래에서 짐작할 c를 고르세요. 그 c에 맞춰 a, b를 거꾸로 만듭니다."
           : "증명할 것은 B = A^u입니다. u는 비밀입니다."}
       </p>
       {cheat && step === 0 && (
         <Picker
-          label="미리 짐작한 c"
+          label="짐작한 c"
           value={guessC}
           options={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
           onChange={setGuessC}
@@ -353,7 +356,7 @@ export function ZkToy() {
             <>
               a = <Num>{a}</Num>, b = <Num>{b}</Num>
               {cheat
-                ? `. 짐작한 c = ${guessC}에 맞춰 거꾸로 만들었습니다.`
+                ? `. z를 먼저 정하고, 짐작한 c = ${guessC}에서 두 식이 맞도록 거꾸로 만들었습니다.`
                 : `. 무작위 r = ${r}로 g^r, A^r를 만들었습니다.`}
             </>
           ) : (
@@ -390,13 +393,13 @@ export function ZkToy() {
           {step >= 2 && (
             <>
               z = <Num>{z}</Num>
-              {cheat ? "" : ` (= r + c·u mod 11)`}
+              {cheat ? "" : ` (= r + c·u를 11로 나눈 나머지)`}
             </>
           )}
         </li>
         <li>
           확인: g<sup>z</sup> = a·V<sup>c</sup> 이고 A<sup>z</sup> = b·B
-          <sup>c</sup>일까요?{" "}
+          <sup>c</sup>일까요? 양쪽 모두 23으로 나눈 나머지로 봅니다.{" "}
           {step >= 2 && (
             <>
               {left1} {left1 === right1 ? "=" : "≠"} {right1}, {left2}{" "}
@@ -409,8 +412,8 @@ export function ZkToy() {
         <Result ok={cheat ? !ok : ok}>
           {cheat
             ? ok
-              ? `통과해 버렸습니다. 1/11 확률로 c를 미리 맞혔기 때문입니다. 실제 게임의 c는 2²⁵²가지쯤이라 미리 맞힐 수 없습니다.`
-              : "통과하지 못했습니다. 같은 지수가 아니면 c를 미리 알지 않는 한 두 식을 함께 맞출 수 없습니다."
+              ? `통과해 버렸습니다. 짐작한 c가 맞았기 때문입니다. c는 0~10 중 하나라 11번에 한 번꼴로 맞습니다. 실제 게임의 c는 2²⁵²가지쯤이라 미리 맞힐 수 없습니다.`
+              : `통과하지 못했습니다. 실제로 나온 c가 짐작한 ${guessC}와 달라서 두 식이 맞지 않습니다.`
             : "통과. z에는 무작위 r이 섞여 있어 u가 새지 않습니다. 게다가 속이는 증명에서 보듯 c를 미리 알면 비밀 없이도 이런 기록을 만들 수 있습니다. 그래서 기록만으로는 u에 대해 아무것도 알 수 없고, 이것을 영지식이라고 합니다."}
         </Result>
       )}
@@ -444,17 +447,21 @@ export function CutChooseGame() {
   return (
     <Box title="cut-and-choose: 속인 덱으로 버텨 보기">
       <p className="text-sm text-white/80">
-        나는 섞을 때 카드 한 장을 바꿨습니다. 매번 중간 덱을 하나 내야 합니다.
-        "입력에서 정직하게" 만들면 X→Z는 보일 수 있지만 Z→Y는 못 보이고,
-        "출력에서 거꾸로" 만들면 그 반대입니다. 상대가 동전을 던져 어느 쪽을
-        보일지 정합니다. 16번 모두 맞혀야 빠져나갑니다.
+        내가 섞은 사람입니다. 섞으면서 카드 한 장을 몰래 바꿨기 때문에, 받은
+        덱에서 넘긴 덱으로 이어지는 정직한 열쇠와 순서가 없습니다. 그래서 중간
+        덱 Z는 한쪽에만 맞출 수 있습니다. 받은 덱을 정직하게 잠그고 섞어 Z를
+        만들면 「받은 덱 → Z」는 보일 수 있지만 「Z → 넘긴 덱」은 못 보입니다.
+        넘긴 덱에서 거꾸로 Z를 만들면 그 반대입니다. 한 번마다 Z를 어느 쪽에
+        맞출지 고르면, 상대가 동전을 던져 0(「받은 덱 → Z」를 보이기)이나 1(「Z
+        → 넘긴 덱」을 보이기)을 정합니다. 16번 모두 내가 맞춘 쪽이 나와야
+        빠져나갑니다.
       </p>
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => play(0)} disabled={done}>
-          입력에서 정직하게(0이 나오길)
+          받은 덱에 맞춘 Z 내기(0이 나오길)
         </Btn>
         <Btn onClick={() => play(1)} disabled={done}>
-          출력에서 거꾸로(1이 나오길)
+          넘긴 덱에 맞춘 Z 내기(1이 나오길)
         </Btn>
         <Btn onClick={() => setRounds([])}>새 판</Btn>
       </div>
@@ -524,14 +531,14 @@ export function FiatShamirToy() {
     }
     const ms = Math.round(performance.now() - started);
     setResult(
-      `약속을 ${tries.toLocaleString()}번 바꿔 해시를 돌렸더니 원하는 도전값(${k}비트 모두 0)이 나왔습니다. ${ms.toLocaleString()}ms 걸렸습니다. 평균 2^${k} = ${(2 ** k).toLocaleString()}번이면 됩니다.`,
+      `중간 덱을 ${tries.toLocaleString()}번 바꿔 해시를 돌렸더니 원하는 도전값(${k}비트 모두 0)이 나왔습니다. ${(ms / 1000).toLocaleString()}초 걸렸습니다. 평균 2의 ${k}제곱 = ${(2 ** k).toLocaleString()}번이면 됩니다.`,
     );
     setRunning(false);
   };
   return (
     <Box title="도전값을 누가 정하나">
       <Picker
-        label="회 수 k"
+        label="되풀이 횟수 k"
         value={k}
         options={[8, 10, 12, 14, 16, 18]}
         onChange={setK}
@@ -544,10 +551,11 @@ export function FiatShamirToy() {
       {running && <p className="text-sm text-white/70">해시를 돌리는 중…</p>}
       {result && <Result ok={false}>{result}</Result>}
       <p className="text-sm text-white/80">
-        그래서 해시로만 정하면 k를 40~64로 크게 잡아야 합니다. 이 게임은 섞을 때
-        각자 비밀 값의 해시를 걸고, 모두의 약속이 모인 뒤에 비밀 값을 공개해
-        함께 도전값을 정합니다. 약속을 바꿀 수 없으니 기회는 한 번뿐이고, k =
-        16이면 빠져나갈 확률이 1/65,536이라 충분합니다.
+        그래서 해시로만 정하면 k를 40~64로 크게 잡아, 다시 시도하는 데 드는
+        계산을 감당할 수 없을 만큼 키워야 합니다. 이 게임은 섞을 때 각자 비밀
+        값의 해시를 걸고, 모두의 약속이 모인 뒤에 비밀 값을 공개해 함께 도전값을
+        정합니다. 중간 덱을 미리 걸어 두고 바꿀 수 없으니 기회는 한 번뿐이고, k
+        = 16이면 빠져나갈 확률이 1/65,536이라 충분합니다.
       </p>
     </Box>
   );
@@ -783,7 +791,7 @@ export function PolyCheckToy() {
 
 /**
  * OR 증명(Cramer–Damgård–Schoenmakers 1994): "V₁의 비밀이나 V₂의 비밀 중 하나를 안다"를
- * 어느 쪽인지 숨기고 증명한다. 모르는 쪽은 도전값을 미리 정해 흉내 낸다(8단원의 속이는 증명)
+ * 어느 쪽인지 숨기고 증명한다. 모르는 쪽은 도전값을 미리 정해 흉내 낸다(9단원의 속이는 증명)
  */
 export function OrProofToy() {
   const [real, setReal] = useState<0 | 1>(0);

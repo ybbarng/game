@@ -141,7 +141,7 @@ export function FairnessToy() {
             />
           </span>
         </Row>
-        <Row label="씨앗">
+        <Row label="drand 값">
           <span className="flex flex-wrap items-center gap-1.5">
             <Btn
               active={base === REAL_BASE}
@@ -154,11 +154,16 @@ export function FairnessToy() {
               실제 drand 값
             </Btn>
             <Btn onClick={randomBase} disabled={running}>
-              무작위 씨앗
+              무작위 값
             </Btn>
             <Mono>{toHex(base).slice(0, 16)}…</Mono>
           </span>
         </Row>
+        <span className="text-white/55 text-xs">
+          실제 게임은 회차마다 새 drand 값을 씁니다. 이 상자는 몇만 회차를 빨리
+          돌리려고 drand 값 하나를 두고 회차 번호만 바꿔, 회차마다 씨앗(회차
+          번호와 drand 값을 묶은 해시)을 만듭니다.
+        </span>
         <span className="flex flex-wrap gap-1.5">
           <Btn active={compare} onClick={() => setCompare((v) => !v)}>
             치우친 뽑기와 견주기
@@ -208,14 +213,16 @@ function Results({
   return (
     <div className="flex min-w-0 flex-col gap-3" data-fair-draws={fair.draws}>
       <span className="text-white/60 text-xs">
-        번호별 빛난 횟수 · 가운데 선은 기대값, 띠는 우연으로 흔히 나오는 범위
-        {compare && " · 붉은 점은 치우친 뽑기"}
+        번호별 빛난 횟수입니다. 가운데 선은 고르게 뽑을 때의 평균 횟수, 띠는
+        우연으로 흔히 나오는 범위입니다.
+        {compare && " 붉은 점은 치우친 뽑기입니다."}
       </span>
       <CountChart fair={fair} biased={compare ? biased : null} />
 
       <span className="text-white/60 text-xs">
-        {windowSize.toLocaleString("ko-KR")}회차 묶음마다의 치우침 점수 · 선
-        위는 우연 범위 밖(꼬리 확률 5% 밑)
+        {windowSize.toLocaleString("ko-KR")}회차 묶음마다의 치우침 점수(꼬리
+        확률이 작을수록 높음)입니다. 선 위는 우연 범위 밖(꼬리 확률 5%
+        밑)입니다.
       </span>
       <WindowChart fair={fair} biased={compare ? biased : null} />
 
@@ -225,8 +232,8 @@ function Results({
             {fair.draws.toLocaleString("ko-KR")}회차 전체의 꼬리 확률은 {pct(p)}
             입니다.{" "}
             {p >= 0.01
-              ? "우연으로 흔히 나오는 범위입니다."
-              : "치우쳐 보입니다."}
+              ? "1% 기준으로 우연으로 흔히 나오는 범위입니다. 전체는 한 번만 보는 판정이라, 치우쳤다고 말하는 기준을 묶음(5%)보다 엄격한 1%로 둡니다."
+              : "1% 기준으로 치우쳐 보입니다."}
             {compare &&
               ` 치우친 뽑기는 ${pBiased < 0.0001 ? "0.01% 밑" : pct(pBiased, 2)}입니다.`}
           </Verdict>
@@ -256,7 +263,7 @@ function Results({
 
 function CountChart({ fair, biased }: { fair: Tally; biased: Tally | null }) {
   const band = countBand(fair.draws);
-  // 0부터 그리면 작은 차이가 안 보여, 기대값 둘레만 확대해 그린다
+  // 0부터 그리면 작은 차이가 안 보여, 기댓값 둘레만 확대해 그린다
   const all = [...fair.counts, ...(biased ? biased.counts : [])];
   const pad = (band.high - band.low) * 0.6;
   const top = Math.max(band.high, ...all) + pad;
@@ -268,7 +275,7 @@ function CountChart({ fair, biased }: { fair: Tally; biased: Tally | null }) {
       viewBox={`0 0 450 ${H}`}
       className="w-full"
       role="img"
-      aria-label={`번호 1~45가 빛난 횟수, 기대값 ${Math.round(band.expected)}회`}
+      aria-label={`번호 1~45가 빛난 횟수, 기댓값 ${Math.round(band.expected)}회`}
       data-fair-chart="counts"
     >
       <rect

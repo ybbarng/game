@@ -49,8 +49,8 @@ export function TimePresetPicker({
       </div>
       <p className="text-xs opacity-60">
         {control
-          ? `한 사람에게 기본 ${control.base / 60_000}분, 다 쓰면 한 수에 ${control.byoyomi / 1000}초씩 초읽기 ${control.periods}번. 초읽기를 다 넘기면 시간패`
-          : "시간 제한 없이 둔다"}
+          ? `한 사람에게 기본 ${control.base / 60_000}분을 준다. 기본 시간을 다 쓰면 차례마다 ${control.byoyomi / 1000}초 안에 끝내야 하고, 이것을 초읽기라 한다. ${control.byoyomi / 1000}초를 넘길 때마다 초읽기 ${control.periods}번 가운데 한 번이 줄고, ${control.periods}번을 다 쓰면 시간이 다 되어 진다(시간패).`
+          : "시간 제한 없이 둔다."}
       </p>
     </>
   );

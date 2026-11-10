@@ -60,7 +60,7 @@ async function resign(page: Page): Promise<void> {
   await page.getByRole("button", { name: "기권하기" }).click();
 }
 
-/** 옵션에서 2명·짧은 판·입문을 고르고 → 컴퓨터와 시작 */
+/** 옵션에서 2명·짧은 판·입문을 고르고 → 나홀로 은하 한 바퀴 */
 async function startSolo(page: Page) {
   await ready(page);
   await page.getByRole("button", { name: "옵션" }).click();
@@ -68,7 +68,7 @@ async function startSolo(page: Page) {
   await page.getByRole("button", { name: "짧은 판", exact: true }).click();
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await page.getByRole("button", { name: "처음으로" }).click();
-  await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+  await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
   await expect(board(page)).toBeVisible();
 }
 
@@ -175,7 +175,7 @@ test("은하 한 바퀴: 게임 목록에서 들어가 굴리고 사다가 기�
   // 다 끝난 게임은 이어하기에 남지 않는다
   await over(page).click();
   await expect(
-    page.getByRole("button", { name: /컴퓨터와 시작/ }),
+    page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /이어하기/ })).toHaveCount(0);
 });
@@ -267,7 +267,7 @@ test(
     await page.goto("/galaxy");
     await speedUpAnimations(page);
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(rollButton(page)).toBeVisible();
     await expect(page.locator("[data-pair-line]")).toHaveCount(1);
 
@@ -356,7 +356,7 @@ test(
     await page.goto("/galaxy");
     await speedUpAnimations(page);
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(rollButton(page)).toBeVisible();
     await expect(page.locator("[data-meteor-shower]")).toHaveCount(0);
     const paper = page.locator("[data-notice-paper]", {
@@ -445,7 +445,7 @@ test(
     await host.getByRole("button", { name: "2명", exact: true }).click();
     await host.getByRole("button", { name: "짧은 판", exact: true }).click();
     await host.getByRole("button", { name: "처음으로" }).click();
-    await host.getByRole("button", { name: /친구와 하기/ }).click();
+    await host.getByRole("button", { name: /다함께 은하 한 바퀴/ }).click();
     await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
     await host.getByRole("button", { name: "방 만들기", exact: true }).click();
     const link = await host.locator("input[readonly]").inputValue();

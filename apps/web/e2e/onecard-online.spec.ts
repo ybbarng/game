@@ -25,7 +25,7 @@ async function prepare(page: Page) {
 async function openRoom(host: Page, guest: Page, fair: boolean, shots: string) {
   await host.goto("/onecard?net=local");
   await ready(host);
-  await host.getByRole("button", { name: /친구와 하기/ }).click();
+  await host.getByRole("button", { name: /다함께 원카드/ }).click();
   await host.getByPlaceholder("친구에게 보일 이름").fill("방장");
   await host.getByRole("radio", { name: fair ? /암호화방/ : /일반방/ }).check();
   await host.getByRole("button", { name: "방 만들기", exact: true }).click();

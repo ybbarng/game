@@ -7,6 +7,7 @@ import { useState } from "react";
 import { goalLabel } from "@/game/terms";
 
 import { SuitText } from "../SuitText";
+import { TermQuestion } from "../TermHint";
 
 import { ActionButton, KirudaPicker, Panel, ScoreStepper } from "./common";
 
@@ -73,11 +74,11 @@ export function ElectionPanel({
         <SuitText
           text={
             reachable
-              ? `도움말: 이 패라면 ${goalLabel(
+              ? `도움말: 지금 손에 든 카드라면 ${goalLabel(
                   { kiruda: suggestion.kiruda, score: target },
                   view.rules.playerCount,
-                )} 정도까지 노려볼 만합니다`
-              : "도움말: 지금 공약을 넘기기엔 패가 약해 보입니다. 포기를 고려해 보세요"
+                )} 정도까지 노려볼 만합니다.`
+              : "도움말: 지금 공약보다 높게 부르기엔 손에 든 카드가 약해 보입니다. 포기를 고려해 보세요."
           }
         />
       </p>
@@ -106,12 +107,15 @@ export function ElectionPanel({
           </ActionButton>
         )}
         {decision.canDealMiss && (
-          <ActionButton
-            variant="danger"
-            onClick={() => onSubmit({ type: "dealMiss" })}
-          >
-            딜미스
-          </ActionButton>
+          <span className="inline-flex items-center">
+            <ActionButton
+              variant="danger"
+              onClick={() => onSubmit({ type: "dealMiss" })}
+            >
+              딜미스
+            </ActionButton>
+            <TermQuestion id="dealMiss" />
+          </span>
         )}
       </div>
     </Panel>

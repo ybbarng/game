@@ -54,7 +54,7 @@ export function Quiz({
       </div>
       {picked !== null && (
         <p role="status" className="break-keep text-white/80 text-xs">
-          {picked === answer ? "맞아요! " : "다시 골라 보세요. "}
+          {picked === answer ? "맞아요! " : "아니에요. "}
           {picked === answer && why}
         </p>
       )}
@@ -84,7 +84,7 @@ export function Notation({ open = false }: { open?: boolean }) {
         <li>
           <b className="font-mono">R</b>은 오른쪽 면을, 그 면을 마주 볼 때 시계
           방향으로 90° 돌려요. <b className="font-mono">R'</b>은 반대 방향으로
-          90°, <b className="font-mono">R2</b>는 반 바퀴(180°)예요.{" "}
+          90°, <b className="font-mono">R2</b>는 반 바퀴, 곧 180°예요.{" "}
           <b className="font-mono">M</b>은 L과 R 사이의 가운데 층을 L과 같은
           방향으로 돌려요.
         </li>

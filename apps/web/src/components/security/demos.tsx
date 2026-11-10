@@ -434,7 +434,7 @@ export function ReplayAuditDemo() {
   return (
     <Box title="판 끝에 다시 돌려 맞춰 보기">
       <p className="text-xs opacity-80">
-        봇 다섯이 둔 실제 기록입니다. 방장이 공개한 기록을 참가자(철수)가{" "}
+        컴퓨터 다섯이 둔 실제 기록입니다. 방장이 공개한 기록을 참가자(철수)가{" "}
         <code>step</code>으로 처음부터 다시 돌려, 게임 중 받은 화면과 맞춰
         봅니다. 카드 내기 줄의 <b>조작</b>을 눌러 방장이 기록을 바꿨다고 해
         보세요.
@@ -548,20 +548,22 @@ export function HostSignatureDemo() {
     setResult({
       ok,
       text: ok
-        ? "지문 일치 · 서명 일치 · 서명된 연결 아이디와 인증서가 내 연결의 것 → 방장으로 믿는다"
+        ? "지문과 서명이 맞고, 서명에 든 연결 번호와 인증서가 내 연결의 것이다. 방장으로 믿는다."
         : kind === "fake"
-          ? "공개 열쇠의 지문이 링크(k=)와 다르다 → 무시"
+          ? "공개 열쇠의 지문이 링크(k=)의 지문과 다르다. 믿지 않는다."
           : kind === "relay"
-            ? "내가 본 방장 인증서가 방장이 서명한 것과 다르다(신호 릴레이가 가운데 낌) → 무시"
-            : "서명된 연결 아이디가 내 것이 아니다(중간자) → 무시",
+            ? "내가 본 방장 인증서가 방장이 서명한 인증서와 다르다. 신호 서버가 가운데 끼어 양쪽과 따로 연결했다. 믿지 않는다."
+            : "서명에 든 연결 번호가 내 연결의 번호가 아니다. 중간자가 다른 연결에 준 서명을 가져왔다. 믿지 않는다.",
     });
   };
 
   return (
     <Box title="초대 링크의 열쇠 지문으로 방장 확인">
       <p className="text-xs opacity-80">
-        이 브라우저에서 방금 실제로 ECDSA P-256 열쇠 쌍 두 개(진짜 방장, 가짜
-        방장)를 만들었습니다(<code>identity.ts</code>).
+        이 브라우저에서 방금 실제로 서명 열쇠와 공개 열쇠 쌍 두 개(진짜 방장,
+        가짜 방장)를 만들었습니다(서명 방식 ECDSA P-256,{" "}
+        <code>identity.ts</code>). 방장은 서명 문장에 이 연결의 번호와 인증서
+        지문을 넣어 서명합니다.
       </p>
       <div className="rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed">
         <div>
@@ -584,7 +586,7 @@ export function HostSignatureDemo() {
           중간자가 진짜 방장 서명을 전달
         </Btn>
         <Btn onClick={() => void run("relay")} disabled={!host}>
-          신호 릴레이가 연결 정보를 바꿔치기
+          신호 서버가 연결 정보를 바꿔치기
         </Btn>
       </div>
       {result && <Result ok={result.ok}>{result.text}</Result>}
@@ -686,6 +688,8 @@ const MP_CARDS: Card[] = [
   "C2",
 ];
 const MP_PEOPLE = ["방장", "철수", "영희"];
+/** 이름 뒤에 「이/가」를 붙인 꼴 */
+const MP_SUBJECT = ["방장이", "철수가", "영희가"];
 const MP_COLORS = ["text-amber-300", "text-sky-300", "text-pink-300"];
 
 type MpStage = "start" | "shuffled" | "relocked" | "dealt";
@@ -751,14 +755,14 @@ export function MentalPokerDemo() {
       let deck = decks.at(-1)?.deck ?? [];
       for (const p of s.parties) {
         deck = await p.lockAndShuffle(deck, "shuffle");
-        decks.push({ label: `${MP_PEOPLE[p.id]}이 잠그고 섞음`, deck });
+        decks.push({ label: `${MP_SUBJECT[p.id]} 잠그고 섞음`, deck });
       }
       return {
         decks,
         stage: "shuffled",
         log: [
           ...s.log,
-          "1. 셋이 차례로 자기 열쇠로 잠그고 섞었다. 이제 누구도 어느 자리가 무슨 카드인지 모른다.",
+          "1. 셋이 차례로 자기 열쇠로 잠그고 섞었다. 이제 누구도 어느 칸이 무슨 카드인지 모른다.",
         ],
       };
     });
@@ -771,11 +775,11 @@ export function MentalPokerDemo() {
         deck = await p.relock(deck, slots, ["shuffle"]);
       s.ledger.extend(deck);
       return {
-        decks: [...s.decks, { label: "자리마다 다른 열쇠로 다시 잠금", deck }],
+        decks: [...s.decks, { label: "칸마다 다른 열쇠로 다시 잠금", deck }],
         stage: "relocked",
         log: [
           ...s.log,
-          "2. 각자 섞기 열쇠를 풀고 자리마다 다른 열쇠로 다시 잠갔다. 한 자리 열쇠를 공개해도 다른 자리는 안전하다.",
+          "2. 각자 섞기 열쇠를 풀고 칸마다 다른 열쇠로 다시 잠갔다. 한 칸 열쇠를 공개해도 다른 칸은 안전하다.",
         ],
       };
     });
@@ -799,7 +803,7 @@ export function MentalPokerDemo() {
         stage: "dealt",
         log: [
           ...s.log,
-          "3. 자리마다 받을 사람을 뺀 둘이 열쇠를 공개했다. 받는 사람만 마지막 자물쇠를 풀어 자기 카드를 본다.",
+          "3. 칸마다 받을 사람을 뺀 둘이 열쇠를 공개했다. 받는 사람만 마지막 자물쇠를 풀어 자기 카드를 본다.",
         ],
       };
     });
@@ -819,8 +823,8 @@ export function MentalPokerDemo() {
         log: [
           ...s.log,
           opened === said
-            ? `4. ${MP_PEOPLE[owner]}이 ${slot}번 자리 열쇠를 공개하고 ${cardLabel(said)}를 냈다. 모두가 열어 보니 ${cardLabel(opened as Card)} — 맞다.`
-            : `⚠ ${MP_PEOPLE[owner]}이 ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 자리는 ${opened ? cardLabel(opened) : "카드가 아님"} — 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힌다.`,
+            ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${cardLabel(said)}를 냈다. 모두가 열어 보니 ${cardLabel(opened as Card)} — 맞다.`
+            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? cardLabel(opened) : "카드가 아님"} — 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힌다.`,
         ],
       };
     });
@@ -848,7 +852,7 @@ export function MentalPokerDemo() {
           onClick={() => void relock()}
           disabled={busy || state.stage !== "shuffled"}
         >
-          2. 자리마다 다시 잠그기
+          2. 칸마다 다시 잠그기
         </Btn>
         <Btn
           onClick={() => void deal()}
@@ -872,7 +876,7 @@ export function MentalPokerDemo() {
         <table className="w-full text-left font-mono text-[11px]">
           <thead className="opacity-60">
             <tr>
-              <th className="pr-2">자리</th>
+              <th className="pr-2">칸</th>
               <th className="pr-2">덱의 값(공개 정보)</th>
               <th className="pr-2">받은 사람</th>
               <th>{MP_PEOPLE[view]} 화면</th>
@@ -969,7 +973,7 @@ interface KpState {
   deck: bigint[];
 }
 
-/** 철수에게 줄 0번 자리: 방장과 영희가 열쇠를 공개한다 */
+/** 철수에게 줄 0번 칸: 방장과 영희가 열쇠를 공개한다 */
 const KP_SLOT = 0;
 
 /**
@@ -998,7 +1002,7 @@ export function KeyProofDemo() {
     }
     setState({ parties, steps, commitments, deck });
     setLog([
-      "섞고 자리마다 다시 잠갔다. 다시 잠글 때 셋은 각자 V = g^u(u는 그때 쓴 비밀 지수)를 함께 공개했다.",
+      "섞고 칸마다 다시 잠갔다. 다시 잠글 때 셋은 각자 V = g^u(u는 그때 쓴 비밀 지수)를 함께 공개했다.",
       ...commitments.map((v, i) => `  ${MP_PEOPLE[i]}의 V = ${short(v)}`),
     ]);
     setBusy(false);
@@ -1049,10 +1053,10 @@ export function KeyProofDemo() {
     );
     lines.push(
       card
-        ? `철수가 0번 자리를 열었다: ${cardLabel(card)}`
+        ? `철수가 0번 칸을 열었다: ${cardLabel(card)}`
         : culprit !== null
-          ? `⚠ 철수의 0번 자리가 카드로 열리지 않는다. 열쇠 증명이 틀린 사람: ${MP_PEOPLE[culprit]}`
-          : "⚠ 철수의 0번 자리가 열리지 않는다. 증명은 모두 맞다(섞는 단계 조작).",
+          ? `⚠ 철수의 0번 칸이 카드로 열리지 않는다. 열쇠 증명이 틀린 사람: ${MP_PEOPLE[culprit]}`
+          : "⚠ 철수의 0번 칸이 열리지 않는다. 증명은 모두 맞다(섞는 단계 조작).",
     );
     setLog((l) => [...l, "", ...lines]);
     setBusy(false);
@@ -1062,7 +1066,7 @@ export function KeyProofDemo() {
     <Box title="열쇠 증명(Chaum–Pedersen)">
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => void give(false)} disabled={busy}>
-          0번 자리를 철수에게(정직하게)
+          0번 칸을 철수에게(정직하게)
         </Btn>
         <Btn onClick={() => void give(true)} disabled={busy}>
           고친 프로그램: 영희가 틀린 열쇠 주기
@@ -1125,7 +1129,7 @@ export function ShuffleProofDemo() {
               proof: { a: "1", b: "1", z: "1" },
             },
       );
-      note = `철수는 도전 1인 ${bits.filter((b) => b === 1).length}회에 답할 수 없어 지어냈다.`;
+      note = `철수는 도전값이 1인 ${bits.filter((b) => b === 1).length}회에 답할 수 없어 지어냈다.`;
     }
     const ok = await verifyShuffle(
       g,
@@ -1139,14 +1143,14 @@ export function ShuffleProofDemo() {
     const ms = Math.round(performance.now() - t0);
     setLog([
       cheat
-        ? "철수가 섞은 덱에서 한 장을 다른 카드의 복제로 바꿨다(그 카드를 엿보려고)."
+        ? "철수가 섞은 덱에서 한 장을 다른 카드의 복제로 바꿨다(그 카드를 엿보려고). 그래서 Z는 모두 「받은 덱 → Z」만 보일 수 있게 만들었다."
         : "철수가 9장을 자기 열쇠로 잠그고 섞었다.",
-      `약속: 중간 덱 Z 16벌과 D 16개를 먼저 냈다.`,
-      `도전 비트(셋의 nonce로): ${bits.join("")}  (0 = X→Z를 보여라, 1 = Z→Y를 증명하라)`,
+      "약속: 중간 덱 Z 16벌과, 「Z → 넘긴 덱」을 보일 때 쓸 값 16개를 먼저 냈다.",
+      `도전값(셋이 함께 정함): ${bits.join("")}. 0이면 「받은 덱 → Z」를 보이고, 1이면 「Z → 넘긴 덱」을 보인다.`,
       note,
       ok
-        ? `✓ 섞기 증명이 맞다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것이다. (${ms}ms)`
-        : `⚠ 섞기 증명이 맞지 않는다 — 철수를 짚는다. 도전이 모두 0이어야 빠져나가는데 그 확률은 2^-16(6만 5천분의 1)이다. (${ms}ms)`,
+        ? `✓ 섞기 증명이 맞다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것이다(${ms}ms).`
+        : `⚠ 섞기 증명이 맞지 않는다. 철수를 짚는다. 도전값이 모두 0이어야 빠져나가는데 그 확률은 (½)¹⁶(6만 5천분의 1)이다(${ms}ms).`,
     ]);
     setBusy(false);
   };
