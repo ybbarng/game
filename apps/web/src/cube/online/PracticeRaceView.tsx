@@ -12,9 +12,12 @@ import {
 
 import { cn } from "@/lib/cn";
 import type { RaceSnapshot } from "@/net/race/types";
+import { loadAlgBook } from "../algs/store";
 import { CubePlay, playCubeCue } from "../components/CubePlay";
 import { KeyCaps, useMoveKeys } from "../components/MoveChip";
 import type { Command } from "../input";
+import { loadKeymap } from "../input/storage";
+import { pickAlg } from "../practice/pick-alg";
 import { PRACTICE_N } from "../practice/problem";
 import { stageById } from "../practice/stages";
 import {
@@ -88,10 +91,24 @@ export function PracticeRaceView({
   const stage = rule ? stageById(rule.stage) : undefined;
   const { keysOf } = useMoveKeys(PRACTICE_N);
 
+  // 내가 칠 공식: 혼자 연습과 같이 내 공식이 먼저, 없으면 내 키 배치에서 가장 싼 공식(시작 모양은 모두 같다)
+  const [picks, setPicks] = useState<ReadonlyMap<string, string> | null>(null);
+  useEffect(() => {
+    if (!stage) return;
+    const keymap = loadKeymap();
+    const book = loadAlgBook();
+    setPicks(
+      new Map(stage.cases.map((c) => [c.id, pickAlg(c, keymap, book).alg])),
+    );
+  }, [stage]);
+
   const myState = mine?.stateOf(room.me) ?? mine?.startState();
   const track = trackIn(myState);
-  const board = track ? versusBoard(track) : null;
   const dc = track ? versusCase(track) : undefined;
+  const myAlg = dc ? picks?.get(dc.id) : undefined;
+  const board = track ? versusBoard(track, myAlg) : null;
+  const myAlgRef = useRef(myAlg);
+  myAlgRef.current = myAlg;
   const syncKey = `${room.state?.race?.id}|${snap?.attempt}|${snap?.seed ?? ""}`;
   const repaint = `${syncKey}|${track?.jumps ?? 0}`;
   const [syncToken, setSyncToken] = useState(0);
@@ -115,7 +132,19 @@ export function PracticeRaceView({
   const onMove = useCallback(
     (move: CubeMove) => {
       const s = room.session();
-      const before = trackIn(s?.stateOf(room.me));
+      let before = trackIn(s?.stateOf(room.me));
+      // 따라 치기: 문제마다 첫 수 앞에 내가 칠 공식을 알린다(모든 기기가 이 공식으로 한 수씩 판정한다)
+      const alg = myAlgRef.current;
+      if (
+        s &&
+        alg &&
+        before?.mode === "follow" &&
+        before.alg === null &&
+        before.fed.length === 0
+      ) {
+        s.play({ alg });
+        before = trackIn(s.stateOf(room.me));
+      }
       const r = room.play(move);
       if (!r.ok) return false;
       const after = trackIn(s?.stateOf(room.me));

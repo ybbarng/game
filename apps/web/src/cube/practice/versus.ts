@@ -2,6 +2,11 @@
 // 한 판 전체(몇 번째 문제, 이 문제의 큐브, 맞은 수·틀린 수, 콤보)를 하나의 상태로 두고 수 하나씩 순수 함수로 넘긴다.
 // 그래서 대결 틀(`net/race`)이 받은 수 기록을 다시 적용하기만 하면 모든 기기가 같은 진행·정확도·콤보를 얻는다
 // (남이 알린 진행·결과를 믿지 않는다). 화면과 떨어진 순수 모듈이다.
+//
+// 공정성: 문제 목록(상황 + 윗면 돌리기)과 시작 모양은 씨앗만으로 정해져 모두 같다. 따라 칠 공식은 사람마다 자기 키 배치에서
+// 가장 싼 공식(내 공식이 먼저)이라 다를 수 있다. 그래서 따라 치기는 문제마다 첫 수 앞에 그 문제에서 칠 공식을 알리는
+// 특별한 수(`declareVersus`)를 흘려보내고, 모든 기기가 그 공식이 이 시작 모양을 정말 목표까지 푸는지 확인한 뒤 그 공식으로
+// 한 수씩 판정한다. 알리지 않았으면 흔한 공식(자료의 첫 공식)으로 본다(컴퓨터).
 import {
   applyMove,
   applyMoves,
@@ -13,14 +18,9 @@ import {
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { goalMet } from "../learn/judge";
-import { drawRound } from "./deck";
+import { type Draw, drawRound } from "./deck";
 import { FollowJudge } from "./follow";
-import {
-  boardFor,
-  PRACTICE_N,
-  type Problem,
-  type ProblemBoard,
-} from "./problem";
+import { boardFor, PRACTICE_N, type ProblemBoard, problemFor } from "./problem";
 import { ROUND_SIZE } from "./round";
 import { stageById } from "./stages";
 import type { DrillCase, PracticeStage } from "./types";
@@ -36,9 +36,12 @@ export interface VersusRule {
 export interface VersusTrack {
   readonly stage: string;
   readonly mode: VersusMode;
-  readonly problems: readonly Problem[];
+  /** 문제 목록(상황 + 시작 모양의 윗면 돌리기). 씨앗만으로 정해져 모두 같다 */
+  readonly problems: readonly Draw[];
   /** 지금 문제 차례(0부터). 다 치면 problems.length */
   readonly index: number;
+  /** 따라 치기: 이번 문제에서 칠 공식(앞 맞춤 빼고). 알리지 않았으면 null이고 흔한 공식으로 본다 */
+  readonly alg: string | null;
   /** 이번 문제에 넣은 수(엔진 글, 틀린 수 포함). 따라 치기 판정을 다시 세운다 */
   readonly fed: readonly string[];
   /** 따라 치기: 맞은 낱말 수 합 */
@@ -74,19 +77,13 @@ export function ruleOk(rule: unknown): rule is VersusRule {
 export const modeOf = (rule: VersusRule): VersusMode => rule.mode ?? "follow";
 
 /**
- * 씨앗 → 그 판의 문제. 기록 없이 씨앗만 넘기므로 같은 씨앗이면 누구나 같은 문제·같은 차례다(윗면 돌리기 없음).
- * 공식은 모두에게 같은 자료의 첫 공식(실물에서 흔한 공식)이다. 키 배치마다 고르는 기본 공식(`pickAlg`)을 쓰면 사람마다
- * 따라 칠 공식과 시작 모양이 달라져 같은 문제가 아니게 된다
+ * 씨앗 → 그 판의 문제 목록. 기록 없이 씨앗만 넘기므로 같은 씨앗이면 누구나 같은 상황·같은 차례·같은 윗면 돌리기다
+ * (윗면을 돌려 내는 CFOP 단계는 모든 문제에 씨앗대로 붙인다). 공식은 목록에 없다: 사람마다 자기 공식을 그 모양에 맞춰 친다
  */
-export function versusProblems(stage: PracticeStage, seed: number): Problem[] {
-  const byId = new Map(stage.cases.map((c) => [c.id, c]));
+export function versusProblems(stage: PracticeStage, seed: number): Draw[] {
   return drawRound(
     stage.cases.map((c) => c.id),
-    {
-      seed,
-      algOf: (id) => (byId.get(id) as DrillCase).algs[0] as string,
-      count: ROUND_SIZE,
-    },
+    { seed, auf: stage.auf, everyTurn: true, count: ROUND_SIZE },
   );
 }
 
@@ -96,17 +93,45 @@ function stageOf(track: VersusTrack): PracticeStage {
   return stage;
 }
 
-/** 그 문제의 판(공식 낱말·시작 모양·가리기·목표) */
-export function versusBoard(
-  track: VersusTrack,
-  index = track.index,
-): ProblemBoard | null {
-  const p = track.problems[index];
-  if (!p) return null;
-  const stage = stageOf(track);
+function caseIn(stage: PracticeStage, p: Draw): DrillCase {
   const c = stage.cases.find((x) => x.id === p.caseId);
   if (!c) throw new RangeError("모르는 상황");
-  return boardFor(stage, c, p);
+  return c;
+}
+
+/**
+ * 지금 문제의 판(공식 낱말·시작 모양·가리기·목표). 공식은 알린 공식, 아직 알리지 않았으면 `mine`(이 기기 사람이 칠 공식),
+ * 그것도 없으면 흔한 공식이다. 어느 공식이든 시작 모양은 같다
+ */
+export function versusBoard(
+  track: VersusTrack,
+  mine?: string | null,
+): ProblemBoard | null {
+  const p = track.problems[track.index];
+  if (!p) return null;
+  const stage = stageOf(track);
+  const c = caseIn(stage, p);
+  const want = track.alg ?? mine ?? null;
+  const problem =
+    (want !== null ? problemFor(stage, c, p.turn, want) : null) ??
+    problemFor(stage, c, p.turn, c.algs[0] as string);
+  if (!problem) throw new RangeError("흔한 공식이 그 모양을 풀지 못한다");
+  return boardFor(stage, c, problem);
+}
+
+/**
+ * 따라 치기: 이번 문제에서 칠 공식을 알린다(첫 수 앞에 한 번). 그 공식이 이 시작 모양을 목표까지 풀지 못하거나, 보고 치기거나,
+ * 이미 쳤거나 알렸으면 throw(대결 틀이 「둘 수 없는 수」로 거절한다)
+ */
+export function declareVersus(state: PuzzleState, alg: string): VersusState {
+  const t = trackOf(state);
+  if (t.mode !== "follow" || versusOver(t) || t.fed.length > 0 || t.alg)
+    throw new RangeError("알릴 수 없다");
+  const stage = stageOf(t);
+  const p = t.problems[t.index] as Draw;
+  if (!problemFor(stage, caseIn(stage, p), p.turn, alg))
+    throw new RangeError("그 모양을 풀지 못하는 공식");
+  return withTrack(state, { ...t, alg });
 }
 
 /** 지금 문제의 상황 */
@@ -122,13 +147,14 @@ function withTrack(cube: PuzzleState, practice: VersusTrack): VersusState {
 export function versusStart(
   stage: PracticeStage,
   mode: VersusMode,
-  problems: readonly Problem[],
+  problems: readonly Draw[],
 ): VersusState {
   const track: VersusTrack = {
     stage: stage.id,
     mode,
     problems,
     index: 0,
+    alg: null,
     fed: [],
     hits: 0,
     misses: 0,
@@ -179,6 +205,7 @@ function nextProblem(
   const next: VersusTrack = {
     ...t,
     index: t.index + 1,
+    alg: null,
     fed: [],
     problemMisses: 0,
     peeked: false,
