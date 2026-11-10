@@ -105,15 +105,18 @@ export function heroTiming(n: HeroSize): HeroTiming {
     };
   return {
     ...base,
-    // 축소법은 데스크톱 화면 스레드에서 1초 안쪽, 느린 휴대폰에서는 몇 초 걸릴 수 있다. 그 답도 받게 길게
-    solveWait: 25_000,
+    // 축소법은 데스크톱 화면 스레드에서 4×4·5×5 1초 안쪽, 6×6·7×7 몇 초(첫 면 색을 고르느라 3×3 단계를 여섯 번
+    // 푼다), 느린 휴대폰에서는 그 몇 배다. 그 답도 받게 길게. 풀이 길이는 제한하지 않는다(7×7은 한 판이 몇 분)
+    solveWait: n <= 5 ? 25_000 : 90_000,
+    // 6×6·7×7은 화면 스레드에서 풀면 몇 초 동안 화면이 멈춘다: 워커 답을 오래 기다린다(멈춘 워커는 워커 상한이 버린다)
+    workerWait: n <= 5 ? base.workerWait : 60_000,
     stage: 350,
     look: 120,
     order: 150,
     scrambleMove: 80,
     solveMove: n === 4 ? 120 : 100,
     searchMove: 80,
-    scrambleLength: n === 4 ? 30 : 36,
+    scrambleLength: ({ 4: 30, 5: 36, 6: 40, 7: 44 } as const)[n],
   };
 }
 

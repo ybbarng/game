@@ -279,15 +279,15 @@ export function slotTurn(
   return changed.length ? (pick(changed) as number) : 0;
 }
 
-/** 흰 스티커(색 0)가 가장 많은 면: 위 단계가 끝났을 때 그 층이 있는 면 */
-function whiteFace(n: number, state: PuzzleState): number {
+/** 첫 면 색(`first`, 기본 흰 0) 스티커가 가장 많은 면: 위 단계가 끝났을 때 그 층이 있는 면 */
+function firstFace(n: number, state: PuzzleState, first: number): number {
   const colors = faceColors(n, state);
   const nn = n * n;
   let best = 0;
   let bestCount = -1;
   for (let f = 0; f < 6; f++) {
     let count = 0;
-    for (let i = 0; i < nn; i++) if (colors[f * nn + i] === 0) count++;
+    for (let i = 0; i < nn; i++) if (colors[f * nn + i] === first) count++;
     if (count > bestCount) {
       best = f;
       bestCount = count;
@@ -333,11 +333,13 @@ interface Out {
   events?: PieceMark[];
 }
 
+/** `first`: 해법이 첫 면으로 맞춘 색(0 흰 … 5 파랑, `HumanOptions.first`) */
 export function presentSolve(
   n: number,
   start: PuzzleState,
   solve: PresentInput,
   view: HeroView = {},
+  first = 0,
 ): PresentOutput {
   const up = view.up ?? [];
   const mirror = new Set(view.mirror ?? []);
@@ -566,7 +568,7 @@ export function presentSolve(
       return;
     }
     if (st === firstUp && lastUp) {
-      const face = whiteFace(n, peek(st.start, lastUp.end, false));
+      const face = firstFace(n, peek(st.start, lastUp.end, false), first);
       // 해법의 y를 그대로 보이는 단계는 해법이 든 방향 그대로 든다(앞면이 화면에서도 앞면이게)
       let lead = I;
       for (let i = st.start; i < st.end; i++) {
@@ -580,7 +582,7 @@ export function presentSolve(
     if (kind && !downChecked) {
       // 위 단계 없이 바로 넣는 해법(2×2 공식 해법): 첫 층 면을 아래로
       downChecked = true;
-      const face = whiteFace(n, peek(st.start, st.end, false));
+      const face = firstFace(n, peek(st.start, st.end, false), first);
       const lift = liftToUp(face);
       turn(
         tokensFor(
@@ -593,7 +595,7 @@ export function presentSolve(
       );
     }
     // 이 단계에 맞출 조각만 본다(해법의 수 꼴에는 기대지 않는다)
-    const units = view.search ? unitsForStage(n, st.name) : null;
+    const units = view.search ? unitsForStage(n, st.name, first) : null;
     if (units)
       for (const u of units)
         if (!guard.some((g) => g.pieces.join() === u.pieces.join()))
