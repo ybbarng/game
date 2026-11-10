@@ -20,7 +20,7 @@ import {
   stageById,
   stagesOf,
 } from "../practice/stages";
-import { loadPractice, suggestSee } from "../practice/store";
+import { loadPractice } from "../practice/store";
 import type { PracticeMethod } from "../practice/types";
 import { formatMs } from "../records";
 import { useCubeSettings } from "../settings";
@@ -237,11 +237,7 @@ export function PracticeApp() {
             summary={summary}
             nameOf={nameOf}
             mode={mode}
-            suggest={
-              mode === "follow" &&
-              !!session &&
-              suggestSee(session.record, stage.id)
-            }
+            suggest={session?.suggestSee ?? false}
             onAgain={newRound}
             onSee={() => setMode("see")}
             onFollow={() => setMode("follow")}

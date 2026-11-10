@@ -9,10 +9,12 @@ import { FollowJudge } from "./follow";
 import type { Problem } from "./problem";
 import { PracticeRound } from "./round";
 import {
+  cleanSolves,
   loadPractice,
   recordFollow,
   recordRound,
   rememberStage,
+  SEE_SUGGEST_CLEAN,
   suggestSee,
 } from "./store";
 
@@ -209,23 +211,44 @@ describe("연습 기록", () => {
     };
   };
 
-  it("따라 치기 문제·판 수·마지막 단계를 남기고, 세 판 뒤 외워서 쳐 보기를 권한다", () => {
+  it("따라 치기 문제·판 수·마지막 단계를 남긴다", () => {
     const s = memory();
     recordFollow("pll-t", 3000, 14, 0, s);
     recordFollow("pll-t", 2000, 14, 2, s);
-    expect(loadPractice(s).follow["pll-t"]).toMatchObject({
+    const rec0 = loadPractice(s);
+    expect(rec0.follow["pll-t"]).toMatchObject({
       solves: 2,
       fails: 1,
       best: 2000,
     });
+    expect(cleanSolves(rec0.follow["pll-t"])).toBe(1);
     rememberStage("pll", s);
-    for (let k = 0; k < 2; k++) recordRound("pll", "follow", s);
-    expect(suggestSee(loadPractice(s), "pll")).toBe(false);
-    recordRound("pll", "follow", s);
+    for (let k = 0; k < 3; k++) recordRound("pll", "follow", s);
     const rec = loadPractice(s);
-    expect(suggestSee(rec, "pll")).toBe(true);
     expect(rec.last).toBe("pll");
     expect(rec.rounds.pll).toEqual({ follow: 3, see: 0 });
+  });
+
+  it("외워서 쳐 보기는 판 수가 아니라, 그 단계 공식마다 틀림 없이 두 번 넘게 쳤을 때 권한다", () => {
+    expect(SEE_SUGGEST_CLEAN).toBe(3);
+    const s = memory();
+    const ids = ["pll-t", "pll-y"];
+    // 판을 많이 마쳐도 공식마다 잘 치지 않았으면 권하지 않는다
+    for (let k = 0; k < 5; k++) recordRound("pll", "follow", s);
+    expect(suggestSee(loadPractice(s), ids)).toBe(false);
+    // 틀림 없이 두 번씩: 아직(「넘게」가 아니다)
+    for (const id of ids)
+      for (let k = 0; k < 2; k++) recordFollow(id, 2000, 14, 0, s);
+    expect(suggestSee(loadPractice(s), ids)).toBe(false);
+    // 한 공식만 세 번째: 다른 공식이 남았다
+    recordFollow("pll-t", 2000, 14, 0, s);
+    expect(suggestSee(loadPractice(s), ids)).toBe(false);
+    // 틀린 문제는 세지 않는다
+    recordFollow("pll-y", 2000, 14, 1, s);
+    expect(suggestSee(loadPractice(s), ids)).toBe(false);
+    recordFollow("pll-y", 2000, 14, 0, s);
+    expect(suggestSee(loadPractice(s), ids)).toBe(true);
+    expect(suggestSee(loadPractice(s), [])).toBe(false);
   });
 
   it("깨진 기록은 빈 기록으로 읽는다", () => {

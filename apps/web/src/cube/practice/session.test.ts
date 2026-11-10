@@ -20,7 +20,7 @@ import {
   WRONG_SHOW_MS,
 } from "./session";
 import { stageById } from "./stages";
-import { loadPractice } from "./store";
+import { loadPractice, SEE_SUGGEST_CLEAN } from "./store";
 import type { DrillCase, PracticeStage } from "./types";
 
 const keymap = twoHandKeymap();
@@ -167,6 +167,35 @@ describe("공식 연습 진행기(사이트 공식 연습·Cubie 미니 모드�
     expect(s.phase).toBe("play");
     expect(s.round.index).toBe(0);
     expect(s.summary).toBeNull();
+  });
+
+  it("외워서 쳐 보기 권하기: 판 수와 상관없이 그 단계 공식마다 틀림 없이 두 번 넘게 친 뒤에야", () => {
+    const { s, clock, stage } = setup("beginner-yellow-cross");
+    const clean = new Map(stage.cases.map((c) => [c.id, 0]));
+    const ready = () =>
+      [...clean.values()].every((v) => v >= SEE_SUGGEST_CLEAN);
+    let missed = false;
+    for (let round = 0; !ready(); round++) {
+      expect(round).toBeLessThan(10);
+      for (let k = 0; k < ROUND_SIZE; k++) {
+        const id = s.round.current?.caseId as string;
+        // 첫 문제는 한 번 틀린다(그 문제는 세지 않는다)
+        if (!missed) {
+          missed = true;
+          const want = s.tokens[0] as string;
+          s.input(mv(want.startsWith("B") ? "D" : "B"));
+        } else clean.set(id, (clean.get(id) ?? 0) + 1);
+        typeAll(s, clock);
+        expect(s.suggestSee).toBe(ready());
+        clock.advance(SOLVED_PAUSE_MS);
+      }
+      expect(s.phase).toBe("over");
+      if (!ready()) s.newRound();
+    }
+    expect(s.suggestSee).toBe(true);
+    // 보고 치기에서는 권하지 않는다
+    const see = setup("beginner-yellow-cross", { mode: "see" });
+    expect(see.s.suggestSee).toBe(false);
   });
 
   it("보고 치기: 공식은 펼쳐야 보이고, 되돌리기를 받고, 목표 모양이면 맞춤(펼친 문제는 콤보에서 빠진다)", () => {

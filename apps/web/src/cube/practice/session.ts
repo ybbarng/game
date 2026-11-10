@@ -30,6 +30,7 @@ import {
   recordFollow,
   recordRound,
   rememberStage,
+  suggestSee,
 } from "./store";
 import type { DrillCase, PracticeStage } from "./types";
 
@@ -125,6 +126,17 @@ export class PracticeSession {
   get at(): number {
     if (this.phase !== "play") return this.tokens.length;
     return this.round.follow?.index ?? 0;
+  }
+
+  /** 따라 치기 판 끝에 「외워서 쳐 보기」를 권하나(그 단계 공식마다 틀림 없이 두 번 넘게 쳤다). 사이트와 Cubie가 같은 규칙 */
+  get suggestSee(): boolean {
+    return (
+      this.mode === "follow" &&
+      suggestSee(
+        this.record,
+        this.stage.cases.map((c) => c.id),
+      )
+    );
   }
 
   /** 고른 공식이 실물에서 흔한 공식과 다르면 흔한 공식 */
