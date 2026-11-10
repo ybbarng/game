@@ -483,7 +483,7 @@ export function BoardOnlineScreen<
 
         <p className="text-center text-[11px] leading-relaxed opacity-50">
           서버 없이 두 기기를 바로 잇습니다. 연결 문제를 고치려고 연결에 걸린
-          시간을 서버에 보냅니다(수·이름·채팅은 보내지 않습니다)
+          시간을 서버에 보냅니다. 둔 수·이름·채팅은 보내지 않습니다.
         </p>
         <button
           type="button"

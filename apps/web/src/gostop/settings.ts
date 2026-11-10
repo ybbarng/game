@@ -48,17 +48,19 @@ export const GOSTOP_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "짝 맞는 카드를 자주 내지만 무엇을 먹을지는 따지지 않는다",
+    description: "짝 맞는 카드를 자주 내지만 무엇을 먹을지는 따지지 않는다.",
   },
   {
     value: 1,
     label: "중수",
-    description: "약을 채우고 상대 약을 막는다. 상대 점수가 가까우면 스톱한다",
+    description:
+      "점수가 나는 카드를 모으고, 상대가 모으는 것을 막는다. 손에 남은 카드가 적거나 상대가 고·스톱을 부를 점수에 가까우면 스톱한다.",
   },
   {
     value: 2,
     label: "고수",
-    description: "박을 피하고, 남은 패를 여러 번 굴려 보고 고·스톱을 고른다",
+    description:
+      "박을 피하고, 남은 카드가 어떻게 나올지 여러 번 셈해 보고 고·스톱을 고른다.",
   },
 ];
 
@@ -78,11 +80,11 @@ export const GUKJIN_INFO: readonly {
     value: "best",
     label: "국진은 유리하게",
     description:
-      "9월 국진(술잔)을 열끗과 쌍피 가운데 점수가 더 나는 쪽으로 센다. 졌을 때는 피박을 피하는 쪽으로 센다",
+      "9월 국진(술잔)을 열끗과 쌍피 가운데 점수가 더 나는 쪽으로 센다. 졌을 때는 피박을 피하는 쪽으로 센다.",
   },
   {
     value: "animal",
     label: "국진은 열끗만",
-    description: "9월 국진은 늘 열끗으로 센다",
+    description: "9월 국진은 늘 열끗으로 센다.",
   },
 ];

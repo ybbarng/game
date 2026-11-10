@@ -80,16 +80,18 @@ export const GALAXY_LEVELS: readonly {
   {
     value: 0,
     label: "입문",
-    description: "별빛이 넉넉하면 거의 다 사고, 입찰은 어림으로 낸다",
+    description: "별빛이 넉넉하면 거의 다 사고, 봉투 입찰은 어림으로 내요.",
   },
   {
     value: 1,
     label: "중수",
-    description: "쓸 돈을 남겨 두며 사고, 별자리를 잇거나 막는 별을 더 쳐준다",
+    description:
+      "쓸 별빛을 남겨 두며 사고, 내 별자리를 잇거나 남의 별자리를 막는 별을 더 쳐줘요.",
   },
   {
     value: 2,
     label: "고수",
-    description: "칸마다 밟힐 확률로 앞으로 받을 이용료를 세어 값을 매긴다",
+    description:
+      "칸마다 남이 멈출 확률로 앞으로 받을 이용료를 셈해 별 값을 매겨요.",
   },
 ];

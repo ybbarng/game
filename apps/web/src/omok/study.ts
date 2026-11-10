@@ -161,10 +161,10 @@ function describe(
   );
   const block = threats[0];
   if (block !== undefined && blockable.length === 0)
-    return `${name}: 사(넷)를 만들어요. 백이 막을 ${withJosa(pointName(block), "은", "는")} 백에게 3·3 금지라 막을 수 없어요.`;
+    return `${name}: 넷을 만들어요. 백이 막을 ${withJosa(pointName(block), "은", "는")} 백에게 3·3 금지라 막을 수 없어요.`;
   if (threats.length >= 2)
     return `${name}: 다섯 자리가 ${threats.map(pointName).join("·")} 두 곳이 되어 한 번에 다 막을 수 없어요.`;
-  return `${name}: 사(넷)를 만들어요. 백은 ${block === undefined ? "막을 곳을" : withJosa(pointName(block), "을", "를")} 막을 수밖에 없어요.`;
+  return `${name}: 넷을 만들어요. 백은 ${block === undefined ? "막을 곳을" : withJosa(pointName(block), "을", "를")} 막을 수밖에 없어요.`;
 }
 
 /** 푼 문제의 해설. 장면에서 만든다 */
@@ -180,11 +180,11 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
       .join(" → ");
     return [
       first === undefined
-        ? "백이 사로 몰아붙여 이기는 길이 있었어요."
-        : `그냥 두면 ${steps}: 백이 사로 몰아붙여 다섯을 만들어요.`,
+        ? "백이 넷으로 몰아붙여 이기는 길이 있었어요."
+        : `그냥 두면 ${steps}: 백이 넷으로 몰아붙여 다섯을 만들어요.`,
       first !== undefined && answer.includes(first)
         ? `${pointName(first)}: 백이 노리던 첫 자리를 먼저 차지해 그 길을 끊어요.`
-        : `${answer.map(pointName).join(" 또는 ")}: 그 길의 급소를 먼저 막아 끊어요.`,
+        : `${answer.map(pointName).join(" 또는 ")}: 그 길에서 백이 꼭 지나야 하는 자리를 먼저 막아 끊어요.`,
     ];
   }
   if (puzzle.kind === "pick") return explainPick(puzzle, start, variant);
@@ -197,7 +197,7 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
   if (puzzle.race) {
     const theirs = winningFirstMoves(start, 2, variant, 2).map(pointName);
     lines.unshift(
-      `백은 ${theirs.join("·")}에 두면 막을 수 없는 넷이 되지만, 흑이 사로 몰면 백은 막기만 해야 해서 흑이 먼저 이겨요.`,
+      `백은 ${theirs.join("·")}에 두면 열린 넷이 되지만, 흑이 넷으로 몰면 백은 막기만 해야 해서 흑이 먼저 이겨요.`,
     );
   }
   let board = start;
@@ -279,12 +279,12 @@ function explainPick(
     const direct = isDirect(white);
     return [
       `${answers}: ${direct ? "화월" : "포월"}이에요. 백이 ${direct ? "가로·세로로(직접)" : "대각선으로(간접)"} 붙었을 때(백 ${white}), 셋째 돌을 첫 돌의 대각선 옆이면서 백 돌과 가로나 세로 한 줄인 자리에 둔 모양이에요.`,
-      "렌주 연구에서 흑이 이긴다고 밝혀진 주형이에요.",
+      "렌주 연구에서 흑이 이긴다고 밝혀진 첫 세 수 모양이에요.",
     ];
   }
   const { answer, others, next } = buildPoints(puzzle, start, variant);
   return [
-    `${answers}: 백 열린 셋을 막으면서 흑 열린 셋도 만들어요. 다음에 ${next.map(pointName).join("·")}에 두면 막을 수 없는 넷이라, 이번엔 백이 막아야 해요.`,
+    `${answers}: 백 열린 셋을 막으면서 흑 열린 셋도 만들어요. 다음에 ${next.map(pointName).join("·")}에 두면 열린 넷이라, 이번엔 백이 막아야 해요.`,
     `다른 막는 자리(${others
       .filter((at) => at !== answer)
       .map(pointName)

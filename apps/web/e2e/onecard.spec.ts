@@ -97,14 +97,14 @@ test("원카드: 들어가 단계를 고르고 7·먹기·더미 치기를 한 �
   for (const name of ["입문", "중수", "고수"])
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   await page.getByRole("button", { name: "중수", exact: true }).click();
-  await expect(page.getByText(/받아치기용으로 아끼고/)).toBeVisible();
+  await expect(page.getByText(/받아칠 때 쓰려고 아끼고/)).toBeVisible();
   await noOverflow(page);
   await page.screenshot({ path: info.outputPath("onecard-options.png") });
   await page.getByRole("button", { name: "처음으로" }).click();
 
   await page.goto("/onecard?seed=10");
   await expect(page.getByText(/컴퓨터 1명과 · 5장 · 중수/)).toBeVisible();
-  await page.getByRole("button", { name: /혼자 하기/ }).click();
+  await page.getByRole("button", { name: /나홀로 원카드/ }).click();
   await expect(hand(page)).toBeVisible();
   await expect(page.locator("[data-seat]")).toHaveCount(1);
   await expect(page.getByText("꾹 치면 원카드!")).toHaveCount(0);
@@ -186,7 +186,7 @@ test("원카드 연출: 섞고 나눠 준 뒤, 낸 카드는 더미로·먹은 �
   await page.getByRole("button", { name: "5장", exact: true }).click();
   await page.getByRole("button", { name: "처음으로" }).click();
   await page.goto("/onecard?seed=10");
-  await page.getByRole("button", { name: /혼자 하기/ }).click();
+  await page.getByRole("button", { name: /나홀로 원카드/ }).click();
 
   // 섞고 나눠 주는 동안은 손패를 가리고 내 차례도 아니다
   await expect(page.locator("[data-dealing]")).toBeAttached();

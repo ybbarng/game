@@ -88,9 +88,14 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
-        3×3을 아무리 섞어도, 가장 짧게 푸는 길은 20수를 넘지 않아요(반 바퀴 R2도
-        한 수로 셀 때). 모든 길을 다 아는 신이 풀어도 드는 수라서 이 20을 「신의
-        수」라고 불러요. 90°만 한 수로 세면(R2는 두 수) 26수예요.
+        지금까지는 큐브에서 나올 수 있는 모양을 세고, 그 모양들이 지키는 규칙을
+        봤어요. 이번에는 섞인 큐브를 가장 짧게 풀면 몇 수가 드는지 봐요.
+      </Lead>
+      <Lead>
+        반 바퀴 R2도 한 수로 세면, 3×3을 아무리 섞어도 가장 짧게 푸는 길은
+        20수를 넘지 않아요. 모든 길을 다 아는 신이 풀어도 드는 수라서 이 20을
+        「신의 수」라고 불러요. 90° 돌리기만 한 수로 세어 R2를 두 수로 치면
+        26수예요.
       </Lead>
       <Notation />
       <div className="grid grid-cols-2 gap-2 text-center">
@@ -120,7 +125,7 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
           onClick={() => setMode("try")}
           attr={{ "data-god-try": "" }}
         >
-          직접 쳐 보기
+          직접 해 보기
         </Pill>
       </div>
       {mode === "watch" ? (
@@ -136,6 +141,9 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
         </div>
       ) : (
         <>
+          <Lead>
+            맞춘 큐브에서 아래 20수를 왼쪽부터 차례로 돌리면 슈퍼플립이 돼요.
+          </Lead>
           <p className="flex flex-wrap justify-center gap-1 font-mono text-sm">
             {tokens.map((t, i) => (
               <span
@@ -172,9 +180,10 @@ export function GodCard({ settings }: { settings: CubeSettings }) {
         </>
       )}
       <Source>
-        20수: 2010년 Tomas Rokicki, Herbert Kociemba, Morley Davidson, John
-        Dethridge가 컴퓨터로 증명. 26수(90°만): 2014년 Rokicki·Davidson.
-        슈퍼플립에 꼭 20수가 든다는 것은 1995년 Michael Reid가 보였어요.
+        20수는 2010년 Tomas Rokicki, Herbert Kociemba, Morley Davidson, John
+        Dethridge가 컴퓨터로 증명했어요. 90°만 세는 26수는 2014년 Rokicki와
+        Davidson이 증명했어요. 슈퍼플립에 꼭 20수가 든다는 것은 1995년 Michael
+        Reid가 보였어요.
       </Source>
     </div>
   );
@@ -235,11 +244,18 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
+        앞 카드에서는 20수 공식 하나로 슈퍼플립을 만들었어요. 이번에는 짧은 수
+        묶음 하나를 되풀이하면 어떻게 되는지 봐요.
+      </Lead>
+      <Lead>
         맞춘 큐브에 R U R' U' 같은 수 묶음을 계속 되풀이하면 언젠가 반드시 처음
-        모양으로 돌아와요. 모양의 수가 정해져 있으니 언젠가는 같은 모양을 다시
-        만나요. 그리고 수는 모두 거꾸로 되돌릴 수 있어서, 처음으로 다시 만나는
-        모양은 바로 처음 모양이에요. 돌아오는 데 드는 횟수를 그 묶음의
-        「차수」라고 해요.
+        모양으로 돌아와요. 모양의 수가 정해져 있으니 되풀이하다 보면 언젠가는
+        앞에서 본 모양을 다시 만나요. 그런데 수는 모두 거꾸로 되돌릴 수 있어요.
+        처음 모양을 0번째, 묶음을 한 번 한 모양을 1번째라고 세 볼게요. 처음 겹친
+        것이 5번째와 9번째처럼 둘 다 중간 모양이라고 해 봐요. 둘을 한 묶음씩
+        되돌린 4번째와 8번째도 같은 모양이어야 하니, 그보다 먼저 이미 겹쳤다는
+        말이 돼서 앞뒤가 안 맞아요. 그래서 처음 겹치는 것은 늘 0번째, 곧 처음
+        모양이에요. 돌아오는 데 드는 횟수를 그 묶음의 「차수」라고 해요.
       </Lead>
       <Notation />
       <div className="flex flex-wrap gap-1.5">
@@ -267,7 +283,7 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
             setError(
               err instanceof NotationError
                 ? err.message
-                : "읽을 수 없는 표기예요",
+                : "읽을 수 없는 표기예요.",
             );
           }
         }}
@@ -334,20 +350,24 @@ export function OrderCard({ settings }: { settings: CubeSettings }) {
         </div>
       </div>
       <Lead>
-        {alg === "R U" ? "" : "예를 들어 "}R U를 한 번 하면 엣지 블럭 7개가
-        차례로 한 칸씩 자리를 옮겨요(7개 고리). 그래서 7번마다 제자리에 와요.
-        코너 블럭 5개도 고리로 도는데, 한 바퀴(5번) 돌고 나면 방향이 비틀려
-        있어서 세 바퀴인 15번마다 제자리·바른 방향에 와요. 둘이 함께 맞는 건 7과
-        15의 최소공배수(둘 다로 나누어떨어지는 가장 작은 수)인 105번째예요.
+        {alg === "R U" ? "" : "예를 들어 "}R U를 한 번 하면 엣지 블럭 7개가 한
+        칸씩 자리를 옮기며 한 바퀴 돌아요. 그래서 7번마다 제자리에 와요. 코너
+        블럭은 6개가 바뀌어요. 5개는 이렇게 도는데, 5번 해서 한 바퀴 돌고 나면
+        방향이 비틀려 있어서 세 바퀴인 15번마다 제자리에 바른 방향으로 와요.
+        나머지 1개는 제자리에서 비틀리기만 해서 3번마다 바른 방향으로 와요. 모두
+        함께 맞는 건 7, 15, 3으로 모두 나누어떨어지는 가장 작은 수인
+        105번째예요. 이런 수를 최소공배수라고 해요.
       </Lead>
-      <Source>3×3에서 가장 큰 차수는 1260이에요(R U2 D' B D'가 한 예).</Source>
+      <Source>
+        3×3에서 가장 큰 차수는 1260이에요. R U2 D' B D'가 한 예예요.
+      </Source>
     </div>
   );
 }
 
 /** 교환자와 켤레: A B A' B'가 조금만 바꾸는 까닭 */
 export function CommutatorCard({ settings }: { settings: CubeSettings }) {
-  const [i, setI] = useState(3);
+  const [i, setI] = useState(2);
   const ex = COMMUTATOR_EXAMPLES[i] ?? COMMUTATOR_EXAMPLES[0];
   const start = useMemo(() => solvedCube(N), []);
   const alg = ex ? commutator(ex.a, ex.b) : "";
@@ -358,10 +378,14 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
   return (
     <div className="flex flex-col gap-3">
       <Lead>
-        A와 B를 수 묶음 둘이라고 할게요. A를 하고, B를 하고, A를 되돌리고, B를
-        되돌리는 꼴(A B A' B', A'는 A를 거꾸로 되돌리는 것)을 「교환자」라고
-        해요. A와 B가 함께 움직이는 조각이 적을수록 적게 바뀌어요. 조각 몇 개만
-        옮기는 공식 대부분이 이렇게 만들어져요.
+        앞 카드에서는 묶음 하나를 되풀이했어요. 이번에는 두 묶음을 엮어 조각 몇
+        개만 옮기는 방법을 봐요.
+      </Lead>
+      <Lead>
+        A와 B를 수 묶음 둘이라고 할게요. A를 거꾸로 되돌리는 것을 A'라고 써요.
+        A를 하고, B를 하고, A를 되돌리고, B를 되돌리는 A B A' B' 꼴을
+        「교환자」라고 해요. A와 B가 함께 움직이는 조각이 적을수록 적게
+        바뀌어요. 조각 몇 개만 옮기는 공식 대부분이 이렇게 만들어져요.
       </Lead>
       <Notation />
       <div className="flex flex-wrap gap-1.5">
@@ -380,12 +404,12 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
         <p className="font-mono text-sky-200 text-sm">{alg}</p>
         <Big>
           <span data-comm-changed={corner + edge}>
-            코너 {corner} · 엣지 {edge}
+            코너 블럭 {corner} · 엣지 블럭 {edge}
           </span>
         </Big>
-        <p className="text-white/60 text-xs">
-          바뀐 조각(코너 8 + 엣지 12 = 20개 중)
-          {ex.note ? ` · ${ex.note}` : ""}
+        <p className="break-keep text-white/60 text-xs">
+          코너 블럭 8개와 엣지 블럭 12개, 모두 20개 가운데 바뀐 조각 수예요.
+          {ex.note ? ` ${ex.note}` : ""}
         </p>
       </div>
       <div className="mx-auto w-full max-w-xs">
@@ -400,13 +424,15 @@ export function CommutatorCard({ settings }: { settings: CubeSettings }) {
         />
       </div>
       <Lead>
-        「켤레」는 A B A' 꼴이에요. A로 조각을 B가 일하기 좋은 자리로 옮기고,
-        B를 하고, A'로 되돌려 놓아요. 예를 들어 {conjugate("R", "U")}는 R로
-        오른쪽 조각을 윗면으로 올려 U로 돌린 뒤 R'로 내려놓아서, U가 하는 일을
-        다른 자리에서 해요. 공식을 다른 자리에 쓰고 싶을 때 앞뒤에 A와 A'를
-        붙이면 돼요.
+        「켤레」는 A B A' 꼴이에요. A로 조각을 B가 일하는 자리로 옮기고, B를
+        하고, A'로 되돌려 놓아요. 예를 들어 {conjugate("R", "U")}는 R로
+        앞-오른쪽 줄의 조각을 윗면으로 올려 U로 함께 돌린 뒤, R'로 오른쪽 면을
+        되돌려 놓아요. 공식이 다루는 자리와 바꾸고 싶은 조각의 자리가 다를 때 이
+        꼴을 써요. A는 바꾸고 싶은 조각을 공식이 다루는 자리로 옮기는 수
+        묶음이에요. A가 다른 조각을 함께 옮겨도 괜찮아요. 공식 B가 건드리지 않은
+        조각은 A'가 모두 제자리로 되돌려 놓아요.
       </Lead>
-      <Source>바뀐 조각 수는 이 페이지의 큐브 엔진이 세어요.</Source>
+      <Source>바뀐 조각 수는 이 페이지가 직접 돌려 세어요.</Source>
     </div>
   );
 }

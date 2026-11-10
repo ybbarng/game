@@ -447,7 +447,7 @@ test("게임 목록에서 들어가 응모하고, 추첨을 보고, 내 응모�
   await page.getByRole("button", { name: /내 예측/ }).click();
   await expect(page.getByRole("button", { name: /제 1회/ })).toBeVisible();
   // 게임 화면은 단순하게: 열쇠 칩·"서버가 가진 것" 비교는 설명 페이지에만
-  await expect(page.getByText("서버(공개 장부)가 가진 것")).toHaveCount(0);
+  await expect(page.getByText("서버와 공개 장부에 있는 것")).toHaveCount(0);
   await page.screenshot({
     path: info.outputPath("stardraw-mine.png"),
     fullPage: true,
@@ -719,7 +719,7 @@ test("설명 페이지: 당첨자 확인과 패스키, 별 이야기로 가는 �
     page.getByRole("heading", { name: "패스키와 보안" }),
   ).toBeVisible();
   await expect(page.locator("#passkey")).toBeVisible();
-  await expect(page.getByText("서버(공개 장부)가 가진 것")).toBeVisible();
+  await expect(page.getByText("서버와 공개 장부에 있는 것")).toBeVisible();
   await expect(page.getByText("얼굴·지문이 서버로 가나요?")).toBeVisible();
   await expect(page.getByText(/솔직한 한계/)).toBeVisible();
   await expect(page.locator("[data-agency]")).toContainText("카노푸스 우주국");

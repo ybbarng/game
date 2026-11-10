@@ -130,7 +130,7 @@ describe("효과 글자", () => {
   it("6마 죽이기", () => {
     expect(
       effect({ type: "killAttempt", seat: 0, card: "SK", killed: null })?.text,
-    ).toBe("♠K 지목 — 헛다리");
+    ).toBe("♠K 지목 — 빗나감");
     expect(
       effect({ type: "killAttempt", seat: 0, card: "SK", killed: 4 })?.text,
     ).toBe("♠K — P4 탈락");

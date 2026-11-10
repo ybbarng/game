@@ -62,7 +62,7 @@ test.describe("단계가 섞인 장면", () => {
   }, info) => {
     await page.goto("/galaxy");
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(page.locator("[data-roll]")).toBeVisible();
 
     // 단계별 모양: 완성 칸은 빛 테(오리온 셋·거문고 셋), 둘은 큰개 둘, 큰 정거장 고리 하나
@@ -138,7 +138,7 @@ test.describe("단계가 섞인 장면", () => {
     await page.clock.install();
     await page.goto("/galaxy");
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(page.locator("[data-roll]")).toBeVisible();
     await page.locator("[data-roll]").click();
     // 구르는 도중: 정육면체 둘이 떠 있다(눈 표시는 멈춘 뒤에만)
@@ -196,7 +196,7 @@ test("은하 한 바퀴 판 돌아보기: 끝까지 둔 판에서 1등과의 차
   await page.getByRole("button", { name: "짧은 판", exact: true }).click();
   await page.getByRole("button", { name: "입문", exact: true }).click();
   await page.getByRole("button", { name: "처음으로" }).click();
-  await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+  await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
   const over = page.getByRole("button", { name: "다시 하기" });
   const actions = [
     page.locator("[data-roll]"),
@@ -254,7 +254,7 @@ test.describe("우주선 말", () => {
     await page.clock.install();
     await page.goto("/galaxy");
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(page.locator("[data-roll]")).toBeVisible();
 
     const ship = (seat: number) => board(page).locator(`[data-ship="${seat}"]`);
@@ -365,7 +365,7 @@ test.describe("우주선 말", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/galaxy");
     await ready(page);
-    await page.getByRole("button", { name: /컴퓨터와 시작/ }).click();
+    await page.getByRole("button", { name: /나홀로 은하 한 바퀴/ }).click();
     await expect(page.locator("[data-roll]")).toBeVisible();
     const me = board(page).locator('[data-ship="0"]');
     await expect(me.locator(".galaxy-ship-hover")).toHaveCount(0);

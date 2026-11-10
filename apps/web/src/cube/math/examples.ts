@@ -35,24 +35,24 @@ export const COMMUTATOR_EXAMPLES: CommutatorExample[] = [
     a: "R",
     b: "L",
     changed: {},
-    note: "함께 움직이는 조각이 없는 두 면: 아무것도 안 바뀐다",
+    note: "R과 L은 함께 움직이는 조각이 없어서 아무것도 안 바뀌어요.",
   },
   {
     a: "R",
     b: "U",
     changed: { corner: 4, edge: 3 },
-    note: "R과 U가 함께 움직이는 조각이 셋뿐이라 7조각만 바뀐다",
+    note: "R과 U가 함께 움직이는 조각은 3개뿐이라, 둘이 움직이는 조각 13개 가운데 7개만 바뀌어요.",
   },
   {
     a: "R U R'",
     b: "D",
     changed: { corner: 3 },
-    note: "코너 셋만 한 바퀴 돈다(3개 고리)",
+    note: "코너 블럭 셋만 한 칸씩 자리를 옮기며 한 바퀴 돌아요.",
   },
   {
     a: "M'",
     b: "U2",
     changed: { edge: 3 },
-    note: "엣지 셋만 한 바퀴 돈다(3개 고리)",
+    note: "M'는 L과 R 사이 가운데 층을 돌리는 수예요. 엣지 블럭 셋만 한 칸씩 자리를 옮기며 한 바퀴 돌아요.",
   },
 ];

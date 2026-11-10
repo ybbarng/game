@@ -223,12 +223,12 @@ export function explainTactic(
         `${head}: ${objOf(after, shape.targets[0] as number)} 노린다. 뒤에 ${subjOf(after, shape.back as number)} 있어 비킬 수 없다(핀)`,
         after[shape.back as number] === "bK"
           ? "뒤에 킹이 있으면 앞 기물은 아예 움직일 수 없어, 묶인 채로 잡힌다"
-          : "앞 기물이 비키면 뒤의 더 비싼 기물을 잡는다",
+          : "앞 기물이 비키면 뒤의 값이 더 높은 기물을 잡는다",
       ];
     case "skewer":
       return [
         `${head}: ${objOf(after, shape.targets[0] as number)} 노린다. 비키면 뒤의 ${objOf(after, shape.back as number)} 잡는다(스큐어)`,
-        "핀과 반대로 앞에 더 비싼 기물이 있어, 피할 수밖에 없다",
+        "핀과 반대로 앞에 값이 더 높은 기물이 있어, 피할 수밖에 없다",
       ];
     case "discovered":
       return [
