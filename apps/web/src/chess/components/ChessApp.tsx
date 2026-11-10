@@ -205,7 +205,7 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
             active={!s.coordinates}
             onClick={() => s.set({ coordinates: false })}
           >
-            숨기기
+            감추기
           </Chip>
         </div>
       </Section>
@@ -225,8 +225,8 @@ function ChessOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
         <p className="text-xs opacity-60">
-          내 차례에 공짜로 잡히거나, 값이 더 낮은 기물에 잡힐 수 있는 내 기물에
-          주황 점선을 두른다.
+          내 차례에 잡혀도 되잡을 기물이 없거나, 값이 더 낮은 기물에 잡힐 수
+          있는 내 기물에 주황 점선을 두른다.
         </p>
       </Section>
       <Section title="기물 모양">
@@ -268,7 +268,7 @@ function ChessRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "목표",
-      "다음 수에 상대 킹을 잡을 수 있게 노리는 것을 체크라 한다. 체크를 받은 쪽은 반드시 풀어야 하고, 어떻게 두어도 풀 수 없으면 체크메이트라 해서 진다. 줄여서 메이트라고도 한다.",
+      "다음 수에 상대 킹을 잡을 수 있게 노리는 것을 체크라 한다. 체크를 받은 쪽은 킹을 피하거나, 노리는 길을 막거나, 노리는 기물을 잡아 반드시 풀어야 한다. 어떻게 두어도 풀 수 없으면 체크메이트라 해서 진다. 줄여서 메이트라고도 한다.",
     ],
     [
       "기물 값",

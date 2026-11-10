@@ -66,7 +66,7 @@ export const GAMES: readonly GameEntry[] = [
     name: "마이티",
     englishName: "Mighty",
     tagline:
-      "점수 카드를 가장 많이 따겠다고 건 사람이 숨은 짝과 함께 나머지와 겨루는 대학가 카드게임",
+      "점수 카드를 몇 장 딸지 가장 높게 건 사람이 숨은 짝과 함께 나머지와 겨루는 대학가 카드게임",
     players: "2~7명",
     path: "/mighty",
   },

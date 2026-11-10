@@ -197,7 +197,7 @@ export function explainSolved(puzzle: OmokPuzzle): string[] {
   if (puzzle.race) {
     const theirs = winningFirstMoves(start, 2, variant, 2).map(pointName);
     lines.unshift(
-      `백은 ${theirs.join("·")}에 두면 막을 수 없는 넷이 되지만, 흑이 넷으로 몰면 백은 막기만 해야 해서 흑이 먼저 이겨요.`,
+      `백은 ${theirs.join("·")}에 두면 열린 넷이 되지만, 흑이 넷으로 몰면 백은 막기만 해야 해서 흑이 먼저 이겨요.`,
     );
   }
   let board = start;
@@ -284,7 +284,7 @@ function explainPick(
   }
   const { answer, others, next } = buildPoints(puzzle, start, variant);
   return [
-    `${answers}: 백 열린 셋을 막으면서 흑 열린 셋도 만들어요. 다음에 ${next.map(pointName).join("·")}에 두면 막을 수 없는 넷이라, 이번엔 백이 막아야 해요.`,
+    `${answers}: 백 열린 셋을 막으면서 흑 열린 셋도 만들어요. 다음에 ${next.map(pointName).join("·")}에 두면 열린 넷이라, 이번엔 백이 막아야 해요.`,
     `다른 막는 자리(${others
       .filter((at) => at !== answer)
       .map(pointName)

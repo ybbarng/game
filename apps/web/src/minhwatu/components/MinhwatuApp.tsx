@@ -166,7 +166,7 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
       </Section>
-      <Section title="더 치는 약">
+      <Section title="더 세는 약">
         <div className="flex flex-wrap gap-1.5">
           <Chip active={s.chodan} onClick={() => s.set({ chodan: !s.chodan })}>
             초단 30점
@@ -179,8 +179,8 @@ function MinhwatuOptions({ onBack }: { onBack: () => void }) {
           </Chip>
         </div>
         <p className="text-xs opacity-60">
-          초단(4·5·7월 띠 3장)은 동네에 따라 안 치기도 하고, 사오동(11월 오동
-          4장)은 치는 곳이 적다.
+          초단(4·5·7월 띠 3장)은 동네에 따라 약으로 세지 않기도 하고,
+          사오동(11월 오동 4장)은 약으로 세는 곳이 적다.
         </p>
       </Section>
       <Section title="컴퓨터 실력">
@@ -234,10 +234,10 @@ function MinhwatuRulesScreen({ onBack }: { onBack: () => void }) {
     [
       "약",
       [
-        "정해진 카드 묶음을 모두 먹으면 약을 이룬다. 약을 이루면 나머지 사람 모두에게서 그 약의 점수를 받는다",
+        "정해진 카드 묶음을 모두 먹으면 약을 이룬다. 약을 이루면 나머지 사람 한 사람에게서 그 약의 점수씩 받는다",
         `${YAK_NAMES.choyak}은 ${YAK_DESCRIPTIONS.choyak}, ${YAK_NAMES.pungyak}은 ${YAK_DESCRIPTIONS.pungyak}, ${YAK_NAMES.biyak}은 ${YAK_DESCRIPTIONS.biyak}이고, 옵션에서 고른 대로 20점이나 10점이다`,
         `${YAK_NAMES.hongdan}은 ${YAK_DESCRIPTIONS.hongdan}, ${YAK_NAMES.cheongdan}은 ${YAK_DESCRIPTIONS.cheongdan}으로 30점이다`,
-        `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 친다.`,
+        `옵션에서 켜면 ${YAK_NAMES.chodan}(${YAK_DESCRIPTIONS.chodan}) 30점과 ${YAK_NAMES.saodong}(${YAK_DESCRIPTIONS.saodong}) 40점도 약으로 센다.`,
       ].join(". "),
     ],
     [
