@@ -6,11 +6,13 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 
 import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 
+import { levelOf } from "../emblemArt";
 import {
   buildEmblemScene,
   type DraftTier,
   type EmblemScene,
   isGem,
+  LOOK,
   type Three,
 } from "./scene";
 import {
@@ -38,8 +40,11 @@ import { canHdrCanvas, type DrawPath } from "./support";
 /** 미리보기 바탕(neutral-900)과 같은 색: 배경판 가장자리가 페이지에 녹아든다 */
 export const PAGE_COLOR = "#171717";
 
-/** 번짐 값(SDR 보석): 세기, 반지름, 밝기 문턱(톤 매핑 전 선형 값) */
-export const BLOOM = { strength: 0.55, radius: 0.35, threshold: 1.25 } as const;
+/**
+ * 번짐 값(SDR 보석): 세기, 반지름, 밝기 문턱(톤 매핑 전 선형 값). 반짝이는 점에만 작게 걸리게 문턱을 높이고 반지름을
+ * 줄였다(예전 0.55·0.35·1.25는 보석 전체를 뿌옇게 해 얼음처럼 보였다).
+ */
+export const BLOOM = { strength: 0.4, radius: 0.12, threshold: 3 } as const;
 
 interface Painter {
   path: DrawPath;
@@ -433,20 +438,25 @@ export class EmblemStage implements ViewTurnTarget {
   }
 }
 
+/** 찍을 것 하나: 티어, 한 장의 한 변(실제 화소), 좌우 각들 */
+export interface ShotJob {
+  tier: DraftTier;
+  px: number;
+  yaws: readonly number[];
+}
+
 /**
- * 엠블럼을 각도마다 한 장씩 찍는다(투명 바탕 PNG data URL). 작은 엠블럼(기록 창·티어 줄·Cubie 메뉴)에 3D 대신 쓸
- * 그림이고, 각도를 조금씩 바꾼 몇 장을 차례로 보이면 반짝임이 옮겨 다닌다. 두 배로 그려 줄여 모서리를 부드럽게 한다.
- * 번짐은 투명 바탕을 지워 쓰지 않는다(후광이 그 몫을 한다).
+ * 엠블럼을 각도마다 한 장씩 찍는다(투명 바탕 PNG data URL). 작은 엠블럼(기록 창·티어 줄·Cubie 메뉴)과 미리보기 격자에
+ * 3D 대신 쓸 그림이고, 각도를 조금씩 바꾼 몇 장을 차례로 보이면 반짝임이 옮겨 다닌다. 두 배로 그려 줄여 모서리를
+ * 부드럽게 한다. 렌더러 하나로 여러 티어를 차례로 찍는다(WebGL 맥락을 티어마다 만들지 않는다).
  *
- * @param px 한 장의 한 변(실제 화소). 두 배 화면용이면 보일 크기의 두 배를 넘긴다
- * @param yaws 찍을 좌우 각(라디안)
+ * 보석은 뒤 배경판을 굴절해 비춰야 맑게 보이므로 배경판을 넣고 한 번 그린 뒤, 몸만 흰색으로 한 번 더 그려 그 테두리
+ * 본으로 바탕을 지운다. 후광(다이아몬드부터)은 지운 뒤 2D로 뒤에 깐다. 번짐은 쓰지 않는다.
  */
-export async function captureEmblemShots(
-  tier: DraftTier,
-  px: number,
-  yaws: readonly number[],
+export async function captureShots(
+  jobs: readonly ShotJob[],
   pitch = 0.06,
-): Promise<string[]> {
+): Promise<string[][]> {
   const scale = 2;
   const canvas = document.createElement("canvas");
   const renderer = new THREE.WebGLRenderer({
@@ -455,45 +465,102 @@ export async function captureEmblemShots(
     alpha: true,
     preserveDrawingBuffer: true,
   });
+  const silhouette = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const results: string[][] = [];
   try {
     renderer.setPixelRatio(1);
-    renderer.setSize(px * scale, px * scale, false);
     renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    renderer.setClearColor(0x000000, 0);
-    const built = buildEmblemScene(THREE, tier, {
-      backdrop: false,
-      pageColor: "#000000",
-      hdr: false,
-    });
-    // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
-    built.camera.position.z = 39;
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromScene(built.studio, 0.02).texture;
-    pmrem.dispose();
-    built.scene.environment = env;
-    const out = document.createElement("canvas");
-    out.width = px;
-    out.height = px;
-    const ctx = out.getContext("2d");
-    const urls: string[] = [];
-    for (const yaw of yaws) {
-      built.spin.rotation.set(pitch, yaw, 0, "XYZ");
-      renderer.render(built.scene, built.camera);
-      if (!ctx) continue;
-      ctx.clearRect(0, 0, px, px);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(canvas, 0, 0, px, px);
-      urls.push(out.toDataURL("image/png"));
+    renderer.toneMappingExposure = 1.15;
+    for (const job of jobs) {
+      const { tier, px } = job;
+      renderer.setSize(px * scale, px * scale, false);
+      const built = buildEmblemScene(THREE, tier, {
+        backdrop: true,
+        pageColor: PAGE_COLOR,
+        hdr: false,
+        backGlow: 0.5,
+      });
+      // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
+      built.camera.position.z *= 39 / 43;
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const env = pmrem.fromScene(built.studio, 0.02).texture;
+      pmrem.dispose();
+      built.scene.environment = env;
+      const color = document.createElement("canvas");
+      color.width = px;
+      color.height = px;
+      const out = document.createElement("canvas");
+      out.width = px;
+      out.height = px;
+      const cctx = color.getContext("2d");
+      const ctx = out.getContext("2d");
+      const urls: string[] = [];
+      const lv = levelOf(tier);
+      for (const yaw of job.yaws) {
+        if (!ctx || !cctx) break;
+        built.spin.rotation.set(pitch, yaw, 0, "XYZ");
+        // 1) 배경판을 넣고 그대로
+        renderer.setClearColor(PAGE_COLOR, 1);
+        renderer.render(built.scene, built.camera);
+        cctx.clearRect(0, 0, px, px);
+        cctx.imageSmoothingQuality = "high";
+        cctx.drawImage(canvas, 0, 0, px, px);
+        // 2) 몸만 흰색으로(테두리 본)
+        for (const o of built.behind) o.visible = false;
+        built.scene.overrideMaterial = silhouette;
+        renderer.setClearColor(0x000000, 0);
+        renderer.render(built.scene, built.camera);
+        built.scene.overrideMaterial = null;
+        for (const o of built.behind) o.visible = true;
+        ctx.clearRect(0, 0, px, px);
+        ctx.imageSmoothingQuality = "high";
+        ctx.globalCompositeOperation = "source-over";
+        ctx.drawImage(canvas, 0, 0, px, px);
+        ctx.globalCompositeOperation = "source-in";
+        ctx.drawImage(color, 0, 0);
+        // 3) 후광을 뒤에
+        if (lv >= 6) {
+          const hex = Number.parseInt(LOOK[tier].tint.slice(1), 16);
+          const rgb = `${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255}`;
+          const g = ctx.createRadialGradient(
+            px / 2,
+            px / 2,
+            0,
+            px / 2,
+            px / 2,
+            px / 2,
+          );
+          g.addColorStop(0, `rgba(${rgb},${lv >= 9 ? 0.5 : 0.36})`);
+          g.addColorStop(0.55, `rgba(${rgb},0.12)`);
+          g.addColorStop(1, `rgba(${rgb},0)`);
+          ctx.globalCompositeOperation = "destination-over";
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, px, px);
+        }
+        ctx.globalCompositeOperation = "source-over";
+        urls.push(out.toDataURL("image/png"));
+      }
+      env.dispose();
+      built.dispose();
+      results.push(urls);
     }
-    env.dispose();
-    built.dispose();
-    return urls;
+    return results;
   } finally {
+    silhouette.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
   }
+}
+
+/** 한 티어를 각도마다 찍는다(`captureShots` 하나짜리) */
+export async function captureEmblemShots(
+  tier: DraftTier,
+  px: number,
+  yaws: readonly number[],
+  pitch = 0.06,
+): Promise<string[]> {
+  const [urls] = await captureShots([{ tier, px, yaws }], pitch);
+  return urls ?? [];
 }
 
 /** 반짝임 몇 장 돌리기용 좌우 각: 정면 둘레를 조금씩(±0.32 라디안 안) */

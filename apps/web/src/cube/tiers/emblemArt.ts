@@ -147,18 +147,26 @@ export function crestAt(tier: string): Pt {
 }
 
 /**
- * 반짝임 자리. SVG(보통 화면)와 HDR 그림이 같은 자리에 그린다. 큐브 윗면 뒤 꼭짓점(빛이 위에서 온다)과 오른쪽 모서리,
- * 그리고 위 티어일수록 볏·아래 보석·왕관에 하나씩 는다.
+ * 반짝임 자리. SVG(보통 화면)와 HDR 그림이 같은 자리에 그린다. 큐브 윗면 뒤 꼭짓점(빛이 위에서 온다)과 윗면 오른쪽 끝,
+ * 그리고 위 티어일수록 빛 받는 틀 꼭짓점·볏·왕관에 하나씩 는다.
+ *
+ * 그늘진 왼면·오른면 안에는 두지 않는다(2026-11-10 사용자 「FLB 위치에 있는 코너 조각 혼자 유독 그 면에서 밝다」).
+ * 예전에는 마스터부터 왼면 앞-왼-아래 코너 블럭에, 모든 HDR 티어가 오른면 위 코너 블럭에 반짝임을 얹어 그 블럭 하나만
+ * 튀었다. 빛은 왼위에서 오므로 반짝임은 윗면(가장 밝은 면)과 빛을 받는 틀 꼭짓점에만 둔다.
  */
 export function glintsFor(tier: string): Glint[] {
   const lv = levelOf(tier);
   if (lv < 6) return [];
-  const [t, ur, , , ll] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
+  const [t, ur] = cubeHex(tier) as [Pt, Pt, Pt, Pt, Pt, Pt];
   const out: Glint[] = [
     { x: t[0], y: t[1] + 0.9, r: 3.6 },
-    { x: ur[0] - 1.6, y: ur[1] + 1.2, r: 2.6 },
+    { x: ur[0] - 1.6, y: ur[1] - 0.4, r: 2.6 },
   ];
-  if (lv >= 7) out.push({ x: ll[0] + 2, y: ll[1] - 1, r: 3 });
+  if (lv >= 7) {
+    // 틀 왼위 꼭짓점(바깥 띠에서 빛을 가장 많이 받는 두 변이 만나는 곳)
+    const ul = hexAround(CENTER, FRAME_OUT * coreScale(tier))[5] as Pt;
+    out.push({ x: ul[0] + 0.6, y: ul[1] + 0.4, r: 3 });
+  }
   const crest = crestAt(tier);
   if (lv >= 8) out.push({ x: crest[0], y: crest[1] - 6.5, r: 3.6 });
   else out.push({ x: crest[0], y: crest[1], r: 3 });

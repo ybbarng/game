@@ -7,7 +7,7 @@ import {
 } from "./test";
 
 /**
- * 3D 티어 엠블럼 시안(`/cube/tiers/emblems` 맨 위, docs/47 14-7). 헤드리스는 SDR이라 보석은 번짐(bloom) 길로 그린다.
+ * 3D 티어 엠블럼 시안(`/cube/tiers/emblems` 맨 위, docs/47 14-7). 열 티어 격자(찍은 그림)에서 고른 하나만 큰 칸에 살아 있는 3D. 헤드리스는 SDR이라 보석은 번짐(bloom) 길로 그린다.
  * 실제 HDR 밝기는 HDR 맥에서 사람이 본다. 시안 칸 크기가 화면 크기와 상관없어 데스크톱에서만 본다.
  */
 
@@ -43,30 +43,31 @@ const yawOf = async (stage: Locator) =>
 test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가만히 있으면 그리지 않고, 처음 각도로 돌아온다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
-  // 3D 장면 둘과 찍은 그림을 소프트웨어 GPU로 그려 보통 시험보다 오래 걸린다
+  // 3D 장면과 찍은 그림(열 티어 격자)을 소프트웨어 GPU로 그려 보통 시험보다 오래 걸린다
   test.setTimeout(120_000);
   await page.goto("/cube/tiers/emblems");
+  // 기본 선택은 다이아몬드(보석): 큰 칸 하나만 살아 있는 3D
   const dia = page.locator('[data-emblem3d="diamond"]');
-  const gold = page.locator('[data-emblem3d="gold"]');
   await expect(dia).toHaveAttribute("data-emblem3d-path", /^(bloom|hdr)$/, {
     timeout: 60_000,
   });
-  await expect(gold).toHaveAttribute("data-emblem3d-path", "plain", {
-    timeout: 60_000,
-  });
-  const stages = [dia, gold].map((e) => e.locator("[data-emblem3d-stage]"));
+  await expect(page.locator("[data-emblem3d]")).toHaveCount(1);
+  const stages = [dia.locator("[data-emblem3d-stage]")];
   for (const s of stages) {
     await expect(s).toHaveAttribute("data-emblem3d-frames", /^[1-9]/);
     await expect(s).toHaveAttribute("data-emblem3d-yaw", "0.000");
   }
-  // 찍은 그림: 티어마다 정면 한 장 + 각도 여섯 장
-  for (const t of ["diamond", "gold"]) {
-    await expect(page.locator(`[data-emblem3d-shots="${t}"]`)).toHaveAttribute(
-      "data-emblem3d-shot-count",
-      "7",
-      { timeout: 60_000 },
-    );
-  }
+  // 찍은 그림: 고른 티어의 정면 한 장 + 각도 여섯 장, 열 티어 격자
+  await expect(page.locator('[data-emblem3d-shots="diamond"]')).toHaveAttribute(
+    "data-emblem3d-shot-count",
+    "7",
+    { timeout: 60_000 },
+  );
+  const grid = page.locator("[data-emblem3d-grid]");
+  await expect(grid).toHaveAttribute("data-emblem3d-grid-ready", "", {
+    timeout: 60_000,
+  });
+  await expect(grid.locator("[data-emblem3d-pick] img")).toHaveCount(10);
   await draftShot(page, "front");
 
   // 가만히 있으면 그리지 않는다
@@ -109,6 +110,23 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
     "0.000",
   );
   await expect(dia.locator("[data-cube-view-home]")).toHaveCount(0);
+
+  // 격자에서 골드를 누르면 큰 칸이 골드(금속, 번짐 없음)로 바뀌고 처음 각도에서 시작한다
+  await grid.locator('[data-emblem3d-pick="gold"]').click();
+  const gold = page.locator('[data-emblem3d="gold"]');
+  await expect(gold).toHaveAttribute("data-emblem3d-path", "plain", {
+    timeout: 60_000,
+  });
+  await expect(page.locator("[data-emblem3d]")).toHaveCount(1);
+  const goldStage = gold.locator("[data-emblem3d-stage]");
+  await expect(goldStage).toHaveAttribute("data-emblem3d-frames", /^[1-9]/);
+  await expect(goldStage).toHaveAttribute("data-emblem3d-yaw", "0.000");
+  await expect(page.locator('[data-emblem3d-shots="gold"]')).toHaveAttribute(
+    "data-emblem3d-shot-count",
+    "7",
+    { timeout: 60_000 },
+  );
+  await draftShot(page, "gold");
 });
 
 test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나온다", {
@@ -128,6 +146,8 @@ test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나
   });
   await page.goto("/cube/tiers/emblems");
   for (const t of ["diamond", "gold"]) {
+    if (t !== "diamond")
+      await page.locator(`[data-emblem3d-pick="${t}"]`).click();
     const e = page.locator(`[data-emblem3d="${t}"]`);
     await expect(e).toHaveAttribute("data-emblem3d-path", "svg");
     await expect(e.locator(`[data-cube-emblem="${t}"]`)).toBeVisible();

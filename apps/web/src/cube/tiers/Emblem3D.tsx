@@ -209,3 +209,90 @@ export function EmblemShots({ tier }: { tier: DraftTier }) {
     </div>
   );
 }
+
+/**
+ * 열 티어 격자: 티어마다 비스듬한 한 장을 찍은 그림으로 보이고(살아 있는 3D는 무거워 하나만 띄운다), 누르거나 마우스를
+ * 올리면 그 티어를 고른다. 렌더러 하나로 차례로 찍는다.
+ */
+export function EmblemGrid({
+  tiers,
+  selected,
+  onSelect,
+}: {
+  tiers: readonly DraftTier[];
+  selected: DraftTier;
+  onSelect: (t: DraftTier) => void;
+}) {
+  const [shots, setShots] = useState<string[] | null>(null);
+  const hover = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!canDraw3d()) return;
+    let live = true;
+    import("./emblem3d/stage")
+      .then(({ captureShots }) =>
+        captureShots(tiers.map((tier) => ({ tier, px: 192, yaws: [0.18] }))),
+      )
+      .then((all) => {
+        if (live) setShots(all.map((u) => u[0] ?? ""));
+      })
+      .catch(() => {
+        if (live) setShots(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [tiers]);
+
+  useEffect(
+    () => () => {
+      if (hover.current !== null) window.clearTimeout(hover.current);
+    },
+    [],
+  );
+
+  return (
+    <div
+      data-emblem3d-grid
+      data-emblem3d-grid-ready={shots ? "" : undefined}
+      className="flex flex-wrap justify-center gap-2"
+    >
+      {tiers.map((t, i) => (
+        <button
+          key={t}
+          type="button"
+          data-emblem3d-pick={t}
+          aria-pressed={t === selected}
+          onClick={() => onSelect(t)}
+          onMouseEnter={() => {
+            if (hover.current !== null) window.clearTimeout(hover.current);
+            hover.current = window.setTimeout(() => onSelect(t), 140);
+          }}
+          onMouseLeave={() => {
+            if (hover.current !== null) window.clearTimeout(hover.current);
+            hover.current = null;
+          }}
+          className={cn(
+            "flex w-24 flex-col items-center gap-1 rounded-xl p-1 ring-1 ring-transparent",
+            t === selected ? "bg-white/10 ring-white/30" : "hover:bg-white/5",
+          )}
+        >
+          {shots?.[i] ? (
+            // biome-ignore lint/performance/noImgElement: 찍은 data URL을 그대로 보인다
+            <img
+              src={shots[i]}
+              alt=""
+              width={88}
+              height={88}
+              draggable={false}
+              className="block"
+            />
+          ) : (
+            <TierEmblem tier={t} size={64} />
+          )}
+          <span className="text-white/80 text-xs">{TIER_LABEL[t]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
