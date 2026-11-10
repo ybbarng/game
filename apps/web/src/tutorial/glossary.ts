@@ -161,7 +161,8 @@ export const GLOSSARY: readonly Term[] = [
   {
     id: "noFriend",
     term: "노프렌드",
-    meaning: "프렌드 없이 주공 혼자 하는 것. 이기면 점수가 2배다.",
+    meaning:
+      "프렌드 없이 주공 혼자 하는 것. 이기면 야당이 낸 점수를 주공 혼자 받는다. 규칙에 따라 점수를 2배로 치기도 한다.",
     aka: "노프",
     group: "play",
   },

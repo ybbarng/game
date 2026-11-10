@@ -20,6 +20,7 @@ import { playCubeCue, playCubeSound } from "../components/CubePlay";
 import { CubePosterPair } from "../components/CubePosterPair";
 import { KeyboardMap, KeyLegend } from "../components/KeyboardMap";
 import { KeyCaps } from "../components/MoveChip";
+import { ViewHome } from "../components/ViewHome";
 import { soloSound } from "../game-sounds";
 import { HeroLoop, heroMoveMs, SOLVED_LABEL } from "../hero/loop";
 import { heroRotation, isHeroSize, solveForHero } from "../hero/methods";
@@ -1116,6 +1117,14 @@ function MiniCube() {
             className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
           />
         )}
+        {/* 브라우저 미니 모드만(앱은 마우스 둘러보기를 끈다). 오른쪽 위는 메뉴, 아래는 힌트 자리라 왼쪽 위 */}
+        {!app && !failed && (
+          <ViewHome
+            viewRef={viewRef}
+            ready={ready}
+            className="top-1 right-auto bottom-auto left-1"
+          />
+        )}
       </div>
       {app && <ProfileToApp n={n} version={records} />}
       {cheer && (
@@ -1654,6 +1663,7 @@ function ReplayBox({
             className="absolute inset-0 h-full w-full cursor-grab touch-none active:cursor-grabbing"
           />
         )}
+        {orbit && !failed && <ViewHome viewRef={viewRef} ready={ready} />}
       </div>
     </div>
   );

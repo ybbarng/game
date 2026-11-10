@@ -95,9 +95,9 @@ describe("장기 튜토리얼 미션", () => {
     expect(runFromSetup(mission, mission.mistake ?? [])).toBe("fail");
   });
 
-  it("상 쪽 졸 쓸기: 79 졸을 78로 옮겨야 성공, 77 졸을 78로 옮기면 실패", () => {
-    const mission = missions.find(([t]) => t === "상 쪽 졸 쓸기")?.[1];
-    if (!mission) throw new Error("상 쪽 졸 쓸기 미션이 없다");
+  it("오른쪽 졸 쓸기: 79 졸을 78로 옮겨야 성공, 77 졸을 78로 옮기면 실패", () => {
+    const mission = missions.find(([t]) => t === "오른쪽 졸 쓸기")?.[1];
+    if (!mission) throw new Error("오른쪽 졸 쓸기 미션이 없다");
     expect(runMission(mission, [move("79", "78")]).after).toBe("success");
     expect(runMission(mission, [move("77", "78")]).after).toBe("fail");
   });

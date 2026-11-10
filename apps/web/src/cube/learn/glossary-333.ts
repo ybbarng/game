@@ -2,13 +2,10 @@
 // 쓰기. 갑자기 새로운 단어를 설명 없이 쓰지 않기」). 용어마다 글에서 찾는 꼴(use)과 뜻을 알리는 문장의 꼴(define)을
 // 둔다. 시험(glossary-333.test.ts)이 단원 차례대로 읽어, 뜻을 알리기 전에 쓴 곳이 없는지 본다.
 
-export interface GlossaryTerm {
-  term: string;
-  /** 글에서 이 용어를 쓴 곳 */
-  use: RegExp;
-  /** 뜻을 알리는 문장(이 꼴이 처음 나온 단계가 뜻을 알린 곳) */
-  define: RegExp;
-}
+import type { OrderedTerm } from "@/tutorial/term-order";
+
+/** 용어 하나: 글에서 쓴 꼴(use)과 뜻을 알리는 문장의 꼴(define). 모든 학습 자료가 같은 틀(`@/tutorial/term-order`)을 쓴다 */
+export type GlossaryTerm = OrderedTerm;
 
 export const GLOSSARY_333: GlossaryTerm[] = [
   { term: "스티커", use: /스티커/, define: /「스티커」/ },

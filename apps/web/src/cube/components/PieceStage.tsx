@@ -33,6 +33,7 @@ import { loadCubeView } from "../view";
 import type { PieceLayout } from "../view/types";
 import { playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
+import { ViewHome } from "./ViewHome";
 
 /**
  * 조각 단원의 3D 부품(docs/47 8-4): 「스티커로 보기 / 조각으로 보기」(PartsPanel)와 가상 분해·조립(BuildPanel).
@@ -61,7 +62,6 @@ function useStage(
   settings: CubeSettings,
   onSticker: (sticker: number) => void,
   paint: (view: CubeView) => void,
-  keepView = false,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -86,7 +86,6 @@ function useStage(
           colors: settings.colors,
           stickerless: settings.stickerless,
           hidden: settings.hidden,
-          keepView,
           onTap: (hit) => {
             const i = stickerAtHit(N, hit.center, hit.normal);
             if (i !== null) live.current.onSticker(i);
@@ -109,7 +108,6 @@ function useStage(
     settings.colors,
     settings.stickerless,
     settings.hidden,
-    keepView,
   ]);
 
   return { canvasRef, viewRef, ready, failed };
@@ -139,6 +137,7 @@ function Stage({
             data-cube-ready={stage.ready ? "" : undefined}
             className="h-full w-full cursor-pointer touch-none"
           />
+          <ViewHome viewRef={stage.viewRef} ready={stage.ready} />
         </div>
       )}
       <p className="text-white/50 text-xs">{label}</p>
@@ -421,7 +420,7 @@ export function BuildPanel({
     } else playCubeCue(settings, "invalid");
   };
   // 아래·뒤 빈자리를 끌어 돌려 본 채로 누를 수 있게, 손을 떼도 보기를 남긴다(휴대폰은 돌아가는 사이에 누를 수 없었다)
-  const stage = useStage(settings, tap, (v) => paint(v), true);
+  const stage = useStage(settings, tap, (v) => paint(v));
 
   const takeApart = () => {
     const view = stage.viewRef.current;
@@ -580,7 +579,7 @@ export function BuildPanel({
       )}
       <Stage
         stage={stage}
-        label="빈자리를 눌러 끼워요. 끌어 돌린 각도는 그대로 남아요."
+        label="빈자리를 눌러 끼워요."
         fallback={
           <CubePosterPair
             n={N}
@@ -592,16 +591,6 @@ export function BuildPanel({
           />
         }
       />
-      {stage.ready && b.phase !== "whole" && b.phase !== "done" && (
-        <button
-          type="button"
-          data-build-home-view
-          onClick={() => stage.viewRef.current?.resetView()}
-          className="rounded-lg bg-white/10 px-3 py-1 text-sm hover:bg-white/15"
-        >
-          처음 각도로
-        </button>
-      )}
     </div>
   );
 }

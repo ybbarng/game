@@ -108,7 +108,7 @@ const overview: Lesson = {
     },
     {
       kind: "quiz",
-      body: "한 번에 다 외우지 않아도 돼요. 먼저 2단계 OLL(10개)·2단계 PLL(6개)로 시작하고, 자주 나오는 것부터 전체 OLL 57·PLL 21로 넓혀요.",
+      body: "한 번에 다 외우지 않아도 돼요. 먼저 OLL·PLL을 각각 두 번에 나눠 하는 **2단계 OLL**(10개)·**2단계 PLL**(6개)로 시작하고, 자주 나오는 것부터 전체 OLL 57·PLL 21로 넓혀요.",
       setup: { alg: "z2" },
       mask: "oll",
       quiz: {
@@ -409,7 +409,7 @@ const twoLookOll: Lesson = {
   steps: [
     {
       kind: "quiz",
-      body: "OLL을 두 번에 나눠요. 먼저 엣지를 위로(노란 십자, 공식 3개), 다음 코너를 위로(공식 7개). 초보자 과정의 노란 십자·노란 면과 같은 일을 짧게 해요.",
+      body: "OLL을 두 번에 나눠요. 먼저 엣지를 위로(노란 십자, 공식 3개), 다음 코너를 위로(공식 7개). 초보자 과정의 노란 십자·코너 방향과 같은 일을 짧게 해요. 공식에 나오는 소문자(f·r·l·u·d·b)는 그 면과 붙은 가운데 층까지 두 층을 함께 돌려요. f는 F 두 층, r은 R 두 층이에요(r은 Rw라고도 적어요).",
       setup: flip("F R U R' U' F'"),
       mask: "oll",
       quiz: {
@@ -509,7 +509,7 @@ const twoLookPll: Lesson = {
     },
     {
       kind: "quiz",
-      body: "엣지 공식은 넷이에요. 한 면이 통째로 맞고 셋이 돌면 Ua·Ub(U퍼뮤), 맞은편끼리 바뀌면 H, 옆에 붙은 면끼리 바뀌면 Z.",
+      body: "엣지 공식은 넷이에요. 한 면이 통째로 맞고 셋이 돌면 Ua·Ub(U퍼뮤), 맞은편끼리 바뀌면 H, 옆에 붙은 면끼리 바뀌면 Z. 엣지 공식에 나오는 M은 L과 R 사이 가운데 층을 L과 같은 쪽으로 돌려요(M'는 거꾸로, M2는 반 바퀴).",
       setup: flip(algOf(TWO_LOOK_PLL, "2look-pll-h")),
       mask: "pll",
       quiz: {
@@ -556,7 +556,7 @@ const fullSets: Lesson = {
     },
     {
       kind: "try",
-      body: "윗면이 노란 큐브에서 PLL 하나로 끝내 보세요. 모르는 모양이면 2단계로 풀어도 돼요.",
+      body: "윗면이 노란 큐브에서, 공식 훈련에서 익힌 PLL이 있으면 하나로 끝내 보세요. 모르는 모양이면 2단계로 풀어요.",
       setup: { rule: "oll-solved" },
       goal: "ll",
       mask: "pll",
