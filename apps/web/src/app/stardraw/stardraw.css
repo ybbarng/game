@@ -1,0 +1,1752 @@
+/*
+ * 하늘의 별 따기 화면 연출. 별 따기 layout이 import한다(별 따기 모든 주소).
+ * 다른 게임도 쓰는 조각은 따로 둔다: 손짓 안내 stardraw/components/idle-hint.css, HDR 별빛 stardraw/hdr-glow.css
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/* 별 바구니: 분홍빛 바탕. 다 채우면 테두리가 금빛으로 바뀐다 */
+.sd-slip {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 228, 230, 0.11),
+    rgba(255, 228, 230, 0.04)
+  );
+  border: 1px solid rgba(253, 164, 175, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.25);
+  transition:
+    border-color 0.4s,
+    box-shadow 0.4s;
+}
+/* 별 바구니 위 가장자리의 절취선(종이 응모 용지 시절의 흔적)은 지웠다: 바구니는 서류가 아니라 손에 든 도구다(2026-11-03 사용자) */
+.sd-slip-full {
+  border-color: rgba(253, 230, 138, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(253, 230, 138, 0.18),
+    0 0 36px rgba(253, 230, 138, 0.16);
+}
+
+/* 감열지: 흰 종이, 위아래 톱니 가장자리, 아주 옅은 줄무늬 */
+/* 밤하늘 화면에서 눈부시지 않게, 하늘보다 한 단계 밝은 짙은 남회색 종이(감열지의 가는 결은 그대로) */
+.sd-paper {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.022) 0 2px,
+      transparent 2px 4px
+    ),
+    linear-gradient(180deg, #212a3c, #1a2232);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --tooth: 7px;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    bottom / calc(var(--tooth) * 2) var(--tooth) repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top
+    / calc(var(--tooth) * 2) var(--tooth) repeat-x,
+    linear-gradient(#000 0 0) center / 100% calc(100% - var(--tooth) * 2)
+    no-repeat;
+}
+
+/*
+ * 첫 화면 회차 카드: 지금 살아 있는 회차라는 표시. 맥박 점(응모 받는 중은 초록, 응모함은 금빛, 마감 뒤는 하늘빛)과
+ * 응모 받는 중에만 카드 테두리에 은은한 빛이 천천히 돈다
+ */
+.sd-live-dot {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--live, #6ee7b7);
+  box-shadow: 0 0 10px var(--live, #6ee7b7);
+}
+.sd-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--live, #6ee7b7);
+  animation: sd-live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.sd-live-dot[data-live="entered"] {
+  --live: #fde68a;
+}
+.sd-live-dot[data-live="drawing"] {
+  --live: #7dd3fc;
+}
+.sd-live-dot[data-live="drawing"]::after {
+  animation-duration: 3s;
+}
+@keyframes sd-live-ping {
+  75%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.sd-live-card[data-live="open"] {
+  border-color: rgba(110, 231, 183, 0.35);
+  animation: sd-live-glow 3.2s ease-in-out infinite;
+}
+@keyframes sd-live-glow {
+  50% {
+    border-color: rgba(110, 231, 183, 0.6);
+    box-shadow:
+      0 0 28px rgba(110, 231, 183, 0.14),
+      inset 0 0 18px rgba(110, 231, 183, 0.05);
+  }
+}
+
+/*
+ * 연출의 결(2026-10-31 사용자, Apple 식): 한 번에 하나씩, 단계마다 숨 쉴 틈, 들어올 때는 스프링처럼 감속하고
+ * 나타남은 투명도 + 살짝 커짐 + 아래에서 조금. 시간과 곡선은 fx-timing.ts의 FX·EASE가 정하고 여기는 모양만 둔다
+ * (시간이 필요한 규칙은 부품이 --fx-ms 같은 변수나 인라인 style로 넘긴다)
+ */
+.sd-id-drop {
+  animation: sd-id-drop var(--fx-ms, 700ms) cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sd-id-drop {
+  from {
+    transform: translateY(-70vh) scale(0.96);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+.sd-id-pocket {
+  animation: sd-id-pocket var(--fx-ms, 700ms) cubic-bezier(0.32, 0, 0.67, 0)
+    forwards;
+}
+@keyframes sd-id-pocket {
+  to {
+    transform: translateY(90vh) scale(0.96);
+  }
+}
+/* 아래 고정 자리의 문구·단추: 등록증이 자리 잡은 뒤 조용히 나타난다 */
+.sd-after {
+  animation: sd-text-in 500ms cubic-bezier(0.32, 0.72, 0, 1)
+    var(--fx-delay, 0ms) both;
+}
+
+/*
+ * 마우스로 쓰는 넓은 화면(StardrawNav WIDE_QUERY와 같은 조건): 본문을 조금 넓혀 하늘을 크게 본다.
+ * 글줄이 너무 길어지지 않게 42rem까지만(휴대폰 가로는 높이가 낮아 넓히지 않는다)
+ */
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .sd-wide {
+    max-width: 42rem;
+  }
+  /* 휴대폰에서만 보이는 것(PC는 위쪽 메뉴 줄이 같은 일을 한다). JS 판정 전 첫 그림부터 맞게 CSS로 */
+  .sd-phone-only {
+    display: none;
+  }
+}
+
+/* 연출 오버레이(StageOverlay·IdFlyer): 뒤는 어둡고 흐리게 부드럽게 덮고, 끝나면 걷힌다 */
+.sd-stage,
+.sd-stage-in {
+  animation: sd-stage-in 260ms ease-out both;
+}
+@keyframes sd-stage-in {
+  from {
+    opacity: 0;
+  }
+}
+.sd-stage-out,
+.sd-stage.sd-stage-out {
+  animation: sd-stage-out 320ms ease-in forwards;
+}
+@keyframes sd-stage-out {
+  to {
+    opacity: 0;
+  }
+}
+/* 오버레이 안쪽 여백(안전 여백 반영, 높이가 낮은 화면은 위를 줄인다) */
+.sd-stage-pad {
+  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 32px));
+  padding-bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+/* 위쪽 고정 자리 문구: 바뀔 때 투명도와 살짝 아래에서 */
+.sd-text-in {
+  animation: sd-text-in 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sd-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* 신분증 지문 단추: 등록증이 가운데에 다 올라온 뒤(--finger-delay) 나타나고, 은은하게 숨 쉬듯 빛난다 */
+.sd-finger-in {
+  animation: sd-text-in 420ms cubic-bezier(0.32, 0.72, 0, 1)
+    var(--finger-delay, 0ms) both;
+}
+.sd-finger-glow {
+  animation: sd-finger-glow 2.8s ease-in-out infinite;
+}
+@keyframes sd-finger-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 230, 138, 0);
+    border-color: rgba(253, 230, 138, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 18px 2px rgba(253, 230, 138, 0.28);
+    border-color: rgba(253, 230, 138, 0.7);
+  }
+}
+
+/* 등록 신청서 서명 칸의 지문 자리(docs/36 11-70): 아래 지문 단추(.sd-finger-glow)와 같은 길이·같은 박자로 숨 쉬듯
+   빛난다. 서식 위라 금빛 대신 인주색(rose-700)으로 */
+.sd-seal-glow {
+  animation: sd-seal-glow 2.8s ease-in-out infinite;
+}
+@keyframes sd-seal-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    box-shadow: 0 0 0 0 rgba(190, 18, 60, 0);
+    border-color: rgba(190, 18, 60, 0.3);
+  }
+  50% {
+    opacity: 0.95;
+    box-shadow: 0 0 12px 1px rgba(190, 18, 60, 0.28);
+    border-color: rgba(190, 18, 60, 0.6);
+  }
+}
+
+/* 등록 신청서 지문 도장(docs/36 11-65): 살짝 크게 떠 있다가 내려와 눌려 찍히고, 그 둘레로 인주가 번졌다가 옅게 남는다.
+   번짐은 도장이 닿은 뒤(약 45%)에 시작해 둘이 함께 움직이지 않는다 */
+.sd-fingerstamp {
+  animation: sd-fingerstamp var(--stamp-ms, 1000ms)
+    cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sd-fingerstamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(1.45);
+  }
+  40% {
+    opacity: 0.95;
+    transform: translateY(0) scale(0.95);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.sd-ink-spread {
+  opacity: 0.14;
+  transform: scale(1.18);
+  animation: sd-ink-spread var(--stamp-ms, 1000ms) ease-out both;
+}
+@keyframes sd-ink-spread {
+  0%,
+  42% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  58% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.14;
+    transform: scale(1.18);
+  }
+}
+/* 등록 신청서 성명·주소: 타자기처럼 한 칸씩(--type-at에 나타난다). 글자 하나는 바로 찍히고(짧은 움직임) 자리는 처음부터
+   차지해 줄이 밀리지 않는다. opacity 대신 visibility: 아주 짧은 opacity 애니메이션은 Chrome 합성 단계에서 끝 상태를
+   남기지 못해 앞 글자가 안 보인 채 남았다 */
+.sd-type {
+  animation: sd-type 60ms linear var(--type-at, 0ms) both;
+}
+@keyframes sd-type {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
+/* 신분증 확인 표시: 원이 그려지고 체크가 그어진다 */
+.sd-check {
+  opacity: 0;
+}
+.sd-check-on {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+.sd-check-circle,
+.sd-check-tick {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.sd-check-on .sd-check-circle {
+  animation: sd-draw calc(var(--check-ms, 800ms) * 0.6)
+    cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+.sd-check-on .sd-check-tick {
+  animation: sd-draw calc(var(--check-ms, 800ms) * 0.4)
+    cubic-bezier(0.32, 0.72, 0, 1) calc(var(--check-ms, 800ms) * 0.6) forwards;
+}
+@keyframes sd-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 응모 용지 칸: 별이 닿으면 펜으로 칠하듯 왼쪽부터 채워진다 */
+.sd-cell-ink {
+  background: linear-gradient(#fde68a, #fde68a) no-repeat left / 0% 100%;
+  animation: sd-ink var(--ink-ms, 260ms) ease-out forwards;
+  box-shadow: 0 0 14px rgba(253, 230, 138, 0.45);
+}
+/* 이미 칠한 칸(돌려받은 예측서) */
+.sd-cell-inked {
+  background: #fde68a;
+  box-shadow: 0 0 14px rgba(253, 230, 138, 0.45);
+}
+@keyframes sd-ink {
+  to {
+    background-size: 100% 100%;
+  }
+}
+/* 밀어 올리기를 기다리는 용지: 아주 은은하게 떠올랐다 내려앉기를 되풀이 */
+/* transform이 아니라 translate로 떠오른다: 자리(transform)를 덮어쓰지 않아 누르거나 끌 때 순간이동하지 않는다 */
+.sd-sheet-hint {
+  animation: sd-sheet-hint 2.6s ease-in-out infinite;
+}
+@keyframes sd-sheet-hint {
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+/* 높이가 낮은 화면(휴대폰 가로): 용지와 별 줄을 작게 */
+@media (max-height: 520px) {
+  .sd-cell {
+    height: 1.45rem;
+    font-size: 0.75rem;
+  }
+  .sd-submit-row {
+    max-width: 17rem;
+  }
+  .sd-submit-status {
+    min-height: 1.5rem;
+    font-size: 1rem;
+  }
+}
+/* 영수증을 기다리는 출력구: 숨 쉬듯 아주 조금 밝아졌다 어두워진다 */
+.sd-printer-slot.sd-printer-idle {
+  animation: sd-printer-idle 1.2s ease-in-out infinite alternate;
+}
+@keyframes sd-printer-idle {
+  to {
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.9),
+      0 0 12px rgba(253, 230, 138, 0.25);
+  }
+}
+
+/*
+ * 영수증 발급: 위쪽 출력구에서 일정한 속도로 부드럽게 내려와 끝에서만 감속한다(끊기는 걸음은 읽기 어려웠다,
+ * 2026-10-31 사용자). 출력구 아래는 가려 지난 만큼만 보이고, 종이 그림자와 슬롯으로 나오는 느낌을 준다.
+ * 시간은 Receipt가 --print-feed·--print-delay로 넘긴다(FX.printFeed)
+ */
+.sd-printer {
+  position: relative;
+  padding-top: 10px;
+}
+.sd-printer-slot {
+  position: absolute;
+  inset: 0 -6px auto;
+  z-index: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #05080f, #141b29 70%, #273246);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.9),
+    0 6px 10px -4px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: sd-slot-out 0.6s ease
+    calc(var(--print-delay, 150ms) + var(--print-feed, 4000ms)) forwards;
+}
+.sd-printer-feed {
+  overflow: hidden;
+  /* 톱니 그림자가 잘리지 않게 아래로는 넉넉히 */
+  padding-bottom: 40px;
+  margin-bottom: -40px;
+}
+.sd-print {
+  animation: sd-print var(--print-feed, 4000ms) cubic-bezier(0.3, 0.3, 0.2, 1)
+    var(--print-delay, 150ms) both;
+}
+@keyframes sd-print {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sd-slot-out {
+  to {
+    opacity: 0;
+  }
+}
+/*
+ * 실루엣 등록증으로 기다리다 확인되면: 같은 자리에 놓인 실제 등록증의 칸이 차례로 채워진다
+ * (성명 → 사진 → 등록번호 → 주소 → 발급일, 배경과 머리는 그대로)
+ */
+.sd-id-fill dd,
+.sd-id-fill [data-avatar],
+.sd-id-fill [data-ghost],
+.sd-id-fill [data-issue-date] {
+  animation: sd-id-fill 420ms ease-out both;
+}
+.sd-id-fill [data-avatar] {
+  animation-delay: 80ms;
+}
+.sd-id-fill dd:nth-of-type(2) {
+  animation-delay: 160ms;
+}
+.sd-id-fill dd:nth-of-type(3) {
+  animation-delay: 240ms;
+}
+.sd-id-fill [data-issue-date],
+.sd-id-fill [data-ghost] {
+  animation-delay: 320ms;
+}
+@keyframes sd-id-fill {
+  from {
+    opacity: 0;
+  }
+}
+/* 돌려받은 응모 용지 위 「접수 반송」 도장: 용지가 다 나온 뒤 위에서 찍힌다(--stamp-delay) */
+.sd-stamp {
+  transform: translate(-50%, -50%) rotate(-12deg);
+  opacity: 0.92;
+  animation: sd-stamp 0.35s cubic-bezier(0.3, 1.4, 0.5, 1)
+    var(--stamp-delay, 0ms) both;
+}
+@keyframes sd-stamp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1.8);
+  }
+  to {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1);
+  }
+}
+
+/* 데모의 패스키 흉내 시트: 아래에서 올라오고, 잠금 그림 위로 빛이 훑고 지나간다 */
+.sd-unlock-in {
+  animation: sd-unlock-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes sd-unlock-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.sd-unlock-scan {
+  top: 10%;
+  opacity: 0;
+  animation: sd-unlock-scan 1.6s ease-in-out infinite;
+}
+@keyframes sd-unlock-scan {
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    top: 88%;
+    opacity: 0;
+  }
+}
+.sd-unlock-check {
+  animation: sd-unlock-check 0.3s ease-out both;
+}
+@keyframes sd-unlock-check {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* 기다리는 동안 은은한 맥동 */
+.sd-breathe {
+  animation: sd-breathe 2.6s ease-in-out infinite;
+}
+@keyframes sd-breathe {
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(253, 230, 138, 0.25),
+      0 0 28px rgba(253, 230, 138, 0.14);
+  }
+}
+
+.sd-pop {
+  animation: sd-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes sd-pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+.sd-drop {
+  animation: sd-drop 0.55s cubic-bezier(0.25, 1.4, 0.5, 1) both;
+}
+@keyframes sd-drop {
+  from {
+    transform: translateY(-40px) scale(0.6);
+    opacity: 0;
+  }
+}
+/* 관측 마무리: 작은 순으로 다시 놓은 공이 하나씩 다시 빛난다(DrawView) */
+.sd-ball-shine {
+  animation: sd-ball-shine 0.6s ease-out both;
+}
+@keyframes sd-ball-shine {
+  40% {
+    transform: scale(1.18);
+    filter: brightness(1.35) drop-shadow(0 0 10px rgba(255, 236, 190, 0.85));
+  }
+}
+.sd-rise {
+  animation: sd-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes sd-rise {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+/*
+ * 번호 공: 스스로 빛나는 별처럼. 가운데가 가장 뜨겁고 밝고 가장자리로 갈수록 어둡고 붉어진다(가장자리 어두워짐).
+ * 몸통(::before) 표면에는 해의 쌀알 무늬처럼 밝고 어두운 얼룩이 두 겹으로 반대 방향으로 흘러 끓는 듯 이글거리고,
+ * 둘레(::after)로 그 별빛이 매끈하게 번지며 고르지 않게 작게 반짝인다. 빛줄기 무늬는 두지 않는다(전광판처럼 보인다).
+ * 공 자체에는 animation을 두지 않아 등장 움직임(sd-drop·sd-pop)을 덮어쓰지 않는다. 맞힌 번호의 ring과도 겹치지 않는다.
+ * 색은 --ball(그 별의 빛깔을 진하게, sky.ts ballColor)
+ */
+.sd-ball {
+  position: relative;
+  isolation: isolate;
+}
+.sd-ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 50%;
+  /* 얼룩: 잡음 무늬 두 장(밝은 쪽·어두운 쪽), 그 아래 가장자리 어두워짐 */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='432' height='432'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.13889' numOctaves='1' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.98 0 0 0 0 0.94 0 0 0 1.1 -0.55'/%3E%3C/filter%3E%3Crect width='432' height='432' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='432' height='432'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.12903' numOctaves='1' seed='29'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.7 -0.36'/%3E%3C/filter%3E%3Crect width='432' height='432' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(
+      circle at 50% 50%,
+      color-mix(in srgb, var(--ball) 30%, #fff) 0%,
+      color-mix(in srgb, var(--ball) 70%, #fff) 34%,
+      var(--ball) 68%,
+      color-mix(in srgb, var(--ball) 62%, #3a0d00) 100%
+    );
+  background-size:
+    432px 432px,
+    432px 432px,
+    100% 100%;
+  background-repeat: no-repeat;
+  animation: sd-ball-boil 150s ease-in-out infinite alternate;
+  animation-delay: var(--boil-delay, 0s);
+}
+.sd-ball::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -2;
+  border-radius: 50%;
+  /* 공 가장자리(이 상자 반지름의 --edge 자리)부터 바로 번진다 */
+  --edge: 52%;
+  background: radial-gradient(
+    circle closest-side,
+    color-mix(in srgb, var(--ball) 75%, #fff) var(--edge),
+    color-mix(in srgb, var(--ball) 38%, transparent) calc(var(--edge) + 15%),
+    transparent 100%
+  );
+  animation: sd-ball-twinkle 2.7s steps(1, end) infinite;
+  animation-delay: var(--twinkle-delay, 0s);
+}
+/* 맞힌 번호: 고리 대신 빛이 더 멀리 번진다 */
+.sd-ball-hit::after {
+  /* 고리 없이 빛만으로 알아보게: 더 밝게(흰빛 쪽), 더 멀리 번진다(2026-10-31 UX 시험: 맞힌 공이 안 보였다) */
+  inset: -80%;
+  --edge: 38%;
+  background: radial-gradient(
+    circle closest-side,
+    color-mix(in srgb, var(--ball) 45%, #fff) var(--edge),
+    color-mix(in srgb, var(--ball) 75%, transparent) calc(var(--edge) + 20%),
+    transparent 100%
+  );
+}
+/* 촘촘한 얼룩을 화면 크기 그대로 크게 한 장씩(늘이지도 되풀이하지도 않아 이음매가 없다), 두 장이 서로 다른 방향으로 천천히 오간다 */
+@keyframes sd-ball-boil {
+  from {
+    background-position:
+      -40px -40px,
+      -340px -60px,
+      0 0;
+  }
+  to {
+    background-position:
+      -340px -300px,
+      -60px -320px,
+      0 0;
+  }
+}
+/* 반짝임: 주기 없이 보이게 고르지 않은 밝기를 계단으로(숨 쉬듯 커졌다 작아지지 않는다) */
+@keyframes sd-ball-twinkle {
+  0% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.88;
+  }
+  15% {
+    opacity: 0.97;
+  }
+  27% {
+    opacity: 0.91;
+  }
+  38% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 0.86;
+  }
+  53% {
+    opacity: 0.96;
+  }
+  67% {
+    opacity: 0.9;
+  }
+  79% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 0.92;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-ball::after,
+  .sd-ball::before {
+    animation: none;
+  }
+}
+
+/* 응모권 칸: 6개를 다 고른 뒤 또 누르면 짧게 흔들린다 */
+.sd-shake {
+  animation: sd-shake 0.36s ease-in-out;
+}
+@keyframes sd-shake {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-shake {
+    animation: none;
+  }
+}
+
+.sd-glory {
+  animation: sd-glory 2.4s ease-in-out infinite;
+}
+@keyframes sd-glory {
+  50% {
+    box-shadow: 0 0 60px rgba(253, 230, 138, 0.45);
+  }
+}
+
+/*
+ * 당첨 축하(stardraw/celebrate.ts, Celebration.tsx): 나만의 별자리·반짝임 고리·별똥별·당첨 직인.
+ * 기본 모습이 마지막 모습이고 움직임은 처음 모습에서 들어온다(지연 동안은 처음 모습). 움직임 줄이기면 바로 마지막 모습이다.
+ */
+.sd-cel-star {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sd-cel-star 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes sd-cel-star {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+}
+/* 첫 화면 정답 예시(GameIntro): 별·선·번호 공이 차례로 서서히 켜지고, 거꾸로 서서히 꺼진다 */
+.sd-intro-line {
+  stroke: rgba(253, 230, 138, 0.85);
+  stroke-width: 0.55;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  filter: drop-shadow(0 0 1.2px rgba(253, 230, 138, 0.9));
+  transition: stroke-dashoffset 0.45s ease-in-out;
+}
+.sd-intro-ball {
+  display: inline-block;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity 0.5s ease-in-out,
+    transform 0.5s ease-in-out;
+}
+.sd-intro-ball[data-shown] {
+  opacity: 1;
+  transform: scale(1);
+}
+/* 다 보이면 별이 차례로 한 번씩 반짝일 때(별 빛은 하늘 그림이 그린다) 그 공도 살짝 커졌다 돌아온다 */
+.sd-intro-pop {
+  display: inline-block;
+}
+.sd-intro-pop[data-twinkle] {
+  animation: sd-intro-pop 0.45s ease-out;
+}
+@keyframes sd-intro-pop {
+  40% {
+    transform: scale(1.15);
+  }
+}
+/* 사라질 때는 전체가 한 번에 서서히(GameIntro INTRO_TIMING.fade와 같게) */
+.sd-intro-fade {
+  transition: opacity 0.7s ease-in-out;
+}
+.sd-intro-fade[data-fading] {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-intro-line,
+  .sd-intro-ball,
+  .sd-intro-fade {
+    transition: none;
+  }
+  .sd-intro-pop[data-twinkle] {
+    animation: none;
+  }
+}
+
+.sd-cel-line {
+  stroke: rgba(253, 230, 138, 0.85);
+  stroke-width: 0.55;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 1.2px rgba(253, 230, 138, 0.9));
+  animation: sd-cel-line 0.34s ease-out both;
+}
+@keyframes sd-cel-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+/* 별자리가 다 생기면 별마다 십자 빛줄기가 길게 뻗었다 사라진다 */
+.sd-cel-ring {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sd-cel-ring 0.9s ease-out backwards;
+}
+@keyframes sd-cel-ring {
+  from {
+    opacity: 1;
+    transform: scale(0.25);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+.sd-cel-meteor {
+  position: absolute;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(191, 219, 254, 0.5) 60%,
+    #fff 100%
+  );
+  box-shadow: 0 0 6px rgba(219, 234, 254, 0.8);
+  transform-origin: 0 50%;
+  opacity: 0;
+  animation: sd-cel-meteor 1.1s cubic-bezier(0.3, 0.1, 0.4, 1) backwards;
+}
+@keyframes sd-cel-meteor {
+  from {
+    opacity: 0;
+    transform: rotate(var(--sd-angle)) translateX(0) scaleX(0.3);
+  }
+  15% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--sd-angle)) translateX(260%) scaleX(1);
+  }
+}
+.sd-cel-stamp {
+  transform: rotate(-12deg);
+  animation: sd-cel-stamp 0.5s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+@keyframes sd-cel-stamp {
+  from {
+    opacity: 0;
+    transform: rotate(-4deg) scale(2.6);
+  }
+  70% {
+    opacity: 1;
+    transform: rotate(-12deg) scale(0.92);
+  }
+  85% {
+    transform: rotate(-12deg) scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-12deg) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-cel-star,
+  .sd-cel-line,
+  .sd-cel-ring,
+  .sd-cel-stamp {
+    animation: none;
+  }
+  .sd-cel-meteor {
+    display: none;
+  }
+}
+
+/* 보안 배우기 랑데부 해싱: 이사한 우주인이 몇 번 반짝인다(끝나도 흰 테두리는 남는다) */
+.sd-moved {
+  animation: sd-moved 0.5s ease-in-out 4 both;
+}
+@keyframes sd-moved {
+  50% {
+    box-shadow: 0 0 12px 3px rgba(255, 255, 255, 0.85);
+    transform: scale(1.18);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-moved {
+    animation: none;
+  }
+}
+
+/* 결과 봉투: 봉한 편지 */
+.sd-envelope {
+  position: relative;
+  background: linear-gradient(180deg, #f5ead2, #e9d9b5);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+.sd-envelope::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 46%;
+  background: linear-gradient(180deg, #e3cfa3, #d9c08b);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+.sd-envelope::after {
+  content: "★";
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #b45309;
+  font-size: 14px;
+}
+
+/* 우주국 편지 봉투: 결과 봉투와 같은 종이. 봉인은 용골자리를 눌러 찍은 실링왁스(WaxSeal, 2026-11-02)라 별 표시는 지운다 */
+.sd-letter-envelope::after {
+  content: none;
+  top: 46%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: #b91c1c;
+  color: #fde8e8;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* 별 세 개가 맞으면 초록불이 하늘 전체로 번진다 */
+.sd-green {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(74, 222, 128, 0.42),
+    rgba(74, 222, 128, 0.12) 55%,
+    transparent 75%
+  );
+  animation: sd-green 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  box-shadow: inset 0 0 40px rgba(74, 222, 128, 0.45);
+}
+@keyframes sd-green {
+  from {
+    clip-path: circle(0% at 50% 50%);
+    opacity: 0.2;
+  }
+  to {
+    clip-path: circle(80% at 50% 50%);
+    opacity: 1;
+  }
+}
+
+/*
+ * 우주인 등록증: 두께가 있는 카드 한 장(AstronautCard).
+ * 돌림판(.sd-idcard-flip)의 숫자 변수가 모든 움직임을 정한다. 숫자로 등록해 두어 손을 떼면 부드럽게 돌아간다.
+ *   --ang 좌우 각(도, 뒤집기까지 쌓인다) · --rx 위아래 각(도) · --px·--py 빛 위치(0~1) · --ht 기울인 세기(0~1)
+ * 면마다 --drift(가만히 있을 때 천천히 일렁이는 값)를 더해 빛 위치 --lx·--ly, 색 각 --la, 세기 --li를 만든다.
+ */
+@property --ang {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --rx {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --px {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.5;
+}
+@property --py {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.5;
+}
+@property --ht {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --drift {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.5;
+}
+.sd-idcard-stage {
+  /* 카드 위에서 시작한 끌기는 카드를 기울인다(페이지 스크롤은 카드 밖에서) */
+  touch-action: none;
+}
+.sd-idcard-flip {
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ang) * 1deg));
+  transition:
+    --ang 0.7s cubic-bezier(0.25, 0.8, 0.25, 1),
+    --rx 0.5s cubic-bezier(0.25, 0.8, 0.25, 1),
+    --px 0.6s ease-out,
+    --py 0.6s ease-out,
+    --ht 0.6s ease-out;
+}
+.sd-idcard-flip[data-dragging] {
+  transition: none;
+}
+/* 옆면 띠 조각: 가운데는 흰 플라스틱 심, 앞뒷면 쪽 끝은 인쇄 색(가로 방향이 카드 두께) */
+.sd-idcard-edge {
+  position: absolute;
+  background: linear-gradient(
+    90deg,
+    #2a3a6c 0 14%,
+    #eef2fa 14% 50%,
+    #b9c3d8 50% 86%,
+    #2a3a6c 86% 100%
+  );
+  pointer-events: none;
+}
+.sd-idcard {
+  container-type: inline-size;
+  background:
+    radial-gradient(
+      120% 90% at 100% 0%,
+      rgba(120, 160, 255, 0.18),
+      transparent 55%
+    ),
+    repeating-radial-gradient(
+      circle at 12% 110%,
+      rgba(190, 210, 255, 0.07) 0 1px,
+      transparent 1px 7px
+    ),
+    linear-gradient(135deg, #1b2b55 0%, #101a36 55%, #1d1440 100%);
+  border: 1px solid rgba(205, 220, 255, 0.28);
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* 빛: 포인터 위치에 가만히 있을 때의 일렁임을 더한다(기울일수록 일렁임은 줄고 손을 따른다) */
+  --lx: calc(var(--px) + (var(--drift) - 0.5) * 0.7 * (1 - var(--ht)));
+  --ly: calc(var(--py) + (var(--drift) - 0.5) * -0.35 * (1 - var(--ht)));
+  --la: calc((var(--lx) - 0.5) * 320 + (var(--ly) - 0.5) * 160);
+  --li: max(var(--ht), var(--boost, 0));
+  animation: sd-drift 6s ease-in-out infinite alternate;
+}
+.sd-idcard-front {
+  transform: translateZ(0.7cqw);
+  --sf: var(--s);
+}
+.sd-idcard-back {
+  transform: rotateY(180deg) translateZ(0.7cqw);
+  --sf: calc(-1 * var(--s));
+}
+.sd-idcard-face {
+  /* 좌우 각·위아래 각의 사인: 멀어지는 쪽 가장자리가 어두워진다 */
+  --s: sin(calc(var(--ang) * 1deg));
+  --c: sin(calc(var(--rx) * 1deg));
+}
+.sd-idcard[data-owner="ok"] {
+  --boost: 0.8;
+  animation-duration: 2.2s;
+  box-shadow:
+    0 0 0 2px rgba(110, 231, 183, 0.75),
+    0 22px 44px rgba(0, 0, 0, 0.45),
+    0 0 36px rgba(110, 231, 183, 0.3);
+}
+@keyframes sd-drift {
+  from {
+    --drift: 0;
+  }
+  to {
+    --drift: 1;
+  }
+}
+/* 기울기에 따른 그늘과 빛: 멀어지는 가장자리는 어둡고 다가오는 쪽은 밝다 */
+.sd-idcard-shade {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to right,
+      rgb(255 255 255 / calc(max(0, -1 * var(--sf)) * 0.28)),
+      transparent 40% 60%,
+      rgb(2 4 16 / calc(max(0, var(--sf)) * 0.6))
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(2 4 16 / calc(max(0, var(--c)) * 0.5)),
+      transparent 35% 65%,
+      rgb(2 4 16 / calc(max(0, -1 * var(--c)) * 0.5))
+    );
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / calc(0.1 + var(--li) * 0.25));
+}
+.sd-idcard-back > .sd-idcard-shade {
+  background:
+    linear-gradient(
+      to left,
+      rgb(255 255 255 / calc(max(0, -1 * var(--sf)) * 0.28)),
+      transparent 40% 60%,
+      rgb(2 4 16 / calc(max(0, var(--sf)) * 0.6))
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(2 4 16 / calc(max(0, var(--c)) * 0.5)),
+      transparent 35% 65%,
+      rgb(2 4 16 / calc(max(0, -1 * var(--c)) * 0.5))
+    );
+}
+/* 기요셰: 가는 선(가면) 속 무지개가 기울기를 따라 미끄러진다 */
+.sd-guilloche {
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  background: linear-gradient(
+    100deg,
+    #ff7ccf,
+    #ffd36e,
+    #7bffb0,
+    #6ecbff,
+    #b18cff,
+    #ff7ccf,
+    #ffd36e,
+    #7bffb0
+  );
+  background-size: 300% 100%;
+  background-position: calc(var(--lx) * 100%) 50%;
+  mix-blend-mode: screen;
+  opacity: calc(0.28 + var(--li) * 0.4);
+}
+/* 무지개 필름: 띠 두 줄과 회절 결이 빛 위치를 따라 옮겨 다닌다(옮김은 transform이라 다시 그리지 않는다) */
+.sd-holo-film {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: calc(0.2 + var(--li) * 0.6);
+}
+.sd-holo-band {
+  position: absolute;
+  inset: -40% -110%;
+  background:
+    repeating-linear-gradient(
+      62deg,
+      rgba(255, 255, 255, 0.06) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(
+      115deg,
+      transparent 0 21%,
+      rgba(255, 120, 210, 0.5) 25%,
+      rgba(255, 220, 120, 0.5) 29%,
+      rgba(130, 255, 190, 0.45) 33%,
+      rgba(120, 210, 255, 0.5) 37%,
+      rgba(190, 150, 255, 0.5) 41%,
+      transparent 45% 56%,
+      rgba(255, 120, 210, 0.32) 60%,
+      rgba(255, 220, 120, 0.32) 63%,
+      rgba(130, 255, 190, 0.3) 66%,
+      rgba(120, 210, 255, 0.32) 69%,
+      rgba(190, 150, 255, 0.32) 72%,
+      transparent 76%
+    );
+  transform: translate3d(
+    calc((0.5 - var(--lx)) * 42%),
+    calc((0.5 - var(--ly)) * 22%),
+    0
+  );
+  will-change: transform;
+}
+/* 반짝이: 무리 셋이 서로 다른 기울기에서 빛난다 */
+.sd-holo-glitter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.sd-holo-glitter > div {
+  position: absolute;
+  inset: 0;
+  background-size: 21cqw 21cqw;
+  background-position: calc(var(--k) * 7cqw) calc(var(--k) * 5cqw);
+  opacity: calc(
+    0.05 +
+    var(--li) *
+    0.85 *
+    max(0, cos((var(--lx) * 2.4 + var(--ly) * 1.4 + var(--k) / 3) * 1turn))
+  );
+}
+.sd-idcard[data-owner="ok"] .sd-holo-glitter > div {
+  animation: sd-glint 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--k) * -0.47s);
+}
+@keyframes sd-glint {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+/* 은박 패치: 은빛 바탕 + 도는 무지개 + 회절 살 + 미끄러지는 반사광 + 새김 무늬.
+   사진 모서리에 겹치므로 반투명(평소 0.55, 기울이면 더 또렷하게) */
+.sd-foil {
+  border-radius: 50%;
+  opacity: calc(0.55 + var(--li) * 0.3);
+  background:
+    var(--foil-art) center / 100% 100% no-repeat,
+    radial-gradient(
+      circle at calc(var(--lx) * 100%) calc(var(--ly) * 100%),
+      rgba(255, 255, 255, 0.85),
+      rgba(255, 255, 255, 0) 48%
+    ),
+    repeating-conic-gradient(
+      from calc(var(--la) * 0.6deg),
+      rgba(255, 255, 255, 0) 0deg 5deg,
+      rgba(255, 255, 255, 0.55) 6deg 7deg,
+      rgba(255, 255, 255, 0) 8deg 12deg
+    ),
+    conic-gradient(
+      from calc(var(--la) * 1.4deg),
+      #ff8fd6,
+      #ffe07a,
+      #8effc4,
+      #7fd6ff,
+      #c4a2ff,
+      #ff8fd6
+    ),
+    linear-gradient(
+      calc(110deg + var(--la) * 0.4deg),
+      #7c869a,
+      #f2f5fb 34%,
+      #98a2b5 50%,
+      #ffffff 66%,
+      #808a9e
+    );
+  background-blend-mode: normal, soft-light, overlay, overlay, normal;
+  box-shadow:
+    0 0 0 0.25cqw rgba(235, 240, 255, 0.45),
+    0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.4),
+    inset 0 0 0.8cqw rgba(20, 30, 60, 0.35);
+  filter: saturate(calc(1 + var(--li) * 0.6));
+}
+/* 키네그램: 사진 위 투명 무지개 속 용골자리. 가만히 있어도 비치고 기울이면 또렷해진다 */
+.sd-idcard-kine {
+  right: 6cqw;
+  top: 19cqw;
+  width: 21cqw;
+  aspect-ratio: 100 / 60;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  background: linear-gradient(
+    100deg,
+    #ff6ec7,
+    #ffd36e,
+    #7bffb0,
+    #6ecbff,
+    #b18cff,
+    #ff6ec7
+  );
+  background-size: 300% 100%;
+  background-position: calc(var(--lx) * 100%) 50%;
+  mix-blend-mode: screen;
+  opacity: calc(0.22 + var(--li) * 0.7);
+}
+/* 용골자리 선 위 작은 별: 평소엔 희미하고, 본인 확인 뒤 짧고 작게 고르게 반짝인다 */
+.sd-twinkle {
+  fill: #e6f0ff;
+  opacity: 0.12;
+}
+.sd-idcard[data-owner="ok"] .sd-twinkle {
+  animation-name: sd-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes sd-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 등록증: 돌지 않고 바로 바뀌며, 홀로그램은 멈춘 은빛 무지개 */
+  .sd-idcard-flip {
+    transition: none;
+  }
+  .sd-idcard,
+  .sd-idcard[data-owner="ok"] .sd-holo-glitter > div,
+  .sd-idcard[data-owner="ok"] .sd-twinkle,
+  .sd-print,
+  .sd-printer-slot,
+  .sd-stamp,
+  .sd-id-fill dd,
+  .sd-id-fill [data-avatar],
+  .sd-id-fill [data-ghost],
+  .sd-id-fill [data-issue-date],
+  .sd-id-drop,
+  .sd-id-pocket,
+  .sd-stage,
+  .sd-stage-in,
+  .sd-text-in,
+  .sd-after,
+  .sd-sheet-hint,
+  .sd-finger-in,
+  .sd-finger-glow,
+  .sd-seal-glow,
+  .sd-fingerstamp,
+  .sd-ink-spread,
+  .sd-type,
+  .sd-printer-idle,
+  .sd-live-dot::after,
+  .sd-live-card,
+  .sd-unlock-in,
+  .sd-unlock-scan,
+  .sd-unlock-check,
+  .sd-breathe,
+  .sd-pop,
+  .sd-drop,
+  .sd-ball-shine,
+  .sd-rise,
+  .sd-glory,
+  .sd-green {
+    animation: none;
+  }
+  .sd-printer-slot {
+    opacity: 0;
+  }
+}
+
+/* 회차 방(docs/36 11-23): 언덕, 얼굴, 풍등 말풍선, 카운트다운, 별똥별 */
+.sd-room-hill {
+  background:
+    radial-gradient(120% 70% at 50% 100%, #0d1426 60%, transparent 61%),
+    linear-gradient(to bottom, transparent, #070b16 85%);
+}
+/* 언덕 아래 어둠: 신분증을 내기 전 내가 숨어 있는 곳(언덕 바로 밑에 이어진다) */
+.sd-room-under {
+  background: linear-gradient(to bottom, #070b16 55%, transparent);
+}
+.sd-room-below {
+  background: #0a1020;
+  box-shadow: 0 0 18px 6px #070b16;
+}
+.sd-room-face {
+  animation: sd-room-face-in 0.9s cubic-bezier(0.32, 0.72, 0, 1) both;
+  background: #0f1d3a;
+  transition:
+    box-shadow 0.6s ease,
+    transform 0.6s ease;
+}
+@keyframes sd-room-face-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+}
+.sd-room-face-glow {
+  box-shadow:
+    0 0 0 2px rgba(255, 224, 160, 0.9),
+    0 0 22px 6px rgba(255, 214, 140, 0.55);
+  transform: translateY(-4px);
+}
+.sd-room-face-twinkle {
+  animation: sd-room-twinkle 1.2s ease-out;
+}
+@keyframes sd-room-twinkle {
+  30% {
+    box-shadow: 0 0 26px 8px rgba(200, 225, 255, 0.8);
+  }
+}
+/*
+ * 관측이 끝난 뒤(docs/36 11-44): 언덕에서 가장 높은 등수인 얼굴은 금빛 테두리가 천천히 숨 쉬듯 빛난다.
+ * 등수 표지(.sd-room-rank)는 결과 카드가 올라온 다음 조용히 나타난다
+ */
+.sd-room-face-best {
+  border-color: #fcd34d;
+  box-shadow:
+    0 0 0 2px #fcd34d,
+    0 0 18px 4px rgba(252, 211, 77, 0.55);
+  animation:
+    sd-room-face-in 0.9s cubic-bezier(0.32, 0.72, 0, 1) both,
+    sd-room-best 3.2s ease-in-out 0.6s infinite;
+}
+@keyframes sd-room-best {
+  50% {
+    box-shadow:
+      0 0 0 3px #fde68a,
+      0 0 30px 10px rgba(252, 211, 77, 0.7);
+  }
+}
+.sd-room-rank {
+  animation: sd-text-in 700ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* 1~3등 소감: 하늘 가운데에 크게, 천천히 떠올라 오래 머문 뒤 흐려진다(RoomView SPEECH_MS와 같은 9초) */
+.sd-speech {
+  animation: sd-speech 9s ease-in-out forwards;
+}
+@keyframes sd-speech {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1);
+  }
+}
+/* 같은 빠르기로 곧게 떠오른다(빠르기가 같아야 먼저 뜬 풍등을 따라잡아 겹치지 않는다, RoomView LANTERN_CLEAR_MS) */
+.sd-lantern {
+  animation: sd-lantern 7s linear forwards;
+  transform-origin: 50% 100%;
+}
+@keyframes sd-lantern {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  6% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-260px);
+  }
+}
+.sd-room-count {
+  animation: sd-room-count 1s cubic-bezier(0.32, 0.72, 0, 1) both;
+  text-shadow: 0 0 40px rgba(255, 220, 150, 0.6);
+}
+@keyframes sd-room-count {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+}
+/*
+ * 별똥별(언덕에서 보낸 응원): 하늘 위쪽을 왼쪽 위에서 오른쪽 아래로 비스듬히 가로지른다. 밝은 머리와 점점 흐려지는 꼬리라
+ * 별자리 선(가는 흰 선)과 헷갈리지 않는다(예전 1px 선 하나는 별자리 선 사이에서 보이지 않았다, 2026-11-02 사용자).
+ * 바깥(.sd-room-meteor)은 자리와 기울기, 안쪽(.sd-room-meteor-streak)이 그 기울기 방향으로 날아간다. 시간은 RoomView METEOR_MS
+ */
+.sd-room-meteor {
+  width: 60%;
+  height: 0;
+  transform: rotate(22deg);
+  transform-origin: 0 50%;
+}
+.sd-room-meteor-streak {
+  position: absolute;
+  left: 0;
+  top: -1.5px;
+  width: 7.5rem;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    rgba(180, 205, 255, 0),
+    rgba(200, 220, 255, 0.35) 55%,
+    rgba(255, 255, 255, 0.95)
+  );
+  animation: sd-room-meteor 2.4s cubic-bezier(0.3, 0.2, 0.4, 1) forwards;
+}
+.sd-room-meteor-streak::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow:
+    0 0 8px 3px rgba(255, 255, 255, 0.85),
+    0 0 18px 6px rgba(170, 200, 255, 0.55);
+}
+@keyframes sd-room-meteor {
+  from {
+    opacity: 0;
+    transform: translateX(-30%);
+  }
+  15% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(150%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-room-face,
+  .sd-room-face-twinkle,
+  .sd-room-face-best,
+  .sd-room-rank,
+  .sd-room-count,
+  .sd-room-meteor-streak {
+    animation: none;
+  }
+  .sd-lantern {
+    animation: sd-lantern-still 7s linear forwards;
+  }
+  .sd-speech {
+    animation: sd-speech-still 9s linear forwards;
+  }
+  @keyframes sd-speech-still {
+    0%,
+    90% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes sd-lantern-still {
+    0%,
+    85% {
+      opacity: 1;
+      transform: translateY(-40px);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-40px);
+    }
+  }
+}
+
+/* 우주국 방송 토스트: 위에서 내려오고, 손을 떼면 제자리로 돌아간다 */
+.sd-broadcast {
+  animation: sd-broadcast-in 0.7s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
+}
+@keyframes sd-broadcast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-broadcast {
+    animation: none;
+  }
+}
+
+/* 우주국 인사(IntroGate, 2026-11-02): 가운데 인사가 천천히 떠오르고, 물러날 때는 위로 사라지며 뒤의 홈이 드러난다 */
+@keyframes sd-intro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-intro .sd-intro-line {
+  animation: sd-intro-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: 150ms;
+}
+.sd-intro {
+  transition: opacity 700ms ease;
+}
+.sd-intro-leave {
+  opacity: 0;
+  pointer-events: none;
+}
+.sd-intro-leave [data-intro-shell] {
+  transition: transform 700ms cubic-bezier(0.4, 0, 0.6, 1);
+  transform: translateY(-24px);
+}
+
+/* 홈 펼치기(2026-11-02 사용자): 위에서부터 차례로. 조각마다 제자리를 차지한 채 투명했다가 나타나 레이아웃이 밀리지 않는다 */
+@keyframes sd-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-unfold-all > * {
+  animation: sd-unfold 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: 1200ms;
+}
+.sd-unfold-all > :nth-child(1) {
+  animation-delay: 0ms;
+}
+.sd-unfold-all > :nth-child(2) {
+  animation-delay: 150ms;
+}
+.sd-unfold-all > :nth-child(3) {
+  animation-delay: 300ms;
+}
+.sd-unfold-all > :nth-child(4) {
+  animation-delay: 450ms;
+}
+.sd-unfold-all > :nth-child(5) {
+  animation-delay: 600ms;
+}
+.sd-unfold-all > :nth-child(6) {
+  animation-delay: 750ms;
+}
+.sd-unfold-all > :nth-child(7) {
+  animation-delay: 900ms;
+}
+.sd-unfold-all > :nth-child(8) {
+  animation-delay: 1050ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-intro .sd-intro-line,
+  .sd-unfold-all > * {
+    animation: none;
+  }
+}
+
+/* 우주국 편지(2026-11-02): 봉투가 위에서 내려와 숨 쉬듯 떠 있다가, 누르면 덮개가 젖혀지며 봉인이 풀리고 봉투가 물러난다 */
+@keyframes sd-env-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-60vh) rotate(-6deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(8px) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sd-env-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.sd-env-drop {
+  perspective: 600px;
+  animation:
+    sd-env-drop 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    sd-env-float 3200ms ease-in-out 1100ms infinite;
+}
+@keyframes sd-env-flap {
+  to {
+    transform: rotateX(180deg);
+  }
+}
+@keyframes sd-env-seal {
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+@keyframes sd-env-away {
+  to {
+    opacity: 0;
+    transform: translateY(40px) scale(0.92);
+  }
+}
+.sd-env-open {
+  perspective: 600px;
+  animation: sd-env-away 450ms ease-in 750ms both;
+}
+.sd-env-open::before {
+  transform-origin: top;
+  animation: sd-env-flap 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.sd-env-open .sd-env-seal {
+  animation: sd-env-seal 350ms ease-out both;
+}
+
+/* 편지지: 옅은 줄이 있는 미색 종이, 명조 글꼴. 봉투에서 나와 위에서부터 펼쳐진다 */
+.sd-letter-paper {
+  font-family:
+    "Nanum Myeongjo", "AppleMyungjo", "Batang", "Noto Serif KR",
+    "Noto Serif CJK KR", serif;
+  background-color: #f6f0e1;
+  background-image: radial-gradient(
+    120% 90% at 50% 40%,
+    transparent 60%,
+    rgba(150, 115, 60, 0.12)
+  );
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 6px #f6f0e1,
+    inset 0 0 0 7px rgba(150, 115, 60, 0.35);
+}
+@keyframes sd-letter-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scaleY(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sd-letter-unfold {
+  transform-origin: top;
+  animation: sd-letter-unfold 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-env-drop,
+  .sd-env-open,
+  .sd-env-open::before,
+  .sd-env-open .sd-env-seal,
+  .sd-letter-unfold {
+    animation: none;
+  }
+}
+
+/* 처음 온 사람이 편지를 읽는 동안 홈을 숨겨 둔다(편지 오버레이만 보인다). 편지가 닫히면 sd-unfold-all로 펼친다 */
+.sd-unfold-hold > * {
+  visibility: hidden;
+}
+.sd-unfold-hold [data-stage-overlay] {
+  visibility: visible;
+}
+
+/* 키가 작은 화면(작은 폰·폰 가로): 편지 줄 간격과 여백을 조금 줄여 스크롤 거리를 던다 */
+@media (max-height: 700px) {
+  .sd-letter-paper {
+    font-size: 14px;
+    line-height: 1.7;
+    padding-top: 1rem;
+    padding-bottom: 1.25rem;
+    gap: 0.6rem;
+  }
+  .sd-letter-paper [data-bureau-logo] {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}

@@ -1,7 +1,6 @@
 import type { BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
 
-import type { AlgBook, ImportResult } from "../algs/store";
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
 import type { HeroSolve } from "../hero/methods";
 import type { ShortSolution } from "../progress/distance";
@@ -10,7 +9,8 @@ import type { ShortSolution } from "../progress/distance";
  * 큐브 워커가 받는 일과 돌려주는 답. 섞기(`cube-scramble`)와 3×3 풀이(`cube-solver`)는 처음 부를 때
  * 표를 만들어 오래 걸리므로 화면 스레드가 아니라 워커에서 한다. 컴퓨터 계획(`cube-ai` botPlan)도 해법기를 써서
  * 처음에는 1초 넘게 걸릴 수 있어 워커에서 만든다(대결 화면이 멈추지 않게).
- * 내 공식 가져오기(`algs-import`)도 공식마다 검사기를 돌려 길어질 수 있어 워커에서 한다.
+ * 내 공식 가져오기는 공식 자료(단원 목록)를 불러와야 해서 따로 된 워커가 한다(algs/import-in-worker.ts). 여기 두면
+ * 이 워커를 쓰는 모든 큐브 화면이 공식 자료에 기대는 것으로 보여 화면 시험이 넓어진다(docs/38 17절).
  */
 export type CubeJob =
   | { kind: "scramble"; event: ScrambleEvent; seed: number }
@@ -27,7 +27,6 @@ export type CubeJob =
       /** 모양 만들기: 목표 모양 공식 */
       shape?: string;
     }
-  | { kind: "algs-import"; book: AlgBook; text: string }
   | {
       /** 첫 화면 연출의 사람 흉내 해법(`hero/methods.ts` 표의 id) */
       kind: "hero";
@@ -61,7 +60,6 @@ export type CubeJobAnswer =
   | Scramble
   | string
   | BotPlan
-  | ImportResult
   | HeroSolve
   | CrossRound
   | ShortSolution
@@ -72,17 +70,15 @@ export type CubeJobResult<J extends CubeJob> = J extends { kind: "scramble" }
   ? Scramble
   : J extends { kind: "plan" }
     ? BotPlan
-    : J extends { kind: "algs-import" }
-      ? ImportResult
-      : J extends { kind: "hero" }
-        ? HeroSolve
-        : J extends { kind: "cross" }
-          ? CrossRound
-          : J extends { kind: "distance" }
-            ? number | null
-            : J extends { kind: "short" }
-              ? ShortSolution | null
-              : string;
+    : J extends { kind: "hero" }
+      ? HeroSolve
+      : J extends { kind: "cross" }
+        ? CrossRound
+        : J extends { kind: "distance" }
+          ? number | null
+          : J extends { kind: "short" }
+            ? ShortSolution | null
+            : string;
 
 export type CubeJobMessage = { id: number; job: CubeJob };
 export type CubeJobReply =
@@ -123,10 +119,6 @@ export async function runCubeJob(job: CubeJob): Promise<CubeJobAnswer> {
   if (job.kind === "cross") {
     const { makeCrossRound } = await import("../cross/scramble");
     return makeCrossRound(job.request);
-  }
-  if (job.kind === "algs-import") {
-    const { importAlgBook } = await import("../algs/store");
-    return importAlgBook(job.book, job.text);
   }
   if (job.kind === "scramble") {
     const { scramble } = await import("@game/cube-scramble");

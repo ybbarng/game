@@ -3,6 +3,7 @@
 import { cn } from "@/lib/cn";
 
 import { formatMs } from "../records";
+import "@/cube/mini/mini.css";
 
 /**
  * 섞은 판을 다 맞춘 순간의 짧은 축하(docs/47 15-22, 사용자 2026-11-10 「너무 과하지는 않고 심플하게」).

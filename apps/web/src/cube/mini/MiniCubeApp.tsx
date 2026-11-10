@@ -105,6 +105,7 @@ import {
   saveMiniPrefs,
   summarize,
 } from "./store";
+import "@/cube/mini/mini.css";
 
 /**
  * 미니 모드(`/cube/mini`, docs/47 15절): 맥 앱 Cubie의 작은 투명 창(기본 200×200, 48×48까지 줄임)에 맞춘 혼자 맞추기.

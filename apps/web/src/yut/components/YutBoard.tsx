@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 
 import { PieceToken, sideColor } from "./parts";
+import "@/yut/components/yut.css";
 
 /** 판 그림 안쪽 여백(판 크기의 %) */
 const PAD = 11;

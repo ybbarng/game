@@ -12,7 +12,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import type { Command } from "../input";
-import { algTokens } from "../learn";
+import { algTokens } from "../learn/notation";
 import { patternState, samePattern } from "../patterns/shape";
 import type { CubeSettings } from "../settings";
 import { CubePlay, playCubeCue } from "./CubePlay";

@@ -45,6 +45,7 @@
 - 화면 시험은 **nice 없이** 바꾼 spec 하나를 `--workers=1`로 돌린다(2026-11-09 사용자 결정, nice로 감싸면 자동 권한 판정에 막힌다). 전체 화면 시험은 CI가 맡는다.
 - 단위 시험·빌드는 바꾼 것만(`pnpm test:changed`). 백그라운드 작업은 한 번에 하나씩.
 - main 보호: PR 필수·CI 통과(`ci-ok`)·최신 main 반영 필수. main에서는 화면 시험을 다시 돌리지 않는다(main push는 빠른 검사만, 매일 한 번은 전부). docs/38 17절.
+- **새 CSS를 `globals.css`에 넣지 않는다.** 한 게임(또는 몇 화면)만 쓰는 규칙은 그 게임 layout이나 그 클래스를 쓰는 컴포넌트가 import하는 CSS 파일에 둔다. globals.css는 모든 화면이 쓰는 것만이고, 바뀌면 화면 시험이 전부 돈다. 큐브 화면 코드는 `cube/learn` 묶음(index) 대신 필요한 모듈을 바로 부른다. docs/38 17절. 점검: `scripts/affected-e2e.test.mjs` 「게임별 CSS」.
 ## 5. 기능 범위와 사이트 목적
 
 - 기능은 따로 말하지 않아도 모든 게임에 넣는다. 새 게임은 PC·휴대폰, 여러 단계 컴퓨터가 기본(`docs/21-new-game-checklist.md`).

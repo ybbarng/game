@@ -13,6 +13,8 @@ import { cellOf } from "../sky-art";
 import { groupColor } from "../star-color";
 import { SeasonMark } from "./SeasonMark";
 import { nebulaStyle, TileSky } from "./TileSky";
+import "@/stardraw/hdr-glow.css";
+import "@/galaxy/components/galaxy.css";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 

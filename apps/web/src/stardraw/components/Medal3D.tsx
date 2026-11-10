@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { HDR_GLOW_SRC, useHdrScreen } from "../hdr-glow";
 import type { MedalKind, MedalScene } from "../medal/medal-scene";
+import "@/stardraw/hdr-glow.css";
 
 /** 리본까지 넣은 훈장의 세로:가로 */
 export const MEDAL_ASPECT = 1.45;

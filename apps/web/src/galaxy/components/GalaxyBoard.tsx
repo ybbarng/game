@@ -30,6 +30,7 @@ import { BoardTile, type StationFx, type TileTier } from "./BoardTile";
 import { Die3D } from "./Dice3D";
 import { NoticePaper, ShipToken } from "./parts";
 import { ShipPiece } from "./Ship";
+import "@/galaxy/components/galaxy.css";
 
 const pct = (n: number) => `${(n / 9) * 100}%`;
 

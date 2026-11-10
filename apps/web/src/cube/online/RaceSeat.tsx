@@ -18,6 +18,7 @@ import { ItemIcon } from "./ItemBar";
 import { ITEM_LABELS, type ItemKind } from "./items";
 import { PartyBar } from "./PartyBar";
 import type { SeatLook } from "./race-seats";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 대결 화면 테두리의 상대 자리 하나(docs/47 9-9). 작은 큐브 그림(비스듬한 SVG, 3D 장면은 만들지 않는다)이 상대가

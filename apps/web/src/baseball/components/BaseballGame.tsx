@@ -29,6 +29,7 @@ import { BASEBALL_LEVELS, useBaseballSettings } from "../settings";
 import { useBaseball } from "../store";
 import { type DigitMemo, GuessLog, NumberBoxes, NumberPad } from "./parts";
 import { Infield, PitchCall, Scoreboard, usePitchCalls } from "./scoreboard";
+import "@/baseball/components/baseball.css";
 
 /** 아래 단추 줄의 작은 단추 모양 */
 const SMALL_BUTTON =

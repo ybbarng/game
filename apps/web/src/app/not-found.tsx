@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { NotFoundLinks } from "@/components/NotFoundLinks";
+import "@/stardraw/night.css";
 
 /**
  * 없는 주소(정적 내보내기의 out/404.html). 운영 nginx는 `error_page 404 /404.html`로 이 파일을 낸다(deploy/nginx.conf).

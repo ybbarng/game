@@ -9,6 +9,7 @@ import {
   rhythm,
   sizeOf,
 } from "./star-look";
+import "@/components/star/star.css";
 
 /**
  * 쌀알 무늬(대류 세포). 한 번 그려 둔 그림이라 프레임마다 다시 계산하지 않고, 겹을 천천히 돌려 이글거리게 한다

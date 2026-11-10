@@ -1,6 +1,7 @@
 // 내 공식(이 기기 localStorage). 상황마다 내가 넣은 공식 여러 개와 「쓰는 공식」 하나를 둔다.
 // 넣을 때·가져올 때 모두 검사기(checkAlg)를 거쳐 그 상황의 역할에 맞는 것만 남긴다.
-import { ALG_SETS, type AlgCase, type AlgSetInfo } from "../learn";
+import { ALG_SETS, type AlgSetInfo } from "../learn/alg-sets";
+import type { AlgCase } from "../learn/types";
 import { candidatesOf } from "./candidates";
 import { caseById, checkAlg, MAX_ALG_LENGTH, shortName } from "./check";
 import type { HabitState } from "./habit";

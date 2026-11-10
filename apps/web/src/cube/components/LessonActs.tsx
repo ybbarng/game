@@ -16,11 +16,6 @@ import { cn } from "@/lib/cn";
 import { stickersFromState } from "../bridge";
 import type { Command } from "../input";
 import {
-  algTokens as algTokensOf,
-  type Lesson,
-  type LessonStep,
-} from "../learn";
-import {
   focusMask,
   focusPieces,
   lookMet,
@@ -38,6 +33,8 @@ import {
   slotCenterColors,
   turnProgress,
 } from "../learn/interact";
+import { algTokens as algTokensOf } from "../learn/notation";
+import type { Lesson, LessonStep } from "../learn/types";
 import type { CubeSettings } from "../settings";
 import { type CubeView, loadCubeView, type MarkTone } from "../view";
 import { CubeHero } from "./CubeHero";

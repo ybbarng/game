@@ -1,0 +1,19 @@
+/*
+ * 장기·체스 기물 미끄러짐. JanggiBoard·ChessBoard가 import한다
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/* 장기·체스: 방금 옮긴 기물이 출발 자리에서 미끄러져 온다(SVG 안이라 px = 판 좌표 한 칸 단위). 오목·바둑은 놓는 게임이라 마지막 돌 표시(점·고리)만 */
+.jg-slide {
+  animation: jg-slide 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes jg-slide {
+  from {
+    transform: translate(var(--jg-dx), var(--jg-dy));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jg-slide {
+    animation: none;
+  }
+}

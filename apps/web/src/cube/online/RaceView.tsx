@@ -82,6 +82,7 @@ import {
   splitColumns,
 } from "./race-stages";
 import { type CubeRoom, excludeUnverified, type RoundRecord } from "./room";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 대결 한 판의 화면(온라인 방·컴퓨터와 대결이 함께 쓴다, docs/47 9-1).

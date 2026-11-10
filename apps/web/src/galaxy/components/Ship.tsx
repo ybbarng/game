@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 
 import { shipOf } from "../format";
 import type { Heading } from "../fx";
+import "@/galaxy/components/galaxy.css";
 
 const OUTLINE = "#0b1020";
 

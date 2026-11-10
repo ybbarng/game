@@ -18,6 +18,7 @@ import {
   inningText,
 } from "../call";
 import { CountLamps } from "./parts";
+import "@/baseball/components/baseball.css";
 
 /** 전광판에 비워 두는 회 수(실제 야구처럼 9회까지 칸을 둔다) */
 const INNINGS = 9;
