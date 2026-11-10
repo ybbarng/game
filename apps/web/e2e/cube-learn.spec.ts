@@ -193,6 +193,36 @@ test("배우기: 크기별 해법 목록과 ZZ 엣지 방향 해 보기", async 
   await shot(page, "learn-zz-eo", info.project.name);
 });
 
+test(
+  "배우기: 야우 흰 십자 셋을 나눈 단계(쥐기 문제 → 줄 문제 → 2U' 한 수)",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.goto("/cube/learn?lesson=yau-cross3");
+    const quiz = page.locator('[data-act="quiz"]');
+    await goStep(page, 1);
+    await expect(page.locator("[data-step-body]")).toContainText(
+      "넣을 자리를 앞으로",
+    );
+    await page.locator("[data-learn-quiz] [data-choice='2']").click();
+    await expect(quiz).toHaveAttribute("data-act-passed", "");
+    await goStep(page, 2);
+    await expect(page.locator("[data-step-body]")).toContainText("위 칸");
+    await page.locator("[data-learn-quiz] [data-choice='1']").click();
+    await expect(quiz).toHaveAttribute("data-act-passed", "");
+    await goToStep(page, "turn");
+    await inputReady(page);
+    // 2U'는 기본 「두 손」 배치에서 키 표시가 「키 없음」이라 표기 단추 줄로 친다
+    const buttons = page.locator("[data-cube-buttons]");
+    await buttons.getByRole("button", { name: "′ 반대" }).click();
+    await buttons.getByRole("button", { name: "2U'", exact: true }).click();
+    await expect(page.locator('[data-act="turn"]')).toHaveAttribute(
+      "data-act-passed",
+      "",
+    );
+    await shot(page, "learn-yau-cross-turn", info.project.name);
+  },
+);
+
 test("배우기: 야우 엣지 묶기 시연", async ({ page }, info) => {
   await page.goto("/cube/learn?lesson=yau-edges");
   await goToStep(page, "demo");

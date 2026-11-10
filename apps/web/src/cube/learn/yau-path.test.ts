@@ -12,6 +12,7 @@ import {
   YAU_CROSS_DOWN_DEMO,
   YAU_CROSS_FRONT_TRY,
   YAU_CROSS_PAIR_DEMO,
+  YAU_CROSS_PAIR_HELD,
   YAU_CROSS_PAIR_TRY,
   YAU_CROSS_SAME_TRY,
   YAU_CROSS_UP_DEMO,
@@ -37,6 +38,7 @@ import {
   stepMovesYau,
   stepMovesYauCross,
   stepMovesYauLast,
+  whiteWings,
   YAU_BRING,
   YAU_CROSS_CASES,
   YAU_FACES,
@@ -349,7 +351,9 @@ describe("야우 단원이 규칙과 같다", () => {
       "same-layer,pair",
     ]);
     // 같은 층 문제는 해 보기와 같은 화면이고, F2는 앞-오른쪽 위 칸을 앞-왼쪽 아래 칸으로 보낸다
-    const q = steps("yau-cross3", "quiz")[0] as LessonStep;
+    const q = steps("yau-cross3", "quiz").find((x) =>
+      x.quiz?.question.includes("F2"),
+    ) as LessonStep;
     expect(q.setup).toEqual(withAlg("yau-cross3")[5]?.setup);
     expect(q.quiz?.choices[q.quiz.answer]).toBe("앞-왼쪽 줄 아래 칸");
   });
@@ -394,7 +398,9 @@ describe("야우 단원이 규칙과 같다", () => {
     expect(sideCount(s, R, 2)).toBe(4);
     expect(sideCount(s, B, 4)).toBeGreaterThan(0);
     // 보내기 문제: 같은 화면에서 2U 2D'를 치면 빨강 넷은 왼쪽 면, 초록 넷은 앞면
-    const q = steps("yau-side-centers", "quiz")[1] as LessonStep;
+    const q = steps("yau-side-centers", "quiz").find((x) =>
+      x.quiz?.question.includes("보내기"),
+    ) as LessonStep;
     expect(q.setup).toEqual(st.setup);
     const parked = play(s, YAU_PARK);
     expect(sideCount(parked, L, 1)).toBe(4);
@@ -446,5 +452,115 @@ describe("야우 단원이 규칙과 같다", () => {
           expect(goalMet(n, s, "yau-cross3"), st.body).toBe(false);
         else expect(goalMet(n, s, "yau-cross3"), st.body).toBe(true);
       }
+  });
+});
+
+describe("긴 단계를 한 가지 목표씩 나눈 단계(docs/47 16-18)", () => {
+  const lesson = (id: string) =>
+    YAU_444.lessons.find((l) => l.id === id) as Lesson;
+  const quizBy = (id: string, word: string) =>
+    lesson(id).steps.find(
+      (s) => s.kind === "quiz" && s.quiz?.question.includes(word),
+    ) as LessonStep;
+  const answer = (st: LessonStep) => st.quiz?.choices[st.quiz.answer];
+  const startOf = (id: string, st: LessonStep) => stepStart(lesson(id), st, 1);
+  const cell = (f: number, r: number, c: number) => f * 16 + r * 4 + c;
+
+  it("한 수 해 보기는 바로 뒤 시연·해 보기 모범 답의 앞부분이다(쥐기 y2는 앞서 친 상황)", () => {
+    for (const l of YAU_444.lessons)
+      l.steps.forEach((st, i) => {
+        if (st.kind !== "turn") return;
+        const after = l.steps
+          .slice(i + 1)
+          .find((x) => x.kind === "demo" || x.kind === "try") as LessonStep;
+        const s = stepStart(l, st, 1);
+        const a = stepStart(l, after, 1);
+        const held = after.alg?.startsWith("y2 ") ? play(a, "y2") : a;
+        const rest = (after.alg ?? "").replace(/^y2 /, "");
+        expect(faceColors(n, s), st.body).toEqual(faceColors(n, held));
+        expect(rest.startsWith(st.alg as string), st.body).toBe(true);
+      });
+  });
+
+  it("흰 십자 셋: 쥐기 문제 → 줄·칸 문제 → 2U' 한 수 → 짝짓기 시연", () => {
+    expect(YAU_CROSS_PAIR_DEMO).toBe(`y2 ${YAU_CROSS_PAIR_HELD}`);
+    const hold = quizBy("yau-cross3", "쥘까요");
+    expect(answer(hold)).toBe("y2");
+    const line = quizBy("yau-cross3", "어느 줄");
+    // 쥐기 문제 화면에서 y2를 치면 줄·칸 문제 화면
+    expect(faceColors(n, play(startOf("yau-cross3", hold), "y2"))).toEqual(
+      faceColors(n, startOf("yau-cross3", line)),
+    );
+    const s = startOf("yau-cross3", line);
+    const blue = whiteWings(s, 5);
+    expect(blue.map((w) => w.line)).toEqual(["FL", "FL"]);
+    expect(blue.map((w) => w.level).sort()).toEqual([0, 1]);
+    expect(blue.every((w) => w.whiteFace === F)).toBe(true);
+    expect(answer(line)).toBe("앞-왼쪽 줄");
+    // 2U'는 위 칸 날개만 앞-오른쪽 줄로 옮긴다
+    const turn = lesson("yau-cross3").steps.find(
+      (x) => x.kind === "turn",
+    ) as LessonStep;
+    expect(turn.setup).toEqual(line.setup);
+    const moved = whiteWings(play(s, turn.alg as string), 5);
+    expect(moved.map((w) => `${w.line}${w.level}`).sort()).toEqual([
+      "FL1",
+      "FR0",
+    ]);
+  });
+
+  it("옆 센터: 옮기지 않는 수 문제 → 2U 데려오기 한 수 → 데려온 칸 문제 → 옮기기 시연", () => {
+    const sides = [R, F, L, B];
+    const centers = (s: PuzzleState) => {
+      const col = faceColors(n, s);
+      return sides.flatMap((f) =>
+        [1, 2].flatMap((r) => [1, 2].map((c) => col[cell(f, r, c)])),
+      );
+    };
+    const scrambled = [1, 2, 3].map((seed) =>
+      stateForRule("4x4-yau-cross3", seed),
+    );
+    const moveQuiz = quizBy("yau-side-centers", "옮기지 않는");
+    expect(answer(moveQuiz)).toBe("U");
+    for (const s of scrambled) {
+      expect(centers(play(s, "U"))).toEqual(centers(s));
+      expect(centers(play(s, "R"))).not.toEqual(centers(s));
+      expect(centers(play(s, "2U"))).not.toEqual(centers(s));
+    }
+    // 데려오기 한 수: 뒷면 윗줄의 주황 센터 블럭(색 4)이 오른쪽 면 위-뒤 칸에
+    const turn = lesson("yau-side-centers").steps.find(
+      (x) => x.kind === "turn",
+    ) as LessonStep;
+    expect(turn.alg).toBe(YAU_BRING.top.B);
+    const brought = play(startOf("yau-side-centers", turn), turn.alg as string);
+    expect(faceColors(n, brought)[cell(R, 1, 2)]).toBe(4);
+    // 데려온 칸: 그 면을 마주 보고 왼쪽 칸은 오른쪽 면 앞쪽 칸, 오른쪽 칸은 뒤쪽 칸, 줄은 그대로
+    const FACE = { F, B, L } as const;
+    for (const s of scrambled)
+      for (const [row, r] of [
+        ["top", 1],
+        ["bottom", 2],
+      ] as const)
+        for (const face of ["F", "B", "L"] as const) {
+          const before = faceColors(n, s);
+          const after = faceColors(n, play(s, YAU_BRING[row][face]));
+          for (const c of [1, 2])
+            expect(after[cell(R, r, c)]).toBe(before[cell(FACE[face], r, c)]);
+        }
+    const cellQuiz = quizBy("yau-side-centers", "어느 칸");
+    expect(cellQuiz.quiz?.question).toContain(YAU_BRING.top.F);
+    expect(answer(cellQuiz)).toBe("위-앞 칸");
+  });
+
+  it("엣지 묶기: 야우에 나오지 않는 수 문제 → Dw 한 수", () => {
+    const q = quizBy("yau-edges", "나오지 않는");
+    expect(answer(q)).toBe("x2로 큐브 뒤집기");
+    const ids = new Set<string>();
+    for (const seed of [1, 2, 3, 4, 5])
+      for (const st of runEdges444(stateForRule("4x4-yau-cross", seed)).steps)
+        ids.add(st.caseId);
+    expect(ids.has("turn-over")).toBe(false);
+    expect(ids.has("store")).toBe(true);
+    expect(ids.has("low")).toBe(true);
   });
 });

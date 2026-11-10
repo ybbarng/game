@@ -134,8 +134,28 @@ describe("ZZ 단원이 규칙과 같다", () => {
     ]);
     // 첫 문제: 위를 보는 노란 코너 블럭이 하나
     const s7 = play3(solvedCube(3), ZZ_LL_START_7);
-    const q = ll.steps[0] as LessonStep;
+    const q = ll.steps.find((s) => s.kind === "quiz") as LessonStep;
     expect(q.quiz?.choices[q.quiz.answer]).toBe("1개");
     expect(goalMet(3, s7, "f2l")).toBe(true);
+  });
+
+  it("마지막 층 첫머리를 나눔: 차례 둘러보기 → 윗면 문제, PLL 코너는 시연 앞 문제로(docs/47 16-18)", () => {
+    const ll = lesson("zz-ll");
+    const [look, first] = ll.steps as LessonStep[];
+    expect(look?.kind).toBe("look");
+    expect(look?.look).toBeUndefined();
+    expect(first?.kind).toBe("quiz");
+    expect(look?.setup).toEqual(first?.setup);
+    // 헤드라이트 문제: PLL 시연과 같은 큐브이고, 규칙의 PLL 코너 걸음은 헤드라이트가 없는 경우(Y퍼뮤), 맞춘 뒤 U 없음
+    const i = ll.steps.findIndex((s) =>
+      s.quiz?.question.includes("헤드라이트"),
+    );
+    const q = ll.steps[i] as LessonStep;
+    const demo = ll.steps[i + 1] as LessonStep;
+    expect(demo.alg).toBe(ZZ_PLL_21);
+    expect(q.setup).toEqual(demo.setup);
+    const ids = runZzLl(stepStart(ll, q, 1)).steps.map((x) => x.caseId);
+    expect(ids).toEqual(["2look-pll-diagonal", "2look-pll-ua"]);
+    expect(q.quiz?.choices[q.quiz.answer]).toBe("0개");
   });
 });
