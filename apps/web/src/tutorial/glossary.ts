@@ -28,7 +28,7 @@ export const GLOSSARY: readonly Term[] = [
     id: "trick",
     term: "턴",
     meaning:
-      "모두가 한 장씩 내는 한 바퀴. 가장 센 카드를 낸 사람이 그 턴을 이겨 나온 카드를 가져간다. 한 판은 10턴이다.",
+      "모두가 한 장씩 내는 한 바퀴. 가장 센 카드를 낸 사람이 그 턴을 이겨 나온 카드를 가져간다. 5명이 하면 한 판은 10턴이다.",
     aka: "구(첫 턴은 초구, 마지막 턴은 막구, 2구·3구…)",
     general: "트릭",
     group: "basic",
@@ -37,16 +37,8 @@ export const GLOSSARY: readonly Term[] = [
     id: "lead",
     term: "선",
     meaning:
-      "턴에서 맨 처음 카드를 내는 사람. 턴을 이긴 사람이 다음 선이 된다. 첫 턴의 선은 주공이다.",
+      "한 턴에서 맨 처음 카드를 내는 사람. 턴을 이긴 사람이 다음 턴의 선이 된다.",
     general: "리드(lead)",
-    group: "basic",
-  },
-  {
-    id: "follow",
-    term: "무늬 따라 내기",
-    meaning:
-      "선이 낸 무늬가 손에 있으면 반드시 그 무늬를 내야 한다. 없을 때만 다른 카드를 낼 수 있다. 마이티와 조커는 따라 내야 할 때도 낼 수 있다. 다만 조커는 표준 규칙에서 첫 턴과 마지막 턴에 낼 수 없다.",
-    general: "팔로우(follow suit)",
     group: "basic",
   },
   {
@@ -58,10 +50,27 @@ export const GLOSSARY: readonly Term[] = [
     group: "basic",
   },
   {
+    id: "kiruda",
+    term: "기루다",
+    meaning:
+      "그 판의 으뜸 무늬. 기루다 카드는 다른 무늬 카드를 모두 이긴다. 판마다 새로 정한다.",
+    aka: "기",
+    general: "트럼프, 으뜸패",
+    group: "basic",
+  },
+  {
+    id: "noKiruda",
+    term: "노기루다",
+    meaning: "기루다 없이 하는 판. 표준 규칙에서는 이기면 점수가 2배다.",
+    aka: "노기, 노",
+    general: "노트럼프(NT)",
+    group: "basic",
+  },
+  {
     id: "election",
     term: "선거",
     meaning:
-      "판마다 주공을 뽑는 단계. 딜러부터 돌아가며 공약을 걸고(출마), 부르기 싫으면 출마를 포기한다. 남은 한 사람이 당선된다.",
+      "판마다 그 판의 대표인 주공을 뽑는 단계. 카드를 나눠 준 사람(딜러)부터 돌아가며 공약을 더 높게 부르고(출마), 부르기 싫으면 포기한다. 마지막까지 남은 한 사람이 당선되어 주공이 된다.",
     aka: "출마, 포기(패스), 당선",
     general: "비딩, 경매",
     group: "basic",
@@ -70,33 +79,25 @@ export const GLOSSARY: readonly Term[] = [
     id: "goal",
     term: "공약",
     meaning:
-      "여당이 가져오겠다고 약속하는 점수 카드 장수(목표 점수)와 기루다. 예: ♥15는 기루다 ♥로 점수 카드 15장.",
+      "선거에서 거는 약속. 같은 편과 함께 가져올 점수 카드 장수(목표 점수)와 기루다를 정한다. 예: ♥15는 기루다 ♥로 점수 카드 15장.",
     aka: "숫자는 둘(12)·셋(13)·넷·닷·섯·곱·덜·홉·풀(20)로 부르고 무늬를 붙인다: 셋트(♥13), 둘노(노기루다 12)",
     general: "비드, 계약(contract)",
     group: "basic",
   },
   {
-    id: "kiruda",
-    term: "기루다",
+    id: "kitty",
+    term: "바닥 카드",
     meaning:
-      "그 판의 으뜸 무늬. 기루다는 다른 무늬 카드를 모두 이긴다. 공약을 걸 때 정한다.",
-    aka: "기",
-    general: "트럼프, 으뜸패",
-    group: "basic",
-  },
-  {
-    id: "noKiruda",
-    term: "노기루다",
-    meaning: "기루다 없이 하는 공약. 이기면 점수가 2배다.",
-    aka: "노기, 노",
-    general: "노트럼프(NT)",
+      "나눠 주고 남아 가운데 엎어 둔 카드. 5명이면 3장이다. 선거에서 당선된 사람이 가져가 13장 가운데 3장을 골라 다시 엎어 내려놓는다(묻는다).",
+    aka: "원작에서는 나머지 카드, 추가 카드",
+    general: "키티(kitty), 위도(widow)",
     group: "basic",
   },
   {
     id: "declarer",
     term: "주공",
     meaning:
-      "선거에서 당선된 사람. 바닥 카드를 받고, 프렌드를 정하고, 첫 턴의 선이 된다.",
+      "선거에서 당선된 사람. 바닥 카드를 가져가고, 같은 편 한 명(프렌드)을 정하고, 첫 턴의 선이 된다.",
     general: "디클러러(declarer)",
     group: "basic",
   },
@@ -118,19 +119,10 @@ export const GLOSSARY: readonly Term[] = [
     group: "basic",
   },
   {
-    id: "kitty",
-    term: "바닥 카드",
-    meaning:
-      "나눠 주고 남아 가운데 엎어 둔 3장. 당선된 주공이 가져가 13장 중 3장을 다시 바닥에 묻는다(버린다).",
-    aka: "원작에서는 나머지 카드, 추가 카드",
-    general: "키티(kitty), 위도(widow)",
-    group: "basic",
-  },
-  {
     id: "mighty",
     term: "마이티",
     meaning:
-      "♠A. 가장 센 카드이고 언제든 낼 수 있다. 기루다가 ♠이면 ◆A가 마이티다.",
+      "가장 센 카드. 보통 ♠A이고, 기루다가 ♠이면 ◆A가 마이티다. 언제든 낼 수 있다.",
     aka: "마, ◆A 마이티는 빨마(빨간 마이티)",
     group: "basic",
   },
@@ -143,10 +135,18 @@ export const GLOSSARY: readonly Term[] = [
     group: "basic",
   },
   {
+    id: "follow",
+    term: "무늬 따라 내기",
+    meaning:
+      "선이 낸 무늬가 손에 있으면 반드시 그 무늬를 내야 한다. 없을 때만 다른 카드를 낼 수 있다. 마이티와 조커는 따라 내야 할 때도 낼 수 있다. 다만 조커는 표준 규칙에서 첫 턴과 마지막 턴에 낼 수 없다.",
+    general: "팔로우(follow suit)",
+    group: "basic",
+  },
+  {
     id: "jokerCall",
     term: "조커콜",
     meaning:
-      "선이 ♣3(기루다가 ♣이면 ♠3)을 내며 외치면 조커를 가진 사람이 조커를 내야 하고, 그 조커는 힘을 잃는다.",
+      "선이 조커콜 카드(표준 규칙에서 ♣3, 기루다가 ♣이면 ♠3)를 내며 「조커콜」을 외치면, 조커를 가진 사람은 조커를 내야 하고 그 조커는 힘을 잃는다.",
     aka: "쪼콜, 총. 끌려 나온 조커는 쪼끌",
     group: "basic",
   },
@@ -177,7 +177,7 @@ export const GLOSSARY: readonly Term[] = [
     id: "dealMiss",
     term: "딜미스",
     meaning:
-      "점수 카드가 하나도 없는 등 너무 나쁜 패. 선언하면 다시 나눈다. 규칙마다 조건이 다르다.",
+      "받은 카드가 너무 나쁠 때 선언해 다시 나누는 것. 점수 카드가 한 장도 없을 때처럼 규칙마다 조건이 다르다.",
     aka: "딜 미스, 딜미",
     general: "미스딜(misdeal)",
     group: "play",

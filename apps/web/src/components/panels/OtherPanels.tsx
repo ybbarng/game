@@ -41,12 +41,14 @@ export function KillPanel({
   return (
     <Panel title="이번 판에서 뺄 사람을 카드로 지목하세요">
       <p className="panel-aside text-center text-xs opacity-70">
-        고른 카드를 가진 사람이 이번 판에서 빠집니다. 내 손에 있거나 이미 고른
-        카드는 헛다리입니다.
+        고른 카드를 가진 사람이 이번 판에서 빠집니다. 그 카드가 바닥 카드에 있어
+        아무도 빠지지 않으면 다시 고릅니다. 내 손에 있거나 이미 고른 카드는 고를
+        수 없습니다.
       </p>
       {decision.failed.length > 0 && (
         <p className="text-center text-xs">
-          헛다리: <SuitText text={decision.failed.map(cardLabel).join(", ")} />
+          빗나간 카드:{" "}
+          <SuitText text={decision.failed.map(cardLabel).join(", ")} />
         </p>
       )}
       <CardPicker
@@ -343,7 +345,7 @@ export function RoundResultPanel({
         <div className="flex flex-col items-center gap-2">
           <p className="text-center text-sm">
             {bankrupt
-              ? "돈이 바닥난 사람이 생겨 게임이 끝났습니다."
+              ? "돈이 0이 된 사람이 생겨 게임이 끝났습니다."
               : "게임을 끝냈습니다."}{" "}
             내 등수는{" "}
             <b>
