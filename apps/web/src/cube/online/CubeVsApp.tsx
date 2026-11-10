@@ -33,7 +33,7 @@ import { PracticeRulePicker } from "./PracticeRulePicker";
 import { PARTY_MODE_LABELS, PARTY_MODES, type PartyMode } from "./party";
 import { RaceView } from "./RaceView";
 import { eventForSize } from "./race-game";
-import { CubeRoom, TIME_LIMIT_SEC } from "./room";
+import { CubeRoom, PRACTICE_TIME_LIMIT_SEC, TIME_LIMIT_SEC } from "./room";
 import { POINTS_ROUNDS, SCORING_LABELS, type Scoring } from "./standings";
 import { useCubeRoom } from "./use-room";
 import { testVsBots, testVsSeed, testVsShapeKey } from "./vs-seed";
@@ -130,7 +130,9 @@ export function CubeVsApp() {
           ? { format: "points" as const, rounds, scoring }
           : { format: "single" as const }),
         inspection,
-        timeLimitSec: TIME_LIMIT_SEC[n] ?? 300,
+        timeLimitSec: practiceOn
+          ? PRACTICE_TIME_LIMIT_SEC
+          : (TIME_LIMIT_SEC[n] ?? 300),
         ...(party && !shapeNow ? { party: partyMode } : {}),
         ...(shapeNow
           ? {

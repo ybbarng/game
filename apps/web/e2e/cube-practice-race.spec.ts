@@ -101,56 +101,60 @@ test("컴퓨터와 대결: 공식 연습 한 판(2층, 입문 컴퓨터)", async
  * 친구와 대결 두 탭(같은 브라우저 탭끼리 `?net=local`). 여러 탭 시험이라 `CUBE_MULTI=1`일 때만 돈다(cube-online.spec.ts와 같다).
  * 방장이 공식 연습(노란 십자)을 고르고, 둘이 같은 문제를 받아 손님이 먼저 다 친다.
  */
-test("친구와 대결: 두 탭 공식 연습 한 판", async ({ context }, info) => {
-  test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
-  test.skip(info.project.name !== "desktop", "키보드 기기만 참가");
-  await no3d(context);
-  const host = await context.newPage();
-  await useNotationKeys(host);
-  await host.goto("/cube/online?net=local");
-  await host.locator("[data-cube-enter]").click();
-  const link = await host.locator("input[readonly]").inputValue();
-  const guest = await context.newPage();
-  await useNotationKeys(guest);
-  await guest.goto(link);
-  await guest.locator("[data-cube-enter]").click();
-  await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
+test(
+  "친구와 대결: 두 탭 공식 연습 한 판",
+  { tag: "@only-desktop" },
+  async ({ context }, info) => {
+    test.skip(!process.env.CUBE_MULTI, "여러 탭 시험은 CUBE_MULTI=1일 때만");
+    // 키보드 기기만 참가
+    await no3d(context);
+    const host = await context.newPage();
+    await useNotationKeys(host);
+    await host.goto("/cube/online?net=local");
+    await host.locator("[data-cube-enter]").click();
+    const link = await host.locator("input[readonly]").inputValue();
+    const guest = await context.newPage();
+    await useNotationKeys(guest);
+    await guest.goto(link);
+    await guest.locator("[data-cube-enter]").click();
+    await expect(host.locator("[data-cube-players] li")).toHaveCount(2);
 
-  await host.locator("[data-cube-party]").selectOption("practice");
-  await host
-    .locator('[data-cube-practice-stage="beginner-yellow-cross"]')
-    .click();
-  // 손님 화면에도 방장이 고른 규칙이 보인다(고를 수는 없다)
-  await expect(
-    guest.locator('[data-cube-practice-stage="beginner-yellow-cross"]'),
-  ).toHaveAttribute("aria-pressed", "true");
-  await shot(guest, "practice-online-lobby", info.project.name);
-  await host.locator("[data-cube-start]").click();
+    await host.locator("[data-cube-party]").selectOption("practice");
+    await host
+      .locator('[data-cube-practice-stage="beginner-yellow-cross"]')
+      .click();
+    // 손님 화면에도 방장이 고른 규칙이 보인다(고를 수는 없다)
+    await expect(
+      guest.locator('[data-cube-practice-stage="beginner-yellow-cross"]'),
+    ).toHaveAttribute("aria-pressed", "true");
+    await shot(guest, "practice-online-lobby", info.project.name);
+    await host.locator("[data-cube-start]").click();
 
-  for (const p of [host, guest])
-    await expect(view(p)).toHaveAttribute("data-cube-race-phase", "race", {
-      timeout: 30_000,
-    });
-  await inputReady(guest);
-  // 같은 문제
-  expect(await atProblem(guest, 0)).toBe(await atProblem(host, 0));
-  await typeRound(guest);
-  // 방장 화면: 손님이 다 친 시간이 보인다
-  await expect(host.locator("[data-cube-peer]:not(section)")).toHaveAttribute(
-    "data-cube-peer-status",
-    "done",
-  );
-  await shot(host, "practice-online-host", info.project.name);
-  await inputReady(host);
-  await typeRound(host);
-  for (const p of [host, guest])
-    await expect(p.locator('[data-cube-result="final"]')).toBeVisible();
-  // 두 기기가 같은 순위(손님이 1위)
-  await expect(guest.locator('[data-cube-result="final"] h2')).toHaveText(
-    "1위예요.",
-  );
-  await expect(host.locator('[data-cube-result="final"] h2')).toHaveText(
-    "2위예요.",
-  );
-  await shot(guest, "practice-online-result", info.project.name);
-});
+    for (const p of [host, guest])
+      await expect(view(p)).toHaveAttribute("data-cube-race-phase", "race", {
+        timeout: 30_000,
+      });
+    await inputReady(guest);
+    // 같은 문제
+    expect(await atProblem(guest, 0)).toBe(await atProblem(host, 0));
+    await typeRound(guest);
+    // 방장 화면: 손님이 다 친 시간이 보인다
+    await expect(host.locator("[data-cube-peer]:not(section)")).toHaveAttribute(
+      "data-cube-peer-status",
+      "done",
+    );
+    await shot(host, "practice-online-host", info.project.name);
+    await inputReady(host);
+    await typeRound(host);
+    for (const p of [host, guest])
+      await expect(p.locator('[data-cube-result="final"]')).toBeVisible();
+    // 두 기기가 같은 순위(손님이 1위)
+    await expect(guest.locator('[data-cube-result="final"] h2')).toHaveText(
+      "1위예요.",
+    );
+    await expect(host.locator('[data-cube-result="final"] h2')).toHaveText(
+      "2위예요.",
+    );
+    await shot(guest, "practice-online-result", info.project.name);
+  },
+);

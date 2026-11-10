@@ -32,15 +32,17 @@ export interface VersusBotSpeed {
 
 /**
  * 단계별 빠르기(2026-11-10). 사람이 키보드로 공식을 따라 칠 때를 어림했다: 처음 배운 사람은 낱말을 읽고 키를 찾느라
- * 1초 남짓, 익숙한 사람은 0.3초 안팎, 손에 붙은 사람은 0.2초 안쪽. 2층(8수) 10문제면 입문 약 1분 50초, 초보 약 1분 10초,
- * 중수 약 45초, 고수 약 28초, 초고수 약 18초(틀림 포함 어림)
+ * 1초 가까이, 익숙한 사람은 0.4초 안팎, 손에 붙은 사람은 0.2초 안쪽. 씨앗 40개로 잰 10문제 평균(최대, 2026-11-10):
+ * 2층 입문 2분 9초(2분 41초)·초보 1분 22초·중수 53초·고수 33초·초고수 21초, PLL 입문 2분 40초·초고수 25초,
+ * 가장 긴 코너 방향 입문 4분 11초(4분 37초)·초고수 40초.
+ * 공식 연습 판의 제한 시간 10분(`PRACTICE_TIME_LIMIT_SEC`) 안에 모든 단계를 끝낸다
  */
 export const VERSUS_BOT_SPEED: Readonly<Record<BotLevel, VersusBotSpeed>> = {
-  novice: { moveMs: 1100, thinkMs: 1500, missRate: 0.15 },
-  casual: { moveMs: 700, thinkMs: 1000, missRate: 0.1 },
-  club: { moveMs: 450, thinkMs: 700, missRate: 0.06 },
-  fast: { moveMs: 280, thinkMs: 500, missRate: 0.03 },
-  pro: { moveMs: 170, thinkMs: 350, missRate: 0.01 },
+  novice: { moveMs: 900, thinkMs: 1200, missRate: 0.1 },
+  casual: { moveMs: 600, thinkMs: 900, missRate: 0.06 },
+  club: { moveMs: 400, thinkMs: 600, missRate: 0.04 },
+  fast: { moveMs: 250, thinkMs: 450, missRate: 0.02 },
+  pro: { moveMs: 160, thinkMs: 300, missRate: 0.01 },
 };
 
 /** 보고 치기는 공식을 떠올려야 해서 문제를 읽는 시간을 이만큼 늘린다 */

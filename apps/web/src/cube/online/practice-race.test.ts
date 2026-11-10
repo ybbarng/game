@@ -20,8 +20,10 @@ import type { Scrambler } from "./race-game";
 import {
   CubeRoom,
   PRACTICE_READY_MS,
+  PRACTICE_TIME_LIMIT_SEC,
   type RoomSettings,
   raceOptionsFor,
+  TIME_LIMIT_SEC,
 } from "./room";
 
 /** 공식 연습 대결(docs/47 16-14): 같은 문제·기록으로 다시 계산·위조 기록 무효·컴퓨터 */
@@ -279,11 +281,16 @@ describe("공식 연습 대결(두 기기)", () => {
     host.setSettings({ n: 2 });
     host.setParty("hp");
     host.setPractice({ stage: "pll", mode: "see" });
+    // 가장 긴 단계도 입문 컴퓨터가 끝내게 제한 시간은 10분, 끄면 그 크기의 기본으로
     expect(host.state?.settings).toMatchObject({
       n: 3,
       practice: { stage: "pll", mode: "see" },
+      timeLimitSec: PRACTICE_TIME_LIMIT_SEC,
     });
     expect(host.state?.settings.party).toBeUndefined();
+    host.setPractice(null);
+    expect(host.state?.settings.timeLimitSec).toBe(TIME_LIMIT_SEC[3]);
+    host.setPractice({ stage: "pll" });
     host.setShape({ start: "solved", pick: "easy" });
     expect(host.state?.settings.practice).toBeUndefined();
     host.setPractice(SECOND);

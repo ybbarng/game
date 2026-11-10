@@ -75,9 +75,14 @@ export function attachPracticeBot(init: AttachPracticeBotInit): BotHandle {
     if (stopped || k !== attempt || j >= moves.length) return;
     const snap = session.snapshot();
     if (snap.attempt !== k || snap.phase !== "race") return;
-    const r = session.play(moves[j] as CubeMove, times[j] as number);
-    j++;
-    if (!r.ok || r.solved || j >= moves.length) return;
+    // 타이머가 늦게 불렸으면(백그라운드 탭, 시험의 시계 감기) 계획 시각이 지난 수를 모두 친다. 시각은 계획 그대로 적힌다
+    const elapsed = snap.elapsed ?? 0;
+    do {
+      const r = session.play(moves[j] as CubeMove, times[j] as number);
+      j++;
+      if (!r.ok || r.solved) return;
+    } while (j < moves.length && (times[j] as number) <= elapsed);
+    if (j >= moves.length) return;
     schedule(k);
   };
   const schedule = (k: number) => {

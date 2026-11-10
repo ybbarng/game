@@ -288,7 +288,7 @@ export function PracticeRaceView({
           </span>
         </div>
 
-        {mine && track && !over && dc && (
+        {mine && track && !over && dc && phase !== "finished" && (
           <>
             <div className="flex w-full max-w-xl items-baseline justify-between gap-3 text-sm">
               <span
@@ -449,15 +449,17 @@ function PracticeResult({
       data-practice-result
     >
       <h2 className="font-bold text-lg">{head}</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[22rem] text-sm">
+      <div>
+        <table className="w-full text-sm">
           <thead className="text-white/50 text-xs">
             <tr>
               <th className="py-1 text-left font-normal">순위</th>
               <th className="py-1 text-left font-normal">이름</th>
               <th className="py-1 text-right font-normal">시간</th>
               <th className="py-1 text-right font-normal">정확도</th>
-              <th className="py-1 text-right font-normal">가장 긴 콤보</th>
+              <th className="break-keep py-1 text-right font-normal">
+                가장 긴 콤보
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -474,7 +476,7 @@ function PracticeResult({
                     : "확인 안 됨"
                   : p?.status === "forfeit"
                     ? "기권"
-                    : `못 끝냄 · ${sum?.solved ?? 0}/${t?.problems.length ?? 10}`;
+                    : "못 끝냄";
               const bot = room.state?.players.find((x) => x.id === id)?.bot;
               const botOk =
                 bot !== undefined && round
@@ -510,6 +512,11 @@ function PracticeResult({
                   </td>
                   <td className="py-1 text-right font-mono tabular-nums">
                     {time}
+                    {p?.status === "dnf" && (
+                      <span className="block text-white/50 text-xs">
+                        {sum?.solved ?? 0}/{t?.problems.length ?? 10}문제
+                      </span>
+                    )}
                     {!local && p?.weak && (
                       <span className="ml-1 text-white/50 text-xs">
                         확인 약함

@@ -141,6 +141,12 @@ export type { PartyMode, ShapeRule, VersusRule };
  */
 export const PRACTICE_READY_MS = 3_000;
 
+/**
+ * 공식 연습 대결의 제한 시간(초). 가장 긴 단계(초보자 코너 방향, 공식 17수 안팎 × 10문제)도 입문 컴퓨터가 시간 안에 끝내게
+ * 넉넉히(입문 평균 4분 11초, 씨앗 40개 가운데 최대 4분 37초, `practice/versus-bot.ts`)
+ */
+export const PRACTICE_TIME_LIMIT_SEC = 600;
+
 /** 대결 틀의 다툼 폭(기본값과 같다). 체력 판정이 중간 지점 시각을 같은 규칙으로 본다 */
 const DISPUTE_MS = 1_000;
 
@@ -947,7 +953,7 @@ export class CubeRoom {
     if (!this.isHost || !s || s.status === "racing") return;
     if (!rule) {
       delete s.settings.practice;
-      this.setSettings({});
+      this.setSettings({ timeLimitSec: TIME_LIMIT_SEC[s.settings.n] ?? 300 });
       return;
     }
     const practice: VersusRule =
@@ -955,7 +961,11 @@ export class CubeRoom {
         ? { stage: rule.stage, mode: "see" }
         : { stage: rule.stage };
     if (!ruleOk(practice)) return;
-    this.setSettings({ practice, n: 3 });
+    this.setSettings({
+      practice,
+      n: 3,
+      ...(s.settings.practice ? {} : { timeLimitSec: PRACTICE_TIME_LIMIT_SEC }),
+    });
   }
 
   /** 새 경기(판 기록을 비운다) */
