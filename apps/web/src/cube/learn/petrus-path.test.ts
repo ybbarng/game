@@ -185,13 +185,23 @@ describe("페트루스 엣지 방향 고치기", () => {
   it("단원 해 보기 둘의 모범 답 = 규칙이 낸 수, 상황은 2×2×3 블록이 맞고 나쁜 엣지 둘·넷", () => {
     expect(PETRUS_EO_TWO_ANSWER).toBe("R F' U' F");
     expect(PETRUS_EO_FOUR_ANSWER).toBe("F' U' F R2 U' F' U F");
+    // 본문이 짚는 나쁜 엣지 자리: 둘은 아래-오른쪽·위-왼쪽, 넷은 앞-오른쪽·위-왼쪽·뒤-오른쪽·위-앞
+    const where = (s: PuzzleState) =>
+      badEdges(s)
+        .map((f) =>
+          f
+            .map((x) => "URFDLB"[x])
+            .sort()
+            .join(""),
+        )
+        .sort();
     for (const [setup, answer, bad] of [
-      [PETRUS_EO_TWO, PETRUS_EO_TWO_ANSWER, 2],
-      [PETRUS_EO_FOUR, PETRUS_EO_FOUR_ANSWER, 4],
+      [PETRUS_EO_TWO, PETRUS_EO_TWO_ANSWER, ["DR", "LU"]],
+      [PETRUS_EO_FOUR, PETRUS_EO_FOUR_ANSWER, ["BR", "FR", "FU", "LU"]],
     ] as const) {
       const s = play3(solvedCube(3), setup);
       expect(methodGoalMet(3, s, "petrus-223")).toBe(true);
-      expect(badEdges(s)).toHaveLength(bad);
+      expect(where(s)).toEqual([...bad]);
       expect(answer).toBe(petrusEoMoves(setup));
       const t = play3(s, answer);
       expect(methodGoalMet(3, t, "eo")).toBe(true);
