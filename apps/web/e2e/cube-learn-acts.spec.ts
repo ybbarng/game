@@ -179,7 +179,9 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 센�
   // 표준 색 배치: 까만 큐브에서 흰색 맞은편 노란색 센터 찾기(위 센터는 틀림, 아래 센터 31이 맞음)
   await goStep(page, 3);
   await expect(section).toHaveAttribute("data-step-kind", "find");
-  await expect(page.locator("[data-step-body]")).toContainText("표준 색 배치");
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "색 자리가 정해져",
+  );
   await page.locator('[data-sticker-cell="4"]').click();
   await expect(find).not.toHaveAttribute("data-act-passed", "");
   await page.locator('[data-sticker-cell="31"]').click();
@@ -205,7 +207,7 @@ test("배우기: 큐브와 만나기는 환영 → 스티커와 조각 → 센�
   await expect(pick).not.toHaveAttribute("data-act-passed", "");
   await page.locator("[data-learn-quiz] [data-choice='0']").click();
   await expect(pick).toHaveAttribute("data-act-passed", "");
-  await expect(pick).toContainText("거울에 비친 큐브");
+  await expect(pick).toContainText("맞출 수 없어요");
   await shot(page, "learn-color-scheme-quiz", info.project.name);
 
   // 분해·조립: 분해 → 축 → 센터(흰·초록은 먼저) → 엣지 둘 → 나머지 → 코너 하나 → 나머지
@@ -308,11 +310,13 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너, 자리와 
   await expect(quiz).not.toHaveAttribute("data-act-passed", "");
   await page.locator("[data-learn-quiz] [data-choice='1']").click();
   await expect(quiz).toHaveAttribute("data-act-passed", "");
-  await expect(quiz).toContainText("제자리에 바른 방향");
+  await expect(quiz).toContainText("제자리에 바르게");
 
   // 자리 × 방향 정리
   await goStep(page, 12);
-  await expect(page.locator("[data-step-body]")).toContainText("자리 ✓·방향 ✗");
+  await expect(page.locator("[data-step-body]")).toContainText(
+    "자리와 방향이 둘 다",
+  );
   await page.locator("[data-learn-quiz] [data-choice='2']").click();
   await expect(quiz).toHaveAttribute("data-act-passed", "");
   await shot(page, "learn-pieces-place-turn", info.project.name);
@@ -320,7 +324,7 @@ test("배우기: 조각의 움직임은 센터 → 엣지 → 코너, 자리와 
   // 해 보기는 엣지 → 코너
   await goStep(page, 13);
   await expect(page.locator("[data-step-body]")).toContainText(
-    "흰-초록 엣지 블럭",
+    "흰-초록 엣지만",
   );
 });
 

@@ -221,16 +221,16 @@ test("배우기: 루 해 보기(가운데 층 M)", async ({ page }, info) => {
   await shot(page, "learn-roux-passed", info.project.name);
 });
 
-test("배우기: 흰 십자 경우별 해 보기(가운데 줄, 옆색 쪽 면으로 올리기)", async ({
+test("배우기: 흰 십자 경우별 해 보기(가운데 층, 짝 색 쪽 면으로 올리기)", async ({
   page,
 }, info) => {
   await useNotationKeys(page);
   await page.goto("/cube/learn?lesson=333-white-cross");
-  // 8번: 흰색이 앞을 보는 가운데 줄 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
+  // 8번: 흰색이 앞을 보는 가운데 층 엣지를 빨강 면을 앞으로 가져와(y) 앞면으로 올린다(F)
   await goStep(page, 8);
   const section = page.locator("[data-step-kind]");
   await expect(section).toHaveAttribute("data-step-kind", "try");
-  await expect(section).toContainText("가운데 줄 엣지");
+  await expect(section).toContainText("빨강 면을 앞으로");
   await inputReady(page);
   await shot(page, "learn-cross-case", info.project.name);
 

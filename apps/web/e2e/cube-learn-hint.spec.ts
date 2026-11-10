@@ -50,7 +50,7 @@ test("무작위 해 보기: 힌트 1은 지금 경우, 힌트 2는 다음 수, �
   await page.locator("[data-cube-hint-case]").click();
   await expect(page.locator("[data-cube-taught-case]")).toHaveAttribute(
     "data-cube-taught-case",
-    /^흰-(빨강|초록|주황|파랑) 엣지: .+ 경우$/,
+    /^흰-(빨강|초록|주황|파랑) 엣지: (아래|가운데|위) 층.*$/,
   );
   await expect(page.locator("[data-cube-hint]")).toHaveCount(0);
   await shot(page, "learn-hint-case", info.project.name);
