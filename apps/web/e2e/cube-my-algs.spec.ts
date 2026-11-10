@@ -2,7 +2,7 @@ import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
- * 내 공식 일람표(/cube/algs)의 추천 후보·버릇 들이기와 공식 훈련 「내 목록」(docs/47 8-1, 2026-11-04).
+ * 내 공식(/cube/algs)의 추천 후보·버릇 들이기와 공식 훈련 「내 목록」(docs/47 8-1, 2026-11-04).
  * 기존 cube-algs.spec.ts와 따로 짧게 둔다(하나에 15초 안쪽). 큐브는 입력 준비(`data-input-ready`)를 조건으로 기다린다.
  */
 

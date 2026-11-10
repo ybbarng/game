@@ -184,7 +184,7 @@ export function CubeOnlineApp() {
           >
             ← 큐브
           </a>
-          <h1 className="font-bold text-lg">온라인 대결</h1>
+          <h1 className="font-bold text-lg">친구와 대결</h1>
           {state && state.round > 0 && (
             <span className="text-sm text-white/60">
               {state.round}번째 판 · {FORMAT_LABELS[state.settings.format]}
@@ -201,7 +201,7 @@ export function CubeOnlineApp() {
             role="status"
             className="rounded-xl bg-amber-400/15 p-3 text-amber-100 text-sm"
           >
-            온라인 대결은 키보드가 있는 기기에서만 참가할 수 있어요. 컴퓨터나
+            친구와 대결은 키보드가 있는 기기에서만 참가할 수 있어요. 컴퓨터나
             키보드를 연결한 태블릿으로 들어와 주세요.
           </p>
         )}

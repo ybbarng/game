@@ -393,7 +393,7 @@ export function TrainApp() {
                   href="/cube/algs"
                   className="text-sky-300 hover:text-sky-200"
                 >
-                  내 공식 일람표
+                  내 공식
                 </a>
               </p>
             )}
@@ -689,7 +689,7 @@ function AlgView({
         data-train-algs-link
         className="self-start text-sky-300 text-xs hover:text-sky-200"
       >
-        내 공식 일람표
+        내 공식
       </a>
     </div>
   );

@@ -1,5 +1,5 @@
 // 추천 후보 공식(docs/47 8-1, 2026-11-04). 상황마다 자료(대표·대안) 밖의 널리 쓰는 다른 공식을 두어
-// 「내 공식 일람표」에서 견주고 골라 쓰게 한다. 꼬리표는 수를 코드로 세어 붙인다(짧음·R·U만 등).
+// 「내 공식」에서 견주고 골라 쓰게 한다. 꼬리표는 수를 코드로 세어 붙인다(짧음·R·U만 등).
 // 모든 후보가 그 상황의 검사기(checkAlg)를 통과하는지 candidates.test.ts가 확인한다.
 import { type CubeMove, isRotation, parseMoves } from "@game/cube-engine";
 

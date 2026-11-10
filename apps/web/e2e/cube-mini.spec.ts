@@ -858,5 +858,5 @@ test("공식 보기: 작은 앱 창은 앱 말풍선으로 보내고, 말풍선�
   await page.keyboard.press("F1");
   await expect
     .poll(async () => (await lastHint())?.lines?.[0]?.text)
-    .toBe("이 크기는 공식 보기 없음");
+    .toBe("이 크기는 힌트 없음");
 });
