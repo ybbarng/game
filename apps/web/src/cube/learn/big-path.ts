@@ -29,7 +29,11 @@ export const EDGE_FLIP = "R U R' F R' F' R";
 
 // ── 단계와 경우 ───────────────────────────────────────
 
-export type BigPathStageId = "444-centers" | "555-centers" | "444-last-edges";
+export type BigPathStageId =
+  | "444-centers"
+  | "555-centers"
+  | "444-first-edges"
+  | "444-last-edges";
 
 export interface BigPathCase {
   id: string;
@@ -100,9 +104,48 @@ const EDGE_CASES: BigPathCase[] = [
   },
 ];
 
+// 4×4 처음 엣지 여덟(파일 끝 nextFirstEdge)
+/** 묶은 줄 올리기: 앞-오른쪽 → 위-앞, 위-뒤 → 앞-오른쪽(위 층의 다른 엣지는 자리만 돈다) */
+export const STORE_UP = "R U R'";
+/** 위 층에서 내리기: 위-뒤 → 앞-왼쪽(앞-왼쪽 엣지는 위 층으로) */
+export const DROP_FROM_UP = "L' U' L";
+/** 아래 층에서 내리기: 아래-뒤 → 앞-왼쪽(앞-왼쪽 엣지는 아래 층으로) */
+export const DROP_FROM_DOWN = "L D L'";
+
+export const FIRST_EDGE_CASES: BigPathCase[] = [
+  {
+    id: "store",
+    shape: "앞-오른쪽 줄이 묶였고 위 층에 묶이지 않은 엣지가 있음",
+    hold: "U로 위 층의 묶이지 않은 엣지를 위-뒤에",
+    alg: STORE_UP,
+  },
+  {
+    id: "turn-over",
+    shape: "앞-오른쪽 줄이 묶였고 위 층 넷이 모두 묶인 엣지",
+    hold: "그대로",
+    alg: "x2",
+    next: "store",
+  },
+  {
+    id: "drop-up",
+    shape:
+      "앞-오른쪽 두 날개의 짝이 모두 가운데 줄에 없고, 아래 날개의 짝이 위 층에 있음",
+    hold: "U로 그 짝이 든 엣지를 위-뒤에",
+    alg: DROP_FROM_UP,
+  },
+  {
+    id: "drop-down",
+    shape:
+      "앞-오른쪽 두 날개의 짝이 모두 가운데 줄에 없고, 아래 날개의 짝이 아래 층에 있음",
+    hold: "D로 그 짝이 든 엣지를 아래-뒤에",
+    alg: DROP_FROM_DOWN,
+  },
+];
+
 export const BIG_PATH_CASES: Record<BigPathStageId, BigPathCase[]> = {
   "444-centers": CENTER_CASES,
   "555-centers": [...CENTER_CASES, ...CROSS_CASES],
+  "444-first-edges": [...FIRST_EDGE_CASES, ...EDGE_CASES],
   "444-last-edges": EDGE_CASES,
 };
 
@@ -496,3 +539,128 @@ export function runLastEdges(
 }
 
 export const LAST_EDGE_WINGS = WINGS_444;
+
+// ── 4×4 처음 엣지 여덟(2026-11-10) ─────────────────────
+// 묶을 줄은 늘 앞-오른쪽. 묶으면 R U R'로 위 층에 올려 모으고(위 층의 묶이지 않은 엣지를 위-뒤에 두면 그 엣지가
+// 앞-오른쪽으로 내려온다), 위 층이 묶인 엣지로 차면 x2로 뒤집어 새 위 층을 채운다. 짝 날개가 가운데 줄에 없으면
+// 위 층(U로 위-뒤 → L' U' L)이나 아래 층(D로 아래-뒤 → L D L')에서 앞-왼쪽 줄로 내린다. 위·아래 층에 묶이지 않은
+// 엣지가 없어지면 마지막 넷(nextLastEdge)이다. 바깥 층만 돌리는 수는 엣지 짝을 풀지 않고, Dw·Uw 경우는 앞-오른쪽
+// 위 날개와 다른 줄 아래(위) 날개만 맞바꿔 묶인 줄을 풀지 않는다.
+
+/** 4×4 엣지 줄 열둘(두 면)과 그 줄의 날개 둘(위·앞쪽 먼저가 아니라 높이 순, 가로 줄은 둘 다 같은 높이) */
+type Line = { name: string; wings: [number, number] };
+const LINES_444: Line[] = (() => {
+  const topo = cubeTopology(4);
+  const names: [string, number, number][] = [
+    ["UF", U, F],
+    ["UR", U, R],
+    ["UB", U, B],
+    ["UL", U, L],
+    ["DF", D, F],
+    ["DR", D, R],
+    ["DB", D, B],
+    ["DL", D, L],
+    ["FR", F, R],
+    ["FL", F, L],
+    ["BR", B, R],
+    ["BL", B, L],
+  ];
+  return names.map(([name, a, b]) => {
+    const wings = topo.pieces
+      .map((p, i) => ({ p, i }))
+      .filter(
+        ({ p }) =>
+          p.kind === "wing" &&
+          p.stickers.length === 2 &&
+          [a, b].every((f) =>
+            p.stickers.some((st) => topo.stickers[st]?.face === f),
+          ),
+      )
+      .sort((x, y) => y.p.position[1] - x.p.position[1]);
+    return {
+      name,
+      wings: [wings[0]?.i as number, wings[1]?.i as number],
+    };
+  });
+})();
+const lineByName = (name: string) =>
+  LINES_444.find((l) => l.name === name) as Line;
+
+function linePaired444(col: Uint8Array, line: Line): boolean {
+  return wingColors(col, line.wings[0]) === wingColors(col, line.wings[1]);
+}
+
+/** 위·아래 층의 묶이지 않은 줄 */
+function openOuter(col: Uint8Array, layer: "U" | "D"): Line[] {
+  return LINES_444.filter(
+    (l) => l.name.startsWith(layer) && !linePaired444(col, l),
+  );
+}
+
+/** 4×4 처음 엣지 여덟의 다음 한 걸음. 위·아래 층에 묶이지 않은 엣지가 없으면 null(마지막 넷으로) */
+export function nextFirstEdge(s: PuzzleState): BigPathStep | null {
+  const stage: BigPathStageId = "444-first-edges";
+  const col = faceColors(4, s);
+  if (openOuter(col, "U").length === 0 && openOuter(col, "D").length === 0)
+    return null;
+  const fr = lineByName("FR");
+  if (linePaired444(col, fr)) {
+    if (openOuter(col, "U").length === 0)
+      return { stage, caseId: "turn-over", hold: "", alg: "x2" };
+    const u = firstTurn(
+      4,
+      s,
+      FACE4("U"),
+      (t) => !linePaired444(faceColors(4, t), lineByName("UB")),
+    );
+    return { stage, caseId: "store", hold: u, alg: STORE_UP };
+  }
+  const partnerOfWing = (wing: number) => {
+    const w = wingColors(col, wing);
+    const line = LINES_444.find(
+      (l) => l.name !== "FR" && l.wings.some((x) => wingColors(col, x) === w),
+    );
+    if (!line) throw new Error("짝 날개가 없다");
+    return line;
+  };
+  const want = wingColors(col, fr.wings[1]);
+  const partner = partnerOfWing(fr.wings[1]);
+  const outside = (l: Line) => l.name[0] === "U" || l.name[0] === "D";
+  const layer = partner.name[0] === "U" ? "U" : "D";
+  // 두 날개의 짝이 모두 위·아래 층에 있을 때만 내린다(하나라도 가운데 줄이면 Dw·Uw·뒤집기)
+  if (outside(partner) && outside(partnerOfWing(fr.wings[0]))) {
+    const target = lineByName(layer === "U" ? "UB" : "DB");
+    const turn = firstTurn(4, s, FACE4(layer), (t) => {
+      const c = faceColors(4, t);
+      return target.wings.some((w) => wingColors(c, w) === want);
+    });
+    return {
+      stage,
+      caseId: layer === "U" ? "drop-up" : "drop-down",
+      hold: turn,
+      alg: layer === "U" ? DROP_FROM_UP : DROP_FROM_DOWN,
+    };
+  }
+  // 짝이 가운데 줄에 있으면 마지막 넷과 같은 세 경우(Dw·Uw·뒤집기)
+  const st = nextLastEdge(s);
+  if (!st) throw new Error("앞-오른쪽이 묶이지 않았는데 걸음이 없다");
+  return { ...st, stage };
+}
+
+/** 센터가 맞은 4×4의 엣지 열둘을 규칙대로: 처음 여덟(올려 모으기) → 마지막 넷 */
+export function runEdges444(
+  s: PuzzleState,
+  limit = 80,
+): { state: PuzzleState; steps: BigPathStep[] } {
+  const steps: BigPathStep[] = [];
+  let state = s;
+  for (;;) {
+    const st = nextFirstEdge(state);
+    if (!st) break;
+    steps.push(st);
+    if (steps.length > limit) throw new Error("처음 엣지가 끝나지 않는다");
+    state = playN(4, state, stepMovesBig(st));
+  }
+  const last = runLastEdges(state);
+  return { state: last.state, steps: [...steps, ...last.steps] };
+}

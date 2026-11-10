@@ -237,3 +237,320 @@ export function runZz(
 }
 
 export { B, D, F, L, R, U };
+
+// ── ZZ 블록(ZZF2L): 바닥 엣지 블럭 → 앞 칸 짝 → 뒤 칸 짝, 왼쪽 블록 다음 오른쪽 블록 ──────────────
+// EO라인 뒤 흰 면 아래(z2)·초록 앞 그대로 쥐고 R·U·L만 쓴다(F·B는 엣지 방향을 깨고, D는 줄을 옮긴다).
+// 짝 넣기의 원본은 오른쪽 앞 칸(앞-오른쪽) 표 하나(ZZ_PAIR_CASES)다. 뒤 칸은 앞↔뒤를 바꿔 읽고 수의 방향을 모두 반대로,
+// 왼쪽 블록은 오른쪽↔왼쪽을 바꿔 읽고 R을 L로·방향을 모두 반대로 쓴다(mirrorPairAlg). 큐브를 돌려 쥐지 않는다.
+// 엣지 방향이 맞았으니 위 층에 온 가운데 층 엣지 블럭은 늘 앞뒤 색(초록·파랑)이 위를 본다. 그래서 짝의 경우는
+// 「코너 블럭의 흰색이 어디를 보나(위·칸의 앞뒤 면·블록 쪽 옆면) × 엣지 블럭이 위 층 어디에 있나(넷)」 열둘뿐이다.
+
+/** 블록 칸: 앞-왼쪽·뒤-왼쪽·앞-오른쪽·뒤-오른쪽 */
+export type ZzSlot = "FL" | "BL" | "FR" | "BR";
+
+/** 코너 블럭의 흰색이 보는 쪽: 위, 칸의 앞뒤 면(앞 칸이면 앞), 블록 쪽 옆면(오른쪽 블록이면 오른쪽) */
+export type PairWhite = "up" | "fb" | "side";
+/** 엣지 블럭의 위 층 자리(칸 기준): 칸 쪽 앞뒤(앞 칸이면 위-앞), 블록 쪽(위-오른쪽), 맞은편 앞뒤(위-뒤), 맞은편 옆(위-왼쪽) */
+export type PairEdge = "near" | "side" | "far" | "across";
+
+export interface PairCase {
+  white: PairWhite;
+  edge: PairEdge;
+  /** 오른쪽 앞 칸에서: 코너 블럭을 U로 칸 바로 위(위-앞-오른쪽)에 둔 뒤 치는 공식 */
+  alg: string;
+}
+
+/**
+ * 오른쪽 앞 칸(앞-오른쪽) 짝 넣기 열두 경우. 코너 블럭은 칸 바로 위에 있다.
+ * 공식은 R·U만으로 가장 짧은 것 가운데 R 4분의 1 돌리기 짝(R … R')으로 읽히는 것을 골랐다(zz-path.test.ts가
+ * 뒤 칸·아래-오른쪽 엣지 블럭·왼쪽 블록·줄·엣지 방향을 지키며 짝을 넣는지 본다).
+ */
+export const ZZ_PAIR_CASES: PairCase[] = [
+  { white: "fb", edge: "side", alg: "U R U' R'" },
+  { white: "side", edge: "far", alg: "R U R'" },
+  { white: "fb", edge: "far", alg: "U' R U R' U2 R U' R'" },
+  { white: "fb", edge: "across", alg: "U' R U2 R' U2 R U' R'" },
+  { white: "fb", edge: "near", alg: "R U R' U2 R U' R' U R U' R'" },
+  { white: "side", edge: "side", alg: "U' R U' R' U R U R'" },
+  { white: "side", edge: "across", alg: "U2 R U' R' U' R U R'" },
+  { white: "side", edge: "near", alg: "R' U2 R2 U R2 U R" },
+  { white: "up", edge: "side", alg: "R U2 R' U' R U R'" },
+  { white: "up", edge: "across", alg: "R U' R' U2 R U R'" },
+  { white: "up", edge: "far", alg: "U R U2 R' U R U' R'" },
+  { white: "up", edge: "near", alg: "U2 R2 U2 R' U' R U' R2" },
+];
+
+/** 오른쪽 앞 칸 공식을 다른 칸 공식으로: 뒤 칸은 방향을 모두 반대로, 왼쪽은 R을 L로 바꾸고 방향을 모두 반대로 */
+export function mirrorPairAlg(alg: string, slot: ZzSlot): string {
+  const back = slot[0] === "B";
+  const left = slot[1] === "L";
+  return alg
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((m) => {
+      const face = left && m[0] === "R" ? "L" : (m[0] as string);
+      const flip = back !== left;
+      const t = `${face}${m.slice(1)}`;
+      return flip ? undo(t) : t;
+    })
+    .join(" ");
+}
+
+/** 칸마다 쓰는 면 글자: 칸 바로 위 코너 자리, 앞뒤 면, 옆면, 위 층 엣지 네 자리(near·side·far·across), 꺼내기 공식 */
+const SLOT_GEOM: Record<
+  ZzSlot,
+  {
+    above: string;
+    fb: string;
+    side: string;
+    edges: Record<PairEdge, string>;
+    out: string;
+    /** 꺼내기 공식이 칸으로 내리는 위 층 자리(코너, 엣지) */
+    danger: [string, string];
+    corner: number[];
+    edge: number[];
+  }
+> = {
+  FR: {
+    above: "FRU",
+    fb: "F",
+    side: "R",
+    edges: { near: "FU", side: "RU", far: "BU", across: "LU" },
+    out: "R U R'",
+    danger: ["FRU", "BU"],
+    corner: [0, 2, 4],
+    edge: [2, 4],
+  },
+  BR: {
+    above: "BRU",
+    fb: "B",
+    side: "R",
+    edges: { near: "BU", side: "RU", far: "FU", across: "LU" },
+    out: "R' U' R",
+    danger: ["BRU", "FU"],
+    corner: [0, 5, 4],
+    edge: [5, 4],
+  },
+  FL: {
+    above: "FLU",
+    fb: "F",
+    side: "L",
+    edges: { near: "FU", side: "LU", far: "BU", across: "RU" },
+    out: "L' U' L",
+    danger: ["FLU", "BU"],
+    corner: [0, 2, 1],
+    edge: [2, 1],
+  },
+  BL: {
+    above: "BLU",
+    fb: "B",
+    side: "L",
+    edges: { near: "BU", side: "LU", far: "FU", across: "RU" },
+    out: "L U L'",
+    danger: ["BLU", "FU"],
+    corner: [0, 5, 1],
+    edge: [5, 1],
+  },
+};
+
+const FACE_LETTERS = "URFDLB";
+const sortLetters = (s: string) => [...s].sort().join("");
+
+/** 그 색 조각의 자리(면 글자 정렬)와 첫 색 칸이 보는 면 */
+export function pieceAt(
+  s: PuzzleState,
+  colors: number[],
+): { slot: string; ref: string } {
+  const col = faceColors(3, s);
+  for (const p of TOPO.pieces) {
+    if (p.stickers.length !== colors.length) continue;
+    const cs = p.stickers.map((st) => col[st] as number);
+    if (!colors.every((c) => cs.includes(c))) continue;
+    const faces = p.stickers.map(
+      (st) => FACE_LETTERS[TOPO.stickers[st]?.face as number] as string,
+    );
+    return {
+      slot: sortLetters(faces.join("")),
+      ref: faces[cs.indexOf(colors[0] as number)] as string,
+    };
+  }
+  throw new Error("조각을 못 찾음");
+}
+
+/** 그 색 조각이 제자리에 바르게 있나(센터 색과 칸 색이 모두 같다) */
+export function pieceSolved(s: PuzzleState, colors: number[]): boolean {
+  const col = faceColors(3, s);
+  const centerColor = (f: number) => {
+    const st = TOPO.pieces.find(
+      (p) =>
+        p.kind === "center" &&
+        TOPO.stickers[p.stickers[0] as number]?.face === f,
+    )?.stickers[0] as number;
+    return col[st] as number;
+  };
+  for (const p of TOPO.pieces) {
+    if (p.stickers.length !== colors.length) continue;
+    const cs = p.stickers.map((st) => col[st] as number);
+    if (!colors.every((c) => cs.includes(c))) continue;
+    return p.stickers.every(
+      (st) => col[st] === centerColor(TOPO.stickers[st]?.face as number),
+    );
+  }
+  return false;
+}
+
+const inTop = (slot: string) => slot.includes("U");
+
+export type ZzBlockCaseId =
+  | "base-top"
+  | "base-middle"
+  | "base-right"
+  | "pair-out-own"
+  | "pair-out-other"
+  | "pair-out-right"
+  | `pair-${PairWhite}-${PairEdge}`;
+
+export interface ZzBlockStep {
+  caseId: ZzBlockCaseId;
+  /** 어느 단계인가: 바닥 엣지 블럭(DL·DR) 또는 칸 */
+  part: "DL" | "DR" | ZzSlot;
+  hold: string;
+  alg: string;
+}
+
+/** 블록 바닥 엣지 블럭: 왼쪽은 흰-빨강(아래-왼쪽), 오른쪽은 흰-주황(아래-오른쪽) */
+const BASES = {
+  DL: { colors: [0, 1], top: "LU", half: "L2" },
+  DR: { colors: [0, 4], top: "RU", half: "R2" },
+} as const;
+/** 바닥 엣지 블럭을 위 층으로 올리는 수(자리 → 수) */
+const BASE_LIFT: Record<string, string> = {
+  FL: "L'",
+  BL: "L",
+  FR: "R",
+  BR: "R'",
+  DR: "R2",
+};
+const U_ALIGN = ["", "U", "U'", "U2"];
+
+function nextBase(s: PuzzleState, part: "DL" | "DR"): ZzBlockStep | null {
+  const b = BASES[part];
+  if (pieceSolved(s, [...b.colors])) return null;
+  const at = pieceAt(s, [...b.colors]).slot;
+  const lift = inTop(at) ? "" : (BASE_LIFT[at] as string);
+  if (!inTop(at) && !lift)
+    throw new Error(`바닥 엣지 블럭 자리를 모른다: ${at}`);
+  const t = play3(s, lift);
+  const u = U_ALIGN.find(
+    (x) => pieceAt(play3(t, x), [...b.colors]).slot === sortLetters(b.top),
+  ) as string;
+  return {
+    caseId: inTop(at) ? "base-top" : at === "DR" ? "base-right" : "base-middle",
+    part,
+    hold: join(lift, u),
+    alg: b.half,
+  };
+}
+
+/** 칸 자리(코너 자리·엣지 자리) → 그 칸 */
+function slotOfPosition(pos: string): ZzSlot | "DR" | null {
+  for (const k of Object.keys(SLOT_GEOM) as ZzSlot[]) {
+    const g = k.split("").concat();
+    const corner = sortLetters(`D${g.join("")}`);
+    const edge = sortLetters(g.join(""));
+    if (pos === corner || pos === edge) return k;
+  }
+  return pos === "DR" ? "DR" : null;
+}
+
+/** 오른쪽 블록이 아직 없을 때(왼쪽 블록을 만들 때) 오른쪽의 조각을 R 한 번으로 위 층에 올리는 수 */
+const RIGHT_LIFT = ["R", "R'", "R2"];
+
+function nextPair(
+  s: PuzzleState,
+  slot: ZzSlot,
+  rightFree: boolean,
+): ZzBlockStep | null {
+  const g = SLOT_GEOM[slot];
+  const cSolved = pieceSolved(s, g.corner);
+  const eSolved = pieceSolved(s, g.edge);
+  if (cSolved && eSolved) return null;
+  const c = pieceAt(s, g.corner);
+  const e = pieceAt(s, g.edge);
+  // ① 꺼내기: 위 층 밖에 있는 짝 조각(코너 블럭 먼저)
+  if (!inTop(c.slot) || !inTop(e.slot)) {
+    const out = !inTop(c.slot) ? c : e;
+    const other = out === c ? e : c;
+    const from = slotOfPosition(out.slot);
+    if (!from) throw new Error(`꺼낼 자리를 모른다: ${out.slot}`);
+    if (from === "DR" || (rightFree && from[1] === "R")) {
+      // 오른쪽 블록이 아직 없으면 R 한 번으로 올린다. 위 층의 다른 짝 조각이 오른쪽 열에 있으면 먼저 U2로 비킨다
+      const pre = inTop(other.slot) && other.slot.includes("R") ? "U2" : "";
+      const t = play3(s, pre);
+      const r = RIGHT_LIFT.find((x) =>
+        inTop(pieceAt(play3(t, x), out === c ? g.corner : g.edge).slot),
+      ) as string;
+      return { caseId: "pair-out-right", part: slot, hold: pre, alg: r };
+    }
+    const trig = SLOT_GEOM[from as ZzSlot];
+    const pre =
+      inTop(other.slot) && trig.danger.includes(other.slot) ? "U2" : "";
+    return {
+      caseId: from === slot ? "pair-out-own" : "pair-out-other",
+      part: slot,
+      hold: pre,
+      alg: trig.out,
+    };
+  }
+  // ② 둘 다 위 층: U로 코너 블럭을 칸 바로 위에 두고 표의 공식
+  const u = U_ALIGN.find(
+    (x) => pieceAt(play3(s, x), g.corner).slot === sortLetters(g.above),
+  ) as string;
+  const t = play3(s, u);
+  const ct = pieceAt(t, g.corner);
+  const et = pieceAt(t, g.edge);
+  const white: PairWhite =
+    ct.ref === "U" ? "up" : ct.ref === g.fb ? "fb" : "side";
+  const edge = (Object.keys(g.edges) as PairEdge[]).find(
+    (k) => sortLetters(g.edges[k]) === et.slot,
+  ) as PairEdge;
+  const pc = ZZ_PAIR_CASES.find(
+    (x) => x.white === white && x.edge === edge,
+  ) as PairCase;
+  return {
+    caseId: `pair-${white}-${edge}`,
+    part: slot,
+    hold: u,
+    alg: mirrorPairAlg(pc.alg, slot),
+  };
+}
+
+/** ZZ 블록의 다음 한 걸음: 왼쪽 블록(바닥 → 앞 칸 → 뒤 칸) 다음 오른쪽 블록(같은 차례). 다 맞으면 null */
+export function nextBlock(s: PuzzleState): ZzBlockStep | null {
+  return (
+    nextBase(s, "DL") ??
+    nextPair(s, "FL", true) ??
+    nextPair(s, "BL", true) ??
+    nextBase(s, "DR") ??
+    nextPair(s, "FR", false) ??
+    nextPair(s, "BR", false)
+  );
+}
+
+export const stepMovesBlock = (st: ZzBlockStep) => join(st.hold, st.alg);
+
+export function runBlocks(
+  s: PuzzleState,
+  until: "left" | "all" = "all",
+): { state: PuzzleState; steps: ZzBlockStep[] } {
+  const steps: ZzBlockStep[] = [];
+  let state = s;
+  for (;;) {
+    const st = nextBlock(state);
+    if (!st || (until === "left" && (st.part === "DR" || st.part[1] === "R")))
+      return { state, steps };
+    steps.push(st);
+    if (steps.length > 40) throw new Error("ZZ 블록이 끝나지 않는다");
+    state = play3(state, stepMovesBlock(st));
+  }
+}

@@ -20,22 +20,26 @@ test(
     await expect(page.getByText(/0번 자리의 값이 약속과 다르다/)).toBeVisible();
 
     // 판 끝 검증: 기록을 조작하면 걸린다.
-    await expect(page.getByText(/모두 맞다/)).toBeVisible();
+    await expect(page.getByText(/모두 맞습니다/)).toBeVisible();
     await page
       .getByRole("button", { name: "조작", exact: true })
       .nth(3)
       .click();
     await expect(
-      page.getByText(/규칙에 맞지 않는다|화면과 다르다|기록과 맞지 않는다/),
+      page.getByText(
+        /규칙에 맞지 않습니다|화면과 다릅니다|기록과 맞지 않습니다/,
+      ),
     ).toBeVisible();
 
     // 방장 확인: 가짜 방장은 지문이 다르다.
     await page.getByRole("button", { name: /자기 열쇠로 서명/ }).click();
     await expect(
-      page.getByText(/지문이 링크\(k=\)의 지문과 다르다/),
+      page.getByText(/지문이 링크\(k=\)의 지문과 다릅니다/),
     ).toBeVisible();
     await page.getByRole("button", { name: /진짜 방장이 답함/ }).click();
-    await expect(page.getByText(/방장으로 믿는다/)).toBeVisible();
+    await expect(
+      page.getByText(/내 연결의 것입니다\. 방장으로 믿습니다/),
+    ).toBeVisible();
     // 신호 서버가 가운데 끼면 진짜 방장 서명이라도 인증서 지문이 달라 믿지 않는다.
     await page.getByRole("button", { name: /신호 서버가 연결 정보를/ }).click();
     await expect(page.getByText(/신호 서버가 가운데 끼어/)).toBeVisible();
@@ -48,13 +52,13 @@ test(
     await page
       .getByRole("button", { name: "고친 프로그램: 다른 카드라고 속여 내기" })
       .click();
-    await expect(page.getByText(/철수의 부정으로 찍힌다/)).toBeVisible();
+    await expect(page.getByText(/철수의 부정으로 찍힙니다/)).toBeVisible();
     // 열쇠 증명: 정직하면 철수가 카드를 열고, 영희가 틀린 열쇠를 주면 증명이 틀려 영희를 짚는다.
     await expect(page.getByText(/방장의 V = /)).toBeVisible();
     await page
       .getByRole("button", { name: "0번 칸을 철수에게(정직하게)" })
       .click();
-    await expect(page.getByText(/철수가 0번 칸을 열었다/)).toBeVisible();
+    await expect(page.getByText(/철수가 0번 칸을 열었습니다/)).toBeVisible();
     await page
       .getByRole("button", { name: "고친 프로그램: 영희가 틀린 열쇠 주기" })
       .click();
@@ -64,15 +68,15 @@ test(
       .screenshot({ path: info.outputPath("key-proof.png") });
     // 섞기 증명: 정직하면 맞고, 한 장을 복제해 섞으면 맞지 않아 철수를 짚는다.
     await page.getByRole("button", { name: "철수가 정직하게 섞기" }).click();
-    await expect(page.getByText(/✓ 섞기 증명이 맞다/)).toBeVisible();
+    await expect(page.getByText(/✓ 섞기 증명이 맞습니다/)).toBeVisible();
     await page
       .getByRole("button", { name: "고친 프로그램: 한 장 복제해 섞기" })
       .click();
     await expect(
-      page.getByText(/섞기 증명이 맞지 않는다\. 철수를/),
+      page.getByText(/섞기 증명이 맞지 않습니다\. 철수를/),
     ).toBeVisible();
     await page
-      .getByText(/섞기 증명이 맞지 않는다\. 철수를/)
+      .getByText(/섞기 증명이 맞지 않습니다\. 철수를/)
       .screenshot({ path: info.outputPath("shuffle-proof.png") });
     await page.screenshot({
       path: info.outputPath("security.png"),

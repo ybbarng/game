@@ -193,6 +193,28 @@ describe("큐브 중급 과정 조각 이름(블럭)", () => {
   }
 });
 
+// OLL 모양 이름(「T 모양」)과 PLL 공식 이름(「T퍼뮤」)은 같은 글자를 쓰니 늘 「모양」·「퍼뮤」를 붙여 구별한다
+// (2026-11-10, docs/47 16-16). 수네·안티수네도 모양은 「수네 모양」, 공식은 「수네」.
+describe("CFOP 모양 이름과 공식 이름", () => {
+  const bare = /(^|[^A-Za-z0-9'])(H|T|Y|Z|Ua|Ub)(?![A-Za-z0-9'퍼]| 모양)/;
+  for (const course of COURSES) {
+    if (!["cfop", "roux", "zz", "petrus", "444-yau"].includes(course.id))
+      continue;
+    it(`${course.title}: H·T·U·Y·Z 이름에 「모양」이나 「퍼뮤」를 붙인다`, () => {
+      const found = [
+        ...courseSummaries(course),
+        ...coursePlaces(course),
+      ].flatMap(({ where, text }) => {
+        const m = text.match(bare);
+        return m
+          ? [`${where}: …${text.slice(m.index ?? 0, (m.index ?? 0) + 12)}…`]
+          : [];
+      });
+      expect(found).toEqual([]);
+    });
+  }
+});
+
 describe("큐브 중급 과정 용어", () => {
   for (const course of COURSES) {
     const terms = SCOPE[course.id];

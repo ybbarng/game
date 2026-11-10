@@ -235,8 +235,16 @@ function allCentersOk(n: number, colors: Uint8Array) {
   return true;
 }
 
-/** 흰 면 쪽 십자 엣지 줄(옆면마다 한 줄) 센터 맞은 줄 수, 가장 많이 맞는 방향 기준 */
-function crossLinesOk(n: number, colors: Uint8Array, white: number): number {
+/**
+ * 흰 면 쪽 십자 엣지 줄(옆면마다 한 줄) 센터 맞은 줄 수, 가장 많이 맞는 방향 기준.
+ * `byCenters`면 센터가 다 맞았다고 보고 면마다 센터 색을 기준으로 센다(옆 센터가 십자와 어긋나 돌아간 것을 걸러 낸다)
+ */
+function crossLinesOk(
+  n: number,
+  colors: Uint8Array,
+  white: number,
+  byCenters = false,
+): number {
   const sides = [0, 1, 2, 3, 4, 5].filter(
     (g) => g !== white && g !== OPPOSITE_FACE[white as 0],
   );
@@ -247,7 +255,15 @@ function crossLinesOk(n: number, colors: Uint8Array, white: number): number {
     ]),
   );
   let best = 0;
-  for (const fr of frames(n)) {
+  const topo = cubeTopology(n);
+  const centerStickers = piecesOfKind(n, "center", "innerCenter").flatMap(
+    (p) => topo.pieces[p]?.stickers ?? [],
+  );
+  const own = Uint8Array.from({ length: 6 }, (_, f) => {
+    const s0 = centerStickers.find((s) => topo.stickers[s]?.face === f);
+    return s0 === undefined ? 255 : (colors[s0] as number);
+  });
+  for (const fr of byCenters ? [own] : frames(n)) {
     if (fr[white] !== WHITE) continue;
     const count = lines.filter((pieces) => ok(n, colors, fr, pieces)).length;
     if (count > best) best = count;
@@ -305,8 +321,11 @@ export function methodGoalMet(
     case "yau-cross": {
       const white = whiteCenterFace(n, colors);
       if (white < 0) return false;
-      if (goal !== "yau-cross3" && !allCentersOk(n, colors)) return false;
-      return crossLinesOk(n, colors, white) >= (goal === "yau-cross" ? 4 : 3);
+      const all = goal !== "yau-cross3";
+      if (all && !allCentersOk(n, colors)) return false;
+      return (
+        crossLinesOk(n, colors, white, all) >= (goal === "yau-cross" ? 4 : 3)
+      );
     }
   }
 }

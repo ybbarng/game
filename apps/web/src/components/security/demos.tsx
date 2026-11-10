@@ -149,9 +149,10 @@ export function ViewFilterDemo() {
     <Box title="방장이 가진 것과 참가자가 받는 것">
       <p className="text-xs opacity-80">
         아래는 실제 엔진의 게임 시작 함수(코드 이름 <code>createMatch</code>)로
-        첫 판을 나눈 모습입니다. 왼쪽은 엔진을 돌리는 방장 기기의 메모리,
-        오른쪽은 그 자리에서 보이는 것만 골라 내는 함수(코드 이름{" "}
-        <code>viewOf</code>)로 만들어 그 자리에 보내는 데이터입니다.
+        첫 판을 나눈 모습입니다. 「방장 기기」 칸은 엔진을 돌리는 방장 기기의
+        메모리이고, 「…에게 보내는 화면 데이터」 칸은 그 자리에서 보이는 것만
+        골라 내는 함수(코드 이름 <code>viewOf</code>)로 만들어 그 자리에 보내는
+        데이터입니다.
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs opacity-70">받는 자리</span>
@@ -199,8 +200,8 @@ export function ViewFilterDemo() {
           </pre>
           <p className="text-[11px] opacity-70">
             남의 손패는 장수(<code>handCounts</code>)만, 바닥 카드는 장수 (
-            <code>kittyCount</code>)만 갑니다. 난수 상태(<code>rng</code>)도
-            빠집니다.
+            <code>kittyCount</code>)만 갑니다. 무작위 수를 만드는 상태(
+            <code>rng</code>)도 빠집니다.
           </p>
         </div>
       </div>
@@ -317,11 +318,14 @@ export function CommitRevealDemo() {
       {result &&
         (result.ok ? (
           <Result ok>
-            seed = SHA-256(r0|r1|r2) 앞 32비트 = {result.seed} → 철수의 패:{" "}
-            <SuitText text={result.hand.map(cardLabel).join(" ")} />
+            시드 = SHA-256(r0‖r1‖r2)의 앞부분을 수로 읽은 값 = {result.seed},
+            철수의 패: <SuitText text={result.hand.map(cardLabel).join(" ")} />
           </Result>
         ) : (
-          <Result ok={false}>참가자 검증 실패: {result.reason}</Result>
+          <Result ok={false}>
+            참가자가 확인해 보니 맞지 않습니다. 프로그램이 낸 까닭: 「
+            {result.reason}」
+          </Result>
         ))}
     </Box>
   );
@@ -400,12 +404,12 @@ export function ReplayAuditDemo() {
     if (error)
       return {
         ok: false,
-        text: `기록 ${error.index + 1}번째 행동이 규칙에 맞지 않는다 (${error.reason})`,
+        text: `기록 ${error.index + 1}번째 행동이 규칙에 맞지 않습니다. 엔진이 낸 까닭: 「${error.reason}」`,
       };
     if (views.at(-1) !== received.at(-1))
       return {
         ok: false,
-        text: "다시 계산한 마지막 화면이 내가 본 화면과 다르다",
+        text: "다시 계산한 마지막 화면이 내가 본 화면과 다릅니다.",
       };
     let cursor = 0;
     for (const [i, seen] of received.entries()) {
@@ -413,12 +417,12 @@ export function ReplayAuditDemo() {
       if (cursor === views.length)
         return {
           ok: false,
-          text: `게임 중 받은 ${i + 1}번째 화면이 기록과 맞지 않는다`,
+          text: `게임 중 받은 ${i + 1}번째 화면이 기록과 맞지 않습니다.`,
         };
     }
     return {
       ok: true,
-      text: `기록 ${log.length}개를 다시 돌린 결과와 받은 화면 ${received.length}개가 모두 맞다`,
+      text: `기록 ${log.length}개를 다시 돌린 결과와 받은 화면 ${received.length}개가 모두 맞습니다.`,
     };
   }, [log, received]);
 
@@ -524,7 +528,7 @@ export function HostSignatureDemo() {
     if (kind === "none") {
       setResult({
         ok: false,
-        text: '서명이 없는 "어서 와" → 방장으로 믿지 않는다',
+        text: '서명이 없는 "어서 와"는 방장으로 믿지 않습니다.',
       });
       return;
     }
@@ -551,12 +555,12 @@ export function HostSignatureDemo() {
     setResult({
       ok,
       text: ok
-        ? "지문과 서명이 맞고, 서명에 든 연결 아이디와 인증서가 내 연결의 것이다. 방장으로 믿는다."
+        ? "지문과 서명이 맞고, 서명에 든 연결 아이디와 인증서가 내 연결의 것입니다. 방장으로 믿습니다."
         : kind === "fake"
-          ? "공개 열쇠의 지문이 링크(k=)의 지문과 다르다. 믿지 않는다."
+          ? "공개 열쇠의 지문이 링크(k=)의 지문과 다릅니다. 믿지 않습니다."
           : kind === "relay"
-            ? "내가 본 방장 인증서가 방장이 서명한 인증서와 다르다. 신호 서버가 가운데 끼어 양쪽과 따로 연결했다. 믿지 않는다."
-            : "서명에 든 연결 아이디가 내 연결의 아이디가 아니다. 중간자가 다른 연결에 준 서명을 가져왔다. 믿지 않는다.",
+            ? "내가 본 방장 인증서가 방장이 서명한 인증서와 다릅니다. 신호 서버가 가운데 끼어 양쪽과 따로 연결했습니다. 믿지 않습니다."
+            : "서명에 든 연결 아이디가 내 연결의 아이디가 아닙니다. 중간자가 다른 연결에 준 서명을 가져왔습니다. 믿지 않습니다.",
     });
   };
 
@@ -667,10 +671,10 @@ export function ChatRoutingDemo() {
       <Result ok={sender !== 0}>
         모두의 화면: "{shown}: 안녕" —{" "}
         {sender === 0
-          ? "방장은 모든 말을 거치므로 남의 이름으로 말을 지어낼 수 있다(한계)"
+          ? "방장은 모든 말을 거치므로 남의 이름으로 말을 지어낼 수 있습니다. 지금 구조의 한계입니다."
           : people[sender] === people[claim]
-            ? "자기 이름으로 말했다"
-            : `${people[sender]}가 ${people[claim]}인 척했지만 방장이 연결 기준으로 ${people[sender]}라고 붙였다`}
+            ? "자기 이름으로 말했습니다."
+            : `${people[sender]}가 ${people[claim]}인 척했지만 방장이 연결 기준으로 ${people[sender]}라고 붙였습니다.`}
       </Result>
     </Box>
   );
@@ -746,7 +750,7 @@ export function MentalPokerDemo() {
     setState({
       ...state,
       ...next,
-      log: [...(next.log ?? state.log), `  (${ms}ms)`],
+      log: [...(next.log ?? state.log), `  (${(ms / 1000).toFixed(2)}초)`],
     });
     setBusy(false);
   };
@@ -764,7 +768,7 @@ export function MentalPokerDemo() {
         stage: "shuffled",
         log: [
           ...s.log,
-          "1. 셋이 차례로 자기 열쇠로 잠그고 섞었다. 이제 누구도 어느 칸이 무슨 카드인지 모른다.",
+          "1. 셋이 차례로 자기 열쇠로 잠그고 섞었습니다. 이제 누구도 어느 칸이 무슨 카드인지 모릅니다.",
         ],
       };
     });
@@ -781,7 +785,7 @@ export function MentalPokerDemo() {
         stage: "relocked",
         log: [
           ...s.log,
-          "2. 각자 섞기 열쇠를 풀고 칸마다 다른 열쇠로 다시 잠갔다. 한 칸 열쇠를 공개해도 다른 칸은 안전하다.",
+          "2. 각자 섞기 열쇠를 풀고 칸마다 다른 열쇠로 다시 잠갔습니다. 한 칸 열쇠를 공개해도 다른 칸은 안전합니다.",
         ],
       };
     });
@@ -805,7 +809,7 @@ export function MentalPokerDemo() {
         stage: "dealt",
         log: [
           ...s.log,
-          "3. 칸마다 받을 사람을 뺀 둘이 열쇠를 공개했다. 받는 사람만 마지막 자물쇠를 풀어 자기 카드를 본다.",
+          "3. 칸마다 받을 사람을 뺀 둘이 열쇠를 공개했습니다. 받는 사람만 마지막 자물쇠를 풀어 자기 카드를 봅니다.",
         ],
       };
     });
@@ -825,8 +829,8 @@ export function MentalPokerDemo() {
         log: [
           ...s.log,
           opened === said
-            ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${cardLabel(said)}를 냈다. 모두가 열어 보니 ${cardLabel(opened as Card)} — 맞다.`
-            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? cardLabel(opened) : "카드가 아님"} — 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힌다.`,
+            ? `4. ${MP_SUBJECT[owner]} ${slot}번 칸 열쇠를 공개하고 ${cardLabel(said)}를 냈습니다. 모두가 열어 보니 ${cardLabel(opened as Card)}, 맞습니다.`
+            : `⚠ ${MP_SUBJECT[owner]} ${cardLabel(said)}를 낸다고 했지만 열쇠로 연 ${slot}번 칸은 ${opened ? `${cardLabel(opened)}입니다` : "카드가 아닙니다"}. 모두의 화면에 ${MP_PEOPLE[owner]}의 부정으로 찍힙니다.`,
         ],
       };
     });
@@ -1002,7 +1006,7 @@ export function KeyProofDemo() {
     }
     setState({ parties, steps, commitments, deck });
     setLog([
-      "섞고 칸마다 다시 잠갔다. 다시 잠글 때 셋은 각자 V = g^u(u는 그때 쓴 비밀 지수)를 함께 공개했다.",
+      "섞고 칸마다 다시 잠갔습니다. 다시 잠글 때 셋은 각자 V = g^u를 함께 공개했습니다. g는 모두가 함께 쓰는 정해진 바탕 수, u는 그때 쓴 비밀 지수입니다.",
       ...commitments.map((v, i) => `  ${MP_PEOPLE[i]}의 V = ${short(v)}`),
     ]);
     setBusy(false);
@@ -1042,7 +1046,7 @@ export function KeyProofDemo() {
       const ok = await verifyKeys(g, st, proof);
       if (!ok) culprit = p.id;
       lines.push(
-        `${MP_PEOPLE[p.id]}: 열쇠 ${short(key)} 공개, 증명 a=${proof.a.slice(0, 6)}… z=${proof.z.slice(0, 6)}… → ${ok ? "맞다 ✓" : "맞지 않는다 ✗"}`,
+        `${MP_PEOPLE[p.id]}: 열쇠 ${short(key)} 공개, 증명 a=${proof.a.slice(0, 6)}… z=${proof.z.slice(0, 6)}… → ${ok ? "맞음 ✓" : "맞지 않음 ✗"}`,
       );
     }
     const cheolsu = state.parties[1] as Party;
@@ -1053,10 +1057,10 @@ export function KeyProofDemo() {
     );
     lines.push(
       card
-        ? `철수가 0번 칸을 열었다: ${cardLabel(card)}`
+        ? `철수가 0번 칸을 열었습니다: ${cardLabel(card)}`
         : culprit !== null
-          ? `⚠ 철수의 0번 칸이 카드로 열리지 않는다. 열쇠 증명이 틀린 사람: ${MP_PEOPLE[culprit]}`
-          : "⚠ 철수의 0번 칸이 열리지 않는다. 증명은 모두 맞다(섞는 단계 조작).",
+          ? `⚠ 철수의 0번 칸이 카드로 열리지 않습니다. 열쇠 증명이 틀린 사람: ${MP_PEOPLE[culprit]}`
+          : "⚠ 철수의 0번 칸이 열리지 않습니다. 증명은 모두 맞으니 섞는 단계에서 조작한 것입니다.",
     );
     setLog((l) => [...l, "", ...lines]);
     setBusy(false);
@@ -1113,7 +1117,7 @@ export function ShuffleProofDemo() {
     let note: string;
     try {
       answers = await answerShuffle(g, label, input, output, e, work, bits);
-      note = "철수가 16회 모두 응답했다.";
+      note = "철수가 16회 모두 응답했습니다.";
     } catch {
       // 속인 덱은 도전 1에 응답할 수 없다. 도전 0만 정직하게 답하고 나머지는 지어낸다.
       answers = bits.map((b, r) =>
@@ -1129,7 +1133,7 @@ export function ShuffleProofDemo() {
               proof: { a: "1", b: "1", z: "1" },
             },
       );
-      note = `철수는 도전값이 1인 ${bits.filter((b) => b === 1).length}회에 답할 수 없어 지어냈다.`;
+      note = `철수는 도전값이 1인 ${bits.filter((b) => b === 1).length}회에 답할 수 없어 지어냈습니다.`;
     }
     const ok = await verifyShuffle(
       g,
@@ -1143,20 +1147,20 @@ export function ShuffleProofDemo() {
     const ms = Math.round(performance.now() - t0);
     setLog([
       cheat
-        ? "철수가 섞은 덱에서 한 장을 다른 카드의 복제로 바꿨다(그 카드를 엿보려고). 그래서 Z는 모두 「받은 덱 → Z」만 보일 수 있게 만들었다."
-        : "철수가 9장을 자기 열쇠로 잠그고 섞었다.",
-      "약속: 중간 덱 Z 16벌과, 「Z → 넘긴 덱」을 보일 때 쓸 값 16개를 먼저 냈다.",
-      `도전값(셋이 함께 정함): ${bits.join("")}. 0이면 「받은 덱 → Z」를 보이고, 1이면 「Z → 넘긴 덱」을 보인다.`,
+        ? "철수가 섞은 덱에서 한 장을 다른 카드의 복제로 바꿨습니다(그 카드를 엿보려고). 그래서 Z는 모두 「받은 덱 → Z」만 보일 수 있게 만들었습니다."
+        : "철수가 9장을 자기 열쇠로 잠그고 섞었습니다.",
+      "약속: 중간 덱 Z 16벌과, 「Z → 넘긴 덱」을 보일 때 쓸 값 16개를 먼저 냈습니다.",
+      `도전값(셋이 함께 정함): ${bits.join("")}. 0이면 「받은 덱 → Z」를 보이고, 1이면 「Z → 넘긴 덱」을 보입니다.`,
       note,
       ok
-        ? `✓ 섞기 증명이 맞다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것이다(${ms}ms).`
-        : `⚠ 섞기 증명이 맞지 않는다. 철수를 짚는다. 도전값이 모두 0이어야 빠져나가는데 그 확률은 (½)¹⁶(6만 5천분의 1)이다(${ms}ms).`,
+        ? `✓ 섞기 증명이 맞습니다. 덱은 원래 카드를 같은 열쇠로 잠그고 순서만 바꾼 것입니다(${(ms / 1000).toFixed(2)}초).`
+        : `⚠ 섞기 증명이 맞지 않습니다. 철수를 짚습니다. 도전값이 모두 0이어야 빠져나가는데 그 확률은 (½)¹⁶, 곧 6만 5천분의 1입니다(${(ms / 1000).toFixed(2)}초).`,
     ]);
     setBusy(false);
   };
 
   return (
-    <Box title="섞기 증명(cut-and-choose)">
+    <Box title="섞기 증명(골라 열어 보기)">
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => void run(false)} disabled={busy}>
           철수가 정직하게 섞기
