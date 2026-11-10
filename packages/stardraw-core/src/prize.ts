@@ -57,7 +57,7 @@ export function checkTicketQualification(
     ({ period }) =>
       equalBytes(period.id, ticket.qual?.cert.periodId ?? new Uint8Array()),
   );
-  if (!open) return "이 회차에 쓸 수 있는 자격 기간이 아니다";
+  if (!open) return "이 회차에 쓸 수 있는 자격 기간이 아닙니다.";
   if (
     !qualVerify(
       ticket.qual.cert.qualPub,
@@ -65,7 +65,7 @@ export function checkTicketQualification(
       ticket.qual.sig,
     )
   )
-    return "자격 서명이 맞지 않는다";
+    return "자격 서명이 맞지 않습니다.";
   return null;
 }
 
@@ -116,7 +116,7 @@ export function judgeRound(
       for (const entry of list)
         if (!valid.includes(entry))
           problems.push(
-            `소속 증서: 예측서 ${toHex(ids[entry.index] as Uint8Array).slice(0, 12)}: 도장이 기간 열쇠로 확인되지 않는다`,
+            `소속 증서: 예측서 ${toHex(ids[entry.index] as Uint8Array).slice(0, 12)}: 도장이 기간 열쇠로 확인되지 않습니다.`,
           );
     }
     const counts = new Map<string, number>();

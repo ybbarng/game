@@ -262,8 +262,7 @@ export class EntryError extends Error {
 }
 
 /** 국장 열쇠로 응모·등록·찾기를 하려 할 때(docs/36 11-12). 화면에 그대로 보인다 */
-export const DIRECTOR_KEY_MESSAGE =
-  "이 패스키는 국장 열쇠라 예측에 쓸 수 없습니다";
+export const DIRECTOR_KEY_MESSAGE = "국장 패스키로는 예측할 수 없습니다";
 
 /** 등록만 올리기(우주인 등록 직후, docs/36 11-14) */
 export interface RegisterInput {
@@ -1407,7 +1406,7 @@ export class StardrawServer {
     if (!problem) return [pending];
     this.o.store.setPendingChange(null);
     this.o.log?.(
-      `예약한 일정 바꾸기를 ${round}회차 기록에 싣지 못해 지웠다(${problem}): ${describeEntry(pending)}`,
+      `예약한 일정 바꾸기를 ${round}회차 기록에 싣지 못해 지웠다(${problem.replace(/\.$/, "")}): ${describeEntry(pending)}`,
     );
     return [];
   }
@@ -1489,7 +1488,7 @@ export class StardrawServer {
     );
     for (const r of rejected)
       this.o.log?.(
-        `운영 기록을 싣지 않았다(${r.problem}): ${describeOp(r.op)}`,
+        `운영 기록을 싣지 않았다(${r.problem.replace(/\.$/, "")}): ${describeOp(r.op)}`,
       );
     return { operations: accepted, submittedIds: submitted.map((x) => x.id) };
   }
@@ -1601,7 +1600,7 @@ export class StardrawServer {
       ) === undefined
     )
       throw new EntryError(
-        "국장 열쇠가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요",
+        "국장 패스키가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요",
         403,
       );
     const submitted = store.directorOps();
@@ -1635,9 +1634,9 @@ export class StardrawServer {
     );
     const mine = rejected.find((r) => toHex(opId(r.op)) === id);
     if (mine) {
-      if (/국장 열쇠가 아니다/.test(mine.problem))
+      if (/국장 패스키가 아닙니다/.test(mine.problem))
         throw new EntryError(
-          "국장 열쇠가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요",
+          "국장 패스키가 아닙니다. 우주국이 지정한 국장 패스키로 서명해 주세요",
           403,
         );
       throw new EntryError(mine.problem);

@@ -232,7 +232,7 @@ export function DirectorConsole({
 
       <Section title="국장 패스키">
         <p className="break-keep text-sm text-white/70">
-          이 화면에서 만든 패스키는 우주국이 지정해야 국장 열쇠가 됩니다. 처음
+          이 화면에서 만든 패스키는 우주국이 지정해야 국장 패스키가 됩니다. 처음
           지정은 서버 설정(<code>STARDRAW_DIRECTOR_KEYS</code>)에 아래 값을
           넣어야 하고, 그 뒤는 쓰는 중인 국장의 서명으로 더합니다. 예측용 우주인
           패스키와 따로 만듭니다(국장 패스키로는 예측할 수 없습니다).
@@ -278,10 +278,10 @@ export function DirectorConsole({
             }
           />
         ))}
-        <h3 className="pt-2 font-semibold text-white/80">장부의 국장 열쇠</h3>
+        <h3 className="pt-2 font-semibold text-white/80">장부의 국장 패스키</h3>
         {view.directors.length === 0 && pendingDirectors.length === 0 ? (
           <p className="text-sm text-white/55">
-            아직 지정된 국장 열쇠가 없습니다.
+            아직 지정된 국장 패스키가 없습니다.
           </p>
         ) : (
           <ul className="flex flex-col gap-2 text-sm" data-director-keys>
@@ -324,7 +324,7 @@ export function DirectorConsole({
                 className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200/25 px-3 py-2"
               >
                 <code className="font-semibold">
-                  {o.summary.replace("국장 열쇠 지정 ", "")}
+                  {o.summary.replace("국장 패스키 지정 ", "")}
                 </code>
                 <span className="text-amber-100/80">
                   {`지정 예고 중 · ${roundShort(schedule, o.effectiveRound)}(${at(o.effectiveAt)})부터 · 서명 ${o.signedBy}`}
@@ -725,10 +725,10 @@ function MyKey({
         </code>{" "}
         <span className="text-white/60">
           {using
-            ? "(장부의 국장 열쇠)"
+            ? "(장부의 국장 패스키)"
             : pending
               ? "(지정 예고 중)"
-              : "(아직 국장 열쇠가 아님)"}
+              : "(아직 국장 패스키가 아님)"}
         </span>
       </p>
       {!using && !pending && (
@@ -772,7 +772,7 @@ function MyKey({
                 onClick={onDesignate}
                 className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-40"
               >
-                쓰는 중인 국장 열쇠로 지정
+                쓰는 중인 국장 패스키로 지정
               </button>
             )}
           </div>

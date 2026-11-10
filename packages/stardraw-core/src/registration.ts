@@ -53,9 +53,9 @@ export type UnsolvedRegistration = Omit<KeyRegistration, "nonce">;
 export function checkRegistration(r: UnsolvedRegistration): string | null {
   if (r.v !== REGISTRATION_VERSION) return `모르는 등록 판: ${r.v}`;
   if (r.pub.length !== PUBLIC_KEY_LENGTH || r.pub[0] !== 0x04)
-    return "공개 열쇠는 압축하지 않은 P-256 65바이트";
+    return "공개 열쇠는 압축하지 않은 P-256 65바이트여야 합니다.";
   if (r.credentialId.length < 1 || r.credentialId.length > MAX_CREDENTIAL_ID) {
-    return `패스키 번호는 1~${MAX_CREDENTIAL_ID}바이트`;
+    return `패스키 번호는 1~${MAX_CREDENTIAL_ID}바이트여야 합니다.`;
   }
   return null;
 }

@@ -111,7 +111,7 @@ describe("일정 변경은 3회차 예고 뒤부터", () => {
   it("1회차 기록에 실으면 2·3·4회차 동안 보이고 5회차부터 바꿀 수 있다", () => {
     expect(NOTICE_ROUNDS).toBe(3);
     expect(checkScheduleChange(hourly, change(4), 1)).toBe(
-      "일정 변경은 3회차 예고 뒤(5회차)부터",
+      "일정 변경은 3회차 예고 뒤(5회차)부터여야 합니다.",
     );
     expect(checkScheduleChange(hourly, change(5), 1)).toBeNull();
   });
@@ -215,7 +215,7 @@ describe("운영 단계(시험 → 정식, 이어지는 장부)", () => {
   it("정식 단계는 일정 바꾸기 한 줄이고 3회차 예고 규칙을 그대로 따른다", () => {
     expect(checkScheduleChange(trial, live(5), 1)).toBeNull();
     expect(checkScheduleChange(trial, live(4), 1)).toBe(
-      "일정 변경은 3회차 예고 뒤(5회차)부터",
+      "일정 변경은 3회차 예고 뒤(5회차)부터여야 합니다.",
     );
   });
 
@@ -223,7 +223,7 @@ describe("운영 단계(시험 → 정식, 이어지는 장부)", () => {
     const changed = withChange(trial, live(26));
     expect(
       checkScheduleChange(changed, { ...live(60), phase: "trial" }, 30),
-    ).toMatch(/정식 단계 뒤로 시험 단계를 둘 수 없다/);
+    ).toMatch(/정식 단계 뒤로 시험 단계를 둘 수 없습니다/);
     const { phase: _, ...noPhase } = live(60);
     expect(checkScheduleChange(changed, noPhase, 30)).toMatch(
       /모든 줄에 있거나 모두 없어야/,

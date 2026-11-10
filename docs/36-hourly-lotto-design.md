@@ -2658,3 +2658,16 @@ nice -n 15 node apps/stardraw-server/dist/bench/rush.js --n 1000 --mode returnin
 **찾아 쓰기**: `StoryTechWords.tsx` `STORY_TECH_PAIRS`, `PasskeyHelp.tsx`, 설명 페이지 `app/stardraw/about/page.tsx` `WORDS`·`FlowStep`의 `trial`, 보안 배우기 `learn/StardrawLearn.tsx`(`INTRO`·`LESSONS`·`LIMITS`), `learn/attacks.ts`.
 
 **시험**: 단위 `learn/learn-terms.test.tsx`(보안 배우기 글을 읽는 차례대로 펼쳐 용어마다 뜻을 먼저 알렸는지 `tutorial/term-order.ts`로, 목차 한 줄·공격 설명·한계 글이 합니다체 문장인지, 「예측서 열쇠」·「drand 회차」·「기대값」이 없는지). 화면 `stardraw-bureau.spec.ts`(낱말 표 수).
+
+### 11-75. 검사 문구 말투와 남은 옛 낱말(2026-11-10, #233 뒤 마무리)
+
+**까닭**: 11-74가 「drand 순번」·「국장 패스키」를 정하면서 검증 페이지와 core 검사 문구는 옛 말로 남겼다. core 검사 문구는 해라체(「정해진 drand 회차가 아니다」)에 마침표가 없어, 같은 화면의 합니다체 설명(검증 페이지)과 터미널 검사기의 합니다체 출력 사이에 섞였다.
+
+- **장부 검사 문구는 합니다체 문장, 마침표까지**: core가 만드는 문제 문장(`verify.ts`·`round-check.ts`·`public-ledger.ts`·`early-seal.ts`·`tsa.ts`·`operations.ts`·`prize.ts`·`qualification.ts`, 이어 붙는 규칙 문장 `registration.ts`·`nickname.ts`·`ticket.ts`·`schedule.ts`, 입상 확인 `claim.ts`·`invite.ts`)을 「~습니다.」로. 규칙 조각(「별명은 1~20자」)은 「별명은 1~20자여야 합니다.」처럼 문장으로. 「회차: 문장」·「등록 id: 문장」처럼 앞에 붙는 꼬리표는 그대로다. 짧은 표시 칸(「확인 못 함」, 「없음」, 「n회차 대조」)과 프로그래머 오류(바이트 길이·DER 읽기 같은 안쪽 오류)는 그대로다. 서버 기록(로그)에 괄호로 넣을 때는 끝 마침표를 뗀다.
+- **drand 순번**: 검증 페이지의 규칙 설명·장부 검사 요약(「마지막 drand 순번」)·항목 이름(「drand 순번·서명」)·시험 값 제목, core 검사 문구(「정해진 drand 순번이 아닙니다.」)까지. 「quicknet 회차」도 「quicknet 순번」.
+- **국장 패스키**: 운영 기록 이름(「국장 패스키 지정」·「국장 패스키 빼기」), 검사 문구, 국장 화면·우주국 소개·데모, 서버·연습 장부의 오류(「국장 패스키가 아닙니다」, 「국장 패스키로는 예측할 수 없습니다」), 터미널 검사기의 「[국장 패스키 내력]」. 서버 기록과 코드 식별자·주석은 그대로다.
+- **형식**: 검사 문구의 「모르는 판」·「모르는 기록 판」·「모르는 운영 기록 판」도 11-74의 「형식」으로.
+
+**찾아 쓰기**: 바꾼 문구를 정규식으로 찾는 곳이 있다. 웹 당첨자 확인 `confirm.ts` `REASONS`, 서버 `engine.ts`·웹 `local-ledger.ts`의 「국장 패스키가 아닙니다」, `public-ledger.ts` `RULES`(항목 나누기, `/drand/` 등).
+
+**시험**: 단위 `apps/web/src/stardraw/verify/words.test.ts`(별 따기 화면 코드·core·터미널 검사기의 주석 밖에 「drand 회차」·「quicknet 회차」·「국장 열쇠」가 없는지, core `fail(…)` 문구가 마침표로 끝나는 합니다체 문장인지).

@@ -47,15 +47,17 @@ describe("당첨자 확인 링크 초대", () => {
     const { other, ticket } = await winnerAndTicket();
     const forged = await signInvite(other, ticket, newInviteToken());
     expect(await verifyInvite(forged, ticket)).toEqual([
-      "예측서 주인의 서명이 아니다",
+      "예측서 주인의 서명이 아닙니다.",
     ]);
     const { winner, ticket: mine } = await winnerAndTicket();
     const real = await signInvite(winner, mine, newInviteToken());
     const swapped = { ...real, tokenHash: inviteTokenHash(newInviteToken()) };
     expect(await verifyInvite(swapped, mine)).toEqual([
-      "예측서 주인의 서명이 아니다",
+      "예측서 주인의 서명이 아닙니다.",
     ]);
-    expect(await verifyInvite(real, ticket)).toContain("다른 예측서의 초대다");
+    expect(await verifyInvite(real, ticket)).toContain(
+      "다른 예측서의 초대입니다.",
+    );
   });
 
   it("패스키로 낸 응모권도 패스키 서명으로 초대를 만든다", async () => {

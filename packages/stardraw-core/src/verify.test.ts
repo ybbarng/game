@@ -312,7 +312,7 @@ describe("장부 검사", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/^1: 빛난 별이 규칙대로가 아니다/),
+        expect.stringMatching(/^1: 빛난 별이 규칙대로가 아닙니다/),
         expect.stringMatching(/^2: 앞 기록 해시/),
       ]),
     );
@@ -330,7 +330,7 @@ describe("장부 검사", () => {
       OPTIONS,
     );
     expect(messages(report)).toContain(
-      "1: 1등 입상자 목록이 규칙대로가 아니다",
+      "1: 1등 입상자 목록이 규칙대로가 아닙니다.",
     );
   });
 
@@ -368,7 +368,7 @@ describe("장부 검사", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/같은 열쇠가 이 회차에 두 장/),
+        expect.stringMatching(/같은 열쇠로 이 회차에 두 장/),
       ]),
     );
   });
@@ -409,7 +409,7 @@ describe("장부 검사", () => {
     });
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/작업 증명이 맞지 않는다/),
+        expect.stringMatching(/작업 증명이 맞지 않습니다/),
       ]),
     );
   });
@@ -450,7 +450,7 @@ describe("장부 검사", () => {
       ledger.registrations,
       { ...OPTIONS, beaconVerifier: () => false },
     );
-    expect(messages(report)).toContain("1: drand 서명이 맞지 않는다");
+    expect(messages(report)).toContain("1: drand 서명이 맞지 않습니다.");
   });
 
   it("루트를 drand 뒤에 올렸는데 추첨했으면 드러난다", async () => {
@@ -465,7 +465,7 @@ describe("장부 검사", () => {
       OPTIONS,
     );
     expect(messages(report)).toContain(
-      "1: 루트 기록 시각으로는 무효 회차인데 결과를 정했다",
+      "1: 루트 기록 시각으로는 무효 회차인데 결과를 정했습니다.",
     );
   });
 
@@ -480,8 +480,8 @@ describe("장부 검사", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        "2: 회차 번호가 2여야 하는데 3다",
-        "2: 앞 기록 해시와 이어지지 않는다(장부가 바뀌었다)",
+        "2: 회차 번호가 2여야 하는데 3입니다.",
+        "2: 앞 기록 해시와 이어지지 않습니다(장부가 바뀌었습니다).",
       ]),
     );
   });
@@ -516,7 +516,7 @@ describe("일정 변경", () => {
       OPTIONS,
     );
     expect(messages(early)).toContain(
-      "1: 일정 변경: 일정 변경은 3회차 예고 뒤(5회차)부터",
+      "1: 일정 변경: 일정 변경은 3회차 예고 뒤(5회차)부터여야 합니다.",
     );
   });
 });
@@ -580,7 +580,7 @@ describe("시험 → 정식 이어지는 장부", () => {
     const records = chain(1, { ...liveFrom26, fromRound: 4 });
     const report = await verifyLedger(trial, records, [[]], [[]], OPTIONS);
     expect(messages(report)).toEqual([
-      "1: 일정 변경: 일정 변경은 3회차 예고 뒤(5회차)부터",
+      "1: 일정 변경: 일정 변경은 3회차 예고 뒤(5회차)부터여야 합니다.",
     ]);
   });
 });
@@ -663,11 +663,11 @@ describe("지운 회차(연습 장부가 남 응모권을 지운 회차)", () =>
     });
     expect(messages(noProof)).toEqual([
       expect.stringMatching(
-        /^2: 예측서 .*: 기록의 머클 루트에 들어 있다는 증명이 없다$/,
+        /^2: 예측서 .*: 기록의 머클 루트에 들어 있다는 증명이 없습니다.$/,
       ),
     ]);
     const plain = await verifyLedger(ledger.schedule, ...lists, OPTIONS);
-    expect(messages(plain)).toContain("2: 예측 수가 1인데 기록은 4");
+    expect(messages(plain)).toContain("2: 예측 수가 1인데 기록은 4입니다.");
   });
 });
 
@@ -691,7 +691,7 @@ describe("열쇠 등록", () => {
     });
     const report = await verifyLedger(HOURLY, [record], [[t]], [[]], OPTIONS);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 예측서 .*: 등록되지 않은 열쇠$/),
+      expect.stringMatching(/^1: 예측서 .*: 등록되지 않은 열쇠입니다\.$/),
     ]);
   });
 
@@ -706,8 +706,8 @@ describe("열쇠 등록", () => {
     );
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        "1: 등록 수가 3인데 기록은 4",
-        "1: 등록 목록으로 만든 머클 루트가 기록과 다르다",
+        "1: 등록 수가 3인데 기록은 4입니다.",
+        "1: 등록 목록으로 만든 머클 루트가 기록과 다릅니다.",
         expect.stringMatching(/등록되지 않은 열쇠/),
       ]),
     );
@@ -749,8 +749,8 @@ describe("열쇠 등록", () => {
     const report = await verifyLedger(HOURLY, [record], [[]], [regs], OPTIONS);
     expect(messages(report)).toEqual(
       expect.arrayContaining([
-        expect.stringMatching(/이미 등록된 열쇠$/),
-        expect.stringMatching(/이미 등록된 패스키 번호$/),
+        expect.stringMatching(/이미 등록된 열쇠입니다\.$/),
+        expect.stringMatching(/이미 등록된 패스키 번호입니다\.$/),
       ]),
     );
     expect(report.keys).toHaveLength(2);
@@ -787,7 +787,7 @@ describe("열쇠 등록", () => {
     });
     const report = await verifyLedger(HOURLY, [record], [[]], [regs], OPTIONS);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 등록 .*: 작업 증명이 맞지 않는다$/),
+      expect.stringMatching(/^1: 등록 .*: 작업 증명이 맞지 않습니다.$/),
     ]);
   });
 
@@ -946,12 +946,12 @@ describe("별명 남기기", () => {
     );
     const report = await check(ledger, [[sameRound], [loserNick]]);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^1: 별명 .*: 지난 회차 입상 예측서가 아니다$/),
-      expect.stringMatching(/^2: 별명 .*: 지난 회차 입상 예측서가 아니다$/),
+      expect.stringMatching(/^1: 별명 .*: 지난 회차 입상 예측서가 아닙니다.$/),
+      expect.stringMatching(/^2: 별명 .*: 지난 회차 입상 예측서가 아닙니다.$/),
     ]);
     const stolenReport = await check(ledger, [[], [stolen]]);
     expect(messages(stolenReport)).toEqual([
-      expect.stringMatching(/^2: 별명 .*: 서명이 맞지 않는다$/),
+      expect.stringMatching(/^2: 별명 .*: 서명이 맞지 않습니다.$/),
     ]);
   });
 
@@ -965,7 +965,7 @@ describe("별명 남기기", () => {
       [await makeNickname(signer, first, "다시 철수")],
     ]);
     expect(messages(report)).toEqual([
-      expect.stringMatching(/^3: 별명 .*: 이미 별명을 남긴 예측서$/),
+      expect.stringMatching(/^3: 별명 .*: 이미 별명을 남긴 예측서입니다\.$/),
     ]);
   });
 

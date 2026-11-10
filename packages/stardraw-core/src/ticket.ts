@@ -55,13 +55,14 @@ export interface Ticket {
 export type UnsignedTicket = Omit<Ticket, "nonce" | "sig">;
 
 export function checkNumbers(numbers: readonly number[]): string | null {
-  if (numbers.length !== PICK_COUNT) return `번호는 ${PICK_COUNT}개`;
+  if (numbers.length !== PICK_COUNT)
+    return `번호는 ${PICK_COUNT}개여야 합니다.`;
   for (let i = 0; i < numbers.length; i++) {
     const n = numbers[i] as number;
     if (!Number.isInteger(n) || n < 1 || n > MAX_NUMBER)
       return `번호는 1~${MAX_NUMBER}`;
     if (i > 0 && n <= (numbers[i - 1] as number))
-      return "번호는 서로 다르고 오름차순";
+      return "번호는 서로 다르고 오름차순이어야 합니다.";
   }
   return null;
 }

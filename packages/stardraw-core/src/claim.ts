@@ -77,7 +77,9 @@ function claimMessage(c: ClaimFields): Uint8Array {
 function checkText(label: string, text: string): void {
   const trimmed = text.trim();
   if (trimmed.length === 0 || trimmed !== text || text.length > MAX_TEXT) {
-    throw new Error(`${label}은(는) 앞뒤 공백 없이 1~${MAX_TEXT}자`);
+    throw new Error(
+      `${label}은(는) 앞뒤 공백 없이 1~${MAX_TEXT}자여야 합니다.`,
+    );
   }
 }
 
@@ -144,7 +146,7 @@ export function encodeClaim(c: Claim): string {
 export function decodeClaim(text: string): Claim {
   const trimmed = text.trim();
   if (!trimmed.startsWith(CLAIM_PREFIX))
-    throw new Error("하늘의 별 따기 입상 증명이 아니다");
+    throw new Error("하늘의 별 따기 입상 증명이 아닙니다.");
   const r = new ByteReader(fromBase64Url(trimmed.slice(CLAIM_PREFIX.length)));
   const kind = r.u8();
   const body = new ByteReader(r.bytes());
@@ -197,24 +199,24 @@ export async function verifyClaim(
 ): Promise<string[]> {
   const problems: string[] = [];
   if (!equalBytes(claim.ticketId, ticketId(expect.ticket)))
-    problems.push("다른 예측서의 증명이다");
+    problems.push("다른 예측서의 증명입니다.");
   if (!equalBytes(claim.pub, expect.ticket.pub))
-    problems.push("예측서 주인의 열쇠가 아니다");
+    problems.push("예측서 주인의 열쇠가 아닙니다.");
   if (
     claim.kind === "direct" &&
     expect.to !== undefined &&
     claim.to !== expect.to
   ) {
-    problems.push(`받는 사람이 다르다(증명에는 "${claim.to}")`);
+    problems.push(`받는 사람이 다릅니다(증명에는 "${claim.to}").`);
   }
   if (claim.kind === "challenge" && expect.request) {
     if (claim.challenge !== expect.request.challenge)
-      problems.push("확인 문구가 다르다");
+      problems.push("확인 문구가 다릅니다.");
     if (claim.requester !== expect.request.requester)
-      problems.push(`확인 요청자가 다르다(증명에는 "${claim.requester}")`);
+      problems.push(`확인 요청자가 다릅니다(증명에는 "${claim.requester}").`);
   }
   if (claim.kind === "direct" && expect.request) {
-    problems.push("확인 문구 증명을 요청했는데 바로 보내는 증명이다");
+    problems.push("확인 문구 증명을 요청했는데 바로 보내는 증명입니다.");
   }
   if (
     !(await verifyEntrantSignature(
@@ -224,7 +226,7 @@ export async function verifyClaim(
       expect.policy,
     ))
   ) {
-    problems.push("서명이 맞지 않는다");
+    problems.push("서명이 맞지 않습니다.");
   }
   return problems;
 }
@@ -299,6 +301,6 @@ export async function answerConfirmRequest(
   req: ConfirmRequest,
 ): Promise<Claim> {
   if (req.round !== ticket.round || !equalBytes(req.ticketId, ticketId(ticket)))
-    throw new Error("이 예측서에 대한 확인 요청이 아니다");
+    throw new Error("이 예측서에 대한 확인 요청이 아닙니다.");
   return makeChallengeClaim(signer, ticket, req.challenge, req.requester);
 }

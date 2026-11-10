@@ -157,8 +157,8 @@ describe("정식 유효 회차", () => {
     // 4회차: 사본 없음
     let [copy] = await check(rounds, w);
     expect(copy.status).toBe("fail");
-    expect(copy.detail).toContain("3회: 관측 전 사본이 봉인 파일과 다르다");
-    expect(copy.detail).toContain("4회: 관측 전 사본이 없다");
+    expect(copy.detail).toContain("3회: 관측 전 사본이 봉인 파일과 다릅니다.");
+    expect(copy.detail).toContain("4회: 관측 전 사본이 없습니다.");
 
     const late = new FakeWitness();
     late.timely(rounds[2] as RoundRecord);
@@ -179,7 +179,7 @@ describe("정식 유효 회차", () => {
     expect(activity.status).toBe("warn");
     expect(activity.detail).toContain("3회: 활동 기록의 push 시각");
     expect(activity.detail).toContain(
-      "4회: 활동 기록에서 사본 커밋을 찾지 못했다",
+      "4회: 활동 기록에서 사본 커밋을 찾지 못했습니다",
     );
   });
 

@@ -461,7 +461,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
   },
   {
     id: "schedule",
-    title: "일정표와 drand 회차",
+    title: "일정표와 drand 순번",
     vectors: [
       {
         title: "1시간 회차의 epoch(1회차가 열리는 시각)",
@@ -476,15 +476,15 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
         compute: () => String(roundTimes(HOURLY, 1).closesAt),
       },
       {
-        title: "1회차가 쓰는 drand 회차",
-        input: "마감 + 300초 이후 첫 quicknet 회차",
+        title: "1회차가 쓰는 drand 순번",
+        input: "마감 + 300초 이후 첫 quicknet 순번",
         expected: "33507412",
         compute: () =>
           String(drandRoundForClose(roundTimes(HOURLY, 1).closesAt)),
       },
       {
-        title: "그 drand 회차의 시각",
-        input: "1692803367 + (회차 − 1) × 3",
+        title: "그 drand 순번의 시각",
+        input: "1692803367 + (순번 − 1) × 3",
         expected: "1793325600",
         compute: () =>
           String(drandTime(drandRoundForClose(roundTimes(HOURLY, 1).closesAt))),
@@ -665,7 +665,7 @@ export const TEST_VECTORS: readonly VectorGroup[] = [
           ),
       },
       {
-        title: "국장 열쇠 지문",
+        title: "국장 패스키 지문",
         input: `공개 열쇠 ${PUB_TEXT}`,
         expected: "국장-PQ4H-271Y-NRQJ",
         compute: () => directorFingerprint(PUB),
