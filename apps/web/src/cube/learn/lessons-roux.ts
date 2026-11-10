@@ -186,7 +186,8 @@ const lse: Lesson = {
   id: "roux-lse",
   size: 3,
   title: "남은 엣지 여섯(LSE)",
-  summary: "M과 U만으로 세 걸음: 엣지 방향 → 왼쪽·오른쪽 위 엣지 → 가운데 줄.",
+  summary:
+    "M과 U만으로 세 걸음: 엣지 방향 → 왼쪽·오른쪽 위 엣지 → 가운데 층(M) 엣지.",
   steps: [
     {
       kind: "quiz",
@@ -240,13 +241,13 @@ const lse: Lesson = {
     },
     {
       kind: "demo",
-      body: "마지막으로 가운데 줄 엣지 넷을 M과 U2로 맞춰요. 영어 자료에서는 이 걸음을 4c라고 불러요. 루의 넷째 단계인 LSE의 세 번째 걸음이라는 뜻이에요.",
+      body: "마지막으로 가운데 층(M) 엣지 넷을 M과 U2로 맞춰요. 영어 자료에서는 이 걸음을 4c라고 불러요. 루의 넷째 단계인 LSE의 세 번째 걸음이라는 뜻이에요.",
       setup: upTo(S21, FB21, SB21, CMLL21, EO21, ULUR21),
       alg: EP21,
     },
     {
       kind: "try",
-      body: "가운데 줄 엣지를 맞춰 끝내 보세요.",
+      body: "가운데 층(M) 엣지를 맞춰 끝내 보세요.",
       setup: upTo(S7, FB7, SB7, CMLL7, EO7, ULUR7),
       alg: EP7,
       goal: "solved",
