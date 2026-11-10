@@ -33,11 +33,12 @@ import {
 } from "@game/cube-engine";
 import { nextInt, type RngState } from "@game/mighty-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-
+import type { AlgSetInfo } from "./alg-sets";
 import { EDGES_5X5 } from "./algs-big";
-import type { AlgSetInfo } from "./index";
+// 단원 글(lessons-333)의 CORNER_TWIST와 같은 값. 채점기가 단원 글에 기대지 않게 원본에서 바로 가져온다
+import { TWIST as CORNER_TWIST } from "./beginner-path";
+import { LAST_EDGE_WINGS } from "./big-path";
 import { isMethodGoal, methodGoalMet } from "./judge-methods";
-import { CORNER_TWIST } from "./lessons-333";
 import type {
   AlgCase,
   CubeSize,
@@ -522,6 +523,7 @@ const RULE_SIZE: Record<ScrambleRule, CubeSize> = {
   "2x2-corners-placed": 2,
   "4x4-random": 4,
   "4x4-centers-solved": 4,
+  "4x4-last-four-edges": 4,
   "4x4-reduced": 4,
   "5x5-random": 5,
   "5x5-centers-solved": 5,
@@ -688,6 +690,7 @@ const RULE_NEXT: Record<ScrambleRule, GoalName> = {
   "2x2-corners-placed": "solved",
   "4x4-random": "centers",
   "4x4-centers-solved": "edges-paired",
+  "4x4-last-four-edges": "edges-paired",
   "4x4-reduced": "solved",
   "5x5-random": "centers",
   "5x5-centers-solved": "edges-paired",
@@ -780,6 +783,14 @@ function ruleOnce(rule: ScrambleRule, rng: RngState): PuzzleState {
     case "4x4-centers-solved":
     case "5x5-centers-solved":
       return keepRandom(n, rng, piecesOfKind(n, "center", "innerCenter"));
+    case "4x4-last-four-edges": {
+      // 가운데 줄 넷의 날개 여덟만 섞는다(센터·코너·위·아래 층 엣지는 맞은 채)
+      const wings = new Set(Object.values(LAST_EDGE_WINGS).flat());
+      const keep = cubeTopology(n)
+        .pieces.map((_, i) => i)
+        .filter((i) => !wings.has(i));
+      return keepRandom(n, rng, keep);
+    }
     case "4x4-reduced":
       return fromAlg(n, randomOuterTurns(rng, 30));
     case "roux-fb-solved":

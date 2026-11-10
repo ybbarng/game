@@ -15,6 +15,7 @@ import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { fitGlyph, PIECE_GLYPHS } from "../piece-glyphs";
 import type { PieceLabels } from "../settings";
+import "@/components/board-game/piece-slide.css";
 
 /** 판 가장자리 여백(칸 단위). 바깥 줄 위 기물이 잘리지 않게 */
 const PAD = 0.62;

@@ -361,7 +361,7 @@ function JanggiHome({
       together={{
         icon: "👥",
         title: "다함께 장기",
-        detail: "링크로 친구를 부릅니다. 서버 없이 바로 이어집니다",
+        detail: "링크로 친구를 부릅니다. 서버 없이 바로 이어집니다.",
         onClick: onOnline,
       }}
       learn={{

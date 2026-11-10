@@ -22,6 +22,7 @@ import { STAR_FACTS } from "../star-facts";
 import { rentTable } from "./Decision";
 import { ShipToken } from "./parts";
 import { SEASON_KO, SeasonMark } from "./SeasonMark";
+import "@/galaxy/components/galaxy.css";
 
 /**
  * 모퉁이·공문 칸 설명(2026-11-05 사용자 「특수칸의 역할을 잘 모르겠음」). 칸 카드와 옆 칸 정보가 같은 글을 쓴다

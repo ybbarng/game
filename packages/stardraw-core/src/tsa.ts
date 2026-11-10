@@ -175,17 +175,17 @@ export async function verifyTimestampToken(
     const t = readToken(token);
     genTime = Math.floor(t.genTimeMs / 1000);
     if (t.imprintAlg !== OID.sha256 || !equalBytes(t.imprint, expect.imprint))
-      problems.push("토큰이 이 봉인 값을 담고 있지 않다");
+      problems.push("토큰이 이 봉인 값을 담고 있지 않습니다.");
 
     const hash = HASHES[t.digestAlg];
     if (!hash) throw new Error(`모르는 해시 ${t.digestAlg}`);
     if (!equalBytes(t.messageDigest, digestOf(hash, t.content)))
-      problems.push("서명된 속성의 해시가 토큰 내용과 다르다");
+      problems.push("서명된 속성의 해시가 토큰 내용과 다릅니다.");
     if (t.contentTypeAttr !== OID.tstInfo)
-      problems.push("서명된 속성의 내용 종류가 TSTInfo가 아니다");
+      problems.push("서명된 속성의 내용 종류가 TSTInfo가 아닙니다.");
 
     const signer = t.certs.find((c) => t.sidMatches(c));
-    if (!signer) throw new Error("서명한 인증서가 토큰 안에 없다");
+    if (!signer) throw new Error("서명한 인증서가 토큰 안에 없습니다");
     if (
       !(await verifySignature(
         signer.spki,
@@ -195,20 +195,20 @@ export async function verifyTimestampToken(
         t.signature,
       ))
     )
-      problems.push("토큰 서명이 맞지 않는다");
+      problems.push("토큰 서명이 맞지 않습니다.");
     // RFC 3161 2.3: 시각 인증 인증서의 확장 키 용도는 timeStamping 하나뿐이고 critical이어야 한다
     if (
       !signer.ekuCritical ||
       signer.eku.length !== 1 ||
       signer.eku[0] !== OID.timeStamping
     )
-      problems.push("서명한 인증서가 시각 인증용이 아니다");
+      problems.push("서명한 인증서가 시각 인증용이 아닙니다.");
 
     const authorities = expect.authorities ?? TSA_AUTHORITIES;
     tsa = await chainTo(signer, t.certs, t.genTimeMs, authorities, problems);
-    if (!tsa) problems.push("인증서가 믿는 기관 열쇠로 이어지지 않는다");
+    if (!tsa) problems.push("인증서가 믿는 기관 열쇠로 이어지지 않습니다.");
   } catch (err) {
-    problems.push(`토큰을 읽을 수 없다(${(err as Error).message})`);
+    problems.push(`토큰을 읽을 수 없습니다(${(err as Error).message}).`);
   }
   return { ok: problems.length === 0, genTime, tsa, problems };
 }
@@ -257,18 +257,20 @@ export async function verifyTsaProof(
           ok: false,
           genTime: 0,
           tsa: null,
-          problems: ["믿는 기관 목록에 없다"],
+          problems: ["믿는 기관 목록에 없습니다."],
         };
     if (check.ok && check.genTime !== item.genTime) {
       check.ok = false;
-      check.problems.push("적어 둔 시각이 토큰 시각과 다르다");
+      check.problems.push("적어 둔 시각이 토큰 시각과 다릅니다.");
     }
     stamps.push({ ...check, tsa: item.tsa });
     if (!check.ok) problems.push(`${item.tsa}: ${check.problems.join(", ")}`);
   }
   const names = new Set(stamps.filter((s) => s.ok).map((s) => s.tsa));
   if (names.size < minValid)
-    problems.push(`시각 인증 기관이 ${minValid}곳보다 적다(${names.size}곳)`);
+    problems.push(
+      `시각 인증 기관이 ${minValid}곳보다 적습니다(${names.size}곳).`,
+    );
   const times = stamps.filter((s) => s.ok).map((s) => s.genTime);
   return {
     ok: problems.length === 0,
@@ -392,12 +394,13 @@ function readCert(node: Der): Cert {
 
 function readToken(token: Uint8Array) {
   const [type, wrapped] = derChildren(parseDer(token));
-  if (readOid(type) !== OID.signedData) throw new Error("SignedData가 아니다");
+  if (readOid(type) !== OID.signedData)
+    throw new Error("SignedData가 아닙니다");
   const signed = derChildren(
     expectTag(derChildren(expectTag(wrapped, 0xa0))[0], TAG.sequence),
   );
   const encap = derChildren(expectTag(signed[2], TAG.sequence));
-  if (readOid(encap[0]) !== OID.tstInfo) throw new Error("TSTInfo가 아니다");
+  if (readOid(encap[0]) !== OID.tstInfo) throw new Error("TSTInfo가 아닙니다");
   const content = expectTag(
     derChildren(expectTag(encap[1], 0xa0))[0],
     TAG.octetString,
@@ -411,11 +414,11 @@ function readToken(token: Uint8Array) {
   const signerInfos = derChildren(
     expectTag(signed[signed.length - 1], TAG.set),
   );
-  if (signerInfos.length !== 1) throw new Error("서명자가 하나가 아니다");
+  if (signerInfos.length !== 1) throw new Error("서명자가 하나가 아닙니다");
   const si = derChildren(expectTag(signerInfos[0], TAG.sequence));
   const sid = si[1] as Der;
   const attrsNode = si.find((n) => n.tag === 0xa0);
-  if (!attrsNode) throw new Error("서명된 속성이 없다");
+  if (!attrsNode) throw new Error("서명된 속성이 없습니다");
   const after = si.slice(si.indexOf(attrsNode) + 1);
   let messageDigest: Uint8Array = new Uint8Array();
   let contentTypeAttr = "";
@@ -477,7 +480,7 @@ async function chainTo(
     const found = authorities.find((a) => a.pins.includes(pin));
     if (found) return found.name;
     if (atMs < cur.notBefore || atMs > cur.notAfter) {
-      problems.push("인증서가 토큰 시각에 유효하지 않다");
+      problems.push("인증서가 토큰 시각에 유효하지 않습니다.");
       return null;
     }
     const issuer = certs.find(
@@ -494,7 +497,7 @@ async function chainTo(
         !issuer.keyCertSign ||
         (issuer.pathLen !== null && depth > issuer.pathLen))
     ) {
-      problems.push("인증서 사슬에 CA가 아닌 발급 인증서가 있다");
+      problems.push("인증서 사슬에 CA가 아닌 발급 인증서가 있습니다.");
       return null;
     }
     const hash = HASHES[cur.sigAlg];
@@ -508,7 +511,7 @@ async function chainTo(
         cur.signature,
       ))
     ) {
-      problems.push("인증서 사슬의 서명이 맞지 않는다");
+      problems.push("인증서 사슬의 서명이 맞지 않습니다.");
       return null;
     }
     cur = issuer;

@@ -13,6 +13,7 @@ import {
 } from "../challenge";
 import { formatMs, type Split } from "../records";
 import { SplitList } from "./SolveProgress";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 제한 도전(`/cube/challenge`, docs/51 2-3) 화면 조각: 체력바, 결과 상자, 기록 칸.

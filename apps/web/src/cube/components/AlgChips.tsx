@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { algTokens } from "../learn";
+import { algTokens } from "../learn/notation";
 import { MoveChip, type MoveKeysOf } from "./MoveChip";
 
 /** 공식 한 줄을 수 칩(표기 + 사용자 키캡)으로. `keysOf`가 null이면(휴대폰) 표기만 */

@@ -73,6 +73,7 @@ import { ShoutPress } from "../shout-press";
 import { useOnecard } from "../store";
 import { ONECARD_CARD, OnecardCardView } from "./OnecardCard";
 import { OnecardSettingsMenu } from "./OnecardSettingsMenu";
+import "@/onecard/components/onecard.css";
 
 /** 원카드 화면 배경(짙은 남색 펠트). 하트는 붉은 펠트, 마이티는 초록 펠트 */
 export const ONECARD_BG =

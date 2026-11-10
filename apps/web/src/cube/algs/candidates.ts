@@ -3,7 +3,7 @@
 // 모든 후보가 그 상황의 검사기(checkAlg)를 통과하는지 candidates.test.ts가 확인한다.
 import { type CubeMove, isRotation, parseMoves } from "@game/cube-engine";
 
-import type { AlgCase } from "../learn";
+import type { AlgCase } from "../learn/types";
 import { LL_CANDIDATES } from "./candidates-ll";
 import { MORE_CANDIDATES } from "./candidates-more";
 import { setOf } from "./check";

@@ -917,7 +917,7 @@ export class RoomHub {
   ): Promise<void> {
     const room = this.room(round, false);
     if (!this.deps.isDirector(input.pub))
-      throw new EntryError("국장 열쇠가 아닙니다", 403);
+      throw new EntryError("국장 패스키가 아닙니다", 403);
     const nonce = this.checkNonce(room, input.nonce);
     const ok = await verifyEntrantSignature(
       input.pub,

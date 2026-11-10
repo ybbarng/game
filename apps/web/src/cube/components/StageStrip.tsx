@@ -5,8 +5,9 @@ import type { PuzzleState } from "@game/puzzle-core";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { type Course, lessonPlace } from "../learn";
 import type { LearnProgress } from "../learn/progress";
+import { lessonPlace } from "../learn/stage-map";
+import type { Course } from "../learn/types";
 import type { CubeSettings } from "../settings";
 import { CubePosterPair } from "./CubePosterPair";
 import { DemoCube } from "./DemoCube";

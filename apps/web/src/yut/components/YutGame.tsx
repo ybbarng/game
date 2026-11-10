@@ -38,6 +38,7 @@ import {
   YutSticks,
 } from "./parts";
 import { YutBoard } from "./YutBoard";
+import "@/yut/components/yut.css";
 
 /** 윷놀이 화면 배경: 저녁 마당 */
 export const YUT_BG =

@@ -122,7 +122,7 @@ describe("앵커 확인(githubAnchorVerifier)", () => {
       [path]: good.replace(/record \w+/, `record ${"00".repeat(32)}`),
     });
     expect(bad.problems.map((p) => p.message)).toContain(
-      "기록 해시가 앵커 저장소의 기록과 다르다",
+      "기록 해시가 앵커 저장소의 기록과 다릅니다.",
     );
     expect((await run({})).skipped).toContain("1회차: 앵커(기록 없음)");
   });
@@ -160,7 +160,7 @@ describe("처음 일정표 앵커(githubGenesisVerifier)", () => {
       verifyLedger(g, [], [], [], { genesisAnchorVerifier: verifier(files) });
     expect((await run(TRIAL, file)).problems).toEqual([]);
     expect((await run(restarted, file)).problems.map((p) => p.message)).toEqual(
-      ["처음 일정표: 앵커 저장소의 장부와 다르다(장부를 다시 시작했다)"],
+      ["처음 일정표: 앵커 저장소의 장부와 다릅니다(장부를 다시 시작했습니다)."],
     );
     expect((await run(TRIAL, {})).skipped).toEqual([
       "앵커의 처음 일정표(기록 없음)",

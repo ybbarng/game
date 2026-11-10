@@ -37,7 +37,9 @@ import {
   summarize,
   weakKeys,
 } from "../keys";
-import { algTokens, FINGER_DRILLS, type FingerDrill } from "../learn";
+import { FINGER_DRILLS } from "../learn/fingers";
+import { algTokens } from "../learn/notation";
+import type { FingerDrill } from "../learn/types";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { LapChart } from "./FingersApp";
 import { KeyboardMap } from "./KeyboardMap";

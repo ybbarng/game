@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { PARTY_HP, PARTY_LOW } from "./party";
+import "@/cube/components/cube-fx.css";
 
 /** 깎인 몫(「−16」)이 떠 있는 시간(ms). CSS `cube-party-hit`과 같다 */
 const HIT_MS = 900;

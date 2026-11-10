@@ -85,14 +85,15 @@ export function issuerPublicKey(secretKey: Uint8Array): Uint8Array {
 
 /** 기간 열쇠가 G2 부분군의 점이고 무한원점이 아닌지 */
 export function checkIssuerKey(key: Uint8Array): string | null {
-  if (key.length !== ISSUER_KEY_LENGTH) return "도장 열쇠는 96바이트";
+  if (key.length !== ISSUER_KEY_LENGTH)
+    return "도장 열쇠는 96바이트여야 합니다.";
   try {
     const point = G2.fromBytes(key);
     point.assertValidity();
-    if (point.is0()) return "도장 열쇠가 무한원점이다";
+    if (point.is0()) return "도장 열쇠가 무한원점입니다.";
     return null;
   } catch {
-    return "도장 열쇠가 곡선 위 점이 아니다";
+    return "도장 열쇠가 곡선 위 점이 아닙니다.";
   }
 }
 
@@ -401,16 +402,16 @@ function fromBase32(text: string, length: number): Uint8Array {
   let at = 0;
   for (const ch of text) {
     const v = CROCKFORD.indexOf(ch);
-    if (v < 0) throw new Error("복구 코드에 쓸 수 없는 글자가 있다");
+    if (v < 0) throw new Error("복구 코드에 쓸 수 없는 글자가 있습니다.");
     value = ((value << 5) | v) & 0xffff;
     bits += 5;
     if (bits >= 8) {
-      if (at >= length) throw new Error("복구 코드가 너무 길다");
+      if (at >= length) throw new Error("복구 코드가 너무 깁니다.");
       out[at++] = (value >>> (bits - 8)) & 255;
       bits -= 8;
     }
   }
-  if (at !== length) throw new Error("복구 코드가 짧다");
+  if (at !== length) throw new Error("복구 코드가 짧습니다.");
   return out;
 }
 
@@ -442,11 +443,12 @@ export function parseRecoveryCode(text: string): {
     .replace(/O/g, "0");
   const prefix = RECOVERY_PREFIX.replace("-", "");
   if (!clean.startsWith(prefix))
-    throw new Error("복구 코드는 SDQ1-로 시작한다");
+    throw new Error("복구 코드는 SDQ1-로 시작해야 합니다.");
   const r = new ByteReader(
     fromBase32(clean.slice(prefix.length), RECOVERY_BYTES),
   );
-  if (r.u8() !== RECOVERY_VERSION) throw new Error("모르는 복구 코드 판");
+  if (r.u8() !== RECOVERY_VERSION)
+    throw new Error("모르는 복구 코드 형식입니다.");
   const out = {
     periodPrefix: r.fixed(PERIOD_PREFIX_LENGTH),
     seed: r.fixed(QUAL_SEED_LENGTH),

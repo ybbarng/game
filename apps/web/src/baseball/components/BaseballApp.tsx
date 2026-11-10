@@ -34,6 +34,7 @@ import { BaseballGame } from "./BaseballGame";
 import { baseballTutorial } from "./baseball-tutorial";
 import { CountLamps, NumberBoxes } from "./parts";
 import { BaseDiamond } from "./scoreboard";
+import "@/baseball/components/baseball.css";
 
 /** 숫자야구 화면들의 배경(밤 야구장 잔디) */
 const BG = "ballpark";
@@ -331,7 +332,7 @@ function BaseballHome({
       together={{
         icon: "👥",
         title: "다함께 숫자야구",
-        detail: "링크로 친구를 부릅니다. 비밀 수는 각자 기기에만 있습니다",
+        detail: "링크로 친구를 부릅니다. 비밀 수는 각자 기기에만 있습니다.",
         onClick: onOnline,
       }}
       learn={{

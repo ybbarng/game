@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Seal } from "@/stardraw/astronaut/marks";
 import { BureauLogo } from "@/stardraw/components/BureauMarks";
+import "@/galaxy/components/galaxy.css";
 
 export { ShipToken } from "./Ship";
 

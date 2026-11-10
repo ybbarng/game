@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Logo } from "./brand/Logo";
+import "@/components/brand/splash.css";
 
 const SEEN_KEY = "mighty-splash-seen";
 const DURATION = 1600;

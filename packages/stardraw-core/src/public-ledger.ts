@@ -471,7 +471,7 @@ const RULES: { id: string; label: string; test: RegExp }[] = [
     test: /^예측서|예측서 목록/,
   },
   { id: "merkle", label: "예측 수·머클 루트", test: /예측 수가|머클 루트/ },
-  { id: "drand", label: "drand 회차·서명", test: /drand/ },
+  { id: "drand", label: "drand 순번·서명", test: /drand/ },
   { id: "void", label: "무효 회차 규칙", test: /무효/ },
   { id: "draw", label: "빛난 별·등수", test: /빛난 별|입상자/ },
   { id: "schedule", label: "일정 변경", test: /^일정 변경/ },
@@ -519,7 +519,7 @@ export function checkItemsFrom(
   return items;
 }
 
-/** "3회차: 서명이 맞지 않는다"처럼 회차를 붙인 문장 */
+/** "3회차: 서명이 맞지 않습니다."처럼 회차를 붙인 문장 */
 export const problemText = (p: Problem) =>
   p.round === 0 ? p.message : `${p.round}회차: ${p.message}`;
 
@@ -603,9 +603,9 @@ export async function checkPublicLedger(
   for (const [i, record] of records.entries()) {
     const seal = seals[i] as PublicSealFile;
     if (seal.digest !== toHex(sealDigest(record)))
-      sealProblems.push(`${record.round}회차: 봉인 값이 기록과 다르다`);
+      sealProblems.push(`${record.round}회차: 봉인 값이 기록과 다릅니다.`);
     if (seal.loggedAt !== record.rootLoggedAt)
-      sealProblems.push(`${record.round}회차: 봉인 시각이 기록과 다르다`);
+      sealProblems.push(`${record.round}회차: 봉인 시각이 기록과 다릅니다.`);
   }
   const headOk = head.head === toHex(report.head);
   const extra: CheckItem[] = [
@@ -703,7 +703,7 @@ function sealKeyItem(
       label,
       status: "fail",
       detail:
-        "장부가 정한 지금 관인 열쇠가 head.json의 서버 공개 열쇠와 다르다",
+        "장부가 정한 지금 관인 열쇠가 head.json의 서버 공개 열쇠와 다릅니다.",
     };
   return { id: "seal-key", label, status: "pass" };
 }
@@ -831,7 +831,7 @@ export async function voidRoundsItem(
     };
     const hide = () =>
       hidden.push(
-        `${record.round}회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔다`,
+        `${record.round}회: 결과 결정 전에 봉인 증거(시각 인증)가 있었는데 무효로 닫혔습니다.`,
       );
     let caught = false;
     if (options.earlySeals)
@@ -942,7 +942,7 @@ export async function lightItem(
       () => false,
     );
     if (!first) return item("skip", "가벼운 기록 파일을 아직 내지 않습니다");
-    return item("fail", `${err.round}회차 가벼운 기록 파일이 없다`);
+    return item("fail", `${err.round}회차 가벼운 기록 파일이 없습니다.`);
   }
   const problems: string[] = [];
   for (const [i, record] of records.entries()) {
@@ -950,11 +950,11 @@ export async function lightItem(
     if (!light) continue;
     if (!equalBytes(recordHash(light.record), recordHash(record)))
       problems.push(
-        `${record.round}회차: 가벼운 기록의 기록이 회차 파일과 다르다`,
+        `${record.round}회차: 가벼운 기록의 기록이 회차 파일과 다릅니다.`,
       );
     if (!sameSummary(light.summary, roundSummary(tickets[i] ?? [])))
       problems.push(
-        `${record.round}회차: 요약이 회차 파일로 다시 계산한 값과 다르다`,
+        `${record.round}회차: 요약이 회차 파일로 다시 계산한 값과 다릅니다.`,
       );
   }
   return problems.length > 0
@@ -1005,7 +1005,7 @@ async function timestampItem(
       failed.push(`${record.round}회차: ${check.problems.join(", ")}`);
     else if (check.loggedAt !== record.rootLoggedAt)
       failed.push(
-        `${record.round}회차: 봉인 시각이 가장 이른 토큰 시각과 다르다`,
+        `${record.round}회차: 봉인 시각이 가장 이른 토큰 시각과 다릅니다.`,
       );
     else {
       proved++;

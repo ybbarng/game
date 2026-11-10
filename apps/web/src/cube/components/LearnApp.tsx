@@ -5,14 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { backViewText } from "../back-view";
-import {
-  type BesideCube,
-  COURSES,
-  type Course,
-  courseById,
-  type Lesson,
-  type LessonStep,
-} from "../learn";
+import { COURSES, courseById } from "../learn/courses";
 import {
   demoBodyParts,
   demoOffersTurn,
@@ -32,6 +25,7 @@ import {
   markTryPassed,
   resumeStep,
 } from "../learn/progress";
+import type { BesideCube, Course, Lesson, LessonStep } from "../learn/types";
 import { redirectTarget } from "../nav/redirect";
 import { type CubeSettings, useCubeSettings } from "../settings";
 import { touchText } from "../touch-text";
@@ -58,6 +52,7 @@ import { StageHeader, StageMapDemo, StageStrip } from "./StageStrip";
 import { StillCube } from "./StillCube";
 import { KIND_LABEL, KIND_MARK } from "./step-kinds";
 import { TryPanel } from "./TryPanel";
+import "@/cube/components/cube-fx.css";
 
 /**
  * 배우기 단원(`/cube/learn?lesson=<id>`, docs/47 8-1): 설명 → 시연 → 직접 해보기. 과정 목록은 해법 익히기(`MethodsApp`, `/cube/methods`)로 옮겼다.

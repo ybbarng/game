@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -536,6 +537,64 @@ describe("놓친 의존 막기", () => {
     expect(ctx.reach["src/app/globals.css"]?.size).toBeGreaterThan(50);
     // new Worker(new URL("./cube-worker", import.meta.url))
     expect(ctx.reach["src/cube/worker/cube-worker.ts"]).toBeTruthy();
+  });
+});
+
+describe("게임별 CSS(globals.css는 모든 화면이 쓰는 것만, docs/38 17절)", () => {
+  const web = path.join(ROOT, "apps/web");
+  const all = readdirSync(path.join(web, "src"), { recursive: true }).map(
+    (p) => `src/${p.split(path.sep).join("/")}`,
+  );
+  const cssFiles = all.filter(
+    (f) => f.endsWith(".css") && f !== "src/app/globals.css",
+  );
+  const codeFiles = all.filter(
+    (f) => /\.(tsx?|mjs)$/.test(f) && !/\.test\./.test(f),
+  );
+  const noComments = (t) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[\s;{}(),])\/\/.*$/gm, "$1");
+  const code = Object.fromEntries(
+    codeFiles.map((f) => [
+      f,
+      noComments(readFileSync(path.join(web, f), "utf8")),
+    ]),
+  );
+  // 클래스가 아닌데 이름이 같은 것(SVG 그라디언트 id)
+  const NOT_CLASS = { "src/stardraw/icon-art.tsx": ["sd-ball"] };
+
+  it("따로 둔 CSS의 클래스를 쓰는 파일이 닿는 주소에는 그 CSS도 닿는다(빠지면 그 화면에서 연출이 조용히 사라진다)", () => {
+    expect(cssFiles.length).toBeGreaterThan(5);
+    const missing = [];
+    for (const css of cssFiles) {
+      const text = noComments(readFileSync(path.join(web, css), "utf8"))
+        .replace(/url\([^)]*\)/g, "")
+        .replace(/"[^"]*"/g, '""');
+      const classes = new Set(
+        [...text.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]),
+      );
+      const cssReach = ctx.reach[css] ?? new Set();
+      for (const cl of classes) {
+        const re = new RegExp(`(?<![\\w-])${cl}(?![\\w-])`);
+        for (const f of codeFiles) {
+          if (NOT_CLASS[f]?.includes(cl) || !re.test(code[f])) continue;
+          const lost = [...(ctx.reach[f] ?? [])].filter(
+            (k) => !cssReach.has(k),
+          );
+          if (lost.length)
+            missing.push(`${f} .${cl} → ${css}: ${lost.join(",")}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("게임별 CSS 하나만 바뀌면 전부가 아니라 그 CSS가 닿는 주소의 spec만", () => {
+    const emblem = pick("apps/web/src/cube/tiers/emblem.css");
+    expect(emblem.mode).not.toBe("all");
+    expect(emblem.specs.length).toBeLessThan(cubeSpecs.length);
+    const sd = pick("apps/web/src/app/stardraw/stardraw.css");
+    expect(sd.mode).not.toBe("all");
+    expect(sd.specs.some((s) => s.startsWith("cube-"))).toBe(false);
   });
 });
 

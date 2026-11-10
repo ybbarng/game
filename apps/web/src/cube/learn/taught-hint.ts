@@ -13,7 +13,7 @@ import {
   TWIST,
   TWIST_BACK,
 } from "./beginner-path";
-import { courseById } from "./index";
+import { courseById } from "./courses";
 import { goalMet } from "./judge";
 import { BEGINNER_COURSE_ID } from "./taught-kind";
 import type { Course, CourseStage } from "./types";

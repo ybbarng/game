@@ -1,0 +1,24 @@
+/*
+ * 원카드 연출. OnecardGame이 import한다
+ * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ */
+
+/* 원카드: 가운데 더미를 친 순간 살짝 눌렸다 돌아온다(친 사람 화면에서만, 판 상태와 상관없다) */
+.onecard-slap {
+  animation: onecard-slap 0.18s ease-out;
+}
+
+@keyframes onecard-slap {
+  40% {
+    scale: 0.92;
+  }
+  to {
+    scale: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onecard-slap {
+    animation: none;
+  }
+}

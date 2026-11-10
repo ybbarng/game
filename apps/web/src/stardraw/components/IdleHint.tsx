@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { FX } from "../fx-timing";
 import { SKY_STARS, type SkyStar } from "../sky";
+import "@/stardraw/components/idle-hint.css";
 
 /**
  * 손짓 안내(2026-11-03 사용자): 사람이 물건을 밀거나 누르기를 기다리는데 손을 대지 않고 가만히 있으면, 글 없이 손짓만

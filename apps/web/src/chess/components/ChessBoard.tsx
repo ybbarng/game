@@ -21,6 +21,7 @@ import {
   PieceUse,
   usePiecePrefix,
 } from "./piece-art";
+import "@/components/board-game/piece-slide.css";
 
 const LIGHT = "#f0d9b5";
 

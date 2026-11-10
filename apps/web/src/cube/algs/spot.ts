@@ -11,9 +11,8 @@ import {
   U,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-
-import type { AlgCase, AlgSet } from "../learn";
 import { goalMet } from "../learn/judge";
+import type { AlgCase, AlgSet } from "../learn/types";
 import { aufBefore, solvesFrom } from "./check";
 
 /** 알림에서 보는 묶음(F2L 뒤 윗면 상황) */
