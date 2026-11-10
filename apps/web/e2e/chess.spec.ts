@@ -188,7 +188,9 @@ test("체스 옵션: 컴퓨터 실력에서 초고수를 고르면 설명이 바
   const master = page.getByRole("button", { name: "초고수", exact: true });
   await master.click();
   await expect(master).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText(/이름난 오프닝으로 시작하고/)).toBeVisible();
+  await expect(
+    page.getByText(/처음 몇 수는 널리 알려진 수로 두고/),
+  ).toBeVisible();
   await page.screenshot({ path: info.outputPath("chess-options-master.png") });
   await page.getByRole("button", { name: "처음으로" }).click();
   await expect(page.getByRole("button", { name: /나홀로 체스/ })).toContainText(
