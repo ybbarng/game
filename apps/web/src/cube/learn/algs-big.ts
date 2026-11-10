@@ -25,7 +25,7 @@ export const EDGES_5X5: AlgCase[] = [
   {
     id: "edges-5x5-flip",
     set: "edges-5x5",
-    name: "마지막 엣지 날개 뒤집기",
+    name: "마지막 엣지 날개 바꾸기",
     algs: ["2R2 B2 U2 2L U2 2R' U2 2R U2 F2 2R F2 2L' B2 2R2"],
     note: "마지막 엣지의 센터 블럭은 맞는데 양쪽 날개가 서로 바뀌어 있으면, 그 엣지를 위-앞에 두고 해요.",
   },
