@@ -227,7 +227,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         body: [
           "낸 카드는 가운데에 쌓여요. 이것을 **버린 더미**라고 해요. 버린 더미 맨 위 카드와 **무늬가 같거나 숫자가 같은** 카드를 한 장 내요.",
           "맨 위가 ♥5면 ♥ 카드나 5를 낼 수 있어요.",
-          "**조커**는 맨 위 카드와 상관없이 아무 때나 낼 수 있고, 조커 다음에는 아무 카드나 낼 수 있어요. 다만 조커는 공격 카드라서, 다음 사람은 먼저 공격을 막거나 카드를 가져와야 해요. 공격은 3단원에서 배워요.",
+          "**조커**는 맨 위 카드와 상관없이 아무 때나 낼 수 있고, 조커 다음에는 아무 카드나 낼 수 있어요. 다만 조커는 공격 카드라서, 다음 사람은 먼저 그 공격부터 처리해야 해요. 공격은 3단원에서 배워요.",
         ],
         scene: FOLLOW_SCENE,
       },
@@ -352,7 +352,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         kind: "explain",
         title: "받아치면 쌓여요",
         body: [
-          "공격을 받으면 공격 카드로 **받아쳐서** 다음 사람에게 넘길 수 있어요. 장 수는 **쌓여요**.",
+          "공격을 받으면 공격 카드로 **받아쳐서** 다음 사람에게 넘길 수 있어요. 장 수는 **쌓여요**. 받아치는 것을 「막는다」고도 해요.",
           "**2** 위에는 아무 2, 같은 무늬 A, 조커. **A** 위에는 아무 A, 조커. **조커** 위에는 조커만.",
           "받아칠 카드가 없으면 쌓인 장 수를 **모두 먹고** 차례가 끝나요.",
         ],
@@ -407,7 +407,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
   {
     id: "shout",
     title: "원카드! 외치기와 잡기",
-    summary: "한 장이 되면 가장 빨리 더미를 친 사람이 겨루기에서 이긴다",
+    summary: "한 장이 되면 가장 빨리 버린 더미를 친 사람이 겨루기에서 이긴다",
     steps: [
       {
         kind: "explain",
@@ -458,7 +458,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
         options: ["컴퓨터가 안전하다", "컴퓨터가 잡혀 1장 먹는다"],
         answer: 1,
         explain:
-          "내가 더 빨랐으니 잡기예요. 늦게 닿아도 한 장이 된 화면을 본 때부터 잰 빠르기로 견줘요.",
+          "내가 더 빨랐으니 잡기예요. 내 신호가 늦게 도착해도 한 장이 된 화면을 본 때부터 잰 빠르기로 견줘요.",
       },
       {
         kind: "mission",
@@ -497,7 +497,7 @@ export const ONECARD_LESSONS: readonly OnecardLesson[] = [
   {
     id: "end",
     title: "다시 섞기, 파산, 순위",
-    summary: "더미가 바닥나면 다시 섞고, 20장이 되면 파산",
+    summary: "가져올 더미가 바닥나면 다시 섞고, 손패가 20장이 되면 파산",
     steps: [
       {
         kind: "explain",

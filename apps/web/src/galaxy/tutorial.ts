@@ -604,7 +604,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "우주국 지원금",
         body: [
           "오른쪽 아래 출발 칸 **카노푸스 우주국**(줄여서 **우주국**)에서 출발해요.",
-          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 ${pct(NUMBERS.salaryTaper)}만큼 덜 받아요. 예를 들어 ${money(NUMBERS.salaryFree + 200)}이 있으면 넘는 ${money(200)}의 ${pct(NUMBERS.salaryTaper)}만큼 덜 받아요. 한 바퀴 ${BOARD_SIZE}칸은 네 차례쯤 걸려요.`,
+          `우주국을 **지나거나 멈추면** 지원금 ${money(NUMBERS.salary)}을 받아요. 별빛이 ${money(NUMBERS.salaryFree)} 넘게 있으면 넘는 몫의 ${pct(NUMBERS.salaryTaper)}만큼 덜 받아요. 예를 들어 ${money(NUMBERS.salaryFree + 200)}이 있으면 넘는 ${money(200)}의 ${pct(NUMBERS.salaryTaper)}만큼 덜 받아요(그만큼 빼고 받아요). 한 바퀴 ${BOARD_SIZE}칸은 네 차례쯤 걸려요.`,
         ],
         scene: { kind: "board", marked: [0] },
       },
@@ -703,7 +703,7 @@ export const GALAXY_LESSONS: readonly GalaxyLesson[] = [
         title: "우주국 공문",
         body: [
           "변마다 하나씩 있는 **공문** 칸에 멈추면 공문 한 장을 펴서 따라요.",
-          "여러 장이 **별의 실제 값**(밝기·온도·거리)으로 계산해요. 밝기는 **등급**(숫자가 작을수록 밝아요), 거리는 **광년**(빛이 1년 동안 가는 거리)으로 나타내요. 내 별의 값을 알면 공문으로 얼마를 받을지 미리 셈할 수 있어요. 별의 값은 8단원에서 더 배워요.",
+          "공문 가운데 여러 장은 내 별의 **실제 값**(밝기·온도·거리)으로 받을 별빛이 정해져요. 밝기는 **등급**(숫자가 작을수록 밝아요), 거리는 **광년**(빛이 1년 동안 가는 거리)으로 나타내요. 내 별의 값을 알면 공문으로 얼마를 받을지 미리 셈할 수 있어요. 별의 값은 8단원에서 더 배워요.",
         ],
         scene: { kind: "board", marked: [4, 12, 20, 28], card: 4 },
       },
