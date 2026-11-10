@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
-import { ShapeSoloApp } from "@/cube/components/ShapeSoloApp";
+import { CubeRedirect } from "@/cube/nav/CubeRedirect";
 
 export const metadata: Metadata = {
-  title: { absolute: "큐브 모양 만들기" },
-  description:
-    "목표 모양을 보고 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다. 체커보드·큐브 속 큐브 등 모양마다 가장 빠른 기록이 남는다.",
+  title: { absolute: "큐브 패턴" },
+  robots: { index: false },
 };
 
+/** 옛 주소: 모양 만들기는 패턴의 「만들기」 탭으로 옮겼다(docs/47 16-6) */
 export default function CubeShapePage() {
-  return <ShapeSoloApp />;
+  return <CubeRedirect to="/cube/patterns?tab=make" label="패턴 만들기로" />;
 }

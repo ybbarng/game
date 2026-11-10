@@ -6,7 +6,7 @@ import { algTokens } from "../learn/notation";
 import type { ShapeStart } from "./race";
 
 /**
- * 모양 만들기의 「공식 보기」(혼자 하기·대결이 함께 쓴다, docs/47 9-10). 누르면 목표 모양의 공식(`data.ts`)이
+ * 모양 만들기의 「만드는 법」(혼자 하기·대결이 함께 쓴다, docs/47 9-10). 누르면 목표 모양의 공식(`data.ts`)이
  * 지금 키 배치의 키와 함께 보인다(휴대폰은 표기만). 섞인 큐브에서 시작하면 맞춘 뒤에 칠 공식이라고 알린다.
  * 컴퓨터는 늘 공식을 안다: 공식을 모르는 사람도 겨룰 수 있게 둔 화면 도움이고 판정에는 끼지 않는다
  */
@@ -46,7 +46,7 @@ export function ShapeFormula({
             : "bg-violet-300 text-black hover:bg-violet-200"
         }`}
       >
-        {open ? "공식 숨기기" : "공식 보기"}
+        {open ? "만드는 법 숨기기" : "만드는 법"}
       </button>
       {open && (
         <>

@@ -2,7 +2,7 @@ import { no3d } from "./cube";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
- * 큐브 패턴 만들기(/cube/patterns). 카드 모음 → 카드를 열면 시연과 「직접 만들어 보기」.
+ * 큐브 패턴(/cube/patterns)의 보기 탭. 카드 모음 → 카드를 열면 시연과 「직접 만들어 보기」.
  * 「표기」 배치로 친다(R = R, Shift+R = R', 두 번 = R2, Y = 큐브 돌리기 y).
  */
 
@@ -47,6 +47,12 @@ test("패턴: 크기별 카드를 보고, 카드를 열면 시연이 나온다",
   page,
 }, info) => {
   await page.goto("/cube/patterns");
+  // 패턴 만들기와 모양 만들기를 합친 화면: 보기·만들기·기록 탭(docs/47 16-2)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("패턴");
+  await expect(page.locator('[data-patterns-tab="see"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   for (const n of [3, 2, 4, 5])
     await expect(
       page.locator(`[data-pattern-size="${n}"] [data-pattern-card]`).first(),

@@ -12,7 +12,7 @@ import {
 
 /**
  * 모양 만들기 규칙 고르기(컴퓨터와 대결·온라인 대기실·혼자 하기가 함께 쓴다, docs/47 9-10).
- * 시작(맞춘 큐브/섞인 큐브)과 모양 어려움(그 크기에 모양이 있는 것만, 개수를 붙인다), 「공식 보기」 허용(기본 켬).
+ * 시작(맞춘 큐브/섞인 큐브)과 모양 어려움(그 크기에 모양이 있는 것만, 개수를 붙인다), 「만드는 법」 허용(기본 켬).
  * `disabled`면 보기만(손님)
  */
 export function ShapeRulePicker({
@@ -30,7 +30,7 @@ export function ShapeRulePicker({
   pick: ShapePick;
   onStart: (s: ShapeStart) => void;
   onPick: (p: ShapePick) => void;
-  /** 「공식 보기」 허용. 칸을 두지 않으려면 `onFormula`를 넘기지 않는다 */
+  /** 「만드는 법」 허용. 칸을 두지 않으려면 `onFormula`를 넘기지 않는다 */
   formula?: boolean;
   onFormula?: (on: boolean) => void;
   disabled?: boolean;
@@ -78,7 +78,7 @@ export function ShapeRulePicker({
       </fieldset>
       {onFormula && (
         <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1">공식 보기</legend>
+          <legend className="mb-1">만드는 법 보기</legend>
           <div className="flex flex-wrap gap-1">
             {[true, false].map((on) => (
               <button
@@ -99,7 +99,7 @@ export function ShapeRulePicker({
               data-cube-shape-formula-off
               className="text-amber-200/90 text-xs"
             >
-              공식 보기를 껐어요. 외운 공식으로 겨뤄요.
+              만드는 법 보기를 껐어요. 외운 공식으로 겨뤄요.
             </span>
           )}
         </fieldset>

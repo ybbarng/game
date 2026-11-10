@@ -10,7 +10,14 @@ import {
   solvedCube,
 } from "@game/cube-engine";
 import type { PuzzleState } from "@game/puzzle-core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/cn";
 import type { Command } from "../input";
@@ -43,9 +50,9 @@ import { CubePlay, playCubeCue } from "./CubePlay";
 import { CubePosterPair } from "./CubePosterPair";
 
 /**
- * 혼자 하는 모양 만들기(`/cube/shape`, docs/47 9-10). 목표 모양을 고르고, 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다.
+ * 혼자 하는 모양 만들기(`/cube/patterns?tab=make`, 옛 `/cube/shape`, docs/47 9-10·16-2). 목표 모양을 고르고, 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다.
  * 첫 면 돌리기에 시간이 흐르고 목표와 같은 모양이 되면 멈춘다. 기록은 모양·시작마다 이 기기에 둔다.
- * 목표는 펼친 그림이 아니라 비스듬한 큐브 그림 둘로 보인다. 「공식 보기」를 연 판은 기록을 따로 센다(`shape-records.ts`)
+ * 목표는 펼친 그림이 아니라 비스듬한 큐브 그림 둘로 보인다. 「만드는 법」를 연 판은 기록을 따로 센다(`shape-records.ts`)
  */
 
 const SIZES = [3, 2, 4, 5].filter(shapeSupports);
@@ -65,7 +72,12 @@ type Run =
       scramble: string;
     };
 
-export function ShapeSoloApp() {
+export function ShapeSoloApp({
+  header,
+}: {
+  /** 패턴 화면의 이름과 탭 */
+  header: ReactNode;
+}) {
   const settings = useCubeSettings();
   const [n, setN] = useState(3);
   const [startMode, setStartMode] = useState<ShapeStart>("solved");
@@ -122,15 +134,7 @@ export function ShapeSoloApp() {
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-cube-shape-solo={run.phase}
       >
-        <header className="flex flex-wrap items-center gap-3">
-          <a
-            href="/cube"
-            className="-ml-1 inline-flex min-h-8 items-center px-1 text-sm text-white/70 hover:text-white"
-          >
-            ← 큐브
-          </a>
-          <h1 className="font-bold text-lg">모양 만들기</h1>
-        </header>
+        {header}
 
         {intro && (
           <section
@@ -144,8 +148,9 @@ export function ShapeSoloApp() {
               시간이 흐르고, 모양마다 가장 빠른 기록이 남아요.
             </p>
             <p className="break-keep text-white/60 text-xs">
-              큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요. 막히면 「공식
-              보기」를 눌러 보세요. 공식을 본 판은 기록이 따로 남아요.
+              큐브를 어느 쪽으로 들고 만들어도 같은 모양이면 돼요. 막히면
+              「만드는 법」을 눌러 보세요. 만드는 법을 본 판은 기록이 따로
+              남아요.
             </p>
             <button
               type="button"
@@ -286,7 +291,7 @@ function ShapePicker({
                 <span className="text-white/60 text-xs">
                   {LEVEL_LABEL[shapeLevel(p)]}
                   {rec ? ` · 최고 ${formatMs(rec.best)} · ${rec.count}번` : ""}
-                  {seen ? ` · 공식 보고 ${formatMs(seen.best)}` : ""}
+                  {seen ? ` · 만드는 법 보고 ${formatMs(seen.best)}` : ""}
                 </span>
               </button>
             </li>
@@ -315,7 +320,7 @@ function ShapePlay({
   scramble: string;
   settings: CubeSettings;
   record: ShapeRecords[string] | undefined;
-  /** 「공식 보기」를 연 판의 기록 */
+  /** 「만드는 법」를 연 판의 기록 */
   formulaRecord: ShapeRecords[string] | undefined;
   /** 완성(`formula`: 이 판에서 공식을 열었나): 새 기록이면 true */
   onDone: (ms: number, moves: number, formula: boolean) => boolean;
@@ -335,7 +340,7 @@ function ShapePlay({
   } | null>(null);
   const [syncToken, setSyncToken] = useState(0);
   const [, tick] = useState(0);
-  // 「공식 보기」: 판이 끝나기 전에 한 번이라도 열면 공식을 본 판이다(처음부터 하면 연 채일 때만 그대로)
+  // 「만드는 법」: 판이 끝나기 전에 한 번이라도 열면 공식을 본 판이다(처음부터 하면 연 채일 때만 그대로)
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [peeked, setPeeked] = useState(false);
   const live = useRef({ state, history, startedAt, result, settings, peeked });
@@ -439,8 +444,8 @@ function ShapePlay({
         <span className="text-sm text-white/60" data-cube-shape-record>
           {peeked
             ? formulaRecord
-              ? `공식 보고 최고 ${formatMs(formulaRecord.best)}`
-              : "공식 보고 첫 기록"
+              ? `만드는 법 보고 최고 ${formatMs(formulaRecord.best)}`
+              : "만드는 법 보고 첫 기록"
             : record
               ? `최고 ${formatMs(record.best)}`
               : "첫 기록"}
@@ -456,7 +461,7 @@ function ShapePlay({
             className="rounded-full border border-emerald-400/50 bg-emerald-400/15 px-4 py-1 font-bold text-emerald-300"
           >
             완성! {formatMs(result.ms)} · {result.moves}수
-            {result.formula ? " · 공식 보고" : ""}
+            {result.formula ? " · 만드는 법 보고" : ""}
             {result.best ? " · 새 기록" : ""}
           </span>
         ) : (
