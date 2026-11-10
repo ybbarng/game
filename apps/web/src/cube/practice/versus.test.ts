@@ -1,18 +1,25 @@
-import { type CubeMove, parseMoves } from "@game/cube-engine";
+import { applyMoves, type CubeMove, parseMoves } from "@game/cube-engine";
 import { describe, expect, it } from "vitest";
 
-import { PRACTICE_N, type Problem } from "./problem";
+import { type Keymap, notationKeymap, twoHandKeymap } from "../input/keymaps";
+import { goalMet } from "../learn/judge";
+import { algTokens } from "../learn/notation";
+import type { Draw } from "./deck";
+import { choicesOf, pickAlg } from "./pick-alg";
+import { caseStart, PRACTICE_N } from "./problem";
 import { ROUND_SIZE } from "./round";
-import { stageById } from "./stages";
-import type { PracticeStage } from "./types";
+import { PRACTICE_STAGES, stageById } from "./stages";
+import type { DrillCase, PracticeStage } from "./types";
 import {
   applyVersus,
+  declareVersus,
   peekVersus,
   ruleOk,
   trackOf,
   type VersusState,
   versusAt,
   versusBoard,
+  versusCase,
   versusOver,
   versusProblems,
   versusProgress,
@@ -51,13 +58,13 @@ describe("같은 문제", () => {
     }
   });
 
-  it("공식은 모두에게 자료의 첫 공식이고 윗면 돌리기를 붙이지 않는다", () => {
-    const s = stage("oll");
-    for (const p of versusProblems(s, 7)) {
-      const c = s.cases.find((x) => x.id === p.caseId);
-      expect(p.preAuf).toBe("");
-      expect(p.alg).toBe(c?.algs[0]);
-    }
+  it("문제 목록은 상황과 윗면 돌리기뿐(공식 없음). CFOP는 씨앗대로 윗면을 돌려 두고 초보자는 돌리지 않는다", () => {
+    const oll = versusProblems(stage("oll"), 7);
+    for (const p of oll)
+      expect(Object.keys(p).sort()).toEqual(["caseId", "turn"]);
+    expect(new Set(oll.map((p) => p.turn)).size).toBeGreaterThan(1);
+    const second = versusProblems(stage("beginner-second"), 7);
+    expect(second.every((p) => p.turn === "")).toBe(true);
   });
 
   it("씨앗이 다르면 다른 차례", () => {
@@ -97,7 +104,9 @@ describe("따라 치기 진행", () => {
 
   it("틀린 수는 큐브에 들지 않고, 틀림·콤보 끊김으로 센다", () => {
     let s = versusStart(stage("beginner-second"), "follow", problems);
+    const lens = [versusBoard(trackOf(s))?.tokens.length ?? 0];
     s = typeProblem(s);
+    lens.push(versusBoard(trackOf(s))?.tokens.length ?? 0);
     expect(trackOf(s).combo).toBe(1);
     const before = [...s.perm];
     const first = versusBoard(trackOf(s))?.tokens[0] as string;
@@ -116,23 +125,14 @@ describe("따라 치기 진행", () => {
     expect(trackOf(s).best).toBe(1);
     // 정확도 = 맞은 수 / 친 수(틀린 수 포함)
     const hits = trackOf(s).hits;
-    expect(hits).toBe(
-      [0, 1].reduce(
-        (n, k) => n + (versusBoard(trackOf(s), k)?.tokens.length ?? 0),
-        0,
-      ),
-    );
+    expect(hits).toBe((lens[0] as number) + (lens[1] as number));
     expect(versusSummary(trackOf(s)).accuracy).toBeCloseTo(hits / (hits + 1));
   });
 
   it("반 바퀴를 나눠 치다 틀리면 먼저 넣은 반쪽도 되돌린다", () => {
     const edges = stage("beginner-edges");
     const c = edges.cases[0];
-    const p: Problem = {
-      caseId: c?.id as string,
-      alg: c?.algs[0] as string,
-      preAuf: "",
-    };
+    const p: Draw = { caseId: c?.id as string, turn: "" };
     let s = versusStart(edges, "follow", [p]);
     const tokens = versusBoard(trackOf(s))?.tokens ?? [];
     const half = tokens.indexOf("U2");
@@ -150,6 +150,118 @@ describe("따라 치기 진행", () => {
     s = applyVersus(s, mv("U"));
     for (const t of tokens.slice(half + 1)) s = applyVersus(s, mv(t));
     expect(versusOver(trackOf(s))).toBe(true);
+  });
+});
+
+describe("사람마다 다른 공식(같은 시작 모양)", () => {
+  const pll = stage("pll");
+  const problems = versusProblems(pll, 2024);
+  const caseOf = (id: string) =>
+    pll.cases.find((c) => c.id === id) as DrillCase;
+
+  /** 키 배치 하나로 한 판: 문제마다 그 배치의 공식을 알리고 끝까지 친다. 수 기록을 함께 돌려준다 */
+  function play(keymap: Keymap): {
+    end: VersusState;
+    log: string[];
+    algs: string[];
+  } {
+    let s = versusStart(pll, "follow", problems);
+    const log: string[] = [];
+    const algs: string[] = [];
+    while (!versusOver(trackOf(s))) {
+      const c = versusCase(trackOf(s)) as DrillCase;
+      const alg = pickAlg(c, keymap).alg;
+      algs.push(alg);
+      s = declareVersus(s, alg);
+      log.push(`?alg ${alg}`);
+      for (const t of versusBoard(trackOf(s))?.tokens ?? []) {
+        s = applyVersus(s, mv(t));
+        log.push(t);
+      }
+    }
+    return { end: s, log, algs };
+  }
+
+  /** 다른 기기가 수 기록만으로 다시 계산 */
+  function replay(log: string[]): VersusState {
+    let s = versusStart(pll, "follow", problems);
+    for (const m of log)
+      s = m.startsWith("?alg ")
+        ? declareVersus(s, m.slice(5))
+        : applyVersus(s, mv(m));
+    return s;
+  }
+
+  it("두 키 배치가 고른 공식이 달라도 시작 모양은 같고, 둘 다 10문제를 끝내며 다시 계산해도 같은 결과", () => {
+    const a = play(twoHandKeymap());
+    const b = play(notationKeymap());
+    expect(a.algs).not.toEqual(b.algs);
+    for (const r of [a, b]) {
+      const t = trackOf(r.end);
+      expect(versusSummary(t)).toEqual({
+        accuracy: 1,
+        bestCombo: 10,
+        solved: 10,
+      });
+      const again = replay(r.log);
+      expect(trackOf(again)).toEqual(t);
+      expect([...again.perm]).toEqual([...r.end.perm]);
+    }
+  });
+
+  it("알린 공식은 시작 모양에 맞춰 앞에 윗면 돌리기를 붙여 보인다(모양은 공식과 상관없이 같다)", () => {
+    const s0 = versusStart(pll, "follow", problems);
+    const c = versusCase(trackOf(s0)) as DrillCase;
+    const p = problems[0] as Draw;
+    const start = caseStart(pll, c, p.turn);
+    expect([...s0.perm]).toEqual([...start.perm]);
+    for (const alg of choicesOf(c)) {
+      const s = declareVersus(s0, alg);
+      const tokens = versusBoard(trackOf(s))?.tokens.join(" ") ?? "";
+      expect(tokens.endsWith(algTokens(alg).join(" ")), alg).toBe(true);
+      const end = applyMoves(PRACTICE_N, start, parseMoves(PRACTICE_N, tokens));
+      expect(goalMet(PRACTICE_N, end, pll.goal(c)), alg).toBe(true);
+    }
+  });
+
+  it("모든 단계에서 그 판의 문제마다 고를 수 있는 모든 공식이 알려지고 끝까지 풀린다", () => {
+    for (const st of PRACTICE_STAGES) {
+      const list = versusProblems(st, 31);
+      let s = versusStart(st, "follow", list);
+      while (!versusOver(trackOf(s))) {
+        const c = versusCase(trackOf(s)) as DrillCase;
+        for (const alg of choicesOf(c)) {
+          let x = declareVersus(s, alg);
+          const index = trackOf(x).index;
+          for (const t of versusBoard(trackOf(x))?.tokens ?? [])
+            x = applyVersus(x, mv(t));
+          expect(trackOf(x).index, `${st.id} ${c.id} ${alg}`).toBe(index + 1);
+        }
+        s = typeProblem(s);
+      }
+    }
+  });
+
+  it("알리지 않으면 흔한 공식으로 판정한다(컴퓨터)", () => {
+    const s = versusStart(pll, "follow", problems);
+    const c = caseOf((problems[0] as Draw).caseId);
+    const tokens = versusBoard(trackOf(s))?.tokens.join(" ") ?? "";
+    expect(tokens.endsWith(algTokens(c.algs[0] as string).join(" "))).toBe(
+      true,
+    );
+  });
+
+  it("그 모양을 풀지 못하는 공식, 친 뒤의 알리기, 두 번 알리기, 보고 치기의 알리기는 받지 않는다", () => {
+    const s = versusStart(pll, "follow", problems);
+    expect(() => declareVersus(s, "R U R' U'")).toThrow();
+    const c = caseOf((problems[0] as Draw).caseId);
+    const once = declareVersus(s, c.algs[0] as string);
+    expect(() => declareVersus(once, c.algs[0] as string)).toThrow();
+    const first = versusBoard(trackOf(s))?.tokens[0] as string;
+    const typed = applyVersus(s, mv(first));
+    expect(() => declareVersus(typed, c.algs[0] as string)).toThrow();
+    const see = versusStart(pll, "see", problems);
+    expect(() => declareVersus(see, c.algs[0] as string)).toThrow();
   });
 });
 

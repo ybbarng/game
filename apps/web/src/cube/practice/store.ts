@@ -10,8 +10,11 @@ import type { PracticeMode } from "./round";
 
 export const PRACTICE_KEY = "cube.practice.v1";
 
-/** 따라 치기 판을 이만큼 마친 단계는 판 끝에 「외워서 쳐 보기」를 권한다(잠그지는 않는다) */
-export const SEE_SUGGEST_ROUNDS = 3;
+/**
+ * 그 단계의 공식마다 따라 치기로 틀림 없이 이만큼(두 번 넘게) 친 단계는 판 끝에 「외워서 쳐 보기」를 권한다(잠그지는 않는다).
+ * 판 수가 아니라 공식마다 잘 쳤는지를 본다(2026-11-10, docs/47 16-9)
+ */
+export const SEE_SUGGEST_CLEAN = 3;
 
 export interface PracticeRecord {
   /** 따라 치기 상황별 기록(틀린 수가 있던 문제는 fails에도 하나) */
@@ -113,7 +116,18 @@ export function rememberStage(
   return save({ ...loadPractice(storage), last: stageId }, storage);
 }
 
-/** 판 끝에 「외워서 쳐 보기」를 권하나 */
-export function suggestSee(rec: PracticeRecord, stageId: string): boolean {
-  return (rec.rounds[stageId]?.follow ?? 0) >= SEE_SUGGEST_ROUNDS;
+/** 따라 치기에서 틀림 없이 친 횟수(틀린 문제는 맞춤과 틀림에 하나씩 들어간다) */
+export function cleanSolves(s: CaseStats | undefined): number {
+  return s ? Math.max(0, s.solves - s.fails) : 0;
+}
+
+/** 판 끝에 「외워서 쳐 보기」를 권하나: 그 단계 공식마다 틀림 없이 두 번 넘게(`SEE_SUGGEST_CLEAN`번 이상) 쳤다 */
+export function suggestSee(
+  rec: PracticeRecord,
+  caseIds: readonly string[],
+): boolean {
+  return (
+    caseIds.length > 0 &&
+    caseIds.every((id) => cleanSolves(rec.follow[id]) >= SEE_SUGGEST_CLEAN)
+  );
 }
