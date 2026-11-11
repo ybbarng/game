@@ -61,7 +61,7 @@ import {
   onAppMessage,
   toApp,
 } from "./app-bridge";
-import { backdropBackground, backdropBox, outlineFilter } from "./backdrop";
+import { outlineFilter } from "./backdrop";
 import { FocusClock } from "./focus-clock";
 import {
   algTokens,
@@ -874,8 +874,6 @@ function MiniCube() {
   // 앱의 투명 창: 큐브·(보이는) 거울이 차지하는 곳을 알린다(그 밖의 누르기는 아래 앱으로 지나간다).
   // 거울이 숨으면 거울 사각형이 빠져 그 자리의 누르기도 아래 앱으로 간다
   const hitKey = size ? `${mirrorShown}-${size.w}x${size.h}` : "";
-  /** 큐브 뒤 은은한 받침 자리(앱의 투명 창에서만, `backdrop.ts`). 누르는 자리와 같은 사각형을 감싼다 */
-  const [backdrop, setBackdrop] = useState<CheerRect | null>(null);
   useEffect(() => {
     // 거울이 보이고 숨거나 창 크기가 바뀌면(hitKey) 다시 알린다
     if (!app || !ready || !hitKey) return;
@@ -887,9 +885,6 @@ function MiniCube() {
         type: "hit",
         rects: rects.map((r) => [r.x, r.y, r.w, r.h].map((x) => Math.round(x))),
       });
-      const wrap = wrapRef.current;
-      if (wrap)
-        setBackdrop(backdropBox(rects, wrap.clientWidth, wrap.clientHeight));
     };
     // 거울이 페이드하는 동안(MIRROR_FADE_MS) 카메라가 옮겨 가므로, 다 옮긴 뒤에도 한 번 더
     // (앱 안에서는 마우스 둘러보기가 꺼져 있어 보는 각도가 끌기로 바뀌지 않는다)
@@ -1407,24 +1402,16 @@ function MiniCube() {
             : undefined
         }
       >
-        {app && backdrop && (
-          <div
-            data-mini-backdrop
-            aria-hidden="true"
-            className="mini-backdrop pointer-events-none absolute"
-            style={{
-              left: backdrop.x,
-              top: backdrop.y,
-              width: backdrop.w,
-              height: backdrop.h,
-              background: backdropBackground(),
-            }}
-          />
-        )}
         {failed ? (
           <div
             data-cube-no3d
             className="relative flex h-full w-full items-center justify-center p-1"
+            // 3D가 없을 때의 큐브 그림도 앱 창에서는 같은 윤곽을 받는다
+            style={
+              app && windowShort > 0
+                ? { filter: outlineFilter(windowShort) }
+                : undefined
+            }
           >
             <CubePosterPair
               n={cubeN}
@@ -1442,7 +1429,7 @@ function MiniCube() {
             data-cube-canvas
             data-cube-ready={ready ? "" : undefined}
             className="relative h-full w-full cursor-grab touch-none active:cursor-grabbing"
-            // 앱 창: 큐브가 창을 채워 받침이 가려져도 윤곽 둘레로 바탕과 갈린다(`backdrop.ts`)
+            // 앱 창: 큐브·거울 판 윤곽을 따라 도는 밝은 테두리와 어두운 그림자로 바탕과 갈린다(`backdrop.ts`)
             style={
               app && windowShort > 0
                 ? { filter: outlineFilter(windowShort) }

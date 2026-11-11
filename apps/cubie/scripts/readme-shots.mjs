@@ -33,11 +33,13 @@ const { chromium } = require("@playwright/test");
 
 const args = process.argv.slice(2);
 /**
- * `--hero`: 움직이는 그림만 다시 만든다. `--practice`: 공식 연습 그림만 다시 만든다.
+ * `--hero`: 움직이는 그림만 다시 만든다. `--practice`: 공식 연습 그림만 다시 만든다. `--keys`: 키 배치 그림만.
  * `--keep <폴더>`: 찍은 프레임을 그 폴더에 남긴다(고를 때 보기)
  */
 const HERO_ONLY = args.includes("--hero");
 const PRACTICE_ONLY = args.includes("--practice");
+/** `--keys`: 기본 키 배치 그림(keys.webp)만 다시 만든다 */
+const KEYS_ONLY = args.includes("--keys");
 const KEEP = args.includes("--keep") ? args[args.indexOf("--keep") + 1] : null;
 const BASE = args.find((a) => a.startsWith("http")) ?? "http://localhost:4391";
 const CLOCK_START = Date.UTC(2026, 10, 9, 7, 0);
@@ -266,13 +268,13 @@ async function main() {
   menuIcon = dataUrl(
     readFileSync(path.join(here, "../Resources/MenuIcon@2x.png")),
   );
-  if (PRACTICE_ONLY) {
+  if (PRACTICE_ONLY || KEYS_ONLY) {
     const b = await chromium.launch({
       channel: "chrome",
       chromiumSandbox: true,
     });
     try {
-      return await practiceShot(b);
+      return await (KEYS_ONLY ? keysShot(b) : practiceShot(b));
     } finally {
       await b.close();
     }
@@ -411,6 +413,7 @@ async function main() {
     }
 
     await practiceShot(browser);
+    await keysShot(browser);
 
     // 2) 홈 시연(맞춘 큐브가 가만히 떠 있을 때 섞고 맞추는 연출). 기록이 없어야 내 판 다시 보기 대신 이것이 돈다
     await heroFrames(browser);
@@ -458,6 +461,33 @@ function bubbleHtml(lines) {
     })
     .join("");
   return `<div style="position:absolute;max-width:280px;padding:10px;border-radius:10px;background:#141414eb;border:1px solid #ffffff26;box-shadow:0 10px 30px #0009">${body}</div>`;
+}
+
+/**
+ * 기본 키 배치(「두 손」, 3×3) 키보드 그림: 앱이 F1로 큐브 옆에 띄우는 단축키 표(`?view=keys&panel=1`)를 그 크기
+ * (`Config.keysPanelSize` 560×300)로 찍는다. 다른 그림의 `appLike`는 「표기」 배치를 넣으므로 저장소를 비운 채 연다.
+ * 표 바탕이 불투명한 어두운 색이라 GitHub 밝은·어두운 테마 모두에서 글자가 묻히지 않는다. 둥근 모서리와 옅은 테두리만 더한다
+ */
+async function keysShot(browser) {
+  const SIZE = { width: 560, height: 300 };
+  const ctx = await browser.newContext({
+    viewport: SIZE,
+    deviceScaleFactor: 2,
+    colorScheme: "dark",
+  });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/cube/mini?view=keys&panel=1&n=3`);
+  await page.locator("[data-mini-keys-panel='3']").waitFor();
+  if (!(await page.getByText("배치 「두 손」").count()))
+    throw new Error("기본 배치(두 손)가 아니다");
+  const png = await page.screenshot({ type: "png" });
+  await ctx.close();
+  await compose(
+    browser,
+    "keys.png",
+    `<body style="margin:0;background:transparent"><img src="${dataUrl(png)}" style="display:block;width:${SIZE.width}px;height:${SIZE.height}px;border-radius:10px;outline:1px solid #ffffff2e;outline-offset:-1px"></body>`,
+    SIZE,
+  );
 }
 
 /**

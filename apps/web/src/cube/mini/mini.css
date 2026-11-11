@@ -80,29 +80,6 @@
     animation: none;
   }
 }
-/*
- * Cubie 앱 창의 큐브 뒤 받침(cube/mini/backdrop.ts). 거울이 보이고 숨을 때 카메라가 옮겨 가는 동안(거울 페이드
- * 300ms 남짓) 받침도 같이 미끄러지고, 처음 뜰 때는 서서히 나타난다
- */
-.mini-backdrop {
-  transition:
-    left 400ms ease,
-    top 400ms ease,
-    width 400ms ease,
-    height 400ms ease;
-  animation: mini-backdrop-in 400ms ease-out both;
-}
-@keyframes mini-backdrop-in {
-  from {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mini-backdrop {
-    transition: none;
-    animation: none;
-  }
-}
 /* Cubie 공식 연습: 문제 하나를 맞추면 큐브 위에 작은 ✓가 떴다 사라진다(다음 문제까지 0.7초, docs/47 16-11) */
 .mini-practice-ok {
   animation: mini-practice-ok 700ms ease-out both;
