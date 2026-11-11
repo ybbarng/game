@@ -128,6 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
       }
     }
+    // 화면 구성이 바뀌어 창을 다시 놓았을 때도(크기만 줄었거나 창은 그대로인데 화면이 바뀐 때도) 말풍선을 그 화면 안으로
+    cube.onPlaced = { [weak self] in
+      guard let self else { return }
+      self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
+    }
     // 큐브·거울을 클릭하면(끌지 않고) ⌃⌥⌘C처럼 큐브에 키 입력을 준다. 누를 때 맥이 이미 창을 앞으로 가져오지만,
     // 그것에만 기대지 않고 키 받는 창까지 확실히 정한다
     cube.onClick = { [weak self] in
