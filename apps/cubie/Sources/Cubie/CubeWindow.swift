@@ -35,6 +35,8 @@ final class ChromeView: NSView {
   var minSize = NSSize(width: 56, height: 56)
   var maxSize = NSSize(width: 480, height: 480)
   private var resizeStart: (mouse: NSPoint, frame: NSRect)?
+  /// 크기 손잡이를 놓았을 때(창 자리를 저장한다)
+  var onResized: (() -> Void)?
 
   /// 창 크기에 맞춘 손잡이 크기(아주 작은 창에서 큐브를 가리지 않게)
   private var grip: CGFloat { max(8, min(14, min(bounds.width, bounds.height) * 0.14)) }
@@ -117,7 +119,7 @@ final class ChromeView: NSView {
   }
 
   override func mouseUp(with event: NSEvent) {
-    if resizeStart != nil { window?.saveFrame(usingName: CubeWindow.frameName) }
+    if resizeStart != nil { onResized?() }
     resizeStart = nil
   }
 }
@@ -201,6 +203,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     content.addSubview(chrome)
     panel.contentView = content
 
+    chrome.onResized = { [weak self] in self?.saveFrame() }
     placeWindow()
     webView.navigationDelegate = self
     bridge.onRetry = { [weak self] in self?.load() }
@@ -240,19 +243,89 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     path.start(queue: .main)
   }
 
-  /// 저장된 크기·자리. 없거나 그 자리가 지금 어느 화면에도 없으면(모니터를 뗀 뒤) 기본 자리
+  // MARK: 창 자리: 화면 구성마다 기억하고, 구성이 바뀌면 다시 놓는다(docs/47 15-24)
+  // 테두리 없는 떠 있는 창이라 모니터를 떼도 macOS가 옮겨 주지 않는다. 그래서 켤 때뿐 아니라
+  // 화면 구성이 바뀌거나 잠자기에서 깰 때마다 자리를 다시 본다
+
+  /// 화면 구성(`WindowPlacement.layoutKey`)마다 마지막 창 자리(`NSStringFromRect`)
+  static let framesKey = "CubieFramesByLayout"
+  /// 화면 바뀜 알림이 몰려 올 때 마지막 것 뒤에 한 번만 다시 놓는다
+  private var refitTask: Task<Void, Never>?
+  /// 구성이 바뀌어 창을 다시 놓은 뒤(말풍선이 따라온다)
+  var onPlaced: (() -> Void)?
+
+  /// 켤 때: 이 구성의 자리 → 지난 자리(구성을 모를 때, 0.1.7까지 저장한 자리 포함) → 기본 자리
   private func placeWindow() {
-    let restored = panel.setFrameUsingName(Self.frameName)
-    let screens = NSScreen.screens.map(\.visibleFrame)
-    if !restored || !WindowPlacement.isOnScreen(panel.frame, screens: screens) { resetFrame() }
-    panel.setFrameAutosaveName(Self.frameName)
+    if !panel.setFrameUsingName(Self.frameName) {
+      if let primary = Self.primaryVisible {
+        panel.setFrame(
+          WindowPlacement.defaultFrame(visible: primary, size: Config.defaultSize, margin: Config.margin),
+          display: false)
+      }
+    }
+    fitToScreens()
+    let center = NotificationCenter.default
+    center.addObserver(
+      self, selector: #selector(screensChanged), name: NSApplication.didChangeScreenParametersNotification,
+      object: nil)
+    let workspace = NSWorkspace.shared.notificationCenter
+    workspace.addObserver(
+      self, selector: #selector(screensChanged), name: NSWorkspace.screensDidWakeNotification, object: nil)
+    workspace.addObserver(
+      self, selector: #selector(screensChanged), name: NSWorkspace.didWakeNotification, object: nil)
   }
 
-  /// 기본 크기로, 주 화면(메뉴 막대가 있는 화면) 보이는 영역의 오른쪽 아래 구석에
+  @objc private func screensChanged(_ note: Notification) {
+    if Config.debug { print("[cubie] screens changed: \(note.name.rawValue)"); fflush(stdout) }
+    refitTask?.cancel()
+    refitTask = Task { @MainActor [weak self] in
+      try? await Task.sleep(for: .milliseconds(600))
+      guard !Task.isCancelled else { return }
+      self?.fitToScreens()
+    }
+  }
+
+  /// 이 화면 구성에서 저장한 자리가 보이면 그리로, 아니면 지금 자리가 보이는지 보고 당기거나 기본 자리로(`WindowPlacement.placed`).
+  /// 저절로 옮긴 자리는 저장하지 않는다(저장은 사용자가 옮기거나 크기를 바꿀 때만)
+  func fitToScreens() {
+    let screens = NSScreen.screens.map(\.visibleFrame)
+    let key = Self.layoutKey
+    let f = WindowPlacement.placed(
+      saved: Self.savedFrame(key), current: panel.frame, screens: screens,
+      defaultSize: Config.defaultSize, margin: Config.margin)
+    if Config.debug { print("[cubie] place layout=\(key) \(panel.frame) -> \(f)"); fflush(stdout) }
+    if f != panel.frame { panel.setFrame(f, display: true) }
+    onPlaced?()
+  }
+
+  /// 사용자가 옮기거나 크기를 바꾼 자리를 지금 화면 구성의 자리로, 또 지난 자리로 저장한다
+  func saveFrame() {
+    panel.saveFrame(usingName: Self.frameName)
+    let defaults = UserDefaults.standard
+    var all = defaults.dictionary(forKey: Self.framesKey) as? [String: String] ?? [:]
+    all[Self.layoutKey] = NSStringFromRect(panel.frame)
+    defaults.set(all, forKey: Self.framesKey)
+  }
+
+  private static var layoutKey: String {
+    WindowPlacement.layoutKey(NSScreen.screens.map { (name: $0.localizedName, frame: $0.frame) })
+  }
+
+  private static func savedFrame(_ key: String) -> CGRect? {
+    guard let s = (UserDefaults.standard.dictionary(forKey: framesKey) as? [String: String])?[key] else { return nil }
+    let r = NSRectFromString(s)
+    return r.width > 0 && r.height > 0 ? r : nil
+  }
+
+  /// 주 화면(메뉴 막대가 있는 화면) 보이는 영역
+  private static var primaryVisible: NSRect? { (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame }
+
+  /// 기본 크기로, 주 화면 보이는 영역의 오른쪽 아래 구석에(메뉴 「창 자리 처음으로」, 이 구성의 자리로 저장)
   func resetFrame() {
-    guard let screen = (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame else { return }
+    guard let screen = Self.primaryVisible else { return }
     let f = WindowPlacement.defaultFrame(visible: screen, size: Config.defaultSize, margin: Config.margin)
     panel.setFrame(f, display: true)
+    saveFrame()
   }
 
   func load() {
@@ -303,7 +376,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
       // ⌘ + 끌기: 창 어디서나 바로 옮기기(맥 기본 창 끌기)
       if e.modifierFlags.contains(.command) {
         panel.performDrag(with: e)
-        panel.saveFrame(usingName: Self.frameName)
+        saveFrame()
         return nil
       }
       // 손잡이(옮기기·크기)는 ChromeView가 받는다
@@ -324,7 +397,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
       guard let p = press else { return e }
       press = nil
       if p.moving {
-        panel.saveFrame(usingName: Self.frameName)
+        saveFrame()
         updateMouse()
       } else {
         onClick?()
@@ -357,7 +430,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     }
     if e.phase == .ended || e.phase == .cancelled {
       zoom.end()
-      panel.saveFrame(usingName: Self.frameName)
+      saveFrame()
     }
     return nil
   }
@@ -366,7 +439,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   func setSide(_ side: CGFloat) {
     let f = WindowGesture.resized(panel.frame, side: side, min: Config.minSize, max: Config.maxSize)
     panel.setFrame(f, display: true)
-    panel.saveFrame(usingName: Self.frameName)
+    saveFrame()
   }
 
   // MARK: 포커스·보임
