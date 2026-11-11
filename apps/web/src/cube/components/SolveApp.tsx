@@ -286,7 +286,9 @@ export function SolveApp({
   // 섞기 연출(docs/47 3-1): 장면만 움직이고, 세션은 연출이 끝나거나 첫 키가 들어올 때 시간을 연다
   const reduced = useReducedMotion();
   const show = useMemo(() => new ScrambleShow(realClock, bump), [bump]);
-  useEffect(() => () => show.drop(), [show]);
+  // 크기·방식을 바꾸면(세션이 새로 생긴다) 돌던 연출을 버린다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 크기·방식이 바뀔 때도 정리한다
+  useEffect(() => () => show.drop(), [show, n, mode]);
   /** 다음 다시 칠하기(`syncToken`) 뒤에 시작할 연출. 장면이 섞인 상태로 칠해진 다음 맞춘 큐브부터 다시 돌린다 */
   const pendingShow = useRef<{
     kind: ScrambleShowKind;

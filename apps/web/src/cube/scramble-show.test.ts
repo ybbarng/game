@@ -90,18 +90,18 @@ describe("섞기 연출 진행", () => {
     expect(clock.pending()).toBe(0);
   });
 
-  it("짧은 연출: 한 바퀴 돌리고 반 바퀴에 섞인 모양으로 칠하고, 다 돌면 끝", () => {
+  it("짧은 연출: 맞춘 큐브로 한 바퀴 돌리고 반 바퀴에 섞인 모양으로 칠하고, 다 돌면 끝", () => {
     const clock = new ManualClock();
     const show = new ScrambleShow(clock);
     const { log, target } = recorder();
     let done = 0;
     show.play({ kind: "spin", ms: 500 }, target, () => done++);
-    expect(log).toEqual(["spin@500"]);
+    expect(log).toEqual(["solved", "spin@500"]);
     clock.advance(250);
-    expect(log).toEqual(["spin@500", "paint"]);
+    expect(log).toEqual(["solved", "spin@500", "paint"]);
     expect(done).toBe(0);
     clock.advance(250);
-    expect(log).toEqual(["spin@500", "paint", "scrambled"]);
+    expect(log).toEqual(["solved", "spin@500", "paint", "scrambled"]);
     expect(done).toBe(1);
   });
 
@@ -148,7 +148,7 @@ describe("섞기 연출 진행", () => {
     show.play({ kind: "spin", ms: 500 }, first.target, () => done.push("a"));
     clock.advance(100);
     show.cancel();
-    expect(first.log).toEqual(["spin@500", "scrambled"]);
+    expect(first.log).toEqual(["solved", "spin@500", "scrambled"]);
     clock.advance(1_000);
     expect(done).toEqual([]);
     show.play({ kind: "spin", ms: 500 }, second.target, () => done.push("b"));
@@ -156,7 +156,7 @@ describe("섞기 연출 진행", () => {
     show.play({ kind: "spin", ms: 500 }, second.target, () => done.push("c"));
     clock.advance(500);
     expect(done).toEqual(["c"]);
-    expect(first.log).toEqual(["spin@500", "scrambled"]);
+    expect(first.log).toEqual(["solved", "spin@500", "scrambled"]);
   });
 
   it("drop: 장면을 건드리지 않고 멈춘다(맞춘 상태로·다시 보기)", () => {
@@ -170,7 +170,7 @@ describe("섞기 연출 진행", () => {
     show.drop();
     expect(changes).toBe(2);
     clock.advance(1_000);
-    expect(log).toEqual(["spin@500"]);
+    expect(log).toEqual(["solved", "spin@500"]);
     expect(done).toBe(0);
     expect(show.running).toBe(false);
   });

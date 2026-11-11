@@ -175,8 +175,9 @@ export class ScrambleShow {
       };
       next();
     } else {
+      // 맞춘 큐브로 돌기 시작해 반 바퀴(뒤를 볼 때) 섞인 모양으로 바꾼다
+      target.solved();
       target.spin(plan.ms);
-      // 반 바퀴(뒤를 볼 때) 섞인 모양으로 바꾼다
       cancel = this.clock.after(plan.ms / 2, () => {
         if (this.run !== run) return;
         target.paint();
