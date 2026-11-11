@@ -329,7 +329,7 @@ const DESKS = {
 } as const;
 
 /**
- * 큐브 윤곽(docs/47 15-23): 앱의 투명 창에서 큐브·거울 판 실루엣을 따라 도는 밝은 테두리 두 겹과 어두운 그림자.
+ * 큐브 윤곽(docs/47 15-23): 앱의 투명 창에서 큐브·거울 판 실루엣을 따라 도는 흐림 없는 밝은 선(상하좌우로 민 흰 그림자 네 겹)과 어두운 그림자.
  * 둥근 받침(원반)은 큐브와 따로 놀아 두지 않는다. 브라우저 미니 모드는 이미 어두운 바탕이 있어 윤곽을 두지 않는다
  */
 test(
@@ -371,12 +371,12 @@ test(
         return sent.filter((m) => m.type === "hit").at(-1)?.rects ?? [];
       });
     const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
-    /** 윤곽: 흰 빛 두 겹 뒤 검은 그림자 한 겹 */
+    /** 윤곽: 흐림 없는 흰 선 네 겹 뒤 검은 그림자 한 겹 */
     const outlined = async () => {
       const reds = [...(await filter()).matchAll(/rgba\((\d+),/g)].map(
         (m) => m[1],
       );
-      expect(reds).toEqual(["255", "255", "0"]);
+      expect(reds).toEqual(["255", "255", "255", "255", "0"]);
     };
 
     // 맞춘 큐브(거울 없음)

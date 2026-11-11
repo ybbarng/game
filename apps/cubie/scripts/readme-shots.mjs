@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // README(apps/cubie/README.md)의 그림을 만든다. 앱을 띄우지 않는다(사용자 화면을 건드리지 않게).
 //
-// **흉내다**: Cubie 앱이 여는 것과 같은 웹 미니 모드(/cube/mini)를 헤드리스 Chrome에서 앱처럼 열고
-// (앱 다리 `webkit.messageHandlers.cubie`를 흉내 내고, 앱이 넣는 투명 바탕 CSS를 똑같이 넣는다) 투명 바탕으로
+// **흉내다**: Cubie 앱이 여는 것과 같은 웹 미니 모드(/cube/mini)를 헤드리스 WebKit(앱의 WKWebView와 같은 엔진)에서
+// 앱처럼 열고 (앱 다리 `webkit.messageHandlers.cubie`를 흉내 내고, 앱이 넣는 투명 바탕 CSS를 똑같이 넣는다) 투명 바탕으로
 // 찍은 뒤, 이 스크립트가 그린 바탕화면 위 오른쪽 아래에 얹는다. 메뉴 막대·문서 창·바탕화면은 그림이고 실제 맥 화면이
 // 아니다. 기록 창도 앱이 보통 창으로 여는 `/cube/mini?view=records`를 그 크기(380×600)로 찍어 창 틀을 그려 얹었다.
 //
@@ -29,7 +29,8 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, "../docs");
 const require = createRequire(path.join(here, "../../web/package.json"));
-const { chromium } = require("@playwright/test");
+// 앱과 같은 엔진으로 찍는다. Chromium은 drop-shadow 흐림 등을 앱과 다르게 그려 생김새 판단이 어긋났다(2026-11-11)
+const { webkit } = require("@playwright/test");
 
 const args = process.argv.slice(2);
 /**
@@ -269,10 +270,7 @@ async function main() {
     readFileSync(path.join(here, "../Resources/MenuIcon@2x.png")),
   );
   if (PRACTICE_ONLY || KEYS_ONLY) {
-    const b = await chromium.launch({
-      channel: "chrome",
-      chromiumSandbox: true,
-    });
+    const b = await webkit.launch();
     try {
       return await (KEYS_ONLY ? keysShot(b) : practiceShot(b));
     } finally {
@@ -301,10 +299,7 @@ async function main() {
     path.join(OUT, "icon.png"),
   ]);
   rmSync(iconTmp, { recursive: true, force: true });
-  const browser = await chromium.launch({
-    channel: "chrome",
-    chromiumSandbox: true,
-  });
+  const browser = await webkit.launch();
   const CUBE = 150;
   const DESK = { width: 900, height: 560 };
   try {
