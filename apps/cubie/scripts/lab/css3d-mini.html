@@ -1,0 +1,112 @@
+<!doctype html>
+<!--
+  CSS 3D 큐브 시안(docs/52 5-3): WebGL·three.js 없이 transform-style: preserve-3d와 Web Animations로 3×3을 그리고 돌린다.
+  돌리는 연출은 WebKit이 Core Animation으로 넘겨 앱(UI) 프로세스·WindowServer가 움직인다. 웹 GPU 프로세스는 장마다 그리지 않는다.
+  Cubie 측정 모드로 재기(앱 다리: ready 알림, 측정 스크립트의 키·섞기 명령을 받는다):
+    python3 -m http.server 4394 --bind 127.0.0.1 --directory apps/cubie/scripts/lab   # 다른 터미널
+    apps/cubie/scripts/measure-memory.sh --url "http://127.0.0.1:4394/css3d-mini.html?outline"
+  주소 뒤 ?outline 은 사이트 Cubie 윤곽(흐림 없는 흰 선 네 겹 + 그림자, drop-shadow), &clock 은 0.1초마다 바뀌는 시간 글자.
+  눈으로 보기: CUBIE_URL="http://127.0.0.1:4394/css3d-mini.html?outline" apps/cubie/Cubie.app/Contents/MacOS/Cubie
+  (Playwright WebKit 화면 없는 모드와 WKWebView takeSnapshot은 3D를 납작하게 찍는다. Chrome이나 실제 앱 창으로 본다)
+  시안이라 조명·광택·거울 판·끌어 돌리기·큰 큐브는 없다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>CSS 3D 큐브 시안</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  #stage { position: absolute; inset: 0; display: grid; place-items: center; }
+  #wrap { width: 96px; height: 96px; perspective: 400px; position: relative; }
+  /* 필터는 3D가 아닌 바깥 상자에 둔다(3D 층에 걸면 Core Animation이 무시한다) */
+  #stage.outline {
+    filter: drop-shadow(1px 0 0 rgba(255,255,255,.55)) drop-shadow(-1px 0 0 rgba(255,255,255,.55))
+            drop-shadow(0 1px 0 rgba(255,255,255,.55)) drop-shadow(0 -1px 0 rgba(255,255,255,.55))
+            drop-shadow(0 0 2px rgba(0,0,0,.55));
+  }
+  #cube { position: absolute; left: 48px; top: 48px; width: 0; height: 0; transform-style: preserve-3d;
+          transform: rotateX(-30deg) rotateY(-40deg); }
+  .cubie, .pivot { position: absolute; left: -10px; top: -10px; width: 20px; height: 20px; transform-style: preserve-3d; }
+  .pivot { left: 0; top: 0; }
+  .face { position: absolute; width: 20px; height: 20px; left: 0; top: 0; border-radius: 3px;
+          background: #141414; border: 1.6px solid #141414; box-sizing: border-box; }
+  #clock { position: absolute; left: 4px; top: 2px; font: 600 11px -apple-system, sans-serif; color: #fff; }
+</style>
+</head>
+<body>
+<div id="clock" hidden>0.0</div>
+<div id="stage"><div id="wrap"><div id="cube"></div></div></div>
+<script>
+  const U = 20;
+  const query = new URLSearchParams(location.search);
+  if (query.has('outline')) document.getElementById('stage').classList.add('outline');
+  const cube = document.getElementById('cube');
+  const COLORS = ['#fff', '#ffd500', '#b71234', '#ff5800', '#009b48', '#0046ad'];
+  // 여섯 면: 바깥 방향(축, 부호), 면 변환, 색 번호
+  const FACES = [
+    [2, 1, 'translateZ(10px)', 2], [2, -1, 'rotateY(180deg) translateZ(10px)', 3],
+    [0, 1, 'rotateY(90deg) translateZ(10px)', 4], [0, -1, 'rotateY(-90deg) translateZ(10px)', 5],
+    [1, -1, 'rotateX(90deg) translateZ(10px)', 0], [1, 1, 'rotateX(-90deg) translateZ(10px)', 1],
+  ];
+  const cubies = [];
+  for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+    if (!x && !y && !z) continue;
+    const c = document.createElement('div');
+    c.className = 'cubie';
+    c._m = new DOMMatrix().translate(x * U, y * U, z * U);
+    c.style.transform = c._m.toString();
+    const p = [x, y, z];
+    for (const [axis, sign, tf, color] of FACES) {
+      const f = document.createElement('div');
+      f.className = 'face';
+      f.style.transform = tf;
+      if (p[axis] === sign) f.style.background = COLORS[color];
+      c.appendChild(f);
+    }
+    cube.appendChild(c);
+    cubies.push(c);
+  }
+  // 한 층 돌리기: 그 층 조각을 묶음에 옮겨 묶음을 90ms 동안 90도 돌리고, 끝나면 각을 조각에 굳힌다
+  let busy = Promise.resolve();
+  const KEYS = { KeyJ: [1, 1], KeyF: [1, -1], KeyI: [0, 1], KeyE: [0, -1], KeyK: [2, 1], KeyD: [2, -1],
+                 KeyH: [0, 1], KeyG: [0, -1], KeyL: [1, 1], KeyS: [2, -1] };
+  function turn(axis, side) {
+    busy = busy.then(() => new Promise((done) => {
+      const members = cubies.filter((c) => Math.round([c._m.m41, c._m.m42, c._m.m43][axis] / U) === side);
+      const pivot = document.createElement('div');
+      pivot.className = 'pivot';
+      cube.appendChild(pivot);
+      for (const c of members) pivot.appendChild(c);
+      const rot = ['rotateX', 'rotateY', 'rotateZ'][axis];
+      const a = pivot.animate([{ transform: `${rot}(0deg)` }, { transform: `${rot}(90deg)` }],
+                              { duration: 90, easing: 'ease-out' });
+      a.onfinish = () => {
+        const r = new DOMMatrix().rotateAxisAngle(axis === 0 ? 1 : 0, axis === 1 ? 1 : 0, axis === 2 ? 1 : 0, 90);
+        for (const c of members) {
+          c._m = r.multiply(c._m);
+          // 떠다니는 오차를 지운다(회전 부분은 0·±1뿐)
+          for (const k of ['m11', 'm12', 'm13', 'm21', 'm22', 'm23', 'm31', 'm32', 'm33']) c._m[k] = Math.round(c._m[k]);
+          c.style.transform = c._m.toString();
+          cube.appendChild(c);
+        }
+        pivot.remove();
+        done();
+      };
+    }));
+  }
+  if (query.has('clock')) {
+    const clock = document.getElementById('clock');
+    clock.hidden = false;
+    let t0 = 0;
+    window.addEventListener('keydown', () => { if (!t0) t0 = performance.now(); });
+    setInterval(() => { if (t0) clock.textContent = ((performance.now() - t0) / 1000).toFixed(1); }, 100);
+  }
+  window.addEventListener('keydown', (e) => { const k = KEYS[e.code]; if (k) turn(k[0], k[1]); });
+  window.addEventListener('cubie', (e) => {
+    if (e.detail?.type === 'scramble') for (let i = 0; i < 20; i++) turn(i % 3, i % 2 ? 1 : -1);
+  });
+  window.webkit?.messageHandlers?.cubie?.postMessage({ type: 'ready' });
+</script>
+</body>
+</html>
