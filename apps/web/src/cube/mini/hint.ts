@@ -18,11 +18,12 @@ export const HINT_RULES = {
 } as const;
 
 /**
- * 힌트 키(`KeyboardEvent.code`, 조합 키 없이). F1이 기본이다. 맥북은 F1이 밝기 키라 fn+F1을 눌러야 해서, 두 기본 배치
- * (「두 손」·「표기」, `input/keymaps.ts`)가 쓰지 않는 `\`도 받는다. 사용자 배치가 `\`를 쓰면 그 배치를 따른다
+ * 힌트 키(`KeyboardEvent.code`, 조합 키 없이): `\`. 두 기본 배치(「두 손」·「표기」, `input/keymaps.ts`)가 쓰지 않고, 맥
+ * 키보드에서 Enter(섞기) 바로 위라 찾기 쉽다. 사용자 배치가 `\`를 쓰면 그 배치를 따른다.
+ * 예전(앱 0.1.3~0.1.8)에는 F1도 힌트였지만 2026-11-11부터 F1은 앱의 「단축키 보기」다(docs/47 15-25)
  */
-export const HINT_KEYS = ["F1", "Backslash"] as const;
-export const HINT_KEY_LABEL = "F1(맥북은 fn+F1) 또는 \\";
+export const HINT_KEYS = ["Backslash"] as const;
+export const HINT_KEY_LABEL = "\\";
 
 /** 창 안에 바로 보일 만한 창의 짧은 변(CSS px). 이보다 작으면 앱의 말풍선, 말풍선이 없으면 작게 */
 export const HINT_INLINE_MIN = 240;

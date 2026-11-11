@@ -28,7 +28,7 @@ export type FromApp =
    * 바로 다음에 화면에 닿을 키 하나의 출처. 앱이 키를 웹 화면에 넘기기 직전에 보낸다(같은 연결이라 차례가 지켜진다)
    */
   | { type: "key"; source: "keyboard" | "synthetic" }
-  /** 「공식 보기」(앱 메뉴, 또는 앱이 가로챈 F1) */
+  /** 「공식 보기」(앱 메뉴. 0.1.3~0.1.8 앱은 F1을 가로채 보낸다, 0.1.9부터 F1은 단축키 보기) */
   | { type: "hint" }
   /** 앱이 할 수 있는 것(0.1.3부터, 화면이 떴을 때). `hintBubble`: 창 옆 말풍선을 그린다 */
   | { type: "caps"; hintBubble: boolean }
@@ -36,7 +36,13 @@ export type FromApp =
    * 공식 연습(docs/47 16-11, 앱 메뉴 「공식 연습 ▸」). `stage`: 시작할 단계 id, null이면 연습 끝내기(앱이 연습 중 Esc를
    * 가로채 보낸다). 지금 하는 단계를 다시 고르면 새 판. `mode`: 따라 치기·보고 치기(없으면 지금 방식). 0.1.6 이하 앱은 보내지 않는다
    */
-  | { type: "practice"; stage: string | null; mode?: "follow" | "see" };
+  | { type: "practice"; stage: string | null; mode?: "follow" | "see" }
+  /**
+   * 큐브 옆 단축키 표가 떠 있는가(0.1.9부터, F1·메뉴 「단축키 보기」). 떠 있는 동안 화면은 누른 키를 `pressed`로 알린다
+   */
+  | { type: "keysPanel"; open: boolean }
+  /** 방금 누른 키(`KeyboardEvent.code`). 앱이 단축키 표 화면(`?view=keys&panel=1`)에 보내 그 칸을 잠깐 빛낸다 */
+  | { type: "pressed"; code: string };
 
 /**
  * 말풍선 한 줄. 앱이 줄마다 글꼴을 고른다(`HintBubble.swift`). `spans`가 있으면 그 줄을 낱말마다 다른 색으로 그린다
@@ -79,6 +85,8 @@ export type ToApp =
    * 누르기를 아래 앱으로 넘긴다
    */
   | { type: "hit"; rects: number[][] }
+  /** 단축키 표가 떠 있는 동안 큐브 창에서 누른 키(`KeyboardEvent.code`). 앱이 단축키 표에 넘긴다(0.1.9부터) */
+  | { type: "pressed"; code: string }
   /** 떠 있을 때 움직임이 시작·끝남(확인용 기록) */
   | { type: "idle"; showing: "replay" | "hero" | "jiggle" | null }
   /** 「공식 보기」 말풍선을 큐브 창 옆에 띄운다(`lines`) / 숨긴다(null). 0.1.2 이하 앱은 모르는 꼴이라 버린다 */
@@ -167,6 +175,14 @@ export function parseFromApp(d: unknown): FromApp | null {
         ? { type: "practice", stage, mode: x.mode }
         : { type: "practice", stage };
     }
+    case "keysPanel":
+      return typeof x.open === "boolean"
+        ? { type: "keysPanel", open: x.open }
+        : null;
+    case "pressed":
+      return typeof x.code === "string" && x.code !== ""
+        ? { type: "pressed", code: x.code }
+        : null;
     default:
       return null;
   }

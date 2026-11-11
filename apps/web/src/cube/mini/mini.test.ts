@@ -53,6 +53,18 @@ describe("앱 다리", () => {
       type: "caps",
       hintBubble: false,
     });
+    // 큐브 옆 단축키 표(0.1.9부터): 떠 있는가, 방금 누른 키
+    expect(parseFromApp({ type: "keysPanel", open: true })).toEqual({
+      type: "keysPanel",
+      open: true,
+    });
+    expect(parseFromApp({ type: "keysPanel" })).toBeNull();
+    expect(parseFromApp({ type: "pressed", code: "KeyI" })).toEqual({
+      type: "pressed",
+      code: "KeyI",
+    });
+    expect(parseFromApp({ type: "pressed", code: "" })).toBeNull();
+    expect(parseFromApp({ type: "pressed" })).toBeNull();
     expect(parseFromApp({ type: "focus" })).toBeNull();
     expect(parseFromApp({ type: "erase" })).toBeNull();
     expect(parseFromApp("scramble")).toBeNull();
