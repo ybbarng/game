@@ -3,7 +3,7 @@
 //!
 //!   cargo run --release --bin cubie-bench -- [초, 기본 10] [fps, 기본 60] [모드]
 //!
-//! 모드: `turn`(기본, 수마다 돌리기) · `still`(같은 장면을 계속 다시 그림) · `wait`(장마다 GPU가 끝날 때까지 기다림)
+//! 모드: `turn`(기본, 수마다 돌리기) · `still`(같은 장면을 계속 다시 그림) · `wait`(장마다 GPU가 끝날 때까지 기다림) · `keys`(앱 재기처럼 0.12초마다 한 수)
 
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -43,14 +43,32 @@ fn main() {
     g.scramble(3);
     let r_move = parse_moves(3, "R").unwrap()[0];
     println!("시작 {}", footprint());
+    // 넷째 인자: 첫 장을 그린 뒤 쉬는 초(앱은 켠 뒤 한참 있다가 돌린다)
+    if let Some(idle) = args.get(3).and_then(|s| s.parse::<f64>().ok()) {
+        let _ = r.draw(3, g.state(), None);
+        std::thread::sleep(Duration::from_secs_f64(idle));
+        println!("첫 장 뒤 {idle}초 쉼 {}", footprint());
+    }
     let t0 = Instant::now();
     let mut frames = 0u64;
+    let mut next_key = 0.0;
     let mut next_report = 1.0;
     while t0.elapsed().as_secs_f64() < seconds {
         let now = t0.elapsed().as_secs_f64() * 1000.0;
         match mode {
             "still" => {
                 let _ = r.draw(3, g.state(), Some((r_move, 0.3)));
+            }
+            "keys" => {
+                // 앱 재기처럼 0.12초마다 한 수, 그릴 것이 있을 때만 그린다
+                if now >= next_key {
+                    g.play(r_move);
+                    next_key += 120.0;
+                }
+                if g.needs_frame() {
+                    let turning = g.frame(now);
+                    let _ = r.draw(3, g.shown(), turning);
+                }
             }
             _ => {
                 if !g.needs_frame() || g.frame(now).is_none() {
