@@ -193,6 +193,18 @@ describe("바뀐 파일 → 돌릴 화면 시험", () => {
     ).toBe("none");
   });
 
+  it("Rust 큐브 코어와 공통 시험 자료·사이트 쪽 자료 시험만: 화면 시험 없음", () => {
+    expect(
+      pick(
+        "native/cube-core/src/scramble.rs",
+        "native/cube-core/fixtures/spot.json",
+        "native/cube-core/Cargo.toml",
+        "apps/web/src/cube/native/core-fixtures.ts",
+        "apps/web/src/cube/native/fixture-test-util.ts",
+      ).mode,
+    ).toBe("none");
+  });
+
   it("Cubie 내려받기 페이지: 그 spec과 기본 묶음", () => {
     const r = pick("apps/web/src/app/cubie/download/page.tsx");
     expect(r.mode).toBe("some");
