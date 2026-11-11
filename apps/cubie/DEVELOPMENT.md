@@ -32,7 +32,7 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 
 ```sh
 apps/cubie/build.sh && pnpm --filter @game/web build
-apps/cubie/scripts/measure-memory.sh                    # 로컬 빌드(apps/web/out)를 포트 4393으로 열어 잰다(약 3분)
+apps/cubie/scripts/measure-memory.sh                    # 로컬 빌드(apps/web/out)를 포트 4393으로 열어 잰다(약 4분)
 apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
 apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # 가만히 1분을 10초로, 결과를 TSV에 덧붙인다
 ```
@@ -41,6 +41,7 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 - 화면 밖 창은 WebKit이 「가려짐」으로 보고 그리기를 멈추므로, 측정 모드에서만 WebKit의 가려짐 감지를 끈다(비공개 설정). 그래야 보이는 창과 같이 그린다.
 - 상태는 표준 입력 한 줄 명령으로 바꾼다(`Sources/Cubie/Measure.swift` 머리말의 목록: 포커스·섞기·거울·키로 돌리기·숨기기·단축키 표 불러오기 등). 스크립트만 쓰는 FIFO라 다른 프로세스가 끼어들 수 없다.
 - 재는 값은 `footprint`의 `phys_footprint`(1초 간격 세 번 평균)이고, 프로세스는 `launchctl print pid/<Cubie>`가 보여 주는 그 앱 소속 WebKit 서비스(WebContent·GPU·Networking)만 센다.
+- CPU도 함께 잰다(`CPU …` 줄과 끝의 요약): 가만히 1분, 돌리는 동안 약 20초, 포커스 있고 멈춤·포커스 없음 10초, 숨긴 뒤 30초부터 1분. 구간 처음과 끝의 누적 CPU 시간(`ps -o time`) 차이 ÷ 지난 시간이라 100%가 코어 하나다. `--out <파일>.tsv`를 주면 CPU 결과는 `<파일>-cpu.tsv`에 덧붙인다. 결과는 docs/52 2-4.
 - 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
 - `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
 - 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
