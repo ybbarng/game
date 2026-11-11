@@ -60,6 +60,11 @@ enum Config {
     return defaultSize.width
   }()
 
+  /// `CUBIE_NATIVE=1`: 웹 화면 대신 네이티브 화면 시제품(Rust 코어 + wgpu, docs/52 5-2, `NativeCube.swift`). 3×3 혼자
+  /// 맞추기만 된다(키 → 코어 해석기 → 수, Enter 섞기, 맞춤 판정). 웹 화면을 만들지 않아 WebKit 프로세스가 뜨지 않는다.
+  /// 꺼져 있으면(기본) 지금 앱 그대로다
+  static let native = ProcessInfo.processInfo.environment["CUBIE_NATIVE"] == "1"
+
   /// 같은 사이트의 다른 화면(대결·설정)
   static func site(_ path: String) -> URL {
     URL(string: path, relativeTo: miniURL)!.absoluteURL

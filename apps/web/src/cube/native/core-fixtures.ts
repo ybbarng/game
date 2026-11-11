@@ -23,6 +23,14 @@ import { SCRAMBLE_EVENTS, scramble } from "@game/cube-scramble";
 import { createRng, nextInt, type RngState } from "@game/mighty-engine";
 
 import { spotCase, spotHold } from "../algs/spot";
+import { KeyInterpreter, type KeyResult } from "../input/interpreter";
+import {
+  type KeyChord,
+  type KeyInput,
+  type Keymap,
+  notationKeymap,
+  twoHandKeymap,
+} from "../input/keymaps";
 import { ALG_SETS } from "../learn/alg-sets";
 import { goalMet } from "../learn/judge";
 import type { AlgCase, AlgSet } from "../learn/types";
@@ -506,6 +514,192 @@ export function buildRustData(): string {
   ].join("\n");
 }
 
+// ── 키 배치 해석기(docs/52 5-2) ─────────────────────────
+
+type Preset = "twoHand" | "notation";
+
+const KEY_PRESETS: Record<Preset, () => Keymap> = {
+  twoHand: twoHandKeymap,
+  notation: notationKeymap,
+};
+
+/** 자료의 키 누름 하나(거짓인 조합 키는 적지 않는다) */
+type KeyStep = Partial<KeyInput> & { code: string };
+
+const keyInput = (k: KeyStep): KeyInput => ({
+  code: k.code,
+  shiftKey: !!k.shiftKey,
+  altKey: !!k.altKey,
+  ctrlKey: !!k.ctrlKey,
+  metaKey: !!k.metaKey,
+  repeat: !!k.repeat,
+});
+
+const chordStep = (b: KeyChord): KeyStep => ({
+  code: b.code,
+  ...(b.shift ? { shiftKey: true } : {}),
+  ...(b.alt ? { altKey: true } : {}),
+  ...(b.ctrl ? { ctrlKey: true } : {}),
+});
+
+/** 배치에 없는 누름·⌘ 조합도 섞는다(⌘Z만 되돌리기, 나머지는 키를 먹지 않아야 한다) */
+const STRAY_KEYS: KeyStep[] = [
+  { code: "KeyQ", altKey: true },
+  { code: "Digit3", shiftKey: true },
+  { code: "KeyZ", metaKey: true },
+  { code: "KeyZ", metaKey: true, shiftKey: true },
+  { code: "KeyI", metaKey: true },
+  { code: "KeyZ", ctrlKey: true },
+  { code: "Tab" },
+  { code: "F1" },
+];
+
+function keyResult(r: KeyResult | null) {
+  if (r === null || r.kind !== "move") return r;
+  const { axis, from, to, turns } = r.move;
+  return { ...r, move: { axis, from, to, turns } };
+}
+
+function keyCase(preset: Preset, n: number, keys: KeyStep[]) {
+  const it = new KeyInterpreter(n, KEY_PRESETS[preset]());
+  const results = keys.map((k) => keyResult(it.handle(keyInput(k))));
+  return { preset, n, keys, results };
+}
+
+/** 손으로 고른 차례: 층 수·깊이·가운데 줄 키, 명령이 층 수·깊이를 되돌리는지, 크기에 없는 동작 */
+const HAND_KEYS: [Preset, number, string[]][] = [
+  [
+    "twoHand",
+    3,
+    "KeyI KeyK Digit5 Digit6 KeyX Period Digit1 Digit2 Digit9 Digit0 Digit3 Digit7 KeyU KeyT Semicolon".split(
+      " ",
+    ),
+  ],
+  [
+    "twoHand",
+    4,
+    "Digit7 KeyI KeyU Period Digit6 Digit7 Period Digit7 KeyI Digit8 Digit8 Digit8 Digit4 KeyD KeyV Digit5 Enter KeyI Digit7 Escape KeyI".split(
+      " ",
+    ),
+  ],
+  [
+    "twoHand",
+    5,
+    "Digit7 Period Digit7 Period Digit4 Digit4 KeyX Digit4 KeyX Backspace KeyX Space KeyX".split(
+      " ",
+    ),
+  ],
+  ["twoHand", 2, "KeyI KeyU Digit5 Digit1 Digit7 KeyT Enter".split(" ")],
+  [
+    "notation",
+    3,
+    "Digit2 KeyR Digit3 KeyR Digit4 KeyR Digit2 KeyM KeyR KeyM KeyX".split(" "),
+  ],
+  [
+    "notation",
+    5,
+    "Digit3 KeyR Digit3 Enter KeyR Digit7 KeyR Digit5 KeyU Digit2 KeyX".split(
+      " ",
+    ),
+  ],
+  ["notation", 7, "Digit7 KeyF Digit6 KeyB Digit4 KeyM".split(" ")],
+  ["notation", 2, "Digit2 KeyR KeyM KeyR".split(" ")],
+];
+
+/** 손으로 고른 조합 키 차례(Shift 넓게, 되풀이 누름, ⌘Z, Alt 넓게) */
+const HAND_MODS: [Preset, number, KeyStep[]][] = [
+  [
+    "twoHand",
+    4,
+    [
+      { code: "KeyI", shiftKey: true },
+      { code: "Digit7" },
+      { code: "KeyI", shiftKey: true },
+      { code: "KeyJ", shiftKey: true },
+      { code: "KeyI", repeat: true },
+      { code: "KeyZ", metaKey: true },
+      { code: "KeyZ", ctrlKey: true },
+    ],
+  ],
+  [
+    "notation",
+    4,
+    [
+      { code: "Digit3" },
+      { code: "KeyR", altKey: true },
+      { code: "KeyR", altKey: true, shiftKey: true },
+      { code: "Digit3" },
+      { code: "KeyR", shiftKey: true },
+      { code: "Digit3" },
+      { code: "KeyX" },
+      { code: "KeyR" },
+      { code: "KeyM" },
+    ],
+  ],
+];
+
+export function buildKeys(): string {
+  const rng = createRng(20261112);
+  const cases: unknown[] = [];
+  for (const [preset, n, codes] of HAND_KEYS)
+    cases.push(
+      keyCase(
+        preset,
+        n,
+        codes.map((code) => ({ code })),
+      ),
+    );
+  for (const [preset, n, keys] of HAND_MODS)
+    cases.push(keyCase(preset, n, keys));
+  for (const preset of Object.keys(KEY_PRESETS) as Preset[]) {
+    const chords = KEY_PRESETS[preset]().bindings.map(chordStep);
+    for (let n = 2; n <= 7; n++) {
+      for (let k = 0; k < 3; k++) {
+        const keys = Array.from({ length: 40 }, (): KeyStep => {
+          const r = nextInt(rng, 100);
+          if (r < 6) return pick(rng, STRAY_KEYS);
+          if (r < 9) return { ...pick(rng, chords), repeat: true };
+          return pick(rng, chords);
+        });
+        cases.push(keyCase(preset, n, keys));
+      }
+    }
+  }
+  return fixtureJson(
+    {
+      what: "키 배치(두 손·표기)와 해석기: 키 누름 차례 → 수(가장 짧은 이름과 계약의 수)·깊이·층 수·명령. 키를 먹지 않으면 null",
+    },
+    cases,
+  );
+}
+
+/** Rust 코어의 배치 자료: 배치가 바뀌면 자료만 다시 쓰면 된다 */
+export function buildRustKeymaps(): string {
+  const rows = (preset: Preset) =>
+    KEY_PRESETS[preset]()
+      .bindings.map(
+        (b) =>
+          `    (${rustStr(b.code)}, ${(b.shift ? 1 : 0) | (b.alt ? 2 : 0) | (b.ctrl ? 4 : 0)}, ${rustStr(b.action)}),`,
+      )
+      .join("\n");
+  return [
+    "// 사이트 자료에서 만든 파일이다. 손으로 고치지 않는다.",
+    "// 다시 만들기: CUBE_CORE_FIXTURES=write pnpm vitest run apps/web/src/cube/native/",
+    "// 원본: apps/web/src/cube/input/keymaps.ts(twoHandKeymap·notationKeymap)",
+    "",
+    "/// 「두 손」 배치: (KeyboardEvent.code, 조합 키(1 Shift·2 Alt·4 Ctrl을 더한 값), 동작 이름). 사이트와 같은 차례",
+    "pub const TWO_HAND: &[(&str, u8, &str)] = &[",
+    rows("twoHand"),
+    "];",
+    "",
+    "/// 「표기」 배치(같은 꼴)",
+    "pub const NOTATION: &[(&str, u8, &str)] = &[",
+    rows("notation"),
+    "];",
+    "",
+  ].join("\n");
+}
+
 /** 자료 파일 전부(파일 이름 → 내용) */
 export const BUILDERS = {
   "fixtures/scramble.json": buildScramble,
@@ -513,5 +707,7 @@ export const BUILDERS = {
   "fixtures/spot.json": buildSpot,
   "fixtures/tier.json": buildTier,
   "fixtures/replay.json": buildReplay,
+  "fixtures/keys.json": buildKeys,
   "src/data.rs": buildRustData,
+  "src/keymap_data.rs": buildRustKeymaps,
 } as const;

@@ -1,0 +1,26 @@
+[package]
+name = "cubie-native"
+version = "0.1.0"
+edition = "2021"
+description = "Cubie 네이티브 화면(docs/52 5절 3단계): 큐브 코어 + wgpu(Metal) 그리기 + C ABI"
+license = "MIT"
+publish = false
+
+# staticlib: Swift 앱(apps/cubie)이 링크한다. rlib: 시험·스크린샷 도구가 쓴다
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+# 의존은 코어와 wgpu 하나(docs/52: 의존 최소, 판 고정). wgpu는 Metal 백엔드와 WGSL만 켠다
+[dependencies]
+cube-core = { path = "../cube-core" }
+wgpu = { version = "=30.0.1", default-features = false, features = ["metal", "wgsl", "std", "parking_lot"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = false

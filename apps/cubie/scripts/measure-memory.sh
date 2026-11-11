@@ -7,9 +7,11 @@
 #   apps/cubie/build.sh && pnpm --filter @game/web build     # 먼저(재는 대상)
 #   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
 #   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
+#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면 시제품(CUBIE_NATIVE=1, docs/52 5-2)을 같은 시나리오로 잰다
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
 #         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
+#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않고, 거울·큐브 크기·단축키 표 명령은 앱이 받기만 한다)
 #
 # 결과: 상태마다 Cubie·WebContent(개수)·GPU·Networking·합계(MB, footprint의 phys_footprint, 1초 간격 세 번 평균).
 # CPU: 상태 구간(가만히 1분, 돌리는 동안 약 20초, 숨긴 뒤 1분 등)의 처음과 끝에 프로세스마다 누적 CPU 시간(`ps -o time`)을
@@ -29,6 +31,7 @@ IDLE=60
 WEB=""
 INJECT=""
 DETAIL=0
+NATIVE=0
 PORT=4393
 
 while [ $# -gt 0 ]; do
@@ -41,6 +44,7 @@ while [ $# -gt 0 ]; do
     --web) WEB="$(cd "$2" && pwd)"; shift 2 ;;
     --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
+    --native) NATIVE=1; shift ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
   esac
 done
@@ -66,6 +70,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+if [ "$NATIVE" = 1 ]; then
+  URL="about:blank"
+fi
 if [ -z "$URL" ]; then
   WEB="${WEB:-$ROOT/apps/web/out}"
   [ -f "$WEB/cube/mini.html" ] || { echo "apps/web/out이 없다: pnpm --filter @game/web build 먼저" >&2; exit 1; }
@@ -82,7 +89,7 @@ if [ -z "$URL" ]; then
 fi
 
 mkfifo "$TMP/in"
-CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
+CUBIE_NATIVE="$NATIVE" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 exec 3>"$TMP/in"
 cmd() { echo "$*" >&3; }
@@ -147,10 +154,10 @@ measure() {
   }'
 }
 
-# --detail: WebContent·GPU의 메모리 갈래(footprint 위 열 줄)
+# --detail: Cubie·WebContent·GPU의 메모리 갈래(footprint 위 열 줄)
 detail() {
   [ "$DETAIL" = 1 ] || return 0
-  for pid in $(children | awk '$2 != "Networking" { print $1 }'); do
+  for pid in "$APP_PID" $(children | awk '$2 != "Networking" { print $1 }'); do
     footprint -p "$pid" 2>/dev/null | awk '/: 64-bit/ { print; n = 0 } /^ *[0-9.]+ [KMG]?B / && n++ < 10' | sed 's/^/# /'
   done
 }
