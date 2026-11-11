@@ -1543,3 +1543,79 @@ test(
     await expect(summary).toHaveCount(0);
   },
 );
+
+test(
+  "섞기 연출: 3×3은 섞기 수를 하나씩 빠르게 돌리고, 키를 누르면 바로 끝내 그 수를 넣는다. 7×7은 0.5초 짧은 연출",
+  { tag: ["@3d", "@only-desktop"] },
+  async ({ page }, info) => {
+    // 키보드 조작은 데스크톱만
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 200, height: 200 });
+    await installClock(page);
+    await fakeApp(page);
+    await page.goto("/cube/mini");
+    const main = page.locator("main[data-mini]");
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      SCENE,
+    );
+    await expect(main).toHaveAttribute("data-input-ready", "", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await pauseClock(page);
+    await fromApp(page, { type: "focus", focused: true });
+    const showing = async () =>
+      (await main.getAttribute("data-scramble-show")) === "on";
+
+    // 하나씩 빠르게: 3×3 섞기(약 20수)는 1초 안팎이면 끝난다
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await expect(main).toHaveAttribute("data-mini-phase", "ready");
+    await page.clock.fastForward(400);
+    await expect(main).toHaveAttribute("data-scramble-show", "on");
+    await shot(page, "mini-scramble-moves", info.project.name);
+    await fastForwardUntil(page, async () => !(await showing()), {
+      step: 50,
+      timeout: 10_000,
+    });
+    await shot(page, "mini-scramble-moves-done", info.project.name);
+
+    // 연출 중 키: 바로 섞인 모양으로 두고 그 수부터 잰다
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const keys = inverseKeys(
+      (await main.getAttribute("data-mini-scramble")) ?? "",
+    );
+    await page.keyboard.press(keys[0] as string);
+    await expect(main).not.toHaveAttribute("data-scramble-show", /on/);
+    await expect(main).toHaveAttribute("data-mini-phase", "solving");
+    for (const k of keys.slice(1)) await page.keyboard.press(k);
+    await expect(main).toHaveAttribute("data-mini-phase", "done");
+
+    // 짧은 연출: 6×6·7×7은 크기와 상관없이 0.5초
+    await fromApp(page, { type: "size", n: 7 });
+    await expect(main).toHaveAttribute("data-mini-n", "7");
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      SCENE,
+    );
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await page.clock.fastForward(200);
+    await shot(page, "mini-scramble-spin", info.project.name);
+    await page.clock.fastForward(200);
+    expect(await showing()).toBe(true);
+    await fastForwardUntil(page, async () => !(await showing()), {
+      step: 50,
+      timeout: 10_000,
+    });
+  },
+);
