@@ -109,6 +109,20 @@ describe("큐브 설정 저장", () => {
     );
   });
 
+  it("섞기 연출: 옛 저장값·모르는 값은 크기에 맞게, 고른 값은 그대로", () => {
+    expect(parseSettings(JSON.stringify({ version: 1 })).scrambleShow).toBe(
+      "auto",
+    );
+    for (const v of ["instant", "moves", "spin"] as const)
+      expect(
+        parseSettings(JSON.stringify({ scrambleShow: v })).scrambleShow,
+      ).toBe(v);
+    for (const v of ["x", "toString", 3])
+      expect(
+        parseSettings(JSON.stringify({ scrambleShow: v })).scrambleShow,
+      ).toBe("auto");
+  });
+
   it("대결 알림: 옛 저장값·모르는 값은 켬, 움직임 줄이기면 켬도 조용히", () => {
     expect(parseSettings(JSON.stringify({ version: 1 })).raceAlerts).toBe("on");
     expect(

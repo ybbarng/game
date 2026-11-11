@@ -39,6 +39,7 @@ import {
   keysOf,
   toCustom,
 } from "../keymap-editor";
+import { SCRAMBLE_SHOW_LABEL, SCRAMBLE_SHOW_SETTINGS } from "../scramble-show";
 import {
   BACK_VIEW_LABEL,
   COLOR_SCHEME_LABEL,
@@ -205,6 +206,26 @@ export function CubeSettingsApp() {
           <p className="-mt-2 break-keep text-white/50 text-xs">
             거울은 안 보이는 뒤·왼쪽·아래 면을 큐브 둘레에 비춰 보여요. 좁은
             자리에서는 거울 없이 큐브만 보이니 끌어서 둘러봐요.
+          </p>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-scramble-show-setting
+          >
+            섞기 연출
+            {SCRAMBLE_SHOW_SETTINGS.map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={settings.scrambleShow === v}
+                onClick={() => updateSettings({ ...settings, scrambleShow: v })}
+                className={chip(settings.scrambleShow === v)}
+              >
+                {SCRAMBLE_SHOW_LABEL[v]}
+              </button>
+            ))}
+          </div>
+          <p className="-mt-2 break-keep text-white/50 text-xs">
+            크기에 맞게는 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출이에요.
           </p>
           <div className="flex flex-wrap items-center gap-2" data-flow-setting>
             수 흐름 띠

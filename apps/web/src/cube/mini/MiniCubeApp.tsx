@@ -45,6 +45,11 @@ import { PracticeSession } from "../practice/session";
 import { stageById } from "../practice/stages";
 import { formatMs, type SolveInput } from "../records";
 import { ReplayPlayer, type ReplayStatus, solveSteps } from "../replay-player";
+import {
+  resolveScrambleShow,
+  ScrambleShow,
+  showScramble,
+} from "../scramble-show";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
 import { type MyTier, tierName } from "../tiers/rank";
@@ -491,6 +496,8 @@ function KeysPanelPage() {
 function MiniCube() {
   const settings = useCubeSettings();
   const reduced = useReducedMotion();
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
   const [prefs, setPrefsState] = useState<MiniPrefs | null>(null);
   useEffect(() => setPrefsState(loadMiniPrefs()), []);
   const n = prefs?.n ?? 3;
@@ -552,6 +559,11 @@ function MiniCube() {
 
   // 공식 보기(docs/47 15-15): 한 판의 횟수·시간 제한(`HintGate`), 보이는 공식, 짧은 알림(남은 초 등)
   const hintGate = useMemo(() => new HintGate(realClock, bump), [bump]);
+  // 섞기 연출(docs/47 3-1, 사이트 혼자 맞추기와 같은 모듈)
+  const show = useMemo(() => new ScrambleShow(realClock, bump), [bump]);
+  useEffect(() => () => show.drop(), [show]);
+  const showRef = useRef(show);
+  showRef.current = show;
   useEffect(() => () => hintGate.dispose(), [hintGate]);
   const hintGateRef = useRef(hintGate);
   hintGateRef.current = hintGate;
@@ -633,6 +645,8 @@ function MiniCube() {
   const mirror = mirrorWanted && mirrorFits;
 
   const repaint = useCallback(() => {
+    // 다른 일이 장면을 다시 칠하면 섞기 연출은 끝낸다
+    showRef.current.finish();
     const v = viewRef.current;
     if (!v) return;
     const p = practiceRef.current;
@@ -883,13 +897,17 @@ function MiniCube() {
   // 카메라가 큐브만 담는 자리로 옮겨 큐브가 창 가운데에 크게 보인다(창 크기는 그대로)
   const solved = isSolved(session.n, session.state);
   // 연습 문제도 직접 맞추는 것이라 포커스가 있으면 거울을 보인다
-  const mirrorShown = miniMirrorShown({
+  const mirrorWant = miniMirrorShown({
     wanted: mirrorWanted,
     fits: mirrorFits,
     focused,
     solved: practicing ? false : solved,
     idle: idle.showing !== null,
   });
+  // 섞기 연출 동안은 거울(과 그에 따른 카메라 이동)을 연출 전 그대로 둔다. 바뀔 것은 연출이 끝난 뒤에(docs/47 3-1)
+  const mirrorHeld = useRef(mirrorWant);
+  if (!show.running) mirrorHeld.current = mirrorWant;
+  const mirrorShown = mirrorHeld.current;
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirrorShown, true);
   }, [mirrorShown, ready]);
@@ -925,6 +943,7 @@ function MiniCube() {
   const doScramble = useCallback(async () => {
     if (preparing.current) return;
     preparing.current = true;
+    showRef.current.cancel();
     const id = ++scrambleId.current;
     const s = sessionRef.current;
     const seed = randomSeed();
@@ -932,11 +951,25 @@ function MiniCube() {
       const made = await scrambleInWorker(eventFor(s.n), seed);
       if (id !== scrambleId.current || s.disposed) return;
       idle.reset();
-      s.start(made.text, seed);
+      const kind = resolveScrambleShow(
+        settingsRef.current.scrambleShow,
+        s.n,
+        reducedRef.current,
+      );
+      s.start(made.text, seed, undefined, { hold: kind !== "instant" });
       hintGateRef.current.reset();
       inputsRef.current = [];
       originsRef.current = new Set();
       repaintRef.current();
+      if (!practiceRef.current)
+        showScramble(showRef.current, {
+          kind,
+          n: s.n,
+          scramble: made.text,
+          scrambled: s.state,
+          getView: () => viewRef.current,
+          onDone: () => s.release(),
+        });
     } catch {
       // 섞기를 못 만들었다: 다음에 다시 누르면 된다
     } finally {
@@ -983,6 +1016,8 @@ function MiniCube() {
         return;
       }
       const s = sessionRef.current;
+      // 섞기 연출 중 키: 연출을 바로 끝내 섞인 모양으로 두고 그 수를 넣는다
+      showRef.current.finish();
       // 맞춰서 기록이 생기는 수도 그 판에 든다(input 전에 더한다)
       if (!inputsRef.current.includes(input))
         inputsRef.current = [...inputsRef.current, input];
@@ -1377,6 +1412,7 @@ function MiniCube() {
     <main
       data-mini
       data-mini-n={n}
+      data-scramble-show={show.running ? "on" : undefined}
       data-mini-practice={practice?.stage.id}
       data-mini-practice-mode={practice?.mode}
       data-mini-practice-phase={practice?.phase}

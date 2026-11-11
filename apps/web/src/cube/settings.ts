@@ -12,6 +12,7 @@ import {
   type HeroSize,
   isHeroSize,
 } from "./hero/methods";
+import { SCRAMBLE_SHOW_LABEL, type ScrambleShowSetting } from "./scramble-show";
 import { DEFAULT_COLORS, type Quality } from "./view/types";
 
 /**
@@ -130,6 +131,11 @@ export interface CubeSettings {
   flowStrip: FlowStripMode;
   /** 대결 알림(2026-11-05, 기본 켬) */
   raceAlerts: RaceAlertMode;
+  /**
+   * 섞기 연출(2026-11-11, docs/47 3-1): 혼자 맞추기·Cubie에서 섞은 모양을 보여 주는 방식. 기본 「크기에 맞게」는
+   * 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출. 움직임 줄이기를 켠 기기는 늘 바로
+   */
+  scrambleShow: ScrambleShowSetting;
   /** 첫 화면 큐브 연출의 크기 */
   heroSize: HeroSize;
   /** 첫 화면 큐브 연출의 해법: 「번갈아」 또는 해법 표(`hero/methods.ts`)의 id */
@@ -157,6 +163,7 @@ export const DEFAULT_SETTINGS: CubeSettings = {
   backViewShown: true,
   flowStrip: "on",
   raceAlerts: "on",
+  scrambleShow: "auto",
   heroSize: DEFAULT_HERO_SIZE,
   heroMethod: HERO_ALTERNATE,
   heroHighlight: DEFAULT_HERO_HIGHLIGHT,
@@ -249,6 +256,11 @@ export function parseSettings(text: string | null | undefined): CubeSettings {
       typeof d.raceAlerts === "string" && d.raceAlerts in RACE_ALERT_LABEL
         ? (d.raceAlerts as RaceAlertMode)
         : DEFAULT_SETTINGS.raceAlerts,
+    scrambleShow:
+      typeof d.scrambleShow === "string" &&
+      Object.hasOwn(SCRAMBLE_SHOW_LABEL, d.scrambleShow)
+        ? (d.scrambleShow as ScrambleShowSetting)
+        : DEFAULT_SETTINGS.scrambleShow,
     heroSize,
     heroMethod,
     heroHighlight: (HERO_HIGHLIGHTS as readonly unknown[]).includes(

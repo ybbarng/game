@@ -187,8 +187,18 @@ export class SolveSession {
     return this.phase === "blindSolve" ? stageMask(this.n, "all-hidden") : null;
   }
 
+  /**
+   * 섞인 상태를 받아 두고 시간은 아직 열지 않았는가(섞기 연출 중, `scramble-show.ts`). `release`나 첫 수·「시작」이
+   * 풀어 그때부터 살펴보기·외우기를 잰다. 연출은 기록에 들지 않는다
+   */
+  get held(): boolean {
+    return this.heldFlag;
+  }
+  private heldFlag = false;
+
   /** 시간이 흐르는 중인가(화면이 시계를 돌릴지) */
   get running(): boolean {
+    if (this.heldFlag) return false;
     return (
       this.phase === "inspect" ||
       this.phase === "solving" ||
@@ -200,6 +210,7 @@ export class SolveSession {
 
   /** 지금 보여 줄 시간(ms). 살펴보기면 지난 살펴보기 시간 */
   elapsed(): number {
+    if (this.heldFlag) return 0;
     const now = this.clock.now();
     switch (this.phase) {
       case "inspect":
@@ -216,9 +227,17 @@ export class SolveSession {
     }
   }
 
-  /** 섞기 글을 받아 새 판을 연다 */
-  start(scramble: string, seed?: number, limit?: SessionLimit): void {
+  /**
+   * 섞기 글을 받아 새 판을 연다. `hold`면 상태만 받아 두고 시간은 `release`(또는 첫 수·「시작」)에서 연다(섞기 연출)
+   */
+  start(
+    scramble: string,
+    seed?: number,
+    limit?: SessionLimit,
+    opts?: { hold?: boolean },
+  ): void {
     if (this.disposedFlag) return;
+    this.heldFlag = false;
     this.clearTimers();
     this.clearLimit();
     this.limit = limit ?? null;
@@ -243,6 +262,19 @@ export class SolveSession {
     this.leftAtEnd = null;
     this.lowCued = false;
     this.solveEnd = 0;
+    this.open(opts?.hold === true);
+  }
+
+  /** 붙잡아 둔 판의 시간을 지금부터 연다(섞기 연출이 끝났을 때). 붙잡지 않았으면 아무것도 하지 않는다 */
+  release(): void {
+    if (!this.heldFlag || this.disposedFlag) return;
+    this.heldFlag = false;
+    this.open(false);
+  }
+
+  /** 단계를 정하고(블라인드 외우기·살펴보기·첫 수 기다리기) `hold`가 아니면 그 단계의 시계를 건다 */
+  private open(hold: boolean): void {
+    this.heldFlag = hold;
     const now = this.clock.now();
     this.phaseStart = now;
     if (this.mode === "blind") {
@@ -250,6 +282,10 @@ export class SolveSession {
       this.solveStart = now;
     } else if (this.inspection) {
       this.phase = "inspect";
+      if (hold) {
+        this.changed();
+        return;
+      }
       for (const at of INSPECTION_ALERTS)
         this.timers.push(this.clock.after(at, () => this.cue(ALERT_CUE[at])));
       this.timers.push(
@@ -263,6 +299,7 @@ export class SolveSession {
 
   /** 맞춘 상태로(판을 버린다) */
   reset(): void {
+    this.heldFlag = false;
     this.clearTimers();
     this.clearLimit();
     this.limit = null;
@@ -344,6 +381,7 @@ export class SolveSession {
 
   /** 수 하나. 받아들였으면 "applied"(화면이 장면에 넣는다) */
   input(move: CubeMove, notation: string): InputResult {
+    this.release();
     const r = this.apply(move, notation);
     if (r === "applied") this.undoStack.push(move);
     return r;
@@ -386,6 +424,7 @@ export class SolveSession {
 
   /** 마지막 수를 거꾸로 돌린다(되돌리기도 한 수로 센다). 돌린 수를 돌려준다 */
   undo(): CubeMove | null {
+    this.release();
     const last = this.undoStack.at(-1);
     if (!last) return null;
     const inv = invertMove(last);
@@ -399,6 +438,7 @@ export class SolveSession {
    * 무엇을 했는지 돌려준다.
    */
   advance(): "memoEnd" | "blindEnd" | "inspectEnd" | null {
+    this.release();
     const now = this.clock.now();
     if (this.phase === "inspect") {
       // 살펴보기를 접는다. 벌점은 접은 순간으로 정하고, 첫 면 돌리기로 시간이 열린다

@@ -1,0 +1,253 @@
+import { formatMove } from "@game/cube-engine";
+import { type Clock, ManualClock } from "@game/fair-play";
+import { describe, expect, it } from "vitest";
+
+import {
+  movesShowMs,
+  planMs,
+  planScrambleShow,
+  resolveScrambleShow,
+  ScrambleShow,
+  type ScrambleShowTarget,
+  SPIN_MS,
+} from "./scramble-show";
+
+/** 장면 대신 부른 차례를 적는다 */
+function recorder(n = 3) {
+  const log: string[] = [];
+  const target: ScrambleShowTarget = {
+    solved: () => log.push("solved"),
+    turn: (m, ms) => log.push(`${formatMove(n, m)}@${ms}`),
+    spin: (ms) => log.push(`spin@${ms}`),
+    paint: () => log.push("paint"),
+    scrambled: () => log.push("scrambled"),
+  };
+  return { log, target };
+}
+
+describe("섞기 연출 고르기", () => {
+  it("크기에 맞게: 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출", () => {
+    for (const n of [2, 3, 4, 5])
+      expect(resolveScrambleShow("auto", n, false)).toBe("moves");
+    for (const n of [6, 7])
+      expect(resolveScrambleShow("auto", n, false)).toBe("spin");
+  });
+
+  it("고른 값은 크기와 상관없이 그대로, 움직임 줄이기면 늘 바로", () => {
+    expect(resolveScrambleShow("moves", 7, false)).toBe("moves");
+    expect(resolveScrambleShow("spin", 2, false)).toBe("spin");
+    expect(resolveScrambleShow("instant", 3, false)).toBe("instant");
+    for (const s of ["auto", "moves", "spin"] as const)
+      expect(resolveScrambleShow(s, 3, true)).toBe("instant");
+  });
+
+  it("하나씩 빠르게 시간: 3×3 20수 1초, 5×5 60수도 2초 안쪽, 더 길어도 2초", () => {
+    expect(movesShowMs(20)).toBe(1000);
+    expect(movesShowMs(11)).toBeLessThan(1000);
+    expect(movesShowMs(60)).toBeLessThanOrEqual(2000);
+    expect(movesShowMs(60)).toBeGreaterThan(movesShowMs(40));
+    expect(movesShowMs(100)).toBe(2000);
+    const plan = planScrambleShow("moves", 3, "R U R' U' F2 B D L' R2 U");
+    expect(plan.kind).toBe("moves");
+    expect(planMs(plan)).toBeCloseTo(movesShowMs(10), 6);
+  });
+
+  it("짧은 연출은 크기와 상관없이 0.5초, 읽을 수 없는 섞기는 바로", () => {
+    expect(planScrambleShow("spin", 7, "R")).toEqual({
+      kind: "spin",
+      ms: SPIN_MS,
+    });
+    expect(SPIN_MS).toBe(500);
+    expect(planScrambleShow("moves", 3, "").kind).toBe("instant");
+    expect(planScrambleShow("moves", 3, "Q?").kind).toBe("instant");
+  });
+});
+
+describe("섞기 연출 진행", () => {
+  it("하나씩 빠르게: 맞춘 큐브에서 수마다 같은 간격으로 돌리고 끝나면 섞인 모양·onDone", () => {
+    const clock = new ManualClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play(
+      { kind: "moves", moves: planMoves("R U F"), stepMs: 100 },
+      target,
+      () => done++,
+    );
+    expect(show.running).toBe(true);
+    expect(log).toEqual(["solved", "R@100"]);
+    clock.advance(99);
+    expect(log).toEqual(["solved", "R@100"]);
+    clock.advance(1);
+    expect(log.at(-1)).toBe("U@100");
+    clock.advance(100);
+    expect(log.at(-1)).toBe("F@100");
+    expect(done).toBe(0);
+    clock.advance(100);
+    expect(log.at(-1)).toBe("scrambled");
+    expect(done).toBe(1);
+    expect(show.running).toBe(false);
+    expect(clock.pending()).toBe(0);
+  });
+
+  it("타이머가 늦게 와도(그리기가 느린 기기) 밀린 수는 바로 돌리고 계획한 시간에 끝난다", () => {
+    const clock = new LateClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play(
+      { kind: "moves", moves: planMoves("R U F L"), stepMs: 100 },
+      target,
+      () => done++,
+    );
+    expect(log).toEqual(["solved", "R@100"]);
+    // 100에 올 타이머가 250에 왔다: U는 바로(0), F가 한 칸 시간으로
+    clock.fireAt(250);
+    expect(log).toEqual(["solved", "R@100", "U@0", "F@100"]);
+    // 다음은 300(L). 계획한 끝(400)을 넘겨 왔으면 남은 수 없이 섞인 모양으로 끝
+    clock.fireAt(420);
+    expect(log.at(-1)).toBe("scrambled");
+    expect(done).toBe(1);
+    expect(show.running).toBe(false);
+    expect(clock.pending()).toBe(0);
+  });
+
+  it("짧은 연출도 늦은 타이머에 밀리지 않는다: 반 바퀴가 늦으면 끝은 남은 시간만 기다린다", () => {
+    const clock = new LateClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play({ kind: "spin", ms: 500 }, target, () => done++);
+    clock.fireAt(450);
+    expect(log.at(-1)).toBe("paint");
+    expect(clock.nextAt()).toBe(500);
+    clock.fireAt(500);
+    expect(done).toBe(1);
+  });
+
+  it("짧은 연출: 맞춘 큐브로 한 바퀴 돌리고 반 바퀴에 섞인 모양으로 칠하고, 다 돌면 끝", () => {
+    const clock = new ManualClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play({ kind: "spin", ms: 500 }, target, () => done++);
+    expect(log).toEqual(["solved", "spin@500"]);
+    clock.advance(250);
+    expect(log).toEqual(["solved", "spin@500", "paint"]);
+    expect(done).toBe(0);
+    clock.advance(250);
+    expect(log).toEqual(["solved", "spin@500", "paint", "scrambled"]);
+    expect(done).toBe(1);
+  });
+
+  it("바로: 섞인 모양으로 칠하고 onDone을 바로 부른다", () => {
+    const clock = new ManualClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play({ kind: "instant" }, target, () => done++);
+    expect(log).toEqual(["scrambled"]);
+    expect(done).toBe(1);
+    expect(show.running).toBe(false);
+    expect(clock.pending()).toBe(0);
+  });
+
+  it("연출 중 키(finish): 바로 섞인 모양으로 두고 onDone, 남은 수는 돌리지 않는다", () => {
+    const clock = new ManualClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play(
+      { kind: "moves", moves: planMoves("R U F"), stepMs: 100 },
+      target,
+      () => done++,
+    );
+    clock.advance(100);
+    expect(show.finish()).toBe(true);
+    expect(log).toEqual(["solved", "R@100", "U@100", "scrambled"]);
+    expect(done).toBe(1);
+    clock.advance(1_000);
+    expect(log).toHaveLength(4);
+    expect(done).toBe(1);
+    // 끝난 뒤의 finish는 아무것도 하지 않는다
+    expect(show.finish()).toBe(false);
+    expect(done).toBe(1);
+  });
+
+  it("다시 섞기(cancel → play): 앞 연출은 onDone 없이 멈추고 새 연출만 끝을 알린다", () => {
+    const clock = new ManualClock();
+    const show = new ScrambleShow(clock);
+    const first = recorder();
+    const second = recorder();
+    const done: string[] = [];
+    show.play({ kind: "spin", ms: 500 }, first.target, () => done.push("a"));
+    clock.advance(100);
+    show.cancel();
+    expect(first.log).toEqual(["solved", "spin@500", "scrambled"]);
+    clock.advance(1_000);
+    expect(done).toEqual([]);
+    show.play({ kind: "spin", ms: 500 }, second.target, () => done.push("b"));
+    // play가 돌던 연출을 바꿔도 앞 것은 끝을 알리지 않는다
+    show.play({ kind: "spin", ms: 500 }, second.target, () => done.push("c"));
+    clock.advance(500);
+    expect(done).toEqual(["c"]);
+    expect(first.log).toEqual(["solved", "spin@500", "scrambled"]);
+  });
+
+  it("drop: 장면을 건드리지 않고 멈춘다(맞춘 상태로·다시 보기)", () => {
+    const clock = new ManualClock();
+    let changes = 0;
+    const show = new ScrambleShow(clock, () => changes++);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play({ kind: "spin", ms: 500 }, target, () => done++);
+    expect(changes).toBe(1);
+    show.drop();
+    expect(changes).toBe(2);
+    clock.advance(1_000);
+    expect(log).toEqual(["solved", "spin@500"]);
+    expect(done).toBe(0);
+    expect(show.running).toBe(false);
+  });
+});
+
+function planMoves(text: string) {
+  const p = planScrambleShow("moves", 3, text);
+  if (p.kind !== "moves") throw new Error("moves");
+  return p.moves;
+}
+
+/**
+ * 바쁜 기기 흉내: 걸린 일은 시험이 정한 시각(`fireAt`)에 가장 이른 것 하나만 늦게 불린다
+ * (그동안 다른 일이 차례를 막았다고 본다)
+ */
+class LateClock implements Clock {
+  private time = 0;
+  private timers: { at: number; fn: () => void }[] = [];
+  now(): number {
+    return this.time;
+  }
+  after(ms: number, fn: () => void): () => void {
+    const t = { at: this.time + ms, fn };
+    this.timers.push(t);
+    return () => {
+      this.timers = this.timers.filter((x) => x !== t);
+    };
+  }
+  nextAt(): number | undefined {
+    return this.timers.reduce<number | undefined>(
+      (m, t) => (m === undefined || t.at < m ? t.at : m),
+      undefined,
+    );
+  }
+  fireAt(time: number): void {
+    const t = this.timers.find((x) => x.at === this.nextAt());
+    if (!t || t.at > time) throw new Error("그 시각까지 걸린 일이 없다");
+    this.timers = this.timers.filter((x) => x !== t);
+    this.time = time;
+    t.fn();
+  }
+  pending(): number {
+    return this.timers.length;
+  }
+}
