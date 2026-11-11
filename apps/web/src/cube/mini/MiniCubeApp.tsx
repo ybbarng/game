@@ -57,7 +57,13 @@ import { TierEmblem } from "../tiers/TierEmblem";
 import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
-import { type CubeView, loadCubeView } from "../view";
+import {
+  type CubeScene,
+  type CubeView,
+  type CubeViewOptions,
+  loadCssCubeView,
+  loadCubeView,
+} from "../view";
 import { MIRROR_FADE_MS } from "../view/mirror";
 import {
   heroSolveInWorker,
@@ -171,6 +177,15 @@ const eventFor = (n: number) => `${n}${n}${n}` as ScrambleEvent;
  * `?view=keys&panel=1`은 큐브 옆 단축키 표. 아니면 큐브.
  * 주소는 붙은 뒤에 읽는다(정적 HTML은 둘 다 아니다)
  */
+/**
+ * 큐브를 CSS 3D로 그릴지(실험 주소 `?render=css`, docs/52 5-4). 기본은 three.js(WebGL)다. 앱은 `CUBIE_URL`로 이
+ * 주소를 열어 메모리를 견준다(`apps/cubie/scripts/measure-memory.sh --query render=css`). 기록 창의 다시 보기는 그대로
+ */
+export function miniRenderCss(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("render") === "css";
+}
+
 export function MiniCubeApp() {
   const [view, setView] = useState<
     "cube" | "records" | "keys" | "keysPanel" | null
@@ -621,7 +636,10 @@ function MiniCube() {
   // 3D 장면
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const viewRef = useRef<CubeView | null>(null);
+  /** CSS 3D로 그릴 때(`?render=css`, docs/52 5-4)의 장면 상자 */
+  const cssHostRef = useRef<HTMLDivElement>(null);
+  const [cssRender] = useState(miniRenderCss);
+  const viewRef = useRef<CubeScene | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -682,18 +700,27 @@ function MiniCube() {
   const quality = settings.quality;
   const loaded = prefs !== null;
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = cssRender ? cssHostRef.current : canvasRef.current;
     if (!canvas || !loaded) return;
     let disposed = false;
     setReady(false);
     const ro = new ResizeObserver(() =>
       viewRef.current?.resize(canvas.clientWidth, canvas.clientHeight),
     );
-    void loadCubeView()
-      .then(({ CubeView }) => {
+    const load = cssRender
+      ? loadCssCubeView().then(({ CssCubeView }) => ({
+          create: (o: CubeViewOptions): CubeScene =>
+            CssCubeView.create(canvas, o),
+        }))
+      : loadCubeView().then(({ CubeView }) => ({
+          create: (o: CubeViewOptions): CubeScene =>
+            CubeView.create(canvas as HTMLCanvasElement, o),
+        }));
+    void load
+      .then(({ create }) => {
         if (disposed) return;
         const s = settingsRef.current;
-        const view = CubeView.create(canvas, {
+        const view = create({
           n: cubeN,
           quality,
           colors: s.colors,
@@ -720,7 +747,7 @@ function MiniCube() {
       viewRef.current?.dispose();
       viewRef.current = null;
     };
-  }, [cubeN, quality, loaded]);
+  }, [cubeN, quality, loaded, cssRender]);
 
   useEffect(() => {
     viewRef.current?.setOptions({
@@ -1492,6 +1519,20 @@ function MiniCube() {
               className="h-full w-full"
             />
           </div>
+        ) : cssRender ? (
+          <div
+            key={`${n}-css`}
+            ref={cssHostRef}
+            data-cube-canvas
+            data-cube-ready={ready ? "" : undefined}
+            className="relative h-full w-full overflow-hidden"
+            // 윤곽은 3D가 아닌 바깥 상자에 건다(3D 층에 걸면 Core Animation이 무시한다, docs/52 5-3)
+            style={
+              app && windowShort > 0
+                ? { filter: outlineFilter(windowShort) }
+                : undefined
+            }
+          />
         ) : (
           <canvas
             key={`${n}-${quality}`}

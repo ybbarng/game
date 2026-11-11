@@ -145,3 +145,27 @@ export interface CubeViewOptions {
    */
   shadow?: boolean;
 }
+
+/**
+ * 큐브 장면이 갖출 공통 꼴(docs/52 5-4). three.js 장면(`CubeView`)과 CSS 3D 장면(`CssCubeView`, Cubie 미니 화면의
+ * 실험 주소 `?render=css`)이 함께 맞춘다. 미니 화면과 섞기 연출은 이것만 부른다
+ */
+export interface CubeScene {
+  readonly n: number;
+  setStickers(stickers: readonly Sticker[]): void;
+  setMarks(marks: readonly (MarkTone | null)[] | null): void;
+  setOptions(
+    o: Partial<
+      Pick<CubeViewOptions, "colors" | "stickerless" | "moveMs" | "hidden">
+    >,
+  ): void;
+  enqueue(move: CubeMove, ms?: number): void;
+  spin(ms: number): void;
+  setMirror(on: boolean, fade?: boolean): void;
+  setView(yaw: number, pitch: number): void;
+  resetView(): boolean;
+  onViewTurn(fn: (turned: boolean) => void): () => void;
+  hitRects(): { x: number; y: number; w: number; h: number }[];
+  resize(width: number, height: number): void;
+  dispose(): void;
+}

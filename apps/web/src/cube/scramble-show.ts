@@ -3,7 +3,7 @@ import type { Clock } from "@game/fair-play";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import { stickersFromState } from "./bridge";
-import type { CubeView } from "./view/cube-view";
+import type { CubeScene } from "./view/types";
 
 /**
  * 섞기 연출(docs/47 3-1, 2026-11-11). 섞은 모양을 어떻게 보여 줄지만 정한다. 엔진 상태와 시간은 건드리지 않는다:
@@ -241,7 +241,7 @@ export class ScrambleShow {
  * 크기가 다른 장면이면 칠하지 않는다(새 장면은 만들 때 엔진 상태로 칠한다)
  */
 export function viewShowTarget(
-  getView: () => CubeView | null,
+  getView: () => CubeScene | null,
   n: number,
   scrambled: PuzzleState,
 ): ScrambleShowTarget {
@@ -275,7 +275,7 @@ export function showScramble(
     n: number;
     scramble: string;
     scrambled: PuzzleState;
-    getView: () => CubeView | null;
+    getView: () => CubeScene | null;
     onDone: () => void;
   },
 ): void {

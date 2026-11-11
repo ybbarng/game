@@ -8,7 +8,9 @@
 #   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
 #   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
 #   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면 시제품(CUBIE_NATIVE=1, docs/52 5-2)을 같은 시나리오로 잰다
+#   apps/cubie/scripts/measure-memory.sh --query render=css   # 로컬 빌드의 미니 화면을 CSS 3D로 그려 잰다(docs/52 5-4)
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
+#         --query <a=b&…>(로컬 빌드 주소 /cube/mini 뒤에 붙일 쿼리) ·
 #         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
 #         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않고, 거울·큐브 크기·단축키 표 명령은 앱이 받기만 한다)
@@ -32,6 +34,7 @@ WEB=""
 INJECT=""
 DETAIL=0
 NATIVE=0
+QUERY=""
 PORT=4393
 
 while [ $# -gt 0 ]; do
@@ -45,6 +48,7 @@ while [ $# -gt 0 ]; do
     --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
     --native) NATIVE=1; shift ;;
+    --query) QUERY="$2"; shift 2 ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
   esac
 done
@@ -81,7 +85,7 @@ if [ -z "$URL" ]; then
   fi
   "$ROOT/apps/web/node_modules/.bin/serve" "$WEB" -l "$PORT" -n >"$TMP/serve.log" 2>&1 &
   SERVER_PID=$!
-  URL="http://localhost:$PORT/cube/mini"
+  URL="http://localhost:$PORT/cube/mini${QUERY:+?$QUERY}"
   for _ in $(seq 1 50); do
     curl -fsS -o /dev/null "$URL" 2>/dev/null && break
     sleep 0.2
