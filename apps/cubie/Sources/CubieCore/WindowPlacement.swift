@@ -84,6 +84,26 @@ public enum WindowPlacement {
     defaultFrame(visible: visible, size: frame.size, margin: margin)
   }
 
+  /// 단축키 표 자리(docs/47 15-25): 큐브 창 위(자리가 모자라면 아래), 가로는 창이 화면 오른쪽 반이면 오른쪽 끝을, 왼쪽 반이면
+  /// 왼쪽 끝을 창에 맞춘다. 말풍선(`bubbleFrame`)은 창 옆 위 끝에 붙으니 위·아래에 두면 둘이 겹치지 않는다.
+  /// 위·아래 모두 자리가 모자라면 말풍선처럼 옆에 둔다. 어느 쪽이든 보이는 영역 안으로 당긴다
+  public static func keysFrame(cube: CGRect, panel: CGSize, visible: CGRect, gap: CGFloat = 8) -> CGRect {
+    let above = visible.maxY - cube.maxY
+    let below = cube.minY - visible.minY
+    let need = panel.height + gap
+    let y: CGFloat
+    if above >= need {
+      y = cube.maxY + gap
+    } else if below >= need {
+      y = cube.minY - gap - panel.height
+    } else {
+      return bubbleFrame(cube: cube, bubble: panel, visible: visible, gap: gap)
+    }
+    var x = cube.midX > visible.midX ? cube.maxX - panel.width : cube.minX
+    x = min(max(x, visible.minX), visible.maxX - panel.width)
+    return CGRect(x: x, y: y, width: panel.width, height: panel.height)
+  }
+
   /// 「공식 보기」 말풍선 자리: 큐브 창 옆, 화면 안쪽 방향(창이 화면 오른쪽 반에 있으면 왼쪽에). 위 끝을 창 위 끝에 맞추고
   /// 보이는 영역 밖으로 나가지 않게 당긴다. 양옆 모두 자리가 모자라면 더 넓은 쪽에 두고 화면 안으로 당긴다(창과 겹칠 수 있다)
   public static func bubbleFrame(cube: CGRect, bubble: CGSize, visible: CGRect, gap: CGFloat = 8) -> CGRect {
