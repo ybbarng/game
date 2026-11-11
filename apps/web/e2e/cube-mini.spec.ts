@@ -822,6 +822,7 @@ test(
       };
     });
     expect(fits).toEqual({ scroll: true, bottom: true });
+    await expect.poll(() => overflowingKeyText(page)).toEqual([]);
     // Cubie가 쓰지 않는 동작(Esc 처음으로·Space 살펴보기)은 표에 없다
     await expect(panel).not.toContainText("처음으로");
     await expect(panel).not.toContainText("살펴보기");
@@ -835,8 +836,46 @@ test(
     // 큐브 크기가 바뀌면 그 크기의 키
     await fromApp(page, { type: "size", n: 3 });
     await expect(page.locator("[data-mini-keys-panel='3']")).toBeVisible();
+    await expect.poll(() => overflowingKeyText(page)).toEqual([]);
   },
 );
+
+test("큐브 옆 단축키 표(F1) 기본 배치 「두 손」: 층 수 키 글이 잘리지 않고, 3×3에서는 빈 칸이다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 앱 창은 데스크톱에서
+  // 기본 배치로(이 파일의 다른 시험은 「표기」 배치를 쓴다)
+  await page.addInitScript(() => localStorage.removeItem("cube.keymap.v1"));
+  await page.setViewportSize(KEYS_PANEL);
+  await page.goto("/cube/mini?view=keys&panel=1&n=4");
+  await expect(page.locator("[data-mini-keys-panel='4']")).toContainText(
+    "배치 「두 손」",
+  );
+  // 4×4: 숫자 3·4는 왼손, 7·8은 오른손 층 수(바깥 층 수 바꾸기)
+  await expect(page.locator("[data-key='Digit3']")).toContainText("왼손");
+  await expect(page.locator("[data-key='Digit7']")).toContainText("오른손");
+  await expect.poll(() => overflowingKeyText(page)).toEqual([]);
+  // 3×3에서 층 수 키는 하는 일이 없어 빈 칸이다
+  await fromApp(page, { type: "size", n: 3 });
+  await expect(page.locator("[data-mini-keys-panel='3']")).toBeVisible();
+  for (const code of ["Digit3", "Digit4", "Digit7", "Digit8"])
+    await expect(
+      page.locator(`[data-key='${code}'] [data-layer-line]`),
+    ).toHaveCount(0);
+  await expect.poll(() => overflowingKeyText(page)).toEqual([]);
+});
+
+/** 키보드 그림에서 칸을 넘쳐 잘리는 글(「…」)이 있는 칸의 키 이름 */
+function overflowingKeyText(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("[data-layer-line]")]
+      .filter((el) => el.scrollWidth > el.clientWidth + 0.5)
+      .map(
+        (el) =>
+          `${el.closest("[data-key]")?.getAttribute("data-key")}: ${el.textContent}`,
+      ),
+  );
+}
 
 test("앱 안: 단축키 표가 떠 있는 동안만 누른 키를 앱에 알리고, 그 키로 큐브는 그대로 돈다", {
   tag: "@only-desktop",

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { parseAction } from "../input/actions";
 import type { KeyChord, Keymap } from "../input/keymaps";
 import { capRepeats } from "../keys/key-colors";
 import {
@@ -54,6 +55,16 @@ function borderOf(a: KeyAction | undefined): string {
   return a?.usable
     ? "border-white/10 print:border-neutral-400"
     : "border-white/[0.05] print:border-neutral-200";
+}
+
+/** 층 수 키(큰 큐브의 바깥 층 수 바꾸기). 3×3 이하에서는 하는 일이 없다(`isAvailable`) */
+function isLayersKey(a: KeyAction): boolean {
+  return parseAction(a.action)?.kind === "layers";
+}
+
+/** 수가 아니라 낱말로 적는 동작(명령·층 수) */
+function isWordy(a: KeyAction): boolean {
+  return a.kind === "command" || isLayersKey(a);
 }
 
 export function dotOf(a: { kind: ActionKind; face?: FaceLetter }): string {
@@ -289,17 +300,18 @@ function Key({
       {!cell.modifier && !hideActions && (
         <span className="flex min-w-0 flex-1 flex-col justify-end">
           {lines.map(({ key, a, strong }) =>
-            a && (a.usable || layer === "all") ? (
+            a && (a.usable || (layer === "all" && !isLayersKey(a))) ? (
               <span
                 key={key}
                 data-layer-line={key}
                 className={cn(
-                  "truncate",
+                  // 낱말(되돌리기·왼손 층 +1)은 칸에서 잘리지 않게 줄을 접고, 수는 한 줄
+                  isWordy(a) ? "break-keep" : "truncate",
                   strong
                     ? cn(
                         "font-semibold print:text-black",
                         // 수는 크게, 낱말(처음으로·되돌리기)은 칸에 들어가게
-                        a.kind === "command" ? "text-[1.1em]" : "text-[1.35em]",
+                        isWordy(a) ? "text-[1.1em]" : "text-[1.35em]",
                         labelTone(paint),
                       )
                     : "text-white/40 print:text-neutral-600",

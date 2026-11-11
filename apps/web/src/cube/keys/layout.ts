@@ -202,9 +202,9 @@ const SHORT_COMMAND: Record<string, string> = {
 
 export function shortLabel(action: ActionId): string {
   const p = parseAction(action);
-  // 층 수 키는 칸이 좁아 「오른손 층 +」로
+  // 층 수 키는 칸이 좁아 「오른손」·「층 +1」 두 줄로 접힌다(「층 +1」은 붙여 둔다)
   if (p?.kind === "layers")
-    return `${p.side === "L" ? "왼손" : "오른손"} 층 ${p.delta > 0 ? "+" : "−"}`;
+    return `${p.side === "L" ? "왼손" : "오른손"} 층 ${p.delta > 0 ? "+1" : "−1"}`;
   return SHORT_COMMAND[action] ?? actionLabel(action);
 }
 
