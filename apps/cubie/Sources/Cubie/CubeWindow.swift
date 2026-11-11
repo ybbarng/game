@@ -240,11 +240,17 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     path.start(queue: .main)
   }
 
-  /// 저장된 크기·자리. 없거나 그 자리가 지금 어느 화면에도 없으면(모니터를 뗀 뒤) 기본 자리
+  /// 저장된 크기·자리. 그 자리가 보이지 않으면(모니터를 뗀 뒤) 화면 안으로 당기거나 기본 자리(`WindowPlacement.placed`)
   private func placeWindow() {
     let restored = panel.setFrameUsingName(Self.frameName)
-    let screens = NSScreen.screens.map(\.visibleFrame)
-    if !restored || !WindowPlacement.isOnScreen(panel.frame, screens: screens) { resetFrame() }
+    if restored {
+      let f = WindowPlacement.placed(
+        saved: nil, current: panel.frame, screens: NSScreen.screens.map(\.visibleFrame),
+        defaultSize: Config.defaultSize, margin: Config.margin)
+      if f != panel.frame { panel.setFrame(f, display: true) }
+    } else {
+      resetFrame()
+    }
     panel.setFrameAutosaveName(Self.frameName)
   }
 
