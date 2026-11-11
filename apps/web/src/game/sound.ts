@@ -5,6 +5,7 @@
  * 브라우저는 사용자가 한 번 누르기 전에는 소리를 막는다. 첫 누름에서 AudioContext를 열어 두어
  * 컴퓨터 차례처럼 누름 없이 나는 첫 소리도 막히지 않게 한다(특히 iOS).
  */
+import type { Clock } from "@game/fair-play/clock";
 import { createRng, nextFloat } from "@game/mighty-engine";
 
 import { FLIGHT_MS } from "./timing";
@@ -489,7 +490,50 @@ function impulse(ctx: BaseAudioContext, seconds: number): AudioBuffer {
 function audio(): Audio | null {
   audioState ??= createAudio();
   if (audioState?.ctx.state === "suspended") void audioState.ctx.resume();
+  if (audioState) armIdleClose();
   return audioState;
+}
+
+/** `closeAudioWhenIdle`로 켰을 때: 시계, 기다릴 시간, 걸어 둔 닫기 끄기 */
+let idleClose: {
+  clock: Clock;
+  ms: number;
+  cancel: (() => void) | null;
+} | null = null;
+
+function armIdleClose(): void {
+  if (!idleClose) return;
+  idleClose.cancel?.();
+  idleClose.cancel = idleClose.clock.after(idleClose.ms, closeAudio);
+}
+
+/** 소리 엔진을 닫는다. 다음 소리는 `audio()`가 새로 연다 */
+function closeAudio(): void {
+  if (idleClose) idleClose.cancel = null;
+  const a = audioState;
+  if (!a) return;
+  audioState = null;
+  turnVoice = null;
+  bigVoice = null;
+  void a.ctx.close().catch(() => undefined);
+}
+
+/**
+ * 소리 엔진을 마지막으로 쓴 뒤 `ms` 동안 소리가 없으면 닫는다(돌려준 함수로 끈다). 열린 AudioContext는 잔향·잡음
+ * 버퍼와 소리 스레드로 웹 프로세스 메모리를 계속 쥔다(Cubie 큐브 미니에서 약 15MB, docs/52 2절). `ms`는 가장 긴
+ * 소리(잔향 꼬리 포함)보다 넉넉히 둔다. 브라우저는 누름 밖에서 새로 연 소리를 막을 수 있어, 누름 없이도 소리를
+ * 여는 Cubie 앱의 웹 화면에서만 켠다
+ */
+export function closeAudioWhenIdle(clock: Clock, ms: number): () => void {
+  idleClose?.cancel?.();
+  const mine = { clock, ms, cancel: null as (() => void) | null };
+  idleClose = mine;
+  if (audioState) armIdleClose();
+  return () => {
+    if (idleClose !== mine) return;
+    mine.cancel?.();
+    idleClose = null;
+  };
 }
 
 /** 사용자가 처음 누를 때 소리를 열어 둔다. 누름 안에서 열어야 iOS가 막지 않는다 */

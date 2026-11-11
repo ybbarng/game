@@ -151,7 +151,8 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
 
   override init() {
     let config = WKWebViewConfiguration()
-    config.websiteDataStore = .default()
+    // 메모리 재기는 사용자 기록·설정을 읽지도 쓰지도 않는다(늘 같은 처음 상태에서 잰다)
+    config.websiteDataStore = Config.measure ? .nonPersistent() : .default()
     config.userContentController.add(bridge, name: Bridge.name)
     // 바탕을 처음부터 비운다(웹 코드가 붙기 전 한순간 검은 바탕이 보이지 않게)
     config.userContentController.addUserScript(
@@ -162,6 +163,13 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
           (document.head||document.documentElement).appendChild(s);})();
           """,
         injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    // 메모리 재기의 실험(`measure-memory.sh --inject <파일>`): 문서 시작 때 넣는 스크립트(재기에서만, 표준 입력과 같이 띄운 스크립트만 준다)
+    if Config.measure, let path = ProcessInfo.processInfo.environment["CUBIE_MEASURE_INJECT"],
+      let js = try? String(contentsOfFile: path, encoding: .utf8)
+    {
+      config.userContentController.addUserScript(
+        WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    }
     config.mediaTypesRequiringUserActionForPlayback = []
     webView = CubieWebView(frame: .zero, configuration: config)
     // 웹 화면 바탕을 그리지 않는다. 맥용 WKWebView에는 공개 속성이 없어 널리 쓰는 키(drawsBackground)를 쓴다
@@ -204,8 +212,12 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     panel.contentView = content
 
     chrome.onResized = { [weak self] in self?.saveFrame() }
-    placeWindow()
     webView.navigationDelegate = self
+    if Config.measure {
+      hideForMeasure()
+      return
+    }
+    placeWindow()
     bridge.onRetry = { [weak self] in self?.load() }
     bridge.onHit = { [weak self] rects in
       self?.hitRects = rects
@@ -241,6 +253,31 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
       }
     }
     path.start(queue: .main)
+  }
+
+  // MARK: 메모리 재기(`Config.measure`, `Measure`)
+
+  /// 재는 동안 웹에 알릴 포커스(앱은 앞으로 나올 수 없어 실제 키 창이 되지 않는다)
+  var measureFocus = false
+
+  /// 창을 화면 밖(어느 모니터에서도 먼 좌표)에 투명하게, 마우스를 받지 않게 둔다. 화면 구성이 바뀌어도 화면 안으로
+  /// 당기지 않는다(`fitToScreens`를 부르지 않는다). 화면 밖 창은 WebKit이 「가려짐」으로 보고 그리기를 멈추므로
+  /// 가려짐 감지를 끈다(비공개 설정 `_windowOcclusionDetectionEnabled`, 재기에서만). 그래야 보이는 창처럼 그린다
+  private func hideForMeasure() {
+    let side = min(Config.maxSize.width, max(Config.minSize.width, Config.measureSide))
+    panel.setFrame(NSRect(x: -30000, y: -30000, width: side, height: side), display: false)
+    panel.alphaValue = 0
+    panel.ignoresMouseEvents = true
+    // 미션 컨트롤·창 돌기에도 나오지 않게
+    panel.collectionBehavior = [.transient, .ignoresCycle]
+    let sel = NSSelectorFromString("_setWindowOcclusionDetectionEnabled:")
+    if webView.responds(to: sel) {
+      typealias Setter = @convention(c) (AnyObject, Selector, Bool) -> Void
+      let imp = webView.method(for: sel)
+      unsafeBitCast(imp, to: Setter.self)(webView, sel, false)
+    } else {
+      print("[measure] warn: occlusion detection setter missing; the web view may not draw offscreen")
+    }
   }
 
   // MARK: 창 자리: 화면 구성마다 기억하고, 구성이 바뀌면 다시 놓는다(docs/47 15-24)
@@ -353,6 +390,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   }
 
   func updateMouse() {
+    if Config.measure { return }
     // 누른 채 끄는 중(창 옮기기·크기 바꾸기)에는 바꾸지 않는다
     if NSEvent.pressedMouseButtons & 1 != 0 && !panel.ignoresMouseEvents { return }
     let m = NSEvent.mouseLocation
@@ -444,8 +482,9 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
 
   // MARK: 포커스·보임
 
-  var focused: Bool { panel.isKeyWindow && NSApp.isActive }
-  var visible: Bool { panel.isVisible && panel.occlusionState.contains(.visible) }
+  var focused: Bool { Config.measure ? measureFocus : panel.isKeyWindow && NSApp.isActive }
+  /// 재기에서는 창이 화면 밖이라 가려짐을 보지 않고 띄웠는지만 본다
+  var visible: Bool { panel.isVisible && (Config.measure || panel.occlusionState.contains(.visible)) }
 
   func sendFocus() {
     bridge.send(["type": "focus", "focused": focused])
