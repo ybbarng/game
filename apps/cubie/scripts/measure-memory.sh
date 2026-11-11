@@ -12,6 +12,9 @@
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
 #
 # 결과: 상태마다 Cubie·WebContent(개수)·GPU·Networking·합계(MB, footprint의 phys_footprint, 1초 간격 세 번 평균).
+# CPU: 상태 구간(가만히 1분, 돌리는 동안 약 20초, 숨긴 뒤 1분 등)의 처음과 끝에 프로세스마다 누적 CPU 시간(`ps -o time`)을
+#   읽어, 늘어난 CPU 시간 ÷ 지난 시간으로 평균 %를 낸다(100% = 코어 하나를 다 씀). 표본을 뽑지 않아 짧은 반짝임도 빠지지 않는다.
+#   --out을 주면 CPU 결과는 같은 이름에 -cpu를 붙인 TSV에 덧붙인다.
 # 프로세스는 `launchctl print pid/<Cubie>`가 보여 주는 그 앱 소속 WebKit XPC 서비스만 센다(다른 앱의 WebKit은 섞이지 않는다).
 set -euo pipefail
 
@@ -152,36 +155,95 @@ detail() {
   done
 }
 
+# ---- CPU ----
+CPU_OUT=""
+if [ -n "$OUT" ]; then
+  CPU_OUT="${OUT%.tsv}-cpu.tsv"
+  [ -s "$CPU_OUT" ] || printf "label\tstate\tseconds\ttotal\tcubie\twebcontent\tgpu\tnet\n" >"$CPU_OUT"
+fi
+: >"$TMP/cpu.txt"
+
+now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
+
+# 누적 CPU 시간: "<pid> <종류> <센티초>"(앱 자신은 종류 Cubie). ps 시간은 [[시:]분:]초.센티초
+cpu_snapshot() {
+  { echo "$APP_PID Cubie"; children; } | while read -r pid kind; do
+    [ -n "$pid" ] || continue
+    t="$(ps -o time= -p "$pid" 2>/dev/null | tr -d ' ')"
+    [ -n "$t" ] && echo "$pid $kind $t"
+  done | awk '{ n = split($3, p, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + p[i]; printf "%s %s %d\n", $1, $2, s * 100 + 0.5 }'
+}
+
+cpu_begin() {
+  cpu_snapshot >"$TMP/cpu0"
+  CPU_T0="$(now)"
+}
+
+# 구간 끝: 프로세스마다 늘어난 CPU 시간(구간 안에 새로 뜬 프로세스는 전부)을 종류별로 더해 %로
+cpu_end() {
+  local state="$1" t1
+  cpu_snapshot >"$TMP/cpu1"
+  t1="$(now)"
+  awk -v t0="$CPU_T0" -v t1="$t1" -v state="$state" -v label="$LABEL" -v out="$CPU_OUT" '
+    FNR == NR { start[$1] = $3; next }
+    { d = $3 - (($1 in start) ? start[$1] : 0); if (d < 0) d = 0; by[$2] += d; total += d }
+    END {
+      wall = (t1 - t0) * 100
+      c = by["Cubie"] / wall * 100; w = by["WebContent"] / wall * 100
+      g = by["GPU"] / wall * 100; n = by["Networking"] / wall * 100; t = total / wall * 100
+      printf "%-28s %6.1f%%  (Cubie %.1f · WebContent %.1f · GPU %.1f · Net %.1f, %d초)\n", state, t, c, w, g, n, wall / 100
+      if (out != "") printf "%s\t%s\t%.0f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n", label, state, wall / 100, t, c, w, g, n >> out
+    }' "$TMP/cpu0" "$TMP/cpu1" | tee -a "$TMP/cpu.txt" | sed 's/^/CPU /'
+}
+
 sleep 5
 measure "켠 직후"
 detail
+cpu_begin
 sleep "$IDLE"
+cpu_end "가만히 ${IDLE}초"
 measure "가만히 ${IDLE}초"
 
-# 직접 맞추는 중: 포커스를 주고 섞은 뒤 키로 돌린다(거울은 포커스가 있고 섞인 큐브에서 보인다)
+# 직접 맞추는 중: 포커스를 주고 섞은 뒤 키로 돌린다(거울은 포커스가 있고 섞인 큐브에서 보인다).
+# 200수 × 0.12초 = 24초 동안 돈다. CPU는 그 안쪽 약 20초를 본다
 cmd focus 1
 cmd scramble
 sleep 3
 cmd turns 200
+cpu_begin
 sleep 10
 measure "섞고 돌리는 중(거울 보임)"
 detail
-sleep 14
+sleep 7
+cpu_end "섞고 돌리는 중(거울 보임)"
+sleep 7
 cmd mirror 0
 sleep 2
 cmd turns 60
+cpu_begin
 sleep 3
 measure "돌리는 중(거울 숨김)"
+cpu_end "돌리는 중(거울 숨김)"
 sleep 6
 cmd mirror 1
+sleep 2
+# 포커스는 있고 손을 멈춘 때(섞인 큐브, 거울 보임)
+cpu_begin
+sleep 10
+cpu_end "포커스 있고 멈춤 10초"
 
 # 다른 앱으로(포커스 없음) → 메뉴 「숨기기」
 cmd focus 0
+cpu_begin
 sleep 10
+cpu_end "포커스 없음 10초"
 measure "포커스 없음 10초"
 cmd hide
 sleep 30
 measure "숨긴 뒤 30초"
+cpu_begin
+sleep "$IDLE"
+cpu_end "숨긴 뒤 30초부터 ${IDLE}초"
 cmd show
 sleep 5
 
@@ -203,6 +265,9 @@ args=(-p "$APP_PID")
 for p in $peak; do args+=(-p "$p"); done
 footprint -f bytes --noCategories "${args[@]}" 2>/dev/null |
   awk '/\]: / { name = $1 } /phys_footprint_peak:/ { printf "# 최고 %s %.1f MB\n", name, $2 / 1048576 }'
+
+echo "# CPU(구간 평균, 100% = 코어 하나)"
+sed 's/^/# /' "$TMP/cpu.txt"
 
 cmd quit
 sleep 1

@@ -289,6 +289,13 @@ export function parseSplits(text: unknown): Split[] {
   return out;
 }
 
+/** 수와 시각(맞추기 시작부터 ms) → 다시 보기 글 "R@120 U'@380". 시각은 반올림한다 */
+export function formatReplay(
+  events: readonly { notation: string; t: number }[],
+): string {
+  return events.map((e) => `${e.notation}@${Math.round(e.t)}`).join(" ");
+}
+
 /** 다시 보기 글 → [표기, 시각] 목록 */
 export function parseReplay(text: string | undefined): [string, number][] {
   if (!text) return [];

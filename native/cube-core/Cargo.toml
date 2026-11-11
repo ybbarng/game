@@ -1,0 +1,17 @@
+[package]
+name = "cube-core"
+version = "0.1.0"
+edition = "2021"
+description = "큐브 계산 코어(docs/52 4절): 상태·수·판정·섞기·OLL·PLL 알아보기·티어. 사이트 TypeScript 엔진과 같은 결과를 낸다"
+license = "MIT"
+publish = false
+
+# 의존 없음(docs/52 5절 2단계: 의존은 최소로). 시험의 JSON 읽기도 tests/json.rs가 직접 한다.
+[dependencies]
+
+# 해법기 표(3×3 2단계·2×2 거리표)를 만드는 계산이 커서, 시험도 최적화해 빌드한다(디버그면 수십 배 느리다)
+[profile.dev]
+opt-level = 2
+
+[profile.test]
+opt-level = 2
