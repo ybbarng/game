@@ -316,10 +316,11 @@ test(
   },
 );
 
-/** 스크린샷용 바탕화면 셋(밝은·어두운·사진 흉내). 받침이 어느 바탕에서도 큐브를 갈라 주는지 사람이 견준다 */
+/** 스크린샷용 바탕화면 넷(검은·어두운·밝은·사진 흉내). 윤곽이 어느 바탕에서도 큐브 테두리를 갈라 주는지 사람이 견준다 */
 const DESKS = {
-  light: "#eef0f3",
-  dark: "#1c1d22",
+  black: "#000",
+  dark: "#2a2b30",
+  light: "#ffffff",
   photo: [
     "radial-gradient(circle at 70% 30%, rgb(255 236 180 / 0.9) 0 6%, transparent 18%)",
     "repeating-linear-gradient(115deg, rgb(0 0 0 / 0.12) 0 3px, transparent 3px 9px)",
@@ -328,18 +329,17 @@ const DESKS = {
 } as const;
 
 /**
- * 큐브 뒤 받침(docs/47 15절): 앱의 투명 창에서 큐브와 보이는 거울을 감싸는 은은한 둥근 그림자. 창 안에서 다 사라지고,
- * 누르기를 먹지 않고, 앱에 알리는 누르는 자리(`hit`)도 그대로다. 거울이 숨으면 큐브만 감싼다. 브라우저 미니 모드는
- * 이미 어두운 바탕이 있어 받침을 두지 않는다
+ * 큐브 윤곽(docs/47 15-23): 앱의 투명 창에서 큐브·거울 판 실루엣을 따라 도는 밝은 테두리 두 겹과 어두운 그림자.
+ * 둥근 받침(원반)은 큐브와 따로 놀아 두지 않는다. 브라우저 미니 모드는 이미 어두운 바탕이 있어 윤곽을 두지 않는다
  */
 test(
-  "앱 창에서 큐브 뒤에 은은한 받침을 깔고, 누르는 자리는 그대로다",
+  "앱 창에서 큐브 윤곽을 따라 테두리를 두르고, 둥근 받침은 없다",
   {
     tag: ["@3d", "@only-desktop"],
   },
   async ({ page }, info) => {
     // 키보드 조작은 데스크톱만
-    // 거울 페이드·받침 미끄러짐 없이 바로 자리 잡게
+    // 거울 페이드 없이 바로 자리 잡게
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 96, height: 96 });
     await fakeApp(page);
@@ -357,7 +357,6 @@ test(
     await page.goto("/cube/mini");
     const main = page.locator("main[data-mini]");
     const canvas = page.locator("[data-cube-canvas]");
-    const backdrop = page.locator("[data-mini-backdrop]");
     await expect(canvas).toHaveAttribute("data-cube-ready", "", SCENE);
     await expect(main).toHaveAttribute("data-input-ready", "", {
       timeout: SCRAMBLE_TIMEOUT,
@@ -371,106 +370,72 @@ test(
         ).__toApp;
         return sent.filter((m) => m.type === "hit").at(-1)?.rects ?? [];
       });
-    const box = async () => {
-      const b = await backdrop.boundingBox();
-      if (!b) throw new Error("받침이 없다");
-      return b;
-    };
-    /** 받침이 창 안에 다 들어오고 누르는 자리를 모두 감싼다 */
-    const wraps = async (count: number) => {
-      await expect.poll(async () => (await lastHit()).length).toBe(count);
-      const rects = await lastHit();
-      await expect
-        .poll(async () => {
-          const b = await box();
-          const cx = b.x + b.width / 2;
-          const cy = b.y + b.height / 2;
-          const inWindow =
-            b.x >= -0.5 &&
-            b.y >= -0.5 &&
-            b.x + b.width <= 96.5 &&
-            b.y + b.height <= 96.5;
-          // 누르는 자리 사각형들의 가운데에 받침이 놓인다(창 안으로 줄였어도 가운데는 같다)
-          const x0 = Math.min(...rects.map((r) => r[0] ?? 0));
-          const x1 = Math.max(...rects.map((r) => (r[0] ?? 0) + (r[2] ?? 0)));
-          const y0 = Math.min(...rects.map((r) => r[1] ?? 0));
-          const y1 = Math.max(...rects.map((r) => (r[1] ?? 0) + (r[3] ?? 0)));
-          const centered =
-            Math.abs(cx - Math.min(Math.max((x0 + x1) / 2, 0), 96)) < 2 &&
-            Math.abs(cy - Math.min(Math.max((y0 + y1) / 2, 0), 96)) < 2;
-          return inWindow && centered;
-        })
-        .toBe(true);
+    const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
+    /** 윤곽: 흰 빛 두 겹 뒤 검은 그림자 한 겹 */
+    const outlined = async () => {
+      const reds = [...(await filter()).matchAll(/rgba\((\d+),/g)].map(
+        (m) => m[1],
+      );
+      expect(reds).toEqual(["255", "255", "0"]);
     };
 
-    // 맞춘 큐브(거울 없음): 큐브만 감싼다
+    // 맞춘 큐브(거울 없음)
     await fromApp(page, { type: "focus", focused: true });
-    await expect(backdrop).toHaveCount(1);
-    await wraps(1);
-    const cubeOnly = await box();
-    // 받침은 누르기를 먹지 않는다: 받침 가운데를 누르면 장면(캔버스)이 받는다
-    expect(
-      await backdrop.evaluate((el) => getComputedStyle(el).pointerEvents),
-    ).toBe("none");
+    await expect.poll(async () => (await lastHit()).length).toBe(1);
+    await outlined();
+    // 둥근 받침(원반)은 없다
+    await expect(page.locator("[data-mini-backdrop]")).toHaveCount(0);
+    // 윤곽은 누르기를 바꾸지 않는다: 큐브 가운데를 누르면 장면(캔버스)이 받는다
+    const [cube] = await lastHit();
     expect(
       await page.evaluate(
-        ({ x, y }) =>
-          document.elementFromPoint(x, y)?.hasAttribute("data-cube-canvas") ??
-          false,
-        {
-          x: cubeOnly.x + cubeOnly.width / 2,
-          y: cubeOnly.y + cubeOnly.height / 2,
-        },
+        ([x = 0, y = 0, w = 0, h = 0]) =>
+          document
+            .elementFromPoint(x + w / 2, y + h / 2)
+            ?.hasAttribute("data-cube-canvas") ?? false,
+        cube ?? [],
       ),
     ).toBe(true);
 
-    // 섞으면 거울이 나타나고 받침도 거울까지 넓어진다
+    // 섞으면 거울이 나타난다(거울 판도 같은 캔버스라 판마다 제 윤곽을 받는다)
     await page.keyboard.press("Enter");
     await expect(main).toHaveAttribute("data-mini-phase", "ready", {
       timeout: SCRAMBLE_TIMEOUT,
     });
     await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
-    await wraps(4);
-    const withMirror = await box();
-    expect(withMirror.width * withMirror.height).toBeGreaterThan(
-      cubeOnly.width * cubeOnly.height,
-    );
+    await expect.poll(async () => (await lastHit()).length).toBe(4);
+    await outlined();
     for (const [name, desk] of Object.entries(DESKS)) {
       await page.evaluate(
         (d) => document.documentElement.style.setProperty("--desk", d),
         desk,
       );
-      await shot(page, `mini-backdrop-${name}`, info.project.name);
+      await shot(page, `mini-outline-${name}`, info.project.name);
     }
 
-    // 떠 있으면 거울이 숨고 받침도 큐브만. 큐브가 창을 거의 채워 받침이 가려지므로 큐브 윤곽 그림자가 갈라 준다
+    // 떠 있으면 거울이 숨고 큐브가 창을 거의 채운다. 그래도 윤곽은 그대로
     await fromApp(page, { type: "focus", focused: false });
     await expect(main).not.toHaveAttribute("data-mini-mirror-shown");
-    await wraps(1);
-    // 윤곽 그림자 두 겹(밝은 빛 + 어두운 그림자)
-    const filter = () => canvas.evaluate((c) => getComputedStyle(c).filter);
-    expect((await filter()).match(/drop-shadow/g)).toHaveLength(2);
+    await expect.poll(async () => (await lastHit()).length).toBe(1);
+    await outlined();
     for (const [name, desk] of Object.entries(DESKS)) {
       await page.evaluate(
         (d) => document.documentElement.style.setProperty("--desk", d),
         desk,
       );
-      await shot(page, `mini-backdrop-${name}-floating`, info.project.name);
+      await shot(page, `mini-outline-${name}-floating`, info.project.name);
     }
 
-    // 가장 큰 창에서도 같은 비율(창에 대한 받침 크기와 윤곽 그림자 폭이 같다)
+    // 가장 큰 창에서도 같은 비율(윤곽 폭이 창 크기에 비례한다)
     const blur = async () =>
       Number(/([\d.]+)px\)\s*$/.exec(await filter())?.[1] ?? Number.NaN);
     const smallBlur = await blur();
     await page.setViewportSize({ width: 480, height: 480 });
-    await expect
-      .poll(async () => Math.round((await box()).width / 480 / 0.02))
-      .toBe(Math.round(cubeOnly.width / 96 / 0.02));
     await expect.poll(async () => (await blur()) / smallBlur).toBeCloseTo(5, 0);
   },
 );
 
-test("브라우저 미니 모드는 바탕이 있어 받침·윤곽 그림자를 두지 않는다", {
+test("브라우저 미니 모드는 바탕이 있어 윤곽을 두지 않는다", {
   tag: ["@3d", "@only-desktop"],
 }, async ({ page }) => {
   // 창 크기는 데스크톱에서
@@ -482,7 +447,6 @@ test("브라우저 미니 모드는 바탕이 있어 받침·윤곽 그림자를
     "data-input-ready",
     "",
   );
-  await expect(page.locator("[data-mini-backdrop]")).toHaveCount(0);
   expect(await canvas.evaluate((c) => getComputedStyle(c).filter)).toBe("none");
 });
 
