@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.9</title>
+      <pubDate>Wed, 11 Nov 2026 06:56:44 +0000</pubDate>
+      <sparkle:version>0.1.9</sparkle:version>
+      <sparkle:shortVersionString>0.1.9</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;F1(맥북은 fn+F1)을 누르면 큐브 옆에 키보드 그림이 떠요. 그림을 보면서 키를 눌러도 큐브가 그대로 돌고, 누른 키는 그림에서 잠깐 빛나요. 공식 힌트는 이제 Enter 바로 위 \ 키로 봐요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.9/Cubie.zip" length="1737986" type="application/octet-stream" sparkle:edSignature="m37/0RYIhSuuKHJRfiTpjTcPY+gnZNRwRS9UsNBhQ57Gm3+WWXSlQiw1KI9XLm64dpNTghseSSyzmcQ2RgWOBA=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.8</title>
       <pubDate>Wed, 11 Nov 2026 06:12:13 +0000</pubDate>
       <sparkle:version>0.1.8</sparkle:version>
