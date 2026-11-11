@@ -14,12 +14,15 @@ final class RunningApp: FocusApp {
 /// Cubie: 화면 구석에 늘 떠 있는 큐브 창(docs/47 15절).
 /// - ⌃⌥⌘C(`Config.hotKey*`)를 누르면 그때 앞에 있던 앱을 기억하고 큐브 창에 키 입력을 준다. 다시 누르면 돌려준다.
 /// - 큐브 창이 키를 받는 동안 Esc를 누르면 기억한 앱으로 돌아가고 창은 그대로 떠 있다.
+/// - F1(맥북은 fn+F1)은 큐브 옆 단축키 표를 켜고 끈다. 표는 키를 받지 않아 보면서 친 키가 그대로 큐브로 간다(`KeysPanel`).
 /// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·큐브 크기·기록·대결·창·키 배치를 고른다(짜임은 `MenuLayout`).
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
   private let cube = CubeWindow()
   /// 「공식 보기」 말풍선(큐브 창 옆)
   private let bubble = HintBubble()
+  /// 큐브 옆 단축키 표(F1·메뉴 「단축키 보기」, docs/47 15-25)
+  private let keys = KeysPanel()
   private var statusItem: NSStatusItem!
   private var hotKey: HotKey!
   private var hotKeyOK = false
@@ -29,8 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 자동 업데이트(Sparkle). .app으로 띄웠을 때만 켜진다
   private let updater = Updater()
 
-  /// 따로 여는 보통 창(투명 아님): 기록, 단축키, 티어표, 키 배치·색
-  enum WebWindow { case records, keys, tiers, settings }
+  /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
+  enum WebWindow { case records, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -64,12 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
       guard let self else { return event }
       let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-      // F1(맥북은 fn+F1): 「공식 보기」. 앱이 받아 다리로 넘긴다(웹 화면에 키로 닿는지에 기대지 않는다).
-      // 맥북에서 fn 없이 누르면 밝기 키라 앱에 오지 않는다. 웹의 다른 힌트 키(\)는 그대로 웹에 간다
-      if event.keyCode == UInt16(Config.hintKeyCode), event.window === self.cube.panel,
+      // F1(맥북은 fn+F1): 「단축키 보기」. 큐브 옆 표를 켜고 끈다(웹에는 보내지 않는다).
+      // 맥북에서 fn 없이 누르면 밝기 키라 앱에 오지 않는다. 힌트 키(\)는 그대로 웹에 간다
+      if event.keyCode == UInt16(Config.shortcutsKeyCode), event.window === self.cube.panel,
         mods.subtracting([.function, .numericPad]).isEmpty
       {
-        if !event.isARepeat { self.cube.bridge.send(["type": "hint"]) }
+        if !event.isARepeat { self.toggleKeys() }
         return nil
       }
       let isEsc = event.keyCode == 53 && mods.subtracting([.function, .numericPad]).isEmpty
@@ -84,15 +87,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       }
       guard isEsc else { return event }
       if self.cube.panel.isKeyWindow {
-        // 공식 연습 중이면 Esc는 연습 끝내기(맞추기로 돌아가기). 한 번 더 누르면 이전 앱으로
-        if self.cube.bridge.state.practice != nil {
+        // 단축키 표가 떠 있으면 Esc는 표 닫기. 공식 연습 중이면 연습 끝내기(맞추기로 돌아가기). 한 번 더 누르면 이전 앱으로
+        if self.keys.isShown {
+          self.hideKeys()
+        } else if self.cube.bridge.state.practice != nil {
           self.cube.bridge.send(["type": "practice", "stage": NSNull()])
         } else {
           self.returnFocus()
         }
         return nil
       }
-      // 기록·단축키 창은 Esc로 닫는다(설정 창은 웹 화면의 Esc를 그대로 둔다)
+      // 기록·티어표 창은 Esc로 닫는다(설정 창은 웹 화면의 Esc를 그대로 둔다)
       if let w = event.window, let kind = self.webWindows.first(where: { $0.value === w })?.key,
         kind != .settings
       {
@@ -110,6 +115,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       // 이 앱이 말풍선을 그린다고 알린다(0.1.2 이하 앱은 보내지 않아 웹이 창 안에 작게 보인다)
       self.cube.bridge.send(["type": "caps", "hintBubble": true])
       self.bubble.hide()
+      // 다시 불러온 화면에도 단축키 표가 떠 있는지 알린다(떠 있는 동안만 누른 키를 보낸다)
+      self.cube.bridge.send(["type": "keysPanel", "open": self.keys.isShown])
+    }
+    cube.bridge.onState = { [weak self] in
+      guard let self, self.keys.isShown else { return }
+      self.keys.setSize(self.keysN)
+    }
+    cube.bridge.onPressed = { [weak self] code in self?.keys.pressed(code) }
+    // 다른 앱으로 가면(Esc·⌃⌥⌘C·다른 앱 누르기) 단축키 표도 닫는다. 표는 큐브를 돌릴 때만 쓴다
+    NotificationCenter.default.addObserver(
+      forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      MainActor.assumeIsolated { self?.hideKeys() }
     }
     cube.bridge.onHint = { [weak self] lines in
       guard let self else { return }
@@ -126,12 +144,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       MainActor.assumeIsolated {
         guard let self else { return }
         self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
+        self.keys.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
       }
     }
     // 화면 구성이 바뀌어 창을 다시 놓았을 때도(크기만 줄었거나 창은 그대로인데 화면이 바뀐 때도) 말풍선을 그 화면 안으로
     cube.onPlaced = { [weak self] in
       guard let self else { return }
       self.bubble.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
+      self.keys.follow(cube: self.cube.panel.frame, visible: self.cubeScreen)
     }
     // 큐브·거울을 클릭하면(끌지 않고) ⌃⌥⌘C처럼 큐브에 키 입력을 준다. 누를 때 맥이 이미 창을 앞으로 가져오지만,
     // 그것에만 기대지 않고 키 받는 창까지 확실히 정한다
@@ -193,6 +213,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 큐브 창이 있는 화면의 보이는 영역
   private var cubeScreen: NSRect {
     (cube.panel.screen ?? NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? cube.panel.frame
+  }
+
+  // MARK: 단축키 표
+
+  /// 표에 보일 큐브 크기(공식 연습은 3×3만)
+  private var keysN: Int { cube.bridge.state.practice != nil ? 3 : cube.bridge.state.n }
+
+  private func toggleKeys() {
+    if keys.isShown { hideKeys() } else { showKeys() }
+  }
+
+  private func showKeys() {
+    keys.show(cube: cube.panel.frame, visible: cubeScreen, n: keysN)
+    cube.bridge.send(["type": "keysPanel", "open": true])
+  }
+
+  private func hideKeys() {
+    guard keys.isShown else { return }
+    keys.hide()
+    cube.bridge.send(["type": "keysPanel", "open": false])
   }
 
   // MARK: 포커스
@@ -309,7 +349,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .scramble:
       return [item(title, #selector(menuScramble), key: s.scrambleKey)]
     case .hint:
-      return [item(title, #selector(menuHint), key: MenuKey(key: MenuKey.f1))]
+      return [item(title, #selector(menuHint), key: MenuKey.hint)]
     case .practice:
       return [submenu(title, menu(of: MenuLayout.practice(stages: s.practiceStages)))]
     case .practiceGroup:
@@ -366,7 +406,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .keySettings:
       return [item(title, #selector(menuSettings))]
     case .shortcuts:
-      return [item(title, #selector(menuKeys))]
+      return [item(title, #selector(menuKeys), key: MenuKey.shortcuts, on: keys.isShown)]
     case .reload:
       return [item(title, #selector(menuReload))]
     case .checkForUpdates:
@@ -386,6 +426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     if cube.panel.isVisible {
       if cube.focused { returnFocus() }
       bubble.hide()
+      hideKeys()
       cube.panel.orderOut(nil)
     } else {
       cube.panel.orderFrontRegardless()
@@ -428,7 +469,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuWindowSize(_ sender: NSMenuItem) { cube.setSide(CGFloat(sender.tag)) }
 
   @objc private func menuRecords() { openWebWindow(.records) }
-  @objc private func menuKeys() { openWebWindow(.keys) }
+  /// 단축키 표 켜고 끄기. 켜면 바로 키를 쳐 볼 수 있게 큐브에 키 입력을 준다(F1과 같은 일)
+  @objc private func menuKeys() {
+    // 메뉴가 열린 채 F1을 눌러 이 항목이 불렸다면 메뉴가 키를 받아 큐브 창의 키 감시에는 닿지 않는다. 그래서 여기서 한 번만 한다
+    toggleKeys()
+    if keys.isShown, !cube.focused { focusCube() }
+  }
   /// 사이트 티어표를 지금 크기로(이미 열려 있으면 그 크기로 다시 연다)
   @objc private func menuTiers() {
     if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
@@ -449,7 +495,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
 
-  /// 기록·단축키·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
+  /// 기록·티어표·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
   private func openWebWindow(_ kind: WebWindow) {
     if let w = webWindows[kind] {
       Self.bringToFront(w)
@@ -458,7 +504,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let (path, title, size): (String, String, NSSize) =
       switch kind {
       case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
-      case .keys: ("/cube/mini?view=keys", "Cubie 단축키", NSSize(width: 780, height: 560))
       case .tiers: ("/cube/tiers?n=\(cube.bridge.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
       case .settings: ("/cube/settings", "Cubie 키 배치·색", NSSize(width: 760, height: 720))
       }
@@ -493,6 +538,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       let kind = webWindows.first(where: { $0.value === w })?.key
     else { return }
     webWindows[kind] = nil
-    if kind == .settings { cube.load() }
+    if kind == .settings {
+      cube.load()
+      keys.reload()
+    }
   }
 }

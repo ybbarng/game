@@ -21,8 +21,11 @@ enum Config {
   static let sizePresets: [(label: String, side: CGFloat)] = [
     ("작게", 72), ("보통", 96), ("크게", 144), ("아주 크게", 200),
   ]
-  /// 「공식 보기」 키 F1(맥북은 fn+F1). 웹의 다른 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`)
-  static let hintKeyCode = UInt32(kVK_F1)
+  /// 「단축키 보기」 키 F1(맥북은 fn+F1, docs/47 15-25). 앱이 가로채 큐브 옆 단축키 표를 켜고 끈다(메뉴 표시는
+  /// `MenuKey.shortcuts`). 힌트 키 `\`는 웹이 받는다(`apps/web/src/cube/mini/hint.ts` `HINT_KEYS`, 메뉴 표시 `MenuKey.hint`)
+  static let shortcutsKeyCode = UInt32(kVK_F1)
+  /// 큐브 옆 단축키 표 크기(pt). 웹 `?view=keys&panel=1`이 스크롤 없이 들어가는 크기(화면 시험 `cube-mini.spec.ts`가 같은 값으로 본다)
+  static let keysPanelSize = NSSize(width: 560, height: 300)
   /// 메뉴 「배우기」가 여는 곳: 사이트 해법 익히기(웹 `LEARN_PATH`와 같다)
   static let learnPath = "/cube/methods"
 

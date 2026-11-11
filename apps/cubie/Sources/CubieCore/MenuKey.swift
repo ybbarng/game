@@ -23,6 +23,11 @@ public struct MenuKey: Equatable, Sendable {
   static func function(_ code: UInt32) -> String { String(Character(UnicodeScalar(code)!)) }
   public static let f1 = function(0xF704)
 
+  /// 메뉴 「단축키 보기」 옆 키: F1(맥북은 fn+F1). 앱이 키 감시에서 가로채 큐브 옆 단축키 표를 켜고 끈다(docs/47 15-25)
+  public static let shortcuts = MenuKey(key: f1)
+  /// 메뉴 「힌트」 옆 키: `\`(웹 `HINT_KEYS`의 "Backslash"와 같아야 한다). 웹이 받는다
+  public static let hint = MenuKey(key: "\\")
+
   /// 웹 키 코드(+ 수식) → 메뉴 단축키. 메뉴에 그릴 수 없는 키면 nil
   public static func fromWeb(code: String, shift: Bool = false, alt: Bool = false, ctrl: Bool = false)
     -> MenuKey?
@@ -31,7 +36,7 @@ public struct MenuKey: Equatable, Sendable {
     return MenuKey(key: key, shift: shift, option: alt, control: ctrl)
   }
 
-  /// 앱이 먼저 가로채는 키는 웹에 닿지 않아 nil: Esc(「이전 앱으로」, 열린 메뉴도 닫는다)·F1(「공식 보기」)
+  /// 앱이 먼저 가로채는 키는 웹에 닿지 않아 nil: Esc(「이전 앱으로」, 열린 메뉴도 닫는다)·F1(「단축키 보기」)
   static func webKey(_ code: String) -> String? {
     if code.hasPrefix("Key"), code.count == 4 { return code.dropFirst(3).lowercased() }
     if code.hasPrefix("Digit"), code.count == 6 { return String(code.dropFirst(5)) }
