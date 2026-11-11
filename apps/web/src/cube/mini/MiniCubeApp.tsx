@@ -874,13 +874,17 @@ function MiniCube() {
   // 카메라가 큐브만 담는 자리로 옮겨 큐브가 창 가운데에 크게 보인다(창 크기는 그대로)
   const solved = isSolved(session.n, session.state);
   // 연습 문제도 직접 맞추는 것이라 포커스가 있으면 거울을 보인다
-  const mirrorShown = miniMirrorShown({
+  const mirrorWant = miniMirrorShown({
     wanted: mirrorWanted,
     fits: mirrorFits,
     focused,
     solved: practicing ? false : solved,
     idle: idle.showing !== null,
   });
+  // 섞기 연출 동안은 거울(과 그에 따른 카메라 이동)을 연출 전 그대로 둔다. 바뀔 것은 연출이 끝난 뒤에(docs/47 3-1)
+  const mirrorHeld = useRef(mirrorWant);
+  if (!show.running) mirrorHeld.current = mirrorWant;
+  const mirrorShown = mirrorHeld.current;
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirrorShown, true);
   }, [mirrorShown, ready]);

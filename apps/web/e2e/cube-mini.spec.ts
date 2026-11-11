@@ -1577,10 +1577,19 @@ test(
     await page.clock.fastForward(400);
     await expect(main).toHaveAttribute("data-scramble-show", "on");
     await shot(page, "mini-scramble-moves", info.project.name);
-    await fastForwardUntil(page, async () => !(await showing()), {
-      step: 50,
-      timeout: 10_000,
-    });
+    // 연출이 도는 동안은 거울이 나타나지 않는다(거울 페이드·카메라 이동이 연출과 겹치지 않게). 끝난 뒤에 나타난다
+    const mirrorShown = async () =>
+      (await main.getAttribute("data-mini-mirror-shown")) !== null;
+    await fastForwardUntil(
+      page,
+      async () => {
+        const on = await showing();
+        if (on) expect(await mirrorShown()).toBe(false);
+        return !on;
+      },
+      { step: 50, timeout: 10_000 },
+    );
+    await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
     await shot(page, "mini-scramble-moves-done", info.project.name);
 
     // 연출 중 키: 바로 섞인 모양으로 두고 그 수부터 잰다
@@ -1613,9 +1622,16 @@ test(
     await shot(page, "mini-scramble-spin", info.project.name);
     await page.clock.fastForward(200);
     expect(await showing()).toBe(true);
-    await fastForwardUntil(page, async () => !(await showing()), {
-      step: 50,
-      timeout: 10_000,
-    });
+    expect(await mirrorShown()).toBe(false);
+    await fastForwardUntil(
+      page,
+      async () => {
+        const on = await showing();
+        if (on) expect(await mirrorShown()).toBe(false);
+        return !on;
+      },
+      { step: 50, timeout: 10_000 },
+    );
+    await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
   },
 );
