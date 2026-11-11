@@ -12,13 +12,17 @@
 //! | [`judge`]·[`spot`] | `apps/web/src/cube/learn/judge.ts`·`algs/check.ts`·`algs/spot.ts`·`mini/hint-pick.ts`(OLL·PLL 알아보기) |
 //! | [`tier`] | `apps/web/src/cube/timer/stats.ts`·`tiers/rank.ts`·`tiers/table.ts` |
 //! | [`replay`] | `apps/web/src/cube/records.ts`·`replay-player.ts`(다시 보기·구간 기록 글) |
+//! | [`keys`] | `apps/web/src/cube/input/`(키 배치·해석기: 키 → 수·명령) |
 //!
-//! [`data`]는 사이트 자료(공식 상황·티어 표)에서 만든 파일이라 손으로 고치지 않는다.
+//! [`data`]·[`keymap_data`]는 사이트 자료(공식 상황·티어 표·키 배치)에서 만든 파일이라 손으로 고치지 않는다.
 
 #[rustfmt::skip]
 pub mod data;
 pub mod groups;
 pub mod judge;
+#[rustfmt::skip]
+pub mod keymap_data;
+pub mod keys;
 pub mod notation;
 pub mod replay;
 pub mod rng;

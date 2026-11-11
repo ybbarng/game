@@ -23,6 +23,7 @@ const FILES = import.meta.glob<string>(
   [
     "../../../../../native/cube-core/fixtures/*.json",
     "../../../../../native/cube-core/src/data.rs",
+    "../../../../../native/cube-core/src/keymap_data.rs",
   ],
   { query: "?raw", import: "default", eager: true },
 );
