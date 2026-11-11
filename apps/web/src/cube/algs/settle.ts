@@ -1,5 +1,5 @@
 // 입력이 멈춘 뒤 한 번만 검사한다. 칠 때마다 검사기를 돌리면 긴 공식에서 화면이 멈춘다.
-import { type Clock, realClock } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import { useEffect, useMemo, useState } from "react";
 
 /** 입력이 이만큼(ms) 멈추면 검사한다 */

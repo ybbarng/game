@@ -166,3 +166,52 @@ describe("섞기 줄", () => {
     expect(lane.sent).toHaveLength(2);
   });
 });
+
+describe("워커 놓아주기(release)", () => {
+  it("맡은 일이 없으면 워커를 끝내고, 다음 일은 새 워커가 받는다", async () => {
+    const { workers, runner } = setup();
+    const answer = runner.request(SOLVE);
+    workers[0]?.reply(workers[0].sent[0]?.id as number, "풀이");
+    await expect(answer).resolves.toBe("풀이");
+    expect(runner.release()).toBe(true);
+    expect(workers[0]?.terminated).toBe(true);
+    void runner.request(SOLVE);
+    expect(workers).toHaveLength(2);
+    expect(workers[1]?.sent).toHaveLength(1);
+  });
+
+  it("답을 기다리는 일이 있으면 끝내지 않는다", () => {
+    const { workers, runner } = setup();
+    void runner.request(SOLVE);
+    expect(runner.release()).toBe(false);
+    expect(workers[0]?.terminated).toBe(false);
+  });
+
+  it("워커가 없으면 할 일이 없다", () => {
+    const { workers, runner } = setup();
+    expect(runner.release()).toBe(false);
+    expect(workers).toHaveLength(0);
+  });
+
+  it("두 줄 모두 맡은 일이 없는 워커만 끝낸다", async () => {
+    const clock = new ManualClock();
+    const workers: FakeWorker[] = [];
+    const runner = createLanedRunner({
+      clock,
+      spawn: () => {
+        const w = new FakeWorker();
+        workers.push(w);
+        return w;
+      },
+      runInline: async () => "화면 스레드",
+    });
+    void runner.request({ kind: "hero", method: "x", perm: [], twist: [] });
+    const s = runner.request({ kind: "scramble", event: "333", seed: 1 });
+    const [main, lane] = workers as [FakeWorker, FakeWorker];
+    lane.reply(lane.sent[0]?.id as number, "섞기");
+    await s;
+    runner.release();
+    expect(lane.terminated).toBe(true);
+    expect(main.terminated).toBe(false);
+  });
+});

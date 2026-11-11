@@ -1,4 +1,4 @@
-import { type Clock, realClock } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 
 /**
  * 포커스가 있는 동안만 흐르는 시계(미니 모드의 시간 재기, docs/47 15절). `SolveSession`에 넣으면 창이 포커스를

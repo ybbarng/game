@@ -1,7 +1,7 @@
 "use client";
 
 import type { CubeMove } from "@game/cube-engine";
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import {

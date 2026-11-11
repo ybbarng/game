@@ -14,7 +14,7 @@ final class Updater: NSObject, SPUStandardUserDriverDelegate {
   override init() {
     super.init()
     // .app 안에서 띄웠을 때만 켠다. 실행 파일을 바로 띄우면(CUBIE_URL 확인용) 앱 묶음이 아니라 Sparkle이 시작하지 못하고 경고 창을 띄운다
-    guard Bundle.main.bundleURL.pathExtension == "app",
+    guard !Config.measure, Bundle.main.bundleURL.pathExtension == "app",
       Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") != nil
     else { return }
     controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: self)

@@ -1,4 +1,4 @@
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 
 import { stickersFromState } from "../bridge";
 import { loadCubeView } from "../view";

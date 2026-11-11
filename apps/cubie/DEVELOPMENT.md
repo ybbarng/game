@@ -26,6 +26,25 @@ defaults write kr.byb.cubie url http://localhost:4392/cube/mini   # 늘 그 주�
 
 `CUBIE_DEBUG=1`을 붙이면 포커스·다리 메시지·키 출처 칸을 표준 출력에 찍는다. 실행 파일을 바로 띄우면 자동 업데이트는 꺼진다(앱 묶음이 아니라서).
 
+## 메모리 재기
+
+`scripts/measure-memory.sh`가 앱을 측정 모드(`CUBIE_MEASURE=1`)로 띄워 상태마다 메모리를 잰다. 결과와 해석은 [docs/52 2절](../../docs/52-cubie-native.md).
+
+```sh
+apps/cubie/build.sh && pnpm --filter @game/web build
+apps/cubie/scripts/measure-memory.sh                    # 로컬 빌드(apps/web/out)를 포트 4393으로 열어 잰다(약 3분)
+apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
+apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # 가만히 1분을 10초로, 결과를 TSV에 덧붙인다
+```
+
+- 사용자 화면·포커스를 건드리지 않는다. 측정 모드의 앱은 앞으로 나올 수 없고(활성화 정책 `.prohibited`), 큐브 창은 화면 밖 좌표에 투명하게 마우스를 받지 않게 떠 있다. 메뉴 막대 아이콘·전역 단축키·마우스 감시·자동 업데이트를 켜지 않고, 웹 저장소는 비영속이라 사용자 기록·설정을 읽지도 쓰지도 않는다. 이미 떠 있는 Cubie와 같이 돌아도 된다.
+- 화면 밖 창은 WebKit이 「가려짐」으로 보고 그리기를 멈추므로, 측정 모드에서만 WebKit의 가려짐 감지를 끈다(비공개 설정). 그래야 보이는 창과 같이 그린다.
+- 상태는 표준 입력 한 줄 명령으로 바꾼다(`Sources/Cubie/Measure.swift` 머리말의 목록: 포커스·섞기·거울·키로 돌리기·숨기기·단축키 표 불러오기 등). 스크립트만 쓰는 FIFO라 다른 프로세스가 끼어들 수 없다.
+- 재는 값은 `footprint`의 `phys_footprint`(1초 간격 세 번 평균)이고, 프로세스는 `launchctl print pid/<Cubie>`가 보여 주는 그 앱 소속 WebKit 서비스(WebContent·GPU·Networking)만 센다.
+- 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
+- `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
+- 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
+
 앱 아이콘(`Resources/AppIcon.icns`)은 사이트의 3D 큐브(`apps/web/src/cube/view/cube-view.ts`)로 그린다: `node apps/cubie/scripts/icon/make-art.mjs --icns d-pocket`. 하늘색 판에 살짝 기운 2×2 큐브이고, 32px 아래도 같은 2×2를 판에 더 크게 그린다. 시안은 `scripts/icon/render.ts`의 `OPTIONS`에 있다(0.1.2에서 다섯 가운데 `d-pocket`을 골랐다). `--out <폴더>`를 붙이면 시안마다 크기별 PNG와 지금 아이콘을 맨 위에 둔 비교판 `options.png`를 남긴다. 화면 시험과 같은 시스템 Chrome을 화면 없이 띄운다(`pnpm install` 뒤).
 
 메뉴 막대 아이콘(`Resources/MenuIcon*.png`, 템플릿 그림 1x·2x)은 `swift apps/cubie/scripts/make-menu-icon.swift`가 그린다(앱 아이콘에 맞춘 2×2 큐브 실루엣, CoreGraphics만 쓴다). `--preview <폴더>`를 붙이면 밝은·어두운 메뉴 막대 흉내 PNG도 남긴다. 어느 쪽이든 그림을 고치면 다시 만들어 함께 커밋하고, 아래 「README 그림」도 다시 만든다.

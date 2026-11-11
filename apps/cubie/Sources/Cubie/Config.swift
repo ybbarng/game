@@ -48,6 +48,18 @@ enum Config {
   /// `CUBIE_DEBUG=1`이면 포커스·다리 메시지와 웹 화면 상태를 표준 출력에 찍는다(동작 확인용)
   static let debug = ProcessInfo.processInfo.environment["CUBIE_DEBUG"] != nil
 
+  /// `CUBIE_MEASURE=1`: 메모리 재기(`scripts/measure-memory.sh`, `Measure`). 사용자 화면·포커스를 건드리지 않는다:
+  /// 앱은 앞으로 나올 수 없고(.prohibited) 창은 화면 밖에 투명하게 두며, 메뉴 막대 아이콘·전역 단축키·마우스 감시·
+  /// 업데이트를 켜지 않는다. 웹 저장소는 비영속이라 사용자 기록·설정에 손대지 않는다. 명령은 표준 입력으로만 받는다
+  static let measure = ProcessInfo.processInfo.environment["CUBIE_MEASURE"] != nil
+  /// 재는 창 한 변(pt). 기본은 `defaultSize`
+  static let measureSide: CGFloat = {
+    if let s = ProcessInfo.processInfo.environment["CUBIE_MEASURE_SIZE"], let v = Double(s), v > 0 {
+      return CGFloat(v)
+    }
+    return defaultSize.width
+  }()
+
   /// 같은 사이트의 다른 화면(대결·설정)
   static func site(_ path: String) -> URL {
     URL(string: path, relativeTo: miniURL)!.absoluteURL

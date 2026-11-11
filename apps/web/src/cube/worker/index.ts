@@ -1,6 +1,6 @@
 import type { BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
-import { type Clock, realClock } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";
@@ -89,6 +89,7 @@ export function createJobRunner<J extends JobLike = CubeJob, A = CubeJobAnswer>(
   opts: JobRunnerOptions<J, A>,
 ): {
   request: (job: J) => Promise<A>;
+  release: () => boolean;
 } {
   // 기본값은 큐브 일(J가 CubeJob일 때만 맞다. 다른 일은 runInline·limits를 준다)
   const runInlineJob =
@@ -170,7 +171,18 @@ export function createJobRunner<J extends JobLike = CubeJob, A = CubeJobAnswer>(
       }
     });
 
-  return { request };
+  /**
+   * 맡은 일이 없으면 워커를 끝내 메모리(워커의 자바스크립트 환경과 해법기 표)를 놓는다. 다음 일은 새 워커가 받는다
+   * (표를 다시 만든다). 끝냈으면 true
+   */
+  const release = (): boolean => {
+    if (!worker || pending.size > 0) return false;
+    worker.terminate();
+    worker = null;
+    return true;
+  };
+
+  return { request, release };
 }
 
 /**
@@ -188,15 +200,26 @@ export function laneOf(kind: CubeJob["kind"]): JobLane {
 /** 줄마다 워커 하나(`createJobRunner`)를 두고 일을 그 줄로 보낸다. 워커는 줄에 첫 일이 올 때 만든다 */
 export function createLanedRunner(opts: JobRunnerOptions): {
   request: (job: CubeJob) => Promise<CubeJobAnswer>;
+  release: () => void;
 } {
   const lanes: Record<
     JobLane,
-    { request: (job: CubeJob) => Promise<CubeJobAnswer> }
+    {
+      request: (job: CubeJob) => Promise<CubeJobAnswer>;
+      release: () => boolean;
+    }
   > = {
     scramble: createJobRunner(opts),
     main: createJobRunner(opts),
   };
-  return { request: (job) => lanes[laneOf(job.kind)].request(job) };
+  return {
+    request: (job) => lanes[laneOf(job.kind)].request(job),
+    // 줄마다 맡은 일이 없는 워커만 끝낸다
+    release: () => {
+      lanes.scramble.release();
+      lanes.main.release();
+    },
+  };
 }
 
 /** 번들러가 알아보는 모양 그대로 둔다(`new Worker(new URL(…, import.meta.url))`) */
@@ -227,6 +250,14 @@ const runner = createLanedRunner({
   ...(noJobLimit() ? { limits: NO_LIMITS } : {}),
 });
 const request = runner.request;
+
+/**
+ * 맡은 일이 없는 큐브 워커를 모두 끝낸다(Cubie 큐브 미니가 쓰지 않는 동안 메모리를 놓을 때, docs/52 2절).
+ * 다음 일은 새 워커가 받으니, 곧 섞을 것 같으면 `warmUpScramble`로 다시 데운다
+ */
+export function releaseCubeWorkers(): void {
+  runner.release();
+}
 
 /** 대회 규칙 섞기(종목·씨앗). 3×3·2×2는 처음 부를 때 표를 만드느라 몇 초 걸릴 수 있다 */
 export function scrambleInWorker(

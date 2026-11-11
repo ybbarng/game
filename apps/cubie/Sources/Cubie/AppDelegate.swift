@@ -36,7 +36,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   enum WebWindow { case records, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
 
+  /// 메모리 재기 모드(`Config.measure`)일 때만
+  private var measure: Measure?
+
   func applicationDidFinishLaunching(_ notification: Notification) {
+    // 메모리 재기: 메뉴 막대 아이콘·전역 단축키·키 감시 없이 큐브 창만(화면 밖) 띄운다
+    if Config.measure {
+      measure = Measure(cube: cube)
+      return
+    }
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     statusItem.button?.image = Self.menuIcon("MenuIcon", fallback: "cube", label: "Cubie")
     let menu = NSMenu()

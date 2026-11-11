@@ -9,10 +9,11 @@ import {
   solvedCube,
 } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { closeAudioWhenIdle } from "@/game/sound";
 import { cn } from "@/lib/cn";
 
 import { loadAlgBook } from "../algs/store";
@@ -53,7 +54,12 @@ import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
 import { type CubeView, loadCubeView } from "../view";
 import { MIRROR_FADE_MS } from "../view/mirror";
-import { heroSolveInWorker, scrambleInWorker, warmUpScramble } from "../worker";
+import {
+  heroSolveInWorker,
+  releaseCubeWorkers,
+  scrambleInWorker,
+  warmUpScramble,
+} from "../worker";
 import {
   type BubbleLine,
   type FromApp,
@@ -129,6 +135,15 @@ import "@/cube/mini/mini.css";
  * 정함: 48px 창의 3×3 거울도 색을 알아본다). 3×3·4×4는 가장 작은 창(48)에서도 거울이 남고, 7×7은 70px 아래에서 접힌다
  */
 export const MINI_MIRROR_PER_N = 10;
+
+/**
+ * 앱 안에서 소리 엔진을 닫기까지 소리 없이 기다리는 시간. 가장 긴 소리(다 맞춘 소리·잔향)보다 넉넉하고, 맞추는 동안
+ * 수 사이에 쉬는 시간으로는 닫히지 않을 만큼(닫혀도 다음 소리에 다시 열리니 들리는 것은 같다)
+ */
+const AUDIO_IDLE_MS = 30_000;
+
+/** 앱 안에서 포커스를 잃은 뒤 큐브 워커를 놓기까지(잠깐 다른 앱을 봤다 돌아오면 다시 데우지 않게) */
+const WORKER_IDLE_MS = 30_000;
 
 const DEFAULT_VIEW = { yaw: 32, pitch: 26 };
 const PEEK = {
@@ -487,6 +502,10 @@ function MiniCube() {
   // 앱 안인지는 붙은 뒤에 본다(정적 HTML과 첫 그림이 같아야 한다)
   const [app, setApp] = useState(false);
   useEffect(() => setApp(hasApp()), []);
+  // 앱 안이면 한동안 소리가 없을 때 소리 엔진을 닫는다(늘 떠 있는 창이라 열어 두면 메모리를 계속 쥔다, docs/52 2절)
+  useEffect(() => {
+    if (app) return closeAudioWhenIdle(realClock, AUDIO_IDLE_MS);
+  }, [app]);
   // 앱 안이면 앱이 알려 줄 때까지 포커스 없음·보임으로 둔다. 브라우저는 창의 포커스를 본다
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(true);
@@ -819,7 +838,11 @@ function MiniCube() {
           setIdleState(null);
           repaintRef.current();
           bump();
-          if (hasApp()) toApp({ type: "idle", showing: null });
+          if (hasApp()) {
+            toApp({ type: "idle", showing: null });
+            // 연출(첫 화면 풀이 시연)이 쓴 워커를 놓는다(포커스가 없을 때만 연출이 돈다)
+            releaseCubeWorkers();
+          }
         },
         started: (kind) => {
           bump();
@@ -927,6 +950,17 @@ function MiniCube() {
       preparing.current = false;
     };
   }, [n, prefs]);
+  // 앱 안: 포커스가 없는 동안(다른 앱을 쓰거나 창을 숨긴 동안, 대부분의 시간)은 큐브 워커를 놓아 메모리를 줄인다
+  // (워커마다 자바스크립트 환경과 해법기 표, docs/52 2절). 포커스를 받으면 섞기 워커를 다시 데워, 섞기 키를 누를
+  // 때쯤에는 표가 다 만들어져 있다. 떠 있을 때 연출이 워커를 다시 쓰면 연출이 끝날 때 다시 놓는다(`restore`)
+  useEffect(() => {
+    if (!app || !prefs) return;
+    if (focused) {
+      warmUpScramble(eventFor(n));
+      return;
+    }
+    return realClock.after(WORKER_IDLE_MS, releaseCubeWorkers);
+  }, [app, focused, n, prefs]);
 
   /**
    * 수 하나: 엔진에 넣고 장면이 따라 돈다(키·밀기). 입력 방식과 키 출처(키일 때)는 이번 판 기록에 남긴다

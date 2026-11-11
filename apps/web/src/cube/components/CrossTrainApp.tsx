@@ -6,7 +6,7 @@ import {
   type StickerVisibility,
   stageMask,
 } from "@game/cube-engine";
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
