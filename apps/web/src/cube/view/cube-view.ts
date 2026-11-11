@@ -382,7 +382,10 @@ export class CubeView {
   /** 큐브 속 축(가운데를 잇는 심). setCore(true)일 때만 만든다 */
   private core: THREE.Group | null = null;
 
-  private queue: CubeMove[] = [];
+  /** 줄에 남은 회전(`ms`가 있으면 그 시간으로 돈다. 섞기 연출) */
+  private queue: { move: CubeMove; ms?: number }[] = [];
+  /** 큐브 전체가 세로축으로 한 바퀴 도는 중(섞기 연출 「짧은 연출」, 시각은 `performance.now()`) */
+  private spinning: { start: number; ms: number } | null = null;
   private running: Running | null = null;
   private done = 0;
   private raf = 0;
@@ -752,18 +755,37 @@ export class CubeView {
 
   /**
    * 회전 하나를 줄에 넣는다. 돌고 있던 회전은 바로 끝내고 다음으로 넘어가며, 줄이 길면 더 빨리 돈다.
+   * `ms`를 주면 설정의 회전 시간 대신 그 시간으로 돈다(섞기 연출 「하나씩 빠르게」)
    */
-  enqueue(move: CubeMove): void {
+  enqueue(move: CubeMove, ms?: number): void {
     if (this.disposed) return;
     if (this.running) this.finish(this.running);
-    this.queue.push(move);
+    this.queue.push(ms === undefined ? { move } : { move, ms });
+    this.invalidate();
+  }
+
+  /**
+   * 큐브 전체를 세로축으로 `ms` 동안 한 바퀴 돌린다(섞기 연출 「짧은 연출」). 한 바퀴라 끝나면 제자리다.
+   * 도는 중에 `setStickers`로 칠해도 이어 돈다. 0이거나 움직임 줄이기면 멈추고 제자리
+   */
+  spin(ms: number): void {
+    if (this.disposed) return;
+    const was = this.spinning !== null;
+    this.spinning =
+      ms > 0 && !this.reduced?.matches
+        ? { start: performance.now(), ms }
+        : null;
+    if (was && !this.spinning)
+      this.cubies.forEach((_, i) => {
+        this.writeCubie(i);
+      });
     this.invalidate();
   }
 
   /** 줄에 남은 회전까지 모두 끝낸 상태로 바로 넘긴다 */
   flush(): void {
     if (this.running) this.finish(this.running);
-    for (const m of this.queue.splice(0)) this.finish(this.start(m, 0, 0));
+    for (const q of this.queue.splice(0)) this.finish(this.start(q.move, 0, 0));
     this.invalidate();
   }
 
@@ -1227,14 +1249,23 @@ export class CubeView {
     let busy = false;
     // 회전
     while (this.queue.length > MAX_BACKLOG) {
-      const m = this.queue.shift();
-      if (m) this.finish(this.start(m, now, 0));
+      const q = this.queue.shift();
+      if (q) this.finish(this.start(q.move, now, 0));
     }
     while (!this.running && this.queue.length > 0) {
-      const m = this.queue.shift() as CubeMove;
+      const q = this.queue.shift() as { move: CubeMove; ms?: number };
+      const m = q.move;
       const base = moveDuration(this.effectiveMs(), m);
-      // 줄에 남은 수가 많을수록 빨리
-      const r = this.start(m, now, base / (1 + this.queue.length));
+      // 줄에 남은 수가 많을수록 빨리. 시간을 정해 넣은 수는 그 시간(움직임 줄이기면 바로)
+      const r = this.start(
+        m,
+        now,
+        q.ms !== undefined
+          ? this.reduced?.matches
+            ? 0
+            : q.ms
+          : base / (1 + this.queue.length),
+      );
       if (r.duration <= 0) this.finish(r);
       else this.running = r;
     }
@@ -1252,6 +1283,25 @@ export class CubeView {
       busy = true;
     }
     if (this.queue.length > 0) busy = true;
+
+    // 큐브 전체 한 바퀴(섞기 연출). 도는 동안 모든 조각에 같은 회전을 더한다
+    const sp = this.spinning;
+    if (sp) {
+      const p = clamp((performance.now() - sp.start) / sp.ms, 0, 1);
+      if (p >= 1) {
+        this.spinning = null;
+        this.cubies.forEach((_, i) => {
+          this.writeCubie(i);
+        });
+      } else {
+        tmpQ2.setFromAxisAngle(AXIS_VEC.y, Math.PI * 2 * easeInOut(p));
+        const q = tmpQ2.clone();
+        this.cubies.forEach((_, i) => {
+          this.writeCubie(i, q);
+        });
+        busy = true;
+      }
+    }
 
     // 놓임(벌리기·날아오기)
     const la = this.layoutAnim;

@@ -288,3 +288,60 @@ describe("가상 블라인드", () => {
     expect(s.result).toMatchObject({ ms: null, dnfReason: "unsolved" });
   });
 });
+
+describe("섞기 연출 동안 붙잡아 두기(hold)", () => {
+  it("살펴보기는 풀 때부터 잰다. 붙잡은 동안은 시계가 돌지 않고 알림도 없다", () => {
+    const { clock, cues, s } = setup();
+    s.start(SCRAMBLE, 1, undefined, { hold: true });
+    expect(s.held).toBe(true);
+    expect(s.running).toBe(false);
+    expect(s.phase).toBe("inspect");
+    clock.advance(20_000);
+    expect(cues).toEqual([]);
+    expect(s.elapsed()).toBe(0);
+    s.release();
+    expect(s.held).toBe(false);
+    expect(s.running).toBe(true);
+    clock.advance(8_000);
+    expect(cues).toEqual(["inspect8"]);
+    expect(s.elapsed()).toBe(8_000);
+  });
+
+  it("붙잡은 채 첫 수가 들어오면 풀고 그 수부터 잰다(살펴보기 없는 판)", () => {
+    const { clock, records, s, solve } = setup({ inspection: false });
+    s.start(SCRAMBLE, 1, undefined, { hold: true });
+    expect(s.phase).toBe("ready");
+    clock.advance(1_500);
+    solve();
+    expect(s.held).toBe(false);
+    expect(s.phase).toBe("done");
+    expect(records[0]).toMatchObject({ ms: 0, moves: 4 });
+  });
+
+  it("살펴보기 접기·되돌리기도 먼저 푼다. 섞인 상태는 붙잡을 때부터 들고 있다", () => {
+    const { clock, records, s, solve } = setup();
+    s.start(SCRAMBLE, 1, undefined, { hold: true });
+    const scrambled = s.state;
+    clock.advance(30_000);
+    expect(s.advance()).toBe("inspectEnd");
+    expect(s.state).toBe(scrambled);
+    // 붙잡은 30초는 살펴보기에 들지 않아 +2초 벌점이 없다
+    solve();
+    expect(records[0]).toMatchObject({ penalty: 0 });
+  });
+
+  it("블라인드 외우기도 풀 때부터, 맞춘 상태로·새 섞기는 붙잡음을 지운다", () => {
+    const { clock, s } = setup({ mode: "blind" });
+    s.start(SCRAMBLE, 1, undefined, { hold: true });
+    expect(s.phase).toBe("memo");
+    clock.advance(2_000);
+    s.release();
+    clock.advance(1_000);
+    expect(s.elapsed()).toBe(1_000);
+    s.start(SCRAMBLE, 2, undefined, { hold: true });
+    s.reset();
+    expect(s.held).toBe(false);
+    s.start(SCRAMBLE, 3);
+    expect(s.held).toBe(false);
+  });
+});
