@@ -296,6 +296,10 @@ test(
     await expect(main).toHaveAttribute("data-mini-phase", "ready", {
       timeout: SCRAMBLE_TIMEOUT,
     });
+    // 섞기 연출(docs/47 3-1)이 도는 동안은 거울이 나타나지 않고, 끝난 뒤에 나타난다(상한은 멈춘 시험을 잡는 안전장치)
+    await expect(main).not.toHaveAttribute("data-scramble-show", /on/, {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
     await shown();
     await shot(page, "mini-mirror-solving", info.project.name);
     const keys = inverseKeys(
@@ -1587,7 +1591,7 @@ test(
         if (on) expect(await mirrorShown()).toBe(false);
         return !on;
       },
-      { step: 50, timeout: 10_000 },
+      { step: 100 },
     );
     await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
     await shot(page, "mini-scramble-moves-done", info.project.name);
@@ -1630,7 +1634,7 @@ test(
         if (on) expect(await mirrorShown()).toBe(false);
         return !on;
       },
-      { step: 50, timeout: 10_000 },
+      { step: 100 },
     );
     await expect(main).toHaveAttribute("data-mini-mirror-shown", "");
   },

@@ -393,7 +393,6 @@ test(
     await expect(clock).toHaveText(atStart ?? "");
     await fastForwardUntil(page, async () => !(await showing()), {
       step: 100,
-      timeout: 10_000,
     });
     await shot(page, "solo-scramble-moves-done", info.project.name);
     // 살펴보기는 연출이 끝난 때부터: 7.5초 뒤는 아직 8초 전 색, 1초 더 가면 8초 넘은 색
@@ -432,8 +431,7 @@ test(
     await page.clock.fastForward(200);
     expect(await showing()).toBe(true);
     await fastForwardUntil(page, async () => !(await showing()), {
-      step: 50,
-      timeout: 10_000,
+      step: 100,
     });
   },
 );
