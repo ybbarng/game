@@ -1,0 +1,12 @@
+{"what":"다시 보기 글·구간 기록 글 읽기·쓰기, 다시 보기 걸음(멈춤 1초까지)","cases":[
+{"kind":"replay","n":3,"text":"R@120 U'@380 R'@2000 U@2100","parsed":[["R",120],["U'",380],["R'",2000],["U",2100]],"formatted":"R@120 U'@380 R'@2000 U@2100","length":1360,"steps":[{"at":0,"moves":"R"},{"at":260,"moves":"U'"},{"at":1260,"moves":"R'"},{"at":1360,"moves":"U"}]},
+{"kind":"replay","n":3,"text":"","parsed":[],"formatted":"","length":0,"steps":[]},
+{"kind":"replay","n":3,"text":"R@0 junk Q@50 U@x F@ B@1e3 L@0x20 D@-5 M@12.7 (R@40","parsed":[["R",0],["Q",50],["F",0],["B",1000],["L",32],["D",-5],["M",12.7],["(R",40]],"formatted":"R@0 Q@50 F@0 B@1000 L@32 D@-5 M@13 (R@40","length":1095,"steps":[{"at":0,"moves":"R"},{"at":50,"moves":"F"},{"at":1050,"moves":"B"},{"at":1050,"moves":"L"},{"at":1050,"moves":"D"},{"at":1067.7,"moves":"M"},{"at":1095,"moves":"R"}]},
+{"kind":"replay","n":4,"text":"Rw@10 3Rw2@20 2R'@3000 M@3100 x@3200 r@3300","parsed":[["Rw",10],["3Rw2",20],["2R'",3000],["M",3100],["x",3200],["r",3300]],"formatted":"Rw@10 3Rw2@20 2R'@3000 M@3100 x@3200 r@3300","length":1310,"steps":[{"at":0,"moves":"Rw"},{"at":10,"moves":"3Rw2"},{"at":1010,"moves":"2R'"},{"at":1210,"moves":"x"},{"at":1310,"moves":"Rw"}]},
+{"kind":"replay","n":3,"text":"R@100 R@100 R@90 R@5000","parsed":[["R",100],["R",100],["R",90],["R",5000]],"formatted":"R@100 R@100 R@90 R@5000","length":1000,"steps":[{"at":0,"moves":"R"},{"at":0,"moves":"R"},{"at":0,"moves":"R"},{"at":1000,"moves":"R"}]},
+{"kind":"replay","n":7,"text":"3Uw@1 4R@2 S@3 Infinity@4 R@Infinity R@NaN","parsed":[["3Uw",1],["4R",2],["S",3],["Infinity",4]],"formatted":"3Uw@1 4R@2 S@3 Infinity@4","length":3,"steps":[{"at":0,"moves":"3Uw"},{"at":1,"moves":"M'"},{"at":2,"moves":"S"}]},
+{"kind":"splits","text":"cross@3210 f2l1@8020","parsed":[{"id":"cross","ms":3210},{"id":"f2l1","ms":8020}],"formatted":"cross@3210 f2l1@8020"},
+{"kind":"splits","text":"cross@1 cross@2 F2L@3 bad oll@4.5 pll@07","parsed":[{"id":"cross","ms":1},{"id":"pll","ms":7}],"formatted":"cross@1 pll@7"},
+{"kind":"splits","text":"","parsed":[],"formatted":""},
+{"kind":"format","events":[["R",120.4],["U'",380.5],["x",0]],"formatted":"R@120 U'@381 x@0"}
+]}

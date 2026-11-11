@@ -14,7 +14,8 @@
       "!**/.next",
       "!**/out",
       "!apps/web/public/cards",
-      "!apps/web/public/stats"
+      "!apps/web/public/stats",
+      "!native/cube-core/fixtures"
     ]
   },
   "formatter": {
