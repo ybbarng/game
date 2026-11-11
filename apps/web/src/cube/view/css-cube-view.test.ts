@@ -64,10 +64,10 @@ describe("CSS 3D 큐브 장면(그리기 없이 상태만)", () => {
     view.setStickers(start);
     expect(byPlace(view.stickers())).toEqual(byPlace(start));
     expect(host.dataset.cubeRender).toBe("css");
-    // 무대·뿌리·돌림·큐브 넷 + 조각 26개와 면 여섯씩 + 겉면 스티커 54,
+    // 무대·뿌리·돌림·큐브 넷 + 조각 26개 + 겉면 54와 그 스티커 54(속면은 두지 않는다),
     // 판 셋마다(판·유리·누름·가림·조각 상자 다섯 + 조각 26 + 겉면 54)
     expect(host.querySelectorAll("div")).toHaveLength(
-      4 + 26 * 7 + 54 + 3 * (5 + 26 + 54),
+      4 + 26 + 54 * 2 + 3 * (5 + 26 + 54),
     );
     view.dispose();
     expect(host.children).toHaveLength(0);

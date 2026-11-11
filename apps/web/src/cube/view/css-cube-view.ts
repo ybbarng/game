@@ -20,6 +20,7 @@ import {
   translation,
 } from "./css-math";
 import {
+  coordOfLayer,
   cubiePositions,
   inMove,
   moveAngle,
@@ -100,6 +101,8 @@ interface Running {
   members: number[];
   pivots: HTMLDivElement[];
   anims: Animation[];
+  /** 자르는 면에 둔 검은 판 중 돌지 않는 쪽(도는 쪽은 돌림 상자와 함께 버린다) */
+  cuts: HTMLDivElement[];
 }
 
 const slotKey = (c: readonly number[], n: Normal) =>
@@ -249,7 +252,8 @@ export class CssCubeView implements CubeScene {
     const size = 1.02 * u;
     for (const c of this.cubies) {
       const el = div(BOX);
-      for (const normal of NORMALS) {
+      // 겉면만 둔다. 속면은 층을 돌리는 동안만 자르는 면에 검은 판으로 대신한다(`cutPlanes`, 층 수가 3×3에서 156 → 54)
+      for (const normal of c.faces.keys()) {
         // 조각 면은 거의 네모(둥글게 깎으면 그 틈으로 뒤쪽 칸 색이 비친다). 스티커는 변환 없는 자식 상자라 면과
         // 같은 층에 한 번 칠해진다(층이 늘지 않는다)
         const f = div(
@@ -472,12 +476,30 @@ export class CssCubeView implements CubeScene {
     }
     const members = this.membersOf(q.move);
     const angle = moveAngle(q.move);
-    const r: Running = { move: q.move, members, pivots: [], anims: [] };
-    for (const holder of this.holders) {
+    const r: Running = {
+      move: q.move,
+      members,
+      pivots: [],
+      anims: [],
+      cuts: [],
+    };
+    // 거울 판이 안 보이면 판 쪽 조각은 돌리지 않고 끝난 자리만 쓴다(돌림 상자·애니메이션 셋을 아낀다)
+    const shown = mirrorShownAt(this.yaw, this.pitch, this.mirrorFade) > 0.01;
+    for (const holder of shown ? this.holders : this.holders.slice(0, 1)) {
       const pivot = div(BOX);
       holder.appendChild(pivot);
       r.pivots.push(pivot);
     }
+    // 큐브 속이 드러나는 자르는 면: 도는 층 쪽과 나머지 쪽에 검은 판 하나씩
+    const main = this.holders[0];
+    const pivot0 = r.pivots[0];
+    if (main && pivot0)
+      for (const t of this.cutPlanes(q.move)) {
+        const still = div(t);
+        main.appendChild(still);
+        r.cuts.push(still);
+        pivot0.appendChild(div(t));
+      }
     const k = r.pivots.length;
     for (const i of members) {
       const c = this.cubies[i];
@@ -501,6 +523,26 @@ export class CssCubeView implements CubeScene {
       first.onfinish = () => {
         if (this.running === r) this.finish(r);
       };
+  }
+
+  /** 수가 큐브를 자르는 면마다 검은 판의 CSS(큐브 전체 돌리기는 자르지 않는다) */
+  private cutPlanes(move: CubeMove): string[] {
+    const n = this.n;
+    const u = this.unit;
+    const side = n * u;
+    const axis = { x: 0, y: 1, z: 2 }[move.axis];
+    const normal = `+${move.axis}` as Normal;
+    const at: number[] = [];
+    if (move.from > 1) at.push(coordOfLayer(n, move.from) + 0.5);
+    if (move.to < n) at.push(coordOfLayer(n, move.to) - 0.5);
+    return at.map((c) => {
+      const t: [number, number, number] = [0, 0, 0];
+      t[axis] = c;
+      return (
+        `position:absolute;left:${-side / 2}px;top:${-side / 2}px;width:${side}px;height:${side}px;background:${this.body()};` +
+        `transform:${cssMatrix(toCss(multiply(translation(t[0], t[1], t[2]), faceRotation(normal)), u))};`
+      );
+    });
   }
 
   private membersOf(move: CubeMove): number[] {
@@ -537,12 +579,14 @@ export class CssCubeView implements CubeScene {
   }
 
   private release(r: Running): void {
+    const k = r.pivots.length;
     for (const i of r.members)
       this.cubies[i]?.els.forEach((el, j) => {
-        this.holders[j]?.appendChild(el);
+        if (j < k) this.holders[j]?.appendChild(el);
       });
     for (const a of r.anims) a.cancel();
     for (const p of r.pivots) p.remove();
+    for (const c of r.cuts) c.remove();
     if (this.running === r) this.running = null;
   }
 
