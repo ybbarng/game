@@ -417,7 +417,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     guard sender.tag >= 0, sender.tag < screens.count else { return }
     let f = WindowPlacement.moved(cube.panel.frame, to: screens[sender.tag].visibleFrame, margin: Config.margin)
     cube.panel.setFrame(f, display: true)
-    cube.panel.saveFrame(usingName: CubeWindow.frameName)
+    cube.saveFrame()
   }
   @objc private func menuSize(_ sender: NSMenuItem) { cube.bridge.send(["type": "size", "n": sender.tag]) }
   @objc private func menuWindowSize(_ sender: NSMenuItem) { cube.setSide(CGFloat(sender.tag)) }
