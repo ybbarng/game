@@ -39,6 +39,9 @@ export const AUTO_MOVES_MAX_N = 5;
 /** 짧은 연출의 길이(ms) */
 export const SPIN_MS = 500;
 
+/** 칸 시간이 소수라 생기는 반올림 틈(ms) */
+const EPS_MS = 1e-6;
+
 /** 하나씩 빠르게: 기준(3×3 섞기 20수)에 걸리는 시간과 큰 큐브의 상한(ms) */
 const MOVES_BASE_MS = 1000;
 const MOVES_BASE_COUNT = 20;
@@ -159,29 +162,44 @@ export class ScrambleShow {
       onDone();
       this.onChange?.();
     };
+    // 차례는 시작 시각에서 잰다. 타이머가 늦게 와도(바쁜 기기·그리기가 느린 기기) 밀린 수는 바로 돌려 따라잡고,
+    // 계획한 시간에 끝난다(타이머를 이어 걸면 늦음이 쌓여 연출이 몇 배로 길어진다)
+    const t0 = this.clock.now();
+    const total = planMs(plan);
+    const at = (ms: number, fn: () => void) => {
+      cancel = this.clock.after(Math.max(0, t0 + ms - this.clock.now()), () => {
+        if (this.run === run) fn();
+      });
+    };
     if (plan.kind === "moves") {
       const { moves, stepMs } = plan;
       target.solved();
       let i = 0;
       const next = () => {
-        if (this.run !== run) return;
-        if (i >= moves.length) {
+        const elapsed = this.clock.now() - t0;
+        if (elapsed >= total - EPS_MS) {
           end();
           return;
         }
-        target.turn(moves[i] as CubeMove, stepMs);
-        i++;
-        cancel = this.clock.after(stepMs, next);
+        // 지금까지 돌았어야 할 수: 앞의 밀린 수는 바로, 마지막 수만 한 칸 시간으로
+        const due = Math.min(
+          moves.length,
+          Math.floor((elapsed + EPS_MS) / stepMs) + 1,
+        );
+        while (i < due) {
+          target.turn(moves[i] as CubeMove, i < due - 1 ? 0 : stepMs);
+          i++;
+        }
+        at(i < moves.length ? i * stepMs : total, next);
       };
       next();
     } else {
       // 맞춘 큐브로 돌기 시작해 반 바퀴(뒤를 볼 때) 섞인 모양으로 바꾼다
       target.solved();
       target.spin(plan.ms);
-      cancel = this.clock.after(plan.ms / 2, () => {
-        if (this.run !== run) return;
+      at(plan.ms / 2, () => {
         target.paint();
-        cancel = this.clock.after(plan.ms / 2, end);
+        at(plan.ms, end);
       });
     }
     this.onChange?.();
@@ -261,8 +279,11 @@ export function showScramble(
     onDone: () => void;
   },
 ): void {
+  // 그릴 장면이 없으면(3D를 못 그리는 기기, 장면이 아직 없거나 다른 크기) 연출 없이 바로
+  const view = o.getView();
+  const kind = view && view.n === o.n ? o.kind : "instant";
   show.play(
-    planScrambleShow(o.kind, o.n, o.scramble),
+    planScrambleShow(kind, o.n, o.scramble),
     viewShowTarget(o.getView, o.n, o.scrambled),
     o.onDone,
   );

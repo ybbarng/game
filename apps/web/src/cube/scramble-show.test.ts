@@ -1,5 +1,5 @@
 import { formatMove } from "@game/cube-engine";
-import { ManualClock } from "@game/fair-play";
+import { type Clock, ManualClock } from "@game/fair-play";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -88,6 +88,41 @@ describe("섞기 연출 진행", () => {
     expect(done).toBe(1);
     expect(show.running).toBe(false);
     expect(clock.pending()).toBe(0);
+  });
+
+  it("타이머가 늦게 와도(그리기가 느린 기기) 밀린 수는 바로 돌리고 계획한 시간에 끝난다", () => {
+    const clock = new LateClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play(
+      { kind: "moves", moves: planMoves("R U F L"), stepMs: 100 },
+      target,
+      () => done++,
+    );
+    expect(log).toEqual(["solved", "R@100"]);
+    // 100에 올 타이머가 250에 왔다: U는 바로(0), F가 한 칸 시간으로
+    clock.fireAt(250);
+    expect(log).toEqual(["solved", "R@100", "U@0", "F@100"]);
+    // 다음은 300(L). 계획한 끝(400)을 넘겨 왔으면 남은 수 없이 섞인 모양으로 끝
+    clock.fireAt(420);
+    expect(log.at(-1)).toBe("scrambled");
+    expect(done).toBe(1);
+    expect(show.running).toBe(false);
+    expect(clock.pending()).toBe(0);
+  });
+
+  it("짧은 연출도 늦은 타이머에 밀리지 않는다: 반 바퀴가 늦으면 끝은 남은 시간만 기다린다", () => {
+    const clock = new LateClock();
+    const show = new ScrambleShow(clock);
+    const { log, target } = recorder();
+    let done = 0;
+    show.play({ kind: "spin", ms: 500 }, target, () => done++);
+    clock.fireAt(450);
+    expect(log.at(-1)).toBe("paint");
+    expect(clock.nextAt()).toBe(500);
+    clock.fireAt(500);
+    expect(done).toBe(1);
   });
 
   it("짧은 연출: 맞춘 큐브로 한 바퀴 돌리고 반 바퀴에 섞인 모양으로 칠하고, 다 돌면 끝", () => {
@@ -180,4 +215,39 @@ function planMoves(text: string) {
   const p = planScrambleShow("moves", 3, text);
   if (p.kind !== "moves") throw new Error("moves");
   return p.moves;
+}
+
+/**
+ * 바쁜 기기 흉내: 걸린 일은 시험이 정한 시각(`fireAt`)에 가장 이른 것 하나만 늦게 불린다
+ * (그동안 다른 일이 차례를 막았다고 본다)
+ */
+class LateClock implements Clock {
+  private time = 0;
+  private timers: { at: number; fn: () => void }[] = [];
+  now(): number {
+    return this.time;
+  }
+  after(ms: number, fn: () => void): () => void {
+    const t = { at: this.time + ms, fn };
+    this.timers.push(t);
+    return () => {
+      this.timers = this.timers.filter((x) => x !== t);
+    };
+  }
+  nextAt(): number | undefined {
+    return this.timers.reduce<number | undefined>(
+      (m, t) => (m === undefined || t.at < m ? t.at : m),
+      undefined,
+    );
+  }
+  fireAt(time: number): void {
+    const t = this.timers.find((x) => x.at === this.nextAt());
+    if (!t || t.at > time) throw new Error("그 시각까지 걸린 일이 없다");
+    this.timers = this.timers.filter((x) => x !== t);
+    this.time = time;
+    t.fn();
+  }
+  pending(): number {
+    return this.timers.length;
+  }
 }
