@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.8</title>
+      <pubDate>Wed, 11 Nov 2026 06:12:13 +0000</pubDate>
+      <sparkle:version>0.1.8</sparkle:version>
+      <sparkle:shortVersionString>0.1.8</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;모니터를 떼면 큐브가 남은 화면으로 옮겨 오고, 다시 붙이면 그 모니터에서 두던 자리로 돌아가요. 잠자기 중에 모니터를 뗐다가 깨워도 큐브가 보여요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.8/Cubie.zip" length="1728933" type="application/octet-stream" sparkle:edSignature="TPk8hGIFAgCXoTy633I3LxhT9KE46WnSFbchjllXe5HSnK5HTMMdqqM5a95MOKSA5zPhfZ76XniLQ90H/J2uDg=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.7</title>
       <pubDate>Tue, 10 Nov 2026 08:03:09 +0000</pubDate>
       <sparkle:version>0.1.7</sparkle:version>
