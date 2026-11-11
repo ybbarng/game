@@ -62,6 +62,13 @@ node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면
 - Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
 - C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi.rs`와 하나씩 맞춘다.
 - 정적 라이브러리를 링크하므로 스위치를 꺼도 앱이 커진다(유니버설 실행 파일 0.6MB → 8.0MB).
+- `swift build`는 정적 라이브러리가 바뀐 것을 몰라 다시 링크하지 않을 수 있다. 라이브러리만 바꿨으면 `.build/<칩>-apple-macosx/release/Cubie`를 지우고 빌드한다.
+- `cargo run --release --bin cubie-bench -- <초> <fps> <모드>`: 창 없이 그리며 메모리(최고치 포함)를 찍는다. `release` 모드는 그리개를 놓았다 다시 만든다.
+
+## 그리기 방식 메모리 연구 도구(docs/52 5-3)
+
+- `scripts/lab/memlab.swift`: 맨 Metal·Core Animation 3D·CoreGraphics 그리기를 같은 조건으로 돌리며 스스로 footprint를 찍는다. `swiftc -O -swift-version 5 -o /tmp/memlab apps/cubie/scripts/lab/memlab.swift` 뒤 `/tmp/memlab <모드> <창>`(머리말에 모드·스위치). 앞으로 나오지 않고 마우스를 받지 않는다.
+- `scripts/lab/css3d-mini.html`: WebGL 없이 CSS 3D로 그린 3×3 시안. 앱 다리를 받아 `measure-memory.sh --url`로 잰다(파일 머리말에 명령).
 
 앱 아이콘(`Resources/AppIcon.icns`)은 사이트의 3D 큐브(`apps/web/src/cube/view/cube-view.ts`)로 그린다: `node apps/cubie/scripts/icon/make-art.mjs --icns d-pocket`. 하늘색 판에 살짝 기운 2×2 큐브이고, 32px 아래도 같은 2×2를 판에 더 크게 그린다. 시안은 `scripts/icon/render.ts`의 `OPTIONS`에 있다(0.1.2에서 다섯 가운데 `d-pocket`을 골랐다). `--out <폴더>`를 붙이면 시안마다 크기별 PNG와 지금 아이콘을 맨 위에 둔 비교판 `options.png`를 남긴다. 화면 시험과 같은 시스템 Chrome을 화면 없이 띄운다(`pnpm install` 뒤).
 
