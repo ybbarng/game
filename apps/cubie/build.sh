@@ -20,6 +20,9 @@ done
 VERSION="${CUBIE_VERSION:-$(tr -d ' \n' < VERSION)}"
 if [ "$UNIVERSAL" = 1 ]; then ARCHS="arm64 x86_64"; else ARCHS="$(uname -m)"; fi
 
+# 네이티브 화면 정적 라이브러리(docs/52 5-2, CUBIE_NATIVE=1 실험). 앱과 같은 칩으로 만든다
+if [ "$UNIVERSAL" = 1 ]; then scripts/build-native.sh --universal; else scripts/build-native.sh; fi
+
 # 칩마다 따로 빌드해 lipo로 합친다(`--arch` 두 개를 한 번에 주면 xcbuild로 빌드해 결과 자리가 달라진다)
 SLICES=""
 for arch in $ARCHS; do

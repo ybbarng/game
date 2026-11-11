@@ -45,6 +45,23 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 - 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
 - `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
 - 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
+- `--native`는 네이티브 화면 시제품(아래)을 같은 시나리오로 잰다. 웹 서버를 띄우지 않고, 거울·큐브 크기·단축키 표 명령은 앱이 받기만 한다. 화면 밖 창은 wgpu가 가려진 창으로 보고 그릴 곳을 내주지 않아, 측정 모드에서는 같은 그리기를 화면 밖 텍스처에 한다(화면에 내보내기만 빠진다). `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
+
+## 네이티브 화면 시제품(docs/52 5-2)
+
+`CUBIE_NATIVE=1`로 띄우면 웹 화면 대신 Rust 코어 + wgpu(Metal)로 그린 3×3 화면이 뜬다. 키 → 코어 키 해석기(두 손 배치) → 수, Enter 섞기(코어 섞기), 맞춤 판정까지 된다. 거울·기록·힌트·공식 연습·메뉴의 나머지는 아직 없다. 스위치를 켜지 않으면(기본) 지금 앱 그대로다.
+
+```sh
+apps/cubie/scripts/build-native.sh [--universal]          # 정적 라이브러리 → apps/cubie/.native/ (build.sh·test.sh가 먼저 부른다)
+CUBIE_NATIVE=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  # 띄우기(사람이 직접 볼 때)
+(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 그리기·한 판 시험(이 맥에서만, Metal)
+(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo run --release --bin cubie-shot -- <폴더>)   # 화면 밖 스크린샷
+node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면과 바탕 넷 위 비교판(compare.png)
+```
+
+- Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
+- C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi.rs`와 하나씩 맞춘다.
+- 정적 라이브러리를 링크하므로 스위치를 꺼도 앱이 커진다(유니버설 실행 파일 0.6MB → 8.0MB).
 
 앱 아이콘(`Resources/AppIcon.icns`)은 사이트의 3D 큐브(`apps/web/src/cube/view/cube-view.ts`)로 그린다: `node apps/cubie/scripts/icon/make-art.mjs --icns d-pocket`. 하늘색 판에 살짝 기운 2×2 큐브이고, 32px 아래도 같은 2×2를 판에 더 크게 그린다. 시안은 `scripts/icon/render.ts`의 `OPTIONS`에 있다(0.1.2에서 다섯 가운데 `d-pocket`을 골랐다). `--out <폴더>`를 붙이면 시안마다 크기별 PNG와 지금 아이콘을 맨 위에 둔 비교판 `options.png`를 남긴다. 화면 시험과 같은 시스템 Chrome을 화면 없이 띄운다(`pnpm install` 뒤).
 
