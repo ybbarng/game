@@ -1,6 +1,6 @@
 import type { BotPlan } from "@game/cube-ai";
 import type { Scramble, ScrambleEvent } from "@game/cube-scramble";
-import { type Clock, realClock } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import type { PuzzleState } from "@game/puzzle-core";
 
 import type { CrossRound, CrossRoundRequest } from "../cross/scramble";

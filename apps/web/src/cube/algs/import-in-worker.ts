@@ -1,4 +1,4 @@
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import { createJobRunner, noJobLimit, type WorkerLike } from "../worker";
 import { type AlgBook, type ImportResult, importAlgBook } from "./store";
 

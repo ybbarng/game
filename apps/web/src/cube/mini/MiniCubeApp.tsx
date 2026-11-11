@@ -9,7 +9,7 @@ import {
   solvedCube,
 } from "@game/cube-engine";
 import type { ScrambleEvent } from "@game/cube-scramble";
-import { realClock } from "@game/fair-play";
+import { realClock } from "@game/fair-play/clock";
 import type { PuzzleState } from "@game/puzzle-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

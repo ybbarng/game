@@ -1,6 +1,6 @@
 "use client";
 
-import { type Clock, realClock } from "@game/fair-play";
+import { type Clock, realClock } from "@game/fair-play/clock";
 import {
   useCallback,
   useEffect,
