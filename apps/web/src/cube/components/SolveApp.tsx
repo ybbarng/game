@@ -75,10 +75,17 @@ import {
 } from "../records";
 import { solveSteps } from "../replay-player";
 import { type RivalOutcome, rivalOutcome, rivalSeed } from "../rival";
+import {
+  resolveScrambleShow,
+  ScrambleShow,
+  type ScrambleShowKind,
+  showScramble,
+} from "../scramble-show";
 import { useCubeSettings } from "../settings";
 import { type SessionCue, SolveSession } from "../solve-session";
 import { type MyTier, myTier } from "../tiers/rank";
 import { TierLink } from "../tiers/TierTable";
+import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
 import type { CubeView } from "../view";
 import {
@@ -276,6 +283,17 @@ export function SolveApp({
 
   const bump = useCallback(() => setVersion((v) => v + 1), []);
   const sync = useCallback(() => setSyncToken((v) => v + 1), []);
+  // 섞기 연출(docs/47 3-1): 장면만 움직이고, 세션은 연출이 끝나거나 첫 키가 들어올 때 시간을 연다
+  const reduced = useReducedMotion();
+  const show = useMemo(() => new ScrambleShow(realClock, bump), [bump]);
+  // 크기·방식을 바꾸면(세션이 새로 생긴다) 돌던 연출을 버린다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 크기·방식이 바뀔 때도 정리한다
+  useEffect(() => () => show.drop(), [show, n, mode]);
+  /** 다음 다시 칠하기(`syncToken`) 뒤에 시작할 연출. 장면이 섞인 상태로 칠해진 다음 맞춘 큐브부터 다시 돌린다 */
+  const pendingShow = useRef<{
+    kind: ScrambleShowKind;
+    scramble: string;
+  } | null>(null);
 
   // 크기·방식마다 세션 하나. 효과 정리에서 치우고, 개발 모드처럼 효과가 다시 돌면 새로 만든다
   const session = useRenewable(() => {
@@ -411,6 +429,8 @@ export function SolveApp({
   const doScramble = useCallback(async () => {
     if (preparing) return;
     stopReplay();
+    // 연출 중 다시 섞기: 돌던 연출은 섞인 모양으로 멈추고 새 섞기를 기다린다
+    show.cancel();
     setPreparing(true);
     setNotice(null);
     const id = ++scrambleRequest.current;
@@ -456,7 +476,14 @@ export function SolveApp({
         setToday(date);
         setAttempt({ kind: begun.kind, date, startedAt: now });
       }
-      session.start(s.text, seed, limit);
+      const showKind = resolveScrambleShow(
+        settingsRef.current.scrambleShow,
+        n,
+        reduced,
+      );
+      session.start(s.text, seed, limit, { hold: showKind !== "instant" });
+      pendingShow.current =
+        showKind === "instant" ? null : { kind: showKind, scramble: s.text };
       sync();
       if (!s.official) setNotice(TEMP_SCRAMBLE);
       setRivalStart(null);
@@ -504,7 +531,25 @@ export function SolveApp({
     clearMet,
     rivalOn,
     rivalPick,
+    show,
+    reduced,
   ]);
+
+  // 섞은 뒤 다시 칠한 다음(아이 `CubePlay`의 효과가 먼저 돈다) 연출을 시작한다
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncToken이 바뀔 때만 본다
+  useEffect(() => {
+    const p = pendingShow.current;
+    pendingShow.current = null;
+    if (!p || session.scramble !== p.scramble || !session.held) return;
+    showScramble(show, {
+      kind: p.kind,
+      n,
+      scramble: p.scramble,
+      scrambled: session.state,
+      getView: () => viewRef.current,
+      onDone: () => session.release(),
+    });
+  }, [syncToken]);
 
   const onMove = useCallback(
     (
@@ -512,6 +557,8 @@ export function SolveApp({
       notation: string,
       input?: SolveInput,
     ) => {
+      // 연출 중 키: 연출을 바로 끝내 섞인 모양으로 두고 그 수를 넣는다(시간은 이 수부터)
+      show.finish();
       const before = session.phase;
       const r = session.input(move, notation);
       if (r === "blocked") {
@@ -539,16 +586,18 @@ export function SolveApp({
       }
       return true;
     },
-    [session, alertOn],
+    [session, alertOn, show],
   );
 
   const onCommand = useCallback(
     (c: Command) => {
+      if (c === "undo" || c === "inspectionSkip") show.finish();
       if (c === "undo") return session.undo();
       // 오늘의 섞기 기록 시도 중에는 섞기·처음으로 키를 받지 않는다(잘못 눌러 하루 한 번을 날리지 않게)
       if ((c === "reset" || c === "scramble") && officialLiveRef.current)
         return null;
       if (c === "reset") {
+        show.drop();
         stopReplay();
         clearMet();
         setRival(null);
@@ -563,13 +612,14 @@ export function SolveApp({
       }
       return null;
     },
-    [session, sync, doScramble, stopReplay, clearMet],
+    [session, sync, doScramble, stopReplay, clearMet, show],
   );
 
   /** 기록 하나를 다시 본다: 섞인 상태에서 수를 그때 시각대로 */
   const replay = (r: SolveRecord) => {
     const view = viewRef.current;
     if (!view || r.n !== n) return;
+    show.drop();
     stopReplay();
     session.reset();
     const scrambled = applyMoves(n, solvedCube(n), parseMoves(n, r.scramble));
@@ -735,6 +785,7 @@ export function SolveApp({
         className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4"
         data-cube-phase={phase}
         data-cube-version={version}
+        data-scramble-show={show.running ? "on" : undefined}
       >
         <header className="flex flex-wrap items-center gap-3">
           <a

@@ -1,5 +1,5 @@
 import { installClock, no3d, pauseClock, shot, useNotationKeys } from "./cube";
-import { expect, type Page, test } from "./test";
+import { expect, fastForwardUntil, type Page, test } from "./test";
 
 /**
  * 큐브 혼자 맞추기(/cube/solo)·블라인드(/cube/blind, docs/47). 섞고, 키로 섞기의 거꾸로를 쳐서 맞추면 결과 상자가 뜬다.
@@ -12,8 +12,9 @@ import { expect, type Page, test } from "./test";
 const SCRAMBLE_TIMEOUT = 60_000;
 
 test.beforeEach(async ({ page }, info) => {
-  // 거울 숨기기 단추는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다
-  if (!info.title.includes("거울 숨기기")) await no3d(page);
+  // 거울 숨기기 단추는 3D 장면(거울 판)이 있을 때만 보여 그 시험만 3D를 켠다. 섞기 연출도 장면에서 보인다
+  if (!info.title.includes("거울 숨기기") && !info.title.includes("섞기 연출"))
+    await no3d(page);
   await useNotationKeys(page);
 });
 
@@ -356,5 +357,81 @@ test(
     await page.getByRole("button", { name: "사용자", exact: true }).click();
     await expect(page.locator("[data-keymap-editor]")).toBeVisible();
     await shot(page, "settings", info.project.name);
+  },
+);
+
+test(
+  "섞기 연출: 섞기 수를 하나씩 빠르게 돌린 뒤 살펴보기를 재고, 연출 중 키는 바로 끝내 그 수부터. 6×6은 짧은 연출",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await installClock(page);
+    await page.goto("/cube/solo");
+    const main = page.locator("main[data-cube-phase]");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      { timeout: 30_000 },
+    );
+    await pauseClock(page);
+    const clock = page.locator("[data-cube-clock]");
+    const showing = async () =>
+      (await main.getAttribute("data-scramble-show")) === "on";
+
+    await page.locator("[data-cube-scramble-button]").click();
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await expect(main).toHaveAttribute("data-cube-phase", "inspect");
+    const atStart = await clock.textContent();
+    await page.clock.fastForward(400);
+    await shot(page, "solo-scramble-moves", info.project.name);
+    // 연출 동안 살펴보기 시계는 서 있다
+    await expect(clock).toHaveText(atStart ?? "");
+    await fastForwardUntil(page, async () => !(await showing()), {
+      step: 100,
+    });
+    await shot(page, "solo-scramble-moves-done", info.project.name);
+    // 살펴보기는 연출이 끝난 때부터: 7.5초 뒤는 아직 8초 전 색, 1초 더 가면 8초 넘은 색
+    await page.clock.fastForward(7_500);
+    await expect(clock).toHaveClass(/text-sky-300/);
+    await page.clock.fastForward(1_000);
+    await expect(clock).toHaveClass(/text-amber-300/);
+
+    // 연출 중 키(Enter로 다시 섞은 뒤): 바로 끝내고 그 수가 첫 수
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    const text =
+      (await page
+        .locator("[data-cube-scramble]")
+        .getAttribute("data-cube-scramble")) ?? "";
+    await page.keyboard.press(inverseKeys(text)[0] as string);
+    await expect(main).not.toHaveAttribute("data-scramble-show", /on/);
+    await expect(main).toHaveAttribute("data-cube-phase", "solving");
+    await expect(page.locator("[data-cube-moves]")).toHaveText("1");
+
+    // 6×6: 크기와 상관없이 0.5초 짧은 연출
+    await page.locator("[data-cube-size]").selectOption("6");
+    await expect(page.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-ready",
+      "",
+      { timeout: 30_000 },
+    );
+    await page.locator("[data-cube-scramble-button]").click();
+    await expect(main).toHaveAttribute("data-scramble-show", "on", {
+      timeout: SCRAMBLE_TIMEOUT,
+    });
+    await page.clock.fastForward(200);
+    await shot(page, "solo-scramble-spin", info.project.name);
+    await page.clock.fastForward(200);
+    expect(await showing()).toBe(true);
+    await fastForwardUntil(page, async () => !(await showing()), {
+      step: 100,
+    });
   },
 );
