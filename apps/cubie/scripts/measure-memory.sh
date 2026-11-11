@@ -8,6 +8,7 @@
 #   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
 #   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
+#         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
 #
 # 결과: 상태마다 Cubie·WebContent(개수)·GPU·Networking·합계(MB, footprint의 phys_footprint, 1초 간격 세 번 평균).
@@ -22,6 +23,7 @@ SIDE=96
 LABEL="measure"
 OUT=""
 IDLE=60
+WEB=""
 INJECT=""
 DETAIL=0
 PORT=4393
@@ -33,6 +35,7 @@ while [ $# -gt 0 ]; do
     --label) LABEL="$2"; shift 2 ;;
     --out) OUT="$2"; shift 2 ;;
     --quick) IDLE=10; shift ;;
+    --web) WEB="$(cd "$2" && pwd)"; shift 2 ;;
     --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
@@ -61,11 +64,12 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [ -z "$URL" ]; then
-  [ -f "$ROOT/apps/web/out/cube/mini.html" ] || { echo "apps/web/out이 없다: pnpm --filter @game/web build 먼저" >&2; exit 1; }
+  WEB="${WEB:-$ROOT/apps/web/out}"
+  [ -f "$WEB/cube/mini.html" ] || { echo "apps/web/out이 없다: pnpm --filter @game/web build 먼저" >&2; exit 1; }
   if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
     echo "포트 $PORT를 이미 누가 쓴다" >&2; exit 1
   fi
-  "$ROOT/apps/web/node_modules/.bin/serve" "$ROOT/apps/web/out" -l "$PORT" -n >"$TMP/serve.log" 2>&1 &
+  "$ROOT/apps/web/node_modules/.bin/serve" "$WEB" -l "$PORT" -n >"$TMP/serve.log" 2>&1 &
   SERVER_PID=$!
   URL="http://localhost:$PORT/cube/mini"
   for _ in $(seq 1 50); do
