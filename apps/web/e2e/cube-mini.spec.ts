@@ -792,6 +792,92 @@ test(
   },
 );
 
+/** 앱의 큐브 옆 단축키 표 크기(`apps/cubie/Sources/Cubie/Config.swift` `keysPanelSize`와 같아야 한다) */
+const KEYS_PANEL = { width: 560, height: 300 };
+
+test(
+  "큐브 옆 단축키 표(F1): 앱 패널 크기에 스크롤 없이 들어가고, 앱이 넘긴 키를 잠깐 빛내며 큐브 크기를 따른다",
+  { tag: "@only-desktop" },
+  async ({ page }, info) => {
+    // 앱 창은 데스크톱에서
+    await page.setViewportSize(KEYS_PANEL);
+    await page.goto("/cube/mini?view=keys&panel=1&n=4");
+    const panel = page.locator("[data-mini-keys-panel='4']");
+    await expect(panel).toContainText("Enter");
+    await expect(panel).toContainText("섞기");
+    await expect(panel).toContainText("\\");
+    await expect(panel).toContainText("힌트");
+    await expect(panel).toContainText("F1, Esc");
+    // 패널은 키도 마우스도 받지 않으니 넘치면 볼 수 없다
+    const fits = await page.evaluate(() => {
+      const d = document.documentElement;
+      const last = document.querySelector("[data-mini-keys-panel] > p");
+      return {
+        scroll:
+          d.scrollHeight <= window.innerHeight &&
+          d.scrollWidth <= window.innerWidth,
+        bottom:
+          (last?.getBoundingClientRect().bottom ?? Infinity) <=
+          window.innerHeight,
+      };
+    });
+    expect(fits).toEqual({ scroll: true, bottom: true });
+    // Cubie가 쓰지 않는 동작(Esc 처음으로·Space 살펴보기)은 표에 없다
+    await expect(panel).not.toContainText("처음으로");
+    await expect(panel).not.toContainText("살펴보기");
+    await shot(page, "mini-keys-panel", info.project.name);
+
+    // 큐브 창에서 누른 키(앱이 `pressed`로 넘긴다)는 그 칸이 잠깐 빛나고 사라진다
+    await fromApp(page, { type: "pressed", code: "KeyI" });
+    const key = page.locator("[data-mini-keys-panel] [data-key='KeyI']");
+    await expect(key).toHaveAttribute("data-key-state", "pressed");
+    await expect(key).not.toHaveAttribute("data-key-state");
+    // 큐브 크기가 바뀌면 그 크기의 키
+    await fromApp(page, { type: "size", n: 3 });
+    await expect(page.locator("[data-mini-keys-panel='3']")).toBeVisible();
+  },
+);
+
+test("앱 안: 단축키 표가 떠 있는 동안만 누른 키를 앱에 알리고, 그 키로 큐브는 그대로 돈다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  // 키보드 조작은 데스크톱만
+  await fakeApp(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-input-ready", "", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+  await fromApp(page, { type: "focus", focused: true });
+  const pressed = () =>
+    page.evaluate(() =>
+      (
+        window as unknown as { __toApp: { type: string; code?: string }[] }
+      ).__toApp
+        .filter((m) => m.type === "pressed")
+        .map((m) => m.code),
+    );
+  await page.keyboard.press("Enter");
+  await expect(main).toHaveAttribute("data-mini-phase", "ready", {
+    timeout: SCRAMBLE_TIMEOUT,
+  });
+
+  // 표가 없으면 보내지 않는다(시험의 배치는 「표기」: R 키가 R, U 키가 U)
+  await page.keyboard.press("KeyR");
+  await expect(main).toHaveAttribute("data-mini-moves", "1");
+  expect(await pressed()).toEqual([]);
+  // 표가 떠 있으면 누른 키를 보내고, 큐브도 돈다
+  await fromApp(page, { type: "keysPanel", open: true });
+  await page.keyboard.press("KeyU");
+  await expect(main).toHaveAttribute("data-mini-moves", "2");
+  await expect.poll(pressed).toEqual(["KeyU"]);
+  // 닫으면 다시 보내지 않는다
+  await fromApp(page, { type: "keysPanel", open: false });
+  await page.keyboard.press("KeyR");
+  await expect(main).toHaveAttribute("data-mini-moves", "3");
+  expect(await pressed()).toEqual(["KeyU"]);
+});
+
 /** 앱이 받은 마지막 `profile` 메시지 */
 async function lastProfile(page: Page) {
   return page.evaluate(() => {
@@ -1038,7 +1124,7 @@ test(
     await fromApp(page, { type: "focus", focused: true });
 
     // 섞기 전에는 볼 것이 없다
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute("data-mini-hint-msg", /섞은 뒤/);
     await page.clock.fastForward(2000);
     await expect(main).not.toHaveAttribute("data-mini-hint-msg");
@@ -1062,7 +1148,7 @@ test(
         : [...undo, ...setup];
 
     // 1번째: 섞인 큐브에는 십자 수(창이 넉넉해 창 안에 단계·공식·키캡)
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute("data-mini-hint", /\S/);
     await expect(main).toHaveAttribute("data-mini-hint-where", "inline");
     await expect(card).toHaveAttribute("data-mini-hint-card", "full");
@@ -1072,7 +1158,7 @@ test(
     // 5초 뒤 사라진다
     await page.clock.fastForward(5000);
     await expect(main).toHaveAttribute("data-mini-hint", "");
-    // 20초 안에는 다시 못 본다(남은 초). `\`도 힌트 키
+    // 20초 안에는 다시 못 본다(남은 초)
     await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute(
       "data-mini-hint-msg",
@@ -1082,7 +1168,7 @@ test(
 
     // 2번째: 공식을 보다가 수를 두면 바로 사라진다
     const keys = notationKeys(toCase);
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute("data-mini-hint", /\S/);
     await page.keyboard.press(keys[0] as string);
     await expect(main).toHaveAttribute("data-mini-hint", "");
@@ -1092,7 +1178,7 @@ test(
 
     // 3번째: 가로줄 상황의 공식과 쥐는 법(흰 면이 위라 돌리기부터)
     await page.clock.fastForward(20_000);
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute("data-mini-hint", "F R U R' U' F'");
     await expect(main).toHaveAttribute("data-mini-hint-before", /^[xz]/);
     await expect(card).toContainText("OLL 1단계(노란 십자)");
@@ -1101,7 +1187,7 @@ test(
     await shot(page, "mini-hint-oll", info.project.name);
     // 한 판에 세 번까지
     await page.clock.fastForward(20_000);
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute(
       "data-mini-hint-msg",
       "이번 판 3번 다 봤어요",
@@ -1170,7 +1256,7 @@ test(
 
     // 0.1.3 앱: 말풍선으로 줄을 보내고, 수를 두면 숨기기(null)
     await fromApp(page, { type: "caps", hintBubble: true });
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect(main).toHaveAttribute("data-mini-hint-where", "bubble");
     await expect(page.locator("[data-mini-hint-card]")).toHaveCount(0);
     await expect
@@ -1189,7 +1275,7 @@ test(
     await expect(main).toHaveAttribute("data-mini-phase", "ready", {
       timeout: SCRAMBLE_TIMEOUT,
     });
-    await page.keyboard.press("F1");
+    await page.keyboard.press("Backslash");
     await expect
       .poll(async () => (await lastHint())?.lines?.[0]?.text)
       .toBe("이 크기는 힌트 없음");

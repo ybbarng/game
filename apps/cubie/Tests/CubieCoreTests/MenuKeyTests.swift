@@ -29,4 +29,10 @@ struct MenuKeyTests {
   @Test func F1은_AppKit_기능_키_글자() {
     #expect(MenuKey.f1 == "\u{F704}")
   }
+
+  @Test func 단축키_보기는_F1_힌트는_웹_힌트_키와_같은_역슬래시() {
+    #expect(MenuKey.shortcuts == MenuKey(key: MenuKey.f1))
+    // 웹 `HINT_KEYS`("Backslash")를 메뉴 글자로 바꾼 것과 같다
+    #expect(MenuKey.hint == MenuKey.fromWeb(code: "Backslash"))
+  }
 }

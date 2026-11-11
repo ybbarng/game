@@ -37,6 +37,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
   var onHit: (([NSRect]) -> Void)?
   /// 「공식 보기」 말풍선 줄들(웹 `BubbleLine`). nil이면 숨기기
   var onHint: (([[String: Any]]?) -> Void)?
+  /// 단축키 표가 떠 있는 동안 큐브 창에서 누른 키(`KeyboardEvent.code`, 웹은 `keysPanel` 알림을 받은 동안만 보낸다)
+  var onPressed: ((String) -> Void)?
 
   nonisolated func userContentController(
     _ controller: WKUserContentController, didReceive message: WKScriptMessage
@@ -79,6 +81,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
       onHit?(rects)
     case "hint":
       onHint?(d["lines"] as? [[String: Any]])
+    case "pressed":
+      if let code = d["code"] as? String, !code.isEmpty { onPressed?(code) }
     case "idle":
       if Config.debug { print("[cubie] idle \(d["showing"] as? String ?? "none")"); fflush(stdout) }
     default:

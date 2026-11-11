@@ -147,17 +147,28 @@ function randomSeed(): number {
 const eventFor = (n: number) => `${n}${n}${n}` as ScrambleEvent;
 
 /**
- * `?view=records`면 기록만 보인다(앱이 따로 여는 기록 창, 떠 있는 창은 아주 작을 수 있어서). 아니면 큐브.
+ * `?view=records`면 기록만 보인다(앱이 따로 여는 기록 창, 떠 있는 창은 아주 작을 수 있어서). `?view=keys`는 단축키 창,
+ * `?view=keys&panel=1`은 큐브 옆 단축키 표. 아니면 큐브.
  * 주소는 붙은 뒤에 읽는다(정적 HTML은 둘 다 아니다)
  */
 export function MiniCubeApp() {
-  const [view, setView] = useState<"cube" | "records" | "keys" | null>(null);
+  const [view, setView] = useState<
+    "cube" | "records" | "keys" | "keysPanel" | null
+  >(null);
   useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("view");
-    setView(v === "records" || v === "keys" ? v : "cube");
+    const q = new URLSearchParams(window.location.search);
+    const v = q.get("view");
+    setView(
+      v === "keys" && q.get("panel") === "1"
+        ? "keysPanel"
+        : v === "records" || v === "keys"
+          ? v
+          : "cube",
+    );
   }, []);
   if (view === "records") return <RecordsPage />;
   if (view === "keys") return <KeysPage />;
+  if (view === "keysPanel") return <KeysPanelPage />;
   if (view === "cube") return <MiniCube />;
   return null;
 }
@@ -297,8 +308,8 @@ const APP_KEYS: { keys: string; what: string }[] = [
 ];
 
 /**
- * 단축키 창(앱 메뉴 「단축키 보기」): 앱 단축키 짧은 목록과, 지금 키 배치·크기의 큐브 키를 사이트 단축키 표와 같은
- * 키보드 그림으로. 섞기·되돌리기는 배치에서 읽는다
+ * 단축키 창(앱 0.1.8까지 메뉴 「단축키 보기」가 보통 창으로 연다. 0.1.9부터는 큐브 옆 `KeysPanelPage`): 앱 단축키 짧은
+ * 목록과, 지금 키 배치·크기의 큐브 키를 사이트 단축키 표와 같은 키보드 그림으로. 섞기·되돌리기는 배치에서 읽는다
  */
 function KeysPage() {
   const [n, setN] = useState(() => loadMiniPrefs().n);
@@ -376,6 +387,88 @@ function KeysPage() {
           </p>
         </div>
       )}
+    </main>
+  );
+}
+
+/** 단축키 표에서 방금 누른 키 칸이 빛나는 시간(ms) */
+export const KEYS_PANEL_PRESS_MS = 500;
+
+const isMiniSize = (v: number) => (MINI_SIZES as readonly number[]).includes(v);
+
+/**
+ * 큐브 옆 단축키 표(`?view=keys&panel=1`, 앱 0.1.9부터 F1·메뉴 「단축키 보기」, docs/47 15-25). 앱은 키 입력을 받지 않는
+ * 패널에 이 화면을 띄워, 표를 보면서 누른 키가 그대로 큐브로 간다. 큐브 창에서 누른 키는 앱이 `pressed`로 넘겨 그 칸을
+ * 잠깐 빛낸다. 크기는 주소의 `n`(없으면 저장된 크기), 큐브 크기가 바뀌면 앱이 `size`로 알린다
+ */
+function KeysPanelPage() {
+  const [n, setN] = useState<number>(() => {
+    const q = Number(new URLSearchParams(window.location.search).get("n"));
+    return isMiniSize(q) ? q : loadMiniPrefs().n;
+  });
+  // Cubie가 쓰지 않는 동작(처음으로·살펴보기, `MiniCube`의 키 처리)은 표에서 뺀다. Esc는 앱의 「표 닫기·이전 앱으로」다
+  const [keymap] = useState<Keymap>(() => {
+    const k = loadKeymap();
+    return {
+      ...k,
+      bindings: k.bindings.filter(
+        (b) => b.action !== "reset" && b.action !== "inspectionSkip",
+      ),
+    };
+  });
+  const [pressed, setPressed] = useState<{ code: string; id: number } | null>(
+    null,
+  );
+  useEffect(
+    () =>
+      onAppMessage((msg) => {
+        if (msg.type === "size" && isMiniSize(msg.n)) setN(msg.n);
+        else if (msg.type === "pressed")
+          setPressed((p) => ({ code: msg.code, id: (p?.id ?? 0) + 1 }));
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (!pressed) return;
+    return realClock.after(KEYS_PANEL_PRESS_MS, () => setPressed(null));
+  }, [pressed]);
+  const chord = (action: "scramble" | "undo") =>
+    chordsFor(keymap, action)
+      .map((c) => chordLabel(c))
+      .join(", ");
+  const rows = [
+    { keys: chord("scramble"), what: "섞기" },
+    { keys: chord("undo"), what: "되돌리기" },
+    { keys: HINT_KEY_LABEL, what: "힌트" },
+    { keys: "F1, Esc", what: "닫기" },
+  ].filter((r) => r.keys);
+  return (
+    <main
+      data-mini-keys-panel={n}
+      data-pressed={pressed?.code}
+      className="flex h-dvh flex-col gap-1.5 overflow-hidden bg-neutral-950 px-3 py-2 text-white text-xs"
+    >
+      <ul className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        {rows.map((r) => (
+          <li key={r.what}>
+            <span className="font-semibold">{r.keys}</span>{" "}
+            <span className="text-white/60">{r.what}</span>
+          </li>
+        ))}
+        <li className="ml-auto text-white/50">
+          {n}×{n} · 배치 「{PRESET_LABEL[keymap.preset]}」
+        </li>
+      </ul>
+      <KeyboardMap
+        keymap={keymap}
+        n={n}
+        layer="all"
+        pressed={pressed?.code ?? null}
+      />
+      <p className="break-keep text-white/50">
+        칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
+        Alt와 함께 칠 때예요.
+      </p>
     </main>
   );
 }
@@ -1075,12 +1168,12 @@ function MiniCube() {
     };
   }, []);
 
-  // 힌트 키(F1, `\`). 사용자 배치가 `\`에 동작을 놓았으면 그 배치를 따른다. F1은 브라우저 도움말을 막는다
+  // 힌트 키(`\`). 사용자 배치가 `\`에 동작을 놓았으면 그 배치를 따른다
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(HINT_KEYS as readonly string[]).includes(e.code)) return;
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      if (e.code !== "F1" && keymap && resolveAction(keymap, e)) return;
+      if (keymap && resolveAction(keymap, e)) return;
       e.preventDefault();
       if (recordsOpenRef.current) return;
       void requestHintRef.current();
@@ -1118,6 +1211,17 @@ function MiniCube() {
     },
     [n],
   );
+
+  // 앱의 단축키 표(F1)가 떠 있는 동안 누른 키를 앱에 알린다. 앱이 표에 넘겨 그 칸을 잠깐 빛낸다
+  const keysPanelRef = useRef(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!keysPanelRef.current || e.repeat || !e.code) return;
+      toApp({ type: "pressed", code: e.code });
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   // 앱이 보낸 것(앱이 없어도 같은 이벤트를 받는다: 화면 시험이 앱 흉내를 낸다)
   const live = useRef({ prefs, n, recordsOpen, openRecords, practiceMode });
@@ -1172,6 +1276,9 @@ function MiniCube() {
                 msg.stage,
                 msg.mode ?? practiceRef.current?.mode ?? c.practiceMode,
               );
+            break;
+          case "keysPanel":
+            keysPanelRef.current = msg.open;
             break;
         }
       }),

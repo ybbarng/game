@@ -222,4 +222,42 @@ struct WindowPlacementTests {
     #expect(external.contains(c))
     #expect(c.maxX == there.minX - 8)
   }
+
+  // MARK: 단축키 표(docs/47 15-25)
+
+  let keysPanel = CGSize(width: 560, height: 300)
+
+  @Test func 단축키_표는_창_위에_두고_오른쪽_끝을_맞춘다() {
+    // 기본 자리(오른쪽 아래): 창 바로 위, 오른쪽 끝을 창에 맞춘다
+    let cube = WindowPlacement.defaultFrame(visible: visible, size: size, margin: 16)
+    let k = WindowPlacement.keysFrame(cube: cube, panel: keysPanel, visible: visible)
+    #expect(k.minY == cube.maxY + 8)
+    #expect(k.maxX == cube.maxX)
+    #expect(visible.contains(k))
+    // 창과도, 창 옆 말풍선과도 겹치지 않는다(키를 누르며 큐브와 공식을 함께 본다)
+    #expect(!k.intersects(cube))
+    let b = WindowPlacement.bubbleFrame(cube: cube, bubble: bubble, visible: visible)
+    #expect(!k.intersects(b))
+  }
+
+  @Test func 단축키_표는_위에_자리가_없으면_아래에_왼쪽_창이면_왼쪽_끝을_맞춘다() {
+    // 화면 왼쪽 위 창: 아래에, 왼쪽 끝을 맞춘다
+    let topLeft = CGRect(x: visible.minX + 16, y: visible.maxY - 16 - 96, width: 96, height: 96)
+    let k = WindowPlacement.keysFrame(cube: topLeft, panel: keysPanel, visible: visible)
+    #expect(k.maxY == topLeft.minY - 8)
+    #expect(k.minX == topLeft.minX)
+    #expect(!k.intersects(topLeft))
+  }
+
+  @Test func 단축키_표는_위아래_모두_모자라면_옆에_두고_화면_안으로_당긴다() {
+    // 화면 높이에 가까운 큰 창(위아래 자리가 없다): 말풍선처럼 옆에
+    let tall = CGRect(x: visible.maxX - 16 - 480, y: visible.minY + 100, width: 480, height: visible.height - 200)
+    let k = WindowPlacement.keysFrame(cube: tall, panel: keysPanel, visible: visible)
+    #expect(k.maxX == tall.minX - 8)
+    #expect(visible.contains(k))
+    // 화면 오른쪽 끝에 걸친 창: 오른쪽 끝을 맞추면 밖으로 나가므로 당긴다
+    let edge = CGRect(x: visible.maxX - 40, y: visible.minY + 16, width: 96, height: 96)
+    let e = WindowPlacement.keysFrame(cube: edge, panel: keysPanel, visible: visible)
+    #expect(e.maxX == visible.maxX)
+  }
 }
