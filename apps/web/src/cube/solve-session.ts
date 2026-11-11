@@ -26,6 +26,7 @@ import {
   pushCombo,
 } from "./flow/combo";
 import {
+  formatReplay,
   formatSplits,
   type SolveMode,
   type SolveRecord,
@@ -612,9 +613,7 @@ export class SolveSession {
       ...(r.memoMs === undefined ? {} : { memoMs: r.memoMs }),
       ...(this.splits.length > 0 ? { splits: formatSplits(this.splits) } : {}),
       ...(this.longestCombo >= COMBO_SHOW ? { combo: this.longestCombo } : {}),
-      replay: this.history
-        .map((e) => `${e.notation}@${Math.round(e.t)}`)
-        .join(" "),
+      replay: formatReplay(this.history),
     };
     this.opts.onRecord?.(record);
   }
