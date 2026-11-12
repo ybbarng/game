@@ -42,7 +42,7 @@ const TIERS = [
   "grandmaster",
   "challenger",
 ];
-const STYLES = ["now", "a", "b", "c", "d", "e", "f", "g"];
+const STYLES = ["now", "a", "b", "c", "d", "e", "f", "g", "h", "i"];
 const BGS = ["dark", "light"];
 const JOBS = [
   ...TIERS.flatMap((tier) =>

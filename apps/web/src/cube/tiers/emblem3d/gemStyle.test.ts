@@ -193,7 +193,13 @@ describe("시안 값", () => {
     // 축: f는 꿰뚫어 보는 몫을 줄여 정면은 맑고 되튄 가장자리만 짙게, g만 조각 사이 틈을 없앤다
     expect(GEM_STYLE_LOOK.f.cubeFill).toBeLessThan(GEM_STYLE_LOOK.e.cubeFill);
     expect(GEM_STYLE_LOOK.f.left[0]).toBeLessThan(GEM_STYLE_LOOK.e.left[0]);
-    expect(GEM_STYLES.filter((s) => GEM_STYLE_LOOK[s].fused)).toEqual(["g"]);
+    expect(GEM_STYLES.filter((s) => GEM_STYLE_LOOK[s].fused)).toEqual([
+      "g",
+      "h",
+    ]);
+    // 큐브 전체 빛길은 h(한 덩이)·i(격자)만
+    expect(GEM_STYLE_LOOK.h.trace).toBe("whole");
+    expect(GEM_STYLE_LOOK.i.trace).toBe("grid");
   });
 
   it("c는 가장 진한 몸(조각 한 변을 지난 초록이 가장 적게 남는다), d만 내포물", () => {

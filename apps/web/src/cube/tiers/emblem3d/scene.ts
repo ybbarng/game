@@ -12,6 +12,7 @@ import {
 } from "../emblemArt";
 import { wingPlates } from "../TierEmblem";
 import { TIER_IDS, type TierId } from "../table";
+import { FUSED_CUBIE } from "./cubeTrace";
 import type { GemPhysics, GemShape } from "./gem";
 import {
   type GemSee,
@@ -52,8 +53,6 @@ export function isGem(tier: DraftTier): boolean {
 const SIN60 = Math.sqrt(3) / 2;
 /** 큐브 조각 간격과 크기(조각 사이 틈 = 1 - CUBIE) */
 const CUBIE = 0.92;
-/** 붙은 유리 큐브(시안 g)의 조각 한 변: 틈 0.01만 남긴다 */
-const FUSED_CUBIE = 0.99;
 /** 조각 베벨 폭(두 단). 큐브 조각처럼 아주 작게 */
 const CUBIE_BEVEL = 0.05;
 /** 큐브 한 변 3을 몸통 대각선으로 볼 때 실루엣 육각형 반지름 */
@@ -695,6 +694,7 @@ export function buildEmblemScene(
     backGain: sl ? sl.backGain : GEM_BACK_GAIN,
     envGain: sl ? sl.envGain : GEM_GAIN,
     cubeInv: new T.Matrix4(),
+    cube: new T.Matrix4(),
   };
   const node = hasTsl(T);
   const gems: GemMat[] = [];
@@ -1023,6 +1023,7 @@ export function buildEmblemScene(
     update() {
       // 꿰뚫어 보는 빛이 큐브 전체 두께를 셀 수 있게 월드 → 큐브 좌표를 매 장 고친다
       scene.updateMatrixWorld();
+      see.cube.copy(cube.matrixWorld);
       see.cubeInv.copy(cube.matrixWorld).invert();
     },
     applyEnvironment(env) {

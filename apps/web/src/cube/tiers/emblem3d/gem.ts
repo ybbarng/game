@@ -138,6 +138,8 @@ export interface GemExit {
   weight: number;
   /** 전반사로 되튄 뒤 나갔는지 */
   afterTir: boolean;
+  /** 나가기까지 보석 안을 지난 길이 */
+  path: number;
 }
 
 /**
@@ -175,7 +177,7 @@ export function traceGem(
     const F = fresnel(dot(d, m), ior, 1);
     if (F < 1) {
       const o = refract(d, mul(m, -1), ior) ?? d;
-      exits.push({ dir: o, weight: thr * (1 - F), afterTir: tir });
+      exits.push({ dir: o, weight: thr * (1 - F), afterTir: tir, path });
     } else tir = true;
     thr *= F;
     d = reflect(d, m);

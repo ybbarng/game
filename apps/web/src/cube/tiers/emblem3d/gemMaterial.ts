@@ -1,6 +1,12 @@
 import type * as THREE_NS from "three";
 
 import {
+  CUBE_WHOLE_HALF,
+  GRID_BOUNCES,
+  GRID_GAP,
+  WHOLE_BOUNCES,
+} from "./cubeTrace";
+import {
   GEM_BOUNCES,
   GEM_BOX_HALF,
   GEM_CUBE_FILL,
@@ -82,6 +88,8 @@ export interface GemSee {
   envGain: number;
   /** 월드 → 큐브 좌표(큐브 전체 두께로 더 흡수할 때). 매 장 `EmblemScene.update`가 고친다 */
   cubeInv: THREE_NS.Matrix4;
+  /** 큐브 → 월드(큐브 전체 빛길, 시안 h·i) */
+  cube: THREE_NS.Matrix4;
 }
 
 const VERT_DECL = /* glsl */ `
@@ -252,15 +260,9 @@ float gemBoxPath( vec3 p, vec3 d ) {
 #endif
 
 // 물체 좌표의 나가는 점 p와 방향 d: 뒤로 꿰뚫어 보면 배경판, 아니면 스튜디오 빛(gem.ts throughWeight)
-vec3 gemSee( vec3 p, vec3 d ) {
-  mat3 M = mat3( vGemM0, vGemM1, vGemM2 );
-  vec3 ow = normalize( M * d );
+// 월드 좌표의 나가는 점 pw와 방향 ow(길이 1)가 보는 빛
+vec3 gemSeeW( vec3 pw, vec3 ow ) {
   vec3 env = gemEnvAt( ow ) * gemSeeK.w;
-#if GEM_SHAPE == 2
-  // 날개 조각 판은 닦은 금속 판 위에 붙어 있어 뒤가 배경이 아니라 금속(스튜디오를 비춘다)
-  return env * ${f(SLAB_ENV)};
-#endif
-  vec3 pw = M * p + vGemM3;
   vec3 view = normalize( pw - cameraPosition );
   float w = smoothstep( ${f(through[0])}, ${f(through[1])}, dot( ow, view ) );
   if ( w <= 0.0 || ow.z > - 1e-3 ) return env;
@@ -274,6 +276,79 @@ vec3 gemSee( vec3 p, vec3 d ) {
 #endif
   return mix( env, back, w );
 }
+
+vec3 gemSee( vec3 p, vec3 d ) {
+  mat3 M = mat3( vGemM0, vGemM1, vGemM2 );
+  vec3 ow = normalize( M * d );
+#if GEM_SHAPE == 2
+  // 날개 조각 판은 닦은 금속 판 위에 붙어 있어 뒤가 배경이 아니라 금속(스튜디오를 비춘다)
+  return gemEnvAt( ow ) * gemSeeK.w * ${f(SLAB_ENV)};
+#endif
+  return gemSeeW( M * p + vGemM3, ow );
+}
+
+#ifdef GEM_TRACE
+// 큐브 전체 빛길(cubeTrace.ts traceCube와 같은 계산). 1: 큐브 전체를 유리 상자 하나로(시안 h), 2: 조각 격자를 틈 너머
+// 이웃 조각까지(시안 i). 큐브 좌표(조각 간격 1)로 따라가고 큐브 바깥으로 나갈 때만 배경·방을 읽는다
+uniform mat4 gemCube;
+vec3 gemSeeCube( vec3 p, vec3 d ) {
+  return gemSeeW( ( gemCube * vec4( p, 1.0 ) ).xyz, normalize( mat3( gemCube ) * d ) );
+}
+vec3 gemTraceCube( float ior ) {
+  mat3 M = mat3( vGemM0, vGemM1, vGemM2 );
+  vec3 p = ( gemCubeInv * vec4( M * vGemPos + vGemM3, 1.0 ) ).xyz;
+  vec3 eye = ( gemCubeInv * vec4( cameraPosition, 1.0 ) ).xyz;
+  vec3 v = normalize( p - eye );
+  vec3 n0 = mat3( gemCubeInv ) * ( M * vGemNrm );
+  vec3 a = abs( n0 );
+  vec3 n = a.x >= a.y && a.x >= a.z ? vec3( sign( n0.x ), 0.0, 0.0 ) : a.y >= a.z ? vec3( 0.0, sign( n0.y ), 0.0 ) : vec3( 0.0, 0.0, sign( n0.z ) );
+#if GEM_TRACE == 1
+  vec3 cell = vec3( 0.0 );
+  const float H = ${f(CUBE_WHOLE_HALF)};
+  const int N = ${WHOLE_BOUNCES};
+#else
+  vec3 cell = floor( ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz + 0.5 );
+  const float H = ${f(GEM_BOX_HALF)};
+  const int N = ${GRID_BOUNCES};
+#endif
+  float cosI = clamp( dot( - v, n ), 0.0, 1.0 );
+  vec3 d = refract( v, n, 1.0 / ior );
+  p -= n * 1e-4;
+  vec3 thr = vec3( 1.0 - gemFresnel( cosI, 1.0, ior ) );
+  vec3 acc = vec3( 0.0 );
+  for ( int i = 0; i < N; i ++ ) {
+    vec3 s = sign( d );
+    vec3 t3 = ( vec3( H ) - ( p - cell ) * s ) / max( abs( d ), vec3( 1e-5 ) );
+    float t; vec3 m;
+    if ( t3.x < t3.y && t3.x < t3.z ) { t = t3.x; m = vec3( s.x, 0.0, 0.0 ); }
+    else if ( t3.y < t3.z ) { t = t3.y; m = vec3( 0.0, s.y, 0.0 ); }
+    else { t = t3.z; m = vec3( 0.0, 0.0, s.z ); }
+    t = max( t, 0.0 );
+    p += d * t;
+    thr *= exp( - gemAbsorb * t );
+    float F = gemFresnel( dot( d, m ), ior, 1.0 );
+#if GEM_TRACE == 2
+    vec3 nx = cell + m;
+    if ( max( max( abs( nx.x ), abs( nx.y ) ), abs( nx.z ) ) < 1.5 ) {
+      if ( F < 1.0 ) {
+        // 틈을 지나 이웃 조각으로(평행한 두 면이라 방향은 그대로)
+        p += d * ( ${f(GRID_GAP)} / dot( d, m ) );
+        cell = nx;
+      } else {
+        d = reflect( d, m );
+        p -= m * 1e-4;
+      }
+      continue;
+    }
+#endif
+    if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSeeCube( p, refract( d, - m, ior ) );
+    thr *= F;
+    d = reflect( d, m );
+    p -= m * 1e-4;
+  }
+  return acc + thr * gemSeeCube( p, d );
+}
+#endif
 
 vec3 gemTrace( float ior ) {
   vec3 n = normalize( vGemNrm );
@@ -316,7 +391,9 @@ vec3 gemTrace( float ior ) {
 }
 
 vec3 gemLight() {
-#ifdef GEM_DISPERSE
+#ifdef GEM_TRACE
+  return gemTraceCube( gemIor.g );
+#elif defined( GEM_DISPERSE )
   return vec3( gemTrace( gemIor.r ).r, gemTrace( gemIor.g ).g, gemTrace( gemIor.b ).b );
 #else
   return gemTrace( gemIor.g );
@@ -375,6 +452,13 @@ export function gemMaterialGL(
     : ([THROUGH_LO, THROUGH_HI] as const);
   const wideThrough = through[0] !== THROUGH_LO || through[1] !== THROUGH_HI;
   const jardin = !!style?.jardin && inCube;
+  // 큐브 전체 빛길(시안 h·i)은 큐브 조각에만
+  const traceId =
+    inCube && shape === "box" && style?.trace
+      ? style.trace === "whole"
+        ? 1
+        : 2
+      : 0;
   m.onBeforeCompile = (shader) => {
     shader.defines = {
       ...shader.defines,
@@ -383,6 +467,7 @@ export function gemMaterialGL(
       ...(inCube ? { GEM_IN_CUBE: "" } : {}),
       ...(facet ? { GEM_FACET: "" } : {}),
       ...(jardin ? { GEM_JARDIN: "" } : {}),
+      ...(traceId ? { GEM_TRACE: traceId } : {}),
     };
     shader.uniforms.gemIor = { value: new T.Vector3(...ior) };
     shader.uniforms.gemAbsorb = { value: new T.Vector3(...absorbOf(g, shape)) };
@@ -391,6 +476,7 @@ export function gemMaterialGL(
       value: new T.Vector4(see.backZ, see.backSize, see.backGain, see.envGain),
     };
     shader.uniforms.gemCubeInv = { value: see.cubeInv };
+    shader.uniforms.gemCube = { value: see.cube };
     shader.vertexShader =
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
@@ -409,7 +495,7 @@ export function gemMaterialGL(
       );
   };
   m.customProgramCacheKey = () =>
-    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin || wideThrough || fill !== GEM_CUBE_FILL ? styleKey : "flat"}`;
+    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin || traceId || wideThrough || fill !== GEM_CUBE_FILL ? styleKey : "flat"}`;
   return m;
 }
 

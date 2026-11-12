@@ -23,7 +23,18 @@ import type { Vec3 } from "./gem";
  * 다른 티어는 바꾸지 않는다. 시안은 WebGL 길로만 그린다(HDR 길의 TSL 셰이더는 사용자가 하나를 고른 뒤 옮긴다).
  */
 
-export const GEM_STYLES = ["now", "a", "b", "c", "d", "e", "f", "g"] as const;
+export const GEM_STYLES = [
+  "now",
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f",
+  "g",
+  "h",
+  "i",
+] as const;
 export type GemStyle = (typeof GEM_STYLES)[number];
 
 /** 미리보기 단추 이름 */
@@ -36,6 +47,8 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   e: "e 맑은 유리",
   f: "f 녹색 옆면 유리",
   g: "g 붙은 유리 큐브",
+  h: "h 한 덩이 유리",
+  i: "i 이웃까지 추적",
 };
 
 /** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
@@ -118,6 +131,11 @@ export interface GemStyleLook {
    * 없으면 넷째 시안 그대로 55°·25°(`gem.ts` `throughWeight`). 유리는 거의 모든 뒤쪽 빛이 배경을 읽게 넓힌다
    */
   through?: readonly [number, number];
+  /**
+   * 큐브 조각의 빛길(`cubeTrace.ts`): 없으면 조각 하나 안에서만(옆으로 나간 빛이 이웃 유리를 지나지 않고 방을 읽는다),
+   * `whole`은 큐브 전체를 유리 상자 하나로(h), `grid`는 조각 격자를 틈 너머 이웃까지(i)
+   */
+  trace?: "whole" | "grid";
   /** 꿰뚫어 본 뒤 배경 세기, 되튄 빛이 읽는 스튜디오 세기 */
   backGain: number;
   envGain: number;
@@ -260,6 +278,42 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     glow: 0.5,
     frontLights: 1,
     bloom: { strength: 0.3, radius: 0.1, threshold: 3.2 },
+  },
+  // ---- 일곱째 시안: 큐브 전체 빛길(2026-11-12 사용자 「내부에 사각형 공간이 따로 진하게 보이는 게 매우 어색하거든.
+  // 원래 사각형 보석들을 큐브처럼 모은다면 저렇게 보이게 돼?」). f 값 위에서 빛길만 바꾼다
+  h: {
+    // 한 덩이 유리: 큐브 전체를 유리 상자 하나로 따라가고, 조각 경계는 겉면의 가는 틈 자국(붙은 조각)뿐
+    cut: FLAT,
+    left: [0.8, 0.965, 0.84],
+    spread: 0,
+    jardin: false,
+    cubeFill: 0,
+    fused: true,
+    through: GLASS_THROUGH,
+    trace: "whole",
+    studio: "glass",
+    backGain: 1.45,
+    envGain: 1.25,
+    glow: 0.5,
+    frontLights: 0.8,
+    bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
+  },
+  i: {
+    // 이웃까지 추적: 조각 27개(틈 0.08)를 빛이 건너간다. 틈에서 전반사가 아니면 이웃 조각으로, 큐브 바깥 면에서만 나간다
+    cut: FLAT,
+    left: [0.8, 0.965, 0.84],
+    spread: 0,
+    jardin: false,
+    cubeFill: 0,
+    fused: false,
+    through: GLASS_THROUGH,
+    trace: "grid",
+    studio: "glass",
+    backGain: 1.45,
+    envGain: 1.25,
+    glow: 0.5,
+    frontLights: 0.8,
+    bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
   },
 };
 
