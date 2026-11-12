@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
 
-import type { DraftTier } from "./emblem3d/scene";
+import type { GemStyle } from "./emblem3d/gemStyle";
+import { posterSrc } from "./emblem3d/poster";
+import { type DraftTier, styleFor } from "./emblem3d/scene";
+import { FRONT, type Spin } from "./emblem3d/spin";
 import type { EmblemStage } from "./emblem3d/stage";
 import { canDraw3d, type DrawPath, pathOverride } from "./emblem3d/support";
 import { TierEmblem } from "./TierEmblem";
@@ -13,9 +16,16 @@ import { TIER_LABEL } from "./table";
 
 type State = "loading" | "3d" | "svg";
 
+/** 미리보기의 「돌린 각」(좌우 0.6 라디안, 비교 그림과 같은 각) */
+export const TURNED_VIEW: Spin = { yaw: 0.6, pitch: 0 };
+
 /**
  * 3D 티어 엠블럼 시안 한 칸(docs/47 14-7). 끌면 좌우로 돌고, 놓은 각도에 남으며, 벗어나 있으면 「처음 각도로」 단추가
- * 뜬다. three.js는 이 칸이 뜰 때 늦게 받는다. 3D를 못 그리면 지금 SVG 엠블럼을 보인다(받는 동안에도 SVG).
+ * 뜬다. three.js는 이 칸이 뜰 때 늦게 받는다.
+ *
+ * 3D가 뜨기 전에는 3D 장면을 미리 찍은 대기 그림(`emblem3d/poster.ts`)을 같은 자리·같은 크기로 덮어 두고, 3D 첫 장이
+ * 화면에 나간 뒤에 걷는다(고정 규칙 2-1절). 3D를 못 그리면 대기 그림을 그대로 둔다. 찍어 둔 그림이 없을 때만 SVG
+ * 엠블럼을 보인다.
  *
  * `data-emblem3d-path`: `hdr`(HDR 캔버스) · `bloom`(SDR 번짐) · `plain`(금속) · `svg`(3D 없음) · `loading`.
  */
@@ -24,17 +34,36 @@ export function Emblem3D({
   size,
   className,
   pageColor,
+  gemStyle = null,
+  view = "front",
+  auto = false,
 }: {
   tier: DraftTier;
   size: number;
   className?: string;
   /** 바탕색(배경판 가장자리가 녹아든다). 기본은 미리보기 바탕(neutral-900) */
   pageColor?: string | undefined;
+  /** 에메랄드 시안(`?gem=`) */
+  gemStyle?: GemStyle | null;
+  /** 각: 정면·돌린 각(미리보기 단추) */
+  view?: "front" | "turned";
+  /** 자동 회전(미리보기 단추) */
+  auto?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<EmblemStage | null>(null);
   const [state, setState] = useState<State>("loading");
   const [path, setPath] = useState<DrawPath | null>(null);
+  const [shown, setShown] = useState(false);
+  const [posterBroken, setPosterBroken] = useState(false);
+  const style = styleFor(tier, gemStyle);
+  const poster = posterSrc(tier, size, pageColor, style);
+  const appliedView = useRef<"front" | "turned">("front");
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 대기 그림 주소가 바뀌면 다시 불러 본다
+  useEffect(() => {
+    setPosterBroken(false);
+  }, [poster]);
 
   useEffect(() => {
     const el = box.current;
@@ -43,10 +72,12 @@ export function Emblem3D({
       setState("svg");
       return;
     }
-    // 티어·바탕을 바꾸면 새 무대가 셰이더를 짓는 동안 「불러오는 중」(SVG 엠블럼)으로 둔다. 앞 무대의 「처음
-    // 각도로」 단추·길 표시가 남지 않게 한다
+    // 티어·바탕·시안을 바꾸면 새 무대가 셰이더를 짓는 동안 대기 그림으로 둔다. 앞 무대의 「처음 각도로」 단추·길
+    // 표시가 남지 않게 한다. 새 무대는 정면에서 시작한다(대기 그림이 정면이다)
     setState("loading");
     setPath(null);
+    setShown(false);
+    appliedView.current = "front";
     let live = true;
     let made: EmblemStage | null = null;
     let force: DrawPath | null = null;
@@ -55,11 +86,27 @@ export function Emblem3D({
     } catch {
       force = null;
     }
-    import("./emblem3d/stage")
-      .then(({ EmblemStage }) =>
-        EmblemStage.create(el, { tier, size, force, pageColor }),
-      )
+    // 무대마다 제 칸을 따로 둔다: 앞 무대가 늦게 지어져도 새 무대의 캔버스를 건드리지 않고, 정리할 때 칸째 지운다
+    // (티어·시안을 빨리 바꾸면 늦게 끝난 앞 무대가 새 무대 캔버스를 지우거나 제 캔버스를 남겼다)
+    const host = document.createElement("div");
+    host.className = "absolute inset-0";
+    host.dataset.emblem3dStage = "";
+    el.append(host);
+    // 화면 시험이 대기 그림을 재는 동안 3D를 붙잡아 둔다(`window.__emblem3dHold`, 제품에서는 없다)
+    const hold = (window as { __emblem3dHold?: Promise<void> }).__emblem3dHold;
+    Promise.all([import("./emblem3d/stage"), hold])
+      .then(([{ EmblemStage }]) => {
+        if (!live) return null;
+        return EmblemStage.create(host, {
+          tier,
+          size,
+          force,
+          pageColor,
+          gemStyle,
+        });
+      })
       .then((s) => {
+        if (!s) return;
         made = s;
         if (!live) {
           s.dispose();
@@ -68,23 +115,42 @@ export function Emblem3D({
         stage.current = s;
         setPath(s.path);
         setState("3d");
+        s.firstFrame.then(() => {
+          if (live) setShown(true);
+        });
       })
       .catch(() => {
-        for (const c of el.querySelectorAll("canvas")) c.remove();
+        host.remove();
         if (live) setState("svg");
       });
     return () => {
       live = false;
       made?.dispose();
       stage.current = null;
-      for (const c of el.querySelectorAll("canvas")) c.remove();
+      host.remove();
     };
-  }, [tier, size, pageColor]);
+  }, [tier, size, pageColor, gemStyle]);
+
+  // 각·자동 회전 단추(무대가 뜬 뒤, 바뀐 것만)
+  useEffect(() => {
+    const s = stage.current;
+    if (!s || state !== "3d" || appliedView.current === view) return;
+    appliedView.current = view;
+    s.setView(view === "turned" ? TURNED_VIEW : FRONT);
+  }, [view, state]);
+  useEffect(() => {
+    if (state === "3d") stage.current?.setAuto(auto);
+  }, [auto, state]);
+
+  const covered = !(state === "3d" && shown);
+  const usePoster = poster !== null && !posterBroken;
 
   return (
     <div
       data-emblem3d={tier}
       data-emblem3d-path={state === "3d" ? (path ?? "loading") : state}
+      data-emblem3d-shown={state === "3d" && shown ? "" : undefined}
+      data-emblem3d-style={style ?? undefined}
       role="img"
       aria-label={`${TIER_LABEL[tier]} 엠블럼 3D 시안`}
       className={cn(
@@ -94,8 +160,23 @@ export function Emblem3D({
       style={{ width: size, height: size, background: pageColor }}
     >
       {/* 캔버스는 무대가 이 칸에 직접 넣는다(React가 자식을 다루지 않는 칸) */}
-      <div ref={box} data-emblem3d-stage className="absolute inset-0" />
-      {state !== "3d" && (
+      <div ref={box} className="absolute inset-0" />
+      {covered && usePoster && (
+        // 3D 장면을 미리 찍은 대기 그림: 캔버스와 같은 자리·같은 크기(캔버스 위에 덮어 두었다가 첫 장 뒤에 걷는다)
+        // biome-ignore lint/performance/noImgElement: 미리 찍은 그림을 캔버스와 같은 화소 크기로 그대로 보인다
+        <img
+          data-emblem3d-poster
+          src={poster}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          onError={() => setPosterBroken(true)}
+          className="absolute inset-0 block rounded-2xl"
+          style={{ width: size, height: size }}
+        />
+      )}
+      {covered && !usePoster && (
         <TierEmblem tier={tier} size={Math.round(size * 0.72)} />
       )}
       <ViewHome viewRef={stage} ready={state === "3d"} />
@@ -108,7 +189,13 @@ export function Emblem3D({
  * 정면 한 장을 크기별로, 각도를 조금씩 바꾼 여섯 장을 늘어놓고, 그 여섯 장을 차례로 돌리는 칸 하나(메뉴가 열린 동안
  * 반짝임을 돌리는 모습)를 둔다. 동작 줄이기면 돌리지 않는다.
  */
-export function EmblemShots({ tier }: { tier: DraftTier }) {
+export function EmblemShots({
+  tier,
+  gemStyle = null,
+}: {
+  tier: DraftTier;
+  gemStyle?: GemStyle | null;
+}) {
   const [front, setFront] = useState<string | null>(null);
   const [frames, setFrames] = useState<string[]>([]);
   const [failed, setFailed] = useState(false);
@@ -124,8 +211,8 @@ export function EmblemShots({ tier }: { tier: DraftTier }) {
       .then(async ({ captureShots, SPARKLE_YAWS }) => {
         // 두 배 화면용: 64px로 보일 그림은 128px로 찍는다. 렌더러 하나로 함께 찍는다(맥락마다 셰이더를 다시 짓는다)
         const [[f] = [], list = []] = await captureShots([
-          { tier, px: 128, yaws: [0] },
-          { tier, px: 96, yaws: SPARKLE_YAWS },
+          { tier, px: 128, yaws: [0], gemStyle },
+          { tier, px: 96, yaws: SPARKLE_YAWS, gemStyle },
         ]);
         if (!live) return;
         setFront(f ?? null);
@@ -137,7 +224,7 @@ export function EmblemShots({ tier }: { tier: DraftTier }) {
     return () => {
       live = false;
     };
-  }, [tier]);
+  }, [tier, gemStyle]);
 
   useEffect(() => {
     if (frames.length < 2) return;
@@ -229,10 +316,12 @@ export function EmblemGrid({
   tiers,
   selected,
   onSelect,
+  gemStyle = null,
 }: {
   tiers: readonly DraftTier[];
   selected: DraftTier;
   onSelect: (t: DraftTier) => void;
+  gemStyle?: GemStyle | null;
 }) {
   const [shots, setShots] = useState<string[] | null>(null);
   const hover = useRef<number | null>(null);
@@ -242,7 +331,9 @@ export function EmblemGrid({
     let live = true;
     import("./emblem3d/stage")
       .then(({ captureShots }) =>
-        captureShots(tiers.map((tier) => ({ tier, px: 192, yaws: [0.18] }))),
+        captureShots(
+          tiers.map((tier) => ({ tier, px: 192, yaws: [0.18], gemStyle })),
+        ),
       )
       .then((all) => {
         if (live) setShots(all.map((u) => u[0] ?? ""));
@@ -253,7 +344,7 @@ export function EmblemGrid({
     return () => {
       live = false;
     };
-  }, [tiers]);
+  }, [tiers, gemStyle]);
 
   useEffect(
     () => () => {
@@ -299,7 +390,10 @@ export function EmblemGrid({
               className="block"
             />
           ) : (
-            <TierEmblem tier={t} size={64} />
+            // 찍은 그림과 같은 88px 칸: 그림이 와도 격자 높이가 바뀌어 아래 3D 칸이 밀리지 않게
+            <span className="flex size-[88px] items-center justify-center">
+              <TierEmblem tier={t} size={64} />
+            </span>
           )}
           <span className="text-white/80 text-xs">{TIER_LABEL[t]}</span>
         </button>

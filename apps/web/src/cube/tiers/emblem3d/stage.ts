@@ -7,6 +7,8 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 
 import { levelOf } from "../emblemArt";
+import type { GemStyle } from "./gemStyle";
+import { POSTER_PAGE } from "./poster";
 import { MotionQuality, REST_MS } from "./quality";
 import {
   buildEmblemScene,
@@ -14,6 +16,7 @@ import {
   type EmblemScene,
   isGem,
   LOOK,
+  styleFor,
   type Three,
 } from "./scene";
 import {
@@ -42,7 +45,7 @@ let learnedLevel = 0;
  */
 
 /** 미리보기 바탕(neutral-900)과 같은 색: 배경판 가장자리가 페이지에 녹아든다 */
-export const PAGE_COLOR = "#171717";
+export const PAGE_COLOR = POSTER_PAGE.dark;
 
 /**
  * 번짐 값(SDR 보석): 세기, 반지름, 밝기 문턱(톤 매핑 전 선형 값). 반짝이는 점에만 작게 걸리게 문턱을 높이고 반지름을
@@ -71,6 +74,7 @@ async function webglPainter(
   px: number,
   bloom: boolean,
   pageColor: string,
+  gemStyle: GemStyle | null,
 ): Promise<Painter> {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -87,6 +91,7 @@ async function webglPainter(
     backdrop: true,
     pageColor,
     hdr: false,
+    gemStyle,
   });
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio, 0.02).texture;
@@ -106,9 +111,9 @@ async function webglPainter(
     composer.addPass(
       new UnrealBloomPass(
         new THREE.Vector2(px, px),
-        BLOOM.strength,
-        BLOOM.radius,
-        BLOOM.threshold,
+        built.bloom.strength,
+        built.bloom.radius,
+        built.bloom.threshold,
       ),
     );
     composer.addPass(new OutputPass());
@@ -267,7 +272,12 @@ export interface StageOptions {
   force?: DrawPath | null;
   /** 페이지 바탕색(배경판 가장자리가 녹아든다). 기본 `PAGE_COLOR` */
   pageColor?: string | undefined;
+  /** 에메랄드 시안(`?gem=`). 고르면 시안끼리 같은 길로 견주도록 WebGL 길로 그린다 */
+  gemStyle?: GemStyle | null | undefined;
 }
+
+/** 자동 회전 빠르기(라디안/ms, 8초에 한 바퀴) */
+export const AUTO_SPIN = (Math.PI * 2) / 8000;
 
 export class EmblemStage implements ViewTurnTarget {
   readonly path: DrawPath;
@@ -296,6 +306,15 @@ export class EmblemStage implements ViewTurnTarget {
   private timing = false;
   private scale = 1;
   private readonly quality = new MotionQuality(learnedLevel);
+  private auto = false;
+  private shown: (() => void) | null = null;
+  /**
+   * 첫 장이 화면에 나가면 풀린다. 그때까지 대기 그림(미리 찍은 3D 그림)을 캔버스 위에 덮어 둬서, 빈 캔버스가 한 장도
+   * 보이지 않게 한다(docs/47 14-7 「다섯째 시안」)
+   */
+  readonly firstFrame = new Promise<void>((resolve) => {
+    this.shown = resolve;
+  });
 
   private constructor(
     private readonly host: HTMLElement,
@@ -346,8 +365,9 @@ export class EmblemStage implements ViewTurnTarget {
     };
     const page = opt.pageColor ?? PAGE_COLOR;
     const gem = isGem(opt.tier);
+    const style = styleFor(opt.tier, opt.gemStyle);
     let painter: Painter | null = null;
-    if (gem && opt.force !== "bloom") {
+    if (gem && opt.force !== "bloom" && !style) {
       const want = opt.force === "hdr" || (await canHdrCanvas());
       if (want) {
         try {
@@ -357,7 +377,7 @@ export class EmblemStage implements ViewTurnTarget {
         }
       }
     }
-    painter ??= await webglPainter(fresh(), opt.tier, px, gem, page);
+    painter ??= await webglPainter(fresh(), opt.tier, px, gem, page, style);
     return new EmblemStage(host, painter, opt.size);
   }
 
@@ -370,7 +390,30 @@ export class EmblemStage implements ViewTurnTarget {
 
   /** 움직이는 중인지(끄는 중, 미끄러지는 중, 처음 각도로 돌아가는 중) */
   get moving(): boolean {
-    return this.drag !== null || this.speed !== 0 || this.homing !== null;
+    return (
+      this.drag !== null ||
+      this.speed !== 0 ||
+      this.homing !== null ||
+      this.auto
+    );
+  }
+
+  /** 각을 바로 정한다(미리보기의 「정면」·「돌린 각」 단추, 찍기) */
+  setView(s: Spin): void {
+    this.speed = 0;
+    this.homing = null;
+    this.spin = { ...s };
+    this.noteView();
+    this.invalidate();
+  }
+
+  /** 자동 회전(미리보기). 도는 동안은 돌릴 때처럼 해상도 조절을 쓴다 */
+  setAuto(on: boolean): void {
+    if (this.auto === on) return;
+    this.auto = on;
+    this.last = performance.now();
+    this.apply();
+    this.invalidate();
   }
 
   onViewTurn(fn: (turned: boolean) => void): () => void {
@@ -486,6 +529,10 @@ export class EmblemStage implements ViewTurnTarget {
       this.spin = { ...this.spin, yaw: next.yaw };
       this.speed = next.speed;
       if (next.speed === 0) this.noteView();
+    } else if (this.auto && !this.drag) {
+      stepped = true;
+      this.spin = { ...this.spin, yaw: this.spin.yaw + AUTO_SPIN * dt };
+      this.noteView();
     }
     // 움직이는 동안은 낮춘 해상도, 멈춘 장과 끄는 손이 멈췄을 때는 제 해상도
     const moving = this.moving;
@@ -508,6 +555,12 @@ export class EmblemStage implements ViewTurnTarget {
       this.painter.draw();
       this.frames += 1;
       this.dirty = false;
+      if (this.shown) {
+        // 그린 장은 다음 화면 갱신에 나간다. 그 뒤에 대기 그림을 걷는다
+        const done = this.shown;
+        this.shown = null;
+        requestAnimationFrame(() => done());
+      }
       // 돌리는 동안 그린 장이 GPU에서 끝나기까지 걸린 시간을 잰다(한 번에 하나, 배율을 바꾼 장은 빼고)
       if (moving && !resting && !rescaled && !this.timing) {
         this.timing = true;
@@ -524,7 +577,8 @@ export class EmblemStage implements ViewTurnTarget {
       }
     }
     this.apply();
-    if (this.homing || this.speed !== 0 || this.drag) this.schedule();
+    if (this.homing || this.speed !== 0 || this.drag || this.auto)
+      this.schedule();
   };
 
   /**
@@ -561,6 +615,8 @@ export interface ShotJob {
   tier: DraftTier;
   px: number;
   yaws: readonly number[];
+  /** 에메랄드 시안(에메랄드에만 쓴다) */
+  gemStyle?: GemStyle | null | undefined;
 }
 
 /**
@@ -597,6 +653,7 @@ export async function captureShots(
         pageColor: PAGE_COLOR,
         hdr: false,
         backGlow: 0.5,
+        gemStyle: job.gemStyle,
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
       built.camera.position.z *= 39 / 43;

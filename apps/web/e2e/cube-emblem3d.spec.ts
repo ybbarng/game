@@ -129,7 +129,60 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
   await draftShot(page, "gold");
 });
 
-test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나온다", {
+test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 전에는 미리 찍은 그림이 덮고, 바뀔 때 1px도 움직이지 않는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(120_000);
+  // 3D를 붙잡아 두었다가 대기 그림을 잰 뒤 놓는다
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __emblem3dHold: Promise<void>;
+      __emblem3dRelease: () => void;
+    };
+    w.__emblem3dHold = new Promise<void>((r) => {
+      w.__emblem3dRelease = r;
+    });
+  });
+  for (const [url, tier, size] of [
+    ["/cube/tiers/emblems", "diamond", 300],
+    ["/cube/tiers/emblems?gem=b&emblemBg=light", "emerald", 440],
+  ] as const) {
+    await page.goto(url);
+    const box = page.locator(`[data-emblem3d="${tier}"]`);
+    const poster = box.locator("[data-emblem3d-poster]");
+    await expect(poster).toBeVisible();
+    await expect(box).toHaveAttribute("data-emblem3d-path", "loading");
+    // 다른 모양 그림(SVG 엠블럼)은 보이지 않는다
+    await expect(box.locator("[data-cube-emblem]")).toHaveCount(0);
+    // 찍은 그림은 칸과 같은 크기를 두 배 화소로 찍었다
+    await expect
+      .poll(() =>
+        poster.evaluate((img: HTMLImageElement) =>
+          img.complete ? img.naturalWidth : 0,
+        ),
+      )
+      .toBe(size * 2);
+    const before = await poster.boundingBox();
+    await page.evaluate(() =>
+      (
+        window as unknown as { __emblem3dRelease: () => void }
+      ).__emblem3dRelease(),
+    );
+    await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+      timeout: 60_000,
+    });
+    await expect(poster).toHaveCount(0);
+    const after = await box
+      .locator("[data-emblem3d-stage] canvas")
+      .boundingBox();
+    expect(before).not.toBeNull();
+    expect(after).toEqual(before);
+    expect(before?.width).toBe(size);
+    await draftShot(page, `poster-${tier}`);
+  }
+});
+
+test("3D를 그릴 수 없으면 3D 시안 자리에 미리 찍은 그림이 그대로 남는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   await page.addInitScript(() => {
@@ -150,7 +203,8 @@ test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나
       await page.locator(`[data-emblem3d-pick="${t}"]`).click();
     const e = page.locator(`[data-emblem3d="${t}"]`);
     await expect(e).toHaveAttribute("data-emblem3d-path", "svg");
-    await expect(e.locator(`[data-cube-emblem="${t}"]`)).toBeVisible();
+    await expect(e.locator("[data-emblem3d-poster]")).toBeVisible();
+    await expect(e.locator(`[data-cube-emblem="${t}"]`)).toHaveCount(0);
     await expect(e.locator("canvas")).toHaveCount(0);
   }
 });

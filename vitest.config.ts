@@ -38,6 +38,8 @@ export default defineConfig({
       "**/.node-version",
       "**/.github/workflows/ci.yml",
       "**/apps/web/public/stats/**",
+      // 3D 엠블럼 대기 그림(emblem3d/poster.test.ts가 파일로 읽는다)
+      "**/apps/web/public/cube/tiers/emblem3d/**",
       "**/apps/web/scripts/build-hashes.mjs",
     ],
     coverage: {

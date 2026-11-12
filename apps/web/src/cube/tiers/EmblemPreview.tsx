@@ -5,6 +5,13 @@ import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { HDR_GLOW_SRC } from "@/stardraw/hdr-glow";
 import { Emblem3D, EmblemGrid, EmblemShots } from "./Emblem3D";
+import {
+  GEM_STYLE_LABEL,
+  GEM_STYLES,
+  type GemStyle,
+  gemStyleOf,
+} from "./emblem3d/gemStyle";
+import { BIG_SIZE, DRAFT_SIZE, POSTER_PAGE } from "./emblem3d/poster";
 import { DRAFT_TIERS, type DraftTier } from "./emblem3d/scene";
 import { HDR_CHECK_WHITE_SRC, hdrFacetSrc } from "./emblemArt";
 import { type MyTier, tierOf } from "./rank";
@@ -14,8 +21,6 @@ import { DIVISIONS, TIER_IDS, TIER_LABEL, TIER_TABLE } from "./table";
 import "@/cube/tiers/emblem.css";
 
 const SIZES = [64, 32, 24, 16] as const;
-/** 3D 시안을 밝은 바탕에서 볼 때 바탕(neutral-100) */
-const LIGHT_PAGE = "#f5f5f5";
 
 /** 3×3 표의 티어마다 구간 II 상한(구간이 없으면 그 티어 상한)을 Ao5로 본 내 티어 */
 const LINK_SAMPLES: MyTier[] = (TIER_TABLE[3] ?? []).flatMap((row) => {
@@ -117,57 +122,145 @@ export function EmblemPreview() {
  * 3D 엠블럼 시안(docs/47 14-7): 열 티어를 찍은 그림 격자로 보이고, 고른 하나만 큰 칸에서 살아 있는 3D로 끌어 돌려 본다
  * (기본 다이아몬드). 아래는 고른 티어의 찍은 그림(작은 크기·각도 여섯 장).
  */
+/** 주소 쿼리 하나를 바꾼다(다시 불러도 같은 시안·바탕·티어로 열리게). 값이 null이면 뺀다 */
+function setParam(key: string, value: string | null): void {
+  try {
+    const u = new URL(window.location.href);
+    if (value === null) u.searchParams.delete(key);
+    else u.searchParams.set(key, value);
+    window.history.replaceState(window.history.state, "", u);
+  } catch {
+    // 주소를 못 바꾸면 화면만 바꾼다
+  }
+}
+
+/** 단추 한 줄 */
+function Choice<V extends string | boolean>({
+  items,
+  value,
+  onPick,
+  data,
+}: {
+  items: readonly (readonly [V, string])[];
+  value: V;
+  onPick: (v: V) => void;
+  data: string;
+}) {
+  return (
+    <div className="flex flex-wrap justify-center gap-2 text-xs">
+      {items.map(([v, label]) => (
+        <button
+          key={label}
+          type="button"
+          {...{ [data]: String(v) }}
+          aria-pressed={value === v}
+          onClick={() => onPick(v)}
+          className={cn(
+            "rounded-lg px-2 py-1 ring-1 ring-white/20",
+            value === v ? "bg-white/15" : "hover:bg-white/5",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Draft3d() {
   const [tier, setTier] = useState<DraftTier>("diamond");
   // 보석이 뒤를 비추는지 견주어 보는 바탕(`?emblemBg=light`로 밝게 시작)
   const [light, setLight] = useState(false);
+  // 에메랄드 시안(`?gem=a|b|c|d|now`). 고르면 에메랄드를 크게 본다
+  const [gem, setGem] = useState<GemStyle | null>(null);
+  const [view, setView] = useState<"front" | "turned">("front");
+  const [auto, setAuto] = useState(false);
   useEffect(() => {
     try {
-      setLight(
-        new URLSearchParams(window.location.search).get("emblemBg") === "light",
-      );
+      const q = new URLSearchParams(window.location.search);
+      setLight(q.get("emblemBg") === "light");
+      const g = gemStyleOf(window.location.search);
+      setGem(g);
+      const t = DRAFT_TIERS.find((x) => x === q.get("tier"));
+      if (g) setTier("emerald");
+      else if (t) setTier(t);
+      setAuto(q.get("auto") === "1");
     } catch {
       setLight(false);
     }
   }, []);
+  // 무대를 새로 지으면 정면에서 시작한다(대기 그림이 정면이다)
+  const rebuild = () => setView("front");
+  const pickTier = (t: DraftTier) => {
+    if (t !== tier) rebuild();
+    setTier(t);
+  };
+  const style = tier === "emerald" ? gem : null;
+  const size = style ? BIG_SIZE : DRAFT_SIZE;
   return (
     <section data-emblem3d-draft className="flex flex-col gap-3">
       <h2 className="font-semibold text-sm">3D 시안</h2>
-      <EmblemGrid tiers={DRAFT_TIERS} selected={tier} onSelect={setTier} />
-      <div className="flex justify-center gap-2 text-xs">
-        {(
-          [
-            [false, "어두운 바탕"],
-            [true, "밝은 바탕"],
-          ] as const
-        ).map(([on, label]) => (
-          <button
-            key={label}
-            type="button"
-            data-emblem3d-bg={on ? "light" : "dark"}
-            aria-pressed={light === on}
-            onClick={() => setLight(on)}
-            className={cn(
-              "rounded-lg px-2 py-1 ring-1 ring-white/20",
-              light === on ? "bg-white/15" : "hover:bg-white/5",
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <EmblemGrid tiers={DRAFT_TIERS} selected={tier} onSelect={pickTier} />
+      <Choice
+        data="data-emblem3d-gem"
+        items={GEM_STYLES.map((s) => [s, GEM_STYLE_LABEL[s]] as const)}
+        value={style ?? ("" as GemStyle)}
+        onPick={(s) => {
+          rebuild();
+          setGem(s);
+          setTier("emerald");
+          setParam("gem", s);
+        }}
+      />
+      <Choice
+        data="data-emblem3d-bg"
+        items={[
+          [false, "어두운 바탕"],
+          [true, "밝은 바탕"],
+        ]}
+        value={light}
+        onPick={(on) => {
+          rebuild();
+          setLight(on);
+          setParam("emblemBg", on ? "light" : null);
+        }}
+      />
+      <div className="flex flex-wrap justify-center gap-2">
+        <Choice
+          data="data-emblem3d-view"
+          items={[
+            ["front", "정면"],
+            ["turned", "돌린 각"],
+          ]}
+          value={view}
+          onPick={(v) => {
+            setAuto(false);
+            setView(v);
+          }}
+        />
+        <Choice
+          data="data-emblem3d-auto"
+          items={[[true, "자동 회전"]]}
+          value={auto}
+          onPick={() => setAuto(!auto)}
+        />
       </div>
       <figure className="flex flex-col items-center gap-1">
         <Emblem3D
           tier={tier}
-          size={300}
-          pageColor={light ? LIGHT_PAGE : undefined}
+          size={size}
+          pageColor={light ? POSTER_PAGE.light : undefined}
+          gemStyle={style}
+          view={view}
+          auto={auto}
         />
         <figcaption className={cn("font-semibold text-sm", TIER_TONE[tier])}>
           {TIER_LABEL[tier]}
+          {style ? ` · ${GEM_STYLE_LABEL[style]}` : ""}
         </figcaption>
       </figure>
       <h3 className="font-semibold text-white/80 text-xs">찍은 그림</h3>
-      <EmblemShots key={tier} tier={tier} />
+      <EmblemShots key={`${tier}-${style}`} tier={tier} gemStyle={style} />
     </section>
   );
 }
