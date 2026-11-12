@@ -60,8 +60,13 @@ final class SettingsPageView: FlippedView {
   private let showLabel = NUI.label(SettingsSheet.scrambleShow, size: 14, mono: false)
   private var showChips: [Chip] = []
   private let showNote = NUI.paragraph(SettingsSheet.scrambleShowNote, color: NUI.white(0.5), lineHeight: 16)
+  private let hiddenLabel = NUI.label(SettingsSheet.hidden, size: 14, mono: false)
+  private var hiddenChips: [Chip] = []
   private let stickerless = NSButton(checkboxWithTitle: SettingsSheet.stickerless, target: nil, action: nil)
   private let sound = NSButton(checkboxWithTitle: SettingsSheet.sound, target: nil, action: nil)
+  private let keyColors = NSButton(checkboxWithTitle: SettingsSheet.keyColors, target: nil, action: nil)
+  /// 체크 칸(사이트 차례)
+  private var checks: [NSButton] { [stickerless, sound, keyColors] }
   private let all = Chip(SettingsSheet.allSettings, look: Chip.Look(fill: NUI.white(0.1), size: 14, padX: 12, padY: 4))
 
   private var settingsText: String? { store.string(CubeSettings.key) }
@@ -109,14 +114,23 @@ final class SettingsPageView: FlippedView {
       }
       showChips.append(c)
     }
-    for b in [stickerless, sound] {
+    for (id, label) in SettingsSheet.hiddenChoices {
+      let c = Chip(label)
+      c.action = { [weak self] in
+        self?.write(settings: SettingsSheet.updated(self?.settingsText) { $0["hidden"] = id })
+      }
+      hiddenChips.append(c)
+    }
+    for b in checks {
       b.target = self
       b.action = #selector(toggled(_:))
       b.font = NUI.font(14, mono: false)
     }
     all.action = { [weak self] in self?.openWeb?() }
     var views: [NSView] = [back, title, keymapTitle, keysMap, keysLearn, customBox, colorsTitle, customChip, preview]
-    views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, showNote, stickerless, sound, all])
+    views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, showNote, hiddenLabel, all])
+    views.append(contentsOf: checks as [NSView])
+    views.append(contentsOf: hiddenChips as [NSView])
     views.append(contentsOf: presetChips as [NSView])
     views.append(contentsOf: schemeChips as [NSView])
     views.append(contentsOf: wells as [NSView])
@@ -165,6 +179,12 @@ final class SettingsPageView: FlippedView {
     }
     stickerless.state = s.stickerless ? .on : .off
     sound.state = s.sound ? .on : .off
+    keyColors.state = s.keyColors ? .on : .off
+    for (i, (id, _)) in SettingsSheet.hiddenChoices.enumerated() {
+      let on = (id == "gray") == s.hiddenGray
+      hiddenChips[i].look = Self.chipLook(on)
+      hiddenChips[i].pressed = on
+    }
     needsLayout = true
   }
 
@@ -198,7 +218,7 @@ final class SettingsPageView: FlippedView {
   }
 
   @objc private func toggled(_ b: NSButton) {
-    let key = b === stickerless ? "stickerless" : "sound"
+    let key = b === stickerless ? "stickerless" : b === sound ? "sound" : "keyColors"
     write(settings: SettingsSheet.updated(settingsText) { $0[key] = b.state == .on })
   }
 
@@ -269,7 +289,10 @@ final class SettingsPageView: FlippedView {
     let nh = NUI.height(showNote, width: w)
     showNote.frame = NSRect(x: x0, y: y, width: w, height: nh)
     y += nh + 12
-    for b in [stickerless, sound] {
+    hiddenLabel.frame = NSRect(x: x0, y: y + 4, width: NUI.width(hiddenLabel), height: 20)
+    row(hiddenChips, x: hiddenLabel.frame.maxX + 8, y: y)
+    y += 28 + 12
+    for b in checks {
       b.frame = NSRect(x: x0, y: y, width: w, height: 20)
       y += 20 + 12
     }

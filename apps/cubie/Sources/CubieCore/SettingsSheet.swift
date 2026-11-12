@@ -1,8 +1,9 @@
 import Foundation
 
 /// 설정 창의 글과 저장 글 고치기(사이트 `apps/web/src/cube/components/CubeSettingsApp.tsx`, `settings.ts`, `input/storage.ts`).
-/// 네이티브 설정 창(`NativeSettingsWindow`)은 사이트 설정 가운데 Cubie가 쓰는 것만 같은 글·차례로 보인다: 키 배치(두 손·표기·사용자),
-/// 색, 회전 속도, 섞기 연출, 스티커 없는 모양, 큐브 소리. 사용자 배치 편집과 Cubie가 쓰지 않는 설정(그리기 품질·첫 화면 큐브 등)은
+/// 네이티브 설정 창(`NativeSettingsWindow`)은 사이트 설정 가운데 Cubie 큐브 창·F1 표가 읽는 칸(`CubeSettings.parse`)만 같은 글·차례로
+/// 보인다: 키 배치(두 손·표기·사용자), 색, 회전 속도, 섞기 연출, 가린 스티커, 스티커 없는 모양, 큐브 소리, 키 그림에 면 색.
+/// 「뒷면 보기」는 Cubie가 읽지 않는다(Cubie 거울은 메뉴 「거울」, `cube.mini.v1`의 `mirror`). 사용자 배치 편집과 Cubie가 쓰지 않는 설정(그리기 품질·첫 화면 큐브 등)은
 /// 「모든 설정…」이 여는 사이트 창이 맡는다. 저장 글은 사이트와 같은 키·같은 JSON이고 모르는 칸은 그대로 둔다
 public enum SettingsSheet {
   // MARK: 글(사이트와 같다)
@@ -26,8 +27,13 @@ public enum SettingsSheet {
     ("auto", "크기에 맞게"), ("instant", "바로"), ("moves", "하나씩 빠르게"), ("spin", "짧은 연출"),
   ]
   public static let scrambleShowNote = "크기에 맞게는 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출이에요."
+  /// 공식 연습 가리기의 가린 칸 색(사이트 `hidden`, 큐브 창 `CubeSettings.hiddenColor`)
+  public static let hidden = "가린 스티커"
+  public static let hiddenChoices: [(id: String, label: String)] = [("black", "검정"), ("gray", "회색")]
   public static let stickerless = "스티커 없는 모양"
   public static let sound = "큐브 소리"
+  /// F1 단축키 표 칸에 면 색(사이트 `keyColors`)
+  public static let keyColors = "키 그림에 면 색"
   /// 앱에만 있는 단추: 사용자 배치 편집·나머지 설정은 사이트 설정 창에서
   public static let editCustom = "사용자 배치 편집…"
   public static let allSettings = "모든 설정…"

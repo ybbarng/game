@@ -31,6 +31,14 @@ struct SettingsSheetTests {
     }
     let p = CubeSettings.parse(s)
     #expect(p.moveMs == 150 && p.scrambleShow == .spin && p.stickerless && !p.sound)
+    // 가린 스티커(공식 연습 가리기 칸 색)·키 그림에 면 색(F1 표)
+    let gray = SettingsSheet.updated(s) {
+      $0["hidden"] = SettingsSheet.hiddenChoices[1].id
+      $0["keyColors"] = false
+    }
+    let g = CubeSettings.parse(gray)
+    #expect(g.hiddenGray && g.hiddenColor == 0x6b6b6b && !g.keyColors)
+    #expect(CubeSettings.parse(SettingsSheet.updated(gray) { $0["hidden"] = "black" }).hiddenColor == 0x111111)
   }
 
   @Test func keymapPresetAndCustom() {
