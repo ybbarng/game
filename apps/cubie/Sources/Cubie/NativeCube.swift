@@ -309,7 +309,7 @@ final class CACubeView: NSView {
       panel.bounds = CGRect(x: 0, y: 0, width: plate, height: plate)
       panel.position = .zero
       panel.transform = Self.ca(m)
-      panel.cornerRadius = 0.1 * plate
+      panel.cornerRadius = CubeGeometry.mirrorPlateRadius * cell * u
       panel.borderWidth = 1
       panel.borderColor = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.26)
       let glass = CAGradientLayer()
@@ -342,7 +342,7 @@ final class CACubeView: NSView {
         for axis in 0..<3 where abs(pos[axis]) == mm {
           var normal = [0, 0, 0]
           normal[axis] = pos[axis] > 0 ? 1 : -1
-          let s = stickerLayer(size: 0.86 * u, radius: 0.16 * u)
+          let s = stickerLayer(size: CubeGeometry.mirrorSticker * u, radius: 0.16 * u)
           s.contents = nil
           s.position = .zero
           s.isDoubleSided = false

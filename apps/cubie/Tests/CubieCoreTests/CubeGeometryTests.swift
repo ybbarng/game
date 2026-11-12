@@ -75,6 +75,19 @@ struct CubeGeometryTests {
     }
   }
 
+  /// 사이트 `mirror.test.ts` 「판 테두리는 큐브처럼 얇다」와 같은 값(2026-11-12)
+  @Test func 거울_판_테두리는_큐브처럼_얇다() {
+    let gap = 1 - G.mirrorSticker
+    let rim = gap / 2 + G.mirrorPad
+    #expect(gap > 0)
+    #expect(rim <= gap)
+    #expect(G.mirrorPlateRadius <= 0.16 + rim)
+    let c = G.panelCorners(n: 3, G.mirrorPanels(n: 3)[0])
+    let d = (0..<3).map { c[1][$0] - c[0][$0] }
+    let side = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).squareRoot()
+    #expect(abs(side / G.mirrorCell - (3 + 2 * G.mirrorPad)) < 1e-9)
+  }
+
   @Test func 거울_판은_큐브와_겹치지_않고_판까지_화면에_든다() {
     for n in 2...7 {
       let panels = G.mirrorPanels(n: n)

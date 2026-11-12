@@ -223,9 +223,15 @@ public enum CubeGeometry {
 
   // MARK: 거울 판(사이트 `mirror.ts`)
 
-  /// 판 위 칸 간격(큐브 칸 간격 1에 대해)과 테두리 여백(판 칸 단위)
+  /// 판 위 칸 간격(큐브 칸 간격 1에 대해)
   public static let mirrorCell = 0.6
-  public static let mirrorPad = 0.28
+  /// 판 위 스티커 한 변(판 칸 단위, 사이트 `MIRROR_STICKER`). 스티커 사이 틈은 1 − 이 값
+  public static let mirrorSticker = 0.86
+  /// 판 테두리 여백(판 칸 단위, 사이트 `MIRROR_PAD`). 바깥 스티커 가장자리에서 판 가장자리까지 0.07 + 이 값.
+  /// 큐브처럼 얇게(스티커 사이 틈 정도) 두어 뒤 화면을 덜 가린다(2026-11-12, 예전 0.28)
+  public static let mirrorPad = 0.04
+  /// 판 모서리 둥글기(판 칸 단위, 사이트 `MIRROR_PLATE_RADIUS`). 판 크기와 상관없이 바깥 스티커 모서리를 따라 돈다
+  public static let mirrorPlateRadius = 0.22
   /// 판을 켜고 끌 때 짙어지거나 옅어지는 시간(초)
   public static let mirrorFade = 0.3
 

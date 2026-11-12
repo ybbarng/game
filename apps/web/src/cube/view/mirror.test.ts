@@ -7,11 +7,15 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { faceGrid, stickersFromState } from "../bridge";
-import { applyMoveToStickers, solvedStickers } from "./geometry";
+import { applyMoveToStickers, solvedStickers, type Vec3 } from "./geometry";
 import {
   BACK_NORMALS,
   cellPoint,
+  MIRROR_CELL,
   MIRROR_FADE_MS,
+  MIRROR_PAD,
+  MIRROR_PLATE_RADIUS,
+  MIRROR_STICKER,
   type MirrorPanel,
   mirrorAlpha,
   mirrorCells,
@@ -76,6 +80,20 @@ describe("거울 판 배치", () => {
             ),
           ).toBeGreaterThan(0);
     });
+
+  it("판 테두리는 큐브처럼 얇다: 바깥 스티커에서 판 가장자리까지가 스티커 사이 틈보다 넓지 않고, 모서리는 판 크기와 상관없다", () => {
+    const gap = 1 - MIRROR_STICKER;
+    const rim = gap / 2 + MIRROR_PAD;
+    expect(gap).toBeGreaterThan(0);
+    expect(rim).toBeLessThanOrEqual(gap);
+    // 둥근 모서리가 바깥 스티커 모서리를 깎지 않는다(스티커 모서리 둥글기 0.12칸과 같은 중심이면 0.12 + 둘레)
+    expect(MIRROR_PLATE_RADIUS).toBeLessThanOrEqual(0.12 + rim + 1e-9);
+    // 판 한 변은 n칸 + 얇은 둘레
+    const p = mirrorPanels(3)[0] as MirrorPanel;
+    const [a, b] = panelCorners(3, p) as [Vec3, Vec3];
+    const side = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    expect(side / MIRROR_CELL).toBeCloseTo(3 + 2 * MIRROR_PAD);
+  });
 
   it("판은 그 면과 평행하고, 판의 칸 줄은 그 면의 두 세계 축(큐브 테두리 선)과 나란하다", () => {
     const axes = {
