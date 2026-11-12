@@ -102,7 +102,10 @@ try {
     ["웹 · 맞추는 중(거울)", mirror],
     ["네이티브 · 맞추는 중(거울)", native("native-mirror.png")],
     ["네이티브 · 돌리는 중", native("native-turning.png")],
-    ["네이티브 · 돌리는 중(거울도 따라 돎)", native("native-mirror-turning.png")],
+    [
+      "네이티브 · 돌리는 중(거울도 따라 돎)",
+      native("native-mirror-turning.png"),
+    ],
     ["네이티브 · 다 맞춘 축하", native("native-cheer.png")],
   ].filter(([, b]) => b);
   const cell = (desk, buf) =>
@@ -134,7 +137,11 @@ try {
   const panels = [
     ["네이티브 · 힌트 말풍선", native("native-hint.png"), "png"],
     ["네이티브 · 공식 연습 말풍선", native("native-practice.png"), "png"],
-    ["웹 · 공식 연습(README)", file(path.join(docs, "desktop-practice.webp")), "webp"],
+    [
+      "웹 · 공식 연습(README)",
+      file(path.join(docs, "desktop-practice.webp")),
+      "webp",
+    ],
     ["네이티브 · F1 단축키 표", native("native-keys.png"), "png"],
     ["웹 · F1 단축키 표(README)", file(path.join(docs, "keys.webp")), "webp"],
   ].filter(([, b]) => b);
