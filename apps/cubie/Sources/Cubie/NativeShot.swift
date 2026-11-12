@@ -155,17 +155,14 @@ enum NativeShot {
       let parsed = lines.split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
       ok = shoot2D("native-practice", HintBubble().layoutForShot(lines: parsed)) && ok
     }
-    // F1 단축키 표(두 손, 3×3, J 누름 빛남)
-    let keys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))
-    keys.n = 3
-    keys.bindings = NativeCore.string { cubie_game_key_bindings(hintView.game, 3, $0, $1) }.split(separator: "\n")
-      .compactMap { line in
-        let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-        guard f.count == 3, let m = Int(f[1]) else { return nil }
-        return NativeKeysView.Binding(code: f[0], mods: m, action: f[2])
-      }
-    keys.press("KeyJ")
-    ok = shoot2D("native-keys", keys) && ok
+    // F1 단축키 표(두 손): 3×3(J 누름 빛남)과 7×7
+    for (size, name) in [(3, "native-keys"), (7, "native-keys-7")] {
+      let keys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))
+      keys.n = size
+      keys.source = .of(game: hintView.game, n: size, preset: "twoHand")
+      if size == 3 { keys.press("KeyJ") }
+      ok = shoot2D(name, keys) && ok
+    }
     fflush(stdout)
     return ok ? 0 : 1
   }
