@@ -20,6 +20,7 @@ import {
   gemNodeEmissive,
   hasTsl,
 } from "./gemMaterial";
+import { GEM_STYLE_LOOK, type GemStyle, type GemStyleLook } from "./gemStyle";
 
 /**
  * 3D 티어 엠블럼 시안의 장면(docs/47 14-7). 지금 SVG 엠블럼(14-6)의 구도를 3D로 옮긴다: 베벨 금속 육각 고리 틀,
@@ -72,6 +73,16 @@ export interface BuildOptions {
   hdr: boolean;
   /** 뒤 조명 세기 배수(찍은 그림은 작게 보여 대비가 커야 해서 줄인다). 기본 1 */
   backGlow?: number;
+  /** 에메랄드 시안(docs/47 14-7 「다섯째 시안」). 에메랄드에만 쓰고 다른 티어는 무시한다 */
+  gemStyle?: GemStyle | null | undefined;
+}
+
+/** 이 티어·옵션에 쓸 에메랄드 시안(에메랄드가 아니거나 고르지 않았으면 null) */
+export function styleFor(
+  tier: DraftTier,
+  style: GemStyle | null | undefined,
+): GemStyle | null {
+  return tier === "emerald" && style ? style : null;
 }
 
 export interface EmblemScene {
@@ -87,6 +98,8 @@ export interface EmblemScene {
   update(): void;
   /** 구운 반사 지도를 장면에 건다(보석 빛길도 이것을 읽는다) */
   applyEnvironment(env: THREE_NS.Texture): void;
+  /** 번짐 값(시안마다 다를 수 있다) */
+  bloom: { strength: number; radius: number; threshold: number };
   dispose(): void;
 }
 
@@ -451,6 +464,7 @@ function studioScene(
   hdr: boolean,
   tint: string,
   gem: boolean,
+  kind: GemStyleLook["studio"] = "now",
 ): THREE_NS.Scene {
   const s = new T.Scene();
   const k = hdr ? 1.4 : 1;
@@ -488,7 +502,15 @@ function studioScene(
   // 등각 큐브의 세 면은 정면에서 볼 때 뒤쪽을 비춘다(윗면 → 위-뒤, 왼면 → 왼-아래-뒤, 오른면 → 오른-아래-뒤).
   // 그래서 큰 소프트박스는 뒤쪽에 두고 밝기를 윗면 > 왼면 > 오른면으로 갈라 SVG 엠블럼의 면 밝기(1·0.62·0.4)를 잇는다
   // 보석은 큰 소프트박스를 줄인다: 면 전체가 밝게 비치면 뿌옇게(얼음처럼) 보였다. 대신 가는 띠 조명으로 또렷한 대비를 낸다
-  const big = gem ? GEM_BIG_PANEL : 1;
+  // 에메랄드 시안 b(반짝임 무늬)는 큰 빛판을 거의 끄고 가는 띠를 늘린다: 깎은 면마다 띠를 비추거나 검은 방을 비춰
+  // 검고 흰 조각 무늬가 또렷해진다. c(점빛)는 큰 빛판을 조금 줄이고 점 조명을 작고 세게
+  const big = gem
+    ? kind === "contrast"
+      ? 0.1
+      : kind === "sparkle"
+        ? 0.25
+        : GEM_BIG_PANEL
+    : 1;
   panel(12, 6, 3.4 * big, [0, 9, -6]);
   panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
   panel(6, 8, 1.2 * big, [9, -4, -6], [1, 0.97, 0.93]);
@@ -498,8 +520,20 @@ function studioScene(
     panel(0.35, 9, 4, [7, -3, -8]);
     panel(6, 0.3, 5, [-2, -8, -7]);
     // 보석 사진의 뒤 라이트 박스: 보석을 곧게 지나 뒤를 보는 빛길(얇은 날개 조각, 정면 조각 가운데)이 검게 막히지 않게
-    panel(14, 14, 0.3, [0, 0, -11]);
+    panel(14, 14, kind === "contrast" ? 0.12 : 0.3, [0, 0, -11]);
   }
+  if (gem && kind === "contrast")
+    // 사방에 가는 띠 열둘(앞·옆·뒤): 면마다 띠 하나가 걸리거나 어두운 틈이 걸린다
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const zf = i % 3 === 0 ? 6 : i % 3 === 1 ? -2 : -9;
+      const along = i % 2 === 0;
+      panel(along ? 0.25 : 5, along ? 5 : 0.25, 9, [
+        Math.cos(a) * 10,
+        Math.sin(a) * 10,
+        zf,
+      ]);
+    }
   // 위 앞 소프트박스(약하게): 틀의 위로 기운 베벨
   panel(12, 3, 1.4 * big, [0, 10, 4]);
   // 양옆 띠 조명: 돌릴 때 옆면·모서리를 따라 흐르는 긴 반사(림). 왼쪽은 티어 색을 살짝
@@ -543,8 +577,10 @@ function studioScene(
       [0, -9, 4],
       [-10, 0, -3],
     );
-  for (const p of spots)
-    panel(gem ? 0.6 : 0.9, gem ? 0.6 : 0.9, gem ? 70 : 45, p);
+  const spot = !gem ? 0.9 : kind === "sparkle" ? 0.32 : 0.6;
+  // c의 점빛: 넓이는 1/3.5, 세기는 2.1배(더 세게 하면 은빛 틀 윗변이 비춰 하얗게 번졌다)
+  const spotPower = !gem ? 45 : kind === "sparkle" ? 150 : 70;
+  for (const p of spots) panel(spot, spot, spotPower, p);
   return s;
 }
 
@@ -566,7 +602,14 @@ export function buildEmblemScene(
   tier: DraftTier,
   opt: BuildOptions,
 ): EmblemScene {
-  const look = LOOK[tier];
+  const styleId = styleFor(tier, opt.gemStyle);
+  const sl = styleId ? GEM_STYLE_LOOK[styleId] : null;
+  const look: TierLook = sl
+    ? {
+        ...LOOK[tier],
+        gem: { ior: 1.577, spread: sl.spread, absorb: absorbFor(sl.left) },
+      }
+    : LOOK[tier];
   const gem = isGem(tier);
   const lv = levelOf(tier);
   const s = coreScale(tier);
@@ -610,23 +653,36 @@ export function buildEmblemScene(
     backdropCenter(look.backdrop, opt.pageColor),
     opt.pageColor,
     look.glow ?? null,
-    (look.gem && Math.max(...look.gem.absorb) < 0.05 ? GLOW_CLEAR : GLOW) *
-      (opt.backGlow ?? 1),
+    (sl
+      ? sl.glow
+      : look.gem && Math.max(...look.gem.absorb) < 0.05
+        ? GLOW_CLEAR
+        : GLOW) * (opt.backGlow ?? 1),
   );
   texs.push(bgTex);
   const see: GemSee = {
     back: bgTex,
     backZ: BACKDROP_Z,
     backSize: BACKDROP_SIZE,
-    backGain: GEM_BACK_GAIN,
-    envGain: GEM_GAIN,
+    backGain: sl ? sl.backGain : GEM_BACK_GAIN,
+    envGain: sl ? sl.envGain : GEM_GAIN,
     cubeInv: new T.Matrix4(),
   };
   const node = hasTsl(T);
   const gems: GemMat[] = [];
   const gemMat = (g: GemPhysics, shape: GemShape, inCube = false) => {
     const m = mat(
-      node ? gemMaterialNode(T, g) : gemMaterialGL(T, g, shape, see, inCube),
+      node
+        ? gemMaterialNode(T, g)
+        : gemMaterialGL(
+            T,
+            g,
+            shape,
+            see,
+            inCube,
+            sl ?? undefined,
+            styleId ?? "now",
+          ),
     );
     gems.push({ mat: m, g, shape, inCube });
     return m;
@@ -899,7 +955,12 @@ export function buildEmblemScene(
       [8, 6, 14, 140],
       [1, -7, 15, 70],
     ] as const) {
-      const l = new T.PointLight(0xffffff, p * 0.6 * (opt.hdr ? 1.6 : 1), 0, 2);
+      const l = new T.PointLight(
+        0xffffff,
+        p * 0.6 * (opt.hdr ? 1.6 : 1) * (sl?.frontLights ?? 1),
+        0,
+        2,
+      );
       l.position.set(x, y, z);
       scene.add(l);
     }
@@ -910,7 +971,7 @@ export function buildEmblemScene(
   camera.position.set(0, 0, (CAMERA_Z * u) / U_REF);
   camera.lookAt(0, 0, 0);
 
-  const studio = studioScene(T, opt.hdr, look.tint, gem);
+  const studio = studioScene(T, opt.hdr, look.tint, gem, sl?.studio);
 
   return {
     scene,
@@ -918,6 +979,7 @@ export function buildEmblemScene(
     spin,
     behind,
     studio,
+    bloom: sl ? sl.bloom : GEM_STYLE_LOOK.now.bloom,
     update() {
       // 꿰뚫어 보는 빛이 큐브 전체 두께를 셀 수 있게 월드 → 큐브 좌표를 매 장 고친다
       scene.updateMatrixWorld();

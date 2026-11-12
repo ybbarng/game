@@ -12,6 +12,7 @@ import {
   THROUGH_HI,
   THROUGH_LO,
 } from "./gem";
+import { type FacetCut, type GemStyleLook, JARDIN } from "./gemStyle";
 
 /**
  * 보석 재질(docs/47 14-7 「셋째 시안」·「넷째 시안」). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이
@@ -101,7 +102,74 @@ vGemM3 = modelMatrix[ 3 ].xyz;
 
 const f = (x: number) => x.toFixed(5);
 
-const FRAG_FUNCS = /* glsl */ `
+/**
+ * 깎은 면 법선(`gemStyle.ts` `facetNormal`과 같은 계산). 띠 값은 시안마다 달라 셰이더 글로 펼친다. 깎지 않으면 면의
+ * 축 법선을 그대로 돌려준다
+ */
+function facetGlsl(cut: FacetCut): string {
+  const rings = cut.rings
+    .map(
+      (r) =>
+        `  if ( r >= ${f(r.from)} ) { tilt = ${f((r.tilt * Math.PI) / 180)}; k = ${f(r.sectors ?? 8)}; off = ${f(r.offset ?? 0)}; }`,
+    )
+    .join("\n");
+  const dir =
+    cut.kind === 2
+      ? `  float st = 6.2831853 / k;
+  float s = floor( atan( v, u ) / st + off );
+  float c = ( s + 0.5 - off ) * st;
+  vec3 e = U * cos( c ) + V * sin( c );`
+      : `  vec3 e = abs( u ) >= abs( v ) ? U * ( u < 0.0 ? - 1.0 : 1.0 ) : V * ( v < 0.0 ? - 1.0 : 1.0 );`;
+  return /* glsl */ `
+vec3 gemFacet( vec3 p, vec3 n ) {
+  vec3 a = abs( n );
+  vec3 N; vec3 U; vec3 V;
+  if ( a.x >= a.y && a.x >= a.z ) { N = vec3( n.x < 0.0 ? - 1.0 : 1.0, 0.0, 0.0 ); U = vec3( 0.0, 1.0, 0.0 ); V = vec3( 0.0, 0.0, 1.0 ); }
+  else if ( a.y >= a.z ) { N = vec3( 0.0, n.y < 0.0 ? - 1.0 : 1.0, 0.0 ); U = vec3( 1.0, 0.0, 0.0 ); V = vec3( 0.0, 0.0, 1.0 ); }
+  else { N = vec3( 0.0, 0.0, n.z < 0.0 ? - 1.0 : 1.0 ); U = vec3( 1.0, 0.0, 0.0 ); V = vec3( 0.0, 1.0, 0.0 ); }
+  float u = dot( p, U ) / ${f(GEM_BOX_HALF)};
+  float v = dot( p, V ) / ${f(GEM_BOX_HALF)};
+  float r = max( abs( u ), abs( v ) );
+  float tilt = 0.0; float k = 8.0; float off = 0.0;
+${rings}
+  if ( tilt <= 0.0 ) return N;
+${dir}
+  return normalize( N * cos( tilt ) + e * sin( tilt ) );
+}
+`;
+}
+
+/** 내포물(결·알갱이) 노이즈(`gemStyle.ts` `jardinAt`과 같은 계산) */
+const JARDIN_GLSL = /* glsl */ `
+float gemHash( vec3 p ) {
+  p = fract( p * 0.3183099 + 0.1 ) * 17.0;
+  return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) );
+}
+float gemNoise( vec3 x ) {
+  vec3 i = floor( x );
+  vec3 w = fract( x );
+  w = w * w * ( 3.0 - 2.0 * w );
+  return mix(
+    mix( mix( gemHash( i ), gemHash( i + vec3( 1, 0, 0 ) ), w.x ), mix( gemHash( i + vec3( 0, 1, 0 ) ), gemHash( i + vec3( 1, 1, 0 ) ), w.x ), w.y ),
+    mix( mix( gemHash( i + vec3( 0, 0, 1 ) ), gemHash( i + vec3( 1, 0, 1 ) ), w.x ), mix( gemHash( i + vec3( 0, 1, 1 ) ), gemHash( i + vec3( 1, 1, 1 ) ), w.x ), w.y ),
+    w.z );
+}
+// 한 구간(p에서 d로 t만큼)에서 결과 알갱이를 지나는 양
+vec2 gemJardin( vec3 p, vec3 d, float t, vec3 seed ) {
+  vec2 s = vec2( 0.0 );
+  for ( int k = 0; k < ${JARDIN.samples}; k ++ ) {
+    vec3 q = p + d * ( t * ( float( k ) + 0.5 ) / ${f(JARDIN.samples)} ) + seed;
+    vec3 qs = vec3( q.x, q.y * ${f(JARDIN.veilStretch)}, q.z );
+    float n = gemNoise( qs * ${f(JARDIN.veilScale)} ) * 0.65 + gemNoise( qs * ${f(JARDIN.veilFine)} ) * 0.35;
+    float veil = smoothstep( ${f(JARDIN.veilLo)}, ${f(JARDIN.veilMid)}, n ) * ( 1.0 - smoothstep( ${f(JARDIN.veilMid)}, ${f(JARDIN.veilHi)}, n ) );
+    float speck = smoothstep( ${f(JARDIN.speckLo)}, ${f(JARDIN.speckHi)}, gemNoise( q * ${f(JARDIN.speckScale)} ) );
+    s += vec2( veil, speck );
+  }
+  return s * ( t / ${f(JARDIN.samples)} );
+}
+`;
+
+const fragFuncs = (cut: FacetCut) => /* glsl */ `
 #include <envmap_physical_pars_fragment>
 varying vec3 vGemPos;
 varying vec3 vGemNrm;
@@ -115,6 +183,8 @@ uniform vec3 gemAbsorb;
 uniform sampler2D gemBack;
 uniform vec4 gemSeeK;
 uniform mat4 gemCubeInv;
+${facetGlsl(cut)}
+${JARDIN_GLSL}
 
 float gemFresnel( float cosI, float n1, float n2 ) {
   float s = n1 / n2 * sqrt( max( 0.0, 1.0 - cosI * cosI ) );
@@ -198,16 +268,34 @@ vec3 gemSee( vec3 p, vec3 d ) {
 
 vec3 gemTrace( float ior ) {
   vec3 n = normalize( vGemNrm );
+#ifdef GEM_FACET
+  n = gemFacet( vGemPos, n );
+#endif
   vec3 v = normalize( vGemPos - vGemCam );
   float cosI = clamp( dot( - v, n ), 0.0, 1.0 );
   vec3 d = refract( v, n, 1.0 / ior );
   vec3 p = vGemPos - n * 1e-4;
   vec3 thr = vec3( 1.0 - gemFresnel( cosI, 1.0, ior ) );
   vec3 acc = vec3( 0.0 );
+#ifdef GEM_JARDIN
+  // 조각마다 다른 결: 큐브 안 조각 자리(돌려도 그대로)를 씨앗으로
+  vec3 seed = ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz * 5.3;
+#endif
   for ( int i = 0; i < ${GEM_BOUNCES}; i ++ ) {
     vec3 m;
     float t = gemExit( p, d, m );
+#ifdef GEM_JARDIN
+    if ( i < ${JARDIN.segments} ) {
+      vec2 j = gemJardin( p, d, t, seed );
+      acc += thr * j.x * ${f(JARDIN.veilGlow)} * vec3( 0.62, 0.8, 0.66 ) * gemSeeK.w;
+      thr *= exp( - ( j.x * ${f(JARDIN.veilBlock)} + j.y * ${f(JARDIN.speckBlock)} ) );
+    }
+#endif
     p += d * t;
+#ifdef GEM_FACET
+    vec3 mf = gemFacet( p, m );
+    if ( dot( d, mf ) > 0.05 ) m = mf;
+#endif
     thr *= exp( - gemAbsorb * t );
     float F = gemFresnel( dot( d, m ), ior, 1.0 );
     if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSee( p, refract( d, - m, ior ) );
@@ -225,6 +313,18 @@ vec3 gemLight() {
   return gemTrace( gemIor.g );
 #endif
 }
+`;
+
+const NO_CUT: FacetCut = { kind: 0, rings: [] };
+
+/** 깎은 면이면 겉 반사(프레넬·점 조명 반짝 점)도 그 면의 기울기로 그린다(보기 좌표 법선을 바꾼다) */
+const FACET_NORMAL = /* glsl */ `
+#ifdef GEM_FACET
+{
+  vec3 gemFo = gemFacet( vGemPos, normalize( vGemNrm ) );
+  normal = normalize( ( viewMatrix * vec4( normalize( mat3( vGemM0, vGemM1, vGemM2 ) * gemFo ), 0.0 ) ).xyz );
+}
+#endif
 `;
 
 /** 겉 반사만 그리는 물리 재질 값(몸 색 검정, 투과 없음) */
@@ -251,16 +351,24 @@ export function gemMaterialGL(
   shape: GemShape,
   see: GemSee,
   inCube: boolean,
+  style?: GemStyleLook,
+  styleKey = "now",
 ): THREE_NS.MeshPhysicalMaterial {
   const m = new T.MeshPhysicalMaterial(frontParams(g));
   const ior = channelIor(g);
   const disperse = disperses(g);
+  // 깎은 면은 큐브 조각·왕관 같은 상자 보석에만(팔면체·판은 이미 깎인 모양이다)
+  const cut = style && shape === "box" ? style.cut : NO_CUT;
+  const facet = cut.kind !== 0;
+  const jardin = !!style?.jardin && inCube;
   m.onBeforeCompile = (shader) => {
     shader.defines = {
       ...shader.defines,
       GEM_SHAPE: SHAPE_ID[shape],
       ...(disperse ? { GEM_DISPERSE: "" } : {}),
       ...(inCube ? { GEM_IN_CUBE: "" } : {}),
+      ...(facet ? { GEM_FACET: "" } : {}),
+      ...(jardin ? { GEM_JARDIN: "" } : {}),
     };
     shader.uniforms.gemIor = { value: new T.Vector3(...ior) };
     shader.uniforms.gemAbsorb = { value: new T.Vector3(...absorbOf(g, shape)) };
@@ -273,14 +381,18 @@ export function gemMaterialGL(
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <envmap_physical_pars_fragment>", FRAG_FUNCS)
+      .replace("#include <envmap_physical_pars_fragment>", fragFuncs(cut))
+      .replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>\n${FACET_NORMAL}`,
+      )
       .replace(
         "#include <emissivemap_fragment>",
         "#include <emissivemap_fragment>\ntotalEmissiveRadiance += gemLight();",
       );
   };
   m.customProgramCacheKey = () =>
-    `gem2-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}`;
+    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin ? styleKey : "flat"}`;
   return m;
 }
 
