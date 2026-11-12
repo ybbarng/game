@@ -1,4 +1,5 @@
 import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
+import { NO_PHONE_LANDSCAPE } from "./projects";
 import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
 
 /**
@@ -88,7 +89,7 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
     );
     await inputReady(page);
     const target = page.locator("[data-cube-shape-target]");
-    await expect(target.locator("[data-cube-posters]")).toBeVisible();
+    await expect(target.locator("[data-cube-shape-goal]")).toBeVisible();
     const id = (await target.getAttribute("data-cube-shape-target")) as string;
     expect(Object.keys(EASY2)).toContain(id);
     // 맞춘 큐브에서 시작한다(섞기 글 없음), 진행은 0%
@@ -173,5 +174,80 @@ test.describe("화면 시험(스크린샷을 찍지 않으면 3D 없음)", () =>
       2,
     );
     await shot(page, "pattern-records", info.project.name);
+  });
+});
+
+/**
+ * 목표 그림은 내가 돌리는 큐브와 같은 3D 큐브에 같은 거울 판(2026-11-12 사용자 「거울 상을 쓰는 게 낫지 않을까?
+ * 일관성 측면에서」, docs/47 9-10). 3D를 켜고 휴대폰 세로·데스크톱에서 혼자 하기와 컴퓨터와 대결을 본다.
+ * 「만드는 법」을 열고 닫아도 목표 그림과 공식이 보이는지도 함께 본다.
+ */
+test.describe("목표 그림: 거울 판을 단 3D 큐브", {
+  tag: NO_PHONE_LANDSCAPE,
+}, () => {
+  test.beforeEach(async ({ page }) => {
+    await useNotationKeys(page);
+  });
+
+  /** 목표 그림이 거울 판을 단 3D로 보이고, 「만드는 법」을 열어도 그림과 공식이 화면 안에 보인다 */
+  async function goalWithMirror(page: Page, name: string, project: string) {
+    const goal = page.locator(
+      "[data-cube-shape-target] [data-cube-shape-goal]",
+    );
+    const canvas = goal.locator("[data-cube-canvas]");
+    await expect(canvas).toHaveAttribute("data-cube-ready", "");
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+    // 펼친 그림·큐브 그림 둘이 아니다
+    await expect(goal.locator("[data-cube-posters]")).toHaveCount(0);
+    // 내가 돌리는 큐브도 거울 판
+    await expect(
+      page.locator("[data-cube-stage] [data-cube-canvas]"),
+    ).toHaveAttribute("data-cube-mirror", "on");
+    await shot(page, `${name}-goal`, project);
+
+    const toggle = page.locator("[data-cube-shape-formula-toggle]");
+    await toggle.click();
+    await expect(page.locator("[data-cube-shape-formula]")).toHaveAttribute(
+      "data-cube-shape-formula",
+      "open",
+    );
+    await expect(page.locator("[data-cube-shape-alg]")).toBeInViewport();
+    await expect(canvas).toBeVisible();
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+    await shot(page, `${name}-goal-formula`, project);
+    await toggle.click();
+    await expect(page.locator("[data-cube-shape-alg]")).toHaveCount(0);
+    await expect(canvas).toBeVisible();
+  }
+
+  test("혼자 하기", async ({ page }, info) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("cube.shape-intro.v1", "1"),
+    );
+    await page.goto("/cube/patterns?tab=make");
+    await page.locator('[data-cube-shape-card="3-checkerboard"]').click();
+    await inputReady(page);
+    await goalWithMirror(page, "shape-solo", info.project.name);
+  });
+
+  test("컴퓨터와 대결", async ({ page }, info) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as Record<string, unknown>;
+      w.__cubeTestHooks = true;
+      w.__cubeVsSeed = "shape";
+    });
+    await page.goto("/cube/vs");
+    await page.locator("[data-cube-vs-size]").selectOption("3");
+    await page.getByRole("button", { name: "입문", exact: true }).click();
+    await page.locator('[data-cube-vs-party="shape"]').click();
+    await page.getByLabel("15초 살펴보기").uncheck();
+    await page.locator("[data-cube-vs-start]").click();
+    await expect(page.locator("[data-cube-race-phase]")).toHaveAttribute(
+      "data-cube-race-phase",
+      "race",
+      { timeout: SCRAMBLE_TIMEOUT },
+    );
+    await inputReady(page);
+    await goalWithMirror(page, "shape-vs", info.project.name);
   });
 });
