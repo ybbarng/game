@@ -390,6 +390,8 @@ export class CubeView {
   private done = 0;
   private raf = 0;
   private disposed = false;
+  /** 첫 장을 그렸는지(`data-cube-drawn`) */
+  private drawn = false;
 
   private yaw = DEFAULT_YAW;
   private pitch = DEFAULT_PITCH;
@@ -1122,6 +1124,8 @@ export class CubeView {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.reduced?.removeEventListener("change", this.invalidate);
+    // 같은 캔버스에 새 장면을 만들면 그 장면이 다시 붙인다
+    delete this.canvas.dataset.cubeDrawn;
     const c = this.canvas;
     c.removeEventListener("pointerdown", this.onPointerDown);
     c.removeEventListener("pointermove", this.onPointerMove);
@@ -1617,6 +1621,11 @@ export class CubeView {
     if (this.disposed) return;
     const busy = this.update(now);
     this.renderer.render(this.scene, this.camera);
+    // 첫 장을 그렸다(장면을 만든 것과 그림이 나온 것 사이가 GPU 없는 기기에서 몇 초): 화면 시험이 이것을 기다린다
+    if (!this.drawn) {
+      this.drawn = true;
+      this.canvas.dataset.cubeDrawn = "";
+    }
     if (busy) this.invalidate();
   };
 
