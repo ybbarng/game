@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 
 /// 네이티브 화면 스크린샷(docs/52 5-5): `CUBIE_NATIVE_SHOT=<폴더> Cubie`. 창을 띄우지 않고 층 트리를
 /// `CARenderer`로 Metal 텍스처에 그려 투명 바탕 PNG로 쓴 뒤 끝난다(`layer.render(in:)`은 3D 변환을 납작하게 그려 쓰지 않는다).
-/// 창 96pt·배율 2. 결과: native-solved·native-scrambled·native-mirror(포커스 있고 섞인 큐브)·native-turning(R을 돌리는
+/// 창 96pt(`CUBIE_NATIVE_SHOT_SIDE`로 바꿈)·배율 2. 결과: native-solved·native-scrambled·native-mirror(포커스 있고 섞인 큐브)·native-turning(R을 돌리는
 /// 중간). `scripts/native-compare.mjs <폴더>`가 웹 그림과 바탕 넷 위에 나란히 얹는다.
 /// 재기·확인용이라 사용자 앱 흐름에서는 쓰지 않는다. 이 모드에서만 이 프로세스가 GPU로 그린다.
 @MainActor
@@ -19,7 +19,8 @@ enum NativeShot {
       print("[shot] Metal 장치가 없다")
       return 1
     }
-    let side: CGFloat = 96
+    // 창 크기(pt). `CUBIE_NATIVE_SHOT_SIDE`로 바꿀 수 있다(거울 판처럼 작은 것을 크게 견줄 때)
+    let side = CGFloat(Double(ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT_SIDE"] ?? "") ?? 96)
     let scale: CGFloat = 2
     let px = Int(side * scale)
     try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)

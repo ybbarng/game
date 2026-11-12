@@ -242,8 +242,16 @@ final class CACubeView: NSView {
     onLayout?()
   }
 
+  /// 3D로 돌린 층의 곧은 가장자리를 부드럽게(대각선이 계단처럼 보이지 않게, 2026-11-12 사용자 「대각선 안티알리어싱이 애매하고
+  /// 조금 계단처럼 보인다」). Core Animation은 기본으로 층 가장자리를 다듬지 않는다(둥근 모서리만 다듬는다). 네 변 모두
+  static func smoothEdges(_ l: CALayer) {
+    l.allowsEdgeAntialiasing = true
+    l.edgeAntialiasingMask = [.layerLeftEdge, .layerRightEdge, .layerBottomEdge, .layerTopEdge]
+  }
+
   private func stickerLayer(size: CGFloat, radius: CGFloat) -> CALayer {
     let s = CALayer()
+    Self.smoothEdges(s)
     s.bounds = CGRect(x: 0, y: 0, width: size, height: size)
     s.cornerRadius = radius
     s.masksToBounds = true
@@ -276,6 +284,7 @@ final class CACubeView: NSView {
         face.backgroundColor = Self.body
         face.cornerRadius = 0.03 * u
         face.isDoubleSided = false
+        Self.smoothEdges(face)
         face.transform = Self.ca(
           CubeGeometry.multiply(CubeGeometry.faceRotation(normal), CubeGeometry.translation(0, 0, 0.5 * Double(u))))
         // 스티커 없는 모양: 조각 면 전체가 색(가장자리만 아주 조금 남긴다)
@@ -309,9 +318,10 @@ final class CACubeView: NSView {
       panel.bounds = CGRect(x: 0, y: 0, width: plate, height: plate)
       panel.position = .zero
       panel.transform = Self.ca(m)
-      panel.cornerRadius = 0.1 * plate
+      panel.cornerRadius = CubeGeometry.mirrorPlateRadius * cell * u
       panel.borderWidth = 1
       panel.borderColor = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.26)
+      Self.smoothEdges(panel)
       let glass = CAGradientLayer()
       glass.frame = panel.bounds
       glass.cornerRadius = panel.cornerRadius
@@ -321,6 +331,7 @@ final class CACubeView: NSView {
       ]
       glass.startPoint = CGPoint(x: 0, y: 1)
       glass.endPoint = CGPoint(x: 1, y: 0)
+      Self.smoothEdges(glass)
       panel.addSublayer(glass)
       panel.opacity = 0
       // 누른 큐브: 판 가운데에서 큐브 스티커를 판 평면으로(사이트 `mirrorFlatten`). 조각은 큐브와 같은 자리·같은 돌리기
@@ -342,7 +353,7 @@ final class CACubeView: NSView {
         for axis in 0..<3 where abs(pos[axis]) == mm {
           var normal = [0, 0, 0]
           normal[axis] = pos[axis] > 0 ? 1 : -1
-          let s = stickerLayer(size: 0.86 * u, radius: 0.16 * u)
+          let s = stickerLayer(size: CubeGeometry.mirrorSticker * u, radius: 0.16 * u)
           s.contents = nil
           s.position = .zero
           s.isDoubleSided = false
@@ -614,6 +625,7 @@ final class CACubeView: NSView {
     l.backgroundColor = Self.body
     l.transform = Self.ca(
       CubeGeometry.multiply(CubeGeometry.translation(t[0], t[1], t[2]), CubeGeometry.faceRotation(normal)))
+    Self.smoothEdges(l)
     return l
   }
 

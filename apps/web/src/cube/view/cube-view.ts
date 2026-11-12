@@ -18,6 +18,8 @@ import {
   type Frame,
   MIRROR_CELL,
   MIRROR_PAD,
+  MIRROR_PLATE_RADIUS,
+  MIRROR_STICKER,
   type MirrorFade,
   type MirrorPanel,
   mirrorAlpha,
@@ -203,14 +205,17 @@ function frameGeometry(spec: QualitySpec): THREE.BufferGeometry {
   return g;
 }
 
-/** 거울 판 바탕(어두운 유리, 옅은 테두리, 비스듬한 반사 띠). 판 한 장 크기의 정사각형 그림 */
-function glassTexture(): THREE.CanvasTexture {
+/**
+ * 거울 판 바탕(어두운 유리, 옅은 테두리, 비스듬한 반사 띠). 판 한 장 크기의 정사각형 그림.
+ * `round`는 모서리 둥글기를 판 한 변에 대한 비율로(판 칸 단위 `MIRROR_PLATE_RADIUS`를 판 한 변 칸 수로 나눈 값)
+ */
+function glassTexture(round: number): THREE.CanvasTexture {
   const size = 256;
   const c = document.createElement("canvas");
   c.width = size;
   c.height = size;
   const g = c.getContext("2d") as CanvasRenderingContext2D;
-  const r = 26;
+  const r = round * size;
   const path = (inset: number) => {
     const a = inset;
     const b = size - inset;
@@ -1431,7 +1436,7 @@ export class CubeView {
     const n = this.n;
     const panels = mirrorPanels(n);
     const group = new THREE.Group();
-    const tex = glassTexture();
+    const tex = glassTexture(MIRROR_PLATE_RADIUS / (n + MIRROR_PAD * 2));
     const plateMat = new THREE.MeshBasicMaterial({
       map: tex,
       transparent: true,
@@ -1441,7 +1446,7 @@ export class CubeView {
     const plateSize = (n + MIRROR_PAD * 2) * MIRROR_CELL;
     const plateGeo = new THREE.PlaneGeometry(plateSize, plateSize);
     const cellGeo = new THREE.ShapeGeometry(
-      roundedRect(0.86 * MIRROR_CELL, 0.12 * MIRROR_CELL),
+      roundedRect(MIRROR_STICKER * MIRROR_CELL, 0.12 * MIRROR_CELL),
       this.spec.curveSegments,
     );
     const ring = roundedRect(0.98 * MIRROR_CELL, 0.16 * MIRROR_CELL);

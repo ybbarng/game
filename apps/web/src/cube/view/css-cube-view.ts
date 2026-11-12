@@ -35,6 +35,8 @@ import {
   MIRROR_CELL,
   MIRROR_FADE_MS,
   MIRROR_PAD,
+  MIRROR_PLATE_RADIUS,
+  MIRROR_STICKER,
   type MirrorFade,
   type MirrorPanel,
   mirrorFadeAt,
@@ -289,7 +291,7 @@ export class CssCubeView implements CubeScene {
       panel.appendChild(
         div(
           `position:absolute;left:${-plate / 2}px;top:${-plate / 2}px;width:${plate}px;height:${plate}px;box-sizing:border-box;` +
-            `border-radius:${0.1 * plate}px;border:1px solid rgba(255,255,255,0.26);` +
+            `border-radius:${MIRROR_PLATE_RADIUS * MIRROR_CELL * u}px;border:1px solid rgba(255,255,255,0.26);` +
             "background:linear-gradient(135deg,rgba(46,56,78,0.62),rgba(14,18,28,0.5));",
         ),
       );
@@ -313,7 +315,7 @@ export class CssCubeView implements CubeScene {
         for (const [normal, list] of c.faces) {
           const f = div(
             `position:absolute;left:${-cell / 2}px;top:${-cell / 2}px;width:${cell}px;height:${cell}px;` +
-              `box-sizing:border-box;border:${0.06 * u}px solid transparent;background-clip:padding-box;` +
+              `box-sizing:border-box;border:${((CUBIE - MIRROR_STICKER) / 2) * u}px solid transparent;background-clip:padding-box;` +
               `border-radius:${0.16 * u}px;` +
               `transform:${cssMatrix(toCss(multiply(faceRotation(normal), translation(0, 0, CUBIE / 2)), u))};`,
           );
