@@ -1,13 +1,16 @@
-// 네이티브 화면(native/cubie-native)과 웹 미니 화면의 생김새 비교판(docs/52 5-2).
-// 웹은 앱과 같은 엔진 WebKit(배율 2, 앱처럼 투명 바탕)으로 찍고, 네이티브는 `cubie-shot`이 화면 밖에 그린 PNG를 쓴다.
+// 네이티브 화면과 웹 미니 화면의 생김새 비교판(docs/52 5-2·5-5).
+// 웹은 앱과 같은 엔진 WebKit(배율 2, 앱처럼 투명 바탕)으로 찍고, 네이티브는 화면 밖에 그린 PNG를 쓴다.
 // 둘을 바탕 넷(#000·어두운 회색·흰색·사진 흉내, 화면 시험 `cube-mini.spec.ts` DESKS와 같다) 위에 나란히 얹어 한 장으로 찍는다.
-// 앱을 띄우지 않는다.
+// 앱 창을 띄우지 않는다.
 //
-//   (cd native/cubie-native && cargo run --release --bin cubie-shot -- <폴더>)
+//   Core Animation(5-5): apps/cubie/build.sh 뒤
+//     CUBIE_NATIVE=1 CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie
+//   wgpu(5-2): (cd native/cubie-native && cargo run --release --features wgpu --bin cubie-shot -- <폴더>)
 //   node apps/cubie/scripts/native-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr]
 //
-// 결과: <폴더>/web-float.png·web-solving.png(웹 투명 바탕), <폴더>/compare.png(비교판)
-import { readFileSync, writeFileSync } from "node:fs";
+// 결과: <폴더>/web-float.png·web-solving.png·web-mirror.png(웹 투명 바탕), <폴더>/compare.png(비교판).
+// 네이티브 그림 중 없는 것(wgpu는 native-mirror.png가 없다)은 칸을 빼고 얹는다.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,16 +83,26 @@ try {
   await page.waitForTimeout(800);
   const solving = await page.screenshot({ omitBackground: true, type: "png" });
   writeFileSync(path.join(dir, "web-solving.png"), solving);
+  // 맞추는 중 거울 보임(포커스 있고 섞인 큐브)
+  await fromApp(page, { type: "mirror", on: true });
+  await page.waitForTimeout(800);
+  const mirror = await page.screenshot({ omitBackground: true, type: "png" });
+  writeFileSync(path.join(dir, "web-mirror.png"), mirror);
 
   const img = (buf) => `data:image/png;base64,${buf.toString("base64")}`;
-  const native = (name) => readFileSync(path.join(dir, name));
+  const native = (name) => {
+    const f = path.join(dir, name);
+    return existsSync(f) ? readFileSync(f) : null;
+  };
   const cols = [
     ["웹 · 떠 있을 때", float],
     ["네이티브 · 맞춘 큐브", native("native-solved.png")],
     ["웹 · 섞인 큐브", solving],
     ["네이티브 · 섞인 큐브", native("native-scrambled.png")],
+    ["웹 · 맞추는 중(거울)", mirror],
+    ["네이티브 · 맞추는 중(거울)", native("native-mirror.png")],
     ["네이티브 · 돌리는 중", native("native-turning.png")],
-  ];
+  ].filter(([, b]) => b);
   const cell = (desk, buf) =>
     `<div class="c" style="background:${desk}"><img src="${img(buf)}"></div>`;
   const html = `<!doctype html><meta charset="utf-8"><style>
@@ -105,7 +118,7 @@ try {
     .join("")}</table>`;
   const sheet = await browser.newPage({
     deviceScaleFactor: 2,
-    viewport: { width: 720, height: 560 },
+    viewport: { width: 900, height: 560 },
   });
   await sheet.setContent(html);
   await sheet
