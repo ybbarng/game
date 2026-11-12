@@ -28,6 +28,7 @@ import type { Command } from "../input";
 import type { CubeLook } from "../item-look";
 import { SHAPE_START_LABELS, shapeGoal, shapeProgress } from "../patterns/race";
 import { ShapeFormula } from "../patterns/ShapeFormula";
+import { ShapeGoal } from "../patterns/ShapeGoal";
 import { groupSplits, type SplitGroup } from "../progress/splits";
 import { formatMs, type Split } from "../records";
 import { effectiveRaceAlerts, useCubeSettings } from "../settings";
@@ -1654,8 +1655,8 @@ function Replay({
 }
 
 /**
- * 모양 만들기의 목표 그림(docs/47 9-10): 펼친 그림이 아니라 비스듬한 큐브 그림 둘(위·앞·오른쪽 / 아래·왼쪽·뒤)과
- * 이름·시작, 내 진행. 판 내내 같은 높이라 큐브가 밀리지 않는다
+ * 모양 만들기의 목표 그림(docs/47 9-10): 내 큐브와 같은 거울 판을 단 3D 큐브(`ShapeGoal`, 3D를 못 그리면 비스듬한
+ * 큐브 그림 둘)와 이름·시작, 내 진행. 판 내내 같은 높이라 큐브가 밀리지 않는다
  */
 function ShapeTarget({
   id,
@@ -1693,13 +1694,12 @@ function ShapeTarget({
       data-cube-shape-target={id}
       className="flex items-center gap-3 rounded-xl border border-violet-300/30 bg-violet-300/10 px-3 py-1.5"
     >
-      <CubePosterPair
+      <ShapeGoal
         n={n}
         state={target}
         settings={settings}
         look={look}
-        captions={false}
-        className="w-28 shrink-0 md:w-36"
+        className="w-36 md:w-44"
       />
       <div className="flex min-w-0 flex-col gap-1 text-sm">
         <span className="text-violet-100/70 text-xs">만들 모양</span>

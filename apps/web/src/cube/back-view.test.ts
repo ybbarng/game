@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { backViewFor, backViewText, MIRROR_MIN_WIDTH } from "./back-view";
+import {
+  backViewFor,
+  backViewText,
+  MIRROR_MIN_WIDTH,
+  MIRROR_VIEW_MIN_WIDTH,
+} from "./back-view";
 import { COURSES } from "./learn";
 
 describe("뒷면 보기 고르기", () => {
@@ -14,6 +19,15 @@ describe("뒷면 보기 고르기", () => {
     expect(backViewFor("mirror", MIRROR_MIN_WIDTH, true)).toBe("mirror");
     expect(backViewFor("mirror", null, true)).toBe("mirror");
     expect(backViewFor("off", 800, true)).toBe("off");
+  });
+
+  it("보기만 하는 큐브(모양 만들기 목표)는 더 좁은 자리에도 거울을 단다", () => {
+    const w = MIRROR_VIEW_MIN_WIDTH;
+    expect(w).toBeLessThan(MIRROR_MIN_WIDTH);
+    expect(backViewFor("mirror", w, true)).toBe("off");
+    expect(backViewFor("mirror", w, true, w)).toBe("mirror");
+    expect(backViewFor("mirror", w - 1, true, w)).toBe("off");
+    expect(backViewFor("off", 800, true, w)).toBe("off");
   });
 });
 

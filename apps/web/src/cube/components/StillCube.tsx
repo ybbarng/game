@@ -23,6 +23,7 @@ export function StillCube({
   marks,
   fallback,
   hint = true,
+  mirrorMinWidth,
 }: {
   n: number;
   state: PuzzleState;
@@ -35,6 +36,8 @@ export function StillCube({
   fallback?: ReactNode;
   /** 큐브 아래 「끌면 둘러볼 수 있어요」 안내 */
   hint?: boolean;
+  /** 거울 판을 보일 가장 좁은 자리. 보기만 하는 작은 큐브(모양 만들기 목표)는 `MIRROR_VIEW_MIN_WIDTH` */
+  mirrorMinWidth?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<CubeView | null>(null);
@@ -42,7 +45,7 @@ export function StillCube({
   const [failed, setFailed] = useState(false);
   const live = useRef({ state, mask, onSticker, marks });
   live.current = { state, mask, onSticker, marks };
-  const back = useBackView(settings.backView, !failed);
+  const back = useBackView(settings.backView, !failed, mirrorMinWidth);
   const mirror = back.mode === "mirror";
   useEffect(() => {
     if (ready) viewRef.current?.setMirror(mirror);
