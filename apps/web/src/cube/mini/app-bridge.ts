@@ -12,6 +12,13 @@ import type { KeyChord } from "../input";
 
 export const BRIDGE_EVENT = "cubie";
 
+/**
+ * 이 화면의 빌드 커밋(next.config `NEXT_PUBLIC_BUILD_COMMIT`, 사이트 `/version.json`과 같은 값). 「준비됨」에 실어 보내고
+ * `main[data-mini-build]`에도 둔다. 배포한 변경이 앱에 안 보이던 일(2026-11-12, 옛 HTML이 남음)을 앱과 시험이 알아채게 한다.
+ * 모르는 빌드(값 없음)는 `unknown`
+ */
+export const MINI_BUILD = process.env.NEXT_PUBLIC_BUILD_COMMIT || "unknown";
+
 /** 앱이 화면에 보내는 것 */
 export type FromApp =
   /** 큐브 창이 키 입력을 받는가(시간 재기·떠 있을 때 움직임) */
@@ -61,8 +68,11 @@ export interface BubbleSpan {
 
 /** 화면이 앱에 보내는 것 */
 export type ToApp =
-  /** 화면이 떴다: 앱이 지금 포커스·보임을 다시 알려 준다 */
-  | { type: "ready" }
+  /**
+   * 화면이 떴다: 앱이 지금 포커스·보임을 다시 알려 준다. `build`: 이 화면의 빌드 커밋(`MINI_BUILD`). 0.1.10부터 앱이
+   * 사이트 `/version.json`과 견줘 다르면(옛 HTML이 남았으면) 저장본 없이 다시 불러온다
+   */
+  | { type: "ready"; build: string }
   /**
    * 메뉴 표시(체크 표시)를 맞출 값. `scrambleKeys`: 지금 키 배치의 섞기 키(0.1.3부터 앱이 메뉴 「섞기」 옆에 보인다)
    */
