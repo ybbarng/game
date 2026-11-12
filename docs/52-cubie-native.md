@@ -655,6 +655,28 @@ apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 같
 7. 끌어 옮기기·핀치·창 크기 메뉴·모니터 떼기, 떠 있을 때(포커스를 잃고 1분 뒤) 내 판 다시 보기와 조금 섞기.
 8. 판에 넣을지: 기본이 네이티브라 판을 내면 모든 사용자의 큐브 창이 바뀐다. 웹 쪽 고침이 앱에 바로 들어가던 길(15-26)은 큐브 창에서는 없어지고, 앞으로 큐브 창을 고치면 앱 판을 내야 한다(기록 창·티어표·설정은 지금처럼 사이트 배포로 바뀐다). **2026-11-12 사용자 결정: 받아들인다**(「앞으로 큐브 창 고침도 Cubie 새 판으로만 내기」 응). 0.2.0부터 네이티브로 낸다.
 
+### 5-7. 사이트 미니 화면과 네이티브가 어긋나지 않게(2026-11-12)
+
+> 사용자: 「네이티브가 기존과 모든 기능이 같은가, 앞으로 불일치를 해결할 방법은?」. 0.2.0부터 큐브 창 고침은 Cubie 새 판으로만 나가므로(5-6 「판을 내기 전에」 8), 사이트 미니 화면만 고치면 앱과 조용히 달라진다. 장치는 셋이다.
+
+1. **값은 공통 시험 자료로 견준다.** 판 규칙·섞기·힌트·공식 연습·키캡·F1 표 글자·한 판 기록·티어, 그리고 화면 상태(공식 연습 가리기·F1 표 칸 색)는 코어가 만든 값과 사이트가 만든 값을 같은 자료(`native/cube-core/fixtures/*.json` ↔ `apps/web/src/cube/native/core-fixtures*.ts`)로 본다. 사이트 결과가 바뀌면 사이트 쪽 자료 시험이 먼저 깨지고, 자료를 다시 쓰면 `native/`가 바뀌어 CI `rust` 작업이 돈다.
+2. **PR 검사 `native-parity`**(`scripts/native-parity.mjs`, 시험 `native-parity.test.mjs`, CI 작업 `native-parity`를 `ci-ok`가 기다림): PR에서 큐브 창 동작에 닿는 사이트 코드가 바뀌었는데 `apps/cubie/`·`native/` 아래가 하나도 안 바뀌면 실패한다. 네이티브와 상관없는 고침이면 PR 본문에 `네이티브 해당 없음: <이유>` 줄을 적으면 통과한다(목록 표시 `-`나 굵게 `**`가 붙어도 된다, 이유가 비면 안 된다). 본문을 고친 뒤 작업을 다시 돌리면 스크립트가 GitHub API로 지금 본문을 읽는다. 단위 시험 파일만 바뀐 것은 보지 않는다.
+   - 검사 대상(스크립트의 `WATCHED`, 사이트 `apps/web/src/` 아래): `cube/mini/`·`app/cube/mini/`(미니 화면), `cube/view/`(그리기·거울 판·카메라), `cube/input/`(키 해석·배치), `cube/keys/` 가운데 `two-hand`·`layout`·`move-keys`·`reach`·`hand-layers`·`key-colors`, `cube/components/KeyboardMap.tsx`(F1 표), `cube/settings.ts`, `cube/scramble-show.ts`, `cube/solve-session.ts`, `cube/flow/combo.ts`, `cube/hero/`(홈 시연·첫 면 색), `cube/practice/`(대결 `versus*` 빼고), `cube/learn/judge.ts`(가리기)·`alg-sets.ts`, `cube/algs/spot.ts`·`store.ts`, `cube/game-sounds.ts`, `game/sound.ts`, `cube/replay-player.ts`, `cube/records.ts`, `cube/tiers/rank.ts`, `cube/native/`(공통 자료의 사이트 쪽).
+   - 넣지 않은 것: 기록 창·티어표·설정 창(앱이 사이트 창으로 열어 사이트 배포로 바뀐다), 수 계산 패키지 `packages/cube-*`(CI `rust` 작업과 공통 자료가 값으로 본다). 목록의 파일·폴더를 옮기거나 지우면 시험이 깨지니 목록도 함께 고친다.
+3. **큐브 창 생김새를 바꾼 PR에는 웹·네이티브 비교 그림을 붙인다.** 값 자료로 못 잡는 그리기·연출은 사람이 본다. 네이티브는 화면 밖 스크린샷 모드(창을 띄우지 않음), 웹은 앱과 같은 엔진 WebKit으로 찍는다.
+
+```sh
+apps/cubie/build.sh                                         # 이 폴더 안에 Cubie.app(설치하지 않음)
+CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie        # 화면 밖 스크린샷(창·포커스 없음)
+node apps/cubie/scripts/native-compare.mjs <폴더> [사이트 주소] # 바탕 넷 × 웹(WebKit)·네이티브 → <폴더>/compare.png, 말풍선·F1 표 → compare-panels.png
+# 거울 판 전후(고치기 전 폴더·고친 뒤 폴더를 따로 찍은 뒤)
+node apps/cubie/scripts/mirror-compare.mjs shoot <폴더> <사이트 주소> 160
+CUBIE_NATIVE_SHOT=<폴더> CUBIE_NATIVE_SHOT_SIDE=160 apps/cubie/Cubie.app/Contents/MacOS/Cubie
+node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 폴더> 160
+```
+
+- 사이트 주소는 기본이 `https://game.byb.kr`(배포된 판)이다. 고친 웹을 찍으려면 로컬 서버(`pnpm dev`, 또는 빌드한 `out/`를 띄운 주소)를 준다. 고친 화면에 맞는 그림을 `docs/cubie-native/`에 webp로 남기고 PR 본문에 붙인다.
+
 ## 6. 윈도우판을 언제 어떻게 낼지
 
 - **Tauri로 먼저**: 몇 주 안에 낼 수 있고 지금 웹 화면을 그대로 쓴다. 메모리는 Edge 웹 화면이라 맥과 비슷하게 무겁다. 네이티브로 옮길 때 껍데기는 Rust라 일부(창·단축키·트레이)를 다시 쓸 수 있다.

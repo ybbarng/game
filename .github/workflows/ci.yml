@@ -184,10 +184,39 @@ jobs:
       - run: cargo fmt --check
       - run: cargo test --locked
 
+  # 사이트 미니 큐브 화면과 Cubie 네이티브 큐브 창을 함께 고쳤는지(2026-11-12, docs/52 5-7). PR에서만 돈다.
+  # 미니 화면이 쓰는 코드(scripts/native-parity.mjs WATCHED)가 바뀌었는데 apps/cubie/·native/가 그대로면 실패하고,
+  # PR 본문에 「네이티브 해당 없음: <이유>」 줄이 있으면 통과한다. 본문은 셸 해석을 거치지 않게 환경 변수로만 넘긴다.
+  # 본문을 고친 뒤 이 작업을 다시 돌리면 이벤트 본문은 옛것이라, 스크립트가 PR_API_URL로 지금 본문을 한 번 더 읽는다
+  native-parity:
+    needs: plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read # 지금 PR 본문 읽기
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: 네이티브 함께 고침
+        env:
+          BASE: ${{ needs.plan.outputs.base }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_API_URL: ${{ github.event.pull_request.url }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/native-parity.mjs --github --base "${BASE:-$PR_BASE}"
+
   # 화면 시험. 전부면 여섯 조각으로 나눠 동시에 돌린다(2026-11-10 둘에서 여섯으로, docs/38 17절). plan이 지난 시험 시간
   # (scripts/e2e-times.json)으로 spec을 조각에 고르게 담아 조각마다 spec 목록을 넘긴다. 조각마다 설치·빌드를 따로 하므로
   # 고른 spec이 적으면 조각을 줄인다(scripts/affected-e2e.mjs shardCount). 고를 것이 없으면 이 작업을 건너뛴다(건너뜀은 CI 성공).
-  # 동시 작업은 한 실행에 많아야 8개(plan·check·화면 6·ci-ok)라 무료 공개 저장소 한도 20개 안이다
+  # 동시 작업은 한 실행에 많아야 10개(plan·check·rust·native-parity·화면 6·ci-ok, ci-ok는 맨 뒤)라 무료 공개 저장소 한도 20개 안이다
   e2e:
     name: e2e (${{ matrix.shard }})
     needs: plan
@@ -301,7 +330,7 @@ jobs:
   # 앞 작업 가운데 실패·취소가 하나라도 있으면 실패, 모두 성공이거나 건너뜀이면 성공한다
   ci-ok:
     if: always()
-    needs: [plan, check, e2e, rust]
+    needs: [plan, check, e2e, rust, native-parity]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -311,13 +340,14 @@ jobs:
           CHECK: ${{ needs.check.result }}
           E2E: ${{ needs.e2e.result }}
           RUST: ${{ needs.rust.result }}
+          PARITY: ${{ needs.native-parity.result }}
         run: |
-          echo "plan=$PLAN check=$CHECK e2e=$E2E rust=$RUST"
-          for r in "$PLAN" "$CHECK" "$E2E" "$RUST"; do
+          echo "plan=$PLAN check=$CHECK e2e=$E2E rust=$RUST native-parity=$PARITY"
+          for r in "$PLAN" "$CHECK" "$E2E" "$RUST" "$PARITY"; do
             case "$r" in
               success | skipped) ;;
               *)
-                echo "::error::실패하거나 취소된 작업이 있다(plan=$PLAN check=$CHECK e2e=$E2E rust=$RUST)"
+                echo "::error::실패하거나 취소된 작업이 있다(plan=$PLAN check=$CHECK e2e=$E2E rust=$RUST native-parity=$PARITY)"
                 exit 1
                 ;;
             esac
