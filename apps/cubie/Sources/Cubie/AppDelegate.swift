@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
   enum WebWindow { case records, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
+  /// 네이티브 화면일 때의 같은 창들(docs/52 5-7). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
+  private var sheets: [WebWindow: NativeSheetWindow] = [:]
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
   private var measure: Measure?
@@ -62,10 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
           native.send(.keysPanel(false))
         }
         m.openRecords = { [weak self] in
-          self?.openWebWindow(.records)
-          if let w = self?.webWindows[.records] { w.setFrameOrigin(NSPoint(x: -30000, y: -30000)) }
+          self?.openWindow(.records)
+          if let w = self?.sheets[.records]?.window { w.setFrameOrigin(NSPoint(x: -30000, y: -30000)) }
         }
-        m.closeRecords = { [weak self] in self?.webWindows[.records]?.close() }
+        m.closeRecords = { [weak self] in self?.sheets[.records]?.window.close() }
         nativeMeasure = m
       }
       return
@@ -132,6 +134,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         w.close()
         return nil
       }
+      // 네이티브 창은 셋 다 Esc로 닫는다(설정 창은 키 기다리는 중이 아닐 때만, `NativeSettingsWindow`가 먼저 먹는다)
+      if let w = event.window, self.sheets.values.contains(where: { $0.window === w }) {
+        w.close()
+        return nil
+      }
       return event
     }
 
@@ -140,7 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     if let native = cube as? NativeCubeWindow {
       keys.nativeSource = { [weak native] n in native?.keyBindings(n: n) ?? .empty }
     }
-    (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in self?.pushStoreToWebWindows() }
+    (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in
+      self?.pushStoreToWebWindows()
+      (self?.sheets[.records] as? NativeRecordsWindow)?.reload()
+    }
     cube.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
     cube.onReady = { [weak self] in
       guard let self else { return }
@@ -496,7 +506,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuSize(_ sender: NSMenuItem) { cube.send(.size(sender.tag)) }
   @objc private func menuWindowSize(_ sender: NSMenuItem) { cube.setSide(CGFloat(sender.tag)) }
 
-  @objc private func menuRecords() { openWebWindow(.records) }
+  @objc private func menuRecords() { openWindow(.records) }
   /// 단축키 표 켜고 끄기. 켜면 바로 키를 쳐 볼 수 있게 큐브에 키 입력을 준다(F1과 같은 일)
   @objc private func menuKeys() {
     // 메뉴가 열린 채 F1을 눌러 이 항목이 불렸다면 메뉴가 키를 받아 큐브 창의 키 감시에는 닿지 않는다. 그래서 여기서 한 번만 한다
@@ -522,6 +532,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   }
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
+
+  /// 기록·티어표·설정 창을 연다: 네이티브 화면이면 네이티브 창(docs/52 5-7), 아니면(`CUBIE_WEB=1`) 사이트 창
+  private func openWindow(_ kind: WebWindow) {
+    guard let native = cube as? NativeCubeWindow, nativeSheet(kind) else {
+      openWebWindow(kind)
+      return
+    }
+    if let s = sheets[kind] {
+      Self.bringToFront(s.window)
+      return
+    }
+    let s: NativeSheetWindow
+    switch kind {
+    case .records:
+      let r = NativeRecordsWindow(book: native.book) { [weak native] in native?.settings ?? CubeSettings() }
+      r.onTiers = { [weak self] n in self?.openTiers(n: n) }
+      s = r
+    case .tiers, .settings:
+      return openWebWindow(kind)
+    }
+    s.onClose = { [weak self] in self?.sheets[kind] = nil }
+    sheets[kind] = s
+    Self.bringToFront(s.window)
+  }
+
+  /// 그 창을 네이티브로 옮겼나
+  private func nativeSheet(_ kind: WebWindow) -> Bool {
+    switch kind {
+    case .records: true
+    case .tiers, .settings: false
+    }
+  }
+
+  /// 티어표를 크기 `n`으로(기록 창 「티어표」)
+  private func openTiers(n: Int) {
+    if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
+      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(n)"), cachePolicy: PageFreshness.load))
+    }
+    openWebWindow(.tiers)
+  }
 
   /// 기록·티어표·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
   private func openWebWindow(_ kind: WebWindow) {
