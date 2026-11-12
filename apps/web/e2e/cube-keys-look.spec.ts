@@ -96,10 +96,10 @@ test(
     // 키 글자와 수가 다르면(L 키 = D') 키 글자는 작게 따로
     await expect(key("KeyL").locator("[data-key-cap]")).toHaveText("L");
     await expect(key("KeyL").locator("[data-key-label]")).toHaveText("D'");
-    // 큐브 돌리기(T = x)는 R 색 점선, 가운데 층(M·E·S)은 가운데 짧은 선. 그 칸 바탕은 무채색
-    await expect(key("KeyT")).toHaveAttribute("data-key-paint", "sweep");
+    // 큐브 돌리기(Y = x)는 R 색 점선, 가운데 층(M·E·S)은 가운데 짧은 선. 그 칸 바탕은 무채색
+    await expect(key("KeyY")).toHaveAttribute("data-key-paint", "sweep");
     await expect(
-      key("KeyT").locator('[data-key-mark-shape="dotted"]'),
+      key("KeyY").locator('[data-key-mark-shape="dotted"]'),
     ).toHaveCount(1);
     await expect(keys.locator('[data-key-mark-shape="short"]')).not.toHaveCount(
       0,
@@ -107,8 +107,8 @@ test(
     await expect(keys.locator('[data-key-mark-shape="solid"]')).toHaveCount(0);
     // 맞추는 화면은 손가락 자리를 기본으로 끈다(면 색처럼 보여 헷갈렸다)
     await expect(keys.locator("[data-key-finger]")).toHaveCount(0);
-    // 동작 없는 키(3×3의 3)는 흐리게
-    await expect(key("Digit3")).toHaveAttribute("data-key-idle", "");
+    // 동작 없는 키(숫자 8)는 흐리게
+    await expect(key("Digit8")).toHaveAttribute("data-key-idle", "");
     await snap(page, "[data-cube-keys]", "solo-two-hand", info.project.name);
 
     if (!phone) {

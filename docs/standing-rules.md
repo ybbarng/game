@@ -32,6 +32,7 @@
 - **OLL·PLL 상황은 윗면 평면도를 함께 보인다**(윗면 + 옆면 윗줄, `AlgPicture`). 평면도는 전개도와 다른 것이고 있어야 하는 그림이다.
 - **Cubie 투명 창에서 큐브는 제 실루엣을 따라 도는 테두리로 바탕과 가른다.** 큐브 크기와 맞지 않는 둥근 받침·판을 뒤에 깔지 않는다(따로 논다). 생김새를 견줄 때 바탕은 완전히 검은 #000·어두운 회색·흰색·사진 넷, 장면은 떠 있을 때·맞추는 중(거울 보임) 둘. 테두리는 흐린 빛 대신 흐림 없는 선으로 둔다(흐림은 엔진마다 진하기가 다르다). docs/47 15-23. 점검: `cube/mini/backdrop.test.ts`, 화면 시험 `cube-mini.spec.ts` 「큐브 윤곽을 따라…」(받침 없음, `DESKS`에 #000).
 - **Cubie 미니 화면의 생김새를 견주는 시안·README 그림은 앱과 같은 엔진 WebKit으로 찍는다**(Playwright `webkit`, 배율 2). 앱은 WKWebView라 Chromium 헤드리스로 찍은 그림만 보고 판단하면 앱에서 다르게 보일 수 있다. 점검: `apps/cubie/scripts/readme-shots.mjs`가 `webkit`으로 띄운다.
+- **키 배치 「두 손」(2026-11-12)**: 글자 키는 csTimer 자리 그대로. **숫자 n = 다음 면 키 하나의 n번째 층**(남지 않음), **Shift = 같이 돌리기**(Shift + 면 키 = 바깥 두 층, 숫자 n 뒤 = 바깥 n층, 7×7 바깥 세 층 = 3 → Shift+I). T·B = M′·M, E·S는 2 + D·F 쪽 키. Alt·Ctrl은 큐브 키로 쓰지 않는다. 키를 글에 적을 때는 배치에서 읽는다(`keyTextFor`). docs/47 4-2, docs/53 10절. 점검: `keys/two-hand.test.ts`, `input/input.test.ts`.
 - **사이트에 배포한 Cubie 화면 변경을 「앱에 반영됐다」고 할 때는 실제 앱이 그 판을 쓰는지 확인한다.** 배포만 보고 판단하지 않는다. 확인: 떠 있는 앱 창을 `screencapture -l <창 번호> -o -x`로 찍어 보거나(포커스·화면을 바꾸지 않음), `CUBIE_DEBUG=1` 앱·재기 모드의 `[cubie] build page=… deployed=… -> ok` 줄. 장치: 페이지 HTML은 `Cache-Control: no-cache`(`deploy/nginx.conf`), 앱 불러오기는 재검증, 화면 빌드 커밋과 `/version.json`이 다르면 앱이 다시 불러옴. docs/47 15-26. 점검: `PageFreshnessTests`, 화면 시험 `cube-mini.spec.ts` 「앱 안: 화면 빌드 커밋을…」.
 - **자동 맞추기 첫 면: 초보자 해법은 흰색, 그 밖은 십자가 가장 싼 색**(같으면 흰색). 사이트 첫 화면 연출과 Cubie 홈 시연 모두. 꼬리표의 색 이름도 그 색을 따른다. docs/47 0절. 점검: `hero/first-color.test.ts`.
 

@@ -4,7 +4,8 @@ import { chordsFor, type Keymap } from "../input/keymaps";
 import { type HandLayers, HOME_LAYERS } from "./reach";
 
 /**
- * 지금 손이 잡은 층 수(큰 큐브 「두 손」의 3·4·7·8 키, csTimer의 oSl·oSr, 2026-11-04).
+ * 지금 손이 잡은 층 수(csTimer의 oSl·oSr, 2026-11-04). 2026-11-12부터 「두 손」에는 층 수 키가 없어(숫자 = 깊이)
+ * 층 수 키 `layers:*`를 든 옛 「사용자」 배치에서만 1·1이 아니게 된다.
  * 큐브를 받는 조각(`CubePlay`)이 해석기의 층 수를 여기에 알리고, 배우기 키캡(`useMoveKeys`)이 읽어
  * 「3Rw = 7 → U」 뒤의 R을 「8 → I」로 보인다. 큐브 하나만 키를 받으므로 화면에 하나만 둔다.
  */

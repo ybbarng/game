@@ -52,30 +52,31 @@ test("키 익히기: 배치 규칙은 키 글을 가리고 손가락으로 맞�
   ).toHaveCount(2);
 });
 
-test("5×5 「두 손」: 7로 오른손 층 수를 올리면 큐브와 키 그림에 보이고, 키캡이 따라간다", async ({
+test("5×5 「두 손」: 숫자는 다음 면 키 하나의 깊이라 층 수 표시가 없고, 숫자 칸은 「n번째 층」", async ({
   page,
 }) => {
   await page.goto("/cube/solo");
   await inputReady(page);
   await page.locator("[data-cube-size]").selectOption("5");
   await inputReady(page);
-  await expect(page.locator("[data-cube-keys]")).toBeVisible();
-  await expect(page.locator("[data-key-layers]")).toHaveAttribute(
-    "data-key-layers",
-    "1-1",
-  );
-  await page.keyboard.press("Digit7");
-  await expect(page.locator("[data-cube-layers]")).toHaveAttribute(
-    "data-cube-layers",
-    "1-2",
-  );
-  await expect(page.locator("[data-key-layers]")).toHaveAttribute(
-    "data-key-layers",
-    "1-2",
-  );
-  // 층 수 2에서 R 키(I)는 바깥 두 층(Rw)
-  await page.keyboard.press("KeyI");
+  const keys = page.locator("[data-cube-keys]");
+  await expect(keys).toBeVisible();
+  // 2026-11-12부터 층 수(손 표시)는 없다
+  await expect(page.locator("[data-key-layers]")).toHaveCount(0);
+  await expect(page.locator("[data-cube-layers]")).toHaveCount(0);
+  await expect(keys.locator("[data-key='Digit3']")).toContainText("3번째 층");
+  // Shift를 누르는 동안 숫자 칸은 「바깥 3층」
+  await page.keyboard.down("Shift");
+  await expect(keys.locator("[data-key='Digit3']")).toContainText("바깥 3층");
+  await page.keyboard.up("Shift");
+  // 3 → Shift+I = 3Rw(수 하나), 숫자는 수가 아니다
+  await page.keyboard.press("Digit3");
+  await expect(page.locator("[data-cube-moves]")).toHaveText("0");
+  await page.keyboard.press("Shift+KeyI");
   await expect(page.locator("[data-cube-moves]")).toHaveText("1");
+  await page.keyboard.press("KeyI");
+  await expect(page.locator("[data-cube-moves]")).toHaveText("2");
+  await expect(page.locator("[data-key-layers]")).toHaveCount(0);
 });
 
 test("설정 사용자 키: 쓰던 키를 지정하면 먼저 묻고, 키가 없어진 동작을 표시한다", async ({
