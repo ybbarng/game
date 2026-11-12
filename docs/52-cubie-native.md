@@ -596,6 +596,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
 3. ~~단축키 표 칸 바탕 면 색~~(2026-11-12 옮김: 칸 바탕·사선 무늬·빌린 면 색 선, 설정 「키 그림에 면 색」을 끄면 칠하지 않음).
 4. 실제 창의 손맛·포커스·말풍선 자리·모니터 떼기는 사람이 확인(아래 「판을 내기 전에」).
+5. 단축키 표의 손가락 자리 표시(사이트 `KeyOverlay`, 가운데 줄 손가락 자리를 손 색 띠로)는 앱 표에 없다(2026-11-12 비교 그림에서 찾음).
 
 #### 견주기: 웹(0.1.10 화면) vs 완전 네이티브
 
@@ -635,7 +636,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 생김새
 
 - `docs/cubie-native/compare-full.webp`: 바탕 넷(#000·어두운 회색·흰색·사진) × 웹(WebKit, 배율 2) 떠 있을 때·섞인 큐브·맞추는 중(거울)과 네이티브 맞춘 큐브·섞인 큐브·맞추는 중(거울)·돌리는 중·돌리는 중 거울도 따라 돎·다 맞춘 축하(빛 고리와 금색 시간). 윤곽·거울 판 자리는 5-5와 같고, 돌리는 동안 거울 판의 그 층도 같이 돈다.
-- `docs/cubie-native/compare-panels.webp`: 네이티브 힌트 말풍선(3×3 섞기, 사람 해법의 십자 단계와 키캡 줄)·공식 연습 말풍선(십자 1/10, 지금 칠 수 밑줄)과 웹 README 공식 연습 그림, 그리고 F1 단축키 표 3×3(J 누름 빛남)·7×7을 네이티브와 웹(사이트 `?view=keys&panel=1`, WebKit 560×300)으로 한 줄에 나란히. 단축키 표는 같은 글·같은 배치, 칸 색 칠하는 방식만 다르다(위 「웹과 다르게 한 것」).
+- `docs/cubie-native/compare-panels.webp`: 네이티브 힌트 말풍선(3×3 섞기, 사람 해법의 십자 단계와 키캡 줄)·공식 연습 말풍선(십자 1/10, 지금 칠 수 밑줄)과 웹 README 공식 연습 그림, 그리고 F1 단축키 표 3×3(J 누름 빛남)·7×7을 네이티브와 웹(사이트 `?view=keys&panel=1`, WebKit 560×300)으로 한 줄에 나란히. 단축키 표는 같은 글·같은 배치(이 그림 때는 칸 색 칠하는 방식이 달랐다. 2026-11-12 사이트와 같게 고친 뒤 그림은 아래 5-7 `compare-parity-panels.webp`).
 - 다시 만들기: `CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie` 뒤 `node apps/cubie/scripts/native-compare.mjs <폴더>`. 큐브는 `CARenderer`(Metal 텍스처), 말풍선·단축키 표는 층과 보기 그리기로 PNG를 뜬다. 창을 띄우지 않는다.
 
 #### 사용자가 써 볼 명령
@@ -681,6 +682,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 ```
 
 - 사이트 주소는 기본이 `https://game.byb.kr`(배포된 판)이다. 고친 웹을 찍으려면 로컬 서버(`pnpm dev`, 또는 빌드한 `out/`를 띄운 주소)를 준다. 고친 화면에 맞는 그림을 `docs/cubie-native/`에 webp로 남기고 PR 본문에 붙인다.
+- 2026-11-12 그림(공식 연습 가리기·F1 표 칸 색을 고친 뒤, 웹은 배포된 사이트를 WebKit으로, 네이티브는 화면 밖 스크린샷): `docs/cubie-native/compare-parity.webp`(바탕 넷 × 큐브 장면, 오른쪽 넷 칸이 공식 연습 십자·노란 십자 가리기. 문제는 웹과 네이티브가 달라 시작 모양이 다르고, 가리는 모양을 본다), `docs/cubie-native/compare-parity-panels.webp`(F1 표 3×3·7×7·색약 친화 3×3 웹·네이티브 나란히: 칸 바탕 면 색·주황 사선·x·y·z 점선·M 짧은 선이 같다). 웹 표에만 있는 것: Esc 칸(앱은 위 줄 「닫기」에 적는다)과 손가락 자리 표시(`KeyOverlay`, 칸 사이 손 색 띠. 앱 표에는 없다, 5-6 「남은 것」 5).
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 
