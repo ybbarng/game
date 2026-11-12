@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.3.0</title>
+      <pubDate>Thu, 12 Nov 2026 08:14:23 +0000</pubDate>
+      <sparkle:version>0.3.0</sparkle:version>
+      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;기록 보기·티어표·설정 창도 앱이 직접 그려요. 이 창들을 열어도 메모리가 거의 늘지 않고, 인터넷 없이 열려요. 공식 연습에서 그 단계와 상관없는 스티커를 가리고, F1 키보드 그림 칸에 면 색이 들어가요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.3.0/Cubie.zip" length="3506049" type="application/octet-stream" sparkle:edSignature="vS7rmzXcSsWN/ITbm8i/1c8lUD6/CJfINfLA6G4sPYGIQtYFcwCbQ6bNRzFeczz5XN6wO0oR3gtZWn7MtKE2Cw=="/>
+    </item>
+    <item>
       <title>Cubie 0.2.0</title>
       <pubDate>Thu, 12 Nov 2026 05:59:35 +0000</pubDate>
       <sparkle:version>0.2.0</sparkle:version>
