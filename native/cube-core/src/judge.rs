@@ -23,6 +23,30 @@ pub enum Goal {
     Oll,
     /// OLL + 윗면 돌리기 하나로 윗층 코너가 맞음
     YellowCorners,
+    /// 초보자 옆면 맞추기: F2L + 윗면 돌리기 하나로 윗층 엣지가 맞음
+    YellowEdges,
+    /// 초보자 코너 자리: 옆면 맞추기 + 윗층 코너가 제자리(방향은 안 봄)
+    LlCornersPlaced,
+    /// 다 맞음, 어느 면이든 한 번 돌리기는 봐준다
+    Ll,
+}
+
+impl Goal {
+    /// 사이트 목표 이름(`GoalName`)에서. 「second-layer」는 F2L과 같은 판정이다
+    pub fn from_id(id: &str) -> Option<Goal> {
+        Some(match id {
+            "solved" => Goal::Solved,
+            "white-cross" | "cross" => Goal::Cross,
+            "second-layer" | "f2l" => Goal::F2l,
+            "yellow-cross" => Goal::YellowCross,
+            "oll" => Goal::Oll,
+            "yellow-corners" => Goal::YellowCorners,
+            "yellow-edges" => Goal::YellowEdges,
+            "ll-corners-placed" => Goal::LlCornersPlaced,
+            "ll" => Goal::Ll,
+            _ => return None,
+        })
+    }
 }
 
 /// 큐브 전체 방향 24가지마다 "자리 면 → 있어야 할 색"
@@ -64,6 +88,20 @@ fn piece_ok(v: &View, piece: usize) -> bool {
 
 fn all_ok(v: &View, pieces: &[usize]) -> bool {
     pieces.iter().all(|&p| piece_ok(v, p))
+}
+
+/// 조각 하나가 제자리인가(방향은 안 본다)
+fn piece_placed(v: &View, piece: usize) -> bool {
+    let topo = cube_topology(v.n);
+    let stickers = &topo.pieces[piece].stickers;
+    let mut have: Vec<u8> = stickers.iter().map(|&s| v.colors[s]).collect();
+    let mut want: Vec<u8> = stickers
+        .iter()
+        .map(|&s| v.frame[topo.stickers[s].face])
+        .collect();
+    have.sort_unstable();
+    want.sort_unstable();
+    have == want
 }
 
 fn face_is(n: usize, colors: &[u8], f: usize, color: u8) -> bool {
@@ -124,7 +162,7 @@ fn frame_goal(goal: Goal, v: &View, state: &State) -> bool {
     let white = v.frame.iter().position(|&c| c == WHITE).unwrap_or(0);
     let g = cube_groups(n, white);
     match goal {
-        Goal::Solved => unreachable!(),
+        Goal::Solved | Goal::Ll => unreachable!(),
         Goal::Cross => all_ok(v, &g.cross),
         Goal::F2l => all_ok(v, &g.f2l),
         Goal::YellowCross => all_ok(v, &g.f2l) && top_edges_oriented(v, &g.last_layer_edges),
@@ -143,6 +181,22 @@ fn frame_goal(goal: Goal, v: &View, state: &State) -> bool {
                 all_ok(&tv, &g.last_layer_corners)
             })
         }
+        Goal::YellowEdges | Goal::LlCornersPlaced => {
+            if !all_ok(v, &g.f2l) {
+                return false;
+            }
+            (0..4).any(|k| {
+                let s = turn_face(n, state, v.top, k);
+                let colors = face_colors(n, &s);
+                let tv = View {
+                    colors: &colors,
+                    ..*v
+                };
+                all_ok(&tv, &g.last_layer_edges)
+                    && (goal == Goal::YellowEdges
+                        || g.last_layer_corners.iter().all(|&p| piece_placed(&tv, p)))
+            })
+        }
     }
 }
 
@@ -150,6 +204,9 @@ fn frame_goal(goal: Goal, v: &View, state: &State) -> bool {
 pub fn goal_met(n: usize, state: &State, goal: Goal) -> bool {
     if goal == Goal::Solved {
         return is_solved(n, state);
+    }
+    if goal == Goal::Ll {
+        return (0..6).any(|f| (0..4).any(|k| is_solved(n, &turn_face(n, state, f, k))));
     }
     let colors = face_colors(n, state);
     frames_of(n, &colors).into_iter().any(|frame| {
