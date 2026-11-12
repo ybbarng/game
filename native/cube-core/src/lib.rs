@@ -14,6 +14,7 @@
 //! | [`replay`] | `apps/web/src/cube/records.ts`·`replay-player.ts`(다시 보기·구간 기록 글) |
 //! | [`keys`] | `apps/web/src/cube/input/`(키 배치·해석기: 키 → 수·명령), 키캡 줄은 `keys/move-keys.ts`·`keys/reach.ts` |
 //! | [`progress`]·[`combo`]·[`session`] | `packages/cube-engine/src/solve-progress.ts`(조각 점수·이정표·흐름 진행 칸), 웹 `flow/combo.ts`·`solve-session.ts`(Cubie 미니의 한 판: 기록 칸) |
+//! | [`hero`] | 웹 `hero/methods.ts`(홈 시연의 첫 면 색 고르기, 지금은 3×3 프리드리히) |
 //! | [`human`]·[`hint`] | `packages/cube-ai`(`solveCfop`·`solveAdvanced2`와 그 단계·탐색), 웹 `mini/hint-pick.ts`(공식 보기 고르기) |
 //! | [`mask`] | `packages/cube-engine/src/mask.ts`·웹 `learn/judge.ts` `maskFor`(공식 연습 가리기) |
 //! | [`practice`] | 웹 `practice/`(단계·키 비용·공식 고르기·출제·문제·따라 치기 판정·한 판·진행기)와 `mini/practice.ts`(메뉴 단계) |
@@ -24,6 +25,7 @@
 pub mod data;
 pub mod combo;
 pub mod groups;
+pub mod hero;
 pub mod hint;
 pub mod human;
 #[rustfmt::skip]

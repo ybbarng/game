@@ -558,7 +558,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 다 맞춘 축하(움츠렸다 튐·빛 고리·시간 숫자, 최고면 금색) | `SolveCheer.tsx` | `CACubeView.cheer`(합성기 애니메이션) | 옮김 |
 | 떠 있을 때: 내 판 다시 보기(최고·최근 번갈아, 그때 속도) | `idle.ts`·`replay.ts` | `IdleShow` + 코어 다시 보기 걸음 | 옮김 |
 | 떠 있을 때: 섞인 큐브 조금 섞었다 되돌리기 | `idle.ts` `jigglePlan` | `IdleShow.jigglePlan` | 옮김 |
-| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop` | — | 남음(지금은 조금 섞기로 대신) |
+| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop`·`hero/methods.ts`·`present.ts` | 코어 `hero.rs`(3×3 프리드리히 첫 면 색 고르기·풀이, 공통 자료 `hero.json` 어긋남 0) | 일부(앱은 아직 조금 섞기로 대신, 아래 「남은 것」 1) |
 | 소리(돌리기·맞춤·틀림) | `game/sound.ts` | `CubieSound`(같은 모양을 미리 PCM으로, 울림 없음) | 옮김 |
 | 동작 줄이기(떠 있을 때 움직임 없음·축하 줄임·섞기 연출 바로·거울 바로) | `prefers-reduced-motion` | 시스템 설정(`accessibilityDisplayShouldReduceMotion`) | 옮김 |
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
@@ -587,7 +587,12 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 
 #### 남은 것
 
-1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절)을 코어로: `HeroLoop`·초보자·중수 해법(`solveBeginner3` 등).
+1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). 2026-11-12 첫 걸음: 코어 `hero.rs`가 3×3 프리드리히(`3-cfop`)의 첫 면 색(여섯 색 중 십자가 가장 싼 색, 같으면 흰색 먼저)을 고르고 그 색으로 푼다(`human::solve_cfop_first`, 사이트 `firstFaceMap`과 같은 색 바꿈). 사이트 `solveWithFirst`와 공통 자료 `hero.json`(섞기 8개, 색마다 십자 수·고른 색·풀이 수·단계) 어긋남 0. 남은 차례:
+   1. 보여 주기 변환(`hero/present.ts` 811줄: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 조각 찾기 돌리기·강조 사건·쉬는 자리)을 코어로. 미니는 꼬리표를 보이지 않으니 수·쉬는 자리만 맞추면 된다.
+   2. 연출 차례·시간(`hero/loop.ts` `HeroLoop`: 섞기 → 쥐기 → 풀이 걸음, `heroTiming`·`heroMoveMs`)을 코어 연출 줄로. 사이트 `solveSteps`·`scrambleSteps`와 공통 자료로 견준다.
+   3. 나머지 해법을 코어로: 3×3 초보자(`solveBeginner3` 배우는 방식, `taught.ts`·`taught-plan.ts`)·루·ZZ(`methods-roux-zz.ts`)·2×2 초보자·공식, 4×4~7×7 축소법(`big.ts`). 「번갈아」 차례(`heroRotation`)도.
+   4. 앱 `IdleShow`의 홈 시연 자리에 잇고(지금은 조금 섞기), 웹·네이티브 비교 그림을 남긴다.
+   - 1~3을 마치기 전에 앱에 잇지 않는다. 보여 주기 변환 없이 풀이만 돌리면 사이트와 다른 시연이 되어 오히려 어긋남이 생긴다.
 2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
 3. ~~단축키 표 칸 바탕 면 색~~(2026-11-12 옮김: 칸 바탕·사선 무늬·빌린 면 색 선, 설정 「키 그림에 면 색」을 끄면 칠하지 않음).
 4. 실제 창의 손맛·포커스·말풍선 자리·모니터 떼기는 사람이 확인(아래 「판을 내기 전에」).
@@ -659,7 +664,7 @@ apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 같
 
 > 사용자: 「네이티브가 기존과 모든 기능이 같은가, 앞으로 불일치를 해결할 방법은?」. 0.2.0부터 큐브 창 고침은 Cubie 새 판으로만 나가므로(5-6 「판을 내기 전에」 8), 사이트 미니 화면만 고치면 앱과 조용히 달라진다. 장치는 셋이다.
 
-1. **값은 공통 시험 자료로 견준다.** 판 규칙·섞기·힌트·공식 연습·키캡·F1 표 글자·한 판 기록·티어, 그리고 화면 상태(공식 연습 가리기·F1 표 칸 색)는 코어가 만든 값과 사이트가 만든 값을 같은 자료(`native/cube-core/fixtures/*.json` ↔ `apps/web/src/cube/native/core-fixtures*.ts`)로 본다. 사이트 결과가 바뀌면 사이트 쪽 자료 시험이 먼저 깨지고, 자료를 다시 쓰면 `native/`가 바뀌어 CI `rust` 작업이 돈다.
+1. **값은 공통 시험 자료로 견준다.** 판 규칙·섞기·힌트·공식 연습·키캡·F1 표 글자·한 판 기록·티어, 그리고 화면 상태(공식 연습 가리기·F1 표 칸 색)는 코어가 만든 값과 사이트가 만든 값을 같은 자료(`native/cube-core/fixtures/*.json` ↔ `apps/web/src/cube/native/core-fixtures*.ts`)로 본다. 사이트 결과가 바뀌면 사이트 쪽 자료 시험이 먼저 깨지고, 자료를 다시 쓰면 `native/`가 바뀌어 CI `rust` 작업이 돈다. 화면 상태 자료는 `mask.json`(가리기 이름 × 크기, 공식 연습 단계마다 시작 모양에서 칠할 값)·`keypaint.json`(F1 표 칸마다 칠하기, 배색마다 칸 바탕·선·사선 색), 홈 시연은 `hero.json`이다(2026-11-12). CI `rust` 작업의 조건에 그 기준 파일(`keys/key-colors`·`keys/layout`·`hero/methods`·`settings`)을 더했다.
 2. **PR 검사 `native-parity`**(`scripts/native-parity.mjs`, 시험 `native-parity.test.mjs`, CI 작업 `native-parity`를 `ci-ok`가 기다림): PR에서 큐브 창 동작에 닿는 사이트 코드가 바뀌었는데 `apps/cubie/`·`native/` 아래가 하나도 안 바뀌면 실패한다. 네이티브와 상관없는 고침이면 PR 본문에 `네이티브 해당 없음: <이유>` 줄을 적으면 통과한다(목록 표시 `-`나 굵게 `**`가 붙어도 된다, 이유가 비면 안 된다). 본문을 고친 뒤 작업을 다시 돌리면 스크립트가 GitHub API로 지금 본문을 읽는다. 단위 시험 파일만 바뀐 것은 보지 않는다.
    - 검사 대상(스크립트의 `WATCHED`, 사이트 `apps/web/src/` 아래): `cube/mini/`·`app/cube/mini/`(미니 화면), `cube/view/`(그리기·거울 판·카메라), `cube/input/`(키 해석·배치), `cube/keys/` 가운데 `two-hand`·`layout`·`move-keys`·`reach`·`hand-layers`·`key-colors`, `cube/components/KeyboardMap.tsx`(F1 표), `cube/settings.ts`, `cube/scramble-show.ts`, `cube/solve-session.ts`, `cube/flow/combo.ts`, `cube/hero/`(홈 시연·첫 면 색), `cube/practice/`(대결 `versus*` 빼고), `cube/learn/judge.ts`(가리기)·`alg-sets.ts`, `cube/algs/spot.ts`·`store.ts`, `cube/game-sounds.ts`, `game/sound.ts`, `cube/replay-player.ts`, `cube/records.ts`, `cube/tiers/rank.ts`, `cube/native/`(공통 자료의 사이트 쪽).
    - 넣지 않은 것: 기록 창·티어표·설정 창(앱이 사이트 창으로 열어 사이트 배포로 바뀐다), 수 계산 패키지 `packages/cube-*`(CI `rust` 작업과 공통 자료가 값으로 본다). 목록의 파일·폴더를 옮기거나 지우면 시험이 깨지니 목록도 함께 고친다.

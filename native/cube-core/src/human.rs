@@ -800,7 +800,35 @@ fn finish(s: &Solve) -> R<HumanSolve> {
 
 /// 3×3 고수(사이트 `solveCfop`, 첫 면 흰색): 흰 면 아래로 쥐고 십자(가장 짧게) → F2L 네 쌍 → OLL 57 → PLL 21
 pub fn solve_cfop(state: &State) -> R<HumanSolve> {
-    let mut s = Solve::new(3, face_colors(3, state), None);
+    solve_cfop_first(state, 0)
+}
+
+/// 큐브 돌리기 한 번 안쪽으로 각 면을 위로 드는 표기(흰 면 위 맞춘 큐브 기준, 사이트 `facelets.ts` `LIFT`)
+const LIFT: [&str; 6] = ["", "z'", "x", "x2", "z", "x'"];
+
+/// 첫 면 색 `first`(0 흰 · 1 빨강 · 2 초록 · 3 노랑 · 4 주황 · 5 파랑)를 흰 글자로 읽게 하는 색 → 글자 표
+/// (사이트 `firstFaceMap`). 맞춘 큐브를 돌려 `first`가 위로 오는 방향에서 면마다 보이는 색을 그 면 글자로 읽는다
+pub fn first_face_map(first: usize) -> [u8; 6] {
+    let solved = crate::solved_cube(3);
+    let s = crate::state::apply_alg(3, &solved, LIFT[first % 6]).expect("들기 표기");
+    let colors = face_colors(3, &s);
+    let mut map = [0u8; 6];
+    for k in 0..6 {
+        map[colors[k * 9 + 4] as usize] = k as u8;
+    }
+    map
+}
+
+/// 3×3 고수, 첫 면 색을 골라서(사이트 `solveCfop(state, { first })`, 색 중립). 그 색을 흰색처럼 보고 같은 차례로 푼다
+pub fn solve_cfop_first(state: &State, first: usize) -> R<HumanSolve> {
+    let mut f = face_colors(3, state);
+    if first != 0 {
+        let map = first_face_map(first);
+        for c in f.iter_mut() {
+            *c = map[*c as usize];
+        }
+    }
+    let mut s = Solve::new(3, f, None);
     white_down(&mut s)?;
     cross_optimal(&mut s)?;
     s.stage(StageName::Cross);

@@ -44,6 +44,7 @@ import {
 import { replayLength, solveSteps } from "../replay-player";
 import { ao5, bestAo5, myTier, tierName, tierOf } from "../tiers/rank";
 import { TIER_SIZES, TIER_TABLE } from "../tiers/table";
+import { buildHero } from "./core-fixtures-hero";
 import {
   buildHint,
   buildRustHumanData,
@@ -735,6 +736,7 @@ export const BUILDERS = {
   "fixtures/keytable.json": buildKeyTable,
   "fixtures/mask.json": buildMask,
   "fixtures/keypaint.json": buildKeyPaint,
+  "fixtures/hero.json": buildHero,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,
