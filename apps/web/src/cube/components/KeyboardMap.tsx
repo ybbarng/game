@@ -62,9 +62,17 @@ function isLayersKey(a: KeyAction): boolean {
   return parseAction(a.action)?.kind === "layers";
 }
 
-/** 수가 아니라 낱말로 적는 동작(명령·층 수) */
+/**
+ * 수가 아니라 다음 키의 뜻을 바꾸는 키(층 수·깊이). 그 크기에서 쓸 수 없으면 「모두」에서도 흐린 글을 적지 않는다
+ * (3×3의 숫자 4~7, 2×2의 숫자)
+ */
+function isKeyMode(a: KeyAction): boolean {
+  return isLayersKey(a) || parseAction(a.action)?.kind === "depth";
+}
+
+/** 수가 아니라 낱말로 적는 동작(명령·층 수·깊이 「3번째 층」) */
 function isWordy(a: KeyAction): boolean {
-  return a.kind === "command" || isLayersKey(a);
+  return a.kind === "command" || isKeyMode(a);
 }
 
 export function dotOf(a: { kind: ActionKind; face?: FaceLetter }): string {
@@ -300,7 +308,7 @@ function Key({
       {!cell.modifier && !hideActions && (
         <span className="flex min-w-0 flex-1 flex-col justify-end">
           {lines.map(({ key, a, strong }) =>
-            a && (a.usable || (layer === "all" && !isLayersKey(a))) ? (
+            a && (a.usable || (layer === "all" && !isKeyMode(a))) ? (
               <span
                 key={key}
                 data-layer-line={key}

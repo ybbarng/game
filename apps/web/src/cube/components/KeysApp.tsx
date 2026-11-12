@@ -165,10 +165,11 @@ export function KeysApp() {
             <KeyLegend />
             {keymap.preset === "twoHand" && (
               <p className="break-keep text-white/60 text-xs" data-keys-cstimer>
-                「두 손」은 csTimer와 같은 자리예요. 덧붙인 것: Shift + 면 키 =
-                넓게. csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라
-                살펴보기·블라인드 시작이에요. 큰 큐브의 층 수(3·4·7·8)는
-                섞기·맞춘 상태로 때 1로 돌아가요.
+                「두 손」의 글자 키는 csTimer와 같은 자리예요. 숫자 n 다음 면
+                키는 그 면의 n번째 층 하나, 숫자 n 다음 Shift + 면 키는 바깥
+                n층을 같이 돌려요(7×7 바깥 세 층은 3 → Shift+I). 숫자는 다음 수
+                하나에만 붙어요. csTimer와 다른 곳: Space는 살펴보기·블라인드
+                시작이에요.
               </p>
             )}
           </section>

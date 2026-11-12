@@ -175,13 +175,17 @@ export function keyLayers(
   for (const layer of LAYERS) {
     const action = resolveAction(keymap, input(code, layer));
     if (action === null) continue;
+    const p = parseAction(action);
     out[layer] = {
       action,
-      // 3×3의 둘째 층(2U)은 가운데 층 이름(E')으로 적는다
+      // 3×3의 둘째 층(2U)은 가운데 층 이름(E')으로 적는다. 숫자(깊이)는 그냥 칠 때 「3번째 층」,
+      // Shift와 함께면 그 뒤 Shift + 면 키가 바깥 3층을 같이 돌리므로 「바깥 3층」(2026-11-12)
       label:
-        parseAction(action)?.kind === "move"
+        p?.kind === "move"
           ? canonicalNotation(n, action)
-          : shortLabel(action),
+          : p?.kind === "depth" && (layer === "shift" || layer === "altShift")
+            ? `바깥 ${p.depth}층`
+            : shortLabel(action),
       ...kindOf(action),
       usable: isAvailable(n, action),
     };
@@ -205,6 +209,8 @@ export function shortLabel(action: ActionId): string {
   // 층 수 키는 칸이 좁아 「오른손」·「층 +1」 두 줄로 접힌다(「층 +1」은 붙여 둔다)
   if (p?.kind === "layers")
     return `${p.side === "L" ? "왼손" : "오른손"} 층 ${p.delta > 0 ? "+1" : "−1"}`;
+  // 숫자 = 다음 면 키 하나의 깊이(n번째 층 하나만)
+  if (p?.kind === "depth") return `${p.depth}번째 층`;
   return SHORT_COMMAND[action] ?? actionLabel(action);
 }
 

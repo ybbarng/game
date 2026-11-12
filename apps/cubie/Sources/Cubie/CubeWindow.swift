@@ -145,6 +145,10 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
 
   private var triedCache = false
   private var offline = false
+  /// 연결이 없어 저장해 둔 화면을 띄웠다(연결이 돌아오면 다시 불러온다)
+  private var showingCache = false
+  /// 이번 불러오기에서 판이 어긋나 저장본 없이 한 번 더 불러왔다(`PageFreshness.needsFreshReload`)
+  private var buildRetried = false
   private let path = NWPathMonitor()
 
   static let frameName = "CubieMain"
@@ -213,6 +217,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
 
     chrome.onResized = { [weak self] in self?.saveFrame() }
     webView.navigationDelegate = self
+    bridge.onBuild = { [weak self] build in self?.checkBuild(page: build) }
     if Config.measure {
       hideForMeasure()
       return
@@ -249,7 +254,8 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     path.pathUpdateHandler = { [weak self] p in
       guard p.status == .satisfied else { return }
       Task { @MainActor in
-        if self?.offline == true { self?.load() }
+        guard let self else { return }
+        if self.offline || self.showingCache { self.load() }
       }
     }
     path.start(queue: .main)
@@ -365,11 +371,46 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
     saveFrame()
   }
 
+  /// 켤 때·메뉴 「다시 불러오기」·설정 창을 닫을 때. 저장해 둔 HTML이 있어도 서버에 바뀌었는지 묻는다(`PageFreshness.load`).
+  /// 예전처럼 기본 정책으로 불러오면 옛 HTML(→ 옛 화면 코드)이 남아 배포한 변경이 앱에 안 보였다(2026-11-12)
   func load() {
     offline = false
     triedCache = false
+    showingCache = false
+    buildRetried = false
     hitRects = []
-    webView.load(URLRequest(url: Config.miniURL))
+    webView.load(URLRequest(url: Config.miniURL, cachePolicy: PageFreshness.load))
+  }
+
+  // MARK: 판 비교: 화면이 아는 빌드 커밋과 사이트에 배포된 커밋(docs/47 15-26)
+
+  /// 화면이 「준비됨」과 함께 알려 준 빌드 커밋을 사이트 `/version.json`과 견줘, 다르면 저장본 없이 한 번 더 불러온다.
+  /// 저장본으로 띄운 화면(연결 없음)은 견주지 않는다(연결이 돌아오면 어차피 다시 불러온다)
+  private func checkBuild(page: String?) {
+    guard !offline, !showingCache, !buildRetried else { return }
+    let versionURL = Config.site("/version.json")
+    Task { @MainActor [weak self] in
+      let deployed = await Self.deployedBuild(versionURL)
+      guard let self, !self.offline, !self.showingCache else { return }
+      let reload = PageFreshness.needsFreshReload(page: page, deployed: deployed, alreadyRetried: self.buildRetried)
+      if Config.debug || Config.measure {
+        print("[cubie] build page=\(page ?? "nil") deployed=\(deployed ?? "nil") -> \(reload ? "reload" : "ok")")
+        fflush(stdout)
+      }
+      guard reload else { return }
+      self.buildRetried = true
+      self.hitRects = []
+      self.webView.load(URLRequest(url: Config.miniURL, cachePolicy: PageFreshness.forceFresh))
+    }
+  }
+
+  /// 사이트에 배포된 빌드 커밋. 저장본을 쓰지 않고 받는다. 못 받으면 nil
+  private static func deployedBuild(_ url: URL) async -> String? {
+    let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+    guard let (data, resp) = try? await URLSession.shared.data(for: req),
+      (resp as? HTTPURLResponse)?.statusCode == 200
+    else { return nil }
+    return PageFreshness.deployedCommit(fromVersionJSON: data)
   }
 
   // MARK: 마우스: 투명한 빈 곳은 지나가게
@@ -522,7 +563,7 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   func windowDidMove(_ notification: Notification) { updateMouse() }
   func windowDidResize(_ notification: Notification) { chrome.needsDisplay = true }
 
-  // MARK: 불러오기 실패(오프라인): 저장된 것 → 연결 없음 화면
+  // MARK: 불러오기 실패: 연결이 없을 때만 저장된 것 → 연결 없음 화면(`PageFreshness.onFailure`)
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     failed(error)
@@ -534,13 +575,17 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
 
   private func failed(_ error: Error) {
     let e = error as NSError
-    if e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled { return }
-    if !triedCache {
+    let action = PageFreshness.onFailure(domain: e.domain, code: e.code)
+    if Config.debug { print("[cubie] load failed \(e.domain) \(e.code) -> \(action)"); fflush(stdout) }
+    if action == .ignore { return }
+    if action == .showCache && !triedCache {
       triedCache = true
+      showingCache = true
       webView.load(URLRequest(url: Config.miniURL, cachePolicy: .returnCacheDataDontLoad))
       return
     }
     offline = true
+    showingCache = false
     webView.loadHTMLString(Self.offlineHTML, baseURL: nil)
   }
 

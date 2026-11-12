@@ -34,6 +34,7 @@ import {
   shapesFor,
 } from "../patterns/race";
 import { ShapeFormula } from "../patterns/ShapeFormula";
+import { ShapeGoal } from "../patterns/ShapeGoal";
 import {
   addShapeResult,
   introSeen,
@@ -52,7 +53,7 @@ import { CubePosterPair } from "./CubePosterPair";
 /**
  * 혼자 하는 모양 만들기(`/cube/patterns?tab=make`, 옛 `/cube/shape`, docs/47 9-10·16-2). 목표 모양을 고르고, 맞춘 큐브(또는 섞인 큐브)에서 그 모양을 만든다.
  * 첫 면 돌리기에 시간이 흐르고 목표와 같은 모양이 되면 멈춘다. 기록은 모양·시작마다 이 기기에 둔다.
- * 목표는 펼친 그림이 아니라 비스듬한 큐브 그림 둘로 보인다. 「만드는 법」를 연 판은 기록을 따로 센다(`shape-records.ts`)
+ * 목표는 내 큐브와 같은 거울 판을 단 3D 큐브(`ShapeGoal`), 고르는 카드는 비스듬한 큐브 그림 둘로 보인다. 「만드는 법」를 연 판은 기록을 따로 센다(`shape-records.ts`)
  */
 
 const SIZES = [3, 2, 4, 5].filter(shapeSupports);
@@ -505,14 +506,13 @@ function ShapePlay({
       <div className="flex flex-col items-center gap-3 md:flex-row md:items-start md:justify-center">
         <div
           data-cube-shape-target={pattern.id}
-          className="flex shrink-0 items-center gap-3 rounded-xl border border-violet-300/30 bg-violet-300/10 p-2 md:w-56 md:flex-col"
+          className="flex shrink-0 items-center gap-3 rounded-xl border border-violet-300/30 bg-violet-300/10 p-2 md:w-60 md:flex-col"
         >
-          <CubePosterPair
+          <ShapeGoal
             n={n}
             state={goal.target}
             settings={settings}
-            captions={false}
-            className="w-32 md:w-full"
+            className="w-40 md:w-full"
           />
           <div className="flex flex-col gap-0.5 text-sm md:items-center">
             <span className="text-violet-100/70 text-xs">만들 모양</span>

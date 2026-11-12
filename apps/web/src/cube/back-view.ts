@@ -13,17 +13,23 @@ import type { BackView } from "./settings";
 export const MIRROR_MIN_WIDTH = 300;
 
 /**
- * 지금 보일 뒷면 보기. 3D를 못 그리면 끔(큐브 그림 둘이 여섯 면을 다 보인다), 거울인데 자리가 좁으면 끔.
+ * 칸을 누르지 않고 보기만 하는 큐브(모양 만들기의 목표 그림 등)의 거울 판 최소 자리(CSS px). 판 칸을 누를 일이 없어
+ * 작아도 되고, 이보다 좁으면 큐브와 판이 알아보기 어렵다(2026-11-12 사용자 「거울 상 일관성」, docs/47 9-10)
+ */
+export const MIRROR_VIEW_MIN_WIDTH = 140;
+
+/**
+ * 지금 보일 뒷면 보기. 3D를 못 그리면 끔(큐브 그림 둘이 여섯 면을 다 보인다), 거울인데 자리가 `minWidth`보다 좁으면 끔.
  * `width`가 아직 재지 않은 값(null)이면 설정대로
  */
 export function backViewFor(
   setting: BackView,
   width: number | null,
   can3d: boolean,
+  minWidth: number = MIRROR_MIN_WIDTH,
 ): BackView {
   if (!can3d) return "off";
-  if (setting === "mirror" && width !== null && width < MIRROR_MIN_WIDTH)
-    return "off";
+  if (setting === "mirror" && width !== null && width < minWidth) return "off";
   return setting;
 }
 
