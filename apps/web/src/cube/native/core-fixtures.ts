@@ -44,6 +44,7 @@ import {
 import { replayLength, solveSteps } from "../replay-player";
 import { ao5, bestAo5, myTier, tierName, tierOf } from "../tiers/rank";
 import { TIER_SIZES, TIER_TABLE } from "../tiers/table";
+import { buildHero } from "./core-fixtures-hero";
 import {
   buildHint,
   buildRustHumanData,
@@ -52,6 +53,7 @@ import {
 import { buildKeycaps } from "./core-fixtures-keycaps";
 import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
+import { buildKeyPaint, buildMask } from "./core-fixtures-screen";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
 export type FixtureFiles = Record<string, string>;
@@ -732,6 +734,9 @@ export const BUILDERS = {
   "fixtures/practice.json": buildPractice,
   "fixtures/keycaps.json": buildKeycaps,
   "fixtures/keytable.json": buildKeyTable,
+  "fixtures/mask.json": buildMask,
+  "fixtures/keypaint.json": buildKeyPaint,
+  "fixtures/hero.json": buildHero,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,
