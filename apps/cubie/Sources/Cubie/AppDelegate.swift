@@ -63,11 +63,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
           self?.keys.reload()
           native.send(.keysPanel(false))
         }
-        m.openRecords = { [weak self] in
-          self?.openWindow(.records)
-          if let w = self?.sheets[.records]?.window { w.setFrameOrigin(NSPoint(x: -30000, y: -30000)) }
+        // 기록 창·티어표·설정 창도 화면 밖에서 띄워 잰다(네이티브, `CUBIE_WEB_WINDOWS=1`이면 사이트 창)
+        m.window = { [weak self] name, open in
+          let kind: WebWindow? =
+            switch name {
+            case "records": .records
+            case "tiers": .tiers
+            case "settings": .settings
+            default: nil
+            }
+          if let kind { self?.measureWindow(kind, open: open) }
+          // `replay open`: 기록 창을 열고 한 판 다시 보기(네이티브 창만)
+          if name == "replay", open {
+            self?.measureWindow(.records, open: true)
+            (self?.sheets[.records] as? NativeRecordsWindow)?.measureReplay()
+          }
         }
-        m.closeRecords = { [weak self] in self?.sheets[.records]?.window.close() }
         nativeMeasure = m
       }
       return
@@ -536,7 +547,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     if let s = sheets[kind] {
       if let n { (s as? NativeTiersWindow)?.show(n) }
-      Self.bringToFront(s.window)
+      present(s.window)
       return
     }
     let s: NativeSheetWindow
@@ -559,13 +570,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     s.onClose = { [weak self] in self?.sheets[kind] = nil }
     sheets[kind] = s
-    Self.bringToFront(s.window)
+    present(s.window)
   }
 
-  /// 그 창을 네이티브로 옮겼나
+  /// 연 창을 보인다. 재기 모드는 화면 밖에 두고 앞으로 가져오지 않는다(사용자 화면·포커스를 건드리지 않는다)
+  private func present(_ w: NSWindow) {
+    if Config.measure {
+      w.setFrameOrigin(NSPoint(x: -30000, y: -30000))
+      w.orderFrontRegardless()
+    } else {
+      Self.bringToFront(w)
+    }
+  }
+
+  /// 재기 명령: 창 열기·닫기(네이티브 창이든 사이트 창이든)
+  func measureWindow(_ kind: WebWindow, open: Bool) {
+    if open {
+      openWindow(kind)
+    } else {
+      sheets[kind]?.window.close()
+      webWindows[kind]?.close()
+    }
+  }
+
+  /// 그 창을 네이티브로 옮겼나(`CUBIE_WEB_WINDOWS=1`이면 셋 다 예전 사이트 창, 견주기·되돌림용)
   private func nativeSheet(_ kind: WebWindow) -> Bool {
     switch kind {
-    case .records, .tiers, .settings: true
+    case .records, .tiers, .settings: !Config.webWindows
     }
   }
 
@@ -580,7 +611,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 기록·티어표·설정을 보통 창(투명 아님)으로 연다. 떠 있는 창과 같은 웹 저장소를 쓴다
   private func openWebWindow(_ kind: WebWindow) {
     if let w = webWindows[kind] {
-      Self.bringToFront(w)
+      present(w)
       return
     }
     let (path, title, size): (String, String, NSSize) =
@@ -603,7 +634,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     w.delegate = self
     w.center()
     webWindows[kind] = w
-    Self.bringToFront(w)
+    present(w)
   }
 
   /// 메뉴로 연 창을 앞으로. macOS 14부터 `NSApp.activate()`는 요청이라 다른 앱을 쓰던 중이면 거절되어, 첫 번에는

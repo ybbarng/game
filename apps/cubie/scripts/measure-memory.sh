@@ -15,8 +15,9 @@
 #         --query <a=b&…>(로컬 빌드 주소 /cube/mini 뒤에 붙일 쿼리) ·
 #         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
-#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않는다. 단축키 표·기록 창은 사이트 창이라 --url이 없으면
-#           사이트 game.byb.kr를 연다) ·
+#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않는다. 기록 창·티어표·설정 창도 네이티브 창이다) ·
+#         --web-windows(--native와 함께: 기록 창·티어표·설정 창만 예전 사이트 창 CUBIE_WEB_WINDOWS=1로 열어 견준다. --url이
+#           없으면 사이트 game.byb.kr를 연다) ·
 #         --onscreen(재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로. 화면 밖 창은 WindowServer가 합성하지 않을 수
 #           있어서다. 마우스는 지나가고 앱은 앞으로 나오지 않는다. 메모리 줄에 WindowServer MEM(`top`, footprint는 관리자 권한이
 #           필요하다)을, CPU 줄에 WindowServer 몫을 더한다. 다른 앱 화면 변화도 WindowServer에 섞이므로 흔들림을 감안한다)
@@ -40,6 +41,7 @@ WEB=""
 INJECT=""
 DETAIL=0
 NATIVE=0
+WEB_WINDOWS=0
 ONSCREEN=0
 QUERY=""
 PORT=4393
@@ -55,6 +57,7 @@ while [ $# -gt 0 ]; do
     --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
     --native) NATIVE=1; shift ;;
+    --web-windows) WEB_WINDOWS=1; shift ;;
     --onscreen) ONSCREEN=1; shift ;;
     --query) QUERY="$2"; shift 2 ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
@@ -103,7 +106,7 @@ fi
 mkfifo "$TMP/in"
 WS_PID=""
 if [ "$ONSCREEN" = 1 ]; then WS_PID="$(pgrep -x WindowServer | head -1)"; fi
-CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_WEB="$((1 - NATIVE))" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
+CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_WEB="$((1 - NATIVE))" CUBIE_WEB_WINDOWS="$WEB_WINDOWS" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 exec 3>"$TMP/in"
 cmd() { echo "$*" >&3; }
@@ -298,13 +301,31 @@ cmd practice stop
 cmd focus 0
 sleep 3
 
-# 기록 창(사이트 창, 화면 밖)을 연 동안과 닫은 뒤
+# 기록 창(화면 밖)을 연 동안과 닫은 뒤. 네이티브 화면은 네이티브 창(--web-windows면 사이트 창), 웹 화면은 사이트 창
 cmd records open
 sleep 8
 measure "기록 창 열었을 때"
 cmd records close
 sleep 12
 measure "기록 창 닫은 뒤 12초"
+
+# 세 창(기록 창·티어표·설정 창)을 함께 연 동안과 닫은 뒤(docs/52 5-7)
+if [ "$NATIVE" = 1 ]; then
+  cmd records open
+  cmd tiers open
+  cmd settings open
+  sleep 10
+  measure "세 창 열었을 때"
+  # 기록 창에서 한 판 다시 보기(네이티브 창만. --web-windows면 사이트 창은 기록이 없어 다시 볼 판이 없다)
+  cmd replay open
+  sleep 3
+  measure "세 창 + 다시 보기 중"
+  cmd records close
+  cmd tiers close
+  cmd settings close
+  sleep 12
+  measure "세 창 닫은 뒤 12초"
+fi
 
 cmd state
 sleep 1

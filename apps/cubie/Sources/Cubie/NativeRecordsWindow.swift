@@ -56,6 +56,23 @@ final class NativeRecordsWindow: NativeSheetWindow {
 
   func openTiers() { onTiers?(n) }
 
+  /// 재기 전용(메모리 저장소): 다시 볼 판이 없으면 3×3 한 판(섞기와 그 거꾸로 푼 다시 보기 글)을 더하고 다시 보기를 연다
+  func measureReplay() {
+    if !book.records(n).contains(where: RecordsSheet.canReplay) {
+      let scramble = "R U R' U' F2 D L2 B' U2 R D' F"
+      let solve = scramble.split(separator: " ").reversed().map { m -> String in
+        m.hasSuffix("2") ? String(m) : m.hasSuffix("'") ? String(m.dropLast()) : "\(m)'"
+      }
+      let replay = solve.enumerated().map { "\($0.element)@\($0.offset * 400)" }.joined(separator: " ")
+      book.add([
+        "at": Date().timeIntervalSince1970 * 1000, "n": n, "mode": "solo", "ms": 4_800, "penalty": 0,
+        "moves": solve.count, "scramble": scramble, "replay": replay,
+      ])
+    }
+    reload()
+    if let r = book.records(n).first(where: RecordsSheet.canReplay) { watch(r) }
+  }
+
   /// 확인용(스크린샷): 그 판 다시 보기를 열어 둔다
   var replayView: CACubeView? { root.replay?.cube }
 }
