@@ -52,6 +52,8 @@ export function isGem(tier: DraftTier): boolean {
 const SIN60 = Math.sqrt(3) / 2;
 /** 큐브 조각 간격과 크기(조각 사이 틈 = 1 - CUBIE) */
 const CUBIE = 0.92;
+/** 붙은 유리 큐브(시안 g)의 조각 한 변: 틈 0.01만 남긴다 */
+const FUSED_CUBIE = 0.99;
 /** 조각 베벨 폭(두 단). 큐브 조각처럼 아주 작게 */
 const CUBIE_BEVEL = 0.05;
 /** 큐브 한 변 3을 몸통 대각선으로 볼 때 실루엣 육각형 반지름 */
@@ -465,6 +467,8 @@ function studioScene(
   tint: string,
   gem: boolean,
   kind: GemStyleLook["studio"] = "now",
+  /** 방 벽 색(유리 시안: 배경판 가운데 색. 맑은 유리는 둘레를 그대로 비춘다) */
+  roomColor?: string,
 ): THREE_NS.Scene {
   const s = new T.Scene();
   const k = hdr ? 1.4 : 1;
@@ -472,7 +476,7 @@ function studioScene(
   const room = new T.Mesh(
     new T.BoxGeometry(24, 24, 24),
     new T.MeshBasicMaterial({
-      color: gem ? 0x050608 : 0x0e1014,
+      color: roomColor ?? (gem ? 0x050608 : 0x0e1014),
       side: T.BackSide,
     }),
   );
@@ -484,6 +488,8 @@ function studioScene(
     pos: [number, number, number],
     tintRgb: readonly [number, number, number] = [1, 1, 1],
   ) => {
+    // 세기 0은 끈 조명: 판을 두지 않는다(검은 판으로 남으면 그 뒤 방을 가린다)
+    if (power <= 0) return;
     const m = new T.Mesh(
       new T.PlaneGeometry(w, h),
       new T.MeshBasicMaterial({
@@ -509,7 +515,9 @@ function studioScene(
       ? 0.1
       : kind === "sparkle"
         ? 0.25
-        : GEM_BIG_PANEL
+        : kind === "glass"
+          ? 0.2
+          : GEM_BIG_PANEL
     : 1;
   panel(12, 6, 3.4 * big, [0, 9, -6]);
   panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
@@ -520,7 +528,20 @@ function studioScene(
     panel(0.35, 9, 4, [7, -3, -8]);
     panel(6, 0.3, 5, [-2, -8, -7]);
     // 보석 사진의 뒤 라이트 박스: 보석을 곧게 지나 뒤를 보는 빛길(얇은 날개 조각, 정면 조각 가운데)이 검게 막히지 않게
-    panel(14, 14, kind === "contrast" ? 0.12 : 0.3, [0, 0, -11]);
+    panel(
+      14,
+      14,
+      // 유리는 끈다: 흰 라이트 박스를 비춘 칸이 어두운 바탕에서 회색(금속처럼)으로 보였다
+      kind === "contrast" ? 0.12 : kind === "glass" ? 0 : 0.3,
+      [0, 0, -11],
+    );
+  }
+  if (gem && kind === "glass") {
+    // 유리(시안 e~g): 앞쪽에 길고 가는 띠 조명 넷. 매끈한 면에 깨끗하고 가는 반사선으로 비친다(창문이 비친 유리)
+    panel(16, 0.18, 9, [0, 9, 6]);
+    panel(16, 0.14, 6, [0, -8, 7]);
+    panel(0.18, 16, 8, [-9, 0, 7]);
+    panel(0.14, 16, 6, [9, 1, 6]);
   }
   if (gem && kind === "contrast")
     // 사방에 가는 띠 열둘(앞·옆·뒤): 면마다 띠 하나가 걸리거나 어두운 틈이 걸린다
@@ -579,7 +600,14 @@ function studioScene(
     );
   const spot = !gem ? 0.9 : kind === "sparkle" ? 0.32 : 0.6;
   // c의 점빛: 넓이는 1/3.5, 세기는 2.1배(더 세게 하면 은빛 틀 윗변이 비춰 하얗게 번졌다)
-  const spotPower = !gem ? 45 : kind === "sparkle" ? 150 : 70;
+  // 유리(e~g)는 점 조명을 약하게: 반짝 점보다 가는 반사선이 앞서게
+  const spotPower = !gem
+    ? 45
+    : kind === "sparkle"
+      ? 150
+      : kind === "glass"
+        ? 35
+        : 70;
   for (const p of spots) panel(spot, spot, spotPower, p);
   return s;
 }
@@ -728,6 +756,8 @@ export function buildEmblemScene(
       for (let z = -1; z <= 1; z++) {
         const m = new T.Mesh(cubieGeo, blockMat);
         m.position.set(x, y, z);
+        // 시안 g: 조각을 키워 틈을 거의 없앤다(빛길은 물체 좌표로 셈해 그대로 맞다)
+        if (sl?.fused) m.scale.setScalar(FUSED_CUBIE / CUBIE);
         cube.add(m);
       }
   if (!gem) {
@@ -971,7 +1001,17 @@ export function buildEmblemScene(
   camera.position.set(0, 0, (CAMERA_Z * u) / U_REF);
   camera.lookAt(0, 0, 0);
 
-  const studio = studioScene(T, opt.hdr, look.tint, gem, sl?.studio);
+  // 유리 시안은 방 벽을 배경판 가운데 색으로: 앞·옆으로 나간 빛이 검은 방을 읽어 검은 칸이 생겼다(여섯째 시안 첫 판)
+  const studio = studioScene(
+    T,
+    opt.hdr,
+    look.tint,
+    gem,
+    sl?.studio,
+    sl?.studio === "glass"
+      ? backdropCenter(look.backdrop, opt.pageColor)
+      : undefined,
+  );
 
   return {
     scene,

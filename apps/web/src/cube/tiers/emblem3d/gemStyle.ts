@@ -14,10 +14,16 @@ import type { Vec3 } from "./gem";
  * - `d` 맑은 녹색·내포물: 맑고 밝은 녹색에, 천연 에메랄드처럼 안에 옅은 결(이끼 같은 막)과 작은 알갱이가 비친다.
  *   얕은 계단 면 한 단.
  *
+ * 여섯째 시안(사용자가 a~d를 보고 「다 뭔가 보석 느낌이 덜한 것 같아. 아주 연한 녹색 유리라고 생각하고 만들어
+ * 볼래?」): 깎은 면 없는 매끈한 아주 연한 녹색 유리 셋.
+ * - `e` 맑은 유리: 거의 무색, 큐브를 꿰뚫으면 옅은 민트.
+ * - `f` 녹색 옆면 유리: 정면은 맑고 안에서 되튀어 길게 지난 가장자리·옆면만 짙은 녹색.
+ * - `g` 붙은 유리 큐브: 조각 사이 틈을 거의 없앤 한 덩이 유리 문진.
+ *
  * 다른 티어는 바꾸지 않는다. 시안은 WebGL 길로만 그린다(HDR 길의 TSL 셰이더는 사용자가 하나를 고른 뒤 옮긴다).
  */
 
-export const GEM_STYLES = ["now", "a", "b", "c", "d"] as const;
+export const GEM_STYLES = ["now", "a", "b", "c", "d", "e", "f", "g"] as const;
 export type GemStyle = (typeof GEM_STYLES)[number];
 
 /** 미리보기 단추 이름 */
@@ -27,9 +33,12 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   b: "b 반짝임 무늬",
   c: "c 진한 몸·불꽃",
   d: "d 맑은 녹색·내포물",
+  e: "e 맑은 유리",
+  f: "f 녹색 옆면 유리",
+  g: "g 붙은 유리 큐브",
 };
 
-/** 주소의 `?gem=a|b|c|d|now`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
+/** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
 export function gemStyleOf(search: string): GemStyle | null {
   const v = new URLSearchParams(search).get("gem");
   return GEM_STYLES.find((s) => s === v) ?? null;
@@ -95,8 +104,20 @@ export interface GemStyleLook {
   spread: number;
   /** 안의 결·알갱이(d) */
   jardin: boolean;
-  /** 스튜디오 방: 지금 / 검고 가는 띠(b) / 작은 점빛(c) */
-  studio: "now" | "contrast" | "sparkle";
+  /** 스튜디오 방: 지금 / 검고 가는 띠(b) / 작은 점빛(c) / 유리(가늘고 긴 반사선, e~g) */
+  studio: "now" | "contrast" | "sparkle" | "glass";
+  /**
+   * 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수되는 몫(큐브 전체 두께 × 이 값). 0.92면 보석이 차지하는 몫 그대로라
+   * 가운데가 가장 짙다. 유리처럼 가운데는 맑고 안에서 되튄 가장자리만 짙게 하려면 줄인다
+   */
+  cubeFill: number;
+  /** 조각 사이 틈을 거의 없앤다(한 덩이 유리 큐브처럼, 조각 사이는 가는 선만) */
+  fused: boolean;
+  /**
+   * 나가는 빛이 눈 방향과 이루는 각이 첫 값(도)보다 벌어지면 스튜디오, 둘째 값 안이면 뒤 배경을 읽는다(사이는 섞음).
+   * 없으면 넷째 시안 그대로 55°·25°(`gem.ts` `throughWeight`). 유리는 거의 모든 뒤쪽 빛이 배경을 읽게 넓힌다
+   */
+  through?: readonly [number, number];
   /** 꿰뚫어 본 뒤 배경 세기, 되튄 빛이 읽는 스튜디오 세기 */
   backGain: number;
   envGain: number;
@@ -109,6 +130,12 @@ export interface GemStyleLook {
 }
 
 const NOW_BLOOM = { strength: 0.4, radius: 0.12, threshold: 3 } as const;
+/**
+ * 유리의 꿰뚫어 보기 각: 뒤로 나가는 빛은 모두 뒤 배경(배경판, 그 밖은 가장자리의 바탕색)을 읽는다. 넷째 시안
+ * 각(55°·25°)이나 88°·50°이면 옆면으로 비스듬히 나간 빛이 스튜디오 큰 빛판을 읽어 조각마다 회색 칸(금속처럼)이
+ * 생겼다(여섯째 시안 첫 판)
+ */
+const GLASS_THROUGH = [95, 75] as const;
 
 /** 시안마다 값(문서·보고에 그대로 적는다) */
 export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
@@ -117,6 +144,8 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     left: [0.3, 0.86, 0.5],
     spread: 0,
     jardin: false,
+    cubeFill: 0.92,
+    fused: false,
     studio: "now",
     backGain: 1.8,
     envGain: 1.3,
@@ -129,6 +158,8 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     left: [0.3, 0.87, 0.56],
     spread: 0,
     jardin: false,
+    cubeFill: 0.92,
+    fused: false,
     studio: "now",
     backGain: 1.6,
     envGain: 1.5,
@@ -141,6 +172,8 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     left: [0.26, 0.84, 0.5],
     spread: 0.02,
     jardin: false,
+    cubeFill: 0.92,
+    fused: false,
     studio: "contrast",
     backGain: 1.2,
     envGain: 1.8,
@@ -153,6 +186,8 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     left: [0.05, 0.6, 0.26],
     spread: 0.06,
     jardin: false,
+    cubeFill: 0.92,
+    fused: false,
     studio: "sparkle",
     backGain: 1.5,
     envGain: 1.6,
@@ -166,6 +201,8 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     left: [0.38, 0.88, 0.56],
     spread: 0,
     jardin: true,
+    cubeFill: 0.92,
+    fused: false,
     studio: "now",
     backGain: 1.7,
     envGain: 1.3,
@@ -173,9 +210,66 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     frontLights: 1,
     bloom: NOW_BLOOM,
   },
+  // ---- 여섯째 시안: 아주 연한 녹색 유리(2026-11-12 사용자 「아주 연한 녹색 유리라고 생각하고 만들어 볼래?」).
+  // 깎은 면·분산·내포물 없이 매끈한 유리. 셋은 옅기·가장자리 짙어짐·반사 세기·조각 사이 틈으로 가른다
+  e: {
+    // 맑은 유리: 거의 무색(조각 한 변에 빨강 5%·파랑 4%만 흡수), 큐브를 꿰뚫으면 옅은 민트
+    cut: FLAT,
+    left: [0.95, 0.99, 0.96],
+    spread: 0,
+    jardin: false,
+    cubeFill: 0.92,
+    fused: false,
+    through: GLASS_THROUGH,
+    studio: "glass",
+    backGain: 1.45,
+    envGain: 1.0,
+    glow: 0.5,
+    frontLights: 0.7,
+    bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
+  },
+  f: {
+    // 녹색 옆면: 한 번 지날 때 흡수는 e의 네 배쯤이지만 꿰뚫어 보는 몫은 거의 더하지 않아(0.15) 정면은 맑고,
+    // 안에서 여러 번 되튀어 길게 지난 가장자리·옆면만 짙은 녹색(유리판 옆면이 녹색인 것과 같은 까닭)
+    cut: FLAT,
+    left: [0.8, 0.965, 0.84],
+    spread: 0,
+    jardin: false,
+    cubeFill: 0.15,
+    fused: false,
+    through: GLASS_THROUGH,
+    studio: "glass",
+    backGain: 1.45,
+    envGain: 1.25,
+    glow: 0.5,
+    frontLights: 0.8,
+    bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
+  },
+  g: {
+    // 붙은 유리 큐브: 조각 사이 틈을 거의 없애 한 덩이 유리 문진처럼, 조각 사이는 가는 선만. 반사는 조금 세게
+    cut: FLAT,
+    left: [0.93, 0.985, 0.95],
+    spread: 0,
+    jardin: false,
+    cubeFill: 0.92,
+    fused: true,
+    through: GLASS_THROUGH,
+    studio: "glass",
+    backGain: 1.4,
+    envGain: 1.15,
+    glow: 0.5,
+    frontLights: 1,
+    bloom: { strength: 0.3, radius: 0.1, threshold: 3.2 },
+  },
 };
 
 const DEG = Math.PI / 180;
+
+/** 시안의 꿰뚫어 보기 각을 셰이더가 쓰는 코사인 둘로(넓은 쪽, 좁은 쪽) */
+export function throughCos(s: GemStyleLook): readonly [number, number] {
+  const [lo, hi] = s.through ?? [55, 25];
+  return [Math.cos(lo * DEG), Math.cos(hi * DEG)];
+}
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /** 상자 면의 바깥 법선(축)과 면 위 두 축 */

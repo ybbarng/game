@@ -12,7 +12,12 @@ import {
   THROUGH_HI,
   THROUGH_LO,
 } from "./gem";
-import { type FacetCut, type GemStyleLook, JARDIN } from "./gemStyle";
+import {
+  type FacetCut,
+  type GemStyleLook,
+  JARDIN,
+  throughCos,
+} from "./gemStyle";
 
 /**
  * 보석 재질(docs/47 14-7 「셋째 시안」·「넷째 시안」). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이
@@ -169,7 +174,11 @@ vec2 gemJardin( vec3 p, vec3 d, float t, vec3 seed ) {
 }
 `;
 
-const fragFuncs = (cut: FacetCut) => /* glsl */ `
+const fragFuncs = (
+  cut: FacetCut,
+  fill: number,
+  through: readonly [number, number],
+) => /* glsl */ `
 #include <envmap_physical_pars_fragment>
 varying vec3 vGemPos;
 varying vec3 vGemNrm;
@@ -253,7 +262,7 @@ vec3 gemSee( vec3 p, vec3 d ) {
 #endif
   vec3 pw = M * p + vGemM3;
   vec3 view = normalize( pw - cameraPosition );
-  float w = smoothstep( ${f(THROUGH_LO)}, ${f(THROUGH_HI)}, dot( ow, view ) );
+  float w = smoothstep( ${f(through[0])}, ${f(through[1])}, dot( ow, view ) );
   if ( w <= 0.0 || ow.z > - 1e-3 ) return env;
   float t = ( gemSeeK.x - pw.z ) / ow.z;
   vec2 uv = ( pw.xy + ow.xy * t ) / gemSeeK.y + 0.5;
@@ -261,7 +270,7 @@ vec3 gemSee( vec3 p, vec3 d ) {
 #ifdef GEM_IN_CUBE
   vec3 pc = ( gemCubeInv * vec4( pw, 1.0 ) ).xyz;
   vec3 dc = normalize( mat3( gemCubeInv ) * ow );
-  back *= exp( - gemAbsorb * gemBoxPath( pc, dc ) * ${f(GEM_CUBE_FILL)} );
+  back *= exp( - gemAbsorb * gemBoxPath( pc, dc ) * ${f(fill)} );
 #endif
   return mix( env, back, w );
 }
@@ -360,6 +369,11 @@ export function gemMaterialGL(
   // 깎은 면은 큐브 조각·왕관 같은 상자 보석에만(팔면체·판은 이미 깎인 모양이다)
   const cut = style && shape === "box" ? style.cut : NO_CUT;
   const facet = cut.kind !== 0;
+  const fill = style?.cubeFill ?? GEM_CUBE_FILL;
+  const through = style
+    ? throughCos(style)
+    : ([THROUGH_LO, THROUGH_HI] as const);
+  const wideThrough = through[0] !== THROUGH_LO || through[1] !== THROUGH_HI;
   const jardin = !!style?.jardin && inCube;
   m.onBeforeCompile = (shader) => {
     shader.defines = {
@@ -381,7 +395,10 @@ export function gemMaterialGL(
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <envmap_physical_pars_fragment>", fragFuncs(cut))
+      .replace(
+        "#include <envmap_physical_pars_fragment>",
+        fragFuncs(cut, fill, through),
+      )
       .replace(
         "#include <normal_fragment_maps>",
         `#include <normal_fragment_maps>\n${FACET_NORMAL}`,
@@ -392,7 +409,7 @@ export function gemMaterialGL(
       );
   };
   m.customProgramCacheKey = () =>
-    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin ? styleKey : "flat"}`;
+    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin || wideThrough || fill !== GEM_CUBE_FILL ? styleKey : "flat"}`;
   return m;
 }
 

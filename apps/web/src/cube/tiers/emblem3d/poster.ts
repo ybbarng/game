@@ -33,7 +33,7 @@ export interface PosterSpec {
   size: number;
 }
 
-/** 찍어 둘 대기 그림 전부: 열 티어 × 바탕 둘(보통 칸), 에메랄드 시안 다섯 × 바탕 둘(큰 칸) */
+/** 찍어 둘 대기 그림 전부: 열 티어 × 바탕 둘(보통 칸), 에메랄드 시안 전부(`GEM_STYLES`) × 바탕 둘(큰 칸) */
 export const POSTERS: readonly PosterSpec[] = [
   ...TIER_IDS.flatMap((tier) =>
     (["dark", "light"] as const).map((bg) => ({

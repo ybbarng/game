@@ -180,6 +180,22 @@ describe("시안 값", () => {
     expect(now.spread).toBe(e?.spread);
   });
 
+  it("유리 시안(e~g)은 아주 옅고 매끈하다: 조각 한 변을 지나도 초록 96%·빨강 80% 넘게 남고, 깎은 면·분산·내포물이 없다", () => {
+    for (const s of ["e", "f", "g"] as const) {
+      const l = GEM_STYLE_LOOK[s];
+      expect(l.left[1]).toBeGreaterThan(0.96);
+      expect(l.left[0]).toBeGreaterThanOrEqual(0.8);
+      expect(l.cut.kind).toBe(0);
+      expect(l.spread).toBe(0);
+      expect(l.jardin).toBe(false);
+      expect(l.studio).toBe("glass");
+    }
+    // 축: f는 꿰뚫어 보는 몫을 줄여 정면은 맑고 되튄 가장자리만 짙게, g만 조각 사이 틈을 없앤다
+    expect(GEM_STYLE_LOOK.f.cubeFill).toBeLessThan(GEM_STYLE_LOOK.e.cubeFill);
+    expect(GEM_STYLE_LOOK.f.left[0]).toBeLessThan(GEM_STYLE_LOOK.e.left[0]);
+    expect(GEM_STYLES.filter((s) => GEM_STYLE_LOOK[s].fused)).toEqual(["g"]);
+  });
+
   it("c는 가장 진한 몸(조각 한 변을 지난 초록이 가장 적게 남는다), d만 내포물", () => {
     const g = (s: keyof typeof GEM_STYLE_LOOK) => GEM_STYLE_LOOK[s].left[1];
     for (const s of ["now", "a", "b", "d"] as const)
