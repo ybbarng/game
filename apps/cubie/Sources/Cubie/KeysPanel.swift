@@ -53,7 +53,7 @@ final class KeysPanel {
     releaseTask?.cancel()
     releaseTask = nil
     if webView == nil {
-      makeWebView().load(URLRequest(url: Config.site("/cube/mini?view=keys&panel=1&n=\(n)")))
+      makeWebView().load(URLRequest(url: Config.site("/cube/mini?view=keys&panel=1&n=\(n)"), cachePolicy: PageFreshness.load))
     } else {
       setSize(n)
     }
@@ -109,7 +109,7 @@ final class KeysPanel {
   /// 키 배치를 바꿨다: 떠 있으면 다시 불러오고, 아니면 버려서 다음에 띄울 때 새로 불러온다
   func reload() {
     if panel.isVisible {
-      webView?.reload()
+      webView?.reloadFromOrigin()
     } else {
       releaseTask?.cancel()
       releaseWebView()

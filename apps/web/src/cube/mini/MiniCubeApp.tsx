@@ -75,6 +75,7 @@ import {
   type BubbleLine,
   type FromApp,
   hasApp,
+  MINI_BUILD,
   onAppMessage,
   toApp,
 } from "./app-bridge";
@@ -1387,7 +1388,7 @@ function MiniCube() {
     [setPrefs, clock, practiceClock],
   );
   useEffect(() => {
-    if (app) toApp({ type: "ready" });
+    if (app) toApp({ type: "ready", build: MINI_BUILD });
   }, [app]);
   useEffect(() => {
     if (app && prefs)
@@ -1444,6 +1445,7 @@ function MiniCube() {
   return (
     <main
       data-mini
+      data-mini-build={MINI_BUILD}
       data-mini-n={n}
       data-scramble-show={show.running ? "on" : undefined}
       data-mini-practice={practice?.stage.id}

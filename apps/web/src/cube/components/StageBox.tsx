@@ -16,6 +16,8 @@ import type { BackView } from "../settings";
 export function useBackView(
   setting: BackView,
   can3d: boolean,
+  /** 거울 판을 보일 가장 좁은 자리(기본 `MIRROR_MIN_WIDTH`, 보기만 하는 큐브는 `MIRROR_VIEW_MIN_WIDTH`) */
+  minWidth?: number,
 ): { ref: RefObject<HTMLDivElement | null>; mode: BackView } {
   const ref = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number | null>(null);
@@ -28,7 +30,7 @@ export function useBackView(
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  return { ref, mode: backViewFor(setting, width, can3d) };
+  return { ref, mode: backViewFor(setting, width, can3d, minWidth) };
 }
 
 /**

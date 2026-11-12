@@ -926,6 +926,30 @@ test("앱 안: 단축키 표가 떠 있는 동안만 누른 키를 앱에 알리
   expect(await pressed()).toEqual(["KeyU"]);
 });
 
+test("앱 안: 화면 빌드 커밋을 data-mini-build와 「준비됨」에 싣고, 배포 판 파일(/version.json)과 같다", async ({
+  page,
+}) => {
+  // 앱(0.1.10부터)은 「준비됨」의 build를 /version.json과 견줘 옛 HTML이 남았으면 다시 불러온다(docs/47 15-26)
+  await fakeApp(page);
+  await page.goto("/cube/mini");
+  const main = page.locator("main[data-mini]");
+  await expect(main).toHaveAttribute("data-mini-build", /.+/);
+  const deployed = (await (await page.request.get("/version.json")).json()) as {
+    commit: string;
+  };
+  expect(deployed.commit).toMatch(/^[0-9a-f]{40}$/);
+  await expect(main).toHaveAttribute("data-mini-build", deployed.commit);
+  const ready = () =>
+    page.evaluate(() =>
+      (
+        window as unknown as { __toApp: { type: string; build?: string }[] }
+      ).__toApp
+        .filter((m) => m.type === "ready")
+        .map((m) => m.build),
+    );
+  await expect.poll(ready).toEqual([deployed.commit]);
+});
+
 /** 앱이 받은 마지막 `profile` 메시지 */
 async function lastProfile(page: Page) {
   return page.evaluate(() => {
