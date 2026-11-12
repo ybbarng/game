@@ -22,6 +22,11 @@ public struct CubeSettings: Equatable, Sendable {
   public var stickerless = false
   public var sound = true
   public var scrambleShow: ScrambleShow = .auto
+  /// 가린 칸(공식 연습 가리기)을 검정으로 칠할지 회색으로 칠할지(사이트 `hidden`)
+  public var hiddenGray = false
+
+  /// 가린 칸 색(사이트 `view/cube-view.ts` `HIDDEN_COLOR`)
+  public var hiddenColor: UInt32 { hiddenGray ? 0x6b6b6b : 0x111111 }
 
   public init() {}
 
@@ -47,6 +52,7 @@ public struct CubeSettings: Equatable, Sendable {
     if let b = d["stickerless"] as? NSNumber, isBool(b) { s.stickerless = b.boolValue }
     if let b = d["sound"] as? NSNumber, isBool(b) { s.sound = b.boolValue }
     if let v = d["scrambleShow"] as? String, let show = ScrambleShow(rawValue: v) { s.scrambleShow = show }
+    s.hiddenGray = (d["hidden"] as? String) == "gray"
     return s
   }
 

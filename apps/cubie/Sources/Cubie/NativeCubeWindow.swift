@@ -116,7 +116,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
 
   private func applySettings() {
     cube.reducedMotion = reducedMotion
-    cube.setColors(settings.colors)
+    cube.setColors(settings.colors, masked: settings.hiddenColor)
     cube.setMoveMs(settings.moveMs)
     cube.setScrambleShow(scrambleShow)
     sound.enabled = settings.sound

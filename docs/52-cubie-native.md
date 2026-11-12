@@ -552,7 +552,8 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 힌트: F2L 전(3×3 십자·F2L 짝, 2×2 전부) | `solveCfop`·`solveAdvanced2` | 코어 `human.rs`(공통 시험 자료 어긋남 0) | 옮김 |
 | 힌트 키캡 줄(공식·쥐는 법) | `keysForMove` | 코어 `keys/route.rs` | 옮김 |
 | 힌트 제한(5초 보임·20초에 한 번·판당 3번·티어 제외)과 말풍선 | `hint.ts`·`HintBubble` | `HintGate` + 말풍선 | 옮김(창이 커도 늘 말풍선) |
-| 공식 연습(단계·따라 치기·보고 치기·콤보·10문제·판 끝 결과·기록) | `practice/`·`mini/practice.ts` | 코어 `practice.rs`(어긋남 0) + `cubie-native/practice.rs`(말풍선 줄) | 옮김(창이 커도 늘 말풍선, 가리기 없음) |
+| 공식 연습(단계·따라 치기·보고 치기·콤보·10문제·판 끝 결과·기록) | `practice/`·`mini/practice.ts` | 코어 `practice.rs`(어긋남 0) + `cubie-native/practice.rs`(말풍선 줄) | 옮김(창이 커도 늘 말풍선) |
+| 공식 연습 가리기(그 단계와 상관없는 스티커를 설정의 가린 칸 색으로) | `learn/judge.ts` `maskFor`·`bridge.ts` | 코어 `mask.rs`(`mask_for`·`mask_at_slots`, 공통 자료 `mask.json` 어긋남 0) → 칸 색 `CUBIE_COLOR_MASKED` → `CACubeView`가 설정 `hidden`(검정·회색)으로 칠함 | 옮김(2026-11-12) |
 | F1 단축키 표(키보드 그림, 누른 키 빛남) | `?view=keys&panel=1` | `NativeKeysView`(앱이 그림, 칸 글은 코어 `keys::table`) | 옮김(칸 바탕 대신 테두리 면 색) |
 | 다 맞춘 축하(움츠렸다 튐·빛 고리·시간 숫자, 최고면 금색) | `SolveCheer.tsx` | `CACubeView.cheer`(합성기 애니메이션) | 옮김 |
 | 떠 있을 때: 내 판 다시 보기(최고·최근 번갈아, 그때 속도) | `idle.ts`·`replay.ts` | `IdleShow` + 코어 다시 보기 걸음 | 옮김 |
@@ -579,7 +580,6 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 웹과 다르게 한 것(일부러)
 
 - 힌트·공식 연습은 창 크기와 상관없이 늘 큐브 옆 말풍선이다(웹은 짧은 변 240px 이상이면 창 안 카드). 앱 창 안에 글을 그리면 큐브와 겹치고, 말풍선이 이미 있다.
-- 공식 연습의 가리기(초보자 단계에서 그 단계와 상관없는 스티커를 어둡게)는 아직 없다. 모든 스티커가 제 색으로 보인다(코어는 가리기 이름만 들고 있다).
 - 다시 볼 판이 없을 때 홈 시연(사람 해법 풀이) 대신 조금 섞었다 되돌린다. 사이트도 시연이 없는 크기에서는 이 길로 간다.
 - 단축키 표의 칸은 면 색을 테두리로만 보인다(웹은 칸 바탕을 옅게 칠한다). 가운데 층·큐브 돌리기(M′·x 등)는 테두리 색이 없다(웹은 빌린 면 색 띠). 칸 글은 코어 `keys::table`이 사이트 `KeyboardMap` 「모두」와 같게 만든다(3×3 「두 손」 X·. = M′, 큰 큐브에서 못 쓰는 M′·M은 흐리게, Alt 줄, ↑ 처음 각도). 같은지는 공통 자료 `fixtures/keytable.json`(두 손·표기·사용자 × 2~7)으로 본다(2026-11-12). 줄이 넷인 칸(Alt와 Alt+Shift가 다 있는 사용자 배치)은 글꼴을 줄여 칸 안에 넣는다(웹은 넘치면 잘린다).
 - 소리는 사이트와 같은 모양을 처음 쓸 때 PCM으로 만들어 두고 `NSSound`로 낸다(돌리기는 여섯 벌을 돌려 씀, 울림 없음). 웹은 수마다 새로 합성했다.
@@ -588,7 +588,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 남은 것
 
 1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절)을 코어로: `HeroLoop`·초보자·중수 해법(`solveBeginner3` 등).
-2. 공식 연습 가리기(`stageMask`)를 코어로 옮겨 장면에 칠하기.
+2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
 3. 단축키 표 칸 바탕 면 색(↑ 칸은 2026-11-12 더함).
 4. 실제 창의 손맛·포커스·말풍선 자리·모니터 떼기는 사람이 확인(아래 「판을 내기 전에」).
 

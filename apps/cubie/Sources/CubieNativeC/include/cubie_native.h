@@ -73,7 +73,9 @@ bool cubie_game_finish_show(CubieGame *game);
 uint32_t cubie_game_sticker_count(const CubieGame *game);
 /// 스티커 자리 i의 조각 중심(두 배 좌표, x 오른쪽·y 위·z 앞)과 면 방향(i32 세 칸씩). 범위 밖이면 false
 bool cubie_game_sticker_slot(const CubieGame *game, uint32_t i, int32_t *pos2, int32_t *normal);
-/// 화면 상태의 칸 색(자리마다 0~5, U R F D L B)을 len칸까지 쓴다. 쓴 칸 수를 돌려준다
+/// 가린 칸(공식 연습 가리기)의 색 번호. 설정의 「가린 칸 색」(사이트 `hidden`)으로 칠한다
+#define CUBIE_COLOR_MASKED 6
+/// 화면 상태의 칸 색(자리마다 0~5, U R F D L B, 가린 칸은 CUBIE_COLOR_MASKED)을 len칸까지 쓴다. 쓴 칸 수를 돌려준다
 uint32_t cubie_game_shown_colors(const CubieGame *game, uint8_t *out, uint32_t len);
 bool cubie_game_is_solved(const CubieGame *game);
 /// 섞인 큐브를 맞추는 중인가(거울 판을 보일지)

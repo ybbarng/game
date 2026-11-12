@@ -708,7 +708,11 @@ pub unsafe extern "C" fn cubie_game_sticker_slot(
     true
 }
 
-/// 화면 상태의 칸 색(스티커 자리마다 색 번호 0~5, U R F D L B)을 `out`에 `len`칸까지 쓴다. 쓴 칸 수를 돌려준다
+/// 가린 칸(공식 연습 가리기)의 색 번호. 앱이 설정의 「가린 칸 색」(사이트 `hidden`: 검정·회색)으로 칠한다
+pub const COLOR_MASKED: u8 = 6;
+
+/// 화면 상태의 칸 색(스티커 자리마다 색 번호 0~5, U R F D L B, 가린 칸은 [`COLOR_MASKED`])을 `out`에 `len`칸까지
+/// 쓴다. 쓴 칸 수를 돌려준다. 가리기는 공식 연습 중에만 있다(사이트 미니처럼 까맣게·회색 모두 같은 값)
 ///
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
@@ -719,7 +723,14 @@ pub unsafe extern "C" fn cubie_game_shown_colors(
     len: u32,
 ) -> u32 {
     let g = unsafe { &*g };
-    let colors = face_colors(g.game.n, g.game.shown());
+    let mut colors = face_colors(g.game.n, g.game.shown());
+    if let Some(mask) = g.game.shown_mask() {
+        for (c, v) in colors.iter_mut().zip(mask) {
+            if v != cube_core::mask::Visibility::Visible {
+                *c = COLOR_MASKED;
+            }
+        }
+    }
     let k = colors.len().min(len as usize);
     unsafe { std::ptr::copy_nonoverlapping(colors.as_ptr(), out, k) };
     k as u32
@@ -755,6 +766,32 @@ mod tests {
     use super::*;
 
     /// C로 부르는 차례 그대로: 섞고(연출 하나씩), 수를 꺼내 화면 상태가 논리 상태를 따라가는지
+    #[test]
+    fn practice_mask_comes_as_masked_color() {
+        unsafe {
+            let g = cubie_game_new(3);
+            let mut colors = [0u8; 54];
+            let none = c"";
+            assert!(cubie_game_practice_start(
+                g,
+                c"beginner-cross".as_ptr(),
+                false,
+                none.as_ptr(),
+                none.as_ptr(),
+                none.as_ptr(),
+                3
+            ));
+            cubie_game_shown_colors(g, colors.as_mut_ptr(), 54);
+            // 십자 단계: 십자 엣지 넷 × 2 + 센터 여섯 = 14칸만 제 색, 나머지 40칸은 가린 칸
+            assert_eq!(colors.iter().filter(|&&c| c == COLOR_MASKED).count(), 40);
+            assert!(colors.iter().all(|&c| c <= COLOR_MASKED));
+            cubie_game_practice_stop(g);
+            cubie_game_shown_colors(g, colors.as_mut_ptr(), 54);
+            assert!(!colors.contains(&COLOR_MASKED));
+            cubie_game_free(g);
+        }
+    }
+
     #[test]
     fn c_calls_follow_the_game() {
         unsafe {

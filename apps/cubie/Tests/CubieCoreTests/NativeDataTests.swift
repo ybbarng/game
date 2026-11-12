@@ -130,6 +130,10 @@ struct SettingsTests {
     let badCustom = CubeSettings.parse(#"{"colorScheme":"custom","colors":[1,2,3]}"#)
     #expect(badCustom.colors == CubeSettings.standard)
     #expect(CubeSettings.parse(#"{"moveMs":44.5}"#).moveMs == 45)
+    // 가린 칸 색(공식 연습 가리기): 사이트 HIDDEN_COLOR, 모르는 값은 검정
+    #expect(CubeSettings.parse(nil).hiddenColor == 0x111111)
+    #expect(CubeSettings.parse(#"{"hidden":"gray"}"#).hiddenColor == 0x6b6b6b)
+    #expect(CubeSettings.parse(#"{"hidden":"blue"}"#).hiddenColor == 0x111111)
   }
 
   @Test func keymapLikeTheSite() {
