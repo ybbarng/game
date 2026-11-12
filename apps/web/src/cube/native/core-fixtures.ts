@@ -44,7 +44,11 @@ import {
 import { replayLength, solveSteps } from "../replay-player";
 import { ao5, bestAo5, myTier, tierName, tierOf } from "../tiers/rank";
 import { TIER_SIZES, TIER_TABLE } from "../tiers/table";
-import { buildSession } from "./core-fixtures-human";
+import {
+  buildHint,
+  buildRustHumanData,
+  buildSession,
+} from "./core-fixtures-human";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
 export type FixtureFiles = Record<string, string>;
@@ -721,6 +725,8 @@ export const BUILDERS = {
   "fixtures/replay.json": buildReplay,
   "fixtures/keys.json": buildKeys,
   "fixtures/session.json": buildSession,
+  "fixtures/hint.json": buildHint,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
+  "src/human_data.rs": buildRustHumanData,
 } as const;

@@ -2,7 +2,17 @@
  * Rust 코어 공통 시험 자료 가운데 Cubie 네이티브 4단계(docs/52)의 것: 한 판 세션(기록 칸), 사람 해법과 공식 보기,
  * 공식 연습 진행기. 꼴과 다시 쓰는 법은 `core-fixtures.ts` 머리말과 같다. 화면은 이 파일을 부르지 않는다(시험 전용).
  */
-import { solveAdvanced2, solveCfop } from "@game/cube-ai";
+import {
+  CPLL,
+  EO_2LOOK,
+  EPLL,
+  OCLL,
+  OCLL_2X2,
+  OLL,
+  PLL,
+  solveAdvanced2,
+  solveCfop,
+} from "@game/cube-ai";
 import {
   applyMoves,
   formatMove,
@@ -10,10 +20,11 @@ import {
   parseMoves,
   solvedCube,
 } from "@game/cube-engine";
-import { scramble } from "@game/cube-scramble";
+import { type ScrambleEvent, scramble } from "@game/cube-scramble";
 import { ManualClock } from "@game/fair-play";
 import { createRng, nextInt, type RngState } from "@game/mighty-engine";
 
+import { pickHint } from "../mini/hint-pick";
 import { formatSplits } from "../records";
 import { type SessionCue, SolveSession } from "../solve-session";
 import { fixtureJson } from "./core-fixtures";
@@ -200,4 +211,136 @@ export function buildSession(): string {
     },
     sessionScenarios().map(sessionCase),
   );
+}
+
+// ── 사람 해법과 공식 보기 ─────────────────────────────────
+
+const ROTS = ["", "y", "x2", "z'", "x y2", "y'"];
+
+interface HintCase {
+  n: number;
+  alg: string;
+  /** 사이트 해법 전체도 견줄지(섞기 상태만) */
+  full: boolean;
+}
+
+function hintCases(): HintCase[] {
+  const rng = createRng(1113);
+  const out: HintCase[] = [];
+  const add = (n: number, alg: string, full = false) =>
+    out.push({ n, alg: alg.replace(/\s+/g, " ").trim(), full });
+  const sets: {
+    n: number;
+    event: ScrambleEvent;
+    seeds: number[];
+    solve: typeof solveCfop;
+  }[] = [
+    { n: 3, event: "333", seeds: [11, 12, 13, 14], solve: solveCfop },
+    {
+      n: 2,
+      event: "222",
+      seeds: [21, 22, 23, 24, 25, 26],
+      solve: solveAdvanced2,
+    },
+  ];
+  for (const { n, event, seeds, solve } of sets) {
+    for (const seed of seeds) {
+      const sc = scramble(event, seed).text;
+      add(n, sc, true);
+      const s = solve(applyMoves(n, solvedCube(n), parseMoves(n, sc)));
+      // 단계 경계마다(쥔 방향을 바꿔), 단계 중간 하나씩
+      for (const stage of s.stages) {
+        const rot = ROTS[nextInt(rng, ROTS.length)] as string;
+        add(n, `${sc} ${s.moves.slice(0, stage.end).join(" ")} ${rot}`);
+        if (stage.end - stage.start > 1) {
+          const k = stage.start + 1 + nextInt(rng, stage.end - stage.start - 1);
+          add(n, `${sc} ${s.moves.slice(0, k).join(" ")}`);
+        }
+      }
+      // 윗면 돌리기만 남음
+      add(n, `${sc} ${s.moves.join(" ")} U'`);
+    }
+  }
+  // 섞기 상태(쥔 방향 바꿈, 해법 전체도 견줌)
+  for (const seed of [31, 32, 33])
+    add(3, `${scramble("333", seed).text} x`, true);
+  for (const seed of [41, 42])
+    add(2, `${scramble("222", seed).text} z y`, true);
+  // 이미 맞음, 크기에 판정이 없음, 손으로 고른 상태(십자만 깨짐, F2L 짝 하나만 빠짐)
+  add(3, "");
+  add(2, "y");
+  add(4, "R U");
+  add(5, "");
+  add(3, "F2");
+  add(3, "R U R' U'");
+  add(3, "z2 R U R' U'");
+  add(3, "z2 F R U R' U' F' R U R'");
+  return out;
+}
+
+export function buildHint(): string {
+  return fixtureJson(
+    {
+      what: "상태(맞춘 큐브에 alg) → Cubie 공식 보기(pickHint)와 사람 해법(3×3 solveCfop·2×2 solveAdvanced2) 수·단계",
+    },
+    hintCases().map(({ n, alg, full }) => {
+      const st = applyMoves(n, solvedCube(n), parseMoves(n, alg));
+      const h = pickHint(n, st);
+      const solve = full
+        ? n === 3
+          ? solveCfop(st)
+          : solveAdvanced2(st)
+        : null;
+      return {
+        n,
+        alg,
+        hint:
+          h.kind === "hint"
+            ? {
+                stage: h.hint.stage,
+                name: h.hint.name ?? null,
+                before: h.hint.before,
+                alg: h.hint.alg,
+                lesson: h.hint.lesson ?? null,
+              }
+            : { kind: h.kind },
+        solve: solve && {
+          moves: solve.moves.join(" "),
+          stages: solve.stages.map((s) => [s.name, s.start, s.end]),
+          looks: solve.looks,
+        },
+      };
+    }),
+  );
+}
+
+/** Rust 코어가 쓰는 사람 해법 공식 표(사이트 `packages/cube-ai/src/algs.ts`) */
+export function buildRustHumanData(): string {
+  const list = (name: string, doc: string, algs: readonly string[]) =>
+    [
+      `/// ${doc}`,
+      `pub const ${name}: &[&str] = &[`,
+      ...algs.map((a) => `    ${JSON.stringify(a)},`),
+      "];",
+      "",
+    ].join("\n");
+  return [
+    "// 사이트 자료에서 만든 파일이다. 손으로 고치지 않는다.",
+    "// 다시 만들기: CUBE_CORE_FIXTURES=write pnpm vitest run apps/web/src/cube/native/",
+    "// 원본: packages/cube-ai/src/algs.ts",
+    "",
+    list("EO_2LOOK", "2단계 OLL 첫째: 노란 십자", EO_2LOOK),
+    list("OCLL", "2단계 OLL 둘째: 꼭짓점 방향 7", OCLL),
+    list("OCLL_2X2", "2×2 윗면 7", OCLL_2X2),
+    list("CPLL", "2단계 PLL 첫째·2×2 윗층: 꼭짓점 자리", CPLL),
+    list("EPLL", "2단계 PLL 둘째: 모서리 자리", EPLL),
+    list("OLL", "OLL 57(번호 차례)", OLL),
+    "/// PLL 21(이름, 공식)",
+    "pub const PLL: &[(&str, &str)] = &[",
+    ...PLL.map(
+      ([name, alg]) => `    (${JSON.stringify(name)}, ${JSON.stringify(alg)}),`,
+    ),
+    "];",
+    "",
+  ].join("\n");
 }

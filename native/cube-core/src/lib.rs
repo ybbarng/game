@@ -14,13 +14,18 @@
 //! | [`replay`] | `apps/web/src/cube/records.ts`·`replay-player.ts`(다시 보기·구간 기록 글) |
 //! | [`keys`] | `apps/web/src/cube/input/`(키 배치·해석기: 키 → 수·명령) |
 //! | [`progress`]·[`combo`]·[`session`] | `packages/cube-engine/src/solve-progress.ts`(조각 점수·이정표·흐름 진행 칸), 웹 `flow/combo.ts`·`solve-session.ts`(Cubie 미니의 한 판: 기록 칸) |
+//! | [`human`]·[`hint`] | `packages/cube-ai`(`solveCfop`·`solveAdvanced2`와 그 단계·탐색), 웹 `mini/hint-pick.ts`(공식 보기 고르기) |
 //!
-//! [`data`]·[`keymap_data`]는 사이트 자료(공식 상황·티어 표·키 배치)에서 만든 파일이라 손으로 고치지 않는다.
+//! [`data`]·[`keymap_data`]·[`human_data`]는 사이트 자료(공식 상황·티어 표·키 배치)에서 만든 파일이라 손으로 고치지 않는다.
 
 #[rustfmt::skip]
 pub mod data;
 pub mod combo;
 pub mod groups;
+pub mod hint;
+pub mod human;
+#[rustfmt::skip]
+pub mod human_data;
 pub mod judge;
 #[rustfmt::skip]
 pub mod keymap_data;
