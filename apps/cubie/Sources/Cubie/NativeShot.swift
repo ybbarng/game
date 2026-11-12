@@ -13,6 +13,8 @@ import UniformTypeIdentifiers
 @MainActor
 enum NativeShot {
   static func run(dir: String, n: Int) -> Int32 {
+    // 말풍선 패널(NSPanel)을 만들려면 앱 객체가 있어야 한다(창은 띄우지 않는다)
+    _ = NSApplication.shared
     guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else {
       print("[shot] Metal 장치가 없다")
       return 1
@@ -83,6 +85,37 @@ enum NativeShot {
       return ok
     }
 
+    /// 2D 화면(말풍선·단축키 표)을 PNG로(배율 2). 층으로 칠한 바탕·테두리까지 들게 층을 그린다
+    func shoot2D(_ name: String, _ v: NSView) -> Bool {
+      v.wantsLayer = true
+      v.layoutSubtreeIfNeeded()
+      v.display()
+      guard
+        let rep = NSBitmapImageRep(
+          bitmapDataPlanes: nil, pixelsWide: Int(v.bounds.width * scale), pixelsHigh: Int(v.bounds.height * scale),
+          bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+          bytesPerRow: 0, bitsPerPixel: 0),
+        let layer = v.layer, let ctx = NSGraphicsContext(bitmapImageRep: rep)
+      else { return false }
+      rep.size = v.bounds.size
+      let cg = ctx.cgContext
+      // 바탕·테두리(층): 층 좌표(왼쪽 위 기준)로 뒤집고 배율을 건다
+      cg.saveGState()
+      cg.translateBy(x: 0, y: CGFloat(rep.pixelsHigh))
+      cg.scaleBy(x: scale, y: -scale)
+      layer.render(in: cg)
+      cg.restoreGState()
+      // 글(보기가 그리는 것)은 보기 그리기로 위에 얹는다
+      cg.saveGState()
+      cg.scaleBy(x: scale, y: scale)
+      v.displayIgnoringOpacity(v.bounds, in: ctx)
+      cg.restoreGState()
+      let url = URL(fileURLWithPath: dir).appendingPathComponent("\(name).png")
+      let ok = (try? rep.representation(using: .png, properties: [:])?.write(to: url)) != nil
+      print("[shot] \(url.path)")
+      return ok
+    }
+
     var ok = true
     ok = shoot("native-solved", after: 1) { _ in } && ok
     ok = shoot("native-scrambled", after: 1) { $0.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT)) } && ok
@@ -97,6 +130,42 @@ enum NativeShot {
         $0.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT))
         $0.press(keyCode: 34)
       } && ok
+    // 거울 판이 돌리는 동안 따라 도는지: 거울 보임 + R 가운데쯤
+    ok =
+      shoot("native-mirror-turning", after: 0.045) {
+        $0.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT))
+        $0.setMirror(true)
+        $0.press(keyCode: 34)
+      } && ok
+    // 다 맞춘 축하: 빛 고리가 퍼지고 시간 숫자가 보이는 순간(0.7초쯤)
+    ok = shoot("native-cheer", after: 0.75) { $0.cheer(text: "12.34", best: true) } && ok
+
+    // 힌트 말풍선: 3×3 섞기(F2L 전, 사람 해법의 다음 단계)와 마지막 층(코어가 쓰는 같은 판)
+    let hintView = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: n)
+    hintView.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT))
+    let bubble = HintBubble()
+    ok = shoot2D("native-hint", bubble.layoutForShot(lines: NativeCubeWindow.hintLines(game: hintView.game).lines)) && ok
+    // 공식 연습 말풍선(메뉴 첫 단계 따라 치기, 한 수 친 뒤)
+    let practiceView = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: 3)
+    let first = NativeCore.string { cubie_practice_menu($0, $1) }.split(separator: "\n").first.map {
+      String($0.split(separator: "\t")[0])
+    } ?? ""
+    if cubie_game_practice_start(practiceView.game, first, false, "", "", "", 7) {
+      let lines = "Enter".withCString { a in NativeCore.string { cubie_game_practice_lines(practiceView.game, a, $0, $1) } }
+      let parsed = lines.split(separator: "\n").map { NativeCubeWindow.bubbleLine(String($0)) }
+      ok = shoot2D("native-practice", HintBubble().layoutForShot(lines: parsed)) && ok
+    }
+    // F1 단축키 표(두 손, 3×3, J 누름 빛남)
+    let keys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))
+    keys.n = 3
+    keys.bindings = NativeCore.string { cubie_game_key_bindings(hintView.game, 3, $0, $1) }.split(separator: "\n")
+      .compactMap { line in
+        let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard f.count == 3, let m = Int(f[1]) else { return nil }
+        return NativeKeysView.Binding(code: f[0], mods: m, action: f[2])
+      }
+    keys.press("KeyJ")
+    ok = shoot2D("native-keys", keys) && ok
     fflush(stdout)
     return ok ? 0 : 1
   }

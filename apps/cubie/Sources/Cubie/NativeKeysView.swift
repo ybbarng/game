@@ -79,6 +79,8 @@ final class NativeKeysView: NSView {
 
   /// 테두리 색: 그냥 칠 때 면 돌리기면 그 면 색
   static func tone(_ action: String) -> NSColor? {
+    // 명령(되돌리기·섞기 등)과 깊이·층 수 키는 면 색이 없다
+    if action.contains(":") || ["undo", "scramble", "peekBack", "peekDown", "viewHome"].contains(action) { return nil }
     guard let f = action.first else { return nil }
     let faces: [Character: UInt32] = [
       "U": 0xffffff, "R": 0xc8102e, "F": 0x009b48, "D": 0xffd500, "L": 0xff5800, "B": 0x0046ad,
@@ -151,7 +153,9 @@ final class NativeKeysView: NSView {
           (1, NSFont.systemFont(ofSize: 8), NSColor(white: 1, alpha: 0.7)), (2, NSFont.systemFont(ofSize: 8), NSColor(white: 1, alpha: 0.5))]
         {
           guard let a = l[m] else { continue }
-          let s = NSAttributedString(string: Self.short(a), attributes: [.font: font, .foregroundColor: color])
+          // 「두 손」 숫자 + Shift는 바깥 n층(사이트 키 그림 `keyTextFor`)
+          let text = m == 1 && a.hasPrefix("depth:") ? "바깥 \(a.dropFirst(6))층" : Self.short(a)
+          let s = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: color])
           s.draw(in: NSRect(x: r.minX + 2, y: ly, width: r.width - 3, height: 11))
           ly += 9.5
         }

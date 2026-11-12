@@ -64,6 +64,15 @@ final class HintBubble {
 
   func hide() { panel.orderOut(nil) }
 
+  /// 스크린샷용: 줄들을 그린 상자(창은 띄우지 않는다)
+  func layoutForShot(lines: [[String: Any]]) -> NSView {
+    label.attributedStringValue = Self.text(lines)
+    let fit = label.sizeThatFits(NSSize(width: Self.maxWidth - Self.padding * 2, height: .greatestFiniteMagnitude))
+    label.frame = NSRect(x: Self.padding, y: Self.padding, width: ceil(fit.width), height: ceil(fit.height))
+    box.frame = NSRect(x: 0, y: 0, width: ceil(fit.width) + Self.padding * 2, height: ceil(fit.height) + Self.padding * 2)
+    return box
+  }
+
   private static func text(_ lines: [[String: Any]]) -> NSAttributedString {
     let out = NSMutableAttributedString()
     let para = NSMutableParagraphStyle()

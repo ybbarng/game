@@ -356,8 +356,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   private func requestHint() {
     guard cubie_game_solving(cube.game) else { return flash("섞은 뒤 맞추는 동안 볼 수 있어요") }
     guard cube.n == 2 || cube.n == 3 else { return flash("이 크기는 힌트 없음") }
-    let lines = NativeCore.string { cubie_game_hint(cube.game, $0, $1) }.components(separatedBy: "\n")
-    let kind = lines.first ?? "none"
+    let (kind, out) = Self.hintLines(game: cube.game)
     switch kind {
     case "hint": break
     case "unsupported": return flash("이 크기는 힌트 없음")
@@ -370,16 +369,21 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     }
     hintMsgCancel?()
     hintMsgCancel = nil
+    onHint?(out)
+  }
+
+  /// 코어 힌트 → 갈래와 말풍선 줄(사이트 `hintBubbleLines`: 단계·상황, 쥐는 법(키캡), 공식, 공식 키캡)
+  static func hintLines(game: OpaquePointer) -> (kind: String, lines: [[String: Any]]) {
+    let lines = NativeCore.string { cubie_game_hint(game, $0, $1) }.components(separatedBy: "\n")
     let field = { (i: Int) in i < lines.count ? lines[i] : "" }
     let (stage, name, before, alg, keys, beforeKeys) = (field(1), field(2), field(3), field(4), field(6), field(7))
-    // 사이트 `hintBubbleLines`와 같은 줄: 단계·상황, 쥐는 법(키캡), 공식, 공식 키캡
     var out: [[String: Any]] = [["text": name.isEmpty ? stage : "\(stage) · \(name)", "style": "title"]]
     if !before.isEmpty {
       out.append(["text": beforeKeys.isEmpty ? "\(before) 뒤" : "\(before) 뒤  (\(beforeKeys))", "style": "note"])
     }
     out.append(["text": alg, "style": "alg"])
     if !keys.isEmpty { out.append(["text": keys, "style": "keys"]) }
-    onHint?(out)
+    return (field(0).isEmpty ? "none" : field(0), out)
   }
 
   /// 짧은 알림 한 줄(1.5초)

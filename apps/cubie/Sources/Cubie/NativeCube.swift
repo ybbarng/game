@@ -373,6 +373,8 @@ final class CACubeView: NSView {
 
   /// 칸 색을 코어 화면 상태로(바뀐 칸만). 색을 바꾸는 일은 여기와 `paintSolved`에서만 생긴다
   private func paint(_ shown: [UInt8]) {
+    // 층을 아직 만들기 전(창에 붙기 전)이면 칠할 것이 없다. 만들 때 처음부터 칠한다
+    guard stickerLayers.count == painted.count else { return }
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     for (i, c) in shown.enumerated() where i < painted.count && painted[i] != c {
