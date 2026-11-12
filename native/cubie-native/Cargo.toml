@@ -2,7 +2,7 @@
 name = "cubie-native"
 version = "0.1.0"
 edition = "2021"
-description = "Cubie 네이티브 화면(docs/52 5절 3단계): 큐브 코어 + wgpu(Metal) 그리기 + C ABI"
+description = "Cubie 네이티브 화면(docs/52 5-2·5-5): 큐브 코어 한 판 + C ABI, 기능 wgpu를 켜면 wgpu(Metal) 그리기"
 license = "MIT"
 publish = false
 
@@ -10,10 +10,24 @@ publish = false
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+# 기본은 코어 한 판과 C ABI만(앱은 Core Animation으로 그린다, docs/52 5-5). wgpu 그리기(5-2 시제품)는 기능 `wgpu`로
+# 켠다: 스크린샷·벤치 도구와 그리기 시험이 쓴다. 앱은 켜지 않는다(유니버설 실행 파일 약 +7MB)
+[features]
+default = []
+wgpu = ["dep:wgpu"]
+
 # 의존은 코어와 wgpu 하나(docs/52: 의존 최소, 판 고정). wgpu는 Metal 백엔드와 WGSL만 켠다
 [dependencies]
 cube-core = { path = "../cube-core" }
-wgpu = { version = "=30.0.1", default-features = false, features = ["metal", "wgsl", "std", "parking_lot"] }
+wgpu = { version = "=30.0.1", default-features = false, features = ["metal", "wgsl", "std", "parking_lot"], optional = true }
+
+[[bin]]
+name = "cubie-shot"
+required-features = ["wgpu"]
+
+[[bin]]
+name = "cubie-bench"
+required-features = ["wgpu"]
 
 [profile.dev]
 opt-level = 1

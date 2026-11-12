@@ -265,8 +265,8 @@ final class CubeWindow: NSObject, NSWindowDelegate, WKNavigationDelegate {
   /// 가려짐 감지를 끈다(비공개 설정 `_windowOcclusionDetectionEnabled`, 재기에서만). 그래야 보이는 창처럼 그린다
   private func hideForMeasure() {
     let side = min(Config.maxSize.width, max(Config.minSize.width, Config.measureSide))
-    panel.setFrame(NSRect(x: -30000, y: -30000, width: side, height: side), display: false)
-    panel.alphaValue = 0
+    panel.setFrame(Config.measureFrame(side: side), display: false)
+    panel.alphaValue = Config.measureOnscreen ? 0.01 : 0
     panel.ignoresMouseEvents = true
     // 미션 컨트롤·창 돌기에도 나오지 않게
     panel.collectionBehavior = [.transient, .ignoresCycle]

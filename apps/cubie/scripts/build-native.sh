@@ -1,5 +1,6 @@
 #!/bin/sh
-# 네이티브 화면 정적 라이브러리(native/cubie-native, docs/52 5-2)를 만들어 apps/cubie/.native/libcubie_native.a에 둔다.
+# 네이티브 화면 정적 라이브러리(native/cubie-native, docs/52 5-5)를 만들어 apps/cubie/.native/libcubie_native.a에 둔다.
+# 코어 한 판과 C ABI만 든다(크레이트 기본 기능, wgpu 없음. 그리기는 앱의 Core Animation 층 트리).
 # Package.swift가 이 자리를 링크한다. build.sh·test.sh가 먼저 부른다.
 #   scripts/build-native.sh                 이 맥 칩용만
 #   scripts/build-native.sh --universal     arm64 + x86_64를 lipo로 합친다(배포본)
