@@ -5,7 +5,7 @@ import Metal
 import QuartzCore
 import UniformTypeIdentifiers
 
-/// 네이티브 화면 스크린샷(docs/52 5-5): `CUBIE_NATIVE=1 CUBIE_NATIVE_SHOT=<폴더> Cubie`. 창을 띄우지 않고 층 트리를
+/// 네이티브 화면 스크린샷(docs/52 5-5): `CUBIE_NATIVE_SHOT=<폴더> Cubie`. 창을 띄우지 않고 층 트리를
 /// `CARenderer`로 Metal 텍스처에 그려 투명 바탕 PNG로 쓴 뒤 끝난다(`layer.render(in:)`은 3D 변환을 납작하게 그려 쓰지 않는다).
 /// 창 96pt·배율 2. 결과: native-solved·native-scrambled·native-mirror(포커스 있고 섞인 큐브)·native-turning(R을 돌리는
 /// 중간). `scripts/native-compare.mjs <폴더>`가 웹 그림과 바탕 넷 위에 나란히 얹는다.
@@ -89,7 +89,7 @@ enum NativeShot {
     ok =
       shoot("native-mirror", after: 1) {
         $0.scramble(seed: 42, show: Int32(CUBIE_SHOW_INSTANT))
-        $0.focused = true
+        $0.setMirror(true)
       } && ok
     // I = R(두 손 배치). 90ms 가운데쯤
     ok =

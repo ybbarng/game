@@ -73,11 +73,10 @@ enum Config {
     return NSRect(x: -30000, y: -30000, width: side, height: side)
   }
 
-  /// `CUBIE_NATIVE=1`: 웹 화면 대신 네이티브 화면 시제품(Rust 코어 한 판 + Core Animation 3D 그리기, docs/52 5-5,
-  /// `NativeCube.swift`). 2×2~7×7 혼자 맞추기만 된다(키 → 코어 해석기 → 수, Enter 섞기와 섞기 연출, 거울 판, 맞춤 판정).
-  /// 웹 화면을 만들지 않아 WebKit 프로세스가 뜨지 않는다. 꺼져 있으면(기본) 지금 앱 그대로다.
-  /// (5-2의 wgpu 그리기는 앱에서 뺐다. 크레이트 기능 `wgpu`로 스크린샷·벤치 도구에만 남는다)
-  static let native = ProcessInfo.processInfo.environment["CUBIE_NATIVE"] == "1"
+  /// `CUBIE_WEB=1`: 큐브 창을 예전 웹 화면(사이트 `/cube/mini`를 WKWebView로)으로 띄우는 되돌림 스위치(docs/52 5-6).
+  /// 기본은 네이티브 화면(Rust 코어 + Core Animation 3D, `NativeCubeWindow`)이라 WebKit 프로세스가 뜨지 않는다.
+  /// 예전 확인용 `CUBIE_NATIVE=1`은 이제 기본과 같다
+  static let web = ProcessInfo.processInfo.environment["CUBIE_WEB"] == "1"
 
   /// 같은 사이트의 다른 화면(대결·설정)
   static func site(_ path: String) -> URL {

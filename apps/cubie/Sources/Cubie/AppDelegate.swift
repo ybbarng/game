@@ -18,7 +18,8 @@ final class RunningApp: FocusApp {
 /// - 메뉴 막대 아이콘과 창의 오른쪽 누르기 메뉴에서 섞기·큐브 크기·기록·대결·창·키 배치를 고른다(짜임은 `MenuLayout`).
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
-  private let cube = CubeWindow()
+  /// 떠 있는 큐브 창: 네이티브(기본) 또는 웹(`CUBIE_WEB=1`, docs/52 5-6)
+  private let cube: CubeSurface = Config.web ? CubeWindow() : NativeCubeWindow()
   /// 「공식 보기」 말풍선(큐브 창 옆)
   private let bubble = HintBubble()
   /// 큐브 옆 단축키 표(F1·메뉴 「단축키 보기」, docs/47 15-25)
@@ -38,11 +39,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
   private var measure: Measure?
+  private var nativeMeasure: NativeMeasure?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // 메모리 재기: 메뉴 막대 아이콘·전역 단축키·키 감시 없이 큐브 창만(화면 밖) 띄운다
     if Config.measure {
-      measure = Measure(cube: cube)
+      if let web = cube as? CubeWindow {
+        measure = Measure(cube: web)
+      } else if let native = cube as? NativeCubeWindow {
+        keys.storeScript = { [weak self] in self?.storeScript() }
+        let m = NativeMeasure(cube: native)
+        // 단축키 표·기록 창도 화면 밖에서 띄워 잰다
+        m.openKeys = { [weak self] in
+          guard let self else { return }
+          self.keys.show(cube: Config.measureFrame(side: 96), visible: Config.measureFrame(side: 2000), n: native.state.n)
+          native.send(.keysPanel(true))
+        }
+        m.dropKeys = { [weak self] in
+          self?.keys.hide()
+          self?.keys.reload()
+          native.send(.keysPanel(false))
+        }
+        m.openRecords = { [weak self] in
+          self?.openWebWindow(.records)
+          if let w = self?.webWindows[.records] { w.setFrameOrigin(NSPoint(x: -30000, y: -30000)) }
+        }
+        m.closeRecords = { [weak self] in self?.webWindows[.records]?.close() }
+        nativeMeasure = m
+      }
       return
     }
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -84,22 +108,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         return nil
       }
       let isEsc = event.keyCode == 53 && mods.subtracting([.function, .numericPad]).isEmpty
-      // 큐브 창으로 가는 키: 웹 화면에 닿기 직전에 출처를 알린다(같은 연결이라 키보다 먼저 닿는다)
+      // 큐브 창으로 가는 키: 화면에 닿기 직전에 출처를 알린다(웹은 같은 연결이라 키보다 먼저 닿는다)
       if !isEsc, event.window === self.cube.panel {
-        let source = KeySource.of(event)
-        if Config.debug, let f = KeySource.fields(event) {
-          print("[cubie] key code=\(event.keyCode) repeat=\(event.isARepeat) source=\(source.rawValue) \(f)")
-          fflush(stdout)
-        }
-        self.cube.bridge.send(["type": "key", "source": source.rawValue])
+        self.cube.keyArriving(event)
       }
       guard isEsc else { return event }
       if self.cube.panel.isKeyWindow {
         // 단축키 표가 떠 있으면 Esc는 표 닫기. 공식 연습 중이면 연습 끝내기(맞추기로 돌아가기). 한 번 더 누르면 이전 앱으로
         if self.keys.isShown {
           self.hideKeys()
-        } else if self.cube.bridge.state.practice != nil {
-          self.cube.bridge.send(["type": "practice", "stage": NSNull()])
+        } else if self.cube.state.practice != nil {
+          self.cube.send(.practice(stage: nil, see: false))
         } else {
           self.returnFocus()
         }
@@ -116,28 +135,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     if Config.debug { listenDebug() }
-    cube.webView.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
-    cube.bridge.onReady = { [weak self] in
+    keys.storeScript = { [weak self] in self?.storeScript() }
+    (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in self?.pushStoreToWebWindows() }
+    cube.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
+    cube.onReady = { [weak self] in
       guard let self else { return }
-      self.cube.sendFocus()
-      // 이 앱이 말풍선을 그린다고 알린다(0.1.2 이하 앱은 보내지 않아 웹이 창 안에 작게 보인다)
-      self.cube.bridge.send(["type": "caps", "hintBubble": true])
       self.bubble.hide()
       // 다시 불러온 화면에도 단축키 표가 떠 있는지 알린다(떠 있는 동안만 누른 키를 보낸다)
-      self.cube.bridge.send(["type": "keysPanel", "open": self.keys.isShown])
+      self.cube.send(.keysPanel(self.keys.isShown))
     }
-    cube.bridge.onState = { [weak self] in
+    cube.onState = { [weak self] in
       guard let self, self.keys.isShown else { return }
       self.keys.setSize(self.keysN)
     }
-    cube.bridge.onPressed = { [weak self] code in self?.keys.pressed(code) }
+    cube.onPressed = { [weak self] code in self?.keys.pressed(code) }
     // 다른 앱으로 가면(Esc·⌃⌥⌘C·다른 앱 누르기) 단축키 표도 닫는다. 표는 큐브를 돌릴 때만 쓴다
     NotificationCenter.default.addObserver(
       forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
     ) { [weak self] _ in
       MainActor.assumeIsolated { self?.hideKeys() }
     }
-    cube.bridge.onHint = { [weak self] lines in
+    cube.onHint = { [weak self] lines in
       guard let self else { return }
       if let lines, !lines.isEmpty, self.cube.panel.isVisible {
         self.bubble.show(lines: lines, cube: self.cube.panel.frame, visible: self.cubeScreen)
@@ -167,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       guard let self, !self.cube.focused else { return }
       self.focusCube()
     }
-    cube.load()
+    cube.reload()
     cube.panel.orderFrontRegardless()
   }
 
@@ -202,7 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         switch parts.first {
         case "scramble": self.menuScramble()
         case "mirror": self.menuMirror()
-        case "size": self.cube.bridge.send(["type": "size", "n": Int(parts.last ?? "") ?? 3])
+        case "size": self.cube.send(.size(Int(parts.last ?? "") ?? 3))
         case "records": self.menuRecords()
         case "keys": self.menuKeys()
         case "frame":
@@ -212,7 +230,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let h = max(Config.minSize.height, v[3])
             self.cube.panel.setFrame(NSRect(x: v[0], y: v[1], width: w, height: h), display: true)
           }
-        default: self.cube.dumpWebState("dump frame=\(self.cube.panel.frame)")
+        default: self.cube.dump("dump frame=\(self.cube.panel.frame)")
         }
       }
     }
@@ -226,7 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   // MARK: 단축키 표
 
   /// 표에 보일 큐브 크기(공식 연습은 3×3만)
-  private var keysN: Int { cube.bridge.state.practice != nil ? 3 : cube.bridge.state.n }
+  private var keysN: Int { cube.state.practice != nil ? 3 : cube.state.n }
 
   private func toggleKeys() {
     if keys.isShown { hideKeys() } else { showKeys() }
@@ -234,13 +252,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
   private func showKeys() {
     keys.show(cube: cube.panel.frame, visible: cubeScreen, n: keysN)
-    cube.bridge.send(["type": "keysPanel", "open": true])
+    cube.send(.keysPanel(true))
   }
 
   private func hideKeys() {
     guard keys.isShown else { return }
     keys.hide()
-    cube.bridge.send(["type": "keysPanel", "open": false])
+    cube.send(.keysPanel(false))
   }
 
   // MARK: 포커스
@@ -264,7 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     // 단축키는 사용자가 누른 것이니 예전 방식으로 바로 앞으로 온다
     NSApp.activate(ignoringOtherApps: true)
     cube.panel.makeKeyAndOrderFront(nil)
-    cube.panel.makeFirstResponder(cube.webView)
+    cube.takeKeys()
   }
 
   /// 기억한 앱을 앞으로. 큐브 창은 그대로 떠 있다
@@ -314,7 +332,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let entries = MenuLayout.main(
       forWindow: forWindow, hotKeyOK: hotKeyOK,
       pendingUpdate: updater.pendingVersion != nil, updaterAvailable: updater.isAvailable,
-      practiceAvailable: !cube.bridge.state.practiceStages.isEmpty)
+      practiceAvailable: !cube.state.practiceStages.isEmpty)
     return menu(of: entries)
   }
 
@@ -333,13 +351,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   }
 
   private func items(for e: MenuEntry) -> [NSMenuItem] {
-    let s = cube.bridge.state
+    let s = cube.state
     let title = e.title ?? ""
     switch e {
     case .profile:
       // 맨 위 프로필 칸(뷰가 직접 그리고 누르기를 받는다). 누르면 기록 보기
-      let i = NSMenuItem(title: cube.bridge.profile.name, action: nil, keyEquivalent: "")
-      i.view = ProfileMenuView(profile: cube.bridge.profile) { [weak self] in self?.menuRecords() }
+      let i = NSMenuItem(title: cube.profile.name, action: nil, keyEquivalent: "")
+      i.view = ProfileMenuView(profile: cube.profile) { [weak self] in self?.menuRecords() }
       return [i]
     case .separator:
       return [.separator()]
@@ -442,28 +460,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     cube.sendFocus()
   }
 
-  @objc private func menuScramble() { cube.bridge.send(["type": "scramble"]) }
-  @objc private func menuMirror() { cube.bridge.send(["type": "mirror"]) }
-  @objc private func menuHint() { cube.bridge.send(["type": "hint"]) }
+  @objc private func menuScramble() { cube.send(.scramble) }
+  @objc private func menuMirror() { cube.send(.toggleMirror) }
+  @objc private func menuHint() { cube.send(.hint) }
   /// 공식 연습 단계 고르기(지금 하는 단계를 다시 고르면 새 판). 키를 바로 칠 수 있게 큐브에 키 입력을 준다
   @objc private func menuPracticeStage(_ sender: NSMenuItem) {
     guard let id = sender.representedObject as? String else { return }
-    let s = cube.bridge.state
-    cube.bridge.send(["type": "practice", "stage": id, "mode": s.practiceSee ? "see" : "follow"])
+    cube.send(.practice(stage: id, see: cube.state.practiceSee))
     if !cube.focused { focusCube() }
   }
   /// 보고 치기 켜고 끄기. 연습 중이면 같은 단계를 새 방식으로 새 판
   @objc private func menuPracticeSee() {
-    let s = cube.bridge.state
-    let mode = s.practiceSee ? "follow" : "see"
+    let s = cube.state
     if let stage = s.practice {
-      cube.bridge.send(["type": "practice", "stage": stage, "mode": mode])
+      cube.send(.practice(stage: stage, see: !s.practiceSee))
     } else {
       // 연습 전이면 방식만 기억해 둔다(다음에 고르는 단계가 그 방식으로 열린다)
-      cube.bridge.setPracticeSee(!s.practiceSee)
+      cube.setPracticeSee(!s.practiceSee)
     }
   }
-  @objc private func menuPracticeStop() { cube.bridge.send(["type": "practice", "stage": NSNull()]) }
+  @objc private func menuPracticeStop() { cube.send(.practice(stage: nil, see: false)) }
   /// 사이트 해법 익히기(해법을 고르면 배우기 단원과 공식 연습)를 기본 브라우저로
   @objc private func menuLearn() { NSWorkspace.shared.open(Config.site(Config.learnPath)) }
   @objc private func menuMoveScreen(_ sender: NSMenuItem) {
@@ -473,7 +489,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     cube.panel.setFrame(f, display: true)
     cube.saveFrame()
   }
-  @objc private func menuSize(_ sender: NSMenuItem) { cube.bridge.send(["type": "size", "n": sender.tag]) }
+  @objc private func menuSize(_ sender: NSMenuItem) { cube.send(.size(sender.tag)) }
   @objc private func menuWindowSize(_ sender: NSMenuItem) { cube.setSide(CGFloat(sender.tag)) }
 
   @objc private func menuRecords() { openWebWindow(.records) }
@@ -486,7 +502,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 사이트 티어표를 지금 크기로(이미 열려 있으면 그 크기로 다시 연다)
   @objc private func menuTiers() {
     if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
-      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(cube.bridge.state.n)"), cachePolicy: PageFreshness.load))
+      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(cube.state.n)"), cachePolicy: PageFreshness.load))
     }
     openWebWindow(.tiers)
   }
@@ -498,7 +514,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuResetFrame() { cube.resetFrame() }
   @objc private func menuReload() {
     bubble.hide()
-    cube.load()
+    cube.reload()
   }
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
@@ -512,11 +528,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let (path, title, size): (String, String, NSSize) =
       switch kind {
       case .records: ("/cube/mini?view=records", "Cubie 기록", NSSize(width: 380, height: 600))
-      case .tiers: ("/cube/tiers?n=\(cube.bridge.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
+      case .tiers: ("/cube/tiers?n=\(cube.state.n)", "Cubie 티어표", NSSize(width: 760, height: 760))
       case .settings: ("/cube/settings", "Cubie 키 배치·색", NSSize(width: 760, height: 720))
       }
     let config = WKWebViewConfiguration()
-    config.websiteDataStore = .default()
+    config.websiteDataStore = Config.measure ? .nonPersistent() : .default()
+    if let script = storeScript() { config.userContentController.addUserScript(script) }
     let web = WKWebView(frame: NSRect(origin: .zero, size: size), configuration: config)
     web.load(URLRequest(url: Config.site(path), cachePolicy: PageFreshness.load))
     let w = NSWindow(
@@ -546,9 +563,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
       let kind = webWindows.first(where: { $0.value === w })?.key
     else { return }
     webWindows[kind] = nil
-    if kind == .settings {
-      cube.load()
+    guard kind == .settings else { return }
+    guard let native = cube as? NativeCubeWindow, let web = w.contentView as? WKWebView else {
+      cube.reload()
       keys.reload()
+      return
+    }
+    // 네이티브 화면: 설정 창이 저장한 키 배치·색·설정을 앱 저장소로 읽어 온다(앱이 쓰는 미니 기록 `cube.mini.*`는 빼고).
+    // 창을 닫는 중이라도 웹 화면은 이 응답이 올 때까지 붙들어 둔다
+    web.evaluateJavaScript(Self.readStoreJS) { [weak self] result, _ in
+      MainActor.assumeIsolated {
+        _ = web
+        if let text = result as? String, let data = text.data(using: .utf8),
+          let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: String]
+        {
+          for (k, v) in d where !k.hasPrefix("cube.mini.") { native.store.set(v, for: k) }
+        }
+        self?.cube.reload()
+        self?.keys.reload()
+      }
+    }
+  }
+
+  /// 웹 화면의 큐브 저장소(`cube.`로 시작하는 키) 전부를 JSON 글로
+  static let readStoreJS =
+    "JSON.stringify(Object.fromEntries(Object.keys(localStorage).filter(k => k.startsWith('cube.'))"
+    + ".map(k => [k, localStorage.getItem(k)])))"
+
+  /// 앱 저장소 글을 localStorage에 넣는 스크립트
+  static func setItemsJS(_ d: [String: String]) -> String? {
+    guard let data = try? JSONSerialization.data(withJSONObject: d), let json = String(data: data, encoding: .utf8)
+    else { return nil }
+    return "(function(d){for(var k in d){try{localStorage.setItem(k,d[k])}catch(e){}}})(" + json + ");"
+  }
+
+  /// 네이티브 화면이면: 앱 저장소의 큐브 글(기록·프로필·키 배치·설정)을 사이트 창의 localStorage에 문서 시작 때 넣는다.
+  /// 기록 창·티어표·설정 화면·단축키 표는 사이트 코드 그대로 이 글을 읽는다(docs/52 5-6). 웹 화면이면 넣지 않는다
+  func storeScript() -> WKUserScript? {
+    guard let native = cube as? NativeCubeWindow else { return nil }
+    var d: [String: String] = [:]
+    for k in native.store.keys where k.hasPrefix("cube.") { d[k] = native.store.string(k) }
+    guard let js = Self.setItemsJS(d) else { return nil }
+    return WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+  }
+
+  /// 기록이 바뀌었을 때 열려 있는 기록 창·티어표에도 넣는다(그 창은 앞으로 올 때 다시 읽는다)
+  func pushStoreToWebWindows() {
+    guard let native = cube as? NativeCubeWindow else { return }
+    var d: [String: String] = [:]
+    for k in native.store.keys where k.hasPrefix("cube.mini.") { d[k] = native.store.string(k) }
+    guard let js = Self.setItemsJS(d) else { return }
+    for kind in [WebWindow.records, .tiers] {
+      (webWindows[kind]?.contentView as? WKWebView)?.evaluateJavaScript(js)
     }
   }
 }

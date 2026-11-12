@@ -13,6 +13,7 @@ use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::{preset_keymap, Command, KeyInput, Keymap, Preset};
 use cube_core::replay::replay_steps;
 use cube_core::solved_cube;
+use cube_core::spot::{last_layer_hint, LastLayerHint};
 use cube_core::state::face_colors;
 use cube_core::topology::{cube_topology, MAX_SIZE, MIN_SIZE};
 
@@ -234,6 +235,37 @@ pub unsafe extern "C" fn cubie_game_last_rotation(g: *const CubieGame) -> bool {
     unsafe { &*g }.game.last_rotation()
 }
 
+/// 맥 키 코드(`NSEvent.keyCode`) → `KeyboardEvent.code`(배치가 쓰는 키만). 모르는 키면 빈 글. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_mac_key_code(key: u16, out: *mut u8, len: u32) -> u32 {
+    unsafe { write_str(mac_key_code(key).unwrap_or(""), out, len) }
+}
+
+/// 마지막으로 둔 수가 되돌리기였나
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_last_undo(g: *const CubieGame) -> bool {
+    unsafe { &*g }.game.last_undo()
+}
+
+/// 마지막 섞기 글(WCA 표기)을 `out`에 쓴다. 글 전체 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_scramble_text(
+    g: *const CubieGame,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    unsafe { write_str((*g).game.scramble_text(), out, len) }
+}
+
 /// 보기만 하는 연출: 화면을 맞춘 모양(`solved` true) 또는 논리 상태(false)로 두고 줄을 비운다
 ///
 /// # Safety
@@ -264,6 +296,87 @@ pub unsafe extern "C" fn cubie_game_show_push(
         Some(t) => g.game.show_push(t, ms),
         None => false,
     }
+}
+
+/// 한 수를 돌리는 시간(사이트 설정 `moveMs`, 0~200ms)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_set_move_ms(g: *mut CubieGame, ms: f64) {
+    unsafe { &mut *g }.game.set_move_ms(ms);
+}
+
+/// 지금 상태의 힌트(사이트 `pickHint`, docs/47 15-15)를 줄 여섯으로 쓴다: 갈래(`hint`·`none`·`unsupported`·`notyet`),
+/// 단계 이름, 상황 이름, 쥐는 법, 공식, 배우기 단원 id. `notyet`은 마지막 층 전(F2L 전 갈래, 사람 해법을 옮기는 중).
+/// 글 전체 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_hint(g: *const CubieGame, out: *mut u8, len: u32) -> u32 {
+    let g = unsafe { &*g };
+    let lines: [String; 6] = if g.game.n != 3 {
+        let kind = if g.game.n == 2 {
+            "notyet"
+        } else {
+            "unsupported"
+        };
+        [
+            kind.into(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        ]
+    } else {
+        match last_layer_hint(g.game.state()) {
+            LastLayerHint::Solved => Default::default(),
+            LastLayerHint::Formula {
+                stage,
+                name,
+                before,
+                alg,
+                ..
+            } => {
+                let lesson = if stage.starts_with("OLL") {
+                    "cfop-2look-oll"
+                } else {
+                    "cfop-2look-pll"
+                };
+                [
+                    "hint".into(),
+                    stage.into(),
+                    name.into(),
+                    before,
+                    alg.into(),
+                    lesson.into(),
+                ]
+            }
+            LastLayerHint::Finish { alg } => [
+                "hint".into(),
+                "마무리(윗면 맞추기)".into(),
+                String::new(),
+                String::new(),
+                alg.into(),
+                String::new(),
+            ],
+            LastLayerHint::NotLastLayer => [
+                "notyet".into(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+        }
+    };
+    let mut lines = lines;
+    if lines[0].is_empty() {
+        lines[0] = "none".into();
+    }
+    unsafe { write_str(&lines.join("\n"), out, len) }
 }
 
 /// 다시 보기 글 → 걸음(사이트 `solveSteps`, 수 사이 멈춤은 `max_pause_ms`까지, 첫 수가 `offset`). 걸음마다 한 줄

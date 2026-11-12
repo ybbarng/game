@@ -19,6 +19,8 @@ final class KeysPanel {
   private let box: NSView
   private var webView: WKWebView?
   private var releaseTask: Task<Void, Never>?
+  /// 네이티브 화면이면 앱 저장소의 키 배치·설정을 웹 화면에 넣는 스크립트(docs/52 5-6)
+  var storeScript: (() -> WKUserScript?)?
 
   init() {
     let size = Config.keysPanelSize
@@ -64,7 +66,8 @@ final class KeysPanel {
   /// 큐브 창과 같은 웹 저장소(키 배치·크기를 함께 읽는다)
   private func makeWebView() -> WKWebView {
     let config = WKWebViewConfiguration()
-    config.websiteDataStore = .default()
+    config.websiteDataStore = Config.measure ? .nonPersistent() : .default()
+    if let script = storeScript?() { config.userContentController.addUserScript(script) }
     let web = WKWebView(frame: box.bounds, configuration: config)
     // 불러오기 전 흰 바탕이 번쩍이지 않게 웹 바탕은 그리지 않고 상자 색을 쓴다(`CubeWindow`와 같은 키)
     web.setValue(false, forKey: "drawsBackground")

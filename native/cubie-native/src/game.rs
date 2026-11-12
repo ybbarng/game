@@ -56,12 +56,17 @@ pub fn moves_show_ms(count: usize) -> f64 {
     (1000.0 * (count as f64 / 20.0).sqrt()).round().min(2000.0)
 }
 
-/// 한 수를 돌리는 시간(사이트 `moveDuration`)
+/// 한 수를 돌리는 시간(사이트 `moveDuration`, 기본 설정)
 pub fn move_duration(m: &CubeMove) -> f64 {
+    move_duration_with(m, MOVE_MS)
+}
+
+/// 한 수를 돌리는 시간(설정 `moveMs`), 반 바퀴는 1.4배
+pub fn move_duration_with(m: &CubeMove, move_ms: f64) -> f64 {
     if m.turns == 2 {
-        MOVE_MS * HALF_TURN_SLOWER
+        move_ms * HALF_TURN_SLOWER
     } else {
-        MOVE_MS
+        move_ms
     }
 }
 
@@ -108,6 +113,12 @@ pub struct Game {
     /// 마지막으로 둔 수의 표기(되돌리기면 거꾸로 돌린 수)와 큐브 돌리기(x·y·z)인지
     last_notation: String,
     last_rotation: bool,
+    /// 한 수를 돌리는 시간(사이트 설정 `moveMs`, 0~200)
+    move_ms: f64,
+    /// 마지막으로 둔 수가 되돌리기였나
+    last_undo: bool,
+    /// 마지막 섞기 글
+    scramble_text: String,
 }
 
 impl Game {
@@ -124,6 +135,9 @@ impl Game {
             dirty: true,
             last_notation: String::new(),
             last_rotation: false,
+            move_ms: MOVE_MS,
+            last_undo: false,
+            scramble_text: String::new(),
         }
     }
 
@@ -136,6 +150,15 @@ impl Game {
         self.interp.keymap()
     }
 
+    /// 한 수를 돌리는 시간(사이트 설정 `moveMs`, 0~200ms)
+    pub fn set_move_ms(&mut self, ms: f64) {
+        self.move_ms = if ms.is_finite() {
+            ms.clamp(0.0, 200.0)
+        } else {
+            MOVE_MS
+        };
+    }
+
     /// 마지막으로 둔 수의 표기(사이트 기록에 적는 가장 짧은 이름, 되돌리기면 거꾸로 돌린 수)
     pub fn last_notation(&self) -> &str {
         &self.last_notation
@@ -144,6 +167,16 @@ impl Game {
     /// 마지막으로 둔 수가 큐브 돌리기(x·y·z)인가
     pub fn last_rotation(&self) -> bool {
         self.last_rotation
+    }
+
+    /// 마지막으로 둔 수가 되돌리기였나
+    pub fn last_undo(&self) -> bool {
+        self.last_undo
+    }
+
+    /// 마지막 섞기 글(WCA 표기)
+    pub fn scramble_text(&self) -> &str {
+        &self.scramble_text
     }
 
     pub fn state(&self) -> &State {
@@ -163,6 +196,7 @@ impl Game {
         match self.interp.handle(input) {
             None => Outcome::Ignored,
             Some(KeyResult::Move { notation, mv, .. }) => {
+                self.last_undo = false;
                 self.last_notation = notation.clone();
                 self.last_rotation = mv.is_rotation(self.n);
                 let solved = self.play(mv);
@@ -170,12 +204,12 @@ impl Game {
             }
             Some(KeyResult::Command { command, .. }) => match command {
                 Command::Scramble => self.scramble(seed),
-                Command::Reset => {
-                    self.reset();
-                    Outcome::Reset
-                }
+                // 미니 모드는 「맞춘 상태로」(Esc)·살펴보기 건너뛰기(Space)를 쓰지 않는다(사이트 `MiniCubeApp`, docs/47 15-4).
+                // Esc는 앱이 먼저 가로채고, 사용자 배치가 다른 키에 놓았어도 진행을 버리지 않는다
+                Command::Reset | Command::InspectionSkip => Outcome::Consumed,
                 Command::Undo => match self.history.pop() {
                     Some(m) => {
+                        self.last_undo = true;
                         let inv = m.inverse();
                         self.state = apply_move(self.n, &self.state, &inv);
                         self.last_notation = format_move(self.n, &inv);
@@ -189,7 +223,6 @@ impl Game {
                     None => Outcome::Consumed,
                 },
                 Command::PeekBack | Command::PeekDown | Command::ViewHome => Outcome::View(command),
-                _ => Outcome::Consumed,
             },
             Some(_) => Outcome::Consumed,
         }
@@ -248,6 +281,7 @@ impl Game {
         }
         .expect("종목");
         let s = scramble(event, seed);
+        self.scramble_text = s.text.clone();
         let moves = parse_moves(self.n, &s.text).expect("섞기 글");
         let mut st = solved_cube(self.n);
         for m in &moves {
@@ -343,7 +377,10 @@ impl Game {
         }
         let q = self.queue.pop_front()?;
         self.shown = apply_move(self.n, &self.shown, &q.mv);
-        Some((q.mv, q.ms.unwrap_or_else(|| move_duration(&q.mv))))
+        Some((
+            q.mv,
+            q.ms.unwrap_or_else(|| move_duration_with(&q.mv, self.move_ms)),
+        ))
     }
 
     /// 시각 `now`(ms)의 화면: 돌리는 중인 수와 진행 0..1(보이는 상태는 [`Game::shown`]). 끝난 연출은 화면 상태에 넣는다

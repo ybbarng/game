@@ -10,21 +10,7 @@ import WebKit
 final class Bridge: NSObject, WKScriptMessageHandler {
   static let name = "cubie"
 
-  /// 화면이 알려 준 값(메뉴 체크 표시)
-  struct WebState {
-    var n = 3
-    var mirror = true
-    var records = false
-    /// 지금 키 배치의 섞기 키(메뉴 「섞기」 옆에 보인다). 이 값을 보내기 전 웹 화면이면 비어 있다
-    var scrambleKey: MenuKey?
-    /// 공식 연습(docs/47 16-11): 지금 하는 단계 id(안 하면 nil), 보고 치기인가, 메뉴에 보일 단계.
-    /// 단계 목록이 비었으면(0.1.6 이하 화면) 메뉴에 「공식 연습」을 두지 않는다
-    var practice: String?
-    var practiceSee = false
-    var practiceStages: [PracticeStageItem] = []
-  }
-
-  private(set) var state = WebState()
+  private(set) var state = CubeState()
   /// 메뉴 맨 위 프로필 칸(웹이 `profile`로 알려 준다, docs/47 15-20). 알려 주기 전에는 번호 없는 익명 이름
   private(set) var profile = Profile.placeholder
   weak var webView: WKWebView?
