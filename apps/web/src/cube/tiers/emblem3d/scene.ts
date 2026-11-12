@@ -14,6 +14,7 @@ import { wingPlates } from "../TierEmblem";
 import { TIER_IDS, type TierId } from "../table";
 import type { GemPhysics, GemShape } from "./gem";
 import {
+  type GemSee,
   gemMaterialGL,
   gemMaterialNode,
   gemNodeEmissive,
@@ -82,6 +83,8 @@ export interface EmblemScene {
   behind: THREE_NS.Object3D[];
   /** 반사 지도로 구울 스튜디오 방(PMREM에 넘긴 뒤 버린다) */
   studio: THREE_NS.Scene;
+  /** 그리기 전에 부른다(돌린 뒤 보석 계산에 쓰는 값을 고친다) */
+  update(): void;
   /** 구운 반사 지도를 장면에 건다(보석 빛길도 이것을 읽는다) */
   applyEnvironment(env: THREE_NS.Texture): void;
   dispose(): void;
@@ -121,9 +124,42 @@ function absorbFor(left: Rgb): Rgb {
 }
 
 /**
- * 보석 안의 빛 세기(반사 지도에 곱한다). 반사 지도는 금속과 같은 방이라 1이 물리 그대로다
+ * 보석 안에서 되튀어 나간 빛이 읽는 스튜디오 반사 지도 세기. 반사 지도는 금속과 같은 방이라 1이 물리 그대로다. 예전
+ * 2는 나가는 빛이 모두 반사 지도를 읽던 때라 보석이 밝은 스튜디오를 비추는 거울(금속)처럼 보였다
  */
-export const GEM_GAIN = 2;
+export const GEM_GAIN = 1.3;
+/**
+ * 보석이 꿰뚫어 본 뒤 배경판 세기. 배경판은 톤 매핑 없이 그리는데 보석 빛은 톤 매핑을 거쳐 조금 어두워지고, 실제
+ * 보석도 둘레 빛을 모아 뒤 배경보다 조금 밝게 보인다
+ */
+export const GEM_BACK_GAIN = 1.8;
+/**
+ * 보석 스튜디오의 큰 빛판 세기(금속 1 기준). 큰 빛판이 밝으면 안에서 되튄 빛이 면 전체를 고르게 밝혀 닦은 금속판처럼
+ * 보였다(2026-11-12). 줄이면 되튄 빛은 가는 띠 조명·점 조명의 반짝임으로 남고, 면은 꿰뚫어 본 배경의 빛으로 산다
+ */
+export const GEM_BIG_PANEL = 0.35;
+/** 배경판 자리(z)와 한 변(돌지 않는다) */
+export const BACKDROP_Z = -14;
+export const BACKDROP_SIZE = 40;
+/** 큐브 바로 뒤 뒤 조명(라이트 박스) 세기: 색 보석, 무색 보석 */
+const GLOW = 0.6;
+const GLOW_CLEAR = 0.7;
+
+/** 배경판 가운데 색: 어두운 바탕은 티어 색 그대로, 밝은 바탕은 바탕에 가깝게 옅게 */
+function backdropCenter(center: string, page: string): string {
+  const hex = (s: string) => Number.parseInt(s.slice(1), 16);
+  const rgb = (n: number): [number, number, number] => [
+    (n >> 16) & 255,
+    (n >> 8) & 255,
+    n & 255,
+  ];
+  const p = rgb(hex(page));
+  const light = (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255 > 0.5;
+  if (!light) return center;
+  const c = rgb(hex(center));
+  const mixed = p.map((v, i) => Math.round(v * 0.78 + (c[i] as number) * 0.22));
+  return `#${mixed.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
 
 /** 티어마다 재질(시안에서 고른 값, 보고·문서에 그대로 적는다) */
 export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
@@ -370,14 +406,7 @@ function backdropTexture(
     ctx.fillRect(0, 0, size, size);
     if (glow) {
       // 큐브 바로 뒤의 뒤 조명(보석 사진의 라이트 박스): 조각을 지나 굴절돼 보석이 안에서 맑게 빛난다
-      const back = ctx.createRadialGradient(
-        h,
-        h,
-        0,
-        h,
-        h,
-        h * (glowAlpha > 0.7 ? 0.24 : 0.2),
-      );
+      const back = ctx.createRadialGradient(h, h, 0, h, h, h * 0.17);
       back.addColorStop(0, glow);
       back.addColorStop(0.45, glow);
       back.addColorStop(1, "rgba(0,0,0,0)");
@@ -459,7 +488,7 @@ function studioScene(
   // 등각 큐브의 세 면은 정면에서 볼 때 뒤쪽을 비춘다(윗면 → 위-뒤, 왼면 → 왼-아래-뒤, 오른면 → 오른-아래-뒤).
   // 그래서 큰 소프트박스는 뒤쪽에 두고 밝기를 윗면 > 왼면 > 오른면으로 갈라 SVG 엠블럼의 면 밝기(1·0.62·0.4)를 잇는다
   // 보석은 큰 소프트박스를 줄인다: 면 전체가 밝게 비치면 뿌옇게(얼음처럼) 보였다. 대신 가는 띠 조명으로 또렷한 대비를 낸다
-  const big = gem ? 0.7 : 1;
+  const big = gem ? GEM_BIG_PANEL : 1;
   panel(12, 6, 3.4 * big, [0, 9, -6]);
   panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
   panel(6, 8, 1.2 * big, [9, -4, -6], [1, 0.97, 0.93]);
@@ -528,6 +557,7 @@ interface GemMat {
   mat: THREE_NS.Material;
   g: GemPhysics;
   shape: GemShape;
+  inCube: boolean;
 }
 
 /** 엠블럼 장면을 짓는다 */
@@ -574,13 +604,31 @@ export function buildEmblemScene(
       envMapIntensity: gem ? 0.7 : 1,
     }),
   );
+  // 배경판 그림: 장면 뒤에 깔고(opt.backdrop), 보석이 꿰뚫어 볼 때도 같은 그림을 읽는다
+  const bgTex = backdropTexture(
+    T,
+    backdropCenter(look.backdrop, opt.pageColor),
+    opt.pageColor,
+    look.glow ?? null,
+    (look.gem && Math.max(...look.gem.absorb) < 0.05 ? GLOW_CLEAR : GLOW) *
+      (opt.backGlow ?? 1),
+  );
+  texs.push(bgTex);
+  const see: GemSee = {
+    back: bgTex,
+    backZ: BACKDROP_Z,
+    backSize: BACKDROP_SIZE,
+    backGain: GEM_BACK_GAIN,
+    envGain: GEM_GAIN,
+    cubeInv: new T.Matrix4(),
+  };
   const node = hasTsl(T);
   const gems: GemMat[] = [];
-  const gemMat = (g: GemPhysics, shape: GemShape) => {
+  const gemMat = (g: GemPhysics, shape: GemShape, inCube = false) => {
     const m = mat(
-      node ? gemMaterialNode(T, g) : gemMaterialGL(T, g, shape, GEM_GAIN),
+      node ? gemMaterialNode(T, g) : gemMaterialGL(T, g, shape, see, inCube),
     );
-    gems.push({ mat: m, g, shape });
+    gems.push({ mat: m, g, shape, inCube });
     return m;
   };
   const metalBlock = mat(
@@ -591,8 +639,10 @@ export function buildEmblemScene(
       envMapIntensity: 1.3,
     }),
   );
-  /** 큐브 조각·왕관(상자 보석) */
-  const blockMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
+  /** 큐브 조각(상자 보석, 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수된다) */
+  const blockMat = look.gem ? gemMat(look.gem, "box", true) : metalBlock;
+  /** 왕관 상자(홀로 놓인 상자 보석) */
+  const crownMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
   /** 날개 조각(얇은 판 보석) */
   const plateMat = look.gem ? gemMat(look.gem, "slab") : metalBlock;
   /** 팔면체 작은 보석(틀 꼭짓점·볏·아래 보석): 보석 티어는 몸 보석, 플래티넘은 그 색 보석 */
@@ -733,7 +783,7 @@ export function buildEmblemScene(
     for (const [p, r] of cubes) {
       // r은 실루엣 육각형 반지름 → 한 변 = r / √(2/3)
       const edge = (r * u) / Math.sqrt(2 / 3);
-      const box = new T.Mesh(cubieGeo, blockMat);
+      const box = new T.Mesh(cubieGeo, crownMat);
       box.scale.setScalar(edge / CUBIE);
       box.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
       const [x, y] = toWorld(p, u);
@@ -800,22 +850,11 @@ export function buildEmblemScene(
     behind.push(halo);
   }
   if (opt.backdrop) {
-    const bgTex = backdropTexture(
-      T,
-      look.backdrop,
-      opt.pageColor,
-      look.glow ?? null,
-      // 보석은 이제 배경판을 굴절해 비추지 않고(빛길이 반사 지도를 읽는다) 뒤 조명은 틈과 둘레로만 보인다.
-      // 둘째 시안의 세기(0.6, 무색 0.85)면 큐브 둘레가 뿌옇게 떠 절반 아래로 줄인다
-      (look.gem && Math.max(...look.gem.absorb) < 0.05 ? 0.35 : 0.25) *
-        (opt.backGlow ?? 1),
-    );
-    texs.push(bgTex);
     const bg = new T.Mesh(
-      keep(new T.PlaneGeometry(40, 40)),
+      keep(new T.PlaneGeometry(BACKDROP_SIZE, BACKDROP_SIZE)),
       mat(new T.MeshBasicMaterial({ map: bgTex, toneMapped: false })),
     );
-    bg.position.z = -14;
+    bg.position.z = BACKDROP_Z;
     scene.add(bg);
     behind.push(bg);
     const shadowTex = radialTexture(T, [
@@ -879,6 +918,11 @@ export function buildEmblemScene(
     spin,
     behind,
     studio,
+    update() {
+      // 꿰뚫어 보는 빛이 큐브 전체 두께를 셀 수 있게 월드 → 큐브 좌표를 매 장 고친다
+      scene.updateMatrixWorld();
+      see.cubeInv.copy(cube.matrixWorld).invert();
+    },
     applyEnvironment(env) {
       scene.environment = env;
       // WebGPU: 보석 빛길 노드는 반사 지도를 직접 읽으므로 지도가 생긴 뒤 붙인다(WebGL은 셰이더가 envMap을 읽는다)
@@ -886,7 +930,7 @@ export function buildEmblemScene(
         for (const x of gems) {
           (
             x.mat as THREE_NS.Material & { emissiveNode: unknown }
-          ).emissiveNode = gemNodeEmissive(T, env, x.g, x.shape, GEM_GAIN);
+          ).emissiveNode = gemNodeEmissive(T, env, x.g, x.shape, see, x.inCube);
           x.mat.needsUpdate = true;
         }
     },

@@ -23,10 +23,13 @@ export function Emblem3D({
   tier,
   size,
   className,
+  pageColor,
 }: {
   tier: DraftTier;
   size: number;
   className?: string;
+  /** 바탕색(배경판 가장자리가 녹아든다). 기본은 미리보기 바탕(neutral-900) */
+  pageColor?: string | undefined;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<EmblemStage | null>(null);
@@ -40,6 +43,10 @@ export function Emblem3D({
       setState("svg");
       return;
     }
+    // 티어·바탕을 바꾸면 새 무대가 셰이더를 짓는 동안 「불러오는 중」(SVG 엠블럼)으로 둔다. 앞 무대의 「처음
+    // 각도로」 단추·길 표시가 남지 않게 한다
+    setState("loading");
+    setPath(null);
     let live = true;
     let made: EmblemStage | null = null;
     let force: DrawPath | null = null;
@@ -49,7 +56,9 @@ export function Emblem3D({
       force = null;
     }
     import("./emblem3d/stage")
-      .then(({ EmblemStage }) => EmblemStage.create(el, { tier, size, force }))
+      .then(({ EmblemStage }) =>
+        EmblemStage.create(el, { tier, size, force, pageColor }),
+      )
       .then((s) => {
         made = s;
         if (!live) {
@@ -70,7 +79,7 @@ export function Emblem3D({
       stage.current = null;
       for (const c of el.querySelectorAll("canvas")) c.remove();
     };
-  }, [tier, size]);
+  }, [tier, size, pageColor]);
 
   return (
     <div
@@ -82,7 +91,7 @@ export function Emblem3D({
         "relative flex select-none items-center justify-center overflow-hidden rounded-2xl bg-neutral-900",
         className,
       )}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, background: pageColor }}
     >
       {/* 캔버스는 무대가 이 칸에 직접 넣는다(React가 자식을 다루지 않는 칸) */}
       <div ref={box} data-emblem3d-stage className="absolute inset-0" />
@@ -112,10 +121,12 @@ export function EmblemShots({ tier }: { tier: DraftTier }) {
     }
     let live = true;
     import("./emblem3d/stage")
-      .then(async ({ captureEmblemShots, SPARKLE_YAWS }) => {
-        // 두 배 화면용: 64px로 보일 그림은 128px로 찍는다
-        const [f] = await captureEmblemShots(tier, 128, [0]);
-        const list = await captureEmblemShots(tier, 96, SPARKLE_YAWS);
+      .then(async ({ captureShots, SPARKLE_YAWS }) => {
+        // 두 배 화면용: 64px로 보일 그림은 128px로 찍는다. 렌더러 하나로 함께 찍는다(맥락마다 셰이더를 다시 짓는다)
+        const [[f] = [], list = []] = await captureShots([
+          { tier, px: 128, yaws: [0] },
+          { tier, px: 96, yaws: SPARKLE_YAWS },
+        ]);
         if (!live) return;
         setFront(f ?? null);
         setFrames(list);

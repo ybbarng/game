@@ -7,6 +7,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 
 import { levelOf } from "../emblemArt";
+import { MotionQuality, REST_MS } from "./quality";
 import {
   buildEmblemScene,
   type DraftTier,
@@ -27,6 +28,9 @@ import {
   wrapYaw,
 } from "./spin";
 import { canHdrCanvas, type DrawPath } from "./support";
+
+/** 이 페이지에서 배운 돌릴 때 해상도 단계(티어를 바꿔 새 무대를 만들어도 이어 쓴다) */
+let learnedLevel = 0;
 
 /**
  * 3D 엠블럼 시안의 무대(docs/47 14-7): 캔버스 하나에 엠블럼 하나를 그리고, 끌어 돌리기를 받는다.
@@ -50,15 +54,24 @@ interface Painter {
   path: DrawPath;
   built: EmblemScene;
   draw(): void;
+  /** 그리는 해상도 배율(캔버스 화면 크기는 그대로, 버퍼만 바뀐다) */
+  setScale(s: number): void;
+  /** 지금까지 보낸 그리기를 GPU가 다 끝내면 풀린다(돌릴 때 해상도 조절이 잰다) */
+  gpuDone(): Promise<void>;
   dispose(): void;
 }
 
-function webglPainter(
+/**
+ * WebGL 무대. 셰이더는 `compileAsync`로 먼저 짓는다: 보석 셰이더가 길어 그리면서 지으면 주 스레드가 수백 ms 멈췄다
+ * (티어를 바꿀 때마다, 2026-11-12 잰 값 200~340ms).
+ */
+async function webglPainter(
   canvas: HTMLCanvasElement,
   tier: DraftTier,
   px: number,
   bloom: boolean,
-): Painter {
+  pageColor: string,
+): Promise<Painter> {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -69,10 +82,10 @@ function webglPainter(
   renderer.setSize(px, px, false);
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.05;
-  renderer.setClearColor(PAGE_COLOR, 1);
+  renderer.setClearColor(pageColor, 1);
   const built = buildEmblemScene(THREE, tier, {
     backdrop: true,
-    pageColor: PAGE_COLOR,
+    pageColor,
     hdr: false,
   });
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -100,12 +113,48 @@ function webglPainter(
     );
     composer.addPass(new OutputPass());
   }
+  // 셰이더 프로그램은 그릴 대상(화면이냐 번짐용 버퍼냐)에 따라 달라 실제로 그릴 대상에 맞춰 짓는다
+  built.update();
+  renderer.setRenderTarget(composer ? composer.readBuffer : null);
+  try {
+    await renderer.compileAsync(built.scene, built.camera);
+  } finally {
+    renderer.setRenderTarget(null);
+  }
   return {
     path: bloom ? "bloom" : "plain",
     built,
     draw() {
+      built.update();
       if (composer) composer.render();
       else renderer.render(built.scene, built.camera);
+    },
+    setScale(s) {
+      renderer.setPixelRatio(s);
+      renderer.setSize(px, px, false);
+      if (composer) {
+        composer.setPixelRatio(s);
+        composer.setSize(px, px);
+      }
+    },
+    gpuDone() {
+      // 펜스를 걸고 기다리지 않고 짧게 들여다본다(WebGL은 시간 제한 0만 허용, 상태는 작업 사이에 바뀐다)
+      const gl = renderer.getContext() as WebGL2RenderingContext;
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      if (!sync) return Promise.resolve();
+      gl.flush();
+      return new Promise<void>((resolve) => {
+        const check = () => {
+          const r = gl.clientWaitSync(sync, 0, 0);
+          if (r === gl.TIMEOUT_EXPIRED) {
+            setTimeout(check, 1);
+            return;
+          }
+          gl.deleteSync(sync);
+          resolve();
+        };
+        setTimeout(check, 0);
+      });
     },
     dispose() {
       composer?.dispose();
@@ -130,6 +179,7 @@ async function hdrPainter(
   canvas: HTMLCanvasElement,
   tier: DraftTier,
   px: number,
+  pageColor: string,
 ): Promise<Painter> {
   const W = await import("three/webgpu");
   const ctx = canvas.getContext("webgpu" as "2d") as unknown as GpuCtx | null;
@@ -161,21 +211,36 @@ async function hdrPainter(
   renderer.setPixelRatio(1);
   renderer.setSize(px, px, false);
   renderer.toneMapping = W.NoToneMapping;
-  renderer.setClearColor(new W.Color(PAGE_COLOR), 1);
+  renderer.setClearColor(new W.Color(pageColor), 1);
   const T = W as unknown as Three;
   const built = buildEmblemScene(T, tier, {
     backdrop: true,
-    pageColor: PAGE_COLOR,
+    pageColor,
     hdr: true,
   });
   const pmrem = new W.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio as never, 0.02).texture;
   built.applyEnvironment(env as unknown as THREE.Texture);
+  built.update();
+  // r169 WebGPURenderer의 compileAsync는 이 장면에서 끝나지 않아(헤드리스 크롬, 2026-11-12) 쓰지 않는다
   return {
     path: "hdr",
     built,
     draw() {
+      built.update();
       renderer.render(built.scene as never, built.camera as never);
+    },
+    setScale(s) {
+      renderer.setPixelRatio(s);
+      renderer.setSize(px, px, false);
+    },
+    gpuDone() {
+      const device = (
+        renderer.backend as unknown as {
+          device?: { queue: { onSubmittedWorkDone(): Promise<void> } };
+        }
+      ).device;
+      return device ? device.queue.onSubmittedWorkDone() : Promise.resolve();
     },
     dispose() {
       (pmrem as unknown as { dispose?: () => void }).dispose?.();
@@ -200,6 +265,8 @@ export interface StageOptions {
   size: number;
   /** 길을 고정해 볼 때(`?emblem3d=`) */
   force?: DrawPath | null;
+  /** 페이지 바탕색(배경판 가장자리가 녹아든다). 기본 `PAGE_COLOR` */
+  pageColor?: string | undefined;
 }
 
 export class EmblemStage implements ViewTurnTarget {
@@ -224,6 +291,11 @@ export class EmblemStage implements ViewTurnTarget {
   private readonly listeners = new Set<(turned: boolean) => void>();
   private readonly io: IntersectionObserver | null;
   private disposed = false;
+  private dirty = true;
+  private lastMoveAt = 0;
+  private timing = false;
+  private scale = 1;
+  private readonly quality = new MotionQuality(learnedLevel);
 
   private constructor(
     private readonly host: HTMLElement,
@@ -272,19 +344,20 @@ export class EmblemStage implements ViewTurnTarget {
       host.prepend(c);
       return c;
     };
+    const page = opt.pageColor ?? PAGE_COLOR;
     const gem = isGem(opt.tier);
     let painter: Painter | null = null;
     if (gem && opt.force !== "bloom") {
       const want = opt.force === "hdr" || (await canHdrCanvas());
       if (want) {
         try {
-          painter = await hdrPainter(fresh(), opt.tier, px);
+          painter = await hdrPainter(fresh(), opt.tier, px, page);
         } catch {
           painter = null;
         }
       }
     }
-    painter ??= webglPainter(fresh(), opt.tier, px, gem);
+    painter ??= await webglPainter(fresh(), opt.tier, px, gem, page);
     return new EmblemStage(host, painter, opt.size);
   }
 
@@ -330,6 +403,7 @@ export class EmblemStage implements ViewTurnTarget {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (this.drag) return;
     this.canvas.setPointerCapture?.(e.pointerId);
+    this.lastMoveAt = performance.now();
     this.speed = 0;
     this.homing = null;
     this.drag = {
@@ -352,6 +426,7 @@ export class EmblemStage implements ViewTurnTarget {
       e.clientY - d.y0,
       this.size,
     );
+    this.lastMoveAt = performance.now();
     d.samples.push({ t: e.timeStamp, yaw: this.spin.yaw });
     if (d.samples.length > 12) d.samples.shift();
     this.noteView();
@@ -375,7 +450,14 @@ export class EmblemStage implements ViewTurnTarget {
 
   // ---------------------------------------------------------------- 그리기
 
+  /** 그릴 것이 바뀌었다(끌기·놓기·처음 각도로·처음 장·다시 보일 때) */
   private invalidate(): void {
+    this.dirty = true;
+    this.schedule();
+  }
+
+  /** 다음 장을 부른다. 끄는 동안은 그릴 것이 없어도 매 장 불러 간격을 재고, 손이 멈추면 제 해상도로 그린다 */
+  private schedule(): void {
     this.pending = true;
     if (this.disposed || this.raf || !this.visible) return;
     this.raf = requestAnimationFrame(this.frame);
@@ -388,7 +470,9 @@ export class EmblemStage implements ViewTurnTarget {
     this.pending = false;
     const dt = Math.min(50, Math.max(0, now - (this.last || now)));
     this.last = now;
+    let stepped = false;
     if (this.homing) {
+      stepped = true;
       const t = (now - this.homing.start) / HOME_MS;
       this.spin = homeSpin(this.homing.from, t);
       if (t >= 1) {
@@ -397,29 +481,63 @@ export class EmblemStage implements ViewTurnTarget {
         this.noteView();
       }
     } else if (this.speed !== 0 && !this.drag) {
+      stepped = true;
       const next = coast(this.spin.yaw, this.speed, dt);
       this.spin = { ...this.spin, yaw: next.yaw };
       this.speed = next.speed;
       if (next.speed === 0) this.noteView();
     }
-    this.painter.built.spin.rotation.set(
-      this.spin.pitch,
-      this.spin.yaw,
-      0,
-      "XYZ",
-    );
-    this.painter.draw();
-    this.frames += 1;
+    // 움직이는 동안은 낮춘 해상도, 멈춘 장과 끄는 손이 멈췄을 때는 제 해상도
+    const moving = this.moving;
+    const resting = this.drag !== null && now - this.lastMoveAt > REST_MS;
+    const want = moving && !resting ? this.quality.scale : 1;
+    let draw = this.dirty || stepped;
+    if (!draw && resting && this.scale !== 1) draw = true;
+    if (draw) {
+      const rescaled = want !== this.scale;
+      if (rescaled) {
+        this.painter.setScale(want);
+        this.scale = want;
+      }
+      this.painter.built.spin.rotation.set(
+        this.spin.pitch,
+        this.spin.yaw,
+        0,
+        "XYZ",
+      );
+      this.painter.draw();
+      this.frames += 1;
+      this.dirty = false;
+      // 돌리는 동안 그린 장이 GPU에서 끝나기까지 걸린 시간을 잰다(한 번에 하나, 배율을 바꾼 장은 빼고)
+      if (moving && !resting && !rescaled && !this.timing) {
+        this.timing = true;
+        const t0 = performance.now();
+        const scale = this.scale;
+        this.painter.gpuDone().then(() => {
+          this.timing = false;
+          if (this.disposed || scale !== this.scale) return;
+          if (this.quality.note(performance.now() - t0)) {
+            learnedLevel = Math.max(learnedLevel, this.quality.level);
+            this.apply();
+          }
+        });
+      }
+    }
     this.apply();
-    if (this.homing || (this.speed !== 0 && !this.drag)) this.invalidate();
+    if (this.homing || this.speed !== 0 || this.drag) this.schedule();
   };
 
-  /** 시험과 사람이 볼 수 있게 지금 각·그린 장 수·움직임을 캔버스 칸의 data 속성에 적는다(길은 화면 컴포넌트가 적는다) */
+  /**
+   * 시험과 사람이 볼 수 있게 지금 각·그린 장 수·움직임·해상도 배율·돌릴 때 장 사이 간격(ms, 가운데 값)을 캔버스 칸의
+   * data 속성에 적는다(길은 화면 컴포넌트가 적는다). 간격은 실제 기기에서 끊김을 잴 때 개발자 도구로 읽는다.
+   */
   private apply(): void {
     const h = this.host.dataset;
     h.emblem3dYaw = wrapYaw(this.spin.yaw).toFixed(3);
     h.emblem3dPitch = this.spin.pitch.toFixed(3);
     h.emblem3dFrames = String(this.frames);
+    h.emblem3dScale = String(this.scale);
+    if (this.quality.median > 0) h.emblem3dGap = this.quality.median.toFixed(1);
     if (this.moving) h.emblem3dMoving = "";
     else delete h.emblem3dMoving;
   }
@@ -486,6 +604,9 @@ export async function captureShots(
       const env = pmrem.fromScene(built.studio, 0.02).texture;
       pmrem.dispose();
       built.applyEnvironment(env);
+      // 셰이더를 주 스레드를 막지 않고 먼저 짓는다(그리면서 지으면 티어마다 수백 ms 멈췄다)
+      built.update();
+      await renderer.compileAsync(built.scene, built.camera);
       const color = document.createElement("canvas");
       color.width = px;
       color.height = px;
@@ -499,6 +620,7 @@ export async function captureShots(
       for (const yaw of job.yaws) {
         if (!ctx || !cctx) break;
         built.spin.rotation.set(pitch, yaw, 0, "XYZ");
+        built.update();
         // 1) 배경판을 넣고 그대로
         renderer.setClearColor(PAGE_COLOR, 1);
         renderer.render(built.scene, built.camera);
@@ -550,17 +672,6 @@ export async function captureShots(
     renderer.dispose();
     renderer.forceContextLoss();
   }
-}
-
-/** 한 티어를 각도마다 찍는다(`captureShots` 하나짜리) */
-export async function captureEmblemShots(
-  tier: DraftTier,
-  px: number,
-  yaws: readonly number[],
-  pitch = 0.06,
-): Promise<string[]> {
-  const [urls] = await captureShots([{ tier, px, yaws }], pitch);
-  return urls ?? [];
 }
 
 /** 반짝임 몇 장 돌리기용 좌우 각: 정면 둘레를 조금씩(±0.32 라디안 안) */

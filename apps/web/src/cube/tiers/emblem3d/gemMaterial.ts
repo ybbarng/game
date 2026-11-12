@@ -3,25 +3,35 @@ import type * as THREE_NS from "three";
 import {
   GEM_BOUNCES,
   GEM_BOX_HALF,
+  GEM_CUBE_FILL,
+  GEM_CUBE_HALF,
   GEM_OCTA_R,
   GEM_SLAB_HALF,
   type GemPhysics,
   type GemShape,
+  THROUGH_HI,
+  THROUGH_LO,
 } from "./gem";
 
 /**
- * 보석 재질(docs/47 14-7 「셋째 시안」). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이 그리고(몸 색은
- * 검정이라 난반사 없음, 투과 없음), 보석 안의 빛은 조각마다 빛길을 따라가 자체 발광(emissive) 자리에 더한다. 계산은
- * `gem.ts`의 `traceGem`과 같다. WebGL은 GLSL을 끼워 넣고(`onBeforeCompile`), WebGPU(HDR 길)는 같은 계산을 TSL 노드로
- * 짓는다(`gemNodeEmissive`).
+ * 보석 재질(docs/47 14-7 「셋째 시안」·「넷째 시안」). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이
+ * 그리고(몸 색은 검정이라 난반사 없음, 투과 없음), 보석 안의 빛은 조각마다 빛길을 따라가 자체 발광(emissive) 자리에
+ * 더한다. 계산은 `gem.ts`의 `traceGem`과 같다. WebGL은 GLSL을 끼워 넣고(`onBeforeCompile`), WebGPU(HDR 길)는 같은
+ * 계산을 TSL 노드로 짓는다(`gemNodeEmissive`).
  *
- * 투과를 쓰지 않으니 three가 보석마다 장면을 한 번 더 그리던 투과 패스와 양면 보석의 뒷면 패스가 없어진다.
+ * 나가는 빛은 어디를 보는지에 따라 둘 중 하나를 읽는다(`gem.ts` `throughWeight`): 보석을 꿰뚫어 뒤로 나가는 빛은 뒤
+ * 배경판(장면의 그 그림, 돌지 않는 평면)을 직접 읽고, 안에서 되튀어 옆·앞으로 나가는 빛은 스튜디오 반사 지도를 읽는다.
+ * 그래서 보석 너머 배경이 굴절돼 비치고(투명), 가장자리·면에서만 스튜디오 빛이 반짝인다. 배경판은 평면 하나라 장면을
+ * 한 번 더 그리지 않고 텍스처 한 번 읽기로 끝난다.
  */
 
 type Three = typeof THREE_NS;
 
-/** 겉 반사 세기(반사 지도) */
-export const GEM_FRONT_ENV = 1.5;
+/**
+ * 겉 반사 세기(반사 지도). 1이면 물리 그대로: 정면 반사율이 굴절률대로 에메랄드 5.0%, 자수정 4.6%, 루비 7.7%,
+ * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다
+ */
+export const GEM_FRONT_ENV = 1;
 
 const SHAPE_ID: Record<GemShape, number> = { box: 0, octa: 1, slab: 2 };
 
@@ -35,6 +45,9 @@ export function disperses(g: GemPhysics): boolean {
  * 판에서는 흡수를 이만큼 키운다
  */
 export const SLAB_TINT = 7;
+
+/** 날개 조각 판이 비추는 금속 판 빛 세기(스튜디오 반사 지도 세기에 곱한다). 닦은 금속이 판 뒤에서 한 번 더 비춘다 */
+export const SLAB_ENV = 1.5;
 
 /** 모양에 따른 흡수 */
 export function absorbOf(
@@ -50,6 +63,21 @@ export function channelIor(g: GemPhysics): [number, number, number] {
   return [g.ior - g.spread / 2, g.ior, g.ior + g.spread / 2];
 }
 
+/** 보석이 꿰뚫어 볼 뒤 배경판과 빛 세기(장면이 하나 만들어 모든 보석 재질이 같이 쓴다) */
+export interface GemSee {
+  /** 배경판 그림(장면의 배경판과 같은 것) */
+  back: THREE_NS.Texture;
+  /** 배경판 자리(z)와 한 변. 배경판은 돌지 않는다(월드 좌표) */
+  backZ: number;
+  backSize: number;
+  /** 꿰뚫어 본 배경 세기 */
+  backGain: number;
+  /** 되튄 빛이 읽는 스튜디오 반사 지도 세기 */
+  envGain: number;
+  /** 월드 → 큐브 좌표(큐브 전체 두께로 더 흡수할 때). 매 장 `EmblemScene.update`가 고친다 */
+  cubeInv: THREE_NS.Matrix4;
+}
+
 const VERT_DECL = /* glsl */ `
 varying vec3 vGemPos;
 varying vec3 vGemNrm;
@@ -57,6 +85,7 @@ varying vec3 vGemCam;
 varying vec3 vGemM0;
 varying vec3 vGemM1;
 varying vec3 vGemM2;
+varying vec3 vGemM3;
 `;
 
 const VERT_BODY = /* glsl */ `
@@ -67,7 +96,10 @@ vGemCam = ( inverse( modelMatrix ) * vec4( cameraPosition, 1.0 ) ).xyz;
 vGemM0 = modelMatrix[ 0 ].xyz;
 vGemM1 = modelMatrix[ 1 ].xyz;
 vGemM2 = modelMatrix[ 2 ].xyz;
+vGemM3 = modelMatrix[ 3 ].xyz;
 `;
+
+const f = (x: number) => x.toFixed(5);
 
 const FRAG_FUNCS = /* glsl */ `
 #include <envmap_physical_pars_fragment>
@@ -77,9 +109,12 @@ varying vec3 vGemCam;
 varying vec3 vGemM0;
 varying vec3 vGemM1;
 varying vec3 vGemM2;
+varying vec3 vGemM3;
 uniform vec3 gemIor;
 uniform vec3 gemAbsorb;
-uniform float gemGain;
+uniform sampler2D gemBack;
+uniform vec4 gemSeeK;
+uniform mat4 gemCubeInv;
 
 float gemFresnel( float cosI, float n1, float n2 ) {
   float s = n1 / n2 * sqrt( max( 0.0, 1.0 - cosI * cosI ) );
@@ -98,17 +133,17 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
     vec3 n = normalize( vec3( ( k & 1 ) == 0 ? - 1.0 : 1.0, ( k & 2 ) == 0 ? - 1.0 : 1.0, ( k & 4 ) == 0 ? - 1.0 : 1.0 ) );
     float dn = dot( n, d );
     if ( dn <= 1e-6 ) continue;
-    float tk = ( ${GEM_OCTA_R.toFixed(4)} / sqrt( 3.0 ) - dot( n, p ) ) / dn;
+    float tk = ( ${f(GEM_OCTA_R)} / sqrt( 3.0 ) - dot( n, p ) ) / dn;
     if ( tk < t ) { t = tk; m = n; }
   }
   return max( t, 0.0 );
 #elif GEM_SHAPE == 2
   float sz = d.z < 0.0 ? - 1.0 : 1.0;
   m = vec3( 0.0, 0.0, sz );
-  return max( ( ${GEM_SLAB_HALF.toFixed(4)} - p.z * sz ) / max( abs( d.z ), 1e-5 ), 0.0 );
+  return max( ( ${f(GEM_SLAB_HALF)} - p.z * sz ) / max( abs( d.z ), 1e-5 ), 0.0 );
 #else
   vec3 s = sign( d );
-  vec3 t = ( vec3( ${GEM_BOX_HALF.toFixed(4)} ) - p * s ) / max( abs( d ), vec3( 1e-5 ) );
+  vec3 t = ( vec3( ${f(GEM_BOX_HALF)} ) - p * s ) / max( abs( d ), vec3( 1e-5 ) );
   if ( t.x < t.y && t.x < t.z ) { m = vec3( s.x, 0.0, 0.0 ); return max( t.x, 0.0 ); }
   if ( t.y < t.z ) { m = vec3( 0.0, s.y, 0.0 ); return max( t.y, 0.0 ); }
   m = vec3( 0.0, 0.0, s.z );
@@ -116,13 +151,49 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
 #endif
 }
 
-vec3 gemEnvAt( vec3 dirObj ) {
+vec3 gemEnvAt( vec3 w ) {
 #ifdef ENVMAP_TYPE_CUBE_UV
-  vec3 w = normalize( mat3( vGemM0, vGemM1, vGemM2 ) * dirObj );
   return textureCubeUV( envMap, envMapRotation * w, 0.0 ).rgb;
 #else
   return vec3( 0.0 );
 #endif
+}
+
+#ifdef GEM_IN_CUBE
+float gemBoxPath( vec3 p, vec3 d ) {
+  vec3 inv = 1.0 / mix( d, vec3( 1e-6 ), lessThan( abs( d ), vec3( 1e-6 ) ) );
+  vec3 a = ( vec3( - ${f(GEM_CUBE_HALF)} ) - p ) * inv;
+  vec3 b = ( vec3( ${f(GEM_CUBE_HALF)} ) - p ) * inv;
+  vec3 lo = min( a, b );
+  vec3 hi = max( a, b );
+  float t0 = max( max( lo.x, lo.y ), max( lo.z, 0.0 ) );
+  float t1 = min( min( hi.x, hi.y ), hi.z );
+  return max( t1 - t0, 0.0 );
+}
+#endif
+
+// 물체 좌표의 나가는 점 p와 방향 d: 뒤로 꿰뚫어 보면 배경판, 아니면 스튜디오 빛(gem.ts throughWeight)
+vec3 gemSee( vec3 p, vec3 d ) {
+  mat3 M = mat3( vGemM0, vGemM1, vGemM2 );
+  vec3 ow = normalize( M * d );
+  vec3 env = gemEnvAt( ow ) * gemSeeK.w;
+#if GEM_SHAPE == 2
+  // 날개 조각 판은 닦은 금속 판 위에 붙어 있어 뒤가 배경이 아니라 금속(스튜디오를 비춘다)
+  return env * ${f(SLAB_ENV)};
+#endif
+  vec3 pw = M * p + vGemM3;
+  vec3 view = normalize( pw - cameraPosition );
+  float w = smoothstep( ${f(THROUGH_LO)}, ${f(THROUGH_HI)}, dot( ow, view ) );
+  if ( w <= 0.0 || ow.z > - 1e-3 ) return env;
+  float t = ( gemSeeK.x - pw.z ) / ow.z;
+  vec2 uv = ( pw.xy + ow.xy * t ) / gemSeeK.y + 0.5;
+  vec3 back = texture2D( gemBack, uv ).rgb * gemSeeK.z;
+#ifdef GEM_IN_CUBE
+  vec3 pc = ( gemCubeInv * vec4( pw, 1.0 ) ).xyz;
+  vec3 dc = normalize( mat3( gemCubeInv ) * ow );
+  back *= exp( - gemAbsorb * gemBoxPath( pc, dc ) * ${f(GEM_CUBE_FILL)} );
+#endif
+  return mix( env, back, w );
 }
 
 vec3 gemTrace( float ior ) {
@@ -139,19 +210,19 @@ vec3 gemTrace( float ior ) {
     p += d * t;
     thr *= exp( - gemAbsorb * t );
     float F = gemFresnel( dot( d, m ), ior, 1.0 );
-    if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemEnvAt( refract( d, - m, ior ) );
+    if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSee( p, refract( d, - m, ior ) );
     thr *= F;
     d = reflect( d, m );
     p -= m * 1e-4;
   }
-  return acc + thr * gemEnvAt( d );
+  return acc + thr * gemSee( p, d );
 }
 
 vec3 gemLight() {
 #ifdef GEM_DISPERSE
-  return gemGain * vec3( gemTrace( gemIor.r ).r, gemTrace( gemIor.g ).g, gemTrace( gemIor.b ).b );
+  return vec3( gemTrace( gemIor.r ).r, gemTrace( gemIor.g ).g, gemTrace( gemIor.b ).b );
 #else
-  return gemGain * gemTrace( gemIor.g );
+  return gemTrace( gemIor.g );
 #endif
 }
 `;
@@ -170,12 +241,16 @@ function frontParams(g: GemPhysics) {
   };
 }
 
-/** WebGL 보석 재질 */
+/**
+ * WebGL 보석 재질. `inCube`면 큐브 조각이라 꿰뚫어 보는 빛이 뒤쪽 조각들을 지나며 더 흡수된다(왕관 상자·팔면체·판은
+ * 홀로 놓인 보석)
+ */
 export function gemMaterialGL(
   T: Three,
   g: GemPhysics,
   shape: GemShape,
-  gain: number,
+  see: GemSee,
+  inCube: boolean,
 ): THREE_NS.MeshPhysicalMaterial {
   const m = new T.MeshPhysicalMaterial(frontParams(g));
   const ior = channelIor(g);
@@ -185,10 +260,15 @@ export function gemMaterialGL(
       ...shader.defines,
       GEM_SHAPE: SHAPE_ID[shape],
       ...(disperse ? { GEM_DISPERSE: "" } : {}),
+      ...(inCube ? { GEM_IN_CUBE: "" } : {}),
     };
     shader.uniforms.gemIor = { value: new T.Vector3(...ior) };
     shader.uniforms.gemAbsorb = { value: new T.Vector3(...absorbOf(g, shape)) };
-    shader.uniforms.gemGain = { value: gain };
+    shader.uniforms.gemBack = { value: see.back };
+    shader.uniforms.gemSeeK = {
+      value: new T.Vector4(see.backZ, see.backSize, see.backGain, see.envGain),
+    };
+    shader.uniforms.gemCubeInv = { value: see.cubeInv };
     shader.vertexShader =
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
@@ -200,7 +280,7 @@ export function gemMaterialGL(
       );
   };
   m.customProgramCacheKey = () =>
-    `gem-${shape}-${disperse ? 1 : 0}-${GEM_BOUNCES}`;
+    `gem2-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}`;
   return m;
 }
 
@@ -218,6 +298,7 @@ interface Tsl {
   cameraPosition: N;
   modelWorldMatrix: N;
   modelWorldMatrixInverse: N;
+  vec2: (...a: N[]) => N;
   vec3: (...a: N[]) => N;
   vec4: (...a: N[]) => N;
   float: (a: number) => N;
@@ -233,6 +314,10 @@ interface Tsl {
   sign: (a: N) => N;
   dot: (a: N, b: N) => N;
   clamp: (a: N, lo: N, hi: N) => N;
+  mix: (a: N, b: N, t: N) => N;
+  smoothstep: (lo: N, hi: N, x: N) => N;
+  texture: (t: THREE_NS.Texture, uv: N) => N;
+  uniform: (v: unknown) => N;
   pmremTexture: (t: THREE_NS.Texture, uv: N, level: N) => N;
 }
 
@@ -256,22 +341,60 @@ export function gemNodeEmissive(
   env: THREE_NS.Texture,
   g: GemPhysics,
   shape: GemShape,
-  gain: number,
+  see: GemSee,
+  inCube: boolean,
 ): N {
   const W = T as unknown as Tsl;
-  const { vec3, vec4, float, normalize, refract, reflect, select, dot } = W;
-  const { exp, max, min, abs, sqrt, sign, clamp } = W;
+  const { vec2, vec3, vec4, float, normalize, refract, reflect, select } = W;
+  const { exp, max, min, abs, sqrt, sign, clamp, dot, mix, smoothstep } = W;
   const camObj = W.modelWorldMatrixInverse.mul(vec4(W.cameraPosition, 1)).xyz;
   const p0 = W.positionLocal;
   const n0 = normalize(W.normalLocal);
   const v = normalize(p0.sub(camObj));
   const absorb = vec3(...absorbOf(g, shape).map((x) => float(x)));
-  const envAt = (o: N) =>
-    W.pmremTexture(
-      env,
-      normalize(W.modelWorldMatrix.mul(vec4(o, 0)).xyz),
+  const cubeInv = W.uniform(see.cubeInv);
+  const envAt = (w: N) => W.pmremTexture(env, w, float(0));
+  const boxPath = (p: N, d: N) => {
+    // 0으로 나누지 않게 성분마다 1e-6보다 작아지지 않게(WGSL select는 스칼라 조건만 받는다)
+    const safe = (c: N) =>
+      select(c.lessThan(0), min(c, float(-1e-6)), max(c, float(1e-6)));
+    const inv = vec3(1).div(vec3(safe(d.x), safe(d.y), safe(d.z)));
+    const a = vec3(-GEM_CUBE_HALF).sub(p).mul(inv);
+    const b = vec3(GEM_CUBE_HALF).sub(p).mul(inv);
+    const lo = min(a, b);
+    const hi = max(a, b);
+    const t0 = max(max(lo.x, lo.y), max(lo.z, float(0)));
+    const t1 = min(min(hi.x, hi.y), hi.z);
+    return max(t1.sub(t0), float(0));
+  };
+  /** 물체 좌표의 나가는 점 p, 방향 d가 보는 빛(GLSL gemSee) */
+  const seeAt = (p: N, d: N) => {
+    const ow = normalize(W.modelWorldMatrix.mul(vec4(d, 0)).xyz);
+    const envC = envAt(ow).rgb.mul(see.envGain);
+    // 날개 조각 판은 닦은 금속 판 위에 붙어 있어 뒤가 배경이 아니라 금속(스튜디오를 비춘다)
+    if (shape === "slab") return envC.mul(SLAB_ENV);
+    const pw = W.modelWorldMatrix.mul(vec4(p, 1)).xyz;
+    const view = normalize(pw.sub(W.cameraPosition));
+    const behind = ow.z.lessThan(-1e-3);
+    const w = select(
+      behind,
+      smoothstep(float(THROUGH_LO), float(THROUGH_HI), dot(ow, view)),
       float(0),
     );
+    const t = float(see.backZ)
+      .sub(pw.z)
+      .div(select(behind, ow.z, float(-1)));
+    const uv = pw.xy.add(ow.xy.mul(t)).div(see.backSize).add(vec2(0.5, 0.5));
+    let back: N = W.texture(see.back, uv).rgb.mul(see.backGain);
+    if (inCube) {
+      const pc = cubeInv.mul(vec4(pw, 1)).xyz;
+      const dc = normalize(cubeInv.mul(vec4(ow, 0)).xyz);
+      back = back.mul(
+        exp(absorb.mul(boxPath(pc, dc)).mul(GEM_CUBE_FILL).negate()),
+      );
+    }
+    return mix(envC, back, w);
+  };
   const fres = (cosI: N, n1: number, n2: number) => {
     const s = sqrt(max(float(0), float(1).sub(cosI.mul(cosI)))).mul(n1 / n2);
     const cosT = sqrt(max(float(0), float(1).sub(s.mul(s))));
@@ -350,16 +473,15 @@ export function gemNodeEmissive(
       thr = thr.mul(exp(absorb.mul(t).negate()));
       const F = fres(dot(d, m), ior, 1);
       const o = select(F.lessThan(1), refract(d, m.negate(), float(ior)), d);
-      acc = acc.add(thr.mul(float(1).sub(F)).mul(envAt(o)));
+      acc = acc.add(thr.mul(float(1).sub(F)).mul(seeAt(p, o)));
       thr = thr.mul(F);
       d = reflect(d, m);
       p = p.sub(m.mul(1e-4));
     }
-    return acc.add(thr.mul(envAt(d)));
+    return acc.add(thr.mul(seeAt(p, d)));
   };
   const [r, gIor, b] = channelIor(g);
-  const light = disperses(g)
+  return disperses(g)
     ? vec3(trace(r).x, trace(gIor).y, trace(b).z)
     : trace(gIor);
-  return light.mul(gain);
 }
