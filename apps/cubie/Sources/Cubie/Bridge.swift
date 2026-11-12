@@ -30,6 +30,8 @@ final class Bridge: NSObject, WKScriptMessageHandler {
   weak var webView: WKWebView?
   /// 화면이 떴다(앱이 지금 포커스·보임을 다시 알려 줄 때)
   var onReady: (() -> Void)?
+  /// 화면이 떴을 때 알려 준 빌드 커밋(`ready.build`). nil이면 커밋을 보내기 전 화면(`PageFreshness.needsFreshReload`)
+  var onBuild: ((String?) -> Void)?
   var onState: (() -> Void)?
   /// 연결 없음 화면의 「다시 시도」
   var onRetry: (() -> Void)?
@@ -51,6 +53,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     switch type {
     case "ready":
       onReady?()
+      onBuild?(d["build"] as? String)
     case "state":
       if let n = d["n"] as? Int { state.n = n }
       if let m = d["mirror"] as? Bool { state.mirror = m }

@@ -486,7 +486,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 사이트 티어표를 지금 크기로(이미 열려 있으면 그 크기로 다시 연다)
   @objc private func menuTiers() {
     if let w = webWindows[.tiers], let web = w.contentView as? WKWebView {
-      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(cube.bridge.state.n)")))
+      web.load(URLRequest(url: Config.site("/cube/tiers?n=\(cube.bridge.state.n)"), cachePolicy: PageFreshness.load))
     }
     openWebWindow(.tiers)
   }
@@ -518,7 +518,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     let config = WKWebViewConfiguration()
     config.websiteDataStore = .default()
     let web = WKWebView(frame: NSRect(origin: .zero, size: size), configuration: config)
-    web.load(URLRequest(url: Config.site(path)))
+    web.load(URLRequest(url: Config.site(path), cachePolicy: PageFreshness.load))
     let w = NSWindow(
       contentRect: web.frame, styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered,
       defer: false)
