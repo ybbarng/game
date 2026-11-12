@@ -78,7 +78,7 @@ function webglPainter(
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio, 0.02).texture;
   pmrem.dispose();
-  built.scene.environment = env;
+  built.applyEnvironment(env);
 
   let composer: EffectComposer | null = null;
   if (bloom) {
@@ -170,7 +170,7 @@ async function hdrPainter(
   });
   const pmrem = new W.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio as never, 0.02).texture;
-  built.scene.environment = env as unknown as THREE.Texture;
+  built.applyEnvironment(env as unknown as THREE.Texture);
   return {
     path: "hdr",
     built,
@@ -485,7 +485,7 @@ export async function captureShots(
       const pmrem = new THREE.PMREMGenerator(renderer);
       const env = pmrem.fromScene(built.studio, 0.02).texture;
       pmrem.dispose();
-      built.scene.environment = env;
+      built.applyEnvironment(env);
       const color = document.createElement("canvas");
       color.width = px;
       color.height = px;
