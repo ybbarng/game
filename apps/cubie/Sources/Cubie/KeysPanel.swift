@@ -22,7 +22,7 @@ final class KeysPanel {
   /// 네이티브 화면이면 앱 저장소의 키 배치·설정을 웹 화면에 넣는 스크립트(docs/52 5-6)
   var storeScript: (() -> WKUserScript?)?
   /// 네이티브 화면이면 표를 앱이 그린다(`NativeKeysView`, 웹 화면을 띄우지 않는다). 크기 n → 배치 이름과 키
-  var nativeSource: ((Int) -> (preset: String, bindings: [NativeKeysView.Binding]))?
+  var nativeSource: ((Int) -> NativeKeysView.Source)?
   private var nativeView: NativeKeysView?
   private var shownN = 3
 
@@ -66,10 +66,8 @@ final class KeysPanel {
         box.addSubview(v)
         nativeView = v
       }
-      let s = src(n)
       v.n = n
-      v.preset = s.preset
-      v.bindings = s.bindings
+      v.source = src(n)
     } else if webView == nil {
       makeWebView().load(URLRequest(url: Config.site("/cube/mini?view=keys&panel=1&n=\(n)"), cachePolicy: PageFreshness.load))
     } else {
@@ -131,10 +129,8 @@ final class KeysPanel {
     if let v = nativeView, let src = nativeSource {
       guard n != shownN else { return }
       shownN = n
-      let s = src(n)
       v.n = n
-      v.preset = s.preset
-      v.bindings = s.bindings
+      v.source = src(n)
       return
     }
     send(["type": "size", "n": n])
@@ -143,9 +139,7 @@ final class KeysPanel {
   /// 키 배치를 바꿨다: 떠 있으면 다시 불러오고, 아니면 버려서 다음에 띄울 때 새로 불러온다
   func reload() {
     if let v = nativeView, let src = nativeSource {
-      let s = src(shownN)
-      v.preset = s.preset
-      v.bindings = s.bindings
+      v.source = src(shownN)
       return
     }
     if panel.isVisible {

@@ -12,4 +12,6 @@ describe("Rust 코어 공통 자료", () => {
   it("Rust 키 배치 자료 파일", () => checkFixture("src/keymap_data.rs"));
   it("공식 글의 수 → 키캡 줄(두 손·표기·사용자)", () =>
     checkFixture("fixtures/keycaps.json"));
+  it("단축키 표(F1) 칸마다 적는 글(두 손·표기·사용자)", () =>
+    checkFixture("fixtures/keytable.json"));
 });

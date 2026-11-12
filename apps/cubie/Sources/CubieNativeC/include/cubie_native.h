@@ -115,6 +115,9 @@ bool cubie_game_take_milestone(CubieGame *game);
 uint32_t cubie_game_take_record(CubieGame *game, uint8_t *out, uint32_t len);
 /// 지금 배치에서 크기 n에 쓰는 키(단축키 표): 줄마다 「code\t조합\t동작」(맞춘 상태로·살펴보기·쓸 수 없는 동작 뺌)
 uint32_t cubie_game_key_bindings(const CubieGame *game, uint32_t n, uint8_t *out, uint32_t len);
+/// 단축키 표(F1)의 칸마다 적는 글(사이트 미니 표와 같다): 줄마다 「code\t조합(Shift 1·Alt 2)\t쓸 수 있나(1/0)\t동작\t칸 글」,
+/// 한 키의 줄은 위에서부터 차례로
+uint32_t cubie_game_key_table(const CubieGame *game, uint32_t n, uint8_t *out, uint32_t len);
 /// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 바이트 수
 uint32_t cubie_practice_menu(uint8_t *out, uint32_t len);
 /// 공식 연습을 연다(3×3 한 판만). 기록 글은 사이트와 같은 JSON. 못 열면 false

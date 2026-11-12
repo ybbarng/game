@@ -425,7 +425,12 @@ pub unsafe extern "C" fn cubie_game_take_record(g: *mut CubieGame, out: *mut u8,
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
 #[no_mangle]
-pub unsafe extern "C" fn cubie_game_key_bindings(g: *const CubieGame, n: u32, out: *mut u8, len: u32) -> u32 {
+pub unsafe extern "C" fn cubie_game_key_bindings(
+    g: *const CubieGame,
+    n: u32,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
     let g = unsafe { &*g };
     let n = n as usize;
     let lines: Vec<String> = g
@@ -436,6 +441,42 @@ pub unsafe extern "C" fn cubie_game_key_bindings(g: *const CubieGame, n: u32, ou
         .filter(|b| b.action != "reset" && b.action != "inspectionSkip")
         .filter(|b| cube_core::keys::actions::is_available(n, &b.action))
         .map(|b| format!("{}\t{}\t{}", b.code, b.mods, b.action))
+        .collect();
+    unsafe { write_str(&lines.join("\n"), out, len) }
+}
+
+/// 단축키 표(F1)의 칸마다 적는 글(사이트 Cubie 미니 표와 같다, 코어 `keys::table`): 줄마다
+/// 「KeyboardEvent.code\t조합(Shift 1·Alt 2)\t쓸 수 있나(1/0)\t동작 이름\t칸 글」. 한 키의 줄은 위에서부터 차례로 온다.
+/// Cubie가 쓰지 않는 동작(맞춘 상태로·살펴보기 건너뛰기)은 뺀다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_key_table(
+    g: *const CubieGame,
+    n: u32,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    let g = unsafe { &*g };
+    let mut keymap = g.game.keymap().clone();
+    keymap
+        .bindings
+        .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
+    let lines: Vec<String> = cube_core::keys::key_table(&keymap, n as usize)
+        .iter()
+        .flat_map(|cell| {
+            cell.lines.iter().map(move |l| {
+                format!(
+                    "{}\t{}\t{}\t{}\t{}",
+                    cell.code,
+                    l.mods,
+                    u8::from(l.usable),
+                    l.action,
+                    l.label
+                )
+            })
+        })
         .collect();
     unsafe { write_str(&lines.join("\n"), out, len) }
 }
@@ -854,6 +895,31 @@ mod tests {
             assert!(!cubie_game_is_solved(g));
             cubie_game_show_jump(g, false);
             assert!(!cubie_game_has_turns(g));
+            cubie_game_free(g);
+        }
+    }
+
+    /// 단축키 표: 3×3 두 손의 X·. 는 사이트처럼 M′, ↑는 처음 각도, 처음으로(Esc)는 뺀다
+    #[test]
+    fn key_table_uses_site_labels() {
+        unsafe {
+            let g = cubie_game_new(3);
+            let mut buf = vec![0u8; 8192];
+            let k = cubie_game_key_table(g, 3, buf.as_mut_ptr(), 8192) as usize;
+            let text = std::str::from_utf8(&buf[..k]).unwrap();
+            let lines: Vec<&str> = text.lines().collect();
+            assert!(lines.contains(&"KeyX\t0\t1\t2L'\tM'"), "{text}");
+            assert!(lines.contains(&"Period\t0\t1\t2R\tM'"), "{text}");
+            assert!(
+                lines.contains(&"ArrowUp\t0\t1\tviewHome\t처음 각도"),
+                "{text}"
+            );
+            assert!(lines.contains(&"Digit3\t1\t1\tdepth:3\t바깥 3층"), "{text}");
+            assert!(!text.contains("Escape"), "{text}");
+            // 4×4에서 T·B(M′·M)는 못 쓰지만 흐리게 남는다
+            let k = cubie_game_key_table(g, 4, buf.as_mut_ptr(), 8192) as usize;
+            let text = std::str::from_utf8(&buf[..k]).unwrap();
+            assert!(text.lines().any(|l| l == "KeyT\t0\t0\tM'\tM'"), "{text}");
             cubie_game_free(g);
         }
     }
