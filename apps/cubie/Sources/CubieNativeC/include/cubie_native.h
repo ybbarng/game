@@ -101,9 +101,18 @@ void cubie_game_show_jump(CubieGame *game, bool solved);
 bool cubie_game_show_push(CubieGame *game, const char *notation, double ms);
 /// 한 수를 돌리는 시간(사이트 설정 moveMs, 0~200ms)
 void cubie_game_set_move_ms(CubieGame *game, double ms);
-/// 지금 상태의 힌트를 줄 여섯(갈래 hint·none·unsupported·notyet, 단계, 상황 이름, 쥐는 법, 공식, 배우기 단원)으로.
-/// 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
+/// 지금 상태의 힌트(사이트 pickHint, 코어 사람 해법 포함)를 줄 여덟으로: 갈래(hint·none·unsupported), 단계, 상황 이름,
+/// 쥐는 법, 공식, 배우기 단원, 공식의 키캡 줄, 쥐는 법의 키캡 줄. 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
 uint32_t cubie_game_hint(const CubieGame *game, uint8_t *out, uint32_t len);
+/// 다음 키·섞기의 시각(ms, 앱의 포커스 시계). 기록 시간·다시 보기 글은 이 시각으로 잰다
+void cubie_game_set_now(CubieGame *game, double now);
+/// 섞은 뒤 맞추는 중인가(첫 수 전 포함)
+bool cubie_game_solving(const CubieGame *game);
+/// 이정표가 새로 켜졌으면 true(한 번만)
+bool cubie_game_take_milestone(CubieGame *game);
+/// 다 맞춰 생긴 기록 한 판(ms·penalty·moves·scramble·seed·replay·splits·combo)을 JSON 글로 꺼낸다(한 번만, 없으면 0).
+/// 글 전체 바이트 수를 돌려준다(len이 모자라면 꺼내지 않고 필요한 길이만)
+uint32_t cubie_game_take_record(CubieGame *game, uint8_t *out, uint32_t len);
 /// 다시 보기 글 → 걸음 줄들(「시각 표기」, 줄바꿈으로 이음). 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
 uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
                             uint32_t len);

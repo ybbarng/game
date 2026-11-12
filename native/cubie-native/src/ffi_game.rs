@@ -8,12 +8,13 @@ use std::ffi::{c_char, CStr};
 
 use crate::game::{Game, Outcome, ScrambleShow};
 use crate::keycode::mac_key_code;
+use cube_core::hint::{pick_hint, HintAnswer};
 use cube_core::keys::actions::parse_action;
+use cube_core::keys::keycaps_for_move;
 use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::{preset_keymap, Command, KeyInput, Keymap, Preset};
 use cube_core::replay::replay_steps;
 use cube_core::solved_cube;
-use cube_core::spot::{last_layer_hint, LastLayerHint};
 use cube_core::state::face_colors;
 use cube_core::topology::{cube_topology, MAX_SIZE, MIN_SIZE};
 
@@ -307,76 +308,115 @@ pub unsafe extern "C" fn cubie_game_set_move_ms(g: *mut CubieGame, ms: f64) {
     unsafe { &mut *g }.game.set_move_ms(ms);
 }
 
-/// 지금 상태의 힌트(사이트 `pickHint`, docs/47 15-15)를 줄 여섯으로 쓴다: 갈래(`hint`·`none`·`unsupported`·`notyet`),
-/// 단계 이름, 상황 이름, 쥐는 법, 공식, 배우기 단원 id. `notyet`은 마지막 층 전(F2L 전 갈래, 사람 해법을 옮기는 중).
-/// 글 전체 바이트 수를 돌려준다
+/// 지금 상태의 힌트(사이트 `pickHint`, docs/47 15-15)를 줄 여덟으로 쓴다: 갈래(`hint`·`none`·`unsupported`),
+/// 단계 이름, 상황 이름, 쥐는 법, 공식, 배우기 단원 id, 공식의 키캡 줄, 쥐는 법의 키캡 줄(사이트 `keysText`: 수마다
+/// 키캡을 「 · 」로 잇고, 키가 없는 수는 「?」). 글 전체 바이트 수를 돌려준다
 ///
 /// # Safety
 /// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
 #[no_mangle]
 pub unsafe extern "C" fn cubie_game_hint(g: *const CubieGame, out: *mut u8, len: u32) -> u32 {
     let g = unsafe { &*g };
-    let lines: [String; 6] = if g.game.n != 3 {
-        let kind = if g.game.n == 2 {
-            "notyet"
-        } else {
-            "unsupported"
-        };
-        [
-            kind.into(),
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-        ]
-    } else {
-        match last_layer_hint(g.game.state()) {
-            LastLayerHint::Solved => Default::default(),
-            LastLayerHint::Formula {
-                stage,
-                name,
-                before,
-                alg,
-                ..
-            } => {
-                let lesson = if stage.starts_with("OLL") {
-                    "cfop-2look-oll"
-                } else {
-                    "cfop-2look-pll"
-                };
-                [
-                    "hint".into(),
-                    stage.into(),
-                    name.into(),
-                    before,
-                    alg.into(),
-                    lesson.into(),
-                ]
-            }
-            LastLayerHint::Finish { alg } => [
-                "hint".into(),
-                "마무리(윗면 맞추기)".into(),
-                String::new(),
-                String::new(),
-                alg.into(),
-                String::new(),
-            ],
-            LastLayerHint::NotLastLayer => [
-                "notyet".into(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-            ],
-        }
+    let n = g.game.n;
+    let keys = |alg: &str| -> String {
+        alg.split_whitespace()
+            .map(|m| keycaps_for_move(g.game.keymap(), n, m).unwrap_or_else(|| "?".into()))
+            .collect::<Vec<_>>()
+            .join(" · ")
     };
-    let mut lines = lines;
-    if lines[0].is_empty() {
-        lines[0] = "none".into();
-    }
+    let lines: Vec<String> = match pick_hint(n, g.game.state()) {
+        HintAnswer::Hint(h) => vec![
+            "hint".into(),
+            h.stage.clone(),
+            h.name.clone().unwrap_or_default(),
+            h.before.clone(),
+            h.alg.clone(),
+            h.lesson.unwrap_or("").into(),
+            keys(&h.alg),
+            keys(&h.before),
+        ],
+        HintAnswer::Unsupported => vec!["unsupported".into()],
+        HintAnswer::None => vec!["none".into()],
+    };
     unsafe { write_str(&lines.join("\n"), out, len) }
+}
+
+/// 다음 키·섞기의 시각(ms, 앱의 포커스 시계). 기록의 시간·다시 보기 글은 이 시각으로 잰다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_set_now(g: *mut CubieGame, now: f64) {
+    unsafe { &mut *g }.game.set_now(now);
+}
+
+/// 섞은 뒤 맞추는 중인가(첫 수 전 포함)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_solving(g: *const CubieGame) -> bool {
+    unsafe { &*g }.game.solving()
+}
+
+/// 이정표가 새로 켜졌으면 true(한 번만)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_take_milestone(g: *mut CubieGame) -> bool {
+    unsafe { &mut *g }.game.take_milestone()
+}
+
+fn json_str(s: &str) -> String {
+    let mut o = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => o.push_str("\\\""),
+            '\\' => o.push_str("\\\\"),
+            c if (c as u32) < 0x20 => o.push_str(&format!("\\u{:04x}", c as u32)),
+            c => o.push(c),
+        }
+    }
+    o.push('"');
+    o
+}
+
+/// 다 맞춰 생긴 기록 한 판(사이트 `SolveRecord` 꼴의 칸 가운데 세션이 아는 것: ms·penalty·moves·scramble·seed·replay·
+/// splits·combo)을 JSON 글로 꺼낸다(한 번만). 없으면 빈 글. 글 전체 바이트 수를 돌려준다(모자라면 꺼내지 않는다)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_take_record(g: *mut CubieGame, out: *mut u8, len: u32) -> u32 {
+    let g = unsafe { &mut *g };
+    let Some(r) = g.game.take_record() else {
+        return 0;
+    };
+    let (scramble, seed) = g.game.session_scramble();
+    let mut f = vec![
+        format!("\"ms\":{}", r.ms),
+        format!("\"penalty\":{}", r.penalty),
+        format!("\"moves\":{}", r.moves),
+        format!("\"scramble\":{}", json_str(scramble)),
+        format!("\"replay\":{}", json_str(&r.replay)),
+    ];
+    if let Some(seed) = seed {
+        f.push(format!("\"seed\":{seed}"));
+    }
+    if let Some(sp) = &r.splits {
+        f.push(format!("\"splits\":{}", json_str(sp)));
+    }
+    if let Some(c) = r.combo {
+        f.push(format!("\"combo\":{c}"));
+    }
+    let text = format!("{{{}}}", f.join(","));
+    let need = unsafe { write_str(&text, out, len) };
+    if need > len {
+        // 자리가 모자라면 다시 꺼낼 수 있게 되돌려 둔다
+        g.game.put_back_record(r);
+    }
+    need
 }
 
 /// 다시 보기 글 → 걸음(사이트 `solveSteps`, 수 사이 멈춤은 `max_pause_ms`까지, 첫 수가 `offset`). 걸음마다 한 줄
@@ -709,6 +749,46 @@ mod tests {
                 cubie_replay_steps(3, t.as_ptr(), 1000.0, 50.0, std::ptr::null_mut(), 0),
                 k as u32
             );
+        }
+    }
+
+    /// 섞고 거꾸로 두면 기록 한 판이 JSON으로 한 번만 나온다(시각은 넣어 준 값)
+    #[test]
+    fn record_comes_out_once_with_session_fields() {
+        use cube_core::scramble::{scramble, ScrambleEvent};
+        unsafe {
+            let g = cubie_game_new(3);
+            cubie_game_set_now(g, 1000.0);
+            cubie_game_scramble(g, 42, SHOW_INSTANT);
+            assert!(cubie_game_solving(g));
+            let text = scramble(ScrambleEvent::from_id("333").unwrap(), 42).text;
+            let inverse =
+                cube_core::notation::invert_moves(&cube_core::parse_moves(3, &text).unwrap());
+            let mut t = 2000.0;
+            for m in &inverse {
+                cubie_game_set_now(g, t);
+                g.as_mut().unwrap().game.key_move_for_test(*m);
+                t += 300.0;
+            }
+            assert!(!cubie_game_solving(g));
+            let mut buf = vec![0u8; 4096];
+            let k = cubie_game_take_record(g, buf.as_mut_ptr(), 4096) as usize;
+            let json = std::str::from_utf8(&buf[..k]).unwrap();
+            assert!(
+                json.starts_with('{') && json.contains("\"seed\":42"),
+                "{json}"
+            );
+            assert!(
+                json.contains(&format!("\"moves\":{}", inverse.len())),
+                "{json}"
+            );
+            assert!(
+                json.contains(&format!("\"ms\":{}", 300.0 * (inverse.len() - 1) as f64)),
+                "{json}"
+            );
+            assert!(json.contains("\"splits\":\""), "{json}");
+            assert_eq!(cubie_game_take_record(g, buf.as_mut_ptr(), 4096), 0);
+            cubie_game_free(g);
         }
     }
 }

@@ -184,6 +184,16 @@ public final class MiniBook {
     math.myTier(n: n, records: records(n).map(Timeable.init), bestFive: bestFive(n).map(Timeable.init))
   }
 
+  /// 시간 글(사이트 `formatMs`): 1/100초 버림, 1분부터 「분:초」. nil이면 DNF
+  public static func formatMs(_ ms: Double?) -> String {
+    guard let ms else { return "DNF" }
+    let cs = Int((ms / 10).rounded(.down))
+    let s = cs / 100
+    let frac = String(format: "%02d", cs % 100)
+    if s < 60 { return "\(s).\(frac)" }
+    return "\(s / 60):\(String(format: "%02d", s % 60)).\(frac)"
+  }
+
   /// 그 크기의 가장 빠른 시간(사이트 `summarize().best`). 기록이 없으면 nil
   public func best(_ n: Int) -> Double? {
     records(n).compactMap { Timeable(record: $0).result }.min()

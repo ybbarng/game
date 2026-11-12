@@ -18,7 +18,6 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   private let realClock = RealClock()
   private let clock: FocusClock
   private var hintGate: HintGate!
-  private var solve: MiniSolve
   private let sound = CubieSound()
   private var idle: IdleShow!
   private var idleTurn = 0
@@ -57,7 +56,6 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
       if Config.debug { print("[cubie] migrate \(r)"); fflush(stdout) }
     }
     let n = book.n
-    solve = MiniSolve(n: n)
     cube = CACubeView(frame: NSRect(origin: .zero, size: Config.defaultSize), n: n)
     super.init()
     hintGate = HintGate(clock: realClock) { [weak self] in
@@ -142,7 +140,6 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     idle.reset()
     hintGate.reset()
     hideHint()
-    solve = MiniSolve(n: n)
     cube = CACubeView(frame: host.bounds, n: n)
     install(cube)
     state.n = n
@@ -233,11 +230,11 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     // 떠 있을 때 연출 중이면 멈추고 장면을 되돌린 뒤 받는다
     idle.setActive(false)
     let seed = UInt32.random(in: 0...UInt32.max)
-    lastKeySeed = seed
+    cubie_game_set_now(cube.game, clock.now())
     let r = cube.press(keyCode: e.keyCode, flags: CACubeView.flags(e), seed: seed)
     switch r {
     case Int32(CUBIE_KEY_SCRAMBLED):
-      startedScramble(seed: nil)
+      startedScramble()
     case Int32(CUBIE_KEY_MOVED), Int32(CUBIE_KEY_SOLVED):
       moved(origin: origin)
     case Int32(CUBIE_KEY_PEEK_BACK):
@@ -264,8 +261,9 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   private func scramble() {
     idle.setActive(false)
     let seed = UInt32.random(in: 0...UInt32.max)
+    cubie_game_set_now(cube.game, clock.now())
     cube.scramble(seed: seed, show: scrambleShow)
-    startedScramble(seed: seed)
+    startedScramble()
     sendFocus()
   }
 
@@ -279,10 +277,8 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     }
   }
 
-  /// 섞었다: 새 판(키 섞기는 씨앗을 코어가 받았으니 섞기 글에서 읽지 않는다)
-  private func startedScramble(seed: UInt32?) {
-    let text = NativeCore.string { cubie_game_scramble_text(cube.game, $0, $1) }
-    solve.start(scramble: text, seed: seed ?? lastKeySeed)
+  /// 섞었다: 새 판(섞기 글·씨앗·시간은 코어 한 판 세션이 들고 있다)
+  private func startedScramble() {
     hintGate.reset()
     hideHint()
     inputs = []
@@ -291,20 +287,17 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     updateMirror()
   }
 
-  /// 키 섞기의 씨앗(코어에 넘긴 값을 기록에 남긴다)
-  private var lastKeySeed: UInt32?
-
   private func moved(origin: String) {
-    let notation = cube.lastNotation
-    let rotation = cube.lastRotation
     let undo = cubie_game_last_undo(cube.game)
     hintGate.hide()
     // 맞춰서 기록이 생기는 수도 그 판에 든다. 되돌리기는 입력 방식에 세지 않지만 키 출처에는 넣는다(사이트와 같다)
     if !undo, !inputs.contains("keyboard") { inputs.append("keyboard") }
     origins.insert(origin)
     sound.play(.turn)
-    let rec = solve.input(notation: notation, rotation: rotation, solvedAfter: cube.solved, now: clock.now())
-    if let rec { finish(rec) }
+    let text = NativeCore.string { cubie_game_take_record(cube.game, $0, $1) }
+    if let data = text.data(using: .utf8), let rec = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+      finish(rec)
+    }
     updateMirror()
   }
 
@@ -314,6 +307,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     let n = cube.n
     r["at"] = Int(Date().timeIntervalSince1970 * 1000)
     r["n"] = n
+    r["mode"] = "solo"
     r["inspection"] = false
     if !inputs.isEmpty { r["inputs"] = inputs }
     let rank = ["hardware": 0, "unknown": 1, "synthetic": 2]
@@ -326,7 +320,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     hideHint()
     solvedCount += 1
     sound.play(.solved)
-    cube.cheer(text: MiniSolve.formatMs(ms), best: before.map { ms < $0 } ?? false)
+    cube.cheer(text: MiniBook.formatMs(ms), best: before.map { ms < $0 } ?? false)
     refreshProfile()
     onRecorded?()
     if Config.debug || Config.measure { print("[cubie] solved n=\(n) ms=\(Int(ms)) moves=\(r["moves"] ?? "")"); fflush(stdout) }
@@ -335,14 +329,13 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   // MARK: 힌트(docs/47 15-15)
 
   private func requestHint() {
-    guard solve.solving else { return flash("섞은 뒤 맞추는 동안 볼 수 있어요") }
+    guard cubie_game_solving(cube.game) else { return flash("섞은 뒤 맞추는 동안 볼 수 있어요") }
     guard cube.n == 2 || cube.n == 3 else { return flash("이 크기는 힌트 없음") }
     let lines = NativeCore.string { cubie_game_hint(cube.game, $0, $1) }.components(separatedBy: "\n")
     let kind = lines.first ?? "none"
     switch kind {
     case "hint": break
     case "unsupported": return flash("이 크기는 힌트 없음")
-    case "notyet": return flash("마지막 층에서 볼 수 있어요")
     default: return flash("지금은 보일 공식이 없어요")
     }
     switch hintGate.request() {
@@ -353,10 +346,14 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     hintMsgCancel?()
     hintMsgCancel = nil
     let field = { (i: Int) in i < lines.count ? lines[i] : "" }
-    let (stage, name, before, alg) = (field(1), field(2), field(3), field(4))
+    let (stage, name, before, alg, keys, beforeKeys) = (field(1), field(2), field(3), field(4), field(6), field(7))
+    // 사이트 `hintBubbleLines`와 같은 줄: 단계·상황, 쥐는 법(키캡), 공식, 공식 키캡
     var out: [[String: Any]] = [["text": name.isEmpty ? stage : "\(stage) · \(name)", "style": "title"]]
-    if !before.isEmpty { out.append(["text": "\(before) 뒤", "style": "note"]) }
+    if !before.isEmpty {
+      out.append(["text": beforeKeys.isEmpty ? "\(before) 뒤" : "\(before) 뒤  (\(beforeKeys))", "style": "note"])
+    }
     out.append(["text": alg, "style": "alg"])
+    if !keys.isEmpty { out.append(["text": keys, "style": "keys"]) }
     onHint?(out)
   }
 
@@ -391,7 +388,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
       return
     }
     let fits = min(host.bounds.width, host.bounds.height) >= CGFloat(10 * cube.n)
-    let want = state.mirror && fits && focused && solve.solving && !cube.solved && idle.showing == nil
+    let want = state.mirror && fits && focused && cubie_game_solving(cube.game) && !cube.solved && idle.showing == nil
     cube.setMirror(want)
   }
 
@@ -515,6 +512,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
 
   /// 키 하나를 실제 키처럼(재기의 돌리기)
   func measurePress(_ keyCode: UInt16) {
+    cubie_game_set_now(cube.game, clock.now())
     let r = cube.press(keyCode: keyCode, flags: 0)
     if r == Int32(CUBIE_KEY_MOVED) || r == Int32(CUBIE_KEY_SOLVED) { moved(origin: "synthetic") }
   }

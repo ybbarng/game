@@ -185,37 +185,13 @@ struct ClockAndSessionTests {
     #expect(g.request() == .ok(used: 1))
   }
 
-  @Test func soloSessionTimesFromFirstFaceTurn() {
-    let s = MiniSolve(n: 3)
-    // 섞기 전 수는 기록에 들지 않는다
-    #expect(s.input(notation: "R", rotation: false, solvedAfter: false, now: 10) == nil)
-    s.start(scramble: "R U", seed: 7)
-    #expect(s.moveCount == 0 && s.phase == .ready)
-    // 시작 전 큐브 돌리기는 수로 세지 않고, 시각은 시작 기준 음수
-    _ = s.input(notation: "y", rotation: true, solvedAfter: false, now: 1000)
-    _ = s.input(notation: "U'", rotation: false, solvedAfter: false, now: 1400)
-    #expect(s.phase == .solving)
-    let r = s.input(notation: "R'", rotation: false, solvedAfter: true, now: 2000.6)
-    #expect(s.phase == .done)
-    #expect(abs(((r?["ms"] as? Double) ?? 0) - 600.6) < 1e-9)
-    #expect(r?["moves"] as? Int == 2)
-    #expect(r?["replay"] as? String == "y@-400 U'@0 R'@601")
-    #expect(r?["seed"] as? UInt32 == 7)
-    #expect(r?["scramble"] as? String == "R U")
-    // 끝난 판에 수를 더 둬도 기록은 다시 생기지 않는다
-    #expect(s.input(notation: "R", rotation: false, solvedAfter: true, now: 3000) == nil)
-  }
-
   @Test func timeTextLikeTheSite() {
-    #expect(MiniSolve.formatMs(3000) == "3.00")
-    #expect(MiniSolve.formatMs(12_349.9) == "12.34")
-    #expect(MiniSolve.formatMs(62_050) == "1:02.05")
-    #expect(MiniSolve.formatMs(nil) == "DNF")
+    #expect(MiniBook.formatMs(3000) == "3.00")
+    #expect(MiniBook.formatMs(12_349.9) == "12.34")
+    #expect(MiniBook.formatMs(62_050) == "1:02.05")
+    #expect(MiniBook.formatMs(nil) == "DNF")
   }
 
-  @Test func replayRoundsLikeJavaScript() {
-    #expect(MiniSolve.formatReplay([("R", 0.5), ("U", -0.5), ("F", -1.5), ("B", 2.4999)]) == "R@1 U@0 F@-1 B@2")
-  }
 }
 
 struct HitRectTests {

@@ -12,6 +12,7 @@ use std::collections::VecDeque;
 use cube_core::keys::{two_hand_keymap, Command, KeyInput, KeyInterpreter, KeyResult, Keymap};
 use cube_core::notation::format_move;
 use cube_core::scramble::{scramble, ScrambleEvent};
+use cube_core::session::{SessionCue, SolvePhase, SolveRecord, SolveSession};
 use cube_core::state::{apply_move, is_solved, State};
 use cube_core::{parse_moves, solved_cube, CubeMove};
 
@@ -119,6 +120,12 @@ pub struct Game {
     last_undo: bool,
     /// 마지막 섞기 글
     scramble_text: String,
+    /// 한 판 기록(사이트 `SolveSession` 혼자·살펴보기 없음, 코어 `session.rs`). 시각은 앱이 넣는 포커스 시계
+    session: SolveSession,
+    now: f64,
+    /// 다 맞춰 생긴 기록(앱이 꺼내 간다)과 이정표가 새로 켜졌는지(소리)
+    record: Option<SolveRecord>,
+    milestone: bool,
 }
 
 impl Game {
@@ -138,6 +145,10 @@ impl Game {
             move_ms: MOVE_MS,
             last_undo: false,
             scramble_text: String::new(),
+            session: SolveSession::new(n),
+            now: 0.0,
+            record: None,
+            milestone: false,
         }
     }
 
@@ -179,6 +190,54 @@ impl Game {
         &self.scramble_text
     }
 
+    /// 다음 키·섞기의 시각(ms, 앱의 포커스 시계)
+    pub fn set_now(&mut self, now: f64) {
+        self.now = now;
+    }
+
+    /// 섞은 뒤 맞추는 중인가(첫 수 전 포함, 힌트를 볼 수 있는 때)
+    pub fn solving(&self) -> bool {
+        matches!(self.session.phase, SolvePhase::Ready | SolvePhase::Solving)
+    }
+
+    /// 다 맞춰 생긴 기록을 꺼낸다(한 번만)
+    pub fn take_record(&mut self) -> Option<SolveRecord> {
+        self.record.take()
+    }
+
+    /// 시험용: 키 대신 수 하나를 둔다(키 해석 없이, 표기는 가장 짧은 이름)
+    #[doc(hidden)]
+    pub fn key_move_for_test(&mut self, mv: CubeMove) -> bool {
+        let notation = format_move(self.n, &mv);
+        self.feed(mv, &notation);
+        self.play(mv)
+    }
+
+    /// 꺼낸 기록을 되돌려 둔다(앱의 자리가 모자랐을 때)
+    pub fn put_back_record(&mut self, r: SolveRecord) {
+        self.record = Some(r);
+    }
+
+    /// 이정표가 새로 켜졌는가를 꺼낸다(한 번만)
+    pub fn take_milestone(&mut self) -> bool {
+        std::mem::take(&mut self.milestone)
+    }
+
+    /// 섞기 글과 씨앗(기록에 남긴다)
+    pub fn session_scramble(&self) -> (&str, Option<u32>) {
+        (&self.session.scramble, self.session.seed)
+    }
+
+    fn feed(&mut self, mv: CubeMove, notation: &str) {
+        let out = self.session.input(mv, notation, self.now);
+        if out.cues.contains(&SessionCue::Milestone) {
+            self.milestone = true;
+        }
+        if out.record.is_some() {
+            self.record = out.record;
+        }
+    }
+
     pub fn state(&self) -> &State {
         &self.state
     }
@@ -199,6 +258,7 @@ impl Game {
                 self.last_undo = false;
                 self.last_notation = notation.clone();
                 self.last_rotation = mv.is_rotation(self.n);
+                self.feed(mv, &notation);
                 let solved = self.play(mv);
                 Outcome::Moved { notation, solved }
             }
@@ -214,6 +274,8 @@ impl Game {
                         self.state = apply_move(self.n, &self.state, &inv);
                         self.last_notation = format_move(self.n, &inv);
                         self.last_rotation = inv.is_rotation(self.n);
+                        let text = self.last_notation.clone();
+                        self.feed(inv, &text);
                         self.push(inv);
                         Outcome::Moved {
                             notation: self.last_notation.clone(),
@@ -289,6 +351,9 @@ impl Game {
         }
         self.jump(st);
         self.scrambled = true;
+        self.record = None;
+        self.milestone = false;
+        let _ = self.session.start(&s.text, Some(seed), self.now);
         if show == ScrambleShow::Moves && !moves.is_empty() {
             self.shown = solved_cube(self.n);
             let step = moves_show_ms(moves.len()) / moves.len() as f64;
@@ -301,6 +366,8 @@ impl Game {
     pub fn reset(&mut self) {
         self.jump(solved_cube(self.n));
         self.scrambled = false;
+        self.session.reset();
+        self.record = None;
     }
 
     fn jump(&mut self, st: State) {

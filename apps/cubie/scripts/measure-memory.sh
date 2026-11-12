@@ -7,14 +7,16 @@
 #   apps/cubie/build.sh && pnpm --filter @game/web build     # 먼저(재는 대상)
 #   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
 #   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
-#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면 시제품(CUBIE_NATIVE=1, Core Animation, docs/52 5-5)을 같은 시나리오로 잰다
+#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면(앱 기본, Core Animation + Rust 코어, docs/52 5-6)을 같은 시나리오로 잰다
+#   (--native가 없으면 웹 화면 CUBIE_WEB=1을 잰다: 0.1.10까지의 앱과 같은 화면)
 #   apps/cubie/scripts/measure-memory.sh --native --onscreen   # 창을 화면 왼쪽 아래 구석에 거의 투명하게(알파 0.01) 두고 WindowServer도 잰다
 #   apps/cubie/scripts/measure-memory.sh --query render=css   # 로컬 빌드의 미니 화면을 CSS 3D로 그려 잰다(docs/52 5-4)
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
 #         --query <a=b&…>(로컬 빌드 주소 /cube/mini 뒤에 붙일 쿼리) ·
 #         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
-#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않고, 단축키 표 명령은 앱이 받기만 한다) ·
+#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않는다. 단축키 표·기록 창은 사이트 창이라 --url이 없으면
+#           사이트 game.byb.kr를 연다) ·
 #         --onscreen(재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로. 화면 밖 창은 WindowServer가 합성하지 않을 수
 #           있어서다. 마우스는 지나가고 앱은 앞으로 나오지 않는다. 메모리 줄에 WindowServer MEM(`top`, footprint는 관리자 권한이
 #           필요하다)을, CPU 줄에 WindowServer 몫을 더한다. 다른 앱 화면 변화도 WindowServer에 섞이므로 흔들림을 감안한다)
@@ -80,8 +82,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if [ "$NATIVE" = 1 ]; then
-  URL="about:blank"
+if [ "$NATIVE" = 1 ] && [ -z "$URL" ]; then
+  URL="https://game.byb.kr/cube/mini"
 fi
 if [ -z "$URL" ]; then
   WEB="${WEB:-$ROOT/apps/web/out}"
@@ -101,7 +103,7 @@ fi
 mkfifo "$TMP/in"
 WS_PID=""
 if [ "$ONSCREEN" = 1 ]; then WS_PID="$(pgrep -x WindowServer | head -1)"; fi
-CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_NATIVE="$NATIVE" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
+CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_WEB="$((1 - NATIVE))" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 exec 3>"$TMP/in"
 cmd() { echo "$*" >&3; }
@@ -282,6 +284,27 @@ measure "단축키 표 불러옴"
 cmd keys drop
 sleep 10
 measure "단축키 표 버린 뒤 10초"
+
+# 공식 연습(메뉴 첫 단계, 따라 치기)을 열고 키로 쳐 본 뒤 끝내기
+cmd focus 1
+cmd practice start
+sleep 3
+cmd turns 40
+cpu_begin
+sleep 5
+cpu_end "공식 연습 중"
+measure "공식 연습 중"
+cmd practice stop
+cmd focus 0
+sleep 3
+
+# 기록 창(사이트 창, 화면 밖)을 연 동안과 닫은 뒤
+cmd records open
+sleep 8
+measure "기록 창 열었을 때"
+cmd records close
+sleep 12
+measure "기록 창 닫은 뒤 12초"
 
 cmd state
 sleep 1
