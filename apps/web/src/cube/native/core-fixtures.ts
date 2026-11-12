@@ -52,7 +52,7 @@ import {
 import { buildKeycaps } from "./core-fixtures-keycaps";
 import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
-import { buildMask } from "./core-fixtures-screen";
+import { buildKeyPaint, buildMask } from "./core-fixtures-screen";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
 export type FixtureFiles = Record<string, string>;
@@ -734,6 +734,7 @@ export const BUILDERS = {
   "fixtures/keycaps.json": buildKeycaps,
   "fixtures/keytable.json": buildKeyTable,
   "fixtures/mask.json": buildMask,
+  "fixtures/keypaint.json": buildKeyPaint,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,

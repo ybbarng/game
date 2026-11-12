@@ -463,22 +463,65 @@ pub unsafe extern "C" fn cubie_game_key_table(
     keymap
         .bindings
         .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
-    let lines: Vec<String> = cube_core::keys::key_table(&keymap, n as usize)
+    let n = n as usize;
+    let lines: Vec<String> = cube_core::keys::key_table(&keymap, n)
         .iter()
         .flat_map(|cell| {
             cell.lines.iter().map(move |l| {
                 format!(
-                    "{}\t{}\t{}\t{}\t{}",
+                    "{}\t{}\t{}\t{}\t{}\t{}",
                     cell.code,
                     l.mods,
                     u8::from(l.usable),
                     l.action,
-                    l.label
+                    l.label,
+                    paint_text(n, &l.action)
                 )
             })
         })
         .collect();
     unsafe { write_str(&lines.join("\n"), out, len) }
+}
+
+/// 칸 칠하기 글(코어 `keys::paint`, 처음 방향): 「f」(면 돌리기)·「s」(큐브 돌리기·가운데 층) + 면 번호 + 반대(0/1) +
+/// 넓게·큐브 돌리기(0/1). 수가 아니면 빈 글
+fn paint_text(n: usize, action: &str) -> String {
+    use cube_core::keys::KeyPaint;
+    match cube_core::keys::key_paint(n, action) {
+        Some(KeyPaint::Face { color, prime, wide }) => {
+            format!("f{color}{}{}", u8::from(prime), u8::from(wide))
+        }
+        Some(KeyPaint::Sweep {
+            color,
+            prime,
+            whole,
+        }) => format!("s{color}{}{}", u8::from(prime), u8::from(whole)),
+        None => String::new(),
+    }
+}
+
+/// 단축키 표 칸 색(사이트 `KeyPaint.tsx`, 코어 `keys::paint`): `which` 0 칸 바탕·1 반대 칸 바탕·2 선·3 사선·4 반대 사선.
+/// 면 색 `rgb`(24비트)를 페이지 바탕과 섞은 색
+#[no_mangle]
+pub extern "C" fn cubie_key_tone(rgb: u32, which: u32) -> u32 {
+    use cube_core::keys::paint::{calm_line, calm_tint, stripe_tint};
+    match which {
+        0 => calm_tint(rgb, false),
+        1 => calm_tint(rgb, true),
+        2 => calm_line(rgb),
+        3 => stripe_tint(rgb, false),
+        _ => stripe_tint(rgb, true),
+    }
+}
+
+/// 그 배색(사이트 `colorScheme`)에서 이 면 색 칸에 사선 무늬를 넣나
+///
+/// # Safety
+/// `scheme`은 NULL이거나 NUL로 끝나는 UTF-8 글.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_key_striped(scheme: *const c_char, color: u8) -> bool {
+    let scheme = unsafe { c_str(scheme) }.unwrap_or("");
+    cube_core::keys::paint::striped_color(scheme, color)
 }
 
 /// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 전체 바이트 수를 돌려준다
@@ -945,18 +988,29 @@ mod tests {
             let k = cubie_game_key_table(g, 3, buf.as_mut_ptr(), 8192) as usize;
             let text = std::str::from_utf8(&buf[..k]).unwrap();
             let lines: Vec<&str> = text.lines().collect();
-            assert!(lines.contains(&"KeyX\t0\t1\t2L'\tM'"), "{text}");
-            assert!(lines.contains(&"Period\t0\t1\t2R\tM'"), "{text}");
+            assert!(lines.contains(&"KeyX\t0\t1\t2L'\tM'\ts410"), "{text}");
+            assert!(lines.contains(&"Period\t0\t1\t2R\tM'\ts410"), "{text}");
             assert!(
-                lines.contains(&"ArrowUp\t0\t1\tviewHome\t처음 각도"),
+                lines.contains(&"ArrowUp\t0\t1\tviewHome\t처음 각도\t"),
                 "{text}"
             );
-            assert!(lines.contains(&"Digit3\t1\t1\tdepth:3\t바깥 3층"), "{text}");
+            assert!(
+                lines.contains(&"Digit3\t1\t1\tdepth:3\t바깥 3층\t"),
+                "{text}"
+            );
             assert!(!text.contains("Escape"), "{text}");
             // 4×4에서 T·B(M′·M)는 못 쓰지만 흐리게 남는다
             let k = cubie_game_key_table(g, 4, buf.as_mut_ptr(), 8192) as usize;
             let text = std::str::from_utf8(&buf[..k]).unwrap();
-            assert!(text.lines().any(|l| l == "KeyT\t0\t0\tM'\tM'"), "{text}");
+            assert!(text.lines().any(|l| l == "KeyT\t0\t0\tM'\tM'\t"), "{text}");
+            // 「두 손」 J = U(면 돌리기, 흰 면), 칸 바탕은 사이트 calmTint
+            assert!(
+                text.lines().any(|l| l == "KeyJ\t0\t1\tU\tU\tf000"),
+                "{text}"
+            );
+            assert_eq!(cubie_key_tone(0xffffff, 0), 0x3c3c3c);
+            assert!(cubie_key_striped(c"colorblind".as_ptr(), 4));
+            assert!(!cubie_key_striped(c"standard".as_ptr(), 4));
             cubie_game_free(g);
         }
     }

@@ -134,6 +134,12 @@ struct SettingsTests {
     #expect(CubeSettings.parse(nil).hiddenColor == 0x111111)
     #expect(CubeSettings.parse(#"{"hidden":"gray"}"#).hiddenColor == 0x6b6b6b)
     #expect(CubeSettings.parse(#"{"hidden":"blue"}"#).hiddenColor == 0x111111)
+    // 단축키 표 칸 색: 배색 이름(사선 무늬)과 켜기
+    #expect(s.colorScheme == "highContrast" && s.keyColors)
+    #expect(custom.colorScheme == "custom")
+    #expect(CubeSettings.parse(#"{"colorScheme":"rainbow","keyColors":false}"#).colorScheme == "standard")
+    #expect(!CubeSettings.parse(#"{"keyColors":false}"#).keyColors)
+    #expect(CubeSettings.parse(#"{"keyColors":0}"#).keyColors)
   }
 
   @Test func keymapLikeTheSite() {

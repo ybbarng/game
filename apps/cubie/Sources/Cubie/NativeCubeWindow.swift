@@ -407,7 +407,9 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
 
   /// 지금 배치에서 크기 n에 쓰는 키(맞추던 판의 배치. 연습 판도 같은 배치다)
   func keyBindings(n: Int) -> NativeKeysView.Source {
-    NativeKeysView.Source.of(game: (mainCube ?? cube).game, n: n, preset: keymap.preset)
+    NativeKeysView.Source.of(
+      game: (mainCube ?? cube).game, n: n, preset: keymap.preset,
+      look: .init(colors: settings.colors, scheme: settings.colorScheme, on: settings.keyColors))
   }
 
   // MARK: 공식 연습(docs/47 16-11)
