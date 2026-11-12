@@ -109,7 +109,7 @@ jobs:
           BASE: ${{ steps.base.outputs.base }}
         run: |
           set -euo pipefail
-          pattern='^(native/|\.github/workflows/ci\.yml$|packages/(cube-engine|cube-solver|cube-scramble|puzzle-core)/|packages/engine/src/rng\.ts$|apps/web/src/cube/(native/|algs/(check|spot|transform)\.ts$|learn/(judge|judge-methods|alg-sets|algs-[a-z0-9-]+|bld|types|beginner-path|big-path)\.ts$|tiers/(rank|table)\.ts$|timer/stats\.ts$|records\.ts$|replay-player\.ts$|mini/hint(-pick)?\.ts$|input/(actions|interpreter|keymaps)\.ts$))'
+          pattern='^(native/|\.github/workflows/ci\.yml$|packages/(cube-engine|cube-solver|cube-scramble|cube-ai|puzzle-core)/|packages/engine/src/rng\.ts$|apps/web/src/cube/(native/|solve-session\.ts$|flow/combo\.ts$|practice/|keys/(move-keys|reach)\.ts$|mini/practice\.ts$|algs/(check|spot|transform|store)\.ts$|learn/(judge|judge-methods|alg-sets|algs-[a-z0-9-]+|bld|types|beginner-path|big-path)\.ts$|tiers/(rank|table)\.ts$|timer/stats\.ts$|records\.ts$|replay-player\.ts$|mini/hint(-pick)?\.ts$|input/(actions|interpreter|keymaps)\.ts$))'
           if [ -z "$BASE" ]; then
             rust=true
           elif git diff --name-only "$BASE" HEAD | grep -qE "$pattern"; then
