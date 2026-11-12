@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         measure = Measure(cube: web)
       } else if let native = cube as? NativeCubeWindow {
         keys.storeScript = { [weak self] in self?.storeScript() }
+        keys.nativeSource = { [weak native] n in native?.keyBindings(n: n) ?? ("twoHand", []) }
         let m = NativeMeasure(cube: native)
         // 단축키 표·기록 창도 화면 밖에서 띄워 잰다
         m.openKeys = { [weak self] in
@@ -136,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     if Config.debug { listenDebug() }
     keys.storeScript = { [weak self] in self?.storeScript() }
+    if let native = cube as? NativeCubeWindow {
+      keys.nativeSource = { [weak native] n in native?.keyBindings(n: n) ?? ("twoHand", []) }
+    }
     (cube as? NativeCubeWindow)?.onRecorded = { [weak self] in self?.pushStoreToWebWindows() }
     cube.menuProvider = { [weak self] in self?.buildMenu(forWindow: true) ?? NSMenu() }
     cube.onReady = { [weak self] in

@@ -113,6 +113,8 @@ bool cubie_game_take_milestone(CubieGame *game);
 /// 다 맞춰 생긴 기록 한 판(ms·penalty·moves·scramble·seed·replay·splits·combo)을 JSON 글로 꺼낸다(한 번만, 없으면 0).
 /// 글 전체 바이트 수를 돌려준다(len이 모자라면 꺼내지 않고 필요한 길이만)
 uint32_t cubie_game_take_record(CubieGame *game, uint8_t *out, uint32_t len);
+/// 지금 배치에서 크기 n에 쓰는 키(단축키 표): 줄마다 「code\t조합\t동작」(맞춘 상태로·살펴보기·쓸 수 없는 동작 뺌)
+uint32_t cubie_game_key_bindings(const CubieGame *game, uint32_t n, uint8_t *out, uint32_t len);
 /// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 바이트 수
 uint32_t cubie_practice_menu(uint8_t *out, uint32_t len);
 /// 공식 연습을 연다(3×3 한 판만). 기록 글은 사이트와 같은 JSON. 못 열면 false

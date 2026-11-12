@@ -419,6 +419,27 @@ pub unsafe extern "C" fn cubie_game_take_record(g: *mut CubieGame, out: *mut u8,
     need
 }
 
+/// 지금 키 배치에서 크기 `n`에 쓰는 키(단축키 표): 줄마다 「KeyboardEvent.code\t조합(Shift 1·Alt 2·Ctrl 4)\t동작 이름」.
+/// Cubie가 쓰지 않는 동작(맞춘 상태로·살펴보기 건너뛰기)과 그 크기에서 쓸 수 없는 동작은 뺀다(사이트 `KeysPanelPage`)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_key_bindings(g: *const CubieGame, n: u32, out: *mut u8, len: u32) -> u32 {
+    let g = unsafe { &*g };
+    let n = n as usize;
+    let lines: Vec<String> = g
+        .game
+        .keymap()
+        .bindings
+        .iter()
+        .filter(|b| b.action != "reset" && b.action != "inspectionSkip")
+        .filter(|b| cube_core::keys::actions::is_available(n, &b.action))
+        .map(|b| format!("{}\t{}\t{}", b.code, b.mods, b.action))
+        .collect();
+    unsafe { write_str(&lines.join("\n"), out, len) }
+}
+
 /// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 전체 바이트 수를 돌려준다
 ///
 /// # Safety

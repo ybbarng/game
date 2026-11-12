@@ -21,6 +21,10 @@ final class KeysPanel {
   private var releaseTask: Task<Void, Never>?
   /// 네이티브 화면이면 앱 저장소의 키 배치·설정을 웹 화면에 넣는 스크립트(docs/52 5-6)
   var storeScript: (() -> WKUserScript?)?
+  /// 네이티브 화면이면 표를 앱이 그린다(`NativeKeysView`, 웹 화면을 띄우지 않는다). 크기 n → 배치 이름과 키
+  var nativeSource: ((Int) -> (preset: String, bindings: [NativeKeysView.Binding]))?
+  private var nativeView: NativeKeysView?
+  private var shownN = 3
 
   init() {
     let size = Config.keysPanelSize
@@ -54,7 +58,19 @@ final class KeysPanel {
   func show(cube: NSRect, visible: NSRect, n: Int) {
     releaseTask?.cancel()
     releaseTask = nil
-    if webView == nil {
+    shownN = n
+    if let src = nativeSource {
+      let v = nativeView ?? NativeKeysView(frame: box.bounds)
+      if nativeView == nil {
+        v.autoresizingMask = [.width, .height]
+        box.addSubview(v)
+        nativeView = v
+      }
+      let s = src(n)
+      v.n = n
+      v.preset = s.preset
+      v.bindings = s.bindings
+    } else if webView == nil {
       makeWebView().load(URLRequest(url: Config.site("/cube/mini?view=keys&panel=1&n=\(n)"), cachePolicy: PageFreshness.load))
     } else {
       setSize(n)
@@ -103,14 +119,35 @@ final class KeysPanel {
   /// 큐브 창에서 누른 키(`KeyboardEvent.code`)를 표에서 잠깐 빛낸다
   func pressed(_ code: String) {
     guard panel.isVisible else { return }
+    if let v = nativeView {
+      v.press(code)
+      return
+    }
     send(["type": "pressed", "code": code])
   }
 
   /// 큐브 크기가 바뀌었다
-  func setSize(_ n: Int) { send(["type": "size", "n": n]) }
+  func setSize(_ n: Int) {
+    if let v = nativeView, let src = nativeSource {
+      guard n != shownN else { return }
+      shownN = n
+      let s = src(n)
+      v.n = n
+      v.preset = s.preset
+      v.bindings = s.bindings
+      return
+    }
+    send(["type": "size", "n": n])
+  }
 
   /// 키 배치를 바꿨다: 떠 있으면 다시 불러오고, 아니면 버려서 다음에 띄울 때 새로 불러온다
   func reload() {
+    if let v = nativeView, let src = nativeSource {
+      let s = src(shownN)
+      v.preset = s.preset
+      v.bindings = s.bindings
+      return
+    }
     if panel.isVisible {
       webView?.reloadFromOrigin()
     } else {

@@ -399,6 +399,20 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     onHint?(nil)
   }
 
+  // MARK: 단축키 표(F1)
+
+  /// 지금 배치에서 크기 n에 쓰는 키(맞추던 판의 배치. 연습 판도 같은 배치다)
+  func keyBindings(n: Int) -> (preset: String, bindings: [NativeKeysView.Binding]) {
+    let game = (mainCube ?? cube).game
+    let text = NativeCore.string { cubie_game_key_bindings(game, UInt32(n), $0, $1) }
+    let list = text.split(separator: "\n").compactMap { line -> NativeKeysView.Binding? in
+      let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+      guard f.count == 3, let m = Int(f[1]) else { return nil }
+      return NativeKeysView.Binding(code: f[0], mods: m, action: f[2])
+    }
+    return (keymap.preset, list)
+  }
+
   // MARK: 공식 연습(docs/47 16-11)
 
   private func startPractice(_ id: String, see: Bool) {
