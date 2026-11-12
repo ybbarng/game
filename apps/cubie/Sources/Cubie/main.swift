@@ -5,6 +5,11 @@ if !Config.web, let dir = ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT
   exit(NativeShot.run(dir: dir, n: Int(ProcessInfo.processInfo.environment["CUBIE_NATIVE_N"] ?? "") ?? 3))
 }
 
+// 네이티브 보통 창(기록·티어표·설정) 스크린샷(창을 화면에 띄우지 않고 PNG를 쓰고 끝난다, docs/52 5-7)
+if let dir = ProcessInfo.processInfo.environment["CUBIE_WINDOW_SHOT"] {
+  exit(NativeWindowShot.run(dir: dir))
+}
+
 let app = NSApplication.shared
 // 큐브 창은 기본 네이티브 화면, `CUBIE_WEB=1`이면 예전 웹 화면(docs/52 5-6)
 let delegate = AppDelegate()
