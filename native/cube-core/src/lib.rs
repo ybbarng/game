@@ -11,6 +11,7 @@
 //! | [`scramble`] | `packages/cube-scramble`(대회 규칙 섞기) |
 //! | [`judge`]·[`spot`] | `apps/web/src/cube/learn/judge.ts`·`algs/check.ts`·`algs/spot.ts`·`mini/hint-pick.ts`(OLL·PLL 알아보기) |
 //! | [`tier`] | `apps/web/src/cube/timer/stats.ts`·`tiers/rank.ts`·`tiers/table.ts` |
+//! | [`summary`] | 웹 `mini/store.ts` `summarize`(Cubie 기록 창 요약: 최고·평균·5번·12번 평균) |
 //! | [`replay`] | `apps/web/src/cube/records.ts`·`replay-player.ts`(다시 보기·구간 기록 글) |
 //! | [`keys`] | `apps/web/src/cube/input/`(키 배치·해석기: 키 → 수·명령), 키캡 줄은 `keys/move-keys.ts`·`keys/reach.ts` |
 //! | [`progress`]·[`combo`]·[`session`] | `packages/cube-engine/src/solve-progress.ts`(조각 점수·이정표·흐름 진행 칸), 웹 `flow/combo.ts`·`solve-session.ts`(Cubie 미니의 한 판: 기록 칸) |
@@ -43,6 +44,7 @@ pub mod session;
 pub mod solver;
 pub mod spot;
 pub mod state;
+pub mod summary;
 pub mod tier;
 pub mod topology;
 

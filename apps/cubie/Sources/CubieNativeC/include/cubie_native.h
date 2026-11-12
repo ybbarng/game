@@ -164,6 +164,20 @@ bool cubie_best_ao5(const CubieTimeable *recs, uint32_t count, double *ms, uint3
 bool cubie_my_tier(uint32_t n, const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5,
                    uint32_t best5_count, CubieTier *out);
 
+/// 기록 창 요약(사이트 summarize, 코어 summary.rs). 값이 없으면 NaN, DNF면 무한대
+typedef struct CubieSummary {
+  uint32_t count;
+  double best;  // 가장 빠른 시간(벌점 포함)
+  double mean;  // 맞춘 판 모두의 평균
+  double ao5;   // 최근 5판 평균(모자라면 NaN, DNF면 무한대)
+  double ao12;  // 최근 12판 평균
+} CubieSummary;
+
+void cubie_mini_summary(const CubieTimeable *recs, uint32_t count, CubieSummary *out);
+/// 티어표 글: 첫 줄 「WCA 경기자 수\t자료 날짜\tWCA 문구\tWCA 주소」, 그 뒤 티어 열 줄(아이언부터)
+/// 「구간 상한(초, 쉼표, 끝없음 inf)\t진입 시간 이하 경기자 수\t상위 %」(대회 밖은 뒤 두 칸이 빈다). 글 바이트 수
+uint32_t cubie_tier_table(uint32_t n, uint8_t *out, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif
