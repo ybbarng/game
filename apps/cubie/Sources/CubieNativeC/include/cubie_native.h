@@ -22,6 +22,9 @@ enum {
   CUBIE_KEY_SOLVED = 3,    // 섞인 큐브를 이 수로 다 맞춤
   CUBIE_KEY_SCRAMBLED = 4, // 섞음(Enter)
   CUBIE_KEY_RESET = 5,     // 맞춘 상태로
+  CUBIE_KEY_PEEK_BACK = 6, // 살짝 보기: 뒤(키를 떼면 앱이 처음 각도로)
+  CUBIE_KEY_PEEK_DOWN = 7, // 살짝 보기: 아래
+  CUBIE_KEY_VIEW_HOME = 8, // 처음 각도로
 };
 
 /// cubie_game_key의 조합 키
@@ -77,6 +80,22 @@ bool cubie_game_is_solved(const CubieGame *game);
 bool cubie_game_is_scrambled(const CubieGame *game);
 /// 섞은 뒤 둔 수
 uint32_t cubie_game_move_count(const CubieGame *game);
+
+/// 키 배치(사이트 `cube.keymap.v1`과 같은 꼴). preset "twoHand"·"notation"이면 목록은 보지 않고, "custom"이면 count개의
+/// 키(codes = KeyboardEvent.code, mods = Shift 1·Alt 2·Ctrl 4, actions = 동작 이름). 모르는 동작은 버린다. 모르는 묶음이면 false
+bool cubie_game_set_keymap(CubieGame *game, const char *preset, const char *const *codes, const uint8_t *mods,
+                           const char *const *actions, uint32_t count);
+/// 마지막으로 둔 수의 표기(되돌리기면 거꾸로 돌린 수)를 out에 len바이트까지(UTF-8, NUL 없음). 글 전체 바이트 수를 돌려준다
+uint32_t cubie_game_last_notation(const CubieGame *game, uint8_t *out, uint32_t len);
+/// 마지막으로 둔 수가 큐브 돌리기(x·y·z)인가
+bool cubie_game_last_rotation(const CubieGame *game);
+/// 보기만 하는 연출: 화면을 맞춘 모양(solved) 또는 논리 상태(false)로 두고 줄을 비운다
+void cubie_game_show_jump(CubieGame *game, bool solved);
+/// 보기만 하는 수를 줄에 넣는다(여러 수면 ms를 나눈다). 읽지 못하면 false
+bool cubie_game_show_push(CubieGame *game, const char *notation, double ms);
+/// 다시 보기 글 → 걸음 줄들(「시각 표기」, 줄바꿈으로 이음). 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
+uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
+                            uint32_t len);
 
 #ifdef __cplusplus
 }

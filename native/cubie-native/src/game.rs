@@ -9,7 +9,8 @@
 
 use std::collections::VecDeque;
 
-use cube_core::keys::{two_hand_keymap, Command, KeyInput, KeyInterpreter, KeyResult};
+use cube_core::keys::{two_hand_keymap, Command, KeyInput, KeyInterpreter, KeyResult, Keymap};
+use cube_core::notation::format_move;
 use cube_core::scramble::{scramble, ScrambleEvent};
 use cube_core::state::{apply_move, is_solved, State};
 use cube_core::{parse_moves, solved_cube, CubeMove};
@@ -87,6 +88,8 @@ pub enum Outcome {
         text: String,
     },
     Reset,
+    /// 보기만 바꾸는 명령(살짝 보기 뒤·아래, 처음 각도로). 앱이 보는 각을 바꾼다
+    View(Command),
 }
 
 pub struct Game {
@@ -102,6 +105,9 @@ pub struct Game {
     turning: Option<(CubeMove, f64, f64)>,
     /// 연출 없이 한 번 다시 그려야 함(섞기·맞춘 상태로·창 크기)
     dirty: bool,
+    /// 마지막으로 둔 수의 표기(되돌리기면 거꾸로 돌린 수)와 큐브 돌리기(x·y·z)인지
+    last_notation: String,
+    last_rotation: bool,
 }
 
 impl Game {
@@ -116,7 +122,28 @@ impl Game {
             queue: VecDeque::new(),
             turning: None,
             dirty: true,
+            last_notation: String::new(),
+            last_rotation: false,
         }
+    }
+
+    /// 키 배치를 바꾼다(사용자 배치·「표기」). 기억해 둔 깊이는 버린다
+    pub fn set_keymap(&mut self, keymap: Keymap) {
+        self.interp.set_keymap(keymap);
+    }
+
+    pub fn keymap(&self) -> &Keymap {
+        self.interp.keymap()
+    }
+
+    /// 마지막으로 둔 수의 표기(사이트 기록에 적는 가장 짧은 이름, 되돌리기면 거꾸로 돌린 수)
+    pub fn last_notation(&self) -> &str {
+        &self.last_notation
+    }
+
+    /// 마지막으로 둔 수가 큐브 돌리기(x·y·z)인가
+    pub fn last_rotation(&self) -> bool {
+        self.last_rotation
     }
 
     pub fn state(&self) -> &State {
@@ -136,6 +163,8 @@ impl Game {
         match self.interp.handle(input) {
             None => Outcome::Ignored,
             Some(KeyResult::Move { notation, mv, .. }) => {
+                self.last_notation = notation.clone();
+                self.last_rotation = mv.is_rotation(self.n);
                 let solved = self.play(mv);
                 Outcome::Moved { notation, solved }
             }
@@ -149,14 +178,17 @@ impl Game {
                     Some(m) => {
                         let inv = m.inverse();
                         self.state = apply_move(self.n, &self.state, &inv);
+                        self.last_notation = format_move(self.n, &inv);
+                        self.last_rotation = inv.is_rotation(self.n);
                         self.push(inv);
                         Outcome::Moved {
-                            notation: String::new(),
+                            notation: self.last_notation.clone(),
                             solved: false,
                         }
                     }
                     None => Outcome::Consumed,
                 },
+                Command::PeekBack | Command::PeekDown | Command::ViewHome => Outcome::View(command),
                 _ => Outcome::Consumed,
             },
             Some(_) => Outcome::Consumed,
@@ -269,6 +301,36 @@ impl Game {
     /// 줄에 돌릴 수가 남았나
     pub fn has_turns(&self) -> bool {
         !self.queue.is_empty()
+    }
+
+    /// 보기만 하는 연출(떠 있을 때 다시 보기·조금 섞기, docs/47 15-5): 화면 상태를 `st`로 두고 줄을 비운다. 논리 상태는
+    /// 그대로다. 끝나면 [`Game::show_restore`]로 논리 상태로 돌린다
+    pub fn show_jump(&mut self, st: State) {
+        self.shown = st;
+        self.queue.clear();
+        self.turning = None;
+        self.dirty = true;
+    }
+
+    /// 보기만 하는 수를 줄에 넣는다(그 시간으로, 밀려도 넘기지 않는다). 표기를 읽지 못하면 false
+    pub fn show_push(&mut self, notation: &str, ms: f64) -> bool {
+        let Ok(moves) = parse_moves(self.n, notation) else {
+            return false;
+        };
+        let step = if moves.is_empty() {
+            ms
+        } else {
+            ms / moves.len() as f64
+        };
+        self.queue
+            .extend(moves.into_iter().map(|mv| Queued { mv, ms: Some(step) }));
+        true
+    }
+
+    /// 보기만 하던 연출을 끝내고 화면을 논리 상태로
+    pub fn show_restore(&mut self) {
+        let st = self.state.clone();
+        self.show_jump(st);
     }
 
     /// 다음에 돌릴 수 하나와 그 시간(ms)을 꺼낸다. 꺼낸 수는 화면 상태에 바로 넣는다(그리는 쪽은 그 수를 애니메이션으로
