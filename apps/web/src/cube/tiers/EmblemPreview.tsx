@@ -14,6 +14,8 @@ import { DIVISIONS, TIER_IDS, TIER_LABEL, TIER_TABLE } from "./table";
 import "@/cube/tiers/emblem.css";
 
 const SIZES = [64, 32, 24, 16] as const;
+/** 3D 시안을 밝은 바탕에서 볼 때 바탕(neutral-100) */
+const LIGHT_PAGE = "#f5f5f5";
 
 /** 3×3 표의 티어마다 구간 II 상한(구간이 없으면 그 티어 상한)을 Ao5로 본 내 티어 */
 const LINK_SAMPLES: MyTier[] = (TIER_TABLE[3] ?? []).flatMap((row) => {
@@ -117,12 +119,49 @@ export function EmblemPreview() {
  */
 function Draft3d() {
   const [tier, setTier] = useState<DraftTier>("diamond");
+  // 보석이 뒤를 비추는지 견주어 보는 바탕(`?emblemBg=light`로 밝게 시작)
+  const [light, setLight] = useState(false);
+  useEffect(() => {
+    try {
+      setLight(
+        new URLSearchParams(window.location.search).get("emblemBg") === "light",
+      );
+    } catch {
+      setLight(false);
+    }
+  }, []);
   return (
     <section data-emblem3d-draft className="flex flex-col gap-3">
       <h2 className="font-semibold text-sm">3D 시안</h2>
       <EmblemGrid tiers={DRAFT_TIERS} selected={tier} onSelect={setTier} />
+      <div className="flex justify-center gap-2 text-xs">
+        {(
+          [
+            [false, "어두운 바탕"],
+            [true, "밝은 바탕"],
+          ] as const
+        ).map(([on, label]) => (
+          <button
+            key={label}
+            type="button"
+            data-emblem3d-bg={on ? "light" : "dark"}
+            aria-pressed={light === on}
+            onClick={() => setLight(on)}
+            className={cn(
+              "rounded-lg px-2 py-1 ring-1 ring-white/20",
+              light === on ? "bg-white/15" : "hover:bg-white/5",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <figure className="flex flex-col items-center gap-1">
-        <Emblem3D tier={tier} size={300} />
+        <Emblem3D
+          tier={tier}
+          size={300}
+          pageColor={light ? LIGHT_PAGE : undefined}
+        />
         <figcaption className={cn("font-semibold text-sm", TIER_TONE[tier])}>
           {TIER_LABEL[tier]}
         </figcaption>

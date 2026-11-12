@@ -2,7 +2,7 @@ import AppKit
 import CubieCore
 import CubieNativeC
 
-/// 네이티브 기록 창(docs/52 5-7): 사이트 기록 창(`/cube/mini?view=records`, `MiniCubeApp.tsx` `RecordsPage`)과 같은 글·차례·동작.
+/// 네이티브 기록 창(docs/52 5-8): 사이트 기록 창(`/cube/mini?view=records`, `MiniCubeApp.tsx` `RecordsPage`)과 같은 글·차례·동작.
 /// - 위: 크기별 Cubie 티어(엠블럼·최고 Ao5·이름, 누르면 그 크기), 「티어표」(네이티브 티어표 창)
 /// - 아래: 크기 단추, 요약(최고·평균·5번·12번 평균, 코어 `summary.rs`), 판마다 줄(번호·때·시간·입력 표시·힌트·수·다시 보기)
 /// - 다시 보기 상자: 섞인 모양에서 그때 시각대로(멈춤은 1초까지), 큐브는 큐브 창과 같은 `CACubeView`와 거울
@@ -433,7 +433,7 @@ final class ReplayBoxView: FlippedView {
     fill = NUI.white(0.05)
     radius = 4
     cube.reducedMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-    cube.setColors(settings.colors)
+    cube.setColors(settings.colors, masked: settings.hiddenColor)
     cube.setMoveMs(settings.moveMs)
     if settings.stickerless {
       cube.stickerless = true
@@ -481,7 +481,7 @@ final class ReplayBoxView: FlippedView {
   /// 스크린샷용: 창에 붙지 않은 같은 모양의 큐브(창에 붙은 층은 `CARenderer`로 따로 그릴 수 없다)
   func shotCube() -> CACubeView {
     let c = CACubeView(frame: cube.frame, n: n)
-    c.setColors(colors)
+    c.setColors(colors, masked: cube.maskedColor)
     if cube.stickerless { c.stickerless = true }
     c.buildForShot()
     c.showJump(solved: true)

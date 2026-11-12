@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  boxPath,
   criticalAngle,
   fresnel,
   GEM_BOX_HALF,
+  GEM_CUBE_HALF,
   REAL,
+  throughWeight,
   traceGem,
   type Vec3,
 } from "./gem";
-import { absorbOf, channelIor, disperses } from "./gemMaterial";
+import { absorbOf, channelIor, disperses, GEM_FRONT_ENV } from "./gemMaterial";
 import { LOOK } from "./scene";
 
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -87,6 +90,69 @@ describe("보석 빛길(docs/47 14-7 셋째 시안)", () => {
     );
     const sum = (r: typeof clear) => r.exits.reduce((s, e) => s + e.weight, 0);
     expect(sum(deep)).toBeLessThan(sum(clear));
+  });
+
+  it("겉 반사는 물리 그대로: 정면에서 에메랄드·자수정 약 5%, 루비 7.7%, 다이아몬드 17%(금속처럼 크지 않다)", () => {
+    expect(GEM_FRONT_ENV).toBe(1);
+    for (const t of ["emerald", "master"] as const) {
+      const g = LOOK[t].gem;
+      if (!g) throw new Error(t);
+      const f0 = fresnel(1, 1, g.ior);
+      expect(f0).toBeGreaterThan(0.04);
+      expect(f0).toBeLessThan(0.06);
+    }
+    expect(fresnel(1, 1, REAL.ruby.ior)).toBeCloseTo(0.077, 3);
+    expect(fresnel(1, 1, REAL.diamond.ior)).toBeCloseTo(0.172, 3);
+  });
+
+  it("면을 정면으로 보면 빛 대부분이 뒤 배경에서 온다(투명), 등각으로 보면 배경과 안에서 되튄 반짝임이 섞인다", () => {
+    /** 뒤 배경을 읽는 몫과 스튜디오를 읽는 몫(겉 반사 포함 전체 1) */
+    const see = (view: Vec3, ior: number) => {
+      const v = Math.hypot(...view);
+      const u: Vec3 = [view[0] / v, view[1] / v, view[2] / v];
+      let back = 0;
+      let env = 0;
+      for (const p of hits) {
+        const r = traceGem("box", p, u, TOP, ior, 0);
+        for (const e of r.exits) {
+          const w = throughWeight(
+            e.dir[0] * u[0] + e.dir[1] * u[1] + e.dir[2] * u[2],
+          );
+          back += e.weight * w;
+          env += e.weight * (1 - w);
+        }
+      }
+      return { back: back / hits.length, env: env / hits.length };
+    };
+    // 정면: 곧게 지나 뒤가 비친다(에메랄드 90% 넘게, 다이아몬드도 70% 넘게)
+    expect(see([0, -1, 0], REAL.emerald.ior).back).toBeGreaterThan(0.9);
+    expect(see([0, -1, 0], REAL.diamond.ior).back).toBeGreaterThan(0.7);
+    // 등각: 뒤 배경도 20% 넘게 비치고(예전에는 0, 모두 스튜디오를 읽어 거울처럼 보였다), 되튄 반짝임도 남는다
+    for (const real of Object.values(REAL)) {
+      const s = see(VIEW, real.ior);
+      expect(s.back).toBeGreaterThan(0.2);
+      expect(s.env).toBeGreaterThan(0.3);
+    }
+    // 눈 방향에서 많이 벗어난 빛은 배경을 읽지 않는다
+    expect(throughWeight(Math.cos((60 * Math.PI) / 180))).toBe(0);
+    expect(throughWeight(1)).toBe(1);
+  });
+
+  it("꿰뚫어 보는 빛은 큐브 전체 두께만큼 더 흡수된다(두꺼운 가운데는 짙고 가장자리는 맑다)", () => {
+    // 가운데를 곧게 지나면 큐브 한 변, 모서리 가까이는 짧다, 밖으로 나가면 0
+    expect(boxPath([0, 0, 0], [0, 0, -1], GEM_CUBE_HALF)).toBeCloseTo(
+      GEM_CUBE_HALF,
+      6,
+    );
+    expect(boxPath([0, 0, 1.46], [0, 0, -1], GEM_CUBE_HALF)).toBeCloseTo(
+      2.92,
+      6,
+    );
+    expect(boxPath([1.3, 0, 1.46], [0.5, 0, -1], GEM_CUBE_HALF)).toBeLessThan(
+      0.5,
+    );
+    expect(boxPath([0, 0, -1.46], [0, 0, -1], GEM_CUBE_HALF)).toBe(0);
+    expect(boxPath([3, 0, 0], [1, 0, 0], GEM_CUBE_HALF)).toBe(0);
   });
 
   it("보석 티어의 굴절률은 실제 보석 값, 분산은 다이아몬드·챌린저만 따로 따라간다", () => {

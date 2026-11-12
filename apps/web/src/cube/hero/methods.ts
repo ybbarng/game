@@ -194,8 +194,8 @@ export function heroStageLabel(
   return labels[name] ?? name;
 }
 
-/** 단계 `stage`의 수(큐브 돌리기는 세지 않는다) */
-function stageCost(solve: HumanSolve, stage: string): number {
+/** 단계 `stage`의 수(큐브 돌리기는 세지 않는다). Cubie 코어 `hero.rs` `stage_cost`와 같다(공통 자료 `hero.json`) */
+export function stageCost(solve: HumanSolve, stage: string): number {
   let cost = 0;
   for (const st of solve.stages)
     if (st.name === stage)

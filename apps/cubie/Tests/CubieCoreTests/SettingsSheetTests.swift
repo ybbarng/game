@@ -3,7 +3,7 @@ import Testing
 
 @testable import CubieCore
 
-/// 네이티브 설정 창(docs/52 5-7)이 쓰는 저장 글: 사이트 `withScheme`·`withFaceColor`·`saveKeymap`·`toCustom`과 같은 꼴이고,
+/// 네이티브 설정 창(docs/52 5-8)이 쓰는 저장 글: 사이트 `withScheme`·`withFaceColor`·`saveKeymap`·`toCustom`과 같은 꼴이고,
 /// 바꾼 글을 큐브 창이 읽는 규칙(`CubeSettings.parse`·`StoredKeymap.parse`)으로 다시 읽으면 바꾼 값이 나온다
 struct SettingsSheetTests {
   @Test func colorsRoundTripThroughCubeSettings() {

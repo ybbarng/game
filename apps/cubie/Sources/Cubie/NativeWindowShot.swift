@@ -5,7 +5,7 @@ import Metal
 import QuartzCore
 import UniformTypeIdentifiers
 
-/// 네이티브 보통 창(기록·티어표·설정, docs/52 5-7)의 스크린샷: `CUBIE_WINDOW_SHOT=<폴더> CUBIE_WINDOW_SHOT_STORE=<JSON> Cubie`.
+/// 네이티브 보통 창(기록·티어표·설정, docs/52 5-8)의 스크린샷: `CUBIE_WINDOW_SHOT=<폴더> CUBIE_WINDOW_SHOT_STORE=<JSON> Cubie`.
 /// 창을 화면에 띄우지 않고(보이지 않는 창에 붙여 그리기만) PNG로 쓰고 끝난다. 저장소는 JSON 파일(키 → 글, 사이트 localStorage와
 /// 같은 꼴)을 읽은 메모리 저장소라 사용자 기록을 읽지도 쓰지도 않는다. `scripts/window-compare.mjs`가 같은 저장소로 사이트
 /// 화면을 WebKit으로 찍어 나란히 얹는다. 글·바탕은 층을 CoreGraphics로, 다시 보기 큐브(3D)는 `CARenderer`로 그려 얹는다

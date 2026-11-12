@@ -77,7 +77,7 @@ enum Config {
   /// 기본은 네이티브 화면(Rust 코어 + Core Animation 3D, `NativeCubeWindow`)이라 WebKit 프로세스가 뜨지 않는다.
   /// 예전 확인용 `CUBIE_NATIVE=1`은 이제 기본과 같다
   static let web = ProcessInfo.processInfo.environment["CUBIE_WEB"] == "1"
-  /// `CUBIE_WEB_WINDOWS=1`: 큐브 창은 네이티브인 채 기록 창·티어표·설정 창만 예전 사이트 창으로 연다(docs/52 5-7, 견주기·되돌림).
+  /// `CUBIE_WEB_WINDOWS=1`: 큐브 창은 네이티브인 채 기록 창·티어표·설정 창만 예전 사이트 창으로 연다(docs/52 5-8, 견주기·되돌림).
   /// `CUBIE_WEB=1`이면 이것과 상관없이 셋 다 사이트 창이다
   static let webWindows = ProcessInfo.processInfo.environment["CUBIE_WEB_WINDOWS"] == "1"
 

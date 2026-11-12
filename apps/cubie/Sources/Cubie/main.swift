@@ -5,7 +5,7 @@ if !Config.web, let dir = ProcessInfo.processInfo.environment["CUBIE_NATIVE_SHOT
   exit(NativeShot.run(dir: dir, n: Int(ProcessInfo.processInfo.environment["CUBIE_NATIVE_N"] ?? "") ?? 3))
 }
 
-// 네이티브 보통 창(기록·티어표·설정) 스크린샷(창을 화면에 띄우지 않고 PNG를 쓰고 끝난다, docs/52 5-7)
+// 네이티브 보통 창(기록·티어표·설정) 스크린샷(창을 화면에 띄우지 않고 PNG를 쓰고 끝난다, docs/52 5-8)
 if let dir = ProcessInfo.processInfo.environment["CUBIE_WINDOW_SHOT"] {
   exit(NativeWindowShot.run(dir: dir))
 }

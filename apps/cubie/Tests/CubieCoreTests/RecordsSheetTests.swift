@@ -3,7 +3,7 @@ import Testing
 
 @testable import CubieCore
 
-/// 네이티브 기록 창(docs/52 5-7)의 줄 글과 다시 보기 재생기(사이트 `ReplayPlayer`·`RecordsPanel`과 같은 규칙)
+/// 네이티브 기록 창(docs/52 5-8)의 줄 글과 다시 보기 재생기(사이트 `ReplayPlayer`·`RecordsPanel`과 같은 규칙)
 @MainActor
 struct RecordsSheetTests {
   @Test func rowShowsWhatTheSiteShows() {

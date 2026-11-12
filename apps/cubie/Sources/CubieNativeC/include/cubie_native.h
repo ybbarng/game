@@ -73,7 +73,9 @@ bool cubie_game_finish_show(CubieGame *game);
 uint32_t cubie_game_sticker_count(const CubieGame *game);
 /// 스티커 자리 i의 조각 중심(두 배 좌표, x 오른쪽·y 위·z 앞)과 면 방향(i32 세 칸씩). 범위 밖이면 false
 bool cubie_game_sticker_slot(const CubieGame *game, uint32_t i, int32_t *pos2, int32_t *normal);
-/// 화면 상태의 칸 색(자리마다 0~5, U R F D L B)을 len칸까지 쓴다. 쓴 칸 수를 돌려준다
+/// 가린 칸(공식 연습 가리기)의 색 번호. 설정의 「가린 칸 색」(사이트 `hidden`)으로 칠한다
+#define CUBIE_COLOR_MASKED 6
+/// 화면 상태의 칸 색(자리마다 0~5, U R F D L B, 가린 칸은 CUBIE_COLOR_MASKED)을 len칸까지 쓴다. 쓴 칸 수를 돌려준다
 uint32_t cubie_game_shown_colors(const CubieGame *game, uint8_t *out, uint32_t len);
 bool cubie_game_is_solved(const CubieGame *game);
 /// 섞인 큐브를 맞추는 중인가(거울 판을 보일지)
@@ -115,9 +117,14 @@ bool cubie_game_take_milestone(CubieGame *game);
 uint32_t cubie_game_take_record(CubieGame *game, uint8_t *out, uint32_t len);
 /// 지금 배치에서 크기 n에 쓰는 키(단축키 표): 줄마다 「code\t조합\t동작」(맞춘 상태로·살펴보기·쓸 수 없는 동작 뺌)
 uint32_t cubie_game_key_bindings(const CubieGame *game, uint32_t n, uint8_t *out, uint32_t len);
-/// 단축키 표(F1)의 칸마다 적는 글(사이트 미니 표와 같다): 줄마다 「code\t조합(Shift 1·Alt 2)\t쓸 수 있나(1/0)\t동작\t칸 글」,
-/// 한 키의 줄은 위에서부터 차례로
+/// 단축키 표(F1)의 칸마다 적는 글(사이트 미니 표와 같다): 줄마다
+/// 「code\t조합(Shift 1·Alt 2)\t쓸 수 있나(1/0)\t동작\t칸 글\t칠하기」, 한 키의 줄은 위에서부터 차례로.
+/// 칠하기는 「f」(면 돌리기)·「s」(큐브 돌리기·가운데 층) + 면 번호 + 반대(0/1) + 넓게·큐브 돌리기(0/1), 수가 아니면 빈 글
 uint32_t cubie_game_key_table(const CubieGame *game, uint32_t n, uint8_t *out, uint32_t len);
+/// 단축키 표 칸 색(사이트 KeyPaint): which 0 칸 바탕·1 반대 칸 바탕·2 선·3 사선·4 반대 사선. 면 색 rgb를 페이지 바탕과 섞은 색
+uint32_t cubie_key_tone(uint32_t rgb, uint32_t which);
+/// 그 배색(사이트 colorScheme)에서 이 면 색 칸에 사선 무늬를 넣나
+bool cubie_key_striped(const char *scheme, uint8_t color);
 /// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 바이트 수
 uint32_t cubie_practice_menu(uint8_t *out, uint32_t len);
 /// 공식 연습을 연다(3×3 한 판만). 기록 글은 사이트와 같은 JSON. 못 열면 false

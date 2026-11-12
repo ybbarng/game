@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 따로 여는 보통 창(투명 아님): 기록, 티어표, 키 배치·색. 단축키는 0.1.9부터 창이 아니라 큐브 옆 표(`KeysPanel`)
   enum WebWindow { case records, tiers, settings }
   private var webWindows: [WebWindow: NSWindow] = [:]
-  /// 네이티브 화면일 때의 같은 창들(docs/52 5-7). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
+  /// 네이티브 화면일 때의 같은 창들(docs/52 5-8). WebKit이 뜨지 않는다. `CUBIE_WEB=1`이면 위 사이트 창을 쓴다
   private var sheets: [WebWindow: NativeSheetWindow] = [:]
 
   /// 메모리 재기 모드(`Config.measure`)일 때만
@@ -539,7 +539,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   @objc private func menuQuit() { NSApp.terminate(nil) }
   @objc private func menuCheckForUpdates() { updater.checkForUpdates() }
 
-  /// 기록·티어표·설정 창을 연다: 네이티브 화면이면 네이티브 창(docs/52 5-7), 아니면(`CUBIE_WEB=1`) 사이트 창
+  /// 기록·티어표·설정 창을 연다: 네이티브 화면이면 네이티브 창(docs/52 5-8), 아니면(`CUBIE_WEB=1`) 사이트 창
   private func openWindow(_ kind: WebWindow, n: Int? = nil) {
     guard let native = cube as? NativeCubeWindow, nativeSheet(kind) else {
       openWebWindow(kind)

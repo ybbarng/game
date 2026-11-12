@@ -309,7 +309,7 @@ cmd records close
 sleep 12
 measure "기록 창 닫은 뒤 12초"
 
-# 세 창(기록 창·티어표·설정 창)을 함께 연 동안과 닫은 뒤(docs/52 5-7)
+# 세 창(기록 창·티어표·설정 창)을 함께 연 동안과 닫은 뒤(docs/52 5-8)
 if [ "$NATIVE" = 1 ]; then
   cmd records open
   cmd tiers open

@@ -2,7 +2,7 @@
 
 쓰는 사람을 위한 안내는 [README](README.md)에 있다. 이 문서는 빌드, 새 판 내기, README 그림 만들기를 다룬다. 설계와 결정은 [docs/47 15절](../../docs/47-cube-design.md)에 있다.
 
-앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-7). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「사용자 배치 편집…」·「모든 설정…」뿐이고, `CUBIE_WEB_WINDOWS=1`이면 세 창 모두 예전처럼 사이트 창이다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
+앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정 창도 앱이 그린다(docs/52 5-8). 사이트 화면을 WKWebView 창으로 여는 것은 설정 창의 「사용자 배치 편집…」·「모든 설정…」뿐이고, `CUBIE_WEB_WINDOWS=1`이면 세 창 모두 예전처럼 사이트 창이다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
 
 ## 빌드·실행
 
@@ -67,7 +67,7 @@ node apps/cubie/scripts/window-compare.mjs <폴더>          # 기록 창·티�
 CUBIE_WEB_WINDOWS=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 되돌림: 기록 창·티어표·설정 창만 예전 사이트 창
 ```
 
-- 기록 창·티어표·설정 창(docs/52 5-7)의 화면 글은 `CubieCore/RecordsSheet.swift`·`TierSheet.swift`·`SettingsSheet.swift`에 모았다. 사이트 화면 글이 바뀌면 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts`가 깨져 앱 글도 고치라고 알린다.
+- 기록 창·티어표·설정 창(docs/52 5-8)의 화면 글은 `CubieCore/RecordsSheet.swift`·`TierSheet.swift`·`SettingsSheet.swift`에 모았다. 사이트 화면 글이 바뀌면 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts`가 깨져 앱 글도 고치라고 알린다.
 
 - Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
 - C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi_game.rs`와 하나씩 맞춘다.

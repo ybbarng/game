@@ -1,4 +1,5 @@
 import AppKit
+import CubieCore
 import CubieNativeC
 import ImageIO
 import Metal
@@ -140,6 +141,17 @@ enum NativeShot {
       } && ok
     // 다 맞춘 축하: 빛 고리가 퍼지고 시간 숫자가 보이는 순간(0.7초쯤)
     ok = shoot("native-cheer", after: 0.75) { $0.cheer(text: "12.34", best: true) } && ok
+    // 공식 연습 가리기(docs/52 5-7): 초보자 십자(상관없는 칸 검정)·노란 십자(윗층은 노란 칸만, 나머지 회색 자리도 같은 가린 칸 색)
+    if n == 3 {
+      for (stage, name) in [("beginner-cross", "native-practice-cross"), ("beginner-yellow-cross", "native-practice-llcross")]
+      {
+        ok =
+          shoot(name, after: 1) { v in
+            _ = cubie_game_practice_start(v.game, stage, false, "", "", "", 7)
+            v.paintShown()
+          } && ok
+      }
+    }
 
     // 힌트 말풍선: 3×3 섞기(F2L 전, 사람 해법의 다음 단계)와 마지막 층(코어가 쓰는 같은 판)
     let hintView = CACubeView(frame: NSRect(x: 0, y: 0, width: side, height: side), n: n)
@@ -164,6 +176,13 @@ enum NativeShot {
       if size == 3 { keys.press("KeyJ") }
       ok = shoot2D(name, keys) && ok
     }
+    // 색약 친화 배색: 주황 칸 사선 무늬(사이트 `KEY_STRIPE`)
+    let colorblind = CubeSettings.parse(#"{"colorScheme":"colorblind"}"#)
+    let cbKeys = NativeKeysView(frame: NSRect(origin: .zero, size: Config.keysPanelSize))
+    cbKeys.source = .of(
+      game: hintView.game, n: 3, preset: "twoHand",
+      look: .init(colors: colorblind.colors, scheme: colorblind.colorScheme, on: true))
+    ok = shoot2D("native-keys-colorblind", cbKeys) && ok
     fflush(stdout)
     return ok ? 0 : 1
   }

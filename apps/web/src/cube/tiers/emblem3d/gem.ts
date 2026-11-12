@@ -170,6 +170,53 @@ export function traceGem(
   return { reflect: R, exits, left: thr, path };
 }
 
+/**
+ * 나가는 빛이 어디를 보는가(2026-11-12 「투명한 보석이 아니라 금속 느낌」 뒤). 예전에는 나가는 빛이 모두 스튜디오
+ * 반사 지도만 읽어, 보석 너머 배경판이 전혀 비치지 않고 거울처럼(금속처럼) 보였다. 이제 눈이 보던 방향에서 크게
+ * 벗어나지 않고 뒤로 나가는 빛(보석을 「꿰뚫어 보는」 빛)은 뒤 배경판을 읽고, 안에서 되튀어 옆·앞으로 나가는 빛은
+ * 스튜디오 빛을 읽는다. 둘 사이는 눈 방향과 이루는 각으로 부드럽게 섞는다.
+ */
+export const THROUGH_LO = Math.cos((55 * Math.PI) / 180);
+export const THROUGH_HI = Math.cos((25 * Math.PI) / 180);
+
+/** GLSL `smoothstep` */
+export function smoothstep(lo: number, hi: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - lo) / (hi - lo)));
+  return t * t * (3 - 2 * t);
+}
+
+/** 나가는 빛 가운데 뒤 배경을 읽는 몫. `cosView`는 나가는 방향과 눈이 보는 방향(눈 → 보석)의 내적 */
+export function throughWeight(cosView: number): number {
+  return smoothstep(THROUGH_LO, THROUGH_HI, cosView);
+}
+
+/**
+ * 큐브 전체(조각 27개, 반 변 `GEM_CUBE_HALF`)를 상자 하나로 보고, 점 p에서 d로 갈 때 상자 안을 지나는 길이. 꿰뚫어
+ * 보는 빛이 뒤쪽 조각들을 지나며 더 흡수되게 해서, 두꺼운 가운데는 짙고 얇은 가장자리는 맑게 보인다.
+ */
+export const GEM_CUBE_HALF = 1.46;
+/** 큐브 안 길이 가운데 보석이 차지하는 몫(조각 한 변 0.92, 간격 1) */
+export const GEM_CUBE_FILL = 0.92;
+
+export function boxPath(p: Vec3, d: Vec3, half: number): number {
+  let t0 = 0;
+  let t1 = Number.POSITIVE_INFINITY;
+  for (let k = 0; k < 3; k++) {
+    const pk = p[k] as number;
+    const dk = d[k] as number;
+    if (Math.abs(dk) < 1e-6) {
+      if (Math.abs(pk) > half) return 0;
+      continue;
+    }
+    let a = (-half - pk) / dk;
+    let b = (half - pk) / dk;
+    if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, b);
+  }
+  return Math.max(0, t1 - t0);
+}
+
 /** 실제 분산 값(B–G 굴절률 차, 보석학 표준 값). 문서·시험용 */
 export const REAL = {
   emerald: { ior: 1.577, dispersion: 0.014 },

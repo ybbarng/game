@@ -51,6 +51,7 @@ import {
   WCA_PEOPLE,
   WCA_RESULTS_URL,
 } from "../tiers/table";
+import { buildHero } from "./core-fixtures-hero";
 import {
   buildHint,
   buildRustHumanData,
@@ -60,6 +61,7 @@ import { buildKeycaps } from "./core-fixtures-keycaps";
 import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
 import { buildSummary } from "./core-fixtures-records";
+import { buildKeyPaint, buildMask } from "./core-fixtures-screen";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
 export type FixtureFiles = Record<string, string>;
@@ -759,6 +761,9 @@ export const BUILDERS = {
   "fixtures/keycaps.json": buildKeycaps,
   "fixtures/keytable.json": buildKeyTable,
   "fixtures/summary.json": buildSummary,
+  "fixtures/mask.json": buildMask,
+  "fixtures/keypaint.json": buildKeyPaint,
+  "fixtures/hero.json": buildHero,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,

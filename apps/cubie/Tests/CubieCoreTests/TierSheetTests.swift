@@ -3,7 +3,7 @@ import Testing
 
 @testable import CubieCore
 
-/// 네이티브 티어표 창(docs/52 5-7)의 글과 표 읽기(사이트 `TierTable.tsx` `cutText`·WCA 칸과 같은 규칙)
+/// 네이티브 티어표 창(docs/52 5-8)의 글과 표 읽기(사이트 `TierTable.tsx` `cutText`·WCA 칸과 같은 규칙)
 struct TierSheetTests {
   @Test func cutTextLikeTheSite() {
     // 사이트 cutText: 1분 아래 「9.3초」, 1시간 아래 「2:30」, 그 위 「1:10:00」, 끝없음 「다 맞춤」

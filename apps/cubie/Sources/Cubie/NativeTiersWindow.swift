@@ -2,7 +2,7 @@ import AppKit
 import CubieCore
 import CubieNativeC
 
-/// 네이티브 티어표 창(docs/52 5-7): 사이트 티어표(`/cube/tiers`, `TiersApp.tsx`·`TierTable.tsx`)와 같은 글·차례·동작.
+/// 네이티브 티어표 창(docs/52 5-8): 사이트 티어표(`/cube/tiers`, `TiersApp.tsx`·`TierTable.tsx`)와 같은 글·차례·동작.
 /// 크기 단추, 내 티어 상자(사이트처럼 이 기기의 혼자 맞추기 기록으로), 크기별 기준표(구간 상한·WCA 경기자 비율), WCA 출처.
 /// 표 값은 코어가 사이트 표에서 만든 자료(`cubie_tier_table`), 엠블럼은 앱에 묶은 PNG다. 사이트로 가는 글(「← 큐브」·「혼자
 /// 맞추기」·WCA 주소)은 기본 브라우저로 연다

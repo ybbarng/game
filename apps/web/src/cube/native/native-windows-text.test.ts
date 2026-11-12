@@ -1,4 +1,4 @@
-// Cubie 네이티브 보통 창(기록 창·티어표·설정 창, docs/52 5-7)이 사이트 화면과 같은 글을 쓰는지 본다. 사이트 화면 글을 고치면
+// Cubie 네이티브 보통 창(기록 창·티어표·설정 창, docs/52 5-8)이 사이트 화면과 같은 글을 쓰는지 본다. 사이트 화면 글을 고치면
 // 이 시험이 깨져 앱의 같은 글(`apps/cubie/Sources/CubieCore/*Sheet.swift`)도 고치라고 알린다. 앱 글은 Cubie 새 판을 내야
 // 사용자에게 간다(고정 규칙 5절).
 import { describe, expect, it } from "vitest";

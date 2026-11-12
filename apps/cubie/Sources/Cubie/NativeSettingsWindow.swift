@@ -2,7 +2,7 @@ import AppKit
 import CubieCore
 import CubieNativeC
 
-/// 네이티브 설정 창(docs/52 5-7, 메뉴 「키 배치·색…」): 사이트 설정 화면(`/cube/settings`, `CubeSettingsApp.tsx`) 가운데 Cubie가
+/// 네이티브 설정 창(docs/52 5-8, 메뉴 「키 배치·색…」): 사이트 설정 화면(`/cube/settings`, `CubeSettingsApp.tsx`) 가운데 Cubie가
 /// 쓰는 것만 같은 글·차례로 보인다(`SettingsSheet`). 바꾸면 바로 앱 저장소에 쓰고 큐브 창·단축키 표가 다시 읽는다(`onChange`).
 /// 사용자 배치 편집(키 지정·겹친 키 묻기·내보내기)과 Cubie가 쓰지 않는 설정은 「사용자 배치 편집…」·「모든 설정…」이 예전 사이트
 /// 창을 연다(`openWeb`)
@@ -148,7 +148,7 @@ final class SettingsPageView: FlippedView {
     }
     customChip.look = Self.chipLook(true)
     customChip.isHidden = scheme != "custom"
-    preview.setColors(s.colors)
+    preview.setColors(s.colors, masked: s.hiddenColor)
     if preview.stickerless != s.stickerless {
       preview.stickerless = s.stickerless
       preview.rebuild()
@@ -290,7 +290,7 @@ final class SettingsPageView: FlippedView {
   func shotCube() -> CACubeView {
     let s = CubeSettings.parse(settingsText)
     let c = CACubeView(frame: preview.frame, n: 3)
-    c.setColors(s.colors)
+    c.setColors(s.colors, masked: s.hiddenColor)
     c.stickerless = s.stickerless
     c.buildForShot()
     c.reducedMotion = true
