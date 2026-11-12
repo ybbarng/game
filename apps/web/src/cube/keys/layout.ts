@@ -193,6 +193,36 @@ export function keyLayers(
   return out;
 }
 
+/**
+ * 수가 아니라 다음 키의 뜻을 바꾸는 키(층 수·깊이). 그 크기에서 쓸 수 없으면 「모두」에서도 흐린 글을 적지 않는다
+ * (3×3의 숫자 4~7, 2×2의 숫자)
+ */
+export function isKeyMode(a: KeyAction): boolean {
+  const kind = parseAction(a.action)?.kind;
+  return kind === "layers" || kind === "depth";
+}
+
+/**
+ * 단축키 표 「모두」에서 칸 하나에 적는 줄(위에서부터): 그냥 칠 때(굵게)·Shift·Alt(없으면 Alt+Shift)·둘 다 있으면
+ * Alt+Shift. 그 크기에서 못 쓰는 수는 흐리게 남기고, 못 쓰는 깊이·층 수 키는 뺀다. Cubie 네이티브 표(F1)도 Rust 코어
+ * `keys::table`이 같은 줄을 만든다(`native/cube-core/fixtures/keytable.json`)
+ */
+export function allLayerLines(
+  l: Partial<Record<Layer, KeyAction>>,
+): { key: Layer; a: KeyAction; strong: boolean }[] {
+  const lines: { key: Layer; a: KeyAction | undefined; strong: boolean }[] = [
+    { key: "plain", a: l.plain, strong: true },
+    { key: "shift", a: l.shift, strong: false },
+    { key: l.alt ? "alt" : "altShift", a: l.alt ?? l.altShift, strong: false },
+    ...(l.alt && l.altShift
+      ? [{ key: "altShift" as const, a: l.altShift, strong: false }]
+      : []),
+  ];
+  return lines.flatMap(({ key, a, strong }) =>
+    a && (a.usable || !isKeyMode(a)) ? [{ key, a, strong }] : [],
+  );
+}
+
 /** 키 칸에 들어갈 짧은 이름(명령은 낱말 하나) */
 const SHORT_COMMAND: Record<string, string> = {
   undo: "되돌리기",

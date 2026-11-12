@@ -18,7 +18,7 @@ import { fixtureJson } from "./core-fixtures";
  * 층 수 키를 든 옛 「사용자」 배치: 「두 손」에서 깊이 숫자 2~7을 비우고 층 수 키(1·2 왼손, 9·0 오른손)를 놓았다.
  * 깊이 키가 없으니 큰 큐브의 안쪽 넓은 수는 층 수를 바꾸는 길로만 친다
  */
-function layeredKeymap(): Keymap {
+export function layeredKeymap(): Keymap {
   let k = twoHandKeymap();
   for (let d = 2; d <= 7; d++) {
     k = unbind(k, { code: `Digit${d}` });

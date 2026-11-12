@@ -1,14 +1,15 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { parseAction } from "../input/actions";
 import type { KeyChord, Keymap } from "../input/keymaps";
 import { capRepeats } from "../keys/key-colors";
 import {
   type ActionKind,
   ARROWS,
+  allLayerLines,
   capOf,
   type FaceLetter,
+  isKeyMode,
   type KeyAction,
   type KeyCell,
   keyboardCells,
@@ -55,19 +56,6 @@ function borderOf(a: KeyAction | undefined): string {
   return a?.usable
     ? "border-white/10 print:border-neutral-400"
     : "border-white/[0.05] print:border-neutral-200";
-}
-
-/** 층 수 키(큰 큐브의 바깥 층 수 바꾸기). 3×3 이하에서는 하는 일이 없다(`isAvailable`) */
-function isLayersKey(a: KeyAction): boolean {
-  return parseAction(a.action)?.kind === "layers";
-}
-
-/**
- * 수가 아니라 다음 키의 뜻을 바꾸는 키(층 수·깊이). 그 크기에서 쓸 수 없으면 「모두」에서도 흐린 글을 적지 않는다
- * (3×3의 숫자 4~7, 2×2의 숫자)
- */
-function isKeyMode(a: KeyAction): boolean {
-  return isLayersKey(a) || parseAction(a.action)?.kind === "depth";
 }
 
 /** 수가 아니라 낱말로 적는 동작(명령·층 수·깊이 「3번째 층」) */
@@ -264,12 +252,7 @@ function Key({
   const idle = !cell.modifier && !usable;
   const lines: { key: string; a: KeyAction | undefined; strong?: boolean }[] =
     layer === "all"
-      ? [
-          { key: "plain", a: l.plain, strong: true },
-          { key: "shift", a: l.shift },
-          { key: "alt", a: l.alt ?? l.altShift },
-          ...(l.alt && l.altShift ? [{ key: "altShift", a: l.altShift }] : []),
-        ]
+      ? allLayerLines(l)
       : [{ key: layer, a: main, strong: true }];
   const label = !hideActions && usable ? main?.label : undefined;
   const showCap = cell.modifier || !capRepeats(cell.cap, label);
