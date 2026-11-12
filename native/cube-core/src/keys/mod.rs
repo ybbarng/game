@@ -4,7 +4,12 @@
 pub mod actions;
 pub mod interpreter;
 pub mod keymap;
+pub mod route;
 
 pub use actions::{canonical_notation, notation_to_move, Command};
 pub use interpreter::{with_layers, KeyInterpreter, KeyResult};
 pub use keymap::{notation_keymap, preset_keymap, two_hand_keymap, KeyInput, Keymap, Preset};
+pub use route::{
+    keycap_label, keycaps_for_move, keys_for_move, keys_for_move_from, normalize_move, route_for,
+    HandLayers, KeyChord, KeyRoute, HOME_LAYERS,
+};

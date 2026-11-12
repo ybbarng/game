@@ -321,6 +321,7 @@ export function CubePlay({
         if (disposed) return;
         const s = live.current.settings;
         const view = CubeView.create(canvas, {
+          onLost: () => setFailed(true),
           n,
           quality,
           colors: shownRef.current,

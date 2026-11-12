@@ -81,6 +81,7 @@ function useStage(
       .then(({ CubeView }) => {
         if (disposed) return;
         const view = CubeView.create(canvas, {
+          onLost: () => setFailed(true),
           n: N,
           quality: settings.quality,
           colors: settings.colors,

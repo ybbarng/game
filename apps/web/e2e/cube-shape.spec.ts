@@ -1,6 +1,12 @@
 import { inputReady, keysFor, no3d, shot, useNotationKeys } from "./cube";
 import { NO_PHONE_LANDSCAPE } from "./projects";
-import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  SAVE_SCREENSHOTS,
+  test,
+} from "./test";
 
 /**
  * 모양 만들기(docs/47 9-10). 목표 고르기·판정·컴퓨터 계획은 단위 시험(`shape-race.test.ts`, `shape-plan.test.ts`,
@@ -11,6 +17,8 @@ import { expect, type Page, SAVE_SCREENSHOTS, test } from "./test";
  */
 
 const SCRAMBLE_TIMEOUT = 60_000;
+/** 3D 장면이 자리 잡기를 기다리는 상한(멈춘 시험을 잡는 안전장치, cube-3d.spec과 같다) */
+const SCENE = { timeout: 30_000 };
 
 /** 2×2 쉬운 모양의 공식(`patterns/data.ts`) */
 const EASY2: Record<string, string> = {
@@ -189,20 +197,37 @@ test.describe("목표 그림: 거울 판을 단 3D 큐브", {
     await useNotationKeys(page);
   });
 
+  /**
+   * 장면이 자리를 잡을 때까지: 첫 장을 그렸거나(`data-cube-drawn`) 3D를 못 그려 큐브 그림으로 바뀌었다.
+   * 이 화면은 장면이 둘(목표·내 큐브)이고, GPU 없는 CI는 두 장면을 만들고 첫 장을 그리는 동안 화면이 몇 초 멈춘다
+   * (2026-11-12 #264 CI에서 기본 5초를 넘김). 상한은 멈춘 시험을 잡는 안전장치(cube-3d.spec과 같다)
+   */
+  async function settled(area: Locator) {
+    await expect(
+      area
+        .locator("[data-cube-canvas][data-cube-drawn], [data-cube-posters]")
+        .first(),
+    ).toBeVisible(SCENE);
+    // 그림으로 바뀌었으면 3D 길이 깨진 것이라 여기서 드러낸다
+    await expect(area.locator("[data-cube-posters]")).toHaveCount(0);
+  }
+
   /** 목표 그림이 거울 판을 단 3D로 보이고, 「만드는 법」을 열어도 그림과 공식이 화면 안에 보인다 */
   async function goalWithMirror(page: Page, name: string, project: string) {
     const goal = page.locator(
       "[data-cube-shape-target] [data-cube-shape-goal]",
     );
     const canvas = goal.locator("[data-cube-canvas]");
-    await expect(canvas).toHaveAttribute("data-cube-ready", "");
-    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
+    const stage = page.locator("[data-cube-stage]");
     // 펼친 그림·큐브 그림 둘이 아니다
-    await expect(goal.locator("[data-cube-posters]")).toHaveCount(0);
+    await settled(goal);
+    await expect(canvas).toHaveAttribute("data-cube-mirror", "on");
     // 내가 돌리는 큐브도 거울 판
-    await expect(
-      page.locator("[data-cube-stage] [data-cube-canvas]"),
-    ).toHaveAttribute("data-cube-mirror", "on");
+    await settled(stage);
+    await expect(stage.locator("[data-cube-canvas]")).toHaveAttribute(
+      "data-cube-mirror",
+      "on",
+    );
     await shot(page, `${name}-goal`, project);
 
     const toggle = page.locator("[data-cube-shape-formula-toggle]");
@@ -228,6 +253,21 @@ test.describe("목표 그림: 거울 판을 단 3D 큐브", {
     await page.locator('[data-cube-shape-card="3-checkerboard"]').click();
     await inputReady(page);
     await goalWithMirror(page, "shape-solo", info.project.name);
+
+    // 브라우저가 문맥을 버리면(문맥 수 상한, GPU 다시 시작) 빈 캔버스로 남지 않고 큐브 그림 둘로 바뀐다
+    const goal = page.locator(
+      "[data-cube-shape-target] [data-cube-shape-goal]",
+    );
+    await goal.locator("[data-cube-canvas]").evaluate((c) => {
+      const gl = (c as HTMLCanvasElement).getContext("webgl2");
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    });
+    await expect(goal.locator("[data-cube-posters]")).toBeVisible();
+    await expect(goal.locator("[data-cube-canvas]")).toHaveCount(0);
+    // 내 큐브는 그대로 3D
+    await expect(
+      page.locator("[data-cube-stage] [data-cube-canvas][data-cube-drawn]"),
+    ).toBeVisible();
   });
 
   test("컴퓨터와 대결", async ({ page }, info) => {

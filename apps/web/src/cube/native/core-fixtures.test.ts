@@ -10,4 +10,6 @@ describe("Rust 코어 공통 자료", () => {
   it("키 누름 차례 → 수·명령(두 손·표기)", () =>
     checkFixture("fixtures/keys.json"));
   it("Rust 키 배치 자료 파일", () => checkFixture("src/keymap_data.rs"));
+  it("공식 글의 수 → 키캡 줄(두 손·표기·사용자)", () =>
+    checkFixture("fixtures/keycaps.json"));
 });
