@@ -3,6 +3,10 @@
 // 사용자에게 간다(고정 규칙 5절).
 import { describe, expect, it } from "vitest";
 
+import { PRESET_LABEL } from "../input/keymaps";
+import { SCRAMBLE_SHOW_LABEL } from "../scramble-show";
+import { COLOR_SCHEME_LABEL } from "../settings";
+
 declare global {
   interface ImportMeta {
     glob<T>(
@@ -84,6 +88,42 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       "평균 기록이 있는 약",
       "그랜드마스터·챌린저 경계는 그때의 세계 약 1,000위·300위 기록이라 해마다 빨라질 수 있습니다.",
     ]));
+
+  it("설정 창(CubeSettingsApp 가운데 Cubie가 쓰는 칸)", () =>
+    sameText("CubeSettingsApp.tsx", "SettingsSheet.swift", [
+      "← 큐브",
+      "큐브 설정",
+      "키 배치",
+      "키보드 그림으로 보기",
+      "키 익히기",
+      '"위(U)"',
+      '"오른쪽(R)"',
+      '"앞(F)"',
+      '"아래(D)"',
+      '"왼쪽(L)"',
+      '"뒤(B)"',
+      "보기와 소리",
+      "회전 속도",
+      "섞기 연출",
+      "크기에 맞게는 5×5까지 하나씩 빠르게, 6×6·7×7은 짧은 연출이에요.",
+      '"스티커 없는 모양"',
+      '"큐브 소리"',
+    ]));
+
+  it("설정 칩 이름(사이트 이름표 모음)", () => {
+    const app = source("SettingsSheet.swift");
+    for (const [id, label] of [
+      ...Object.entries(PRESET_LABEL),
+      ...Object.entries(COLOR_SCHEME_LABEL),
+      ...Object.entries(SCRAMBLE_SHOW_LABEL),
+    ]) {
+      const pair =
+        id === "custom" && label === "직접 고름"
+          ? `"${label}"`
+          : `("${id}", "${label}")`;
+      expect(app, `앱 설정 글에 ${pair}가 없다`).toContain(pair);
+    }
+  });
 
   it("티어 기준표(TierTable)", () =>
     sameText("TierTable.tsx", "TierSheet.swift", [

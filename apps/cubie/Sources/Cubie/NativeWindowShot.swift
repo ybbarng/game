@@ -35,13 +35,12 @@ enum NativeWindowShot {
     }
     let tiers = NativeTiersWindow(store: store, math: RustTierMath(), n: book.n)
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok
-    for (name, make) in extraShots(store) { ok = shoot(make().window, name: name, dir: dir, fullHeight: true) && ok }
+    let settingsWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
+    ok = shoot(settingsWindow.window, name: "native-settings", dir: dir, fullHeight: true) && ok
     fflush(stdout)
     return ok ? 0 : 1
   }
 
-  /// 다른 창의 스크린샷(설정 창이 더한다)
-  static var extraShots: (KeyValueStore) -> [(String, () -> NativeSheetWindow)] = { _ in [] }
 
   /// 창 내용을 PNG로(배율 2). `fullHeight`면 굴리는 내용 전체 높이로
   static func shoot(_ window: NSWindow, name: String, dir: String, fullHeight: Bool = false) -> Bool {
@@ -84,7 +83,7 @@ enum NativeWindowShot {
       if ProcessInfo.processInfo.environment["CUBIE_DEBUG"] != nil {
         print("[shot] cube bounds=\(c.bounds) layers=\(c.layerCount)")
       }
-      let target = (c.superview as? ReplayBoxView)?.shotCube() ?? c
+      let target = (c.superview as? ReplayBoxView)?.shotCube() ?? (c.superview as? SettingsPageView)?.shotCube() ?? c
       guard let img = render3D(target, scale: scale) else { continue }
       // 창 좌표(아래가 0)로 옮긴다
       let r = c.convert(c.bounds, to: view)

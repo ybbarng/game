@@ -177,6 +177,8 @@ void cubie_mini_summary(const CubieTimeable *recs, uint32_t count, CubieSummary 
 /// 티어표 글: 첫 줄 「WCA 경기자 수\t자료 날짜\tWCA 문구\tWCA 주소」, 그 뒤 티어 열 줄(아이언부터)
 /// 「구간 상한(초, 쉼표, 끝없음 inf)\t진입 시간 이하 경기자 수\t상위 %」(대회 밖은 뒤 두 칸이 빈다). 글 바이트 수
 uint32_t cubie_tier_table(uint32_t n, uint8_t *out, uint32_t len);
+/// 기본 배치("twoHand"·"notation")의 키 전부(사이트 차례): 줄마다 「code\t조합(Shift 1·Alt 2·Ctrl 4)\t동작」. 글 바이트 수
+uint32_t cubie_preset_bindings(const char *preset, uint8_t *out, uint32_t len);
 
 #ifdef __cplusplus
 }

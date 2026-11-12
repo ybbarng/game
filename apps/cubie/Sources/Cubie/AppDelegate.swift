@@ -516,7 +516,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 티어표를 지금 크기로(이미 열려 있으면 그 크기로 바꾼다)
   @objc private func menuTiers() { openTiers(n: cube.state.n) }
   /// 메뉴 「키 배치·색…」: 사이트의 키·색 설정 화면. 웹 저장소가 앱 것(브라우저와 따로)이라 앱 안에서 정해야 미니 창에 닿는다
-  @objc private func menuSettings() { openWebWindow(.settings) }
+  @objc private func menuSettings() { openWindow(.settings) }
 
   @objc private func menuVsFriends() { NSWorkspace.shared.open(Config.site("/cube/online")) }
   @objc private func menuVsBot() { NSWorkspace.shared.open(Config.site("/cube/vs")) }
@@ -548,7 +548,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     case .tiers:
       s = NativeTiersWindow(store: native.store, math: RustTierMath(), n: n ?? cube.state.n)
     case .settings:
-      return openWebWindow(kind)
+      // 바꾸면 바로 큐브 창(색·회전 시간·스티커·소리·섞기 연출·키 배치)과 단축키 표가 다시 읽는다
+      s = NativeSettingsWindow(
+        store: native.store,
+        onChange: { [weak self] in
+          self?.cube.reload()
+          self?.keys.reload()
+        },
+        openWeb: { [weak self] in self?.openWebWindow(.settings) })
     }
     s.onClose = { [weak self] in self?.sheets[kind] = nil }
     sheets[kind] = s
@@ -558,8 +565,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
   /// 그 창을 네이티브로 옮겼나
   private func nativeSheet(_ kind: WebWindow) -> Bool {
     switch kind {
-    case .records, .tiers: true
-    case .settings: false
+    case .records, .tiers, .settings: true
     }
   }
 
@@ -633,6 +639,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         self?.cube.reload()
         self?.keys.reload()
+        (self?.sheets[.settings] as? NativeSettingsWindow)?.reload()
       }
     }
   }
