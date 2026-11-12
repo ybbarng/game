@@ -1,11 +1,13 @@
 import AppKit
+import CubieCore
 import CubieNativeC
 
 /// 네이티브 단축키 표(F1, docs/47 15-25·docs/52 5-6): 사이트 `?view=keys&panel=1`(`KeysPanelPage` + `KeyboardMap` 「모두」)과
 /// 같은 내용을 앱이 그린다. 웹 화면을 띄우지 않아 F1을 켜도 웹 프로세스(약 35MB)가 생기지 않는다.
 /// - 위 줄: 섞기·되돌리기 키(지금 배치에서 읽음), 힌트 `\`, 닫기 F1·Esc, 오른쪽에 크기·배치 이름
 /// - 키보드 그림: 실제 키보드 비례, 칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래 Shift, 맨 아래 Alt. 칸 글은 Rust 코어가
-///   사이트와 같게 만든다(`cubie_game_key_table`, 3×3의 2L′ → M′, 못 쓰는 수는 흐리게). 테두리는 그냥 칠 때 면 색
+///   사이트와 같게 만든다(`cubie_game_key_table`, 3×3의 2L′ → M′, 못 쓰는 수는 흐리게). 칸 색도 사이트와 같다: 면 돌리기는
+///   칸 바탕에 면 색을 옅게, 큐브 돌리기는 칸 아래 점선·가운데 층은 짧은 선에 빌린 면 색(코어 `keys::paint`, `keypaint.json`)
 /// - 화살표: 사이트처럼 위 하나(처음 각도)·아래 셋(뒤 보기·아래 보기·뒤 보기)을 한 칸 높이에 두 줄로
 /// - 아래 줄: 칸 읽는 법(「두 손」 3×3 이상이면 숫자·Shift 규칙)
 /// - 큐브 창에서 누른 키는 0.5초 빛난다(`KEYS_PANEL_PRESS_MS`)
@@ -23,6 +25,15 @@ final class NativeKeysView: NSView {
     var usable: Bool
     var action: String
     var label: String
+    /// 칠하기(코어 `keys::paint`): 「f」·「s」 + 면 번호 + 반대 + 넓게·큐브 돌리기, 수가 아니면 빈 글
+    var paint = ""
+  }
+
+  /// 칸에 칠할 면 색(설정 `colors`·`colorScheme`·`keyColors`)
+  struct Look {
+    var colors: [UInt32] = CubeSettings.standard
+    var scheme = "standard"
+    var on = true
   }
 
   /// 표 하나를 그릴 자료: 배치 이름, 위 줄 키를 읽을 배치, 칸마다의 줄
@@ -30,11 +41,12 @@ final class NativeKeysView: NSView {
     var preset: String
     var bindings: [Binding]
     var cells: [String: [Line]]
+    var look = Look()
 
     static let empty = Source(preset: "twoHand", bindings: [], cells: [:])
 
     /// 코어 게임의 지금 배치에서 크기 n의 표
-    static func of(game: OpaquePointer, n: Int, preset: String) -> Source {
+    static func of(game: OpaquePointer, n: Int, preset: String, look: Look = Look()) -> Source {
       let bindings = NativeCore.string { cubie_game_key_bindings(game, UInt32(n), $0, $1) }.split(separator: "\n")
         .compactMap { line -> Binding? in
           let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
@@ -42,7 +54,7 @@ final class NativeKeysView: NSView {
           return Binding(code: f[0], mods: m, action: f[2])
         }
       let table = NativeCore.string { cubie_game_key_table(game, UInt32(n), $0, $1) }
-      return Source(preset: preset, bindings: bindings, cells: NativeKeysView.parseTable(table))
+      return Source(preset: preset, bindings: bindings, cells: NativeKeysView.parseTable(table), look: look)
     }
   }
 
@@ -51,8 +63,9 @@ final class NativeKeysView: NSView {
     var out: [String: [Line]] = [:]
     for line in text.split(separator: "\n") {
       let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-      guard f.count == 5, let m = Int(f[1]) else { continue }
-      out[f[0], default: []].append(Line(mods: m, usable: f[2] == "1", action: f[3], label: f[4]))
+      guard f.count >= 5, let m = Int(f[1]) else { continue }
+      out[f[0], default: []].append(
+        Line(mods: m, usable: f[2] == "1", action: f[3], label: f[4], paint: f.count > 5 ? f[5] : ""))
     }
     return out
   }
@@ -122,22 +135,38 @@ final class NativeKeysView: NSView {
     l.action.contains(":") || commands.contains(l.action)
   }
 
-  /// 테두리 색: 그냥 칠 때 면 돌리기면 그 면 색. 사이트 `keyPaint`처럼 칸 글(가장 짧은 이름)로 고른다:
-  /// 3×3의 X(2L′)·.(2R)는 T와 같은 M′이라 같은 생김새
-  static func tone(_ line: Line) -> NSColor? {
-    // 명령(되돌리기·섞기 등)과 깊이·층 수 키는 면 색이 없다
-    if isWordy(line) { return nil }
-    let action = line.label
-    guard let f = action.first else { return nil }
-    let faces: [Character: UInt32] = [
-      "U": 0xffffff, "R": 0xc8102e, "F": 0x009b48, "D": 0xffd500, "L": 0xff5800, "B": 0x0046ad,
-      "u": 0xffffff, "r": 0xc8102e, "f": 0x009b48, "d": 0xffd500, "l": 0xff5800, "b": 0x0046ad,
-    ]
-    let letter = action.first(where: { $0.isLetter }) ?? f
-    guard let hex = faces[letter] else { return nil }
-    return NSColor(
+  /// 칸 하나의 칠하기(사이트 `KeyPaint.tsx` `useKeyLook`·`KeyMark`, 값은 코어 `keys::paint`)
+  struct Paint: Equatable {
+    /// 면 돌리기면 칸 바탕(면 색을 옅게), 아니면 nil
+    var fill: UInt32?
+    /// 면 돌리기 칸의 사선 무늬 색(색약 친화·높은 대비 배색의 주황)
+    var stripe: UInt32?
+    /// 큐브 돌리기(점선)·가운데 층(짧은 선)의 선 색과 모양, 반대 방향은 흐리게
+    var line: UInt32?
+    var dotted = false
+    var prime = false
+  }
+
+  /// 그냥 칠 때 줄의 칠하기 글 → 칸 칠하기. 쓸 수 없는 줄·면 색을 끈 설정·수가 아닌 줄은 nil
+  static func paint(_ line: Line?, look: Look) -> Paint? {
+    guard look.on, let line, line.usable, line.paint.count == 4 else { return nil }
+    let f = Array(line.paint)
+    guard let color = Int(String(f[1])), color < look.colors.count else { return nil }
+    let rgb = look.colors[color]
+    let prime = f[2] == "1"
+    if f[0] == "f" {
+      let striped = look.scheme.withCString { cubie_key_striped($0, UInt8(color)) }
+      return Paint(
+        fill: cubie_key_tone(rgb, prime ? 1 : 0), stripe: striped ? cubie_key_tone(rgb, prime ? 4 : 3) : nil,
+        prime: prime)
+    }
+    return Paint(line: cubie_key_tone(rgb, 2), dotted: f[3] == "1", prime: prime)
+  }
+
+  static func ns(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
+    NSColor(
       srgbRed: CGFloat((hex >> 16) & 0xff) / 255, green: CGFloat((hex >> 8) & 0xff) / 255,
-      blue: CGFloat(hex & 0xff) / 255, alpha: 1)
+      blue: CGFloat(hex & 0xff) / 255, alpha: alpha)
   }
 
   /// 글을 폭 `width` 안에 들게: 넘치면 글꼴을 줄인다(잘리지 않게)
@@ -215,24 +244,69 @@ final class NativeKeysView: NSView {
       .draw(with: NSRect(x: pad, y: y + 2, width: bounds.width - pad * 2, height: bounds.height - y - 4), options: [.usesLineFragmentOrigin])
   }
 
-  private func fillKey(_ code: String, _ r: NSRect, modifier: Bool, stroke: NSColor?) -> NSBezierPath {
-    let path = NSBezierPath(roundedRect: r, xRadius: 4, yRadius: 4)
-    (pressed == code ? NSColor(srgbRed: 0.95, green: 0.8, blue: 0.3, alpha: 0.45) : NSColor(white: 1, alpha: modifier ? 0.03 : 0.07))
-      .setFill()
+  /// 칸 바탕과 테두리(사이트 `KeyboardMap`): 테두리는 무채색 하나, 면 돌리기 칸은 바탕에 면 색을 옅게(+ 사선 무늬),
+  /// 큐브 돌리기·가운데 층은 칸 아래 선. 누른 칸은 칠하기 대신 빛난다(사이트도 상태가 있으면 바탕 칠하기를 뺀다)
+  private func fillKey(_ code: String, _ r: NSRect, modifier: Bool, idle: Bool, paint: Paint?) {
+    let path = NSBezierPath(roundedRect: r.insetBy(dx: 0.5, dy: 0.5), xRadius: 4, yRadius: 4)
+    let lit = pressed == code
+    if lit {
+      NSColor(srgbRed: 0.95, green: 0.8, blue: 0.3, alpha: 0.45).setFill()
+    } else if let fill = paint?.fill {
+      Self.ns(fill).setFill()
+    } else {
+      NSColor(white: 1, alpha: modifier || idle ? 0 : 0.04).setFill()
+    }
     path.fill()
-    (stroke?.withAlphaComponent(0.85) ?? NSColor(white: 1, alpha: 0.15)).setStroke()
-    path.lineWidth = stroke == nil ? 1 : 1.5
+    if !lit, let stripe = paint?.stripe {
+      // 135° 사선, 2px 선·5px 틈(사이트 `stripeImage`)
+      NSGraphicsContext.saveGraphicsState()
+      path.addClip()
+      Self.ns(stripe).setStroke()
+      let lines = NSBezierPath()
+      lines.lineWidth = 2
+      var x = r.minX - r.height
+      while x < r.maxX + r.height {
+        lines.move(to: NSPoint(x: x, y: r.minY))
+        lines.line(to: NSPoint(x: x + r.height, y: r.maxY))
+        x += 7 * 2.squareRoot()
+      }
+      lines.stroke()
+      NSGraphicsContext.restoreGraphicsState()
+    }
+    NSColor(white: 1, alpha: modifier ? 0.06 : idle ? 0.05 : 0.10).setStroke()
+    path.lineWidth = 1
     path.stroke()
-    return path
+    if !lit, let line = paint?.line { drawMark(in: r, color: line, dotted: paint?.dotted ?? false, prime: paint?.prime ?? false) }
+  }
+
+  /// 칸 아래 선(사이트 `KeyMark`): 큐브 돌리기는 칸 너비 56%의 점선(지름 3px, 5px마다 하나, 남는 길이를 고르게),
+  /// 가운데 층은 20%의 짧은 선. 굵기 3px, 칸 아래에서 4px 위. 반대 방향은 불투명도 0.6
+  private func drawMark(in r: NSRect, color: UInt32, dotted: Bool, prime: Bool) {
+    let c = Self.ns(color, prime ? 0.6 : 1)
+    c.setFill()
+    let inset = r.width * (dotted ? 0.22 : 0.40)
+    let box = NSRect(x: r.minX + inset, y: r.maxY - 4 - 3, width: r.width - inset * 2, height: 3)
+    if !dotted {
+      NSBezierPath(roundedRect: box, xRadius: 1.5, yRadius: 1.5).fill()
+      return
+    }
+    let pitch: CGFloat = 5
+    let count = max(1, Int(box.width / pitch))
+    let space = (box.width - CGFloat(count) * 3) / CGFloat(count + 1)
+    for i in 0..<count {
+      let x = box.minX + space + CGFloat(i) * (3 + space)
+      NSBezierPath(ovalIn: NSRect(x: x, y: box.minY, width: 3, height: 3)).fill()
+    }
   }
 
   private func drawKey(_ code: String, in r: NSRect) {
     let lines = source.cells[code] ?? []
     let plain = lines.first { $0.mods == 0 }
     let modifier = Self.modifierCaps[code] != nil
-    _ = fillKey(code, r, modifier: modifier, stroke: plain.flatMap { $0.usable ? Self.tone($0) : nil })
     let cap = Self.cap(code)
     let idle = !modifier && !(plain?.usable ?? false)
+    let plainPaint = modifier ? nil : Self.paint(plain, look: source.look)
+    fillKey(code, r, modifier: modifier, idle: idle, paint: plainPaint)
     if modifier || !Self.capRepeats(cap, plain?.usable == true ? plain?.label : nil) {
       NSAttributedString(
         string: cap,
@@ -247,7 +321,8 @@ final class NativeKeysView: NSView {
         strong
         ? NSFont.systemFont(ofSize: Self.isWordy(l) ? 8.5 : 10, weight: .semibold)
         : NSFont.systemFont(ofSize: 7.5)
-      let base = strong ? NSColor(white: 1, alpha: 0.9) : NSColor(white: 1, alpha: 0.45)
+      // 반대 방향 면 색 칸은 글자를 한 단계 흐리게(사이트 `labelTone`)
+      let base = strong ? NSColor(white: 1, alpha: plainPaint?.prime == true ? 0.6 : 0.9) : NSColor(white: 1, alpha: 0.45)
       return (l, font, l.usable ? base : base.withAlphaComponent(base.alphaComponent * 0.35))
     }
     // 줄 간격은 글꼴 크기의 1.15배(글 상자 높이보다 촘촘히, 사이트 leading-[1.15])
@@ -274,7 +349,7 @@ final class NativeKeysView: NSView {
     for (code, col, row) in spots {
       let cell = NSRect(x: r.minX + col * (w + gap), y: r.minY + row * (h + gap), width: w, height: h)
       let line = source.cells[code]?.first
-      _ = fillKey(code, cell, modifier: false, stroke: nil)
+      fillKey(code, cell, modifier: false, idle: false, paint: nil)
       let cap = NSAttributedString(
         string: Self.cap(code),
         attributes: [.font: NSFont.systemFont(ofSize: 6.5), .foregroundColor: NSColor(white: 1, alpha: 0.45)])

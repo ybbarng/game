@@ -39,6 +39,8 @@ final class CACubeView: NSView {
   let n: Int
   /// 면 색(U R F D L B, 설정 `colors`)
   private(set) var colors: [UInt32] = CubeSettings.standard
+  /// 가린 칸 색(설정 `hidden`, 코어 칸 색 `CUBIE_COLOR_MASKED`)
+  private(set) var maskedColor: UInt32 = CubeSettings().hiddenColor
   var stickerless = false
   /// 동작 줄이기(시스템 설정): 거울 페이드·축하를 줄인다
   var reducedMotion = false
@@ -164,9 +166,10 @@ final class CACubeView: NSView {
 
   // MARK: 설정
 
-  func setColors(_ c: [UInt32]) {
-    guard c.count == 6, c != colors else { return }
+  func setColors(_ c: [UInt32], masked: UInt32) {
+    guard c.count == 6, c != colors || masked != maskedColor else { return }
     colors = c
+    maskedColor = masked
     painted = painted.map { _ in 255 }
     paintShown()
   }
@@ -390,7 +393,7 @@ final class CACubeView: NSView {
     CATransaction.setDisableActions(true)
     for (i, c) in shown.enumerated() where i < painted.count && painted[i] != c {
       painted[i] = c
-      let hex = colors[Int(min(c, 5))]
+      let hex = c == UInt8(CUBIE_COLOR_MASKED) ? maskedColor : colors[Int(min(c, 5))]
       stickerLayers[i].backgroundColor = Self.cg(hex)
       let tinted = Self.cg(hex, Self.mirrorTint)
       for k in mirrorStickers.indices { mirrorStickers[k][i].backgroundColor = tinted }

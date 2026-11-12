@@ -23,14 +23,14 @@ const LAYER_MODS: Record<Layer, number> = {
   altShift: 3,
 };
 
-const KEYMAPS: Record<string, () => Keymap> = {
+export const KEYMAPS: Record<string, () => Keymap> = {
   twoHand: twoHandKeymap,
   notation: notationKeymap,
   custom: layeredKeymap,
 };
 
 /** Cubie 표는 Cubie가 쓰지 않는 동작(처음으로·살펴보기)을 뺀다(`KeysPanelPage`) */
-function forCubie(k: Keymap): Keymap {
+export function forCubie(k: Keymap): Keymap {
   return {
     ...k,
     bindings: k.bindings.filter(

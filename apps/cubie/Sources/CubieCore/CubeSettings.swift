@@ -22,6 +22,15 @@ public struct CubeSettings: Equatable, Sendable {
   public var stickerless = false
   public var sound = true
   public var scrambleShow: ScrambleShow = .auto
+  /// 가린 칸(공식 연습 가리기)을 검정으로 칠할지 회색으로 칠할지(사이트 `hidden`)
+  public var hiddenGray = false
+  /// 배색 이름(사이트 `colorScheme`: standard·highContrast·colorblind·custom). 단축키 표의 사선 무늬를 고른다
+  public var colorScheme = "standard"
+  /// 단축키 표 칸에 면 색을 칠할지(사이트 `keyColors`)
+  public var keyColors = true
+
+  /// 가린 칸 색(사이트 `view/cube-view.ts` `HIDDEN_COLOR`)
+  public var hiddenColor: UInt32 { hiddenGray ? 0x6b6b6b : 0x111111 }
 
   public init() {}
 
@@ -32,6 +41,8 @@ public struct CubeSettings: Equatable, Sendable {
       let d = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     else { return s }
     let scheme = d["colorScheme"] as? String
+    if let scheme, scheme == "custom" || schemes[scheme] != nil { s.colorScheme = scheme }
+    if let b = d["keyColors"] as? NSNumber, isBool(b) { s.keyColors = b.boolValue }
     if scheme == "custom" {
       if let arr = d["colors"] as? [NSNumber], arr.count == 6,
         arr.allSatisfy({ isInt($0) && $0.doubleValue >= 0 && $0.doubleValue <= 0xffffff })
@@ -47,6 +58,7 @@ public struct CubeSettings: Equatable, Sendable {
     if let b = d["stickerless"] as? NSNumber, isBool(b) { s.stickerless = b.boolValue }
     if let b = d["sound"] as? NSNumber, isBool(b) { s.sound = b.boolValue }
     if let v = d["scrambleShow"] as? String, let show = ScrambleShow(rawValue: v) { s.scrambleShow = show }
+    s.hiddenGray = (d["hidden"] as? String) == "gray"
     return s
   }
 

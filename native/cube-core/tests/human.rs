@@ -236,3 +236,44 @@ fn hint_and_human_solve_match_site() {
     }
     r.finish();
 }
+
+/// 홈 시연 해법 고르기(`fixtures/hero.json`): 첫 면 색마다 십자 수, 가장 싼 색과 그 색의 풀이
+#[test]
+fn hero_first_color_matches_site() {
+    use cube_core::hero::{hero_cfop, stage_cost};
+    use cube_core::human::{solve_cfop_first, StageName};
+    let mut r = Report::new("홈 시연 첫 면 색");
+    for c in cases(include_str!("../fixtures/hero.json")) {
+        r.total += 1;
+        let alg = c.get("alg").str();
+        let state = apply_alg(3, &solved_cube(3), alg).expect("표기");
+        let what = format!("3×3 「{alg}」");
+        let costs: Vec<f64> = (0..6)
+            .map(|first| {
+                let s = solve_cfop_first(&state, first).expect("해법");
+                stage_cost(&s, StageName::Cross) as f64
+            })
+            .collect();
+        let want_costs: Vec<f64> = c.get("costs").arr().iter().map(Json::num).collect();
+        r.check(&what, costs, want_costs);
+        let (solve, first) = hero_cfop(&state).expect("해법");
+        r.check(&what, first as f64, c.get("first").num());
+        r.check(&what, solve.moves.join(" ").as_str(), c.get("moves").str());
+        let stages: Vec<(String, f64, f64)> = solve
+            .stages
+            .iter()
+            .map(|s| (s.name.id().to_string(), s.start as f64, s.end as f64))
+            .collect();
+        let want_stages: Vec<(String, f64, f64)> = c
+            .get("stages")
+            .arr()
+            .iter()
+            .map(|s| {
+                let a = s.arr();
+                (a[0].str().to_string(), a[1].num(), a[2].num())
+            })
+            .collect();
+        r.check(&what, stages, want_stages);
+    }
+    r.finish();
+}

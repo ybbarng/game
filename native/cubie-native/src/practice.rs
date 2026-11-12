@@ -3,6 +3,7 @@
 //! 넣지 않고 그 수의 키를 잠깐 보인다). 말풍선 줄은 사이트 `mini/practice.ts` `practiceBubbleLines`와 같은 글이다.
 
 use cube_core::keys::{keycaps_for_move, Command, KeyInput, KeyResult};
+use cube_core::mask::{mask_at_slots, mask_for, Visibility};
 use cube_core::practice::{
     stage_by_id, PracticeEvent, PracticeInput, PracticeMode, PracticePhase, PracticeSession,
     PRACTICE_N,
@@ -77,6 +78,15 @@ impl Game {
 
     pub fn practicing(&self) -> bool {
         self.practice.is_some()
+    }
+
+    /// 공식 연습 중이면 그 단계의 가리기를 화면 상태의 자리마다(사이트 미니 `stickersFromState(…, board.mask)`).
+    /// 가리지 않는 단계·연습 밖이면 `None`. 값은 코어 [`mask_for`]가 내고 공통 시험 자료(`mask.json`)로 사이트와 견준다
+    pub fn shown_mask(&self) -> Option<Vec<Visibility>> {
+        let p = self.practice.as_ref()?;
+        p.board.as_ref()?;
+        let m = mask_for(self.n, p.stage.mask)?;
+        Some(mask_at_slots(self.shown(), &m))
     }
 
     /// 시각이 닿은 일(맞춘 모습 멈춤 끝·틀린 키 끝)
@@ -295,8 +305,13 @@ mod tests {
         let (rec, train) = g.practice_records().unwrap();
         assert!(rec.contains(&format!("\"last\":\"{stage}\"")), "{rec}");
         assert_eq!(train, "{}");
+        // 첫 단계(십자)는 십자 엣지와 센터만 보인다: 54칸 중 보이는 칸은 십자 엣지 넷 × 2 + 센터 여섯 = 14
+        let m = g.shown_mask().expect("십자 단계는 가린다");
+        assert_eq!(m.len(), 54);
+        assert_eq!(m.iter().filter(|v| **v == Visibility::Visible).count(), 14);
         g.practice_stop();
         assert!(!g.practicing());
+        assert!(g.shown_mask().is_none());
         assert!(!Game::new(4).practice_start(stage, false, "", "", "", 1));
         assert_eq!(format_ms(62_050.0), "1:02.05");
     }

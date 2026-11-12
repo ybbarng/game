@@ -89,6 +89,25 @@ try {
   await page.waitForTimeout(800);
   const mirror = await page.screenshot({ omitBackground: true, type: "png" });
   writeFileSync(path.join(dir, "web-mirror.png"), mirror);
+  // 공식 연습 가리기(docs/52 5-7): 초보자 십자·노란 십자 단계. 문제는 웹과 네이티브가 다를 수 있다(가리는 모양을 본다)
+  await fromApp(page, { type: "mirror", on: false });
+  const webPractice = {};
+  for (const stage of ["beginner-cross", "beginner-yellow-cross"]) {
+    await fromApp(page, { type: "practice", stage, mode: "follow" });
+    await page.waitForSelector(`main[data-mini-practice='${stage}']`, {
+      timeout: 30_000,
+    });
+    await page.waitForTimeout(800);
+    webPractice[stage] = await page.screenshot({
+      omitBackground: true,
+      type: "png",
+    });
+    writeFileSync(
+      path.join(dir, `web-practice-${stage}.png`),
+      webPractice[stage],
+    );
+  }
+  await fromApp(page, { type: "practice", stage: null });
 
   const img = (buf) => `data:image/png;base64,${buf.toString("base64")}`;
   const native = (name) => {
@@ -108,6 +127,10 @@ try {
       native("native-mirror-turning.png"),
     ],
     ["네이티브 · 다 맞춘 축하", native("native-cheer.png")],
+    ["웹 · 공식 연습 십자(가리기)", webPractice["beginner-cross"]],
+    ["네이티브 · 공식 연습 십자(가리기)", native("native-practice-cross.png")],
+    ["웹 · 공식 연습 노란 십자", webPractice["beginner-yellow-cross"]],
+    ["네이티브 · 공식 연습 노란 십자", native("native-practice-llcross.png")],
   ].filter(([, b]) => b);
   const cell = (desk, buf) =>
     `<div class="c" style="background:${desk}"><img src="${img(buf)}"></div>`;
@@ -124,7 +147,7 @@ try {
     .join("")}</table>`;
   const sheet = await browser.newPage({
     deviceScaleFactor: 2,
-    viewport: { width: 1200, height: 560 },
+    viewport: { width: 1800, height: 560 },
   });
   await sheet.setContent(html);
   await sheet
@@ -149,6 +172,24 @@ try {
     await kp.close();
   }
   await keysCtx.close();
+  // 색약 친화 배색 3×3: 주황 칸 사선 무늬(사이트 `KEY_STRIPE`, docs/52 5-7)
+  const cbCtx = await browser.newContext({
+    viewport: { width: 560, height: 300 },
+    deviceScaleFactor: 2,
+    colorScheme: "dark",
+  });
+  await cbCtx.addInitScript(() =>
+    localStorage.setItem(
+      "cube.settings.v1",
+      JSON.stringify({ colorScheme: "colorblind" }),
+    ),
+  );
+  const cbPage = await cbCtx.newPage();
+  await cbPage.goto(`${BASE}/cube/mini?view=keys&panel=1&n=3`);
+  await cbPage.locator("[data-mini-keys-panel='3']").waitFor();
+  const webKeysColorblind = await cbPage.screenshot({ type: "png" });
+  writeFileSync(path.join(dir, "web-keys-colorblind.png"), webKeysColorblind);
+  await cbCtx.close();
 
   // 말풍선·단축키 표: 네이티브(앱이 그림)와 웹(README 그림, WebKit으로 찍은 사이트 화면)을 나란히(docs/52 5-6)
   const docs = path.join(here, "../docs");
@@ -167,6 +208,12 @@ try {
     ["웹 · F1 단축키 표 3×3", webKeys[3], "png"],
     ["네이티브 · F1 단축키 표 7×7", native("native-keys-7.png"), "png"],
     ["웹 · F1 단축키 표 7×7", webKeys[7], "png"],
+    [
+      "네이티브 · F1 단축키 표 3×3 색약 친화(주황 사선)",
+      native("native-keys-colorblind.png"),
+      "png",
+    ],
+    ["웹 · F1 단축키 표 3×3 색약 친화", webKeysColorblind, "png"],
   ].filter(([, b, kind]) => b || kind === "spacer");
   const panelHtml = `<!doctype html><meta charset="utf-8"><style>
     body{margin:0;background:#2a2b30;font:12px -apple-system,sans-serif;color:#eee}
