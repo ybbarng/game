@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.2.0</title>
+      <pubDate>Thu, 12 Nov 2026 05:59:35 +0000</pubDate>
+      <sparkle:version>0.2.0</sparkle:version>
+      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;큐브를 앱이 직접 그려요. 쓰는 메모리가 약 260MB에서 11MB로, 돌릴 때 CPU가 4분의 1로 줄었어요. 거울 판 테두리를 큐브처럼 얇게 했고, 비스듬한 가장자리를 부드럽게 그려요. 처음 켤 때 지금까지의 기록을 그대로 옮겨 와요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.2.0/Cubie.zip" length="3005474" type="application/octet-stream" sparkle:edSignature="dAQf5lIFyXVVq1FouB1KU7Tsf75OkqO9ow4o9CeqwxiFszrygNbAIPPLmaOEimFZhMTpuH1H9T25vQ07gHzoCg=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.10</title>
       <pubDate>Thu, 12 Nov 2026 02:55:42 +0000</pubDate>
       <sparkle:version>0.1.10</sparkle:version>
