@@ -7,6 +7,15 @@
     <language>ko</language>
     <!-- release.sh: 새 판 -->
     <item>
+      <title>Cubie 0.1.10</title>
+      <pubDate>Thu, 12 Nov 2026 02:55:42 +0000</pubDate>
+      <sparkle:version>0.1.10</sparkle:version>
+      <sparkle:shortVersionString>0.1.10</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description>&lt;p&gt;사이트에서 큐브 화면을 고치면 앱이 바로 새 화면을 써요. 예전 화면이 남아 테두리·섞기 연출이 안 보이던 일을 고쳤어요. F1 키보드 그림을 닫으면 쓰던 메모리를 곧 돌려줘요.&lt;/p&gt;</description>
+      <enclosure url="https://github.com/ybbarng/game/releases/download/cubie-v0.1.10/Cubie.zip" length="2292543" type="application/octet-stream" sparkle:edSignature="nhso3dfGjlWqlE7hv3gJxCW5Ckvt7u5LG9ll1OXI4RP8uKNhgp//RRWkJxl8588m8FreJETjNcpp3qsdjIRKCA=="/>
+    </item>
+    <item>
       <title>Cubie 0.1.9</title>
       <pubDate>Wed, 11 Nov 2026 06:56:44 +0000</pubDate>
       <sparkle:version>0.1.9</sparkle:version>
