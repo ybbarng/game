@@ -5,6 +5,7 @@ pub mod actions;
 pub mod interpreter;
 pub mod keymap;
 pub mod route;
+pub mod table;
 
 pub use actions::{canonical_notation, notation_to_move, Command};
 pub use interpreter::{with_layers, KeyInterpreter, KeyResult};
@@ -13,3 +14,4 @@ pub use route::{
     keycap_label, keycaps_for_move, keys_for_move, keys_for_move_from, normalize_move, route_for,
     HandLayers, KeyChord, KeyRoute, HOME_LAYERS,
 };
+pub use table::{key_table, TableCell, TableLine};

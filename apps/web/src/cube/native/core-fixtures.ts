@@ -50,6 +50,7 @@ import {
   buildSession,
 } from "./core-fixtures-human";
 import { buildKeycaps } from "./core-fixtures-keycaps";
+import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
@@ -730,6 +731,7 @@ export const BUILDERS = {
   "fixtures/hint.json": buildHint,
   "fixtures/practice.json": buildPractice,
   "fixtures/keycaps.json": buildKeycaps,
+  "fixtures/keytable.json": buildKeyTable,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,

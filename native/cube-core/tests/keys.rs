@@ -5,7 +5,7 @@ mod json;
 
 use cube_core::keys::keymap::KeyBinding;
 use cube_core::keys::{
-    keycaps_for_move, preset_keymap, KeyInput, KeyInterpreter, KeyResult, Keymap, Preset,
+    key_table, keycaps_for_move, preset_keymap, KeyInput, KeyInterpreter, KeyResult, Keymap, Preset,
 };
 use cube_core::notation::AXIS_NAMES;
 use json::Json;
@@ -151,6 +151,83 @@ fn keycaps_match_site() {
         }
     }
     println!("키캡 줄: 수 {total}개, 어긋남 {}개", bad.len());
+    assert!(total > 0);
+    assert!(bad.is_empty(), "어긋남 {}개\n{}", bad.len(), bad.join("\n"));
+}
+
+/// 사용자 배치(층 수 키를 든 옛 배치, keycaps.json의 custom)
+fn custom_keymap(root: &Json) -> Keymap {
+    Keymap {
+        preset: Preset::Custom,
+        bindings: root
+            .get("custom")
+            .arr()
+            .iter()
+            .map(|b| {
+                let b = b.arr();
+                KeyBinding {
+                    code: b[0].str().to_string(),
+                    mods: b[1].num() as u8,
+                    action: b[2].str().to_string(),
+                }
+            })
+            .collect(),
+    }
+}
+
+/// 단축키 표(F1) 칸마다 적는 글이 사이트 Cubie 미니 표와 같은지(fixtures/keytable.json)
+#[test]
+fn key_table_matches_site() {
+    let custom = custom_keymap(&json::parse(include_str!("../fixtures/keycaps.json")));
+    let root = json::parse(include_str!("../fixtures/keytable.json"));
+    let (mut total, mut bad) = (0, vec![]);
+    for c in root.get("cases").arr() {
+        let preset = c.get("preset").str();
+        let mut keymap = match preset {
+            "custom" => custom.clone(),
+            id => preset_keymap(Preset::from_id(id).expect("배치")),
+        };
+        // Cubie 표는 처음으로·살펴보기를 뺀다(사이트 `KeysPanelPage`)
+        keymap
+            .bindings
+            .retain(|b| b.action != "reset" && b.action != "inspectionSkip");
+        let n = c.get("n").num() as usize;
+        let want: Vec<String> = c
+            .get("cells")
+            .arr()
+            .iter()
+            .map(|cell| {
+                let cell = cell.arr();
+                let lines: Vec<String> = cell[1]
+                    .arr()
+                    .iter()
+                    .map(|l| {
+                        let l = l.arr();
+                        format!("{}:{}:{}", l[0].num(), l[1].str(), l[2].num())
+                    })
+                    .collect();
+                format!("{} {}", cell[0].str(), lines.join(" | "))
+            })
+            .collect();
+        let have: Vec<String> = key_table(&keymap, n)
+            .iter()
+            .map(|cell| {
+                let lines: Vec<String> = cell
+                    .lines
+                    .iter()
+                    .map(|l| format!("{}:{}:{}", l.mods, l.label, u8::from(l.usable)))
+                    .collect();
+                format!("{} {}", cell.code, lines.join(" | "))
+            })
+            .collect();
+        total += want.len();
+        if have != want {
+            bad.push(format!(
+                "{preset} {n}×{n}\n    코어: {have:?}\n    사이트: {want:?}"
+            ));
+        }
+    }
+    println!("단축키 표: 칸 {total}개, 어긋난 차례 {}개", bad.len());
     assert!(total > 0);
     assert!(bad.is_empty(), "어긋남 {}개\n{}", bad.len(), bad.join("\n"));
 }

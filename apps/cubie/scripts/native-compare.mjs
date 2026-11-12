@@ -8,7 +8,8 @@
 //   wgpu(5-2): (cd native/cubie-native && cargo run --release --features wgpu --bin cubie-shot -- <폴더>)
 //   node apps/cubie/scripts/native-compare.mjs <폴더> [사이트 주소, 기본 https://game.byb.kr]
 //
-// 결과: <폴더>/web-float.png·web-solving.png·web-mirror.png(웹 투명 바탕), <폴더>/compare.png(비교판).
+// 결과: <폴더>/web-float.png·web-solving.png·web-mirror.png(웹 투명 바탕), <폴더>/compare.png(비교판),
+// <폴더>/web-keys-3.png·web-keys-7.png(웹 F1 표), <폴더>/compare-panels.png(말풍선·F1 표 비교판).
 // 네이티브 그림 중 없는 것(wgpu는 native-mirror.png가 없다)은 칸을 빼고 얹는다.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -131,6 +132,24 @@ try {
     .screenshot({ path: path.join(dir, "compare.png") });
   console.log(path.join(dir, "compare.png"));
 
+  // 웹 F1 단축키 표: 앱이 예전에 띄우던 사이트 표(`?view=keys&panel=1`)를 같은 크기(`Config.keysPanelSize` 560×300)로.
+  // 저장소를 비운 채 열어 기본 배치 「두 손」이다(readme-shots `keysShot`과 같다)
+  const keysCtx = await browser.newContext({
+    viewport: { width: 560, height: 300 },
+    deviceScaleFactor: 2,
+    colorScheme: "dark",
+  });
+  const webKeys = {};
+  for (const n of [3, 7]) {
+    const kp = await keysCtx.newPage();
+    await kp.goto(`${BASE}/cube/mini?view=keys&panel=1&n=${n}`);
+    await kp.locator(`[data-mini-keys-panel='${n}']`).waitFor();
+    webKeys[n] = await kp.screenshot({ type: "png" });
+    writeFileSync(path.join(dir, `web-keys-${n}.png`), webKeys[n]);
+    await kp.close();
+  }
+  await keysCtx.close();
+
   // 말풍선·단축키 표: 네이티브(앱이 그림)와 웹(README 그림, WebKit으로 찍은 사이트 화면)을 나란히(docs/52 5-6)
   const docs = path.join(here, "../docs");
   const file = (f) => (existsSync(f) ? readFileSync(f) : null);
@@ -142,22 +161,27 @@ try {
       file(path.join(docs, "desktop-practice.webp")),
       "webp",
     ],
-    ["네이티브 · F1 단축키 표", native("native-keys.png"), "png"],
-    ["웹 · F1 단축키 표(README)", file(path.join(docs, "keys.webp")), "webp"],
-  ].filter(([, b]) => b);
+    // 두 칸 격자: 네이티브 표와 웹 표가 한 줄에 나란히 오게 빈칸을 둔다
+    ["", null, "spacer"],
+    ["네이티브 · F1 단축키 표 3×3(J 누름)", native("native-keys.png"), "png"],
+    ["웹 · F1 단축키 표 3×3", webKeys[3], "png"],
+    ["네이티브 · F1 단축키 표 7×7", native("native-keys-7.png"), "png"],
+    ["웹 · F1 단축키 표 7×7", webKeys[7], "png"],
+  ].filter(([, b, kind]) => b || kind === "spacer");
   const panelHtml = `<!doctype html><meta charset="utf-8"><style>
     body{margin:0;background:#2a2b30;font:12px -apple-system,sans-serif;color:#eee}
-    .g{display:flex;flex-wrap:wrap;gap:16px;padding:12px;align-items:flex-start;width:1180px}
+    .g{display:grid;grid-template-columns:repeat(2,560px);gap:16px;padding:12px;align-items:start;width:max-content}
     figure{margin:0} figcaption{margin-bottom:4px} img{max-width:560px;display:block}
   </style><div class="g">${panels
-    .map(
-      ([t, b, kind]) =>
-        `<figure><figcaption>${t}</figcaption><img src="data:image/${kind};base64,${b.toString("base64")}"></figure>`,
+    .map(([t, b, kind]) =>
+      kind === "spacer"
+        ? "<div></div>"
+        : `<figure><figcaption>${t}</figcaption><img src="data:image/${kind};base64,${b.toString("base64")}"></figure>`,
     )
     .join("")}</div>`;
   const ps = await browser.newPage({
     deviceScaleFactor: 2,
-    viewport: { width: 1200, height: 900 },
+    viewport: { width: 1200, height: 1300 },
   });
   await ps.setContent(panelHtml);
   await ps
