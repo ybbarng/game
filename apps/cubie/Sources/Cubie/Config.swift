@@ -60,9 +60,23 @@ enum Config {
     return defaultSize.width
   }()
 
-  /// `CUBIE_NATIVE=1`: 웹 화면 대신 네이티브 화면 시제품(Rust 코어 + wgpu, docs/52 5-2, `NativeCube.swift`). 3×3 혼자
-  /// 맞추기만 된다(키 → 코어 해석기 → 수, Enter 섞기, 맞춤 판정). 웹 화면을 만들지 않아 WebKit 프로세스가 뜨지 않는다.
-  /// 꺼져 있으면(기본) 지금 앱 그대로다
+  /// `CUBIE_MEASURE_ONSCREEN=1`: 재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 거의 투명하게(알파 0.01) 둔다. 화면 밖
+  /// 창은 WindowServer가 합성하지 않을 수 있어, WindowServer 쪽 메모리·CPU를 볼 때만 쓴다. 마우스는 지나가고 앞으로 나오지
+  /// 않는다(포커스를 빼앗지 않는다)
+  static let measureOnscreen = ProcessInfo.processInfo.environment["CUBIE_MEASURE_ONSCREEN"] == "1"
+
+  /// 재는 창 자리: 화면 밖, 또는 `measureOnscreen`이면 주 화면 보이는 영역 왼쪽 아래
+  @MainActor static func measureFrame(side: CGFloat) -> NSRect {
+    if measureOnscreen, let v = (NSScreen.screens.first ?? NSScreen.main)?.visibleFrame {
+      return NSRect(x: v.minX, y: v.minY, width: side, height: side)
+    }
+    return NSRect(x: -30000, y: -30000, width: side, height: side)
+  }
+
+  /// `CUBIE_NATIVE=1`: 웹 화면 대신 네이티브 화면 시제품(Rust 코어 한 판 + Core Animation 3D 그리기, docs/52 5-5,
+  /// `NativeCube.swift`). 2×2~7×7 혼자 맞추기만 된다(키 → 코어 해석기 → 수, Enter 섞기와 섞기 연출, 거울 판, 맞춤 판정).
+  /// 웹 화면을 만들지 않아 WebKit 프로세스가 뜨지 않는다. 꺼져 있으면(기본) 지금 앱 그대로다.
+  /// (5-2의 wgpu 그리기는 앱에서 뺐다. 크레이트 기능 `wgpu`로 스크린샷·벤치 도구에만 남는다)
   static let native = ProcessInfo.processInfo.environment["CUBIE_NATIVE"] == "1"
 
   /// 같은 사이트의 다른 화면(대결·설정)
