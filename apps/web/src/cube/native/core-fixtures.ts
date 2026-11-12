@@ -571,25 +571,32 @@ const HAND_KEYS: [Preset, number, string[]][] = [
   [
     "twoHand",
     3,
-    "KeyI KeyK Digit5 Digit6 KeyX Period Digit1 Digit2 Digit9 Digit0 Digit3 Digit7 KeyU KeyT Semicolon".split(
+    "KeyI KeyK KeyT KeyB KeyX Period Digit2 KeyI Digit2 KeyJ Digit2 KeyH Digit3 KeyI Digit1 Digit9 KeyU KeyY KeyN Semicolon".split(
       " ",
     ),
   ],
   [
     "twoHand",
     4,
-    "Digit7 KeyI KeyU Period Digit6 Digit7 Period Digit7 KeyI Digit8 Digit8 Digit8 Digit4 KeyD KeyV Digit5 Enter KeyI Digit7 Escape KeyI".split(
+    "Digit2 KeyI KeyU Period Digit2 KeyK Digit3 KeyU Digit3 Enter KeyI KeyT KeyB KeyD KeyV Digit2 KeyF Digit3 Escape KeyI".split(
       " ",
     ),
   ],
   [
     "twoHand",
     5,
-    "Digit7 Period Digit7 Period Digit4 Digit4 KeyX Digit4 KeyX Backspace KeyX Space KeyX".split(
+    "Digit3 KeyI Digit3 KeyU Digit3 KeyJ KeyB KeyT KeyX Backspace Digit4 Space KeyX".split(
       " ",
     ),
   ],
-  ["twoHand", 2, "KeyI KeyU Digit5 Digit1 Digit7 KeyT Enter".split(" ")],
+  [
+    "twoHand",
+    7,
+    "Digit3 KeyI Digit4 KeyT KeyB Digit7 KeyI Digit5 KeyW Digit6 KeyO".split(
+      " ",
+    ),
+  ],
+  ["twoHand", 2, "KeyI KeyU Digit2 KeyI Digit7 KeyT Enter".split(" ")],
   [
     "notation",
     3,
@@ -613,8 +620,12 @@ const HAND_MODS: [Preset, number, KeyStep[]][] = [
     4,
     [
       { code: "KeyI", shiftKey: true },
-      { code: "Digit7" },
+      { code: "Digit3" },
       { code: "KeyI", shiftKey: true },
+      { code: "Digit3", shiftKey: true },
+      { code: "KeyK", shiftKey: true },
+      { code: "Digit2" },
+      { code: "KeyH", shiftKey: true },
       { code: "KeyJ", shiftKey: true },
       { code: "KeyI", repeat: true },
       { code: "KeyZ", metaKey: true },

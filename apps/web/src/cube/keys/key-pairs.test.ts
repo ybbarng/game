@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { presetKeymap } from "../input/keymaps";
+import { bind, presetKeymap } from "../input/keymaps";
 import {
   handLayersText,
   heldLayers,
@@ -29,9 +29,12 @@ describe("손이 잡은 층 수", () => {
     );
   });
 
-  it("층 수 키가 있는 배치·큰 큐브만 손 표시", () => {
-    expect(usesHandLayers(presetKeymap("twoHand"), 4)).toBe(true);
-    expect(usesHandLayers(presetKeymap("twoHand"), 3)).toBe(false);
+  it("층 수 키가 있는 배치(옛 사용자 배치)·큰 큐브만 손 표시", () => {
+    // 2026-11-12부터 「두 손」에는 층 수 키가 없다(숫자 = 깊이)
+    expect(usesHandLayers(presetKeymap("twoHand"), 4)).toBe(false);
     expect(usesHandLayers(presetKeymap("notation"), 5)).toBe(false);
+    const old = bind(presetKeymap("twoHand"), { code: "Digit7" }, "layers:R+");
+    expect(usesHandLayers(old, 4)).toBe(true);
+    expect(usesHandLayers(old, 3)).toBe(false);
   });
 });

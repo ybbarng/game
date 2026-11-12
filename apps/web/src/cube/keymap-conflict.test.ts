@@ -27,9 +27,9 @@ describe("사용자 키: 겹치는 키를 지정하기 전에 묻는다", () => 
       current: "U",
       orphan: true,
     });
-    // x는 T·Y 두 키: T를 옮겨도 Y가 남는다
-    expect(checkAssign(km, "R", { code: "KeyT" })).toEqual({
-      current: "x",
+    // Rw는 U·Shift+I 두 키: U를 옮겨도 Shift+I가 남는다
+    expect(checkAssign(km, "R", { code: "KeyU" })).toEqual({
+      current: "Rw",
       orphan: false,
     });
   });

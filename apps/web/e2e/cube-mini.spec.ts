@@ -844,7 +844,7 @@ test(
   },
 );
 
-test("큐브 옆 단축키 표(F1) 기본 배치 「두 손」: 층 수 키 글이 잘리지 않고, 3×3에서는 빈 칸이다", {
+test("큐브 옆 단축키 표(F1) 기본 배치 「두 손」: 숫자 칸 「n번째 층」·「바깥 n층」이 잘리지 않고, 크기보다 깊은 숫자는 빈 칸이다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   // 앱 창은 데스크톱에서
@@ -852,20 +852,25 @@ test("큐브 옆 단축키 표(F1) 기본 배치 「두 손」: 층 수 키 글�
   await page.addInitScript(() => localStorage.removeItem("cube.keymap.v1"));
   await page.setViewportSize(KEYS_PANEL);
   await page.goto("/cube/mini?view=keys&panel=1&n=4");
-  await expect(page.locator("[data-mini-keys-panel='4']")).toContainText(
-    "배치 「두 손」",
-  );
-  // 4×4: 숫자 3·4는 왼손, 7·8은 오른손 층 수(바깥 층 수 바꾸기)
-  await expect(page.locator("[data-key='Digit3']")).toContainText("왼손");
-  await expect(page.locator("[data-key='Digit7']")).toContainText("오른손");
+  const panel = page.locator("[data-mini-keys-panel='4']");
+  await expect(panel).toContainText("배치 「두 손」");
+  // 4×4: 숫자는 몇 번째 층(그냥), 바깥 몇 층(Shift와 함께). 7×7 예로 바깥 n층 = 숫자 n을 알린다
+  await expect(page.locator("[data-key='Digit3']")).toContainText("3번째 층");
+  await expect(page.locator("[data-key='Digit3']")).toContainText("바깥 3층");
+  await expect(panel).toContainText("7×7 바깥 세 층은 3 → Shift+I");
+  // T·B는 가운데 층, Y는 x
+  await expect(page.locator("[data-key='KeyY']")).toContainText("x");
   await expect.poll(() => overflowingKeyText(page)).toEqual([]);
-  // 3×3에서 층 수 키는 하는 일이 없어 빈 칸이다
+  // 3×3: 숫자 2·3만 쓰고 4~7은 빈 칸, 1·8·9·0은 비었다. T·B = M'·M
   await fromApp(page, { type: "size", n: 3 });
   await expect(page.locator("[data-mini-keys-panel='3']")).toBeVisible();
-  for (const code of ["Digit3", "Digit4", "Digit7", "Digit8"])
+  await expect(page.locator("[data-key='Digit2']")).toContainText("2번째 층");
+  for (const code of ["Digit1", "Digit4", "Digit7", "Digit8", "Digit0"])
     await expect(
       page.locator(`[data-key='${code}'] [data-layer-line]`),
     ).toHaveCount(0);
+  await expect(page.locator("[data-key='KeyT']")).toContainText("M'");
+  await expect(page.locator("[data-key='KeyB']")).toContainText("M");
   await expect.poll(() => overflowingKeyText(page)).toEqual([]);
 });
 
