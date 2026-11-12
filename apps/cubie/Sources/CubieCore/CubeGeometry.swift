@@ -190,8 +190,8 @@ public enum CubeGeometry {
   }
 
   /// 세계 → 카메라(카메라가 원점, −z를 본다, +y 위)
-  public static func viewMatrix(_ c: Camera) -> Mat4 {
-    let b = viewBasis()
+  public static func viewMatrix(_ c: Camera, yaw: Double = defaultYaw, pitch: Double = defaultPitch) -> Mat4 {
+    let b = viewBasis(yaw: yaw, pitch: pitch)
     let eye = add(c.target, b.toward, c.dist)
     let d = { (a: Vec3) in -dot(a, eye) }
     let (r, u, t) = (b.right, b.up, b.toward)
@@ -205,8 +205,10 @@ public enum CubeGeometry {
 
   /// 장면 뿌리 층에 걸 행렬. 자식 층은 세계 좌표를 `unit` pt로 늘려 둔다. 카메라 공간 점 q는 (k·x, k·y, k·z + P)로 가서
   /// 원근(m34 = −1/P)을 거치면 화면 자리가 P·x/(−z)가 된다(사이트 투영과 같다). k = `unit`이면 바라보는 점 근처가 1:1이다
-  public static func sceneMatrix(_ c: Camera, perspective: Double, unit: Double) -> Mat4 {
-    let v = viewMatrix(c)
+  public static func sceneMatrix(
+    _ c: Camera, perspective: Double, unit: Double, yaw: Double = defaultYaw, pitch: Double = defaultPitch
+  ) -> Mat4 {
+    let v = viewMatrix(c, yaw: yaw, pitch: pitch)
     // 세계(×unit pt) → 세계: 1/unit, 보기, 다시 unit 배, 원근 거리만큼 앞으로
     return multiply(translation(0, 0, perspective), multiply(scaling(unit), multiply(v, scaling(1 / unit))))
   }
@@ -252,6 +254,16 @@ public enum CubeGeometry {
     var out: [Vec3] = []
     for x in [-h, h] { for y in [-h, h] { for z in [-h, h] { out.append([x, y, z]) } } }
     return out
+  }
+
+  /// 거울 판 위에 큐브를 납작하게 비추는 행렬(사이트 `css-math.ts` `mirrorFlatten`): 판의 오른쪽·위 성분에 칸 간격을 곱하고,
+  /// 판 안쪽 방향 성분은 깊이로 둔다. 판 층(평평한 층) 안에 두면 그 평면에 그려진다
+  public static func mirrorFlatten(_ p: MirrorPanel, cell: Double) -> Mat4 {
+    let out = scale(p.facing, -1)
+    return [
+      p.right[0] * cell, p.up[0] * cell, out[0], 0, p.right[1] * cell, p.up[1] * cell, out[1], 0,
+      p.right[2] * cell, p.up[2] * cell, out[2], 0, 0, 0, 0, 1,
+    ]
   }
 
   public static func panelCorners(n: Int, _ p: MirrorPanel) -> [Vec3] {
@@ -354,5 +366,39 @@ public enum CubeGeometry {
     guard let i = flat.firstIndex(where: { $0.normal == normal }) else { return nil }
     let c = pos2.map { Double($0) / 2 }
     return (i, dot(c, flat[i].right) + 0, dot(c, flat[i].up) + 0)
+  }
+
+  // MARK: 누르는 자리(사이트 `CubeView.hitRects`, 앱이 투명한 빈 곳의 누르기를 아래 앱에 넘긴다)
+
+  /// 큐브(한 변 n의 1.15배 상자)와 보이는 거울 판의 화면 사각형(창 왼쪽 위 기준 pt, y 아래). 첫 칸이 큐브
+  public static func hitRects(
+    n: Int, width: Double, height: Double, panels: [MirrorPanel], mirrorShown: Bool
+  ) -> [CGRect] {
+    let cam = camera(n: n, aspect: width / height, panels: panels, fade: mirrorShown ? 1 : 0)
+    func rect(_ points: [Vec3]) -> CGRect {
+      var x0 = Double.infinity
+      var y0 = Double.infinity
+      var x1 = -Double.infinity
+      var y1 = -Double.infinity
+      for p in points {
+        guard let s = project(cam, height: height, p) else { continue }
+        // 창 가운데 기준 y 위 → 창 왼쪽 위 기준 y 아래
+        let x = width / 2 + s.x
+        let y = height / 2 - s.y
+        x0 = min(x0, x)
+        y0 = min(y0, y)
+        x1 = max(x1, x)
+        y1 = max(y1, y)
+      }
+      return x0.isFinite ? CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0) : .zero
+    }
+    let h = Double(n) / 2 * 1.15
+    var corners: [Vec3] = []
+    for x in [-h, h] { for y in [-h, h] { for z in [-h, h] { corners.append([x, y, z]) } } }
+    var out = [rect(corners)]
+    if mirrorShown {
+      for p in panels { out.append(rect(panelCorners(n: n, p))) }
+    }
+    return out
   }
 }

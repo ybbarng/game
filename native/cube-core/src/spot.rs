@@ -168,7 +168,7 @@ pub enum LastLayerHint {
     },
     /// 윗면 돌리기 하나만 남음
     Finish { alg: &'static str },
-    /// 마지막 층이 아니다(F2L 전 등). 사이트는 컴퓨터 해법의 다음 단계를 낸다(이 코어에는 아직 없다)
+    /// 마지막 층이 아니다(F2L 전 등). 그다음 갈래(컴퓨터 해법의 다음 단계)는 [`crate::hint::pick_hint`]가 낸다
     NotLastLayer,
 }
 

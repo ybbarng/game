@@ -9,8 +9,10 @@
 
 use std::collections::VecDeque;
 
-use cube_core::keys::{two_hand_keymap, Command, KeyInput, KeyInterpreter, KeyResult};
+use cube_core::keys::{two_hand_keymap, Command, KeyInput, KeyInterpreter, KeyResult, Keymap};
+use cube_core::notation::format_move;
 use cube_core::scramble::{scramble, ScrambleEvent};
+use cube_core::session::{SessionCue, SolvePhase, SolveRecord, SolveSession};
 use cube_core::state::{apply_move, is_solved, State};
 use cube_core::{parse_moves, solved_cube, CubeMove};
 
@@ -55,12 +57,17 @@ pub fn moves_show_ms(count: usize) -> f64 {
     (1000.0 * (count as f64 / 20.0).sqrt()).round().min(2000.0)
 }
 
-/// 한 수를 돌리는 시간(사이트 `moveDuration`)
+/// 한 수를 돌리는 시간(사이트 `moveDuration`, 기본 설정)
 pub fn move_duration(m: &CubeMove) -> f64 {
+    move_duration_with(m, MOVE_MS)
+}
+
+/// 한 수를 돌리는 시간(설정 `moveMs`), 반 바퀴는 1.4배
+pub fn move_duration_with(m: &CubeMove, move_ms: f64) -> f64 {
     if m.turns == 2 {
-        MOVE_MS * HALF_TURN_SLOWER
+        move_ms * HALF_TURN_SLOWER
     } else {
-        MOVE_MS
+        move_ms
     }
 }
 
@@ -87,6 +94,8 @@ pub enum Outcome {
         text: String,
     },
     Reset,
+    /// 보기만 바꾸는 명령(살짝 보기 뒤·아래, 처음 각도로). 앱이 보는 각을 바꾼다
+    View(Command),
 }
 
 pub struct Game {
@@ -102,6 +111,25 @@ pub struct Game {
     turning: Option<(CubeMove, f64, f64)>,
     /// 연출 없이 한 번 다시 그려야 함(섞기·맞춘 상태로·창 크기)
     dirty: bool,
+    /// 마지막으로 둔 수의 표기(되돌리기면 거꾸로 돌린 수)와 큐브 돌리기(x·y·z)인지
+    last_notation: String,
+    last_rotation: bool,
+    /// 한 수를 돌리는 시간(사이트 설정 `moveMs`, 0~200)
+    move_ms: f64,
+    /// 마지막으로 둔 수가 되돌리기였나
+    last_undo: bool,
+    /// 마지막 섞기 글
+    scramble_text: String,
+    /// 한 판 기록(사이트 `SolveSession` 혼자·살펴보기 없음, 코어 `session.rs`). 시각은 앱이 넣는 포커스 시계
+    session: SolveSession,
+    now: f64,
+    /// 다 맞춰 생긴 기록(앱이 꺼내 간다)과 이정표가 새로 켜졌는지(소리)
+    record: Option<SolveRecord>,
+    milestone: bool,
+    /// 공식 연습 중이면 그 진행기(3×3 한 판에만). 키는 진행기로 가고 장면은 진행기 상태를 보인다
+    pub(crate) practice: Option<cube_core::practice::PracticeSession>,
+    /// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝), 앱이 꺼내 간다
+    pub(crate) practice_events: u32,
 }
 
 impl Game {
@@ -116,6 +144,126 @@ impl Game {
             queue: VecDeque::new(),
             turning: None,
             dirty: true,
+            last_notation: String::new(),
+            last_rotation: false,
+            move_ms: MOVE_MS,
+            last_undo: false,
+            scramble_text: String::new(),
+            session: SolveSession::new(n),
+            now: 0.0,
+            record: None,
+            milestone: false,
+            practice: None,
+            practice_events: 0,
+        }
+    }
+
+    /// 키 배치를 바꾼다(사용자 배치·「표기」). 기억해 둔 깊이는 버린다
+    pub fn set_keymap(&mut self, keymap: Keymap) {
+        self.interp.set_keymap(keymap);
+    }
+
+    pub fn keymap(&self) -> &Keymap {
+        self.interp.keymap()
+    }
+
+    /// 한 수를 돌리는 시간(사이트 설정 `moveMs`, 0~200ms)
+    pub fn set_move_ms(&mut self, ms: f64) {
+        self.move_ms = if ms.is_finite() {
+            ms.clamp(0.0, 200.0)
+        } else {
+            MOVE_MS
+        };
+    }
+
+    /// 마지막으로 둔 수의 표기(사이트 기록에 적는 가장 짧은 이름, 되돌리기면 거꾸로 돌린 수)
+    pub fn last_notation(&self) -> &str {
+        &self.last_notation
+    }
+
+    /// 마지막으로 둔 수가 큐브 돌리기(x·y·z)인가
+    pub fn last_rotation(&self) -> bool {
+        self.last_rotation
+    }
+
+    /// 마지막으로 둔 수가 되돌리기였나
+    pub fn last_undo(&self) -> bool {
+        self.last_undo
+    }
+
+    /// 마지막 섞기 글(WCA 표기)
+    pub fn scramble_text(&self) -> &str {
+        &self.scramble_text
+    }
+
+    /// 다음 키·섞기의 시각(ms, 앱의 포커스 시계)
+    pub fn set_now(&mut self, now: f64) {
+        self.now = now;
+    }
+
+    /// 섞은 뒤 맞추는 중인가(첫 수 전 포함, 힌트를 볼 수 있는 때)
+    pub fn solving(&self) -> bool {
+        matches!(self.session.phase, SolvePhase::Ready | SolvePhase::Solving)
+    }
+
+    /// 다 맞춰 생긴 기록을 꺼낸다(한 번만)
+    pub fn take_record(&mut self) -> Option<SolveRecord> {
+        self.record.take()
+    }
+
+    /// 시험용: 키 대신 수 하나를 둔다(키 해석 없이, 표기는 가장 짧은 이름)
+    #[doc(hidden)]
+    pub fn key_move_for_test(&mut self, mv: CubeMove) -> bool {
+        let notation = format_move(self.n, &mv);
+        self.feed(mv, &notation);
+        self.play(mv)
+    }
+
+    pub(crate) fn keymap_clone(&self) -> Keymap {
+        self.interp.keymap().clone()
+    }
+
+    pub(crate) fn now(&self) -> f64 {
+        self.now
+    }
+
+    /// 상태를 통째로 바꾼다(공식 연습 문제·다시 칠하기)
+    pub(crate) fn jump_to(&mut self, st: State) {
+        self.jump(st);
+    }
+
+    /// 수 하나를 화면 줄에 넣고 논리 상태를 `st`로(공식 연습이 받은 수)
+    pub(crate) fn push_with_state(&mut self, mv: CubeMove, st: State) {
+        self.state = st;
+        self.push(mv);
+    }
+
+    pub(crate) fn interp_handle(&mut self, input: &KeyInput) -> Option<KeyResult> {
+        self.interp.handle(input)
+    }
+
+    /// 꺼낸 기록을 되돌려 둔다(앱의 자리가 모자랐을 때)
+    pub fn put_back_record(&mut self, r: SolveRecord) {
+        self.record = Some(r);
+    }
+
+    /// 이정표가 새로 켜졌는가를 꺼낸다(한 번만)
+    pub fn take_milestone(&mut self) -> bool {
+        std::mem::take(&mut self.milestone)
+    }
+
+    /// 섞기 글과 씨앗(기록에 남긴다)
+    pub fn session_scramble(&self) -> (&str, Option<u32>) {
+        (&self.session.scramble, self.session.seed)
+    }
+
+    fn feed(&mut self, mv: CubeMove, notation: &str) {
+        let out = self.session.input(mv, notation, self.now);
+        if out.cues.contains(&SessionCue::Milestone) {
+            self.milestone = true;
+        }
+        if out.record.is_some() {
+            self.record = out.record;
         }
     }
 
@@ -133,31 +281,42 @@ impl Game {
 
     /// 키 누름 하나
     pub fn key(&mut self, input: &KeyInput, seed: u32) -> Outcome {
+        if self.practice.is_some() {
+            return self.practice_key(input, seed);
+        }
         match self.interp.handle(input) {
             None => Outcome::Ignored,
             Some(KeyResult::Move { notation, mv, .. }) => {
+                self.last_undo = false;
+                self.last_notation = notation.clone();
+                self.last_rotation = mv.is_rotation(self.n);
+                self.feed(mv, &notation);
                 let solved = self.play(mv);
                 Outcome::Moved { notation, solved }
             }
             Some(KeyResult::Command { command, .. }) => match command {
                 Command::Scramble => self.scramble(seed),
-                Command::Reset => {
-                    self.reset();
-                    Outcome::Reset
-                }
+                // 미니 모드는 「맞춘 상태로」(Esc)·살펴보기 건너뛰기(Space)를 쓰지 않는다(사이트 `MiniCubeApp`, docs/47 15-4).
+                // Esc는 앱이 먼저 가로채고, 사용자 배치가 다른 키에 놓았어도 진행을 버리지 않는다
+                Command::Reset | Command::InspectionSkip => Outcome::Consumed,
                 Command::Undo => match self.history.pop() {
                     Some(m) => {
+                        self.last_undo = true;
                         let inv = m.inverse();
                         self.state = apply_move(self.n, &self.state, &inv);
+                        self.last_notation = format_move(self.n, &inv);
+                        self.last_rotation = inv.is_rotation(self.n);
+                        let text = self.last_notation.clone();
+                        self.feed(inv, &text);
                         self.push(inv);
                         Outcome::Moved {
-                            notation: String::new(),
+                            notation: self.last_notation.clone(),
                             solved: false,
                         }
                     }
                     None => Outcome::Consumed,
                 },
-                _ => Outcome::Consumed,
+                Command::PeekBack | Command::PeekDown | Command::ViewHome => Outcome::View(command),
             },
             Some(_) => Outcome::Consumed,
         }
@@ -216,6 +375,7 @@ impl Game {
         }
         .expect("종목");
         let s = scramble(event, seed);
+        self.scramble_text = s.text.clone();
         let moves = parse_moves(self.n, &s.text).expect("섞기 글");
         let mut st = solved_cube(self.n);
         for m in &moves {
@@ -223,6 +383,9 @@ impl Game {
         }
         self.jump(st);
         self.scrambled = true;
+        self.record = None;
+        self.milestone = false;
+        let _ = self.session.start(&s.text, Some(seed), self.now);
         if show == ScrambleShow::Moves && !moves.is_empty() {
             self.shown = solved_cube(self.n);
             let step = moves_show_ms(moves.len()) / moves.len() as f64;
@@ -235,6 +398,8 @@ impl Game {
     pub fn reset(&mut self) {
         self.jump(solved_cube(self.n));
         self.scrambled = false;
+        self.session.reset();
+        self.record = None;
     }
 
     fn jump(&mut self, st: State) {
@@ -271,6 +436,36 @@ impl Game {
         !self.queue.is_empty()
     }
 
+    /// 보기만 하는 연출(떠 있을 때 다시 보기·조금 섞기, docs/47 15-5): 화면 상태를 `st`로 두고 줄을 비운다. 논리 상태는
+    /// 그대로다. 끝나면 [`Game::show_restore`]로 논리 상태로 돌린다
+    pub fn show_jump(&mut self, st: State) {
+        self.shown = st;
+        self.queue.clear();
+        self.turning = None;
+        self.dirty = true;
+    }
+
+    /// 보기만 하는 수를 줄에 넣는다(그 시간으로, 밀려도 넘기지 않는다). 표기를 읽지 못하면 false
+    pub fn show_push(&mut self, notation: &str, ms: f64) -> bool {
+        let Ok(moves) = parse_moves(self.n, notation) else {
+            return false;
+        };
+        let step = if moves.is_empty() {
+            ms
+        } else {
+            ms / moves.len() as f64
+        };
+        self.queue
+            .extend(moves.into_iter().map(|mv| Queued { mv, ms: Some(step) }));
+        true
+    }
+
+    /// 보기만 하던 연출을 끝내고 화면을 논리 상태로
+    pub fn show_restore(&mut self) {
+        let st = self.state.clone();
+        self.show_jump(st);
+    }
+
     /// 다음에 돌릴 수 하나와 그 시간(ms)을 꺼낸다. 꺼낸 수는 화면 상태에 바로 넣는다(그리는 쪽은 그 수를 애니메이션으로
     /// 돌리고, 끝나면 화면 상태 색으로 다시 칠한다). 손으로 둔 수가 [`MAX_BACKLOG`]보다 많이 밀렸으면 앞의 것은 바로 넘긴다
     pub fn take_turn(&mut self) -> Option<(CubeMove, f64)> {
@@ -281,7 +476,10 @@ impl Game {
         }
         let q = self.queue.pop_front()?;
         self.shown = apply_move(self.n, &self.shown, &q.mv);
-        Some((q.mv, q.ms.unwrap_or_else(|| move_duration(&q.mv))))
+        Some((
+            q.mv,
+            q.ms.unwrap_or_else(|| move_duration_with(&q.mv, self.move_ms)),
+        ))
     }
 
     /// 시각 `now`(ms)의 화면: 돌리는 중인 수와 진행 0..1(보이는 상태는 [`Game::shown`]). 끝난 연출은 화면 상태에 넣는다

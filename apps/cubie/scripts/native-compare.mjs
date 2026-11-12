@@ -102,6 +102,11 @@ try {
     ["웹 · 맞추는 중(거울)", mirror],
     ["네이티브 · 맞추는 중(거울)", native("native-mirror.png")],
     ["네이티브 · 돌리는 중", native("native-turning.png")],
+    [
+      "네이티브 · 돌리는 중(거울도 따라 돎)",
+      native("native-mirror-turning.png"),
+    ],
+    ["네이티브 · 다 맞춘 축하", native("native-cheer.png")],
   ].filter(([, b]) => b);
   const cell = (desk, buf) =>
     `<div class="c" style="background:${desk}"><img src="${img(buf)}"></div>`;
@@ -118,13 +123,47 @@ try {
     .join("")}</table>`;
   const sheet = await browser.newPage({
     deviceScaleFactor: 2,
-    viewport: { width: 900, height: 560 },
+    viewport: { width: 1200, height: 560 },
   });
   await sheet.setContent(html);
   await sheet
     .locator("table")
     .screenshot({ path: path.join(dir, "compare.png") });
   console.log(path.join(dir, "compare.png"));
+
+  // 말풍선·단축키 표: 네이티브(앱이 그림)와 웹(README 그림, WebKit으로 찍은 사이트 화면)을 나란히(docs/52 5-6)
+  const docs = path.join(here, "../docs");
+  const file = (f) => (existsSync(f) ? readFileSync(f) : null);
+  const panels = [
+    ["네이티브 · 힌트 말풍선", native("native-hint.png"), "png"],
+    ["네이티브 · 공식 연습 말풍선", native("native-practice.png"), "png"],
+    [
+      "웹 · 공식 연습(README)",
+      file(path.join(docs, "desktop-practice.webp")),
+      "webp",
+    ],
+    ["네이티브 · F1 단축키 표", native("native-keys.png"), "png"],
+    ["웹 · F1 단축키 표(README)", file(path.join(docs, "keys.webp")), "webp"],
+  ].filter(([, b]) => b);
+  const panelHtml = `<!doctype html><meta charset="utf-8"><style>
+    body{margin:0;background:#2a2b30;font:12px -apple-system,sans-serif;color:#eee}
+    .g{display:flex;flex-wrap:wrap;gap:16px;padding:12px;align-items:flex-start;width:1180px}
+    figure{margin:0} figcaption{margin-bottom:4px} img{max-width:560px;display:block}
+  </style><div class="g">${panels
+    .map(
+      ([t, b, kind]) =>
+        `<figure><figcaption>${t}</figcaption><img src="data:image/${kind};base64,${b.toString("base64")}"></figure>`,
+    )
+    .join("")}</div>`;
+  const ps = await browser.newPage({
+    deviceScaleFactor: 2,
+    viewport: { width: 1200, height: 900 },
+  });
+  await ps.setContent(panelHtml);
+  await ps
+    .locator(".g")
+    .screenshot({ path: path.join(dir, "compare-panels.png") });
+  console.log(path.join(dir, "compare-panels.png"));
 } finally {
   await browser.close();
 }

@@ -18,7 +18,8 @@ let package = Package(
     .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1")
   ],
   targets: [
-    .target(name: "CubieCore", path: "Sources/CubieCore"),
+    // 웹 저장소 옮기기(`WebStorageMigration`)가 시스템 sqlite3를 읽기 전용으로 쓴다
+    .target(name: "CubieCore", path: "Sources/CubieCore", linkerSettings: [.linkedLibrary("sqlite3")]),
     .target(name: "CubieNativeC", path: "Sources/CubieNativeC"),
     .executableTarget(
       name: "Cubie",

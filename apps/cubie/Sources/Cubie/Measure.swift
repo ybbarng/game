@@ -13,6 +13,8 @@ final class Measure {
   private let cube: CubeWindow
   /// 단축키 표와 같은 웹 화면(재기 전용, 화면 밖)
   private var keysWindow: NSWindow?
+  /// 기록 창과 같은 웹 화면(재기 전용, 화면 밖)
+  private var recordsWindow: NSWindow?
 
   init(cube: CubeWindow) {
     self.cube = cube
@@ -101,6 +103,23 @@ final class Measure {
       cube.sendFocus()
     case "keys":
       if arg == "load" { loadKeys() } else { dropKeys() }
+    case "records":
+      if arg == "open" {
+        if recordsWindow == nil {
+          recordsWindow = offscreen("/cube/mini?view=records", size: NSSize(width: 380, height: 600))
+        }
+      } else {
+        recordsWindow?.orderOut(nil)
+        recordsWindow?.contentView = nil
+        recordsWindow = nil
+      }
+    case "practice":
+      // 공식 연습: 메뉴 첫 단계(따라 치기)를 연다. `practice stop`이면 끝내기
+      if arg == "stop" {
+        cube.bridge.send(["type": "practice", "stage": NSNull()])
+      } else if let first = cube.bridge.state.practiceStages.first {
+        cube.bridge.send(["type": "practice", "stage": first.id, "mode": "follow"])
+      }
     case "state":
       report("state")
     case "quit":
@@ -134,6 +153,24 @@ final class Measure {
       let pid = (web.value(forKey: "_webProcessIdentifier") as? Int) ?? 0
       self?.log("keys web=\(pid)")
     }
+  }
+
+  /// 앱이 따로 여는 보통 창(기록 창)과 같은 설정의 웹 화면을 화면 밖 창에
+  private func offscreen(_ path: String, size: NSSize) -> NSWindow {
+    let config = WKWebViewConfiguration()
+    config.websiteDataStore = cube.webView.configuration.websiteDataStore
+    let web = WKWebView(frame: NSRect(origin: .zero, size: size), configuration: config)
+    web.load(URLRequest(url: Config.site(path)))
+    let w = NSWindow(
+      contentRect: NSRect(x: -30000, y: -33000, width: size.width, height: size.height),
+      styleMask: [.borderless], backing: .buffered, defer: false)
+    w.alphaValue = 0
+    w.ignoresMouseEvents = true
+    w.isReleasedWhenClosed = false
+    w.collectionBehavior = [.transient, .ignoresCycle]
+    w.contentView = web
+    w.orderFrontRegardless()
+    return w
   }
 
   private func dropKeys() {
