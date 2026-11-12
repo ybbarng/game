@@ -43,7 +43,14 @@ import {
 } from "../records";
 import { replayLength, solveSteps } from "../replay-player";
 import { ao5, bestAo5, myTier, tierName, tierOf } from "../tiers/rank";
-import { TIER_SIZES, TIER_TABLE } from "../tiers/table";
+import {
+  TIER_DATA_DATE,
+  TIER_SIZES,
+  TIER_TABLE,
+  WCA_CREDIT,
+  WCA_PEOPLE,
+  WCA_RESULTS_URL,
+} from "../tiers/table";
 import { buildHero } from "./core-fixtures-hero";
 import {
   buildHint,
@@ -53,6 +60,7 @@ import {
 import { buildKeycaps } from "./core-fixtures-keycaps";
 import { buildKeyTable } from "./core-fixtures-keytable";
 import { buildPractice, buildRustPracticeData } from "./core-fixtures-practice";
+import { buildSummary } from "./core-fixtures-records";
 import { buildKeyPaint, buildMask } from "./core-fixtures-screen";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
@@ -503,6 +511,12 @@ export function buildRustData(): string {
     );
     return `    (${n}, &[${rows.join(", ")}]),`;
   });
+  const wca = TIER_SIZES.map((n) => {
+    const rows = (TIER_TABLE[n] ?? []).map((r) =>
+      r.wca ? `Some((${r.wca.people}, ${rustNum(r.wca.percent)}))` : "None",
+    );
+    return `    (${n}, ${WCA_PEOPLE[n] ?? 0}, &[${rows.join(", ")}]),`;
+  });
   return [
     "// 사이트 자료에서 만든 파일이다. 손으로 고치지 않는다.",
     "// 다시 만들기: CUBE_CORE_FIXTURES=write pnpm vitest run apps/web/src/cube/native/",
@@ -520,6 +534,18 @@ export function buildRustData(): string {
     "pub const TIER_TABLE: &[(usize, &[&[f64]])] = &[",
     ...tiers,
     "];",
+    "",
+    "/// 크기 → (그 크기 평균 기록이 있는 WCA 경기자 수, 티어 열 개의 (진입 시간 이하 경기자 수, 상위 %)). 대회 밖 티어는 None",
+    "pub const TIER_WCA: &[(usize, u32, &[Option<(u32, f64)>])] = &[",
+    ...wca,
+    "];",
+    "",
+    "/// 티어 기준 자료 날짜",
+    `pub const TIER_DATA_DATE: &str = ${rustStr(TIER_DATA_DATE)};`,
+    "",
+    "/// WCA 결과 내보내기가 다시 펴낼 때 붙이라는 문구(그대로)와 그 주소",
+    `pub const WCA_CREDIT: &str = ${rustStr(WCA_CREDIT)};`,
+    `pub const WCA_RESULTS_URL: &str = ${rustStr(WCA_RESULTS_URL)};`,
     "",
   ].join("\n");
 }
@@ -734,6 +760,7 @@ export const BUILDERS = {
   "fixtures/practice.json": buildPractice,
   "fixtures/keycaps.json": buildKeycaps,
   "fixtures/keytable.json": buildKeyTable,
+  "fixtures/summary.json": buildSummary,
   "fixtures/mask.json": buildMask,
   "fixtures/keypaint.json": buildKeyPaint,
   "fixtures/hero.json": buildHero,

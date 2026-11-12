@@ -25,7 +25,8 @@ const WEB = "apps/web/src/";
 /**
  * Cubie 큐브 창 동작에 닿는 사이트 코드. 끝이 /이면 그 폴더 전부, 아니면 그 파일 하나.
  * why는 실패 글에 그대로 나온다. 고를 때 기준: 미니 화면(MiniCubeApp)이 불러오고, 네이티브가 같은 일을 따로 하는 것.
- * 기록 창·티어표·설정 창은 앱이 사이트 창으로 열어 사이트 배포로 바뀌므로 넣지 않는다(tiers/TierTable, /cube/settings).
+ * 기록 창·티어표·설정 창도 앱이 직접 그리므로(docs/52 5-8) 그 사이트 화면을 넣는다. 설정 화면 가운데 사용자 배치 편집
+ * (`keymap-editor.ts`)은 앱이 사이트 창으로 열어 사이트 배포로 바뀌므로 넣지 않는다.
  * 수 계산 패키지(packages/cube-*)는 Rust CI 작업과 공통 시험 자료가 값으로 본다.
  */
 export const WATCHED = [
@@ -58,6 +59,23 @@ export const WATCHED = [
   { path: `${WEB}cube/replay-player.ts`, why: "다시 보기" },
   { path: `${WEB}cube/records.ts`, why: "기록 한 판" },
   { path: `${WEB}cube/tiers/rank.ts`, why: "Ao5·티어" },
+  {
+    path: `${WEB}cube/tiers/TiersApp.tsx`,
+    why: "티어표 창(앱 NativeTiersWindow)",
+  },
+  {
+    path: `${WEB}cube/tiers/TierTable.tsx`,
+    why: "티어 기준표(앱 NativeTiersWindow)",
+  },
+  { path: `${WEB}cube/tiers/table.ts`, why: "티어 표 자료(코어 data.rs)" },
+  {
+    path: `${WEB}cube/tiers/TierEmblem.tsx`,
+    why: "티어 엠블럼(앱에 묶은 PNG)",
+  },
+  {
+    path: `${WEB}cube/components/CubeSettingsApp.tsx`,
+    why: "설정 창(앱 NativeSettingsWindow)",
+  },
   { path: `${WEB}cube/native/`, why: "공통 시험 자료(사이트 쪽)" },
 ];
 

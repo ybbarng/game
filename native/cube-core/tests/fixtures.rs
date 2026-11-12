@@ -13,6 +13,7 @@ use cube_core::replay::{
 use cube_core::scramble::{scramble, ScrambleEvent};
 use cube_core::spot::{last_layer_hint, spot_case, spot_hold, LastLayerHint};
 use cube_core::state::{apply_moves, face_colors, is_solved_with};
+use cube_core::summary::{mini_summary, RecentAverage};
 use cube_core::tier::{ao5, best_ao5, my_tier, tier_of, Timeable, DIVISIONS};
 use cube_core::{data, parse_moves, solved_cube};
 use json::Json;
@@ -280,6 +281,37 @@ fn tiers_match_site() {
             }
             other => panic!("모르는 사례 {other}"),
         }
+    }
+    r.finish();
+}
+
+fn recent_json(j: &Json) -> RecentAverage {
+    if j.is_null() {
+        RecentAverage::Dnf
+    } else if matches!(j, Json::Str(s) if s == "-") {
+        RecentAverage::Missing
+    } else {
+        RecentAverage::Ms(j.num())
+    }
+}
+
+#[test]
+fn summary_matches_site() {
+    let mut r = Report::new("Cubie 기록 창 요약");
+    for c in cases(include_str!("../fixtures/summary.json")) {
+        r.total += 1;
+        let records: Vec<Timeable> = c.get("records").arr().iter().map(timeable).collect();
+        let s = mini_summary(&records);
+        r.check(
+            &format!("기록 {}판", records.len()),
+            (s.best, s.mean, s.ao5, s.ao12),
+            (
+                c.get("best").opt_num(),
+                c.get("mean").opt_num(),
+                recent_json(c.get("ao5")),
+                recent_json(c.get("ao12")),
+            ),
+        );
     }
     r.finish();
 }
