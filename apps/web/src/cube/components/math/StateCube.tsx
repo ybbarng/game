@@ -53,6 +53,7 @@ export function StateCube({
       .then(({ CubeView }) => {
         if (disposed) return;
         const view = CubeView.create(canvas, {
+          onLost: () => setFailed(true),
           n,
           quality: settings.quality,
           colors: settings.colors,

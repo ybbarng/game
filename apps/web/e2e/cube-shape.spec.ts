@@ -253,6 +253,21 @@ test.describe("목표 그림: 거울 판을 단 3D 큐브", {
     await page.locator('[data-cube-shape-card="3-checkerboard"]').click();
     await inputReady(page);
     await goalWithMirror(page, "shape-solo", info.project.name);
+
+    // 브라우저가 문맥을 버리면(문맥 수 상한, GPU 다시 시작) 빈 캔버스로 남지 않고 큐브 그림 둘로 바뀐다
+    const goal = page.locator(
+      "[data-cube-shape-target] [data-cube-shape-goal]",
+    );
+    await goal.locator("[data-cube-canvas]").evaluate((c) => {
+      const gl = (c as HTMLCanvasElement).getContext("webgl2");
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    });
+    await expect(goal.locator("[data-cube-posters]")).toBeVisible();
+    await expect(goal.locator("[data-cube-canvas]")).toHaveCount(0);
+    // 내 큐브는 그대로 3D
+    await expect(
+      page.locator("[data-cube-stage] [data-cube-canvas][data-cube-drawn]"),
+    ).toBeVisible();
   });
 
   test("컴퓨터와 대결", async ({ page }, info) => {

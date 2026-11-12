@@ -723,6 +723,7 @@ function MiniCube() {
         const s = settingsRef.current;
         const view = create({
           n: cubeN,
+          onLost: () => setFailed(true),
           quality,
           colors: s.colors,
           stickerless: s.stickerless,
@@ -2014,6 +2015,7 @@ function ReplayBox({
         if (disposed) return;
         const s = settingsRef.current;
         const view = CubeView.create(canvas, {
+          onLost: () => setFailed(true),
           n,
           quality,
           colors: s.colors,

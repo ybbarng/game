@@ -366,6 +366,7 @@ export class CubeView {
   private onMoveDone: ((done: number) => void) | undefined;
   private onSwipe: ((move: CubeMove) => void) | undefined;
   private onTap: ((hit: SwipeHit) => void) | undefined;
+  private onLost: (() => void) | undefined;
   private swipeMouse: boolean;
   private keepView: boolean;
   /** 밀기 하나(누른 곳에서 정한 칸, 이미 수를 냈는지) */
@@ -448,6 +449,7 @@ export class CubeView {
     this.onMoveDone = o.onMoveDone;
     this.onSwipe = o.onSwipe;
     this.onTap = o.onTap;
+    this.onLost = o.onLost;
     this.swipeMouse = o.swipeMouse ?? false;
     this.keepView = o.keepView ?? true;
     this.interactive = o.interactive ?? true;
@@ -600,6 +602,7 @@ export class CubeView {
 
     this.reduced = prefersReducedMotion();
     this.reduced?.addEventListener("change", this.invalidate);
+    canvas.addEventListener("webglcontextlost", this.onContextLost);
     if (this.interactive) {
       canvas.style.touchAction = "none";
       canvas.addEventListener("pointerdown", this.onPointerDown);
@@ -1124,6 +1127,7 @@ export class CubeView {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.reduced?.removeEventListener("change", this.invalidate);
+    this.canvas.removeEventListener("webglcontextlost", this.onContextLost);
     // 같은 캔버스에 새 장면을 만들면 그 장면이 다시 붙인다
     delete this.canvas.dataset.cubeDrawn;
     const c = this.canvas;
@@ -1681,6 +1685,20 @@ export class CubeView {
     const hit = this.hitAt(clientX, clientY, true);
     if (hit) this.onTap(hit);
   }
+
+  /**
+   * 브라우저가 문맥을 버렸다. 문맥 수 상한을 넘어 밀려난 문맥은 되살아나지 않고, 되살아나도 미리 구운 방 환경은
+   * 비어 있다. 그래서 기다리지 않고 장면을 놓은 뒤 받은 쪽(`onLost`)이 큐브 그림으로 바꾸게 한다
+   */
+  private readonly onContextLost = (): void => {
+    if (this.disposed) return;
+    try {
+      this.dispose();
+    } catch {
+      // 이미 잃은 문맥을 놓아주다 던져도 그대로 둔다
+    }
+    this.onLost?.();
+  };
 
   private readonly onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0 || this.drag || this.gesture) return;
