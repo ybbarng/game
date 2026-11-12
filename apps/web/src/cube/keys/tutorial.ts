@@ -197,7 +197,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
 
   const presetLine =
     keymap.preset === "twoHand"
-      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 쳐요. ${faceHandLine(keymap)} csTimer 같은 가상 큐브 사이트와 같은 배치라 다른 곳에서도 그대로 써요(다른 곳: Space는 살펴보기).`
+      ? `「두 손」 배치는 실물에서 그 면을 돌리는 손으로 쳐요. ${faceHandLine(keymap)} 글자 키는 csTimer 같은 가상 큐브 사이트와 같은 자리라 다른 곳에서도 그대로 써요(다른 곳: Space는 살펴보기).`
       : keymap.preset === "notation"
         ? "「표기」 배치는 글자 그대로 쳐요. Shift를 함께 누르면 반대 방향이에요."
         : `「${PRESET_LABEL.custom}」 배치로 안내해요. 키는 설정에서 바꾼 대로 나와요.`;
@@ -310,7 +310,7 @@ export function tutorialSteps(keymap: Keymap): TutorialStep[] {
         `Rw(오른쪽 두 층 함께)는 ${k("Rw")} 키, Rw'은 ${k("Rw'")} 키예요.`,
         keymap.preset === "notation"
           ? `넓게는 Alt + 면 키, E·S는 ${k("E")}·${k("S")} 키예요.`
-          : `E(적도, D와 같은 쪽)는 ${k("E")}, S(서 있는 층, F와 같은 쪽)는 ${k("S")} 키예요(csTimer와 같아요). 넓게는 Shift + 면 키로도 쳐요.`,
+          : `숫자 2를 먼저 치면 다음 면 키는 그 면의 둘째 층 하나만 돌려요. 그래서 E(적도, D와 같은 쪽)는 ${k("E")}, S(서 있는 층, F와 같은 쪽)는 ${k("S")}예요. 넓게는 Shift + 면 키로도 쳐요.`,
       ],
       ...moves("M", "M'", "Rw", "Rw'", "E", "S"),
     },
@@ -360,7 +360,7 @@ function ruleStep(keymap: Keymap, n: number): TutorialStep {
       id: "rule",
       title: "배치 규칙",
       lines: [
-        "「두 손」은 실물 큐브의 핑거 트릭을 키보드로 옮긴 배치예요. csTimer 가상 큐브와 같은 자리라 거기서도 그대로 쳐요.",
+        "「두 손」은 실물 큐브의 핑거 트릭을 키보드로 옮긴 배치예요. 글자 키는 csTimer 가상 큐브와 같은 자리라 거기서도 그대로 쳐요.",
         `규칙 하나만 기억해요: ${TWO_HAND_RULE}`,
         `예를 들어 R은 오른 손목을 아래에서 위로 올리니 오른손 위 줄 ${k("R") ?? "I"}, R'은 내리니 가운데 줄 ${k("R'") ?? "K"}예요. U는 오른 검지로 미니 ${k("U") ?? "J"}.`,
         "물음표 칸은 키를 가렸어요. 손가락을 떠올려 맞는 키를 쳐 보세요.",

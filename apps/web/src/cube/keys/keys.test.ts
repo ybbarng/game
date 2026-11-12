@@ -87,15 +87,19 @@ describe("키 차례", () => {
     expect(keyTextFor(notationKeymap(), 3, "R'")).toBe("Shift+R");
     expect(keyTextFor(twoHandKeymap(), 3, "R2")).toBe("I 두 번");
     expect(keyTextFor(notationKeymap(), 4, "2R")).toBe("2 → R");
-    // 「두 손」의 안쪽 한 층은 csTimer처럼 가운데 줄 키(4×4의 . = 2R)
+    // 「두 손」의 4×4 2R은 csTimer처럼 . 하나, 2R'은 숫자 깊이 + 면 키
     expect(keyTextFor(twoHandKeymap(), 4, "2R")).toBe(".");
-    expect(keyTextFor(twoHandKeymap(), 3, "M")).toBe("5 / 6");
+    expect(keyTextFor(twoHandKeymap(), 4, "2R'")).toBe("2 → K");
+    expect(keyTextFor(twoHandKeymap(), 3, "M")).toBe("B");
     expect(keyTextFor(twoHandKeymap(), 4, "Rw")).toBe("U / Shift+I");
+    // 바깥 n층 함께: 숫자 n 뒤 넓게 키(U 또는 Shift+I)
+    expect(keyTextFor(twoHandKeymap(), 7, "3Rw")).toBe("3 → U / 3 → Shift+I");
     expect(keyTextFor(notationKeymap(), 5, "3Rw")).toBe("3 → Alt+R");
     expect(keyTextFor(twoHandKeymap(), 3, "undo")).toBe("⌫ / Ctrl+Z");
-    // csTimer 숫자 키: E = 2, S' = 1
-    expect(keyTextFor(twoHandKeymap(), 3, "E")).toBe("2");
-    expect(keyTextFor(twoHandKeymap(), 3, "S'")).toBe("1");
+    // E·S는 깊이 2 + 따라 도는 면 키(E는 D, S는 F), E2는 그것을 두 번
+    expect(keyTextFor(twoHandKeymap(), 3, "E")).toBe("2 → S");
+    expect(keyTextFor(twoHandKeymap(), 3, "S'")).toBe("2 → G");
+    expect(keyTextFor(twoHandKeymap(), 3, "E2")).toBe("2 → S → 2 → S");
     expect(pressLabel([{ code: "KeyI" }, { code: "KeyJ" }])).toBe("I → J");
   });
 

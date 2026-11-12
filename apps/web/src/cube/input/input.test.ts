@@ -15,6 +15,7 @@ import {
   bind,
   findConflicts,
   type KeyInput,
+  type Keymap,
   notationKeymap,
   resolveAction,
   twoHandKeymap,
@@ -312,13 +313,40 @@ describe("키 → 동작 → 수", () => {
           press("KeyI", { shiftKey: true }),
         ),
       ).toMatchObject({ notation: "Rw" });
-    // csTimer 숫자 키: 3×3의 2 = E, 4×4의 7 = 오른손 층 수 +1
-    expect(
-      new KeyInterpreter(3, twoHandKeymap()).handle(press("Digit2")),
-    ).toMatchObject({ notation: "E" });
+    // 숫자 = 깊이(2026-11-12): 3×3의 2 → J = E', 4×4의 3 → Shift+I = 3Rw
+    const three = new KeyInterpreter(3, twoHandKeymap());
+    expect(three.handle(press("Digit2"))).toMatchObject({ kind: "depth" });
+    expect(three.handle(press("KeyJ"))).toMatchObject({ notation: "E'" });
     const four = new KeyInterpreter(4, twoHandKeymap());
-    four.handle(press("Digit7"));
-    expect(four.handle(press("KeyI"))).toMatchObject({ notation: "Rw" });
+    four.handle(press("Digit3"));
+    expect(four.handle(press("KeyI", { shiftKey: true }))).toMatchObject({
+      notation: "3Rw",
+    });
+  });
+
+  it("옛 「사용자」 배치의 층 수 키(layers:*)는 그대로 돈다", () => {
+    // 2026-11-12 전의 「두 손」에서 복사한 사용자 배치: 7 = 오른손 층 수 +1, 6 = 2R'
+    const old: Keymap = {
+      ...twoHandKeymap(),
+      preset: "custom",
+      bindings: [
+        { code: "KeyI", action: "R" },
+        { code: "KeyU", action: "Rw" },
+        { code: "Digit6", action: "2R'" },
+        { code: "Digit7", action: "layers:R+" },
+        { code: "Digit8", action: "layers:R-" },
+      ],
+    };
+    const it = new KeyInterpreter(6, old);
+    expect(it.handle(press("Digit7"))).toMatchObject({
+      kind: "layers",
+      right: 2,
+    });
+    expect(it.handle(press("KeyI"))).toMatchObject({ notation: "Rw" });
+    expect(it.handle(press("KeyU"))).toMatchObject({ notation: "3Rw" });
+    expect(it.handle(press("Digit6"))).toMatchObject({ notation: "3R'" });
+    it.handle(press("Digit8"));
+    expect(it.handle(press("KeyI"))).toMatchObject({ notation: "R" });
   });
 
   it("표기: 숫자로 다음 수 깊이를 고르고, 한 수에만 붙는다", () => {

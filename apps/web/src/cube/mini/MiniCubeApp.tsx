@@ -343,6 +343,10 @@ const APP_KEYS: { keys: string; what: string }[] = [
   },
 ];
 
+/** 「두 손」 숫자·Shift 규칙(2026-11-12). 바깥 n층은 숫자 n이라는 것을 7×7 예로 */
+const DEPTH_RULE =
+  "숫자 n 다음 면 키는 그 면의 n번째 층 하나, 숫자 n 다음 Shift + 면 키는 바깥 n층을 같이 돌려요(7×7 바깥 세 층은 3 → Shift+I).";
+
 /**
  * 단축키 창(앱 0.1.8까지 메뉴 「단축키 보기」가 보통 창으로 연다. 0.1.9부터는 큐브 옆 `KeysPanelPage`): 앱 단축키 짧은
  * 목록과, 지금 키 배치·크기의 큐브 키를 사이트 단축키 표와 같은 키보드 그림으로. 섞기·되돌리기는 배치에서 읽는다
@@ -415,8 +419,9 @@ function KeysPage() {
           <KeyLegend />
           <p className="break-keep text-white/60 text-xs">
             칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
-            Alt와 함께 칠 때예요. 흐린 글은 이 크기에서 쓰지 않아요. Cubie에서
-            Esc는 「처음으로」가 아니라 이전 앱으로 돌아가는 키이고,
+            Alt와 함께 칠 때예요. 흐린 글은 이 크기에서 쓰지 않아요.
+            {keymap.preset === "twoHand" && n >= 3 && <> {DEPTH_RULE}</>}{" "}
+            Cubie에서 Esc는 「처음으로」가 아니라 이전 앱으로 돌아가는 키이고,
             Space(살펴보기)는 쓰지 않아요. 마우스로는 큐브를 돌려 보지 않으니
             보는 각도는 큐브 통째 돌리기(x·y·z) 키로 바꿔요. 배치는 메뉴 「키
             배치·색…」에서 바꿔요.
@@ -504,6 +509,7 @@ function KeysPanelPage() {
       <p className="break-keep text-white/50">
         칸마다 맨 위 굵은 글은 그냥 칠 때, 그 아래는 Shift와 함께, 맨 아래는
         Alt와 함께 칠 때예요.
+        {keymap.preset === "twoHand" && n >= 3 && <> {DEPTH_RULE}</>}
       </p>
     </main>
   );

@@ -1179,7 +1179,7 @@
           ],
           "recommend": "안 2, 숫자 뒤 면 키는 α(넓게)",
           "status": "decided",
-          "decided": "2026-11-12 사용자: 숫자줄은 n번째 안쪽 한 층, Shift는 같이 돌리기(넓게, 「강해지는」 느낌). 7×7 바깥 세 층 함께는 Shift+3 → 면 키 꼴. csTimer 글자 키는 그대로"
+          "decided": "2026-11-12 사용자: 안 2를 바꿔서. 숫자 n + 면 키 = n번째 층 하나(한 번만), Shift = 같이 돌리기(Shift + 면 키 = 바깥 두 층, 숫자 n 뒤 = 바깥 n층, 7×7 3Rw = 3 → Shift+I), T·B = M'·M, .·X = M', E·S = 2 + D·F 쪽 키. 브랜치 cube-keymap-depth-shift, docs/47 4-2·docs/53 10절"
         },
         {
           "id": "cube-items",
