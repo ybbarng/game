@@ -2,7 +2,7 @@
 
 쓰는 사람을 위한 안내는 [README](README.md)에 있다. 이 문서는 빌드, 새 판 내기, README 그림 만들기를 다룬다. 설계와 결정은 [docs/47 15절](../../docs/47-cube-design.md)에 있다.
 
-앱은 Swift + AppKit + WKWebView다. 화면은 사이트의 미니 모드(`https://game.byb.kr/cube/mini`)를 연다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
+앱은 Swift + AppKit이고, 큐브 창은 네이티브 화면이다(Core Animation 3D 그리기 + Rust 코어 `native/cube-core`·`native/cubie-native`, docs/52 5-6). 기록 창·티어표·키 배치와 색 설정만 사이트 화면을 WKWebView 창으로 연다. 예전 웹 큐브 창(사이트 미니 모드 `https://game.byb.kr/cube/mini`)은 되돌림 스위치 `CUBIE_WEB=1`로만 뜬다. 이 폴더는 이 맥에서만 빌드한다(CI·Dockerfile·pnpm 빌드에 넣지 않는다).
 
 ## 빌드·실행
 
@@ -17,7 +17,7 @@ apps/cubie/test.sh                        # 화면 없는 단위 시험(포커�
 
 직접 빌드한 앱을 쓰려면 `apps/cubie/build.sh --universal` 뒤 `apps/cubie/Cubie.app`을 `/Applications`로 복사한다. 이 맥에서 만든 앱은 첫 실행이 막히지 않는다.
 
-로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
+사이트 창(기록·티어표·설정, `CUBIE_WEB=1`이면 큐브 창도)이 로컬 빌드를 열려면 주소를 바꾼다(`open`은 환경 변수를 넘기지 않으니 실행 파일을 바로 띄운다):
 
 ```sh
 CUBIE_URL=http://localhost:4392/cube/mini apps/cubie/Cubie.app/Contents/MacOS/Cubie
@@ -45,19 +45,24 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 - 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
 - `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
 - 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
-- `--native`는 네이티브 화면 시제품(아래)을 같은 시나리오로 잰다. 웹 서버를 띄우지 않고, 단축키 표 명령은 앱이 받기만 한다. `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
+- `--native`는 네이티브 화면(앱 기본)을 같은 시나리오로 잰다. `--native`가 없으면 웹 화면(`CUBIE_WEB=1`)을 잰다. 시나리오 끝에 단축키 표·공식 연습·기록 창(사이트 창, 화면 밖) 상태도 잰다. `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
 - `--onscreen`은 재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로 둔다(웹·네이티브 모두). 화면 밖 창은 WindowServer가 합성하지 않을 수 있어서, WindowServer 쪽(메모리는 `top` MEM, CPU는 누적 시간)을 볼 때만 쓴다. 앱은 앞으로 나오지 않고 마우스는 지나간다. WindowServer 값에는 다른 앱 화면 변화가 섞인다.
 
-## 네이티브 화면 시제품(docs/52 5-5)
+## 네이티브 화면(docs/52 5-5·5-6)
 
-`CUBIE_NATIVE=1`로 띄우면 웹 화면 대신 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`Sources/Cubie/NativeCube.swift`)로 그린 화면이 뜬다. 키 → 코어 키 해석기(두 손 배치) → 수, Enter 섞기(코어 섞기, 섞기 연출 크기에 맞게), 거울 판(포커스 있고 섞인 큐브일 때), 맞춤 판정, 메뉴의 섞기·거울·큐브 크기(2×2~7×7)·창 크기까지 된다. 기록·힌트·공식 연습·단축키 표·메뉴의 나머지는 아직 없다. 스위치를 켜지 않으면(기본) 지금 앱 그대로다. 그리기 계산(카메라·거울 판·층 고르기)은 `Sources/CubieCore/CubeGeometry.swift`에 두고 `swift test`로 본다.
+큐브 창(`Sources/Cubie/NativeCubeWindow.swift`)은 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`NativeCube.swift`)로 그린다. 코어가 키 해석·섞기·판정·한 판 기록(시간·다시 보기 글·구간·콤보)·힌트(사람 해법)·공식 연습 진행기·티어를 맡고(사이트와 공통 시험 자료로 어긋남 0), 앱은 시계·저장·창·말풍선·단축키 표(`NativeKeysView`)·소리·떠 있을 때 움직임을 맡는다. 창 다루기는 웹 화면과 함께 쓰는 `FloatingWindow`, 앱 껍데기는 `CubeSurface` 약속만 본다.
+
+- 저장: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글(`cube.mini.v1` 등, `CubieCore/NativeStore.swift`·`MiniBook.swift`). 처음 띄울 때 웹 저장소(WebKit localStorage sqlite)의 `cube.*`를 한 번 옮긴다(`WebStorageMigration`, 지우지 않음, 표시 `cubie.migrated.v1`).
+- 사이트 창(기록·티어표·설정·`CUBIE_WEB=1`의 단축키 표)에는 앱 저장소 글을 문서 시작 때 넣고, 설정 창을 닫으면 키 배치·색·설정(`cube.mini.*` 빼고)을 읽어 온다(`AppDelegate.storeScript`).
+- 티어 엠블럼은 앱에 묶은 PNG(`Resources/Emblems`, `node apps/cubie/scripts/emblems/make.mjs`가 사이트 엠블럼 코드로 만든다).
 
 ```sh
 apps/cubie/scripts/build-native.sh [--universal]          # 정적 라이브러리 → apps/cubie/.native/ (build.sh·test.sh가 먼저 부른다)
-CUBIE_NATIVE=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  # 띄우기(사람이 직접 볼 때. ⌃⌥⌘C로 키 입력, 메뉴 막대 아이콘에서 끝내기)
-(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 한 판·C ABI 시험(wgpu 없음)
-CUBIE_NATIVE=1 CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 창 없이 PNG 넷(CARenderer)
-node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면과 바탕 넷 위 비교판(compare.png)
+apps/cubie/Cubie.app/Contents/MacOS/Cubie                 # 띄우기(⌃⌥⌘C로 키 입력, 메뉴 막대 아이콘에서 끝내기)
+CUBIE_WEB=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie     # 되돌림: 예전 웹 큐브 창
+(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 한 판·C ABI·연습·JSON 시험(wgpu 없음)
+CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 창 없이 PNG(CARenderer: 큐브 여섯, 말풍선 둘, 단축키 표)
+node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면과 바탕 넷 위 비교판(compare.png·compare-panels.png)
 ```
 
 - Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
