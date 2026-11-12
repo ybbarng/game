@@ -24,7 +24,7 @@ describe("「두 손」 = 실물 핑거 트릭을 옮긴 배치", () => {
   const keymap = presetKeymap("twoHand");
 
   it.each(TWO_HAND_RULES)("$move: $code", (r) => {
-    // 표의 키가 실제 배치에서(3×3) 그 수다. 가운데 줄 키는 안쪽 한 층(2R')이라 3×3 이름(M)으로 본다
+    // 표의 키가 실제 배치에서(3×3) 그 수다. 3×3 이름(M' 등)으로 본다
     const action = resolveAction(keymap, press(r.code)) ?? "";
     expect(canonicalNotation(3, action)).toBe(r.move);
     // 실물에서 그 수를 하는 손으로 친다
