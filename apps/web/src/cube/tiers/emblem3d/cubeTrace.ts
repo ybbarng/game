@@ -1,4 +1,5 @@
 import { fresnel, GEM_BOX_HALF, reflect, refract, type Vec3 } from "./gem";
+import { type FacetCut, facetNormal } from "./gemStyle";
 
 /**
  * 큐브 전체 빛길(docs/47 14-7 「일곱째 시안」, 2026-11-12 사용자 「내부에 사각형 공간이 따로 진하게 보이는 게 매우
@@ -16,7 +17,8 @@ import { fresnel, GEM_BOX_HALF, reflect, refract, type Vec3 } from "./gem";
  * 셰이더(`gemMaterial.ts` `gemTraceCube`)와 같은 계산이고, 단위 시험이 「조각마다 진한 안쪽 사각형이 없다」를 이것으로 본다.
  */
 
-export type CubeTraceMode = "whole" | "grid";
+/** `pass`(시안 m): 격자를 건너가되 틈은 반사·굴절 없이 곧게 통과(틈의 공기는 없는 것처럼) */
+export type CubeTraceMode = "whole" | "grid" | "pass";
 
 /** 붙은 유리 큐브(시안 g·h)의 조각 한 변: 틈 0.01만 남긴다 */
 export const FUSED_CUBIE = 0.99;
@@ -69,6 +71,8 @@ export function traceCube(
   cell0: Vec3,
   half = CUBE_WHOLE_HALF,
   maxBounces?: number,
+  /** 깎은 겉면(시안 m2): 큐브 바깥 면에 들어오고 나갈 때만 */
+  cut?: FacetCut,
 ): {
   reflect: number;
   exits: CubeExit[];
@@ -77,9 +81,17 @@ export function traceCube(
   path: number;
 } {
   const v = norm(v0);
-  const n = axisOf(n0);
   const H = mode === "whole" ? half : GEM_BOX_HALF;
   let cell: Vec3 = mode === "whole" ? [0, 0, 0] : cell0;
+  const facet = cut && cut.kind !== 0 && mode !== "whole" ? cut : null;
+  const local = (q: Vec3): Vec3 => [
+    q[0] - cell[0],
+    q[1] - cell[1],
+    q[2] - cell[2],
+  ];
+  const n = facet
+    ? facetNormal(facet, local(p0), axisOf(n0), GEM_BOX_HALF)
+    : axisOf(n0);
   const cosI = Math.min(1, Math.max(0, -dot(v, n)));
   const R = fresnel(cosI, 1, ior);
   let d = refract(v, n, 1 / ior) ?? v;
@@ -88,7 +100,7 @@ export function traceCube(
   let path = 0;
   const exits: CubeExit[] = [];
   const bounces =
-    maxBounces ?? (mode === "grid" ? GRID_BOUNCES : WHOLE_BOUNCES);
+    maxBounces ?? (mode === "whole" ? WHOLE_BOUNCES : GRID_BOUNCES);
   for (let i = 0; i < bounces; i++) {
     let t = Number.POSITIVE_INFINITY;
     let k = 0;
@@ -103,12 +115,21 @@ export function traceCube(
       }
     }
     t = Math.max(0, t);
-    const m: [number, number, number] = [0, 0, 0];
-    m[k] = Math.sign(d[k] as number) || 1;
+    const axis: [number, number, number] = [0, 0, 0];
+    axis[k] = Math.sign(d[k] as number) || 1;
+    let m: Vec3 = axis;
     p = add(p, mul(d, t));
     path += t;
     thr *= Math.exp(-absorb * t);
-    const F = fresnel(dot(d, m), ior, 1);
+    let F = fresnel(dot(d, m), ior, 1);
+    if (mode === "pass") {
+      const next = add(cell, m);
+      if (Math.max(...next.map(Math.abs)) < 1.5) {
+        p = add(p, mul(d, GRID_GAP / dot(d, m)));
+        cell = next;
+        continue;
+      }
+    }
     if (mode === "grid") {
       const next = add(cell, m);
       if (Math.max(...next.map(Math.abs)) < 1.5) {
@@ -121,6 +142,13 @@ export function traceCube(
           p = add(p, mul(m, -1e-4));
         }
         continue;
+      }
+    }
+    if (facet) {
+      const mf = facetNormal(facet, local(p), m, GEM_BOX_HALF);
+      if (dot(d, mf) > 0.05) {
+        m = mf;
+        F = fresnel(dot(d, m), ior, 1);
       }
     }
     if (F < 1) {

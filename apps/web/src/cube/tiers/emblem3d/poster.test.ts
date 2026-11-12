@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { GEM_STYLES } from "./gemStyle";
 import {
   BIG_SIZE,
   DRAFT_SIZE,
@@ -42,9 +43,11 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7 다섯�
     }
   });
 
-  it("열 티어 × 바탕 둘(보통 칸)과 에메랄드 시안 열 × 바탕 둘(큰 칸)", () => {
+  it("열 티어 × 바탕 둘(보통 칸)과 에메랄드 시안 전부 × 바탕 둘(큰 칸)", () => {
     expect(POSTERS.filter((p) => p.size === DRAFT_SIZE)).toHaveLength(20);
-    expect(POSTERS.filter((p) => p.size === BIG_SIZE)).toHaveLength(20);
+    expect(POSTERS.filter((p) => p.size === BIG_SIZE)).toHaveLength(
+      GEM_STYLES.length * 2,
+    );
   });
 
   it("칸에 맞는 그림만 고른다: 크기·바탕·시안이 다르면 없다(그때만 SVG)", () => {

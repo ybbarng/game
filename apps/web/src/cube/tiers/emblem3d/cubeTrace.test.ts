@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { traceCube } from "./cubeTrace";
 import { GEM_BOX_HALF, smoothstep, traceGem, type Vec3 } from "./gem";
-import { GEM_STYLE_LOOK, throughCos } from "./gemStyle";
+import { type FacetCut, GEM_STYLE_LOOK, throughCos } from "./gemStyle";
 
 /**
  * 「조각마다 진한 안쪽 사각형」을 재는 잣대(docs/47 14-7 일곱째 시안). 등각 정면(눈 방향 몸통 대각선)에서 맨 앞 위
@@ -87,6 +87,112 @@ function rings(model: Model) {
     bright: diff(c.bright, o.bright),
   };
 }
+
+/**
+ * 큐브 전체에 걸친 안쪽 경계(여덟째 시안, 사용자 「한 덩이 유리도 가운데 녹색 사각형이 이상하게 생기는데?」). 정면에서
+ * 큐브 윗면 전체(조각 아홉 칸)를 8×8 덩어리로 나눠, 덩어리마다 나가는 빛 가운데 뒤 배경을 읽는 몫(배경판·방 경계가
+ * 영역을 가른다)의 평균을 구하고, 덩어리 사이 가장 큰 차를 본다. 가는 틈 자국은 덩어리 평균에 묻힌다.
+ */
+function regionSpread(
+  mode: "whole" | "pass",
+  ior: number,
+  cut?: FacetCut,
+  byCell = false,
+): number {
+  const N = 8;
+  const S = 5;
+  const vals: number[] = [];
+  /** 조각 단위로 모을 때(깎은 면 무늬는 조각마다 되풀이되므로 조각 평균끼리 견준다) */
+  const cells = new Map<string, { s: number; n: number }>();
+  const top = mode === "whole" ? 1.495 : 1 + GEM_BOX_HALF;
+  for (let bi = 0; bi < N; bi++)
+    for (let bj = 0; bj < N; bj++) {
+      let s = 0;
+      let n = 0;
+      for (let i = 0; i < S; i++)
+        for (let j = 0; j < S; j++) {
+          const x = -top + ((bi + (i + 0.5) / S) / N) * 2 * top;
+          const z = -top + ((bj + (j + 0.5) / S) / N) * 2 * top;
+          const cell: Vec3 = [Math.round(x), 1, Math.round(z)];
+          // 틈 위 점은 건너뛴다(겉면에 보이는 틈 자국)
+          if (
+            mode === "pass" &&
+            (Math.abs(x - cell[0]) > GEM_BOX_HALF ||
+              Math.abs(z - cell[2]) > GEM_BOX_HALF)
+          )
+            continue;
+          const r = traceCube(
+            mode,
+            [x, top, z],
+            VIEW,
+            TOP,
+            ior,
+            0,
+            cell,
+            undefined,
+            undefined,
+            cut,
+          );
+          let through = 0;
+          let all = 0;
+          const take = (dir: Vec3, w: number) => {
+            all += w;
+            through += (w * (seen(dir) - ROOM)) / (1 - ROOM);
+          };
+          for (const e of r.exits) take(e.dir, e.weight);
+          take(r.leftDir, r.left);
+          s += through / all;
+          n++;
+          const key = `${cell[0]},${cell[2]}`;
+          const c = cells.get(key) ?? { s: 0, n: 0 };
+          c.s += through / all;
+          c.n++;
+          cells.set(key, c);
+        }
+      if (n) vals.push(s / n);
+    }
+  const list = byCell ? [...cells.values()].map((c) => c.s / c.n) : vals;
+  return Math.max(...list) - Math.min(...list);
+}
+
+// 2026-11-12 잰 값: h 0.97, 유리 굴절률의 m 0.93, l·m(굴절률 1.12) 0.007
+describe("큐브 전체의 안쪽 경계(docs/47 14-7 여덟째 시안)", () => {
+  it("유리 굴절률(1.52)이면 옆면 전반사가 영역을 갈라 큰 경계가 생긴다(h, 틈만 통과하는 m도 같다)", () => {
+    expect(regionSpread("whole", 1.52)).toBeGreaterThan(0.5);
+    expect(regionSpread("pass", 1.52)).toBeGreaterThan(0.5);
+  });
+
+  it("l·m: 안의 빛길 굴절률을 1.12로 낮추면 영역이 갈리지 않는다(덩어리 사이 차 0.05 안)", () => {
+    for (const s of ["l", "m", "m2"] as const) {
+      const look = GEM_STYLE_LOOK[s];
+      expect(look.traceIor).toBeLessThan(Math.SQRT2);
+      expect(look.tint).toBeDefined();
+      expect(look.glow).toBe(0);
+    }
+    expect(
+      regionSpread("whole", GEM_STYLE_LOOK.l.traceIor as number),
+    ).toBeLessThan(0.05);
+    expect(
+      regionSpread("pass", GEM_STYLE_LOOK.m.traceIor as number),
+    ).toBeLessThan(0.05);
+  });
+
+  it("m·m2: 조각마다 평균 내면 조각끼리 차가 없다(큐브 전체의 안쪽 경계 없음). m2의 깎은 면 무늬는 조각마다 되풀이될 뿐이다", () => {
+    // 2026-11-12 잰 값: m 0.007, m2 0.098(가장자리 조각의 깎은 면이 큐브 모서리 쪽으로 빛을 내보내는 몫), 유리 굴절률 0.3 넘음
+    for (const [s, max] of [
+      ["m", 0.05],
+      ["m2", 0.15],
+    ] as const) {
+      const look = GEM_STYLE_LOOK[s];
+      expect(look.trace).toBe("pass");
+      expect(
+        regionSpread("pass", look.traceIor as number, look.cut, true),
+      ).toBeLessThan(max);
+    }
+    // 유리 굴절률이면 조각 평균끼리도 크게 갈린다(안쪽 큐브 경계)
+    expect(regionSpread("pass", 1.52, undefined, true)).toBeGreaterThan(0.3);
+  });
+});
 
 // 2026-11-12 잰 값(41×41 점): 조각 하나 밝기 차 13%(가운데 0.78·둘레 0.68), 한 덩이 0.8%, 격자 28%(가운데 0.41·
 // 둘레 0.57). 짙기(지난 길이) 차는 셋 다 1% 아래

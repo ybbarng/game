@@ -240,7 +240,11 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
 
 vec3 gemEnvAt( vec3 w ) {
 #ifdef ENVMAP_TYPE_CUBE_UV
+#ifdef GEM_BLUR_ROUGH
+  return textureCubeUV( envMap, envMapRotation * w, GEM_BLUR_ROUGH ).rgb;
+#else
   return textureCubeUV( envMap, envMapRotation * w, 0.0 ).rgb;
+#endif
 #else
   return vec3( 0.0 );
 #endif
@@ -262,13 +266,24 @@ float gemBoxPath( vec3 p, vec3 d ) {
 // 물체 좌표의 나가는 점 p와 방향 d: 뒤로 꿰뚫어 보면 배경판, 아니면 스튜디오 빛(gem.ts throughWeight)
 // 월드 좌표의 나가는 점 pw와 방향 ow(길이 1)가 보는 빛
 vec3 gemSeeW( vec3 pw, vec3 ow ) {
+#ifdef GEM_SURROUND
+  // 둘레도 배경판에서(여덟째 시안 j·k): 꿰뚫지 않고 옆·앞으로 나간 빛도 큐브 바로 뒤 배경판을 흐리게 읽는다(반사
+  // 지도는 아주 조금만). 꿰뚫는 빛(배경판)과 되튄 빛(방)의 밝기가 달라 생기던 안쪽 사각형 경계를 없앤다
+  vec3 env = texture2D( gemBack, pw.xy / gemSeeK.y + 0.5, 6.0 ).rgb * gemSeeK.z + gemEnvAt( ow ) * gemSeeK.w * 0.15;
+#else
   vec3 env = gemEnvAt( ow ) * gemSeeK.w;
+#endif
   vec3 view = normalize( pw - cameraPosition );
   float w = smoothstep( ${f(through[0])}, ${f(through[1])}, dot( ow, view ) );
   if ( w <= 0.0 || ow.z > - 1e-3 ) return env;
   float t = ( gemSeeK.x - pw.z ) / ow.z;
   vec2 uv = ( pw.xy + ow.xy * t ) / gemSeeK.y + 0.5;
+#ifdef GEM_BLUR_BIAS
+  // 젖빛(시안 k): 배경판을 밉맵 아래 단계로 흐리게 읽는다
+  vec3 back = texture2D( gemBack, uv, GEM_BLUR_BIAS ).rgb * gemSeeK.z;
+#else
   vec3 back = texture2D( gemBack, uv ).rgb * gemSeeK.z;
+#endif
 #ifdef GEM_IN_CUBE
   vec3 pc = ( gemCubeInv * vec4( pw, 1.0 ) ).xyz;
   vec3 dc = normalize( mat3( gemCubeInv ) * ow );
@@ -311,9 +326,13 @@ vec3 gemTraceCube( float ior ) {
   const float H = ${f(GEM_BOX_HALF)};
   const int N = ${GRID_BOUNCES};
 #endif
+  p -= n * 1e-4;
+#ifdef GEM_FACET
+  // 깎은 겉면(시안 m2): 큐브 바깥 면에 들어오고 나갈 때만 그 면 기울기를 쓴다(조각 사이 통과는 그대로)
+  n = gemFacet( p - cell, n );
+#endif
   float cosI = clamp( dot( - v, n ), 0.0, 1.0 );
   vec3 d = refract( v, n, 1.0 / ior );
-  p -= n * 1e-4;
   vec3 thr = vec3( 1.0 - gemFresnel( cosI, 1.0, ior ) );
   vec3 acc = vec3( 0.0 );
   for ( int i = 0; i < N; i ++ ) {
@@ -327,6 +346,15 @@ vec3 gemTraceCube( float ior ) {
     p += d * t;
     thr *= exp( - gemAbsorb * t );
     float F = gemFresnel( dot( d, m ), ior, 1.0 );
+#if GEM_TRACE == 3
+    // 시안 m: 조각 사이 틈은 반사·굴절 없이 곧게 통과(틈의 공기는 없는 것처럼, 흡수는 유리 안 길이만)
+    vec3 nx3 = cell + m;
+    if ( max( max( abs( nx3.x ), abs( nx3.y ) ), abs( nx3.z ) ) < 1.5 ) {
+      p += d * ( ${f(GRID_GAP)} / dot( d, m ) );
+      cell = nx3;
+      continue;
+    }
+#endif
 #if GEM_TRACE == 2
     vec3 nx = cell + m;
     if ( max( max( abs( nx.x ), abs( nx.y ) ), abs( nx.z ) ) < 1.5 ) {
@@ -340,6 +368,10 @@ vec3 gemTraceCube( float ior ) {
       }
       continue;
     }
+#endif
+#ifdef GEM_FACET
+    vec3 mf = gemFacet( p - cell, m );
+    if ( dot( d, mf ) > 0.05 ) { m = mf; F = gemFresnel( dot( d, m ), ior, 1.0 ); }
 #endif
     if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSeeCube( p, refract( d, - m, ior ) );
     thr *= F;
@@ -392,7 +424,20 @@ vec3 gemTrace( float ior ) {
 
 vec3 gemLight() {
 #ifdef GEM_TRACE
-  return gemTraceCube( gemIor.g );
+#ifdef GEM_DISPERSE
+  vec3 gemL = vec3( gemTraceCube( gemIor.r ).r, gemTraceCube( gemIor.g ).g, gemTraceCube( gemIor.b ).b );
+#else
+  vec3 gemL = gemTraceCube( gemIor.g );
+#endif
+#ifdef GEM_TINT
+  // 고른 색(여덟째 시안): 지난 길이로 흡수하지 않고 한 번 곱한다
+  gemL *= GEM_TINT;
+#endif
+#ifdef GEM_INNER
+  // 고른 속빛(시안 m): 안에서 돌아오는 빛을 영역 차이 없이
+  gemL += GEM_TINT * GEM_INNER * gemSeeK.w;
+#endif
+  return gemL;
 #elif defined( GEM_DISPERSE )
   return vec3( gemTrace( gemIor.r ).r, gemTrace( gemIor.g ).g, gemTrace( gemIor.b ).b );
 #else
@@ -441,7 +486,10 @@ export function gemMaterialGL(
   styleKey = "now",
 ): THREE_NS.MeshPhysicalMaterial {
   const m = new T.MeshPhysicalMaterial(frontParams(g));
-  const ior = channelIor(g);
+  // 안의 빛길에만 쓰는 굴절률(시안 l). 겉 반사(frontParams)는 몸 굴절률 그대로
+  const ior = style?.traceIor
+    ? channelIor({ ...g, ior: style.traceIor })
+    : channelIor(g);
   const disperse = disperses(g);
   // 깎은 면은 큐브 조각·왕관 같은 상자 보석에만(팔면체·판은 이미 깎인 모양이다)
   const cut = style && shape === "box" ? style.cut : NO_CUT;
@@ -457,7 +505,9 @@ export function gemMaterialGL(
     inCube && shape === "box" && style?.trace
       ? style.trace === "whole"
         ? 1
-        : 2
+        : style.trace === "grid"
+          ? 2
+          : 3
       : 0;
   m.onBeforeCompile = (shader) => {
     shader.defines = {
@@ -468,6 +518,19 @@ export function gemMaterialGL(
       ...(facet ? { GEM_FACET: "" } : {}),
       ...(jardin ? { GEM_JARDIN: "" } : {}),
       ...(traceId ? { GEM_TRACE: traceId } : {}),
+      ...(traceId && style?.tint
+        ? { GEM_TINT: `vec3( ${style.tint.map(f).join(", ")} )` }
+        : {}),
+      ...(traceId && style?.surround ? { GEM_SURROUND: "" } : {}),
+      ...(traceId && style?.tint && style.innerGlow
+        ? { GEM_INNER: f(style.innerGlow) }
+        : {}),
+      ...(style?.blur && inCube
+        ? {
+            GEM_BLUR_BIAS: f(style.blur.bias),
+            GEM_BLUR_ROUGH: f(style.blur.rough),
+          }
+        : {}),
     };
     shader.uniforms.gemIor = { value: new T.Vector3(...ior) };
     shader.uniforms.gemAbsorb = { value: new T.Vector3(...absorbOf(g, shape)) };

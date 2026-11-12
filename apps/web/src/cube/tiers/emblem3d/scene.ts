@@ -403,8 +403,10 @@ function backdropTexture(
   page: string,
   glow: string | null,
   glowAlpha = 0.6,
+  /** 작은 빛점(유리 시안 j~l은 뺀다: 안에 굴절돼 따로 떠 보인다) */
+  dots = true,
 ) {
-  const gem = glow !== null;
+  const gem = glow !== null && dots;
   const size = 1024;
   const c = document.createElement("canvas");
   c.width = size;
@@ -685,6 +687,7 @@ export function buildEmblemScene(
       : look.gem && Math.max(...look.gem.absorb) < 0.05
         ? GLOW_CLEAR
         : GLOW) * (opt.backGlow ?? 1),
+    !sl?.tint,
   );
   texs.push(bgTex);
   const see: GemSee = {

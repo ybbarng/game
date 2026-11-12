@@ -182,6 +182,67 @@ test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 
   }
 });
 
+/**
+ * 큐브 안쪽 영역 경계의 세기(0~1): 캔버스 화소를 조각 하나 크기로 흐린 뒤, 등각 큐브 윗면 안쪽의 밝기 표준편차.
+ * h의 「안쪽 큐브」 경계는 윗면 안을 가로질러 남고, 조각마다 되풀이되는 틈 선·깎은 면 무늬는 흐려져 고르게 된다
+ */
+async function innerSpread(page: Page, box: Locator): Promise<number> {
+  const png = await box.locator("[data-emblem3d-stage] canvas").screenshot();
+  return page.evaluate(async (b64) => {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bin], { type: "image/png" }));
+    const c = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+    const W = bmp.width;
+    // 조각 하나 크기로 흐린다(가는 틈 선·조각 안 무늬·깎은 면은 지우고 큰 영역 차이만 남긴다)
+    ctx.filter = `blur(${(W * 18) / 880}px)`;
+    ctx.drawImage(bmp, 0, 0);
+    // 등각 큐브의 윗면 안쪽(한 면 안이라 면끼리의 입체 음영은 섞이지 않는다)
+    const img = ctx.getImageData(
+      Math.round(W * 0.42),
+      Math.round(W * 0.392),
+      Math.round(W * 0.159),
+      Math.round(W * 0.0795),
+    );
+    const d = img.data;
+    const vals: number[] = [];
+    for (let k = 0; k < d.length; k += 4)
+      vals.push(
+        (0.2126 * (d[k] ?? 0) +
+          0.7152 * (d[k + 1] ?? 0) +
+          0.0722 * (d[k + 2] ?? 0)) /
+          255,
+      );
+    const mean = vals.reduce((a, v) => a + v, 0) / vals.length;
+    return Math.sqrt(
+      vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length,
+    );
+  }, png.toString("base64"));
+}
+
+test("에메랄드 시안 l: 큐브 안쪽에 영역 경계가 없다(흐린 윗면 밝기가 h보다 훨씬 고르다), m·m2는 값을 기록", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(150_000);
+  const spread: Record<string, number> = {};
+  for (const s of ["h", "l", "m", "m2"]) {
+    await page.goto(`/cube/tiers/emblems?gem=${s}&emblemBg=light`);
+    const box = page.locator('[data-emblem3d="emerald"]');
+    await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+      timeout: 60_000,
+    });
+    spread[s] = await innerSpread(page, box);
+    await draftShot(page, `glass-${s}`);
+  }
+  // 2026-11-12 이 맥(Chromium): h 0.023, l 약 0.002. 진한 색 m·m2는 조각마다의 음영·틈선이 흐린 뒤에도 남아 이 잣대로는
+  // h와 잘 갈리지 않아(m 약 0.015) 값만 기록하고, 큐브 전체 경계 없음은 단위 시험 cubeTrace.test.ts가 조각 평균으로 본다
+  expect(spread.l as number).toBeLessThan((spread.h as number) * 0.5);
+  test.info().annotations.push({
+    type: "emblem-inner-spread",
+    description: JSON.stringify(spread),
+  });
+});
+
 test("3D를 그릴 수 없으면 3D 시안 자리에 미리 찍은 그림이 그대로 남는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {

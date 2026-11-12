@@ -34,6 +34,11 @@ export const GEM_STYLES = [
   "g",
   "h",
   "i",
+  "j",
+  "k",
+  "l",
+  "m",
+  "m2",
 ] as const;
 export type GemStyle = (typeof GEM_STYLES)[number];
 
@@ -49,6 +54,11 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   g: "g 붙은 유리 큐브",
   h: "h 한 덩이 유리",
   i: "i 이웃까지 추적",
+  j: "j 고른 옅은 녹색",
+  k: "k 젖빛 유리",
+  l: "l 약한 굴절",
+  m: "m 틈을 통과하는 보석",
+  m2: "m2 통과하는 보석·깎은 겉면",
 };
 
 /** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
@@ -135,7 +145,20 @@ export interface GemStyleLook {
    * 큐브 조각의 빛길(`cubeTrace.ts`): 없으면 조각 하나 안에서만(옆으로 나간 빛이 이웃 유리를 지나지 않고 방을 읽는다),
    * `whole`은 큐브 전체를 유리 상자 하나로(h), `grid`는 조각 격자를 틈 너머 이웃까지(i)
    */
-  trace?: "whole" | "grid";
+  trace?: "whole" | "grid" | "pass";
+  /**
+   * 고른 색(선형 RGB): 있으면 빛이 지난 길이로 흡수하지 않고(`left`는 무시) 안의 빛에 이 색을 한 번 곱한다. 길이 차로
+   * 생기는 짙은 사각형을 없앤다(여덟째 시안)
+   */
+  tint?: Rgb;
+  /** 안쪽 상을 흐리게(젖빛): 배경판 밉맵 치우침과 반사 지도 거칠기 */
+  blur?: { bias: number; rough: number };
+  /** 안의 빛길에만 쓰는 굴절률(겉 반사는 몸 굴절률 그대로). 낮으면 덜 꺾이고 전반사가 거의 없다 */
+  traceIor?: number;
+  /** 꿰뚫지 않고 나간 빛도 반사 지도 대신 큐브 바로 뒤 배경판을 흐리게 읽는다(배경판·방의 밝기 차 경계를 없앤다) */
+  surround?: boolean;
+  /** 고른 속빛(고른 색 `tint`에 곱해 더한다): 안에서 돌아오는 빛을 영역 차이 없이 흉내 낸다(시안 m) */
+  innerGlow?: number;
   /** 꿰뚫어 본 뒤 배경 세기, 되튄 빛이 읽는 스튜디오 세기 */
   backGain: number;
   envGain: number;
@@ -154,6 +177,47 @@ const NOW_BLOOM = { strength: 0.4, radius: 0.12, threshold: 3 } as const;
  * 생겼다(여섯째 시안 첫 판)
  */
 const GLASS_THROUGH = [95, 75] as const;
+
+/** 여덟째 시안의 고른 옅은 녹색(선형): 빨강 88%·초록 97%·파랑 91% */
+const GLASS_TINT = [0.88, 0.97, 0.91] as const;
+
+/** h 한 덩이 유리: 큐브 전체를 유리 상자 하나로 따라가고, 조각 경계는 겉면의 가는 틈 자국(붙은 조각)뿐. j~l은 이 위에서 바꾼다 */
+const H_LOOK: GemStyleLook = {
+  cut: FLAT,
+  left: [0.8, 0.965, 0.84],
+  spread: 0,
+  jardin: false,
+  cubeFill: 0,
+  fused: true,
+  through: GLASS_THROUGH,
+  trace: "whole",
+  studio: "glass",
+  backGain: 1.45,
+  envGain: 1.25,
+  glow: 0.5,
+  frontLights: 0.8,
+  bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
+};
+
+/** m 보석(조각 사이 통과): 진하고 맑은 푸른 녹색(선형), 고른 속빛 */
+const M_LOOK: GemStyleLook = {
+  ...H_LOOK,
+  fused: false,
+  trace: "pass",
+  left: [1, 1, 1],
+  // 첫 판(색 0.08·0.62·0.34, 속빛 0.3, 번짐 문턱 3)은 옥처럼 탁하고 밝은 바탕에서 형광 민트, 틀 윗변이 크게 번졌다
+  tint: [0.03, 0.46, 0.24],
+  innerGlow: 0.1,
+  glow: 0,
+  traceIor: 1.12,
+  spread: 0.05,
+  surround: true,
+  studio: "sparkle",
+  backGain: 1.7,
+  envGain: 1.6,
+  frontLights: 1.4,
+  bloom: { strength: 0.35, radius: 0.06, threshold: 4.5 },
+};
 
 /** 시안마다 값(문서·보고에 그대로 적는다) */
 export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
@@ -281,23 +345,7 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
   },
   // ---- 일곱째 시안: 큐브 전체 빛길(2026-11-12 사용자 「내부에 사각형 공간이 따로 진하게 보이는 게 매우 어색하거든.
   // 원래 사각형 보석들을 큐브처럼 모은다면 저렇게 보이게 돼?」). f 값 위에서 빛길만 바꾼다
-  h: {
-    // 한 덩이 유리: 큐브 전체를 유리 상자 하나로 따라가고, 조각 경계는 겉면의 가는 틈 자국(붙은 조각)뿐
-    cut: FLAT,
-    left: [0.8, 0.965, 0.84],
-    spread: 0,
-    jardin: false,
-    cubeFill: 0,
-    fused: true,
-    through: GLASS_THROUGH,
-    trace: "whole",
-    studio: "glass",
-    backGain: 1.45,
-    envGain: 1.25,
-    glow: 0.5,
-    frontLights: 0.8,
-    bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
-  },
+  h: H_LOOK,
   i: {
     // 이웃까지 추적: 조각 27개(틈 0.08)를 빛이 건너간다. 틈에서 전반사가 아니면 이웃 조각으로, 큐브 바깥 면에서만 나간다
     cut: FLAT,
@@ -315,6 +363,35 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     frontLights: 0.8,
     bloom: { strength: 0.25, radius: 0.1, threshold: 3.5 },
   },
+  // ---- 여덟째 시안: 안쪽 사각형 경계 없애기(2026-11-12 사용자 h를 보고 「한 덩이 유리도 가운데 녹색 사각형이
+  // 이상하게 생기는데?」). 셋 다 h 위에서 길이 흡수 대신 고른 옅은 녹색, 배경판의 녹색 빛 덩어리 없음
+  j: { ...H_LOOK, left: [1, 1, 1], tint: GLASS_TINT, glow: 0, surround: true },
+  k: {
+    ...H_LOOK,
+    left: [1, 1, 1],
+    tint: GLASS_TINT,
+    glow: 0,
+    surround: true,
+    blur: { bias: 4, rough: 0.5 },
+  },
+  l: {
+    ...H_LOOK,
+    left: [1, 1, 1],
+    tint: GLASS_TINT,
+    glow: 0,
+    traceIor: 1.12,
+  },
+  // 사용자 제안 「보석끼리는 서로 반사하지 않고 통과하는 것처럼 해도 좋을 것 같은데」: 조각 27개(틈 0.08)를 건너가되
+  // 틈은 반사·굴절 없이 곧게 통과, 큐브 바깥 면에서만 굴절·반사·전반사. 겉에는 조각 사이 틈이 그대로 보인다.
+  // 유리 굴절률(1.52)이면 h와 같은 안쪽 큐브 경계가 생겨 l의 수단(약한 굴절·고른 색)을 얹었다
+  // 이어 사용자 「유리 느낌이 아니라 보석 느낌이 나게」(m만): 조각 사이 통과는 지키고, 안쪽 사각형을 만들지 않는
+  // 보석 요소만 얹는다. 바깥 면 굴절률을 실제로 올리면 옆면 전반사가 영역을 갈라 h와 같은 안쪽 큐브 경계가 생긴다
+  // (단위 시험 0.93). 그래서 안의 빛길은 약한 굴절(1.12) 그대로, 진하고 맑은 푸른 녹색을 고르게 곱하고, 안에서
+  // 돌아오는 빛은 고른 속빛으로 더해 어두운 바탕에서도 가라앉지 않게, 겉에는 작고 센 흰 점빛(점빛 스튜디오), 빨강·초록·
+  // 파랑 굴절률 차로 모서리 분산 불꽃
+  m: M_LOOK,
+  // m2: m에 바깥 면만 얕게 깎은 면(계단 세 단). 겉 반사와 큐브 바깥 면 굴절에만 쓰고, 조각 사이 통과는 그대로
+  m2: { ...M_LOOK, cut: STEP },
 };
 
 const DEG = Math.PI / 180;
