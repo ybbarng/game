@@ -9,6 +9,7 @@
 //! | [`render`] | wgpu 그리기(장면 + 실루엣 윤곽), 창 또는 화면 밖 |
 //! | [`keycode`] | 맥 키 코드 → `KeyboardEvent.code` |
 //! | [`ffi_game`] | 앱이 부르는 한 판 C ABI(그리기 없음) |
+//! | [`ffi_records`] | 기록 계산 C ABI(Ao5·최고 Ao5·티어, 코어 `tier.rs`) |
 //! | [`ffi`] | wgpu 그리기 C ABI(기능 `wgpu`) |
 //! | [`png`] | 스크린샷 PNG 쓰기(기능 `wgpu`) |
 //!
@@ -18,6 +19,7 @@
 #[cfg(feature = "wgpu")]
 pub mod ffi;
 pub mod ffi_game;
+pub mod ffi_records;
 pub mod game;
 pub mod keycode;
 pub mod math;

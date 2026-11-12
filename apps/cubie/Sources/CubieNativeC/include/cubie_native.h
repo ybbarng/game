@@ -97,6 +97,32 @@ bool cubie_game_show_push(CubieGame *game, const char *notation, double ms);
 uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
                             uint32_t len);
 
+// ---- 기록 계산(native/cubie-native/src/ffi_records.rs, 코어 tier.rs) ----
+
+/// 기록 한 판. ms가 음수면 DNF
+typedef struct CubieTimeable {
+  double ms;
+  double penalty;
+  uint32_t hints;
+} CubieTimeable;
+
+/// 내 티어
+typedef struct CubieTier {
+  double ao5;        // 최고 Ao5(ms)
+  uint32_t tier;     // 0 아이언 … 9 챌린저
+  int32_t division;  // 0 IV … 3 I, 단계 없는 티어는 -1
+} CubieTier;
+
+/// 대회 규칙 평균(3판보다 적으면 NaN, DNF면 무한대)
+double cubie_average_of(const CubieTimeable *recs, uint32_t count);
+/// 5판의 Ao5(DNF·개수가 5가 아니면 NaN)
+double cubie_ao5(const CubieTimeable *five, uint32_t count);
+/// 최고 Ao5(힌트 판이 든 5판은 건너뜀). 있으면 ms·at(그 5판의 첫 번호)에 쓰고 true
+bool cubie_best_ao5(const CubieTimeable *recs, uint32_t count, double *ms, uint32_t *at);
+/// 기록(새것이 앞)과 최고 5판으로 내 티어. 있으면 out에 쓰고 true
+bool cubie_my_tier(uint32_t n, const CubieTimeable *recs, uint32_t count, const CubieTimeable *best5,
+                   uint32_t best5_count, CubieTier *out);
+
 #ifdef __cplusplus
 }
 #endif
