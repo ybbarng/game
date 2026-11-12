@@ -4,7 +4,7 @@ import AppKit
 /// 받는다. 창은 `FloatingWindow`가 화면 밖에 투명하게 두고, 저장소는 메모리에만 둔다(사용자 기록에 손대지 않는다).
 ///
 /// 명령: `focus 1|0` · `scramble` · `mirror 1|0` · `size <n>` · `side <pt>` · `turns <개수>`(0.12초마다 손가락 자리 키) ·
-/// `show` · `hide` · `keys load|drop`(단축키 표) · `records open|close`(기록 창: 사이트 창, 화면 밖) · `state` · `quit`
+/// `show` · `hide` · `keys load|drop`(단축키 표) · `records open|close`(기록 창: 사이트 창, 화면 밖) · `practice start|stop`(공식 연습 첫 단계) · `state` · `quit`
 @MainActor
 final class NativeMeasure {
   private let cube: NativeCubeWindow
@@ -94,6 +94,13 @@ final class NativeMeasure {
       cube.sendFocus()
     case "keys":
       if arg == "load" { openKeys?() } else { dropKeys?() }
+    case "practice":
+      // 공식 연습: 메뉴 첫 단계(따라 치기). `practice stop`이면 끝내기
+      if arg == "stop" {
+        cube.send(.practice(stage: nil, see: false))
+      } else if let first = cube.state.practiceStages.first {
+        cube.send(.practice(stage: first.id, see: false))
+      }
     case "records":
       if arg == "open" { openRecords?() } else { closeRecords?() }
     case "state": report("state")

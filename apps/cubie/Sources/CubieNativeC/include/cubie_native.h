@@ -113,6 +113,22 @@ bool cubie_game_take_milestone(CubieGame *game);
 /// 다 맞춰 생긴 기록 한 판(ms·penalty·moves·scramble·seed·replay·splits·combo)을 JSON 글로 꺼낸다(한 번만, 없으면 0).
 /// 글 전체 바이트 수를 돌려준다(len이 모자라면 꺼내지 않고 필요한 길이만)
 uint32_t cubie_game_take_record(CubieGame *game, uint8_t *out, uint32_t len);
+/// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 바이트 수
+uint32_t cubie_practice_menu(uint8_t *out, uint32_t len);
+/// 공식 연습을 연다(3×3 한 판만). 기록 글은 사이트와 같은 JSON. 못 열면 false
+bool cubie_game_practice_start(CubieGame *game, const char *stage, bool see, const char *alg_book, const char *record,
+                               const char *train, uint32_t seed);
+void cubie_game_practice_stop(CubieGame *game);
+/// 시각이 닿은 일(멈춤 끝·틀린 키 끝)
+void cubie_game_practice_tick(CubieGame *game, double now);
+/// 보고 치기: 공식 펼치기
+bool cubie_game_practice_peek(CubieGame *game);
+/// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝)
+uint32_t cubie_game_practice_events(CubieGame *game);
+/// 말풍선 줄들(줄마다 「꼴\t글[\t낱말 꼴:글을 0x1f로 이음]」). 글 바이트 수
+uint32_t cubie_game_practice_lines(const CubieGame *game, const char *again, uint8_t *out, uint32_t len);
+/// 저장할 기록 글(which 0 공식 연습 기록, 1 보고 치기 기록). 글 바이트 수
+uint32_t cubie_game_practice_record(const CubieGame *game, uint32_t which, uint8_t *out, uint32_t len);
 /// 다시 보기 글 → 걸음 줄들(「시각 표기」, 줄바꿈으로 이음). 글 전체 바이트 수를 돌려준다(out이 NULL이면 길이만)
 uint32_t cubie_replay_steps(uint32_t n, const char *text, double max_pause_ms, double offset, uint8_t *out,
                             uint32_t len);

@@ -7,6 +7,8 @@
 //! | [`game`] | 한 판: 키 → 수, 섞기, 되돌리기, 맞춤 판정, 돌리는 연출 줄(시간은 밖에서 넣는다) |
 //! | [`scene`] | 조각·스티커 모양, 상태 → 인스턴스, 카메라(사이트 생김새 값) |
 //! | [`render`] | wgpu 그리기(장면 + 실루엣 윤곽), 창 또는 화면 밖 |
+//! | [`practice`] | 공식 연습: 코어 진행기를 한 판에 붙이기, 말풍선 줄(사이트 `practiceBubbleLines`) |
+//! | [`json`] | 작은 JSON 읽기·쓰기(연습 기록·내 공식, 사이트와 같은 꼴) |
 //! | [`keycode`] | 맥 키 코드 → `KeyboardEvent.code` |
 //! | [`ffi_game`] | 앱이 부르는 한 판 C ABI(그리기 없음) |
 //! | [`ffi_records`] | 기록 계산 C ABI(Ao5·최고 Ao5·티어, 코어 `tier.rs`) |
@@ -21,10 +23,12 @@ pub mod ffi;
 pub mod ffi_game;
 pub mod ffi_records;
 pub mod game;
+pub mod json;
 pub mod keycode;
 pub mod math;
 #[cfg(feature = "wgpu")]
 pub mod png;
+pub mod practice;
 #[cfg(feature = "wgpu")]
 pub mod render;
 pub mod scene;

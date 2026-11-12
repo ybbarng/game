@@ -126,6 +126,10 @@ pub struct Game {
     /// 다 맞춰 생긴 기록(앱이 꺼내 간다)과 이정표가 새로 켜졌는지(소리)
     record: Option<SolveRecord>,
     milestone: bool,
+    /// 공식 연습 중이면 그 진행기(3×3 한 판에만). 키는 진행기로 가고 장면은 진행기 상태를 보인다
+    pub(crate) practice: Option<cube_core::practice::PracticeSession>,
+    /// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝), 앱이 꺼내 간다
+    pub(crate) practice_events: u32,
 }
 
 impl Game {
@@ -149,6 +153,8 @@ impl Game {
             now: 0.0,
             record: None,
             milestone: false,
+            practice: None,
+            practice_events: 0,
         }
     }
 
@@ -213,6 +219,29 @@ impl Game {
         self.play(mv)
     }
 
+    pub(crate) fn keymap_clone(&self) -> Keymap {
+        self.interp.keymap().clone()
+    }
+
+    pub(crate) fn now(&self) -> f64 {
+        self.now
+    }
+
+    /// 상태를 통째로 바꾼다(공식 연습 문제·다시 칠하기)
+    pub(crate) fn jump_to(&mut self, st: State) {
+        self.jump(st);
+    }
+
+    /// 수 하나를 화면 줄에 넣고 논리 상태를 `st`로(공식 연습이 받은 수)
+    pub(crate) fn push_with_state(&mut self, mv: CubeMove, st: State) {
+        self.state = st;
+        self.push(mv);
+    }
+
+    pub(crate) fn interp_handle(&mut self, input: &KeyInput) -> Option<KeyResult> {
+        self.interp.handle(input)
+    }
+
     /// 꺼낸 기록을 되돌려 둔다(앱의 자리가 모자랐을 때)
     pub fn put_back_record(&mut self, r: SolveRecord) {
         self.record = Some(r);
@@ -252,6 +281,9 @@ impl Game {
 
     /// 키 누름 하나
     pub fn key(&mut self, input: &KeyInput, seed: u32) -> Outcome {
+        if self.practice.is_some() {
+            return self.practice_key(input, seed);
+        }
         match self.interp.handle(input) {
             None => Outcome::Ignored,
             Some(KeyResult::Move { notation, mv, .. }) => {

@@ -28,6 +28,14 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   private var pendingOrigin: String?
   private var peekKey: UInt16?
   private var hintMsgCancel: (() -> Void)?
+  /// 공식 연습(docs/47 16-11): 연습하는 동안 맞추던 판(`mainCube`)은 그대로 두고 3×3 연습 판을 보인다
+  private var mainCube: CACubeView?
+  private let practiceClock: FocusClock
+  private var practiceTimer: Timer?
+  private var practiceLines: [String] = []
+  static let practiceKey = "cube.mini.practice.v1"
+  static let trainKey = "cube.mini.train.v1"
+  static let algsKey = "cube.algs.v1"
   private var mirrorRecheck: (() -> Void)?
 
   var onReady: (() -> Void)?
@@ -50,6 +58,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     store = Config.measure ? MemoryStore() : DefaultsStore()
     book = MiniBook(store: store, math: RustTierMath())
     clock = FocusClock(base: realClock)
+    practiceClock = FocusClock(base: realClock)
     if !Config.measure {
       let r = WebStorageMigration.run(
         store: store, websiteData: WebStorageMigration.websiteData(), host: Config.miniURL.host ?? "game.byb.kr")
@@ -65,6 +74,10 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     idle = IdleShow(clock: realClock, hooks: idleHooks())
     state.n = n
     state.mirror = book.mirror
+    state.practiceStages = NativeCore.string { cubie_practice_menu($0, $1) }.split(separator: "\n").compactMap {
+      let f = $0.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+      return f.count == 3 ? PracticeStageItem(id: f[0], title: f[1], group: f[2]) : nil
+    }
     readSettings()
     install(cube)
     refreshProfile()
@@ -137,6 +150,7 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   /// 크기를 바꾼다(새 한 판, 기록도 크기별). 맞추던 판은 버린다(사이트와 같다)
   private func setSize(_ n: Int) {
     guard MiniBook.sizes.contains(n) else { return }
+    stopPractice()
     idle.reset()
     hintGate.reset()
     hideHint()
@@ -164,9 +178,8 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
       requestHint()
     case .size(let n):
       setSize(n)
-    case .practice:
-      // 공식 연습은 코어 진행기를 옮긴 뒤(docs/52 5-6 남은 것). 지금은 메뉴에 단계가 없다
-      break
+    case .practice(let stage, let see):
+      if let stage { startPractice(stage, see: see) } else { stopPractice() }
     case .keysPanel(let open):
       keysPanelOpen = open
     }
@@ -193,8 +206,10 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
 
   func sendFocus() {
     let f = focused
-    clock.setFocused(f)
-    idle.setActive(!f && visible && !reducedMotion)
+    let practicing = state.practice != nil
+    clock.setFocused(f && !practicing)
+    practiceClock.setFocused(f && practicing)
+    idle.setActive(!f && visible && !reducedMotion && !practicing)
     updateMirror()
     if Config.debug { dump("focus=\(f) visible=\(visible)") }
   }
@@ -222,11 +237,20 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     pendingOrigin = nil
     if keysPanelOpen, let code = WebKeyCode.of(e.keyCode), !e.isARepeat { onPressed?(code) }
     let mods = e.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.function, .numericPad, .capsLock])
-    // 힌트 키 `\`(사용자 배치가 `\`를 쓰면 배치를 따른다, 사이트 `HINT_KEYS`)
+    // 힌트 키 `\`(사용자 배치가 `\`를 쓰면 배치를 따른다, 사이트 `HINT_KEYS`). 공식 연습 보고 치기는 공식 펼치기
     if e.keyCode == 42, mods.isEmpty, !keymap.usesBackslash {
-      if !e.isARepeat { requestHint() }
+      if !e.isARepeat {
+        if state.practice != nil {
+          cubie_game_set_now(cube.game, practiceClock.now())
+          _ = cubie_game_practice_peek(cube.game)
+          practiceChanged()
+        } else {
+          requestHint()
+        }
+      }
       return true
     }
+    if state.practice != nil { return practiceKey(e.keyCode, flags: CACubeView.flags(e)) }
     // 떠 있을 때 연출 중이면 멈추고 장면을 되돌린 뒤 받는다
     idle.setActive(false)
     let seed = UInt32.random(in: 0...UInt32.max)
@@ -257,8 +281,9 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     cube.setPeek(nil)
   }
 
-  /// 섞기(메뉴·재기). 섞기 연출은 설정을 따르고, 동작 줄이기면 바로
+  /// 섞기(메뉴·재기). 섞기 연출은 설정을 따르고, 동작 줄이기면 바로. 공식 연습 중이면 끝내고 섞는다
   private func scramble() {
+    stopPractice()
     idle.setActive(false)
     let seed = UInt32.random(in: 0...UInt32.max)
     cubie_game_set_now(cube.game, clock.now())
@@ -374,6 +399,124 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
     onHint?(nil)
   }
 
+  // MARK: 공식 연습(docs/47 16-11)
+
+  private func startPractice(_ id: String, see: Bool) {
+    idle.setActive(false)
+    hintGate.hide()
+    hideHint()
+    if mainCube == nil { mainCube = cube }
+    let view = CACubeView(frame: host.bounds, n: 3)
+    cube = view
+    install(view)
+    cubie_game_set_now(view.game, practiceClock.now())
+    let ok = cubie_game_practice_start(
+      view.game, id, see, store.string(Self.algsKey) ?? "", store.string(Self.practiceKey) ?? "",
+      store.string(Self.trainKey) ?? "", UInt32.random(in: 0...UInt32.max))
+    guard ok else {
+      stopPractice()
+      return
+    }
+    state.practice = id
+    state.practiceSee = see
+    view.showJump(solved: false)
+    practiceTimer?.invalidate()
+    let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self, self.state.practice != nil else { return }
+        cubie_game_practice_tick(self.cube.game, self.practiceClock.now())
+        self.practiceChanged()
+      }
+    }
+    RunLoop.main.add(t, forMode: .common)
+    practiceTimer = t
+    sendFocus()
+    practiceChanged(force: true)
+    onState?()
+  }
+
+  /// 연습 끝내기: 맞추던 판으로 돌아간다(Esc·메뉴·섞기·크기)
+  private func stopPractice() {
+    guard state.practice != nil || mainCube != nil else { return }
+    savePractice()
+    cubie_game_practice_stop(cube.game)
+    practiceTimer?.invalidate()
+    practiceTimer = nil
+    state.practice = nil
+    practiceLines = []
+    if let main = mainCube {
+      cube = main
+      mainCube = nil
+      install(main)
+    }
+    onHint?(nil)
+    sendFocus()
+    onState?()
+  }
+
+  private func savePractice() {
+    guard state.practice != nil, !Config.measure else { return }
+    let rec = NativeCore.string { cubie_game_practice_record(cube.game, 0, $0, $1) }
+    let train = NativeCore.string { cubie_game_practice_record(cube.game, 1, $0, $1) }
+    if !rec.isEmpty { store.set(rec, for: Self.practiceKey) }
+    if !train.isEmpty { store.set(train, for: Self.trainKey) }
+  }
+
+  private func practiceKey(_ keyCode: UInt16, flags: UInt32) -> Bool {
+    cubie_game_set_now(cube.game, practiceClock.now())
+    let r = cube.press(keyCode: keyCode, flags: flags, seed: UInt32.random(in: 0...UInt32.max))
+    switch r {
+    case Int32(CUBIE_KEY_MOVED): sound.play(.turn)
+    case Int32(CUBIE_KEY_PEEK_BACK):
+      cube.setPeek(CACubeView.peekBack)
+      peekKey = keyCode
+    case Int32(CUBIE_KEY_PEEK_DOWN):
+      cube.setPeek(CACubeView.peekDown)
+      peekKey = keyCode
+    default: break
+    }
+    practiceChanged()
+    return r != Int32(CUBIE_KEY_IGNORED)
+  }
+
+  /// 진행기가 알린 일을 처리하고 말풍선 줄을 고친다
+  private func practiceChanged(force: Bool = false) {
+    let ev = cubie_game_practice_events(cube.game)
+    if ev & 1 != 0 { cube.showJump(solved: false) }
+    if ev & 2 != 0 {
+      sound.play(.solved)
+      savePractice()
+    }
+    if ev & 4 != 0 { sound.play(.invalid) }
+    if ev & 8 != 0 { savePractice() }
+    let again = keymap.scrambleKey.map { Self.keyLabel($0.code) } ?? "Enter"
+    let text = again.withCString { a in NativeCore.string { cubie_game_practice_lines(cube.game, a, $0, $1) } }
+    let lines = text.split(separator: "\n").map(String.init)
+    guard force || lines != practiceLines else { return }
+    practiceLines = lines
+    onHint?(lines.map(Self.bubbleLine))
+  }
+
+  /// 「꼴\t글[\t낱말들]」 → 말풍선 줄
+  static func bubbleLine(_ raw: String) -> [String: Any] {
+    let f = raw.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+    var line: [String: Any] = ["style": f.first ?? "plain", "text": f.count > 1 ? f[1] : ""]
+    if f.count > 2 {
+      line["spans"] = f[2].split(separator: "\u{1f}").map { sp -> [String: Any] in
+        let p = sp.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+        return ["style": p[0], "text": p.count > 1 ? p[1] : ""]
+      }
+    }
+    return line
+  }
+
+  /// 키 이름(사이트 `codeLabel`의 줄인 꼴)
+  static func keyLabel(_ code: String) -> String {
+    if code.hasPrefix("Key") { return String(code.dropFirst(3)) }
+    if code.hasPrefix("Digit") { return String(code.dropFirst(5)) }
+    return code
+  }
+
   // MARK: 거울(사이트 `mirror.ts`, docs/47 15-14)
 
   private func updateMirror() {
@@ -388,7 +531,8 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
       return
     }
     let fits = min(host.bounds.width, host.bounds.height) >= CGFloat(10 * cube.n)
-    let want = state.mirror && fits && focused && cubie_game_solving(cube.game) && !cube.solved && idle.showing == nil
+    let solving = state.practice != nil || (cubie_game_solving(cube.game) && !cube.solved)
+    let want = state.mirror && fits && focused && solving && idle.showing == nil
     cube.setMirror(want)
   }
 
@@ -512,6 +656,10 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
 
   /// 키 하나를 실제 키처럼(재기의 돌리기)
   func measurePress(_ keyCode: UInt16) {
+    if state.practice != nil {
+      _ = practiceKey(keyCode, flags: 0)
+      return
+    }
     cubie_game_set_now(cube.game, clock.now())
     let r = cube.press(keyCode: keyCode, flags: 0)
     if r == Int32(CUBIE_KEY_MOVED) || r == Int32(CUBIE_KEY_SOLVED) { moved(origin: "synthetic") }

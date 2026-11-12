@@ -419,6 +419,109 @@ pub unsafe extern "C" fn cubie_game_take_record(g: *mut CubieGame, out: *mut u8,
     need
 }
 
+/// 공식 연습 단계 목록(메뉴): 줄마다 「id\t이름\t묶음」. 글 전체 바이트 수를 돌려준다
+///
+/// # Safety
+/// `out`은 `len`바이트를 쓸 수 있는 자리(NULL이면 길이만).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_practice_menu(out: *mut u8, len: u32) -> u32 {
+    let lines: Vec<String> = cube_core::practice::menu_stages()
+        .iter()
+        .map(|s| format!("{}\t{}\t{}", s.id, s.title, s.group))
+        .collect();
+    unsafe { write_str(&lines.join("\n"), out, len) }
+}
+
+/// 공식 연습을 연다(3×3 한 판만, 시각은 [`cubie_game_set_now`]). 기록 글은 사이트와 같은 JSON. 못 열면 false
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. 글은 NUL로 끝나는 C 글(NULL이면 빈 글).
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_start(
+    g: *mut CubieGame,
+    stage: *const c_char,
+    see: bool,
+    alg_book: *const c_char,
+    record: *const c_char,
+    train: *const c_char,
+    seed: u32,
+) -> bool {
+    let g = unsafe { &mut *g };
+    let s = |p| unsafe { c_str(p) }.unwrap_or("");
+    let (stage, book, rec, tr) = (s(stage), s(alg_book), s(record), s(train));
+    g.game.practice_start(stage, see, book, rec, tr, seed)
+}
+
+/// 연습 끝내기
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_stop(g: *mut CubieGame) {
+    unsafe { &mut *g }.game.practice_stop();
+}
+
+/// 시각이 닿은 일을 처리한다(맞춘 모습 멈춤 0.7초·틀린 키 1.5초). 연습 중에는 앱이 짧은 간격으로 부른다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_tick(g: *mut CubieGame, now: f64) {
+    unsafe { &mut *g }.game.practice_tick(now);
+}
+
+/// 보고 치기: 공식 펼치기(힌트 키). 펼쳤으면 true
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_peek(g: *mut CubieGame) -> bool {
+    unsafe { &mut *g }.game.practice_peek()
+}
+
+/// 진행기가 알린 일(비트: 1 다시 칠함 · 2 문제 맞춤 · 4 틀린 수 · 8 판 끝)을 꺼낸다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_events(g: *mut CubieGame) -> u32 {
+    unsafe { &mut *g }.game.take_practice_events()
+}
+
+/// 말풍선 줄(사이트 `practiceBubbleLines`, 줄바꿈으로 이음). `again`은 「한 판 더」 키 이름. 글 바이트 수를 돌려준다
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `again`은 C 글, `out`은 `len`바이트를 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_lines(
+    g: *const CubieGame,
+    again: *const c_char,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    let g = unsafe { &*g };
+    let again = unsafe { c_str(again) }.unwrap_or("Enter");
+    unsafe { write_str(&g.game.practice_lines(again).join("\n"), out, len) }
+}
+
+/// 저장할 기록 글: `which` 0이면 공식 연습 기록(`cube.mini.practice.v1`), 1이면 보고 치기 기록(`cube.mini.train.v1`)
+///
+/// # Safety
+/// [`cubie_game_size`]와 같다. `out`은 `len`바이트를 쓸 수 있는 자리.
+#[no_mangle]
+pub unsafe extern "C" fn cubie_game_practice_record(
+    g: *const CubieGame,
+    which: u32,
+    out: *mut u8,
+    len: u32,
+) -> u32 {
+    let g = unsafe { &*g };
+    let Some((rec, train)) = g.game.practice_records() else {
+        return 0;
+    };
+    unsafe { write_str(if which == 0 { &rec } else { &train }, out, len) }
+}
+
 /// 다시 보기 글 → 걸음(사이트 `solveSteps`, 수 사이 멈춤은 `max_pause_ms`까지, 첫 수가 `offset`). 걸음마다 한 줄
 /// 「시각 표기」(수가 여럿이면 빈칸으로 이음)를 `out`에 쓴다. 글 전체 바이트 수를 돌려준다
 ///
