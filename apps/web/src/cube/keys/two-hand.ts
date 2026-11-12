@@ -139,15 +139,15 @@ export const TWO_HAND_RULES: HandRule[] = [
   },
   {
     move: "x",
-    code: "KeyT",
-    hand: "left",
+    code: "KeyY",
+    hand: "right",
     row: "up",
     finger: "큐브 전체를 R처럼 위로(가운데 위 줄)",
   },
   {
     move: "x'",
-    code: "KeyB",
-    hand: "left",
+    code: "KeyN",
+    hand: "right",
     row: "down",
     finger: "큐브 전체를 아래로(가운데 아래 줄)",
   },
@@ -179,19 +179,20 @@ export const TWO_HAND_RULES: HandRule[] = [
     row: "up",
     finger: "큐브 전체를 F'처럼(왼 새끼 위)",
   },
-  {
-    move: "M",
-    code: "Digit6",
-    hand: "right",
-    row: "up",
-    finger: "약지로 가운데 줄을 밀어 올리기(숫자 줄)",
-  },
+  // 가운데 층(2026-11-12): 앞면이 움직이는 쪽으로 줄을 고른다. M'은 R·x처럼 앞면이 위로, M은 아래로
   {
     move: "M'",
-    code: "Period",
-    hand: "right",
+    code: "KeyT",
+    hand: "left",
+    row: "up",
+    finger: "가운데 층을 R처럼 위로(가운데 위 줄, x 옆)",
+  },
+  {
+    move: "M",
+    code: "KeyB",
+    hand: "left",
     row: "down",
-    finger: "오른 약지로 가운데 줄 뒤쪽을 당겨 내리기",
+    finger: "가운데 층을 L처럼 아래로(가운데 아래 줄, x' 옆)",
   },
 ];
 

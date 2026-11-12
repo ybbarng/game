@@ -114,8 +114,12 @@ function bare({ code, shift, alt, ctrl }: KeyChord): KeyChord {
 const letterOf = (notation: string) =>
   /[RLUDFBMESxyz]/i.exec(notation)?.[0]?.toUpperCase() ?? "";
 
+/** 가운데 층 → 따라 도는 면(M은 L, E는 D, S는 F) */
+const SLICE_FACE: Record<string, string> = { M: "L", E: "D", S: "F" };
+
 /**
- * 층 수 하나에서 그 수를 치는 길들(층 수 키 없이): 키 하나, 없으면 같은 키 두 번, 없으면 깊이 키 + 면 키.
+ * 층 수 하나에서 그 수를 치는 길들(층 수 키 없이): 키 하나, 없으면 같은 키 두 번, 없으면 깊이 키 + 면 키,
+ * 없으면 깊이 키 + 면 키를 두 번(「두 손」 3×3의 E2 = 2 → S를 두 번).
  * 같은 무리 안에서는 공식과 같은 글자의 동작(「표기」의 2R'은 3 → L보다 2 → ⇧R), 조합 키 적은 것,
  * 시계 방향(R2는 R 두 번), 배치에 먼저 놓인 것 차례
  */
@@ -130,11 +134,26 @@ function routesAt(
   const direct: Option[] = [];
   const double: Option[] = [];
   const deep: Option[] = [];
-  const depthKeys = keymap.bindings.filter(
+  const deepDouble: Option[] = [];
+  // 바깥 면 한 층·큐브 전체는 깊이 길로 찾지 않는다(3×3의 R을 「3 → 반대 면 키」로 가르치지 않게)
+  const outer =
+    (target.from === target.to && (target.from === 1 || target.from === n)) ||
+    (target.from === 1 && target.to === n);
+  // 같은 깊이가 여러 키에 있으면 조합 키 없는 것만(「두 손」의 Shift+3은 Shift를 누른 채 치게 둔 같은 3)
+  const allDepth = keymap.bindings.filter(
     (b) => parseAction(b.action)?.kind === "depth",
   );
+  const depthKeys = outer
+    ? []
+    : allDepth.filter(
+        (b) =>
+          mods(b) === 0 ||
+          !allDepth.some((o) => o.action === b.action && mods(o) === 0),
+      );
+  // 가운데 층은 표기 정의에서 따라 도는 면의 키를 다음으로(3×3 E = 2 → D 키, S = 2 → F 키)
+  const sliceFace = SLICE_FACE[letter];
   const rank = (action: string, presses: KeyChord[], ccw = false) => [
-    letterOf(action) === letter ? 0 : 1,
+    letterOf(action) === letter ? 0 : letterOf(action) === sliceFace ? 1 : 2,
     modsOf(presses),
     ccw ? 1 : 0,
   ];
@@ -163,6 +182,19 @@ function routesAt(
       ) {
         const presses = [bare(d), bare(b)];
         deep.push({ presses, rank: rank(b.action, presses) });
+      } else if (
+        dm &&
+        !same &&
+        sameLayersOf(dm, target) &&
+        target.turns === 2 &&
+        dm.turns !== 2
+      ) {
+        const presses = [bare(d), bare(b), bare(d), bare(b)];
+        deepDouble.push({
+          presses,
+          // 시계 방향은 표기로 본다(E2는 E 키인 D 쪽 S를 두 번)
+          rank: rank(b.action, presses, b.action.endsWith("'")),
+        });
       }
     }
   }
@@ -174,13 +206,14 @@ function routesAt(
     return 0;
   };
   // 앞 무리에 길이 있으면 그것만(키 하나로 치는 수에 「3 → L」 같은 먼 길을 덧붙이지 않는다)
-  const first = [direct, double, deep].find((list) => list.length > 0) ?? [];
+  const first =
+    [direct, double, deep, deepDouble].find((list) => list.length > 0) ?? [];
   first.sort(byRank);
   // 공식과 같은 글자의 키가 있으면 그것만(「2 → R」에 「3 → Shift+L」을 덧붙이지 않는다)
   const best = first[0]?.rank[0];
   const sorted = first.filter((o) => o.rank[0] === best).map((o) => o.presses);
   // 반 바퀴는 어느 쪽 키든 맞지만 글로는 하나만(「I 두 번」)
-  return first === double ? sorted.slice(0, 1) : sorted;
+  return first === double || first === deepDouble ? sorted.slice(0, 1) : sorted;
 }
 
 /** 공식 글의 수 하나 → 그 크기의 수. 쓸 수 없는 수면 null */

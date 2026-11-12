@@ -202,7 +202,7 @@ const COMMON_COMMANDS: KeyBinding[] = [
 /**
  * 「두 손」(기본, 빠르기). 실물에서 그 면을 돌리는 손으로 친다. R·R'(I·K)은 오른손, L·L'(D·E)은 왼손에
  * 함께 있고, U·D·F·B는 시계·반시계가 두 손의 마주 보는 자리로 나뉜다.
- * 널리 쓰이는 웹 큐브 프로그램(qqTimer·csTimer 가상 큐브)의 자리를 기억으로 옮겼다.
+ * 널리 쓰이는 웹 큐브 프로그램(qqTimer·csTimer 가상 큐브)의 글자 키 자리를 옮겼다.
  *
  *   오른손                      왼손
  *   I  R    K  R'               D  L    E  L'
@@ -211,13 +211,19 @@ const COMMON_COMMANDS: KeyBinding[] = [
  *   U  Rw   M  Rw'              V  Lw   R  Lw'
  *   ,  Uw   /  Dw'              C  Uw'  Z  Dw
  *   ;  y    P  z                A  y'   Q  z'
- *   Y  x    N  x'               T  x    B  x'
- *   6  M(2R')  .  M'(2R)      5  M(2L)  X  M'(2L')
+ *   Y  x    N  x'               T  M'   B  M
+ *   .  M'(2R)                   X  M'(2L')
  *
- * csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다(2026-11-04).
- * 숫자: 1 = S', 2 = E, 9 = E', 0 = S, 3·4 = 왼손 층 수 −1·+1, 7·8 = 오른손 층 수 +1·−1(R 키가 바깥 k층, Rw 키가 k+1층).
- * csTimer에 없는 덧붙임: Shift+면 키 = 넓게(Rw …, 큰 큐브는 층 수 + 1층). Alt는 쓰지 않는다(Shift가 알아보기 쉽다. 브라우저 단축키는 막을 수 있다, docs/47 4-2).
- * csTimer와 다른 곳: Space는 층 수 되돌리기가 아니라 살펴보기·블라인드 시작이다(층 수는 섞기·맞춘 상태로 때 1로).
+ * 글자 키는 csTimer(github cs0x7f/cstimer `src/js/twisty/twistynnn.js` `generateCubeKeyMapping`)와 같은 자리다.
+ * 숫자와 Shift는 2026-11-12 사용자 결정으로 바꿨다(docs/47 4-2, docs/53).
+ * - 숫자 n(2~7) = 다음 면 키 하나에만 붙는 깊이: n → I = nR(그 면의 n번째 층 하나). 남지 않는다
+ *   (예전 층 수 3·4·7·8은 버림). 3×3에서 2 → I = 2R = M', 2 → J = 2U = E', 2 → H = 2F = S.
+ * - Shift + 면 키 = 같이 돌리기(넓게): Shift+I = Rw. 숫자 n 뒤면 바깥 n층 함께: 3 → Shift+I = 3Rw.
+ *   Shift를 먼저 누른 채 숫자를 쳐도 같다(Shift+3은 자판 글자로는 #이지만 키 자리로 읽는다).
+ * - T·B = M'·M(앞면이 위로 가는 M'이 위 줄). x·x'은 Y·N에 남는다. .·X는 csTimer처럼 M'(늘 2R·2L').
+ * - E·S는 따로 키를 두지 않는다(공식 자료·사용자 기록에서 0번, docs/53 2절): 2 → J·S·H·W.
+ * Alt는 쓰지 않는다(브라우저·운영체제 단축키와 부딪칠 수 있다, docs/53 5절).
+ * csTimer와 다른 곳: Space는 살펴보기·블라인드 시작이다.
  */
 const TWO_HAND_FACE: [code: string, action: string][] = [
   ["KeyI", "R"],
@@ -249,31 +255,26 @@ export function twoHandKeymap(): Keymap {
     key("KeyC", "Uw'"),
     key("KeyZ", "Dw"),
     key("Slash", "Dw'"),
-    key("KeyT", "x"),
     key("KeyY", "x"),
-    key("KeyB", "x'"),
     key("KeyN", "x'"),
     key("Semicolon", "y"),
     key("KeyA", "y'"),
     key("KeyP", "z"),
     key("KeyQ", "z'"),
-    // 가운데 줄 키는 csTimer처럼 「손이 잡은 층 바로 안쪽 한 층」(2026-11-04): 3×3은 M·M', 4×4는 2L·2R' …,
-    // 층 수를 올리면 한 층씩 안쪽으로(4×4에서 7 → . = 3R). 5×5의 M은 7 → 6
-    key("Digit5", "2L"),
-    key("Digit6", "2R'"),
+    // 가운데 층(2026-11-12): T = M'(앞면이 위로, 위 줄), B = M(아래 줄). 홀수 크기의 정가운데 층
+    key("KeyT", "M'"),
+    key("KeyB", "M"),
+    // csTimer의 M' 자리. 층 수가 없어 늘 둘째 층 하나(3×3은 M', 4×4는 2R·2L')
     key("KeyX", "2L'"),
     key("Period", "2R"),
-    // csTimer와 같은 숫자 키(2026-11-04): E·S, 큰 큐브 층 수
-    key("Digit1", "S'"),
-    key("Digit2", "E"),
-    key("Digit9", "E'"),
-    key("Digit0", "S"),
-    key("Digit3", "layers:L-"),
-    key("Digit4", "layers:L+"),
-    key("Digit7", "layers:R+"),
-    key("Digit8", "layers:R-"),
-    ...COMMON_COMMANDS,
   );
+  // 숫자 = 다음 면 키 하나의 깊이. Shift를 누른 채로 쳐도 같은 깊이(그 뒤 Shift + 면 키 = 바깥 n층 함께)
+  for (let d = 2; d <= 7; d++)
+    bindings.push(
+      key(`Digit${d}`, `depth:${d}`),
+      key(`Digit${d}`, `depth:${d}`, { shift: true }),
+    );
+  bindings.push(...COMMON_COMMANDS);
   return { version: 1, preset: "twoHand", bindings, mouseRotate: false };
 }
 

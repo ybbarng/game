@@ -24,36 +24,33 @@ describe("수 → 키(배우기·튜토리얼이 보이는 키)", () => {
     expect(caps(keysForMove(twoHand, 3, "Rw"))).toBe("U");
     expect(caps(keysForMove(twoHand, 3, "r"))).toBe("U");
     expect(caps(keysForMove(twoHand, 3, "r'"))).toBe("M");
-    // x는 T·Y 두 키에 놓였다. 키 익히기와 같이 앞의 것(T)
-    expect(caps(keysForMove(twoHand, 3, "x"))).toBe("T");
-    expect(caps(keysForMove(twoHand, 3, "M'"))).toBe("X");
+    // x는 Y, M'은 T(공식과 같은 글자 M의 키가 .·X보다 먼저)
+    expect(caps(keysForMove(twoHand, 3, "x"))).toBe("Y");
+    expect(caps(keysForMove(twoHand, 3, "M'"))).toBe("T");
+    expect(caps(keysForMove(twoHand, 3, "M"))).toBe("B");
   });
 
-  test("「두 손」: 안쪽 한 층은 csTimer의 가운데 줄 키 하나(수 하나라 중간 모양이 없다)", () => {
+  test("「두 손」: 안쪽 한 층은 숫자 깊이 + 면 키(.·X는 csTimer처럼 둘째 층 하나)", () => {
     expect(caps(keysForMove(twoHand, 4, "2R"))).toBe(".");
-    expect(caps(keysForMove(twoHand, 4, "2R'"))).toBe("6");
-    expect(caps(keysForMove(twoHand, 4, "2L"))).toBe("5");
+    expect(caps(keysForMove(twoHand, 4, "2R'"))).toBe("2 K");
+    expect(caps(keysForMove(twoHand, 4, "2L"))).toBe("2 D");
     expect(caps(keysForMove(twoHand, 4, "2L'"))).toBe("X");
     expect(caps(keysForMove(twoHand, 4, "2R2"))).toBe(". .");
     expect(caps(keysForMove(twoHand, 4, "Rw"))).toBe("U");
+    expect(caps(keysForMove(twoHand, 4, "2U'"))).toBe("2 F");
+    expect(caps(keysForMove(twoHand, 6, "3R"))).toBe("3 I");
   });
 
-  test("「두 손」: 층 수 키를 포함한 차례(3Rw = 7 → U), 지금 층 수에서 시작", () => {
-    expect(caps(keysForMove(twoHand, 5, "3Rw"))).toBe("7 U");
-    expect(caps(keysForMove(twoHand, 5, "3Lw'"))).toBe("4 R");
-    expect(caps(keysForMove(twoHand, 5, "M"))).toBe("7 6");
-    expect(caps(keysForMove(twoHand, 6, "3R"))).toBe("7 .");
-    expect(caps(keysForMove(twoHand, 7, "4Rw"))).toBe("7 7 U");
-    // 오른손 층 수 2를 잡고 있으면: R은 8로 되돌린 뒤 I, Rw(2층)는 그대로 I, 3Rw는 U
-    const two = { left: 1, right: 2 };
-    expect(caps(keysForMove(twoHand, 5, "R", two))).toBe("8 I");
-    expect(caps(keysForMove(twoHand, 5, "Rw", two))).toBe("I");
-    expect(caps(keysForMove(twoHand, 5, "3Rw", two))).toBe("U");
-    // 층 수를 따르지 않는 면은 그대로
-    expect(caps(keysForMove(twoHand, 5, "U", two))).toBe("J");
-    // U·D·F·B 쪽 깊은 넓게는 csTimer에도 키가 없다
-    expect(keysForMove(twoHand, 5, "3Uw")).toBeNull();
-    // 3×3에는 층 수 키가 없다
+  test("「두 손」: 바깥 n층은 숫자 n + 넓게 키(남는 층 수가 없다)", () => {
+    expect(caps(keysForMove(twoHand, 5, "3Rw"))).toBe("3 U");
+    expect(caps(keysForMove(twoHand, 5, "3Lw'"))).toBe("3 R");
+    expect(caps(keysForMove(twoHand, 7, "4Rw"))).toBe("4 U");
+    // 넓게 글자 키가 없는 F·B, U·D 쪽도 숫자 + Shift + 면 키
+    expect(caps(keysForMove(twoHand, 5, "3Fw"))).toBe("3 ⇧H");
+    expect(caps(keysForMove(twoHand, 5, "3Uw"))).toBe("3 ,");
+    // 정가운데 층은 T·B
+    expect(caps(keysForMove(twoHand, 5, "M"))).toBe("B");
+    // 3×3의 3Rw는 크기에 없는 이름(x로 친다)
     expect(keysForMove(twoHand, 3, "3Rw")).toBeNull();
   });
 
@@ -90,10 +87,12 @@ describe("수 → 키(배우기·튜토리얼이 보이는 키)", () => {
     }
   });
 
-  test("「두 손」: E·S는 csTimer 숫자 키", () => {
-    expect(caps(keysForMove(twoHand, 3, "E"))).toBe("2");
-    expect(caps(keysForMove(twoHand, 3, "S'"))).toBe("1");
-    expect(caps(keysForMove(twoHand, 5, "E'"))).toBe("9");
+  test("「두 손」: E·S는 깊이 2 + 면 키(5×5는 3)", () => {
+    expect(caps(keysForMove(twoHand, 3, "E"))).toBe("2 S");
+    expect(caps(keysForMove(twoHand, 3, "E'"))).toBe("2 L");
+    expect(caps(keysForMove(twoHand, 3, "S"))).toBe("2 H");
+    expect(caps(keysForMove(twoHand, 3, "S'"))).toBe("2 G");
+    expect(caps(keysForMove(twoHand, 5, "E'"))).toBe("3 L");
   });
 
   test("「표기」: 글자 그대로, Shift는 반대, Alt는 넓게", () => {
@@ -123,6 +122,7 @@ describe("수 → 키(배우기·튜토리얼이 보이는 키)", () => {
     // R이 없어도 R'이 있으면 R2는 R'을 두 번
     expect(caps(keysForMove(custom, 3, "R2"))).toBe("K K");
     custom = unbind(custom, { code: "KeyK" });
+    // 3 → E(왼쪽에서 셋째 층을 L'으로)도 같은 돌리기지만 바깥 면은 깊이 길로 가르치지 않는다
     expect(keysForMove(custom, 3, "R")).toBeNull();
     expect(keysForMove(custom, 3, "R2")).toBeNull();
   });
