@@ -17,7 +17,7 @@ import { type FacetCut, facetNormal } from "./gemStyle";
 export type Vec3 = readonly [number, number, number];
 
 /** 보석 조각 모양(물체 좌표). 상자는 큐브 조각·왕관, 팔면체는 꼭짓점·볏·아래 보석, 판은 날개 조각 */
-export type GemShape = "box" | "octa" | "slab";
+export type GemShape = "box" | "octa" | "slab" | "poly" | "round";
 
 /** 큐브 조각 반 변(`CUBIE` 0.92의 절반) */
 export const GEM_BOX_HALF = 0.46;

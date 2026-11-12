@@ -6,6 +6,7 @@ import {
   GRID_GAP,
   WHOLE_BOUNCES,
 } from "./cubeTrace";
+import { ROUND_R, stepCutPlanes, voronoiSeeds } from "./cutGeometry";
 import {
   GEM_BOUNCES,
   GEM_BOX_HALF,
@@ -45,7 +46,13 @@ type Three = typeof THREE_NS;
  */
 export const GEM_FRONT_ENV = 1;
 
-const SHAPE_ID: Record<GemShape, number> = { box: 0, octa: 1, slab: 2 };
+const SHAPE_ID: Record<GemShape, number> = {
+  box: 0,
+  octa: 1,
+  slab: 2,
+  poly: 3,
+  round: 4,
+};
 
 /** 분산을 따로 따라갈 만큼 큰지(아니면 초록 채널 굴절률 하나로 따라간다) */
 export function disperses(g: GemPhysics): boolean {
@@ -182,6 +189,49 @@ vec2 gemJardin( vec3 p, vec3 d, float t, vec3 seed ) {
 }
 `;
 
+/**
+ * 안쪽 결정 구조(시안 o1·o2): 3D 보로노이 칸. 빛이 지금 칸의 씨앗과 이웃 씨앗 사이 이등분 면에 먼저 닿으면 일부(`GEM_VORO_R`)를
+ * 그 면에서 되비춘 방향으로 읽고, 나머지는 조금 꺾여(`GEM_VORO_BEND`) 이웃 칸으로 간다. 그래서 큰 영역 대신 잘게 쪼개진
+ * 반짝임이 난다. 셰이더 글 조각(`p`·`d`·`t`·`thr`·`acc`·`vbase`를 쓰는 곳에 끼운다)
+ */
+const VORO_INIT = /* glsl */ `
+  int vcur = 0;
+  {
+    float bd = 1e9;
+    for ( int j = 0; j < GEM_VORO; j ++ ) {
+      vec3 s = gemSeeds[ vbase + j ];
+      float dd = dot( s - p, s - p );
+      if ( dd < bd ) { bd = dd; vcur = j; }
+    }
+  }`;
+const voroStep = (see: string) => /* glsl */ `
+    {
+      vec3 si = gemSeeds[ vbase + vcur ];
+      float tb = t;
+      int nj = - 1;
+      vec3 bn = vec3( 0.0 );
+      for ( int j = 0; j < GEM_VORO; j ++ ) {
+        if ( j == vcur ) continue;
+        vec3 sj = gemSeeds[ vbase + j ];
+        vec3 nn = sj - si;
+        float dn = dot( d, nn );
+        if ( dn <= 1e-6 ) continue;
+        float tj = dot( ( si + sj ) * 0.5 - p, nn ) / dn;
+        if ( tj > 1e-4 && tj < tb ) { tb = tj; nj = j; bn = nn; }
+      }
+      if ( nj >= 0 ) {
+        bn = normalize( bn );
+        p += d * tb;
+        thr *= exp( - gemAbsorb * tb );
+        acc += thr * GEM_VORO_R * ${see}( p, reflect( d, bn ) );
+        thr *= 1.0 - GEM_VORO_R;
+        d = normalize( d + bn * GEM_VORO_BEND );
+        vcur = nj;
+        continue;
+      }
+    }`;
+const VORO_STEP = voroStep("gemSee");
+
 const fragFuncs = (
   cut: FacetCut,
   fill: number,
@@ -200,6 +250,9 @@ uniform vec3 gemAbsorb;
 uniform sampler2D gemBack;
 uniform vec4 gemSeeK;
 uniform mat4 gemCubeInv;
+#ifdef GEM_VORO
+uniform vec3 gemSeeds[ GEM_VORO_N ];
+#endif
 ${facetGlsl(cut)}
 ${JARDIN_GLSL}
 
@@ -211,6 +264,16 @@ float gemFresnel( float cosI, float n1, float n2 ) {
   float rp = ( n1 * cosT - n2 * cosI ) / ( n1 * cosT + n2 * cosI + 1e-6 );
   return 0.5 * ( rs * rs + rp * rp );
 }
+
+#if GEM_SHAPE == 3
+uniform vec4 gemPlanes[ GEM_PLANES ];
+#endif
+#if GEM_SHAPE == 4
+float gemRoundSdf( vec3 x ) {
+  vec3 q = abs( x ) - vec3( ${f(GEM_BOX_HALF)} - GEM_ROUND_R );
+  return length( max( q, 0.0 ) ) + min( max( q.x, max( q.y, q.z ) ), 0.0 ) - GEM_ROUND_R;
+}
+#endif
 
 float gemExit( vec3 p, vec3 d, out vec3 m ) {
 #if GEM_SHAPE == 1
@@ -224,6 +287,37 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
     if ( tk < t ) { t = tk; m = n; }
   }
   return max( t, 0.0 );
+#elif GEM_SHAPE == 3
+  // 계단 컷 다면체(시안 n): 평면들의 교집합, 빛이 향하는 평면 가운데 가장 가까운 것
+  float t = 1e9;
+  m = vec3( 0.0, 0.0, 1.0 );
+  for ( int k = 0; k < GEM_PLANES; k ++ ) {
+    vec4 pl = gemPlanes[ k ];
+    float dn = dot( pl.xyz, d );
+    if ( dn <= 1e-6 ) continue;
+    float tk = ( pl.w - dot( pl.xyz, p ) ) / dn;
+    if ( tk < t ) { t = tk; m = pl.xyz; }
+  }
+  return max( t, 0.0 );
+#elif GEM_SHAPE == 4
+  // 둥근 모서리 상자(시안 q): 일정한 걸음으로 나아가다 겉을 넘으면(거리 함수가 양수) 반으로 좁혀 겉면을 찾는다.
+  // 거리 함수를 따라 걷기는 들어온 겉면 바로 안에서 시작해 걸음이 0으로 멈췄다(첫 판, 화면이 하얗게 날아감)
+  float t0 = 0.0;
+  float t = 0.0;
+  for ( int k = 0; k < 26; k ++ ) {
+    t += 0.07;
+    if ( gemRoundSdf( p + d * t ) > 0.0 ) break;
+    t0 = t;
+  }
+  for ( int k = 0; k < 8; k ++ ) {
+    float tm = 0.5 * ( t0 + t );
+    if ( gemRoundSdf( p + d * tm ) > 0.0 ) t = tm; else t0 = tm;
+  }
+  vec3 x = p + d * t;
+  vec3 q = abs( x ) - vec3( ${f(GEM_BOX_HALF)} - GEM_ROUND_R );
+  vec3 g = max( q, 0.0 );
+  m = length( g ) > 1e-6 ? normalize( g ) * sign( x ) : ( q.x > q.y && q.x > q.z ? vec3( sign( x.x ), 0.0, 0.0 ) : q.y > q.z ? vec3( 0.0, sign( x.y ), 0.0 ) : vec3( 0.0, 0.0, sign( x.z ) ) );
+  return t;
 #elif GEM_SHAPE == 2
   float sz = d.z < 0.0 ? - 1.0 : 1.0;
   m = vec3( 0.0, 0.0, sz );
@@ -324,7 +418,7 @@ vec3 gemTraceCube( float ior ) {
 #else
   vec3 cell = floor( ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz + 0.5 );
   const float H = ${f(GEM_BOX_HALF)};
-  const int N = ${GRID_BOUNCES};
+  const int N = GEM_STEPS;
 #endif
   p -= n * 1e-4;
 #ifdef GEM_FACET
@@ -335,6 +429,11 @@ vec3 gemTraceCube( float ior ) {
   vec3 d = refract( v, n, 1.0 / ior );
   vec3 thr = vec3( 1.0 - gemFresnel( cosI, 1.0, ior ) );
   vec3 acc = vec3( 0.0 );
+#ifdef GEM_VORO
+  // 큐브 전체에 걸친 결정 구조(시안 o2): 씨앗은 큐브 좌표 한 묶음
+  int vbase = 0;
+  ${VORO_INIT}
+#endif
   for ( int i = 0; i < N; i ++ ) {
     vec3 s = sign( d );
     vec3 t3 = ( vec3( H ) - ( p - cell ) * s ) / max( abs( d ), vec3( 1e-5 ) );
@@ -343,6 +442,9 @@ vec3 gemTraceCube( float ior ) {
     else if ( t3.y < t3.z ) { t = t3.y; m = vec3( 0.0, s.y, 0.0 ); }
     else { t = t3.z; m = vec3( 0.0, 0.0, s.z ); }
     t = max( t, 0.0 );
+#ifdef GEM_VORO
+    ${voroStep("gemSeeCube")}
+#endif
     p += d * t;
     thr *= exp( - gemAbsorb * t );
     float F = gemFresnel( dot( d, m ), ior, 1.0 );
@@ -384,7 +486,7 @@ vec3 gemTraceCube( float ior ) {
 
 vec3 gemTrace( float ior ) {
   vec3 n = normalize( vGemNrm );
-#ifdef GEM_FACET
+#if defined( GEM_FACET ) && ! defined( GEM_FACET_WALL )
   n = gemFacet( vGemPos, n );
 #endif
   vec3 v = normalize( vGemPos - vGemCam );
@@ -397,9 +499,18 @@ vec3 gemTrace( float ior ) {
   // 조각마다 다른 결: 큐브 안 조각 자리(돌려도 그대로)를 씨앗으로
   vec3 seed = ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz * 5.3;
 #endif
-  for ( int i = 0; i < ${GEM_BOUNCES}; i ++ ) {
+#ifdef GEM_VORO
+  // 조각마다 다른 결정 구조(시안 o1): 큐브 안 조각 자리로 씨앗 묶음을 고른다
+  vec3 gemCell = floor( ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz + 0.5 ) + 1.0;
+  int vbase = ( int( gemCell.x ) * 9 + int( gemCell.y ) * 3 + int( gemCell.z ) ) * GEM_VORO;
+  ${VORO_INIT}
+#endif
+  for ( int i = 0; i < GEM_STEPS; i ++ ) {
     vec3 m;
     float t = gemExit( p, d, m );
+#ifdef GEM_VORO
+    ${VORO_STEP}
+#endif
 #ifdef GEM_JARDIN
     if ( i < ${JARDIN.segments} ) {
       vec2 j = gemJardin( p, d, t, seed );
@@ -413,7 +524,9 @@ vec3 gemTrace( float ior ) {
     if ( dot( d, mf ) > 0.05 ) m = mf;
 #endif
     thr *= exp( - gemAbsorb * t );
-    float F = gemFresnel( dot( d, m ), ior, 1.0 );
+    // 벽을 등지는 빛(곡면·깎은 면에서 드물게)은 나가지 않고 되튄다고 본다: 굴절 방향이 0이 되어 계산이 무너지지 않게
+    float cd = dot( d, m );
+    float F = cd > 1e-4 ? gemFresnel( cd, ior, 1.0 ) : 1.0;
     if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSee( p, refract( d, - m, ior ) );
     thr *= F;
     d = reflect( d, m );
@@ -448,9 +561,12 @@ vec3 gemLight() {
 
 const NO_CUT: FacetCut = { kind: 0, rings: [] };
 
+/** 계단 컷 조각의 평면들(시안 n). 장면의 그물도 같은 평면으로 짓는다 */
+export const POLY_PLANES = stepCutPlanes();
+
 /** 깎은 면이면 겉 반사(프레넬·점 조명 반짝 점)도 그 면의 기울기로 그린다(보기 좌표 법선을 바꾼다) */
 const FACET_NORMAL = /* glsl */ `
-#ifdef GEM_FACET
+#if defined( GEM_FACET ) && ! defined( GEM_FACET_WALL )
 {
   vec3 gemFo = gemFacet( vGemPos, normalize( vGemNrm ) );
   normal = normalize( ( viewMatrix * vec4( normalize( mat3( vGemM0, vGemM1, vGemM2 ) * gemFo ), 0.0 ) ).xyz );
@@ -500,6 +616,19 @@ export function gemMaterialGL(
     : ([THROUGH_LO, THROUGH_HI] as const);
   const wideThrough = through[0] !== THROUGH_LO || through[1] !== THROUGH_HI;
   const jardin = !!style?.jardin && inCube;
+  // 안쪽 결정 구조 씨앗(시안 o1은 조각마다 한 묶음씩 27묶음, o2는 큐브 좌표 한 묶음)
+  const voro =
+    style?.voro && inCube
+      ? {
+          ...style.voro,
+          seeds:
+            style.voro.scope === "piece"
+              ? Array.from({ length: 27 }, (_, c) =>
+                  voronoiSeeds(style.voro?.count ?? 0, GEM_BOX_HALF, 101 + c),
+                ).flat()
+              : voronoiSeeds(style.voro.count, GEM_CUBE_HALF, 7),
+        }
+      : null;
   // 큐브 전체 빛길(시안 h·i)은 큐브 조각에만
   const traceId =
     inCube && shape === "box" && style?.trace
@@ -513,6 +642,18 @@ export function gemMaterialGL(
     shader.defines = {
       ...shader.defines,
       GEM_SHAPE: SHAPE_ID[shape],
+      GEM_STEPS: style?.steps ?? (traceId >= 2 ? GRID_BOUNCES : GEM_BOUNCES),
+      ...(shape === "poly" ? { GEM_PLANES: POLY_PLANES.length } : {}),
+      ...(shape === "round" ? { GEM_ROUND_R: f(ROUND_R) } : {}),
+      ...(style?.facetWallOnly && facet ? { GEM_FACET_WALL: "" } : {}),
+      ...(voro
+        ? {
+            GEM_VORO: voro.count,
+            GEM_VORO_N: voro.seeds.length,
+            GEM_VORO_R: f(voro.reflect),
+            GEM_VORO_BEND: f(voro.bend),
+          }
+        : {}),
       ...(disperse ? { GEM_DISPERSE: "" } : {}),
       ...(inCube ? { GEM_IN_CUBE: "" } : {}),
       ...(facet ? { GEM_FACET: "" } : {}),
@@ -540,6 +681,14 @@ export function gemMaterialGL(
     };
     shader.uniforms.gemCubeInv = { value: see.cubeInv };
     shader.uniforms.gemCube = { value: see.cube };
+    if (shape === "poly")
+      shader.uniforms.gemPlanes = {
+        value: POLY_PLANES.map((p) => new T.Vector4(...p.n, p.h)),
+      };
+    if (voro)
+      shader.uniforms.gemSeeds = {
+        value: voro.seeds.map((s) => new T.Vector3(...s)),
+      };
     shader.vertexShader =
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
@@ -558,7 +707,7 @@ export function gemMaterialGL(
       );
   };
   m.customProgramCacheKey = () =>
-    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin || traceId || wideThrough || fill !== GEM_CUBE_FILL ? styleKey : "flat"}`;
+    `gem3-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || jardin || traceId || voro || style?.steps || wideThrough || fill !== GEM_CUBE_FILL ? styleKey : "flat"}`;
   return m;
 }
 

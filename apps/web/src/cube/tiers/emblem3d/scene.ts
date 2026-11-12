@@ -13,6 +13,12 @@ import {
 import { wingPlates } from "../TierEmblem";
 import { TIER_IDS, type TierId } from "../table";
 import { FUSED_CUBIE } from "./cubeTrace";
+import {
+  polyFromPlanes,
+  ROUND_R,
+  roundBoxMesh,
+  stepCutPlanes,
+} from "./cutGeometry";
 import type { GemPhysics, GemShape } from "./gem";
 import {
   type GemSee,
@@ -346,6 +352,18 @@ function stepBox(T: Three, s: number, b: number) {
   return g;
 }
 
+/** 위치·법선(·색인) 배열로 그물을 짓는다(계단 컷 다면체, 둥근 모서리 상자) */
+function meshGeo(
+  T: Three,
+  m: { positions: number[]; normals: number[]; indices?: number[] },
+) {
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.Float32BufferAttribute(m.positions, 3));
+  g.setAttribute("normal", new T.Float32BufferAttribute(m.normals, 3));
+  if (m.indices) g.setIndex(m.indices);
+  return g;
+}
+
 /** 평평한 다각형 판(두께 d, 베벨 b). z는 -d/2-b ~ d/2+b */
 function plateGeo(
   T: Three,
@@ -518,7 +536,10 @@ function studioScene(
         ? 0.25
         : kind === "glass"
           ? 0.2
-          : GEM_BIG_PANEL
+          : kind === "step"
+            ? // 계단 컷(시안 n): 위 큰 빛판을 밝혀 깎은 띠 하나하나에 흰 쐐기 반사가 서게(사진의 정사각 계단 컷 아홉 개)
+              1
+            : GEM_BIG_PANEL
     : 1;
   panel(12, 6, 3.4 * big, [0, 9, -6]);
   panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
@@ -727,7 +748,12 @@ export function buildEmblemScene(
     }),
   );
   /** 큐브 조각(상자 보석, 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수된다) */
-  const blockMat = look.gem ? gemMat(look.gem, "box", true) : metalBlock;
+  const blockMat = look.gem
+    ? gemMat(look.gem, sl?.shape ?? "box", true)
+    : metalBlock;
+  // 겉 반사 세기(시안 n·q: 깎은 면·둥근 모서리에 조명이 흰 쐐기·굵은 띠로 비치게)
+  if (sl?.frontEnv)
+    (blockMat as THREE_NS.MeshStandardMaterial).envMapIntensity = sl.frontEnv;
   /** 왕관 상자(홀로 놓인 상자 보석) */
   const crownMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
   /** 날개 조각(얇은 판 보석) */
@@ -753,7 +779,16 @@ export function buildEmblemScene(
   // ---- 큐브: 조각 27개를 몸통 대각선이 앞을 보게(윗면·왼면·오른면이 보이는 등각), 틀 두께 한가운데에
   const cube = new T.Group();
   cube.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
-  const cubieGeo = keep(stepBox(T, CUBIE, CUBIE_BEVEL));
+  // 시안 n·q는 조각의 실제 모양을 바꾼다(빛길 셰이더도 같은 모양을 벽으로 따라간다)
+  const cubieGeo = keep(
+    sl?.shape === "poly"
+      ? meshGeo(T, polyFromPlanes(stepCutPlanes()))
+      : sl?.shape === "round"
+        ? meshGeo(T, roundBoxMesh(CUBIE / 2, ROUND_R))
+        : stepBox(T, CUBIE, CUBIE_BEVEL),
+  );
+  // 왕관 상자는 그대로 네모(모양을 바꾸는 시안은 큐브 조각만)
+  const crownGeo = sl?.shape ? keep(stepBox(T, CUBIE, CUBIE_BEVEL)) : cubieGeo;
   for (let x = -1; x <= 1; x++)
     for (let y = -1; y <= 1; y++)
       for (let z = -1; z <= 1; z++) {
@@ -872,7 +907,7 @@ export function buildEmblemScene(
     for (const [p, r] of cubes) {
       // r은 실루엣 육각형 반지름 → 한 변 = r / √(2/3)
       const edge = (r * u) / Math.sqrt(2 / 3);
-      const box = new T.Mesh(cubieGeo, crownMat);
+      const box = new T.Mesh(crownGeo, crownMat);
       box.scale.setScalar(edge / CUBIE);
       box.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
       const [x, y] = toWorld(p, u);

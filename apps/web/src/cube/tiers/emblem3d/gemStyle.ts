@@ -39,6 +39,11 @@ export const GEM_STYLES = [
   "l",
   "m",
   "m2",
+  "n",
+  "q",
+  "p",
+  "o1",
+  "o2",
 ] as const;
 export type GemStyle = (typeof GEM_STYLES)[number];
 
@@ -59,6 +64,11 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   l: "l 약한 굴절",
   m: "m 틈을 통과하는 보석",
   m2: "m2 통과하는 보석·깎은 겉면",
+  n: "n 계단 컷",
+  q: "q 둥근 모서리",
+  p: "p 브릴리언트 속",
+  o1: "o1 결정 구조(조각마다)",
+  o2: "o2 결정 구조(큐브 전체)",
 };
 
 /** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
@@ -128,7 +138,7 @@ export interface GemStyleLook {
   /** 안의 결·알갱이(d) */
   jardin: boolean;
   /** 스튜디오 방: 지금 / 검고 가는 띠(b) / 작은 점빛(c) / 유리(가늘고 긴 반사선, e~g) */
-  studio: "now" | "contrast" | "sparkle" | "glass";
+  studio: "now" | "contrast" | "sparkle" | "glass" | "step";
   /**
    * 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수되는 몫(큐브 전체 두께 × 이 값). 0.92면 보석이 차지하는 몫 그대로라
    * 가운데가 가장 짙다. 유리처럼 가운데는 맑고 안에서 되튄 가장자리만 짙게 하려면 줄인다
@@ -159,6 +169,24 @@ export interface GemStyleLook {
   surround?: boolean;
   /** 고른 속빛(고른 색 `tint`에 곱해 더한다): 안에서 돌아오는 빛을 영역 차이 없이 흉내 낸다(시안 m) */
   innerGlow?: number;
+  /**
+   * 큐브 조각의 실제 모양(아홉째 시안): `poly`는 모서리·꼭짓점을 깎은 계단 컷 다면체(n), `round`는 둥근 모서리 상자(q).
+   * 그물과 빛길 벽이 모두 그 모양이다
+   */
+  shape?: "poly" | "round";
+  /** 안의 빛길에서 벽에 닿는 횟수(기본 5, 큐브 빛길은 9) */
+  steps?: number;
+  /** 깎은 면을 안쪽 벽에만(겉면은 평평, 시안 p: 평평한 큐브 안에 브릴리언트 컷이 든 것처럼) */
+  facetWallOnly?: boolean;
+  /** 안쪽 결정 구조(시안 o1·o2): 칸 수, 경계 면 반사 몫, 꺾임, 조각마다/큐브 전체 */
+  voro?: {
+    count: number;
+    reflect: number;
+    bend: number;
+    scope: "piece" | "cube";
+  };
+  /** 겉 반사 세기(반사 지도, 기본 1): 깎은 면에 조명이 흰 쐐기로 비치게(시안 n) */
+  frontEnv?: number;
   /** 꿰뚫어 본 뒤 배경 세기, 되튄 빛이 읽는 스튜디오 세기 */
   backGain: number;
   envGain: number;
@@ -217,6 +245,34 @@ const M_LOOK: GemStyleLook = {
   envGain: 1.6,
   frontLights: 1.4,
   bloom: { strength: 0.35, radius: 0.06, threshold: 4.5 },
+};
+
+/** 아홉째 시안 공통: 진한 에메랄드(조각 한 변을 지나 빨강 14%·초록 74%·파랑 44%), 실제 굴절률, 조각별 추적 */
+const DEEP: GemStyleLook = {
+  cut: FLAT,
+  left: [0.14, 0.74, 0.44],
+  spread: 0,
+  jardin: false,
+  cubeFill: 0.5,
+  fused: false,
+  studio: "now",
+  backGain: 1.6,
+  envGain: 1.5,
+  glow: 0.6,
+  frontLights: 1.2,
+  bloom: NOW_BLOOM,
+};
+
+/**
+ * 브릴리언트 파빌리언(시안 p): 테이블 없이 바로 깊게 기운 별 면 여덟과 반 칸 어긋난 연 면 여덟. 첫 판(열여섯 조각 셋째
+ * 단까지)은 무늬가 잘게 흩어져 젖빛처럼 보여 굵은 두 단으로 줄였다
+ */
+const PAVILION: FacetCut = {
+  kind: 2,
+  rings: [
+    { from: 0, tilt: 42, sectors: 8, offset: 0 },
+    { from: 0.55, tilt: 36, sectors: 8, offset: 0.5 },
+  ],
 };
 
 /** 시안마다 값(문서·보고에 그대로 적는다) */
@@ -392,6 +448,44 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
   m: M_LOOK,
   // m2: m에 바깥 면만 얕게 깎은 면(계단 세 단). 겉 반사와 큐브 바깥 면 굴절에만 쓰고, 조각 사이 통과는 그대로
   m2: { ...M_LOOK, cut: STEP },
+  // ---- 아홉째 시안: 안쪽에 의도된 구조(2026-11-12 사용자 참고 사진과 「이거나 이것처럼 구조를 좀 내부에 넣는 건 어때?」).
+  // 진한 에메랄드, 실제 굴절률 1.577. 안쪽 무늬는 받아들이되 흐린 영역 대신 또렷한 구조로
+  // n 계단 컷: 조각마다 실제로 깎은 다면체(테이블 둘레 계단 두 단, 꼭짓점), 조각별 추적. 위 큰 빛판을 밝혀 깎은 띠에
+  // 흰 쐐기 반사가 서게
+  n: { ...DEEP, shape: "poly", steps: 7, studio: "step", frontEnv: 1.8 },
+  // q 둥근 모서리: 조각마다 둥근 모서리 상자(곡면을 거리 함수로 따라감), 밝고 진한 연두빛 에메랄드, 안쪽 둥근 사각 테
+  q: {
+    ...DEEP,
+    shape: "round",
+    left: [0.4, 0.86, 0.32],
+    steps: 7,
+    glow: 0.8,
+    envGain: 1.7,
+    frontEnv: 1.5,
+  },
+  // p 브릴리언트 속: 겉은 평평한 큐브 조각, 안쪽 벽만 브릴리언트 파빌리언 면이라 테이블 너머로 방사형 조각 무늬
+  p: {
+    ...DEEP,
+    cut: PAVILION,
+    facetWallOnly: true,
+    studio: "contrast",
+    steps: 6,
+    envGain: 1.8,
+  },
+  // o1 안쪽 결정 구조(조각마다): 조각 안 보로노이 칸 여섯, 경계 면에서 28% 되비침
+  o1: {
+    ...DEEP,
+    voro: { count: 6, reflect: 0.28, bend: 0.18, scope: "piece" },
+    steps: 12,
+  },
+  // o2 안쪽 결정 구조(큐브 전체): 조각 사이는 통과하고 큐브 전체에 보로노이 칸 서른
+  o2: {
+    ...DEEP,
+    trace: "pass",
+    cubeFill: 0,
+    voro: { count: 30, reflect: 0.25, bend: 0.15, scope: "cube" },
+    steps: 16,
+  },
 };
 
 const DEG = Math.PI / 180;

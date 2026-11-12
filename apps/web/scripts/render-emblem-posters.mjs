@@ -58,6 +58,11 @@ const STYLES = [
   "l",
   "m",
   "m2",
+  "n",
+  "q",
+  "p",
+  "o1",
+  "o2",
 ];
 const BGS = ["dark", "light"];
 const JOBS = [
