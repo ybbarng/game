@@ -7,13 +7,17 @@
 #   apps/cubie/build.sh && pnpm --filter @game/web build     # 먼저(재는 대상)
 #   apps/cubie/scripts/measure-memory.sh                      # 로컬 빌드(apps/web/out)를 로컬 서버로 열어 잰다
 #   apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 사이트를 잰다
-#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면 시제품(CUBIE_NATIVE=1, docs/52 5-2)을 같은 시나리오로 잰다
+#   apps/cubie/scripts/measure-memory.sh --native          # 네이티브 화면 시제품(CUBIE_NATIVE=1, Core Animation, docs/52 5-5)을 같은 시나리오로 잰다
+#   apps/cubie/scripts/measure-memory.sh --native --onscreen   # 창을 화면 왼쪽 아래 구석에 거의 투명하게(알파 0.01) 두고 WindowServer도 잰다
 #   apps/cubie/scripts/measure-memory.sh --query render=css   # 로컬 빌드의 미니 화면을 CSS 3D로 그려 잰다(docs/52 5-4)
 #   옵션: --side <pt>(창 한 변, 기본 96) · --label <이름>(결과 줄 머리) · --out <파일>(결과 TSV를 덧붙인다) · --quick(가만히 1분을 10초로)
 #         --query <a=b&…>(로컬 빌드 주소 /cube/mini 뒤에 붙일 쿼리) ·
 #         --web <폴더>(apps/web/out 대신 다른 정적 빌드, 예: 바꾸기 전 빌드를 복사해 둔 곳) ·
 #         --inject <js 파일>(문서 시작 때 넣는 실험 스크립트. 예: 테두리 끄기·화면 배율 1) · --detail(돌리는 중 WebContent·GPU의 메모리 갈래)
-#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않고, 거울·큐브 크기·단축키 표 명령은 앱이 받기만 한다)
+#         --native(웹 화면 대신 네이티브 화면. 웹 서버를 띄우지 않고, 단축키 표 명령은 앱이 받기만 한다) ·
+#         --onscreen(재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로. 화면 밖 창은 WindowServer가 합성하지 않을 수
+#           있어서다. 마우스는 지나가고 앱은 앞으로 나오지 않는다. 메모리 줄에 WindowServer MEM(`top`, footprint는 관리자 권한이
+#           필요하다)을, CPU 줄에 WindowServer 몫을 더한다. 다른 앱 화면 변화도 WindowServer에 섞이므로 흔들림을 감안한다)
 #
 # 결과: 상태마다 Cubie·WebContent(개수)·GPU·Networking·합계(MB, footprint의 phys_footprint, 1초 간격 세 번 평균).
 # CPU: 상태 구간(가만히 1분, 돌리는 동안 약 20초, 숨긴 뒤 1분 등)의 처음과 끝에 프로세스마다 누적 CPU 시간(`ps -o time`)을
@@ -34,6 +38,7 @@ WEB=""
 INJECT=""
 DETAIL=0
 NATIVE=0
+ONSCREEN=0
 QUERY=""
 PORT=4393
 
@@ -48,6 +53,7 @@ while [ $# -gt 0 ]; do
     --inject) INJECT="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --detail) DETAIL=1; shift ;;
     --native) NATIVE=1; shift ;;
+    --onscreen) ONSCREEN=1; shift ;;
     --query) QUERY="$2"; shift 2 ;;
     *) echo "모르는 옵션: $1" >&2; exit 2 ;;
   esac
@@ -93,7 +99,9 @@ if [ -z "$URL" ]; then
 fi
 
 mkfifo "$TMP/in"
-CUBIE_NATIVE="$NATIVE" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
+WS_PID=""
+if [ "$ONSCREEN" = 1 ]; then WS_PID="$(pgrep -x WindowServer | head -1)"; fi
+CUBIE_MEASURE_ONSCREEN="$ONSCREEN" CUBIE_NATIVE="$NATIVE" CUBIE_MEASURE_INJECT="$INJECT" CUBIE_MEASURE=1 CUBIE_MEASURE_SIZE="$SIDE" CUBIE_URL="$URL" "$APP" <"$TMP/in" >"$TMP/app.log" 2>&1 &
 APP_PID=$!
 exec 3>"$TMP/in"
 cmd() { echo "$*" >&3; }
@@ -143,17 +151,25 @@ sample() {
 if [ -n "$OUT" ] && [ ! -s "$OUT" ]; then
   printf "label\tstate\tcubie\twebcontent\twc\tgpu\tnet\ttotal\n" >"$OUT"
 fi
-printf "%-28s %7s %12s %7s %7s %7s\n" "상태" "Cubie" "WebContent" "GPU" "Net" "합계"
+printf "%-28s %7s %12s %7s %7s %7s%s\n" "상태" "Cubie" "WebContent" "GPU" "Net" "합계" "${WS_PID:+   WindowServer}"
+
+# WindowServer MEM(MB, top. --onscreen일 때만)
+ws_mem() {
+  [ -n "$WS_PID" ] || { echo 0; return; }
+  top -l 1 -pid "$WS_PID" -stats mem 2>/dev/null | tail -1 |
+    awk '{ v = $1; u = substr(v, length(v)); n = v + 0; if (u == "G") n *= 1024; else if (u == "K") n /= 1024; else if (u == "B") n /= 1048576; printf "%.1f\n", n }'
+}
 
 # 상태 하나: 1초 간격 세 번 평균(MB)
 measure() {
-  local state="$1" s1 s2 s3
-  s1="$(sample)"; sleep 1; s2="$(sample)"; sleep 1; s3="$(sample)"
-  echo "$s1 $s2 $s3" | awk -v state="$state" -v label="$LABEL" -v out="$OUT" '{
+  local state="$1" s1 s2 s3 w1 w2 w3
+  s1="$(sample)"; w1="$(ws_mem)"; sleep 1; s2="$(sample)"; w2="$(ws_mem)"; sleep 1; s3="$(sample)"; w3="$(ws_mem)"
+  echo "$s1 $s2 $s3 $w1 $w2 $w3" | awk -v state="$state" -v label="$LABEL" -v out="$OUT" -v ws="$WS_PID" '{
     m = 1048576
     c = ($1 + $6 + $11) / 3 / m; w = ($2 + $7 + $12) / 3 / m; wc = $13
     g = ($4 + $9 + $14) / 3 / m; n = ($5 + $10 + $15) / 3 / m; t = c + w + g + n
-    printf "%-28s %7.1f %8.1f(%d) %7.1f %7.1f %7.1f\n", state, c, w, wc, g, n, t
+    if (ws != "") printf "%-28s %7.1f %8.1f(%d) %7.1f %7.1f %7.1f   %7.1f\n", state, c, w, wc, g, n, t, ($16 + $17 + $18) / 3
+    else printf "%-28s %7.1f %8.1f(%d) %7.1f %7.1f %7.1f\n", state, c, w, wc, g, n, t
     if (out != "") printf "%s\t%s\t%.1f\t%.1f\t%d\t%.1f\t%.1f\t%.1f\n", label, state, c, w, wc, g, n, t >> out
   }'
 }
@@ -178,7 +194,7 @@ now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 
 # 누적 CPU 시간: "<pid> <종류> <센티초>"(앱 자신은 종류 Cubie). ps 시간은 [[시:]분:]초.센티초
 cpu_snapshot() {
-  { echo "$APP_PID Cubie"; children; } | while read -r pid kind; do
+  { echo "$APP_PID Cubie"; children; if [ -n "$WS_PID" ]; then echo "$WS_PID WindowServer"; fi; } | while read -r pid kind; do
     [ -n "$pid" ] || continue
     t="$(ps -o time= -p "$pid" 2>/dev/null | tr -d ' ')"
     [ -n "$t" ] && echo "$pid $kind $t"
@@ -197,12 +213,13 @@ cpu_end() {
   t1="$(now)"
   awk -v t0="$CPU_T0" -v t1="$t1" -v state="$state" -v label="$LABEL" -v out="$CPU_OUT" '
     FNR == NR { start[$1] = $3; next }
-    { d = $3 - (($1 in start) ? start[$1] : 0); if (d < 0) d = 0; by[$2] += d; total += d }
+    { d = $3 - (($1 in start) ? start[$1] : 0); if (d < 0) d = 0; by[$2] += d; if ($2 != "WindowServer") total += d }
     END {
       wall = (t1 - t0) * 100
       c = by["Cubie"] / wall * 100; w = by["WebContent"] / wall * 100
       g = by["GPU"] / wall * 100; n = by["Networking"] / wall * 100; t = total / wall * 100
-      printf "%-28s %6.1f%%  (Cubie %.1f · WebContent %.1f · GPU %.1f · Net %.1f, %d초)\n", state, t, c, w, g, n, wall / 100
+      ws = by["WindowServer"] / wall * 100
+      printf "%-28s %6.1f%%  (Cubie %.1f · WebContent %.1f · GPU %.1f · Net %.1f, %d초)%s\n", state, t, c, w, g, n, wall / 100, (ws > 0 ? sprintf("  WindowServer %.1f%%", ws) : "")
       if (out != "") printf "%s\t%s\t%.0f\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n", label, state, wall / 100, t, c, w, g, n >> out
     }' "$TMP/cpu0" "$TMP/cpu1" | tee -a "$TMP/cpu.txt" | sed 's/^/CPU /'
 }

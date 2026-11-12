@@ -45,25 +45,27 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 - 측정 모드의 Cubie 칸은 메뉴 막대·Sparkle·말풍선 창이 없어 실제 앱보다 20~30MB 작다. 웹 화면 쪽(WebContent·GPU·Networking)은 실제 앱과 같다.
 - `--inject <js 파일>`은 문서 시작 때 실험 스크립트를 넣는다(빌드 없이 「테두리 끄기」·「화면 배율 1」 같은 안을 견줄 때). `--detail`은 WebContent·GPU의 메모리 갈래(`footprint` 범주)를 함께 찍는다.
 - 끝나면(중간에 멈춰도) 띄운 앱과 로컬 서버를 끈다.
-- `--native`는 네이티브 화면 시제품(아래)을 같은 시나리오로 잰다. 웹 서버를 띄우지 않고, 거울·큐브 크기·단축키 표 명령은 앱이 받기만 한다. 화면 밖 창은 wgpu가 가려진 창으로 보고 그릴 곳을 내주지 않아, 측정 모드에서는 같은 그리기를 화면 밖 텍스처에 한다(화면에 내보내기만 빠진다). `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
+- `--native`는 네이티브 화면 시제품(아래)을 같은 시나리오로 잰다. 웹 서버를 띄우지 않고, 단축키 표 명령은 앱이 받기만 한다. `--detail`은 Cubie 자신의 메모리 갈래도 찍는다.
+- `--onscreen`은 재는 창을 화면 밖 대신 주 화면 왼쪽 아래 구석에 알파 0.01로 둔다(웹·네이티브 모두). 화면 밖 창은 WindowServer가 합성하지 않을 수 있어서, WindowServer 쪽(메모리는 `top` MEM, CPU는 누적 시간)을 볼 때만 쓴다. 앱은 앞으로 나오지 않고 마우스는 지나간다. WindowServer 값에는 다른 앱 화면 변화가 섞인다.
 
-## 네이티브 화면 시제품(docs/52 5-2)
+## 네이티브 화면 시제품(docs/52 5-5)
 
-`CUBIE_NATIVE=1`로 띄우면 웹 화면 대신 Rust 코어 + wgpu(Metal)로 그린 3×3 화면이 뜬다. 키 → 코어 키 해석기(두 손 배치) → 수, Enter 섞기(코어 섞기), 맞춤 판정까지 된다. 거울·기록·힌트·공식 연습·메뉴의 나머지는 아직 없다. 스위치를 켜지 않으면(기본) 지금 앱 그대로다.
+`CUBIE_NATIVE=1`로 띄우면 웹 화면 대신 Rust 코어 한 판(C ABI) + Core Animation 3D 층 트리(`Sources/Cubie/NativeCube.swift`)로 그린 화면이 뜬다. 키 → 코어 키 해석기(두 손 배치) → 수, Enter 섞기(코어 섞기, 섞기 연출 크기에 맞게), 거울 판(포커스 있고 섞인 큐브일 때), 맞춤 판정, 메뉴의 섞기·거울·큐브 크기(2×2~7×7)·창 크기까지 된다. 기록·힌트·공식 연습·단축키 표·메뉴의 나머지는 아직 없다. 스위치를 켜지 않으면(기본) 지금 앱 그대로다. 그리기 계산(카메라·거울 판·층 고르기)은 `Sources/CubieCore/CubeGeometry.swift`에 두고 `swift test`로 본다.
 
 ```sh
 apps/cubie/scripts/build-native.sh [--universal]          # 정적 라이브러리 → apps/cubie/.native/ (build.sh·test.sh가 먼저 부른다)
-CUBIE_NATIVE=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  # 띄우기(사람이 직접 볼 때)
-(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 그리기·한 판 시험(이 맥에서만, Metal)
-(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo run --release --bin cubie-shot -- <폴더>)   # 화면 밖 스크린샷
+CUBIE_NATIVE=1 apps/cubie/Cubie.app/Contents/MacOS/Cubie  # 띄우기(사람이 직접 볼 때. ⌃⌥⌘C로 키 입력, 메뉴 막대 아이콘에서 끝내기)
+(cd native/cubie-native && /opt/homebrew/opt/rustup/bin/cargo test --release)   # 한 판·C ABI 시험(wgpu 없음)
+CUBIE_NATIVE=1 CUBIE_NATIVE_SHOT=<폴더> apps/cubie/Cubie.app/Contents/MacOS/Cubie   # 창 없이 PNG 넷(CARenderer)
 node apps/cubie/scripts/native-compare.mjs <폴더>          # WebKit 웹 화면과 바탕 넷 위 비교판(compare.png)
 ```
 
 - Rust는 rustup의 cargo를 절대 경로로 쓴다(`CUBIE_CARGO`로 바꿀 수 있다). 유니버설 빌드는 `rustup target add x86_64-apple-darwin`이 한 번 필요하다.
-- C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi.rs`와 하나씩 맞춘다.
-- 정적 라이브러리를 링크하므로 스위치를 꺼도 앱이 커진다(유니버설 실행 파일 0.6MB → 8.0MB).
+- C 머리 파일 `Sources/CubieNativeC/include/cubie_native.h`는 손으로 쓴다. `native/cubie-native/src/ffi_game.rs`와 하나씩 맞춘다.
+- 정적 라이브러리를 링크하므로 스위치를 꺼도 앱이 조금 커진다(유니버설 실행 파일 0.6MB → 1.7MB).
 - `swift build`는 정적 라이브러리가 바뀐 것을 몰라 다시 링크하지 않을 수 있다. 라이브러리만 바꿨으면 `.build/<칩>-apple-macosx/release/Cubie`를 지우고 빌드한다.
-- `cargo run --release --bin cubie-bench -- <초> <fps> <모드>`: 창 없이 그리며 메모리(최고치 포함)를 찍는다. `release` 모드는 그리개를 놓았다 다시 만든다.
+- 스크린샷은 `layer.render(in:)`이 3D 변환을 납작하게 그려서 `CARenderer`(Metal 텍스처)로 찍는다. 렌더러에 층을 붙인 뒤 한 번 더 커밋해야 그린다.
+- 5-2의 wgpu 그리기는 크레이트 기능 `wgpu`로만 남았다(앱은 링크하지 않음): `cargo test --release --features wgpu`(그리기 시험, Metal), `cargo run --release --features wgpu --bin cubie-shot -- <폴더>`, `cargo run --release --features wgpu --bin cubie-bench -- <초> <fps> <모드>`.
 
 ## 그리기 방식 메모리 연구 도구(docs/52 5-3)
 
