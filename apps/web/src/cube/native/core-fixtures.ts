@@ -49,6 +49,7 @@ import {
   buildRustHumanData,
   buildSession,
 } from "./core-fixtures-human";
+import { buildKeycaps } from "./core-fixtures-keycaps";
 
 /** 자료 파일 이름 → 내용(JSON 글) */
 export type FixtureFiles = Record<string, string>;
@@ -726,6 +727,7 @@ export const BUILDERS = {
   "fixtures/keys.json": buildKeys,
   "fixtures/session.json": buildSession,
   "fixtures/hint.json": buildHint,
+  "fixtures/keycaps.json": buildKeycaps,
   "src/data.rs": buildRustData,
   "src/keymap_data.rs": buildRustKeymaps,
   "src/human_data.rs": buildRustHumanData,

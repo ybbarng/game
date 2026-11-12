@@ -3,7 +3,10 @@
 
 mod json;
 
-use cube_core::keys::{preset_keymap, KeyInput, KeyInterpreter, KeyResult, Preset};
+use cube_core::keys::keymap::KeyBinding;
+use cube_core::keys::{
+    keycaps_for_move, preset_keymap, KeyInput, KeyInterpreter, KeyResult, Keymap, Preset,
+};
 use cube_core::notation::AXIS_NAMES;
 use json::Json;
 
@@ -104,6 +107,50 @@ fn key_sequences_match_site() {
         cases.len(),
         bad.len()
     );
+    assert!(total > 0);
+    assert!(bad.is_empty(), "어긋남 {}개\n{}", bad.len(), bad.join("\n"));
+}
+
+#[test]
+fn keycaps_match_site() {
+    let root = json::parse(include_str!("../fixtures/keycaps.json"));
+    let custom = Keymap {
+        preset: Preset::Custom,
+        bindings: root
+            .get("custom")
+            .arr()
+            .iter()
+            .map(|b| {
+                let b = b.arr();
+                KeyBinding {
+                    code: b[0].str().to_string(),
+                    mods: b[1].num() as u8,
+                    action: b[2].str().to_string(),
+                }
+            })
+            .collect(),
+    };
+    let (mut total, mut bad) = (0, vec![]);
+    for c in root.get("cases").arr() {
+        let preset = c.get("preset").str();
+        let keymap = match preset {
+            "custom" => custom.clone(),
+            id => preset_keymap(Preset::from_id(id).expect("배치")),
+        };
+        let n = c.get("n").num() as usize;
+        for k in c.get("keys").arr() {
+            total += 1;
+            let k = k.arr();
+            let (token, want) = (k[0].str(), k[1].opt_str());
+            let have = keycaps_for_move(&keymap, n, token);
+            if have.as_deref() != want {
+                bad.push(format!(
+                    "{preset} {n}×{n} 「{token}」 코어: {have:?} 사이트: {want:?}"
+                ));
+            }
+        }
+    }
+    println!("키캡 줄: 수 {total}개, 어긋남 {}개", bad.len());
     assert!(total > 0);
     assert!(bad.is_empty(), "어긋남 {}개\n{}", bad.len(), bad.join("\n"));
 }
