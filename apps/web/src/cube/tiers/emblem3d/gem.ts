@@ -1,0 +1,179 @@
+/**
+ * 엠블럼 보석의 빛길(docs/47 14-7 「셋째 시안」). three.js의 투과(transmission)는 화면에 미리 그린 불투명한 뒤 그림을
+ * 한 번 굴절해 비추는 얇은 유리 흉내라, 보석 안의 전반사(빛이 안에서 튕겨 윗면으로 돌아오는 것)가 없고 이웃 보석도
+ * 보지 못한다. 그래서 보석 조각마다 안에서 빛길을 직접 따라간다:
+ *
+ * 1. 눈에서 온 빛이 겉면에서 굴절해 들어간다(들어가지 못한 몫은 겉 반사로 재질이 그린다).
+ * 2. 안에서 벽에 닿을 때마다 프레넬 식으로 나가는 몫과 되튀는 몫을 나눈다. 임계각보다 비스듬하면 모두 되튄다(전반사).
+ * 3. 나가는 몫은 그 방향의 스튜디오 빛(반사 지도)을 가져온다. 지나온 길이만큼 색이 흡수된다(비어-람베르트).
+ * 4. 분산: 빨강·초록·파랑의 굴절률을 조금씩 달리해 세 번 따라간다(다이아몬드·챌린저의 무지개).
+ *
+ * 이 파일의 `traceGem`은 셰이더(GLSL·TSL)와 같은 계산을 JS로 옮긴 기준 구현이다. 셰이더를 고치면 함께 고치고,
+ * 단위 시험이 물리 성질(전반사, 에너지 보존, 흡수)을 이것으로 확인한다.
+ */
+
+export type Vec3 = readonly [number, number, number];
+
+/** 보석 조각 모양(물체 좌표). 상자는 큐브 조각·왕관, 팔면체는 꼭짓점·볏·아래 보석, 판은 날개 조각 */
+export type GemShape = "box" | "octa" | "slab";
+
+/** 큐브 조각 반 변(`CUBIE` 0.92의 절반) */
+export const GEM_BOX_HALF = 0.46;
+/** 팔면체 보석은 반지름 1로 만들고 크기는 물체 배율로 준다 */
+export const GEM_OCTA_R = 1;
+/** 날개 조각 판 반두께(두께 0.04 + 베벨 0.03) */
+export const GEM_SLAB_HALF = 0.05;
+/** 안에서 벽에 닿는 횟수 */
+export const GEM_BOUNCES = 5;
+
+/** 보석 물리 값 */
+export interface GemPhysics {
+  /** 굴절률(나트륨 D선). 실제 보석 값 */
+  ior: number;
+  /** 빨강과 파랑의 굴절률 차이(화면용으로 키운 값, 실제 값은 `realDispersion`) */
+  spread: number;
+  /** 단위 길이당 흡수(선형 빨강·초록·파랑). 조각 한 변 0.92 */
+  absorb: Vec3;
+}
+
+const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const add = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const mul = (a: Vec3, k: number): Vec3 => [a[0] * k, a[1] * k, a[2] * k];
+const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm = (a: Vec3): Vec3 => mul(a, 1 / Math.hypot(a[0], a[1], a[2]));
+
+/** GLSL `reflect` */
+export function reflect(i: Vec3, n: Vec3): Vec3 {
+  return sub(i, mul(n, 2 * dot(n, i)));
+}
+
+/** GLSL `refract`(n은 i 반대쪽, eta = n1/n2). 전반사면 null */
+export function refract(i: Vec3, n: Vec3, eta: number): Vec3 | null {
+  const c = dot(n, i);
+  const k = 1 - eta * eta * (1 - c * c);
+  if (k < 0) return null;
+  return sub(mul(i, eta), mul(n, eta * c + Math.sqrt(k)));
+}
+
+/** 편광 없는 빛의 프레넬 반사율(n1 쪽에서 cosI로 닿을 때). 임계각을 넘으면 1 */
+export function fresnel(cosI: number, n1: number, n2: number): number {
+  const s = (n1 / n2) * Math.sqrt(Math.max(0, 1 - cosI * cosI));
+  if (s >= 1) return 1;
+  const cosT = Math.sqrt(1 - s * s);
+  const rs = (n1 * cosI - n2 * cosT) / (n1 * cosI + n2 * cosT + 1e-6);
+  const rp = (n1 * cosT - n2 * cosI) / (n1 * cosT + n2 * cosI + 1e-6);
+  return 0.5 * (rs * rs + rp * rp);
+}
+
+/** 임계각(라디안): 이보다 비스듬히 안에서 벽에 닿으면 모두 되튄다 */
+export function criticalAngle(ior: number): number {
+  return Math.asin(1 / ior);
+}
+
+const OCTA_N: Vec3[] = [];
+for (const x of [-1, 1])
+  for (const y of [-1, 1])
+    for (const z of [-1, 1]) OCTA_N.push(norm([x, y, z]));
+
+/** 안에서 나가는 벽까지 거리와 그 벽의 바깥 법선 */
+export function exitOf(
+  shape: GemShape,
+  p: Vec3,
+  d: Vec3,
+): { t: number; m: Vec3 } {
+  if (shape === "octa") {
+    let t = Number.POSITIVE_INFINITY;
+    let m: Vec3 = [0, 0, 1];
+    for (const n of OCTA_N) {
+      const dn = dot(n, d);
+      if (dn <= 1e-6) continue;
+      const tk = (GEM_OCTA_R / Math.sqrt(3) - dot(n, p)) / dn;
+      if (tk < t) {
+        t = tk;
+        m = n;
+      }
+    }
+    return { t: Math.max(0, t), m };
+  }
+  if (shape === "slab") {
+    const sz = Math.sign(d[2]) || 1;
+    return {
+      t: Math.max(
+        0,
+        (GEM_SLAB_HALF - p[2] * sz) / Math.max(Math.abs(d[2]), 1e-5),
+      ),
+      m: [0, 0, sz],
+    };
+  }
+  let best = 0;
+  let t = Number.POSITIVE_INFINITY;
+  for (let k = 0; k < 3; k++) {
+    const s = Math.sign(d[k] as number);
+    const tk =
+      (GEM_BOX_HALF - (p[k] as number) * s) /
+      Math.max(Math.abs(d[k] as number), 1e-5);
+    if (tk < t) {
+      t = tk;
+      best = k;
+    }
+  }
+  const m: [number, number, number] = [0, 0, 0];
+  m[best] = Math.sign(d[best] as number) || 1;
+  return { t: Math.max(0, t), m };
+}
+
+/** 보석에서 나가는 빛 한 줄기: 나가는 방향과 그 몫(한 색 채널) */
+export interface GemExit {
+  dir: Vec3;
+  weight: number;
+  /** 전반사로 되튄 뒤 나갔는지 */
+  afterTir: boolean;
+}
+
+/**
+ * 한 색 채널의 빛길을 따라간다(셰이더와 같은 계산). `p`는 겉면 위 점, `v`는 눈에서 그 점으로 가는 방향, `n`은 그 겉면의
+ * 바깥 법선. 겉 반사 몫(`reflect`)과 나가는 빛 목록, 마지막에 남은 몫(셰이더는 그 방향으로 나간다고 본다)을 돌려준다.
+ */
+export function traceGem(
+  shape: GemShape,
+  p0: Vec3,
+  v0: Vec3,
+  n0: Vec3,
+  ior: number,
+  absorb: number,
+  bounces = GEM_BOUNCES,
+): { reflect: number; exits: GemExit[]; left: number; path: number } {
+  const v = norm(v0);
+  const n = norm(n0);
+  const cosI = Math.min(1, Math.max(0, -dot(v, n)));
+  const R = fresnel(cosI, 1, ior);
+  let d = refract(v, n, 1 / ior) ?? v;
+  let p = sub(p0, mul(n, 1e-4));
+  let thr = 1 - R;
+  let path = 0;
+  let tir = false;
+  const exits: GemExit[] = [];
+  for (let i = 0; i < bounces; i++) {
+    const { t, m } = exitOf(shape, p, d);
+    p = add(p, mul(d, t));
+    path += t;
+    thr *= Math.exp(-absorb * t);
+    const F = fresnel(dot(d, m), ior, 1);
+    if (F < 1) {
+      const o = refract(d, mul(m, -1), ior) ?? d;
+      exits.push({ dir: o, weight: thr * (1 - F), afterTir: tir });
+    } else tir = true;
+    thr *= F;
+    d = reflect(d, m);
+    p = sub(p, mul(m, 1e-4));
+  }
+  return { reflect: R, exits, left: thr, path };
+}
+
+/** 실제 분산 값(B–G 굴절률 차, 보석학 표준 값). 문서·시험용 */
+export const REAL = {
+  emerald: { ior: 1.577, dispersion: 0.014 },
+  amethyst: { ior: 1.544, dispersion: 0.013 },
+  ruby: { ior: 1.77, dispersion: 0.018 },
+  diamond: { ior: 2.417, dispersion: 0.044 },
+} as const;
