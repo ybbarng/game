@@ -102,8 +102,8 @@ test(
     const kept = await expectKept(page, canvas, home);
     await shot(page, "keep-view-solo-dragged", info.project.name);
 
-    // 큐브 돌리기(x, 「두 손」의 T)는 큐브가 돌고 보는 각은 그대로다
-    await page.keyboard.press("KeyT");
+    // 큐브 돌리기(x, 「두 손」의 Y)는 큐브가 돌고 보는 각은 그대로다
+    await page.keyboard.press("KeyY");
     for (let i = 0; i < 6; i++) await page.clock.fastForward(200);
     expect(await turnOf(canvas), "x를 쳐도 보는 각은 그대로").toBe(kept);
 

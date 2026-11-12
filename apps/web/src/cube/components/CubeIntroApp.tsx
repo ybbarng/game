@@ -638,11 +638,12 @@ function LayoutStep({ onDone }: { onDone: () => void }) {
           </ul>
           <p className="break-keep text-white/60 text-xs">
             {TWO_HAND_RULES.find((r) => r.exception)?.exception} csTimer(큐브
-            연습에 널리 쓰는 웹 사이트) 같은 가상 큐브 사이트와 같은 배치라 다른
-            곳에서도 그대로 써요. 덧붙인 것: Shift + 면 키 = 넓게. csTimer와
-            다른 곳: Space는 살펴보기(맞추기 전에 큐브를 둘러보는 시간)와
-            블라인드(외운 뒤 가린 채 맞추기) 시작이에요. 큰 큐브는
-            3·4(왼손)·7·8(오른손)로 함께 돌릴 층 수를 골라요.
+            연습에 널리 쓰는 웹 사이트) 같은 가상 큐브 사이트와 글자 키 자리가
+            같아 다른 곳에서도 그대로 써요. 덧붙인 것: Shift + 면 키는 바깥 두
+            층을 같이 돌려요. 숫자 n을 먼저 치면 다음 면 키는 그 면의 n번째 층
+            하나를, Shift + 면 키는 바깥 n층을 같이 돌려요. csTimer와 다른 곳:
+            Space는 살펴보기(맞추기 전에 큐브를 둘러보는 시간)와 블라인드(외운
+            뒤 가린 채 맞추기) 시작이에요.
           </p>
         </div>
       )}

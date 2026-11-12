@@ -57,7 +57,7 @@ test(
       "data-key-paint",
       "1'",
     );
-    await expect(page.locator('[data-key="KeyT"]')).toHaveAttribute(
+    await expect(page.locator('[data-key="KeyY"]')).toHaveAttribute(
       "data-key-paint",
       "sweep",
     );
@@ -77,11 +77,14 @@ test(
     await expect(page.locator("[data-keys-table] tbody tr")).toHaveCount(1);
     await expect(page.locator('tr[data-action="R\'"]')).toContainText("K");
 
-    // 크기 4: csTimer와 같은 층 수 키(7 = 오른손 층 수 +1)와 csTimer 안내
-    await page.locator('[data-size="4"]').click();
-    await page.locator("[data-keys-search]").fill("오른손 층 수");
-    await expect(page.locator('tr[data-action="layers:R+"]')).toContainText(
-      "7",
+    // 크기 7: 바깥 세 층(3Rw)은 숫자 3 뒤 넓게 키(2026-11-12), 안내에 7×7 예
+    await page.locator('[data-size="7"]').click();
+    await page.locator("[data-keys-search]").fill("3Rw");
+    await expect(page.locator('tr[data-action="3Rw"]')).toContainText(
+      "3 → Shift+I",
+    );
+    await expect(page.locator("[data-keys-cstimer]")).toContainText(
+      "3 → Shift+I",
     );
     await expect(page.locator("[data-keys-cstimer]")).toContainText("Space");
   },
@@ -114,11 +117,11 @@ test(
     await page.locator("[data-learn-next]").click();
     // 둘째 단계는 큐브 둘러보기(x·y·z)
     await expect(main).toHaveAttribute("data-learn-step", "rotate");
-    await expect(page.locator('[data-key="KeyT"]')).toHaveAttribute(
+    await expect(page.locator('[data-key="KeyY"]')).toHaveAttribute(
       "data-key-state",
       "lit",
     );
-    await page.keyboard.press("KeyT");
+    await page.keyboard.press("KeyY");
     await expect(
       page.locator('[data-learn-targets] li[data-target-state="done"]'),
     ).toHaveCount(1);
@@ -146,8 +149,8 @@ test(
     const done = page.locator(
       '[data-learn-targets] li[data-target-state="done"]',
     );
-    // x·y·z를 한 번씩(두 손: T ; P)
-    for (const [i, code] of ["KeyT", "Semicolon", "KeyP"].entries()) {
+    // x·y·z를 한 번씩(두 손: Y ; P)
+    for (const [i, code] of ["KeyY", "Semicolon", "KeyP"].entries()) {
       await page.keyboard.press(code);
       await expect(done).toHaveCount(i + 1);
     }
