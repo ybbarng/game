@@ -35,7 +35,15 @@ describe("감시 목록", () => {
     // 파일 하나로 적은 것은 이름이 비슷한 다른 파일을 잡지 않는다
     expect(watchedEntry("apps/web/src/cube/keys/drill.ts")).toBeNull();
     expect(watchedEntry("apps/web/src/cube/settings.test.ts")).toBeNull();
-    expect(watchedEntry("apps/web/src/cube/tiers/TierTable.tsx")).toBeNull();
+    // 기록 창·티어표·설정 창도 앱이 그린다(docs/52 5-8). 사용자 배치 편집은 앱이 사이트 창으로 연다
+    expect(
+      watchedEntry("apps/web/src/cube/tiers/TierTable.tsx"),
+    ).not.toBeNull();
+    expect(
+      watchedEntry("apps/web/src/cube/components/CubeSettingsApp.tsx"),
+    ).not.toBeNull();
+    expect(watchedEntry("apps/web/src/cube/keymap-editor.ts")).toBeNull();
+    expect(watchedEntry("apps/web/src/cube/tiers/emblem3d/gem.ts")).toBeNull();
   });
 });
 

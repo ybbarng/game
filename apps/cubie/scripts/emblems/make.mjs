@@ -1,4 +1,4 @@
-// 네이티브 Cubie의 티어 엠블럼 PNG(Resources/Emblems/<티어>.png, 64px)를 사이트 엠블럼 코드로 만든다. 이 맥에서 손으로 돌린다.
+// 네이티브 Cubie의 티어 엠블럼 PNG(Resources/Emblems/<티어>.png 64px, big/ 아래 128px·구간 표시)를 사이트 엠블럼 코드로 만든다. 이 맥에서 손으로 돌린다.
 //
 //   node apps/cubie/scripts/emblems/make.mjs
 //
@@ -95,6 +95,7 @@ try {
       continue;
     }
     const b64 = url.slice(url.indexOf(",") + 1);
+    mkdirSync(dirname(join(outDir, `${tier}.png`)), { recursive: true });
     writeFileSync(join(outDir, `${tier}.png`), Buffer.from(b64, "base64"));
     console.log(`만듦: Resources/Emblems/${tier}.png`);
   }

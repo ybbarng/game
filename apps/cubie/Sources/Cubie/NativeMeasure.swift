@@ -4,7 +4,8 @@ import AppKit
 /// 받는다. 창은 `FloatingWindow`가 화면 밖에 투명하게 두고, 저장소는 메모리에만 둔다(사용자 기록에 손대지 않는다).
 ///
 /// 명령: `focus 1|0` · `scramble` · `mirror 1|0` · `size <n>` · `side <pt>` · `turns <개수>`(0.12초마다 손가락 자리 키) ·
-/// `show` · `hide` · `keys load|drop`(단축키 표) · `records open|close`(기록 창: 사이트 창, 화면 밖) · `practice start|stop`(공식 연습 첫 단계) · `state` · `quit`
+/// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창: 네이티브 창, `CUBIE_WEB_WINDOWS=1`이면 사이트 창, 화면 밖) ·
+/// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) · `state` · `quit`
 @MainActor
 final class NativeMeasure {
   private let cube: NativeCubeWindow
@@ -12,8 +13,8 @@ final class NativeMeasure {
   /// 단축키 표·기록 창(재기 전용, 화면 밖)
   var openKeys: (() -> Void)?
   var dropKeys: (() -> Void)?
-  var openRecords: (() -> Void)?
-  var closeRecords: (() -> Void)?
+  /// 보통 창(이름 records·tiers·settings) 열기·닫기
+  var window: ((String, Bool) -> Void)?
 
   /// `Measure.turns`와 같은 손가락 자리 키(두 손 배치) J F I E K D H G L S의 맥 키 코드
   static let fingerKeys: [UInt16] = [38, 3, 34, 14, 40, 2, 4, 5, 37, 1]
@@ -101,8 +102,8 @@ final class NativeMeasure {
       } else if let first = cube.state.practiceStages.first {
         cube.send(.practice(stage: first.id, see: false))
       }
-    case "records":
-      if arg == "open" { openRecords?() } else { closeRecords?() }
+    case "records", "tiers", "settings", "replay":
+      window?(cmd, arg == "open")
     case "state": report("state")
     case "quit": NSApp.terminate(nil)
     default: log("unknown command: \(line)")
