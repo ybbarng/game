@@ -53,6 +53,56 @@ async function stillsLoaded(scope: Locator, count: number) {
   await expect(scope.locator(".cube-emblem svg")).toHaveCount(0);
 }
 
+/** 사다리 칸 그림의 중간 밝기(보고 있지 않은 칸, TierShowcase.tsx `LADDER_REST`) */
+const REST = "brightness(0.72) saturate(0.85)";
+
+/** 사다리 칸 열 개의 그림 필터(티어 차례) */
+async function artFilters(page: Page): Promise<string[]> {
+  const got = await page
+    .locator("[data-cube-ladder] [data-cube-ladder-art]")
+    .evaluateAll((els) =>
+      els.map((e) => [
+        e.closest("[data-cube-ladder]")?.getAttribute("data-cube-ladder") ?? "",
+        getComputedStyle(e).filter,
+      ]),
+    );
+  const by = new Map(got.map(([t, f]) => [t, f]));
+  return TIERS.map((t) => by.get(t) ?? "");
+}
+
+/** 그 칸만 보고 있는 칸(제 밝기, 표시)이고 나머지 아홉은 같은 중간 밝기 */
+async function expectShown(page: Page, tier: string) {
+  await expect(page.locator("[data-cube-ladder-shown]")).toHaveCount(1);
+  await expect(page.locator("[data-cube-ladder-shown]")).toHaveAttribute(
+    "data-cube-ladder",
+    tier,
+  );
+  await expect(page.locator(`[data-cube-ladder="${tier}"]`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // 밝기는 0.2초 동안 바뀌므로 다 바뀔 때까지 기다린다(티어 차례대로 열 칸)
+  const want = TIERS.map((t) => (t === tier ? "none" : REST));
+  await expect.poll(() => artFilters(page)).toEqual(want);
+}
+
+const TIERS = [
+  "iron",
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "emerald",
+  "diamond",
+  "master",
+  "grandmaster",
+  "challenger",
+];
+
+/** 칸 테두리(box-shadow) */
+const ringOf = (cell: Locator) =>
+  cell.evaluate((e) => getComputedStyle(e).boxShadow);
+
 /** 사다리 칸 열 개가 미리 찍은 그림을 받았다 */
 async function spritesLoaded(page: Page) {
   const cells = page.locator("[data-cube-ladder-sprite]");
@@ -130,9 +180,10 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "",
   );
   await expect(page.locator("[data-cube-next-tier]")).toHaveCount(0);
-  // 사다리: 열 티어 모두 잠김, 칸마다 미리 찍은 그림과 그 티어에 드는 시간
+  // 사다리: 열 칸 모두 같은 중간 밝기(보고 있는 칸 없음), 칸마다 미리 찍은 그림과 그 티어에 드는 시간
   await expect(page.locator("[data-cube-ladder]")).toHaveCount(10);
-  await expect(page.locator("[data-cube-ladder-locked]")).toHaveCount(10);
+  await expect(page.locator("[data-cube-ladder-shown]")).toHaveCount(0);
+  expect(new Set(await artFilters(page))).toEqual(new Set([REST]));
   await expect(page.locator('[data-cube-ladder="diamond"]')).toContainText(
     "14초 이하",
   );
@@ -187,19 +238,32 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   await expect(next).toContainText("Ao5 10초 이하");
   // 정지 그림: 내 티어(3D 대신) + 다음 티어
   await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 2);
-  // 사다리: 다이아몬드가 내 칸, 그 위 셋(마스터·그랜드마스터·챌린저)만 잠김
+  // 사다리: 다이아몬드가 내 칸이고 처음 보고 있는 칸이라 그 칸만 제 밝기, 나머지 아홉은 같은 중간 밝기
+  const cell = (t: string) => page.locator(`[data-cube-ladder="${t}"]`);
   await expect(page.locator("[data-cube-ladder-mine]")).toHaveAttribute(
     "data-cube-ladder",
     "diamond",
   );
-  const locked = page.locator("[data-cube-ladder-locked]");
-  await expect(locked).toHaveCount(3);
-  for (const t of ["master", "grandmaster", "challenger"])
-    await expect(
-      page.locator(`[data-cube-ladder="${t}"][data-cube-ladder-locked]`),
-    ).toHaveCount(1);
+  await expectShown(page, "diamond");
+  // 내 티어를 보고 있으면 노란 테두리와 티어 색 테두리가 둘 다
+  expect(await ringOf(cell("diamond"))).toContain("252, 211, 77");
+  expect(await ringOf(cell("diamond"))).toContain("125, 211, 252");
   await noSideScroll(page);
   await shot(page, "tiers-mine", info.project.name);
+
+  // 아직 얻지 못한 마스터를 누르면 그 칸이 밝아지고 마스터 색 테두리, 내 칸은 노란 테두리만 남는다
+  await cell("master").click();
+  await expectShown(page, "master");
+  expect(await ringOf(cell("master"))).toContain("240, 171, 252");
+  expect(await ringOf(cell("diamond"))).toContain("252, 211, 77");
+  expect(await ringOf(cell("diamond"))).not.toContain("125, 211, 252");
+  await shot(page, "tiers-picked", info.project.name);
+  // 다른 칸을 누르면 앞 칸은 다시 중간 밝기
+  await cell("challenger").click();
+  await expectShown(page, "challenger");
+  // 같은 칸을 다시 누르면 내 티어로
+  await cell("challenger").click();
+  await expectShown(page, "diamond");
 
   // 다른 크기는 아직 없다
   await page.locator("[data-cube-tier-size='4']").click();
