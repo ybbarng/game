@@ -548,7 +548,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | Ao5·최고 Ao5(힌트 판 묶음 빼기)·티어 | `tiers/rank.ts` | 코어 `tier.rs`(C ABI `ffi_records.rs`) | 옮김 |
 | 기록 창(크기별 목록·평균·티어 엠블럼·다시 보기 상자) | `?view=records` | `NativeRecordsWindow`(요약은 코어 `summary.rs`, 다시 보기는 `CACubeView`) | 옮김(2026-11-12, 5-8) |
 | 티어표 | `/cube/tiers` | `NativeTiersWindow`(표는 코어 `cubie_tier_table`, 엠블럼 PNG) | 옮김(2026-11-12, 5-8. 큰 엠블럼 아래 구간 점은 없음) |
-| 메뉴 맨 위 프로필 칸(이름·티어 글·엠블럼) | `profile.ts`·`emblemImage.ts` | 앱(이름·티어 글), 엠블럼은 사이트 코드로 만든 PNG를 앱에 묶음 | 옮김 |
+| 메뉴 맨 위 프로필 칸(이름·티어 글·엠블럼) | `profile.ts`·`emblemImage.ts` | 앱(이름·티어 글), 엠블럼은 사이트 3D 엠블럼을 찍은 PNG를 앱에 묶음(2026-11-13부터 정지 그림) | 옮김 |
 | 힌트: 마지막 층(2단계 OLL·PLL·윗면 돌리기) | `hint-pick.ts` | 코어 `hint.rs` | 옮김 |
 | 힌트: F2L 전(3×3 십자·F2L 짝, 2×2 전부) | `solveCfop`·`solveAdvanced2` | 코어 `human.rs`(공통 시험 자료 어긋남 0) | 옮김 |
 | 힌트 키캡 줄(공식·쥐는 법) | `keysForMove` | 코어 `keys/route.rs` | 옮김 |
@@ -704,7 +704,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 | 요약 계산 | 코어 `src/summary.rs`, C ABI `cubie_mini_summary`, 공통 자료 `fixtures/summary.json`(46사례, 어긋남 0) | 사이트 `summarize`: 벌점 포함 시간 그대로·ms 반올림(티어의 대회 규칙 평균과 셈이 달라 따로 둠), 4판 넘게 셀 때만 가장 좋은·나쁜 판을 하나씩 뺌, 모자라면 「-」, DNF가 많으면 「DNF」 |
 | 티어표 | `NativeTiersWindow.swift`, 글·표 `CubieCore/TierSheet.swift`, 표 자료 C ABI `cubie_tier_table` | 사이트 티어표와 같은 글: 소개 두 문단, 크기 단추, 내 티어 상자(사이트처럼 이 기기의 **혼자 맞추기** 기록 `cube.records.v1`, Cubie 기록이 아님), 챌린저부터 아이언까지 구간 상한·WCA 경기자 비율(넓은 창 꼴), 내 칸 짚기, WCA 출처. 표 값(구간·WCA 수·자료 날짜·문구)은 사이트 표에서 만드는 `data.rs`에 더했다 |
 | 설정 창 | `NativeSettingsWindow.swift`, 글·저장 `CubieCore/SettingsSheet.swift`, 기본 배치 키 `cubie_preset_bindings` | 사이트 설정 화면 가운데 Cubie가 쓰는 칸만 같은 글·차례: 키 배치(두 손·표기·사용자, 「키보드 그림으로 보기」·「키 익히기」는 브라우저), 색(표준·높은 대비·색약 친화·직접 고름, 면마다 색 고르기, 3D 미리 보기와 거울), 회전 속도(0~200ms, 10ms 단위), 섞기 연출 넷과 설명, 가린 스티커(검정·회색, 공식 연습 가리기 칸 색), 스티커 없는 모양, 큐브 소리, 키 그림에 면 색(F1 표 칸 색). 바꾸면 바로 앱 저장소에 쓰고 큐브 창·단축키 표가 다시 읽는다(예전 사이트 창은 창을 닫아야 들어갔다). 「사용자」는 사이트 `toCustom`처럼 지금 기본 배치의 키 전부를 사용자 배치로 옮긴다 |
-| 엠블럼 | `Resources/Emblems/big/<티어>.png`(64pt, 244KB), `scripts/emblems/render.tsx` | 티어표 「내 티어」 상자용 큰 그림. 사이트 엠블럼 코드로 뜬다 |
+| 엠블럼 | `Resources/Emblems/<티어>.png`(32pt·64px), `Resources/Emblems/big/<티어>.png`(64pt·128px), 찍기 `apps/web/scripts/render-emblem-posters.mjs`(`ONLY=cubie`) | 메뉴 프로필 칸·기록 창 티어 칸·티어표 줄과 티어표 「내 티어」 상자. 2026-11-13부터 사이트 3D 엠블럼을 정면에서 찍은 정지 그림(docs/47 14-7 「열째 시안 확정」), 20장 298KB → 353KB |
 | 스크린샷·견주기 | `NativeWindowShot.swift`(`CUBIE_WINDOW_SHOT=<폴더> CUBIE_WINDOW_SHOT_STORE=<JSON>`), `scripts/window-compare.mjs` | 창을 화면에 띄우지 않고 그린다(글·바탕은 AppKit 그리기, 다시 보기·미리 보기 큐브는 `CARenderer`). 같은 저장소로 사이트 화면을 WebKit으로 찍어 나란히 |
 | 글 어긋남 막기 | 웹 시험 `apps/web/src/cube/native/native-windows-text.test.ts` | 사이트 화면 글(기록 창·티어표·설정)과 앱 글 파일에 같은 글이 있는지 본다. 사이트 글을 고치면 깨진다 |
 | 재기 | `measure-memory.sh --native`(세 창·다시 보기 상태 더함), `--native --web-windows`(세 창만 사이트 창) | 아래 표 |
