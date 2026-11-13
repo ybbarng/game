@@ -26,6 +26,15 @@
 
 <br clear="left">
 
+<p align="center">
+  <img src="apps/cubie/docs/tiers.webp" width="640" alt="티어 엠블럼 열 개가 아이언부터 챌린저까지 계단처럼 올라가는 그림. 위로 갈수록 날개와 보석이 늘어 화려해진다">
+</p>
+
+<p align="center">
+  티어는 사이트 큐브 맞추기와 Cubie 모두 5판 평균(Ao5)으로 매긴다(<a href="https://game.byb.kr/cube/tiers">티어표</a>).<br>
+  실력을 올려 더 화려한 티어에 도전해 보자.
+</p>
+
 ## 공정성
 
 공정성 장치는 판정마다 두 결로 나눈다([docs/50](docs/50-fairness-two-tracks.md)).
