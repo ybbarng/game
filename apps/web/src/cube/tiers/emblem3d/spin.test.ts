@@ -10,6 +10,12 @@ import {
   homeSpin,
   isTurned,
   PITCH_MAX,
+  SWAY_AMP,
+  SWAY_EASE,
+  SWAY_PERIOD,
+  swayFrom,
+  swayStep,
+  swayYaw,
   wrapYaw,
 } from "./spin";
 
@@ -88,5 +94,35 @@ describe("3D 엠블럼 끌어 돌리기", () => {
     expect(homeSpin(from, 1)).toEqual({ yaw: -0, pitch: 0 });
     expect(homeSpin(from, 2)).toEqual(homeSpin(from, 1));
     expect(HOME_MS).toBeGreaterThan(0);
+  });
+});
+
+describe("진열 흔들기", () => {
+  it("정면에서 시작해 빠르기를 천천히 올리고, 폭 안에서 좌우로 흔든다", () => {
+    let s = swayFrom(0);
+    expect(swayYaw(s)).toBeCloseTo(0);
+    // 처음 한 장은 거의 움직이지 않는다
+    expect(Math.abs(swayYaw(swayStep(s, 16)))).toBeLessThan(1e-4);
+    let max = 0;
+    let min = 0;
+    for (let t = 0; t < SWAY_PERIOD * 2; t += 16) {
+      s = swayStep(s, 16);
+      max = Math.max(max, swayYaw(s));
+      min = Math.min(min, swayYaw(s));
+    }
+    expect(max).toBeLessThanOrEqual(SWAY_AMP + 1e-9);
+    expect(max).toBeGreaterThan(SWAY_AMP * 0.95);
+    expect(min).toBeLessThan(-SWAY_AMP * 0.95);
+  });
+
+  it("폭 안에서 놓으면 그 각에서 이어 흔들고, 폭 밖·여러 바퀴 돈 각이면 가까운 정면으로 돌아온다", () => {
+    expect(swayYaw(swayFrom(0.3))).toBeCloseTo(0.3);
+    const far = swayFrom(Math.PI * 4 + 1.4);
+    expect(far.center).toBeCloseTo(Math.PI * 4);
+    expect(swayYaw(far)).toBeCloseTo(Math.PI * 4 + 1.4);
+    let s = far;
+    for (let t = 0; t < SWAY_EASE * 8; t += 16) s = swayStep(s, 16);
+    expect(Math.abs(s.offset)).toBeLessThan(0.01);
+    expect(Math.abs(swayYaw(s) - Math.PI * 4)).toBeLessThan(SWAY_AMP + 0.01);
   });
 });

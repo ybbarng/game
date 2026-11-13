@@ -146,7 +146,7 @@ export function Emblem3D({
     s.setView(view === "turned" ? TURNED_VIEW : FRONT);
   }, [view, state]);
   useEffect(() => {
-    if (state === "3d") stage.current?.setAuto(auto);
+    if (state === "3d") stage.current?.setSway(auto);
   }, [auto, state]);
 
   // 로딩 중에는 대기 그림, 대기 그림이 없으면 작은 로딩 표시. 정지 그림은 3D를 못 그리거나 문맥을 잃었을 때만

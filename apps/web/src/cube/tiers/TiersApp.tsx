@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatMs } from "../records";
 import { EmblemStill } from "./EmblemStill";
+import { installCaptureHook } from "./emblem3d/capture";
 import { tierName } from "./rank";
 import { TIER_TONE, TierTable, useMyTier } from "./TierTable";
 import {
@@ -28,7 +29,14 @@ function sizeFromUrl(): number {
 /** 큐브 티어표(`/cube/tiers`, docs/47 14절) */
 export function TiersApp() {
   const [n, setN] = useState(3);
-  useEffect(() => setN(sizeFromUrl()), []);
+  useEffect(() => {
+    setN(sizeFromUrl());
+    try {
+      installCaptureHook(window.location.search);
+    } catch {
+      // 찍기 고리는 제품 화면에 없어도 된다
+    }
+  }, []);
   const mine = useMyTier(n);
 
   const pick = (next: number) => {
