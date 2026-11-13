@@ -47,7 +47,8 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7 다섯�
     expect(POSTERS.filter((p) => p.size === DRAFT_SIZE)).toHaveLength(20);
     expect(POSTERS.filter((p) => p.size === BIG_SIZE)).toHaveLength(
       // 에메랄드는 모든 시안, 다른 보석 티어 넷은 아홉째 시안 다섯
-      GEM_STYLES.length * 2 + 4 * 5 * 2,
+      // 에메랄드는 다이아몬드 전용 셋을 뺀 시안 전부, 다이아몬드는 아홉째 다섯 + 얕은 계단 셋, 나머지 셋은 다섯씩
+      (GEM_STYLES.length - 3 + 8 + 5 * 3) * 2,
     );
   });
 

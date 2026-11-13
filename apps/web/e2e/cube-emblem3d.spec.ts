@@ -80,7 +80,8 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
 
   // 왼쪽으로 끌면 왼쪽으로 돈 채 남는다(동작 줄이기라 미끄러지지 않는다)
   for (const s of stages) {
-    await dragBy(page, s, -50, 6);
+    // 기본 다이아몬드는 기본 시안으로 큰 칸(440px)이라 칸 너비 대비 같은 비율만큼 끈다
+    await dragBy(page, s, -75, 6);
     await expect(s).not.toHaveAttribute("data-emblem3d-moving");
     expect(await yawOf(s)).toBeLessThan(-0.4);
     expect(Number(await s.getAttribute("data-emblem3d-pitch"))).toBeGreaterThan(
@@ -97,7 +98,7 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
 
   // 오른쪽으로 끌면 오른쪽으로
   for (const s of stages) {
-    await dragBy(page, s, 100, -6);
+    await dragBy(page, s, 150, -6);
     await expect(s).not.toHaveAttribute("data-emblem3d-moving");
     expect(await yawOf(s)).toBeGreaterThan(0.4);
   }
@@ -129,7 +130,36 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
   await draftShot(page, "gold");
 });
 
-test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 전에는 미리 찍은 그림이 덮고, 바뀔 때 1px도 움직이지 않는다", {
+/** 두 PNG(같은 크기)의 화소 차 RMSE(0~1, RGB) */
+async function pngRmse(page: Page, a: Buffer, b: Buffer): Promise<number> {
+  return page.evaluate(
+    async ([pa, pb]) => {
+      const load = async (b64: string) => {
+        const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const bmp = await createImageBitmap(
+          new Blob([bin], { type: "image/png" }),
+        );
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        const ctx = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+        ctx.drawImage(bmp, 0, 0);
+        return ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+      };
+      const [x, y] = await Promise.all([load(pa), load(pb)]);
+      let s = 0;
+      let n = 0;
+      for (let k = 0; k < Math.min(x.length, y.length); k += 4)
+        for (let ch = 0; ch < 3; ch++) {
+          const d = ((x[k + ch] ?? 0) - (y[k + ch] ?? 0)) / 255;
+          s += d * d;
+          n++;
+        }
+      return Math.sqrt(s / n);
+    },
+    [a.toString("base64"), b.toString("base64")] as const,
+  );
+}
+
+test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 첫 장이 뜨기 전에는 미리 찍은 그림이 덮고, 바뀔 때 1px도 움직이지 않는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   test.setTimeout(120_000);
@@ -143,9 +173,11 @@ test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 
       w.__emblem3dRelease = r;
     });
   });
+  // 기본 선택 다이아몬드는 기본 시안(얕은 계단)으로 크게 연다(화려함 사다리)
   for (const [url, tier, size] of [
-    ["/cube/tiers/emblems", "diamond", 300],
+    ["/cube/tiers/emblems", "diamond", 440],
     ["/cube/tiers/emblems?gem=b&emblemBg=light", "emerald", 440],
+    ["/cube/tiers/emblems?tier=challenger", "challenger", 440],
   ] as const) {
     await page.goto(url);
     const box = page.locator(`[data-emblem3d="${tier}"]`);
@@ -162,6 +194,8 @@ test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 
         ),
       )
       .toBe(size * 2);
+    // 찍기(screenshot)가 칸을 화면 안으로 스크롤하므로 자리는 찍은 뒤에 잰다
+    const posterPng = await box.screenshot();
     const before = await poster.boundingBox();
     await page.evaluate(() =>
       (
@@ -178,6 +212,10 @@ test("대기 그림과 3D는 같은 자리·같은 크기: 3D 첫 장이 뜨기 
     expect(before).not.toBeNull();
     expect(after).toEqual(before);
     expect(before?.width).toBe(size);
+    // 대기 그림과 3D 첫 장의 같은 자리 화소 차(RMSE). 이 맥(GPU)에서 약 0.012~0.014(WebP 압축 몫). GPU 없는 CI
+    // (소프트웨어 그리기)는 번짐·정밀도가 조금 달라 넉넉히 둔다. 생김새가 바뀌었는데 대기 그림을 다시 찍지 않으면 넘는다
+    const diff = await pngRmse(page, posterPng, await box.screenshot());
+    expect(diff, `${tier} 대기 그림과 3D 첫 장의 화소 차`).toBeLessThan(0.07);
     await draftShot(page, `poster-${tier}`);
   }
 });

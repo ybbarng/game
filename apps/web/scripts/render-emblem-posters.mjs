@@ -63,6 +63,9 @@ const STYLES = [
   "p",
   "o1",
   "o2",
+  "calm",
+  "calm1",
+  "calm2",
 ];
 const BGS = ["dark", "light"];
 const JOBS = [
@@ -77,9 +80,16 @@ const JOBS = [
       file: `emerald-${style}-${bg}.webp`,
     })),
   ),
-  // 다른 보석 티어 × 아홉째 시안(poster.ts와 같게)
+  // 다른 보석 티어 × 아홉째 시안, 다이아몬드는 얕은 계단까지(poster.ts stylesForTier와 같게)
   ...["diamond", "master", "grandmaster", "challenger"].flatMap((tier) =>
-    ["n", "q", "p", "o1", "o2"].flatMap((style) =>
+    [
+      "n",
+      "q",
+      "p",
+      "o1",
+      "o2",
+      ...(tier === "diamond" ? ["soft", "soft1", "soft2"] : []),
+    ].flatMap((style) =>
       BGS.map((bg) => ({
         tier,
         bg,
@@ -140,6 +150,10 @@ try {
       `[data-emblem3d="${job.tier}"][data-emblem3d-shown]`,
     );
     await box.waitFor({ timeout: 90_000 });
+    // 대기 그림이 3D 첫 장 위에서 겹쳐 사라질 때까지(그 사이 찍으면 예전 대기 그림이 섞인다)
+    await box
+      .locator("[data-emblem3d-poster]")
+      .waitFor({ state: "detached", timeout: 10_000 });
     await page.evaluate(
       () =>
         new Promise((r) =>

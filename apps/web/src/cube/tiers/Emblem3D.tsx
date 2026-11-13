@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
 
-import type { GemStyle } from "./emblem3d/gemStyle";
-import { posterSrc } from "./emblem3d/poster";
+import { defaultStyle, type GemStyle } from "./emblem3d/gemStyle";
+import { BIG_SIZE, DRAFT_SIZE, posterSrc } from "./emblem3d/poster";
 import { type DraftTier, styleFor } from "./emblem3d/scene";
 import { FRONT, type Spin } from "./emblem3d/spin";
 import type { EmblemStage } from "./emblem3d/stage";
@@ -15,6 +15,9 @@ import { TierEmblem } from "./TierEmblem";
 import { TIER_LABEL } from "./table";
 
 type State = "loading" | "3d" | "svg";
+
+/** 대기 그림이 3D 첫 장 위에서 겹쳐 사라지는 시간(ms) */
+export const POSTER_FADE_MS = 200;
 
 /** 미리보기의 「돌린 각」(좌우 0.6 라디안, 비교 그림과 같은 각) */
 export const TURNED_VIEW: Spin = { yaw: 0.6, pitch: 0 };
@@ -55,6 +58,16 @@ export function Emblem3D({
   const [state, setState] = useState<State>("loading");
   const [path, setPath] = useState<DrawPath | null>(null);
   const [shown, setShown] = useState(false);
+  // 3D 첫 장 뒤 대기 그림을 겹쳐 사라지게 한 다음 걷는다(남은 작은 차이가 한 번에 튀지 않게)
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!shown) {
+      setGone(false);
+      return;
+    }
+    const id = window.setTimeout(() => setGone(true), POSTER_FADE_MS + 30);
+    return () => window.clearTimeout(id);
+  }, [shown]);
   const [posterBroken, setPosterBroken] = useState(false);
   const style = styleFor(tier, gemStyle);
   const poster = posterSrc(tier, size, pageColor, style);
@@ -161,7 +174,7 @@ export function Emblem3D({
     >
       {/* 캔버스는 무대가 이 칸에 직접 넣는다(React가 자식을 다루지 않는 칸) */}
       <div ref={box} className="absolute inset-0" />
-      {covered && usePoster && (
+      {!(state === "3d" && gone) && usePoster && (
         // 3D 장면을 미리 찍은 대기 그림: 캔버스와 같은 자리·같은 크기(캔버스 위에 덮어 두었다가 첫 장 뒤에 걷는다)
         // biome-ignore lint/performance/noImgElement: 미리 찍은 그림을 캔버스와 같은 화소 크기로 그대로 보인다
         <img
@@ -172,8 +185,13 @@ export function Emblem3D({
           height={size}
           draggable={false}
           onError={() => setPosterBroken(true)}
-          className="absolute inset-0 block rounded-2xl"
-          style={{ width: size, height: size }}
+          className="pointer-events-none absolute inset-0 block rounded-2xl"
+          style={{
+            width: size,
+            height: size,
+            opacity: covered ? 1 : 0,
+            transition: `opacity ${POSTER_FADE_MS}ms ease-out`,
+          }}
         />
       )}
       {covered && !usePoster && (
@@ -316,35 +334,19 @@ export function EmblemGrid({
   tiers,
   selected,
   onSelect,
-  gemStyle = null,
 }: {
   tiers: readonly DraftTier[];
   selected: DraftTier;
   onSelect: (t: DraftTier) => void;
-  gemStyle?: GemStyle | null;
 }) {
-  const [shots, setShots] = useState<string[] | null>(null);
+  // 티어마다 누르면 열리는 큰 칸의 대기 그림(기본 시안, 정면)을 줄여 보인다. 예전에는 따로 찍은 비스듬한 그림(바탕
+  // 없음·다른 각도)이 SVG 다음에 떠서 두 번 바뀌었고, 누르면 또 다른 모습이 떠 이질적이었다(2026-11-13 사용자
+  // 「로드되는 동안 이전 이미지랑 이질적이니까」). 3D를 짓지 않아 가볍다
+  const shots = tiers.map((t) => {
+    const s = defaultStyle(t);
+    return posterSrc(t, s ? BIG_SIZE : DRAFT_SIZE, undefined, s);
+  });
   const hover = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!canDraw3d()) return;
-    let live = true;
-    import("./emblem3d/stage")
-      .then(({ captureShots }) =>
-        captureShots(
-          tiers.map((tier) => ({ tier, px: 192, yaws: [0.18], gemStyle })),
-        ),
-      )
-      .then((all) => {
-        if (live) setShots(all.map((u) => u[0] ?? ""));
-      })
-      .catch(() => {
-        if (live) setShots(null);
-      });
-    return () => {
-      live = false;
-    };
-  }, [tiers, gemStyle]);
 
   useEffect(
     () => () => {
@@ -356,7 +358,7 @@ export function EmblemGrid({
   return (
     <div
       data-emblem3d-grid
-      data-emblem3d-grid-ready={shots ? "" : undefined}
+      data-emblem3d-grid-ready=""
       className="flex flex-wrap justify-center gap-2"
     >
       {tiers.map((t, i) => (
@@ -379,18 +381,17 @@ export function EmblemGrid({
             t === selected ? "bg-white/10 ring-white/30" : "hover:bg-white/5",
           )}
         >
-          {shots?.[i] ? (
-            // biome-ignore lint/performance/noImgElement: 찍은 data URL을 그대로 보인다
+          {shots[i] ? (
+            // biome-ignore lint/performance/noImgElement: 미리 찍은 대기 그림을 그대로 줄여 보인다
             <img
-              src={shots[i]}
+              src={shots[i] as string}
               alt=""
               width={88}
               height={88}
               draggable={false}
-              className="block"
+              className="block rounded-lg"
             />
           ) : (
-            // 찍은 그림과 같은 88px 칸: 그림이 와도 격자 높이가 바뀌어 아래 3D 칸이 밀리지 않게
             <span className="flex size-[88px] items-center justify-center">
               <TierEmblem tier={t} size={64} />
             </span>

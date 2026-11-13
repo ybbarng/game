@@ -307,6 +307,7 @@ export class EmblemStage implements ViewTurnTarget {
   private scale = 1;
   private readonly quality = new MotionQuality(learnedLevel);
   private auto = false;
+  private wasMoving = false;
   private shown: (() => void) | null = null;
   /**
    * 첫 장이 화면에 나가면 풀린다. 그때까지 대기 그림(미리 찍은 3D 그림)을 캔버스 위에 덮어 둬서, 빈 캔버스가 한 장도
@@ -511,6 +512,9 @@ export class EmblemStage implements ViewTurnTarget {
     if (this.disposed) return;
     if (!this.visible) return;
     this.pending = false;
+    // 돌리는 동안 이어진 장 사이 간격으로 화면 주기를 잰다(120Hz면 한 장 예산이 8.3ms, quality.ts)
+    if (this.moving && this.wasMoving && this.last)
+      this.quality.noteInterval(now - this.last);
     const dt = Math.min(50, Math.max(0, now - (this.last || now)));
     this.last = now;
     let stepped = false;
@@ -576,6 +580,7 @@ export class EmblemStage implements ViewTurnTarget {
         });
       }
     }
+    this.wasMoving = this.moving;
     this.apply();
     if (this.homing || this.speed !== 0 || this.drag || this.auto)
       this.schedule();
@@ -592,6 +597,7 @@ export class EmblemStage implements ViewTurnTarget {
     h.emblem3dFrames = String(this.frames);
     h.emblem3dScale = String(this.scale);
     if (this.quality.median > 0) h.emblem3dGap = this.quality.median.toFixed(1);
+    h.emblem3dBudget = this.quality.budget.toFixed(1);
     if (this.moving) h.emblem3dMoving = "";
     else delete h.emblem3dMoving;
   }

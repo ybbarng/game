@@ -486,6 +486,16 @@ vec3 gemTraceCube( float ior ) {
 }
 #endif
 
+#ifdef GEM_FIRE
+// 분산 흉내(열째 시안 다이아몬드 soft): 나가는 방향과 되튄 횟수로 스펙트럼 색을 골라 곱한다. 평균 밝기는 그대로이고,
+// 처음 나가는 빛(겉에 가까움)은 약하게, 안에서 되튄 뒤 나가는 빛일수록 불꽃이 선다
+vec3 gemFire( vec3 o, int i ) {
+  float h = fract( dot( o, vec3( 2.1, 3.3, 1.7 ) ) * 1.6 + float( i ) * 0.37 );
+  vec3 s = clamp( abs( fract( h + vec3( 0.0, 2.0 / 3.0, 1.0 / 3.0 ) ) * 6.0 - 3.0 ) - 1.0, 0.0, 1.0 );
+  return mix( vec3( 1.0 ), s * 2.0, GEM_FIRE * ( i > 0 ? 1.0 : 0.3 ) );
+}
+#endif
+
 vec3 gemTrace( float ior ) {
   vec3 n = normalize( vGemNrm );
 #if defined( GEM_FACET ) && ! defined( GEM_FACET_WALL )
@@ -529,7 +539,11 @@ vec3 gemTrace( float ior ) {
     // 벽을 등지는 빛(곡면·깎은 면에서 드물게)은 나가지 않고 되튄다고 본다: 굴절 방향이 0이 되어 계산이 무너지지 않게
     float cd = dot( d, m );
     float F = cd > 1e-4 ? gemFresnel( cd, ior, 1.0 ) : 1.0;
+#ifdef GEM_FIRE
+    if ( F < 1.0 ) { vec3 go = refract( d, - m, ior ); acc += thr * ( 1.0 - F ) * gemSee( p, go ) * gemFire( go, i ); }
+#else
     if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSee( p, refract( d, - m, ior ) );
+#endif
     thr *= F;
     d = reflect( d, m );
     p -= m * 1e-4;
@@ -608,7 +622,9 @@ export function gemMaterialGL(
   const ior = style?.traceIor
     ? channelIor({ ...g, ior: style.traceIor })
     : channelIor(g);
-  const disperse = disperses(g);
+  // 분산 흉내를 쓰는 시안(다이아몬드 soft)은 세 번 따라가지 않는다(큐브 조각만, 볏·징 같은 작은 보석은 그대로)
+  const fire = style?.fire && inCube ? style.fire : 0;
+  const disperse = disperses(g) && !fire;
   // 깎은 면은 큐브 조각·왕관 같은 상자 보석에만(팔면체·판은 이미 깎인 모양이다)
   const cut = style && shape === "box" ? style.cut : NO_CUT;
   const facet = cut.kind !== 0;
@@ -665,6 +681,7 @@ export function gemMaterialGL(
         ? { GEM_TINT: `vec3( ${style.tint.map(f).join(", ")} )` }
         : {}),
       ...(traceId && style?.surround ? { GEM_SURROUND: "" } : {}),
+      ...(fire ? { GEM_FIRE: f(fire) } : {}),
       ...(traceId && style?.tint && style.innerGlow
         ? { GEM_INNER: f(style.innerGlow) }
         : {}),

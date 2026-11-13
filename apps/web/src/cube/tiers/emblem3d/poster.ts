@@ -1,10 +1,9 @@
 import { TIER_IDS, type TierId } from "../table";
 import {
-  ALL_GEM_STYLES,
-  GEM_STYLES,
   GEM_TIERS,
   type GemStyle,
   styleForTier,
+  stylesForTier,
 } from "./gemStyle";
 
 /**
@@ -49,17 +48,9 @@ export const POSTERS: readonly PosterSpec[] = [
       size: DRAFT_SIZE,
     })),
   ),
-  ...GEM_STYLES.flatMap((style) =>
-    (["dark", "light"] as const).map((bg) => ({
-      tier: "emerald" as const,
-      bg,
-      style,
-      size: BIG_SIZE,
-    })),
-  ),
-  // 다른 보석 티어 × 아홉째 시안(2026-11-13): 시안을 고르면 그 티어를 크게 본다
-  ...GEM_TIERS.filter((t) => t !== "emerald").flatMap((tier) =>
-    ALL_GEM_STYLES.flatMap((style) =>
+  // 보석 티어 × 그 티어의 시안 단추(큰 칸): 에메랄드는 앞 시안과 차분한 보석까지, 다이아몬드는 얕은 계단까지
+  ...GEM_TIERS.flatMap((tier) =>
+    stylesForTier(tier).flatMap((style) =>
       (["dark", "light"] as const).map((bg) => ({
         tier,
         bg,

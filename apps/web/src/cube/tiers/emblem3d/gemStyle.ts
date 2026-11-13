@@ -44,6 +44,12 @@ export const GEM_STYLES = [
   "p",
   "o1",
   "o2",
+  "calm",
+  "calm1",
+  "calm2",
+  "soft",
+  "soft1",
+  "soft2",
 ] as const;
 export type GemStyle = (typeof GEM_STYLES)[number];
 
@@ -69,6 +75,12 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   p: "p 브릴리언트 속",
   o1: "o1 결정 구조(조각마다)",
   o2: "o2 결정 구조(큐브 전체)",
+  calm: "차분한 보석",
+  calm1: "차분한 보석 −1",
+  calm2: "차분한 보석 −2",
+  soft: "얕은 계단",
+  soft1: "얕은 계단 −1",
+  soft2: "얕은 계단 −2",
 };
 
 /**
@@ -86,17 +98,58 @@ export const GEM_TIERS = [
   "challenger",
 ] as const;
 
-/** 이 티어에 쓸 시안(못 쓰면 null): 에메랄드는 모든 시안, 다른 보석 티어는 아홉째 시안만 */
+/**
+ * 화려함 사다리(열째 시안, 2026-11-13 사용자 「에메랄드, 다이아몬드는 과한 것 같아. 등급상 더 하위 등급이니까」):
+ * 티어가 오를수록 화려하게. 에메랄드는 매끈하고 차분한 보석, 다이아몬드는 얕은 계단, 마스터 결정(조각마다),
+ * 그랜드마스터 계단 컷, 챌린저는 지금 모습 그대로(사용자 「지금 챌린저 좋아 보여」, 결정 조각마다 + 무지개)
+ */
+export const DEFAULT_STYLE: Readonly<
+  Record<(typeof GEM_TIERS)[number], GemStyle>
+> = {
+  emerald: "calm",
+  diamond: "soft",
+  master: "o1",
+  grandmaster: "n",
+  challenger: "o1",
+};
+
+/** 한 티어에만 쓰는 시안(사다리의 낮은 두 티어) */
+const TIER_ONLY: Partial<Record<GemStyle, string>> = {
+  calm: "emerald",
+  calm1: "emerald",
+  calm2: "emerald",
+  soft: "diamond",
+  soft1: "diamond",
+  soft2: "diamond",
+};
+
+/** 이 티어의 시안 단추 목록 */
+export function stylesForTier(tier: string): readonly GemStyle[] {
+  if (!(GEM_TIERS as readonly string[]).includes(tier)) return GEM_STYLES;
+  if (tier === "emerald")
+    return GEM_STYLES.filter((s) => (TIER_ONLY[s] ?? "emerald") === "emerald");
+  return GEM_STYLES.filter(
+    (s) => ALL_GEM_STYLES.includes(s) || TIER_ONLY[s] === tier,
+  );
+}
+
+/**
+ * 이 티어에 쓸 시안(못 쓰면 null): 에메랄드는 다이아몬드 전용을 뺀 모든 시안, 다른 보석 티어는 아홉째 시안과 제 전용 시안
+ */
 export function styleForTier(
   tier: string,
   style: GemStyle | null | undefined,
 ): GemStyle | null {
   if (!style) return null;
-  if (tier === "emerald") return style;
-  return (GEM_TIERS as readonly string[]).includes(tier) &&
-    ALL_GEM_STYLES.includes(style)
+  return stylesForTier(tier).includes(style) &&
+    (GEM_TIERS as readonly string[]).includes(tier)
     ? style
     : null;
+}
+
+/** 보석 티어의 기본 시안(사다리), 금속 티어는 null */
+export function defaultStyle(tier: string): GemStyle | null {
+  return (DEFAULT_STYLE as Record<string, GemStyle>)[tier] ?? null;
 }
 
 /** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
@@ -215,6 +268,11 @@ export interface GemStyleLook {
   };
   /** 겉 반사 세기(반사 지도, 기본 1): 깎은 면에 조명이 흰 쐐기로 비치게(시안 n) */
   frontEnv?: number;
+  /**
+   * 분산 흉내(열째 시안 다이아몬드 soft): 빛길을 빨강·초록·파랑 세 번 따라가는 대신 한 번 따라가고, 나가는 방향에 따라
+   * 스펙트럼 색을 이만큼 곱한다(평균 밝기는 그대로). 계산이 약 1/3
+   */
+  fire?: number;
   /** 꿰뚫어 본 뒤 배경 세기, 되튄 빛이 읽는 스튜디오 세기 */
   backGain: number;
   envGain: number;
@@ -289,6 +347,26 @@ const DEEP: GemStyleLook = {
   glow: 0.6,
   frontLights: 1.2,
   bloom: NOW_BLOOM,
+};
+
+/** 열째 시안 에메랄드 차분한 보석 */
+const CALM: GemStyleLook = {
+  ...DEEP,
+  cubeFill: 0.6,
+  backGain: 1.7,
+  envGain: 1.3,
+  frontLights: 0.7,
+  bloom: { strength: 0.3, radius: 0.1, threshold: 3.5 },
+};
+
+/** 열째 시안 다이아몬드 얕은 계단(겉면만 얕게 깎은 두 단, 분산 흉내) */
+const SOFT: GemStyleLook = {
+  ...DEEP,
+  cut: SOFT_STEP,
+  fire: 0.18,
+  envGain: 1.4,
+  frontLights: 1,
+  bloom: { strength: 0.32, radius: 0.1, threshold: 3.4 },
 };
 
 /**
@@ -518,6 +596,38 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     cubeFill: 0,
     voro: { count: 30, reflect: 0.25, bend: 0.15, scope: "cube" },
     steps: 16,
+  },
+  // ---- 열째 시안: 화려함 사다리의 낮은 두 티어
+  // 에메랄드 차분한 보석: 매끈한 네모 조각(깎은 면·결정 없음), 반짝 점·번짐 약하게. 뒤 배경이 비치고 몸 색이 짙어
+  // 금속·탁한 유리로 보이지 않게(넷째 시안의 뒤 비침은 그대로)
+  calm: CALM,
+  calm1: {
+    ...CALM,
+    envGain: 1.15,
+    frontLights: 0.5,
+    bloom: { strength: 0.2, radius: 0.1, threshold: 4 },
+  },
+  calm2: {
+    ...CALM,
+    envGain: 1,
+    frontLights: 0.35,
+    glow: 0.5,
+    bloom: { strength: 0.12, radius: 0.1, threshold: 4.5 },
+  },
+  // 다이아몬드 얕은 계단: 에메랄드보다 한 단계 위. 겉면만 얕게 깎은 면 두 단, 불꽃은 분산 흉내로 약하게
+  soft: SOFT,
+  soft1: {
+    ...SOFT,
+    cut: { kind: 1, rings: [{ from: 0.8, tilt: 14 }] },
+    fire: 0.1,
+    frontLights: 0.9,
+  },
+  soft2: {
+    ...SOFT,
+    cut: { kind: 1, rings: [{ from: 0.88, tilt: 10 }] },
+    fire: 0.05,
+    frontLights: 0.8,
+    envGain: 1.25,
   },
 };
 

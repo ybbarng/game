@@ -6,13 +6,12 @@ import { cn } from "@/lib/cn";
 import { HDR_GLOW_SRC } from "@/stardraw/hdr-glow";
 import { Emblem3D, EmblemGrid, EmblemShots } from "./Emblem3D";
 import {
-  ALL_GEM_STYLES,
+  defaultStyle,
   GEM_STYLE_LABEL,
-  GEM_STYLES,
-  GEM_TIERS,
   type GemStyle,
   gemStyleOf,
   styleForTier,
+  stylesForTier,
 } from "./emblem3d/gemStyle";
 import { BIG_SIZE, DRAFT_SIZE, POSTER_PAGE } from "./emblem3d/poster";
 import { DRAFT_TIERS, type DraftTier } from "./emblem3d/scene";
@@ -200,13 +199,11 @@ function Draft3d() {
     setTier(t);
     setParam("tier", t);
   };
-  const style = styleForTier(tier, gem);
+  // 고른 시안이 이 티어에 맞지 않으면 그 티어의 기본 시안(화려함 사다리)으로 연다
+  const style = styleForTier(tier, gem) ?? defaultStyle(tier);
   const size = style ? BIG_SIZE : DRAFT_SIZE;
-  // 다른 보석 티어는 모든 티어에 입힌 아홉째 시안 다섯만, 에메랄드·금속 티어는 전부(금속 티어에서 누르면 에메랄드로)
-  const styleItems =
-    tier !== "emerald" && (GEM_TIERS as readonly string[]).includes(tier)
-      ? ALL_GEM_STYLES
-      : GEM_STYLES;
+  // 그 티어의 시안 단추(금속 티어는 전부를 보이고, 누르면 에메랄드로)
+  const styleItems = stylesForTier(tier);
   return (
     <section data-emblem3d-draft className="flex flex-col gap-3">
       <h2 className="font-semibold text-sm">3D 시안</h2>
