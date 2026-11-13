@@ -17,7 +17,7 @@ import { type FacetCut, facetNormal } from "./gemStyle";
 export type Vec3 = readonly [number, number, number];
 
 /** 보석 조각 모양(물체 좌표). 상자는 큐브 조각·왕관, 팔면체는 꼭짓점·볏·아래 보석, 판은 날개 조각 */
-export type GemShape = "box" | "octa" | "slab" | "poly" | "round";
+export type GemShape = "box" | "octa" | "slab" | "poly";
 
 /** 큐브 조각 반 변(`CUBIE` 0.92의 절반) */
 export const GEM_BOX_HALF = 0.46;
@@ -236,7 +236,8 @@ export function boxPath(p: Vec3, d: Vec3, half: number): number {
 /** 실제 분산 값(B–G 굴절률 차, 보석학 표준 값). 문서·시험용 */
 export const REAL = {
   emerald: { ior: 1.577, dispersion: 0.014 },
-  amethyst: { ior: 1.544, dispersion: 0.013 },
+  // 보라 사파이어(커런덤) 1.762~1.770의 가운데. 마스터 티어(2026-11-13 자수정에서 바꿈)
+  sapphire: { ior: 1.766, dispersion: 0.018 },
   ruby: { ior: 1.77, dispersion: 0.018 },
   diamond: { ior: 2.417, dispersion: 0.044 },
 } as const;

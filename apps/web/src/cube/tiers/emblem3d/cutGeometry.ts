@@ -1,12 +1,12 @@
 import { GEM_BOX_HALF, type Vec3 } from "./gem";
 
 /**
- * 아홉째 시안의 실제 기하(docs/47 14-7, 사용자 참고 사진 「계단 컷 루비 큐브」·「안쪽 결정 구조 루비」).
+ * 보석 조각의 실제 기하(docs/47 14-7, 사용자 참고 사진 「계단 컷 루비 큐브」·「안쪽 결정 구조 루비」).
  *
- * - `stepCutPlanes`: 조각 하나를 평면들의 교집합(볼록 다면체)으로 둔다. 면마다 넓은 테이블 둘레에 네 변 쪽으로 기운 계단
+ * - `stepCutPlanes`(그랜드마스터 계단 컷): 조각 하나를 평면들의 교집합(볼록 다면체)으로 둔다. 면마다 넓은 테이블 둘레에 네 변 쪽으로 기운 계단
  *   띠 두 단, 꼭짓점 여덟은 비스듬히 깎는다. 빛길 셰이더는 이 평면들을 실제 벽으로 따라가고(`GEM_SHAPE == 3`), 장면은
  *   같은 평면으로 그물(`polyFromPlanes`)을 지어 실루엣·겉 반사도 깎인 모양 그대로다.
- * - `voronoiSeeds`: 안쪽 결정 조각(3D 보로노이 칸)의 씨앗. 이웃 씨앗 사이 이등분 면이 안쪽 경계 면이다.
+ * - `voronoiSeeds`(마스터·챌린저 결정 구조): 안쪽 결정 조각(3D 보로노이 칸)의 씨앗. 이웃 씨앗 사이 이등분 면이 안쪽 경계 면이다.
  */
 
 export interface Plane {
@@ -163,98 +163,7 @@ export function polyFromPlanes(planes: readonly Plane[]): {
   return { positions, normals, faces };
 }
 
-/** 둥근 모서리 조각(시안 q): 모서리·꼭짓점 반지름(조각 한 변 0.92의 약 17%) */
-export const ROUND_R = 0.16;
-
-/** 둥근 모서리 상자의 부호 있는 거리(안쪽 음수). 셰이더 `gemRoundSdf`와 같다 */
-export function roundBoxSdf(p: Vec3, half: number, r: number): number {
-  const q = p.map((x) => Math.abs(x) - (half - r)) as unknown as Vec3;
-  const out = Math.hypot(
-    Math.max(q[0], 0),
-    Math.max(q[1], 0),
-    Math.max(q[2], 0),
-  );
-  return out + Math.min(Math.max(q[0], q[1], q[2]), 0) - r;
-}
-
-/**
- * 둥근 모서리 상자 그물(면마다 n×n 격자를 둥근 상자 겉면으로 밀어낸다). 법선은 곡면 그대로(부드럽게), 색인 삼각형.
- */
-export function roundBoxMesh(
-  half: number,
-  r: number,
-  n = 14,
-): { positions: number[]; normals: number[]; indices: number[] } {
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const indices: number[] = [];
-  const core = half - r;
-  const faces: [Vec3, Vec3, Vec3][] = [
-    [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-    ],
-    [
-      [-1, 0, 0],
-      [0, 0, 1],
-      [0, 1, 0],
-    ],
-    [
-      [0, 1, 0],
-      [0, 0, 1],
-      [1, 0, 0],
-    ],
-    [
-      [0, -1, 0],
-      [1, 0, 0],
-      [0, 0, 1],
-    ],
-    [
-      [0, 0, 1],
-      [1, 0, 0],
-      [0, 1, 0],
-    ],
-    [
-      [0, 0, -1],
-      [0, 1, 0],
-      [1, 0, 0],
-    ],
-  ];
-  for (const [a, u, v] of faces) {
-    const base = positions.length / 3;
-    for (let i = 0; i <= n; i++)
-      for (let j = 0; j <= n; j++) {
-        const su = (i / n) * 2 - 1;
-        const sv = (j / n) * 2 - 1;
-        const p: Vec3 = [
-          a[0] * half + u[0] * su * half + v[0] * sv * half,
-          a[1] * half + u[1] * su * half + v[1] * sv * half,
-          a[2] * half + u[2] * su * half + v[2] * sv * half,
-        ];
-        const inner = p.map((x) =>
-          Math.max(-core, Math.min(core, x)),
-        ) as unknown as Vec3;
-        let d: Vec3 = [p[0] - inner[0], p[1] - inner[1], p[2] - inner[2]];
-        const l = Math.hypot(d[0], d[1], d[2]);
-        d = l > 1e-9 ? [d[0] / l, d[1] / l, d[2] / l] : a;
-        positions.push(
-          inner[0] + d[0] * r,
-          inner[1] + d[1] * r,
-          inner[2] + d[2] * r,
-        );
-        normals.push(...d);
-      }
-    for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++) {
-        const k = base + i * (n + 1) + j;
-        indices.push(k, k + n + 1, k + 1, k + 1, k + n + 1, k + n + 2);
-      }
-  }
-  return { positions, normals, indices };
-}
-
-/** 셰이더 `gemHash`와 같은 뜻의 결정적 난수(0~1) */
+/** 씨앗을 고정한 결정적 난수(0~1) */
 function rand(seed: number): () => number {
   let s = seed >>> 0 || 1;
   return () => {

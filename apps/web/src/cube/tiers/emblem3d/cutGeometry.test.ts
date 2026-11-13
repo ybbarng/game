@@ -4,9 +4,6 @@ import {
   CORNER_CUT,
   nearestSeed,
   polyFromPlanes,
-  ROUND_R,
-  roundBoxMesh,
-  roundBoxSdf,
   stepCutPlanes,
   voronoiSeeds,
 } from "./cutGeometry";
@@ -14,7 +11,7 @@ import { GEM_BOX_HALF, type Vec3 } from "./gem";
 
 const H = GEM_BOX_HALF;
 
-describe("아홉째 시안의 실제 기하(docs/47 14-7)", () => {
+describe("보석 조각의 실제 기하(docs/47 14-7)", () => {
   it("계단 컷 조각: 평면 62개로 깎은 다면체가 30면 넘게 남고, 그물은 상자 안·평면 안쪽에 닫혀 있다", () => {
     const planes = stepCutPlanes();
     expect(planes).toHaveLength(62);
@@ -56,26 +53,6 @@ describe("아홉째 시안의 실제 기하(docs/47 14-7)", () => {
       ).toBeGreaterThan(0);
     }
     expect(CORNER_CUT).toBeLessThan(1);
-  });
-
-  it("둥근 모서리 조각: 그물 꼭짓점은 거리 함수 0 위에 있고 법선은 길이 1", () => {
-    const m = roundBoxMesh(H, ROUND_R, 8);
-    for (let i = 0; i < m.positions.length; i += 3) {
-      const v: Vec3 = [
-        m.positions[i] as number,
-        m.positions[i + 1] as number,
-        m.positions[i + 2] as number,
-      ];
-      expect(Math.abs(roundBoxSdf(v, H, ROUND_R))).toBeLessThan(1e-6);
-      expect(
-        Math.hypot(
-          m.normals[i] as number,
-          m.normals[i + 1] as number,
-          m.normals[i + 2] as number,
-        ),
-      ).toBeCloseTo(1, 6);
-    }
-    expect(roundBoxSdf([0, 0, 0], H, ROUND_R)).toBeCloseTo(-H, 6);
   });
 
   it("결정 구조 씨앗은 늘 같고 상자 안에 있으며, 가까운 씨앗을 고른다", () => {

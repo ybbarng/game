@@ -1,9 +1,9 @@
 /**
- * 3D 엠블럼 시안이 어느 길로 그릴지 가른다(docs/47 14-7). 브라우저 이름이 아니라 기능으로 본다.
+ * 3D 엠블럼이 어느 길로 그릴지 가른다(docs/47 14-7). 브라우저 이름이 아니라 기능으로 본다.
  *
- * - `hdr`: HDR 화면(`dynamic-range: high`)이고 WebGPU 캔버스가 흰색보다 밝은 값을 그대로 내보낼 수 있을 때
- *   (`toneMapping: { mode: "extended" }`를 받아들였는지 `getConfiguration()`으로 확인). 반짝임이 1.0보다 밝다.
- * - `bloom`: 그 밖의 보석. SDR에 밝은 곳이 번지는 효과로 반짝임을 흉내 낸다.
+ * - `hdr`: WebGPU 캔버스에 흰색보다 밝은 값을 그대로 내보낸다. 티어별 생김새(열째 시안 확정)는 아직 이 길에 옮기지
+ *   않아 지금은 `?emblem3d=hdr`로 강제할 때만 쓴다. 옮기면 HDR 화면(`canHdrCanvas`)에서 저절로 고르게 한다.
+ * - `bloom`: 보석. SDR에 밝은 곳이 번지는 효과로 반짝임을 흉내 낸다.
  * - `plain`: 금속(골드). 번짐 없이 그린다.
  * - 3D를 못 그리면(WebGL2 없음, 시험의 3D 끄기) 지금 SVG 엠블럼을 보인다.
  */
@@ -46,7 +46,10 @@ interface GpuCanvasContext {
   getConfiguration?(): { toneMapping?: { mode?: string } } | null;
 }
 
-/** HDR 캔버스(WebGPU, rgba16float, toneMapping extended)를 쓸 수 있는지 */
+/**
+ * HDR 캔버스(WebGPU, rgba16float, toneMapping extended)를 쓸 수 있는지. 티어별 생김새를 HDR 길로 옮긴 뒤 저절로 고를 때
+ * 쓴다(지금은 부르는 곳 없음, docs/47 14-7 남은 일)
+ */
 export async function canHdrCanvas(): Promise<boolean> {
   try {
     if (!matchMedia("(dynamic-range: high)").matches) return false;

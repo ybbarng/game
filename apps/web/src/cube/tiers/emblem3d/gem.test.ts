@@ -92,15 +92,13 @@ describe("보석 빛길(docs/47 14-7 셋째 시안)", () => {
     expect(sum(deep)).toBeLessThan(sum(clear));
   });
 
-  it("겉 반사는 물리 그대로: 정면에서 에메랄드·자수정 약 5%, 루비 7.7%, 다이아몬드 17%(금속처럼 크지 않다)", () => {
+  it("겉 반사는 물리 그대로: 정면에서 에메랄드 약 5%, 사파이어 7.6%, 루비 7.7%, 다이아몬드 17%(금속처럼 크지 않다)", () => {
     expect(GEM_FRONT_ENV).toBe(1);
-    for (const t of ["emerald", "master"] as const) {
-      const g = LOOK[t].gem;
-      if (!g) throw new Error(t);
-      const f0 = fresnel(1, 1, g.ior);
-      expect(f0).toBeGreaterThan(0.04);
-      expect(f0).toBeLessThan(0.06);
-    }
+    const emerald = LOOK.emerald.gem;
+    if (!emerald) throw new Error("emerald");
+    expect(fresnel(1, 1, emerald.ior)).toBeGreaterThan(0.04);
+    expect(fresnel(1, 1, emerald.ior)).toBeLessThan(0.06);
+    expect(fresnel(1, 1, REAL.sapphire.ior)).toBeCloseTo(0.0767, 3);
     expect(fresnel(1, 1, REAL.ruby.ior)).toBeCloseTo(0.077, 3);
     expect(fresnel(1, 1, REAL.diamond.ior)).toBeCloseTo(0.172, 3);
   });
@@ -157,7 +155,8 @@ describe("보석 빛길(docs/47 14-7 셋째 시안)", () => {
 
   it("보석 티어의 굴절률은 실제 보석 값, 분산은 다이아몬드·챌린저만 따로 따라간다", () => {
     expect(LOOK.emerald.gem?.ior).toBe(REAL.emerald.ior);
-    expect(LOOK.master.gem?.ior).toBe(REAL.amethyst.ior);
+    // 마스터는 보라 사파이어(2026-11-13 자수정에서 바꿈: 다이아몬드 위 티어에 흔하고 싼 자수정은 어색했다)
+    expect(LOOK.master.gem?.ior).toBe(REAL.sapphire.ior);
     expect(LOOK.grandmaster.gem?.ior).toBe(REAL.ruby.ior);
     expect(LOOK.diamond.gem?.ior).toBe(REAL.diamond.ior);
     expect(LOOK.challenger.gem?.ior).toBe(REAL.diamond.ior);

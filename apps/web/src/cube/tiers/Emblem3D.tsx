@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
 
-import { defaultStyle, type GemStyle } from "./emblem3d/gemStyle";
-import { BIG_SIZE, DRAFT_SIZE, posterSrc } from "./emblem3d/poster";
-import { type DraftTier, styleFor } from "./emblem3d/scene";
+import { styleOfTier } from "./emblem3d/gemStyle";
+import { emblemSize, posterSrc } from "./emblem3d/poster";
+import type { DraftTier } from "./emblem3d/scene";
 import { FRONT, type Spin } from "./emblem3d/spin";
 import type { EmblemStage } from "./emblem3d/stage";
 import { canDraw3d, type DrawPath, pathOverride } from "./emblem3d/support";
@@ -27,17 +27,16 @@ export const TURNED_VIEW: Spin = { yaw: 0.6, pitch: 0 };
  * 뜬다. three.js는 이 칸이 뜰 때 늦게 받는다.
  *
  * 3D가 뜨기 전에는 3D 장면을 미리 찍은 대기 그림(`emblem3d/poster.ts`)을 같은 자리·같은 크기로 덮어 두고, 3D 첫 장이
- * 화면에 나간 뒤에 걷는다(고정 규칙 2-1절). 3D를 못 그리면 대기 그림을 그대로 둔다. 찍어 둔 그림이 없을 때만 SVG
- * 엠블럼을 보인다.
+ * 화면에 나간 뒤에 걷는다(고정 규칙 2-1절). 찍어 둔 그림이 없거나 못 받으면 빈 칸에 작은 로딩 표시를 둔다. 로딩
+ * 중에는 평면 SVG를 보이지 않는다. 3D를 못 그리거나(WebGL2 없음·무대 실패) 문맥을 잃었을 때만 SVG 엠블럼을 보인다.
  *
- * `data-emblem3d-path`: `hdr`(HDR 캔버스) · `bloom`(SDR 번짐) · `plain`(금속) · `svg`(3D 없음) · `loading`.
+ * `data-emblem3d-path`: `hdr`(HDR 캔버스) · `bloom`(SDR 번짐) · `plain`(금속) · `svg`(3D 없음·실패) · `loading`.
  */
 export function Emblem3D({
   tier,
   size,
   className,
   pageColor,
-  gemStyle = null,
   view = "front",
   auto = false,
 }: {
@@ -46,8 +45,6 @@ export function Emblem3D({
   className?: string;
   /** 바탕색(배경판 가장자리가 녹아든다). 기본은 미리보기 바탕(neutral-900) */
   pageColor?: string | undefined;
-  /** 에메랄드 시안(`?gem=`) */
-  gemStyle?: GemStyle | null;
   /** 각: 정면·돌린 각(미리보기 단추) */
   view?: "front" | "turned";
   /** 자동 회전(미리보기 단추) */
@@ -69,8 +66,7 @@ export function Emblem3D({
     return () => window.clearTimeout(id);
   }, [shown]);
   const [posterBroken, setPosterBroken] = useState(false);
-  const style = styleFor(tier, gemStyle);
-  const poster = posterSrc(tier, size, pageColor, style);
+  const poster = posterSrc(tier, size, pageColor);
   const appliedView = useRef<"front" | "turned">("front");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 대기 그림 주소가 바뀌면 다시 불러 본다
@@ -110,13 +106,7 @@ export function Emblem3D({
     Promise.all([import("./emblem3d/stage"), hold])
       .then(([{ EmblemStage }]) => {
         if (!live) return null;
-        return EmblemStage.create(host, {
-          tier,
-          size,
-          force,
-          pageColor,
-          gemStyle,
-        });
+        return EmblemStage.create(host, { tier, size, force, pageColor });
       })
       .then((s) => {
         if (!s) return;
@@ -126,6 +116,10 @@ export function Emblem3D({
           return;
         }
         stage.current = s;
+        // 문맥을 잃으면(GPU 재시작·탭이 오래 숨음 등) 빈 캔버스 대신 평면 엠블럼으로
+        s.canvas.addEventListener("webglcontextlost", () => {
+          if (live) setState("svg");
+        });
         setPath(s.path);
         setState("3d");
         s.firstFrame.then(() => {
@@ -142,7 +136,7 @@ export function Emblem3D({
       stage.current = null;
       host.remove();
     };
-  }, [tier, size, pageColor, gemStyle]);
+  }, [tier, size, pageColor]);
 
   // 각·자동 회전 단추(무대가 뜬 뒤, 바뀐 것만)
   useEffect(() => {
@@ -155,15 +149,18 @@ export function Emblem3D({
     if (state === "3d") stage.current?.setAuto(auto);
   }, [auto, state]);
 
-  const covered = !(state === "3d" && shown);
-  const usePoster = poster !== null && !posterBroken;
+  // 로딩 중에는 대기 그림, 대기 그림이 없으면 작은 로딩 표시. 평면 SVG는 3D를 못 그리거나 문맥을 잃었을 때만
+  // (고정 규칙 2-1절, 2026-11-13 사용자 「평면이 떴다가 입체가 뜨는 게 버그처럼 보인다」)
+  const failed = state === "svg";
+  const covered = !failed && !(state === "3d" && shown);
+  const usePoster = !failed && poster !== null && !posterBroken;
 
   return (
     <div
       data-emblem3d={tier}
       data-emblem3d-path={state === "3d" ? (path ?? "loading") : state}
       data-emblem3d-shown={state === "3d" && shown ? "" : undefined}
-      data-emblem3d-style={style ?? undefined}
+      data-emblem3d-style={styleOfTier(tier) ?? undefined}
       role="img"
       aria-label={`${TIER_LABEL[tier]} 엠블럼 3D 시안`}
       className={cn(
@@ -195,7 +192,20 @@ export function Emblem3D({
         />
       )}
       {covered && !usePoster && (
-        <TierEmblem tier={tier} size={Math.round(size * 0.72)} />
+        <span
+          data-emblem3d-loading
+          aria-hidden
+          className="absolute size-6 animate-spin rounded-full border-2 border-white/15 border-t-white/60"
+        />
+      )}
+      {failed && (
+        <span
+          data-emblem3d-fallback
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ background: pageColor ?? undefined }}
+        >
+          <TierEmblem tier={tier} size={Math.round(size * 0.72)} />
+        </span>
       )}
       <ViewHome viewRef={stage} ready={state === "3d"} />
     </div>
@@ -207,13 +217,7 @@ export function Emblem3D({
  * 정면 한 장을 크기별로, 각도를 조금씩 바꾼 여섯 장을 늘어놓고, 그 여섯 장을 차례로 돌리는 칸 하나(메뉴가 열린 동안
  * 반짝임을 돌리는 모습)를 둔다. 동작 줄이기면 돌리지 않는다.
  */
-export function EmblemShots({
-  tier,
-  gemStyle = null,
-}: {
-  tier: DraftTier;
-  gemStyle?: GemStyle | null;
-}) {
+export function EmblemShots({ tier }: { tier: DraftTier }) {
   const [front, setFront] = useState<string | null>(null);
   const [frames, setFrames] = useState<string[]>([]);
   const [failed, setFailed] = useState(false);
@@ -229,8 +233,8 @@ export function EmblemShots({
       .then(async ({ captureShots, SPARKLE_YAWS }) => {
         // 두 배 화면용: 64px로 보일 그림은 128px로 찍는다. 렌더러 하나로 함께 찍는다(맥락마다 셰이더를 다시 짓는다)
         const [[f] = [], list = []] = await captureShots([
-          { tier, px: 128, yaws: [0], gemStyle },
-          { tier, px: 96, yaws: SPARKLE_YAWS, gemStyle },
+          { tier, px: 128, yaws: [0] },
+          { tier, px: 96, yaws: SPARKLE_YAWS },
         ]);
         if (!live) return;
         setFront(f ?? null);
@@ -242,7 +246,7 @@ export function EmblemShots({
     return () => {
       live = false;
     };
-  }, [tier, gemStyle]);
+  }, [tier]);
 
   useEffect(() => {
     if (frames.length < 2) return;
@@ -343,8 +347,7 @@ export function EmblemGrid({
   // 없음·다른 각도)이 SVG 다음에 떠서 두 번 바뀌었고, 누르면 또 다른 모습이 떠 이질적이었다(2026-11-13 사용자
   // 「로드되는 동안 이전 이미지랑 이질적이니까」). 3D를 짓지 않아 가볍다
   const shots = tiers.map((t) => {
-    const s = defaultStyle(t);
-    return posterSrc(t, s ? BIG_SIZE : DRAFT_SIZE, undefined, s);
+    return posterSrc(t, emblemSize(t), undefined);
   });
   const hover = useRef<number | null>(null);
 

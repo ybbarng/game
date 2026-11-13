@@ -7,7 +7,6 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 
 import { levelOf } from "../emblemArt";
-import type { GemStyle } from "./gemStyle";
 import { POSTER_PAGE } from "./poster";
 import { MotionQuality, REST_MS } from "./quality";
 import {
@@ -16,7 +15,6 @@ import {
   type EmblemScene,
   isGem,
   LOOK,
-  styleFor,
   type Three,
 } from "./scene";
 import {
@@ -30,7 +28,7 @@ import {
   type Spin,
   wrapYaw,
 } from "./spin";
-import { canHdrCanvas, type DrawPath } from "./support";
+import type { DrawPath } from "./support";
 
 /** 이 페이지에서 배운 돌릴 때 해상도 단계(티어를 바꿔 새 무대를 만들어도 이어 쓴다) */
 let learnedLevel = 0;
@@ -46,12 +44,6 @@ let learnedLevel = 0;
 
 /** 미리보기 바탕(neutral-900)과 같은 색: 배경판 가장자리가 페이지에 녹아든다 */
 export const PAGE_COLOR = POSTER_PAGE.dark;
-
-/**
- * 번짐 값(SDR 보석): 세기, 반지름, 밝기 문턱(톤 매핑 전 선형 값). 반짝이는 점에만 작게 걸리게 문턱을 높이고 반지름을
- * 줄였다(예전 0.55·0.35·1.25는 보석 전체를 뿌옇게 해 얼음처럼 보였다).
- */
-export const BLOOM = { strength: 0.4, radius: 0.12, threshold: 3 } as const;
 
 interface Painter {
   path: DrawPath;
@@ -74,7 +66,6 @@ async function webglPainter(
   px: number,
   bloom: boolean,
   pageColor: string,
-  gemStyle: GemStyle | null,
 ): Promise<Painter> {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -91,7 +82,6 @@ async function webglPainter(
     backdrop: true,
     pageColor,
     hdr: false,
-    gemStyle,
   });
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(built.studio, 0.02).texture;
@@ -272,8 +262,6 @@ export interface StageOptions {
   force?: DrawPath | null;
   /** 페이지 바탕색(배경판 가장자리가 녹아든다). 기본 `PAGE_COLOR` */
   pageColor?: string | undefined;
-  /** 에메랄드 시안(`?gem=`). 고르면 시안끼리 같은 길로 견주도록 WebGL 길로 그린다 */
-  gemStyle?: GemStyle | null | undefined;
 }
 
 /** 자동 회전 빠르기(라디안/ms, 8초에 한 바퀴) */
@@ -366,19 +354,17 @@ export class EmblemStage implements ViewTurnTarget {
     };
     const page = opt.pageColor ?? PAGE_COLOR;
     const gem = isGem(opt.tier);
-    const style = styleFor(opt.tier, opt.gemStyle);
     let painter: Painter | null = null;
-    if (gem && opt.force !== "bloom" && !style) {
-      const want = opt.force === "hdr" || (await canHdrCanvas());
-      if (want) {
-        try {
-          painter = await hdrPainter(fresh(), opt.tier, px, page);
-        } catch {
-          painter = null;
-        }
+    // 티어별 생김새(깎은 면·결정 구조·분산 흉내)는 아직 WebGL 길에만 있다. HDR 길(WebGPU)은 넷째 시안 생김새라 대기
+    // 그림(SDR 번짐 길로 찍음)과 달라, 옮기기 전에는 `?emblem3d=hdr`로 강제할 때만 쓴다(docs/47 14-7 남은 일)
+    if (gem && opt.force === "hdr") {
+      try {
+        painter = await hdrPainter(fresh(), opt.tier, px, page);
+      } catch {
+        painter = null;
       }
     }
-    painter ??= await webglPainter(fresh(), opt.tier, px, gem, page, style);
+    painter ??= await webglPainter(fresh(), opt.tier, px, gem, page);
     return new EmblemStage(host, painter, opt.size);
   }
 
@@ -621,8 +607,6 @@ export interface ShotJob {
   tier: DraftTier;
   px: number;
   yaws: readonly number[];
-  /** 에메랄드 시안(에메랄드에만 쓴다) */
-  gemStyle?: GemStyle | null | undefined;
 }
 
 /**
@@ -659,7 +643,6 @@ export async function captureShots(
         pageColor: PAGE_COLOR,
         hdr: false,
         backGlow: 0.5,
-        gemStyle: job.gemStyle,
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
       built.camera.position.z *= 39 / 43;

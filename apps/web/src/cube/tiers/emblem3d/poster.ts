@@ -1,16 +1,10 @@
 import { TIER_IDS, type TierId } from "../table";
-import {
-  GEM_TIERS,
-  type GemStyle,
-  styleForTier,
-  stylesForTier,
-} from "./gemStyle";
+import { styleOfTier } from "./gemStyle";
 
 /**
- * 3D 엠블럼의 대기 그림(docs/47 14-7 「다섯째 시안」, 고정 규칙 2-1절). 3D가 뜨기 전·못 뜰 때 보이는 그림을 3D
- * 장면에서 미리 찍어 둔다(`scripts/render-emblem-posters.mjs` → `public/cube/tiers/emblem3d/`). 같은 카메라·같은
- * 크기·같은 바탕·정면이라 3D 첫 장으로 바뀌어도 자리와 생김새가 그대로다. 큐브 첫 화면 대기 그림(`cube/hero/poster.ts`)과
- * 같은 방식이다.
+ * 3D 엠블럼의 대기 그림(docs/47 14-7, 고정 규칙 2-1절). 3D가 뜨기 전·못 뜰 때 보이는 그림을 3D 장면에서 미리 찍어
+ * 둔다(`scripts/render-emblem-posters.mjs` → `public/cube/tiers/emblem3d/`). 같은 카메라·같은 크기·같은 바탕·정면이라
+ * 3D 첫 장으로 바뀌어도 자리와 생김새가 그대로다. 큐브 첫 화면 대기 그림(`cube/hero/poster.ts`)과 같은 방식이다.
  *
  * 2026-11-12 사용자 「그래픽 로드 전에 뜨는 이미지랑 후의 이미지랑 크기나 스타일 차이가 커서 이질적」: 예전에는
  * 72% 크기의 SVG 엠블럼(다른 각도·색·조명)을 보였다.
@@ -24,45 +18,33 @@ export const POSTER_PAGE: Record<PosterBg, string> = {
   light: "#f5f5f5",
 };
 
-/** 3D 시안 큰 칸 한 변(CSS px), 에메랄드 시안을 고를 때 크게 보는 칸 */
+/** 3D 큰 칸 한 변(CSS px): 금속 티어, 보석 티어(생김새가 보이게 크게) */
 export const DRAFT_SIZE = 300;
 export const BIG_SIZE = 440;
 /** 찍는 화소 밀도(두 배 화면) */
 export const POSTER_DPR = 2;
 
+/** 이 티어의 3D 큰 칸 한 변 */
+export function emblemSize(tier: TierId): number {
+  return styleOfTier(tier) ? BIG_SIZE : DRAFT_SIZE;
+}
+
 export interface PosterSpec {
   tier: TierId;
   bg: PosterBg;
-  /** 에메랄드 시안(크게 보는 칸). 없으면 보통 칸 */
-  style: GemStyle | null;
   size: number;
 }
 
-/** 찍어 둘 대기 그림 전부: 열 티어 × 바탕 둘(보통 칸), 에메랄드 시안 전부(`GEM_STYLES`) × 바탕 둘(큰 칸) */
-export const POSTERS: readonly PosterSpec[] = [
-  ...TIER_IDS.flatMap((tier) =>
-    (["dark", "light"] as const).map((bg) => ({
-      tier,
-      bg,
-      style: null,
-      size: DRAFT_SIZE,
-    })),
-  ),
-  // 보석 티어 × 그 티어의 시안 단추(큰 칸): 에메랄드는 앞 시안과 차분한 보석까지, 다이아몬드는 얕은 계단까지
-  ...GEM_TIERS.flatMap((tier) =>
-    stylesForTier(tier).flatMap((style) =>
-      (["dark", "light"] as const).map((bg) => ({
-        tier,
-        bg,
-        style,
-        size: BIG_SIZE,
-      })),
-    ),
-  ),
-];
+/** 찍어 둘 대기 그림 전부: 열 티어 × 바탕 둘(티어마다 그 티어 큰 칸 크기) */
+export const POSTERS: readonly PosterSpec[] = TIER_IDS.flatMap((tier) =>
+  (["dark", "light"] as const).map((bg) => ({
+    tier,
+    bg,
+    size: emblemSize(tier),
+  })),
+);
 
-export const posterFile = (p: PosterSpec): string =>
-  p.style ? `${p.tier}-${p.style}-${p.bg}.webp` : `${p.tier}-${p.bg}.webp`;
+export const posterFile = (p: PosterSpec): string => `${p.tier}-${p.bg}.webp`;
 
 export const POSTER_DIR = "/cube/tiers/emblem3d";
 
@@ -79,13 +61,11 @@ export function posterSrc(
   tier: TierId,
   size: number,
   pageColor: string | undefined,
-  style: GemStyle | null,
 ): string | null {
   const bg = posterBg(pageColor);
   if (!bg) return null;
-  const s = styleForTier(tier, style);
   const hit = POSTERS.find(
-    (p) => p.tier === tier && p.bg === bg && p.style === s && p.size === size,
+    (p) => p.tier === tier && p.bg === bg && p.size === size,
   );
   return hit ? `${POSTER_DIR}/${posterFile(hit)}` : null;
 }
