@@ -77,6 +77,17 @@ const JOBS = [
       file: `emerald-${style}-${bg}.webp`,
     })),
   ),
+  // 다른 보석 티어 × 아홉째 시안(poster.ts와 같게)
+  ...["diamond", "master", "grandmaster", "challenger"].flatMap((tier) =>
+    ["n", "q", "p", "o1", "o2"].flatMap((style) =>
+      BGS.map((bg) => ({
+        tier,
+        bg,
+        style,
+        file: `${tier}-${style}-${bg}.webp`,
+      })),
+    ),
+  ),
 ].filter((j) => j.file.startsWith(ONLY));
 
 if (

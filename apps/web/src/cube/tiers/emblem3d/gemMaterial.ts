@@ -309,10 +309,12 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
     if ( gemRoundSdf( p + d * t ) > 0.0 ) break;
     t0 = t;
   }
-  for ( int k = 0; k < 8; k ++ ) {
+  for ( int k = 0; k < 12; k ++ ) {
     float tm = 0.5 * ( t0 + t );
     if ( gemRoundSdf( p + d * tm ) > 0.0 ) t = tm; else t0 = tm;
   }
+  // 겉 바로 안쪽 끝을 쓴다: 바깥쪽 끝을 쓰면 되튄 뒤 다음 걸음이 겉 바깥에서 시작해 화소마다 결과가 들쭉날쭉했다(색 알갱이)
+  t = t0;
   vec3 x = p + d * t;
   vec3 q = abs( x ) - vec3( ${f(GEM_BOX_HALF)} - GEM_ROUND_R );
   vec3 g = max( q, 0.0 );

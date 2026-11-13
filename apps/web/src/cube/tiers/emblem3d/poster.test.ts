@@ -46,7 +46,8 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7 다섯�
   it("열 티어 × 바탕 둘(보통 칸)과 에메랄드 시안 전부 × 바탕 둘(큰 칸)", () => {
     expect(POSTERS.filter((p) => p.size === DRAFT_SIZE)).toHaveLength(20);
     expect(POSTERS.filter((p) => p.size === BIG_SIZE)).toHaveLength(
-      GEM_STYLES.length * 2,
+      // 에메랄드는 모든 시안, 다른 보석 티어 넷은 아홉째 시안 다섯
+      GEM_STYLES.length * 2 + 4 * 5 * 2,
     );
   });
 
@@ -60,10 +61,20 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7 다섯�
     expect(posterSrc("emerald", BIG_SIZE, POSTER_PAGE.light, "b")).toBe(
       `${POSTER_DIR}/emerald-b-light.webp`,
     );
-    // 에메랄드가 아니면 시안은 무시한다
+    // 앞 시안(a 등)은 에메랄드에만: 다른 티어는 시안 없는 그림
     expect(posterSrc("ruby" as never, DRAFT_SIZE, undefined, "a")).toBeNull();
     expect(posterSrc("diamond", DRAFT_SIZE, undefined, "a")).toBe(
       `${POSTER_DIR}/diamond-dark.webp`,
+    );
+    // 아홉째 시안은 모든 보석 티어에(큰 칸), 금속 티어는 시안 없음
+    expect(posterSrc("diamond", BIG_SIZE, undefined, "n")).toBe(
+      `${POSTER_DIR}/diamond-n-dark.webp`,
+    );
+    expect(posterSrc("grandmaster", BIG_SIZE, POSTER_PAGE.light, "o2")).toBe(
+      `${POSTER_DIR}/grandmaster-o2-light.webp`,
+    );
+    expect(posterSrc("gold", DRAFT_SIZE, undefined, "n")).toBe(
+      `${POSTER_DIR}/gold-dark.webp`,
     );
     // 찍지 않은 크기·바탕
     expect(posterSrc("diamond", 200, undefined, null)).toBeNull();

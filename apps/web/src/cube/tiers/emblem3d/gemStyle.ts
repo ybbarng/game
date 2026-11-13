@@ -71,6 +71,34 @@ export const GEM_STYLE_LABEL: Record<GemStyle, string> = {
   o2: "o2 결정 구조(큐브 전체)",
 };
 
+/**
+ * 모든 보석 티어에 입히는 시안(아홉째 시안, 2026-11-13 사용자 「오 이제 꽤 마음에 드네. 근데 모두 에메랄드만 한 거야?」).
+ * 구조(모양·깎은 면·결정 구조·스튜디오)는 시안에서, 색·굴절률·분산은 그 티어 보석 값(`scene.ts` `LOOK`)에서 가져온다.
+ * 에메랄드는 시안에 적은 색 그대로. 그 앞 시안(now·a~m)은 에메랄드 색과 유리 실험에 묶인 값이라 견주기용으로 에메랄드에만 둔다
+ */
+export const ALL_GEM_STYLES: readonly GemStyle[] = ["n", "q", "p", "o1", "o2"];
+/** 보석 티어(에메랄드부터, `isGem`과 같다) */
+export const GEM_TIERS = [
+  "emerald",
+  "diamond",
+  "master",
+  "grandmaster",
+  "challenger",
+] as const;
+
+/** 이 티어에 쓸 시안(못 쓰면 null): 에메랄드는 모든 시안, 다른 보석 티어는 아홉째 시안만 */
+export function styleForTier(
+  tier: string,
+  style: GemStyle | null | undefined,
+): GemStyle | null {
+  if (!style) return null;
+  if (tier === "emerald") return style;
+  return (GEM_TIERS as readonly string[]).includes(tier) &&
+    ALL_GEM_STYLES.includes(style)
+    ? style
+    : null;
+}
+
 /** 주소의 `?gem=now|a|…|g`. 없거나 모르는 값이면 null(시안 고르기 없이 지금 모습) */
 export function gemStyleOf(search: string): GemStyle | null {
   const v = new URLSearchParams(search).get("gem");
@@ -458,10 +486,15 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     ...DEEP,
     shape: "round",
     left: [0.4, 0.86, 0.32],
-    steps: 7,
+    // 둥근 모서리에서 여러 번 전반사하는 빛길은 만화경처럼 예민해 화소마다 결과가 달라진다(다이아몬드에서 색 알갱이).
+    // 벽 닿기를 3번까지만 따라가고 남은 빛은 흐린 둘레를 읽는다
+    steps: 3,
     glow: 0.8,
     envGain: 1.7,
     frontEnv: 1.5,
+    // 곡면에서 여러 번 전반사하면 이웃 화소끼리 다른 길을 가 색 알갱이가 생겼다(다이아몬드에서 심함). 안에서 읽는
+    // 배경판·반사 지도를 살짝 흐려 부드러운 둥근 테로
+    blur: { bias: 1.5, rough: 0.22 },
   },
   // p 브릴리언트 속: 겉은 평평한 큐브 조각, 안쪽 벽만 브릴리언트 파빌리언 면이라 테이블 너머로 방사형 조각 무늬
   p: {

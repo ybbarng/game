@@ -1,5 +1,11 @@
 import { TIER_IDS, type TierId } from "../table";
-import { GEM_STYLES, type GemStyle } from "./gemStyle";
+import {
+  ALL_GEM_STYLES,
+  GEM_STYLES,
+  GEM_TIERS,
+  type GemStyle,
+  styleForTier,
+} from "./gemStyle";
 
 /**
  * 3D 엠블럼의 대기 그림(docs/47 14-7 「다섯째 시안」, 고정 규칙 2-1절). 3D가 뜨기 전·못 뜰 때 보이는 그림을 3D
@@ -51,6 +57,17 @@ export const POSTERS: readonly PosterSpec[] = [
       size: BIG_SIZE,
     })),
   ),
+  // 다른 보석 티어 × 아홉째 시안(2026-11-13): 시안을 고르면 그 티어를 크게 본다
+  ...GEM_TIERS.filter((t) => t !== "emerald").flatMap((tier) =>
+    ALL_GEM_STYLES.flatMap((style) =>
+      (["dark", "light"] as const).map((bg) => ({
+        tier,
+        bg,
+        style,
+        size: BIG_SIZE,
+      })),
+    ),
+  ),
 ];
 
 export const posterFile = (p: PosterSpec): string =>
@@ -75,7 +92,7 @@ export function posterSrc(
 ): string | null {
   const bg = posterBg(pageColor);
   if (!bg) return null;
-  const s = tier === "emerald" ? style : null;
+  const s = styleForTier(tier, style);
   const hit = POSTERS.find(
     (p) => p.tier === tier && p.bg === bg && p.style === s && p.size === size,
   );

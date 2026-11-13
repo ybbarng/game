@@ -27,7 +27,12 @@ import {
   gemNodeEmissive,
   hasTsl,
 } from "./gemMaterial";
-import { GEM_STYLE_LOOK, type GemStyle, type GemStyleLook } from "./gemStyle";
+import {
+  GEM_STYLE_LOOK,
+  type GemStyle,
+  type GemStyleLook,
+  styleForTier,
+} from "./gemStyle";
 
 /**
  * 3D 티어 엠블럼 시안의 장면(docs/47 14-7). 지금 SVG 엠블럼(14-6)의 구도를 3D로 옮긴다: 베벨 금속 육각 고리 틀,
@@ -89,7 +94,7 @@ export function styleFor(
   tier: DraftTier,
   style: GemStyle | null | undefined,
 ): GemStyle | null {
-  return tier === "emerald" && style ? style : null;
+  return styleForTier(tier, style);
 }
 
 export interface EmblemScene {
@@ -654,12 +659,14 @@ export function buildEmblemScene(
 ): EmblemScene {
   const styleId = styleFor(tier, opt.gemStyle);
   const sl = styleId ? GEM_STYLE_LOOK[styleId] : null;
-  const look: TierLook = sl
-    ? {
-        ...LOOK[tier],
-        gem: { ior: 1.577, spread: sl.spread, absorb: absorbFor(sl.left) },
-      }
-    : LOOK[tier];
+  // 에메랄드는 시안에 적은 색·분산, 다른 보석 티어(아홉째 시안)는 그 티어 보석의 굴절률·색·분산 그대로
+  const look: TierLook =
+    sl && tier === "emerald"
+      ? {
+          ...LOOK[tier],
+          gem: { ior: 1.577, spread: sl.spread, absorb: absorbFor(sl.left) },
+        }
+      : LOOK[tier];
   const gem = isGem(tier);
   const lv = levelOf(tier);
   const s = coreScale(tier);
