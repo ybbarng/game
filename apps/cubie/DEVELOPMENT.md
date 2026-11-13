@@ -54,7 +54,7 @@ apps/cubie/scripts/measure-memory.sh --quick --out /tmp/m.tsv --label 전   # �
 
 - 저장: UserDefaults `store.<키>`에 사이트 localStorage와 같은 키·같은 JSON 글(`cube.mini.v1` 등, `CubieCore/NativeStore.swift`·`MiniBook.swift`). 처음 띄울 때 웹 저장소(WebKit localStorage sqlite)의 `cube.*`를 한 번 옮긴다(`WebStorageMigration`, 지우지 않음, 표시 `cubie.migrated.v1`).
 - 사이트 창(설정 창이 여는 사용자 배치 편집·모든 설정, `CUBIE_WEB_WINDOWS=1`·`CUBIE_WEB=1`의 창)에는 앱 저장소 글을 문서 시작 때 넣고, 설정 창을 닫으면 키 배치·색·설정(`cube.mini.*` 빼고)을 읽어 온다(`AppDelegate.storeScript`).
-- 티어 엠블럼은 앱에 묶은 PNG(`Resources/Emblems`, `node apps/cubie/scripts/emblems/make.mjs`가 사이트 엠블럼 코드로 만든다).
+- 티어 엠블럼은 앱에 묶은 PNG(`Resources/Emblems` 32pt·64px, `Emblems/big` 64pt·128px). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림이고 `apps/web/scripts/render-emblem-posters.mjs`(`ONLY=cubie`)가 만든다.
 
 ```sh
 apps/cubie/scripts/build-native.sh [--universal]          # 정적 라이브러리 → apps/cubie/.native/ (build.sh·test.sh가 먼저 부른다)

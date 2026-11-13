@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
-
+import { EmblemStill } from "./EmblemStill";
 import { styleOfTier } from "./emblem3d/gemStyle";
 import { emblemSize, posterSrc } from "./emblem3d/poster";
 import type { DraftTier } from "./emblem3d/scene";
 import { FRONT, type Spin } from "./emblem3d/spin";
 import type { EmblemStage } from "./emblem3d/stage";
 import { canDraw3d, type DrawPath, pathOverride } from "./emblem3d/support";
-import { TierEmblem } from "./TierEmblem";
 import { TIER_LABEL } from "./table";
 
 type State = "loading" | "3d" | "svg";
@@ -28,7 +27,8 @@ export const TURNED_VIEW: Spin = { yaw: 0.6, pitch: 0 };
  *
  * 3D가 뜨기 전에는 3D 장면을 미리 찍은 대기 그림(`emblem3d/poster.ts`)을 같은 자리·같은 크기로 덮어 두고, 3D 첫 장이
  * 화면에 나간 뒤에 걷는다(고정 규칙 2-1절). 찍어 둔 그림이 없거나 못 받으면 빈 칸에 작은 로딩 표시를 둔다. 로딩
- * 중에는 평면 SVG를 보이지 않는다. 3D를 못 그리거나(WebGL2 없음·무대 실패) 문맥을 잃었을 때만 SVG 엠블럼을 보인다.
+ * 중에는 평면 SVG를 보이지 않는다. 3D를 못 그리거나(WebGL2 없음·무대 실패) 문맥을 잃으면 정지 그림(`EmblemStill`, 3D를
+ * 정면에서 찍은 그림)을 보이고, 그 그림도 못 받을 때만 평면 SVG가 남는다.
  *
  * `data-emblem3d-path`: `hdr`(HDR 캔버스) · `bloom`(SDR 번짐) · `plain`(금속) · `svg`(3D 없음·실패) · `loading`.
  */
@@ -116,7 +116,7 @@ export function Emblem3D({
           return;
         }
         stage.current = s;
-        // 문맥을 잃으면(GPU 재시작·탭이 오래 숨음 등) 빈 캔버스 대신 평면 엠블럼으로
+        // 문맥을 잃으면(GPU 재시작·탭이 오래 숨음 등) 빈 캔버스 대신 정지 그림으로
         s.canvas.addEventListener("webglcontextlost", () => {
           if (live) setState("svg");
         });
@@ -149,7 +149,7 @@ export function Emblem3D({
     if (state === "3d") stage.current?.setAuto(auto);
   }, [auto, state]);
 
-  // 로딩 중에는 대기 그림, 대기 그림이 없으면 작은 로딩 표시. 평면 SVG는 3D를 못 그리거나 문맥을 잃었을 때만
+  // 로딩 중에는 대기 그림, 대기 그림이 없으면 작은 로딩 표시. 정지 그림은 3D를 못 그리거나 문맥을 잃었을 때만
   // (고정 규칙 2-1절, 2026-11-13 사용자 「평면이 떴다가 입체가 뜨는 게 버그처럼 보인다」)
   const failed = state === "svg";
   const covered = !failed && !(state === "3d" && shown);
@@ -204,7 +204,7 @@ export function Emblem3D({
           className="absolute inset-0 flex items-center justify-center"
           style={{ background: pageColor ?? undefined }}
         >
-          <TierEmblem tier={tier} size={Math.round(size * 0.72)} />
+          <EmblemStill tier={tier} size={Math.round(size * 0.72)} />
         </span>
       )}
       <ViewHome viewRef={stage} ready={state === "3d"} />
@@ -396,7 +396,7 @@ export function EmblemGrid({
             />
           ) : (
             <span className="flex size-[88px] items-center justify-center">
-              <TierEmblem tier={t} size={64} />
+              <EmblemStill tier={t} size={64} />
             </span>
           )}
           <span className="text-white/80 text-xs">{TIER_LABEL[t]}</span>

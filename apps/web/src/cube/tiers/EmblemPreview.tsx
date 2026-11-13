@@ -5,16 +5,16 @@ import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { HDR_GLOW_SRC } from "@/stardraw/hdr-glow";
 import { Emblem3D, EmblemGrid, EmblemShots } from "./Emblem3D";
+import { EmblemStill } from "./EmblemStill";
 import { emblemSize, POSTER_PAGE } from "./emblem3d/poster";
 import { DRAFT_TIERS, type DraftTier } from "./emblem3d/scene";
-import { HDR_CHECK_WHITE_SRC, hdrFacetSrc } from "./emblemArt";
+import type { ShotJob } from "./emblem3d/stage";
+import { HDR_CHECK_WHITE_SRC } from "./emblemArt";
 import { type MyTier, tierOf } from "./rank";
 import { TierEmblem } from "./TierEmblem";
 import { TIER_TONE, TierLink } from "./TierTable";
 import { DIVISIONS, TIER_IDS, TIER_LABEL, TIER_TABLE } from "./table";
 import "@/cube/tiers/emblem.css";
-
-const SIZES = [64, 32, 24, 16] as const;
 
 /** 3×3 표의 티어마다 구간 II 상한(구간이 없으면 그 티어 상한)을 Ao5로 본 내 티어 */
 const LINK_SAMPLES: MyTier[] = (TIER_TABLE[3] ?? []).flatMap((row) => {
@@ -24,14 +24,22 @@ const LINK_SAMPLES: MyTier[] = (TIER_TABLE[3] ?? []).flatMap((row) => {
   return place ? [{ n: 3, ao5, place }] : [];
 });
 
+/** 정지 그림을 견줄 크기(티어 화면 64, 티어표·Cubie 28, 기록 칸 18) */
+const STILL_SIZES = [128, 64, 48, 32, 28, 24, 18] as const;
+/** 평면 엠블럼과 나란히 견줄 작은 크기 */
+const SMALL_SIZES = [28, 24, 18] as const;
+
 /** 티어 엠블럼 미리보기(`/cube/tiers/emblems`, 개발용) */
 export function EmblemPreview() {
-  const [hdr, setHdr] = useState(false);
   useEffect(() => {
     try {
-      setHdr(new URLSearchParams(window.location.search).get("hdr") === "1");
+      // 정지 그림 찍기(`scripts/render-emblem-posters.mjs`)가 부르는 고리. 이 개발용 화면에서 `?stills=1`일 때만 둔다
+      if (new URLSearchParams(window.location.search).get("stills") === "1")
+        (window as { __emblemStills?: unknown }).__emblemStills = async (
+          jobs: ShotJob[],
+        ) => (await import("./emblem3d/stage")).captureShots(jobs, 0);
     } catch {
-      // 주소를 못 읽으면 보통 모습
+      // 주소를 못 읽으면 고리를 두지 않는다
     }
   }, []);
 
@@ -39,46 +47,22 @@ export function EmblemPreview() {
     <main
       data-game="cube"
       data-cube-emblem-preview
-      className={cn(
-        "min-h-dvh bg-neutral-900 text-white",
-        hdr && "emb-hdr-force",
-      )}
+      className="min-h-dvh bg-neutral-900 text-white"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-4">
         <h1 className="font-bold text-lg">티어 엠블럼</h1>
 
         <Draft3d />
 
-        <HdrCheck />
-
-        <section
-          data-cube-emblem-big
-          className="flex flex-wrap justify-center gap-x-4 gap-y-4"
-        >
-          {TIER_IDS.map((t) => (
-            <figure key={t} className="flex w-28 flex-col items-center gap-1">
-              <TierEmblem
-                tier={t}
-                size={112}
-                division={
-                  t === "grandmaster" || t === "challenger" ? null : "I"
-                }
-              />
-              <figcaption className={cn("font-semibold text-sm", TIER_TONE[t])}>
-                {TIER_LABEL[t]}
-              </figcaption>
-            </figure>
-          ))}
-        </section>
-
         <section data-cube-emblem-sizes className="flex flex-col gap-2">
-          {SIZES.map((s) => (
+          <h2 className="font-semibold text-sm">정지 그림</h2>
+          {STILL_SIZES.map((s) => (
             <div key={s} className="flex flex-wrap items-center gap-3">
               <span className="w-10 text-right text-white/50 text-xs">
                 {s}px
               </span>
               {TIER_IDS.map((t) => (
-                <TierEmblem key={t} tier={t} size={s} />
+                <EmblemStill key={t} tier={t} size={s} />
               ))}
             </div>
           ))}
@@ -90,11 +74,29 @@ export function EmblemPreview() {
         >
           {DIVISIONS.map((d) => (
             <figure key={d} className="flex flex-col items-center gap-1">
-              <TierEmblem tier="gold" size={48} division={d} />
+              <EmblemStill tier="gold" size={64} division={d} />
               <figcaption className="text-white/60 text-xs">
                 골드 {d}
               </figcaption>
             </figure>
+          ))}
+        </section>
+
+        {/* 작은 크기에서 정지 그림과 평면 엠블럼(마지막 대체)을 나란히 */}
+        <section data-cube-emblem-small className="flex flex-col gap-2">
+          <h2 className="font-semibold text-sm">작은 크기: 정지 그림 · 평면</h2>
+          {SMALL_SIZES.map((s) => (
+            <div key={s} className="flex flex-wrap items-center gap-3">
+              <span className="w-10 text-right text-white/50 text-xs">
+                {s}px
+              </span>
+              {TIER_IDS.map((t) => (
+                <span key={t} className="flex items-center gap-0.5">
+                  <EmblemStill tier={t} size={s} />
+                  <TierEmblem tier={t} size={s} />
+                </span>
+              ))}
+            </div>
           ))}
         </section>
 
@@ -107,6 +109,8 @@ export function EmblemPreview() {
             </p>
           ))}
         </section>
+
+        <HdrCheck />
       </div>
     </main>
   );
@@ -242,7 +246,7 @@ function Draft3d() {
   );
 }
 
-/** 「HDR 확인」 견본: HDR 맥에서 브라우저가 HDR 그림을 HDR로 그리는지, 엠블럼 그림이 충분히 밝은지 가른다 */
+/** 「HDR 확인」 견본: HDR 맥에서 브라우저가 HDR 그림을 HDR로 그리는지 가른다(3D 엠블럼 HDR 길을 옮길 때 쓴다) */
 function HdrCheck() {
   const [screen, setScreen] = useState<string | null>(null);
   useEffect(() => {
@@ -281,8 +285,7 @@ function HdrCheck() {
       <h2 className="font-semibold text-sm">HDR 확인</h2>
       <p className="text-white/70 text-xs">
         HDR 화면이면 첫 네모가 둘째 네모·흰 글자보다 확실히 밝다. 첫 네모부터
-        같아 보이면 브라우저나 화면이 HDR 그림을 HDR로 그리지 않는 것이고, 첫
-        네모는 밝은데 엠블럼 빛만 흐리면 엠블럼 그림이 모자란 것이다.
+        같아 보이면 브라우저나 화면이 HDR 그림을 HDR로 그리지 않는 것이다.
       </p>
       {screen && (
         <p data-cube-hdr-check-screen className="text-white/50 text-xs">
@@ -299,7 +302,6 @@ function HdrCheck() {
           </span>,
         )}
         {item("별 따기 별빛", img(HDR_GLOW_SRC, 96))}
-        {item("다이아몬드 엠블럼 빛", img(hdrFacetSrc("diamond"), 192))}
       </div>
     </section>
   );

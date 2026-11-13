@@ -173,10 +173,10 @@ test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 
       w.__emblem3dRelease = r;
     });
   });
-  // 기본 선택 다이아몬드는 기본 시안(얕은 계단)으로 크게 연다(화려함 사다리)
+  // 보석 티어는 생김새가 보이게 큰 칸(440px)으로 연다(화려함 사다리)
   for (const [url, tier, size] of [
     ["/cube/tiers/emblems", "diamond", 440],
-    ["/cube/tiers/emblems?gem=b&emblemBg=light", "emerald", 440],
+    ["/cube/tiers/emblems?tier=emerald&emblemBg=light", "emerald", 440],
     ["/cube/tiers/emblems?tier=challenger", "challenger", 440],
   ] as const) {
     await page.goto(url);
@@ -220,73 +220,30 @@ test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 
   }
 });
 
-/**
- * 큐브 안쪽 영역 경계의 세기(0~1): 캔버스 화소를 조각 하나 크기로 흐린 뒤, 등각 큐브 윗면 안쪽의 밝기 표준편차.
- * h의 「안쪽 큐브」 경계는 윗면 안을 가로질러 남고, 조각마다 되풀이되는 틈 선·깎은 면 무늬는 흐려져 고르게 된다
- */
-async function innerSpread(page: Page, box: Locator): Promise<number> {
-  const png = await box.locator("[data-emblem3d-stage] canvas").screenshot();
-  return page.evaluate(async (b64) => {
-    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const bmp = await createImageBitmap(new Blob([bin], { type: "image/png" }));
-    const c = new OffscreenCanvas(bmp.width, bmp.height);
-    const ctx = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
-    const W = bmp.width;
-    // 조각 하나 크기로 흐린다(가는 틈 선·조각 안 무늬·깎은 면은 지우고 큰 영역 차이만 남긴다)
-    ctx.filter = `blur(${(W * 18) / 880}px)`;
-    ctx.drawImage(bmp, 0, 0);
-    // 등각 큐브의 윗면 안쪽(한 면 안이라 면끼리의 입체 음영은 섞이지 않는다)
-    const img = ctx.getImageData(
-      Math.round(W * 0.42),
-      Math.round(W * 0.392),
-      Math.round(W * 0.159),
-      Math.round(W * 0.0795),
-    );
-    const d = img.data;
-    const vals: number[] = [];
-    for (let k = 0; k < d.length; k += 4)
-      vals.push(
-        (0.2126 * (d[k] ?? 0) +
-          0.7152 * (d[k + 1] ?? 0) +
-          0.0722 * (d[k + 2] ?? 0)) /
-          255,
-      );
-    const mean = vals.reduce((a, v) => a + v, 0) / vals.length;
-    return Math.sqrt(
-      vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length,
-    );
-  }, png.toString("base64"));
+/** 3D를 붙잡아 둔다(화면 시험의 고리, 제품에서는 없다). 놓을 때는 `release3d` */
+async function hold3d(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __emblem3dHold: Promise<void>;
+      __emblem3dRelease: () => void;
+    };
+    w.__emblem3dHold = new Promise<void>((r) => {
+      w.__emblem3dRelease = r;
+    });
+  });
+}
+async function release3d(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (
+      window as unknown as { __emblem3dRelease: () => void }
+    ).__emblem3dRelease(),
+  );
 }
 
-test("에메랄드 시안 l: 큐브 안쪽에 영역 경계가 없다(흐린 윗면 밝기가 h보다 훨씬 고르다), m·m2는 값을 기록", {
-  tag: "@only-desktop",
-}, async ({ page }) => {
-  test.setTimeout(150_000);
-  const spread: Record<string, number> = {};
-  for (const s of ["h", "l", "m", "m2"]) {
-    await page.goto(`/cube/tiers/emblems?gem=${s}&emblemBg=light`);
-    const box = page.locator('[data-emblem3d="emerald"]');
-    await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
-      timeout: 60_000,
-    });
-    spread[s] = await innerSpread(page, box);
-    await draftShot(page, `glass-${s}`);
-  }
-  // 2026-11-12 이 맥(Chromium): h 0.023, l 약 0.002. 진한 색 m·m2는 조각마다의 음영·틈선이 흐린 뒤에도 남아 이 잣대로는
-  // h와 잘 갈리지 않아(m 약 0.015) 값만 기록하고, 큐브 전체 경계 없음은 단위 시험 cubeTrace.test.ts가 조각 평균으로 본다
-  expect(spread.l as number).toBeLessThan((spread.h as number) * 0.5);
-  test.info().annotations.push({
-    type: "emblem-inner-spread",
-    description: JSON.stringify(spread),
-  });
-});
-
-test("3D를 그릴 수 없으면 3D 시안 자리에 미리 찍은 그림이 그대로 남는다", {
-  tag: "@only-desktop",
-}, async ({ page }) => {
+/** WebGL을 못 얻는 기기처럼 */
+async function noWebgl(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const orig = HTMLCanvasElement.prototype.getContext;
-    // WebGL을 못 얻는 기기처럼
     HTMLCanvasElement.prototype.getContext = function (
       this: HTMLCanvasElement,
       type: string,
@@ -296,14 +253,96 @@ test("3D를 그릴 수 없으면 3D 시안 자리에 미리 찍은 그림이 그
       return (orig as (...a: unknown[]) => unknown).call(this, type, ...rest);
     } as typeof orig;
   });
+}
+
+/** 칸 안에 평면 SVG 엠블럼이 없다 */
+async function noFlat(box: Locator): Promise<void> {
+  await expect(box.locator("[data-cube-emblem] svg")).toHaveCount(0);
+}
+
+test("로딩 중에는 평면 엠블럼을 보이지 않는다: 대기 그림을 못 받으면 빈 칸에 작은 로딩 표시만, 3D가 뜨면 사라진다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(120_000);
+  await hold3d(page);
+  // 대기 그림(큰 칸 그림)만 막는다. 정지 그림(still/)은 그대로
+  await page.route(/\/cube\/tiers\/emblem3d\/[a-z]+-(dark|light)\.webp$/, (r) =>
+    r.abort(),
+  );
+  await page.goto("/cube/tiers/emblems?tier=master");
+  const box = page.locator('[data-emblem3d="master"]');
+  await expect(box).toHaveAttribute("data-emblem3d-path", "loading");
+  await expect(box.locator("[data-emblem3d-loading]")).toBeVisible();
+  await expect(box.locator("[data-emblem3d-poster]")).toHaveCount(0);
+  await expect(box.locator("[data-cube-emblem]")).toHaveCount(0);
+  await draftShot(page, "loading-no-poster");
+  await release3d(page);
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await expect(box.locator("[data-emblem3d-loading]")).toHaveCount(0);
+  await noFlat(box);
+});
+
+test("3D를 그릴 수 없으면 3D 칸에 정지 그림(3D를 찍은 그림)이 뜨고, 그 그림도 못 받을 때만 평면 엠블럼", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await noWebgl(page);
   await page.goto("/cube/tiers/emblems");
   for (const t of ["diamond", "gold"]) {
     if (t !== "diamond")
       await page.locator(`[data-emblem3d-pick="${t}"]`).click();
     const e = page.locator(`[data-emblem3d="${t}"]`);
     await expect(e).toHaveAttribute("data-emblem3d-path", "svg");
-    await expect(e.locator("[data-emblem3d-poster]")).toBeVisible();
-    await expect(e.locator(`[data-cube-emblem="${t}"]`)).toHaveCount(0);
+    await expect(e.locator("[data-emblem3d-poster]")).toHaveCount(0);
+    const still = e.locator(
+      `[data-emblem3d-fallback] [data-cube-emblem-still]`,
+    );
+    await expect(still).toBeVisible();
+    await expect
+      .poll(() =>
+        still
+          .locator("img")
+          .evaluate((img: HTMLImageElement) =>
+            img.complete ? img.naturalWidth : 0,
+          ),
+      )
+      .toBeGreaterThan(0);
+    await noFlat(e);
     await expect(e.locator("canvas")).toHaveCount(0);
   }
+  await draftShot(page, "no-webgl");
+  // 격자는 3D 없이도 같은 대기 그림
+  await expect(
+    page.locator("[data-emblem3d-grid] [data-emblem3d-pick] img"),
+  ).toHaveCount(10);
+
+  // 정지 그림까지 못 받으면 그때만 평면
+  await page.route(/\/cube\/tiers\/emblem3d\/still\//, (r) => r.abort());
+  await page.goto("/cube/tiers/emblems?tier=master");
+  const m = page.locator('[data-emblem3d="master"]');
+  await expect(
+    m.locator("[data-emblem3d-fallback] [data-cube-emblem] svg"),
+  ).toBeVisible();
+  await draftShot(page, "no-webgl-no-still");
+});
+
+test("3D 문맥을 잃으면 빈 캔버스 대신 정지 그림", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/cube/tiers/emblems?tier=gold");
+  const box = page.locator('[data-emblem3d="gold"]');
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await box.locator("[data-emblem3d-stage] canvas").evaluate((c) => {
+    const gl = (c as HTMLCanvasElement).getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  });
+  await expect(box).toHaveAttribute("data-emblem3d-path", "svg");
+  await expect(
+    box.locator("[data-emblem3d-fallback] [data-cube-emblem-still]"),
+  ).toBeVisible();
+  await noFlat(box);
 });

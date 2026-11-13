@@ -37,8 +37,34 @@ enum NativeWindowShot {
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok
     let settingsWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
     ok = shoot(settingsWindow.window, name: "native-settings", dir: dir, fullHeight: true) && ok
+    for (name, look) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
+      ok = shootProfiles(dir: dir, name: "native-profile-\(name)", appearance: NSAppearance(named: look)) && ok
+    }
     fflush(stdout)
     return ok ? 0 : 1
+  }
+
+  /// 메뉴 막대 메뉴 맨 위 프로필 칸(`ProfileMenuView`)을 열 티어 모두 한 장에(메뉴 바탕 위, 배율 2). 엠블럼은 앱에 묶은 그림
+  static func shootProfiles(dir: String, name: String, appearance: NSAppearance?) -> Bool {
+    let rows = TierInfo.ids.enumerated().reversed().map { i, id in
+      ProfileMenuView(
+        profile: Profile(
+          name: "익명 큐버 #1234", tierText: "3×3 \(TierSheet.labels[i])", emblem: NativeCubeWindow.emblem(id)),
+        onPick: {})
+    }
+    let w = rows.map(\.frame.width).max() ?? 240
+    let h = ProfileMenuView.height * CGFloat(rows.count)
+    let box = FlippedView(frame: NSRect(x: 0, y: 0, width: w, height: h))
+    box.appearance = appearance
+    box.fill = .windowBackgroundColor
+    for (i, r) in rows.enumerated() {
+      r.frame = NSRect(x: 0, y: CGFloat(i) * ProfileMenuView.height, width: w, height: ProfileMenuView.height)
+      box.addSubview(r)
+    }
+    let window = NSWindow(contentRect: box.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+    window.appearance = appearance
+    window.contentView = box
+    return shoot(window, name: name, dir: dir)
   }
 
 

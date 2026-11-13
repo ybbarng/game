@@ -607,6 +607,14 @@ export interface ShotJob {
   tier: DraftTier;
   px: number;
   yaws: readonly number[];
+  /** 엠블럼이 칸을 채우는 정도(1이 기본, 크면 카메라를 더 당긴다). 작은 그림은 크게 */
+  fill?: number;
+  /** 후광 세기(1이 기본). 작은 그림은 줄인다(작게 보면 후광이 색 얼룩으로 번진다) */
+  halo?: number;
+  /** 노출(기본 1.15). 작은 그림은 밝혀 틀·보석 색이 어둡게 뭉개지지 않게 한다 */
+  exposure?: number;
+  /** 몸 둘레 어두운 테두리 굵기(화소, 기본 0). 작은 그림이 밝은 바탕에서도 가장자리가 서게 */
+  outline?: number;
 }
 
 /**
@@ -634,9 +642,9 @@ export async function captureShots(
   try {
     renderer.setPixelRatio(1);
     renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.15;
     for (const job of jobs) {
       const { tier, px } = job;
+      renderer.toneMappingExposure = job.exposure ?? 1.15;
       renderer.setSize(px * scale, px * scale, false);
       const built = buildEmblemScene(THREE, tier, {
         backdrop: true,
@@ -645,7 +653,7 @@ export async function captureShots(
         backGlow: 0.5,
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
-      built.camera.position.z *= 39 / 43;
+      built.camera.position.z *= 39 / 43 / (job.fill ?? 1);
       const pmrem = new THREE.PMREMGenerator(renderer);
       const env = pmrem.fromScene(built.studio, 0.02).texture;
       pmrem.dispose();
@@ -659,8 +667,12 @@ export async function captureShots(
       const out = document.createElement("canvas");
       out.width = px;
       out.height = px;
+      const edge = document.createElement("canvas");
+      edge.width = px;
+      edge.height = px;
       const cctx = color.getContext("2d");
       const ctx = out.getContext("2d");
+      const ectx = edge.getContext("2d");
       const urls: string[] = [];
       const lv = levelOf(tier);
       for (const yaw of job.yaws) {
@@ -686,8 +698,31 @@ export async function captureShots(
         ctx.drawImage(canvas, 0, 0, px, px);
         ctx.globalCompositeOperation = "source-in";
         ctx.drawImage(color, 0, 0);
+        // 2-1) 몸 둘레 얇은 어두운 테두리(작은 그림, 밝은 바탕에서 은색 틀이 묻히지 않게)
+        const ow = job.outline ?? 0;
+        if (ow > 0 && ectx) {
+          ectx.globalCompositeOperation = "source-over";
+          ectx.clearRect(0, 0, px, px);
+          ectx.drawImage(out, 0, 0);
+          ectx.globalCompositeOperation = "source-in";
+          ectx.fillStyle = "rgba(0,0,0,0.35)";
+          ectx.fillRect(0, 0, px, px);
+          ctx.globalCompositeOperation = "destination-over";
+          for (const [dx, dy] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+            [0.7, 0.7],
+            [-0.7, 0.7],
+            [0.7, -0.7],
+            [-0.7, -0.7],
+          ] as const)
+            ctx.drawImage(edge, dx * ow, dy * ow);
+        }
         // 3) 후광을 뒤에
-        if (lv >= 6) {
+        const haloGain = job.halo ?? 1;
+        if (lv >= 6 && haloGain > 0) {
           const hex = Number.parseInt(LOOK[tier].tint.slice(1), 16);
           const rgb = `${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255}`;
           const g = ctx.createRadialGradient(
@@ -698,8 +733,11 @@ export async function captureShots(
             px / 2,
             px / 2,
           );
-          g.addColorStop(0, `rgba(${rgb},${lv >= 9 ? 0.5 : 0.36})`);
-          g.addColorStop(0.55, `rgba(${rgb},0.12)`);
+          g.addColorStop(
+            0,
+            `rgba(${rgb},${(lv >= 9 ? 0.5 : 0.36) * haloGain})`,
+          );
+          g.addColorStop(0.55, `rgba(${rgb},${0.12 * haloGain})`);
           g.addColorStop(1, `rgba(${rgb},0)`);
           ctx.globalCompositeOperation = "destination-over";
           ctx.fillStyle = g;

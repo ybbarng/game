@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveEmblemVars, unionBox } from "../tiers/emblemImage";
 import { myTier } from "../tiers/rank";
 import {
   anonymousName,
@@ -65,26 +64,5 @@ describe("Cubie 프로필", () => {
     expect(mine).not.toBeNull();
     expect(profileTierText(3, mine)).toMatch(/^3×3 \S+/);
     expect(profileTierText(3, mine)).not.toContain("5판 뒤에");
-  });
-});
-
-describe("엠블럼 그림", () => {
-  it("CSS 변수는 기본 색으로", () => {
-    expect(
-      resolveEmblemVars(
-        '<stop stop-color="var(--emb-gold-top, #ffcc00)"/><path fill="var(--emb-x,#123)"/>',
-      ),
-    ).toBe('<stop stop-color="#ffcc00"/><path fill="#123"/>');
-  });
-
-  it("상자 밖으로 나간 그림까지 넣는다", () => {
-    const box = { x: 0, y: 0, width: 64, height: 64 };
-    expect(unionBox(box, null)).toEqual([0, 0, 64, 64]);
-    expect(unionBox(box, { x: 4, y: 4, width: 50, height: 50 })).toEqual([
-      0, 0, 64, 64,
-    ]);
-    expect(unionBox(box, { x: -6, y: -3, width: 76, height: 70 })).toEqual([
-      -6, -3, 76, 70,
-    ]);
   });
 });

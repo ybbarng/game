@@ -1,6 +1,5 @@
 /**
- * 티어 엠블럼의 모양·색(TierEmblem.tsx)과 HDR 반짝임 그림(scripts/build-cube-tier-hdr.mjs)이 함께 쓰는 값.
- * 그림 스크립트가 Node로 이 파일을 바로 불러오므로(형 지우기) 다른 파일을 import하지 않고 지울 수 있는 TS 문법만 쓴다.
+ * 티어 엠블럼의 모양·색. 평면 엠블럼(TierEmblem.tsx, 마지막 대체)과 3D 엠블럼(emblem3d/scene.ts)이 함께 쓴다.
  *
  * 좌표는 viewBox 0~64(엠블럼) 기준이고, 구간 표시는 그 아래 64~74에 그린다. 가운데 C에 베벨 금속 육각 틀과 그 안의
  * 등각 큐브가 있고(이 둘을 「몸」이라 한다), 몸은 티어마다 `coreScale`만큼 키운다. 낮은 티어는 몸이 크고 장식이 없으며,
@@ -98,7 +97,7 @@ export function cellAt(
   ];
 }
 
-/** 블럭 하나의 반사 자리(칸 단위): 빛 받는 쪽 테이블 모서리 근처. SVG와 HDR 그림이 같은 자리에 둔다 */
+/** 블럭 하나의 반사 자리(칸 단위): 빛 받는 쪽 테이블 모서리 근처. SVG가 쓴다 */
 export const BLOCK_SPARK: Pt = [0.34, 0.31];
 /** 면마다 블럭이 빛을 받는 정도(윗면·왼면·오른면) */
 export const FACE_LIT = [1, 0.62, 0.4] as const;
@@ -112,7 +111,7 @@ export function faceMid(q: readonly Pt[]): Pt {
 
 /**
  * 깎인 면 사이 모서리(면 가운데 → 네 꼭짓점)와 그 모서리가 빛을 받는 정도(0~1). 빛은 왼위에서 와서 윗면이 가장 밝다.
- * SVG(보통 화면)의 가는 빛줄과 HDR 그림(늘 은은하게 켜 두는 면 모서리 빛)이 같은 선을 쓴다.
+ * SVG의 가는 빛줄이 쓴다.
  */
 export function facetEdges(tier: string): { a: Pt; b: Pt; lit: number }[] {
   const lit = [
@@ -125,7 +124,7 @@ export function facetEdges(tier: string): { a: Pt; b: Pt; lit: number }[] {
   );
 }
 
-/** HDR 반짝임이 있는 티어(위 넷) */
+/** 반짝임 점이 있는 티어(위 넷) */
 export const HDR_TIERS = [
   "diamond",
   "master",
@@ -147,7 +146,7 @@ export function crestAt(tier: string): Pt {
 }
 
 /**
- * 반짝임 자리. SVG(보통 화면)와 HDR 그림이 같은 자리에 그린다. 큐브 윗면 뒤 꼭짓점(빛이 위에서 온다)과 윗면 오른쪽 끝,
+ * 반짝임 자리. 큐브 윗면 뒤 꼭짓점(빛이 위에서 온다)과 윗면 오른쪽 끝,
  * 그리고 위 티어일수록 빛 받는 틀 꼭짓점·볏·왕관에 하나씩 는다.
  *
  * 그늘진 왼면·오른면 안에는 두지 않는다(2026-11-10 사용자 「FLB 위치에 있는 코너 조각 혼자 유독 그 면에서 밝다」).
@@ -173,39 +172,5 @@ export function glintsFor(tier: string): Glint[] {
   return out;
 }
 
-/**
- * HDR 반짝임의 빛 색(선형 sRGB 비율, 가장 큰 값 1). 보석·금속마다 살짝 물든 흰빛.
- * 그림 스크립트가 BT.2020으로 바꿔 PQ로 적는다.
- */
-export const HDR_TINT: Readonly<
-  Record<HdrTier, readonly [number, number, number]>
-> = {
-  diamond: [0.82, 0.93, 1],
-  master: [0.95, 0.8, 1],
-  grandmaster: [1, 0.78, 0.76],
-  challenger: [1, 0.9, 0.68],
-};
-
-/**
- * 빛이 면을 따라 지나가는 띠: 그림 세 장(왼쪽·가운데·오른쪽)을 차례로 켰다 끄며 지나가는 것처럼 보인다.
- * img에 transform을 걸지 않으려고(Safari가 transform 걸린 HDR 그림을 SDR로 그린 적이 있다, docs/36 HDR 별빛) 자리를 그림에 굽는다.
- * 값은 가운데에서 띠 가운데까지의 x(큐브 반지름 비율), 띠는 왼아래에서 오른위로 기운다.
- */
-export const BAND_FRAMES = [-0.68, 0, 0.68] as const;
-/** 띠 기울기(x가 y 1만큼 바뀔 때 옮겨 가는 양)와 반폭(큐브 반지름 비율) */
-export const BAND_SLANT = 0.55;
-export const BAND_HALF = 0.22;
-
-/** HDR 그림 경로(public 아래) */
-export function hdrGlintSrc(tier: HdrTier): string {
-  return `/cube/tiers/hdr-${tier}-glint.avif`;
-}
-/** 늘 켜 두는 HDR 그림: 반짝임 자리·블럭 반사 점의 작은 빛 덩어리와 윗면 바깥·깎인 면 모서리의 부드러운 빛 */
-export function hdrFacetSrc(tier: HdrTier): string {
-  return `/cube/tiers/hdr-${tier}-facet.avif`;
-}
-export function hdrBandSrc(tier: HdrTier, frame: number): string {
-  return `/cube/tiers/hdr-${tier}-band${frame}.avif`;
-}
 /** 미리보기 「HDR 확인」의 1000 nit 흰 네모 */
 export const HDR_CHECK_WHITE_SRC = "/cube/tiers/hdr-check-white.avif";

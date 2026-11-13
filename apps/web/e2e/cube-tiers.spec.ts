@@ -1,5 +1,5 @@
 import { no3d, shot } from "./cube";
-import { expect, type Page, test } from "./test";
+import { expect, type Locator, type Page, test } from "./test";
 
 /**
  * 큐브 티어표(`/cube/tiers`, docs/47 14절). 티어·Ao5 계산은 단위 시험(`tiers/rank.test.ts`, `records.test.ts`)이 맡고,
@@ -39,6 +39,20 @@ async function noSideScroll(page: Page) {
   ).toBe(false);
 }
 
+/** `scope` 안의 엠블럼 `count`개가 모두 정지 그림이고 그림을 받았다(평면 SVG 없음) */
+async function stillsLoaded(scope: Locator, count: number) {
+  const imgs = scope.locator("[data-cube-emblem-still] img");
+  await expect(imgs).toHaveCount(count);
+  await expect
+    .poll(() =>
+      imgs.evaluateAll((els) =>
+        els.every((e) => (e as HTMLImageElement).naturalWidth > 0),
+      ),
+    )
+    .toBe(true);
+  await expect(scope.locator("[data-cube-emblem] svg")).toHaveCount(0);
+}
+
 test.beforeEach(async ({ page }) => {
   await no3d(page);
 });
@@ -67,6 +81,8 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "data-cube-emblem",
     "challenger",
   );
+  // 엠블럼은 3D를 정면에서 찍은 정지 그림(3D를 끈 기기에서도 같은 그림). 평면 SVG는 없다
+  await stillsLoaded(page.locator("[data-cube-tier-row]"), 10);
   await expect(page.locator("[data-cube-tier-row='diamond']")).toContainText(
     "14초",
   );
@@ -110,6 +126,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   await expect(
     page.locator("[data-cube-tier-mine-box] [data-cube-emblem]"),
   ).toHaveAttribute("data-cube-emblem-division", "IV");
+  await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 1);
   await noSideScroll(page);
   await shot(page, "tiers-mine", info.project.name);
 
@@ -128,83 +145,10 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
     "data-cube-emblem",
     "diamond",
   );
+  await stillsLoaded(tier, 1);
   await page.locator("[data-cube-records]").scrollIntoViewIfNeeded();
   await shot(page, "solo-tier", info.project.name);
   await tier.click();
   await expect(page).toHaveURL(/\/cube\/tiers\?n=3$/);
   await expect(page.locator("[data-cube-my-tier]")).toHaveText("다이아몬드 IV");
 });
-
-test("엠블럼 미리보기: 열 티어를 크기별로 견주고 화면 밖으로 넘치지 않는다", async ({
-  page,
-}, info) => {
-  await page.goto("/cube/tiers/emblems");
-  await expect(
-    page.locator("[data-cube-emblem-big] [data-cube-emblem]"),
-  ).toHaveCount(10);
-  // 64·32·24·16px 줄마다 열 개
-  await expect(
-    page.locator("[data-cube-emblem-sizes] [data-cube-emblem]"),
-  ).toHaveCount(40);
-  await expect(
-    page.locator("[data-cube-emblem-divisions] [data-cube-emblem-division]"),
-  ).toHaveCount(4);
-  // HDR 층은 SDR 화면(헤드리스)에서 보이지 않는다(lazy img라 받지도 않는다)
-  await expect(page.locator(".emb-hdr-layer img").first()).toBeHidden();
-  // 「HDR 확인」 견본은 화면과 상관없이 늘 보이고 그림 셋(흰 네모·별빛·엠블럼 빛)이 다 받아진다
-  const check = page.locator("[data-cube-hdr-check] img");
-  await expect(check).toHaveCount(3);
-  await expect
-    .poll(() =>
-      check.evaluateAll((els) =>
-        els.every((e) => (e as HTMLImageElement).naturalWidth > 0),
-      ),
-    )
-    .toBe(true);
-  await expect(page.locator("[data-cube-hdr-check-screen]")).toContainText(
-    "화면 SDR",
-  );
-  await noSideScroll(page);
-  await shot(page, "tier-emblems", info.project.name);
-});
-
-test(
-  "HDR 층: HDR 화면을 흉내 내면(?hdr=1) 면 모서리 빛은 늘 켜져 있고, 곧 가장 높은 티어에 빛 띠가 지나가며 HDR 띠가 켜진다",
-  { tag: "@only-desktop" },
-  async ({ page }, info) => {
-    // 헤드리스는 SDR이라 `(dynamic-range: high)`가 거짓이다. `?hdr=1`은 같은 HDR 층을 SDR에서도 켠다(밝기는 사람이 HDR 맥에서 본다)
-    // CSS 조건은 화면 크기와 상관없다
-    await page.emulateMedia({ reducedMotion: "no-preference" });
-    // 3D 시안(맨 위)은 이 시험과 상관없어 끈다. 빛 띠는 보이는 엠블럼만 돌아서, 시안 칸에 밀려 내려간 큰 줄로 간다
-    await no3d(page);
-    await page.goto("/cube/tiers/emblems?hdr=1");
-    const big = page.locator("[data-cube-emblem-big]");
-    await big.scrollIntoViewIfNeeded();
-    const opacity = (sel: string) =>
-      big
-        .locator(sel)
-        .evaluateAll((els) =>
-          Math.max(0, ...els.map((e) => Number(getComputedStyle(e).opacity))),
-        );
-    // 2026-11-09 HDR 맥에서 HDR 그림의 불투명도가 8초 동안 한 번도 0보다 커지지 않았다
-    // 같은 날 다시: 켜져 있어도 0.6으로 낮게 두어 HDR이 느껴지지 않았다. 평소에도 거의 다 켜 둔다
-    await expect.poll(() => opacity("img.emb-hdr-facet")).toBeGreaterThan(0.8);
-    // SDR에서는 HDR 그림이 흰색으로 잘려 그려진다: 줄여 보여도 빛 면적이 남는지 사람이 본다
-    await shot(page, "tier-emblems-hdr", info.project.name);
-    // 차례는 높은 티어부터: 챌린저에 빛이 지나가고 그 HDR 띠 그림이 켜진다.
-    // 빛 띠 하나는 1.6초라 짧은 간격으로 본다
-    await expect
-      .poll(
-        () =>
-          opacity(
-            "[data-cube-emblem='challenger'][data-shine] img.emb-hdr-band",
-          ),
-        { intervals: [100] },
-      )
-      .toBeGreaterThan(0.3);
-    // 반짝임 점은 평소에도 천천히 반짝인다
-    await expect(
-      big.locator("[data-cube-emblem='diamond'][data-twinkle]"),
-    ).toHaveCount(1);
-  },
-);
