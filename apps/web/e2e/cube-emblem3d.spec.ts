@@ -257,7 +257,7 @@ async function noWebgl(page: Page): Promise<void> {
 
 /** 칸 안에 평면 SVG 엠블럼이 없다 */
 async function noFlat(box: Locator): Promise<void> {
-  await expect(box.locator("[data-cube-emblem] svg")).toHaveCount(0);
+  await expect(box.locator(".cube-emblem svg")).toHaveCount(0);
 }
 
 test("로딩 중에는 평면 엠블럼을 보이지 않는다: 대기 그림을 못 받으면 빈 칸에 작은 로딩 표시만, 3D가 뜨면 사라진다", {
@@ -284,7 +284,7 @@ test("로딩 중에는 평면 엠블럼을 보이지 않는다: 대기 그림을
   await noFlat(box);
 });
 
-test("3D를 그릴 수 없으면 3D 칸에 정지 그림(3D를 찍은 그림)이 뜨고, 그 그림도 못 받을 때만 평면 엠블럼", {
+test("3D를 그릴 수 없으면 3D 칸에 정지 그림(3D를 찍은 그림)이 뜨고 평면은 보이지 않는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   await noWebgl(page);
@@ -316,13 +316,17 @@ test("3D를 그릴 수 없으면 3D 칸에 정지 그림(3D를 찍은 그림)이
   await expect(
     page.locator("[data-emblem3d-grid] [data-emblem3d-pick] img"),
   ).toHaveCount(10);
+});
 
-  // 정지 그림까지 못 받으면 그때만 평면
+test("3D도 정지 그림도 없을 때만 평면 엠블럼", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await noWebgl(page);
   await page.route(/\/cube\/tiers\/emblem3d\/still\//, (r) => r.abort());
   await page.goto("/cube/tiers/emblems?tier=master");
   const m = page.locator('[data-emblem3d="master"]');
   await expect(
-    m.locator("[data-emblem3d-fallback] [data-cube-emblem] svg"),
+    m.locator("[data-emblem3d-fallback] .cube-emblem svg"),
   ).toBeVisible();
   await draftShot(page, "no-webgl-no-still");
 });

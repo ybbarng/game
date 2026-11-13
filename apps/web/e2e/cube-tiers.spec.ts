@@ -39,7 +39,7 @@ async function noSideScroll(page: Page) {
   ).toBe(false);
 }
 
-/** `scope` 안의 엠블럼 `count`개가 모두 정지 그림이고 그림을 받았다(평면 SVG 없음) */
+/** `scope` 안의 엠블럼 `count`개가 모두 정지 그림이고 그림을 받았다(평면 SVG `.cube-emblem` 없음) */
 async function stillsLoaded(scope: Locator, count: number) {
   const imgs = scope.locator("[data-cube-emblem-still] img");
   await expect(imgs).toHaveCount(count);
@@ -50,7 +50,7 @@ async function stillsLoaded(scope: Locator, count: number) {
       ),
     )
     .toBe(true);
-  await expect(scope.locator("[data-cube-emblem] svg")).toHaveCount(0);
+  await expect(scope.locator(".cube-emblem svg")).toHaveCount(0);
 }
 
 test.beforeEach(async ({ page }) => {
