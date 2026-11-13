@@ -275,6 +275,10 @@ test("로딩 중에는 평면 엠블럼을 보이지 않는다: 대기 그림을
   await expect(box.locator("[data-emblem3d-loading]")).toBeVisible();
   await expect(box.locator("[data-emblem3d-poster]")).toHaveCount(0);
   await expect(box.locator("[data-cube-emblem]")).toHaveCount(0);
+  // 위 격자도 깨진 그림 대신 정지 그림
+  await expect(
+    page.locator("[data-emblem3d-grid] [data-cube-emblem-still]"),
+  ).toHaveCount(10);
   await draftShot(page, "loading-no-poster");
   await release3d(page);
   await expect(box).toHaveAttribute("data-emblem3d-shown", "", {

@@ -384,24 +384,36 @@ export function EmblemGrid({
             t === selected ? "bg-white/10 ring-white/30" : "hover:bg-white/5",
           )}
         >
-          {shots[i] ? (
-            // biome-ignore lint/performance/noImgElement: 미리 찍은 대기 그림을 그대로 줄여 보인다
-            <img
-              src={shots[i] as string}
-              alt=""
-              width={88}
-              height={88}
-              draggable={false}
-              className="block rounded-lg"
-            />
-          ) : (
-            <span className="flex size-[88px] items-center justify-center">
-              <EmblemStill tier={t} size={64} />
-            </span>
-          )}
+          <GridPicture tier={t} src={shots[i] ?? null} />
           <span className="text-white/80 text-xs">{TIER_LABEL[t]}</span>
         </button>
       ))}
     </div>
+  );
+}
+
+/** 격자 한 칸 그림: 대기 그림을 줄여 보이고, 없거나 못 받으면 정지 그림(깨진 그림 표시를 보이지 않는다) */
+function GridPicture({ tier, src }: { tier: DraftTier; src: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken)
+    return (
+      <span className="flex size-[88px] items-center justify-center">
+        <EmblemStill tier={tier} size={64} />
+      </span>
+    );
+  return (
+    // biome-ignore lint/performance/noImgElement: 미리 찍은 대기 그림을 그대로 줄여 보인다
+    <img
+      src={src}
+      alt=""
+      width={88}
+      height={88}
+      draggable={false}
+      onError={() => setBroken(true)}
+      ref={(el) => {
+        if (el?.complete && el.naturalWidth === 0) setBroken(true);
+      }}
+      className="block rounded-lg"
+    />
   );
 }
