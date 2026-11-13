@@ -221,10 +221,10 @@ test("휴대폰: 누르면 큰 칸이 그 티어로, 다시 누르면 내 티어
   await seed(page);
   await page.goto("/cube/tiers");
   await heroIs(page, "diamond");
-  await page.locator('[data-cube-ladder="grandmaster"]').tap();
-  await heroIs(page, "grandmaster");
+  await page.locator('[data-cube-ladder="challenger"]').tap();
+  await heroIs(page, "challenger");
   await shot(page, "picked-phone");
-  await page.locator('[data-cube-ladder="grandmaster"]').tap();
+  await page.locator('[data-cube-ladder="challenger"]').tap();
   await heroIs(page, "diamond");
   await shot(page, "showcase-phone");
 });

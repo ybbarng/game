@@ -245,18 +245,29 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
     "diamond",
   );
   await expectShown(page, "diamond");
-  // 내 티어를 보고 있으면 노란 테두리와 티어 색 테두리가 둘 다
-  expect(await ringOf(cell("diamond"))).toContain("252, 211, 77");
-  expect(await ringOf(cell("diamond"))).toContain("125, 211, 252");
+  // 내 자리 = 밝은 배경: 내 칸은 구간 표의 내 줄과 같은 배경 판, 다른 칸은 배경 없음. 가는 노란 선은 없다
+  const mineBg = await page
+    .locator("[data-cube-tier-mine] th")
+    .evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(mineBg).not.toBe("rgba(0, 0, 0, 0)");
+  const bgOf = (t: string) =>
+    cell(t).evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(await bgOf("diamond")).toBe(mineBg);
+  expect(await bgOf("emerald")).toBe("rgba(0, 0, 0, 0)");
+  // 내 티어를 보고 있으면 배경 판 + 다이아몬드 색 테두리
+  await expect.poll(() => ringOf(cell("diamond"))).toContain("125, 211, 252");
+  await expect
+    .poll(() => ringOf(cell("diamond")))
+    .not.toContain("252, 211, 77");
   await noSideScroll(page);
   await shot(page, "tiers-mine", info.project.name);
 
-  // 아직 얻지 못한 마스터를 누르면 그 칸이 밝아지고 마스터 색 테두리, 내 칸은 노란 테두리만 남는다
+  // 아직 얻지 못한 마스터를 누르면 그 칸이 밝아지고 마스터 색 테두리, 내 칸은 배경 판만 남는다(테두리 없음)
   await cell("master").click();
   await expectShown(page, "master");
-  expect(await ringOf(cell("master"))).toContain("240, 171, 252");
-  expect(await ringOf(cell("diamond"))).toContain("252, 211, 77");
-  expect(await ringOf(cell("diamond"))).not.toContain("125, 211, 252");
+  await expect.poll(() => ringOf(cell("master"))).toContain("240, 171, 252");
+  expect(await bgOf("diamond")).toBe(mineBg);
+  await expect.poll(() => ringOf(cell("diamond"))).toBe("none");
   await shot(page, "tiers-picked", info.project.name);
   // 다른 칸을 누르면 앞 칸은 다시 중간 밝기
   await cell("challenger").click();

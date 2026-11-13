@@ -34,8 +34,8 @@ import {
  * - 3D는 늘 위쪽 큰 칸 하나. 사다리 칸은 그 3D를 좌우 각마다 미리 찍은 그림을 넘겨 도는 것처럼 보인다.
  * - 사다리 칸은 한 번에 하나씩 아래 티어부터 차례로 흔든다(여러 개를 동시에 움직이지 않는다, 고정 규칙 3절). 동작
  *   줄이기 설정이면 멈춘다.
- * - 사다리 열 칸은 모두 같은 중간 밝기, 위쪽 큰 칸에 보고 있는 칸만 제 밝기와 그 티어 색 테두리. 내 티어 칸은 노란
- *   테두리(2026-11-14 사용자 「밑에 모두 적당한 중간 밝기 이렇게 해 주고, 선택하면 좀 더 밝게」). 얻었는지로 밝기를
+ * - 사다리 열 칸은 모두 같은 중간 밝기, 위쪽 큰 칸에 보고 있는 칸만 제 밝기와 그 티어 색 테두리. 내 티어 칸은 구간 표의
+ *   내 줄과 같은 밝은 배경 판(2026-11-14 사용자 「밑에 모두 적당한 중간 밝기 이렇게 해 주고, 선택하면 좀 더 밝게」). 얻었는지로 밝기를
  *   가르지 않는다. 기록이 없을 때 위쪽 큰 칸의 아이언만 어둡게 둔다(아직 얻지 못한 첫 티어).
  */
 
@@ -77,8 +77,6 @@ const TIER_RING: Readonly<Record<TierId, string>> = {
   grandmaster: "#fb7185",
   challenger: "#fde68a",
 };
-/** 내 티어 칸 테두리(노랑) */
-const MINE_RING = "rgba(252, 211, 77, 0.85)";
 
 /**
  * 사다리 칸 그림 밝기: 열 칸 모두 같은 중간 밝기, 위쪽 큰 칸에 보고 있는 칸만 제 밝기(2026-11-14 사용자 「밑에 모두
@@ -89,22 +87,19 @@ const LADDER_REST: CSSProperties = {
 };
 
 /**
- * 사다리 칸 테두리: 내 티어 칸은 노란 테두리(안쪽 2px), 보고 있는 칸은 그 티어 색 테두리와 약한 빛. 내 티어를 보고 있으면
- * 둘 다 보이게 노란 테두리 바깥에 티어 색 테두리를 한 겹 더 두른다
+ * 사다리 칸 표시 둘(2026-11-14 사용자 「여기 노란 테두리가 어디 있어?」·「티도 안 나는데..? 잘 모르겠으면 배경색 같은
+ * 걸로 표시하거나」: 안쪽 2px 노란 선이 바깥 티어 색 빛에 묻혔다):
+ * - 내 티어 칸: 아래 구간 표의 내 줄과 같은 밝은 배경 판(`MINE_BG`). 페이지 안에서 「내 자리 = 밝은 배경」.
+ * - 보고 있는 칸: 제 밝기 + 그 티어 색 테두리와 약한 빛(`ladderRing`).
+ * 내 티어를 보고 있으면 배경 판과 테두리가 한 칸에, 다른 티어를 보면 서로 다른 칸에 보인다.
  */
-export function ladderRing(
-  tier: TierId,
-  mine: boolean,
-  viewing: boolean,
-): string | undefined {
-  const parts: string[] = [];
-  if (mine) parts.push(`0 0 0 2px ${MINE_RING}`);
-  if (viewing)
-    parts.push(
-      `0 0 0 ${mine ? 4 : 2}px ${TIER_RING[tier]}`,
-      `0 0 14px ${TIER_RING[tier]}66`,
-    );
-  return parts.length ? parts.join(", ") : undefined;
+export const MINE_BG = "bg-white/10";
+
+/** 보고 있는 칸 테두리: 그 티어 색 2px와 약한 빛. 그 밖은 없음 */
+export function ladderRing(tier: TierId, viewing: boolean): string | undefined {
+  return viewing
+    ? `0 0 0 2px ${TIER_RING[tier]}, 0 0 14px ${TIER_RING[tier]}66`
+    : undefined;
 }
 
 /** 진열 전체: 위쪽 큰 칸과 사다리. 고른 티어를 둘이 함께 쓴다 */
@@ -379,10 +374,11 @@ function TierLadder({
                   onClick={() => onPick(t)}
                   className={cn(
                     // 마우스를 올리면 살짝 떠오르기만 한다(3D로 바꾸지 않는다)
-                    "flex w-full flex-col items-center gap-1 rounded-xl p-0.5 pb-1 transition duration-150 hover:-translate-y-0.5 hover:bg-white/5 hover:shadow-black/50 hover:shadow-lg hover:brightness-110 sm:p-1.5",
-                    viewing && "bg-white/10",
+                    "flex w-full flex-col items-center gap-1 rounded-xl p-0.5 pb-1 transition duration-150 hover:-translate-y-0.5 hover:shadow-black/50 hover:shadow-lg hover:brightness-110 sm:p-1.5",
+                    // 내 칸은 마우스를 올려도 같은 배경 판(떠오르기 배경이 덮지 않게)
+                    here ? MINE_BG : "hover:bg-white/5",
                   )}
-                  style={{ boxShadow: ladderRing(t, here, viewing) }}
+                  style={{ boxShadow: ladderRing(t, viewing) }}
                 >
                   <span
                     data-cube-ladder-art
