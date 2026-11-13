@@ -9,7 +9,13 @@ import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 import { levelOf } from "../emblemArt";
 import { type LookParts, lookParts } from "./lookStats";
 import { POSTER_PAGE } from "./poster";
-import { MotionQuality, REST_MS, tooSlowToSway } from "./quality";
+import {
+  FrameBudget,
+  MotionQuality,
+  REST_MS,
+  SwayPacer,
+  tooSlowToSway,
+} from "./quality";
 import {
   buildEmblemScene,
   type DraftTier,
@@ -37,8 +43,12 @@ import {
 } from "./spin";
 import type { DrawPath } from "./support";
 
-/** 이 페이지에서 배운 돌릴 때 해상도 단계(티어를 바꿔 새 무대를 만들어도 이어 쓴다) */
-let learnedLevel = 0;
+/** 화면 시험이 고정한 한 장 예산(ms, `window.__emblem3dBudget`). 제품에서는 없다 */
+function fixedBudget(): number | null {
+  if (typeof window === "undefined") return null;
+  const v = (window as { __emblem3dBudget?: unknown }).__emblem3dBudget;
+  return typeof v === "number" && v > 0 ? v : null;
+}
 
 /**
  * 3D 엠블럼 시안의 무대(docs/47 14-7): 캔버스 하나에 엠블럼 하나를 그리고, 끌어 돌리기를 받는다.
@@ -335,7 +345,14 @@ export class EmblemStage implements ViewTurnTarget {
   private lastMoveAt = 0;
   private timing = false;
   private scale = 1;
-  private readonly quality = new MotionQuality(learnedLevel);
+  /**
+   * 무대마다 따로 재는 한 장 예산·끌 때 해상도·흔들 때 그리는 간격(quality.ts). 화면 시험은
+   * `window.__emblem3dBudget`(ms)로 예산을 고정해 120Hz(7.1ms)를 흉내 낸다
+   */
+  private readonly budget = new FrameBudget(fixedBudget());
+  private readonly quality = new MotionQuality(this.budget);
+  private readonly pacer = new SwayPacer(this.budget);
+  private tick = 0;
   /** 진열 흔들기를 켰는지(티어 화면), 지금 흔드는 중이면 그 상태, 끌기를 놓은 뒤 다시 흔들 타이머 */
   private swayOn = false;
   private sway: Sway | null = null;
@@ -427,6 +444,16 @@ export class EmblemStage implements ViewTurnTarget {
       this.speed !== 0 ||
       this.homing !== null ||
       this.sway !== null
+    );
+  }
+
+  /** 저절로 흔드는 중인지(끄는 중·미끄러지는 중·처음 각도로 돌아가는 중이 아니고) */
+  private get swayingNow(): boolean {
+    return (
+      this.sway !== null &&
+      this.drag === null &&
+      this.speed === 0 &&
+      this.homing === null
     );
   }
 
@@ -567,9 +594,9 @@ export class EmblemStage implements ViewTurnTarget {
     if (this.disposed) return;
     if (!this.visible) return;
     this.pending = false;
-    // 돌리는 동안 이어진 장 사이 간격으로 화면 주기를 잰다(120Hz면 한 장 예산이 8.3ms, quality.ts)
+    // 움직이는 동안 이어진 장 사이 간격으로 화면 주기를 잰다(120Hz면 한 장 예산이 8.3ms, quality.ts)
     if (this.moving && this.wasMoving && this.last)
-      this.quality.noteInterval(now - this.last);
+      this.budget.noteInterval(now - this.last);
     const dt = Math.min(50, Math.max(0, now - (this.last || now)));
     this.last = now;
     let stepped = false;
@@ -601,12 +628,17 @@ export class EmblemStage implements ViewTurnTarget {
       };
       this.noteView();
     }
-    // 움직이는 동안은 낮춘 해상도, 멈춘 장과 끄는 손이 멈췄을 때는 제 해상도
+    // 사람이 끄는 동안은 낮춘 해상도, 멈춘 장·끄는 손이 멈췄을 때·저절로 흔드는 동안은 제 해상도. 흔드는 동안 GPU가
+    // 못 따라오면 해상도 대신 그리는 횟수를 줄인다(화면 갱신 N번에 한 번, 흔들기 시계는 그대로 흐른다)
     const moving = this.moving;
+    const swaying = this.swayingNow;
     const resting = this.drag !== null && now - this.lastMoveAt > REST_MS;
-    const want = moving && !resting ? this.quality.scale : 1;
-    let draw = this.dirty || stepped;
-    if (!draw && resting && this.scale !== 1) draw = true;
+    const want = moving && !resting && !swaying ? this.quality.scale : 1;
+    this.tick += 1;
+    let draw =
+      this.dirty ||
+      (stepped && (!swaying || this.tick % this.pacer.every === 0));
+    if (!draw && this.scale !== want && (resting || swaying)) draw = true;
     if (draw) {
       const rescaled = want !== this.scale;
       if (rescaled) {
@@ -628,22 +660,21 @@ export class EmblemStage implements ViewTurnTarget {
         this.shown = null;
         requestAnimationFrame(() => done());
       }
-      // 돌리는 동안 그린 장이 GPU에서 끝나기까지 걸린 시간을 잰다(한 번에 하나, 배율을 바꾼 장은 빼고)
+      // 움직이는 동안 그린 장이 GPU에서 끝나기까지 걸린 시간을 잰다(한 번에 하나, 배율을 바꾼 장은 빼고). 흔드는 장은
+      // 흔들기 간격(`pacer`), 끄는 장은 해상도(`quality`)에 적는다
       if (moving && !resting && !rescaled && !this.timing) {
         this.timing = true;
         const t0 = performance.now();
         const scale = this.scale;
+        const meter = swaying ? this.pacer : this.quality;
         this.painter.gpuDone().then(() => {
           this.timing = false;
           if (this.disposed || scale !== this.scale) return;
-          if (this.quality.note(performance.now() - t0)) {
-            learnedLevel = Math.max(learnedLevel, this.quality.level);
-            this.apply();
-          }
-          // 가장 낮은 해상도에서도 한 장이 예산을 크게 넘으면(소프트웨어 GPU·저전력 기기) 저절로 흔들기를 멈춘다.
+          if (meter.note(performance.now() - t0)) this.apply();
+          // 가장 드물게 그려도 한 장이 그 사이에 끝나지 않으면(소프트웨어 GPU·저전력 기기) 저절로 흔들기를 멈춘다.
           // 계속 흔들면 초당 몇 장으로 끊기며 CPU를 쉬지 않고 쓴다(2026-11-13 잰 값: 소프트웨어 GPU에서 마스터 초당
           // 24장·한 장 150ms, 챌린저 8장). 끌어 돌리기는 그대로 된다
-          if (this.swayOn && tooSlowToSway(this.quality)) {
+          if (this.swayOn && tooSlowToSway(this.pacer)) {
             this.swayOn = false;
             this.sway = null;
             window.clearTimeout(this.resumeTimer);
@@ -668,9 +699,13 @@ export class EmblemStage implements ViewTurnTarget {
     h.emblem3dYaw = wrapYaw(this.spin.yaw).toFixed(3);
     h.emblem3dPitch = this.spin.pitch.toFixed(3);
     h.emblem3dFrames = String(this.frames);
+    // 해상도 배율(그린 장), 끌 때 해상도 단계 배율, 흔들 때 그리는 간격(화면 갱신 몇 번에 한 번)
     h.emblem3dScale = String(this.scale);
+    h.emblem3dDragScale = String(this.quality.scale);
+    h.emblem3dEvery = String(this.pacer.every);
     if (this.quality.median > 0) h.emblem3dGap = this.quality.median.toFixed(1);
-    h.emblem3dBudget = this.quality.budget.toFixed(1);
+    if (this.pacer.median > 0) h.emblem3dSwayGap = this.pacer.median.toFixed(1);
+    h.emblem3dBudget = this.budget.value.toFixed(1);
     if (this.moving) h.emblem3dMoving = "";
     else delete h.emblem3dMoving;
     if (this.sway) h.emblem3dSway = "";
@@ -700,6 +735,8 @@ export interface FrameJob {
   pageColor?: string;
   /** 화소 밀도(기본 2) */
   dpr?: number;
+  /** 해상도 배율(기본 1). 낮춘 해상도로 그린 모습을 견줄 때(비교 그림) */
+  scale?: number;
 }
 
 /** 3D 칸과 같은 그리기(번짐까지)로 그린다. `fn`이 끝나면 버린다 */
@@ -733,13 +770,14 @@ const turnTo = (p: Painter, yaw: number) =>
  * 찍어, 3D 첫 장으로 바뀌어도 같은 생김새다(고정 규칙 2-1절). 그린 바로 그 자리에서 읽는다(다음 화면 갱신 전)
  */
 export async function captureFrames(job: FrameJob): Promise<string[]> {
-  return withPainter(job, (p, canvas) =>
-    job.yaws.map((yaw) => {
+  return withPainter(job, (p, canvas) => {
+    if (job.scale && job.scale !== 1) p.setScale(job.scale);
+    return job.yaws.map((yaw) => {
       turnTo(p, yaw);
       p.draw();
       return canvas.toDataURL("image/png");
-    }),
-  );
+    });
+  });
 }
 
 /** 그린 캔버스를 RGBA 화소로 읽는다(그린 바로 그 자리에서) */
