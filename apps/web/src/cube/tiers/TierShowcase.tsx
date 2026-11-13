@@ -14,6 +14,7 @@ import {
   SPRITE_FRONT,
   spriteSrc,
 } from "./emblem3d/poster";
+import { ladderRing } from "./ladderRing";
 import { type MyTier, nextTier, tierName } from "./rank";
 import { cutText, TIER_TONE } from "./TierTable";
 import {
@@ -64,20 +65,6 @@ function useWide(): boolean {
 /** 기록이 없을 때 위쪽 큰 칸의 아이언(아직 못 얻은 첫 티어) */
 const LOCKED: CSSProperties = { filter: "brightness(0.5) saturate(0.55)" };
 
-/** 티어 색(테두리·빛, `TIER_TONE` 글자 색과 같은 Tailwind 색) */
-const TIER_RING: Readonly<Record<TierId, string>> = {
-  iron: "#a8a29e",
-  bronze: "#fdba74",
-  silver: "#e2e8f0",
-  gold: "#fde047",
-  platinum: "#5eead4",
-  emerald: "#34d399",
-  diamond: "#7dd3fc",
-  master: "#f0abfc",
-  grandmaster: "#fb7185",
-  challenger: "#fde68a",
-};
-
 /**
  * 사다리 칸 그림 밝기: 열 칸 모두 같은 중간 밝기, 위쪽 큰 칸에 보고 있는 칸만 제 밝기(2026-11-14 사용자 「밑에 모두
  * 적당한 중간 밝기 이렇게 해 주고, 선택하면 좀 더 밝게」). 얻었는지로 밝기를 가르지 않는다
@@ -90,17 +77,11 @@ const LADDER_REST: CSSProperties = {
  * 사다리 칸 표시 둘(2026-11-14 사용자 「여기 노란 테두리가 어디 있어?」·「티도 안 나는데..? 잘 모르겠으면 배경색 같은
  * 걸로 표시하거나」: 안쪽 2px 노란 선이 바깥 티어 색 빛에 묻혔다):
  * - 내 티어 칸: 아래 구간 표의 내 줄과 같은 밝은 배경 판(`MINE_BG`). 페이지 안에서 「내 자리 = 밝은 배경」.
- * - 보고 있는 칸: 제 밝기 + 그 티어 색 테두리와 약한 빛(`ladderRing`).
- * 내 티어를 보고 있으면 배경 판과 테두리가 한 칸에, 다른 티어를 보면 서로 다른 칸에 보인다.
+ * - 보고 있는 칸: 제 밝기 + 그 티어 색 3px 테두리와 바깥 빛(`ladderRing.ts`).
+ * 내 티어를 보고 있으면 배경 판과 테두리가 한 칸에, 다른 티어를 보면 서로 다른 칸에 보인다. 위쪽 큰 칸에 떠 있는 티어는
+ * 언제나 보고 있는 칸으로 표시한다(기록이 없으면 처음엔 아이언). 배경 판은 기록이 있을 때만.
  */
 export const MINE_BG = "bg-white/10";
-
-/** 보고 있는 칸 테두리: 그 티어 색 2px와 약한 빛. 그 밖은 없음 */
-export function ladderRing(tier: TierId, viewing: boolean): string | undefined {
-  return viewing
-    ? `0 0 0 2px ${TIER_RING[tier]}, 0 0 14px ${TIER_RING[tier]}66`
-    : undefined;
-}
 
 /** 진열 전체: 위쪽 큰 칸과 사다리. 고른 티어를 둘이 함께 쓴다 */
 export function TierShowcase({ n, mine }: { n: number; mine: MyTier | null }) {
@@ -337,7 +318,7 @@ function TierLadder({
   const myIndex = mine ? TIER_IDS.indexOf(mine.place.tier) : -1;
   const rows = [TIER_IDS.slice(5), TIER_IDS.slice(0, 5)];
   // 지금 위쪽 큰 칸에 뜬 티어
-  const shown = picked ?? mine?.place.tier ?? null;
+  const shown: TierId = picked ?? mine?.place.tier ?? "iron";
 
   return (
     <section

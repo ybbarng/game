@@ -84,6 +84,34 @@ async function expectShown(page: Page, tier: string) {
   // 밝기는 0.2초 동안 바뀌므로 다 바뀔 때까지 기다린다(티어 차례대로 열 칸)
   const want = TIERS.map((t) => (t === tier ? "none" : REST));
   await expect.poll(() => artFilters(page)).toEqual(want);
+  // 고른 칸 테두리: 3px, 어두운 바탕(#171717)과 내 칸 배경 판(#2e2e2e) 둘 다에 대해 명도 대비 3:1 이상
+  const ring = page.locator(`[data-cube-ladder="${tier}"]`);
+  await expect.poll(() => ringOf(ring)).toContain("0px 0px 0px 3px");
+  const rgb = (await ringOf(ring)).match(/rgba?\((\d+), (\d+), (\d+)/);
+  expect(rgb).not.toBeNull();
+  const [r, g, b] = (rgb ?? []).slice(1, 4).map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  for (const bg of [0x17, 0x2e])
+    expect(contrastRgb([r, g, b], [bg, bg, bg])).toBeGreaterThanOrEqual(3);
+}
+
+/** 두 sRGB 색의 명도 대비(WCAG) */
+function contrastRgb(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+): number {
+  const lum = ([r, g, b]: readonly [number, number, number]) => {
+    const f = (v: number) => {
+      const s = v / 255;
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
 }
 
 const TIERS = [
@@ -180,10 +208,13 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "",
   );
   await expect(page.locator("[data-cube-next-tier]")).toHaveCount(0);
-  // 사다리: 열 칸 모두 같은 중간 밝기(보고 있는 칸 없음), 칸마다 미리 찍은 그림과 그 티어에 드는 시간
+  // 사다리: 기록 없음이면 위쪽 큰 칸의 아이언이 고른 칸(제 밝기 + 3px 테두리), 나머지는 중간 밝기. 내 칸 배경 판은 없다
   await expect(page.locator("[data-cube-ladder]")).toHaveCount(10);
-  await expect(page.locator("[data-cube-ladder-shown]")).toHaveCount(0);
-  expect(new Set(await artFilters(page))).toEqual(new Set([REST]));
+  await expectShown(page, "iron");
+  await expect(page.locator("[data-cube-ladder-mine]")).toHaveCount(0);
+  await expect
+    .poll(() => ringOf(page.locator('[data-cube-ladder="iron"]')))
+    .toContain("0px 0px 0px 3px");
   await expect(page.locator('[data-cube-ladder="diamond"]')).toContainText(
     "14초 이하",
   );
@@ -255,7 +286,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   expect(await bgOf("diamond")).toBe(mineBg);
   expect(await bgOf("emerald")).toBe("rgba(0, 0, 0, 0)");
   // 내 티어를 보고 있으면 배경 판 + 다이아몬드 색 테두리
-  await expect.poll(() => ringOf(cell("diamond"))).toContain("125, 211, 252");
+  await expect.poll(() => ringOf(cell("diamond"))).toContain("56, 189, 248");
   await expect
     .poll(() => ringOf(cell("diamond")))
     .not.toContain("252, 211, 77");
@@ -265,7 +296,7 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   // 아직 얻지 못한 마스터를 누르면 그 칸이 밝아지고 마스터 색 테두리, 내 칸은 배경 판만 남는다(테두리 없음)
   await cell("master").click();
   await expectShown(page, "master");
-  await expect.poll(() => ringOf(cell("master"))).toContain("240, 171, 252");
+  await expect.poll(() => ringOf(cell("master"))).toContain("232, 121, 249");
   expect(await bgOf("diamond")).toBe(mineBg);
   await expect.poll(() => ringOf(cell("diamond"))).toBe("none");
   await shot(page, "tiers-picked", info.project.name);
