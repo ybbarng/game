@@ -53,6 +53,36 @@ async function stillsLoaded(scope: Locator, count: number) {
   await expect(scope.locator(".cube-emblem svg")).toHaveCount(0);
 }
 
+/** 사다리 칸 열 개가 미리 찍은 그림을 받았다 */
+async function spritesLoaded(page: Page) {
+  const cells = page.locator("[data-cube-ladder-sprite]");
+  await expect(cells).toHaveCount(10);
+  await expect
+    .poll(() =>
+      cells.evaluateAll(async (els) => {
+        const urls = els.map(
+          (e) =>
+            getComputedStyle(e).backgroundImage.match(
+              /url\("?(.+?)"?\)/,
+            )?.[1] ?? "",
+        );
+        const ok = await Promise.all(
+          urls.map(
+            (u) =>
+              new Promise<boolean>((r) => {
+                const img = new Image();
+                img.onload = () => r(img.naturalWidth > 0);
+                img.onerror = () => r(false);
+                img.src = u;
+              }),
+          ),
+        );
+        return ok.every(Boolean);
+      }),
+    )
+    .toBe(true);
+}
+
 test.beforeEach(async ({ page }) => {
   await no3d(page);
 });
@@ -90,6 +120,26 @@ test("큐브 메뉴에서 티어표로 가고, 기록이 없으면 표만 보인
     "아직 Ao5가 없습니다",
   );
   await expect(page.locator("[data-cube-tier-mine]")).toHaveCount(0);
+  // 진열: 기록이 없으면 내 티어 칸은 처음 얻을 아이언을 잠긴 채로 보이고, 다음 티어 칸은 없다
+  await expect(page.locator("[data-cube-tier-hero]")).toHaveAttribute(
+    "data-cube-tier-hero",
+    "iron",
+  );
+  await expect(page.locator("[data-cube-tier-hero]")).toHaveAttribute(
+    "data-cube-tier-locked",
+    "",
+  );
+  await expect(page.locator("[data-cube-next-tier]")).toHaveCount(0);
+  // 사다리: 열 티어 모두 잠김, 칸마다 미리 찍은 그림과 그 티어에 드는 시간
+  await expect(page.locator("[data-cube-ladder]")).toHaveCount(10);
+  await expect(page.locator("[data-cube-ladder-locked]")).toHaveCount(10);
+  await expect(page.locator('[data-cube-ladder="diamond"]')).toContainText(
+    "14초 이하",
+  );
+  await expect(page.locator('[data-cube-ladder="iron"]')).toContainText(
+    "다 맞춤",
+  );
+  await spritesLoaded(page);
   // WCA 결과 내보내기 README가 요구하는 출처 문구(그대로)
   await expect(page.locator("[data-cube-wca-credit]")).toHaveText(
     "This information is based on competition results owned and maintained by the World Cube Assocation, published at https://worldcubeassociation.org/results as of November 9, 2026.",
@@ -122,11 +172,32 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
     "diamond",
   );
   await expect(page.locator("[data-cube-tier-cell]")).toHaveText("14초");
-  // 내 티어 상자: 엠블럼과 구간 표시(IV = 하나)
+  // 내 티어 칸: 엠블럼(3D를 끈 기기라 정지 그림)과 구간 표시(IV = 하나), 다음 티어 마스터까지 3.40초
+  await expect(page.locator("[data-cube-tier-hero]")).toHaveAttribute(
+    "data-cube-tier-hero",
+    "diamond",
+  );
+  await expect(page.locator("[data-cube-tier-locked]")).toHaveCount(0);
   await expect(
-    page.locator("[data-cube-tier-mine-box] [data-cube-emblem]"),
-  ).toHaveAttribute("data-cube-emblem-division", "IV");
-  await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 1);
+    page.locator("[data-cube-tier-mine-box] [data-cube-tier-division]"),
+  ).toHaveAttribute("data-cube-tier-division", "IV");
+  const next = page.locator("[data-cube-next-tier]");
+  await expect(next).toHaveAttribute("data-cube-next-tier", "master");
+  await expect(next.locator("[data-cube-next-gap]")).toHaveText("3.40초");
+  await expect(next).toContainText("Ao5 10초 이하");
+  // 정지 그림: 내 티어(3D 대신) + 다음 티어
+  await stillsLoaded(page.locator("[data-cube-tier-mine-box]"), 2);
+  // 사다리: 다이아몬드가 내 칸, 그 위 셋(마스터·그랜드마스터·챌린저)만 잠김
+  await expect(page.locator("[data-cube-ladder-mine]")).toHaveAttribute(
+    "data-cube-ladder",
+    "diamond",
+  );
+  const locked = page.locator("[data-cube-ladder-locked]");
+  await expect(locked).toHaveCount(3);
+  for (const t of ["master", "grandmaster", "challenger"])
+    await expect(
+      page.locator(`[data-cube-ladder="${t}"][data-cube-ladder-locked]`),
+    ).toHaveCount(1);
   await noSideScroll(page);
   await shot(page, "tiers-mine", info.project.name);
 
@@ -151,4 +222,12 @@ test("이 기기 기록의 최고 Ao5와 티어를 짚고, 혼자 맞추기 기�
   await tier.click();
   await expect(page).toHaveURL(/\/cube\/tiers\?n=3$/);
   await expect(page.locator("[data-cube-my-tier]")).toHaveText("다이아몬드 IV");
+});
+
+test("없앤 엠블럼 미리보기 주소로 들어오면 티어 화면으로 간다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await page.goto("/cube/tiers/emblems");
+  await expect(page).toHaveURL(/\/cube\/tiers$/);
+  await expect(page.getByRole("heading", { name: "티어표" })).toBeVisible();
 });

@@ -4,15 +4,20 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-  BIG_SIZE,
-  DRAFT_SIZE,
-  emblemSize,
+  HERO_SIZE,
+  LADDER_SIZE,
   POSTER_DIR,
   POSTER_DPR,
   POSTER_PAGE,
   POSTERS,
   posterFile,
   posterSrc,
+  SPRITE_AMP,
+  SPRITE_DIR,
+  SPRITE_FRAMES,
+  SPRITE_FRONT,
+  SPRITE_YAWS,
+  spriteFile,
 } from "./poster";
 import {
   STILL_CSS,
@@ -26,6 +31,22 @@ import {
 
 const PUBLIC = join(__dirname, "../../../../public");
 const CUBIE = join(__dirname, "../../../../../cubie/Resources/Emblems");
+declare global {
+  interface ImportMeta {
+    glob<T>(
+      pattern: string | string[],
+      options: { query: "?raw"; import: "default"; eager: true },
+    ): Record<string, T>;
+  }
+}
+// 찍기 스크립트를 import.meta.glob(?raw)으로 읽어 모듈 그래프에 잡히게 한다(스크립트가 바뀌면 `vitest --changed`가 이 시험을 돈다)
+const SCRIPT_SOURCE = Object.values(
+  import.meta.glob<string>("../../../../scripts/render-emblem-posters.mjs", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+)[0] as string;
 
 /** PNG 그림의 가로·세로와 알파가 있는지(색 형식 6 = RGBA) */
 function pngInfo(b: Buffer): { w: number; h: number; alpha: boolean } {
@@ -48,23 +69,15 @@ function webpSize(b: Buffer): [number, number] {
 }
 
 describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7)", () => {
-  it("찍어 둘 그림이 모두 있고, 3D 칸과 같은 크기(2배 화소)다", () => {
-    for (const p of POSTERS) {
-      const file = join(PUBLIC, POSTER_DIR, posterFile(p));
-      const [w, h] = webpSize(readFileSync(file));
-      expect([w, h], posterFile(p)).toEqual([
-        p.size * POSTER_DPR,
-        p.size * POSTER_DPR,
+  it("열 티어 모두 있고, 내 티어 3D 칸과 같은 크기(2배 화소)다", () => {
+    expect(POSTERS).toHaveLength(10);
+    for (const t of POSTERS) {
+      const file = join(PUBLIC, POSTER_DIR, posterFile(t));
+      expect(webpSize(readFileSync(file)), posterFile(t)).toEqual([
+        HERO_SIZE * POSTER_DPR,
+        HERO_SIZE * POSTER_DPR,
       ]);
     }
-  });
-
-  it("열 티어 × 바탕 둘: 금속 다섯은 보통 칸, 보석 다섯은 생김새가 보이게 큰 칸", () => {
-    expect(POSTERS).toHaveLength(20);
-    expect(POSTERS.filter((p) => p.size === DRAFT_SIZE)).toHaveLength(10);
-    expect(POSTERS.filter((p) => p.size === BIG_SIZE)).toHaveLength(10);
-    expect(emblemSize("gold")).toBe(DRAFT_SIZE);
-    expect(emblemSize("master")).toBe(BIG_SIZE);
   });
 
   it("남은 그림은 목록에 있는 것뿐(쓰지 않는 그림을 남기지 않는다)", () => {
@@ -75,17 +88,47 @@ describe("3D 엠블럼 대기 그림(고정 규칙 2-1절, docs/47 14-7)", () =>
     expect(have.filter((f) => !want.has(f))).toEqual([]);
   });
 
-  it("칸에 맞는 그림만 고른다: 크기·바탕이 다르면 없다(그때만 SVG)", () => {
-    expect(posterSrc("diamond", BIG_SIZE, undefined)).toBe(
+  it("칸에 맞는 그림만 고른다: 크기·바탕이 다르면 없다(그때는 작은 로딩 표시)", () => {
+    expect(posterSrc("diamond", HERO_SIZE, undefined)).toBe(
       `${POSTER_DIR}/diamond-dark.webp`,
     );
-    expect(posterSrc("gold", DRAFT_SIZE, POSTER_PAGE.light)).toBe(
-      `${POSTER_DIR}/gold-light.webp`,
+    expect(posterSrc("gold", HERO_SIZE, POSTER_PAGE)).toBe(
+      `${POSTER_DIR}/gold-dark.webp`,
     );
-    expect(posterSrc("ruby" as never, DRAFT_SIZE, undefined)).toBeNull();
-    // 찍지 않은 크기·바탕
-    expect(posterSrc("diamond", DRAFT_SIZE, undefined)).toBeNull();
-    expect(posterSrc("diamond", BIG_SIZE, "#123456")).toBeNull();
+    expect(posterSrc("ruby" as never, HERO_SIZE, undefined)).toBeNull();
+    expect(posterSrc("diamond", LADDER_SIZE, undefined)).toBeNull();
+    expect(posterSrc("diamond", HERO_SIZE, "#f5f5f5")).toBeNull();
+  });
+});
+
+describe("진열 칸 그림(각도별 장을 이어 붙인 그림)", () => {
+  it("열 티어 모두 있고, 사다리 칸 크기(2배 화소)의 장이 좌우 각 수만큼 가로로 이어진다", () => {
+    for (const t of POSTERS) {
+      const px = LADDER_SIZE * POSTER_DPR;
+      expect(
+        webpSize(readFileSync(join(PUBLIC, SPRITE_DIR, spriteFile(t)))),
+        spriteFile(t),
+      ).toEqual([px * SPRITE_FRAMES, px]);
+    }
+    const want = new Set(POSTERS.map(spriteFile));
+    expect(
+      readdirSync(join(PUBLIC, SPRITE_DIR)).filter((f) => !want.has(f)),
+    ).toEqual([]);
+  });
+
+  it("각은 정면 둘레로 고르게, 가운데 장이 정면", () => {
+    expect(SPRITE_YAWS).toHaveLength(SPRITE_FRAMES);
+    expect(SPRITE_YAWS[SPRITE_FRONT]).toBeCloseTo(0, 9);
+    expect(SPRITE_YAWS[0]).toBeCloseTo(-SPRITE_AMP, 9);
+    expect(SPRITE_YAWS[SPRITE_FRAMES - 1]).toBeCloseTo(SPRITE_AMP, 9);
+  });
+
+  it("찍기 스크립트의 크기·각 수가 poster.ts와 같다", () => {
+    const script = SCRIPT_SOURCE;
+    expect(script).toContain(`const HERO_SIZE = ${HERO_SIZE};`);
+    expect(script).toContain(`const LADDER_SIZE = ${LADDER_SIZE};`);
+    expect(script).toContain(`const SPRITE_FRAMES = ${SPRITE_FRAMES};`);
+    expect(script).toContain(`const SPRITE_AMP = ${SPRITE_AMP};`);
   });
 });
 

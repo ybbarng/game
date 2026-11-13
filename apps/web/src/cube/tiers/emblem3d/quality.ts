@@ -28,6 +28,20 @@ export const BUDGET_SHARE = 0.85;
 export const BUDGET_MIN = 6;
 export const BUDGET_MAX = SLOW_MS;
 
+/** 저절로 흔들기를 멈출 만큼 느린지: 가장 낮은 해상도에서 잰 한 장이 예산의 이 배수를 넘으면 */
+export const SWAY_STOP_FACTOR = 2;
+
+/**
+ * 진열 흔들기(티어 화면)를 그만둘지. 끄는 동안은 사람이 움직이니 끊겨도 괜찮지만, 저절로 흔드는 것은 느린 기기에서
+ * 끊긴 장을 쉬지 않고 그리며 CPU를 쓴다
+ */
+export function tooSlowToSway(q: MotionQuality): boolean {
+  return (
+    q.level === MOTION_SCALES.length - 1 &&
+    q.median > q.budget * SWAY_STOP_FACTOR
+  );
+}
+
 export class MotionQuality {
   private samples: number[] = [];
   private intervals: number[] = [];

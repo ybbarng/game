@@ -90,6 +90,29 @@ function divisionOf(row: TierRow, d: number): Division | null {
   return row.cuts.length === 4 ? (DIVISIONS[d] as Division) : null;
 }
 
+/** 다음 티어(티어 화면 진열, docs/47 14-7 「진열」) */
+export interface NextTier {
+  tier: TierId;
+  /** 그 티어에 드는 최고 Ao5 상한(ms, 가장 낮은 구간의 상한) */
+  cutMs: number;
+  /** 지금 최고 Ao5에서 줄여야 할 시간(ms) */
+  gapMs: number;
+}
+
+/**
+ * 크기 `n`에서 Ao5 `ms`인 사람의 다음 티어(지금 티어 바로 위 티어의 가장 낮은 구간에 들려면). 꼭대기(챌린저)면 null
+ */
+export function nextTier(n: number, ms: number): NextTier | null {
+  const table = TIER_TABLE[n];
+  const here = tierOf(n, ms);
+  if (!table || !here) return null;
+  const i = table.findIndex((r) => r.tier === here.tier);
+  const up = table[i + 1];
+  if (!up) return null;
+  const cutMs = Math.round((up.cuts[0] as number) * 1000);
+  return { tier: up.tier, cutMs, gapMs: Math.max(0, ms - cutMs) };
+}
+
 /** 「다이아몬드 II」「챌린저」 */
 export function tierName(p: Pick<TierPlace, "tier" | "division">): string {
   return p.division

@@ -105,7 +105,7 @@ const SMALL_TINT = JSON.parse(
     JSON.stringify({
       silver: { color: "#cfd8e6", amount: 0.25 },
       platinum: { color: "#2fd6c4", amount: 0.55 },
-      diamond: { color: "#7cc4ff", amount: 0.5 },
+      diamond: { color: "#8ccdff", amount: 0.38 },
       challenger: { color: "#ffd36a", amount: 0.3 },
     }),
 );
@@ -377,10 +377,12 @@ async function readme(page) {
       const c = new OffscreenCanvas(W, H);
       const ctx = c.getContext("2d");
       const n = imgs.length;
-      const gap = W / n;
+      // 양옆 여백: 위 티어일수록 커져 마지막 칸 날개가 그림 밖으로 나가지 않게
+      const side = 36 * S;
+      const gap = (W - side * 2) / n;
       imgs.forEach((im, i) => {
         const size = (84 + i * 5) * S;
-        const cx = gap * (i + 0.5);
+        const cx = side + gap * (i + 0.5);
         const bottom = H - 34 * S - i * 12 * S;
         ctx.drawImage(im, cx - size / 2, bottom - size, size, size);
         ctx.font = `600 ${15 * S}px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;

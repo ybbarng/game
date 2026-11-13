@@ -41,7 +41,6 @@ export function EmblemStill({
       />
     );
   const pips = division !== null && size >= 28;
-  const p = PALETTE[tier];
   return (
     <span
       data-cube-emblem={tier}
@@ -70,30 +69,46 @@ export function EmblemStill({
         style={{ width: size, height: size }}
       />
       {pips && division && (
-        <svg
-          viewBox="0 0 64 10"
-          width={size}
-          height={(size * 10) / 64}
-          aria-hidden
-          className="block"
-        >
-          {/* 구간: 마름모 넷 가운데 켜진 개수(TierEmblem과 같은 모양) */}
-          {[0, 1, 2, 3].map((i) => {
-            const x = 32 + (i - 1.5) * 9;
-            const on = i < divisionPips(division);
-            return (
-              <polygon
-                key={i}
-                points={`${x},1.6 ${x + 3.2},5 ${x},8.4 ${x - 3.2},5`}
-                fill={on ? p.accent : "#ffffff"}
-                fillOpacity={on ? 1 : 0.16}
-                stroke={on ? p.dark : "none"}
-                strokeWidth="0.6"
-              />
-            );
-          })}
-        </svg>
+        <DivisionPips tier={tier} division={division} size={size} />
       )}
     </span>
+  );
+}
+
+/** 구간 표시: 마름모 넷 가운데 켜진 개수(IV 하나 … I 넷, TierEmblem과 같은 모양). `size`는 너비(px) */
+export function DivisionPips({
+  tier,
+  division,
+  size,
+}: {
+  tier: TierId;
+  division: Division;
+  size: number;
+}) {
+  const p = PALETTE[tier];
+  return (
+    <svg
+      viewBox="0 0 64 10"
+      width={size}
+      height={(size * 10) / 64}
+      aria-hidden
+      data-cube-tier-division={division}
+      className="block"
+    >
+      {[0, 1, 2, 3].map((i) => {
+        const x = 32 + (i - 1.5) * 9;
+        const on = i < divisionPips(division);
+        return (
+          <polygon
+            key={i}
+            points={`${x},1.6 ${x + 3.2},5 ${x},8.4 ${x - 3.2},5`}
+            fill={on ? p.accent : "#ffffff"}
+            fillOpacity={on ? 1 : 0.16}
+            stroke={on ? p.dark : "none"}
+            strokeWidth="0.6"
+          />
+        );
+      })}
+    </svg>
   );
 }

@@ -6,6 +6,7 @@ import {
   MOTION_SCALES,
   MotionQuality,
   SLOW_MS,
+  tooSlowToSway,
   WINDOW,
 } from "./quality";
 
@@ -57,5 +58,22 @@ describe("돌리는 동안 해상도 조절", () => {
     for (let i = 0; i < WINDOW; i++) q.note(i === 3 ? 80 : 3);
     expect(q.level).toBe(0);
     expect(q.median).toBeLessThan(SLOW_MS);
+  });
+
+  it("진열 흔들기: 가장 낮은 해상도에서도 예산의 두 배를 넘을 때만 그만둔다(소프트웨어 GPU)", () => {
+    const q = new MotionQuality();
+    // 이 맥 GPU처럼 빠르면 그대로
+    for (let i = 0; i < WINDOW; i++) q.note(4);
+    expect(tooSlowToSway(q)).toBe(false);
+    // 느리면 먼저 해상도를 끝까지 낮추고, 그때까지는 흔든다
+    for (let k = 0; k < MOTION_SCALES.length - 1; k++) {
+      expect(tooSlowToSway(q)).toBe(false);
+      for (let i = 0; i < WINDOW; i++) q.note(150);
+    }
+    expect(q.level).toBe(MOTION_SCALES.length - 1);
+    expect(tooSlowToSway(q)).toBe(true);
+    // 가장 낮은 해상도에서 예산 안팎이면 흔든다
+    for (let i = 0; i < WINDOW; i++) q.note(q.budget * 1.5);
+    expect(tooSlowToSway(q)).toBe(false);
   });
 });

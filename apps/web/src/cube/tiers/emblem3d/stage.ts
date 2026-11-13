@@ -9,7 +9,7 @@ import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 import { levelOf } from "../emblemArt";
 import { type LookParts, lookParts } from "./lookStats";
 import { POSTER_PAGE } from "./poster";
-import { MotionQuality, REST_MS } from "./quality";
+import { MotionQuality, REST_MS, tooSlowToSway } from "./quality";
 import {
   buildEmblemScene,
   type DraftTier,
@@ -50,7 +50,7 @@ let learnedLevel = 0;
  */
 
 /** 미리보기 바탕(neutral-900)과 같은 색: 배경판 가장자리가 페이지에 녹아든다 */
-export const PAGE_COLOR = POSTER_PAGE.dark;
+export const PAGE_COLOR = POSTER_PAGE;
 
 interface Painter {
   path: DrawPath;
@@ -638,6 +638,16 @@ export class EmblemStage implements ViewTurnTarget {
           if (this.disposed || scale !== this.scale) return;
           if (this.quality.note(performance.now() - t0)) {
             learnedLevel = Math.max(learnedLevel, this.quality.level);
+            this.apply();
+          }
+          // 가장 낮은 해상도에서도 한 장이 예산을 크게 넘으면(소프트웨어 GPU·저전력 기기) 저절로 흔들기를 멈춘다.
+          // 계속 흔들면 초당 몇 장으로 끊기며 CPU를 쉬지 않고 쓴다(2026-11-13 잰 값: 소프트웨어 GPU에서 마스터 초당
+          // 24장·한 장 150ms, 챌린저 8장). 끌어 돌리기는 그대로 된다
+          if (this.swayOn && tooSlowToSway(this.quality)) {
+            this.swayOn = false;
+            this.sway = null;
+            window.clearTimeout(this.resumeTimer);
+            this.host.dataset.emblem3dSwayStopped = "slow";
             this.apply();
           }
         });

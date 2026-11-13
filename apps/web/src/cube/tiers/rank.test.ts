@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { SolveRecord } from "../records";
-import { ao5, bestAo5, myTier, tierName, tierOf } from "./rank";
+import { ao5, bestAo5, myTier, nextTier, tierName, tierOf } from "./rank";
 import { TIER_IDS, TIER_SIZES, TIER_TABLE } from "./table";
 
 const r = (
@@ -125,5 +125,42 @@ describe("티어 경계(상한 이하)", () => {
 
   it("표가 없는 크기는 없다", () => {
     expect(tierOf(8, 10_000)).toBeNull();
+  });
+});
+
+describe("다음 티어(티어 화면 진열)", () => {
+  it("바로 위 티어의 가장 낮은 구간 상한까지 줄일 시간", () => {
+    // 3×3 Ao5 13.40초 = 다이아몬드 IV → 마스터(10초 이하)까지 3.40초
+    expect(nextTier(3, 13_400)).toEqual({
+      tier: "master",
+      cutMs: 10_000,
+      gapMs: 3_400,
+    });
+    // 같은 티어 안에서 구간이 올라도 다음 티어는 같다(다이아몬드 I 11.00초 → 마스터까지 1초)
+    expect(nextTier(3, 11_000)?.gapMs).toBe(1_000);
+    // 구간 없는 티어: 그랜드마스터 → 챌린저(6.5초)
+    expect(nextTier(3, 7_000)).toEqual({
+      tier: "challenger",
+      cutMs: 6_500,
+      gapMs: 500,
+    });
+  });
+
+  it("꼭대기(챌린저)와 표 없는 크기는 없다", () => {
+    expect(nextTier(3, 6_000)).toBeNull();
+    expect(nextTier(8, 10_000)).toBeNull();
+  });
+
+  it("모든 크기·티어에서 다음 티어는 한 칸 위다", () => {
+    for (const n of TIER_SIZES) {
+      const table = TIER_TABLE[n] ?? [];
+      for (const [i, row] of table.entries()) {
+        const ms = Math.round((row.cuts[row.cuts.length - 1] as number) * 1000);
+        // 구간 없는 아이언(6×6·7×7)은 상한이 끝없음이라 그 안의 아무 시간
+        if (!Number.isFinite(ms)) continue;
+        const next = nextTier(n, ms);
+        expect(next?.tier ?? null).toBe(TIER_IDS[i + 1] ?? null);
+      }
+    }
   });
 });

@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
-import { formatMs } from "../records";
-import { EmblemStill } from "./EmblemStill";
 import { installCaptureHook } from "./emblem3d/capture";
-import { tierName } from "./rank";
-import { TIER_TONE, TierTable, useMyTier } from "./TierTable";
+import { TierHero, TierLadder } from "./TierShowcase";
+import { TierTable, useMyTier } from "./TierTable";
 import {
   TIER_DATA_DATE,
   TIER_SIZES,
@@ -56,7 +54,7 @@ export function TiersApp() {
       className="min-h-dvh bg-neutral-900 text-white"
       data-cube-tiers={n}
     >
-      <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-4">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-4">
         <header className="flex items-center gap-3">
           <a
             href="/cube"
@@ -66,20 +64,6 @@ export function TiersApp() {
           </a>
           <h1 className="font-bold text-lg">티어표</h1>
         </header>
-
-        <section className="flex flex-col gap-1.5 text-sm text-white/80 leading-relaxed">
-          <p>
-            같은 크기 혼자 맞추기에서 낸 가장 좋은 Ao5로 티어를 매깁니다. Ao5는
-            연달아 맞춘 5번 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3번의
-            평균입니다.
-          </p>
-          <p>
-            골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고,
-            아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔습니다.
-            큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰,
-            크기가 달라도 같은 티어면 비슷한 실력입니다.
-          </p>
-        </section>
 
         <fieldset className="grid grid-cols-6 gap-1.5">
           <legend className="sr-only">크기</legend>
@@ -102,46 +86,23 @@ export function TiersApp() {
           ))}
         </fieldset>
 
-        <div
-          data-cube-tier-mine-box
-          className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm"
-        >
-          {mine ? (
-            <div className="flex items-center gap-3">
-              <EmblemStill
-                tier={mine.place.tier}
-                division={mine.place.division}
-                size={64}
-              />
-              <p>
-                <span
-                  data-cube-my-tier={mine.place.tier}
-                  className={cn(
-                    "block font-bold text-base",
-                    TIER_TONE[mine.place.tier],
-                  )}
-                >
-                  {tierName(mine.place)}
-                </span>
-                내 최고 Ao5{" "}
-                <span className="font-mono font-semibold tabular-nums">
-                  {formatMs(mine.ao5)}
-                </span>
-              </p>
-            </div>
-          ) : (
-            <p className="text-white/70">
-              이 크기는 아직 Ao5가 없습니다.{" "}
-              <a href="/cube/solo" className="text-sky-300 hover:underline">
-                혼자 맞추기
-              </a>
-              에서 5번 맞추면 생깁니다.
-            </p>
-          )}
-          <p className="mt-1 text-white/50 text-xs">
-            기록은 이 기기에만 저장됩니다.
+        <TierHero n={n} mine={mine} />
+
+        <TierLadder n={n} mine={mine} />
+
+        <section className="flex flex-col gap-1.5 text-sm text-white/80 leading-relaxed">
+          <p>
+            같은 크기 혼자 맞추기에서 낸 가장 좋은 Ao5로 티어를 매깁니다. Ao5는
+            연달아 맞춘 5번 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3번의
+            평균입니다.
           </p>
-        </div>
+          <p>
+            골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고,
+            아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔습니다.
+            큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰,
+            크기가 달라도 같은 티어면 비슷한 실력입니다.
+          </p>
+        </section>
 
         <section className="flex flex-col gap-1">
           <h2 className="font-semibold">

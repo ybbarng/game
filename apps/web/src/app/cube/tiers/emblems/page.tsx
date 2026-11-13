@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 
-import { EmblemPreview } from "@/cube/tiers/EmblemPreview";
-
 export const metadata: Metadata = {
-  title: { absolute: "큐브 티어 엠블럼 미리보기" },
+  title: { absolute: "큐브 티어표" },
   robots: { index: false, follow: false },
 };
 
 /**
- * 티어 엠블럼 열 개를 크기별로 한눈에 견주는 개발용 화면. 숨은 주소: 메뉴에 링크가 없고 검색에 싣지 않는다.
- * `?hdr=1`이면 SDR 화면에서도 HDR 층(멈춘 반짝임 점)을 겹쳐 자리를 본다.
+ * 없앤 개발용 엠블럼 미리보기 주소(2026-11-13, 진열을 티어 화면으로 옮김, docs/47 14-7 「진열」). 운영 nginx가 먼저 301로
+ * 티어 화면에 보내고(deploy/nginx.conf), nginx 밖(정적 빌드를 그대로 띄운 곳)에서도 바로 넘어가게 이 작은 페이지를 둔다.
  */
-export default function CubeTierEmblemsPage() {
-  return <EmblemPreview />;
+export default function OldEmblemPreviewPage() {
+  return (
+    <main className="min-h-dvh bg-neutral-900 p-4 text-white">
+      <meta httpEquiv="refresh" content="0;url=/cube/tiers" />
+      <a href="/cube/tiers" className="text-sky-300 underline">
+        티어표
+      </a>
+    </main>
+  );
 }
