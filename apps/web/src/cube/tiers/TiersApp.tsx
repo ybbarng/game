@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatMs } from "../records";
+import { EmblemStill } from "./EmblemStill";
 import { tierName } from "./rank";
-import { TierEmblem } from "./TierEmblem";
 import { TIER_TONE, TierTable, useMyTier } from "./TierTable";
 import {
   TIER_DATA_DATE,
@@ -100,7 +100,7 @@ export function TiersApp() {
         >
           {mine ? (
             <div className="flex items-center gap-3">
-              <TierEmblem
+              <EmblemStill
                 tier={mine.place.tier}
                 division={mine.place.division}
                 size={64}

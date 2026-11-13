@@ -1,5 +1,6 @@
 import type * as THREE_NS from "three";
 
+import { stepCutPlanes, voronoiSeeds } from "./cutGeometry";
 import {
   GEM_BOUNCES,
   GEM_BOX_HALF,
@@ -12,28 +13,36 @@ import {
   THROUGH_HI,
   THROUGH_LO,
 } from "./gem";
+import type { FacetCut, GemStyleLook } from "./gemStyle";
 
 /**
- * 보석 재질(docs/47 14-7 「셋째 시안」·「넷째 시안」). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이
- * 그리고(몸 색은 검정이라 난반사 없음, 투과 없음), 보석 안의 빛은 조각마다 빛길을 따라가 자체 발광(emissive) 자리에
- * 더한다. 계산은 `gem.ts`의 `traceGem`과 같다. WebGL은 GLSL을 끼워 넣고(`onBeforeCompile`), WebGPU(HDR 길)는 같은
- * 계산을 TSL 노드로 짓는다(`gemNodeEmissive`).
+ * 보석 재질(docs/47 14-7). 겉 반사(프레넬, 점 조명의 반짝 점)는 `MeshPhysicalMaterial`이 그리고(몸 색은 검정이라 난반사
+ * 없음, 투과 없음), 보석 안의 빛은 조각마다 빛길을 따라가 자체 발광(emissive) 자리에 더한다. 계산은 `gem.ts`의
+ * `traceGem`과 같다. WebGL은 GLSL을 끼워 넣고(`onBeforeCompile`), WebGPU(HDR 길)는 같은 계산을 TSL 노드로 짓는다
+ * (`gemNodeEmissive`, 넷째 시안 생김새. 확정한 티어별 생김새는 아직 옮기지 않았다).
  *
  * 나가는 빛은 어디를 보는지에 따라 둘 중 하나를 읽는다(`gem.ts` `throughWeight`): 보석을 꿰뚫어 뒤로 나가는 빛은 뒤
  * 배경판(장면의 그 그림, 돌지 않는 평면)을 직접 읽고, 안에서 되튀어 옆·앞으로 나가는 빛은 스튜디오 반사 지도를 읽는다.
- * 그래서 보석 너머 배경이 굴절돼 비치고(투명), 가장자리·면에서만 스튜디오 빛이 반짝인다. 배경판은 평면 하나라 장면을
- * 한 번 더 그리지 않고 텍스처 한 번 읽기로 끝난다.
+ *
+ * 티어별 생김새(열째 시안 확정, `gemStyle.ts`)가 쓰는 길: 겉면 얕은 계단(`GEM_FACET`, 다이아몬드), 실제로 깎은 계단 컷
+ * 다면체(`GEM_SHAPE == 3`, 그랜드마스터), 조각 안 결정 구조(`GEM_VORO`, 마스터·챌린저), 분산 세 번 추적(`GEM_DISPERSE`,
+ * 챌린저)과 분산 흉내(`GEM_FIRE`, 다이아몬드).
  */
 
 type Three = typeof THREE_NS;
 
 /**
- * 겉 반사 세기(반사 지도). 1이면 물리 그대로: 정면 반사율이 굴절률대로 에메랄드 5.0%, 자수정 4.6%, 루비 7.7%,
+ * 겉 반사 세기(반사 지도). 1이면 물리 그대로: 정면 반사율이 굴절률대로 에메랄드 5.0%, 사파이어 7.6%, 루비 7.7%,
  * 다이아몬드 17%. 예전 1.5는 정면에서도 반사가 커서 금속처럼 보이는 데 한몫했다
  */
 export const GEM_FRONT_ENV = 1;
 
-const SHAPE_ID: Record<GemShape, number> = { box: 0, octa: 1, slab: 2 };
+const SHAPE_ID: Record<GemShape, number> = {
+  box: 0,
+  octa: 1,
+  slab: 2,
+  poly: 3,
+};
 
 /** 분산을 따로 따라갈 만큼 큰지(아니면 초록 채널 굴절률 하나로 따라간다) */
 export function disperses(g: GemPhysics): boolean {
@@ -74,7 +83,7 @@ export interface GemSee {
   backGain: number;
   /** 되튄 빛이 읽는 스튜디오 반사 지도 세기 */
   envGain: number;
-  /** 월드 → 큐브 좌표(큐브 전체 두께로 더 흡수할 때). 매 장 `EmblemScene.update`가 고친다 */
+  /** 월드 → 큐브 좌표(큐브 전체 두께로 더 흡수할 때, 결정 구조 씨앗 고르기). 매 장 `EmblemScene.update`가 고친다 */
   cubeInv: THREE_NS.Matrix4;
 }
 
@@ -101,7 +110,82 @@ vGemM3 = modelMatrix[ 3 ].xyz;
 
 const f = (x: number) => x.toFixed(5);
 
-const FRAG_FUNCS = /* glsl */ `
+/**
+ * 겉면 얕은 계단의 법선(`gemStyle.ts` `facetNormal`과 같은 계산). 띠 값은 생김새마다 달라 셰이더 글로 펼친다. 깎지
+ * 않으면 면의 축 법선을 그대로 돌려준다
+ */
+function facetGlsl(cut: FacetCut): string {
+  const rings = cut.rings
+    .map(
+      (r) =>
+        `  if ( r >= ${f(r.from)} ) tilt = ${f((r.tilt * Math.PI) / 180)};`,
+    )
+    .join("\n");
+  return /* glsl */ `
+vec3 gemFacet( vec3 p, vec3 n ) {
+  vec3 a = abs( n );
+  vec3 N; vec3 U; vec3 V;
+  if ( a.x >= a.y && a.x >= a.z ) { N = vec3( n.x < 0.0 ? - 1.0 : 1.0, 0.0, 0.0 ); U = vec3( 0.0, 1.0, 0.0 ); V = vec3( 0.0, 0.0, 1.0 ); }
+  else if ( a.y >= a.z ) { N = vec3( 0.0, n.y < 0.0 ? - 1.0 : 1.0, 0.0 ); U = vec3( 1.0, 0.0, 0.0 ); V = vec3( 0.0, 0.0, 1.0 ); }
+  else { N = vec3( 0.0, 0.0, n.z < 0.0 ? - 1.0 : 1.0 ); U = vec3( 1.0, 0.0, 0.0 ); V = vec3( 0.0, 1.0, 0.0 ); }
+  float u = dot( p, U ) / ${f(GEM_BOX_HALF)};
+  float v = dot( p, V ) / ${f(GEM_BOX_HALF)};
+  float r = max( abs( u ), abs( v ) );
+  float tilt = 0.0;
+${rings}
+  if ( tilt <= 0.0 ) return N;
+  // 가까운 변 쪽으로 기운다(꼭짓점에서 45° 맞붙는 선이 생긴다)
+  vec3 e = abs( u ) >= abs( v ) ? U * ( u < 0.0 ? - 1.0 : 1.0 ) : V * ( v < 0.0 ? - 1.0 : 1.0 );
+  return normalize( N * cos( tilt ) + e * sin( tilt ) );
+}
+`;
+}
+
+/**
+ * 조각 안 결정 구조(마스터·챌린저): 3D 보로노이 칸. 빛이 지금 칸의 씨앗과 이웃 씨앗 사이 이등분 면에 먼저 닿으면
+ * 일부(`GEM_VORO_R`)를 그 면에서 되비춘 방향으로 읽고, 나머지는 조금 꺾여(`GEM_VORO_BEND`) 이웃 칸으로 간다. 그래서 큰
+ * 영역 대신 잘게 쪼개진 반짝임이 난다. 조각마다 다른 씨앗 묶음(큐브 안 조각 자리로 고른다)
+ */
+const VORO_INIT = /* glsl */ `
+  vec3 gemCell = floor( ( gemCubeInv * vec4( vGemM3, 1.0 ) ).xyz + 0.5 ) + 1.0;
+  int vbase = ( int( gemCell.x ) * 9 + int( gemCell.y ) * 3 + int( gemCell.z ) ) * GEM_VORO;
+  int vcur = 0;
+  {
+    float bd = 1e9;
+    for ( int j = 0; j < GEM_VORO; j ++ ) {
+      vec3 s = gemSeeds[ vbase + j ];
+      float dd = dot( s - p, s - p );
+      if ( dd < bd ) { bd = dd; vcur = j; }
+    }
+  }`;
+const VORO_STEP = /* glsl */ `
+    {
+      vec3 si = gemSeeds[ vbase + vcur ];
+      float tb = t;
+      int nj = - 1;
+      vec3 bn = vec3( 0.0 );
+      for ( int j = 0; j < GEM_VORO; j ++ ) {
+        if ( j == vcur ) continue;
+        vec3 sj = gemSeeds[ vbase + j ];
+        vec3 nn = sj - si;
+        float dn = dot( d, nn );
+        if ( dn <= 1e-6 ) continue;
+        float tj = dot( ( si + sj ) * 0.5 - p, nn ) / dn;
+        if ( tj > 1e-4 && tj < tb ) { tb = tj; nj = j; bn = nn; }
+      }
+      if ( nj >= 0 ) {
+        bn = normalize( bn );
+        p += d * tb;
+        thr *= exp( - gemAbsorb * tb );
+        acc += thr * GEM_VORO_R * gemSee( p, reflect( d, bn ) );
+        thr *= 1.0 - GEM_VORO_R;
+        d = normalize( d + bn * GEM_VORO_BEND );
+        vcur = nj;
+        continue;
+      }
+    }`;
+
+const fragFuncs = (cut: FacetCut, fill: number) => /* glsl */ `
 #include <envmap_physical_pars_fragment>
 varying vec3 vGemPos;
 varying vec3 vGemNrm;
@@ -115,6 +199,13 @@ uniform vec3 gemAbsorb;
 uniform sampler2D gemBack;
 uniform vec4 gemSeeK;
 uniform mat4 gemCubeInv;
+#ifdef GEM_VORO
+uniform vec3 gemSeeds[ GEM_VORO_N ];
+#endif
+#if GEM_SHAPE == 3
+uniform vec4 gemPlanes[ GEM_PLANES ];
+#endif
+${facetGlsl(cut)}
 
 float gemFresnel( float cosI, float n1, float n2 ) {
   float s = n1 / n2 * sqrt( max( 0.0, 1.0 - cosI * cosI ) );
@@ -135,6 +226,18 @@ float gemExit( vec3 p, vec3 d, out vec3 m ) {
     if ( dn <= 1e-6 ) continue;
     float tk = ( ${f(GEM_OCTA_R)} / sqrt( 3.0 ) - dot( n, p ) ) / dn;
     if ( tk < t ) { t = tk; m = n; }
+  }
+  return max( t, 0.0 );
+#elif GEM_SHAPE == 3
+  // 계단 컷 다면체(그랜드마스터): 평면들의 교집합, 빛이 향하는 평면 가운데 가장 가까운 것
+  float t = 1e9;
+  m = vec3( 0.0, 0.0, 1.0 );
+  for ( int k = 0; k < GEM_PLANES; k ++ ) {
+    vec4 pl = gemPlanes[ k ];
+    float dn = dot( pl.xyz, d );
+    if ( dn <= 1e-6 ) continue;
+    float tk = ( pl.w - dot( pl.xyz, p ) ) / dn;
+    if ( tk < t ) { t = tk; m = pl.xyz; }
   }
   return max( t, 0.0 );
 #elif GEM_SHAPE == 2
@@ -191,26 +294,55 @@ vec3 gemSee( vec3 p, vec3 d ) {
 #ifdef GEM_IN_CUBE
   vec3 pc = ( gemCubeInv * vec4( pw, 1.0 ) ).xyz;
   vec3 dc = normalize( mat3( gemCubeInv ) * ow );
-  back *= exp( - gemAbsorb * gemBoxPath( pc, dc ) * ${f(GEM_CUBE_FILL)} );
+  back *= exp( - gemAbsorb * gemBoxPath( pc, dc ) * ${f(fill)} );
 #endif
   return mix( env, back, w );
 }
 
+#ifdef GEM_FIRE
+// 분산 흉내(다이아몬드): 빛길을 세 번 따라가는 대신 나가는 방향과 되튄 횟수로 스펙트럼 색을 골라 곱한다. 평균 밝기는
+// 그대로이고, 처음 나가는 빛(겉에 가까움)은 약하게, 안에서 되튄 뒤 나가는 빛일수록 불꽃이 선다
+vec3 gemFire( vec3 o, int i ) {
+  float h = fract( dot( o, vec3( 2.1, 3.3, 1.7 ) ) * 1.6 + float( i ) * 0.37 );
+  vec3 s = clamp( abs( fract( h + vec3( 0.0, 2.0 / 3.0, 1.0 / 3.0 ) ) * 6.0 - 3.0 ) - 1.0, 0.0, 1.0 );
+  return mix( vec3( 1.0 ), s * 2.0, GEM_FIRE * ( i > 0 ? 1.0 : 0.3 ) );
+}
+#endif
+
 vec3 gemTrace( float ior ) {
   vec3 n = normalize( vGemNrm );
+#ifdef GEM_FACET
+  n = gemFacet( vGemPos, n );
+#endif
   vec3 v = normalize( vGemPos - vGemCam );
   float cosI = clamp( dot( - v, n ), 0.0, 1.0 );
   vec3 d = refract( v, n, 1.0 / ior );
   vec3 p = vGemPos - n * 1e-4;
   vec3 thr = vec3( 1.0 - gemFresnel( cosI, 1.0, ior ) );
   vec3 acc = vec3( 0.0 );
-  for ( int i = 0; i < ${GEM_BOUNCES}; i ++ ) {
+#ifdef GEM_VORO
+  ${VORO_INIT}
+#endif
+  for ( int i = 0; i < GEM_STEPS; i ++ ) {
     vec3 m;
     float t = gemExit( p, d, m );
+#ifdef GEM_VORO
+    ${VORO_STEP}
+#endif
     p += d * t;
+#ifdef GEM_FACET
+    vec3 mf = gemFacet( p, m );
+    if ( dot( d, mf ) > 0.05 ) m = mf;
+#endif
     thr *= exp( - gemAbsorb * t );
-    float F = gemFresnel( dot( d, m ), ior, 1.0 );
+    // 벽을 등지는 빛(깎은 면에서 드물게)은 나가지 않고 되튄다고 본다: 굴절 방향이 0이 되어 계산이 무너지지 않게
+    float cd = dot( d, m );
+    float F = cd > 1e-4 ? gemFresnel( cd, ior, 1.0 ) : 1.0;
+#ifdef GEM_FIRE
+    if ( F < 1.0 ) { vec3 go = refract( d, - m, ior ); acc += thr * ( 1.0 - F ) * gemSee( p, go ) * gemFire( go, i ); }
+#else
     if ( F < 1.0 ) acc += thr * ( 1.0 - F ) * gemSee( p, refract( d, - m, ior ) );
+#endif
     thr *= F;
     d = reflect( d, m );
     p -= m * 1e-4;
@@ -225,6 +357,21 @@ vec3 gemLight() {
   return gemTrace( gemIor.g );
 #endif
 }
+`;
+
+const NO_CUT: FacetCut = { kind: 0, rings: [] };
+
+/** 계단 컷 조각의 평면들(그랜드마스터). 장면의 그물도 같은 평면으로 짓는다 */
+export const POLY_PLANES = stepCutPlanes();
+
+/** 깎은 면이면 겉 반사(프레넬·점 조명 반짝 점)도 그 면의 기울기로 그린다(보기 좌표 법선을 바꾼다) */
+const FACET_NORMAL = /* glsl */ `
+#ifdef GEM_FACET
+{
+  vec3 gemFo = gemFacet( vGemPos, normalize( vGemNrm ) );
+  normal = normalize( ( viewMatrix * vec4( normalize( mat3( vGemM0, vGemM1, vGemM2 ) * gemFo ), 0.0 ) ).xyz );
+}
+#endif
 `;
 
 /** 겉 반사만 그리는 물리 재질 값(몸 색 검정, 투과 없음) */
@@ -242,8 +389,8 @@ function frontParams(g: GemPhysics) {
 }
 
 /**
- * WebGL 보석 재질. `inCube`면 큐브 조각이라 꿰뚫어 보는 빛이 뒤쪽 조각들을 지나며 더 흡수된다(왕관 상자·팔면체·판은
- * 홀로 놓인 보석)
+ * WebGL 보석 재질. `inCube`면 큐브 조각이라 꿰뚫어 보는 빛이 뒤쪽 조각들을 지나며 더 흡수되고, 티어별 생김새
+ * (`style`)의 깎은 면·결정 구조·분산 흉내를 쓴다(왕관 상자·팔면체·판은 홀로 놓인 보석)
  */
 export function gemMaterialGL(
   T: Three,
@@ -251,16 +398,46 @@ export function gemMaterialGL(
   shape: GemShape,
   see: GemSee,
   inCube: boolean,
+  style?: GemStyleLook,
+  styleKey = "plain",
 ): THREE_NS.MeshPhysicalMaterial {
   const m = new T.MeshPhysicalMaterial(frontParams(g));
   const ior = channelIor(g);
-  const disperse = disperses(g);
+  // 분산 흉내를 쓰는 생김새(다이아몬드)는 세 번 따라가지 않는다(큐브 조각만, 볏·징 같은 작은 보석은 그대로)
+  const fire = style?.fire && inCube ? style.fire : 0;
+  const disperse = disperses(g) && !fire;
+  // 깎은 면은 큐브 조각·왕관 같은 상자 보석에만(팔면체·판은 이미 깎인 모양이다)
+  const cut = style && shape === "box" ? style.cut : NO_CUT;
+  const facet = cut.kind !== 0;
+  const fill = style?.cubeFill ?? GEM_CUBE_FILL;
+  // 조각 안 결정 구조 씨앗: 조각마다 한 묶음씩 27묶음
+  const voro =
+    style?.voro && inCube
+      ? {
+          ...style.voro,
+          seeds: Array.from({ length: 27 }, (_, c) =>
+            voronoiSeeds(style.voro?.count ?? 0, GEM_BOX_HALF, 101 + c),
+          ).flat(),
+        }
+      : null;
   m.onBeforeCompile = (shader) => {
     shader.defines = {
       ...shader.defines,
       GEM_SHAPE: SHAPE_ID[shape],
+      GEM_STEPS: style?.steps ?? GEM_BOUNCES,
+      ...(shape === "poly" ? { GEM_PLANES: POLY_PLANES.length } : {}),
+      ...(voro
+        ? {
+            GEM_VORO: voro.count,
+            GEM_VORO_N: voro.seeds.length,
+            GEM_VORO_R: f(voro.reflect),
+            GEM_VORO_BEND: f(voro.bend),
+          }
+        : {}),
       ...(disperse ? { GEM_DISPERSE: "" } : {}),
       ...(inCube ? { GEM_IN_CUBE: "" } : {}),
+      ...(facet ? { GEM_FACET: "" } : {}),
+      ...(fire ? { GEM_FIRE: f(fire) } : {}),
     };
     shader.uniforms.gemIor = { value: new T.Vector3(...ior) };
     shader.uniforms.gemAbsorb = { value: new T.Vector3(...absorbOf(g, shape)) };
@@ -269,18 +446,30 @@ export function gemMaterialGL(
       value: new T.Vector4(see.backZ, see.backSize, see.backGain, see.envGain),
     };
     shader.uniforms.gemCubeInv = { value: see.cubeInv };
+    if (shape === "poly")
+      shader.uniforms.gemPlanes = {
+        value: POLY_PLANES.map((p) => new T.Vector4(...p.n, p.h)),
+      };
+    if (voro)
+      shader.uniforms.gemSeeds = {
+        value: voro.seeds.map((s) => new T.Vector3(...s)),
+      };
     shader.vertexShader =
       VERT_DECL +
       shader.vertexShader.replace("#include <worldpos_vertex>", VERT_BODY);
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <envmap_physical_pars_fragment>", FRAG_FUNCS)
+      .replace("#include <envmap_physical_pars_fragment>", fragFuncs(cut, fill))
+      .replace(
+        "#include <normal_fragment_maps>",
+        `#include <normal_fragment_maps>\n${FACET_NORMAL}`,
+      )
       .replace(
         "#include <emissivemap_fragment>",
         "#include <emissivemap_fragment>\ntotalEmissiveRadiance += gemLight();",
       );
   };
   m.customProgramCacheKey = () =>
-    `gem2-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}`;
+    `gem4-${shape}-${disperse ? 1 : 0}-${inCube ? 1 : 0}-${GEM_BOUNCES}-${facet || voro || fire || style?.steps || fill !== GEM_CUBE_FILL ? styleKey : "plain"}`;
   return m;
 }
 
@@ -333,8 +522,8 @@ export function gemMaterialNode(T: object, g: GemPhysics): THREE_NS.Material {
 }
 
 /**
- * GLSL `gemLight`와 같은 계산을 TSL 노드로 짓는다. 벽에 닿는 횟수만큼 JS에서 펼친다(분기는 `select`). 여러 번 쓰는
- * 노드는 TSL이 임시 변수로 한 번만 계산한다.
+ * GLSL `gemLight`와 같은 계산(깎은 면·결정 구조·분산 흉내 없는 기본 빛길)을 TSL 노드로 짓는다. 벽에 닿는 횟수만큼 JS에서
+ * 펼친다(분기는 `select`). 여러 번 쓰는 노드는 TSL이 임시 변수로 한 번만 계산한다.
  */
 export function gemNodeEmissive(
   T: object,

@@ -7,6 +7,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import type { ViewTurnTarget } from "@/cube/components/ViewHome";
 
 import { levelOf } from "../emblemArt";
+import { POSTER_PAGE } from "./poster";
 import { MotionQuality, REST_MS } from "./quality";
 import {
   buildEmblemScene,
@@ -27,7 +28,7 @@ import {
   type Spin,
   wrapYaw,
 } from "./spin";
-import { canHdrCanvas, type DrawPath } from "./support";
+import type { DrawPath } from "./support";
 
 /** 이 페이지에서 배운 돌릴 때 해상도 단계(티어를 바꿔 새 무대를 만들어도 이어 쓴다) */
 let learnedLevel = 0;
@@ -42,13 +43,7 @@ let learnedLevel = 0;
  */
 
 /** 미리보기 바탕(neutral-900)과 같은 색: 배경판 가장자리가 페이지에 녹아든다 */
-export const PAGE_COLOR = "#171717";
-
-/**
- * 번짐 값(SDR 보석): 세기, 반지름, 밝기 문턱(톤 매핑 전 선형 값). 반짝이는 점에만 작게 걸리게 문턱을 높이고 반지름을
- * 줄였다(예전 0.55·0.35·1.25는 보석 전체를 뿌옇게 해 얼음처럼 보였다).
- */
-export const BLOOM = { strength: 0.4, radius: 0.12, threshold: 3 } as const;
+export const PAGE_COLOR = POSTER_PAGE.dark;
 
 interface Painter {
   path: DrawPath;
@@ -106,9 +101,9 @@ async function webglPainter(
     composer.addPass(
       new UnrealBloomPass(
         new THREE.Vector2(px, px),
-        BLOOM.strength,
-        BLOOM.radius,
-        BLOOM.threshold,
+        built.bloom.strength,
+        built.bloom.radius,
+        built.bloom.threshold,
       ),
     );
     composer.addPass(new OutputPass());
@@ -269,6 +264,9 @@ export interface StageOptions {
   pageColor?: string | undefined;
 }
 
+/** 자동 회전 빠르기(라디안/ms, 8초에 한 바퀴) */
+export const AUTO_SPIN = (Math.PI * 2) / 8000;
+
 export class EmblemStage implements ViewTurnTarget {
   readonly path: DrawPath;
   readonly canvas: HTMLCanvasElement;
@@ -296,6 +294,16 @@ export class EmblemStage implements ViewTurnTarget {
   private timing = false;
   private scale = 1;
   private readonly quality = new MotionQuality(learnedLevel);
+  private auto = false;
+  private wasMoving = false;
+  private shown: (() => void) | null = null;
+  /**
+   * 첫 장이 화면에 나가면 풀린다. 그때까지 대기 그림(미리 찍은 3D 그림)을 캔버스 위에 덮어 둬서, 빈 캔버스가 한 장도
+   * 보이지 않게 한다(docs/47 14-7 「다섯째 시안」)
+   */
+  readonly firstFrame = new Promise<void>((resolve) => {
+    this.shown = resolve;
+  });
 
   private constructor(
     private readonly host: HTMLElement,
@@ -347,14 +355,13 @@ export class EmblemStage implements ViewTurnTarget {
     const page = opt.pageColor ?? PAGE_COLOR;
     const gem = isGem(opt.tier);
     let painter: Painter | null = null;
-    if (gem && opt.force !== "bloom") {
-      const want = opt.force === "hdr" || (await canHdrCanvas());
-      if (want) {
-        try {
-          painter = await hdrPainter(fresh(), opt.tier, px, page);
-        } catch {
-          painter = null;
-        }
+    // 티어별 생김새(깎은 면·결정 구조·분산 흉내)는 아직 WebGL 길에만 있다. HDR 길(WebGPU)은 넷째 시안 생김새라 대기
+    // 그림(SDR 번짐 길로 찍음)과 달라, 옮기기 전에는 `?emblem3d=hdr`로 강제할 때만 쓴다(docs/47 14-7 남은 일)
+    if (gem && opt.force === "hdr") {
+      try {
+        painter = await hdrPainter(fresh(), opt.tier, px, page);
+      } catch {
+        painter = null;
       }
     }
     painter ??= await webglPainter(fresh(), opt.tier, px, gem, page);
@@ -370,7 +377,30 @@ export class EmblemStage implements ViewTurnTarget {
 
   /** 움직이는 중인지(끄는 중, 미끄러지는 중, 처음 각도로 돌아가는 중) */
   get moving(): boolean {
-    return this.drag !== null || this.speed !== 0 || this.homing !== null;
+    return (
+      this.drag !== null ||
+      this.speed !== 0 ||
+      this.homing !== null ||
+      this.auto
+    );
+  }
+
+  /** 각을 바로 정한다(미리보기의 「정면」·「돌린 각」 단추, 찍기) */
+  setView(s: Spin): void {
+    this.speed = 0;
+    this.homing = null;
+    this.spin = { ...s };
+    this.noteView();
+    this.invalidate();
+  }
+
+  /** 자동 회전(미리보기). 도는 동안은 돌릴 때처럼 해상도 조절을 쓴다 */
+  setAuto(on: boolean): void {
+    if (this.auto === on) return;
+    this.auto = on;
+    this.last = performance.now();
+    this.apply();
+    this.invalidate();
   }
 
   onViewTurn(fn: (turned: boolean) => void): () => void {
@@ -468,6 +498,9 @@ export class EmblemStage implements ViewTurnTarget {
     if (this.disposed) return;
     if (!this.visible) return;
     this.pending = false;
+    // 돌리는 동안 이어진 장 사이 간격으로 화면 주기를 잰다(120Hz면 한 장 예산이 8.3ms, quality.ts)
+    if (this.moving && this.wasMoving && this.last)
+      this.quality.noteInterval(now - this.last);
     const dt = Math.min(50, Math.max(0, now - (this.last || now)));
     this.last = now;
     let stepped = false;
@@ -486,6 +519,10 @@ export class EmblemStage implements ViewTurnTarget {
       this.spin = { ...this.spin, yaw: next.yaw };
       this.speed = next.speed;
       if (next.speed === 0) this.noteView();
+    } else if (this.auto && !this.drag) {
+      stepped = true;
+      this.spin = { ...this.spin, yaw: this.spin.yaw + AUTO_SPIN * dt };
+      this.noteView();
     }
     // 움직이는 동안은 낮춘 해상도, 멈춘 장과 끄는 손이 멈췄을 때는 제 해상도
     const moving = this.moving;
@@ -508,6 +545,12 @@ export class EmblemStage implements ViewTurnTarget {
       this.painter.draw();
       this.frames += 1;
       this.dirty = false;
+      if (this.shown) {
+        // 그린 장은 다음 화면 갱신에 나간다. 그 뒤에 대기 그림을 걷는다
+        const done = this.shown;
+        this.shown = null;
+        requestAnimationFrame(() => done());
+      }
       // 돌리는 동안 그린 장이 GPU에서 끝나기까지 걸린 시간을 잰다(한 번에 하나, 배율을 바꾼 장은 빼고)
       if (moving && !resting && !rescaled && !this.timing) {
         this.timing = true;
@@ -523,8 +566,10 @@ export class EmblemStage implements ViewTurnTarget {
         });
       }
     }
+    this.wasMoving = this.moving;
     this.apply();
-    if (this.homing || this.speed !== 0 || this.drag) this.schedule();
+    if (this.homing || this.speed !== 0 || this.drag || this.auto)
+      this.schedule();
   };
 
   /**
@@ -538,6 +583,7 @@ export class EmblemStage implements ViewTurnTarget {
     h.emblem3dFrames = String(this.frames);
     h.emblem3dScale = String(this.scale);
     if (this.quality.median > 0) h.emblem3dGap = this.quality.median.toFixed(1);
+    h.emblem3dBudget = this.quality.budget.toFixed(1);
     if (this.moving) h.emblem3dMoving = "";
     else delete h.emblem3dMoving;
   }
@@ -561,6 +607,14 @@ export interface ShotJob {
   tier: DraftTier;
   px: number;
   yaws: readonly number[];
+  /** 엠블럼이 칸을 채우는 정도(1이 기본, 크면 카메라를 더 당긴다). 작은 그림은 크게 */
+  fill?: number;
+  /** 후광 세기(1이 기본). 작은 그림은 줄인다(작게 보면 후광이 색 얼룩으로 번진다) */
+  halo?: number;
+  /** 노출(기본 1.15). 작은 그림은 밝혀 틀·보석 색이 어둡게 뭉개지지 않게 한다 */
+  exposure?: number;
+  /** 몸 둘레 어두운 테두리 굵기(화소, 기본 0). 작은 그림이 밝은 바탕에서도 가장자리가 서게 */
+  outline?: number;
 }
 
 /**
@@ -588,9 +642,9 @@ export async function captureShots(
   try {
     renderer.setPixelRatio(1);
     renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.15;
     for (const job of jobs) {
       const { tier, px } = job;
+      renderer.toneMappingExposure = job.exposure ?? 1.15;
       renderer.setSize(px * scale, px * scale, false);
       const built = buildEmblemScene(THREE, tier, {
         backdrop: true,
@@ -599,7 +653,7 @@ export async function captureShots(
         backGlow: 0.5,
       });
       // 작은 그림은 엠블럼이 칸을 꽉 채우게 조금 당긴다
-      built.camera.position.z *= 39 / 43;
+      built.camera.position.z *= 39 / 43 / (job.fill ?? 1);
       const pmrem = new THREE.PMREMGenerator(renderer);
       const env = pmrem.fromScene(built.studio, 0.02).texture;
       pmrem.dispose();
@@ -613,8 +667,12 @@ export async function captureShots(
       const out = document.createElement("canvas");
       out.width = px;
       out.height = px;
+      const edge = document.createElement("canvas");
+      edge.width = px;
+      edge.height = px;
       const cctx = color.getContext("2d");
       const ctx = out.getContext("2d");
+      const ectx = edge.getContext("2d");
       const urls: string[] = [];
       const lv = levelOf(tier);
       for (const yaw of job.yaws) {
@@ -640,8 +698,31 @@ export async function captureShots(
         ctx.drawImage(canvas, 0, 0, px, px);
         ctx.globalCompositeOperation = "source-in";
         ctx.drawImage(color, 0, 0);
+        // 2-1) 몸 둘레 얇은 어두운 테두리(작은 그림, 밝은 바탕에서 은색 틀이 묻히지 않게)
+        const ow = job.outline ?? 0;
+        if (ow > 0 && ectx) {
+          ectx.globalCompositeOperation = "source-over";
+          ectx.clearRect(0, 0, px, px);
+          ectx.drawImage(out, 0, 0);
+          ectx.globalCompositeOperation = "source-in";
+          ectx.fillStyle = "rgba(0,0,0,0.35)";
+          ectx.fillRect(0, 0, px, px);
+          ctx.globalCompositeOperation = "destination-over";
+          for (const [dx, dy] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+            [0.7, 0.7],
+            [-0.7, 0.7],
+            [0.7, -0.7],
+            [-0.7, -0.7],
+          ] as const)
+            ctx.drawImage(edge, dx * ow, dy * ow);
+        }
         // 3) 후광을 뒤에
-        if (lv >= 6) {
+        const haloGain = job.halo ?? 1;
+        if (lv >= 6 && haloGain > 0) {
           const hex = Number.parseInt(LOOK[tier].tint.slice(1), 16);
           const rgb = `${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255}`;
           const g = ctx.createRadialGradient(
@@ -652,8 +733,11 @@ export async function captureShots(
             px / 2,
             px / 2,
           );
-          g.addColorStop(0, `rgba(${rgb},${lv >= 9 ? 0.5 : 0.36})`);
-          g.addColorStop(0.55, `rgba(${rgb},0.12)`);
+          g.addColorStop(
+            0,
+            `rgba(${rgb},${(lv >= 9 ? 0.5 : 0.36) * haloGain})`,
+          );
+          g.addColorStop(0.55, `rgba(${rgb},${0.12 * haloGain})`);
           g.addColorStop(1, `rgba(${rgb},0)`);
           ctx.globalCompositeOperation = "destination-over";
           ctx.fillStyle = g;

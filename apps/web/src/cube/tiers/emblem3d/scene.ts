@@ -12,6 +12,7 @@ import {
 } from "../emblemArt";
 import { wingPlates } from "../TierEmblem";
 import { TIER_IDS, type TierId } from "../table";
+import { polyFromPlanes, stepCutPlanes } from "./cutGeometry";
 import type { GemPhysics, GemShape } from "./gem";
 import {
   type GemSee,
@@ -20,6 +21,12 @@ import {
   gemNodeEmissive,
   hasTsl,
 } from "./gemMaterial";
+import {
+  BASE_BLOOM,
+  GEM_STYLE_LOOK,
+  type GemStyleLook,
+  styleOfTier,
+} from "./gemStyle";
 
 /**
  * 3D 티어 엠블럼 시안의 장면(docs/47 14-7). 지금 SVG 엠블럼(14-6)의 구도를 3D로 옮긴다: 베벨 금속 육각 고리 틀,
@@ -30,7 +37,8 @@ import {
  * - 모든 티어가 같은 틀·큐브·비례를 쓰고 재질만 다르다. 조각은 네모 상자에 아주 얕은 두 단 베벨(사각 보석의 계단 면).
  * - 금속 티어(아이언~플래티넘): 불투명 금속(metalness 1), 티어마다 다른 금속.
  * - 보석 티어(에메랄드~챌린저): 맑은 보석. three 투과 대신 조각마다 안의 빛길(굴절·전반사·흡수·분산)을 따라가는
- *   재질(`gemMaterial.ts`, 계산은 `gem.ts`). 굴절률은 실제 보석 값, 다이아몬드·챌린저는 무색.
+ *   재질(`gemMaterial.ts`, 계산은 `gem.ts`). 굴절률은 실제 보석 값, 다이아몬드·챌린저는 무색. 티어가 오를수록
+ *   화려해지는 생김새(차분한 보석 → 얕은 계단 → 결정 구조 → 계단 컷 → 결정 구조 + 무지개, `gemStyle.ts`).
  * - 빛: 보석 사진 스튜디오처럼 코드로 만든 방(소프트박스·띠 조명·작은 점 조명)을 반사 지도로 쓴다(바깥 파일 없음).
  *
  * WebGL(`three`)과 WebGPU(`three/webgpu`) 묶음이 서로 다른 클래스 사본을 가지므로, 쓰는 쪽 이름공간을 `T`로 받는다.
@@ -87,6 +95,8 @@ export interface EmblemScene {
   update(): void;
   /** 구운 반사 지도를 장면에 건다(보석 빛길도 이것을 읽는다) */
   applyEnvironment(env: THREE_NS.Texture): void;
+  /** 번짐 값(티어 생김새마다 다르다) */
+  bloom: { strength: number; radius: number; threshold: number };
   dispose(): void;
 }
 
@@ -213,8 +223,10 @@ export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
   },
   master: {
     frame: { color: [0.82, 0.8, 0.88], roughness: 0.26 },
-    // 자수정(수정) 굴절률 1.544
-    gem: { ior: 1.544, spread: 0, absorb: absorbFor([0.62, 0.3, 0.86]) },
+    // 보라 사파이어(커런덤) 굴절률 1.762~1.770의 가운데 1.766. 실제 분산 0.018은 작아 따로 따라가지 않는다(루비·
+    // 에메랄드와 같다). 색은 예전 자수정 보라를 바탕으로 사파이어답게 더 맑고 진하게(빨강 55%·초록 22%·파랑 88%).
+    // 2026-11-13 사용자 결정: 다이아몬드 위 티어에 흔하고 싼 자수정은 어색해 보라 사파이어로 바꿨다
+    gem: { ior: 1.766, spread: 0, absorb: absorbFor([0.55, 0.22, 0.88]) },
     tint: "#e2a8ff",
     backdrop: "#2e2242",
     glow: "#e2c4ff",
@@ -329,6 +341,18 @@ function stepBox(T: Three, s: number, b: number) {
     curveSegments: 1,
   });
   g.translate(0, 0, -(s - 2 * b) / 2);
+  return g;
+}
+
+/** 위치·법선(·색인) 배열로 그물을 짓는다(계단 컷 다면체, 둥근 모서리 상자) */
+function meshGeo(
+  T: Three,
+  m: { positions: number[]; normals: number[]; indices?: number[] },
+) {
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.Float32BufferAttribute(m.positions, 3));
+  g.setAttribute("normal", new T.Float32BufferAttribute(m.normals, 3));
+  if (m.indices) g.setIndex(m.indices);
   return g;
 }
 
@@ -451,6 +475,7 @@ function studioScene(
   hdr: boolean,
   tint: string,
   gem: boolean,
+  kind: GemStyleLook["studio"] = "now",
 ): THREE_NS.Scene {
   const s = new T.Scene();
   const k = hdr ? 1.4 : 1;
@@ -470,6 +495,8 @@ function studioScene(
     pos: [number, number, number],
     tintRgb: readonly [number, number, number] = [1, 1, 1],
   ) => {
+    // 세기 0은 끈 조명: 판을 두지 않는다(검은 판으로 남으면 그 뒤 방을 가린다)
+    if (power <= 0) return;
     const m = new T.Mesh(
       new T.PlaneGeometry(w, h),
       new T.MeshBasicMaterial({
@@ -488,7 +515,8 @@ function studioScene(
   // 등각 큐브의 세 면은 정면에서 볼 때 뒤쪽을 비춘다(윗면 → 위-뒤, 왼면 → 왼-아래-뒤, 오른면 → 오른-아래-뒤).
   // 그래서 큰 소프트박스는 뒤쪽에 두고 밝기를 윗면 > 왼면 > 오른면으로 갈라 SVG 엠블럼의 면 밝기(1·0.62·0.4)를 잇는다
   // 보석은 큰 소프트박스를 줄인다: 면 전체가 밝게 비치면 뿌옇게(얼음처럼) 보였다. 대신 가는 띠 조명으로 또렷한 대비를 낸다
-  const big = gem ? GEM_BIG_PANEL : 1;
+  // 계단 컷(그랜드마스터)은 위 큰 빛판을 밝혀 깎은 띠 하나하나에 흰 쐐기 반사가 서게(사진의 정사각 계단 컷 아홉 개)
+  const big = gem ? (kind === "step" ? 1 : GEM_BIG_PANEL) : 1;
   panel(12, 6, 3.4 * big, [0, 9, -6]);
   panel(6, 8, 2.1 * big, [-9, -4, -6], [0.94, 0.98, 1]);
   panel(6, 8, 1.2 * big, [9, -4, -6], [1, 0.97, 0.93]);
@@ -566,7 +594,17 @@ export function buildEmblemScene(
   tier: DraftTier,
   opt: BuildOptions,
 ): EmblemScene {
-  const look = LOOK[tier];
+  // 보석 티어마다 생김새(화려함 사다리, gemStyle.ts). 금속 티어는 없음
+  const styleId = styleOfTier(tier);
+  const sl = styleId ? GEM_STYLE_LOOK[styleId] : null;
+  // 에메랄드는 생김새에 적은 색, 다른 보석 티어는 그 티어 보석의 굴절률·색·분산 그대로
+  const look: TierLook =
+    sl && tier === "emerald"
+      ? {
+          ...LOOK[tier],
+          gem: { ior: 1.577, spread: sl.spread, absorb: absorbFor(sl.left) },
+        }
+      : LOOK[tier];
   const gem = isGem(tier);
   const lv = levelOf(tier);
   const s = coreScale(tier);
@@ -610,23 +648,36 @@ export function buildEmblemScene(
     backdropCenter(look.backdrop, opt.pageColor),
     opt.pageColor,
     look.glow ?? null,
-    (look.gem && Math.max(...look.gem.absorb) < 0.05 ? GLOW_CLEAR : GLOW) *
-      (opt.backGlow ?? 1),
+    (sl
+      ? sl.glow
+      : look.gem && Math.max(...look.gem.absorb) < 0.05
+        ? GLOW_CLEAR
+        : GLOW) * (opt.backGlow ?? 1),
   );
   texs.push(bgTex);
   const see: GemSee = {
     back: bgTex,
     backZ: BACKDROP_Z,
     backSize: BACKDROP_SIZE,
-    backGain: GEM_BACK_GAIN,
-    envGain: GEM_GAIN,
+    backGain: sl ? sl.backGain : GEM_BACK_GAIN,
+    envGain: sl ? sl.envGain : GEM_GAIN,
     cubeInv: new T.Matrix4(),
   };
   const node = hasTsl(T);
   const gems: GemMat[] = [];
   const gemMat = (g: GemPhysics, shape: GemShape, inCube = false) => {
     const m = mat(
-      node ? gemMaterialNode(T, g) : gemMaterialGL(T, g, shape, see, inCube),
+      node
+        ? gemMaterialNode(T, g)
+        : gemMaterialGL(
+            T,
+            g,
+            shape,
+            see,
+            inCube,
+            sl ?? undefined,
+            styleId ?? "plain",
+          ),
     );
     gems.push({ mat: m, g, shape, inCube });
     return m;
@@ -640,7 +691,12 @@ export function buildEmblemScene(
     }),
   );
   /** 큐브 조각(상자 보석, 꿰뚫어 본 빛이 뒤쪽 조각들을 지나며 더 흡수된다) */
-  const blockMat = look.gem ? gemMat(look.gem, "box", true) : metalBlock;
+  const blockMat = look.gem
+    ? gemMat(look.gem, sl?.shape ?? "box", true)
+    : metalBlock;
+  // 겉 반사 세기(그랜드마스터 계단 컷: 깎은 면에 조명이 흰 쐐기로 비치게)
+  if (sl?.frontEnv)
+    (blockMat as THREE_NS.MeshStandardMaterial).envMapIntensity = sl.frontEnv;
   /** 왕관 상자(홀로 놓인 상자 보석) */
   const crownMat = look.gem ? gemMat(look.gem, "box") : metalBlock;
   /** 날개 조각(얇은 판 보석) */
@@ -666,7 +722,14 @@ export function buildEmblemScene(
   // ---- 큐브: 조각 27개를 몸통 대각선이 앞을 보게(윗면·왼면·오른면이 보이는 등각), 틀 두께 한가운데에
   const cube = new T.Group();
   cube.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
-  const cubieGeo = keep(stepBox(T, CUBIE, CUBIE_BEVEL));
+  // 그랜드마스터 계단 컷은 조각의 실제 모양을 바꾼다(빛길 셰이더도 같은 평면을 벽으로 따라간다)
+  const cubieGeo = keep(
+    sl?.shape === "poly"
+      ? meshGeo(T, polyFromPlanes(stepCutPlanes()))
+      : stepBox(T, CUBIE, CUBIE_BEVEL),
+  );
+  // 왕관 상자는 그대로 네모(모양을 바꾸는 것은 큐브 조각만)
+  const crownGeo = sl?.shape ? keep(stepBox(T, CUBIE, CUBIE_BEVEL)) : cubieGeo;
   for (let x = -1; x <= 1; x++)
     for (let y = -1; y <= 1; y++)
       for (let z = -1; z <= 1; z++) {
@@ -783,7 +846,7 @@ export function buildEmblemScene(
     for (const [p, r] of cubes) {
       // r은 실루엣 육각형 반지름 → 한 변 = r / √(2/3)
       const edge = (r * u) / Math.sqrt(2 / 3);
-      const box = new T.Mesh(cubieGeo, crownMat);
+      const box = new T.Mesh(crownGeo, crownMat);
       box.scale.setScalar(edge / CUBIE);
       box.rotation.set(Math.atan(1 / Math.SQRT2), -Math.PI / 4, 0, "XYZ");
       const [x, y] = toWorld(p, u);
@@ -899,7 +962,12 @@ export function buildEmblemScene(
       [8, 6, 14, 140],
       [1, -7, 15, 70],
     ] as const) {
-      const l = new T.PointLight(0xffffff, p * 0.6 * (opt.hdr ? 1.6 : 1), 0, 2);
+      const l = new T.PointLight(
+        0xffffff,
+        p * 0.6 * (opt.hdr ? 1.6 : 1) * (sl?.frontLights ?? 1),
+        0,
+        2,
+      );
       l.position.set(x, y, z);
       scene.add(l);
     }
@@ -910,7 +978,7 @@ export function buildEmblemScene(
   camera.position.set(0, 0, (CAMERA_Z * u) / U_REF);
   camera.lookAt(0, 0, 0);
 
-  const studio = studioScene(T, opt.hdr, look.tint, gem);
+  const studio = studioScene(T, opt.hdr, look.tint, gem, sl?.studio);
 
   return {
     scene,
@@ -918,6 +986,7 @@ export function buildEmblemScene(
     spin,
     behind,
     studio,
+    bloom: sl ? sl.bloom : BASE_BLOOM,
     update() {
       // 꿰뚫어 보는 빛이 큐브 전체 두께를 셀 수 있게 월드 → 큐브 좌표를 매 장 고친다
       scene.updateMatrixWorld();

@@ -12,10 +12,12 @@
  * 단위 시험이 물리 성질(전반사, 에너지 보존, 흡수)을 이것으로 확인한다.
  */
 
+import { type FacetCut, facetNormal } from "./gemStyle";
+
 export type Vec3 = readonly [number, number, number];
 
 /** 보석 조각 모양(물체 좌표). 상자는 큐브 조각·왕관, 팔면체는 꼭짓점·볏·아래 보석, 판은 날개 조각 */
-export type GemShape = "box" | "octa" | "slab";
+export type GemShape = "box" | "octa" | "slab" | "poly";
 
 /** 큐브 조각 반 변(`CUBIE` 0.92의 절반) */
 export const GEM_BOX_HALF = 0.46;
@@ -122,12 +124,22 @@ export function exitOf(
   return { t: Math.max(0, t), m };
 }
 
+/**
+ * 안쪽 벽의 깎은 면 법선. 기운 면이 빛줄기와 거의 나란하면(빛이 그 면을 등지면) 깎지 않은 벽으로 본다(셰이더와 같다)
+ */
+export function wallFacet(cut: FacetCut, p: Vec3, d: Vec3, m: Vec3): Vec3 {
+  const f = facetNormal(cut, p, m, GEM_BOX_HALF);
+  return dot(d, f) > 0.05 ? f : m;
+}
+
 /** 보석에서 나가는 빛 한 줄기: 나가는 방향과 그 몫(한 색 채널) */
 export interface GemExit {
   dir: Vec3;
   weight: number;
   /** 전반사로 되튄 뒤 나갔는지 */
   afterTir: boolean;
+  /** 나가기까지 보석 안을 지난 길이 */
+  path: number;
 }
 
 /**
@@ -142,9 +154,11 @@ export function traceGem(
   ior: number,
   absorb: number,
   bounces = GEM_BOUNCES,
+  cut?: FacetCut,
 ): { reflect: number; exits: GemExit[]; left: number; path: number } {
   const v = norm(v0);
-  const n = norm(n0);
+  const facet = cut && cut.kind !== 0 && shape === "box" ? cut : null;
+  const n = facet ? facetNormal(facet, p0, n0, GEM_BOX_HALF) : norm(n0);
   const cosI = Math.min(1, Math.max(0, -dot(v, n)));
   const R = fresnel(cosI, 1, ior);
   let d = refract(v, n, 1 / ior) ?? v;
@@ -154,14 +168,16 @@ export function traceGem(
   let tir = false;
   const exits: GemExit[] = [];
   for (let i = 0; i < bounces; i++) {
-    const { t, m } = exitOf(shape, p, d);
+    const hit = exitOf(shape, p, d);
+    const t = hit.t;
     p = add(p, mul(d, t));
+    const m = facet ? wallFacet(facet, p, d, hit.m) : hit.m;
     path += t;
     thr *= Math.exp(-absorb * t);
     const F = fresnel(dot(d, m), ior, 1);
     if (F < 1) {
       const o = refract(d, mul(m, -1), ior) ?? d;
-      exits.push({ dir: o, weight: thr * (1 - F), afterTir: tir });
+      exits.push({ dir: o, weight: thr * (1 - F), afterTir: tir, path });
     } else tir = true;
     thr *= F;
     d = reflect(d, m);
@@ -220,7 +236,8 @@ export function boxPath(p: Vec3, d: Vec3, half: number): number {
 /** 실제 분산 값(B–G 굴절률 차, 보석학 표준 값). 문서·시험용 */
 export const REAL = {
   emerald: { ior: 1.577, dispersion: 0.014 },
-  amethyst: { ior: 1.544, dispersion: 0.013 },
+  // 보라 사파이어(커런덤) 1.762~1.770의 가운데. 마스터 티어(2026-11-13 자수정에서 바꿈)
+  sapphire: { ior: 1.766, dispersion: 0.018 },
   ruby: { ior: 1.77, dispersion: 0.018 },
   diamond: { ior: 2.417, dispersion: 0.044 },
 } as const;

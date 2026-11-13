@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { loadBestFive, loadRecords } from "../records";
+import { EmblemStill } from "./EmblemStill";
 import { type MyTier, myTier, tierName } from "./rank";
-import { TierEmblem } from "./TierEmblem";
 import { DIVISIONS, TIER_LABEL, TIER_TABLE, type TierId } from "./table";
 
 /**
@@ -69,7 +69,7 @@ export function TierLink({
         className,
       )}
     >
-      <TierEmblem tier={mine.place.tier} size={emblemSize} />
+      <EmblemStill tier={mine.place.tier} size={emblemSize} />
       {tierName(mine.place)}
     </a>
   );
@@ -127,7 +127,7 @@ export function TierTable({ n, mine }: { n: number; mine?: MyTier | null }) {
                 )}
               >
                 <span className="flex items-center gap-1.5">
-                  <TierEmblem tier={row.tier} size={28} />
+                  <EmblemStill tier={row.tier} size={28} />
                   <span className="min-w-0">
                     <span
                       className={cn("block break-keep", TIER_TONE[row.tier])}

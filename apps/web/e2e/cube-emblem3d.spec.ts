@@ -80,7 +80,8 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
 
   // 왼쪽으로 끌면 왼쪽으로 돈 채 남는다(동작 줄이기라 미끄러지지 않는다)
   for (const s of stages) {
-    await dragBy(page, s, -50, 6);
+    // 기본 다이아몬드는 기본 시안으로 큰 칸(440px)이라 칸 너비 대비 같은 비율만큼 끈다
+    await dragBy(page, s, -75, 6);
     await expect(s).not.toHaveAttribute("data-emblem3d-moving");
     expect(await yawOf(s)).toBeLessThan(-0.4);
     expect(Number(await s.getAttribute("data-emblem3d-pitch"))).toBeGreaterThan(
@@ -97,7 +98,7 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
 
   // 오른쪽으로 끌면 오른쪽으로
   for (const s of stages) {
-    await dragBy(page, s, 100, -6);
+    await dragBy(page, s, 150, -6);
     await expect(s).not.toHaveAttribute("data-emblem3d-moving");
     expect(await yawOf(s)).toBeGreaterThan(0.4);
   }
@@ -129,12 +130,120 @@ test("3D 엠블럼 시안: 끌면 좌우로 돌고 놓은 각에 남으며, 가�
   await draftShot(page, "gold");
 });
 
-test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나온다", {
+/** 두 PNG(같은 크기)의 화소 차 RMSE(0~1, RGB) */
+async function pngRmse(page: Page, a: Buffer, b: Buffer): Promise<number> {
+  return page.evaluate(
+    async ([pa, pb]) => {
+      const load = async (b64: string) => {
+        const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const bmp = await createImageBitmap(
+          new Blob([bin], { type: "image/png" }),
+        );
+        const c = new OffscreenCanvas(bmp.width, bmp.height);
+        const ctx = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+        ctx.drawImage(bmp, 0, 0);
+        return ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+      };
+      const [x, y] = await Promise.all([load(pa), load(pb)]);
+      let s = 0;
+      let n = 0;
+      for (let k = 0; k < Math.min(x.length, y.length); k += 4)
+        for (let ch = 0; ch < 3; ch++) {
+          const d = ((x[k + ch] ?? 0) - (y[k + ch] ?? 0)) / 255;
+          s += d * d;
+          n++;
+        }
+      return Math.sqrt(s / n);
+    },
+    [a.toString("base64"), b.toString("base64")] as const,
+  );
+}
+
+test("대기 그림과 3D는 같은 자리·같은 크기·같은 생김새: 3D 첫 장이 뜨기 전에는 미리 찍은 그림이 덮고, 바뀔 때 1px도 움직이지 않는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
+  test.setTimeout(120_000);
+  // 3D를 붙잡아 두었다가 대기 그림을 잰 뒤 놓는다
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __emblem3dHold: Promise<void>;
+      __emblem3dRelease: () => void;
+    };
+    w.__emblem3dHold = new Promise<void>((r) => {
+      w.__emblem3dRelease = r;
+    });
+  });
+  // 보석 티어는 생김새가 보이게 큰 칸(440px)으로 연다(화려함 사다리)
+  for (const [url, tier, size] of [
+    ["/cube/tiers/emblems", "diamond", 440],
+    ["/cube/tiers/emblems?tier=emerald&emblemBg=light", "emerald", 440],
+    ["/cube/tiers/emblems?tier=challenger", "challenger", 440],
+  ] as const) {
+    await page.goto(url);
+    const box = page.locator(`[data-emblem3d="${tier}"]`);
+    const poster = box.locator("[data-emblem3d-poster]");
+    await expect(poster).toBeVisible();
+    await expect(box).toHaveAttribute("data-emblem3d-path", "loading");
+    // 다른 모양 그림(SVG 엠블럼)은 보이지 않는다
+    await expect(box.locator("[data-cube-emblem]")).toHaveCount(0);
+    // 찍은 그림은 칸과 같은 크기를 두 배 화소로 찍었다
+    await expect
+      .poll(() =>
+        poster.evaluate((img: HTMLImageElement) =>
+          img.complete ? img.naturalWidth : 0,
+        ),
+      )
+      .toBe(size * 2);
+    // 찍기(screenshot)가 칸을 화면 안으로 스크롤하므로 자리는 찍은 뒤에 잰다
+    const posterPng = await box.screenshot();
+    const before = await poster.boundingBox();
+    await page.evaluate(() =>
+      (
+        window as unknown as { __emblem3dRelease: () => void }
+      ).__emblem3dRelease(),
+    );
+    await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+      timeout: 60_000,
+    });
+    await expect(poster).toHaveCount(0);
+    const after = await box
+      .locator("[data-emblem3d-stage] canvas")
+      .boundingBox();
+    expect(before).not.toBeNull();
+    expect(after).toEqual(before);
+    expect(before?.width).toBe(size);
+    // 대기 그림과 3D 첫 장의 같은 자리 화소 차(RMSE). 이 맥(GPU)에서 약 0.012~0.014(WebP 압축 몫). GPU 없는 CI
+    // (소프트웨어 그리기)는 번짐·정밀도가 조금 달라 넉넉히 둔다. 생김새가 바뀌었는데 대기 그림을 다시 찍지 않으면 넘는다
+    const diff = await pngRmse(page, posterPng, await box.screenshot());
+    expect(diff, `${tier} 대기 그림과 3D 첫 장의 화소 차`).toBeLessThan(0.07);
+    await draftShot(page, `poster-${tier}`);
+  }
+});
+
+/** 3D를 붙잡아 둔다(화면 시험의 고리, 제품에서는 없다). 놓을 때는 `release3d` */
+async function hold3d(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __emblem3dHold: Promise<void>;
+      __emblem3dRelease: () => void;
+    };
+    w.__emblem3dHold = new Promise<void>((r) => {
+      w.__emblem3dRelease = r;
+    });
+  });
+}
+async function release3d(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (
+      window as unknown as { __emblem3dRelease: () => void }
+    ).__emblem3dRelease(),
+  );
+}
+
+/** WebGL을 못 얻는 기기처럼 */
+async function noWebgl(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const orig = HTMLCanvasElement.prototype.getContext;
-    // WebGL을 못 얻는 기기처럼
     HTMLCanvasElement.prototype.getContext = function (
       this: HTMLCanvasElement,
       type: string,
@@ -144,13 +253,104 @@ test("3D를 그릴 수 없으면 3D 시안 자리에 지금 SVG 엠블럼이 나
       return (orig as (...a: unknown[]) => unknown).call(this, type, ...rest);
     } as typeof orig;
   });
+}
+
+/** 칸 안에 평면 SVG 엠블럼이 없다 */
+async function noFlat(box: Locator): Promise<void> {
+  await expect(box.locator(".cube-emblem svg")).toHaveCount(0);
+}
+
+test("로딩 중에는 평면 엠블럼을 보이지 않는다: 대기 그림을 못 받으면 빈 칸에 작은 로딩 표시만, 3D가 뜨면 사라진다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(120_000);
+  await hold3d(page);
+  // 대기 그림(큰 칸 그림)만 막는다. 정지 그림(still/)은 그대로
+  await page.route(/\/cube\/tiers\/emblem3d\/[a-z]+-(dark|light)\.webp$/, (r) =>
+    r.abort(),
+  );
+  await page.goto("/cube/tiers/emblems?tier=master");
+  const box = page.locator('[data-emblem3d="master"]');
+  await expect(box).toHaveAttribute("data-emblem3d-path", "loading");
+  await expect(box.locator("[data-emblem3d-loading]")).toBeVisible();
+  await expect(box.locator("[data-emblem3d-poster]")).toHaveCount(0);
+  await expect(box.locator("[data-cube-emblem]")).toHaveCount(0);
+  // 위 격자도 깨진 그림 대신 정지 그림
+  await expect(
+    page.locator("[data-emblem3d-grid] [data-cube-emblem-still]"),
+  ).toHaveCount(10);
+  await draftShot(page, "loading-no-poster");
+  await release3d(page);
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await expect(box.locator("[data-emblem3d-loading]")).toHaveCount(0);
+  await noFlat(box);
+});
+
+test("3D를 그릴 수 없으면 3D 칸에 정지 그림(3D를 찍은 그림)이 뜨고 평면은 보이지 않는다", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await noWebgl(page);
   await page.goto("/cube/tiers/emblems");
   for (const t of ["diamond", "gold"]) {
     if (t !== "diamond")
       await page.locator(`[data-emblem3d-pick="${t}"]`).click();
     const e = page.locator(`[data-emblem3d="${t}"]`);
     await expect(e).toHaveAttribute("data-emblem3d-path", "svg");
-    await expect(e.locator(`[data-cube-emblem="${t}"]`)).toBeVisible();
+    await expect(e.locator("[data-emblem3d-poster]")).toHaveCount(0);
+    const still = e.locator(
+      `[data-emblem3d-fallback] [data-cube-emblem-still]`,
+    );
+    await expect(still).toBeVisible();
+    await expect
+      .poll(() =>
+        still
+          .locator("img")
+          .evaluate((img: HTMLImageElement) =>
+            img.complete ? img.naturalWidth : 0,
+          ),
+      )
+      .toBeGreaterThan(0);
+    await noFlat(e);
     await expect(e.locator("canvas")).toHaveCount(0);
   }
+  await draftShot(page, "no-webgl");
+  // 격자는 3D 없이도 같은 대기 그림
+  await expect(
+    page.locator("[data-emblem3d-grid] [data-emblem3d-pick] img"),
+  ).toHaveCount(10);
+});
+
+test("3D도 정지 그림도 없을 때만 평면 엠블럼", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  await noWebgl(page);
+  await page.route(/\/cube\/tiers\/emblem3d\/still\//, (r) => r.abort());
+  await page.goto("/cube/tiers/emblems?tier=master");
+  const m = page.locator('[data-emblem3d="master"]');
+  await expect(
+    m.locator("[data-emblem3d-fallback] .cube-emblem svg"),
+  ).toBeVisible();
+  await draftShot(page, "no-webgl-no-still");
+});
+
+test("3D 문맥을 잃으면 빈 캔버스 대신 정지 그림", {
+  tag: "@only-desktop",
+}, async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/cube/tiers/emblems?tier=gold");
+  const box = page.locator('[data-emblem3d="gold"]');
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await box.locator("[data-emblem3d-stage] canvas").evaluate((c) => {
+    const gl = (c as HTMLCanvasElement).getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  });
+  await expect(box).toHaveAttribute("data-emblem3d-path", "svg");
+  await expect(
+    box.locator("[data-emblem3d-fallback] [data-cube-emblem-still]"),
+  ).toBeVisible();
+  await noFlat(box);
 });

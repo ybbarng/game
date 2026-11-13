@@ -52,8 +52,8 @@ import {
 } from "../scramble-show";
 import { useCubeSettings } from "../settings";
 import { SolveSession } from "../solve-session";
+import { EmblemStill } from "../tiers/EmblemStill";
 import { type MyTier, tierName } from "../tiers/rank";
-import { TierEmblem } from "../tiers/TierEmblem";
 import { TIER_TONE } from "../tiers/TierTable";
 import { useReducedMotion } from "../use-reduced-motion";
 import { useRenewable } from "../use-renewable";
@@ -284,9 +284,9 @@ function MiniTiers({
                   s === n ? "bg-white/15" : "bg-white/5 hover:bg-white/10",
                 )}
               >
-                {/* 사이트 티어 화면과 같은 엠블럼. 작은 창이라 빛 띠는 돌리지 않는다 */}
+                {/* 사이트 티어 화면과 같은 엠블럼 정지 그림(3D를 정면에서 찍은 그림) */}
                 {t ? (
-                  <TierEmblem tier={t.place.tier} size={28} still />
+                  <EmblemStill tier={t.place.tier} size={28} />
                 ) : (
                   <span
                     aria-hidden="true"

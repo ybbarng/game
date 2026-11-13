@@ -1,10 +1,9 @@
 "use client";
 
-import { type ReactNode, useEffect, useId, useRef } from "react";
+import { type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/cn";
 import {
-  BAND_FRAMES,
   BLOCK_SPARK,
   CENTER,
   CUBE_R,
@@ -19,15 +18,11 @@ import {
   glintsFor,
   HDR_TIERS,
   type HdrTier,
-  hdrBandSrc,
-  hdrFacetSrc,
-  hdrGlintSrc,
   hexAround,
   levelOf,
   type Pt,
   STICKER_INSET,
 } from "./emblemArt";
-import { watchShine } from "./emblemShine";
 import { DIVISIONS, type Division, TIER_LABEL, type TierId } from "./table";
 import "@/cube/tiers/emblem.css";
 
@@ -39,12 +34,9 @@ import "@/cube/tiers/emblem.css";
  *
  * - 인라인 SVG 하나라 바깥 그림·글꼴이 없고 크기는 `size`(px)로 정한다. 필터 없이 미리 정한 그라데이션과 면 밝기로만
  *   입체를 낸다. 28px 아래는 스티커·징 같은 잔 선을 뺀다.
- * - 플래티넘부터 위는 가끔 빛 띠가 한 번 지나간다(화면에 여러 개 있어도 한 번에 하나, 높은 티어부터, 보이는 것만,
- *   emblemShine.ts). 움직임 줄이기나 `still`, 28px 아래면 움직이지 않는다.
- * - 다이아몬드부터 위는 HDR 화면이면 흰색보다 밝은 반짝임 그림(BT.2020 PQ AVIF)을 겹친다. 반짝임 자리·블럭 반사 점의
- *   작은 빛 덩어리는 늘 켜 두고, 빛 띠가 지나갈 때 띠·큰 반짝임이 켜진다. 움직임 줄이기·`still`·28px 아래면 반짝임 점도
- *   멈춘 채 켜 둔다. SDR 화면·HDR을 모르는 브라우저는 그림을 받지도 않는다.
- * - 넓은 색역(P3) 화면이면 위 티어의 보석 색이 더 짙어진다(globals.css의 `--emb-*`).
+ * - 2026-11-13부터 화면은 3D 엠블럼과 그 정지 그림(`EmblemStill`)을 쓰고, 이 평면 그림은 정지 그림 파일을 못 받았거나
+ *   3D를 못 그릴 때의 마지막 대체로만 남는다. 그래서 움직임(빛 띠)·HDR 반짝임 층을 지웠다(docs/47 14-7 「정지 그림」).
+ * - 넓은 색역(P3) 화면이면 위 티어의 보석 색이 더 짙어진다(emblem.css의 `--emb-*`).
  */
 
 export interface Palette {
@@ -168,11 +160,6 @@ export const PALETTE: Readonly<Record<TierId, Palette>> = {
   },
 };
 
-/** 빛 띠가 지나가는 티어(플래티넘부터) */
-export function canShine(tier: TierId): boolean {
-  return levelOf(tier) >= 4;
-}
-
 export function isHdrTier(tier: TierId): tier is HdrTier {
   return (HDR_TIERS as readonly string[]).includes(tier);
 }
@@ -289,10 +276,6 @@ export interface TierEmblemProps {
   division?: Division | null;
   /** 너비(px). 높이는 구간 표시가 있으면 조금 더 길다 */
   size?: number;
-  /** 움직이지 않는다(성능을 아끼는 곳, 예: Cubie 미니 모드) */
-  still?: boolean;
-  /** HDR 반짝임 그림을 쓰지 않는다 */
-  noHdr?: boolean;
   /** 주면 이름이 있는 그림(읽어 주기)으로, 없으면 장식(옆 글자가 이름을 말한다) */
   label?: string;
   className?: string;
@@ -302,8 +285,6 @@ export function TierEmblem({
   tier,
   division = null,
   size = 32,
-  still = false,
-  noHdr = false,
   label,
   className,
 }: TierEmblemProps) {
@@ -313,16 +294,6 @@ export function TierEmblem({
   const pips = division !== null && fine;
   const H = pips ? EMBLEM_BOX_PIPS : EMBLEM_BOX;
   const id = `emb${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const ref = useRef<HTMLSpanElement>(null);
-  // 28px 아래(기록 칸의 작은 표시)는 빛 띠가 거의 보이지 않아 차례에 넣지 않는다(위 티어 차례가 늦어진다)
-  const shine = canShine(tier) && !still && fine;
-  const hdr = isHdrTier(tier) && !noHdr ? tier : null;
-
-  useEffect(() => {
-    if (!shine || !ref.current) return;
-    return watchShine(ref.current, lv);
-  }, [shine, lv]);
-
   const C = CENTER;
   const s = coreScale(tier);
   const Ro = FRAME_OUT * s;
@@ -375,15 +346,6 @@ export function TierEmblem({
     return out;
   };
   const stickers = (k: FaceKey) => cells(k, STICKER_INSET);
-  /** 블럭 테이블 면을 화면 x로 다섯 무리(빛 띠가 왼쪽에서 오른쪽으로 지나간다) */
-  const flashBins: Pt[][][] = [[], [], [], [], []];
-  if (canShine(tier) && fine)
-    for (const k of FACE_KEYS)
-      for (const q of cells(k, 0.24)) {
-        const cx = q.reduce((sum, v) => sum + v[0], 0) / q.length;
-        const bin = Math.floor(((cx - (C[0] - Rc)) / (2 * Rc)) * 5);
-        flashBins[Math.max(0, Math.min(4, bin))]?.push(q);
-      }
   /** 면 가운데에서 네 변으로 나눈 깎인 면 넷 */
   const facets = (k: FaceKey) => {
     const q = faces[k].quad;
@@ -450,9 +412,7 @@ export function TierEmblem({
 
   return (
     <span
-      ref={ref}
       data-cube-emblem={tier}
-      data-twinkle={shine && glints.length > 0 ? "" : undefined}
       {...(pips && division ? { "data-cube-emblem-division": division } : {})}
       className={cn(
         "cube-emblem relative inline-block shrink-0 align-middle",
@@ -593,13 +553,6 @@ export function TierEmblem({
               })}
             </>
           )}
-          <linearGradient id={`${id}-band`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#fff" stopOpacity="0" />
-            <stop offset="0.3" stopColor="#fff" stopOpacity="0.15" />
-            <stop offset="0.5" stopColor="#fff" stopOpacity="0.85" />
-            <stop offset="0.7" stopColor="#fff" stopOpacity="0.15" />
-            <stop offset="1" stopColor="#fff" stopOpacity="0" />
-          </linearGradient>
         </defs>
 
         {/* 후광(다이아몬드부터): 어두운 바탕에서 엠블럼 둘레가 은은하게 빛난다 */}
@@ -879,48 +832,11 @@ export function TierEmblem({
           </g>
         )}
 
-        {/* 빛 띠: 가끔 한 번 틀과 큐브 위를 지나간다(평소에는 보이지 않는다). 금속 틀도 함께 번쩍인다 */}
-        {canShine(tier) && (
-          <g clipPath={url("frame")}>
-            <g className="emb-band">
-              <polygon
-                points={pts([
-                  [C[0] - Rc * 0.5 - Ro * 0.55, C[1] + Ro],
-                  [C[0] + Rc * 0.5 - Ro * 0.55, C[1] + Ro],
-                  [C[0] + Rc * 0.5 + Ro * 0.55, C[1] - Ro],
-                  [C[0] - Rc * 0.5 + Ro * 0.55, C[1] - Ro],
-                ])}
-                fill={url("band")}
-              />
-            </g>
-          </g>
-        )}
-
-        {/* 블럭이 차례로 번쩍: 빛 띠가 지나가는 자리를 따라 왼쪽부터 다섯 무리(무리마다 경로 하나) */}
-        {canShine(tier) && fine && (
-          <g fill="#fff" className="emb-blocks">
-            {flashBins.map((qs, i) => (
-              <path
-                // biome-ignore lint/suspicious/noArrayIndexKey: 무리 차례가 곧 이름이다
-                key={i}
-                d={quadsPath(qs)}
-                className={`emb-block-flash emb-bf${i}`}
-              />
-            ))}
-          </g>
-        )}
-
-        {/* 반짝임 점(다이아몬드부터): 움직일 수 있으면 늘 천천히 반짝인다(점마다 때를 어긋나게) */}
+        {/* 반짝임 점(다이아몬드부터, 멈춘 채) */}
         {glints.length > 0 && (
-          <g fill="#fff" className="emb-glints">
-            {glints.map((g, i) => (
-              <g
-                key={`${g.x}-${g.y}`}
-                className="emb-glint-tw"
-                style={{ animationDelay: `${-i * 1.3}s` }}
-              >
-                <path d={glintPath(g)} className="emb-glint" />
-              </g>
+          <g fill="#fff" opacity="0.9">
+            {glints.map((g) => (
+              <path key={`${g.x}-${g.y}`} d={glintPath(g)} />
             ))}
           </g>
         )}
@@ -948,8 +864,6 @@ export function TierEmblem({
             );
           })}
       </svg>
-
-      {hdr && <HdrLayer tier={hdr} still={!shine} pips={pips} />}
     </span>
   );
 }
@@ -1177,52 +1091,6 @@ function glintPath(g: Glint): string {
   const w = r * 0.2;
   const n = (v: number) => f2(v);
   return `M${n(x)} ${n(y - r)}Q${n(x + w)} ${n(y - w)} ${n(x + r)} ${n(y)}Q${n(x + w)} ${n(y + w)} ${n(x)} ${n(y + r)}Q${n(x - w)} ${n(y + w)} ${n(x - r)} ${n(y)}Q${n(x - w)} ${n(y - w)} ${n(x)} ${n(y - r)}Z`;
-}
-
-/**
- * HDR 반짝임 그림(HDR 화면 + `dynamic-range-limit`을 아는 브라우저에서만 CSS가 보인다. 안 보이는 img는 lazy라 받지 않는다).
- * img에는 위치·변형을 걸지 않고 감싸는 칸만 놓는다(Safari가 위치·변형 걸린 HDR 그림을 SDR로 그린 적이 있다, docs/36).
- */
-function HdrLayer({
-  tier,
-  still,
-  pips,
-}: {
-  tier: HdrTier;
-  still: boolean;
-  pips: boolean;
-}) {
-  const h = pips ? `${(EMBLEM_BOX / EMBLEM_BOX_PIPS) * 100}%` : "100%";
-  const img = (src: string, cls: string) => (
-    <span
-      key={src}
-      className="absolute top-0 left-0 block w-full"
-      style={{ height: h }}
-    >
-      {/* biome-ignore lint/performance/noImgElement: 정적 내보내기의 작은 HDR 그림이라 next/image가 필요 없다 */}
-      <img
-        src={src}
-        alt=""
-        draggable={false}
-        loading="lazy"
-        decoding="async"
-        className={`emb-hdr ${cls} block h-full w-full`}
-      />
-    </span>
-  );
-  return (
-    <span
-      className="emb-hdr-layer pointer-events-none"
-      data-still={still ? "" : undefined}
-    >
-      {img(hdrFacetSrc(tier), "emb-hdr-facet")}
-      {!still &&
-        BAND_FRAMES.map((_, i) =>
-          img(hdrBandSrc(tier, i), `emb-hdr-band emb-hdr-band${i}`),
-        )}
-      {img(hdrGlintSrc(tier), "emb-hdr-glint")}
-    </span>
-  );
 }
 
 /** 이름과 엠블럼 이름표(읽어 주기용) */

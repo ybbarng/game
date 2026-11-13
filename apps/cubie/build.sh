@@ -43,7 +43,7 @@ strip -rSTx "$APP/Contents/MacOS/Cubie"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 # 앱 아이콘(scripts/icon/make-art.mjs)과 메뉴 막대 아이콘(scripts/make-menu-icon.swift)
 cp Resources/AppIcon.icns Resources/MenuIcon*.png "$APP/Contents/Resources/"
-# 메뉴 프로필 칸의 티어 엠블럼(네이티브 화면, scripts/emblems/make.mjs가 사이트 엠블럼 코드로 만든다)
+# 티어 엠블럼(네이티브 화면). 사이트 3D 엠블럼을 정면에서 찍은 정지 그림, apps/web/scripts/render-emblem-posters.mjs가 만든다
 cp -R Resources/Emblems "$APP/Contents/Resources/"
 plutil -insert CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -insert CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
