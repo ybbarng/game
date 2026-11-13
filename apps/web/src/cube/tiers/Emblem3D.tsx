@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ViewHome } from "@/cube/components/ViewHome";
 import { cn } from "@/lib/cn";
@@ -32,8 +32,7 @@ export function prefersReducedMotion(): boolean {
  * - `sway`(티어 화면 진열): 정면 둘레를 좌우로 천천히 흔들어 반짝임이 면을 따라 지나간다. 끌면 멈췄다가 놓은 뒤 잠시
  *   그 각에 두고 다시 천천히 흔든다. 동작 줄이기 설정이면 흔들지 않고, 그때는 끌어 돌린 각에 남기고 벗어나 있으면
  *   「처음 각도로」 단추가 뜬다(고정 규칙 2-1절). 흔드는 동안은 각이 늘 바뀌므로 그 단추를 두지 않는다.
- * - 3D가 뜨기 전에는 3D 장면을 미리 찍은 그림(`cover`가 있으면 그것, 없으면 `emblem3d/poster.ts` 대기 그림)을 같은
- *   자리·같은 크기로 덮어 두고, 3D 첫 장이 화면에 나간 뒤에 걷는다. 찍어 둔 그림이 없으면 빈 칸에 작은 로딩 표시를
+ * - 3D가 뜨기 전에는 3D 장면을 미리 찍은 대기 그림(`emblem3d/poster.ts`)을 같은 자리·같은 크기로 덮어 두고, 3D 첫 장이 화면에 나간 뒤에 걷는다. 찍어 둔 그림이 없으면 빈 칸에 작은 로딩 표시를
  *   둔다. 로딩 중에는 평면 SVG를 보이지 않는다. 3D를 못 그리거나(WebGL2 없음·무대 실패) 문맥을 잃으면 정지
  *   그림(`EmblemStill`, 3D를 정면에서 찍은 그림)을 보이고, 그 그림도 못 받을 때만 평면 SVG가 남는다.
  * - 화면 밖이면 그리지 않는다(무대의 IntersectionObserver, 흔들기 시계도 멈춘다).
@@ -46,7 +45,6 @@ export function Emblem3D({
   className,
   pageColor,
   sway = false,
-  cover,
   label,
 }: {
   tier: DraftTier;
@@ -56,8 +54,6 @@ export function Emblem3D({
   pageColor?: string | undefined;
   /** 진열 흔들기 */
   sway?: boolean;
-  /** 3D 첫 장 전까지 덮어 둘 그림(같은 3D를 같은 크기·정면으로 찍은 것). 없으면 대기 그림 */
-  cover?: ReactNode;
   /** 읽어 주는 이름(없으면 「<티어> 엠블럼」) */
   label?: string;
 }) {
@@ -155,8 +151,7 @@ export function Emblem3D({
 
   const failed = state === "svg";
   const covered = !failed && !(state === "3d" && shown);
-  const usePoster =
-    !failed && (cover != null || (poster !== null && !posterBroken));
+  const usePoster = !failed && poster !== null && !posterBroken;
 
   return (
     <div
@@ -183,20 +178,18 @@ export function Emblem3D({
             transition: `opacity ${POSTER_FADE_MS}ms ease-out`,
           }}
         >
-          {cover ?? (
-            // 3D 장면을 미리 찍은 대기 그림: 캔버스와 같은 자리·같은 크기
-            // biome-ignore lint/performance/noImgElement: 미리 찍은 그림을 캔버스와 같은 화소 크기로 그대로 보인다
-            <img
-              src={poster ?? undefined}
-              alt=""
-              width={size}
-              height={size}
-              draggable={false}
-              onError={() => setPosterBroken(true)}
-              className="block rounded-2xl"
-              style={{ width: size, height: size }}
-            />
-          )}
+          {/* 3D 장면을 미리 찍은 대기 그림: 캔버스와 같은 자리·같은 크기 */}
+          {/* biome-ignore lint/performance/noImgElement: 미리 찍은 그림을 캔버스와 같은 화소 크기로 그대로 보인다 */}
+          <img
+            src={poster ?? undefined}
+            alt=""
+            width={size}
+            height={size}
+            draggable={false}
+            onError={() => setPosterBroken(true)}
+            className="block rounded-2xl"
+            style={{ width: size, height: size }}
+          />
         </div>
       )}
       {covered && !usePoster && (

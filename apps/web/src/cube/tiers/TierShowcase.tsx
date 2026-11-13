@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { formatMs } from "../records";
@@ -14,17 +14,24 @@ import {
   SPRITE_FRONT,
   spriteSrc,
 } from "./emblem3d/poster";
-import { canDraw3d } from "./emblem3d/support";
 import { type MyTier, nextTier, tierName } from "./rank";
 import { cutText, TIER_TONE } from "./TierTable";
-import { TIER_IDS, TIER_LABEL, TIER_TABLE, type TierId } from "./table";
+import {
+  DIVISIONS,
+  TIER_IDS,
+  TIER_LABEL,
+  TIER_TABLE,
+  type TierId,
+} from "./table";
 
 /**
  * 티어 화면 진열(docs/47 14-7 「진열」, 2026-11-13 사용자 「티어 페이지에서 엠블럼을 눈에 띄게 해서 사람들이 모두 보면서
- * 가지고 싶은 마음이 들게」). 내 티어를 크게 3D로, 그 옆에 다음 티어와 줄일 시간, 아래에 열 티어 사다리.
+ * 가지고 싶은 마음이 들게」). 위쪽 큰 칸에 내 티어를 3D로 크게, 그 옆에 다음 티어와 줄일 시간, 아래에 열 티어 사다리.
  *
- * - 3D는 한 번에 많아야 둘: 내 티어 칸 하나와, 사다리에서 누르거나 마우스를 올린 칸 하나. 사다리의 나머지 칸은 그 칸
- *   3D를 좌우 각마다 미리 찍은 그림을 넘겨 도는 것처럼 보인다(3D 문맥을 여럿 띄우지 않는다).
+ * - 동작은 누르기 하나(2026-11-13 사용자 「마우스 올리는 거랑 클릭이랑 무슨 차이야, 좀 동작이 헷갈리네」): 사다리 칸을
+ *   누르면(Enter·Space도) 그 티어가 위쪽 큰 칸에 크게 뜨고 이름·기준 시간이 함께 보인다. 같은 칸이나 내 티어 칸을
+ *   다시 누르면 내 티어로 돌아온다. 마우스를 올리면 칸이 살짝 떠오르기만 한다.
+ * - 3D는 늘 위쪽 큰 칸 하나. 사다리 칸은 그 3D를 좌우 각마다 미리 찍은 그림을 넘겨 도는 것처럼 보인다.
  * - 사다리 칸은 한 번에 하나씩 아래 티어부터 차례로 흔든다(여러 개를 동시에 움직이지 않는다, 고정 규칙 3절). 동작
  *   줄이기 설정이면 멈춘다.
  * - 아직 얻지 못한 티어는 살짝 어둡게 둔다(잠긴 보상).
@@ -55,20 +62,50 @@ function useWide(): boolean {
 /** 잠긴(아직 못 얻은) 티어의 생김새 */
 const LOCKED: CSSProperties = { filter: "brightness(0.5) saturate(0.55)" };
 
-/** 내 티어 칸: 크게 3D, 이름·최고 Ao5·다음 티어 */
-export function TierHero({ n, mine }: { n: number; mine: MyTier | null }) {
-  const tier: TierId = mine?.place.tier ?? "iron";
-  const next = mine ? nextTier(n, mine.ao5) : null;
+/** 진열 전체: 위쪽 큰 칸과 사다리. 고른 티어를 둘이 함께 쓴다 */
+export function TierShowcase({ n, mine }: { n: number; mine: MyTier | null }) {
+  const [picked, setPicked] = useState<TierId | null>(null);
+  const myTier = mine?.place.tier ?? null;
+  const pick = (t: TierId) =>
+    setPicked((p) => (p === t || t === myTier ? null : t));
+  return (
+    <>
+      <TierHero n={n} mine={mine} picked={picked} />
+      <TierLadder n={n} mine={mine} picked={picked} onPick={pick} />
+    </>
+  );
+}
+
+/** 위쪽 큰 칸: 내 티어(또는 사다리에서 고른 티어)를 크게 3D로, 이름과 시간 */
+function TierHero({
+  n,
+  mine,
+  picked,
+}: {
+  n: number;
+  mine: MyTier | null;
+  picked: TierId | null;
+}) {
+  const tier: TierId = picked ?? mine?.place.tier ?? "iron";
+  const next = !picked && mine ? nextTier(n, mine.ao5) : null;
+  const row = TIER_TABLE[n]?.find((r) => r.tier === tier);
+  const myIndex = mine ? TIER_IDS.indexOf(mine.place.tier) : -1;
+  // 고른 티어가 내 티어보다 위면 거기까지 줄일 시간
+  const gap =
+    picked && mine && row && TIER_IDS.indexOf(picked) > myIndex
+      ? Math.max(0, mine.ao5 - Math.round((row.cuts[0] as number) * 1000))
+      : null;
   return (
     <section
       data-cube-tier-mine-box
+      data-cube-tier-view={picked ? "pick" : "mine"}
       className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 px-4 py-4 sm:flex-row sm:gap-6"
     >
       <div className="flex shrink-0 flex-col items-center gap-1">
         <div
           data-cube-tier-hero={tier}
-          {...(mine ? {} : { "data-cube-tier-locked": "" })}
-          style={mine ? undefined : LOCKED}
+          {...(!mine && !picked ? { "data-cube-tier-locked": "" } : {})}
+          style={!mine && !picked ? LOCKED : undefined}
         >
           <Emblem3D
             tier={tier}
@@ -77,12 +114,37 @@ export function TierHero({ n, mine }: { n: number; mine: MyTier | null }) {
             label={`${TIER_LABEL[tier]} 엠블럼`}
           />
         </div>
-        {mine?.place.division && (
+        {!picked && mine?.place.division && (
           <DivisionPips tier={tier} division={mine.place.division} size={96} />
         )}
       </div>
       <div className="flex w-full flex-col gap-3 text-sm sm:w-auto sm:min-w-0 sm:flex-1">
-        {mine ? (
+        {picked ? (
+          <div className="text-center sm:text-left">
+            <span
+              data-cube-tier-picked={picked}
+              className={cn("block font-bold text-2xl", TIER_TONE[picked])}
+            >
+              {TIER_LABEL[picked]}
+            </span>
+            {row && (
+              <>
+                <span className="block font-semibold tabular-nums">
+                  {Number.isFinite(row.cuts[0] as number)
+                    ? `Ao5 ${cutText(row.cuts[0] as number)} 이하`
+                    : "다 맞춤"}
+                </span>
+                {row.cuts.length === 4 && (
+                  <span className="block text-white/50 text-xs tabular-nums">
+                    {row.cuts
+                      .map((c, d) => `${DIVISIONS[d]} ${cutText(c)}`)
+                      .join(" · ")}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        ) : mine ? (
           <p className="text-center sm:text-left">
             <span
               data-cube-my-tier={mine.place.tier}
@@ -129,6 +191,35 @@ export function TierHero({ n, mine }: { n: number; mine: MyTier | null }) {
             </p>
           </div>
         )}
+        {picked && mine && (
+          // 고른 티어를 보는 동안에도 내 기록을 함께: 내 티어(누르면 돌아온다)와 최고 Ao5, 위 티어면 거기까지 줄일 시간
+          <div
+            data-cube-picked-mine
+            className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2"
+          >
+            <EmblemStill tier={mine.place.tier} size={48} />
+            <p className="min-w-0">
+              <span className="block">
+                <span
+                  className={cn("font-semibold", TIER_TONE[mine.place.tier])}
+                >
+                  {tierName(mine.place)}
+                </span>{" "}
+                <span className="font-mono font-semibold tabular-nums">
+                  {formatMs(mine.ao5)}
+                </span>
+              </span>
+              {gap !== null && (
+                <span className="block text-white/50 text-xs">
+                  {TIER_LABEL[tier]}까지{" "}
+                  <span data-cube-picked-gap className="font-mono tabular-nums">
+                    {formatMs(gap)}초
+                  </span>
+                </span>
+              )}
+            </p>
+          </div>
+        )}
         <p className="text-center text-white/50 text-xs sm:text-left">
           기록은 이 기기에만 저장됩니다.
         </p>
@@ -166,13 +257,13 @@ function LadderSprite({
 }: {
   tier: TierId;
   size: number;
-  /** 흔드는 차례(아래 티어부터 0). 없으면 정면에 멈춘 한 장 */
-  order?: number;
+  /** 흔드는 차례(아래 티어부터 0) */
+  order: number;
 }) {
   return (
     <span
       data-cube-ladder-sprite={tier}
-      {...(order !== undefined ? { "data-sweep": "" } : {})}
+      data-sweep=""
       aria-hidden
       className="block rounded-xl"
       style={{
@@ -182,27 +273,31 @@ function LadderSprite({
         backgroundSize: `${SPRITE_FRAMES * 100}% 100%`,
         backgroundPosition: `${(SPRITE_FRONT / (SPRITE_FRAMES - 1)) * 100}% 0`,
         backgroundRepeat: "no-repeat",
-        ...(order !== undefined
-          ? { animationDelay: `${order * LADDER_SWEEP_MS}ms` }
-          : {}),
+        animationDelay: `${order * LADDER_SWEEP_MS}ms`,
       }}
     />
   );
 }
 
 /** 열 티어 사다리: 위 줄 보석 다섯, 아래 줄 금속 다섯(왼쪽 아래 아이언에서 오른쪽 위 챌린저로 오른다) */
-export function TierLadder({ n, mine }: { n: number; mine: MyTier | null }) {
+function TierLadder({
+  n,
+  mine,
+  picked,
+  onPick,
+}: {
+  n: number;
+  mine: MyTier | null;
+  picked: TierId | null;
+  onPick: (t: TierId) => void;
+}) {
   const wide = useWide();
   const size = wide ? LADDER_SIZE : LADDER_SIZE_PHONE;
-  const [open, setOpen] = useState<TierId | null>(null);
-  const [can3d, setCan3d] = useState(false);
-  useEffect(() => setCan3d(canDraw3d()), []);
-  const hover = useRef(0);
-  useEffect(() => () => window.clearTimeout(hover.current), []);
   const table = TIER_TABLE[n] ?? [];
   const myIndex = mine ? TIER_IDS.indexOf(mine.place.tier) : -1;
   const rows = [TIER_IDS.slice(5), TIER_IDS.slice(0, 5)];
-  const pick = (t: TierId) => setOpen((o) => (o === t ? null : t));
+  // 지금 위쪽 큰 칸에 뜬 티어
+  const shown = picked ?? mine?.place.tier ?? null;
 
   return (
     <section
@@ -221,7 +316,6 @@ export function TierLadder({ n, mine }: { n: number; mine: MyTier | null }) {
             const locked = i > myIndex;
             const here = i === myIndex;
             const cut = table[i]?.cuts[0];
-            const live = open === t && can3d;
             return (
               <li
                 key={t}
@@ -234,44 +328,23 @@ export function TierLadder({ n, mine }: { n: number; mine: MyTier | null }) {
                   data-cube-ladder={t}
                   {...(locked ? { "data-cube-ladder-locked": "" } : {})}
                   {...(here ? { "data-cube-ladder-mine": "" } : {})}
-                  aria-pressed={open === t}
+                  aria-pressed={shown === t}
                   aria-label={TIER_LABEL[t]}
-                  onClick={() => pick(t)}
-                  onPointerEnter={(e) => {
-                    if (e.pointerType !== "mouse") return;
-                    window.clearTimeout(hover.current);
-                    hover.current = window.setTimeout(() => setOpen(t), 250);
-                  }}
-                  onPointerLeave={() => window.clearTimeout(hover.current)}
+                  onClick={() => onPick(t)}
                   className={cn(
-                    "flex w-full flex-col items-center gap-1 rounded-xl p-0.5 pb-1 ring-1 sm:p-1.5",
-                    here
-                      ? "ring-amber-300/70"
-                      : open === t
-                        ? "ring-white/30"
-                        : "ring-transparent hover:ring-white/15",
+                    // 마우스를 올리면 살짝 떠오르기만 한다(3D로 바꾸지 않는다)
+                    "flex w-full flex-col items-center gap-1 rounded-xl p-0.5 pb-1 ring-1 transition duration-150 hover:-translate-y-0.5 hover:bg-white/5 hover:shadow-black/50 hover:shadow-lg hover:brightness-110 sm:p-1.5",
+                    shown === t
+                      ? here
+                        ? "bg-white/5 ring-amber-300/80"
+                        : "bg-white/5 ring-white/40"
+                      : here
+                        ? "ring-amber-300/50"
+                        : "ring-transparent",
                   )}
                 >
-                  <span
-                    className="block"
-                    style={locked && !live ? LOCKED : undefined}
-                  >
-                    {live ? (
-                      <Emblem3D
-                        tier={t}
-                        size={size}
-                        sway
-                        className="rounded-xl"
-                        cover={<LadderSprite tier={t} size={size} />}
-                      />
-                    ) : (
-                      // 사다리 칸 하나를 3D로 연 동안은 차례 흔들기를 멈춘다(여러 개를 동시에 움직이지 않는다)
-                      <LadderSprite
-                        tier={t}
-                        size={size}
-                        {...(open === null ? { order: i } : {})}
-                      />
-                    )}
+                  <span className="block" style={locked ? LOCKED : undefined}>
+                    <LadderSprite tier={t} size={size} order={i} />
                   </span>
                   <span
                     className={cn(

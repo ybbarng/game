@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { installCaptureHook } from "./emblem3d/capture";
-import { TierHero, TierLadder } from "./TierShowcase";
+import { TierShowcase } from "./TierShowcase";
 import { TierTable, useMyTier } from "./TierTable";
 import {
   TIER_DATA_DATE,
@@ -86,9 +86,7 @@ export function TiersApp() {
           ))}
         </fieldset>
 
-        <TierHero n={n} mine={mine} />
-
-        <TierLadder n={n} mine={mine} />
+        <TierShowcase n={n} mine={mine} />
 
         <section className="flex flex-col gap-1.5 text-sm text-white/80 leading-relaxed">
           <p>

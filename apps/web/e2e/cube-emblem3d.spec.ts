@@ -153,53 +153,184 @@ test("동작 줄이기 설정이면 내 티어 3D와 사다리 칸 모두 멈춰
   await expect(box.locator("[data-cube-view-home]")).toBeVisible();
 });
 
-test("사다리: 칸을 누르면 그 칸이 3D가 되고, 3D는 한 번에 많아야 둘(내 티어 칸 + 고른 칸)", {
+/** 위쪽 큰 칸이 그 티어 3D를 그렸다(3D는 늘 하나, 사다리 안에는 없다) */
+async function heroIs(page: Page, tier: string) {
+  const box = hero(page);
+  await expect(box).toHaveAttribute("data-emblem3d", tier);
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
+    timeout: 60_000,
+  });
+  await expect(page.locator("[data-emblem3d]")).toHaveCount(1);
+  await expect(page.locator("[data-emblem3d-stage] canvas")).toHaveCount(1);
+  await expect(
+    page.locator("[data-cube-ladder-list] [data-emblem3d]"),
+  ).toHaveCount(0);
+}
+
+test("사다리: 누르면 위쪽 큰 칸이 그 티어로, 같은 칸·내 티어 칸을 누르면 내 티어로. 키보드로도 고르고, 마우스를 올리기만 해서는 바뀌지 않는다", {
   tag: "@only-desktop",
 }, async ({ page }) => {
   test.setTimeout(120_000);
   await seed(page);
   await page.goto("/cube/tiers");
-  await expect(hero(page)).toHaveAttribute("data-emblem3d-shown", "", {
-    timeout: 60_000,
-  });
-  const ladder = page.locator("[data-cube-ladder-list]");
-  // 처음은 사다리에 3D가 없다(미리 찍은 그림)
-  await expect(ladder.locator("[data-emblem3d]")).toHaveCount(0);
-  for (const t of ["challenger", "gold", "master"]) {
-    await ladder.locator(`[data-cube-ladder="${t}"]`).click();
-    const cell = ladder.locator(`[data-cube-ladder="${t}"] [data-emblem3d]`);
-    await expect(cell).toHaveAttribute("data-emblem3d-shown", "", {
-      timeout: 60_000,
-    });
-    await expect(page.locator("[data-emblem3d]")).toHaveCount(2);
-    await expect(page.locator("[data-emblem3d-stage] canvas")).toHaveCount(2);
-  }
-  await shot(page, "ladder-open");
-  // 같은 칸을 다시 누르면 닫는다(3D는 내 티어 칸 하나)
-  await ladder.locator('[data-cube-ladder="master"]').click();
-  await expect(page.locator("[data-emblem3d]")).toHaveCount(1);
+  await heroIs(page, "diamond");
+  const box = page.locator("[data-cube-tier-mine-box]");
+  await expect(box).toHaveAttribute("data-cube-tier-view", "mine");
+  const cell = (t: string) => page.locator(`[data-cube-ladder="${t}"]`);
+
+  // 마우스를 올리기만 하면 칸이 떠오를 뿐 큰 칸은 그대로다
+  await cell("challenger").hover();
+  await expect(box).toHaveAttribute("data-cube-tier-view", "mine");
+  await heroIs(page, "diamond");
+
+  // 누르면 큰 칸이 그 티어로: 이름·기준 시간, 내 기록과 거기까지 줄일 시간
+  await cell("challenger").click();
+  await heroIs(page, "challenger");
+  await expect(box).toHaveAttribute("data-cube-tier-view", "pick");
+  await expect(box.locator("[data-cube-tier-picked]")).toHaveText("챌린저");
+  await expect(box).toContainText("Ao5 6.5초 이하");
+  await expect(box.locator("[data-cube-picked-gap]")).toHaveText("6.90초");
+  await expect(cell("challenger")).toHaveAttribute("aria-pressed", "true");
+  await shot(page, "picked-desktop");
+  // 같은 칸을 다시 누르면 내 티어로
+  await cell("challenger").click();
+  await heroIs(page, "diamond");
+  await expect(box).toHaveAttribute("data-cube-tier-view", "mine");
+
+  // 내 티어보다 아래 티어: 기준 시간은 보이고, 줄일 시간은 없다
+  await cell("gold").click();
+  await heroIs(page, "gold");
+  await expect(box).toContainText("IV 1:00 · III 52초 · II 46초 · I 40초");
+  await expect(box.locator("[data-cube-picked-gap]")).toHaveCount(0);
+  // 사다리의 내 칸을 누르면 내 티어로
+  await cell("diamond").click();
+  await heroIs(page, "diamond");
+
+  // 키보드: Enter로 고르고 Space로 되돌린다
+  await cell("master").focus();
+  await page.keyboard.press("Enter");
+  await heroIs(page, "master");
+  await page.keyboard.press("Space");
+  await heroIs(page, "diamond");
 });
 
-test("휴대폰: 내 티어 3D와 사다리 칸 3D도 둘을 넘지 않는다", {
+test("휴대폰: 누르면 큰 칸이 그 티어로, 다시 누르면 내 티어로, 3D는 하나", {
   tag: "@only-phone-portrait",
 }, async ({ page }) => {
   test.setTimeout(120_000);
   await seed(page);
   await page.goto("/cube/tiers");
-  await expect(hero(page)).toHaveAttribute("data-emblem3d-shown", "", {
+  await heroIs(page, "diamond");
+  await page.locator('[data-cube-ladder="grandmaster"]').tap();
+  await heroIs(page, "grandmaster");
+  await shot(page, "picked-phone");
+  await page.locator('[data-cube-ladder="grandmaster"]').tap();
+  await heroIs(page, "diamond");
+  await shot(page, "showcase-phone");
+});
+
+/** PNG의 선명도: 가운데 영역 밝기의 가로·세로 차 절댓값 평균(경계가 흐리면 작아진다) */
+async function sharpness(page: Page, png: Buffer): Promise<number> {
+  return page.evaluate(async (b64) => {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bin], { type: "image/png" }));
+    const c = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+    ctx.drawImage(bmp, 0, 0);
+    const { data, width, height } = ctx.getImageData(
+      0,
+      0,
+      bmp.width,
+      bmp.height,
+    );
+    const y = (x: number, yy: number) => {
+      const k = (yy * width + x) * 4;
+      return (
+        0.2126 * (data[k] ?? 0) +
+        0.7152 * (data[k + 1] ?? 0) +
+        0.0722 * (data[k + 2] ?? 0)
+      );
+    };
+    let s = 0;
+    let n = 0;
+    // 엠블럼이 놓인 가운데 70%만(배경판 가장자리 빼고)
+    const x0 = Math.floor(width * 0.15);
+    const y0 = Math.floor(height * 0.15);
+    for (let yy = y0; yy < height - y0 - 1; yy++)
+      for (let x = x0; x < width - x0 - 1; x++) {
+        s +=
+          Math.abs(y(x + 1, yy) - y(x, yy)) + Math.abs(y(x, yy + 1) - y(x, yy));
+        n++;
+      }
+    return s / n;
+  }, png.toString("base64"));
+}
+
+test("고른 티어의 3D는 미리 찍은 그림만큼 선명하다: 첫 장도, 120Hz 예산(7.1ms)으로 흔드는 동안에도 해상도 배율 1", {
+  tag: "@only-desktop",
+}, async ({ browser }) => {
+  test.setTimeout(150_000);
+  // 사용자 맥처럼 배율 2, 연출 켬
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    deviceScaleFactor: 2,
+    reducedMotion: "no-preference",
+  });
+  const page = await context.newPage();
+  // 120Hz 화면의 한 장 예산으로 고정(화면 시험 고리, 제품에서는 없다)
+  await page.addInitScript(() => {
+    (window as { __emblem3dBudget?: number }).__emblem3dBudget = 7.1;
+  });
+  await seed(page);
+  await page.goto("/cube/tiers");
+  await heroIs(page, "diamond");
+  // 3D를 붙잡아 두고 사다리에서 마스터를 고른다: 큰 칸에 마스터 대기 그림
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __emblem3dHold: Promise<void>;
+      __emblem3dRelease: () => void;
+    };
+    w.__emblem3dHold = new Promise<void>((r) => {
+      w.__emblem3dRelease = r;
+    });
+  });
+  await page.locator('[data-cube-ladder="master"]').click();
+  const box = hero(page);
+  await expect(box).toHaveAttribute("data-emblem3d", "master");
+  const poster = box.locator("[data-emblem3d-poster] img");
+  await expect
+    .poll(() =>
+      poster.evaluate((img: HTMLImageElement) =>
+        img.complete ? img.naturalWidth : 0,
+      ),
+    )
+    .toBe(560);
+  const posterSharp = await sharpness(page, await box.screenshot());
+  await release3d(page);
+  await expect(box).toHaveAttribute("data-emblem3d-shown", "", {
     timeout: 60_000,
   });
-  const ladder = page.locator("[data-cube-ladder-list]");
-  await ladder.locator('[data-cube-ladder="grandmaster"]').tap();
-  await expect(
-    ladder.locator('[data-cube-ladder="grandmaster"] [data-emblem3d]'),
-  ).toHaveAttribute("data-emblem3d-shown", "", { timeout: 60_000 });
-  await ladder.locator('[data-cube-ladder="emerald"]').tap();
-  await expect(
-    ladder.locator('[data-cube-ladder="emerald"] [data-emblem3d]'),
-  ).toHaveAttribute("data-emblem3d-shown", "", { timeout: 60_000 });
-  await expect(page.locator("[data-emblem3d]")).toHaveCount(2);
-  await shot(page, "showcase-phone");
+  await expect(box.locator("[data-emblem3d-poster]")).toHaveCount(0);
+  const stage = box.locator("[data-emblem3d-stage]");
+  await expect(stage).toHaveAttribute("data-emblem3d-budget", "7.1");
+  const firstSharp = await sharpness(page, await box.screenshot());
+  // 흔드는 동안: 장이 충분히 지나도 해상도 배율은 1(흔들기는 해상도 대신 그리는 횟수를 줄인다)
+  await expect(stage).toHaveAttribute("data-emblem3d-sway", "", {
+    timeout: 10_000,
+  });
+  const f0 = await framesOf(stage);
+  await expect
+    .poll(() => framesOf(stage), { timeout: 30_000 })
+    .toBeGreaterThan(f0 + 60);
+  await expect(stage).toHaveAttribute("data-emblem3d-scale", "1");
+  const swaySharp = await sharpness(page, await box.screenshot());
+  await expect(stage).toHaveAttribute("data-emblem3d-scale", "1");
+  console.log(
+    `선명도 대기 그림 ${posterSharp.toFixed(2)} · 3D 첫 장 ${firstSharp.toFixed(2)} · 흔드는 중 ${swaySharp.toFixed(2)} · 그리는 간격 ${await stage.getAttribute("data-emblem3d-every")}`,
+  );
+  expect(firstSharp / posterSharp).toBeGreaterThan(0.85);
+  expect(swaySharp / posterSharp).toBeGreaterThan(0.8);
+  await context.close();
 });
 
 /** 두 PNG(같은 크기)의 화소 차 RMSE(0~1, RGB) */
@@ -372,8 +503,13 @@ test("3D를 그릴 수 없으면 내 티어 칸에 정지 그림이 뜨고 평�
     .toBeGreaterThan(0);
   await noFlat(e);
   await expect(e.locator("canvas")).toHaveCount(0);
-  // 사다리 칸을 눌러도 3D를 띄우지 않는다
+  // 사다리 칸을 누르면 큰 칸이 그 티어의 정지 그림으로 바뀐다(평면 없음)
   await page.locator('[data-cube-ladder="master"]').click();
+  await expect(e).toHaveAttribute("data-emblem3d", "master");
+  await expect(
+    e.locator('[data-emblem3d-fallback] [data-cube-emblem="master"]'),
+  ).toBeVisible();
+  await noFlat(e);
   await expect(
     page.locator("[data-cube-ladder-list] [data-emblem3d]"),
   ).toHaveCount(0);
