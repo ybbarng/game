@@ -675,6 +675,18 @@ final class NativeCubeWindow: FloatingWindow, CubeSurface {
   }
 
   func measureScramble() { scramble() }
+
+  private var measureHeroStop: (() -> Void)?
+  /// 재기: 홈 시연을 바로 시작(끝나면 멈춘다)·멈춤
+  func measureHero(_ on: Bool) {
+    measureHeroStop?()
+    measureHeroStop = nil
+    if on {
+      measureHeroStop = startHero { [weak self] in self?.measureHeroStop = nil }
+    } else {
+      cube.showJump(solved: false)
+    }
+  }
   func measureMirror(_ on: Bool) {
     state.mirror = on
     updateMirror()
