@@ -40,6 +40,9 @@ async function setup() {
     rules,
     revealTimeoutMs: 500,
     standInDelayMs: 10,
+    // 화면처럼 빈자리 컴퓨터의 단계를 알린다(알리지 않으면 참가자가 컴퓨터 수를 「확인 못 함」으로 본다)
+    bot: intermediateBot,
+    botLevel: 1,
   });
   const a = new GuestRoom({
     transport: net.join("a"),

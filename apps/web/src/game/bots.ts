@@ -5,6 +5,13 @@ import {
   searchBot,
 } from "@game/mighty-ai";
 
+/**
+ * 컴퓨터 계획 판 번호(`GameKit.botPlan`). 같은 화면·같은 난수에서 고르는 수가 바뀌면 올린다(온라인 방에서 번호가 다른
+ * 기기끼리 컴퓨터 수를 「조종」으로 잘못 보지 않게). 올리면 `bot-plan-fixture.ts` `PRINTS`에 새 지문을 더한다.
+ * 1: 번호를 싣기 전(2026-11-17까지) · 2: 조커콜 가리기(PR #321)
+ */
+export const MIGHTY_BOT_PLAN = 2;
+
 /** 0 입문, 1 중수, 2 고수. 저장해 둔 값(1 중수, 2 고수)이 그대로 이어지도록 입문을 0에 둔다 */
 export type BotLevel = 0 | 1 | 2;
 

@@ -19,6 +19,7 @@ import { useSettings } from "@/game/settings";
 import { useHwatuFair } from "@/hwatu/fair-bar";
 import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
+import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -119,17 +120,18 @@ export function GostopOnlineScreen({
   });
 
   /** 게임 끝 검증 결과를 채팅에 남긴다. 무효 표시는 내 기기의 검증만 따른다(HeartsOnlineScreen과 같다) */
-  const onAuditReport = (who: string, ok: boolean, reason?: string) => {
+  const onAuditReport = (
+    who: string,
+    ok: boolean,
+    reason?: string,
+    unchecked?: string,
+  ) => {
     const own = who === "나";
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: ok
-        ? `${who} — 문제없음 ✓`
-        : own
-          ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`,
+      text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
       if (!ok)
@@ -250,13 +252,18 @@ export function GostopOnlineScreen({
         });
         guest.on("audit", (result) => {
           useGostop.setState({
-            notice: result.ok
-              ? "기록 확인: 진행에 문제가 없습니다"
-              : `기록 확인 실패: ${result.reason}`,
+            notice: auditNotice(result, "기록 확인", "진행에 문제가 없습니다"),
           });
-          onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
+          onAuditReport(
+            "나",
+            result.ok,
+            result.ok ? undefined : result.reason,
+            result.ok ? result.unchecked : undefined,
+          );
         });
-        guest.on("report", (r) => onAuditReport(r.name, r.ok, r.reason));
+        guest.on("report", (r) =>
+          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+        );
         guest.on("incident", (n) =>
           reportIncident(
             n,
