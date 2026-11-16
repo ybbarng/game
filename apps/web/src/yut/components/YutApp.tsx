@@ -12,6 +12,7 @@ import { TutorialHome } from "@/components/tutorial/TutorialHome";
 import { useScreenHistory } from "@/game/screen-history";
 import { cn } from "@/lib/cn";
 import { type HostRestore, hostedRoom } from "@/net/host-store";
+import { canVibrate } from "../haptics";
 import { YutIconArt } from "../icon-art";
 import { yutOnline, yutRulesSummary } from "../online";
 import { useYutTutorialProgress } from "../progress";
@@ -108,6 +109,9 @@ function YutOptions({ onBack }: { onBack: () => void }) {
   const s = useYutSettings();
   const lineup = YUT_LINEUPS.find((l) => l.value === s.lineup);
   const level = YUT_LEVELS.find((l) => l.value === s.level);
+  // 진동 줄은 진동 함수가 있는 기기에만(첫 그리기 뒤에 알아본다)
+  const [vibrates, setVibrates] = useState(false);
+  useEffect(() => setVibrates(canVibrate()), []);
   return (
     <SubScreen title="윷놀이 옵션" onBack={onBack}>
       <Section title="판 짜기">
@@ -224,6 +228,29 @@ function YutOptions({ onBack }: { onBack: () => void }) {
         </div>
         <p className="text-xs opacity-60">{level?.description}</p>
       </Section>
+      {vibrates && (
+        <Section title="진동">
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={s.vibrate !== false}
+              onClick={() => s.set({ vibrate: true })}
+            >
+              켬
+            </Chip>
+            <Chip
+              active={s.vibrate === false}
+              onClick={() => s.set({ vibrate: false })}
+            >
+              끔
+            </Chip>
+          </div>
+          <p className="text-xs opacity-60">
+            {s.vibrate === false
+              ? "윷가락이 멈춰도 떨리지 않는다."
+              : "던진 윷가락이 하나씩 멈출 때마다 폰이 짧게 떨린다."}
+          </p>
+        </Section>
+      )}
       <p className="text-xs opacity-60">
         다함께 윷놀이도 여기서 고른 규칙으로 방을 연다. 빈자리는 컴퓨터가
         맡는다.

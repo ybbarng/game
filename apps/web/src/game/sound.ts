@@ -104,6 +104,8 @@ export type Cue =
   | "yutCapture"
   /** 윷놀이: 말이 나는 "띠링" */
   | "yutHome"
+  /** 윷놀이: 3D로 던진 가락 하나가 멍석에 닿는 작은 "탁"(세기 `step` 1~3) */
+  | "yutHit"
   /** 큐브: 면 하나가 도는 짧은 플라스틱 "딸깍"(빠르게 치면 앞 소리를 끊는다) */
   | "cubeTurn"
   /** 큐브: 다 맞췄다 */
@@ -195,6 +197,7 @@ export const CUE_ROLE: Partial<Record<Cue, "event" | "repeat">> = {
   cubeBeat: "repeat",
   cubeBeatAccent: "repeat",
   galaxyTick: "repeat",
+  yutHit: "repeat",
 };
 
 export const CUE_LABELS: Record<Cue, string> = {
@@ -247,6 +250,7 @@ export const CUE_LABELS: Record<Cue, string> = {
   yutPiece: "윷놀이: 말 놓기",
   yutCapture: "윷놀이: 잡기",
   yutHome: "윷놀이: 나기",
+  yutHit: "윷놀이: 가락이 멍석에 닿음",
   cubeTurn: "큐브: 면 돌기",
   cubeSolved: "큐브: 맞춤",
   cubeInspect: "큐브: 살펴보기 알림",
@@ -336,6 +340,8 @@ const TRIM_DB: Partial<Record<Cue, number>> = {
   starTick: 10,
   yutCapture: 3,
   yutHome: 0,
+  // 가락 넷이 튀고 구르며 여러 번 겹쳐 나는 반복 소리라 사건 소리보다 작게
+  yutHit: 0,
   // 면 돌기는 1초에 몇 번씩 나는 반복 소리라 사건 소리보다 작게.
   // 0.08초짜리 작은 "스슥"(스치는 소리, 울림 없음)이라 0.15초 평균으로 재면 작게 나와 값이 커 보인다.
   // 지금 사건 소리 가운데값보다 약 14.7dB 작다(2026-11-05 사용자 「크고 또렷하고 딱딱한 소리가 나지 않아」로 줄임.
@@ -1824,6 +1830,19 @@ function render(cue: Cue, v: Voice): void {
       bell(v, G5, 0.08, 0.6, 0.07);
       bell(v, C6, 0.16, 0.8, 0.06);
       break;
+    case "yutHit": {
+      // 나무 가락이 짚 멍석에 닿는 짧은 "탁": 짚이 받아 둔한 몸통에 나무 소리가 얹힌다. 세게 닿을수록 크고 또렷하다
+      const s = Math.max(1, Math.min(3, v.step ?? 2)) / 3;
+      woodClack(v, 0, 0.3 + 0.7 * s, 0.85 + 0.15 * s);
+      noise(v, 0, 0.06, {
+        filter: "lowpass",
+        freq: 700,
+        q: 0.8,
+        gain: 0.18 * s,
+        attack: 0.002,
+      });
+      break;
+    }
     case "galaxyDice":
       // 주사위 둘이 유리 판에 떨어져 구르다(작고 높은 "따그르르") 멈추는 "톡 톡"
       for (let i = 0; i < 5; i++)
