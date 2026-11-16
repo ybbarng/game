@@ -176,33 +176,37 @@ function backdropCenter(center: string, page: string): string {
 
 /** 티어마다 재질(시안에서 고른 값, 보고·문서에 그대로 적는다) */
 export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
+  // 금속 다섯은 색 기운은 그대로 두고 밝기만 낮췄다(예전 값의 아이언 0.575·브론즈 0.486·실버 0.465·골드 0.6·플래티넘
+  // 0.665배). 보석 티어 틀을 어둡게 한 뒤 금속이 에메랄드보다 밝아 사다리가 뒤집혔고(플래티넘 장식 L* 56.0 > 에메랄드
+  // 48.1), 실버가 골드·플래티넘보다 밝았다. 아이언 < 브론즈 < 실버 < 골드 < 플래티넘 < 에메랄드(2026-11-16, docs/47 14-7
+  // 「밝기 사다리」, ladder.ts)
   iron: {
-    frame: { color: [0.3, 0.31, 0.33], roughness: 0.55 },
-    block: { color: [0.36, 0.37, 0.39], roughness: 0.5 },
+    frame: { color: [0.172, 0.178, 0.19], roughness: 0.55 },
+    block: { color: [0.207, 0.213, 0.224], roughness: 0.5 },
     tint: "#9aa3ad",
     backdrop: "#2c2f33",
   },
   bronze: {
-    frame: { color: [0.8, 0.4, 0.22], roughness: 0.36 },
-    block: { color: [0.86, 0.46, 0.26], roughness: 0.34 },
+    frame: { color: [0.389, 0.194, 0.107], roughness: 0.36 },
+    block: { color: [0.418, 0.224, 0.126], roughness: 0.34 },
     tint: "#e9a070",
     backdrop: "#3a2a22",
   },
   silver: {
-    frame: { color: [0.86, 0.88, 0.9], roughness: 0.24 },
-    block: { color: [0.9, 0.91, 0.93], roughness: 0.26 },
+    frame: { color: [0.4, 0.409, 0.419], roughness: 0.24 },
+    block: { color: [0.419, 0.423, 0.432], roughness: 0.26 },
     tint: "#dfe7f0",
     backdrop: "#2e333a",
   },
   gold: {
-    frame: { color: [1.0, 0.72, 0.29], roughness: 0.2 },
-    block: { color: [1.0, 0.72, 0.29], roughness: 0.32 },
+    frame: { color: [0.6, 0.432, 0.174], roughness: 0.2 },
+    block: { color: [0.6, 0.432, 0.174], roughness: 0.32 },
     tint: "#ffd27a",
     backdrop: "#3a3426",
   },
   platinum: {
-    frame: { color: [0.84, 0.93, 0.92], roughness: 0.18 },
-    block: { color: [0.8, 0.93, 0.91], roughness: 0.24 },
+    frame: { color: [0.559, 0.618, 0.612], roughness: 0.18 },
+    block: { color: [0.532, 0.618, 0.605], roughness: 0.24 },
     // 청록 보석(파라이바 토르말린 굴절률 약 1.62)
     accent: { ior: 1.62, spread: 0, absorb: absorbFor([0.35, 0.86, 0.78]) },
     tint: "#9ff0e2",

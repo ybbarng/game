@@ -2,7 +2,7 @@
  * 3D 엠블럼을 미리 찍은 그림을 만들고 밝기 사다리를 잰다(docs/47 14-7). 3D 모양·재질·빛·바탕색이 바뀌면 다시 찍는다.
  * CI에서는 돌리지 않는다(GPU 없는 브라우저는 그림이 다르게 나온다).
  *
- * 0) 밝기 사다리 `src/cube/tiers/emblem3d/ladder-measure.json`(emblem3d/ladder.ts): 보석 다섯과 플래티넘의 3D 장을 어두운·
+ * 0) 밝기 사다리 `src/cube/tiers/emblem3d/ladder-measure.json`(emblem3d/ladder.ts): 열 티어의 3D 장을 어두운·
  *    밝은 바탕, 정면·돌린 각에서 재서 엠블럼 전체·큐브·장식의 밝기(L*)와 반짝임을 표로 내고 남긴다. 위 티어일수록 크거나
  *    같아야 한다는 규칙을 어기면 그림을 찍지 않고 실패한다(값을 바꿔 순서가 뒤집히면 여기서 잡힌다).
  * 1) 대기 그림 `public/cube/tiers/emblem3d/<티어>-dark.webp`(emblem3d/poster.ts): 티어 화면의 내 티어 3D 칸이 그리는 첫
@@ -82,14 +82,7 @@ const SPRITE_YAWS = Array.from(
   (_, i) => -SPRITE_AMP + (2 * SPRITE_AMP * i) / (SPRITE_FRAMES - 1),
 );
 // ladder.ts MEASURE_*와 같게
-const MEASURE_TIERS = [
-  "platinum",
-  "emerald",
-  "diamond",
-  "master",
-  "grandmaster",
-  "challenger",
-];
+const MEASURE_TIERS = ALL_TIERS;
 const MEASURE_SIZE = 300;
 const MEASURE_YAWS = [0, 0.6];
 // still.ts STILL_CSS와 같게(파일은 두 배 화소). 작은 단계는 칸을 더 채우고 조금 밝히고 얇은 어두운 테두리를 두른다
@@ -247,12 +240,6 @@ async function ladder(page) {
     (x) => window.__emblemCapture.violations(x),
     m,
   );
-  const flip = await page.evaluate(
-    (x) => window.__emblemCapture.platinumFlip(x),
-    m,
-  );
-  if (flip.length)
-    console.log(`\n플래티넘 > 에메랄드(보고만): ${flip.join(" / ")}`);
   if (bad.length) {
     console.error(`\n사다리 규칙을 어김:\n${bad.join("\n")}`);
     if (process.env.LADDER_SAVE_ANYWAY !== "1") return false;

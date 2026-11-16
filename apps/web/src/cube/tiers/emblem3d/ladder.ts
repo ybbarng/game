@@ -14,8 +14,12 @@ import { GEM_BACK_GAIN, GEM_BIG_PANEL, GEM_GAIN, LOOK } from "./scene";
  * (`lookPrint`)로 잰 것인지와 규칙을 지키는지 본다. 값을 바꾸고 다시 재지 않으면 시험이 잡는다.
  */
 
-/** 재는 티어: 보석 다섯과, 금속 꼭대기인 플래티넘(플래티넘 < 에메랄드가 뒤집히는지 보고만 한다) */
+/** 재는 티어: 열 티어 모두(금속 다섯의 순서와 플래티넘 < 에메랄드도 본다, 2026-11-16) */
 export const MEASURE_TIERS = [
+  "iron",
+  "bronze",
+  "silver",
+  "gold",
   "platinum",
   "emerald",
   "diamond",
@@ -58,13 +62,44 @@ export function average(
 /** 같다고 볼 차(L* 1, 반짝임 0.3%p): 정한 순서를 지키되 같은 단계 안의 작은 차는 허용 */
 export const TOLERANCE = { meanL: 1, sparkle: 0.003 } as const;
 
-/** 규칙 하나: `low`의 값 ≤ `high`의 값(+ 허용 차). `strict`면 `low` < `high` */
+/** 규칙 하나: `low`의 값 ≤ `high`의 값(+ 허용 차). `strict`면 `low` < `high`. `metrics`는 볼 값(기본 밝기·반짝임 둘 다) */
 export interface LadderRule {
   part: keyof LookParts;
   low: MeasureTier;
   high: MeasureTier;
   strict?: boolean;
+  metrics?: readonly ("meanL" | "sparkle")[];
 }
+
+/** 금속 다섯과 그 위 에메랄드: 아래 티어부터 */
+const METAL_CHAIN = [
+  "iron",
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "emerald",
+] as const;
+
+/**
+ * 금속 사다리: 장식과 엠블럼 전체의 밝기가 아이언 < 브론즈 < 실버 < 골드 < 플래티넘 < 에메랄드(같아도 안 된다). 반짝임
+ * (L* 85 넘는 화소 몫)은 금속끼리 견주지 않는다: 흰 금속(실버·플래티넘)은 같은 밝기에서도 색 금속(브론즈·골드)보다 흰
+ * 화소가 많다. 플래티넘 < 에메랄드는 장식 반짝임도 본다. 큐브는 금속 거울 조각과 보석 조각이라 견주지 않는다
+ */
+const METAL_RULES: LadderRule[] = [
+  ...METAL_CHAIN.slice(1).flatMap((high, i) =>
+    (["deco", "body"] as const).map(
+      (part): LadderRule => ({
+        part,
+        low: METAL_CHAIN[i] as MeasureTier,
+        high,
+        strict: true,
+        metrics: ["meanL"],
+      }),
+    ),
+  ),
+  { part: "deco", low: "platinum", high: "emerald", metrics: ["sparkle"] },
+];
 
 /**
  * 지킬 순서(밝기·반짝임 둘 다). 보석 다섯을 아래부터 에메랄드 < 다이아몬드 < 마스터 < 그랜드마스터 < 챌린저로 본다.
@@ -74,9 +109,10 @@ export interface LadderRule {
  *   않는다(색 보석은 빛을 먹어 무색보다 어둡다).
  * - 엠블럼 전체: 에메랄드 ≤ 다이아몬드, 마스터 ≤ 그랜드마스터 ≤ 챌린저. 다이아몬드와 마스터는 위와 같은 까닭으로 견주지
  *   않는다(장식이 한 단계라 무색 보석이 밝은 쪽이 전체도 밝다).
- * 플래티넘은 규칙에 넣지 않고 보고만 한다(`platinumFlip`).
+ * 금속 다섯과 플래티넘 < 에메랄드는 `METAL_RULES`.
  */
 export const LADDER_RULES: readonly LadderRule[] = [
+  ...METAL_RULES,
   { part: "deco", low: "emerald", high: "grandmaster" },
   { part: "deco", low: "diamond", high: "grandmaster" },
   { part: "deco", low: "master", high: "grandmaster" },
@@ -99,7 +135,7 @@ export const DECO_BAND = {
 export function ladderViolations(m: LadderMeasure): string[] {
   const out: string[] = [];
   for (const r of LADDER_RULES)
-    for (const metric of ["meanL", "sparkle"] as const) {
+    for (const metric of r.metrics ?? (["meanL", "sparkle"] as const)) {
       const a = average(m, r.low, r.part)[metric];
       const b = average(m, r.high, r.part)[metric];
       const ok = r.strict ? a < b : a <= b + TOLERANCE[metric];
@@ -114,21 +150,6 @@ export function ladderViolations(m: LadderMeasure): string[] {
     out.push(
       `deco meanL: 에메랄드·다이아몬드·마스터 차 ${spread.toFixed(2)} > ${DECO_BAND.meanL}(한 단계가 아님)`,
     );
-  return out;
-}
-
-/** 플래티넘이 에메랄드보다 밝은 영역·값(뒤집힘). 보고만 한다 */
-export function platinumFlip(m: LadderMeasure): string[] {
-  const out: string[] = [];
-  for (const part of ["body", "deco"] as const)
-    for (const metric of ["meanL", "sparkle"] as const) {
-      const p = average(m, "platinum", part)[metric];
-      const e = average(m, "emerald", part)[metric];
-      if (p > e + TOLERANCE[metric])
-        out.push(
-          `${part} ${metric}: 플래티넘 ${p.toFixed(3)} > 에메랄드 ${e.toFixed(3)}`,
-        );
-    }
   return out;
 }
 

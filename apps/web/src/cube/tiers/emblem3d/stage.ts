@@ -805,7 +805,7 @@ function pixels(canvas: HTMLCanvasElement, px: number): Uint8ClampedArray {
 
 /**
  * 그 각의 3D 장 밝기·반짝임을 엠블럼 전체·큐브·장식으로 나눠 잰다(docs/47 14-7 「밝기 사다리」, `lookStats.ts`).
- * 찍기 스크립트가 다섯 보석 티어(와 비교로 플래티넘)를 어두운·밝은 바탕, 정면·돌린 각에서 재 순서를 확인한다
+ * 찍기 스크립트가 열 티어를 어두운·밝은 바탕, 정면·돌린 각에서 재 순서를 확인한다
  */
 export async function measureEmblem(
   job: Omit<FrameJob, "yaws"> & { yaw: number },

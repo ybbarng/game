@@ -8,6 +8,7 @@ import {
   MEASURE_BGS,
   MEASURE_TIERS,
   MEASURE_YAWS,
+  type MeasureTier,
 } from "./ladder";
 import measured from "./ladder-measure.json";
 import { lightness, lookParts, lookStat } from "./lookStats";
@@ -49,7 +50,7 @@ describe("밝기 사다리(docs/47 14-7, 고정 규칙 2-1절): 남긴 측정값
     expect(m.print).toBe(lookPrint());
   });
 
-  it("여섯 티어 × 바탕 둘 × 각 둘을 모두 쟀다", () => {
+  it("열 티어 × 바탕 둘 × 각 둘을 모두 쟀다", () => {
     for (const t of MEASURE_TIERS)
       for (const bg of MEASURE_BGS)
         for (const yaw of MEASURE_YAWS) {
@@ -63,6 +64,18 @@ describe("밝기 사다리(docs/47 14-7, 고정 규칙 2-1절): 남긴 측정값
 
   it("위 티어일수록 밝고 화려하다: 장식은 에메랄드·다이아몬드·마스터가 한 단계, 그 위 그랜드마스터, 꼭대기 챌린저. 큐브는 그랜드마스터 ≥ 마스터", () => {
     expect(ladderViolations(m)).toEqual([]);
+  });
+
+  it("금속은 아이언 < 브론즈 < 실버 < 골드 < 플래티넘 < 에메랄드: 바꿔 넣으면 어긴다", () => {
+    const swap = (a: MeasureTier, b: MeasureTier): LadderMeasure => ({
+      ...m,
+      tiers: { ...m.tiers, [a]: m.tiers[b], [b]: m.tiers[a] },
+    });
+    expect(
+      ladderViolations(swap("platinum", "emerald")).length,
+    ).toBeGreaterThan(0);
+    expect(ladderViolations(swap("silver", "gold")).length).toBeGreaterThan(0);
+    expect(ladderViolations(swap("iron", "bronze")).length).toBeGreaterThan(0);
   });
 
   it("규칙이 실제로 잡는다: 그랜드마스터와 마스터를 바꿔 넣으면 어긴다", () => {
