@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { allPaths } from "@/study/line";
 
 import { BADUK_JOSEKI, parseJosekiStart } from "./joseki";
-import { JOSEKI_POINTS, JOSEKI_WALL } from "./study-lessons";
+import { JOSEKI_POINTS, JOSEKI_WALL, JOSEKI_WALL_GAP } from "./study-lessons";
 
 describe("바둑 정석 수순", () => {
   it("id가 겹치지 않고 모두 line-으로 시작하며 출처와 시작 판이 있다", () => {
@@ -74,6 +74,15 @@ describe("정석 시작 판 글자", () => {
 // 수 설명과 정석 단원 그림이 말하는 판 관계(활로 수, 끊는 자리, 날일자 거리)를 엔진으로 확인한다.
 const SIZE = 19;
 const at = (name: string) => pointAt(name, SIZE);
+/** 두 자리의 가로·세로 거리 */
+const dist = (a: string, b: string) => {
+  const p = at(a);
+  const q = at(b);
+  return {
+    dx: Math.abs((p % SIZE) - (q % SIZE)),
+    dy: Math.abs(Math.floor(p / SIZE) - Math.floor(q / SIZE)),
+  };
+};
 const lineById = (id: string) => {
   const line = BADUK_JOSEKI.find((l) => l.id === id);
   if (!line) throw new Error(`정석이 없다: ${id}`);
@@ -129,6 +138,20 @@ describe("정석 수 설명의 판 관계", () => {
     expect(stonesOf(end, 2)).toEqual([...JOSEKI_WALL.white].sort());
   });
 
+  it("벽 그림의 대각선 틈: 백이 끊으면 그 돌은 활로가 둘뿐이고, 맞닿은 흑 무리는 활로가 셋 이상이다", () => {
+    const main = lineById("line-33-invasion-black").moves.map((n) => n.move);
+    const end = boardAfter("line-33-invasion-black", main);
+    const [a, b] = JOSEKI_WALL_GAP.between;
+    expect(dist(a, JOSEKI_WALL_GAP.gap)).toEqual({ dx: 0, dy: 1 });
+    expect(dist(b, JOSEKI_WALL_GAP.gap)).toEqual({ dx: 1, dy: 0 });
+    expect(dist(a, b)).toEqual({ dx: 1, dy: 1 });
+    const cut = tryPlace(end, at(JOSEKI_WALL_GAP.gap), 2);
+    if (!cut.ok) throw new Error("끊을 수 없다");
+    expect(libertiesOf(cut.board, JOSEKI_WALL_GAP.gap)).toHaveLength(2);
+    expect(libertiesOf(cut.board, a).length).toBeGreaterThanOrEqual(3);
+    expect(libertiesOf(cut.board, b).length).toBeGreaterThanOrEqual(3);
+  });
+
   it("예전 마무리: 흑이 C18에 두면 백 D18이 단수, F17 뒤 백이 E17에 끊으면 활로가 E16 하나", () => {
     const blocked = boardAfter("line-33-invasion-old-end", ["D18", "E18"]);
     expect(libertiesIfPlaced(blocked, "C18", 1)).toEqual(["B18", "C19"]);
@@ -182,17 +205,8 @@ describe("정석 수 설명의 판 관계", () => {
 });
 
 describe("정석 단원 그림의 자리", () => {
-  const xy = (name: string) => {
-    const p = at(name);
-    return { x: p % SIZE, y: Math.floor(p / SIZE) };
-  };
   /** 판 위 끝(19줄)을 첫째 줄로 셀 때 몇째 줄인지 */
   const fromTop = (name: string) => 20 - Number(name.slice(1));
-  const dist = (a: string, b: string) => {
-    const p = xy(a);
-    const q = xy(b);
-    return { dx: Math.abs(p.x - q.x), dy: Math.abs(p.y - q.y) };
-  };
   const P = JOSEKI_POINTS;
 
   it("낮은 걸침은 화점에서 가로 두 칸·세로 한 칸(날일자)의 셋째 줄이다", () => {

@@ -333,6 +333,12 @@ export const JOSEKI_WALL = {
   white: ["C17", "C16", "B15", "B14"],
 } as const;
 
+/** 위 벽의 대각선 틈: 흑 D16·C15 사이 빈 자리 D15 */
+export const JOSEKI_WALL_GAP = {
+  between: ["D16", "C15"],
+  gap: "D15",
+} as const;
+
 /** 수 배우기 목록의 「단원 읽기」 소개 */
 export const BADUK_STUDY_LESSON_SUMMARY =
   "패로 버티기, 긴 축과 축머리, 포석, 끝내기 기초, 정석의 돌 모양 이름을 그림으로 읽고 퀴즈를 풀어요. 읽은 뒤 아래 문제와 따라 두기로 익혀요.";
@@ -575,7 +581,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         body: [
           "귀에 한 수 둔 뒤에는 두 가지를 해요.",
           "귀에 한 수 더 두어 상대가 들어오지 못하게 하는 것을 **굳힘**이라고 해요. 그림의 A예요.",
-          "변을 따라 두세 칸 건너 두어 집 자리를 넓히는 것을 **벌림**이라고 해요. 그림의 B는 세 칸 건넜어요.",
+          "변을 따라 두 칸 이상 건너 두어 집 자리를 넓히는 것을 **벌림**이라고 해요. 그림의 B는 세 칸 건넜어요.",
           "빈 귀가 남아 있으면 굳힘이나 벌림보다 빈 귀에 먼저 둬요. 빈 귀가 없으면 굳힘이나 벌림을 해요.",
         ],
         scene: {
@@ -722,7 +728,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         body: [
           "상대 돌이 있는 귀에 다가가, 상대가 귀를 혼자 차지하지 못하게 두는 수를 **걸침**이라고 해요. 그림의 백이 흑 화점에 걸쳤어요.",
           `백 ${JOSEKI_POINTS.lowApproach}은 흑 ${JOSEKI_POINTS.star}에서 가로로 두 칸, 세로로 한 칸 떨어졌어요. 이렇게 떨어진 자리를 **날일자**라고 해요.`,
-          `셋째 줄에 두는 걸침을 **낮은 걸침**, 넷째 줄에 두는 걸침을 **높은 걸침**이라고 해요. 백 ${JOSEKI_POINTS.lowApproach}은 셋째 줄이라 낮은 걸침이에요.`,
+          `가까운 판 끝에서 셋째 줄에 두는 걸침을 **낮은 걸침**, 넷째 줄에 두는 걸침을 **높은 걸침**이라고 해요. 백 ${JOSEKI_POINTS.lowApproach}은 셋째 줄이라 낮은 걸침이에요.`,
         ],
         scene: {
           black: [JOSEKI_POINTS.star],
@@ -748,7 +754,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "붙임, 젖힘, 마늘모",
         body: [
           `상대 돌의 위·아래·왼쪽·오른쪽 바로 옆에 맞닿게 두는 것을 **붙인다**고 해요. 흑 ${JOSEKI_POINTS.attach}이 백 ${JOSEKI_POINTS.highApproach}에 붙였어요.`,
-          `맞붙은 상대 돌이 나아갈 앞을 내 돌의 대각선 자리에서 막는 것을 **젖힌다**고 해요. 백 ${JOSEKI_POINTS.hane}이 흑 ${JOSEKI_POINTS.attach}의 오른쪽을 막아 젖혔어요. 젖힘을 한 번 더 이어 두는 것은 **양 젖힘**이라고 해요.`,
+          `맞붙은 상대 돌이 나아갈 앞을 내 돌의 대각선 자리에서 막는 것을 **젖힌다**고 해요. 백 ${JOSEKI_POINTS.hane}이 흑 ${JOSEKI_POINTS.attach}의 오른쪽을 막아 젖혔어요. 젖힌 뒤 바로 옆에서 한 번 더 젖히는 것을 **양 젖힘**이라고 해요.`,
           `내 돌에서 대각선으로 바로 옆 자리에 두는 것을 **마늘모**라고 해요. 그림의 A가 흑 ${JOSEKI_POINTS.komoku}의 마늘모 자리 가운데 하나예요.`,
         ],
         scene: {
@@ -763,7 +769,7 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         title: "끊는 자리, 서기, 기기",
         body: [
           "대각선으로 놓인 상대 돌 둘 사이의 빈 자리에 두어 둘을 갈라놓는 것을 **끊는다**고 해요. 그 빈 자리를 **끊는 자리**라고 해요.",
-          `그림의 백 ${JOSEKI_POINTS.highApproach}과 ${JOSEKI_POINTS.hane}은 대각선으로 놓여, ×(${JOSEKI_POINTS.cut})가 백의 끊는 자리예요. 백이 여기에 두어 이으면 끊기지 않아요.`,
+          `그림의 백 ${JOSEKI_POINTS.highApproach}과 ${JOSEKI_POINTS.hane}은 대각선으로 놓여, ×(${JOSEKI_POINTS.cut})가 백이 끊기는 자리예요. 흑이 여기에 두면 백 두 점이 갈라지고, 백이 먼저 두어 이으면 끊기지 않아요.`,
           "내 돌 바로 옆에 판 가운데 쪽으로 곧게 이어 두는 것을 **선다**고 해요.",
           "판 끝에서 둘째 줄을 **2선**이라고 해요. 2선을 따라 한 칸씩 이어 두는 것을 **긴다**고 해요. 2선을 기면 살기는 쉽지만 집이 작아요.",
         ],
@@ -782,8 +788,8 @@ export const BADUK_STUDY_LESSONS: readonly BadukLesson[] = [
         kind: "explain",
         title: "벽과 두터움",
         body: [
-          "그림은 흑 화점에 백이 삼삼으로 들어온 정석이 끝난 모양이에요. 백은 2선을 기어 귀에 살았고, 흑은 바깥에 이어진 돌을 늘어세웠어요.",
-          "돌이 튼튼하게 이어져 상대가 잡거나 깨기 어려운 것을 **두텁다**고 해요. 흑은 귀를 내주었지만, 가운데와 변을 바라보는 두터운 벽을 얻었어요.",
+          "상대가 차지한 귀 안쪽으로 들어가는 수를 **침입**이라고 해요. 그림은 흑 화점의 삼삼에 백이 침입한 정석이 끝난 모양이에요. 백은 2선을 기어 귀에 살았고, 흑은 바깥에 돌 다섯을 줄지어 두었어요.",
+          `돌이 튼튼해 상대가 잡거나 깨기 어려운 것을 **두텁다**고 해요. 흑 ${JOSEKI_WALL_GAP.between[0]}과 ${JOSEKI_WALL_GAP.between[1]} 사이 ${JOSEKI_WALL_GAP.gap}에 대각선 틈이 있지만, 백이 끊어도 그 돌은 활로가 둘뿐이라, 활로가 셋 이상인 둘레의 흑 돌보다 약해요. 그래서 흑은 귀를 내주었지만, 위쪽 변과 왼쪽 변, 가운데를 바라보는 두터운 벽을 얻었어요.`,
           "정석이 끝나면 한쪽은 귀 집, 다른 쪽은 바깥 두터움처럼 서로 다른 것을 나눠 가져요.",
         ],
         scene: {

@@ -15,7 +15,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     id: "line-33-invasion-black",
     name: "화점 삼삼 침입 받기(흑)",
     summary:
-      "화점에 백이 삼삼으로 들어오면 넓은 쪽에서 막아 바깥 벽을 쌓아요. 귀는 내주고 두터움을 얻어요.",
+      "화점에 백이 삼삼으로 들어오면 한쪽씩 막아 바깥 벽을 쌓아요. 귀는 내주고 두터움을 얻어요.",
     learner: 1,
     start: "19 B:D16 turn:W",
     source: `${SL}33PointInvasion`,
@@ -23,9 +23,9 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       { move: "C17", note: "백이 귀 안쪽 삼삼에 들어왔어요." },
       {
         move: "D17",
-        note: "위쪽에서 막아요. 막는 쪽은 넓은 변으로, 바깥 벽이 넓은 곳을 바라보게 해요.",
+        note: "D17로 백 C17의 오른쪽을 막아요. 다른 귀에 내 돌이 있으면, 벽이 그 돌 쪽을 바라보게 막을 쪽을 골라요.",
       },
-      { move: "C16", note: "백은 왼쪽 변으로 기어 나가요." },
+      { move: "C16", note: "백은 C17 아래에 이어 왼쪽 변 쪽으로 나가요." },
       {
         move: "C15",
         note: "왼쪽도 막아 백이 변으로 크게 나오지 못하게 해요.",
@@ -33,7 +33,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
           [
             {
               move: "C14",
-              note: "C15로 막지 않고 C14에 날일자로 둬요. 귀는 백에게 주고, 빨리 끝내 다른 곳에 먼저 둘 수 있어요(선수).",
+              note: "C15로 막지 않고 C14에 날일자로 둬요. 귀는 백에게 주고, 빨리 끝내 선수를 잡고 다른 곳에 먼저 둬요.",
             },
           ],
           [
@@ -53,7 +53,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       { move: "B14", note: "백은 2선을 기어 귀를 넓혀요." },
       {
         move: "C13",
-        note: "한 번 더 막아 벽을 완성해요. 백은 귀에 살고, 흑은 위·왼쪽을 바라보는 두터운 벽을 얻어요.",
+        note: "한 번 더 막아 벽을 완성해요. 백은 귀에 살고, 흑은 위쪽 변과 왼쪽 변, 가운데를 바라보는 두터운 벽을 얻어요.",
       },
     ],
   },
@@ -68,10 +68,10 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     moves: [
       {
         move: "C17",
-        note: "화점 아래 귀 안쪽(삼삼)에 들어가요. 귀 집을 빼앗고 살 자리예요.",
+        note: "화점과 귀 모서리 사이, 대각선 안쪽의 삼삼에 들어가요. 귀 집을 빼앗고 살 자리예요.",
       },
-      { move: "D17", note: "흑은 넓은 쪽에서 막아요." },
-      { move: "C16", note: "왼쪽으로 기어 귀를 넓혀요." },
+      { move: "D17", note: "흑이 오른쪽을 막아요." },
+      { move: "C16", note: "C17 아래에 이어 귀를 넓혀요." },
       { move: "C15", note: "흑이 왼쪽도 막아요." },
       { move: "B15", note: "2선을 한 번 더 기어 집을 늘려요." },
       { move: "C14", note: "흑이 벽을 이어요." },
@@ -86,7 +86,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     id: "line-33-invasion-old-end",
     name: "화점 삼삼 침입 — 예전 마무리(흑)",
     summary:
-      "삼삼 침입 정석이 끝난 판에서 시작해요. 백이 2선을 젖혀 귀를 넓히면 막고, 끊는 자리를 지켜 벽을 두텁게 해요. 예전에는 백이 꼭 둬야 한다고 봤지만, 요즘은 이 젖힘 없이 다른 곳에 먼저 두기도 해요.",
+      "삼삼 침입 정석이 끝난 판에서 시작해요. 백이 2선을 젖혀 귀를 넓히면 막고, 흑이 끊기는 자리를 지켜 벽을 두텁게 해요. 예전에는 백이 이 2선 젖힘까지 둬야 정석이 끝난다고 봤어요. 요즘은 젖히지 않고 다른 곳에 먼저 두기도 해요.",
     learner: 1,
     start: "19 B:D17,D16,C15,C14,C13 W:C17,C16,B15,B14 turn:W",
     source: `${SL}33PointInvasion`,
@@ -105,7 +105,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       },
       {
         move: "F17",
-        note: "흑 D17과 E18 사이의 E17이 끊는 자리예요. F17에 두면 백이 E17에 끊어도 그 돌은 활로가 E16 하나뿐이라 흑이 바로 따내요. 백은 귀에 살고, 흑은 바깥에 두터운 벽을 얻었어요.",
+        note: "흑 D17과 E18 사이의 E17이 흑이 끊기는 자리예요. F17에 두면 백이 E17에 끊어도 그 돌은 활로가 E16 하나뿐이라 흑이 바로 따내요. 백은 귀에 살고, 흑은 바깥에 두터운 벽을 얻었어요.",
       },
     ],
   },
@@ -120,7 +120,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     moves: [
       {
         move: "B14",
-        note: "C15에 이어 B14로 한 번 더 젖혀요. 백이 왼쪽 변으로 기어 나오는 길을 막아 귀에 가두려는 수예요.",
+        note: "C15로 젖힌 다음 B14로 한 번 더 젖혀요. 백이 왼쪽 변으로 기어 나오는 길을 막아 귀에 가두려는 수예요.",
       },
       {
         move: "C14",
@@ -228,9 +228,9 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
   },
   {
     id: "line-44-attach-block",
-    name: "화점 날일자 걸침 — 붙여막기, 가운데 쪽으로 잇기(흑)",
+    name: "화점 날일자 걸침 — 붙이고 막기, 가운데 쪽으로 잇기(흑)",
     summary:
-      "붙여막기 정석의 뒷부분이에요. 백이 가운데 쪽으로 이어 바깥을 두텁게 하고, 흑은 백 한 점을 따내 귀를 차지해요. G17 둘레에 패가 남아요.",
+      "붙이고 막는 정석의 뒷부분이에요. 백이 가운데 쪽으로 이어 바깥을 두텁게 하고, 흑은 백 한 점을 따내 귀를 차지해요. G17 둘레에 패가 남아요.",
     learner: 1,
     start: "19 B:E17,D16,E16,F16 W:F17,G16,F15 turn:W",
     source: `${SL}44PointLowApproachAttachBlockJoseki`,
@@ -296,7 +296,10 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       },
       { move: "D16", note: "백이 D16에 붙어 흑 C16을 압박해요." },
       { move: "C15", note: "아래로 이어 C16 돌의 활로를 늘려요." },
-      { move: "C18", note: "백이 판 끝 쪽으로 내려 C17 돌의 활로를 늘려요." },
+      {
+        move: "C18",
+        note: "백이 C17 위, 판 끝 쪽에 이어 C17 돌의 활로를 늘려요.",
+      },
       {
         move: "C10",
         note: "왼쪽 변으로 크게 벌려 집 자리를 넓혀요.",
@@ -307,14 +310,14 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     id: "line-34-diagonal",
     name: "소목 날일자 걸침 — 마늘모로 막기(흑)",
     summary:
-      "백 걸침에 마늘모로 서서 귀를 지키고, 백이 벌리면 위로 다가가 압박해요.",
+      "백 걸침에 마늘모로 둬 귀를 지키고, 백이 벌리면 위로 다가가 압박해요.",
     learner: 0,
     start: "19 B:C16 W:E17 turn:B",
     source: `${SL}34PointLowApproachDiagonal`,
     moves: [
       {
         move: "D15",
-        note: "마늘모로 서요. 귀를 지키면서 백 E17을 위쪽에 묶어 둬요.",
+        note: "마늘모로 둬요. 귀를 지키면서 백 E17을 위쪽에 묶어 둬요.",
       },
       { move: "J17", note: "백은 위쪽 변으로 벌려 자리를 잡아요." },
       {
@@ -325,7 +328,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       { move: "E14", note: "젖혀서 바깥으로 나오는 길을 막아요." },
       { move: "F15", note: "백이 뻗어요." },
       { move: "D13", note: "D13에 둬 왼쪽 변을 넓히고 E14를 아래에서 받쳐요." },
-      { move: "H16", note: "백이 H16에 둬 오른쪽 위 자리를 넓혀요." },
+      { move: "H16", note: "백이 H16에 둬 위쪽 변의 오른쪽 자리를 넓혀요." },
       {
         move: "D17",
         note: "귀를 지켜 흑 귀가 확실해져요.",
@@ -337,7 +340,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
     id: "line-34-high-attach",
     name: "소목 한 칸 높은 걸침 — 붙이고 물러서기(흑)",
     summary:
-      "소목에 백이 한 칸 높게 걸쳐 오면 판 끝 쪽에서 붙이고, 백이 젖히면 한 칸 물러서 이어요. 흑은 귀 집을 단단히 하고, 백은 끊는 자리를 지켜 위쪽 변에 벌려요. 처음 배우는 소목 정석으로 자주 꼽혀요.",
+      "소목에 백이 한 칸 높게 걸쳐 오면 판 끝 쪽에서 붙이고, 백이 젖히면 한 칸 물러서 이어요. 흑은 귀 집을 단단히 하고, 백은 끊기는 자리를 지켜 위쪽 변에 벌려요. 처음 배우는 소목 정석으로 자주 꼽혀요.",
     learner: 0,
     start: "19 B:C16 W:E16 turn:B",
     source: `${SL}34PointHighApproachInsideContactSolidConnection`,
@@ -349,7 +352,7 @@ export const BADUK_JOSEKI: readonly StudyLine[] = [
       { move: "F17", note: "백이 젖혀 흑 E17의 오른쪽을 막아요." },
       {
         move: "D17",
-        note: "맞서지 않고 D17로 물러서 이어요. E17이 잡힐 걱정이 없고 귀 집이 단단해져요. 대신 백에게는 F16에 끊는 자리가 남아요.",
+        note: "젖힘에 맞서지 않고 귀 쪽 D17로 한 칸 물러나 이어요. E17이 잡힐 걱정이 없고 귀 집이 단단해져요. 대신 백에게는 F16에 끊기는 자리가 남아요.",
       },
       {
         move: "F16",

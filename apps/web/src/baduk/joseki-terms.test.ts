@@ -26,6 +26,7 @@ const EARLIER_TERMS: OrderedTerm[] = [
   { term: "삼삼", use: /삼삼/, define: /\*\*삼삼\*\*이에요/ },
   { term: "굳힘", use: /굳힘|굳히/, define: /\*\*굳힘\*\*이라고/ },
   { term: "벌림", use: /벌림|벌리|벌려/, define: /\*\*벌림\*\*이라고/ },
+  { term: "뻗다", use: /뻗/, define: /\*\*뻗는다\*\*고/ },
 ];
 
 /** 정석 단원이 처음 알리는 돌 모양 이름 */
@@ -58,6 +59,7 @@ const SHAPE_TERMS: OrderedTerm[] = [
     define: /\*\*긴다\*\*고/,
   },
   { term: "두텁다", use: /두터|두텁/, define: /\*\*두텁다\*\*고/ },
+  { term: "침입", use: /침입/, define: /\*\*침입\*\*이라고/ },
 ];
 
 const notes = (nodes: readonly LineNode[]): string[] =>
