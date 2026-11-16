@@ -9,6 +9,7 @@ import { CHESS_PUZZLE_SETS } from "./puzzles";
 import {
   explainEndgame,
   explainMate,
+  explainOutside,
   puzzleState,
   solutionMove,
 } from "./study";
@@ -32,6 +33,7 @@ describe("체스 수 배우기 글 말투", () => {
         const move = solutionMove(p);
         if (p.kind === "tactic") return explainTactic(pos, move, p.tactic);
         if (p.kind === "endgame") return explainEndgame(pos, move);
+        if (p.kind === "outside") return explainOutside(pos, move);
         return explainMate(pos, move);
       }),
     );

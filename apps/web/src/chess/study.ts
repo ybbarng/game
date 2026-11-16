@@ -181,3 +181,61 @@ export function explainEndgame(pos: Position, move: Move): string[] {
     );
   return lines;
 }
+
+/** 백의 바깥 패스 폰: 앞쪽 같은·옆 세로줄에 흑 폰이 없는 백 폰 가운데 흑 폰들에서 가장 먼 것 */
+export function outsidePawnOf(board: Board): number | null {
+  const black: number[] = [];
+  const white: number[] = [];
+  board.forEach((c, i) => {
+    if (c === "bP") black.push(i);
+    else if (c === "wP") white.push(i);
+  });
+  const passed = white.filter((p) =>
+    black.every((b) => Math.abs((b % 8) - (p % 8)) > 1 || b >> 3 >= p >> 3),
+  );
+  const far = (p: number) =>
+    Math.min(...black.map((b) => Math.abs((b % 8) - (p % 8))));
+  return passed.sort((a, b) => far(b) - far(a))[0] ?? null;
+}
+
+/**
+ * 바깥 패스 폰 해설: 흑 킹이 먼 패스 폰에 붙잡힌 사이 백 킹이 반대쪽 흑 폰으로 간다.
+ * 판에서 만든다(어느 폰이 바깥 패스 폰인지, 흑 킹이 그 폰 바로 옆인지, 반대쪽 흑 폰은 어디인지).
+ * 정답만 이기고 다른 수는 이기지 못한다는 것은 outside.test.ts가 끝까지 읽기로 확인한다
+ */
+export function explainOutside(pos: Position, move: Move): string[] {
+  const outside = outsidePawnOf(pos.board);
+  const bk = kingOf(pos.board, "b");
+  const mover = pos.board[move.from] as string;
+  const kind = KIND_NAMES[mover[1] as Kind];
+  const lines = [
+    `${obj(kind)} ${squareName(move.to)}로(${moveToSan(pos, move)}): 이 수만 이겨요.`,
+  ];
+  if (outside === null) return lines;
+  const file = `${squareName(outside)[0]}폰`;
+  // 흑 폰은 세로줄 차례로(f5·h7)
+  const blackPawns = pos.board
+    .map((c, i) => (c === "bP" ? squareName(i) : null))
+    .filter((s): s is string => s !== null)
+    .sort()
+    .join("·");
+  const beside =
+    Math.max(
+      Math.abs((bk % 8) - (outside % 8)),
+      Math.abs((bk >> 3) - (outside >> 3)),
+    ) <= 1;
+  if (move.from === outside)
+    lines.push(
+      `흑 킹이 ${file} 바로 옆에 왔어요. 폰을 한 칸 더 밀면 흑 킹은 폰을 잡으러 한 걸음 더 가야 해요. 그만큼 백 킹이 반대쪽 흑 폰(${blackPawns})에 먼저 닿아요.`,
+    );
+  else if (beside)
+    lines.push(
+      `${obj(file)} 흑 킹에게 내줘요. 흑 킹이 판 가장자리 쪽에서 ${obj(file)} 잡는 사이, 백 킹은 반대쪽 흑 폰(${blackPawns})을 잡으러 가요.`,
+    );
+  else
+    lines.push(
+      `흑 킹은 ${subj(file)} 퀸이 되지 않게 막으러 판 가장자리 쪽으로 가야 해요. 그사이 백 킹은 반대쪽 흑 폰(${blackPawns})을 잡으러 가요.`,
+    );
+  lines.push("다른 수는 모두 비기거나 져요.");
+  return lines;
+}
