@@ -125,3 +125,12 @@ test("되풀이 상한을 줄이면 그 단계에서 이름 있는 오류로 막
   expect(stuckAt({ centerSteps: 1 })).toBe("centers-ud:too-long");
   expect(stuckAt({ edgeSteps: 1 })).toBe("edges:too-long");
 });
+
+test("엣지 짝까지만(`pairsOnly`) 풀면 끝까지 푼 해의 앞 네 단계와 수·단계가 같다", () => {
+  const { state, sol } = caseOf(2);
+  const pairs = solveReductionState(n, state, { pairsOnly: true });
+  const four = sol.stages.slice(0, 4);
+  expect(pairs.stages).toEqual(four);
+  const to = four.at(-1)?.to ?? 0;
+  expect(pairs.moves).toBe(sol.moves.split(" ").slice(0, to).join(" "));
+});

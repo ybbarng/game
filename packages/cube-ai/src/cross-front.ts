@@ -41,6 +41,8 @@ const CROSS_WHITE = [5, 7, 3, 1];
 const CROSS_SIDE = [10, 19, 37, 46];
 /** 옆 센터 R F L B 자리 */
 const SIDE_CENTERS = [13, 22, 40, 49];
+/** R 센터가 있는 자리 → 번호(0..3). 탐색은 F·D·y만 써서 옆 센터는 이 넷 사이만 돈다 */
+const CENTER_INDEX: Record<number, number> = { 13: 0, 22: 1, 40: 2, 49: 3 };
 const FACE_OF_SIDE = ["R", "F", "L", "B"] as const;
 export type SideFace = (typeof FACE_OF_SIDE)[number];
 
@@ -153,7 +155,7 @@ function searchRounds(
     phase: Phase;
     rounds: number;
   };
-  const seen = new Set<string>();
+  const seen = new Set<number>();
   let layer: Node[] = [
     {
       p: start,
@@ -201,12 +203,13 @@ function searchRounds(
         for (let i = 0; i < p.length; i++)
           p[i] = perm[node.p[i] as number] as number;
         const v = node.v || low(p);
-        // 본 상태 열쇠: 스티커 자리(0..53)마다 글자 하나 + 나머지를 글자 하나로(v 1 · phase 4 · rounds 4 · kind 3가지).
-        // 같은 상태면 같은 글이고 다른 상태면 다른 글이라 예전 「1,2,3|true|…」 글과 같은 판정이다(탐색의 대부분이
-        // 이 글을 만드는 시간이었다)
-        const k =
-          String.fromCharCode(...p) +
-          String.fromCharCode((v ? 1 : 0) + phase * 2 + rounds * 8 + kind * 64);
+        // 본 상태 열쇠(수 하나): 옆 센터 넷은 y로만 함께 돌아 R 센터 자리 하나로 정해지고, 엣지는 두 스티커가 함께
+        // 움직여 흰 스티커 자리(0..53) 하나로 정해진다. 나머지(v 1 · phase 4 · rounds 4 · kind 3가지)는 7비트.
+        // 같은 상태면 같은 수, 다른 상태면 다른 수라 스티커 자리를 모두 적던 글 열쇠와 같은 판정이다
+        // (엣지 넷까지 4 × 64⁴ × 128 < 2⁵³)
+        let k = CENTER_INDEX[p[0] as number] as number;
+        for (let i = 4; i < p.length; i += 2) k = k * 64 + (p[i] as number);
+        k = k * 128 + (v ? 1 : 0) + phase * 2 + rounds * 8 + kind * 32;
         if (seen.has(k)) continue;
         seen.add(k);
         const child: Node = {

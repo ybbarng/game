@@ -43,15 +43,48 @@ export function applyMovesColors(
  */
 export function sourceMap(n: number, moves: readonly CubeMove[]): Int32Array {
   const size = 6 * n * n;
+  // 두 배열을 번갈아 쓴다(수마다 새 배열을 만들지 않는다)
   let cur = new Int32Array(size);
+  let next = new Int32Array(size);
   for (let i = 0; i < size; i++) cur[i] = i;
   for (const m of moves) {
     const dest = moveTable(n, m).dest;
-    const next = new Int32Array(size);
     for (let i = 0; i < size; i++) next[dest[i] as number] = cur[i] as number;
-    cur = next;
+    [cur, next] = [next, cur];
   }
   return cur;
+}
+
+/**
+ * 수열 여럿을 차례로 돌린 자리 표: `composeSources([sourceMap(A), sourceMap(B)])`는 `sourceMap(A B)`와 같다
+ * (A 뒤 자리 p의 색은 `c0[sA[p]]`, B까지 돌리면 `c0[sA[sB[p]]]`)
+ */
+export function composeSources(srcs: readonly Int32Array[]): Int32Array {
+  const last = srcs[srcs.length - 1] as Int32Array;
+  const out = Int32Array.from(last);
+  for (let i = srcs.length - 2; i >= 0; i--) {
+    const s = srcs[i] as Int32Array;
+    for (let p = 0; p < out.length; p++) out[p] = s[out[p] as number] as number;
+  }
+  return out;
+}
+
+/** 자리 표의 거꾸로(되돌리는 수열 `invert(list)`의 `sourceMap`) */
+export function invertSource(src: Int32Array): Int32Array {
+  const out = new Int32Array(src.length);
+  for (let p = 0; p < src.length; p++) out[src[p] as number] = p;
+  return out;
+}
+
+/** 자리 p의 새 색 = `colors[src[p]]`(`sourceMap`으로 미리 묶은 수열을 한 번에 돌린다). `into`가 있으면 거기에 쓴다 */
+export function applySource(
+  colors: Colors,
+  src: Int32Array,
+  into: Colors = new Uint8Array(colors.length),
+): Colors {
+  for (let p = 0; p < src.length; p++)
+    into[p] = colors[src[p] as number] as number;
+  return into;
 }
 
 /** 표기 → 수 목록(cube-engine 표기 그대로) */
