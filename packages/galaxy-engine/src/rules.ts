@@ -214,10 +214,10 @@ export function decodeGalaxyRules(
     return {
       ok: false,
       reason:
-        "옛 규칙으로 만든 판이에요. 화면을 새로 고친 뒤 다시 만들어 주세요",
+        "옛 규칙으로 만든 판이에요. 화면을 새로 고친 뒤 다시 만들어 주세요.",
     };
   if (!match)
-    return { ok: false, reason: "은하 한 바퀴 규칙 문자열 형식이 아니에요" };
+    return { ok: false, reason: "은하 한 바퀴 규칙 문자열 형식이 아니에요." };
   const [
     ,
     players,
@@ -231,9 +231,9 @@ export function decodeGalaxyRules(
     tail,
   ] = match;
   const time = decodeTimePreset(tail);
-  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요" };
+  if (time === null) return { ok: false, reason: "모르는 시간 규칙이에요." };
   if (!OPEN_SKIES.includes(sky as string))
-    return { ok: false, reason: "아직 열지 않았거나 없는 하늘이에요" };
+    return { ok: false, reason: "아직 열지 않았거나 없는 하늘이에요." };
   const lengthName = (Object.keys(LENGTH_CODES) as GalaxyLength[]).find(
     (k) => LENGTH_CODES[k] === length,
   ) as GalaxyLength;
