@@ -31,7 +31,7 @@ import { botPlanOf, type GameKit } from "./kit";
 import { mightyKit } from "./mighty-kit";
 
 /**
- * 컴퓨터 계획 판 번호(`GameKit.botPlan`)를 올리는 것을 잊지 않게 하는 지문(docs/13 「컴퓨터 계획 판 번호」).
+ * 컴퓨터 계획 판 번호(`GameKit.botPlan`)를 올리는 것을 잊지 않게 하는 지문(docs/07 「컴퓨터 계획 판 번호」).
  *
  * 정해진 씨앗으로 판을 두어 가며 걸음마다 온라인 방이 쓰는 단계 컴퓨터들이 그 자리에서 둘 수를 모아 해시한다.
  * 컴퓨터 판단이 바뀌면 지문이 바뀌고, 그 게임의 지금 번호에 남긴 지문과 달라 시험이 실패한다. 그때는
