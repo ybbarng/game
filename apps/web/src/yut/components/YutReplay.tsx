@@ -106,6 +106,7 @@ export function YutReplay({
           <YutSticks
             sticks={state.lastThrow?.sticks ?? null}
             value={state.lastThrow?.value ?? null}
+            nak={state.lastThrow?.nak ?? null}
             throwKey={0}
             tossing={state.phase === "reveal"}
           />

@@ -3,6 +3,7 @@ import {
   type Action,
   derivedSeed,
   type GameEvent,
+  type Gesture,
   sideOf,
   type YutRules,
   type YutState,
@@ -21,12 +22,17 @@ import { track } from "@/stats/track";
 
 import {
   commitAction,
+  loadPendingThrows,
   loadSeedBook,
   mySeed,
   newSeed,
+  openAction,
+  type PendingThrow,
   revealAction,
   type SeedBook,
+  savePendingThrows,
   saveSeedBook,
+  sealGesture,
 } from "./chain";
 import { yutKit } from "./kit";
 
@@ -112,6 +118,10 @@ interface YutStore {
   ): void;
   setSeatNames(seatNames: string[]): void;
   submit(action: Action): SubmitResult;
+  /** 이 몸짓을 봉인해 던진다(몸짓은 모든 고리가 공개된 뒤 자동으로 연다, docs/37 13절) */
+  throwGesture(gesture: Gesture): SubmitResult;
+  /** 화면에 잠깐 보일 알림(너무 낮게 던짐 등) */
+  setNotice(notice: string): void;
   /** 혼자 할 때 무르기: 내 마지막 움직임(과 그 뒤 컴퓨터 수)을 되돌린다 */
   undo(): boolean;
   canUndo(): boolean;
@@ -125,6 +135,7 @@ function cuesFor(events: readonly GameEvent[], view: YutView): void {
   for (const e of events) {
     if (e.type === "thrown") playUiCue("yutThrow");
     if (e.type === "result") playUiCue(e.bonus ? "yutBonus" : "yutLand");
+    if (e.type === "nak") playUiCue("yutLand");
     if (e.type === "moved")
       playUiCue(
         e.captured > 0 ? "yutCapture" : e.finished ? "yutHome" : "yutPiece",
@@ -142,6 +153,8 @@ let unsubscribe: (() => void) | null = null;
 let lastAuto: string | null = null;
 /** 씨앗을 남기는 곳: 온라인은 탭 저장소, 혼자 하기·미션은 자리 재료로 만든 씨앗을 쓴다 */
 let seedKey: string | null = null;
+/** 봉인해 던진 내 몸짓(열 때까지). 혼자 하기·온라인은 탭 저장소에도 남긴다 */
+let kept: PendingThrow[] = [];
 
 function stop(): void {
   if (timer !== null) clearTimeout(timer);
@@ -160,7 +173,7 @@ export const useYut = create<YutStore>((set, get) => {
     const { host, view, queue } = get();
     if (!host || !view || queue.length > 0) return;
     const kind = view.decision?.kind;
-    if (kind !== "commit" && kind !== "reveal") return;
+    if (kind !== "commit" && kind !== "reveal" && kind !== "open") return;
     const key = `${view.generation}:${view.throwCount}:${kind}`;
     if (lastAuto === key) return;
     const online = seedKey?.startsWith("online:") ?? false;
@@ -176,6 +189,9 @@ export const useYut = create<YutStore>((set, get) => {
         saveSeedBook(seedKey as string, seeds);
       }
       action = commitAction(seed ?? derivedSeed(view.botKey, view.generation));
+    } else if (kind === "open") {
+      action = openAction(view, kept);
+      if (!action) return;
     } else {
       const seed = mySeed(view, get().seeds);
       if (!seed) return;
@@ -234,6 +250,7 @@ export const useYut = create<YutStore>((set, get) => {
     // 바꾸는 대국이 세던 컴퓨터 수는 버린다(무르기·새 판).
     if (get().local !== local) get().local?.dispose();
     seedKey = options.key;
+    kept = options.key ? loadPendingThrows(options.key) : [];
     const recorder = options.stats
       ? new StatsRecorder(yutKit.stats, options.stats)
       : null;
@@ -381,6 +398,18 @@ export const useYut = create<YutStore>((set, get) => {
       set({ seatNames });
     },
 
+    throwGesture(gesture) {
+      const pending = sealGesture(gesture);
+      // 던지기를 내기 전에 먼저 남긴다(새로고침해도 열 수 있게).
+      kept = [...kept.slice(-3), pending];
+      if (seedKey) savePendingThrows(seedKey, kept);
+      return get().submit({ type: "throw", seal: pending.seal });
+    },
+
+    setNotice(notice) {
+      set({ notice });
+    },
+
     submit(action) {
       const host = get().host;
       if (!host) return { ok: false, error: "게임이 없다" };
@@ -428,6 +457,7 @@ export const useYut = create<YutStore>((set, get) => {
       stop();
       get().local?.dispose();
       seedKey = null;
+      kept = [];
       set({
         host: null,
         local: null,

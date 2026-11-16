@@ -10,6 +10,7 @@ import {
   type GameResult,
   HOME,
   legalMoves,
+  OPEN_WAIT_MS,
   pendingSeats,
   pointName,
   replay,
@@ -17,6 +18,7 @@ import {
   sideOf,
   step,
   throwName,
+  usesGesture,
   viewOf,
   type YutRules,
   type YutState,
@@ -138,6 +140,10 @@ function describe(action: unknown): string {
       return "던지기";
     case "reveal":
       return "고리 공개";
+    case "open":
+      return "몸짓 열기";
+    case "unopened":
+      return "몸짓을 열지 않음";
     case "move":
       return `${throwName(a.value)} → ${pointLabel(a.from)}`;
     case "resign":
@@ -216,9 +222,11 @@ export const yutKit: YutKit = {
   decodeRules: decodeYutRules,
   startEvents: (view) => [{ type: "gameStarted", turn: view.turn }],
   isOver: (view) => view.phase === "gameOver",
-  // 끝내기와 시간패는 방장 기기만 기록한다.
+  // 끝내기·시간패·몸짓을 열지 않음은 방장 기기만 기록한다.
   guestMayAct: (action) =>
-    action.type !== "retire" && action.type !== "timeout",
+    action.type !== "retire" &&
+    action.type !== "timeout" &&
+    action.type !== "unopened",
   // 내 차례가 아니어도 기권할 수 있다(받아들일지는 엔진이 정한다).
   offTurn: (view, action) =>
     action.type === "resign" && view.phase !== "gameOver",
@@ -250,6 +258,22 @@ export const yutKit: YutKit = {
     explain: explainYut,
   },
   botFor: (level) => yutBotFor(level),
+  // 몸짓 열기 창(규칙 판 2, docs/37 13절): 모든 고리가 공개된 뒤 던진 사람이 정해진 시간 안에 열지 않으면
+  // 방장 시계가 그 던지기를 무효로 한다. 참가자 기기는 판 끝에 창이 열린 뒤 그만큼 지났는지 자기 시계로 본다.
+  timers: (state) =>
+    state.phase === "open" && usesGesture(state.rules)
+      ? [
+          {
+            key: `open:${state.throwCount}`,
+            seat: state.turn,
+            ms: OPEN_WAIT_MS,
+            action: { type: "unopened", index: state.throwCount },
+          },
+        ]
+      : [],
+  clockKey: (action) =>
+    action.type === "unopened" ? `open:${action.index}` : null,
+  hostAction: (action) => action.type === "unopened",
   // 던지기·말 움직이기마다 따로 잰다. 한 번 더 던질 때도 결정 하나씩 깎아 keepsTurn은 두지 않는다(docs/37 4절).
   timing: {
     turn: clockTurn,

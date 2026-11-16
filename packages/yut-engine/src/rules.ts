@@ -92,8 +92,9 @@ export function decodeYutRules(
       backDo: backDo === "b",
       flatPercent: flat === "6" ? 60 : 50,
       landOnHome: home === "l",
-      ...(time === "none" ? {} : { time }),
+      // 판 번호·낙을 시간보다 앞에 둔다(기본 규칙에 시간을 더한 꼴과 같은 순서라야 화면을 JSON으로 견줄 때 같다).
       ...(second ? { version: 2 as const, nak: nak === "k" } : {}),
+      ...(time === "none" ? {} : { time }),
     },
   };
 }
