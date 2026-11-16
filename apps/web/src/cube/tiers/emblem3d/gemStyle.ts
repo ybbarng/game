@@ -148,7 +148,18 @@ export const GEM_STYLE_LOOK: Readonly<Record<GemStyle, GemStyleLook>> = {
     voro: { count: 6, reflect: 0.28, bend: 0.18 },
     steps: 12,
   },
-  n: { ...DEEP, shape: "poly", steps: 7, studio: "step", frontEnv: 1.8 },
+  // 그랜드마스터: 마스터보다 한 단계 밝고 화려하게(속빛·반짝 점·깎은 띠 흰 쐐기·번짐을 마스터보다 세게, docs/47 14-7
+  // 「밝기 사다리」)
+  n: {
+    ...DEEP,
+    shape: "poly",
+    steps: 7,
+    studio: "step",
+    frontEnv: 1.8,
+    envGain: 2.4,
+    frontLights: 1.8,
+    bloom: { strength: 0.5, radius: 0.12, threshold: 3 },
+  },
 };
 
 const DEG = Math.PI / 180;

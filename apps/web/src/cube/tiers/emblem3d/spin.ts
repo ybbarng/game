@@ -106,3 +106,58 @@ export function homeSpin(from: Spin, t: number): Spin {
   const y = wrapYaw(from.yaw);
   return { yaw: y * (1 - e), pitch: from.pitch * (1 - e) };
 }
+
+/**
+ * 진열 흔들기(티어 화면, docs/47 14-7 「진열」, 2026-11-13 사용자 「3D들은 자동으로 빙글빙글 돌거나, 좌우로 움직여도
+ * 좋을 것 같아」). 엠블럼은 앞을 보는 물건이라 한 바퀴 돌리지 않고 정면 둘레를 좌우로 천천히 흔든다. 각이 바뀌는 동안
+ * 반짝임이 면을 따라 지나간다.
+ *
+ * - `SWAY_AMP` 좌우 폭(라디안), `SWAY_PERIOD` 한 번 왕복(ms). 반짝임이 지나가는 게 보일 만큼 여유 있게.
+ * - 처음 시작하거나 끌기를 놓은 뒤 다시 흔들 때는 `SWAY_EASE` 동안 빠르기를 0에서 천천히 올린다(갑자기 움직이지 않게).
+ * - 놓은 각이 흔들 폭 밖이면 그 차이를 `SWAY_EASE`의 시간 상수로 줄여 가까운 정면 쪽으로 돌아온다.
+ */
+export const SWAY_AMP = 0.5;
+export const SWAY_PERIOD = 9000;
+export const SWAY_EASE = 1500;
+/** 끌기를 놓고(미끄러짐이 끝나고) 이만큼(ms) 그 각에 머문 뒤 다시 흔든다 */
+export const SWAY_RESUME_MS = 1600;
+
+export interface Sway {
+  /** 흔드는 가운데(정면 = 2π의 배수) */
+  center: number;
+  /** 흔들기 시계(ms, 빠르기를 올리는 동안은 느리게 간다) */
+  t: number;
+  /** 다시 흔든 뒤 흐른 실제 시간(ms) */
+  since: number;
+  /** 흔들 폭 밖에서 시작한 몫(라디안), 시간이 갈수록 준다 */
+  offset: number;
+}
+
+/** 지금 각 `yaw`에서 흔들기를 다시 시작한다: 가까운 정면을 가운데로, 그 각이 폭 안이면 같은 자리 위상에서 */
+export function swayFrom(yaw: number): Sway {
+  const turn = Math.PI * 2;
+  const center = Math.round(yaw / turn) * turn;
+  const v = Math.max(-1, Math.min(1, (yaw - center) / SWAY_AMP));
+  const t = (Math.asin(v) / turn) * SWAY_PERIOD;
+  return { center, t, since: 0, offset: yaw - center - SWAY_AMP * v };
+}
+
+/** 흔들기를 `dt`(ms) 나아가게 한다 */
+export function swayStep(s: Sway, dt: number): Sway {
+  const ramp = Math.min(1, s.since / SWAY_EASE);
+  // 빠르기를 매끈하게(smoothstep) 올린다
+  const rate = ramp * ramp * (3 - 2 * ramp);
+  return {
+    center: s.center,
+    t: s.t + dt * rate,
+    since: s.since + dt,
+    offset: s.offset * Math.exp(-dt / SWAY_EASE),
+  };
+}
+
+/** 흔들기의 지금 각 */
+export function swayYaw(s: Sway): number {
+  return (
+    s.center + SWAY_AMP * Math.sin((Math.PI * 2 * s.t) / SWAY_PERIOD) + s.offset
+  );
+}

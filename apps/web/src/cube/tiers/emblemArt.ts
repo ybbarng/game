@@ -171,6 +171,3 @@ export function glintsFor(tier: string): Glint[] {
   else out.push({ x: crest[0], y: crest[1], r: 3 });
   return out;
 }
-
-/** 미리보기 「HDR 확인」의 1000 nit 흰 네모 */
-export const HDR_CHECK_WHITE_SRC = "/cube/tiers/hdr-check-white.avif";

@@ -1,12 +1,6 @@
 /*
- * 큐브 티어 엠블럼의 넓은 색역 색과 미리보기 「HDR 확인」 견본. TierEmblem·EmblemPreview가 import한다
- * (globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
+ * 큐브 티어 엠블럼의 넓은 색역 색. TierEmblem이 import한다(globals.css에는 모든 화면이 쓰는 것만 둔다, docs/38 17절)
  */
-/* 미리보기 「HDR 확인」 견본: 화면·브라우저와 상관없이 늘 보이고, 밝기 한도를 풀어 둔다 */
-.emb-hdr-check {
-  dynamic-range-limit: no-limit;
-  user-select: none;
-}
 /* 넓은 색역(P3) 화면: 위 티어의 보석 색을 sRGB 밖까지 짙게 */
 @media (color-gamut: p3) {
   :root {

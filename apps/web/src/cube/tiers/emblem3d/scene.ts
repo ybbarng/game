@@ -87,6 +87,8 @@ export interface EmblemScene {
   camera: THREE_NS.PerspectiveCamera;
   /** 끌어 돌리는 몸(틀·큐브·날개·볏) */
   spin: THREE_NS.Group;
+  /** 몸 가운데 큐브(조각 27개). 밝기를 잴 때 큐브와 장식(틀·날개·볏·왕관)을 가른다(`lookStats.ts`) */
+  core: THREE_NS.Group;
   /** 몸이 아닌 뒤(배경판·그림자·후광). 찍은 그림의 테두리 본을 뜰 때 숨긴다 */
   behind: THREE_NS.Object3D[];
   /** 반사 지도로 구울 스튜디오 방(PMREM에 넘긴 뒤 버린다) */
@@ -106,6 +108,8 @@ type Rgb = readonly [number, number, number];
 interface MetalLook {
   color: Rgb;
   roughness: number;
+  /** 반사 지도 세기(없으면 보석 티어 틀 0.7, 그 밖 1) */
+  env?: number;
 }
 
 interface TierLook {
@@ -205,8 +209,11 @@ export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
     tint: "#9ff0e2",
     backdrop: "#22363a",
   },
+  // 에메랄드·다이아몬드·마스터의 틀은 예전 그랜드마스터 틀 밝기(선형 밝기 약 0.30)로, 그랜드마스터 틀은 예전 세 티어
+  // 밝기(약 0.89)로 서로 바꿨다. 색 기운은 티어마다 그대로(2026-11-13 사용자 「에메랄드, 다이아몬드, 마스터가 지금의
+  // 그마 틀 밝기가 되고, 그마가 얘네 밝기를 가지는 게 더 나은 것 같아」, docs/47 14-7 「밝기 사다리」)
   emerald: {
-    frame: { color: [0.92, 0.93, 0.94], roughness: 0.26 },
+    frame: { color: [0.297, 0.3, 0.304], roughness: 0.24 },
     // 에메랄드 굴절률 1.577, 분산이 작아(0.014) 따로 따라가지 않는다
     gem: { ior: 1.577, spread: 0, absorb: absorbFor([0.3, 0.86, 0.5]) },
     tint: "#7dffbd",
@@ -214,7 +221,7 @@ export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
     glow: "#9ef0c4",
   },
   diamond: {
-    frame: { color: [0.9, 0.92, 0.96], roughness: 0.26 },
+    frame: { color: [0.293, 0.3, 0.313], roughness: 0.24 },
     // 다이아몬드 굴절률 2.417, 분산 0.044(화면에서 보이게 키움), 무색
     gem: { ior: 2.417, spread: 0.08, absorb: absorbFor([0.99, 0.99, 0.995]) },
     tint: "#9fd4ff",
@@ -222,7 +229,7 @@ export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
     glow: "#d2e6ff",
   },
   master: {
-    frame: { color: [0.82, 0.8, 0.88], roughness: 0.26 },
+    frame: { color: [0.303, 0.296, 0.326], roughness: 0.24 },
     // 보라 사파이어(커런덤) 굴절률 1.762~1.770의 가운데 1.766. 실제 분산 0.018은 작아 따로 따라가지 않는다(루비·
     // 에메랄드와 같다). 색은 예전 자수정 보라를 바탕으로 사파이어답게 더 맑고 진하게(빨강 55%·초록 22%·파랑 88%).
     // 2026-11-13 사용자 결정: 다이아몬드 위 티어에 흔하고 싼 자수정은 어색해 보라 사파이어로 바꿨다
@@ -232,9 +239,10 @@ export const LOOK: Readonly<Record<DraftTier, TierLook>> = {
     glow: "#e2c4ff",
   },
   grandmaster: {
-    frame: { color: [0.3, 0.3, 0.33], roughness: 0.24 },
-    // 루비(커런덤) 굴절률 1.77
-    gem: { ior: 1.77, spread: 0, absorb: absorbFor([0.9, 0.05, 0.1]) },
+    frame: { color: [0.7, 0.7, 0.77], roughness: 0.26 },
+    // 루비(커런덤) 굴절률 1.77. 조각 한 변을 지나 빨강 95%·초록 15%·파랑 22%(예전 90·5·10은 빨강만 남아 마스터보다
+    // 어둡게 가라앉았다, 2026-11-13 사용자 「마스터가 그랜드마스터보다 더 밝아 보여」)
+    gem: { ior: 1.77, spread: 0, absorb: absorbFor([0.97, 0.26, 0.32]) },
     tint: "#ff8c8c",
     backdrop: "#3a1e22",
     glow: "#ffc0c0",
@@ -639,7 +647,7 @@ export function buildEmblemScene(
       metalness: 1,
       roughness: look.frame.roughness,
       // 보석 티어는 틀이 보석보다 튀지 않게(밝은 반사가 번짐으로 퍼졌다)
-      envMapIntensity: gem ? 0.7 : 1,
+      envMapIntensity: look.frame.env ?? (gem ? 0.7 : 1),
     }),
   );
   // 배경판 그림: 장면 뒤에 깔고(opt.backdrop), 보석이 꿰뚫어 볼 때도 같은 그림을 읽는다
@@ -984,6 +992,7 @@ export function buildEmblemScene(
     scene,
     camera,
     spin,
+    core: cube,
     behind,
     studio,
     bloom: sl ? sl.bloom : BASE_BLOOM,

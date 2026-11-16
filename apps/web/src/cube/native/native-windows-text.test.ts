@@ -23,6 +23,7 @@ const FILES = import.meta.glob<string>(
     "../../../../cubie/Sources/CubieCore/SettingsSheet.swift",
     "../mini/MiniCubeApp.tsx",
     "../tiers/TiersApp.tsx",
+    "../tiers/TierShowcase.tsx",
     "../tiers/TierTable.tsx",
     "../components/CubeSettingsApp.tsx",
   ],
@@ -43,8 +44,13 @@ function source(name: string): string {
   return flat(FILES[key as string] as string);
 }
 
-function sameText(site: string, app: string, texts: readonly string[]) {
-  const s = source(site);
+/** `site`는 화면 파일 하나 또는 여럿(한 화면을 여러 파일이 나눠 그릴 때, 예: 티어 화면 + 진열) */
+function sameText(
+  site: string | readonly string[],
+  app: string,
+  texts: readonly string[],
+) {
+  const s = (typeof site === "string" ? [site] : site).map(source).join(" ");
   const a = source(app);
   for (const t of texts) {
     expect(s, `사이트 ${site}에 「${t}」가 없다`).toContain(t);
@@ -75,7 +81,8 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
     ]));
 
   it("티어표(TiersApp)", () =>
-    sameText("TiersApp.tsx", "TierSheet.swift", [
+    // 내 티어 칸 글은 진열(TierShowcase.tsx)로 옮겼다(2026-11-13, 글은 그대로)
+    sameText(["TiersApp.tsx", "TierShowcase.tsx"], "TierSheet.swift", [
       "← 큐브",
       "같은 크기 혼자 맞추기에서 낸 가장 좋은 Ao5로 티어를 매깁니다. Ao5는 연달아 맞춘 5번 가운데 가장 빠른 판과 가장 느린 판을 빼고 남은 3번의 평균입니다.",
       "골드부터 위는 세계 큐브 협회(WCA) 대회 기록의 분포로 정했고, 아이언·브론즈·실버는 대회에 나가지 않는 사람까지 담도록 넓혔습니다. 큰 큐브는 3×3 기록이 같은 사람이 그 크기에서 내는 기록에 맞춰, 크기가 달라도 같은 티어면 비슷한 실력입니다.",
