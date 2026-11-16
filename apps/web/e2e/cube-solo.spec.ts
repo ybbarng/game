@@ -404,6 +404,73 @@ test(
   },
 );
 
+/**
+ * 4×4 야우(docs/47 8-8 「내 해법」). 야우는 4×4에서만 고른다. 옛 4×4 기록 하나(야우 단계 구간, 층별 단계도 함께
+ * 지남)를 넣어 두고 야우를 고르면 이론 최고가 야우 여덟 단계(센터 둘 → … → 윗층)의 구간을 더한 값이다.
+ */
+test(
+  "내 해법: 4×4에서 야우를 고르면 이론 최고가 야우 단계를 따른다",
+  { tag: "@no-phone-landscape" },
+  async ({ page }, info) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem("cube.records.v1")) return;
+      localStorage.setItem(
+        "cube.records.v1",
+        JSON.stringify({
+          "solo-4": [
+            {
+              at: 1,
+              n: 4,
+              mode: "solo",
+              ms: 190_000,
+              penalty: 0,
+              moves: 300,
+              scramble: "R U R' U'",
+              splits:
+                "centers2@10000 cross3@25000 centers@60000 cross@75000 edges@120000 f2l1@130000 layer1@150000 layer2@160000 oll@175000 ll@190000",
+            },
+          ],
+        }),
+      );
+    });
+    await installClock(page);
+    await page.goto("/cube/solo");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await pauseClock(page);
+    const method = page.locator("select[data-cube-method]");
+    const yau = method.locator("option[value=yau]");
+    // 3×3에는 야우가 없다
+    await expect(yau).toHaveCount(0);
+
+    await page.locator("[data-cube-size]").selectOption("4");
+    await expect(
+      page.locator("[data-cube-stage][data-input-ready]"),
+    ).toBeVisible({ timeout: SCRAMBLE_TIMEOUT });
+    await expect(yau).toHaveText("야우");
+    await method.selectOption("yau");
+    const theory = page.locator("[data-cube-theory]");
+    await expect(theory).toHaveAttribute("data-cube-theory", "190000");
+    await expect(page.locator("[data-cube-theory-part]")).toHaveText([
+      /센터 둘/,
+      /십자 셋/,
+      /센터/,
+      /십자/,
+      /엣지 짝/,
+      /둘째 층/,
+      /윗면/,
+      /윗층/,
+    ]);
+    await shot(page, "solo-method-yau", info.project.name);
+
+    // 5×5에는 야우 풀이가 없어 고르기에도 없고, 고른 야우는 자동으로 보인다
+    await page.locator("[data-cube-size]").selectOption("5");
+    await expect(method).toHaveValue("auto");
+    await expect(yau).toHaveCount(0);
+  },
+);
+
 test(
   "블라인드: 외운 뒤 시작하면 모두 가려지고, 맞추지 않고 끝내면 DNF",
   { tag: "@only-desktop" },

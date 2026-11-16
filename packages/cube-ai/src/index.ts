@@ -40,3 +40,9 @@ export {
   type TaughtStage,
   taughtStagePlan,
 } from "./taught-plan";
+export {
+  solveYauHuman,
+  type YauReduceStage,
+  type YauReduceStageId,
+  yauReduce,
+} from "./yau";

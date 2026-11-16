@@ -379,6 +379,10 @@ pub fn flow_score(n: usize, state: &State, pieces: &PieceScore) -> u32 {
 /// 이정표 id(사이트 `MilestoneId`)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Milestone {
+    /// 4×4 야우: 맞은편 두 면의 센터
+    Centers2,
+    /// 4×4 야우: 그 한 면 쪽 십자 엣지 셋
+    Cross3,
     Centers,
     Edges,
     Cross,
@@ -397,7 +401,9 @@ pub enum Milestone {
 
 impl Milestone {
     /// 사이트 `MILESTONES`의 차례
-    pub const ALL: [Milestone; 14] = [
+    pub const ALL: [Milestone; 16] = [
+        Milestone::Centers2,
+        Milestone::Cross3,
         Milestone::Centers,
         Milestone::Edges,
         Milestone::Cross,
@@ -417,6 +423,8 @@ impl Milestone {
     /// 저장 글의 id(구간 기록 "cross@3210")
     pub fn id(self) -> &'static str {
         match self {
+            Milestone::Centers2 => "centers2",
+            Milestone::Cross3 => "cross3",
             Milestone::Centers => "centers",
             Milestone::Edges => "edges",
             Milestone::Cross => "cross",
@@ -437,6 +445,8 @@ impl Milestone {
     /// 칩 이름(사이트 `milestoneLabel`)
     pub fn label(self) -> &'static str {
         match self {
+            Milestone::Centers2 => "센터 둘",
+            Milestone::Cross3 => "십자 셋",
             Milestone::Centers => "센터",
             Milestone::Edges => "엣지 짝",
             Milestone::Cross => "십자",
@@ -466,9 +476,12 @@ pub fn milestones_for(n: usize) -> Vec<Milestone> {
         2 => vec![Layer1, Oll, Ll],
         3 => Milestone::ALL
             .into_iter()
-            .filter(|m| !matches!(m, Centers | Edges))
+            .filter(|m| !matches!(m, Centers2 | Cross3 | Centers | Edges))
             .collect(),
-        // 센터·엣지 짝 뒤에는 3×3처럼 층별·CFOP 단계(사이트 `BIG_LAYER_STEPS`)
+        // 야우 단계는 야우 풀이가 있는 4×4만, 센터·엣지 짝 뒤에는 3×3처럼 층별·CFOP 단계(사이트 `BIG_LAYER_STEPS`)
+        4 => vec![
+            Centers2, Cross3, Centers, Edges, Cross, F2l1, F2l2, F2l3, Layer1, Layer2, Oll, Ll,
+        ],
         _ => vec![
             Centers, Edges, Cross, F2l1, F2l2, F2l3, Layer1, Layer2, Oll, Ll,
         ],
@@ -725,6 +738,43 @@ fn pocket_milestones(colors: &[u8], out: &mut Vec<Milestone>) {
     }
 }
 
+/// 면 f의 센터 블럭이 모두 한 색이면 그 색
+fn center_color(n: usize, colors: &[u8], f: usize) -> Option<u8> {
+    let cells = &flow_groups(n).centers[f];
+    let c = colors[cells[0]];
+    cells.iter().all(|&s| colors[s] == c).then_some(c)
+}
+
+/// 4×4 야우 이정표(사이트 `yauMilestones`): 맞은편 두 면의 센터가 맞은편 색끼리면 센터 둘, 그 한 면 쪽 십자 엣지
+/// 줄이 셋 이상 맞으면 십자 셋. 기준 색은 큐브 전체 방향 24가지 가운데 두 센터 색과 맞는 것
+fn yau_milestones(n: usize, colors: &[u8], out: &mut Vec<Milestone>) {
+    let center: Vec<Option<u8>> = (0..6).map(|f| center_color(n, colors, f)).collect();
+    let p = pieces_of(n);
+    let units = units_of(n);
+    let mut two = false;
+    for fr in all_frames(n) {
+        for f in 0..6 {
+            let top = OPPOSITE_FACE[f];
+            if center[f] != Some(fr[f]) || center[top] != Some(fr[top]) {
+                continue;
+            }
+            two = true;
+            let lines = p.edges_on[f]
+                .iter()
+                .filter(|&&e| unit_ok(&units[e], colors, fr))
+                .count();
+            if lines >= 3 {
+                out.push(Milestone::Centers2);
+                out.push(Milestone::Cross3);
+                return;
+            }
+        }
+    }
+    if two {
+        out.push(Milestone::Centers2);
+    }
+}
+
 /// 지금 상태에서 켜진 이정표(크기마다 `milestones_for`의 차례대로, 사이트 `milestonesOf`)
 pub fn milestones_of(n: usize, state: &State) -> Vec<Milestone> {
     let mut out = Vec::new();
@@ -741,6 +791,9 @@ pub fn milestones_of(n: usize, state: &State) -> Vec<Milestone> {
         eoline_milestone(&colors, &frame, &mut out);
         corners_milestone(3, &colors, &mut out);
     } else {
+        if n == 4 {
+            yau_milestones(n, &colors, &mut out);
+        }
         if paired_edge_lines(n, state) == 12 {
             out.push(Milestone::Edges);
         }

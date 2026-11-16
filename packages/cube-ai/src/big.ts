@@ -150,7 +150,6 @@ export function solveBigHuman(
   const redMoves = red.moves.split(/\s+/).filter(Boolean);
   const moves: string[] = [];
   const stages: HumanSolve["stages"] = [];
-  const looks: number[] = [];
   for (const st of red.stages) {
     const name = REDUCTION_STAGE[st.id];
     if (!name) continue;
@@ -158,6 +157,31 @@ export function solveBigHuman(
     moves.push(...redMoves.slice(st.from, st.to));
     stages.push({ name, start, end: moves.length });
   }
+  return finishAsThree(
+    steps,
+    n,
+    state,
+    { moves, stages, looks: [] },
+    first,
+    until,
+  );
+}
+
+/**
+ * 센터·엣지 짝을 다 맞춘 n×n 판(`reduced`: 섞인 `state`부터 둔 수·단계)에 「3×3처럼」을 잇는다: 3×3로 보아 그 단계의 사람
+ * 해법 차례(`steps`)를 돌리고, 패리티 칸에서 고칠 것이 있으면 패리티 공식을 넣는다. 축소법 컴퓨터와 4×4 야우 컴퓨터가 같이 쓴다
+ */
+export function finishAsThree(
+  steps: readonly Step[],
+  n: number,
+  state: PuzzleState,
+  reduced: HumanSolve,
+  first = 0,
+  until?: StageName,
+): HumanSolve {
+  const moves = [...reduced.moves];
+  const stages = [...reduced.stages];
+  const looks = [...reduced.looks];
   let cur = applyMoves(n, state, parseMoves(n, moves.join(" ")));
   let s = new Solve(3, threeView(n, cur, first));
   s.stopAt = until ?? null;
