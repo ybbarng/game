@@ -28,6 +28,11 @@ export interface LobbyState {
   ruleName?: string;
   /** 빈자리 컴퓨터의 실력 단계. 판 끝에 컴퓨터 수를 다시 계산해 방장이 조종하지 않았는지 본다 */
   botLevel?: number;
+  /**
+   * 빈자리 컴퓨터의 계획 판 번호(`GameKit.botPlan`). 참가자는 자기 번호와 같을 때만 컴퓨터 수를 다시 계산한다.
+   * 없으면 1(번호를 싣기 전 화면, net/bot-plan.ts)
+   */
+  botPlan?: number;
   seats: LobbySeat[];
   started: boolean;
   /**
@@ -79,6 +84,8 @@ export interface AuditReport {
   name: string;
   ok: boolean;
   reason?: string;
+  /** 통과했지만 맞춰 보지 못한 것(컴퓨터 계획 판 번호가 달라 컴퓨터 수 확인 못 함 등) */
+  unchecked?: string;
 }
 
 /** 채팅 한 줄 */

@@ -189,6 +189,12 @@ export interface GameKit<Rules, State, View, Action, Event, Extra = undefined> {
   offTurn?(view: View, action: Action): boolean;
   /** 실력 단계의 컴퓨터. 온라인 판 끝 검증에서 컴퓨터 수를 다시 계산한다 */
   botFor?(level: number): KitBot<View, Action>;
+  /**
+   * 컴퓨터 계획 판 번호. 컴퓨터 판단(같은 화면·같은 난수에서 고르는 수)을 바꾸면 올린다. 없으면 1(번호를 싣기 전 판).
+   * 방장이 방 상태에 싣고, 참가자는 자기 번호와 같을 때만 판 끝에 컴퓨터 수를 다시 계산해 맞춰 본다(`net/bot-plan.ts`).
+   * 올리는 것을 잊지 않게 `game/bot-plan.test.ts`가 컴퓨터 지문을 번호와 함께 남겨 둔다
+   */
+  readonly botPlan?: number;
   /** 봇 행동 다듬기(손패 위치 같은 연출 정보) */
   annotateBotAction?(view: View, action: Action): Action;
   /**
@@ -346,4 +352,9 @@ export interface KitTiming<State, Action> {
    * 그런 행동 뒤에는 생각 시간을 처음부터 다시 재지 않고 이어 잰다. 없으면 모든 행동이 새로 잰다
    */
   keepsTurn?(action: Action): boolean;
+}
+
+/** 이 게임 컴퓨터의 계획 판 번호(`GameKit.botPlan`, 없으면 1) */
+export function botPlanOf(kit: { readonly botPlan?: number }): number {
+  return kit.botPlan ?? 1;
 }
