@@ -38,7 +38,7 @@ import {
 } from "@/net/session";
 import { randomId } from "@/net/transport";
 import { saveGuestArchive } from "@/review/recorder";
-
+import { sessionPeople } from "@/stats/people";
 import { minhwatuKit } from "../kit";
 import { describeRules } from "../rules-text";
 import { type MinhwatuHostRoom, minhwatuSession } from "../session";
@@ -90,6 +90,8 @@ export function MinhwatuOnlineScreen({
     game: "minhwatu",
     mode: "online" as const,
     key: `online:${roomCode}`,
+    /** 같이 앉은 사람(나와 컴퓨터 빼고). 이 기기 내 기록에만 남는다 */
+    people: sessionPeople(minhwatuSession),
   };
   /** 방장: 복기용 기록은 방이 내준다 */
   const hostArchive = (host: MinhwatuHostRoom) => ({

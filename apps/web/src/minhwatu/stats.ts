@@ -1,6 +1,7 @@
 import type { GameEvent, MinhwatuView, YakId } from "@game/minhwatu-engine";
 
 import type { KitStats } from "@/game/kit";
+import { anyRound } from "@/stats/achievements";
 import type { GameRecord, RoundRecord } from "@/stats/records";
 
 /** 민화투 판 기록(내 자리에서 본 것) */
@@ -29,6 +30,24 @@ const rankOf = (scores: readonly number[], seat: number) =>
   scores.filter((s) => s > (scores[seat] ?? 0)).length + 1;
 
 export const minhwatuStats: KitStats<MinhwatuView, GameEvent> = {
+  result: {
+    unit: "round",
+    outcome: (data) => ((data as MinhwatuRound).rank === 1 ? "win" : "loss"),
+  },
+  achievements: [
+    anyRound<MinhwatuRound>(
+      "first-yak",
+      "첫 약",
+      "약을 하나 이룹니다.",
+      (r) => r.yaks.length >= 1,
+    ),
+    anyRound<MinhwatuRound>(
+      "two-yaks",
+      "약 둘",
+      "한 판에 약을 둘 이룹니다.",
+      (r) => r.yaks.length >= 2,
+    ),
+  ],
   roundStarted: (events) => events.some((e) => e.type === "roundStarted"),
   roundEnded: (events) => events.some((e) => e.type === "roundEnded"),
   gameEnded: (events) => events.some((e) => e.type === "gameEnded"),
