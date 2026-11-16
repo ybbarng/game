@@ -26,11 +26,17 @@ import type {
 } from "@game/mighty-engine";
 import { botName } from "@/game/bot-names";
 import type { BotRunner } from "@/game/bot-runner";
-import type { GameKit, KitBot, KitLoggedAction } from "@/game/kit";
+import {
+  botPlanOf,
+  type GameKit,
+  type KitBot,
+  type KitLoggedAction,
+} from "@/game/kit";
 import { LocalMatch } from "@/game/local-match";
 import { mightyKit } from "@/game/mighty-kit";
 import type { ArchiveSource } from "@/review/recorder";
 import { serializeDeals } from "@/review/replay";
+import { lobbyBotFields } from "./bot-plan";
 import { ClaimHub } from "./claim-hub";
 import { watchFairDevice } from "./diag";
 import { commit, deriveSeed, newSecret, tokenProof } from "./fairness";
@@ -474,6 +480,7 @@ export class HostRoom<
       rules: this.rules,
       seed: this.seed,
       log: this.match.actionLog() as KitLoggedAction<unknown>[],
+      ...(this.botLevel !== null ? { botPlan: botPlanOf(this.kit) } : {}),
       ...(this.fair
         ? {
             deals: serializeDeals(
@@ -535,7 +542,7 @@ export class HostRoom<
       game: this.kit.id,
       ruleCode: this.kit.encodeRules(this.rules),
       ...(this.ruleName ? { ruleName: this.ruleName } : {}),
-      ...(this.botLevel !== null ? { botLevel: this.botLevel } : {}),
+      ...lobbyBotFields(this.kit, this.botLevel),
       seats,
       started: this.match !== null,
       ...(this.fairGroup()

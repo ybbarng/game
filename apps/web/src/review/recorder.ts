@@ -11,6 +11,8 @@ export interface ArchiveSource {
   presetDeal?: unknown;
   deals?: Record<number, unknown>;
   log: KitLoggedAction<unknown>[];
+  /** 컴퓨터가 있던 판이면 그 컴퓨터의 계획 판 번호(`GameKit.botPlan`). 2026-11-17 전 기록에는 없다 */
+  botPlan?: number;
 }
 
 /** 복기용으로 남길 대국. `source`는 그 순간의 시작 조건과 행동 기록을 돌려준다 */

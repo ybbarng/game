@@ -12,6 +12,7 @@ import { sentenceProblem, sentencesOf } from "@/study/tone";
 const files: Record<string, string> = import.meta.glob(
   [
     "./{baduk,baseball,chess,galaxy,game,gostop,hearts,hwatu,janggi,minhwatu,nyrongppong,omok,onecard,yut,review,stats,components}/**/*.{ts,tsx}",
+    "./net/{audit-text,bot-plan}.ts", // 판 끝 검증 알림 글(그 밖의 net 검증 실패 사유는 아직 해라체, docs/standing-rules.md 3절)
     "!./**/*.test.{ts,tsx}",
     // 따로 정한 말투나 따로 보는 시험이 있는 글
     "!./components/learn/**", // 보안 배우기: 학습 글, learn-terms.test.tsx
@@ -36,6 +37,7 @@ const files: Record<string, string> = import.meta.glob(
     "!./review/commentary-tone-suite.ts", // 시험 틀
     "!./hwatu/card-table-sim.ts", // 시험·시연용 흉내
     "!./*/fair-room-fixture.ts",
+    "!./*/*-fixture.ts", // 시험 자료
   ],
   { query: "?raw", import: "default", eager: true },
 );

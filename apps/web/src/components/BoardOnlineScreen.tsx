@@ -12,6 +12,7 @@ import type { GameKit, KitBot } from "@/game/kit";
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
+import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -173,17 +174,18 @@ export function BoardOnlineScreen<
   });
 
   /** 게임 끝 검증 결과를 채팅에 남긴다. 무효 표시는 내 기기의 검증만 따른다(HeartsOnlineScreen과 같다) */
-  const onAuditReport = (who: string, ok: boolean, reason?: string) => {
+  const onAuditReport = (
+    who: string,
+    ok: boolean,
+    reason?: string,
+    unchecked?: string,
+  ) => {
     const own = who === "나";
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: ok
-        ? `${who} — 문제없음 ✓`
-        : own
-          ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봐요)`,
+      text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
       if (!ok) useStore.setState({ notice: `기록 검증 실패: ${reason ?? ""}` });
@@ -290,13 +292,18 @@ export function BoardOnlineScreen<
         });
         guest.on("audit", (result) => {
           useStore.setState({
-            notice: result.ok
-              ? "기록 확인: 진행에 문제가 없어요."
-              : `기록 확인 실패: ${result.reason}`,
+            notice: auditNotice(result, "기록 확인", "진행에 문제가 없어요."),
           });
-          onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
+          onAuditReport(
+            "나",
+            result.ok,
+            result.ok ? undefined : result.reason,
+            result.ok ? result.unchecked : undefined,
+          );
         });
-        guest.on("report", (r) => onAuditReport(r.name, r.ok, r.reason));
+        guest.on("report", (r) =>
+          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+        );
         // 게임 끝 검증을 통과하면 복기용으로 남긴다.
         guest.on("archive", (source) => {
           const view = guest.match?.current();

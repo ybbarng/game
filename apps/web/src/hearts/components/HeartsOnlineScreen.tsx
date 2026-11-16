@@ -18,6 +18,7 @@ import { workerBotOption } from "@/game/bot-runner";
 import { useSettings } from "@/game/settings";
 import { cn } from "@/lib/cn";
 import { recordAudit } from "@/net/audit-history";
+import { auditChatText, auditNotice } from "@/net/audit-text";
 import { useChat } from "@/net/chat";
 import { GuestRoom } from "@/net/guest-room";
 import { HostRoom } from "@/net/host-room";
@@ -134,18 +135,19 @@ export function HeartsOnlineScreen({
    * 다른 사람의 실패 알림은 그 사람의 주장으로만 보여 준다. 판 끝 기록은 모두 같은 것을 받으므로,
    * 남이 거짓으로 "실패"라고 알려 게임을 무효로 만드는 것을 막는다(모의 침투 B3).
    */
-  const onAuditReport = (who: string, ok: boolean, reason?: string) => {
+  const onAuditReport = (
+    who: string,
+    ok: boolean,
+    reason?: string,
+    unchecked?: string,
+  ) => {
     const own = who === "나";
     const failure = ok ? null : `${who}: ${reason ?? "알 수 없는 문제"}`;
     useChat.getState().receive({
       id: randomId(8),
       seat: -1,
       name: "검증",
-      text: ok
-        ? `${who} — 문제없음 ✓`
-        : own
-          ? `${who} — 실패 ⚠ ${reason ?? ""}`
-          : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봐요)`,
+      text: auditChatText(who, ok, reason, unchecked),
     });
     if (own) {
       if (failure) useHearts.setState({ invalid: failure });
@@ -262,13 +264,22 @@ export function HeartsOnlineScreen({
         guest.on("audit", (result) => {
           useHearts.setState({
             audit: result,
-            notice: result.ok
-              ? "공정성 확인: 섞기와 진행에 문제가 없어요."
-              : `공정성 확인 실패: ${result.reason}`,
+            notice: auditNotice(
+              result,
+              "공정성 확인",
+              "섞기와 진행에 문제가 없어요.",
+            ),
           });
-          onAuditReport("나", result.ok, result.ok ? undefined : result.reason);
+          onAuditReport(
+            "나",
+            result.ok,
+            result.ok ? undefined : result.reason,
+            result.ok ? result.unchecked : undefined,
+          );
         });
-        guest.on("report", (r) => onAuditReport(r.name, r.ok, r.reason));
+        guest.on("report", (r) =>
+          onAuditReport(r.name, r.ok, r.reason, r.unchecked),
+        );
         guest.on("incident", (n) =>
           reportIncident(
             n,

@@ -24,6 +24,8 @@ export interface GameArchive {
   deals?: Record<number, unknown>;
   /** 행동 기록(실제 카드) */
   log: KitLoggedAction<unknown>[];
+  /** 컴퓨터가 있던 판이면 그 컴퓨터의 계획 판 번호(`GameKit.botPlan`). 2026-11-17 전 기록에는 없다 */
+  botPlan?: number;
   /** 내 자리 */
   seat: number;
   /** 온라인이면 자리 이름. 혼자면 null(화면이 컴퓨터 이름을 붙인다) */
