@@ -538,7 +538,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 키 입력: 「두 손」·「표기」 배치 | `input/` | 코어 `keys/` | 옮김 |
 | 키 입력: 사용자 배치(`cube.keymap.v1`) | `input/storage.ts` | 앱이 읽어 코어에 넣음(`cubie_game_set_keymap`) | 옮김 |
 | 색·돌리는 시간·스티커 없는 모양·소리 켜기·섞기 연출(`cube.settings.v1`) | `settings.ts` | `CubeSettings.parse`(사이트와 같은 규칙) | 옮김 |
-| 키·색 설정 화면 | `/cube/settings` | `NativeSettingsWindow`(Cubie가 쓰는 칸만, 바꾸면 바로 큐브 창에. 사용자 배치 편집·나머지는 「사용자 배치 편집…」·「모든 설정…」이 사이트 창) | 옮김(2026-11-12, 5-8. 사용자 배치 편집만 웹 창으로 남김) |
+| 키·색 설정 화면 | `/cube/settings` | `NativeSettingsWindow`(Cubie가 쓰는 칸과 사용자 배치 편집기·내보내기·가져오기, 바꾸면 바로 큐브 창에. 나머지는 「모든 설정…」이 사이트 창) | 옮김(2026-11-12, 5-8. 사용자 배치 편집은 2026-11-16, 5-9) |
 | 섞기(WCA, 씨앗)·섞기 키(배치의 「다시 섞기」) | 섞기 워커 | 코어 섞기 | 옮김 |
 | 되돌리기 ⌫·살짝 보기(←·↓, 누르는 동안)·처음 각도·큐브 통째 돌리기 | `MiniCubeApp` | 코어 해석기 + `CACubeView.setPeek` | 옮김 |
 | Esc·Space 명령(미니는 쓰지 않음) | 앱이 Esc를 가로챔 | 코어가 먹기만 함 | 옮김 |
@@ -559,7 +559,7 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 | 다 맞춘 축하(움츠렸다 튐·빛 고리·시간 숫자, 최고면 금색) | `SolveCheer.tsx` | `CACubeView.cheer`(합성기 애니메이션) | 옮김 |
 | 떠 있을 때: 내 판 다시 보기(최고·최근 번갈아, 그때 속도) | `idle.ts`·`replay.ts` | `IdleShow` + 코어 다시 보기 걸음 | 옮김 |
 | 떠 있을 때: 섞인 큐브 조금 섞었다 되돌리기 | `idle.ts` `jigglePlan` | `IdleShow.jigglePlan` | 옮김 |
-| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop`·`hero/methods.ts`·`present.ts` | 코어 `hero.rs`(3×3 프리드리히 첫 면 색 고르기·풀이, 공통 자료 `hero.json` 어긋남 0) | 일부(앱은 아직 조금 섞기로 대신, 아래 「남은 것」 1) |
+| 떠 있을 때: 다시 볼 판이 없으면 홈 시연(사람 해법 풀이) | `HeroLoop`·`hero/methods.ts`·`present.ts`·`piece-marks.ts` | 코어 `hero_show.rs`(섞기·쥐는 방향·보여 주기 변환·연출 걸음과 시간)·`taught.rs`(배우는 방식 3×3 초보자)·`hero.rs`(프리드리히 첫 면 색), C ABI `cubie_hero_steps`, 앱 `IdleShow` 홈 시연 자리(공통 자료 `hero-show.json` 어긋남 0) | 옮김(2026-11-16, 3×3 초보자·프리드리히. 그 밖의 크기·루·ZZ는 조금 섞기, 아래 「남은 것」 1) |
 | 소리(돌리기·맞춤·틀림) | `game/sound.ts` | `CubieSound`(같은 모양을 미리 PCM으로, 울림 없음) | 옮김 |
 | 동작 줄이기(떠 있을 때 움직임 없음·축하 줄임·섞기 연출 바로·거울 바로) | `prefers-reduced-motion` | 시스템 설정(`accessibilityDisplayShouldReduceMotion`) | 옮김 |
 | Esc: 표 닫기 → 연습 끝내기 → 이전 앱 | 앱 | 앱(같은 코드) | 옮김 |
@@ -581,19 +581,20 @@ apps/cubie/scripts/measure-memory.sh --native --onscreen  # 화면 왼쪽 아래
 #### 웹과 다르게 한 것(일부러)
 
 - 힌트·공식 연습은 창 크기와 상관없이 늘 큐브 옆 말풍선이다(웹은 짧은 변 240px 이상이면 창 안 카드). 앱 창 안에 글을 그리면 큐브와 겹치고, 말풍선이 이미 있다.
-- 다시 볼 판이 없을 때 홈 시연(사람 해법 풀이) 대신 조금 섞었다 되돌린다. 사이트도 시연이 없는 크기에서는 이 길로 간다.
+- 다시 볼 판이 없을 때 홈 시연은 3×3(초보자 해법·프리드리히)만 한다. 그 밖의 크기와 첫 화면 해법을 루·ZZ로 고른 경우에는 조금 섞었다 되돌린다(사이트는 2×2~7×7과 루·ZZ도 시연한다, 아래 「남은 것」 1). 시연 풀이는 섞기가 끝나기 전에 앱이 미리 다 계산해 두어(3×3 초보자 수 ms) 사이트처럼 워커를 기다리지 않는다.
 - 단축키 표의 칸 글은 코어 `keys::table`이 사이트 `KeyboardMap` 「모두」와 같게 만든다(3×3 「두 손」 X·. = M′, 큰 큐브에서 못 쓰는 M′·M은 흐리게, Alt 줄, ↑ 처음 각도). 같은지는 공통 자료 `fixtures/keytable.json`(두 손·표기·사용자 × 2~7)으로 본다(2026-11-12). 줄이 넷인 칸(Alt와 Alt+Shift가 다 있는 사용자 배치)은 글꼴을 줄여 칸 안에 넣는다(웹은 넘치면 잘린다).
 - 소리는 사이트와 같은 모양을 처음 쓸 때 PCM으로 만들어 두고 `NSSound`로 낸다(돌리기는 여섯 벌을 돌려 씀, 울림 없음). 웹은 수마다 새로 합성했다.
 - 3D로 돌린 층(조각 겉면 몸통·스티커·거울 판과 유리·돌리는 동안 자르는 면 판)은 곧은 가장자리 다듬기(`allowsEdgeAntialiasing`, 네 변)를 켠다(`CACubeView.smoothEdges`). Core Animation은 기본으로 둥근 모서리만 다듬고 곧은 변은 다듬지 않아, 사용자가 「대각선 안티알리어싱이 애매하고 조금 계단처럼 보인다」고 했다(2026-11-12. 웹과 나란히 띄워 보면 차이는 크지 않다고 했고, 메모리·성능 부하가 크면 되돌리기로 함). 잰 값(`measure-memory.sh --native`, 96pt): 메모리는 상태마다 −1.1~+0.8MB(가장 늘어난 공식 연습 중 29.9 → 30.7MB), 돌리는 중 CPU는 거울 보임 3.1 → 3.6%, 거울 숨김 3.5 → 3.2%, 공식 연습 2.0 → 2.6%, 가만히·숨김은 그대로 0%. 되돌릴 기준(어느 상태든 5MB 넘게, 돌리는 중 2%p 넘게)보다 작아 그대로 둔다. 화면 밖 스크린샷(`CARenderer`)은 설정 전에도 대각선을 다듬어 그려 전후가 거의 같다(192×192 중 5픽셀 다름, `docs/cubie-native/compare-edges.webp`). 실제 창(WindowServer 합성)에서 나아졌는지는 사용자가 본다.
 
 #### 남은 것
 
-1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). 2026-11-12 첫 걸음: 코어 `hero.rs`가 3×3 프리드리히(`3-cfop`)의 첫 면 색(여섯 색 중 십자가 가장 싼 색, 같으면 흰색 먼저)을 고르고 그 색으로 푼다(`human::solve_cfop_first`, 사이트 `firstFaceMap`과 같은 색 바꿈). 사이트 `solveWithFirst`와 공통 자료 `hero.json`(섞기 8개, 색마다 십자 수·고른 색·풀이 수·단계) 어긋남 0. 남은 차례:
-   1. 보여 주기 변환(`hero/present.ts` 811줄: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 조각 찾기 돌리기·강조 사건·쉬는 자리)을 코어로. 미니는 꼬리표를 보이지 않으니 수·쉬는 자리만 맞추면 된다.
-   2. 연출 차례·시간(`hero/loop.ts` `HeroLoop`: 섞기 → 쥐기 → 풀이 걸음, `heroTiming`·`heroMoveMs`)을 코어 연출 줄로. 사이트 `solveSteps`·`scrambleSteps`와 공통 자료로 견준다.
-   3. 나머지 해법을 코어로: 3×3 초보자(`solveBeginner3` 배우는 방식, `taught.ts`·`taught-plan.ts`)·루·ZZ(`methods-roux-zz.ts`)·2×2 초보자·공식, 4×4~7×7 축소법(`big.ts`). 「번갈아」 차례(`heroRotation`)도.
-   4. 앱 `IdleShow`의 홈 시연 자리에 잇고(지금은 조금 섞기), 웹·네이티브 비교 그림을 남긴다.
-   - 1~3을 마치기 전에 앱에 잇지 않는다. 보여 주기 변환 없이 풀이만 돌리면 사이트와 다른 시연이 되어 오히려 어긋남이 생긴다.
+1. 홈 시연(사람 해법 풀이, 첫 면 색 규칙 2-1절). **2026-11-16 3×3을 옮겼다**: 미니 화면은 떠 있을 때 한 판마다 연출을 새로 시작해 그 크기 해법 차례의 첫 해법을 쓴다(설정 「첫 화면 큐브」가 번갈아면 초보자 해법, 같은 크기의 해법을 골랐으면 그것). 코어가 그 해법 둘을 옮겼다.
+   - `taught.rs`: 배우는 방식 3×3 초보자(사이트 `solveBeginner3(state, { taught: true })`, `taught.ts`·`cross-front.ts`): 흰 면 위 십자를 F·D·y로만, 첫 층 코너 지름길, z2 뒤 둘째 층은 앞-오른쪽 칸만, 노란 십자 → 옆면 맞추기 → 코너 자리 → 코너 방향. 살피는 자리 앞뒤 수를 합치지 않는다(`look_barrier`).
+   - `hero_show.rs`: 조각 강조(`piece-marks.ts`), 보여 주기 변환(`present.ts` 전부: 첫 층을 위에서 보이기, 넣는 칸을 앞-오른쪽으로, 보이는 세 면에서 찾는 돌리기, 이미 맞은 조각 확인, 마지막 층 맞출 칸·알아볼 모양, 쉬는 자리), 연출 걸음과 시간(`loop.ts` `heroTiming`·`randomScramble`·`orientForSolve`·`scrambleSteps`·`orientSteps`·`solveSteps` 강조 「잠깐」·`heroMoveMs`), 꼬리표(`heroStageLabel`). 걸음은 시각표(`hero_timeline`: 시각·수·회전 시간, 「맞춤」 멈춤이 시작하는 때)로 앱에 준다.
+   - 공통 자료 `fixtures/hero-show.json`(씨앗 8개 × 초보자·프리드리히): 씨앗 → 섞기·쥐는 방향, 첫 면 색, 변환 뒤 수·단계·살피는 자리·찾는 돌리기·쉬는 자리·강조(스티커까지), 연출 걸음 전부. 어긋남 0. 씨앗 150개 × 둘(300판)로도 한 번 견줘 어긋남 0이었다(자료에는 8개만 남김).
+   - 앱: C ABI `cubie_hero_steps(해법, 씨앗)` → `NativeCubeWindow.startHero`가 맞춘 큐브에서 시각표대로 돌리고 「맞춤」 멈춤에 들어서면 1.5초 보이고 끝낸다(사이트 미니와 같다). 해법은 설정 `heroSize`·`heroMethod`를 사이트와 같은 규칙으로 읽는다(`CubeSettings.heroMethodId`, 시험 `HeroSettingsTests`).
+   - 비교 그림 `docs/cubie-native/compare-hero.webp`: 초보자 해법 씨앗 5의 멈춤 자리 열 곳(섞인 뒤 · 흰 십자 · 첫 층 · 뒤집은 뒤 · 둘째 층 · 마지막 층 단계)을 웹(배포된 사이트를 WebKit, 시계를 멈추고 Math.random을 같은 mulberry32로)과 네이티브(화면 밖 스크린샷)로 나란히. 장면마다 칸 색이 같다(카메라 원근 차이는 5-5부터 있던 것). 다시 만들기: `CUBIE_NATIVE_SHOT=<폴더> CUBIE_NATIVE_SHOT_HERO=3-beginner:5 apps/cubie/Cubie.app/Contents/MacOS/Cubie` 뒤 `node apps/cubie/scripts/hero-compare.mjs <폴더>`.
+   - 남은 차례: 루·ZZ(`methods-roux-zz.ts`, 보기 `mirror`는 변환에 이미 있다)·2×2 초보자·공식, 4×4~7×7 축소법(`big.ts`). 그 크기·해법에서는 앱이 조금 섞기로 넘어간다. 조각 강조 빛(사이트 `onMarks`)은 미니 화면도 그리지 않아 옮기지 않았다(멈춤 시간에는 들어 있다).
 2. ~~공식 연습 가리기~~(2026-11-12 옮김, 위 기능 표).
 3. ~~단축키 표 칸 바탕 면 색~~(2026-11-12 옮김: 칸 바탕·사선 무늬·빌린 면 색 선, 설정 「키 그림에 면 색」을 끄면 칠하지 않음).
 4. 실제 창의 손맛·포커스·말풍선 자리·모니터 떼기는 사람이 확인(아래 「판을 내기 전에」).
@@ -669,7 +670,8 @@ apps/cubie/scripts/measure-memory.sh --url https://game.byb.kr/cube/mini   # 같
 1. **값은 공통 시험 자료로 견준다.** 판 규칙·섞기·힌트·공식 연습·키캡·F1 표 글자·한 판 기록·티어, 그리고 화면 상태(공식 연습 가리기·F1 표 칸 색)는 코어가 만든 값과 사이트가 만든 값을 같은 자료(`native/cube-core/fixtures/*.json` ↔ `apps/web/src/cube/native/core-fixtures*.ts`)로 본다. 사이트 결과가 바뀌면 사이트 쪽 자료 시험이 먼저 깨지고, 자료를 다시 쓰면 `native/`가 바뀌어 CI `rust` 작업이 돈다. 화면 상태 자료는 `mask.json`(가리기 이름 × 크기, 공식 연습 단계마다 시작 모양에서 칠할 값)·`keypaint.json`(F1 표 칸마다 칠하기, 배색마다 칸 바탕·선·사선 색), 홈 시연은 `hero.json`이다(2026-11-12). CI `rust` 작업의 조건에 그 기준 파일(`keys/key-colors`·`keys/layout`·`hero/methods`·`settings`)을 더했다.
 2. **PR 검사 `native-parity`**(`scripts/native-parity.mjs`, 시험 `native-parity.test.mjs`, CI 작업 `native-parity`를 `ci-ok`가 기다림): PR에서 큐브 창 동작에 닿는 사이트 코드가 바뀌었는데 `apps/cubie/`·`native/` 아래가 하나도 안 바뀌면 실패한다. 네이티브와 상관없는 고침이면 PR 본문에 `네이티브 해당 없음: <이유>` 줄을 적으면 통과한다(목록 표시 `-`나 굵게 `**`가 붙어도 된다, 이유가 비면 안 된다). 본문을 고친 뒤 작업을 다시 돌리면 스크립트가 GitHub API로 지금 본문을 읽는다. 단위 시험 파일만 바뀐 것은 보지 않는다.
    - 검사 대상(스크립트의 `WATCHED`, 사이트 `apps/web/src/` 아래): `cube/mini/`·`app/cube/mini/`(미니 화면), `cube/view/`(그리기·거울 판·카메라), `cube/input/`(키 해석·배치), `cube/keys/` 가운데 `two-hand`·`layout`·`move-keys`·`reach`·`hand-layers`·`key-colors`, `cube/components/KeyboardMap.tsx`(F1 표), `cube/settings.ts`, `cube/scramble-show.ts`, `cube/solve-session.ts`, `cube/flow/combo.ts`, `cube/hero/`(홈 시연·첫 면 색), `cube/practice/`(대결 `versus*` 빼고), `cube/learn/judge.ts`(가리기)·`alg-sets.ts`, `cube/algs/spot.ts`·`store.ts`, `cube/game-sounds.ts`, `game/sound.ts`, `cube/replay-player.ts`, `cube/records.ts`, `cube/tiers/rank.ts`, `cube/native/`(공통 자료의 사이트 쪽).
-   - 넣지 않은 것: 설정 화면의 사용자 배치 편집(`keymap-editor.ts`, 앱이 사이트 창으로 연다. 기록 창·티어표·설정 창은 5-8에서 네이티브로 옮겨 그 사이트 화면 `TiersApp`·`TierTable`·`table.ts`·`TierEmblem`·`CubeSettingsApp`을 대상에 더했다), 수 계산 패키지 `packages/cube-*`(CI `rust` 작업과 공통 자료가 값으로 본다). 목록의 파일·폴더를 옮기거나 지우면 시험이 깨지니 목록도 함께 고친다.
+   - 기록 창·티어표·설정 창은 5-8에서 네이티브로 옮겨 그 사이트 화면 `TiersApp`·`TierTable`·`table.ts`·`TierEmblem`·`CubeSettingsApp`을 대상에 더했고, 사용자 배치 편집(`keymap-editor.ts`)은 5-9에서 더했다(2026-11-16).
+   - 넣지 않은 것: 수 계산 패키지 `packages/cube-*`(CI `rust` 작업과 공통 자료가 값으로 본다). 목록의 파일·폴더를 옮기거나 지우면 시험이 깨지니 목록도 함께 고친다.
 3. **큐브 창 생김새를 바꾼 PR에는 웹·네이티브 비교 그림을 붙인다.** 값 자료로 못 잡는 그리기·연출은 사람이 본다. 네이티브는 화면 밖 스크린샷 모드(창을 띄우지 않음), 웹은 앱과 같은 엔진 WebKit으로 찍는다.
 
 ```sh
@@ -694,7 +696,7 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 - 메뉴 「기록 보기」·「티어표」·「키 배치·색…」이 앱이 직접 그린 창(AppKit)을 연다. WebKit 프로세스가 뜨지 않는다. 사이트 화면과 같은 글·같은 차례·같은 동작이고, 계산은 코어 C ABI다(요약 평균은 새로 `summary.rs`, 사이트와 공통 시험 자료 어긋남 0).
 - 메모리(측정 모드, 같은 앱 빌드): 기록 창을 연 동안 102.6MB(사이트 창) → **32.0MB**, 세 창을 함께 연 동안 353.0 → **39.2MB**(다시 보기 중 353.8 → 39.9), 세 창을 닫은 뒤 60.8(GPU 프로세스 24MB가 남음) → **34.8MB**. 앱이 끌 때까지 쓰는 최고치는 Cubie 40.3MB 하나다(사이트 창이면 Cubie 37.4 + WebKit GPU 최고 233.3 + WebContent 셋). 큐브 창만 쓰는 상태(11~30MB)는 그대로다.
 - 되돌림: `CUBIE_WEB=1`이면 큐브 창까지 예전 웹, `CUBIE_WEB_WINDOWS=1`이면 큐브 창은 네이티브인 채 세 창만 예전 사이트 창이다.
-- 설정 창의 사용자 배치 편집(키 지정·겹친 키 묻기·내보내기·가져오기)은 옮기지 않았다. 「사용자 배치 편집…」·「모든 설정…」이 예전 사이트 창을 연다(아래 「남은 것」).
+- 설정 창의 사용자 배치 편집(키 지정·겹친 키 묻기·내보내기·가져오기)은 이때 옮기지 않았다가 2026-11-16 옮겼다(5-9). 이제 「모든 설정…」만 사이트 창을 연다.
 
 **만든 것**(브랜치 `cubie-native-windows`, 커밋만)
 
@@ -743,9 +745,9 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 
 **남은 것**
 
-1. 설정 창의 사용자 배치 편집(동작 목록 묶음별 접기, 키 지정·조합 키 기다리기·Esc 그만두기, 겹친 키 바꿀지 묻기, 키 없는 동작·겹친 키 알림, 키 빼기·비우기, 기본으로 되돌리기, 마우스 끌어 돌리기, 내보내기·가져오기). 사이트 `keymap-editor.ts`의 판단(`assignKey`·`checkAssign`·`findConflicts`·`keylessActions`·`actionsFor`·`importKeymap`)을 코어로 옮기고 공통 자료로 견줘야 해서 이번에는 「사용자 배치 편집…」이 예전 사이트 창을 연다(그 창을 닫으면 앱 저장소로 읽어 오고 네이티브 설정 창도 다시 읽는다).
+1. ~~설정 창의 사용자 배치 편집~~(2026-11-16 옮김, 5-9). 옮기기 전 적어 둔 범위: 동작 목록 묶음별 접기, 키 지정·조합 키 기다리기·Esc 그만두기, 겹친 키 바꿀지 묻기, 키 없는 동작·겹친 키 알림, 키 빼기·비우기, 기본으로 되돌리기, 마우스 끌어 돌리기, 내보내기·가져오기). 사이트 `keymap-editor.ts`의 판단(`assignKey`·`checkAssign`·`findConflicts`·`keylessActions`·`actionsFor`·`importKeymap`)을 코어로 옮기고 공통 자료로 견줘야 해서 이번에는 「사용자 배치 편집…」이 예전 사이트 창을 연다(그 창을 닫으면 앱 저장소로 읽어 오고 네이티브 설정 창도 다시 읽는다).
 2. 판을 내기 전 사람이 앱에서 볼 것(아래).
-3. README(`apps/cubie/README.md`)의 「기록 보기·티어표·설정 창은 사이트 화면이라 인터넷이 필요」 줄은 이 바뀜이 든 판을 낼 때 고친다(지금 쓰는 0.2.0은 사이트 창이다).
+3. ~~README 인터넷 줄~~(2026-11-16 고침: 인터넷은 「모든 설정…」을 열 때만, 5-9).
 
 **판을 내기 전에 사용자가 볼 것**
 
@@ -753,6 +755,56 @@ node apps/cubie/scripts/mirror-compare.mjs sheet <결과.png> <전 폴더> <후 
 2. 기록 창의 「티어표」와 메뉴 「티어표」: 지금 크기로 열리는지, 크기 단추, 혼자 맞추기 기록이 없으면 「이 크기는 아직 Ao5가 없습니다.」, 「혼자 맞추기」·WCA 주소가 브라우저로 열리는지.
 3. 메뉴 「키 배치·색…」: 색 묶음·면 색·회전 속도·섞기 연출·스티커 없는 모양·소리를 바꾸면 창을 닫지 않아도 큐브에 바로 들어가는지, 「두 손」↔「표기」를 바꾸고 바로 키로 돌려 보기·F1 표, 「사용자」를 누르면 지금 키가 그대로인지, 「사용자 배치 편집…」·「모든 설정…」 사이트 창에서 바꾸고 닫으면 네이티브 설정 창과 큐브에 들어가는지.
 4. 세 창의 글자·줄 간격이 어색하지 않은지(비교판은 화면 밖에서 그린 그림이다).
+
+### 5-9. 홈 시연과 사용자 키 배치 편집도 네이티브로(2026-11-16)
+
+> 지도 남은 일: 「홈 시연 나머지」와 5-8 「남은 것」 1(설정 창의 사용자 배치 편집). 이제 앱이 여는 사이트 창은 설정 창의 「모든 설정…」 하나뿐이다(되돌림 스위치 `CUBIE_WEB=1`·`CUBIE_WEB_WINDOWS=1`은 그대로). 브랜치 `cubie-native-hero-keymap`, 커밋만.
+
+**홈 시연**: 5-6 「남은 것」 1에 적었다. 떠 있을 때 다시 볼 판이 없으면 3×3은 사이트 미니 화면과 같은 연출(섞기 → 쥐는 방향 → 초보자 해법 또는 고른 프리드리히)을 보인다. 공통 자료 `hero-show.json` 어긋남 0, 비교 그림 `docs/cubie-native/compare-hero.webp`.
+
+**사용자 키 배치 편집**
+
+| 무엇 | 자리 | 내용 |
+|---|---|---|
+| 판단·글 | 코어 `src/keys/editor.rs` | 사이트 `keymap-editor.ts`(키 지정·겹친 키 묻는 글·바꾼 뒤 알림·키 없는 동작·기본으로 되돌리기), `input/keymaps.ts`(묶기·빼기·겹친 키·키 이름 `chordKey`·`chordLabel`), `input/storage.ts`(저장 글·내보내기 `JSON.stringify(…, null, 2)`·가져오기와 오류 글, `JSON.parse`가 받는 글만 받는 작은 읽기), `input/actions.ts`(`actionsFor`·`actionLabel`·`isKnownAction`), 설정 화면의 묶음 이름·알림 글 조립 |
+| 공통 자료 | `fixtures/keymap-editor.json`(사이트 `core-fixtures-keymap-editor.ts`) | 크기마다 동작 목록·이름·기본 배치의 키 없는 동작 글, 키 이름(조합 여섯 × 키 30)·키 누름 → 키, 키 이름 차례(`localeCompare`), 가져오기 26가지(잘못된 JSON·판·묶음·mouseRotate·키 모양·모르는 동작·겹친 키·키 501개 등), 설정 화면 대본 16개(크기 넷 × 시작 배치 넷, 걸음 40씩: 키 지정과 겹침 묻기의 바꾸기·그만두기, 키 빼기, 비우기, 기본으로 되돌리기, 묶음 고르기, 사용자로, 마우스 돌리기, 가져오기. 걸음마다 저장 글 FNV-1a·알림·묻는 글·키 없는 동작·겹친 키·가져오기 오류). 어긋남 0 |
+| C ABI | `native/cubie-native/src/ffi_keymap.rs` | `cubie_keymap_view`(화면 줄)·`cubie_keymap_ask`(겹치면 묻는 글)·`cubie_keymap_edit`(편집 하나 → 새 저장 글과 알림·오류)·`cubie_keymap_export`·`cubie_keymap_chord`(키 누름 → 조합 비트). 저장 글은 앱 저장소 `cube.keymap.v1` 그대로(사이트 `saveKeymap`과 같은 꼴) |
+| 화면 | `Sources/Cubie/NativeKeymapEditor.swift`(`KeymapEditorView`·`KeymapPortView`), 글 `CubieCore/SettingsSheet.swift`, 줄 읽기 `CubieCore/KeymapEditorModel.swift` | 설정 창 「사용자」 상자(예전 「사용자 배치 편집…」 단추 자리)에 사이트 `data-keymap-editor`와 같은 차례: 마우스로 끌어 큐브 전체 돌리기, 동작 목록 크기(2×2~7×7), 기본으로 되돌리기(두 손·표기), 겹친 키 묻기(바꾸기·그만두기), 알림, 키 없는 동작, 겹친 키, 묶음별로 접는 동작 목록(처음엔 면 돌리기만 펼침, 키 칩 누르면 빼기, 키 지정 → 키 기다리는 중, 비우기). 그 아래 「내보내기·가져오기(JSON)」 상자(지금 배치·복사, 가져올 배치·가져오기·오류 글). 키 지정 중에는 그 창의 키 누름을 먼저 받는다(Esc는 그만두기, 조합 키만 누르면 계속 기다림, ⌘ 조합은 받지 않음). 바꾸면 바로 저장하고 큐브 창·F1 표가 다시 읽는다 |
+| 어긋남 막기 | `scripts/native-parity.mjs` `WATCHED`, CI `rust` 조건, `native-windows-text.test.ts` | 감시 목록에 `keymap-editor.ts`(`input/`·`CubeSettingsApp.tsx`는 이미 있음), CI `rust` 조건에 `input/storage.ts`·`keymap-editor.ts`, 편집기 글 열여섯이 사이트 화면 글과 같은지 |
+| 비교 그림 | `docs/cubie-native/compare-keymap-editor.webp` | 왼쪽 네이티브(화면 밖 스크린샷), 오른쪽 사이트(WebKit, 배율 2). 위: 「사용자」를 누르고 R에 J를 지정해 겹친 키를 묻는 때, 아래: 바꾼 뒤(알림·「U」 키 없음, 내보내기·가져오기 펼침). 다시 만들기: `apps/cubie/build.sh` 뒤 `node apps/cubie/scripts/window-compare.mjs <폴더>`(설정 비교판에 장면 셋) |
+
+**웹과 다르게 한 것**
+
+- 키 지정은 앱이 아는 키(코어 `keycode.rs`, 배치가 쓰는 글자·숫자·기호·화살표·Space·Enter·Esc·⌫ 등)만 받는다. F 키처럼 맥 키 코드 표에 없는 키는 눌러도 계속 기다린다(사이트는 아무 `event.code`나 받는다).
+- 「복사」는 맥 붙여넣기 판에 넣는다. 글 칸은 시스템 글꼴이라 사이트보다 조금 굵다(5-8과 같음).
+- 「마우스로 끌어 큐브 전체 돌리기」는 사이트와 같이 저장하지만 Cubie는 마우스 둘러보기를 쓰지 않아 큐브 창에는 영향이 없다(사이트 혼자 맞추기에서 쓴다).
+
+**메모리**(측정 모드 `measure-memory.sh --native`, 창 96pt·배율 2, 같은 날 같은 앱 빌드, 단위 MB, 시나리오 끝에 둘을 더함. 재는 동안 같은 맥에서 단위 시험이 돌아 CPU는 조금 흔들릴 수 있다)
+
+| 상태 | 메모리 | CPU(앱 프로세스) |
+|---|---|---|
+| 켠 직후 · 가만히 60초 | 11.4 · 11.4 | 0.0% |
+| 섞고 돌리는 중(거울 보임) · 돌리는 중(거울 숨김) | 21.8 · 22.9 | 2.5% · 2.4% |
+| 세 창(기록·티어표·설정) 열었을 때 · 닫은 뒤 12초 | 39.0 · 34.8 | |
+| **홈 시연 중**(섞기 3초 뒤부터 10초) | **35.6** | **0.1%** |
+| **설정 창 키 배치 편집기 열었을 때**(「사용자」, 면 돌리기 펼침) | **40.2** | |
+| 키 배치 편집기 닫은 뒤 12초 | 36.8 | |
+| 최고(켠 뒤 내내) | Cubie 41.0(WebKit 프로세스 없음) | |
+
+- 홈 시연은 세 창을 닫은 뒤(34.8MB)에서 +0.8MB다. 풀이는 시작할 때 코어가 한 번 다 계산하고(초보자 해법 수 ms), 그 뒤로는 시각표대로 수를 넣기만 해서 앱 CPU가 거의 들지 않는다(그리기는 Core Animation 합성기 몫, 5-5).
+- 편집기를 연 동안 +5.4MB(설정 창 + 동작 칸 보기 약 60개). 예전처럼 사이트 창으로 열면 WebKit이 붙어 5-8 표의 설정 사이트 창(WebContent 약 40·GPU 약 20·Networking 약 8MB)만큼 들었다.
+- 재기 명령에 `hero start|stop`·`editor open|close`를 더했다(`NativeMeasure`).
+- 앱 크기(유니버설, `build.sh --universal`): 실행 파일 4.42MB, 앱 8.0MB(`du`). 5-8 때 3.49·7.25MB였고 그 사이 다른 바뀜(엠블럼 정지 그림 등)도 섞여 이번 몫만 가르지는 않았다.
+
+**시험**: 코어 `cargo test`(`tests/hero_show.rs`·`tests/keymap_editor.rs` 어긋남 0), `cubie-native` `cargo test --release`(`ffi_keymap`·`hero_steps_as_lines`), 앱 `test.sh` 118개(`HeroSettingsTests`·`KeymapEditorModelTests` 더함), 웹 `core-fixtures-hero.test.ts`·`core-fixtures-keymap-editor.test.ts`·`native-windows-text.test.ts`·`scripts/native-parity.test.mjs`.
+
+**판을 내기 전에 사용자가 볼 것**
+
+1. 메뉴 「키 배치·색…」에서 「사용자」 → 동작 하나에 「키 지정」을 누르고 키를 치면 그 키가 붙는지, 이미 다른 동작의 키면 묻는 줄이 뜨고 「바꾸기」·「그만두기」가 되는지, Esc로 기다리기를 그만두는지(창이 닫히지 않는지).
+2. 키를 바꾼 뒤 창을 닫지 않아도 큐브가 새 키로 도는지, F1 표에 바로 보이는지, 「키 없는 동작」 줄과 묶음의 「키 없음」 표시.
+3. 「기본으로 되돌리기」, 키 칩 ×로 빼기, 「비우기」, 동작 목록 크기 바꾸기, 묶음 접고 펴기.
+4. 「내보내기·가져오기(JSON)」: 복사한 글을 사이트 설정 화면에 가져오기, 사이트에서 내보낸 글을 앱에 가져오기, 잘못된 글이면 오류 글.
+5. 큐브를 맞춘 채 다른 앱으로 넘어가 1분(기록이 없는 크기 3×3): 섞고 초보자 해법으로 푸는 연출, 큐브로 돌아오면 바로 멈추는지. 기록이 있으면 예전처럼 내 판 다시 보기가 먼저다.
 
 ## 6. 윈도우판을 언제 어떻게 낼지
 

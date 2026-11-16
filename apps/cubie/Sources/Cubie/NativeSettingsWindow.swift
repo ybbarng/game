@@ -4,12 +4,12 @@ import CubieNativeC
 
 /// 네이티브 설정 창(docs/52 5-8, 메뉴 「키 배치·색…」): 사이트 설정 화면(`/cube/settings`, `CubeSettingsApp.tsx`) 가운데 Cubie가
 /// 쓰는 것만 같은 글·차례로 보인다(`SettingsSheet`). 바꾸면 바로 앱 저장소에 쓰고 큐브 창·단축키 표가 다시 읽는다(`onChange`).
-/// 사용자 배치 편집(키 지정·겹친 키 묻기·내보내기)과 Cubie가 쓰지 않는 설정은 「사용자 배치 편집…」·「모든 설정…」이 예전 사이트
-/// 창을 연다(`openWeb`)
+/// 「사용자」 배치 편집기와 내보내기·가져오기도 앱이 그린다(`KeymapEditorView`·`KeymapPortView`, 2026-11-16). Cubie가 쓰지 않는
+/// 설정만 「모든 설정…」이 사이트 창을 연다(`openWeb`)
 @MainActor
 final class NativeSettingsWindow: NativeSheetWindow {
   static let size = NSSize(width: 760, height: 720)
-  private let page: SettingsPageView
+  let page: SettingsPageView
   private let scroll = NSScrollView()
 
   init(store: KeyValueStore, onChange: @escaping () -> Void, openWeb: @escaping () -> Void) {
@@ -44,7 +44,8 @@ final class SettingsPageView: FlippedView {
   private let keysLearn = Chip(SettingsSheet.keysLearnLink, look: Chip.Look(text: NUI.color(NUI.Hex.sky300), size: 14, padX: 0))
   private var presetChips: [Chip] = []
   private let customBox = FlippedView()
-  private let editCustom = Chip(SettingsSheet.editCustom, look: Chip.Look(fill: NUI.white(0.1), size: 12, padX: 8, padY: 4))
+  let editor: KeymapEditorView
+  let port = KeymapPortView()
 
   private let colorsTitle = NUI.label(SettingsSheet.colorsTitle, size: 18, weight: .semibold, mono: false)
   private var schemeChips: [Chip] = []
@@ -75,6 +76,7 @@ final class SettingsPageView: FlippedView {
   init(store: KeyValueStore) {
     self.store = store
     preview = CACubeView(frame: NSRect(x: 0, y: 0, width: 192, height: 144), n: 3)
+    editor = KeymapEditorView(store: store)
     super.init(frame: NSRect(origin: .zero, size: NativeSettingsWindow.size))
     fill = NUI.color(NUI.Hex.neutral900)
     back.action = { NUI.openSite("/cube") }
@@ -87,8 +89,11 @@ final class SettingsPageView: FlippedView {
     }
     customBox.fill = NUI.white(0.05)
     customBox.radius = 12
-    customBox.addSubview(editCustom)
-    editCustom.action = { [weak self] in self?.openWeb?() }
+    customBox.addSubview(editor)
+    editor.onChange = { [weak self] in self?.keymapEdited() }
+    editor.onLayout = { [weak self] in self?.needsLayout = true }
+    port.onLayout = { [weak self] in self?.needsLayout = true }
+    port.onImport = { [weak self] text in self?.editor.importText(text) }
     for (id, label) in SettingsSheet.schemes {
       let c = Chip(label)
       c.action = { [weak self] in self?.write(settings: SettingsSheet.withScheme(self?.settingsText, id)) }
@@ -127,7 +132,7 @@ final class SettingsPageView: FlippedView {
       b.font = NUI.font(14, mono: false)
     }
     all.action = { [weak self] in self?.openWeb?() }
-    var views: [NSView] = [back, title, keymapTitle, keysMap, keysLearn, customBox, colorsTitle, customChip, preview]
+    var views: [NSView] = [back, title, keymapTitle, keysMap, keysLearn, customBox, port, colorsTitle, customChip, preview]
     views.append(contentsOf: [viewTitle, speedLabel, speedValue, slider, showLabel, showNote, hiddenLabel, all])
     views.append(contentsOf: checks as [NSView])
     views.append(contentsOf: hiddenChips as [NSView])
@@ -149,12 +154,8 @@ final class SettingsPageView: FlippedView {
   /// 저장소에서 지금 값을 읽어 칸마다 보인다
   func reload() {
     let s = CubeSettings.parse(settingsText)
-    let keymap = StoredKeymap.parse(keymapText)
-    for (i, (id, _)) in SettingsSheet.presets.enumerated() {
-      presetChips[i].look = Self.chipLook(keymap.preset == id)
-      presetChips[i].pressed = keymap.preset == id
-    }
-    customBox.isHidden = keymap.preset != "custom"
+    editor.reload()
+    refreshKeymap()
     let scheme = SettingsSheet.scheme(settingsText)
     for (i, (id, _)) in SettingsSheet.schemes.enumerated() {
       schemeChips[i].look = Self.chipLook(scheme == id)
@@ -188,6 +189,25 @@ final class SettingsPageView: FlippedView {
     needsLayout = true
   }
 
+  /// 배치 칩·「사용자」 상자·내보내기 글을 저장된 배치로
+  private func refreshKeymap() {
+    let keymap = StoredKeymap.parse(keymapText)
+    for (i, (id, _)) in SettingsSheet.presets.enumerated() {
+      presetChips[i].look = Self.chipLook(keymap.preset == id)
+      presetChips[i].pressed = keymap.preset == id
+    }
+    customBox.isHidden = keymap.preset != "custom"
+    let t = keymapText
+    port.setExport(t.withOptionalCString { p in NativeCore.string { cubie_keymap_export(p, $0, $1) } })
+    needsLayout = true
+  }
+
+  /// 편집기가 배치를 바꿨다
+  private func keymapEdited() {
+    refreshKeymap()
+    onChange?()
+  }
+
   private func write(settings: String) {
     store.set(settings, for: CubeSettings.key)
     reload()
@@ -200,6 +220,8 @@ final class SettingsPageView: FlippedView {
       ? SettingsSheet.toCustom(keymapText) { p in p.withCString { c in NativeCore.string { cubie_preset_bindings(c, $0, $1) } } }
       : SettingsSheet.presetKeymap(id)
     store.set(text, for: StoredKeymap.key)
+    // 「두 손」·「표기」를 고르면 알림을 지운다(사이트 `setMessage(null)`). 「사용자」는 그대로
+    if id != "custom" { editor.clearMessage() }
     reload()
     onChange?()
   }
@@ -253,11 +275,21 @@ final class SettingsPageView: FlippedView {
     row(presetChips, x: x0, y: y)
     y += 28 + 12
     if !customBox.isHidden {
-      let ef = editCustom.fit
-      editCustom.frame = NSRect(x: 12, y: 12, width: ef.width, height: 24)
-      customBox.frame = NSRect(x: x0, y: y, width: w, height: 48)
-      y += 48 + 12
+      if abs(editor.frame.width - w) > 0.5 {
+        editor.frame = NSRect(x: 0, y: 0, width: w, height: max(editor.contentHeight, 48))
+        editor.layoutSubtreeIfNeeded()
+      }
+      let eh = editor.contentHeight
+      editor.frame = NSRect(x: 0, y: 0, width: w, height: eh)
+      customBox.frame = NSRect(x: x0, y: y, width: w, height: eh)
+      y += eh + 12
     }
+    if abs(port.frame.width - w) > 0.5 {
+      port.frame = NSRect(x: x0, y: y, width: w, height: port.contentHeight)
+      port.layoutSubtreeIfNeeded()
+    }
+    port.frame = NSRect(x: x0, y: y, width: w, height: port.contentHeight)
+    y += port.contentHeight + 12
     y += 12
     // 색
     colorsTitle.frame = NSRect(x: x0, y: y, width: NUI.width(colorsTitle), height: 24)

@@ -121,6 +121,26 @@ describe("Cubie 네이티브 창 글 = 사이트 화면 글", () => {
       '"키 그림에 면 색"',
     ]));
 
+  it("설정 창 사용자 배치 편집(KeymapSection, 알림 글은 코어 keys/editor.rs가 공통 자료로)", () =>
+    sameText("CubeSettingsApp.tsx", "SettingsSheet.swift", [
+      "마우스로 끌어 큐브 전체 돌리기(x·y·z)",
+      "동작 목록 크기",
+      "기본으로 되돌리기:",
+      "바꾸기",
+      "그만두기",
+      "키 없음",
+      '"키 기다리는 중"',
+      '"키 지정"',
+      "비우기",
+      '"이 키 빼기"',
+      '"이 동작의 키 모두 지우기"',
+      "내보내기·가져오기(JSON)",
+      "지금 배치",
+      "복사",
+      "가져올 배치",
+      "가져오기",
+    ]));
+
   it("설정 칩 이름(사이트 이름표 모음)", () => {
     const app = source("SettingsSheet.swift");
     for (const [id, label] of [

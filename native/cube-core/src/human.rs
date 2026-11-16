@@ -28,7 +28,7 @@ impl fmt::Display for SolveError {
 
 impl std::error::Error for SolveError {}
 
-type R<T> = Result<T, SolveError>;
+pub(crate) type R<T> = Result<T, SolveError>;
 
 // ── 단계 이름 ─────────────────────────────────────────
 
@@ -43,6 +43,13 @@ pub enum StageName {
     Oll,
     Pll,
     FirstLayer,
+    // 배우는 방식 초보자(홈 시연, 사이트 `BEGINNER3_TAUGHT_STEPS`)
+    Corners,
+    Middle,
+    Eo,
+    LlEdges,
+    LlCornerPlace,
+    LlCornerTwist,
 }
 
 impl StageName {
@@ -57,6 +64,12 @@ impl StageName {
             StageName::Oll => "oll",
             StageName::Pll => "pll",
             StageName::FirstLayer => "first-layer",
+            StageName::Corners => "corners",
+            StageName::Middle => "middle",
+            StageName::Eo => "eo",
+            StageName::LlEdges => "ll-edges",
+            StageName::LlCornerPlace => "ll-corner-place",
+            StageName::LlCornerTwist => "ll-corner-twist",
         }
     }
 
@@ -71,6 +84,12 @@ impl StageName {
             StageName::Oll => "윗면(OLL)",
             StageName::Pll => "윗층 자리(PLL)",
             StageName::FirstLayer => "첫 층",
+            StageName::Corners => "첫 층 코너",
+            StageName::Middle => "둘째 층 엣지",
+            StageName::Eo => "노란 십자",
+            StageName::LlEdges => "옆면 맞추기",
+            StageName::LlCornerPlace => "코너 자리",
+            StageName::LlCornerTwist => "코너 방향",
         }
     }
 }
@@ -107,19 +126,21 @@ const OPPOSITE: [u8; 6] = [3, 4, 5, 0, 1, 2];
 const SOLVED_FRAME: [u8; 6] = [0, 1, 2, 3, 4, 5];
 
 #[derive(Clone)]
-struct Solve {
-    n: usize,
+pub(crate) struct Solve {
+    pub(crate) n: usize,
     /// 자리마다 실제 색 글자(면 번호)
-    f: Vec<u8>,
+    pub(crate) f: Vec<u8>,
     /// 2×2만: 면 k에 와야 할 색. 3×3은 None(가운데 색을 본다)
     frame: Option<[u8; 6]>,
     moves: Vec<CubeMove>,
     stage_list: Vec<SolveStage>,
     look_list: Vec<usize>,
+    /// 살피는 자리를 넘어 수를 합치지 않는다(사이트 `lookBarrier`, 배우는 방식 홈 시연만)
+    pub(crate) look_barrier: bool,
 }
 
 impl Solve {
-    fn new(n: usize, f: Vec<u8>, frame: Option<[u8; 6]>) -> Self {
+    pub(crate) fn new(n: usize, f: Vec<u8>, frame: Option<[u8; 6]>) -> Self {
         Solve {
             n,
             f,
@@ -127,11 +148,12 @@ impl Solve {
             moves: vec![],
             stage_list: vec![],
             look_list: vec![],
+            look_barrier: false,
         }
     }
 
     /// 수 목록 없이 스티커만(공식을 시험해 볼 때)
-    fn probe(&self) -> Solve {
+    pub(crate) fn probe(&self) -> Solve {
         Solve {
             n: self.n,
             f: self.f.clone(),
@@ -139,10 +161,11 @@ impl Solve {
             moves: vec![],
             stage_list: vec![],
             look_list: vec![],
+            look_barrier: self.look_barrier,
         }
     }
 
-    fn apply(&mut self, alg: &str) -> &mut Self {
+    pub(crate) fn apply(&mut self, alg: &str) -> &mut Self {
         for m in parse_moves(self.n, alg).expect("해법 공식") {
             self.apply_move(m);
         }
@@ -165,7 +188,7 @@ impl Solve {
     }
 
     /// 기준 방향 글자
-    fn rel(&self) -> Vec<u8> {
+    pub(crate) fn rel(&self) -> Vec<u8> {
         let nn = self.n * self.n;
         let mut to_rel = [0u8; 6];
         for k in 0..6 {
@@ -178,11 +201,11 @@ impl Solve {
         self.f.iter().map(|&c| to_rel[c as usize]).collect()
     }
 
-    fn cubie(&self) -> R<Cubie> {
+    pub(crate) fn cubie(&self) -> R<Cubie> {
         read_cubie(&self.rel(), self.n)
     }
 
-    fn is_solved(&self) -> bool {
+    pub(crate) fn is_solved(&self) -> bool {
         let nn = self.n * self.n;
         self.f
             .iter()
@@ -190,7 +213,7 @@ impl Solve {
             .all(|(i, &c)| c == self.f[(i / nn) * nn])
     }
 
-    fn stage(&mut self, name: StageName) {
+    pub(crate) fn stage(&mut self, name: StageName) {
         let start = self.stage_list.last().map_or(0, |s| s.end);
         self.stage_list.push(SolveStage {
             name,
@@ -199,7 +222,7 @@ impl Solve {
         });
     }
 
-    fn look(&mut self) {
+    pub(crate) fn look(&mut self) {
         if self.look_list.last() != Some(&self.moves.len()) {
             self.look_list.push(self.moves.len());
         }
@@ -214,7 +237,10 @@ impl Solve {
                 .map(|i| (self.moves[i], self.look_list.contains(&i)))
                 .collect();
             let start = moves.len();
-            for (i, (m, look)) in merge_marked(&raw).into_iter().enumerate() {
+            for (i, (m, look)) in merge_marked(&raw, self.look_barrier)
+                .into_iter()
+                .enumerate()
+            {
                 if look && i > 0 {
                     looks.push(moves.len());
                 }
@@ -234,14 +260,17 @@ impl Solve {
     }
 }
 
-/// 이어진 같은 층 수 합치기(사이트 `mergeMarked`, 살피는 자리 막기 없음)
-fn merge_marked(list: &[(CubeMove, bool)]) -> Vec<(CubeMove, bool)> {
+/// 이어진 같은 층 수 합치기(사이트 `mergeMarked`). `barrier`면 살피는 표시가 붙은 수는 앞 수와 합치지 않는다
+fn merge_marked(list: &[(CubeMove, bool)], barrier: bool) -> Vec<(CubeMove, bool)> {
     let mut out: Vec<(CubeMove, bool)> = Vec::new();
     let mut carry = false;
     for &(m, look) in list {
         match out.last().copied() {
             Some((last, last_look))
-                if last.axis == m.axis && last.from == m.from && last.to == m.to =>
+                if !(barrier && (look || carry))
+                    && last.axis == m.axis
+                    && last.from == m.from
+                    && last.to == m.to =>
             {
                 let turns = (last.turns + m.turns) % 4;
                 out.pop();
@@ -278,17 +307,17 @@ fn rotate_frame(frame: &[u8; 6], m: &CubeMove) -> [u8; 6] {
     out
 }
 
-fn u_turn(a: usize) -> &'static str {
+pub(crate) fn u_turn(a: usize) -> &'static str {
     ["", "U", "U2", "U'"][a % 4]
 }
 
 // ── 조각 표현(사이트 `cubie.ts`) ─────────────────────────
 
-struct Cubie {
-    cp: Vec<u8>,
-    co: Vec<u8>,
-    ep: Vec<u8>,
-    eo: Vec<u8>,
+pub(crate) struct Cubie {
+    pub(crate) cp: Vec<u8>,
+    pub(crate) co: Vec<u8>,
+    pub(crate) ep: Vec<u8>,
+    pub(crate) eo: Vec<u8>,
 }
 
 const CORNER_FACELETS_3: [[usize; 3]; 8] = [
@@ -302,7 +331,7 @@ const CORNER_FACELETS_3: [[usize; 3]; 8] = [
     [35, 17, 51],
 ];
 
-const EDGE_FACELETS: [[usize; 2]; 12] = [
+pub(crate) const EDGE_FACELETS: [[usize; 2]; 12] = [
     [5, 10],
     [7, 19],
     [3, 37],
@@ -791,7 +820,7 @@ fn f2l_pairs(s: &mut Solve) -> R<()> {
     Ok(())
 }
 
-fn finish(s: &Solve) -> R<HumanSolve> {
+pub(crate) fn finish(s: &Solve) -> R<HumanSolve> {
     if !s.is_solved() {
         return Err(SolveError("다 맞추지 못했다"));
     }

@@ -325,6 +325,22 @@ if [ "$NATIVE" = 1 ]; then
   cmd settings close
   sleep 12
   measure "세 창 닫은 뒤 12초"
+  # 홈 시연(떠 있을 때 다시 볼 판이 없으면 하는 사람 해법 풀이, docs/52 5-6): 섞기 3초쯤 뒤부터 10초
+  cmd hero start
+  sleep 3
+  cpu_begin
+  sleep 10
+  cpu_end "홈 시연 중"
+  measure "홈 시연 중"
+  cmd hero stop
+  sleep 5
+  # 설정 창의 사용자 키 배치 편집기(「사용자」 배치, 면 돌리기 묶음 펼침, docs/52 5-8)
+  cmd editor open
+  sleep 8
+  measure "키 배치 편집기 열었을 때"
+  cmd editor close
+  sleep 12
+  measure "키 배치 편집기 닫은 뒤 12초"
 fi
 
 cmd state

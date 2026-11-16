@@ -1,5 +1,6 @@
 import AppKit
 import CubieCore
+import CubieNativeC
 import ImageIO
 import Metal
 import QuartzCore
@@ -37,6 +38,17 @@ enum NativeWindowShot {
     ok = shoot(tiers.window, name: "native-tiers", dir: dir, fullHeight: true) && ok
     let settingsWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
     ok = shoot(settingsWindow.window, name: "native-settings", dir: dir, fullHeight: true) && ok
+    // 「사용자」 배치 편집(사이트에서 「사용자」를 누르고 R에 J를 지정): 겹친 키 묻기, 바꾼 뒤 알림·키 없음·내보내기 상자
+    let custom = "customFrom".withCString { o in
+      "twoHand".withCString { a in "".withCString { c in NativeCore.string { cubie_keymap_edit(nil, o, a, c, 0, $0, $1) } } }
+    }
+    store.set(KeymapEditorModel.parseEdit(custom).stored, for: StoredKeymap.key)
+    let customWindow = NativeSettingsWindow(store: store, onChange: {}, openWeb: {})
+    customWindow.page.editor.shotPress(action: "R", code: "KeyJ", mods: 0)
+    ok = shoot(customWindow.window, name: "native-settings-ask", dir: dir, fullHeight: true) && ok
+    customWindow.page.editor.shotAnswerYes()
+    customWindow.page.port.setOpen(true)
+    ok = shoot(customWindow.window, name: "native-settings-custom", dir: dir, fullHeight: true) && ok
     for (name, look) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
       ok = shootProfiles(dir: dir, name: "native-profile-\(name)", appearance: NSAppearance(named: look)) && ok
     }

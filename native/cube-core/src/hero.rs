@@ -4,9 +4,8 @@
 //! 프리드리히는 십자)의 수가 가장 적은 색(같으면 흰색 먼저, 그다음 색 번호 차례). 사이트 `solveWithFirst`와 같은지는
 //! 공통 시험 자료 `fixtures/hero.json`으로 본다.
 //!
-//! 지금 옮긴 것은 3×3 프리드리히(`3-cfop`)의 첫 면 색 고르기와 풀이다. 보여 주기 변환(`hero/present.ts`: 첫 층을
-//! 위에서 보이기·조각 찾기 돌리기·강조), 연출 차례와 시간(`hero/loop.ts`), 초보자·루·ZZ·2×2·큰 큐브 해법은 남았다
-//! (docs/52 5-6 「남은 것」 1).
+//! 여기는 3×3 프리드리히(`3-cfop`)의 첫 면 색 고르기와 풀이다. 초보자(늘 흰색)는 [`crate::taught`], 보여 주기 변환과
+//! 연출 차례·시간은 [`crate::hero_show`]에 있다. 루·ZZ·2×2·큰 큐브 시연은 남았다(docs/52 5-6 「남은 것」 1).
 
 use crate::human::{solve_cfop_first, HumanSolve, SolveError, StageName};
 use crate::state::State;

@@ -21,6 +21,7 @@
 #[cfg(feature = "wgpu")]
 pub mod ffi;
 pub mod ffi_game;
+pub mod ffi_keymap;
 pub mod ffi_records;
 pub mod game;
 pub mod json;

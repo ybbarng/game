@@ -2,6 +2,7 @@
 //! 공통 시험 자료 `fixtures/keys.json`으로 본다.
 
 pub mod actions;
+pub mod editor;
 pub mod interpreter;
 pub mod keymap;
 pub mod paint;

@@ -1,5 +1,6 @@
 import AppKit
 import CubieCore
+import CubieNativeC
 import WebKit
 
 /// 실제 앱을 포커스 판단(`FocusKeeper`)에 넘기는 껍질
@@ -77,6 +78,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
           if name == "replay", open {
             self?.measureWindow(.records, open: true)
             (self?.sheets[.records] as? NativeRecordsWindow)?.measureReplay()
+          }
+          // `editor open|close`: 「사용자」 배치로 두고 설정 창(키 배치 편집기가 펼쳐진 채)을 연다(docs/52 5-8)
+          if name == "editor" {
+            if open {
+              let custom = "customFrom".withCString { o in
+                "twoHand".withCString { a in "".withCString { c in NativeCore.string { cubie_keymap_edit(nil, o, a, c, 0, $0, $1) } } }
+              }
+              native.store.set(KeymapEditorModel.parseEdit(custom).stored, for: StoredKeymap.key)
+            }
+            self?.measureWindow(.settings, open: open)
           }
         }
         nativeMeasure = m

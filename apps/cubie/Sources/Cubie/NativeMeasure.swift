@@ -5,7 +5,8 @@ import AppKit
 ///
 /// 명령: `focus 1|0` · `scramble` · `mirror 1|0` · `size <n>` · `side <pt>` · `turns <개수>`(0.12초마다 손가락 자리 키) ·
 /// `show` · `hide` · `keys load|drop`(단축키 표) · `records|tiers|settings open|close`(기록 창·티어표·설정 창: 네이티브 창, `CUBIE_WEB_WINDOWS=1`이면 사이트 창, 화면 밖) ·
-/// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) · `state` · `quit`
+/// `replay open`(기록 창에서 한 판 다시 보기, 판이 없으면 메모리 저장소에 하나 더함) · `practice start|stop`(공식 연습 첫 단계) ·
+/// `hero start|stop`(홈 시연) · `editor open|close`(「사용자」 배치로 두고 설정 창의 키 배치 편집기) · `state` · `quit`
 @MainActor
 final class NativeMeasure {
   private let cube: NativeCubeWindow
@@ -102,7 +103,10 @@ final class NativeMeasure {
       } else if let first = cube.state.practiceStages.first {
         cube.send(.practice(stage: first.id, see: false))
       }
-    case "records", "tiers", "settings", "replay":
+    case "hero":
+      // 홈 시연(떠 있을 때 다시 볼 판이 없으면 하는 것)을 바로 시작·멈춤
+      cube.measureHero(arg == "start")
+    case "records", "tiers", "settings", "replay", "editor":
       window?(cmd, arg == "open")
     case "state": report("state")
     case "quit": NSApp.terminate(nil)
