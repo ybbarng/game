@@ -46,7 +46,7 @@ export function InviteLink({
 
   return (
     <div className="flex flex-col gap-2 rounded-2xl bg-white/5 p-3">
-      <p className="text-sm">친구에게 이 링크를 보내세요</p>
+      <p className="text-sm">친구에게 이 링크를 보내세요.</p>
       <div className="flex gap-2">
         <input
           readOnly
@@ -75,7 +75,7 @@ export function InviteLink({
         <div className="flex items-center gap-3">
           <InviteQr url={link} size={120} />
           <p className="text-xs leading-relaxed opacity-70">
-            휴대폰 카메라로 찍으면 바로 들어옵니다.
+            휴대폰 카메라로 찍으면 바로 들어와요.
             <br />방 코드 {roomCode}
           </p>
         </div>

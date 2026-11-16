@@ -240,7 +240,7 @@ export function SeatPlateFrame(props: SeatPlateFrameProps) {
       {props.accused ? (
         <div
           className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-bold text-[10px] shadow"
-          title="이 자리에서 규칙 위반이나 조작을 찾았습니다"
+          title="이 자리에서 규칙 위반이나 조작을 찾았어요"
         >
           ⚠ 부정 감지
         </div>
@@ -250,8 +250,8 @@ export function SeatPlateFrame(props: SeatPlateFrameProps) {
             className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-rose-600 px-2 py-0.5 font-semibold text-[10px] shadow"
             title={
               props.waiting
-                ? "연결이 끊겼습니다. 이 사람 카드는 이 사람만 열 수 있어 돌아오기를 기다립니다"
-                : "연결이 끊겨 컴퓨터가 대신 둡니다"
+                ? "연결이 끊겼어요. 이 사람 카드는 이 사람만 열 수 있어 돌아오기를 기다려요."
+                : "연결이 끊겨 컴퓨터가 대신 둬요."
             }
           >
             {props.offlineLabel ??

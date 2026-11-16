@@ -490,7 +490,7 @@ export const useGame = create<GameStore>((set, get) => {
 
     submit(action) {
       const { host } = get();
-      if (host === null) return { ok: false, error: "게임이 없다" };
+      if (host === null) return { ok: false, error: "게임이 없어요." };
       const result = host.submit(action);
       if (!result.ok) set({ notice: result.error });
       return result;

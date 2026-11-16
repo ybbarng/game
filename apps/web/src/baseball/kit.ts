@@ -88,13 +88,13 @@ export const baseballStats: KitStats<BaseballView, GameEvent> = {
     anyRound<BaseballRound>(
       "quick-solve",
       "다섯 번 안에",
-      "서로 맞히기에서 다섯 번 안에 상대 수를 맞힙니다.",
+      "서로 맞히기에서 다섯 번 안에 상대 수를 맞혀요.",
       (r) => r.mode === "duel" && r.solved && r.guesses <= 5,
     ),
     countRounds<BaseballRound>(
       "puzzle-10",
       "퍼즐 열 개",
-      "퍼즐을 열 번 풉니다.",
+      "퍼즐을 열 번 풀어요.",
       10,
       (r) => r.mode === "puzzle" && r.solved,
     ),

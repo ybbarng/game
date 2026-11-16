@@ -76,7 +76,7 @@ for (const variant of VARIANTS) {
           .all();
         if (ranks[0]) await ranks[0].click();
         await page.getByRole("button", { name: /지목$/ }).click();
-      } else if (await page.getByText("당선을 축하합니다").isVisible()) {
+      } else if (await page.getByText("당선을 축하해요").isVisible()) {
         await shot("exchange");
         await expect(page.getByText(/버릴 카드/).first()).toBeVisible();
         // 버릴 카드가 다 골라질 때까지(2마 1장, 그 밖 3장) 하나씩 누른다.

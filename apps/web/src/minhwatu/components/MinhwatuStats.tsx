@@ -14,10 +14,10 @@ export function MinhwatuStats({ book }: { book: StatsBook }) {
   const s = summarizeMinhwatu(book.rounds, book.games);
   if (s.rounds === 0)
     return (
-      <Card title="아직 기록이 없습니다">
+      <Card title="아직 기록이 없어요">
         <p className="text-sm text-white/70">
-          민화투를 한 판 끝까지 치면 여기에 쌓입니다. 혼자 하기와 친구와 하기를
-          모두 기록하고, 배우기는 기록하지 않습니다.
+          민화투를 한 판 끝까지 치면 여기에 쌓여요. 혼자 하기와 친구와 하기를
+          모두 기록하고, 배우기는 기록하지 않아요.
         </p>
       </Card>
     );

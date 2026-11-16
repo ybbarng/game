@@ -34,9 +34,9 @@ const NUMBERS: Card[] = ["SA", "H10", "D7", "C2"];
 const NOTES: Record<string, string> = {
   classic: "지금 쓰는 글자형",
   "demo-a":
-    "Dmitry Fomin 전통 그림(CC0)에서 인물만 떼어 비율 그대로 넣음. 글씨는 우리가 그림",
+    "Dmitry Fomin 전통 그림(CC0)에서 인물만 떼어 비율 그대로 넣음 · 글씨는 우리가 그림",
   "demo-b": "직접 그린 인물을 넓은 틀에 크게",
-  "demo-c": "시안 A에 선을 굵게 하는 효과. 손패처럼 작을 때 또렷함",
+  "demo-c": "시안 A에 선을 굵게 하는 효과 · 손패처럼 작을 때 또렷함",
 };
 
 const SIZES = [
@@ -75,8 +75,8 @@ export function FaceComparison() {
     <main className="min-h-dvh bg-[#0a3622] p-4">
       <h1 className="mb-1 font-bold text-lg">그림 카드</h1>
       <p className="mb-3 text-sm opacity-70">
-        J·Q·K 그리는 방법 세 가지를 지금 모양과 나란히 놓았다. 모서리 글씨
-        폰트와 크기를 바꿔 가며 본다.
+        J·Q·K 그리는 방법 세 가지를 지금 모양과 나란히 놓았어요. 모서리 글씨
+        폰트와 크기를 바꿔 가며 봐요.
       </p>
       <div className="mb-5 flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-xs opacity-70">글씨</span>

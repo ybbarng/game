@@ -57,7 +57,7 @@ export function reportIncident(
       ? `⚠ ${n.own ? "내 기기가 찾음" : `${names[n.reporter] ?? `${n.reporter}번`}의 알림`} — ${n.reason}`
       : n.own
         ? `⚠ 내 기기가 찾음 — ${who}: ${n.reason}`
-        : `${names[n.reporter] ?? `${n.reporter}번`}의 알림 — ${who}: ${n.reason} (내 기기 확인과 따로 봅니다)`,
+        : `${names[n.reporter] ?? `${n.reporter}번`}의 알림 — ${who}: ${n.reason} (내 기기 확인과 따로 봐요)`,
   });
   const current = store.getState().incident;
   // 확인하는 중이던 알림은 같은 사람의 확정 알림으로 바꾼다.
@@ -109,7 +109,7 @@ export function announceRoundVerified(): void {
     id: randomId(8),
     seat: -1,
     name: "검증",
-    text: "이번 판을 진짜 카드로 다시 계산했습니다 — 문제없음 ✓",
+    text: "이번 판을 진짜 카드로 다시 계산했어요 — 문제없음 ✓",
   });
 }
 
@@ -126,14 +126,14 @@ export function RoomKindPicker() {
       icon: "🔐",
       title: "암호화방(추천)",
       detail:
-        "방장 기기도 남의 패를 볼 수 없고, 속이면 그 자리에서 짚습니다. 판 시작·끝에 계산이 들어 느린 폰이 섞이면 몇 초씩 걸릴 수 있습니다.",
+        "방장 기기도 남의 패를 볼 수 없고, 속이면 그 자리에서 짚어요. 판 시작·끝에 계산이 들어 느린 폰이 섞이면 몇 초씩 걸릴 수 있어요.",
     },
     {
       fair: false,
       icon: "🔓",
       title: "일반방",
       detail:
-        "방장 기기가 섞어서 가볍고 빠릅니다. 방장 기기에는 모든 패가 있습니다(판 끝에 섞기와 진행은 확인합니다). 믿는 친구끼리 할 때.",
+        "방장 기기가 섞어서 가볍고 빨라요. 방장 기기에는 모든 패가 있어요(판 끝에 섞기와 진행은 확인해요). 믿는 친구끼리 할 때 써요.",
     },
   ];
   return (
@@ -190,8 +190,8 @@ export function FairLine({
       <span className="flex-1 leading-relaxed">
         {on ? (
           <>
-            <b>암호화방</b> — 멘탈 포커로 함께 섞습니다. 방장 기기도 남의 카드를
-            볼 수 없고, 판마다 진행을 모두가 다시 계산해 확인합니다.{" "}
+            <b>암호화방</b> — 멘탈 포커로 함께 섞어요. 방장 기기도 남의 카드를
+            볼 수 없고, 판마다 진행을 모두가 다시 계산해 확인해요.{" "}
             <a
               href="/security#mental-poker"
               target="_blank"
@@ -203,8 +203,8 @@ export function FairLine({
           </>
         ) : (
           <>
-            <b>일반방</b> — 방장 기기가 섞습니다(방장 기기에는 모든 패가
-            있습니다). 판 끝에 섞기와 진행을 확인합니다.
+            <b>일반방</b> — 방장 기기가 섞어요(방장 기기에는 모든 패가 있어요).
+            판 끝에 섞기와 진행을 확인해요.
           </>
         )}
       </span>

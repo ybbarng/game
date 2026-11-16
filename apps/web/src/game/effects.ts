@@ -37,19 +37,19 @@ export function effectFor(
     switch (event.type) {
       case "dealMiss":
         return {
-          text: `${seatName(event.seat)} 딜미스! 다시 섞습니다`,
+          text: `${seatName(event.seat)} 딜미스! 다시 섞어요.`,
           tone: "red",
           cards: event.hand,
         };
       case "allPassed":
-        return { text: "모두 포기 — 다시 섞습니다", tone: "info" };
+        return { text: "모두 포기 — 다시 섞어요.", tone: "info" };
       case "elected":
         return {
           text: `${seatName(event.seat)} 당선`,
           tone: "gold",
           lines: [
             `공약 ${goalLabel(event.goal, view.rules.playerCount)}`,
-            "바닥 카드를 가져갑니다",
+            "바닥 카드를 가져가요.",
           ],
         };
       case "exchanged": {

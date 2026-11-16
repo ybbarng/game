@@ -69,24 +69,26 @@ function resultText(
   view: GalaxyView,
   name: (seat: number) => string,
 ): string {
-  if (!result) return "게임을 끝냈어요";
+  if (!result) return "게임을 끝냈어요.";
   const mine = result.standings.find((s) => s.seat === view.mySeat);
   const rank = mine ? `${mine.rank}등` : "";
   switch (result.kind) {
     case "resign":
       return result.seat === view.mySeat
-        ? "기권했어요"
+        ? "기권했어요."
         : `${name(result.seat ?? 0)} 기권 · 나 ${rank}`;
     case "bankrupt":
       return result.seat === view.mySeat
-        ? `운항을 멈췄어요 · ${rank}`
+        ? `운항을 멈췄어요. 나는 ${rank}이에요.`
         : `${name(result.seat ?? 0)} 운항 중단으로 끝 · 나 ${rank}`;
     case "time":
-      return `시간을 다 써서 끝났어요 · 나 ${rank}`;
+      return `시간을 다 써서 끝났어요. 나는 ${rank}이에요.`;
     case "forfeit":
-      return "공개를 기다리지 않고 끝냈어요";
+      return "공개를 기다리지 않고 끝냈어요.";
     default:
-      return mine?.rank === 1 ? "1등이에요!" : `판이 끝났어요 · 나 ${rank}`;
+      return mine?.rank === 1
+        ? "1등이에요!"
+        : `판이 끝났어요. 나는 ${rank}이에요.`;
   }
 }
 
@@ -545,18 +547,18 @@ export function GalaxyGame({
   let status: string;
   if (gameOver) status = resultText(view.result, view, name);
   else if (playing)
-    status = view.turn.seat === me ? "내 차례예요" : `${turnName}의 차례예요`;
+    status = view.turn.seat === me ? "내 차례예요." : `${turnName}의 차례예요.`;
   else if (!decision) {
     status =
       view.phase === "bid" || view.phase === "bidReveal"
         ? view.auction
-          ? `${subject(name(view.auction.passer))} ${squareName(view.board, view.auction.square)}에 도착했지만 사지 않아 모두 봉투를 내는 중이에요`
-          : "모두가 봉투를 내는 중이에요"
+          ? `${subject(name(view.auction.passer))} ${squareName(view.board, view.auction.square)}에 도착했지만 사지 않아 모두 봉투를 내는 중이에요.`
+          : "모두가 봉투를 내는 중이에요."
         : view.phase === "commit" || view.phase === "reveal"
-          ? "모두의 기기가 주사위를 함께 정하는 중이에요"
+          ? "모두의 기기가 주사위를 함께 정하는 중이에요."
           : view.phase === "requestReveal"
-            ? "모두의 관측 의뢰서를 펼치는 중이에요"
-            : `${turnName}의 차례예요`;
+            ? "모두의 관측 의뢰서를 펼치는 중이에요."
+            : `${turnName}의 차례예요.`;
   } else
     switch (decision.kind) {
       case "roll":
@@ -583,7 +585,7 @@ export function GalaxyGame({
         status = "별빛이 모자라요. 정리해 주세요.";
         break;
       default:
-        status = "잠깐만요";
+        status = "잠깐만요.";
     }
 
   const ended = events.find((e) => e.type === "gameEnded");

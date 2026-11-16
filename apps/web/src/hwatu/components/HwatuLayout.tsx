@@ -129,7 +129,7 @@ export function HwatuFloor({
       className="flex flex-wrap items-start justify-center gap-2"
     >
       {groups.length === 0 && (
-        <p className="py-6 text-sm text-white/50">바닥이 비었어요</p>
+        <p className="py-6 text-sm text-white/50">바닥이 비었어요.</p>
       )}
       {groups.map(([month, cards]) => (
         <div key={month} data-month={month} className="flex">

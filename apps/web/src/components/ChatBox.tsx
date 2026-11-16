@@ -8,7 +8,7 @@ import { CHAT_MAX_LENGTH } from "@/net/protocol";
 /** 채팅 기록과 입력. 대기실에 그대로 두거나 게임 화면에서 띄워 쓴다 */
 export function ChatBox({
   mySeat,
-  emptyText = "아직 아무 말도 없습니다",
+  emptyText = "아직 아무 말도 없어요.",
 }: {
   mySeat: number | null;
   /** 말이 없을 때 글(게임마다 말투가 달라 바꿀 수 있다. 큐브는 해요체) */

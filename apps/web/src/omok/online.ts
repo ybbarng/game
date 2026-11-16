@@ -30,6 +30,8 @@ export const omokOnline: BoardOnlineGame<
   botFor: omokBotFor,
   rulesSummary(rules) {
     const variant = VARIANT_INFO.find((v) => v.value === rules.variant);
-    return `${variant?.label ?? ""} 규칙 · ${variant?.description ?? ""}. 첫 판 흑은 무작위, 판마다 흑백을 바꿉니다.`;
+    return `${variant?.label ?? ""} 규칙 · 첫 판 흑은 무작위 · 판마다 흑백 바꿈`;
   },
+  rulesNote: (rules) =>
+    VARIANT_INFO.find((v) => v.value === rules.variant)?.description ?? "",
 };

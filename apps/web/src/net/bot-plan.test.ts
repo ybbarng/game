@@ -46,7 +46,7 @@ describe("참가자가 컴퓨터 수를 맞춰 볼지", () => {
     const check = botCheckFor(kitOf(2), { botLevel: 1 }, true);
     expect(check.bot).toBeNull();
     expect(check.unchecked).toBe(
-      "방장 화면의 컴퓨터가 내 화면보다 옛 판(1, 내 화면 2)이라 컴퓨터 수는 확인하지 못했다. 방장이 새로고침하면 다음 게임부터 확인한다",
+      "방장 화면의 컴퓨터가 내 화면보다 옛 판(1, 내 화면 2)이라 컴퓨터 수는 확인하지 못했어요. 방장이 새로고침하면 다음 게임부터 확인해요.",
     );
   });
 
@@ -54,7 +54,7 @@ describe("참가자가 컴퓨터 수를 맞춰 볼지", () => {
     const check = botCheckFor(kitOf(2), { botLevel: 1, botPlan: 3 }, true);
     expect(check.bot).toBeNull();
     expect(check.unchecked).toBe(
-      "방장 화면의 컴퓨터가 내 화면보다 새 판(3, 내 화면 2)이라 컴퓨터 수는 확인하지 못했다. 새로고침하면 다음 게임부터 확인한다",
+      "방장 화면의 컴퓨터가 내 화면보다 새 판(3, 내 화면 2)이라 컴퓨터 수는 확인하지 못했어요. 새로고침하면 다음 게임부터 확인해요.",
     );
   });
 
@@ -68,7 +68,8 @@ describe("참가자가 컴퓨터 수를 맞춰 볼지", () => {
   it("방장이 단계를 빼고 컴퓨터 수를 실으면 조용히 넘기지 않고 확인 못 함으로 알린다", () => {
     expect(botCheckFor(kitOf(), {}, true)).toEqual({
       bot: null,
-      unchecked: "방장이 컴퓨터 단계를 알리지 않아 컴퓨터 수는 확인하지 못했다",
+      unchecked:
+        "방장이 컴퓨터 단계를 알리지 않아 컴퓨터 수는 확인하지 못했어요.",
     });
     expect(botCheckFor(kitOf(), {}, false)).toEqual({
       bot: null,

@@ -96,7 +96,7 @@ export function explainMighty(
       `${view.trickIndex + 1}턴 · 기루다 ${kirudaName(view.goal.kiruda)} · ${
         trick && trick.plays.length > 0
           ? `나온 카드 ${trick.plays.map((p) => `${cardLabel(p.card)}(${name(p.seat)})`).join(" ")}`
-          : `${name(next.seat)}이(가) 선`
+          : `${subj(name(next.seat))} 선`
       }`,
     );
     const values = evaluatePlays(view, { seed }, PLAY_WORLDS);

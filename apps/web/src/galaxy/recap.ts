@@ -166,7 +166,7 @@ function missedChances(
   for (const e of events)
     if (e.type === "requestRevealed" && e.seat === me && !e.done)
       out.push(
-        `관측 의뢰 「${requestById(e.card).title}」 못 이룸 · 이뤘으면 ${money(NUMBERS.requestBonus)} 더`,
+        `관측 의뢰 「${requestById(e.card).title}」 못 이룸 · 놓친 상금 ${money(NUMBERS.requestBonus)}`,
       );
   // 하나만 더 있으면 완성인 별자리(다른 사람이 마지막 별을 가졌어도 사실은 같다)
   const near = state.board.groups.filter((g) => {

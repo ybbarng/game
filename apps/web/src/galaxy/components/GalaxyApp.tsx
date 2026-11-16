@@ -226,11 +226,7 @@ function GalaxyOptions({ onBack }: { onBack: () => void }) {
         </p>
       </Section>
       <Section title="개인 시간">
-        <TimePresetPicker
-          value={s.time}
-          onChange={(time) => s.set({ time })}
-          tone="polite"
-        />
+        <TimePresetPicker value={s.time} onChange={(time) => s.set({ time })} />
       </Section>
       <Section title="컴퓨터 실력">
         <div className="flex flex-wrap gap-1.5">
@@ -285,7 +281,7 @@ function GalaxyRulesScreen({ onBack }: { onBack: () => void }) {
     ],
     [
       "목표",
-      "판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛, 가진 별 값의 80%, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 그 별자리 별 하나 값을 더한 것이에요.",
+      "판이 끝날 때 자산이 가장 많으면 1등이에요. 자산은 별빛, 가진 별 값의 80%, 정거장을 내릴 때 돌려받는 값(지은 값의 절반), 완성한 별자리마다 그 별자리 별 하나 값을 더한 거예요.",
     ],
     [
       "별 사기",
@@ -387,7 +383,7 @@ function GalaxyHome({
           </h1>
         </>
       }
-      tagline="계절 하늘을 돌며 별을 사고, 별자리를 잇는다"
+      tagline="계절 하늘을 돌며 별을 사고, 별자리를 이어요."
       {...(saved ? { resume: () => onStart(saved) } : {})}
       solo={{
         icon: "🚀",
@@ -417,7 +413,7 @@ function GalaxyHome({
         title: "은하 한 바퀴 배우기",
         learned,
         total: GALAXY_LESSONS.length,
-        firstHint: `처음이라면 여기부터. ${GALAXY_LESSONS.length}단원`,
+        firstHint: `처음이라면 여기서 시작해요. ${GALAXY_LESSONS.length}단원이 있어요.`,
         onClick: onLearn,
       }}
       onOptions={onOptions}

@@ -121,7 +121,7 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
       { cue: "card", when: "카드를 냄(숫자 카드)" },
       {
         cue: "onecardAttack",
-        when: "공격 카드(2·A·조커). 쌓인 장 수가 많으면 여러 번",
+        when: "공격 카드(2·A·조커) · 쌓인 장 수만큼 여러 번",
       },
       { cue: "onecardBlock", when: "공격을 받아쳐 막음" },
       { cue: "onecardSuit", when: "7로 무늬를 바꿈" },
@@ -143,7 +143,7 @@ const GROUPS: { title: string; cues: { cue: Cue; when: string }[] }[] = [
     cues: [
       { cue: "strike", when: "스트라이크가 하나라도 나온 답(나·상대 모두)" },
       { cue: "ball", when: "볼만 나온 답" },
-      { cue: "homerun", when: "다 맞힌 답(홈런). 이어서 승리·패배 소리" },
+      { cue: "homerun", when: "다 맞힌 답(홈런) · 이어서 승리·패배 소리" },
       { cue: "pass", when: "아웃(하나도 없음)" },
       { cue: "click", when: "숫자 패드 누르기" },
       { cue: "invalid", when: "물을 수 없는 수(이미 물음 등)" },
@@ -314,8 +314,8 @@ export function SoundBoard() {
     <main className="min-h-dvh bg-[#0a3622] p-4 text-white">
       <h1 className="mb-1 font-bold text-lg">효과음</h1>
       <p className="mb-4 text-sm text-white/70">
-        누르면 그 소리가 납니다. 숫자는 귀에 느껴지는 크기, 가장 큰 순간의 크기,
-        들리는 길이입니다.
+        누르면 그 소리가 나요. 숫자는 귀에 느껴지는 크기, 가장 큰 순간의 크기,
+        들리는 길이예요.
       </p>
       <button
         type="button"

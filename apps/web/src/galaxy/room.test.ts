@@ -445,7 +445,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const audits = await resignAndAudit(room);
     expect(audits[0]?.ok).toBe(false);
     expect(audits[0]?.ok === false && audits[0].reason).toContain(
-      "정해진 대신 두기와 다르다",
+      "정해진 대신 두기와 달라요.",
     );
   });
 
@@ -474,7 +474,7 @@ describe("은하 한 바퀴 온라인 방", () => {
     const audits = await resignAndAudit(room);
     expect(audits[0]?.ok).toBe(false);
     expect(audits[0]?.ok === false && audits[0].reason).toContain(
-      "정해진 대신 두기와 다르다",
+      "정해진 대신 두기와 달라요.",
     );
   });
 

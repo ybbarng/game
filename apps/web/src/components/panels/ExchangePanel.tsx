@@ -31,7 +31,7 @@ export function ExchangePanel({
   const ready = discards.length === decision.discardCount;
 
   return (
-    <Panel title="당선을 축하합니다" term="kitty">
+    <Panel title="당선을 축하해요" term="kitty">
       <p className="text-center text-sm">
         손패에서 버릴 카드 <b>{decision.discardCount}장</b>을 누르세요 (
         {discards.length}/{decision.discardCount})
@@ -52,8 +52,8 @@ export function ExchangePanel({
             onChange={(score) => setGoal({ ...goal, score })}
           />
           <p className="text-center text-xs opacity-60">
-            기루다를 바꾸려면 공약을 더 올려야 합니다. 같은 기루다면 올리기만 할
-            수 있습니다.
+            기루다를 바꾸려면 공약을 더 올려야 해요. 같은 기루다면 올리기만 할
+            수 있어요.
           </p>
         </div>
       ) : (

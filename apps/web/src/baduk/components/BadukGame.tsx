@@ -163,8 +163,8 @@ export function BadukGame({
       ? aim !== null
         ? `${pointName(aim, size)}: 한 번 더 누르면 둬요.`
         : opponentPassed
-          ? "상대가 쉬었어요 — 나도 쉬면 판 위 그대로 세요"
-          : "내 차례 — 판을 눌러 두세요"
+          ? "상대가 쉬었어요 — 나도 쉬면 판 위 그대로 세요."
+          : "내 차례 — 판을 눌러 두세요."
       : online
         ? `${opponent}의 차례`
         : "컴퓨터가 생각하는 중…";
@@ -173,15 +173,15 @@ export function BadukGame({
       result.kind === "score"
         ? "세어 보니 이겼어요!"
         : result.kind === "resign"
-          ? "상대가 기권했어요"
+          ? "상대가 기권했어요."
           : "상대 시간이 다 돼 이겼어요!";
   else
     status =
       result?.kind === "score"
-        ? "세어 보니 졌어요"
+        ? "세어 보니 졌어요."
         : result?.kind === "resign"
-          ? "기권했어요"
-          : "시간이 다 돼 졌어요";
+          ? "기권했어요."
+          : "시간이 다 돼 졌어요.";
 
   // 판이 막 끝난 장면이면 모든 게임처럼 가운데에 크게 띄운다(미션은 결과 창이 따로 있다).
   const ended = events.find((e) => e.type === "roundEnded");
@@ -225,15 +225,15 @@ export function BadukGame({
     typeof hint === "number" &&
     aim === hint
   )
-    status = `힌트: 초록 고리 ${pointName(hint, size)}에 두어 보세요`;
+    status = `힌트: 초록 고리 ${pointName(hint, size)}에 두어 보세요.`;
   if (view.phase === "play" && myTurn && aim === null) {
-    if (hint === "pass") status = "힌트: 지금은 쉬어도 돼요";
+    if (hint === "pass") status = "힌트: 지금은 쉬어도 돼요.";
     else if (passEnds)
       status = passWins
-        ? "상대가 쉬었어요 — 나도 쉬면 이대로 세어 이겨요"
+        ? "상대가 쉬었어요 — 나도 쉬면 이대로 세어 이겨요."
         : "상대가 쉬었어요 — 지금 쉬면 져요. 집 안 죽은 돌을 따냈나요?";
     else if (myAtari)
-      status = "내 돌이 단수예요(빨간 테두리) — 달아나거나 이어 보세요";
+      status = "내 돌이 단수예요(빨간 테두리) — 달아나거나 이어 보세요.";
   }
 
   const gameOver = view.phase === "gameOver";
@@ -270,8 +270,8 @@ export function BadukGame({
             className="w-full rounded-xl bg-rose-700/80 px-3 py-2 text-center text-sm"
           >
             {hostLeft
-              ? "방장이 방을 나갔습니다"
-              : "방장과 연결이 끊겼습니다. 다시 연결하는 중…"}
+              ? "방장이 방을 나갔어요."
+              : "방장과 연결이 끊겼어요. 다시 연결하는 중…"}
           </p>
         )
       }

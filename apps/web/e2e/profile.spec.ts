@@ -175,7 +175,7 @@ test(
 
     // 장기는 두 달 전 기록뿐이라 최근 7일에는 비어 있다. 업적은 그대로 보인다.
     await page.getByRole("tab", { name: "楚 장기" }).click();
-    await expect(page.getByText("이 기간에는 기록이 없습니다.")).toBeVisible();
+    await expect(page.getByText("이 기간에는 기록이 없어요.")).toBeVisible();
     await expect(
       page.locator('[data-achievement="checkmate"]'),
     ).toHaveAttribute("data-earned", "true");

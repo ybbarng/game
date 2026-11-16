@@ -542,7 +542,7 @@ export const useOnecard = create<OnecardStore>((set, get) => {
 
     submit(action) {
       const host = get().host;
-      if (!host) return { ok: false, error: "게임이 없다" };
+      if (!host) return { ok: false, error: "게임이 없어요." };
       const result = host.submit(action);
       if (!result.ok) {
         set({ notice: result.error });

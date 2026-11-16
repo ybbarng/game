@@ -73,13 +73,13 @@ export const gostopStats: KitStats<GostopView, GameEvent> = {
     anyRound<GostopRound>(
       "three-go",
       "쓰리고",
-      "고를 세 번 부르고 이깁니다.",
+      "고를 세 번 부르고 이겨요.",
       (r) => r.outcome === "win" && r.goCount >= 3,
     ),
     anyRound<GostopRound>(
       "chongtong",
       "총통",
-      "총통으로 이깁니다.",
+      "총통으로 이겨요.",
       (r) => r.outcome === "win" && r.kind === "chongtong",
     ),
   ],

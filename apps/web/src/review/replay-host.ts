@@ -35,7 +35,7 @@ export class ReplayHost<Rules, State, View, Action, Event, Extra>
   }
 
   submit(): SubmitResult {
-    return { ok: false, error: "다시 보기 중입니다" };
+    return { ok: false, error: "다시 보기 중이에요." };
   }
 
   subscribe(listener: (snapshot: Snapshot<View, Event>) => void): () => void {

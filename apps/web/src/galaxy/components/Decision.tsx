@@ -248,7 +248,7 @@ export function BidSheet({
       {passer !== null && (
         <p data-bid-why className="text-sm text-white/85">
           {subject(name(passer))} {info?.star.ko}에 도착했지만 사지 않아 봉투
-          입찰을 엽니다.
+          입찰을 열어요.
         </p>
       )}
       <p className="mt-0.5 text-white/60 text-xs">

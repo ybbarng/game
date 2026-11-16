@@ -608,8 +608,8 @@ export function NumberPad({
       </div>
       {inMemo && (
         <p className="text-center text-sky-200 text-xs">
-          숫자를 누를 때마다 없음(빨간 줄) → 있음(초록 점) → 지움. 메모는 이
-          화면에만 남아요
+          숫자를 누를 때마다 없음(빨간 줄) → 있음(초록 점) → 지움 차례로
+          바뀌어요. 메모는 이 화면에만 남아요.
         </p>
       )}
     </div>

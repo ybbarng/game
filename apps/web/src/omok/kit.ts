@@ -58,13 +58,13 @@ export const omokStats: KitStats<OmokView, GameEvent> = {
     anyRound<OmokRound>(
       "fast-five",
       "번개 오목",
-      "돌이 스무 개 놓이기 전에 다섯을 잇고 이깁니다.",
+      "돌이 스무 개 놓이기 전에 다섯을 잇고 이겨요.",
       (r) => r.outcome === "win" && r.by === "five" && r.moves < 20,
     ),
     anyRound<OmokRound>(
       "white-win",
       "백의 승리",
-      "백(나중)으로 이깁니다.",
+      "백(나중)으로 이겨요.",
       (r) => r.outcome === "win" && r.stone === "white",
     ),
   ],

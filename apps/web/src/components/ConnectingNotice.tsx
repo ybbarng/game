@@ -20,7 +20,7 @@ export function ConnectingNotice({ isHost }: { isHost: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-center text-sm opacity-80">
-        {isHost ? "방을 여는 중…" : "방장을 찾는 중… 잠시만 기다려 주세요"}
+        {isHost ? "방을 여는 중…" : "방장을 찾는 중… 잠시만 기다려 주세요."}
       </p>
       {slow && (
         <div
@@ -30,7 +30,7 @@ export function ConnectingNotice({ isHost }: { isHost: boolean }) {
           <p className="mb-1 font-semibold">연결이 오래 걸리나요?</p>
           <ul className="list-disc pl-4">
             <li>
-              회사·학교 와이파이는 기기끼리 바로 잇는 것을 막을 때가 많습니다.
+              회사·학교 와이파이는 기기끼리 바로 잇는 것을 막을 때가 많아요.
               한쪽이라도 휴대폰 데이터로 바꿔 보세요.
             </li>
             <li>방장 화면이 켜져 있는지, 링크가 맞는지 확인해 보세요.</li>

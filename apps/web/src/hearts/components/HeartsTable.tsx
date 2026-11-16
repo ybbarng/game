@@ -265,11 +265,11 @@ export function HeartsTable({
       useHearts.setState({
         notice: leading
           ? view.trickIndex === 0
-            ? "첫 턴은 ♣2로 시작합니다"
-            : "하트가 깨지기 전에는 선일 때 하트를 낼 수 없습니다"
+            ? "첫 턴은 ♣2로 시작해요."
+            : "하트가 깨지기 전에는 선일 때 하트를 낼 수 없어요."
           : view.trickIndex === 0
-            ? "첫 턴에는 하트와 ♠Q를 낼 수 없습니다"
-            : "선 무늬를 따라 내야 합니다",
+            ? "첫 턴에는 하트와 ♠Q를 낼 수 없어요."
+            : "선 무늬를 따라 내야 해요.",
       });
       playUiCue("invalid");
       return;
@@ -300,17 +300,17 @@ export function HeartsTable({
       if (e.type === "played" && e.card === QUEEN_OF_SPADES)
         return { text: `♠Q — ${seatName(e.seat)}`, tone: "red" as const };
       if (e.type === "heartsBroken")
-        return { text: "하트가 깨졌습니다 ♥", tone: "red" as const };
+        return { text: "하트가 깨졌어요 ♥", tone: "red" as const };
       if (e.type === "passed")
         return {
           text:
             view.direction === "none"
-              ? "이번 판은 넘기지 않습니다"
+              ? "이번 판은 넘기지 않아요."
               : `${seatName(
                   view.players.find(
                     (s) => passTarget(s, view.direction) === me,
                   ) ?? me,
-                )}에게서 ${view.received.length}장을 받았습니다`,
+                )}에게서 ${view.received.length}장을 받았어요.`,
           tone: "info" as const,
         };
       if (e.type === "roundScored" && e.moonShooter !== null)
@@ -476,7 +476,7 @@ export function HeartsTable({
                   ready && (
                     <span
                       className="shrink-0 rounded bg-emerald-400 px-1 text-[10px] text-black"
-                      title="넘길 카드를 골랐다"
+                      title="넘길 카드를 골랐어요"
                     >
                       ✓
                     </span>
@@ -725,8 +725,8 @@ export function HeartsTable({
               style={{ left: stage.width / 2, top: layout.hand.top - 30 }}
             >
               {(decision as PlayDecision).leading
-                ? "내가 선입니다 — 낼 카드를 고르세요"
-                : "내 차례 — 낼 카드를 고르세요"}
+                ? "내가 선이에요 — 낼 카드를 고르세요."
+                : "내 차례 — 낼 카드를 고르세요."}
             </div>
           )}
 
@@ -761,7 +761,7 @@ export function HeartsTable({
               className="absolute inset-x-0 z-[340] mx-auto w-fit max-w-[92%] rounded-xl bg-rose-700/95 px-3 py-1.5 text-center font-semibold text-sm shadow-xl"
               style={{ top: layout.hud.y + layout.hud.h + 6 }}
             >
-              ⚠ 공정성 검증 실패 — 이 게임은 무효입니다 ({invalid})
+              ⚠ 공정성 검증 실패 — 이 게임은 무효예요 ({invalid})
             </div>
           )}
           {reconnecting && !hostLeft && (
@@ -770,12 +770,12 @@ export function HeartsTable({
               className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
             >
               <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              방장과 연결이 끊겼습니다. 다시 연결하는 중…
+              방장과 연결이 끊겼어요. 다시 연결하는 중…
             </div>
           )}
           {hostLeft && (
             <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-              방장이 방을 나가 게임이 끝났습니다
+              방장이 방을 나가 게임이 끝났어요.
               <button
                 type="button"
                 onClick={onExit}
@@ -827,10 +827,10 @@ function RoundPanel({
     <Panel
       title={
         retired
-          ? "게임을 중간에 끝냈습니다"
+          ? "게임을 중간에 끝냈어요."
           : over
             ? winners.includes(view.seat)
-              ? "🏆 이겼습니다!"
+              ? "🏆 이겼어요!"
               : `${winners.map(seatName).join(", ")} 승리`
             : `${view.roundNumber}판 결과`
       }

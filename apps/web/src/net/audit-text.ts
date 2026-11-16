@@ -16,10 +16,10 @@ export function auditChatText(
       : `${who} — 문제없음 ✓`;
   return who === "나"
     ? `${who} — 실패 ⚠ ${reason ?? ""}`
-    : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봅니다)`;
+    : `${who}의 주장 — 실패 ⚠ ${reason ?? ""} (내 검증과 따로 봐요)`;
 }
 
-/** 판 끝 검증 결과 알림. `label`은 「공정성 확인」·「기록 확인」, `fine`은 통과했을 때 덧붙이는 말 */
+/** 판 끝 검증 결과 알림. `label`은 「공정성 확인」·「기록 확인」, `fine`은 통과했을 때 덧붙이는 문장(마침표까지). `unchecked`도 마침표로 끝나는 문장이다 */
 export function auditNotice(
   result: AuditResult,
   label: string,
@@ -27,6 +27,6 @@ export function auditNotice(
 ): string {
   if (!result.ok) return `${label} 실패: ${result.reason}`;
   return result.unchecked
-    ? `${label}: ${fine}. 다만 ${result.unchecked}.`
+    ? `${label}: ${fine} 다만 ${result.unchecked}`
     : `${label}: ${fine}`;
 }

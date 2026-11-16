@@ -131,13 +131,13 @@ export const galaxyStats: KitStats<GalaxyView, GameEvent> = {
     anyRound<GalaxyRound>(
       "constellation",
       "첫 별자리",
-      "판 끝에 별자리를 하나 완성해 둡니다.",
+      "판 끝에 별자리를 하나 완성해 둬요.",
       (r) => r.completed.length >= 1,
     ),
     anyRound<GalaxyRound>(
       "constellation-3",
       "별자리 셋",
-      "판 끝에 별자리를 셋 완성해 둡니다.",
+      "판 끝에 별자리를 셋 완성해 둬요.",
       (r) => r.completed.length >= 3,
     ),
   ],

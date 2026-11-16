@@ -87,7 +87,7 @@ export function endText(
         ? `${name(end.seat)} 스톱 성공`
         : `${name(end.seat)} 스톱 실패(벌점 +30)`;
     case "deckOut":
-      return "더미가 떨어졌어요";
+      return "더미가 떨어졌어요.";
   }
 }
 
@@ -396,7 +396,7 @@ export function NyrongppongGame({
     status =
       view.phase === "gameOver"
         ? view.retired
-          ? "게임을 끝냈어요"
+          ? "게임을 끝냈어요."
           : `게임 끝 — ${ranksOf(view.totals)[me]}등 (합계 ${view.totals[me]}점)`
         : roundWinners(scores).includes(me)
           ? `이번 판 1등! (${scores[me]}점)`
@@ -407,16 +407,16 @@ export function NyrongppongGame({
   else if (d?.kind === "draw")
     // 암호화방은 뽕한 적이 있으면 늘 묻는다(방장이 손패 합을 모른다). 스톱할 수 없으면 가져오기만.
     status = d.canStop
-      ? `스톱할 수 있어요(합 ${handValue(view.hand)}). 스톱하거나 한 장 가져오세요`
-      : `합 ${handValue(view.hand)}라 스톱할 수 없어요. 한 장 가져오세요`;
+      ? `스톱할 수 있어요(합 ${handValue(view.hand)}). 스톱하거나 한 장 가져오세요.`
+      : `합 ${handValue(view.hand)}라 스톱할 수 없어요. 한 장 가져오세요.`;
   else if (myDiscard)
     status = d.yak
-      ? `약이 됐어요: ${YAK_NAMES[d.yak.kind]}! 내거나 한 장 버리세요`
+      ? `약이 됐어요: ${YAK_NAMES[d.yak.kind]}! 내거나 한 장 버리세요.`
       : view.hand.length % 3 === 0 &&
           view.drawn === null &&
           view.melds[me]?.length
-        ? "뽕! 한 장 더 버리세요"
-        : "버릴 카드를 누르세요";
+        ? "뽕! 한 장 더 버리세요."
+        : "버릴 카드를 누르세요.";
   else if (view.phase === "call") status = "뽕 응답을 기다리는 중…";
   else status = online ? `${name(view.turn)} 차례` : `${name(view.turn)} 차례…`;
 

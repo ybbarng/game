@@ -86,13 +86,13 @@ export const yutStats: KitStats<YutView, GameEvent> = {
     anyRound<YutRound>(
       "mo-3",
       "모 셋",
-      "한 판에 모를 세 번 던집니다.",
+      "한 판에 모를 세 번 던져요.",
       (r) => r.mos >= 3,
     ),
     anyRound<YutRound>(
       "capture-3",
       "잡기 셋",
-      "한 판에 상대 말을 세 번 잡습니다.",
+      "한 판에 상대 말을 세 번 잡아요.",
       (r) => r.captures >= 3,
     ),
   ],

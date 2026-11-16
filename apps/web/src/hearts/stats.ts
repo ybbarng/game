@@ -42,13 +42,13 @@ export const heartsStats: KitStats<PlayerView, GameEvent> = {
     anyRound<HeartsRound>(
       "moon",
       "문 슛",
-      "문 슛을 해냅니다.",
+      "문 슛을 해내요.",
       (r) => r.moon === "me",
     ),
     countRounds<HeartsRound>(
       "clean-10",
       "깨끗한 손",
-      "0점으로 끝낸 판이 열 번 쌓입니다.",
+      "0점으로 끝낸 판이 열 번 쌓여요.",
       10,
       (r) => r.points === 0,
     ),

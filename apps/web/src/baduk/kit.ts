@@ -67,13 +67,13 @@ export const badukStats: KitStats<BadukView, GameEvent> = {
     anyRound<BadukRound>(
       "count-win",
       "세어서 이김",
-      "끝까지 두고 집을 세어 이깁니다.",
+      "끝까지 두고 집을 세어 이겨요.",
       (r) => r.outcome === "win" && r.by === "score",
     ),
     anyRound<BadukRound>(
       "full-board",
       "19줄 승리",
-      "19줄 판에서 이깁니다.",
+      "19줄 판에서 이겨요.",
       (r) => r.outcome === "win" && r.size === 19,
     ),
   ],

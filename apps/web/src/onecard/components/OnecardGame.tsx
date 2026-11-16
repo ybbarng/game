@@ -657,17 +657,17 @@ export function OnecardGame({
         : `${rank}등`;
   } else if (view.phase === "reshuffle") status = "버린 더미를 섞는 중…";
   else if (view.finished.includes(me))
-    status = `다 냈어요! ${view.finished.indexOf(me) + 1}등 · 남은 사람을 기다려요`;
-  else if (view.bankrupt.includes(me)) status = "파산했어요 · 남은 판을 봐요";
+    status = `다 냈어요! ${view.finished.indexOf(me) + 1}등 · 남은 사람을 기다려요.`;
+  else if (view.bankrupt.includes(me)) status = "파산했어요 · 남은 판을 봐요.";
   else if (replay && view.phase === "play" && view.turn === me)
     status = view.attack > 0 ? `내 차례 · 공격 +${view.attack}` : "내 차례";
   else if (myTurn)
     status =
       view.attack > 0
-        ? `공격 +${view.attack}! 받아치거나 ${view.attack}장 먹으세요`
+        ? `공격 +${view.attack}! 받아치거나 ${view.attack}장 먹으세요.`
         : playable.size > 0
-          ? "내 차례 — 낼 카드를 누르세요"
-          : "낼 카드가 없어요. 먹으세요";
+          ? "내 차례 — 낼 카드를 누르세요."
+          : "낼 카드가 없어요. 먹으세요.";
   else status = `${name(view.turn)} 차례…`;
 
   const ended = events.find(
@@ -1015,7 +1015,7 @@ export function OnecardGame({
               {seven && myTurn && (
                 <fieldset className="pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl border border-white/15 bg-black/70 p-2 shadow-2xl backdrop-blur">
                   <legend className="sr-only">바꿀 무늬</legend>
-                  <p className="text-sm">7을 내요. 바꿀 무늬를 고르세요</p>
+                  <p className="text-sm">7을 내요. 바꿀 무늬를 고르세요.</p>
                   <div className="flex gap-1.5">
                     {SUITS.map((suit) => (
                       <button
@@ -1251,12 +1251,12 @@ export function OnecardGame({
               className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit max-w-[92%] items-center gap-2 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl"
             >
               <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              방장과 연결이 끊겼습니다. 다시 연결하는 중…
+              방장과 연결이 끊겼어요. 다시 연결하는 중…
             </div>
           )}
           {online && hostLeft && (
             <div className="absolute inset-x-0 top-16 z-[350] mx-auto flex w-fit items-center gap-3 rounded-2xl bg-black/85 px-4 py-3 text-sm shadow-2xl">
-              방장이 방을 나갔습니다
+              방장이 방을 나갔어요.
               <button
                 type="button"
                 onClick={onExit}

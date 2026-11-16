@@ -96,8 +96,8 @@ export function Scoreboard({
           </tbody>
         </table>
         <p className="text-xs opacity-50">
-          돈은 한 사람당 1000에서 시작합니다. 누군가 0이 되면 게임이 끝납니다.
-          승/패 옆 숫자는 승률입니다.
+          돈은 한 사람당 1000에서 시작해요. 누군가 0이 되면 게임이 끝나요. 승/패
+          옆 숫자는 승률이에요.
         </p>
       </div>
     </div>

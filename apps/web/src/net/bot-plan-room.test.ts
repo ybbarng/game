@@ -169,7 +169,7 @@ describe("컴퓨터 계획 판 번호가 다르면", () => {
     await host.start();
     await until(() => a.match !== null);
     await playRound(host, a);
-    const unchecked = `방장 화면의 컴퓨터가 내 화면보다 새 판(${MIGHTY_BOT_PLAN + 1}, 내 화면 ${MIGHTY_BOT_PLAN})이라 컴퓨터 수는 확인하지 못했다. 새로고침하면 다음 게임부터 확인한다`;
+    const unchecked = `방장 화면의 컴퓨터가 내 화면보다 새 판(${MIGHTY_BOT_PLAN + 1}, 내 화면 ${MIGHTY_BOT_PLAN})이라 컴퓨터 수는 확인하지 못했어요. 새로고침하면 다음 게임부터 확인해요.`;
     expect(await finish(host, audits)).toEqual({ ok: true, unchecked });
     // 다른 사람에게 알리는 결과에도 「확인 못 함」이 실린다(숨기지 않는다).
     await until(() => reports.length === 1);
@@ -214,7 +214,7 @@ describe("컴퓨터 계획 판 번호가 다르면", () => {
     expect(rigs.count).toBeGreaterThan(0);
     expect(await finish(liar.host, liar.audits)).toEqual({
       ok: true,
-      unchecked: expect.stringContaining("컴퓨터 수는 확인하지 못했다"),
+      unchecked: expect.stringContaining("컴퓨터 수는 확인하지 못했어요."),
     });
 
     // 번호는 컴퓨터 수를 맞춰 볼지에만 쓰인다: 참가자가 낸 카드를 바꿔 넣으면 번호가 달라도 잡힌다(모의 침투 A3).

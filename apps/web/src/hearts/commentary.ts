@@ -49,7 +49,7 @@ export function explainHearts(
       `${view.trickIndex + 1}/13턴 · 하트 ${view.heartsBroken ? "깨짐" : "안 깨짐"} · ${
         trick && trick.plays.length > 0
           ? `나온 카드 ${trick.plays.map((p) => `${cardLabel(p.card)}(${name(p.seat)})`).join(" ")}`
-          : `${name(next.seat)}이(가) 선`
+          : `${subj(name(next.seat))} 선`
       }`,
     );
     const values = evaluateHeartsPlays(view, { seed }, PLAY_WORLDS);
